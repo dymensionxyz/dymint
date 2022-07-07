@@ -46,6 +46,9 @@ type BlockManagerConfig struct {
 	BlockBatchSize uint64 `mapstructure:"block_batch_size"`
 }
 
+// GetViperConfig reads configuration parameters from Viper instance.
+//
+// This method is called in cosmos-sdk.
 func (nc *NodeConfig) GetViperConfig(v *viper.Viper) error {
 	nc.Aggregator = v.GetBool(flagAggregator)
 	nc.DALayer = v.GetString(flagDALayer)
@@ -63,6 +66,9 @@ func (nc *NodeConfig) GetViperConfig(v *viper.Viper) error {
 	return nil
 }
 
+// AddFlags adds Optimint specific configuration options to cobra Command.
+//
+// This function is called in cosmos-sdk.
 func AddFlags(cmd *cobra.Command) {
 	def := DefaultNodeConfig
 
