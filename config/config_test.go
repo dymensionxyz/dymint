@@ -24,6 +24,7 @@ func TestViperAndCobra(t *testing.T) {
 	assert.NoError(cmd.Flags().Set(flagDAConfig, `{"json":true}`))
 	assert.NoError(cmd.Flags().Set(flagBlockTime, "1234s"))
 	assert.NoError(cmd.Flags().Set(flagNamespaceID, "0102030405060708"))
+	assert.NoError(cmd.Flags().Set(flagBlockBatchSize, "10"))
 
 	nc := DefaultNodeConfig
 	assert.NoError(nc.GetViperConfig(v))
@@ -33,4 +34,5 @@ func TestViperAndCobra(t *testing.T) {
 	assert.Equal(`{"json":true}`, nc.DAConfig)
 	assert.Equal(1234*time.Second, nc.BlockTime)
 	assert.Equal([8]byte{1, 2, 3, 4, 5, 6, 7, 8}, nc.NamespaceID)
+	assert.Equal(uint64(10), nc.BlockBatchSize)
 }
