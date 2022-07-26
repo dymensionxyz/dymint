@@ -30,7 +30,7 @@ type ResultSubmitBatch struct {
 	BaseResult
 }
 
-type ResultGetLatestBatch struct {
+type ResultRetrieveBatch struct {
 	BaseResult
 	StartHeight uint64
 	EndHeight   uint64
@@ -40,6 +40,12 @@ type ResultGetLatestBatch struct {
 // SettlementLayerClientClient defines generic interface for Settlement layer interaction.
 type SettlementLayerClient interface {
 	Init(config []byte, settlementKV store.KVStore, logger log.Logger) error
+	Start() error
+	Stop() error
+	// SubmitBatch submits the batch to the settlement layer. This should create a transaction which (potentially)
+	// triggers a state transition in the settlement layer.
 	SubmitBatch(batch *types.Batch) ResultSubmitBatch
-	GetLatestBatch() ResultGetLatestBatch
+	// Get the batch which contains the given height. Empty height returns the latest batch.
+	RetrieveBatch(height ...uint64) (ResultRetrieveBatch, error)
+	// TODO(omritoptix): Support getting multiple batches and pagination
 }

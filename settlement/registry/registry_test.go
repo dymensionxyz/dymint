@@ -1,8 +1,9 @@
-package registry
+package registry_test
 
 import (
 	"testing"
 
+	"github.com/celestiaorg/optimint/settlement/registry"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -10,14 +11,14 @@ func TestRegistery(t *testing.T) {
 	assert := assert.New(t)
 
 	expected := []string{"mock"}
-	actual := RegisteredClients()
+	actual := registry.RegisteredClients()
 
 	assert.ElementsMatch(expected, actual)
 
 	for _, e := range expected {
-		dalc := GetClient(e)
+		dalc := registry.GetClient(e)
 		assert.NotNil(dalc)
 	}
 
-	assert.Nil(GetClient("nonexistent"))
+	assert.Nil(registry.GetClient("nonexistent"))
 }
