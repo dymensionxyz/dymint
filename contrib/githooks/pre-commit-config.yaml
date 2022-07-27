@@ -15,3 +15,7 @@ repos:
     - id: go-unit-tests
     - id: go-build
     - id: go-mod-tidy
+- repo: https://github.com/jumanjihouse/pre-commit-hooks
+  rev: master
+  hooks:
+    - id: markdownlint

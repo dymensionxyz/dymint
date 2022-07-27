@@ -1,10 +1,10 @@
 # Git hooks
 
-Using https://pre-commit.com/
+Using <https://pre-commit.com/>
 
 ## Installation
 
-Using pip: 
+Using pip:
 
 `pip install pre-commit`
 
