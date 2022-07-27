@@ -6,12 +6,12 @@ import (
 )
 
 // A central registry for all Settlement Layer Clients
-var clients = map[string]func() settlement.SettlementLayerClient{
-	"mock": func() settlement.SettlementLayerClient { return &mock.SettlementLayerClient{} },
+var clients = map[string]func() settlement.LayerClient{
+	"mock": func() settlement.LayerClient { return &mock.SettlementLayerClient{} },
 }
 
 // GetClient returns client identified by name.
-func GetClient(name string) settlement.SettlementLayerClient {
+func GetClient(name string) settlement.LayerClient {
 	f, ok := clients[name]
 	if !ok {
 		return nil

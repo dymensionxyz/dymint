@@ -25,11 +25,12 @@ type BaseResult struct {
 	Message string
 }
 
-// ResultSubmitBlock contains information returned from settlement layer after batch submission.
+// ResultSubmitBatch contains information returned from settlement layer after batch submission.
 type ResultSubmitBatch struct {
 	BaseResult
 }
 
+// ResultRetrieveBatch contains information returned from settlement layer after batch retrieval.
 type ResultRetrieveBatch struct {
 	BaseResult
 	StartHeight uint64
@@ -37,15 +38,24 @@ type ResultRetrieveBatch struct {
 	AppHashes   [][32]byte
 }
 
-// SettlementLayerClientClient defines generic interface for Settlement layer interaction.
-type SettlementLayerClient interface {
+// LayerClient defines generic interface for Settlement layer interaction.
+type LayerClient interface {
+
+	// Init is called once for the client initialization
 	Init(config []byte, settlementKV store.KVStore, logger log.Logger) error
+
+	// Start is called once, after Init. It's implementation should start the client service.
 	Start() error
+
+	// Stop is called once, after Start. It should stop the client service.
 	Stop() error
+
 	// SubmitBatch submits the batch to the settlement layer. This should create a transaction which (potentially)
 	// triggers a state transition in the settlement layer.
 	SubmitBatch(batch *types.Batch) ResultSubmitBatch
-	// Get the batch which contains the given height. Empty height returns the latest batch.
+
+	// RetrieveBatch Gets the batch which contains the given height. Empty height returns the latest batch.
 	RetrieveBatch(height ...uint64) (ResultRetrieveBatch, error)
+
 	// TODO(omritoptix): Support getting multiple batches and pagination
 }

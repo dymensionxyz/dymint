@@ -10,14 +10,17 @@ func createRandomHashes() [][32]byte {
 	h := [][32]byte{}
 	for i := 0; i < 8; i++ {
 		var h1 [32]byte
-		rand.Read(h1[:])
+		_, err := rand.Read(h1[:])
+		if err != nil {
+			panic(err)
+		}
 		h = append(h, h1)
 	}
 	return h
 }
 
-// TODO(omritoptix): Generate a chain and not just random blocks.
-// An optional argument would be the previous block.
+// GenerateBlocks generates random blocks.
+// TODO(omritoptix): Generate a chain and not just random blocks. An optional argument would be the previous block.
 func GenerateBlocks(num int) []*types.Block {
 	blocks := make([]*types.Block, num)
 	for i := 0; i < num; i++ {
@@ -56,6 +59,7 @@ func GenerateBlocks(num int) []*types.Block {
 	return blocks
 }
 
+// GenerateBatch generates a batch out of random blocks
 func GenerateBatch(startHeight uint64, endHeight uint64) *types.Batch {
 	blocks := GenerateBlocks(int(endHeight - startHeight))
 	batch := &types.Batch{

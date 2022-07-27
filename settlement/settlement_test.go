@@ -28,7 +28,7 @@ func TesClientsLifeCycle(t *testing.T) {
 	}
 }
 
-func doTestLifecycle(t *testing.T, settlement settlement.SettlementLayerClient) {
+func doTestLifecycle(t *testing.T, settlement settlement.LayerClient) {
 	require := require.New(t)
 
 	err := settlement.Init([]byte{}, nil, test.NewLogger(t))
@@ -50,7 +50,7 @@ func TestSubmitAndRetrieve(t *testing.T) {
 	}
 }
 
-func getConfForClient(settlementlc settlement.SettlementLayerClient) []byte {
+func getConfForClient(settlementlc settlement.LayerClient) []byte {
 	conf := []byte{}
 	if _, ok := settlementlc.(*mock.SettlementLayerClient); ok {
 		config := mock.Config{
@@ -62,7 +62,7 @@ func getConfForClient(settlementlc settlement.SettlementLayerClient) []byte {
 	return conf
 }
 
-func initClient(t *testing.T, settlementlc settlement.SettlementLayerClient) {
+func initClient(t *testing.T, settlementlc settlement.LayerClient) {
 	require := require.New(t)
 	conf := getConfForClient(settlementlc)
 
@@ -73,7 +73,7 @@ func initClient(t *testing.T, settlementlc settlement.SettlementLayerClient) {
 	require.NoError(err)
 }
 
-func doTestInvalidSubmit(t *testing.T, settlementlc settlement.SettlementLayerClient) {
+func doTestInvalidSubmit(t *testing.T, settlementlc settlement.LayerClient) {
 	assert := assert.New(t)
 	initClient(t, settlementlc)
 
@@ -100,7 +100,7 @@ func doTestInvalidSubmit(t *testing.T, settlementlc settlement.SettlementLayerCl
 
 }
 
-func doTestSubmitAndRetrieve(t *testing.T, settlementlc settlement.SettlementLayerClient) {
+func doTestSubmitAndRetrieve(t *testing.T, settlementlc settlement.LayerClient) {
 	require := require.New(t)
 	assert := assert.New(t)
 

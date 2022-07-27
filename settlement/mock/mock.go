@@ -15,7 +15,7 @@ import (
 	"github.com/celestiaorg/optimint/types"
 )
 
-const DefaultBatchSize = 5
+const defaultBatchSize = 5
 
 // SettlementLayerClient is intended only for usage in tests.
 type SettlementLayerClient struct {
@@ -26,14 +26,17 @@ type SettlementLayerClient struct {
 	ctx          context.Context
 	cancel       context.CancelFunc
 }
+
+// Config for the SettlementLayerClient mock
 type Config struct {
 	AutoUpdateBatches       bool
 	AutoUpdateBatchInterval time.Duration
 	BatchSize               uint64
 }
 
-var _ settlement.SettlementLayerClient = &SettlementLayerClient{}
+var _ settlement.LayerClient = &SettlementLayerClient{}
 
+// Init is called once. it initializes the struct members.
 func (s *SettlementLayerClient) Init(config []byte, settlementKV store.KVStore, logger log.Logger) error {
 	s.logger = logger
 	s.settlementKV = settlementKV
@@ -45,6 +48,9 @@ func (s *SettlementLayerClient) Init(config []byte, settlementKV store.KVStore, 
 		if err != nil {
 			return err
 		}
+		if s.config.BatchSize == 0 {
+			s.config.BatchSize = defaultBatchSize
+		}
 	}
 	return nil
 }
@@ -55,11 +61,9 @@ func (s *SettlementLayerClient) decodeConfig(config []byte) (Config, error) {
 	return c, err
 }
 
+// Start is called once, after init. If configured so, it will start producing batches every interval.
 func (s *SettlementLayerClient) Start() error {
 	s.logger.Debug("Mock settlement Layer Client starting")
-	if s.config.BatchSize == 0 {
-		s.config.BatchSize = DefaultBatchSize
-	}
 	if s.config.AutoUpdateBatches {
 		go func() {
 			timer := time.NewTimer(s.config.AutoUpdateBatchInterval)
@@ -68,7 +72,7 @@ func (s *SettlementLayerClient) Start() error {
 				case <-s.ctx.Done():
 					return
 				case <-timer.C:
-					s.UpdateSettlementWithBatch()
+					s.updateSettlementWithBatch()
 				}
 			}
 		}()
@@ -76,13 +80,14 @@ func (s *SettlementLayerClient) Start() error {
 	return nil
 }
 
+// Stop is called once, after Start. it cancels the auto batches created, if such was started.
 func (s *SettlementLayerClient) Stop() error {
 	s.logger.Debug("Mock settlement Layer Client stopping")
 	s.cancel()
 	return nil
 }
 
-func (s *SettlementLayerClient) UpdateSettlementWithBatch() {
+func (s *SettlementLayerClient) updateSettlementWithBatch() {
 	s.logger.Debug("Mock settlement Layer Client updating with batch")
 	batch := s.createBatch(s.latestHeight+1, s.latestHeight+1+s.config.BatchSize)
 	s.SubmitBatch(&batch)
@@ -95,13 +100,13 @@ func (s *SettlementLayerClient) createBatch(startHeight uint64, endHeight uint64
 		StartHeight: startHeight,
 		EndHeight:   endHeight,
 		Blocks:      blocks,
-		// TODO(omritoptix): Change it to be recieved as func arg
+		// TODO(omritoptix): Change it to be received as func arg
 		DAPath: fmt.Sprint(endHeight),
 	}
 	return batch
 }
 
-// Save the data to the kvstore
+// saveBatch saves the data to the kvstore
 func (s *SettlementLayerClient) saveBatch(resultRetrieveBatch *settlement.ResultRetrieveBatch) error {
 	s.logger.Debug("Saving batch to settlement layer", "start height",
 		resultRetrieveBatch.StartHeight, "end height", resultRetrieveBatch.EndHeight)
@@ -126,6 +131,8 @@ func (s *SettlementLayerClient) validateBatch(batch *types.Batch) error {
 	return nil
 }
 
+// SubmitBatch submits the batch to the settlement layer. This should create a transaction which (potentially)
+// triggers a state transition in the settlement layer.
 func (s *SettlementLayerClient) SubmitBatch(batch *types.Batch) settlement.ResultSubmitBatch {
 	s.logger.Debug("Submitting batch to settlement layer", "start height", batch.StartHeight, "end height", batch.EndHeight)
 	// validate batch
@@ -170,6 +177,7 @@ func (s *SettlementLayerClient) retrieveBatchAtEndHeight(endHeight uint64) (*set
 	return &batchResult, nil
 }
 
+// RetrieveBatch Gets the batch which contains the given height. Empty height returns the latest batch.
 func (s *SettlementLayerClient) RetrieveBatch(height ...uint64) (settlement.ResultRetrieveBatch, error) {
 	if len(height) == 0 {
 		s.logger.Debug("Getting latest batch from settlement layer", "latest height", s.latestHeight)
