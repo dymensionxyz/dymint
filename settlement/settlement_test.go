@@ -94,7 +94,7 @@ func doTestInvalidSubmit(t *testing.T, settlementlc settlement.LayerClient) {
 			StartHeight: c.startHeight,
 			EndHeight:   c.endHeight,
 		}
-		resultSubmitBatch := settlementlc.SubmitBatch(batch)
+		resultSubmitBatch := settlementlc.SubmitBatch(batch, strconv.FormatUint(c.endHeight, 10))
 		assert.Equal(resultSubmitBatch.Code, c.status)
 	}
 
@@ -107,7 +107,7 @@ func doTestSubmitAndRetrieve(t *testing.T, settlementlc settlement.LayerClient) 
 	initClient(t, settlementlc)
 
 	// Get settlement lastest batch and check there is an error as we haven't written anything yet.
-	lastestBatch, err := settlementlc.RetrieveBatch()
+	_, err := settlementlc.RetrieveBatch()
 	require.Error(err)
 
 	// Create and submit multiple batches
@@ -118,14 +118,13 @@ func doTestSubmitAndRetrieve(t *testing.T, settlementlc settlement.LayerClient) 
 		startHeight := uint64(i)*(batchSize+1) + 1
 		// Create the batch
 		batch = testutil.GenerateBatch(startHeight, uint64(startHeight+batchSize))
-		batch.DAPath = strconv.FormatUint(batch.EndHeight, 10)
 		// Submit the batch
-		resultSubmitBatch := settlementlc.SubmitBatch(batch)
+		resultSubmitBatch := settlementlc.SubmitBatch(batch, strconv.FormatUint(batch.EndHeight, 10))
 		assert.Equal(resultSubmitBatch.Code, settlement.StatusSuccess)
 	}
 
 	// Retrieve the latest batch and make sure it matches latest batch submitted
-	lastestBatch, err = settlementlc.RetrieveBatch()
+	lastestBatch, err := settlementlc.RetrieveBatch()
 	require.NoError(err)
 	assert.Equal(batch.EndHeight, lastestBatch.EndHeight)
 

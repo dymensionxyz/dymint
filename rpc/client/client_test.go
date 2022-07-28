@@ -3,7 +3,6 @@ package client
 import (
 	"context"
 	crand "crypto/rand"
-	cryptorand "crypto/rand"
 	"fmt"
 	"math/rand"
 	"testing"
@@ -89,8 +88,8 @@ func TestGenesisChunked(t *testing.T) {
 
 	mockApp := &mocks.Application{}
 	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
-	privKey, _, _ := crypto.GenerateEd25519Key(cryptorand.Reader)
-	signingKey, _, _ := crypto.GenerateEd25519Key(cryptorand.Reader)
+	privKey, _, _ := crypto.GenerateEd25519Key(crand.Reader)
+	signingKey, _, _ := crypto.GenerateEd25519Key(crand.Reader)
 	n, _ := node.NewNode(context.Background(), config.NodeConfig{DALayer: "mock"}, privKey, signingKey, proxy.NewLocalClientCreator(mockApp), genDoc, log.TestingLogger())
 
 	rpc := NewClient(n)
