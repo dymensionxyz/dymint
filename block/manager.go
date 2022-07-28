@@ -455,7 +455,7 @@ func (m *Manager) submitBlockToDA(ctx context.Context, block *types.Block) error
 	}
 
 	if !submitted {
-		return fmt.Errorf("Failed to submit block to DA layer after %d attempts", maxSubmitAttempts)
+		return fmt.Errorf("failed to submit block to DA layer after %d attempts", maxSubmitAttempts)
 	}
 
 	m.HeaderOutCh <- &block.Header

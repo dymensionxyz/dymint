@@ -25,6 +25,15 @@ type BaseResult struct {
 	Message string
 }
 
+// Batch defines a batch structure for the settlement layer
+type Batch struct {
+	StartHeight uint64
+	EndHeight   uint64
+	AppHashes   [][32]byte
+	// Path of the batch in the DA layer
+	DAPath string
+}
+
 // ResultSubmitBatch contains information returned from settlement layer after batch submission.
 type ResultSubmitBatch struct {
 	BaseResult
@@ -33,9 +42,7 @@ type ResultSubmitBatch struct {
 // ResultRetrieveBatch contains information returned from settlement layer after batch retrieval.
 type ResultRetrieveBatch struct {
 	BaseResult
-	StartHeight uint64
-	EndHeight   uint64
-	AppHashes   [][32]byte
+	*Batch
 }
 
 // LayerClient defines generic interface for Settlement layer interaction.
@@ -52,7 +59,7 @@ type LayerClient interface {
 
 	// SubmitBatch submits the batch to the settlement layer. This should create a transaction which (potentially)
 	// triggers a state transition in the settlement layer.
-	SubmitBatch(batch *types.Batch) ResultSubmitBatch
+	SubmitBatch(batch *types.Batch, daPath string) ResultSubmitBatch
 
 	// RetrieveBatch Gets the batch which contains the given height. Empty height returns the latest batch.
 	RetrieveBatch(height ...uint64) (ResultRetrieveBatch, error)

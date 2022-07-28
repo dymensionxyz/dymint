@@ -280,7 +280,7 @@ func evidenceToProto(evidence EvidenceData) []*abci.Evidence {
 	var ret []*abci.Evidence
 	for _, e := range evidence.Evidence {
 		for _, ae := range e.ABCI() {
-			ret = append(ret, &ae)
+			ret = append(ret, &ae) //#nosec
 		}
 	}
 	return ret
