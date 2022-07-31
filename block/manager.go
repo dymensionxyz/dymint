@@ -52,7 +52,7 @@ type Manager struct {
 	executor *state.BlockExecutor
 
 	dalc      da.DataAvailabilityLayerClient
-	retriever da.BlockRetriever
+	retriever da.BatchRetriever
 	// daHeight is the height of the latest processed DA block
 	daHeight uint64
 
@@ -131,7 +131,7 @@ func NewManager(
 		store:       store,
 		executor:    exec,
 		dalc:        dalc,
-		retriever:   dalc.(da.BlockRetriever), // TODO(tzdybal): do it in more gentle way (after MVP)
+		retriever:   dalc.(da.BatchRetriever), // TODO(tzdybal): do it in more gentle way (after MVP)
 		daHeight:    s.DAHeight,
 		// channels are buffered to avoid blocking on input/output operations, buffer sizes are arbitrary
 		HeaderOutCh: make(chan *types.Header, 100),
@@ -157,7 +157,7 @@ func getAddress(key crypto.PrivKey) ([]byte, error) {
 // SetDALC is used to set DataAvailabilityLayerClient used by Manager.
 func (m *Manager) SetDALC(dalc da.DataAvailabilityLayerClient) {
 	m.dalc = dalc
-	m.retriever = dalc.(da.BlockRetriever)
+	m.retriever = dalc.(da.BatchRetriever)
 }
 
 // AggregationLoop is responsible for aggregating transactions into rollup-blocks.
@@ -312,9 +312,9 @@ func (m *Manager) processNextDABlock() error {
 	return err
 }
 
-func (m *Manager) fetchBlock(daHeight uint64) (da.ResultRetrieveBlocks, error) {
+func (m *Manager) fetchBlock(daHeight uint64) (da.ResultRetrieveBatch, error) {
 	var err error
-	blockRes := m.retriever.RetrieveBlocks(daHeight)
+	blockRes := m.retriever.RetrieveBatches(daHeight)
 	switch blockRes.Code {
 	case da.StatusError:
 		err = fmt.Errorf("failed to retrieve block: %s", blockRes.Message)
@@ -443,7 +443,7 @@ func (m *Manager) submitBlockToDA(ctx context.Context, block *types.Block) error
 	submitted := false
 	backoff := initialBackoff
 	for attempt := 1; ctx.Err() == nil && !submitted && attempt <= maxSubmitAttempts; attempt++ {
-		res := m.dalc.SubmitBlock(block)
+		res := m.dalc.SubmitBatch(block)
 		if res.Code == da.StatusSuccess {
 			m.logger.Info("successfully submitted optimint block to DA layer", "optimintHeight", block.Header.Height, "daHeight", res.DAHeight)
 			submitted = true

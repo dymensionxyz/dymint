@@ -38,7 +38,7 @@ var DefaultConfig = Config{
 }
 
 var _ da.DataAvailabilityLayerClient = &DataAvailabilityLayerClient{}
-var _ da.BlockRetriever = &DataAvailabilityLayerClient{}
+var _ da.BatchRetriever = &DataAvailabilityLayerClient{}
 
 // Init sets the configuration options.
 func (d *DataAvailabilityLayerClient) Init(config []byte, _ store.KVStore, logger log.Logger) error {
@@ -73,15 +73,15 @@ func (d *DataAvailabilityLayerClient) Stop() error {
 	return d.conn.Close()
 }
 
-// SubmitBlock proxies SubmitBlock request to gRPC server.
-func (d *DataAvailabilityLayerClient) SubmitBlock(block *types.Block) da.ResultSubmitBlock {
-	resp, err := d.client.SubmitBlock(context.TODO(), &dalc.SubmitBlockRequest{Block: block.ToProto()})
+// SubmitBatch proxies SubmitBatch request to gRPC server.
+func (d *DataAvailabilityLayerClient) SubmitBatch(block *types.Block) da.ResultSubmitBatch {
+	resp, err := d.client.SubmitBatch(context.TODO(), &dalc.SubmitBatchRequest{Block: block.ToProto()})
 	if err != nil {
-		return da.ResultSubmitBlock{
+		return da.ResultSubmitBatch{
 			BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error()},
 		}
 	}
-	return da.ResultSubmitBlock{
+	return da.ResultSubmitBatch{
 		BaseResult: da.BaseResult{
 			Code:     da.StatusCode(resp.Result.Code),
 			Message:  resp.Result.Message,
@@ -90,23 +90,23 @@ func (d *DataAvailabilityLayerClient) SubmitBlock(block *types.Block) da.ResultS
 	}
 }
 
-// CheckBlockAvailability proxies CheckBlockAvailability request to gRPC server.
-func (d *DataAvailabilityLayerClient) CheckBlockAvailability(dataLayerHeight uint64) da.ResultCheckBlock {
-	resp, err := d.client.CheckBlockAvailability(context.TODO(), &dalc.CheckBlockAvailabilityRequest{DataLayerHeight: dataLayerHeight})
+// CheckBatchAvailability proxies CheckBatchAvailability request to gRPC server.
+func (d *DataAvailabilityLayerClient) CheckBatchAvailability(dataLayerHeight uint64) da.ResultCheckBatch {
+	resp, err := d.client.CheckBatchAvailability(context.TODO(), &dalc.CheckBatchAvailabilityRequest{DataLayerHeight: dataLayerHeight})
 	if err != nil {
-		return da.ResultCheckBlock{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error()}}
+		return da.ResultCheckBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error()}}
 	}
-	return da.ResultCheckBlock{
+	return da.ResultCheckBatch{
 		BaseResult:    da.BaseResult{Code: da.StatusCode(resp.Result.Code), Message: resp.Result.Message},
 		DataAvailable: resp.DataAvailable,
 	}
 }
 
-// RetrieveBlocks proxies RetrieveBlocks request to gRPC server.
-func (d *DataAvailabilityLayerClient) RetrieveBlocks(dataLayerHeight uint64) da.ResultRetrieveBlocks {
-	resp, err := d.client.RetrieveBlocks(context.TODO(), &dalc.RetrieveBlocksRequest{DataLayerHeight: dataLayerHeight})
+// RetrieveBatches proxies RetrieveBlocks request to gRPC server.
+func (d *DataAvailabilityLayerClient) RetrieveBatches(dataLayerHeight uint64) da.ResultRetrieveBatch {
+	resp, err := d.client.RetrieveBatches(context.TODO(), &dalc.RetrieveBatchesRequest{DataLayerHeight: dataLayerHeight})
 	if err != nil {
-		return da.ResultRetrieveBlocks{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error()}}
+		return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error()}}
 	}
 
 	blocks := make([]*types.Block, len(resp.Blocks))
@@ -114,11 +114,11 @@ func (d *DataAvailabilityLayerClient) RetrieveBlocks(dataLayerHeight uint64) da.
 		var b types.Block
 		err = b.FromProto(block)
 		if err != nil {
-			return da.ResultRetrieveBlocks{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error()}}
+			return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error()}}
 		}
 		blocks[i] = &b
 	}
-	return da.ResultRetrieveBlocks{
+	return da.ResultRetrieveBatch{
 		BaseResult: da.BaseResult{
 			Code:     da.StatusCode(resp.Result.Code),
 			Message:  resp.Result.Message,
