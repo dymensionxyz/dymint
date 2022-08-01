@@ -74,8 +74,8 @@ func (d *DataAvailabilityLayerClient) Stop() error {
 }
 
 // SubmitBatch proxies SubmitBatch request to gRPC server.
-func (d *DataAvailabilityLayerClient) SubmitBatch(block *types.Block) da.ResultSubmitBatch {
-	resp, err := d.client.SubmitBatch(context.TODO(), &dalc.SubmitBatchRequest{Block: block.ToProto()})
+func (d *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultSubmitBatch {
+	resp, err := d.client.SubmitBatch(context.TODO(), &dalc.SubmitBatchRequest{Batch: batch.ToProto()})
 	if err != nil {
 		return da.ResultSubmitBatch{
 			BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error()},
@@ -109,14 +109,14 @@ func (d *DataAvailabilityLayerClient) RetrieveBatches(dataLayerHeight uint64) da
 		return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error()}}
 	}
 
-	blocks := make([]*types.Block, len(resp.Blocks))
-	for i, block := range resp.Blocks {
-		var b types.Block
-		err = b.FromProto(block)
+	batches := make([]*types.Batch, len(resp.Batches))
+	for i, batch := range resp.Batches {
+		var b types.Batch
+		err = b.FromProto(batch)
 		if err != nil {
 			return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error()}}
 		}
-		blocks[i] = &b
+		batches[i] = &b
 	}
 	return da.ResultRetrieveBatch{
 		BaseResult: da.BaseResult{
@@ -124,6 +124,6 @@ func (d *DataAvailabilityLayerClient) RetrieveBatches(dataLayerHeight uint64) da
 			Message:  resp.Result.Message,
 			DAHeight: dataLayerHeight,
 		},
-		Blocks: blocks,
+		Batches: batches,
 	}
 }

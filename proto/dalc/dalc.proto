@@ -18,7 +18,7 @@ message DAResponse {
 }
 
 message SubmitBatchRequest {
-	optimint.Block block = 1;
+	optimint.Batch batch = 1;
 }
 
 message SubmitBatchResponse {
@@ -40,7 +40,7 @@ message RetrieveBatchesRequest {
 
 message RetrieveBatchesResponse {
 	DAResponse result = 1;
-	repeated optimint.Block blocks = 2;
+	repeated optimint.Batch batches = 2;
 }
 
 service DALCService {

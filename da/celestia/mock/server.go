@@ -80,19 +80,19 @@ func (s *Server) submit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	block := types.Block{}
-	blockData, err := hex.DecodeString(req.Data)
+	batch := types.Batch{}
+	batchData, err := hex.DecodeString(req.Data)
 	if err != nil {
 		s.writeError(w, err)
 		return
 	}
-	err = block.UnmarshalBinary(blockData)
+	err = batch.UnmarshalBinary(batchData)
 	if err != nil {
 		s.writeError(w, err)
 		return
 	}
 
-	res := s.mock.SubmitBatch(&block)
+	res := s.mock.SubmitBatch(&batch)
 	code := 0
 	if res.Code != da.StatusSuccess {
 		code = 3
@@ -125,8 +125,8 @@ func (s *Server) shares(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var nShares []NamespacedShare
-	for _, block := range res.Blocks {
-		blob, err := block.MarshalBinary()
+	for _, batch := range res.Batches {
+		blob, err := json.Marshal(batch)
 		if err != nil {
 			s.writeError(w, err)
 			return
@@ -167,9 +167,9 @@ func (s *Server) data(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data := make([][]byte, len(res.Blocks))
-	for i := range res.Blocks {
-		data[i], err = res.Blocks[i].MarshalBinary()
+	data := make([][]byte, len(res.Batches))
+	for i := range res.Batches {
+		data[i], err = res.Batches[i].MarshalBinary()
 		if err != nil {
 			s.writeError(w, err)
 			return

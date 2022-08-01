@@ -89,7 +89,7 @@ repos:
     # - Supports repo config file for configuration
     # - https://github.com/golangci/golangci-lint
     #
-    -   id: golangci-lint
+    # -   id: golangci-lint
     -   id: golangci-lint-mod
     -   id: golangci-lint-repo-mod
     #

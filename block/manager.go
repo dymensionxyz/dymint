@@ -276,7 +276,7 @@ func (m *Manager) RetrieveLoop(ctx context.Context) {
 			for {
 				daHeight := atomic.LoadUint64(&m.daHeight)
 				m.logger.Debug("retrieve", "daHeight", daHeight)
-				err := m.processNextDABlock()
+				err := m.processNextDABatch()
 				if err != nil {
 					m.logger.Error("failed to retrieve block from DALC", "daHeight", daHeight, "errors", err.Error())
 					break
@@ -289,22 +289,24 @@ func (m *Manager) RetrieveLoop(ctx context.Context) {
 	}
 }
 
-func (m *Manager) processNextDABlock() error {
+func (m *Manager) processNextDABatch() error {
 	// TODO(tzdybal): extract configuration option
 	maxRetries := 10
 	daHeight := atomic.LoadUint64(&m.daHeight)
 
 	var err error
-	m.logger.Debug("trying to retrieve block from DA", "daHeight", daHeight)
+	m.logger.Debug("trying to retrieve batch from DA", "daHeight", daHeight)
 	for r := 0; r < maxRetries; r++ {
-		blockResp, fetchErr := m.fetchBlock(daHeight)
+		batchResp, fetchErr := m.fetchBatch(daHeight)
 		if fetchErr != nil {
 			err = multierr.Append(err, fetchErr)
 			time.Sleep(100 * time.Millisecond)
 		} else {
-			m.logger.Debug("retrieved potential blocks", "n", len(blockResp.Blocks), "daHeight", daHeight)
-			for _, block := range blockResp.Blocks {
-				m.blockInCh <- newBlockEvent{block, daHeight}
+			m.logger.Debug("retrieved potential batches", "n", len(batchResp.Batches), "daHeight", daHeight)
+			for _, batch := range batchResp.Batches {
+				for _, block := range batch.Blocks {
+					m.blockInCh <- newBlockEvent{block, daHeight}
+				}
 			}
 			return nil
 		}
@@ -312,16 +314,16 @@ func (m *Manager) processNextDABlock() error {
 	return err
 }
 
-func (m *Manager) fetchBlock(daHeight uint64) (da.ResultRetrieveBatch, error) {
+func (m *Manager) fetchBatch(daHeight uint64) (da.ResultRetrieveBatch, error) {
 	var err error
-	blockRes := m.retriever.RetrieveBatches(daHeight)
-	switch blockRes.Code {
+	batchRes := m.retriever.RetrieveBatches(daHeight)
+	switch batchRes.Code {
 	case da.StatusError:
-		err = fmt.Errorf("failed to retrieve block: %s", blockRes.Message)
+		err = fmt.Errorf("failed to retrieve batch: %s", batchRes.Message)
 	case da.StatusTimeout:
-		err = fmt.Errorf("timeout during retrieve block: %s", blockRes.Message)
+		err = fmt.Errorf("timeout during retrieve batch: %s", batchRes.Message)
 	}
-	return blockRes, err
+	return batchRes, err
 }
 
 func (m *Manager) getRemainingSleep(start time.Time) time.Duration {
@@ -395,7 +397,7 @@ func (m *Manager) publishBlock(ctx context.Context) error {
 		return err
 	}
 
-	err = m.submitBlockToDA(ctx, block)
+	err = m.submitBatchToDA(ctx, block)
 	if err != nil {
 		m.logger.Error("Failed to submit block to DA Layer")
 		return err
@@ -437,15 +439,20 @@ func (m *Manager) publishBlock(ctx context.Context) error {
 	return nil
 }
 
-func (m *Manager) submitBlockToDA(ctx context.Context, block *types.Block) error {
-	m.logger.Info("submitting block to DA layer", "height", block.Header.Height)
+func (m *Manager) submitBatchToDA(ctx context.Context, block *types.Block) error {
+	m.logger.Info("submitting batch to DA layer", "height", block.Header.Height)
 
 	submitted := false
 	backoff := initialBackoff
 	for attempt := 1; ctx.Err() == nil && !submitted && attempt <= maxSubmitAttempts; attempt++ {
-		res := m.dalc.SubmitBatch(block)
+		batch := &types.Batch{
+			StartHeight: block.Header.Height,
+			EndHeight:   block.Header.Height,
+			Blocks:      []*types.Block{block},
+		}
+		res := m.dalc.SubmitBatch(batch)
 		if res.Code == da.StatusSuccess {
-			m.logger.Info("successfully submitted optimint block to DA layer", "optimintHeight", block.Header.Height, "daHeight", res.DAHeight)
+			m.logger.Info("successfully submitted dymint batch to DA layer", "dymintHeight", block.Header.Height, "daHeight", res.DAHeight)
 			submitted = true
 		} else {
 			m.logger.Error("DA layer submission failed", "error", res.Message, "attempt", attempt)
@@ -455,7 +462,7 @@ func (m *Manager) submitBlockToDA(ctx context.Context, block *types.Block) error
 	}
 
 	if !submitted {
-		return fmt.Errorf("failed to submit block to DA layer after %d attempts", maxSubmitAttempts)
+		return fmt.Errorf("failed to submit batch to DA layer after %d attempts", maxSubmitAttempts)
 	}
 
 	m.HeaderOutCh <- &block.Header

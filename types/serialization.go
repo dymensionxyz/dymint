@@ -14,6 +14,11 @@ func (b *Block) MarshalBinary() ([]byte, error) {
 	return b.ToProto().Marshal()
 }
 
+// MarshalBinary encodes Batch into binary form and returns it.
+func (b *Batch) MarshalBinary() ([]byte, error) {
+	return b.ToProto().Marshal()
+}
+
 // UnmarshalBinary decodes binary form of Block into object.
 func (b *Block) UnmarshalBinary(data []byte) error {
 	var pBlock pb.Block
@@ -22,6 +27,17 @@ func (b *Block) UnmarshalBinary(data []byte) error {
 		return err
 	}
 	err = b.FromProto(&pBlock)
+	return err
+}
+
+// UnmarshalBinary decodes binary form of Batch into object.
+func (b *Batch) UnmarshalBinary(data []byte) error {
+	var pBatch pb.Batch
+	err := pBatch.Unmarshal(data)
+	if err != nil {
+		return err
+	}
+	err = b.FromProto(&pBatch)
 	return err
 }
 
@@ -140,6 +156,15 @@ func (b *Block) ToProto() *pb.Block {
 	}
 }
 
+// ToProto converts Batch into protobuf representation and returns it.
+func (b *Batch) ToProto() *pb.Batch {
+	return &pb.Batch{
+		StartHeight: b.StartHeight,
+		EndHeight:   b.EndHeight,
+		Blocks:      blocksToProto(b.Blocks),
+	}
+}
+
 // ToProto converts Data into protobuf representation and returns it.
 func (d *Data) ToProto() *pb.Data {
 	return &pb.Data{
@@ -165,6 +190,14 @@ func (b *Block) FromProto(other *pb.Block) error {
 		}
 	}
 
+	return nil
+}
+
+// FromProto fills Batch with data from its protobuf representation.
+func (b *Batch) FromProto(other *pb.Batch) error {
+	b.StartHeight = other.StartHeight
+	b.EndHeight = other.EndHeight
+	b.Blocks = protoToBlocks(other.Blocks)
 	return nil
 }
 
@@ -312,4 +345,26 @@ func byteSlicesToSignatures(bytes [][]byte) []Signature {
 		sigs[i] = bytes[i]
 	}
 	return sigs
+}
+
+// Convert a list of blocks to a list of protobuf blocks.
+func blocksToProto(blocks []*Block) []*pb.Block {
+	pbBlocks := make([]*pb.Block, len(blocks))
+	for i, b := range blocks {
+		pbBlocks[i] = b.ToProto()
+	}
+	return pbBlocks
+}
+
+// protoToBlocks converts a list of protobuf blocks to a list of go struct blocks.
+func protoToBlocks(pbBlocks []*pb.Block) []*Block {
+	blocks := make([]*Block, len(pbBlocks))
+	for i, b := range pbBlocks {
+		blocks[i] = new(Block)
+		err := blocks[i].FromProto(b)
+		if err != nil {
+			panic(err)
+		}
+	}
+	return blocks
 }

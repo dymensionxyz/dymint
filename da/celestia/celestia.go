@@ -61,8 +61,8 @@ func (c *DataAvailabilityLayerClient) Stop() error {
 }
 
 // SubmitBatch submits a block to DA layer.
-func (c *DataAvailabilityLayerClient) SubmitBatch(block *types.Block) da.ResultSubmitBatch {
-	blob, err := block.MarshalBinary()
+func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultSubmitBatch {
+	blob, err := batch.MarshalBinary()
 	if err != nil {
 		return da.ResultSubmitBatch{
 			BaseResult: da.BaseResult{
@@ -134,16 +134,16 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(dataLayerHeight uint64) da
 		}
 	}
 
-	blocks := make([]*types.Block, len(data))
+	batches := make([]*types.Batch, len(data))
 	for i, msg := range data {
-		var block pb.Block
-		err = proto.Unmarshal(msg, &block)
+		var batch pb.Batch
+		err = proto.Unmarshal(msg, &batch)
 		if err != nil {
-			c.logger.Error("failed to unmarshal block", "daHeight", dataLayerHeight, "position", i, "error", err)
+			c.logger.Error("failed to unmarshal batch", "daHeight", dataLayerHeight, "position", i, "error", err)
 			continue
 		}
-		blocks[i] = new(types.Block)
-		err := blocks[i].FromProto(&block)
+		batches[i] = new(types.Batch)
+		err := batches[i].FromProto(&batch)
 		if err != nil {
 			return da.ResultRetrieveBatch{
 				BaseResult: da.BaseResult{
@@ -159,6 +159,6 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(dataLayerHeight uint64) da
 			Code:     da.StatusSuccess,
 			DAHeight: dataLayerHeight,
 		},
-		Blocks: blocks,
+		Batches: batches,
 	}
 }

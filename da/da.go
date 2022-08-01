@@ -51,7 +51,7 @@ type ResultRetrieveBatch struct {
 	BaseResult
 	// Block is the full block retrieved from Data Availability Layer.
 	// If Code is not equal to StatusSuccess, it has to be nil.
-	Blocks []*types.Block
+	Batches []*types.Batch
 }
 
 // DataAvailabilityLayerClient defines generic interface for DA layer block submission.
@@ -69,7 +69,7 @@ type DataAvailabilityLayerClient interface {
 	// SubmitBatch submits the passed in block to the DA layer.
 	// This should create a transaction which (potentially)
 	// triggers a state transition in the DA layer.
-	SubmitBatch(block *types.Block) ResultSubmitBatch
+	SubmitBatch(batch *types.Batch) ResultSubmitBatch
 
 	// CheckBatchAvailability queries DA layer to check data availability of block corresponding at given height.
 	CheckBatchAvailability(dataLayerHeight uint64) ResultCheckBatch

@@ -40,8 +40,8 @@ type mockImpl struct {
 }
 
 func (m *mockImpl) SubmitBatch(_ context.Context, request *dalc.SubmitBatchRequest) (*dalc.SubmitBatchResponse, error) {
-	var b types.Block
-	err := b.FromProto(request.Block)
+	var b types.Batch
+	err := b.FromProto(request.Batch)
 	if err != nil {
 		return nil, err
 	}
@@ -68,15 +68,15 @@ func (m *mockImpl) CheckBatchAvailability(_ context.Context, request *dalc.Check
 
 func (m *mockImpl) RetrieveBatches(context context.Context, request *dalc.RetrieveBatchesRequest) (*dalc.RetrieveBatchesResponse, error) {
 	resp := m.mock.RetrieveBatches(request.DataLayerHeight)
-	blocks := make([]*optimint.Block, len(resp.Blocks))
-	for i := range resp.Blocks {
-		blocks[i] = resp.Blocks[i].ToProto()
+	batches := make([]*optimint.Batch, len(resp.Batches))
+	for i := range resp.Batches {
+		batches[i] = resp.Batches[i].ToProto()
 	}
 	return &dalc.RetrieveBatchesResponse{
 		Result: &dalc.DAResponse{
 			Code:    dalc.StatusCode(resp.Code),
 			Message: resp.Message,
 		},
-		Blocks: blocks,
+		Batches: batches,
 	}, nil
 }
