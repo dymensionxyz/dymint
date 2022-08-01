@@ -6,8 +6,12 @@ run:
     - mempool
     - state/indexer
     - state/txindex
+  skip-files:
+    - da/celestia/mock/server.go
+    - ./*_test.go
 
 linters:
+  disable-all: true
   enable:
     - gofmt
     - goimports
@@ -26,6 +30,8 @@ linters:
     - typecheck
     - unused
     - varcheck
+    - gosec
+    - gocyclo
 
 issues:
   exclude-use-default: false

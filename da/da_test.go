@@ -1,4 +1,4 @@
-package test
+package da_test
 
 import (
 	"encoding/json"
@@ -92,30 +92,42 @@ func doTestDALC(t *testing.T, dalc da.DataAvailabilityLayerClient) {
 	time.Sleep(mockDaBlockTime + 20*time.Millisecond)
 
 	// only blocks b1 and b2 will be submitted to DA
-	b1 := getRandomBlock(1, 10)
-	b2 := getRandomBlock(2, 10)
+	block1 := getRandomBlock(1, 10)
+	block2 := getRandomBlock(2, 10)
+	batch1 := &types.Batch{
+		StartHeight: block1.Header.Height,
+		EndHeight:   block1.Header.Height,
+		Blocks:      []*types.Block{block1},
+	}
+	batch2 := &types.Batch{
+		StartHeight: block2.Header.Height,
+		EndHeight:   block2.Header.Height,
+		Blocks:      []*types.Block{block2},
+	}
 
-	resp := dalc.SubmitBlock(b1)
+	resp := dalc.SubmitBatch(batch1)
 	h1 := resp.DAHeight
 	assert.Equal(da.StatusSuccess, resp.Code)
 
-	resp = dalc.SubmitBlock(b2)
+	resp = dalc.SubmitBatch(batch2)
 	h2 := resp.DAHeight
 	assert.Equal(da.StatusSuccess, resp.Code)
 
 	// wait a bit more than mockDaBlockTime, so optimint blocks can be "included" in mock block
 	time.Sleep(mockDaBlockTime + 20*time.Millisecond)
 
-	check := dalc.CheckBlockAvailability(h1)
+	check := dalc.CheckBatchAvailability(h1)
+	// print the check result
+	t.Logf("CheckBatchAvailability result: %+v", check)
 	assert.Equal(da.StatusSuccess, check.Code)
 	assert.True(check.DataAvailable)
 
-	check = dalc.CheckBlockAvailability(h2)
+	check = dalc.CheckBatchAvailability(h2)
 	assert.Equal(da.StatusSuccess, check.Code)
 	assert.True(check.DataAvailable)
 
 	// this height should not be used by DALC
-	check = dalc.CheckBlockAvailability(h1 - 1)
+	check = dalc.CheckBatchAvailability(h1 - 1)
 	assert.Equal(da.StatusSuccess, check.Code)
 	assert.False(check.DataAvailable)
 }
@@ -130,7 +142,7 @@ func TestRetrieve(t *testing.T) {
 	for _, client := range registry.RegisteredClients() {
 		t.Run(client, func(t *testing.T) {
 			dalc := registry.GetClient(client)
-			_, ok := dalc.(da.BlockRetriever)
+			_, ok := dalc.(da.BatchRetriever)
 			if ok {
 				doTestRetrieve(t, dalc)
 			}
@@ -193,18 +205,23 @@ func doTestRetrieve(t *testing.T, dalc da.DataAvailabilityLayerClient) {
 	// wait a bit more than mockDaBlockTime, so mock can "produce" some blocks
 	time.Sleep(mockDaBlockTime + 20*time.Millisecond)
 
-	retriever := dalc.(da.BlockRetriever)
+	retriever := dalc.(da.BatchRetriever)
 	countAtHeight := make(map[uint64]int)
-	blocks := make(map[*types.Block]uint64)
+	batches := make(map[*types.Batch]uint64)
 
 	for i := uint64(0); i < 100; i++ {
 		b := getRandomBlock(i, rand.Int()%20)
-		resp := dalc.SubmitBlock(b)
+		batch := &types.Batch{
+			StartHeight: i,
+			EndHeight:   i,
+			Blocks:      []*types.Block{b},
+		}
+		resp := dalc.SubmitBatch(batch)
 		assert.Equal(da.StatusSuccess, resp.Code, resp.Message)
 		time.Sleep(time.Duration(rand.Int63() % mockDaBlockTime.Milliseconds()))
 
 		countAtHeight[resp.DAHeight]++
-		blocks[b] = resp.DAHeight
+		batches[batch] = resp.DAHeight
 	}
 
 	// wait a bit more than mockDaBlockTime, so mock can "produce" last blocks
@@ -212,17 +229,17 @@ func doTestRetrieve(t *testing.T, dalc da.DataAvailabilityLayerClient) {
 
 	for h, cnt := range countAtHeight {
 		t.Log("Retrieving block, DA Height", h)
-		ret := retriever.RetrieveBlocks(h)
+		ret := retriever.RetrieveBatches(h)
 		assert.Equal(da.StatusSuccess, ret.Code, ret.Message)
-		require.NotEmpty(ret.Blocks, h)
-		assert.Len(ret.Blocks, cnt, h)
+		require.NotEmpty(ret.Batches, h)
+		assert.Len(ret.Batches, cnt, h)
 	}
 
-	for b, h := range blocks {
-		ret := retriever.RetrieveBlocks(h)
+	for b, h := range batches {
+		ret := retriever.RetrieveBatches(h)
 		assert.Equal(da.StatusSuccess, ret.Code, h)
-		require.NotEmpty(ret.Blocks, h)
-		assert.Contains(ret.Blocks, b, h)
+		require.NotEmpty(ret.Batches, h)
+		assert.Contains(ret.Batches, b, h)
 	}
 }
 

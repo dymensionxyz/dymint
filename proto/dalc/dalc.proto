@@ -17,34 +17,34 @@ message DAResponse {
 	uint64 data_layer_height = 3;
 }
 
-message SubmitBlockRequest {
-	optimint.Block block = 1;
+message SubmitBatchRequest {
+	optimint.Batch batch = 1;
 }
 
-message SubmitBlockResponse {
+message SubmitBatchResponse {
 	DAResponse result = 1;
 }
 
-message CheckBlockAvailabilityRequest {
+message CheckBatchAvailabilityRequest {
 	uint64 data_layer_height = 1;
 }
 
-message CheckBlockAvailabilityResponse {
+message CheckBatchAvailabilityResponse {
 	DAResponse result = 1;
 	bool data_available = 2;
 }
 
-message RetrieveBlocksRequest {
+message RetrieveBatchesRequest {
 	uint64 data_layer_height = 1;
 }
 
-message RetrieveBlocksResponse {
+message RetrieveBatchesResponse {
 	DAResponse result = 1;
-	repeated optimint.Block blocks = 2;
+	repeated optimint.Batch batches = 2;
 }
 
 service DALCService {
-	rpc SubmitBlock(SubmitBlockRequest) returns (SubmitBlockResponse) {}
-	rpc CheckBlockAvailability(CheckBlockAvailabilityRequest) returns (CheckBlockAvailabilityResponse) {}
-	rpc RetrieveBlocks(RetrieveBlocksRequest) returns (RetrieveBlocksResponse) {}
+	rpc SubmitBatch(SubmitBatchRequest) returns (SubmitBatchResponse) {}
+	rpc CheckBatchAvailability(CheckBatchAvailabilityRequest) returns (CheckBatchAvailabilityResponse) {}
+	rpc RetrieveBatches(RetrieveBatchesRequest) returns (RetrieveBatchesResponse) {}
 }

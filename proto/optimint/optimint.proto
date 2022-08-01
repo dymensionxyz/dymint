@@ -74,3 +74,10 @@ message Block {
 	Data data = 2;
 	Commit last_commit = 3;
 }
+
+message Batch {
+	uint64 start_height = 1;
+	uint64 end_height = 2;
+	repeated Block blocks = 3;
+
+}

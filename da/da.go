@@ -30,28 +30,28 @@ type BaseResult struct {
 	DAHeight uint64
 }
 
-// ResultSubmitBlock contains information returned from DA layer after block submission.
-type ResultSubmitBlock struct {
+// ResultSubmitBatch contains information returned from DA layer after block submission.
+type ResultSubmitBatch struct {
 	BaseResult
 	// Not sure if this needs to be bubbled up to other
 	// parts of Optimint.
 	// Hash hash.Hash
 }
 
-// ResultCheckBlock contains information about block availability, returned from DA layer client.
-type ResultCheckBlock struct {
+// ResultCheckBatch contains information about block availability, returned from DA layer client.
+type ResultCheckBatch struct {
 	BaseResult
 	// DataAvailable is the actual answer whether the block is available or not.
 	// It can be true if and only if Code is equal to StatusSuccess.
 	DataAvailable bool
 }
 
-// ResultRetrieveBlocks contains batch of blocks returned from DA layer client.
-type ResultRetrieveBlocks struct {
+// ResultRetrieveBatch contains batch of blocks returned from DA layer client.
+type ResultRetrieveBatch struct {
 	BaseResult
 	// Block is the full block retrieved from Data Availability Layer.
 	// If Code is not equal to StatusSuccess, it has to be nil.
-	Blocks []*types.Block
+	Batches []*types.Batch
 }
 
 // DataAvailabilityLayerClient defines generic interface for DA layer block submission.
@@ -66,18 +66,18 @@ type DataAvailabilityLayerClient interface {
 	// Stop is called once, when DataAvailabilityLayerClient is no longer needed.
 	Stop() error
 
-	// SubmitBlock submits the passed in block to the DA layer.
+	// SubmitBatch submits the passed in block to the DA layer.
 	// This should create a transaction which (potentially)
 	// triggers a state transition in the DA layer.
-	SubmitBlock(block *types.Block) ResultSubmitBlock
+	SubmitBatch(batch *types.Batch) ResultSubmitBatch
 
-	// CheckBlockAvailability queries DA layer to check data availability of block corresponding at given height.
-	CheckBlockAvailability(dataLayerHeight uint64) ResultCheckBlock
+	// CheckBatchAvailability queries DA layer to check data availability of block corresponding at given height.
+	CheckBatchAvailability(dataLayerHeight uint64) ResultCheckBatch
 }
 
-// BlockRetriever is additional interface that can be implemented by Data Availability Layer Client that is able to retrieve
+// BatchRetriever is additional interface that can be implemented by Data Availability Layer Client that is able to retrieve
 // block data from DA layer. This gives the ability to use it for block synchronization.
-type BlockRetriever interface {
-	// RetrieveBlocks returns blocks at given data layer height from data availability layer.
-	RetrieveBlocks(dataLayerHeight uint64) ResultRetrieveBlocks
+type BatchRetriever interface {
+	// RetrieveBatches returns blocks at given data layer height from data availability layer.
+	RetrieveBatches(dataLayerHeight uint64) ResultRetrieveBatch
 }

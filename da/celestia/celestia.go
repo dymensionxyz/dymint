@@ -25,7 +25,7 @@ type DataAvailabilityLayerClient struct {
 }
 
 var _ da.DataAvailabilityLayerClient = &DataAvailabilityLayerClient{}
-var _ da.BlockRetriever = &DataAvailabilityLayerClient{}
+var _ da.BatchRetriever = &DataAvailabilityLayerClient{}
 
 // Config stores Celestia DALC configuration parameters.
 type Config struct {
@@ -60,11 +60,11 @@ func (c *DataAvailabilityLayerClient) Stop() error {
 	return nil
 }
 
-// SubmitBlock submits a block to DA layer.
-func (c *DataAvailabilityLayerClient) SubmitBlock(block *types.Block) da.ResultSubmitBlock {
-	blob, err := block.MarshalBinary()
+// SubmitBatch submits a block to DA layer.
+func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultSubmitBatch {
+	blob, err := batch.MarshalBinary()
 	if err != nil {
-		return da.ResultSubmitBlock{
+		return da.ResultSubmitBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
 				Message: err.Error(),
@@ -75,7 +75,7 @@ func (c *DataAvailabilityLayerClient) SubmitBlock(block *types.Block) da.ResultS
 	txResponse, err := c.client.SubmitPFD(context.TODO(), c.config.NamespaceID, blob, c.config.GasLimit)
 
 	if err != nil {
-		return da.ResultSubmitBlock{
+		return da.ResultSubmitBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
 				Message: err.Error(),
@@ -84,7 +84,7 @@ func (c *DataAvailabilityLayerClient) SubmitBlock(block *types.Block) da.ResultS
 	}
 
 	if txResponse.Code != 0 {
-		return da.ResultSubmitBlock{
+		return da.ResultSubmitBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
 				Message: fmt.Sprintf("Codespace: '%s', Code: %d, Message: %s", txResponse.Codespace, txResponse.Code, txResponse.RawLog),
@@ -92,7 +92,7 @@ func (c *DataAvailabilityLayerClient) SubmitBlock(block *types.Block) da.ResultS
 		}
 	}
 
-	return da.ResultSubmitBlock{
+	return da.ResultSubmitBatch{
 		BaseResult: da.BaseResult{
 			Code:     da.StatusSuccess,
 			Message:  "tx hash: " + txResponse.TxHash,
@@ -101,11 +101,11 @@ func (c *DataAvailabilityLayerClient) SubmitBlock(block *types.Block) da.ResultS
 	}
 }
 
-// CheckBlockAvailability queries DA layer to check data availability of block at given height.
-func (c *DataAvailabilityLayerClient) CheckBlockAvailability(dataLayerHeight uint64) da.ResultCheckBlock {
+// CheckBatchAvailability queries DA layer to check data availability of block at given height.
+func (c *DataAvailabilityLayerClient) CheckBatchAvailability(dataLayerHeight uint64) da.ResultCheckBatch {
 	shares, err := c.client.NamespacedShares(context.TODO(), c.config.NamespaceID, dataLayerHeight)
 	if err != nil {
-		return da.ResultCheckBlock{
+		return da.ResultCheckBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
 				Message: err.Error(),
@@ -113,7 +113,7 @@ func (c *DataAvailabilityLayerClient) CheckBlockAvailability(dataLayerHeight uin
 		}
 	}
 
-	return da.ResultCheckBlock{
+	return da.ResultCheckBatch{
 		BaseResult: da.BaseResult{
 			Code:     da.StatusSuccess,
 			DAHeight: dataLayerHeight,
@@ -122,11 +122,11 @@ func (c *DataAvailabilityLayerClient) CheckBlockAvailability(dataLayerHeight uin
 	}
 }
 
-// RetrieveBlocks gets a batch of blocks from DA layer.
-func (c *DataAvailabilityLayerClient) RetrieveBlocks(dataLayerHeight uint64) da.ResultRetrieveBlocks {
+// RetrieveBatches gets a batch of blocks from DA layer.
+func (c *DataAvailabilityLayerClient) RetrieveBatches(dataLayerHeight uint64) da.ResultRetrieveBatch {
 	data, err := c.client.NamespacedData(context.TODO(), c.config.NamespaceID, dataLayerHeight)
 	if err != nil {
-		return da.ResultRetrieveBlocks{
+		return da.ResultRetrieveBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
 				Message: err.Error(),
@@ -134,18 +134,18 @@ func (c *DataAvailabilityLayerClient) RetrieveBlocks(dataLayerHeight uint64) da.
 		}
 	}
 
-	blocks := make([]*types.Block, len(data))
+	batches := make([]*types.Batch, len(data))
 	for i, msg := range data {
-		var block pb.Block
-		err = proto.Unmarshal(msg, &block)
+		var batch pb.Batch
+		err = proto.Unmarshal(msg, &batch)
 		if err != nil {
-			c.logger.Error("failed to unmarshal block", "daHeight", dataLayerHeight, "position", i, "error", err)
+			c.logger.Error("failed to unmarshal batch", "daHeight", dataLayerHeight, "position", i, "error", err)
 			continue
 		}
-		blocks[i] = new(types.Block)
-		err := blocks[i].FromProto(&block)
+		batches[i] = new(types.Batch)
+		err := batches[i].FromProto(&batch)
 		if err != nil {
-			return da.ResultRetrieveBlocks{
+			return da.ResultRetrieveBatch{
 				BaseResult: da.BaseResult{
 					Code:    da.StatusError,
 					Message: err.Error(),
@@ -154,11 +154,11 @@ func (c *DataAvailabilityLayerClient) RetrieveBlocks(dataLayerHeight uint64) da.
 		}
 	}
 
-	return da.ResultRetrieveBlocks{
+	return da.ResultRetrieveBatch{
 		BaseResult: da.BaseResult{
 			Code:     da.StatusSuccess,
 			DAHeight: dataLayerHeight,
 		},
-		Blocks: blocks,
+		Batches: batches,
 	}
 }

@@ -118,22 +118,22 @@ func (m *DAResponse) GetDataLayerHeight() uint64 {
 	return 0
 }
 
-type SubmitBlockRequest struct {
-	Block *optimint.Block `protobuf:"bytes,1,opt,name=block,proto3" json:"block,omitempty"`
+type SubmitBatchRequest struct {
+	Batch *optimint.Batch `protobuf:"bytes,1,opt,name=batch,proto3" json:"batch,omitempty"`
 }
 
-func (m *SubmitBlockRequest) Reset()         { *m = SubmitBlockRequest{} }
-func (m *SubmitBlockRequest) String() string { return proto.CompactTextString(m) }
-func (*SubmitBlockRequest) ProtoMessage()    {}
-func (*SubmitBlockRequest) Descriptor() ([]byte, []int) {
+func (m *SubmitBatchRequest) Reset()         { *m = SubmitBatchRequest{} }
+func (m *SubmitBatchRequest) String() string { return proto.CompactTextString(m) }
+func (*SubmitBatchRequest) ProtoMessage()    {}
+func (*SubmitBatchRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_45d7d8eda2693dc1, []int{1}
 }
-func (m *SubmitBlockRequest) XXX_Unmarshal(b []byte) error {
+func (m *SubmitBatchRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *SubmitBlockRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *SubmitBatchRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_SubmitBlockRequest.Marshal(b, m, deterministic)
+		return xxx_messageInfo_SubmitBatchRequest.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -143,41 +143,41 @@ func (m *SubmitBlockRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, 
 		return b[:n], nil
 	}
 }
-func (m *SubmitBlockRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_SubmitBlockRequest.Merge(m, src)
+func (m *SubmitBatchRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SubmitBatchRequest.Merge(m, src)
 }
-func (m *SubmitBlockRequest) XXX_Size() int {
+func (m *SubmitBatchRequest) XXX_Size() int {
 	return m.Size()
 }
-func (m *SubmitBlockRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_SubmitBlockRequest.DiscardUnknown(m)
+func (m *SubmitBatchRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_SubmitBatchRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_SubmitBlockRequest proto.InternalMessageInfo
+var xxx_messageInfo_SubmitBatchRequest proto.InternalMessageInfo
 
-func (m *SubmitBlockRequest) GetBlock() *optimint.Block {
+func (m *SubmitBatchRequest) GetBatch() *optimint.Batch {
 	if m != nil {
-		return m.Block
+		return m.Batch
 	}
 	return nil
 }
 
-type SubmitBlockResponse struct {
+type SubmitBatchResponse struct {
 	Result *DAResponse `protobuf:"bytes,1,opt,name=result,proto3" json:"result,omitempty"`
 }
 
-func (m *SubmitBlockResponse) Reset()         { *m = SubmitBlockResponse{} }
-func (m *SubmitBlockResponse) String() string { return proto.CompactTextString(m) }
-func (*SubmitBlockResponse) ProtoMessage()    {}
-func (*SubmitBlockResponse) Descriptor() ([]byte, []int) {
+func (m *SubmitBatchResponse) Reset()         { *m = SubmitBatchResponse{} }
+func (m *SubmitBatchResponse) String() string { return proto.CompactTextString(m) }
+func (*SubmitBatchResponse) ProtoMessage()    {}
+func (*SubmitBatchResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_45d7d8eda2693dc1, []int{2}
 }
-func (m *SubmitBlockResponse) XXX_Unmarshal(b []byte) error {
+func (m *SubmitBatchResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *SubmitBlockResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *SubmitBatchResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_SubmitBlockResponse.Marshal(b, m, deterministic)
+		return xxx_messageInfo_SubmitBatchResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -187,41 +187,41 @@ func (m *SubmitBlockResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte,
 		return b[:n], nil
 	}
 }
-func (m *SubmitBlockResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_SubmitBlockResponse.Merge(m, src)
+func (m *SubmitBatchResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SubmitBatchResponse.Merge(m, src)
 }
-func (m *SubmitBlockResponse) XXX_Size() int {
+func (m *SubmitBatchResponse) XXX_Size() int {
 	return m.Size()
 }
-func (m *SubmitBlockResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_SubmitBlockResponse.DiscardUnknown(m)
+func (m *SubmitBatchResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_SubmitBatchResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_SubmitBlockResponse proto.InternalMessageInfo
+var xxx_messageInfo_SubmitBatchResponse proto.InternalMessageInfo
 
-func (m *SubmitBlockResponse) GetResult() *DAResponse {
+func (m *SubmitBatchResponse) GetResult() *DAResponse {
 	if m != nil {
 		return m.Result
 	}
 	return nil
 }
 
-type CheckBlockAvailabilityRequest struct {
+type CheckBatchAvailabilityRequest struct {
 	DataLayerHeight uint64 `protobuf:"varint,1,opt,name=data_layer_height,json=dataLayerHeight,proto3" json:"data_layer_height,omitempty"`
 }
 
-func (m *CheckBlockAvailabilityRequest) Reset()         { *m = CheckBlockAvailabilityRequest{} }
-func (m *CheckBlockAvailabilityRequest) String() string { return proto.CompactTextString(m) }
-func (*CheckBlockAvailabilityRequest) ProtoMessage()    {}
-func (*CheckBlockAvailabilityRequest) Descriptor() ([]byte, []int) {
+func (m *CheckBatchAvailabilityRequest) Reset()         { *m = CheckBatchAvailabilityRequest{} }
+func (m *CheckBatchAvailabilityRequest) String() string { return proto.CompactTextString(m) }
+func (*CheckBatchAvailabilityRequest) ProtoMessage()    {}
+func (*CheckBatchAvailabilityRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_45d7d8eda2693dc1, []int{3}
 }
-func (m *CheckBlockAvailabilityRequest) XXX_Unmarshal(b []byte) error {
+func (m *CheckBatchAvailabilityRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *CheckBlockAvailabilityRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *CheckBatchAvailabilityRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_CheckBlockAvailabilityRequest.Marshal(b, m, deterministic)
+		return xxx_messageInfo_CheckBatchAvailabilityRequest.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -231,42 +231,42 @@ func (m *CheckBlockAvailabilityRequest) XXX_Marshal(b []byte, deterministic bool
 		return b[:n], nil
 	}
 }
-func (m *CheckBlockAvailabilityRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_CheckBlockAvailabilityRequest.Merge(m, src)
+func (m *CheckBatchAvailabilityRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CheckBatchAvailabilityRequest.Merge(m, src)
 }
-func (m *CheckBlockAvailabilityRequest) XXX_Size() int {
+func (m *CheckBatchAvailabilityRequest) XXX_Size() int {
 	return m.Size()
 }
-func (m *CheckBlockAvailabilityRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_CheckBlockAvailabilityRequest.DiscardUnknown(m)
+func (m *CheckBatchAvailabilityRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_CheckBatchAvailabilityRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_CheckBlockAvailabilityRequest proto.InternalMessageInfo
+var xxx_messageInfo_CheckBatchAvailabilityRequest proto.InternalMessageInfo
 
-func (m *CheckBlockAvailabilityRequest) GetDataLayerHeight() uint64 {
+func (m *CheckBatchAvailabilityRequest) GetDataLayerHeight() uint64 {
 	if m != nil {
 		return m.DataLayerHeight
 	}
 	return 0
 }
 
-type CheckBlockAvailabilityResponse struct {
+type CheckBatchAvailabilityResponse struct {
 	Result        *DAResponse `protobuf:"bytes,1,opt,name=result,proto3" json:"result,omitempty"`
 	DataAvailable bool        `protobuf:"varint,2,opt,name=data_available,json=dataAvailable,proto3" json:"data_available,omitempty"`
 }
 
-func (m *CheckBlockAvailabilityResponse) Reset()         { *m = CheckBlockAvailabilityResponse{} }
-func (m *CheckBlockAvailabilityResponse) String() string { return proto.CompactTextString(m) }
-func (*CheckBlockAvailabilityResponse) ProtoMessage()    {}
-func (*CheckBlockAvailabilityResponse) Descriptor() ([]byte, []int) {
+func (m *CheckBatchAvailabilityResponse) Reset()         { *m = CheckBatchAvailabilityResponse{} }
+func (m *CheckBatchAvailabilityResponse) String() string { return proto.CompactTextString(m) }
+func (*CheckBatchAvailabilityResponse) ProtoMessage()    {}
+func (*CheckBatchAvailabilityResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_45d7d8eda2693dc1, []int{4}
 }
-func (m *CheckBlockAvailabilityResponse) XXX_Unmarshal(b []byte) error {
+func (m *CheckBatchAvailabilityResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *CheckBlockAvailabilityResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *CheckBatchAvailabilityResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_CheckBlockAvailabilityResponse.Marshal(b, m, deterministic)
+		return xxx_messageInfo_CheckBatchAvailabilityResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -276,48 +276,48 @@ func (m *CheckBlockAvailabilityResponse) XXX_Marshal(b []byte, deterministic boo
 		return b[:n], nil
 	}
 }
-func (m *CheckBlockAvailabilityResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_CheckBlockAvailabilityResponse.Merge(m, src)
+func (m *CheckBatchAvailabilityResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_CheckBatchAvailabilityResponse.Merge(m, src)
 }
-func (m *CheckBlockAvailabilityResponse) XXX_Size() int {
+func (m *CheckBatchAvailabilityResponse) XXX_Size() int {
 	return m.Size()
 }
-func (m *CheckBlockAvailabilityResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_CheckBlockAvailabilityResponse.DiscardUnknown(m)
+func (m *CheckBatchAvailabilityResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_CheckBatchAvailabilityResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_CheckBlockAvailabilityResponse proto.InternalMessageInfo
+var xxx_messageInfo_CheckBatchAvailabilityResponse proto.InternalMessageInfo
 
-func (m *CheckBlockAvailabilityResponse) GetResult() *DAResponse {
+func (m *CheckBatchAvailabilityResponse) GetResult() *DAResponse {
 	if m != nil {
 		return m.Result
 	}
 	return nil
 }
 
-func (m *CheckBlockAvailabilityResponse) GetDataAvailable() bool {
+func (m *CheckBatchAvailabilityResponse) GetDataAvailable() bool {
 	if m != nil {
 		return m.DataAvailable
 	}
 	return false
 }
 
-type RetrieveBlocksRequest struct {
+type RetrieveBatchesRequest struct {
 	DataLayerHeight uint64 `protobuf:"varint,1,opt,name=data_layer_height,json=dataLayerHeight,proto3" json:"data_layer_height,omitempty"`
 }
 
-func (m *RetrieveBlocksRequest) Reset()         { *m = RetrieveBlocksRequest{} }
-func (m *RetrieveBlocksRequest) String() string { return proto.CompactTextString(m) }
-func (*RetrieveBlocksRequest) ProtoMessage()    {}
-func (*RetrieveBlocksRequest) Descriptor() ([]byte, []int) {
+func (m *RetrieveBatchesRequest) Reset()         { *m = RetrieveBatchesRequest{} }
+func (m *RetrieveBatchesRequest) String() string { return proto.CompactTextString(m) }
+func (*RetrieveBatchesRequest) ProtoMessage()    {}
+func (*RetrieveBatchesRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_45d7d8eda2693dc1, []int{5}
 }
-func (m *RetrieveBlocksRequest) XXX_Unmarshal(b []byte) error {
+func (m *RetrieveBatchesRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *RetrieveBlocksRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RetrieveBatchesRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_RetrieveBlocksRequest.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RetrieveBatchesRequest.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -327,42 +327,42 @@ func (m *RetrieveBlocksRequest) XXX_Marshal(b []byte, deterministic bool) ([]byt
 		return b[:n], nil
 	}
 }
-func (m *RetrieveBlocksRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RetrieveBlocksRequest.Merge(m, src)
+func (m *RetrieveBatchesRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RetrieveBatchesRequest.Merge(m, src)
 }
-func (m *RetrieveBlocksRequest) XXX_Size() int {
+func (m *RetrieveBatchesRequest) XXX_Size() int {
 	return m.Size()
 }
-func (m *RetrieveBlocksRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_RetrieveBlocksRequest.DiscardUnknown(m)
+func (m *RetrieveBatchesRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_RetrieveBatchesRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_RetrieveBlocksRequest proto.InternalMessageInfo
+var xxx_messageInfo_RetrieveBatchesRequest proto.InternalMessageInfo
 
-func (m *RetrieveBlocksRequest) GetDataLayerHeight() uint64 {
+func (m *RetrieveBatchesRequest) GetDataLayerHeight() uint64 {
 	if m != nil {
 		return m.DataLayerHeight
 	}
 	return 0
 }
 
-type RetrieveBlocksResponse struct {
-	Result *DAResponse       `protobuf:"bytes,1,opt,name=result,proto3" json:"result,omitempty"`
-	Blocks []*optimint.Block `protobuf:"bytes,2,rep,name=blocks,proto3" json:"blocks,omitempty"`
+type RetrieveBatchesResponse struct {
+	Result  *DAResponse       `protobuf:"bytes,1,opt,name=result,proto3" json:"result,omitempty"`
+	Batches []*optimint.Batch `protobuf:"bytes,2,rep,name=batches,proto3" json:"batches,omitempty"`
 }
 
-func (m *RetrieveBlocksResponse) Reset()         { *m = RetrieveBlocksResponse{} }
-func (m *RetrieveBlocksResponse) String() string { return proto.CompactTextString(m) }
-func (*RetrieveBlocksResponse) ProtoMessage()    {}
-func (*RetrieveBlocksResponse) Descriptor() ([]byte, []int) {
+func (m *RetrieveBatchesResponse) Reset()         { *m = RetrieveBatchesResponse{} }
+func (m *RetrieveBatchesResponse) String() string { return proto.CompactTextString(m) }
+func (*RetrieveBatchesResponse) ProtoMessage()    {}
+func (*RetrieveBatchesResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_45d7d8eda2693dc1, []int{6}
 }
-func (m *RetrieveBlocksResponse) XXX_Unmarshal(b []byte) error {
+func (m *RetrieveBatchesResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *RetrieveBlocksResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *RetrieveBatchesResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_RetrieveBlocksResponse.Marshal(b, m, deterministic)
+		return xxx_messageInfo_RetrieveBatchesResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -372,28 +372,28 @@ func (m *RetrieveBlocksResponse) XXX_Marshal(b []byte, deterministic bool) ([]by
 		return b[:n], nil
 	}
 }
-func (m *RetrieveBlocksResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RetrieveBlocksResponse.Merge(m, src)
+func (m *RetrieveBatchesResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RetrieveBatchesResponse.Merge(m, src)
 }
-func (m *RetrieveBlocksResponse) XXX_Size() int {
+func (m *RetrieveBatchesResponse) XXX_Size() int {
 	return m.Size()
 }
-func (m *RetrieveBlocksResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_RetrieveBlocksResponse.DiscardUnknown(m)
+func (m *RetrieveBatchesResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_RetrieveBatchesResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_RetrieveBlocksResponse proto.InternalMessageInfo
+var xxx_messageInfo_RetrieveBatchesResponse proto.InternalMessageInfo
 
-func (m *RetrieveBlocksResponse) GetResult() *DAResponse {
+func (m *RetrieveBatchesResponse) GetResult() *DAResponse {
 	if m != nil {
 		return m.Result
 	}
 	return nil
 }
 
-func (m *RetrieveBlocksResponse) GetBlocks() []*optimint.Block {
+func (m *RetrieveBatchesResponse) GetBatches() []*optimint.Batch {
 	if m != nil {
-		return m.Blocks
+		return m.Batches
 	}
 	return nil
 }
@@ -401,51 +401,51 @@ func (m *RetrieveBlocksResponse) GetBlocks() []*optimint.Block {
 func init() {
 	proto.RegisterEnum("dalc.StatusCode", StatusCode_name, StatusCode_value)
 	proto.RegisterType((*DAResponse)(nil), "dalc.DAResponse")
-	proto.RegisterType((*SubmitBlockRequest)(nil), "dalc.SubmitBlockRequest")
-	proto.RegisterType((*SubmitBlockResponse)(nil), "dalc.SubmitBlockResponse")
-	proto.RegisterType((*CheckBlockAvailabilityRequest)(nil), "dalc.CheckBlockAvailabilityRequest")
-	proto.RegisterType((*CheckBlockAvailabilityResponse)(nil), "dalc.CheckBlockAvailabilityResponse")
-	proto.RegisterType((*RetrieveBlocksRequest)(nil), "dalc.RetrieveBlocksRequest")
-	proto.RegisterType((*RetrieveBlocksResponse)(nil), "dalc.RetrieveBlocksResponse")
+	proto.RegisterType((*SubmitBatchRequest)(nil), "dalc.SubmitBatchRequest")
+	proto.RegisterType((*SubmitBatchResponse)(nil), "dalc.SubmitBatchResponse")
+	proto.RegisterType((*CheckBatchAvailabilityRequest)(nil), "dalc.CheckBatchAvailabilityRequest")
+	proto.RegisterType((*CheckBatchAvailabilityResponse)(nil), "dalc.CheckBatchAvailabilityResponse")
+	proto.RegisterType((*RetrieveBatchesRequest)(nil), "dalc.RetrieveBatchesRequest")
+	proto.RegisterType((*RetrieveBatchesResponse)(nil), "dalc.RetrieveBatchesResponse")
 }
 
 func init() { proto.RegisterFile("dalc/dalc.proto", fileDescriptor_45d7d8eda2693dc1) }
 
 var fileDescriptor_45d7d8eda2693dc1 = []byte{
-	// 527 bytes of a gzipped FileDescriptorProto
+	// 528 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x9c, 0x94, 0xc1, 0x6e, 0xda, 0x4c,
-	0x10, 0xc7, 0x31, 0xf0, 0xf1, 0xb5, 0x83, 0x0a, 0x64, 0xa3, 0x04, 0x97, 0xb4, 0x16, 0x72, 0x13,
-	0x15, 0x45, 0x2a, 0x48, 0xf4, 0xd8, 0x43, 0x45, 0x8c, 0xdb, 0xa2, 0x26, 0xa5, 0x5a, 0xc3, 0xa5,
-	0x17, 0x64, 0x9b, 0x11, 0xac, 0x30, 0x31, 0xf1, 0x2e, 0xa8, 0x3c, 0x42, 0x6f, 0x7d, 0xac, 0x1e,
-	0x73, 0xec, 0xb1, 0x82, 0x17, 0xa9, 0xbc, 0x36, 0x84, 0xa4, 0x6e, 0xa4, 0xf4, 0x62, 0xed, 0xce,
-	0x6f, 0x67, 0xe6, 0x3f, 0x9e, 0xd1, 0x40, 0x71, 0x68, 0x7b, 0x6e, 0x23, 0xfc, 0xd4, 0x67, 0x81,
-	0x2f, 0x7c, 0x92, 0x0d, 0xcf, 0x95, 0xb2, 0x3f, 0x13, 0x6c, 0xca, 0x2e, 0x45, 0x63, 0x73, 0x88,
-	0xb0, 0xfe, 0x15, 0xa0, 0xdd, 0xa2, 0xc8, 0x67, 0xfe, 0x25, 0x47, 0x72, 0x0c, 0x59, 0xd7, 0x1f,
-	0xa2, 0xaa, 0x54, 0x95, 0x5a, 0xa1, 0x59, 0xaa, 0xcb, 0x38, 0x96, 0xb0, 0xc5, 0x9c, 0x1b, 0xfe,
-	0x10, 0xa9, 0xa4, 0x44, 0x85, 0xff, 0xa7, 0xc8, 0xb9, 0x3d, 0x42, 0x35, 0x5d, 0x55, 0x6a, 0x8f,
-	0xe9, 0xe6, 0x4a, 0x4e, 0x61, 0x6f, 0x68, 0x0b, 0x7b, 0xe0, 0xd9, 0x4b, 0x0c, 0x06, 0x63, 0x64,
-	0xa3, 0xb1, 0x50, 0x33, 0x55, 0xa5, 0x96, 0xa5, 0xc5, 0x10, 0x9c, 0x87, 0xf6, 0x0f, 0xd2, 0xac,
-	0xbf, 0x01, 0x62, 0xcd, 0x9d, 0x29, 0x13, 0x67, 0x9e, 0xef, 0x4e, 0x28, 0x5e, 0xcd, 0x91, 0x0b,
-	0x72, 0x02, 0xff, 0x39, 0xe1, 0x5d, 0x4a, 0xc8, 0x37, 0x8b, 0xf5, 0xad, 0xde, 0xe8, 0x59, 0x44,
-	0xf5, 0xb7, 0xb0, 0x7f, 0xcb, 0x39, 0xd6, 0x5f, 0x83, 0x5c, 0x80, 0x7c, 0xee, 0x89, 0xd8, 0x3d,
-	0xae, 0xe0, 0xa6, 0x42, 0x1a, 0x73, 0xfd, 0x23, 0x3c, 0x37, 0xc6, 0xe8, 0x4e, 0xa4, 0x7f, 0x6b,
-	0x61, 0x33, 0xcf, 0x76, 0x98, 0xc7, 0xc4, 0x72, 0x23, 0x24, 0xb1, 0x14, 0x25, 0xb9, 0x94, 0x2b,
-	0xd0, 0xfe, 0x16, 0xec, 0xa1, 0xc2, 0xc8, 0x09, 0x14, 0x64, 0x5e, 0x3b, 0x0a, 0xe3, 0x45, 0xff,
-	0xf8, 0x11, 0x7d, 0x12, 0x5a, 0x5b, 0x1b, 0xa3, 0x6e, 0xc0, 0x01, 0x45, 0x11, 0x30, 0x5c, 0xa0,
-	0xcc, 0xca, 0xff, 0x45, 0xf7, 0x04, 0x0e, 0xef, 0x06, 0x79, 0xb0, 0xde, 0x97, 0x90, 0x93, 0x2d,
-	0xe1, 0x6a, 0xba, 0x9a, 0x49, 0xea, 0x58, 0x8c, 0x4f, 0x03, 0x80, 0x9b, 0x49, 0x22, 0x47, 0x50,
-	0xb6, 0x7a, 0xad, 0x5e, 0xdf, 0x1a, 0x18, 0xdd, 0xb6, 0x39, 0xe8, 0x7f, 0xb2, 0x3e, 0x9b, 0x46,
-	0xe7, 0x5d, 0xc7, 0x6c, 0x97, 0x52, 0xa4, 0x0c, 0xfb, 0xbb, 0xd0, 0xea, 0x1b, 0x86, 0x69, 0x59,
-	0x25, 0xe5, 0x2e, 0xe8, 0x75, 0x2e, 0xcc, 0x6e, 0xbf, 0x57, 0x4a, 0x93, 0x03, 0xd8, 0xdb, 0x05,
-	0x26, 0xa5, 0x5d, 0x5a, 0xca, 0x34, 0xbf, 0xa5, 0x21, 0xdf, 0x6e, 0x9d, 0x1b, 0x16, 0x06, 0x0b,
-	0xe6, 0x22, 0x69, 0x43, 0x7e, 0x67, 0x6c, 0x88, 0x1a, 0x0f, 0xf8, 0x1f, 0x63, 0x58, 0x79, 0x9a,
-	0x40, 0xa2, 0xc2, 0xf5, 0x14, 0x41, 0x38, 0x4c, 0x6e, 0x37, 0x79, 0x11, 0xb9, 0xdd, 0x3b, 0x59,
-	0x95, 0xe3, 0xfb, 0x1f, 0x6d, 0xd3, 0x5c, 0x40, 0xe1, 0x76, 0x77, 0xc8, 0x51, 0xe4, 0x99, 0xd8,
-	0xf8, 0xca, 0xb3, 0x64, 0xb8, 0x09, 0x77, 0xf6, 0xfe, 0xc7, 0x4a, 0x53, 0xae, 0x57, 0x9a, 0xf2,
-	0x6b, 0xa5, 0x29, 0xdf, 0xd7, 0x5a, 0xea, 0x7a, 0xad, 0xa5, 0x7e, 0xae, 0xb5, 0xd4, 0x97, 0x57,
-	0x23, 0x26, 0xc6, 0x73, 0xa7, 0xee, 0xfa, 0xd3, 0x86, 0x8b, 0x1e, 0x72, 0xc1, 0x6c, 0x3f, 0x18,
-	0x6d, 0x57, 0x45, 0x43, 0x2c, 0x67, 0xc8, 0x1b, 0x33, 0x47, 0xee, 0x15, 0x27, 0x27, 0x37, 0xc7,
-	0xeb, 0xdf, 0x01, 0x00, 0x00, 0xff, 0xff, 0x72, 0xc7, 0x7f, 0x66, 0x6b, 0x04, 0x00, 0x00,
+	0x10, 0xc7, 0x31, 0xf0, 0x25, 0x5f, 0x07, 0x35, 0x90, 0x8d, 0x1a, 0x5c, 0xda, 0x58, 0xc8, 0x4d,
+	0x24, 0x1a, 0xa9, 0x20, 0xd1, 0x63, 0x0f, 0x15, 0xb1, 0xdd, 0x16, 0x35, 0x2d, 0xd1, 0x1a, 0x2e,
+	0xbd, 0xa0, 0xb5, 0x19, 0xc1, 0xaa, 0x06, 0x13, 0xef, 0x82, 0xca, 0x3b, 0xf4, 0xd0, 0xc7, 0xea,
+	0x31, 0xc7, 0x1e, 0x2b, 0x78, 0x91, 0xca, 0x36, 0x26, 0x34, 0x71, 0x22, 0xa5, 0x17, 0x6b, 0x77,
+	0x7e, 0xfb, 0x9f, 0xfd, 0x8f, 0x67, 0xb4, 0x50, 0x1c, 0x30, 0xcf, 0x6d, 0x84, 0x9f, 0xfa, 0x34,
+	0xf0, 0xa5, 0x4f, 0xf2, 0xe1, 0xba, 0x52, 0xf6, 0xa7, 0x92, 0x8f, 0xf9, 0x44, 0x36, 0x92, 0x45,
+	0x8c, 0xf5, 0x6f, 0x00, 0x66, 0x8b, 0xa2, 0x98, 0xfa, 0x13, 0x81, 0xe4, 0x18, 0xf2, 0xae, 0x3f,
+	0x40, 0x55, 0xa9, 0x2a, 0xb5, 0xbd, 0x66, 0xa9, 0x1e, 0xe5, 0xb1, 0x25, 0x93, 0x33, 0x61, 0xf8,
+	0x03, 0xa4, 0x11, 0x25, 0x2a, 0xec, 0x8e, 0x51, 0x08, 0x36, 0x44, 0x35, 0x5b, 0x55, 0x6a, 0x8f,
+	0x68, 0xb2, 0x25, 0xa7, 0xb0, 0x3f, 0x60, 0x92, 0xf5, 0x3d, 0xb6, 0xc0, 0xa0, 0x3f, 0x42, 0x3e,
+	0x1c, 0x49, 0x35, 0x57, 0x55, 0x6a, 0x79, 0x5a, 0x0c, 0xc1, 0x79, 0x18, 0xff, 0x10, 0x85, 0xf5,
+	0x37, 0x40, 0xec, 0x99, 0x33, 0xe6, 0xf2, 0x8c, 0x49, 0x77, 0x44, 0xf1, 0x72, 0x86, 0x42, 0x92,
+	0x13, 0xf8, 0xcf, 0x09, 0xf7, 0x91, 0x85, 0x42, 0xb3, 0x58, 0xdf, 0xf8, 0x8d, 0x8f, 0xc5, 0x54,
+	0x7f, 0x0b, 0x07, 0x7f, 0x89, 0xd7, 0xfe, 0x6b, 0xb0, 0x13, 0xa0, 0x98, 0x79, 0x72, 0x2d, 0x5f,
+	0x57, 0x70, 0x5d, 0x21, 0x5d, 0x73, 0xfd, 0x23, 0x1c, 0x19, 0x23, 0x74, 0xbf, 0x46, 0xfa, 0xd6,
+	0x9c, 0x71, 0x8f, 0x39, 0xdc, 0xe3, 0x72, 0x91, 0x18, 0x49, 0x2d, 0x45, 0x49, 0x2f, 0xe5, 0x12,
+	0xb4, 0xbb, 0x92, 0x3d, 0xd4, 0x18, 0x39, 0x81, 0xbd, 0xe8, 0x5e, 0x16, 0xa7, 0xf1, 0xe2, 0x7f,
+	0xfc, 0x3f, 0x7d, 0x1c, 0x46, 0x5b, 0x49, 0x50, 0x37, 0xe1, 0x90, 0xa2, 0x0c, 0x38, 0xce, 0x31,
+	0xba, 0x15, 0xc5, 0xbf, 0x18, 0x9f, 0x40, 0xf9, 0x56, 0x96, 0x07, 0x3b, 0x7e, 0x09, 0xbb, 0x4e,
+	0x2c, 0x56, 0xb3, 0xd5, 0x5c, 0x5a, 0xd3, 0x12, 0x7e, 0x1a, 0x00, 0x5c, 0x4f, 0x13, 0x79, 0x06,
+	0x65, 0xbb, 0xdb, 0xea, 0xf6, 0xec, 0xbe, 0xd1, 0x31, 0xad, 0x7e, 0xef, 0xb3, 0x7d, 0x61, 0x19,
+	0xed, 0x77, 0x6d, 0xcb, 0x2c, 0x65, 0x48, 0x19, 0x0e, 0xb6, 0xa1, 0xdd, 0x33, 0x0c, 0xcb, 0xb6,
+	0x4b, 0xca, 0x4d, 0xd0, 0x6d, 0x7f, 0xb2, 0x3a, 0xbd, 0x6e, 0x29, 0x4b, 0x9e, 0xc0, 0xfe, 0x36,
+	0xb0, 0x28, 0xed, 0xd0, 0x52, 0xae, 0xf9, 0x3d, 0x0b, 0x05, 0xb3, 0x75, 0x6e, 0xd8, 0x18, 0xcc,
+	0xb9, 0x8b, 0xc4, 0x84, 0xc2, 0xd6, 0xe8, 0x10, 0x75, 0x3d, 0xe4, 0xb7, 0x46, 0xb1, 0xf2, 0x34,
+	0x85, 0xc4, 0xa5, 0xeb, 0x19, 0x82, 0x70, 0x98, 0xde, 0x72, 0xf2, 0x22, 0x96, 0xdd, 0x3b, 0x5d,
+	0x95, 0xe3, 0xfb, 0x0f, 0x6d, 0xae, 0xb9, 0x80, 0xe2, 0x8d, 0x06, 0x91, 0xe7, 0xb1, 0x34, 0xbd,
+	0xfb, 0x95, 0xa3, 0x3b, 0x68, 0x92, 0xf1, 0xec, 0xfd, 0xcf, 0xa5, 0xa6, 0x5c, 0x2d, 0x35, 0xe5,
+	0xf7, 0x52, 0x53, 0x7e, 0xac, 0xb4, 0xcc, 0xd5, 0x4a, 0xcb, 0xfc, 0x5a, 0x69, 0x99, 0x2f, 0xaf,
+	0x86, 0x5c, 0x8e, 0x66, 0x4e, 0xdd, 0xf5, 0xc7, 0x0d, 0x17, 0x3d, 0x14, 0x92, 0x33, 0x3f, 0x18,
+	0x6e, 0x5e, 0x8c, 0x86, 0x5c, 0x4c, 0x51, 0x34, 0xa6, 0x4e, 0xf4, 0xbc, 0x38, 0x3b, 0xd1, 0x03,
+	0xf2, 0xfa, 0x4f, 0x00, 0x00, 0x00, 0xff, 0xff, 0xc6, 0x5d, 0xc2, 0x4c, 0x72, 0x04, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -460,9 +460,9 @@ const _ = grpc.SupportPackageIsVersion4
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type DALCServiceClient interface {
-	SubmitBlock(ctx context.Context, in *SubmitBlockRequest, opts ...grpc.CallOption) (*SubmitBlockResponse, error)
-	CheckBlockAvailability(ctx context.Context, in *CheckBlockAvailabilityRequest, opts ...grpc.CallOption) (*CheckBlockAvailabilityResponse, error)
-	RetrieveBlocks(ctx context.Context, in *RetrieveBlocksRequest, opts ...grpc.CallOption) (*RetrieveBlocksResponse, error)
+	SubmitBatch(ctx context.Context, in *SubmitBatchRequest, opts ...grpc.CallOption) (*SubmitBatchResponse, error)
+	CheckBatchAvailability(ctx context.Context, in *CheckBatchAvailabilityRequest, opts ...grpc.CallOption) (*CheckBatchAvailabilityResponse, error)
+	RetrieveBatches(ctx context.Context, in *RetrieveBatchesRequest, opts ...grpc.CallOption) (*RetrieveBatchesResponse, error)
 }
 
 type dALCServiceClient struct {
@@ -473,27 +473,27 @@ func NewDALCServiceClient(cc *grpc.ClientConn) DALCServiceClient {
 	return &dALCServiceClient{cc}
 }
 
-func (c *dALCServiceClient) SubmitBlock(ctx context.Context, in *SubmitBlockRequest, opts ...grpc.CallOption) (*SubmitBlockResponse, error) {
-	out := new(SubmitBlockResponse)
-	err := c.cc.Invoke(ctx, "/dalc.DALCService/SubmitBlock", in, out, opts...)
+func (c *dALCServiceClient) SubmitBatch(ctx context.Context, in *SubmitBatchRequest, opts ...grpc.CallOption) (*SubmitBatchResponse, error) {
+	out := new(SubmitBatchResponse)
+	err := c.cc.Invoke(ctx, "/dalc.DALCService/SubmitBatch", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *dALCServiceClient) CheckBlockAvailability(ctx context.Context, in *CheckBlockAvailabilityRequest, opts ...grpc.CallOption) (*CheckBlockAvailabilityResponse, error) {
-	out := new(CheckBlockAvailabilityResponse)
-	err := c.cc.Invoke(ctx, "/dalc.DALCService/CheckBlockAvailability", in, out, opts...)
+func (c *dALCServiceClient) CheckBatchAvailability(ctx context.Context, in *CheckBatchAvailabilityRequest, opts ...grpc.CallOption) (*CheckBatchAvailabilityResponse, error) {
+	out := new(CheckBatchAvailabilityResponse)
+	err := c.cc.Invoke(ctx, "/dalc.DALCService/CheckBatchAvailability", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *dALCServiceClient) RetrieveBlocks(ctx context.Context, in *RetrieveBlocksRequest, opts ...grpc.CallOption) (*RetrieveBlocksResponse, error) {
-	out := new(RetrieveBlocksResponse)
-	err := c.cc.Invoke(ctx, "/dalc.DALCService/RetrieveBlocks", in, out, opts...)
+func (c *dALCServiceClient) RetrieveBatches(ctx context.Context, in *RetrieveBatchesRequest, opts ...grpc.CallOption) (*RetrieveBatchesResponse, error) {
+	out := new(RetrieveBatchesResponse)
+	err := c.cc.Invoke(ctx, "/dalc.DALCService/RetrieveBatches", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -502,79 +502,79 @@ func (c *dALCServiceClient) RetrieveBlocks(ctx context.Context, in *RetrieveBloc
 
 // DALCServiceServer is the server API for DALCService service.
 type DALCServiceServer interface {
-	SubmitBlock(context.Context, *SubmitBlockRequest) (*SubmitBlockResponse, error)
-	CheckBlockAvailability(context.Context, *CheckBlockAvailabilityRequest) (*CheckBlockAvailabilityResponse, error)
-	RetrieveBlocks(context.Context, *RetrieveBlocksRequest) (*RetrieveBlocksResponse, error)
+	SubmitBatch(context.Context, *SubmitBatchRequest) (*SubmitBatchResponse, error)
+	CheckBatchAvailability(context.Context, *CheckBatchAvailabilityRequest) (*CheckBatchAvailabilityResponse, error)
+	RetrieveBatches(context.Context, *RetrieveBatchesRequest) (*RetrieveBatchesResponse, error)
 }
 
 // UnimplementedDALCServiceServer can be embedded to have forward compatible implementations.
 type UnimplementedDALCServiceServer struct {
 }
 
-func (*UnimplementedDALCServiceServer) SubmitBlock(ctx context.Context, req *SubmitBlockRequest) (*SubmitBlockResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SubmitBlock not implemented")
+func (*UnimplementedDALCServiceServer) SubmitBatch(ctx context.Context, req *SubmitBatchRequest) (*SubmitBatchResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SubmitBatch not implemented")
 }
-func (*UnimplementedDALCServiceServer) CheckBlockAvailability(ctx context.Context, req *CheckBlockAvailabilityRequest) (*CheckBlockAvailabilityResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CheckBlockAvailability not implemented")
+func (*UnimplementedDALCServiceServer) CheckBatchAvailability(ctx context.Context, req *CheckBatchAvailabilityRequest) (*CheckBatchAvailabilityResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CheckBatchAvailability not implemented")
 }
-func (*UnimplementedDALCServiceServer) RetrieveBlocks(ctx context.Context, req *RetrieveBlocksRequest) (*RetrieveBlocksResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RetrieveBlocks not implemented")
+func (*UnimplementedDALCServiceServer) RetrieveBatches(ctx context.Context, req *RetrieveBatchesRequest) (*RetrieveBatchesResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RetrieveBatches not implemented")
 }
 
 func RegisterDALCServiceServer(s *grpc.Server, srv DALCServiceServer) {
 	s.RegisterService(&_DALCService_serviceDesc, srv)
 }
 
-func _DALCService_SubmitBlock_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SubmitBlockRequest)
+func _DALCService_SubmitBatch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SubmitBatchRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(DALCServiceServer).SubmitBlock(ctx, in)
+		return srv.(DALCServiceServer).SubmitBatch(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/dalc.DALCService/SubmitBlock",
+		FullMethod: "/dalc.DALCService/SubmitBatch",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DALCServiceServer).SubmitBlock(ctx, req.(*SubmitBlockRequest))
+		return srv.(DALCServiceServer).SubmitBatch(ctx, req.(*SubmitBatchRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _DALCService_CheckBlockAvailability_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CheckBlockAvailabilityRequest)
+func _DALCService_CheckBatchAvailability_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CheckBatchAvailabilityRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(DALCServiceServer).CheckBlockAvailability(ctx, in)
+		return srv.(DALCServiceServer).CheckBatchAvailability(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/dalc.DALCService/CheckBlockAvailability",
+		FullMethod: "/dalc.DALCService/CheckBatchAvailability",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DALCServiceServer).CheckBlockAvailability(ctx, req.(*CheckBlockAvailabilityRequest))
+		return srv.(DALCServiceServer).CheckBatchAvailability(ctx, req.(*CheckBatchAvailabilityRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _DALCService_RetrieveBlocks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(RetrieveBlocksRequest)
+func _DALCService_RetrieveBatches_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RetrieveBatchesRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(DALCServiceServer).RetrieveBlocks(ctx, in)
+		return srv.(DALCServiceServer).RetrieveBatches(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/dalc.DALCService/RetrieveBlocks",
+		FullMethod: "/dalc.DALCService/RetrieveBatches",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DALCServiceServer).RetrieveBlocks(ctx, req.(*RetrieveBlocksRequest))
+		return srv.(DALCServiceServer).RetrieveBatches(ctx, req.(*RetrieveBatchesRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -584,16 +584,16 @@ var _DALCService_serviceDesc = grpc.ServiceDesc{
 	HandlerType: (*DALCServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "SubmitBlock",
-			Handler:    _DALCService_SubmitBlock_Handler,
+			MethodName: "SubmitBatch",
+			Handler:    _DALCService_SubmitBatch_Handler,
 		},
 		{
-			MethodName: "CheckBlockAvailability",
-			Handler:    _DALCService_CheckBlockAvailability_Handler,
+			MethodName: "CheckBatchAvailability",
+			Handler:    _DALCService_CheckBatchAvailability_Handler,
 		},
 		{
-			MethodName: "RetrieveBlocks",
-			Handler:    _DALCService_RetrieveBlocks_Handler,
+			MethodName: "RetrieveBatches",
+			Handler:    _DALCService_RetrieveBatches_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
@@ -640,7 +640,7 @@ func (m *DAResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *SubmitBlockRequest) Marshal() (dAtA []byte, err error) {
+func (m *SubmitBatchRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -650,19 +650,19 @@ func (m *SubmitBlockRequest) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *SubmitBlockRequest) MarshalTo(dAtA []byte) (int, error) {
+func (m *SubmitBatchRequest) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *SubmitBlockRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *SubmitBatchRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if m.Block != nil {
+	if m.Batch != nil {
 		{
-			size, err := m.Block.MarshalToSizedBuffer(dAtA[:i])
+			size, err := m.Batch.MarshalToSizedBuffer(dAtA[:i])
 			if err != nil {
 				return 0, err
 			}
@@ -675,7 +675,7 @@ func (m *SubmitBlockRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *SubmitBlockResponse) Marshal() (dAtA []byte, err error) {
+func (m *SubmitBatchResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -685,12 +685,12 @@ func (m *SubmitBlockResponse) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *SubmitBlockResponse) MarshalTo(dAtA []byte) (int, error) {
+func (m *SubmitBatchResponse) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *SubmitBlockResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *SubmitBatchResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -710,7 +710,7 @@ func (m *SubmitBlockResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *CheckBlockAvailabilityRequest) Marshal() (dAtA []byte, err error) {
+func (m *CheckBatchAvailabilityRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -720,12 +720,12 @@ func (m *CheckBlockAvailabilityRequest) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *CheckBlockAvailabilityRequest) MarshalTo(dAtA []byte) (int, error) {
+func (m *CheckBatchAvailabilityRequest) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *CheckBlockAvailabilityRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *CheckBatchAvailabilityRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -738,7 +738,7 @@ func (m *CheckBlockAvailabilityRequest) MarshalToSizedBuffer(dAtA []byte) (int, 
 	return len(dAtA) - i, nil
 }
 
-func (m *CheckBlockAvailabilityResponse) Marshal() (dAtA []byte, err error) {
+func (m *CheckBatchAvailabilityResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -748,12 +748,12 @@ func (m *CheckBlockAvailabilityResponse) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *CheckBlockAvailabilityResponse) MarshalTo(dAtA []byte) (int, error) {
+func (m *CheckBatchAvailabilityResponse) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *CheckBlockAvailabilityResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *CheckBatchAvailabilityResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -783,7 +783,7 @@ func (m *CheckBlockAvailabilityResponse) MarshalToSizedBuffer(dAtA []byte) (int,
 	return len(dAtA) - i, nil
 }
 
-func (m *RetrieveBlocksRequest) Marshal() (dAtA []byte, err error) {
+func (m *RetrieveBatchesRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -793,12 +793,12 @@ func (m *RetrieveBlocksRequest) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *RetrieveBlocksRequest) MarshalTo(dAtA []byte) (int, error) {
+func (m *RetrieveBatchesRequest) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *RetrieveBlocksRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RetrieveBatchesRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -811,7 +811,7 @@ func (m *RetrieveBlocksRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *RetrieveBlocksResponse) Marshal() (dAtA []byte, err error) {
+func (m *RetrieveBatchesResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -821,20 +821,20 @@ func (m *RetrieveBlocksResponse) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *RetrieveBlocksResponse) MarshalTo(dAtA []byte) (int, error) {
+func (m *RetrieveBatchesResponse) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *RetrieveBlocksResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *RetrieveBatchesResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if len(m.Blocks) > 0 {
-		for iNdEx := len(m.Blocks) - 1; iNdEx >= 0; iNdEx-- {
+	if len(m.Batches) > 0 {
+		for iNdEx := len(m.Batches) - 1; iNdEx >= 0; iNdEx-- {
 			{
-				size, err := m.Blocks[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				size, err := m.Batches[iNdEx].MarshalToSizedBuffer(dAtA[:i])
 				if err != nil {
 					return 0, err
 				}
@@ -890,20 +890,20 @@ func (m *DAResponse) Size() (n int) {
 	return n
 }
 
-func (m *SubmitBlockRequest) Size() (n int) {
+func (m *SubmitBatchRequest) Size() (n int) {
 	if m == nil {
 		return 0
 	}
 	var l int
 	_ = l
-	if m.Block != nil {
-		l = m.Block.Size()
+	if m.Batch != nil {
+		l = m.Batch.Size()
 		n += 1 + l + sovDalc(uint64(l))
 	}
 	return n
 }
 
-func (m *SubmitBlockResponse) Size() (n int) {
+func (m *SubmitBatchResponse) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -916,7 +916,7 @@ func (m *SubmitBlockResponse) Size() (n int) {
 	return n
 }
 
-func (m *CheckBlockAvailabilityRequest) Size() (n int) {
+func (m *CheckBatchAvailabilityRequest) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -928,7 +928,7 @@ func (m *CheckBlockAvailabilityRequest) Size() (n int) {
 	return n
 }
 
-func (m *CheckBlockAvailabilityResponse) Size() (n int) {
+func (m *CheckBatchAvailabilityResponse) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -944,7 +944,7 @@ func (m *CheckBlockAvailabilityResponse) Size() (n int) {
 	return n
 }
 
-func (m *RetrieveBlocksRequest) Size() (n int) {
+func (m *RetrieveBatchesRequest) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -956,7 +956,7 @@ func (m *RetrieveBlocksRequest) Size() (n int) {
 	return n
 }
 
-func (m *RetrieveBlocksResponse) Size() (n int) {
+func (m *RetrieveBatchesResponse) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -966,8 +966,8 @@ func (m *RetrieveBlocksResponse) Size() (n int) {
 		l = m.Result.Size()
 		n += 1 + l + sovDalc(uint64(l))
 	}
-	if len(m.Blocks) > 0 {
-		for _, e := range m.Blocks {
+	if len(m.Batches) > 0 {
+		for _, e := range m.Batches {
 			l = e.Size()
 			n += 1 + l + sovDalc(uint64(l))
 		}
@@ -1101,7 +1101,7 @@ func (m *DAResponse) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *SubmitBlockRequest) Unmarshal(dAtA []byte) error {
+func (m *SubmitBatchRequest) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1124,15 +1124,15 @@ func (m *SubmitBlockRequest) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: SubmitBlockRequest: wiretype end group for non-group")
+			return fmt.Errorf("proto: SubmitBatchRequest: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: SubmitBlockRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: SubmitBatchRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Block", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Batch", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -1159,10 +1159,10 @@ func (m *SubmitBlockRequest) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.Block == nil {
-				m.Block = &optimint.Block{}
+			if m.Batch == nil {
+				m.Batch = &optimint.Batch{}
 			}
-			if err := m.Block.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+			if err := m.Batch.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -1187,7 +1187,7 @@ func (m *SubmitBlockRequest) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *SubmitBlockResponse) Unmarshal(dAtA []byte) error {
+func (m *SubmitBatchResponse) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1210,15 +1210,15 @@ func (m *SubmitBlockResponse) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: SubmitBlockResponse: wiretype end group for non-group")
+			return fmt.Errorf("proto: SubmitBatchResponse: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: SubmitBlockResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: SubmitBatchResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field BaseResult", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Result", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -1273,7 +1273,7 @@ func (m *SubmitBlockResponse) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *CheckBlockAvailabilityRequest) Unmarshal(dAtA []byte) error {
+func (m *CheckBatchAvailabilityRequest) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1296,10 +1296,10 @@ func (m *CheckBlockAvailabilityRequest) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: CheckBlockAvailabilityRequest: wiretype end group for non-group")
+			return fmt.Errorf("proto: CheckBatchAvailabilityRequest: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: CheckBlockAvailabilityRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: CheckBatchAvailabilityRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -1342,7 +1342,7 @@ func (m *CheckBlockAvailabilityRequest) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *CheckBlockAvailabilityResponse) Unmarshal(dAtA []byte) error {
+func (m *CheckBatchAvailabilityResponse) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1365,15 +1365,15 @@ func (m *CheckBlockAvailabilityResponse) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: CheckBlockAvailabilityResponse: wiretype end group for non-group")
+			return fmt.Errorf("proto: CheckBatchAvailabilityResponse: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: CheckBlockAvailabilityResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: CheckBatchAvailabilityResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field BaseResult", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Result", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -1448,7 +1448,7 @@ func (m *CheckBlockAvailabilityResponse) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *RetrieveBlocksRequest) Unmarshal(dAtA []byte) error {
+func (m *RetrieveBatchesRequest) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1471,10 +1471,10 @@ func (m *RetrieveBlocksRequest) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: RetrieveBlocksRequest: wiretype end group for non-group")
+			return fmt.Errorf("proto: RetrieveBatchesRequest: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: RetrieveBlocksRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: RetrieveBatchesRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -1517,7 +1517,7 @@ func (m *RetrieveBlocksRequest) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *RetrieveBlocksResponse) Unmarshal(dAtA []byte) error {
+func (m *RetrieveBatchesResponse) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -1540,15 +1540,15 @@ func (m *RetrieveBlocksResponse) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: RetrieveBlocksResponse: wiretype end group for non-group")
+			return fmt.Errorf("proto: RetrieveBatchesResponse: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: RetrieveBlocksResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: RetrieveBatchesResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field BaseResult", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Result", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -1584,7 +1584,7 @@ func (m *RetrieveBlocksResponse) Unmarshal(dAtA []byte) error {
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Blocks", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Batches", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -1611,8 +1611,8 @@ func (m *RetrieveBlocksResponse) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Blocks = append(m.Blocks, &optimint.Block{})
-			if err := m.Blocks[len(m.Blocks)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+			m.Batches = append(m.Batches, &optimint.Batch{})
+			if err := m.Batches[len(m.Batches)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex

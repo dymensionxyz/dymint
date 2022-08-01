@@ -39,14 +39,14 @@ type mockImpl struct {
 	mock mock.DataAvailabilityLayerClient
 }
 
-func (m *mockImpl) SubmitBlock(_ context.Context, request *dalc.SubmitBlockRequest) (*dalc.SubmitBlockResponse, error) {
-	var b types.Block
-	err := b.FromProto(request.Block)
+func (m *mockImpl) SubmitBatch(_ context.Context, request *dalc.SubmitBatchRequest) (*dalc.SubmitBatchResponse, error) {
+	var b types.Batch
+	err := b.FromProto(request.Batch)
 	if err != nil {
 		return nil, err
 	}
-	resp := m.mock.SubmitBlock(&b)
-	return &dalc.SubmitBlockResponse{
+	resp := m.mock.SubmitBatch(&b)
+	return &dalc.SubmitBatchResponse{
 		Result: &dalc.DAResponse{
 			Code:            dalc.StatusCode(resp.Code),
 			Message:         resp.Message,
@@ -55,9 +55,9 @@ func (m *mockImpl) SubmitBlock(_ context.Context, request *dalc.SubmitBlockReque
 	}, nil
 }
 
-func (m *mockImpl) CheckBlockAvailability(_ context.Context, request *dalc.CheckBlockAvailabilityRequest) (*dalc.CheckBlockAvailabilityResponse, error) {
-	resp := m.mock.CheckBlockAvailability(request.DataLayerHeight)
-	return &dalc.CheckBlockAvailabilityResponse{
+func (m *mockImpl) CheckBatchAvailability(_ context.Context, request *dalc.CheckBatchAvailabilityRequest) (*dalc.CheckBatchAvailabilityResponse, error) {
+	resp := m.mock.CheckBatchAvailability(request.DataLayerHeight)
+	return &dalc.CheckBatchAvailabilityResponse{
 		Result: &dalc.DAResponse{
 			Code:    dalc.StatusCode(resp.Code),
 			Message: resp.Message,
@@ -66,17 +66,17 @@ func (m *mockImpl) CheckBlockAvailability(_ context.Context, request *dalc.Check
 	}, nil
 }
 
-func (m *mockImpl) RetrieveBlocks(context context.Context, request *dalc.RetrieveBlocksRequest) (*dalc.RetrieveBlocksResponse, error) {
-	resp := m.mock.RetrieveBlocks(request.DataLayerHeight)
-	blocks := make([]*optimint.Block, len(resp.Blocks))
-	for i := range resp.Blocks {
-		blocks[i] = resp.Blocks[i].ToProto()
+func (m *mockImpl) RetrieveBatches(context context.Context, request *dalc.RetrieveBatchesRequest) (*dalc.RetrieveBatchesResponse, error) {
+	resp := m.mock.RetrieveBatches(request.DataLayerHeight)
+	batches := make([]*optimint.Batch, len(resp.Batches))
+	for i := range resp.Batches {
+		batches[i] = resp.Batches[i].ToProto()
 	}
-	return &dalc.RetrieveBlocksResponse{
+	return &dalc.RetrieveBatchesResponse{
 		Result: &dalc.DAResponse{
 			Code:    dalc.StatusCode(resp.Code),
 			Message: resp.Message,
 		},
-		Blocks: blocks,
+		Batches: batches,
 	}, nil
 }

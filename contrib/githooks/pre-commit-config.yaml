@@ -83,39 +83,13 @@ repos:
     #
     -   id: go-test-mod
     -   id: go-test-repo-mod
-    # #
-    # Go Vet
-    #
-    -   id: go-vet-mod
-    -   id: go-vet-repo-mod
-    #
-    # GoSec
-    #
-    -   id: go-sec-mod
-    -   id: go-sec-repo-mod
-    #
-    # StaticCheck
-    #
-    -   id: go-staticcheck-mod
-    -   id: go-staticcheck-repo-mod
-    #
-    # StructSlop
-    #
-    -   id: go-structslop-mod
-    -   id: go-structslop-repo-mod
-    #
-    # Formatters
-    #
-    -   id: go-fmt
-    -   id: go-imports      # replaces go-fmt
-    -   id: go-returns      # replaces go-imports & go-fmt
-    #
     # GolangCI-Lint
     # - Fast Multi-Linter
     # - Can be configured to replace MOST other hooks
     # - Supports repo config file for configuration
     # - https://github.com/golangci/golangci-lint
     #
+    # -   id: golangci-lint
     -   id: golangci-lint-mod
     -   id: golangci-lint-repo-mod
     #
@@ -134,8 +108,6 @@ repos:
 - repo: https://github.com/dnephin/pre-commit-golang
   rev: master
   hooks:
-    - id: go-cyclo
-      args: [-over=15]
     - id: validate-toml
 - repo: https://github.com/jumanjihouse/pre-commit-hooks
   rev: master

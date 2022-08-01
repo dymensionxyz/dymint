@@ -1,6 +1,7 @@
 package mock
 
 import (
+	"crypto/sha1" //#nosec
 	"encoding/binary"
 	"math/rand"
 	"sync/atomic"
@@ -28,7 +29,7 @@ type config struct {
 }
 
 var _ da.DataAvailabilityLayerClient = &DataAvailabilityLayerClient{}
-var _ da.BlockRetriever = &DataAvailabilityLayerClient{}
+var _ da.BatchRetriever = &DataAvailabilityLayerClient{}
 
 // Init is called once to allow DA client to read configuration and initialize resources.
 func (m *DataAvailabilityLayerClient) Init(config []byte, dalcKV store.KVStore, logger log.Logger) error {
@@ -65,29 +66,28 @@ func (m *DataAvailabilityLayerClient) Stop() error {
 	return nil
 }
 
-// SubmitBlock submits the passed in block to the DA layer.
+// SubmitBatch submits the passed in batch to the DA layer.
 // This should create a transaction which (potentially)
 // triggers a state transition in the DA layer.
-func (m *DataAvailabilityLayerClient) SubmitBlock(block *types.Block) da.ResultSubmitBlock {
+func (m *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultSubmitBatch {
 	daHeight := atomic.LoadUint64(&m.daHeight)
-	m.logger.Debug("Submitting block to DA layer!", "height", block.Header.Height, "dataLayerHeight", daHeight)
+	m.logger.Debug("Submitting batch to DA layer. start height", batch.StartHeight, "end height", batch.EndHeight, "da height", daHeight)
 
-	hash := block.Header.Hash()
-	blob, err := block.MarshalBinary()
+	blob, err := batch.MarshalBinary()
 	if err != nil {
-		return da.ResultSubmitBlock{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error()}}
+		return da.ResultSubmitBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error()}}
 	}
-
-	err = m.dalcKV.Set(getKey(daHeight, block.Header.Height), hash[:])
+	hash := sha1.Sum(uint64ToBinary(batch.EndHeight)) //#nosec
+	err = m.dalcKV.Set(getKey(daHeight, batch.StartHeight), hash[:])
 	if err != nil {
-		return da.ResultSubmitBlock{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error()}}
+		return da.ResultSubmitBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error()}}
 	}
 	err = m.dalcKV.Set(hash[:], blob)
 	if err != nil {
-		return da.ResultSubmitBlock{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error()}}
+		return da.ResultSubmitBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error()}}
 	}
 
-	return da.ResultSubmitBlock{
+	return da.ResultSubmitBatch{
 		BaseResult: da.BaseResult{
 			Code:     da.StatusSuccess,
 			Message:  "OK",
@@ -96,44 +96,44 @@ func (m *DataAvailabilityLayerClient) SubmitBlock(block *types.Block) da.ResultS
 	}
 }
 
-// CheckBlockAvailability queries DA layer to check data availability of block corresponding to given header.
-func (m *DataAvailabilityLayerClient) CheckBlockAvailability(dataLayerHeight uint64) da.ResultCheckBlock {
-	blocksRes := m.RetrieveBlocks(dataLayerHeight)
-	return da.ResultCheckBlock{BaseResult: da.BaseResult{Code: blocksRes.Code}, DataAvailable: len(blocksRes.Blocks) > 0}
+// CheckBatchAvailability queries DA layer to check data availability of block corresponding to given header.
+func (m *DataAvailabilityLayerClient) CheckBatchAvailability(dataLayerHeight uint64) da.ResultCheckBatch {
+	batchesRes := m.RetrieveBatches(dataLayerHeight)
+	return da.ResultCheckBatch{BaseResult: da.BaseResult{Code: batchesRes.Code}, DataAvailable: len(batchesRes.Batches) > 0}
 }
 
-// RetrieveBlocks returns block at given height from data availability layer.
-func (m *DataAvailabilityLayerClient) RetrieveBlocks(dataLayerHeight uint64) da.ResultRetrieveBlocks {
+// RetrieveBatches returns block at given height from data availability layer.
+func (m *DataAvailabilityLayerClient) RetrieveBatches(dataLayerHeight uint64) da.ResultRetrieveBatch {
 	if dataLayerHeight >= atomic.LoadUint64(&m.daHeight) {
-		return da.ResultRetrieveBlocks{BaseResult: da.BaseResult{Code: da.StatusError, Message: "block not found"}}
+		return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: "batch not found"}}
 	}
 
-	iter := m.dalcKV.PrefixIterator(getPrefix(dataLayerHeight))
+	iter := m.dalcKV.PrefixIterator(uint64ToBinary(dataLayerHeight))
 	defer iter.Discard()
 
-	var blocks []*types.Block
+	var batches []*types.Batch
 	for iter.Valid() {
 		hash := iter.Value()
 
 		blob, err := m.dalcKV.Get(hash)
 		if err != nil {
-			return da.ResultRetrieveBlocks{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error()}}
+			return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error()}}
 		}
 
-		block := &types.Block{}
-		err = block.UnmarshalBinary(blob)
+		batch := &types.Batch{}
+		err = batch.UnmarshalBinary(blob)
 		if err != nil {
-			return da.ResultRetrieveBlocks{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error()}}
+			return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error()}}
 		}
-		blocks = append(blocks, block)
+		batches = append(batches, batch)
 
 		iter.Next()
 	}
 
-	return da.ResultRetrieveBlocks{BaseResult: da.BaseResult{Code: da.StatusSuccess}, Blocks: blocks}
+	return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusSuccess}, Batches: batches}
 }
 
-func getPrefix(daHeight uint64) []byte {
+func uint64ToBinary(daHeight uint64) []byte {
 	b := make([]byte, 8)
 	binary.BigEndian.PutUint64(b, daHeight)
 	return b
