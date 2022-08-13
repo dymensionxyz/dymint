@@ -13,6 +13,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	llcfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/libs/service"
 	corep2p "github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
@@ -21,10 +22,12 @@ import (
 	"github.com/celestiaorg/optimint/block"
 	"github.com/celestiaorg/optimint/config"
 	"github.com/celestiaorg/optimint/da"
-	"github.com/celestiaorg/optimint/da/registry"
+	daregsitry "github.com/celestiaorg/optimint/da/registry"
 	"github.com/celestiaorg/optimint/mempool"
 	mempoolv1 "github.com/celestiaorg/optimint/mempool/v1"
 	"github.com/celestiaorg/optimint/p2p"
+	"github.com/celestiaorg/optimint/settlement"
+	slregistry "github.com/celestiaorg/optimint/settlement/registry"
 	"github.com/celestiaorg/optimint/state/indexer"
 	blockidxkv "github.com/celestiaorg/optimint/state/indexer/block/kv"
 	"github.com/celestiaorg/optimint/state/txindex"
@@ -50,8 +53,9 @@ const (
 // It connects all the components and orchestrates their work.
 type Node struct {
 	service.BaseService
-	eventBus *tmtypes.EventBus
-	proxyApp proxy.AppConns
+	eventBus     *tmtypes.EventBus
+	pubsubServer *pubsub.Server
+	proxyApp     proxy.AppConns
 
 	genesis *tmtypes.GenesisDoc
 	// cache of chunked genesis data.
@@ -68,6 +72,7 @@ type Node struct {
 	Store        store.Store
 	blockManager *block.Manager
 	dalc         da.DataAvailabilityLayerClient
+	settlementlc settlement.LayerClient
 
 	TxIndexer      txindex.TxIndexer
 	BlockIndexer   indexer.BlockIndexer
@@ -92,6 +97,8 @@ func NewNode(ctx context.Context, conf config.NodeConfig, p2pKey crypto.PrivKey,
 		return nil, err
 	}
 
+	pubsubServer := pubsub.NewServer()
+
 	client, err := p2p.NewClient(conf.P2P, p2pKey, genesis.ChainID, logger.With("module", "p2p"))
 	if err != nil {
 		return nil, err
@@ -110,13 +117,23 @@ func NewNode(ctx context.Context, conf config.NodeConfig, p2pKey crypto.PrivKey,
 
 	s := store.New(mainKV)
 
-	dalc := registry.GetClient(conf.DALayer)
+	dalc := daregsitry.GetClient(conf.DALayer)
 	if dalc == nil {
 		return nil, fmt.Errorf("couldn't get data availability client named '%s'", conf.DALayer)
 	}
 	err = dalc.Init([]byte(conf.DAConfig), dalcKV, logger.With("module", "da_client"))
 	if err != nil {
 		return nil, fmt.Errorf("data availability layer client initialization error: %w", err)
+	}
+
+	// Init the settlement layer client
+	settlementlc := slregistry.GetClient(slregistry.Client(conf.SettlementLayer))
+	if settlementlc == nil {
+		return nil, fmt.Errorf("couldn't get settlement client named '%s'", conf.SettlementLayer)
+	}
+	err = settlementlc.Init([]byte(conf.SettlementConfig), pubsubServer, logger.With("module", "settlement_client"))
+	if err != nil {
+		return nil, fmt.Errorf("settlement layer client initialization error: %w", err)
 	}
 
 	indexerService, txIndexer, blockIndexer, err := createAndStartIndexerService(conf, indexerKV, eventBus, logger)
@@ -127,7 +144,7 @@ func NewNode(ctx context.Context, conf config.NodeConfig, p2pKey crypto.PrivKey,
 	mp := mempoolv1.NewTxMempool(logger, llcfg.DefaultMempoolConfig(), proxyApp.Mempool(), 0)
 	mpIDs := newMempoolIDs()
 
-	blockManager, err := block.NewManager(signingKey, conf.BlockManagerConfig, genesis, s, mp, proxyApp.Consensus(), dalc, eventBus, logger.With("module", "BlockManager"))
+	blockManager, err := block.NewManager(signingKey, conf.BlockManagerConfig, genesis, s, mp, proxyApp.Consensus(), dalc, settlementlc, eventBus, pubsubServer, logger.With("module", "BlockManager"))
 	if err != nil {
 		return nil, fmt.Errorf("BlockManager initialization error: %w", err)
 	}
@@ -135,11 +152,13 @@ func NewNode(ctx context.Context, conf config.NodeConfig, p2pKey crypto.PrivKey,
 	node := &Node{
 		proxyApp:       proxyApp,
 		eventBus:       eventBus,
+		pubsubServer:   pubsubServer,
 		genesis:        genesis,
 		conf:           conf,
 		P2P:            client,
 		blockManager:   blockManager,
 		dalc:           dalc,
+		settlementlc:   settlementlc,
 		Mempool:        mp,
 		mempoolIDs:     mpIDs,
 		incomingTxCh:   make(chan *p2p.GossipMessage),
@@ -187,23 +206,23 @@ func (n *Node) initGenesisChunks() error {
 	return nil
 }
 
-func (n *Node) headerPublishLoop(ctx context.Context) {
-	for {
-		select {
-		case header := <-n.blockManager.HeaderOutCh:
-			headerBytes, err := header.MarshalBinary()
-			if err != nil {
-				n.Logger.Error("failed to serialize block header", "error", err)
-			}
-			err = n.P2P.GossipHeader(ctx, headerBytes)
-			if err != nil {
-				n.Logger.Error("failed to gossip block header", "error", err)
-			}
-		case <-ctx.Done():
-			return
-		}
-	}
-}
+// func (n *Node) headerPublishLoop(ctx context.Context) {
+// 	for {
+// 		select {
+// 		case header := <-n.blockManager.HeaderOutCh:
+// 			headerBytes, err := header.MarshalBinary()
+// 			if err != nil {
+// 				n.Logger.Error("failed to serialize block header", "error", err)
+// 			}
+// 			err = n.P2P.GossipHeader(ctx, headerBytes)
+// 			if err != nil {
+// 				n.Logger.Error("failed to gossip block header", "error", err)
+// 			}
+// 		case <-ctx.Done():
+// 			return
+// 		}
+// 	}
+// }
 
 // OnStart is a part of Service interface.
 func (n *Node) OnStart() error {
@@ -212,17 +231,26 @@ func (n *Node) OnStart() error {
 	if err != nil {
 		return fmt.Errorf("error while starting P2P client: %w", err)
 	}
+	// start the pubsub server
+	err = n.pubsubServer.Start()
+	if err != nil {
+		return fmt.Errorf("error while starting pubsub server: %w", err)
+	}
 	err = n.dalc.Start()
 	if err != nil {
 		return fmt.Errorf("error while starting data availability layer client: %w", err)
 	}
-	if n.conf.Aggregator {
-		n.Logger.Info("working in aggregator mode", "block time", n.conf.BlockTime)
-		go n.blockManager.AggregationLoop(n.ctx)
-		go n.headerPublishLoop(n.ctx)
+	// Start the settlement layer client
+	err = n.settlementlc.Start()
+	if err != nil {
+		return fmt.Errorf("error while starting settlement layer client: %w", err)
 	}
-	go n.blockManager.RetrieveLoop(n.ctx)
-	go n.blockManager.SyncLoop(n.ctx)
+	if n.conf.Aggregator {
+		go n.blockManager.PublishBlockLoop(n.ctx)
+	}
+	go n.blockManager.RetriveLoop(n.ctx)
+	go n.blockManager.ApplyBlockLoop(n.ctx)
+	go n.blockManager.SyncTargetLoop(n.ctx)
 
 	return nil
 }
@@ -244,6 +272,7 @@ func (n *Node) GetGenesisChunks() ([]string, error) {
 // OnStop is a part of Service interface.
 func (n *Node) OnStop() {
 	err := n.dalc.Stop()
+	err = multierr.Append(err, n.settlementlc.Stop())
 	err = multierr.Append(err, n.P2P.Close())
 	n.Logger.Error("errors while stopping node:", "errors", err)
 }

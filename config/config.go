@@ -9,14 +9,17 @@ import (
 )
 
 const (
-	flagAggregator     = "optimint.aggregator"
-	flagDALayer        = "optimint.da_layer"
-	flagDAConfig       = "optimint.da_config"
-	flagBlockTime      = "optimint.block_time"
-	flagDABlockTime    = "optimint.da_block_time"
-	flagDAStartHeight  = "optimint.da_start_height"
-	flagNamespaceID    = "optimint.namespace_id"
-	flagBlockBatchSize = "optimint.block_batch_size"
+	flagAggregator        = "optimint.aggregator"
+	flagDALayer           = "optimint.da_layer"
+	flagDAConfig          = "optimint.da_config"
+	flagSettlementLayer   = "optimint.settlement_layer"
+	flagSettlementConfig  = "optimint.settlement_config"
+	flagBlockTime         = "optimint.block_time"
+	flagDABlockTime       = "optimint.da_block_time"
+	flagBatchSyncInterval = "optimint.batch_sync_interval"
+	flagDAStartHeight     = "optimint.da_start_height"
+	flagNamespaceID       = "optimint.namespace_id"
+	flagBlockBatchSize    = "optimint.block_batch_size"
 )
 
 // NodeConfig stores Optimint node configuration.
@@ -31,14 +34,19 @@ type NodeConfig struct {
 	BlockManagerConfig `mapstructure:",squash"`
 	DALayer            string `mapstructure:"da_layer"`
 	DAConfig           string `mapstructure:"da_config"`
+	SettlementLayer    string `mapstructure:"settlement_layer"`
+	SettlementConfig   string `mapstructure:"settlement_config"`
 }
 
 // BlockManagerConfig consists of all parameters required by BlockManagerConfig
 type BlockManagerConfig struct {
 	// BlockTime defines how often new blocks are produced
+	// TODO(omritoptix): Remove BlockTime
 	BlockTime time.Duration `mapstructure:"block_time"`
 	// DABlockTime informs about block time of underlying data availability layer
 	DABlockTime time.Duration `mapstructure:"da_block_time"`
+	// BatchSyncInterval defines how often block manager should sync with the settlement layer
+	BatchSyncInterval time.Duration `mapstructure:"batch_sync_interval"`
 	// DAStartHeight allows skipping first DAStartHeight-1 blocks when querying for blocks.
 	DAStartHeight uint64  `mapstructure:"da_start_height"`
 	NamespaceID   [8]byte `mapstructure:"namespace_id"`
@@ -53,8 +61,11 @@ func (nc *NodeConfig) GetViperConfig(v *viper.Viper) error {
 	nc.Aggregator = v.GetBool(flagAggregator)
 	nc.DALayer = v.GetString(flagDALayer)
 	nc.DAConfig = v.GetString(flagDAConfig)
+	nc.SettlementLayer = v.GetString(flagSettlementLayer)
+	nc.SettlementConfig = v.GetString(flagSettlementConfig)
 	nc.DAStartHeight = v.GetUint64(flagDAStartHeight)
 	nc.DABlockTime = v.GetDuration(flagDABlockTime)
+	nc.BatchSyncInterval = v.GetDuration(flagBatchSyncInterval)
 	nc.BlockTime = v.GetDuration(flagBlockTime)
 	nc.BlockBatchSize = v.GetUint64(flagBlockBatchSize)
 	nsID := v.GetString(flagNamespaceID)
@@ -75,8 +86,11 @@ func AddFlags(cmd *cobra.Command) {
 	cmd.Flags().Bool(flagAggregator, def.Aggregator, "run node in aggregator mode")
 	cmd.Flags().String(flagDALayer, def.DALayer, "Data Availability Layer Client name (mock or grpc")
 	cmd.Flags().String(flagDAConfig, def.DAConfig, "Data Availability Layer Client config")
+	cmd.Flags().String(flagSettlementLayer, def.SettlementLayer, "Settlement Layer Client name (currently only mock)")
+	cmd.Flags().String(flagSettlementConfig, def.SettlementConfig, "Settlement Layer Client config")
 	cmd.Flags().Duration(flagBlockTime, def.BlockTime, "block time (for aggregator mode)")
 	cmd.Flags().Duration(flagDABlockTime, def.DABlockTime, "DA chain block time (for syncing)")
+	cmd.Flags().Duration(flagBatchSyncInterval, def.BatchSyncInterval, "batch sync interval")
 	cmd.Flags().Uint64(flagDAStartHeight, def.DAStartHeight, "starting DA block height (for syncing)")
 	cmd.Flags().BytesHex(flagNamespaceID, def.NamespaceID[:], "namespace identifies (8 bytes in hex)")
 	cmd.Flags().Uint64(flagBlockBatchSize, def.BlockBatchSize, "block batch size")

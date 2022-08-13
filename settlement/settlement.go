@@ -1,9 +1,10 @@
 package settlement
 
 import (
+	"github.com/celestiaorg/optimint/da"
 	"github.com/celestiaorg/optimint/log"
-	"github.com/celestiaorg/optimint/store"
 	"github.com/celestiaorg/optimint/types"
+	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
 // StatusCode is a type for settlement layer return status.
@@ -25,13 +26,28 @@ type BaseResult struct {
 	Message string
 }
 
+// DAMetaData contains meta data about a batch on the Data Availability Layer.
+type DAMetaData struct {
+	// Height is the height of the block in the da layer
+	Height uint64
+	// Path is the path to fetch data from the da layer
+	Path string
+	// Client is the client to use to fetch data from the da layer
+	Client da.Client
+}
+
+// BatchMetaData aggregates all the batch metadata.
+type BatchMetaData struct {
+	DA *DAMetaData
+}
+
 // Batch defines a batch structure for the settlement layer
 type Batch struct {
 	StartHeight uint64
 	EndHeight   uint64
 	AppHashes   [][32]byte
-	// Path of the batch in the DA layer
-	DAPath string
+	// MetaData about the batch in the DA layer
+	MetaData *BatchMetaData
 }
 
 // ResultSubmitBatch contains information returned from settlement layer after batch submission.
@@ -49,7 +65,7 @@ type ResultRetrieveBatch struct {
 type LayerClient interface {
 
 	// Init is called once for the client initialization
-	Init(config []byte, settlementKV store.KVStore, logger log.Logger) error
+	Init(config []byte, pubsub *pubsub.Server, logger log.Logger) error
 
 	// Start is called once, after Init. It's implementation should start the client service.
 	Start() error
@@ -59,7 +75,7 @@ type LayerClient interface {
 
 	// SubmitBatch submits the batch to the settlement layer. This should create a transaction which (potentially)
 	// triggers a state transition in the settlement layer.
-	SubmitBatch(batch *types.Batch, daPath string) ResultSubmitBatch
+	SubmitBatch(batch *types.Batch, metaData *BatchMetaData) ResultSubmitBatch
 
 	// RetrieveBatch Gets the batch which contains the given height. Empty height returns the latest batch.
 	RetrieveBatch(height ...uint64) (ResultRetrieveBatch, error)

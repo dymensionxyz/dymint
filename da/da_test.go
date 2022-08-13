@@ -215,6 +215,11 @@ func doTestRetrieve(t *testing.T, dalc da.DataAvailabilityLayerClient) {
 			StartHeight: i,
 			EndHeight:   i,
 			Blocks:      []*types.Block{b},
+			Commits: []*types.Commit{{
+				Height:     b.Header.Height,
+				HeaderHash: b.Header.Hash(),
+			},
+			},
 		}
 		resp := dalc.SubmitBatch(batch)
 		assert.Equal(da.StatusSuccess, resp.Code, resp.Message)

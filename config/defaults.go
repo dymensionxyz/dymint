@@ -15,9 +15,11 @@ var DefaultNodeConfig = NodeConfig{
 	},
 	Aggregator: false,
 	BlockManagerConfig: BlockManagerConfig{
-		BlockTime:   30 * time.Second,
-		NamespaceID: [8]byte{},
+		BlockTime:         30 * time.Second,
+		NamespaceID:       [8]byte{},
+		BatchSyncInterval: time.Second * 30,
 	},
-	DALayer:  "mock",
-	DAConfig: "",
+	DALayer:         "mock",
+	SettlementLayer: "mock",
+	DAConfig:        "",
 }

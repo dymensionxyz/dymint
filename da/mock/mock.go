@@ -71,7 +71,7 @@ func (m *DataAvailabilityLayerClient) Stop() error {
 // triggers a state transition in the DA layer.
 func (m *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultSubmitBatch {
 	daHeight := atomic.LoadUint64(&m.daHeight)
-	m.logger.Debug("Submitting batch to DA layer. start height", batch.StartHeight, "end height", batch.EndHeight, "da height", daHeight)
+	m.logger.Debug("Submitting batch to DA layer", "start height", batch.StartHeight, "end height", batch.EndHeight, "da height", daHeight)
 
 	blob, err := batch.MarshalBinary()
 	if err != nil {

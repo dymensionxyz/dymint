@@ -7,18 +7,21 @@ import (
 	"sync/atomic"
 	"time"
 
+	"code.cloudfoundry.org/go-diodes"
+	"github.com/avast/retry-go"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmcrypto "github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/merkle"
+	"github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/proxy"
 	tmtypes "github.com/tendermint/tendermint/types"
-	"go.uber.org/multierr"
 
 	"github.com/celestiaorg/optimint/config"
 	"github.com/celestiaorg/optimint/da"
 	"github.com/celestiaorg/optimint/log"
 	"github.com/celestiaorg/optimint/mempool"
+	"github.com/celestiaorg/optimint/settlement"
 	"github.com/celestiaorg/optimint/state"
 	"github.com/celestiaorg/optimint/store"
 	"github.com/celestiaorg/optimint/types"
@@ -36,11 +39,14 @@ var initialBackoff = 100 * time.Millisecond
 
 type newBlockEvent struct {
 	block    *types.Block
+	commit   *types.Commit
 	daHeight uint64
 }
 
 // Manager is responsible for aggregating transactions into blocks.
 type Manager struct {
+	pubsub *pubsub.Server
+
 	lastState types.State
 
 	conf    config.BlockManagerConfig
@@ -51,22 +57,22 @@ type Manager struct {
 	store    store.Store
 	executor *state.BlockExecutor
 
-	dalc      da.DataAvailabilityLayerClient
-	retriever da.BatchRetriever
+	dalc         da.DataAvailabilityLayerClient
+	settlementlc settlement.LayerClient
+	retriever    da.BatchRetriever
 	// daHeight is the height of the latest processed DA block
 	daHeight uint64
 
-	HeaderOutCh chan *types.Header
-	HeaderInCh  chan *types.Header
+	// TODO(omritotpix): Remove the header sync fields
+	HeaderOutCh     chan *types.Header
+	HeaderInCh      chan *types.Header
+	syncTargetDiode diodes.Diode
 
-	syncTarget uint64
-	blockInCh  chan newBlockEvent
-	syncCache  map[uint64]*types.Block
+	syncTarget   uint64
+	isSyncedCond sync.Cond
 
-	// retrieveMtx is used by retrieveCond
-	retrieveMtx *sync.Mutex
-	// retrieveCond is used to notify sync goroutine (SyncLoop) that it needs to retrieve data
-	retrieveCond *sync.Cond
+	blockInCh chan newBlockEvent
+	syncCache map[uint64]*types.Block
 
 	logger log.Logger
 }
@@ -89,7 +95,9 @@ func NewManager(
 	mempool mempool.Mempool,
 	proxyApp proxy.AppConnConsensus,
 	dalc da.DataAvailabilityLayerClient,
+	settlementlc settlement.LayerClient,
 	eventBus *tmtypes.EventBus,
+	pubsub *pubsub.Server,
 	logger log.Logger,
 ) (*Manager, error) {
 	s, err := getInitialState(store, genesis)
@@ -104,7 +112,7 @@ func NewManager(
 	if err != nil {
 		return nil, err
 	}
-
+	// TODO(omritoptix): Think about the default batchSize and default DABlockTime proper location.
 	if conf.DABlockTime == 0 {
 		logger.Info("WARNING: using default DA block time", "DABlockTime", defaultDABlockTime)
 		conf.DABlockTime = defaultDABlockTime
@@ -124,24 +132,26 @@ func NewManager(
 	}
 
 	agg := &Manager{
-		proposerKey: proposerKey,
-		conf:        conf,
-		genesis:     genesis,
-		lastState:   s,
-		store:       store,
-		executor:    exec,
-		dalc:        dalc,
-		retriever:   dalc.(da.BatchRetriever), // TODO(tzdybal): do it in more gentle way (after MVP)
-		daHeight:    s.DAHeight,
+		pubsub:       pubsub,
+		proposerKey:  proposerKey,
+		conf:         conf,
+		genesis:      genesis,
+		lastState:    s,
+		store:        store,
+		executor:     exec,
+		dalc:         dalc,
+		settlementlc: settlementlc,
+		retriever:    dalc.(da.BatchRetriever), // TODO(tzdybal): do it in more gentle way (after MVP)
+		daHeight:     s.DAHeight,
 		// channels are buffered to avoid blocking on input/output operations, buffer sizes are arbitrary
-		HeaderOutCh: make(chan *types.Header, 100),
-		HeaderInCh:  make(chan *types.Header, 100),
-		blockInCh:   make(chan newBlockEvent, 100),
-		retrieveMtx: new(sync.Mutex),
-		syncCache:   make(map[uint64]*types.Block),
-		logger:      logger,
+		HeaderOutCh:     make(chan *types.Header, 100),
+		HeaderInCh:      make(chan *types.Header, 100),
+		syncTargetDiode: diodes.NewOneToOne(1, nil),
+		blockInCh:       make(chan newBlockEvent, 100),
+		syncCache:       make(map[uint64]*types.Block),
+		isSyncedCond:    *sync.NewCond(new(sync.Mutex)),
+		logger:          logger,
 	}
-	agg.retrieveCond = sync.NewCond(agg.retrieveMtx)
 
 	return agg, nil
 }
@@ -155,83 +165,200 @@ func getAddress(key crypto.PrivKey) ([]byte, error) {
 }
 
 // SetDALC is used to set DataAvailabilityLayerClient used by Manager.
+// TODO(omritoptix): Remove this from here as it's only being used for tests.
 func (m *Manager) SetDALC(dalc da.DataAvailabilityLayerClient) {
 	m.dalc = dalc
 	m.retriever = dalc.(da.BatchRetriever)
 }
 
-// AggregationLoop is responsible for aggregating transactions into rollup-blocks.
-func (m *Manager) AggregationLoop(ctx context.Context) {
-	timer := time.NewTimer(0)
+// getLatestBatchFromSL gets the latest batch from the SL
+func (m *Manager) getLatestBatchFromSL(ctx context.Context) (settlement.ResultRetrieveBatch, error) {
+	var resultRetrieveBatch settlement.ResultRetrieveBatch
+	var err error
+	// TODO(omritoptix): Move to a separate function.
+	// Get latest batch from SL
+	err = retry.Do(
+		func() error {
+			resultRetrieveBatch, err = m.settlementlc.RetrieveBatch()
+			if err != nil {
+				return err
+			}
+			return nil
+		},
+		retry.LastErrorOnly(true),
+		retry.Context(ctx),
+		retry.Attempts(1),
+	)
+	if err != nil {
+		return resultRetrieveBatch, err
+	}
+	return resultRetrieveBatch, nil
+
+}
+
+// waitForSync waits until we are synced before it unblocks.
+func (m *Manager) waitForSync(ctx context.Context) error {
+	resultRetrieveBatch, err := m.getLatestBatchFromSL(ctx)
+	// Set the syncTarget according to the result
+	if err == settlement.ErrBatchNotFound {
+		// Since we requested the latest batch and got batch not found it means
+		// the SL still hasn't got any batches for this chain.
+		m.logger.Info("No batches for chain found in SL. Start writing first batch")
+		atomic.StoreUint64(&m.syncTarget, uint64(m.genesis.InitialHeight))
+		return nil
+	} else if err != nil {
+		m.logger.Error("failed to retrieve batch from SL", "err", err)
+		return err
+	} else {
+		atomic.StoreUint64(&m.syncTarget, resultRetrieveBatch.EndHeight)
+	}
+	// Wait until isSynced is true and then call the PublishBlockLoop
+	m.isSyncedCond.L.Lock()
+	// Wait until we're synced and that we have got the latest batch (if we didn't, m.syncTarget == 0)
+	// before we start publishing blocks
+	for m.store.Height() < atomic.LoadUint64(&m.syncTarget) {
+		m.logger.Info("Waiting for sync", "current height", m.store.Height(), "syncTarget", atomic.LoadUint64(&m.syncTarget))
+		m.isSyncedCond.Wait()
+	}
+	m.isSyncedCond.L.Unlock()
+	m.logger.Info("Synced, Starting to produce", "current height", m.store.Height(), "syncTarget", atomic.LoadUint64(&m.syncTarget))
+	return nil
+}
+
+// PublishBlockLoop is calling publishBlock in a loop as long as wer'e synced.
+func (m *Manager) PublishBlockLoop(ctx context.Context) {
+	// We want to wait until we are synced. After that, since there is no leader
+	// election yet, and leader are elected manually, we will not be out of sync until
+	// we are manually being replaced.
+	err := m.waitForSync(ctx)
+	if err != nil {
+		m.logger.Error("failed to wait for sync", "err", err)
+	}
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-timer.C:
-			start := time.Now()
+		default:
 			err := m.publishBlock(ctx)
 			if err != nil {
-				m.logger.Error("error while publishing block", "error", err)
+				m.logger.Error("error while producing block", "error", err)
 			}
-			timer.Reset(m.getRemainingSleep(start))
 		}
 	}
 }
 
-// SyncLoop is responsible for syncing blocks.
-//
-// SyncLoop processes headers gossiped in P2p network to know what's the latest block height,
-// block data is retrieved from DA layer.
-func (m *Manager) SyncLoop(ctx context.Context) {
-	daTicker := time.NewTicker(m.conf.DABlockTime)
+// SyncTargetLoop is responsible for updating the syncTarget as read from the SL
+// to a ring buffer which will later be used by retrieveLoop for actually syncing until this target
+func (m *Manager) SyncTargetLoop(ctx context.Context) {
+	m.logger.Info("Started sync target loop")
+	ticker := time.NewTicker(m.conf.BatchSyncInterval)
 	for {
 		select {
-		case <-daTicker.C:
-			m.retrieveCond.Signal()
-		case header := <-m.HeaderInCh:
-			m.logger.Debug("block header received", "height", header.Height, "hash", header.Hash())
-			newHeight := header.Height
-			currentHeight := m.store.Height()
-			// in case of client reconnecting after being offline
-			// newHeight may be significantly larger than currentHeight
-			// it's handled gently in RetrieveLoop
-			if newHeight > currentHeight {
-				atomic.StoreUint64(&m.syncTarget, newHeight)
-				m.retrieveCond.Signal()
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			// Cancel the previous running getLatestBatchFromSL if it still runs
+			// during next tick. Currently we timeout after half the batchSyncInterval.
+			batchContext, cancel := context.WithTimeout(ctx, m.conf.BatchSyncInterval/2)
+			// Cancel the context to avoid a leak
+			defer cancel()
+			// Get the latest batch from the settlement layer
+			resultRetrieveBatch, err := m.getLatestBatchFromSL(batchContext)
+			if err != nil {
+				m.logger.Error("error while retrieving batch", "error", err)
+				continue
 			}
+			// Check if batch height is higher than current block height and if so, set the syncTarget atomically
+			if resultRetrieveBatch.EndHeight > m.store.Height() {
+				m.logger.Info("Setting syncTarget", "syncTarget", resultRetrieveBatch.EndHeight)
+				atomic.StoreUint64(&m.syncTarget, resultRetrieveBatch.EndHeight)
+				m.syncTargetDiode.Set(diodes.GenericDataType(&resultRetrieveBatch.EndHeight))
+			}
+		}
+		// TODO(omritoptix): Listen to events from the settlement layer of new batches and udpate the syncTarget
+	}
+}
+
+// RetriveLoop listens for new sync messages written to a ring buffer and in turn
+// runs syncUntilTarget on the latest message in the ring buffer.
+func (m *Manager) RetriveLoop(ctx context.Context) {
+	m.logger.Info("Started retrieve loop")
+	syncTargetpoller := diodes.NewPoller(m.syncTargetDiode)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			// Get only the latest sync target
+			syncTarget := syncTargetpoller.Next()
+			m.syncUntilTarget(ctx, *(*uint64)(syncTarget))
+			// Check if after we sync we are synced or a new syncTarget was already set.
+			// If we are synced then signal all processes waiting on isSyncedCond.
+			if m.store.Height() >= atomic.LoadUint64(&m.syncTarget) {
+				m.logger.Info("Synced at height", "height", m.store.Height())
+				m.isSyncedCond.L.Lock()
+				m.isSyncedCond.Signal()
+				m.isSyncedCond.L.Unlock()
+			}
+		}
+	}
+}
+
+// syncUntilTarget syncs the block until the syncTarget is reached.
+// It fetches the batches from the settlement, gets the DA height and gets
+// the actual blocks from the DA.
+func (m *Manager) syncUntilTarget(ctx context.Context, syncTarget uint64) {
+	currentHeight := m.store.Height()
+	for currentHeight < syncTarget {
+		m.logger.Info("Syncing until target", "current height", currentHeight, "syncTarget", syncTarget)
+		resultRetrieveBatch, err := m.settlementlc.RetrieveBatch(currentHeight + 1)
+		// TODO(omritoptix): Handle in case we get batchNotfound
+		if err != nil {
+			m.logger.Error("error while retrieving batch", "error", err)
+			continue
+		}
+		err = m.processNextDABatch(resultRetrieveBatch.MetaData.DA.Height)
+		if err != nil {
+			m.logger.Error("error while processing next DA batch", "error", err)
+			break
+		}
+		currentHeight = m.store.Height()
+	}
+}
+
+// ApplyBlockLoop is responsible for applying blocks retrieved from the DA.
+func (m *Manager) ApplyBlockLoop(ctx context.Context) {
+	for {
+		select {
 		case blockEvent := <-m.blockInCh:
 			block := blockEvent.block
+			commit := blockEvent.commit
 			daHeight := blockEvent.daHeight
 			m.logger.Debug("block body retrieved from DALC",
 				"height", block.Header.Height,
 				"daHeight", daHeight,
 				"hash", block.Hash(),
 			)
-			m.syncCache[block.Header.Height] = block
-			m.retrieveCond.Signal()
-			currentHeight := m.store.Height() // TODO(tzdybal): maybe store a copy in memory
-			b1, ok1 := m.syncCache[currentHeight+1]
-			b2, ok2 := m.syncCache[currentHeight+2]
-			if ok1 && ok2 {
-				m.logger.Info("Syncing block", "height", b1.Header.Height)
-				newState, responses, err := m.executor.ApplyBlock(ctx, m.lastState, b1)
+			if block.Header.Height > m.store.Height() {
+				m.logger.Info("Syncing block", "height", block.Header.Height)
+				newState, responses, err := m.executor.ApplyBlock(ctx, m.lastState, block)
 				if err != nil {
 					m.logger.Error("failed to ApplyBlock", "error", err)
 					continue
 				}
-				err = m.store.SaveBlock(b1, &b2.LastCommit)
+				err = m.store.SaveBlock(block, commit)
 				if err != nil {
 					m.logger.Error("failed to save block", "error", err)
 					continue
 				}
-				_, _, err = m.executor.Commit(ctx, newState, b1, responses)
+				_, _, err = m.executor.Commit(ctx, newState, block, responses)
 				if err != nil {
 					m.logger.Error("failed to Commit", "error", err)
 					continue
 				}
-				m.store.SetHeight(b1.Header.Height)
+				m.store.SetHeight(block.Header.Height)
 
-				err = m.store.SaveBlockResponses(b1.Header.Height, responses)
+				err = m.store.SaveBlockResponses(block.Header.Height, responses)
 				if err != nil {
 					m.logger.Error("failed to save block responses", "error", err)
 					continue
@@ -244,7 +371,6 @@ func (m *Manager) SyncLoop(ctx context.Context) {
 					m.logger.Error("failed to save updated state", "error", err)
 					continue
 				}
-				delete(m.syncCache, currentHeight+1)
 			}
 		case <-ctx.Done():
 			return
@@ -252,66 +378,20 @@ func (m *Manager) SyncLoop(ctx context.Context) {
 	}
 }
 
-// RetrieveLoop is responsible for interacting with DA layer.
-func (m *Manager) RetrieveLoop(ctx context.Context) {
-	// waitCh is used to signal the retrieve loop, that it should process next blocks
-	// retrieveCond can be signalled in completely async manner, and goroutine below
-	// works as some kind of "buffer" for those signals
-	waitCh := make(chan interface{})
-	go func() {
-		for {
-			m.retrieveMtx.Lock()
-			m.retrieveCond.Wait()
-			waitCh <- nil
-			m.retrieveMtx.Unlock()
-			if ctx.Err() != nil {
-				return
-			}
-		}
-	}()
-
-	for {
-		select {
-		case <-waitCh:
-			for {
-				daHeight := atomic.LoadUint64(&m.daHeight)
-				m.logger.Debug("retrieve", "daHeight", daHeight)
-				err := m.processNextDABatch()
-				if err != nil {
-					m.logger.Error("failed to retrieve block from DALC", "daHeight", daHeight, "errors", err.Error())
-					break
-				}
-				atomic.AddUint64(&m.daHeight, 1)
-			}
-		case <-ctx.Done():
-			return
-		}
-	}
-}
-
-func (m *Manager) processNextDABatch() error {
-	// TODO(tzdybal): extract configuration option
-	maxRetries := 10
-	daHeight := atomic.LoadUint64(&m.daHeight)
-
-	var err error
+func (m *Manager) processNextDABatch(daHeight uint64) error {
 	m.logger.Debug("trying to retrieve batch from DA", "daHeight", daHeight)
-	for r := 0; r < maxRetries; r++ {
-		batchResp, fetchErr := m.fetchBatch(daHeight)
-		if fetchErr != nil {
-			err = multierr.Append(err, fetchErr)
-			time.Sleep(100 * time.Millisecond)
-		} else {
-			m.logger.Debug("retrieved potential batches", "n", len(batchResp.Batches), "daHeight", daHeight)
-			for _, batch := range batchResp.Batches {
-				for _, block := range batch.Blocks {
-					m.blockInCh <- newBlockEvent{block, daHeight}
-				}
-			}
-			return nil
+	batchResp, err := m.fetchBatch(daHeight)
+	if err != nil {
+		m.logger.Error("failed to retrieve batch from DA", "daHeight", daHeight, "error", err)
+		return err
+	}
+	m.logger.Debug("retrieved batches", "n", len(batchResp.Batches), "daHeight", daHeight)
+	for _, batch := range batchResp.Batches {
+		for i, block := range batch.Blocks {
+			m.blockInCh <- newBlockEvent{block, batch.Commits[i], daHeight}
 		}
 	}
-	return err
+	return nil
 }
 
 func (m *Manager) fetchBatch(daHeight uint64) (da.ResultRetrieveBatch, error) {
@@ -326,16 +406,8 @@ func (m *Manager) fetchBatch(daHeight uint64) (da.ResultRetrieveBatch, error) {
 	return batchRes, err
 }
 
-func (m *Manager) getRemainingSleep(start time.Time) time.Duration {
-	publishingDuration := time.Since(start)
-	sleepDuration := m.conf.BlockTime - publishingDuration
-	if sleepDuration < 0 {
-		sleepDuration = 0
-	}
-	return sleepDuration
-}
-
 func (m *Manager) publishBlock(ctx context.Context) error {
+
 	var lastCommit *types.Commit
 	var lastHeaderHash [32]byte
 	var err error
@@ -361,6 +433,7 @@ func (m *Manager) publishBlock(ctx context.Context) error {
 
 	// Check if there's an already stored block at a newer height
 	// If there is use that instead of creating a new block
+	var commit *types.Commit
 	pendingBlock, err := m.store.LoadBlock(newHeight)
 	if err == nil {
 		m.logger.Info("Using pending block", "height", newHeight)
@@ -378,7 +451,7 @@ func (m *Manager) publishBlock(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		commit := &types.Commit{
+		commit = &types.Commit{
 			Height:     block.Header.Height,
 			HeaderHash: block.Header.Hash(),
 			Signatures: []types.Signature{sign},
@@ -397,7 +470,7 @@ func (m *Manager) publishBlock(ctx context.Context) error {
 		return err
 	}
 
-	err = m.submitBatchToDA(ctx, block)
+	err = m.submitBatchToDA(ctx, block, commit)
 	if err != nil {
 		m.logger.Error("Failed to submit block to DA Layer")
 		return err
@@ -439,7 +512,8 @@ func (m *Manager) publishBlock(ctx context.Context) error {
 	return nil
 }
 
-func (m *Manager) submitBatchToDA(ctx context.Context, block *types.Block) error {
+// TODO(omritoptix): Remove the manual exponential backoff and wrap it with go-retry.
+func (m *Manager) submitBatchToDA(ctx context.Context, block *types.Block, commit *types.Commit) error {
 	m.logger.Info("submitting batch to DA layer", "height", block.Header.Height)
 
 	submitted := false
@@ -449,6 +523,7 @@ func (m *Manager) submitBatchToDA(ctx context.Context, block *types.Block) error
 			StartHeight: block.Header.Height,
 			EndHeight:   block.Header.Height,
 			Blocks:      []*types.Block{block},
+			Commits:     []*types.Commit{commit},
 		}
 		res := m.dalc.SubmitBatch(batch)
 		if res.Code == da.StatusSuccess {
@@ -465,8 +540,6 @@ func (m *Manager) submitBatchToDA(ctx context.Context, block *types.Block) error
 		return fmt.Errorf("failed to submit batch to DA layer after %d attempts", maxSubmitAttempts)
 	}
 
-	m.HeaderOutCh <- &block.Header
-
 	return nil
 }
 
@@ -478,10 +551,12 @@ func (m *Manager) exponentialBackoff(backoff time.Duration) time.Duration {
 	return backoff
 }
 
+// TODO(omritoptix): Change it to publish block
 func (m *Manager) publishHeader(block *types.Block) {
 	m.HeaderOutCh <- &block.Header
 }
 
+// TODO(omritoptix): possible remove this method from the manager
 func updateState(s *types.State, res *abci.ResponseInitChain) {
 	// If the app did not return an app hash, we keep the one set from the genesis doc in
 	// the state. We don't set appHash since we don't want the genesis doc app hash
