@@ -162,6 +162,7 @@ func (b *Batch) ToProto() *pb.Batch {
 		StartHeight: b.StartHeight,
 		EndHeight:   b.EndHeight,
 		Blocks:      blocksToProto(b.Blocks),
+		Commits:     commitsToProto(b.Commits),
 	}
 }
 
@@ -198,6 +199,7 @@ func (b *Batch) FromProto(other *pb.Batch) error {
 	b.StartHeight = other.StartHeight
 	b.EndHeight = other.EndHeight
 	b.Blocks = protoToBlocks(other.Blocks)
+	b.Commits = protoToCommits(other.Commits)
 	return nil
 }
 
@@ -367,4 +369,26 @@ func protoToBlocks(pbBlocks []*pb.Block) []*Block {
 		}
 	}
 	return blocks
+}
+
+// commitsToProto converts a list of commits to a list of protobuf commits.
+func commitsToProto(commits []*Commit) []*pb.Commit {
+	pbCommits := make([]*pb.Commit, len(commits))
+	for i, c := range commits {
+		pbCommits[i] = c.ToProto()
+	}
+	return pbCommits
+}
+
+// protoToCommits converts a list of protobuf commits to a list of go struct commits.
+func protoToCommits(pbCommits []*pb.Commit) []*Commit {
+	commits := make([]*Commit, len(pbCommits))
+	for i, c := range pbCommits {
+		commits[i] = new(Commit)
+		err := commits[i].FromProto(c)
+		if err != nil {
+			panic(err)
+		}
+	}
+	return commits
 }

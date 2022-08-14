@@ -20,6 +20,14 @@ const (
 	StatusError
 )
 
+// Client defines all the possible da clients
+type Client uint8
+
+// Data availability clients
+const (
+	Celestia Client = iota
+)
+
 // BaseResult contains basic information returned by DA layer.
 type BaseResult struct {
 	// Code is to determine if the action succeeded.

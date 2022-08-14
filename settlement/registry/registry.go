@@ -5,14 +5,22 @@ import (
 	"github.com/celestiaorg/optimint/settlement/mock"
 )
 
+// Client represents a settlement layer client
+type Client string
+
+const (
+	// ClientMock is a mock client for the settlement layer
+	ClientMock Client = "mock"
+)
+
 // A central registry for all Settlement Layer Clients
-var clients = map[string]func() settlement.LayerClient{
-	"mock": func() settlement.LayerClient { return &mock.SettlementLayerClient{} },
+var clients = map[Client]func() settlement.LayerClient{
+	ClientMock: func() settlement.LayerClient { return &mock.SettlementLayerClient{} },
 }
 
 // GetClient returns client identified by name.
-func GetClient(name string) settlement.LayerClient {
-	f, ok := clients[name]
+func GetClient(client Client) settlement.LayerClient {
+	f, ok := clients[client]
 	if !ok {
 		return nil
 	}
@@ -20,10 +28,10 @@ func GetClient(name string) settlement.LayerClient {
 }
 
 // RegisteredClients returns names of all settlement clients in registry.
-func RegisteredClients() []string {
-	registered := make([]string, 0, len(clients))
-	for name := range clients {
-		registered = append(registered, name)
+func RegisteredClients() []Client {
+	registered := make([]Client, 0, len(clients))
+	for client := range clients {
+		registered = append(registered, client)
 	}
 	return registered
 }

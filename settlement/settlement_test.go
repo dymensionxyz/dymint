@@ -7,12 +7,13 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tendermint/tendermint/libs/pubsub"
 
+	"github.com/celestiaorg/optimint/da"
 	"github.com/celestiaorg/optimint/log/test"
 	"github.com/celestiaorg/optimint/settlement"
 	"github.com/celestiaorg/optimint/settlement/mock"
 	"github.com/celestiaorg/optimint/settlement/registry"
-	"github.com/celestiaorg/optimint/store"
 	"github.com/celestiaorg/optimint/testutil"
 	"github.com/celestiaorg/optimint/types"
 )
@@ -22,28 +23,30 @@ const batchSize = 5
 func TesClientsLifeCycle(t *testing.T) {
 
 	for _, settlement := range registry.RegisteredClients() {
-		t.Run(settlement, func(t *testing.T) {
+		t.Run(string(settlement), func(t *testing.T) {
 			doTestLifecycle(t, registry.GetClient(settlement))
 		})
 	}
 }
 
-func doTestLifecycle(t *testing.T, settlement settlement.LayerClient) {
+func doTestLifecycle(t *testing.T, settlementlc settlement.LayerClient) {
 	require := require.New(t)
 
-	err := settlement.Init([]byte{}, nil, test.NewLogger(t))
+	pubsubServer := pubsub.NewServer()
+	pubsubServer.Start()
+	err := settlementlc.Init([]byte{}, pubsubServer, test.NewLogger(t))
 	require.NoError(err)
 
-	err = settlement.Start()
+	err = settlementlc.Start()
 	require.NoError(err)
 
-	err = settlement.Stop()
+	err = settlementlc.Stop()
 	require.NoError(err)
 }
 
 func TestSubmitAndRetrieve(t *testing.T) {
 	for _, settlement := range registry.RegisteredClients() {
-		t.Run(settlement, func(t *testing.T) {
+		t.Run(string(settlement), func(t *testing.T) {
 			doTestSubmitAndRetrieve(t, registry.GetClient(settlement))
 			doTestInvalidSubmit(t, registry.GetClient(settlement))
 		})
@@ -66,7 +69,9 @@ func initClient(t *testing.T, settlementlc settlement.LayerClient) {
 	require := require.New(t)
 	conf := getConfForClient(settlementlc)
 
-	err := settlementlc.Init(conf, store.NewDefaultInMemoryKVStore(), test.NewLogger(t))
+	pubsubServer := pubsub.NewServer()
+	pubsubServer.Start()
+	err := settlementlc.Init(conf, pubsubServer, test.NewLogger(t))
 	require.NoError(err)
 
 	err = settlementlc.Start()
@@ -94,7 +99,14 @@ func doTestInvalidSubmit(t *testing.T, settlementlc settlement.LayerClient) {
 			StartHeight: c.startHeight,
 			EndHeight:   c.endHeight,
 		}
-		resultSubmitBatch := settlementlc.SubmitBatch(batch, strconv.FormatUint(c.endHeight, 10))
+		batchMetaData := &settlement.BatchMetaData{
+			DA: &settlement.DAMetaData{
+				Height: c.endHeight,
+				Path:   strconv.FormatUint(c.endHeight, 10),
+				Client: da.Celestia,
+			},
+		}
+		resultSubmitBatch := settlementlc.SubmitBatch(batch, batchMetaData)
 		assert.Equal(resultSubmitBatch.Code, c.status)
 	}
 
@@ -119,7 +131,14 @@ func doTestSubmitAndRetrieve(t *testing.T, settlementlc settlement.LayerClient) 
 		// Create the batch
 		batch = testutil.GenerateBatch(startHeight, uint64(startHeight+batchSize))
 		// Submit the batch
-		resultSubmitBatch := settlementlc.SubmitBatch(batch, strconv.FormatUint(batch.EndHeight, 10))
+		batchMetaData := &settlement.BatchMetaData{
+			DA: &settlement.DAMetaData{
+				Height: batch.EndHeight,
+				Path:   strconv.FormatUint(batch.EndHeight, 10),
+				Client: da.Celestia,
+			},
+		}
+		resultSubmitBatch := settlementlc.SubmitBatch(batch, batchMetaData)
 		assert.Equal(resultSubmitBatch.Code, settlement.StatusSuccess)
 	}
 

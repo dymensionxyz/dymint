@@ -217,8 +217,8 @@ func (c *Client) BroadcastTxSync(ctx context.Context, tx types.Tx) (*ctypes.Resu
 			// if this does not occur, then the user will not be able to try again using
 			// this node, as the CheckTx call above will return an error indicating that
 			// the tx is already in the mempool
-			c.node.Mempool.RemoveTxByKey(mempool.TxKey(tx), true)
-			return nil, fmt.Errorf("valid tra: %w", err)
+			_ = c.node.Mempool.RemoveTxByKey(tx.Key())
+			return nil, fmt.Errorf("failed to gossip tx: %w", err)
 		}
 	}
 
@@ -275,7 +275,10 @@ func (c *Client) Genesis(_ context.Context) (*ctypes.ResultGenesis, error) {
 
 // GenesisChunked returns given chunk of genesis.
 func (c *Client) GenesisChunked(context context.Context, id uint) (*ctypes.ResultGenesisChunk, error) {
-	genChunks := c.node.GetGenesisChunks()
+	genChunks, err := c.node.GetGenesisChunks()
+	if err != nil {
+		return nil, fmt.Errorf("error while creating chunks of the genesis document: %w", err)
+	}
 	if genChunks == nil {
 		return nil, fmt.Errorf("service configuration error, genesis chunks are not initialized")
 	}
@@ -730,7 +733,7 @@ func (c *Client) NumUnconfirmedTxs(ctx context.Context) (*ctypes.ResultUnconfirm
 	return &ctypes.ResultUnconfirmedTxs{
 		Count:      c.node.Mempool.Size(),
 		Total:      c.node.Mempool.Size(),
-		TotalBytes: c.node.Mempool.TxsBytes(),
+		TotalBytes: c.node.Mempool.SizeBytes(),
 	}, nil
 
 }
@@ -744,7 +747,7 @@ func (c *Client) UnconfirmedTxs(ctx context.Context, limitPtr *int) (*ctypes.Res
 	return &ctypes.ResultUnconfirmedTxs{
 		Count:      len(txs),
 		Total:      c.node.Mempool.Size(),
-		TotalBytes: c.node.Mempool.TxsBytes(),
+		TotalBytes: c.node.Mempool.SizeBytes(),
 		Txs:        txs}, nil
 }
 

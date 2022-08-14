@@ -31,7 +31,9 @@ func TestStartup(t *testing.T) {
 	app.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 	key, _, _ := crypto.GenerateEd25519Key(rand.Reader)
 	signingKey, _, _ := crypto.GenerateEd25519Key(rand.Reader)
-	node, err := NewNode(context.Background(), config.NodeConfig{DALayer: "mock"}, key, signingKey, proxy.NewLocalClientCreator(app), &types.GenesisDoc{ChainID: "test"}, log.TestingLogger())
+	// TODO(omritoptix): Test with and without aggregator mode.
+	nodeConfig := config.NodeConfig{Aggregator: false, DALayer: "mock", SettlementLayer: "mock", BlockManagerConfig: config.BlockManagerConfig{BatchSyncInterval: time.Second * 5}}
+	node, err := NewNode(context.Background(), nodeConfig, key, signingKey, proxy.NewLocalClientCreator(app), &types.GenesisDoc{ChainID: "test"}, log.TestingLogger())
 	require.NoError(err)
 	require.NotNil(node)
 
@@ -56,8 +58,8 @@ func TestMempoolDirectly(t *testing.T) {
 	key, _, _ := crypto.GenerateEd25519Key(rand.Reader)
 	signingKey, _, _ := crypto.GenerateEd25519Key(rand.Reader)
 	anotherKey, _, _ := crypto.GenerateEd25519Key(rand.Reader)
-
-	node, err := NewNode(context.Background(), config.NodeConfig{DALayer: "mock"}, key, signingKey, proxy.NewLocalClientCreator(app), &types.GenesisDoc{ChainID: "test"}, log.TestingLogger())
+	nodeConfig := config.NodeConfig{DALayer: "mock", SettlementLayer: "mock", BlockManagerConfig: config.BlockManagerConfig{BatchSyncInterval: time.Second * 5}}
+	node, err := NewNode(context.Background(), nodeConfig, key, signingKey, proxy.NewLocalClientCreator(app), &types.GenesisDoc{ChainID: "test"}, log.TestingLogger())
 	require.NoError(err)
 	require.NotNil(node)
 
@@ -86,5 +88,5 @@ func TestMempoolDirectly(t *testing.T) {
 
 	time.Sleep(1 * time.Second)
 
-	assert.Equal(int64(4*len("tx*")), node.Mempool.TxsBytes())
+	assert.Equal(int64(4*len("tx*")), node.Mempool.SizeBytes())
 }

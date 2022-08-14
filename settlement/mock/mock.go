@@ -9,38 +9,49 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/celestiaorg/optimint/da"
 	"github.com/celestiaorg/optimint/log"
 	"github.com/celestiaorg/optimint/settlement"
 	"github.com/celestiaorg/optimint/store"
 	"github.com/celestiaorg/optimint/testutil"
 	"github.com/celestiaorg/optimint/types"
+	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
 const defaultBatchSize = 5
 
+var settlementKVPrefix = []byte{0}
+
 // SettlementLayerClient is intended only for usage in tests.
 type SettlementLayerClient struct {
-	logger       log.Logger
-	settlementKV store.KVStore
-	latestHeight uint64
-	config       Config
-	ctx          context.Context
-	cancel       context.CancelFunc
+	logger            log.Logger
+	settlementKV      store.KVStore
+	pubsub            *pubsub.Server
+	latestHeight      uint64
+	batchOffsetHeight uint64
+	config            Config
+	ctx               context.Context
+	cancel            context.CancelFunc
 }
 
 // Config for the SettlementLayerClient mock
 type Config struct {
-	AutoUpdateBatches       bool
-	AutoUpdateBatchInterval time.Duration
-	BatchSize               uint64
+	AutoUpdateBatches       bool          `json:"auto_update_batches"`
+	AutoUpdateBatchInterval time.Duration `json:"auto_update_batch_interval"`
+	BatchSize               uint64        `json:"batch_size"`
+	LatestHeight            uint64        `json:"latest_height"`
+	// The height at which the new batchSize started
+	BatchOffsetHeight uint64 `json:"batch_offset_height"`
 }
 
 var _ settlement.LayerClient = &SettlementLayerClient{}
 
 // Init is called once. it initializes the struct members.
-func (s *SettlementLayerClient) Init(config []byte, settlementKV store.KVStore, logger log.Logger) error {
+func (s *SettlementLayerClient) Init(config []byte, pubsub *pubsub.Server, logger log.Logger) error {
+	s.pubsub = pubsub
 	s.logger = logger
-	s.settlementKV = settlementKV
+	baseKV := store.NewDefaultInMemoryKVStore()
+	s.settlementKV = store.NewPrefixKV(baseKV, settlementKVPrefix)
 	s.latestHeight = 0
 	s.ctx, s.cancel = context.WithCancel(context.Background())
 	if len(config) > 0 {
@@ -52,6 +63,10 @@ func (s *SettlementLayerClient) Init(config []byte, settlementKV store.KVStore, 
 		if s.config.BatchSize == 0 {
 			s.config.BatchSize = defaultBatchSize
 		}
+		if s.config.LatestHeight > 0 {
+			s.latestHeight = s.config.LatestHeight
+		}
+		s.batchOffsetHeight = s.config.BatchOffsetHeight
 	}
 	return nil
 }
@@ -91,13 +106,19 @@ func (s *SettlementLayerClient) Stop() error {
 func (s *SettlementLayerClient) updateSettlementWithBatch() {
 	s.logger.Debug("Mock settlement Layer Client updating with batch")
 	batch := s.createBatch(s.latestHeight+1, s.latestHeight+1+s.config.BatchSize)
-	daPath := strconv.FormatUint(batch.EndHeight, 10)
-	s.SubmitBatch(&batch, daPath)
+	batchMetaData := &settlement.BatchMetaData{
+		DA: &settlement.DAMetaData{
+			Height: batch.EndHeight,
+			Path:   strconv.FormatUint(batch.EndHeight, 10),
+			Client: da.Celestia,
+		},
+	}
+	s.SubmitBatch(&batch, batchMetaData)
 }
 
 func (s *SettlementLayerClient) createBatch(startHeight uint64, endHeight uint64) types.Batch {
 	s.logger.Debug("Creating batch for settlement layer", "start height", startHeight, "end height", endHeight)
-	blocks := testutil.GenerateBlocks(int(endHeight - startHeight))
+	blocks := testutil.GenerateBlocks(startHeight, endHeight-startHeight)
 	batch := types.Batch{
 		StartHeight: startHeight,
 		EndHeight:   endHeight,
@@ -131,11 +152,11 @@ func (s *SettlementLayerClient) validateBatch(batch *types.Batch) error {
 	return nil
 }
 
-func (s *SettlementLayerClient) convertBatchtoSettlementBatch(batch *types.Batch, daPath string) *settlement.Batch {
+func (s *SettlementLayerClient) convertBatchtoSettlementBatch(batch *types.Batch, metaData *settlement.BatchMetaData) *settlement.Batch {
 	settlementBatch := &settlement.Batch{
 		StartHeight: batch.StartHeight,
 		EndHeight:   batch.EndHeight,
-		DAPath:      daPath,
+		MetaData:    metaData,
 	}
 	for _, block := range batch.Blocks {
 		settlementBatch.AppHashes = append(settlementBatch.AppHashes, block.Header.AppHash)
@@ -145,7 +166,7 @@ func (s *SettlementLayerClient) convertBatchtoSettlementBatch(batch *types.Batch
 
 // SubmitBatch submits the batch to the settlement layer. This should create a transaction which (potentially)
 // triggers a state transition in the settlement layer.
-func (s *SettlementLayerClient) SubmitBatch(batch *types.Batch, daPath string) settlement.ResultSubmitBatch {
+func (s *SettlementLayerClient) SubmitBatch(batch *types.Batch, metaData *settlement.BatchMetaData) settlement.ResultSubmitBatch {
 	s.logger.Debug("Submitting batch to settlement layer", "start height", batch.StartHeight, "end height", batch.EndHeight)
 	// validate batch
 	err := s.validateBatch(batch)
@@ -155,7 +176,7 @@ func (s *SettlementLayerClient) SubmitBatch(batch *types.Batch, daPath string) s
 		}
 	}
 	// Build the result to save in the settlement layer.
-	settlementBatch := s.convertBatchtoSettlementBatch(batch, daPath)
+	settlementBatch := s.convertBatchtoSettlementBatch(batch, metaData)
 	// Save to the settlement layer
 	err = s.saveBatch(settlementBatch)
 	if err != nil {
@@ -172,8 +193,9 @@ func (s *SettlementLayerClient) SubmitBatch(batch *types.Batch, daPath string) s
 
 func (s *SettlementLayerClient) retrieveBatchAtEndHeight(endHeight uint64) (*settlement.ResultRetrieveBatch, error) {
 	b, err := s.settlementKV.Get(getKey(endHeight))
+	s.logger.Debug("Retrieving batch from settlement layer", "end height", endHeight)
 	if err != nil {
-		return nil, errors.New("error getting batch from kv store for height " + fmt.Sprint(endHeight))
+		return nil, settlement.ErrBatchNotFound
 	}
 	var settlementBatch settlement.Batch
 	err = json.Unmarshal(b, &settlementBatch)
@@ -195,14 +217,15 @@ func (s *SettlementLayerClient) RetrieveBatch(height ...uint64) (settlement.Resu
 		if err != nil {
 			return settlement.ResultRetrieveBatch{
 				BaseResult: settlement.BaseResult{Code: settlement.StatusError, Message: err.Error()},
-			}, errors.New("error getting latest batch")
+			}, err
 		}
 		return *batchResult, nil
 
 	} else if len(height) == 1 {
 		s.logger.Debug("Getting batch from settlement layer for height", height)
 		height := height[0]
-		endHeight := uint64(float64(height/s.config.BatchSize)) * (s.config.BatchSize + 1)
+		startHeight := (height-s.config.BatchOffsetHeight)/s.config.BatchSize*s.config.BatchSize + s.config.BatchOffsetHeight
+		endHeight := startHeight + (s.config.BatchSize - 1)
 		resultRetrieveBatch, err := s.retrieveBatchAtEndHeight(endHeight)
 		if err != nil {
 			return settlement.ResultRetrieveBatch{

@@ -6,4 +6,5 @@ type Batch struct {
 	StartHeight uint64
 	EndHeight   uint64
 	Blocks      []*Block
+	Commits     []*Commit
 }
