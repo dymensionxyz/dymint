@@ -30,13 +30,6 @@ import (
 // defaultDABlockTime is used only if DABlockTime is not configured for manager
 const defaultDABlockTime = 30 * time.Second
 
-// maxSubmitAttempts defines how many times Optimint will re-try to publish block to DA layer.
-// This is temporary solution. It will be removed in future versions.
-const maxSubmitAttempts = 30
-
-// initialBackoff defines initial value for block submission backoff
-var initialBackoff = 100 * time.Millisecond
-
 type newBlockEvent struct {
 	block    *types.Block
 	commit   *types.Commit
@@ -210,7 +203,7 @@ func (m *Manager) waitForSync(ctx context.Context) error {
 		// Since we requested the latest batch and got batch not found it means
 		// the SL still hasn't got any batches for this chain.
 		m.logger.Info("No batches for chain found in SL. Start writing first batch")
-		atomic.StoreUint64(&m.syncTarget, uint64(m.genesis.InitialHeight))
+		atomic.StoreUint64(&m.syncTarget, uint64(m.store.Height()))
 		return nil
 	} else if err != nil {
 		m.logger.Error("failed to retrieve batch from SL", "err", err)
@@ -520,25 +513,34 @@ func (m *Manager) submitNextBatch(ctx context.Context) {
 	defer m.batchInProcess.Store(false)
 	m.batchInProcess.Store(true)
 	// Get the batch start and end height
-	startHeight := atomic.LoadUint64(&m.syncTarget)
-	endHeight := startHeight + m.conf.BlockBatchSize
+	startHeight := atomic.LoadUint64(&m.syncTarget) + 1
+	endHeight := startHeight + m.conf.BlockBatchSize - 1
 	// Create the batch
-	nextBatch, err := m.createNextBatch(startHeight, endHeight)
+	nextBatch, err := m.createNextDABatch(startHeight, endHeight)
 	if err != nil {
 		m.logger.Error("Failed to create next batch", "startHeight", startHeight, "endHeight", endHeight, "error", err)
 		return
 	}
 	m.logger.Info("Submitting next batch to DA", "startHeight", startHeight, "endHeight", endHeight)
 	// Submit batch to the DA
-	err = m.submitBatchToDA(ctx, nextBatch)
+	resultSubmitToDA, err := m.submitBatchToDA(ctx, nextBatch)
 	if err != nil {
 		m.logger.Error("Failed to submit next batch to DA Layer", "startHeight", startHeight, "endHeight", endHeight, "error", err)
 		return
 	}
-	// TODO(omritoptix): Submit batch to SL
+	// Submit batch to SL
+	// TODO(omritoptix): Handle a case where the SL submission fails due to syncTarget out of sync. In that case
+	// we'll want to update the syncTarget before returning.
+	err = m.submitBatchToSL(ctx, nextBatch, resultSubmitToDA)
+	if err != nil {
+		m.logger.Error("Failed to submit next batch to SL Layer", "startHeight", startHeight, "endHeight", endHeight, "error", err)
+		return
+	}
+	// Update the sync target
+	atomic.StoreUint64(&m.syncTarget, endHeight)
 }
 
-func (m *Manager) createNextBatch(startHeight uint64, endHeight uint64) (*types.Batch, error) {
+func (m *Manager) createNextDABatch(startHeight uint64, endHeight uint64) (*types.Batch, error) {
 	// Create the batch
 	batch := &types.Batch{
 		StartHeight: startHeight,
@@ -565,37 +567,37 @@ func (m *Manager) createNextBatch(startHeight uint64, endHeight uint64) (*types.
 	return batch, nil
 }
 
-// TODO(omritoptix): Remove the manual exponential backoff and wrap it with go-retry.
-func (m *Manager) submitBatchToDA(ctx context.Context, batch *types.Batch) error {
-	m.logger.Info("submitting batch to DA layer", "start height", batch.StartHeight, "end height", batch.EndHeight)
-
-	submitted := false
-	backoff := initialBackoff
-	for attempt := 1; ctx.Err() == nil && !submitted && attempt <= maxSubmitAttempts; attempt++ {
-		res := m.dalc.SubmitBatch(batch)
-		if res.Code == da.StatusSuccess {
-			m.logger.Info("successfully submitted dymint batch to DA layer", "daHeight", res.DAHeight)
-			submitted = true
-		} else {
-			m.logger.Error("DA layer submission failed", "error", res.Message, "attempt", attempt)
-			time.Sleep(backoff)
-			backoff = m.exponentialBackoff(backoff)
+func (m *Manager) submitBatchToSL(ctx context.Context, batch *types.Batch, resultSubmitToDA *da.ResultSubmitBatch) error {
+	// Submit batch to SL
+	m.logger.Info("submitting batch to SL layer", "start height", batch.StartHeight, "end height", batch.EndHeight)
+	err := retry.Do(func() error {
+		resultSubmitToSL := m.settlementlc.SubmitBatch(batch, resultSubmitToDA)
+		if resultSubmitToSL.Code != settlement.StatusSuccess {
+			err := fmt.Errorf("failed to submit batch to SL layer: %s", resultSubmitToSL.Message)
+			return err
 		}
+		return nil
+	}, retry.Context(ctx), retry.LastErrorOnly(true))
+	if err != nil {
+		return err
 	}
-
-	if !submitted {
-		return fmt.Errorf("failed to submit batch to DA layer after %d attempts", maxSubmitAttempts)
-	}
-
 	return nil
 }
 
-func (m *Manager) exponentialBackoff(backoff time.Duration) time.Duration {
-	backoff *= 2
-	if backoff > m.conf.DABlockTime {
-		backoff = m.conf.DABlockTime
+func (m *Manager) submitBatchToDA(ctx context.Context, batch *types.Batch) (*da.ResultSubmitBatch, error) {
+	m.logger.Info("submitting batch to DA layer", "start height", batch.StartHeight, "end height", batch.EndHeight)
+	var res da.ResultSubmitBatch
+	err := retry.Do(func() error {
+		res = m.dalc.SubmitBatch(batch)
+		if res.Code != da.StatusSuccess {
+			return fmt.Errorf("failed to submit batch to DA layer: %s", res.Message)
+		}
+		return nil
+	}, retry.Context(ctx), retry.LastErrorOnly(true))
+	if err != nil {
+		return nil, err
 	}
-	return backoff
+	return &res, nil
 }
 
 // TODO(omritoptix): Change it to publish block

@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
-	"strconv"
 	"testing"
 	"time"
 
@@ -107,17 +106,14 @@ func TestWaitUntilSynced(t *testing.T) {
 	}
 
 	// Add a batch which takes the manager out of sync
-	// TODO(omritoptix): A hack since currently creating a batch doesn't update the mock latestHeight.
-	nextBatchStartHeight := storeLastBlockHeight + 1
-	batch := testutil.GenerateBatch(uint64(nextBatchStartHeight), manager.store.Height()+uint64(defaultBatchSize-1))
-	batchMetaData := &settlement.BatchMetaData{
-		DA: &settlement.DAMetaData{
-			Height: 1,
-			Path:   strconv.FormatUint(batch.EndHeight, 10),
-			Client: da.Celestia,
+	startHeight := manager.syncTarget + 1
+	batch := testutil.GenerateBatch(startHeight, startHeight+uint64(defaultBatchSize-1))
+	daResult := &da.ResultSubmitBatch{
+		BaseResult: da.BaseResult{
+			DAHeight: 1,
 		},
 	}
-	resultSubmitBatch := manager.settlementlc.SubmitBatch(batch, batchMetaData)
+	resultSubmitBatch := manager.settlementlc.SubmitBatch(batch, daResult)
 	assert.Equal(t, resultSubmitBatch.Code, settlement.StatusSuccess)
 
 	// Validate blocks are not produced.
@@ -142,18 +138,11 @@ func TestPublishAfterSynced(t *testing.T) {
 
 	// Validate blocks are not produced by adding a batch and outsyncing the manager
 	lastStoreHeight := manager.store.Height()
-	nextBatchStartHeight := lastStoreHeight + 1
+	nextBatchStartHeight := manager.syncTarget + 1
 	batch := testutil.GenerateBatch(nextBatchStartHeight, nextBatchStartHeight+uint64(defaultBatchSize-1))
 	daResultSubmitBatch := manager.dalc.SubmitBatch(batch)
 	assert.Equal(t, daResultSubmitBatch.Code, da.StatusSuccess)
-	batchMetaData := &settlement.BatchMetaData{
-		DA: &settlement.DAMetaData{
-			Height: daResultSubmitBatch.DAHeight,
-			Path:   strconv.FormatUint(batch.EndHeight, 10),
-			Client: da.Celestia,
-		},
-	}
-	resultSubmitBatch := manager.settlementlc.SubmitBatch(batch, batchMetaData)
+	resultSubmitBatch := manager.settlementlc.SubmitBatch(batch, &daResultSubmitBatch)
 	assert.Equal(t, resultSubmitBatch.Code, settlement.StatusSuccess)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*1)
 	defer cancel()
@@ -239,6 +228,7 @@ func getManagerConfig() config.BlockManagerConfig {
 	return config.BlockManagerConfig{
 		BlockTime:         10 * time.Second,
 		BatchSyncInterval: 1 * time.Second,
+		BlockBatchSize:    defaultBatchSize,
 		DAStartHeight:     0,
 		NamespaceID:       [8]byte{1, 2, 3, 4, 5, 6, 7, 8},
 	}

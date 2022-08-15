@@ -106,14 +106,12 @@ func (s *SettlementLayerClient) Stop() error {
 func (s *SettlementLayerClient) updateSettlementWithBatch() {
 	s.logger.Debug("Mock settlement Layer Client updating with batch")
 	batch := s.createBatch(s.latestHeight+1, s.latestHeight+1+s.config.BatchSize)
-	batchMetaData := &settlement.BatchMetaData{
-		DA: &settlement.DAMetaData{
-			Height: batch.EndHeight,
-			Path:   strconv.FormatUint(batch.EndHeight, 10),
-			Client: da.Celestia,
+	daResult := &da.ResultSubmitBatch{
+		BaseResult: da.BaseResult{
+			DAHeight: batch.EndHeight,
 		},
 	}
-	s.SubmitBatch(&batch, batchMetaData)
+	s.SubmitBatch(&batch, daResult)
 }
 
 func (s *SettlementLayerClient) createBatch(startHeight uint64, endHeight uint64) types.Batch {
@@ -152,11 +150,17 @@ func (s *SettlementLayerClient) validateBatch(batch *types.Batch) error {
 	return nil
 }
 
-func (s *SettlementLayerClient) convertBatchtoSettlementBatch(batch *types.Batch, metaData *settlement.BatchMetaData) *settlement.Batch {
+func (s *SettlementLayerClient) convertBatchtoSettlementBatch(batch *types.Batch, daResult *da.ResultSubmitBatch) *settlement.Batch {
 	settlementBatch := &settlement.Batch{
 		StartHeight: batch.StartHeight,
 		EndHeight:   batch.EndHeight,
-		MetaData:    metaData,
+		MetaData: &settlement.BatchMetaData{
+			DA: &settlement.DAMetaData{
+				Height: daResult.DAHeight,
+				Path:   strconv.FormatUint(batch.EndHeight, 10),
+				Client: da.Celestia,
+			},
+		},
 	}
 	for _, block := range batch.Blocks {
 		settlementBatch.AppHashes = append(settlementBatch.AppHashes, block.Header.AppHash)
@@ -166,7 +170,7 @@ func (s *SettlementLayerClient) convertBatchtoSettlementBatch(batch *types.Batch
 
 // SubmitBatch submits the batch to the settlement layer. This should create a transaction which (potentially)
 // triggers a state transition in the settlement layer.
-func (s *SettlementLayerClient) SubmitBatch(batch *types.Batch, metaData *settlement.BatchMetaData) settlement.ResultSubmitBatch {
+func (s *SettlementLayerClient) SubmitBatch(batch *types.Batch, daResult *da.ResultSubmitBatch) settlement.ResultSubmitBatch {
 	s.logger.Debug("Submitting batch to settlement layer", "start height", batch.StartHeight, "end height", batch.EndHeight)
 	// validate batch
 	err := s.validateBatch(batch)
@@ -176,7 +180,7 @@ func (s *SettlementLayerClient) SubmitBatch(batch *types.Batch, metaData *settle
 		}
 	}
 	// Build the result to save in the settlement layer.
-	settlementBatch := s.convertBatchtoSettlementBatch(batch, metaData)
+	settlementBatch := s.convertBatchtoSettlementBatch(batch, daResult)
 	// Save to the settlement layer
 	err = s.saveBatch(settlementBatch)
 	if err != nil {
