@@ -68,6 +68,8 @@ type Manager struct {
 	HeaderInCh      chan *types.Header
 	syncTargetDiode diodes.Diode
 
+	batchInProcess atomic.Value
+
 	syncTarget   uint64
 	isSyncedCond sync.Cond
 
@@ -131,6 +133,9 @@ func NewManager(
 		}
 	}
 
+	batchInProcess := atomic.Value{}
+	batchInProcess.Store(false)
+
 	agg := &Manager{
 		pubsub:       pubsub,
 		proposerKey:  proposerKey,
@@ -150,6 +155,7 @@ func NewManager(
 		blockInCh:       make(chan newBlockEvent, 100),
 		syncCache:       make(map[uint64]*types.Block),
 		isSyncedCond:    *sync.NewCond(new(sync.Mutex)),
+		batchInProcess:  batchInProcess,
 		logger:          logger,
 	}
 
@@ -470,12 +476,6 @@ func (m *Manager) publishBlock(ctx context.Context) error {
 		return err
 	}
 
-	err = m.submitBatchToDA(ctx, block, commit)
-	if err != nil {
-		m.logger.Error("Failed to submit block to DA Layer")
-		return err
-	}
-
 	// Commit the new state and block which writes to disk on the proxy app
 	_, _, err = m.executor.Commit(ctx, newState, block, responses)
 	if err != nil {
@@ -509,25 +509,72 @@ func (m *Manager) publishBlock(ctx context.Context) error {
 
 	m.publishHeader(block)
 
+	if block.Header.Height-atomic.LoadUint64(&m.syncTarget) >= m.conf.BlockBatchSize && m.batchInProcess.Load() == false {
+		go m.submitNextBatch(ctx)
+	}
+
 	return nil
 }
 
+func (m *Manager) submitNextBatch(ctx context.Context) {
+	defer m.batchInProcess.Store(false)
+	m.batchInProcess.Store(true)
+	// Get the batch start and end height
+	startHeight := atomic.LoadUint64(&m.syncTarget)
+	endHeight := startHeight + m.conf.BlockBatchSize
+	// Create the batch
+	nextBatch, err := m.createNextBatch(startHeight, endHeight)
+	if err != nil {
+		m.logger.Error("Failed to create next batch", "startHeight", startHeight, "endHeight", endHeight, "error", err)
+		return
+	}
+	m.logger.Info("Submitting next batch to DA", "startHeight", startHeight, "endHeight", endHeight)
+	// Submit batch to the DA
+	err = m.submitBatchToDA(ctx, nextBatch)
+	if err != nil {
+		m.logger.Error("Failed to submit next batch to DA Layer", "startHeight", startHeight, "endHeight", endHeight, "error", err)
+		return
+	}
+	// TODO(omritoptix): Submit batch to SL
+}
+
+func (m *Manager) createNextBatch(startHeight uint64, endHeight uint64) (*types.Batch, error) {
+	// Create the batch
+	batch := &types.Batch{
+		StartHeight: startHeight,
+		EndHeight:   endHeight,
+		Blocks:      make([]*types.Block, 0, m.conf.BlockBatchSize),
+		Commits:     make([]*types.Commit, 0, m.conf.BlockBatchSize),
+	}
+	// Populate the batch
+	for height := startHeight; height <= endHeight; height++ {
+		m.logger.Info("Adding element to batch", "height", height)
+		block, err := m.store.LoadBlock(height)
+		if err != nil {
+			m.logger.Error("Failed to load block", "height", height)
+			return nil, err
+		}
+		commit, err := m.store.LoadCommit(height)
+		if err != nil {
+			m.logger.Error("Failed to load commit", "height", height)
+			return nil, err
+		}
+		batch.Blocks = append(batch.Blocks, block)
+		batch.Commits = append(batch.Commits, commit)
+	}
+	return batch, nil
+}
+
 // TODO(omritoptix): Remove the manual exponential backoff and wrap it with go-retry.
-func (m *Manager) submitBatchToDA(ctx context.Context, block *types.Block, commit *types.Commit) error {
-	m.logger.Info("submitting batch to DA layer", "height", block.Header.Height)
+func (m *Manager) submitBatchToDA(ctx context.Context, batch *types.Batch) error {
+	m.logger.Info("submitting batch to DA layer", "start height", batch.StartHeight, "end height", batch.EndHeight)
 
 	submitted := false
 	backoff := initialBackoff
 	for attempt := 1; ctx.Err() == nil && !submitted && attempt <= maxSubmitAttempts; attempt++ {
-		batch := &types.Batch{
-			StartHeight: block.Header.Height,
-			EndHeight:   block.Header.Height,
-			Blocks:      []*types.Block{block},
-			Commits:     []*types.Commit{commit},
-		}
 		res := m.dalc.SubmitBatch(batch)
 		if res.Code == da.StatusSuccess {
-			m.logger.Info("successfully submitted dymint batch to DA layer", "dymintHeight", block.Header.Height, "daHeight", res.DAHeight)
+			m.logger.Info("successfully submitted dymint batch to DA layer", "daHeight", res.DAHeight)
 			submitted = true
 		} else {
 			m.logger.Error("DA layer submission failed", "error", res.Message, "attempt", attempt)
