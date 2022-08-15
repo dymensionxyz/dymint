@@ -97,14 +97,16 @@ func TestWaitUntilSynced(t *testing.T) {
 
 	// Manager should produce blocks as it's the first to write batches.
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*1)
+	done := make(chan bool, 1)
 	defer cancel()
 	go manager.PublishBlockLoop(ctx)
 	select {
 	case <-ctx.Done():
 		// Validate some blocks produced
 		assert.Greater(t, manager.store.Height(), storeLastBlockHeight)
+		done <- true
 	}
-
+	<-done
 	// Add a batch which takes the manager out of sync
 	startHeight := manager.syncTarget + 1
 	batch := testutil.GenerateBatch(startHeight, startHeight+uint64(defaultBatchSize-1))
@@ -136,7 +138,8 @@ func TestPublishAfterSynced(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, manager)
 
-	// Validate blocks are not produced by adding a batch and outsyncing the manager
+	// Validate blocks are not produced by adding a batch and outsyncing the manager.
+	// Submit batch
 	lastStoreHeight := manager.store.Height()
 	nextBatchStartHeight := manager.syncTarget + 1
 	batch := testutil.GenerateBatch(nextBatchStartHeight, nextBatchStartHeight+uint64(defaultBatchSize-1))
@@ -144,15 +147,21 @@ func TestPublishAfterSynced(t *testing.T) {
 	assert.Equal(t, daResultSubmitBatch.Code, da.StatusSuccess)
 	resultSubmitBatch := manager.settlementlc.SubmitBatch(batch, &daResultSubmitBatch)
 	assert.Equal(t, resultSubmitBatch.Code, settlement.StatusSuccess)
+
+	// Check manager is out of sync
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*1)
+	done := make(chan bool, 1)
 	defer cancel()
 	go manager.PublishBlockLoop(ctx)
 	select {
 	case <-ctx.Done():
 		assert.Equal(t, manager.store.Height(), lastStoreHeight)
+		done <- true
 	}
 
 	// Sync the manager
+	x := <-done
+	assert.True(t, x)
 	ctx, cancel = context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 	go manager.SyncTargetLoop(ctx)
