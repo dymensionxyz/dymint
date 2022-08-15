@@ -2,7 +2,6 @@ package settlement_test
 
 import (
 	"encoding/json"
-	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -99,14 +98,12 @@ func doTestInvalidSubmit(t *testing.T, settlementlc settlement.LayerClient) {
 			StartHeight: c.startHeight,
 			EndHeight:   c.endHeight,
 		}
-		batchMetaData := &settlement.BatchMetaData{
-			DA: &settlement.DAMetaData{
-				Height: c.endHeight,
-				Path:   strconv.FormatUint(c.endHeight, 10),
-				Client: da.Celestia,
+		daResult := &da.ResultSubmitBatch{
+			BaseResult: da.BaseResult{
+				DAHeight: c.endHeight,
 			},
 		}
-		resultSubmitBatch := settlementlc.SubmitBatch(batch, batchMetaData)
+		resultSubmitBatch := settlementlc.SubmitBatch(batch, daResult)
 		assert.Equal(resultSubmitBatch.Code, c.status)
 	}
 
@@ -131,14 +128,12 @@ func doTestSubmitAndRetrieve(t *testing.T, settlementlc settlement.LayerClient) 
 		// Create the batch
 		batch = testutil.GenerateBatch(startHeight, uint64(startHeight+batchSize))
 		// Submit the batch
-		batchMetaData := &settlement.BatchMetaData{
-			DA: &settlement.DAMetaData{
-				Height: batch.EndHeight,
-				Path:   strconv.FormatUint(batch.EndHeight, 10),
-				Client: da.Celestia,
+		daResult := &da.ResultSubmitBatch{
+			BaseResult: da.BaseResult{
+				DAHeight: batch.EndHeight,
 			},
 		}
-		resultSubmitBatch := settlementlc.SubmitBatch(batch, batchMetaData)
+		resultSubmitBatch := settlementlc.SubmitBatch(batch, daResult)
 		assert.Equal(resultSubmitBatch.Code, settlement.StatusSuccess)
 	}
 
