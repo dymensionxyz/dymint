@@ -57,8 +57,6 @@ type Manager struct {
 	daHeight uint64
 
 	// TODO(omritotpix): Remove the header sync fields
-	HeaderOutCh     chan *types.Header
-	HeaderInCh      chan *types.Header
 	syncTargetDiode diodes.Diode
 
 	batchInProcess atomic.Value
@@ -142,8 +140,6 @@ func NewManager(
 		retriever:    dalc.(da.BatchRetriever), // TODO(tzdybal): do it in more gentle way (after MVP)
 		daHeight:     s.DAHeight,
 		// channels are buffered to avoid blocking on input/output operations, buffer sizes are arbitrary
-		HeaderOutCh:     make(chan *types.Header, 100),
-		HeaderInCh:      make(chan *types.Header, 100),
 		syncTargetDiode: diodes.NewOneToOne(1, nil),
 		blockInCh:       make(chan newBlockEvent, 100),
 		syncCache:       make(map[uint64]*types.Block),
@@ -500,8 +496,6 @@ func (m *Manager) publishBlock(ctx context.Context) error {
 	// Only update the stored height after successfully submitting to DA layer and committing to the DB
 	m.store.SetHeight(block.Header.Height)
 
-	m.publishHeader(block)
-
 	if block.Header.Height-atomic.LoadUint64(&m.syncTarget) >= m.conf.BlockBatchSize && m.batchInProcess.Load() == false {
 		go m.submitNextBatch(ctx)
 	}
@@ -515,13 +509,13 @@ func (m *Manager) submitNextBatch(ctx context.Context) {
 	// Get the batch start and end height
 	startHeight := atomic.LoadUint64(&m.syncTarget) + 1
 	endHeight := startHeight + m.conf.BlockBatchSize - 1
+	m.logger.Info("Submitting next batch", "startHeight", startHeight, "endHeight", endHeight)
 	// Create the batch
 	nextBatch, err := m.createNextDABatch(startHeight, endHeight)
 	if err != nil {
 		m.logger.Error("Failed to create next batch", "startHeight", startHeight, "endHeight", endHeight, "error", err)
 		return
 	}
-	m.logger.Info("Submitting next batch to DA", "startHeight", startHeight, "endHeight", endHeight)
 	// Submit batch to the DA
 	resultSubmitToDA, err := m.submitBatchToDA(ctx, nextBatch)
 	if err != nil {
@@ -550,7 +544,7 @@ func (m *Manager) createNextDABatch(startHeight uint64, endHeight uint64) (*type
 	}
 	// Populate the batch
 	for height := startHeight; height <= endHeight; height++ {
-		m.logger.Info("Adding element to batch", "height", height)
+		m.logger.Debug("Adding element to batch", "height", height)
 		block, err := m.store.LoadBlock(height)
 		if err != nil {
 			m.logger.Error("Failed to load block", "height", height)
@@ -569,7 +563,6 @@ func (m *Manager) createNextDABatch(startHeight uint64, endHeight uint64) (*type
 
 func (m *Manager) submitBatchToSL(ctx context.Context, batch *types.Batch, resultSubmitToDA *da.ResultSubmitBatch) error {
 	// Submit batch to SL
-	m.logger.Info("submitting batch to SL layer", "start height", batch.StartHeight, "end height", batch.EndHeight)
 	err := retry.Do(func() error {
 		resultSubmitToSL := m.settlementlc.SubmitBatch(batch, resultSubmitToDA)
 		if resultSubmitToSL.Code != settlement.StatusSuccess {
@@ -585,7 +578,6 @@ func (m *Manager) submitBatchToSL(ctx context.Context, batch *types.Batch, resul
 }
 
 func (m *Manager) submitBatchToDA(ctx context.Context, batch *types.Batch) (*da.ResultSubmitBatch, error) {
-	m.logger.Info("submitting batch to DA layer", "start height", batch.StartHeight, "end height", batch.EndHeight)
 	var res da.ResultSubmitBatch
 	err := retry.Do(func() error {
 		res = m.dalc.SubmitBatch(batch)
@@ -598,11 +590,6 @@ func (m *Manager) submitBatchToDA(ctx context.Context, batch *types.Batch) (*da.
 		return nil, err
 	}
 	return &res, nil
-}
-
-// TODO(omritoptix): Change it to publish block
-func (m *Manager) publishHeader(block *types.Block) {
-	m.HeaderOutCh <- &block.Header
 }
 
 // TODO(omritoptix): possible remove this method from the manager

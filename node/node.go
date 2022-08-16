@@ -33,7 +33,6 @@ import (
 	"github.com/celestiaorg/optimint/state/txindex"
 	"github.com/celestiaorg/optimint/state/txindex/kv"
 	"github.com/celestiaorg/optimint/store"
-	"github.com/celestiaorg/optimint/types"
 )
 
 // prefixes used in KV store to separate main node data from DALC data
@@ -172,7 +171,6 @@ func NewNode(ctx context.Context, conf config.NodeConfig, p2pKey crypto.PrivKey,
 	node.BaseService = *service.NewBaseService(logger, "Node", node)
 
 	node.P2P.SetTxValidator(node.newTxValidator())
-	node.P2P.SetHeaderValidator(node.newHeaderValidator())
 
 	return node, nil
 }
@@ -205,24 +203,6 @@ func (n *Node) initGenesisChunks() error {
 
 	return nil
 }
-
-// func (n *Node) headerPublishLoop(ctx context.Context) {
-// 	for {
-// 		select {
-// 		case header := <-n.blockManager.HeaderOutCh:
-// 			headerBytes, err := header.MarshalBinary()
-// 			if err != nil {
-// 				n.Logger.Error("failed to serialize block header", "error", err)
-// 			}
-// 			err = n.P2P.GossipHeader(ctx, headerBytes)
-// 			if err != nil {
-// 				n.Logger.Error("failed to gossip block header", "error", err)
-// 			}
-// 		case <-ctx.Done():
-// 			return
-// 		}
-// 	}
-// }
 
 // OnStart is a part of Service interface.
 func (n *Node) OnStart() error {
@@ -329,27 +309,6 @@ func (n *Node) newTxValidator() p2p.GossipValidator {
 		checkTxResp := res.GetCheckTx()
 
 		return checkTxResp.Code == abci.CodeTypeOK
-	}
-}
-
-// newHeaderValidator returns a pubsub validator that runs basic checks and forwards
-// the deserialized header for further processing
-func (n *Node) newHeaderValidator() p2p.GossipValidator {
-	return func(headerMsg *p2p.GossipMessage) bool {
-		n.Logger.Debug("header received", "from", headerMsg.From, "bytes", len(headerMsg.Data))
-		var header types.Header
-		err := header.UnmarshalBinary(headerMsg.Data)
-		if err != nil {
-			n.Logger.Error("failed to deserialize header", "error", err)
-			return false
-		}
-		err = header.ValidateBasic()
-		if err != nil {
-			n.Logger.Error("failed to validate header", "error", err)
-			return false
-		}
-		n.blockManager.HeaderInCh <- &header
-		return true
 	}
 }
 
