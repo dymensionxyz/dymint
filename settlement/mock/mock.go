@@ -21,17 +21,17 @@ import (
 const defaultBatchSize = 5
 
 var settlementKVPrefix = []byte{0}
+var latestHeightKey = []byte("latestHeight")
 
 // SettlementLayerClient is intended only for usage in tests.
 type SettlementLayerClient struct {
-	logger            log.Logger
-	settlementKV      store.KVStore
-	pubsub            *pubsub.Server
-	latestHeight      uint64
-	batchOffsetHeight uint64
-	config            Config
-	ctx               context.Context
-	cancel            context.CancelFunc
+	logger       log.Logger
+	settlementKV store.KVStore
+	pubsub       *pubsub.Server
+	latestHeight uint64
+	config       Config
+	ctx          context.Context
+	cancel       context.CancelFunc
 }
 
 // Config for the SettlementLayerClient mock
@@ -42,39 +42,63 @@ type Config struct {
 	LatestHeight            uint64        `json:"latest_height"`
 	// The height at which the new batchSize started
 	BatchOffsetHeight uint64 `json:"batch_offset_height"`
+	DBPath            string `json:"db_path"`
+	RootDir           string `json:"root_dir"`
+	store             store.KVStore
 }
 
 var _ settlement.LayerClient = &SettlementLayerClient{}
 
 // Init is called once. it initializes the struct members.
 func (s *SettlementLayerClient) Init(config []byte, pubsub *pubsub.Server, logger log.Logger) error {
+	c, err := s.getConfig(config)
+	if err != nil {
+		return err
+	}
+	s.config = *c
 	s.pubsub = pubsub
 	s.logger = logger
-	baseKV := store.NewDefaultInMemoryKVStore()
-	s.settlementKV = store.NewPrefixKV(baseKV, settlementKVPrefix)
-	s.latestHeight = 0
 	s.ctx, s.cancel = context.WithCancel(context.Background())
-	if len(config) > 0 {
-		var err error
-		s.config, err = s.decodeConfig(config)
-		if err != nil {
-			return err
-		}
-		if s.config.BatchSize == 0 {
-			s.config.BatchSize = defaultBatchSize
-		}
-		if s.config.LatestHeight > 0 {
-			s.latestHeight = s.config.LatestHeight
-		}
-		s.batchOffsetHeight = s.config.BatchOffsetHeight
+	s.settlementKV = store.NewPrefixKV(s.config.store, settlementKVPrefix)
+	b, err := s.settlementKV.Get(latestHeightKey)
+	if err != nil {
+		s.latestHeight = 0
+	} else {
+		s.latestHeight = binary.BigEndian.Uint64(b)
 	}
 	return nil
 }
 
-func (s *SettlementLayerClient) decodeConfig(config []byte) (Config, error) {
+func (s *SettlementLayerClient) decodeConfig(config []byte) (*Config, error) {
 	var c Config
 	err := json.Unmarshal(config, &c)
-	return c, err
+	return &c, err
+}
+
+func (s *SettlementLayerClient) getConfig(config []byte) (*Config, error) {
+	var c *Config
+	if len(config) > 0 {
+		var err error
+		c, err = s.decodeConfig(config)
+		if err != nil {
+			return nil, err
+		}
+		if c.BatchSize == 0 {
+			c.BatchSize = defaultBatchSize
+		}
+		if c.RootDir != "" && c.DBPath != "" {
+			// TODO(omritoptix): move the 'settlemetmock' to const
+			c.store = store.NewDefaultKVStore(c.RootDir, c.DBPath, "settlement")
+		} else {
+			c.store = store.NewDefaultInMemoryKVStore()
+		}
+	} else {
+		c = &Config{
+			BatchSize: defaultBatchSize,
+			store:     store.NewDefaultInMemoryKVStore(),
+		}
+	}
+	return c, nil
 }
 
 // Start is called once, after init. If configured so, it will start producing batches every interval.
@@ -190,6 +214,12 @@ func (s *SettlementLayerClient) SubmitBatch(batch *types.Batch, daResult *da.Res
 		}
 	}
 	s.latestHeight = batch.EndHeight
+	b := make([]byte, 8)
+	binary.BigEndian.PutUint64(b, uint64(s.latestHeight))
+	err = s.settlementKV.Set(latestHeightKey, b)
+	if err != nil {
+		s.logger.Error("Failed to save latest height to kv store", "error", err)
+	}
 	return settlement.ResultSubmitBatch{
 		BaseResult: settlement.BaseResult{Code: settlement.StatusSuccess},
 	}
