@@ -105,11 +105,14 @@ func TestWaitUntilSynced(t *testing.T) {
 		// Validate some blocks produced
 		assert.Greater(t, manager.store.Height(), storeLastBlockHeight)
 	}
-	// Take the manager out of sync. Set the store height since it may
-	// be heigher then the syncTarget since syncTarget is only updated
-	// upon batch submission so set a big endHeight for the batch
+	// As the publishBlock function doesn't stop upon context termination (only PublishBlockLoop),
+	// wait for it to finish before taking the manager out of sync.
+	time.Sleep(time.Second)
+
+	// Take the manager out of sync.
+	t.Log("Taking the manager out of sync by submitting a batch")
 	startHeight := atomic.LoadUint64(&manager.syncTarget) + 1
-	batch := testutil.GenerateBatch(startHeight, startHeight+uint64(defaultBatchSize-1)*100)
+	batch := testutil.GenerateBatch(startHeight, startHeight+uint64(defaultBatchSize-1)*2)
 	daResult := &da.ResultSubmitBatch{
 		BaseResult: da.BaseResult{
 			DAHeight: 1,
@@ -119,6 +122,7 @@ func TestWaitUntilSynced(t *testing.T) {
 	assert.Equal(t, resultSubmitBatch.Code, settlement.StatusSuccess)
 
 	// Validate blocks are not produced.
+	t.Log("Validating blocks are not produced")
 	storeHeight := manager.store.Height()
 	ctx, cancel = context.WithTimeout(context.Background(), time.Second*2)
 	defer cancel()
@@ -231,7 +235,7 @@ func getSettlementLayerMock(batchSize uint64, latestHeight uint64, batchOffsetHe
 
 func getManagerConfig() config.BlockManagerConfig {
 	return config.BlockManagerConfig{
-		BlockTime:         10 * time.Second,
+		BlockTime:         100 * time.Millisecond,
 		BatchSyncInterval: 1 * time.Second,
 		BlockBatchSize:    defaultBatchSize,
 		DAStartHeight:     0,

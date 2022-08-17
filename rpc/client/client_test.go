@@ -90,7 +90,7 @@ func TestGenesisChunked(t *testing.T) {
 	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 	privKey, _, _ := crypto.GenerateEd25519Key(crand.Reader)
 	signingKey, _, _ := crypto.GenerateEd25519Key(crand.Reader)
-	config := config.NodeConfig{DALayer: "mock", SettlementLayer: "mock", BlockManagerConfig: config.BlockManagerConfig{BatchSyncInterval: time.Second}}
+	config := config.NodeConfig{DALayer: "mock", SettlementLayer: "mock", BlockManagerConfig: config.BlockManagerConfig{BatchSyncInterval: time.Second, BlockTime: 100 * time.Millisecond}}
 	n, _ := node.NewNode(context.Background(), config, privKey, signingKey, proxy.NewLocalClientCreator(mockApp), genDoc, log.TestingLogger())
 
 	rpc := NewClient(n)
@@ -783,7 +783,7 @@ func getRPC(t *testing.T) (*mocks.Application, *Client) {
 	app.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 	key, _, _ := crypto.GenerateEd25519Key(crand.Reader)
 	signingKey, _, _ := crypto.GenerateEd25519Key(crand.Reader)
-	config := config.NodeConfig{DALayer: "mock", SettlementLayer: "mock", BlockManagerConfig: config.BlockManagerConfig{BatchSyncInterval: time.Second}}
+	config := config.NodeConfig{DALayer: "mock", SettlementLayer: "mock", BlockManagerConfig: config.BlockManagerConfig{BatchSyncInterval: time.Second, BlockTime: 100 * time.Millisecond}}
 	node, err := node.NewNode(context.Background(), config, key, signingKey, proxy.NewLocalClientCreator(app), &tmtypes.GenesisDoc{ChainID: "test"}, log.TestingLogger())
 	require.NoError(err)
 	require.NotNil(node)
@@ -853,6 +853,7 @@ func TestMempool2Nodes(t *testing.T) {
 		DALayer:         "mock",
 		SettlementLayer: "mock",
 		BlockManagerConfig: config.BlockManagerConfig{
+			BlockTime:         100 * time.Millisecond,
 			BatchSyncInterval: time.Second,
 		},
 		P2P: config.P2PConfig{
@@ -866,6 +867,7 @@ func TestMempool2Nodes(t *testing.T) {
 		DALayer:         "mock",
 		SettlementLayer: "mock",
 		BlockManagerConfig: config.BlockManagerConfig{
+			BlockTime:         100 * time.Millisecond,
 			BatchSyncInterval: time.Second,
 		},
 		P2P: config.P2PConfig{

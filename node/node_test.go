@@ -32,7 +32,7 @@ func TestStartup(t *testing.T) {
 	key, _, _ := crypto.GenerateEd25519Key(rand.Reader)
 	signingKey, _, _ := crypto.GenerateEd25519Key(rand.Reader)
 	// TODO(omritoptix): Test with and without aggregator mode.
-	nodeConfig := config.NodeConfig{Aggregator: false, DALayer: "mock", SettlementLayer: "mock", BlockManagerConfig: config.BlockManagerConfig{BatchSyncInterval: time.Second * 5}}
+	nodeConfig := config.NodeConfig{Aggregator: false, DALayer: "mock", SettlementLayer: "mock", BlockManagerConfig: config.BlockManagerConfig{BatchSyncInterval: time.Second * 5, BlockTime: 100 * time.Millisecond}}
 	node, err := NewNode(context.Background(), nodeConfig, key, signingKey, proxy.NewLocalClientCreator(app), &types.GenesisDoc{ChainID: "test"}, log.TestingLogger())
 	require.NoError(err)
 	require.NotNil(node)
@@ -58,7 +58,7 @@ func TestMempoolDirectly(t *testing.T) {
 	key, _, _ := crypto.GenerateEd25519Key(rand.Reader)
 	signingKey, _, _ := crypto.GenerateEd25519Key(rand.Reader)
 	anotherKey, _, _ := crypto.GenerateEd25519Key(rand.Reader)
-	nodeConfig := config.NodeConfig{DALayer: "mock", SettlementLayer: "mock", BlockManagerConfig: config.BlockManagerConfig{BatchSyncInterval: time.Second * 5}}
+	nodeConfig := config.NodeConfig{DALayer: "mock", SettlementLayer: "mock", BlockManagerConfig: config.BlockManagerConfig{BatchSyncInterval: time.Second * 5, BlockTime: 100 * time.Millisecond}}
 	node, err := NewNode(context.Background(), nodeConfig, key, signingKey, proxy.NewLocalClientCreator(app), &types.GenesisDoc{ChainID: "test"}, log.TestingLogger())
 	require.NoError(err)
 	require.NotNil(node)
