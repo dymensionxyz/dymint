@@ -6,7 +6,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/types"
 
-	pb "github.com/celestiaorg/optimint/types/pb/optimint"
+	pb "github.com/dymensionxyz/dymint/types/pb/dymint"
 )
 
 // MarshalBinary encodes Block into binary form and returns it.

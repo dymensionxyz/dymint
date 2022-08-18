@@ -3,7 +3,7 @@ package registry_test
 import (
 	"testing"
 
-	"github.com/celestiaorg/optimint/settlement/registry"
+	"github.com/dymensionxyz/dymint/settlement/registry"
 	"github.com/stretchr/testify/assert"
 )
 

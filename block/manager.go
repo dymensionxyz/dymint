@@ -17,14 +17,14 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	tmtypes "github.com/tendermint/tendermint/types"
 
-	"github.com/celestiaorg/optimint/config"
-	"github.com/celestiaorg/optimint/da"
-	"github.com/celestiaorg/optimint/log"
-	"github.com/celestiaorg/optimint/mempool"
-	"github.com/celestiaorg/optimint/settlement"
-	"github.com/celestiaorg/optimint/state"
-	"github.com/celestiaorg/optimint/store"
-	"github.com/celestiaorg/optimint/types"
+	"github.com/dymensionxyz/dymint/config"
+	"github.com/dymensionxyz/dymint/da"
+	"github.com/dymensionxyz/dymint/log"
+	"github.com/dymensionxyz/dymint/mempool"
+	"github.com/dymensionxyz/dymint/settlement"
+	"github.com/dymensionxyz/dymint/state"
+	"github.com/dymensionxyz/dymint/store"
+	"github.com/dymensionxyz/dymint/types"
 )
 
 // defaultDABlockTime is used only if DABlockTime is not configured for manager

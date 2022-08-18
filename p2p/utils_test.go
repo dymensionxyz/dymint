@@ -15,8 +15,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/multierr"
 
-	"github.com/celestiaorg/optimint/config"
-	"github.com/celestiaorg/optimint/log"
+	"github.com/dymensionxyz/dymint/config"
+	"github.com/dymensionxyz/dymint/log"
 )
 
 type testNet []*Client

@@ -9,12 +9,12 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/celestiaorg/optimint/da"
-	"github.com/celestiaorg/optimint/log"
-	"github.com/celestiaorg/optimint/settlement"
-	"github.com/celestiaorg/optimint/store"
-	"github.com/celestiaorg/optimint/testutil"
-	"github.com/celestiaorg/optimint/types"
+	"github.com/dymensionxyz/dymint/da"
+	"github.com/dymensionxyz/dymint/log"
+	"github.com/dymensionxyz/dymint/settlement"
+	"github.com/dymensionxyz/dymint/store"
+	"github.com/dymensionxyz/dymint/testutil"
+	"github.com/dymensionxyz/dymint/types"
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 

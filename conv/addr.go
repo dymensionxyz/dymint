@@ -5,7 +5,7 @@ import (
 
 	"github.com/multiformats/go-multiaddr"
 
-	"github.com/celestiaorg/optimint/config"
+	"github.com/dymensionxyz/dymint/config"
 )
 
 // TranslateAddresses updates conf by changing Cosmos-style addresses to Multiaddr format.

@@ -15,10 +15,10 @@ import (
 	tmtypes "github.com/tendermint/tendermint/types"
 	"go.uber.org/multierr"
 
-	abciconv "github.com/celestiaorg/optimint/conv/abci"
-	"github.com/celestiaorg/optimint/log"
-	"github.com/celestiaorg/optimint/mempool"
-	"github.com/celestiaorg/optimint/types"
+	abciconv "github.com/dymensionxyz/dymint/conv/abci"
+	"github.com/dymensionxyz/dymint/log"
+	"github.com/dymensionxyz/dymint/mempool"
+	"github.com/dymensionxyz/dymint/types"
 )
 
 // BlockExecutor creates and applies blocks and maintains state.
@@ -108,7 +108,7 @@ func (e *BlockExecutor) CreateBlock(height uint64, lastCommit *types.Commit, las
 			ProposerAddress: e.proposerAddress,
 		},
 		Data: types.Data{
-			Txs:                    toOptimintTxs(mempoolTxs),
+			Txs:                    toDymintTxs(mempoolTxs),
 			IntermediateStateRoots: types.IntermediateStateRoots{RawRootsList: nil},
 			Evidence:               types.EvidenceData{Evidence: nil},
 		},
@@ -177,7 +177,7 @@ func (e *BlockExecutor) Commit(ctx context.Context, state types.State, block *ty
 func (e *BlockExecutor) updateState(state types.State, block *types.Block, abciResponses *tmstate.ABCIResponses, validatorUpdates []*tmtypes.Validator) (types.State, error) {
 	nValSet := state.NextValidators.Copy()
 	lastHeightValSetChanged := state.LastHeightValidatorsChanged
-	// Optimint can work without validators
+	// Dymint can work without validators
 	if len(nValSet.Validators) > 0 {
 		if len(validatorUpdates) > 0 {
 			err := nValSet.UpdateWithChangeSet(validatorUpdates)
@@ -232,7 +232,7 @@ func (e *BlockExecutor) commit(ctx context.Context, state types.State, block *ty
 
 	maxBytes := state.ConsensusParams.Block.MaxBytes
 	maxGas := state.ConsensusParams.Block.MaxGas
-	err = e.mempool.Update(int64(block.Header.Height), fromOptimintTxs(block.Data.Txs), deliverTxs, mempool.PreCheckMaxBytes(maxBytes), mempool.PostCheckMaxGas(maxGas))
+	err = e.mempool.Update(int64(block.Header.Height), fromDymintTxs(block.Data.Txs), deliverTxs, mempool.PreCheckMaxBytes(maxBytes), mempool.PostCheckMaxGas(maxGas))
 	if err != nil {
 		return nil, 0, err
 	}
@@ -376,7 +376,7 @@ func (e *BlockExecutor) publishEvents(resp *tmstate.ABCIResponses, block *types.
 	return err
 }
 
-func toOptimintTxs(txs tmtypes.Txs) types.Txs {
+func toDymintTxs(txs tmtypes.Txs) types.Txs {
 	optiTxs := make(types.Txs, len(txs))
 	for i := range txs {
 		optiTxs[i] = []byte(txs[i])
@@ -384,7 +384,7 @@ func toOptimintTxs(txs tmtypes.Txs) types.Txs {
 	return optiTxs
 }
 
-func fromOptimintTxs(optiTxs types.Txs) tmtypes.Txs {
+func fromDymintTxs(optiTxs types.Txs) tmtypes.Txs {
 	txs := make(tmtypes.Txs, len(optiTxs))
 	for i := range optiTxs {
 		txs[i] = []byte(optiTxs[i])

@@ -14,8 +14,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/celestiaorg/optimint/config"
-	"github.com/celestiaorg/optimint/log/test"
+	"github.com/dymensionxyz/dymint/config"
+	"github.com/dymensionxyz/dymint/log/test"
 )
 
 func TestClientStartup(t *testing.T) {

@@ -24,11 +24,11 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	tmtypes "github.com/tendermint/tendermint/types"
 
-	"github.com/celestiaorg/optimint/config"
-	abciconv "github.com/celestiaorg/optimint/conv/abci"
-	"github.com/celestiaorg/optimint/mocks"
-	"github.com/celestiaorg/optimint/node"
-	"github.com/celestiaorg/optimint/types"
+	"github.com/dymensionxyz/dymint/config"
+	abciconv "github.com/dymensionxyz/dymint/conv/abci"
+	"github.com/dymensionxyz/dymint/mocks"
+	"github.com/dymensionxyz/dymint/node"
+	"github.com/dymensionxyz/dymint/types"
 )
 
 var expectedInfo = abci.ResponseInfo{
@@ -506,7 +506,7 @@ func TestUnconfirmedTxs(t *testing.T) {
 func TestUnconfirmedTxsLimit(t *testing.T) {
 	t.Skip("Test disabled because of known bug")
 	// there's a bug in mempool implementation - count should be 1
-	// TODO(tzdybal): uncomment after resolving https://github.com/celestiaorg/optimint/issues/191
+	// TODO(tzdybal): uncomment after resolving https://github.com/dymensionxyz/dymint/issues/191
 
 	assert := assert.New(t)
 	require := require.New(t)
@@ -737,7 +737,7 @@ func getRandomBlock(height uint64, nTxs int) *types.Block {
 		block.Data.IntermediateStateRoots.RawRootsList[i] = getRandomBytes(32)
 	}
 
-	// TODO(tzdybal): see https://github.com/celestiaorg/optimint/issues/143
+	// TODO(tzdybal): see https://github.com/dymensionxyz/dymint/issues/143
 	if nTxs == 0 {
 		block.Data.Txs = nil
 		block.Data.IntermediateStateRoots.RawRootsList = nil

@@ -19,20 +19,20 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	tmtypes "github.com/tendermint/tendermint/types"
 
-	"github.com/celestiaorg/optimint/block"
-	"github.com/celestiaorg/optimint/config"
-	"github.com/celestiaorg/optimint/da"
-	daregsitry "github.com/celestiaorg/optimint/da/registry"
-	"github.com/celestiaorg/optimint/mempool"
-	mempoolv1 "github.com/celestiaorg/optimint/mempool/v1"
-	"github.com/celestiaorg/optimint/p2p"
-	"github.com/celestiaorg/optimint/settlement"
-	slregistry "github.com/celestiaorg/optimint/settlement/registry"
-	"github.com/celestiaorg/optimint/state/indexer"
-	blockidxkv "github.com/celestiaorg/optimint/state/indexer/block/kv"
-	"github.com/celestiaorg/optimint/state/txindex"
-	"github.com/celestiaorg/optimint/state/txindex/kv"
-	"github.com/celestiaorg/optimint/store"
+	"github.com/dymensionxyz/dymint/block"
+	"github.com/dymensionxyz/dymint/config"
+	"github.com/dymensionxyz/dymint/da"
+	daregsitry "github.com/dymensionxyz/dymint/da/registry"
+	"github.com/dymensionxyz/dymint/mempool"
+	mempoolv1 "github.com/dymensionxyz/dymint/mempool/v1"
+	"github.com/dymensionxyz/dymint/p2p"
+	"github.com/dymensionxyz/dymint/settlement"
+	slregistry "github.com/dymensionxyz/dymint/settlement/registry"
+	"github.com/dymensionxyz/dymint/state/indexer"
+	blockidxkv "github.com/dymensionxyz/dymint/state/indexer/block/kv"
+	"github.com/dymensionxyz/dymint/state/txindex"
+	"github.com/dymensionxyz/dymint/state/txindex/kv"
+	"github.com/dymensionxyz/dymint/store"
 )
 
 // prefixes used in KV store to separate main node data from DALC data
@@ -48,7 +48,7 @@ const (
 	genesisChunkSize = 16 * 1024 * 1024 // 16 MiB
 )
 
-// Node represents a client node in Optimint network.
+// Node represents a client node in Dymint network.
 // It connects all the components and orchestrates their work.
 type Node struct {
 	service.BaseService
@@ -82,7 +82,7 @@ type Node struct {
 	ctx context.Context
 }
 
-// NewNode creates new Optimint node.
+// NewNode creates new Dymint node.
 func NewNode(ctx context.Context, conf config.NodeConfig, p2pKey crypto.PrivKey, signingKey crypto.PrivKey, clientCreator proxy.ClientCreator, genesis *tmtypes.GenesisDoc, logger log.Logger) (*Node, error) {
 	proxyApp := proxy.NewAppConns(clientCreator)
 	proxyApp.SetLogger(logger.With("module", "proxy"))

@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/celestiaorg/optimint/mempool"
+	"github.com/dymensionxyz/dymint/mempool"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -18,8 +18,8 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 
-	"github.com/celestiaorg/optimint/config"
-	"github.com/celestiaorg/optimint/mocks"
+	"github.com/dymensionxyz/dymint/config"
+	"github.com/dymensionxyz/dymint/mocks"
 )
 
 // simply check that node is starting and stopping without panicking

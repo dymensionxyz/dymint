@@ -9,27 +9,27 @@ import (
 )
 
 const (
-	flagAggregator        = "optimint.aggregator"
-	flagDALayer           = "optimint.da_layer"
-	flagDAConfig          = "optimint.da_config"
-	flagSettlementLayer   = "optimint.settlement_layer"
-	flagSettlementConfig  = "optimint.settlement_config"
-	flagBlockTime         = "optimint.block_time"
-	flagDABlockTime       = "optimint.da_block_time"
-	flagBatchSyncInterval = "optimint.batch_sync_interval"
-	flagDAStartHeight     = "optimint.da_start_height"
-	flagNamespaceID       = "optimint.namespace_id"
-	flagBlockBatchSize    = "optimint.block_batch_size"
+	flagAggregator        = "dymint.aggregator"
+	flagDALayer           = "dymint.da_layer"
+	flagDAConfig          = "dymint.da_config"
+	flagSettlementLayer   = "dymint.settlement_layer"
+	flagSettlementConfig  = "dymint.settlement_config"
+	flagBlockTime         = "dymint.block_time"
+	flagDABlockTime       = "dymint.da_block_time"
+	flagBatchSyncInterval = "dymint.batch_sync_interval"
+	flagDAStartHeight     = "dymint.da_start_height"
+	flagNamespaceID       = "dymint.namespace_id"
+	flagBlockBatchSize    = "dymint.block_batch_size"
 )
 
-// NodeConfig stores Optimint node configuration.
+// NodeConfig stores Dymint node configuration.
 type NodeConfig struct {
 	// parameters below are translated from existing config
 	RootDir string
 	DBPath  string
 	P2P     P2PConfig
 	RPC     RPCConfig
-	// parameters below are optimint specific and read from config
+	// parameters below are dymint specific and read from config
 	Aggregator         bool `mapstructure:"aggregator"`
 	BlockManagerConfig `mapstructure:",squash"`
 	DALayer            string `mapstructure:"da_layer"`
@@ -77,7 +77,7 @@ func (nc *NodeConfig) GetViperConfig(v *viper.Viper) error {
 	return nil
 }
 
-// AddFlags adds Optimint specific configuration options to cobra Command.
+// AddFlags adds Dymint specific configuration options to cobra Command.
 //
 // This function is called in cosmos-sdk.
 func AddFlags(cmd *cobra.Command) {

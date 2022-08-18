@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/celestiaorg/optimint/p2p"
+	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/libp2p/go-libp2p-core/crypto"
@@ -19,8 +19,8 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 
-	"github.com/celestiaorg/optimint/config"
-	"github.com/celestiaorg/optimint/mocks"
+	"github.com/dymensionxyz/dymint/config"
+	"github.com/dymensionxyz/dymint/mocks"
 )
 
 func TestAggregatorMode(t *testing.T) {

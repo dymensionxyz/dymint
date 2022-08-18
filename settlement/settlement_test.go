@@ -8,13 +8,13 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/libs/pubsub"
 
-	"github.com/celestiaorg/optimint/da"
-	"github.com/celestiaorg/optimint/log/test"
-	"github.com/celestiaorg/optimint/settlement"
-	"github.com/celestiaorg/optimint/settlement/mock"
-	"github.com/celestiaorg/optimint/settlement/registry"
-	"github.com/celestiaorg/optimint/testutil"
-	"github.com/celestiaorg/optimint/types"
+	"github.com/dymensionxyz/dymint/da"
+	"github.com/dymensionxyz/dymint/log/test"
+	"github.com/dymensionxyz/dymint/settlement"
+	"github.com/dymensionxyz/dymint/settlement/mock"
+	"github.com/dymensionxyz/dymint/settlement/registry"
+	"github.com/dymensionxyz/dymint/testutil"
+	"github.com/dymensionxyz/dymint/types"
 )
 
 const batchSize = 5

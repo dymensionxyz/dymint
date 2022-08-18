@@ -1,8 +1,8 @@
 package registry
 
 import (
-	"github.com/celestiaorg/optimint/settlement"
-	"github.com/celestiaorg/optimint/settlement/mock"
+	"github.com/dymensionxyz/dymint/settlement"
+	"github.com/dymensionxyz/dymint/settlement/mock"
 )
 
 // Client represents a settlement layer client

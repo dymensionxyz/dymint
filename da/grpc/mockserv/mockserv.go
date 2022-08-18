@@ -7,12 +7,12 @@ import (
 	tmlog "github.com/tendermint/tendermint/libs/log"
 	"google.golang.org/grpc"
 
-	grpcda "github.com/celestiaorg/optimint/da/grpc"
-	"github.com/celestiaorg/optimint/da/mock"
-	"github.com/celestiaorg/optimint/store"
-	"github.com/celestiaorg/optimint/types"
-	"github.com/celestiaorg/optimint/types/pb/dalc"
-	"github.com/celestiaorg/optimint/types/pb/optimint"
+	grpcda "github.com/dymensionxyz/dymint/da/grpc"
+	"github.com/dymensionxyz/dymint/da/mock"
+	"github.com/dymensionxyz/dymint/store"
+	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/dymint/types/pb/dalc"
+	"github.com/dymensionxyz/dymint/types/pb/dymint"
 )
 
 // GetServer creates and returns gRPC server instance.
@@ -68,7 +68,7 @@ func (m *mockImpl) CheckBatchAvailability(_ context.Context, request *dalc.Check
 
 func (m *mockImpl) RetrieveBatches(context context.Context, request *dalc.RetrieveBatchesRequest) (*dalc.RetrieveBatchesResponse, error) {
 	resp := m.mock.RetrieveBatches(request.DataLayerHeight)
-	batches := make([]*optimint.Batch, len(resp.Batches))
+	batches := make([]*dymint.Batch, len(resp.Batches))
 	for i := range resp.Batches {
 		batches[i] = resp.Batches[i].ToProto()
 	}

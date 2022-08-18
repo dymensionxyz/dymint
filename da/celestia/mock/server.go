@@ -13,11 +13,11 @@ import (
 	mux2 "github.com/gorilla/mux"
 
 	"github.com/celestiaorg/go-cnc"
-	"github.com/celestiaorg/optimint/da"
-	mockda "github.com/celestiaorg/optimint/da/mock"
-	"github.com/celestiaorg/optimint/log"
-	"github.com/celestiaorg/optimint/store"
-	"github.com/celestiaorg/optimint/types"
+	"github.com/dymensionxyz/dymint/da"
+	mockda "github.com/dymensionxyz/dymint/da/mock"
+	"github.com/dymensionxyz/dymint/log"
+	"github.com/dymensionxyz/dymint/store"
+	"github.com/dymensionxyz/dymint/types"
 )
 
 // Server mocks celestia-node HTTP API.

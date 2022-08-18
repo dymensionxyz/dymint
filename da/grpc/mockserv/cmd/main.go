@@ -6,9 +6,9 @@ import (
 	"net"
 	"strconv"
 
-	grpcda "github.com/celestiaorg/optimint/da/grpc"
-	"github.com/celestiaorg/optimint/da/grpc/mockserv"
-	"github.com/celestiaorg/optimint/store"
+	grpcda "github.com/dymensionxyz/dymint/da/grpc"
+	"github.com/dymensionxyz/dymint/da/grpc/mockserv"
+	"github.com/dymensionxyz/dymint/store"
 )
 
 func main() {
@@ -18,7 +18,7 @@ func main() {
 	flag.StringVar(&conf.Host, "host", "0.0.0.0", "listening address")
 	flag.Parse()
 
-	kv := store.NewDefaultKVStore(".", "db", "optimint")
+	kv := store.NewDefaultKVStore(".", "db", "dymint")
 	lis, err := net.Listen("tcp", conf.Host+":"+strconv.Itoa(conf.Port))
 	if err != nil {
 		log.Panic(err)

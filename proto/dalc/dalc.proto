@@ -1,8 +1,8 @@
 syntax = "proto3";
 package dalc;
-option go_package = "github.com/celestiaorg/optimint/types/pb/dalc";
+option go_package = "github.com/dymensionxyz/dymint/types/pb/dalc";
 
-import "optimint/optimint.proto";
+import "dymint/dymint.proto";
 
 enum StatusCode {
 	STATUS_CODE_UNSPECIFIED = 0;
@@ -18,7 +18,7 @@ message DAResponse {
 }
 
 message SubmitBatchRequest {
-	optimint.Batch batch = 1;
+	dymint.Batch batch = 1;
 }
 
 message SubmitBatchResponse {
@@ -40,7 +40,7 @@ message RetrieveBatchesRequest {
 
 message RetrieveBatchesResponse {
 	DAResponse result = 1;
-	repeated optimint.Batch batches = 2;
+	repeated dymint.Batch batches = 2;
 }
 
 service DALCService {

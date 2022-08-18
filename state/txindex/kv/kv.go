@@ -14,9 +14,9 @@ import (
 	"github.com/tendermint/tendermint/libs/pubsub/query"
 	"github.com/tendermint/tendermint/types"
 
-	"github.com/celestiaorg/optimint/state/indexer"
-	"github.com/celestiaorg/optimint/state/txindex"
-	"github.com/celestiaorg/optimint/store"
+	"github.com/dymensionxyz/dymint/state/indexer"
+	"github.com/dymensionxyz/dymint/state/txindex"
+	"github.com/dymensionxyz/dymint/store"
 )
 
 const (

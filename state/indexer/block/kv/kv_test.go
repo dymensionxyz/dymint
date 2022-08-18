@@ -10,8 +10,8 @@ import (
 	"github.com/tendermint/tendermint/libs/pubsub/query"
 	"github.com/tendermint/tendermint/types"
 
-	blockidxkv "github.com/celestiaorg/optimint/state/indexer/block/kv"
-	"github.com/celestiaorg/optimint/store"
+	blockidxkv "github.com/dymensionxyz/dymint/state/indexer/block/kv"
+	"github.com/dymensionxyz/dymint/store"
 )
 
 func TestBlockIndexer(t *testing.T) {

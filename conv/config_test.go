@@ -5,7 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/celestiaorg/optimint/config"
+	"github.com/dymensionxyz/dymint/config"
 	tmcfg "github.com/tendermint/tendermint/config"
 )
 

@@ -1,4 +1,4 @@
-module github.com/celestiaorg/optimint
+module github.com/dymensionxyz/dymint
 
 go 1.17
 
