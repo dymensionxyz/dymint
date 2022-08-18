@@ -108,7 +108,8 @@ func NewNode(ctx context.Context, conf config.NodeConfig, p2pKey crypto.PrivKey,
 		logger.Info("WARNING: working in in-memory mode")
 		baseKV = store.NewDefaultInMemoryKVStore()
 	} else {
-		baseKV = store.NewDefaultKVStore(conf.RootDir, conf.DBPath, "optimint")
+		// TODO(omritoptx): Move dymint to const
+		baseKV = store.NewDefaultKVStore(conf.RootDir, conf.DBPath, "dymint")
 	}
 	mainKV := store.NewPrefixKV(baseKV, mainPrefix)
 	dalcKV := store.NewPrefixKV(baseKV, dalcPrefix)
