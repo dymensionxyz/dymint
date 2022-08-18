@@ -15,9 +15,9 @@ import (
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	"golang.org/x/net/netutil"
 
-	"github.com/celestiaorg/optimint/node"
-	"github.com/celestiaorg/optimint/rpc/client"
-	"github.com/celestiaorg/optimint/rpc/json"
+	"github.com/dymensionxyz/dymint/node"
+	"github.com/dymensionxyz/dymint/rpc/client"
+	"github.com/dymensionxyz/dymint/rpc/json"
 )
 
 // Server handles HTTP and JSON-RPC requests, exposing Tendermint-compatible API.

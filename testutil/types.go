@@ -4,7 +4,7 @@ import (
 	"crypto/rand"
 	"time"
 
-	"github.com/celestiaorg/optimint/types"
+	"github.com/dymensionxyz/dymint/types"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"

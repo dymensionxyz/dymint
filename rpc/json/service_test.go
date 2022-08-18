@@ -24,10 +24,10 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 
-	"github.com/celestiaorg/optimint/config"
-	"github.com/celestiaorg/optimint/mocks"
-	"github.com/celestiaorg/optimint/node"
-	"github.com/celestiaorg/optimint/rpc/client"
+	"github.com/dymensionxyz/dymint/config"
+	"github.com/dymensionxyz/dymint/mocks"
+	"github.com/dymensionxyz/dymint/node"
+	"github.com/dymensionxyz/dymint/rpc/client"
 )
 
 func TestHandlerMapping(t *testing.T) {

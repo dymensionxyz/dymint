@@ -1,9 +1,9 @@
 package settlement
 
 import (
-	"github.com/celestiaorg/optimint/da"
-	"github.com/celestiaorg/optimint/log"
-	"github.com/celestiaorg/optimint/types"
+	"github.com/dymensionxyz/dymint/da"
+	"github.com/dymensionxyz/dymint/log"
+	"github.com/dymensionxyz/dymint/types"
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 

@@ -19,9 +19,9 @@ import (
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
 
-	abciconv "github.com/celestiaorg/optimint/conv/abci"
-	"github.com/celestiaorg/optimint/mempool"
-	"github.com/celestiaorg/optimint/node"
+	abciconv "github.com/dymensionxyz/dymint/conv/abci"
+	"github.com/dymensionxyz/dymint/mempool"
+	"github.com/dymensionxyz/dymint/node"
 )
 
 const (
@@ -33,15 +33,15 @@ const (
 )
 
 var (
-	// ErrConsensusStateNotAvailable is returned because Optimint doesn't use Tendermint consensus.
-	ErrConsensusStateNotAvailable = errors.New("consensus state not available in Optimint")
+	// ErrConsensusStateNotAvailable is returned because Dymint doesn't use Tendermint consensus.
+	ErrConsensusStateNotAvailable = errors.New("consensus state not available in Dymint")
 )
 
 var _ rpcclient.Client = &Client{}
 
 // Client implements tendermint RPC client interface.
 //
-// This is the type that is used in communication between cosmos-sdk app and Optimint.
+// This is the type that is used in communication between cosmos-sdk app and Dymint.
 type Client struct {
 	*types.EventBus
 	config *config.RPCConfig
@@ -359,12 +359,12 @@ func (c *Client) NetInfo(ctx context.Context) (*ctypes.ResultNetInfo, error) {
 	return &res, nil
 }
 
-// DumpConsensusState always returns error as there is no consensus state in Optimint.
+// DumpConsensusState always returns error as there is no consensus state in Dymint.
 func (c *Client) DumpConsensusState(ctx context.Context) (*ctypes.ResultDumpConsensusState, error) {
 	return nil, ErrConsensusStateNotAvailable
 }
 
-// ConsensusState always returns error as there is no consensus state in Optimint.
+// ConsensusState always returns error as there is no consensus state in Dymint.
 func (c *Client) ConsensusState(ctx context.Context) (*ctypes.ResultConsensusState, error) {
 	return nil, ErrConsensusStateNotAvailable
 }
@@ -373,7 +373,7 @@ func (c *Client) ConsensusState(ctx context.Context) (*ctypes.ResultConsensusSta
 //
 // Currently, consensus params changes are not supported and this method returns params as defined in genesis.
 func (c *Client) ConsensusParams(ctx context.Context, height *int64) (*ctypes.ResultConsensusParams, error) {
-	// TODO(tzdybal): implement consensus params handling: https://github.com/celestiaorg/optimint/issues/291
+	// TODO(tzdybal): implement consensus params handling: https://github.com/dymensionxyz/dymint/issues/291
 	params := c.node.GetGenesis().ConsensusParams
 	return &ctypes.ResultConsensusParams{
 		BlockHeight: int64(c.normalizeHeight(height)),

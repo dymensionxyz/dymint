@@ -3,10 +3,10 @@ package testutil
 import (
 	// "encoding/json"
 
-	"github.com/celestiaorg/optimint/mocks"
-	// "github.com/celestiaorg/optimint/settlement"
-	// slmock "github.com/celestiaorg/optimint/settlement/mock"
-	// slregistry "github.com/celestiaorg/optimint/settlement/registry"
+	"github.com/dymensionxyz/dymint/mocks"
+	// "github.com/dymensionxyz/dymint/settlement"
+	// slmock "github.com/dymensionxyz/dymint/settlement/mock"
+	// slregistry "github.com/dymensionxyz/dymint/settlement/registry"
 	"github.com/stretchr/testify/mock"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"

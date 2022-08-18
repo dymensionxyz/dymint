@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
-	mempoolv1 "github.com/celestiaorg/optimint/mempool/v1"
-	"github.com/celestiaorg/optimint/settlement"
-	"github.com/celestiaorg/optimint/testutil"
+	mempoolv1 "github.com/dymensionxyz/dymint/mempool/v1"
+	"github.com/dymensionxyz/dymint/settlement"
+	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -19,12 +19,12 @@ import (
 	"github.com/tendermint/tendermint/libs/pubsub"
 	tmtypes "github.com/tendermint/tendermint/types"
 
-	"github.com/celestiaorg/optimint/config"
-	"github.com/celestiaorg/optimint/da"
-	mockda "github.com/celestiaorg/optimint/da/mock"
-	slmock "github.com/celestiaorg/optimint/settlement/mock"
-	slregistry "github.com/celestiaorg/optimint/settlement/registry"
-	"github.com/celestiaorg/optimint/store"
+	"github.com/dymensionxyz/dymint/config"
+	"github.com/dymensionxyz/dymint/da"
+	mockda "github.com/dymensionxyz/dymint/da/mock"
+	slmock "github.com/dymensionxyz/dymint/settlement/mock"
+	slregistry "github.com/dymensionxyz/dymint/settlement/registry"
+	"github.com/dymensionxyz/dymint/store"
 )
 
 const defaultBatchSize = 5
