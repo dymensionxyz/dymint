@@ -229,16 +229,35 @@ func (m *Manager) PublishBlockLoop(ctx context.Context) {
 	if err != nil {
 		m.logger.Error("failed to wait for sync", "err", err)
 	}
+	// If we get blockTime of 0 we'll just run publishBlock in a loop
+	// vs waiting for ticks
+	publishLoopCh := make(chan bool, 1)
+	ticker := &time.Ticker{}
+	if m.conf.BlockTime == 0 {
+		publishLoopCh <- true
+	} else {
+		ticker = time.NewTicker(time.Duration(m.conf.BlockTime))
+		defer ticker.Stop()
+	}
+	// The func to invoke upon block publish
+	publishLoopFunc := func() {
+		err := m.publishBlock(ctx)
+		if err != nil {
+			m.logger.Error("error while producing block", "error", err)
+		}
+	}
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		default:
-			err := m.publishBlock(ctx)
-			if err != nil {
-				m.logger.Error("error while producing block", "error", err)
+		case <-ticker.C:
+			publishLoopFunc()
+		case <-publishLoopCh:
+			for {
+				publishLoopFunc()
 			}
 		}
+
 	}
 }
 
@@ -496,7 +515,9 @@ func (m *Manager) publishBlock(ctx context.Context) error {
 	// Only update the stored height after successfully submitting to DA layer and committing to the DB
 	m.store.SetHeight(block.Header.Height)
 
-	if block.Header.Height-atomic.LoadUint64(&m.syncTarget) >= m.conf.BlockBatchSize && m.batchInProcess.Load() == false {
+	syncTarget := atomic.LoadUint64(&m.syncTarget)
+	currentBlockHeight := block.Header.Height
+	if currentBlockHeight > syncTarget && currentBlockHeight-syncTarget >= m.conf.BlockBatchSize && m.batchInProcess.Load() == false {
 		go m.submitNextBatch(ctx)
 	}
 
