@@ -1,2 +1,5 @@
 proto/pb
-.vscode/
+.DS_Store
+.vscode
+.idea
+go.sum

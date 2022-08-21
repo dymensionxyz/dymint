@@ -7,6 +7,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"code.cloudfoundry.org/go-diodes"
+	"github.com/avast/retry-go"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmcrypto "github.com/tendermint/tendermint/crypto"
