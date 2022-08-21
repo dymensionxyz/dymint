@@ -3,13 +3,13 @@ package block
 import (
 	"context"
 	"fmt"
-	abciconv "github.com/dymensionxyz/dymint/conv/abci"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"code.cloudfoundry.org/go-diodes"
 	"github.com/avast/retry-go"
+	abciconv "github.com/dymensionxyz/dymint/conv/abci"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmcrypto "github.com/tendermint/tendermint/crypto"
