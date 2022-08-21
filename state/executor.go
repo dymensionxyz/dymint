@@ -96,11 +96,10 @@ func (e *BlockExecutor) CreateBlock(height uint64, lastCommit *types.Commit, las
 				Block: state.Version.Consensus.Block,
 				App:   state.Version.Consensus.App,
 			},
-			NamespaceID:    e.namespaceID,
-			Height:         height,
-			Time:           uint64(time.Now().Unix()), // TODO(tzdybal): how to get TAI64?
-			LastHeaderHash: lastHeaderHash,
-			//LastCommitHash:  lastCommitHash,
+			NamespaceID:     e.namespaceID,
+			Height:          height,
+			Time:            uint64(time.Now().UTC().Unix()), // TODO(tzdybal): how to get TAI64?
+			LastHeaderHash:  lastHeaderHash,
 			DataHash:        [32]byte{},
 			ConsensusHash:   [32]byte{},
 			AppHash:         state.AppHash,
@@ -115,6 +114,7 @@ func (e *BlockExecutor) CreateBlock(height uint64, lastCommit *types.Commit, las
 		LastCommit: *lastCommit,
 	}
 	copy(block.Header.LastCommitHash[:], e.getLastCommitHash(lastCommit, &block.Header))
+	copy(block.Header.DataHash[:], e.getDataHash(block))
 	copy(block.Header.AggregatorsHash[:], state.Validators.Hash())
 
 	return block
@@ -209,7 +209,7 @@ func (e *BlockExecutor) updateState(state types.State, block *types.Block, abciR
 		LastHeightValidatorsChanged:      lastHeightValSetChanged,
 		ConsensusParams:                  state.ConsensusParams,
 		LastHeightConsensusParamsChanged: state.LastHeightConsensusParamsChanged,
-		AppHash:                          [32]byte{},
+		AppHash:                          state.AppHash,
 	}
 	copy(s.LastResultsHash[:], tmtypes.NewResults(abciResponses.DeliverTxs).Hash())
 
@@ -327,12 +327,15 @@ func (e *BlockExecutor) execute(ctx context.Context, state types.State, block *t
 }
 
 func (e *BlockExecutor) getLastCommitHash(lastCommit *types.Commit, header *types.Header) []byte {
-	lastABCICommit := abciconv.ToABCICommit(lastCommit)
-	if len(lastCommit.Signatures) == 1 {
-		lastABCICommit.Signatures[0].ValidatorAddress = e.proposerAddress
-		lastABCICommit.Signatures[0].Timestamp = time.UnixMilli(int64(header.Time))
-	}
+	lastABCICommit := abciconv.ToABCICommit(lastCommit, header)
 	return lastABCICommit.Hash()
+}
+
+func (e *BlockExecutor) getDataHash(block *types.Block) []byte {
+	abciData := tmtypes.Data{
+		Txs: abciconv.ToABCIBlockDataTxs(&block.Data),
+	}
+	return abciData.Hash()
 }
 
 func (e *BlockExecutor) publishEvents(resp *tmstate.ABCIResponses, block *types.Block, state types.State) error {
