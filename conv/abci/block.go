@@ -94,6 +94,7 @@ func ToABCIBlock(block *types.Block) (*tmtypes.Block, error) {
 	return &abciBlock, nil
 }
 
+// ToABCIBlockDataTxs converts Dymint block-data into block-data format defined by ABCI.
 func ToABCIBlockDataTxs(data *types.Data) []tmtypes.Tx {
 	txs := make([]tmtypes.Tx, len(data.Txs))
 	for i := range data.Txs {
