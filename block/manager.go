@@ -3,6 +3,7 @@ package block
 import (
 	"context"
 	"fmt"
+	abciconv "github.com/dymensionxyz/dymint/conv/abci"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -459,14 +460,18 @@ func (m *Manager) publishBlock(ctx context.Context) error {
 		block = m.executor.CreateBlock(newHeight, lastCommit, lastHeaderHash, m.lastState)
 		m.logger.Debug("block info", "num_tx", len(block.Data.Txs))
 
-		headerHash := block.Header.Hash()
-		sign, err := m.proposerKey.Sign(headerHash[:])
+		abciHeaderPb := abciconv.ToABCIHeaderPB(&block.Header)
+		headerBytes, err := abciHeaderPb.Marshal()
+		if err != nil {
+			return err
+		}
+		sign, err := m.proposerKey.Sign(headerBytes)
 		if err != nil {
 			return err
 		}
 		commit = &types.Commit{
 			Height:     block.Header.Height,
-			HeaderHash: headerHash,
+			HeaderHash: block.Header.Hash(),
 			Signatures: []types.Signature{sign},
 		}
 
