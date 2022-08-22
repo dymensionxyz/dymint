@@ -134,9 +134,8 @@ func TestApplyBlock(t *testing.T) {
 	require.NotNil(newState)
 	require.NotNil(resp)
 	assert.Equal(int64(1), newState.LastBlockHeight)
-	appHash, _, err := executor.Commit(context.Background(), newState, block, resp)
+	err = executor.Commit(context.Background(), &newState, block, resp)
 	require.NoError(err)
-	assert.Equal(mockAppHash, appHash)
 
 	require.NoError(mpool.CheckTx([]byte{0, 1, 2, 3, 4}, func(r *abci.Response) {}, mempool.TxInfo{}))
 	require.NoError(mpool.CheckTx([]byte{5, 6, 7, 8, 9}, func(r *abci.Response) {}, mempool.TxInfo{}))
@@ -152,7 +151,7 @@ func TestApplyBlock(t *testing.T) {
 	require.NotNil(newState)
 	require.NotNil(resp)
 	assert.Equal(int64(2), newState.LastBlockHeight)
-	_, _, err = executor.Commit(context.Background(), newState, block, resp)
+	err = executor.Commit(context.Background(), &newState, block, resp)
 	require.NoError(err)
 
 	// wait for at least 4 Tx events, for up to 3 second.

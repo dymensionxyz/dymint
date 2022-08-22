@@ -159,19 +159,19 @@ func (e *BlockExecutor) ApplyBlock(ctx context.Context, state types.State, block
 }
 
 // Commit commits the block
-func (e *BlockExecutor) Commit(ctx context.Context, state types.State, block *types.Block, resp *tmstate.ABCIResponses) ([]byte, uint64, error) {
-	appHash, retainHeight, err := e.commit(ctx, state, block, resp.DeliverTxs)
+func (e *BlockExecutor) Commit(ctx context.Context, state *types.State, block *types.Block, resp *tmstate.ABCIResponses) error {
+	appHash, err := e.commit(ctx, state, block, resp.DeliverTxs)
 	if err != nil {
-		return []byte{}, 0, err
+		return err
 	}
 
 	copy(state.AppHash[:], appHash[:])
 
-	err = e.publishEvents(resp, block, state)
+	err = e.publishEvents(resp, block, *state)
 	if err != nil {
 		e.logger.Error("failed to fire block events", "error", err)
 	}
-	return appHash, retainHeight, nil
+	return nil
 }
 
 func (e *BlockExecutor) updateState(state types.State, block *types.Block, abciResponses *tmstate.ABCIResponses, validatorUpdates []*tmtypes.Validator) (types.State, error) {
@@ -216,28 +216,28 @@ func (e *BlockExecutor) updateState(state types.State, block *types.Block, abciR
 	return s, nil
 }
 
-func (e *BlockExecutor) commit(ctx context.Context, state types.State, block *types.Block, deliverTxs []*abci.ResponseDeliverTx) ([]byte, uint64, error) {
+func (e *BlockExecutor) commit(ctx context.Context, state *types.State, block *types.Block, deliverTxs []*abci.ResponseDeliverTx) ([]byte, error) {
 	e.mempool.Lock()
 	defer e.mempool.Unlock()
 
 	err := e.mempool.FlushAppConn()
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 
 	resp, err := e.proxyApp.CommitSync()
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 
 	maxBytes := state.ConsensusParams.Block.MaxBytes
 	maxGas := state.ConsensusParams.Block.MaxGas
 	err = e.mempool.Update(int64(block.Header.Height), fromDymintTxs(block.Data.Txs), deliverTxs, mempool.PreCheckMaxBytes(maxBytes), mempool.PostCheckMaxGas(maxGas))
 	if err != nil {
-		return nil, 0, err
+		return nil, err
 	}
 
-	return resp.Data, uint64(resp.RetainHeight), err
+	return resp.Data, err
 }
 
 func (e *BlockExecutor) validate(state types.State, block *types.Block) error {
