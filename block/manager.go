@@ -367,7 +367,7 @@ func (m *Manager) ApplyBlockLoop(ctx context.Context) {
 					continue
 				}
 				var appHash []byte
-				err = m.executor.Commit(ctx, newState, block, responses)
+				err = m.executor.Commit(ctx, &newState, block, responses)
 				if err != nil {
 					m.logger.Error("failed to Commit", "error", err)
 					continue
