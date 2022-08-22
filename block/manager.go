@@ -367,7 +367,7 @@ func (m *Manager) ApplyBlockLoop(ctx context.Context) {
 					continue
 				}
 				var appHash []byte
-				appHash, _, err = m.executor.Commit(ctx, newState, block, responses)
+				err = m.executor.Commit(ctx, &newState, block, responses)
 				if err != nil {
 					m.logger.Error("failed to Commit", "error", err)
 					continue
@@ -489,8 +489,7 @@ func (m *Manager) publishBlock(ctx context.Context) error {
 	}
 
 	// Commit the new state and block which writes to disk on the proxy app
-	var appHash []byte
-	appHash, _, err = m.executor.Commit(ctx, newState, block, responses)
+	err = m.executor.Commit(ctx, &newState, block, responses)
 	if err != nil {
 		return err
 	}
@@ -501,7 +500,6 @@ func (m *Manager) publishBlock(ctx context.Context) error {
 		return err
 	}
 
-	copy(newState.AppHash[:], appHash)
 	newState.DAHeight = atomic.LoadUint64(&m.daHeight)
 	// After this call m.lastState is the NEW state returned from ApplyBlock
 	m.lastState = newState
