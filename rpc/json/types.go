@@ -27,8 +27,8 @@ type statusArgs struct {
 type netInfoArgs struct {
 }
 type blockchainInfoArgs struct {
-	MinHeight StrInt64
-	MaxHeight StrInt64
+	MinHeight StrInt64 `json:"minHeight"`
+	MaxHeight StrInt64 `json:"maxHeight"`
 }
 type genesisArgs struct {
 }

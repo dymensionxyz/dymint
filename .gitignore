@@ -1,2 +1,4 @@
 proto/pb
-.vscode/
+.DS_Store
+.vscode
+.idea

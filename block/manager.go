@@ -9,6 +9,7 @@ import (
 
 	"code.cloudfoundry.org/go-diodes"
 	"github.com/avast/retry-go"
+	abciconv "github.com/dymensionxyz/dymint/conv/abci"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmcrypto "github.com/tendermint/tendermint/crypto"
@@ -365,7 +366,8 @@ func (m *Manager) ApplyBlockLoop(ctx context.Context) {
 					m.logger.Error("failed to save block", "error", err)
 					continue
 				}
-				_, _, err = m.executor.Commit(ctx, newState, block, responses)
+				var appHash []byte
+				appHash, _, err = m.executor.Commit(ctx, newState, block, responses)
 				if err != nil {
 					m.logger.Error("failed to Commit", "error", err)
 					continue
@@ -378,6 +380,7 @@ func (m *Manager) ApplyBlockLoop(ctx context.Context) {
 					continue
 				}
 
+				copy(newState.AppHash[:], appHash)
 				newState.DAHeight = daHeight
 				m.lastState = newState
 				err = m.store.UpdateState(m.lastState)
@@ -457,7 +460,8 @@ func (m *Manager) publishBlock(ctx context.Context) error {
 		block = m.executor.CreateBlock(newHeight, lastCommit, lastHeaderHash, m.lastState)
 		m.logger.Debug("block info", "num_tx", len(block.Data.Txs))
 
-		headerBytes, err := block.Header.MarshalBinary()
+		abciHeaderPb := abciconv.ToABCIHeaderPB(&block.Header)
+		headerBytes, err := abciHeaderPb.Marshal()
 		if err != nil {
 			return err
 		}
@@ -485,7 +489,8 @@ func (m *Manager) publishBlock(ctx context.Context) error {
 	}
 
 	// Commit the new state and block which writes to disk on the proxy app
-	_, _, err = m.executor.Commit(ctx, newState, block, responses)
+	var appHash []byte
+	appHash, _, err = m.executor.Commit(ctx, newState, block, responses)
 	if err != nil {
 		return err
 	}
@@ -496,6 +501,7 @@ func (m *Manager) publishBlock(ctx context.Context) error {
 		return err
 	}
 
+	copy(newState.AppHash[:], appHash)
 	newState.DAHeight = atomic.LoadUint64(&m.daHeight)
 	// After this call m.lastState is the NEW state returned from ApplyBlock
 	m.lastState = newState
