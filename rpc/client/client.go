@@ -828,7 +828,7 @@ func (c *Client) snapshot() proxy.AppConnSnapshot {
 
 func (c *Client) normalizeHeight(height *int64) uint64 {
 	var heightValue uint64
-	if height == nil {
+	if height == nil || *height == 0 {
 		heightValue = c.node.Store.Height()
 	} else {
 		heightValue = uint64(*height)
