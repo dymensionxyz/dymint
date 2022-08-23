@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"reflect"
 	"strconv"
+	"strings"
 
 	tmjson "github.com/tendermint/tendermint/libs/json"
 
@@ -125,32 +126,36 @@ func (h *handler) newHandler(methodSpec *method) func(http.ResponseWriter, *http
 		}
 		for i := 0; i < methodSpec.argsType.NumField(); i++ {
 			field := methodSpec.argsType.Field(i)
-			name := field.Tag.Get("json")
-			if !values.Has(name) {
+			nameTag := field.Tag.Get("json")
+			name := strings.Split(nameTag, ",")[0]
+			isRequired := !strings.Contains(nameTag, "omitempty")
+			if isRequired && !values.Has(name) {
 				h.encodeAndWriteResponse(w, nil, fmt.Errorf("missing param '%s'", name), int(json2.E_INVALID_REQ))
 				return
 			}
-			rawVal := values.Get(name)
-			var err error
-			switch field.Type.Kind() {
-			case reflect.Bool:
-				err = setBoolParam(rawVal, &args, i)
-			case reflect.Int, reflect.Int64:
-				err = setIntParam(rawVal, &args, i)
-			case reflect.String:
-				args.Elem().Field(i).SetString(rawVal)
-			case reflect.Slice:
-				// []byte is a reflect.Slice of reflect.Uint8's
-				if field.Type.Elem().Kind() == reflect.Uint8 {
-					err = setByteSliceParam(rawVal, &args, i)
+			if isRequired || values.Has(name) {
+				rawVal := values.Get(name)
+				var err error
+				switch field.Type.Kind() {
+				case reflect.Bool:
+					err = setBoolParam(rawVal, &args, i)
+				case reflect.Int, reflect.Int64:
+					err = setIntParam(rawVal, &args, i)
+				case reflect.String:
+					args.Elem().Field(i).SetString(rawVal)
+				case reflect.Slice:
+					// []byte is a reflect.Slice of reflect.Uint8's
+					if field.Type.Elem().Kind() == reflect.Uint8 {
+						err = setByteSliceParam(rawVal, &args, i)
+					}
+				default:
+					err = errors.New("unknown type")
 				}
-			default:
-				err = errors.New("unknown type")
-			}
-			if err != nil {
-				err = fmt.Errorf("failed to parse param '%s': %w", name, err)
-				h.encodeAndWriteResponse(w, nil, err, int(json2.E_PARSE))
-				return
+				if err != nil {
+					err = fmt.Errorf("failed to parse param '%s': %w", name, err)
+					h.encodeAndWriteResponse(w, nil, err, int(json2.E_PARSE))
+					return
+				}
 			}
 		}
 		rets := methodSpec.m.Call([]reflect.Value{

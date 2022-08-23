@@ -45,7 +45,7 @@ type blockResultsArgs struct {
 	Height StrInt64 `json:"height"`
 }
 type commitArgs struct {
-	Height StrInt64 `json:"height"`
+	Height StrInt64 `json:"height,omitempty"`
 }
 type checkTxArgs struct {
 	Tx types.Tx `json:"tx"`
