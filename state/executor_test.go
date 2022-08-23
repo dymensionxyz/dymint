@@ -81,7 +81,7 @@ func TestApplyBlock(t *testing.T) {
 	app.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
 	app.On("DeliverTx", mock.Anything).Return(abci.ResponseDeliverTx{})
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{})
-	var mockAppHash []byte
+	var mockAppHash [32]byte
 	_, err := rand.Read(mockAppHash[:])
 	require.NoError(err)
 	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{
@@ -136,6 +136,7 @@ func TestApplyBlock(t *testing.T) {
 	assert.Equal(int64(1), newState.LastBlockHeight)
 	err = executor.Commit(context.Background(), &newState, block, resp)
 	require.NoError(err)
+	assert.Equal(mockAppHash, newState.AppHash)
 
 	require.NoError(mpool.CheckTx([]byte{0, 1, 2, 3, 4}, func(r *abci.Response) {}, mempool.TxInfo{}))
 	require.NoError(mpool.CheckTx([]byte{5, 6, 7, 8, 9}, func(r *abci.Response) {}, mempool.TxInfo{}))

@@ -200,7 +200,7 @@ func (m *Manager) waitForSync(ctx context.Context) error {
 		// Since we requested the latest batch and got batch not found it means
 		// the SL still hasn't got any batches for this chain.
 		m.logger.Info("No batches for chain found in SL. Start writing first batch")
-		atomic.StoreUint64(&m.syncTarget, uint64(m.store.Height()))
+		atomic.StoreUint64(&m.syncTarget, uint64(m.genesis.InitialHeight-1))
 		return nil
 	} else if err != nil {
 		m.logger.Error("failed to retrieve batch from SL", "err", err)
