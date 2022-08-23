@@ -98,7 +98,7 @@ func (e *BlockExecutor) CreateBlock(height uint64, lastCommit *types.Commit, las
 			},
 			NamespaceID:     e.namespaceID,
 			Height:          height,
-			Time:            uint64(time.Now().UTC().Unix()), // TODO(tzdybal): how to get TAI64?
+			Time:            uint64(time.Now().UTC().UnixNano()),
 			LastHeaderHash:  lastHeaderHash,
 			DataHash:        [32]byte{},
 			ConsensusHash:   [32]byte{},
@@ -198,7 +198,7 @@ func (e *BlockExecutor) updateState(state types.State, block *types.Block, abciR
 		ChainID:         state.ChainID,
 		InitialHeight:   state.InitialHeight,
 		LastBlockHeight: int64(block.Header.Height),
-		LastBlockTime:   time.Unix(int64(block.Header.Time), 0),
+		LastBlockTime:   time.Unix(0, int64(block.Header.Time)),
 		LastBlockID: tmtypes.BlockID{
 			Hash: hash[:],
 			// for now, we don't care about part set headers

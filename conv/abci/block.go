@@ -22,7 +22,7 @@ func ToABCIHeaderPB(header *types.Header) tmproto.Header {
 		},
 		ChainID: strings.ToUpper(hex.EncodeToString(header.NamespaceID[:])),
 		Height:  int64(header.Height),
-		Time:    time.Unix(int64(header.Time), 0),
+		Time:    time.Unix(0, int64(header.Time)),
 		LastBlockId: tmproto.BlockID{
 			Hash: header.LastHeaderHash[:],
 			PartSetHeader: tmproto.PartSetHeader{
@@ -51,7 +51,7 @@ func ToABCIHeader(header *types.Header) tmtypes.Header {
 			App:   header.Version.App,
 		},
 		Height:  int64(header.Height),
-		Time:    time.Unix(int64(header.Time), 0),
+		Time:    time.Unix(0, int64(header.Time)),
 		ChainID: strings.ToUpper(hex.EncodeToString(header.NamespaceID[:])),
 		LastBlockID: tmtypes.BlockID{
 			Hash: header.LastHeaderHash[:],
@@ -141,7 +141,7 @@ func ToABCICommit(commit *types.Commit, header *types.Header) *tmtypes.Commit {
 	// This assumes that we have only one signature
 	if len(commit.Signatures) == 1 {
 		tmCommit.Signatures[0].ValidatorAddress = header.ProposerAddress
-		tmCommit.Signatures[0].Timestamp = time.Unix(int64(header.Time), 0)
+		tmCommit.Signatures[0].Timestamp = time.Unix(0, int64(header.Time))
 	}
 
 	return &tmCommit

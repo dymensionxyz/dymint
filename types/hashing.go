@@ -17,7 +17,7 @@ func (h *Header) Hash() [32]byte {
 			App:   h.Version.App,
 		},
 		Height:  int64(h.Height),
-		Time:    time.Unix(int64(h.Time), 0),
+		Time:    time.Unix(0, int64(h.Time)),
 		ChainID: strings.ToUpper(hex.EncodeToString(h.NamespaceID[:])),
 		LastBlockID: tmtypes.BlockID{
 			Hash: h.LastHeaderHash[:],
