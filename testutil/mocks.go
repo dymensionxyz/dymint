@@ -1,17 +1,10 @@
 package testutil
 
 import (
-	// "encoding/json"
-
 	"github.com/dymensionxyz/dymint/mocks"
-	// "github.com/dymensionxyz/dymint/settlement"
-	// slmock "github.com/dymensionxyz/dymint/settlement/mock"
-	// slregistry "github.com/dymensionxyz/dymint/settlement/registry"
 	"github.com/stretchr/testify/mock"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
-
-	// "github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/proxy"
 )
 

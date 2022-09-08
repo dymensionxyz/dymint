@@ -11,11 +11,14 @@ type Client string
 const (
 	// ClientMock is a mock client for the settlement layer
 	ClientMock Client = "mock"
+	// Dymension is a client for interacting with dymension settlement layer
+	Dymension Client = "dymension"
 )
 
 // A central registry for all Settlement Layer Clients
 var clients = map[Client]func() settlement.LayerClient{
 	ClientMock: func() settlement.LayerClient { return &mock.SettlementLayerClient{} },
+	Dymension:  func() settlement.LayerClient { return &settlement.DymensionLayerClient{} },
 }
 
 // GetClient returns client identified by name.

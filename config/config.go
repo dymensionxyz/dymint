@@ -41,7 +41,6 @@ type NodeConfig struct {
 // BlockManagerConfig consists of all parameters required by BlockManagerConfig
 type BlockManagerConfig struct {
 	// BlockTime defines how often new blocks are produced
-	// TODO(omritoptix): Remove BlockTime
 	BlockTime time.Duration `mapstructure:"block_time"`
 	// DABlockTime informs about block time of underlying data availability layer
 	DABlockTime time.Duration `mapstructure:"da_block_time"`

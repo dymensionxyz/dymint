@@ -245,7 +245,6 @@ func (s *State) ToProto() (*pb.State, error) {
 		LastBlockHeight:                  s.LastBlockHeight,
 		LastBlockID:                      s.LastBlockID.ToProto(),
 		LastBlockTime:                    s.LastBlockTime,
-		DAHeight:                         s.DAHeight,
 		NextValidators:                   nextValidators,
 		Validators:                       validators,
 		LastValidators:                   lastValidators,
@@ -270,7 +269,6 @@ func (s *State) FromProto(other *pb.State) error {
 	}
 	s.LastBlockID = *lastBlockID
 	s.LastBlockTime = other.LastBlockTime
-	s.DAHeight = other.DAHeight
 	s.NextValidators, err = types.ValidatorSetFromProto(other.NextValidators)
 	if err != nil {
 		return err

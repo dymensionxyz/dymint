@@ -28,39 +28,44 @@ func TesClientsLifeCycle(t *testing.T) {
 	}
 }
 
-func doTestLifecycle(t *testing.T, settlementlc settlement.LayerClient) {
+func doTestLifecycle(t *testing.T, settlementClient settlement.LayerClient) {
 	require := require.New(t)
 
 	pubsubServer := pubsub.NewServer()
 	pubsubServer.Start()
-	err := settlementlc.Init([]byte{}, pubsubServer, test.NewLogger(t))
+	err := settlementClient.Init([]byte{}, pubsubServer, test.NewLogger(t))
 	require.NoError(err)
 
-	err = settlementlc.Start()
+	err = settlementClient.Start()
 	require.NoError(err)
 
-	err = settlementlc.Stop()
+	err = settlementClient.Stop()
 	require.NoError(err)
 }
 
 func TestSubmitAndRetrieve(t *testing.T) {
 	for _, settlement := range registry.RegisteredClients() {
 		t.Run(string(settlement), func(t *testing.T) {
-			doTestSubmitAndRetrieve(t, registry.GetClient(settlement))
-			doTestInvalidSubmit(t, registry.GetClient(settlement))
+			//TODO(omritoptix): Currently not testing dymension SL as part of this tests. 
+			if settlement == registry.ClientMock {
+				doTestSubmitAndRetrieve(t, registry.GetClient(settlement))
+				doTestInvalidSubmit(t, registry.GetClient(settlement))
+			}
 		})
 	}
 }
 
 func getConfForClient(settlementlc settlement.LayerClient) []byte {
+	var config interface{}
 	conf := []byte{}
 	if _, ok := settlementlc.(*mock.SettlementLayerClient); ok {
-		config := mock.Config{
+		config = mock.Config{
 			AutoUpdateBatches: false,
 			BatchSize:         batchSize,
 		}
-		conf, _ = json.Marshal(config)
 	}
+	conf, _ = json.Marshal(config)
+
 	return conf
 }
 
@@ -87,7 +92,7 @@ func doTestInvalidSubmit(t *testing.T, settlementlc settlement.LayerClient) {
 		endHeight   uint64
 		status      settlement.StatusCode
 	}{
-		{startHeight: 1, endHeight: 1 + batchSize, status: settlement.StatusSuccess},
+		{startHeight: 1, endHeight: batchSize, status: settlement.StatusSuccess},
 		// batch with endHight < startHeight
 		{startHeight: batchSize + 2, endHeight: 1, status: settlement.StatusError},
 		// batch with startHeight != previousEndHeight + 1
@@ -118,15 +123,21 @@ func doTestSubmitAndRetrieve(t *testing.T, settlementlc settlement.LayerClient) 
 	// Get settlement lastest batch and check there is an error as we haven't written anything yet.
 	_, err := settlementlc.RetrieveBatch()
 	require.Error(err)
+	assert.Equal(err, settlement.ErrBatchNotFound)
+
+	// Get nonexisting stateIndex from the settlement layer
+	_, err = settlementlc.RetrieveBatch(uint64(100))
+	require.Error(err)
+	assert.Equal(err, settlement.ErrBatchNotFound)
 
 	// Create and submit multiple batches
 	numBatches := 4
 	var batch *types.Batch
 	// iterate batches
 	for i := 0; i < numBatches; i++ {
-		startHeight := uint64(i)*(batchSize+1) + 1
+		startHeight := uint64(i)*batchSize + 1
 		// Create the batch
-		batch = testutil.GenerateBatch(startHeight, uint64(startHeight+batchSize))
+		batch = testutil.GenerateBatch(startHeight, uint64(startHeight+batchSize-1))
 		// Submit the batch
 		daResult := &da.ResultSubmitBatch{
 			BaseResult: da.BaseResult{
@@ -142,11 +153,11 @@ func doTestSubmitAndRetrieve(t *testing.T, settlementlc settlement.LayerClient) 
 	require.NoError(err)
 	assert.Equal(batch.EndHeight, lastestBatch.EndHeight)
 
-	// Retrieve one batch before last by querying for a height in the middle of it
-	height := uint64(numBatches-1)*(batchSize+1) + (batchSize / 2)
-	batchResult, err := settlementlc.RetrieveBatch(height)
+	// Retrieve one batch before last
+	batchResult, err := settlementlc.RetrieveBatch(lastestBatch.StateIndex - 1)
 	require.NoError(err)
-	assert.LessOrEqual(batchResult.StartHeight, height)
-	assert.GreaterOrEqual(batchResult.EndHeight, height)
+	middleOfBatchHeight := uint64(numBatches-1)*(batchSize) - (batchSize / 2)
+	assert.LessOrEqual(batchResult.StartHeight, middleOfBatchHeight)
+	assert.GreaterOrEqual(batchResult.EndHeight, middleOfBatchHeight)
 
 }
