@@ -1,4 +1,3 @@
-// Package cosmosclient provides a standalone client to connect to Cosmos SDK chains.
 package cosmosclient
 
 import (
