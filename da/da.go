@@ -21,11 +21,12 @@ const (
 )
 
 // Client defines all the possible da clients
-type Client uint8
+type Client string
 
 // Data availability clients
 const (
-	Celestia Client = iota
+	Mock     Client = "mock"
+	Celestia Client = "celestia"
 )
 
 // BaseResult contains basic information returned by DA layer.

@@ -5,8 +5,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"errors"
-	"fmt"
-	"strconv"
+	"sync/atomic"
 	"time"
 
 	"github.com/dymensionxyz/dymint/da"
@@ -19,9 +18,11 @@ import (
 )
 
 const defaultBatchSize = 5
+const kvStoreDBName = "settlement"
 
 var settlementKVPrefix = []byte{0}
 var latestHeightKey = []byte("latestHeight")
+var slStateIndexKey = []byte("slStateIndex")
 
 // SettlementLayerClient is intended only for usage in tests.
 type SettlementLayerClient struct {
@@ -29,6 +30,7 @@ type SettlementLayerClient struct {
 	settlementKV store.KVStore
 	pubsub       *pubsub.Server
 	latestHeight uint64
+	slStateIndex uint64
 	config       Config
 	ctx          context.Context
 	cancel       context.CancelFunc
@@ -66,6 +68,25 @@ func (s *SettlementLayerClient) Init(config []byte, pubsub *pubsub.Server, logge
 	} else {
 		s.latestHeight = binary.BigEndian.Uint64(b)
 	}
+	b, err = s.settlementKV.Get(slStateIndexKey)
+	if err != nil {
+		s.slStateIndex = 0
+		s.latestHeight = 0
+	} else {
+		s.slStateIndex = binary.BigEndian.Uint64(b)
+		// Get the latest height from the stateIndex
+		var settlementBatch settlement.Batch
+		b, err := s.settlementKV.Get(getKey(s.slStateIndex))
+		if err != nil {
+			return err
+		}
+		err = json.Unmarshal(b, &settlementBatch)
+		if err != nil {
+			return errors.New("error unmarshalling batch")
+		}
+		s.latestHeight = settlementBatch.EndHeight
+
+	}
 	return nil
 }
 
@@ -87,8 +108,7 @@ func (s *SettlementLayerClient) getConfig(config []byte) (*Config, error) {
 			c.BatchSize = defaultBatchSize
 		}
 		if c.RootDir != "" && c.DBPath != "" {
-			// TODO(omritoptix): move the 'settlemetmock' to const
-			c.store = store.NewDefaultKVStore(c.RootDir, c.DBPath, "settlement")
+			c.store = store.NewDefaultKVStore(c.RootDir, c.DBPath, kvStoreDBName)
 		} else {
 			c.store = store.NewDefaultInMemoryKVStore()
 		}
@@ -157,10 +177,22 @@ func (s *SettlementLayerClient) saveBatch(batch *settlement.Batch) error {
 	if err != nil {
 		return err
 	}
-	err = s.settlementKV.Set(getKey(batch.EndHeight), b)
+	// Save the batch to the next state index
+	slStateIndex := atomic.LoadUint64(&s.slStateIndex)
+	err = s.settlementKV.Set(getKey(slStateIndex+1), b)
 	if err != nil {
 		return err
 	}
+	// Save SL state index in memory and in store
+	atomic.StoreUint64(&s.slStateIndex, slStateIndex+1)
+	b = make([]byte, 8)
+	binary.BigEndian.PutUint64(b, slStateIndex+1)
+	err = s.settlementKV.Set(slStateIndexKey, b)
+	if err != nil {
+		return err
+	}
+	// Save latest height in memory and in store
+	atomic.StoreUint64(&s.latestHeight, batch.EndHeight)
 	return nil
 }
 
@@ -181,7 +213,6 @@ func (s *SettlementLayerClient) convertBatchtoSettlementBatch(batch *types.Batch
 		MetaData: &settlement.BatchMetaData{
 			DA: &settlement.DAMetaData{
 				Height: daResult.DAHeight,
-				Path:   strconv.FormatUint(batch.EndHeight, 10),
 				Client: da.Celestia,
 			},
 		},
@@ -194,12 +225,12 @@ func (s *SettlementLayerClient) convertBatchtoSettlementBatch(batch *types.Batch
 
 // SubmitBatch submits the batch to the settlement layer. This should create a transaction which (potentially)
 // triggers a state transition in the settlement layer.
-func (s *SettlementLayerClient) SubmitBatch(batch *types.Batch, daResult *da.ResultSubmitBatch) settlement.ResultSubmitBatch {
+func (s *SettlementLayerClient) SubmitBatch(batch *types.Batch, daResult *da.ResultSubmitBatch) *settlement.ResultSubmitBatch {
 	s.logger.Debug("Submitting batch to settlement layer", "start height", batch.StartHeight, "end height", batch.EndHeight)
 	// validate batch
 	err := s.validateBatch(batch)
 	if err != nil {
-		return settlement.ResultSubmitBatch{
+		return &settlement.ResultSubmitBatch{
 			BaseResult: settlement.BaseResult{Code: settlement.StatusError, Message: err.Error()},
 		}
 	}
@@ -209,25 +240,18 @@ func (s *SettlementLayerClient) SubmitBatch(batch *types.Batch, daResult *da.Res
 	err = s.saveBatch(settlementBatch)
 	if err != nil {
 		s.logger.Error("Error saving app hash to kv store", "error", err)
-		return settlement.ResultSubmitBatch{
+		return &settlement.ResultSubmitBatch{
 			BaseResult: settlement.BaseResult{Code: settlement.StatusError, Message: err.Error()},
 		}
 	}
-	s.latestHeight = batch.EndHeight
-	b := make([]byte, 8)
-	binary.BigEndian.PutUint64(b, uint64(s.latestHeight))
-	err = s.settlementKV.Set(latestHeightKey, b)
-	if err != nil {
-		s.logger.Error("Failed to save latest height to kv store", "error", err)
-	}
-	return settlement.ResultSubmitBatch{
-		BaseResult: settlement.BaseResult{Code: settlement.StatusSuccess},
+	return &settlement.ResultSubmitBatch{
+		BaseResult: settlement.BaseResult{Code: settlement.StatusSuccess, StateIndex: atomic.LoadUint64(&s.slStateIndex)},
 	}
 }
 
-func (s *SettlementLayerClient) retrieveBatchAtEndHeight(endHeight uint64) (*settlement.ResultRetrieveBatch, error) {
-	b, err := s.settlementKV.Get(getKey(endHeight))
-	s.logger.Debug("Retrieving batch from settlement layer", "end height", endHeight)
+func (s *SettlementLayerClient) retrieveBatchAtStateIndex(slStateIndex uint64) (*settlement.ResultRetrieveBatch, error) {
+	b, err := s.settlementKV.Get(getKey(slStateIndex))
+	s.logger.Debug("Retrieving batch from settlement layer", "SL state index", slStateIndex)
 	if err != nil {
 		return nil, settlement.ErrBatchNotFound
 	}
@@ -237,44 +261,37 @@ func (s *SettlementLayerClient) retrieveBatchAtEndHeight(endHeight uint64) (*set
 		return nil, errors.New("error unmarshalling batch")
 	}
 	batchResult := settlement.ResultRetrieveBatch{
-		BaseResult: settlement.BaseResult{Code: settlement.StatusSuccess},
+		BaseResult: settlement.BaseResult{Code: settlement.StatusSuccess, StateIndex: slStateIndex},
 		Batch:      &settlementBatch,
 	}
 	return &batchResult, nil
 }
 
-// RetrieveBatch Gets the batch which contains the given height. Empty height returns the latest batch.
-func (s *SettlementLayerClient) RetrieveBatch(height ...uint64) (settlement.ResultRetrieveBatch, error) {
-	if len(height) == 0 {
-		s.logger.Debug("Getting latest batch from settlement layer", "latest height", s.latestHeight)
-		batchResult, err := s.retrieveBatchAtEndHeight(s.latestHeight)
-		if err != nil {
-			return settlement.ResultRetrieveBatch{
-				BaseResult: settlement.BaseResult{Code: settlement.StatusError, Message: err.Error()},
-			}, err
-		}
-		return *batchResult, nil
-
-	} else if len(height) == 1 {
-		s.logger.Debug("Getting batch from settlement layer for height", height)
-		height := height[0]
-		startHeight := (height-s.config.BatchOffsetHeight)/s.config.BatchSize*s.config.BatchSize + s.config.BatchOffsetHeight
-		endHeight := startHeight + (s.config.BatchSize - 1)
-		resultRetrieveBatch, err := s.retrieveBatchAtEndHeight(endHeight)
-		if err != nil {
-			return settlement.ResultRetrieveBatch{
-				BaseResult: settlement.BaseResult{Code: settlement.StatusError, Message: err.Error()},
-			}, errors.New("error getting batch from kv store at height " + fmt.Sprint(endHeight))
-		}
-		return *resultRetrieveBatch, nil
+// RetrieveBatch Gets the batch which contains the given stateIndex. Empty stateIndex returns the latest batch.
+func (s *SettlementLayerClient) RetrieveBatch(slStateIndex ...uint64) (*settlement.ResultRetrieveBatch, error) {
+	var stateIndex uint64
+	if len(slStateIndex) == 0 {
+		stateIndex = atomic.LoadUint64(&s.slStateIndex)
+		s.logger.Debug("Getting latest batch from settlement layer", "state index", stateIndex)
+	} else if len(slStateIndex) == 1 {
+		s.logger.Debug("Getting batch from settlement layer for SL state index", slStateIndex)
+		stateIndex = slStateIndex[0]
 	} else {
-		return settlement.ResultRetrieveBatch{}, errors.New("height len must be 1 or 0")
+		return &settlement.ResultRetrieveBatch{}, errors.New("height len must be 1 or 0")
 	}
+	// Get the batch from the settlement layer
+	batchResult, err := s.retrieveBatchAtStateIndex(stateIndex)
+	if err != nil {
+		return &settlement.ResultRetrieveBatch{
+			BaseResult: settlement.BaseResult{Code: settlement.StatusError, Message: err.Error()},
+		}, err
+	}
+	return batchResult, nil
 
 }
 
-func getKey(endHeight uint64) []byte {
+func getKey(key uint64) []byte {
 	b := make([]byte, 8)
-	binary.BigEndian.PutUint64(b, endHeight)
+	binary.BigEndian.PutUint64(b, key)
 	return b
 }

@@ -130,7 +130,6 @@ func TestStateRoundTrip(t *testing.T) {
 					},
 				},
 				LastBlockTime:               time.Date(2022, 6, 6, 12, 12, 33, 44, time.UTC),
-				DAHeight:                    3344,
 				NextValidators:              valSet,
 				Validators:                  valSet,
 				LastValidators:              valSet,

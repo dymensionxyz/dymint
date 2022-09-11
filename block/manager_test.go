@@ -11,6 +11,7 @@ import (
 	mempoolv1 "github.com/dymensionxyz/dymint/mempool/v1"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/testutil"
+	"github.com/dymensionxyz/dymint/types"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -75,7 +76,7 @@ func TestInitialState(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			assert := assert.New(t)
-			dalc := getMockDALC(logger)
+			dalc := getMockDALC(100*time.Second, logger)
 			agg, err := NewManager(key, conf, c.genesis, c.store, nil, nil, dalc, settlementlc, nil, pubsubServer, logger)
 			assert.NoError(err)
 			assert.NotNil(agg)
@@ -118,7 +119,7 @@ func TestWaitUntilSynced(t *testing.T) {
 			DAHeight: 1,
 		},
 	}
-	resultSubmitBatch := manager.settlementlc.SubmitBatch(batch, daResult)
+	resultSubmitBatch := manager.settlementClient.SubmitBatch(batch, daResult)
 	assert.Equal(t, resultSubmitBatch.Code, settlement.StatusSuccess)
 
 	// Validate blocks are not produced.
@@ -145,12 +146,19 @@ func TestPublishAfterSynced(t *testing.T) {
 	// Validate blocks are not produced by adding a batch and outsyncing the manager.
 	// Submit batch
 	lastStoreHeight := manager.store.Height()
+	numBatchesToAdd := 2
 	nextBatchStartHeight := atomic.LoadUint64(&manager.syncTarget) + 1
-	batch := testutil.GenerateBatch(nextBatchStartHeight, nextBatchStartHeight+uint64(defaultBatchSize-1))
-	daResultSubmitBatch := manager.dalc.SubmitBatch(batch)
-	assert.Equal(t, daResultSubmitBatch.Code, da.StatusSuccess)
-	resultSubmitBatch := manager.settlementlc.SubmitBatch(batch, &daResultSubmitBatch)
-	assert.Equal(t, resultSubmitBatch.Code, settlement.StatusSuccess)
+	var batch *types.Batch
+	for i := 0; i < numBatchesToAdd; i++ {
+		batch = testutil.GenerateBatch(nextBatchStartHeight, nextBatchStartHeight+uint64(defaultBatchSize-1))
+		daResultSubmitBatch := manager.dalc.SubmitBatch(batch)
+		assert.Equal(t, daResultSubmitBatch.Code, da.StatusSuccess)
+		resultSubmitBatch := manager.settlementClient.SubmitBatch(batch, &daResultSubmitBatch)
+		assert.Equal(t, resultSubmitBatch.Code, settlement.StatusSuccess)
+		nextBatchStartHeight = batch.EndHeight + 1
+		// Wait until daHeight is updated
+		time.Sleep(time.Millisecond * 500)
+	}
 
 	// Check manager is out of sync
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*1)
@@ -204,7 +212,7 @@ func getManager(genesisHeight int64, storeInitialHeight int64, storeLastBlockHei
 		return nil, err
 	}
 	mp := mempoolv1.NewTxMempool(logger, tmcfg.DefaultMempoolConfig(), proxyApp.Mempool(), 0)
-	manager, err := NewManager(key, conf, genesis, store, mp, proxyApp.Consensus(), getMockDALC(logger), settlementlc, nil, pubsubServer, logger)
+	manager, err := NewManager(key, conf, genesis, store, mp, proxyApp.Consensus(), getMockDALC(conf.DABlockTime, logger), settlementlc, nil, pubsubServer, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -212,9 +220,9 @@ func getManager(genesisHeight int64, storeInitialHeight int64, storeLastBlockHei
 }
 
 // TODO(omritoptix): Possible move out to a generic testutil
-func getMockDALC(logger log.Logger) da.DataAvailabilityLayerClient {
+func getMockDALC(daBlockTime time.Duration, logger log.Logger) da.DataAvailabilityLayerClient {
 	dalc := &mockda.DataAvailabilityLayerClient{}
-	_ = dalc.Init(nil, store.NewDefaultInMemoryKVStore(), logger)
+	_ = dalc.Init([]byte(daBlockTime.String()), store.NewDefaultInMemoryKVStore(), logger)
 	_ = dalc.Start()
 	return dalc
 }
@@ -236,6 +244,7 @@ func getSettlementLayerMock(batchSize uint64, latestHeight uint64, batchOffsetHe
 func getManagerConfig() config.BlockManagerConfig {
 	return config.BlockManagerConfig{
 		BlockTime:         100 * time.Millisecond,
+		DABlockTime:       100 * time.Millisecond,
 		BatchSyncInterval: 1 * time.Second,
 		BlockBatchSize:    defaultBatchSize,
 		DAStartHeight:     0,

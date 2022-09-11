@@ -1,6 +1,9 @@
 package settlement
 
 import (
+	"strconv"
+	"strings"
+
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/log"
 	"github.com/dymensionxyz/dymint/types"
@@ -24,16 +27,34 @@ type BaseResult struct {
 	Code StatusCode
 	// Message may contain settlement layer specific information (like detailed error message, etc)
 	Message string
+	// StateIndex is the rollapp-specific index the batch was saved in the SL
+	StateIndex uint64
 }
 
 // DAMetaData contains meta data about a batch on the Data Availability Layer.
 type DAMetaData struct {
 	// Height is the height of the block in the da layer
 	Height uint64
-	// Path is the path to fetch data from the da layer
-	Path string
 	// Client is the client to use to fetch data from the da layer
 	Client da.Client
+}
+
+func (d *DAMetaData) toPath() string {
+	// convert uint64 to string
+	path := []string{string(d.Client), ".", strconv.FormatUint(d.Height, 10)}
+	return strings.Join(path, "")
+}
+
+func (d *DAMetaData) fromPath(path string) (*DAMetaData, error) {
+	pathParts := strings.FieldsFunc(path, func(r rune) bool { return r == '.' })
+	height, err := strconv.ParseUint(pathParts[1], 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	return &DAMetaData{
+		Height: height,
+		Client: da.Client(pathParts[0]),
+	}, nil
 }
 
 // BatchMetaData aggregates all the batch metadata.
@@ -75,10 +96,10 @@ type LayerClient interface {
 
 	// SubmitBatch submits the batch to the settlement layer. This should create a transaction which (potentially)
 	// triggers a state transition in the settlement layer.
-	SubmitBatch(batch *types.Batch, daResult *da.ResultSubmitBatch) ResultSubmitBatch
+	SubmitBatch(batch *types.Batch, daResult *da.ResultSubmitBatch) *ResultSubmitBatch
 
 	// RetrieveBatch Gets the batch which contains the given height. Empty height returns the latest batch.
-	RetrieveBatch(height ...uint64) (ResultRetrieveBatch, error)
+	RetrieveBatch(stateIndex ...uint64) (*ResultRetrieveBatch, error)
 
 	// TODO(omritoptix): Support getting multiple batches and pagination
 }
