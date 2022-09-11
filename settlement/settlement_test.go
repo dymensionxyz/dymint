@@ -46,7 +46,7 @@ func doTestLifecycle(t *testing.T, settlementClient settlement.LayerClient) {
 func TestSubmitAndRetrieve(t *testing.T) {
 	for _, settlement := range registry.RegisteredClients() {
 		t.Run(string(settlement), func(t *testing.T) {
-			//TODO(omritoptix): Currently not testing dymension SL as part of this tests. 
+			//TODO(omritoptix): Currently not testing dymension SL as part of this tests.
 			if settlement == registry.ClientMock {
 				doTestSubmitAndRetrieve(t, registry.GetClient(settlement))
 				doTestInvalidSubmit(t, registry.GetClient(settlement))
