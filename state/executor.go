@@ -197,6 +197,7 @@ func (e *BlockExecutor) updateState(state types.State, block *types.Block, abciR
 		Version:         state.Version,
 		ChainID:         state.ChainID,
 		InitialHeight:   state.InitialHeight,
+		SLStateIndex:    state.SLStateIndex,
 		LastBlockHeight: int64(block.Header.Height),
 		LastBlockTime:   time.Unix(0, int64(block.Header.Time)),
 		LastBlockID: tmtypes.BlockID{
