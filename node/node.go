@@ -217,6 +217,7 @@ func (n *Node) OnStart() error {
 	if err != nil {
 		return fmt.Errorf("error while starting pubsub server: %w", err)
 	}
+	// Start the da client
 	err = n.dalc.Start()
 	if err != nil {
 		return fmt.Errorf("error while starting data availability layer client: %w", err)

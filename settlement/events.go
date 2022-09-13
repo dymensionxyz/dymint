@@ -20,8 +20,10 @@ const (
 
 // EventDataNewSettlementBatchAccepted defines the structure of the event data for the EventNewSettlementBatchAccepted
 type EventDataNewSettlementBatchAccepted struct {
-	// Batch is the settlement batch that was accepted
-	Batch *Batch
+	// EndHeight is the height of the last accepted batch
+	EndHeight uint64
+	// StateIndex is the rollapp-specific index the batch was saved in the SL
+	StateIndex uint64
 }
 
 // Define queries

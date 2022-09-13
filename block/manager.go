@@ -258,32 +258,56 @@ func (m *Manager) PublishBlockLoop(ctx context.Context) {
 // to a ring buffer which will later be used by retrieveLoop for actually syncing until this target
 func (m *Manager) SyncTargetLoop(ctx context.Context) {
 	m.logger.Info("Started sync target loop")
-	ticker := time.NewTicker(m.conf.BatchSyncInterval)
+	subscription, err := m.pubsub.Subscribe(ctx, "syncTargetLoop", settlement.EventQueryNewSettlementBatchAccepted)
+	if err != nil {
+		panic("failed to subscribe to state update events")
+	}
+	// First time we start we want to get the latest batch from the SL
+	resultRetrieveBatch, err := m.getLatestBatchFromSL(ctx)
+	if err != nil {
+		m.logger.Error("failed to retrieve batch from SL", "err", err)
+	} else {
+		err = m.updateSyncParams(ctx, resultRetrieveBatch.EndHeight, resultRetrieveBatch.StateIndex)
+		if err != nil {
+			m.logger.Error("failed to update sync params", "err", err)
+		}
+	}
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-ticker.C:
-			// Cancel the previous running getLatestBatchFromSL if it still runs
-			// during next tick. Currently we timeout after half the batchSyncInterval.
-			batchContext, cancel := context.WithTimeout(ctx, m.conf.BatchSyncInterval/2)
-			// Cancel the context to avoid a leak
-			defer cancel()
-			// Get the latest batch from the settlement layer
-			resultRetrieveBatch, err := m.getLatestBatchFromSL(batchContext)
+		case event := <-subscription.Out():
+			m.logger.Info("Received state update event", event)
+			eventData := event.Data().(*settlement.EventDataNewSettlementBatchAccepted)
+			err := m.updateSyncParams(ctx, eventData.EndHeight, eventData.StateIndex)
 			if err != nil {
-				m.logger.Error("error while retrieving batch", "error", err)
-				continue
+				m.logger.Error("failed to update sync params", "err", err)
 			}
-			// Check if batch height is higher than current block height and if so, set the syncTarget atomically
-			if resultRetrieveBatch.EndHeight > m.store.Height() {
-				m.logger.Info("Setting syncTarget", "syncTarget", resultRetrieveBatch.EndHeight)
-				atomic.StoreUint64(&m.syncTarget, resultRetrieveBatch.EndHeight)
-				m.syncTargetDiode.Set(diodes.GenericDataType(&resultRetrieveBatch.EndHeight))
+		case <-subscription.Cancelled():
+			m.logger.Info("Subscription canceled")
+		}
+	}
+}
+
+// updateSyncParams updates the sync target and state index if necessary
+func (m *Manager) updateSyncParams(ctx context.Context, endHeight uint64, stateIndex uint64) error {
+	if endHeight > m.store.Height() {
+		m.logger.Info("Setting syncTarget", "syncTarget", endHeight)
+		atomic.StoreUint64(&m.syncTarget, endHeight)
+		m.syncTargetDiode.Set(diodes.GenericDataType(&endHeight))
+	} else {
+		// If the endHeight smaller or equal to current height, it means for sure our
+		// SLStateIndex should be at least the same height. In that case we can update it
+		// if it's smaller.
+		m.logger.Info("Updating state index", "stateIndex", stateIndex)
+		if stateIndex > atomic.LoadUint64(&m.lastState.SLStateIndex) {
+			err := m.updateStateIndex(stateIndex)
+			if err != nil {
+				return err
 			}
 		}
-		// TODO(omritoptix): Listen to events from the settlement layer of new batches and udpate the syncTarget
 	}
+	return nil
 }
 
 // RetriveLoop listens for new sync messages written to a ring buffer and in turn
