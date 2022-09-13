@@ -1,11 +1,10 @@
 # dymint
 
-ABCI-client implementation for Optimistic Rollups
-on top of dymension settlement hub.
+ABCI-client implementation for Optimistic Rollups on top of dymension settlement hub.
 
 ## Building From Source
 
-Requires Go version >= 1.17.
+Requires Go version >= 1.17. If you need to install Go on your system, head to the [Go download and install page](https://go.dev/doc/install).
 
 To build:
 
