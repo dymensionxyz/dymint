@@ -260,17 +260,15 @@ func (m *Manager) SyncTargetLoop(ctx context.Context) {
 	m.logger.Info("Started sync target loop")
 	subscription, err := m.pubsub.Subscribe(ctx, "syncTargetLoop", settlement.EventQueryNewSettlementBatchAccepted)
 	if err != nil {
-		panic("failed to subscribe to state update events")
+		m.logger.Error("failed to subscribe to state update events")
+		panic(err)
 	}
 	// First time we start we want to get the latest batch from the SL
 	resultRetrieveBatch, err := m.getLatestBatchFromSL(ctx)
 	if err != nil {
 		m.logger.Error("failed to retrieve batch from SL", "err", err)
 	} else {
-		err = m.updateSyncParams(ctx, resultRetrieveBatch.EndHeight, resultRetrieveBatch.StateIndex)
-		if err != nil {
-			m.logger.Error("failed to update sync params", "err", err)
-		}
+		m.updateSyncParams(ctx, resultRetrieveBatch.EndHeight)
 	}
 	for {
 		select {
@@ -279,10 +277,12 @@ func (m *Manager) SyncTargetLoop(ctx context.Context) {
 		case event := <-subscription.Out():
 			m.logger.Info("Received state update event", event)
 			eventData := event.Data().(*settlement.EventDataNewSettlementBatchAccepted)
-			err := m.updateSyncParams(ctx, eventData.EndHeight, eventData.StateIndex)
-			if err != nil {
-				m.logger.Error("failed to update sync params", "err", err)
-			}
+			m.updateSyncParams(ctx, eventData.EndHeight)
+			// In case we are the aggregator and we've got an update, then we can stop blocking from
+			// the next batches to be published. For non-aggregators this is not needed.
+			// We only want to send the next once the previous has been published successfully.
+			// TODO(omritoptix): Once we have leader election, we can add a condition.
+			m.batchInProcess.Store(false)
 		case <-subscription.Cancelled():
 			m.logger.Info("Subscription canceled")
 		}
@@ -290,24 +290,10 @@ func (m *Manager) SyncTargetLoop(ctx context.Context) {
 }
 
 // updateSyncParams updates the sync target and state index if necessary
-func (m *Manager) updateSyncParams(ctx context.Context, endHeight uint64, stateIndex uint64) error {
-	if endHeight > m.store.Height() {
-		m.logger.Info("Setting syncTarget", "syncTarget", endHeight)
-		atomic.StoreUint64(&m.syncTarget, endHeight)
-		m.syncTargetDiode.Set(diodes.GenericDataType(&endHeight))
-	} else {
-		// If the endHeight smaller or equal to current height, it means for sure our
-		// SLStateIndex should be at least the same height. In that case we can update it
-		// if it's smaller.
-		m.logger.Info("Updating state index", "stateIndex", stateIndex)
-		if stateIndex > atomic.LoadUint64(&m.lastState.SLStateIndex) {
-			err := m.updateStateIndex(stateIndex)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	return nil
+func (m *Manager) updateSyncParams(ctx context.Context, endHeight uint64) {
+	m.logger.Info("Setting syncTarget", "syncTarget", endHeight)
+	atomic.StoreUint64(&m.syncTarget, endHeight)
+	m.syncTargetDiode.Set(diodes.GenericDataType(&endHeight))
 }
 
 // RetriveLoop listens for new sync messages written to a ring buffer and in turn
@@ -558,7 +544,6 @@ func (m *Manager) publishBlock(ctx context.Context) error {
 }
 
 func (m *Manager) submitNextBatch(ctx context.Context) {
-	defer m.batchInProcess.Store(false)
 	m.batchInProcess.Store(true)
 	// Get the batch start and end height
 	startHeight := atomic.LoadUint64(&m.syncTarget) + 1
@@ -584,8 +569,6 @@ func (m *Manager) submitNextBatch(ctx context.Context) {
 		m.logger.Error("Failed to submit next batch to SL Layer", "startHeight", startHeight, "endHeight", endHeight, "error", err)
 		return
 	}
-	// Update the sync target and the state
-	atomic.StoreUint64(&m.syncTarget, endHeight)
 }
 
 func (m *Manager) updateStateIndex(stateIndex uint64) error {
