@@ -100,6 +100,8 @@ func TestWaitUntilSynced(t *testing.T) {
 	// Manager should produce blocks as it's the first to write batches.
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
 	defer cancel()
+	// Run syncTargetLoop so that we update the syncTarget.
+	go manager.SyncTargetLoop(ctx)
 	go manager.PublishBlockLoop(ctx)
 	select {
 	case <-ctx.Done():
@@ -113,7 +115,8 @@ func TestWaitUntilSynced(t *testing.T) {
 	// Take the manager out of sync.
 	t.Log("Taking the manager out of sync by submitting a batch")
 	startHeight := atomic.LoadUint64(&manager.syncTarget) + 1
-	batch := testutil.GenerateBatch(startHeight, startHeight+uint64(defaultBatchSize-1)*2)
+	endHeight := startHeight + uint64(defaultBatchSize-1)*2
+	batch := testutil.GenerateBatch(startHeight, endHeight)
 	daResult := &da.ResultSubmitBatch{
 		BaseResult: da.BaseResult{
 			DAHeight: 1,
@@ -130,7 +133,7 @@ func TestWaitUntilSynced(t *testing.T) {
 	go manager.PublishBlockLoop(ctx)
 	select {
 	case <-ctx.Done():
-		assert.Equal(t, manager.store.Height(), storeHeight)
+		assert.Equal(t, storeHeight, manager.store.Height())
 	}
 }
 

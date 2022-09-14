@@ -244,6 +244,11 @@ func (s *SettlementLayerClient) SubmitBatch(batch *types.Batch, daResult *da.Res
 			BaseResult: settlement.BaseResult{Code: settlement.StatusError, Message: err.Error()},
 		}
 	}
+	// Emit an event
+	err = s.pubsub.PublishWithEvents(context.Background(), &settlement.EventDataNewSettlementBatchAccepted{EndHeight: batch.EndHeight}, map[string][]string{settlement.EventTypeKey: {settlement.EventNewSettlementBatchAccepted}})
+	if err != nil {
+		s.logger.Error("Error publishing event", "error", err)
+	}
 	return &settlement.ResultSubmitBatch{
 		BaseResult: settlement.BaseResult{Code: settlement.StatusSuccess, StateIndex: atomic.LoadUint64(&s.slStateIndex)},
 	}

@@ -15,7 +15,6 @@ import (
 	"github.com/cenkalti/backoff"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/flags"
-	"github.com/cosmos/cosmos-sdk/client/tx"
 	"github.com/cosmos/cosmos-sdk/codec"
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
@@ -64,7 +63,7 @@ type Client struct {
 	RPC *rpchttp.HTTP
 
 	// Factory is a Cosmos SDK tx factory.
-	Factory tx.Factory
+	Factory Factory
 
 	// context is a Cosmos SDK client context.
 	context client.Context
@@ -352,7 +351,7 @@ func (c Client) BroadcastTxWithProvision(accountName string, msgs ...sdktypes.Ms
 		return 0, nil, err
 	}
 
-	_, gas, err = tx.CalculateGas(ctx, txf, msgs...)
+	_, gas, err = CalculateGas(ctx, txf, msgs...)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -363,13 +362,13 @@ func (c Client) BroadcastTxWithProvision(accountName string, msgs ...sdktypes.Ms
 
 	// Return the provision function
 	return gas, func() (Response, error) {
-		txUnsigned, err := tx.BuildUnsignedTx(txf, msgs...)
+		txUnsigned, err := txf.BuildUnsignedTx(msgs...)
 		if err != nil {
 			return Response{}, err
 		}
 
 		txUnsigned.SetFeeGranter(ctx.GetFeeGranterAddress())
-		if err := tx.Sign(txf, accountName, txUnsigned, true); err != nil {
+		if err := Sign(txf, accountName, txUnsigned, true); err != nil {
 			return Response{}, err
 		}
 
@@ -477,7 +476,7 @@ func handleBroadcastResult(resp *sdktypes.TxResponse, err error) error {
 	return nil
 }
 
-func prepareFactory(clientCtx client.Context, txf tx.Factory) (tx.Factory, error) {
+func prepareFactory(clientCtx client.Context, txf Factory) (Factory, error) {
 	from := clientCtx.GetFromAddress()
 
 	if err := txf.AccountRetriever().EnsureExists(clientCtx, from); err != nil {
@@ -537,8 +536,8 @@ func newContext(
 		WithSkipConfirmation(true)
 }
 
-func newFactory(clientCtx client.Context) tx.Factory {
-	return tx.Factory{}.
+func newFactory(clientCtx client.Context) Factory {
+	return Factory{}.
 		WithChainID(clientCtx.ChainID).
 		WithKeybase(clientCtx.Keyring).
 		WithGas(defaultGasLimit).
