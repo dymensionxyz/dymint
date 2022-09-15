@@ -270,6 +270,7 @@ func (d *DymensionLayerClient) SubmitBatch(batch *types.Batch, daResult *da.Resu
 			BaseResult: BaseResult{Code: StatusError, Message: err.Error()},
 		}
 	}
+	d.logger.Info("Successfully submitted batch to settlement layer", "tx hash", txResp.TxHash)
 	d.latestHeight = batch.EndHeight
 	return &ResultSubmitBatch{
 		BaseResult: BaseResult{Code: StatusSuccess},
@@ -299,7 +300,7 @@ func (d *DymensionLayerClient) RetrieveBatch(stateIndex ...uint64) (*ResultRetri
 		stateInfo = stateInfoResp.StateInfo
 	} else if len(stateIndex) == 1 {
 		d.logger.Debug("Getting batch from settlement layer", "state index", stateIndex)
-		queryResp, err := d.rollappQueryClient.StateInfo(context.Background(), &rollapptypes.QueryGetStateInfoRequest{Index: stateIndex[0]})
+		queryResp, err := d.rollappQueryClient.StateInfo(context.Background(), &rollapptypes.QueryGetStateInfoRequest{RollappId: d.config.RollappID, Index: stateIndex[0]})
 		if err != nil {
 			return nil, err
 		}
