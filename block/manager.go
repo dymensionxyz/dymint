@@ -291,7 +291,7 @@ func (m *Manager) SyncTargetLoop(ctx context.Context) {
 
 // updateSyncParams updates the sync target and state index if necessary
 func (m *Manager) updateSyncParams(ctx context.Context, endHeight uint64) {
-	m.logger.Info("Setting syncTarget", "syncTarget", endHeight)
+	m.logger.Info("Received new syncTarget", "syncTarget", endHeight)
 	atomic.StoreUint64(&m.syncTarget, endHeight)
 	m.syncTargetDiode.Set(diodes.GenericDataType(&endHeight))
 }
@@ -310,7 +310,7 @@ func (m *Manager) RetriveLoop(ctx context.Context) {
 			syncTarget := syncTargetpoller.Next()
 			m.syncUntilTarget(ctx, *(*uint64)(syncTarget))
 			// Check if after we sync we are synced or a new syncTarget was already set.
-			// If we are synced then signal all processes waiting on isSyncedCond.
+			// If we are synced then signal all goroutines waiting on isSyncedCond.
 			if m.store.Height() >= atomic.LoadUint64(&m.syncTarget) {
 				m.logger.Info("Synced at height", "height", m.store.Height())
 				m.isSyncedCond.L.Lock()
@@ -472,7 +472,7 @@ func (m *Manager) publishBlock(ctx context.Context) error {
 		m.logger.Info("Using pending block", "height", newHeight)
 		block = pendingBlock
 	} else {
-		m.logger.Info("Creating and publishing block", "height", newHeight)
+		m.logger.Info("Creating block", "height", newHeight)
 		block = m.executor.CreateBlock(newHeight, lastCommit, lastHeaderHash, m.lastState)
 		m.logger.Debug("block info", "num_tx", len(block.Data.Txs))
 
