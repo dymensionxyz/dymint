@@ -1,6 +1,6 @@
 module github.com/dymensionxyz/dymint
 
-go 1.17
+go 1.18
 
 require (
 	code.cloudfoundry.org/go-diodes v0.0.0-20220725190411-383eb6634c40
