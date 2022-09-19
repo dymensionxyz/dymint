@@ -4,7 +4,7 @@ ABCI-client implementation for Optimistic Rollups on top of dymension settlement
 
 ## Building From Source
 
-Requires Go version >= 1.17. If you need to install Go on your system, head to the [Go download and install page](https://go.dev/doc/install).
+Requires Go version >= 1.18. If you need to install Go on your system, head to the [Go download and install page](https://go.dev/doc/install).
 
 To build:
 
