@@ -256,6 +256,40 @@ func (s *DefaultStore) loadHashFromIndex(height uint64) ([32]byte, error) {
 	return hash, nil
 }
 
+// StartBatch creates a new batch for this store.
+func (s *DefaultStore) StartBatch() Batch {
+	if currentBatch == nil {
+		currentBatch = s.db.NewBatch()
+	}
+	return currentBatch
+}
+
+// GetCurrentBatch gets the current batch started in this store.
+func (s *DefaultStore) GetCurrentBatch() Batch {
+	return currentBatch
+}
+
+// CommitCurrentBatch commits the current batch saved in this store.
+func (s *DefaultStore) CommitCurrentBatch() error {
+	if currentBatch == nil {
+		return fmt.Errorf("there isn't started batch to commit")
+	}
+	if err := currentBatch.Commit(); err != nil {
+		return fmt.Errorf("failed to commit batch: %w", err)
+	}
+	currentBatch = nil
+	return nil
+}
+
+// DiscardCurrentBatch discard the current batch saved in this store.
+func (s *DefaultStore) DiscardCurrentBatch() error {
+	if currentBatch == nil {
+		return fmt.Errorf("there isn't started batch to discard")
+	}
+	currentBatch.Discard()
+	currentBatch = nil
+	return nil
+}
 func getBlockKey(hash [32]byte) []byte {
 	return append(blockPrefix[:], hash[:]...)
 }
@@ -284,35 +318,4 @@ func getValidatorsKey(height uint64) []byte {
 	buf := make([]byte, 8)
 	binary.BigEndian.PutUint64(buf, height)
 	return append(validatorsPrefix[:], buf[:]...)
-}
-
-func (s *DefaultStore) StartBatch() Batch {
-	if currentBatch == nil {
-		currentBatch = s.db.NewBatch()
-	}
-	return currentBatch
-}
-
-func (s *DefaultStore) GetCurrentBatch() Batch {
-	return currentBatch
-}
-
-func (s *DefaultStore) CommitCurrentBatch() error {
-	if currentBatch == nil {
-		return fmt.Errorf("there isn't started batch to commit")
-	}
-	if err := currentBatch.Commit(); err != nil {
-		return fmt.Errorf("failed to commit batch: %w", err)
-	}
-	currentBatch = nil
-	return nil
-}
-
-func (s *DefaultStore) DiscardCurrentBatch() error {
-	if currentBatch == nil {
-		return fmt.Errorf("there isn't started batch to discard")
-	}
-	currentBatch.Discard()
-	currentBatch = nil
-	return nil
 }
