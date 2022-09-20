@@ -128,15 +128,15 @@ func (s *DefaultStore) LoadBlockByHash(hash [32]byte) (*types.Block, error) {
 
 // SaveBlockResponses saves block responses (events, tx responses, validator set updates, etc) in Store.
 func (s *DefaultStore) SaveBlockResponses(height uint64, responses *tmstate.ABCIResponses) error {
+	s.mtx.Lock()
+	defer s.mtx.Unlock()
+
 	data, err := responses.Marshal()
 	if err != nil {
 		return fmt.Errorf("failed to marshal response: %w", err)
 	}
 	batch := s.GetCurrentBatch()
 	if batch != nil {
-		s.mtx.Lock()
-		defer s.mtx.Unlock()
-
 		return batch.Set(getResponsesKey(height), data)
 	}
 	return s.db.Set(getResponsesKey(height), data)
@@ -182,6 +182,9 @@ func (s *DefaultStore) LoadCommitByHash(hash [32]byte) (*types.Commit, error) {
 // UpdateState updates state saved in Store. Only one State is stored.
 // If there is no State in Store, state will be saved.
 func (s *DefaultStore) UpdateState(state types.State) error {
+	s.mtx.Lock()
+	defer s.mtx.Unlock()
+
 	pbState, err := state.ToProto()
 	if err != nil {
 		return fmt.Errorf("failed to marshal state to JSON: %w", err)
@@ -193,9 +196,6 @@ func (s *DefaultStore) UpdateState(state types.State) error {
 
 	batch := s.GetCurrentBatch()
 	if batch != nil {
-		s.mtx.Lock()
-		defer s.mtx.Unlock()
-		
 		return batch.Set(getStateKey(), data)
 	}
 	return s.db.Set(getStateKey(), data)
@@ -221,6 +221,9 @@ func (s *DefaultStore) LoadState() (types.State, error) {
 
 // SaveValidators stores validator set for given block height in store.
 func (s *DefaultStore) SaveValidators(height uint64, validatorSet *tmtypes.ValidatorSet) error {
+	s.mtx.Lock()
+	defer s.mtx.Unlock()
+
 	pbValSet, err := validatorSet.ToProto()
 	if err != nil {
 		return fmt.Errorf("failed to marshal ValidatorSet to protobuf: %w", err)
@@ -232,9 +235,6 @@ func (s *DefaultStore) SaveValidators(height uint64, validatorSet *tmtypes.Valid
 
 	batch := s.GetCurrentBatch()
 	if batch != nil {
-		s.mtx.Lock()
-		defer s.mtx.Unlock()
-
 		return batch.Set(getValidatorsKey(height), blob)
 	}
 	return s.db.Set(getValidatorsKey(height), blob)
@@ -271,9 +271,6 @@ func (s *DefaultStore) loadHashFromIndex(height uint64) ([32]byte, error) {
 
 // StartBatch creates a new batch for this store.
 func (s *DefaultStore) StartBatch() Batch {
-	s.mtx.Lock()
-	defer s.mtx.Unlock()
-
 	if currentBatch == nil {
 		currentBatch = s.db.NewBatch()
 	}
@@ -287,9 +284,6 @@ func (s *DefaultStore) GetCurrentBatch() Batch {
 
 // CommitCurrentBatch commits the current batch saved in this store.
 func (s *DefaultStore) CommitCurrentBatch() error {
-	s.mtx.Lock()
-	defer s.mtx.Unlock()
-
 	if currentBatch == nil {
 		return fmt.Errorf("there isn't started batch to commit")
 	}
@@ -302,9 +296,6 @@ func (s *DefaultStore) CommitCurrentBatch() error {
 
 // DiscardCurrentBatch discard the current batch saved in this store.
 func (s *DefaultStore) DiscardCurrentBatch() error {
-	s.mtx.Lock()
-	defer s.mtx.Unlock()
-
 	if currentBatch == nil {
 		return fmt.Errorf("there isn't started batch to discard")
 	}
