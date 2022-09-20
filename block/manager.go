@@ -377,6 +377,7 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 
 		newState, responses, err := m.executor.ApplyBlock(ctx, m.lastState, block)
 		if err != nil {
+			_ = m.store.DiscardCurrentBatch()
 			m.logger.Error("failed to ApplyBlock", "error", err)
 			return err
 		}
@@ -388,6 +389,7 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 		var appHash []byte
 		err = m.executor.Commit(ctx, &newState, block, responses)
 		if err != nil {
+			_ = m.store.DiscardCurrentBatch()
 			m.logger.Error("failed to Commit", "error", err)
 			return err
 		}
@@ -510,12 +512,14 @@ func (m *Manager) publishBlock(ctx context.Context) error {
 	// Apply the block but DONT commit
 	newState, responses, err := m.executor.ApplyBlock(ctx, m.lastState, block)
 	if err != nil {
+		_ = m.store.DiscardCurrentBatch()
 		return err
 	}
 
 	// Commit the new state and block which writes to disk on the proxy app
 	err = m.executor.Commit(ctx, &newState, block, responses)
 	if err != nil {
+		_ = m.store.DiscardCurrentBatch()
 		return err
 	}
 
@@ -531,12 +535,14 @@ func (m *Manager) publishBlock(ctx context.Context) error {
 	// UpdateState commits the DB tx
 	err = m.store.UpdateState(m.lastState)
 	if err != nil {
+		_ = m.store.DiscardCurrentBatch()
 		return err
 	}
 
 	// SaveValidators commits the DB tx
 	err = m.store.SaveValidators(block.Header.Height, m.lastState.Validators)
 	if err != nil {
+		_ = m.store.DiscardCurrentBatch()
 		return err
 	}
 
