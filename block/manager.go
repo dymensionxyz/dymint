@@ -451,7 +451,6 @@ func (m *Manager) fetchBatch(daHeight uint64) (da.ResultRetrieveBatch, error) {
 }
 
 func (m *Manager) publishBlock(ctx context.Context) error {
-
 	var lastCommit *types.Commit
 	var lastHeaderHash [32]byte
 	var err error

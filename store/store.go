@@ -290,10 +290,9 @@ func getValidatorsKey(height uint64) []byte {
 }
 
 func (s *DefaultStore) StartBatch() Batch {
-	if currentBatch != nil {
-		currentBatch.Discard()
+	if currentBatch == nil {
+		currentBatch = s.db.NewBatch()
 	}
-	currentBatch := s.db.NewBatch()
 	return currentBatch
 }
 
