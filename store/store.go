@@ -4,6 +4,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
+	"sync"
 	"sync/atomic"
 
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
@@ -29,6 +30,8 @@ type DefaultStore struct {
 	db KVStore
 
 	height uint64
+
+	mtx *sync.RWMutex
 }
 
 var _ Store = &DefaultStore{}
@@ -258,6 +261,9 @@ func (s *DefaultStore) loadHashFromIndex(height uint64) ([32]byte, error) {
 
 // StartBatch creates a new batch for this store.
 func (s *DefaultStore) StartBatch() Batch {
+	s.mtx.Lock()
+	defer s.mtx.Unlock()
+
 	if currentBatch == nil {
 		currentBatch = s.db.NewBatch()
 	}
@@ -271,6 +277,9 @@ func (s *DefaultStore) GetCurrentBatch() Batch {
 
 // CommitCurrentBatch commits the current batch saved in this store.
 func (s *DefaultStore) CommitCurrentBatch() error {
+	s.mtx.Lock()
+	defer s.mtx.Unlock()
+
 	if currentBatch == nil {
 		return fmt.Errorf("there isn't started batch to commit")
 	}
@@ -283,6 +292,9 @@ func (s *DefaultStore) CommitCurrentBatch() error {
 
 // DiscardCurrentBatch discard the current batch saved in this store.
 func (s *DefaultStore) DiscardCurrentBatch() error {
+	s.mtx.Lock()
+	defer s.mtx.Unlock()
+
 	if currentBatch == nil {
 		return fmt.Errorf("there isn't started batch to discard")
 	}
