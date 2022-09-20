@@ -383,6 +383,7 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 		}
 		err = m.store.SaveBlock(block, commit)
 		if err != nil {
+			_ = m.store.DiscardCurrentBatch()
 			m.logger.Error("failed to save block", "error", err)
 			return err
 		}
@@ -397,6 +398,7 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 
 		err = m.store.SaveBlockResponses(block.Header.Height, responses)
 		if err != nil {
+			_ = m.store.DiscardCurrentBatch()
 			m.logger.Error("failed to save block responses", "error", err)
 			return err
 		}
@@ -504,6 +506,7 @@ func (m *Manager) publishBlock(ctx context.Context) error {
 		// SaveBlock commits the DB tx
 		err = m.store.SaveBlock(block, commit)
 		if err != nil {
+			_ = m.store.DiscardCurrentBatch()
 			return err
 		}
 	}
@@ -525,6 +528,7 @@ func (m *Manager) publishBlock(ctx context.Context) error {
 	// SaveBlockResponses commits the DB tx
 	err = m.store.SaveBlockResponses(block.Header.Height, responses)
 	if err != nil {
+		_ = m.store.DiscardCurrentBatch()
 		return err
 	}
 
