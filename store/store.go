@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"sync"
 	"sync/atomic"
 
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
@@ -31,18 +30,15 @@ type DefaultStore struct {
 
 	height uint64
 
-	mtx *sync.RWMutex
+	currentBatch Batch
 }
 
 var _ Store = &DefaultStore{}
 
-var currentBatch Batch
-
 // New returns new, default store.
 func New(kv KVStore) Store {
 	return &DefaultStore{
-		db:  kv,
-		mtx: new(sync.RWMutex),
+		db: kv,
 	}
 }
 
@@ -73,7 +69,7 @@ func (s *DefaultStore) SaveBlock(block *types.Block, commit *types.Commit) error
 		return fmt.Errorf("failed to marshal Commit to binary: %w", err)
 	}
 
-	bb := s.GetCurrentBatch()
+	bb := s.currentBatch
 	if bb == nil {
 		bb = s.db.NewBatch()
 	}
@@ -82,7 +78,7 @@ func (s *DefaultStore) SaveBlock(block *types.Block, commit *types.Commit) error
 	err = multierr.Append(err, bb.Set(getIndexKey(block.Header.Height), hash[:]))
 
 	if err != nil {
-		if s.GetCurrentBatch() != nil {
+		if s.currentBatch != nil {
 			_ = s.DiscardCurrentBatch()
 		} else {
 			bb.Discard()
@@ -90,7 +86,7 @@ func (s *DefaultStore) SaveBlock(block *types.Block, commit *types.Commit) error
 		return err
 	}
 
-	if s.GetCurrentBatch() == nil {
+	if s.currentBatch == nil {
 		if err = bb.Commit(); err != nil {
 			return fmt.Errorf("failed to commit transaction: %w", err)
 		}
@@ -128,16 +124,12 @@ func (s *DefaultStore) LoadBlockByHash(hash [32]byte) (*types.Block, error) {
 
 // SaveBlockResponses saves block responses (events, tx responses, validator set updates, etc) in Store.
 func (s *DefaultStore) SaveBlockResponses(height uint64, responses *tmstate.ABCIResponses) error {
-	s.mtx.Lock()
-	defer s.mtx.Unlock()
-
 	data, err := responses.Marshal()
 	if err != nil {
 		return fmt.Errorf("failed to marshal response: %w", err)
 	}
-	batch := s.GetCurrentBatch()
-	if batch != nil {
-		return batch.Set(getResponsesKey(height), data)
+	if s.currentBatch != nil {
+		return s.currentBatch.Set(getResponsesKey(height), data)
 	}
 	return s.db.Set(getResponsesKey(height), data)
 }
@@ -182,9 +174,6 @@ func (s *DefaultStore) LoadCommitByHash(hash [32]byte) (*types.Commit, error) {
 // UpdateState updates state saved in Store. Only one State is stored.
 // If there is no State in Store, state will be saved.
 func (s *DefaultStore) UpdateState(state types.State) error {
-	s.mtx.Lock()
-	defer s.mtx.Unlock()
-
 	pbState, err := state.ToProto()
 	if err != nil {
 		return fmt.Errorf("failed to marshal state to JSON: %w", err)
@@ -194,9 +183,8 @@ func (s *DefaultStore) UpdateState(state types.State) error {
 		return err
 	}
 
-	batch := s.GetCurrentBatch()
-	if batch != nil {
-		return batch.Set(getStateKey(), data)
+	if s.currentBatch != nil {
+		return s.currentBatch.Set(getStateKey(), data)
 	}
 	return s.db.Set(getStateKey(), data)
 }
@@ -221,9 +209,6 @@ func (s *DefaultStore) LoadState() (types.State, error) {
 
 // SaveValidators stores validator set for given block height in store.
 func (s *DefaultStore) SaveValidators(height uint64, validatorSet *tmtypes.ValidatorSet) error {
-	s.mtx.Lock()
-	defer s.mtx.Unlock()
-
 	pbValSet, err := validatorSet.ToProto()
 	if err != nil {
 		return fmt.Errorf("failed to marshal ValidatorSet to protobuf: %w", err)
@@ -233,9 +218,8 @@ func (s *DefaultStore) SaveValidators(height uint64, validatorSet *tmtypes.Valid
 		return fmt.Errorf("failed to marshal ValidatorSet: %w", err)
 	}
 
-	batch := s.GetCurrentBatch()
-	if batch != nil {
-		return batch.Set(getValidatorsKey(height), blob)
+	if s.currentBatch != nil {
+		return s.currentBatch.Set(getValidatorsKey(height), blob)
 	}
 	return s.db.Set(getValidatorsKey(height), blob)
 }
@@ -271,39 +255,31 @@ func (s *DefaultStore) loadHashFromIndex(height uint64) ([32]byte, error) {
 
 // StartBatch creates a new batch for this store.
 func (s *DefaultStore) StartBatch() Batch {
-	if currentBatch == nil {
-		currentBatch = s.db.NewBatch()
+	if s.currentBatch == nil {
+		s.currentBatch = s.db.NewBatch()
 	}
-	return currentBatch
-}
-
-// GetCurrentBatch gets the current batch started in this store.
-func (s *DefaultStore) GetCurrentBatch() Batch {
-	return currentBatch
+	return s.currentBatch
 }
 
 // CommitCurrentBatch commits the current batch saved in this store.
 func (s *DefaultStore) CommitCurrentBatch() error {
-	s.mtx.Lock()
-	defer s.mtx.Unlock()
-
-	if currentBatch == nil {
+	if s.currentBatch == nil {
 		return fmt.Errorf("there isn't started batch to commit")
 	}
-	if err := currentBatch.Commit(); err != nil {
+	if err := s.currentBatch.Commit(); err != nil {
 		return fmt.Errorf("failed to commit batch: %w", err)
 	}
-	currentBatch = nil
+	s.currentBatch = nil
 	return nil
 }
 
 // DiscardCurrentBatch discard the current batch saved in this store.
 func (s *DefaultStore) DiscardCurrentBatch() error {
-	if currentBatch == nil {
+	if s.currentBatch == nil {
 		return fmt.Errorf("there isn't started batch to discard")
 	}
-	currentBatch.Discard()
-	currentBatch = nil
+	s.currentBatch.Discard()
+	s.currentBatch = nil
 	return nil
 }
 func getBlockKey(hash [32]byte) []byte {

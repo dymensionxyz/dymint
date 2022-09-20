@@ -42,8 +42,6 @@ type Store interface {
 
 	// StartBatch creates a new batch for this store.
 	StartBatch() Batch
-	// GetCurrentBatch gets the current batch started in this store.
-	GetCurrentBatch() Batch
 	// CommitCurrentBatch commits the current batch saved in this store.
 	CommitCurrentBatch() error
 	// DiscardCurrentBatch discard the current batch saved in this store.
