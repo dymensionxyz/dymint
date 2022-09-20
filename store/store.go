@@ -131,9 +131,8 @@ func (s *DefaultStore) SaveBlockResponses(height uint64, responses *tmstate.ABCI
 	batch := s.GetCurrentBatch()
 	if batch != nil {
 		return batch.Set(getResponsesKey(height), data)
-	} else {
-		return s.db.Set(getResponsesKey(height), data)
 	}
+	return s.db.Set(getResponsesKey(height), data)
 }
 
 // LoadBlockResponses returns block results at given height, or error if it's not found in Store.
@@ -188,9 +187,8 @@ func (s *DefaultStore) UpdateState(state types.State) error {
 	batch := s.GetCurrentBatch()
 	if batch != nil {
 		return batch.Set(getStateKey(), data)
-	} else {
-		return s.db.Set(getStateKey(), data)
 	}
+	return s.db.Set(getStateKey(), data)
 }
 
 // LoadState returns last state saved with UpdateState.
@@ -225,9 +223,8 @@ func (s *DefaultStore) SaveValidators(height uint64, validatorSet *tmtypes.Valid
 	batch := s.GetCurrentBatch()
 	if batch != nil {
 		return batch.Set(getValidatorsKey(height), blob)
-	} else {
-		return s.db.Set(getValidatorsKey(height), blob)
 	}
+	return s.db.Set(getValidatorsKey(height), blob)
 }
 
 // LoadValidators loads validator set at given block height from store.

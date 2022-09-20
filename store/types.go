@@ -40,15 +40,16 @@ type Store interface {
 	// LoadState returns last state saved with UpdateState.
 	LoadState() (types.State, error)
 
+	// StartBatch creates a new batch for this store.
+	StartBatch() Batch
+	// GetCurrentBatch gets the current batch started in this store.
+	GetCurrentBatch() Batch
+	// CommitCurrentBatch commits the current batch saved in this store.
+	CommitCurrentBatch() error
+	// DiscardCurrentBatch discard the current batch saved in this store.
+	DiscardCurrentBatch() error
+
 	SaveValidators(height uint64, validatorSet *tmtypes.ValidatorSet) error
 
 	LoadValidators(height uint64) (*tmtypes.ValidatorSet, error)
-
-	StartBatch() Batch
-
-	GetCurrentBatch() Batch
-
-	CommitCurrentBatch() error
-
-	DiscardCurrentBatch() error
 }
