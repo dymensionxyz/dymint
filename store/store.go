@@ -41,7 +41,8 @@ var currentBatch Batch
 // New returns new, default store.
 func New(kv KVStore) Store {
 	return &DefaultStore{
-		db: kv,
+		db:  kv,
+		mtx: new(sync.RWMutex),
 	}
 }
 
@@ -133,6 +134,9 @@ func (s *DefaultStore) SaveBlockResponses(height uint64, responses *tmstate.ABCI
 	}
 	batch := s.GetCurrentBatch()
 	if batch != nil {
+		s.mtx.Lock()
+		defer s.mtx.Unlock()
+
 		return batch.Set(getResponsesKey(height), data)
 	}
 	return s.db.Set(getResponsesKey(height), data)
@@ -189,6 +193,9 @@ func (s *DefaultStore) UpdateState(state types.State) error {
 
 	batch := s.GetCurrentBatch()
 	if batch != nil {
+		s.mtx.Lock()
+		defer s.mtx.Unlock()
+		
 		return batch.Set(getStateKey(), data)
 	}
 	return s.db.Set(getStateKey(), data)
@@ -225,6 +232,9 @@ func (s *DefaultStore) SaveValidators(height uint64, validatorSet *tmtypes.Valid
 
 	batch := s.GetCurrentBatch()
 	if batch != nil {
+		s.mtx.Lock()
+		defer s.mtx.Unlock()
+
 		return batch.Set(getValidatorsKey(height), blob)
 	}
 	return s.db.Set(getValidatorsKey(height), blob)
