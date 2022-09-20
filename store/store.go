@@ -33,6 +33,8 @@ type DefaultStore struct {
 
 var _ Store = &DefaultStore{}
 
+var currentBatch Batch
+
 // New returns new, default store.
 func New(kv KVStore) Store {
 	return &DefaultStore{
@@ -67,18 +69,27 @@ func (s *DefaultStore) SaveBlock(block *types.Block, commit *types.Commit) error
 		return fmt.Errorf("failed to marshal Commit to binary: %w", err)
 	}
 
-	bb := s.db.NewBatch()
+	bb := s.GetCurrentBatch()
+	if bb == nil {
+		bb = s.db.NewBatch()
+	}
 	err = multierr.Append(err, bb.Set(getBlockKey(hash), blockBlob))
 	err = multierr.Append(err, bb.Set(getCommitKey(hash), commitBlob))
 	err = multierr.Append(err, bb.Set(getIndexKey(block.Header.Height), hash[:]))
 
 	if err != nil {
-		bb.Discard()
+		if s.GetCurrentBatch() != nil {
+			_ = s.DiscardCurrentBatch()
+		} else {
+			bb.Discard()
+		}
 		return err
 	}
 
-	if err = bb.Commit(); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
+	if s.GetCurrentBatch() == nil {
+		if err = bb.Commit(); err != nil {
+			return fmt.Errorf("failed to commit transaction: %w", err)
+		}
 	}
 
 	return nil
@@ -117,7 +128,12 @@ func (s *DefaultStore) SaveBlockResponses(height uint64, responses *tmstate.ABCI
 	if err != nil {
 		return fmt.Errorf("failed to marshal response: %w", err)
 	}
-	return s.db.Set(getResponsesKey(height), data)
+	batch := s.GetCurrentBatch()
+	if batch != nil {
+		return batch.Set(getResponsesKey(height), data)
+	} else {
+		return s.db.Set(getResponsesKey(height), data)
+	}
 }
 
 // LoadBlockResponses returns block results at given height, or error if it's not found in Store.
@@ -168,7 +184,13 @@ func (s *DefaultStore) UpdateState(state types.State) error {
 	if err != nil {
 		return err
 	}
-	return s.db.Set(getStateKey(), data)
+
+	batch := s.GetCurrentBatch()
+	if batch != nil {
+		return batch.Set(getStateKey(), data)
+	} else {
+		return s.db.Set(getStateKey(), data)
+	}
 }
 
 // LoadState returns last state saved with UpdateState.
@@ -200,7 +222,12 @@ func (s *DefaultStore) SaveValidators(height uint64, validatorSet *tmtypes.Valid
 		return fmt.Errorf("failed to marshal ValidatorSet: %w", err)
 	}
 
-	return s.db.Set(getValidatorsKey(height), blob)
+	batch := s.GetCurrentBatch()
+	if batch != nil {
+		return batch.Set(getValidatorsKey(height), blob)
+	} else {
+		return s.db.Set(getValidatorsKey(height), blob)
+	}
 }
 
 // LoadValidators loads validator set at given block height from store.
@@ -260,4 +287,36 @@ func getValidatorsKey(height uint64) []byte {
 	buf := make([]byte, 8)
 	binary.BigEndian.PutUint64(buf, height)
 	return append(validatorsPrefix[:], buf[:]...)
+}
+
+func (s *DefaultStore) StartBatch() Batch {
+	if currentBatch != nil {
+		currentBatch.Discard()
+	}
+	currentBatch := s.db.NewBatch()
+	return currentBatch
+}
+
+func (s *DefaultStore) GetCurrentBatch() Batch {
+	return currentBatch
+}
+
+func (s *DefaultStore) CommitCurrentBatch() error {
+	if currentBatch == nil {
+		return fmt.Errorf("there isn't started batch to commit")
+	}
+	if err := currentBatch.Commit(); err != nil {
+		return fmt.Errorf("failed to commit batch: %w", err)
+	}
+	currentBatch = nil
+	return nil
+}
+
+func (s *DefaultStore) DiscardCurrentBatch() error {
+	if currentBatch == nil {
+		return fmt.Errorf("there isn't started batch to discard")
+	}
+	currentBatch.Discard()
+	currentBatch = nil
+	return nil
 }

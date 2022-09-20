@@ -43,4 +43,12 @@ type Store interface {
 	SaveValidators(height uint64, validatorSet *tmtypes.ValidatorSet) error
 
 	LoadValidators(height uint64) (*tmtypes.ValidatorSet, error)
+
+	StartBatch() Batch
+
+	GetCurrentBatch() Batch
+
+	CommitCurrentBatch() error
+
+	DiscardCurrentBatch() error
 }

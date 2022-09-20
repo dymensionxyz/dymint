@@ -372,6 +372,9 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 	)
 	if block.Header.Height > m.store.Height() {
 		m.logger.Info("Syncing block", "height", block.Header.Height)
+
+		m.store.StartBatch()
+
 		newState, responses, err := m.executor.ApplyBlock(ctx, m.lastState, block)
 		if err != nil {
 			m.logger.Error("failed to ApplyBlock", "error", err)
@@ -393,6 +396,12 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 		err = m.store.SaveBlockResponses(block.Header.Height, responses)
 		if err != nil {
 			m.logger.Error("failed to save block responses", "error", err)
+			return err
+		}
+
+		err = m.store.CommitCurrentBatch()
+		if err != nil {
+			m.logger.Error("failed to persist batch to disk", "error", err)
 			return err
 		}
 
@@ -463,7 +472,7 @@ func (m *Manager) publishBlock(ctx context.Context) error {
 	}
 
 	var block *types.Block
-
+	m.store.StartBatch()
 	// Check if there's an already stored block at a newer height
 	// If there is use that instead of creating a new block
 	var commit *types.Commit
@@ -528,6 +537,12 @@ func (m *Manager) publishBlock(ctx context.Context) error {
 	// SaveValidators commits the DB tx
 	err = m.store.SaveValidators(block.Header.Height, m.lastState.Validators)
 	if err != nil {
+		return err
+	}
+
+	err = m.store.CommitCurrentBatch()
+	if err != nil {
+		m.logger.Error("failed to persist batch to disk", "error", err)
 		return err
 	}
 
