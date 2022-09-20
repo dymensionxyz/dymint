@@ -284,6 +284,9 @@ func (s *DefaultStore) GetCurrentBatch() Batch {
 
 // CommitCurrentBatch commits the current batch saved in this store.
 func (s *DefaultStore) CommitCurrentBatch() error {
+	s.mtx.Lock()
+	defer s.mtx.Unlock()
+
 	if currentBatch == nil {
 		return fmt.Errorf("there isn't started batch to commit")
 	}
