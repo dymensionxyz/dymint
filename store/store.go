@@ -251,7 +251,7 @@ func (s *DefaultStore) SaveValidatorsWithBatch(height uint64, validatorSet *tmty
 		return nil, s.db.Set(getValidatorsKey(height), blob)
 	}
 	err = batch.Set(getValidatorsKey(height), blob)
-	return batch, nil
+	return batch, err
 }
 
 // LoadValidators loads validator set at given block height from store.
