@@ -222,15 +222,15 @@ func TestBatch(t *testing.T) {
 		},
 	}
 
-	s.StartBatch()
-	err := s.SaveBlockResponses(1, expected)
+	batch := s.NewBatch()
+	batch, err := s.SaveBlockResponsesWithBatch(1, expected, batch)
 	assert.NoError(err)
 
 	resp, err := s.LoadBlockResponses(1)
 	assert.EqualError(err, "failed to retrieve block results from height 1: key not found")
 	assert.Nil(resp)
 
-	err = s.CommitCurrentBatch()
+	err = batch.Commit()
 	assert.NoError(err)
 
 	resp, err = s.LoadBlockResponses(1)

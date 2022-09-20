@@ -373,37 +373,37 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 	if block.Header.Height > m.store.Height() {
 		m.logger.Info("Syncing block", "height", block.Header.Height)
 
-		m.store.StartBatch()
+		batch := m.store.NewBatch()
 
 		newState, responses, err := m.executor.ApplyBlock(ctx, m.lastState, block)
 		if err != nil {
-			_ = m.store.DiscardCurrentBatch()
+			batch.Discard()
 			m.logger.Error("failed to ApplyBlock", "error", err)
 			return err
 		}
-		err = m.store.SaveBlock(block, commit)
+		batch, err = m.store.SaveBlockWithBatch(block, commit, batch)
 		if err != nil {
-			_ = m.store.DiscardCurrentBatch()
+			batch.Discard()
 			m.logger.Error("failed to save block", "error", err)
 			return err
 		}
 		var appHash []byte
 		err = m.executor.Commit(ctx, &newState, block, responses)
 		if err != nil {
-			_ = m.store.DiscardCurrentBatch()
+			batch.Discard()
 			m.logger.Error("failed to Commit", "error", err)
 			return err
 		}
 		m.store.SetHeight(block.Header.Height)
 
-		err = m.store.SaveBlockResponses(block.Header.Height, responses)
+		batch, err = m.store.SaveBlockResponsesWithBatch(block.Header.Height, responses, batch)
 		if err != nil {
-			_ = m.store.DiscardCurrentBatch()
+			batch.Discard()
 			m.logger.Error("failed to save block responses", "error", err)
 			return err
 		}
 
-		err = m.store.CommitCurrentBatch()
+		err = batch.Commit()
 		if err != nil {
 			m.logger.Error("failed to persist batch to disk", "error", err)
 			return err
@@ -475,7 +475,7 @@ func (m *Manager) publishBlock(ctx context.Context) error {
 	}
 
 	var block *types.Block
-	m.store.StartBatch()
+	batch := m.store.NewBatch()
 	// Check if there's an already stored block at a newer height
 	// If there is use that instead of creating a new block
 	var commit *types.Commit
@@ -504,9 +504,9 @@ func (m *Manager) publishBlock(ctx context.Context) error {
 		}
 
 		// SaveBlock commits the DB tx
-		err = m.store.SaveBlock(block, commit)
+		batch, err = m.store.SaveBlockWithBatch(block, commit, batch)
 		if err != nil {
-			_ = m.store.DiscardCurrentBatch()
+			batch.Discard()
 			return err
 		}
 	}
@@ -514,21 +514,21 @@ func (m *Manager) publishBlock(ctx context.Context) error {
 	// Apply the block but DONT commit
 	newState, responses, err := m.executor.ApplyBlock(ctx, m.lastState, block)
 	if err != nil {
-		_ = m.store.DiscardCurrentBatch()
+		batch.Discard()
 		return err
 	}
 
 	// Commit the new state and block which writes to disk on the proxy app
 	err = m.executor.Commit(ctx, &newState, block, responses)
 	if err != nil {
-		_ = m.store.DiscardCurrentBatch()
+		batch.Discard()
 		return err
 	}
 
 	// SaveBlockResponses commits the DB tx
-	err = m.store.SaveBlockResponses(block.Header.Height, responses)
+	batch, err = m.store.SaveBlockResponsesWithBatch(block.Header.Height, responses, batch)
 	if err != nil {
-		_ = m.store.DiscardCurrentBatch()
+		batch.Discard()
 		return err
 	}
 
@@ -536,20 +536,20 @@ func (m *Manager) publishBlock(ctx context.Context) error {
 	m.lastState = newState
 
 	// UpdateState commits the DB tx
-	err = m.store.UpdateState(m.lastState)
+	batch, err = m.store.UpdateStateWithBatch(m.lastState, batch)
 	if err != nil {
-		_ = m.store.DiscardCurrentBatch()
+		batch.Discard()
 		return err
 	}
 
 	// SaveValidators commits the DB tx
-	err = m.store.SaveValidators(block.Header.Height, m.lastState.Validators)
+	batch, err = m.store.SaveValidatorsWithBatch(block.Header.Height, m.lastState.Validators, batch)
 	if err != nil {
-		_ = m.store.DiscardCurrentBatch()
+		batch.Discard()
 		return err
 	}
 
-	err = m.store.CommitCurrentBatch()
+	err = batch.Commit()
 	if err != nil {
 		m.logger.Error("failed to persist batch to disk", "error", err)
 		return err
