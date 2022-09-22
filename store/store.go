@@ -60,14 +60,7 @@ func (s *DefaultStore) Height() uint64 {
 
 // SaveBlock adds block to the store along with corresponding commit.
 // Stored height is updated if block height is greater than stored value.
-func (s *DefaultStore) SaveBlock(block *types.Block, commit *types.Commit) error {
-	_, err := s.SaveBlockWithBatch(block, commit, nil)
-	return err
-}
-
-// SaveBlockWithBatch adds block to the store along with corresponding commit.
-// Stored height is updated if block height is greater than stored value.
-func (s *DefaultStore) SaveBlockWithBatch(block *types.Block, commit *types.Commit, batch Batch) (Batch, error) {
+func (s *DefaultStore) SaveBlock(block *types.Block, commit *types.Commit, batch Batch) (Batch, error) {
 	hash := block.Header.Hash()
 	blockBlob, err := block.MarshalBinary()
 	if err != nil {
@@ -131,13 +124,7 @@ func (s *DefaultStore) LoadBlockByHash(hash [32]byte) (*types.Block, error) {
 }
 
 // SaveBlockResponses saves block responses (events, tx responses, validator set updates, etc) in Store.
-func (s *DefaultStore) SaveBlockResponses(height uint64, responses *tmstate.ABCIResponses) error {
-	_, err := s.SaveBlockResponsesWithBatch(height, responses, nil)
-	return err
-}
-
-// SaveBlockResponsesWithBatch saves block responses (events, tx responses, validator set updates, etc) in Store.
-func (s *DefaultStore) SaveBlockResponsesWithBatch(height uint64, responses *tmstate.ABCIResponses, batch Batch) (Batch, error) {
+func (s *DefaultStore) SaveBlockResponses(height uint64, responses *tmstate.ABCIResponses, batch Batch) (Batch, error) {
 	data, err := responses.Marshal()
 	if err != nil {
 		return batch, fmt.Errorf("failed to marshal response: %w", err)
@@ -188,14 +175,7 @@ func (s *DefaultStore) LoadCommitByHash(hash [32]byte) (*types.Commit, error) {
 
 // UpdateState updates state saved in Store. Only one State is stored.
 // If there is no State in Store, state will be saved.
-func (s *DefaultStore) UpdateState(state types.State) error {
-	_, err := s.UpdateStateWithBatch(state, nil)
-	return err
-}
-
-// UpdateStateWithBatch updates state saved in Store. Only one State is stored.
-// If there is no State in Store, state will be saved.
-func (s *DefaultStore) UpdateStateWithBatch(state types.State, batch Batch) (Batch, error) {
+func (s *DefaultStore) UpdateState(state types.State, batch Batch) (Batch, error) {
 	pbState, err := state.ToProto()
 	if err != nil {
 		return batch, fmt.Errorf("failed to marshal state to JSON: %w", err)
@@ -231,13 +211,7 @@ func (s *DefaultStore) LoadState() (types.State, error) {
 }
 
 // SaveValidators stores validator set for given block height in store.
-func (s *DefaultStore) SaveValidators(height uint64, validatorSet *tmtypes.ValidatorSet) error {
-	_, err := s.SaveValidatorsWithBatch(height, validatorSet, nil)
-	return err
-}
-
-// SaveValidatorsWithBatch stores validator set for given block height in store.
-func (s *DefaultStore) SaveValidatorsWithBatch(height uint64, validatorSet *tmtypes.ValidatorSet, batch Batch) (Batch, error) {
+func (s *DefaultStore) SaveValidators(height uint64, validatorSet *tmtypes.ValidatorSet, batch Batch) (Batch, error) {
 	pbValSet, err := validatorSet.ToProto()
 	if err != nil {
 		return batch, fmt.Errorf("failed to marshal ValidatorSet to protobuf: %w", err)

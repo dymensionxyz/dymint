@@ -46,7 +46,7 @@ func TestStoreHeight(t *testing.T) {
 			assert.Equal(uint64(0), bstore.Height())
 
 			for _, block := range c.blocks {
-				err := bstore.SaveBlock(block, &types.Commit{})
+				_, err := bstore.SaveBlock(block, &types.Commit{}, nil)
 				bstore.SetHeight(block.Header.Height)
 				assert.NoError(err)
 			}
@@ -98,7 +98,7 @@ func TestStoreLoad(t *testing.T) {
 				for _, block := range c.blocks {
 					commit := &types.Commit{Height: block.Header.Height, HeaderHash: block.Header.Hash()}
 					block.LastCommit = *lastCommit
-					err := bstore.SaveBlock(block, commit)
+					_, err := bstore.SaveBlock(block, commit, nil)
 					require.NoError(err)
 					lastCommit = commit
 				}
@@ -134,12 +134,12 @@ func TestRestart(t *testing.T) {
 	kv := NewDefaultInMemoryKVStore()
 	s1 := New(kv)
 	expectedHeight := uint64(10)
-	err := s1.UpdateState(types.State{
+	_, err := s1.UpdateState(types.State{
 		LastBlockHeight: int64(expectedHeight),
 		NextValidators:  validatorSet,
 		Validators:      validatorSet,
 		LastValidators:  validatorSet,
-	})
+	}, nil)
 	assert.NoError(err)
 
 	s2 := New(kv)
@@ -179,7 +179,7 @@ func TestBlockResponses(t *testing.T) {
 		},
 	}
 
-	err := s.SaveBlockResponses(1, expected)
+	_, err := s.SaveBlockResponses(1, expected, nil)
 	assert.NoError(err)
 
 	resp, err := s.LoadBlockResponses(123)
@@ -223,7 +223,7 @@ func TestBatch(t *testing.T) {
 	}
 
 	batch := s.NewBatch()
-	batch, err := s.SaveBlockResponsesWithBatch(1, expected, batch)
+	batch, err := s.SaveBlockResponses(1, expected, batch)
 	assert.NoError(err)
 
 	resp, err := s.LoadBlockResponses(1)

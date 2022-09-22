@@ -114,7 +114,7 @@ func NewManager(
 		}
 
 		updateState(&s, res)
-		if err := store.UpdateState(s); err != nil {
+		if _, err := store.UpdateState(s, nil); err != nil {
 			return nil, err
 		}
 	}
@@ -381,7 +381,7 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 			m.logger.Error("failed to ApplyBlock", "error", err)
 			return err
 		}
-		batch, err = m.store.SaveBlockWithBatch(block, commit, batch)
+		batch, err = m.store.SaveBlock(block, commit, batch)
 		if err != nil {
 			batch.Discard()
 			m.logger.Error("failed to save block", "error", err)
@@ -396,7 +396,7 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 		}
 		m.store.SetHeight(block.Header.Height)
 
-		batch, err = m.store.SaveBlockResponsesWithBatch(block.Header.Height, responses, batch)
+		batch, err = m.store.SaveBlockResponses(block.Header.Height, responses, batch)
 		if err != nil {
 			batch.Discard()
 			m.logger.Error("failed to save block responses", "error", err)
@@ -412,7 +412,7 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 		copy(newState.AppHash[:], appHash)
 
 		m.lastState = newState
-		err = m.store.UpdateState(m.lastState)
+		_, err = m.store.UpdateState(m.lastState, nil)
 		if err != nil {
 			m.logger.Error("failed to save updated state", "error", err)
 			return err
@@ -504,7 +504,7 @@ func (m *Manager) publishBlock(ctx context.Context) error {
 		}
 
 		// SaveBlock commits the DB tx
-		batch, err = m.store.SaveBlockWithBatch(block, commit, batch)
+		batch, err = m.store.SaveBlock(block, commit, batch)
 		if err != nil {
 			batch.Discard()
 			return err
@@ -526,7 +526,7 @@ func (m *Manager) publishBlock(ctx context.Context) error {
 	}
 
 	// SaveBlockResponses commits the DB tx
-	batch, err = m.store.SaveBlockResponsesWithBatch(block.Header.Height, responses, batch)
+	batch, err = m.store.SaveBlockResponses(block.Header.Height, responses, batch)
 	if err != nil {
 		batch.Discard()
 		return err
@@ -536,14 +536,14 @@ func (m *Manager) publishBlock(ctx context.Context) error {
 	m.lastState = newState
 
 	// UpdateState commits the DB tx
-	batch, err = m.store.UpdateStateWithBatch(m.lastState, batch)
+	batch, err = m.store.UpdateState(m.lastState, batch)
 	if err != nil {
 		batch.Discard()
 		return err
 	}
 
 	// SaveValidators commits the DB tx
-	batch, err = m.store.SaveValidatorsWithBatch(block.Header.Height, m.lastState.Validators, batch)
+	batch, err = m.store.SaveValidators(block.Header.Height, m.lastState.Validators, batch)
 	if err != nil {
 		batch.Discard()
 		return err
@@ -597,7 +597,7 @@ func (m *Manager) submitNextBatch(ctx context.Context) {
 
 func (m *Manager) updateStateIndex(stateIndex uint64) error {
 	atomic.StoreUint64(&m.lastState.SLStateIndex, stateIndex)
-	err := m.store.UpdateState(m.lastState)
+	_, err := m.store.UpdateState(m.lastState, nil)
 	if err != nil {
 		m.logger.Error("Failed to update state", "error", err)
 		return err
