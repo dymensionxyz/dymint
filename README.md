@@ -1,6 +1,8 @@
 # dymint
 
-ABCI-client implementation for Optimistic Rollups on top of dymension settlement hub.
+ABCI-client implementation for dYmenion's autonomous RollApp forked from [celestiaorg/optimint](https://github.com/celestiaorg/optimint).
+
+To learn more about dYmension's autonomous RollApps and dymint read the [docs](https://docs.dymension.xyz/learn/rollapps)
 
 ## Building From Source
 
