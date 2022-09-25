@@ -40,6 +40,11 @@ func New(kv KVStore) Store {
 	}
 }
 
+// NewBatch creates a new db batch.
+func (s *DefaultStore) NewBatch() Batch {
+	return s.db.NewBatch()
+}
+
 // SetHeight sets the height saved in the Store if it is higher than the existing height
 func (s *DefaultStore) SetHeight(height uint64) {
 	storeHeight := atomic.LoadUint64(&s.height)
@@ -55,33 +60,40 @@ func (s *DefaultStore) Height() uint64 {
 
 // SaveBlock adds block to the store along with corresponding commit.
 // Stored height is updated if block height is greater than stored value.
-func (s *DefaultStore) SaveBlock(block *types.Block, commit *types.Commit) error {
+func (s *DefaultStore) SaveBlock(block *types.Block, commit *types.Commit, batch Batch) (Batch, error) {
 	hash := block.Header.Hash()
 	blockBlob, err := block.MarshalBinary()
 	if err != nil {
-		return fmt.Errorf("failed to marshal Block to binary: %w", err)
+		return batch, fmt.Errorf("failed to marshal Block to binary: %w", err)
 	}
 
 	commitBlob, err := commit.MarshalBinary()
 	if err != nil {
-		return fmt.Errorf("failed to marshal Commit to binary: %w", err)
+		return batch, fmt.Errorf("failed to marshal Commit to binary: %w", err)
 	}
 
-	bb := s.db.NewBatch()
+	bb := batch
+	if bb == nil {
+		bb = s.db.NewBatch()
+	}
 	err = multierr.Append(err, bb.Set(getBlockKey(hash), blockBlob))
 	err = multierr.Append(err, bb.Set(getCommitKey(hash), commitBlob))
 	err = multierr.Append(err, bb.Set(getIndexKey(block.Header.Height), hash[:]))
 
 	if err != nil {
-		bb.Discard()
-		return err
+		if batch == nil {
+			bb.Discard()
+		}
+		return batch, err
 	}
 
-	if err = bb.Commit(); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
+	if batch == nil {
+		if err = bb.Commit(); err != nil {
+			return nil, fmt.Errorf("failed to commit transaction: %w", err)
+		}
 	}
 
-	return nil
+	return batch, nil
 }
 
 // LoadBlock returns block at given height, or error if it's not found in Store.
@@ -112,12 +124,16 @@ func (s *DefaultStore) LoadBlockByHash(hash [32]byte) (*types.Block, error) {
 }
 
 // SaveBlockResponses saves block responses (events, tx responses, validator set updates, etc) in Store.
-func (s *DefaultStore) SaveBlockResponses(height uint64, responses *tmstate.ABCIResponses) error {
+func (s *DefaultStore) SaveBlockResponses(height uint64, responses *tmstate.ABCIResponses, batch Batch) (Batch, error) {
 	data, err := responses.Marshal()
 	if err != nil {
-		return fmt.Errorf("failed to marshal response: %w", err)
+		return batch, fmt.Errorf("failed to marshal response: %w", err)
 	}
-	return s.db.Set(getResponsesKey(height), data)
+	if batch == nil {
+		return nil, s.db.Set(getResponsesKey(height), data)
+	}
+	err = batch.Set(getResponsesKey(height), data)
+	return batch, err
 }
 
 // LoadBlockResponses returns block results at given height, or error if it's not found in Store.
@@ -159,16 +175,21 @@ func (s *DefaultStore) LoadCommitByHash(hash [32]byte) (*types.Commit, error) {
 
 // UpdateState updates state saved in Store. Only one State is stored.
 // If there is no State in Store, state will be saved.
-func (s *DefaultStore) UpdateState(state types.State) error {
+func (s *DefaultStore) UpdateState(state types.State, batch Batch) (Batch, error) {
 	pbState, err := state.ToProto()
 	if err != nil {
-		return fmt.Errorf("failed to marshal state to JSON: %w", err)
+		return batch, fmt.Errorf("failed to marshal state to JSON: %w", err)
 	}
 	data, err := pbState.Marshal()
 	if err != nil {
-		return err
+		return batch, err
 	}
-	return s.db.Set(getStateKey(), data)
+
+	if batch == nil {
+		return nil, s.db.Set(getStateKey(), data)
+	}
+	err = batch.Set(getStateKey(), data)
+	return batch, err
 }
 
 // LoadState returns last state saved with UpdateState.
@@ -190,17 +211,21 @@ func (s *DefaultStore) LoadState() (types.State, error) {
 }
 
 // SaveValidators stores validator set for given block height in store.
-func (s *DefaultStore) SaveValidators(height uint64, validatorSet *tmtypes.ValidatorSet) error {
+func (s *DefaultStore) SaveValidators(height uint64, validatorSet *tmtypes.ValidatorSet, batch Batch) (Batch, error) {
 	pbValSet, err := validatorSet.ToProto()
 	if err != nil {
-		return fmt.Errorf("failed to marshal ValidatorSet to protobuf: %w", err)
+		return batch, fmt.Errorf("failed to marshal ValidatorSet to protobuf: %w", err)
 	}
 	blob, err := pbValSet.Marshal()
 	if err != nil {
-		return fmt.Errorf("failed to marshal ValidatorSet: %w", err)
+		return batch, fmt.Errorf("failed to marshal ValidatorSet: %w", err)
 	}
 
-	return s.db.Set(getValidatorsKey(height), blob)
+	if batch == nil {
+		return nil, s.db.Set(getValidatorsKey(height), blob)
+	}
+	err = batch.Set(getValidatorsKey(height), blob)
+	return batch, err
 }
 
 // LoadValidators loads validator set at given block height from store.
