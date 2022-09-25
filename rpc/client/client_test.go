@@ -247,7 +247,7 @@ func TestGetBlock(t *testing.T) {
 	require.NoError(err)
 
 	block := getRandomBlock(1, 10)
-	err = rpc.node.Store.SaveBlock(block, &types.Commit{})
+	_, err = rpc.node.Store.SaveBlock(block, &types.Commit{}, nil)
 	rpc.node.Store.SetHeight(block.Header.Height)
 	require.NoError(err)
 
@@ -274,7 +274,7 @@ func TestGetCommit(t *testing.T) {
 	require.NoError(err)
 
 	for _, b := range blocks {
-		err = rpc.node.Store.SaveBlock(b, &types.Commit{Height: b.Header.Height})
+		_, err = rpc.node.Store.SaveBlock(b, &types.Commit{Height: b.Header.Height}, nil)
 		rpc.node.Store.SetHeight(b.Header.Height)
 		require.NoError(err)
 	}
@@ -309,10 +309,10 @@ func TestBlockSearch(t *testing.T) {
 	heights := []int64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
 	for _, h := range heights {
 		block := getRandomBlock(uint64(h), 5)
-		err := rpc.node.Store.SaveBlock(block, &types.Commit{
+		_, err := rpc.node.Store.SaveBlock(block, &types.Commit{
 			Height:     uint64(h),
 			HeaderHash: block.Header.Hash(),
-		})
+		}, nil)
 		require.NoError(err)
 	}
 	indexBlocks(t, rpc, heights)
@@ -373,7 +373,7 @@ func TestGetBlockByHash(t *testing.T) {
 	require.NoError(err)
 
 	block := getRandomBlock(1, 10)
-	err = rpc.node.Store.SaveBlock(block, &types.Commit{})
+	_, err = rpc.node.Store.SaveBlock(block, &types.Commit{}, nil)
 	require.NoError(err)
 	abciBlock, err := abciconv.ToABCIBlock(block)
 	require.NoError(err)
@@ -567,10 +567,10 @@ func TestBlockchainInfo(t *testing.T) {
 	heights := []int64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
 	for _, h := range heights {
 		block := getRandomBlock(uint64(h), 5)
-		err := rpc.node.Store.SaveBlock(block, &types.Commit{
+		_, err := rpc.node.Store.SaveBlock(block, &types.Commit{
 			Height:     uint64(h),
 			HeaderHash: block.Header.Hash(),
-		})
+		}, nil)
 		rpc.node.Store.SetHeight(block.Header.Height)
 		require.NoError(err)
 	}
