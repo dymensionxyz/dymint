@@ -555,7 +555,6 @@ func (m *Manager) publishBlock(ctx context.Context) error {
 		return err
 	}
 
-	// Only update the stored height after successfully submitting to DA layer and committing to the DB
 	m.store.SetHeight(block.Header.Height)
 
 	syncTarget := atomic.LoadUint64(&m.syncTarget)
