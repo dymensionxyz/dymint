@@ -9,6 +9,10 @@ import (
 
 // Store is minimal interface for storing and retrieving blocks, commits and state.
 type Store interface {
+
+	// NewBatch creates a new db batch.
+	NewBatch() Batch
+
 	// Height returns height of the highest block in store.
 	Height() uint64
 
@@ -16,7 +20,7 @@ type Store interface {
 	SetHeight(height uint64)
 
 	// SaveBlock saves block along with its seen commit (which will be included in the next block).
-	SaveBlock(block *types.Block, commit *types.Commit) error
+	SaveBlock(block *types.Block, commit *types.Commit, batch Batch) (Batch, error)
 
 	// LoadBlock returns block at given height, or error if it's not found in Store.
 	LoadBlock(height uint64) (*types.Block, error)
@@ -24,7 +28,7 @@ type Store interface {
 	LoadBlockByHash(hash [32]byte) (*types.Block, error)
 
 	// SaveBlockResponses saves block responses (events, tx responses, validator set updates, etc) in Store.
-	SaveBlockResponses(height uint64, responses *tmstate.ABCIResponses) error
+	SaveBlockResponses(height uint64, responses *tmstate.ABCIResponses, batch Batch) (Batch, error)
 
 	// LoadBlockResponses returns block results at given height, or error if it's not found in Store.
 	LoadBlockResponses(height uint64) (*tmstate.ABCIResponses, error)
@@ -36,11 +40,12 @@ type Store interface {
 
 	// UpdateState updates state saved in Store. Only one State is stored.
 	// If there is no State in Store, state will be saved.
-	UpdateState(state types.State) error
+	UpdateState(state types.State, batch Batch) (Batch, error)
+
 	// LoadState returns last state saved with UpdateState.
 	LoadState() (types.State, error)
 
-	SaveValidators(height uint64, validatorSet *tmtypes.ValidatorSet) error
+	SaveValidators(height uint64, validatorSet *tmtypes.ValidatorSet, batch Batch) (Batch, error)
 
 	LoadValidators(height uint64) (*tmtypes.ValidatorSet, error)
 }

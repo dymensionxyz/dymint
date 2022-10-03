@@ -44,7 +44,7 @@ func TestInitialState(t *testing.T) {
 	// Init empty store and full store
 	emptyStore := store.New(store.NewDefaultInMemoryKVStore())
 	fullStore := store.New(store.NewDefaultInMemoryKVStore())
-	err := fullStore.UpdateState(sampleState)
+	_, err := fullStore.UpdateState(sampleState, nil)
 	require.NoError(t, err)
 
 	cases := []struct {
@@ -201,7 +201,7 @@ func getManager(genesisHeight int64, storeInitialHeight int64, storeLastBlockHei
 	// And updating the state according to the genesis.
 	state := testutil.GenerateState(storeInitialHeight, storeLastBlockHeight)
 	store := store.New(store.NewDefaultInMemoryKVStore())
-	if err := store.UpdateState(state); err != nil {
+	if _, err := store.UpdateState(state, nil); err != nil {
 		return nil, err
 	}
 	key, _, _ := crypto.GenerateEd25519Key(rand.Reader)
