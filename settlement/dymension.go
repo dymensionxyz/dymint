@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/hashicorp/go-multierror"
 	"strconv"
 
 	"github.com/dymensionxyz/cosmosclient/cosmosclient"
@@ -13,6 +12,7 @@ import (
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/log"
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/hashicorp/go-multierror"
 	"github.com/ignite/cli/ignite/pkg/cosmosaccount"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
