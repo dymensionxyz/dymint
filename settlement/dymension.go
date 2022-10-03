@@ -7,8 +7,8 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/dymensionxyz/cosmosclient/cosmosclient"
 	rollapptypes "github.com/dymensionxyz/dymension/x/rollapp/types"
-	"github.com/dymensionxyz/dymint/cosmosclient"
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/log"
 	"github.com/dymensionxyz/dymint/types"
