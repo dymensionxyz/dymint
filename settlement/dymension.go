@@ -5,7 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
+	"net/url"
+	"os"
 	"strconv"
+	"syscall"
 
 	"github.com/dymensionxyz/cosmosclient/cosmosclient"
 	rollapptypes "github.com/dymensionxyz/dymension/x/rollapp/types"
@@ -266,8 +270,12 @@ func (d *DymensionLayerClient) SubmitBatch(batch *types.Batch, daResult *da.Resu
 	txResp, err := d.client.BroadcastTx(d.config.DymAccountName, settlementBatch)
 	if err != nil || txResp.Code != 0 {
 		d.logger.Error("Error sending batch to settlement layer", "error", err)
+		errorCode := StatusError
+		if isConnectionRefusedError(err) {
+			errorCode = StatusConnRefused
+		}
 		return &ResultSubmitBatch{
-			BaseResult: BaseResult{Code: StatusError, Message: err.Error()},
+			BaseResult: BaseResult{Code: errorCode, Message: err.Error()},
 		}
 	}
 	d.logger.Info("Successfully submitted batch to settlement layer", "tx hash", txResp.TxHash)
@@ -324,4 +332,23 @@ func (d *DymensionLayerClient) RetrieveBatch(stateIndex ...uint64) (*ResultRetri
 	return &ResultRetrieveBatch{
 		BaseResult: BaseResult{Code: StatusSuccess, StateIndex: stateInfo.StateInfoIndex.Index},
 		Batch:      batchResult}, nil
+}
+
+func isConnectionRefusedError(err error) bool {
+	if err == nil {
+		return false
+	}
+	urlError, ok := errors.Unwrap(err).(*url.Error)
+	if !ok {
+		return false
+	}
+	opError, ok := urlError.Err.(*net.OpError)
+	if !ok {
+		return false
+	}
+	syscallError, ok := opError.Err.(*os.SyscallError)
+	if !ok {
+		return false
+	}
+	return syscallError.Err == syscall.ECONNREFUSED
 }

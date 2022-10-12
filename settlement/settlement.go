@@ -18,6 +18,7 @@ const (
 	StatusUnknown StatusCode = iota
 	StatusSuccess
 	StatusTimeout
+	StatusConnRefused
 	StatusError
 )
 

@@ -634,9 +634,11 @@ func (m *Manager) createNextDABatch(startHeight uint64, endHeight uint64) (*type
 
 func (m *Manager) submitBatchToSL(ctx context.Context, batch *types.Batch, resultSubmitToDA *da.ResultSubmitBatch) (*settlement.ResultSubmitBatch, error) {
 	var resultSubmitToSL *settlement.ResultSubmitBatch
+	var lastSubmitCode settlement.StatusCode
 	// Submit batch to SL
 	err := retry.Do(func() error {
 		resultSubmitToSL = m.settlementClient.SubmitBatch(batch, resultSubmitToDA)
+		lastSubmitCode = resultSubmitToSL.Code
 		if resultSubmitToSL.Code != settlement.StatusSuccess {
 			err := fmt.Errorf("failed to submit batch to SL layer: %s", resultSubmitToSL.Message)
 			return err
@@ -644,6 +646,9 @@ func (m *Manager) submitBatchToSL(ctx context.Context, batch *types.Batch, resul
 		return nil
 	}, retry.Context(ctx), retry.LastErrorOnly(true))
 	if err != nil {
+		if lastSubmitCode == settlement.StatusConnRefused {
+			panic("Connection refused: can't submit to SL layer!")
+		}
 		return nil, err
 	}
 	return resultSubmitToSL, nil
