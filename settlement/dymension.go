@@ -157,7 +157,7 @@ func (d *DymensionLayerClient) eventHandler() {
 		case <-d.ctx.Done():
 			return
 		case <-d.client.RPC.WSEvents.GetWSClient().Quit():
-			panic("WS disconnected")
+			panic("Settlement WS disconnected")
 		case event := <-d.eventsChannel:
 			// Assert value is in map and publish it to the event bus
 			d.logger.Debug("Received event from settlement layer", "event", event)
