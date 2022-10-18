@@ -7,6 +7,7 @@ require (
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/celestiaorg/go-cnc v0.1.0
 	github.com/dgraph-io/badger/v3 v3.2103.2
+	github.com/dymensionxyz/cosmosclient v0.1.0-alpha.0.20221018211807-9038c3e73582
 	github.com/go-kit/kit v0.12.0
 	github.com/gogo/protobuf v1.3.3
 	github.com/google/orderedcode v0.0.1
@@ -68,7 +69,6 @@ require (
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/dustin/go-humanize v1.0.1-0.20200219035652-afde56e7acac // indirect
 	github.com/dvsekhvalnov/jose2go v1.5.0 // indirect
-	github.com/dymensionxyz/cosmosclient v0.1.1-alpha
 	github.com/dymensionxyz/dymension v0.0.0-20220906152713-9cfb350c86bd
 	github.com/elastic/gosigar v0.14.2 // indirect
 	github.com/flynn/noise v1.0.0 // indirect
@@ -239,5 +239,4 @@ require (
 replace (
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.2-alpha.regen.4
 	google.golang.org/grpc => google.golang.org/grpc v1.33.2
-
 )
