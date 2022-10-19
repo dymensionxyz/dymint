@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
+	"github.com/avast/retry-go"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -192,10 +193,44 @@ func TestPublishAfterSynced(t *testing.T) {
 	case <-ctx.Done():
 		assert.Greater(t, manager.store.Height(), batch.EndHeight)
 	}
+}
 
+type FailureSettlementLayerClient struct {
+	slmock.SettlementLayerClient
+}
+
+// SubmitBatch submits the batch to the settlement layer. This should create a transaction which (potentially)
+// triggers a state transition in the settlement layer.
+func (s *FailureSettlementLayerClient) SubmitBatch(_ *types.Batch, _ *da.ResultSubmitBatch) *settlement.ResultSubmitBatch {
+	return &settlement.ResultSubmitBatch{
+		BaseResult: settlement.BaseResult{Code: settlement.StatusError, Message: "Connection refused"},
+	}
+}
+
+func TestPublishWhenSettlementDisconnected(t *testing.T) {
+	manager, err := getManagerWithCustomSettlementLayer(&FailureSettlementLayerClient{}, 1, 1, 0)
+	retry.DefaultAttempts = 2
+	require.NoError(t, err)
+	require.NotNil(t, manager)
+
+	nextBatchStartHeight := atomic.LoadUint64(&manager.syncTarget) + 1
+	var batch = testutil.GenerateBatch(nextBatchStartHeight, nextBatchStartHeight+uint64(defaultBatchSize-1))
+	daResultSubmitBatch := manager.dalc.SubmitBatch(batch)
+	assert.Equal(t, daResultSubmitBatch.Code, da.StatusSuccess)
+	resultSubmitBatch := manager.settlementClient.SubmitBatch(batch, &daResultSubmitBatch)
+	assert.Equal(t, resultSubmitBatch.Code, settlement.StatusError)
+	nextBatchStartHeight = batch.EndHeight + 1
+
+	_, err = manager.submitBatchToSL(context.Background(), nil, nil)
+	assert.EqualError(t, err, "failed to submit batch to SL layer: Connection refused")
 }
 
 func getManager(genesisHeight int64, storeInitialHeight int64, storeLastBlockHeight int64) (*Manager, error) {
+	settlementlc := slregistry.GetClient(slregistry.ClientMock)
+	return getManagerWithCustomSettlementLayer(settlementlc, genesisHeight, storeInitialHeight, storeLastBlockHeight)
+}
+
+func getManagerWithCustomSettlementLayer(settlementlc settlement.LayerClient, genesisHeight int64, storeInitialHeight int64, storeLastBlockHeight int64) (*Manager, error) {
 	genesis := testutil.GenerateGenesis(genesisHeight)
 	// Change the LastBlockHeight to avoid calling InitChainSync within the manager
 	// And updating the state according to the genesis.
@@ -209,7 +244,8 @@ func getManager(genesisHeight int64, storeInitialHeight int64, storeLastBlockHei
 	logger := log.TestingLogger()
 	pubsubServer := pubsub.NewServer()
 	pubsubServer.Start()
-	settlementlc := getSettlementLayerMock(defaultBatchSize, uint64(state.LastBlockHeight), uint64(state.LastBlockHeight)+1, pubsubServer, logger)
+
+	_ = initSettlementLayerMock(settlementlc, defaultBatchSize, uint64(state.LastBlockHeight), uint64(state.LastBlockHeight)+1, pubsubServer, logger)
 	proxyApp := testutil.GetABCIProxyAppMock(logger.With("module", "proxy"))
 	if err := proxyApp.Start(); err != nil {
 		return nil, err
@@ -231,7 +267,7 @@ func getMockDALC(daBlockTime time.Duration, logger log.Logger) da.DataAvailabili
 }
 
 // TODO(omritoptix): Possible move out to a generic testutil
-func getSettlementLayerMock(batchSize uint64, latestHeight uint64, batchOffsetHeight uint64, pubsubServer *pubsub.Server, logger log.Logger) settlement.LayerClient {
+func initSettlementLayerMock(settlementlc settlement.LayerClient, batchSize uint64, latestHeight uint64, batchOffsetHeight uint64, pubsubServer *pubsub.Server, logger log.Logger) error {
 	conf := slmock.Config{
 		AutoUpdateBatches: false,
 		BatchSize:         batchSize,
@@ -239,9 +275,7 @@ func getSettlementLayerMock(batchSize uint64, latestHeight uint64, batchOffsetHe
 		BatchOffsetHeight: batchOffsetHeight,
 	}
 	byteconf, _ := json.Marshal(conf)
-	settlementlc := slregistry.GetClient(slregistry.ClientMock)
-	_ = settlementlc.Init(byteconf, pubsubServer, logger)
-	return settlementlc
+	return settlementlc.Init(byteconf, pubsubServer, logger)
 }
 
 func getManagerConfig() config.BlockManagerConfig {

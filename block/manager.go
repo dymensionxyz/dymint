@@ -591,7 +591,7 @@ func (m *Manager) submitNextBatch(ctx context.Context) {
 	_, err = m.submitBatchToSL(ctx, nextBatch, resultSubmitToDA)
 	if err != nil {
 		m.logger.Error("Failed to submit next batch to SL Layer", "startHeight", startHeight, "endHeight", endHeight, "error", err)
-		return
+		panic(err)
 	}
 }
 
@@ -644,7 +644,7 @@ func (m *Manager) submitBatchToSL(ctx context.Context, batch *types.Batch, resul
 		return nil
 	}, retry.Context(ctx), retry.LastErrorOnly(true))
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 	return resultSubmitToSL, nil
 }
