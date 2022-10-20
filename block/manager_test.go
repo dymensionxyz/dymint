@@ -287,11 +287,3 @@ func (s *SettlementLayerClientSubmitBatchError) SubmitBatch(_ *types.Batch, _ *d
 		BaseResult: settlement.BaseResult{Code: settlement.StatusError, Message: "Connection refused"},
 	}
 }
-
-type DALayerClientSubmitBatchError struct {
-	mockda.DataAvailabilityLayerClient
-}
-
-func (s *DALayerClientSubmitBatchError) SubmitBatch(_ *types.Batch) da.ResultSubmitBatch {
-	return da.ResultSubmitBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: "Connection refused"}}
-}
