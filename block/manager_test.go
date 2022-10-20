@@ -95,7 +95,7 @@ func TestInitialState(t *testing.T) {
 // 3. Validate blocks are not produced.
 func TestWaitUntilSynced(t *testing.T) {
 	storeLastBlockHeight := uint64(0)
-	manager, err := getManager(nil, 1, 1, int64(storeLastBlockHeight))
+	manager, err := getManager(nil, nil, 1, 1, int64(storeLastBlockHeight))
 	require.NoError(t, err)
 	require.NotNil(t, manager)
 
@@ -144,7 +144,7 @@ func TestWaitUntilSynced(t *testing.T) {
 // 2. Sync the manager
 // 3. Validate blocks are produced.
 func TestPublishAfterSynced(t *testing.T) {
-	manager, err := getManager(nil, 1, 1, 0)
+	manager, err := getManager(nil, nil, 1, 1, 0)
 	require.NoError(t, err)
 	require.NotNil(t, manager)
 
@@ -197,7 +197,7 @@ func TestPublishAfterSynced(t *testing.T) {
 }
 
 func TestPublishWhenSettlementLayerDisconnected(t *testing.T) {
-	manager, err := getManager(&SettlementLayerClientSubmitBatchError{}, 1, 1, 0)
+	manager, err := getManager(&SettlementLayerClientSubmitBatchError{}, nil, 1, 1, 0)
 	retry.DefaultAttempts = 2
 	require.NoError(t, err)
 	require.NotNil(t, manager)
@@ -214,7 +214,22 @@ func TestPublishWhenSettlementLayerDisconnected(t *testing.T) {
 	})
 }
 
-func getManager(settlementlc settlement.LayerClient, genesisHeight int64, storeInitialHeight int64, storeLastBlockHeight int64) (*Manager, error) {
+func TestPublishWhenDALayerDisconnected(t *testing.T) {
+	manager, err := getManager(nil, &DALayerClientSubmitBatchError{}, 1, 1, 0)
+	retry.DefaultAttempts = 2
+	require.NoError(t, err)
+	require.NotNil(t, manager)
+
+	nextBatchStartHeight := atomic.LoadUint64(&manager.syncTarget) + 1
+	var batch = testutil.GenerateBatch(nextBatchStartHeight, nextBatchStartHeight+uint64(defaultBatchSize-1))
+	daResultSubmitBatch := manager.dalc.SubmitBatch(batch)
+	assert.Equal(t, daResultSubmitBatch.Code, da.StatusError)
+
+	_, err = manager.submitBatchToDA(context.Background(), nil)
+	assert.EqualError(t, err, "failed to submit batch to DA layer: Connection refused")
+}
+
+func getManager(settlementlc settlement.LayerClient, dalc da.DataAvailabilityLayerClient, genesisHeight int64, storeInitialHeight int64, storeLastBlockHeight int64) (*Manager, error) {
 	genesis := testutil.GenerateGenesis(genesisHeight)
 	// Change the LastBlockHeight to avoid calling InitChainSync within the manager
 	// And updating the state according to the genesis.
@@ -234,13 +249,18 @@ func getManager(settlementlc settlement.LayerClient, genesisHeight int64, storeI
 	}
 	_ = initSettlementLayerMock(settlementlc, defaultBatchSize, uint64(state.LastBlockHeight), uint64(state.LastBlockHeight)+1, pubsubServer, logger)
 
+	if dalc == nil {
+		dalc = &mockda.DataAvailabilityLayerClient{}
+	}
+	initDALCMock(dalc, conf.DABlockTime, logger)
+
 	proxyApp := testutil.GetABCIProxyAppMock(logger.With("module", "proxy"))
 	if err := proxyApp.Start(); err != nil {
 		return nil, err
 	}
 
 	mp := mempoolv1.NewTxMempool(logger, tmcfg.DefaultMempoolConfig(), proxyApp.Mempool(), 0)
-	manager, err := NewManager(key, conf, genesis, store, mp, proxyApp.Consensus(), getMockDALC(conf.DABlockTime, logger), settlementlc, nil, pubsubServer, logger)
+	manager, err := NewManager(key, conf, genesis, store, mp, proxyApp.Consensus(), dalc, settlementlc, nil, pubsubServer, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -250,9 +270,14 @@ func getManager(settlementlc settlement.LayerClient, genesisHeight int64, storeI
 // TODO(omritoptix): Possible move out to a generic testutil
 func getMockDALC(daBlockTime time.Duration, logger log.Logger) da.DataAvailabilityLayerClient {
 	dalc := &mockda.DataAvailabilityLayerClient{}
+	initDALCMock(dalc, daBlockTime, logger)
+	return dalc
+}
+
+// TODO(omritoptix): Possible move out to a generic testutil
+func initDALCMock(dalc da.DataAvailabilityLayerClient, daBlockTime time.Duration, logger log.Logger) {
 	_ = dalc.Init([]byte(daBlockTime.String()), store.NewDefaultInMemoryKVStore(), logger)
 	_ = dalc.Start()
-	return dalc
 }
 
 // TODO(omritoptix): Possible move out to a generic testutil
@@ -286,4 +311,12 @@ func (s *SettlementLayerClientSubmitBatchError) SubmitBatch(_ *types.Batch, _ *d
 	return &settlement.ResultSubmitBatch{
 		BaseResult: settlement.BaseResult{Code: settlement.StatusError, Message: "Connection refused"},
 	}
+}
+
+type DALayerClientSubmitBatchError struct {
+	mockda.DataAvailabilityLayerClient
+}
+
+func (s *DALayerClientSubmitBatchError) SubmitBatch(_ *types.Batch) da.ResultSubmitBatch {
+	return da.ResultSubmitBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: "Connection refused"}}
 }
