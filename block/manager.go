@@ -581,13 +581,16 @@ func (m *Manager) submitNextBatch(ctx context.Context) {
 	}
 
 	// Submit batch to the DA
-	resultSubmitToDA := m.submitBatchToDA(ctx, nextBatch)
+	resultSubmitToDA, err := m.submitBatchToDA(ctx, nextBatch)
+	if err != nil {
+		m.logger.Error("Failed to submit next batch to DA Layer", "startHeight", startHeight, "endHeight", endHeight, "error", err)
+		return
+	}
 
 	// Submit batch to SL
 	// TODO(omritoptix): Handle a case where the SL submission fails due to syncTarget out of sync with the latestHeight in the SL.
 	// In that case we'll want to update the syncTarget before returning.
 	m.submitBatchToSL(ctx, nextBatch, resultSubmitToDA)
-
 }
 
 func (m *Manager) updateStateIndex(stateIndex uint64) error {
@@ -645,7 +648,7 @@ func (m *Manager) submitBatchToSL(ctx context.Context, batch *types.Batch, resul
 	return resultSubmitToSL
 }
 
-func (m *Manager) submitBatchToDA(ctx context.Context, batch *types.Batch) *da.ResultSubmitBatch {
+func (m *Manager) submitBatchToDA(ctx context.Context, batch *types.Batch) (*da.ResultSubmitBatch, error) {
 	var res da.ResultSubmitBatch
 	err := retry.Do(func() error {
 		res = m.dalc.SubmitBatch(batch)
@@ -655,10 +658,9 @@ func (m *Manager) submitBatchToDA(ctx context.Context, batch *types.Batch) *da.R
 		return nil
 	}, retry.Context(ctx), retry.LastErrorOnly(true))
 	if err != nil {
-		m.logger.Error("Failed to submit next batch to DA Layer", batch, err)
-		panic(err)
+		return nil, err
 	}
-	return &res
+	return &res, nil
 }
 
 // TODO(omritoptix): possible remove this method from the manager
