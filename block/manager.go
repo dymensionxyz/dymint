@@ -65,8 +65,6 @@ type Manager struct {
 	blockInCh chan newBlockEvent
 	syncCache map[uint64]*types.Block
 
-	submitBatchErrorCh chan error
-
 	logger log.Logger
 }
 
@@ -136,13 +134,12 @@ func NewManager(
 		settlementClient: settlementClient,
 		retriever:        dalc.(da.BatchRetriever),
 		// channels are buffered to avoid blocking on input/output operations, buffer sizes are arbitrary
-		syncTargetDiode:    diodes.NewOneToOne(1, nil),
-		blockInCh:          make(chan newBlockEvent, 100),
-		submitBatchErrorCh: make(chan error),
-		syncCache:          make(map[uint64]*types.Block),
-		isSyncedCond:       *sync.NewCond(new(sync.Mutex)),
-		batchInProcess:     batchInProcess,
-		logger:             logger,
+		syncTargetDiode: diodes.NewOneToOne(1, nil),
+		blockInCh:       make(chan newBlockEvent, 100),
+		syncCache:       make(map[uint64]*types.Block),
+		isSyncedCond:    *sync.NewCond(new(sync.Mutex)),
+		batchInProcess:  batchInProcess,
+		logger:          logger,
 	}
 
 	return agg, nil
