@@ -95,7 +95,7 @@ func TestInitialState(t *testing.T) {
 // 3. Validate blocks are not produced.
 func TestWaitUntilSynced(t *testing.T) {
 	storeLastBlockHeight := uint64(0)
-	manager, err := getManager(1, 1, int64(storeLastBlockHeight))
+	manager, err := getManager(nil, nil, 1, 1, int64(storeLastBlockHeight))
 	require.NoError(t, err)
 	require.NotNil(t, manager)
 
@@ -144,7 +144,7 @@ func TestWaitUntilSynced(t *testing.T) {
 // 2. Sync the manager
 // 3. Validate blocks are produced.
 func TestPublishAfterSynced(t *testing.T) {
-	manager, err := getManager(1, 1, 0)
+	manager, err := getManager(nil, nil, 1, 1, 0)
 	require.NoError(t, err)
 	require.NotNil(t, manager)
 
@@ -207,7 +207,7 @@ func (s *FailureSettlementLayerClient) SubmitBatch(_ *types.Batch, _ *da.ResultS
 }
 
 func TestPublishWhenSettlementLayerDisconnected(t *testing.T) {
-	manager, err := getManagerWithCustomLayers(1, 1, 0, &FailureSettlementLayerClient{}, nil)
+	manager, err := getManager(&FailureSettlementLayerClient{}, nil, 1, 1, 0)
 	retry.DefaultAttempts = 2
 	require.NoError(t, err)
 	require.NotNil(t, manager)
@@ -233,7 +233,7 @@ func (s *FailureDALayerClient) SubmitBatch(_ *types.Batch) da.ResultSubmitBatch 
 }
 
 func TestPublishWhenDALayerDisconnected(t *testing.T) {
-	manager, err := getManagerWithCustomLayers(1, 1, 0, nil, &FailureDALayerClient{})
+	manager, err := getManager(nil, &FailureDALayerClient{}, 1, 1, 0)
 	retry.DefaultAttempts = 2
 	require.NoError(t, err)
 	require.NotNil(t, manager)
@@ -248,11 +248,7 @@ func TestPublishWhenDALayerDisconnected(t *testing.T) {
 	})
 }
 
-func getManager(genesisHeight int64, storeInitialHeight int64, storeLastBlockHeight int64) (*Manager, error) {
-	return getManagerWithCustomLayers(genesisHeight, storeInitialHeight, storeLastBlockHeight, nil, nil)
-}
-
-func getManagerWithCustomLayers(genesisHeight int64, storeInitialHeight int64, storeLastBlockHeight int64, settlementlc settlement.LayerClient, dalc da.DataAvailabilityLayerClient) (*Manager, error) {
+func getManager(settlementlc settlement.LayerClient, dalc da.DataAvailabilityLayerClient, genesisHeight int64, storeInitialHeight int64, storeLastBlockHeight int64) (*Manager, error) {
 	genesis := testutil.GenerateGenesis(genesisHeight)
 	// Change the LastBlockHeight to avoid calling InitChainSync within the manager
 	// And updating the state according to the genesis.
