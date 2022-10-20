@@ -77,6 +77,7 @@ func TestInitialState(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			assert := assert.New(t)
+
 			dalc := getMockDALC(100*time.Second, logger)
 			agg, err := NewManager(key, conf, c.genesis, c.store, nil, nil, dalc, settlementlc, nil, pubsubServer, logger)
 			assert.NoError(err)
@@ -199,16 +200,14 @@ type FailureSettlementLayerClient struct {
 	slmock.SettlementLayerClient
 }
 
-// SubmitBatch submits the batch to the settlement layer. This should create a transaction which (potentially)
-// triggers a state transition in the settlement layer.
 func (s *FailureSettlementLayerClient) SubmitBatch(_ *types.Batch, _ *da.ResultSubmitBatch) *settlement.ResultSubmitBatch {
 	return &settlement.ResultSubmitBatch{
 		BaseResult: settlement.BaseResult{Code: settlement.StatusError, Message: "Connection refused"},
 	}
 }
 
-func TestPublishWhenSettlementDisconnected(t *testing.T) {
-	manager, err := getManagerWithCustomSettlementLayer(&FailureSettlementLayerClient{}, 1, 1, 0)
+func TestPublishWhenSettlementLayerDisconnected(t *testing.T) {
+	manager, err := getManagerWithCustomLayers(1, 1, 0, &FailureSettlementLayerClient{}, nil)
 	retry.DefaultAttempts = 2
 	require.NoError(t, err)
 	require.NotNil(t, manager)
@@ -219,18 +218,41 @@ func TestPublishWhenSettlementDisconnected(t *testing.T) {
 	assert.Equal(t, daResultSubmitBatch.Code, da.StatusSuccess)
 	resultSubmitBatch := manager.settlementClient.SubmitBatch(batch, &daResultSubmitBatch)
 	assert.Equal(t, resultSubmitBatch.Code, settlement.StatusError)
-	nextBatchStartHeight = batch.EndHeight + 1
 
-	_, err = manager.submitBatchToSL(context.Background(), nil, nil)
-	assert.EqualError(t, err, "failed to submit batch to SL layer: Connection refused")
+	assert.PanicsWithError(t, "failed to submit batch to SL layer: Connection refused", func() {
+		manager.submitBatchToSL(context.Background(), nil, nil)
+	})
+}
+
+type FailureDALayerClient struct {
+	mockda.DataAvailabilityLayerClient
+}
+
+func (s *FailureDALayerClient) SubmitBatch(_ *types.Batch) da.ResultSubmitBatch {
+	return da.ResultSubmitBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: "Connection refused"}}
+}
+
+func TestPublishWhenDALayerDisconnected(t *testing.T) {
+	manager, err := getManagerWithCustomLayers(1, 1, 0, nil, &FailureDALayerClient{})
+	retry.DefaultAttempts = 2
+	require.NoError(t, err)
+	require.NotNil(t, manager)
+
+	nextBatchStartHeight := atomic.LoadUint64(&manager.syncTarget) + 1
+	var batch = testutil.GenerateBatch(nextBatchStartHeight, nextBatchStartHeight+uint64(defaultBatchSize-1))
+	daResultSubmitBatch := manager.dalc.SubmitBatch(batch)
+	assert.Equal(t, daResultSubmitBatch.Code, da.StatusError)
+
+	assert.PanicsWithError(t, "failed to submit batch to DA layer: Connection refused", func() {
+		manager.submitBatchToDA(context.Background(), nil)
+	})
 }
 
 func getManager(genesisHeight int64, storeInitialHeight int64, storeLastBlockHeight int64) (*Manager, error) {
-	settlementlc := slregistry.GetClient(slregistry.ClientMock)
-	return getManagerWithCustomSettlementLayer(settlementlc, genesisHeight, storeInitialHeight, storeLastBlockHeight)
+	return getManagerWithCustomLayers(genesisHeight, storeInitialHeight, storeLastBlockHeight, nil, nil)
 }
 
-func getManagerWithCustomSettlementLayer(settlementlc settlement.LayerClient, genesisHeight int64, storeInitialHeight int64, storeLastBlockHeight int64) (*Manager, error) {
+func getManagerWithCustomLayers(genesisHeight int64, storeInitialHeight int64, storeLastBlockHeight int64, settlementlc settlement.LayerClient, dalc da.DataAvailabilityLayerClient) (*Manager, error) {
 	genesis := testutil.GenerateGenesis(genesisHeight)
 	// Change the LastBlockHeight to avoid calling InitChainSync within the manager
 	// And updating the state according to the genesis.
@@ -245,13 +267,23 @@ func getManagerWithCustomSettlementLayer(settlementlc settlement.LayerClient, ge
 	pubsubServer := pubsub.NewServer()
 	pubsubServer.Start()
 
+	if settlementlc == nil {
+		settlementlc = slregistry.GetClient(slregistry.ClientMock)
+	}
 	_ = initSettlementLayerMock(settlementlc, defaultBatchSize, uint64(state.LastBlockHeight), uint64(state.LastBlockHeight)+1, pubsubServer, logger)
+
+	if dalc == nil {
+		dalc = &mockda.DataAvailabilityLayerClient{}
+	}
+	initDALCMock(dalc, conf.DABlockTime, logger)
+
 	proxyApp := testutil.GetABCIProxyAppMock(logger.With("module", "proxy"))
 	if err := proxyApp.Start(); err != nil {
 		return nil, err
 	}
+
 	mp := mempoolv1.NewTxMempool(logger, tmcfg.DefaultMempoolConfig(), proxyApp.Mempool(), 0)
-	manager, err := NewManager(key, conf, genesis, store, mp, proxyApp.Consensus(), getMockDALC(conf.DABlockTime, logger), settlementlc, nil, pubsubServer, logger)
+	manager, err := NewManager(key, conf, genesis, store, mp, proxyApp.Consensus(), dalc, settlementlc, nil, pubsubServer, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -261,9 +293,14 @@ func getManagerWithCustomSettlementLayer(settlementlc settlement.LayerClient, ge
 // TODO(omritoptix): Possible move out to a generic testutil
 func getMockDALC(daBlockTime time.Duration, logger log.Logger) da.DataAvailabilityLayerClient {
 	dalc := &mockda.DataAvailabilityLayerClient{}
+	initDALCMock(dalc, daBlockTime, logger)
+	return dalc
+}
+
+// TODO(omritoptix): Possible move out to a generic testutil
+func initDALCMock(dalc da.DataAvailabilityLayerClient, daBlockTime time.Duration, logger log.Logger) {
 	_ = dalc.Init([]byte(daBlockTime.String()), store.NewDefaultInMemoryKVStore(), logger)
 	_ = dalc.Start()
-	return dalc
 }
 
 // TODO(omritoptix): Possible move out to a generic testutil
