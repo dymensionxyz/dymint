@@ -196,18 +196,8 @@ func TestPublishAfterSynced(t *testing.T) {
 	}
 }
 
-type FailureSettlementLayerClient struct {
-	slmock.SettlementLayerClient
-}
-
-func (s *FailureSettlementLayerClient) SubmitBatch(_ *types.Batch, _ *da.ResultSubmitBatch) *settlement.ResultSubmitBatch {
-	return &settlement.ResultSubmitBatch{
-		BaseResult: settlement.BaseResult{Code: settlement.StatusError, Message: "Connection refused"},
-	}
-}
-
 func TestPublishWhenSettlementLayerDisconnected(t *testing.T) {
-	manager, err := getManager(&FailureSettlementLayerClient{}, nil, 1, 1, 0)
+	manager, err := getManager(&SettlementLayerClientSubmitBatchError{}, nil, 1, 1, 0)
 	retry.DefaultAttempts = 2
 	require.NoError(t, err)
 	require.NotNil(t, manager)
@@ -224,16 +214,8 @@ func TestPublishWhenSettlementLayerDisconnected(t *testing.T) {
 	})
 }
 
-type FailureDALayerClient struct {
-	mockda.DataAvailabilityLayerClient
-}
-
-func (s *FailureDALayerClient) SubmitBatch(_ *types.Batch) da.ResultSubmitBatch {
-	return da.ResultSubmitBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: "Connection refused"}}
-}
-
 func TestPublishWhenDALayerDisconnected(t *testing.T) {
-	manager, err := getManager(nil, &FailureDALayerClient{}, 1, 1, 0)
+	manager, err := getManager(nil, &DALayerClientSubmitBatchError{}, 1, 1, 0)
 	retry.DefaultAttempts = 2
 	require.NoError(t, err)
 	require.NotNil(t, manager)
@@ -320,4 +302,22 @@ func getManagerConfig() config.BlockManagerConfig {
 		DAStartHeight:     0,
 		NamespaceID:       [8]byte{1, 2, 3, 4, 5, 6, 7, 8},
 	}
+}
+
+type SettlementLayerClientSubmitBatchError struct {
+	slmock.SettlementLayerClient
+}
+
+func (s *SettlementLayerClientSubmitBatchError) SubmitBatch(_ *types.Batch, _ *da.ResultSubmitBatch) *settlement.ResultSubmitBatch {
+	return &settlement.ResultSubmitBatch{
+		BaseResult: settlement.BaseResult{Code: settlement.StatusError, Message: "Connection refused"},
+	}
+}
+
+type DALayerClientSubmitBatchError struct {
+	mockda.DataAvailabilityLayerClient
+}
+
+func (s *DALayerClientSubmitBatchError) SubmitBatch(_ *types.Batch) da.ResultSubmitBatch {
+	return da.ResultSubmitBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: "Connection refused"}}
 }
