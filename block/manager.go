@@ -229,7 +229,7 @@ func (m *Manager) PublishBlockLoop(ctx context.Context) {
 	if m.conf.BlockTime == 0 {
 		publishLoopCh <- true
 	} else {
-		ticker = time.NewTicker(time.Duration(m.conf.BlockTime))
+		ticker = time.NewTicker(m.conf.BlockTime)
 		defer ticker.Stop()
 	}
 	// The func to invoke upon block publish
@@ -579,20 +579,18 @@ func (m *Manager) submitNextBatch(ctx context.Context) {
 		m.logger.Error("Failed to create next batch", "startHeight", startHeight, "endHeight", endHeight, "error", err)
 		return
 	}
+
 	// Submit batch to the DA
 	resultSubmitToDA, err := m.submitBatchToDA(ctx, nextBatch)
 	if err != nil {
 		m.logger.Error("Failed to submit next batch to DA Layer", "startHeight", startHeight, "endHeight", endHeight, "error", err)
 		return
 	}
+
 	// Submit batch to SL
 	// TODO(omritoptix): Handle a case where the SL submission fails due to syncTarget out of sync with the latestHeight in the SL.
 	// In that case we'll want to update the syncTarget before returning.
-	_, err = m.submitBatchToSL(ctx, nextBatch, resultSubmitToDA)
-	if err != nil {
-		m.logger.Error("Failed to submit next batch to SL Layer", "startHeight", startHeight, "endHeight", endHeight, "error", err)
-		return
-	}
+	m.submitBatchToSL(ctx, nextBatch, resultSubmitToDA)
 }
 
 func (m *Manager) updateStateIndex(stateIndex uint64) error {
@@ -632,7 +630,7 @@ func (m *Manager) createNextDABatch(startHeight uint64, endHeight uint64) (*type
 	return batch, nil
 }
 
-func (m *Manager) submitBatchToSL(ctx context.Context, batch *types.Batch, resultSubmitToDA *da.ResultSubmitBatch) (*settlement.ResultSubmitBatch, error) {
+func (m *Manager) submitBatchToSL(ctx context.Context, batch *types.Batch, resultSubmitToDA *da.ResultSubmitBatch) *settlement.ResultSubmitBatch {
 	var resultSubmitToSL *settlement.ResultSubmitBatch
 	// Submit batch to SL
 	err := retry.Do(func() error {
@@ -644,9 +642,10 @@ func (m *Manager) submitBatchToSL(ctx context.Context, batch *types.Batch, resul
 		return nil
 	}, retry.Context(ctx), retry.LastErrorOnly(true))
 	if err != nil {
-		return nil, err
+		m.logger.Error("Failed to submit batch to SL Layer", batch, err)
+		panic(err)
 	}
-	return resultSubmitToSL, nil
+	return resultSubmitToSL
 }
 
 func (m *Manager) submitBatchToDA(ctx context.Context, batch *types.Batch) (*da.ResultSubmitBatch, error) {

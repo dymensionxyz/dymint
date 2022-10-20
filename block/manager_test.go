@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
+	"github.com/avast/retry-go"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -76,6 +77,7 @@ func TestInitialState(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			assert := assert.New(t)
+
 			dalc := getMockDALC(100*time.Second, logger)
 			agg, err := NewManager(key, conf, c.genesis, c.store, nil, nil, dalc, settlementlc, nil, pubsubServer, logger)
 			assert.NoError(err)
@@ -93,7 +95,7 @@ func TestInitialState(t *testing.T) {
 // 3. Validate blocks are not produced.
 func TestWaitUntilSynced(t *testing.T) {
 	storeLastBlockHeight := uint64(0)
-	manager, err := getManager(1, 1, int64(storeLastBlockHeight))
+	manager, err := getManager(nil, nil, 1, 1, int64(storeLastBlockHeight))
 	require.NoError(t, err)
 	require.NotNil(t, manager)
 
@@ -142,7 +144,7 @@ func TestWaitUntilSynced(t *testing.T) {
 // 2. Sync the manager
 // 3. Validate blocks are produced.
 func TestPublishAfterSynced(t *testing.T) {
-	manager, err := getManager(1, 1, 0)
+	manager, err := getManager(nil, nil, 1, 1, 0)
 	require.NoError(t, err)
 	require.NotNil(t, manager)
 
@@ -192,10 +194,42 @@ func TestPublishAfterSynced(t *testing.T) {
 	case <-ctx.Done():
 		assert.Greater(t, manager.store.Height(), batch.EndHeight)
 	}
-
 }
 
-func getManager(genesisHeight int64, storeInitialHeight int64, storeLastBlockHeight int64) (*Manager, error) {
+func TestPublishWhenSettlementLayerDisconnected(t *testing.T) {
+	manager, err := getManager(&SettlementLayerClientSubmitBatchError{}, nil, 1, 1, 0)
+	retry.DefaultAttempts = 2
+	require.NoError(t, err)
+	require.NotNil(t, manager)
+
+	nextBatchStartHeight := atomic.LoadUint64(&manager.syncTarget) + 1
+	var batch = testutil.GenerateBatch(nextBatchStartHeight, nextBatchStartHeight+uint64(defaultBatchSize-1))
+	daResultSubmitBatch := manager.dalc.SubmitBatch(batch)
+	assert.Equal(t, daResultSubmitBatch.Code, da.StatusSuccess)
+	resultSubmitBatch := manager.settlementClient.SubmitBatch(batch, &daResultSubmitBatch)
+	assert.Equal(t, resultSubmitBatch.Code, settlement.StatusError)
+
+	assert.PanicsWithError(t, "failed to submit batch to SL layer: Connection refused", func() {
+		manager.submitBatchToSL(context.Background(), nil, nil)
+	})
+}
+
+func TestPublishWhenDALayerDisconnected(t *testing.T) {
+	manager, err := getManager(nil, &DALayerClientSubmitBatchError{}, 1, 1, 0)
+	retry.DefaultAttempts = 2
+	require.NoError(t, err)
+	require.NotNil(t, manager)
+
+	nextBatchStartHeight := atomic.LoadUint64(&manager.syncTarget) + 1
+	var batch = testutil.GenerateBatch(nextBatchStartHeight, nextBatchStartHeight+uint64(defaultBatchSize-1))
+	daResultSubmitBatch := manager.dalc.SubmitBatch(batch)
+	assert.Equal(t, daResultSubmitBatch.Code, da.StatusError)
+
+	_, err = manager.submitBatchToDA(context.Background(), nil)
+	assert.EqualError(t, err, "failed to submit batch to DA layer: Connection refused")
+}
+
+func getManager(settlementlc settlement.LayerClient, dalc da.DataAvailabilityLayerClient, genesisHeight int64, storeInitialHeight int64, storeLastBlockHeight int64) (*Manager, error) {
 	genesis := testutil.GenerateGenesis(genesisHeight)
 	// Change the LastBlockHeight to avoid calling InitChainSync within the manager
 	// And updating the state according to the genesis.
@@ -209,13 +243,24 @@ func getManager(genesisHeight int64, storeInitialHeight int64, storeLastBlockHei
 	logger := log.TestingLogger()
 	pubsubServer := pubsub.NewServer()
 	pubsubServer.Start()
-	settlementlc := getSettlementLayerMock(defaultBatchSize, uint64(state.LastBlockHeight), uint64(state.LastBlockHeight)+1, pubsubServer, logger)
+
+	if settlementlc == nil {
+		settlementlc = slregistry.GetClient(slregistry.ClientMock)
+	}
+	_ = initSettlementLayerMock(settlementlc, defaultBatchSize, uint64(state.LastBlockHeight), uint64(state.LastBlockHeight)+1, pubsubServer, logger)
+
+	if dalc == nil {
+		dalc = &mockda.DataAvailabilityLayerClient{}
+	}
+	initDALCMock(dalc, conf.DABlockTime, logger)
+
 	proxyApp := testutil.GetABCIProxyAppMock(logger.With("module", "proxy"))
 	if err := proxyApp.Start(); err != nil {
 		return nil, err
 	}
+
 	mp := mempoolv1.NewTxMempool(logger, tmcfg.DefaultMempoolConfig(), proxyApp.Mempool(), 0)
-	manager, err := NewManager(key, conf, genesis, store, mp, proxyApp.Consensus(), getMockDALC(conf.DABlockTime, logger), settlementlc, nil, pubsubServer, logger)
+	manager, err := NewManager(key, conf, genesis, store, mp, proxyApp.Consensus(), dalc, settlementlc, nil, pubsubServer, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -225,13 +270,18 @@ func getManager(genesisHeight int64, storeInitialHeight int64, storeLastBlockHei
 // TODO(omritoptix): Possible move out to a generic testutil
 func getMockDALC(daBlockTime time.Duration, logger log.Logger) da.DataAvailabilityLayerClient {
 	dalc := &mockda.DataAvailabilityLayerClient{}
-	_ = dalc.Init([]byte(daBlockTime.String()), store.NewDefaultInMemoryKVStore(), logger)
-	_ = dalc.Start()
+	initDALCMock(dalc, daBlockTime, logger)
 	return dalc
 }
 
 // TODO(omritoptix): Possible move out to a generic testutil
-func getSettlementLayerMock(batchSize uint64, latestHeight uint64, batchOffsetHeight uint64, pubsubServer *pubsub.Server, logger log.Logger) settlement.LayerClient {
+func initDALCMock(dalc da.DataAvailabilityLayerClient, daBlockTime time.Duration, logger log.Logger) {
+	_ = dalc.Init([]byte(daBlockTime.String()), store.NewDefaultInMemoryKVStore(), logger)
+	_ = dalc.Start()
+}
+
+// TODO(omritoptix): Possible move out to a generic testutil
+func initSettlementLayerMock(settlementlc settlement.LayerClient, batchSize uint64, latestHeight uint64, batchOffsetHeight uint64, pubsubServer *pubsub.Server, logger log.Logger) error {
 	conf := slmock.Config{
 		AutoUpdateBatches: false,
 		BatchSize:         batchSize,
@@ -239,9 +289,7 @@ func getSettlementLayerMock(batchSize uint64, latestHeight uint64, batchOffsetHe
 		BatchOffsetHeight: batchOffsetHeight,
 	}
 	byteconf, _ := json.Marshal(conf)
-	settlementlc := slregistry.GetClient(slregistry.ClientMock)
-	_ = settlementlc.Init(byteconf, pubsubServer, logger)
-	return settlementlc
+	return settlementlc.Init(byteconf, pubsubServer, logger)
 }
 
 func getManagerConfig() config.BlockManagerConfig {
@@ -253,4 +301,22 @@ func getManagerConfig() config.BlockManagerConfig {
 		DAStartHeight:     0,
 		NamespaceID:       [8]byte{1, 2, 3, 4, 5, 6, 7, 8},
 	}
+}
+
+type SettlementLayerClientSubmitBatchError struct {
+	slmock.SettlementLayerClient
+}
+
+func (s *SettlementLayerClientSubmitBatchError) SubmitBatch(_ *types.Batch, _ *da.ResultSubmitBatch) *settlement.ResultSubmitBatch {
+	return &settlement.ResultSubmitBatch{
+		BaseResult: settlement.BaseResult{Code: settlement.StatusError, Message: "Connection refused"},
+	}
+}
+
+type DALayerClientSubmitBatchError struct {
+	mockda.DataAvailabilityLayerClient
+}
+
+func (s *DALayerClientSubmitBatchError) SubmitBatch(_ *types.Batch) da.ResultSubmitBatch {
+	return da.ResultSubmitBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: "Connection refused"}}
 }
