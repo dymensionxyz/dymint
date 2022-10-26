@@ -229,6 +229,15 @@ func TestPublishWhenDALayerDisconnected(t *testing.T) {
 	assert.EqualError(t, err, "failed to submit batch to DA layer: Connection refused")
 }
 
+func TestRetrieveDaBatchesFailed(t *testing.T) {
+	manager, err := getManager(nil, &DALayerClientRetrieveBatchesError{}, 1, 1, 0)
+	require.NoError(t, err)
+	require.NotNil(t, manager)
+
+	err = manager.processNextDABatch(context.Background(), 1)
+	assert.EqualError(t, err, "failed to retrieve batch: batch not found")
+}
+
 func getManager(settlementlc settlement.LayerClient, dalc da.DataAvailabilityLayerClient, genesisHeight int64, storeInitialHeight int64, storeLastBlockHeight int64) (*Manager, error) {
 	genesis := testutil.GenerateGenesis(genesisHeight)
 	// Change the LastBlockHeight to avoid calling InitChainSync within the manager
@@ -319,4 +328,12 @@ type DALayerClientSubmitBatchError struct {
 
 func (s *DALayerClientSubmitBatchError) SubmitBatch(_ *types.Batch) da.ResultSubmitBatch {
 	return da.ResultSubmitBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: "Connection refused"}}
+}
+
+type DALayerClientRetrieveBatchesError struct {
+	mockda.DataAvailabilityLayerClient
+}
+
+func (m *DALayerClientRetrieveBatchesError) RetrieveBatches(_ uint64) da.ResultRetrieveBatch {
+	return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: "batch not found"}}
 }
