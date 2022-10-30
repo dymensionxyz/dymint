@@ -30,6 +30,8 @@ import (
 )
 
 const defaultBatchSize = 5
+const connectionRefusedErrorMessage = "connection refused"
+const batchNotFoundErrorMessage = "batch not found"
 
 func TestInitialState(t *testing.T) {
 	genesis := testutil.GenerateGenesis(123)
@@ -209,9 +211,11 @@ func TestPublishWhenSettlementLayerDisconnected(t *testing.T) {
 	resultSubmitBatch := manager.settlementClient.SubmitBatch(batch, &daResultSubmitBatch)
 	assert.Equal(t, resultSubmitBatch.Code, settlement.StatusError)
 
-	assert.PanicsWithError(t, "failed to submit batch to SL layer: Connection refused", func() {
-		manager.submitBatchToSL(context.Background(), nil, nil)
-	})
+	defer func() {
+		err := recover().(error)
+		assert.ErrorContains(t, err, connectionRefusedErrorMessage)
+	}()
+	manager.submitBatchToSL(context.Background(), nil, nil)
 }
 
 func TestPublishWhenDALayerDisconnected(t *testing.T) {
@@ -226,7 +230,16 @@ func TestPublishWhenDALayerDisconnected(t *testing.T) {
 	assert.Equal(t, daResultSubmitBatch.Code, da.StatusError)
 
 	_, err = manager.submitBatchToDA(context.Background(), nil)
-	assert.EqualError(t, err, "failed to submit batch to DA layer: Connection refused")
+	assert.ErrorContains(t, err, connectionRefusedErrorMessage)
+}
+
+func TestRetrieveDaBatchesFailed(t *testing.T) {
+	manager, err := getManager(nil, &DALayerClientRetrieveBatchesError{}, 1, 1, 0)
+	require.NoError(t, err)
+	require.NotNil(t, manager)
+
+	err = manager.processNextDABatch(context.Background(), 1)
+	assert.ErrorContains(t, err, batchNotFoundErrorMessage)
 }
 
 func getManager(settlementlc settlement.LayerClient, dalc da.DataAvailabilityLayerClient, genesisHeight int64, storeInitialHeight int64, storeLastBlockHeight int64) (*Manager, error) {
@@ -309,7 +322,7 @@ type SettlementLayerClientSubmitBatchError struct {
 
 func (s *SettlementLayerClientSubmitBatchError) SubmitBatch(_ *types.Batch, _ *da.ResultSubmitBatch) *settlement.ResultSubmitBatch {
 	return &settlement.ResultSubmitBatch{
-		BaseResult: settlement.BaseResult{Code: settlement.StatusError, Message: "Connection refused"},
+		BaseResult: settlement.BaseResult{Code: settlement.StatusError, Message: connectionRefusedErrorMessage},
 	}
 }
 
@@ -318,5 +331,13 @@ type DALayerClientSubmitBatchError struct {
 }
 
 func (s *DALayerClientSubmitBatchError) SubmitBatch(_ *types.Batch) da.ResultSubmitBatch {
-	return da.ResultSubmitBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: "Connection refused"}}
+	return da.ResultSubmitBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: connectionRefusedErrorMessage}}
+}
+
+type DALayerClientRetrieveBatchesError struct {
+	mockda.DataAvailabilityLayerClient
+}
+
+func (m *DALayerClientRetrieveBatchesError) RetrieveBatches(_ uint64) da.ResultRetrieveBatch {
+	return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: batchNotFoundErrorMessage}}
 }
