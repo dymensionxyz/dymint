@@ -561,6 +561,7 @@ func (m *Manager) publishBlock(ctx context.Context) error {
 	syncTarget := atomic.LoadUint64(&m.syncTarget)
 	currentBlockHeight := block.Header.Height
 	if currentBlockHeight > syncTarget && currentBlockHeight-syncTarget >= m.conf.BlockBatchSize && m.batchInProcess.Load() == false {
+		m.batchInProcess.Store(true)
 		go m.submitNextBatch(ctx)
 	}
 
@@ -568,7 +569,6 @@ func (m *Manager) publishBlock(ctx context.Context) error {
 }
 
 func (m *Manager) submitNextBatch(ctx context.Context) {
-	m.batchInProcess.Store(true)
 	// Get the batch start and end height
 	startHeight := atomic.LoadUint64(&m.syncTarget) + 1
 	endHeight := startHeight + m.conf.BlockBatchSize - 1
