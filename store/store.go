@@ -60,6 +60,7 @@ func (s *DefaultStore) Height() uint64 {
 
 // SaveBlock adds block to the store along with corresponding commit.
 // Stored height is updated if block height is greater than stored value.
+// In case a batch is provided, the block and commit are added to the batch and not saved.
 func (s *DefaultStore) SaveBlock(block *types.Block, commit *types.Commit, batch Batch) (Batch, error) {
 	hash := block.Header.Hash()
 	blockBlob, err := block.MarshalBinary()

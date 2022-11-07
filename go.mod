@@ -36,8 +36,12 @@ require golang.org/x/exp v0.0.0-20220722155223-a9213eeb770e // indirect
 
 require (
 	github.com/99designs/go-keychain v0.0.0-20191008050251-8e49817e8af4 // indirect
+	github.com/Workiva/go-datastructures v1.0.53 // indirect
 	github.com/blang/semver v3.5.1+incompatible // indirect
+	github.com/creachadair/taskgroup v0.3.2 // indirect
 	github.com/ghodss/yaml v1.0.0 // indirect
+	github.com/lib/pq v1.10.6 // indirect
+	github.com/minio/highwayhash v1.0.2 // indirect
 )
 
 require (
