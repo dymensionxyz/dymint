@@ -22,6 +22,11 @@ const (
 	flagBlockBatchSize    = "dymint.block_batch_size"
 )
 
+var (
+	// DefaultDymintDir is the default directory for dymint
+	DefaultDymintDir = ".dymint"
+)
+
 // NodeConfig stores Dymint node configuration.
 type NodeConfig struct {
 	// parameters below are translated from existing config
