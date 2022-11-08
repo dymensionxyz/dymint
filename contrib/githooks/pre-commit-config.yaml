@@ -109,7 +109,7 @@ repos:
   rev: master
   hooks:
     - id: validate-toml
-- repo: https://github.com/jumanjihouse/pre-commit-hooks
+- repo: https://github.com/igorshubovych/markdownlint-cli
   rev: master
   hooks:
     - id: markdownlint
