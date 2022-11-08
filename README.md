@@ -1,6 +1,6 @@
 # Dymint
 
-<img src="docs/dymint.png" alt="banner" width="830"/> <!-- markdownlint-disable -->
+<img src="docs/dymint.png" alt="banner" width="830"/>
 
 ABCI-client implementation for dYmenion's autonomous RollApp forked from [celestiaorg/optimint](https://github.com/celestiaorg/optimint).
 
