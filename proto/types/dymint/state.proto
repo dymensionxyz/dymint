@@ -4,11 +4,11 @@ option go_package = "github.com/dymensionxyz/dymint/types/pb/dymint";
 
 import "gogoproto/gogo.proto";
 import "google/protobuf/timestamp.proto";
-import "tendermint/abci/types.proto";
-import "tendermint/types/types.proto";
-import "tendermint/types/validator.proto";
-import "tendermint/types/params.proto";
-import "tendermint/state/types.proto";
+import "types/tendermint/abci/types.proto";
+import "types/tendermint/types/types.proto";
+import "types/tendermint/types/validator.proto";
+import "types/tendermint/types/params.proto";
+import "types/tendermint/state/types.proto";
 
 
 message State {

@@ -2,7 +2,7 @@ syntax = "proto3";
 package dalc;
 option go_package = "github.com/dymensionxyz/dymint/types/pb/dalc";
 
-import "dymint/dymint.proto";
+import "types/dymint/dymint.proto";
 
 enum StatusCode {
 	STATUS_CODE_UNSPECIFIED = 0;
