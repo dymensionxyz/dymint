@@ -9,11 +9,13 @@ require (
 	github.com/dgraph-io/badger/v3 v3.2103.3
 	github.com/dymensionxyz/cosmosclient v0.1.2-alpha
 	github.com/go-kit/kit v0.12.0
+	github.com/gofrs/uuid v4.2.0+incompatible
 	github.com/gogo/protobuf v1.3.3
 	github.com/google/orderedcode v0.0.1
 	github.com/gorilla/mux v1.8.0
 	github.com/gorilla/rpc v1.2.0
 	github.com/gorilla/websocket v1.5.0
+	github.com/informalsystems/tm-load-test v1.0.0
 	github.com/ipfs/go-log v1.0.5
 	github.com/libp2p/go-libp2p v0.19.0
 	github.com/libp2p/go-libp2p-core v0.15.1
@@ -28,6 +30,7 @@ require (
 	github.com/tendermint/tendermint v0.34.21
 	go.uber.org/multierr v1.8.0
 	golang.org/x/net v0.0.0-20220923203811-8be639271d50
+	gonum.org/v1/gonum v0.12.0
 	google.golang.org/grpc v1.49.0
 	google.golang.org/protobuf v1.28.1
 )
@@ -42,6 +45,8 @@ require (
 	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/lib/pq v1.10.6 // indirect
 	github.com/minio/highwayhash v1.0.2 // indirect
+	github.com/satori/go.uuid v1.2.0 // indirect
+	github.com/sirupsen/logrus v1.9.0 // indirect
 )
 
 require (
@@ -90,7 +95,7 @@ require (
 	github.com/google/btree v1.0.1 // indirect
 	github.com/google/flatbuffers v1.12.1 // indirect
 	github.com/google/gopacket v1.1.19 // indirect
-	github.com/google/uuid v1.3.0 // indirect
+	github.com/google/uuid v1.3.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway v1.16.0 // indirect
 	github.com/gsterjov/go-libsecret v0.0.0-20161001094733-a6f4afe4910c // indirect
@@ -159,7 +164,7 @@ require (
 	github.com/miekg/dns v1.1.48 // indirect
 	github.com/mikioh/tcpinfo v0.0.0-20190314235526-30a79bb1804b // indirect
 	github.com/mikioh/tcpopt v0.0.0-20190314235656-172688c1accc // indirect
-	github.com/mimoo/StrobeGo v0.0.0-20181016162300-f8f6d4d2b643 // indirect
+	github.com/mimoo/StrobeGo v0.0.0-20210601165009-122bf33a46e0 // indirect
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1 // indirect
 	github.com/minio/sha256-simd v1.0.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
@@ -188,9 +193,9 @@ require (
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/raulk/clock v1.1.0 // indirect
 	github.com/raulk/go-watchdog v1.2.0 // indirect
-	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0 // indirect
+	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
 	github.com/regen-network/cosmos-proto v0.3.1 // indirect
-	github.com/sasha-s/go-deadlock v0.2.1-0.20190427202633-1595213edefa // indirect
+	github.com/sasha-s/go-deadlock v0.3.1 // indirect
 	github.com/spacemonkeygo/spacelog v0.0.0-20180420211403-2296661a0572 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
 	github.com/spf13/afero v1.8.2 // indirect

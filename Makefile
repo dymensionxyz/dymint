@@ -96,5 +96,5 @@ install:
 
 proto-gen:
 	@echo "Generating Protobuf files.."
-	$(shell ./proto/gen.sh)
+	./proto/gen.sh
 .PHONY: proto-gen

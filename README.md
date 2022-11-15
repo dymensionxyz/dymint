@@ -85,3 +85,9 @@ make install
 ```sh
 make proto-gen
 ```
+
+## Run tests
+
+```sh
+make test
+```
