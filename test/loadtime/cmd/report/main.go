@@ -103,11 +103,13 @@ func main() {
 			"\tRate: %d\n"+
 			"\tSize: %d\n\n"+
 			"\tTotal Valid Tx: %d\n"+
+			"\tAverage TPS: %d\n"+
+			"\tMaximum TPS: %d\n"+
 			"\tTotal Negative Latencies: %d\n"+
 			"\tMinimum Latency: %s\n"+
 			"\tMaximum Latency: %s\n"+
 			"\tAverage Latency: %s\n"+
-			"\tStandard Deviation: %s\n\n", r.ID, r.Connections, r.Rate, r.Size, len(r.All), r.NegativeCount, r.Min, r.Max, r.Avg, r.StdDev)
+			"\tStandard Deviation: %s\n\n", r.ID, r.Connections, r.Rate, r.Size, len(r.All), r.AverageTPS, r.MaxTPS, r.NegativeCount, r.Min, r.Max, r.Avg, r.StdDev)
 
 	}
 	fmt.Printf("Total Invalid Tx: %d\n", rs.ErrorCount())
