@@ -43,10 +43,8 @@ type Report struct {
 	// setup.
 	NegativeCount int
 
-	// max tps is calculated by deviding the block with the most transaction by the average block time
-	MaxTPS uint64
-	// average tps is calculated by deviding the total number of transactions by the total time of the blocks containing transactions
-	AverageTPS uint64
+	// TPS is calculated by taking the highest averaged TPS over all consecutive blocks
+	TPS uint64
 
 	// All contains all data points gathered from all valid transactions.
 	// The order of the contents of All is not guaranteed to be match the order of transactions
@@ -118,39 +116,43 @@ func (rs *Reports) calculateAll() {
 		}
 		r.Avg = time.Duration(r.sum / int64(len(r.All)))
 		r.StdDev = time.Duration(int64(stat.StdDev(toFloat(r.All), nil)))
-		r.AverageTPS, r.MaxTPS = calculateTPS(r.All)
+		r.TPS = calculateTPS(r.All)
 		rs.l = append(rs.l, r)
 	}
 }
 
-// calculateTPS calculates the max and average tps
-// max tps is calculated by deviding the block with the most transaction by the average block time
-// average tps is calculated by deviding the total number of transactions by the total time of the blocks containing transactions
-func calculateTPS(in []DataPoint) (uint64, uint64) {
+// calculateTPS calculates the TPS by calculating a average moving window with a minimum size of 1 second over all consecutive blocks
+func calculateTPS(in []DataPoint) uint64 {
 	// create a map of block times to the number of transactions in that block
 	blocks := make(map[time.Time]int)
 	for _, v := range in {
 		blocks[v.BlockTime]++
 	}
-	// Get the block time with the most transactions
-	var maxTranactionPerBlock int
-	for _, v := range blocks {
-		if v > maxTranactionPerBlock {
-			maxTranactionPerBlock = v
+	// sort the blocks by time
+	var blockTimes []time.Time
+	for k := range blocks {
+		blockTimes = append(blockTimes, k)
+	}
+	sort.Slice(blockTimes, func(i, j int) bool {
+		return blockTimes[i].Before(blockTimes[j])
+	})
+	// Iterave over the blocks and calculate the tps starting from each block
+	TPS := uint64(0)
+	for index, blockTime := range blockTimes {
+		currentTx := blocks[blockTime]
+		for _, nextBlockTime := range blockTimes[index+1:] {
+			currentTx += blocks[nextBlockTime]
+			blockTimeDifference := nextBlockTime.Sub(blockTime)
+			if blockTimeDifference > time.Second {
+				currentTPS := uint64(float64(currentTx) / blockTimeDifference.Seconds())
+				if currentTPS > TPS {
+					TPS = currentTPS
+				}
+			}
 		}
 	}
-	// sort the data points by block time
-	sort.Slice(in, func(i, j int) bool {
-		return in[i].BlockTime.Before(in[j].BlockTime)
-	})
-	// Get the average block time by dividing the total time by the number of blocks
-	totalBlockTimes := in[len(in)-1].BlockTime.Sub(in[0].BlockTime)
-	avgBlockTime := totalBlockTimes / time.Duration(len(blocks))
-	// Calculate the max TPS by dividing the number of transactions in the block with the most transactions by the average block time
-	maxTPS := uint64((float64(maxTranactionPerBlock)) / avgBlockTime.Seconds())
-	averageTPS := uint64((float64(len(in))) / totalBlockTimes.Seconds())
 
-	return averageTPS, maxTPS
+	return TPS
 }
 
 func (rs *Reports) addError() {
