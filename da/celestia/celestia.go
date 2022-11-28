@@ -60,6 +60,11 @@ func (c *DataAvailabilityLayerClient) Stop() error {
 	return nil
 }
 
+// GetClientType returns client type.
+func (c *DataAvailabilityLayerClient) GetClientType() da.Client {
+	return da.Celestia
+}
+
 // SubmitBatch submits a block to DA layer.
 func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultSubmitBatch {
 	blob, err := batch.MarshalBinary()

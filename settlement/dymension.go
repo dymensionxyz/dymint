@@ -213,7 +213,7 @@ func (d *DymensionLayerClient) validateBatch(batch *types.Batch) error {
 	return nil
 }
 
-func (d *DymensionLayerClient) convertBatchtoSettlementBatch(batch *types.Batch, daResult *da.ResultSubmitBatch) (*rollapptypes.MsgUpdateState, error) {
+func (d *DymensionLayerClient) convertBatchtoSettlementBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) (*rollapptypes.MsgUpdateState, error) {
 	account, err := d.client.Account(d.config.DymAccountName)
 	if err != nil {
 		return nil, err
@@ -221,8 +221,7 @@ func (d *DymensionLayerClient) convertBatchtoSettlementBatch(batch *types.Batch,
 	addr := account.Address(addressPrefix)
 	DAMetaData := &DAMetaData{
 		Height: daResult.DAHeight,
-		// TODO(omritoptix): Change da to be a param
-		Client: da.Mock,
+		Client: daClient,
 	}
 	blockDescriptors := make([]rollapptypes.BlockDescriptor, len(batch.Blocks))
 	for index, block := range batch.Blocks {
@@ -248,7 +247,7 @@ func (d *DymensionLayerClient) convertBatchtoSettlementBatch(batch *types.Batch,
 
 // SubmitBatch submits the batch to the settlement layer. This should create a transaction which (potentially)
 // triggers a state transition in the settlement layer.
-func (d *DymensionLayerClient) SubmitBatch(batch *types.Batch, daResult *da.ResultSubmitBatch) *ResultSubmitBatch {
+func (d *DymensionLayerClient) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) *ResultSubmitBatch {
 	d.logger.Debug("Submitting batch to settlement layer", "start height", batch.StartHeight, "end height", batch.EndHeight)
 	// validate batch
 	err := d.validateBatch(batch)
@@ -258,7 +257,7 @@ func (d *DymensionLayerClient) SubmitBatch(batch *types.Batch, daResult *da.Resu
 		}
 	}
 	// Build the result to save in the settlement layer.
-	settlementBatch, err := d.convertBatchtoSettlementBatch(batch, daResult)
+	settlementBatch, err := d.convertBatchtoSettlementBatch(batch, daClient, daResult)
 	if err != nil {
 		return &ResultSubmitBatch{
 			BaseResult: BaseResult{Code: StatusError, Message: err.Error()},

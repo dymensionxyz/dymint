@@ -4,10 +4,11 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/json"
-	"github.com/avast/retry-go"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/avast/retry-go"
 
 	mempoolv1 "github.com/dymensionxyz/dymint/mempool/v1"
 	"github.com/dymensionxyz/dymint/settlement"
@@ -126,7 +127,7 @@ func TestWaitUntilSynced(t *testing.T) {
 			DAHeight: 1,
 		},
 	}
-	resultSubmitBatch := manager.settlementClient.SubmitBatch(batch, daResult)
+	resultSubmitBatch := manager.settlementClient.SubmitBatch(batch, manager.dalc.GetClientType(), daResult)
 	assert.Equal(t, resultSubmitBatch.Code, settlement.StatusSuccess)
 
 	// Validate blocks are not produced.
@@ -160,7 +161,7 @@ func TestPublishAfterSynced(t *testing.T) {
 		batch = testutil.GenerateBatch(nextBatchStartHeight, nextBatchStartHeight+uint64(defaultBatchSize-1))
 		daResultSubmitBatch := manager.dalc.SubmitBatch(batch)
 		assert.Equal(t, daResultSubmitBatch.Code, da.StatusSuccess)
-		resultSubmitBatch := manager.settlementClient.SubmitBatch(batch, &daResultSubmitBatch)
+		resultSubmitBatch := manager.settlementClient.SubmitBatch(batch, manager.dalc.GetClientType(), &daResultSubmitBatch)
 		assert.Equal(t, resultSubmitBatch.Code, settlement.StatusSuccess)
 		nextBatchStartHeight = batch.EndHeight + 1
 		// Wait until daHeight is updated
@@ -208,7 +209,7 @@ func TestPublishWhenSettlementLayerDisconnected(t *testing.T) {
 	var batch = testutil.GenerateBatch(nextBatchStartHeight, nextBatchStartHeight+uint64(defaultBatchSize-1))
 	daResultSubmitBatch := manager.dalc.SubmitBatch(batch)
 	assert.Equal(t, daResultSubmitBatch.Code, da.StatusSuccess)
-	resultSubmitBatch := manager.settlementClient.SubmitBatch(batch, &daResultSubmitBatch)
+	resultSubmitBatch := manager.settlementClient.SubmitBatch(batch, manager.dalc.GetClientType(), &daResultSubmitBatch)
 	assert.Equal(t, resultSubmitBatch.Code, settlement.StatusError)
 
 	defer func() {
@@ -320,7 +321,7 @@ type SettlementLayerClientSubmitBatchError struct {
 	slmock.SettlementLayerClient
 }
 
-func (s *SettlementLayerClientSubmitBatchError) SubmitBatch(_ *types.Batch, _ *da.ResultSubmitBatch) *settlement.ResultSubmitBatch {
+func (s *SettlementLayerClientSubmitBatchError) SubmitBatch(_ *types.Batch, _ da.Client, _ *da.ResultSubmitBatch) *settlement.ResultSubmitBatch {
 	return &settlement.ResultSubmitBatch{
 		BaseResult: settlement.BaseResult{Code: settlement.StatusError, Message: connectionRefusedErrorMessage},
 	}

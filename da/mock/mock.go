@@ -66,6 +66,11 @@ func (m *DataAvailabilityLayerClient) Stop() error {
 	return nil
 }
 
+// GetClientType returns client type.
+func (m *DataAvailabilityLayerClient) GetClientType() da.Client {
+	return da.Mock
+}
+
 // SubmitBatch submits the passed in batch to the DA layer.
 // This should create a transaction which (potentially)
 // triggers a state transition in the DA layer.
