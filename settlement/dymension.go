@@ -116,13 +116,17 @@ func (d *DymensionLayerClient) getConfig(config []byte) (*Config, error) {
 func (d *DymensionLayerClient) Start() error {
 	d.logger.Debug("settlement Layer Client starting.")
 	latestBatch, err := d.RetrieveBatch()
+	var endHeight uint64
 	if err != nil {
 		if err == ErrBatchNotFound {
-			return nil
+			endHeight = 0
+		} else {
+			return err
 		}
-		return err
+	} else {
+		endHeight = latestBatch.EndHeight
 	}
-	d.latestHeight = latestBatch.EndHeight
+	d.latestHeight = endHeight
 	d.logger.Info("Updated latest height from settlement layer", "latestHeight", d.latestHeight)
 
 	// Subscribe to relevant events
