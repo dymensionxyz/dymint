@@ -634,7 +634,7 @@ func (m *Manager) submitBatchToSL(ctx context.Context, batch *types.Batch, resul
 	var resultSubmitToSL *settlement.ResultSubmitBatch
 	// Submit batch to SL
 	err := retry.Do(func() error {
-		resultSubmitToSL = m.settlementClient.SubmitBatch(batch, resultSubmitToDA)
+		resultSubmitToSL = m.settlementClient.SubmitBatch(batch, m.dalc.GetClientType(), resultSubmitToDA)
 		if resultSubmitToSL.Code != settlement.StatusSuccess {
 			err := fmt.Errorf("failed to submit batch to SL layer: %s", resultSubmitToSL.Message)
 			return err

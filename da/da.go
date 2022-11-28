@@ -82,6 +82,8 @@ type DataAvailabilityLayerClient interface {
 
 	// CheckBatchAvailability queries DA layer to check data availability of block corresponding at given height.
 	CheckBatchAvailability(dataLayerHeight uint64) ResultCheckBatch
+
+	GetClientType() Client
 }
 
 // BatchRetriever is additional interface that can be implemented by Data Availability Layer Client that is able to retrieve
