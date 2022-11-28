@@ -220,7 +220,7 @@ func (d *DymensionLayerClient) convertBatchtoSettlementBatch(batch *types.Batch,
 	DAMetaData := &DAMetaData{
 		Height: daResult.DAHeight,
 		// TODO(omritoptix): Change da to be a param
-		Client: da.Mock,
+		Client: da.Celestia,
 	}
 	blockDescriptors := make([]rollapptypes.BlockDescriptor, len(batch.Blocks))
 	for index, block := range batch.Blocks {
