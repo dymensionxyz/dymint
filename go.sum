@@ -275,8 +275,8 @@ github.com/dustin/go-humanize v1.0.1-0.20200219035652-afde56e7acac/go.mod h1:Htr
 github.com/dvsekhvalnov/jose2go v0.0.0-20200901110807-248326c1351b/go.mod h1:7BvyPhdbLxMXIYTFPLsyJRFMsKmOZnQmzh6Gb+uquuM=
 github.com/dvsekhvalnov/jose2go v1.5.0 h1:3j8ya4Z4kMCwT5nXIKFSV84YS+HdqSSO0VsTQxaLAeM=
 github.com/dvsekhvalnov/jose2go v1.5.0/go.mod h1:QsHjhyTlD/lAVqn/NSbVZmSCGeDehTB/mPZadG+mhXU=
-github.com/dymensionxyz/cosmosclient v0.1.2-alpha.0.20221130095027-2769aee626b4 h1:mVZrrAcnDUV0OmLqsobgNiUnkxWWQhvQaXIYCzgPrT4=
-github.com/dymensionxyz/cosmosclient v0.1.2-alpha.0.20221130095027-2769aee626b4/go.mod h1:h3z2ULdMHqVfDHrDpjJv5VRJQiEASg7GYz9MqeCGxIo=
+github.com/dymensionxyz/cosmosclient v0.1.2-alpha.0.20221130132907-ed0461d19d43 h1:PmqMIzGCmjUBJnQJ/cuBvApL4F1amiME8JJZ5d/nADI=
+github.com/dymensionxyz/cosmosclient v0.1.2-alpha.0.20221130132907-ed0461d19d43/go.mod h1:Fxwqa+T2fG+Q1cK5niy+WE9L1ul1nf1fF6gi3nwCqVE=
 github.com/dymensionxyz/dymension v0.0.0-20220906152713-9cfb350c86bd h1:nBuQoguSoa+5MsrtvAqwS0wZItgcc6yJrBYoH71/1Fw=
 github.com/dymensionxyz/dymension v0.0.0-20220906152713-9cfb350c86bd/go.mod h1:E/R5A7myqX53XDtxG5RrawrQYKgLKRbSGM/KN5kh+pA=
 github.com/eapache/go-resiliency v1.1.0/go.mod h1:kFI+JgMyC7bLPUVY133qvEBtVayf5mFgVsvEsIPBvNs=
@@ -1448,8 +1448,8 @@ golang.org/x/exp v0.0.0-20191129062945-2f5052295587/go.mod h1:2RIsYlXP63K8oxa1u0
 golang.org/x/exp v0.0.0-20191227195350-da58074b4299/go.mod h1:2RIsYlXP63K8oxa1u096TMicItID8zy7Y6sNkU49FU4=
 golang.org/x/exp v0.0.0-20200119233911-0405dc783f0a/go.mod h1:2RIsYlXP63K8oxa1u096TMicItID8zy7Y6sNkU49FU4=
 golang.org/x/exp v0.0.0-20200207192155-f17229e696bd/go.mod h1:J/WKrq2StrnmMY6+EHIKF9dgMWnmCNThgcyBT1FY9mM=
+golang.org/x/exp v0.0.0-20200224162631-6cc2880d07d6 h1:QE6XYQK6naiK1EPAe1g/ILLxN5RBoH5xkJk3CqlMI/Y=
 golang.org/x/exp v0.0.0-20200224162631-6cc2880d07d6/go.mod h1:3jZMyOhIsHpP37uCMkUooju7aAi5cS1Q23tOzKc+0MU=
-golang.org/x/exp v0.0.0-20220722155223-a9213eeb770e h1:+WEEuIdZHnUeJJmEUjyYC2gfUMj69yZXw17EnHg/otA=
 golang.org/x/image v0.0.0-20180708004352-c73c2afc3b81/go.mod h1:ux5Hcp/YLpHSI86hEcLt0YII63i6oz57MZXIpbrjZUs=
 golang.org/x/image v0.0.0-20190227222117-0694c2d4d067/go.mod h1:kZ7UVZpmo3dzQBMxlp+ypCbDeSB+sBbTgSJuh5dn5js=
 golang.org/x/image v0.0.0-20190802002840-cff245a6509b/go.mod h1:FeLwcggjj3mMvU+oOTbSwawSJRM1uh48EjtB4UJZlP0=
