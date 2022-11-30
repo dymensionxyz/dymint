@@ -2,9 +2,9 @@
 
 <img src="docs/dymint.png" alt="banner" width="830"/>
 
-ABCI-client implementation for dYmenion's autonomous RollApp forked from [celestiaorg/optimint](https://github.com/celestiaorg/optimint).
+ABCI-client implementation for Dymenion's autonomous RollApp forked from [celestiaorg/optimint](https://github.com/celestiaorg/optimint).
 
-To learn more about dYmension's autonomous RollApps and dymint read the [docs](https://docs.dymension.xyz/learn/rollapps).
+To learn more about Dymension's autonomous RollApps and dymint read the [docs](https://docs.dymension.xyz/learn/rollapps).
 
 ![license](https://img.shields.io/github/license/dymensionxyz/dymint)
 ![Go](https://img.shields.io/badge/go-1.18-blue.svg)
