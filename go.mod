@@ -6,7 +6,7 @@ require (
 	code.cloudfoundry.org/go-diodes v0.0.0-20220725190411-383eb6634c40
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/celestiaorg/go-cnc v0.1.0
-	github.com/dgraph-io/badger/v3 v3.2103.3
+	github.com/dgraph-io/badger/v3 v3.2103.4
 	github.com/dymensionxyz/cosmosclient v0.2.0-alpha
 	github.com/go-kit/kit v0.12.0
 	github.com/gofrs/uuid v4.2.0+incompatible
