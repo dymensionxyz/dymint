@@ -87,7 +87,7 @@ func (nc *NodeConfig) GetViperConfig(v *viper.Viper) error {
 func AddFlags(cmd *cobra.Command) {
 	def := DefaultNodeConfig
 
-	cmd.Flags().Bool(flagAggregator, def.Aggregator, "run node in aggregator mode")
+	cmd.Flags().Bool(flagAggregator, false, "run node in aggregator mode")
 	cmd.Flags().String(flagDALayer, def.DALayer, "Data Availability Layer Client name (mock or grpc")
 	cmd.Flags().String(flagDAConfig, def.DAConfig, "Data Availability Layer Client config")
 	cmd.Flags().String(flagSettlementLayer, def.SettlementLayer, "Settlement Layer Client name (currently only mock)")
