@@ -68,10 +68,7 @@ func (d *DymensionLayerClient) Init(config []byte, pubsub *pubsub.Server, logger
 	d.ctx, d.cancel = context.WithCancel(context.Background())
 	client, err := cosmosclient.New(
 		d.ctx,
-		cosmosclient.WithAddressPrefix(addressPrefix),
-		cosmosclient.WithNodeAddress(c.NodeAddress),
-		cosmosclient.WithKeyringBackend(c.KeyringBackend),
-		cosmosclient.WithHome(c.KeyRingHomeDir),
+		d.getCosmosClientOptions(d.config)...,
 	)
 	if err != nil {
 		return err
@@ -110,6 +107,19 @@ func (d *DymensionLayerClient) getConfig(config []byte) (*Config, error) {
 		}
 	}
 	return c, nil
+}
+
+func (d *DymensionLayerClient) getCosmosClientOptions(c Config) []cosmosclient.Option {
+	options := []cosmosclient.Option{
+		cosmosclient.WithAddressPrefix(addressPrefix),
+		cosmosclient.WithNodeAddress(d.config.NodeAddress),
+	}
+	if d.config.KeyringBackend != "" {
+		options = append(options,
+			cosmosclient.WithKeyringBackend(d.config.KeyringBackend),
+			cosmosclient.WithHome(d.config.KeyRingHomeDir))
+	}
+	return options
 }
 
 // Start is called once, after init. It initializes the query client.
