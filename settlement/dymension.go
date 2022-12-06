@@ -68,10 +68,7 @@ func (d *DymensionLayerClient) Init(config []byte, pubsub *pubsub.Server, logger
 	d.ctx, d.cancel = context.WithCancel(context.Background())
 	client, err := cosmosclient.New(
 		d.ctx,
-		cosmosclient.WithAddressPrefix(addressPrefix),
-		cosmosclient.WithNodeAddress(c.NodeAddress),
-		cosmosclient.WithKeyringBackend(c.KeyringBackend),
-		cosmosclient.WithHome(c.KeyRingHomeDir),
+		d.getCosmosClientOptions(d.config)...,
 	)
 	if err != nil {
 		return err
@@ -110,6 +107,19 @@ func (d *DymensionLayerClient) getConfig(config []byte) (*Config, error) {
 		}
 	}
 	return c, nil
+}
+
+func (d *DymensionLayerClient) getCosmosClientOptions(c Config) []cosmosclient.Option {
+	options := []cosmosclient.Option{
+		cosmosclient.WithAddressPrefix(addressPrefix),
+		cosmosclient.WithNodeAddress(d.config.NodeAddress),
+	}
+	if d.config.KeyringBackend != "" {
+		options = append(options,
+			cosmosclient.WithKeyringBackend(d.config.KeyringBackend),
+			cosmosclient.WithHome(d.config.KeyRingHomeDir))
+	}
+	return options
 }
 
 // Start is called once, after init. It initializes the query client.
@@ -286,7 +296,7 @@ func (d *DymensionLayerClient) SubmitBatch(batch *types.Batch, daClient da.Clien
 func (d *DymensionLayerClient) RetrieveBatch(stateIndex ...uint64) (*ResultRetrieveBatch, error) {
 	var stateInfo rollapptypes.StateInfo
 	if len(stateIndex) == 0 {
-		d.logger.Debug("Getting latest batch from settlement layer", "latest height", d.latestHeight)
+		d.logger.Debug("Getting latest batch from settlement layer")
 		latestStateInfoIndexResp, err := d.rollappQueryClient.LatestStateInfoIndex(d.ctx,
 			&rollapptypes.QueryGetLatestStateInfoIndexRequest{RollappId: d.config.RollappID})
 		if latestStateInfoIndexResp == nil {
