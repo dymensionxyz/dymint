@@ -296,7 +296,7 @@ func (d *DymensionLayerClient) SubmitBatch(batch *types.Batch, daClient da.Clien
 func (d *DymensionLayerClient) RetrieveBatch(stateIndex ...uint64) (*ResultRetrieveBatch, error) {
 	var stateInfo rollapptypes.StateInfo
 	if len(stateIndex) == 0 {
-		d.logger.Debug("Getting latest batch from settlement layer", "latest height", d.latestHeight)
+		d.logger.Debug("Getting latest batch from settlement layer")
 		latestStateInfoIndexResp, err := d.rollappQueryClient.LatestStateInfoIndex(d.ctx,
 			&rollapptypes.QueryGetLatestStateInfoIndexRequest{RollappId: d.config.RollappID})
 		if latestStateInfoIndexResp == nil {
