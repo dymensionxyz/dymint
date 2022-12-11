@@ -222,7 +222,10 @@ func (d *DymensionLayerClient) convertBatchtoSettlementBatch(batch *types.Batch,
 	if err != nil {
 		return nil, err
 	}
-	addr := account.Address(addressPrefix)
+	addr, err := account.Address(addressPrefix)
+	if err != nil {
+		return nil, err
+	}
 	DAMetaData := &DAMetaData{
 		Height: daResult.DAHeight,
 		Client: daClient,
