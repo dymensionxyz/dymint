@@ -255,7 +255,7 @@ func (d *DymensionLayerClient) convertBatchtoSettlementBatch(batch *types.Batch,
 // SubmitBatch submits the batch to the settlement layer. This should create a transaction which (potentially)
 // triggers a state transition in the settlement layer.
 func (d *DymensionLayerClient) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) *ResultSubmitBatch {
-	d.logger.Debug("Submitting batch to settlement layer", "start height", batch.StartHeight, "end height", batch.EndHeight)
+	d.logger.Debug("Submitting batch to settlement layer", "batch", batch.String())
 	// validate batch
 	err := d.validateBatch(batch)
 	if err != nil {

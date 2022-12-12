@@ -642,7 +642,7 @@ func (m *Manager) submitBatchToSL(ctx context.Context, batch *types.Batch, resul
 		return nil
 	}, retry.Context(ctx), retry.LastErrorOnly(true))
 	if err != nil {
-		m.logger.Error("Failed to submit batch to SL Layer", batch, err)
+		m.logger.Error("Failed to submit batch to SL Layer", "batch", batch.String(), "error", err)
 		panic(err)
 	}
 	return resultSubmitToSL
