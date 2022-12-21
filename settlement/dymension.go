@@ -68,10 +68,7 @@ func (d *DymensionLayerClient) Init(config []byte, pubsub *pubsub.Server, logger
 	d.ctx, d.cancel = context.WithCancel(context.Background())
 	client, err := cosmosclient.New(
 		d.ctx,
-		cosmosclient.WithAddressPrefix(addressPrefix),
-		cosmosclient.WithNodeAddress(c.NodeAddress),
-		cosmosclient.WithKeyringBackend(c.KeyringBackend),
-		cosmosclient.WithHome(c.KeyRingHomeDir),
+		d.getCosmosClientOptions(d.config)...,
 	)
 	if err != nil {
 		return err
@@ -112,17 +109,34 @@ func (d *DymensionLayerClient) getConfig(config []byte) (*Config, error) {
 	return c, nil
 }
 
+func (d *DymensionLayerClient) getCosmosClientOptions(c Config) []cosmosclient.Option {
+	options := []cosmosclient.Option{
+		cosmosclient.WithAddressPrefix(addressPrefix),
+		cosmosclient.WithNodeAddress(d.config.NodeAddress),
+	}
+	if d.config.KeyringBackend != "" {
+		options = append(options,
+			cosmosclient.WithKeyringBackend(d.config.KeyringBackend),
+			cosmosclient.WithHome(d.config.KeyRingHomeDir))
+	}
+	return options
+}
+
 // Start is called once, after init. It initializes the query client.
 func (d *DymensionLayerClient) Start() error {
 	d.logger.Debug("settlement Layer Client starting.")
 	latestBatch, err := d.RetrieveBatch()
+	var endHeight uint64
 	if err != nil {
 		if err == ErrBatchNotFound {
-			return nil
+			endHeight = 0
+		} else {
+			return err
 		}
-		return err
+	} else {
+		endHeight = latestBatch.EndHeight
 	}
-	d.latestHeight = latestBatch.EndHeight
+	d.latestHeight = endHeight
 	d.logger.Info("Updated latest height from settlement layer", "latestHeight", d.latestHeight)
 
 	// Subscribe to relevant events
@@ -213,7 +227,7 @@ func (d *DymensionLayerClient) validateBatch(batch *types.Batch) error {
 	return nil
 }
 
-func (d *DymensionLayerClient) convertBatchtoSettlementBatch(batch *types.Batch, daResult *da.ResultSubmitBatch) (*rollapptypes.MsgUpdateState, error) {
+func (d *DymensionLayerClient) convertBatchtoSettlementBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) (*rollapptypes.MsgUpdateState, error) {
 	account, err := d.client.Account(d.config.DymAccountName)
 	if err != nil {
 		return nil, err
@@ -221,8 +235,7 @@ func (d *DymensionLayerClient) convertBatchtoSettlementBatch(batch *types.Batch,
 	addr := account.Address(addressPrefix)
 	DAMetaData := &DAMetaData{
 		Height: daResult.DAHeight,
-		// TODO(omritoptix): Change da to be a param
-		Client: da.Mock,
+		Client: daClient,
 	}
 	blockDescriptors := make([]rollapptypes.BlockDescriptor, len(batch.Blocks))
 	for index, block := range batch.Blocks {
@@ -248,7 +261,7 @@ func (d *DymensionLayerClient) convertBatchtoSettlementBatch(batch *types.Batch,
 
 // SubmitBatch submits the batch to the settlement layer. This should create a transaction which (potentially)
 // triggers a state transition in the settlement layer.
-func (d *DymensionLayerClient) SubmitBatch(batch *types.Batch, daResult *da.ResultSubmitBatch) *ResultSubmitBatch {
+func (d *DymensionLayerClient) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) *ResultSubmitBatch {
 	d.logger.Debug("Submitting batch to settlement layer", "start height", batch.StartHeight, "end height", batch.EndHeight)
 	// validate batch
 	err := d.validateBatch(batch)
@@ -258,7 +271,7 @@ func (d *DymensionLayerClient) SubmitBatch(batch *types.Batch, daResult *da.Resu
 		}
 	}
 	// Build the result to save in the settlement layer.
-	settlementBatch, err := d.convertBatchtoSettlementBatch(batch, daResult)
+	settlementBatch, err := d.convertBatchtoSettlementBatch(batch, daClient, daResult)
 	if err != nil {
 		return &ResultSubmitBatch{
 			BaseResult: BaseResult{Code: StatusError, Message: err.Error()},
@@ -283,7 +296,7 @@ func (d *DymensionLayerClient) SubmitBatch(batch *types.Batch, daResult *da.Resu
 func (d *DymensionLayerClient) RetrieveBatch(stateIndex ...uint64) (*ResultRetrieveBatch, error) {
 	var stateInfo rollapptypes.StateInfo
 	if len(stateIndex) == 0 {
-		d.logger.Debug("Getting latest batch from settlement layer", "latest height", d.latestHeight)
+		d.logger.Debug("Getting latest batch from settlement layer")
 		latestStateInfoIndexResp, err := d.rollappQueryClient.LatestStateInfoIndex(d.ctx,
 			&rollapptypes.QueryGetLatestStateInfoIndexRequest{RollappId: d.config.RollappID})
 		if latestStateInfoIndexResp == nil {

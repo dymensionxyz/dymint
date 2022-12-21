@@ -155,7 +155,7 @@ func (s *SettlementLayerClient) updateSettlementWithBatch() {
 			DAHeight: batch.EndHeight,
 		},
 	}
-	s.SubmitBatch(&batch, daResult)
+	s.SubmitBatch(&batch, da.Mock, daResult)
 }
 
 func (s *SettlementLayerClient) createBatch(startHeight uint64, endHeight uint64) types.Batch {
@@ -206,14 +206,14 @@ func (s *SettlementLayerClient) validateBatch(batch *types.Batch) error {
 	return nil
 }
 
-func (s *SettlementLayerClient) convertBatchtoSettlementBatch(batch *types.Batch, daResult *da.ResultSubmitBatch) *settlement.Batch {
+func (s *SettlementLayerClient) convertBatchtoSettlementBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) *settlement.Batch {
 	settlementBatch := &settlement.Batch{
 		StartHeight: batch.StartHeight,
 		EndHeight:   batch.EndHeight,
 		MetaData: &settlement.BatchMetaData{
 			DA: &settlement.DAMetaData{
 				Height: daResult.DAHeight,
-				Client: da.Celestia,
+				Client: daClient,
 			},
 		},
 	}
@@ -225,7 +225,7 @@ func (s *SettlementLayerClient) convertBatchtoSettlementBatch(batch *types.Batch
 
 // SubmitBatch submits the batch to the settlement layer. This should create a transaction which (potentially)
 // triggers a state transition in the settlement layer.
-func (s *SettlementLayerClient) SubmitBatch(batch *types.Batch, daResult *da.ResultSubmitBatch) *settlement.ResultSubmitBatch {
+func (s *SettlementLayerClient) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) *settlement.ResultSubmitBatch {
 	s.logger.Debug("Submitting batch to settlement layer", "start height", batch.StartHeight, "end height", batch.EndHeight)
 	// validate batch
 	err := s.validateBatch(batch)
@@ -235,7 +235,7 @@ func (s *SettlementLayerClient) SubmitBatch(batch *types.Batch, daResult *da.Res
 		}
 	}
 	// Build the result to save in the settlement layer.
-	settlementBatch := s.convertBatchtoSettlementBatch(batch, daResult)
+	settlementBatch := s.convertBatchtoSettlementBatch(batch, daClient, daResult)
 	// Save to the settlement layer
 	err = s.saveBatch(settlementBatch)
 	if err != nil {

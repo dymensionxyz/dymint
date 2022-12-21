@@ -1,0 +1,50 @@
+syntax = "proto3";
+package dalc;
+option go_package = "github.com/dymensionxyz/dymint/types/pb/dalc";
+
+import "types/dymint/dymint.proto";
+
+enum StatusCode {
+	STATUS_CODE_UNSPECIFIED = 0;
+	STATUS_CODE_SUCCESS = 1;
+	STATUS_CODE_TIMEOUT = 2;
+	STATUS_CODE_ERROR   = 3;
+}
+
+message DAResponse {
+	StatusCode code = 1;
+	string message = 2;
+	uint64 data_layer_height = 3;
+}
+
+message SubmitBatchRequest {
+	dymint.Batch batch = 1;
+}
+
+message SubmitBatchResponse {
+	DAResponse result = 1;
+}
+
+message CheckBatchAvailabilityRequest {
+	uint64 data_layer_height = 1;
+}
+
+message CheckBatchAvailabilityResponse {
+	DAResponse result = 1;
+	bool data_available = 2;
+}
+
+message RetrieveBatchesRequest {
+	uint64 data_layer_height = 1;
+}
+
+message RetrieveBatchesResponse {
+	DAResponse result = 1;
+	repeated dymint.Batch batches = 2;
+}
+
+service DALCService {
+	rpc SubmitBatch(SubmitBatchRequest) returns (SubmitBatchResponse) {}
+	rpc CheckBatchAvailability(CheckBatchAvailabilityRequest) returns (CheckBatchAvailabilityResponse) {}
+	rpc RetrieveBatches(RetrieveBatchesRequest) returns (RetrieveBatchesResponse) {}
+}

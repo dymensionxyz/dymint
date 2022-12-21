@@ -294,10 +294,13 @@ func (c *Client) findPeers(ctx context.Context) error {
 
 // tryConnect attempts to connect to a peer and logs error if necessary
 func (c *Client) tryConnect(ctx context.Context, peer peer.AddrInfo) {
+	c.logger.Debug("trying to connect to peer", "peer", peer)
 	err := c.host.Connect(ctx, peer)
 	if err != nil {
 		c.logger.Error("failed to connect to peer", "peer", peer, "error", err)
+		return
 	}
+	c.logger.Debug("connected to peer", "peer", peer)
 }
 
 func (c *Client) setupGossiping(ctx context.Context) error {

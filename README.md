@@ -1,29 +1,93 @@
-# dymint
+# Dymint
 
-ABCI-client implementation for dYmenion's autonomous RollApp forked from [celestiaorg/optimint](https://github.com/celestiaorg/optimint).
+<img src="docs/dymint.png" alt="banner" width="830"/>
 
-To learn more about dYmension's autonomous RollApps and dymint read the [docs](https://docs.dymension.xyz/learn/rollapps)
+ABCI-client implementation for Dymenion's autonomous RollApp forked from [celestiaorg/optimint](https://github.com/celestiaorg/optimint).
 
-## Building From Source
+To learn more about Dymension's autonomous RollApps and dymint read the [docs](https://docs.dymension.xyz/learn/rollapps).
 
-Requires Go version >= 1.18. If you need to install Go on your system, head to the [Go download and install page](https://go.dev/doc/install).
+![license](https://img.shields.io/github/license/dymensionxyz/dymint)
+![Go](https://img.shields.io/badge/go-1.18-blue.svg)
+![issues](https://img.shields.io/github/issues/dymensionxyz/dymint)
+![tests](https://github.com/dymensionxyz/dymint/actions/workflows/test.yml/badge.svg?branch=main)
+![lint](https://github.com/dymensionxyz/dymint/actions/workflows/lint.yml/badge.svg?branch=main)
 
-To build:
+## Installation
+
+### From Binary
+
+To download pre-built binaries, see the [releases page](https://github.com/dymensionxyz/dymint/releases).
+
+## From Source
+
+You'll need `go` 1.18 [installed](https://golang.org/doc/install) and the required
+environment variables set, which can be done with the following commands:
+
+```sh
+echo export GOPATH=\"\$HOME/go\" >> ~/.bash_profile
+echo export PATH=\"\$PATH:\$GOPATH/bin\" >> ~/.bash_profile
+```
+
+### Get Source Code
 
 ```sh
 git clone https://github.com/dymensionxyz/dymint.git
 cd dymint
-go build -v ./...
 ```
 
-To test:
+### Compile
+
+to put the binary in `$GOPATH/bin`:
 
 ```sh
-go test ./...
+make install
 ```
 
-To regenerate protobuf types:
+or to put the binary in `./build`:
 
 ```sh
-./proto/gen.sh
+make build
+```
+
+The latest Dymint is now installed. You can verify the installation by
+running:
+
+```sh
+dymint
+```
+
+## Run
+
+To run a sequencer with a simple in-process (kvstore) application:
+
+```sh
+dymint init
+dymint start --proxy_app=kvstore
+```
+
+## Reinstall
+
+If you already have Dymint installed, and you make updates, simply
+
+```sh
+make install
+```
+
+To upgrade, run
+
+```sh
+git pull origin main
+make install
+```
+
+## Regenerate protobuf
+
+```sh
+make proto-gen
+```
+
+## Run tests
+
+```sh
+make test
 ```

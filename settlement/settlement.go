@@ -96,7 +96,7 @@ type LayerClient interface {
 
 	// SubmitBatch submits the batch to the settlement layer. This should create a transaction which (potentially)
 	// triggers a state transition in the settlement layer.
-	SubmitBatch(batch *types.Batch, daResult *da.ResultSubmitBatch) *ResultSubmitBatch
+	SubmitBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) *ResultSubmitBatch
 
 	// RetrieveBatch Gets the batch which contains the given height. Empty height returns the latest batch.
 	RetrieveBatch(stateIndex ...uint64) (*ResultRetrieveBatch, error)

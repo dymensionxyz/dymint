@@ -108,7 +108,7 @@ func doTestInvalidSubmit(t *testing.T, settlementlc settlement.LayerClient) {
 				DAHeight: c.endHeight,
 			},
 		}
-		resultSubmitBatch := settlementlc.SubmitBatch(batch, daResult)
+		resultSubmitBatch := settlementlc.SubmitBatch(batch, da.Mock, daResult)
 		assert.Equal(resultSubmitBatch.Code, c.status)
 	}
 
@@ -144,7 +144,7 @@ func doTestSubmitAndRetrieve(t *testing.T, settlementlc settlement.LayerClient) 
 				DAHeight: batch.EndHeight,
 			},
 		}
-		resultSubmitBatch := settlementlc.SubmitBatch(batch, daResult)
+		resultSubmitBatch := settlementlc.SubmitBatch(batch, da.Mock, daResult)
 		assert.Equal(resultSubmitBatch.Code, settlement.StatusSuccess)
 	}
 

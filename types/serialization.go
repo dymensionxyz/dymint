@@ -243,6 +243,7 @@ func (s *State) ToProto() (*pb.State, error) {
 		ChainId:                          s.ChainID,
 		InitialHeight:                    s.InitialHeight,
 		LastBlockHeight:                  s.LastBlockHeight,
+		SLStateIndex:                     s.SLStateIndex,
 		LastBlockID:                      s.LastBlockID.ToProto(),
 		LastBlockTime:                    s.LastBlockTime,
 		NextValidators:                   nextValidators,
@@ -263,6 +264,7 @@ func (s *State) FromProto(other *pb.State) error {
 	s.ChainID = other.ChainId
 	s.InitialHeight = other.InitialHeight
 	s.LastBlockHeight = other.LastBlockHeight
+	s.SLStateIndex = other.SLStateIndex
 	lastBlockID, err := types.BlockIDFromProto(&other.LastBlockID)
 	if err != nil {
 		return err

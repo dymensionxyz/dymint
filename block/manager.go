@@ -275,7 +275,7 @@ func (m *Manager) SyncTargetLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case event := <-subscription.Out():
-			m.logger.Info("Received state update event", event)
+			m.logger.Info("Received state update event", "eventData", event.Data())
 			eventData := event.Data().(*settlement.EventDataNewSettlementBatchAccepted)
 			m.updateSyncParams(ctx, eventData.EndHeight)
 			// In case we are the aggregator and we've got an update, then we can stop blocking from
@@ -561,6 +561,7 @@ func (m *Manager) publishBlock(ctx context.Context) error {
 	syncTarget := atomic.LoadUint64(&m.syncTarget)
 	currentBlockHeight := block.Header.Height
 	if currentBlockHeight > syncTarget && currentBlockHeight-syncTarget >= m.conf.BlockBatchSize && m.batchInProcess.Load() == false {
+		m.batchInProcess.Store(true)
 		go m.submitNextBatch(ctx)
 	}
 
@@ -568,7 +569,6 @@ func (m *Manager) publishBlock(ctx context.Context) error {
 }
 
 func (m *Manager) submitNextBatch(ctx context.Context) {
-	m.batchInProcess.Store(true)
 	// Get the batch start and end height
 	startHeight := atomic.LoadUint64(&m.syncTarget) + 1
 	endHeight := startHeight + m.conf.BlockBatchSize - 1
@@ -634,7 +634,7 @@ func (m *Manager) submitBatchToSL(ctx context.Context, batch *types.Batch, resul
 	var resultSubmitToSL *settlement.ResultSubmitBatch
 	// Submit batch to SL
 	err := retry.Do(func() error {
-		resultSubmitToSL = m.settlementClient.SubmitBatch(batch, resultSubmitToDA)
+		resultSubmitToSL = m.settlementClient.SubmitBatch(batch, m.dalc.GetClientType(), resultSubmitToDA)
 		if resultSubmitToSL.Code != settlement.StatusSuccess {
 			err := fmt.Errorf("failed to submit batch to SL layer: %s", resultSubmitToSL.Message)
 			return err
