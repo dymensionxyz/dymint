@@ -88,6 +88,7 @@ func (h *Header) ToProto() *pb.Header {
 		NamespaceId:     h.NamespaceID[:],
 		Height:          h.Height,
 		Time:            h.Time,
+		ChainId:         h.ChainID,
 		LastHeaderHash:  h.LastHeaderHash[:],
 		LastCommitHash:  h.LastCommitHash[:],
 		DataHash:        h.DataHash[:],
