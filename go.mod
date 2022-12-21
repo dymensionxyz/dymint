@@ -26,12 +26,12 @@ require (
 	github.com/rs/cors v1.8.2
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/viper v1.12.0
-	github.com/stretchr/testify v1.8.0
+	github.com/stretchr/testify v1.8.1
 	github.com/tendermint/tendermint v0.34.21
 	go.uber.org/multierr v1.8.0
-	golang.org/x/net v0.0.0-20220923203811-8be639271d50
+	golang.org/x/net v0.2.0
 	gonum.org/v1/gonum v0.12.0
-	google.golang.org/grpc v1.49.0
+	google.golang.org/grpc v1.50.1
 	google.golang.org/protobuf v1.28.1
 )
 
@@ -77,7 +77,7 @@ require (
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/dustin/go-humanize v1.0.1-0.20200219035652-afde56e7acac // indirect
 	github.com/dvsekhvalnov/jose2go v1.5.0 // indirect
-	github.com/dymensionxyz/dymension v0.0.0-20220906152713-9cfb350c86bd
+	github.com/dymensionxyz/dymension v0.1.0-alpha.0.20221219141547-b43279e94b18
 	github.com/elastic/gosigar v0.14.2 // indirect
 	github.com/flynn/noise v1.0.0 // indirect
 	github.com/francoispqt/gojay v1.2.13 // indirect
@@ -201,7 +201,7 @@ require (
 	github.com/spf13/cast v1.5.0 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/stretchr/objx v0.4.0 // indirect
+	github.com/stretchr/objx v0.5.0 // indirect
 	github.com/subosito/gotenv v1.4.0 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7 // indirect
 	github.com/tendermint/btcd v0.1.1 // indirect
@@ -219,10 +219,10 @@ require (
 	golang.org/x/crypto v0.0.0-20220924013350-4ba4fb4dd9e7 // indirect
 	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4 // indirect
 	golang.org/x/sync v0.0.0-20220722155255-886fb9371eb4 // indirect
-	golang.org/x/sys v0.0.0-20221010170243-090e33056c14 // indirect
-	golang.org/x/term v0.0.0-20220722155259-a9ba230a4035 // indirect
-	golang.org/x/text v0.3.7 // indirect
-	google.golang.org/genproto v0.0.0-20220822174746-9e6da59bd2fc // indirect
+	golang.org/x/sys v0.2.0 // indirect
+	golang.org/x/term v0.2.0 // indirect
+	golang.org/x/text v0.4.0 // indirect
+	google.golang.org/genproto v0.0.0-20221114212237-e4508ebdbee1 // indirect
 	gopkg.in/ini.v1 v1.66.6 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
