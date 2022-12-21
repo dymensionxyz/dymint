@@ -1,8 +1,6 @@
 package types
 
 import (
-	"encoding/hex"
-	"strings"
 	"time"
 
 	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
@@ -16,9 +14,8 @@ func (h *Header) Hash() [32]byte {
 			Block: h.Version.Block,
 			App:   h.Version.App,
 		},
-		Height:  int64(h.Height),
-		Time:    time.Unix(0, int64(h.Time)),
-		ChainID: strings.ToUpper(hex.EncodeToString(h.NamespaceID[:])),
+		Height: int64(h.Height),
+		Time:   time.Unix(0, int64(h.Time)),
 		LastBlockID: tmtypes.BlockID{
 			Hash: h.LastHeaderHash[:],
 			PartSetHeader: tmtypes.PartSetHeader{
@@ -35,6 +32,7 @@ func (h *Header) Hash() [32]byte {
 		LastResultsHash:    h.LastResultsHash[:],
 		EvidenceHash:       new(tmtypes.EvidenceData).Hash(),
 		ProposerAddress:    h.ProposerAddress,
+		ChainID:            h.ChainID,
 	}
 	var hash [32]byte
 	copy(hash[:], abciHeader.Hash())

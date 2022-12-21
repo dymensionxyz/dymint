@@ -1,8 +1,6 @@
 package abci
 
 import (
-	"encoding/hex"
-	"strings"
 	"time"
 
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -20,9 +18,8 @@ func ToABCIHeaderPB(header *types.Header) tmproto.Header {
 			Block: header.Version.Block,
 			App:   header.Version.App,
 		},
-		ChainID: strings.ToUpper(hex.EncodeToString(header.NamespaceID[:])),
-		Height:  int64(header.Height),
-		Time:    time.Unix(0, int64(header.Time)),
+		Height: int64(header.Height),
+		Time:   time.Unix(0, int64(header.Time)),
 		LastBlockId: tmproto.BlockID{
 			Hash: header.LastHeaderHash[:],
 			PartSetHeader: tmproto.PartSetHeader{
@@ -39,6 +36,7 @@ func ToABCIHeaderPB(header *types.Header) tmproto.Header {
 		LastResultsHash:    header.LastResultsHash[:],
 		EvidenceHash:       new(tmtypes.EvidenceData).Hash(),
 		ProposerAddress:    header.ProposerAddress,
+		ChainID:            header.ChainID,
 	}
 }
 
@@ -50,9 +48,8 @@ func ToABCIHeader(header *types.Header) tmtypes.Header {
 			Block: header.Version.Block,
 			App:   header.Version.App,
 		},
-		Height:  int64(header.Height),
-		Time:    time.Unix(0, int64(header.Time)),
-		ChainID: strings.ToUpper(hex.EncodeToString(header.NamespaceID[:])),
+		Height: int64(header.Height),
+		Time:   time.Unix(0, int64(header.Time)),
 		LastBlockID: tmtypes.BlockID{
 			Hash: header.LastHeaderHash[:],
 			PartSetHeader: tmtypes.PartSetHeader{
@@ -69,6 +66,7 @@ func ToABCIHeader(header *types.Header) tmtypes.Header {
 		LastResultsHash:    header.LastResultsHash[:],
 		EvidenceHash:       new(tmtypes.EvidenceData).Hash(),
 		ProposerAddress:    header.ProposerAddress,
+		ChainID:            header.ChainID,
 	}
 }
 
