@@ -160,4 +160,7 @@ func doTestSubmitAndRetrieve(t *testing.T, settlementlc settlement.LayerClient) 
 	assert.LessOrEqual(batchResult.StartHeight, middleOfBatchHeight)
 	assert.GreaterOrEqual(batchResult.EndHeight, middleOfBatchHeight)
 
+	result, err := settlementlc.GetLatestFinalizedStateHeight("")
+	require.NoError(err)
+	assert.Equal(result, int64(numBatches*batchSize))
 }
