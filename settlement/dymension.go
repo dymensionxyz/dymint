@@ -341,9 +341,10 @@ func (d *DymensionLayerClient) RetrieveBatch(stateIndex ...uint64) (*ResultRetri
 		Batch:      batchResult}, nil
 }
 
-func (d *DymensionLayerClient) GetLatestFinalizedStateHeight(rollapId string) (int64, error) {
+// GetLatestFinalizedStateHeight returns the latest-finalized-state height of the active rollapp
+func (d *DymensionLayerClient) GetLatestFinalizedStateHeight(rollapID string) (int64, error) {
 	latestFinalizedStateInfoResponse, err := d.rollappQueryClient.LatestFinalizedStateInfo(d.ctx,
-		&rollapptypes.QueryGetLatestFinalizedStateInfoRequest{RollappId: rollapId})
+		&rollapptypes.QueryGetLatestFinalizedStateInfoRequest{RollappId: rollapID})
 	if err != nil {
 		return -1, err
 	}

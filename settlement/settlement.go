@@ -102,7 +102,7 @@ type LayerClient interface {
 	RetrieveBatch(stateIndex ...uint64) (*ResultRetrieveBatch, error)
 
 	// GetLatestFinalizedStateHeight returns the latest-finalized-state height of the active rollapp
-	GetLatestFinalizedStateHeight(rollapId string) (int64, error)
+	GetLatestFinalizedStateHeight(rollapID string) (int64, error)
 
 	// TODO(omritoptix): Support getting multiple batches and pagination
 }

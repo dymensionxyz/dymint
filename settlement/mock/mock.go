@@ -294,6 +294,7 @@ func (s *SettlementLayerClient) RetrieveBatch(slStateIndex ...uint64) (*settleme
 	return batchResult, nil
 }
 
+// GetLatestFinalizedStateHeight returns the latest-finalized-state height of the active rollapp
 func (s *SettlementLayerClient) GetLatestFinalizedStateHeight(_ string) (int64, error) {
 	return int64(s.latestHeight), nil
 }
