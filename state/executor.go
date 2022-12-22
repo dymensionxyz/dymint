@@ -96,6 +96,7 @@ func (e *BlockExecutor) CreateBlock(height uint64, lastCommit *types.Commit, las
 				Block: state.Version.Consensus.Block,
 				App:   state.Version.Consensus.App,
 			},
+			ChainID:         e.chainID,
 			NamespaceID:     e.namespaceID,
 			Height:          height,
 			Time:            uint64(time.Now().UTC().UnixNano()),

@@ -88,6 +88,7 @@ func (h *Header) ToProto() *pb.Header {
 		NamespaceId:     h.NamespaceID[:],
 		Height:          h.Height,
 		Time:            h.Time,
+		ChainId:         h.ChainID,
 		LastHeaderHash:  h.LastHeaderHash[:],
 		LastCommitHash:  h.LastCommitHash[:],
 		DataHash:        h.DataHash[:],
@@ -103,6 +104,7 @@ func (h *Header) ToProto() *pb.Header {
 func (h *Header) FromProto(other *pb.Header) error {
 	h.Version.Block = other.Version.Block
 	h.Version.App = other.Version.App
+	h.ChainID = other.ChainId
 	if !safeCopy(h.NamespaceID[:], other.NamespaceId) {
 		return errors.New("invalid length of 'NamespaceId'")
 	}
