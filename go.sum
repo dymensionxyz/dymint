@@ -275,6 +275,8 @@ github.com/dustin/go-humanize v1.0.1-0.20200219035652-afde56e7acac/go.mod h1:Htr
 github.com/dvsekhvalnov/jose2go v0.0.0-20200901110807-248326c1351b/go.mod h1:7BvyPhdbLxMXIYTFPLsyJRFMsKmOZnQmzh6Gb+uquuM=
 github.com/dvsekhvalnov/jose2go v1.5.0 h1:3j8ya4Z4kMCwT5nXIKFSV84YS+HdqSSO0VsTQxaLAeM=
 github.com/dvsekhvalnov/jose2go v1.5.0/go.mod h1:QsHjhyTlD/lAVqn/NSbVZmSCGeDehTB/mPZadG+mhXU=
+github.com/dymensionxyz/cosmosclient v0.2.0-alpha h1:x8UCXtWyZc7TXw99VH83ld2YD21d5m4fJx5k8zbdFj4=
+github.com/dymensionxyz/cosmosclient v0.2.0-alpha/go.mod h1:Fxwqa+T2fG+Q1cK5niy+WE9L1ul1nf1fF6gi3nwCqVE=
 github.com/dymensionxyz/dymension v0.1.0-alpha.0.20221225142534-0e73a495b739 h1:x6dXyuofax+FAxWuYuikOMpCTU3VK4A7qM63EO43Xrs=
 github.com/dymensionxyz/dymension v0.1.0-alpha.0.20221225142534-0e73a495b739/go.mod h1:Ss0oibs7QoFWlQjbb8R/HwKVpzh7AHI+0y3TShrf35g=
 github.com/eapache/go-resiliency v1.1.0/go.mod h1:kFI+JgMyC7bLPUVY133qvEBtVayf5mFgVsvEsIPBvNs=
