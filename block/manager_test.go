@@ -42,7 +42,7 @@ func TestInitialState(t *testing.T) {
 	logger := log.TestingLogger()
 	pubsubServer := pubsub.NewServer()
 	pubsubServer.Start()
-	settlementlc := slregistry.GetClient(slregistry.ClientMock)
+	settlementlc := slregistry.GetClient(slregistry.Mock)
 	_ = settlementlc.Init(nil, pubsubServer, logger)
 
 	// Init empty store and full store
@@ -259,7 +259,7 @@ func getManager(settlementlc settlement.LayerClient, dalc da.DataAvailabilityLay
 	pubsubServer.Start()
 
 	if settlementlc == nil {
-		settlementlc = slregistry.GetClient(slregistry.ClientMock)
+		settlementlc = slregistry.GetClient(slregistry.Mock)
 	}
 	_ = initSettlementLayerMock(settlementlc, defaultBatchSize, uint64(state.LastBlockHeight), uint64(state.LastBlockHeight)+1, pubsubServer, logger)
 
@@ -297,10 +297,9 @@ func initDALCMock(dalc da.DataAvailabilityLayerClient, daBlockTime time.Duration
 // TODO(omritoptix): Possible move out to a generic testutil
 func initSettlementLayerMock(settlementlc settlement.LayerClient, batchSize uint64, latestHeight uint64, batchOffsetHeight uint64, pubsubServer *pubsub.Server, logger log.Logger) error {
 	conf := slmock.Config{
-		AutoUpdateBatches: false,
-		BatchSize:         batchSize,
-		LatestHeight:      latestHeight,
-		BatchOffsetHeight: batchOffsetHeight,
+		Config: &settlement.Config{
+			BatchSize: batchSize,
+		},
 	}
 	byteconf, _ := json.Marshal(conf)
 	return settlementlc.Init(byteconf, pubsubServer, logger)

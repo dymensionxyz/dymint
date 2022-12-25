@@ -2,6 +2,7 @@ package registry
 
 import (
 	"github.com/dymensionxyz/dymint/settlement"
+	"github.com/dymensionxyz/dymint/settlement/dymension"
 	"github.com/dymensionxyz/dymint/settlement/mock"
 )
 
@@ -9,16 +10,16 @@ import (
 type Client string
 
 const (
-	// ClientMock is a mock client for the settlement layer
-	ClientMock Client = "mock"
+	// Mock is a mock client for the settlement layer
+	Mock Client = "mock"
 	// Dymension is a client for interacting with dymension settlement layer
 	Dymension Client = "dymension"
 )
 
 // A central registry for all Settlement Layer Clients
 var clients = map[Client]func() settlement.LayerClient{
-	ClientMock: func() settlement.LayerClient { return &mock.SettlementLayerClient{} },
-	Dymension:  func() settlement.LayerClient { return &settlement.DymensionLayerClient{} },
+	Mock:      func() settlement.LayerClient { return &mock.SettlementLayerClient{} },
+	Dymension: func() settlement.LayerClient { return &dymension.LayerClient{} },
 }
 
 // GetClient returns client identified by name.

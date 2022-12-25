@@ -3,6 +3,7 @@ package settlement
 import (
 	"fmt"
 
+	"github.com/dymensionxyz/dymint/types"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
 )
@@ -16,6 +17,7 @@ const (
 // Define the event types
 const (
 	EventNewSettlementBatchAccepted = "NewSettlementBatchAccepted"
+	EventSequencersListUpdated      = "SequencersListUpdated"
 )
 
 // EventDataNewSettlementBatchAccepted defines the structure of the event data for the EventNewSettlementBatchAccepted
@@ -24,6 +26,12 @@ type EventDataNewSettlementBatchAccepted struct {
 	EndHeight uint64
 	// StateIndex is the rollapp-specific index the batch was saved in the SL
 	StateIndex uint64
+}
+
+// EventDataSequencersListUpdated defines the structure of the event data for the EventSequencersListUpdated
+type EventDataSequencersListUpdated struct {
+	// Sequencers is the list of sequencers
+	Sequencers []types.Sequencer
 }
 
 // Define queries

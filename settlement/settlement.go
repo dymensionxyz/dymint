@@ -39,13 +39,15 @@ type DAMetaData struct {
 	Client da.Client
 }
 
-func (d *DAMetaData) toPath() string {
+// ToPath converts a DAMetaData to a path.
+func (d *DAMetaData) ToPath() string {
 	// convert uint64 to string
 	path := []string{string(d.Client), ".", strconv.FormatUint(d.Height, 10)}
 	return strings.Join(path, "")
 }
 
-func (d *DAMetaData) fromPath(path string) (*DAMetaData, error) {
+// FromPath parses a path to a DAMetaData.
+func (d *DAMetaData) FromPath(path string) (*DAMetaData, error) {
 	pathParts := strings.FieldsFunc(path, func(r rune) bool { return r == '.' })
 	height, err := strconv.ParseUint(pathParts[1], 10, 64)
 	if err != nil {
@@ -76,17 +78,20 @@ type ResultSubmitBatch struct {
 	BaseResult
 }
 
-// ResultRetrieveBatch contains information returned from settlement layer after batch retrieval.
+// ResultRetrieveBatch contains information returned from settlement layer after batch retrieva
 type ResultRetrieveBatch struct {
 	BaseResult
 	*Batch
 }
 
+// Option is a function that sets a parameter on the settlement layer.
+type Option func(LayerClient)
+
 // LayerClient defines generic interface for Settlement layer interaction.
 type LayerClient interface {
 
 	// Init is called once for the client initialization
-	Init(config []byte, pubsub *pubsub.Server, logger log.Logger) error
+	Init(config []byte, pubsub *pubsub.Server, logger log.Logger, options ...Option) error
 
 	// Start is called once, after Init. It's implementation should start the client service.
 	Start() error
@@ -101,8 +106,29 @@ type LayerClient interface {
 	// RetrieveBatch Gets the batch which contains the given height. Empty height returns the latest batch.
 	RetrieveBatch(stateIndex ...uint64) (*ResultRetrieveBatch, error)
 
-	// GetLatestFinalizedStateHeight returns the latest-finalized-state height of the active rollapp
-	GetLatestFinalizedStateHeight(rollapID string) (int64, error)
+	// GetSequencersList returns the list of the sequencers for this chain.
+	GetSequencersList() []*types.Sequencer
 
-	// TODO(omritoptix): Support getting multiple batches and pagination
+	// GetProposer returns the current proposer for this chain.
+	GetProposer() *types.Sequencer
+}
+
+// HubClient is an helper interface for a more granualr interaction with the hub.
+// Implementing a new settlement layer client basically requires embedding the base client
+// and implementing the helper interfaces.
+type HubClient interface {
+	Start() error
+	Stop() error
+	PostBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) (PostBatchResp, error)
+	GetLatestBatch(rollappID string) (*ResultRetrieveBatch, error)
+	GetBatchAtIndex(rollappID string, index uint64) (*ResultRetrieveBatch, error)
+	GetSequencers(rollappID string) ([]*types.Sequencer, error)
+}
+
+// PostBatchResp is an helper interface for a more granualr interaction with the hub.
+// Implementing a new settlement layer client basically requires embedding the base client
+// and implementing the helper interfaces.
+type PostBatchResp interface {
+	GetCode() uint32
+	GetTxHash() string
 }
