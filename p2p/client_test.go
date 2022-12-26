@@ -79,8 +79,7 @@ func TestGossiping(t *testing.T) {
 	assert := assert.New(t)
 	logger := test.NewLogger(t)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := context.Background()
 
 	var expectedMsg = []byte("foobar")
 	var wg sync.WaitGroup
