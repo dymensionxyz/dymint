@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"sync/atomic"
 
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/log"
@@ -122,7 +123,7 @@ func (b *BaseLayerClient) SubmitBatch(batch *types.Batch, daClient da.Client, da
 		}
 	}
 	b.logger.Info("Successfully submitted batch to settlement layer", "tx hash", txResp.GetTxHash())
-	b.latestHeight = batch.EndHeight
+	atomic.StoreUint64(&b.latestHeight, batch.EndHeight)
 	return &ResultSubmitBatch{
 		BaseResult: BaseResult{Code: StatusSuccess},
 	}
@@ -197,7 +198,7 @@ func (b *BaseLayerClient) getConfig(config []byte) (*Config, error) {
 }
 
 func (b *BaseLayerClient) validateBatch(batch *types.Batch) error {
-	if batch.StartHeight != b.latestHeight+1 {
+	if batch.StartHeight != atomic.LoadUint64(&b.latestHeight)+1 {
 		return errors.New("batch start height must be last height + 1")
 	}
 	if batch.EndHeight < batch.StartHeight {

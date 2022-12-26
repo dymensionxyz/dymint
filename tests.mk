@@ -8,5 +8,5 @@ BINDIR ?= $(GOPATH)/bin
 ### go tests
 test:
 	@echo "--> Running go test"
-	@go test $(PACKAGES)
+	@go test $(PACKAGES) -race
 .PHONY: test
