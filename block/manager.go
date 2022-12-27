@@ -10,6 +10,7 @@ import (
 	"code.cloudfoundry.org/go-diodes"
 	"github.com/avast/retry-go"
 	abciconv "github.com/dymensionxyz/dymint/conv/abci"
+	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmcrypto "github.com/tendermint/tendermint/crypto"
@@ -354,7 +355,7 @@ func (m *Manager) syncUntilTarget(ctx context.Context, syncTarget uint64) {
 
 // ApplyBlockLoop is responsible for applying blocks retrieved from pubsub server.
 func (m *Manager) ApplyBlockLoop(ctx context.Context) {
-	subscription, err := m.pubsub.Subscribe(ctx, "ApplyBlockLoop", EventQueryNewNewGossipedBlock, 100)
+	subscription, err := m.pubsub.Subscribe(ctx, "ApplyBlockLoop", p2p.EventQueryNewNewGossipedBlock, 100)
 	if err != nil {
 		m.logger.Error("failed to subscribe to gossiped blocked events")
 		panic(err)
@@ -363,7 +364,7 @@ func (m *Manager) ApplyBlockLoop(ctx context.Context) {
 		select {
 		case blockEvent := <-subscription.Out():
 			m.logger.Info("Received new block event", "eventData", blockEvent.Data())
-			eventData := blockEvent.Data().(*EventDataNewGossipedBlock)
+			eventData := blockEvent.Data().(*p2p.EventDataNewGossipedBlock)
 			block := eventData.Block
 			commit := eventData.Commit
 			err := m.applyBlock(ctx, &block, &commit, blockMetaData{source: gossipedBlock})
