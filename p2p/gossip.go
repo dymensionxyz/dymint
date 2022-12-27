@@ -18,9 +18,6 @@ type GossipMessage struct {
 	From peer.ID
 }
 
-// GossipValidator is a callback function type.
-type GossipValidator func(*GossipMessage) bool
-
 // GossiperOption sets optional parameters of Gossiper.
 type GossiperOption func(*Gossiper) error
 

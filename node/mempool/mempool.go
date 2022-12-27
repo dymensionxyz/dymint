@@ -1,4 +1,4 @@
-package node
+package nodemempool
 
 import (
 	"fmt"
@@ -12,7 +12,7 @@ const (
 	maxActiveIDs = math.MaxUint16
 )
 
-type mempoolIDs struct {
+type MempoolIDs struct {
 	mtx       tmsync.RWMutex
 	peerMap   map[peer.ID]uint16
 	nextID    uint16              // assumes that a node will never have over 65536 active peers
@@ -21,7 +21,7 @@ type mempoolIDs struct {
 
 // Reserve searches for the next unused ID and assigns it to the
 // peer.
-func (ids *mempoolIDs) ReserveForPeer(peer peer.ID) {
+func (ids *MempoolIDs) ReserveForPeer(peer peer.ID) {
 	ids.mtx.Lock()
 	defer ids.mtx.Unlock()
 
@@ -32,7 +32,7 @@ func (ids *mempoolIDs) ReserveForPeer(peer peer.ID) {
 
 // nextPeerID returns the next unused peer ID to use.
 // This assumes that ids's mutex is already locked.
-func (ids *mempoolIDs) nextPeerID() uint16 {
+func (ids *MempoolIDs) nextPeerID() uint16 {
 	if len(ids.activeIDs) == maxActiveIDs {
 		panic(fmt.Sprintf("node has maximum %d active IDs and wanted to get one more", maxActiveIDs))
 	}
@@ -48,7 +48,7 @@ func (ids *mempoolIDs) nextPeerID() uint16 {
 }
 
 // Reclaim returns the ID reserved for the peer back to unused pool.
-func (ids *mempoolIDs) Reclaim(peer peer.ID) {
+func (ids *MempoolIDs) Reclaim(peer peer.ID) {
 	ids.mtx.Lock()
 	defer ids.mtx.Unlock()
 
@@ -60,7 +60,7 @@ func (ids *mempoolIDs) Reclaim(peer peer.ID) {
 }
 
 // GetForPeer returns an ID for the peer. ID is generated if required.
-func (ids *mempoolIDs) GetForPeer(peer peer.ID) uint16 {
+func (ids *MempoolIDs) GetForPeer(peer peer.ID) uint16 {
 	ids.mtx.Lock()
 	defer ids.mtx.Unlock()
 
@@ -74,8 +74,8 @@ func (ids *mempoolIDs) GetForPeer(peer peer.ID) uint16 {
 	return id
 }
 
-func newMempoolIDs() *mempoolIDs {
-	return &mempoolIDs{
+func NewMempoolIDs() *MempoolIDs {
+	return &MempoolIDs{
 		peerMap:   make(map[peer.ID]uint16),
 		activeIDs: map[uint16]struct{}{0: {}},
 		nextID:    1, // reserve unknownPeerID(0) for mempoolReactor.BroadcastTx

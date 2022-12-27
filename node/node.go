@@ -4,18 +4,15 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"go.uber.org/multierr"
 
-	abci "github.com/tendermint/tendermint/abci/types"
 	llcfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/libs/service"
-	corep2p "github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
 	tmtypes "github.com/tendermint/tendermint/types"
 
@@ -25,6 +22,7 @@ import (
 	daregsitry "github.com/dymensionxyz/dymint/da/registry"
 	"github.com/dymensionxyz/dymint/mempool"
 	mempoolv1 "github.com/dymensionxyz/dymint/mempool/v1"
+	nodemempool "github.com/dymensionxyz/dymint/node/mempool"
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/settlement"
 	slregistry "github.com/dymensionxyz/dymint/settlement/registry"
@@ -65,7 +63,7 @@ type Node struct {
 
 	// TODO(tzdybal): consider extracting "mempool reactor"
 	Mempool      mempool.Mempool
-	mempoolIDs   *mempoolIDs
+	mempoolIDs   *nodemempool.MempoolIDs
 	incomingTxCh chan *p2p.GossipMessage
 
 	Store        store.Store
@@ -98,11 +96,6 @@ func NewNode(ctx context.Context, conf config.NodeConfig, p2pKey crypto.PrivKey,
 
 	pubsubServer := pubsub.NewServer()
 
-	client, err := p2p.NewClient(conf.P2P, p2pKey, genesis.ChainID, logger.With("module", "p2p"))
-	if err != nil {
-		return nil, err
-	}
-
 	var baseKV store.KVStore
 	if conf.RootDir == "" && conf.DBPath == "" { // this is used for testing
 		logger.Info("WARNING: working in in-memory mode")
@@ -121,7 +114,7 @@ func NewNode(ctx context.Context, conf config.NodeConfig, p2pKey crypto.PrivKey,
 	if dalc == nil {
 		return nil, fmt.Errorf("couldn't get data availability client named '%s'", conf.DALayer)
 	}
-	err = dalc.Init([]byte(conf.DAConfig), dalcKV, logger.With("module", "da_client"))
+	err := dalc.Init([]byte(conf.DAConfig), dalcKV, logger.With("module", "da_client"))
 	if err != nil {
 		return nil, fmt.Errorf("data availability layer client initialization error: %w", err)
 	}
@@ -142,7 +135,15 @@ func NewNode(ctx context.Context, conf config.NodeConfig, p2pKey crypto.PrivKey,
 	}
 
 	mp := mempoolv1.NewTxMempool(logger, llcfg.DefaultMempoolConfig(), proxyApp.Mempool(), 0)
-	mpIDs := newMempoolIDs()
+	mpIDs := nodemempool.NewMempoolIDs()
+
+	// Set p2p client and it's validators
+	p2pValidator := p2p.NewValidator(logger)
+	client, err := p2p.NewClient(conf.P2P, p2pKey, genesis.ChainID, logger.With("module", "p2p"))
+	if err != nil {
+		return nil, err
+	}
+	client.SetTxValidator(p2pValidator.Tx(mp, mpIDs))
 
 	blockManager, err := block.NewManager(signingKey, conf.BlockManagerConfig, genesis, s, mp, proxyApp.Consensus(), dalc, settlementlc, eventBus, pubsubServer, logger.With("module", "BlockManager"))
 	if err != nil {
@@ -170,8 +171,6 @@ func NewNode(ctx context.Context, conf config.NodeConfig, p2pKey crypto.PrivKey,
 	}
 
 	node.BaseService = *service.NewBaseService(logger, "Node", node)
-
-	node.P2P.SetTxValidator(node.newTxValidator())
 
 	return node, nil
 }
@@ -282,36 +281,6 @@ func (n *Node) EventBus() *tmtypes.EventBus {
 // ProxyApp returns ABCI proxy connections to communicate with application.
 func (n *Node) ProxyApp() proxy.AppConns {
 	return n.proxyApp
-}
-
-// newTxValidator creates a pubsub validator that uses the node's mempool to check the
-// transaction. If the transaction is valid, then it is added to the mempool
-func (n *Node) newTxValidator() p2p.GossipValidator {
-	return func(m *p2p.GossipMessage) bool {
-		n.Logger.Debug("transaction received", "bytes", len(m.Data))
-		checkTxResCh := make(chan *abci.Response, 1)
-		err := n.Mempool.CheckTx(m.Data, func(resp *abci.Response) {
-			checkTxResCh <- resp
-		}, mempool.TxInfo{
-			SenderID:    n.mempoolIDs.GetForPeer(m.From),
-			SenderP2PID: corep2p.ID(m.From),
-		})
-		switch {
-		case errors.Is(err, mempool.ErrTxInCache):
-			return true
-		case errors.Is(err, mempool.ErrMempoolIsFull{}):
-			return true
-		case errors.Is(err, mempool.ErrTxTooLarge{}):
-			return false
-		case errors.Is(err, mempool.ErrPreCheck{}):
-			return false
-		default:
-		}
-		res := <-checkTxResCh
-		checkTxResp := res.GetCheckTx()
-
-		return checkTxResp.Code == abci.CodeTypeOK
-	}
 }
 
 func createAndStartIndexerService(
