@@ -13,10 +13,11 @@ for d in ./proto/* ; do
         TARGET="${d}/pb"
         # Remove the parent directory
         TARGET=${TARGET#*/*/}
-        # ADd to the list of targets
+        # Add to the list of targets
         TARGETS="$TARGETS ./$TARGET"
     fi
 done
+
 
 # Iterate over the target dirs and delete the current contents
 for TARGET_DIR in $TARGETS; do
