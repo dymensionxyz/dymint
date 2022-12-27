@@ -28,12 +28,20 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
-// defaultDABlockTime is used only if DABlockTime is not configured for manager
-const defaultDABlockTime = 30 * time.Second
+type blockSource string
 
-type newBlockEvent struct {
-	block    *types.Block
-	commit   *types.Commit
+// defaultDABlockTime is used only if DABlockTime is not configured for manager
+const (
+	defaultDABlockTime = 30 * time.Second
+)
+
+const (
+	gossipedBlock blockSource = "gossip"
+	daBlock       blockSource = "da"
+)
+
+type blockMetaData struct {
+	source   blockSource
 	daHeight uint64
 }
 
@@ -62,7 +70,6 @@ type Manager struct {
 	syncTarget   uint64
 	isSyncedCond sync.Cond
 
-	blockInCh chan newBlockEvent
 	syncCache map[uint64]*types.Block
 
 	logger log.Logger
@@ -135,7 +142,6 @@ func NewManager(
 		retriever:        dalc.(da.BatchRetriever),
 		// channels are buffered to avoid blocking on input/output operations, buffer sizes are arbitrary
 		syncTargetDiode: diodes.NewOneToOne(1, nil),
-		blockInCh:       make(chan newBlockEvent, 100),
 		syncCache:       make(map[uint64]*types.Block),
 		isSyncedCond:    *sync.NewCond(new(sync.Mutex)),
 		batchInProcess:  batchInProcess,
@@ -346,28 +352,36 @@ func (m *Manager) syncUntilTarget(ctx context.Context, syncTarget uint64) {
 	}
 }
 
-// ApplyBlockLoop is responsible for applying blocks retrieved from the DA.
+// ApplyBlockLoop is responsible for applying blocks retrieved from pubsub server.
 func (m *Manager) ApplyBlockLoop(ctx context.Context) {
+	subscription, err := m.pubsub.Subscribe(ctx, "ApplyBlockLoop", EventQueryNewNewGossipedBlock, 100)
+	if err != nil {
+		m.logger.Error("failed to subscribe to gossiped blocked events")
+		panic(err)
+	}
 	for {
 		select {
-		case blockEvent := <-m.blockInCh:
-			block := blockEvent.block
-			commit := blockEvent.commit
-			daHeight := blockEvent.daHeight
-			err := m.applyBlock(ctx, block, commit, daHeight)
+		case blockEvent := <-subscription.Out():
+			m.logger.Info("Received new block event", "eventData", blockEvent.Data())
+			eventData := blockEvent.Data().(*EventDataNewGossipedBlock)
+			block := eventData.Block
+			commit := eventData.Commit
+			err := m.applyBlock(ctx, &block, &commit, blockMetaData{source: gossipedBlock})
 			if err != nil {
 				continue
 			}
 		case <-ctx.Done():
 			return
+		case <-subscription.Cancelled():
+			m.logger.Info("Subscription for gossied blocked events canceled")
 		}
 	}
 }
 
-func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *types.Commit, daHeight uint64) error {
-	m.logger.Debug("block body retrieved from DALC",
+func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *types.Commit, blockMetaData blockMetaData) error {
+	m.logger.Debug("block body retrieved",
 		"height", block.Header.Height,
-		"daHeight", daHeight,
+		"source", blockMetaData.source,
 		"hash", block.Hash(),
 	)
 	if block.Header.Height > m.store.Height() {
@@ -431,7 +445,7 @@ func (m *Manager) processNextDABatch(ctx context.Context, daHeight uint64) error
 	m.logger.Debug("retrieved batches", "n", len(batchResp.Batches), "daHeight", daHeight)
 	for _, batch := range batchResp.Batches {
 		for i, block := range batch.Blocks {
-			err := m.applyBlock(ctx, block, batch.Commits[i], daHeight)
+			err := m.applyBlock(ctx, block, batch.Commits[i], blockMetaData{source: daBlock, daHeight: daHeight})
 			if err != nil {
 				return err
 			}
