@@ -138,12 +138,12 @@ func NewNode(ctx context.Context, conf config.NodeConfig, p2pKey crypto.PrivKey,
 	mpIDs := nodemempool.NewMempoolIDs()
 
 	// Set p2p client and it's validators
-	p2pValidator := p2p.NewValidator(logger)
+	p2pValidator := p2p.NewValidator(logger, pubsubServer)
 	client, err := p2p.NewClient(conf.P2P, p2pKey, genesis.ChainID, logger.With("module", "p2p"))
 	if err != nil {
 		return nil, err
 	}
-	client.SetTxValidator(p2pValidator.Tx(mp, mpIDs))
+	client.SetTxValidator(p2pValidator.TxValidator(mp, mpIDs))
 
 	blockManager, err := block.NewManager(signingKey, conf.BlockManagerConfig, genesis, s, mp, proxyApp.Consensus(), dalc, settlementlc, eventBus, pubsubServer, logger.With("module", "BlockManager"))
 	if err != nil {

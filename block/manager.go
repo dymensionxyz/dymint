@@ -364,7 +364,7 @@ func (m *Manager) ApplyBlockLoop(ctx context.Context) {
 		select {
 		case blockEvent := <-subscription.Out():
 			m.logger.Info("Received new block event", "eventData", blockEvent.Data())
-			eventData := blockEvent.Data().(*p2p.EventDataNewGossipedBlock)
+			eventData := blockEvent.Data().(*p2p.GossipedBlock)
 			block := eventData.Block
 			commit := eventData.Commit
 			err := m.applyBlock(ctx, &block, &commit, blockMetaData{source: gossipedBlock})
