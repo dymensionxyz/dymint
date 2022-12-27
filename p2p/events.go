@@ -3,6 +3,7 @@ package p2p
 import (
 	"fmt"
 
+	"github.com/dymensionxyz/dymint/p2p/pb"
 	"github.com/dymensionxyz/dymint/types"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
@@ -27,12 +28,47 @@ type EventDataNewGossipedBlock struct {
 	Commit types.Commit
 }
 
-func (e EventDataNewGossipedBlock) String() string {
-	return fmt.Sprintf("EventDataNewGossipedBlock{Block: %v, Commit: %v}", e.Block, e.Commit)
+// MarshalBinary encodes GossipedBlock into binary form and returns it.
+func (e *EventDataNewGossipedBlock) MarshalBinary() ([]byte, error) {
+	return e.ToProto().Marshal()
 }
 
-// Define queries
+// UnmarshalBinary decodes binary form of GossipedBlock into object.
+func (e *EventDataNewGossipedBlock) UnmarshalBinary(data []byte) error {
+	var pbGossipedBlock pb.GossipedBlock
+	err := pbGossipedBlock.Unmarshal(data)
+	if err != nil {
+		return err
+	}
+	err = e.FromProto(&pbGossipedBlock)
+	return err
+}
+
+// ToProto converts Data into protobuf representation and returns it.
+func (e *EventDataNewGossipedBlock) ToProto() *pb.GossipedBlock {
+	return &pb.GossipedBlock{
+		Block:  e.Block.ToProto(),
+		Commit: e.Commit.ToProto(),
+	}
+}
+
+//FromProto fills GossipedBlock with data from its protobuf representation.
+func (e *EventDataNewGossipedBlock) FromProto(other *pb.GossipedBlock) error {
+	if err := e.Block.FromProto(other.Block); err != nil {
+		return err
+	}
+	if err := e.Commit.FromProto(other.Commit); err != nil {
+		return err
+	}
+	return nil
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                   Queries                                  */
+/* -------------------------------------------------------------------------- */
+
 var (
+	// EventQueryNewNewGossipedBlock is the query used for getting EventNewGossipedBlock
 	EventQueryNewNewGossipedBlock = QueryForEvent(EventNewGossipedBlock)
 )
 
