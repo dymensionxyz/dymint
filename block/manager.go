@@ -37,6 +37,7 @@ const (
 )
 
 const (
+	produced      blockSource = "produced"
 	gossipedBlock blockSource = "gossip"
 	daBlock       blockSource = "da"
 )
@@ -501,7 +502,6 @@ func (m *Manager) publishBlock(ctx context.Context) error {
 	}
 
 	var block *types.Block
-	batch := m.store.NewBatch()
 	// Check if there's an already stored block at a newer height
 	// If there is use that instead of creating a new block
 	var commit *types.Commit
@@ -529,60 +529,11 @@ func (m *Manager) publishBlock(ctx context.Context) error {
 			Signatures: []types.Signature{sign},
 		}
 
-		// SaveBlock commits the DB tx
-		batch, err = m.store.SaveBlock(block, commit, batch)
-		if err != nil {
-			batch.Discard()
-			return err
-		}
 	}
 
-	// Apply the block but DONT commit
-	newState, responses, err := m.executor.ApplyBlock(ctx, m.lastState, block)
-	if err != nil {
-		batch.Discard()
+	if err := m.applyBlock(ctx, block, commit, blockMetaData{source: produced}); err != nil {
 		return err
 	}
-
-	// Commit the new state and block which writes to disk on the proxy app
-	err = m.executor.Commit(ctx, &newState, block, responses)
-	if err != nil {
-		batch.Discard()
-		return err
-	}
-
-	// SaveBlockResponses commits the DB tx
-	batch, err = m.store.SaveBlockResponses(block.Header.Height, responses, batch)
-	if err != nil {
-		batch.Discard()
-		return err
-	}
-
-	// After this call m.lastState is the NEW state returned from ApplyBlock
-	m.lastState = newState
-
-	// UpdateState commits the DB tx
-	batch, err = m.store.UpdateState(m.lastState, batch)
-	if err != nil {
-		batch.Discard()
-		return err
-	}
-
-	// SaveValidators commits the DB tx
-	batch, err = m.store.SaveValidators(block.Header.Height, m.lastState.Validators, batch)
-	if err != nil {
-		batch.Discard()
-		return err
-	}
-
-	err = batch.Commit()
-	if err != nil {
-		m.logger.Error("failed to persist batch to disk", "error", err)
-		return err
-	}
-
-	// Only update the stored height after successfully submitting to DA layer and committing to the DB
-	m.store.SetHeight(block.Header.Height)
 
 	syncTarget := atomic.LoadUint64(&m.syncTarget)
 	currentBlockHeight := block.Header.Height
