@@ -388,33 +388,49 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 	if block.Header.Height > m.store.Height() {
 		m.logger.Info("Syncing block", "height", block.Header.Height)
 
-		batch := m.store.NewBatch()
-
-		newState, responses, err := m.executor.ApplyBlock(ctx, m.lastState, block)
+		_, err := m.store.SaveBlock(block, commit, nil)
 		if err != nil {
-			batch.Discard()
-			m.logger.Error("failed to ApplyBlock", "error", err)
-			return err
-		}
-		batch, err = m.store.SaveBlock(block, commit, batch)
-		if err != nil {
-			batch.Discard()
 			m.logger.Error("failed to save block", "error", err)
 			return err
 		}
-		var appHash []byte
-		err = m.executor.Commit(ctx, &newState, block, responses)
+
+		// Apply the block but DONT commit
+		newState, responses, err := m.executor.ApplyBlock(ctx, m.lastState, block)
 		if err != nil {
-			batch.Discard()
-			m.logger.Error("failed to Commit", "error", err)
+			m.logger.Error("failed to ApplyBlock", "error", err)
 			return err
 		}
-		m.store.SetHeight(block.Header.Height)
 
+		// Commit the new state and block which writes to disk on the proxy app
+		err = m.executor.Commit(ctx, &newState, block, responses)
+		if err != nil {
+			m.logger.Error("failed to Commit to the block", "error", err)
+			return err
+		}
+
+		batch := m.store.NewBatch()
+
+		// SaveBlockResponses commits the DB tx
 		batch, err = m.store.SaveBlockResponses(block.Header.Height, responses, batch)
 		if err != nil {
 			batch.Discard()
-			m.logger.Error("failed to save block responses", "error", err)
+			return err
+		}
+
+		// After this call m.lastState is the NEW state returned from ApplyBlock
+		m.lastState = newState
+
+		// UpdateState commits the DB tx
+		batch, err = m.store.UpdateState(m.lastState, batch)
+		if err != nil {
+			batch.Discard()
+			return err
+		}
+
+		// SaveValidators commits the DB tx
+		batch, err = m.store.SaveValidators(block.Header.Height, m.lastState.Validators, batch)
+		if err != nil {
+			batch.Discard()
 			return err
 		}
 
@@ -424,14 +440,9 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 			return err
 		}
 
-		copy(newState.AppHash[:], appHash)
+		// Only update the stored height after successfully submitting to DA layer and committing to the DB
+		m.store.SetHeight(block.Header.Height)
 
-		m.lastState = newState
-		_, err = m.store.UpdateState(m.lastState, nil)
-		if err != nil {
-			m.logger.Error("failed to save updated state", "error", err)
-			return err
-		}
 	}
 	return nil
 }
