@@ -242,7 +242,7 @@ func (m *Manager) PublishBlockLoop(ctx context.Context) {
 	}
 	// The func to invoke upon block publish
 	publishLoopFunc := func() {
-		err := m.publishBlock(ctx)
+		err := m.produceBlock(ctx)
 		if err != nil {
 			m.logger.Error("error while producing block", "error", err)
 		}
@@ -479,7 +479,7 @@ func (m *Manager) fetchBatch(daHeight uint64) (da.ResultRetrieveBatch, error) {
 	return batchRes, err
 }
 
-func (m *Manager) publishBlock(ctx context.Context) error {
+func (m *Manager) produceBlock(ctx context.Context) error {
 	var lastCommit *types.Commit
 	var lastHeaderHash [32]byte
 	var err error
