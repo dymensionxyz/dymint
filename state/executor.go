@@ -8,6 +8,7 @@ import (
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	abcitypes "github.com/tendermint/tendermint/abci/types"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -221,10 +222,18 @@ func (e *BlockExecutor) updateState(state types.State, block *types.Block, abciR
 }
 
 func (e *BlockExecutor) commit(ctx context.Context, state *types.State, block *types.Block, deliverTxs []*abci.ResponseDeliverTx) ([]byte, error) {
+	infoResp, err := e.proxyAppQueryConn.InfoSync(abcitypes.RequestInfo{})
+	if err != nil {
+		return nil, err
+	}
+	// If the abci app has the same height as the current block (i.e already has been committed), skip the commit
+	if infoResp.LastBlockHeight == int64(block.Header.Height) {
+		return infoResp.LastBlockAppHash, nil
+	}
 	e.mempool.Lock()
 	defer e.mempool.Unlock()
 
-	err := e.mempool.FlushAppConn()
+	err = e.mempool.FlushAppConn()
 	if err != nil {
 		return nil, err
 	}

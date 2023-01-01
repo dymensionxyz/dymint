@@ -34,6 +34,7 @@ func TestAggregatorMode(t *testing.T) {
 	app.On("DeliverTx", mock.Anything).Return(abci.ResponseDeliverTx{})
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{})
 	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{})
+	app.On("Info", mock.Anything).Return(abci.ResponseInfo{LastBlockHeight: 0, LastBlockAppHash: []byte{0}})
 
 	key, _, _ := crypto.GenerateEd25519Key(rand.Reader)
 	signingKey, _, _ := crypto.GenerateEd25519Key(rand.Reader)

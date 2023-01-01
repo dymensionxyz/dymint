@@ -232,16 +232,16 @@ func (m *Manager) PublishBlockLoop(ctx context.Context) {
 	}
 	// If we get blockTime of 0 we'll just run publishBlock in a loop
 	// vs waiting for ticks
-	publishLoopCh := make(chan bool, 1)
+	produceBlockCh := make(chan bool, 1)
 	ticker := &time.Ticker{}
 	if m.conf.BlockTime == 0 {
-		publishLoopCh <- true
+		produceBlockCh <- true
 	} else {
 		ticker = time.NewTicker(m.conf.BlockTime)
 		defer ticker.Stop()
 	}
 	// The func to invoke upon block publish
-	publishLoopFunc := func() {
+	produceBlockLoop := func() {
 		err := m.produceBlock(ctx)
 		if err != nil {
 			m.logger.Error("error while producing block", "error", err)
@@ -252,10 +252,10 @@ func (m *Manager) PublishBlockLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			publishLoopFunc()
-		case <-publishLoopCh:
+			produceBlockLoop()
+		case <-produceBlockCh:
 			for {
-				publishLoopFunc()
+				produceBlockLoop()
 			}
 		}
 
@@ -441,7 +441,7 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 			return err
 		}
 
-		// Only update the stored height after successfully submitting to DA layer and committing to the DB
+		// Only update the stored height after successfully committing to the DB
 		m.store.SetHeight(block.Header.Height)
 
 	}
@@ -502,13 +502,18 @@ func (m *Manager) produceBlock(ctx context.Context) error {
 	}
 
 	var block *types.Block
-	// Check if there's an already stored block at a newer height
+	// Check if there's an already stored block and commit at a newer height
 	// If there is use that instead of creating a new block
 	var commit *types.Commit
 	pendingBlock, err := m.store.LoadBlock(newHeight)
 	if err == nil {
 		m.logger.Info("Using pending block", "height", newHeight)
 		block = pendingBlock
+		commit, err = m.store.LoadCommit(newHeight)
+		if err != nil {
+			m.logger.Error("Loaded block but failed to load commit", "height", newHeight, "error", err)
+			return err
+		}
 	} else {
 		m.logger.Info("Creating block", "height", newHeight)
 		block = m.executor.CreateBlock(newHeight, lastCommit, lastHeaderHash, m.lastState)

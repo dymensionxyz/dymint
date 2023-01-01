@@ -89,6 +89,10 @@ func TestApplyBlock(t *testing.T) {
 	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{
 		Data: mockAppHash[:],
 	})
+	app.On("Info", mock.Anything).Return(abci.ResponseInfo{
+		LastBlockHeight:  0,
+		LastBlockAppHash: []byte{0},
+	})
 
 	clientCreator := proxy.NewLocalClientCreator(app)
 	abciClient, err := clientCreator.NewABCIClient()
