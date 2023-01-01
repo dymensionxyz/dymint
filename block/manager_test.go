@@ -42,6 +42,7 @@ func TestInitialState(t *testing.T) {
 	logger := log.TestingLogger()
 	pubsubServer := pubsub.NewServer()
 	pubsubServer.Start()
+	proxyApp := testutil.GetABCIProxyAppMock(logger.With("module", "proxy"))
 	settlementlc := slregistry.GetClient(slregistry.Mock)
 	_ = settlementlc.Init(nil, pubsubServer, logger)
 
@@ -82,7 +83,7 @@ func TestInitialState(t *testing.T) {
 			assert := assert.New(t)
 
 			dalc := getMockDALC(100*time.Second, logger)
-			agg, err := NewManager(key, conf, c.genesis, c.store, nil, nil, dalc, settlementlc, nil, pubsubServer, logger)
+			agg, err := NewManager(key, conf, c.genesis, c.store, nil, proxyApp, dalc, settlementlc, nil, pubsubServer, logger)
 			assert.NoError(err)
 			assert.NotNil(agg)
 			assert.Equal(c.expectedChainID, agg.lastState.ChainID)
@@ -274,7 +275,7 @@ func getManager(settlementlc settlement.LayerClient, dalc da.DataAvailabilityLay
 	}
 
 	mp := mempoolv1.NewTxMempool(logger, tmcfg.DefaultMempoolConfig(), proxyApp.Mempool(), 0)
-	manager, err := NewManager(key, conf, genesis, store, mp, proxyApp.Consensus(), dalc, settlementlc, nil, pubsubServer, logger)
+	manager, err := NewManager(key, conf, genesis, store, mp, proxyApp, dalc, settlementlc, nil, pubsubServer, logger)
 	if err != nil {
 		return nil, err
 	}

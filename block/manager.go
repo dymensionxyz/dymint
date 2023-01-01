@@ -93,7 +93,7 @@ func NewManager(
 	genesis *tmtypes.GenesisDoc,
 	store store.Store,
 	mempool mempool.Mempool,
-	proxyApp proxy.AppConnConsensus,
+	proxyApp proxy.AppConns,
 	dalc da.DataAvailabilityLayerClient,
 	settlementClient settlement.LayerClient,
 	eventBus *tmtypes.EventBus,
