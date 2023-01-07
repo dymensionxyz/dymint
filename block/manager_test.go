@@ -10,8 +10,10 @@ import (
 
 	"github.com/avast/retry-go"
 
+	"github.com/dymensionxyz/dymint/log/test"
 	mempoolv1 "github.com/dymensionxyz/dymint/mempool/v1"
 	"github.com/dymensionxyz/dymint/mocks"
+	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
@@ -29,6 +31,7 @@ import (
 	"github.com/dymensionxyz/dymint/config"
 	"github.com/dymensionxyz/dymint/da"
 	mockda "github.com/dymensionxyz/dymint/da/mock"
+	nodemempool "github.com/dymensionxyz/dymint/node/mempool"
 	slmock "github.com/dymensionxyz/dymint/settlement/mock"
 	slregistry "github.com/dymensionxyz/dymint/settlement/registry"
 	"github.com/dymensionxyz/dymint/store"
@@ -39,6 +42,8 @@ const connectionRefusedErrorMessage = "connection refused"
 const batchNotFoundErrorMessage = "batch not found"
 
 func TestInitialState(t *testing.T) {
+	assert := assert.New(t)
+
 	genesis := testutil.GenerateGenesis(123)
 	sampleState := testutil.GenerateState(1, 128)
 	key, _, _ := crypto.GenerateEd25519Key(rand.Reader)
@@ -55,6 +60,18 @@ func TestInitialState(t *testing.T) {
 	fullStore := store.New(store.NewDefaultInMemoryKVStore())
 	_, err := fullStore.UpdateState(sampleState, nil)
 	require.NoError(t, err)
+
+	// Init p2p client
+	privKey, _, _ := crypto.GenerateEd25519Key(rand.Reader)
+	p2pClient, err := p2p.NewClient(config.P2PConfig{}, privKey, "TestChain", test.NewLogger(t))
+	assert.NoError(err)
+	assert.NotNil(p2pClient)
+
+	err = p2pClient.Start(context.Background())
+	defer func() {
+		_ = p2pClient.Close()
+	}()
+	assert.NoError(err)
 
 	cases := []struct {
 		name                    string
@@ -84,10 +101,9 @@ func TestInitialState(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			assert := assert.New(t)
 
 			dalc := getMockDALC(100*time.Second, logger)
-			agg, err := NewManager(key, conf, c.genesis, c.store, nil, proxyApp, dalc, settlementlc, nil, pubsubServer, logger)
+			agg, err := NewManager(key, conf, c.genesis, c.store, nil, proxyApp, dalc, settlementlc, nil, pubsubServer, p2pClient, logger)
 			assert.NoError(err)
 			assert.NotNil(agg)
 			assert.Equal(c.expectedChainID, agg.lastState.ChainID)
@@ -112,7 +128,7 @@ func TestWaitUntilSynced(t *testing.T) {
 	defer cancel()
 	// Run syncTargetLoop so that we update the syncTarget.
 	go manager.SyncTargetLoop(ctx)
-	go manager.PublishBlockLoop(ctx)
+	go manager.ProduceBlockLoop(ctx)
 	select {
 	case <-ctx.Done():
 		// Validate some blocks produced
@@ -140,7 +156,7 @@ func TestWaitUntilSynced(t *testing.T) {
 	storeHeight := manager.store.Height()
 	ctx, cancel = context.WithTimeout(context.Background(), time.Second*2)
 	defer cancel()
-	go manager.PublishBlockLoop(ctx)
+	go manager.ProduceBlockLoop(ctx)
 	select {
 	case <-ctx.Done():
 		assert.Equal(t, storeHeight, manager.store.Height())
@@ -176,7 +192,7 @@ func TestPublishAfterSynced(t *testing.T) {
 	// Check manager is out of sync
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*1)
 	defer cancel()
-	go manager.PublishBlockLoop(ctx)
+	go manager.ProduceBlockLoop(ctx)
 	select {
 	case <-ctx.Done():
 		assert.Equal(t, manager.store.Height(), lastStoreHeight)
@@ -197,7 +213,7 @@ func TestPublishAfterSynced(t *testing.T) {
 	// Validate blocks are produced
 	ctx, cancel = context.WithTimeout(context.Background(), time.Second*2)
 	defer cancel()
-	go manager.PublishBlockLoop(ctx)
+	go manager.ProduceBlockLoop(ctx)
 	select {
 	case <-ctx.Done():
 		assert.Greater(t, manager.store.Height(), batch.EndHeight)
@@ -307,7 +323,7 @@ func TestProducePendingBlock(t *testing.T) {
 
 // Test that in case we fail after the proxy app commit, next time we won't commit again to the proxy app
 // and take the state from the previous commit of the proxy app (as it should take the state from the `Info` ABCI method)
-func TestProduceBlockFailAfterCommit(t *testing.T) {
+func TestProduceBlockIfFailAfterCommit(t *testing.T) {
 	// Init app
 	app := &mocks.Application{}
 	app.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
@@ -375,7 +391,23 @@ func getManager(settlementlc settlement.LayerClient, dalc da.DataAvailabilityLay
 	}
 
 	mp := mempoolv1.NewTxMempool(logger, tmcfg.DefaultMempoolConfig(), proxyApp.Mempool(), 0)
-	manager, err := NewManager(key, conf, genesis, store, mp, proxyApp, dalc, settlementlc, nil, pubsubServer, logger)
+	mpIDs := nodemempool.NewMempoolIDs()
+
+	// Init p2p client and validator
+	privKey, _, _ := crypto.GenerateEd25519Key(rand.Reader)
+	p2pClient, err := p2p.NewClient(config.P2PConfig{}, privKey, "TestChain", logger)
+	if err != nil {
+		return nil, err
+	}
+	p2pValidator := p2p.NewValidator(logger, pubsubServer)
+	p2pClient.SetTxValidator(p2pValidator.TxValidator(mp, mpIDs))
+	p2pClient.SetBlockValidator(p2pValidator.BlockValidator())
+
+	if err = p2pClient.Start(context.Background()); err != nil {
+		return nil, err
+	}
+
+	manager, err := NewManager(key, conf, genesis, store, mp, proxyApp, dalc, settlementlc, nil, pubsubServer, p2pClient, logger)
 	if err != nil {
 		return nil, err
 	}

@@ -37,7 +37,7 @@ const (
 )
 
 const (
-	produced      blockSource = "produced"
+	producedBlock blockSource = "produced"
 	gossipedBlock blockSource = "gossip"
 	daBlock       blockSource = "da"
 )
@@ -50,6 +50,8 @@ type blockMetaData struct {
 // Manager is responsible for aggregating transactions into blocks.
 type Manager struct {
 	pubsub *pubsub.Server
+
+	p2pClient *p2p.Client
 
 	lastState types.State
 
@@ -98,6 +100,7 @@ func NewManager(
 	settlementClient settlement.LayerClient,
 	eventBus *tmtypes.EventBus,
 	pubsub *pubsub.Server,
+	p2pClient *p2p.Client,
 	logger log.Logger,
 ) (*Manager, error) {
 	s, err := getInitialState(store, genesis)
@@ -133,6 +136,7 @@ func NewManager(
 
 	agg := &Manager{
 		pubsub:           pubsub,
+		p2pClient:        p2pClient,
 		proposerKey:      proposerKey,
 		conf:             conf,
 		genesis:          genesis,
@@ -221,8 +225,8 @@ func (m *Manager) waitForSync(ctx context.Context) error {
 	return nil
 }
 
-// PublishBlockLoop is calling publishBlock in a loop as long as wer'e synced.
-func (m *Manager) PublishBlockLoop(ctx context.Context) {
+// ProduceBlockLoop is calling publishBlock in a loop as long as wer'e synced.
+func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 	// We want to wait until we are synced. After that, since there is no leader
 	// election yet, and leader are elected manually, we will not be out of sync until
 	// we are manually being replaced.
@@ -364,8 +368,8 @@ func (m *Manager) ApplyBlockLoop(ctx context.Context) {
 	for {
 		select {
 		case blockEvent := <-subscription.Out():
-			m.logger.Info("Received new block event", "eventData", blockEvent.Data())
-			eventData := blockEvent.Data().(*p2p.GossipedBlock)
+			m.logger.Debug("Received new block event", "eventData", blockEvent.Data())
+			eventData := blockEvent.Data().(p2p.GossipedBlock)
 			block := eventData.Block
 			commit := eventData.Commit
 			err := m.applyBlock(ctx, &block, &commit, blockMetaData{source: gossipedBlock})
@@ -381,13 +385,8 @@ func (m *Manager) ApplyBlockLoop(ctx context.Context) {
 }
 
 func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *types.Commit, blockMetaData blockMetaData) error {
-	m.logger.Debug("block body retrieved",
-		"height", block.Header.Height,
-		"source", blockMetaData.source,
-		"hash", block.Hash(),
-	)
 	if block.Header.Height > m.store.Height() {
-		m.logger.Info("Syncing block", "height", block.Header.Height)
+		m.logger.Info("Applying block", "height", block.Header.Height, "source", blockMetaData.source)
 
 		_, err := m.store.SaveBlock(block, commit, nil)
 		if err != nil {
@@ -446,6 +445,21 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 
 	}
 	return nil
+}
+
+func (m *Manager) gossipBlock(ctx context.Context, block types.Block, commit types.Commit) error {
+	gossipedBlock := p2p.GossipedBlock{Block: block, Commit: commit}
+	gossipedBlockBytes, err := gossipedBlock.MarshalBinary()
+	if err != nil {
+		m.logger.Error("Failed to marshal block", "error", err)
+		return err
+	}
+	if err := m.p2pClient.GossipBlock(ctx, gossipedBlockBytes); err != nil {
+		m.logger.Error("Failed to gossip block", "error", err)
+		return err
+	}
+	return nil
+
 }
 
 func (m *Manager) processNextDABatch(ctx context.Context, daHeight uint64) error {
@@ -536,13 +550,19 @@ func (m *Manager) produceBlock(ctx context.Context) error {
 
 	}
 
-	if err := m.applyBlock(ctx, block, commit, blockMetaData{source: produced}); err != nil {
+	// Gossip the block as soon as it is produced
+	if err := m.gossipBlock(ctx, *block, *commit); err != nil {
 		return err
 	}
 
+	if err := m.applyBlock(ctx, block, commit, blockMetaData{source: producedBlock}); err != nil {
+		return err
+	}
+
+	// Submit batch if we've reached the batch size and there isn't another batch currently in submission process.
+	// SyncTarget is the height of the last block in the last batch as seen by this node.
 	syncTarget := atomic.LoadUint64(&m.syncTarget)
-	currentBlockHeight := block.Header.Height
-	if currentBlockHeight > syncTarget && currentBlockHeight-syncTarget >= m.conf.BlockBatchSize && m.batchInProcess.Load() == false {
+	if block.Header.Height-syncTarget >= m.conf.BlockBatchSize && m.batchInProcess.Load() == false {
 		m.batchInProcess.Store(true)
 		go m.submitNextBatch(ctx)
 	}

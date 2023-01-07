@@ -138,14 +138,15 @@ func NewNode(ctx context.Context, conf config.NodeConfig, p2pKey crypto.PrivKey,
 	mpIDs := nodemempool.NewMempoolIDs()
 
 	// Set p2p client and it's validators
-	p2pValidator := p2p.NewValidator(logger, pubsubServer)
-	client, err := p2p.NewClient(conf.P2P, p2pKey, genesis.ChainID, logger.With("module", "p2p"))
+	p2pValidator := p2p.NewValidator(logger.With("module", "p2p_validator"), pubsubServer)
+	p2pClient, err := p2p.NewClient(conf.P2P, p2pKey, genesis.ChainID, logger.With("module", "p2p"))
 	if err != nil {
 		return nil, err
 	}
-	client.SetTxValidator(p2pValidator.TxValidator(mp, mpIDs))
+	p2pClient.SetTxValidator(p2pValidator.TxValidator(mp, mpIDs))
+	p2pClient.SetBlockValidator(p2pValidator.BlockValidator())
 
-	blockManager, err := block.NewManager(signingKey, conf.BlockManagerConfig, genesis, s, mp, proxyApp, dalc, settlementlc, eventBus, pubsubServer, logger.With("module", "BlockManager"))
+	blockManager, err := block.NewManager(signingKey, conf.BlockManagerConfig, genesis, s, mp, proxyApp, dalc, settlementlc, eventBus, pubsubServer, p2pClient, logger.With("module", "BlockManager"))
 	if err != nil {
 		return nil, fmt.Errorf("BlockManager initialization error: %w", err)
 	}
@@ -156,7 +157,7 @@ func NewNode(ctx context.Context, conf config.NodeConfig, p2pKey crypto.PrivKey,
 		pubsubServer:   pubsubServer,
 		genesis:        genesis,
 		conf:           conf,
-		P2P:            client,
+		P2P:            p2pClient,
 		blockManager:   blockManager,
 		dalc:           dalc,
 		settlementlc:   settlementlc,
@@ -227,7 +228,7 @@ func (n *Node) OnStart() error {
 		return fmt.Errorf("error while starting settlement layer client: %w", err)
 	}
 	if n.conf.Aggregator {
-		go n.blockManager.PublishBlockLoop(n.ctx)
+		go n.blockManager.ProduceBlockLoop(n.ctx)
 	}
 	go n.blockManager.RetriveLoop(n.ctx)
 	go n.blockManager.ApplyBlockLoop(n.ctx)
