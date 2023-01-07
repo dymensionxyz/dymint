@@ -8,6 +8,7 @@ import (
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	abcitypes "github.com/tendermint/tendermint/abci/types"
 	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -23,11 +24,12 @@ import (
 
 // BlockExecutor creates and applies blocks and maintains state.
 type BlockExecutor struct {
-	proposerAddress []byte
-	namespaceID     [8]byte
-	chainID         string
-	proxyApp        proxy.AppConnConsensus
-	mempool         mempool.Mempool
+	proposerAddress       []byte
+	namespaceID           [8]byte
+	chainID               string
+	proxyAppConsensusConn proxy.AppConnConsensus
+	proxyAppQueryConn     proxy.AppConnQuery
+	mempool               mempool.Mempool
 
 	eventBus *tmtypes.EventBus
 
@@ -36,15 +38,16 @@ type BlockExecutor struct {
 
 // NewBlockExecutor creates new instance of BlockExecutor.
 // Proposer address and namespace ID will be used in all newly created blocks.
-func NewBlockExecutor(proposerAddress []byte, namespaceID [8]byte, chainID string, mempool mempool.Mempool, proxyApp proxy.AppConnConsensus, eventBus *tmtypes.EventBus, logger log.Logger) *BlockExecutor {
+func NewBlockExecutor(proposerAddress []byte, namespaceID [8]byte, chainID string, mempool mempool.Mempool, proxyApp proxy.AppConns, eventBus *tmtypes.EventBus, logger log.Logger) *BlockExecutor {
 	return &BlockExecutor{
-		proposerAddress: proposerAddress,
-		namespaceID:     namespaceID,
-		chainID:         chainID,
-		proxyApp:        proxyApp,
-		mempool:         mempool,
-		eventBus:        eventBus,
-		logger:          logger,
+		proposerAddress:       proposerAddress,
+		namespaceID:           namespaceID,
+		chainID:               chainID,
+		proxyAppConsensusConn: proxyApp.Consensus(),
+		proxyAppQueryConn:     proxyApp.Query(),
+		mempool:               mempool,
+		eventBus:              eventBus,
+		logger:                logger,
 	}
 }
 
@@ -57,7 +60,7 @@ func (e *BlockExecutor) InitChain(genesis *tmtypes.GenesisDoc) (*abci.ResponseIn
 		validators[i] = tmtypes.NewValidator(v.PubKey, v.Power)
 	}
 
-	return e.proxyApp.InitChainSync(abci.RequestInitChain{
+	return e.proxyAppConsensusConn.InitChainSync(abci.RequestInitChain{
 		Time:    genesis.GenesisTime,
 		ChainId: genesis.ChainID,
 		ConsensusParams: &abci.ConsensusParams{
@@ -219,15 +222,23 @@ func (e *BlockExecutor) updateState(state types.State, block *types.Block, abciR
 }
 
 func (e *BlockExecutor) commit(ctx context.Context, state *types.State, block *types.Block, deliverTxs []*abci.ResponseDeliverTx) ([]byte, error) {
+	infoResp, err := e.proxyAppQueryConn.InfoSync(abcitypes.RequestInfo{})
+	if err != nil {
+		return nil, err
+	}
+	// If the abci app has the same height as the current block (i.e already has been committed), skip the commit
+	if infoResp.LastBlockHeight == int64(block.Header.Height) {
+		return infoResp.LastBlockAppHash, nil
+	}
 	e.mempool.Lock()
 	defer e.mempool.Unlock()
 
-	err := e.mempool.FlushAppConn()
+	err = e.mempool.FlushAppConn()
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := e.proxyApp.CommitSync()
+	resp, err := e.proxyAppConsensusConn.CommitSync()
 	if err != nil {
 		return nil, err
 	}
@@ -278,7 +289,7 @@ func (e *BlockExecutor) execute(ctx context.Context, state types.State, block *t
 
 	var err error
 
-	e.proxyApp.SetResponseCallback(func(req *abci.Request, res *abci.Response) {
+	e.proxyAppConsensusConn.SetResponseCallback(func(req *abci.Request, res *abci.Response) {
 		if r, ok := res.Value.(*abci.Response_DeliverTx); ok {
 			txRes := r.DeliverTx
 			if txRes.Code == abci.CodeTypeOK {
@@ -296,7 +307,7 @@ func (e *BlockExecutor) execute(ctx context.Context, state types.State, block *t
 	abciHeader := abciconv.ToABCIHeaderPB(&block.Header)
 	abciHeader.ChainID = e.chainID
 	abciHeader.ValidatorsHash = state.Validators.Hash()
-	abciResponses.BeginBlock, err = e.proxyApp.BeginBlockSync(
+	abciResponses.BeginBlock, err = e.proxyAppConsensusConn.BeginBlockSync(
 		abci.RequestBeginBlock{
 			Hash:   hash[:],
 			Header: abciHeader,
@@ -311,13 +322,13 @@ func (e *BlockExecutor) execute(ctx context.Context, state types.State, block *t
 	}
 
 	for _, tx := range block.Data.Txs {
-		res := e.proxyApp.DeliverTxAsync(abci.RequestDeliverTx{Tx: tx})
+		res := e.proxyAppConsensusConn.DeliverTxAsync(abci.RequestDeliverTx{Tx: tx})
 		if res.GetException() != nil {
 			return nil, errors.New(res.GetException().GetError())
 		}
 	}
 
-	abciResponses.EndBlock, err = e.proxyApp.EndBlockSync(abci.RequestEndBlock{Height: int64(block.Header.Height)})
+	abciResponses.EndBlock, err = e.proxyAppConsensusConn.EndBlockSync(abci.RequestEndBlock{Height: int64(block.Header.Height)})
 	if err != nil {
 		return nil, err
 	}

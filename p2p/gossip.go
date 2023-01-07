@@ -18,16 +18,13 @@ type GossipMessage struct {
 	From peer.ID
 }
 
-// GossipValidator is a callback function type.
-type GossipValidator func(*GossipMessage) bool
-
 // GossiperOption sets optional parameters of Gossiper.
 type GossiperOption func(*Gossiper) error
 
 // WithValidator options registers topic validator for Gossiper.
 func WithValidator(validator GossipValidator) GossiperOption {
 	return func(g *Gossiper) error {
-		return g.ps.RegisterTopicValidator(g.topic.String(), wrapValidator(validator))
+		return g.ps.RegisterTopicValidator(g.topic.String(), wrapValidator(g, validator))
 	}
 }
 
@@ -100,8 +97,13 @@ func (g *Gossiper) ProcessMessages(ctx context.Context) {
 	}
 }
 
-func wrapValidator(validator GossipValidator) pubsub.Validator {
+func wrapValidator(gossiper *Gossiper, validator GossipValidator) pubsub.Validator {
 	return func(_ context.Context, _ peer.ID, msg *pubsub.Message) bool {
+		// Make sure we don't process our own messages.
+		// In this case we'll want to return true but not to actually handle the message.
+		if msg.GetFrom() == gossiper.ownID {
+			return true
+		}
 		return validator(&GossipMessage{
 			Data: msg.Data,
 			From: msg.GetFrom(),

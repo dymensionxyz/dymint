@@ -10,6 +10,7 @@ import (
 	"code.cloudfoundry.org/go-diodes"
 	"github.com/avast/retry-go"
 	abciconv "github.com/dymensionxyz/dymint/conv/abci"
+	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmcrypto "github.com/tendermint/tendermint/crypto"
@@ -28,18 +29,29 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
-// defaultDABlockTime is used only if DABlockTime is not configured for manager
-const defaultDABlockTime = 30 * time.Second
+type blockSource string
 
-type newBlockEvent struct {
-	block    *types.Block
-	commit   *types.Commit
+// defaultDABlockTime is used only if DABlockTime is not configured for manager
+const (
+	defaultDABlockTime = 30 * time.Second
+)
+
+const (
+	producedBlock blockSource = "produced"
+	gossipedBlock blockSource = "gossip"
+	daBlock       blockSource = "da"
+)
+
+type blockMetaData struct {
+	source   blockSource
 	daHeight uint64
 }
 
 // Manager is responsible for aggregating transactions into blocks.
 type Manager struct {
 	pubsub *pubsub.Server
+
+	p2pClient *p2p.Client
 
 	lastState types.State
 
@@ -62,7 +74,6 @@ type Manager struct {
 	syncTarget   uint64
 	isSyncedCond sync.Cond
 
-	blockInCh chan newBlockEvent
 	syncCache map[uint64]*types.Block
 
 	logger log.Logger
@@ -84,11 +95,12 @@ func NewManager(
 	genesis *tmtypes.GenesisDoc,
 	store store.Store,
 	mempool mempool.Mempool,
-	proxyApp proxy.AppConnConsensus,
+	proxyApp proxy.AppConns,
 	dalc da.DataAvailabilityLayerClient,
 	settlementClient settlement.LayerClient,
 	eventBus *tmtypes.EventBus,
 	pubsub *pubsub.Server,
+	p2pClient *p2p.Client,
 	logger log.Logger,
 ) (*Manager, error) {
 	s, err := getInitialState(store, genesis)
@@ -124,6 +136,7 @@ func NewManager(
 
 	agg := &Manager{
 		pubsub:           pubsub,
+		p2pClient:        p2pClient,
 		proposerKey:      proposerKey,
 		conf:             conf,
 		genesis:          genesis,
@@ -135,7 +148,6 @@ func NewManager(
 		retriever:        dalc.(da.BatchRetriever),
 		// channels are buffered to avoid blocking on input/output operations, buffer sizes are arbitrary
 		syncTargetDiode: diodes.NewOneToOne(1, nil),
-		blockInCh:       make(chan newBlockEvent, 100),
 		syncCache:       make(map[uint64]*types.Block),
 		isSyncedCond:    *sync.NewCond(new(sync.Mutex)),
 		batchInProcess:  batchInProcess,
@@ -213,8 +225,8 @@ func (m *Manager) waitForSync(ctx context.Context) error {
 	return nil
 }
 
-// PublishBlockLoop is calling publishBlock in a loop as long as wer'e synced.
-func (m *Manager) PublishBlockLoop(ctx context.Context) {
+// ProduceBlockLoop is calling publishBlock in a loop as long as wer'e synced.
+func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 	// We want to wait until we are synced. After that, since there is no leader
 	// election yet, and leader are elected manually, we will not be out of sync until
 	// we are manually being replaced.
@@ -224,17 +236,17 @@ func (m *Manager) PublishBlockLoop(ctx context.Context) {
 	}
 	// If we get blockTime of 0 we'll just run publishBlock in a loop
 	// vs waiting for ticks
-	publishLoopCh := make(chan bool, 1)
+	produceBlockCh := make(chan bool, 1)
 	ticker := &time.Ticker{}
 	if m.conf.BlockTime == 0 {
-		publishLoopCh <- true
+		produceBlockCh <- true
 	} else {
 		ticker = time.NewTicker(m.conf.BlockTime)
 		defer ticker.Stop()
 	}
 	// The func to invoke upon block publish
-	publishLoopFunc := func() {
-		err := m.publishBlock(ctx)
+	produceBlockLoop := func() {
+		err := m.produceBlock(ctx)
 		if err != nil {
 			m.logger.Error("error while producing block", "error", err)
 		}
@@ -244,10 +256,10 @@ func (m *Manager) PublishBlockLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			publishLoopFunc()
-		case <-publishLoopCh:
+			produceBlockLoop()
+		case <-produceBlockCh:
 			for {
-				publishLoopFunc()
+				produceBlockLoop()
 			}
 		}
 
@@ -346,60 +358,79 @@ func (m *Manager) syncUntilTarget(ctx context.Context, syncTarget uint64) {
 	}
 }
 
-// ApplyBlockLoop is responsible for applying blocks retrieved from the DA.
+// ApplyBlockLoop is responsible for applying blocks retrieved from pubsub server.
 func (m *Manager) ApplyBlockLoop(ctx context.Context) {
+	subscription, err := m.pubsub.Subscribe(ctx, "ApplyBlockLoop", p2p.EventQueryNewNewGossipedBlock, 100)
+	if err != nil {
+		m.logger.Error("failed to subscribe to gossiped blocked events")
+		panic(err)
+	}
 	for {
 		select {
-		case blockEvent := <-m.blockInCh:
-			block := blockEvent.block
-			commit := blockEvent.commit
-			daHeight := blockEvent.daHeight
-			err := m.applyBlock(ctx, block, commit, daHeight)
+		case blockEvent := <-subscription.Out():
+			m.logger.Debug("Received new block event", "eventData", blockEvent.Data())
+			eventData := blockEvent.Data().(p2p.GossipedBlock)
+			block := eventData.Block
+			commit := eventData.Commit
+			err := m.applyBlock(ctx, &block, &commit, blockMetaData{source: gossipedBlock})
 			if err != nil {
 				continue
 			}
 		case <-ctx.Done():
 			return
+		case <-subscription.Cancelled():
+			m.logger.Info("Subscription for gossied blocked events canceled")
 		}
 	}
 }
 
-func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *types.Commit, daHeight uint64) error {
-	m.logger.Debug("block body retrieved from DALC",
-		"height", block.Header.Height,
-		"daHeight", daHeight,
-		"hash", block.Hash(),
-	)
+func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *types.Commit, blockMetaData blockMetaData) error {
 	if block.Header.Height > m.store.Height() {
-		m.logger.Info("Syncing block", "height", block.Header.Height)
+		m.logger.Info("Applying block", "height", block.Header.Height, "source", blockMetaData.source)
 
-		batch := m.store.NewBatch()
-
-		newState, responses, err := m.executor.ApplyBlock(ctx, m.lastState, block)
+		_, err := m.store.SaveBlock(block, commit, nil)
 		if err != nil {
-			batch.Discard()
-			m.logger.Error("failed to ApplyBlock", "error", err)
-			return err
-		}
-		batch, err = m.store.SaveBlock(block, commit, batch)
-		if err != nil {
-			batch.Discard()
 			m.logger.Error("failed to save block", "error", err)
 			return err
 		}
-		var appHash []byte
-		err = m.executor.Commit(ctx, &newState, block, responses)
+
+		// Apply the block but DONT commit
+		newState, responses, err := m.executor.ApplyBlock(ctx, m.lastState, block)
 		if err != nil {
-			batch.Discard()
-			m.logger.Error("failed to Commit", "error", err)
+			m.logger.Error("failed to ApplyBlock", "error", err)
 			return err
 		}
-		m.store.SetHeight(block.Header.Height)
 
+		// Commit the new state and block which writes to disk on the proxy app
+		err = m.executor.Commit(ctx, &newState, block, responses)
+		if err != nil {
+			m.logger.Error("failed to Commit to the block", "error", err)
+			return err
+		}
+
+		batch := m.store.NewBatch()
+
+		// SaveBlockResponses commits the DB tx
 		batch, err = m.store.SaveBlockResponses(block.Header.Height, responses, batch)
 		if err != nil {
 			batch.Discard()
-			m.logger.Error("failed to save block responses", "error", err)
+			return err
+		}
+
+		// After this call m.lastState is the NEW state returned from ApplyBlock
+		m.lastState = newState
+
+		// UpdateState commits the DB tx
+		batch, err = m.store.UpdateState(m.lastState, batch)
+		if err != nil {
+			batch.Discard()
+			return err
+		}
+
+		// SaveValidators commits the DB tx
+		batch, err = m.store.SaveValidators(block.Header.Height, m.lastState.Validators, batch)
+		if err != nil {
+			batch.Discard()
 			return err
 		}
 
@@ -409,16 +440,26 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 			return err
 		}
 
-		copy(newState.AppHash[:], appHash)
+		// Only update the stored height after successfully committing to the DB
+		m.store.SetHeight(block.Header.Height)
 
-		m.lastState = newState
-		_, err = m.store.UpdateState(m.lastState, nil)
-		if err != nil {
-			m.logger.Error("failed to save updated state", "error", err)
-			return err
-		}
 	}
 	return nil
+}
+
+func (m *Manager) gossipBlock(ctx context.Context, block types.Block, commit types.Commit) error {
+	gossipedBlock := p2p.GossipedBlock{Block: block, Commit: commit}
+	gossipedBlockBytes, err := gossipedBlock.MarshalBinary()
+	if err != nil {
+		m.logger.Error("Failed to marshal block", "error", err)
+		return err
+	}
+	if err := m.p2pClient.GossipBlock(ctx, gossipedBlockBytes); err != nil {
+		m.logger.Error("Failed to gossip block", "error", err)
+		return err
+	}
+	return nil
+
 }
 
 func (m *Manager) processNextDABatch(ctx context.Context, daHeight uint64) error {
@@ -431,7 +472,7 @@ func (m *Manager) processNextDABatch(ctx context.Context, daHeight uint64) error
 	m.logger.Debug("retrieved batches", "n", len(batchResp.Batches), "daHeight", daHeight)
 	for _, batch := range batchResp.Batches {
 		for i, block := range batch.Blocks {
-			err := m.applyBlock(ctx, block, batch.Commits[i], daHeight)
+			err := m.applyBlock(ctx, block, batch.Commits[i], blockMetaData{source: daBlock, daHeight: daHeight})
 			if err != nil {
 				return err
 			}
@@ -452,7 +493,7 @@ func (m *Manager) fetchBatch(daHeight uint64) (da.ResultRetrieveBatch, error) {
 	return batchRes, err
 }
 
-func (m *Manager) publishBlock(ctx context.Context) error {
+func (m *Manager) produceBlock(ctx context.Context) error {
 	var lastCommit *types.Commit
 	var lastHeaderHash [32]byte
 	var err error
@@ -475,14 +516,18 @@ func (m *Manager) publishBlock(ctx context.Context) error {
 	}
 
 	var block *types.Block
-	batch := m.store.NewBatch()
-	// Check if there's an already stored block at a newer height
+	// Check if there's an already stored block and commit at a newer height
 	// If there is use that instead of creating a new block
 	var commit *types.Commit
 	pendingBlock, err := m.store.LoadBlock(newHeight)
 	if err == nil {
 		m.logger.Info("Using pending block", "height", newHeight)
 		block = pendingBlock
+		commit, err = m.store.LoadCommit(newHeight)
+		if err != nil {
+			m.logger.Error("Loaded block but failed to load commit", "height", newHeight, "error", err)
+			return err
+		}
 	} else {
 		m.logger.Info("Creating block", "height", newHeight)
 		block = m.executor.CreateBlock(newHeight, lastCommit, lastHeaderHash, m.lastState)
@@ -503,64 +548,21 @@ func (m *Manager) publishBlock(ctx context.Context) error {
 			Signatures: []types.Signature{sign},
 		}
 
-		// SaveBlock commits the DB tx
-		batch, err = m.store.SaveBlock(block, commit, batch)
-		if err != nil {
-			batch.Discard()
-			return err
-		}
 	}
 
-	// Apply the block but DONT commit
-	newState, responses, err := m.executor.ApplyBlock(ctx, m.lastState, block)
-	if err != nil {
-		batch.Discard()
+	// Gossip the block as soon as it is produced
+	if err := m.gossipBlock(ctx, *block, *commit); err != nil {
 		return err
 	}
 
-	// Commit the new state and block which writes to disk on the proxy app
-	err = m.executor.Commit(ctx, &newState, block, responses)
-	if err != nil {
-		batch.Discard()
+	if err := m.applyBlock(ctx, block, commit, blockMetaData{source: producedBlock}); err != nil {
 		return err
 	}
 
-	// SaveBlockResponses commits the DB tx
-	batch, err = m.store.SaveBlockResponses(block.Header.Height, responses, batch)
-	if err != nil {
-		batch.Discard()
-		return err
-	}
-
-	// After this call m.lastState is the NEW state returned from ApplyBlock
-	m.lastState = newState
-
-	// UpdateState commits the DB tx
-	batch, err = m.store.UpdateState(m.lastState, batch)
-	if err != nil {
-		batch.Discard()
-		return err
-	}
-
-	// SaveValidators commits the DB tx
-	batch, err = m.store.SaveValidators(block.Header.Height, m.lastState.Validators, batch)
-	if err != nil {
-		batch.Discard()
-		return err
-	}
-
-	err = batch.Commit()
-	if err != nil {
-		m.logger.Error("failed to persist batch to disk", "error", err)
-		return err
-	}
-
-	// Only update the stored height after successfully submitting to DA layer and committing to the DB
-	m.store.SetHeight(block.Header.Height)
-
+	// Submit batch if we've reached the batch size and there isn't another batch currently in submission process.
+	// SyncTarget is the height of the last block in the last batch as seen by this node.
 	syncTarget := atomic.LoadUint64(&m.syncTarget)
-	currentBlockHeight := block.Header.Height
-	if currentBlockHeight > syncTarget && currentBlockHeight-syncTarget >= m.conf.BlockBatchSize && m.batchInProcess.Load() == false {
+	if block.Header.Height-syncTarget >= m.conf.BlockBatchSize && m.batchInProcess.Load() == false {
 		m.batchInProcess.Store(true)
 		go m.submitNextBatch(ctx)
 	}

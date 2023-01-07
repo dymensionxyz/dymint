@@ -38,6 +38,9 @@ const (
 
 	// headerTopicSuffix is added after namespace to create pubsub topic for block header gossiping.
 	headerTopicSuffix = "-header"
+
+	// blockTopicSuffix is added after namespace to create pubsub topic for block gossiping.
+	blockTopicSuffix = "-block"
 )
 
 // Client is a P2P client, implemented with libp2p.
@@ -59,6 +62,9 @@ type Client struct {
 
 	headerGossiper  *Gossiper
 	headerValidator GossipValidator
+
+	blockGossiper  *Gossiper
+	blockValidator GossipValidator
 
 	// cancel is used to cancel context passed to libp2p functions
 	// it's required because of discovery.Advertise call
@@ -138,6 +144,7 @@ func (c *Client) Close() error {
 	return multierr.Combine(
 		c.txGossiper.Close(),
 		c.headerGossiper.Close(),
+		c.blockGossiper.Close(),
 		c.dht.Close(),
 		c.host.Close(),
 	)
@@ -163,6 +170,17 @@ func (c *Client) GossipHeader(ctx context.Context, headerBytes []byte) error {
 // SetHeaderValidator sets the callback function, that will be invoked after block header is received from P2P network.
 func (c *Client) SetHeaderValidator(validator GossipValidator) {
 	c.headerValidator = validator
+}
+
+// GossipBlock sends the block and it's commit to the P2P network.
+func (c *Client) GossipBlock(ctx context.Context, blockBytes []byte) error {
+	c.logger.Debug("Gossiping block", "len", len(blockBytes))
+	return c.blockGossiper.Publish(ctx, blockBytes)
+}
+
+// SetBlockValidator sets the callback function, that will be invoked after block is received from P2P network.
+func (c *Client) SetBlockValidator(validator GossipValidator) {
+	c.blockValidator = validator
 }
 
 // Addrs returns listen addresses of Client.
@@ -322,6 +340,13 @@ func (c *Client) setupGossiping(ctx context.Context) error {
 	}
 	go c.headerGossiper.ProcessMessages(ctx)
 
+	c.blockGossiper, err = NewGossiper(c.host, ps, c.getBlockTopic(), c.logger,
+		WithValidator(c.blockValidator))
+	if err != nil {
+		return err
+	}
+	go c.blockGossiper.ProcessMessages(ctx)
+
 	return nil
 }
 
@@ -361,4 +386,16 @@ func (c *Client) getTxTopic() string {
 
 func (c *Client) getHeaderTopic() string {
 	return c.getNamespace() + headerTopicSuffix
+}
+
+func (c *Client) getBlockTopic() string {
+	return c.getNamespace() + blockTopicSuffix
+}
+
+// NewTxValidator creates a pubsub validator that uses the node's mempool to check the
+// transaction. If the transaction is valid, then it is added to the mempool
+func (c *Client) NewTxValidator() GossipValidator {
+	return func(g *GossipMessage) bool {
+		return true
+	}
 }

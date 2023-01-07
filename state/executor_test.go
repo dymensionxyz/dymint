@@ -32,14 +32,16 @@ func TestCreateBlock(t *testing.T) {
 	app := &mocks.Application{}
 	app.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{})
 
-	client, err := proxy.NewLocalClientCreator(app).NewABCIClient()
+	clientCreator := proxy.NewLocalClientCreator(app)
+	abciClient, err := clientCreator.NewABCIClient()
 	require.NoError(err)
-	require.NotNil(client)
+	require.NotNil(clientCreator)
+	require.NotNil(abciClient)
 
 	nsID := [8]byte{1, 2, 3, 4, 5, 6, 7, 8}
 
-	mpool := mempoolv1.NewTxMempool(logger, cfg.DefaultMempoolConfig(), proxy.NewAppConnMempool(client), 0)
-	executor := NewBlockExecutor([]byte("test address"), nsID, "test", mpool, proxy.NewAppConnConsensus(client), nil, logger)
+	mpool := mempoolv1.NewTxMempool(logger, cfg.DefaultMempoolConfig(), proxy.NewAppConnMempool(abciClient), 0)
+	executor := NewBlockExecutor([]byte("test address"), nsID, "test", mpool, proxy.NewAppConns(clientCreator), nil, logger)
 
 	state := types.State{}
 	state.ConsensusParams.Block.MaxBytes = 100
@@ -87,18 +89,28 @@ func TestApplyBlock(t *testing.T) {
 	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{
 		Data: mockAppHash[:],
 	})
+	app.On("Info", mock.Anything).Return(abci.ResponseInfo{
+		LastBlockHeight:  0,
+		LastBlockAppHash: []byte{0},
+	})
 
-	client, err := proxy.NewLocalClientCreator(app).NewABCIClient()
+	clientCreator := proxy.NewLocalClientCreator(app)
+	abciClient, err := clientCreator.NewABCIClient()
 	require.NoError(err)
-	require.NotNil(client)
+	require.NotNil(clientCreator)
+	require.NotNil(abciClient)
 
 	nsID := [8]byte{1, 2, 3, 4, 5, 6, 7, 8}
 	chainID := "test"
 
-	mpool := mempoolv1.NewTxMempool(logger, cfg.DefaultMempoolConfig(), proxy.NewAppConnMempool(client), 0)
+	mpool := mempoolv1.NewTxMempool(logger, cfg.DefaultMempoolConfig(), proxy.NewAppConnMempool(abciClient), 0)
 	eventBus := tmtypes.NewEventBus()
 	require.NoError(eventBus.Start())
-	executor := NewBlockExecutor([]byte("test address"), nsID, chainID, mpool, proxy.NewAppConnConsensus(client), eventBus, logger)
+
+	appConns := &mocks.AppConns{}
+	appConns.On("Consensus").Return(abciClient)
+	appConns.On("Query").Return(abciClient)
+	executor := NewBlockExecutor([]byte("test address"), nsID, chainID, mpool, appConns, eventBus, logger)
 
 	txQuery, err := query.New("tm.event='Tx'")
 	require.NoError(err)

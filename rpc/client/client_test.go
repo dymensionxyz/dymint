@@ -368,6 +368,7 @@ func TestGetBlockByHash(t *testing.T) {
 	mockApp.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{})
 	mockApp.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{})
 	mockApp.On("Commit", mock.Anything).Return(abci.ResponseCommit{})
+	mockApp.On("Info", mock.Anything).Return(abci.ResponseInfo{LastBlockHeight: 0, LastBlockAppHash: []byte{0}})
 
 	err := rpc.node.Start()
 	require.NoError(err)
@@ -425,6 +426,7 @@ func TestTx(t *testing.T) {
 	mockApp.On("Commit", mock.Anything).Return(abci.ResponseCommit{})
 	mockApp.On("DeliverTx", mock.Anything).Return(abci.ResponseDeliverTx{})
 	mockApp.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{})
+	mockApp.On("Info", mock.Anything).Return(abci.ResponseInfo{LastBlockHeight: 0, LastBlockAppHash: []byte{0}})
 
 	err = rpc.node.Start()
 	require.NoError(err)
@@ -639,6 +641,7 @@ func TestValidatorSetHandling(t *testing.T) {
 	app.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{})
 	app.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
 	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{})
+	app.On("Info", mock.Anything).Return(abci.ResponseInfo{LastBlockHeight: 0, LastBlockAppHash: []byte{0}})
 
 	key, _, _ := crypto.GenerateEd25519Key(crand.Reader)
 	signingKey, _, _ := crypto.GenerateEd25519Key(crand.Reader)
