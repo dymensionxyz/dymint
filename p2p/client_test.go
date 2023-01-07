@@ -84,7 +84,7 @@ func TestGossiping(t *testing.T) {
 	var expectedMsg = []byte("foobar")
 	var wg sync.WaitGroup
 
-	wg.Add(3)
+	wg.Add(2)
 
 	// ensure that Tx is delivered to client
 	assertRecv := func(tx *GossipMessage) bool {
@@ -100,7 +100,7 @@ func TestGossiping(t *testing.T) {
 		return false
 	}
 
-	validators := []GossipValidator{assertRecv, assertNotRecv, assertNotRecv, assertRecv, assertRecv}
+	validators := []GossipValidator{assertRecv, assertNotRecv, assertNotRecv, assertRecv, assertNotRecv}
 
 	// network connections topology: 3<->1<->0<->2<->4
 	clients := startTestNetwork(ctx, t, 5, map[int]hostDescr{
@@ -118,7 +118,8 @@ func TestGossiping(t *testing.T) {
 	// TODO(tzdybal): is there a better way to wait for readiness?
 	time.Sleep(1 * time.Second)
 
-	// gossip from client 4
+	// gossip from client 4. The validation of client 4 won't be called as we're not
+	// validating messages sent by ourselves.
 	err := clients[4].GossipTx(ctx, expectedMsg)
 	assert.NoError(err)
 
