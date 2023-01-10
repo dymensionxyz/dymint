@@ -7,7 +7,7 @@ import (
 	"errors"
 	"sync/atomic"
 
-	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	"github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
 	rollapptypes "github.com/dymensionxyz/dymension/x/rollapp/types"
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/log"
@@ -56,9 +56,10 @@ func (m *SettlementLayerClient) Init(config []byte, pubsub *pubsub.Server, logge
 // Config for the HubClient
 type Config struct {
 	*settlement.Config
-	DBPath  string `json:"db_path"`
-	RootDir string `json:"root_dir"`
-	store   store.KVStore
+	DBPath         string `json:"db_path"`
+	RootDir        string `json:"root_dir"`
+	ProposerPubKey []byte `json:"proposer_pub_key"`
+	store          store.KVStore
 }
 
 // HubClient implements The HubClient interface
@@ -202,9 +203,10 @@ func (c *HubClient) GetBatchAtIndex(rollappID string, index uint64) (*settlement
 
 // GetSequencers returns a list of sequencers. Currently only returns a single sequencer
 func (c *HubClient) GetSequencers(rollappID string) ([]*types.Sequencer, error) {
+	pubKey := &ed25519.PubKey{Key: c.config.ProposerPubKey}
 	return []*types.Sequencer{
 		{
-			PublicKey: secp256k1.GenPrivKey().PubKey(),
+			PublicKey: pubKey,
 			Status:    types.Proposer,
 		},
 	}, nil

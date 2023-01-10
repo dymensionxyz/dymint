@@ -28,6 +28,7 @@ import (
 	"github.com/dymensionxyz/dymint/mocks"
 	"github.com/dymensionxyz/dymint/node"
 	"github.com/dymensionxyz/dymint/rpc/client"
+	slmock "github.com/dymensionxyz/dymint/settlement/mock"
 )
 
 func TestHandlerMapping(t *testing.T) {
@@ -289,8 +290,11 @@ func getRPC(t *testing.T) (*mocks.Application, *client.Client) {
 		LastBlockAppHash: nil,
 	})
 	key, _, _ := crypto.GenerateEd25519Key(rand.Reader)
-	signingKey, _, _ := crypto.GenerateEd25519Key(rand.Reader)
-	config := config.NodeConfig{Aggregator: true, DALayer: "mock", SettlementLayer: "mock", BlockManagerConfig: config.BlockManagerConfig{BlockTime: 1 * time.Second, BatchSyncInterval: time.Second}}
+	signingKey, proposerPubKey, _ := crypto.GenerateEd25519Key(rand.Reader)
+	proposerPubKeyBytes, err := proposerPubKey.Raw()
+	settlementLayerConfig, err := json.Marshal(slmock.Config{ProposerPubKey: proposerPubKeyBytes})
+	require.NoError(err)
+	config := config.NodeConfig{Aggregator: true, DALayer: "mock", SettlementLayer: "mock", BlockManagerConfig: config.BlockManagerConfig{BlockTime: 1 * time.Second, BatchSyncInterval: time.Second}, SettlementConfig: string(settlementLayerConfig)}
 	node, err := node.NewNode(context.Background(), config, key, signingKey, proxy.NewLocalClientCreator(app), &types.GenesisDoc{ChainID: "test"}, log.TestingLogger())
 	require.NoError(err)
 	require.NotNil(node)

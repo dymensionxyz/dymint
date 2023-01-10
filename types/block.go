@@ -81,7 +81,8 @@ type EvidenceData struct {
 type Commit struct {
 	Height     uint64
 	HeaderHash [32]byte
-	Signatures []Signature // most of the time this is a single signature
+	// TODO(omritoptix): Change from []Signature to Signature as it should be one signature per block
+	Signatures []Signature
 }
 
 // Signature represents signature of block creator.

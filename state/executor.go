@@ -125,12 +125,15 @@ func (e *BlockExecutor) CreateBlock(height uint64, lastCommit *types.Commit, las
 }
 
 // ApplyBlock validates and executes the block.
-func (e *BlockExecutor) ApplyBlock(ctx context.Context, state types.State, block *types.Block) (types.State, *tmstate.ABCIResponses, error) {
-	err := e.validate(state, block)
+func (e *BlockExecutor) ApplyBlock(ctx context.Context, state types.State, block *types.Block, commit *types.Commit, proposer *types.Sequencer) (types.State, *tmstate.ABCIResponses, error) {
+	err := e.validateBlock(state, block)
 	if err != nil {
 		return types.State{}, nil, err
 	}
-
+	err = e.validateCommit(proposer, commit, &block.Header)
+	if err != nil {
+		return types.State{}, nil, err
+	}
 	// This makes calls to the ProxyApp
 	resp, err := e.execute(ctx, state, block)
 	if err != nil {
@@ -253,7 +256,7 @@ func (e *BlockExecutor) commit(ctx context.Context, state *types.State, block *t
 	return resp.Data, err
 }
 
-func (e *BlockExecutor) validate(state types.State, block *types.Block) error {
+func (e *BlockExecutor) validateBlock(state types.State, block *types.Block) error {
 	err := block.ValidateBasic()
 	if err != nil {
 		return err
@@ -276,6 +279,18 @@ func (e *BlockExecutor) validate(state types.State, block *types.Block) error {
 		return errors.New("LastResultsHash mismatch")
 	}
 
+	return nil
+}
+
+func (e *BlockExecutor) validateCommit(proposer *types.Sequencer, commit *types.Commit, header *types.Header) error {
+	abciHeaderPb := abciconv.ToABCIHeaderPB(header)
+	abciHeaderBytes, err := abciHeaderPb.Marshal()
+	if err != nil {
+		return err
+	}
+	if err = commit.Validate(proposer, abciHeaderBytes); err != nil {
+		return err
+	}
 	return nil
 }
 
