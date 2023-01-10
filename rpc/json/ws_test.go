@@ -49,7 +49,7 @@ func TestWebSockets(t *testing.T) {
 `))
 	assert.NoError(err)
 
-	err = conn.SetReadDeadline(time.Now().Add(1 * time.Second))
+	err = conn.SetReadDeadline(time.Now().Add(100 * time.Second))
 	assert.NoError(err)
 	typ, msg, err := conn.ReadMessage()
 	assert.NoError(err)

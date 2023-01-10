@@ -3,6 +3,7 @@ package settlement_test
 import (
 	"testing"
 
+	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/libs/pubsub"
@@ -97,7 +98,10 @@ func TestSubmitAndRetrieve(t *testing.T) {
 	for i := 0; i < numBatches; i++ {
 		startHeight := uint64(i)*batchSize + 1
 		// Create the batch
-		batch = testutil.GenerateBatch(startHeight, uint64(startHeight+batchSize-1))
+		propserKey, _, err := crypto.GenerateEd25519Key(nil)
+		require.NoError(err)
+		batch, err = testutil.GenerateBatch(startHeight, uint64(startHeight+batchSize-1), propserKey)
+		require.NoError(err)
 		// Submit the batch
 		daResult := &da.ResultSubmitBatch{
 			BaseResult: da.BaseResult{

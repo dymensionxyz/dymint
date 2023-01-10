@@ -43,7 +43,6 @@ const batchNotFoundErrorMessage = "batch not found"
 
 func TestInitialState(t *testing.T) {
 	assert := assert.New(t)
-
 	genesis := testutil.GenerateGenesis(123)
 	sampleState := testutil.GenerateState(1, 128)
 	key, _, _ := crypto.GenerateEd25519Key(rand.Reader)
@@ -142,7 +141,8 @@ func TestWaitUntilSynced(t *testing.T) {
 	t.Log("Taking the manager out of sync by submitting a batch")
 	startHeight := atomic.LoadUint64(&manager.syncTarget) + 1
 	endHeight := startHeight + uint64(defaultBatchSize-1)*2
-	batch := testutil.GenerateBatch(startHeight, endHeight)
+	batch, err := testutil.GenerateBatch(startHeight, endHeight, manager.proposerKey)
+	require.NoError(t, err)
 	daResult := &da.ResultSubmitBatch{
 		BaseResult: da.BaseResult{
 			DAHeight: 1,
@@ -179,7 +179,8 @@ func TestPublishAfterSynced(t *testing.T) {
 	nextBatchStartHeight := atomic.LoadUint64(&manager.syncTarget) + 1
 	var batch *types.Batch
 	for i := 0; i < numBatchesToAdd; i++ {
-		batch = testutil.GenerateBatch(nextBatchStartHeight, nextBatchStartHeight+uint64(defaultBatchSize-1))
+		batch, err = testutil.GenerateBatch(nextBatchStartHeight, nextBatchStartHeight+uint64(defaultBatchSize-1), manager.proposerKey)
+		assert.NoError(t, err)
 		daResultSubmitBatch := manager.dalc.SubmitBatch(batch)
 		assert.Equal(t, daResultSubmitBatch.Code, da.StatusSuccess)
 		resultSubmitBatch := manager.settlementClient.SubmitBatch(batch, manager.dalc.GetClientType(), &daResultSubmitBatch)
@@ -195,11 +196,11 @@ func TestPublishAfterSynced(t *testing.T) {
 	go manager.ProduceBlockLoop(ctx)
 	select {
 	case <-ctx.Done():
-		assert.Equal(t, manager.store.Height(), lastStoreHeight)
+		assert.Equal(t, lastStoreHeight, manager.store.Height())
 	}
 
 	// Sync the manager
-	ctx, cancel = context.WithTimeout(context.Background(), time.Second*5)
+	ctx, cancel = context.WithTimeout(context.Background(), time.Second*2)
 	defer cancel()
 	go manager.SyncTargetLoop(ctx)
 	go manager.RetriveLoop(ctx)
@@ -207,7 +208,7 @@ func TestPublishAfterSynced(t *testing.T) {
 	select {
 	case <-ctx.Done():
 		assert.Greater(t, manager.store.Height(), lastStoreHeight)
-		assert.Equal(t, manager.store.Height(), batch.EndHeight)
+		assert.Equal(t, batch.EndHeight, manager.store.Height())
 	}
 
 	// Validate blocks are produced
@@ -227,7 +228,8 @@ func TestPublishWhenSettlementLayerDisconnected(t *testing.T) {
 	require.NotNil(t, manager)
 
 	nextBatchStartHeight := atomic.LoadUint64(&manager.syncTarget) + 1
-	var batch = testutil.GenerateBatch(nextBatchStartHeight, nextBatchStartHeight+uint64(defaultBatchSize-1))
+	batch, err := testutil.GenerateBatch(nextBatchStartHeight, nextBatchStartHeight+uint64(defaultBatchSize-1), manager.proposerKey)
+	assert.NoError(t, err)
 	daResultSubmitBatch := manager.dalc.SubmitBatch(batch)
 	assert.Equal(t, daResultSubmitBatch.Code, da.StatusSuccess)
 	resultSubmitBatch := manager.settlementClient.SubmitBatch(batch, manager.dalc.GetClientType(), &daResultSubmitBatch)
@@ -247,7 +249,8 @@ func TestPublishWhenDALayerDisconnected(t *testing.T) {
 	require.NotNil(t, manager)
 
 	nextBatchStartHeight := atomic.LoadUint64(&manager.syncTarget) + 1
-	var batch = testutil.GenerateBatch(nextBatchStartHeight, nextBatchStartHeight+uint64(defaultBatchSize-1))
+	batch, err := testutil.GenerateBatch(nextBatchStartHeight, nextBatchStartHeight+uint64(defaultBatchSize-1), manager.proposerKey)
+	assert.NoError(t, err)
 	daResultSubmitBatch := manager.dalc.SubmitBatch(batch)
 	assert.Equal(t, daResultSubmitBatch.Code, da.StatusError)
 
@@ -311,7 +314,9 @@ func TestProducePendingBlock(t *testing.T) {
 	manager, err := getManager(nil, nil, 1, 1, 0, proxyApp)
 	require.NoError(t, err)
 	// Generate block and commit and save it to the store
-	block := testutil.GenerateBlocks(1, 1)[0]
+	blocks, err := testutil.GenerateBlocks(1, 1, manager.proposerKey)
+	require.NoError(t, err)
+	block := blocks[0]
 	_, err = manager.store.SaveBlock(block, &block.LastCommit, nil)
 	require.NoError(t, err)
 	// Produce block
@@ -364,16 +369,28 @@ func getManager(settlementlc settlement.LayerClient, dalc da.DataAvailabilityLay
 	if _, err := store.UpdateState(state, nil); err != nil {
 		return nil, err
 	}
-	key, _, _ := crypto.GenerateEd25519Key(rand.Reader)
 	conf := getManagerConfig()
 	logger := log.TestingLogger()
 	pubsubServer := pubsub.NewServer()
 	pubsubServer.Start()
 
+	// Init the settlement layer mock
 	if settlementlc == nil {
 		settlementlc = slregistry.GetClient(slregistry.Mock)
 	}
-	_ = initSettlementLayerMock(settlementlc, defaultBatchSize, uint64(state.LastBlockHeight), uint64(state.LastBlockHeight)+1, pubsubServer, logger)
+	//TODO(omritoptix): Change the initialization. a bit dirty.
+	proposerKey, proposerPubKey, err := crypto.GenerateEd25519Key(rand.Reader)
+	if err != nil {
+		return nil, err
+	}
+	pubKeybytes, err := proposerPubKey.Raw()
+	if err != nil {
+		return nil, err
+	}
+	err = initSettlementLayerMock(settlementlc, defaultBatchSize, pubKeybytes, pubsubServer, logger)
+	if err != nil {
+		return nil, err
+	}
 
 	if dalc == nil {
 		dalc = &mockda.DataAvailabilityLayerClient{}
@@ -394,8 +411,8 @@ func getManager(settlementlc settlement.LayerClient, dalc da.DataAvailabilityLay
 	mpIDs := nodemempool.NewMempoolIDs()
 
 	// Init p2p client and validator
-	privKey, _, _ := crypto.GenerateEd25519Key(rand.Reader)
-	p2pClient, err := p2p.NewClient(config.P2PConfig{}, privKey, "TestChain", logger)
+	p2pKey, _, _ := crypto.GenerateEd25519Key(rand.Reader)
+	p2pClient, err := p2p.NewClient(config.P2PConfig{}, p2pKey, "TestChain", logger)
 	if err != nil {
 		return nil, err
 	}
@@ -407,7 +424,7 @@ func getManager(settlementlc settlement.LayerClient, dalc da.DataAvailabilityLay
 		return nil, err
 	}
 
-	manager, err := NewManager(key, conf, genesis, store, mp, proxyApp, dalc, settlementlc, nil, pubsubServer, p2pClient, logger)
+	manager, err := NewManager(proposerKey, conf, genesis, store, mp, proxyApp, dalc, settlementlc, nil, pubsubServer, p2pClient, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -428,14 +445,23 @@ func initDALCMock(dalc da.DataAvailabilityLayerClient, daBlockTime time.Duration
 }
 
 // TODO(omritoptix): Possible move out to a generic testutil
-func initSettlementLayerMock(settlementlc settlement.LayerClient, batchSize uint64, latestHeight uint64, batchOffsetHeight uint64, pubsubServer *pubsub.Server, logger log.Logger) error {
+func initSettlementLayerMock(settlementlc settlement.LayerClient, batchSize uint64, proposerPubKey []byte, pubsubServer *pubsub.Server, logger log.Logger) error {
 	conf := slmock.Config{
 		Config: &settlement.Config{
 			BatchSize: batchSize,
 		},
+		ProposerPubKey: proposerPubKey,
 	}
 	byteconf, _ := json.Marshal(conf)
-	return settlementlc.Init(byteconf, pubsubServer, logger)
+	err := settlementlc.Init(byteconf, pubsubServer, logger)
+	if err != nil {
+		return err
+	}
+	err = settlementlc.Start()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func getManagerConfig() config.BlockManagerConfig {
