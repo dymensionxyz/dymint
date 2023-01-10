@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -292,7 +293,7 @@ func getRPC(t *testing.T) (*mocks.Application, *client.Client) {
 	key, _, _ := crypto.GenerateEd25519Key(rand.Reader)
 	signingKey, proposerPubKey, _ := crypto.GenerateEd25519Key(rand.Reader)
 	proposerPubKeyBytes, err := proposerPubKey.Raw()
-	settlementLayerConfig, err := json.Marshal(slmock.Config{ProposerPubKey: proposerPubKeyBytes})
+	settlementLayerConfig, err := json.Marshal(slmock.Config{ProposerPubKey: hex.EncodeToString(proposerPubKeyBytes)})
 	require.NoError(err)
 	config := config.NodeConfig{Aggregator: true, DALayer: "mock", SettlementLayer: "mock", BlockManagerConfig: config.BlockManagerConfig{BlockTime: 1 * time.Second, BatchSyncInterval: time.Second}, SettlementConfig: string(settlementLayerConfig)}
 	node, err := node.NewNode(context.Background(), config, key, signingKey, proxy.NewLocalClientCreator(app), &types.GenesisDoc{ChainID: "test"}, log.TestingLogger())
