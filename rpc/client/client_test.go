@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	crand "crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"math/rand"
@@ -410,7 +411,7 @@ func TestTx(t *testing.T) {
 	require.NoError(err)
 
 	proposerPubKeyBytes, err := proposerPubKey.Raw()
-	settlementLayerConfig, err := json.Marshal(slmock.Config{ProposerPubKey: proposerPubKeyBytes})
+	settlementLayerConfig, err := json.Marshal(slmock.Config{ProposerPubKey: hex.EncodeToString(proposerPubKeyBytes)})
 	require.NoError(err)
 
 	node, err := node.NewNode(context.Background(), config.NodeConfig{
@@ -658,7 +659,7 @@ func TestValidatorSetHandling(t *testing.T) {
 	require.NoError(err)
 
 	proposerPubKeyBytes, err := proposerPubKey.Raw()
-	settlementLayerConfig, err := json.Marshal(slmock.Config{ProposerPubKey: proposerPubKeyBytes})
+	settlementLayerConfig, err := json.Marshal(slmock.Config{ProposerPubKey: hex.EncodeToString(proposerPubKeyBytes)})
 	require.NoError(err)
 
 	vKeys := make([]tmcrypto.PrivKey, 4)

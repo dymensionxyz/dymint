@@ -3,6 +3,7 @@ package block
 import (
 	"context"
 	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"sync/atomic"
 	"testing"
@@ -450,7 +451,7 @@ func initSettlementLayerMock(settlementlc settlement.LayerClient, batchSize uint
 		Config: &settlement.Config{
 			BatchSize: batchSize,
 		},
-		ProposerPubKey: proposerPubKey,
+		ProposerPubKey: hex.EncodeToString(proposerPubKey),
 	}
 	byteconf, _ := json.Marshal(conf)
 	err := settlementlc.Init(byteconf, pubsubServer, logger)
