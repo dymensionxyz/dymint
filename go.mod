@@ -9,7 +9,7 @@ require (
 	github.com/dgraph-io/badger/v3 v3.2103.3
 	github.com/dymensionxyz/cosmosclient v0.2.0-alpha.0.20230112120949-2519e225b9fd
 	github.com/go-kit/kit v0.12.0
-	github.com/gofrs/uuid v4.2.0+incompatible
+	github.com/gofrs/uuid v4.3.1+incompatible
 	github.com/gogo/protobuf v1.3.3
 	github.com/google/orderedcode v0.0.1
 	github.com/gorilla/mux v1.8.0
