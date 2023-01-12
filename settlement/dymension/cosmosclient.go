@@ -8,6 +8,7 @@ import (
 	"github.com/dymensionxyz/cosmosclient/cosmosclient"
 	rollapptypes "github.com/dymensionxyz/dymension/x/rollapp/types"
 	sequencertypes "github.com/dymensionxyz/dymension/x/sequencer/types"
+	"github.com/ignite/cli/ignite/pkg/cosmosaccount"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 )
 
@@ -24,6 +25,7 @@ type CosmosClient interface {
 	BroadcastTx(accountName string, msgs ...sdktypes.Msg) (cosmosclient.Response, error)
 	GetRollappClient() rollapptypes.QueryClient
 	GetSequencerClient() sequencertypes.QueryClient
+	GetAccount(accountName string) (cosmosaccount.Account, error)
 }
 
 type cosmosClient struct {
@@ -59,4 +61,8 @@ func (c *cosmosClient) GetRollappClient() rollapptypes.QueryClient {
 
 func (c *cosmosClient) GetSequencerClient() sequencertypes.QueryClient {
 	return sequencertypes.NewQueryClient(c.Context())
+}
+
+func (c *cosmosClient) GetAccount(accountName string) (cosmosaccount.Account, error) {
+	return c.AccountRegistry.GetByName(accountName)
 }
