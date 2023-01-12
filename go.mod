@@ -25,7 +25,7 @@ require (
 	github.com/prometheus/client_golang v1.12.2
 	github.com/rs/cors v1.8.2
 	github.com/spf13/cobra v1.6.1
-	github.com/spf13/viper v1.13.0
+	github.com/spf13/viper v1.14.0
 	github.com/stretchr/testify v1.8.1
 	github.com/tendermint/tendermint v0.34.22
 	go.uber.org/multierr v1.8.0
@@ -82,7 +82,7 @@ require (
 	github.com/elastic/gosigar v0.14.2 // indirect
 	github.com/flynn/noise v1.0.0 // indirect
 	github.com/francoispqt/gojay v1.2.13 // indirect
-	github.com/fsnotify/fsnotify v1.5.4 // indirect
+	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/go-kit/log v0.2.1 // indirect
 	github.com/go-logfmt/logfmt v0.5.1 // indirect
 	github.com/go-resty/resty/v2 v2.7.0 // indirect
@@ -198,7 +198,7 @@ require (
 	github.com/sasha-s/go-deadlock v0.3.1 // indirect
 	github.com/spacemonkeygo/spacelog v0.0.0-20180420211403-2296661a0572 // indirect
 	github.com/spaolacci/murmur3 v1.1.0 // indirect
-	github.com/spf13/afero v1.8.2 // indirect
+	github.com/spf13/afero v1.9.2 // indirect
 	github.com/spf13/cast v1.5.0 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
@@ -219,7 +219,7 @@ require (
 	go.uber.org/zap v1.22.0 // indirect
 	golang.org/x/crypto v0.0.0-20220924013350-4ba4fb4dd9e7 // indirect
 	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4 // indirect
-	golang.org/x/sync v0.0.0-20220819030929-7fc1605a5dde // indirect
+	golang.org/x/sync v0.1.0 // indirect
 	golang.org/x/sys v0.3.0 // indirect
 	golang.org/x/term v0.3.0 // indirect
 	golang.org/x/text v0.5.0 // indirect
