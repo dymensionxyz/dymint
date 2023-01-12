@@ -315,6 +315,11 @@ func (d *HubClient) eventHandler() {
 }
 
 func (d *HubClient) convertBatchToMsgUpdateState(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) (*rollapptypes.MsgUpdateState, error) {
+	account, err := d.client.GetAccount(d.config.DymAccountName)
+	if err != nil {
+		return nil, err
+	}
+	addr := account.Address(addressPrefix)
 	DAMetaData := &settlement.DAMetaData{
 		Height: daResult.DAHeight,
 		Client: daClient,
@@ -330,6 +335,7 @@ func (d *HubClient) convertBatchToMsgUpdateState(batch *types.Batch, daClient da
 		blockDescriptors[index] = blockDescriptor
 	}
 	settlementBatch := &rollapptypes.MsgUpdateState{
+		Creator:     addr,
 		RollappId:   d.config.RollappID,
 		StartHeight: batch.StartHeight,
 		NumBlocks:   batch.EndHeight - batch.StartHeight + 1,
