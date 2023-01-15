@@ -15,6 +15,7 @@ func main() {
 	rootCmd.AddCommand(
 		commands.InitFilesCmd,
 		commands.ShowSequencer,
+		commands.ShowNodeIDCmd,
 		debug.DebugCmd,
 		cli.NewCompletionCmd(rootCmd, true),
 	)
