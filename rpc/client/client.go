@@ -727,7 +727,7 @@ func (c *Client) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
 			ListenAddr:      addr,
 			Network:         network,
 			Version:         rconfig.Version,
-			Channels:        []byte{},
+			Channels:        []byte{0x40202122233038606100},
 			Moniker:         config.DefaultBaseConfig().Moniker,
 			Other: p2p.DefaultNodeInfoOther{
 				TxIndex:    txIndexerStatus,
