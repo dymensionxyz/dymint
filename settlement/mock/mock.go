@@ -3,11 +3,15 @@ package mock
 import (
 	"context"
 	"encoding/binary"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"strings"
 	"sync/atomic"
 
-	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
+	tmp2p "github.com/tendermint/tendermint/p2p"
+
+	"github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
 	rollapptypes "github.com/dymensionxyz/dymension/x/rollapp/types"
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/log"
@@ -56,9 +60,10 @@ func (m *SettlementLayerClient) Init(config []byte, pubsub *pubsub.Server, logge
 // Config for the HubClient
 type Config struct {
 	*settlement.Config
-	DBPath  string `json:"db_path"`
-	RootDir string `json:"root_dir"`
-	store   store.KVStore
+	DBPath         string `json:"db_path"`
+	RootDir        string `json:"root_dir"`
+	ProposerPubKey string `json:"proposer_pub_key"`
+	store          store.KVStore
 }
 
 // HubClient implements The HubClient interface
@@ -142,6 +147,14 @@ func getConfig(config []byte) (*Config, error) {
 		} else {
 			conf.store = store.NewDefaultInMemoryKVStore()
 		}
+		// If the proposer pub key is a path, load the key from the file. otherwise, use the key as is.
+		if strings.HasSuffix(string(conf.ProposerPubKey), ".json") {
+			key, err := tmp2p.LoadOrGenNodeKey(string(conf.ProposerPubKey))
+			if err != nil {
+				return nil, err
+			}
+			conf.ProposerPubKey = hex.EncodeToString(key.PubKey().Bytes())
+		}
 	} else {
 		conf = &Config{
 			store: store.NewDefaultInMemoryKVStore(),
@@ -202,9 +215,14 @@ func (c *HubClient) GetBatchAtIndex(rollappID string, index uint64) (*settlement
 
 // GetSequencers returns a list of sequencers. Currently only returns a single sequencer
 func (c *HubClient) GetSequencers(rollappID string) ([]*types.Sequencer, error) {
+	pubKeyBytes, err := hex.DecodeString(c.config.ProposerPubKey)
+	if err != nil {
+		return nil, err
+	}
+	pubKey := &ed25519.PubKey{Key: pubKeyBytes}
 	return []*types.Sequencer{
 		{
-			PublicKey: secp256k1.GenPrivKey().PubKey(),
+			PublicKey: pubKey,
 			Status:    types.Proposer,
 		},
 	}, nil

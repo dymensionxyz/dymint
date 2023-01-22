@@ -394,8 +394,11 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 			return err
 		}
 
+		// Currently we're assuming proposer is never nil as it's a pre-condition for
+		// dymint to start
+		proposer := m.settlementClient.GetProposer()
 		// Apply the block but DONT commit
-		newState, responses, err := m.executor.ApplyBlock(ctx, m.lastState, block)
+		newState, responses, err := m.executor.ApplyBlock(ctx, m.lastState, block, commit, proposer)
 		if err != nil {
 			m.logger.Error("failed to ApplyBlock", "error", err)
 			return err
@@ -534,11 +537,11 @@ func (m *Manager) produceBlock(ctx context.Context) error {
 		m.logger.Debug("block info", "num_tx", len(block.Data.Txs))
 
 		abciHeaderPb := abciconv.ToABCIHeaderPB(&block.Header)
-		headerBytes, err := abciHeaderPb.Marshal()
+		abciHeaderBytes, err := abciHeaderPb.Marshal()
 		if err != nil {
 			return err
 		}
-		sign, err := m.proposerKey.Sign(headerBytes)
+		sign, err := m.proposerKey.Sign(abciHeaderBytes)
 		if err != nil {
 			return err
 		}

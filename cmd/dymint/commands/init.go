@@ -22,10 +22,11 @@ var InitFilesCmd = &cobra.Command{
 }
 
 func initFiles(cmd *cobra.Command, args []string) error {
-	return initFilesWithConfig(tmconfig)
+	return InitFilesWithConfig(tmconfig)
 }
 
-func initFilesWithConfig(config *cfg.Config) error {
+// InitFilesWithConfig initialises a fresh Dymint instance.
+func InitFilesWithConfig(config *cfg.Config) error {
 	// private validator
 	privValKeyFile := config.PrivValidatorKeyFile()
 	privValStateFile := config.PrivValidatorStateFile()

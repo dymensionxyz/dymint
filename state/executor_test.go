@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -17,6 +18,7 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	tmtypes "github.com/tendermint/tendermint/types"
 
+	abciconv "github.com/dymensionxyz/dymint/conv/abci"
 	"github.com/dymensionxyz/dymint/mempool"
 	mempoolv1 "github.com/dymensionxyz/dymint/mempool/v1"
 	"github.com/dymensionxyz/dymint/mocks"
@@ -78,6 +80,7 @@ func TestApplyBlock(t *testing.T) {
 
 	logger := log.TestingLogger()
 
+	// Mock ABCI app
 	app := &mocks.Application{}
 	app.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{})
 	app.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
@@ -94,6 +97,7 @@ func TestApplyBlock(t *testing.T) {
 		LastBlockAppHash: []byte{0},
 	})
 
+	// Mock ABCI client
 	clientCreator := proxy.NewLocalClientCreator(app)
 	abciClient, err := clientCreator.NewABCIClient()
 	require.NoError(err)
@@ -103,27 +107,32 @@ func TestApplyBlock(t *testing.T) {
 	nsID := [8]byte{1, 2, 3, 4, 5, 6, 7, 8}
 	chainID := "test"
 
+	// Init mempool
 	mpool := mempoolv1.NewTxMempool(logger, cfg.DefaultMempoolConfig(), proxy.NewAppConnMempool(abciClient), 0)
 	eventBus := tmtypes.NewEventBus()
 	require.NoError(eventBus.Start())
 
+	// Mock app connections
 	appConns := &mocks.AppConns{}
 	appConns.On("Consensus").Return(abciClient)
 	appConns.On("Query").Return(abciClient)
 	executor := NewBlockExecutor([]byte("test address"), nsID, chainID, mpool, appConns, eventBus, logger)
 
+	// Subscribe to tx events
 	txQuery, err := query.New("tm.event='Tx'")
 	require.NoError(err)
 	txSub, err := eventBus.Subscribe(context.Background(), "test", txQuery, 1000)
 	require.NoError(err)
 	require.NotNil(txSub)
 
+	// Subscribe to block header events
 	headerQuery, err := query.New("tm.event='NewBlockHeader'")
 	require.NoError(err)
 	headerSub, err := eventBus.Subscribe(context.Background(), "test", headerQuery, 100)
 	require.NoError(err)
 	require.NotNil(headerSub)
 
+	// Init state
 	state := types.State{
 		NextValidators: tmtypes.NewValidatorSet(nil),
 		Validators:     tmtypes.NewValidatorSet(nil),
@@ -134,14 +143,33 @@ func TestApplyBlock(t *testing.T) {
 	state.ConsensusParams.Block.MaxBytes = 100
 	state.ConsensusParams.Block.MaxGas = 100000
 
+	// Create first block with one Tx from mempool
 	_ = mpool.CheckTx([]byte{1, 2, 3, 4}, func(r *abci.Response) {}, mempool.TxInfo{})
 	require.NoError(err)
-	block := executor.CreateBlock(1, &types.Commit{}, [32]byte{}, state)
+	block := executor.CreateBlock(1, &types.Commit{Height: 0}, [32]byte{}, state)
 	require.NotNil(block)
 	assert.Equal(uint64(1), block.Header.Height)
 	assert.Len(block.Data.Txs, 1)
 
-	newState, resp, err := executor.ApplyBlock(context.Background(), state, block)
+	// Create proposer for the block
+	proposerKey := ed25519.GenPrivKey()
+	proposer := &types.Sequencer{
+		PublicKey: proposerKey.PubKey(),
+	}
+	// Create commit for the block
+	abciHeaderPb := abciconv.ToABCIHeaderPB(&block.Header)
+	abciHeaderBytes, err := abciHeaderPb.Marshal()
+	require.NoError(err)
+	signature, err := proposerKey.Sign(abciHeaderBytes)
+	require.NoError(err)
+	commit := &types.Commit{
+		Height:     block.Header.Height,
+		HeaderHash: block.Header.Hash(),
+		Signatures: []types.Signature{signature},
+	}
+
+	// Apply the block
+	newState, resp, err := executor.ApplyBlock(context.Background(), state, block, commit, proposer)
 	require.NoError(err)
 	require.NotNil(newState)
 	require.NotNil(resp)
@@ -150,16 +178,46 @@ func TestApplyBlock(t *testing.T) {
 	require.NoError(err)
 	assert.Equal(mockAppHash, newState.AppHash)
 
+	// Create another block with multiple Tx from mempool
 	require.NoError(mpool.CheckTx([]byte{0, 1, 2, 3, 4}, func(r *abci.Response) {}, mempool.TxInfo{}))
 	require.NoError(mpool.CheckTx([]byte{5, 6, 7, 8, 9}, func(r *abci.Response) {}, mempool.TxInfo{}))
 	require.NoError(mpool.CheckTx([]byte{1, 2, 3, 4, 5}, func(r *abci.Response) {}, mempool.TxInfo{}))
 	require.NoError(mpool.CheckTx(make([]byte, 90), func(r *abci.Response) {}, mempool.TxInfo{}))
-	block = executor.CreateBlock(2, &types.Commit{}, [32]byte{}, newState)
+	block = executor.CreateBlock(2, commit, [32]byte{}, newState)
 	require.NotNil(block)
 	assert.Equal(uint64(2), block.Header.Height)
 	assert.Len(block.Data.Txs, 3)
 
-	newState, resp, err = executor.ApplyBlock(context.Background(), newState, block)
+	// Get the header bytes
+	abciHeaderPb = abciconv.ToABCIHeaderPB(&block.Header)
+	abciHeaderBytes, err = abciHeaderPb.Marshal()
+	require.NoError(err)
+
+	// Create invalid commit for the block with wrong signature
+	invalidProposerKey := ed25519.GenPrivKey()
+	invalidSignature, err := invalidProposerKey.Sign(abciHeaderBytes)
+	require.NoError(err)
+	invalidCommit := &types.Commit{
+		Height:     block.Header.Height,
+		HeaderHash: block.Header.Hash(),
+		Signatures: []types.Signature{invalidSignature},
+	}
+
+	// Apply the block with an invalid commit
+	_, _, err = executor.ApplyBlock(context.Background(), newState, block, invalidCommit, proposer)
+	require.Error(types.ErrInvalidSignature)
+
+	// Create a valid commit for the block
+	signature, err = proposerKey.Sign(abciHeaderBytes)
+	require.NoError(err)
+	commit = &types.Commit{
+		Height:     block.Header.Height,
+		HeaderHash: block.Header.Hash(),
+		Signatures: []types.Signature{signature},
+	}
+
+	// Apply the block
+	newState, resp, err = executor.ApplyBlock(context.Background(), newState, block, commit, proposer)
 	require.NoError(err)
 	require.NotNil(newState)
 	require.NotNil(resp)

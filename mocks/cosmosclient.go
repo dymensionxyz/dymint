@@ -9,6 +9,8 @@ import (
 
 	coretypes "github.com/tendermint/tendermint/rpc/core/types"
 
+	cosmosaccount "github.com/ignite/cli/ignite/pkg/cosmosaccount"
+
 	cosmosclient "github.com/dymensionxyz/cosmosclient/cosmosclient"
 
 	mock "github.com/stretchr/testify/mock"
@@ -81,6 +83,27 @@ func (_m *CosmosClient) EventListenerQuit() <-chan struct{} {
 	}
 
 	return r0
+}
+
+// GetAccount provides a mock function with given fields: accountName
+func (_m *CosmosClient) GetAccount(accountName string) (cosmosaccount.Account, error) {
+	ret := _m.Called(accountName)
+
+	var r0 cosmosaccount.Account
+	if rf, ok := ret.Get(0).(func(string) cosmosaccount.Account); ok {
+		r0 = rf(accountName)
+	} else {
+		r0 = ret.Get(0).(cosmosaccount.Account)
+	}
+
+	var r1 error
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(accountName)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // GetRollappClient provides a mock function with given fields:

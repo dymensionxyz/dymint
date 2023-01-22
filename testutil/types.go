@@ -4,6 +4,9 @@ import (
 	"crypto/rand"
 	"time"
 
+	"github.com/libp2p/go-libp2p-core/crypto"
+
+	abciconv "github.com/dymensionxyz/dymint/conv/abci"
 	"github.com/dymensionxyz/dymint/types"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/ed25519"
@@ -36,7 +39,7 @@ func createRandomHashes() [][32]byte {
 }
 
 // GenerateBlocks generates random blocks.
-func GenerateBlocks(startHeight uint64, num uint64) []*types.Block {
+func GenerateBlocks(startHeight uint64, num uint64, proposerKey crypto.PrivKey) ([]*types.Block, error) {
 	blocks := make([]*types.Block, num)
 	for i := uint64(0); i < num; i++ {
 		h := createRandomHashes()
@@ -67,38 +70,66 @@ func GenerateBlocks(startHeight uint64, num uint64) []*types.Block {
 			LastCommit: types.Commit{
 				Height:     8,
 				HeaderHash: h[7],
-				Signatures: []types.Signature{types.Signature([]byte{1, 1, 1}), types.Signature([]byte{2, 2, 2})},
+				Signatures: []types.Signature{},
 			},
 		}
+		signature, err := generateSignature(proposerKey, &block.Header)
+		if err != nil {
+			return nil, err
+		}
+		block.LastCommit.Signatures = []types.Signature{signature}
 		blocks[i] = block
 	}
-	return blocks
+	return blocks, nil
 }
 
 // GenerateCommits generates commits based on passed blocks.
-func GenerateCommits(blocks []*types.Block) []*types.Commit {
+func GenerateCommits(blocks []*types.Block, proposerKey crypto.PrivKey) ([]*types.Commit, error) {
 	commits := make([]*types.Commit, len(blocks))
 	for i, block := range blocks {
+		signature, err := generateSignature(proposerKey, &block.Header)
+		if err != nil {
+			return nil, err
+		}
 		commits[i] = &types.Commit{
 			Height:     block.Header.Height,
 			HeaderHash: block.Header.Hash(),
-			Signatures: []types.Signature{types.Signature([]byte{1, 1, 1}), types.Signature([]byte{2, 2, 2})},
+			Signatures: []types.Signature{signature},
 		}
 	}
-	return commits
+	return commits, nil
+}
+
+func generateSignature(proposerKey crypto.PrivKey, header *types.Header) ([]byte, error) {
+	abciHeaderPb := abciconv.ToABCIHeaderPB(header)
+	abciHeaderBytes, err := abciHeaderPb.Marshal()
+	if err != nil {
+		return nil, err
+	}
+	sign, err := proposerKey.Sign(abciHeaderBytes)
+	if err != nil {
+		return nil, err
+	}
+	return sign, nil
 }
 
 // GenerateBatch generates a batch out of random blocks
-func GenerateBatch(startHeight uint64, endHeight uint64) *types.Batch {
-	blocks := GenerateBlocks(startHeight, endHeight-startHeight+1)
-	commits := GenerateCommits(blocks)
+func GenerateBatch(startHeight uint64, endHeight uint64, proposerKey crypto.PrivKey) (*types.Batch, error) {
+	blocks, err := GenerateBlocks(startHeight, endHeight-startHeight+1, proposerKey)
+	if err != nil {
+		return nil, err
+	}
+	commits, err := GenerateCommits(blocks, proposerKey)
+	if err != nil {
+		return nil, err
+	}
 	batch := &types.Batch{
 		StartHeight: startHeight,
 		EndHeight:   endHeight,
 		Blocks:      blocks,
 		Commits:     commits,
 	}
-	return batch
+	return batch, nil
 }
 
 // GenerateRandomValidatorSet generates random validator sets

@@ -3,6 +3,8 @@ package client
 import (
 	"context"
 	crand "crypto/rand"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"math/rand"
 	"testing"
@@ -28,6 +30,7 @@ import (
 	abciconv "github.com/dymensionxyz/dymint/conv/abci"
 	"github.com/dymensionxyz/dymint/mocks"
 	"github.com/dymensionxyz/dymint/node"
+	slmock "github.com/dymensionxyz/dymint/settlement/mock"
 	"github.com/dymensionxyz/dymint/types"
 )
 
@@ -404,7 +407,13 @@ func TestTx(t *testing.T) {
 	mockApp := &mocks.Application{}
 	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 	key, _, _ := crypto.GenerateEd25519Key(crand.Reader)
-	signingKey, _, _ := crypto.GenerateEd25519Key(crand.Reader)
+	signingKey, proposerPubKey, err := crypto.GenerateEd25519Key(crand.Reader)
+	require.NoError(err)
+
+	proposerPubKeyBytes, err := proposerPubKey.Raw()
+	settlementLayerConfig, err := json.Marshal(slmock.Config{ProposerPubKey: hex.EncodeToString(proposerPubKeyBytes)})
+	require.NoError(err)
+
 	node, err := node.NewNode(context.Background(), config.NodeConfig{
 		DALayer:         "mock",
 		SettlementLayer: "mock",
@@ -412,7 +421,9 @@ func TestTx(t *testing.T) {
 		BlockManagerConfig: config.BlockManagerConfig{
 			BlockTime:         200 * time.Millisecond,
 			BatchSyncInterval: time.Second,
-		}},
+		},
+		SettlementConfig: string(settlementLayerConfig),
+	},
 		key, signingKey, proxy.NewLocalClientCreator(mockApp),
 		&tmtypes.GenesisDoc{ChainID: "test"},
 		log.TestingLogger())
@@ -644,7 +655,12 @@ func TestValidatorSetHandling(t *testing.T) {
 	app.On("Info", mock.Anything).Return(abci.ResponseInfo{LastBlockHeight: 0, LastBlockAppHash: []byte{0}})
 
 	key, _, _ := crypto.GenerateEd25519Key(crand.Reader)
-	signingKey, _, _ := crypto.GenerateEd25519Key(crand.Reader)
+	signingKey, proposerPubKey, err := crypto.GenerateEd25519Key(crand.Reader)
+	require.NoError(err)
+
+	proposerPubKeyBytes, err := proposerPubKey.Raw()
+	settlementLayerConfig, err := json.Marshal(slmock.Config{ProposerPubKey: hex.EncodeToString(proposerPubKeyBytes)})
+	require.NoError(err)
 
 	vKeys := make([]tmcrypto.PrivKey, 4)
 	genesisValidators := make([]tmtypes.GenesisValidator, len(vKeys))
@@ -666,7 +682,15 @@ func TestValidatorSetHandling(t *testing.T) {
 		waitCh <- nil
 	})
 
-	node, err := node.NewNode(context.Background(), config.NodeConfig{DALayer: "mock", SettlementLayer: "mock", Aggregator: true, BlockManagerConfig: config.BlockManagerConfig{BlockTime: 10 * time.Millisecond, BatchSyncInterval: time.Second}}, key, signingKey, proxy.NewLocalClientCreator(app), &tmtypes.GenesisDoc{ChainID: "test", Validators: genesisValidators}, log.TestingLogger())
+	nodeConfig := config.NodeConfig{
+		DALayer:            "mock",
+		SettlementLayer:    "mock",
+		Aggregator:         true,
+		BlockManagerConfig: config.BlockManagerConfig{BlockTime: 10 * time.Millisecond, BatchSyncInterval: time.Second},
+		SettlementConfig:   string(settlementLayerConfig),
+	}
+
+	node, err := node.NewNode(context.Background(), nodeConfig, key, signingKey, proxy.NewLocalClientCreator(app), &tmtypes.GenesisDoc{ChainID: "test", Validators: genesisValidators}, log.TestingLogger())
 	require.NoError(err)
 	require.NotNil(node)
 
