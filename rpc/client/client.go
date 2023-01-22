@@ -7,21 +7,21 @@ import (
 	"sort"
 	"time"
 
+	abciconv "github.com/dymensionxyz/dymint/conv/abci"
+	"github.com/dymensionxyz/dymint/mempool"
+	"github.com/dymensionxyz/dymint/node"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
+	"github.com/tendermint/tendermint/p2p"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/proxy"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
-
-	abciconv "github.com/dymensionxyz/dymint/conv/abci"
-	"github.com/dymensionxyz/dymint/mempool"
-	"github.com/dymensionxyz/dymint/node"
 )
 
 const (
@@ -700,8 +700,21 @@ func (c *Client) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
 	latestHeight := latest.Header.Height
 	latestBlockTimeNano := latest.Header.Time
 
+	id, addr, network := c.node.P2P.Info()
+	txIndexerStatus := "on"
+
 	result := &ctypes.ResultStatus{
 		// TODO(tzdybal): NodeInfo
+		NodeInfo: p2p.DefaultNodeInfo{
+			DefaultNodeID: id,
+			ListenAddr:    addr,
+			Network:       network,
+			Moniker:       config.DefaultBaseConfig().Moniker,
+			Other: p2p.DefaultNodeInfoOther{
+				TxIndex:    txIndexerStatus,
+				RPCAddress: c.config.ListenAddress,
+			},
+		},
 		SyncInfo: ctypes.SyncInfo{
 			LatestBlockHash:   latestBlockHash[:],
 			LatestAppHash:     latestAppHash[:],
