@@ -31,6 +31,7 @@ var _ da.BatchRetriever = &DataAvailabilityLayerClient{}
 type Config struct {
 	BaseURL     string        `json:"base_url"`
 	Timeout     time.Duration `json:"timeout"`
+	Fee         int64         `json:"fee"`
 	GasLimit    uint64        `json:"gas_limit"`
 	NamespaceID [8]byte       `json:"namespace_id"`
 }
@@ -77,7 +78,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 		}
 	}
 
-	txResponse, err := c.client.SubmitPFD(context.TODO(), c.config.NamespaceID, blob, c.config.GasLimit)
+	txResponse, err := c.client.SubmitPFD(context.TODO(), c.config.NamespaceID, blob, c.config.Fee, c.config.GasLimit)
 
 	if err != nil {
 		return da.ResultSubmitBatch{
