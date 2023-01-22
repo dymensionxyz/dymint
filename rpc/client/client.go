@@ -721,13 +721,14 @@ func (c *Client) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
 	txIndexerStatus := "on"
 
 	result := &ctypes.ResultStatus{
+		// TODO(ItzhakBokris): update NodeInfo fields
 		NodeInfo: p2p.DefaultNodeInfo{
 			ProtocolVersion: defaultProtocolVersion,
 			DefaultNodeID:   id,
 			ListenAddr:      addr,
 			Network:         network,
 			Version:         rconfig.Version,
-			Channels:        []byte{0x40202122233038606100},
+			Channels:        []byte{0x1},
 			Moniker:         config.DefaultBaseConfig().Moniker,
 			Other: p2p.DefaultNodeInfoOther{
 				TxIndex:    txIndexerStatus,
@@ -747,6 +748,7 @@ func (c *Client) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
 			//EarliestBlockTime:   time.Unix(0, earliestBlockTimeNano),
 			//CatchingUp:          env.ConsensusReactor.WaitSync(),
 		},
+		// TODO(ItzhakBokris): update ValidatorInfo fields
 		ValidatorInfo: ctypes.ValidatorInfo{
 			Address:     validator.Address,
 			PubKey:      validator.PubKey,
