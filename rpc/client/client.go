@@ -702,6 +702,12 @@ func (c *Client) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
 	latestHeight := latest.Header.Height
 	latestBlockTimeNano := latest.Header.Time
 
+	validators, err := c.node.Store.LoadValidators(latest.Header.Height)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch the validator info at latest block: %w", err)
+	}
+	_, validator := validators.GetByAddress(latest.Header.ProposerAddress)
+
 	state, err := c.node.Store.LoadState()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load the last saved state: %w", err)
@@ -721,7 +727,7 @@ func (c *Client) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
 			ListenAddr:      addr,
 			Network:         network,
 			Version:         rconfig.Version,
-			Channels:        []byte("@ !\"#08`a"),
+			Channels:        []byte{},
 			Moniker:         config.DefaultBaseConfig().Moniker,
 			Other: p2p.DefaultNodeInfoOther{
 				TxIndex:    txIndexerStatus,
@@ -736,12 +742,15 @@ func (c *Client) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
 			// TODO(tzdybal): add missing fields
 			//EarliestBlockHash:   earliestBlockHash,
 			//EarliestAppHash:     earliestAppHash,
-			//EarliestBlockHeight: earliestBlockHeight,
+			//EarliestBlockHeight: earliestBloc
+			//kHeight,
 			//EarliestBlockTime:   time.Unix(0, earliestBlockTimeNano),
 			//CatchingUp:          env.ConsensusReactor.WaitSync(),
 		},
 		ValidatorInfo: ctypes.ValidatorInfo{
-			Address: latest.Header.ProposerAddress,
+			Address:     validator.Address,
+			PubKey:      validator.PubKey,
+			VotingPower: validator.VotingPower,
 		},
 	}
 	return result, nil
