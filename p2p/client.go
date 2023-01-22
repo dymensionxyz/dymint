@@ -189,6 +189,7 @@ func (c *Client) Addrs() []multiaddr.Multiaddr {
 	return c.host.Addrs()
 }
 
+// Info returns p2p info
 func (c *Client) Info() (p2p.ID, string, string) {
 	return p2p.ID(hex.EncodeToString([]byte(c.host.ID()))), c.conf.ListenAddress, c.chainID
 }
