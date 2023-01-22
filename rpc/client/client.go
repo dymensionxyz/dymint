@@ -7,21 +7,23 @@ import (
 	"sort"
 	"time"
 
+	rconfig "github.com/dymensionxyz/dymint/config"
+	abciconv "github.com/dymensionxyz/dymint/conv/abci"
+	"github.com/dymensionxyz/dymint/mempool"
+	"github.com/dymensionxyz/dymint/node"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 	tmmath "github.com/tendermint/tendermint/libs/math"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
+	"github.com/tendermint/tendermint/p2p"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/proxy"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
-
-	abciconv "github.com/dymensionxyz/dymint/conv/abci"
-	"github.com/dymensionxyz/dymint/mempool"
-	"github.com/dymensionxyz/dymint/node"
+	"github.com/tendermint/tendermint/version"
 )
 
 const (
@@ -700,8 +702,39 @@ func (c *Client) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
 	latestHeight := latest.Header.Height
 	latestBlockTimeNano := latest.Header.Time
 
+	validators, err := c.node.Store.LoadValidators(latest.Header.Height)
+	if err != nil {
+		return nil, fmt.Errorf("failed to fetch the validator info at latest block: %w", err)
+	}
+	_, validator := validators.GetByAddress(latest.Header.ProposerAddress)
+
+	state, err := c.node.Store.LoadState()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load the last saved state: %w", err)
+	}
+	defaultProtocolVersion := p2p.NewProtocolVersion(
+		version.P2PProtocol,
+		state.Version.Consensus.Block,
+		state.Version.Consensus.App,
+	)
+	id, addr, network := c.node.P2P.Info()
+	txIndexerStatus := "on"
+
 	result := &ctypes.ResultStatus{
-		// TODO(tzdybal): NodeInfo
+		// TODO(ItzhakBokris): update NodeInfo fields
+		NodeInfo: p2p.DefaultNodeInfo{
+			ProtocolVersion: defaultProtocolVersion,
+			DefaultNodeID:   id,
+			ListenAddr:      addr,
+			Network:         network,
+			Version:         rconfig.Version,
+			Channels:        []byte{0x1},
+			Moniker:         config.DefaultBaseConfig().Moniker,
+			Other: p2p.DefaultNodeInfoOther{
+				TxIndex:    txIndexerStatus,
+				RPCAddress: c.config.ListenAddress,
+			},
+		},
 		SyncInfo: ctypes.SyncInfo{
 			LatestBlockHash:   latestBlockHash[:],
 			LatestAppHash:     latestAppHash[:],
@@ -710,12 +743,16 @@ func (c *Client) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
 			// TODO(tzdybal): add missing fields
 			//EarliestBlockHash:   earliestBlockHash,
 			//EarliestAppHash:     earliestAppHash,
-			//EarliestBlockHeight: earliestBlockHeight,
+			//EarliestBlockHeight: earliestBloc
+			//kHeight,
 			//EarliestBlockTime:   time.Unix(0, earliestBlockTimeNano),
 			//CatchingUp:          env.ConsensusReactor.WaitSync(),
 		},
+		// TODO(ItzhakBokris): update ValidatorInfo fields
 		ValidatorInfo: ctypes.ValidatorInfo{
-			Address: latest.Header.ProposerAddress,
+			Address:     validator.Address,
+			PubKey:      validator.PubKey,
+			VotingPower: validator.VotingPower,
 		},
 	}
 	return result, nil

@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"strings"
 	"time"
@@ -186,6 +187,11 @@ func (c *Client) SetBlockValidator(validator GossipValidator) {
 // Addrs returns listen addresses of Client.
 func (c *Client) Addrs() []multiaddr.Multiaddr {
 	return c.host.Addrs()
+}
+
+// Info returns p2p info
+func (c *Client) Info() (p2p.ID, string, string) {
+	return p2p.ID(hex.EncodeToString([]byte(c.host.ID()))), c.conf.ListenAddress, c.chainID
 }
 
 // PeerConnection describe basic information about P2P connection.
