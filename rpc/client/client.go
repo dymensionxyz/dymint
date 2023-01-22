@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/tendermint/tendermint/version"
 	"sort"
 	"time"
 
+	rconfig "github.com/dymensionxyz/dymint/config"
 	abciconv "github.com/dymensionxyz/dymint/conv/abci"
 	"github.com/dymensionxyz/dymint/mempool"
 	"github.com/dymensionxyz/dymint/node"
@@ -700,16 +702,27 @@ func (c *Client) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
 	latestHeight := latest.Header.Height
 	latestBlockTimeNano := latest.Header.Time
 
+	state, err := c.node.Store.LoadState()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load the last saved state: %w", err)
+	}
+	defaultProtocolVersion := p2p.NewProtocolVersion(
+		version.P2PProtocol,
+		state.Version.Consensus.Block,
+		state.Version.Consensus.App,
+	)
 	id, addr, network := c.node.P2P.Info()
 	txIndexerStatus := "on"
 
 	result := &ctypes.ResultStatus{
-		// TODO(tzdybal): NodeInfo
 		NodeInfo: p2p.DefaultNodeInfo{
-			DefaultNodeID: id,
-			ListenAddr:    addr,
-			Network:       network,
-			Moniker:       config.DefaultBaseConfig().Moniker,
+			ProtocolVersion: defaultProtocolVersion,
+			DefaultNodeID:   id,
+			ListenAddr:      addr,
+			Network:         network,
+			Version:         rconfig.Version,
+			Channels:        []byte("@ !\"#08`a"),
+			Moniker:         config.DefaultBaseConfig().Moniker,
 			Other: p2p.DefaultNodeInfoOther{
 				TxIndex:    txIndexerStatus,
 				RPCAddress: c.config.ListenAddress,

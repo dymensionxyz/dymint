@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"context"
+	"encoding/hex"
 	"fmt"
 	"strings"
 	"time"
@@ -189,7 +190,7 @@ func (c *Client) Addrs() []multiaddr.Multiaddr {
 }
 
 func (c *Client) Info() (p2p.ID, string, string) {
-	return p2p.ID(c.host.ID().String()), c.conf.ListenAddress, c.chainID
+	return p2p.ID(hex.EncodeToString([]byte(c.host.ID()))), c.conf.ListenAddress, c.chainID
 }
 
 // PeerConnection describe basic information about P2P connection.

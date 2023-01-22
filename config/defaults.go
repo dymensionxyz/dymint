@@ -5,6 +5,7 @@ import "time"
 const (
 	// DefaultListenAddress is a default listen address for P2P client.
 	DefaultListenAddress = "/ip4/0.0.0.0/tcp/7676"
+	Version              = "0.2.2"
 )
 
 // DefaultNodeConfig keeps default values of NodeConfig
