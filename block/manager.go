@@ -385,7 +385,7 @@ func (m *Manager) ApplyBlockLoop(ctx context.Context) {
 }
 
 func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *types.Commit, blockMetaData blockMetaData) error {
-	if block.Header.Height > m.store.Height() {
+	if block.Header.Height == m.store.Height()+1 {
 		m.logger.Info("Applying block", "height", block.Header.Height, "source", blockMetaData.source)
 
 		_, err := m.store.SaveBlock(block, commit, nil)
