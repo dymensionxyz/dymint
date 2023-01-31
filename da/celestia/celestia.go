@@ -77,7 +77,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			},
 		}
 	}
-
+	c.logger.Debug("Submitting to da blob with size", "size", len(blob))
 	txResponse, err := c.client.SubmitPFD(context.TODO(), c.config.NamespaceID, blob, c.config.Fee, c.config.GasLimit)
 	c.logger.Debug("DA submit batch response", "txResponse", txResponse, "error", err)
 	if err != nil {
