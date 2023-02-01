@@ -423,8 +423,8 @@ func (c *Client) Block(ctx context.Context, height *int64) (*ctypes.ResultBlock,
 		BlockID: types.BlockID{
 			Hash: hash[:],
 			PartSetHeader: types.PartSetHeader{
-				Total: 0,
-				Hash:  nil,
+				Total: 1,
+				Hash:  []byte{0x1},
 			},
 		},
 		Block: abciBlock,
@@ -449,8 +449,8 @@ func (c *Client) BlockByHash(ctx context.Context, hash []byte) (*ctypes.ResultBl
 		BlockID: types.BlockID{
 			Hash: h[:],
 			PartSetHeader: types.PartSetHeader{
-				Total: 0,
-				Hash:  nil,
+				Total: 1,
+				Hash:  []byte{0x1},
 			},
 		},
 		Block: abciBlock,
