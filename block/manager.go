@@ -577,15 +577,14 @@ func (m *Manager) submitNextBatch(ctx context.Context) {
 	// Get the batch start and end height
 	startHeight := atomic.LoadUint64(&m.syncTarget) + 1
 	endHeight := startHeight + m.conf.BlockBatchSize - 1
-	m.logger.Info("Submitting next batch", "startHeight", startHeight, "endHeight", endHeight)
 	// Create the batch
 	nextBatch, err := m.createNextDABatch(startHeight, endHeight)
 	if err != nil {
 		m.logger.Error("Failed to create next batch", "startHeight", startHeight, "endHeight", endHeight, "error", err)
 		return
 	}
-
 	// Submit batch to the DA
+	m.logger.Info("Submitting next batch", "startHeight", startHeight, "endHeight", endHeight)
 	resultSubmitToDA, err := m.submitBatchToDA(ctx, nextBatch)
 	if err != nil {
 		m.logger.Error("Failed to submit next batch to DA Layer", "startHeight", startHeight, "endHeight", endHeight, "error", err)
