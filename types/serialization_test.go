@@ -125,8 +125,8 @@ func TestStateRoundTrip(t *testing.T) {
 				LastBlockID: tmtypes.BlockID{
 					Hash: nil,
 					PartSetHeader: tmtypes.PartSetHeader{
-						Total: 0,
-						Hash:  nil,
+						Total: 1,
+						Hash:  []byte{0x1},
 					},
 				},
 				LastBlockTime:               time.Date(2022, 6, 6, 12, 12, 33, 44, time.UTC),

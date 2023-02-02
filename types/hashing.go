@@ -19,8 +19,8 @@ func (h *Header) Hash() [32]byte {
 		LastBlockID: tmtypes.BlockID{
 			Hash: h.LastHeaderHash[:],
 			PartSetHeader: tmtypes.PartSetHeader{
-				Total: 0,
-				Hash:  nil,
+				Total: 1,
+				Hash:  []byte{0x1},
 			},
 		},
 		LastCommitHash:     h.LastCommitHash[:],
