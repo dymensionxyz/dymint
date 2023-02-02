@@ -23,8 +23,8 @@ func ToABCIHeaderPB(header *types.Header) tmproto.Header {
 		LastBlockId: tmproto.BlockID{
 			Hash: header.LastHeaderHash[:],
 			PartSetHeader: tmproto.PartSetHeader{
-				Total: 0,
-				Hash:  nil,
+				Total: 1,
+				Hash:  header.LastHeaderHash[:],
 			},
 		},
 		LastCommitHash:     header.LastCommitHash[:],
@@ -53,8 +53,8 @@ func ToABCIHeader(header *types.Header) tmtypes.Header {
 		LastBlockID: tmtypes.BlockID{
 			Hash: header.LastHeaderHash[:],
 			PartSetHeader: tmtypes.PartSetHeader{
-				Total: 0,
-				Hash:  nil,
+				Total: 1,
+				Hash:  header.LastHeaderHash[:],
 			},
 		},
 		LastCommitHash:     header.LastCommitHash[:],
@@ -125,8 +125,11 @@ func ToABCICommit(commit *types.Commit, header *types.Header) *tmtypes.Commit {
 		Height: int64(commit.Height),
 		Round:  0,
 		BlockID: tmtypes.BlockID{
-			Hash:          commit.HeaderHash[:],
-			PartSetHeader: tmtypes.PartSetHeader{},
+			Hash: commit.HeaderHash[:],
+			PartSetHeader: tmtypes.PartSetHeader{
+				Total: 1,
+				Hash:  commit.HeaderHash[:],
+			},
 		},
 	}
 	for _, sig := range commit.Signatures {
