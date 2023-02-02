@@ -24,7 +24,7 @@ func ToABCIHeaderPB(header *types.Header) tmproto.Header {
 			Hash: header.LastHeaderHash[:],
 			PartSetHeader: tmproto.PartSetHeader{
 				Total: 1,
-				Hash:  []byte{0x1},
+				Hash:  header.LastHeaderHash[:],
 			},
 		},
 		LastCommitHash:     header.LastCommitHash[:],
@@ -54,7 +54,7 @@ func ToABCIHeader(header *types.Header) tmtypes.Header {
 			Hash: header.LastHeaderHash[:],
 			PartSetHeader: tmtypes.PartSetHeader{
 				Total: 1,
-				Hash:  []byte{0x1},
+				Hash:  header.LastHeaderHash[:],
 			},
 		},
 		LastCommitHash:     header.LastCommitHash[:],
@@ -128,7 +128,7 @@ func ToABCICommit(commit *types.Commit, header *types.Header) *tmtypes.Commit {
 			Hash: commit.HeaderHash[:],
 			PartSetHeader: tmtypes.PartSetHeader{
 				Total: 1,
-				Hash:  []byte{0x1},
+				Hash:  commit.HeaderHash[:],
 			},
 		},
 	}
