@@ -76,7 +76,7 @@ func (b *BaseLayerClient) Start() error {
 		endHeight = latestBatch.EndHeight
 	}
 	b.latestHeight = endHeight
-	b.logger.Info("Updated latest height from settlement layer", "latestHeight", b.latestHeight)
+	b.logger.Info("Updated latest height from settlement layer", "latestHeight", endHeight)
 	b.sequencersList, err = b.fetchSequencersList()
 	if err != nil {
 		if err == ErrNoSequencerForRollapp {
@@ -85,6 +85,7 @@ func (b *BaseLayerClient) Start() error {
 		return err
 	}
 	b.logger.Info("Updated sequencers list from settlement layer", "sequencersList", b.sequencersList)
+	go b.stateUpdatesHandler()
 
 	err = b.client.Start()
 	if err != nil {
@@ -123,7 +124,6 @@ func (b *BaseLayerClient) SubmitBatch(batch *types.Batch, daClient da.Client, da
 		}
 	}
 	b.logger.Info("Successfully submitted batch to settlement layer", "tx hash", txResp.GetTxHash())
-	atomic.StoreUint64(&b.latestHeight, batch.EndHeight)
 	return &ResultSubmitBatch{
 		BaseResult: BaseResult{Code: StatusSuccess},
 	}
@@ -205,4 +205,23 @@ func (b *BaseLayerClient) validateBatch(batch *types.Batch) error {
 		return errors.New("batch end height must be greater or equal to start height")
 	}
 	return nil
+}
+
+func (b *BaseLayerClient) stateUpdatesHandler() {
+	b.logger.Info("Started state updates handler loop")
+	subscription, err := b.pubsub.Subscribe(context.Background(), "stateUpdatesHandler", EventQueryNewSettlementBatchAccepted)
+	if err != nil {
+		b.logger.Error("failed to subscribe to state update events")
+		panic(err)
+	}
+	for {
+		select {
+		case event := <-subscription.Out():
+			b.logger.Debug("Received state update event", "eventData", event.Data())
+			eventData := event.Data().(*EventDataNewSettlementBatchAccepted)
+			atomic.StoreUint64(&b.latestHeight, eventData.EndHeight)
+		case <-subscription.Cancelled():
+			b.logger.Info("Subscription canceled")
+		}
+	}
 }

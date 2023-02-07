@@ -2,6 +2,7 @@ package settlement_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/stretchr/testify/assert"
@@ -110,6 +111,8 @@ func TestSubmitAndRetrieve(t *testing.T) {
 		}
 		resultSubmitBatch := settlementClient.SubmitBatch(batch, da.Mock, daResult)
 		assert.Equal(resultSubmitBatch.Code, settlement.StatusSuccess)
+		// sleep for 500 ms to make sure batch got accepted by the settlement layer
+		time.Sleep(500 * time.Millisecond)
 	}
 
 	// Retrieve the latest batch and make sure it matches latest batch submitted
