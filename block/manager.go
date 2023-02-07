@@ -34,6 +34,7 @@ type blockSource string
 // defaultDABlockTime is used only if DABlockTime is not configured for manager
 const (
 	defaultDABlockTime = 30 * time.Second
+	DABatchRetryDelay  = 20 * time.Second
 )
 
 const (
@@ -660,7 +661,7 @@ func (m *Manager) submitBatchToDA(ctx context.Context, batch *types.Batch) (*da.
 			return fmt.Errorf("failed to submit batch to DA layer: %s", res.Message)
 		}
 		return nil
-	}, retry.Context(ctx), retry.LastErrorOnly(true))
+	}, retry.Context(ctx), retry.LastErrorOnly(true), retry.Delay(DABatchRetryDelay))
 	if err != nil {
 		return nil, err
 	}
