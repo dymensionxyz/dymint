@@ -588,7 +588,7 @@ func (m *Manager) submitNextBatch(ctx context.Context) {
 	resultSubmitToDA, err := m.submitBatchToDA(ctx, nextBatch)
 	if err != nil {
 		m.logger.Error("Failed to submit next batch to DA Layer", "startHeight", startHeight, "endHeight", endHeight, "error", err)
-		return
+		panic("Failed to submit next batch to DA Layer")
 	}
 
 	// Submit batch to SL
