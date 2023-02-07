@@ -8,6 +8,7 @@ import (
 	"errors"
 	"strings"
 	"sync/atomic"
+	"time"
 
 	tmp2p "github.com/tendermint/tendermint/p2p"
 
@@ -186,10 +187,14 @@ func (c *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 	if err != nil {
 		return PostBatchResp{err}, err
 	}
-	err = c.pubsub.PublishWithEvents(context.Background(), &settlement.EventDataNewSettlementBatchAccepted{EndHeight: settlementBatch.EndHeight}, map[string][]string{settlement.EventTypeKey: {settlement.EventNewSettlementBatchAccepted}})
-	if err != nil {
-		c.logger.Error("error publishing event", "error", err)
-	}
+	go func() {
+		// sleep for 100 miliseconds to mimic a delay in batch acceptance
+		time.Sleep(100 * time.Millisecond)
+		err = c.pubsub.PublishWithEvents(context.Background(), &settlement.EventDataNewSettlementBatchAccepted{EndHeight: settlementBatch.EndHeight}, map[string][]string{settlement.EventTypeKey: {settlement.EventNewSettlementBatchAccepted}})
+		if err != nil {
+			c.logger.Error("error publishing event", "error", err)
+		}
+	}()
 	return PostBatchResp{nil}, nil
 }
 
