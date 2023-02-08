@@ -35,6 +35,7 @@ type blockSource string
 const (
 	defaultDABlockTime = 30 * time.Second
 	DABatchRetryDelay  = 20 * time.Second
+	maxBlockSkew       = 20000
 )
 
 const (
@@ -504,6 +505,16 @@ func (m *Manager) produceBlock(ctx context.Context) error {
 	height := m.store.Height()
 	newHeight := height + 1
 
+	syncTarget := atomic.LoadUint64(&m.syncTarget)
+	if newHeight-syncTarget >= maxBlockSkew {
+		m.logger.Info("Skipping block production. Too many unsubmitted blocks", "height", newHeight, "syncTarget", syncTarget)
+		if m.batchInProcess.Load() == false {
+			m.batchInProcess.Store(true)
+			go m.submitNextBatch(ctx)
+		}
+		return nil
+	}
+
 	// this is a special case, when first block is produced - there is no previous commit
 	if newHeight == uint64(m.genesis.InitialHeight) {
 		lastCommit = &types.Commit{Height: height, HeaderHash: [32]byte{}}
@@ -565,7 +576,7 @@ func (m *Manager) produceBlock(ctx context.Context) error {
 
 	// Submit batch if we've reached the batch size and there isn't another batch currently in submission process.
 	// SyncTarget is the height of the last block in the last batch as seen by this node.
-	syncTarget := atomic.LoadUint64(&m.syncTarget)
+	syncTarget = atomic.LoadUint64(&m.syncTarget)
 	if block.Header.Height-syncTarget >= m.conf.BlockBatchSize && m.batchInProcess.Load() == false {
 		m.batchInProcess.Store(true)
 		go m.submitNextBatch(ctx)
@@ -575,6 +586,10 @@ func (m *Manager) produceBlock(ctx context.Context) error {
 }
 
 func (m *Manager) submitNextBatch(ctx context.Context) {
+	defer func() {
+		m.batchInProcess.Store(false)
+	}()
+
 	// Get the batch start and end height
 	startHeight := atomic.LoadUint64(&m.syncTarget) + 1
 	endHeight := startHeight + m.conf.BlockBatchSize - 1
