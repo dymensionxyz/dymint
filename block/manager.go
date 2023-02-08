@@ -618,7 +618,6 @@ func (m *Manager) createNextDABatch(startHeight uint64, endHeight uint64) (*type
 	}
 	// Populate the batch
 	for height := startHeight; height <= endHeight; height++ {
-		m.logger.Debug("Adding element to batch", "height", height)
 		block, err := m.store.LoadBlock(height)
 		if err != nil {
 			m.logger.Error("Failed to load block", "height", height)
