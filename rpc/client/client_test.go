@@ -456,11 +456,9 @@ func TestTx(t *testing.T) {
 	assert.EqualValues(res.Hash, resTx.Hash)
 
 	tx2 := tmtypes.Tx("tx2")
-	assert.Panics(func() {
-		resTx, errTx := rpc.Tx(context.Background(), tx2.Hash(), true)
-		assert.Nil(resTx)
-		assert.Error(errTx)
-	})
+	resTx, errTx = rpc.Tx(context.Background(), tx2.Hash(), true)
+	assert.Nil(resTx)
+	assert.Error(errTx)
 }
 
 func TestUnconfirmedTxs(t *testing.T) {

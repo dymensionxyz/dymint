@@ -46,7 +46,7 @@ func (txi *TxIndex) Get(hash []byte) (*abci.TxResult, error) {
 
 	rawBytes, err := txi.store.Get(hash)
 	if err != nil {
-		panic(err)
+		return nil, nil
 	}
 	if rawBytes == nil {
 		return nil, nil
