@@ -46,6 +46,12 @@ const (
 	genesisChunkSize = 16 * 1024 * 1024 // 16 MiB
 )
 
+// BaseLayersHealthStatus contains information about health of base layers.
+type BaseLayersHealthStatus struct {
+	settlementHealthy bool
+	daHealthy         bool
+}
+
 // Node represents a client node in Dymint network.
 // It connects all the components and orchestrates their work.
 type Node struct {
@@ -74,6 +80,8 @@ type Node struct {
 	TxIndexer      txindex.TxIndexer
 	BlockIndexer   indexer.BlockIndexer
 	IndexerService *txindex.IndexerService
+
+	baseLayersHealthStatus BaseLayersHealthStatus
 
 	// keep context here only because of API compatibility
 	// - it's used in `OnStart` (defined in service.Service interface)
@@ -227,6 +235,11 @@ func (n *Node) OnStart() error {
 	if err != nil {
 		return fmt.Errorf("error while starting settlement layer client: %w", err)
 	}
+	n.baseLayersHealthStatus = BaseLayersHealthStatus{
+		settlementHealthy: true,
+		daHealthy:         true,
+	}
+	go n.healthStatusEventListener()
 	if n.conf.Aggregator {
 		go n.blockManager.ProduceBlockLoop(n.ctx)
 	}
@@ -307,4 +320,62 @@ func createAndStartIndexerService(
 	}
 
 	return indexerService, txIndexer, blockIndexer, nil
+}
+
+func (n *Node) healthStatusEventListener() {
+	n.Logger.Info("Started health status handler")
+	settlementHealthSubscription, err := n.pubsubServer.Subscribe(n.ctx, "healthStatusHandler", settlement.EventQuerySettlementHealthStatus)
+	if err != nil {
+		n.Logger.Error("failed to subscribe to health status events")
+		panic(err)
+	}
+	daHealthSubscription, err := n.pubsubServer.Subscribe(n.ctx, "healthStatusHandler", da.EventQueryDAHealthStatus)
+	if err != nil {
+		n.Logger.Error("failed to subscribe to health status events")
+		panic(err)
+	}
+	for {
+		select {
+		case <-n.ctx.Done():
+			return
+		case event := <-settlementHealthSubscription.Out():
+			n.Logger.Info("Received health status event", "eventData", event.Data())
+			eventData := event.Data().(*settlement.EventDataSettlementHealthStatus)
+			n.baseLayersHealthStatus.settlementHealthy = eventData.Healthy
+			n.healthStatusHandler(eventData.Error)
+		case event := <-daHealthSubscription.Out():
+			n.Logger.Info("Received health status event", "eventData", event.Data())
+			eventData := event.Data().(*da.EventDataDAHealthStatus)
+			n.baseLayersHealthStatus.daHealthy = eventData.Healthy
+			n.healthStatusHandler(eventData.Error)
+		case <-settlementHealthSubscription.Cancelled():
+			n.Logger.Info("Subscription canceled")
+		}
+	}
+}
+
+func (n *Node) healthStatusHandler(err error) {
+	if n.baseLayersHealthStatus.daHealthy && n.baseLayersHealthStatus.settlementHealthy {
+		n.Logger.Info("All base layers are healthy")
+		healthStatusEvent := &EventDataHealthStatus{
+			Healthy: true,
+		}
+		err = n.pubsubServer.PublishWithEvents(n.ctx, healthStatusEvent, map[string][]string{EventTypeKey: {EventHealthStatus}})
+		if err != nil {
+			n.Logger.Error("Error publishing health status event")
+			panic(err)
+		}
+		// Only if err is not nil, we publish the event. Otherwise it could come from a previous unhealthy state.
+	} else if err != nil {
+		n.Logger.Info("Base layer is unhealthy")
+		healthStatusEvent := &EventDataHealthStatus{
+			Healthy: false,
+			Error:   err,
+		}
+		err = n.pubsubServer.PublishWithEvents(n.ctx, healthStatusEvent, map[string][]string{EventTypeKey: {EventHealthStatus}})
+		if err != nil {
+			n.Logger.Error("Error publishing health status event")
+			panic(err)
+		}
+	}
 }

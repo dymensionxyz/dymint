@@ -3,10 +3,13 @@ package node
 import (
 	"context"
 	"crypto/rand"
+	"errors"
 	"testing"
 	"time"
 
+	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/mempool"
+	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -27,13 +30,8 @@ func TestStartup(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	app := &mocks.Application{}
-	app.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
-	key, _, _ := crypto.GenerateEd25519Key(rand.Reader)
-	signingKey, _, _ := crypto.GenerateEd25519Key(rand.Reader)
 	// TODO(omritoptix): Test with and without aggregator mode.
-	nodeConfig := config.NodeConfig{Aggregator: false, DALayer: "mock", SettlementLayer: "mock", BlockManagerConfig: config.BlockManagerConfig{BatchSyncInterval: time.Second * 5, BlockTime: 100 * time.Millisecond}}
-	node, err := NewNode(context.Background(), nodeConfig, key, signingKey, proxy.NewLocalClientCreator(app), &types.GenesisDoc{ChainID: "test"}, log.TestingLogger())
+	node, err := createNode()
 	require.NoError(err)
 	require.NotNil(node)
 
@@ -89,4 +87,114 @@ func TestMempoolDirectly(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	assert.Equal(int64(4*len("tx*")), node.Mempool.SizeBytes())
+}
+
+func TestHealthStatusEventHandler(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	node, err := createNode()
+	require.NoError(err)
+	require.NotNil(node)
+
+	err = node.Start()
+	assert.NoError(err)
+	// wait for node to start
+	time.Sleep(100 * time.Millisecond)
+
+	slUnealthyError := errors.New("settlement layer is unhealthy")
+	daUnealthyError := errors.New("da layer is unhealthy")
+
+	cases := []struct {
+		name                           string
+		baseLayerHealthStatusEvent     map[string][]string
+		baseLayerHealthStatusEventData interface{}
+		expectedHealthStatus           bool
+		expectHealthStatusEventEmitted bool
+		expectedError                  error
+	}{
+		// settlement layer is healthy, DA layer is healthy
+		{
+			name:                           "TestSettlementUnhealthyDAHealthy",
+			baseLayerHealthStatusEvent:     map[string][]string{settlement.EventTypeKey: {settlement.EventSettlementHealthStatus}},
+			baseLayerHealthStatusEventData: &settlement.EventDataSettlementHealthStatus{Healthy: false, Error: slUnealthyError},
+			expectedHealthStatus:           false,
+			expectHealthStatusEventEmitted: true,
+			expectedError:                  slUnealthyError,
+		},
+		// Now da also becomes unhealthy
+		{
+			name:                           "TestDAUnhealthySettlementUnhealthy",
+			baseLayerHealthStatusEvent:     map[string][]string{da.EventTypeKey: {da.EventDAHealthStatus}},
+			baseLayerHealthStatusEventData: &da.EventDataDAHealthStatus{Healthy: false, Error: daUnealthyError},
+			expectedHealthStatus:           false,
+			expectHealthStatusEventEmitted: true,
+			expectedError:                  daUnealthyError,
+		},
+		// Now the settlement layer becomes healthy
+		{
+			name:                           "TestSettlementHealthyDAHealthy",
+			baseLayerHealthStatusEvent:     map[string][]string{settlement.EventTypeKey: {settlement.EventSettlementHealthStatus}},
+			baseLayerHealthStatusEventData: &settlement.EventDataSettlementHealthStatus{Healthy: true, Error: nil},
+			expectedHealthStatus:           false,
+			expectHealthStatusEventEmitted: false,
+			expectedError:                  nil,
+		},
+		// Now the da layer becomes healthy so we expect the health status to be healthy and the event to be emitted
+		{
+			name:                           "TestDAHealthySettlementHealthy",
+			baseLayerHealthStatusEvent:     map[string][]string{da.EventTypeKey: {da.EventDAHealthStatus}},
+			baseLayerHealthStatusEventData: &da.EventDataDAHealthStatus{Healthy: true, Error: nil},
+			expectedHealthStatus:           true,
+			expectHealthStatusEventEmitted: true,
+			expectedError:                  nil,
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			done := make(chan bool, 1)
+			go func() {
+				HealthSubscription, err := node.pubsubServer.Subscribe(node.ctx, c.name, EventQueryHealthStatus)
+				assert.NoError(err)
+				select {
+				case event := <-HealthSubscription.Out():
+					if !c.expectHealthStatusEventEmitted {
+						t.Error("didn't expect health status event but got one")
+					}
+					healthStatusEvent := event.Data().(*EventDataHealthStatus)
+					assert.Equal(c.expectedHealthStatus, healthStatusEvent.Healthy)
+					assert.Equal(c.expectedError, healthStatusEvent.Error)
+					done <- true
+					break
+				case <-time.After(100 * time.Millisecond):
+					if c.expectHealthStatusEventEmitted {
+						t.Error("expected health status event but didn't get one")
+					}
+					done <- true
+					break
+				}
+			}()
+			// Emit an event.
+			node.pubsubServer.PublishWithEvents(context.Background(), c.baseLayerHealthStatusEventData, c.baseLayerHealthStatusEvent)
+			<-done
+		})
+	}
+	node.Stop()
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                    utils                                   */
+/* -------------------------------------------------------------------------- */
+
+func createNode() (node *Node, err error) {
+	app := &mocks.Application{}
+	app.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
+	key, _, _ := crypto.GenerateEd25519Key(rand.Reader)
+	signingKey, _, _ := crypto.GenerateEd25519Key(rand.Reader)
+	nodeConfig := config.NodeConfig{DALayer: "mock", SettlementLayer: "mock", BlockManagerConfig: config.BlockManagerConfig{BatchSyncInterval: time.Second * 5, BlockTime: 100 * time.Millisecond}}
+	node, err = NewNode(context.Background(), nodeConfig, key, signingKey, proxy.NewLocalClientCreator(app), &types.GenesisDoc{ChainID: "test"}, log.TestingLogger())
+	if err != nil {
+		return nil, err
+	}
+	return node, nil
 }
