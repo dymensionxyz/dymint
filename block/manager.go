@@ -269,7 +269,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 		defer ticker.Stop()
 	}
 	// The func to invoke upon block publish
-	produceBlockLoop := func() {
+	produceBlockWrapper := func() {
 		err := m.produceBlock(ctx)
 		if err != nil {
 			m.logger.Error("error while producing block", "error", err)
@@ -280,10 +280,10 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			produceBlockLoop()
+			produceBlockWrapper()
 		case <-produceBlockCh:
 			for {
-				produceBlockLoop()
+				produceBlockWrapper()
 			}
 		}
 
