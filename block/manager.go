@@ -388,9 +388,10 @@ func (m *Manager) ApplyBlockLoop(ctx context.Context) {
 
 // applyBlock applies the block to the store and the abci app.
 // steps: save block -> execute block with app -> update state -> commit block to app -> update store height and state hash.
-// As the entire process can't be atomic as we need to make sure the following condition apply before
-// we're applying the block in in the happy path: block height - 1 == abci app.
+// As the entire process can't be atomic we need to make sure the following condition apply before
+// we're applying the block in the happy path: block height - 1 == abci app last block height.
 // In case the following doesn't hold true, it means we crashed after the commit and before updating the store height.
+// In that case we'll want to align the store with the app state and continue to the next block.
 func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *types.Commit, blockMetaData blockMetaData) error {
 	if block.Header.Height == m.store.Height()+1 {
 		m.logger.Info("Applying block", "height", block.Header.Height, "source", blockMetaData.source)
