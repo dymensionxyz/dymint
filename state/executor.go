@@ -124,31 +124,28 @@ func (e *BlockExecutor) CreateBlock(height uint64, lastCommit *types.Commit, las
 	return block
 }
 
-// ApplyBlock validates and executes the block.
-func (e *BlockExecutor) ApplyBlock(ctx context.Context, state types.State, block *types.Block, commit *types.Commit, proposer *types.Sequencer) (types.State, *tmstate.ABCIResponses, error) {
-	err := e.validateBlock(state, block)
-	if err != nil {
-		return types.State{}, nil, err
+// Validate validates block and commit.
+func (e *BlockExecutor) Validate(state types.State, block *types.Block, commit *types.Commit, proposer *types.Sequencer) error {
+	if err := e.validateBlock(state, block); err != nil {
+		return err
 	}
-	err = e.validateCommit(proposer, commit, &block.Header)
-	if err != nil {
-		return types.State{}, nil, err
+	if err := e.validateCommit(proposer, commit, &block.Header); err != nil {
+		return err
 	}
-	// This makes calls to the ProxyApp
-	resp, err := e.execute(ctx, state, block)
-	if err != nil {
-		return types.State{}, nil, err
-	}
+	return nil
+}
 
+// UpdateStateFromResponses updates state based on the ABCIResponses.
+func (e *BlockExecutor) UpdateStateFromResponses(resp *tmstate.ABCIResponses, state types.State, block *types.Block) (types.State, error) {
 	abciValUpdates := resp.EndBlock.ValidatorUpdates
-	err = validateValidatorUpdates(abciValUpdates, state.ConsensusParams.Validator)
+	err := validateValidatorUpdates(abciValUpdates, state.ConsensusParams.Validator)
 	if err != nil {
-		return state, nil, fmt.Errorf("error in validator updates: %v", err)
+		return state, fmt.Errorf("error in validator updates: %v", err)
 	}
 
 	validatorUpdates, err := tmtypes.PB2TM.ValidatorUpdates(abciValUpdates)
 	if err != nil {
-		return state, nil, err
+		return state, err
 	}
 	if len(validatorUpdates) > 0 {
 		e.logger.Debug("updates to validators", "updates", tmtypes.ValidatorListString(validatorUpdates))
@@ -159,10 +156,10 @@ func (e *BlockExecutor) ApplyBlock(ctx context.Context, state types.State, block
 
 	state, err = e.updateState(state, block, resp, validatorUpdates)
 	if err != nil {
-		return types.State{}, nil, err
+		return types.State{}, err
 	}
 
-	return state, resp, nil
+	return state, nil
 }
 
 // Commit commits the block
@@ -224,19 +221,16 @@ func (e *BlockExecutor) updateState(state types.State, block *types.Block, abciR
 	return s, nil
 }
 
+// GetAppInfo returns the latest AppInfo from the proxyApp.
+func (e *BlockExecutor) GetAppInfo() (*abcitypes.ResponseInfo, error) {
+	return e.proxyAppQueryConn.InfoSync(abcitypes.RequestInfo{})
+}
+
 func (e *BlockExecutor) commit(ctx context.Context, state *types.State, block *types.Block, deliverTxs []*abci.ResponseDeliverTx) ([]byte, error) {
-	infoResp, err := e.proxyAppQueryConn.InfoSync(abcitypes.RequestInfo{})
-	if err != nil {
-		return nil, err
-	}
-	// If the abci app has the same height as the current block (i.e already has been committed), skip the commit
-	if infoResp.LastBlockHeight == int64(block.Header.Height) {
-		return infoResp.LastBlockAppHash, nil
-	}
 	e.mempool.Lock()
 	defer e.mempool.Unlock()
 
-	err = e.mempool.FlushAppConn()
+	err := e.mempool.FlushAppConn()
 	if err != nil {
 		return nil, err
 	}
@@ -294,7 +288,8 @@ func (e *BlockExecutor) validateCommit(proposer *types.Sequencer, commit *types.
 	return nil
 }
 
-func (e *BlockExecutor) execute(ctx context.Context, state types.State, block *types.Block) (*tmstate.ABCIResponses, error) {
+// Execute executes the block and returns the ABCIResponses.
+func (e *BlockExecutor) Execute(ctx context.Context, state types.State, block *types.Block) (*tmstate.ABCIResponses, error) {
 	abciResponses := new(tmstate.ABCIResponses)
 	abciResponses.DeliverTxs = make([]*abci.ResponseDeliverTx, len(block.Data.Txs))
 

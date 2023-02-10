@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -13,7 +14,6 @@ import (
 
 	"github.com/dymensionxyz/dymint/log/test"
 	mempoolv1 "github.com/dymensionxyz/dymint/mempool/v1"
-	"github.com/dymensionxyz/dymint/mocks"
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/testutil"
@@ -119,12 +119,12 @@ func TestInitialState(t *testing.T) {
 // 3. Validate blocks are not produced.
 func TestWaitUntilSynced(t *testing.T) {
 	storeLastBlockHeight := uint64(0)
-	manager, err := getManager(nil, nil, 1, 1, int64(storeLastBlockHeight), nil)
+	manager, err := getManager(nil, nil, 1, 1, int64(storeLastBlockHeight), nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, manager)
 
 	// Manager should produce blocks as it's the first to write batches.
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 	// Run syncTargetLoop so that we update the syncTarget.
 	go manager.SyncTargetLoop(ctx)
@@ -136,7 +136,7 @@ func TestWaitUntilSynced(t *testing.T) {
 	}
 	// As the publishBlock function doesn't stop upon context termination (only PublishBlockLoop),
 	// wait for it to finish before taking the manager out of sync.
-	time.Sleep(time.Second)
+	time.Sleep(1 * time.Second)
 
 	// Take the manager out of sync.
 	t.Log("Taking the manager out of sync by submitting a batch")
@@ -155,7 +155,7 @@ func TestWaitUntilSynced(t *testing.T) {
 	// Validate blocks are not produced.
 	t.Log("Validating blocks are not produced")
 	storeHeight := manager.store.Height()
-	ctx, cancel = context.WithTimeout(context.Background(), time.Second*2)
+	ctx, cancel = context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 	go manager.ProduceBlockLoop(ctx)
 	select {
@@ -169,7 +169,7 @@ func TestWaitUntilSynced(t *testing.T) {
 // 2. Sync the manager
 // 3. Validate blocks are produced.
 func TestPublishAfterSynced(t *testing.T) {
-	manager, err := getManager(nil, nil, 1, 1, 0, nil)
+	manager, err := getManager(nil, nil, 1, 1, 0, nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, manager)
 
@@ -213,7 +213,7 @@ func TestPublishAfterSynced(t *testing.T) {
 	}
 
 	// Validate blocks are produced
-	ctx, cancel = context.WithTimeout(context.Background(), time.Second*2)
+	ctx, cancel = context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 	go manager.ProduceBlockLoop(ctx)
 	select {
@@ -223,7 +223,7 @@ func TestPublishAfterSynced(t *testing.T) {
 }
 
 func TestPublishWhenSettlementLayerDisconnected(t *testing.T) {
-	manager, err := getManager(&SettlementLayerClientSubmitBatchError{}, nil, 1, 1, 0, nil)
+	manager, err := getManager(&SettlementLayerClientSubmitBatchError{}, nil, 1, 1, 0, nil, nil)
 	retry.DefaultAttempts = 2
 	require.NoError(t, err)
 	require.NotNil(t, manager)
@@ -244,7 +244,7 @@ func TestPublishWhenSettlementLayerDisconnected(t *testing.T) {
 }
 
 func TestPublishWhenDALayerDisconnected(t *testing.T) {
-	manager, err := getManager(nil, &DALayerClientSubmitBatchError{}, 1, 1, 0, nil)
+	manager, err := getManager(nil, &DALayerClientSubmitBatchError{}, 1, 1, 0, nil, nil)
 	retry.DefaultAttempts = 2
 	require.NoError(t, err)
 	require.NotNil(t, manager)
@@ -260,7 +260,7 @@ func TestPublishWhenDALayerDisconnected(t *testing.T) {
 }
 
 func TestRetrieveDaBatchesFailed(t *testing.T) {
-	manager, err := getManager(nil, &DALayerClientRetrieveBatchesError{}, 1, 1, 0, nil)
+	manager, err := getManager(nil, &DALayerClientRetrieveBatchesError{}, 1, 1, 0, nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, manager)
 
@@ -270,22 +270,16 @@ func TestRetrieveDaBatchesFailed(t *testing.T) {
 
 func TestProduceNewBlock(t *testing.T) {
 	// Init app
-	app := &mocks.Application{}
-	app.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
-	app.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{})
-	app.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
-	app.On("DeliverTx", mock.Anything).Return(abci.ResponseDeliverTx{})
-	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{})
+	app := testutil.GetAppMock(testutil.Commit)
 	commitHash := [32]byte{1}
 	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{Data: commitHash[:]})
-	app.On("Info", mock.Anything).Return(abci.ResponseInfo{LastBlockHeight: 0, LastBlockAppHash: []byte{0}})
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(clientCreator)
 	err := proxyApp.Start()
 	require.NoError(t, err)
 	// Init manager
-	manager, err := getManager(nil, nil, 1, 1, 0, proxyApp)
+	manager, err := getManager(nil, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(t, err)
 	// Produce block
 	err = manager.produceBlock(context.Background())
@@ -297,22 +291,16 @@ func TestProduceNewBlock(t *testing.T) {
 
 func TestProducePendingBlock(t *testing.T) {
 	// Init app
-	app := &mocks.Application{}
-	app.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
-	app.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{})
-	app.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
-	app.On("DeliverTx", mock.Anything).Return(abci.ResponseDeliverTx{})
-	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{})
+	app := testutil.GetAppMock(testutil.Commit)
 	commitHash := [32]byte{1}
 	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{Data: commitHash[:]})
-	app.On("Info", mock.Anything).Return(abci.ResponseInfo{LastBlockHeight: 0, LastBlockAppHash: []byte{0}})
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(clientCreator)
 	err := proxyApp.Start()
 	require.NoError(t, err)
 	// Init manager
-	manager, err := getManager(nil, nil, 1, 1, 0, proxyApp)
+	manager, err := getManager(nil, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(t, err)
 	// Generate block and commit and save it to the store
 	blocks, err := testutil.GenerateBlocks(1, 1, manager.proposerKey)
@@ -328,46 +316,122 @@ func TestProducePendingBlock(t *testing.T) {
 }
 
 // Test that in case we fail after the proxy app commit, next time we won't commit again to the proxy app
-// and take the state from the previous commit of the proxy app (as it should take the state from the `Info` ABCI method)
-func TestProduceBlockIfFailAfterCommit(t *testing.T) {
-	// Init app
-	app := &mocks.Application{}
-	app.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
-	app.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{})
-	app.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
-	app.On("DeliverTx", mock.Anything).Return(abci.ResponseDeliverTx{})
-	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{})
-	commitHash := [32]byte{1}
-	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{Data: commitHash[:]})
-	infoHash := [32]byte{2}
-	app.On("Info", mock.Anything).Return(abci.ResponseInfo{LastBlockHeight: 1, LastBlockAppHash: infoHash[:]})
+// and only update the store height and app hash. This test does the following:
+// 1. Produce first block successfully
+// 2. Produce second block and fail on update state
+// 3. Produce second block again successfully despite the failure
+// 4. Produce third block and fail on update store height
+// 5. Produce third block successfully
+func TestProduceBlockFailAfterCommit(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+	// Setup app
+	app := testutil.GetAppMock(testutil.Info, testutil.Commit)
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(clientCreator)
 	err := proxyApp.Start()
-	require.NoError(t, err)
+	require.NoError(err)
+	// Create a new mock store which should succeed to save the first block
+	mockStore := newMockStore()
 	// Init manager
-	manager, err := getManager(nil, nil, 1, 1, 0, proxyApp)
-	require.NoError(t, err)
-	// Produce block
-	err = manager.produceBlock(context.Background())
-	require.NoError(t, err)
-	// Validate state is updated from the info hash
-	assert.Equal(t, uint64(1), manager.store.Height())
-	assert.Equal(t, infoHash, manager.lastState.AppHash)
+	manager, err := getManager(nil, nil, 1, 1, 0, proxyApp, mockStore)
+	require.NoError(err)
+
+	cases := []struct {
+		name                   string
+		shouldFailSetSetHeight bool
+		shouldFailUpdateState  bool
+		LastAppBlockHeight     int64
+		AppCommitHash          [32]byte
+		LastAppCommitHash      [32]byte
+		expectedStoreHeight    uint64
+		expectedStateAppHash   [32]byte
+	}{
+		{
+			name:                   "ProduceFirstBlockSuccessfully",
+			shouldFailSetSetHeight: false,
+			shouldFailUpdateState:  false,
+			AppCommitHash:          [32]byte{1},
+			LastAppCommitHash:      [32]byte{0},
+			LastAppBlockHeight:     0,
+			expectedStoreHeight:    1,
+			expectedStateAppHash:   [32]byte{1},
+		},
+		{
+			name:                   "ProduceSecondBlockFailOnUpdateState",
+			shouldFailSetSetHeight: false,
+			shouldFailUpdateState:  true,
+			AppCommitHash:          [32]byte{2},
+			LastAppCommitHash:      [32]byte{},
+			LastAppBlockHeight:     0,
+			expectedStoreHeight:    1,
+			expectedStateAppHash:   [32]byte{1},
+		},
+		{
+			name:                   "ProduceSecondBlockSuccessfully",
+			shouldFailSetSetHeight: false,
+			shouldFailUpdateState:  false,
+			AppCommitHash:          [32]byte{},
+			LastAppCommitHash:      [32]byte{2},
+			LastAppBlockHeight:     2,
+			expectedStoreHeight:    2,
+			expectedStateAppHash:   [32]byte{2},
+		},
+		{
+			name:                   "ProduceThirdBlockFailOnUpdateStoreHeight",
+			shouldFailSetSetHeight: true,
+			shouldFailUpdateState:  false,
+			AppCommitHash:          [32]byte{3},
+			LastAppCommitHash:      [32]byte{2},
+			LastAppBlockHeight:     2,
+			expectedStoreHeight:    2,
+			expectedStateAppHash:   [32]byte{3},
+		},
+		{
+			name:                   "ProduceThirdBlockSuccessfully",
+			shouldFailSetSetHeight: false,
+			shouldFailUpdateState:  false,
+			AppCommitHash:          [32]byte{},
+			LastAppCommitHash:      [32]byte{3},
+			LastAppBlockHeight:     3,
+			expectedStoreHeight:    3,
+			expectedStateAppHash:   [32]byte{3},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			app.On("Commit", mock.Anything).Return(abci.ResponseCommit{Data: tc.AppCommitHash[:]}).Once()
+			app.On("Info", mock.Anything).Return(abci.ResponseInfo{LastBlockHeight: tc.LastAppBlockHeight,
+				LastBlockAppHash: tc.LastAppCommitHash[:]}).Once()
+			mockStore.ShouldFailSetHeight = tc.shouldFailSetSetHeight
+			mockStore.ShoudFailUpdateState = tc.shouldFailUpdateState
+			_ = manager.produceBlock(context.Background())
+			assert.Equal(tc.expectedStoreHeight, manager.store.Height())
+			assert.Equal(tc.expectedStateAppHash, manager.lastState.AppHash)
+			storeState, err := manager.store.LoadState()
+			require.NoError(err)
+			assert.Equal(tc.expectedStateAppHash, storeState.AppHash)
+		})
+	}
 }
 
 /* -------------------------------------------------------------------------- */
 /*                                    utils                                   */
 /* -------------------------------------------------------------------------- */
 
-func getManager(settlementlc settlement.LayerClient, dalc da.DataAvailabilityLayerClient, genesisHeight int64, storeInitialHeight int64, storeLastBlockHeight int64, proxyAppConns proxy.AppConns) (*Manager, error) {
+func getManager(settlementlc settlement.LayerClient, dalc da.DataAvailabilityLayerClient, genesisHeight int64, storeInitialHeight int64, storeLastBlockHeight int64, proxyAppConns proxy.AppConns, mockStore store.Store) (*Manager, error) {
 	genesis := testutil.GenerateGenesis(genesisHeight)
 	// Change the LastBlockHeight to avoid calling InitChainSync within the manager
 	// And updating the state according to the genesis.
 	state := testutil.GenerateState(storeInitialHeight, storeLastBlockHeight)
-	store := store.New(store.NewDefaultInMemoryKVStore())
-	if _, err := store.UpdateState(state, nil); err != nil {
+	var managerStore store.Store
+	if mockStore == nil {
+		managerStore = store.New(store.NewDefaultInMemoryKVStore())
+	} else {
+		managerStore = mockStore
+	}
+	if _, err := managerStore.UpdateState(state, nil); err != nil {
 		return nil, err
 	}
 	conf := getManagerConfig()
@@ -425,7 +489,7 @@ func getManager(settlementlc settlement.LayerClient, dalc da.DataAvailabilityLay
 		return nil, err
 	}
 
-	manager, err := NewManager(proposerKey, conf, genesis, store, mp, proxyApp, dalc, settlementlc, nil, pubsubServer, p2pClient, logger)
+	manager, err := NewManager(proposerKey, conf, genesis, managerStore, mp, proxyApp, dalc, settlementlc, nil, pubsubServer, p2pClient, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -479,6 +543,45 @@ func getManagerConfig() config.BlockManagerConfig {
 /* -------------------------------------------------------------------------- */
 /*                                    Mocks                                   */
 /* -------------------------------------------------------------------------- */
+
+type MockStore struct {
+	ShouldFailSetHeight            bool
+	ShoudFailUpdateState           bool
+	ShouldFailUpdateStateWithBatch bool
+	*store.DefaultStore
+	height uint64
+}
+
+// Don't set the height to mock failure in setting the height
+func (m *MockStore) SetHeight(height uint64) {
+	// Fail the first time
+	if m.ShouldFailSetHeight {
+		return
+	}
+	m.height = height
+}
+
+func (m *MockStore) Height() uint64 {
+	return m.height
+}
+
+func (m *MockStore) UpdateState(state types.State, batch store.Batch) (store.Batch, error) {
+	if batch != nil && m.ShouldFailUpdateStateWithBatch || m.ShoudFailUpdateState && batch == nil {
+		return nil, errors.New("failed to update state")
+	} else {
+		return m.DefaultStore.UpdateState(state, batch)
+	}
+}
+
+func newMockStore() *MockStore {
+	defaultStore := store.New(store.NewDefaultInMemoryKVStore())
+	return &MockStore{
+		DefaultStore:         defaultStore.(*store.DefaultStore),
+		height:               0,
+		ShouldFailSetHeight:  false,
+		ShoudFailUpdateState: false,
+	}
+}
 
 type SettlementLayerClientSubmitBatchError struct {
 	slmock.SettlementLayerClient

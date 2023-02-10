@@ -8,6 +8,26 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 )
 
+// ABCIMethod is a string representing an ABCI method
+type ABCIMethod string
+
+const (
+	// InitChain is the string representation of the InitChain ABCI method
+	InitChain ABCIMethod = "InitChain"
+	// CheckTx is the string representation of the CheckTx ABCI method
+	CheckTx ABCIMethod = "CheckTx"
+	// BeginBlock is the string representation of the BeginBlockMethod ABCI method
+	BeginBlock ABCIMethod = "BeginBlock"
+	// DeliverTx is the string representation of the DeliverTx ABCI method
+	DeliverTx ABCIMethod = "DeliverTx"
+	// EndBlock is the string representation of the EndBlock ABCI method
+	EndBlock ABCIMethod = "EndBlock"
+	// Commit is the string representation of the Commit ABCI method
+	Commit ABCIMethod = "Commit"
+	// Info is the string representation of the Info ABCI method
+	Info ABCIMethod = "Info"
+)
+
 // GetABCIProxyAppMock returns a dummy abci proxy app mock for testing
 func GetABCIProxyAppMock(logger log.Logger) proxy.AppConns {
 
@@ -21,7 +41,7 @@ func GetABCIProxyAppMock(logger log.Logger) proxy.AppConns {
 }
 
 // GetAppMock returns a dummy abci app mock for testing
-func GetAppMock() *mocks.Application {
+func GetAppMock(excludeMethods ...ABCIMethod) *mocks.Application {
 	app := &mocks.Application{}
 	app.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 	app.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{})
@@ -31,5 +51,22 @@ func GetAppMock() *mocks.Application {
 	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{})
 	app.On("Info", mock.Anything).Return(abci.ResponseInfo{LastBlockHeight: 0, LastBlockAppHash: []byte{0}})
 
+	// iterate exclude methods and unset the mock
+	for _, method := range excludeMethods {
+		unsetFn(app.On(string(method)))
+	}
+
 	return app
+}
+
+var unsetFn = func(call *mock.Call) {
+	if call != nil {
+		var newList []*mock.Call
+		for _, c := range call.Parent.ExpectedCalls {
+			if c.Method != call.Method {
+				newList = append(newList, c)
+			}
+		}
+		call.Parent.ExpectedCalls = newList
+	}
 }
