@@ -14,7 +14,6 @@ import (
 
 	"github.com/dymensionxyz/dymint/log/test"
 	mempoolv1 "github.com/dymensionxyz/dymint/mempool/v1"
-	"github.com/dymensionxyz/dymint/mocks"
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/testutil"
@@ -317,31 +316,6 @@ func TestProducePendingBlock(t *testing.T) {
 }
 
 // Test that in case we fail after the proxy app commit, next time we won't commit again to the proxy app
-// and take the state from the previous commit of the proxy app (as it should take the state from the `Info` ABCI method)
-func TestProduceBlockIfFailAfterCommit(t *testing.T) {
-	// Init app
-	app := testutil.GetAppMock(testutil.Info, testutil.Commit)
-	commitHash := [32]byte{1}
-	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{Data: commitHash[:]})
-	infoHash := [32]byte{2}
-	app.On("Info", mock.Anything).Return(abci.ResponseInfo{LastBlockHeight: 1, LastBlockAppHash: infoHash[:]})
-	// Create proxy app
-	clientCreator := proxy.NewLocalClientCreator(app)
-	proxyApp := proxy.NewAppConns(clientCreator)
-	err := proxyApp.Start()
-	require.NoError(t, err)
-	// Init manager
-	manager, err := getManager(nil, nil, 1, 1, 0, proxyApp, nil)
-	require.NoError(t, err)
-	// Produce block
-	err = manager.produceBlock(context.Background())
-	require.NoError(t, err)
-	// Validate state is updated from the info hash
-	assert.Equal(t, uint64(1), manager.store.Height())
-	assert.Equal(t, infoHash, manager.lastState.AppHash)
-}
-
-// Test that in case we fail after the proxy app commit, next time we won't commit again to the proxy app
 // and only update the store height and app hash. This test does the following:
 // 1. Produce first block successfully
 // 2. Produce second block and fail on update state
@@ -440,36 +414,6 @@ func TestProduceBlockFailAfterCommit(t *testing.T) {
 			assert.Equal(tc.expectedStateAppHash, storeState.AppHash)
 		})
 	}
-}
-
-// Test that in case we fail after the proxy app commit, next time we won't commit again to the proxy app
-// and take the state from the previous commit of the proxy app (as it should take the state from the `Info` ABCI method)
-func TestProduceBlockFailBeforeCommit(t *testing.T) {
-	// Init app
-	app := &mocks.Application{}
-	app.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
-	app.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{})
-	app.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
-	app.On("DeliverTx", mock.Anything).Return(abci.ResponseDeliverTx{})
-	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{})
-	commitHash := [32]byte{1}
-	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{Data: commitHash[:]})
-	infoHash := [32]byte{2}
-	app.On("Info", mock.Anything).Return(abci.ResponseInfo{LastBlockHeight: 1, LastBlockAppHash: infoHash[:]})
-	// Create proxy app
-	clientCreator := proxy.NewLocalClientCreator(app)
-	proxyApp := proxy.NewAppConns(clientCreator)
-	err := proxyApp.Start()
-	require.NoError(t, err)
-	// Init manager
-	manager, err := getManager(nil, nil, 1, 1, 0, proxyApp, nil)
-	require.NoError(t, err)
-	// Produce block
-	err = manager.produceBlock(context.Background())
-	require.NoError(t, err)
-	// Validate state is updated from the info hash
-	assert.Equal(t, uint64(1), manager.store.Height())
-	assert.Equal(t, infoHash, manager.lastState.AppHash)
 }
 
 /* -------------------------------------------------------------------------- */
