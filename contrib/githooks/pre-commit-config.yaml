@@ -82,7 +82,9 @@ repos:
     # Go Test
     #
     -   id: go-test-mod
+        args: [-v, -race]
     -   id: go-test-repo-mod
+        args: [-v, -race]
     # GolangCI-Lint
     # - Fast Multi-Linter
     # - Can be configured to replace MOST other hooks

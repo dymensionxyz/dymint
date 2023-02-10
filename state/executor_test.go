@@ -169,10 +169,14 @@ func TestApplyBlock(t *testing.T) {
 	}
 
 	// Apply the block
-	newState, resp, err := executor.ApplyBlock(context.Background(), state, block, commit, proposer)
+	err = executor.Validate(state, block, commit, proposer)
+	require.NoError(err)
+	resp, err := executor.Execute(context.Background(), state, block)
+	require.NoError(err)
+	require.NotNil(resp)
+	newState, err := executor.UpdateStateFromResponses(resp, state, block)
 	require.NoError(err)
 	require.NotNil(newState)
-	require.NotNil(resp)
 	assert.Equal(int64(1), newState.LastBlockHeight)
 	err = executor.Commit(context.Background(), &newState, block, resp)
 	require.NoError(err)
@@ -204,7 +208,7 @@ func TestApplyBlock(t *testing.T) {
 	}
 
 	// Apply the block with an invalid commit
-	_, _, err = executor.ApplyBlock(context.Background(), newState, block, invalidCommit, proposer)
+	err = executor.Validate(state, block, invalidCommit, proposer)
 	require.Error(types.ErrInvalidSignature)
 
 	// Create a valid commit for the block
@@ -217,10 +221,14 @@ func TestApplyBlock(t *testing.T) {
 	}
 
 	// Apply the block
-	newState, resp, err = executor.ApplyBlock(context.Background(), newState, block, commit, proposer)
+	err = executor.Validate(newState, block, commit, proposer)
+	require.NoError(err)
+	resp, err = executor.Execute(context.Background(), state, block)
+	require.NoError(err)
+	require.NotNil(resp)
+	newState, err = executor.UpdateStateFromResponses(resp, state, block)
 	require.NoError(err)
 	require.NotNil(newState)
-	require.NotNil(resp)
 	assert.Equal(int64(2), newState.LastBlockHeight)
 	err = executor.Commit(context.Background(), &newState, block, resp)
 	require.NoError(err)
