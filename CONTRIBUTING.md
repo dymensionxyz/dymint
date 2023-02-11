@@ -28,6 +28,7 @@ these steps to make your contribution:
 1. Comment on it and say you're working on that issue.
    This is to avoid conflicts with others also working on the issue.
 1. Write your code and submit your pull request.
+1. Make sure your PR title follows [conventional commits](https://www.conventionalcommits.org)
 1. Wait for code review and address any issues raised as soon as you can.
 
 **A note on collaboration:** We encourage people to collaborate as much as possible.
