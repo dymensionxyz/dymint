@@ -36,6 +36,7 @@ type blockSource string
 const (
 	defaultDABlockTime = 30 * time.Second
 	DABatchRetryDelay  = 20 * time.Second
+	SLBatchRetryDelay  = 10 * time.Second
 )
 
 const (
@@ -705,7 +706,7 @@ func (m *Manager) submitBatchToSL(ctx context.Context, batch *types.Batch, resul
 			return err
 		}
 		return nil
-	}, retry.Context(ctx), retry.LastErrorOnly(true))
+	}, retry.Context(ctx), retry.LastErrorOnly(true), retry.Delay(SLBatchRetryDelay))
 	if err != nil {
 		m.logger.Error("Failed to submit batch to SL Layer", batch, err)
 		panic(err)
