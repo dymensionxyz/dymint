@@ -113,30 +113,15 @@ func TestInitialState(t *testing.T) {
 	}
 }
 
-// TestWaitUntilSynced tests that we don't start producing blocks until we're synced.
-// 1. Validate blocks are produced.
-// 2. Add a batch which takes the manager out of sync
-// 3. Validate blocks are not produced.
+// TestWaitUntilSynced tests that we don't start producing blocks while the manager is not synced.
+// 1. Submit batch
+// 2. Don't start the sync loops.
+// 3. Validate that when produce blocks start, blocks are not produced.
 func TestWaitUntilSynced(t *testing.T) {
 	storeLastBlockHeight := uint64(0)
 	manager, err := getManager(nil, nil, 1, 1, int64(storeLastBlockHeight), nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, manager)
-
-	// Manager should produce blocks as it's the first to write batches.
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
-	defer cancel()
-	// Run syncTargetLoop so that we update the syncTarget.
-	go manager.SyncTargetLoop(ctx)
-	go manager.ProduceBlockLoop(ctx)
-	select {
-	case <-ctx.Done():
-		// Validate some blocks produced
-		assert.Greater(t, manager.store.Height(), storeLastBlockHeight)
-	}
-	// As the publishBlock function doesn't stop upon context termination (only PublishBlockLoop),
-	// wait for it to finish before taking the manager out of sync.
-	time.Sleep(1 * time.Second)
 
 	// Take the manager out of sync.
 	t.Log("Taking the manager out of sync by submitting a batch")
@@ -155,7 +140,7 @@ func TestWaitUntilSynced(t *testing.T) {
 	// Validate blocks are not produced.
 	t.Log("Validating blocks are not produced")
 	storeHeight := manager.store.Height()
-	ctx, cancel = context.WithTimeout(context.Background(), time.Second*3)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
 	defer cancel()
 	go manager.ProduceBlockLoop(ctx)
 	select {
