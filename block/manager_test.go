@@ -113,68 +113,17 @@ func TestInitialState(t *testing.T) {
 	}
 }
 
-// TestWaitUntilSynced tests that we don't start producing blocks until we're synced.
-// 1. Validate blocks are produced.
-// 2. Add a batch which takes the manager out of sync
-// 3. Validate blocks are not produced.
-func TestWaitUntilSynced(t *testing.T) {
-	storeLastBlockHeight := uint64(0)
-	manager, err := getManager(nil, nil, 1, 1, int64(storeLastBlockHeight), nil, nil)
-	require.NoError(t, err)
-	require.NotNil(t, manager)
-
-	// Manager should produce blocks as it's the first to write batches.
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
-	defer cancel()
-	// Run syncTargetLoop so that we update the syncTarget.
-	go manager.SyncTargetLoop(ctx)
-	go manager.ProduceBlockLoop(ctx)
-	select {
-	case <-ctx.Done():
-		// Validate some blocks produced
-		assert.Greater(t, manager.store.Height(), storeLastBlockHeight)
-	}
-	// As the publishBlock function doesn't stop upon context termination (only PublishBlockLoop),
-	// wait for it to finish before taking the manager out of sync.
-	time.Sleep(1 * time.Second)
-
-	// Take the manager out of sync.
-	t.Log("Taking the manager out of sync by submitting a batch")
-	startHeight := atomic.LoadUint64(&manager.syncTarget) + 1
-	endHeight := startHeight + uint64(defaultBatchSize-1)*2
-	batch, err := testutil.GenerateBatch(startHeight, endHeight, manager.proposerKey)
-	require.NoError(t, err)
-	daResult := &da.ResultSubmitBatch{
-		BaseResult: da.BaseResult{
-			DAHeight: 1,
-		},
-	}
-	resultSubmitBatch := manager.settlementClient.SubmitBatch(batch, manager.dalc.GetClientType(), daResult)
-	assert.Equal(t, resultSubmitBatch.Code, settlement.StatusSuccess)
-
-	// Validate blocks are not produced.
-	t.Log("Validating blocks are not produced")
-	storeHeight := manager.store.Height()
-	ctx, cancel = context.WithTimeout(context.Background(), time.Second*3)
-	defer cancel()
-	go manager.ProduceBlockLoop(ctx)
-	select {
-	case <-ctx.Done():
-		assert.Equal(t, storeHeight, manager.store.Height())
-	}
-}
-
-// TestPublishAfterSynced should test that we are resuming publishing blocks after we are synced
-// 1. Validate blocks are not produced by adding a batch and outsyncing the manager
+// TestProduceOnlyAfterSynced should test that we are resuming publishing blocks after we are synced
+// 1. Submit a batch and outsync the manager
+// 2. Fail to produce blocks
 // 2. Sync the manager
-// 3. Validate blocks are produced.
-func TestPublishAfterSynced(t *testing.T) {
+// 3. Succeed to produce blocks
+func TestProduceOnlyAfterSynced(t *testing.T) {
 	manager, err := getManager(nil, nil, 1, 1, 0, nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, manager)
 
-	// Validate blocks are not produced by adding a batch and outsyncing the manager.
-	// Submit batch
+	t.Log("Taking the manager out of sync by submitting a batch")
 	lastStoreHeight := manager.store.Height()
 	numBatchesToAdd := 2
 	nextBatchStartHeight := atomic.LoadUint64(&manager.syncTarget) + 1
@@ -191,7 +140,7 @@ func TestPublishAfterSynced(t *testing.T) {
 		time.Sleep(time.Millisecond * 500)
 	}
 
-	// Check manager is out of sync
+	t.Log("Validating manager can't produce blocks")
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*1)
 	defer cancel()
 	go manager.ProduceBlockLoop(ctx)
@@ -200,10 +149,9 @@ func TestPublishAfterSynced(t *testing.T) {
 		assert.Equal(t, lastStoreHeight, manager.store.Height())
 	}
 
-	// Sync the manager
+	t.Log("Sync the manager")
 	ctx, cancel = context.WithTimeout(context.Background(), time.Second*2)
 	defer cancel()
-	go manager.SyncTargetLoop(ctx)
 	go manager.RetriveLoop(ctx)
 	go manager.ApplyBlockLoop(ctx)
 	select {
@@ -212,7 +160,7 @@ func TestPublishAfterSynced(t *testing.T) {
 		assert.Equal(t, batch.EndHeight, manager.store.Height())
 	}
 
-	// Validate blocks are produced
+	t.Log("Validate blocks are produced")
 	ctx, cancel = context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 	go manager.ProduceBlockLoop(ctx)

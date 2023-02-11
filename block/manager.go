@@ -36,6 +36,7 @@ type blockSource string
 const (
 	defaultDABlockTime = 30 * time.Second
 	DABatchRetryDelay  = 20 * time.Second
+	SLBatchRetryDelay  = 10 * time.Second
 )
 
 const (
@@ -198,7 +199,8 @@ func (m *Manager) getLatestBatchFromSL(ctx context.Context) (*settlement.ResultR
 
 }
 
-// waitForSync waits until we are synced before it unblocks.
+// waitForSync enforaces the aggregator to be synced before it can produce blocks.
+// It requires the retriveBlockLoop to be running.
 func (m *Manager) waitForSync(ctx context.Context) error {
 	resultRetrieveBatch, err := m.getLatestBatchFromSL(ctx)
 	// Set the syncTarget according to the result
@@ -212,7 +214,7 @@ func (m *Manager) waitForSync(ctx context.Context) error {
 		m.logger.Error("failed to retrieve batch from SL", "err", err)
 		return err
 	} else {
-		atomic.StoreUint64(&m.syncTarget, resultRetrieveBatch.EndHeight)
+		m.updateSyncParams(ctx, resultRetrieveBatch.EndHeight)
 	}
 	// Wait until isSynced is true and then call the PublishBlockLoop
 	m.isSyncedCond.L.Lock()
@@ -268,8 +270,9 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 	}
 }
 
-// SyncTargetLoop is responsible for updating the syncTarget as read from the SL
-// to a ring buffer which will later be used by retrieveLoop for actually syncing until this target
+// SyncTargetLoop is responsible for getting real time updates about batches submission.
+// for non aggregator: updating the sync target which will be used by retrieveLoop to sync until this target.
+// for aggregator: get notification that batch has been accepted so can send next batch.
 func (m *Manager) SyncTargetLoop(ctx context.Context) {
 	m.logger.Info("Started sync target loop")
 	subscription, err := m.pubsub.Subscribe(ctx, "syncTargetLoop", settlement.EventQueryNewSettlementBatchAccepted)
@@ -705,7 +708,7 @@ func (m *Manager) submitBatchToSL(ctx context.Context, batch *types.Batch, resul
 			return err
 		}
 		return nil
-	}, retry.Context(ctx), retry.LastErrorOnly(true))
+	}, retry.Context(ctx), retry.LastErrorOnly(true), retry.Delay(SLBatchRetryDelay))
 	if err != nil {
 		m.logger.Error("Failed to submit batch to SL Layer", batch, err)
 		panic(err)
