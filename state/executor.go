@@ -151,7 +151,7 @@ func (e *BlockExecutor) UpdateStateFromResponses(resp *tmstate.ABCIResponses, st
 		e.logger.Debug("updates to validators", "updates", tmtypes.ValidatorListString(validatorUpdates))
 	}
 	if state.ConsensusParams.Block.MaxBytes == 0 {
-		e.logger.Error("maxBytes=0", "state.ConsensusParams.Block", state.ConsensusParams.Block, "block", block)
+		e.logger.Error("maxBytes=0", "state.ConsensusParams.Block", state.ConsensusParams.Block)
 	}
 
 	state, err = e.updateState(state, block, resp, validatorUpdates)
