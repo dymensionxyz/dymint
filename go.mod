@@ -7,7 +7,7 @@ require (
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/celestiaorg/go-cnc v0.2.0
 	github.com/dgraph-io/badger/v3 v3.2103.3
-	github.com/dymensionxyz/cosmosclient v0.2.0-alpha.0.20230123083919-e1f5afda257a
+	github.com/dymensionxyz/cosmosclient v0.2.0-alpha.0.20230214103608-6203ac1f22e8
 	github.com/go-kit/kit v0.12.0
 	github.com/gofrs/uuid v4.2.0+incompatible
 	github.com/gogo/protobuf v1.3.3
