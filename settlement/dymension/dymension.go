@@ -47,6 +47,9 @@ type Config struct {
 	KeyRingHomeDir string                       `json:"keyring_home_dir"`
 	DymAccountName string                       `json:"dym_account_name"`
 	RollappID      string                       `json:"rollapp_id"`
+	GasLimit       uint64                       `json:"gas_limit"`
+	GasPrices      string                       `json:"gas_prices"`
+	GasFees        string                       `json:"gas_fees"`
 }
 
 var _ settlement.LayerClient = &LayerClient{}
@@ -351,6 +354,9 @@ func getCosmosClientOptions(config *Config) []cosmosclient.Option {
 	options := []cosmosclient.Option{
 		cosmosclient.WithAddressPrefix(addressPrefix),
 		cosmosclient.WithNodeAddress(config.NodeAddress),
+		cosmosclient.WithGasFees(config.GasFees),
+		cosmosclient.WithGasLimit(config.GasLimit),
+		cosmosclient.WithGasPrices(config.GasPrices),
 	}
 	if config.KeyringBackend != "" {
 		options = append(options,
