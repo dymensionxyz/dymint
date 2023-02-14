@@ -28,6 +28,7 @@ const (
 	addressPrefix      = "dym"
 	dymRollappVersion  = 0
 	defaultNodeAddress = "http://localhost:26657"
+	defaultGasLimit    = 300000
 )
 
 const (
@@ -351,6 +352,9 @@ func (d *HubClient) convertBatchToMsgUpdateState(batch *types.Batch, daClient da
 }
 
 func getCosmosClientOptions(config *Config) []cosmosclient.Option {
+	if config.GasLimit == 0 {
+		config.GasLimit = defaultGasLimit
+	}
 	options := []cosmosclient.Option{
 		cosmosclient.WithAddressPrefix(addressPrefix),
 		cosmosclient.WithNodeAddress(config.NodeAddress),
