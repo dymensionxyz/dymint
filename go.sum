@@ -276,6 +276,8 @@ github.com/dymensionxyz/cosmosclient v0.2.0-alpha.0.20230123083919-e1f5afda257a 
 github.com/dymensionxyz/cosmosclient v0.2.0-alpha.0.20230123083919-e1f5afda257a/go.mod h1:H6r0zzseZ1dEoud1uswU5xgOCUkGR+5GrXtyu/4nQ2o=
 github.com/dymensionxyz/cosmosclient v0.2.0-alpha.0.20230214101004-460d6299c295 h1:nPqqz7efCqNC3aF1Nen4qhZKoxHbiGFQXrmtogqsbus=
 github.com/dymensionxyz/cosmosclient v0.2.0-alpha.0.20230214101004-460d6299c295/go.mod h1:H6r0zzseZ1dEoud1uswU5xgOCUkGR+5GrXtyu/4nQ2o=
+github.com/dymensionxyz/cosmosclient v0.2.0-alpha.0.20230214103608-6203ac1f22e8 h1:DGCBPYfNHfIoYBwfS9DciScJwGDPOKSSUDtsq6a800M=
+github.com/dymensionxyz/cosmosclient v0.2.0-alpha.0.20230214103608-6203ac1f22e8/go.mod h1:H6r0zzseZ1dEoud1uswU5xgOCUkGR+5GrXtyu/4nQ2o=
 github.com/dymensionxyz/dymension v0.1.0-alpha.0.20230110174626-23b70dccd1e5 h1:ZgnXa+BU/zSJt+NZ1yx7SSmFlovIGJHdDCxFcRNnLDY=
 github.com/dymensionxyz/dymension v0.1.0-alpha.0.20230110174626-23b70dccd1e5/go.mod h1:C5nQlAlDqVtNigjQVNLSL4SuC3gUVoRhqAsfYZZcDgs=
 github.com/dymensionxyz/ibc-go/v3 v3.0.0-rc2.0.20230105134315-1870174ab6da h1:driSbrBc4deT0iRjDKjA4royFDsUsDcE0IgFkFxhopo=
