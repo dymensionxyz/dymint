@@ -205,7 +205,7 @@ func TestPublishWhenDALayerDisconnected(t *testing.T) {
 	daResultSubmitBatch := manager.dalc.SubmitBatch(batch)
 	assert.Equal(t, daResultSubmitBatch.Code, da.StatusError)
 
-	_, err = manager.submitBatchToDA(context.Background(), nil)
+	_, err = manager.submitBatchToDA(context.Background(), batch)
 	assert.ErrorContains(t, err, connectionRefusedErrorMessage)
 }
 
