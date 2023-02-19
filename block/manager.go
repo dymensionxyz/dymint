@@ -722,7 +722,8 @@ func (m *Manager) submitBatchToSL(batch *types.Batch, resultSubmitToDA *da.Resul
 	err := retry.Do(func() error {
 		resultSubmitToSL = m.settlementClient.SubmitBatch(batch, m.dalc.GetClientType(), resultSubmitToDA)
 		if resultSubmitToSL.Code != settlement.StatusSuccess {
-			err := fmt.Errorf("failed to submit batch to SL layer: %s", resultSubmitToSL.Message)
+			m.logger.Error("Failed to submit batch to SL layer", "startHeight", batch.StartHeight, "endHeight", batch.EndHeight, "error", resultSubmitToSL.Message)
+			err := fmt.Errorf("Failed to submit batch to SL layer: %s", resultSubmitToSL.Message)
 			return err
 		}
 		return nil
@@ -730,7 +731,7 @@ func (m *Manager) submitBatchToSL(batch *types.Batch, resultSubmitToDA *da.Resul
 	// Panic if we failed not due to context cancellation
 	m.batchRetryMu.Lock()
 	if err != nil && m.batchRetryCtx.Err() == nil {
-		m.logger.Error("Failed to submit batch to SL Layer", "startHeight", batch.StartHeight, "EndHeight", batch.EndHeight, "error", err)
+		m.logger.Error("Failed to submit batch to SL Layer", "startHeight", batch.StartHeight, "endHeight", batch.EndHeight, "error", err)
 		panic(err)
 	}
 	m.batchRetryMu.Unlock()
@@ -741,7 +742,8 @@ func (m *Manager) submitBatchToDA(ctx context.Context, batch *types.Batch) (*da.
 	err := retry.Do(func() error {
 		res = m.dalc.SubmitBatch(batch)
 		if res.Code != da.StatusSuccess {
-			return fmt.Errorf("failed to submit batch to DA layer: %s", res.Message)
+			m.logger.Error("Failed to submit batch to DA layer", "startHeight", batch.StartHeight, "endHeight", batch.EndHeight, "error", res.Message)
+			return fmt.Errorf("Failed to submit batch to DA layer: %s", res.Message)
 		}
 		return nil
 	}, retry.Context(ctx), retry.LastErrorOnly(true), retry.Delay(DABatchRetryDelay))
