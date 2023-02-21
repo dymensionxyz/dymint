@@ -299,7 +299,7 @@ func (d *HubClient) eventHandler() {
 			panic("Settlement WS disconnected")
 		case event := <-eventsChannel:
 			// Assert value is in map and publish it to the event bus
-			d.logger.Debug("Received event from settlement layer", "event", event)
+			d.logger.Debug("Received event from settlement layer")
 			_, ok := d.eventMap[event.Query]
 			if !ok {
 				d.logger.Debug("Ignoring event. Type not supported", "event", event)
