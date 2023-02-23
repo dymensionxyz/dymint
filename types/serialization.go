@@ -251,6 +251,7 @@ func (s *State) ToProto() (*pb.State, error) {
 		NextValidators:                   nextValidators,
 		Validators:                       validators,
 		LastValidators:                   lastValidators,
+		LastStoreHeight:                  s.LastStoreHeight,
 		LastHeightValidatorsChanged:      s.LastHeightValidatorsChanged,
 		ConsensusParams:                  s.ConsensusParams,
 		LastHeightConsensusParamsChanged: s.LastHeightConsensusParamsChanged,
@@ -266,6 +267,13 @@ func (s *State) FromProto(other *pb.State) error {
 	s.ChainID = other.ChainId
 	s.InitialHeight = other.InitialHeight
 	s.LastBlockHeight = other.LastBlockHeight
+	//TODO(omritoptix): remove this as this is only for backwards compatibility
+	// with old state files that don't have this field.
+	if other.LastStoreHeight == 0 && other.LastBlockHeight > 1 {
+		s.LastStoreHeight = uint64(other.LastBlockHeight)
+	} else {
+		s.LastStoreHeight = other.LastStoreHeight
+	}
 	s.SLStateIndex = other.SLStateIndex
 	lastBlockID, err := types.BlockIDFromProto(&other.LastBlockID)
 	if err != nil {

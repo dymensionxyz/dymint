@@ -35,4 +35,6 @@ message State {
   bytes last_results_hash = 14;
 
   bytes app_hash = 15;
+
+  uint64 last_store_height = 16 [(gogoproto.customname) = "LastStoreHeight"];
 }

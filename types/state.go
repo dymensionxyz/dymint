@@ -54,6 +54,9 @@ type State struct {
 	// Merkle root of the results from executing prev block
 	LastResultsHash [32]byte
 
+	// LastStore height is the last height we've saved to the store.
+	LastStoreHeight uint64
+
 	// the latest AppHash we've received from calling abci.Commit()
 	AppHash [32]byte
 }

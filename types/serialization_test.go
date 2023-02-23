@@ -122,6 +122,7 @@ func TestStateRoundTrip(t *testing.T) {
 				ChainID:         "testchain",
 				InitialHeight:   987,
 				LastBlockHeight: 987654321,
+				LastStoreHeight: 987654321,
 				LastBlockID: tmtypes.BlockID{
 					Hash: nil,
 					PartSetHeader: tmtypes.PartSetHeader{
