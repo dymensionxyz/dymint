@@ -473,7 +473,10 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 			return err
 		}
 
-		// Update the state with the new app hash from the commit.
+		// Update the state with the new app hash, last validators and store height from the commit.
+		// Every one of those, if happens before commit, prevents us from re-executing the block in case failed during commit.
+		newState.LastValidators = m.lastState.Validators.Copy()
+		newState.LastStoreHeight = block.Header.Height
 		_, err = m.store.UpdateState(newState, nil)
 		if err != nil {
 			m.logger.Error("Failed to update state", "error", err)
@@ -499,8 +502,10 @@ func (m *Manager) alignStoreWithApp(ctx context.Context, block *types.Block) (bo
 	if uint64(proxyAppInfo.LastBlockHeight) == block.Header.Height {
 		isRequired = true
 		m.logger.Info("Skipping block application and only updating store height and state hash", "height", block.Header.Height)
-		// update the state with the hash
+		// update the state with the hash, last store height and last validators.
 		m.lastState.AppHash = *(*[32]byte)(proxyAppInfo.LastBlockAppHash)
+		m.lastState.LastStoreHeight = block.Header.Height
+		m.lastState.LastValidators = m.lastState.Validators.Copy()
 		_, err := m.store.UpdateState(m.lastState, nil)
 		if err != nil {
 			m.logger.Error("Failed to update state", "error", err)

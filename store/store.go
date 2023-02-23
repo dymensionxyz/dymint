@@ -207,7 +207,7 @@ func (s *DefaultStore) LoadState() (types.State, error) {
 
 	var state types.State
 	err = state.FromProto(&pbState)
-	atomic.StoreUint64(&s.height, uint64(state.LastBlockHeight))
+	atomic.StoreUint64(&s.height, state.LastStoreHeight)
 	return state, err
 }
 

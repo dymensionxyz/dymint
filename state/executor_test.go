@@ -181,6 +181,7 @@ func TestApplyBlock(t *testing.T) {
 	err = executor.Commit(context.Background(), &newState, block, resp)
 	require.NoError(err)
 	assert.Equal(mockAppHash, newState.AppHash)
+	newState.LastStoreHeight = uint64(newState.LastBlockHeight)
 
 	// Create another block with multiple Tx from mempool
 	require.NoError(mpool.CheckTx([]byte{0, 1, 2, 3, 4}, func(r *abci.Response) {}, mempool.TxInfo{}))
