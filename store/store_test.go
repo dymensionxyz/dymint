@@ -136,6 +136,7 @@ func TestRestart(t *testing.T) {
 	expectedHeight := uint64(10)
 	_, err := s1.UpdateState(types.State{
 		LastBlockHeight: int64(expectedHeight),
+		LastStoreHeight: uint64(expectedHeight),
 		NextValidators:  validatorSet,
 		Validators:      validatorSet,
 		LastValidators:  validatorSet,

@@ -210,11 +210,13 @@ func (e *BlockExecutor) updateState(state types.State, block *types.Block, abciR
 		},
 		NextValidators:                   nValSet,
 		Validators:                       state.NextValidators.Copy(),
-		LastValidators:                   state.Validators.Copy(),
 		LastHeightValidatorsChanged:      lastHeightValSetChanged,
 		ConsensusParams:                  state.ConsensusParams,
 		LastHeightConsensusParamsChanged: state.LastHeightConsensusParamsChanged,
-		AppHash:                          state.AppHash,
+		// We're gonna update those fields only after we commit the blocks
+		AppHash:         state.AppHash,
+		LastValidators:  state.LastValidators.Copy(),
+		LastStoreHeight: state.LastStoreHeight,
 	}
 	copy(s.LastResultsHash[:], tmtypes.NewResults(abciResponses.DeliverTxs).Hash())
 
@@ -262,7 +264,7 @@ func (e *BlockExecutor) validateBlock(state types.State, block *types.Block) err
 	if state.LastBlockHeight <= 0 && block.Header.Height != uint64(state.InitialHeight) {
 		return errors.New("initial block height mismatch")
 	}
-	if state.LastBlockHeight > 0 && block.Header.Height != uint64(state.LastBlockHeight)+1 {
+	if state.LastBlockHeight > 0 && block.Header.Height != uint64(state.LastStoreHeight)+1 {
 		return errors.New("block height mismatch")
 	}
 	if !bytes.Equal(block.Header.AppHash[:], state.AppHash[:]) {
