@@ -281,34 +281,18 @@ func (s *State) FromProto(other *pb.State) error {
 	}
 	s.LastBlockID = *lastBlockID
 	s.LastBlockTime = other.LastBlockTime
-
-	if len(other.NextValidators.Validators) == 0 {
-		s.NextValidators = types.NewValidatorSet(nil)
-	} else {
-		s.NextValidators, err = types.ValidatorSetFromProto(other.NextValidators)
-		if err != nil {
-			return err
-		}
+	s.NextValidators, err = types.ValidatorSetFromProto(other.NextValidators)
+	if err != nil {
+		return err
 	}
-
-	if len(other.Validators.Validators) == 0 {
-		s.Validators = types.NewValidatorSet(nil)
-	} else {
-		s.Validators, err = types.ValidatorSetFromProto(other.Validators)
-		if err != nil {
-			return err
-		}
+	s.Validators, err = types.ValidatorSetFromProto(other.Validators)
+	if err != nil {
+		return err
 	}
-
-	if len(other.LastValidators.Validators) == 0 {
-		s.LastValidators = types.NewValidatorSet(nil)
-	} else {
-		s.LastValidators, err = types.ValidatorSetFromProto(other.LastValidators)
-		if err != nil {
-			return err
-		}
+	s.LastValidators, err = types.ValidatorSetFromProto(other.LastValidators)
+	if err != nil {
+		return err
 	}
-
 	s.LastHeightValidatorsChanged = other.LastHeightValidatorsChanged
 	s.ConsensusParams = other.ConsensusParams
 	s.LastHeightConsensusParamsChanged = other.LastHeightConsensusParamsChanged

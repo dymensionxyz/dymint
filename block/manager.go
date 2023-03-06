@@ -93,12 +93,7 @@ func getInitialState(store store.Store, genesis *tmtypes.GenesisDoc) (types.Stat
 		return s, nil
 	}
 
-	s, err = types.NewFromGenesisDoc(genesis)
-	if err != nil {
-		return s, err
-	}
-
-	return s, err
+	return types.NewFromGenesisDoc(genesis)
 }
 
 // NewManager creates new block Manager.
