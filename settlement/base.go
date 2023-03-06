@@ -58,12 +58,7 @@ func (b *BaseLayerClient) Init(config []byte, pubsub *pubsub.Server, logger log.
 	for _, apply := range options {
 		apply(b)
 	}
-	return nil
-}
 
-// Start is called once, after init. It initializes the query client.
-func (b *BaseLayerClient) Start() error {
-	b.logger.Debug("settlement Layer Client starting.")
 	latestBatch, err := b.RetrieveBatch()
 	var endHeight uint64
 	if err != nil {
@@ -85,9 +80,16 @@ func (b *BaseLayerClient) Start() error {
 		return err
 	}
 	b.logger.Info("Updated sequencers list from settlement layer", "sequencersList", b.sequencersList)
+
+	return nil
+}
+
+// Start is called once, after init. It initializes the query client.
+func (b *BaseLayerClient) Start() error {
+	b.logger.Debug("settlement Layer Client starting.")
 	go b.stateUpdatesHandler()
 
-	err = b.client.Start()
+	err := b.client.Start()
 	if err != nil {
 		return err
 	}

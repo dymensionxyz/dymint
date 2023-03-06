@@ -69,17 +69,8 @@ func NewFromGenesisDoc(genDoc *types.GenesisDoc) (State, error) {
 	}
 
 	var validatorSet, nextValidatorSet *types.ValidatorSet
-	if genDoc.Validators == nil {
-		validatorSet = types.NewValidatorSet(nil)
-		nextValidatorSet = types.NewValidatorSet(nil)
-	} else {
-		validators := make([]*types.Validator, len(genDoc.Validators))
-		for i, val := range genDoc.Validators {
-			validators[i] = types.NewValidator(val.PubKey, val.Power)
-		}
-		validatorSet = types.NewValidatorSet(validators)
-		nextValidatorSet = types.NewValidatorSet(validators).CopyIncrementProposerPriority(1)
-	}
+	validatorSet = types.NewValidatorSet(nil)
+	nextValidatorSet = types.NewValidatorSet(nil)
 
 	s := State{
 		Version:       InitStateVersion,

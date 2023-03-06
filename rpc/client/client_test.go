@@ -656,7 +656,7 @@ func TestValidatorSetHandling(t *testing.T) {
 	signingKey, proposerPubKey, err := crypto.GenerateEd25519Key(crand.Reader)
 	require.NoError(err)
 
-	proposerPubKeyBytes, err := proposerPubKey.Raw()
+	proposerPubKeyBytes, _ := proposerPubKey.Raw()
 	settlementLayerConfig, err := json.Marshal(slmock.Config{ProposerPubKey: hex.EncodeToString(proposerPubKeyBytes)})
 	require.NoError(err)
 

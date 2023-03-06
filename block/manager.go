@@ -9,6 +9,7 @@ import (
 
 	"code.cloudfoundry.org/go-diodes"
 	"github.com/avast/retry-go"
+	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	abciconv "github.com/dymensionxyz/dymint/conv/abci"
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/libp2p/go-libp2p-core/crypto"
@@ -88,9 +89,15 @@ type Manager struct {
 // getInitialState tries to load lastState from Store, and if it's not available it reads GenesisDoc.
 func getInitialState(store store.Store, genesis *tmtypes.GenesisDoc) (types.State, error) {
 	s, err := store.LoadState()
-	if err != nil {
-		s, err = types.NewFromGenesisDoc(genesis)
+	if err == nil {
+		return s, nil
 	}
+
+	s, err = types.NewFromGenesisDoc(genesis)
+	if err != nil {
+		return s, err
+	}
+
 	return s, err
 }
 
@@ -109,10 +116,6 @@ func NewManager(
 	p2pClient *p2p.Client,
 	logger log.Logger,
 ) (*Manager, error) {
-	s, err := getInitialState(store, genesis)
-	if err != nil {
-		return nil, err
-	}
 
 	proposerAddress, err := getAddress(proposerKey)
 	if err != nil {
@@ -125,13 +128,31 @@ func NewManager(
 	}
 
 	exec := state.NewBlockExecutor(proposerAddress, conf.NamespaceID, genesis.ChainID, mempool, proxyApp, eventBus, logger)
+
+	s, err := getInitialState(store, genesis)
+	if err != nil {
+		return nil, err
+	}
+
+	validators := []*tmtypes.Validator{}
+
 	if s.LastBlockHeight+1 == genesis.InitialHeight {
+		sequencersList := settlementClient.GetSequencersList()
+		for _, sequencer := range sequencersList {
+			tmPubKey, err := cryptocodec.ToTmPubKeyInterface(sequencer.PublicKey)
+			if err != nil {
+				return nil, err
+			}
+			validators = append(validators, tmtypes.NewValidator(tmPubKey, 1))
+
+		}
+
 		res, err := exec.InitChain(genesis)
 		if err != nil {
 			return nil, err
 		}
 
-		updateState(&s, res)
+		updateInitChainState(&s, res, validators)
 		if _, err := store.UpdateState(s, nil); err != nil {
 			return nil, err
 		}
@@ -727,8 +748,8 @@ func (m *Manager) submitBatchToSL(batch *types.Batch, resultSubmitToDA *da.Resul
 	err := retry.Do(func() error {
 		resultSubmitToSL = m.settlementClient.SubmitBatch(batch, m.dalc.GetClientType(), resultSubmitToDA)
 		if resultSubmitToSL.Code != settlement.StatusSuccess {
-			m.logger.Error("Failed to submit batch to SL layer", "startHeight", batch.StartHeight, "endHeight", batch.EndHeight, "error", resultSubmitToSL.Message)
-			err := fmt.Errorf("Failed to submit batch to SL layer: %s", resultSubmitToSL.Message)
+			m.logger.Error("failed to submit batch to SL layer", "startHeight", batch.StartHeight, "endHeight", batch.EndHeight, "error", resultSubmitToSL.Message)
+			err := fmt.Errorf("failed to submit batch to SL layer: %s", resultSubmitToSL.Message)
 			return err
 		}
 		return nil
@@ -747,8 +768,8 @@ func (m *Manager) submitBatchToDA(ctx context.Context, batch *types.Batch) (*da.
 	err := retry.Do(func() error {
 		res = m.dalc.SubmitBatch(batch)
 		if res.Code != da.StatusSuccess {
-			m.logger.Error("Failed to submit batch to DA layer", "startHeight", batch.StartHeight, "endHeight", batch.EndHeight, "error", res.Message)
-			return fmt.Errorf("Failed to submit batch to DA layer: %s", res.Message)
+			m.logger.Error("failed to submit batch to DA layer", "startHeight", batch.StartHeight, "endHeight", batch.EndHeight, "error", res.Message)
+			return fmt.Errorf("failed to submit batch to DA layer: %s", res.Message)
 		}
 		return nil
 	}, retry.Context(ctx), retry.LastErrorOnly(true), retry.Delay(DABatchRetryDelay))
@@ -759,7 +780,7 @@ func (m *Manager) submitBatchToDA(ctx context.Context, batch *types.Batch) (*da.
 }
 
 // TODO(omritoptix): possible remove this method from the manager
-func updateState(s *types.State, res *abci.ResponseInitChain) {
+func updateInitChainState(s *types.State, res *abci.ResponseInitChain, validators []*tmtypes.Validator) {
 	// If the app did not return an app hash, we keep the one set from the genesis doc in
 	// the state. We don't set appHash since we don't want the genesis doc app hash
 	// recorded in the genesis block. We should probably just remove GenesisDoc.AppHash.
@@ -791,13 +812,8 @@ func updateState(s *types.State, res *abci.ResponseInitChain) {
 	// We update the last results hash with the empty hash, to conform with RFC-6962.
 	copy(s.LastResultsHash[:], merkle.HashFromByteSlices(nil))
 
-	if len(res.Validators) > 0 {
-		vals, err := tmtypes.PB2TM.ValidatorUpdates(res.Validators)
-		if err != nil {
-			// TODO(tzdybal): handle error properly
-			panic(err)
-		}
-		s.Validators = tmtypes.NewValidatorSet(vals)
-		s.NextValidators = tmtypes.NewValidatorSet(vals).CopyIncrementProposerPriority(1)
+	if len(validators) > 0 {
+		s.Validators = tmtypes.NewValidatorSet(validators)
+		s.NextValidators = tmtypes.NewValidatorSet(validators).CopyIncrementProposerPriority(1)
 	}
 }

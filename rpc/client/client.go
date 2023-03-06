@@ -691,6 +691,7 @@ func (c *Client) BlockSearch(ctx context.Context, query string, page, perPage *i
 
 // Status returns detailed information about current status of the node.
 func (c *Client) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
+
 	latest, err := c.node.Store.LoadBlock(c.node.Store.Height())
 	if err != nil {
 		// TODO(tzdybal): extract error
@@ -707,6 +708,9 @@ func (c *Client) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
 		return nil, fmt.Errorf("failed to fetch the validator info at latest block: %w", err)
 	}
 	_, validator := validators.GetByAddress(latest.Header.ProposerAddress)
+	if validator == nil {
+		return nil, fmt.Errorf("failed to find proposer %s in the valSet", string(latest.Header.ProposerAddress))
+	}
 
 	state, err := c.node.Store.LoadState()
 	if err != nil {
