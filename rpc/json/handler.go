@@ -86,6 +86,12 @@ func (h *handler) serveJSONRPCforWS(w http.ResponseWriter, r *http.Request, wsCo
 	}
 	if methodSpec.ws {
 		callArgs = append(callArgs, reflect.ValueOf(wsConn))
+		rpcID, err := codecReq.ID()
+		if err != nil {
+			codecReq.WriteError(w, http.StatusBadRequest, err)
+			return
+		}
+		callArgs = append(callArgs, reflect.ValueOf(rpcID))
 	}
 	rets := methodSpec.m.Call(callArgs)
 
