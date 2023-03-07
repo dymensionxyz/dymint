@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"reflect"
+	"strconv"
 	"time"
 
 	"github.com/gorilla/rpc/v2/json2"
@@ -13,6 +14,7 @@ import (
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 
 	"github.com/dymensionxyz/dymint/log"
 	"github.com/dymensionxyz/dymint/rpc/client"
@@ -37,7 +39,7 @@ func newMethod(m interface{}) *method {
 		m:          reflect.ValueOf(m),
 		argsType:   mType.In(1).Elem(),
 		returnType: mType.Out(0).Elem(),
-		ws:         mType.NumIn() == 3,
+		ws:         mType.NumIn() == 4,
 	}
 }
 
@@ -86,7 +88,7 @@ func newService(c *client.Client, l log.Logger) *service {
 	return &s
 }
 
-func (s *service) Subscribe(req *http.Request, args *subscribeArgs, wsConn *wsConn) (*ctypes.ResultSubscribe, error) {
+func (s *service) Subscribe(req *http.Request, args *subscribeArgs, wsConn *wsConn, subscriptionID []byte) (*ctypes.ResultSubscribe, error) {
 	addr := req.RemoteAddr
 
 	// TODO(tzdybal): pass config and check subscriptions limits
@@ -108,18 +110,29 @@ func (s *service) Subscribe(req *http.Request, args *subscribeArgs, wsConn *wsCo
 	if err != nil {
 		return nil, fmt.Errorf("failed to subscribe: %w", err)
 	}
-
-	go func() {
+	go func(subscriptionID []byte) {
 		for {
 			select {
 			case msg := <-sub.Out():
-				data, err := json.Marshal(msg.Data())
+				// build the base response
+				resultEvent := &ctypes.ResultEvent{Query: args.Query, Data: msg.Data(), Events: msg.Events()}
+				var resp rpctypes.RPCResponse
+				// Check if subscriptionID is string or int and generate the rest of the response accordingly
+				subscriptionIDInt, err := strconv.Atoi(string(subscriptionID))
 				if err != nil {
-					s.logger.Error("failed to marshal response data", "error", err)
+					s.logger.Info("Failed to convert subscriptionID to int")
+					resp = rpctypes.NewRPCSuccessResponse(rpctypes.JSONRPCStringID(subscriptionID), resultEvent)
+				} else {
+					resp = rpctypes.NewRPCSuccessResponse(rpctypes.JSONRPCIntID(subscriptionIDInt), resultEvent)
+				}
+				// Marshal response to JSON and send it to the websocket queue
+				jsonBytes, err := json.MarshalIndent(resp, "", "  ")
+				if err != nil {
+					s.logger.Error("Failed to marshal RPCResponse to JSON", "err", err)
 					continue
 				}
 				if wsConn != nil {
-					wsConn.queue <- data
+					wsConn.queue <- jsonBytes
 				}
 			case <-sub.Cancelled():
 				if sub.Err() != pubsub.ErrUnsubscribed {
@@ -134,7 +147,7 @@ func (s *service) Subscribe(req *http.Request, args *subscribeArgs, wsConn *wsCo
 				return
 			}
 		}
-	}()
+	}(subscriptionID)
 
 	return &ctypes.ResultSubscribe{}, nil
 }

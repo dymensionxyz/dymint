@@ -248,7 +248,7 @@ require (
 replace (
 	github.com/cosmos/ibc-go/v3 => github.com/dymensionxyz/ibc-go/v3 v3.0.0-rc2.0.20230105134315-1870174ab6da
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.2-alpha.regen.4
-	github.com/gorilla/rpc => github.com/dymensionxyz/rpc v1.2.1
+	github.com/gorilla/rpc => github.com/dymensionxyz/rpc v1.3.1
 	google.golang.org/grpc => google.golang.org/grpc v1.33.2
 
 )
