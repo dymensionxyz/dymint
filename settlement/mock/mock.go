@@ -13,6 +13,7 @@ import (
 	tmp2p "github.com/tendermint/tendermint/p2p"
 
 	"github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
+	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	rollapptypes "github.com/dymensionxyz/dymension/x/rollapp/types"
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/log"
@@ -224,7 +225,7 @@ func (c *HubClient) GetSequencers(rollappID string) ([]*types.Sequencer, error) 
 	if err != nil {
 		return nil, err
 	}
-	pubKey := &ed25519.PubKey{Key: pubKeyBytes}
+	var pubKey cryptotypes.PubKey = &ed25519.PubKey{Key: pubKeyBytes}
 	return []*types.Sequencer{
 		{
 			PublicKey: pubKey,

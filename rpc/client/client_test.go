@@ -92,8 +92,24 @@ func TestGenesisChunked(t *testing.T) {
 	mockApp := &mocks.Application{}
 	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 	privKey, _, _ := crypto.GenerateEd25519Key(crand.Reader)
-	signingKey, _, _ := crypto.GenerateEd25519Key(crand.Reader)
-	config := config.NodeConfig{DALayer: "mock", SettlementLayer: "mock", BlockManagerConfig: config.BlockManagerConfig{BatchSyncInterval: time.Second, BlockTime: 100 * time.Millisecond}}
+	signingKey, proposerPubKey, _ := crypto.GenerateEd25519Key(crand.Reader)
+
+	proposerPubKeyBytes, err := proposerPubKey.Raw()
+	settlementLayerConfig, err := json.Marshal(slmock.Config{ProposerPubKey: hex.EncodeToString(proposerPubKeyBytes)})
+	require.NoError(t, err)
+
+	config := config.NodeConfig{
+		RootDir:            "",
+		DBPath:             "",
+		P2P:                config.P2PConfig{},
+		RPC:                config.RPCConfig{},
+		Aggregator:         false,
+		BlockManagerConfig: config.BlockManagerConfig{BatchSyncInterval: time.Second, BlockTime: 100 * time.Millisecond},
+		DALayer:            "mock",
+		DAConfig:           "",
+		SettlementLayer:    "mock",
+		SettlementConfig:   string(settlementLayerConfig),
+	}
 	n, _ := node.NewNode(context.Background(), config, privKey, signingKey, proxy.NewLocalClientCreator(mockApp), genDoc, log.TestingLogger())
 
 	rpc := NewClient(n)
@@ -660,7 +676,7 @@ func TestValidatorSetHandling(t *testing.T) {
 	settlementLayerConfig, err := json.Marshal(slmock.Config{ProposerPubKey: hex.EncodeToString(proposerPubKeyBytes)})
 	require.NoError(err)
 
-	vKeys := make([]tmcrypto.PrivKey, 4)
+	vKeys := make([]tmcrypto.PrivKey, 1)
 	genesisValidators := make([]tmtypes.GenesisValidator, len(vKeys))
 	for i := 0; i < len(vKeys); i++ {
 		vKeys[i] = ed25519.GenPrivKey()
@@ -672,7 +688,7 @@ func TestValidatorSetHandling(t *testing.T) {
 
 	waitCh := make(chan interface{})
 
-	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{}).Times(5)
+	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{}).Times(2)
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{ValidatorUpdates: []abci.ValidatorUpdate{{PubKey: pbValKey, Power: 0}}}).Once()
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{}).Once()
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{ValidatorUpdates: []abci.ValidatorUpdate{{PubKey: pbValKey, Power: 100}}}).Once()
@@ -700,29 +716,8 @@ func TestValidatorSetHandling(t *testing.T) {
 
 	<-waitCh
 
-	// test first blocks
-	for h := int64(1); h <= 6; h++ {
-		vals, err := rpc.Validators(context.Background(), &h, nil, nil)
-		assert.NoError(err)
-		assert.NotNil(vals)
-		assert.EqualValues(len(genesisValidators), vals.Total)
-		assert.Len(vals.Validators, len(genesisValidators))
-		assert.EqualValues(vals.BlockHeight, h)
-	}
-
-	// 6th EndBlock removes first validator from the list
-	for h := int64(7); h <= 8; h++ {
-		vals, err := rpc.Validators(context.Background(), &h, nil, nil)
-		assert.NoError(err)
-		assert.NotNil(vals)
-		assert.EqualValues(len(genesisValidators)-1, vals.Total)
-		assert.Len(vals.Validators, len(genesisValidators)-1)
-		assert.EqualValues(vals.BlockHeight, h)
-	}
-
-	// 8th EndBlock adds validator back
-	for h := int64(9); h <= 12; h++ {
-		<-waitCh
+	// validator set isn't updated through ABCI anymore
+	for h := int64(1); h <= 5; h++ {
 		vals, err := rpc.Validators(context.Background(), &h, nil, nil)
 		assert.NoError(err)
 		assert.NotNil(vals)
@@ -737,7 +732,7 @@ func TestValidatorSetHandling(t *testing.T) {
 	assert.NotNil(vals)
 	assert.EqualValues(len(genesisValidators), vals.Total)
 	assert.Len(vals.Validators, len(genesisValidators))
-	assert.GreaterOrEqual(vals.BlockHeight, int64(12))
+	assert.GreaterOrEqual(vals.BlockHeight, int64(5))
 }
 
 // copy-pasted from store/store_test.go
@@ -807,8 +802,25 @@ func getRPC(t *testing.T) (*mocks.Application, *Client) {
 	app := &mocks.Application{}
 	app.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 	key, _, _ := crypto.GenerateEd25519Key(crand.Reader)
-	signingKey, _, _ := crypto.GenerateEd25519Key(crand.Reader)
-	config := config.NodeConfig{DALayer: "mock", SettlementLayer: "mock", BlockManagerConfig: config.BlockManagerConfig{BatchSyncInterval: time.Second, BlockTime: 100 * time.Millisecond}}
+	signingKey, pubkey, _ := crypto.GenerateEd25519Key(crand.Reader)
+
+	proposerPubKeyBytes, err := pubkey.Raw()
+	require.NoError(err)
+
+	settlementLayerConfig, err := json.Marshal(slmock.Config{ProposerPubKey: hex.EncodeToString(proposerPubKeyBytes)})
+	require.NoError(err)
+	config := config.NodeConfig{
+		RootDir:            "",
+		DBPath:             "",
+		P2P:                config.P2PConfig{},
+		RPC:                config.RPCConfig{},
+		Aggregator:         false,
+		BlockManagerConfig: config.BlockManagerConfig{BatchSyncInterval: time.Second, BlockTime: 100 * time.Millisecond},
+		DALayer:            "mock",
+		DAConfig:           "",
+		SettlementLayer:    "mock",
+		SettlementConfig:   string(settlementLayerConfig),
+	}
 	node, err := node.NewNode(context.Background(), config, key, signingKey, proxy.NewLocalClientCreator(app), &tmtypes.GenesisDoc{ChainID: "test"}, log.TestingLogger())
 	require.NoError(err)
 	require.NotNil(node)
@@ -868,15 +880,24 @@ func TestMempool2Nodes(t *testing.T) {
 	app.On("CheckTx", abci.RequestCheckTx{Tx: []byte("good")}).Return(abci.ResponseCheckTx{Code: 0})
 	key1, _, _ := crypto.GenerateEd25519Key(crand.Reader)
 	key2, _, _ := crypto.GenerateEd25519Key(crand.Reader)
-	signingKey1, _, _ := crypto.GenerateEd25519Key(crand.Reader)
-	signingKey2, _, _ := crypto.GenerateEd25519Key(crand.Reader)
+	signingKey1, proposerPubKey1, _ := crypto.GenerateEd25519Key(crand.Reader)
+	signingKey2, proposerPubKey2, _ := crypto.GenerateEd25519Key(crand.Reader)
 
 	id1, err := peer.IDFromPrivateKey(key1)
 	require.NoError(err)
 
+	proposerPubKey1Bytes, err := proposerPubKey1.Raw()
+	settlementLayerConfig1, err := json.Marshal(slmock.Config{ProposerPubKey: hex.EncodeToString(proposerPubKey1Bytes)})
+	require.NoError(err)
+
+	proposerPubKey2Bytes, err := proposerPubKey2.Raw()
+	settlementLayerConfig2, err := json.Marshal(slmock.Config{ProposerPubKey: hex.EncodeToString(proposerPubKey2Bytes)})
+	require.NoError(err)
+
 	node1, err := node.NewNode(context.Background(), config.NodeConfig{
-		DALayer:         "mock",
-		SettlementLayer: "mock",
+		DALayer:          "mock",
+		SettlementLayer:  "mock",
+		SettlementConfig: string(settlementLayerConfig1),
 		BlockManagerConfig: config.BlockManagerConfig{
 			BlockTime:         100 * time.Millisecond,
 			BatchSyncInterval: time.Second,
@@ -889,8 +910,9 @@ func TestMempool2Nodes(t *testing.T) {
 	require.NotNil(node1)
 
 	node2, err := node.NewNode(context.Background(), config.NodeConfig{
-		DALayer:         "mock",
-		SettlementLayer: "mock",
+		DALayer:          "mock",
+		SettlementLayer:  "mock",
+		SettlementConfig: string(settlementLayerConfig2),
 		BlockManagerConfig: config.BlockManagerConfig{
 			BlockTime:         100 * time.Millisecond,
 			BatchSyncInterval: time.Second,

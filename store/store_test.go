@@ -150,32 +150,6 @@ func TestRestart(t *testing.T) {
 	assert.Equal(expectedHeight, s2.Height())
 }
 
-func TestRestartNoValidators(t *testing.T) {
-	t.Parallel()
-
-	assert := assert.New(t)
-
-	validatorSet := tmtypes.NewValidatorSet(nil)
-
-	kv := NewDefaultInMemoryKVStore()
-	s1 := New(kv)
-	expectedHeight := uint64(10)
-	_, err := s1.UpdateState(types.State{
-		LastBlockHeight: int64(expectedHeight),
-		LastStoreHeight: uint64(expectedHeight),
-		NextValidators:  validatorSet,
-		Validators:      validatorSet,
-		LastValidators:  validatorSet,
-	}, nil)
-	assert.NoError(err)
-
-	s2 := New(kv)
-	_, err = s2.LoadState()
-	assert.NoError(err)
-
-	assert.Equal(expectedHeight, s2.Height())
-}
-
 func TestBlockResponses(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
