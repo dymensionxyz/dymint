@@ -4,12 +4,10 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	abcitypes "github.com/tendermint/tendermint/abci/types"
-	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/proxy"
@@ -402,27 +400,27 @@ func fromDymintTxs(optiTxs types.Txs) tmtypes.Txs {
 	return txs
 }
 
-func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
-	params tmproto.ValidatorParams) error {
-	for _, valUpdate := range abciUpdates {
-		if valUpdate.GetPower() < 0 {
-			return fmt.Errorf("voting power can't be negative %v", valUpdate)
-		} else if valUpdate.GetPower() == 0 {
-			// continue, since this is deleting the validator, and thus there is no
-			// pubkey to check
-			continue
-		}
+// func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
+// 	params tmproto.ValidatorParams) error {
+// 	for _, valUpdate := range abciUpdates {
+// 		if valUpdate.GetPower() < 0 {
+// 			return fmt.Errorf("voting power can't be negative %v", valUpdate)
+// 		} else if valUpdate.GetPower() == 0 {
+// 			// continue, since this is deleting the validator, and thus there is no
+// 			// pubkey to check
+// 			continue
+// 		}
 
-		// Check if validator's pubkey matches an ABCI type in the consensus params
-		pk, err := cryptoenc.PubKeyFromProto(valUpdate.PubKey)
-		if err != nil {
-			return err
-		}
+// 		// Check if validator's pubkey matches an ABCI type in the consensus params
+// 		pk, err := cryptoenc.PubKeyFromProto(valUpdate.PubKey)
+// 		if err != nil {
+// 			return err
+// 		}
 
-		if !tmtypes.IsValidPubkeyType(params, pk.Type()) {
-			return fmt.Errorf("validator %v is using pubkey %s, which is unsupported for consensus",
-				valUpdate, pk.Type())
-		}
-	}
-	return nil
-}
+// 		if !tmtypes.IsValidPubkeyType(params, pk.Type()) {
+// 			return fmt.Errorf("validator %v is using pubkey %s, which is unsupported for consensus",
+// 				valUpdate, pk.Type())
+// 		}
+// 	}
+// 	return nil
+// }
