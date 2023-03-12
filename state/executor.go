@@ -4,12 +4,10 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	abcitypes "github.com/tendermint/tendermint/abci/types"
-	cryptoenc "github.com/tendermint/tendermint/crypto/encoding"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/proxy"
@@ -54,12 +52,6 @@ func NewBlockExecutor(proposerAddress []byte, namespaceID [8]byte, chainID strin
 // InitChain calls InitChainSync using consensus connection to app.
 func (e *BlockExecutor) InitChain(genesis *tmtypes.GenesisDoc) (*abci.ResponseInitChain, error) {
 	params := genesis.ConsensusParams
-
-	validators := make([]*tmtypes.Validator, len(genesis.Validators))
-	for i, v := range genesis.Validators {
-		validators[i] = tmtypes.NewValidator(v.PubKey, v.Power)
-	}
-
 	return e.proxyAppConsensusConn.InitChainSync(abci.RequestInitChain{
 		Time:    genesis.GenesisTime,
 		ChainId: genesis.ChainID,
@@ -80,7 +72,7 @@ func (e *BlockExecutor) InitChain(genesis *tmtypes.GenesisDoc) (*abci.ResponseIn
 				AppVersion: params.Version.AppVersion,
 			},
 		},
-		Validators:    tmtypes.TM2PB.ValidatorUpdates(tmtypes.NewValidatorSet(validators)),
+		Validators:    tmtypes.TM2PB.ValidatorUpdates(tmtypes.NewValidatorSet(nil)),
 		AppStateBytes: genesis.AppState,
 		InitialHeight: genesis.InitialHeight,
 	})
@@ -137,24 +129,15 @@ func (e *BlockExecutor) Validate(state types.State, block *types.Block, commit *
 
 // UpdateStateFromResponses updates state based on the ABCIResponses.
 func (e *BlockExecutor) UpdateStateFromResponses(resp *tmstate.ABCIResponses, state types.State, block *types.Block) (types.State, error) {
-	abciValUpdates := resp.EndBlock.ValidatorUpdates
-	err := validateValidatorUpdates(abciValUpdates, state.ConsensusParams.Validator)
-	if err != nil {
-		return state, fmt.Errorf("error in validator updates: %v", err)
-	}
+	//Dymint ignores any setValidator responses from the app, as it is manages the validator set based on the settlement consensus
+	//TODO: this will be changed when supporting multiple sequencers from the hub
+	validatorUpdates := []*tmtypes.Validator{}
 
-	validatorUpdates, err := tmtypes.PB2TM.ValidatorUpdates(abciValUpdates)
-	if err != nil {
-		return state, err
-	}
-	if len(validatorUpdates) > 0 {
-		e.logger.Debug("updates to validators", "updates", tmtypes.ValidatorListString(validatorUpdates))
-	}
 	if state.ConsensusParams.Block.MaxBytes == 0 {
 		e.logger.Error("maxBytes=0", "state.ConsensusParams.Block", state.ConsensusParams.Block)
 	}
 
-	state, err = e.updateState(state, block, resp, validatorUpdates)
+	state, err := e.updateState(state, block, resp, validatorUpdates)
 	if err != nil {
 		return types.State{}, err
 	}
@@ -417,27 +400,27 @@ func fromDymintTxs(optiTxs types.Txs) tmtypes.Txs {
 	return txs
 }
 
-func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
-	params tmproto.ValidatorParams) error {
-	for _, valUpdate := range abciUpdates {
-		if valUpdate.GetPower() < 0 {
-			return fmt.Errorf("voting power can't be negative %v", valUpdate)
-		} else if valUpdate.GetPower() == 0 {
-			// continue, since this is deleting the validator, and thus there is no
-			// pubkey to check
-			continue
-		}
+// func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
+// 	params tmproto.ValidatorParams) error {
+// 	for _, valUpdate := range abciUpdates {
+// 		if valUpdate.GetPower() < 0 {
+// 			return fmt.Errorf("voting power can't be negative %v", valUpdate)
+// 		} else if valUpdate.GetPower() == 0 {
+// 			// continue, since this is deleting the validator, and thus there is no
+// 			// pubkey to check
+// 			continue
+// 		}
 
-		// Check if validator's pubkey matches an ABCI type in the consensus params
-		pk, err := cryptoenc.PubKeyFromProto(valUpdate.PubKey)
-		if err != nil {
-			return err
-		}
+// 		// Check if validator's pubkey matches an ABCI type in the consensus params
+// 		pk, err := cryptoenc.PubKeyFromProto(valUpdate.PubKey)
+// 		if err != nil {
+// 			return err
+// 		}
 
-		if !tmtypes.IsValidPubkeyType(params, pk.Type()) {
-			return fmt.Errorf("validator %v is using pubkey %s, which is unsupported for consensus",
-				valUpdate, pk.Type())
-		}
-	}
-	return nil
-}
+// 		if !tmtypes.IsValidPubkeyType(params, pk.Type()) {
+// 			return fmt.Errorf("validator %v is using pubkey %s, which is unsupported for consensus",
+// 				valUpdate, pk.Type())
+// 		}
+// 	}
+// 	return nil
+// }

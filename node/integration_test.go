@@ -3,6 +3,8 @@ package node
 import (
 	"context"
 	"crypto/rand"
+	"encoding/hex"
+	"fmt"
 	mrand "math/rand"
 	"testing"
 	"time"
@@ -37,7 +39,7 @@ func TestAggregatorMode(t *testing.T) {
 	app.On("Info", mock.Anything).Return(abci.ResponseInfo{LastBlockHeight: 0, LastBlockAppHash: []byte{0}})
 
 	key, _, _ := crypto.GenerateEd25519Key(rand.Reader)
-	signingKey, _, _ := crypto.GenerateEd25519Key(rand.Reader)
+	signingKey, pubkey, _ := crypto.GenerateEd25519Key(rand.Reader)
 	anotherKey, _, _ := crypto.GenerateEd25519Key(rand.Reader)
 
 	blockManagerConfig := config.BlockManagerConfig{
@@ -45,7 +47,27 @@ func TestAggregatorMode(t *testing.T) {
 		NamespaceID:       [8]byte{1, 2, 3, 4, 5, 6, 7, 8},
 		BatchSyncInterval: time.Second * 5,
 	}
-	nodeConfig := config.NodeConfig{DALayer: "mock", SettlementLayer: "mock", Aggregator: true, BlockManagerConfig: blockManagerConfig}
+
+	pubkeyBytes, err := pubkey.Raw()
+	require.NoError(err)
+
+	mockConfigFmt := `
+	{"proposer_pub_key": "%s"}
+	`
+	mockConfig := fmt.Sprintf(mockConfigFmt, hex.EncodeToString(pubkeyBytes))
+
+	nodeConfig := config.NodeConfig{
+		RootDir:            "",
+		DBPath:             "",
+		P2P:                config.P2PConfig{},
+		RPC:                config.RPCConfig{},
+		Aggregator:         true,
+		BlockManagerConfig: blockManagerConfig,
+		DALayer:            "mock",
+		DAConfig:           "",
+		SettlementLayer:    "mock",
+		SettlementConfig:   mockConfig,
+	}
 	node, err := NewNode(context.Background(), nodeConfig, key, signingKey, proxy.NewLocalClientCreator(app), &types.GenesisDoc{ChainID: "test"}, log.TestingLogger())
 	require.NoError(err)
 	require.NotNil(node)
