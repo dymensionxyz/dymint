@@ -57,7 +57,7 @@ func TestWebSockets(t *testing.T) {
 `))
 	assert.NoError(err)
 
-	err = conn.SetReadDeadline(time.Now().Add(100 * time.Second))
+	err = conn.SetReadDeadline(time.Now().Add(3 * time.Second))
 	assert.NoError(err)
 	typ, msg, err := conn.ReadMessage()
 	assert.NoError(err)
@@ -78,7 +78,8 @@ func TestWebSockets(t *testing.T) {
 	var m map[string]interface{}
 	err = json.Unmarshal([]byte(responsePayload.Result), &m)
 	require.NoError(err)
-	// TODO(omritoptix): json unmarshalling of the dataPayload fails as dataPayload was encoded with amino and not json and (as such encodes 64bit numbers as strings).
+
+	// TODO(omritoptix): json unmarshalling of the dataPayload fails as dataPayload was encoded with amino and not json (and as such encodes 64bit numbers as strings).
 	// we need to unmarshal using the tendermint json library for it to populate the dataPayload correctly. Currently skipping this part of the test.
 	// valueField := m["data"].(map[string]interface{})["value"]
 	// valueJSON, err := json.Marshal(valueField)
@@ -101,4 +102,48 @@ func TestWebSockets(t *testing.T) {
 	jsonResp := response{}
 	assert.NoError(json.Unmarshal(rsp.Body.Bytes(), &jsonResp))
 	assert.Nil(jsonResp.Error)
+}
+
+// Test that when a websocket connection is closed, the corresponding
+// subscription is also removed.
+func TestWebsocketCloseUnsubscribe(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	_, local := getRPC(t)
+	handler, err := GetHTTPHandler(local, log.TestingLogger())
+	require.NoError(err)
+
+	srv := httptest.NewServer(handler)
+
+	conn, resp, err := websocket.DefaultDialer.Dial(strings.Replace(srv.URL, "http://", "ws://", 1)+"/websocket", nil)
+	require.NoError(err)
+	require.NotNil(resp)
+	require.NotNil(conn)
+	assert.Equal(http.StatusSwitchingProtocols, resp.StatusCode)
+	subscribed_clients := local.EventBus.NumClients()
+
+	err = conn.WriteMessage(websocket.TextMessage, []byte(`
+{
+    "jsonrpc": "2.0",
+    "method": "subscribe",
+    "id": 7,
+    "params": {
+        "query": "tm.event='NewBlock'"
+    }
+}
+`))
+	assert.NoError(err)
+	// Vaildate we have a new client
+	assert.Eventually(func() bool {
+		return subscribed_clients+1 == local.EventBus.NumClients()
+	}, 3*time.Second, 100*time.Millisecond)
+	// disconnect websocket
+	err = conn.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""), time.Now().Add(time.Second))
+	assert.NoError(err)
+	// Validate we have one less client
+	assert.Eventually(func() bool {
+		return subscribed_clients == local.EventBus.NumClients()
+	}, 3*time.Second, 100*time.Millisecond)
+
 }
