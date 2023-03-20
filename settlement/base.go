@@ -225,6 +225,8 @@ func (b *BaseLayerClient) stateUpdatesHandler() {
 		case <-subscription.Cancelled():
 			b.logger.Info("Subscription canceled")
 			return
+		case <-b.ctx.Done():
+			return
 		}
 	}
 }
