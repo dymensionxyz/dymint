@@ -224,6 +224,7 @@ func (b *BaseLayerClient) stateUpdatesHandler() {
 			atomic.StoreUint64(&b.latestHeight, eventData.EndHeight)
 		case <-subscription.Cancelled():
 			b.logger.Info("Subscription canceled")
+			return
 		}
 	}
 }
