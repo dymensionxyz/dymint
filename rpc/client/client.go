@@ -893,7 +893,7 @@ func validatePage(pagePtr *int, perPage, totalCount int) (int, error) {
 		panic(fmt.Sprintf("zero or negative perPage: %d", perPage))
 	}
 
-	if pagePtr == nil { // no page parameter
+	if pagePtr == nil || *pagePtr <= 0 { // no page parameter
 		return 1, nil
 	}
 
@@ -902,7 +902,7 @@ func validatePage(pagePtr *int, perPage, totalCount int) (int, error) {
 		pages = 1 // one page (even if it's empty)
 	}
 	page := *pagePtr
-	if page <= 0 || page > pages {
+	if page > pages {
 		return 1, fmt.Errorf("page should be within [1, %d] range, given %d", pages, page)
 	}
 

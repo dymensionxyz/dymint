@@ -2,12 +2,14 @@ package json
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"net/http"
 
 	"github.com/gorilla/websocket"
 
 	"github.com/dymensionxyz/dymint/log"
+	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 )
 
 type wsConn struct {
@@ -38,6 +40,9 @@ func (h *handler) wsHandler(w http.ResponseWriter, r *http.Request) {
 	upgrader := websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
+		CheckOrigin: func(r *http.Request) bool {
+			return true
+		},
 	}
 
 	wsc, err := upgrader.Upgrade(w, r, nil)
@@ -63,7 +68,15 @@ func (h *handler) wsHandler(w http.ResponseWriter, r *http.Request) {
 	for {
 		mt, r, err := wsc.NextReader()
 		if err != nil {
-			h.logger.Error("failed to read next WebSocket message", "error", err)
+			if _, ok := err.(*websocket.CloseError); ok {
+				h.logger.Debug("WebSocket connection closed")
+				err := h.srv.client.EventBus.UnsubscribeAll(context.Background(), remoteAddr)
+				if err != nil && err != tmpubsub.ErrSubscriptionNotFound {
+					h.logger.Error("Failed to unsubscribe addr from events", "addr", remoteAddr, "err", err)
+				}
+			} else {
+				h.logger.Error("failed to read next WebSocket message", "error", err)
+			}
 			break
 		}
 
