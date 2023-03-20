@@ -142,7 +142,7 @@ func NewManager(
 
 		}
 
-		res, err := exec.InitChain(genesis)
+		res, err := exec.InitChain(genesis, validators)
 		if err != nil {
 			return nil, err
 		}

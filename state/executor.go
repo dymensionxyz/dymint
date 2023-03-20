@@ -8,6 +8,7 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	abcitypes "github.com/tendermint/tendermint/abci/types"
+	tmcrypto "github.com/tendermint/tendermint/crypto/encoding"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/proxy"
@@ -50,8 +51,22 @@ func NewBlockExecutor(proposerAddress []byte, namespaceID [8]byte, chainID strin
 }
 
 // InitChain calls InitChainSync using consensus connection to app.
-func (e *BlockExecutor) InitChain(genesis *tmtypes.GenesisDoc) (*abci.ResponseInitChain, error) {
+func (e *BlockExecutor) InitChain(genesis *tmtypes.GenesisDoc, validators []*tmtypes.Validator) (*abci.ResponseInitChain, error) {
 	params := genesis.ConsensusParams
+	valUpates := abcitypes.ValidatorUpdates{}
+
+	for _, validator := range validators {
+		tmkey, err := tmcrypto.PubKeyToProto(validator.PubKey)
+		if err != nil {
+			return nil, err
+		}
+
+		valUpates = append(valUpates, abcitypes.ValidatorUpdate{
+			PubKey: tmkey,
+			Power:  validator.VotingPower,
+		})
+	}
+
 	return e.proxyAppConsensusConn.InitChainSync(abci.RequestInitChain{
 		Time:    genesis.GenesisTime,
 		ChainId: genesis.ChainID,
@@ -72,7 +87,7 @@ func (e *BlockExecutor) InitChain(genesis *tmtypes.GenesisDoc) (*abci.ResponseIn
 				AppVersion: params.Version.AppVersion,
 			},
 		},
-		Validators:    tmtypes.TM2PB.ValidatorUpdates(tmtypes.NewValidatorSet(nil)),
+		Validators:    valUpates,
 		AppStateBytes: genesis.AppState,
 		InitialHeight: genesis.InitialHeight,
 	})
