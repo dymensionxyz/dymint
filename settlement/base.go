@@ -211,7 +211,7 @@ func (b *BaseLayerClient) validateBatch(batch *types.Batch) error {
 
 func (b *BaseLayerClient) stateUpdatesHandler() {
 	b.logger.Info("Started state updates handler loop")
-	subscription, err := b.pubsub.Subscribe(context.Background(), "stateUpdatesHandler", EventQueryNewSettlementBatchAccepted)
+	subscription, err := b.pubsub.Subscribe(b.ctx, "stateUpdatesHandler", EventQueryNewSettlementBatchAccepted)
 	if err != nil {
 		b.logger.Error("failed to subscribe to state update events")
 		panic(err)
