@@ -144,6 +144,7 @@ func TestGetSequencersEmptyList(t *testing.T) {
 func TestGetSequencers(t *testing.T) {
 	hubClientMock := mocks.NewHubClient(t)
 	hubClientMock.On("Start", tsmock.Anything).Return(nil)
+	hubClientMock.On("Stop", tsmock.Anything).Return(nil)
 	hubClientMock.On("GetLatestBatch", tsmock.Anything).Return(nil, settlement.ErrBatchNotFound)
 	// Mock a sequencer response by the sequencerByRollapp query
 	totalSequencers := 5
@@ -159,6 +160,10 @@ func TestGetSequencers(t *testing.T) {
 
 	assert.Len(t, sequencersList, len(sequencers))
 	assert.Equal(t, settlementClient.GetProposer().PublicKey, proposer.PublicKey)
+
+	err := settlementClient.Stop()
+	assert.NoError(t, err)
+
 	// Validate  the amount of inactive sequencers
 	var inactiveSequencerAmount int
 	for _, sequencer := range sequencersList {
