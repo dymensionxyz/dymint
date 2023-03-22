@@ -26,7 +26,6 @@ type BaseLayerClient struct {
 	ctx            context.Context
 	cancel         context.CancelFunc
 	client         HubClient
-	// eventMap       map[string]string
 }
 
 // Config for the BaseLayerClient
@@ -87,7 +86,11 @@ func (b *BaseLayerClient) Init(config []byte, pubsub *pubsub.Server, logger log.
 // Start is called once, after init. It initializes the query client.
 func (b *BaseLayerClient) Start() error {
 	b.logger.Debug("settlement Layer Client starting.")
-	go b.stateUpdatesHandler()
+
+	// Wait until the state updates handler is ready
+	ready := make(chan bool, 1)
+	go b.stateUpdatesHandler(ready)
+	<-ready
 
 	err := b.client.Start()
 	if err != nil {
@@ -209,21 +212,25 @@ func (b *BaseLayerClient) validateBatch(batch *types.Batch) error {
 	return nil
 }
 
-func (b *BaseLayerClient) stateUpdatesHandler() {
-	b.logger.Info("Started state updates handler loop")
-	subscription, err := b.pubsub.Subscribe(context.Background(), "stateUpdatesHandler", EventQueryNewSettlementBatchAccepted)
+func (b *BaseLayerClient) stateUpdatesHandler(ready chan bool) {
+	b.logger.Info("started state updates handler loop")
+	subscription, err := b.pubsub.Subscribe(b.ctx, "stateUpdatesHandler", EventQueryNewSettlementBatchAccepted)
 	if err != nil {
-		b.logger.Error("failed to subscribe to state update events")
+		b.logger.Error("failed to subscribe to state update events", "error", err)
 		panic(err)
 	}
+	ready <- true
 	for {
 		select {
 		case event := <-subscription.Out():
-			b.logger.Debug("Received state update event", "eventData", event.Data())
+			b.logger.Debug("received state update event", "eventData", event.Data())
 			eventData := event.Data().(*EventDataNewSettlementBatchAccepted)
 			atomic.StoreUint64(&b.latestHeight, eventData.EndHeight)
 		case <-subscription.Cancelled():
-			b.logger.Info("Subscription canceled")
+			b.logger.Info("subscription canceled")
+			return
+		case <-b.ctx.Done():
+			return
 		}
 	}
 }
