@@ -37,6 +37,7 @@ const (
 	defaultDABlockTime = 30 * time.Second
 	DABatchRetryDelay  = 20 * time.Second
 	SLBatchRetryDelay  = 10 * time.Second
+	maxDelay           = 1 * time.Minute
 )
 
 const (
@@ -732,7 +733,7 @@ func (m *Manager) submitBatchToSL(batch *types.Batch, resultSubmitToDA *da.Resul
 			return err
 		}
 		return nil
-	}, retry.Context(m.batchRetryCtx), retry.LastErrorOnly(true), retry.Delay(SLBatchRetryDelay))
+	}, retry.Context(m.batchRetryCtx), retry.LastErrorOnly(true), retry.Delay(SLBatchRetryDelay), retry.MaxDelay(maxDelay))
 	// Panic if we failed not due to context cancellation
 	m.batchRetryMu.Lock()
 	if err != nil && m.batchRetryCtx.Err() == nil {
@@ -751,7 +752,7 @@ func (m *Manager) submitBatchToDA(ctx context.Context, batch *types.Batch) (*da.
 			return fmt.Errorf("Failed to submit batch to DA layer: %s", res.Message)
 		}
 		return nil
-	}, retry.Context(ctx), retry.LastErrorOnly(true), retry.Delay(DABatchRetryDelay))
+	}, retry.Context(ctx), retry.LastErrorOnly(true), retry.Delay(DABatchRetryDelay), retry.MaxDelay(maxDelay))
 	if err != nil {
 		return nil, err
 	}
