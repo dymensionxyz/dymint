@@ -51,6 +51,7 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, kvStore store.KVStore,
 func (c *DataAvailabilityLayerClient) Start() error {
 	c.logger.Info("starting Celestia Data Availability Layer Client", "baseURL", c.config.BaseURL)
 	var err error
+	//TODO: add * time.Second for the timeout
 	c.client, err = cnc.NewClient(c.config.BaseURL, cnc.WithTimeout(c.config.Timeout))
 	return err
 }
