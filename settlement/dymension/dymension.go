@@ -256,9 +256,6 @@ func (d *HubClient) GetBatchAtIndex(rollappID string, index uint64) (*settlement
 func (d *HubClient) GetSequencers(rollappID string) ([]*types.Sequencer, error) {
 	sequencers, err := d.sequencerQueryClient.SequencersByRollapp(d.ctx, &sequencertypes.QueryGetSequencersByRollappRequest{RollappId: d.config.RollappID})
 	if err != nil {
-		return nil, err
-	}
-	if sequencers == nil {
 		return nil, settlement.ErrNoSequencerForRollapp
 	}
 	sequencersList := []*types.Sequencer{}

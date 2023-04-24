@@ -73,9 +73,6 @@ func (b *BaseLayerClient) Init(config []byte, pubsub *pubsub.Server, logger log.
 	b.logger.Info("Updated latest height from settlement layer", "latestHeight", endHeight)
 	b.sequencersList, err = b.fetchSequencersList()
 	if err != nil {
-		if err == ErrNoSequencerForRollapp {
-			panic(err)
-		}
 		return err
 	}
 	b.logger.Info("Updated sequencers list from settlement layer", "sequencersList", b.sequencersList)
