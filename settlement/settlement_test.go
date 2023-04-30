@@ -137,7 +137,11 @@ func TestGetSequencersEmptyList(t *testing.T) {
 	options := []settlement.Option{
 		settlement.WithHubClient(hubClientMock),
 	}
-	assert.Panics(t, func() { initClient(t, settlementClient, options...) })
+
+	pubsubServer := pubsub.NewServer()
+	pubsubServer.Start()
+	err := settlementClient.Init([]byte{}, pubsubServer, test.NewLogger(t), options...)
+	assert.Error(t, err, "empty sequencer list should return an error")
 
 }
 
