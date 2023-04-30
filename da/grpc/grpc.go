@@ -56,6 +56,7 @@ func (d *DataAvailabilityLayerClient) Start() error {
 	var err error
 	var opts []grpc.DialOption
 	// TODO(tzdybal): add more options
+	//FIXME: insecure connection used
 	opts = append(opts, grpc.WithInsecure())
 	d.conn, err = grpc.Dial(d.config.Host+":"+strconv.Itoa(d.config.Port), opts...)
 	if err != nil {
