@@ -7,7 +7,7 @@ require (
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/celestiaorg/go-cnc v0.2.0
 	github.com/dgraph-io/badger/v3 v3.2103.3
-	github.com/dymensionxyz/cosmosclient v0.3.0-beta.0.20230430113129-9be91330856a
+	github.com/dymensionxyz/cosmosclient v0.3.0-beta.0.20230501122627-7667369bd281
 	github.com/dymensionxyz/dymension v0.2.0-beta.0.20230430121658-59b75faad4cb
 	github.com/go-kit/kit v0.12.0
 	github.com/gofrs/uuid v4.3.0+incompatible
@@ -48,7 +48,6 @@ require (
 	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce // indirect
 	github.com/cosmos/cosmos-proto v1.0.0-beta.2 // indirect
 	github.com/cosmos/gogoproto v1.4.3 // indirect
-	github.com/cosmos/ibc-go/v3 v3.4.0 // indirect
 	github.com/creachadair/taskgroup v0.3.2 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 // indirect
 	github.com/ethereum/go-ethereum v1.10.26 // indirect
@@ -259,5 +258,3 @@ replace (
 	github.com/gorilla/rpc => github.com/dymensionxyz/rpc v1.3.1
 	github.com/tendermint/tendermint => github.com/informalsystems/tendermint v0.34.26
 )
-
-// replace github.com/dymensionxyz/dymension => /Users/mtsitrin/Applications/dymension/settelment
