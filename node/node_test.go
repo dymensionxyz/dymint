@@ -131,16 +131,14 @@ func TestHealthStatusEventHandler(t *testing.T) {
 		baseLayerHealthStatusEvent     map[string][]string
 		baseLayerHealthStatusEventData interface{}
 		expectedHealthStatus           bool
-		expectHealthStatusEventEmitted bool
 		expectedError                  error
 	}{
-		// settlement layer is healthy, DA layer is healthy
+		// settlement layer is unhealthy, DA layer is healthy
 		{
 			name:                           "TestSettlementUnhealthyDAHealthy",
 			baseLayerHealthStatusEvent:     map[string][]string{settlement.EventTypeKey: {settlement.EventSettlementHealthStatus}},
 			baseLayerHealthStatusEventData: &settlement.EventDataSettlementHealthStatus{Healthy: false, Error: slUnealthyError},
 			expectedHealthStatus:           false,
-			expectHealthStatusEventEmitted: true,
 			expectedError:                  slUnealthyError,
 		},
 		// Now da also becomes unhealthy
@@ -149,7 +147,6 @@ func TestHealthStatusEventHandler(t *testing.T) {
 			baseLayerHealthStatusEvent:     map[string][]string{da.EventTypeKey: {da.EventDAHealthStatus}},
 			baseLayerHealthStatusEventData: &da.EventDataDAHealthStatus{Healthy: false, Error: daUnealthyError},
 			expectedHealthStatus:           false,
-			expectHealthStatusEventEmitted: true,
 			expectedError:                  daUnealthyError,
 		},
 		// Now the settlement layer becomes healthy
@@ -158,8 +155,7 @@ func TestHealthStatusEventHandler(t *testing.T) {
 			baseLayerHealthStatusEvent:     map[string][]string{settlement.EventTypeKey: {settlement.EventSettlementHealthStatus}},
 			baseLayerHealthStatusEventData: &settlement.EventDataSettlementHealthStatus{Healthy: true, Error: nil},
 			expectedHealthStatus:           false,
-			expectHealthStatusEventEmitted: false,
-			expectedError:                  nil,
+			expectedError:                  daUnealthyError,
 		},
 		// Now the da layer becomes healthy so we expect the health status to be healthy and the event to be emitted
 		{
@@ -167,38 +163,19 @@ func TestHealthStatusEventHandler(t *testing.T) {
 			baseLayerHealthStatusEvent:     map[string][]string{da.EventTypeKey: {da.EventDAHealthStatus}},
 			baseLayerHealthStatusEventData: &da.EventDataDAHealthStatus{Healthy: true, Error: nil},
 			expectedHealthStatus:           true,
-			expectHealthStatusEventEmitted: true,
 			expectedError:                  nil,
 		},
 	}
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			done := make(chan bool, 1)
-			go func() {
-				HealthSubscription, err := node.pubsubServer.Subscribe(node.ctx, c.name, EventQueryHealthStatus)
-				assert.NoError(err)
-				select {
-				case event := <-HealthSubscription.Out():
-					if !c.expectHealthStatusEventEmitted {
-						t.Error("didn't expect health status event but got one")
-					}
-					healthStatusEvent := event.Data().(*EventDataHealthStatus)
-					assert.Equal(c.expectedHealthStatus, healthStatusEvent.Healthy)
-					assert.Equal(c.expectedError, healthStatusEvent.Error)
-					done <- true
-					break
-				case <-time.After(100 * time.Millisecond):
-					if c.expectHealthStatusEventEmitted {
-						t.Error("expected health status event but didn't get one")
-					}
-					done <- true
-					break
-				}
-			}()
 			// Emit an event.
 			node.pubsubServer.PublishWithEvents(context.Background(), c.baseLayerHealthStatusEventData, c.baseLayerHealthStatusEvent)
-			<-done
+			// Wait until expected health status is reached.
+			assert.Eventually(func() bool {
+				isHealthy, err := node.HealthStatus.Get()
+				return isHealthy == c.expectedHealthStatus && err == c.expectedError
+			}, 1*time.Second, 50*time.Millisecond)
 		})
 	}
 	node.Stop()

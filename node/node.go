@@ -26,6 +26,7 @@ import (
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/settlement"
 	slregistry "github.com/dymensionxyz/dymint/settlement/registry"
+	"github.com/dymensionxyz/dymint/sharedtypes"
 	"github.com/dymensionxyz/dymint/state/indexer"
 	blockidxkv "github.com/dymensionxyz/dymint/state/indexer/block/kv"
 	"github.com/dymensionxyz/dymint/state/txindex"
@@ -82,6 +83,7 @@ type Node struct {
 	IndexerService *txindex.IndexerService
 
 	baseLayersHealthStatus BaseLayersHealthStatus
+	HealthStatus           *sharedtypes.HealthStatus
 
 	// keep context here only because of API compatibility
 	// - it's used in `OnStart` (defined in service.Service interface)
@@ -94,6 +96,12 @@ func NewNode(ctx context.Context, conf config.NodeConfig, p2pKey crypto.PrivKey,
 	proxyApp.SetLogger(logger.With("module", "proxy"))
 	if err := proxyApp.Start(); err != nil {
 		return nil, fmt.Errorf("error starting proxy app connections: %w", err)
+	}
+
+	// healthStatus should be set to false if the node is not healthy
+	healthStatus := &sharedtypes.HealthStatus{
+		IsHealthy: true,
+		Error:     nil,
 	}
 
 	eventBus := tmtypes.NewEventBus()
@@ -176,6 +184,7 @@ func NewNode(ctx context.Context, conf config.NodeConfig, p2pKey crypto.PrivKey,
 		TxIndexer:      txIndexer,
 		IndexerService: indexerService,
 		BlockIndexer:   blockIndexer,
+		HealthStatus:   healthStatus,
 		ctx:            ctx,
 	}
 
@@ -357,25 +366,11 @@ func (n *Node) healthStatusEventListener() {
 func (n *Node) healthStatusHandler(err error) {
 	if n.baseLayersHealthStatus.daHealthy && n.baseLayersHealthStatus.settlementHealthy {
 		n.Logger.Info("All base layers are healthy")
-		healthStatusEvent := &EventDataHealthStatus{
-			Healthy: true,
-		}
-		err = n.pubsubServer.PublishWithEvents(n.ctx, healthStatusEvent, map[string][]string{EventTypeKey: {EventHealthStatus}})
-		if err != nil {
-			n.Logger.Error("Error publishing health status event")
-			panic(err)
-		}
-		// Only if err is not nil, we publish the event. Otherwise it could come from a previous unhealthy state.
+		n.HealthStatus.Set(true, nil)
+		// Only if err is not nil, we update the healthStatus. Otherwise it could come from a previous unhealthy state.
+		// and we would be setting the error to nil.
 	} else if err != nil {
-		n.Logger.Info("Base layer is unhealthy")
-		healthStatusEvent := &EventDataHealthStatus{
-			Healthy: false,
-			Error:   err,
-		}
-		err = n.pubsubServer.PublishWithEvents(n.ctx, healthStatusEvent, map[string][]string{EventTypeKey: {EventHealthStatus}})
-		if err != nil {
-			n.Logger.Error("Error publishing health status event")
-			panic(err)
-		}
+		n.Logger.Info("Base layer is unhealthy", "error", err)
+		n.HealthStatus.Set(false, err)
 	}
 }
