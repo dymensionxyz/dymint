@@ -7,7 +7,7 @@ require (
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/celestiaorg/go-cnc v0.2.0
 	github.com/dgraph-io/badger/v3 v3.2103.3
-	github.com/dymensionxyz/cosmosclient v0.3.0-beta.0.20230502080929-75d04c71c180
+	github.com/dymensionxyz/cosmosclient v0.3.0-beta.0.20230507073257-04faeec161d5
 	github.com/dymensionxyz/dymension v0.2.0-beta.0.20230430121658-59b75faad4cb
 	github.com/go-kit/kit v0.12.0
 	github.com/gofrs/uuid v4.3.0+incompatible
@@ -51,7 +51,7 @@ require (
 	github.com/creachadair/taskgroup v0.3.2 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 // indirect
 	github.com/ethereum/go-ethereum v1.10.26 // indirect
-	github.com/evmos/ethermint v0.21.0 // indirect
+	github.com/evmos/ethermint v0.20.0 // indirect
 	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/lib/pq v1.10.6 // indirect
 	github.com/minio/highwayhash v1.0.2 // indirect
