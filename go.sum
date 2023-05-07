@@ -264,8 +264,8 @@ github.com/dvsekhvalnov/jose2go v1.5.0 h1:3j8ya4Z4kMCwT5nXIKFSV84YS+HdqSSO0VsTQx
 github.com/dvsekhvalnov/jose2go v1.5.0/go.mod h1:QsHjhyTlD/lAVqn/NSbVZmSCGeDehTB/mPZadG+mhXU=
 github.com/dymensionxyz/cosmosclient v0.3.0-beta.0.20230507073257-04faeec161d5 h1:EeFPV5a96cE9zh/yc5rfUtN8N76rTJ3F8n7ERawYd4E=
 github.com/dymensionxyz/cosmosclient v0.3.0-beta.0.20230507073257-04faeec161d5/go.mod h1:+zZkh3ntB21qQsfJjdn9aRGLLMmeDWWO+FxnWl8RWpw=
-github.com/dymensionxyz/dymension v0.2.0-beta.0.20230430121658-59b75faad4cb h1:QIVPbHofWr+RQt4FCk3QN/D8tkNxV4tycUPeCw6I+gg=
-github.com/dymensionxyz/dymension v0.2.0-beta.0.20230430121658-59b75faad4cb/go.mod h1:Y6vWJ7h5PfSS6KTN7Fw28KYqhQpjR5b93iaHB5rf5a0=
+github.com/dymensionxyz/dymension v0.2.0-beta.0.20230503120250-228ff624f61c h1:FgOj+LZxMYdWvMFDxFyays7RGPtxRwarLX8ed+AXMqA=
+github.com/dymensionxyz/dymension v0.2.0-beta.0.20230503120250-228ff624f61c/go.mod h1:Y6vWJ7h5PfSS6KTN7Fw28KYqhQpjR5b93iaHB5rf5a0=
 github.com/dymensionxyz/rpc v1.3.1 h1:7EXWIobaBes5zldRvTIg7TmNsEKjicrWA/OjCc0NaGs=
 github.com/dymensionxyz/rpc v1.3.1/go.mod h1:f+WpX8ysy8wt95iGc6auYlHcnHj2bUkhiRVkkKNys8c=
 github.com/eapache/go-resiliency v1.1.0/go.mod h1:kFI+JgMyC7bLPUVY133qvEBtVayf5mFgVsvEsIPBvNs=
