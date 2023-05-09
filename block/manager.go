@@ -117,10 +117,13 @@ func NewManager(
 	if err != nil {
 		return nil, err
 	}
-	// TODO(omritoptix): Think about the default batchSize and default DABlockTime proper location.
+	// TODO(omritoptix): Move validation and defaults somewhere else
 	if conf.DABlockTime == 0 {
 		logger.Info("WARNING: using default DA block time", "DABlockTime", defaultDABlockTime)
 		conf.DABlockTime = defaultDABlockTime
+	}
+	if conf.BlockTime == 0 {
+		panic("Block production time must be a positive number")
 	}
 
 	exec := state.NewBlockExecutor(proposerAddress, conf.NamespaceID, genesis.ChainID, mempool, proxyApp, eventBus, logger)
@@ -258,32 +261,17 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 	if err != nil {
 		m.logger.Error("failed to wait for sync", "err", err)
 	}
-	// If we get blockTime of 0 we'll just run publishBlock in a loop
-	// vs waiting for ticks
-	produceBlockCh := make(chan bool, 1)
-	ticker := &time.Ticker{}
-	if m.conf.BlockTime == 0 {
-		produceBlockCh <- true
-	} else {
-		ticker = time.NewTicker(m.conf.BlockTime)
-		defer ticker.Stop()
-	}
-	// The func to invoke upon block publish
-	produceBlockWrapper := func() {
-		err := m.produceBlock(ctx)
-		if err != nil {
-			m.logger.Error("error while producing block", "error", err)
-		}
-	}
+
+	ticker := time.NewTicker(m.conf.BlockTime)
+
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			produceBlockWrapper()
-		case <-produceBlockCh:
-			for {
-				produceBlockWrapper()
+			err := m.produceBlock(ctx)
+			if err != nil {
+				m.logger.Error("error while producing block", "error", err)
 			}
 		}
 
