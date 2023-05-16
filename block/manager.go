@@ -723,7 +723,6 @@ func (m *Manager) createNextDABatch(startHeight uint64, endHeight uint64) (*type
 	}
 
 	// Populate the batch
-	totalSize := batch.ToProto().Size()
 	for height = startHeight; height <= endHeight; height++ {
 		block, err := m.store.LoadBlock(height)
 		if err != nil {
@@ -736,14 +735,21 @@ func (m *Manager) createNextDABatch(startHeight uint64, endHeight uint64) (*type
 			return nil, err
 		}
 
-		//Check if the batch size is too big
-		totalSize = totalSize + block.ToProto().Size() + commit.ToProto().Size()
-		if totalSize >= int(m.conf.BlockBatchSizeBytes) {
-			break
-		}
-
 		batch.Blocks = append(batch.Blocks, block)
 		batch.Commits = append(batch.Commits, commit)
+
+		//Check if the batch size is too big
+		totalSize := batch.ToProto().Size()
+		if m.conf.BlockBatchSizeBytes > 0 && totalSize >= int(m.conf.BlockBatchSizeBytes) {
+			// Nil out the last block and commit
+			batch.Blocks[len(batch.Blocks)-1] = nil
+			batch.Commits[len(batch.Commits)-1] = nil
+
+			// Remove the last block and commit from the batch
+			batch.Blocks = batch.Blocks[:len(batch.Blocks)-1]
+			batch.Commits = batch.Commits[:len(batch.Commits)-1]
+			break
+		}
 	}
 
 	batch.EndHeight = height - 1

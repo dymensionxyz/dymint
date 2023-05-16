@@ -61,7 +61,7 @@ func ParseConfig(cmd *cobra.Command) (*cfg.Config, error) {
 // RootCmd is the root command for Dymint core.
 var RootCmd = &cobra.Command{
 	Use:   "dymint",
-	Short: "ABCI-client implementation for dYmenion's autonomous rollapps",
+	Short: "ABCI-client implementation for dymension's autonomous rollapps",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) (err error) {
 		v := viper.GetViper()
 		err = v.BindPFlags(cmd.Flags())
