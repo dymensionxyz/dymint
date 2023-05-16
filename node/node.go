@@ -265,13 +265,12 @@ func (n *Node) OnStart() error {
 		daHealthy:         true,
 	}
 	go n.eventListener()
-	//TODO(omritoptix): block manager should be a service
-	if n.conf.Aggregator {
-		go n.blockManager.ProduceBlockLoop(n.ctx)
+
+	// start the block manager
+	err = n.blockManager.Start(n.ctx, n.conf.Aggregator)
+	if err != nil {
+		return fmt.Errorf("error while starting block manager: %w", err)
 	}
-	go n.blockManager.RetriveLoop(n.ctx)
-	go n.blockManager.ApplyBlockLoop(n.ctx)
-	go n.blockManager.SyncTargetLoop(n.ctx)
 
 	return nil
 }

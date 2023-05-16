@@ -11,7 +11,9 @@ import (
 	"github.com/avast/retry-go"
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	abciconv "github.com/dymensionxyz/dymint/conv/abci"
+	"github.com/dymensionxyz/dymint/events"
 	"github.com/dymensionxyz/dymint/p2p"
+	"github.com/dymensionxyz/dymint/utils"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmcrypto "github.com/tendermint/tendermint/crypto"
@@ -78,6 +80,8 @@ type Manager struct {
 	batchRetryCtx    context.Context
 	batchRetryCancel context.CancelFunc
 	batchRetryMu     sync.RWMutex
+
+	shouldProduceBlocksCh chan bool
 
 	syncTarget   uint64
 	isSyncedCond sync.Cond
@@ -173,14 +177,32 @@ func NewManager(
 		settlementClient: settlementClient,
 		retriever:        dalc.(da.BatchRetriever),
 		// channels are buffered to avoid blocking on input/output operations, buffer sizes are arbitrary
-		syncTargetDiode: diodes.NewOneToOne(1, nil),
-		syncCache:       make(map[uint64]*types.Block),
-		isSyncedCond:    *sync.NewCond(new(sync.Mutex)),
-		batchInProcess:  batchInProcess,
-		logger:          logger,
+		syncTargetDiode:       diodes.NewOneToOne(1, nil),
+		syncCache:             make(map[uint64]*types.Block),
+		isSyncedCond:          *sync.NewCond(new(sync.Mutex)),
+		batchInProcess:        batchInProcess,
+		shouldProduceBlocksCh: make(chan bool, 1),
+		logger:                logger,
 	}
 
 	return agg, nil
+}
+
+// Start starts the block manager.
+func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
+	m.logger.Info("Starting the block manager")
+	if isAggregator {
+		m.logger.Info("Starting in aggregator mode")
+		// TODO(omritoptix): change to private methods
+		go m.ProduceBlockLoop(ctx)
+	}
+	// TODO(omritoptix): change to private methods
+	go m.RetriveLoop(ctx)
+	go m.ApplyBlockLoop(ctx)
+	go m.SyncTargetLoop(ctx)
+	go m.EventListener(ctx)
+
+	return nil
 }
 
 func getAddress(key crypto.PrivKey) ([]byte, error) {
@@ -189,6 +211,18 @@ func getAddress(key crypto.PrivKey) ([]byte, error) {
 		return nil, err
 	}
 	return tmcrypto.AddressHash(rawKey), nil
+}
+
+// EventListener registers events to callbacks.
+func (m *Manager) EventListener(ctx context.Context) {
+	go utils.SubscribeAndHandleEvents(ctx, m.pubsub, "nodeHealthStatusHandler", events.EventQueryHealthStatus, m.healthStatusEventCallback, m.logger)
+
+}
+
+func (m *Manager) healthStatusEventCallback(event pubsub.Message) {
+	eventData := event.Data().(*events.EventDataHealthStatus)
+	m.logger.Info("Received health status event", "eventData", eventData)
+	m.shouldProduceBlocksCh <- eventData.Healthy
 }
 
 // SetDALC is used to set DataAvailabilityLayerClient used by Manager.
@@ -273,6 +307,12 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 			if err != nil {
 				m.logger.Error("error while producing block", "error", err)
 			}
+		case shouldProduceBlocks := <-m.shouldProduceBlocksCh:
+			for !shouldProduceBlocks {
+				m.logger.Info("Stopped block production")
+				shouldProduceBlocks = <-m.shouldProduceBlocksCh
+			}
+			m.logger.Info("Resumed Block production")
 		}
 
 	}

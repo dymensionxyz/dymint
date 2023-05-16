@@ -12,6 +12,7 @@ import (
 
 	"github.com/avast/retry-go"
 
+	"github.com/dymensionxyz/dymint/events"
 	"github.com/dymensionxyz/dymint/log/test"
 	mempoolv1 "github.com/dymensionxyz/dymint/mempool/v1"
 	"github.com/dymensionxyz/dymint/p2p"
@@ -103,7 +104,8 @@ func TestInitialState(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 
 			dalc := getMockDALC(100*time.Second, logger)
-			agg, err := NewManager(key, conf, c.genesis, c.store, nil, proxyApp, dalc, settlementlc, nil, pubsubServer, p2pClient, logger)
+			agg, err := NewManager(key, conf, c.genesis, c.store, nil, proxyApp, dalc, settlementlc,
+				nil, pubsubServer, p2pClient, logger)
 			assert.NoError(err)
 			assert.NotNil(agg)
 			assert.Equal(c.expectedChainID, agg.lastState.ChainID)
@@ -263,6 +265,79 @@ func TestProducePendingBlock(t *testing.T) {
 	require.NoError(t, err)
 	// Validate state is updated with the block that was saved in the store
 	assert.Equal(t, block.Header.Hash(), *(*[32]byte)(manager.lastState.LastBlockID.Hash))
+}
+
+// TestBlockProductionNodeHealth tests the different scenarios of block production when the node health is toggling.
+// The test does the following:
+// 1. Send healthy event and validate blocks are produced
+// 2. Send unhealthy event and validate blocks are not produced
+// 3. Send another unhealthy event and validate blocks are still not produced
+// 4. Send healthy event and validate blocks are produced
+func TestBlockProductionNodeHealth(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+	// Setup app
+	app := testutil.GetAppMock()
+	// Create proxy app
+	clientCreator := proxy.NewLocalClientCreator(app)
+	proxyApp := proxy.NewAppConns(clientCreator)
+	err := proxyApp.Start()
+	require.NoError(err)
+	// Init manager
+	manager, err := getManager(getManagerConfig(), nil, nil, 1, 1, 0, proxyApp, nil)
+	require.NoError(err)
+
+	cases := []struct {
+		name                  string
+		healthStatusEvent     map[string][]string
+		healthStatusEventData interface{}
+		shouldProduceBlocks   bool
+	}{
+		{
+			name:                  "HealthyEventBlocksProduced",
+			healthStatusEvent:     map[string][]string{events.EventNodeTypeKey: {events.EventHealthStatus}},
+			healthStatusEventData: &events.EventDataHealthStatus{Healthy: true, Error: nil},
+			shouldProduceBlocks:   true,
+		},
+		{
+			name:                  "UnhealthyEventBlocksNotProduced",
+			healthStatusEvent:     map[string][]string{events.EventNodeTypeKey: {events.EventHealthStatus}},
+			healthStatusEventData: &events.EventDataHealthStatus{Healthy: false, Error: errors.New("Unhealthy")},
+			shouldProduceBlocks:   false,
+		},
+		{
+			name:                  "UnhealthyEventBlocksStillNotProduced",
+			healthStatusEvent:     map[string][]string{events.EventNodeTypeKey: {events.EventHealthStatus}},
+			healthStatusEventData: &events.EventDataHealthStatus{Healthy: false, Error: errors.New("Unhealthy")},
+			shouldProduceBlocks:   false,
+		},
+		{
+			name:                  "HealthyEventBlocksProduced",
+			healthStatusEvent:     map[string][]string{events.EventNodeTypeKey: {events.EventHealthStatus}},
+			healthStatusEventData: &events.EventDataHealthStatus{Healthy: true, Error: nil},
+			shouldProduceBlocks:   true,
+		},
+	}
+	// Start the manager
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	err = manager.Start(ctx, true)
+	require.NoError(err)
+	time.Sleep(100 * time.Millisecond)
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			manager.pubsub.PublishWithEvents(context.Background(), c.healthStatusEventData, c.healthStatusEvent)
+			time.Sleep(500 * time.Millisecond)
+			blockHeight := manager.store.Height()
+			time.Sleep(500 * time.Millisecond)
+			if c.shouldProduceBlocks {
+				assert.Greater(manager.store.Height(), blockHeight)
+			} else {
+				assert.Equal(blockHeight, manager.store.Height())
+			}
+		})
+	}
 }
 
 // Test that in case we fail after the proxy app commit, next time we won't commit again to the proxy app
@@ -486,7 +561,8 @@ func getManager(conf config.BlockManagerConfig, settlementlc settlement.LayerCli
 		return nil, err
 	}
 
-	manager, err := NewManager(proposerKey, conf, genesis, managerStore, mp, proxyApp, dalc, settlementlc, nil, pubsubServer, p2pClient, logger)
+	manager, err := NewManager(proposerKey, conf, genesis, managerStore, mp, proxyApp, dalc, settlementlc, nil,
+		pubsubServer, p2pClient, logger)
 	if err != nil {
 		return nil, err
 	}
