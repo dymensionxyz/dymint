@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/dymensionxyz/dymint/da"
+	"github.com/dymensionxyz/dymint/events"
 	"github.com/dymensionxyz/dymint/mempool"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/stretchr/testify/assert"
@@ -176,14 +177,14 @@ func TestHealthStatusEventHandler(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			done := make(chan bool, 1)
 			go func() {
-				HealthSubscription, err := node.pubsubServer.Subscribe(node.ctx, c.name, EventQueryHealthStatus)
+				HealthSubscription, err := node.pubsubServer.Subscribe(node.ctx, c.name, events.EventQueryHealthStatus)
 				assert.NoError(err)
 				select {
 				case event := <-HealthSubscription.Out():
 					if !c.expectHealthStatusEventEmitted {
 						t.Error("didn't expect health status event but got one")
 					}
-					healthStatusEvent := event.Data().(*EventDataHealthStatus)
+					healthStatusEvent := event.Data().(*events.EventDataHealthStatus)
 					assert.Equal(c.expectedHealthStatus, healthStatusEvent.Healthy)
 					assert.Equal(c.expectedError, healthStatusEvent.Error)
 					done <- true

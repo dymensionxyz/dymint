@@ -1,4 +1,4 @@
-package node
+package events
 
 import (
 	"fmt"
@@ -10,7 +10,7 @@ import (
 // Define the event type keys
 const (
 	// EventTypeKey is a reserved composite key for event name.
-	EventTypeKey = "node.event"
+	EventNodeTypeKey = "node.event"
 )
 
 // Define the event types
@@ -33,5 +33,5 @@ var (
 
 // QueryForEvent returns a query for the given event.
 func QueryForEvent(eventType string) tmpubsub.Query {
-	return tmquery.MustParse(fmt.Sprintf("%s='%s'", EventTypeKey, eventType))
+	return tmquery.MustParse(fmt.Sprintf("%s='%s'", EventNodeTypeKey, eventType))
 }

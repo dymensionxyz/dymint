@@ -21,6 +21,7 @@ import (
 	"github.com/dymensionxyz/dymint/config"
 	"github.com/dymensionxyz/dymint/da"
 	daregsitry "github.com/dymensionxyz/dymint/da/registry"
+	"github.com/dymensionxyz/dymint/events"
 	"github.com/dymensionxyz/dymint/mempool"
 	mempoolv1 "github.com/dymensionxyz/dymint/mempool/v1"
 	nodemempool "github.com/dymensionxyz/dymint/node/mempool"
@@ -376,15 +377,15 @@ func (n *Node) healthStatusHandler(err error) {
 	daHealthy, settlementHealthy := n.baseLayersHealthStatus.get()
 	if daHealthy && settlementHealthy {
 		n.Logger.Info("All base layers are healthy")
-		healthStatusEvent := &EventDataHealthStatus{Healthy: true}
-		if err = n.pubsubServer.PublishWithEvents(n.ctx, healthStatusEvent, map[string][]string{EventTypeKey: {EventHealthStatus}}); err != nil {
+		healthStatusEvent := &events.EventDataHealthStatus{Healthy: true}
+		if err = n.pubsubServer.PublishWithEvents(n.ctx, healthStatusEvent, map[string][]string{events.EventNodeTypeKey: {events.EventHealthStatus}}); err != nil {
 			panic(err)
 		}
 		// Only if err is not nil, we publish the event. Otherwise it could come from a previous unhealthy state.
 	} else if err != nil {
 		n.Logger.Info("Base layer is unhealthy")
-		healthStatusEvent := &EventDataHealthStatus{Healthy: false, Error: err}
-		if err = n.pubsubServer.PublishWithEvents(n.ctx, healthStatusEvent, map[string][]string{EventTypeKey: {EventHealthStatus}}); err != nil {
+		healthStatusEvent := &events.EventDataHealthStatus{Healthy: false, Error: err}
+		if err = n.pubsubServer.PublishWithEvents(n.ctx, healthStatusEvent, map[string][]string{events.EventNodeTypeKey: {events.EventHealthStatus}}); err != nil {
 			panic(err)
 		}
 	}

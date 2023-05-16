@@ -3,7 +3,7 @@ package utils
 import (
 	"context"
 
-	"github.com/tendermint/tendermint/libs/log"
+	"github.com/dymensionxyz/dymint/log"
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
