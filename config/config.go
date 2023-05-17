@@ -9,17 +9,18 @@ import (
 )
 
 const (
-	flagAggregator        = "dymint.aggregator"
-	flagDALayer           = "dymint.da_layer"
-	flagDAConfig          = "dymint.da_config"
-	flagSettlementLayer   = "dymint.settlement_layer"
-	flagSettlementConfig  = "dymint.settlement_config"
-	flagBlockTime         = "dymint.block_time"
-	flagDABlockTime       = "dymint.da_block_time"
-	flagBatchSyncInterval = "dymint.batch_sync_interval"
-	flagDAStartHeight     = "dymint.da_start_height"
-	flagNamespaceID       = "dymint.namespace_id"
-	flagBlockBatchSize    = "dymint.block_batch_size"
+	flagAggregator          = "dymint.aggregator"
+	flagDALayer             = "dymint.da_layer"
+	flagDAConfig            = "dymint.da_config"
+	flagSettlementLayer     = "dymint.settlement_layer"
+	flagSettlementConfig    = "dymint.settlement_config"
+	flagBlockTime           = "dymint.block_time"
+	flagDABlockTime         = "dymint.da_block_time"
+	flagBatchSyncInterval   = "dymint.batch_sync_interval"
+	flagDAStartHeight       = "dymint.da_start_height"
+	flagNamespaceID         = "dymint.namespace_id"
+	flagBlockBatchSize      = "dymint.block_batch_size"
+	flagBlockBatchSizeBytes = "dymint.block_batch_size_bytes"
 )
 
 var (
@@ -56,6 +57,8 @@ type BlockManagerConfig struct {
 	NamespaceID   [8]byte `mapstructure:"namespace_id"`
 	// The size of the batch in blocks. Every batch we'll write to the DA and the settlement layer.
 	BlockBatchSize uint64 `mapstructure:"block_batch_size"`
+	// The size of the batch in Bytes. Every batch we'll write to the DA and the settlement layer.
+	BlockBatchSizeBytes uint64 `mapstructure:"block_batch_size_bytes"`
 }
 
 // GetViperConfig reads configuration parameters from Viper instance.
@@ -72,6 +75,7 @@ func (nc *NodeConfig) GetViperConfig(v *viper.Viper) error {
 	nc.BatchSyncInterval = v.GetDuration(flagBatchSyncInterval)
 	nc.BlockTime = v.GetDuration(flagBlockTime)
 	nc.BlockBatchSize = v.GetUint64(flagBlockBatchSize)
+	nc.BlockBatchSizeBytes = v.GetUint64(flagBlockBatchSizeBytes)
 	nsID := v.GetString(flagNamespaceID)
 	bytes, err := hex.DecodeString(nsID)
 	if err != nil {
@@ -98,4 +102,5 @@ func AddFlags(cmd *cobra.Command) {
 	cmd.Flags().Uint64(flagDAStartHeight, def.DAStartHeight, "starting DA block height (for syncing)")
 	cmd.Flags().BytesHex(flagNamespaceID, def.NamespaceID[:], "namespace identifies (8 bytes in hex)")
 	cmd.Flags().Uint64(flagBlockBatchSize, def.BlockBatchSize, "block batch size")
+	cmd.Flags().Uint64(flagBlockBatchSizeBytes, def.BlockBatchSizeBytes, "block batch size in bytes")
 }

@@ -5,7 +5,6 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -39,9 +38,14 @@ import (
 	"github.com/dymensionxyz/dymint/store"
 )
 
-const defaultBatchSize = 5
-const connectionRefusedErrorMessage = "connection refused"
-const batchNotFoundErrorMessage = "batch not found"
+const (
+	defaultBatchSize = 5
+	batchLimitBytes  = 2000
+)
+const (
+	connectionRefusedErrorMessage = "connection refused"
+	batchNotFoundErrorMessage     = "batch not found"
+)
 
 func TestInitialState(t *testing.T) {
 	assert := assert.New(t)
@@ -174,7 +178,7 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 func TestPublishWhenSettlementLayerDisconnected(t *testing.T) {
 	isSettlementError := atomic.Value{}
 	isSettlementError.Store(true)
-	manager, err := getManager(getManagerConfig(), &SettlementLayerClientSubmitBatchError{isError: isSettlementError}, nil, 1, 1, 0, nil, nil)
+	manager, err := getManager(getManagerConfig(), &testutil.SettlementLayerClientSubmitBatchError{IsError: isSettlementError}, nil, 1, 1, 0, nil, nil)
 	retry.DefaultAttempts = 2
 	require.NoError(t, err)
 	require.NotNil(t, manager)
@@ -195,7 +199,7 @@ func TestPublishWhenSettlementLayerDisconnected(t *testing.T) {
 }
 
 func TestPublishWhenDALayerDisconnected(t *testing.T) {
-	manager, err := getManager(getManagerConfig(), nil, &DALayerClientSubmitBatchError{}, 1, 1, 0, nil, nil)
+	manager, err := getManager(getManagerConfig(), nil, &testutil.DALayerClientSubmitBatchError{}, 1, 1, 0, nil, nil)
 	retry.DefaultAttempts = 2
 	require.NoError(t, err)
 	require.NotNil(t, manager)
@@ -211,7 +215,7 @@ func TestPublishWhenDALayerDisconnected(t *testing.T) {
 }
 
 func TestRetrieveDaBatchesFailed(t *testing.T) {
-	manager, err := getManager(getManagerConfig(), nil, &DALayerClientRetrieveBatchesError{}, 1, 1, 0, nil, nil)
+	manager, err := getManager(getManagerConfig(), nil, &testutil.DALayerClientRetrieveBatchesError{}, 1, 1, 0, nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, manager)
 
@@ -357,7 +361,7 @@ func TestProduceBlockFailAfterCommit(t *testing.T) {
 	err := proxyApp.Start()
 	require.NoError(err)
 	// Create a new mock store which should succeed to save the first block
-	mockStore := newMockStore()
+	mockStore := testutil.NewMockStore()
 	// Init manager
 	manager, err := getManager(getManagerConfig(), nil, nil, 1, 1, 0, proxyApp, mockStore)
 	require.NoError(err)
@@ -458,7 +462,7 @@ func TestBatchRetryWhileBatchAccepted(t *testing.T) {
 	managerConfig.BlockBatchSize = 1
 	isSettlementError := atomic.Value{}
 	isSettlementError.Store(true)
-	settlementLayerClient := &SettlementLayerClientSubmitBatchError{isError: isSettlementError}
+	settlementLayerClient := &testutil.SettlementLayerClientSubmitBatchError{IsError: isSettlementError}
 	manager, err := getManager(managerConfig, settlementLayerClient, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 	// Produce blocks with settlement layer batch submission error
@@ -469,7 +473,7 @@ func TestBatchRetryWhileBatchAccepted(t *testing.T) {
 	go manager.ProduceBlockLoop(blockLoopContext)
 	go manager.SyncTargetLoop(ctx)
 	time.Sleep(200 * time.Millisecond)
-	assert.Equal(uint64(0), atomic.LoadUint64(&settlementLayerClient.batchCounter))
+	assert.Equal(uint64(0), atomic.LoadUint64(&settlementLayerClient.BatchCounter))
 	// Cancel block production to not interfere with the isBatchInProcess flag
 	blockLoopCancel()
 	time.Sleep(100 * time.Millisecond)
@@ -478,13 +482,83 @@ func TestBatchRetryWhileBatchAccepted(t *testing.T) {
 	manager.pubsub.PublishWithEvents(ctx, eventData, map[string][]string{settlement.EventTypeKey: {settlement.EventNewSettlementBatchAccepted}})
 	time.Sleep(200 * time.Millisecond)
 	// Change settlement layer to accept batches and validate new batches was submitted
-	settlementLayerClient.isError.Store(false)
+	settlementLayerClient.IsError.Store(false)
 	blockLoopContext, blockLoopCancel = context.WithCancel(context.Background())
 	defer blockLoopCancel()
 	go manager.ProduceBlockLoop(blockLoopContext)
 	time.Sleep(1 * time.Second)
-	assert.Greater(atomic.LoadUint64(&settlementLayerClient.batchCounter), uint64(0))
+	assert.Greater(atomic.LoadUint64(&settlementLayerClient.BatchCounter), uint64(0))
 
+}
+
+func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	app := testutil.GetAppMock()
+	// Create proxy app
+	clientCreator := proxy.NewLocalClientCreator(app)
+	proxyApp := proxy.NewAppConns(clientCreator)
+	err := proxyApp.Start()
+	require.NoError(err)
+	// Init manager
+	managerConfig := getManagerConfig()
+	managerConfig.BlockBatchSize = 1000
+	managerConfig.BlockBatchSizeBytes = batchLimitBytes //enough for 2 block, not enough for 10 blocks
+	manager, err := getManager(managerConfig, nil, nil, 1, 1, 0, proxyApp, nil)
+	require.NoError(err)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	testCases := []struct {
+		name                  string
+		blocksToProduce       int
+		expectedToBeTruncated bool
+	}{
+		{
+			name:                  "batch fits in bytes limit",
+			blocksToProduce:       2,
+			expectedToBeTruncated: false,
+		},
+		{
+			name:                  "batch exceeds bytes limit",
+			blocksToProduce:       10,
+			expectedToBeTruncated: true,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Produce blocks
+			for i := 0; i < tc.blocksToProduce; i++ {
+				manager.produceBlock(ctx)
+			}
+
+			// Call createNextDABatch function
+			startHeight := atomic.LoadUint64(&manager.syncTarget) + 1
+			endHeight := startHeight + uint64(tc.blocksToProduce) - 1
+			batch, err := manager.createNextDABatch(startHeight, endHeight)
+			assert.NoError(err)
+
+			assert.Equal(batch.StartHeight, startHeight)
+			assert.LessOrEqual(batch.ToProto().Size(), int(managerConfig.BlockBatchSizeBytes))
+
+			if !tc.expectedToBeTruncated {
+				assert.Equal(batch.EndHeight, endHeight)
+			} else {
+				assert.Equal(batch.EndHeight, batch.StartHeight+uint64(len(batch.Blocks))-1)
+				assert.Less(batch.EndHeight, endHeight)
+
+				//validate next added block to batch would have been actually too big
+				//First relax the byte limit so we could proudce larger batch
+				manager.conf.BlockBatchSizeBytes = 10 * manager.conf.BlockBatchSizeBytes
+				newBatch, err := manager.createNextDABatch(startHeight, batch.EndHeight+1)
+				assert.Greater(newBatch.ToProto().Size(), batchLimitBytes)
+
+				assert.NoError(err)
+			}
+		})
+	}
 }
 
 /* -------------------------------------------------------------------------- */
@@ -610,79 +684,4 @@ func getManagerConfig() config.BlockManagerConfig {
 		DAStartHeight:     0,
 		NamespaceID:       [8]byte{1, 2, 3, 4, 5, 6, 7, 8},
 	}
-}
-
-/* -------------------------------------------------------------------------- */
-/*                                    Mocks                                   */
-/* -------------------------------------------------------------------------- */
-
-type MockStore struct {
-	ShouldFailSetHeight            bool
-	ShoudFailUpdateState           bool
-	ShouldFailUpdateStateWithBatch bool
-	*store.DefaultStore
-	height uint64
-}
-
-// Don't set the height to mock failure in setting the height
-func (m *MockStore) SetHeight(height uint64) {
-	// Fail the first time
-	if m.ShouldFailSetHeight {
-		return
-	}
-	m.height = height
-}
-
-func (m *MockStore) Height() uint64 {
-	return m.height
-}
-
-func (m *MockStore) UpdateState(state types.State, batch store.Batch) (store.Batch, error) {
-	if batch != nil && m.ShouldFailUpdateStateWithBatch || m.ShoudFailUpdateState && batch == nil {
-		return nil, errors.New("failed to update state")
-	} else {
-		return m.DefaultStore.UpdateState(state, batch)
-	}
-}
-
-func newMockStore() *MockStore {
-	defaultStore := store.New(store.NewDefaultInMemoryKVStore())
-	return &MockStore{
-		DefaultStore:         defaultStore.(*store.DefaultStore),
-		height:               0,
-		ShouldFailSetHeight:  false,
-		ShoudFailUpdateState: false,
-	}
-}
-
-type SettlementLayerClientSubmitBatchError struct {
-	isError      atomic.Value
-	batchCounter uint64
-	slmock.SettlementLayerClient
-}
-
-func (s *SettlementLayerClientSubmitBatchError) SubmitBatch(batch *types.Batch, daClient da.Client, daResultSubmitBatch *da.ResultSubmitBatch) *settlement.ResultSubmitBatch {
-	if s.isError.Load() == true {
-		return &settlement.ResultSubmitBatch{
-			BaseResult: settlement.BaseResult{Code: settlement.StatusError, Message: connectionRefusedErrorMessage},
-		}
-	}
-	atomic.AddUint64(&s.batchCounter, 1)
-	return &settlement.ResultSubmitBatch{BaseResult: settlement.BaseResult{Code: settlement.StatusSuccess}}
-}
-
-type DALayerClientSubmitBatchError struct {
-	mockda.DataAvailabilityLayerClient
-}
-
-func (s *DALayerClientSubmitBatchError) SubmitBatch(_ *types.Batch) da.ResultSubmitBatch {
-	return da.ResultSubmitBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: connectionRefusedErrorMessage}}
-}
-
-type DALayerClientRetrieveBatchesError struct {
-	mockda.DataAvailabilityLayerClient
-}
-
-func (m *DALayerClientRetrieveBatchesError) RetrieveBatches(_ uint64) da.ResultRetrieveBatch {
-	return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: batchNotFoundErrorMessage}}
 }
