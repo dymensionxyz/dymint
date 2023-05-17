@@ -125,7 +125,7 @@ func NewManager(
 	}
 
 	if conf.BlockBatchSizeBytes == 0 {
-		logger.Info("WARNING: using default DA batch size bytes limit", "DABlockTime", config.DefaultNodeConfig.BlockBatchSizeBytes)
+		logger.Info("WARNING: using default DA batch size bytes limit", "BlockBatchSizeBytes", config.DefaultNodeConfig.BlockBatchSizeBytes)
 		conf.BlockBatchSizeBytes = config.DefaultNodeConfig.BlockBatchSizeBytes
 	}
 
