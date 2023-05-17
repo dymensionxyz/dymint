@@ -37,9 +37,14 @@ import (
 	"github.com/dymensionxyz/dymint/store"
 )
 
-const defaultBatchSize = 5
-const connectionRefusedErrorMessage = "connection refused"
-const batchNotFoundErrorMessage = "batch not found"
+const (
+	defaultBatchSize = 5
+	batchLimitBytes  = 2000
+)
+const (
+	connectionRefusedErrorMessage = "connection refused"
+	batchNotFoundErrorMessage     = "batch not found"
+)
 
 func TestInitialState(t *testing.T) {
 	assert := assert.New(t)
@@ -412,7 +417,7 @@ func TestBatchRetryWhileBatchAccepted(t *testing.T) {
 
 }
 
-func Test_createNextDABatchWithBytesLimit(t *testing.T) {
+func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	app := testutil.GetAppMock()
@@ -424,58 +429,62 @@ func Test_createNextDABatchWithBytesLimit(t *testing.T) {
 	// Init manager
 	managerConfig := getManagerConfig()
 	managerConfig.BlockBatchSize = 1000
-	managerConfig.BlockBatchSizeBytes = 2000 //enough for 2 block, not enough for 10 blocks
+	managerConfig.BlockBatchSizeBytes = batchLimitBytes //enough for 2 block, not enough for 10 blocks
 	manager, err := getManager(managerConfig, nil, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
 	ctx, cancel := context.WithCancel(context.Background())
-	defer func() {
-		cancel()
-	}()
+	defer cancel()
 
-	//First produce 2 blocks and batch them assuming they fit in the bytes limit
-	blocksToProduce := 2
-	for i := 0; i < blocksToProduce; i++ {
-		manager.produceBlock(ctx)
+	testCases := []struct {
+		name                  string
+		blocksToProduce       int
+		expectedToBeTruncated bool
+	}{
+		{
+			name:                  "batch fits in bytes limit",
+			blocksToProduce:       2,
+			expectedToBeTruncated: false,
+		},
+		{
+			name:                  "batch exceeds bytes limit",
+			blocksToProduce:       10,
+			expectedToBeTruncated: true,
+		},
 	}
 
-	// Call createNextDABatch function
-	startHeight := atomic.LoadUint64(&manager.syncTarget) + 1
-	endHeight := startHeight + uint64(blocksToProduce) - 1
-	batch, err := manager.createNextDABatch(startHeight, endHeight)
-	assert.NoError(err)
-	assert.Equal(batch.StartHeight, startHeight)
-	assert.Equal(batch.EndHeight, endHeight)
-	assert.Less(batch.ToProto().Size(), int(managerConfig.BlockBatchSizeBytes))
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Produce blocks
+			for i := 0; i < tc.blocksToProduce; i++ {
+				manager.produceBlock(ctx)
+			}
 
-	//Now produce 10 blocks and batch them assuming they don't fit in the bytes limit
-	blocksToProduce = 10
-	for i := 0; i < blocksToProduce; i++ {
-		manager.produceBlock(ctx)
+			// Call createNextDABatch function
+			startHeight := atomic.LoadUint64(&manager.syncTarget) + 1
+			endHeight := startHeight + uint64(tc.blocksToProduce) - 1
+			batch, err := manager.createNextDABatch(startHeight, endHeight)
+			assert.NoError(err)
+
+			assert.Equal(batch.StartHeight, startHeight)
+			assert.LessOrEqual(batch.ToProto().Size(), int(managerConfig.BlockBatchSizeBytes))
+
+			if !tc.expectedToBeTruncated {
+				assert.Equal(batch.EndHeight, endHeight)
+			} else {
+				assert.Equal(batch.EndHeight, batch.StartHeight+uint64(len(batch.Blocks))-1)
+				assert.Less(batch.EndHeight, endHeight)
+
+				//validate next added block to batch would have been actually too big
+				//First relax the byte limit so we could proudce larger batch
+				manager.conf.BlockBatchSizeBytes = 10 * manager.conf.BlockBatchSizeBytes
+				newBatch, err := manager.createNextDABatch(startHeight, batch.EndHeight+1)
+				assert.Greater(newBatch.ToProto().Size(), batchLimitBytes)
+
+				assert.NoError(err)
+			}
+		})
 	}
-
-	// Call createNextDABatch function
-	startHeight = atomic.LoadUint64(&manager.syncTarget) + 1
-	endHeight = startHeight + uint64(blocksToProduce) - 1
-	batch, err = manager.createNextDABatch(startHeight, endHeight)
-	assert.NoError(err)
-	assert.Equal(batch.StartHeight, startHeight)
-	//validate the is smaller than expected due to bytes limit
-	assert.Equal(batch.EndHeight, batch.StartHeight+uint64(len(batch.Blocks))-1)
-	assert.Less(batch.EndHeight, endHeight)
-	assert.Less(batch.ToProto().Size(), int(managerConfig.BlockBatchSizeBytes))
-
-	// validate that with additional block, the batch is too big
-	//disable bytes limit
-	manager.conf.BlockBatchSizeBytes = 0
-	//create same batch with one more block
-	batch, err = manager.createNextDABatch(startHeight, endHeight+1)
-	assert.NoError(err)
-	assert.Equal(batch.StartHeight, startHeight)
-	assert.Equal(batch.EndHeight, endHeight+1)
-	//validate the batch would have been actually too big
-	assert.Greater(batch.ToProto().Size(), 2000)
-
 }
 
 /* -------------------------------------------------------------------------- */

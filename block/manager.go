@@ -35,10 +35,9 @@ type blockSource string
 
 // defaultDABlockTime is used only if DABlockTime is not configured for manager
 const (
-	defaultDABlockTime = 30 * time.Second
-	DABatchRetryDelay  = 20 * time.Second
-	SLBatchRetryDelay  = 10 * time.Second
-	maxDelay           = 1 * time.Minute
+	DABatchRetryDelay = 20 * time.Second
+	SLBatchRetryDelay = 10 * time.Second
+	maxDelay          = 1 * time.Minute
 )
 
 const (
@@ -117,10 +116,17 @@ func NewManager(
 	if err != nil {
 		return nil, err
 	}
+
+	// TODO(mtsitrin): Probably should be validated and manage default on config init
 	// TODO(omritoptix): Think about the default batchSize and default DABlockTime proper location.
 	if conf.DABlockTime == 0 {
-		logger.Info("WARNING: using default DA block time", "DABlockTime", defaultDABlockTime)
-		conf.DABlockTime = defaultDABlockTime
+		logger.Info("WARNING: using default DA block time", "DABlockTime", config.DefaultNodeConfig.DABlockTime)
+		conf.DABlockTime = config.DefaultNodeConfig.DABlockTime
+	}
+
+	if conf.BlockBatchSizeBytes == 0 {
+		logger.Info("WARNING: using default DA batch size bytes limit", "DABlockTime", config.DefaultNodeConfig.BlockBatchSizeBytes)
+		conf.BlockBatchSizeBytes = config.DefaultNodeConfig.BlockBatchSizeBytes
 	}
 
 	exec := state.NewBlockExecutor(proposerAddress, conf.NamespaceID, genesis.ChainID, mempool, proxyApp, eventBus, logger)
@@ -740,7 +746,7 @@ func (m *Manager) createNextDABatch(startHeight uint64, endHeight uint64) (*type
 
 		//Check if the batch size is too big
 		totalSize := batch.ToProto().Size()
-		if m.conf.BlockBatchSizeBytes > 0 && totalSize >= int(m.conf.BlockBatchSizeBytes) {
+		if totalSize > int(m.conf.BlockBatchSizeBytes) {
 			// Nil out the last block and commit
 			batch.Blocks[len(batch.Blocks)-1] = nil
 			batch.Commits[len(batch.Commits)-1] = nil
