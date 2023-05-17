@@ -320,7 +320,12 @@ func (d *HubClient) convertBatchToMsgUpdateState(batch *types.Batch, daClient da
 	if err != nil {
 		return nil, err
 	}
-	addr := account.Address(addressPrefix)
+
+	addr, err := account.Address(addressPrefix)
+	if err != nil {
+		return nil, err
+	}
+
 	DAMetaData := &settlement.DAMetaData{
 		Height: daResult.DAHeight,
 		Client: daClient,
@@ -355,7 +360,7 @@ func getCosmosClientOptions(config *Config) []cosmosclient.Option {
 	options := []cosmosclient.Option{
 		cosmosclient.WithAddressPrefix(addressPrefix),
 		cosmosclient.WithNodeAddress(config.NodeAddress),
-		cosmosclient.WithGasFees(config.GasFees),
+		cosmosclient.WithFees(config.GasFees),
 		cosmosclient.WithGasLimit(config.GasLimit),
 		cosmosclient.WithGasPrices(config.GasPrices),
 	}
