@@ -35,10 +35,9 @@ type blockSource string
 
 // defaultDABlockTime is used only if DABlockTime is not configured for manager
 const (
-	defaultDABlockTime = 30 * time.Second
-	DABatchRetryDelay  = 20 * time.Second
-	SLBatchRetryDelay  = 10 * time.Second
-	maxDelay           = 1 * time.Minute
+	DABatchRetryDelay = 20 * time.Second
+	SLBatchRetryDelay = 10 * time.Second
+	maxDelay          = 1 * time.Minute
 )
 
 const (
@@ -117,10 +116,17 @@ func NewManager(
 	if err != nil {
 		return nil, err
 	}
+
+	// TODO(mtsitrin): Probably should be validated and manage default on config init
 	// TODO(omritoptix): Think about the default batchSize and default DABlockTime proper location.
 	if conf.DABlockTime == 0 {
-		logger.Info("WARNING: using default DA block time", "DABlockTime", defaultDABlockTime)
-		conf.DABlockTime = defaultDABlockTime
+		logger.Info("WARNING: using default DA block time", "DABlockTime", config.DefaultNodeConfig.DABlockTime)
+		conf.DABlockTime = config.DefaultNodeConfig.DABlockTime
+	}
+
+	if conf.BlockBatchSizeBytes == 0 {
+		logger.Info("WARNING: using default DA batch size bytes limit", "BlockBatchSizeBytes", config.DefaultNodeConfig.BlockBatchSizeBytes)
+		conf.BlockBatchSizeBytes = config.DefaultNodeConfig.BlockBatchSizeBytes
 	}
 
 	exec := state.NewBlockExecutor(proposerAddress, conf.NamespaceID, genesis.ChainID, mempool, proxyApp, eventBus, logger)
@@ -684,11 +690,14 @@ func (m *Manager) submitNextBatch(ctx context.Context) {
 		m.logger.Error("Failed to create next batch", "startHeight", startHeight, "endHeight", endHeight, "error", err)
 		return
 	}
+
+	actualEndHeight := nextBatch.EndHeight
+
 	// Submit batch to the DA
-	m.logger.Info("Submitting next batch", "startHeight", startHeight, "endHeight", endHeight)
+	m.logger.Info("Submitting next batch", "startHeight", startHeight, "endHeight", actualEndHeight, "size", nextBatch.ToProto().Size())
 	resultSubmitToDA, err := m.submitBatchToDA(ctx, nextBatch)
 	if err != nil {
-		m.logger.Error("Failed to submit next batch to DA Layer", "startHeight", startHeight, "endHeight", endHeight, "error", err)
+		m.logger.Error("Failed to submit next batch to DA Layer", "startHeight", startHeight, "endHeight", actualEndHeight, "error", err)
 		panic("Failed to submit next batch to DA Layer")
 	}
 
@@ -709,15 +718,18 @@ func (m *Manager) updateStateIndex(stateIndex uint64) error {
 }
 
 func (m *Manager) createNextDABatch(startHeight uint64, endHeight uint64) (*types.Batch, error) {
+	var height uint64
 	// Create the batch
+	batchSize := endHeight - startHeight + 1
 	batch := &types.Batch{
 		StartHeight: startHeight,
 		EndHeight:   endHeight,
-		Blocks:      make([]*types.Block, 0, m.conf.BlockBatchSize),
-		Commits:     make([]*types.Commit, 0, m.conf.BlockBatchSize),
+		Blocks:      make([]*types.Block, 0, batchSize),
+		Commits:     make([]*types.Commit, 0, batchSize),
 	}
+
 	// Populate the batch
-	for height := startHeight; height <= endHeight; height++ {
+	for height = startHeight; height <= endHeight; height++ {
 		block, err := m.store.LoadBlock(height)
 		if err != nil {
 			m.logger.Error("Failed to load block", "height", height)
@@ -728,9 +740,25 @@ func (m *Manager) createNextDABatch(startHeight uint64, endHeight uint64) (*type
 			m.logger.Error("Failed to load commit", "height", height)
 			return nil, err
 		}
+
 		batch.Blocks = append(batch.Blocks, block)
 		batch.Commits = append(batch.Commits, commit)
+
+		//Check if the batch size is too big
+		totalSize := batch.ToProto().Size()
+		if totalSize > int(m.conf.BlockBatchSizeBytes) {
+			// Nil out the last block and commit
+			batch.Blocks[len(batch.Blocks)-1] = nil
+			batch.Commits[len(batch.Commits)-1] = nil
+
+			// Remove the last block and commit from the batch
+			batch.Blocks = batch.Blocks[:len(batch.Blocks)-1]
+			batch.Commits = batch.Commits[:len(batch.Commits)-1]
+			break
+		}
 	}
+
+	batch.EndHeight = height - 1
 	return batch, nil
 }
 
