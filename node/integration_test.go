@@ -44,7 +44,7 @@ func TestAggregatorMode(t *testing.T) {
 
 	blockManagerConfig := config.BlockManagerConfig{
 		BlockTime:         1 * time.Second,
-		NamespaceID:       [8]byte{1, 2, 3, 4, 5, 6, 7, 8},
+		NamespaceID:       "0102030405060708",
 		BatchSyncInterval: time.Second * 5,
 	}
 

@@ -1,7 +1,6 @@
 package config
 
 import (
-	"encoding/hex"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -53,8 +52,8 @@ type BlockManagerConfig struct {
 	// BatchSyncInterval defines how often block manager should sync with the settlement layer
 	BatchSyncInterval time.Duration `mapstructure:"batch_sync_interval"`
 	// DAStartHeight allows skipping first DAStartHeight-1 blocks when querying for blocks.
-	DAStartHeight uint64  `mapstructure:"da_start_height"`
-	NamespaceID   [8]byte `mapstructure:"namespace_id"`
+	DAStartHeight uint64 `mapstructure:"da_start_height"`
+	NamespaceID   string `mapstructure:"namespace_id"`
 	// The size of the batch in blocks. Every batch we'll write to the DA and the settlement layer.
 	BlockBatchSize uint64 `mapstructure:"block_batch_size"`
 	// The size of the batch in Bytes. Every batch we'll write to the DA and the settlement layer.
@@ -76,12 +75,12 @@ func (nc *NodeConfig) GetViperConfig(v *viper.Viper) error {
 	nc.BlockTime = v.GetDuration(flagBlockTime)
 	nc.BlockBatchSize = v.GetUint64(flagBlockBatchSize)
 	nc.BlockBatchSizeBytes = v.GetUint64(flagBlockBatchSizeBytes)
-	nsID := v.GetString(flagNamespaceID)
-	bytes, err := hex.DecodeString(nsID)
-	if err != nil {
-		return err
-	}
-	copy(nc.NamespaceID[:], bytes)
+	nc.NamespaceID = v.GetString(flagNamespaceID)
+	// bytes, err := hex.DecodeString(nsID)
+	// if err != nil {
+	// 	return err
+	// }
+	// copy(nc.NamespaceID[:], bytes)
 	return nil
 }
 
@@ -100,7 +99,7 @@ func AddFlags(cmd *cobra.Command) {
 	cmd.Flags().Duration(flagDABlockTime, def.DABlockTime, "DA chain block time (for syncing)")
 	cmd.Flags().Duration(flagBatchSyncInterval, def.BatchSyncInterval, "batch sync interval")
 	cmd.Flags().Uint64(flagDAStartHeight, def.DAStartHeight, "starting DA block height (for syncing)")
-	cmd.Flags().BytesHex(flagNamespaceID, def.NamespaceID[:], "namespace identifies (8 bytes in hex)")
+	cmd.Flags().String(flagNamespaceID, def.NamespaceID, "namespace identifies (8 bytes in hex)")
 	cmd.Flags().Uint64(flagBlockBatchSize, def.BlockBatchSize, "block batch size")
 	cmd.Flags().Uint64(flagBlockBatchSizeBytes, def.BlockBatchSizeBytes, "block batch size in bytes")
 }

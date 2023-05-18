@@ -126,8 +126,7 @@ func startInProcess(config *cfg.NodeConfig, tmConfig *tmcfg.Config, logger log.L
 	if err != nil {
 		return err
 	}
-	conv.GetNodeConfig(config, tmConfig)
-	err = conv.TranslateAddresses(config)
+	err = conv.GetNodeConfig(config, tmConfig)
 	if err != nil {
 		return err
 	}

@@ -18,7 +18,7 @@ var DefaultNodeConfig = NodeConfig{
 	Aggregator: true,
 	BlockManagerConfig: BlockManagerConfig{
 		BlockTime:           200 * time.Millisecond,
-		NamespaceID:         [8]byte{},
+		NamespaceID:         "000000000000ffff",
 		BatchSyncInterval:   time.Second * 30,
 		DABlockTime:         30 * time.Second,
 		BlockBatchSize:      500,
@@ -26,5 +26,6 @@ var DefaultNodeConfig = NodeConfig{
 	},
 	DALayer:         "mock",
 	SettlementLayer: "mock",
-	DAConfig:        "",
 }
+
+//FIXME: default config with mocks should be enoguh to run

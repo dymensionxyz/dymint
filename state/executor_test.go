@@ -40,7 +40,7 @@ func TestCreateBlock(t *testing.T) {
 	require.NotNil(clientCreator)
 	require.NotNil(abciClient)
 
-	nsID := [8]byte{1, 2, 3, 4, 5, 6, 7, 8}
+	nsID := "0102030405060708"
 
 	mpool := mempoolv1.NewTxMempool(logger, cfg.DefaultMempoolConfig(), proxy.NewAppConnMempool(abciClient), 0)
 	executor := NewBlockExecutor([]byte("test address"), nsID, "test", mpool, proxy.NewAppConns(clientCreator), nil, logger)
@@ -104,7 +104,7 @@ func TestApplyBlock(t *testing.T) {
 	require.NotNil(clientCreator)
 	require.NotNil(abciClient)
 
-	nsID := [8]byte{1, 2, 3, 4, 5, 6, 7, 8}
+	nsID := "0102030405060708"
 	chainID := "test"
 
 	// Init mempool

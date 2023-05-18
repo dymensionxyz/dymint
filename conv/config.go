@@ -10,7 +10,7 @@ import (
 //
 // This method only translates configuration, and doesn't verify it. If some option is missing in Tendermint's
 // config, it's skipped during translation.
-func GetNodeConfig(nodeConf *config.NodeConfig, tmConf *tmcfg.Config) {
+func GetNodeConfig(nodeConf *config.NodeConfig, tmConf *tmcfg.Config) error {
 	if tmConf != nil {
 		nodeConf.RootDir = tmConf.RootDir
 		nodeConf.DBPath = tmConf.DBPath
@@ -28,4 +28,11 @@ func GetNodeConfig(nodeConf *config.NodeConfig, tmConf *tmcfg.Config) {
 			nodeConf.RPC.TLSKeyFile = tmConf.RPC.TLSKeyFile
 		}
 	}
+
+	err := translateAddresses(nodeConf)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

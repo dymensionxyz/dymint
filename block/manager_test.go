@@ -607,6 +607,6 @@ func getManagerConfig() config.BlockManagerConfig {
 		BatchSyncInterval: 1 * time.Second,
 		BlockBatchSize:    defaultBatchSize,
 		DAStartHeight:     0,
-		NamespaceID:       [8]byte{1, 2, 3, 4, 5, 6, 7, 8},
+		NamespaceID:       "0102030405060708",
 	}
 }
