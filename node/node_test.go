@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/dymensionxyz/dymint/da"
-	"github.com/dymensionxyz/dymint/events"
+	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/mempool"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/stretchr/testify/assert"

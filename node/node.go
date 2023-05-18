@@ -21,9 +21,9 @@ import (
 	"github.com/dymensionxyz/dymint/config"
 	"github.com/dymensionxyz/dymint/da"
 	daregsitry "github.com/dymensionxyz/dymint/da/registry"
-	"github.com/dymensionxyz/dymint/events"
 	"github.com/dymensionxyz/dymint/mempool"
 	mempoolv1 "github.com/dymensionxyz/dymint/mempool/v1"
+	"github.com/dymensionxyz/dymint/node/events"
 	nodemempool "github.com/dymensionxyz/dymint/node/mempool"
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/settlement"
@@ -264,7 +264,7 @@ func (n *Node) OnStart() error {
 		settlementHealthy: true,
 		daHealthy:         true,
 	}
-	go n.eventListener()
+	n.eventListener()
 
 	// start the block manager
 	err = n.blockManager.Start(n.ctx, n.conf.Aggregator)

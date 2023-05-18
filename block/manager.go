@@ -11,7 +11,7 @@ import (
 	"github.com/avast/retry-go"
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	abciconv "github.com/dymensionxyz/dymint/conv/abci"
-	"github.com/dymensionxyz/dymint/events"
+	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/utils"
 	"github.com/libp2p/go-libp2p-core/crypto"
@@ -198,9 +198,8 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 	}
 	// TODO(omritoptix): change to private methods
 	go m.RetriveLoop(ctx)
-	go m.ApplyBlockLoop(ctx)
 	go m.SyncTargetLoop(ctx)
-	go m.EventListener(ctx)
+	m.EventListener(ctx)
 
 	return nil
 }
@@ -216,6 +215,7 @@ func getAddress(key crypto.PrivKey) ([]byte, error) {
 // EventListener registers events to callbacks.
 func (m *Manager) EventListener(ctx context.Context) {
 	go utils.SubscribeAndHandleEvents(ctx, m.pubsub, "nodeHealthStatusHandler", events.EventQueryHealthStatus, m.healthStatusEventCallback, m.logger)
+	go utils.SubscribeAndHandleEvents(ctx, m.pubsub, "ApplyBlockLoop", p2p.EventQueryNewNewGossipedBlock, m.applyBlockCallback, m.logger, 100)
 
 }
 
@@ -223,6 +223,17 @@ func (m *Manager) healthStatusEventCallback(event pubsub.Message) {
 	eventData := event.Data().(*events.EventDataHealthStatus)
 	m.logger.Info("Received health status event", "eventData", eventData)
 	m.shouldProduceBlocksCh <- eventData.Healthy
+}
+
+func (m *Manager) applyBlockCallback(event pubsub.Message) {
+	m.logger.Debug("Received new block event", "eventData", event.Data())
+	eventData := event.Data().(p2p.GossipedBlock)
+	block := eventData.Block
+	commit := eventData.Commit
+	err := m.applyBlock(context.Background(), &block, &commit, blockMetaData{source: gossipedBlock})
+	if err != nil {
+		m.logger.Debug("Failed to apply block", "err", err)
+	}
 }
 
 // SetDALC is used to set DataAvailabilityLayerClient used by Manager.
@@ -419,32 +430,6 @@ func (m *Manager) syncUntilTarget(ctx context.Context, syncTarget uint64) {
 			return
 		}
 		currentHeight = m.store.Height()
-	}
-}
-
-// ApplyBlockLoop is responsible for applying blocks retrieved from pubsub server.
-func (m *Manager) ApplyBlockLoop(ctx context.Context) {
-	subscription, err := m.pubsub.Subscribe(ctx, "ApplyBlockLoop", p2p.EventQueryNewNewGossipedBlock, 100)
-	if err != nil {
-		m.logger.Error("failed to subscribe to gossiped blocked events")
-		panic(err)
-	}
-	for {
-		select {
-		case blockEvent := <-subscription.Out():
-			m.logger.Debug("Received new block event", "eventData", blockEvent.Data())
-			eventData := blockEvent.Data().(p2p.GossipedBlock)
-			block := eventData.Block
-			commit := eventData.Commit
-			err := m.applyBlock(ctx, &block, &commit, blockMetaData{source: gossipedBlock})
-			if err != nil {
-				continue
-			}
-		case <-ctx.Done():
-			return
-		case <-subscription.Cancelled():
-			m.logger.Info("Subscription for gossied blocked events canceled")
-		}
 	}
 }
 

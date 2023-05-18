@@ -12,9 +12,9 @@ import (
 
 	"github.com/avast/retry-go"
 
-	"github.com/dymensionxyz/dymint/events"
 	"github.com/dymensionxyz/dymint/log/test"
 	mempoolv1 "github.com/dymensionxyz/dymint/mempool/v1"
+	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/testutil"
@@ -154,8 +154,7 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 	t.Log("Sync the manager")
 	ctx, cancel = context.WithTimeout(context.Background(), time.Second*2)
 	defer cancel()
-	go manager.RetriveLoop(ctx)
-	go manager.ApplyBlockLoop(ctx)
+	go manager.Start(ctx, false)
 	select {
 	case <-ctx.Done():
 		assert.Greater(t, manager.store.Height(), lastStoreHeight)
