@@ -49,7 +49,7 @@ type NodeConfig struct {
 	DALayer            string            `mapstructure:"da_layer"`
 	DAConfig           string            `mapstructure:"da_config"`
 	SettlementLayer    string            `mapstructure:"settlement_layer"`
-	SettlementConfig   settlement.Config `mapstructure:"settlement_config"`
+	SettlementConfig   settlement.Config `mapstructure:",squash"`
 }
 
 // BlockManagerConfig consists of all parameters required by BlockManagerConfig

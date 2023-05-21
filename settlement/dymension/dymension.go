@@ -321,9 +321,9 @@ func getCosmosClientOptions(config *settlement.Config) []cosmosclient.Option {
 		cosmosclient.WithGasLimit(config.GasLimit),
 		cosmosclient.WithGasPrices(config.GasPrices),
 	}
-	if config.KeyringBackend != "" {
+	if config.KeyRingHomeDir != "" {
 		options = append(options,
-			cosmosclient.WithKeyringBackend(config.KeyringBackend),
+			cosmosclient.WithKeyringBackend("test"),
 			cosmosclient.WithHome(config.KeyRingHomeDir))
 	}
 	return options
