@@ -18,6 +18,7 @@ const (
 const (
 	EventNewSettlementBatchAccepted = "NewSettlementBatchAccepted"
 	EventSequencersListUpdated      = "SequencersListUpdated"
+	EventSettlementHealthStatus     = "SettlementHealthStatus"
 )
 
 // EventDataNewSettlementBatchAccepted defines the structure of the event data for the EventNewSettlementBatchAccepted
@@ -34,9 +35,18 @@ type EventDataSequencersListUpdated struct {
 	Sequencers []types.Sequencer
 }
 
+// EventDataSettlementHealthStatus defines the structure of the event data for the EventDataSettlementHealthStatus
+type EventDataSettlementHealthStatus struct {
+	// Healthy is true if the settlement layer is healthy
+	Healthy bool
+	// Error is the error that was encountered in case of a health check failure
+	Error error
+}
+
 // Define queries
 var (
 	EventQueryNewSettlementBatchAccepted = QueryForEvent(EventNewSettlementBatchAccepted)
+	EventQuerySettlementHealthStatus     = QueryForEvent(EventSettlementHealthStatus)
 )
 
 // QueryForEvent returns a query for the given event.
