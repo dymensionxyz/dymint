@@ -11,7 +11,9 @@ import (
 	"github.com/avast/retry-go"
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	abciconv "github.com/dymensionxyz/dymint/conv/abci"
+	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/p2p"
+	"github.com/dymensionxyz/dymint/utils"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmcrypto "github.com/tendermint/tendermint/crypto"
@@ -78,6 +80,8 @@ type Manager struct {
 	batchRetryCancel context.CancelFunc
 	batchRetryMu     sync.RWMutex
 
+	shouldProduceBlocksCh chan bool
+
 	syncTarget   uint64
 	isSyncedCond sync.Cond
 
@@ -128,6 +132,9 @@ func NewManager(
 		logger.Info("WARNING: using default DA batch size bytes limit", "BlockBatchSizeBytes", config.DefaultNodeConfig.BlockBatchSizeBytes)
 		conf.BlockBatchSizeBytes = config.DefaultNodeConfig.BlockBatchSizeBytes
 	}
+	if conf.BlockTime == 0 {
+		panic("Block production time must be a positive number")
+	}
 
 	exec := state.NewBlockExecutor(proposerAddress, conf.NamespaceID, genesis.ChainID, mempool, proxyApp, eventBus, logger)
 
@@ -176,14 +183,31 @@ func NewManager(
 		settlementClient: settlementClient,
 		retriever:        dalc.(da.BatchRetriever),
 		// channels are buffered to avoid blocking on input/output operations, buffer sizes are arbitrary
-		syncTargetDiode: diodes.NewOneToOne(1, nil),
-		syncCache:       make(map[uint64]*types.Block),
-		isSyncedCond:    *sync.NewCond(new(sync.Mutex)),
-		batchInProcess:  batchInProcess,
-		logger:          logger,
+		syncTargetDiode:       diodes.NewOneToOne(1, nil),
+		syncCache:             make(map[uint64]*types.Block),
+		isSyncedCond:          *sync.NewCond(new(sync.Mutex)),
+		batchInProcess:        batchInProcess,
+		shouldProduceBlocksCh: make(chan bool, 1),
+		logger:                logger,
 	}
 
 	return agg, nil
+}
+
+// Start starts the block manager.
+func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
+	m.logger.Info("Starting the block manager")
+	if isAggregator {
+		m.logger.Info("Starting in aggregator mode")
+		// TODO(omritoptix): change to private methods
+		go m.ProduceBlockLoop(ctx)
+	}
+	// TODO(omritoptix): change to private methods
+	go m.RetriveLoop(ctx)
+	go m.SyncTargetLoop(ctx)
+	m.EventListener(ctx)
+
+	return nil
 }
 
 func getAddress(key crypto.PrivKey) ([]byte, error) {
@@ -192,6 +216,30 @@ func getAddress(key crypto.PrivKey) ([]byte, error) {
 		return nil, err
 	}
 	return tmcrypto.AddressHash(rawKey), nil
+}
+
+// EventListener registers events to callbacks.
+func (m *Manager) EventListener(ctx context.Context) {
+	go utils.SubscribeAndHandleEvents(ctx, m.pubsub, "nodeHealthStatusHandler", events.EventQueryHealthStatus, m.healthStatusEventCallback, m.logger)
+	go utils.SubscribeAndHandleEvents(ctx, m.pubsub, "ApplyBlockLoop", p2p.EventQueryNewNewGossipedBlock, m.applyBlockCallback, m.logger, 100)
+
+}
+
+func (m *Manager) healthStatusEventCallback(event pubsub.Message) {
+	eventData := event.Data().(*events.EventDataHealthStatus)
+	m.logger.Info("Received health status event", "eventData", eventData)
+	m.shouldProduceBlocksCh <- eventData.Healthy
+}
+
+func (m *Manager) applyBlockCallback(event pubsub.Message) {
+	m.logger.Debug("Received new block event", "eventData", event.Data())
+	eventData := event.Data().(p2p.GossipedBlock)
+	block := eventData.Block
+	commit := eventData.Commit
+	err := m.applyBlock(context.Background(), &block, &commit, blockMetaData{source: gossipedBlock})
+	if err != nil {
+		m.logger.Debug("Failed to apply block", "err", err)
+	}
 }
 
 // SetDALC is used to set DataAvailabilityLayerClient used by Manager.
@@ -264,33 +312,24 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 	if err != nil {
 		m.logger.Error("failed to wait for sync", "err", err)
 	}
-	// If we get blockTime of 0 we'll just run publishBlock in a loop
-	// vs waiting for ticks
-	produceBlockCh := make(chan bool, 1)
-	ticker := &time.Ticker{}
-	if m.conf.BlockTime == 0 {
-		produceBlockCh <- true
-	} else {
-		ticker = time.NewTicker(m.conf.BlockTime)
-		defer ticker.Stop()
-	}
-	// The func to invoke upon block publish
-	produceBlockLoop := func() {
-		err := m.produceBlock(ctx)
-		if err != nil {
-			m.logger.Error("error while producing block", "error", err)
-		}
-	}
+
+	ticker := time.NewTicker(m.conf.BlockTime)
+
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			produceBlockLoop()
-		case <-produceBlockCh:
-			for {
-				produceBlockLoop()
+			err := m.produceBlock(ctx)
+			if err != nil {
+				m.logger.Error("error while producing block", "error", err)
 			}
+		case shouldProduceBlocks := <-m.shouldProduceBlocksCh:
+			for !shouldProduceBlocks {
+				m.logger.Info("Stopped block production")
+				shouldProduceBlocks = <-m.shouldProduceBlocksCh
+			}
+			m.logger.Info("Resumed Block production")
 		}
 
 	}
@@ -397,32 +436,6 @@ func (m *Manager) syncUntilTarget(ctx context.Context, syncTarget uint64) {
 			return
 		}
 		currentHeight = m.store.Height()
-	}
-}
-
-// ApplyBlockLoop is responsible for applying blocks retrieved from pubsub server.
-func (m *Manager) ApplyBlockLoop(ctx context.Context) {
-	subscription, err := m.pubsub.Subscribe(ctx, "ApplyBlockLoop", p2p.EventQueryNewNewGossipedBlock, 100)
-	if err != nil {
-		m.logger.Error("failed to subscribe to gossiped blocked events")
-		panic(err)
-	}
-	for {
-		select {
-		case blockEvent := <-subscription.Out():
-			m.logger.Debug("Received new block event", "eventData", blockEvent.Data())
-			eventData := blockEvent.Data().(p2p.GossipedBlock)
-			block := eventData.Block
-			commit := eventData.Commit
-			err := m.applyBlock(ctx, &block, &commit, blockMetaData{source: gossipedBlock})
-			if err != nil {
-				continue
-			}
-		case <-ctx.Done():
-			return
-		case <-subscription.Cancelled():
-			m.logger.Info("Subscription for gossied blocked events canceled")
-		}
 	}
 }
 
