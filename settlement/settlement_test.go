@@ -31,7 +31,7 @@ func TestLifecycle(t *testing.T) {
 
 	pubsubServer := pubsub.NewServer()
 	pubsubServer.Start()
-	err := client.Init([]byte{}, pubsubServer, test.NewLogger(t))
+	err := client.Init(settlement.Config{}, pubsubServer, test.NewLogger(t))
 	require.NoError(err)
 
 	err = client.Start()
@@ -140,7 +140,7 @@ func TestGetSequencersEmptyList(t *testing.T) {
 
 	pubsubServer := pubsub.NewServer()
 	pubsubServer.Start()
-	err := settlementClient.Init([]byte{}, pubsubServer, test.NewLogger(t), options...)
+	err := settlementClient.Init(settlement.Config{}, pubsubServer, test.NewLogger(t), options...)
 	assert.Error(t, err, "empty sequencer list should return an error")
 
 }
@@ -183,12 +183,12 @@ func TestGetSequencers(t *testing.T) {
 /*                                    Utils                                   */
 /* -------------------------------------------------------------------------- */
 
-func initClient(t *testing.T, settlementlc settlement.LayerClient, options ...settlement.Option) {
+func initClient(t *testing.T, settlementlc settlement.LayerI, options ...settlement.Option) {
 	require := require.New(t)
 
 	pubsubServer := pubsub.NewServer()
 	pubsubServer.Start()
-	err := settlementlc.Init([]byte{}, pubsubServer, test.NewLogger(t), options...)
+	err := settlementlc.Init(settlement.Config{}, pubsubServer, test.NewLogger(t), options...)
 	require.NoError(err)
 
 	err = settlementlc.Start()

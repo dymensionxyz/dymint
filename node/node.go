@@ -69,7 +69,7 @@ type Node struct {
 	Store        store.Store
 	blockManager *block.Manager
 	dalc         da.DataAvailabilityLayerClient
-	settlementlc settlement.LayerClient
+	settlementlc settlement.LayerI
 
 	TxIndexer      txindex.TxIndexer
 	BlockIndexer   indexer.BlockIndexer
@@ -124,7 +124,7 @@ func NewNode(ctx context.Context, conf config.NodeConfig, p2pKey crypto.PrivKey,
 	if settlementlc == nil {
 		return nil, fmt.Errorf("couldn't get settlement client named '%s'", conf.SettlementLayer)
 	}
-	err = settlementlc.Init([]byte(conf.SettlementConfig), pubsubServer, logger.With("module", "settlement_client"))
+	err = settlementlc.Init(conf.SettlementConfig, pubsubServer, logger.With("module", "settlement_client"))
 	if err != nil {
 		return nil, fmt.Errorf("settlement layer client initialization error: %w", err)
 	}

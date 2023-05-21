@@ -3,6 +3,7 @@ package config
 import (
 	"time"
 
+	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -12,7 +13,6 @@ const (
 	flagDALayer             = "dymint.da_layer"
 	flagDAConfig            = "dymint.da_config"
 	flagSettlementLayer     = "dymint.settlement_layer"
-	flagSettlementConfig    = "dymint.settlement_config"
 	flagBlockTime           = "dymint.block_time"
 	flagDABlockTime         = "dymint.da_block_time"
 	flagBatchSyncInterval   = "dymint.batch_sync_interval"
@@ -20,6 +20,15 @@ const (
 	flagNamespaceID         = "dymint.namespace_id"
 	flagBlockBatchSize      = "dymint.block_batch_size"
 	flagBlockBatchSizeBytes = "dymint.block_batch_size_bytes"
+)
+
+const (
+	flagSLNodeAddress    = "dymint.settlement_config.node_address"
+	flagSLKeyRingHomeDir = "dymint.settlement_config.keyring_home_dir"
+	flagSLDymAccountName = "dymint.settlement_config.dym_account_name"
+	flagSLGasLimit       = "dymint.settlement_config.gas_limit"
+	flagSLGasPrices      = "dymint.settlement_config.gas_prices"
+	flagSLGasFees        = "dymint.settlement_config.gas_fees"
 )
 
 var (
@@ -37,10 +46,10 @@ type NodeConfig struct {
 	// parameters below are dymint specific and read from config
 	Aggregator         bool `mapstructure:"aggregator"`
 	BlockManagerConfig `mapstructure:",squash"`
-	DALayer            string `mapstructure:"da_layer"`
-	DAConfig           string `mapstructure:"da_config"`
-	SettlementLayer    string `mapstructure:"settlement_layer"`
-	SettlementConfig   string `mapstructure:"settlement_config"`
+	DALayer            string            `mapstructure:"da_layer"`
+	DAConfig           string            `mapstructure:"da_config"`
+	SettlementLayer    string            `mapstructure:"settlement_layer"`
+	SettlementConfig   settlement.Config `mapstructure:"settlement_config"`
 }
 
 // BlockManagerConfig consists of all parameters required by BlockManagerConfig
@@ -68,7 +77,6 @@ func (nc *NodeConfig) GetViperConfig(v *viper.Viper) error {
 	nc.DALayer = v.GetString(flagDALayer)
 	nc.DAConfig = v.GetString(flagDAConfig)
 	nc.SettlementLayer = v.GetString(flagSettlementLayer)
-	nc.SettlementConfig = v.GetString(flagSettlementConfig)
 	nc.DAStartHeight = v.GetUint64(flagDAStartHeight)
 	nc.DABlockTime = v.GetDuration(flagDABlockTime)
 	nc.BatchSyncInterval = v.GetDuration(flagBatchSyncInterval)
@@ -76,11 +84,6 @@ func (nc *NodeConfig) GetViperConfig(v *viper.Viper) error {
 	nc.BlockBatchSize = v.GetUint64(flagBlockBatchSize)
 	nc.BlockBatchSizeBytes = v.GetUint64(flagBlockBatchSizeBytes)
 	nc.NamespaceID = v.GetString(flagNamespaceID)
-	// bytes, err := hex.DecodeString(nsID)
-	// if err != nil {
-	// 	return err
-	// }
-	// copy(nc.NamespaceID[:], bytes)
 	return nil
 }
 
@@ -94,7 +97,6 @@ func AddFlags(cmd *cobra.Command) {
 	cmd.Flags().String(flagDALayer, def.DALayer, "Data Availability Layer Client name (mock or grpc")
 	cmd.Flags().String(flagDAConfig, def.DAConfig, "Data Availability Layer Client config")
 	cmd.Flags().String(flagSettlementLayer, def.SettlementLayer, "Settlement Layer Client name (currently only mock)")
-	cmd.Flags().String(flagSettlementConfig, def.SettlementConfig, "Settlement Layer Client config")
 	cmd.Flags().Duration(flagBlockTime, def.BlockTime, "block time (for aggregator mode)")
 	cmd.Flags().Duration(flagDABlockTime, def.DABlockTime, "DA chain block time (for syncing)")
 	cmd.Flags().Duration(flagBatchSyncInterval, def.BatchSyncInterval, "batch sync interval")
@@ -102,4 +104,11 @@ func AddFlags(cmd *cobra.Command) {
 	cmd.Flags().String(flagNamespaceID, def.NamespaceID, "namespace identifies (8 bytes in hex)")
 	cmd.Flags().Uint64(flagBlockBatchSize, def.BlockBatchSize, "block batch size")
 	cmd.Flags().Uint64(flagBlockBatchSizeBytes, def.BlockBatchSizeBytes, "block batch size in bytes")
+
+	cmd.Flags().String(flagSLNodeAddress, def.SettlementConfig.NodeAddress, "Settlement Layer Client config")
+	cmd.Flags().String(flagSLDymAccountName, def.SettlementConfig.DymAccountName, "Settlement Layer Client config")
+	cmd.Flags().String(flagSLKeyRingHomeDir, def.SettlementConfig.KeyRingHomeDir, "Settlement Layer Client config")
+	cmd.Flags().String(flagSLGasFees, def.SettlementConfig.GasFees, "Settlement Layer Client config")
+	cmd.Flags().String(flagSLGasPrices, def.SettlementConfig.GasPrices, "Settlement Layer Client config")
+	cmd.Flags().Uint64(flagSLGasLimit, def.SettlementConfig.GasLimit, "Settlement Layer Client config")
 }

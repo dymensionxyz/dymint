@@ -132,7 +132,7 @@ const connectionRefusedErrorMessage = "connection refused"
 type SettlementLayerClientSubmitBatchError struct {
 	IsError      atomic.Value
 	BatchCounter uint64
-	slmock.SettlementLayerClient
+	slmock.LayerClient
 }
 
 // SubmitBatch submits a batch to the settlement layer

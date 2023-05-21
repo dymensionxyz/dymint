@@ -13,6 +13,7 @@ import (
 	"github.com/dymensionxyz/dymint/log/test"
 	mocks "github.com/dymensionxyz/dymint/mocks"
 	settlementmocks "github.com/dymensionxyz/dymint/mocks/settlement"
+	"github.com/dymensionxyz/dymint/settlement"
 
 	sdkcodectypes "github.com/cosmos/cosmos-sdk/codec/types"
 )
@@ -36,7 +37,7 @@ func TestGetSequencers(t *testing.T) {
 	pubsubServer := pubsub.NewServer()
 	pubsubServer.Start()
 
-	hubClient, err := newDymensionHubClient([]byte{}, pubsubServer, test.NewLogger(t), options...)
+	hubClient, err := newDymensionHubClient(settlement.Config{}, pubsubServer, test.NewLogger(t), options...)
 	require.NoError(err)
 
 	sequencers, err := hubClient.GetSequencers("mock-rollapp")

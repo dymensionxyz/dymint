@@ -34,7 +34,7 @@ import (
 type blockSource string
 
 // defaultDABlockTime is used only if DABlockTime is not configured for manager
-const (
+var (
 	DABatchRetryDelay = 20 * time.Second
 	SLBatchRetryDelay = 10 * time.Second
 	maxDelay          = 1 * time.Minute
@@ -68,7 +68,7 @@ type Manager struct {
 	executor *state.BlockExecutor
 
 	dalc             da.DataAvailabilityLayerClient
-	settlementClient settlement.LayerClient
+	settlementClient settlement.LayerI
 	retriever        da.BatchRetriever
 
 	syncTargetDiode diodes.Diode
@@ -105,7 +105,7 @@ func NewManager(
 	mempool mempool.Mempool,
 	proxyApp proxy.AppConns,
 	dalc da.DataAvailabilityLayerClient,
-	settlementClient settlement.LayerClient,
+	settlementClient settlement.LayerI,
 	eventBus *tmtypes.EventBus,
 	pubsub *pubsub.Server,
 	p2pClient *p2p.Client,

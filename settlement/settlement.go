@@ -85,13 +85,13 @@ type ResultRetrieveBatch struct {
 }
 
 // Option is a function that sets a parameter on the settlement layer.
-type Option func(LayerClient)
+type Option func(LayerI)
 
-// LayerClient defines generic interface for Settlement layer interaction.
-type LayerClient interface {
+// LayerI defines generic interface for Settlement layer interaction.
+type LayerI interface {
 
 	// Init is called once for the client initialization
-	Init(config []byte, pubsub *pubsub.Server, logger log.Logger, options ...Option) error
+	Init(config Config, pubsub *pubsub.Server, logger log.Logger, options ...Option) error
 
 	// Start is called once, after Init. It's implementation should start the client service.
 	Start() error

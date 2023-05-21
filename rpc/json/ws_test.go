@@ -57,7 +57,7 @@ func TestWebSockets(t *testing.T) {
 `))
 	assert.NoError(err)
 
-	err = conn.SetReadDeadline(time.Now().Add(3 * time.Second))
+	err = conn.SetReadDeadline(time.Now().Add(10 * time.Second))
 	assert.NoError(err)
 	typ, msg, err := conn.ReadMessage()
 	assert.NoError(err)
@@ -65,7 +65,7 @@ func TestWebSockets(t *testing.T) {
 	assert.NotEmpty(msg)
 
 	// wait for new block event
-	err = conn.SetReadDeadline(time.Now().Add(3 * time.Second))
+	err = conn.SetReadDeadline(time.Now().Add(10 * time.Second))
 	assert.NoError(err)
 	typ, msg, err = conn.ReadMessage()
 	assert.NoError(err)

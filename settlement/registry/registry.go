@@ -17,13 +17,13 @@ const (
 )
 
 // A central registry for all Settlement Layer Clients
-var clients = map[Client]func() settlement.LayerClient{
-	Mock:      func() settlement.LayerClient { return &mock.SettlementLayerClient{} },
-	Dymension: func() settlement.LayerClient { return &dymension.LayerClient{} },
+var clients = map[Client]func() settlement.LayerI{
+	Mock:      func() settlement.LayerI { return &mock.LayerClient{} },
+	Dymension: func() settlement.LayerI { return &dymension.LayerClient{} },
 }
 
 // GetClient returns client identified by name.
-func GetClient(client Client) settlement.LayerClient {
+func GetClient(client Client) settlement.LayerI {
 	f, ok := clients[client]
 	if !ok {
 		return nil
