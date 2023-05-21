@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/dymensionxyz/dymint/da"
-	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/mempool"
+	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -34,7 +34,7 @@ func TestStartup(t *testing.T) {
 	require := require.New(t)
 
 	// TODO(omritoptix): Test with and without aggregator mode.
-	node, err := createNode()
+	node, err := CreateNode(false, nil)
 	require.NoError(err)
 	require.NotNil(node)
 
@@ -115,7 +115,7 @@ func TestMempoolDirectly(t *testing.T) {
 func TestHealthStatusEventHandler(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	node, err := createNode()
+	node, err := CreateNode(false, nil)
 	require.NoError(err)
 	require.NotNil(node)
 
@@ -203,38 +203,4 @@ func TestHealthStatusEventHandler(t *testing.T) {
 		})
 	}
 	node.Stop()
-}
-
-/* -------------------------------------------------------------------------- */
-/*                                    utils                                   */
-/* -------------------------------------------------------------------------- */
-
-func createNode() (node *Node, err error) {
-	app := &mocks.Application{}
-	app.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
-	key, _, _ := crypto.GenerateEd25519Key(rand.Reader)
-	signingKey, pubkey, _ := crypto.GenerateEd25519Key(rand.Reader)
-	// TODO(omritoptix): Test with and without aggregator mode.
-	pubkeyBytes, _ := pubkey.Raw()
-	mockConfigFmt := `
-	{"proposer_pub_key": "%s"}
-	`
-	mockConfig := fmt.Sprintf(mockConfigFmt, hex.EncodeToString(pubkeyBytes))
-	nodeConfig := config.NodeConfig{
-		RootDir:            "",
-		DBPath:             "",
-		P2P:                config.P2PConfig{},
-		RPC:                config.RPCConfig{},
-		Aggregator:         false,
-		BlockManagerConfig: config.BlockManagerConfig{BatchSyncInterval: time.Second * 5, BlockTime: 100 * time.Millisecond},
-		DALayer:            "mock",
-		DAConfig:           "",
-		SettlementLayer:    "mock",
-		SettlementConfig:   mockConfig,
-	}
-	node, err = NewNode(context.Background(), nodeConfig, key, signingKey, proxy.NewLocalClientCreator(app), &types.GenesisDoc{ChainID: "test"}, log.TestingLogger())
-	if err != nil {
-		return nil, err
-	}
-	return node, nil
 }
