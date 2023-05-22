@@ -1,15 +1,14 @@
-package store
+package store_test
 
 import (
-	"math/rand"
 	"os"
 	"testing"
 
 	abcitypes "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/crypto/ed25519"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
-	tmtypes "github.com/tendermint/tendermint/types"
 
+	"github.com/dymensionxyz/dymint/store"
+	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -22,27 +21,27 @@ func TestStoreHeight(t *testing.T) {
 		blocks   []*types.Block
 		expected uint64
 	}{
-		{"single block", []*types.Block{getRandomBlock(1, 0)}, 1},
+		{"single block", []*types.Block{testutil.GetRandomBlock(1, 0)}, 1},
 		{"two consecutive blocks", []*types.Block{
-			getRandomBlock(1, 0),
-			getRandomBlock(2, 0),
+			testutil.GetRandomBlock(1, 0),
+			testutil.GetRandomBlock(2, 0),
 		}, 2},
 		{"blocks out of order", []*types.Block{
-			getRandomBlock(2, 0),
-			getRandomBlock(3, 0),
-			getRandomBlock(1, 0),
+			testutil.GetRandomBlock(2, 0),
+			testutil.GetRandomBlock(3, 0),
+			testutil.GetRandomBlock(1, 0),
 		}, 3},
 		{"with a gap", []*types.Block{
-			getRandomBlock(1, 0),
-			getRandomBlock(9, 0),
-			getRandomBlock(10, 0),
+			testutil.GetRandomBlock(1, 0),
+			testutil.GetRandomBlock(9, 0),
+			testutil.GetRandomBlock(10, 0),
 		}, 10},
 	}
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			assert := assert.New(t)
-			bstore := New(NewDefaultInMemoryKVStore())
+			bstore := store.New(store.NewDefaultInMemoryKVStore())
 			assert.Equal(uint64(0), bstore.Height())
 
 			for _, block := range c.blocks {
@@ -62,10 +61,10 @@ func TestStoreLoad(t *testing.T) {
 		name   string
 		blocks []*types.Block
 	}{
-		{"single block", []*types.Block{getRandomBlock(1, 10)}},
+		{"single block", []*types.Block{testutil.GetRandomBlock(1, 10)}},
 		{"two consecutive blocks", []*types.Block{
-			getRandomBlock(1, 10),
-			getRandomBlock(2, 20),
+			testutil.GetRandomBlock(1, 10),
+			testutil.GetRandomBlock(2, 20),
 		}},
 		// TODO(tzdybal): this test needs extra handling because of lastCommits
 		//{"blocks out of order", []*types.Block{
@@ -86,13 +85,13 @@ func TestStoreLoad(t *testing.T) {
 		}
 	}()
 
-	for _, kv := range []KVStore{NewDefaultInMemoryKVStore(), NewDefaultKVStore(tmpDir, "db", "test")} {
+	for _, kv := range []store.KVStore{store.NewDefaultInMemoryKVStore(), store.NewDefaultKVStore(tmpDir, "db", "test")} {
 		for _, c := range cases {
 			t.Run(c.name, func(t *testing.T) {
 				assert := assert.New(t)
 				require := require.New(t)
 
-				bstore := New(kv)
+				bstore := store.New(kv)
 
 				lastCommit := &types.Commit{}
 				for _, block := range c.blocks {
@@ -129,10 +128,10 @@ func TestRestart(t *testing.T) {
 
 	assert := assert.New(t)
 
-	validatorSet := getRandomValidatorSet()
+	validatorSet := testutil.GetRandomValidatorSet()
 
-	kv := NewDefaultInMemoryKVStore()
-	s1 := New(kv)
+	kv := store.NewDefaultInMemoryKVStore()
+	s1 := store.New(kv)
 	expectedHeight := uint64(10)
 	_, err := s1.UpdateState(types.State{
 		LastBlockHeight: int64(expectedHeight),
@@ -143,7 +142,7 @@ func TestRestart(t *testing.T) {
 	}, nil)
 	assert.NoError(err)
 
-	s2 := New(kv)
+	s2 := store.New(kv)
 	_, err = s2.LoadState()
 	assert.NoError(err)
 
@@ -154,8 +153,8 @@ func TestBlockResponses(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	kv := NewDefaultInMemoryKVStore()
-	s := New(kv)
+	kv := store.NewDefaultInMemoryKVStore()
+	s := store.New(kv)
 
 	expected := &tmstate.ABCIResponses{
 		BeginBlock: &abcitypes.ResponseBeginBlock{
@@ -197,8 +196,8 @@ func TestBatch(t *testing.T) {
 	t.Parallel()
 	assert := assert.New(t)
 
-	kv := NewDefaultInMemoryKVStore()
-	s := New(kv)
+	kv := store.NewDefaultInMemoryKVStore()
+	s := store.New(kv)
 
 	expected := &tmstate.ABCIResponses{
 		BeginBlock: &abcitypes.ResponseBeginBlock{
@@ -238,47 +237,4 @@ func TestBatch(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(resp)
 	assert.Equal(expected, resp)
-}
-
-func getRandomBlock(height uint64, nTxs int) *types.Block {
-	block := &types.Block{
-		Header: types.Header{
-			Height: height,
-		},
-		Data: types.Data{
-			Txs: make(types.Txs, nTxs),
-			IntermediateStateRoots: types.IntermediateStateRoots{
-				RawRootsList: make([][]byte, nTxs),
-			},
-		},
-	}
-
-	for i := 0; i < nTxs; i++ {
-		block.Data.Txs[i] = getRandomTx()
-		block.Data.IntermediateStateRoots.RawRootsList[i] = getRandomBytes(32)
-	}
-
-	return block
-}
-
-func getRandomTx() types.Tx {
-	size := rand.Int()%100 + 100
-	return types.Tx(getRandomBytes(size))
-}
-
-func getRandomBytes(n int) []byte {
-	data := make([]byte, n)
-	_, _ = rand.Read(data)
-	return data
-}
-
-// TODO(tzdybal): extract to some common place
-func getRandomValidatorSet() *tmtypes.ValidatorSet {
-	pubKey := ed25519.GenPrivKey().PubKey()
-	return &tmtypes.ValidatorSet{
-		Proposer: &tmtypes.Validator{PubKey: pubKey, Address: pubKey.Address()},
-		Validators: []*tmtypes.Validator{
-			{PubKey: pubKey, Address: pubKey.Address()},
-		},
-	}
 }

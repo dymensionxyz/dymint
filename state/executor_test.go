@@ -178,7 +178,7 @@ func TestApplyBlock(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(newState)
 	assert.Equal(int64(1), newState.LastBlockHeight)
-	err = executor.Commit(context.Background(), &newState, block, resp)
+	_, err = executor.Commit(context.Background(), &newState, block, resp)
 	require.NoError(err)
 	assert.Equal(mockAppHash, newState.AppHash)
 	newState.LastStoreHeight = uint64(newState.LastBlockHeight)
@@ -210,7 +210,11 @@ func TestApplyBlock(t *testing.T) {
 
 	// Apply the block with an invalid commit
 	err = executor.Validate(state, block, invalidCommit, proposer)
-	require.Error(types.ErrInvalidSignature)
+
+	// FIXME: This test didn't check for specific error. It was just checking for error.
+	// If checking for this specific error, it fails
+	// require.ErrorIs(err, types.ErrInvalidSignature)
+	require.Error(err)
 
 	// Create a valid commit for the block
 	signature, err = proposerKey.Sign(abciHeaderBytes)
@@ -231,7 +235,7 @@ func TestApplyBlock(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(newState)
 	assert.Equal(int64(2), newState.LastBlockHeight)
-	err = executor.Commit(context.Background(), &newState, block, resp)
+	_, err = executor.Commit(context.Background(), &newState, block, resp)
 	require.NoError(err)
 
 	// wait for at least 4 Tx events, for up to 3 second.

@@ -138,6 +138,7 @@ func NewNode(ctx context.Context, conf config.NodeConfig, p2pKey crypto.PrivKey,
 		baseKV = store.NewDefaultKVStore(conf.RootDir, conf.DBPath, "dymint")
 	}
 	mainKV := store.NewPrefixKV(baseKV, mainPrefix)
+	// FIXME: not sure why dalcKV is needed. It's not used by celestia
 	dalcKV := store.NewPrefixKV(baseKV, dalcPrefix)
 	indexerKV := store.NewPrefixKV(baseKV, indexerPrefix)
 

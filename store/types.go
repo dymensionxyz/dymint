@@ -19,6 +19,13 @@ type Store interface {
 	// SetHeight sets the height saved in the Store if it is higher than the existing height.
 	SetHeight(height uint64)
 
+	// Base returns height of the lowest block in store.
+	Base() uint64
+
+	// SetBase sets the height saved in the Store for the lowest block
+	//FIXME: should be set to the real value on start
+	SetBase(height uint64)
+
 	// SaveBlock saves block along with its seen commit (which will be included in the next block).
 	SaveBlock(block *types.Block, commit *types.Commit, batch Batch) (Batch, error)
 
@@ -48,4 +55,7 @@ type Store interface {
 	SaveValidators(height uint64, validatorSet *tmtypes.ValidatorSet, batch Batch) (Batch, error)
 
 	LoadValidators(height uint64) (*tmtypes.ValidatorSet, error)
+
+	// Pruning functions
+	PruneBlocks(height int64) (uint64, error)
 }
