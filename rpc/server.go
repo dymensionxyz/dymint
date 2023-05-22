@@ -39,8 +39,18 @@ type Server struct {
 	server http.Server
 }
 
+// Option is a function that configures the Server.
+type Option func(*Server)
+
+// WithListener is an option that sets the listener.
+func WithListener(listener net.Listener) Option {
+	return func(d *Server) {
+		d.listener = listener
+	}
+}
+
 // NewServer creates new instance of Server with given configuration.
-func NewServer(node *node.Node, config *config.RPCConfig, logger log.Logger, listener ...net.Listener) *Server {
+func NewServer(node *node.Node, config *config.RPCConfig, logger log.Logger, options ...Option) *Server {
 	srv := &Server{
 		config: config,
 		client: client.NewClient(node),
@@ -51,10 +61,12 @@ func NewServer(node *node.Node, config *config.RPCConfig, logger log.Logger, lis
 		},
 		ctx: context.Background(),
 	}
-	if len(listener) > 0 {
-		srv.listener = listener[0]
-	}
 	srv.BaseService = service.NewBaseService(logger, "RPC", srv)
+
+	// Apply options
+	for _, option := range options {
+		option(srv)
+	}
 	return srv
 }
 

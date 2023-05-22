@@ -28,7 +28,8 @@ func CreateLocalServer(t *testing.T) (*rpc.Server, net.Listener) {
 		err = node.Start()
 		require.NoError(t, err)
 		rpcConfig := &config.RPCConfig{ListenAddress: fmt.Sprintf("tcp://%s", listener.Addr().String())}
-		server = rpc.NewServer(node, rpcConfig, log.TestingLogger(), listener)
+		options := []rpc.Option{rpc.WithListener(listener)}
+		server = rpc.NewServer(node, rpcConfig, log.TestingLogger(), options...)
 		err = server.Start()
 		require.NoError(t, err)
 		serverReadyCh <- true
