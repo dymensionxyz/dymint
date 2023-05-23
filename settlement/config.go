@@ -2,7 +2,7 @@ package settlement
 
 // Config for the DymensionLayerClient
 type Config struct {
-	KeyringBackend string `json:"keyring_backend"`
+	KeyringBackend string `mapstructure:"keyring_backend"`
 	NodeAddress    string `mapstructure:"node_address"`
 	KeyringHomeDir string `mapstructure:"keyring_home_dir"`
 	DymAccountName string `mapstructure:"dym_account_name"`
@@ -14,3 +14,5 @@ type Config struct {
 	//For testing only. probably should be refactored
 	ProposerPubKey string `json:"proposer_pub_key"`
 }
+
+// TODO: add default config to be used in default NodeConfig
