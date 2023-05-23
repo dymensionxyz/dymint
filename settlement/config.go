@@ -2,8 +2,9 @@ package settlement
 
 // Config for the DymensionLayerClient
 type Config struct {
+	KeyringBackend string `json:"keyring_backend"`
 	NodeAddress    string `mapstructure:"node_address"`
-	KeyRingHomeDir string `mapstructure:"keyring_home_dir"`
+	KeyringHomeDir string `mapstructure:"keyring_home_dir"`
 	DymAccountName string `mapstructure:"dym_account_name"`
 	RollappID      string `mapstructure:"rollapp_id"`
 	GasLimit       uint64 `mapstructure:"gas_limit"`

@@ -131,7 +131,7 @@ func newHubClient(config settlement.Config, pubsub *pubsub.Server, logger log.Lo
 }
 
 func initConfig(conf settlement.Config) (slstore store.KVStore, proposer string, err error) {
-	if conf.KeyRingHomeDir == "" {
+	if conf.KeyringHomeDir == "" {
 		//init store
 		slstore = store.NewDefaultInMemoryKVStore()
 		//init proposer pub key
@@ -150,8 +150,8 @@ func initConfig(conf settlement.Config) (slstore store.KVStore, proposer string,
 			proposer = hex.EncodeToString(pubKeybytes)
 		}
 	} else {
-		slstore = store.NewDefaultKVStore(conf.KeyRingHomeDir, "data", kvStoreDBName)
-		proposerKeyPath := filepath.Join(conf.KeyRingHomeDir, "config/priv_validator_key.json")
+		slstore = store.NewDefaultKVStore(conf.KeyringHomeDir, "data", kvStoreDBName)
+		proposerKeyPath := filepath.Join(conf.KeyringHomeDir, "config/priv_validator_key.json")
 		key, err := tmp2p.LoadOrGenNodeKey(proposerKeyPath)
 		if err != nil {
 			return nil, "", err

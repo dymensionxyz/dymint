@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/go-diodes"
+
 	"github.com/avast/retry-go"
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	abciconv "github.com/dymensionxyz/dymint/conv/abci"
@@ -136,8 +137,10 @@ func NewManager(
 		panic("Block production time must be a positive number")
 	}
 
-	exec := state.NewBlockExecutor(proposerAddress, conf.NamespaceID, genesis.ChainID, mempool, proxyApp, eventBus, logger)
-
+	exec, err := state.NewBlockExecutor(proposerAddress, conf.NamespaceID, genesis.ChainID, mempool, proxyApp, eventBus, logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create block executor: %w", err)
+	}
 	s, err := getInitialState(store, genesis)
 	if err != nil {
 		return nil, err

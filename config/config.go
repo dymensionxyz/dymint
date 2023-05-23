@@ -12,7 +12,6 @@ const (
 	flagAggregator          = "dymint.aggregator"
 	flagDALayer             = "dymint.da_layer"
 	flagDAConfig            = "dymint.da_config"
-	flagSettlementLayer     = "dymint.settlement_layer"
 	flagBlockTime           = "dymint.block_time"
 	flagDABlockTime         = "dymint.da_block_time"
 	flagBatchSyncInterval   = "dymint.batch_sync_interval"
@@ -23,8 +22,10 @@ const (
 )
 
 const (
+	flagSettlementLayer  = "dymint.settlement_layer"
 	flagSLNodeAddress    = "dymint.settlement_config.node_address"
-	flagSLKeyRingHomeDir = "dymint.settlement_config.keyring_home_dir"
+	flagSLKeyringBackend = "dymint.settlement_config.keyring_backend"
+	flagSLKeyringHomeDir = "dymint.settlement_config.keyring_home_dir"
 	flagSLDymAccountName = "dymint.settlement_config.dym_account_name"
 	flagSLGasLimit       = "dymint.settlement_config.gas_limit"
 	flagSLGasPrices      = "dymint.settlement_config.gas_prices"
@@ -84,6 +85,15 @@ func (nc *NodeConfig) GetViperConfig(v *viper.Viper) error {
 	nc.BlockBatchSize = v.GetUint64(flagBlockBatchSize)
 	nc.BlockBatchSizeBytes = v.GetUint64(flagBlockBatchSizeBytes)
 	nc.NamespaceID = v.GetString(flagNamespaceID)
+
+	nc.SettlementConfig.NodeAddress = v.GetString(flagSLNodeAddress)
+	nc.SettlementConfig.KeyringBackend = v.GetString(flagSLKeyringBackend)
+	nc.SettlementConfig.KeyringHomeDir = v.GetString(flagSLKeyringHomeDir)
+	nc.SettlementConfig.DymAccountName = v.GetString(flagSLDymAccountName)
+	nc.SettlementConfig.GasLimit = v.GetUint64(flagSLGasLimit)
+	nc.SettlementConfig.GasPrices = v.GetString(flagSLGasPrices)
+	nc.SettlementConfig.GasFees = v.GetString(flagSLGasFees)
+
 	return nil
 }
 
@@ -96,7 +106,6 @@ func AddFlags(cmd *cobra.Command) {
 	cmd.Flags().Bool(flagAggregator, false, "run node in aggregator mode")
 	cmd.Flags().String(flagDALayer, def.DALayer, "Data Availability Layer Client name (mock or grpc")
 	cmd.Flags().String(flagDAConfig, def.DAConfig, "Data Availability Layer Client config")
-	cmd.Flags().String(flagSettlementLayer, def.SettlementLayer, "Settlement Layer Client name (currently only mock)")
 	cmd.Flags().Duration(flagBlockTime, def.BlockTime, "block time (for aggregator mode)")
 	cmd.Flags().Duration(flagDABlockTime, def.DABlockTime, "DA chain block time (for syncing)")
 	cmd.Flags().Duration(flagBatchSyncInterval, def.BatchSyncInterval, "batch sync interval")
@@ -105,10 +114,12 @@ func AddFlags(cmd *cobra.Command) {
 	cmd.Flags().Uint64(flagBlockBatchSize, def.BlockBatchSize, "block batch size")
 	cmd.Flags().Uint64(flagBlockBatchSizeBytes, def.BlockBatchSizeBytes, "block batch size in bytes")
 
-	cmd.Flags().String(flagSLNodeAddress, def.SettlementConfig.NodeAddress, "Settlement Layer Client config")
-	cmd.Flags().String(flagSLDymAccountName, def.SettlementConfig.DymAccountName, "Settlement Layer Client config")
-	cmd.Flags().String(flagSLKeyRingHomeDir, def.SettlementConfig.KeyRingHomeDir, "Settlement Layer Client config")
-	cmd.Flags().String(flagSLGasFees, def.SettlementConfig.GasFees, "Settlement Layer Client config")
-	cmd.Flags().String(flagSLGasPrices, def.SettlementConfig.GasPrices, "Settlement Layer Client config")
-	cmd.Flags().Uint64(flagSLGasLimit, def.SettlementConfig.GasLimit, "Settlement Layer Client config")
+	cmd.Flags().String(flagSettlementLayer, def.SettlementLayer, "Settlement Layer Client name")
+	cmd.Flags().String(flagSLNodeAddress, def.SettlementConfig.NodeAddress, "Settlement Layer RPC node address")
+	cmd.Flags().String(flagSLKeyringBackend, def.SettlementConfig.KeyringBackend, "Sequencer keyring backend")
+	cmd.Flags().String(flagSLKeyringHomeDir, def.SettlementConfig.KeyringHomeDir, "Sequencer keyring path")
+	cmd.Flags().String(flagSLDymAccountName, def.SettlementConfig.DymAccountName, "Sequencer account name in keyring")
+	cmd.Flags().String(flagSLGasFees, def.SettlementConfig.GasFees, "Settlement Layer gas fees")
+	cmd.Flags().String(flagSLGasPrices, def.SettlementConfig.GasPrices, "Settlement Layer gas prices")
+	cmd.Flags().Uint64(flagSLGasLimit, def.SettlementConfig.GasLimit, "Settlement Layer batch submit gas limit")
 }

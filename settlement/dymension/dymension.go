@@ -10,6 +10,7 @@ import (
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	"github.com/dymensionxyz/cosmosclient/cosmosclient"
 	rollapptypes "github.com/dymensionxyz/dymension/x/rollapp/types"
+	"github.com/ignite/cli/ignite/pkg/cosmosaccount"
 
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	sequencertypes "github.com/dymensionxyz/dymension/x/sequencer/types"
@@ -321,10 +322,11 @@ func getCosmosClientOptions(config *settlement.Config) []cosmosclient.Option {
 		cosmosclient.WithGasLimit(config.GasLimit),
 		cosmosclient.WithGasPrices(config.GasPrices),
 	}
-	if config.KeyRingHomeDir != "" {
+	if config.KeyringHomeDir != "" {
 		options = append(options,
-			cosmosclient.WithKeyringBackend("test"),
-			cosmosclient.WithHome(config.KeyRingHomeDir))
+			cosmosclient.WithKeyringBackend(cosmosaccount.KeyringBackend(config.KeyringBackend)),
+			cosmosclient.WithHome(config.KeyringHomeDir),
+		)
 	}
 	return options
 }

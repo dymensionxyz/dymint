@@ -13,7 +13,7 @@ func TestGetNodeConfig(t *testing.T) {
 	t.Parallel()
 
 	validCosmos := "127.0.0.1:1234"
-	validOptimint := "/ip4/127.0.0.1/tcp/1234"
+	validDymint := "/ip4/127.0.0.1/tcp/1234"
 
 	cases := []struct {
 		name     string
@@ -23,7 +23,7 @@ func TestGetNodeConfig(t *testing.T) {
 		{"empty", nil, config.NodeConfig{}},
 		{"Seeds", &tmcfg.Config{P2P: &tmcfg.P2PConfig{Seeds: "seeds"}}, config.NodeConfig{P2P: config.P2PConfig{Seeds: "seeds"}}},
 		//GetNodeConfig translates the listen address, so we expect the translated address
-		{"ListenAddress", &tmcfg.Config{P2P: &tmcfg.P2PConfig{ListenAddress: validCosmos}}, config.NodeConfig{P2P: config.P2PConfig{ListenAddress: validOptimint}}},
+		{"ListenAddress", &tmcfg.Config{P2P: &tmcfg.P2PConfig{ListenAddress: validCosmos}}, config.NodeConfig{P2P: config.P2PConfig{ListenAddress: validDymint}}},
 		{"RootDir", &tmcfg.Config{BaseConfig: tmcfg.BaseConfig{RootDir: "~/root"}}, config.NodeConfig{RootDir: "~/root"}},
 		{"DBPath", &tmcfg.Config{BaseConfig: tmcfg.BaseConfig{DBPath: "./database"}}, config.NodeConfig{DBPath: "./database"}},
 	}
