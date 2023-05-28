@@ -11,32 +11,62 @@ import (
 	"github.com/rs/cors"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/libs/service"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	"golang.org/x/net/netutil"
 
 	"github.com/dymensionxyz/dymint/node"
+	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/rpc/client"
 	"github.com/dymensionxyz/dymint/rpc/json"
+	"github.com/dymensionxyz/dymint/rpc/middleware"
+	"github.com/dymensionxyz/dymint/rpc/sharedtypes"
+	"github.com/dymensionxyz/dymint/utils"
 )
 
 // Server handles HTTP and JSON-RPC requests, exposing Tendermint-compatible API.
 type Server struct {
 	*service.BaseService
 
-	config *config.RPCConfig
-	client *client.Client
+	config       *config.RPCConfig
+	client       *client.Client
+	node         *node.Node
+	healthStatus sharedtypes.HealthStatus
+	listener     net.Listener
+	ctx          context.Context
 
 	server http.Server
 }
 
+// Option is a function that configures the Server.
+type Option func(*Server)
+
+// WithListener is an option that sets the listener.
+func WithListener(listener net.Listener) Option {
+	return func(d *Server) {
+		d.listener = listener
+	}
+}
+
 // NewServer creates new instance of Server with given configuration.
-func NewServer(node *node.Node, config *config.RPCConfig, logger log.Logger) *Server {
+func NewServer(node *node.Node, config *config.RPCConfig, logger log.Logger, options ...Option) *Server {
 	srv := &Server{
 		config: config,
 		client: client.NewClient(node),
+		node:   node,
+		healthStatus: sharedtypes.HealthStatus{
+			IsHealthy: true,
+			Error:     nil,
+		},
+		ctx: context.Background(),
 	}
 	srv.BaseService = service.NewBaseService(logger, "RPC", srv)
+
+	// Apply options
+	for _, option := range options {
+		option(srv)
+	}
 	return srv
 }
 
@@ -47,18 +77,35 @@ func (s *Server) Client() rpcclient.Client {
 	return s.client
 }
 
+func (s *Server) PubSubServer() *pubsub.Server {
+	return s.node.PubSubServer()
+}
+
 // OnStart is called when Server is started (see service.BaseService for details).
 func (s *Server) OnStart() error {
+	go s.eventListener()
 	return s.startRPC()
 }
 
 // OnStop is called when Server is stopped (see service.BaseService for details).
 func (s *Server) OnStop() {
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(s.ctx, 5*time.Second)
 	defer cancel()
 	if err := s.server.Shutdown(ctx); err != nil {
 		s.Logger.Error("error while shuting down RPC server", "error", err)
 	}
+}
+
+// EventListener registers events to callbacks.
+func (s *Server) eventListener() {
+	go utils.SubscribeAndHandleEvents(s.ctx, s.PubSubServer(), "RPCNodeHealthStatusHandler", events.EventQueryHealthStatus, s.healthStatusEventCallback, s.Logger)
+}
+
+// healthStatusEventCallback is a callback function that handles health status events.
+func (s *Server) healthStatusEventCallback(event pubsub.Message) {
+	eventData := event.Data().(*events.EventDataHealthStatus)
+	s.Logger.Info("Received health status event", "eventData", eventData)
+	s.healthStatus.Set(eventData.Healthy, eventData.Error)
 }
 
 func (s *Server) startRPC() error {
@@ -73,9 +120,15 @@ func (s *Server) startRPC() error {
 	proto := parts[0]
 	addr := parts[1]
 
-	listener, err := net.Listen(proto, addr)
-	if err != nil {
-		return err
+	var listener net.Listener
+	if s.listener == nil {
+		var err error
+		listener, err = net.Listen(proto, addr)
+		if err != nil {
+			return err
+		}
+	} else {
+		listener = s.listener
 	}
 
 	if s.config.MaxOpenConnections != 0 {
@@ -102,6 +155,15 @@ func (s *Server) startRPC() error {
 		handler = c.Handler(handler)
 	}
 
+	// Apply Middleware
+	reg := middleware.GetRegistry()
+	reg.Register(
+		middleware.NewStatusMiddleware(&s.healthStatus),
+	)
+	middlewareClient := middleware.NewClient(*reg, s.Logger.With("module", "rpc/middleware"))
+	handler = middlewareClient.Handle(handler)
+
+	// Start HTTP server
 	go func() {
 		err := s.serve(listener, handler)
 		if err != http.ErrServerClosed {
