@@ -8,7 +8,6 @@ func (s *DefaultStore) PruneBlocks(heightInt int64) (uint64, error) {
 		return 0, fmt.Errorf("height must be greater than 0")
 	}
 
-	//TODO: validate the height is > committed/synced height
 	height := uint64(heightInt)
 	if height > s.Height() {
 		return 0, fmt.Errorf("cannot prune beyond the latest height %v", s.height)
@@ -24,11 +23,11 @@ func (s *DefaultStore) PruneBlocks(heightInt int64) (uint64, error) {
 	defer batch.Discard()
 
 	flush := func(batch Batch, base uint64) error {
-		s.SetBase(base)
 		err := batch.Commit()
 		if err != nil {
 			return fmt.Errorf("failed to prune up to height %v: %w", base, err)
 		}
+		s.SetBase(base)
 		return nil
 	}
 
@@ -61,7 +60,6 @@ func (s *DefaultStore) PruneBlocks(heightInt int64) (uint64, error) {
 			if err != nil {
 				return 0, err
 			}
-			//FIXME: I think it mess with the defer above as it overwrites the batch variable
 			batch = s.db.NewBatch()
 			defer batch.Discard()
 		}
