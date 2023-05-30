@@ -3,9 +3,7 @@ package node
 import (
 	"context"
 	"crypto/rand"
-	"encoding/hex"
 	"errors"
-	"fmt"
 	"testing"
 	"time"
 
@@ -57,16 +55,8 @@ func TestMempoolDirectly(t *testing.T) {
 	app.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 	app.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{})
 	key, _, _ := crypto.GenerateEd25519Key(rand.Reader)
-	signingKey, pubkey, _ := crypto.GenerateEd25519Key(rand.Reader)
+	signingKey, _, _ := crypto.GenerateEd25519Key(rand.Reader)
 	anotherKey, _, _ := crypto.GenerateEd25519Key(rand.Reader)
-
-	pubkeyBytes, err := pubkey.Raw()
-	require.NoError(err)
-
-	mockConfigFmt := `
-	{"proposer_pub_key": "%s"}
-	`
-	mockConfig := fmt.Sprintf(mockConfigFmt, hex.EncodeToString(pubkeyBytes))
 
 	nodeConfig := config.NodeConfig{
 		RootDir:            "",
@@ -78,7 +68,7 @@ func TestMempoolDirectly(t *testing.T) {
 		DALayer:            "mock",
 		DAConfig:           "",
 		SettlementLayer:    "mock",
-		SettlementConfig:   mockConfig,
+		SettlementConfig:   settlement.Config{},
 	}
 	node, err := NewNode(context.Background(), nodeConfig, key, signingKey, proxy.NewLocalClientCreator(app), &types.GenesisDoc{ChainID: "test"}, log.TestingLogger())
 	require.NoError(err)

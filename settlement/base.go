@@ -2,7 +2,6 @@ package settlement
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sync/atomic"
 
@@ -10,10 +9,6 @@ import (
 	"github.com/dymensionxyz/dymint/log"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/tendermint/tendermint/libs/pubsub"
-)
-
-const (
-	defaultBatchSize = 5
 )
 
 // BaseLayerClient is intended only for usage in tests.
@@ -28,28 +23,18 @@ type BaseLayerClient struct {
 	client         HubClient
 }
 
-// Config for the BaseLayerClient
-type Config struct {
-	BatchSize uint64 `json:"batch_size"`
-	RollappID string `json:"rollapp_id"`
-}
-
-var _ LayerClient = &BaseLayerClient{}
+var _ LayerI = &BaseLayerClient{}
 
 // WithHubClient is an option which sets the hub client.
 func WithHubClient(hubClient HubClient) Option {
-	return func(settlementClient LayerClient) {
+	return func(settlementClient LayerI) {
 		settlementClient.(*BaseLayerClient).client = hubClient
 	}
 }
 
 // Init is called once. it initializes the struct members.
-func (b *BaseLayerClient) Init(config []byte, pubsub *pubsub.Server, logger log.Logger, options ...Option) error {
-	c, err := b.getConfig(config)
-	if err != nil {
-		return err
-	}
-	b.config = *c
+func (b *BaseLayerClient) Init(config Config, pubsub *pubsub.Server, logger log.Logger, options ...Option) error {
+	b.config = config
 	b.pubsub = pubsub
 	b.logger = logger
 	b.ctx, b.cancel = context.WithCancel(context.Background())
@@ -156,31 +141,6 @@ func (b *BaseLayerClient) fetchSequencersList() ([]*types.Sequencer, error) {
 		return nil, err
 	}
 	return sequencers, nil
-}
-
-func (b *BaseLayerClient) decodeConfig(config []byte) (*Config, error) {
-	var c Config
-	err := json.Unmarshal(config, &c)
-	return &c, err
-}
-
-func (b *BaseLayerClient) getConfig(config []byte) (*Config, error) {
-	var c *Config
-	if len(config) > 0 {
-		var err error
-		c, err = b.decodeConfig(config)
-		if err != nil {
-			return nil, err
-		}
-		if c.BatchSize == 0 {
-			c.BatchSize = defaultBatchSize
-		}
-	} else {
-		c = &Config{
-			BatchSize: defaultBatchSize,
-		}
-	}
-	return c, nil
 }
 
 func (b *BaseLayerClient) validateBatch(batch *types.Batch) {

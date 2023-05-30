@@ -4,7 +4,6 @@ import (
 	"context"
 	crand "crypto/rand"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"math/rand"
 	"testing"
@@ -30,7 +29,7 @@ import (
 	abciconv "github.com/dymensionxyz/dymint/conv/abci"
 	"github.com/dymensionxyz/dymint/mocks"
 	"github.com/dymensionxyz/dymint/node"
-	slmock "github.com/dymensionxyz/dymint/settlement/mock"
+	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
 )
 
@@ -92,11 +91,7 @@ func TestGenesisChunked(t *testing.T) {
 	mockApp := &mocks.Application{}
 	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 	privKey, _, _ := crypto.GenerateEd25519Key(crand.Reader)
-	signingKey, proposerPubKey, _ := crypto.GenerateEd25519Key(crand.Reader)
-
-	proposerPubKeyBytes, err := proposerPubKey.Raw()
-	settlementLayerConfig, err := json.Marshal(slmock.Config{ProposerPubKey: hex.EncodeToString(proposerPubKeyBytes)})
-	require.NoError(t, err)
+	signingKey, _, _ := crypto.GenerateEd25519Key(crand.Reader)
 
 	config := config.NodeConfig{
 		RootDir:            "",
@@ -108,7 +103,7 @@ func TestGenesisChunked(t *testing.T) {
 		DALayer:            "mock",
 		DAConfig:           "",
 		SettlementLayer:    "mock",
-		SettlementConfig:   string(settlementLayerConfig),
+		SettlementConfig:   settlement.Config{},
 	}
 	n, _ := node.NewNode(context.Background(), config, privKey, signingKey, proxy.NewLocalClientCreator(mockApp), genDoc, log.TestingLogger())
 
@@ -426,8 +421,7 @@ func TestTx(t *testing.T) {
 	signingKey, proposerPubKey, err := crypto.GenerateEd25519Key(crand.Reader)
 	require.NoError(err)
 
-	proposerPubKeyBytes, err := proposerPubKey.Raw()
-	settlementLayerConfig, err := json.Marshal(slmock.Config{ProposerPubKey: hex.EncodeToString(proposerPubKeyBytes)})
+	pubKeybytes, err := proposerPubKey.Raw()
 	require.NoError(err)
 
 	node, err := node.NewNode(context.Background(), config.NodeConfig{
@@ -439,7 +433,7 @@ func TestTx(t *testing.T) {
 			BlockTime:         200 * time.Millisecond,
 			BatchSyncInterval: time.Second,
 		},
-		SettlementConfig: string(settlementLayerConfig),
+		SettlementConfig: settlement.Config{ProposerPubKey: hex.EncodeToString(pubKeybytes)},
 	},
 		key, signingKey, proxy.NewLocalClientCreator(mockApp),
 		&tmtypes.GenesisDoc{ChainID: "test"},
@@ -673,8 +667,7 @@ func TestValidatorSetHandling(t *testing.T) {
 	signingKey, proposerPubKey, err := crypto.GenerateEd25519Key(crand.Reader)
 	require.NoError(err)
 
-	proposerPubKeyBytes, _ := proposerPubKey.Raw()
-	settlementLayerConfig, err := json.Marshal(slmock.Config{ProposerPubKey: hex.EncodeToString(proposerPubKeyBytes)})
+	proposerPubKeyBytes, err := proposerPubKey.Raw()
 	require.NoError(err)
 
 	vKeys := make([]tmcrypto.PrivKey, 1)
@@ -702,7 +695,7 @@ func TestValidatorSetHandling(t *testing.T) {
 		SettlementLayer:    "mock",
 		Aggregator:         true,
 		BlockManagerConfig: config.BlockManagerConfig{BlockTime: 10 * time.Millisecond, BatchSyncInterval: time.Second, BlockBatchSize: 1},
-		SettlementConfig:   string(settlementLayerConfig),
+		SettlementConfig:   settlement.Config{ProposerPubKey: hex.EncodeToString(proposerPubKeyBytes)},
 	}
 
 	node, err := node.NewNode(context.Background(), nodeConfig, key, signingKey, proxy.NewLocalClientCreator(app), &tmtypes.GenesisDoc{ChainID: "test", Validators: genesisValidators}, log.TestingLogger())
@@ -803,13 +796,9 @@ func getRPC(t *testing.T) (*mocks.Application, *Client) {
 	app := &mocks.Application{}
 	app.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 	key, _, _ := crypto.GenerateEd25519Key(crand.Reader)
-	signingKey, pubkey, _ := crypto.GenerateEd25519Key(crand.Reader)
-
-	proposerPubKeyBytes, err := pubkey.Raw()
+	signingKey, _, err := crypto.GenerateEd25519Key(crand.Reader)
 	require.NoError(err)
 
-	settlementLayerConfig, err := json.Marshal(slmock.Config{ProposerPubKey: hex.EncodeToString(proposerPubKeyBytes)})
-	require.NoError(err)
 	config := config.NodeConfig{
 		RootDir:            "",
 		DBPath:             "",
@@ -820,7 +809,7 @@ func getRPC(t *testing.T) (*mocks.Application, *Client) {
 		DALayer:            "mock",
 		DAConfig:           "",
 		SettlementLayer:    "mock",
-		SettlementConfig:   string(settlementLayerConfig),
+		SettlementConfig:   settlement.Config{},
 	}
 	node, err := node.NewNode(context.Background(), config, key, signingKey, proxy.NewLocalClientCreator(app), &tmtypes.GenesisDoc{ChainID: "test"}, log.TestingLogger())
 	require.NoError(err)
@@ -888,17 +877,15 @@ func TestMempool2Nodes(t *testing.T) {
 	require.NoError(err)
 
 	proposerPubKey1Bytes, err := proposerPubKey1.Raw()
-	settlementLayerConfig1, err := json.Marshal(slmock.Config{ProposerPubKey: hex.EncodeToString(proposerPubKey1Bytes)})
 	require.NoError(err)
 
 	proposerPubKey2Bytes, err := proposerPubKey2.Raw()
-	settlementLayerConfig2, err := json.Marshal(slmock.Config{ProposerPubKey: hex.EncodeToString(proposerPubKey2Bytes)})
 	require.NoError(err)
 
 	node1, err := node.NewNode(context.Background(), config.NodeConfig{
 		DALayer:          "mock",
 		SettlementLayer:  "mock",
-		SettlementConfig: string(settlementLayerConfig1),
+		SettlementConfig: settlement.Config{ProposerPubKey: hex.EncodeToString(proposerPubKey1Bytes)},
 		BlockManagerConfig: config.BlockManagerConfig{
 			BlockBatchSize:    1,
 			BlockTime:         100 * time.Millisecond,
@@ -914,7 +901,7 @@ func TestMempool2Nodes(t *testing.T) {
 	node2, err := node.NewNode(context.Background(), config.NodeConfig{
 		DALayer:          "mock",
 		SettlementLayer:  "mock",
-		SettlementConfig: string(settlementLayerConfig2),
+		SettlementConfig: settlement.Config{ProposerPubKey: hex.EncodeToString(proposerPubKey2Bytes)},
 		BlockManagerConfig: config.BlockManagerConfig{
 			BlockBatchSize:    1,
 			BlockTime:         100 * time.Millisecond,

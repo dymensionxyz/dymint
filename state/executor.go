@@ -3,6 +3,7 @@ package state
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"errors"
 	"time"
 
@@ -37,10 +38,14 @@ type BlockExecutor struct {
 
 // NewBlockExecutor creates new instance of BlockExecutor.
 // Proposer address and namespace ID will be used in all newly created blocks.
-func NewBlockExecutor(proposerAddress []byte, namespaceID [8]byte, chainID string, mempool mempool.Mempool, proxyApp proxy.AppConns, eventBus *tmtypes.EventBus, logger log.Logger) *BlockExecutor {
-	return &BlockExecutor{
+func NewBlockExecutor(proposerAddress []byte, namespaceID string, chainID string, mempool mempool.Mempool, proxyApp proxy.AppConns, eventBus *tmtypes.EventBus, logger log.Logger) (*BlockExecutor, error) {
+	bytes, err := hex.DecodeString(namespaceID)
+	if err != nil {
+		return nil, err
+	}
+
+	var be = BlockExecutor{
 		proposerAddress:       proposerAddress,
-		namespaceID:           namespaceID,
 		chainID:               chainID,
 		proxyAppConsensusConn: proxyApp.Consensus(),
 		proxyAppQueryConn:     proxyApp.Query(),
@@ -48,6 +53,8 @@ func NewBlockExecutor(proposerAddress []byte, namespaceID [8]byte, chainID strin
 		eventBus:              eventBus,
 		logger:                logger,
 	}
+	copy(be.namespaceID[:], bytes)
+	return &be, nil
 }
 
 // InitChain calls InitChainSync using consensus connection to app.

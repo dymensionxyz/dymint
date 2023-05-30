@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/go-diodes"
+
 	"github.com/avast/retry-go"
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	abciconv "github.com/dymensionxyz/dymint/conv/abci"
@@ -36,7 +37,7 @@ import (
 type blockSource string
 
 // defaultDABlockTime is used only if DABlockTime is not configured for manager
-const (
+var (
 	DABatchRetryDelay = 20 * time.Second
 	SLBatchRetryDelay = 10 * time.Second
 	maxDelay          = 1 * time.Minute
@@ -70,7 +71,7 @@ type Manager struct {
 	executor *state.BlockExecutor
 
 	dalc             da.DataAvailabilityLayerClient
-	settlementClient settlement.LayerClient
+	settlementClient settlement.LayerI
 	retriever        da.BatchRetriever
 
 	syncTargetDiode diodes.Diode
@@ -106,7 +107,7 @@ func NewManager(
 	mempool mempool.Mempool,
 	proxyApp proxy.AppConns,
 	dalc da.DataAvailabilityLayerClient,
-	settlementClient settlement.LayerClient,
+	settlementClient settlement.LayerI,
 	eventBus *tmtypes.EventBus,
 	pubsub *pubsub.Server,
 	p2pClient *p2p.Client,
@@ -133,8 +134,10 @@ func NewManager(
 		panic("Block production time must be a positive number")
 	}
 
-	exec := state.NewBlockExecutor(proposerAddress, conf.NamespaceID, genesis.ChainID, mempool, proxyApp, eventBus, logger)
-
+	exec, err := state.NewBlockExecutor(proposerAddress, conf.NamespaceID, genesis.ChainID, mempool, proxyApp, eventBus, logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create block executor: %w", err)
+	}
 	s, err := getInitialState(store, genesis)
 	if err != nil {
 		return nil, err

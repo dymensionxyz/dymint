@@ -2,14 +2,16 @@ package mock
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"strings"
+	"path/filepath"
 	"sync/atomic"
 	"time"
 
+	"github.com/libp2p/go-libp2p-core/crypto"
 	tmp2p "github.com/tendermint/tendermint/p2p"
 
 	"github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
@@ -29,16 +31,16 @@ const kvStoreDBName = "settlement"
 var settlementKVPrefix = []byte{0}
 var slStateIndexKey = []byte("slStateIndex")
 
-// SettlementLayerClient is an extension of the base settlement layer client
+// LayerClient is an extension of the base settlement layer client
 // for usage in tests and local development.
-type SettlementLayerClient struct {
+type LayerClient struct {
 	*settlement.BaseLayerClient
 }
 
-var _ settlement.LayerClient = (*SettlementLayerClient)(nil)
+var _ settlement.LayerI = (*LayerClient)(nil)
 
 // Init initializes the mock layer client.
-func (m *SettlementLayerClient) Init(config []byte, pubsub *pubsub.Server, logger log.Logger, options ...settlement.Option) error {
+func (m *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, logger log.Logger, options ...settlement.Option) error {
 	HubClientMock, err := newHubClient(config, pubsub, logger)
 	if err != nil {
 		return err
@@ -59,35 +61,26 @@ func (m *SettlementLayerClient) Init(config []byte, pubsub *pubsub.Server, logge
 	return nil
 }
 
-// Config for the HubClient
-type Config struct {
-	*settlement.Config
-	DBPath         string `json:"db_path"`
-	RootDir        string `json:"root_dir"`
-	ProposerPubKey string `json:"proposer_pub_key"`
-	store          store.KVStore
-}
-
 // HubClient implements The HubClient interface
 type HubClient struct {
-	config       *Config
-	slStateIndex uint64
-	logger       log.Logger
-	pubsub       *pubsub.Server
-	latestHeight uint64
-	settlementKV store.KVStore
+	ProposerPubKey string
+	slStateIndex   uint64
+	logger         log.Logger
+	pubsub         *pubsub.Server
+	latestHeight   uint64
+	settlementKV   store.KVStore
 }
 
 var _ settlement.HubClient = &HubClient{}
 
-func newHubClient(config []byte, pubsub *pubsub.Server, logger log.Logger) (*HubClient, error) {
+func newHubClient(config settlement.Config, pubsub *pubsub.Server, logger log.Logger) (*HubClient, error) {
 	latestHeight := uint64(0)
 	slStateIndex := uint64(0)
-	conf, err := getConfig(config)
+	slstore, proposer, err := initConfig(config)
 	if err != nil {
 		return nil, err
 	}
-	settlementKV := store.NewPrefixKV(conf.store, settlementKVPrefix)
+	settlementKV := store.NewPrefixKV(slstore, settlementKVPrefix)
 	b, err := settlementKV.Get(slStateIndexKey)
 	if err == nil {
 		slStateIndex = binary.BigEndian.Uint64(b)
@@ -103,49 +96,47 @@ func newHubClient(config []byte, pubsub *pubsub.Server, logger log.Logger) (*Hub
 		}
 		latestHeight = settlementBatch.StartHeight + settlementBatch.NumBlocks - 1
 	}
+
 	return &HubClient{
-		config:       conf,
-		logger:       logger,
-		pubsub:       pubsub,
-		latestHeight: latestHeight,
-		slStateIndex: slStateIndex,
-		settlementKV: settlementKV,
+		ProposerPubKey: proposer,
+		logger:         logger,
+		pubsub:         pubsub,
+		latestHeight:   latestHeight,
+		slStateIndex:   slStateIndex,
+		settlementKV:   settlementKV,
 	}, nil
 }
 
-func getConfig(config []byte) (*Config, error) {
-	var conf *Config
-	if len(config) > 0 {
-		var err error
-		conf, err = decodeConfig(config)
-		if err != nil {
-			return nil, err
-		}
-		if conf.RootDir != "" && conf.DBPath != "" {
-			conf.store = store.NewDefaultKVStore(conf.RootDir, conf.DBPath, kvStoreDBName)
+func initConfig(conf settlement.Config) (slstore store.KVStore, proposer string, err error) {
+	if conf.KeyringHomeDir == "" {
+		//init store
+		slstore = store.NewDefaultInMemoryKVStore()
+		//init proposer pub key
+		if conf.ProposerPubKey != "" {
+			proposer = conf.ProposerPubKey
 		} else {
-			conf.store = store.NewDefaultInMemoryKVStore()
-		}
-		// If the proposer pub key is a path, load the key from the file. otherwise, use the key as is.
-		if strings.HasSuffix(string(conf.ProposerPubKey), ".json") {
-			key, err := tmp2p.LoadOrGenNodeKey(string(conf.ProposerPubKey))
+			_, proposerPubKey, err := crypto.GenerateEd25519Key(rand.Reader)
 			if err != nil {
-				return nil, err
+				return nil, "", err
 			}
-			conf.ProposerPubKey = hex.EncodeToString(key.PubKey().Bytes())
+			pubKeybytes, err := proposerPubKey.Raw()
+			if err != nil {
+				return nil, "", err
+			}
+
+			proposer = hex.EncodeToString(pubKeybytes)
 		}
 	} else {
-		conf = &Config{
-			store: store.NewDefaultInMemoryKVStore(),
+		slstore = store.NewDefaultKVStore(conf.KeyringHomeDir, "data", kvStoreDBName)
+		proposerKeyPath := filepath.Join(conf.KeyringHomeDir, "config/priv_validator_key.json")
+		key, err := tmp2p.LoadOrGenNodeKey(proposerKeyPath)
+		if err != nil {
+			return nil, "", err
 		}
+		proposer = hex.EncodeToString(key.PubKey().Bytes())
 	}
-	return conf, nil
-}
 
-func decodeConfig(config []byte) (*Config, error) {
-	var conf Config
-	err := json.Unmarshal(config, &conf)
-	return &conf, err
+	return
 }
 
 // Start starts the mock client
@@ -194,7 +185,7 @@ func (c *HubClient) GetBatchAtIndex(rollappID string, index uint64) (*settlement
 
 // GetSequencers returns a list of sequencers. Currently only returns a single sequencer
 func (c *HubClient) GetSequencers(rollappID string) ([]*types.Sequencer, error) {
-	pubKeyBytes, err := hex.DecodeString(c.config.ProposerPubKey)
+	pubKeyBytes, err := hex.DecodeString(c.ProposerPubKey)
 	if err != nil {
 		return nil, err
 	}

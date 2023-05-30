@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"sync/atomic"
 	"testing"
@@ -34,7 +33,6 @@ import (
 	"github.com/dymensionxyz/dymint/da"
 	mockda "github.com/dymensionxyz/dymint/da/mock"
 	nodemempool "github.com/dymensionxyz/dymint/node/mempool"
-	slmock "github.com/dymensionxyz/dymint/settlement/mock"
 	slregistry "github.com/dymensionxyz/dymint/settlement/registry"
 	"github.com/dymensionxyz/dymint/store"
 )
@@ -59,7 +57,7 @@ func TestInitialState(t *testing.T) {
 	pubsubServer.Start()
 	proxyApp := testutil.GetABCIProxyAppMock(logger.With("module", "proxy"))
 	settlementlc := slregistry.GetClient(slregistry.Mock)
-	_ = settlementlc.Init(nil, pubsubServer, logger)
+	_ = settlementlc.Init(settlement.Config{}, pubsubServer, logger)
 
 	// Init empty store and full store
 	emptyStore := store.New(store.NewDefaultInMemoryKVStore())
@@ -176,6 +174,7 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 }
 
 func TestPublishWhenDALayerDisconnected(t *testing.T) {
+	DABatchRetryDelay = 1 * time.Second
 	manager, err := getManager(getManagerConfig(), nil, &testutil.DALayerClientSubmitBatchError{}, 1, 1, 0, nil, nil)
 	retry.DefaultAttempts = 2
 	require.NoError(t, err)
@@ -542,7 +541,7 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 /*                                    utils                                   */
 /* -------------------------------------------------------------------------- */
 
-func getManager(conf config.BlockManagerConfig, settlementlc settlement.LayerClient, dalc da.DataAvailabilityLayerClient, genesisHeight int64, storeInitialHeight int64, storeLastBlockHeight int64, proxyAppConns proxy.AppConns, mockStore store.Store) (*Manager, error) {
+func getManager(conf config.BlockManagerConfig, settlementlc settlement.LayerI, dalc da.DataAvailabilityLayerClient, genesisHeight int64, storeInitialHeight int64, storeLastBlockHeight int64, proxyAppConns proxy.AppConns, mockStore store.Store) (*Manager, error) {
 	genesis := testutil.GenerateGenesis(genesisHeight)
 	// Change the LastBlockHeight to avoid calling InitChainSync within the manager
 	// And updating the state according to the genesis.
@@ -574,7 +573,8 @@ func getManager(conf config.BlockManagerConfig, settlementlc settlement.LayerCli
 	if err != nil {
 		return nil, err
 	}
-	err = initSettlementLayerMock(settlementlc, defaultBatchSize, pubKeybytes, pubsubServer, logger)
+
+	err = initSettlementLayerMock(settlementlc, hex.EncodeToString(pubKeybytes), pubsubServer, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -633,15 +633,8 @@ func initDALCMock(dalc da.DataAvailabilityLayerClient, daBlockTime time.Duration
 }
 
 // TODO(omritoptix): Possible move out to a generic testutil
-func initSettlementLayerMock(settlementlc settlement.LayerClient, batchSize uint64, proposerPubKey []byte, pubsubServer *pubsub.Server, logger log.Logger) error {
-	conf := slmock.Config{
-		Config: &settlement.Config{
-			BatchSize: batchSize,
-		},
-		ProposerPubKey: hex.EncodeToString(proposerPubKey),
-	}
-	byteconf, _ := json.Marshal(conf)
-	err := settlementlc.Init(byteconf, pubsubServer, logger)
+func initSettlementLayerMock(settlementlc settlement.LayerI, proposer string, pubsubServer *pubsub.Server, logger log.Logger) error {
+	err := settlementlc.Init(settlement.Config{ProposerPubKey: proposer}, pubsubServer, logger)
 	if err != nil {
 		return err
 	}
@@ -659,6 +652,6 @@ func getManagerConfig() config.BlockManagerConfig {
 		BatchSyncInterval: 1 * time.Second,
 		BlockBatchSize:    defaultBatchSize,
 		DAStartHeight:     0,
-		NamespaceID:       [8]byte{1, 2, 3, 4, 5, 6, 7, 8},
+		NamespaceID:       "0102030405060708",
 	}
 }

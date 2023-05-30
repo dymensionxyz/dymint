@@ -2,7 +2,6 @@ package dymension
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"strconv"
 	"time"
@@ -13,6 +12,7 @@ import (
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	"github.com/dymensionxyz/cosmosclient/cosmosclient"
 	rollapptypes "github.com/dymensionxyz/dymension/x/rollapp/types"
+	"github.com/ignite/cli/ignite/pkg/cosmosaccount"
 
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	sequencertypes "github.com/dymensionxyz/dymension/x/sequencer/types"
@@ -21,16 +21,14 @@ import (
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/hashicorp/go-multierror"
-	"github.com/ignite/cli/ignite/pkg/cosmosaccount"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 )
 
 const (
-	addressPrefix      = "dym"
-	dymRollappVersion  = 0
-	defaultNodeAddress = "http://localhost:26657"
-	defaultGasLimit    = 300000
+	addressPrefix     = "dym"
+	dymRollappVersion = 0
+	defaultGasLimit   = 300000
 )
 
 const (
@@ -48,22 +46,10 @@ type LayerClient struct {
 	*settlement.BaseLayerClient
 }
 
-// Config for the DymensionLayerClient
-type Config struct {
-	KeyringBackend cosmosaccount.KeyringBackend `json:"keyring_backend"`
-	NodeAddress    string                       `json:"node_address"`
-	KeyRingHomeDir string                       `json:"keyring_home_dir"`
-	DymAccountName string                       `json:"dym_account_name"`
-	RollappID      string                       `json:"rollapp_id"`
-	GasLimit       uint64                       `json:"gas_limit"`
-	GasPrices      string                       `json:"gas_prices"`
-	GasFees        string                       `json:"gas_fees"`
-}
-
-var _ settlement.LayerClient = &LayerClient{}
+var _ settlement.LayerI = &LayerClient{}
 
 // Init is called once. it initializes the struct members.
-func (dlc *LayerClient) Init(config []byte, pubsub *pubsub.Server, logger log.Logger, options ...settlement.Option) error {
+func (dlc *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, logger log.Logger, options ...settlement.Option) error {
 	DymensionCosmosClient, err := newDymensionHubClient(config, pubsub, logger)
 	if err != nil {
 		return err
@@ -101,7 +87,7 @@ func (d PostBatchResp) GetCode() uint32 {
 
 // HubClient is the client for the Dymension Hub.
 type HubClient struct {
-	config               *Config
+	config               *settlement.Config
 	logger               log.Logger
 	pubsub               *pubsub.Server
 	client               CosmosClient
@@ -125,16 +111,11 @@ func WithCosmosClient(cosmosClient CosmosClient) Option {
 	}
 }
 
-func newDymensionHubClient(config []byte, pubsub *pubsub.Server, logger log.Logger, options ...Option) (*HubClient, error) {
-	conf, err := getConfig(config)
-	if err != nil {
-		return nil, err
-	}
-
+func newDymensionHubClient(config settlement.Config, pubsub *pubsub.Server, logger log.Logger, options ...Option) (*HubClient, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	eventMap := map[string]string{
-		fmt.Sprintf(eventStateUpdate, conf.RollappID):          settlement.EventNewSettlementBatchAccepted,
-		fmt.Sprintf(eventSequencersListUpdate, conf.RollappID): settlement.EventSequencersListUpdated,
+		fmt.Sprintf(eventStateUpdate, config.RollappID):          settlement.EventNewSettlementBatchAccepted,
+		fmt.Sprintf(eventSequencersListUpdate, config.RollappID): settlement.EventSequencersListUpdated,
 	}
 
 	interfaceRegistry := cdctypes.NewInterfaceRegistry()
@@ -142,7 +123,7 @@ func newDymensionHubClient(config []byte, pubsub *pubsub.Server, logger log.Logg
 	protoCodec := codec.NewProtoCodec(interfaceRegistry)
 
 	dymesionHubClient := &HubClient{
-		config:     conf,
+		config:     &config,
 		logger:     logger,
 		pubsub:     pubsub,
 		ctx:        ctx,
@@ -158,7 +139,7 @@ func newDymensionHubClient(config []byte, pubsub *pubsub.Server, logger log.Logg
 	if dymesionHubClient.client == nil {
 		client, err := cosmosclient.New(
 			ctx,
-			getCosmosClientOptions(conf)...,
+			getCosmosClientOptions(&config)...,
 		)
 		if err != nil {
 			return nil, err
@@ -169,29 +150,6 @@ func newDymensionHubClient(config []byte, pubsub *pubsub.Server, logger log.Logg
 	dymesionHubClient.sequencerQueryClient = dymesionHubClient.client.GetSequencerClient()
 
 	return dymesionHubClient, nil
-}
-
-func decodeConfig(config []byte) (*Config, error) {
-	var c Config
-	err := json.Unmarshal(config, &c)
-	return &c, err
-}
-
-func getConfig(config []byte) (*Config, error) {
-	var c *Config
-	if len(config) > 0 {
-		var err error
-		c, err = decodeConfig(config)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		c = &Config{
-			KeyringBackend: cosmosaccount.KeyringTest,
-			NodeAddress:    defaultNodeAddress,
-		}
-	}
-	return c, nil
 }
 
 // Start starts the HubClient.
@@ -365,7 +323,7 @@ func (d *HubClient) convertBatchToMsgUpdateState(batch *types.Batch, daClient da
 
 }
 
-func getCosmosClientOptions(config *Config) []cosmosclient.Option {
+func getCosmosClientOptions(config *settlement.Config) []cosmosclient.Option {
 	if config.GasLimit == 0 {
 		config.GasLimit = defaultGasLimit
 	}
@@ -376,10 +334,11 @@ func getCosmosClientOptions(config *Config) []cosmosclient.Option {
 		cosmosclient.WithGasLimit(config.GasLimit),
 		cosmosclient.WithGasPrices(config.GasPrices),
 	}
-	if config.KeyringBackend != "" {
+	if config.KeyringHomeDir != "" {
 		options = append(options,
-			cosmosclient.WithKeyringBackend(config.KeyringBackend),
-			cosmosclient.WithHome(config.KeyRingHomeDir))
+			cosmosclient.WithKeyringBackend(cosmosaccount.KeyringBackend(config.KeyringBackend)),
+			cosmosclient.WithHome(config.KeyringHomeDir),
+		)
 	}
 	return options
 }
