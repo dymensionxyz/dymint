@@ -3,13 +3,12 @@ package node
 import (
 	"context"
 	"crypto/rand"
-	"encoding/hex"
-	"fmt"
 	mrand "math/rand"
 	"testing"
 	"time"
 
 	"github.com/dymensionxyz/dymint/p2p"
+	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/libp2p/go-libp2p-core/crypto"
@@ -39,22 +38,14 @@ func TestAggregatorMode(t *testing.T) {
 	app.On("Info", mock.Anything).Return(abci.ResponseInfo{LastBlockHeight: 0, LastBlockAppHash: []byte{0}})
 
 	key, _, _ := crypto.GenerateEd25519Key(rand.Reader)
-	signingKey, pubkey, _ := crypto.GenerateEd25519Key(rand.Reader)
+	signingKey, _, _ := crypto.GenerateEd25519Key(rand.Reader)
 	anotherKey, _, _ := crypto.GenerateEd25519Key(rand.Reader)
 
 	blockManagerConfig := config.BlockManagerConfig{
 		BlockTime:         1 * time.Second,
-		NamespaceID:       [8]byte{1, 2, 3, 4, 5, 6, 7, 8},
+		NamespaceID:       "0102030405060708",
 		BatchSyncInterval: time.Second * 5,
 	}
-
-	pubkeyBytes, err := pubkey.Raw()
-	require.NoError(err)
-
-	mockConfigFmt := `
-	{"proposer_pub_key": "%s"}
-	`
-	mockConfig := fmt.Sprintf(mockConfigFmt, hex.EncodeToString(pubkeyBytes))
 
 	nodeConfig := config.NodeConfig{
 		RootDir:            "",
@@ -66,7 +57,7 @@ func TestAggregatorMode(t *testing.T) {
 		DALayer:            "mock",
 		DAConfig:           "",
 		SettlementLayer:    "mock",
-		SettlementConfig:   mockConfig,
+		SettlementConfig:   settlement.Config{},
 	}
 	node, err := NewNode(context.Background(), nodeConfig, key, signingKey, proxy.NewLocalClientCreator(app), &types.GenesisDoc{ChainID: "test"}, log.TestingLogger())
 	require.NoError(err)

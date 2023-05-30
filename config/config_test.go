@@ -33,6 +33,6 @@ func TestViperAndCobra(t *testing.T) {
 	assert.Equal("foobar", nc.DALayer)
 	assert.Equal(`{"json":true}`, nc.DAConfig)
 	assert.Equal(1234*time.Second, nc.BlockTime)
-	assert.Equal([8]byte{1, 2, 3, 4, 5, 6, 7, 8}, nc.NamespaceID)
+	assert.Equal("0102030405060708", nc.NamespaceID)
 	assert.Equal(uint64(10), nc.BlockBatchSize)
 }

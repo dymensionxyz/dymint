@@ -113,7 +113,6 @@ func startInProcess(config *cfg.NodeConfig, tmConfig *tmcfg.Config, logger log.L
 		return err
 	}
 	genDocProvider := tmnode.DefaultGenesisDocProviderFunc(tmConfig)
-	logger.Info("starting node with ABCI dymint in-process")
 	p2pKey, err := conv.GetNodeKey(nodeKey)
 	if err != nil {
 		return err
@@ -126,11 +125,11 @@ func startInProcess(config *cfg.NodeConfig, tmConfig *tmcfg.Config, logger log.L
 	if err != nil {
 		return err
 	}
-	conv.GetNodeConfig(config, tmConfig)
-	err = conv.TranslateAddresses(config)
+	err = conv.GetNodeConfig(config, tmConfig)
 	if err != nil {
 		return err
 	}
+	logger.Info("starting node with ABCI dymint in-process", "conf", config)
 
 	dymintNode, err := node.NewNode(
 		context.Background(),

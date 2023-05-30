@@ -4,10 +4,10 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"fmt"
 	"time"
 
 	"github.com/dymensionxyz/dymint/config"
+	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/tendermint/tendermint/libs/log"
@@ -19,19 +19,20 @@ func CreateNode(isAggregator bool, blockManagerConfig *config.BlockManagerConfig
 	app := testutil.GetAppMock()
 	key, _, _ := crypto.GenerateEd25519Key(rand.Reader)
 	signingKey, pubkey, _ := crypto.GenerateEd25519Key(rand.Reader)
-	// TODO(omritoptix): Test with and without aggregator mode.
 	pubkeyBytes, _ := pubkey.Raw()
-	mockConfigFmt := `
-	{"proposer_pub_key": "%s"}
-	`
+
+	// Node config
+	nodeConfig := config.DefaultNodeConfig
+
 	if blockManagerConfig == nil {
 		blockManagerConfig = &config.BlockManagerConfig{BatchSyncInterval: time.Second * 5, BlockTime: 100 * time.Millisecond}
 	}
-	mockConfig := fmt.Sprintf(mockConfigFmt, hex.EncodeToString(pubkeyBytes))
-	nodeConfig := config.DefaultNodeConfig
-	nodeConfig.Aggregator = isAggregator
 	nodeConfig.BlockManagerConfig = *blockManagerConfig
-	nodeConfig.SettlementConfig = mockConfig
+	nodeConfig.Aggregator = isAggregator
+
+	// SL config
+	nodeConfig.SettlementConfig = settlement.Config{ProposerPubKey: hex.EncodeToString(pubkeyBytes)}
+
 	node, err := NewNode(context.Background(), nodeConfig, key, signingKey, proxy.NewLocalClientCreator(app), &types.GenesisDoc{ChainID: "test"}, log.TestingLogger())
 	if err != nil {
 		return nil, err
