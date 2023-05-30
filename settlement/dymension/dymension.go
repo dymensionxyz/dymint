@@ -249,9 +249,8 @@ func (d *HubClient) eventHandler() {
 	for {
 		select {
 		case <-d.ctx.Done():
-			return
 		case <-d.client.EventListenerQuit():
-			panic("Settlement WS disconnected")
+			return
 		case event := <-eventsChannel:
 			// Assert value is in map and publish it to the event bus
 			d.logger.Debug("Received event from settlement layer")
