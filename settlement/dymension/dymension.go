@@ -249,6 +249,7 @@ func (d *HubClient) eventHandler() {
 	for {
 		select {
 		case <-d.ctx.Done():
+			return
 		case <-d.client.EventListenerQuit():
 			return
 		case event := <-eventsChannel:
