@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"time"
 
+	"github.com/avast/retry-go"
 	"github.com/cosmos/cosmos-sdk/codec"
 	cdctypes "github.com/cosmos/cosmos-sdk/codec/types"
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
@@ -34,6 +36,11 @@ const (
 const (
 	eventStateUpdate          = "state_update.rollapp_id='%s'"
 	eventSequencersListUpdate = "sequencers_list_update.rollapp_id='%s'"
+)
+
+const (
+	batchRetryDelay    = 10 * time.Second
+	batchRetryMaxDelay = 1 * time.Minute
 )
 
 // LayerClient is intended only for usage in tests.
@@ -209,17 +216,20 @@ func (d *HubClient) Stop() error {
 }
 
 // PostBatch posts a batch to the Dymension Hub.
-func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) (settlement.PostBatchResp, error) {
-	msgUpdateState, err := d.convertBatchToMsgUpdateState(batch, daClient, daResult)
+func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) {
+	msgUpdateState := d.convertBatchToMsgUpdateState(batch, daClient, daResult)
+	err := retry.Do(func() error {
+		txResp, err := d.client.BroadcastTx(d.config.DymAccountName, msgUpdateState)
+		if err != nil || txResp.Code != 0 {
+			d.logger.Error("Error sending batch to settlement layer", "resp", txResp, "error", err)
+			return err
+		}
+		return nil
+	}, retry.Context(d.ctx), retry.LastErrorOnly(true), retry.Delay(batchRetryDelay), retry.MaxDelay(batchRetryMaxDelay))
+	// TODO(omritoptix): Temporary until we implement the emitting of events from the settlement layer
 	if err != nil {
-		return nil, err
+		panic("Error sending batch to settlement layer")
 	}
-	txResp, err := d.client.BroadcastTx(d.config.DymAccountName, msgUpdateState)
-	if err != nil || txResp.Code != 0 {
-		d.logger.Error("Error sending batch to settlement layer", "error", err)
-		return PostBatchResp{resp: txResp}, err
-	}
-	return PostBatchResp{resp: txResp}, nil
 }
 
 // GetLatestBatch returns the latest batch from the Dymension Hub.
@@ -315,15 +325,17 @@ func (d *HubClient) eventHandler() {
 	}
 }
 
-func (d *HubClient) convertBatchToMsgUpdateState(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) (*rollapptypes.MsgUpdateState, error) {
+func (d *HubClient) convertBatchToMsgUpdateState(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) *rollapptypes.MsgUpdateState {
 	account, err := d.client.GetAccount(d.config.DymAccountName)
 	if err != nil {
-		return nil, err
+		d.logger.Error("Error getting account for building transaction", "account", d.config.DymAccountName)
+		panic(err)
 	}
 
 	addr, err := account.Address(addressPrefix)
 	if err != nil {
-		return nil, err
+		d.logger.Error("Error getting address prefix for building transaction", "account", addressPrefix)
+		panic(err)
 	}
 
 	DAMetaData := &settlement.DAMetaData{
@@ -349,7 +361,7 @@ func (d *HubClient) convertBatchToMsgUpdateState(batch *types.Batch, daClient da
 		Version:     dymRollappVersion,
 		BDs:         rollapptypes.BlockDescriptors{BD: blockDescriptors},
 	}
-	return settlementBatch, nil
+	return settlementBatch
 
 }
 

@@ -3,7 +3,7 @@ package settlement
 import (
 	"context"
 	"encoding/json"
-	"errors"
+	"fmt"
 	"sync/atomic"
 
 	"github.com/dymensionxyz/dymint/da"
@@ -108,27 +108,11 @@ func (b *BaseLayerClient) Stop() error {
 	return nil
 }
 
-// SubmitBatch submits the batch to the settlement layer. This should create a transaction which (potentially)
-// triggers a state transition in the settlement layer.
-func (b *BaseLayerClient) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) *ResultSubmitBatch {
+// SubmitBatch tries submiting the batch in an async way to the settlement layer. Events are emitted on success or failure.
+func (b *BaseLayerClient) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) {
 	b.logger.Debug("Submitting batch to settlement layer", "start height", batch.StartHeight, "end height", batch.EndHeight)
-	err := b.validateBatch(batch)
-	if err != nil {
-		return &ResultSubmitBatch{
-			BaseResult: BaseResult{Code: StatusError, Message: err.Error()},
-		}
-	}
-	txResp, err := b.client.PostBatch(batch, daClient, daResult)
-	if err != nil || txResp.GetCode() != 0 {
-		b.logger.Error("Error sending batch to settlement layer", "error", err)
-		return &ResultSubmitBatch{
-			BaseResult: BaseResult{Code: StatusError, Message: err.Error()},
-		}
-	}
-	b.logger.Info("Successfully submitted batch to settlement layer", "tx hash", txResp.GetTxHash())
-	return &ResultSubmitBatch{
-		BaseResult: BaseResult{Code: StatusSuccess},
-	}
+	b.validateBatch(batch)
+	b.client.PostBatch(batch, daClient, daResult)
 }
 
 // RetrieveBatch Gets the batch which contains the given slHeight. Empty slHeight returns the latest batch.
@@ -199,14 +183,13 @@ func (b *BaseLayerClient) getConfig(config []byte) (*Config, error) {
 	return c, nil
 }
 
-func (b *BaseLayerClient) validateBatch(batch *types.Batch) error {
+func (b *BaseLayerClient) validateBatch(batch *types.Batch) {
 	if batch.StartHeight != atomic.LoadUint64(&b.latestHeight)+1 {
-		return errors.New("batch start height must be last height + 1")
+		panic(fmt.Sprintf("batch start height must be last height. StartHeight %d, lastetHeight %d", batch.StartHeight, atomic.LoadUint64(&b.latestHeight)+1))
 	}
 	if batch.EndHeight < batch.StartHeight {
-		return errors.New("batch end height must be greater or equal to start height")
+		panic(fmt.Sprintf("batch end height must be greater or equal to start height. StartHeight %d, EndHeight %d", batch.StartHeight, batch.EndHeight))
 	}
-	return nil
 }
 
 func (b *BaseLayerClient) stateUpdatesHandler(ready chan bool) {

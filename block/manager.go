@@ -75,10 +75,7 @@ type Manager struct {
 
 	syncTargetDiode diodes.Diode
 
-	batchInProcess   atomic.Value
-	batchRetryCtx    context.Context
-	batchRetryCancel context.CancelFunc
-	batchRetryMu     sync.RWMutex
+	batchInProcess atomic.Value
 
 	shouldProduceBlocksCh chan bool
 
@@ -366,7 +363,7 @@ func (m *Manager) SyncTargetLoop(ctx context.Context) {
 			// TODO(omritoptix): Once we have leader election, we can add a condition.
 			// Update batch accepted is only relevant for the aggregator
 			// TODO(omritoptix): Check if we are the aggregator
-			m.updateBatchAccepted()
+			m.batchInProcess.Store(false)
 		case <-subscription.Cancelled():
 			m.logger.Info("Subscription canceled")
 		}
@@ -378,15 +375,6 @@ func (m *Manager) updateSyncParams(ctx context.Context, endHeight uint64) {
 	m.logger.Info("Received new syncTarget", "syncTarget", endHeight)
 	atomic.StoreUint64(&m.syncTarget, endHeight)
 	m.syncTargetDiode.Set(diodes.GenericDataType(&endHeight))
-}
-
-func (m *Manager) updateBatchAccepted() {
-	m.batchRetryMu.Lock()
-	if m.batchRetryCtx != nil && m.batchRetryCtx.Err() == nil {
-		m.batchRetryCancel()
-	}
-	m.batchRetryMu.Unlock()
-	m.batchInProcess.Store(false)
 }
 
 // RetriveLoop listens for new sync messages written to a ring buffer and in turn
@@ -717,7 +705,7 @@ func (m *Manager) submitNextBatch(ctx context.Context) {
 	// Submit batch to SL
 	// TODO(omritoptix): Handle a case where the SL submission fails due to syncTarget out of sync with the latestHeight in the SL.
 	// In that case we'll want to update the syncTarget before returning.
-	m.submitBatchToSL(nextBatch, resultSubmitToDA)
+	m.settlementClient.SubmitBatch(nextBatch, m.dalc.GetClientType(), resultSubmitToDA)
 }
 
 func (m *Manager) updateStateIndex(stateIndex uint64) error {
@@ -773,31 +761,6 @@ func (m *Manager) createNextDABatch(startHeight uint64, endHeight uint64) (*type
 
 	batch.EndHeight = height - 1
 	return batch, nil
-}
-
-func (m *Manager) submitBatchToSL(batch *types.Batch, resultSubmitToDA *da.ResultSubmitBatch) {
-	var resultSubmitToSL *settlement.ResultSubmitBatch
-	m.batchRetryMu.Lock()
-	m.batchRetryCtx, m.batchRetryCancel = context.WithCancel(context.Background())
-	m.batchRetryMu.Unlock()
-	defer m.batchRetryCancel()
-	// Submit batch to SL
-	err := retry.Do(func() error {
-		resultSubmitToSL = m.settlementClient.SubmitBatch(batch, m.dalc.GetClientType(), resultSubmitToDA)
-		if resultSubmitToSL.Code != settlement.StatusSuccess {
-			m.logger.Error("failed to submit batch to SL layer", "startHeight", batch.StartHeight, "endHeight", batch.EndHeight, "error", resultSubmitToSL.Message)
-			err := fmt.Errorf("failed to submit batch to SL layer: %s", resultSubmitToSL.Message)
-			return err
-		}
-		return nil
-	}, retry.Context(m.batchRetryCtx), retry.LastErrorOnly(true), retry.Delay(SLBatchRetryDelay), retry.MaxDelay(maxDelay))
-	// Panic if we failed not due to context cancellation
-	m.batchRetryMu.Lock()
-	if err != nil && m.batchRetryCtx.Err() == nil {
-		m.logger.Error("Failed to submit batch to SL Layer", "startHeight", batch.StartHeight, "endHeight", batch.EndHeight, "error", err)
-		panic(err)
-	}
-	m.batchRetryMu.Unlock()
 }
 
 func (m *Manager) submitBatchToDA(ctx context.Context, batch *types.Batch) (*da.ResultSubmitBatch, error) {

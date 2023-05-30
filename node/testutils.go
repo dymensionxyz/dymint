@@ -25,7 +25,7 @@ func CreateNode(isAggregator bool, blockManagerConfig *config.BlockManagerConfig
 	{"proposer_pub_key": "%s"}
 	`
 	if blockManagerConfig == nil {
-		blockManagerConfig = &config.BlockManagerConfig{BatchSyncInterval: time.Second * 5, BlockTime: 100 * time.Millisecond}
+		blockManagerConfig = &config.BlockManagerConfig{BlockBatchSize: 1, BatchSyncInterval: time.Second * 5, BlockTime: 100 * time.Millisecond}
 	}
 	mockConfig := fmt.Sprintf(mockConfigFmt, hex.EncodeToString(pubkeyBytes))
 	nodeConfig := config.DefaultNodeConfig

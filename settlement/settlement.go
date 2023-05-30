@@ -73,11 +73,6 @@ type Batch struct {
 	MetaData *BatchMetaData
 }
 
-// ResultSubmitBatch contains information returned from settlement layer after batch submission.
-type ResultSubmitBatch struct {
-	BaseResult
-}
-
 // ResultRetrieveBatch contains information returned from settlement layer after batch retrieva
 type ResultRetrieveBatch struct {
 	BaseResult
@@ -99,9 +94,9 @@ type LayerClient interface {
 	// Stop is called once, after Start. It should stop the client service.
 	Stop() error
 
-	// SubmitBatch submits the batch to the settlement layer. This should create a transaction which (potentially)
-	// triggers a state transition in the settlement layer.
-	SubmitBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) *ResultSubmitBatch
+	// SubmitBatch tries submiting the batch in an async way to the settlement layer. This should create a transaction which (potentially)
+	// triggers a state transition in the settlement layer. Events are emitted on success or failure.
+	SubmitBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch)
 
 	// RetrieveBatch Gets the batch which contains the given height. Empty height returns the latest batch.
 	RetrieveBatch(stateIndex ...uint64) (*ResultRetrieveBatch, error)
@@ -119,16 +114,8 @@ type LayerClient interface {
 type HubClient interface {
 	Start() error
 	Stop() error
-	PostBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) (PostBatchResp, error)
+	PostBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch)
 	GetLatestBatch(rollappID string) (*ResultRetrieveBatch, error)
 	GetBatchAtIndex(rollappID string, index uint64) (*ResultRetrieveBatch, error)
 	GetSequencers(rollappID string) ([]*types.Sequencer, error)
-}
-
-// PostBatchResp is an helper interface for a more granualr interaction with the hub.
-// Implementing a new settlement layer client basically requires embedding the base client
-// and implementing the helper interfaces.
-type PostBatchResp interface {
-	GetCode() uint32
-	GetTxHash() string
 }
