@@ -89,6 +89,9 @@ func (g *Gossiper) Publish(ctx context.Context, data []byte) error {
 func (g *Gossiper) ProcessMessages(ctx context.Context) {
 	for {
 		_, err := g.sub.Next(ctx)
+		if err == context.Canceled {
+			return
+		}
 		if err != nil {
 			g.logger.Error("failed to read message", "error", err)
 			return

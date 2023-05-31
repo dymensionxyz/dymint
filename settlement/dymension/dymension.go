@@ -158,11 +158,12 @@ func (d *HubClient) Start() error {
 
 // Stop stops the HubClient.
 func (d *HubClient) Stop() error {
+	d.cancel()
 	err := d.client.StopEventListener()
 	if err != nil {
 		return err
 	}
-	d.cancel()
+
 	return nil
 }
 
@@ -251,7 +252,7 @@ func (d *HubClient) eventHandler() {
 		case <-d.ctx.Done():
 			return
 		case <-d.client.EventListenerQuit():
-			return
+			panic("Settlement WS disconnected")
 		case event := <-eventsChannel:
 			// Assert value is in map and publish it to the event bus
 			d.logger.Debug("Received event from settlement layer")
