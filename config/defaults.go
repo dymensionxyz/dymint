@@ -1,6 +1,8 @@
 package config
 
-import "time"
+import (
+	"time"
+)
 
 const (
 	// DefaultListenAddress is a default listen address for P2P client.
@@ -13,18 +15,15 @@ const (
 var DefaultNodeConfig = NodeConfig{
 	P2P: P2PConfig{
 		ListenAddress: DefaultListenAddress,
-		Seeds:         "",
-	},
+		Seeds:         ""},
 	Aggregator: true,
 	BlockManagerConfig: BlockManagerConfig{
 		BlockTime:           200 * time.Millisecond,
-		NamespaceID:         [8]byte{},
+		NamespaceID:         "000000000000ffff",
 		BatchSyncInterval:   time.Second * 30,
 		DABlockTime:         30 * time.Second,
 		BlockBatchSize:      500,
-		BlockBatchSizeBytes: 1500000, //1.5MB
-	},
+		BlockBatchSizeBytes: 1500000},
 	DALayer:         "mock",
 	SettlementLayer: "mock",
-	DAConfig:        "",
 }
