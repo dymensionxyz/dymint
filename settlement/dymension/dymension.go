@@ -158,11 +158,12 @@ func (d *HubClient) Start() error {
 
 // Stop stops the HubClient.
 func (d *HubClient) Stop() error {
+	d.cancel()
 	err := d.client.StopEventListener()
 	if err != nil {
 		return err
 	}
-	d.cancel()
+
 	return nil
 }
 
