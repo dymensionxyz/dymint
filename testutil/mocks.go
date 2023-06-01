@@ -60,13 +60,13 @@ func GetAppMock(excludeMethods ...ABCIMethod) *mocks.Application {
 
 	// iterate exclude methods and unset the mock
 	for _, method := range excludeMethods {
-		unsetFn(app.On(string(method)))
+		UnsetMockFn(app.On(string(method)))
 	}
 
 	return app
 }
 
-var unsetFn = func(call *mock.Call) {
+var UnsetMockFn = func(call *mock.Call) {
 	if call != nil {
 		var newList []*mock.Call
 		for _, c := range call.Parent.ExpectedCalls {

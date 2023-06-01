@@ -708,7 +708,7 @@ func (m *Manager) submitNextBatch(ctx context.Context) {
 	// Submit batch to SL
 	// TODO(omritoptix): Handle a case where the SL submission fails due to syncTarget out of sync with the latestHeight in the SL.
 	// In that case we'll want to update the syncTarget before returning.
-	m.settlementClient.SubmitBatch(nextBatch, m.dalc.GetClientType(), resultSubmitToDA)
+	go m.settlementClient.SubmitBatch(nextBatch, m.dalc.GetClientType(), resultSubmitToDA)
 }
 
 func (m *Manager) updateStateIndex(stateIndex uint64) error {

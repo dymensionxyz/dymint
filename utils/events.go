@@ -26,3 +26,11 @@ func SubscribeAndHandleEvents(ctx context.Context, pubsubServer *pubsub.Server, 
 		}
 	}
 }
+
+// SubmitEventOrPanic submits an event or panics
+func SubmitEventOrPanic(ctx context.Context, pubsubServer *pubsub.Server, msg interface{}, events map[string][]string) {
+	err := pubsubServer.PublishWithEvents(ctx, msg, events)
+	if err != nil {
+		panic(err)
+	}
+}

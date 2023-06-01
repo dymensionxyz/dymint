@@ -20,6 +20,7 @@ import (
 	"github.com/dymensionxyz/dymint/log"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/dymint/utils"
 	"github.com/hashicorp/go-multierror"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
@@ -37,8 +38,10 @@ const (
 )
 
 const (
-	batchRetryDelay    = 10 * time.Second
-	batchRetryMaxDelay = 1 * time.Minute
+	batchRetryDelay        = 10 * time.Second
+	batchRetryMaxDelay     = 1 * time.Minute
+	batchAcceptanceTimeout = 120 * time.Second
+	batchRetryAttempts     = 10
 )
 
 // LayerClient is intended only for usage in tests.
@@ -70,21 +73,6 @@ func (dlc *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, lo
 	return nil
 }
 
-// PostBatchResp is the response after posting a batch to the Dymension Hub.
-type PostBatchResp struct {
-	resp cosmosclient.Response
-}
-
-// GetTxHash returns the transaction hash.
-func (d PostBatchResp) GetTxHash() string {
-	return d.resp.TxHash
-}
-
-// GetCode returns the response code.
-func (d PostBatchResp) GetCode() uint32 {
-	return uint32(d.resp.Code)
-}
-
 // HubClient is the client for the Dymension Hub.
 type HubClient struct {
 	config               *settlement.Config
@@ -97,6 +85,13 @@ type HubClient struct {
 	sequencerQueryClient sequencertypes.QueryClient
 	protoCodec           *codec.ProtoCodec
 	eventMap             map[string]string
+	// channel for getting notified when a batch is accepted by the settlement layer.
+	// only one batch of a specific height can get accepted and we can are currently sending only one batch at a time.
+	// for that reason it's safe to assume that if a batch is accepted, it refers to the last batch we've sent.
+	batchAcceptedCh        chan bool
+	batchRetryAttempts     uint
+	batchRetryDelay        time.Duration
+	batchAcceptanceTimeout time.Duration
 }
 
 var _ settlement.HubClient = &HubClient{}
@@ -108,6 +103,27 @@ type Option func(*HubClient)
 func WithCosmosClient(cosmosClient CosmosClient) Option {
 	return func(d *HubClient) {
 		d.client = cosmosClient
+	}
+}
+
+// WithBatchRetryAttempts is an option that sets the number of attempts to retry sending a batch to the settlement layer.
+func WithBatchRetryAttempts(batchRetryAttempts uint) Option {
+	return func(d *HubClient) {
+		d.batchRetryAttempts = batchRetryAttempts
+	}
+}
+
+// WithBatchAcceptanceTimeout is an option that sets the timeout for waiting for a batch to be accepted by the settlement layer.
+func WithBatchAcceptanceTimeout(batchAcceptanceTimeout time.Duration) Option {
+	return func(d *HubClient) {
+		d.batchAcceptanceTimeout = batchAcceptanceTimeout
+	}
+}
+
+// WithBatchRetryDelay is an option that sets the delay between batch retry attempts.
+func WithBatchRetryDelay(batchRetryDelay time.Duration) Option {
+	return func(d *HubClient) {
+		d.batchRetryDelay = batchRetryDelay
 	}
 }
 
@@ -123,13 +139,17 @@ func newDymensionHubClient(config settlement.Config, pubsub *pubsub.Server, logg
 	protoCodec := codec.NewProtoCodec(interfaceRegistry)
 
 	dymesionHubClient := &HubClient{
-		config:     &config,
-		logger:     logger,
-		pubsub:     pubsub,
-		ctx:        ctx,
-		cancel:     cancel,
-		eventMap:   eventMap,
-		protoCodec: protoCodec,
+		config:                 &config,
+		logger:                 logger,
+		pubsub:                 pubsub,
+		ctx:                    ctx,
+		cancel:                 cancel,
+		eventMap:               eventMap,
+		protoCodec:             protoCodec,
+		batchRetryAttempts:     batchRetryAttempts,
+		batchAcceptanceTimeout: batchAcceptanceTimeout,
+		batchRetryDelay:        batchRetryDelay,
+		batchAcceptedCh:        make(chan bool, 1),
 	}
 
 	for _, option := range options {
@@ -173,20 +193,59 @@ func (d *HubClient) Stop() error {
 	return nil
 }
 
-// PostBatch posts a batch to the Dymension Hub.
+// PostBatch posts a batch to the Dymension Hub. it tries to post the batch until it is accepted by the settlement layer.
+// it emits success and failure events to the event bus accordingly.
 func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) {
 	msgUpdateState := d.convertBatchToMsgUpdateState(batch, daClient, daResult)
-	err := retry.Do(func() error {
-		txResp, err := d.client.BroadcastTx(d.config.DymAccountName, msgUpdateState)
-		if err != nil || txResp.Code != 0 {
-			d.logger.Error("Error sending batch to settlement layer", "resp", txResp, "error", err)
-			return err
+WaitForBatchAcceptance:
+	for {
+		select {
+		case <-d.ctx.Done():
+			return
+		// Try submitting the batch to the settlement layer. If submission (i.e only submission, not acceptance) fails we emit an unhealthy event
+		// and try again in the next loop. If submission succeeds we wait for the batch to be accepted by the settlement layer.
+		// If it is not accepted we emit an unhealthy event and start again the submission loop.
+		default:
+			// Try submitting the batch
+			err := d.submitBatch(msgUpdateState)
+			if err != nil {
+				d.logger.Error("Failed submitting batch to settlement layer. Emitting unhealthy event",
+					"startHeight", batch.StartHeight, "endHeight", batch.EndHeight, "error", err)
+				heatlhEventData := settlement.EventDataSettlementHealthStatus{Healthy: false, Error: err}
+				utils.SubmitEventOrPanic(d.ctx, d.pubsub, heatlhEventData,
+					map[string][]string{settlement.EventTypeKey: {settlement.EventSettlementHealthStatus}})
+				// Sleep to allow context cancellation to take effect before retrying
+				time.Sleep(100 * time.Millisecond)
+			} else {
+				// Batch was submitted successfully. Wait for it to be accepted by the settlement layer.
+				ticker := time.NewTicker(d.batchAcceptanceTimeout)
+				defer ticker.Stop()
+				for {
+					select {
+					case <-d.ctx.Done():
+						return
+					case <-d.batchAcceptedCh:
+						d.logger.Debug("Batch accepted by settlement layer. Emitting healthy event",
+							"startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
+						heatlhEventData := settlement.EventDataSettlementHealthStatus{Healthy: true}
+						utils.SubmitEventOrPanic(d.ctx, d.pubsub, heatlhEventData,
+							map[string][]string{settlement.EventTypeKey: {settlement.EventSettlementHealthStatus}})
+						return
+					case <-ticker.C:
+						// Batch was not accepted by the settlement layer. Emitting unhealthy event
+						d.logger.Debug("Batch not accepted by settlement layer. Emitting unhealthy event",
+							"startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
+						heatlhEventData := settlement.EventDataSettlementHealthStatus{Healthy: false, Error: settlement.ErrBatchNotAccepted}
+						utils.SubmitEventOrPanic(d.ctx, d.pubsub, heatlhEventData,
+							map[string][]string{settlement.EventTypeKey: {settlement.EventSettlementHealthStatus}})
+						// Stop the ticker and restart the loop
+						ticker.Stop()
+						continue WaitForBatchAcceptance
+					}
+				}
+			}
 		}
-		return nil
-	}, retry.Context(d.ctx), retry.LastErrorOnly(true), retry.Delay(batchRetryDelay), retry.MaxDelay(batchRetryMaxDelay))
-	// TODO(omritoptix): Temporary until we implement the emitting of events from the settlement layer
-	if err != nil {
-		panic("Error sending batch to settlement layer")
+
 	}
 }
 
@@ -250,6 +309,19 @@ func (d *HubClient) GetSequencers(rollappID string) ([]*types.Sequencer, error) 
 	return sequencersList, nil
 }
 
+func (d *HubClient) submitBatch(msgUpdateState *rollapptypes.MsgUpdateState) error {
+	err := retry.Do(func() error {
+		txResp, err := d.client.BroadcastTx(d.config.DymAccountName, msgUpdateState)
+		if err != nil || txResp.Code != 0 {
+			d.logger.Error("Error sending batch to settlement layer", "resp", txResp, "error", err)
+			return err
+		}
+		return nil
+	}, retry.Context(d.ctx), retry.LastErrorOnly(true), retry.Delay(d.batchRetryDelay),
+		retry.MaxDelay(batchRetryMaxDelay), retry.Attempts(d.batchRetryAttempts))
+	return err
+}
+
 func (d *HubClient) eventHandler() {
 	// TODO(omritoptix): eventsChannel should be a generic channel which is later filtered by the event type.
 	eventsChannel, err := d.client.SubscribeToEvents(context.Background(), "dymension-client", fmt.Sprintf(eventStateUpdate, d.config.RollappID))
@@ -272,13 +344,13 @@ func (d *HubClient) eventHandler() {
 			}
 			eventData, err := d.getEventData(d.eventMap[event.Query], event)
 			if err != nil {
-				d.logger.Error("Failed to get event data", "err", err)
-				continue
+				panic(err)
 			}
 			err = d.pubsub.PublishWithEvents(d.ctx, eventData, map[string][]string{settlement.EventTypeKey: {d.eventMap[event.Query]}})
 			if err != nil {
-				d.logger.Error("Error publishing event", "err", err)
+				panic(err)
 			}
+			d.batchAcceptedCh <- true
 		}
 	}
 }

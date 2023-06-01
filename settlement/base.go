@@ -93,7 +93,7 @@ func (b *BaseLayerClient) Stop() error {
 	return nil
 }
 
-// SubmitBatch tries submiting the batch in an async way to the settlement layer. Events are emitted on success or failure.
+// SubmitBatch tries submitting the batch in an async way to the settlement layer. Events are emitted on success or failure.
 func (b *BaseLayerClient) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) {
 	b.logger.Debug("Submitting batch to settlement layer", "start height", batch.StartHeight, "end height", batch.EndHeight)
 	b.validateBatch(batch)
