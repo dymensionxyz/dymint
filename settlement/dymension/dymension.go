@@ -324,7 +324,7 @@ func (d *HubClient) submitBatch(msgUpdateState *rollapptypes.MsgUpdateState) err
 
 func (d *HubClient) eventHandler() {
 	// TODO(omritoptix): eventsChannel should be a generic channel which is later filtered by the event type.
-	eventsChannel, err := d.client.SubscribeToEvents(context.Background(), "dymension-client", fmt.Sprintf(eventStateUpdate, d.config.RollappID))
+	eventsChannel, err := d.client.SubscribeToEvents(d.ctx, "dymension-client", fmt.Sprintf(eventStateUpdate, d.config.RollappID))
 	if err != nil {
 		panic("Error subscribing to events")
 	}
@@ -333,6 +333,7 @@ func (d *HubClient) eventHandler() {
 		case <-d.ctx.Done():
 			return
 		case <-d.client.EventListenerQuit():
+			// TODO(omritoptix): Fallback to polling
 			panic("Settlement WS disconnected")
 		case event := <-eventsChannel:
 			// Assert value is in map and publish it to the event bus

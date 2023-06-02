@@ -420,53 +420,6 @@ func TestProduceBlockFailAfterCommit(t *testing.T) {
 	}
 }
 
-// // Test batch retry halts upon new batch acceptance
-// // 1. Produce blocks with settlement layer batch submission error
-// // 2. Emit an event that a new batch was accepted
-// // 3. Validate new batches was submitted
-// func TestBatchRetryWhileBatchAccepted(t *testing.T) {
-// 	assert := assert.New(t)
-// 	require := require.New(t)
-// 	app := testutil.GetAppMock()
-// 	// Create proxy app
-// 	clientCreator := proxy.NewLocalClientCreator(app)
-// 	proxyApp := proxy.NewAppConns(clientCreator)
-// 	err := proxyApp.Start()
-// 	require.NoError(err)
-// 	// Init manager
-// 	managerConfig := getManagerConfig()
-// 	managerConfig.BlockBatchSize = 1
-// 	isSettlementError := atomic.Value{}
-// 	isSettlementError.Store(true)
-// 	settlementLayerClient := &testutil.SettlementLayerClientSubmitBatchError{IsError: isSettlementError}
-// 	manager, err := getManager(managerConfig, settlementLayerClient, nil, 1, 1, 0, proxyApp, nil)
-// 	require.NoError(err)
-// 	// Produce blocks with settlement layer batch submission error
-// 	blockLoopContext, blockLoopCancel := context.WithCancel(context.Background())
-// 	ctx, cancel := context.WithCancel(context.Background())
-// 	defer blockLoopCancel()
-// 	defer cancel()
-// 	go manager.ProduceBlockLoop(blockLoopContext)
-// 	go manager.SyncTargetLoop(ctx)
-// 	time.Sleep(200 * time.Millisecond)
-// 	assert.Equal(uint64(0), atomic.LoadUint64(&settlementLayerClient.BatchCounter))
-// 	// Cancel block production to not interfere with the isBatchInProcess flag
-// 	blockLoopCancel()
-// 	time.Sleep(100 * time.Millisecond)
-// 	// Emit an event that a new batch was accepted and wait for it to be processed
-// 	eventData := &settlement.EventDataNewSettlementBatchAccepted{EndHeight: 1, StateIndex: 1}
-// 	manager.pubsub.PublishWithEvents(ctx, eventData, map[string][]string{settlement.EventTypeKey: {settlement.EventNewSettlementBatchAccepted}})
-// 	time.Sleep(200 * time.Millisecond)
-// 	// Change settlement layer to accept batches and validate new batches was submitted
-// 	settlementLayerClient.IsError.Store(false)
-// 	blockLoopContext, blockLoopCancel = context.WithCancel(context.Background())
-// 	defer blockLoopCancel()
-// 	go manager.ProduceBlockLoop(blockLoopContext)
-// 	time.Sleep(1 * time.Second)
-// 	assert.Greater(atomic.LoadUint64(&settlementLayerClient.BatchCounter), uint64(0))
-
-// }
-
 func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
