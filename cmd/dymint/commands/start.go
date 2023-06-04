@@ -159,6 +159,7 @@ func startInProcess(config *cfg.NodeConfig, tmConfig *tmcfg.Config, logger log.L
 
 	// Stop upon receiving SIGTERM or CTRL-C.
 	tmos.TrapSignal(logger, func() {
+		logger.Info("Caught SIGTERM. Exiting...")
 		if dymintNode.IsRunning() {
 			if err := dymintNode.Stop(); err != nil {
 				logger.Error("unable to stop the node", "error", err)

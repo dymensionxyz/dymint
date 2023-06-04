@@ -8,7 +8,6 @@ import (
 	"sync"
 
 	"github.com/libp2p/go-libp2p-core/crypto"
-	"go.uber.org/multierr"
 
 	llcfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
@@ -292,9 +291,19 @@ func (n *Node) GetGenesisChunks() ([]string, error) {
 // OnStop is a part of Service interface.
 func (n *Node) OnStop() {
 	err := n.dalc.Stop()
-	err = multierr.Append(err, n.settlementlc.Stop())
-	err = multierr.Append(err, n.P2P.Close())
-	n.Logger.Error("errors while stopping node:", "errors", err)
+	if err != nil {
+		n.Logger.Error("error while stopping data availability layer client", "error", err)
+	}
+
+	err = n.settlementlc.Stop()
+	if err != nil {
+		n.Logger.Error("error while stopping settlement layer client", "error", err)
+	}
+
+	err = n.P2P.Close()
+	if err != nil {
+		n.Logger.Error("error while stopping P2P client", "error", err)
+	}
 }
 
 // OnReset is a part of Service interface.
