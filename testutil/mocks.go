@@ -1,8 +1,6 @@
 package testutil
 
 import (
-	"sync/atomic"
-
 	"errors"
 
 	"github.com/dymensionxyz/dymint/mocks"
@@ -14,8 +12,6 @@ import (
 
 	"github.com/dymensionxyz/dymint/da"
 	mockda "github.com/dymensionxyz/dymint/da/mock"
-	"github.com/dymensionxyz/dymint/settlement"
-	slmock "github.com/dymensionxyz/dymint/settlement/mock"
 	"github.com/dymensionxyz/dymint/store"
 )
 
@@ -64,13 +60,13 @@ func GetAppMock(excludeMethods ...ABCIMethod) *mocks.Application {
 
 	// iterate exclude methods and unset the mock
 	for _, method := range excludeMethods {
-		unsetFn(app.On(string(method)))
+		UnsetMockFn(app.On(string(method)))
 	}
 
 	return app
 }
 
-var unsetFn = func(call *mock.Call) {
+var UnsetMockFn = func(call *mock.Call) {
 	if call != nil {
 		var newList []*mock.Call
 		for _, c := range call.Parent.ExpectedCalls {
@@ -127,24 +123,6 @@ func NewMockStore() *MockStore {
 
 const batchNotFoundErrorMessage = "batch not found"
 const connectionRefusedErrorMessage = "connection refused"
-
-// SettlementLayerClientSubmitBatchError is a mock settlement layer client that can be used to test error handling
-type SettlementLayerClientSubmitBatchError struct {
-	IsError      atomic.Value
-	BatchCounter uint64
-	slmock.LayerClient
-}
-
-// SubmitBatch submits a batch to the settlement layer
-func (s *SettlementLayerClientSubmitBatchError) SubmitBatch(batch *types.Batch, daClient da.Client, daResultSubmitBatch *da.ResultSubmitBatch) *settlement.ResultSubmitBatch {
-	if s.IsError.Load() == true {
-		return &settlement.ResultSubmitBatch{
-			BaseResult: settlement.BaseResult{Code: settlement.StatusError, Message: connectionRefusedErrorMessage},
-		}
-	}
-	atomic.AddUint64(&s.BatchCounter, 1)
-	return &settlement.ResultSubmitBatch{BaseResult: settlement.BaseResult{Code: settlement.StatusSuccess}}
-}
 
 // DALayerClientSubmitBatchError is a mock data availability layer client that can be used to test error handling
 type DALayerClientSubmitBatchError struct {
