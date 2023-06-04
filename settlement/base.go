@@ -93,10 +93,13 @@ func (b *BaseLayerClient) Stop() error {
 	return nil
 }
 
-// SubmitBatch tries submitting the batch in an async way to the settlement layer. Events are emitted on success or failure.
+// SubmitBatch tries submitting the batch in an async broadcast mode to the settlement layer. Events are emitted on success or failure.
 func (b *BaseLayerClient) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) {
 	b.logger.Debug("Submitting batch to settlement layer", "start height", batch.StartHeight, "end height", batch.EndHeight)
-	b.validateBatch(batch)
+	err := b.validateBatch(batch)
+	if err != nil {
+		panic(err)
+	}
 	b.client.PostBatch(batch, daClient, daResult)
 }
 
@@ -143,13 +146,14 @@ func (b *BaseLayerClient) fetchSequencersList() ([]*types.Sequencer, error) {
 	return sequencers, nil
 }
 
-func (b *BaseLayerClient) validateBatch(batch *types.Batch) {
+func (b *BaseLayerClient) validateBatch(batch *types.Batch) error {
 	if batch.StartHeight != atomic.LoadUint64(&b.latestHeight)+1 {
-		panic(fmt.Sprintf("batch start height must be last height. StartHeight %d, lastetHeight %d", batch.StartHeight, atomic.LoadUint64(&b.latestHeight)+1))
+		return fmt.Errorf("batch start height must be last height. StartHeight %d, lastetHeight %d", batch.StartHeight, atomic.LoadUint64(&b.latestHeight)+1)
 	}
 	if batch.EndHeight < batch.StartHeight {
-		panic(fmt.Sprintf("batch end height must be greater or equal to start height. StartHeight %d, EndHeight %d", batch.StartHeight, batch.EndHeight))
+		return fmt.Errorf("batch end height must be greater than start height. EndHeight %d, StartHeight %d", batch.EndHeight, batch.StartHeight)
 	}
+	return nil
 }
 
 func (b *BaseLayerClient) stateUpdatesHandler(ready chan bool) {

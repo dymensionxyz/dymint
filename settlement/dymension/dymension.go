@@ -197,7 +197,10 @@ func (d *HubClient) Stop() error {
 // PostBatch posts a batch to the Dymension Hub. it tries to post the batch until it is accepted by the settlement layer.
 // it emits success and failure events to the event bus accordingly.
 func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) {
-	msgUpdateState := d.convertBatchToMsgUpdateState(batch, daClient, daResult)
+	msgUpdateState, err := d.convertBatchToMsgUpdateState(batch, daClient, daResult)
+	if err != nil {
+		panic(err)
+	}
 WaitForBatchAcceptance:
 	for {
 		select {
@@ -357,17 +360,15 @@ func (d *HubClient) eventHandler() {
 	}
 }
 
-func (d *HubClient) convertBatchToMsgUpdateState(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) *rollapptypes.MsgUpdateState {
+func (d *HubClient) convertBatchToMsgUpdateState(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) (*rollapptypes.MsgUpdateState, error) {
 	account, err := d.client.GetAccount(d.config.DymAccountName)
 	if err != nil {
-		d.logger.Error("Error getting account for building transaction", "account", d.config.DymAccountName)
-		panic(err)
+		return nil, err
 	}
 
 	addr, err := account.Address(addressPrefix)
 	if err != nil {
-		d.logger.Error("Error getting address prefix for building transaction", "account", addressPrefix)
-		panic(err)
+		return nil, err
 	}
 
 	DAMetaData := &settlement.DAMetaData{
@@ -393,7 +394,7 @@ func (d *HubClient) convertBatchToMsgUpdateState(batch *types.Batch, daClient da
 		Version:     dymRollappVersion,
 		BDs:         rollapptypes.BlockDescriptors{BD: blockDescriptors},
 	}
-	return settlementBatch
+	return settlementBatch, nil
 
 }
 
