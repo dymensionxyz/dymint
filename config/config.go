@@ -57,6 +57,8 @@ type NodeConfig struct {
 type BlockManagerConfig struct {
 	// BlockTime defines how often new blocks are produced
 	BlockTime time.Duration `mapstructure:"block_time"`
+	// EmptyBlocksMaxTime defines how long should block manager wait for new transactions before producing empty block
+	EmptyBlocksMaxTime time.Duration
 	// DABlockTime informs about block time of underlying data availability layer
 	DABlockTime time.Duration `mapstructure:"da_block_time"`
 	// BatchSyncInterval defines how often block manager should sync with the settlement layer

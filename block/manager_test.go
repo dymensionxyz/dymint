@@ -5,13 +5,18 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/avast/retry-go"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
 	"github.com/dymensionxyz/dymint/log/test"
+	"github.com/dymensionxyz/dymint/mempool"
 	mempoolv1 "github.com/dymensionxyz/dymint/mempool/v1"
 	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/p2p"
@@ -19,10 +24,8 @@ import (
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
 	abci "github.com/tendermint/tendermint/abci/types"
+	cfg "github.com/tendermint/tendermint/config"
 	tmcfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/pubsub"
@@ -239,7 +242,7 @@ func TestProduceNewBlock(t *testing.T) {
 	manager, err := getManager(getManagerConfig(), nil, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(t, err)
 	// Produce block
-	err = manager.produceBlock(context.Background())
+	err = manager.produceBlock(context.Background(), true)
 	require.NoError(t, err)
 	// Validate state is updated with the commit hash
 	assert.Equal(t, uint64(1), manager.store.Height())
@@ -266,7 +269,7 @@ func TestProducePendingBlock(t *testing.T) {
 	_, err = manager.store.SaveBlock(block, &block.LastCommit, nil)
 	require.NoError(t, err)
 	// Produce block
-	err = manager.produceBlock(context.Background())
+	err = manager.produceBlock(context.Background(), true)
 	require.NoError(t, err)
 	// Validate state is updated with the block that was saved in the store
 	assert.Equal(t, block.Header.Hash(), *(*[32]byte)(manager.lastState.LastBlockID.Hash))
@@ -436,7 +439,7 @@ func TestProduceBlockFailAfterCommit(t *testing.T) {
 				LastBlockAppHash: tc.LastAppCommitHash[:]}).Once()
 			mockStore.ShouldFailSetHeight = tc.shouldFailSetSetHeight
 			mockStore.ShoudFailUpdateState = tc.shouldFailUpdateState
-			_ = manager.produceBlock(context.Background())
+			_ = manager.produceBlock(context.Background(), true)
 			assert.Equal(tc.expectedStoreHeight, manager.store.Height())
 			assert.Equal(tc.expectedStateAppHash, manager.lastState.AppHash)
 			storeState, err := manager.store.LoadState()
@@ -533,7 +536,7 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Produce blocks
 			for i := 0; i < tc.blocksToProduce; i++ {
-				manager.produceBlock(ctx)
+				manager.produceBlock(ctx, true)
 			}
 
 			// Call createNextDABatch function
@@ -561,6 +564,72 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestCreateEmptyBlocksNew(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	app := testutil.GetAppMock()
+	// Create proxy app
+	clientCreator := proxy.NewLocalClientCreator(app)
+	proxyApp := proxy.NewAppConns(clientCreator)
+	err := proxyApp.Start()
+	require.NoError(err)
+	// Init manager
+	managerConfig := getManagerConfig()
+	managerConfig.BlockTime = 200 * time.Millisecond
+	managerConfig.EmptyBlocksMaxTime = 1 * time.Second
+	manager, err := getManager(managerConfig, nil, nil, 1, 1, 0, proxyApp, nil)
+	require.NoError(err)
+
+	abciClient, err := clientCreator.NewABCIClient()
+	require.NoError(err)
+	require.NotNil(abciClient)
+	require.NoError(abciClient.Start())
+	defer abciClient.Stop()
+
+	mempoolCfg := cfg.DefaultMempoolConfig()
+	mempoolCfg.KeepInvalidTxsInCache = false
+	mempoolCfg.Recheck = false
+
+	mpool := mempoolv1.NewTxMempool(log.TestingLogger(), cfg.DefaultMempoolConfig(), proxy.NewAppConnMempool(abciClient), 0)
+
+	//Check initial height
+	expectedHeight := uint64(0)
+	assert.Equal(expectedHeight, manager.store.Height())
+
+	mCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+	go manager.ProduceBlockLoop(mCtx)
+
+	<-time.Tick(1 * time.Second)
+	err = mpool.CheckTx([]byte{1, 2, 3, 4}, nil, mempool.TxInfo{})
+	require.NoError(err)
+
+	<-mCtx.Done()
+	foundTx := false
+	assert.LessOrEqual(manager.store.Height(), uint64(10))
+	for i := uint64(2); i < manager.store.Height(); i++ {
+		prevBlock, err := manager.store.LoadBlock(i - 1)
+		assert.NoError(err)
+
+		block, err := manager.store.LoadBlock(i)
+		assert.NoError(err)
+		assert.NotZero(block.Header.Time)
+
+		diff := time.Unix(0, int64(block.Header.Time)).Sub(time.Unix(0, int64(prevBlock.Header.Time)))
+		txsCount := len(block.Data.Txs)
+		if txsCount == 0 {
+			assert.Greater(diff, manager.conf.EmptyBlocksMaxTime)
+			assert.Less(diff, manager.conf.EmptyBlocksMaxTime+1*time.Second)
+		} else {
+			foundTx = true
+			assert.Less(diff, manager.conf.BlockTime+100*time.Millisecond)
+		}
+
+		fmt.Println("time diff:", diff, "tx len", 0)
+	}
+	assert.True(foundTx)
 }
 
 /* -------------------------------------------------------------------------- */

@@ -4,5 +4,6 @@ import "errors"
 
 var (
 	// ErrInvalidSignature is returned when a signature is invalid.
-	ErrInvalidSignature = errors.New("invalid signature")
+	ErrInvalidSignature  = errors.New("invalid signature")
+	ErrSkippedEmptyBlock = errors.New("skipped empty block")
 )

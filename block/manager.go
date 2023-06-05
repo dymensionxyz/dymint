@@ -317,16 +317,34 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 	}
 
 	ticker := time.NewTicker(m.conf.BlockTime)
+	tickerEmptyBlocksMaxTime := time.NewTicker(m.conf.EmptyBlocksMaxTime)
 
+	//FIXME: we probably want this feature to be toggleable
+
+	//Allow the initial block to be empty
+	produceEmptyBlock := true
 	for {
 		select {
 		case <-ctx.Done():
 			return
+		case <-tickerEmptyBlocksMaxTime.C:
+			m.logger.Error("No transactions for too long, producing empty block")
+			produceEmptyBlock = true
 		case <-ticker.C:
-			err := m.produceBlock(ctx)
+			err := m.produceBlock(ctx, produceEmptyBlock)
+			if err == types.ErrSkippedEmptyBlock {
+				m.logger.Debug("Skipped empty block")
+				continue
+			}
 			if err != nil {
 				m.logger.Error("error while producing block", "error", err)
+				continue
 			}
+
+			//after block produced, reset the timeout timer
+			produceEmptyBlock = false
+			tickerEmptyBlocksMaxTime.Reset(m.conf.EmptyBlocksMaxTime)
+
 		case shouldProduceBlocks := <-m.shouldProduceBlocksCh:
 			for !shouldProduceBlocks {
 				m.logger.Info("Stopped block production")
@@ -619,7 +637,7 @@ func (m *Manager) fetchBatch(daHeight uint64) (da.ResultRetrieveBatch, error) {
 	return batchRes, err
 }
 
-func (m *Manager) produceBlock(ctx context.Context) error {
+func (m *Manager) produceBlock(ctx context.Context, allowEmpty bool) error {
 	var lastCommit *types.Commit
 	var lastHeaderHash [32]byte
 	var err error
@@ -655,9 +673,11 @@ func (m *Manager) produceBlock(ctx context.Context) error {
 			return err
 		}
 	} else {
-		m.logger.Info("Creating block", "height", newHeight)
 		block = m.executor.CreateBlock(newHeight, lastCommit, lastHeaderHash, m.lastState)
-		m.logger.Debug("block info", "num_tx", len(block.Data.Txs))
+		if !allowEmpty && len(block.Data.Txs) == 0 {
+			return types.ErrSkippedEmptyBlock
+		}
+		m.logger.Info("block created", "height", newHeight, "num_tx", len(block.Data.Txs))
 
 		abciHeaderPb := abciconv.ToABCIHeaderPB(&block.Header)
 		abciHeaderBytes, err := abciHeaderPb.Marshal()
