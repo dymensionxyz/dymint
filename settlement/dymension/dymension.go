@@ -255,15 +255,15 @@ WaitForBatchAcceptance:
 
 // GetLatestBatch returns the latest batch from the Dymension Hub.
 func (d *HubClient) GetLatestBatch(rollappID string) (*settlement.ResultRetrieveBatch, error) {
-	latestStateInfoIndexResp, err := d.rollappQueryClient.LatestStateInfoIndex(d.ctx,
-		&rollapptypes.QueryGetLatestStateInfoIndexRequest{RollappId: d.config.RollappID})
+	latestStateInfoIndexResp, err := d.rollappQueryClient.LatestStateIndex(d.ctx,
+		&rollapptypes.QueryGetLatestStateIndexRequest{RollappId: d.config.RollappID})
 	if latestStateInfoIndexResp == nil {
 		return nil, settlement.ErrBatchNotFound
 	}
 	if err != nil {
 		return nil, err
 	}
-	latestBatch, err := d.GetBatchAtIndex(rollappID, latestStateInfoIndexResp.LatestStateInfoIndex.Index)
+	latestBatch, err := d.GetBatchAtIndex(rollappID, latestStateInfoIndexResp.StateIndex.Index)
 	if err != nil {
 		return nil, err
 	}
