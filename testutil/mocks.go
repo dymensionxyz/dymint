@@ -78,6 +78,17 @@ var UnsetMockFn = func(call *mock.Call) {
 	}
 }
 
+// CountMockCalls returns the number of times a mock specific function was called
+func CountMockCalls(totalCalls []mock.Call, methodName string) int {
+	var count int
+	for _, call := range totalCalls {
+		if call.Method == methodName {
+			count++
+		}
+	}
+	return count
+}
+
 // MockStore is a mock store for testing
 type MockStore struct {
 	ShouldFailSetHeight            bool
