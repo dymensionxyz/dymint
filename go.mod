@@ -254,6 +254,7 @@ require (
 )
 
 replace (
+	github.com/celestiaorg/go-cnc => github.com/dymensionxyz/go-cnc v0.2.2
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.2-alpha.regen.4
 	github.com/gorilla/rpc => github.com/dymensionxyz/rpc v1.3.1
 	github.com/tendermint/tendermint => github.com/informalsystems/tendermint v0.34.26
