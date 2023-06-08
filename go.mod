@@ -8,7 +8,7 @@ require (
 	github.com/celestiaorg/go-cnc v0.2.0
 	github.com/dgraph-io/badger/v3 v3.2103.3
 	github.com/dymensionxyz/cosmosclient v0.3.0-beta.0.20230514120937-449e9becd080
-	github.com/dymensionxyz/dymension v0.2.0-beta.0.20230503120250-228ff624f61c
+	github.com/dymensionxyz/dymension v0.2.0-beta.0.20230607115558-745644a96ea6
 	github.com/go-kit/kit v0.12.0
 	github.com/gofrs/uuid v4.3.0+incompatible
 	github.com/gogo/protobuf v1.3.3
