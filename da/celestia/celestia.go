@@ -9,6 +9,7 @@ import (
 
 	"github.com/avast/retry-go"
 	"github.com/gogo/protobuf/proto"
+	"github.com/tendermint/tendermint/libs/pubsub"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	httprpcclient "github.com/tendermint/tendermint/rpc/client/http"
 
@@ -34,6 +35,7 @@ type CNCClientI interface {
 // DataAvailabilityLayerClient use celestia-node public API.
 type DataAvailabilityLayerClient struct {
 	client              CNCClientI
+	pubsubServer        *pubsub.Server
 	RPCClient           rpcclient.Client
 	config              Config
 	logger              log.Logger
@@ -85,7 +87,7 @@ func WithTxPollingAttempts(attempts int) da.Option {
 }
 
 // Init initializes DataAvailabilityLayerClient instance.
-func (c *DataAvailabilityLayerClient) Init(config []byte, kvStore store.KVStore, logger log.Logger, options ...da.Option) error {
+func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.Server, kvStore store.KVStore, logger log.Logger, options ...da.Option) error {
 	c.logger = logger
 
 	if len(config) > 0 {
@@ -95,6 +97,7 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, kvStore store.KVStore,
 		}
 	}
 
+	c.pubsubServer = pubsubServer
 	// Set defaults
 	var err error
 	c.TxPollingRetryDelay = defaultTxPollingRetryDelay

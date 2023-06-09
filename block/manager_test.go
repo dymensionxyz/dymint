@@ -516,7 +516,7 @@ func getManager(conf config.BlockManagerConfig, settlementlc settlement.LayerI, 
 	if dalc == nil {
 		dalc = &mockda.DataAvailabilityLayerClient{}
 	}
-	initDALCMock(dalc, conf.DABlockTime, logger)
+	initDALCMock(dalc, pubsubServer, conf.DABlockTime, logger)
 
 	var proxyApp proxy.AppConns
 	if proxyAppConns == nil {
@@ -556,13 +556,13 @@ func getManager(conf config.BlockManagerConfig, settlementlc settlement.LayerI, 
 // TODO(omritoptix): Possible move out to a generic testutil
 func getMockDALC(daBlockTime time.Duration, logger log.Logger) da.DataAvailabilityLayerClient {
 	dalc := &mockda.DataAvailabilityLayerClient{}
-	initDALCMock(dalc, daBlockTime, logger)
+	initDALCMock(dalc, pubsub.NewServer(), daBlockTime, logger)
 	return dalc
 }
 
 // TODO(omritoptix): Possible move out to a generic testutil
-func initDALCMock(dalc da.DataAvailabilityLayerClient, daBlockTime time.Duration, logger log.Logger) {
-	_ = dalc.Init([]byte(daBlockTime.String()), store.NewDefaultInMemoryKVStore(), logger)
+func initDALCMock(dalc da.DataAvailabilityLayerClient, pubsubServer *pubsub.Server, daBlockTime time.Duration, logger log.Logger) {
+	_ = dalc.Init([]byte(daBlockTime.String()), pubsubServer, store.NewDefaultInMemoryKVStore(), logger)
 	_ = dalc.Start()
 }
 

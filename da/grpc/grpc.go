@@ -13,6 +13,7 @@ import (
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/dymensionxyz/dymint/types/pb/dalc"
+	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
 // DataAvailabilityLayerClient is a generic client that proxies all DA requests via gRPC.
@@ -42,7 +43,7 @@ var _ da.DataAvailabilityLayerClient = &DataAvailabilityLayerClient{}
 var _ da.BatchRetriever = &DataAvailabilityLayerClient{}
 
 // Init sets the configuration options.
-func (d *DataAvailabilityLayerClient) Init(config []byte, _ store.KVStore, logger log.Logger, options ...da.Option) error {
+func (d *DataAvailabilityLayerClient) Init(config []byte, _ *pubsub.Server, _ store.KVStore, logger log.Logger, options ...da.Option) error {
 	d.logger = logger
 	if len(config) == 0 {
 		d.config = DefaultConfig

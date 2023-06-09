@@ -11,6 +11,7 @@ import (
 	"github.com/dymensionxyz/dymint/log"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
 // DataAvailabilityLayerClient is intended only for usage in tests.
@@ -32,7 +33,7 @@ var _ da.DataAvailabilityLayerClient = &DataAvailabilityLayerClient{}
 var _ da.BatchRetriever = &DataAvailabilityLayerClient{}
 
 // Init is called once to allow DA client to read configuration and initialize resources.
-func (m *DataAvailabilityLayerClient) Init(config []byte, dalcKV store.KVStore, logger log.Logger, options ...da.Option) error {
+func (m *DataAvailabilityLayerClient) Init(config []byte, _ *pubsub.Server, dalcKV store.KVStore, logger log.Logger, options ...da.Option) error {
 	m.logger = logger
 	m.dalcKV = dalcKV
 	m.daHeight = 1

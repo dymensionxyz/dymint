@@ -17,6 +17,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/libs/bytes"
+	"github.com/tendermint/tendermint/libs/pubsub"
 	rpcmock "github.com/tendermint/tendermint/rpc/client/mocks"
 	coretypes "github.com/tendermint/tendermint/rpc/core/types"
 )
@@ -97,7 +98,7 @@ func TestSubmitBatch(t *testing.T) {
 		}
 		// Start the DALC
 		dalc := celestia.DataAvailabilityLayerClient{}
-		err = dalc.Init(configBytes, nil, test.NewLogger(t), options...)
+		err = dalc.Init(configBytes, pubsub.NewServer(), nil, test.NewLogger(t), options...)
 		require.NoError(err)
 		err = dalc.Start()
 		require.NoError(err)
