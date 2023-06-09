@@ -36,13 +36,6 @@ import (
 
 type blockSource string
 
-// defaultDABlockTime is used only if DABlockTime is not configured for manager
-var (
-	DABatchRetryDelay = 20 * time.Second
-	SLBatchRetryDelay = 10 * time.Second
-	maxDelay          = 1 * time.Minute
-)
-
 const (
 	producedBlock blockSource = "produced"
 	gossipedBlock blockSource = "gossip"
@@ -699,16 +692,15 @@ func (m *Manager) submitNextBatch(ctx context.Context) {
 
 	// Submit batch to the DA
 	m.logger.Info("Submitting next batch", "startHeight", startHeight, "endHeight", actualEndHeight, "size", nextBatch.ToProto().Size())
-	resultSubmitToDA, err := m.submitBatchToDA(ctx, nextBatch)
-	if err != nil {
-		m.logger.Error("Failed to submit next batch to DA Layer", "startHeight", startHeight, "endHeight", actualEndHeight, "error", err)
+	resultSubmitToDA := m.dalc.SubmitBatch(nextBatch)
+	if resultSubmitToDA.Code != da.StatusSuccess {
 		panic("Failed to submit next batch to DA Layer")
 	}
 
 	// Submit batch to SL
 	// TODO(omritoptix): Handle a case where the SL submission fails due to syncTarget out of sync with the latestHeight in the SL.
 	// In that case we'll want to update the syncTarget before returning.
-	go m.settlementClient.SubmitBatch(nextBatch, m.dalc.GetClientType(), resultSubmitToDA)
+	go m.settlementClient.SubmitBatch(nextBatch, m.dalc.GetClientType(), &resultSubmitToDA)
 }
 
 func (m *Manager) updateStateIndex(stateIndex uint64) error {
@@ -764,22 +756,6 @@ func (m *Manager) createNextDABatch(startHeight uint64, endHeight uint64) (*type
 
 	batch.EndHeight = height - 1
 	return batch, nil
-}
-
-func (m *Manager) submitBatchToDA(ctx context.Context, batch *types.Batch) (*da.ResultSubmitBatch, error) {
-	var res da.ResultSubmitBatch
-	err := retry.Do(func() error {
-		res = m.dalc.SubmitBatch(batch)
-		if res.Code != da.StatusSuccess {
-			m.logger.Error("failed to submit batch to DA layer", "startHeight", batch.StartHeight, "endHeight", batch.EndHeight, "error", res.Message)
-			return fmt.Errorf("failed to submit batch to DA layer: %s", res.Message)
-		}
-		return nil
-	}, retry.Context(ctx), retry.LastErrorOnly(true), retry.Delay(DABatchRetryDelay), retry.MaxDelay(maxDelay))
-	if err != nil {
-		return nil, err
-	}
-	return &res, nil
 }
 
 // TODO(omritoptix): possible remove this method from the manager

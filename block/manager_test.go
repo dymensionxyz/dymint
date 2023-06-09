@@ -9,8 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/avast/retry-go"
-
 	"github.com/dymensionxyz/dymint/log/test"
 	mempoolv1 "github.com/dymensionxyz/dymint/mempool/v1"
 	"github.com/dymensionxyz/dymint/node/events"
@@ -171,23 +169,6 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 	case <-ctx.Done():
 		assert.Greater(t, manager.store.Height(), batch.EndHeight)
 	}
-}
-
-func TestPublishWhenDALayerDisconnected(t *testing.T) {
-	DABatchRetryDelay = 1 * time.Second
-	manager, err := getManager(getManagerConfig(), nil, &testutil.DALayerClientSubmitBatchError{}, 1, 1, 0, nil, nil)
-	retry.DefaultAttempts = 2
-	require.NoError(t, err)
-	require.NotNil(t, manager)
-
-	nextBatchStartHeight := atomic.LoadUint64(&manager.syncTarget) + 1
-	batch, err := testutil.GenerateBatch(nextBatchStartHeight, nextBatchStartHeight+uint64(defaultBatchSize-1), manager.proposerKey)
-	assert.NoError(t, err)
-	daResultSubmitBatch := manager.dalc.SubmitBatch(batch)
-	assert.Equal(t, daResultSubmitBatch.Code, da.StatusError)
-
-	_, err = manager.submitBatchToDA(context.Background(), batch)
-	assert.ErrorContains(t, err, connectionRefusedErrorMessage)
 }
 
 func TestRetrieveDaBatchesFailed(t *testing.T) {
