@@ -9,6 +9,7 @@ import (
 
 	"github.com/avast/retry-go"
 	"github.com/gogo/protobuf/proto"
+	"github.com/tendermint/tendermint/libs/pubsub"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	httprpcclient "github.com/tendermint/tendermint/rpc/client/http"
 
@@ -22,6 +23,7 @@ import (
 
 const (
 	defaultTxPollingRetryDelay = 20 * time.Second
+	defaultSubmitRetryDelay    = 10 * time.Second
 	defaultTxPollingAttempts   = 5
 )
 
@@ -34,13 +36,15 @@ type CNCClientI interface {
 // DataAvailabilityLayerClient use celestia-node public API.
 type DataAvailabilityLayerClient struct {
 	client              CNCClientI
+	pubsubServer        *pubsub.Server
 	RPCClient           rpcclient.Client
 	config              Config
 	logger              log.Logger
 	ctx                 context.Context
 	cancel              context.CancelFunc
-	TxPollingRetryDelay time.Duration
-	TxPollingAttempts   int
+	txPollingRetryDelay time.Duration
+	txPollingAttempts   int
+	submitRetryDelay    time.Duration
 }
 
 var _ da.DataAvailabilityLayerClient = &DataAvailabilityLayerClient{}
@@ -73,19 +77,26 @@ func WithRPCClient(rpcClient rpcclient.Client) da.Option {
 // WithTxPollingRetryDelay sets tx polling retry delay.
 func WithTxPollingRetryDelay(delay time.Duration) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
-		daLayerClient.(*DataAvailabilityLayerClient).TxPollingRetryDelay = delay
+		daLayerClient.(*DataAvailabilityLayerClient).txPollingRetryDelay = delay
 	}
 }
 
 // WithTxPollingAttempts sets tx polling retry delay.
 func WithTxPollingAttempts(attempts int) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
-		daLayerClient.(*DataAvailabilityLayerClient).TxPollingAttempts = attempts
+		daLayerClient.(*DataAvailabilityLayerClient).txPollingAttempts = attempts
+	}
+}
+
+// WithSubmitRetryDelay sets submit retry delay.
+func WithSubmitRetryDelay(delay time.Duration) da.Option {
+	return func(daLayerClient da.DataAvailabilityLayerClient) {
+		daLayerClient.(*DataAvailabilityLayerClient).submitRetryDelay = delay
 	}
 }
 
 // Init initializes DataAvailabilityLayerClient instance.
-func (c *DataAvailabilityLayerClient) Init(config []byte, kvStore store.KVStore, logger log.Logger, options ...da.Option) error {
+func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.Server, kvStore store.KVStore, logger log.Logger, options ...da.Option) error {
 	c.logger = logger
 
 	if len(config) > 0 {
@@ -95,10 +106,12 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, kvStore store.KVStore,
 		}
 	}
 
+	c.pubsubServer = pubsubServer
 	// Set defaults
 	var err error
-	c.TxPollingRetryDelay = defaultTxPollingRetryDelay
-	c.TxPollingAttempts = defaultTxPollingAttempts
+	c.txPollingRetryDelay = defaultTxPollingRetryDelay
+	c.txPollingAttempts = defaultTxPollingAttempts
+	c.submitRetryDelay = defaultSubmitRetryDelay
 	c.RPCClient, err = httprpcclient.New(c.config.AppNodeURL, "")
 	if err != nil {
 		return err
@@ -127,6 +140,10 @@ func (c *DataAvailabilityLayerClient) Start() error {
 // Stop stops DataAvailabilityLayerClient.
 func (c *DataAvailabilityLayerClient) Stop() error {
 	c.logger.Info("stopping Celestia Data Availability Layer Client")
+	err := c.pubsubServer.Stop()
+	if err != nil {
+		return err
+	}
 	c.cancel()
 	return nil
 }
@@ -155,17 +172,25 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			return da.ResultSubmitBatch{}
 		default:
 			txResponse, err := c.client.SubmitPFD(c.ctx, c.config.NamespaceID, blob, c.config.Fee, c.config.GasLimit)
-			c.logger.Debug("DA submit batch response", "txResponse", txResponse, "error", err)
 			if txResponse != nil {
 				if txResponse.Code != 0 {
-					continue
+					c.logger.Debug("Failed to submit DA batch. Emitting health event and trying again", "txResponse", txResponse, "error", err)
+					// Publish an health event. Only if we failed to emit the event we return an error.
+					res, err := c.submitBatchHealthEventHelper(false, errors.New(txResponse.RawLog))
+					if err != nil {
+						return res
+					}
 				} else if err != nil {
 					// Here we assume that if txResponse is not nil and also error is not nil it means that the transaction
 					// was submitted (not necessarily accepted) and we still didn't get a clear status regarding it (e.g timeout).
 					// hence trying to poll for it.
+					c.logger.Debug("Failed to receive DA batch inclusion result. Waiting for inclusion", "txResponse", txResponse, "error", err)
 					inclusionHeight, err := c.waitForTXInclusion(txResponse.TxHash)
 					if err == nil {
-						{
+						res, err := c.submitBatchHealthEventHelper(true, nil)
+						if err != nil {
+							return res
+						} else {
 							return da.ResultSubmitBatch{
 								BaseResult: da.BaseResult{
 									Code:     da.StatusSuccess,
@@ -174,8 +199,20 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 								},
 							}
 						}
+					} else {
+						c.logger.Debug("Failed to receive DA batch inclusion result. Emitting health event and trying again", "error", err)
+						res, err := c.submitBatchHealthEventHelper(false, err)
+						if err != nil {
+							return res
+						}
 					}
+
 				} else {
+					c.logger.Debug("Successfully submitted DA batch", "txResponse", txResponse)
+					res, err := c.submitBatchHealthEventHelper(true, nil)
+					if err != nil {
+						return res
+					}
 					return da.ResultSubmitBatch{
 						BaseResult: da.BaseResult{
 							Code:     da.StatusSuccess,
@@ -184,6 +221,12 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 						},
 					}
 				}
+			} else {
+				res, err := c.submitBatchHealthEventHelper(false, errors.New("DA txResponse is nil"))
+				if err != nil {
+					return res
+				}
+				time.Sleep(c.submitRetryDelay)
 			}
 		}
 	}
@@ -276,10 +319,26 @@ func (c *DataAvailabilityLayerClient) waitForTXInclusion(txHash string) (uint64,
 		inclusionHeight = uint64(result.Height)
 
 		return nil
-	}, retry.Attempts(uint(c.TxPollingAttempts)), retry.DelayType(retry.FixedDelay), retry.Delay(c.TxPollingRetryDelay))
+	}, retry.Attempts(uint(c.txPollingAttempts)), retry.DelayType(retry.FixedDelay), retry.Delay(c.txPollingRetryDelay))
 
 	if err != nil {
 		return 0, err
 	}
 	return inclusionHeight, nil
+}
+
+func (c *DataAvailabilityLayerClient) submitBatchHealthEventHelper(healthy bool, err error) (da.ResultSubmitBatch, error) {
+	err = c.pubsubServer.PublishWithEvents(c.ctx, da.EventDataDAHealthStatus{Healthy: healthy, Error: err},
+		map[string][]string{da.EventTypeKey: {da.EventDAHealthStatus}})
+	if err != nil {
+		return da.ResultSubmitBatch{
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: err.Error(),
+			},
+		}, err
+	} else {
+		return da.ResultSubmitBatch{}, nil
+	}
+
 }

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	mux2 "github.com/gorilla/mux"
+	"github.com/tendermint/tendermint/libs/pubsub"
 
 	"github.com/celestiaorg/go-cnc"
 	"github.com/dymensionxyz/dymint/da"
@@ -39,7 +40,7 @@ func NewServer(blockTime time.Duration, logger log.Logger) *Server {
 
 // Start starts HTTP server with given listener.
 func (s *Server) Start(listener net.Listener) error {
-	err := s.mock.Init([]byte(s.blockTime.String()), store.NewDefaultInMemoryKVStore(), s.logger)
+	err := s.mock.Init([]byte(s.blockTime.String()), pubsub.NewServer(), store.NewDefaultInMemoryKVStore(), s.logger)
 	if err != nil {
 		return err
 	}
