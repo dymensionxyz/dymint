@@ -29,6 +29,9 @@ const (
 	Celestia Client = "celestia"
 )
 
+// Option is a function that sets a parameter on the da layer.
+type Option func(DataAvailabilityLayerClient)
+
 // BaseResult contains basic information returned by DA layer.
 type BaseResult struct {
 	// Code is to determine if the action succeeded.
@@ -67,7 +70,7 @@ type ResultRetrieveBatch struct {
 // It also contains life-cycle methods.
 type DataAvailabilityLayerClient interface {
 	// Init is called once to allow DA client to read configuration and initialize resources.
-	Init(config []byte, kvStore store.KVStore, logger log.Logger) error
+	Init(config []byte, kvStore store.KVStore, logger log.Logger, options ...Option) error
 
 	// Start is called once, after Init. It's implementation should start operation of DataAvailabilityLayerClient.
 	Start() error
