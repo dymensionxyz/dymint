@@ -40,8 +40,9 @@ func TestLifecycle(t *testing.T) {
 
 func doTestLifecycle(t *testing.T, dalc da.DataAvailabilityLayerClient) {
 	require := require.New(t)
-
-	err := dalc.Init([]byte{}, pubsub.NewServer(), nil, test.NewLogger(t))
+	pubsubServer := pubsub.NewServer()
+	pubsubServer.Start()
+	err := dalc.Init([]byte{}, pubsubServer, nil, test.NewLogger(t))
 	require.NoError(err)
 
 	err = dalc.Start()
@@ -83,7 +84,9 @@ func doTestDALC(t *testing.T, dalc da.DataAvailabilityLayerClient) {
 		}
 		conf, _ = json.Marshal(config)
 	}
-	err := dalc.Init(conf, pubsub.NewServer(), store.NewDefaultInMemoryKVStore(), test.NewLogger(t))
+	pubsubServer := pubsub.NewServer()
+	pubsubServer.Start()
+	err := dalc.Init(conf, pubsubServer, store.NewDefaultInMemoryKVStore(), test.NewLogger(t))
 	require.NoError(err)
 
 	err = dalc.Start()
@@ -197,7 +200,9 @@ func doTestRetrieve(t *testing.T, dalc da.DataAvailabilityLayerClient) {
 		}
 		conf, _ = json.Marshal(config)
 	}
-	err := dalc.Init(conf, pubsub.NewServer(), store.NewDefaultInMemoryKVStore(), test.NewLogger(t))
+	pubsubServer := pubsub.NewServer()
+	pubsubServer.Start()
+	err := dalc.Init(conf, pubsubServer, store.NewDefaultInMemoryKVStore(), test.NewLogger(t))
 	require.NoError(err)
 
 	err = dalc.Start()
