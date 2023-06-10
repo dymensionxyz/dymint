@@ -13,6 +13,7 @@ const (
 	flagDALayer             = "dymint.da_layer"
 	flagDAConfig            = "dymint.da_config"
 	flagBlockTime           = "dymint.block_time"
+	flagEmptyBlocksMaxTime  = "dymint.empty_blocks_max_time"
 	flagDABlockTime         = "dymint.da_block_time"
 	flagBatchSyncInterval   = "dymint.batch_sync_interval"
 	flagDAStartHeight       = "dymint.da_start_height"
@@ -84,6 +85,7 @@ func (nc *NodeConfig) GetViperConfig(v *viper.Viper) error {
 	nc.DABlockTime = v.GetDuration(flagDABlockTime)
 	nc.BatchSyncInterval = v.GetDuration(flagBatchSyncInterval)
 	nc.BlockTime = v.GetDuration(flagBlockTime)
+	nc.EmptyBlocksMaxTime = v.GetDuration(flagEmptyBlocksMaxTime)
 	nc.BlockBatchSize = v.GetUint64(flagBlockBatchSize)
 	nc.BlockBatchSizeBytes = v.GetUint64(flagBlockBatchSizeBytes)
 	nc.NamespaceID = v.GetString(flagNamespaceID)
@@ -109,6 +111,7 @@ func AddFlags(cmd *cobra.Command) {
 	cmd.Flags().String(flagDALayer, def.DALayer, "Data Availability Layer Client name (mock or grpc")
 	cmd.Flags().String(flagDAConfig, def.DAConfig, "Data Availability Layer Client config")
 	cmd.Flags().Duration(flagBlockTime, def.BlockTime, "block time (for aggregator mode)")
+	cmd.Flags().Duration(flagEmptyBlocksMaxTime, def.EmptyBlocksMaxTime, "max time for empty blocks (for aggregator mode)")
 	cmd.Flags().Duration(flagDABlockTime, def.DABlockTime, "DA chain block time (for syncing)")
 	cmd.Flags().Duration(flagBatchSyncInterval, def.BatchSyncInterval, "batch sync interval")
 	cmd.Flags().Uint64(flagDAStartHeight, def.DAStartHeight, "starting DA block height (for syncing)")
