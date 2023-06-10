@@ -19,7 +19,7 @@ var DefaultNodeConfig = NodeConfig{
 	Aggregator: true,
 	BlockManagerConfig: BlockManagerConfig{
 		BlockTime:           200 * time.Millisecond,
-		EmptyBlocksMaxTime:  30 * time.Second,
+		EmptyBlocksMaxTime:  0,
 		NamespaceID:         "000000000000ffff",
 		BatchSyncInterval:   30 * time.Second,
 		DABlockTime:         30 * time.Second,

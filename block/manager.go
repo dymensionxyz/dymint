@@ -317,19 +317,26 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 	}
 
 	ticker := time.NewTicker(m.conf.BlockTime)
-	tickerEmptyBlocksMaxTime := time.NewTicker(m.conf.EmptyBlocksMaxTime)
 
-	//FIXME: we probably want this feature to be toggleable
+	var tickerEmptyBlocksMaxTime *time.Ticker
+	var tickerEmptyBlocksMaxTimeCh <-chan time.Time
+	if m.conf.EmptyBlocksMaxTime > 0 {
+		tickerEmptyBlocksMaxTime = time.NewTicker(m.conf.EmptyBlocksMaxTime)
+		tickerEmptyBlocksMaxTimeCh = tickerEmptyBlocksMaxTime.C
+	}
 
 	//Allow the initial block to be empty
 	produceEmptyBlock := true
 	for {
 		select {
+		//Context canceled
 		case <-ctx.Done():
 			return
-		case <-tickerEmptyBlocksMaxTime.C:
-			m.logger.Error("No transactions for too long, producing empty block")
+		//Empty blocks timeout
+		case <-tickerEmptyBlocksMaxTimeCh:
+			m.logger.Error("No transactions for too long, allowing to produce empty block")
 			produceEmptyBlock = true
+		//Produce block
 		case <-ticker.C:
 			err := m.produceBlock(ctx, produceEmptyBlock)
 			if err == types.ErrSkippedEmptyBlock {
@@ -340,11 +347,13 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 				m.logger.Error("error while producing block", "error", err)
 				continue
 			}
+			//If empty blocks enabled, after block produced, reset the timeout timer
+			if tickerEmptyBlocksMaxTime != nil {
+				produceEmptyBlock = false
+				tickerEmptyBlocksMaxTime.Reset(m.conf.EmptyBlocksMaxTime)
+			}
 
-			//after block produced, reset the timeout timer
-			produceEmptyBlock = false
-			tickerEmptyBlocksMaxTime.Reset(m.conf.EmptyBlocksMaxTime)
-
+		//Node's health check channel
 		case shouldProduceBlocks := <-m.shouldProduceBlocksCh:
 			for !shouldProduceBlocks {
 				m.logger.Info("Stopped block production")
@@ -352,7 +361,6 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 			}
 			m.logger.Info("Resumed Block production")
 		}
-
 	}
 }
 
