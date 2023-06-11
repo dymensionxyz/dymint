@@ -8,7 +8,7 @@ require (
 	github.com/celestiaorg/go-cnc v0.2.0
 	github.com/dgraph-io/badger/v3 v3.2103.3
 	github.com/dymensionxyz/cosmosclient v0.3.0-beta.0.20230514120937-449e9becd080
-	github.com/dymensionxyz/dymension v0.2.0-beta.0.20230503120250-228ff624f61c
+	github.com/dymensionxyz/dymension v0.2.0-beta.0.20230607115558-745644a96ea6
 	github.com/go-kit/kit v0.12.0
 	github.com/gofrs/uuid v4.3.0+incompatible
 	github.com/gogo/protobuf v1.3.3
@@ -254,6 +254,7 @@ require (
 )
 
 replace (
+	github.com/celestiaorg/go-cnc => github.com/dymensionxyz/go-cnc v0.2.2
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.2-alpha.regen.4
 	github.com/gorilla/rpc => github.com/dymensionxyz/rpc v1.3.1
 	github.com/tendermint/tendermint => github.com/informalsystems/tendermint v0.34.26

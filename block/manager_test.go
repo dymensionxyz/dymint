@@ -9,7 +9,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/avast/retry-go"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -138,8 +137,7 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 		assert.NoError(t, err)
 		daResultSubmitBatch := manager.dalc.SubmitBatch(batch)
 		assert.Equal(t, daResultSubmitBatch.Code, da.StatusSuccess)
-		resultSubmitBatch := manager.settlementClient.SubmitBatch(batch, manager.dalc.GetClientType(), &daResultSubmitBatch)
-		assert.Equal(t, resultSubmitBatch.Code, settlement.StatusSuccess)
+		manager.settlementClient.SubmitBatch(batch, manager.dalc.GetClientType(), &daResultSubmitBatch)
 		nextBatchStartHeight = batch.EndHeight + 1
 		// Wait until daHeight is updated
 		time.Sleep(time.Millisecond * 500)
@@ -172,48 +170,6 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 	case <-ctx.Done():
 		assert.Greater(t, manager.store.Height(), batch.EndHeight)
 	}
-}
-
-func TestPublishWhenSettlementLayerDisconnected(t *testing.T) {
-	SLBatchRetryDelay = 1 * time.Second
-
-	isSettlementError := atomic.Value{}
-	isSettlementError.Store(true)
-	manager, err := getManager(getManagerConfig(), &testutil.SettlementLayerClientSubmitBatchError{IsError: isSettlementError}, nil, 1, 1, 0, nil, nil)
-	retry.DefaultAttempts = 2
-	require.NoError(t, err)
-	require.NotNil(t, manager)
-
-	nextBatchStartHeight := atomic.LoadUint64(&manager.syncTarget) + 1
-	batch, err := testutil.GenerateBatch(nextBatchStartHeight, nextBatchStartHeight+uint64(defaultBatchSize-1), manager.proposerKey)
-	assert.NoError(t, err)
-	daResultSubmitBatch := manager.dalc.SubmitBatch(batch)
-	assert.Equal(t, daResultSubmitBatch.Code, da.StatusSuccess)
-	resultSubmitBatch := manager.settlementClient.SubmitBatch(batch, manager.dalc.GetClientType(), &daResultSubmitBatch)
-	assert.Equal(t, resultSubmitBatch.Code, settlement.StatusError)
-
-	defer func() {
-		err := recover().(error)
-		assert.ErrorContains(t, err, connectionRefusedErrorMessage)
-	}()
-	manager.submitBatchToSL(&types.Batch{StartHeight: 1, EndHeight: 1}, nil)
-}
-
-func TestPublishWhenDALayerDisconnected(t *testing.T) {
-	DABatchRetryDelay = 1 * time.Second
-	manager, err := getManager(getManagerConfig(), nil, &testutil.DALayerClientSubmitBatchError{}, 1, 1, 0, nil, nil)
-	retry.DefaultAttempts = 2
-	require.NoError(t, err)
-	require.NotNil(t, manager)
-
-	nextBatchStartHeight := atomic.LoadUint64(&manager.syncTarget) + 1
-	batch, err := testutil.GenerateBatch(nextBatchStartHeight, nextBatchStartHeight+uint64(defaultBatchSize-1), manager.proposerKey)
-	assert.NoError(t, err)
-	daResultSubmitBatch := manager.dalc.SubmitBatch(batch)
-	assert.Equal(t, daResultSubmitBatch.Code, da.StatusError)
-
-	_, err = manager.submitBatchToDA(context.Background(), batch)
-	assert.ErrorContains(t, err, connectionRefusedErrorMessage)
 }
 
 func TestRetrieveDaBatchesFailed(t *testing.T) {
@@ -446,53 +402,6 @@ func TestProduceBlockFailAfterCommit(t *testing.T) {
 	}
 }
 
-// Test batch retry halts upon new batch acceptance
-// 1. Produce blocks with settlement layer batch submission error
-// 2. Emit an event that a new batch was accepted
-// 3. Validate new batches was submitted
-func TestBatchRetryWhileBatchAccepted(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
-	app := testutil.GetAppMock()
-	// Create proxy app
-	clientCreator := proxy.NewLocalClientCreator(app)
-	proxyApp := proxy.NewAppConns(clientCreator)
-	err := proxyApp.Start()
-	require.NoError(err)
-	// Init manager
-	managerConfig := getManagerConfig()
-	managerConfig.BlockBatchSize = 1
-	isSettlementError := atomic.Value{}
-	isSettlementError.Store(true)
-	settlementLayerClient := &testutil.SettlementLayerClientSubmitBatchError{IsError: isSettlementError}
-	manager, err := getManager(managerConfig, settlementLayerClient, nil, 1, 1, 0, proxyApp, nil)
-	require.NoError(err)
-	// Produce blocks with settlement layer batch submission error
-	blockLoopContext, blockLoopCancel := context.WithCancel(context.Background())
-	ctx, cancel := context.WithCancel(context.Background())
-	defer blockLoopCancel()
-	defer cancel()
-	go manager.ProduceBlockLoop(blockLoopContext)
-	go manager.SyncTargetLoop(ctx)
-	time.Sleep(200 * time.Millisecond)
-	assert.Equal(uint64(0), atomic.LoadUint64(&settlementLayerClient.BatchCounter))
-	// Cancel block production to not interfere with the isBatchInProcess flag
-	blockLoopCancel()
-	time.Sleep(100 * time.Millisecond)
-	// Emit an event that a new batch was accepted and wait for it to be processed
-	eventData := &settlement.EventDataNewSettlementBatchAccepted{EndHeight: 1, StateIndex: 1}
-	manager.pubsub.PublishWithEvents(ctx, eventData, map[string][]string{settlement.EventTypeKey: {settlement.EventNewSettlementBatchAccepted}})
-	time.Sleep(200 * time.Millisecond)
-	// Change settlement layer to accept batches and validate new batches was submitted
-	settlementLayerClient.IsError.Store(false)
-	blockLoopContext, blockLoopCancel = context.WithCancel(context.Background())
-	defer blockLoopCancel()
-	go manager.ProduceBlockLoop(blockLoopContext)
-	time.Sleep(1 * time.Second)
-	assert.Greater(atomic.LoadUint64(&settlementLayerClient.BatchCounter), uint64(0))
-
-}
-
 func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
@@ -608,7 +517,7 @@ func getManager(conf config.BlockManagerConfig, settlementlc settlement.LayerI, 
 	if dalc == nil {
 		dalc = &mockda.DataAvailabilityLayerClient{}
 	}
-	initDALCMock(dalc, conf.DABlockTime, logger)
+	initDALCMock(dalc, pubsubServer, conf.DABlockTime, logger)
 
 	var proxyApp proxy.AppConns
 	if proxyAppConns == nil {
@@ -648,13 +557,13 @@ func getManager(conf config.BlockManagerConfig, settlementlc settlement.LayerI, 
 // TODO(omritoptix): Possible move out to a generic testutil
 func getMockDALC(daBlockTime time.Duration, logger log.Logger) da.DataAvailabilityLayerClient {
 	dalc := &mockda.DataAvailabilityLayerClient{}
-	initDALCMock(dalc, daBlockTime, logger)
+	initDALCMock(dalc, pubsub.NewServer(), daBlockTime, logger)
 	return dalc
 }
 
 // TODO(omritoptix): Possible move out to a generic testutil
-func initDALCMock(dalc da.DataAvailabilityLayerClient, daBlockTime time.Duration, logger log.Logger) {
-	_ = dalc.Init([]byte(daBlockTime.String()), store.NewDefaultInMemoryKVStore(), logger)
+func initDALCMock(dalc da.DataAvailabilityLayerClient, pubsubServer *pubsub.Server, daBlockTime time.Duration, logger log.Logger) {
+	_ = dalc.Init([]byte(daBlockTime.String()), pubsubServer, store.NewDefaultInMemoryKVStore(), logger)
 	_ = dalc.Start()
 }
 

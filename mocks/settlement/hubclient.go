@@ -86,26 +86,8 @@ func (_m *HubClient) GetSequencers(rollappID string) ([]*types.Sequencer, error)
 }
 
 // PostBatch provides a mock function with given fields: batch, daClient, daResult
-func (_m *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) (settlement.PostBatchResp, error) {
-	ret := _m.Called(batch, daClient, daResult)
-
-	var r0 settlement.PostBatchResp
-	if rf, ok := ret.Get(0).(func(*types.Batch, da.Client, *da.ResultSubmitBatch) settlement.PostBatchResp); ok {
-		r0 = rf(batch, daClient, daResult)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(settlement.PostBatchResp)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(*types.Batch, da.Client, *da.ResultSubmitBatch) error); ok {
-		r1 = rf(batch, daClient, daResult)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
+func (_m *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) {
+	_m.Called(batch, daClient, daResult)
 }
 
 // Start provides a mock function with given fields:
