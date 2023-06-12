@@ -112,7 +112,7 @@ func NewManager(
 		return nil, err
 	}
 
-	// TODO(mtsitrin): Probably should be validated and manage default on config init
+	// TODO((#119): Probably should be validated and manage default on config init.
 	// TODO(omritoptix): Think about the default batchSize and default DABlockTime proper location.
 	if conf.DABlockTime == 0 {
 		logger.Info("WARNING: using default DA block time", "DABlockTime", config.DefaultNodeConfig.DABlockTime)
@@ -508,6 +508,8 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 		// Every one of those, if happens before commit, prevents us from re-executing the block in case failed during commit.
 		newState.LastValidators = m.lastState.Validators.Copy()
 		newState.LastStoreHeight = block.Header.Height
+		newState.BaseHeight = m.store.Base()
+
 		_, err = m.store.UpdateState(newState, nil)
 		if err != nil {
 			m.logger.Error("Failed to update state", "error", err)

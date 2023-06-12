@@ -23,7 +23,6 @@ type Store interface {
 	Base() uint64
 
 	// SetBase sets the height saved in the Store for the lowest block
-	//FIXME: should be set to the real value on start
 	SetBase(height uint64)
 
 	// SaveBlock saves block along with its seen commit (which will be included in the next block).
