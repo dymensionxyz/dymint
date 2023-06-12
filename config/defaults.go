@@ -21,8 +21,6 @@ var DefaultNodeConfig = NodeConfig{
 		BlockTime:           200 * time.Millisecond,
 		EmptyBlocksMaxTime:  60 * time.Second,
 		NamespaceID:         "000000000000ffff",
-		BatchSyncInterval:   30 * time.Second,
-		DABlockTime:         30 * time.Second,
 		BlockBatchSize:      500,
 		BlockBatchSizeBytes: 1500000},
 	DALayer:         "mock",

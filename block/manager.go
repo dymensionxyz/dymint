@@ -69,12 +69,12 @@ type Manager struct {
 
 	syncTargetDiode diodes.Diode
 
-	batchInProcess atomic.Value
-
 	shouldProduceBlocksCh chan bool
 
-	syncTarget   uint64
-	isSyncedCond sync.Cond
+	syncTarget         uint64
+	lastSubmissionTime int64
+	batchInProcess     atomic.Value
+	isSyncedCond       sync.Cond
 
 	syncCache map[uint64]*types.Block
 
@@ -113,12 +113,6 @@ func NewManager(
 	}
 
 	// TODO(mtsitrin): Probably should be validated and manage default on config init
-	// TODO(omritoptix): Think about the default batchSize and default DABlockTime proper location.
-	if conf.DABlockTime == 0 {
-		logger.Info("WARNING: using default DA block time", "DABlockTime", config.DefaultNodeConfig.DABlockTime)
-		conf.DABlockTime = config.DefaultNodeConfig.DABlockTime
-	}
-
 	if conf.BlockBatchSizeBytes == 0 {
 		logger.Info("WARNING: using default DA batch size bytes limit", "BlockBatchSizeBytes", config.DefaultNodeConfig.BlockBatchSizeBytes)
 		conf.BlockBatchSizeBytes = config.DefaultNodeConfig.BlockBatchSizeBytes
@@ -276,6 +270,7 @@ func (m *Manager) waitForSync(ctx context.Context) error {
 		// the SL still hasn't got any batches for this chain.
 		m.logger.Info("No batches for chain found in SL. Start writing first batch")
 		atomic.StoreUint64(&m.syncTarget, uint64(m.genesis.InitialHeight-1))
+		atomic.StoreInt64(&m.lastSubmissionTime, time.Now().Unix())
 		return nil
 	} else if err != nil {
 		m.logger.Error("failed to retrieve batch from SL", "err", err)
@@ -396,6 +391,7 @@ func (m *Manager) SyncTargetLoop(ctx context.Context) {
 func (m *Manager) updateSyncParams(ctx context.Context, endHeight uint64) {
 	m.logger.Info("Received new syncTarget", "syncTarget", endHeight)
 	atomic.StoreUint64(&m.syncTarget, endHeight)
+	atomic.StoreInt64(&m.lastSubmissionTime, time.Now().UnixNano())
 	m.syncTargetDiode.Set(diodes.GenericDataType(&endHeight))
 }
 
@@ -694,10 +690,18 @@ func (m *Manager) produceBlock(ctx context.Context, allowEmpty bool) error {
 		return err
 	}
 
-	// Submit batch if we've reached the batch size and there isn't another batch currently in submission process.
+	//TODO: move to separate function
+
+	lastSubmissionTime := atomic.LoadInt64(&m.lastSubmissionTime)
+
+	requiredByTime := time.Since(time.Unix(0, lastSubmissionTime)) > m.conf.BatchSubmitMaxTime
+
 	// SyncTarget is the height of the last block in the last batch as seen by this node.
 	syncTarget := atomic.LoadUint64(&m.syncTarget)
-	if block.Header.Height-syncTarget >= m.conf.BlockBatchSize && m.batchInProcess.Load() == false {
+	requiredByNumOfBlocks := (block.Header.Height - syncTarget) > m.conf.BlockBatchSize
+
+	// Submit batch if we've reached the batch size and there isn't another batch currently in submission process.
+	if m.batchInProcess.Load() == false && (requiredByTime || requiredByNumOfBlocks) {
 		m.batchInProcess.Store(true)
 		go m.submitNextBatch(ctx)
 	}
@@ -707,8 +711,9 @@ func (m *Manager) produceBlock(ctx context.Context, allowEmpty bool) error {
 
 func (m *Manager) submitNextBatch(ctx context.Context) {
 	// Get the batch start and end height
-	startHeight := atomic.LoadUint64(&m.syncTarget) + 1
-	endHeight := startHeight + m.conf.BlockBatchSize - 1
+	startHeight := atomic.LoadUint64(&m.syncTarget)
+	endHeight := uint64(m.lastState.LastBlockHeight)
+
 	// Create the batch
 	nextBatch, err := m.createNextDABatch(startHeight, endHeight)
 	if err != nil {
@@ -728,7 +733,7 @@ func (m *Manager) submitNextBatch(ctx context.Context) {
 	// Submit batch to SL
 	// TODO(omritoptix): Handle a case where the SL submission fails due to syncTarget out of sync with the latestHeight in the SL.
 	// In that case we'll want to update the syncTarget before returning.
-	go m.settlementClient.SubmitBatch(nextBatch, m.dalc.GetClientType(), &resultSubmitToDA)
+	m.settlementClient.SubmitBatch(nextBatch, m.dalc.GetClientType(), &resultSubmitToDA)
 }
 
 func (m *Manager) updateStateIndex(stateIndex uint64) error {
