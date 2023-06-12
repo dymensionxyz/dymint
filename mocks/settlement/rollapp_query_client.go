@@ -17,128 +17,8 @@ type RollAppQueryClient struct {
 	mock.Mock
 }
 
-// BlockHeightToFinalizationQueue provides a mock function with given fields: ctx, in, opts
-func (_m *RollAppQueryClient) BlockHeightToFinalizationQueue(ctx context.Context, in *types.QueryGetBlockHeightToFinalizationQueueRequest, opts ...grpc.CallOption) (*types.QueryGetBlockHeightToFinalizationQueueResponse, error) {
-	_va := make([]interface{}, len(opts))
-	for _i := range opts {
-		_va[_i] = opts[_i]
-	}
-	var _ca []interface{}
-	_ca = append(_ca, ctx, in)
-	_ca = append(_ca, _va...)
-	ret := _m.Called(_ca...)
-
-	var r0 *types.QueryGetBlockHeightToFinalizationQueueResponse
-	if rf, ok := ret.Get(0).(func(context.Context, *types.QueryGetBlockHeightToFinalizationQueueRequest, ...grpc.CallOption) *types.QueryGetBlockHeightToFinalizationQueueResponse); ok {
-		r0 = rf(ctx, in, opts...)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*types.QueryGetBlockHeightToFinalizationQueueResponse)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, *types.QueryGetBlockHeightToFinalizationQueueRequest, ...grpc.CallOption) error); ok {
-		r1 = rf(ctx, in, opts...)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// BlockHeightToFinalizationQueueAll provides a mock function with given fields: ctx, in, opts
-func (_m *RollAppQueryClient) BlockHeightToFinalizationQueueAll(ctx context.Context, in *types.QueryAllBlockHeightToFinalizationQueueRequest, opts ...grpc.CallOption) (*types.QueryAllBlockHeightToFinalizationQueueResponse, error) {
-	_va := make([]interface{}, len(opts))
-	for _i := range opts {
-		_va[_i] = opts[_i]
-	}
-	var _ca []interface{}
-	_ca = append(_ca, ctx, in)
-	_ca = append(_ca, _va...)
-	ret := _m.Called(_ca...)
-
-	var r0 *types.QueryAllBlockHeightToFinalizationQueueResponse
-	if rf, ok := ret.Get(0).(func(context.Context, *types.QueryAllBlockHeightToFinalizationQueueRequest, ...grpc.CallOption) *types.QueryAllBlockHeightToFinalizationQueueResponse); ok {
-		r0 = rf(ctx, in, opts...)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*types.QueryAllBlockHeightToFinalizationQueueResponse)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, *types.QueryAllBlockHeightToFinalizationQueueRequest, ...grpc.CallOption) error); ok {
-		r1 = rf(ctx, in, opts...)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// GetStateInfoByHeight provides a mock function with given fields: ctx, in, opts
-func (_m *RollAppQueryClient) GetStateInfoByHeight(ctx context.Context, in *types.QueryGetStateInfoByHeightRequest, opts ...grpc.CallOption) (*types.QueryGetStateInfoByHeightResponse, error) {
-	_va := make([]interface{}, len(opts))
-	for _i := range opts {
-		_va[_i] = opts[_i]
-	}
-	var _ca []interface{}
-	_ca = append(_ca, ctx, in)
-	_ca = append(_ca, _va...)
-	ret := _m.Called(_ca...)
-
-	var r0 *types.QueryGetStateInfoByHeightResponse
-	if rf, ok := ret.Get(0).(func(context.Context, *types.QueryGetStateInfoByHeightRequest, ...grpc.CallOption) *types.QueryGetStateInfoByHeightResponse); ok {
-		r0 = rf(ctx, in, opts...)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*types.QueryGetStateInfoByHeightResponse)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, *types.QueryGetStateInfoByHeightRequest, ...grpc.CallOption) error); ok {
-		r1 = rf(ctx, in, opts...)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// LatestFinalizedStateInfo provides a mock function with given fields: ctx, in, opts
-func (_m *RollAppQueryClient) LatestFinalizedStateInfo(ctx context.Context, in *types.QueryGetLatestFinalizedStateInfoRequest, opts ...grpc.CallOption) (*types.QueryGetLatestFinalizedStateInfoResponse, error) {
-	_va := make([]interface{}, len(opts))
-	for _i := range opts {
-		_va[_i] = opts[_i]
-	}
-	var _ca []interface{}
-	_ca = append(_ca, ctx, in)
-	_ca = append(_ca, _va...)
-	ret := _m.Called(_ca...)
-
-	var r0 *types.QueryGetLatestFinalizedStateInfoResponse
-	if rf, ok := ret.Get(0).(func(context.Context, *types.QueryGetLatestFinalizedStateInfoRequest, ...grpc.CallOption) *types.QueryGetLatestFinalizedStateInfoResponse); ok {
-		r0 = rf(ctx, in, opts...)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*types.QueryGetLatestFinalizedStateInfoResponse)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, *types.QueryGetLatestFinalizedStateInfoRequest, ...grpc.CallOption) error); ok {
-		r1 = rf(ctx, in, opts...)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
 // LatestStateInfoIndex provides a mock function with given fields: ctx, in, opts
-func (_m *RollAppQueryClient) LatestStateInfoIndex(ctx context.Context, in *types.QueryGetLatestStateInfoIndexRequest, opts ...grpc.CallOption) (*types.QueryGetLatestStateInfoIndexResponse, error) {
+func (_m *RollAppQueryClient) LatestStateIndex(ctx context.Context, in *types.QueryGetLatestStateIndexRequest, opts ...grpc.CallOption) (*types.QueryGetLatestStateIndexResponse, error) {
 	_va := make([]interface{}, len(opts))
 	for _i := range opts {
 		_va[_i] = opts[_i]
@@ -148,47 +28,17 @@ func (_m *RollAppQueryClient) LatestStateInfoIndex(ctx context.Context, in *type
 	_ca = append(_ca, _va...)
 	ret := _m.Called(_ca...)
 
-	var r0 *types.QueryGetLatestStateInfoIndexResponse
-	if rf, ok := ret.Get(0).(func(context.Context, *types.QueryGetLatestStateInfoIndexRequest, ...grpc.CallOption) *types.QueryGetLatestStateInfoIndexResponse); ok {
+	var r0 *types.QueryGetLatestStateIndexResponse
+	if rf, ok := ret.Get(0).(func(context.Context, *types.QueryGetLatestStateIndexRequest, ...grpc.CallOption) *types.QueryGetLatestStateIndexResponse); ok {
 		r0 = rf(ctx, in, opts...)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*types.QueryGetLatestStateInfoIndexResponse)
+			r0 = ret.Get(0).(*types.QueryGetLatestStateIndexResponse)
 		}
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, *types.QueryGetLatestStateInfoIndexRequest, ...grpc.CallOption) error); ok {
-		r1 = rf(ctx, in, opts...)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// LatestStateInfoIndexAll provides a mock function with given fields: ctx, in, opts
-func (_m *RollAppQueryClient) LatestStateInfoIndexAll(ctx context.Context, in *types.QueryAllLatestStateInfoIndexRequest, opts ...grpc.CallOption) (*types.QueryAllLatestStateInfoIndexResponse, error) {
-	_va := make([]interface{}, len(opts))
-	for _i := range opts {
-		_va[_i] = opts[_i]
-	}
-	var _ca []interface{}
-	_ca = append(_ca, ctx, in)
-	_ca = append(_ca, _va...)
-	ret := _m.Called(_ca...)
-
-	var r0 *types.QueryAllLatestStateInfoIndexResponse
-	if rf, ok := ret.Get(0).(func(context.Context, *types.QueryAllLatestStateInfoIndexRequest, ...grpc.CallOption) *types.QueryAllLatestStateInfoIndexResponse); ok {
-		r0 = rf(ctx, in, opts...)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*types.QueryAllLatestStateInfoIndexResponse)
-		}
-	}
-
-	var r1 error
-	if rf, ok := ret.Get(1).(func(context.Context, *types.QueryAllLatestStateInfoIndexRequest, ...grpc.CallOption) error); ok {
+	if rf, ok := ret.Get(1).(func(context.Context, *types.QueryGetLatestStateIndexRequest, ...grpc.CallOption) error); ok {
 		r1 = rf(ctx, in, opts...)
 	} else {
 		r1 = ret.Error(1)

@@ -4,6 +4,7 @@ import (
 	"github.com/dymensionxyz/dymint/log"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
 // StatusCode is a type for DA layer return status.
@@ -28,6 +29,9 @@ const (
 	Mock     Client = "mock"
 	Celestia Client = "celestia"
 )
+
+// Option is a function that sets a parameter on the da layer.
+type Option func(DataAvailabilityLayerClient)
 
 // BaseResult contains basic information returned by DA layer.
 type BaseResult struct {
@@ -67,7 +71,7 @@ type ResultRetrieveBatch struct {
 // It also contains life-cycle methods.
 type DataAvailabilityLayerClient interface {
 	// Init is called once to allow DA client to read configuration and initialize resources.
-	Init(config []byte, kvStore store.KVStore, logger log.Logger) error
+	Init(config []byte, pubsubServer *pubsub.Server, kvStore store.KVStore, logger log.Logger, options ...Option) error
 
 	// Start is called once, after Init. It's implementation should start operation of DataAvailabilityLayerClient.
 	Start() error

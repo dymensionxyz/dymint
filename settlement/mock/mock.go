@@ -73,29 +73,6 @@ type HubClient struct {
 
 var _ settlement.HubClient = &HubClient{}
 
-// PostBatchResp is the response from saving the batch
-type PostBatchResp struct {
-	err error
-}
-
-// GetTxHash returns the tx hash
-func (s PostBatchResp) GetTxHash() string {
-	if s.err != nil {
-		return ""
-	}
-	return "mock-hash"
-}
-
-// GetCode returns the code
-func (s PostBatchResp) GetCode() uint32 {
-	if s.err != nil {
-		return 1
-	}
-	return 0
-}
-
-var _ settlement.PostBatchResp = PostBatchResp{}
-
 func newHubClient(config settlement.Config, pubsub *pubsub.Server, logger log.Logger) (*HubClient, error) {
 	latestHeight := uint64(0)
 	slStateIndex := uint64(0)
@@ -173,21 +150,17 @@ func (c *HubClient) Stop() error {
 }
 
 // PostBatch saves the batch to the kv store
-func (c *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) (settlement.PostBatchResp, error) {
+func (c *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) {
 	settlementBatch := c.convertBatchtoSettlementBatch(batch, daClient, daResult)
-	err := c.saveBatch(settlementBatch)
-	if err != nil {
-		return PostBatchResp{err}, err
-	}
+	c.saveBatch(settlementBatch)
 	go func() {
-		// sleep for 100 miliseconds to mimic a delay in batch acceptance
-		time.Sleep(100 * time.Millisecond)
-		err = c.pubsub.PublishWithEvents(context.Background(), &settlement.EventDataNewSettlementBatchAccepted{EndHeight: settlementBatch.EndHeight}, map[string][]string{settlement.EventTypeKey: {settlement.EventNewSettlementBatchAccepted}})
+		// sleep for 10 miliseconds to mimic a delay in batch acceptance
+		time.Sleep(10 * time.Millisecond)
+		err := c.pubsub.PublishWithEvents(context.Background(), &settlement.EventDataNewSettlementBatchAccepted{EndHeight: settlementBatch.EndHeight}, map[string][]string{settlement.EventTypeKey: {settlement.EventNewSettlementBatchAccepted}})
 		if err != nil {
-			c.logger.Error("error publishing event", "error", err)
+			panic(err)
 		}
 	}()
-	return PostBatchResp{nil}, nil
 }
 
 // GetLatestBatch returns the latest batch from the kv store
@@ -225,18 +198,18 @@ func (c *HubClient) GetSequencers(rollappID string) ([]*types.Sequencer, error) 
 	}, nil
 }
 
-func (c *HubClient) saveBatch(batch *settlement.Batch) error {
+func (c *HubClient) saveBatch(batch *settlement.Batch) {
 	c.logger.Debug("Saving batch to settlement layer", "start height",
 		batch.StartHeight, "end height", batch.EndHeight)
 	b, err := json.Marshal(batch)
 	if err != nil {
-		return err
+		panic(err)
 	}
 	// Save the batch to the next state index
 	slStateIndex := atomic.LoadUint64(&c.slStateIndex)
 	err = c.settlementKV.Set(getKey(slStateIndex+1), b)
 	if err != nil {
-		return err
+		panic(err)
 	}
 	// Save SL state index in memory and in store
 	atomic.StoreUint64(&c.slStateIndex, slStateIndex+1)
@@ -244,11 +217,10 @@ func (c *HubClient) saveBatch(batch *settlement.Batch) error {
 	binary.BigEndian.PutUint64(b, slStateIndex+1)
 	err = c.settlementKV.Set(slStateIndexKey, b)
 	if err != nil {
-		return err
+		panic(err)
 	}
 	// Save latest height in memory and in store
 	atomic.StoreUint64(&c.latestHeight, batch.EndHeight)
-	return nil
 }
 
 func (c *HubClient) convertBatchtoSettlementBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) *settlement.Batch {
