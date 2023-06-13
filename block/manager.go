@@ -11,6 +11,7 @@ import (
 
 	"github.com/avast/retry-go"
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
+	"github.com/cosmos/cosmos-sdk/types/errors"
 	abciconv "github.com/dymensionxyz/dymint/conv/abci"
 	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/p2p"
@@ -116,6 +117,11 @@ func NewManager(
 	if conf.BlockBatchSizeBytes == 0 {
 		logger.Info("WARNING: using default DA batch size bytes limit", "BlockBatchSizeBytes", config.DefaultNodeConfig.BlockBatchSizeBytes)
 		conf.BlockBatchSizeBytes = config.DefaultNodeConfig.BlockBatchSizeBytes
+	}
+	if conf.BatchSubmitMaxTime == 0 {
+		logger.Info("WARNING: using default DA batch submit max time", "BatchSubmitMaxTime", config.DefaultNodeConfig.BatchSubmitMaxTime)
+		conf.BatchSubmitMaxTime = config.DefaultNodeConfig.BatchSubmitMaxTime
+		// panic("Batch submit max time must be a positive number")
 	}
 	if conf.BlockTime == 0 {
 		panic("Block production time must be a positive number")
@@ -298,16 +304,18 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 	// we are manually being replaced.
 	err := m.waitForSync(ctx)
 	if err != nil {
-		m.logger.Error("failed to wait for sync", "err", err)
+		panic(errors.Wrap(err, "failed to wait for sync"))
 	}
 
 	ticker := time.NewTicker(m.conf.BlockTime)
+	defer ticker.Stop()
 
 	var tickerEmptyBlocksMaxTime *time.Ticker
 	var tickerEmptyBlocksMaxTimeCh <-chan time.Time
 	if m.conf.EmptyBlocksMaxTime > 0 {
 		tickerEmptyBlocksMaxTime = time.NewTicker(m.conf.EmptyBlocksMaxTime)
 		tickerEmptyBlocksMaxTimeCh = tickerEmptyBlocksMaxTime.C
+		defer tickerEmptyBlocksMaxTime.Stop()
 	}
 
 	//Allow the initial block to be empty
@@ -691,9 +699,7 @@ func (m *Manager) produceBlock(ctx context.Context, allowEmpty bool) error {
 	}
 
 	//TODO: move to separate function
-
 	lastSubmissionTime := atomic.LoadInt64(&m.lastSubmissionTime)
-
 	requiredByTime := time.Since(time.Unix(0, lastSubmissionTime)) > m.conf.BatchSubmitMaxTime
 
 	// SyncTarget is the height of the last block in the last batch as seen by this node.
@@ -711,7 +717,7 @@ func (m *Manager) produceBlock(ctx context.Context, allowEmpty bool) error {
 
 func (m *Manager) submitNextBatch(ctx context.Context) {
 	// Get the batch start and end height
-	startHeight := atomic.LoadUint64(&m.syncTarget)
+	startHeight := atomic.LoadUint64(&m.syncTarget) + 1
 	endHeight := uint64(m.lastState.LastBlockHeight)
 
 	// Create the batch

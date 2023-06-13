@@ -109,6 +109,7 @@ func AddFlags(cmd *cobra.Command) {
 	cmd.Flags().String(flagDAConfig, def.DAConfig, "Data Availability Layer Client config")
 	cmd.Flags().Duration(flagBlockTime, def.BlockTime, "block time (for aggregator mode)")
 	cmd.Flags().Duration(flagEmptyBlocksMaxTime, def.EmptyBlocksMaxTime, "max time for empty blocks (for aggregator mode)")
+	cmd.Flags().Duration(flagBatchSubmitMaxTime, def.BatchSubmitMaxTime, "max time for batch submit (for aggregator mode)")
 	cmd.Flags().Uint64(flagDAStartHeight, def.DAStartHeight, "starting DA block height (for syncing)")
 	cmd.Flags().String(flagNamespaceID, def.NamespaceID, "namespace identifies (8 bytes in hex)")
 	cmd.Flags().Uint64(flagBlockBatchSize, def.BlockBatchSize, "block batch size")

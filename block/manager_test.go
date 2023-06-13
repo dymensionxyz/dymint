@@ -144,10 +144,9 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 	}
 
 	t.Log("Validating manager can't produce blocks")
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*1)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 	go manager.ProduceBlockLoop(ctx)
-
 	<-ctx.Done()
 	assert.Equal(t, lastStoreHeight, manager.store.Height())
 
@@ -155,16 +154,14 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 	ctx, cancel = context.WithTimeout(context.Background(), time.Second*2)
 	defer cancel()
 	go manager.Start(ctx, false)
-
 	<-ctx.Done()
-	assert.Greater(t, manager.store.Height(), lastStoreHeight)
+	require.Greater(t, manager.store.Height(), lastStoreHeight)
 	assert.Equal(t, batch.EndHeight, manager.store.Height())
 
 	t.Log("Validate blocks are produced")
-	ctx, cancel = context.WithTimeout(context.Background(), time.Second*30)
+	ctx, cancel = context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 	go manager.ProduceBlockLoop(ctx)
-
 	<-ctx.Done()
 	assert.Greater(t, manager.store.Height(), batch.EndHeight)
 }
@@ -579,9 +576,10 @@ func initSettlementLayerMock(settlementlc settlement.LayerI, proposer string, pu
 
 func getManagerConfig() config.BlockManagerConfig {
 	return config.BlockManagerConfig{
-		BlockTime:      100 * time.Millisecond,
-		BlockBatchSize: defaultBatchSize,
-		DAStartHeight:  0,
-		NamespaceID:    "0102030405060708",
+		BlockTime:          100 * time.Millisecond,
+		BlockBatchSize:     defaultBatchSize,
+		BatchSubmitMaxTime: 30 * time.Minute,
+		DAStartHeight:      0,
+		NamespaceID:        "0102030405060708",
 	}
 }
