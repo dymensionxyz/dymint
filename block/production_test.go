@@ -9,6 +9,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/dymensionxyz/dymint/config"
 	"github.com/dymensionxyz/dymint/mempool"
 	mempoolv1 "github.com/dymensionxyz/dymint/mempool/v1"
 	tmcfg "github.com/tendermint/tendermint/config"
@@ -155,4 +156,45 @@ func TestCreateEmptyBlocksNew(t *testing.T) {
 		fmt.Println("time diff:", diff, "tx len", 0)
 	}
 	assert.True(foundTx)
+}
+
+func TestBatchSubmissionAfterTimeout(t *testing.T) {
+	const (
+		// large batch size, so we expect the trigger to be the timeout
+		batchSize     = 100000
+		submitTimeout = 2 * time.Second
+		blockTime     = 200 * time.Millisecond
+		runTime       = submitTimeout + 1*time.Second
+	)
+
+	require := require.New(t)
+	app := testutil.GetAppMock()
+	// Create proxy app
+	clientCreator := proxy.NewLocalClientCreator(app)
+	proxyApp := proxy.NewAppConns(clientCreator)
+	err := proxyApp.Start()
+	require.NoError(err)
+
+	// Init manager with empty blocks feature enabled
+	managerConfig := config.BlockManagerConfig{
+		BlockTime:          blockTime,
+		EmptyBlocksMaxTime: 0,
+		BatchSubmitMaxTime: submitTimeout,
+		BlockBatchSize:     batchSize,
+	}
+
+	manager, err := getManager(managerConfig, nil, nil, 1, 1, 0, proxyApp, nil)
+	require.NoError(err)
+
+	//Check initial height
+	initialHeight := uint64(0)
+	require.Equal(initialHeight, manager.store.Height())
+	require.True(manager.batchInProcess.Load() == false)
+
+	mCtx, cancel := context.WithTimeout(context.Background(), runTime)
+	defer cancel()
+	go manager.ProduceBlockLoop(mCtx)
+	<-mCtx.Done()
+
+	require.True(manager.batchInProcess.Load() == true)
 }
