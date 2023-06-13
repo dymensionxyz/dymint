@@ -58,10 +58,9 @@ type BlockManagerConfig struct {
 	// BlockTime defines how often new blocks are produced
 	BlockTime time.Duration `mapstructure:"block_time"`
 	// EmptyBlocksMaxTime defines how long should block manager wait for new transactions before producing empty block
-	EmptyBlocksMaxTime time.Duration
+	EmptyBlocksMaxTime time.Duration `mapstructure:"empty_blocks_max_time"`
 	// BatchSubmitMaxTime defines how long should block manager wait for before submitting batch
-	BatchSubmitMaxTime time.Duration
-
+	BatchSubmitMaxTime time.Duration `mapstructure:"batch_submit_max_time"`
 	// DAStartHeight allows skipping first DAStartHeight-1 blocks when querying for blocks.
 	DAStartHeight uint64 `mapstructure:"da_start_height"`
 	NamespaceID   string `mapstructure:"namespace_id"`

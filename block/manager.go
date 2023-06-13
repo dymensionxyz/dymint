@@ -121,7 +121,8 @@ func NewManager(
 	if conf.BatchSubmitMaxTime == 0 {
 		logger.Info("WARNING: using default DA batch submit max time", "BatchSubmitMaxTime", config.DefaultNodeConfig.BatchSubmitMaxTime)
 		conf.BatchSubmitMaxTime = config.DefaultNodeConfig.BatchSubmitMaxTime
-		// panic("Batch submit max time must be a positive number")
+
+		//TODO: validate it's larger than empty blocks time
 	}
 	if conf.BlockTime == 0 {
 		panic("Block production time must be a positive number")
