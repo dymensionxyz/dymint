@@ -59,7 +59,7 @@ func (e *GossipedBlock) ToProto() *pb.GossipedBlock {
 	}
 }
 
-//FromProto fills GossipedBlock with data from its protobuf representation.
+// FromProto fills GossipedBlock with data from its protobuf representation.
 func (e *GossipedBlock) FromProto(other *pb.GossipedBlock) error {
 	if err := e.Block.FromProto(other.Block); err != nil {
 		return err

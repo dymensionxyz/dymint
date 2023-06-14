@@ -60,7 +60,7 @@ type Config struct {
 	NamespaceID [8]byte       `json:"namespace_id"`
 }
 
-//WithCNCClient sets CNC client.
+// WithCNCClient sets CNC client.
 func WithCNCClient(client CNCClientI) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
 		daLayerClient.(*DataAvailabilityLayerClient).client = client
