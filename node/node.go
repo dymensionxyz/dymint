@@ -137,6 +137,7 @@ func NewNode(ctx context.Context, conf config.NodeConfig, p2pKey crypto.PrivKey,
 		baseKV = store.NewDefaultKVStore(conf.RootDir, conf.DBPath, "dymint")
 	}
 	mainKV := store.NewPrefixKV(baseKV, mainPrefix)
+	// TODO: dalcKV is needed for mock only. Initilize only if mock used
 	dalcKV := store.NewPrefixKV(baseKV, dalcPrefix)
 	indexerKV := store.NewPrefixKV(baseKV, indexerPrefix)
 

@@ -113,7 +113,7 @@ func NewManager(
 		return nil, err
 	}
 
-	// TODO(mtsitrin): Probably should be validated and manage default on config init
+	// TODO((#119): Probably should be validated and manage default on config init.
 	// TODO(omritoptix): Think about the default batchSize and default DABlockTime proper location.
 	if conf.DABlockTime == 0 {
 		logger.Info("WARNING: using default DA block time", "DABlockTime", config.DefaultNodeConfig.DABlockTime)
@@ -431,6 +431,7 @@ func (m *Manager) syncUntilTarget(ctx context.Context, syncTarget uint64) {
 // In case the following doesn't hold true, it means we crashed after the commit and before updating the store height.
 // In that case we'll want to align the store with the app state and continue to the next block.
 func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *types.Commit, blockMetaData blockMetaData) error {
+	//TODO: make it more go idiomatic, indent left the main logic
 	if block.Header.Height == m.store.Height()+1 {
 		m.logger.Info("Applying block", "height", block.Header.Height, "source", blockMetaData.source)
 
@@ -488,16 +489,28 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 		}
 
 		// Commit block to app
-		err = m.executor.Commit(ctx, &newState, block, responses)
+		retainHeight, err := m.executor.Commit(ctx, &newState, block, responses)
 		if err != nil {
 			m.logger.Error("Failed to commit to the block", "error", err)
 			return err
+		}
+
+		// Prune old heights, if requested by ABCI app.
+		if retainHeight > 0 {
+			pruned, err := m.pruneBlocks(retainHeight)
+			if err != nil {
+				m.logger.Error("failed to prune blocks", "retain_height", retainHeight, "err", err)
+			} else {
+				m.logger.Debug("pruned blocks", "pruned", pruned, "retain_height", retainHeight)
+			}
 		}
 
 		// Update the state with the new app hash, last validators and store height from the commit.
 		// Every one of those, if happens before commit, prevents us from re-executing the block in case failed during commit.
 		newState.LastValidators = m.lastState.Validators.Copy()
 		newState.LastStoreHeight = block.Header.Height
+		newState.BaseHeight = m.store.Base()
+
 		_, err = m.store.UpdateState(newState, nil)
 		if err != nil {
 			m.logger.Error("Failed to update state", "error", err)
