@@ -168,10 +168,10 @@ func (e *BlockExecutor) UpdateStateFromResponses(resp *tmstate.ABCIResponses, st
 }
 
 // Commit commits the block
-func (e *BlockExecutor) Commit(ctx context.Context, state *types.State, block *types.Block, resp *tmstate.ABCIResponses) error {
-	appHash, err := e.commit(ctx, state, block, resp.DeliverTxs)
+func (e *BlockExecutor) Commit(ctx context.Context, state *types.State, block *types.Block, resp *tmstate.ABCIResponses) (int64, error) {
+	appHash, retainHeight, err := e.commit(ctx, state, block, resp.DeliverTxs)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	copy(state.AppHash[:], appHash[:])
@@ -179,8 +179,9 @@ func (e *BlockExecutor) Commit(ctx context.Context, state *types.State, block *t
 	err = e.publishEvents(resp, block, *state)
 	if err != nil {
 		e.logger.Error("failed to fire block events", "error", err)
+		return 0, err
 	}
-	return nil
+	return retainHeight, nil
 }
 
 func (e *BlockExecutor) updateState(state types.State, block *types.Block, abciResponses *tmstate.ABCIResponses, validatorUpdates []*tmtypes.Validator) (types.State, error) {
@@ -233,28 +234,28 @@ func (e *BlockExecutor) GetAppInfo() (*abcitypes.ResponseInfo, error) {
 	return e.proxyAppQueryConn.InfoSync(abcitypes.RequestInfo{})
 }
 
-func (e *BlockExecutor) commit(ctx context.Context, state *types.State, block *types.Block, deliverTxs []*abci.ResponseDeliverTx) ([]byte, error) {
+func (e *BlockExecutor) commit(ctx context.Context, state *types.State, block *types.Block, deliverTxs []*abci.ResponseDeliverTx) ([]byte, int64, error) {
 	e.mempool.Lock()
 	defer e.mempool.Unlock()
 
 	err := e.mempool.FlushAppConn()
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	resp, err := e.proxyAppConsensusConn.CommitSync()
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	maxBytes := state.ConsensusParams.Block.MaxBytes
 	maxGas := state.ConsensusParams.Block.MaxGas
 	err = e.mempool.Update(int64(block.Header.Height), fromDymintTxs(block.Data.Txs), deliverTxs, mempool.PreCheckMaxBytes(maxBytes), mempool.PostCheckMaxGas(maxGas))
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
-	return resp.Data, err
+	return resp.Data, resp.RetainHeight, err
 }
 
 func (e *BlockExecutor) validateBlock(state types.State, block *types.Block) error {

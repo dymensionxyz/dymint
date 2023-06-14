@@ -19,9 +19,9 @@ var DefaultNodeConfig = NodeConfig{
 	Aggregator: true,
 	BlockManagerConfig: BlockManagerConfig{
 		BlockTime:           200 * time.Millisecond,
+		EmptyBlocksMaxTime:  60 * time.Second,
+		BatchSubmitMaxTime:  600 * time.Second,
 		NamespaceID:         "000000000000ffff",
-		BatchSyncInterval:   time.Second * 30,
-		DABlockTime:         30 * time.Second,
 		BlockBatchSize:      500,
 		BlockBatchSizeBytes: 1500000},
 	DALayer:         "mock",
