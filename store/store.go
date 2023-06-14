@@ -212,19 +212,23 @@ func (s *DefaultStore) UpdateState(state types.State, batch Batch) (Batch, error
 func (s *DefaultStore) LoadState() (types.State, error) {
 	blob, err := s.db.Get(getStateKey())
 	if err != nil {
-		return types.State{}, fmt.Errorf("failed to retrieve state: %w", err)
+		return types.State{}, types.ErrNoStateFound
 	}
 	var pbState pb.State
 	err = pbState.Unmarshal(blob)
 	if err != nil {
-		return types.State{}, fmt.Errorf("failed to unmarshal state from JSON: %w", err)
+		return types.State{}, fmt.Errorf("failed to unmarshal state from store: %w", err)
 	}
 
 	var state types.State
 	err = state.FromProto(&pbState)
+	if err != nil {
+		return types.State{}, fmt.Errorf("failed to unmarshal state from proto: %w", err)
+	}
+
 	atomic.StoreUint64(&s.height, state.LastStoreHeight)
 	atomic.StoreUint64(&s.baseHeight, state.BaseHeight)
-	return state, err
+	return state, nil
 }
 
 // SaveValidators stores validator set for given block height in store.

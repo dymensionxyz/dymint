@@ -82,13 +82,14 @@ type Manager struct {
 }
 
 // getInitialState tries to load lastState from Store, and if it's not available it reads GenesisDoc.
-func getInitialState(store store.Store, genesis *tmtypes.GenesisDoc) (types.State, error) {
+func getInitialState(store store.Store, genesis *tmtypes.GenesisDoc, logger log.Logger) (types.State, error) {
 	s, err := store.LoadState()
-	if err == nil {
-		return s, nil
+	if err == types.ErrNoStateFound {
+		logger.Info("failed to find state in the store, creating new state from genesis")
+		return types.NewFromGenesisDoc(genesis)
 	}
 
-	return types.NewFromGenesisDoc(genesis)
+	return s, err
 }
 
 // NewManager creates new block Manager.
@@ -131,9 +132,9 @@ func NewManager(
 	if err != nil {
 		return nil, fmt.Errorf("failed to create block executor: %w", err)
 	}
-	s, err := getInitialState(store, genesis)
+	s, err := getInitialState(store, genesis, logger)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get initial state: %w", err)
 	}
 
 	validators := []*tmtypes.Validator{}
