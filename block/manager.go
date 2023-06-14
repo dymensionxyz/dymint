@@ -278,7 +278,6 @@ func (m *Manager) waitForSync(ctx context.Context) error {
 		// the SL still hasn't got any batches for this chain.
 		m.logger.Info("No batches for chain found in SL. Start writing first batch")
 		atomic.StoreUint64(&m.syncTarget, uint64(m.genesis.InitialHeight-1))
-		atomic.StoreInt64(&m.lastSubmissionTime, time.Now().Unix())
 		return nil
 	} else if err != nil {
 		m.logger.Error("failed to retrieve batch from SL", "err", err)
@@ -301,6 +300,8 @@ func (m *Manager) waitForSync(ctx context.Context) error {
 
 // ProduceBlockLoop is calling publishBlock in a loop as long as wer'e synced.
 func (m *Manager) ProduceBlockLoop(ctx context.Context) {
+	atomic.StoreInt64(&m.lastSubmissionTime, time.Now().Unix())
+
 	// We want to wait until we are synced. After that, since there is no leader
 	// election yet, and leader are elected manually, we will not be out of sync until
 	// we are manually being replaced.
