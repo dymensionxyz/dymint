@@ -4,12 +4,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tendermint/tendermint/libs/pubsub"
+	tmtypes "github.com/tendermint/tendermint/types"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tendermint/tendermint/libs/pubsub"
-	tmtypes "github.com/tendermint/tendermint/types"
 
+	ce "github.com/tendermint/tendermint/crypto/encoding"
+	pc "github.com/tendermint/tendermint/proto/tendermint/crypto"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/log/test"
@@ -19,8 +21,6 @@ import (
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
 	tsmock "github.com/stretchr/testify/mock"
-	ce "github.com/tendermint/tendermint/crypto/encoding"
-	pc "github.com/tendermint/tendermint/proto/tendermint/crypto"
 )
 
 const batchSize = 5

@@ -252,6 +252,7 @@ func (s *State) ToProto() (*pb.State, error) {
 		Validators:                       validators,
 		LastValidators:                   lastValidators,
 		LastStoreHeight:                  s.LastStoreHeight,
+		BaseHeight:                       s.BaseHeight,
 		LastHeightValidatorsChanged:      s.LastHeightValidatorsChanged,
 		ConsensusParams:                  s.ConsensusParams,
 		LastHeightConsensusParamsChanged: s.LastHeightConsensusParamsChanged,
@@ -274,6 +275,7 @@ func (s *State) FromProto(other *pb.State) error {
 	} else {
 		s.LastStoreHeight = other.LastStoreHeight
 	}
+	s.BaseHeight = other.BaseHeight
 	s.SLStateIndex = other.SLStateIndex
 	lastBlockID, err := types.BlockIDFromProto(&other.LastBlockID)
 	if err != nil {

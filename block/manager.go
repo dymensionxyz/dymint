@@ -83,13 +83,14 @@ type Manager struct {
 }
 
 // getInitialState tries to load lastState from Store, and if it's not available it reads GenesisDoc.
-func getInitialState(store store.Store, genesis *tmtypes.GenesisDoc) (types.State, error) {
+func getInitialState(store store.Store, genesis *tmtypes.GenesisDoc, logger log.Logger) (types.State, error) {
 	s, err := store.LoadState()
-	if err == nil {
-		return s, nil
+	if err == types.ErrNoStateFound {
+		logger.Info("failed to find state in the store, creating new state from genesis")
+		return types.NewFromGenesisDoc(genesis)
 	}
 
-	return types.NewFromGenesisDoc(genesis)
+	return s, err
 }
 
 // NewManager creates new block Manager.
@@ -113,7 +114,7 @@ func NewManager(
 		return nil, err
 	}
 
-	// TODO(mtsitrin): Probably should be validated and manage default on config init
+	// TODO((#119): Probably should be validated and manage default on config init.
 	if conf.BlockBatchSizeBytes == 0 {
 		logger.Info("WARNING: using default DA batch size bytes limit", "BlockBatchSizeBytes", config.DefaultNodeConfig.BlockBatchSizeBytes)
 		conf.BlockBatchSizeBytes = config.DefaultNodeConfig.BlockBatchSizeBytes
@@ -132,9 +133,9 @@ func NewManager(
 	if err != nil {
 		return nil, fmt.Errorf("failed to create block executor: %w", err)
 	}
-	s, err := getInitialState(store, genesis)
+	s, err := getInitialState(store, genesis, logger)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get initial state: %w", err)
 	}
 
 	validators := []*tmtypes.Validator{}
@@ -461,6 +462,7 @@ func (m *Manager) syncUntilTarget(ctx context.Context, syncTarget uint64) {
 // In case the following doesn't hold true, it means we crashed after the commit and before updating the store height.
 // In that case we'll want to align the store with the app state and continue to the next block.
 func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *types.Commit, blockMetaData blockMetaData) error {
+	//TODO: make it more go idiomatic, indent left the main logic
 	if block.Header.Height == m.store.Height()+1 {
 		m.logger.Info("Applying block", "height", block.Header.Height, "source", blockMetaData.source)
 
@@ -518,16 +520,28 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 		}
 
 		// Commit block to app
-		err = m.executor.Commit(ctx, &newState, block, responses)
+		retainHeight, err := m.executor.Commit(ctx, &newState, block, responses)
 		if err != nil {
 			m.logger.Error("Failed to commit to the block", "error", err)
 			return err
+		}
+
+		// Prune old heights, if requested by ABCI app.
+		if retainHeight > 0 {
+			pruned, err := m.pruneBlocks(retainHeight)
+			if err != nil {
+				m.logger.Error("failed to prune blocks", "retain_height", retainHeight, "err", err)
+			} else {
+				m.logger.Debug("pruned blocks", "pruned", pruned, "retain_height", retainHeight)
+			}
 		}
 
 		// Update the state with the new app hash, last validators and store height from the commit.
 		// Every one of those, if happens before commit, prevents us from re-executing the block in case failed during commit.
 		newState.LastValidators = m.lastState.Validators.Copy()
 		newState.LastStoreHeight = block.Header.Height
+		newState.BaseHeight = m.store.Base()
+
 		_, err = m.store.UpdateState(newState, nil)
 		if err != nil {
 			m.logger.Error("Failed to update state", "error", err)
