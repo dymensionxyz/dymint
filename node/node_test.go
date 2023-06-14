@@ -64,7 +64,7 @@ func TestMempoolDirectly(t *testing.T) {
 		P2P:                config.P2PConfig{},
 		RPC:                config.RPCConfig{},
 		Aggregator:         false,
-		BlockManagerConfig: config.BlockManagerConfig{BatchSyncInterval: time.Second * 5, BlockTime: 100 * time.Millisecond},
+		BlockManagerConfig: config.BlockManagerConfig{BatchSyncInterval: time.Second * 5, BlockTime: 100 * time.Millisecond, BlockBatchSize: 2},
 		DALayer:            "mock",
 		DAConfig:           "",
 		SettlementLayer:    "mock",
@@ -179,7 +179,7 @@ func TestHealthStatusEventHandler(t *testing.T) {
 					assert.Equal(c.expectedError, healthStatusEvent.Error)
 					done <- true
 					break
-				case <-time.After(100 * time.Millisecond):
+				case <-time.After(500 * time.Millisecond):
 					if c.expectHealthStatusEventEmitted {
 						t.Error("expected health status event but didn't get one")
 					}

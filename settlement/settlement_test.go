@@ -50,13 +50,13 @@ func TestInvalidSubmit(t *testing.T) {
 	cases := []struct {
 		startHeight uint64
 		endHeight   uint64
-		status      settlement.StatusCode
+		shouldPanic bool
 	}{
-		{startHeight: 1, endHeight: batchSize, status: settlement.StatusSuccess},
+		{startHeight: 1, endHeight: batchSize, shouldPanic: false},
 		// batch with endHight < startHeight
-		{startHeight: batchSize + 2, endHeight: 1, status: settlement.StatusError},
+		{startHeight: batchSize + 2, endHeight: 1, shouldPanic: true},
 		// batch with startHeight != previousEndHeight + 1
-		{startHeight: batchSize, endHeight: 1 + batchSize + batchSize, status: settlement.StatusError},
+		{startHeight: batchSize, endHeight: 1 + batchSize + batchSize, shouldPanic: true},
 	}
 	for _, c := range cases {
 		batch := &types.Batch{
@@ -68,8 +68,13 @@ func TestInvalidSubmit(t *testing.T) {
 				DAHeight: c.endHeight,
 			},
 		}
-		resultSubmitBatch := settlementClient.SubmitBatch(batch, da.Mock, daResult)
-		assert.Equal(resultSubmitBatch.Code, c.status)
+		if c.shouldPanic {
+			assert.Panics(func() {
+				settlementClient.SubmitBatch(batch, da.Mock, daResult)
+			})
+		} else {
+			settlementClient.SubmitBatch(batch, da.Mock, daResult)
+		}
 	}
 
 }
@@ -109,8 +114,7 @@ func TestSubmitAndRetrieve(t *testing.T) {
 				DAHeight: batch.EndHeight,
 			},
 		}
-		resultSubmitBatch := settlementClient.SubmitBatch(batch, da.Mock, daResult)
-		assert.Equal(resultSubmitBatch.Code, settlement.StatusSuccess)
+		settlementClient.SubmitBatch(batch, da.Mock, daResult)
 		// sleep for 500 ms to make sure batch got accepted by the settlement layer
 		time.Sleep(500 * time.Millisecond)
 	}

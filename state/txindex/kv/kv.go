@@ -260,6 +260,9 @@ func (txi *TxIndex) Search(ctx context.Context, q *query.Query) ([]*abci.TxResul
 		if err != nil {
 			return nil, fmt.Errorf("failed to get Tx{%X}: %w", h, err)
 		}
+		if res == nil {
+			continue
+		}
 		results = append(results, res)
 
 		// Potentially exit early.

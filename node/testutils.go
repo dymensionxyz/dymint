@@ -25,7 +25,7 @@ func CreateNode(isAggregator bool, blockManagerConfig *config.BlockManagerConfig
 	nodeConfig := config.DefaultNodeConfig
 
 	if blockManagerConfig == nil {
-		blockManagerConfig = &config.BlockManagerConfig{BatchSyncInterval: time.Second * 5, BlockTime: 100 * time.Millisecond}
+		blockManagerConfig = &config.BlockManagerConfig{BlockBatchSize: 1, BatchSyncInterval: time.Second * 5, BlockTime: 100 * time.Millisecond}
 	}
 	nodeConfig.BlockManagerConfig = *blockManagerConfig
 	nodeConfig.Aggregator = isAggregator

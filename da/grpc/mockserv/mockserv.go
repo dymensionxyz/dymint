@@ -13,6 +13,7 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/dymensionxyz/dymint/types/pb/dalc"
 	"github.com/dymensionxyz/dymint/types/pb/dymint"
+	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
 // GetServer creates and returns gRPC server instance.
@@ -21,7 +22,7 @@ func GetServer(kv store.KVStore, conf grpcda.Config, mockConfig []byte) *grpc.Se
 
 	srv := grpc.NewServer()
 	mockImpl := &mockImpl{}
-	err := mockImpl.mock.Init(mockConfig, kv, logger)
+	err := mockImpl.mock.Init(mockConfig, pubsub.NewServer(), kv, logger)
 	if err != nil {
 		logger.Error("failed to initialize mock DALC", "error", err)
 		panic(err)

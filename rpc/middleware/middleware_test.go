@@ -6,11 +6,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/dymensionxyz/dymint/rpc/middleware"
 	"github.com/dymensionxyz/dymint/rpc/sharedtypes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/tendermint/tendermint/libs/log"
 )
 
 // Create a custom test middleware that implements the Middleware interface
