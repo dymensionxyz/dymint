@@ -64,7 +64,7 @@ func TestMempoolDirectly(t *testing.T) {
 		P2P:                config.P2PConfig{},
 		RPC:                config.RPCConfig{},
 		Aggregator:         false,
-		BlockManagerConfig: config.BlockManagerConfig{BatchSyncInterval: time.Second * 5, BlockTime: 100 * time.Millisecond, BlockBatchSize: 2},
+		BlockManagerConfig: config.BlockManagerConfig{BlockTime: 100 * time.Millisecond, BlockBatchSize: 2},
 		DALayer:            "mock",
 		DAConfig:           "",
 		SettlementLayer:    "mock",
