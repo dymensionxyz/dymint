@@ -331,7 +331,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 			return
 		//Empty blocks timeout
 		case <-tickerEmptyBlocksMaxTimeCh:
-			m.logger.Error("No transactions for %s seconds, producing empty block", m.conf.EmptyBlocksMaxTime.Seconds())
+			m.logger.Error(fmt.Sprintf("No transactions for %.2f seconds, producing empty block", m.conf.EmptyBlocksMaxTime.Seconds()))
 			produceEmptyBlock = true
 		//Produce block
 		case <-ticker.C:

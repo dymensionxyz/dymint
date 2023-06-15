@@ -352,7 +352,7 @@ func (c *DataAvailabilityLayerClient) broadcastTx(tx []byte) (uint64, error) {
 		select {
 		case status := <-sub.Chan():
 			if status.IsInBlock {
-				c.logger.Info("Txn inside block %v\n", status.AsInBlock.Hex())
+				c.logger.Info(fmt.Sprintf("Txn included inside a block with hash %v\n, waiting for finalization..", status.AsInBlock.Hex()))
 			} else if status.IsFinalized {
 				c.logger.Info("Txn inside finalized block\n")
 				hash := status.AsFinalized
