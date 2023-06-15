@@ -27,3 +27,22 @@ var DefaultNodeConfig = NodeConfig{
 	DALayer:         "mock",
 	SettlementLayer: "mock",
 }
+
+// DefaultConfig returns a default configuration for dymint node.
+func DefaultConfig() *NodeConfig {
+	return &NodeConfig{
+		P2P: P2PConfig{
+			ListenAddress: DefaultListenAddress,
+			Seeds:         ""},
+		Aggregator: true,
+		BlockManagerConfig: BlockManagerConfig{
+			BlockTime:           200 * time.Millisecond,
+			EmptyBlocksMaxTime:  60 * time.Second,
+			BatchSubmitMaxTime:  600 * time.Second,
+			NamespaceID:         "000000000000ffff",
+			BlockBatchSize:      500,
+			BlockBatchSizeBytes: 1500000},
+		DALayer:         "mock",
+		SettlementLayer: "mock",
+	}
+}

@@ -11,6 +11,11 @@ import (
 )
 
 const (
+	DefaultConfigDirName  = "config"
+	DefaultConfigFileName = "dymint.toml"
+)
+
+const (
 	flagAggregator          = "dymint.aggregator"
 	flagDALayer             = "dymint.da_layer"
 	flagDAConfig            = "dymint.da_config"
