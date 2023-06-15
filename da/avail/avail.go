@@ -265,10 +265,19 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 						},
 					}
 				} else {
-					c.logger.Error("Error broadcasting batch. Trying again..", "error", err)
+					c.logger.Error("Error broadcasting batch. Emitting DA unhealthy event and Trying again.", "error", err)
+					res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, false, err)
+					if err != nil {
+						return res
+					}
 					continue
 				}
 			} else {
+				c.logger.Debug("Successfully submitted DA batch")
+				res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, true, nil)
+				if err != nil {
+					return res
+				}
 				return da.ResultSubmitBatch{
 					BaseResult: da.BaseResult{
 						Code:     da.StatusSuccess,
@@ -352,9 +361,9 @@ func (c *DataAvailabilityLayerClient) broadcastTx(tx []byte) (uint64, error) {
 		select {
 		case status := <-sub.Chan():
 			if status.IsInBlock {
-				c.logger.Info(fmt.Sprintf("Batch included inside a block with hash %v\n, waiting for finalization.", status.AsInBlock.Hex()))
+				c.logger.Debug(fmt.Sprintf("Batch included inside a block with hash %v\n, waiting for finalization.", status.AsInBlock.Hex()))
 			} else if status.IsFinalized {
-				c.logger.Info("Batch successfully sent")
+				c.logger.Debug("Batch finalized inside block")
 				hash := status.AsFinalized
 				blockHeight, err := c.getHeightFromHash(hash)
 				if err != nil {
@@ -380,6 +389,7 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(dataLayerHeight uin
 
 // getHeightFromHash returns the block height from the block hash
 func (c *DataAvailabilityLayerClient) getHeightFromHash(hash availtypes.Hash) (uint64, error) {
+	c.logger.Debug("Getting block height from hash", "hash", hash)
 	block, err := c.client.GetBlock(hash)
 	if err != nil {
 		return 0, fmt.Errorf("cannot get block by hash:%w", err)
