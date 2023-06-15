@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/peer"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/require"
@@ -76,9 +76,8 @@ func startTestNetwork(ctx context.Context, t *testing.T, n int, conf map[int]hos
 			privKey, _, _ := crypto.GenerateEd25519Key(rand.Reader)
 			addr, err := getAddr(privKey)
 			require.NoError(err)
-			host, err := mnet.AddPeer(privKey, addr)
+			_, err = mnet.AddPeer(privKey, addr)
 			require.NoError(err)
-			require.NotEmpty(host)
 		} else {
 			_, err := mnet.GenPeer()
 			require.NoError(err)

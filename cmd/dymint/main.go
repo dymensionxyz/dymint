@@ -6,7 +6,7 @@ import (
 
 	"github.com/dymensionxyz/dymint/cmd/dymint/commands"
 	"github.com/dymensionxyz/dymint/config"
-	"github.com/tendermint/tendermint/cmd/cometbft/commands/debug"
+	"github.com/tendermint/tendermint/cmd/tendermint/commands/debug"
 	"github.com/tendermint/tendermint/libs/cli"
 )
 
