@@ -15,8 +15,8 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/peer"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/proxy"
@@ -64,7 +64,7 @@ func TestMempoolDirectly(t *testing.T) {
 		P2P:                config.P2PConfig{},
 		RPC:                config.RPCConfig{},
 		Aggregator:         false,
-		BlockManagerConfig: config.BlockManagerConfig{BatchSyncInterval: time.Second * 5, BlockTime: 100 * time.Millisecond, BlockBatchSize: 2},
+		BlockManagerConfig: config.BlockManagerConfig{BlockTime: 100 * time.Millisecond, BlockBatchSize: 2},
 		DALayer:            "mock",
 		DAConfig:           "",
 		SettlementLayer:    "mock",

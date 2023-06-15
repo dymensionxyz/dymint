@@ -1,4 +1,5 @@
 run:
+  concurrency: 4
   timeout: 5m
   modules-download-mode: readonly
   # mempool and indexer code is borrowed from Tendermint
@@ -13,7 +14,6 @@ run:
 linters:
   disable-all: true
   enable:
-    - deadcode
     - errcheck
     - gofmt
     - goimports
@@ -22,10 +22,8 @@ linters:
     - ineffassign
     - misspell
     - staticcheck
-    - structcheck
     - typecheck
     - unused
-    - varcheck
     - gosec
     - gocyclo
 

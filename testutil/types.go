@@ -4,7 +4,7 @@ import (
 	"crypto/rand"
 	"time"
 
-	"github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/libp2p/go-libp2p/core/crypto"
 
 	abciconv "github.com/dymensionxyz/dymint/conv/abci"
 	"github.com/dymensionxyz/dymint/types"

@@ -9,6 +9,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
 	"github.com/dymensionxyz/dymint/log/test"
 	mempoolv1 "github.com/dymensionxyz/dymint/mempool/v1"
 	"github.com/dymensionxyz/dymint/node/events"
@@ -16,10 +20,8 @@ import (
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
-	"github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
+	"github.com/libp2p/go-libp2p/core/crypto"
+
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmcfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
@@ -104,7 +106,7 @@ func TestInitialState(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 
-			dalc := getMockDALC(100*time.Second, logger)
+			dalc := getMockDALC(logger)
 			agg, err := NewManager(key, conf, c.genesis, c.store, nil, proxyApp, dalc, settlementlc,
 				nil, pubsubServer, p2pClient, logger)
 			assert.NoError(err)
@@ -143,32 +145,30 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 	}
 
 	t.Log("Validating manager can't produce blocks")
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*1)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 	go manager.ProduceBlockLoop(ctx)
-	select {
-	case <-ctx.Done():
-		assert.Equal(t, lastStoreHeight, manager.store.Height())
-	}
+	<-ctx.Done()
+	assert.Equal(t, lastStoreHeight, manager.store.Height())
+	// Wait until produce block loop is done
+	time.Sleep(time.Second * 1)
 
 	t.Log("Sync the manager")
 	ctx, cancel = context.WithTimeout(context.Background(), time.Second*2)
 	defer cancel()
 	go manager.Start(ctx, false)
-	select {
-	case <-ctx.Done():
-		assert.Greater(t, manager.store.Height(), lastStoreHeight)
-		assert.Equal(t, batch.EndHeight, manager.store.Height())
-	}
+	<-ctx.Done()
+	require.Greater(t, manager.store.Height(), lastStoreHeight)
+	assert.Equal(t, batch.EndHeight, manager.store.Height())
+	// Wait until manager is done
+	time.Sleep(time.Second * 1)
 
 	t.Log("Validate blocks are produced")
 	ctx, cancel = context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 	go manager.ProduceBlockLoop(ctx)
-	select {
-	case <-ctx.Done():
-		assert.Greater(t, manager.store.Height(), batch.EndHeight)
-	}
+	<-ctx.Done()
+	assert.Greater(t, manager.store.Height(), batch.EndHeight)
 }
 
 func TestRetrieveDaBatchesFailed(t *testing.T) {
@@ -194,7 +194,7 @@ func TestProduceNewBlock(t *testing.T) {
 	manager, err := getManager(getManagerConfig(), nil, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(t, err)
 	// Produce block
-	err = manager.produceBlock(context.Background())
+	err = manager.produceBlock(context.Background(), true)
 	require.NoError(t, err)
 	// Validate state is updated with the commit hash
 	assert.Equal(t, uint64(1), manager.store.Height())
@@ -221,7 +221,7 @@ func TestProducePendingBlock(t *testing.T) {
 	_, err = manager.store.SaveBlock(block, &block.LastCommit, nil)
 	require.NoError(t, err)
 	// Produce block
-	err = manager.produceBlock(context.Background())
+	err = manager.produceBlock(context.Background(), true)
 	require.NoError(t, err)
 	// Validate state is updated with the block that was saved in the store
 	assert.Equal(t, block.Header.Hash(), *(*[32]byte)(manager.lastState.LastBlockID.Hash))
@@ -391,7 +391,7 @@ func TestProduceBlockFailAfterCommit(t *testing.T) {
 				LastBlockAppHash: tc.LastAppCommitHash[:]}).Once()
 			mockStore.ShouldFailSetHeight = tc.shouldFailSetSetHeight
 			mockStore.ShoudFailUpdateState = tc.shouldFailUpdateState
-			_ = manager.produceBlock(context.Background())
+			_ = manager.produceBlock(context.Background(), true)
 			assert.Equal(tc.expectedStoreHeight, manager.store.Height())
 			assert.Equal(tc.expectedStateAppHash, manager.lastState.AppHash)
 			storeState, err := manager.store.LoadState()
@@ -441,7 +441,7 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Produce blocks
 			for i := 0; i < tc.blocksToProduce; i++ {
-				manager.produceBlock(ctx)
+				manager.produceBlock(ctx, true)
 			}
 
 			// Call createNextDABatch function
@@ -516,7 +516,7 @@ func getManager(conf config.BlockManagerConfig, settlementlc settlement.LayerI, 
 	if dalc == nil {
 		dalc = &mockda.DataAvailabilityLayerClient{}
 	}
-	initDALCMock(dalc, pubsubServer, conf.DABlockTime, logger)
+	initDALCMock(dalc, pubsubServer, logger)
 
 	var proxyApp proxy.AppConns
 	if proxyAppConns == nil {
@@ -554,15 +554,15 @@ func getManager(conf config.BlockManagerConfig, settlementlc settlement.LayerI, 
 }
 
 // TODO(omritoptix): Possible move out to a generic testutil
-func getMockDALC(daBlockTime time.Duration, logger log.Logger) da.DataAvailabilityLayerClient {
+func getMockDALC(logger log.Logger) da.DataAvailabilityLayerClient {
 	dalc := &mockda.DataAvailabilityLayerClient{}
-	initDALCMock(dalc, pubsub.NewServer(), daBlockTime, logger)
+	initDALCMock(dalc, pubsub.NewServer(), logger)
 	return dalc
 }
 
 // TODO(omritoptix): Possible move out to a generic testutil
-func initDALCMock(dalc da.DataAvailabilityLayerClient, pubsubServer *pubsub.Server, daBlockTime time.Duration, logger log.Logger) {
-	_ = dalc.Init([]byte(daBlockTime.String()), pubsubServer, store.NewDefaultInMemoryKVStore(), logger)
+func initDALCMock(dalc da.DataAvailabilityLayerClient, pubsubServer *pubsub.Server, logger log.Logger) {
+	_ = dalc.Init(nil, pubsubServer, store.NewDefaultInMemoryKVStore(), logger)
 	_ = dalc.Start()
 }
 
@@ -581,11 +581,10 @@ func initSettlementLayerMock(settlementlc settlement.LayerI, proposer string, pu
 
 func getManagerConfig() config.BlockManagerConfig {
 	return config.BlockManagerConfig{
-		BlockTime:         100 * time.Millisecond,
-		DABlockTime:       100 * time.Millisecond,
-		BatchSyncInterval: 1 * time.Second,
-		BlockBatchSize:    defaultBatchSize,
-		DAStartHeight:     0,
-		NamespaceID:       "0102030405060708",
+		BlockTime:          100 * time.Millisecond,
+		BlockBatchSize:     defaultBatchSize,
+		BatchSubmitMaxTime: 30 * time.Minute,
+		DAStartHeight:      0,
+		NamespaceID:        "0102030405060708",
 	}
 }

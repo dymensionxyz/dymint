@@ -13,8 +13,8 @@ const (
 	flagDALayer             = "dymint.da_layer"
 	flagDAConfig            = "dymint.da_config"
 	flagBlockTime           = "dymint.block_time"
-	flagDABlockTime         = "dymint.da_block_time"
-	flagBatchSyncInterval   = "dymint.batch_sync_interval"
+	flagEmptyBlocksMaxTime  = "dymint.empty_blocks_max_time"
+	flagBatchSubmitMaxTime  = "dymint.batch_submit_max_time"
 	flagDAStartHeight       = "dymint.da_start_height"
 	flagNamespaceID         = "dymint.namespace_id"
 	flagBlockBatchSize      = "dymint.block_batch_size"
@@ -57,10 +57,10 @@ type NodeConfig struct {
 type BlockManagerConfig struct {
 	// BlockTime defines how often new blocks are produced
 	BlockTime time.Duration `mapstructure:"block_time"`
-	// DABlockTime informs about block time of underlying data availability layer
-	DABlockTime time.Duration `mapstructure:"da_block_time"`
-	// BatchSyncInterval defines how often block manager should sync with the settlement layer
-	BatchSyncInterval time.Duration `mapstructure:"batch_sync_interval"`
+	// EmptyBlocksMaxTime defines how long should block manager wait for new transactions before producing empty block
+	EmptyBlocksMaxTime time.Duration `mapstructure:"empty_blocks_max_time"`
+	// BatchSubmitMaxTime defines how long should block manager wait for before submitting batch
+	BatchSubmitMaxTime time.Duration `mapstructure:"batch_submit_max_time"`
 	// DAStartHeight allows skipping first DAStartHeight-1 blocks when querying for blocks.
 	DAStartHeight uint64 `mapstructure:"da_start_height"`
 	NamespaceID   string `mapstructure:"namespace_id"`
@@ -79,9 +79,9 @@ func (nc *NodeConfig) GetViperConfig(v *viper.Viper) error {
 	nc.DAConfig = v.GetString(flagDAConfig)
 	nc.SettlementLayer = v.GetString(flagSettlementLayer)
 	nc.DAStartHeight = v.GetUint64(flagDAStartHeight)
-	nc.DABlockTime = v.GetDuration(flagDABlockTime)
-	nc.BatchSyncInterval = v.GetDuration(flagBatchSyncInterval)
 	nc.BlockTime = v.GetDuration(flagBlockTime)
+	nc.EmptyBlocksMaxTime = v.GetDuration(flagEmptyBlocksMaxTime)
+	nc.BatchSubmitMaxTime = v.GetDuration(flagBatchSubmitMaxTime)
 	nc.BlockBatchSize = v.GetUint64(flagBlockBatchSize)
 	nc.BlockBatchSizeBytes = v.GetUint64(flagBlockBatchSizeBytes)
 	nc.NamespaceID = v.GetString(flagNamespaceID)
@@ -107,8 +107,8 @@ func AddFlags(cmd *cobra.Command) {
 	cmd.Flags().String(flagDALayer, def.DALayer, "Data Availability Layer Client name (mock or grpc")
 	cmd.Flags().String(flagDAConfig, def.DAConfig, "Data Availability Layer Client config")
 	cmd.Flags().Duration(flagBlockTime, def.BlockTime, "block time (for aggregator mode)")
-	cmd.Flags().Duration(flagDABlockTime, def.DABlockTime, "DA chain block time (for syncing)")
-	cmd.Flags().Duration(flagBatchSyncInterval, def.BatchSyncInterval, "batch sync interval")
+	cmd.Flags().Duration(flagEmptyBlocksMaxTime, def.EmptyBlocksMaxTime, "max time for empty blocks (for aggregator mode)")
+	cmd.Flags().Duration(flagBatchSubmitMaxTime, def.BatchSubmitMaxTime, "max time for batch submit (for aggregator mode)")
 	cmd.Flags().Uint64(flagDAStartHeight, def.DAStartHeight, "starting DA block height (for syncing)")
 	cmd.Flags().String(flagNamespaceID, def.NamespaceID, "namespace identifies (8 bytes in hex)")
 	cmd.Flags().Uint64(flagBlockBatchSize, def.BlockBatchSize, "block batch size")

@@ -28,7 +28,8 @@ var (
 type DefaultStore struct {
 	db KVStore
 
-	height uint64
+	height     uint64
+	baseHeight uint64
 }
 
 var _ Store = &DefaultStore{}
@@ -58,6 +59,19 @@ func (s *DefaultStore) Height() uint64 {
 	return atomic.LoadUint64(&s.height)
 }
 
+// SetBase sets the height saved in the Store of the earliest block
+func (s *DefaultStore) SetBase(height uint64) {
+	baseHeight := atomic.LoadUint64(&s.baseHeight)
+	if height > baseHeight {
+		_ = atomic.CompareAndSwapUint64(&s.baseHeight, baseHeight, height)
+	}
+}
+
+// Base returns height of the earliest block saved in the Store.
+func (s *DefaultStore) Base() uint64 {
+	return atomic.LoadUint64(&s.baseHeight)
+}
+
 // SaveBlock adds block to the store along with corresponding commit.
 // Stored height is updated if block height is greater than stored value.
 // In case a batch is provided, the block and commit are added to the batch and not saved.
@@ -73,28 +87,29 @@ func (s *DefaultStore) SaveBlock(block *types.Block, commit *types.Commit, batch
 		return batch, fmt.Errorf("failed to marshal Commit to binary: %w", err)
 	}
 
-	bb := batch
-	if bb == nil {
-		bb = s.db.NewBatch()
-	}
-	err = multierr.Append(err, bb.Set(getBlockKey(hash), blockBlob))
-	err = multierr.Append(err, bb.Set(getCommitKey(hash), commitBlob))
-	err = multierr.Append(err, bb.Set(getIndexKey(block.Header.Height), hash[:]))
-
-	if err != nil {
-		if batch == nil {
-			bb.Discard()
-		}
+	//Not sure it's neeeded, as it's not used anywhere
+	if batch != nil {
+		err = multierr.Append(err, batch.Set(getBlockKey(hash), blockBlob))
+		err = multierr.Append(err, batch.Set(getCommitKey(hash), commitBlob))
+		err = multierr.Append(err, batch.Set(getIndexKey(block.Header.Height), hash[:]))
 		return batch, err
 	}
 
-	if batch == nil {
-		if err = bb.Commit(); err != nil {
-			return nil, fmt.Errorf("failed to commit transaction: %w", err)
-		}
+	bb := s.db.NewBatch()
+	defer bb.Discard()
+
+	err = multierr.Append(err, bb.Set(getBlockKey(hash), blockBlob))
+	err = multierr.Append(err, bb.Set(getCommitKey(hash), commitBlob))
+	err = multierr.Append(err, bb.Set(getIndexKey(block.Header.Height), hash[:]))
+	if err != nil {
+		return batch, fmt.Errorf("failed to create db batch: %w", err)
 	}
 
-	return batch, nil
+	if err = bb.Commit(); err != nil {
+		return nil, fmt.Errorf("failed to commit db batch: %w", err)
+	}
+
+	return bb, nil
 }
 
 // LoadBlock returns block at given height, or error if it's not found in Store.
@@ -212,6 +227,7 @@ func (s *DefaultStore) LoadState() (types.State, error) {
 	}
 
 	atomic.StoreUint64(&s.height, state.LastStoreHeight)
+	atomic.StoreUint64(&s.baseHeight, state.BaseHeight)
 	return state, nil
 }
 

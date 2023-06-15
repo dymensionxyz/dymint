@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/libp2p/go-libp2p/core/crypto"
 
 	llcfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
@@ -137,6 +137,7 @@ func NewNode(ctx context.Context, conf config.NodeConfig, p2pKey crypto.PrivKey,
 		baseKV = store.NewDefaultKVStore(conf.RootDir, conf.DBPath, "dymint")
 	}
 	mainKV := store.NewPrefixKV(baseKV, mainPrefix)
+	// TODO: dalcKV is needed for mock only. Initilize only if mock used
 	dalcKV := store.NewPrefixKV(baseKV, dalcPrefix)
 	indexerKV := store.NewPrefixKV(baseKV, indexerPrefix)
 

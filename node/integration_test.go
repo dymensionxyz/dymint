@@ -11,8 +11,8 @@ import (
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -42,10 +42,9 @@ func TestAggregatorMode(t *testing.T) {
 	anotherKey, _, _ := crypto.GenerateEd25519Key(rand.Reader)
 
 	blockManagerConfig := config.BlockManagerConfig{
-		BlockBatchSize:    1,
-		BlockTime:         1 * time.Second,
-		NamespaceID:       "0102030405060708",
-		BatchSyncInterval: time.Second * 5,
+		BlockBatchSize: 1,
+		BlockTime:      1 * time.Second,
+		NamespaceID:    "0102030405060708",
 	}
 
 	nodeConfig := config.NodeConfig{

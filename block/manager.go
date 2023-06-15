@@ -11,11 +11,12 @@ import (
 
 	"github.com/avast/retry-go"
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
+	"github.com/cosmos/cosmos-sdk/types/errors"
 	abciconv "github.com/dymensionxyz/dymint/conv/abci"
 	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/utils"
-	"github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/libp2p/go-libp2p/core/crypto"
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmcrypto "github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/merkle"
@@ -69,12 +70,12 @@ type Manager struct {
 
 	syncTargetDiode diodes.Diode
 
-	batchInProcess atomic.Value
-
 	shouldProduceBlocksCh chan bool
 
-	syncTarget   uint64
-	isSyncedCond sync.Cond
+	syncTarget         uint64
+	lastSubmissionTime int64
+	batchInProcess     atomic.Value
+	isSyncedCond       sync.Cond
 
 	syncCache map[uint64]*types.Block
 
@@ -113,16 +114,16 @@ func NewManager(
 		return nil, err
 	}
 
-	// TODO(mtsitrin): Probably should be validated and manage default on config init
-	// TODO(omritoptix): Think about the default batchSize and default DABlockTime proper location.
-	if conf.DABlockTime == 0 {
-		logger.Info("WARNING: using default DA block time", "DABlockTime", config.DefaultNodeConfig.DABlockTime)
-		conf.DABlockTime = config.DefaultNodeConfig.DABlockTime
-	}
-
+	// TODO((#119): Probably should be validated and manage default on config init.
 	if conf.BlockBatchSizeBytes == 0 {
 		logger.Info("WARNING: using default DA batch size bytes limit", "BlockBatchSizeBytes", config.DefaultNodeConfig.BlockBatchSizeBytes)
 		conf.BlockBatchSizeBytes = config.DefaultNodeConfig.BlockBatchSizeBytes
+	}
+	if conf.BatchSubmitMaxTime == 0 {
+		logger.Info("WARNING: using default DA batch submit max time", "BatchSubmitMaxTime", config.DefaultNodeConfig.BatchSubmitMaxTime)
+		conf.BatchSubmitMaxTime = config.DefaultNodeConfig.BatchSubmitMaxTime
+
+		//TODO: validate it's larger than empty blocks time
 	}
 	if conf.BlockTime == 0 {
 		panic("Block production time must be a positive number")
@@ -299,25 +300,57 @@ func (m *Manager) waitForSync(ctx context.Context) error {
 
 // ProduceBlockLoop is calling publishBlock in a loop as long as wer'e synced.
 func (m *Manager) ProduceBlockLoop(ctx context.Context) {
+	atomic.StoreInt64(&m.lastSubmissionTime, time.Now().Unix())
+
 	// We want to wait until we are synced. After that, since there is no leader
 	// election yet, and leader are elected manually, we will not be out of sync until
 	// we are manually being replaced.
 	err := m.waitForSync(ctx)
 	if err != nil {
-		m.logger.Error("failed to wait for sync", "err", err)
+		panic(errors.Wrap(err, "failed to wait for sync"))
 	}
 
 	ticker := time.NewTicker(m.conf.BlockTime)
+	defer ticker.Stop()
 
+	var tickerEmptyBlocksMaxTime *time.Ticker
+	var tickerEmptyBlocksMaxTimeCh <-chan time.Time
+	// Setup ticker for empty blocks if enabled
+	if m.conf.EmptyBlocksMaxTime > 0 {
+		tickerEmptyBlocksMaxTime = time.NewTicker(m.conf.EmptyBlocksMaxTime)
+		tickerEmptyBlocksMaxTimeCh = tickerEmptyBlocksMaxTime.C
+		defer tickerEmptyBlocksMaxTime.Stop()
+	}
+
+	//Allow the initial block to be empty
+	produceEmptyBlock := true
 	for {
 		select {
+		//Context canceled
 		case <-ctx.Done():
 			return
+		//Empty blocks timeout
+		case <-tickerEmptyBlocksMaxTimeCh:
+			m.logger.Error("No transactions for %s seconds, producing empty block", m.conf.EmptyBlocksMaxTime.Seconds())
+			produceEmptyBlock = true
+		//Produce block
 		case <-ticker.C:
-			err := m.produceBlock(ctx)
+			err := m.produceBlock(ctx, produceEmptyBlock)
+			if err == types.ErrSkippedEmptyBlock {
+				m.logger.Debug("Skipped empty block")
+				continue
+			}
 			if err != nil {
 				m.logger.Error("error while producing block", "error", err)
+				continue
 			}
+			//If empty blocks enabled, after block produced, reset the timeout timer
+			if tickerEmptyBlocksMaxTime != nil {
+				produceEmptyBlock = false
+				tickerEmptyBlocksMaxTime.Reset(m.conf.EmptyBlocksMaxTime)
+			}
+
+		//Node's health check channel
 		case shouldProduceBlocks := <-m.shouldProduceBlocksCh:
 			for !shouldProduceBlocks {
 				m.logger.Info("Stopped block production")
@@ -325,7 +358,6 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 			}
 			m.logger.Info("Resumed Block production")
 		}
-
 	}
 }
 
@@ -371,6 +403,7 @@ func (m *Manager) SyncTargetLoop(ctx context.Context) {
 func (m *Manager) updateSyncParams(ctx context.Context, endHeight uint64) {
 	m.logger.Info("Received new syncTarget", "syncTarget", endHeight)
 	atomic.StoreUint64(&m.syncTarget, endHeight)
+	atomic.StoreInt64(&m.lastSubmissionTime, time.Now().UnixNano())
 	m.syncTargetDiode.Set(diodes.GenericDataType(&endHeight))
 }
 
@@ -431,6 +464,7 @@ func (m *Manager) syncUntilTarget(ctx context.Context, syncTarget uint64) {
 // In case the following doesn't hold true, it means we crashed after the commit and before updating the store height.
 // In that case we'll want to align the store with the app state and continue to the next block.
 func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *types.Commit, blockMetaData blockMetaData) error {
+	//TODO: make it more go idiomatic, indent left the main logic
 	if block.Header.Height == m.store.Height()+1 {
 		m.logger.Info("Applying block", "height", block.Header.Height, "source", blockMetaData.source)
 
@@ -488,16 +522,28 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 		}
 
 		// Commit block to app
-		err = m.executor.Commit(ctx, &newState, block, responses)
+		retainHeight, err := m.executor.Commit(ctx, &newState, block, responses)
 		if err != nil {
 			m.logger.Error("Failed to commit to the block", "error", err)
 			return err
+		}
+
+		// Prune old heights, if requested by ABCI app.
+		if retainHeight > 0 {
+			pruned, err := m.pruneBlocks(retainHeight)
+			if err != nil {
+				m.logger.Error("failed to prune blocks", "retain_height", retainHeight, "err", err)
+			} else {
+				m.logger.Debug("pruned blocks", "pruned", pruned, "retain_height", retainHeight)
+			}
 		}
 
 		// Update the state with the new app hash, last validators and store height from the commit.
 		// Every one of those, if happens before commit, prevents us from re-executing the block in case failed during commit.
 		newState.LastValidators = m.lastState.Validators.Copy()
 		newState.LastStoreHeight = block.Header.Height
+		newState.BaseHeight = m.store.Base()
+
 		_, err = m.store.UpdateState(newState, nil)
 		if err != nil {
 			m.logger.Error("Failed to update state", "error", err)
@@ -601,7 +647,7 @@ func (m *Manager) fetchBatch(daHeight uint64) (da.ResultRetrieveBatch, error) {
 	return batchRes, err
 }
 
-func (m *Manager) produceBlock(ctx context.Context) error {
+func (m *Manager) produceBlock(ctx context.Context, allowEmpty bool) error {
 	var lastCommit *types.Commit
 	var lastHeaderHash [32]byte
 	var err error
@@ -637,9 +683,11 @@ func (m *Manager) produceBlock(ctx context.Context) error {
 			return err
 		}
 	} else {
-		m.logger.Info("Creating block", "height", newHeight)
 		block = m.executor.CreateBlock(newHeight, lastCommit, lastHeaderHash, m.lastState)
-		m.logger.Debug("block info", "num_tx", len(block.Data.Txs))
+		if !allowEmpty && len(block.Data.Txs) == 0 {
+			return types.ErrSkippedEmptyBlock
+		}
+		m.logger.Info("block created", "height", newHeight, "num_tx", len(block.Data.Txs))
 
 		abciHeaderPb := abciconv.ToABCIHeaderPB(&block.Header)
 		abciHeaderBytes, err := abciHeaderPb.Marshal()
@@ -667,10 +715,16 @@ func (m *Manager) produceBlock(ctx context.Context) error {
 		return err
 	}
 
-	// Submit batch if we've reached the batch size and there isn't another batch currently in submission process.
+	//TODO: move to separate function
+	lastSubmissionTime := atomic.LoadInt64(&m.lastSubmissionTime)
+	requiredByTime := time.Since(time.Unix(0, lastSubmissionTime)) > m.conf.BatchSubmitMaxTime
+
 	// SyncTarget is the height of the last block in the last batch as seen by this node.
 	syncTarget := atomic.LoadUint64(&m.syncTarget)
-	if block.Header.Height-syncTarget >= m.conf.BlockBatchSize && m.batchInProcess.Load() == false {
+	requiredByNumOfBlocks := (block.Header.Height - syncTarget) > m.conf.BlockBatchSize
+
+	// Submit batch if we've reached the batch size and there isn't another batch currently in submission process.
+	if m.batchInProcess.Load() == false && (requiredByTime || requiredByNumOfBlocks) {
 		m.batchInProcess.Store(true)
 		go m.submitNextBatch(ctx)
 	}
@@ -681,7 +735,8 @@ func (m *Manager) produceBlock(ctx context.Context) error {
 func (m *Manager) submitNextBatch(ctx context.Context) {
 	// Get the batch start and end height
 	startHeight := atomic.LoadUint64(&m.syncTarget) + 1
-	endHeight := startHeight + m.conf.BlockBatchSize - 1
+	endHeight := uint64(m.lastState.LastBlockHeight)
+
 	// Create the batch
 	nextBatch, err := m.createNextDABatch(startHeight, endHeight)
 	if err != nil {
@@ -701,7 +756,7 @@ func (m *Manager) submitNextBatch(ctx context.Context) {
 	// Submit batch to SL
 	// TODO(omritoptix): Handle a case where the SL submission fails due to syncTarget out of sync with the latestHeight in the SL.
 	// In that case we'll want to update the syncTarget before returning.
-	go m.settlementClient.SubmitBatch(nextBatch, m.dalc.GetClientType(), &resultSubmitToDA)
+	m.settlementClient.SubmitBatch(nextBatch, m.dalc.GetClientType(), &resultSubmitToDA)
 }
 
 func (m *Manager) updateStateIndex(stateIndex uint64) error {

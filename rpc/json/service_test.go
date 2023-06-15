@@ -19,7 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/gorilla/rpc/v2/json2"
-	"github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/libp2p/go-libp2p/core/crypto"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/proxy"
@@ -294,7 +294,7 @@ func getRPC(t *testing.T) (*mocks.Application, *client.Client) {
 	signingKey, proposerPubKey, _ := crypto.GenerateEd25519Key(rand.Reader)
 	proposerPubKeyBytes, err := proposerPubKey.Raw()
 	require.NoError(err)
-	config := config.NodeConfig{Aggregator: true, DALayer: "mock", SettlementLayer: "mock", BlockManagerConfig: config.BlockManagerConfig{BlockTime: 1 * time.Second, BatchSyncInterval: time.Second, BlockBatchSize: 1}, SettlementConfig: settlement.Config{ProposerPubKey: hex.EncodeToString(proposerPubKeyBytes)}}
+	config := config.NodeConfig{Aggregator: true, DALayer: "mock", SettlementLayer: "mock", BlockManagerConfig: config.BlockManagerConfig{BlockTime: 1 * time.Second, BlockBatchSize: 1}, SettlementConfig: settlement.Config{ProposerPubKey: hex.EncodeToString(proposerPubKeyBytes)}}
 	node, err := node.NewNode(context.Background(), config, key, signingKey, proxy.NewLocalClientCreator(app), &types.GenesisDoc{ChainID: "test"}, log.TestingLogger())
 	require.NoError(err)
 	require.NotNil(node)
