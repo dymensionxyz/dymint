@@ -1,9 +1,11 @@
 package config
 
 import (
+	"path/filepath"
 	"time"
 
 	tmcmd "github.com/tendermint/tendermint/cmd/tendermint/commands"
+	"github.com/tendermint/tendermint/libs/cli"
 
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/spf13/cobra"
@@ -11,6 +13,8 @@ import (
 )
 
 const (
+	// DefaultDymintDir is the default directory for dymint
+	DefaultDymintDir      = ".dymint"
 	DefaultConfigDirName  = "config"
 	DefaultConfigFileName = "dymint.toml"
 )
@@ -37,11 +41,6 @@ const (
 	flagSLGasLimit       = "dymint.settlement_config.gas_limit"
 	flagSLGasPrices      = "dymint.settlement_config.gas_prices"
 	flagSLGasFees        = "dymint.settlement_config.gas_fees"
-)
-
-var (
-	// DefaultDymintDir is the default directory for dymint
-	DefaultDymintDir = ".dymint"
 )
 
 // NodeConfig stores Dymint node configuration.
@@ -81,25 +80,47 @@ type BlockManagerConfig struct {
 //
 // This method is called in cosmos-sdk.
 func (nc *NodeConfig) GetViperConfig(v *viper.Viper) error {
-	nc.Aggregator = v.GetBool(flagAggregator)
-	nc.DALayer = v.GetString(flagDALayer)
-	nc.DAConfig = v.GetString(flagDAConfig)
-	nc.SettlementLayer = v.GetString(flagSettlementLayer)
-	nc.DAStartHeight = v.GetUint64(flagDAStartHeight)
-	nc.BlockTime = v.GetDuration(flagBlockTime)
-	nc.EmptyBlocksMaxTime = v.GetDuration(flagEmptyBlocksMaxTime)
-	nc.BatchSubmitMaxTime = v.GetDuration(flagBatchSubmitMaxTime)
-	nc.BlockBatchSize = v.GetUint64(flagBlockBatchSize)
-	nc.BlockBatchSizeBytes = v.GetUint64(flagBlockBatchSizeBytes)
-	nc.NamespaceID = v.GetString(flagNamespaceID)
+	homeDir := v.GetString(cli.HomeFlag)
 
-	nc.SettlementConfig.NodeAddress = v.GetString(flagSLNodeAddress)
-	nc.SettlementConfig.KeyringBackend = v.GetString(flagSLKeyringBackend)
-	nc.SettlementConfig.KeyringHomeDir = v.GetString(flagSLKeyringHomeDir)
-	nc.SettlementConfig.DymAccountName = v.GetString(flagSLDymAccountName)
-	nc.SettlementConfig.GasLimit = v.GetUint64(flagSLGasLimit)
-	nc.SettlementConfig.GasPrices = v.GetString(flagSLGasPrices)
-	nc.SettlementConfig.GasFees = v.GetString(flagSLGasFees)
+	//create dymint toml config file
+	EnsureRoot(filepath.Join(homeDir, DefaultConfigDirName))
+	v.SetConfigName("dymint")
+	v.AddConfigPath(homeDir)                          // search root directory
+	v.AddConfigPath(filepath.Join(homeDir, "config")) // search root directory /config
+
+	// If a config file is found, read it in.
+	err := v.ReadInConfig()
+	if err != nil {
+		// ignore not found error, return other errors
+		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+			return err
+		}
+	}
+
+	err = viper.Unmarshal(&nc)
+	if err != nil {
+		return err
+	}
+
+	// nc.Aggregator = v.GetBool(flagAggregator)
+	// nc.DALayer = v.GetString(flagDALayer)
+	// nc.DAConfig = v.GetString(flagDAConfig)
+	// nc.SettlementLayer = v.GetString(flagSettlementLayer)
+	// nc.DAStartHeight = v.GetUint64(flagDAStartHeight)
+	// nc.BlockTime = v.GetDuration(flagBlockTime)
+	// nc.EmptyBlocksMaxTime = v.GetDuration(flagEmptyBlocksMaxTime)
+	// nc.BatchSubmitMaxTime = v.GetDuration(flagBatchSubmitMaxTime)
+	// nc.BlockBatchSize = v.GetUint64(flagBlockBatchSize)
+	// nc.BlockBatchSizeBytes = v.GetUint64(flagBlockBatchSizeBytes)
+	// nc.NamespaceID = v.GetString(flagNamespaceID)
+
+	// nc.SettlementConfig.NodeAddress = v.GetString(flagSLNodeAddress)
+	// nc.SettlementConfig.KeyringBackend = v.GetString(flagSLKeyringBackend)
+	// nc.SettlementConfig.KeyringHomeDir = v.GetString(flagSLKeyringHomeDir)
+	// nc.SettlementConfig.DymAccountName = v.GetString(flagSLDymAccountName)
+	// nc.SettlementConfig.GasLimit = v.GetUint64(flagSLGasLimit)
+	// nc.SettlementConfig.GasPrices = v.GetString(flagSLGasPrices)
+	// nc.SettlementConfig.GasFees = v.GetString(flagSLGasFees)
 
 	return nil
 }
