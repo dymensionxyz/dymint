@@ -15,7 +15,6 @@ const (
 	flagBlockTime           = "dymint.block_time"
 	flagEmptyBlocksMaxTime  = "dymint.empty_blocks_max_time"
 	flagBatchSubmitMaxTime  = "dymint.batch_submit_max_time"
-	flagDAStartHeight       = "dymint.da_start_height"
 	flagNamespaceID         = "dymint.namespace_id"
 	flagBlockBatchSize      = "dymint.block_batch_size"
 	flagBlockBatchSizeBytes = "dymint.block_batch_size_bytes"
@@ -61,9 +60,7 @@ type BlockManagerConfig struct {
 	EmptyBlocksMaxTime time.Duration `mapstructure:"empty_blocks_max_time"`
 	// BatchSubmitMaxTime defines how long should block manager wait for before submitting batch
 	BatchSubmitMaxTime time.Duration `mapstructure:"batch_submit_max_time"`
-	// DAStartHeight allows skipping first DAStartHeight-1 blocks when querying for blocks.
-	DAStartHeight uint64 `mapstructure:"da_start_height"`
-	NamespaceID   string `mapstructure:"namespace_id"`
+	NamespaceID        string        `mapstructure:"namespace_id"`
 	// The size of the batch in blocks. Every batch we'll write to the DA and the settlement layer.
 	BlockBatchSize uint64 `mapstructure:"block_batch_size"`
 	// The size of the batch in Bytes. Every batch we'll write to the DA and the settlement layer.
@@ -78,7 +75,6 @@ func (nc *NodeConfig) GetViperConfig(v *viper.Viper) error {
 	nc.DALayer = v.GetString(flagDALayer)
 	nc.DAConfig = v.GetString(flagDAConfig)
 	nc.SettlementLayer = v.GetString(flagSettlementLayer)
-	nc.DAStartHeight = v.GetUint64(flagDAStartHeight)
 	nc.BlockTime = v.GetDuration(flagBlockTime)
 	nc.EmptyBlocksMaxTime = v.GetDuration(flagEmptyBlocksMaxTime)
 	nc.BatchSubmitMaxTime = v.GetDuration(flagBatchSubmitMaxTime)
@@ -109,7 +105,6 @@ func AddFlags(cmd *cobra.Command) {
 	cmd.Flags().Duration(flagBlockTime, def.BlockTime, "block time (for aggregator mode)")
 	cmd.Flags().Duration(flagEmptyBlocksMaxTime, def.EmptyBlocksMaxTime, "max time for empty blocks (for aggregator mode)")
 	cmd.Flags().Duration(flagBatchSubmitMaxTime, def.BatchSubmitMaxTime, "max time for batch submit (for aggregator mode)")
-	cmd.Flags().Uint64(flagDAStartHeight, def.DAStartHeight, "starting DA block height (for syncing)")
 	cmd.Flags().String(flagNamespaceID, def.NamespaceID, "namespace identifies (8 bytes in hex)")
 	cmd.Flags().Uint64(flagBlockBatchSize, def.BlockBatchSize, "block batch size")
 	cmd.Flags().Uint64(flagBlockBatchSizeBytes, def.BlockBatchSizeBytes, "block batch size in bytes")

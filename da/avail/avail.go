@@ -69,28 +69,28 @@ type DataAvailabilityLayerClient struct {
 var _ da.DataAvailabilityLayerClient = &DataAvailabilityLayerClient{}
 var _ da.BatchRetriever = &DataAvailabilityLayerClient{}
 
-//WithClient is an option which sets the client.
+// WithClient is an option which sets the client.
 func WithClient(client SubstrateApiI) da.Option {
 	return func(dalc da.DataAvailabilityLayerClient) {
 		dalc.(*DataAvailabilityLayerClient).client = client
 	}
 }
 
-//WithTxInclusionTimeout is an option which sets the timeout for waiting for transaction inclusion.
+// WithTxInclusionTimeout is an option which sets the timeout for waiting for transaction inclusion.
 func WithTxInclusionTimeout(timeout time.Duration) da.Option {
 	return func(dalc da.DataAvailabilityLayerClient) {
 		dalc.(*DataAvailabilityLayerClient).txInclusionTimeout = timeout
 	}
 }
 
-//WithBatchRetryDelay is an option which sets the delay between batch retries.
+// WithBatchRetryDelay is an option which sets the delay between batch retries.
 func WithBatchRetryDelay(delay time.Duration) da.Option {
 	return func(dalc da.DataAvailabilityLayerClient) {
 		dalc.(*DataAvailabilityLayerClient).batchRetryDelay = delay
 	}
 }
 
-//WithBatchRetryAttempts is an option which sets the number of batch retries.
+// WithBatchRetryAttempts is an option which sets the number of batch retries.
 func WithBatchRetryAttempts(attempts uint) da.Option {
 	return func(dalc da.DataAvailabilityLayerClient) {
 		dalc.(*DataAvailabilityLayerClient).batchRetryAttempts = attempts

@@ -161,7 +161,7 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 	require.Greater(t, manager.store.Height(), lastStoreHeight)
 	assert.Equal(t, batch.EndHeight, manager.store.Height())
 	// Wait until manager is done
-	time.Sleep(time.Second * 1)
+	time.Sleep(time.Second * 4)
 
 	t.Log("Validate blocks are produced")
 	ctx, cancel = context.WithTimeout(context.Background(), time.Second*3)
@@ -584,7 +584,6 @@ func getManagerConfig() config.BlockManagerConfig {
 		BlockTime:          100 * time.Millisecond,
 		BlockBatchSize:     defaultBatchSize,
 		BatchSubmitMaxTime: 30 * time.Minute,
-		DAStartHeight:      0,
 		NamespaceID:        "0102030405060708",
 	}
 }
