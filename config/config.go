@@ -9,15 +9,16 @@ import (
 )
 
 const (
-	flagAggregator          = "dymint.aggregator"
-	flagDALayer             = "dymint.da_layer"
-	flagDAConfig            = "dymint.da_config"
-	flagBlockTime           = "dymint.block_time"
-	flagEmptyBlocksMaxTime  = "dymint.empty_blocks_max_time"
-	flagBatchSubmitMaxTime  = "dymint.batch_submit_max_time"
-	flagNamespaceID         = "dymint.namespace_id"
-	flagBlockBatchSize      = "dymint.block_batch_size"
-	flagBlockBatchSizeBytes = "dymint.block_batch_size_bytes"
+	flagAggregator         = "dymint.aggregator"
+	flagDALayer            = "dymint.da_layer"
+	flagDAConfig           = "dymint.da_config"
+	flagBlockTime          = "dymint.block_time"
+	flagEmptyBlocksMaxTime = "dymint.empty_blocks_max_time"
+	flagBatchSubmitMaxTime = "dymint.batch_submit_max_time"
+	// TODO(omritoptix): Namespace ID should be part of the DA config
+	flagNamespaceID            = "dymint.namespace_id"
+	flagBlockBatchSize         = "dymint.block_batch_size"
+	flagBlockBatchMaxSizeBytes = "dymint.block_batch_max_size_bytes"
 )
 
 const (
@@ -64,7 +65,7 @@ type BlockManagerConfig struct {
 	// The size of the batch in blocks. Every batch we'll write to the DA and the settlement layer.
 	BlockBatchSize uint64 `mapstructure:"block_batch_size"`
 	// The size of the batch in Bytes. Every batch we'll write to the DA and the settlement layer.
-	BlockBatchSizeBytes uint64 `mapstructure:"block_batch_size_bytes"`
+	BlockBatchMaxSizeBytes uint64 `mapstructure:"block_batch_size_bytes"`
 }
 
 // GetViperConfig reads configuration parameters from Viper instance.
@@ -79,7 +80,7 @@ func (nc *NodeConfig) GetViperConfig(v *viper.Viper) error {
 	nc.EmptyBlocksMaxTime = v.GetDuration(flagEmptyBlocksMaxTime)
 	nc.BatchSubmitMaxTime = v.GetDuration(flagBatchSubmitMaxTime)
 	nc.BlockBatchSize = v.GetUint64(flagBlockBatchSize)
-	nc.BlockBatchSizeBytes = v.GetUint64(flagBlockBatchSizeBytes)
+	nc.BlockBatchMaxSizeBytes = v.GetUint64(flagBlockBatchMaxSizeBytes)
 	nc.NamespaceID = v.GetString(flagNamespaceID)
 
 	nc.SettlementConfig.NodeAddress = v.GetString(flagSLNodeAddress)
@@ -107,7 +108,7 @@ func AddFlags(cmd *cobra.Command) {
 	cmd.Flags().Duration(flagBatchSubmitMaxTime, def.BatchSubmitMaxTime, "max time for batch submit (for aggregator mode)")
 	cmd.Flags().String(flagNamespaceID, def.NamespaceID, "namespace identifies (8 bytes in hex)")
 	cmd.Flags().Uint64(flagBlockBatchSize, def.BlockBatchSize, "block batch size")
-	cmd.Flags().Uint64(flagBlockBatchSizeBytes, def.BlockBatchSizeBytes, "block batch size in bytes")
+	cmd.Flags().Uint64(flagBlockBatchMaxSizeBytes, def.BlockBatchMaxSizeBytes, "block batch max size in bytes")
 
 	cmd.Flags().String(flagSettlementLayer, def.SettlementLayer, "Settlement Layer Client name")
 	cmd.Flags().String(flagSLNodeAddress, def.SettlementConfig.NodeAddress, "Settlement Layer RPC node address")
