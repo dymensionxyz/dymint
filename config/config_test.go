@@ -14,7 +14,7 @@ func TestViperAndCobra(t *testing.T) {
 	assert := assert.New(t)
 
 	cmd := &cobra.Command{}
-	AddFlags(cmd)
+	AddNodeFlags(cmd)
 
 	v := viper.GetViper()
 	assert.NoError(v.BindPFlags(cmd.Flags()))

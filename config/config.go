@@ -3,6 +3,8 @@ package config
 import (
 	"time"
 
+	tmcmd "github.com/tendermint/tendermint/cmd/tendermint/commands"
+
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -100,7 +102,10 @@ func (nc *NodeConfig) GetViperConfig(v *viper.Viper) error {
 // AddFlags adds Dymint specific configuration options to cobra Command.
 //
 // This function is called in cosmos-sdk.
-func AddFlags(cmd *cobra.Command) {
+func AddNodeFlags(cmd *cobra.Command) {
+	//Add tendermint default flags
+	tmcmd.AddNodeFlags(cmd)
+
 	def := DefaultNodeConfig
 
 	cmd.Flags().Bool(flagAggregator, false, "run node in aggregator mode")
