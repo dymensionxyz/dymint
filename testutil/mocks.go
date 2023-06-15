@@ -154,3 +154,20 @@ type DALayerClientRetrieveBatchesError struct {
 func (m *DALayerClientRetrieveBatchesError) RetrieveBatches(_ uint64) da.ResultRetrieveBatch {
 	return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: batchNotFoundErrorMessage}}
 }
+
+//SubscribeMock is a mock to provide a subscription like behavior for testing
+type SubscribeMock struct {
+	messageCh chan interface{}
+}
+
+func NewSubscribeMock(messageCh chan interface{}) *SubscribeMock {
+	return &SubscribeMock{messageCh: make(chan interface{})}
+}
+
+func (s *SubscribeMock) Chan() <-chan interface{} {
+	return s.messageCh
+}
+
+func (s *SubscribeMock) Unsubscribe() {
+	close(s.messageCh)
+}

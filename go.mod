@@ -6,6 +6,7 @@ require (
 	code.cloudfoundry.org/go-diodes v0.0.0-20220725190411-383eb6634c40
 	github.com/avast/retry-go v3.0.0+incompatible
 	github.com/celestiaorg/go-cnc v0.2.0
+	github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.12
 	github.com/dgraph-io/badger/v3 v3.2103.3
 	github.com/dymensionxyz/cosmosclient v0.3.0-beta.0.20230514120937-449e9becd080
 	github.com/dymensionxyz/dymension v0.2.0-beta.0.20230607115558-745644a96ea6
@@ -50,19 +51,26 @@ require (
 	github.com/cosmos/cosmos-proto v1.0.0-beta.2 // indirect
 	github.com/cosmos/gogoproto v1.4.3 // indirect
 	github.com/creachadair/taskgroup v0.3.2 // indirect
+	github.com/deckarep/golang-set v1.8.0 // indirect
+	github.com/decred/base58 v1.0.4 // indirect
+	github.com/decred/dcrd/crypto/blake256 v1.0.0 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.1.0 // indirect
 	github.com/ethereum/go-ethereum v1.10.26 // indirect
 	github.com/evmos/ethermint v0.20.0 // indirect
 	github.com/ghodss/yaml v1.0.0 // indirect
+	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/lib/pq v1.10.7 // indirect
 	github.com/minio/highwayhash v1.0.2 // indirect
+	github.com/pierrec/xxHash v0.1.5 // indirect
 	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.9.0 // indirect
 	github.com/tecbot/gorocksdb v0.0.0-20191217155057-f0fad39f321c // indirect
 	github.com/tidwall/btree v1.5.0 // indirect
 	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
+	github.com/vedhavyas/go-subkey v1.0.3 // indirect
 	github.com/zondax/ledger-go v0.14.1 // indirect
 	golang.org/x/exp v0.0.0-20230310171629-522b1b587ee0 // indirect
+	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
 
@@ -178,7 +186,7 @@ require (
 	github.com/miekg/dns v1.1.48 // indirect
 	github.com/mikioh/tcpinfo v0.0.0-20190314235526-30a79bb1804b // indirect
 	github.com/mikioh/tcpopt v0.0.0-20190314235656-172688c1accc // indirect
-	github.com/mimoo/StrobeGo v0.0.0-20210601165009-122bf33a46e0 // indirect
+	github.com/mimoo/StrobeGo v0.0.0-20220103164710-9a04d6ca976b // indirect
 	github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1 // indirect
 	github.com/minio/sha256-simd v1.0.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
@@ -257,6 +265,7 @@ require (
 
 replace (
 	github.com/celestiaorg/go-cnc => github.com/dymensionxyz/go-cnc v0.2.2
+	github.com/centrifuge/go-substrate-rpc-client/v4 => github.com/availproject/go-substrate-rpc-client/v4 v4.0.12-avail-1.4.0-rc1-5e286e3
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.2-alpha.regen.4
 	github.com/gorilla/rpc => github.com/dymensionxyz/rpc v1.3.1
 	github.com/tendermint/tendermint => github.com/cometbft/cometbft v0.34.28
