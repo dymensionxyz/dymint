@@ -227,7 +227,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 		}
 	}
 
-	c.logger.Debug("Submitting to da blob with size", "size", len(blob))
+	c.logger.Debug("Submitting to da batch with size", "size", len(blob))
 	return c.submitBatchLoop(blob)
 
 }
@@ -250,7 +250,7 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 				var err error
 				daBlockHeight, err = c.broadcastTx(dataBlob)
 				if err != nil {
-					c.logger.Error("Error broadcasting transaction", "error", err)
+					c.logger.Error("Error broadcasting batch", "error", err)
 					return err
 				}
 				return nil
@@ -265,7 +265,7 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 						},
 					}
 				} else {
-					c.logger.Error("Error broadcasting transaction. Trying again..", "error", err)
+					c.logger.Error("Error broadcasting batch. Trying again..", "error", err)
 					continue
 				}
 			} else {
@@ -344,7 +344,7 @@ func (c *DataAvailabilityLayerClient) broadcastTx(tx []byte) (uint64, error) {
 		return 0, fmt.Errorf("%w: %s", da.ErrTxBroadcastNetworkError, err)
 	}
 
-	c.logger.Info("Submitted data to avail. Waiting for inclusion event")
+	c.logger.Info("Submitted batch to avail. Waiting for inclusion event")
 
 	defer sub.Unsubscribe()
 	timeout := time.After(c.txInclusionTimeout * time.Second)
@@ -352,9 +352,9 @@ func (c *DataAvailabilityLayerClient) broadcastTx(tx []byte) (uint64, error) {
 		select {
 		case status := <-sub.Chan():
 			if status.IsInBlock {
-				c.logger.Info(fmt.Sprintf("Txn included inside a block with hash %v\n, waiting for finalization..", status.AsInBlock.Hex()))
+				c.logger.Info(fmt.Sprintf("Batch included inside a block with hash %v\n, waiting for finalization.", status.AsInBlock.Hex()))
 			} else if status.IsFinalized {
-				c.logger.Info("Txn inside finalized block\n")
+				c.logger.Info("Batch successfully sent")
 				hash := status.AsFinalized
 				blockHeight, err := c.getHeightFromHash(hash)
 				if err != nil {
