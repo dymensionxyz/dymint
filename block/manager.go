@@ -463,7 +463,6 @@ func (m *Manager) syncUntilTarget(ctx context.Context, syncTarget uint64) {
 // In case the following doesn't hold true, it means we crashed after the commit and before updating the store height.
 // In that case we'll want to align the store with the app state and continue to the next block.
 func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *types.Commit, blockMetaData blockMetaData) error {
-	//TODO: make it more go idiomatic, indent left the main logic
 	if block.Header.Height != m.store.Height()+1 {
 		// We crashed after the commit and before updating the store height.
 		return nil
