@@ -48,6 +48,7 @@ func EnsureRoot(rootDir string) {
 // XXX: this func should probably be called by cmd/tendermint/commands/init.go
 // alongside the writing of the genesis.json and priv_validator.json
 func writeDefaultConfigFile(configFilePath, rootDir string) {
+	//TODO: move to defaults.go
 	cfg := DefaultConfig()
 	defaultSLconfig := settlement.Config{
 		KeyringBackend: "test",

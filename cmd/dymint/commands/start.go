@@ -15,6 +15,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	tmcfg "github.com/tendermint/tendermint/config"
+	"github.com/tendermint/tendermint/libs/cli"
 	"github.com/tendermint/tendermint/libs/log"
 	tmos "github.com/tendermint/tendermint/libs/os"
 	tmnode "github.com/tendermint/tendermint/node"
@@ -34,9 +35,8 @@ func NewRunNodeCmd() *cobra.Command {
 		Aliases: []string{"node", "run"},
 		Short:   "Run the dymint node",
 		PreRunE: func(cmd *cobra.Command, args []string) error {
-			v := viper.GetViper()
-
-			err := dymconfig.GetViperConfig(cmd, v)
+			homeDir := viper.GetString(cli.HomeFlag)
+			err := dymconfig.GetViperConfig(cmd, homeDir)
 			if err != nil {
 				return err
 			}

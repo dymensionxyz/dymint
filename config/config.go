@@ -5,7 +5,6 @@ import (
 	"time"
 
 	tmcmd "github.com/tendermint/tendermint/cmd/tendermint/commands"
-	"github.com/tendermint/tendermint/libs/cli"
 
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/spf13/cobra"
@@ -79,14 +78,14 @@ type BlockManagerConfig struct {
 // GetViperConfig reads configuration parameters from Viper instance.
 //
 // This method is called in cosmos-sdk.
-func (nc *NodeConfig) GetViperConfig(cmd *cobra.Command, v *viper.Viper) error {
-	homeDir := v.GetString(cli.HomeFlag)
+func (nc *NodeConfig) GetViperConfig(cmd *cobra.Command, homeDir string) error {
+	v := viper.GetViper()
 
 	//create dymint toml config file
-	EnsureRoot(v.GetString(cli.HomeFlag))
+	EnsureRoot(homeDir)
 	v.SetConfigName("dymint")
-	v.AddConfigPath(homeDir)                          // search root directory
-	v.AddConfigPath(filepath.Join(homeDir, "config")) // search root directory /config
+	v.AddConfigPath(homeDir)                                      // search root directory
+	v.AddConfigPath(filepath.Join(homeDir, DefaultConfigDirName)) // search root directory /config
 
 	// bind flags so we could override config file with flags
 	err := BindDymintFlags(cmd, v)
@@ -97,36 +96,13 @@ func (nc *NodeConfig) GetViperConfig(cmd *cobra.Command, v *viper.Viper) error {
 	// Read viper config
 	err = v.ReadInConfig()
 	if err != nil {
-		// ignore not found error, return other errors
-		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-			return err
-		}
+		return err
 	}
 
 	err = viper.Unmarshal(&nc)
 	if err != nil {
 		return err
 	}
-
-	// nc.Aggregator = v.GetBool(flagAggregator)
-	// nc.DALayer = v.GetString(flagDALayer)
-	// nc.DAConfig = v.GetString(flagDAConfig)
-	// nc.SettlementLayer = v.GetString(flagSettlementLayer)
-	// nc.DAStartHeight = v.GetUint64(flagDAStartHeight)
-	// nc.BlockTime = v.GetDuration(flagBlockTime)
-	// nc.EmptyBlocksMaxTime = v.GetDuration(flagEmptyBlocksMaxTime)
-	// nc.BatchSubmitMaxTime = v.GetDuration(flagBatchSubmitMaxTime)
-	// nc.BlockBatchSize = v.GetUint64(flagBlockBatchSize)
-	// nc.BlockBatchSizeBytes = v.GetUint64(flagBlockBatchSizeBytes)
-	// nc.NamespaceID = v.GetString(flagNamespaceID)
-
-	// nc.SettlementConfig.NodeAddress = v.GetString(flagSLNodeAddress)
-	// nc.SettlementConfig.KeyringBackend = v.GetString(flagSLKeyringBackend)
-	// nc.SettlementConfig.KeyringHomeDir = v.GetString(flagSLKeyringHomeDir)
-	// nc.SettlementConfig.DymAccountName = v.GetString(flagSLDymAccountName)
-	// nc.SettlementConfig.GasLimit = v.GetUint64(flagSLGasLimit)
-	// nc.SettlementConfig.GasPrices = v.GetString(flagSLGasPrices)
-	// nc.SettlementConfig.GasFees = v.GetString(flagSLGasFees)
 
 	return nil
 }
@@ -201,7 +177,7 @@ func BindDymintFlags(cmd *cobra.Command, v *viper.Viper) error {
 	if err := v.BindPFlag("keyring_backend", cmd.Flags().Lookup(flagSLKeyringBackend)); err != nil {
 		return err
 	}
-	if err := v.BindPFlag("keyringhomedir", cmd.Flags().Lookup(flagSLKeyringHomeDir)); err != nil {
+	if err := v.BindPFlag("keyring_home_dir", cmd.Flags().Lookup(flagSLKeyringHomeDir)); err != nil {
 		return err
 	}
 	if err := v.BindPFlag("dym_account_name", cmd.Flags().Lookup(flagSLDymAccountName)); err != nil {

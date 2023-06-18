@@ -7,7 +7,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
-	"github.com/tendermint/tendermint/libs/cli"
 )
 
 func TestViperAndCobra(t *testing.T) {
@@ -21,7 +20,6 @@ func TestViperAndCobra(t *testing.T) {
 	assert.NoError(v.BindPFlags(cmd.Flags()))
 
 	dir := t.TempDir()
-	viper.Set(cli.HomeFlag, dir)
 
 	assert.NoError(cmd.Flags().Set(flagAggregator, "true"))
 	assert.NoError(cmd.Flags().Set(flagDALayer, "foobar"))
@@ -31,7 +29,7 @@ func TestViperAndCobra(t *testing.T) {
 	assert.NoError(cmd.Flags().Set(flagBlockBatchSize, "10"))
 
 	nc := DefaultNodeConfig
-	assert.NoError(nc.GetViperConfig(cmd, v))
+	assert.NoError(nc.GetViperConfig(cmd, dir))
 
 	assert.Equal(true, nc.Aggregator)
 	assert.Equal("foobar", nc.DALayer)
