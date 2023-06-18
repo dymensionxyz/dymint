@@ -13,6 +13,7 @@ import (
 	"github.com/dymensionxyz/dymint/node"
 	"github.com/dymensionxyz/dymint/rpc"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	tmcfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
 	tmos "github.com/tendermint/tendermint/libs/os"
@@ -32,6 +33,15 @@ func NewRunNodeCmd() *cobra.Command {
 		Use:     "start",
 		Aliases: []string{"node", "run"},
 		Short:   "Run the dymint node",
+		PreRunE: func(cmd *cobra.Command, args []string) error {
+			v := viper.GetViper()
+
+			err := dymconfig.GetViperConfig(cmd, v)
+			if err != nil {
+				return err
+			}
+			return nil
+		},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if err := checkGenesisHash(tmconfig); err != nil {
 				return err

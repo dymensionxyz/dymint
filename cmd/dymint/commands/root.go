@@ -70,11 +70,6 @@ var RootCmd = &cobra.Command{
 			return err
 		}
 
-		err = dymconfig.GetViperConfig(v)
-		if err != nil {
-			return err
-		}
-
 		tmconfig, err = ParseConfig(cmd)
 		if err != nil {
 			return err

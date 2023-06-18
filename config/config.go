@@ -79,7 +79,7 @@ type BlockManagerConfig struct {
 // GetViperConfig reads configuration parameters from Viper instance.
 //
 // This method is called in cosmos-sdk.
-func (nc *NodeConfig) GetViperConfig(v *viper.Viper) error {
+func (nc *NodeConfig) GetViperConfig(cmd *cobra.Command, v *viper.Viper) error {
 	homeDir := v.GetString(cli.HomeFlag)
 
 	//create dymint toml config file
@@ -88,8 +88,14 @@ func (nc *NodeConfig) GetViperConfig(v *viper.Viper) error {
 	v.AddConfigPath(homeDir)                          // search root directory
 	v.AddConfigPath(filepath.Join(homeDir, "config")) // search root directory /config
 
-	// If a config file is found, read it in.
-	err := v.ReadInConfig()
+	// bind flags so we could override config file with flags
+	err := BindDymintFlags(cmd, v)
+	if err != nil {
+		return err
+	}
+
+	// Read viper config
+	err = v.ReadInConfig()
 	if err != nil {
 		// ignore not found error, return other errors
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
@@ -153,4 +159,63 @@ func AddNodeFlags(cmd *cobra.Command) {
 	cmd.Flags().String(flagSLGasFees, def.SettlementConfig.GasFees, "Settlement Layer gas fees")
 	cmd.Flags().String(flagSLGasPrices, def.SettlementConfig.GasPrices, "Settlement Layer gas prices")
 	cmd.Flags().Uint64(flagSLGasLimit, def.SettlementConfig.GasLimit, "Settlement Layer batch submit gas limit")
+}
+
+func BindDymintFlags(cmd *cobra.Command, v *viper.Viper) error {
+	if err := v.BindPFlag("aggregator", cmd.Flags().Lookup(flagAggregator)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag("da_layer", cmd.Flags().Lookup(flagDALayer)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag("da_config", cmd.Flags().Lookup(flagDAConfig)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag("block_time", cmd.Flags().Lookup(flagBlockTime)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag("empty_blocks_max_time", cmd.Flags().Lookup(flagEmptyBlocksMaxTime)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag("batch_submit_max_time", cmd.Flags().Lookup(flagBatchSubmitMaxTime)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag("da_start_height", cmd.Flags().Lookup(flagDAStartHeight)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag("namespace_id", cmd.Flags().Lookup(flagNamespaceID)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag("block_batch_size", cmd.Flags().Lookup(flagBlockBatchSize)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag("block_batch_size_bytes", cmd.Flags().Lookup(flagBlockBatchSizeBytes)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag("settlement_layer", cmd.Flags().Lookup(flagSettlementLayer)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag("node_address", cmd.Flags().Lookup(flagSLNodeAddress)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag("keyring_backend", cmd.Flags().Lookup(flagSLKeyringBackend)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag("keyringhomedir", cmd.Flags().Lookup(flagSLKeyringHomeDir)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag("dym_account_name", cmd.Flags().Lookup(flagSLDymAccountName)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag("gas_fees", cmd.Flags().Lookup(flagSLGasFees)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag("gas_prices", cmd.Flags().Lookup(flagSLGasPrices)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag("gas_limit", cmd.Flags().Lookup(flagSLGasLimit)); err != nil {
+		return err
+	}
+
+	return nil
 }
