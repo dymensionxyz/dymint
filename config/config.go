@@ -83,7 +83,7 @@ func (nc *NodeConfig) GetViperConfig(cmd *cobra.Command, v *viper.Viper) error {
 	homeDir := v.GetString(cli.HomeFlag)
 
 	//create dymint toml config file
-	EnsureRoot(filepath.Join(homeDir, DefaultConfigDirName))
+	EnsureRoot(v.GetString(cli.HomeFlag))
 	v.SetConfigName("dymint")
 	v.AddConfigPath(homeDir)                          // search root directory
 	v.AddConfigPath(filepath.Join(homeDir, "config")) // search root directory /config

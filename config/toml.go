@@ -6,7 +6,7 @@ import (
 	"strings"
 	"text/template"
 
-	tmcfg "github.com/tendermint/tendermint/config"
+	"github.com/dymensionxyz/dymint/settlement"
 	tmos "github.com/tendermint/tendermint/libs/os"
 )
 
@@ -36,20 +36,30 @@ func EnsureRoot(rootDir string) {
 	if err := tmos.EnsureDir(filepath.Join(rootDir, DefaultConfigDirName), DefaultDirPerm); err != nil {
 		panic(err.Error())
 	}
-	tmcfg.EnsureRoot(rootDir)
 
 	configFilePath := filepath.Join(rootDir, DefaultConfigDirName, DefaultConfigFileName)
 
 	// Write default config file if missing.
 	if !tmos.FileExists(configFilePath) {
-		writeDefaultConfigFile(configFilePath)
+		writeDefaultConfigFile(configFilePath, rootDir)
 	}
 }
 
 // XXX: this func should probably be called by cmd/tendermint/commands/init.go
 // alongside the writing of the genesis.json and priv_validator.json
-func writeDefaultConfigFile(configFilePath string) {
-	WriteConfigFile(configFilePath, DefaultConfig())
+func writeDefaultConfigFile(configFilePath, rootDir string) {
+	cfg := DefaultConfig()
+	defaultSLconfig := settlement.Config{
+		KeyringBackend: "test",
+		NodeAddress:    "http://127.0.0.1:36657",
+		RollappID:      "",
+		KeyringHomeDir: rootDir,
+		DymAccountName: "sequencer",
+		GasPrices:      "0.025udym",
+	}
+	cfg.SettlementConfig = defaultSLconfig
+
+	WriteConfigFile(configFilePath, cfg)
 }
 
 // WriteConfigFile renders config using the template and writes it to configFilePath.

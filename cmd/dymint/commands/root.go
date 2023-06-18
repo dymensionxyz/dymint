@@ -55,6 +55,8 @@ func ParseConfig(cmd *cobra.Command) (*cfg.Config, error) {
 		return nil, fmt.Errorf("error in config file: %v", err)
 	}
 
+	config.EnsureRoot(conf.RootDir)
+
 	return conf, nil
 }
 
