@@ -81,8 +81,8 @@ type BlockManagerConfig struct {
 func (nc *NodeConfig) GetViperConfig(cmd *cobra.Command, homeDir string) error {
 	v := viper.GetViper()
 
-	//create dymint toml config file
-	EnsureRoot(homeDir)
+	//Loads dymint toml config file
+	EnsureRoot(homeDir, nil)
 	v.SetConfigName("dymint")
 	v.AddConfigPath(homeDir)                                      // search root directory
 	v.AddConfigPath(filepath.Join(homeDir, DefaultConfigDirName)) // search root directory /config

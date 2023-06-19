@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -16,10 +15,9 @@ func TestViperAndCobra(t *testing.T) {
 	cmd := &cobra.Command{}
 	AddNodeFlags(cmd)
 
-	v := viper.GetViper()
-	assert.NoError(v.BindPFlags(cmd.Flags()))
-
 	dir := t.TempDir()
+	nc := DefaultConfig("", "")
+	EnsureRoot(dir, nc)
 
 	assert.NoError(cmd.Flags().Set(flagAggregator, "true"))
 	assert.NoError(cmd.Flags().Set(flagDALayer, "foobar"))
@@ -28,7 +26,6 @@ func TestViperAndCobra(t *testing.T) {
 	assert.NoError(cmd.Flags().Set(flagNamespaceID, "0102030405060708"))
 	assert.NoError(cmd.Flags().Set(flagBlockBatchSize, "10"))
 
-	nc := DefaultNodeConfig
 	assert.NoError(nc.GetViperConfig(cmd, dir))
 
 	assert.Equal(true, nc.Aggregator)

@@ -6,7 +6,6 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/dymensionxyz/dymint/settlement"
 	tmos "github.com/tendermint/tendermint/libs/os"
 )
 
@@ -29,7 +28,7 @@ func init() {
 
 // EnsureRoot creates the root, config, and data directories if they don't exist,
 // and panics if it fails.
-func EnsureRoot(rootDir string) {
+func EnsureRoot(rootDir string, defaultConfig *NodeConfig) {
 	if err := tmos.EnsureDir(rootDir, DefaultDirPerm); err != nil {
 		panic(err.Error())
 	}
@@ -37,30 +36,16 @@ func EnsureRoot(rootDir string) {
 		panic(err.Error())
 	}
 
+	if defaultConfig == nil {
+		return
+	}
+
 	configFilePath := filepath.Join(rootDir, DefaultConfigDirName, DefaultConfigFileName)
 
 	// Write default config file if missing.
 	if !tmos.FileExists(configFilePath) {
-		writeDefaultConfigFile(configFilePath, rootDir)
+		WriteConfigFile(configFilePath, defaultConfig)
 	}
-}
-
-// XXX: this func should probably be called by cmd/tendermint/commands/init.go
-// alongside the writing of the genesis.json and priv_validator.json
-func writeDefaultConfigFile(configFilePath, rootDir string) {
-	//TODO: move to defaults.go
-	cfg := DefaultConfig()
-	defaultSLconfig := settlement.Config{
-		KeyringBackend: "test",
-		NodeAddress:    "http://127.0.0.1:36657",
-		RollappID:      "",
-		KeyringHomeDir: rootDir,
-		DymAccountName: "sequencer",
-		GasPrices:      "0.025udym",
-	}
-	cfg.SettlementConfig = defaultSLconfig
-
-	WriteConfigFile(configFilePath, cfg)
 }
 
 // WriteConfigFile renders config using the template and writes it to configFilePath.
@@ -107,6 +92,7 @@ da_config = "{{ .DAConfig }}"
 settlement_layer = "{{ .SettlementLayer }}" # mock, dymension
 
 # dymension config
+rollapp_id = "{{ .SettlementConfig.RollappID }}"
 node_address = "{{ .SettlementConfig.NodeAddress }}"
 gas_limit = {{ .SettlementConfig.GasLimit }}
 gas_prices = "{{ .SettlementConfig.GasPrices }}"
