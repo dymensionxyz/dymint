@@ -116,7 +116,7 @@ func NewManager(
 
 	// TODO((#119): Probably should be validated and manage default on config init.
 	if conf.BlockBatchMaxSizeBytes == 0 {
-		logger.Info("WARNING: using default DA batch size bytes limit", "BlockBatchSizeBytes", config.DefaultNodeConfig.BlockBatchMaxSizeBytes)
+		logger.Info("WARNING: using default DA batch size bytes limit", "BlockBatchMaxSizeBytes", config.DefaultNodeConfig.BlockBatchMaxSizeBytes)
 		conf.BlockBatchMaxSizeBytes = config.DefaultNodeConfig.BlockBatchMaxSizeBytes
 	}
 	if conf.BatchSubmitMaxTime == 0 {
@@ -331,7 +331,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 			return
 		//Empty blocks timeout
 		case <-tickerEmptyBlocksMaxTimeCh:
-			m.logger.Error(fmt.Sprintf("No transactions for %.2f seconds, producing empty block", m.conf.EmptyBlocksMaxTime.Seconds()))
+			m.logger.Debug(fmt.Sprintf("No transactions for %.2f seconds, producing empty block", m.conf.EmptyBlocksMaxTime.Seconds()))
 			produceEmptyBlock = true
 		//Produce block
 		case <-ticker.C:
@@ -464,96 +464,98 @@ func (m *Manager) syncUntilTarget(ctx context.Context, syncTarget uint64) {
 // In case the following doesn't hold true, it means we crashed after the commit and before updating the store height.
 // In that case we'll want to align the store with the app state and continue to the next block.
 func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *types.Commit, blockMetaData blockMetaData) error {
-	//TODO: make it more go idiomatic, indent left the main logic
-	if block.Header.Height == m.store.Height()+1 {
-		m.logger.Info("Applying block", "height", block.Header.Height, "source", blockMetaData.source)
-
-		// Check if alignment is needed due to incosistencies between the store and the app.
-		isAlignRequired, err := m.alignStoreWithApp(ctx, block)
-		if err != nil {
-			return err
-		}
-		if isAlignRequired {
-			m.logger.Info("Aligned with app state required. Skipping to next block", "height", block.Header.Height)
-			return nil
-		}
-		// Start applying the block assuming no inconsistency was found.
-		_, err = m.store.SaveBlock(block, commit, nil)
-		if err != nil {
-			m.logger.Error("Failed to save block", "error", err)
-			return err
-		}
-
-		responses, err := m.executeBlock(ctx, block, commit)
-		if err != nil {
-			m.logger.Error("Failed to execute block", "error", err)
-			return err
-		}
-
-		newState, err := m.executor.UpdateStateFromResponses(responses, m.lastState, block)
-		if err != nil {
-			return err
-		}
-
-		batch := m.store.NewBatch()
-
-		batch, err = m.store.SaveBlockResponses(block.Header.Height, responses, batch)
-		if err != nil {
-			batch.Discard()
-			return err
-		}
-
-		m.lastState = newState
-		batch, err = m.store.UpdateState(m.lastState, batch)
-		if err != nil {
-			batch.Discard()
-			return err
-		}
-		batch, err = m.store.SaveValidators(block.Header.Height, m.lastState.Validators, batch)
-		if err != nil {
-			batch.Discard()
-			return err
-		}
-
-		err = batch.Commit()
-		if err != nil {
-			m.logger.Error("Failed to persist batch to disk", "error", err)
-			return err
-		}
-
-		// Commit block to app
-		retainHeight, err := m.executor.Commit(ctx, &newState, block, responses)
-		if err != nil {
-			m.logger.Error("Failed to commit to the block", "error", err)
-			return err
-		}
-
-		// Prune old heights, if requested by ABCI app.
-		if retainHeight > 0 {
-			pruned, err := m.pruneBlocks(retainHeight)
-			if err != nil {
-				m.logger.Error("failed to prune blocks", "retain_height", retainHeight, "err", err)
-			} else {
-				m.logger.Debug("pruned blocks", "pruned", pruned, "retain_height", retainHeight)
-			}
-		}
-
-		// Update the state with the new app hash, last validators and store height from the commit.
-		// Every one of those, if happens before commit, prevents us from re-executing the block in case failed during commit.
-		newState.LastValidators = m.lastState.Validators.Copy()
-		newState.LastStoreHeight = block.Header.Height
-		newState.BaseHeight = m.store.Base()
-
-		_, err = m.store.UpdateState(newState, nil)
-		if err != nil {
-			m.logger.Error("Failed to update state", "error", err)
-			return err
-		}
-		m.lastState = newState
-
-		m.store.SetHeight(block.Header.Height)
-
+	if block.Header.Height != m.store.Height()+1 {
+		// We crashed after the commit and before updating the store height.
+		return nil
 	}
+
+	m.logger.Debug("Applying block", "height", block.Header.Height, "source", blockMetaData.source)
+
+	// Check if alignment is needed due to incosistencies between the store and the app.
+	isAlignRequired, err := m.alignStoreWithApp(ctx, block)
+	if err != nil {
+		return err
+	}
+	if isAlignRequired {
+		m.logger.Debug("Aligned with app state required. Skipping to next block", "height", block.Header.Height)
+		return nil
+	}
+	// Start applying the block assuming no inconsistency was found.
+	_, err = m.store.SaveBlock(block, commit, nil)
+	if err != nil {
+		m.logger.Error("Failed to save block", "error", err)
+		return err
+	}
+
+	responses, err := m.executeBlock(ctx, block, commit)
+	if err != nil {
+		m.logger.Error("Failed to execute block", "error", err)
+		return err
+	}
+
+	newState, err := m.executor.UpdateStateFromResponses(responses, m.lastState, block)
+	if err != nil {
+		return err
+	}
+
+	batch := m.store.NewBatch()
+
+	batch, err = m.store.SaveBlockResponses(block.Header.Height, responses, batch)
+	if err != nil {
+		batch.Discard()
+		return err
+	}
+
+	m.lastState = newState
+	batch, err = m.store.UpdateState(m.lastState, batch)
+	if err != nil {
+		batch.Discard()
+		return err
+	}
+	batch, err = m.store.SaveValidators(block.Header.Height, m.lastState.Validators, batch)
+	if err != nil {
+		batch.Discard()
+		return err
+	}
+
+	err = batch.Commit()
+	if err != nil {
+		m.logger.Error("Failed to persist batch to disk", "error", err)
+		return err
+	}
+
+	// Commit block to app
+	retainHeight, err := m.executor.Commit(ctx, &newState, block, responses)
+	if err != nil {
+		m.logger.Error("Failed to commit to the block", "error", err)
+		return err
+	}
+
+	// Prune old heights, if requested by ABCI app.
+	if retainHeight > 0 {
+		pruned, err := m.pruneBlocks(retainHeight)
+		if err != nil {
+			m.logger.Error("failed to prune blocks", "retain_height", retainHeight, "err", err)
+		} else {
+			m.logger.Debug("pruned blocks", "pruned", pruned, "retain_height", retainHeight)
+		}
+	}
+
+	// Update the state with the new app hash, last validators and store height from the commit.
+	// Every one of those, if happens before commit, prevents us from re-executing the block in case failed during commit.
+	newState.LastValidators = m.lastState.Validators.Copy()
+	newState.LastStoreHeight = block.Header.Height
+	newState.BaseHeight = m.store.Base()
+
+	_, err = m.store.UpdateState(newState, nil)
+	if err != nil {
+		m.logger.Error("Failed to update state", "error", err)
+		return err
+	}
+	m.lastState = newState
+
+	m.store.SetHeight(block.Header.Height)
+
 	return nil
 }
 
@@ -687,7 +689,6 @@ func (m *Manager) produceBlock(ctx context.Context, allowEmpty bool) error {
 		if !allowEmpty && len(block.Data.Txs) == 0 {
 			return types.ErrSkippedEmptyBlock
 		}
-		m.logger.Info("block created", "height", newHeight, "num_tx", len(block.Data.Txs))
 
 		abciHeaderPb := abciconv.ToABCIHeaderPB(&block.Header)
 		abciHeaderBytes, err := abciHeaderPb.Marshal()
@@ -714,6 +715,8 @@ func (m *Manager) produceBlock(ctx context.Context, allowEmpty bool) error {
 	if err := m.applyBlock(ctx, block, commit, blockMetaData{source: producedBlock}); err != nil {
 		return err
 	}
+
+	m.logger.Info("block created", "height", newHeight, "num_tx", len(block.Data.Txs))
 
 	//TODO: move to separate function
 	lastSubmissionTime := atomic.LoadInt64(&m.lastSubmissionTime)

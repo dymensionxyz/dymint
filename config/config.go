@@ -1,11 +1,21 @@
 package config
 
 import (
+	"path/filepath"
 	"time"
+
+	tmcmd "github.com/tendermint/tendermint/cmd/cometbft/commands"
 
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+)
+
+const (
+	// DefaultDymintDir is the default directory for dymint
+	DefaultDymintDir      = ".dymint"
+	DefaultConfigDirName  = "config"
+	DefaultConfigFileName = "dymint.toml"
 )
 
 const (
@@ -30,11 +40,6 @@ const (
 	flagSLGasLimit       = "dymint.settlement_config.gas_limit"
 	flagSLGasPrices      = "dymint.settlement_config.gas_prices"
 	flagSLGasFees        = "dymint.settlement_config.gas_fees"
-)
-
-var (
-	// DefaultDymintDir is the default directory for dymint
-	DefaultDymintDir = ".dymint"
 )
 
 // NodeConfig stores Dymint node configuration.
@@ -64,32 +69,38 @@ type BlockManagerConfig struct {
 	NamespaceID        string        `mapstructure:"namespace_id"`
 	// The size of the batch in blocks. Every batch we'll write to the DA and the settlement layer.
 	BlockBatchSize uint64 `mapstructure:"block_batch_size"`
-	// The size of the batch in Bytes. Every batch we'll write to the DA and the settlement layer.
-	BlockBatchMaxSizeBytes uint64 `mapstructure:"block_batch_size_bytes"`
+	// The max size of the batch in Bytes. Every batch we'll write to the DA and the settlement layer.
+	BlockBatchMaxSizeBytes uint64 `mapstructure:"block_batch_max_size_bytes"`
 }
 
 // GetViperConfig reads configuration parameters from Viper instance.
 //
 // This method is called in cosmos-sdk.
-func (nc *NodeConfig) GetViperConfig(v *viper.Viper) error {
-	nc.Aggregator = v.GetBool(flagAggregator)
-	nc.DALayer = v.GetString(flagDALayer)
-	nc.DAConfig = v.GetString(flagDAConfig)
-	nc.SettlementLayer = v.GetString(flagSettlementLayer)
-	nc.BlockTime = v.GetDuration(flagBlockTime)
-	nc.EmptyBlocksMaxTime = v.GetDuration(flagEmptyBlocksMaxTime)
-	nc.BatchSubmitMaxTime = v.GetDuration(flagBatchSubmitMaxTime)
-	nc.BlockBatchSize = v.GetUint64(flagBlockBatchSize)
-	nc.BlockBatchMaxSizeBytes = v.GetUint64(flagBlockBatchMaxSizeBytes)
-	nc.NamespaceID = v.GetString(flagNamespaceID)
+func (nc *NodeConfig) GetViperConfig(cmd *cobra.Command, homeDir string) error {
+	v := viper.GetViper()
 
-	nc.SettlementConfig.NodeAddress = v.GetString(flagSLNodeAddress)
-	nc.SettlementConfig.KeyringBackend = v.GetString(flagSLKeyringBackend)
-	nc.SettlementConfig.KeyringHomeDir = v.GetString(flagSLKeyringHomeDir)
-	nc.SettlementConfig.DymAccountName = v.GetString(flagSLDymAccountName)
-	nc.SettlementConfig.GasLimit = v.GetUint64(flagSLGasLimit)
-	nc.SettlementConfig.GasPrices = v.GetString(flagSLGasPrices)
-	nc.SettlementConfig.GasFees = v.GetString(flagSLGasFees)
+	//Loads dymint toml config file
+	EnsureRoot(homeDir, nil)
+	v.SetConfigName("dymint")
+	v.AddConfigPath(homeDir)                                      // search root directory
+	v.AddConfigPath(filepath.Join(homeDir, DefaultConfigDirName)) // search root directory /config
+
+	// bind flags so we could override config file with flags
+	err := BindDymintFlags(cmd, v)
+	if err != nil {
+		return err
+	}
+
+	// Read viper config
+	err = v.ReadInConfig()
+	if err != nil {
+		return err
+	}
+
+	err = viper.Unmarshal(&nc)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -97,7 +108,10 @@ func (nc *NodeConfig) GetViperConfig(v *viper.Viper) error {
 // AddFlags adds Dymint specific configuration options to cobra Command.
 //
 // This function is called in cosmos-sdk.
-func AddFlags(cmd *cobra.Command) {
+func AddNodeFlags(cmd *cobra.Command) {
+	//Add tendermint default flags
+	tmcmd.AddNodeFlags(cmd)
+
 	def := DefaultNodeConfig
 
 	cmd.Flags().Bool(flagAggregator, false, "run node in aggregator mode")
@@ -118,4 +132,60 @@ func AddFlags(cmd *cobra.Command) {
 	cmd.Flags().String(flagSLGasFees, def.SettlementConfig.GasFees, "Settlement Layer gas fees")
 	cmd.Flags().String(flagSLGasPrices, def.SettlementConfig.GasPrices, "Settlement Layer gas prices")
 	cmd.Flags().Uint64(flagSLGasLimit, def.SettlementConfig.GasLimit, "Settlement Layer batch submit gas limit")
+}
+
+func BindDymintFlags(cmd *cobra.Command, v *viper.Viper) error {
+	if err := v.BindPFlag("aggregator", cmd.Flags().Lookup(flagAggregator)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag("da_layer", cmd.Flags().Lookup(flagDALayer)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag("da_config", cmd.Flags().Lookup(flagDAConfig)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag("block_time", cmd.Flags().Lookup(flagBlockTime)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag("empty_blocks_max_time", cmd.Flags().Lookup(flagEmptyBlocksMaxTime)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag("batch_submit_max_time", cmd.Flags().Lookup(flagBatchSubmitMaxTime)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag("namespace_id", cmd.Flags().Lookup(flagNamespaceID)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag("block_batch_size", cmd.Flags().Lookup(flagBlockBatchSize)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag("block_batch_max_size_bytes", cmd.Flags().Lookup(flagBlockBatchMaxSizeBytes)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag("settlement_layer", cmd.Flags().Lookup(flagSettlementLayer)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag("node_address", cmd.Flags().Lookup(flagSLNodeAddress)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag("keyring_backend", cmd.Flags().Lookup(flagSLKeyringBackend)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag("keyring_home_dir", cmd.Flags().Lookup(flagSLKeyringHomeDir)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag("dym_account_name", cmd.Flags().Lookup(flagSLDymAccountName)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag("gas_fees", cmd.Flags().Lookup(flagSLGasFees)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag("gas_prices", cmd.Flags().Lookup(flagSLGasPrices)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag("gas_limit", cmd.Flags().Lookup(flagSLGasLimit)); err != nil {
+		return err
+	}
+
+	return nil
 }

@@ -55,6 +55,8 @@ func ParseConfig(cmd *cobra.Command) (*cfg.Config, error) {
 		return nil, fmt.Errorf("error in config file: %v", err)
 	}
 
+	cfg := config.DefaultConfig(home, "")
+	config.EnsureRoot(conf.RootDir, cfg)
 	return conf, nil
 }
 
@@ -64,12 +66,9 @@ var RootCmd = &cobra.Command{
 	Short: "ABCI-client implementation for dymension's autonomous rollapps",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) (err error) {
 		v := viper.GetViper()
-		err = v.BindPFlags(cmd.Flags())
-		if err != nil {
-			return err
-		}
-		err = dymconfig.GetViperConfig(v)
-		if err != nil {
+
+		// cmd.Flags() includes flags from this command and all persistent flags from the parent
+		if err := v.BindPFlags(cmd.Flags()); err != nil {
 			return err
 		}
 
