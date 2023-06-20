@@ -7,12 +7,10 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
-	"path/filepath"
 	"sync/atomic"
 	"time"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
-	tmp2p "github.com/tendermint/tendermint/p2p"
 
 	"github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
@@ -25,8 +23,6 @@ import (
 
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
-
-const kvStoreDBName = "settlement"
 
 var settlementKVPrefix = []byte{0}
 var slStateIndexKey = []byte("slStateIndex")
@@ -108,32 +104,22 @@ func newHubClient(config settlement.Config, pubsub *pubsub.Server, logger log.Lo
 }
 
 func initConfig(conf settlement.Config) (slstore store.KVStore, proposer string, err error) {
-	if conf.KeyringHomeDir == "" {
-		//init store
-		slstore = store.NewDefaultInMemoryKVStore()
-		//init proposer pub key
-		if conf.ProposerPubKey != "" {
-			proposer = conf.ProposerPubKey
-		} else {
-			_, proposerPubKey, err := crypto.GenerateEd25519Key(rand.Reader)
-			if err != nil {
-				return nil, "", err
-			}
-			pubKeybytes, err := proposerPubKey.Raw()
-			if err != nil {
-				return nil, "", err
-			}
+	slstore = store.NewDefaultInMemoryKVStore()
 
-			proposer = hex.EncodeToString(pubKeybytes)
-		}
+	//init proposer pub key
+	if conf.ProposerPubKey != "" {
+		proposer = conf.ProposerPubKey
 	} else {
-		slstore = store.NewDefaultKVStore(conf.KeyringHomeDir, "data", kvStoreDBName)
-		proposerKeyPath := filepath.Join(conf.KeyringHomeDir, "config/priv_validator_key.json")
-		key, err := tmp2p.LoadOrGenNodeKey(proposerKeyPath)
+		_, proposerPubKey, err := crypto.GenerateEd25519Key(rand.Reader)
 		if err != nil {
 			return nil, "", err
 		}
-		proposer = hex.EncodeToString(key.PubKey().Bytes())
+		pubKeybytes, err := proposerPubKey.Raw()
+		if err != nil {
+			return nil, "", err
+		}
+
+		proposer = hex.EncodeToString(pubKeybytes)
 	}
 
 	return
