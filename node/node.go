@@ -3,7 +3,6 @@ package node
 import (
 	"context"
 	"encoding/base64"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"sync"
@@ -159,11 +158,7 @@ func NewNode(ctx context.Context, conf config.NodeConfig, p2pKey crypto.PrivKey,
 		return nil, fmt.Errorf("couldn't get settlement client named '%s'", conf.SettlementLayer)
 	}
 	if conf.SettlementLayer == "mock" {
-		pubKeybytes, err := signingKey.GetPublic().Raw()
-		if err != nil {
-			return nil, err
-		}
-		conf.SettlementConfig.ProposerPubKey = hex.EncodeToString(pubKeybytes)
+		conf.SettlementConfig.KeyringHomeDir = conf.RootDir
 	}
 	err = settlementlc.Init(conf.SettlementConfig, pubsubServer, logger.With("module", "settlement_client"))
 	if err != nil {

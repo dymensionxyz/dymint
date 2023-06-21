@@ -795,7 +795,9 @@ func getRPC(t *testing.T) (*mocks.Application, *Client) {
 	app := &mocks.Application{}
 	app.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 	key, _, _ := crypto.GenerateEd25519Key(crand.Reader)
-	signingKey, _, err := crypto.GenerateEd25519Key(crand.Reader)
+	signingKey, pubkey, err := crypto.GenerateEd25519Key(crand.Reader)
+	pubkeyBytes, _ := pubkey.Raw()
+	proposerKey := hex.EncodeToString(pubkeyBytes)
 	require.NoError(err)
 
 	config := config.NodeConfig{
@@ -808,7 +810,7 @@ func getRPC(t *testing.T) (*mocks.Application, *Client) {
 		DALayer:            "mock",
 		DAConfig:           "",
 		SettlementLayer:    "mock",
-		SettlementConfig:   settlement.Config{},
+		SettlementConfig:   settlement.Config{ProposerPubKey: proposerKey},
 	}
 	node, err := node.NewNode(context.Background(), config, key, signingKey, proxy.NewLocalClientCreator(app), &tmtypes.GenesisDoc{ChainID: "test"}, log.TestingLogger())
 	require.NoError(err)
