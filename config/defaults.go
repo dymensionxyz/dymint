@@ -1,6 +1,7 @@
 package config
 
 import (
+	"path/filepath"
 	"time"
 
 	"github.com/dymensionxyz/dymint/settlement"
@@ -12,7 +13,7 @@ const (
 	// Version is a default dymint version for P2P client.
 	Version = "0.2.2"
 
-	DefaultHomeDir = ".dymint"
+	DefaultHomeDir = "sequencer_keys"
 	DefaultChainID = "dymint-testnet"
 )
 
@@ -28,8 +29,8 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 		Aggregator: true,
 		BlockManagerConfig: BlockManagerConfig{
 			BlockTime:           200 * time.Millisecond,
-			EmptyBlocksMaxTime:  60 * time.Second,
-			BatchSubmitMaxTime:  600 * time.Second,
+			EmptyBlocksMaxTime:  3 * time.Second,
+			BatchSubmitMaxTime:  20 * time.Second,
 			NamespaceID:         "000000000000ffff",
 			BlockBatchSize:      500,
 			BlockBatchSizeBytes: 1500000},
@@ -38,8 +39,9 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 	}
 
 	if home == "" {
-		home = DefaultHomeDir
+		home = "/tmp"
 	}
+	keyringDir := filepath.Join(home, DefaultHomeDir)
 	if chainId == "" {
 		chainId = DefaultChainID
 	}
@@ -48,7 +50,7 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 		KeyringBackend: "test",
 		NodeAddress:    "http://127.0.0.1:36657",
 		RollappID:      chainId,
-		KeyringHomeDir: home,
+		KeyringHomeDir: keyringDir,
 		DymAccountName: "sequencer",
 		GasPrices:      "0.025udym",
 	}
