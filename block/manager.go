@@ -115,9 +115,9 @@ func NewManager(
 	}
 
 	// TODO((#119): Probably should be validated and manage default on config init.
-	if conf.BlockBatchSizeBytes == 0 {
-		logger.Info("WARNING: using default DA batch size bytes limit", "BlockBatchSizeBytes", config.DefaultNodeConfig.BlockBatchSizeBytes)
-		conf.BlockBatchSizeBytes = config.DefaultNodeConfig.BlockBatchSizeBytes
+	if conf.BlockBatchMaxSizeBytes == 0 {
+		logger.Info("WARNING: using default DA batch size bytes limit", "BlockBatchMaxSizeBytes", config.DefaultNodeConfig.BlockBatchMaxSizeBytes)
+		conf.BlockBatchMaxSizeBytes = config.DefaultNodeConfig.BlockBatchMaxSizeBytes
 	}
 	if conf.BatchSubmitMaxTime == 0 {
 		logger.Info("WARNING: using default DA batch submit max time", "BatchSubmitMaxTime", config.DefaultNodeConfig.BatchSubmitMaxTime)
@@ -315,6 +315,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 
 	var tickerEmptyBlocksMaxTime *time.Ticker
 	var tickerEmptyBlocksMaxTimeCh <-chan time.Time
+	// Setup ticker for empty blocks if enabled
 	if m.conf.EmptyBlocksMaxTime > 0 {
 		tickerEmptyBlocksMaxTime = time.NewTicker(m.conf.EmptyBlocksMaxTime)
 		tickerEmptyBlocksMaxTimeCh = tickerEmptyBlocksMaxTime.C
@@ -330,7 +331,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 			return
 		//Empty blocks timeout
 		case <-tickerEmptyBlocksMaxTimeCh:
-			m.logger.Debug("No transactions for too long, allowing to produce empty block")
+			m.logger.Debug(fmt.Sprintf("No transactions for %.2f seconds, producing empty block", m.conf.EmptyBlocksMaxTime.Seconds()))
 			produceEmptyBlock = true
 		//Produce block
 		case <-ticker.C:
@@ -800,7 +801,7 @@ func (m *Manager) createNextDABatch(startHeight uint64, endHeight uint64) (*type
 
 		//Check if the batch size is too big
 		totalSize := batch.ToProto().Size()
-		if totalSize > int(m.conf.BlockBatchSizeBytes) {
+		if totalSize > int(m.conf.BlockBatchMaxSizeBytes) {
 			// Nil out the last block and commit
 			batch.Blocks[len(batch.Blocks)-1] = nil
 			batch.Commits[len(batch.Commits)-1] = nil

@@ -147,7 +147,7 @@ func NewNode(ctx context.Context, conf config.NodeConfig, p2pKey crypto.PrivKey,
 	if dalc == nil {
 		return nil, fmt.Errorf("couldn't get data availability client named '%s'", conf.DALayer)
 	}
-	err := dalc.Init([]byte(conf.DAConfig), pubsubServer, dalcKV, logger.With("module", "da_client"))
+	err := dalc.Init([]byte(conf.DAConfig), pubsubServer, dalcKV, logger.With("module", string(dalc.GetClientType())))
 	if err != nil {
 		return nil, fmt.Errorf("data availability layer client initialization error: %w", err)
 	}

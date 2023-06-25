@@ -176,7 +176,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 				if txResponse.Code != 0 {
 					c.logger.Debug("Failed to submit DA batch. Emitting health event and trying again", "txResponse", txResponse, "error", err)
 					// Publish an health event. Only if we failed to emit the event we return an error.
-					res, err := c.submitBatchHealthEventHelper(false, errors.New(txResponse.RawLog))
+					res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, false, errors.New(txResponse.RawLog))
 					if err != nil {
 						return res
 					}
@@ -187,7 +187,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 					c.logger.Debug("Failed to receive DA batch inclusion result. Waiting for inclusion", "txResponse", txResponse, "error", err)
 					inclusionHeight, err := c.waitForTXInclusion(txResponse.TxHash)
 					if err == nil {
-						res, err := c.submitBatchHealthEventHelper(true, nil)
+						res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, true, nil)
 						if err != nil {
 							return res
 						} else {
@@ -201,7 +201,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 						}
 					} else {
 						c.logger.Debug("Failed to receive DA batch inclusion result. Emitting health event and trying again", "error", err)
-						res, err := c.submitBatchHealthEventHelper(false, err)
+						res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, false, err)
 						if err != nil {
 							return res
 						}
@@ -209,7 +209,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 
 				} else {
 					c.logger.Debug("Successfully submitted DA batch", "txResponse", txResponse)
-					res, err := c.submitBatchHealthEventHelper(true, nil)
+					res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, true, nil)
 					if err != nil {
 						return res
 					}
@@ -222,7 +222,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 					}
 				}
 			} else {
-				res, err := c.submitBatchHealthEventHelper(false, errors.New("DA txResponse is nil"))
+				res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, false, errors.New("DA txResponse is nil"))
 				if err != nil {
 					return res
 				}
@@ -325,20 +325,4 @@ func (c *DataAvailabilityLayerClient) waitForTXInclusion(txHash string) (uint64,
 		return 0, err
 	}
 	return inclusionHeight, nil
-}
-
-func (c *DataAvailabilityLayerClient) submitBatchHealthEventHelper(healthy bool, err error) (da.ResultSubmitBatch, error) {
-	err = c.pubsubServer.PublishWithEvents(c.ctx, da.EventDataDAHealthStatus{Healthy: healthy, Error: err},
-		map[string][]string{da.EventTypeKey: {da.EventDAHealthStatus}})
-	if err != nil {
-		return da.ResultSubmitBatch{
-			BaseResult: da.BaseResult{
-				Code:    da.StatusError,
-				Message: err.Error(),
-			},
-		}, err
-	} else {
-		return da.ResultSubmitBatch{}, nil
-	}
-
 }

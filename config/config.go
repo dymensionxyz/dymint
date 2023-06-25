@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"time"
 
-	tmcmd "github.com/tendermint/tendermint/cmd/tendermint/commands"
+	tmcmd "github.com/tendermint/tendermint/cmd/cometbft/commands"
 
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/spf13/cobra"
@@ -19,16 +19,16 @@ const (
 )
 
 const (
-	flagAggregator          = "dymint.aggregator"
-	flagDALayer             = "dymint.da_layer"
-	flagDAConfig            = "dymint.da_config"
-	flagBlockTime           = "dymint.block_time"
-	flagEmptyBlocksMaxTime  = "dymint.empty_blocks_max_time"
-	flagBatchSubmitMaxTime  = "dymint.batch_submit_max_time"
-	flagDAStartHeight       = "dymint.da_start_height"
-	flagNamespaceID         = "dymint.namespace_id"
-	flagBlockBatchSize      = "dymint.block_batch_size"
-	flagBlockBatchSizeBytes = "dymint.block_batch_size_bytes"
+	flagAggregator         = "dymint.aggregator"
+	flagDALayer            = "dymint.da_layer"
+	flagDAConfig           = "dymint.da_config"
+	flagBlockTime          = "dymint.block_time"
+	flagEmptyBlocksMaxTime = "dymint.empty_blocks_max_time"
+	flagBatchSubmitMaxTime = "dymint.batch_submit_max_time"
+	// TODO(omritoptix): Namespace ID should be part of the DA config
+	flagNamespaceID            = "dymint.namespace_id"
+	flagBlockBatchSize         = "dymint.block_batch_size"
+	flagBlockBatchMaxSizeBytes = "dymint.block_batch_max_size_bytes"
 )
 
 const (
@@ -66,13 +66,11 @@ type BlockManagerConfig struct {
 	EmptyBlocksMaxTime time.Duration `mapstructure:"empty_blocks_max_time"`
 	// BatchSubmitMaxTime defines how long should block manager wait for before submitting batch
 	BatchSubmitMaxTime time.Duration `mapstructure:"batch_submit_max_time"`
-	// DAStartHeight allows skipping first DAStartHeight-1 blocks when querying for blocks.
-	DAStartHeight uint64 `mapstructure:"da_start_height"`
-	NamespaceID   string `mapstructure:"namespace_id"`
+	NamespaceID        string        `mapstructure:"namespace_id"`
 	// The size of the batch in blocks. Every batch we'll write to the DA and the settlement layer.
 	BlockBatchSize uint64 `mapstructure:"block_batch_size"`
-	// The size of the batch in Bytes. Every batch we'll write to the DA and the settlement layer.
-	BlockBatchSizeBytes uint64 `mapstructure:"block_batch_size_bytes"`
+	// The max size of the batch in Bytes. Every batch we'll write to the DA and the settlement layer.
+	BlockBatchMaxSizeBytes uint64 `mapstructure:"block_batch_max_size_bytes"`
 }
 
 // GetViperConfig reads configuration parameters from Viper instance.
@@ -122,10 +120,9 @@ func AddNodeFlags(cmd *cobra.Command) {
 	cmd.Flags().Duration(flagBlockTime, def.BlockTime, "block time (for aggregator mode)")
 	cmd.Flags().Duration(flagEmptyBlocksMaxTime, def.EmptyBlocksMaxTime, "max time for empty blocks (for aggregator mode)")
 	cmd.Flags().Duration(flagBatchSubmitMaxTime, def.BatchSubmitMaxTime, "max time for batch submit (for aggregator mode)")
-	cmd.Flags().Uint64(flagDAStartHeight, def.DAStartHeight, "starting DA block height (for syncing)")
 	cmd.Flags().String(flagNamespaceID, def.NamespaceID, "namespace identifies (8 bytes in hex)")
 	cmd.Flags().Uint64(flagBlockBatchSize, def.BlockBatchSize, "block batch size")
-	cmd.Flags().Uint64(flagBlockBatchSizeBytes, def.BlockBatchSizeBytes, "block batch size in bytes")
+	cmd.Flags().Uint64(flagBlockBatchMaxSizeBytes, def.BlockBatchMaxSizeBytes, "block batch max size in bytes")
 
 	cmd.Flags().String(flagSettlementLayer, def.SettlementLayer, "Settlement Layer Client name")
 	cmd.Flags().String(flagSLNodeAddress, def.SettlementConfig.NodeAddress, "Settlement Layer RPC node address")
@@ -156,16 +153,13 @@ func BindDymintFlags(cmd *cobra.Command, v *viper.Viper) error {
 	if err := v.BindPFlag("batch_submit_max_time", cmd.Flags().Lookup(flagBatchSubmitMaxTime)); err != nil {
 		return err
 	}
-	if err := v.BindPFlag("da_start_height", cmd.Flags().Lookup(flagDAStartHeight)); err != nil {
-		return err
-	}
 	if err := v.BindPFlag("namespace_id", cmd.Flags().Lookup(flagNamespaceID)); err != nil {
 		return err
 	}
 	if err := v.BindPFlag("block_batch_size", cmd.Flags().Lookup(flagBlockBatchSize)); err != nil {
 		return err
 	}
-	if err := v.BindPFlag("block_batch_size_bytes", cmd.Flags().Lookup(flagBlockBatchSizeBytes)); err != nil {
+	if err := v.BindPFlag("block_batch_max_size_bytes", cmd.Flags().Lookup(flagBlockBatchMaxSizeBytes)); err != nil {
 		return err
 	}
 	if err := v.BindPFlag("settlement_layer", cmd.Flags().Lookup(flagSettlementLayer)); err != nil {

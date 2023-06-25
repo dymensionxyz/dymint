@@ -150,6 +150,8 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 	go manager.ProduceBlockLoop(ctx)
 	<-ctx.Done()
 	assert.Equal(t, lastStoreHeight, manager.store.Height())
+	// Wait until produce block loop is done
+	time.Sleep(time.Second * 1)
 
 	t.Log("Sync the manager")
 	ctx, cancel = context.WithTimeout(context.Background(), time.Second*2)
@@ -158,6 +160,8 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 	<-ctx.Done()
 	require.Greater(t, manager.store.Height(), lastStoreHeight)
 	assert.Equal(t, batch.EndHeight, manager.store.Height())
+	// Wait until manager is done
+	time.Sleep(time.Second * 4)
 
 	t.Log("Validate blocks are produced")
 	ctx, cancel = context.WithTimeout(context.Background(), time.Second*3)
@@ -409,7 +413,7 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 	// Init manager
 	managerConfig := getManagerConfig()
 	managerConfig.BlockBatchSize = 1000
-	managerConfig.BlockBatchSizeBytes = batchLimitBytes //enough for 2 block, not enough for 10 blocks
+	managerConfig.BlockBatchMaxSizeBytes = batchLimitBytes //enough for 2 block, not enough for 10 blocks
 	manager, err := getManager(managerConfig, nil, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
@@ -447,7 +451,7 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 			assert.NoError(err)
 
 			assert.Equal(batch.StartHeight, startHeight)
-			assert.LessOrEqual(batch.ToProto().Size(), int(managerConfig.BlockBatchSizeBytes))
+			assert.LessOrEqual(batch.ToProto().Size(), int(managerConfig.BlockBatchMaxSizeBytes))
 
 			if !tc.expectedToBeTruncated {
 				assert.Equal(batch.EndHeight, endHeight)
@@ -457,7 +461,7 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 
 				//validate next added block to batch would have been actually too big
 				//First relax the byte limit so we could proudce larger batch
-				manager.conf.BlockBatchSizeBytes = 10 * manager.conf.BlockBatchSizeBytes
+				manager.conf.BlockBatchMaxSizeBytes = 10 * manager.conf.BlockBatchMaxSizeBytes
 				newBatch, err := manager.createNextDABatch(startHeight, batch.EndHeight+1)
 				assert.Greater(newBatch.ToProto().Size(), batchLimitBytes)
 
@@ -580,7 +584,6 @@ func getManagerConfig() config.BlockManagerConfig {
 		BlockTime:          100 * time.Millisecond,
 		BlockBatchSize:     defaultBatchSize,
 		BatchSubmitMaxTime: 30 * time.Minute,
-		DAStartHeight:      0,
 		NamespaceID:        "0102030405060708",
 	}
 }

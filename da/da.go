@@ -28,6 +28,7 @@ type Client string
 const (
 	Mock     Client = "mock"
 	Celestia Client = "celestia"
+	Avail    Client = "avail"
 )
 
 // Option is a function that sets a parameter on the da layer.

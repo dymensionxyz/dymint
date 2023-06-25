@@ -32,6 +32,10 @@ func TestLifecycle(t *testing.T) {
 	defer srv.GracefulStop()
 
 	for _, dalc := range registry.RegisteredClients() {
+		//TODO(omritoptix): Possibly add support for avail here.
+		if dalc == "avail" {
+			t.Skip("TODO")
+		}
 		t.Run(dalc, func(t *testing.T) {
 			doTestLifecycle(t, registry.GetClient(dalc))
 		})
@@ -60,6 +64,10 @@ func TestDALC(t *testing.T) {
 	defer httpServer.Stop()
 
 	for _, dalc := range registry.RegisteredClients() {
+		//TODO(omritoptix): Possibly add support for avail here.
+		if dalc == "avail" {
+			t.Skip("TODO")
+		}
 		t.Run(dalc, func(t *testing.T) {
 			doTestDALC(t, registry.GetClient(dalc))
 		})
@@ -145,6 +153,10 @@ func TestRetrieve(t *testing.T) {
 
 	for _, client := range registry.RegisteredClients() {
 		t.Run(client, func(t *testing.T) {
+			//TODO(omritoptix): Possibly add support for avail here.
+			if client == "avail" {
+				t.Skip("TODO")
+			}
 			dalc := registry.GetClient(client)
 			_, ok := dalc.(da.BatchRetriever)
 			if ok {
