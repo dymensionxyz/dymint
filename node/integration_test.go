@@ -3,6 +3,7 @@ package node
 import (
 	"context"
 	"crypto/rand"
+	"encoding/hex"
 	mrand "math/rand"
 	"testing"
 	"time"
@@ -38,7 +39,10 @@ func TestAggregatorMode(t *testing.T) {
 	app.On("Info", mock.Anything).Return(abci.ResponseInfo{LastBlockHeight: 0, LastBlockAppHash: []byte{0}})
 
 	key, _, _ := crypto.GenerateEd25519Key(rand.Reader)
-	signingKey, _, _ := crypto.GenerateEd25519Key(rand.Reader)
+	signingKey, pubkey, _ := crypto.GenerateEd25519Key(rand.Reader)
+	pubkeyBytes, _ := pubkey.Raw()
+	proposerKey := hex.EncodeToString(pubkeyBytes)
+
 	anotherKey, _, _ := crypto.GenerateEd25519Key(rand.Reader)
 
 	blockManagerConfig := config.BlockManagerConfig{
@@ -57,7 +61,7 @@ func TestAggregatorMode(t *testing.T) {
 		DALayer:            "mock",
 		DAConfig:           "",
 		SettlementLayer:    "mock",
-		SettlementConfig:   settlement.Config{},
+		SettlementConfig:   settlement.Config{ProposerPubKey: proposerKey},
 	}
 	node, err := NewNode(context.Background(), nodeConfig, key, signingKey, proxy.NewLocalClientCreator(app), &types.GenesisDoc{ChainID: "test"}, log.TestingLogger())
 	require.NoError(err)
