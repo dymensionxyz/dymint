@@ -28,12 +28,12 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 			Seeds:         ""},
 		Aggregator: true,
 		BlockManagerConfig: BlockManagerConfig{
-    BlockTime:              200 * time.Millisecond,
-    EmptyBlocksMaxTime:     60 * time.Second,
-    BatchSubmitMaxTime:     600 * time.Second,
-    NamespaceID:            "000000000000ffff",
-    BlockBatchSize:         500,
-    BlockBatchMaxSizeBytes: 1500000},
+			BlockTime:              200 * time.Millisecond,
+			EmptyBlocksMaxTime:     60 * time.Second,
+			BatchSubmitMaxTime:     600 * time.Second,
+			NamespaceID:            "000000000000ffff",
+			BlockBatchSize:         500,
+			BlockBatchMaxSizeBytes: 1500000},
 		DALayer:         "mock",
 		SettlementLayer: "mock",
 	}
