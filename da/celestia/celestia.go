@@ -21,12 +21,6 @@ import (
 	pb "github.com/dymensionxyz/dymint/types/pb/dymint"
 )
 
-const (
-	defaultTxPollingRetryDelay = 20 * time.Second
-	defaultSubmitRetryDelay    = 10 * time.Second
-	defaultTxPollingAttempts   = 5
-)
-
 type CNCClientI interface {
 	SubmitPFD(ctx context.Context, namespaceID [8]byte, blob []byte, fee int64, gasLimit uint64) (*cnc.TxResponse, error)
 	NamespacedShares(ctx context.Context, namespaceID [8]byte, height uint64) ([][]byte, error)
@@ -49,16 +43,6 @@ type DataAvailabilityLayerClient struct {
 
 var _ da.DataAvailabilityLayerClient = &DataAvailabilityLayerClient{}
 var _ da.BatchRetriever = &DataAvailabilityLayerClient{}
-
-// Config stores Celestia DALC configuration parameters.
-type Config struct {
-	BaseURL     string        `json:"base_url"`
-	AppNodeURL  string        `json:"app_node_url"`
-	Timeout     time.Duration `json:"timeout"`
-	Fee         int64         `json:"fee"`
-	GasLimit    uint64        `json:"gas_limit"`
-	NamespaceID [8]byte       `json:"namespace_id"`
-}
 
 // WithCNCClient sets CNC client.
 func WithCNCClient(client CNCClientI) da.Option {
@@ -99,16 +83,16 @@ func WithSubmitRetryDelay(delay time.Duration) da.Option {
 func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.Server, kvStore store.KVStore, logger log.Logger, options ...da.Option) error {
 	c.logger = logger
 
-	if len(config) > 0 {
-		err := json.Unmarshal(config, &c.config)
-		if err != nil {
-			return err
-		}
+	if len(config) <= 0 {
+		return errors.New("config is empty")
+	}
+	err := json.Unmarshal(config, &c.config)
+	if err != nil {
+		return err
 	}
 
 	c.pubsubServer = pubsubServer
 	// Set defaults
-	var err error
 	c.txPollingRetryDelay = defaultTxPollingRetryDelay
 	c.txPollingAttempts = defaultTxPollingAttempts
 	c.submitRetryDelay = defaultSubmitRetryDelay
