@@ -175,6 +175,7 @@ func (e *BlockExecutor) Commit(ctx context.Context, state *types.State, block *t
 	}
 
 	copy(state.AppHash[:], appHash[:])
+	copy(state.LastResultsHash[:], tmtypes.NewResults(resp.DeliverTxs).Hash())
 
 	err = e.publishEvents(resp, block, *state)
 	if err != nil {
@@ -203,6 +204,7 @@ func (e *BlockExecutor) updateState(state types.State, block *types.Block, abciR
 	}
 
 	hash := block.Header.Hash()
+	//TODO: we can probably pass the state as a pointer and update it directly
 	s := types.State{
 		Version:         state.Version,
 		ChainID:         state.ChainID,
@@ -223,8 +225,10 @@ func (e *BlockExecutor) updateState(state types.State, block *types.Block, abciR
 		AppHash:         state.AppHash,
 		LastValidators:  state.LastValidators.Copy(),
 		LastStoreHeight: state.LastStoreHeight,
+
+		LastResultsHash: state.LastResultsHash,
+		BaseHeight:      state.BaseHeight,
 	}
-	copy(s.LastResultsHash[:], tmtypes.NewResults(abciResponses.DeliverTxs).Hash())
 
 	return s, nil
 }
@@ -276,7 +280,6 @@ func (e *BlockExecutor) validateBlock(state types.State, block *types.Block) err
 	if !bytes.Equal(block.Header.AppHash[:], state.AppHash[:]) {
 		return errors.New("AppHash mismatch")
 	}
-
 	if !bytes.Equal(block.Header.LastResultsHash[:], state.LastResultsHash[:]) {
 		return errors.New("LastResultsHash mismatch")
 	}
