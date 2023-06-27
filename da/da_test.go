@@ -37,16 +37,26 @@ func TestLifecycle(t *testing.T) {
 			t.Skip("TODO")
 		}
 		t.Run(dalc, func(t *testing.T) {
-			doTestLifecycle(t, registry.GetClient(dalc))
+			doTestLifecycle(t, dalc)
 		})
 	}
 }
 
-func doTestLifecycle(t *testing.T, dalc da.DataAvailabilityLayerClient) {
+func doTestLifecycle(t *testing.T, daType string) {
+	var err error
 	require := require.New(t)
 	pubsubServer := pubsub.NewServer()
 	pubsubServer.Start()
-	err := dalc.Init([]byte{}, pubsubServer, nil, test.NewLogger(t))
+
+	dacfg := []byte{}
+	dalc := registry.GetClient(daType)
+
+	if daType == "celestia" {
+		dacfg, err = json.Marshal(celestia.CelestiaDefaultConfig)
+		require.NoError(err)
+	}
+
+	err = dalc.Init(dacfg, pubsubServer, nil, test.NewLogger(t))
 	require.NoError(err)
 
 	err = dalc.Start()
