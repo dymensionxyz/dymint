@@ -204,6 +204,7 @@ func (e *BlockExecutor) updateState(state types.State, block *types.Block, abciR
 	}
 
 	hash := block.Header.Hash()
+	//TODO: we can probably pass the state as a pointer and update it directly
 	s := types.State{
 		Version:         state.Version,
 		ChainID:         state.ChainID,
@@ -224,6 +225,9 @@ func (e *BlockExecutor) updateState(state types.State, block *types.Block, abciR
 		AppHash:         state.AppHash,
 		LastValidators:  state.LastValidators.Copy(),
 		LastStoreHeight: state.LastStoreHeight,
+
+		LastResultsHash: state.LastResultsHash,
+		BaseHeight:      state.BaseHeight,
 	}
 
 	return s, nil
