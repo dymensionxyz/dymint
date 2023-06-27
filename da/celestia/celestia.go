@@ -90,6 +90,10 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 	if err != nil {
 		return err
 	}
+	err = (&c.config).InitNamespaceID()
+	if err != nil {
+		return err
+	}
 
 	c.pubsubServer = pubsubServer
 	// Set defaults
