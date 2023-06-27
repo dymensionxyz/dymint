@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"time"
 
+	"cosmossdk.io/errors"
 	"github.com/gorilla/rpc/v2/json2"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
@@ -91,7 +92,9 @@ func newService(c *client.Client, l log.Logger) *service {
 func (s *service) Subscribe(req *http.Request, args *subscribeArgs, wsConn *wsConn, subscriptionID []byte) (*ctypes.ResultSubscribe, error) {
 	addr := req.RemoteAddr
 
-	// TODO(tzdybal): pass config and check subscriptions limits
+	if err := s.client.IsSubscriptionAllowed(addr); err != nil {
+		return nil, errors.Wrap(err, "subscription not allowed")
+	}
 
 	q, err := tmquery.New(args.Query)
 	if err != nil {

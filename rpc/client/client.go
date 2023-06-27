@@ -3,9 +3,12 @@ package client
 import (
 	"context"
 	"errors"
+
 	"fmt"
 	"sort"
 	"time"
+
+	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 
 	rconfig "github.com/dymensionxyz/dymint/config"
 	abciconv "github.com/dymensionxyz/dymint/conv/abci"
@@ -97,10 +100,8 @@ func (c *Client) BroadcastTxCommit(ctx context.Context, tx types.Tx) (*ctypes.Re
 	// This code is a local client, so we can assume that subscriber is ""
 	subscriber := "" //ctx.RemoteAddr()
 
-	if c.EventBus.NumClients() >= c.config.MaxSubscriptionClients {
-		return nil, fmt.Errorf("max_subscription_clients %d reached", c.config.MaxSubscriptionClients)
-	} else if c.EventBus.NumClientSubscriptions(subscriber) >= c.config.MaxSubscriptionsPerClient {
-		return nil, fmt.Errorf("max_subscriptions_per_client %d reached", c.config.MaxSubscriptionsPerClient)
+	if err := c.IsSubscriptionAllowed(subscriber); err != nil {
+		return nil, sdkerrors.Wrap(err, "subscription not allowed")
 	}
 
 	// Subscribe to tx being committed in block.
@@ -876,6 +877,16 @@ func (c *Client) normalizeHeight(height *int64) uint64 {
 	}
 
 	return heightValue
+}
+
+func (c *Client) IsSubscriptionAllowed(subscriber string) error {
+	if c.EventBus.NumClients() >= c.config.MaxSubscriptionClients {
+		return fmt.Errorf("max_subscription_clients %d reached", c.config.MaxSubscriptionClients)
+	} else if c.EventBus.NumClientSubscriptions(subscriber) >= c.config.MaxSubscriptionsPerClient {
+		return fmt.Errorf("max_subscriptions_per_client %d reached", c.config.MaxSubscriptionsPerClient)
+	}
+
+	return nil
 }
 
 func validatePerPage(perPagePtr *int) int {
