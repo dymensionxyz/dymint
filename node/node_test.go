@@ -59,16 +59,21 @@ func TestMempoolDirectly(t *testing.T) {
 	anotherKey, _, _ := crypto.GenerateEd25519Key(rand.Reader)
 
 	nodeConfig := config.NodeConfig{
-		RootDir:            "",
-		DBPath:             "",
-		P2P:                config.P2PConfig{},
-		RPC:                config.RPCConfig{},
-		Aggregator:         false,
-		BlockManagerConfig: config.BlockManagerConfig{BlockTime: 100 * time.Millisecond, BlockBatchSize: 2},
-		DALayer:            "mock",
-		DAConfig:           "",
-		SettlementLayer:    "mock",
-		SettlementConfig:   settlement.Config{},
+		RootDir:    "",
+		DBPath:     "",
+		P2P:        config.P2PConfig{},
+		RPC:        config.RPCConfig{},
+		Aggregator: false,
+		BlockManagerConfig: config.BlockManagerConfig{
+			BlockTime:              100 * time.Millisecond,
+			BlockBatchSize:         2,
+			BatchSubmitMaxTime:     60 * time.Second,
+			BlockBatchMaxSizeBytes: 1000,
+		},
+		DALayer:          "mock",
+		DAConfig:         "",
+		SettlementLayer:  "mock",
+		SettlementConfig: settlement.Config{},
 	}
 	node, err := NewNode(context.Background(), nodeConfig, key, signingKey, proxy.NewLocalClientCreator(app), &types.GenesisDoc{ChainID: "test"}, log.TestingLogger())
 	require.NoError(err)

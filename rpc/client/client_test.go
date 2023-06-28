@@ -94,16 +94,21 @@ func TestGenesisChunked(t *testing.T) {
 	signingKey, _, _ := crypto.GenerateEd25519Key(crand.Reader)
 
 	config := config.NodeConfig{
-		RootDir:            "",
-		DBPath:             "",
-		P2P:                config.P2PConfig{},
-		RPC:                config.RPCConfig{},
-		Aggregator:         false,
-		BlockManagerConfig: config.BlockManagerConfig{BlockTime: 100 * time.Millisecond, BlockBatchSize: 1},
-		DALayer:            "mock",
-		DAConfig:           "",
-		SettlementLayer:    "mock",
-		SettlementConfig:   settlement.Config{},
+		RootDir:    "",
+		DBPath:     "",
+		P2P:        config.P2PConfig{},
+		RPC:        config.RPCConfig{},
+		Aggregator: false,
+		BlockManagerConfig: config.BlockManagerConfig{
+			BlockTime:              100 * time.Millisecond,
+			BlockBatchSize:         1,
+			BatchSubmitMaxTime:     60 * time.Second,
+			BlockBatchMaxSizeBytes: 1000,
+		},
+		DALayer:          "mock",
+		DAConfig:         "",
+		SettlementLayer:  "mock",
+		SettlementConfig: settlement.Config{},
 	}
 	n, _ := node.NewNode(context.Background(), config, privKey, signingKey, proxy.NewLocalClientCreator(mockApp), genDoc, log.TestingLogger())
 
@@ -429,8 +434,10 @@ func TestTx(t *testing.T) {
 		SettlementLayer: "mock",
 		Aggregator:      true,
 		BlockManagerConfig: config.BlockManagerConfig{
-			BlockBatchSize: 1,
-			BlockTime:      200 * time.Millisecond,
+			BlockBatchSize:         1,
+			BlockTime:              200 * time.Millisecond,
+			BatchSubmitMaxTime:     60 * time.Second,
+			BlockBatchMaxSizeBytes: 1000,
 		},
 		SettlementConfig: settlement.Config{ProposerPubKey: hex.EncodeToString(pubKeybytes)},
 	},
@@ -690,11 +697,16 @@ func TestValidatorSetHandling(t *testing.T) {
 	})
 
 	nodeConfig := config.NodeConfig{
-		DALayer:            "mock",
-		SettlementLayer:    "mock",
-		Aggregator:         true,
-		BlockManagerConfig: config.BlockManagerConfig{BlockTime: 10 * time.Millisecond, BlockBatchSize: 1},
-		SettlementConfig:   settlement.Config{ProposerPubKey: hex.EncodeToString(proposerPubKeyBytes)},
+		DALayer:         "mock",
+		SettlementLayer: "mock",
+		Aggregator:      true,
+		BlockManagerConfig: config.BlockManagerConfig{
+			BlockTime:              10 * time.Millisecond,
+			BlockBatchSize:         1,
+			BatchSubmitMaxTime:     60 * time.Second,
+			BlockBatchMaxSizeBytes: 1000,
+		},
+		SettlementConfig: settlement.Config{ProposerPubKey: hex.EncodeToString(proposerPubKeyBytes)},
 	}
 
 	node, err := node.NewNode(context.Background(), nodeConfig, key, signingKey, proxy.NewLocalClientCreator(app), &tmtypes.GenesisDoc{ChainID: "test", Validators: genesisValidators}, log.TestingLogger())
@@ -801,16 +813,21 @@ func getRPC(t *testing.T) (*mocks.Application, *Client) {
 	require.NoError(err)
 
 	config := config.NodeConfig{
-		RootDir:            "",
-		DBPath:             "",
-		P2P:                config.P2PConfig{},
-		RPC:                config.RPCConfig{},
-		Aggregator:         false,
-		BlockManagerConfig: config.BlockManagerConfig{BlockTime: 100 * time.Millisecond, BlockBatchSize: 1},
-		DALayer:            "mock",
-		DAConfig:           "",
-		SettlementLayer:    "mock",
-		SettlementConfig:   settlement.Config{ProposerPubKey: proposerKey},
+		RootDir:    "",
+		DBPath:     "",
+		P2P:        config.P2PConfig{},
+		RPC:        config.RPCConfig{},
+		Aggregator: false,
+		BlockManagerConfig: config.BlockManagerConfig{
+			BlockTime:              100 * time.Millisecond,
+			BlockBatchSize:         1,
+			BatchSubmitMaxTime:     60 * time.Second,
+			BlockBatchMaxSizeBytes: 1000,
+		},
+		DALayer:          "mock",
+		DAConfig:         "",
+		SettlementLayer:  "mock",
+		SettlementConfig: settlement.Config{ProposerPubKey: proposerKey},
 	}
 	node, err := node.NewNode(context.Background(), config, key, signingKey, proxy.NewLocalClientCreator(app), &tmtypes.GenesisDoc{ChainID: "test"}, log.TestingLogger())
 	require.NoError(err)
@@ -888,8 +905,10 @@ func TestMempool2Nodes(t *testing.T) {
 		SettlementLayer:  "mock",
 		SettlementConfig: settlement.Config{ProposerPubKey: hex.EncodeToString(proposerPubKey1Bytes)},
 		BlockManagerConfig: config.BlockManagerConfig{
-			BlockBatchSize: 1,
-			BlockTime:      100 * time.Millisecond,
+			BlockBatchSize:         1,
+			BlockTime:              100 * time.Millisecond,
+			BatchSubmitMaxTime:     60 * time.Second,
+			BlockBatchMaxSizeBytes: 1000,
 		},
 		P2P: config.P2PConfig{
 			ListenAddress: "/ip4/127.0.0.1/tcp/9001",
@@ -903,8 +922,10 @@ func TestMempool2Nodes(t *testing.T) {
 		SettlementLayer:  "mock",
 		SettlementConfig: settlement.Config{ProposerPubKey: hex.EncodeToString(proposerPubKey2Bytes)},
 		BlockManagerConfig: config.BlockManagerConfig{
-			BlockBatchSize: 1,
-			BlockTime:      100 * time.Millisecond,
+			BlockBatchSize:         1,
+			BlockTime:              100 * time.Millisecond,
+			BatchSubmitMaxTime:     60 * time.Second,
+			BlockBatchMaxSizeBytes: 1000,
 		},
 		P2P: config.P2PConfig{
 			ListenAddress: "/ip4/127.0.0.1/tcp/9002",

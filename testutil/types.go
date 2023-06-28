@@ -2,6 +2,7 @@ package testutil
 
 import (
 	"crypto/rand"
+	"math/big"
 	"time"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
@@ -36,6 +37,18 @@ func createRandomHashes() [][32]byte {
 		h = append(h, h1)
 	}
 	return h
+}
+
+func GetRandomTx() types.Tx {
+	n, _ := rand.Int(rand.Reader, big.NewInt(100))
+	size := int(n.Int64()) + 100
+	return types.Tx(GetRandomBytes(size))
+}
+
+func GetRandomBytes(n int) []byte {
+	data := make([]byte, n)
+	_, _ = rand.Read(data)
+	return data
 }
 
 // GenerateBlocks generates random blocks.

@@ -23,6 +23,8 @@ func TestViperAndCobra(t *testing.T) {
 	assert.NoError(cmd.Flags().Set(flagDALayer, "foobar"))
 	assert.NoError(cmd.Flags().Set(flagDAConfig, `{"json":true}`))
 	assert.NoError(cmd.Flags().Set(flagBlockTime, "1234s"))
+	assert.NoError(cmd.Flags().Set(flagEmptyBlocksMaxTime, "2000s"))
+	assert.NoError(cmd.Flags().Set(flagBatchSubmitMaxTime, "3000s"))
 	assert.NoError(cmd.Flags().Set(flagNamespaceID, "0102030405060708"))
 	assert.NoError(cmd.Flags().Set(flagBlockBatchSize, "10"))
 
@@ -35,3 +37,5 @@ func TestViperAndCobra(t *testing.T) {
 	assert.Equal("0102030405060708", nc.NamespaceID)
 	assert.Equal(uint64(10), nc.BlockBatchSize)
 }
+
+//TODO: check invalid config

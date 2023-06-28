@@ -46,9 +46,11 @@ func TestAggregatorMode(t *testing.T) {
 	anotherKey, _, _ := crypto.GenerateEd25519Key(rand.Reader)
 
 	blockManagerConfig := config.BlockManagerConfig{
-		BlockBatchSize: 1,
-		BlockTime:      1 * time.Second,
-		NamespaceID:    "0102030405060708",
+		BlockBatchSize:         1,
+		BlockTime:              1 * time.Second,
+		BatchSubmitMaxTime:     60 * time.Second,
+		BlockBatchMaxSizeBytes: 1000,
+		NamespaceID:            "0102030405060708",
 	}
 
 	nodeConfig := config.NodeConfig{
