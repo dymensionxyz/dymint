@@ -26,5 +26,9 @@ func (c Config) Validate() error {
 		return errors.New("must provide either fees or gas prices")
 	}
 
+	if c.RollappID == "" {
+		return errors.New("must provide rollapp id")
+	}
+
 	return nil
 }

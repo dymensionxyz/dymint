@@ -121,8 +121,10 @@ func (c NodeConfig) Validate() error {
 		return err
 	}
 
-	if err := c.SettlementConfig.Validate(); err != nil {
-		return err
+	if c.SettlementLayer != "mock" {
+		if err := c.SettlementConfig.Validate(); err != nil {
+			return err
+		}
 	}
 
 	//TODO: validate DA config
