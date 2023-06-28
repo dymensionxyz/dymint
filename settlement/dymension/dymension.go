@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"cosmossdk.io/errors"
 	"github.com/avast/retry-go"
 	"github.com/cosmos/cosmos-sdk/codec"
 	cdctypes "github.com/cosmos/cosmos-sdk/codec/types"
@@ -287,7 +288,7 @@ func (d *HubClient) GetBatchAtIndex(rollappID string, index uint64) (*settlement
 func (d *HubClient) GetSequencers(rollappID string) ([]*types.Sequencer, error) {
 	sequencers, err := d.sequencerQueryClient.SequencersByRollapp(d.ctx, &sequencertypes.QueryGetSequencersByRollappRequest{RollappId: d.config.RollappID})
 	if err != nil {
-		return nil, settlement.ErrNoSequencerForRollapp
+		return nil, errors.Wrapf(settlement.ErrNoSequencerForRollapp, "rollappID: %s", rollappID)
 	}
 	sequencersList := []*types.Sequencer{}
 	for _, sequencer := range sequencers.SequencerInfoList {

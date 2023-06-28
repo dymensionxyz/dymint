@@ -27,6 +27,7 @@ const (
 	flagSLGasLimit       = "dymint.settlement_config.gas_limit"
 	flagSLGasPrices      = "dymint.settlement_config.gas_prices"
 	flagSLGasFees        = "dymint.settlement_config.gas_fees"
+	flagRollappID        = "dymint.settlement_config.rollapp_id"
 )
 
 // AddFlags adds Dymint specific configuration options to cobra Command.
@@ -56,6 +57,7 @@ func AddNodeFlags(cmd *cobra.Command) {
 	cmd.Flags().String(flagSLGasFees, def.SettlementConfig.GasFees, "Settlement Layer gas fees")
 	cmd.Flags().String(flagSLGasPrices, def.SettlementConfig.GasPrices, "Settlement Layer gas prices")
 	cmd.Flags().Uint64(flagSLGasLimit, def.SettlementConfig.GasLimit, "Settlement Layer batch submit gas limit")
+	cmd.Flags().String(flagRollappID, def.SettlementConfig.RollappID, "The chainID of the rollapp")
 }
 
 func BindDymintFlags(cmd *cobra.Command, v *viper.Viper) error {
@@ -108,6 +110,9 @@ func BindDymintFlags(cmd *cobra.Command, v *viper.Viper) error {
 		return err
 	}
 	if err := v.BindPFlag("gas_limit", cmd.Flags().Lookup(flagSLGasLimit)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag("rollapp_id", cmd.Flags().Lookup(flagRollappID)); err != nil {
 		return err
 	}
 
