@@ -27,6 +27,7 @@ type BaseResult struct {
 	Code StatusCode
 	// Message may contain settlement layer specific information (like detailed error message, etc)
 	Message string
+	//TODO(omritoptix): Move StateIndex to be part of the batch struct
 	// StateIndex is the rollapp-specific index the batch was saved in the SL
 	StateIndex uint64
 }
