@@ -9,9 +9,9 @@ import (
 
 	"code.cloudfoundry.org/go-diodes"
 
+	"cosmossdk.io/errors"
 	"github.com/avast/retry-go"
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
-	"github.com/cosmos/cosmos-sdk/types/errors"
 	abciconv "github.com/dymensionxyz/dymint/conv/abci"
 	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/p2p"
@@ -565,24 +565,30 @@ func (m *Manager) alignStoreWithApp(ctx context.Context, block *types.Block) (bo
 	// Validate incosistency in height wasn't caused by a crash and if so handle it.
 	proxyAppInfo, err := m.executor.GetAppInfo()
 	if err != nil {
-		m.logger.Error("Failed to get app info", "error", err)
-		return isRequired, err
+		return isRequired, errors.Wrap(err, "failed to get app info")
 	}
-	if uint64(proxyAppInfo.LastBlockHeight) == block.Header.Height {
-		isRequired = true
-		m.logger.Info("Skipping block application and only updating store height and state hash", "height", block.Header.Height)
-		// update the state with the hash, last store height and last validators.
-		m.lastState.AppHash = *(*[32]byte)(proxyAppInfo.LastBlockAppHash)
-		m.lastState.LastStoreHeight = block.Header.Height
-		m.lastState.LastValidators = m.lastState.Validators.Copy()
-		_, err := m.store.UpdateState(m.lastState, nil)
-		if err != nil {
-			m.logger.Error("Failed to update state", "error", err)
-			return isRequired, err
-		}
-		m.store.SetHeight(block.Header.Height)
+	if uint64(proxyAppInfo.LastBlockHeight) != block.Header.Height {
 		return isRequired, nil
 	}
+
+	isRequired = true
+	m.logger.Info("Skipping block application and only updating store height and state hash", "height", block.Header.Height)
+	// update the state with the hash, last store height and last validators.
+	m.lastState.AppHash = *(*[32]byte)(proxyAppInfo.LastBlockAppHash)
+	m.lastState.LastStoreHeight = block.Header.Height
+	m.lastState.LastValidators = m.lastState.Validators.Copy()
+
+	resp, err := m.store.LoadBlockResponses(block.Header.Height)
+	if err != nil {
+		return isRequired, errors.Wrap(err, "failed to load block responses")
+	}
+	copy(m.lastState.LastResultsHash[:], tmtypes.NewResults(resp.DeliverTxs).Hash())
+
+	_, err = m.store.UpdateState(m.lastState, nil)
+	if err != nil {
+		return isRequired, errors.Wrap(err, "failed to update state")
+	}
+	m.store.SetHeight(block.Header.Height)
 	return isRequired, nil
 }
 
