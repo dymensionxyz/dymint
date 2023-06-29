@@ -80,7 +80,7 @@ func TestStatusMiddleware(t *testing.T) {
 		{
 			healthy:         &sharedtypes.HealthStatus{IsHealthy: false, Error: errors.New("Node Unhealthy")},
 			expectedStatus:  http.StatusServiceUnavailable,
-			expectedMessage: "Node Unhealthy",
+			expectedMessage: "node is unhealthy: Node Unhealthy",
 		},
 	}
 

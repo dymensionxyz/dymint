@@ -205,7 +205,7 @@ func TestPostBatch(t *testing.T) {
 				select {
 				case healthEvent := <-HealthSubscription.Out():
 					t.Logf("got health event: %v", healthEvent)
-					healthStatusEvent := healthEvent.Data().(settlement.EventDataSettlementHealthStatus)
+					healthStatusEvent := healthEvent.Data().(*settlement.EventDataSettlementHealthStatus)
 					assert.Equal(t, c.expectedHealthEventValue, healthStatusEvent.Healthy)
 					assert.Equal(t, c.expectedError, healthStatusEvent.Error)
 					wg.Done()
