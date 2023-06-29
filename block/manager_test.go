@@ -581,9 +581,10 @@ func initSettlementLayerMock(settlementlc settlement.LayerI, proposer string, pu
 
 func getManagerConfig() config.BlockManagerConfig {
 	return config.BlockManagerConfig{
-		BlockTime:          100 * time.Millisecond,
-		BlockBatchSize:     defaultBatchSize,
-		BatchSubmitMaxTime: 30 * time.Minute,
-		NamespaceID:        "0102030405060708",
+		BlockTime:              100 * time.Millisecond,
+		BlockBatchSize:         defaultBatchSize,
+		BlockBatchMaxSizeBytes: 1000,
+		BatchSubmitMaxTime:     30 * time.Minute,
+		NamespaceID:            "0102030405060708",
 	}
 }

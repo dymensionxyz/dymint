@@ -177,10 +177,11 @@ func TestBatchSubmissionAfterTimeout(t *testing.T) {
 
 	// Init manager with empty blocks feature enabled
 	managerConfig := config.BlockManagerConfig{
-		BlockTime:          blockTime,
-		EmptyBlocksMaxTime: 0,
-		BatchSubmitMaxTime: submitTimeout,
-		BlockBatchSize:     batchSize,
+		BlockTime:              blockTime,
+		EmptyBlocksMaxTime:     0,
+		BatchSubmitMaxTime:     submitTimeout,
+		BlockBatchSize:         batchSize,
+		BlockBatchMaxSizeBytes: 1000,
 	}
 
 	manager, err := getManager(managerConfig, nil, nil, 1, 1, 0, proxyApp, nil)

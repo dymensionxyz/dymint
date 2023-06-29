@@ -114,21 +114,6 @@ func NewManager(
 		return nil, err
 	}
 
-	// TODO((#119): Probably should be validated and manage default on config init.
-	if conf.BlockBatchMaxSizeBytes == 0 {
-		logger.Info("WARNING: using default DA batch size bytes limit", "BlockBatchMaxSizeBytes", config.DefaultNodeConfig.BlockBatchMaxSizeBytes)
-		conf.BlockBatchMaxSizeBytes = config.DefaultNodeConfig.BlockBatchMaxSizeBytes
-	}
-	if conf.BatchSubmitMaxTime == 0 {
-		logger.Info("WARNING: using default DA batch submit max time", "BatchSubmitMaxTime", config.DefaultNodeConfig.BatchSubmitMaxTime)
-		conf.BatchSubmitMaxTime = config.DefaultNodeConfig.BatchSubmitMaxTime
-
-		//TODO: validate it's larger than empty blocks time
-	}
-	if conf.BlockTime == 0 {
-		panic("Block production time must be a positive number")
-	}
-
 	exec, err := state.NewBlockExecutor(proposerAddress, conf.NamespaceID, genesis.ChainID, mempool, proxyApp, eventBus, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create block executor: %w", err)

@@ -1,5 +1,7 @@
 package settlement
 
+import "errors"
+
 // Config for the DymensionLayerClient
 type Config struct {
 	KeyringBackend string `mapstructure:"keyring_backend"`
@@ -15,4 +17,18 @@ type Config struct {
 	ProposerPubKey string `json:"proposer_pub_key"`
 }
 
-// TODO: add default config to be used in default NodeConfig
+func (c Config) Validate() error {
+	if c.GasPrices != "" && c.GasFees != "" {
+		return errors.New("cannot provide both fees and gas prices")
+	}
+
+	if c.GasPrices == "" && c.GasFees == "" {
+		return errors.New("must provide either fees or gas prices")
+	}
+
+	if c.RollappID == "" {
+		return errors.New("must provide rollapp id")
+	}
+
+	return nil
+}
