@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/dymensionxyz/dymint/rpc/sharedtypes"
@@ -34,8 +35,11 @@ func status(healthStatus *sharedtypes.HealthStatus, h http.Handler, logger log.L
 		isHealthy, err := healthStatus.Get()
 		if !isHealthy {
 			w.WriteHeader(http.StatusServiceUnavailable)
+			errorPrefix := "node is unhealthy"
 			if err == nil {
-				err = errors.New("node is unhealthy")
+				err = errors.New(errorPrefix)
+			} else {
+				err = fmt.Errorf("%s: %w", errorPrefix, err)
 			}
 			_, err := w.Write([]byte(err.Error()))
 			if err != nil {

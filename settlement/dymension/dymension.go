@@ -216,7 +216,7 @@ WaitForBatchAcceptance:
 			if err != nil {
 				d.logger.Error("Failed submitting batch to settlement layer. Emitting unhealthy event",
 					"startHeight", batch.StartHeight, "endHeight", batch.EndHeight, "error", err)
-				heatlhEventData := settlement.EventDataSettlementHealthStatus{Healthy: false, Error: err}
+				heatlhEventData := &settlement.EventDataSettlementHealthStatus{Healthy: false, Error: err}
 				utils.SubmitEventOrPanic(d.ctx, d.pubsub, heatlhEventData,
 					map[string][]string{settlement.EventTypeKey: {settlement.EventSettlementHealthStatus}})
 				// Sleep to allow context cancellation to take effect before retrying
@@ -232,7 +232,7 @@ WaitForBatchAcceptance:
 					case <-d.batchAcceptedCh:
 						d.logger.Debug("Batch accepted by settlement layer. Emitting healthy event",
 							"startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
-						heatlhEventData := settlement.EventDataSettlementHealthStatus{Healthy: true}
+						heatlhEventData := &settlement.EventDataSettlementHealthStatus{Healthy: true}
 						utils.SubmitEventOrPanic(d.ctx, d.pubsub, heatlhEventData,
 							map[string][]string{settlement.EventTypeKey: {settlement.EventSettlementHealthStatus}})
 						return
@@ -250,7 +250,7 @@ WaitForBatchAcceptance:
 							utils.SubmitEventOrPanic(d.ctx, d.pubsub, batchAcceptedEvent,
 								map[string][]string{settlement.EventTypeKey: {settlement.EventNewSettlementBatchAccepted}})
 							// Emit health event
-							heatlhEventData := settlement.EventDataSettlementHealthStatus{Healthy: true}
+							heatlhEventData := &settlement.EventDataSettlementHealthStatus{Healthy: true}
 							utils.SubmitEventOrPanic(d.ctx, d.pubsub, heatlhEventData,
 								map[string][]string{settlement.EventTypeKey: {settlement.EventSettlementHealthStatus}})
 							return
@@ -258,7 +258,7 @@ WaitForBatchAcceptance:
 						// Batch was not accepted by the settlement layer. Emitting unhealthy event
 						d.logger.Debug("Batch not accepted by settlement layer. Emitting unhealthy event",
 							"startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
-						heatlhEventData := settlement.EventDataSettlementHealthStatus{Healthy: false, Error: settlement.ErrBatchNotAccepted}
+						heatlhEventData := &settlement.EventDataSettlementHealthStatus{Healthy: false, Error: settlement.ErrBatchNotAccepted}
 						utils.SubmitEventOrPanic(d.ctx, d.pubsub, heatlhEventData,
 							map[string][]string{settlement.EventTypeKey: {settlement.EventSettlementHealthStatus}})
 						// Stop the ticker and restart the loop
