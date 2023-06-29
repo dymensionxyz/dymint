@@ -236,6 +236,24 @@ WaitForBatchAcceptance:
 							map[string][]string{settlement.EventTypeKey: {settlement.EventSettlementHealthStatus}})
 						return
 					case <-ticker.C:
+						// Before emitting unhealthy event, check if the batch was accepted by the settlement layer and
+						// we've just missed the event.
+						includedBatch, err := d.waitForBatchInclusion(batch.StartHeight)
+						if err == nil {
+							d.logger.Debug("Batch accepted by settlement layer. Emitting events")
+							// Emit batch accepted event
+							batchAcceptedEvent := &settlement.EventDataNewSettlementBatchAccepted{
+								EndHeight:  includedBatch.EndHeight,
+								StateIndex: includedBatch.StateIndex,
+							}
+							utils.SubmitEventOrPanic(d.ctx, d.pubsub, batchAcceptedEvent,
+								map[string][]string{settlement.EventTypeKey: {settlement.EventNewSettlementBatchAccepted}})
+							// Emit health event
+							heatlhEventData := settlement.EventDataSettlementHealthStatus{Healthy: true}
+							utils.SubmitEventOrPanic(d.ctx, d.pubsub, heatlhEventData,
+								map[string][]string{settlement.EventTypeKey: {settlement.EventSettlementHealthStatus}})
+							return
+						}
 						// Batch was not accepted by the settlement layer. Emitting unhealthy event
 						d.logger.Debug("Batch not accepted by settlement layer. Emitting unhealthy event",
 							"startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
@@ -462,4 +480,23 @@ func (d *HubClient) convertStateInfoToResultRetrieveBatch(stateInfo *rollapptype
 	return &settlement.ResultRetrieveBatch{
 		BaseResult: settlement.BaseResult{Code: settlement.StatusSuccess, StateIndex: stateInfo.StateInfoIndex.Index},
 		Batch:      batchResult}, nil
+}
+
+// TODO(omritoptix): Change the retry attempts to be only for the batch polling. Also we need to have a more
+// bullet proof check as theoretically the tx can stay in the mempool longer then our retry attempts.
+func (d *HubClient) waitForBatchInclusion(batchStartHeight uint64) (*settlement.ResultRetrieveBatch, error) {
+	var resultRetriveBatch *settlement.ResultRetrieveBatch
+	err := retry.Do(func() error {
+		latestBatch, err := d.GetLatestBatch(d.config.RollappID)
+		if err != nil {
+			return err
+		}
+		if latestBatch.Batch.StartHeight == batchStartHeight {
+			resultRetriveBatch = latestBatch
+			return nil
+		}
+		return settlement.ErrBatchNotFound
+	}, retry.Context(d.ctx), retry.LastErrorOnly(true), retry.Delay(d.batchRetryDelay), retry.Attempts(d.batchRetryAttempts))
+	return resultRetriveBatch, err
+
 }
