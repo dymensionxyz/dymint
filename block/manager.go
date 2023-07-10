@@ -133,7 +133,6 @@ func NewManager(
 				return nil, err
 			}
 			validators = append(validators, tmtypes.NewValidator(tmPubKey, 1))
-
 		}
 
 		res, err := exec.InitChain(genesis, validators)
@@ -817,6 +816,11 @@ func updateInitChainState(s *types.State, res *abci.ResponseInitChain, validator
 		copy(s.AppHash[:], res.AppHash)
 	}
 
+	//The validators after initChain must be greater than zero, otherwise this state is not loadable
+	if len(validators) <= 0 {
+		panic("Validators must be greater than zero")
+	}
+
 	if res.ConsensusParams != nil {
 		params := res.ConsensusParams
 		if params.Block != nil {
@@ -841,8 +845,8 @@ func updateInitChainState(s *types.State, res *abci.ResponseInitChain, validator
 	// We update the last results hash with the empty hash, to conform with RFC-6962.
 	copy(s.LastResultsHash[:], merkle.HashFromByteSlices(nil))
 
-	if len(validators) > 0 {
-		s.Validators = tmtypes.NewValidatorSet(validators)
-		s.NextValidators = tmtypes.NewValidatorSet(validators).CopyIncrementProposerPriority(1)
-	}
+	// Set the validators in the state
+	s.Validators = tmtypes.NewValidatorSet(validators).CopyIncrementProposerPriority(1)
+	s.NextValidators = s.Validators.Copy()
+	s.LastValidators = s.Validators.Copy()
 }
