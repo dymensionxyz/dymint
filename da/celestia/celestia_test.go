@@ -24,7 +24,7 @@ import (
 )
 
 const (
-	submitPFDFuncName = "SubmitPFD"
+	submitPFBFuncName = "SubmitPFB"
 	TxFuncName        = "Tx"
 )
 
@@ -39,59 +39,59 @@ func TestSubmitBatch(t *testing.T) {
 	}
 	cases := []struct {
 		name                      string
-		submitPFDReturn           []interface{}
+		submitPFBReturn           []interface{}
 		sumbitPFDRun              func(args mock.Arguments)
 		TxFnReturn                []interface{}
 		TxFnRun                   func(args mock.Arguments)
 		isSubmitBatchAsync        bool
-		expectedSubmitPFDMinCalls int
+		expectedSubmitPFBMinCalls int
 		expectedInclusionHeight   int
 		expectedHealthEvent       *da.EventDataDAHealthStatus
 	}{
 		{
-			name:                      "TestSubmitPFDResponseNil",
-			submitPFDReturn:           []interface{}{nil, nil},
+			name:                      "TestSubmitPFBResponseNil",
+			submitPFBReturn:           []interface{}{nil, nil},
 			sumbitPFDRun:              func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) },
 			isSubmitBatchAsync:        true,
-			expectedSubmitPFDMinCalls: 2,
+			expectedSubmitPFBMinCalls: 2,
 			expectedHealthEvent:       &da.EventDataDAHealthStatus{Healthy: false},
 		},
 		{
-			name:                      "TestSubmitPFDResponseCodeSuccess",
-			submitPFDReturn:           []interface{}{&cnc.TxResponse{Code: 0, Height: int64(143)}, nil},
+			name:                      "TestSubmitPFBResponseCodeSuccess",
+			submitPFBReturn:           []interface{}{&cnc.TxResponse{Code: 0, Height: int64(143)}, nil},
 			sumbitPFDRun:              func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) },
 			isSubmitBatchAsync:        false,
-			expectedSubmitPFDMinCalls: 1,
+			expectedSubmitPFBMinCalls: 1,
 			expectedInclusionHeight:   143,
 			expectedHealthEvent:       &da.EventDataDAHealthStatus{Healthy: true},
 		},
 		{
-			name:                      "TestSubmitPFDResponseCodeFailure",
-			submitPFDReturn:           []interface{}{&cnc.TxResponse{Code: 1}, nil},
+			name:                      "TestSubmitPFBResponseCodeFailure",
+			submitPFBReturn:           []interface{}{&cnc.TxResponse{Code: 1}, nil},
 			sumbitPFDRun:              func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) },
 			isSubmitBatchAsync:        true,
-			expectedSubmitPFDMinCalls: 2,
+			expectedSubmitPFBMinCalls: 2,
 			expectedHealthEvent:       &da.EventDataDAHealthStatus{Healthy: false},
 		},
 		{
-			name:                      "TestSubmitPFDDelayedInclusion",
-			submitPFDReturn:           []interface{}{&cnc.TxResponse{TxHash: "1234"}, errors.New("timeout")},
+			name:                      "TestSubmitPFBDelayedInclusion",
+			submitPFBReturn:           []interface{}{&cnc.TxResponse{TxHash: "1234"}, errors.New("timeout")},
 			sumbitPFDRun:              func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) },
 			TxFnReturn:                []interface{}{&coretypes.ResultTx{Hash: bytes.HexBytes("1234"), Height: int64(145)}, nil},
 			TxFnRun:                   func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) },
 			isSubmitBatchAsync:        false,
-			expectedSubmitPFDMinCalls: 1,
+			expectedSubmitPFBMinCalls: 1,
 			expectedInclusionHeight:   145,
 			expectedHealthEvent:       &da.EventDataDAHealthStatus{Healthy: true},
 		},
 		{
-			name:                      "TestSubmitPFDDelayedInclusionTxNotFound",
-			submitPFDReturn:           []interface{}{&cnc.TxResponse{TxHash: "1234"}, errors.New("timeout")},
+			name:                      "TestSubmitPFBDelayedInclusionTxNotFound",
+			submitPFBReturn:           []interface{}{&cnc.TxResponse{TxHash: "1234"}, errors.New("timeout")},
 			sumbitPFDRun:              func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) },
 			TxFnReturn:                []interface{}{nil, errors.New("notFound")},
 			TxFnRun:                   func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) },
 			isSubmitBatchAsync:        true,
-			expectedSubmitPFDMinCalls: 2,
+			expectedSubmitPFBMinCalls: 2,
 			expectedHealthEvent:       &da.EventDataDAHealthStatus{Healthy: false},
 		},
 	}
@@ -119,7 +119,7 @@ func TestSubmitBatch(t *testing.T) {
 		err = dalc.Start()
 		require.NoError(err)
 		// Set the mock functions
-		mockCNCClient.On(submitPFDFuncName, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(tc.submitPFDReturn...).Run(tc.sumbitPFDRun)
+		mockCNCClient.On(submitPFBFuncName, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(tc.submitPFBReturn...).Run(tc.sumbitPFDRun)
 		rpcmockClient.On(TxFuncName, mock.Anything, mock.Anything, mock.Anything).Return(tc.TxFnReturn...).Run(tc.TxFnRun)
 		if tc.isSubmitBatchAsync {
 			go dalc.SubmitBatch(batch)
@@ -148,6 +148,6 @@ func TestSubmitBatch(t *testing.T) {
 		// Wait for the goroutines to finish before accessing the mock calls
 		time.Sleep(1 * time.Second)
 		t.Log("Verifying mock calls")
-		assert.GreaterOrEqual(testutil.CountMockCalls(mockCNCClient.Calls, submitPFDFuncName), tc.expectedSubmitPFDMinCalls)
+		assert.GreaterOrEqual(testutil.CountMockCalls(mockCNCClient.Calls, submitPFBFuncName), tc.expectedSubmitPFBMinCalls)
 	}
 }

@@ -22,9 +22,9 @@ import (
 )
 
 type CNCClientI interface {
-	SubmitPFD(ctx context.Context, namespaceID [8]byte, blob []byte, fee int64, gasLimit uint64) (*cnc.TxResponse, error)
-	NamespacedShares(ctx context.Context, namespaceID [8]byte, height uint64) ([][]byte, error)
-	NamespacedData(ctx context.Context, namespaceID [8]byte, height uint64) ([][]byte, error)
+	SubmitPFB(ctx context.Context, namespaceID cnc.Namespace, blob []byte, fee int64, gasLimit uint64) (*cnc.TxResponse, error)
+	NamespacedShares(ctx context.Context, namespaceID cnc.Namespace, height uint64) ([][]byte, error)
+	NamespacedData(ctx context.Context, namespaceID cnc.Namespace, height uint64) ([][]byte, error)
 }
 
 // DataAvailabilityLayerClient use celestia-node public API.
@@ -159,7 +159,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			c.logger.Debug("Context cancelled")
 			return da.ResultSubmitBatch{}
 		default:
-			txResponse, err := c.client.SubmitPFD(c.ctx, c.config.NamespaceID, blob, c.config.Fee, c.config.GasLimit)
+			txResponse, err := c.client.SubmitPFB(c.ctx, c.config.NamespaceID, blob, c.config.Fee, c.config.GasLimit)
 			if txResponse != nil {
 				if txResponse.Code != 0 {
 					c.logger.Debug("Failed to submit DA batch. Emitting health event and trying again", "txResponse", txResponse, "error", err)
