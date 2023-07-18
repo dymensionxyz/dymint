@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"sync"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
@@ -263,6 +264,7 @@ func (n *Node) OnStart() error {
 	if err != nil {
 		return fmt.Errorf("error while starting settlement layer client: %w", err)
 	}
+	n.startPrometheusServer()
 	n.baseLayersHealthStatus = BaseLayersHealthStatus{
 		settlementHealthy: true,
 		daHealthy:         true,
@@ -401,4 +403,13 @@ func (n *Node) healthStatusHandler(err error) {
 			panic(err)
 		}
 	}
+}
+
+func (n *Node) startPrometheusServer() {
+	go func() {
+		if err := http.ListenAndServe(":2112", nil); err != nil {
+			// Error starting or closing listener:
+			n.Logger.Error("Prometheus HTTP server ListenAndServe", "err", err)
+		}
+	}()
 }
