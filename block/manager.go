@@ -350,7 +350,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 // for aggregator: get notification that batch has been accepted so can send next batch.
 func (m *Manager) SyncTargetLoop(ctx context.Context) {
 	m.logger.Info("Started sync target loop")
-	subscription, err := m.pubsub.Subscribe(ctx, "syncTargetLoop", settlement.EventQueryNewSettlementBatchAccepted)
+	subscription, err := m.pubsub.Subscribe(ctx, "syncTargetLoop", settlement.EventQueryNewBatchAccepted)
 	if err != nil {
 		m.logger.Error("failed to subscribe to state update events")
 		panic(err)
@@ -368,7 +368,7 @@ func (m *Manager) SyncTargetLoop(ctx context.Context) {
 			return
 		case event := <-subscription.Out():
 			m.logger.Info("Received state update event", "eventData", event.Data())
-			eventData := event.Data().(*settlement.EventDataNewSettlementBatchAccepted)
+			eventData := event.Data().(*settlement.EventDataNewBatchAccepted)
 			m.updateSyncParams(ctx, eventData.EndHeight)
 			// In case we are the aggregator and we've got an update, then we can stop blocking from
 			// the next batches to be published. For non-aggregators this is not needed.

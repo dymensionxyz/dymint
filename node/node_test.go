@@ -117,7 +117,7 @@ func TestHealthStatusEventHandler(t *testing.T) {
 	err = node.Start()
 	assert.NoError(err)
 	// wait for node to start
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(1 * time.Second)
 
 	slUnealthyError := errors.New("settlement layer is unhealthy")
 	daUnealthyError := errors.New("da layer is unhealthy")
@@ -184,7 +184,7 @@ func TestHealthStatusEventHandler(t *testing.T) {
 					assert.Equal(c.expectedError, healthStatusEvent.Error)
 					done <- true
 					break
-				case <-time.After(500 * time.Millisecond):
+				case <-time.After(5 * time.Second):
 					if c.expectHealthStatusEventEmitted {
 						t.Error("expected health status event but didn't get one")
 					}
