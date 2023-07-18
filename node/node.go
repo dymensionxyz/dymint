@@ -7,6 +7,9 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
+	"time"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
 
@@ -408,7 +411,14 @@ func (n *Node) healthStatusHandler(err error) {
 
 func (n *Node) startPrometheusServer() {
 	go func() {
-		if err := http.ListenAndServe(":2112", nil); err != nil {
+		http.Handle("/metrics", promhttp.Handler())
+		srv := &http.Server{
+			Addr:         ":2112",
+			ReadTimeout:  5 * time.Second,
+			WriteTimeout: 10 * time.Second,
+			Handler:      http.DefaultServeMux,
+		}
+		if err := srv.ListenAndServe(); err != nil {
 			// Error starting or closing listener:
 			n.Logger.Error("Prometheus HTTP server ListenAndServe", "err", err)
 		}
