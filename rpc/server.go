@@ -3,6 +3,7 @@ package rpc
 import (
 	"context"
 	"errors"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"net"
 	"net/http"
 	"strings"
@@ -84,6 +85,13 @@ func (s *Server) PubSubServer() *pubsub.Server {
 // OnStart is called when Server is started (see service.BaseService for details).
 func (s *Server) OnStart() error {
 	go s.eventListener()
+	go func() {
+		http.Handle("/metrics", promhttp.Handler())
+		err := http.ListenAndServe(":2112", nil)
+		if err != nil {
+			s.Logger.Error("error while running metrics server", "error", err)
+		}
+	}()
 	return s.startRPC()
 }
 
