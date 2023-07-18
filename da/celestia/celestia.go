@@ -19,6 +19,8 @@ import (
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
 	pb "github.com/dymensionxyz/dymint/types/pb/dymint"
+
+	sdktypes "github.com/cosmos/cosmos-sdk/types"
 )
 
 type CNCClientI interface {
@@ -95,6 +97,19 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 		return err
 	}
 
+	if c.config.GasPrices != "" {
+		if c.config.Fee != 0 {
+			return errors.New("can't set both gas prices and fee")
+		}
+		//Check gas fees parsable
+		_, err = sdktypes.NewDecFromStr(c.config.GasPrices)
+		if err != nil {
+			return err
+		}
+	} else if c.config.Fee == 0 {
+		return errors.New("fee or gas prices must be set")
+	}
+
 	c.pubsubServer = pubsubServer
 	// Set defaults
 	c.txPollingRetryDelay = defaultTxPollingRetryDelay
@@ -159,7 +174,8 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			c.logger.Debug("Context cancelled")
 			return da.ResultSubmitBatch{}
 		default:
-			txResponse, err := c.client.SubmitPFD(c.ctx, c.config.NamespaceID, blob, c.config.Fee, c.config.GasLimit)
+			fees := c.calculateFees(EstimateGas([]int{len(blob)}))
+			txResponse, err := c.client.SubmitPFD(c.ctx, c.config.NamespaceID, blob, int64(fees), c.config.GasLimit)
 			if txResponse != nil {
 				if txResponse.Code != 0 {
 					c.logger.Debug("Failed to submit DA batch. Emitting health event and trying again", "txResponse", txResponse, "error", err)
