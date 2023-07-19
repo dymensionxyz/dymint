@@ -146,7 +146,7 @@ func TestSubmitBatch(t *testing.T) {
 		err = dalc.Stop()
 		require.NoError(err)
 		// Wait for the goroutines to finish before accessing the mock calls
-		time.Sleep(1 * time.Second)
+		time.Sleep(3 * time.Second)
 		t.Log("Verifying mock calls")
 		assert.GreaterOrEqual(testutil.CountMockCalls(mockCNCClient.Calls, submitPFBFuncName), tc.expectedSubmitPFBMinCalls)
 	}

@@ -8,6 +8,7 @@ import (
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/log"
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/dymint/utils"
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
@@ -148,7 +149,7 @@ func (b *BaseLayerClient) fetchSequencersList() ([]*types.Sequencer, error) {
 
 func (b *BaseLayerClient) validateBatch(batch *types.Batch) error {
 	if batch.StartHeight != atomic.LoadUint64(&b.latestHeight)+1 {
-		return fmt.Errorf("batch start height must be last height. StartHeight %d, lastetHeight %d", batch.StartHeight, atomic.LoadUint64(&b.latestHeight)+1)
+		return fmt.Errorf("batch start height != latest height + 1. StartHeight %d, lastetHeight %d", batch.StartHeight, atomic.LoadUint64(&b.latestHeight))
 	}
 	if batch.EndHeight < batch.StartHeight {
 		return fmt.Errorf("batch end height must be greater than start height. EndHeight %d, StartHeight %d", batch.EndHeight, batch.StartHeight)
@@ -170,10 +171,18 @@ func (b *BaseLayerClient) stateUpdatesHandler(ready chan bool) {
 			b.logger.Debug("received state update event", "eventData", event.Data())
 			eventData := event.Data().(*EventDataNewSettlementBatchAccepted)
 			atomic.StoreUint64(&b.latestHeight, eventData.EndHeight)
+			// Emit new batch event
+			newBatchEventData := &EventDataNewBatchAccepted{
+				EndHeight:  eventData.EndHeight,
+				StateIndex: eventData.StateIndex,
+			}
+			utils.SubmitEventOrPanic(b.ctx, b.pubsub, newBatchEventData,
+				map[string][]string{EventTypeKey: {EventNewBatchAccepted}})
 		case <-subscription.Cancelled():
 			b.logger.Info("subscription canceled")
 			return
 		case <-b.ctx.Done():
+			b.logger.Info("Context done. Exiting state update handler")
 			return
 		}
 	}
