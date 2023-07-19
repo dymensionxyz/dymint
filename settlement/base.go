@@ -165,7 +165,6 @@ func (b *BaseLayerClient) stateUpdatesHandler(ready chan bool) {
 		panic(err)
 	}
 	ready <- true
-	b.logger.Info("state updates handler ready")
 	for {
 		select {
 		case event := <-subscription.Out():
