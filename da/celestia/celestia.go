@@ -13,7 +13,7 @@ import (
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	httprpcclient "github.com/tendermint/tendermint/rpc/client/http"
 
-	"github.com/celestiaorg/go-cnc"
+	cnc "github.com/celestiaorg/go-cnc"
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/log"
 	"github.com/dymensionxyz/dymint/store"
@@ -24,9 +24,9 @@ import (
 )
 
 type CNCClientI interface {
-	SubmitPFD(ctx context.Context, namespaceID [8]byte, blob []byte, fee int64, gasLimit uint64) (*cnc.TxResponse, error)
-	NamespacedShares(ctx context.Context, namespaceID [8]byte, height uint64) ([][]byte, error)
-	NamespacedData(ctx context.Context, namespaceID [8]byte, height uint64) ([][]byte, error)
+	SubmitPFB(ctx context.Context, namespaceID cnc.Namespace, blob []byte, fee int64, gasLimit uint64) (*cnc.TxResponse, error)
+	NamespacedShares(ctx context.Context, namespaceID cnc.Namespace, height uint64) ([][]byte, error)
+	NamespacedData(ctx context.Context, namespaceID cnc.Namespace, height uint64) ([][]byte, error)
 }
 
 // DataAvailabilityLayerClient use celestia-node public API.
@@ -175,7 +175,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			return da.ResultSubmitBatch{}
 		default:
 			fees := c.calculateFees(EstimateGas([]int{len(blob)}))
-			txResponse, err := c.client.SubmitPFD(c.ctx, c.config.NamespaceID, blob, int64(fees), c.config.GasLimit)
+			txResponse, err := c.client.SubmitPFB(c.ctx, c.config.NamespaceID, blob, int64(fees), c.config.GasLimit)
 			if txResponse != nil {
 				if txResponse.Code != 0 {
 					c.logger.Debug("Failed to submit DA batch. Emitting health event and trying again", "txResponse", txResponse, "error", err)
@@ -188,7 +188,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 					// Here we assume that if txResponse is not nil and also error is not nil it means that the transaction
 					// was submitted (not necessarily accepted) and we still didn't get a clear status regarding it (e.g timeout).
 					// hence trying to poll for it.
-					c.logger.Debug("Failed to receive DA batch inclusion result. Waiting for inclusion", "txResponse", txResponse, "error", err)
+					c.logger.Debug("Failed to receive DA batch inclusion result. Waiting for inclusion", "txResponse", txResponse.RawLog, "error", err)
 					inclusionHeight, err := c.waitForTXInclusion(txResponse.TxHash)
 					if err == nil {
 						res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, true, nil)
@@ -212,7 +212,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 					}
 
 				} else {
-					c.logger.Debug("Successfully submitted DA batch", "txResponse", txResponse)
+					c.logger.Debug("Successfully submitted DA batch", "txResponse", txResponse.RawLog)
 					res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, true, nil)
 					if err != nil {
 						return res

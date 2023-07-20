@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/celestiaorg/go-cnc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/libs/pubsub"
@@ -99,7 +100,7 @@ func doTestDALC(t *testing.T, dalc da.DataAvailabilityLayerClient) {
 			Timeout:     30 * time.Second,
 			GasLimit:    3000000,
 			Fee:         200000000,
-			NamespaceID: [8]byte{0, 1, 2, 3, 4, 5, 6, 7},
+			NamespaceID: cnc.Namespace{Version: 0, ID: []byte{0, 0, 0, 0, 0, 0, 255, 255}},
 		}
 		conf, _ = json.Marshal(config)
 	}
@@ -220,7 +221,7 @@ func doTestRetrieve(t *testing.T, dalc da.DataAvailabilityLayerClient) {
 			Timeout:     30 * time.Second,
 			GasLimit:    3000000,
 			Fee:         2000000,
-			NamespaceID: [8]byte{0, 1, 2, 3, 4, 5, 6, 7},
+			NamespaceID: cnc.Namespace{Version: 0, ID: []byte{0, 0, 0, 0, 0, 0, 255, 255}},
 		}
 		conf, _ = json.Marshal(config)
 	}
