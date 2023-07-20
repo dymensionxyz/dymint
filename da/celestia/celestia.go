@@ -172,7 +172,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 					// Here we assume that if txResponse is not nil and also error is not nil it means that the transaction
 					// was submitted (not necessarily accepted) and we still didn't get a clear status regarding it (e.g timeout).
 					// hence trying to poll for it.
-					c.logger.Debug("Failed to receive DA batch inclusion result. Waiting for inclusion", "txResponse", txResponse, "error", err)
+					c.logger.Debug("Failed to receive DA batch inclusion result. Waiting for inclusion", "txResponse", txResponse.RawLog, "error", err)
 					inclusionHeight, err := c.waitForTXInclusion(txResponse.TxHash)
 					if err == nil {
 						res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, true, nil)
@@ -196,7 +196,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 					}
 
 				} else {
-					c.logger.Debug("Successfully submitted DA batch", "txResponse", txResponse)
+					c.logger.Debug("Successfully submitted DA batch", "txResponse", txResponse.RawLog)
 					res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, true, nil)
 					if err != nil {
 						return res

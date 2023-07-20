@@ -9,7 +9,7 @@ require (
 	github.com/celestiaorg/go-cnc v0.4.2
 	github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.12
 	github.com/dgraph-io/badger/v3 v3.2103.3
-	github.com/dymensionxyz/cosmosclient v0.3.0-beta.0.20230621132116-77eb2ae5ab92
+	github.com/dymensionxyz/cosmosclient v0.4.0-beta
 	github.com/dymensionxyz/dymension v0.2.0-beta.0.20230607115558-745644a96ea6
 	github.com/go-kit/kit v0.12.0
 	github.com/gofrs/uuid v4.3.0+incompatible
