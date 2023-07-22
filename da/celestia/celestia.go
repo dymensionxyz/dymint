@@ -174,7 +174,6 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			c.logger.Debug("Context cancelled")
 			return da.ResultSubmitBatch{}
 		default:
-			//The gas needed for the batch probably should be computed before, when creating the batch. similiar to max bytes check
 			estimatedGas := float64(EstimateGas([]int{len(blob)}))
 			gasWanted := uint64(estimatedGas * gasAdjustment)
 			fees := c.calculateFees(gasWanted)
