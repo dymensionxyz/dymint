@@ -1,6 +1,8 @@
 package celestia
 
-import sdktypes "github.com/cosmos/cosmos-sdk/types"
+import (
+	"strconv"
+)
 
 const (
 	perByteGasTolerance   = 2
@@ -11,9 +13,8 @@ const (
 func (c *DataAvailabilityLayerClient) calculateFees(gas uint64) int64 {
 	fees := c.config.Fee
 	if fees == 0 {
-		decGasPrice, _ := sdktypes.NewDecFromStr(c.config.GasPrices)
-		adjustedPrice := decGasPrice.MustFloat64() * gasAdjustment
-		fees = int64(adjustedPrice * float64(gas))
+		fdecGasPrice, _ := strconv.ParseFloat(c.config.GasPrices, 64)
+		fees = int64(fdecGasPrice * float64(gas))
 	}
 
 	return fees
