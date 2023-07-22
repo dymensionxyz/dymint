@@ -117,7 +117,7 @@ func TestHealthStatusEventHandler(t *testing.T) {
 	err = node.Start()
 	assert.NoError(err)
 	// wait for node to start
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(1 * time.Second)
 
 	slUnealthyError := errors.New("settlement layer is unhealthy")
 	daUnealthyError := errors.New("da layer is unhealthy")
@@ -171,8 +171,10 @@ func TestHealthStatusEventHandler(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			done := make(chan bool, 1)
+			ready := make(chan bool, 1)
 			go func() {
 				HealthSubscription, err := node.pubsubServer.Subscribe(node.ctx, c.name, events.EventQueryHealthStatus)
+				ready <- true
 				assert.NoError(err)
 				select {
 				case event := <-HealthSubscription.Out():
@@ -184,7 +186,7 @@ func TestHealthStatusEventHandler(t *testing.T) {
 					assert.Equal(c.expectedError, healthStatusEvent.Error)
 					done <- true
 					break
-				case <-time.After(500 * time.Millisecond):
+				case <-time.After(1 * time.Second):
 					if c.expectHealthStatusEventEmitted {
 						t.Error("expected health status event but didn't get one")
 					}
@@ -192,6 +194,7 @@ func TestHealthStatusEventHandler(t *testing.T) {
 					break
 				}
 			}()
+			<-ready
 			// Emit an event.
 			node.pubsubServer.PublishWithEvents(context.Background(), c.baseLayerHealthStatusEventData, c.baseLayerHealthStatusEvent)
 			<-done

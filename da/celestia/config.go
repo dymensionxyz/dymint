@@ -3,12 +3,15 @@ package celestia
 import (
 	"encoding/hex"
 	"time"
+
+	"github.com/celestiaorg/go-cnc"
 )
 
 const (
 	defaultTxPollingRetryDelay = 20 * time.Second
 	defaultSubmitRetryDelay    = 10 * time.Second
 	defaultTxPollingAttempts   = 5
+	namespaceVersion           = 0
 )
 
 // Config stores Celestia DALC configuration parameters.
@@ -19,7 +22,7 @@ type Config struct {
 	Fee            int64         `json:"fee"`
 	GasLimit       uint64        `json:"gas_limit"`
 	NamespaceIDStr string        `json:"namespace_id"`
-	NamespaceID    [8]byte       `json:"-"`
+	NamespaceID    cnc.Namespace `json:"-"`
 }
 
 var CelestiaDefaultConfig = Config{
@@ -29,7 +32,7 @@ var CelestiaDefaultConfig = Config{
 	Fee:            20000,
 	GasLimit:       20000000,
 	NamespaceIDStr: "000000000000ffff",
-	NamespaceID:    [8]byte{0, 0, 0, 0, 0, 0, 255, 255},
+	NamespaceID:    cnc.Namespace{Version: namespaceVersion, ID: []byte{0, 0, 0, 0, 0, 0, 255, 255}},
 }
 
 func (c *Config) InitNamespaceID() error {
@@ -38,6 +41,14 @@ func (c *Config) InitNamespaceID() error {
 	if err != nil {
 		return err
 	}
-	copy(c.NamespaceID[:], namespaceBytes)
+	// TODO(omritoptix): a hack. need to enforce in the config
+	if len(namespaceBytes) != cnc.NamespaceIDSize {
+		// pad namespaceBytes with 0s
+		namespaceBytes = append(make([]byte, cnc.NamespaceIDSize-len(namespaceBytes)), namespaceBytes...)
+	}
+	c.NamespaceID, err = cnc.New(namespaceVersion, namespaceBytes)
+	if err != nil {
+		return err
+	}
 	return nil
 }
