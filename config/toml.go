@@ -103,4 +103,19 @@ gas_fees = "{{ .SettlementConfig.GasFees }}"
 keyring_backend = "{{ .SettlementConfig.KeyringBackend }}"
 keyring_home_dir = "{{ .SettlementConfig.KeyringHomeDir }}"
 dym_account_name = "{{ .SettlementConfig.DymAccountName }}"
+
+#######################################################
+###       Instrumentation Configuration Options     ###
+#######################################################
+[instrumentation]
+
+# When true, Prometheus metrics are served under /metrics on
+# PrometheusListenAddr.
+# Check out the documentation for the list of available metrics.
+prometheus = {{ .Instrumentation.Prometheus }}
+
+# Address to listen for Prometheus collector(s) connections
+prometheus_listen_addr = "{{ .Instrumentation.PrometheusListenAddr }}"
+
+
 `
