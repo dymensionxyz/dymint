@@ -7,9 +7,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/promauto"
-
 	"code.cloudfoundry.org/go-diodes"
 
 	"cosmossdk.io/errors"
@@ -45,15 +42,6 @@ const (
 	gossipedBlock blockSource = "gossip"
 	daBlock       blockSource = "da"
 )
-
-var rollappHeightGauge = promauto.NewGauge(prometheus.GaugeOpts{
-	Name: "rollapp_height",
-	Help: "The height of the local rollapp",
-})
-var rollappHubHeightGauge = promauto.NewGauge(prometheus.GaugeOpts{
-	Name: "rollapp_hub_height",
-	Help: "The latest height of the Rollapp that has been synced to the hub.",
-})
 
 type blockMetaData struct {
 	source   blockSource
