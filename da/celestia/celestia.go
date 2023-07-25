@@ -174,15 +174,14 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			c.logger.Debug("Context cancelled")
 			return da.ResultSubmitBatch{}
 		default:
-			estimatedGas := float64(EstimateGas([]int{len(blob)}))
+			estimatedGas := float64(EstimateGas(len(blob)))
 			gasWanted := uint64(estimatedGas * gasAdjustment)
 			fees := c.calculateFees(gasWanted)
 
 			//SubmitPFB sets an error if the txResponse has error, so we check check the txResponse for error
 			txResponse, err := c.client.SubmitPFB(c.ctx, c.config.NamespaceID, blob, int64(fees), gasWanted)
 			if txResponse == nil {
-				c.logger.Debug("Failed to submit DA batch. Emitting health event and trying again", "error", err)
-				// Publish an health event. Only if we failed to emit the event we return an error.
+				c.logger.Error("Failed to submit DA batch. Emitting health event and trying again", "error", err)
 				res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, false, err)
 				if err != nil {
 					return res
@@ -192,8 +191,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			}
 
 			if txResponse.Code != 0 {
-				c.logger.Debug("Failed to submit DA batch. Emitting health event and trying again", "txResponse", txResponse.RawLog, "code", txResponse.Code)
-				// Publish an health event. Only if we failed to emit the event we return an error.
+				c.logger.Error("Failed to submit DA batch. Emitting health event and trying again", "txResponse", txResponse.RawLog, "code", txResponse.Code)
 				res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, false, errors.New(txResponse.RawLog))
 				if err != nil {
 					return res
@@ -210,7 +208,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 				c.logger.Debug("Failed to receive DA batch inclusion result. Waiting for inclusion", "txHash", txResponse.TxHash)
 				daHeight, err = c.waitForTXInclusion(txResponse.TxHash)
 				if err != nil {
-					c.logger.Debug("Failed to receive DA batch inclusion result. Emitting health event and trying again", "error", err)
+					c.logger.Error("Failed to receive DA batch inclusion result. Emitting health event and trying again", "error", err)
 					res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, false, err)
 					if err != nil {
 						return res

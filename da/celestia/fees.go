@@ -21,12 +21,9 @@ func (c *DataAvailabilityLayerClient) calculateFees(gas uint64) int64 {
 }
 
 // EstimateGas estimates the gas required to pay for a set of blobs in a PFB.
-func EstimateGas(blobSizes []int) uint64 {
+func EstimateGas(blobSizes int) uint64 {
 	totalByteCount := 0
-	for _, size := range blobSizes {
-		totalByteCount += size
-	}
+	totalByteCount += blobSizes
 	variableGasAmount := (defaultGasPerBlobByte + perByteGasTolerance) * totalByteCount
-
 	return uint64(variableGasAmount + pfbGasFixedCost)
 }
