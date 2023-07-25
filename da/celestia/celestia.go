@@ -167,8 +167,8 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			c.logger.Debug("Context cancelled")
 			return da.ResultSubmitBatch{}
 		default:
-			estimatedGas := float64(EstimateGas(len(blob)))
-			gasWanted := uint64(estimatedGas * gasAdjustment)
+			estimatedGas := EstimateGas(len(blob))
+			gasWanted := uint64(float64(estimatedGas) * gasAdjustment)
 			fees := c.calculateFees(gasWanted)
 
 			//SubmitPFB sets an error if the txResponse has error, so we check check the txResponse for error
@@ -211,7 +211,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 				}
 			}
 
-			c.logger.Info("Successfully submitted DA batch", "txHash", txResponse.TxHash, "daHeight", txResponse.Height)
+			c.logger.Info("Successfully submitted DA batch", "txHash", txResponse.TxHash, "daHeight", txResponse.Height, "gasWanted", txResponse.GasWanted, "gasUsed", txResponse.GasUsed)
 			res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, true, nil)
 			if err != nil {
 				return res
