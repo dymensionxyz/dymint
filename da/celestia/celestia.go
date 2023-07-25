@@ -19,8 +19,6 @@ import (
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
 	pb "github.com/dymensionxyz/dymint/types/pb/dymint"
-
-	sdktypes "github.com/cosmos/cosmos-sdk/types"
 )
 
 type CNCClientI interface {
@@ -97,16 +95,11 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 		return err
 	}
 
-	if c.config.GasPrices != "" {
-		if c.config.Fee != 0 {
-			return errors.New("can't set both gas prices and fee")
-		}
-		//Check gas fees parsable
-		_, err = sdktypes.NewDecFromStr(c.config.GasPrices)
-		if err != nil {
-			return err
-		}
-	} else if c.config.Fee == 0 {
+	if c.config.GasPrices != 0 && c.config.Fee != 0 {
+		return errors.New("can't set both gas prices and fee")
+	}
+
+	if c.config.Fee == 0 && c.config.GasPrices == 0 {
 		return errors.New("fee or gas prices must be set")
 	}
 

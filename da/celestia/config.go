@@ -12,7 +12,7 @@ const (
 	defaultSubmitRetryDelay    = 10 * time.Second
 	defaultTxPollingAttempts   = 5
 	namespaceVersion           = 0
-	defaultGasPrices           = "0.1"
+	defaultGasPrices           = 0.1
 	gasAdjustment              = 12
 )
 
@@ -22,7 +22,7 @@ type Config struct {
 	AppNodeURL     string        `json:"app_node_url"`
 	Timeout        time.Duration `json:"timeout"`
 	Fee            int64         `json:"fee"`
-	GasPrices      string        `json:"gas_prices"`
+	GasPrices      float64       `json:"gas_prices"`
 	GasLimit       uint64        `json:"gas_limit"`
 	NamespaceIDStr string        `json:"namespace_id"`
 	NamespaceID    cnc.Namespace `json:"-"`
