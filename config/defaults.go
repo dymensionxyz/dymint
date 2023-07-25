@@ -36,6 +36,10 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 			BlockBatchMaxSizeBytes: 1500000},
 		DALayer:         "mock",
 		SettlementLayer: "mock",
+		Instrumentation: &InstrumentationConfig{
+			Prometheus:           false,
+			PrometheusListenAddr: ":2112",
+		},
 	}
 
 	if home == "" {

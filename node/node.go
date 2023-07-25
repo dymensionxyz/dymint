@@ -5,7 +5,11 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"sync"
+	"time"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
 
@@ -263,6 +267,12 @@ func (n *Node) OnStart() error {
 	if err != nil {
 		return fmt.Errorf("error while starting settlement layer client: %w", err)
 	}
+	go func() {
+		if err := n.startPrometheusServer(); err != nil {
+			panic(err)
+		}
+	}()
+
 	n.baseLayersHealthStatus = BaseLayersHealthStatus{
 		settlementHealthy: true,
 		daHealthy:         true,
@@ -400,5 +410,22 @@ func (n *Node) healthStatusHandler(err error) {
 		if err = n.pubsubServer.PublishWithEvents(n.ctx, healthStatusEvent, map[string][]string{events.EventNodeTypeKey: {events.EventHealthStatus}}); err != nil {
 			panic(err)
 		}
+
 	}
+}
+
+func (n *Node) startPrometheusServer() error {
+	if n.conf.Instrumentation != nil && n.conf.Instrumentation.Prometheus {
+		http.Handle("/metrics", promhttp.Handler())
+		srv := &http.Server{
+			Addr:         n.conf.Instrumentation.PrometheusListenAddr,
+			ReadTimeout:  5 * time.Second,
+			WriteTimeout: 10 * time.Second,
+			Handler:      http.DefaultServeMux,
+		}
+		if err := srv.ListenAndServe(); err != nil {
+			return err
+		}
+	}
+	return nil
 }

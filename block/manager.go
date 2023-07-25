@@ -385,6 +385,7 @@ func (m *Manager) SyncTargetLoop(ctx context.Context) {
 
 // updateSyncParams updates the sync target and state index if necessary
 func (m *Manager) updateSyncParams(ctx context.Context, endHeight uint64) {
+	rollappHubHeightGauge.Set(float64(endHeight))
 	m.logger.Info("Received new syncTarget", "syncTarget", endHeight)
 	atomic.StoreUint64(&m.syncTarget, endHeight)
 	atomic.StoreInt64(&m.lastSubmissionTime, time.Now().UnixNano())
@@ -707,6 +708,7 @@ func (m *Manager) produceBlock(ctx context.Context, allowEmpty bool) error {
 	}
 
 	m.logger.Info("block created", "height", newHeight, "num_tx", len(block.Data.Txs))
+	rollappHeightGauge.Set(float64(newHeight))
 
 	//TODO: move to separate function
 	lastSubmissionTime := atomic.LoadInt64(&m.lastSubmissionTime)
