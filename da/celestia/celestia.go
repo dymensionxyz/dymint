@@ -13,7 +13,7 @@ import (
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	httprpcclient "github.com/tendermint/tendermint/rpc/client/http"
 
-	"github.com/celestiaorg/go-cnc"
+	cnc "github.com/celestiaorg/go-cnc"
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/log"
 	"github.com/dymensionxyz/dymint/store"
@@ -22,9 +22,9 @@ import (
 )
 
 type CNCClientI interface {
-	SubmitPFD(ctx context.Context, namespaceID [8]byte, blob []byte, fee int64, gasLimit uint64) (*cnc.TxResponse, error)
-	NamespacedShares(ctx context.Context, namespaceID [8]byte, height uint64) ([][]byte, error)
-	NamespacedData(ctx context.Context, namespaceID [8]byte, height uint64) ([][]byte, error)
+	SubmitPFB(ctx context.Context, namespaceID cnc.Namespace, blob []byte, fee int64, gasLimit uint64) (*cnc.TxResponse, error)
+	NamespacedShares(ctx context.Context, namespaceID cnc.Namespace, height uint64) ([][]byte, error)
+	NamespacedData(ctx context.Context, namespaceID cnc.Namespace, height uint64) ([][]byte, error)
 }
 
 // DataAvailabilityLayerClient use celestia-node public API.
@@ -95,6 +95,14 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 		return err
 	}
 
+	if c.config.GasPrices != 0 && c.config.Fee != 0 {
+		return errors.New("can't set both gas prices and fee")
+	}
+
+	if c.config.Fee == 0 && c.config.GasPrices == 0 {
+		return errors.New("fee or gas prices must be set")
+	}
+
 	c.pubsubServer = pubsubServer
 	// Set defaults
 	c.txPollingRetryDelay = defaultTxPollingRetryDelay
@@ -159,62 +167,61 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			c.logger.Debug("Context cancelled")
 			return da.ResultSubmitBatch{}
 		default:
-			txResponse, err := c.client.SubmitPFD(c.ctx, c.config.NamespaceID, blob, c.config.Fee, c.config.GasLimit)
-			if txResponse != nil {
-				if txResponse.Code != 0 {
-					c.logger.Debug("Failed to submit DA batch. Emitting health event and trying again", "txResponse", txResponse, "error", err)
-					// Publish an health event. Only if we failed to emit the event we return an error.
-					res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, false, errors.New(txResponse.RawLog))
-					if err != nil {
-						return res
-					}
-				} else if err != nil {
-					// Here we assume that if txResponse is not nil and also error is not nil it means that the transaction
-					// was submitted (not necessarily accepted) and we still didn't get a clear status regarding it (e.g timeout).
-					// hence trying to poll for it.
-					c.logger.Debug("Failed to receive DA batch inclusion result. Waiting for inclusion", "txResponse", txResponse, "error", err)
-					inclusionHeight, err := c.waitForTXInclusion(txResponse.TxHash)
-					if err == nil {
-						res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, true, nil)
-						if err != nil {
-							return res
-						} else {
-							return da.ResultSubmitBatch{
-								BaseResult: da.BaseResult{
-									Code:     da.StatusSuccess,
-									Message:  "tx hash: " + txResponse.TxHash,
-									DAHeight: inclusionHeight,
-								},
-							}
-						}
-					} else {
-						c.logger.Debug("Failed to receive DA batch inclusion result. Emitting health event and trying again", "error", err)
-						res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, false, err)
-						if err != nil {
-							return res
-						}
-					}
+			estimatedGas := EstimateGas(len(blob))
+			gasWanted := uint64(float64(estimatedGas) * gasAdjustment)
+			fees := c.calculateFees(gasWanted)
 
-				} else {
-					c.logger.Debug("Successfully submitted DA batch", "txResponse", txResponse)
-					res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, true, nil)
-					if err != nil {
-						return res
-					}
-					return da.ResultSubmitBatch{
-						BaseResult: da.BaseResult{
-							Code:     da.StatusSuccess,
-							Message:  "tx hash: " + txResponse.TxHash,
-							DAHeight: uint64(txResponse.Height),
-						},
-					}
-				}
-			} else {
-				res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, false, errors.New("DA txResponse is nil"))
+			//SubmitPFB sets an error if the txResponse has error, so we check check the txResponse for error
+			txResponse, err := c.client.SubmitPFB(c.ctx, c.config.NamespaceID, blob, int64(fees), gasWanted)
+			if txResponse == nil {
+				c.logger.Error("Failed to submit DA batch. Emitting health event and trying again", "error", err)
+				res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, false, err)
 				if err != nil {
 					return res
 				}
 				time.Sleep(c.submitRetryDelay)
+				continue
+			}
+
+			if txResponse.Code != 0 {
+				c.logger.Error("Failed to submit DA batch. Emitting health event and trying again", "txResponse", txResponse.RawLog, "code", txResponse.Code)
+				res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, false, errors.New(txResponse.RawLog))
+				if err != nil {
+					return res
+				}
+				time.Sleep(c.submitRetryDelay)
+				continue
+			}
+
+			// Here we assume that if txResponse is not nil and also error is not nil it means that the transaction
+			// was submitted (not necessarily accepted) and we still didn't get a clear status regarding it (e.g timeout).
+			// hence trying to poll for it.
+			daHeight := uint64(txResponse.Height)
+			if daHeight == 0 {
+				c.logger.Debug("Failed to receive DA batch inclusion result. Waiting for inclusion", "txHash", txResponse.TxHash)
+				daHeight, err = c.waitForTXInclusion(txResponse.TxHash)
+				if err != nil {
+					c.logger.Error("Failed to receive DA batch inclusion result. Emitting health event and trying again", "error", err)
+					res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, false, err)
+					if err != nil {
+						return res
+					}
+					time.Sleep(c.submitRetryDelay)
+					continue
+				}
+			}
+
+			c.logger.Info("Successfully submitted DA batch", "txHash", txResponse.TxHash, "daHeight", txResponse.Height, "gasWanted", txResponse.GasWanted, "gasUsed", txResponse.GasUsed)
+			res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, true, nil)
+			if err != nil {
+				return res
+			}
+			return da.ResultSubmitBatch{
+				BaseResult: da.BaseResult{
+					Code:     da.StatusSuccess,
+					Message:  "tx hash: " + txResponse.TxHash,
+					DAHeight: daHeight,
+				},
 			}
 		}
 	}

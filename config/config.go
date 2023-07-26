@@ -27,10 +27,11 @@ type NodeConfig struct {
 	// parameters below are dymint specific and read from config
 	Aggregator         bool `mapstructure:"aggregator"`
 	BlockManagerConfig `mapstructure:",squash"`
-	DALayer            string            `mapstructure:"da_layer"`
-	DAConfig           string            `mapstructure:"da_config"`
-	SettlementLayer    string            `mapstructure:"settlement_layer"`
-	SettlementConfig   settlement.Config `mapstructure:",squash"`
+	DALayer            string                 `mapstructure:"da_layer"`
+	DAConfig           string                 `mapstructure:"da_config"`
+	SettlementLayer    string                 `mapstructure:"settlement_layer"`
+	SettlementConfig   settlement.Config      `mapstructure:",squash"`
+	Instrumentation    *InstrumentationConfig `mapstructure:"instrumentation"`
 }
 
 // BlockManagerConfig consists of all parameters required by BlockManagerConfig
@@ -130,4 +131,15 @@ func (c NodeConfig) Validate() error {
 	//TODO: validate DA config
 
 	return nil
+}
+
+// InstrumentationConfig defines the configuration for metrics reporting.
+type InstrumentationConfig struct {
+	// When true, Prometheus metrics are served under /metrics on
+	// PrometheusListenAddr.
+	// Check out the documentation for the list of available metrics.
+	Prometheus bool `mapstructure:"prometheus"`
+
+	// Address to listen for Prometheus collector(s) connections.
+	PrometheusListenAddr string `mapstructure:"prometheus_listen_addr"`
 }

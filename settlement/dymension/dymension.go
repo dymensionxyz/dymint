@@ -8,6 +8,7 @@ import (
 
 	"cosmossdk.io/errors"
 	"github.com/avast/retry-go"
+	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/codec"
 	cdctypes "github.com/cosmos/cosmos-sdk/codec/types"
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
@@ -336,7 +337,7 @@ func (d *HubClient) submitBatch(msgUpdateState *rollapptypes.MsgUpdateState) err
 	err := retry.Do(func() error {
 		txResp, err := d.client.BroadcastTx(d.config.DymAccountName, msgUpdateState)
 		if err != nil || txResp.Code != 0 {
-			d.logger.Error("Error sending batch to settlement layer", "resp", txResp, "error", err)
+			d.logger.Error("Error sending batch to settlement layer", "resp", txResp.RawLog, "error", err)
 			return err
 		}
 		return nil
@@ -423,6 +424,7 @@ func getCosmosClientOptions(config *settlement.Config) []cosmosclient.Option {
 	}
 	options := []cosmosclient.Option{
 		cosmosclient.WithAddressPrefix(addressPrefix),
+		cosmosclient.WithBroadcastMode(flags.BroadcastSync),
 		cosmosclient.WithNodeAddress(config.NodeAddress),
 		cosmosclient.WithFees(config.GasFees),
 		cosmosclient.WithGasLimit(config.GasLimit),

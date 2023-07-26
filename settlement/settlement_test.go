@@ -170,6 +170,8 @@ func TestGetSequencers(t *testing.T) {
 	assert.Equal(t, settlementClient.GetProposer().PublicKey, proposer.PublicKey)
 
 	err := settlementClient.Stop()
+	// Wait until the settlement layer stops
+	<-time.After(1 * time.Second)
 	assert.NoError(t, err)
 
 	// Validate  the amount of inactive sequencers
