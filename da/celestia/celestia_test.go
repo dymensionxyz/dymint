@@ -31,7 +31,7 @@ const (
 func TestSubmitBatch(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	configBytes, err := json.Marshal(celestia.Config{})
+	configBytes, err := json.Marshal(celestia.CelestiaDefaultConfig)
 	require.NoError(err)
 	batch := &types.Batch{
 		StartHeight: 0,

@@ -99,6 +99,7 @@ func doTestDALC(t *testing.T, dalc da.DataAvailabilityLayerClient) {
 			BaseURL:     "http://localhost:26658",
 			Timeout:     30 * time.Second,
 			GasLimit:    3000000,
+			Fee:         200000000,
 			NamespaceID: cnc.Namespace{Version: 0, ID: []byte{0, 0, 0, 0, 0, 0, 255, 255}},
 		}
 		conf, _ = json.Marshal(config)
@@ -219,6 +220,7 @@ func doTestRetrieve(t *testing.T, dalc da.DataAvailabilityLayerClient) {
 			BaseURL:     "http://localhost:26658",
 			Timeout:     30 * time.Second,
 			GasLimit:    3000000,
+			Fee:         2000000,
 			NamespaceID: cnc.Namespace{Version: 0, ID: []byte{0, 0, 0, 0, 0, 0, 255, 255}},
 		}
 		conf, _ = json.Marshal(config)

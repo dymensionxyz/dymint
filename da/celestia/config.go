@@ -4,7 +4,7 @@ import (
 	"encoding/hex"
 	"time"
 
-	"github.com/celestiaorg/go-cnc"
+	cnc "github.com/celestiaorg/go-cnc"
 )
 
 const (
@@ -12,6 +12,8 @@ const (
 	defaultSubmitRetryDelay    = 10 * time.Second
 	defaultTxPollingAttempts   = 5
 	namespaceVersion           = 0
+	defaultGasPrices           = 0.1
+	gasAdjustment              = 1.3
 )
 
 // Config stores Celestia DALC configuration parameters.
@@ -20,6 +22,7 @@ type Config struct {
 	AppNodeURL     string        `json:"app_node_url"`
 	Timeout        time.Duration `json:"timeout"`
 	Fee            int64         `json:"fee"`
+	GasPrices      float64       `json:"gas_prices"`
 	GasLimit       uint64        `json:"gas_limit"`
 	NamespaceIDStr string        `json:"namespace_id"`
 	NamespaceID    cnc.Namespace `json:"-"`
@@ -29,8 +32,9 @@ var CelestiaDefaultConfig = Config{
 	BaseURL:        "http://127.0.0.1:26659",
 	AppNodeURL:     "",
 	Timeout:        30 * time.Second,
-	Fee:            20000,
+	Fee:            0,
 	GasLimit:       20000000,
+	GasPrices:      defaultGasPrices,
 	NamespaceIDStr: "000000000000ffff",
 	NamespaceID:    cnc.Namespace{Version: namespaceVersion, ID: []byte{0, 0, 0, 0, 0, 0, 255, 255}},
 }
