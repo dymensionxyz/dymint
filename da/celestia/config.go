@@ -8,12 +8,12 @@ import (
 )
 
 const (
-	defaultTxPollingRetryDelay = 20 * time.Second
-	defaultSubmitRetryDelay    = 10 * time.Second
-	defaultTxPollingAttempts   = 5
-	namespaceVersion           = 0
-	defaultGasPrices           = 0.1
-	gasAdjustment              = 1.3
+	defaultTxPollingRetryDelay         = 20 * time.Second
+	defaultSubmitRetryDelay            = 10 * time.Second
+	defaultTxPollingAttempts           = 5
+	namespaceVersion                   = 0
+	defaultGasPrices                   = 0.1
+	defaultGasAdjustment       float64 = 1.3
 )
 
 // Config stores Celestia DALC configuration parameters.
@@ -23,6 +23,7 @@ type Config struct {
 	Timeout        time.Duration `json:"timeout"`
 	Fee            int64         `json:"fee"`
 	GasPrices      float64       `json:"gas_prices"`
+	GasAdjustment  float64       `json:"gas_adjustment"`
 	GasLimit       uint64        `json:"gas_limit"`
 	NamespaceIDStr string        `json:"namespace_id"`
 	NamespaceID    cnc.Namespace `json:"-"`
@@ -35,6 +36,7 @@ var CelestiaDefaultConfig = Config{
 	Fee:            0,
 	GasLimit:       20000000,
 	GasPrices:      defaultGasPrices,
+	GasAdjustment:  defaultGasAdjustment,
 	NamespaceIDStr: "000000000000ffff",
 	NamespaceID:    cnc.Namespace{Version: namespaceVersion, ID: []byte{0, 0, 0, 0, 0, 0, 255, 255}},
 }
