@@ -103,6 +103,10 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 		return errors.New("fee or gas prices must be set")
 	}
 
+	if c.config.GasAdjustment == 0 {
+		c.config.GasAdjustment = defaultGasAdjustment
+	}
+
 	c.pubsubServer = pubsubServer
 	// Set defaults
 	c.txPollingRetryDelay = defaultTxPollingRetryDelay
@@ -168,7 +172,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			return da.ResultSubmitBatch{}
 		default:
 			estimatedGas := EstimateGas(len(blob))
-			gasWanted := uint64(float64(estimatedGas) * gasAdjustment)
+			gasWanted := uint64(float64(estimatedGas) * c.config.GasAdjustment)
 			fees := c.calculateFees(gasWanted)
 
 			//SubmitPFB sets an error if the txResponse has error, so we check check the txResponse for error
