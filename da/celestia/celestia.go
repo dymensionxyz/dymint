@@ -171,7 +171,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			c.logger.Debug("Context cancelled")
 			return da.ResultSubmitBatch{}
 		default:
-			estimatedGas := EstimateGas(len(blob))
+			estimatedGas := DefaultEstimateGas(uint32(len(blob)))
 			gasWanted := uint64(float64(estimatedGas) * c.config.GasAdjustment)
 			fees := c.calculateFees(gasWanted)
 
