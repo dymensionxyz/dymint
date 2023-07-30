@@ -24,7 +24,7 @@ require (
 	github.com/libp2p/go-libp2p-core v0.20.1
 	github.com/libp2p/go-libp2p-kad-dht v0.21.0
 	github.com/libp2p/go-libp2p-pubsub v0.9.0
-	github.com/multiformats/go-multiaddr v0.8.0
+	github.com/multiformats/go-multiaddr v0.10.1
 	github.com/prometheus/client_golang v1.14.0
 	github.com/rs/cors v1.8.3
 	github.com/spf13/cobra v1.6.1
@@ -84,7 +84,7 @@ require (
 	github.com/zondax/ledger-go v0.14.1 // indirect
 	go.uber.org/dig v1.15.0 // indirect
 	go.uber.org/fx v1.18.2 // indirect
-	golang.org/x/exp v0.0.0-20230310171629-522b1b587ee0 // indirect
+	golang.org/x/exp v0.0.0-20230626212559-97b1e661b5df // indirect
 	google.golang.org/api v0.114.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20230525234035-dd9d682886f9 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20230525234030-28d5490b6b19 // indirect
@@ -223,7 +223,7 @@ require (
 	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/zap v1.24.0 // indirect
 	golang.org/x/crypto v0.7.0 // indirect
-	golang.org/x/mod v0.9.0 // indirect
+	golang.org/x/mod v0.11.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
 	golang.org/x/sys v0.7.0 // indirect
 	golang.org/x/term v0.7.0 // indirect
