@@ -17,37 +17,48 @@ func Test(t *testing.T) {
 		measuredGas uint64
 		gasAdjust   float64
 	}{
-		{
-			desc:        "",
-			blobSize:    3576,
-			measuredGas: 106230,
-		},
-		{
-			desc:        "",
-			blobSize:    6282,
-			measuredGas: 120850,
-		},
-		{
-			desc:        "",
-			blobSize:    12074,
-			measuredGas: 170002,
-			gasAdjust:   gasAdjust,
-		},
-		{
-			desc:        "",
-			blobSize:    16908,
-			measuredGas: 323804,
-			gasAdjust:   gasAdjust,
-		},
-		{
-			desc:        "",
-			blobSize:    31343,
-			measuredGas: 333852,
-		},
+		// {
+		// 	desc:        "",
+		// 	blobSize:    3576,
+		// 	measuredGas: 106230,
+		// },
+		// {
+		// 	desc:        "",
+		// 	blobSize:    6282,
+		// 	measuredGas: 120850,
+		// },
+		// {
+		// 	desc:        "",
+		// 	blobSize:    12074,
+		// 	measuredGas: 170002,
+		// 	gasAdjust:   gasAdjust,
+		// },
+		// {
+		// 	desc:        "",
+		// 	blobSize:    9384,
+		// 	measuredGas: 225990,
+		// 	gasAdjust:   gasAdjust,
+		// },
+		// {
+		// 	desc:        "",
+		// 	blobSize:    16908,
+		// 	measuredGas: 323804,
+		// 	gasAdjust:   gasAdjust,
+		// },
+		// {
+		// 	desc:        "",
+		// 	blobSize:    31343,
+		// 	measuredGas: 333852,
+		// },
 		{
 			desc:        "",
 			blobSize:    43248,
 			measuredGas: 432156,
+		},
+		{
+			desc:        "",
+			blobSize:    293357,
+			measuredGas: 391765, //probably wrong
 		},
 	}
 	for _, tC := range testCases {

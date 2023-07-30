@@ -13,7 +13,7 @@ const (
 	defaultTxPollingAttempts           = 5
 	namespaceVersion                   = 0
 	defaultGasPrices                   = 0.1
-	defaultGasAdjustment       float64 = 1.3
+	defaultGasAdjustment       float64 = 2.0
 )
 
 // Config stores Celestia DALC configuration parameters.
