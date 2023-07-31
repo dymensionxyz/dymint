@@ -132,7 +132,7 @@ func TestSubmitBatch(t *testing.T) {
 		go func() {
 			select {
 			case event := <-HealthSubscription.Out():
-				healthStatusEvent := event.Data().(da.EventDataDAHealthStatus)
+				healthStatusEvent := event.Data().(*da.EventDataDAHealthStatus)
 				assert.Equal(tc.expectedHealthEvent.Healthy, healthStatusEvent.Healthy)
 				done <- true
 				break
