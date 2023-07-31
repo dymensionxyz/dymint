@@ -167,7 +167,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 	estimatedGas := DefaultEstimateGas(uint32(len(blob)))
 	gasWanted := uint64(float64(estimatedGas) * c.config.GasAdjustment)
 	fees := c.calculateFees(gasWanted)
-	c.logger.Debug("Submitting to da blob with size", "size", len(blob), "estimatedGas", estimatedGas, "gasWanted", gasWanted, "fees", fees)
+	c.logger.Debug("Submitting to da blob with size", "size", len(blob), "estimatedGas", estimatedGas, "gasAdjusted", gasWanted, "fees", fees)
 
 	for {
 		select {
@@ -175,7 +175,6 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			c.logger.Debug("Context cancelled")
 			return da.ResultSubmitBatch{}
 		default:
-
 			//SubmitPFB sets an error if the txResponse has error, so we check check the txResponse for error
 			txResponse, err := c.client.SubmitPFB(c.ctx, c.config.NamespaceID, blob, fees, gasWanted)
 			if txResponse == nil {
