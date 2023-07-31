@@ -164,19 +164,19 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			},
 		}
 	}
-	c.logger.Debug("Submitting to da blob with size", "size", len(blob))
+	estimatedGas := DefaultEstimateGas(uint32(len(blob)))
+	gasWanted := uint64(float64(estimatedGas) * c.config.GasAdjustment)
+	fees := c.calculateFees(gasWanted)
+	c.logger.Debug("Submitting to da blob with size", "size", len(blob), "estimatedGas", estimatedGas, "gasAdjusted", gasWanted, "fees", fees)
+
 	for {
 		select {
 		case <-c.ctx.Done():
 			c.logger.Debug("Context cancelled")
 			return da.ResultSubmitBatch{}
 		default:
-			estimatedGas := DefaultEstimateGas(uint32(len(blob)))
-			gasWanted := uint64(float64(estimatedGas) * c.config.GasAdjustment)
-			fees := c.calculateFees(gasWanted)
-
 			//SubmitPFB sets an error if the txResponse has error, so we check check the txResponse for error
-			txResponse, err := c.client.SubmitPFB(c.ctx, c.config.NamespaceID, blob, int64(fees), gasWanted)
+			txResponse, err := c.client.SubmitPFB(c.ctx, c.config.NamespaceID, blob, fees, gasWanted)
 			if txResponse == nil {
 				c.logger.Error("Failed to submit DA batch. Emitting health event and trying again", "error", err)
 				res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, false, err)

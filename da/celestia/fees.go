@@ -1,6 +1,8 @@
 package celestia
 
 import (
+	"math"
+
 	"github.com/dymensionxyz/dymint/da/celestia/types"
 )
 
@@ -37,7 +39,7 @@ const (
 func (c *DataAvailabilityLayerClient) calculateFees(gas uint64) int64 {
 	fees := c.config.Fee
 	if fees == 0 {
-		fees = int64(c.config.GasPrices * float64(gas))
+		fees = int64(math.Ceil(c.config.GasPrices * float64(gas)))
 	}
 
 	return fees

@@ -337,7 +337,7 @@ func (d *HubClient) submitBatch(msgUpdateState *rollapptypes.MsgUpdateState) err
 	err := retry.Do(func() error {
 		txResp, err := d.client.BroadcastTx(d.config.DymAccountName, msgUpdateState)
 		if err != nil || txResp.Code != 0 {
-			d.logger.Error("Error sending batch to settlement layer", "resp", txResp.RawLog, "error", err)
+			d.logger.Error("Error sending batch to settlement layer", "error", err)
 			return err
 		}
 		return nil
