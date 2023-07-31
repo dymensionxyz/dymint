@@ -7,7 +7,7 @@ import (
 )
 
 func SubmitBatchHealthEventHelper(pubsubServer *pubsub.Server, ctx context.Context, healthy bool, err error) (ResultSubmitBatch, error) {
-	err = pubsubServer.PublishWithEvents(ctx, EventDataDAHealthStatus{Healthy: healthy, Error: err},
+	err = pubsubServer.PublishWithEvents(ctx, &EventDataDAHealthStatus{Healthy: healthy, Error: err},
 		map[string][]string{EventTypeKey: {EventDAHealthStatus}})
 	if err != nil {
 		return ResultSubmitBatch{
