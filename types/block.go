@@ -2,6 +2,8 @@ package types
 
 import (
 	"encoding"
+
+	tmtypes "github.com/tendermint/tendermint/types"
 )
 
 // Header defines the structure of Dymint block header.
@@ -82,7 +84,8 @@ type Commit struct {
 	Height     uint64
 	HeaderHash [32]byte
 	// TODO(omritoptix): Change from []Signature to Signature as it should be one signature per block
-	Signatures []Signature
+	Signatures  []Signature
+	TMSignature tmtypes.CommitSig
 }
 
 // Signature represents signature of block creator.
