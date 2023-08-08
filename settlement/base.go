@@ -168,8 +168,8 @@ func (b *BaseLayerClient) stateUpdatesHandler(ready chan bool) {
 	for {
 		select {
 		case event := <-subscription.Out():
-			b.logger.Debug("received state update event", "eventData", event.Data())
 			eventData := event.Data().(*EventDataNewSettlementBatchAccepted)
+			b.logger.Debug("received state update event", "latestHeight", eventData.EndHeight)
 			atomic.StoreUint64(&b.latestHeight, eventData.EndHeight)
 			// Emit new batch event
 			newBatchEventData := &EventDataNewBatchAccepted{

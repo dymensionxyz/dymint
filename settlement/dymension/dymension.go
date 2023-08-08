@@ -227,7 +227,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 					map[string][]string{settlement.EventTypeKey: {settlement.EventSettlementHealthStatus}})
 				// Sleep to allow context cancellation to take effect before retrying
 
-				//TODO: I think it should panic here, if fails after retries. same as in DA submission
+				//TODO(mtsitrin): I think it should panic here, if it fails after retries. same as in DA submission
 				time.Sleep(100 * time.Millisecond)
 				continue
 			}
@@ -243,9 +243,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 			d.logger.Debug("SLBatchPost subscription canceled")
 			return
 		case <-subscription.Out():
-			//FIXME: validate it's the correct event, to avoid handling same event twice
-
-			d.logger.Debug("Batch accepted by settlement layer. Emitting healthy event",
+			d.logger.Info("Batch accepted by settlement layer. Emitting healthy event",
 				"startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
 			heatlhEventData := &settlement.EventDataSettlementHealthStatus{Healthy: true}
 			utils.SubmitEventOrPanic(d.ctx, d.pubsub, heatlhEventData,
@@ -257,7 +255,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 			includedBatch, err := d.waitForBatchInclusion(batch.StartHeight)
 			if err != nil {
 				// Batch was not accepted by the settlement layer. Emitting unhealthy event
-				d.logger.Debug("Batch not accepted by settlement layer. Emitting unhealthy event",
+				d.logger.Error("Batch not accepted by settlement layer. Emitting unhealthy event",
 					"startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
 				heatlhEventData := &settlement.EventDataSettlementHealthStatus{Healthy: false, Error: settlement.ErrBatchNotAccepted}
 				utils.SubmitEventOrPanic(d.ctx, d.pubsub, heatlhEventData,
@@ -267,7 +265,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 				continue
 			}
 
-			d.logger.Debug("Batch accepted by settlement layer. Emitting events")
+			d.logger.Info("Batch accepted by settlement layer", "startHeight", includedBatch.StartHeight, "endHeight", includedBatch.EndHeight)
 			// Emit batch accepted event
 			batchAcceptedEvent := &settlement.EventDataNewSettlementBatchAccepted{
 				EndHeight:  includedBatch.EndHeight,
