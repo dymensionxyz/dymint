@@ -207,6 +207,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 		d.logger.Error("failed to subscribe to state update events", "error", err)
 		panic(err)
 	}
+	//nolint:errcheck
 	defer d.pubsub.Unsubscribe(d.ctx, "SLBatchPost", settlement.EventQueryNewSettlementBatchAccepted)
 
 	// Try submitting the batch to the settlement layer. If submission (i.e only submission, not acceptance) fails we emit an unhealthy event
