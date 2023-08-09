@@ -297,36 +297,36 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 func (c *DataAvailabilityLayerClient) broadcastTx(tx []byte) (uint64, error) {
 	meta, err := c.client.GetMetadataLatest()
 	if err != nil {
-		return 0, fmt.Errorf("%w: %s", da.ErrTxBroadcastNetworkError, err)
+		return 0, fmt.Errorf("%s: %s", "failed to GetMetadataLatest", err)
 	}
 	newCall, err := availtypes.NewCall(meta, DataCallSection+"."+DataCallMethod, availtypes.NewBytes(tx))
 	if err != nil {
-		return 0, fmt.Errorf("%w: %s", da.ErrTxBroadcastConfigError, err)
+		return 0, fmt.Errorf("%s: %s", "failed to create NewCall", err)
 	}
 	// Create the extrinsic
 	ext := availtypes.NewExtrinsic(newCall)
 	genesisHash, err := c.client.GetBlockHash(0)
 	if err != nil {
-		return 0, fmt.Errorf("%w: %s", da.ErrTxBroadcastNetworkError, err)
+		return 0, fmt.Errorf("%s: %s", "failed to GetBlockHash", err)
 	}
 	rv, err := c.client.GetRuntimeVersionLatest()
 	if err != nil {
-		return 0, fmt.Errorf("%w: %s", da.ErrTxBroadcastNetworkError, err)
+		return 0, fmt.Errorf("%s: %s", "failed to GetRuntimeVersionLatest", err)
 	}
 	keyringPair, err := signature.KeyringPairFromSecret(c.config.Seed, keyringNetworkID)
 	if err != nil {
-		return 0, fmt.Errorf("%w: %s", da.ErrTxBroadcastConfigError, err)
+		return 0, fmt.Errorf("%s: %s", "failed to KeyringPairFromSecret", err)
 	}
 	// Get the account info for the nonce
 	key, err := availtypes.CreateStorageKey(meta, "System", "Account", keyringPair.PublicKey)
 	if err != nil {
-		return 0, fmt.Errorf("%w: %s", da.ErrTxBroadcastConfigError, err)
+		return 0, fmt.Errorf("%s: %s", "failed to CreateStorageKey", err)
 	}
 
 	var accountInfo availtypes.AccountInfo
 	ok, err := c.client.GetStorageLatest(key, &accountInfo)
 	if err != nil || !ok {
-		return 0, fmt.Errorf("%w: %s", da.ErrTxBroadcastNetworkError, err)
+		return 0, fmt.Errorf("%s: %s", "failed to GetStorageLatest", err)
 	}
 
 	nonce := uint32(accountInfo.Nonce)
@@ -344,7 +344,7 @@ func (c *DataAvailabilityLayerClient) broadcastTx(tx []byte) (uint64, error) {
 	// Sign the transaction using Alice's default account
 	err = ext.Sign(keyringPair, options)
 	if err != nil {
-		return 0, fmt.Errorf("%w: %s", da.ErrTxBroadcastConfigError, err)
+		return 0, fmt.Errorf("%s: %s", "failed to sign", err)
 	}
 
 	// Send the extrinsic
@@ -367,7 +367,7 @@ func (c *DataAvailabilityLayerClient) broadcastTx(tx []byte) (uint64, error) {
 				hash := status.AsFinalized
 				blockHeight, err := c.getHeightFromHash(hash)
 				if err != nil {
-					return 0, fmt.Errorf("%w: %s", da.ErrTxBroadcastNetworkError, err)
+					return 0, fmt.Errorf("%s: %s", "failed to getHeightFromHash", err)
 				}
 				return blockHeight, nil
 			}
