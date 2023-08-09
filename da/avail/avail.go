@@ -356,7 +356,7 @@ func (c *DataAvailabilityLayerClient) broadcastTx(tx []byte) (uint64, error) {
 	c.logger.Info("Submitted batch to avail. Waiting for inclusion event")
 
 	defer sub.Unsubscribe()
-	timeout := time.After(c.txInclusionTimeout * time.Second)
+	timeout := time.After(c.txInclusionTimeout)
 	for {
 		select {
 		case status := <-sub.Chan():
