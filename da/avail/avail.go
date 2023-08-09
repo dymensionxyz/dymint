@@ -376,7 +376,7 @@ func (c *DataAvailabilityLayerClient) broadcastTx(tx []byte) (uint64, error) {
 				c.logger.Debug(fmt.Sprintf("Batch included inside a block with hash %v, waiting for finalization.", status.AsInBlock.Hex()))
 				continue
 			} else {
-				c.logger.Debug("unsupported status, still waiting for inclusion")
+				c.logger.Debug("unsupported status, still waiting for inclusion", "status", status)
 				continue
 			}
 		case <-timeout:
