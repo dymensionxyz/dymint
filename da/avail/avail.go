@@ -3,6 +3,7 @@ package avail
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -251,13 +252,16 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 				daBlockHeight, err = c.broadcastTx(dataBlob)
 				if err != nil {
 					c.logger.Error("Error broadcasting batch", "error", err)
+					if errors.Is(err, da.ErrTxBroadcastConfigError) {
+						err = retry.Unrecoverable(err)
+					}
 					return err
 				}
 				return nil
 			}, retry.Context(c.ctx), retry.LastErrorOnly(true), retry.Delay(c.batchRetryDelay),
 				retry.DelayType(retry.FixedDelay), retry.Attempts(c.batchRetryAttempts))
 			if err != nil {
-				if err == da.ErrTxBroadcastConfigError {
+				if !retry.IsRecoverable(err) {
 					return da.ResultSubmitBatch{
 						BaseResult: da.BaseResult{
 							Code:    da.StatusError,
@@ -272,19 +276,19 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 					}
 					continue
 				}
-			} else {
-				c.logger.Debug("Successfully submitted DA batch")
-				res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, true, nil)
-				if err != nil {
-					return res
-				}
-				return da.ResultSubmitBatch{
-					BaseResult: da.BaseResult{
-						Code:     da.StatusSuccess,
-						Message:  "success",
-						DAHeight: daBlockHeight,
-					},
-				}
+			}
+
+			c.logger.Debug("Successfully submitted DA batch")
+			res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, true, nil)
+			if err != nil {
+				return res
+			}
+			return da.ResultSubmitBatch{
+				BaseResult: da.BaseResult{
+					Code:     da.StatusSuccess,
+					Message:  "success",
+					DAHeight: daBlockHeight,
+				},
 			}
 
 		}
@@ -301,7 +305,7 @@ func (c *DataAvailabilityLayerClient) broadcastTx(tx []byte) (uint64, error) {
 	}
 	newCall, err := availtypes.NewCall(meta, DataCallSection+"."+DataCallMethod, availtypes.NewBytes(tx))
 	if err != nil {
-		return 0, fmt.Errorf("%s: %s", "failed to create NewCall", err)
+		return 0, fmt.Errorf("%w: %s", da.ErrTxBroadcastConfigError, err)
 	}
 	// Create the extrinsic
 	ext := availtypes.NewExtrinsic(newCall)
@@ -315,12 +319,12 @@ func (c *DataAvailabilityLayerClient) broadcastTx(tx []byte) (uint64, error) {
 	}
 	keyringPair, err := signature.KeyringPairFromSecret(c.config.Seed, keyringNetworkID)
 	if err != nil {
-		return 0, fmt.Errorf("%s: %s", "failed to KeyringPairFromSecret", err)
+		return 0, fmt.Errorf("%w: %s", da.ErrTxBroadcastConfigError, err)
 	}
 	// Get the account info for the nonce
 	key, err := availtypes.CreateStorageKey(meta, "System", "Account", keyringPair.PublicKey)
 	if err != nil {
-		return 0, fmt.Errorf("%s: %s", "failed to CreateStorageKey", err)
+		return 0, fmt.Errorf("%w: %s", da.ErrTxBroadcastConfigError, err)
 	}
 
 	var accountInfo availtypes.AccountInfo
@@ -344,7 +348,7 @@ func (c *DataAvailabilityLayerClient) broadcastTx(tx []byte) (uint64, error) {
 	// Sign the transaction using Alice's default account
 	err = ext.Sign(keyringPair, options)
 	if err != nil {
-		return 0, fmt.Errorf("%s: %s", "failed to sign", err)
+		return 0, fmt.Errorf("%w: %s", da.ErrTxBroadcastConfigError, err)
 	}
 
 	// Send the extrinsic
