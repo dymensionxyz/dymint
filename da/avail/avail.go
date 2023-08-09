@@ -359,10 +359,12 @@ func (c *DataAvailabilityLayerClient) broadcastTx(tx []byte) (uint64, error) {
 	timeout := time.After(c.txInclusionTimeout)
 	for {
 		select {
+		case <-c.ctx.Done():
+			return 0, c.ctx.Err()
+		case err := <-sub.Err():
+			return 0, err
 		case status := <-sub.Chan():
-			if status.IsInBlock {
-				c.logger.Debug(fmt.Sprintf("Batch included inside a block with hash %v\n, waiting for finalization.", status.AsInBlock.Hex()))
-			} else if status.IsFinalized {
+			if status.IsFinalized {
 				c.logger.Debug("Batch finalized inside block")
 				hash := status.AsFinalized
 				blockHeight, err := c.getHeightFromHash(hash)
@@ -370,6 +372,12 @@ func (c *DataAvailabilityLayerClient) broadcastTx(tx []byte) (uint64, error) {
 					return 0, fmt.Errorf("%s: %s", "failed to getHeightFromHash", err)
 				}
 				return blockHeight, nil
+			} else if status.IsInBlock {
+				c.logger.Debug(fmt.Sprintf("Batch included inside a block with hash %v, waiting for finalization.", status.AsInBlock.Hex()))
+				continue
+			} else {
+				c.logger.Debug("unsupported status, still waiting for inclusion")
+				continue
 			}
 		case <-timeout:
 			return 0, fmt.Errorf("%w: %s", da.ErrTxBroadcastTimeout, err)
