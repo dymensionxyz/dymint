@@ -10,7 +10,7 @@ import (
 	"code.cloudfoundry.org/go-diodes"
 
 	"cosmossdk.io/errors"
-	"github.com/avast/retry-go"
+	"github.com/avast/retry-go/v4"
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	abciconv "github.com/dymensionxyz/dymint/conv/abci"
 	"github.com/dymensionxyz/dymint/node/events"

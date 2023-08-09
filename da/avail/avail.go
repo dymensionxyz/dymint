@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/avast/retry-go"
+	"github.com/avast/retry-go/v4"
 	"github.com/dymensionxyz/dymint/log"
 	"github.com/gogo/protobuf/proto"
 
