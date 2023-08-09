@@ -367,7 +367,6 @@ func (m *Manager) SyncTargetLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case event := <-subscription.Out():
-			m.logger.Info("Received state update event", "eventData", event.Data())
 			eventData := event.Data().(*settlement.EventDataNewBatchAccepted)
 			m.updateSyncParams(ctx, eventData.EndHeight)
 			// In case we are the aggregator and we've got an update, then we can stop blocking from
