@@ -33,7 +33,7 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 			BatchSubmitMaxTime:     30 * time.Second,
 			NamespaceID:            "000000000000ffff",
 			BlockBatchSize:         500,
-			BlockBatchMaxSizeBytes: 1500000},
+			BlockBatchMaxSizeBytes: 500000},
 		DALayer:         "mock",
 		SettlementLayer: "mock",
 		Instrumentation: &InstrumentationConfig{
