@@ -5,7 +5,7 @@ go 1.19
 require (
 	code.cloudfoundry.org/go-diodes v0.0.0-20220725190411-383eb6634c40
 	cosmossdk.io/errors v1.0.0-beta.7
-	github.com/avast/retry-go v3.0.0+incompatible
+	github.com/avast/retry-go/v4 v4.5.0
 	github.com/celestiaorg/go-cnc v0.4.2
 	github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.12
 	github.com/dgraph-io/badger/v3 v3.2103.3
