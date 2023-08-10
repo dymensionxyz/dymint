@@ -228,11 +228,14 @@ func (c *Commit) FromProto(other *pb.Commit) error {
 		return errors.New("invalid length of HeaderHash")
 	}
 	c.Signatures = byteSlicesToSignatures(other.Signatures)
-	c.TMSignature = types.CommitSig{
-		BlockIDFlag:      types.BlockIDFlag(other.TmSignature.BlockIdFlag),
-		ValidatorAddress: other.TmSignature.ValidatorAddress,
-		Timestamp:        other.TmSignature.Timestamp,
-		Signature:        other.TmSignature.Signature,
+	// For backwards compatibility with old state files that don't have this field.
+	if other.TmSignature != nil {
+		c.TMSignature = types.CommitSig{
+			BlockIDFlag:      types.BlockIDFlag(other.TmSignature.BlockIdFlag),
+			ValidatorAddress: other.TmSignature.ValidatorAddress,
+			Timestamp:        other.TmSignature.Timestamp,
+			Signature:        other.TmSignature.Signature,
+		}
 	}
 
 	return nil
