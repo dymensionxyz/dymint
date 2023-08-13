@@ -208,10 +208,11 @@ func TestPostBatch(t *testing.T) {
 					healthStatusEvent := healthEvent.Data().(*settlement.EventDataSettlementHealthStatus)
 					assert.Equal(t, c.expectedHealthEventValue, healthStatusEvent.Healthy)
 					assert.Equal(t, c.expectedError, healthStatusEvent.Error)
-					wg.Done()
 					atomic.AddInt64(&eventsReceivedCount, 1)
-					return
+				case <-time.After(10 * time.Second):
+					t.Error("Didn't recieve health event")
 				}
+				wg.Done()
 			}()
 			if c.expectedBatchAcceptedEvent {
 				go func() {
@@ -220,25 +221,14 @@ func TestPostBatch(t *testing.T) {
 						t.Logf("got batch accepted event: %v", batchAcceptedEvent)
 						batchAcceptedEventData := batchAcceptedEvent.Data().(*settlement.EventDataNewSettlementBatchAccepted)
 						assert.Equal(t, batchAcceptedEventData.EndHeight, batch.EndHeight)
-						wg.Done()
 						atomic.AddInt64(&eventsReceivedCount, 1)
-						return
+					case <-time.After(10 * time.Second):
+						t.Error("Didn't recieve batch accepted event")
 					}
+					wg.Done()
+
 				}()
 			}
-			go func() {
-				select {
-				case <-time.After(2 * time.Second):
-					eventsRecievedCount := int(atomic.LoadInt64(&eventsReceivedCount))
-					if eventsRecievedCount < eventsCount {
-						t.Error("Didn't recieve all events expected")
-						for i := 0; i < eventsCount-eventsRecievedCount; i++ {
-							wg.Done()
-						}
-					}
-					return
-				}
-			}()
 			// Post the batch
 			go hubClient.PostBatch(batch, da.Mock, &da.ResultSubmitBatch{})
 			// Wait for the batch to be submitted and submit an event notifying that the batch was accepted
@@ -253,8 +243,8 @@ func TestPostBatch(t *testing.T) {
 					},
 				}
 			}
-			// Wait for all events to be handled
 			wg.Wait()
+			assert.Equal(t, eventsCount, int(eventsReceivedCount))
 			// Stop the hub client and wait for it to stop
 			hubClient.Stop()
 			time.Sleep(1 * time.Second)

@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"time"
 
-	"cosmossdk.io/errors"
 	"github.com/avast/retry-go/v4"
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/codec"
@@ -14,7 +13,9 @@ import (
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	"github.com/dymensionxyz/cosmosclient/cosmosclient"
 	rollapptypes "github.com/dymensionxyz/dymension/x/rollapp/types"
+	"github.com/google/uuid"
 	"github.com/ignite/cli/ignite/pkg/cosmosaccount"
+	"github.com/pkg/errors"
 
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	sequencertypes "github.com/dymensionxyz/dymension/x/sequencer/types"
@@ -44,6 +45,10 @@ const (
 	batchRetryMaxDelay     = 1 * time.Minute
 	batchAcceptanceTimeout = 120 * time.Second
 	batchRetryAttempts     = 10
+)
+
+const (
+	postBatchSubscriberPrefix = "postBatchSubscriber"
 )
 
 // LayerClient is intended only for usage in tests.
@@ -197,18 +202,21 @@ func (d *HubClient) Stop() error {
 // PostBatch posts a batch to the Dymension Hub. it tries to post the batch until it is accepted by the settlement layer.
 // it emits success and failure events to the event bus accordingly.
 func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) {
+
 	msgUpdateState, err := d.convertBatchToMsgUpdateState(batch, daClient, daResult)
 	if err != nil {
 		panic(err)
 	}
 
-	subscription, err := d.pubsub.Subscribe(d.ctx, "SLBatchPost", settlement.EventQueryNewSettlementBatchAccepted)
+	postBatchSubscriberClient := fmt.Sprintf("%s-%d-%s", postBatchSubscriberPrefix, batch.StartHeight, uuid.New().String())
+	subscription, err := d.pubsub.Subscribe(d.ctx, postBatchSubscriberClient, settlement.EventQueryNewSettlementBatchAccepted)
 	if err != nil {
-		d.logger.Error("failed to subscribe to state update events", "error", err)
+		d.logger.Error("failed to subscribe to state update events", "err", err)
 		panic(err)
 	}
+
 	//nolint:errcheck
-	defer d.pubsub.Unsubscribe(d.ctx, "SLBatchPost", settlement.EventQueryNewSettlementBatchAccepted)
+	defer d.pubsub.Unsubscribe(d.ctx, postBatchSubscriberClient, settlement.EventQueryNewSettlementBatchAccepted)
 
 	// Try submitting the batch to the settlement layer. If submission (i.e only submission, not acceptance) fails we emit an unhealthy event
 	// and try again in the next loop. If submission succeeds we wait for the batch to be accepted by the settlement layer.
