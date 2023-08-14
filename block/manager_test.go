@@ -12,7 +12,6 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/dymensionxyz/dymint/log/test"
 	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/settlement"
@@ -58,7 +57,7 @@ func TestInitialState(t *testing.T) {
 
 	// Init p2p client
 	privKey, _, _ := crypto.GenerateEd25519Key(rand.Reader)
-	p2pClient, err := p2p.NewClient(config.P2PConfig{}, privKey, "TestChain", test.NewLogger(t))
+	p2pClient, err := p2p.NewClient(config.P2PConfig{}, privKey, "TestChain", logger)
 	assert.NoError(err)
 	assert.NotNil(p2pClient)
 
