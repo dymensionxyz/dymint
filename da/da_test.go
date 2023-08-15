@@ -14,6 +14,8 @@ import (
 	"github.com/tendermint/tendermint/libs/pubsub"
 	"google.golang.org/grpc"
 
+	"github.com/tendermint/tendermint/libs/log"
+
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/da/celestia"
 	cmock "github.com/dymensionxyz/dymint/da/celestia/mock"
@@ -21,7 +23,6 @@ import (
 	"github.com/dymensionxyz/dymint/da/grpc/mockserv"
 	"github.com/dymensionxyz/dymint/da/mock"
 	"github.com/dymensionxyz/dymint/da/registry"
-	"github.com/dymensionxyz/dymint/log/test"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
 )
@@ -35,7 +36,7 @@ func TestLifecycle(t *testing.T) {
 	for _, dalc := range registry.RegisteredClients() {
 		//TODO(omritoptix): Possibly add support for avail here.
 		if dalc == "avail" {
-			t.Skip("TODO")
+			continue
 		}
 		t.Run(dalc, func(t *testing.T) {
 			doTestLifecycle(t, dalc)
@@ -57,7 +58,7 @@ func doTestLifecycle(t *testing.T, daType string) {
 		require.NoError(err)
 	}
 
-	err = dalc.Init(dacfg, pubsubServer, nil, test.NewLogger(t))
+	err = dalc.Init(dacfg, pubsubServer, nil, log.TestingLogger())
 	require.NoError(err)
 
 	err = dalc.Start()
@@ -77,7 +78,7 @@ func TestDALC(t *testing.T) {
 	for _, dalc := range registry.RegisteredClients() {
 		//TODO(omritoptix): Possibly add support for avail here.
 		if dalc == "avail" {
-			t.Skip("TODO")
+			continue
 		}
 		t.Run(dalc, func(t *testing.T) {
 			doTestDALC(t, registry.GetClient(dalc))
@@ -106,7 +107,7 @@ func doTestDALC(t *testing.T, dalc da.DataAvailabilityLayerClient) {
 	}
 	pubsubServer := pubsub.NewServer()
 	pubsubServer.Start()
-	err := dalc.Init(conf, pubsubServer, store.NewDefaultInMemoryKVStore(), test.NewLogger(t))
+	err := dalc.Init(conf, pubsubServer, store.NewDefaultInMemoryKVStore(), log.TestingLogger())
 	require.NoError(err)
 
 	err = dalc.Start()
@@ -164,11 +165,11 @@ func TestRetrieve(t *testing.T) {
 	defer httpServer.Stop()
 
 	for _, client := range registry.RegisteredClients() {
+		//TODO(omritoptix): Possibly add support for avail here.
+		if client == "avail" {
+			continue
+		}
 		t.Run(client, func(t *testing.T) {
-			//TODO(omritoptix): Possibly add support for avail here.
-			if client == "avail" {
-				t.Skip("TODO")
-			}
 			dalc := registry.GetClient(client)
 			_, ok := dalc.(da.BatchRetriever)
 			if ok {
@@ -194,7 +195,7 @@ func startMockGRPCServ(t *testing.T) *grpc.Server {
 
 func startMockCelestiaNodeServer(t *testing.T) *cmock.Server {
 	t.Helper()
-	httpSrv := cmock.NewServer(mockDaBlockTime, test.NewLogger(t))
+	httpSrv := cmock.NewServer(mockDaBlockTime, log.TestingLogger())
 	l, err := net.Listen("tcp4", ":26658")
 	if err != nil {
 		t.Fatal("failed to create listener for mock celestia-node RPC server", "error", err)
@@ -227,7 +228,7 @@ func doTestRetrieve(t *testing.T, dalc da.DataAvailabilityLayerClient) {
 	}
 	pubsubServer := pubsub.NewServer()
 	pubsubServer.Start()
-	err := dalc.Init(conf, pubsubServer, store.NewDefaultInMemoryKVStore(), test.NewLogger(t))
+	err := dalc.Init(conf, pubsubServer, store.NewDefaultInMemoryKVStore(), log.TestingLogger())
 	require.NoError(err)
 
 	err = dalc.Start()

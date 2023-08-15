@@ -48,9 +48,9 @@ func (s *Server) Start(listener net.Listener) error {
 	if err != nil {
 		return err
 	}
+	s.server = new(http.Server)
+	s.server.Handler = s.getHandler()
 	go func() {
-		s.server = new(http.Server)
-		s.server.Handler = s.getHandler()
 		err := s.server.Serve(listener)
 		s.logger.Debug("http server exited with", "error", err)
 	}()

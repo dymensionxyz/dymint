@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tendermint/tendermint/libs/log"
+
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
@@ -25,7 +27,6 @@ import (
 	rollapptypes "github.com/dymensionxyz/dymension/x/rollapp/types"
 	sequencertypes "github.com/dymensionxyz/dymension/x/sequencer/types"
 	"github.com/dymensionxyz/dymint/da"
-	"github.com/dymensionxyz/dymint/log/test"
 	mocks "github.com/dymensionxyz/dymint/mocks"
 	settlementmocks "github.com/dymensionxyz/dymint/mocks/settlement"
 	"github.com/dymensionxyz/dymint/settlement"
@@ -53,7 +54,7 @@ func TestGetSequencers(t *testing.T) {
 	pubsubServer := pubsub.NewServer()
 	pubsubServer.Start()
 
-	hubClient, err := newDymensionHubClient(settlement.Config{}, pubsubServer, test.NewLogger(t), options...)
+	hubClient, err := newDymensionHubClient(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
 	require.NoError(err)
 
 	sequencers, err := hubClient.GetSequencers("mock-rollapp")
@@ -196,7 +197,7 @@ func TestPostBatch(t *testing.T) {
 					rollappQueryClientMock.On("LatestStateIndex", mock.Anything, mock.Anything).Return(nil, nil)
 				}
 			}
-			hubClient, err := newDymensionHubClient(settlement.Config{}, pubsubServer, test.NewLogger(t), options...)
+			hubClient, err := newDymensionHubClient(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
 			require.NoError(err)
 			hubClient.Start()
 			// Handle the various events that are emitted and timeout if we don't get them
