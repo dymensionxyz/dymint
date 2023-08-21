@@ -19,7 +19,6 @@ require (
 	github.com/gorilla/rpc v1.2.0
 	github.com/gorilla/websocket v1.5.0
 	github.com/informalsystems/tm-load-test v1.3.0
-	github.com/ipfs/go-log v1.0.5
 	github.com/libp2p/go-libp2p v0.26.0
 	github.com/libp2p/go-libp2p-core v0.20.1
 	github.com/libp2p/go-libp2p-kad-dht v0.21.0
@@ -33,7 +32,7 @@ require (
 	github.com/tendermint/tendermint v0.34.28
 	go.uber.org/multierr v1.8.0
 	golang.org/x/net v0.9.0
-	gonum.org/v1/gonum v0.12.0
+	gonum.org/v1/gonum v0.14.0
 	google.golang.org/grpc v1.57.0
 	google.golang.org/protobuf v1.31.0
 )
@@ -64,6 +63,7 @@ require (
 	github.com/hashicorp/go-uuid v1.0.1 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.1 // indirect
 	github.com/holiman/uint256 v1.2.2-0.20230321075855-87b91420868c // indirect
+	github.com/ipfs/go-log v1.0.5 // indirect
 	github.com/lib/pq v1.10.7 // indirect
 	github.com/libp2p/go-yamux/v4 v4.0.0 // indirect
 	github.com/minio/highwayhash v1.0.2 // indirect
