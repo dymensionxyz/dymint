@@ -102,10 +102,6 @@ func (c BlockManagerConfig) Validate() error {
 		return fmt.Errorf("empty_blocks_max_time must be greater than block_time")
 	}
 
-	if c.EmptyBlocksMaxTime != 0 && c.BatchSubmitMaxTime < c.EmptyBlocksMaxTime {
-		return fmt.Errorf("batch_submit_max_time must be greater than empty_blocks_max_time")
-	}
-
 	if c.BatchSubmitMaxTime < c.BlockTime {
 		return fmt.Errorf("batch_submit_max_time must be greater than block_time")
 	}

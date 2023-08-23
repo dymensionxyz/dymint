@@ -195,6 +195,7 @@ func TestBatchSubmissionAfterTimeout(t *testing.T) {
 	mCtx, cancel := context.WithTimeout(context.Background(), runTime)
 	defer cancel()
 	go manager.ProduceBlockLoop(mCtx)
+	go manager.SubmitLoop(mCtx)
 	<-mCtx.Done()
 
 	require.True(manager.batchInProcess.Load() == true)
