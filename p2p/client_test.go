@@ -7,12 +7,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ipfs/go-log"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/tendermint/tendermint/libs/log"
 
 	"github.com/dymensionxyz/dymint/config"
 	"github.com/dymensionxyz/dymint/log/test"
@@ -20,7 +21,7 @@ import (
 
 func TestClientStartup(t *testing.T) {
 	privKey, _, _ := crypto.GenerateEd25519Key(rand.Reader)
-	client, err := NewClient(config.P2PConfig{}, privKey, "TestChain", test.NewLogger(t))
+	client, err := NewClient(config.P2PConfig{}, privKey, "TestChain", log.TestingLogger())
 	assert := assert.New(t)
 	assert.NoError(err)
 	assert.NotNil(client)
@@ -33,11 +34,8 @@ func TestClientStartup(t *testing.T) {
 }
 
 func TestBootstrapping(t *testing.T) {
-	_ = log.SetLogLevel("dht", "INFO")
-	//log.SetDebugLogging()
-
 	assert := assert.New(t)
-	logger := test.NewLogger(t)
+	logger := log.TestingLogger()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -57,7 +55,7 @@ func TestBootstrapping(t *testing.T) {
 
 func TestDiscovery(t *testing.T) {
 	assert := assert.New(t)
-	logger := test.NewLogger(t)
+	logger := log.TestingLogger()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -77,7 +75,7 @@ func TestDiscovery(t *testing.T) {
 
 func TestGossiping(t *testing.T) {
 	assert := assert.New(t)
-	logger := test.NewLogger(t)
+	logger := log.TestingLogger()
 
 	ctx := context.Background()
 
