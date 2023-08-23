@@ -180,6 +180,7 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 		m.logger.Info("Starting in aggregator mode")
 		// TODO(omritoptix): change to private methods
 		go m.ProduceBlockLoop(ctx)
+		go m.SubmitLoop(ctx)
 	}
 	// TODO(omritoptix): change to private methods
 	go m.RetriveLoop(ctx)
@@ -280,6 +281,36 @@ func (m *Manager) waitForSync(ctx context.Context) error {
 	m.isSyncedCond.L.Unlock()
 	m.logger.Info("Synced, Starting to produce", "current height", m.store.Height(), "syncTarget", atomic.LoadUint64(&m.syncTarget))
 	return nil
+}
+
+func (m *Manager) SubmitLoop(ctx context.Context) {
+	ticker := time.NewTicker(m.conf.BatchSubmitMaxTime)
+	defer ticker.Stop()
+
+	for {
+		select {
+		//Context canceled
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			// SyncTarget is the height of the last block in the last batch as seen by this node.
+			syncTarget := atomic.LoadUint64(&m.syncTarget)
+			height := m.store.Height()
+			//no new blocks produced yet
+			if (height - syncTarget) == 0 {
+				continue
+			}
+
+			// Submit batch if we've reached the batch size and there isn't another batch currently in submission process.
+			if m.batchInProcess.Load() == false {
+				m.batchInProcess.Store(true)
+				go m.submitNextBatch(ctx)
+			}
+
+			//TODO: add the case of batch size (should be signaled from the the block production)
+			// case <- requiredByNumOfBlocks
+		}
+	}
 }
 
 // ProduceBlockLoop is calling publishBlock in a loop as long as wer'e synced.
@@ -708,21 +739,6 @@ func (m *Manager) produceBlock(ctx context.Context, allowEmpty bool) error {
 
 	m.logger.Info("block created", "height", newHeight, "num_tx", len(block.Data.Txs))
 	rollappHeightGauge.Set(float64(newHeight))
-
-	//TODO: move to separate function
-	lastSubmissionTime := atomic.LoadInt64(&m.lastSubmissionTime)
-	requiredByTime := time.Since(time.Unix(0, lastSubmissionTime)) > m.conf.BatchSubmitMaxTime
-
-	// SyncTarget is the height of the last block in the last batch as seen by this node.
-	syncTarget := atomic.LoadUint64(&m.syncTarget)
-	requiredByNumOfBlocks := (block.Header.Height - syncTarget) > m.conf.BlockBatchSize
-
-	// Submit batch if we've reached the batch size and there isn't another batch currently in submission process.
-	if m.batchInProcess.Load() == false && (requiredByTime || requiredByNumOfBlocks) {
-		m.batchInProcess.Store(true)
-		go m.submitNextBatch(ctx)
-	}
-
 	return nil
 }
 
