@@ -10,13 +10,14 @@ import (
 	"github.com/celestiaorg/go-cnc"
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/da/celestia"
-	"github.com/dymensionxyz/dymint/log/test"
 	mocks "github.com/dymensionxyz/dymint/mocks/da/celestia"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"github.com/tendermint/tendermint/libs/log"
+
 	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	rpcmock "github.com/tendermint/tendermint/rpc/client/mocks"
@@ -114,7 +115,7 @@ func TestSubmitBatch(t *testing.T) {
 		assert.NoError(err)
 		// Start the DALC
 		dalc := celestia.DataAvailabilityLayerClient{}
-		err = dalc.Init(configBytes, pubsubServer, nil, test.NewLogger(t), options...)
+		err = dalc.Init(configBytes, pubsubServer, nil, log.TestingLogger(), options...)
 		require.NoError(err)
 		err = dalc.Start()
 		require.NoError(err)

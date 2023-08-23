@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tendermint/tendermint/libs/log"
+
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -12,7 +14,6 @@ import (
 
 	"github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
 	"github.com/dymensionxyz/dymint/da"
-	"github.com/dymensionxyz/dymint/log/test"
 	mocks "github.com/dymensionxyz/dymint/mocks/settlement"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/settlement/registry"
@@ -31,7 +32,7 @@ func TestLifecycle(t *testing.T) {
 
 	pubsubServer := pubsub.NewServer()
 	pubsubServer.Start()
-	err := client.Init(settlement.Config{}, pubsubServer, test.NewLogger(t))
+	err := client.Init(settlement.Config{}, pubsubServer, log.TestingLogger())
 	require.NoError(err)
 
 	err = client.Start()
@@ -144,7 +145,7 @@ func TestGetSequencersEmptyList(t *testing.T) {
 
 	pubsubServer := pubsub.NewServer()
 	pubsubServer.Start()
-	err := settlementClient.Init(settlement.Config{}, pubsubServer, test.NewLogger(t), options...)
+	err := settlementClient.Init(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
 	assert.Error(t, err, "empty sequencer list should return an error")
 
 }
@@ -194,7 +195,7 @@ func initClient(t *testing.T, settlementlc settlement.LayerI, options ...settlem
 
 	pubsubServer := pubsub.NewServer()
 	pubsubServer.Start()
-	err := settlementlc.Init(settlement.Config{}, pubsubServer, test.NewLogger(t), options...)
+	err := settlementlc.Init(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
 	require.NoError(err)
 
 	err = settlementlc.Start()
