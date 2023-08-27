@@ -410,9 +410,9 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(dataLayerHeight uin
 // getHeightFromHash returns the block height from the block hash
 func (c *DataAvailabilityLayerClient) getHeightFromHash(hash availtypes.Hash) (uint64, error) {
 	c.logger.Debug("Getting block height from hash", "hash", hash)
-	block, err := c.client.GetBlock(hash)
+	header, err := c.client.GetHeader(hash)
 	if err != nil {
 		return 0, fmt.Errorf("cannot get block by hash:%w", err)
 	}
-	return uint64(block.Block.Header.Number), nil
+	return uint64(header.Number), nil
 }
