@@ -26,7 +26,7 @@ require (
 	github.com/multiformats/go-multiaddr v0.8.0
 	github.com/prometheus/client_golang v1.14.0
 	github.com/rs/cors v1.8.3
-	github.com/spf13/cobra v1.6.1
+	github.com/spf13/cobra v1.7.0
 	github.com/spf13/viper v1.14.0
 	github.com/stretchr/testify v1.8.4
 	github.com/tendermint/tendermint v0.34.28
@@ -148,7 +148,7 @@ require (
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/hdevalence/ed25519consensus v0.0.0-20220222234857-c00d1f31bab3 // indirect
 	github.com/huin/goupnp v1.0.3 // indirect
-	github.com/inconshreveable/mousetrap v1.0.1 // indirect
+	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/ipfs/go-cid v0.3.2 // indirect
 	github.com/ipfs/go-datastore v0.6.0 // indirect
 	github.com/ipfs/go-ipfs-util v0.0.2 // indirect
