@@ -292,6 +292,8 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 		//Context canceled
 		case <-ctx.Done():
 			return
+		//TODO: add the case of batch size (should be signaled from the the block production)
+		// case <- requiredByNumOfBlocks
 		case <-ticker.C:
 			// SyncTarget is the height of the last block in the last batch as seen by this node.
 			syncTarget := atomic.LoadUint64(&m.syncTarget)
@@ -302,13 +304,13 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 			}
 
 			// Submit batch if we've reached the batch size and there isn't another batch currently in submission process.
-			if m.batchInProcess.Load() == false {
-				m.batchInProcess.Store(true)
-				go m.submitNextBatch(ctx)
+			if m.batchInProcess.Load() == true {
+				m.logger.Debug("Batch submission already in process, skipping submission")
+				continue
 			}
 
-			//TODO: add the case of batch size (should be signaled from the the block production)
-			// case <- requiredByNumOfBlocks
+			m.batchInProcess.Store(true)
+			m.submitNextBatch(ctx)
 		}
 	}
 }
