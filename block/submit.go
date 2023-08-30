@@ -3,10 +3,43 @@ package block
 import (
 	"context"
 	"sync/atomic"
+	"time"
 
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/types"
 )
+
+func (m *Manager) SubmitLoop(ctx context.Context) {
+	ticker := time.NewTicker(m.conf.BatchSubmitMaxTime)
+	defer ticker.Stop()
+
+	for {
+		select {
+		//Context canceled
+		case <-ctx.Done():
+			return
+		//TODO: add the case of batch size (should be signaled from the the block production)
+		// case <- requiredByNumOfBlocks
+		case <-ticker.C:
+			// SyncTarget is the height of the last block in the last batch as seen by this node.
+			syncTarget := atomic.LoadUint64(&m.syncTarget)
+			height := m.store.Height()
+			//no new blocks produced yet
+			if (height - syncTarget) == 0 {
+				continue
+			}
+
+			// Submit batch if we've reached the batch size and there isn't another batch currently in submission process.
+			if m.batchInProcess.Load() == true {
+				m.logger.Debug("Batch submission already in process, skipping submission")
+				continue
+			}
+
+			m.batchInProcess.Store(true)
+			m.submitNextBatch(ctx)
+		}
+	}
+}
 
 func (m *Manager) submitNextBatch(ctx context.Context) {
 	// Get the batch start and end height

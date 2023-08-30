@@ -176,6 +176,7 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 		m.logger.Info("Starting in aggregator mode")
 		// TODO(omritoptix): change to private methods
 		go m.ProduceBlockLoop(ctx)
+		go m.SubmitLoop(ctx)
 	}
 	// TODO(omritoptix): change to private methods
 	go m.RetriveLoop(ctx)
