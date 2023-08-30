@@ -202,7 +202,6 @@ func (d *HubClient) Stop() error {
 // PostBatch posts a batch to the Dymension Hub. it tries to post the batch until it is accepted by the settlement layer.
 // it emits success and failure events to the event bus accordingly.
 func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) {
-
 	msgUpdateState, err := d.convertBatchToMsgUpdateState(batch, daClient, daResult)
 	if err != nil {
 		panic(err)
@@ -236,7 +235,6 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 					map[string][]string{settlement.EventTypeKey: {settlement.EventSettlementHealthStatus}})
 				// Sleep to allow context cancellation to take effect before retrying
 
-				//TODO(mtsitrin): I think it should panic here, if it fails after retries. same as in DA submission
 				time.Sleep(100 * time.Millisecond)
 				continue
 			}
@@ -245,6 +243,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 		// Batch was submitted successfully. Wait for it to be accepted by the settlement layer.
 		ticker := time.NewTicker(d.batchAcceptanceTimeout)
 		defer ticker.Stop()
+
 		select {
 		case <-d.ctx.Done():
 			return
@@ -516,7 +515,7 @@ func (d *HubClient) waitForBatchInclusion(batchStartHeight uint64) (*settlement.
 			return nil
 		}
 		return settlement.ErrBatchNotFound
-	}, retry.Context(d.ctx), retry.LastErrorOnly(true), retry.Delay(d.batchRetryDelay), retry.Attempts(d.batchRetryAttempts))
+	}, retry.Context(d.ctx), retry.LastErrorOnly(true),
+		retry.Delay(d.batchRetryDelay), retry.Attempts(d.batchRetryAttempts), retry.MaxDelay(batchRetryMaxDelay))
 	return resultRetriveBatch, err
-
 }
