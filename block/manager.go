@@ -71,11 +71,13 @@ type Manager struct {
 	syncTargetDiode diodes.Diode
 
 	shouldProduceBlocksCh chan bool
+	produceEmptyBlockCh   chan bool
 
 	syncTarget         uint64
 	lastSubmissionTime int64
 	batchInProcess     atomic.Value
 	isSyncedCond       sync.Cond
+	produceBlockMutex  sync.Mutex
 
 	syncCache map[uint64]*types.Block
 
@@ -167,6 +169,7 @@ func NewManager(
 		isSyncedCond:          *sync.NewCond(new(sync.Mutex)),
 		batchInProcess:        batchInProcess,
 		shouldProduceBlocksCh: make(chan bool, 1),
+		produceEmptyBlockCh:   make(chan bool, 1),
 		logger:                logger,
 	}
 
@@ -310,6 +313,11 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 			}
 
 			m.batchInProcess.Store(true)
+			// We try and produce an empty block to make sure releavnt ibc messages will pass through during the batch submission: https://github.com/dymensionxyz/research/issues/173.
+			err := m.produceBlock(ctx, true)
+			if err != nil {
+				m.logger.Error("error while producing empty block", "error", err)
+			}
 			m.submitNextBatch(ctx)
 		}
 	}
@@ -346,6 +354,9 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 		//Context canceled
 		case <-ctx.Done():
 			return
+		// If we got a request for an empty block produce it and don't wait for the ticker
+		case <-m.produceEmptyBlockCh:
+			produceEmptyBlock = true
 		//Empty blocks timeout
 		case <-tickerEmptyBlocksMaxTimeCh:
 			m.logger.Debug(fmt.Sprintf("No transactions for %.2f seconds, producing empty block", m.conf.EmptyBlocksMaxTime.Seconds()))
@@ -673,6 +684,8 @@ func (m *Manager) fetchBatch(daHeight uint64) (da.ResultRetrieveBatch, error) {
 }
 
 func (m *Manager) produceBlock(ctx context.Context, allowEmpty bool) error {
+	m.produceBlockMutex.Lock()
+	defer m.produceBlockMutex.Unlock()
 	var lastCommit *types.Commit
 	var lastHeaderHash [32]byte
 	var err error
@@ -749,6 +762,16 @@ func (m *Manager) submitNextBatch(ctx context.Context) {
 	startHeight := atomic.LoadUint64(&m.syncTarget) + 1
 	endHeight := uint64(m.lastState.LastBlockHeight)
 
+	isLastBlockEmpty, err := m.validateLastBlockInBatchIsEmpty(startHeight, endHeight)
+	if err != nil {
+		m.logger.Error("Failed to validate last block in batch is empty", "startHeight", startHeight, "endHeight", endHeight, "error", err)
+		return
+	}
+	if !isLastBlockEmpty {
+		m.logger.Info("Requesting for an empty block creation")
+		m.produceEmptyBlockCh <- true
+	}
+
 	// Create the batch
 	nextBatch, err := m.createNextDABatch(startHeight, endHeight)
 	if err != nil {
@@ -769,6 +792,23 @@ func (m *Manager) submitNextBatch(ctx context.Context) {
 	// TODO(omritoptix): Handle a case where the SL submission fails due to syncTarget out of sync with the latestHeight in the SL.
 	// In that case we'll want to update the syncTarget before returning.
 	m.settlementClient.SubmitBatch(nextBatch, m.dalc.GetClientType(), &resultSubmitToDA)
+}
+
+// Verify the last block in the batch is an empty block and that no ibc messages has accidentially passed through.
+// This block may not be empty if another block has passed it in line. If that's the case our empty block request will
+// be sent to the next batch.
+func (m *Manager) validateLastBlockInBatchIsEmpty(startHeight uint64, endHeight uint64) (bool, error) {
+	m.logger.Debug("Verifying last block in batch is an empty block", "startHeight", startHeight, "endHeight", endHeight, "height")
+	lastBlock, err := m.store.LoadBlock(endHeight)
+	if err != nil {
+		m.logger.Error("Failed to load block", "height", endHeight, "error", err)
+		return false, err
+	}
+	if len(lastBlock.Data.Txs) != 0 {
+		m.logger.Info("Last block in batch is not an empty block", "startHeight", startHeight, "endHeight", endHeight, "height")
+		return false, nil
+	}
+	return true, nil
 }
 
 func (m *Manager) updateStateIndex(stateIndex uint64) error {
