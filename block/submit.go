@@ -51,6 +51,16 @@ func (m *Manager) submitNextBatch(ctx context.Context) {
 	startHeight := atomic.LoadUint64(&m.syncTarget) + 1
 	endHeight := uint64(m.lastState.LastBlockHeight)
 
+	isLastBlockEmpty, err := m.validateLastBlockInBatchIsEmpty(startHeight, endHeight)
+	if err != nil {
+		m.logger.Error("Failed to validate last block in batch is empty", "startHeight", startHeight, "endHeight", endHeight, "error", err)
+		return
+	}
+	if !isLastBlockEmpty {
+		m.logger.Info("Requesting for an empty block creation")
+		m.produceEmptyBlockCh <- true
+	}
+
 	// Create the batch
 	nextBatch, err := m.createNextDABatch(startHeight, endHeight)
 	if err != nil {
