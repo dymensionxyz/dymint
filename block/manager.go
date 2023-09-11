@@ -67,11 +67,13 @@ type Manager struct {
 	syncTargetDiode diodes.Diode
 
 	shouldProduceBlocksCh chan bool
+	produceEmptyBlockCh   chan bool
 
 	syncTarget         uint64
 	lastSubmissionTime int64
 	batchInProcess     atomic.Value
 	isSyncedCond       sync.Cond
+	produceBlockMutex  sync.Mutex
 
 	syncCache map[uint64]*types.Block
 
@@ -163,6 +165,7 @@ func NewManager(
 		isSyncedCond:          *sync.NewCond(new(sync.Mutex)),
 		batchInProcess:        batchInProcess,
 		shouldProduceBlocksCh: make(chan bool, 1),
+		produceEmptyBlockCh:   make(chan bool, 1),
 		logger:                logger,
 	}
 

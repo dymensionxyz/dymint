@@ -43,6 +43,9 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 		//Context canceled
 		case <-ctx.Done():
 			return
+		// If we got a request for an empty block produce it and don't wait for the ticker
+		case <-m.produceEmptyBlockCh:
+			produceEmptyBlock = true
 		//Empty blocks timeout
 		case <-tickerEmptyBlocksMaxTimeCh:
 			m.logger.Debug(fmt.Sprintf("No transactions for %.2f seconds, producing empty block", m.conf.EmptyBlocksMaxTime.Seconds()))
@@ -76,6 +79,8 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 }
 
 func (m *Manager) produceBlock(ctx context.Context, allowEmpty bool) error {
+	m.produceBlockMutex.Lock()
+	defer m.produceBlockMutex.Unlock()
 	var lastCommit *types.Commit
 	var lastHeaderHash [32]byte
 	var err error
@@ -144,21 +149,6 @@ func (m *Manager) produceBlock(ctx context.Context, allowEmpty bool) error {
 
 	m.logger.Info("block created", "height", newHeight, "num_tx", len(block.Data.Txs))
 	rollappHeightGauge.Set(float64(newHeight))
-
-	//TODO: move to separate function
-	lastSubmissionTime := atomic.LoadInt64(&m.lastSubmissionTime)
-	requiredByTime := time.Since(time.Unix(0, lastSubmissionTime)) > m.conf.BatchSubmitMaxTime
-
-	// SyncTarget is the height of the last block in the last batch as seen by this node.
-	syncTarget := atomic.LoadUint64(&m.syncTarget)
-	requiredByNumOfBlocks := (block.Header.Height - syncTarget) > m.conf.BlockBatchSize
-
-	// Submit batch if we've reached the batch size and there isn't another batch currently in submission process.
-	if m.batchInProcess.Load() == false && (requiredByTime || requiredByNumOfBlocks) {
-		m.batchInProcess.Store(true)
-		go m.submitNextBatch(ctx)
-	}
-
 	return nil
 }
 

@@ -36,6 +36,11 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 			}
 
 			m.batchInProcess.Store(true)
+			// We try and produce an empty block to make sure releavnt ibc messages will pass through during the batch submission: https://github.com/dymensionxyz/research/issues/173.
+			err := m.produceBlock(ctx, true)
+			if err != nil {
+				m.logger.Error("error while producing empty block", "error", err)
+			}
 			m.submitNextBatch(ctx)
 		}
 	}
@@ -111,4 +116,21 @@ func (m *Manager) createNextDABatch(startHeight uint64, endHeight uint64) (*type
 
 	batch.EndHeight = height - 1
 	return batch, nil
+}
+
+// Verify the last block in the batch is an empty block and that no ibc messages has accidentially passed through.
+// This block may not be empty if another block has passed it in line. If that's the case our empty block request will
+// be sent to the next batch.
+func (m *Manager) validateLastBlockInBatchIsEmpty(startHeight uint64, endHeight uint64) (bool, error) {
+	m.logger.Debug("Verifying last block in batch is an empty block", "startHeight", startHeight, "endHeight", endHeight, "height")
+	lastBlock, err := m.store.LoadBlock(endHeight)
+	if err != nil {
+		m.logger.Error("Failed to load block", "height", endHeight, "error", err)
+		return false, err
+	}
+	if len(lastBlock.Data.Txs) != 0 {
+		m.logger.Info("Last block in batch is not an empty block", "startHeight", startHeight, "endHeight", endHeight, "height")
+		return false, nil
+	}
+	return true, nil
 }
