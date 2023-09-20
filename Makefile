@@ -8,9 +8,21 @@ COMMIT_HASH := $(shell git rev-parse --short HEAD)
 LD_FLAGS = -X github.com/dymensionxyz/dymint/version.DymintGitCommitHash=$(COMMIT_HASH)
 BUILD_FLAGS = -mod=readonly -ldflags "$(LD_FLAGS)"
 CGO_ENABLED ?= 0
+BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
+TIME ?= $(shell date +%Y-%m-%dT%H:%M:%S%z)
 
-# allow users to pass additional flags via the conventional LDFLAGS variable
-LD_FLAGS += $(LDFLAGS)
+# don't override user values
+ifeq (,$(VERSION))
+  VERSION := $(shell git describe --tags)
+  # if VERSION is empty, then populate it with branch's name and raw commit hash
+  ifeq (,$(VERSION))
+    VERSION := $(BRANCH)-$(COMMIT_HASH)
+  endif
+endif
+
+
+LD_FLAGS = -X github.com/dymensionxyz/dymint/version.BuildVersion=$(VERSION)
+
 
 # Process Docker environment varible TARGETPLATFORM 
 # in order to build binary with correspondent ARCH
