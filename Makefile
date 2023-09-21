@@ -8,18 +8,7 @@ COMMIT_HASH := $(shell git rev-parse --short HEAD)
 LD_FLAGS = -X github.com/dymensionxyz/dymint/version.DymintGitCommitHash=$(COMMIT_HASH)
 BUILD_FLAGS = -mod=readonly -ldflags "$(LD_FLAGS)"
 CGO_ENABLED ?= 0
-BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
-TIME ?= $(shell date +%Y-%m-%dT%H:%M:%S%z)
-
-# don't override user values
-ifeq (,$(VERSION))
-  VERSION := $(shell git describe --tags)
-  # if VERSION is empty, then populate it with branch's name and raw commit hash
-  ifeq (,$(VERSION))
-    VERSION := $(BRANCH)-$(COMMIT_HASH)
-  endif
-endif
-
+VERSION ?= $(shell git describe --tags --always)
 
 LD_FLAGS = -X github.com/dymensionxyz/dymint/version.BuildVersion=$(VERSION)
 
