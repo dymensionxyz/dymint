@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"errors"
+	"github.com/dymensionxyz/dymint/version"
 
 	"fmt"
 	"sort"
@@ -10,7 +11,6 @@ import (
 
 	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
 
-	rconfig "github.com/dymensionxyz/dymint/config"
 	abciconv "github.com/dymensionxyz/dymint/conv/abci"
 	"github.com/dymensionxyz/dymint/mempool"
 	"github.com/dymensionxyz/dymint/node"
@@ -26,7 +26,7 @@ import (
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tendermint/version"
+	tm_version "github.com/tendermint/tendermint/version"
 )
 
 const (
@@ -718,7 +718,7 @@ func (c *Client) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
 		return nil, fmt.Errorf("failed to load the last saved state: %w", err)
 	}
 	defaultProtocolVersion := p2p.NewProtocolVersion(
-		version.P2PProtocol,
+		tm_version.P2PProtocol,
 		state.Version.Consensus.Block,
 		state.Version.Consensus.App,
 	)
@@ -732,7 +732,7 @@ func (c *Client) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
 			DefaultNodeID:   id,
 			ListenAddr:      addr,
 			Network:         network,
-			Version:         rconfig.Version,
+			Version:         version.BuildVersion,
 			Channels:        []byte{0x1},
 			Moniker:         config.DefaultBaseConfig().Moniker,
 			Other: p2p.DefaultNodeInfoOther{
