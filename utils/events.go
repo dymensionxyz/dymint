@@ -22,7 +22,8 @@ func SubscribeAndHandleEvents(ctx context.Context, pubsubServer *pubsub.Server, 
 		case event := <-subscription.Out():
 			callback(event)
 		case <-subscription.Cancelled():
-			logger.Info("Subscription canceled")
+			logger.Info(clientID + " subscription canceled")
+			return
 		}
 	}
 }
