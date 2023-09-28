@@ -18,6 +18,7 @@ func main() {
 		commands.ShowNodeIDCmd,
 		debug.DebugCmd,
 		cli.NewCompletionCmd(rootCmd, true),
+
 	)
 
 	// Create & start node
