@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"errors"
+
 	"github.com/dymensionxyz/dymint/version"
 
 	"fmt"
@@ -88,7 +89,7 @@ func (c *Client) ABCIQueryWithOptions(ctx context.Context, path string, data tmb
 	if err != nil {
 		return nil, err
 	}
-	c.Logger.Debug("ABCIQuery", "path", path, "data", data, "result", resQuery)
+	c.Logger.Debug("ABCIQuery", "path", path, "height", resQuery.Height)
 	return &ctypes.ResultABCIQuery{Response: *resQuery}, nil
 }
 
