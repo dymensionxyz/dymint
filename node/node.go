@@ -125,7 +125,7 @@ func NewNode(ctx context.Context, conf config.NodeConfig, p2pKey crypto.PrivKey,
 	}
 
 	eventBus := tmtypes.NewEventBus()
-	// eventBus.SetLogger(logger.With("module", "events"))
+	eventBus.SetLogger(logger.With("module", "events"))
 	if err := eventBus.Start(); err != nil {
 		return nil, err
 	}
