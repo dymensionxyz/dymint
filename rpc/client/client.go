@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"errors"
+
 	"github.com/dymensionxyz/dymint/version"
 
 	"fmt"
