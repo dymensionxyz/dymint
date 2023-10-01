@@ -41,7 +41,8 @@ func (m *Manager) SyncTargetLoop(ctx context.Context) {
 			// TODO(omritoptix): Check if we are the aggregator
 			m.batchInProcess.Store(false)
 		case <-subscription.Cancelled():
-			m.logger.Info("Subscription canceled")
+			m.logger.Info("syncTargetLoop subscription canceled")
+			return
 		}
 	}
 }
