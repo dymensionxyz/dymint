@@ -3,10 +3,11 @@ package avail
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
-	"github.com/avast/retry-go"
+	"github.com/avast/retry-go/v4"
 	"github.com/dymensionxyz/dymint/log"
 	"github.com/gogo/protobuf/proto"
 
@@ -251,13 +252,16 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 				daBlockHeight, err = c.broadcastTx(dataBlob)
 				if err != nil {
 					c.logger.Error("Error broadcasting batch", "error", err)
+					if errors.Is(err, da.ErrTxBroadcastConfigError) {
+						err = retry.Unrecoverable(err)
+					}
 					return err
 				}
 				return nil
 			}, retry.Context(c.ctx), retry.LastErrorOnly(true), retry.Delay(c.batchRetryDelay),
 				retry.DelayType(retry.FixedDelay), retry.Attempts(c.batchRetryAttempts))
 			if err != nil {
-				if err == da.ErrTxBroadcastConfigError {
+				if !retry.IsRecoverable(err) {
 					return da.ResultSubmitBatch{
 						BaseResult: da.BaseResult{
 							Code:    da.StatusError,
@@ -272,19 +276,19 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 					}
 					continue
 				}
-			} else {
-				c.logger.Debug("Successfully submitted DA batch")
-				res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, true, nil)
-				if err != nil {
-					return res
-				}
-				return da.ResultSubmitBatch{
-					BaseResult: da.BaseResult{
-						Code:     da.StatusSuccess,
-						Message:  "success",
-						DAHeight: daBlockHeight,
-					},
-				}
+			}
+
+			c.logger.Debug("Successfully submitted DA batch")
+			res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, true, nil)
+			if err != nil {
+				return res
+			}
+			return da.ResultSubmitBatch{
+				BaseResult: da.BaseResult{
+					Code:     da.StatusSuccess,
+					Message:  "success",
+					DAHeight: daBlockHeight,
+				},
 			}
 
 		}
@@ -297,7 +301,7 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 func (c *DataAvailabilityLayerClient) broadcastTx(tx []byte) (uint64, error) {
 	meta, err := c.client.GetMetadataLatest()
 	if err != nil {
-		return 0, fmt.Errorf("%w: %s", da.ErrTxBroadcastNetworkError, err)
+		return 0, fmt.Errorf("%s: %s", "failed to GetMetadataLatest", err)
 	}
 	newCall, err := availtypes.NewCall(meta, DataCallSection+"."+DataCallMethod, availtypes.NewBytes(tx))
 	if err != nil {
@@ -307,11 +311,11 @@ func (c *DataAvailabilityLayerClient) broadcastTx(tx []byte) (uint64, error) {
 	ext := availtypes.NewExtrinsic(newCall)
 	genesisHash, err := c.client.GetBlockHash(0)
 	if err != nil {
-		return 0, fmt.Errorf("%w: %s", da.ErrTxBroadcastNetworkError, err)
+		return 0, fmt.Errorf("%s: %s", "failed to GetBlockHash", err)
 	}
 	rv, err := c.client.GetRuntimeVersionLatest()
 	if err != nil {
-		return 0, fmt.Errorf("%w: %s", da.ErrTxBroadcastNetworkError, err)
+		return 0, fmt.Errorf("%s: %s", "failed to GetRuntimeVersionLatest", err)
 	}
 	keyringPair, err := signature.KeyringPairFromSecret(c.config.Seed, keyringNetworkID)
 	if err != nil {
@@ -326,7 +330,7 @@ func (c *DataAvailabilityLayerClient) broadcastTx(tx []byte) (uint64, error) {
 	var accountInfo availtypes.AccountInfo
 	ok, err := c.client.GetStorageLatest(key, &accountInfo)
 	if err != nil || !ok {
-		return 0, fmt.Errorf("%w: %s", da.ErrTxBroadcastNetworkError, err)
+		return 0, fmt.Errorf("%s: %s", "failed to GetStorageLatest", err)
 	}
 
 	nonce := uint32(accountInfo.Nonce)
@@ -356,23 +360,39 @@ func (c *DataAvailabilityLayerClient) broadcastTx(tx []byte) (uint64, error) {
 	c.logger.Info("Submitted batch to avail. Waiting for inclusion event")
 
 	defer sub.Unsubscribe()
-	timeout := time.After(c.txInclusionTimeout * time.Second)
+
+	inclusionTimer := time.NewTimer(c.txInclusionTimeout)
+	defer inclusionTimer.Stop()
+
 	for {
 		select {
+		case <-c.ctx.Done():
+			return 0, c.ctx.Err()
+		case err := <-sub.Err():
+			return 0, err
 		case status := <-sub.Chan():
-			if status.IsInBlock {
-				c.logger.Debug(fmt.Sprintf("Batch included inside a block with hash %v\n, waiting for finalization.", status.AsInBlock.Hex()))
-			} else if status.IsFinalized {
+			if status.IsFinalized {
 				c.logger.Debug("Batch finalized inside block")
 				hash := status.AsFinalized
 				blockHeight, err := c.getHeightFromHash(hash)
 				if err != nil {
-					return 0, fmt.Errorf("%w: %s", da.ErrTxBroadcastNetworkError, err)
+					return 0, fmt.Errorf("%s: %s", "failed to getHeightFromHash", err)
 				}
 				return blockHeight, nil
+			} else if status.IsInBlock {
+				c.logger.Debug(fmt.Sprintf("Batch included inside a block with hash %v, waiting for finalization.", status.AsInBlock.Hex()))
+				inclusionTimer.Reset(c.txInclusionTimeout)
+				continue
+			} else {
+				recievedStatus, err := status.MarshalJSON()
+				if err != nil {
+					return 0, fmt.Errorf("%s: %s", "failed to MarshalJSON of received status", err)
+				}
+				c.logger.Debug("unsupported status, still waiting for inclusion", "status", string(recievedStatus))
+				continue
 			}
-		case <-timeout:
-			return 0, fmt.Errorf("%w: %s", da.ErrTxBroadcastTimeout, err)
+		case <-inclusionTimer.C:
+			return 0, da.ErrTxBroadcastTimeout
 		}
 	}
 }
@@ -390,9 +410,9 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(dataLayerHeight uin
 // getHeightFromHash returns the block height from the block hash
 func (c *DataAvailabilityLayerClient) getHeightFromHash(hash availtypes.Hash) (uint64, error) {
 	c.logger.Debug("Getting block height from hash", "hash", hash)
-	block, err := c.client.GetBlock(hash)
+	header, err := c.client.GetHeader(hash)
 	if err != nil {
 		return 0, fmt.Errorf("cannot get block by hash:%w", err)
 	}
-	return uint64(block.Block.Header.Number), nil
+	return uint64(header.Number), nil
 }

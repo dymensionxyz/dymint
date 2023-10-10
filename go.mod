@@ -5,7 +5,7 @@ go 1.19
 require (
 	code.cloudfoundry.org/go-diodes v0.0.0-20220725190411-383eb6634c40
 	cosmossdk.io/errors v1.0.0-beta.7
-	github.com/avast/retry-go v3.0.0+incompatible
+	github.com/avast/retry-go/v4 v4.5.0
 	github.com/celestiaorg/go-cnc v0.4.2
 	github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.12
 	github.com/dgraph-io/badger/v3 v3.2103.3
@@ -19,7 +19,6 @@ require (
 	github.com/gorilla/rpc v1.2.0
 	github.com/gorilla/websocket v1.5.0
 	github.com/informalsystems/tm-load-test v1.3.0
-	github.com/ipfs/go-log v1.0.5
 	github.com/libp2p/go-libp2p v0.26.0
 	github.com/libp2p/go-libp2p-core v0.20.1
 	github.com/libp2p/go-libp2p-kad-dht v0.21.0
@@ -64,6 +63,7 @@ require (
 	github.com/hashicorp/go-uuid v1.0.1 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.1 // indirect
 	github.com/holiman/uint256 v1.2.2-0.20230321075855-87b91420868c // indirect
+	github.com/ipfs/go-log v1.0.5 // indirect
 	github.com/lib/pq v1.10.7 // indirect
 	github.com/libp2p/go-yamux/v4 v4.0.0 // indirect
 	github.com/minio/highwayhash v1.0.2 // indirect
@@ -242,7 +242,7 @@ require (
 	github.com/golang/glog v1.1.0 // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20190812055157-5d271430af9f // indirect
 	github.com/ignite/cli v0.25.2
-	github.com/pkg/errors v0.9.1 // indirect
+	github.com/pkg/errors v0.9.1
 	github.com/prometheus/common v0.42.0 // indirect
 	github.com/smartystreets/assertions v1.0.1 // indirect
 	golang.org/x/tools v0.7.0 // indirect

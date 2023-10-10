@@ -6,15 +6,16 @@ import (
 	"strconv"
 	"time"
 
-	"cosmossdk.io/errors"
-	"github.com/avast/retry-go"
+	"github.com/avast/retry-go/v4"
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/codec"
 	cdctypes "github.com/cosmos/cosmos-sdk/codec/types"
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	"github.com/dymensionxyz/cosmosclient/cosmosclient"
 	rollapptypes "github.com/dymensionxyz/dymension/x/rollapp/types"
+	"github.com/google/uuid"
 	"github.com/ignite/cli/ignite/pkg/cosmosaccount"
+	"github.com/pkg/errors"
 
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	sequencertypes "github.com/dymensionxyz/dymension/x/sequencer/types"
@@ -44,6 +45,10 @@ const (
 	batchRetryMaxDelay     = 1 * time.Minute
 	batchAcceptanceTimeout = 120 * time.Second
 	batchRetryAttempts     = 10
+)
+
+const (
+	postBatchSubscriberPrefix = "postBatchSubscriber"
 )
 
 // LayerClient is intended only for usage in tests.
@@ -90,7 +95,6 @@ type HubClient struct {
 	// channel for getting notified when a batch is accepted by the settlement layer.
 	// only one batch of a specific height can get accepted and we can are currently sending only one batch at a time.
 	// for that reason it's safe to assume that if a batch is accepted, it refers to the last batch we've sent.
-	batchAcceptedCh        chan bool
 	batchRetryAttempts     uint
 	batchRetryDelay        time.Duration
 	batchAcceptanceTimeout time.Duration
@@ -151,7 +155,6 @@ func newDymensionHubClient(config settlement.Config, pubsub *pubsub.Server, logg
 		batchRetryAttempts:     batchRetryAttempts,
 		batchAcceptanceTimeout: batchAcceptanceTimeout,
 		batchRetryDelay:        batchRetryDelay,
-		batchAcceptedCh:        make(chan bool, 1),
 	}
 
 	for _, option := range options {
@@ -203,14 +206,24 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 	if err != nil {
 		panic(err)
 	}
-WaitForBatchAcceptance:
+
+	postBatchSubscriberClient := fmt.Sprintf("%s-%d-%s", postBatchSubscriberPrefix, batch.StartHeight, uuid.New().String())
+	subscription, err := d.pubsub.Subscribe(d.ctx, postBatchSubscriberClient, settlement.EventQueryNewSettlementBatchAccepted)
+	if err != nil {
+		d.logger.Error("failed to subscribe to state update events", "err", err)
+		panic(err)
+	}
+
+	//nolint:errcheck
+	defer d.pubsub.Unsubscribe(d.ctx, postBatchSubscriberClient, settlement.EventQueryNewSettlementBatchAccepted)
+
+	// Try submitting the batch to the settlement layer. If submission (i.e only submission, not acceptance) fails we emit an unhealthy event
+	// and try again in the next loop. If submission succeeds we wait for the batch to be accepted by the settlement layer.
+	// If it is not accepted we emit an unhealthy event and start again the submission loop.
 	for {
 		select {
 		case <-d.ctx.Done():
 			return
-		// Try submitting the batch to the settlement layer. If submission (i.e only submission, not acceptance) fails we emit an unhealthy event
-		// and try again in the next loop. If submission succeeds we wait for the batch to be accepted by the settlement layer.
-		// If it is not accepted we emit an unhealthy event and start again the submission loop.
 		default:
 			// Try submitting the batch
 			err := d.submitBatch(msgUpdateState)
@@ -221,55 +234,59 @@ WaitForBatchAcceptance:
 				utils.SubmitEventOrPanic(d.ctx, d.pubsub, heatlhEventData,
 					map[string][]string{settlement.EventTypeKey: {settlement.EventSettlementHealthStatus}})
 				// Sleep to allow context cancellation to take effect before retrying
+
 				time.Sleep(100 * time.Millisecond)
-			} else {
-				// Batch was submitted successfully. Wait for it to be accepted by the settlement layer.
-				ticker := time.NewTicker(d.batchAcceptanceTimeout)
-				defer ticker.Stop()
-				for {
-					select {
-					case <-d.ctx.Done():
-						return
-					case <-d.batchAcceptedCh:
-						d.logger.Debug("Batch accepted by settlement layer. Emitting healthy event",
-							"startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
-						heatlhEventData := &settlement.EventDataSettlementHealthStatus{Healthy: true}
-						utils.SubmitEventOrPanic(d.ctx, d.pubsub, heatlhEventData,
-							map[string][]string{settlement.EventTypeKey: {settlement.EventSettlementHealthStatus}})
-						return
-					case <-ticker.C:
-						// Before emitting unhealthy event, check if the batch was accepted by the settlement layer and
-						// we've just missed the event.
-						includedBatch, err := d.waitForBatchInclusion(batch.StartHeight)
-						if err == nil {
-							d.logger.Debug("Batch accepted by settlement layer. Emitting events")
-							// Emit batch accepted event
-							batchAcceptedEvent := &settlement.EventDataNewSettlementBatchAccepted{
-								EndHeight:  includedBatch.EndHeight,
-								StateIndex: includedBatch.StateIndex,
-							}
-							utils.SubmitEventOrPanic(d.ctx, d.pubsub, batchAcceptedEvent,
-								map[string][]string{settlement.EventTypeKey: {settlement.EventNewSettlementBatchAccepted}})
-							// Emit health event
-							heatlhEventData := &settlement.EventDataSettlementHealthStatus{Healthy: true}
-							utils.SubmitEventOrPanic(d.ctx, d.pubsub, heatlhEventData,
-								map[string][]string{settlement.EventTypeKey: {settlement.EventSettlementHealthStatus}})
-							return
-						}
-						// Batch was not accepted by the settlement layer. Emitting unhealthy event
-						d.logger.Debug("Batch not accepted by settlement layer. Emitting unhealthy event",
-							"startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
-						heatlhEventData := &settlement.EventDataSettlementHealthStatus{Healthy: false, Error: settlement.ErrBatchNotAccepted}
-						utils.SubmitEventOrPanic(d.ctx, d.pubsub, heatlhEventData,
-							map[string][]string{settlement.EventTypeKey: {settlement.EventSettlementHealthStatus}})
-						// Stop the ticker and restart the loop
-						ticker.Stop()
-						continue WaitForBatchAcceptance
-					}
-				}
+				continue
 			}
 		}
 
+		// Batch was submitted successfully. Wait for it to be accepted by the settlement layer.
+		ticker := time.NewTicker(d.batchAcceptanceTimeout)
+		defer ticker.Stop()
+
+		select {
+		case <-d.ctx.Done():
+			return
+		case <-subscription.Cancelled():
+			d.logger.Debug("SLBatchPost subscription canceled")
+			return
+		case <-subscription.Out():
+			d.logger.Info("Batch accepted by settlement layer. Emitting healthy event",
+				"startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
+			heatlhEventData := &settlement.EventDataSettlementHealthStatus{Healthy: true}
+			utils.SubmitEventOrPanic(d.ctx, d.pubsub, heatlhEventData,
+				map[string][]string{settlement.EventTypeKey: {settlement.EventSettlementHealthStatus}})
+			return
+		case <-ticker.C:
+			// Before emitting unhealthy event, check if the batch was accepted by the settlement layer and
+			// we've just missed the event.
+			includedBatch, err := d.waitForBatchInclusion(batch.StartHeight)
+			if err != nil {
+				// Batch was not accepted by the settlement layer. Emitting unhealthy event
+				d.logger.Error("Batch not accepted by settlement layer. Emitting unhealthy event",
+					"startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
+				heatlhEventData := &settlement.EventDataSettlementHealthStatus{Healthy: false, Error: settlement.ErrBatchNotAccepted}
+				utils.SubmitEventOrPanic(d.ctx, d.pubsub, heatlhEventData,
+					map[string][]string{settlement.EventTypeKey: {settlement.EventSettlementHealthStatus}})
+				// Stop the ticker and restart the loop
+				ticker.Stop()
+				continue
+			}
+
+			d.logger.Info("Batch accepted by settlement layer", "startHeight", includedBatch.StartHeight, "endHeight", includedBatch.EndHeight)
+			// Emit batch accepted event
+			batchAcceptedEvent := &settlement.EventDataNewSettlementBatchAccepted{
+				EndHeight:  includedBatch.EndHeight,
+				StateIndex: includedBatch.StateIndex,
+			}
+			utils.SubmitEventOrPanic(d.ctx, d.pubsub, batchAcceptedEvent,
+				map[string][]string{settlement.EventTypeKey: {settlement.EventNewSettlementBatchAccepted}})
+			// Emit health event
+			heatlhEventData := &settlement.EventDataSettlementHealthStatus{Healthy: true}
+			utils.SubmitEventOrPanic(d.ctx, d.pubsub, heatlhEventData,
+				map[string][]string{settlement.EventTypeKey: {settlement.EventSettlementHealthStatus}})
+			return
+		}
 	}
 }
 
@@ -375,7 +392,6 @@ func (d *HubClient) eventHandler() {
 			if err != nil {
 				panic(err)
 			}
-			d.batchAcceptedCh <- true
 		}
 	}
 }
@@ -499,7 +515,7 @@ func (d *HubClient) waitForBatchInclusion(batchStartHeight uint64) (*settlement.
 			return nil
 		}
 		return settlement.ErrBatchNotFound
-	}, retry.Context(d.ctx), retry.LastErrorOnly(true), retry.Delay(d.batchRetryDelay), retry.Attempts(d.batchRetryAttempts))
+	}, retry.Context(d.ctx), retry.LastErrorOnly(true),
+		retry.Delay(d.batchRetryDelay), retry.Attempts(d.batchRetryAttempts), retry.MaxDelay(batchRetryMaxDelay))
 	return resultRetriveBatch, err
-
 }
