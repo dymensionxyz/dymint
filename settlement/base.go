@@ -179,7 +179,7 @@ func (b *BaseLayerClient) stateUpdatesHandler(ready chan bool) {
 			utils.SubmitEventOrPanic(b.ctx, b.pubsub, newBatchEventData,
 				map[string][]string{EventTypeKey: {EventNewBatchAccepted}})
 		case <-subscription.Cancelled():
-			b.logger.Info("subscription canceled")
+			b.logger.Info("stateUpdatesHandler subscription canceled")
 			return
 		case <-b.ctx.Done():
 			b.logger.Info("Context done. Exiting state update handler")

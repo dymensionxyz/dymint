@@ -88,7 +88,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 		case <-ticker.C:
 			err := m.produceBlock(ctx, produceEmptyBlock)
 			if err == types.ErrSkippedEmptyBlock {
-				m.logger.Debug("Skipped empty block")
+				// m.logger.Debug("Skipped empty block")
 				continue
 			}
 			if err != nil {
