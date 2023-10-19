@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	prototypes "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 
 	pb "github.com/dymensionxyz/dymint/types/pb/dymint"
@@ -211,6 +212,12 @@ func (c *Commit) ToProto() *pb.Commit {
 		Height:     c.Height,
 		HeaderHash: c.HeaderHash[:],
 		Signatures: signaturesToByteSlices(c.Signatures),
+		TmSignature: &prototypes.CommitSig{
+			BlockIdFlag:      prototypes.BlockIDFlag(c.TMSignature.BlockIDFlag),
+			ValidatorAddress: c.TMSignature.ValidatorAddress,
+			Timestamp:        c.TMSignature.Timestamp,
+			Signature:        c.TMSignature.Signature,
+		},
 	}
 }
 
@@ -221,6 +228,15 @@ func (c *Commit) FromProto(other *pb.Commit) error {
 		return errors.New("invalid length of HeaderHash")
 	}
 	c.Signatures = byteSlicesToSignatures(other.Signatures)
+	// For backwards compatibility with old state files that don't have this field.
+	if other.TmSignature != nil {
+		c.TMSignature = types.CommitSig{
+			BlockIDFlag:      types.BlockIDFlag(other.TmSignature.BlockIdFlag),
+			ValidatorAddress: other.TmSignature.ValidatorAddress,
+			Timestamp:        other.TmSignature.Timestamp,
+			Signature:        other.TmSignature.Signature,
+		}
+	}
 
 	return nil
 }

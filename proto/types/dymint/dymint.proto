@@ -2,6 +2,7 @@ syntax = "proto3";
 package dymint;
 option go_package = "github.com/dymensionxyz/dymint/types/pb/dymint";
 import "types/tendermint/abci/types.proto";
+import "types/tendermint/types/types.proto";
 
 // Version captures the consensus rules for processing a block in the blockchain,
 // including all blockchain data structures and the rules of the application's
@@ -63,6 +64,7 @@ message Commit {
 	bytes header_hash = 2;
 	// Note: most of the time this will be a single sinature
 	repeated bytes signatures = 3;
+	tendermint.types.CommitSig tm_signature = 4;
 }
 
 message Data {

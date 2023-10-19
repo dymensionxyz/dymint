@@ -121,28 +121,34 @@ func ToABCIBlockMeta(block *types.Block) (*tmtypes.BlockMeta, error) {
 // This function only converts fields that are available in Dymint commit.
 // Other fields (especially ValidatorAddress and Timestamp of Signature) has to be filled by caller.
 func ToABCICommit(commit *types.Commit, header *types.Header) *tmtypes.Commit {
+	headerHash := header.Hash()
 	tmCommit := tmtypes.Commit{
 		Height: int64(commit.Height),
 		Round:  0,
 		BlockID: tmtypes.BlockID{
-			Hash: commit.HeaderHash[:],
+			Hash: headerHash[:],
 			PartSetHeader: tmtypes.PartSetHeader{
 				Total: 1,
-				Hash:  commit.HeaderHash[:],
+				Hash:  headerHash[:],
 			},
 		},
 	}
-	for _, sig := range commit.Signatures {
-		commitSig := tmtypes.CommitSig{
-			BlockIDFlag: tmtypes.BlockIDFlagCommit,
-			Signature:   sig,
+	// Check if TMSignature exists. if not use the previous dymint signature for backwards compatibility.
+	if len(commit.TMSignature.Signature) == 0 {
+		for _, sig := range commit.Signatures {
+			commitSig := tmtypes.CommitSig{
+				BlockIDFlag: tmtypes.BlockIDFlagCommit,
+				Signature:   sig,
+			}
+			tmCommit.Signatures = append(tmCommit.Signatures, commitSig)
 		}
-		tmCommit.Signatures = append(tmCommit.Signatures, commitSig)
-	}
-	// This assumes that we have only one signature
-	if len(commit.Signatures) == 1 {
-		tmCommit.Signatures[0].ValidatorAddress = header.ProposerAddress
-		tmCommit.Signatures[0].Timestamp = time.Unix(0, int64(header.Time))
+		// This assumes that we have only one signature
+		if len(commit.Signatures) == 1 {
+			tmCommit.Signatures[0].ValidatorAddress = header.ProposerAddress
+			tmCommit.Signatures[0].Timestamp = time.Unix(0, int64(header.Time))
+		}
+	} else {
+		tmCommit.Signatures = append(tmCommit.Signatures, commit.TMSignature)
 	}
 
 	return &tmCommit

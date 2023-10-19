@@ -18,8 +18,9 @@ import (
 	tmcrypto "github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/libs/pubsub"
-	"github.com/tendermint/tendermint/proxy"
 	tmtypes "github.com/tendermint/tendermint/types"
+
+	"github.com/tendermint/tendermint/proxy"
 
 	"github.com/dymensionxyz/dymint/config"
 	"github.com/dymensionxyz/dymint/da"

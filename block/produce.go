@@ -10,6 +10,10 @@ import (
 	abciconv "github.com/dymensionxyz/dymint/conv/abci"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
+	tmed25519 "github.com/tendermint/tendermint/crypto/ed25519"
+	cmtproto "github.com/tendermint/tendermint/proto/tendermint/types"
+	tmtypes "github.com/tendermint/tendermint/types"
+	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
 // waitForSync enforces the aggregator to be synced before it can produce blocks.
@@ -156,7 +160,16 @@ func (m *Manager) produceBlock(ctx context.Context, allowEmpty bool) error {
 		if err != nil {
 			return err
 		}
+		proposerAddress, err := getAddress(m.proposerKey)
+		if err != nil {
+			return err
+		}
 		sign, err := m.proposerKey.Sign(abciHeaderBytes)
+		if err != nil {
+			return err
+		}
+		voteTimestamp := tmtime.Now()
+		tmSignature, err := m.createTMSignature(block, proposerAddress, voteTimestamp)
 		if err != nil {
 			return err
 		}
@@ -164,6 +177,12 @@ func (m *Manager) produceBlock(ctx context.Context, allowEmpty bool) error {
 			Height:     block.Header.Height,
 			HeaderHash: block.Header.Hash(),
 			Signatures: []types.Signature{sign},
+			TMSignature: tmtypes.CommitSig{
+				BlockIDFlag:      2,
+				ValidatorAddress: proposerAddress,
+				Timestamp:        voteTimestamp,
+				Signature:        tmSignature,
+			},
 		}
 
 	}
@@ -180,4 +199,40 @@ func (m *Manager) produceBlock(ctx context.Context, allowEmpty bool) error {
 	m.logger.Info("block created", "height", newHeight, "num_tx", len(block.Data.Txs))
 	rollappHeightGauge.Set(float64(newHeight))
 	return nil
+}
+
+func (m *Manager) createTMSignature(block *types.Block, proposerAddress []byte, voteTimestamp time.Time) ([]byte, error) {
+	headerHash := block.Header.Hash()
+	vote := tmtypes.Vote{
+		Type:      cmtproto.PrecommitType,
+		Height:    int64(block.Header.Height),
+		Round:     0,
+		Timestamp: voteTimestamp,
+		BlockID: tmtypes.BlockID{Hash: headerHash[:], PartSetHeader: tmtypes.PartSetHeader{
+			Total: 1,
+			Hash:  headerHash[:],
+		}},
+		ValidatorAddress: proposerAddress,
+		ValidatorIndex:   0,
+	}
+	v := vote.ToProto()
+	// convert libp2p key to tm key
+	raw_key, _ := m.proposerKey.Raw()
+	tmprivkey := tmed25519.PrivKey(raw_key)
+	tmprivkey.PubKey().Bytes()
+	// Create a mock validator to sign the vote
+	tmvalidator := tmtypes.NewMockPVWithParams(tmprivkey, false, false)
+	err := tmvalidator.SignVote(m.lastState.ChainID, v)
+	if err != nil {
+		return nil, err
+	}
+	// Update the vote with the signature
+	vote.Signature = v.Signature
+	pubKey := tmprivkey.PubKey()
+	voteSignBytes := tmtypes.VoteSignBytes(m.lastState.ChainID, v)
+	if !pubKey.VerifySignature(voteSignBytes, vote.Signature) {
+		return nil, fmt.Errorf("wrong signature")
+	}
+	return vote.Signature, nil
+
 }

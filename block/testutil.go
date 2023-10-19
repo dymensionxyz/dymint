@@ -55,6 +55,7 @@ func getManager(conf config.BlockManagerConfig, settlementlc settlement.LayerI, 
 	if err != nil {
 		return nil, err
 	}
+
 	// Init the settlement layer mock
 	if settlementlc == nil {
 		settlementlc = slregistry.GetClient(slregistry.Mock)

@@ -2,4 +2,5 @@ proto/pb
 .DS_Store
 .vscode
 .idea
+.go-version
 build
