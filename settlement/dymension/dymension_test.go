@@ -211,7 +211,7 @@ func TestPostBatch(t *testing.T) {
 					assert.Equal(t, c.expectedError, healthStatusEvent.Error)
 					atomic.AddInt64(&eventsReceivedCount, 1)
 				case <-time.After(10 * time.Second):
-					t.Error("Didn't recieve health event")
+					t.Error("Didn't receive health event")
 				}
 				wg.Done()
 			}()
@@ -224,7 +224,7 @@ func TestPostBatch(t *testing.T) {
 						assert.Equal(t, batchAcceptedEventData.EndHeight, batch.EndHeight)
 						atomic.AddInt64(&eventsReceivedCount, 1)
 					case <-time.After(10 * time.Second):
-						t.Error("Didn't recieve batch accepted event")
+						t.Error("Didn't receive batch accepted event")
 					}
 					wg.Done()
 
