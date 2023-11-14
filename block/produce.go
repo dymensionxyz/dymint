@@ -93,6 +93,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 			}
 			if err != nil {
 				m.logger.Error("error while producing block", "error", err)
+				m.shouldProduceBlocksCh <- false
 				continue
 			}
 			//If empty blocks enabled, after block produced, reset the timeout timer
