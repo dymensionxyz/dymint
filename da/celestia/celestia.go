@@ -269,8 +269,12 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(dataLayerHeight uint64) da
 		var batch pb.Batch
 		err = proto.Unmarshal(msg, &batch)
 		if err != nil {
-			c.logger.Error("failed to unmarshal batch", "daHeight", dataLayerHeight, "position", i, "error", err)
-			continue
+			return da.ResultRetrieveBatch{
+				BaseResult: da.BaseResult{
+					Code:    da.StatusError,
+					Message: err.Error(),
+				},
+			}
 		}
 		batches[i] = new(types.Batch)
 		err := batches[i].FromProto(&batch)

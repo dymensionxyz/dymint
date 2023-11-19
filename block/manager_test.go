@@ -33,7 +33,7 @@ import (
 
 const (
 	connectionRefusedErrorMessage = "connection refused"
-	batchNotFoundErrorMessage     = "batch not found"
+	batchNotFoundErrorMessage     = "no batches found"
 )
 
 func TestInitialState(t *testing.T) {
