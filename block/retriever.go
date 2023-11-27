@@ -21,7 +21,10 @@ func (m *Manager) RetriveLoop(ctx context.Context) {
 		default:
 			// Get only the latest sync target
 			syncTarget := syncTargetpoller.Next()
-			m.syncUntilTarget(ctx, *(*uint64)(syncTarget))
+			err := m.syncUntilTarget(ctx, *(*uint64)(syncTarget))
+			if err != nil {
+				panic(err)
+			}
 			// Check if after we sync we are synced or a new syncTarget was already set.
 			// If we are synced then signal all goroutines waiting on isSyncedCond.
 			if m.store.Height() >= atomic.LoadUint64(&m.syncTarget) {
@@ -37,26 +40,36 @@ func (m *Manager) RetriveLoop(ctx context.Context) {
 // syncUntilTarget syncs the block until the syncTarget is reached.
 // It fetches the batches from the settlement, gets the DA height and gets
 // the actual blocks from the DA.
-func (m *Manager) syncUntilTarget(ctx context.Context, syncTarget uint64) {
+func (m *Manager) syncUntilTarget(ctx context.Context, syncTarget uint64) error {
 	currentHeight := m.store.Height()
 	for currentHeight < syncTarget {
-		m.logger.Info("Syncing until target", "current height", currentHeight, "syncTarget", syncTarget)
-		resultRetrieveBatch, err := m.settlementClient.RetrieveBatch(atomic.LoadUint64(&m.lastState.SLStateIndex) + 1)
+		currStateIdx := atomic.LoadUint64(&m.lastState.SLStateIndex) + 1
+		m.logger.Info("Syncing until target", "height", currentHeight, "state_index", currStateIdx, "syncTarget", syncTarget)
+		settlementBatch, err := m.settlementClient.RetrieveBatch(currStateIdx)
 		if err != nil {
-			m.logger.Error("Failed to sync until target. error while retrieving batch", "error", err)
-			continue
+			return err
 		}
-		err = m.processNextDABatch(ctx, resultRetrieveBatch.MetaData.DA.Height)
+
+		if settlementBatch.StartHeight != currentHeight+1 {
+			return fmt.Errorf("settlement batch start height (%d) on index (%d) is not the expected", settlementBatch.StartHeight, currStateIdx)
+		}
+
+		err = m.processNextDABatch(ctx, settlementBatch.MetaData.DA.Height)
 		if err != nil {
-			m.logger.Error("Failed to sync until target. error while processing next DA batch", "error", err)
-			break
+			return err
 		}
-		err = m.updateStateIndex(resultRetrieveBatch.StateIndex)
-		if err != nil {
-			return
-		}
+
 		currentHeight = m.store.Height()
+		if currentHeight != settlementBatch.EndHeight {
+			return fmt.Errorf("after applying state index (%d), the height (%d) is not as expected (%d)", currStateIdx, currentHeight, settlementBatch.EndHeight)
+		}
+
+		err = m.updateStateIndex(settlementBatch.StateIndex)
+		if err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 func (m *Manager) updateStateIndex(stateIndex uint64) error {
@@ -73,10 +86,11 @@ func (m *Manager) processNextDABatch(ctx context.Context, daHeight uint64) error
 	m.logger.Debug("trying to retrieve batch from DA", "daHeight", daHeight)
 	batchResp, err := m.fetchBatch(daHeight)
 	if err != nil {
-		m.logger.Error("failed to retrieve batch from DA", "daHeight", daHeight, "error", err)
 		return err
 	}
+
 	m.logger.Debug("retrieved batches", "n", len(batchResp.Batches), "daHeight", daHeight)
+
 	for _, batch := range batchResp.Batches {
 		for i, block := range batch.Blocks {
 			err := m.applyBlock(ctx, block, batch.Commits[i], blockMetaData{source: daBlock, daHeight: daHeight})
@@ -93,9 +107,14 @@ func (m *Manager) fetchBatch(daHeight uint64) (da.ResultRetrieveBatch, error) {
 	batchRes := m.retriever.RetrieveBatches(daHeight)
 	switch batchRes.Code {
 	case da.StatusError:
-		err = fmt.Errorf("failed to retrieve batch: %s", batchRes.Message)
+		err = fmt.Errorf("failed to retrieve batch from height %d: %s", daHeight, batchRes.Message)
 	case da.StatusTimeout:
-		err = fmt.Errorf("timeout during retrieve batch: %s", batchRes.Message)
+		err = fmt.Errorf("timeout during retrieve batch from height %d: %s", daHeight, batchRes.Message)
 	}
+
+	if len(batchRes.Batches) == 0 {
+		err = fmt.Errorf("no batches found on height %d", daHeight)
+	}
+
 	return batchRes, err
 }

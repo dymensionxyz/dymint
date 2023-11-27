@@ -93,6 +93,8 @@ func (m *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 		return da.ResultSubmitBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error()}}
 	}
 
+	atomic.StoreUint64(&m.daHeight, daHeight+1)
+
 	return da.ResultSubmitBatch{
 		BaseResult: da.BaseResult{
 			Code:     da.StatusSuccess,

@@ -264,16 +264,16 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(dataLayerHeight uint64) da
 		}
 	}
 
-	batches := make([]*types.Batch, len(data))
+	var batches []*types.Batch
 	for i, msg := range data {
 		var batch pb.Batch
 		err = proto.Unmarshal(msg, &batch)
 		if err != nil {
-			c.logger.Error("failed to unmarshal batch", "daHeight", dataLayerHeight, "position", i, "error", err)
+			c.logger.Error("failed to unmarshal block", "daHeight", dataLayerHeight, "position", i, "error", err)
 			continue
 		}
-		batches[i] = new(types.Batch)
-		err := batches[i].FromProto(&batch)
+		parsedBatch := new(types.Batch)
+		err := parsedBatch.FromProto(&batch)
 		if err != nil {
 			return da.ResultRetrieveBatch{
 				BaseResult: da.BaseResult{
@@ -282,6 +282,7 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(dataLayerHeight uint64) da
 				},
 			}
 		}
+		batches = append(batches, parsedBatch)
 	}
 
 	return da.ResultRetrieveBatch{
