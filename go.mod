@@ -1,4 +1,4 @@
-module github.com/dymensionxyz/dymint
+module github.com/srene/dymint
 
 go 1.19
 

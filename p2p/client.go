@@ -304,12 +304,14 @@ func (c *Client) advertise(ctx context.Context) error {
 }
 
 func (c *Client) findPeers(ctx context.Context) error {
+	c.logger.Info("finding peers", "namespace", c.getNamespace())
 	peerCh, err := c.disc.FindPeers(ctx, c.getNamespace(), cdiscovery.Limit(peerLimit))
 	if err != nil {
 		return err
 	}
 
 	for peer := range peerCh {
+		c.logger.Info("Peer found", "peer", peer)
 		go c.tryConnect(ctx, peer)
 	}
 
@@ -324,7 +326,7 @@ func (c *Client) tryConnect(ctx context.Context, peer peer.AddrInfo) {
 		c.logger.Error("failed to connect to peer", "peer", peer, "error", err)
 		return
 	}
-	c.logger.Debug("connected to peer", "peer", peer)
+	c.logger.Info("connected to peer", "peer", peer)
 }
 
 func (c *Client) setupGossiping(ctx context.Context) error {
