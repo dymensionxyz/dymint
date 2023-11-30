@@ -100,7 +100,7 @@ func NewClient(conf config.P2PConfig, privKey crypto.PrivKey, chainID string, lo
 // 2. Setup gossibsub.
 // 3. Setup DHT, establish connection to seed nodes and initialize peer discovery.
 // 4. Use active peer discovery to look for peers from same ORU network.
-func (c *Client) Start(ctx context.Context) error {
+func (c *Client) Start(ctx context.Context, opts ...pubsub.Option) error {
 	// create new, cancelable context
 	ctx, c.cancel = context.WithCancel(ctx)
 	c.logger.Debug("starting P2P client")
@@ -108,17 +108,17 @@ func (c *Client) Start(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	return c.startWithHost(ctx, host)
+	return c.startWithHost(ctx, host, opts...)
 }
 
-func (c *Client) startWithHost(ctx context.Context, h host.Host) error {
+func (c *Client) startWithHost(ctx context.Context, h host.Host, opts ...pubsub.Option) error {
 	c.host = h
 	for _, a := range c.host.Addrs() {
 		c.logger.Info("listening on", "address", fmt.Sprintf("%s/p2p/%s", a, c.host.ID()))
 	}
 
 	c.logger.Debug("setting up gossiping")
-	err := c.setupGossiping(ctx)
+	err := c.setupGossiping(ctx, opts...)
 	if err != nil {
 		return err
 	}
@@ -329,8 +329,8 @@ func (c *Client) tryConnect(ctx context.Context, peer peer.AddrInfo) {
 	c.logger.Info("connected to peer", "peer", peer)
 }
 
-func (c *Client) setupGossiping(ctx context.Context) error {
-	ps, err := pubsub.NewGossipSub(ctx, c.host)
+func (c *Client) setupGossiping(ctx context.Context, opts ...pubsub.Option) error {
+	ps, err := pubsub.NewGossipSub(ctx, c.host, opts...)
 	if err != nil {
 		return err
 	}
