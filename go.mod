@@ -252,7 +252,7 @@ require (
 
 replace (
 	github.com/centrifuge/go-substrate-rpc-client/v4 => github.com/availproject/go-substrate-rpc-client/v4 v4.0.12-avail-1.4.0-rc1-5e286e3
-	github.com/dymensionxyz/dymint => github.com/srene/dymint v0.0.0-20231201085905-e4206f115262
+	github.com/dymensionxyz/dymint => github.com/srene/dymint v0.0.0-20231201090635-0be8a2f9ca30
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.2-alpha.regen.4
 	github.com/gorilla/rpc => github.com/dymensionxyz/rpc v1.3.1
 	github.com/tendermint/tendermint => github.com/cometbft/cometbft v0.34.28
