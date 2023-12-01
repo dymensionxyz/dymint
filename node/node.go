@@ -180,7 +180,7 @@ func NewNode(ctx context.Context, conf config.NodeConfig, p2pKey crypto.PrivKey,
 
 	// Set p2p client and it's validators
 	p2pValidator := p2p.NewValidator(logger.With("module", "p2p_validator"), pubsubServer)
-	p2pClient, err := p2p.NewClient(conf.P2P, p2pKey, genesis.ChainID, logger.With("module", "p2p"), opts)
+	p2pClient, err := p2p.NewClient(conf.P2P, p2pKey, genesis.ChainID, logger.With("module", "p2p"), opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -249,7 +249,7 @@ func (n *Node) initGenesisChunks() error {
 // OnStart is a part of Service interface.
 func (n *Node) OnStart() error {
 	n.Logger.Info("starting P2P client")
-	err := n.P2P.Start(n.ctx, n.opts)
+	err := n.P2P.Start(n.ctx)
 	if err != nil {
 		return fmt.Errorf("error while starting P2P client: %w", err)
 	}
