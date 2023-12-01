@@ -334,7 +334,12 @@ func (c *Client) tryConnect(ctx context.Context, peer peer.AddrInfo) {
 }
 
 func (c *Client) setupGossiping(ctx context.Context) error {
+
 	ps, err := pubsub.NewGossipSub(ctx, c.host, c.opts...)
+	c.logger.Info("Starting gosssip", "d", pubsub.GossipSubD)
+	c.logger.Info("Starting gosssip", "dhi", pubsub.GossipSubDhi)
+	c.logger.Info("Starting gosssip", "dlo", pubsub.GossipSubDhi)
+
 	if err != nil {
 		return err
 	}
