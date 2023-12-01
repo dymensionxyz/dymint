@@ -112,7 +112,6 @@ type Node struct {
 
 	baseLayersHealthStatus BaseLayersHealthStatus
 
-	opts []ps.Option
 	// keep context here only because of API compatibility
 	// - it's used in `OnStart` (defined in service.Service interface)
 	ctx context.Context
@@ -181,7 +180,7 @@ func NewNode(ctx context.Context, conf config.NodeConfig, p2pKey crypto.PrivKey,
 
 	// Set p2p client and it's validators
 	p2pValidator := p2p.NewValidator(logger.With("module", "p2p_validator"), pubsubServer)
-	p2pClient, err := p2p.NewClient(conf.P2P, p2pKey, genesis.ChainID, logger.With("module", "p2p"))
+	p2pClient, err := p2p.NewClient(conf.P2P, p2pKey, genesis.ChainID, logger.With("module", "p2p"), opts)
 	if err != nil {
 		return nil, err
 	}
@@ -211,7 +210,6 @@ func NewNode(ctx context.Context, conf config.NodeConfig, p2pKey crypto.PrivKey,
 		IndexerService: indexerService,
 		BlockIndexer:   blockIndexer,
 		ctx:            ctx,
-		opts:           opts,
 	}
 
 	node.BaseService = *service.NewBaseService(logger, "Node", node)
