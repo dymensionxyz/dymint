@@ -79,6 +79,10 @@ type Manager struct {
 	syncCache map[uint64]*types.Block
 
 	logger log.Logger
+
+	prevBlock    map[uint64]*types.Block
+	prevCommit   map[uint64]*types.Commit
+	prevMetaData map[uint64]blockMetaData
 }
 
 // getInitialState tries to load lastState from Store, and if it's not available it reads GenesisDoc.
@@ -168,6 +172,9 @@ func NewManager(
 		shouldProduceBlocksCh: make(chan bool, 1),
 		produceEmptyBlockCh:   make(chan bool, 1),
 		logger:                logger,
+		prevBlock:             make(map[uint64]*types.Block),
+		prevCommit:            make(map[uint64]*types.Commit),
+		prevMetaData:          make(map[uint64]blockMetaData),
 	}
 
 	return agg, nil
@@ -214,9 +221,12 @@ func (m *Manager) healthStatusEventCallback(event pubsub.Message) {
 func (m *Manager) applyBlockCallback(event pubsub.Message) {
 	m.logger.Debug("Received new block event", "eventData", event.Data())
 	eventData := event.Data().(p2p.GossipedBlock)
+
 	block := eventData.Block
 	commit := eventData.Commit
+
 	err := m.applyBlock(context.Background(), &block, &commit, blockMetaData{source: gossipedBlock})
+
 	if err != nil {
 		m.logger.Debug("Failed to apply block", "err", err)
 	}

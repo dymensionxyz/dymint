@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"path/filepath"
 	"sync/atomic"
 	"time"
@@ -128,6 +129,7 @@ func initConfig(conf settlement.Config) (slstore store.KVStore, proposer string,
 		}
 	} else {
 		slstore = store.NewDefaultKVStore(conf.KeyringHomeDir, "data", kvStoreDBName)
+		fmt.Println("Setting proposarkeypath", "path", "config/priv_validator_key.json")
 		proposerKeyPath := filepath.Join(conf.KeyringHomeDir, "config/priv_validator_key.json")
 		key, err := tmp2p.LoadOrGenNodeKey(proposerKeyPath)
 		if err != nil {

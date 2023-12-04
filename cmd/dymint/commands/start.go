@@ -12,6 +12,7 @@ import (
 	"github.com/dymensionxyz/dymint/conv"
 	"github.com/dymensionxyz/dymint/node"
 	"github.com/dymensionxyz/dymint/rpc"
+	"github.com/go-kit/log/term"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	tmcfg "github.com/tendermint/tendermint/config"
@@ -21,6 +22,8 @@ import (
 	tmnode "github.com/tendermint/tendermint/node"
 	tmp2p "github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
+
+	kitlevel "github.com/go-kit/log/level"
 )
 
 var (
@@ -46,7 +49,21 @@ func NewRunNodeCmd() *cobra.Command {
 			if err := checkGenesisHash(tmconfig); err != nil {
 				return err
 			}
-			logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+			//logger := log.NewTMLogger(log.NewSyncWriter(os.Stdout))
+			colorFn := func(keyvals ...interface{}) term.FgBgColor {
+				if keyvals[0] != kitlevel.Key() {
+					panic(fmt.Sprintf("expected level key to be first, got %v", keyvals[0]))
+				}
+				switch keyvals[1].(kitlevel.Value).String() {
+				case "debug":
+					return term.FgBgColor{Fg: term.Blue}
+				case "error":
+					return term.FgBgColor{Fg: term.Red}
+				default:
+					return term.FgBgColor{}
+				}
+			}
+			logger := log.NewTMLoggerWithColorFn(log.NewSyncWriter(os.Stdout), colorFn)
 			err := startInProcess(&dymconfig, tmconfig, logger)
 			if err != nil {
 				return err

@@ -252,8 +252,9 @@ require (
 
 replace (
 	github.com/centrifuge/go-substrate-rpc-client/v4 => github.com/availproject/go-substrate-rpc-client/v4 v4.0.12-avail-1.4.0-rc1-5e286e3
-	//github.com/dymensionxyz/dymint => ../dymint
+	github.com/dymensionxyz/dymint => ../dymint
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.2-alpha.regen.4
 	github.com/gorilla/rpc => github.com/dymensionxyz/rpc v1.3.1
+	github.com/libp2p/go-libp2p-pubsub => ../go-libp2p-pubsub/
 	github.com/tendermint/tendermint => github.com/cometbft/cometbft v0.34.28
 )

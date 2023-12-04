@@ -267,6 +267,43 @@ func (c *Client) setupDHT(ctx context.Context) error {
 		return fmt.Errorf("failed to bootstrap DHT: %w", err)
 	}
 
+	ticker := time.NewTicker(2 * time.Second)
+	quit := make(chan struct{})
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				// do stuff
+				for _, p := range seedNodes {
+					found := false
+					for _, p2 := range c.Peers() {
+						c.logger.Info("Connected", "connected", p.ID.String(), "bootstrap", string(p2.NodeInfo.ID()))
+						if p.ID.String() == string(p2.NodeInfo.ID()) {
+							c.logger.Info("Connected")
+							found = true
+							err = c.dht.Bootstrap(ctx)
+							if err != nil {
+								return
+							}
+						}
+					}
+					if !found {
+						c.logger.Info("Bootstrap node not connected", p.ID)
+						err = c.dht.Bootstrap(ctx)
+						if err != nil {
+							return
+						}
+					} else {
+						c.logger.Info("Bootstrap node connected", p.ID)
+					}
+				}
+			case <-quit:
+				ticker.Stop()
+				return
+			}
+		}
+	}()
+
 	c.host = routedhost.Wrap(c.host, c.dht)
 
 	return nil
@@ -335,7 +372,20 @@ func (c *Client) tryConnect(ctx context.Context, peer peer.AddrInfo) {
 
 func (c *Client) setupGossiping(ctx context.Context) error {
 
+	pubsub.GossipSubHistoryGossip = 500
+	pubsub.GossipSubHistoryLength = 500
+	pubsub.GossipSubHeartbeatInterval = time.Duration(1 * time.Second)
+	pubsub.GossipSubMaxIHaveMessages = 500
+
 	ps, err := pubsub.NewGossipSub(ctx, c.host, c.opts...)
+	c.logger.Info("Starting gosssip", "d", pubsub.GossipSubD)
+	c.logger.Info("Starting gosssip", "dhi", pubsub.GossipSubDhi)
+	c.logger.Info("Starting gosssip", "dlo", pubsub.GossipSubDlo)
+
+	pubsub.GossipSubDhi = 12
+	pubsub.GossipSubD = 8
+	pubsub.GossipSubDlo = 6
+
 	c.logger.Info("Starting gosssip", "d", pubsub.GossipSubD)
 	c.logger.Info("Starting gosssip", "dhi", pubsub.GossipSubDhi)
 	c.logger.Info("Starting gosssip", "dlo", pubsub.GossipSubDlo)
