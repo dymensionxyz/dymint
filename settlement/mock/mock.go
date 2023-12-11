@@ -42,7 +42,7 @@ var _ settlement.LayerI = (*LayerClient)(nil)
 
 // Init initializes the mock layer client.
 func (m *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, logger log.Logger, kv store.KVStore, options ...settlement.Option) error {
-	HubClientMock, err := newHubClient(config, pubsub, logger)
+	HubClientMock, err := newHubClient(config, pubsub, logger, kv)
 	if err != nil {
 		return err
 	}
@@ -74,12 +74,15 @@ type HubClient struct {
 
 var _ settlement.HubClient = &HubClient{}
 
-func newHubClient(config settlement.Config, pubsub *pubsub.Server, logger log.Logger) (*HubClient, error) {
+func newHubClient(config settlement.Config, pubsub *pubsub.Server, logger log.Logger, kv store.KVStore) (*HubClient, error) {
 	latestHeight := uint64(0)
 	slStateIndex := uint64(0)
 	slstore, proposer, err := initConfig(config)
 	if err != nil {
 		return nil, err
+	}
+	if kv != nil {
+		slstore = kv
 	}
 	settlementKV := store.NewPrefixKV(slstore, settlementKVPrefix)
 	b, err := settlementKV.Get(slStateIndexKey)
