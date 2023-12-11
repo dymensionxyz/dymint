@@ -79,12 +79,14 @@ func newHubClient(config settlement.Config, pubsub *pubsub.Server, logger log.Lo
 	slStateIndex := uint64(0)
 	slstore, proposer, err := initConfig(config)
 	if err != nil {
-		logger.Info("HubClient", "kvstore", "Using internal kvstore")
 		return nil, err
 	}
 	if kv != nil {
 		logger.Info("HubClient", "kvstore", "Using external kvstore")
 		slstore = kv
+	} else {
+		logger.Info("HubClient", "kvstore", "Using internal kvstore")
+
 	}
 	settlementKV := store.NewPrefixKV(slstore, settlementKVPrefix)
 	b, err := settlementKV.Get(slStateIndexKey)
