@@ -118,7 +118,7 @@ type Node struct {
 }
 
 // NewNode creates new Dymint node.
-func NewNode(ctx context.Context, conf config.NodeConfig, p2pKey crypto.PrivKey, signingKey crypto.PrivKey, clientCreator proxy.ClientCreator, genesis *tmtypes.GenesisDoc, logger log.Logger, opts ...ps.Option) (*Node, error) {
+func NewNode(ctx context.Context, conf config.NodeConfig, p2pKey crypto.PrivKey, signingKey crypto.PrivKey, clientCreator proxy.ClientCreator, genesis *tmtypes.GenesisDoc, logger log.Logger, kv store.KVStore, opts ...ps.Option) (*Node, error) {
 	proxyApp := proxy.NewAppConns(clientCreator)
 	proxyApp.SetLogger(logger.With("module", "proxy"))
 	if err := proxyApp.Start(); err != nil {
@@ -165,7 +165,7 @@ func NewNode(ctx context.Context, conf config.NodeConfig, p2pKey crypto.PrivKey,
 	if conf.SettlementLayer == "mock" {
 		conf.SettlementConfig.KeyringHomeDir = conf.RootDir
 	}
-	err = settlementlc.Init(conf.SettlementConfig, pubsubServer, logger.With("module", "settlement_client"))
+	err = settlementlc.Init(conf.SettlementConfig, pubsubServer, logger.With("module", "settlement_client"), kv)
 	if err != nil {
 		return nil, fmt.Errorf("settlement layer client initialization error: %w", err)
 	}

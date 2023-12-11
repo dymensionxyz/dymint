@@ -38,7 +38,7 @@ func CreateNode(isAggregator bool, blockManagerConfig *config.BlockManagerConfig
 	// SL config
 	nodeConfig.SettlementConfig = settlement.Config{ProposerPubKey: hex.EncodeToString(pubkeyBytes)}
 
-	node, err := NewNode(context.Background(), nodeConfig, key, signingKey, proxy.NewLocalClientCreator(app), &types.GenesisDoc{ChainID: "test"}, log.TestingLogger())
+	node, err := NewNode(context.Background(), nodeConfig, key, signingKey, proxy.NewLocalClientCreator(app), &types.GenesisDoc{ChainID: "test"}, log.TestingLogger(), nil)
 	if err != nil {
 		return nil, err
 	}

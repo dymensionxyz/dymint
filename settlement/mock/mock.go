@@ -41,7 +41,7 @@ type LayerClient struct {
 var _ settlement.LayerI = (*LayerClient)(nil)
 
 // Init initializes the mock layer client.
-func (m *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, logger log.Logger, options ...settlement.Option) error {
+func (m *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, logger log.Logger, kv store.KVStore, options ...settlement.Option) error {
 	HubClientMock, err := newHubClient(config, pubsub, logger)
 	if err != nil {
 		return err
@@ -55,7 +55,7 @@ func (m *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, logg
 		options = append(baseOptions, options...)
 	}
 	m.BaseLayerClient = &settlement.BaseLayerClient{}
-	err = m.BaseLayerClient.Init(config, pubsub, logger, options...)
+	err = m.BaseLayerClient.Init(config, pubsub, logger, nil, options...)
 	if err != nil {
 		return err
 	}

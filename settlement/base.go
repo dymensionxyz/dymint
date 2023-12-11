@@ -7,6 +7,7 @@ import (
 
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/log"
+	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/dymensionxyz/dymint/utils"
 	"github.com/tendermint/tendermint/libs/pubsub"
@@ -34,7 +35,7 @@ func WithHubClient(hubClient HubClient) Option {
 }
 
 // Init is called once. it initializes the struct members.
-func (b *BaseLayerClient) Init(config Config, pubsub *pubsub.Server, logger log.Logger, options ...Option) error {
+func (b *BaseLayerClient) Init(config Config, pubsub *pubsub.Server, logger log.Logger, kv store.KVStore, options ...Option) error {
 	b.config = config
 	b.pubsub = pubsub
 	b.logger = logger

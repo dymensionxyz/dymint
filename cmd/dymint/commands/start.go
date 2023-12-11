@@ -112,6 +112,7 @@ func startInProcess(config *cfg.NodeConfig, tmConfig *tmcfg.Config, logger log.L
 		proxy.DefaultClientCreator(tmConfig.ProxyApp, tmConfig.ABCI, tmConfig.DBDir()),
 		genesis,
 		logger,
+		nil,
 	)
 	if err != nil {
 		return err

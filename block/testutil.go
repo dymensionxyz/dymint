@@ -130,7 +130,7 @@ func initDALCMock(dalc da.DataAvailabilityLayerClient, pubsubServer *pubsub.Serv
 
 // TODO(omritoptix): Possible move out to a generic testutil
 func initSettlementLayerMock(settlementlc settlement.LayerI, proposer string, pubsubServer *pubsub.Server, logger log.Logger) error {
-	err := settlementlc.Init(settlement.Config{ProposerPubKey: proposer}, pubsubServer, logger)
+	err := settlementlc.Init(settlement.Config{ProposerPubKey: proposer}, pubsubServer, logger, nil)
 	if err != nil {
 		return err
 	}
