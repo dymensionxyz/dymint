@@ -1,4 +1,4 @@
-package mock
+package grpc
 
 import (
 	"context"
@@ -9,15 +9,17 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"strconv"
 	"sync/atomic"
 	"time"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
 	tmp2p "github.com/tendermint/tendermint/p2p"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
-	rollapptypes "github.com/dymensionxyz/dymension/x/rollapp/types"
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/log"
 	"github.com/dymensionxyz/dymint/settlement"
@@ -25,12 +27,9 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 
 	"github.com/tendermint/tendermint/libs/pubsub"
+
+	slmock "github.com/dymensionxyz/dymint/settlement/grpc/mockserv/proto"
 )
-
-const kvStoreDBName = "settlement"
-
-var settlementKVPrefix = []byte{0}
-var slStateIndexKey = []byte("slStateIndex")
 
 // LayerClient is an extension of the base settlement layer client
 // for usage in tests and local development.
@@ -63,32 +62,54 @@ func (m *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, logg
 }
 
 // HubClient implements The HubClient interface
-type HubClient struct {
+type HubGrpcClient struct {
 	ProposerPubKey string
 	slStateIndex   uint64
 	logger         log.Logger
 	pubsub         *pubsub.Server
 	latestHeight   uint64
-	settlementKV   store.KVStore
+	//settlementKV   store.KVStore
+	conn   *grpc.ClientConn
+	sl     slmock.MockSLClient
+	config Config
 }
 
-var _ settlement.HubClient = &HubClient{}
+// Config contains configuration options for DataAvailabilityLayerClient.
+type Config struct {
+	// TODO(tzdybal): add more options!
+	Host string `json:"host"`
+	Port int    `json:"port"`
+}
 
-func newHubClient(config settlement.Config, pubsub *pubsub.Server, logger log.Logger, kv store.KVStore) (*HubClient, error) {
+// DefaultConfig defines default values for DataAvailabilityLayerClient configuration.
+var DefaultConfig = Config{
+	Host: "127.0.0.1",
+	Port: 7981,
+}
+
+var _ settlement.HubClient = &HubGrpcClient{}
+
+func newHubClient(config settlement.Config, pubsub *pubsub.Server, logger log.Logger, kv store.KVStore) (*HubGrpcClient, error) {
+
+	logger.Info("New grpc hub client")
 	latestHeight := uint64(0)
 	slStateIndex := uint64(0)
-	slstore, proposer, err := initConfig(config)
+	proposer, err := initConfig(config)
 	if err != nil {
 		return nil, err
 	}
-	if kv != nil {
-		logger.Info("HubClient", "kvstore", "Using external kvstore")
-		slstore = kv
-	} else {
-		logger.Info("HubClient", "kvstore", "Using internal kvstore")
-
+	var opts []grpc.DialOption
+	// TODO(tzdybal): add more options
+	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conf := DefaultConfig
+	conn, err := grpc.Dial(conf.Host+":"+strconv.Itoa(conf.Port), opts...)
+	if err != nil {
+		logger.Error("Error grpc sl connecting")
+		return nil, err
 	}
-	settlementKV := store.NewPrefixKV(slstore, settlementKVPrefix)
+
+	client := slmock.NewMockSLClient(conn)
+	/*settlementKV := store.NewPrefixKV(slstore, settlementKVPrefix)
 	b, err := settlementKV.Get(slStateIndexKey)
 	if err == nil {
 		slStateIndex = binary.BigEndian.Uint64(b)
@@ -103,44 +124,47 @@ func newHubClient(config settlement.Config, pubsub *pubsub.Server, logger log.Lo
 			return nil, errors.New("error unmarshalling batch")
 		}
 		latestHeight = settlementBatch.StartHeight + settlementBatch.NumBlocks - 1
-	}
+	}*/
 
-	return &HubClient{
+	return &HubGrpcClient{
 		ProposerPubKey: proposer,
 		logger:         logger,
 		pubsub:         pubsub,
 		latestHeight:   latestHeight,
 		slStateIndex:   slStateIndex,
-		settlementKV:   settlementKV,
+		config:         conf,
+		conn:           conn,
+		sl:             client,
+		//settlementKV:   settlementKV,
 	}, nil
 }
 
-func initConfig(conf settlement.Config) (slstore store.KVStore, proposer string, err error) {
+func initConfig(conf settlement.Config) (proposer string, err error) {
 	if conf.KeyringHomeDir == "" {
 		//init store
-		slstore = store.NewDefaultInMemoryKVStore()
+		//slstore = store.NewDefaultInMemoryKVStore()
 		//init proposer pub key
 		if conf.ProposerPubKey != "" {
 			proposer = conf.ProposerPubKey
 		} else {
 			_, proposerPubKey, err := crypto.GenerateEd25519Key(rand.Reader)
 			if err != nil {
-				return nil, "", err
+				return "", err
 			}
 			pubKeybytes, err := proposerPubKey.Raw()
 			if err != nil {
-				return nil, "", err
+				return "", err
 			}
 
 			proposer = hex.EncodeToString(pubKeybytes)
 		}
 	} else {
-		slstore = store.NewDefaultKVStore(conf.KeyringHomeDir, "data", kvStoreDBName)
+		//slstore = store.NewDefaultKVStore(conf.KeyringHomeDir, "data", kvStoreDBName)
 		fmt.Println("Setting proposarkeypath", "path", conf.KeyringHomeDir)
 		proposerKeyPath := filepath.Join(conf.KeyringHomeDir, "config/priv_validator_key.json")
 		key, err := tmp2p.LoadOrGenNodeKey(proposerKeyPath)
 		if err != nil {
-			return nil, "", err
+			return "", err
 		}
 		proposer = hex.EncodeToString(key.PubKey().Bytes())
 	}
@@ -149,18 +173,19 @@ func initConfig(conf settlement.Config) (slstore store.KVStore, proposer string,
 }
 
 // Start starts the mock client
-func (c *HubClient) Start() error {
-	c.logger.Info("Starting mock settlement")
+func (c *HubGrpcClient) Start() error {
+	c.logger.Info("Starting grpc mock settlement")
 	return nil
 }
 
 // Stop stops the mock client
-func (c *HubClient) Stop() error {
+func (c *HubGrpcClient) Stop() error {
+	c.logger.Info("Stopping grpc mock settlement")
 	return nil
 }
 
 // PostBatch saves the batch to the kv store
-func (c *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) {
+func (c *HubGrpcClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) {
 	settlementBatch := c.convertBatchtoSettlementBatch(batch, daClient, daResult)
 	c.saveBatch(settlementBatch)
 	go func() {
@@ -174,8 +199,8 @@ func (c *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 }
 
 // GetLatestBatch returns the latest batch from the kv store
-func (c *HubClient) GetLatestBatch(rollappID string) (*settlement.ResultRetrieveBatch, error) {
-	c.logger.Info("GetLatestBatch", "index", c.slStateIndex)
+func (c *HubGrpcClient) GetLatestBatch(rollappID string) (*settlement.ResultRetrieveBatch, error) {
+	c.logger.Info("GetLatestBatch grpc", "index", c.slStateIndex)
 	batchResult, err := c.GetBatchAtIndex(rollappID, atomic.LoadUint64(&c.slStateIndex))
 	if err != nil {
 		return nil, err
@@ -184,7 +209,7 @@ func (c *HubClient) GetLatestBatch(rollappID string) (*settlement.ResultRetrieve
 }
 
 // GetBatchAtIndex returns the batch at the given index
-func (c *HubClient) GetBatchAtIndex(rollappID string, index uint64) (*settlement.ResultRetrieveBatch, error) {
+func (c *HubGrpcClient) GetBatchAtIndex(rollappID string, index uint64) (*settlement.ResultRetrieveBatch, error) {
 	batchResult, err := c.retrieveBatchAtStateIndex(index)
 	if err != nil {
 		return &settlement.ResultRetrieveBatch{
@@ -195,7 +220,7 @@ func (c *HubClient) GetBatchAtIndex(rollappID string, index uint64) (*settlement
 }
 
 // GetSequencers returns a list of sequencers. Currently only returns a single sequencer
-func (c *HubClient) GetSequencers(rollappID string) ([]*types.Sequencer, error) {
+func (c *HubGrpcClient) GetSequencers(rollappID string) ([]*types.Sequencer, error) {
 	pubKeyBytes, err := hex.DecodeString(c.ProposerPubKey)
 	if err != nil {
 		return nil, err
@@ -209,8 +234,8 @@ func (c *HubClient) GetSequencers(rollappID string) ([]*types.Sequencer, error) 
 	}, nil
 }
 
-func (c *HubClient) saveBatch(batch *settlement.Batch) {
-	c.logger.Debug("Saving batch to settlement layer", "start height",
+func (c *HubGrpcClient) saveBatch(batch *settlement.Batch) {
+	c.logger.Debug("Saving batch to grpc settlement layer", "start height",
 		batch.StartHeight, "end height", batch.EndHeight)
 	b, err := json.Marshal(batch)
 	if err != nil {
@@ -218,23 +243,23 @@ func (c *HubClient) saveBatch(batch *settlement.Batch) {
 	}
 	// Save the batch to the next state index
 	slStateIndex := atomic.LoadUint64(&c.slStateIndex)
-	err = c.settlementKV.Set(getKey(slStateIndex+1), b)
+	/*err = c.settlementKV.Set(getKey(slStateIndex+1), b)
 	if err != nil {
 		panic(err)
-	}
+	}*/
 	// Save SL state index in memory and in store
 	atomic.StoreUint64(&c.slStateIndex, slStateIndex+1)
 	b = make([]byte, 8)
 	binary.BigEndian.PutUint64(b, slStateIndex+1)
-	err = c.settlementKV.Set(slStateIndexKey, b)
+	/*err = c.settlementKV.Set(slStateIndexKey, b)
 	if err != nil {
 		panic(err)
-	}
+	}*/
 	// Save latest height in memory and in store
 	atomic.StoreUint64(&c.latestHeight, batch.EndHeight)
 }
 
-func (c *HubClient) convertBatchtoSettlementBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) *settlement.Batch {
+func (c *HubGrpcClient) convertBatchtoSettlementBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) *settlement.Batch {
 	settlementBatch := &settlement.Batch{
 		StartHeight: batch.StartHeight,
 		EndHeight:   batch.EndHeight,
@@ -251,9 +276,11 @@ func (c *HubClient) convertBatchtoSettlementBatch(batch *types.Batch, daClient d
 	return settlementBatch
 }
 
-func (c *HubClient) retrieveBatchAtStateIndex(slStateIndex uint64) (*settlement.ResultRetrieveBatch, error) {
-	b, err := c.settlementKV.Get(getKey(slStateIndex))
-	c.logger.Debug("Retrieving batch from settlement layer", "SL state index", slStateIndex)
+func (c *HubGrpcClient) retrieveBatchAtStateIndex(slStateIndex uint64) (*settlement.ResultRetrieveBatch, error) {
+	//b, err := c.settlementKV.Get(getKey(slStateIndex))
+	batch, err := c.sl.GetBatch(context.TODO(), &slmock.SLGetBatchRequest{Index: slStateIndex})
+	b := batch.GetBatch()
+	c.logger.Debug("Retrieving batch from grpc settlement layer", "SL state index", slStateIndex)
 	if err != nil {
 		return nil, settlement.ErrBatchNotFound
 	}

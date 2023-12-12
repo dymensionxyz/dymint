@@ -49,7 +49,9 @@ func NewDefaultInMemoryKVStore() KVStore {
 // NewDefaultKVStore creates instance of default key-value store.
 func NewDefaultKVStore(rootDir, dbPath, dbName string) KVStore {
 	path := filepath.Join(rootify(rootDir, dbPath), dbName)
-	db, err := badger.Open(badger.DefaultOptions(path))
+	opts := badger.DefaultOptions(path)
+	opts.BypassLockGuard = true
+	db, err := badger.Open(opts)
 	if err != nil {
 		panic(err)
 	}

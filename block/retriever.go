@@ -11,7 +11,7 @@ import (
 
 // RetriveLoop listens for new sync messages written to a ring buffer and in turn
 // runs syncUntilTarget on the latest message in the ring buffer.
-func (m *Manager) RetriveLoop(ctx context.Context) {
+func (m *Manager) RetrieveLoop(ctx context.Context) {
 	m.logger.Info("Started retrieve loop")
 	syncTargetpoller := diodes.NewPoller(m.syncTargetDiode)
 	for {
@@ -20,7 +20,9 @@ func (m *Manager) RetriveLoop(ctx context.Context) {
 			return
 		default:
 			// Get only the latest sync target
+			m.logger.Info("Retrieveloop", "synctarget", m.store.Height())
 			syncTarget := syncTargetpoller.Next()
+			m.logger.Info("Retrieveloop", "synctarget", m.store.Height())
 			err := m.syncUntilTarget(ctx, *(*uint64)(syncTarget))
 			if err != nil {
 				panic(err)
@@ -104,6 +106,7 @@ func (m *Manager) processNextDABatch(ctx context.Context, daHeight uint64) error
 
 func (m *Manager) fetchBatch(daHeight uint64) (da.ResultRetrieveBatch, error) {
 	var err error
+	m.logger.Info("Fetching batch")
 	batchRes := m.retriever.RetrieveBatches(daHeight)
 	switch batchRes.Code {
 	case da.StatusError:

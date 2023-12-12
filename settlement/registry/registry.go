@@ -3,6 +3,7 @@ package registry
 import (
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/settlement/dymension"
+	"github.com/dymensionxyz/dymint/settlement/grpc"
 	"github.com/dymensionxyz/dymint/settlement/mock"
 )
 
@@ -14,12 +15,15 @@ const (
 	Mock Client = "mock"
 	// Dymension is a client for interacting with dymension settlement layer
 	Dymension Client = "dymension"
+
+	Grpc Client = "grpc"
 )
 
 // A central registry for all Settlement Layer Clients
 var clients = map[Client]func() settlement.LayerI{
 	Mock:      func() settlement.LayerI { return &mock.LayerClient{} },
 	Dymension: func() settlement.LayerI { return &dymension.LayerClient{} },
+	Grpc:      func() settlement.LayerI { return &grpc.LayerClient{} },
 }
 
 // GetClient returns client identified by name.

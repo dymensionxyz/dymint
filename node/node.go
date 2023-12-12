@@ -162,9 +162,9 @@ func NewNode(ctx context.Context, conf config.NodeConfig, p2pKey crypto.PrivKey,
 	if settlementlc == nil {
 		return nil, fmt.Errorf("couldn't get settlement client named '%s'", conf.SettlementLayer)
 	}
-	if conf.SettlementLayer == "mock" {
+	/*if conf.SettlementLayer == "mock" {
 		conf.SettlementConfig.KeyringHomeDir = conf.RootDir
-	}
+	}*/
 	err = settlementlc.Init(conf.SettlementConfig, pubsubServer, logger.With("module", "settlement_client"), kv)
 	if err != nil {
 		return nil, fmt.Errorf("settlement layer client initialization error: %w", err)

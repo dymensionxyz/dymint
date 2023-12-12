@@ -54,7 +54,7 @@ func (d *DataAvailabilityLayerClient) Init(config []byte, _ *pubsub.Server, _ st
 
 // Start creates connection to gRPC server and instantiates gRPC client.
 func (d *DataAvailabilityLayerClient) Start() error {
-	d.logger.Info("starting GRPC DALC", "host", d.config.Host, "port", d.config.Port)
+	d.logger.Info("Starting GRPC DALC", "host", d.config.Host, "port", d.config.Port)
 	var err error
 	var opts []grpc.DialOption
 	// TODO(tzdybal): add more options
@@ -77,7 +77,7 @@ func (d *DataAvailabilityLayerClient) Stop() error {
 
 // GetClientType returns client type.
 func (d *DataAvailabilityLayerClient) GetClientType() da.Client {
-	return da.Celestia
+	return da.GRPC
 }
 
 // SubmitBatch proxies SubmitBatch request to gRPC server.

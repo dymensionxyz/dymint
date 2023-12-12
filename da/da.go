@@ -29,6 +29,7 @@ const (
 	Mock     Client = "mock"
 	Celestia Client = "celestia"
 	Avail    Client = "avail"
+	GRPC     Client = "grpc"
 )
 
 // Option is a function that sets a parameter on the da layer.

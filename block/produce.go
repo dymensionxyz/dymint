@@ -28,7 +28,7 @@ func (m *Manager) waitForSync(ctx context.Context) error {
 		atomic.StoreUint64(&m.syncTarget, uint64(m.genesis.InitialHeight-1))
 		return nil
 	} else if err != nil {
-		m.logger.Error("failed to retrieve batch from SL", "err", err)
+		m.logger.Error("", "err", err)
 		return err
 	} else {
 		m.updateSyncParams(ctx, resultRetrieveBatch.EndHeight)

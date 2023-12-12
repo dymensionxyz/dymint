@@ -190,7 +190,7 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 		go m.SubmitLoop(ctx)
 	}
 	// TODO(omritoptix): change to private methods
-	go m.RetriveLoop(ctx)
+	go m.RetrieveLoop(ctx)
 	go m.SyncTargetLoop(ctx)
 	m.EventListener(ctx)
 
