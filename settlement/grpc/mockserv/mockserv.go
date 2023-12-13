@@ -27,12 +27,13 @@ func getKey(key uint64) []byte {
 }
 
 func (s *server) GetIndex(ctx context.Context, in *slmock.SLGetIndexRequest) (*slmock.SLGetIndexReply, error) {
-	log.Printf("Getting index")
 	b, err := s.kv.Get(slStateIndexKey)
 	if err != nil {
 		return nil, err
 	}
 	slStateIndex := binary.BigEndian.Uint64(b)
+	log.Printf("Getting index %d", slStateIndex)
+
 	return &slmock.SLGetIndexReply{Index: slStateIndex}, nil
 }
 

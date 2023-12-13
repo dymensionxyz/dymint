@@ -64,15 +64,17 @@ func (m *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, logg
 
 // HubClient implements The HubClient interface
 type HubGrpcClient struct {
+	ctx            context.Context
 	ProposerPubKey string
 	slStateIndex   uint64
 	logger         log.Logger
 	pubsub         *pubsub.Server
 	latestHeight   uint64
 	//settlementKV   store.KVStore
-	conn   *grpc.ClientConn
-	sl     slmock.MockSLClient
-	config Config
+	conn     *grpc.ClientConn
+	sl       slmock.MockSLClient
+	config   Config
+	stopchan chan struct{}
 }
 
 // Config contains configuration options for DataAvailabilityLayerClient.
@@ -91,6 +93,7 @@ var DefaultConfig = Config{
 var _ settlement.HubClient = &HubGrpcClient{}
 
 func newHubClient(config settlement.Config, pubsub *pubsub.Server, logger log.Logger, kv store.KVStore) (*HubGrpcClient, error) {
+	ctx, _ := context.WithCancel(context.Background())
 
 	logger.Info("New grpc hub client")
 	latestHeight := uint64(0)
@@ -110,13 +113,14 @@ func newHubClient(config settlement.Config, pubsub *pubsub.Server, logger log.Lo
 	}
 
 	client := slmock.NewMockSLClient(conn)
+	stopchan := make(chan struct{})
 
-	index, err := client.GetIndex(context.TODO(), &slmock.SLGetIndexRequest{})
+	index, err := client.GetIndex(ctx, &slmock.SLGetIndexRequest{})
 	if err == nil {
-		slStateIndex := index.GetIndex()
+		slStateIndex = index.GetIndex()
 		var settlementBatch rollapptypes.MsgUpdateState
 		//b, err := settlementKV.Get(getKey(slStateIndex))
-		batchReply, err := client.GetBatch(context.TODO(), &slmock.SLGetBatchRequest{Index: slStateIndex})
+		batchReply, err := client.GetBatch(ctx, &slmock.SLGetBatchRequest{Index: slStateIndex})
 		if err != nil {
 			return nil, err
 		}
@@ -126,6 +130,7 @@ func newHubClient(config settlement.Config, pubsub *pubsub.Server, logger log.Lo
 		}
 		latestHeight = settlementBatch.StartHeight + settlementBatch.NumBlocks - 1
 	}
+	logger.Debug("Starting grpc SL ", "index", slStateIndex)
 	/*settlementKV := store.NewPrefixKV(slstore, settlementKVPrefix)
 	b, err := settlementKV.Get(slStateIndexKey)
 	if err == nil {
@@ -142,8 +147,8 @@ func newHubClient(config settlement.Config, pubsub *pubsub.Server, logger log.Lo
 		}
 		latestHeight = settlementBatch.StartHeight + settlementBatch.NumBlocks - 1
 	}*/
-
 	return &HubGrpcClient{
+		ctx:            ctx,
 		ProposerPubKey: proposer,
 		logger:         logger,
 		pubsub:         pubsub,
@@ -152,6 +157,7 @@ func newHubClient(config settlement.Config, pubsub *pubsub.Server, logger log.Lo
 		config:         conf,
 		conn:           conn,
 		sl:             client,
+		stopchan:       stopchan,
 		//settlementKV:   settlementKV,
 	}, nil
 }
@@ -192,12 +198,44 @@ func initConfig(conf settlement.Config) (proposer string, err error) {
 // Start starts the mock client
 func (c *HubGrpcClient) Start() error {
 	c.logger.Info("Starting grpc mock settlement")
+	tick := time.Tick(1 * time.Second)
+	// Keep trying until we're timed out or got a result or got an error
+	go func() {
+		for {
+			select {
+			case <-c.stopchan:
+				// stop
+				c.logger.Info("Stopping loop")
+				return
+			case <-tick:
+				c.logger.Info("Pooling loop")
+				index, err := c.sl.GetIndex(c.ctx, &slmock.SLGetIndexRequest{})
+				if err == nil {
+					if c.slStateIndex < index.GetIndex() {
+						c.logger.Info("Simulating new batch event")
+
+						time.Sleep(10 * time.Millisecond)
+						b, err := c.retrieveBatchAtStateIndex(index.GetIndex())
+						if err != nil {
+							panic(err)
+						}
+						err = c.pubsub.PublishWithEvents(context.Background(), &settlement.EventDataNewSettlementBatchAccepted{EndHeight: b.EndHeight}, map[string][]string{settlement.EventTypeKey: {settlement.EventNewSettlementBatchAccepted}})
+						if err != nil {
+							panic(err)
+						}
+						c.slStateIndex = index.GetIndex()
+					}
+				}
+			}
+		}
+	}()
 	return nil
 }
 
 // Stop stops the mock client
 func (c *HubGrpcClient) Stop() error {
 	c.logger.Info("Stopping grpc mock settlement")
+	close(c.stopchan)
 	return nil
 }
 
@@ -259,21 +297,23 @@ func (c *HubGrpcClient) saveBatch(batch *settlement.Batch) {
 		panic(err)
 	}
 	// Save the batch to the next state index
-	slStateIndex := atomic.LoadUint64(&c.slStateIndex)
-	setBatchReply, err := c.sl.SetBatch(context.TODO(), &slmock.SLSetBatchRequest{Index: slStateIndex + 1, Batch: b})
+	//slStateIndex := atomic.LoadUint64(&c.slStateIndex)
+	c.logger.Debug("Saving batch to grpc settlement layer", "inxe", c.slStateIndex+1)
+	setBatchReply, err := c.sl.SetBatch(c.ctx, &slmock.SLSetBatchRequest{Index: c.slStateIndex + 1, Batch: b})
 	//err = c.settlementKV.Set(getKey(slStateIndex+1), b)
 	if err != nil {
 		panic(err)
 	}
-	if setBatchReply.GetResult() != slStateIndex+1 {
+	if setBatchReply.GetResult() != c.slStateIndex+1 {
 		panic(err)
 	}
-	// Save SL state index in memory and in store
-	atomic.StoreUint64(&c.slStateIndex, slStateIndex+1)
-	b = make([]byte, 8)
-	binary.BigEndian.PutUint64(b, slStateIndex+1)
-	setIndexReply, err := c.sl.SetIndex(context.TODO(), &slmock.SLSetIndexRequest{Index: slStateIndex + 1})
-	if err != nil || setIndexReply.GetIndex() != slStateIndex+1 {
+
+	c.logger.Debug("Saving batch to grpc settlement layer", "inxe", setBatchReply.GetResult())
+
+	c.slStateIndex = setBatchReply.GetResult()
+
+	setIndexReply, err := c.sl.SetIndex(c.ctx, &slmock.SLSetIndexRequest{Index: c.slStateIndex})
+	if err != nil || setIndexReply.GetIndex() != c.slStateIndex {
 		panic(err)
 	}
 	c.logger.Debug("Setting grpc SL Index to ", "index", setIndexReply.GetIndex())
@@ -304,7 +344,7 @@ func (c *HubGrpcClient) convertBatchtoSettlementBatch(batch *types.Batch, daClie
 
 func (c *HubGrpcClient) retrieveBatchAtStateIndex(slStateIndex uint64) (*settlement.ResultRetrieveBatch, error) {
 	//b, err := c.settlementKV.Get(getKey(slStateIndex))
-	getBatchReply, err := c.sl.GetBatch(context.TODO(), &slmock.SLGetBatchRequest{Index: slStateIndex})
+	getBatchReply, err := c.sl.GetBatch(c.ctx, &slmock.SLGetBatchRequest{Index: slStateIndex})
 	if err != nil {
 		return nil, settlement.ErrBatchNotFound
 	}
