@@ -6,12 +6,15 @@ import (
 	"net"
 	"strconv"
 
-	grpcsl "github.com/dymensionxyz/dymint/settlement/grpc"
+	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/settlement/grpc/mockserv"
 )
 
 func main() {
-	conf := grpcsl.DefaultConfig
+	conf := settlement.GrpcConfig{
+		Host: "127.0.0.1",
+		Port: 7981,
+	}
 
 	flag.IntVar(&conf.Port, "port", conf.Port, "listening port")
 	flag.StringVar(&conf.Host, "host", "0.0.0.0", "listening address")
