@@ -1,6 +1,8 @@
 package settlement
 
-import "errors"
+import (
+	"errors"
+)
 
 // Config for the DymensionLayerClient
 type Config struct {
@@ -14,7 +16,15 @@ type Config struct {
 	GasFees        string `mapstructure:"gas_fees"`
 
 	//For testing only. probably should be refactored
-	ProposerPubKey string `json:"proposer_pub_key"`
+	ProposerPubKey string     `json:"proposer_pub_key"`
+	SLGrpc         GrpcConfig `mapstructure:",squash"`
+}
+
+// Config contains configuration options for DataAvailabilityLayerClient.
+type GrpcConfig struct {
+	// TODO(tzdybal): add more options!
+	Host string `json:"host"`
+	Port int    `json:"port"`
 }
 
 func (c Config) Validate() error {

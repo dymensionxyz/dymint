@@ -47,6 +47,11 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 	if chainId == "" {
 		chainId = DefaultChainID
 	}
+	// DefaultConfig defines default values for DataAvailabilityLayerClient configuration.
+	defaultSlGrpcConfig := settlement.GrpcConfig{
+		Host: "127.0.0.1",
+		Port: 7981,
+	}
 
 	defaultSLconfig := settlement.Config{
 		KeyringBackend: "test",
@@ -55,6 +60,7 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 		KeyringHomeDir: keyringDir,
 		DymAccountName: "sequencer",
 		GasPrices:      "0.025udym",
+		SLGrpc:         defaultSlGrpcConfig,
 	}
 	cfg.SettlementConfig = defaultSLconfig
 

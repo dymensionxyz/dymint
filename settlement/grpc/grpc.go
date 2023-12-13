@@ -73,21 +73,7 @@ type HubGrpcClient struct {
 	//settlementKV   store.KVStore
 	conn     *grpc.ClientConn
 	sl       slmock.MockSLClient
-	config   Config
 	stopchan chan struct{}
-}
-
-// Config contains configuration options for DataAvailabilityLayerClient.
-type Config struct {
-	// TODO(tzdybal): add more options!
-	Host string `json:"host"`
-	Port int    `json:"port"`
-}
-
-// DefaultConfig defines default values for DataAvailabilityLayerClient configuration.
-var DefaultConfig = Config{
-	Host: "127.0.0.1",
-	Port: 7981,
 }
 
 var _ settlement.HubClient = &HubGrpcClient{}
@@ -105,8 +91,11 @@ func newHubClient(config settlement.Config, pubsub *pubsub.Server, logger log.Lo
 	var opts []grpc.DialOption
 	// TODO(tzdybal): add more options
 	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
-	conf := DefaultConfig
-	conn, err := grpc.Dial(conf.Host+":"+strconv.Itoa(conf.Port), opts...)
+
+	logger.Debug("GRPC Dial ", "ip", config.SLGrpc.Host)
+
+	//conf := DefaultConfig
+	conn, err := grpc.Dial(config.SLGrpc.Host+":"+strconv.Itoa(config.SLGrpc.Port), opts...)
 	if err != nil {
 		logger.Error("Error grpc sl connecting")
 		return nil, err
@@ -154,10 +143,10 @@ func newHubClient(config settlement.Config, pubsub *pubsub.Server, logger log.Lo
 		pubsub:         pubsub,
 		latestHeight:   latestHeight,
 		slStateIndex:   slStateIndex,
-		config:         conf,
-		conn:           conn,
-		sl:             client,
-		stopchan:       stopchan,
+		//config:         conf,
+		conn:     conn,
+		sl:       client,
+		stopchan: stopchan,
 		//settlementKV:   settlementKV,
 	}, nil
 }
