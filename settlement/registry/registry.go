@@ -15,8 +15,7 @@ const (
 	Mock Client = "mock"
 	// Dymension is a client for interacting with dymension settlement layer
 	Dymension Client = "dymension"
-
-	Grpc Client = "grpc"
+	Grpc      Client = "grpc"
 )
 
 // A central registry for all Settlement Layer Clients
