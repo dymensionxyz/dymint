@@ -244,6 +244,7 @@ func (m *Manager) getLatestBatchFromSL(ctx context.Context) (*settlement.ResultR
 	var resultRetrieveBatch *settlement.ResultRetrieveBatch
 	var err error
 	// Get latest batch from SL
+	m.logger.Info("getLatestBatchFromSL")
 	err = retry.Do(
 		func() error {
 			resultRetrieveBatch, err = m.settlementClient.RetrieveBatch()

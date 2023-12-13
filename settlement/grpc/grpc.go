@@ -20,6 +20,7 @@ import (
 
 	"github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
+	rollapptypes "github.com/dymensionxyz/dymension/x/rollapp/types"
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/log"
 	"github.com/dymensionxyz/dymint/settlement"
@@ -109,6 +110,22 @@ func newHubClient(config settlement.Config, pubsub *pubsub.Server, logger log.Lo
 	}
 
 	client := slmock.NewMockSLClient(conn)
+
+	index, err := client.GetIndex(context.TODO(), &slmock.SLGetIndexRequest{})
+	if err == nil {
+		slStateIndex := index.GetIndex()
+		var settlementBatch rollapptypes.MsgUpdateState
+		//b, err := settlementKV.Get(getKey(slStateIndex))
+		batchReply, err := client.GetBatch(context.TODO(), &slmock.SLGetBatchRequest{Index: slStateIndex})
+		if err != nil {
+			return nil, err
+		}
+		err = json.Unmarshal(batchReply.GetBatch(), &settlementBatch)
+		if err != nil {
+			return nil, errors.New("error unmarshalling batch")
+		}
+		latestHeight = settlementBatch.StartHeight + settlementBatch.NumBlocks - 1
+	}
 	/*settlementKV := store.NewPrefixKV(slstore, settlementKVPrefix)
 	b, err := settlementKV.Get(slStateIndexKey)
 	if err == nil {
@@ -243,14 +260,23 @@ func (c *HubGrpcClient) saveBatch(batch *settlement.Batch) {
 	}
 	// Save the batch to the next state index
 	slStateIndex := atomic.LoadUint64(&c.slStateIndex)
-	/*err = c.settlementKV.Set(getKey(slStateIndex+1), b)
+	setBatchReply, err := c.sl.SetBatch(context.TODO(), &slmock.SLSetBatchRequest{Index: slStateIndex + 1, Batch: b})
+	//err = c.settlementKV.Set(getKey(slStateIndex+1), b)
 	if err != nil {
 		panic(err)
-	}*/
+	}
+	if setBatchReply.GetResult() != slStateIndex+1 {
+		panic(err)
+	}
 	// Save SL state index in memory and in store
 	atomic.StoreUint64(&c.slStateIndex, slStateIndex+1)
 	b = make([]byte, 8)
 	binary.BigEndian.PutUint64(b, slStateIndex+1)
+	setIndexReply, err := c.sl.SetIndex(context.TODO(), &slmock.SLSetIndexRequest{Index: slStateIndex + 1})
+	if err != nil || setIndexReply.GetIndex() != slStateIndex+1 {
+		panic(err)
+	}
+	c.logger.Debug("Setting grpc SL Index to ", "index", setIndexReply.GetIndex())
 	/*err = c.settlementKV.Set(slStateIndexKey, b)
 	if err != nil {
 		panic(err)
@@ -278,10 +304,13 @@ func (c *HubGrpcClient) convertBatchtoSettlementBatch(batch *types.Batch, daClie
 
 func (c *HubGrpcClient) retrieveBatchAtStateIndex(slStateIndex uint64) (*settlement.ResultRetrieveBatch, error) {
 	//b, err := c.settlementKV.Get(getKey(slStateIndex))
-	batch, err := c.sl.GetBatch(context.TODO(), &slmock.SLGetBatchRequest{Index: slStateIndex})
-	b := batch.GetBatch()
-	c.logger.Debug("Retrieving batch from grpc settlement layer", "SL state index", slStateIndex)
+	getBatchReply, err := c.sl.GetBatch(context.TODO(), &slmock.SLGetBatchRequest{Index: slStateIndex})
 	if err != nil {
+		return nil, settlement.ErrBatchNotFound
+	}
+	b := getBatchReply.GetBatch()
+	c.logger.Debug("Retrieving batch from grpc settlement layer", "SL state index", slStateIndex)
+	if b == nil {
 		return nil, settlement.ErrBatchNotFound
 	}
 	var settlementBatch settlement.Batch

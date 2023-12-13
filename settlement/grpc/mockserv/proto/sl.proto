@@ -21,31 +21,30 @@ package settlement;
 // The greeting service definition.
 service MockSL {
   // Sends a greeting
-  rpc GetIndex (SLIndexRequest) returns (SLIndexReply) {}
-  rpc SetIndex (SLIndexReply) returns (SLSetIndexResult) {}
+  rpc GetIndex (SLGetIndexRequest) returns (SLGetIndexReply) {}
+  rpc SetIndex (SLSetIndexRequest) returns (SLSetIndexResult) {}
   rpc SetBatch (SLSetBatchRequest) returns (SLSetBatchReply) {}
   rpc GetBatch (SLGetBatchRequest) returns (SLGetBatchReply) {}
 
 }
 
 // The request message containing the user's name.
-message SLIndexRequest {
-  uint64 key = 1;
+message SLGetIndexRequest {
 }
 
 // The response message containing the greetings
-message SLIndexReply {
+message SLGetIndexReply {
   uint64 index = 1;
 }
 
 // The request message containing the user's name.
-message SLSetIndex {
-  uint64 name = 1;
+message SLSetIndexRequest {
+  uint64 index = 1;
 }
 
 // The request message containing the user's name.
 message SLSetIndexResult {
-  uint64 name = 1;
+  uint64 index = 1;
 }
 
 message SLSetBatchRequest {
@@ -54,7 +53,7 @@ message SLSetBatchRequest {
 }
 
 message SLSetBatchReply {
-  int32 result = 1;
+  uint64 result = 1;
 }
 
 message SLGetBatchRequest {

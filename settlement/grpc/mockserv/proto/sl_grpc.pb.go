@@ -44,8 +44,8 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type MockSLClient interface {
 	// Sends a greeting
-	GetIndex(ctx context.Context, in *SLIndexRequest, opts ...grpc.CallOption) (*SLIndexReply, error)
-	SetIndex(ctx context.Context, in *SLIndexReply, opts ...grpc.CallOption) (*SLSetIndexResult, error)
+	GetIndex(ctx context.Context, in *SLGetIndexRequest, opts ...grpc.CallOption) (*SLGetIndexReply, error)
+	SetIndex(ctx context.Context, in *SLSetIndexRequest, opts ...grpc.CallOption) (*SLSetIndexResult, error)
 	SetBatch(ctx context.Context, in *SLSetBatchRequest, opts ...grpc.CallOption) (*SLSetBatchReply, error)
 	GetBatch(ctx context.Context, in *SLGetBatchRequest, opts ...grpc.CallOption) (*SLGetBatchReply, error)
 }
@@ -58,8 +58,8 @@ func NewMockSLClient(cc grpc.ClientConnInterface) MockSLClient {
 	return &mockSLClient{cc}
 }
 
-func (c *mockSLClient) GetIndex(ctx context.Context, in *SLIndexRequest, opts ...grpc.CallOption) (*SLIndexReply, error) {
-	out := new(SLIndexReply)
+func (c *mockSLClient) GetIndex(ctx context.Context, in *SLGetIndexRequest, opts ...grpc.CallOption) (*SLGetIndexReply, error) {
+	out := new(SLGetIndexReply)
 	err := c.cc.Invoke(ctx, MockSL_GetIndex_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -67,7 +67,7 @@ func (c *mockSLClient) GetIndex(ctx context.Context, in *SLIndexRequest, opts ..
 	return out, nil
 }
 
-func (c *mockSLClient) SetIndex(ctx context.Context, in *SLIndexReply, opts ...grpc.CallOption) (*SLSetIndexResult, error) {
+func (c *mockSLClient) SetIndex(ctx context.Context, in *SLSetIndexRequest, opts ...grpc.CallOption) (*SLSetIndexResult, error) {
 	out := new(SLSetIndexResult)
 	err := c.cc.Invoke(ctx, MockSL_SetIndex_FullMethodName, in, out, opts...)
 	if err != nil {
@@ -99,8 +99,8 @@ func (c *mockSLClient) GetBatch(ctx context.Context, in *SLGetBatchRequest, opts
 // for forward compatibility
 type MockSLServer interface {
 	// Sends a greeting
-	GetIndex(context.Context, *SLIndexRequest) (*SLIndexReply, error)
-	SetIndex(context.Context, *SLIndexReply) (*SLSetIndexResult, error)
+	GetIndex(context.Context, *SLGetIndexRequest) (*SLGetIndexReply, error)
+	SetIndex(context.Context, *SLSetIndexRequest) (*SLSetIndexResult, error)
 	SetBatch(context.Context, *SLSetBatchRequest) (*SLSetBatchReply, error)
 	GetBatch(context.Context, *SLGetBatchRequest) (*SLGetBatchReply, error)
 	mustEmbedUnimplementedMockSLServer()
@@ -110,10 +110,10 @@ type MockSLServer interface {
 type UnimplementedMockSLServer struct {
 }
 
-func (UnimplementedMockSLServer) GetIndex(context.Context, *SLIndexRequest) (*SLIndexReply, error) {
+func (UnimplementedMockSLServer) GetIndex(context.Context, *SLGetIndexRequest) (*SLGetIndexReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetIndex not implemented")
 }
-func (UnimplementedMockSLServer) SetIndex(context.Context, *SLIndexReply) (*SLSetIndexResult, error) {
+func (UnimplementedMockSLServer) SetIndex(context.Context, *SLSetIndexRequest) (*SLSetIndexResult, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetIndex not implemented")
 }
 func (UnimplementedMockSLServer) SetBatch(context.Context, *SLSetBatchRequest) (*SLSetBatchReply, error) {
@@ -136,7 +136,7 @@ func RegisterMockSLServer(s grpc.ServiceRegistrar, srv MockSLServer) {
 }
 
 func _MockSL_GetIndex_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SLIndexRequest)
+	in := new(SLGetIndexRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -148,13 +148,13 @@ func _MockSL_GetIndex_Handler(srv interface{}, ctx context.Context, dec func(int
 		FullMethod: MockSL_GetIndex_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MockSLServer).GetIndex(ctx, req.(*SLIndexRequest))
+		return srv.(MockSLServer).GetIndex(ctx, req.(*SLGetIndexRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _MockSL_SetIndex_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SLIndexReply)
+	in := new(SLSetIndexRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -166,7 +166,7 @@ func _MockSL_SetIndex_Handler(srv interface{}, ctx context.Context, dec func(int
 		FullMethod: MockSL_SetIndex_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MockSLServer).SetIndex(ctx, req.(*SLIndexReply))
+		return srv.(MockSLServer).SetIndex(ctx, req.(*SLSetIndexRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
