@@ -287,7 +287,7 @@ func (c *HubGrpcClient) saveBatch(batch *settlement.Batch) {
 	}
 	// Save the batch to the next state index
 	//slStateIndex := atomic.LoadUint64(&c.slStateIndex)
-	c.logger.Debug("Saving batch to grpc settlement layer", "inxe", c.slStateIndex+1)
+	c.logger.Debug("Saving batch to grpc settlement layer", "index", c.slStateIndex+1)
 	setBatchReply, err := c.sl.SetBatch(c.ctx, &slmock.SLSetBatchRequest{Index: c.slStateIndex + 1, Batch: b})
 	//err = c.settlementKV.Set(getKey(slStateIndex+1), b)
 	if err != nil {
@@ -297,7 +297,7 @@ func (c *HubGrpcClient) saveBatch(batch *settlement.Batch) {
 		panic(err)
 	}
 
-	c.logger.Debug("Saving batch to grpc settlement layer", "inxe", setBatchReply.GetResult())
+	c.logger.Debug("Saving batch to grpc settlement layer", "index", setBatchReply.GetResult())
 
 	c.slStateIndex = setBatchReply.GetResult()
 
