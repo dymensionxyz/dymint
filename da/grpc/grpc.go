@@ -46,10 +46,14 @@ var _ da.BatchRetriever = &DataAvailabilityLayerClient{}
 func (d *DataAvailabilityLayerClient) Init(config []byte, _ *pubsub.Server, _ store.KVStore, logger log.Logger, options ...da.Option) error {
 	d.logger = logger
 	if len(config) == 0 {
+		logger.Info("DA GRPC Default config")
 		d.config = DefaultConfig
 		return nil
 	}
-	return json.Unmarshal(config, &d.config)
+	err := json.Unmarshal(config, &d.config)
+	logger.Info("DA GRPC config %s %d", d.config.Host, d.config.Port)
+
+	return err
 }
 
 // Start creates connection to gRPC server and instantiates gRPC client.

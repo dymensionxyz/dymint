@@ -4,6 +4,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/dymensionxyz/dymint/da/grpc"
 	"github.com/dymensionxyz/dymint/settlement"
 )
 
@@ -64,5 +65,10 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 	}
 	cfg.SettlementConfig = defaultSLconfig
 
+	defaultDAGrpc := grpc.Config{
+		Host: "127.0.0.1",
+		Port: 7980,
+	}
+	cfg.DAGrpc = defaultDAGrpc
 	return cfg
 }
