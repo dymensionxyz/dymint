@@ -51,7 +51,7 @@ func (d *DataAvailabilityLayerClient) Init(config []byte, _ *pubsub.Server, _ st
 		return nil
 	}
 	err := json.Unmarshal(config, &d.config)
-	logger.Info("DA GRPC config %s %d", d.config.Host, d.config.Port)
+	logger.Info("DA GRPC config %s %s %d", config, d.config.Host, d.config.Port)
 
 	return err
 }
