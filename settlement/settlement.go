@@ -6,7 +6,6 @@ import (
 
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/log"
-	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
@@ -88,7 +87,7 @@ type Option func(LayerI)
 type LayerI interface {
 
 	// Init is called once for the client initialization
-	Init(config Config, pubsub *pubsub.Server, logger log.Logger, kv store.KVStore, options ...Option) error
+	Init(config Config, pubsub *pubsub.Server, logger log.Logger, options ...Option) error
 
 	// Start is called once, after Init. It's implementation should start the client service.
 	Start() error

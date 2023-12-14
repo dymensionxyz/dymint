@@ -24,7 +24,6 @@ import (
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/log"
 	"github.com/dymensionxyz/dymint/settlement"
-	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
 
 	"github.com/tendermint/tendermint/libs/pubsub"
@@ -41,8 +40,8 @@ type LayerClient struct {
 var _ settlement.LayerI = (*LayerClient)(nil)
 
 // Init initializes the mock layer client.
-func (m *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, logger log.Logger, kv store.KVStore, options ...settlement.Option) error {
-	HubClientMock, err := newHubClient(config, pubsub, logger, kv)
+func (m *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, logger log.Logger, options ...settlement.Option) error {
+	HubClientMock, err := newHubClient(config, pubsub, logger)
 	if err != nil {
 		return err
 	}
@@ -55,7 +54,7 @@ func (m *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, logg
 		options = append(baseOptions, options...)
 	}
 	m.BaseLayerClient = &settlement.BaseLayerClient{}
-	err = m.BaseLayerClient.Init(config, pubsub, logger, nil, options...)
+	err = m.BaseLayerClient.Init(config, pubsub, logger, options...)
 	if err != nil {
 		return err
 	}
@@ -78,7 +77,7 @@ type HubGrpcClient struct {
 
 var _ settlement.HubClient = &HubGrpcClient{}
 
-func newHubClient(config settlement.Config, pubsub *pubsub.Server, logger log.Logger, kv store.KVStore) (*HubGrpcClient, error) {
+func newHubClient(config settlement.Config, pubsub *pubsub.Server, logger log.Logger) (*HubGrpcClient, error) {
 	ctx, _ := context.WithCancel(context.Background())
 
 	logger.Info("New grpc hub client")

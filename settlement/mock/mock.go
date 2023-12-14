@@ -41,8 +41,8 @@ type LayerClient struct {
 var _ settlement.LayerI = (*LayerClient)(nil)
 
 // Init initializes the mock layer client.
-func (m *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, logger log.Logger, kv store.KVStore, options ...settlement.Option) error {
-	HubClientMock, err := newHubClient(config, pubsub, logger, kv)
+func (m *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, logger log.Logger, options ...settlement.Option) error {
+	HubClientMock, err := newHubClient(config, pubsub, logger)
 	if err != nil {
 		return err
 	}
@@ -55,7 +55,7 @@ func (m *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, logg
 		options = append(baseOptions, options...)
 	}
 	m.BaseLayerClient = &settlement.BaseLayerClient{}
-	err = m.BaseLayerClient.Init(config, pubsub, logger, nil, options...)
+	err = m.BaseLayerClient.Init(config, pubsub, logger, options...)
 	if err != nil {
 		return err
 	}
@@ -74,19 +74,12 @@ type HubClient struct {
 
 var _ settlement.HubClient = &HubClient{}
 
-func newHubClient(config settlement.Config, pubsub *pubsub.Server, logger log.Logger, kv store.KVStore) (*HubClient, error) {
+func newHubClient(config settlement.Config, pubsub *pubsub.Server, logger log.Logger) (*HubClient, error) {
 	latestHeight := uint64(0)
 	slStateIndex := uint64(0)
 	slstore, proposer, err := initConfig(config)
 	if err != nil {
 		return nil, err
-	}
-	if kv != nil {
-		logger.Info("HubClient", "kvstore", "Using external kvstore")
-		slstore = kv
-	} else {
-		logger.Info("HubClient", "kvstore", "Using internal kvstore")
-
 	}
 	settlementKV := store.NewPrefixKV(slstore, settlementKVPrefix)
 	b, err := settlementKV.Get(slStateIndexKey)

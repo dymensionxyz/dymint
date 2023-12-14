@@ -13,7 +13,6 @@ import (
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	"github.com/dymensionxyz/cosmosclient/cosmosclient"
 	rollapptypes "github.com/dymensionxyz/dymension/x/rollapp/types"
-	"github.com/dymensionxyz/dymint/store"
 	"github.com/google/uuid"
 	"github.com/ignite/cli/ignite/pkg/cosmosaccount"
 	"github.com/pkg/errors"
@@ -60,7 +59,7 @@ type LayerClient struct {
 var _ settlement.LayerI = &LayerClient{}
 
 // Init is called once. it initializes the struct members.
-func (dlc *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, logger log.Logger, kv store.KVStore, options ...settlement.Option) error {
+func (dlc *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, logger log.Logger, options ...settlement.Option) error {
 	DymensionCosmosClient, err := newDymensionHubClient(config, pubsub, logger)
 	if err != nil {
 		return err
@@ -74,7 +73,7 @@ func (dlc *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, lo
 		options = append(baseOptions, options...)
 	}
 	dlc.BaseLayerClient = &settlement.BaseLayerClient{}
-	err = dlc.BaseLayerClient.Init(config, pubsub, logger, nil, options...)
+	err = dlc.BaseLayerClient.Init(config, pubsub, logger, options...)
 	if err != nil {
 		return err
 	}
