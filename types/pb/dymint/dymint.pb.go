@@ -242,7 +242,7 @@ func (m *Header) GetChainId() string {
 type Commit struct {
 	Height     uint64 `protobuf:"varint,1,opt,name=height,proto3" json:"height,omitempty"`
 	HeaderHash []byte `protobuf:"bytes,2,opt,name=header_hash,json=headerHash,proto3" json:"header_hash,omitempty"`
-	// Note: most of the time this will be a single sinature
+	// Note: most of the time this will be a single signature
 	Signatures  [][]byte         `protobuf:"bytes,3,rep,name=signatures,proto3" json:"signatures,omitempty"`
 	TmSignature *types.CommitSig `protobuf:"bytes,4,opt,name=tm_signature,json=tmSignature,proto3" json:"tm_signature,omitempty"`
 }

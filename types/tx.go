@@ -6,7 +6,7 @@ import (
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 )
 
-// Tx represents transactoin.
+// Tx represents transaction.
 type Tx []byte
 
 // Txs represents a slice of transactions.
