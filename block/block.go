@@ -115,7 +115,10 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 	cachedBlock, exists := m.prevBlock[m.store.Height()+1]
 
 	if exists {
-		m.applyBlock(ctx, cachedBlock, m.prevCommit[m.store.Height()+1], m.prevMetaData[m.store.Height()+1])
+		err := m.applyBlock(ctx, cachedBlock, m.prevCommit[m.store.Height()+1], m.prevMetaData[m.store.Height()+1])
+		if err != nil {
+			m.logger.Debug("Failing to apply previously cached block", "err", err)
+		}
 	}
 
 	for k := range m.prevBlock {
