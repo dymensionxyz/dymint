@@ -328,6 +328,11 @@ func (c *Client) tryConnect(ctx context.Context, peer peer.AddrInfo) {
 }
 
 func (c *Client) setupGossiping(ctx context.Context) error {
+
+	pubsub.GossipSubHistoryGossip = 50
+	pubsub.GossipSubHistoryLength = 70
+	pubsub.GossipSubMaxIHaveMessages = 50
+
 	ps, err := pubsub.NewGossipSub(ctx, c.host)
 	if err != nil {
 		return err
