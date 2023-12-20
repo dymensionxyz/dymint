@@ -19,6 +19,9 @@ import (
 func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *types.Commit, blockMetaData blockMetaData) error {
 	if block.Header.Height != m.store.Height()+1 {
 		// We crashed after the commit and before updating the store height.
+		m.prevBlock[block.Header.Height] = block
+		m.prevCommit[block.Header.Height] = commit
+		m.prevMetaData[block.Header.Height] = blockMetaData
 		return nil
 	}
 
@@ -108,6 +111,20 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 	m.lastState = newState
 
 	m.store.SetHeight(block.Header.Height)
+
+	cachedBlock, exists := m.prevBlock[m.store.Height()+1]
+
+	if exists {
+		m.applyBlock(ctx, cachedBlock, m.prevCommit[m.store.Height()+1], m.prevMetaData[m.store.Height()+1])
+	}
+
+	for k := range m.prevBlock {
+		if k <= block.Header.Height {
+			delete(m.prevBlock, k)
+			delete(m.prevCommit, k)
+			delete(m.prevMetaData, k)
+		}
+	}
 
 	return nil
 }
