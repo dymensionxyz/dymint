@@ -9,13 +9,10 @@ import (
 	"cosmossdk.io/math"
 	"github.com/gogo/protobuf/proto"
 	"github.com/tendermint/tendermint/libs/pubsub"
-	rpcclient "github.com/tendermint/tendermint/rpc/client"
 
 	openrpc "github.com/rollkit/celestia-openrpc"
-	httprpcclient "github.com/tendermint/tendermint/rpc/client/http"
 
 	"github.com/rollkit/celestia-openrpc/types/blob"
-	openrpcns "github.com/rollkit/celestia-openrpc/types/namespace"
 	"github.com/rollkit/celestia-openrpc/types/share"
 
 	"github.com/dymensionxyz/dymint/da"
@@ -27,11 +24,9 @@ import (
 
 // DataAvailabilityLayerClient use celestia-node public API.
 type DataAvailabilityLayerClient struct {
-	rpc         *openrpc.Client
-	namespaceID openrpcns.Namespace
+	rpc *openrpc.Client
 
 	pubsubServer        *pubsub.Server
-	RPCClient           rpcclient.Client
 	config              Config
 	logger              log.Logger
 	ctx                 context.Context
@@ -43,13 +38,6 @@ type DataAvailabilityLayerClient struct {
 
 var _ da.DataAvailabilityLayerClient = &DataAvailabilityLayerClient{}
 var _ da.BatchRetriever = &DataAvailabilityLayerClient{}
-
-// WithRPCClient sets rpc client.
-func WithRPCClient(rpcClient rpcclient.Client) da.Option {
-	return func(daLayerClient da.DataAvailabilityLayerClient) {
-		daLayerClient.(*DataAvailabilityLayerClient).RPCClient = rpcClient
-	}
-}
 
 // WithTxPollingRetryDelay sets tx polling retry delay.
 func WithTxPollingRetryDelay(delay time.Duration) da.Option {
@@ -105,10 +93,6 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 	c.txPollingRetryDelay = defaultTxPollingRetryDelay
 	c.txPollingAttempts = defaultTxPollingAttempts
 	c.submitRetryDelay = defaultSubmitRetryDelay
-	c.RPCClient, err = httprpcclient.New(c.config.AppNodeURL, "")
-	if err != nil {
-		return err
-	}
 
 	c.ctx, c.cancel = context.WithCancel(context.Background())
 
@@ -125,7 +109,9 @@ func (c *DataAvailabilityLayerClient) Start() (err error) {
 	c.logger.Info("starting Celestia Data Availability Layer Client")
 	//FIXME: set Timeouts?
 	//cnc.WithTimeout(c.config.Timeout)
-	c.rpc, err = openrpc.NewClient(c.ctx, c.config.BaseURL, "")
+
+	// FIXME: get token from config
+	c.rpc, err = openrpc.NewClient(c.ctx, c.config.BaseURL, c.config.AuthToken)
 	if err != nil {
 		return err
 	}
@@ -147,54 +133,6 @@ func (c *DataAvailabilityLayerClient) Stop() error {
 func (c *DataAvailabilityLayerClient) GetClientType() da.Client {
 	return da.Celestia
 }
-
-/*
-
-// SubmitBlocks submits blocks to DA layer.
-func (c *DataAvailabilityLayerClient) SubmitBlocks(ctx context.Context, blocks []*types.Block) da.ResultSubmitBlocks {
-	blobs := make([]*blob.Blob, len(blocks))
-	for blockIndex, block := range blocks {
-		data, err := block.MarshalBinary()
-		if err != nil {
-			return da.ResultSubmitBlocks{
-				BaseResult: da.BaseResult{
-					Code:    da.StatusError,
-					Message: err.Error(),
-				},
-			}
-		}
-		blockBlob, err := blob.NewBlobV0(c.namespace.Bytes(), data)
-		if err != nil {
-			return da.ResultSubmitBlocks{
-				BaseResult: da.BaseResult{
-					Code:    da.StatusError,
-					Message: err.Error(),
-				},
-			}
-		}
-		blobs[blockIndex] = blockBlob
-	}
-
-	dataLayerHeight, err := c.rpc.Blob.Submit(ctx, blobs, openrpc.DefaultSubmitOptions())
-	if err != nil {
-		return da.ResultSubmitBlocks{
-			BaseResult: da.BaseResult{
-				Code:    da.StatusError,
-				Message: err.Error(),
-			},
-		}
-	}
-
-	c.logger.Debug("successfully submitted blobs", "daHeight", dataLayerHeight)
-
-	return da.ResultSubmitBlocks{
-		BaseResult: da.BaseResult{
-			Code:     da.StatusSuccess,
-			DAHeight: uint64(dataLayerHeight),
-		},
-	}
-}
-*/
 
 // SubmitBatch submits a batch to the DA layer.
 func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultSubmitBatch {

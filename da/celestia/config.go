@@ -3,6 +3,7 @@ package celestia
 import (
 	"encoding/hex"
 	"fmt"
+	"math/rand"
 	"time"
 
 	openrpcns "github.com/rollkit/celestia-openrpc/types/namespace"
@@ -27,22 +28,36 @@ type Config struct {
 	GasAdjustment  float64             `json:"gas_adjustment"`
 	GasLimit       uint64              `json:"gas_limit"`
 	NamespaceIDStr string              `json:"namespace_id"`
+	AuthToken      string              `json:"auth_token"`
 	NamespaceID    openrpcns.Namespace `json:"-"`
 }
 
 var CelestiaDefaultConfig = Config{
-	BaseURL:        "http://127.0.0.1:26659",
+	BaseURL:        "http://127.0.0.1:26658",
 	AppNodeURL:     "",
 	Timeout:        30 * time.Second,
 	Fee:            0,
 	GasLimit:       20000000,
 	GasPrices:      defaultGasPrices,
 	GasAdjustment:  defaultGasAdjustment,
-	NamespaceIDStr: "00000000000000ffff",
+	NamespaceIDStr: "",
 	NamespaceID:    openrpcns.Namespace{Version: namespaceVersion, ID: []byte{0, 0, 0, 0, 0, 0, 0, 0, 255, 255}},
 }
 
+func generateRandNamespaceID() string {
+	rand.Seed(time.Now().UnixNano())
+	nID := make([]byte, 10)
+	_, err := rand.Read(nID)
+	if err != nil {
+		panic(err)
+	}
+	return hex.EncodeToString(nID)
+}
+
 func (c *Config) InitNamespaceID() error {
+	if c.NamespaceIDStr == "" {
+		c.NamespaceIDStr = generateRandNamespaceID()
+	}
 	// Decode NamespaceID from string to byte array
 	namespaceBytes, err := hex.DecodeString(c.NamespaceIDStr)
 	if err != nil {
