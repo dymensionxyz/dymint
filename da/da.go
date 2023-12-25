@@ -85,9 +85,6 @@ type DataAvailabilityLayerClient interface {
 	// triggers a state transition in the DA layer.
 	SubmitBatch(batch *types.Batch) ResultSubmitBatch
 
-	// CheckBatchAvailability queries DA layer to check data availability of block corresponding at given height.
-	CheckBatchAvailability(dataLayerHeight uint64) ResultCheckBatch
-
 	GetClientType() Client
 }
 

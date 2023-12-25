@@ -2,18 +2,22 @@ package celestia
 
 import (
 	"context"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"time"
 
-	"github.com/avast/retry-go/v4"
+	"cosmossdk.io/math"
 	"github.com/gogo/protobuf/proto"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
+
+	openrpc "github.com/rollkit/celestia-openrpc"
 	httprpcclient "github.com/tendermint/tendermint/rpc/client/http"
 
-	cnc "github.com/celestiaorg/go-cnc"
+	"github.com/rollkit/celestia-openrpc/types/blob"
+	openrpcns "github.com/rollkit/celestia-openrpc/types/namespace"
+	"github.com/rollkit/celestia-openrpc/types/share"
+
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/log"
 	"github.com/dymensionxyz/dymint/store"
@@ -21,15 +25,11 @@ import (
 	pb "github.com/dymensionxyz/dymint/types/pb/dymint"
 )
 
-type CNCClientI interface {
-	SubmitPFB(ctx context.Context, namespaceID cnc.Namespace, blob []byte, fee int64, gasLimit uint64) (*cnc.TxResponse, error)
-	NamespacedShares(ctx context.Context, namespaceID cnc.Namespace, height uint64) ([][]byte, error)
-	NamespacedData(ctx context.Context, namespaceID cnc.Namespace, height uint64) ([][]byte, error)
-}
-
 // DataAvailabilityLayerClient use celestia-node public API.
 type DataAvailabilityLayerClient struct {
-	client              CNCClientI
+	rpc         *openrpc.Client
+	namespaceID openrpcns.Namespace
+
 	pubsubServer        *pubsub.Server
 	RPCClient           rpcclient.Client
 	config              Config
@@ -43,13 +43,6 @@ type DataAvailabilityLayerClient struct {
 
 var _ da.DataAvailabilityLayerClient = &DataAvailabilityLayerClient{}
 var _ da.BatchRetriever = &DataAvailabilityLayerClient{}
-
-// WithCNCClient sets CNC client.
-func WithCNCClient(client CNCClientI) da.Option {
-	return func(daLayerClient da.DataAvailabilityLayerClient) {
-		daLayerClient.(*DataAvailabilityLayerClient).client = client
-	}
-}
 
 // WithRPCClient sets rpc client.
 func WithRPCClient(rpcClient rpcclient.Client) da.Option {
@@ -116,24 +109,26 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 	if err != nil {
 		return err
 	}
-	c.client, err = cnc.NewClient(c.config.BaseURL, cnc.WithTimeout(c.config.Timeout))
-	if err != nil {
-		return err
-	}
+
+	c.ctx, c.cancel = context.WithCancel(context.Background())
 
 	// Apply options
 	for _, apply := range options {
 		apply(c)
 	}
 
-	c.ctx, c.cancel = context.WithCancel(context.Background())
-
 	return nil
 }
 
 // Start prepares DataAvailabilityLayerClient to work.
-func (c *DataAvailabilityLayerClient) Start() error {
+func (c *DataAvailabilityLayerClient) Start() (err error) {
 	c.logger.Info("starting Celestia Data Availability Layer Client")
+	//FIXME: set Timeouts?
+	//cnc.WithTimeout(c.config.Timeout)
+	c.rpc, err = openrpc.NewClient(c.ctx, c.config.BaseURL, "")
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -153,9 +148,57 @@ func (c *DataAvailabilityLayerClient) GetClientType() da.Client {
 	return da.Celestia
 }
 
+/*
+
+// SubmitBlocks submits blocks to DA layer.
+func (c *DataAvailabilityLayerClient) SubmitBlocks(ctx context.Context, blocks []*types.Block) da.ResultSubmitBlocks {
+	blobs := make([]*blob.Blob, len(blocks))
+	for blockIndex, block := range blocks {
+		data, err := block.MarshalBinary()
+		if err != nil {
+			return da.ResultSubmitBlocks{
+				BaseResult: da.BaseResult{
+					Code:    da.StatusError,
+					Message: err.Error(),
+				},
+			}
+		}
+		blockBlob, err := blob.NewBlobV0(c.namespace.Bytes(), data)
+		if err != nil {
+			return da.ResultSubmitBlocks{
+				BaseResult: da.BaseResult{
+					Code:    da.StatusError,
+					Message: err.Error(),
+				},
+			}
+		}
+		blobs[blockIndex] = blockBlob
+	}
+
+	dataLayerHeight, err := c.rpc.Blob.Submit(ctx, blobs, openrpc.DefaultSubmitOptions())
+	if err != nil {
+		return da.ResultSubmitBlocks{
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: err.Error(),
+			},
+		}
+	}
+
+	c.logger.Debug("successfully submitted blobs", "daHeight", dataLayerHeight)
+
+	return da.ResultSubmitBlocks{
+		BaseResult: da.BaseResult{
+			Code:     da.StatusSuccess,
+			DAHeight: uint64(dataLayerHeight),
+		},
+	}
+}
+*/
+
 // SubmitBatch submits a batch to the DA layer.
 func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultSubmitBatch {
-	blob, err := batch.MarshalBinary()
+	data, err := batch.MarshalBinary()
 	if err != nil {
 		return da.ResultSubmitBatch{
 			BaseResult: da.BaseResult{
@@ -164,10 +207,20 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			},
 		}
 	}
-	estimatedGas := DefaultEstimateGas(uint32(len(blob)))
+
+	blockBlob, err := blob.NewBlobV0(c.config.NamespaceID.Bytes(), data)
+	if err != nil {
+		return da.ResultSubmitBatch{
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: err.Error(),
+			},
+		}
+	}
+	estimatedGas := DefaultEstimateGas(uint32(len(data)))
 	gasWanted := uint64(float64(estimatedGas) * c.config.GasAdjustment)
 	fees := c.calculateFees(gasWanted)
-	c.logger.Debug("Submitting to da blob with size", "size", len(blob), "estimatedGas", estimatedGas, "gasAdjusted", gasWanted, "fees", fees)
+	c.logger.Debug("Submitting to da blob with size", "size", len(blockBlob.Data), "estimatedGas", estimatedGas, "gasAdjusted", gasWanted, "fees", fees)
 
 	for {
 		select {
@@ -176,10 +229,20 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			return da.ResultSubmitBatch{}
 		default:
 			//SubmitPFB sets an error if the txResponse has error, so we check check the txResponse for error
-			txResponse, err := c.client.SubmitPFB(c.ctx, c.config.NamespaceID, blob, fees, gasWanted)
-			if txResponse == nil {
+			txResponse, err := c.rpc.State.SubmitPayForBlob(c.ctx, math.NewInt(fees), gasWanted, []*blob.Blob{blockBlob})
+			if err != nil {
 				c.logger.Error("Failed to submit DA batch. Emitting health event and trying again", "error", err)
 				res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, false, err)
+				if err != nil {
+					return res
+				}
+				time.Sleep(c.submitRetryDelay)
+				continue
+			}
+
+			if txResponse == nil {
+				c.logger.Error("Failed to submit DA batch. Emitting health event and trying again", "error", "txResponse is nil")
+				res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, false, errors.New("txResponse is nil"))
 				if err != nil {
 					return res
 				}
@@ -197,24 +260,6 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 				continue
 			}
 
-			// Here we assume that if txResponse is not nil and also error is not nil it means that the transaction
-			// was submitted (not necessarily accepted) and we still didn't get a clear status regarding it (e.g timeout).
-			// hence trying to poll for it.
-			daHeight := uint64(txResponse.Height)
-			if daHeight == 0 {
-				c.logger.Debug("Failed to receive DA batch inclusion result. Waiting for inclusion", "txHash", txResponse.TxHash)
-				daHeight, err = c.waitForTXInclusion(txResponse.TxHash)
-				if err != nil {
-					c.logger.Error("Failed to receive DA batch inclusion result. Emitting health event and trying again", "error", err)
-					res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, false, err)
-					if err != nil {
-						return res
-					}
-					time.Sleep(c.submitRetryDelay)
-					continue
-				}
-			}
-
 			c.logger.Info("Successfully submitted DA batch", "txHash", txResponse.TxHash, "daHeight", txResponse.Height, "gasWanted", txResponse.GasWanted, "gasUsed", txResponse.GasUsed)
 			res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, true, nil)
 			if err != nil {
@@ -224,37 +269,16 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 				BaseResult: da.BaseResult{
 					Code:     da.StatusSuccess,
 					Message:  "tx hash: " + txResponse.TxHash,
-					DAHeight: daHeight,
+					DAHeight: uint64(txResponse.Height),
 				},
 			}
 		}
 	}
 }
 
-// CheckBatchAvailability queries DA layer to check data availability of block at given height.
-func (c *DataAvailabilityLayerClient) CheckBatchAvailability(dataLayerHeight uint64) da.ResultCheckBatch {
-	shares, err := c.client.NamespacedShares(c.ctx, c.config.NamespaceID, dataLayerHeight)
-	if err != nil {
-		return da.ResultCheckBatch{
-			BaseResult: da.BaseResult{
-				Code:    da.StatusError,
-				Message: err.Error(),
-			},
-		}
-	}
-
-	return da.ResultCheckBatch{
-		BaseResult: da.BaseResult{
-			Code:     da.StatusSuccess,
-			DAHeight: dataLayerHeight,
-		},
-		DataAvailable: len(shares) > 0,
-	}
-}
-
 // RetrieveBatches gets a batch of blocks from DA layer.
 func (c *DataAvailabilityLayerClient) RetrieveBatches(dataLayerHeight uint64) da.ResultRetrieveBatch {
-	data, err := c.client.NamespacedData(c.ctx, c.config.NamespaceID, dataLayerHeight)
+	blobs, err := c.rpc.Blob.GetAll(c.ctx, dataLayerHeight, []share.Namespace{c.config.NamespaceID.Bytes()})
 	if err != nil {
 		return da.ResultRetrieveBatch{
 			BaseResult: da.BaseResult{
@@ -265,9 +289,9 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(dataLayerHeight uint64) da
 	}
 
 	var batches []*types.Batch
-	for i, msg := range data {
+	for i, blob := range blobs {
 		var batch pb.Batch
-		err = proto.Unmarshal(msg, &batch)
+		err = proto.Unmarshal(blob.Data, &batch)
 		if err != nil {
 			c.logger.Error("failed to unmarshal block", "daHeight", dataLayerHeight, "position", i, "error", err)
 			continue
@@ -292,37 +316,4 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(dataLayerHeight uint64) da
 		},
 		Batches: batches,
 	}
-}
-
-// FIXME(omritoptix): currently we're relaying on a node without validating it using a light client.
-// should be proxied through light client once it's supported (https://github.com/dymensionxyz/dymint/issues/335).
-func (c *DataAvailabilityLayerClient) waitForTXInclusion(txHash string) (uint64, error) {
-
-	hashBytes, err := hex.DecodeString(txHash)
-	if err != nil {
-		return 0, err
-	}
-
-	inclusionHeight := uint64(0)
-
-	err = retry.Do(func() error {
-		result, err := c.RPCClient.Tx(c.ctx, hashBytes, false)
-		if err != nil {
-			return err
-		}
-
-		if result == nil || err != nil {
-			c.logger.Error("couldn't get transaction from node", "err", err)
-			return errors.New("transaction not found")
-		}
-
-		inclusionHeight = uint64(result.Height)
-
-		return nil
-	}, retry.Attempts(uint(c.txPollingAttempts)), retry.DelayType(retry.FixedDelay), retry.Delay(c.txPollingRetryDelay))
-
-	if err != nil {
-		return 0, err
-	}
-	return inclusionHeight, nil
 }
