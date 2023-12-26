@@ -16,6 +16,7 @@ import (
 	"github.com/rollkit/celestia-openrpc/types/share"
 
 	"github.com/dymensionxyz/dymint/da"
+	celtypes "github.com/dymensionxyz/dymint/da/celestia/types"
 	"github.com/dymensionxyz/dymint/log"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
@@ -24,7 +25,7 @@ import (
 
 // DataAvailabilityLayerClient use celestia-node public API.
 type DataAvailabilityLayerClient struct {
-	rpc *openrpc.Client
+	rpc celtypes.CelestiaRPCClient
 
 	pubsubServer        *pubsub.Server
 	config              Config
@@ -38,6 +39,13 @@ type DataAvailabilityLayerClient struct {
 
 var _ da.DataAvailabilityLayerClient = &DataAvailabilityLayerClient{}
 var _ da.BatchRetriever = &DataAvailabilityLayerClient{}
+
+// WithRPCClient sets rpc client.
+func WithRPCClient(rpc celtypes.CelestiaRPCClient) da.Option {
+	return func(daLayerClient da.DataAvailabilityLayerClient) {
+		daLayerClient.(*DataAvailabilityLayerClient).rpc = rpc
+	}
+}
 
 // WithTxPollingRetryDelay sets tx polling retry delay.
 func WithTxPollingRetryDelay(delay time.Duration) da.Option {
@@ -107,14 +115,29 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 // Start prepares DataAvailabilityLayerClient to work.
 func (c *DataAvailabilityLayerClient) Start() (err error) {
 	c.logger.Info("starting Celestia Data Availability Layer Client")
-	//FIXME: set Timeouts?
-	//cnc.WithTimeout(c.config.Timeout)
 
-	// FIXME: get token from config
-	c.rpc, err = openrpc.NewClient(c.ctx, c.config.BaseURL, c.config.AuthToken)
+	// other client has already been set
+	if c.rpc != nil {
+		return nil
+	}
+
+	rpc, err := openrpc.NewClient(c.ctx, c.config.BaseURL, c.config.AuthToken)
 	if err != nil {
 		return err
 	}
+	state, err := rpc.Header.SyncState(c.ctx)
+	if err != nil {
+		return err
+	}
+	if !state.Finished() {
+		c.logger.Info("waiting for celestia-node to finish syncing", "height", state.Height, "target", state.ToHeight)
+		err := rpc.Header.SyncWait(c.ctx)
+		if err != nil {
+			return err
+		}
+	}
+
+	c.rpc = NewOpenRPC(rpc)
 	return nil
 }
 
@@ -168,7 +191,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			c.logger.Debug("Context cancelled")
 			return da.ResultSubmitBatch{}
 		default:
-			txResponse, err := c.rpc.State.SubmitPayForBlob(c.ctx, math.NewInt(fees), gasWanted, blobs)
+			txResponse, err := c.rpc.SubmitPayForBlob(c.ctx, math.NewInt(fees), gasWanted, blobs)
 			if err != nil {
 				c.logger.Error("Failed to submit DA batch. Emitting health event and trying again", "error", err)
 				res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, false, err)
@@ -217,7 +240,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 
 // RetrieveBatches gets a batch of blocks from DA layer.
 func (c *DataAvailabilityLayerClient) RetrieveBatches(dataLayerHeight uint64) da.ResultRetrieveBatch {
-	blobs, err := c.rpc.Blob.GetAll(c.ctx, dataLayerHeight, []share.Namespace{c.config.NamespaceID.Bytes()})
+	blobs, err := c.rpc.GetAll(c.ctx, dataLayerHeight, []share.Namespace{c.config.NamespaceID.Bytes()})
 	if err != nil {
 		return da.ResultRetrieveBatch{
 			BaseResult: da.BaseResult{

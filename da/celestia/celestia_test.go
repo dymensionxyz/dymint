@@ -20,7 +20,6 @@ import (
 
 	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/pubsub"
-	rpcmock "github.com/tendermint/tendermint/rpc/client/mocks"
 	coretypes "github.com/tendermint/tendermint/rpc/core/types"
 )
 
@@ -98,15 +97,13 @@ func TestSubmitBatch(t *testing.T) {
 	}
 	for _, tc := range cases {
 		// Create mock clients
-		rpcmockClient := &rpcmock.Client{}
-		mockCNCClient := mocks.NewCNCClientI(t)
+		mockRPCClient := mocks.NewCelestiaRPCClient(t)
 		// Configure DALC options
 		options := []da.Option{
 			celestia.WithTxPollingRetryDelay(1 * time.Second),
 			celestia.WithTxPollingAttempts(1),
 			celestia.WithSubmitRetryDelay(30 * time.Millisecond),
-			celestia.WithCNCClient(mockCNCClient),
-			celestia.WithRPCClient(rpcmockClient),
+			celestia.WithRPCClient(mockRPCClient),
 		}
 		// Subscribe to the health status event
 		pubsubServer := pubsub.NewServer()
@@ -119,9 +116,9 @@ func TestSubmitBatch(t *testing.T) {
 		require.NoError(err)
 		err = dalc.Start()
 		require.NoError(err)
+
 		// Set the mock functions
-		mockCNCClient.On(submitPFBFuncName, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(tc.submitPFBReturn...).Run(tc.sumbitPFDRun)
-		rpcmockClient.On(TxFuncName, mock.Anything, mock.Anything, mock.Anything).Return(tc.TxFnReturn...).Run(tc.TxFnRun)
+		mockRPCClient.On(submitPFBFuncName, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(tc.submitPFBReturn...).Run(tc.sumbitPFDRun)
 		if tc.isSubmitBatchAsync {
 			go dalc.SubmitBatch(batch)
 			time.Sleep(100 * time.Millisecond)
@@ -149,6 +146,6 @@ func TestSubmitBatch(t *testing.T) {
 		// Wait for the goroutines to finish before accessing the mock calls
 		time.Sleep(3 * time.Second)
 		t.Log("Verifying mock calls")
-		assert.GreaterOrEqual(testutil.CountMockCalls(mockCNCClient.Calls, submitPFBFuncName), tc.expectedSubmitPFBMinCalls)
+		assert.GreaterOrEqual(testutil.CountMockCalls(mockRPCClient.Calls, submitPFBFuncName), tc.expectedSubmitPFBMinCalls)
 	}
 }
