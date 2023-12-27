@@ -50,9 +50,10 @@ func (m *Manager) syncUntilTarget(ctx context.Context, syncTarget uint64) error 
 			return err
 		}
 
-		if settlementBatch.StartHeight != currentHeight+1 {
+		//code commented out because it may be the case the start height from the da batch is not exactly the next block from the last received
+		/*if settlementBatch.StartHeight != currentHeight+1 {
 			return fmt.Errorf("settlement batch start height (%d) on index (%d) is not the expected", settlementBatch.StartHeight, currStateIdx)
-		}
+		}*/
 
 		err = m.processNextDABatch(ctx, settlementBatch.MetaData.DA.Height)
 		if err != nil {
@@ -60,9 +61,11 @@ func (m *Manager) syncUntilTarget(ctx context.Context, syncTarget uint64) error 
 		}
 
 		currentHeight = m.store.Height()
-		if currentHeight != settlementBatch.EndHeight {
+
+		//code commented out because it may be the case the current height is higher than da height after applying pending blocks, in case of missing blocks
+		/*if currentHeight != settlementBatch.EndHeight {
 			return fmt.Errorf("after applying state index (%d), the height (%d) is not as expected (%d)", currStateIdx, currentHeight, settlementBatch.EndHeight)
-		}
+		}*/
 
 		err = m.updateStateIndex(settlementBatch.StateIndex)
 		if err != nil {
