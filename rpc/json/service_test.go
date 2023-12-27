@@ -296,12 +296,13 @@ func getRPC(t *testing.T) (*mocks.Application, *client.Client) {
 	require.NoError(err)
 	config := config.NodeConfig{Aggregator: true, DALayer: "mock", SettlementLayer: "mock",
 		BlockManagerConfig: config.BlockManagerConfig{
-			BlockTime:              1 * time.Second,
-			EmptyBlocksMaxTime:     0,
-			BatchSubmitMaxTime:     30 * time.Minute,
-			NamespaceID:            "0102030405060708",
-			BlockBatchSize:         10000,
-			BlockBatchMaxSizeBytes: 1000,
+			BlockTime:               1 * time.Second,
+			EmptyBlocksMaxTime:      0,
+			BatchSubmitMaxTime:      30 * time.Minute,
+			NamespaceID:             "0102030405060708",
+			BlockBatchSize:          10000,
+			BlockBatchMaxSizeBytes:  1000,
+			GossipedBlocksCacheSize: 50,
 		},
 		SettlementConfig: settlement.Config{
 			ProposerPubKey: hex.EncodeToString(proposerPubKeyBytes)},

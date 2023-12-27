@@ -57,7 +57,7 @@ func TestInitialState(t *testing.T) {
 
 	// Init p2p client
 	privKey, _, _ := crypto.GenerateEd25519Key(rand.Reader)
-	p2pClient, err := p2p.NewClient(config.P2PConfig{}, privKey, "TestChain", logger)
+	p2pClient, err := p2p.NewClient(config.P2PConfig{}, privKey, "TestChain", 50, logger)
 	assert.NoError(err)
 	assert.NotNil(p2pClient)
 

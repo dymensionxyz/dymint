@@ -47,6 +47,8 @@ type BlockManagerConfig struct {
 	BlockBatchSize uint64 `mapstructure:"block_batch_size"`
 	// The size of the batch in Bytes. Every batch we'll write to the DA and the settlement layer.
 	BlockBatchMaxSizeBytes uint64 `mapstructure:"block_batch_max_size_bytes"`
+	// The number of messages cached by gossipsub protocol
+	GossipedBlocksCacheSize int `mapstructure:"gossiped_blocks_cache_size"`
 }
 
 // GetViperConfig reads configuration parameters from Viper instance.
@@ -112,6 +114,10 @@ func (c BlockManagerConfig) Validate() error {
 
 	if c.BlockBatchMaxSizeBytes <= 0 {
 		return fmt.Errorf("block_batch_size_bytes must be positive")
+	}
+
+	if c.GossipedBlocksCacheSize <= 0 {
+		return fmt.Errorf("gossiped_blocks_cache_size must be positive")
 	}
 
 	return nil

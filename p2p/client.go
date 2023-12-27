@@ -72,13 +72,15 @@ type Client struct {
 	cancel context.CancelFunc
 
 	logger log.Logger
+
+	gossipCacheSize int
 }
 
 // NewClient creates new Client object.
 //
 // Basic checks on parameters are done, and default parameters are provided for unset-configuration
 // TODO(tzdybal): consider passing entire config, not just P2P config, to reduce number of arguments
-func NewClient(conf config.P2PConfig, privKey crypto.PrivKey, chainID string, logger log.Logger) (*Client, error) {
+func NewClient(conf config.P2PConfig, privKey crypto.PrivKey, chainID string, gossipCacheSize int, logger log.Logger) (*Client, error) {
 	if privKey == nil {
 		return nil, errNoPrivKey
 	}
@@ -86,10 +88,11 @@ func NewClient(conf config.P2PConfig, privKey crypto.PrivKey, chainID string, lo
 		conf.ListenAddress = config.DefaultListenAddress
 	}
 	return &Client{
-		conf:    conf,
-		privKey: privKey,
-		chainID: chainID,
-		logger:  logger,
+		conf:            conf,
+		privKey:         privKey,
+		chainID:         chainID,
+		logger:          logger,
+		gossipCacheSize: gossipCacheSize,
 	}, nil
 }
 
@@ -329,9 +332,9 @@ func (c *Client) tryConnect(ctx context.Context, peer peer.AddrInfo) {
 
 func (c *Client) setupGossiping(ctx context.Context) error {
 
-	pubsub.GossipSubHistoryGossip = 50
-	pubsub.GossipSubHistoryLength = 70
-	pubsub.GossipSubMaxIHaveMessages = 50
+	pubsub.GossipSubHistoryGossip = c.gossipCacheSize
+	pubsub.GossipSubHistoryLength = c.gossipCacheSize
+	pubsub.GossipSubMaxIHaveMessages = c.gossipCacheSize
 
 	ps, err := pubsub.NewGossipSub(ctx, c.host)
 	if err != nil {
