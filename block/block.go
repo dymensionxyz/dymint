@@ -113,7 +113,9 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 	return nil
 }
 
-func (m *Manager) checkPrevCachedBlocks(ctx context.Context) error {
+func (m *Manager) attemptApplyCachedBlocks(ctx context.Context) error {
+	m.applyCachedBlockMutex.Lock()
+	defer m.applyCachedBlockMutex.Unlock()
 
 	prevCachedBlock, exists := m.prevBlock[m.store.Height()+1]
 
@@ -122,7 +124,7 @@ func (m *Manager) checkPrevCachedBlocks(ctx context.Context) error {
 
 		err := m.applyBlock(ctx, prevCachedBlock, m.prevCommit[m.store.Height()+1], blockMetaData{source: gossipedBlock})
 		if err != nil {
-			m.logger.Debug("Failing to apply previously cached block", "err", err)
+			m.logger.Debug("Failed to apply previously cached block", "err", err)
 			return err
 		}
 		prevCachedBlock, exists = m.prevBlock[m.store.Height()+1]

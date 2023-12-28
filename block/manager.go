@@ -70,11 +70,12 @@ type Manager struct {
 	shouldProduceBlocksCh chan bool
 	produceEmptyBlockCh   chan bool
 
-	syncTarget         uint64
-	lastSubmissionTime int64
-	batchInProcess     atomic.Value
-	isSyncedCond       sync.Cond
-	produceBlockMutex  sync.Mutex
+	syncTarget            uint64
+	lastSubmissionTime    int64
+	batchInProcess        atomic.Value
+	isSyncedCond          sync.Cond
+	produceBlockMutex     sync.Mutex
+	applyCachedBlockMutex sync.Mutex
 
 	syncCache map[uint64]*types.Block
 
@@ -223,19 +224,19 @@ func (m *Manager) applyBlockCallback(event pubsub.Message) {
 	commit := eventData.Commit
 
 	if block.Header.Height != m.store.Height()+1 {
-		// We crashed after the commit and before updating the store height.
 		m.prevBlock[block.Header.Height] = &block
 		m.prevCommit[block.Header.Height] = &commit
 		m.logger.Debug("Caching block", "block height", block.Header.Height, "store height", m.store.Height())
-		err := m.checkPrevCachedBlocks(context.Background())
-		if err != nil {
-			m.logger.Debug("Error applying previous cached blocks", "err", err)
-		}
+
 	} else {
 		err := m.applyBlock(context.Background(), &block, &commit, blockMetaData{source: gossipedBlock})
 		if err != nil {
 			m.logger.Debug("Failed to apply block", "err", err)
 		}
+	}
+	err := m.attemptApplyCachedBlocks(context.Background())
+	if err != nil {
+		m.logger.Debug("Failed to apply previous cached blocks", "err", err)
 	}
 }
 
