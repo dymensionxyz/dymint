@@ -224,10 +224,11 @@ func (m *Manager) applyBlockCallback(event pubsub.Message) {
 	commit := eventData.Commit
 
 	if block.Header.Height != m.store.Height()+1 {
-		m.prevBlock[block.Header.Height] = &block
-		m.prevCommit[block.Header.Height] = &commit
-		m.logger.Debug("Caching block", "block height", block.Header.Height, "store height", m.store.Height())
-
+		if block.Header.Height > m.store.Height() {
+			m.prevBlock[block.Header.Height] = &block
+			m.prevCommit[block.Header.Height] = &commit
+			m.logger.Debug("Caching block", "block height", block.Header.Height, "store height", m.store.Height())
+		}
 	} else {
 		err := m.applyBlock(context.Background(), &block, &commit, blockMetaData{source: gossipedBlock})
 		if err != nil {
