@@ -84,6 +84,9 @@ da_config = "{{ .DAConfig }}"
 # max size of batch in bytes that can be accepted by DA
 block_batch_max_size_bytes = {{ .BlockManagerConfig.BlockBatchMaxSizeBytes }}
 
+# max number of cached messages by gossipsub protocol
+gossiped_blocks_cache_size = {{ .BlockManagerConfig.GossipedBlocksCacheSize }}
+
 #celestia config example:
 # da_config = "{\"base_url\": \"http://127.0.0.1:26659\", \"timeout\": 60000000000, \"gas_prices\":0.1, \"gas_adjustment\": 1.3, \"namespace_id\":\"000000000000ffff\"}"
 # Avail config example:

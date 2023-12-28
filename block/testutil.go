@@ -95,7 +95,7 @@ func getManager(conf config.BlockManagerConfig, settlementlc settlement.LayerI, 
 
 	// Init p2p client and validator
 	p2pKey, _, _ := crypto.GenerateEd25519Key(rand.Reader)
-	p2pClient, err := p2p.NewClient(config.P2PConfig{}, p2pKey, "TestChain", logger)
+	p2pClient, err := p2p.NewClient(config.P2PConfig{}, p2pKey, "TestChain", 50, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -143,10 +143,11 @@ func initSettlementLayerMock(settlementlc settlement.LayerI, proposer string, pu
 
 func getManagerConfig() config.BlockManagerConfig {
 	return config.BlockManagerConfig{
-		BlockTime:              100 * time.Millisecond,
-		BlockBatchSize:         defaultBatchSize,
-		BlockBatchMaxSizeBytes: 1000,
-		BatchSubmitMaxTime:     30 * time.Minute,
-		NamespaceID:            "0102030405060708",
+		BlockTime:               100 * time.Millisecond,
+		BlockBatchSize:          defaultBatchSize,
+		BlockBatchMaxSizeBytes:  1000,
+		BatchSubmitMaxTime:      30 * time.Minute,
+		NamespaceID:             "0102030405060708",
+		GossipedBlocksCacheSize: 50,
 	}
 }
