@@ -19,6 +19,7 @@ import (
 func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *types.Commit, blockMetaData blockMetaData) error {
 	if block.Header.Height != m.store.Height()+1 {
 		// We crashed after the commit and before updating the store height.
+		m.logger.Error("Block not applied. Wrong height", "block height", block.Header.Height, "store height", m.store.Height())
 		return nil
 	}
 
@@ -109,6 +110,32 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 
 	m.store.SetHeight(block.Header.Height)
 
+	return nil
+}
+
+func (m *Manager) attemptApplyCachedBlocks(ctx context.Context) error {
+	m.applyCachedBlockMutex.Lock()
+	defer m.applyCachedBlockMutex.Unlock()
+
+	prevCachedBlock, exists := m.prevBlock[m.store.Height()+1]
+
+	for exists {
+		m.logger.Debug("Applying cached block", "height", m.store.Height()+1)
+
+		err := m.applyBlock(ctx, prevCachedBlock, m.prevCommit[m.store.Height()+1], blockMetaData{source: gossipedBlock})
+		if err != nil {
+			m.logger.Debug("Failed to apply previously cached block", "err", err)
+			return err
+		}
+		prevCachedBlock, exists = m.prevBlock[m.store.Height()+1]
+	}
+
+	for k := range m.prevBlock {
+		if k <= m.store.Height() {
+			delete(m.prevBlock, k)
+			delete(m.prevCommit, k)
+		}
+	}
 	return nil
 }
 

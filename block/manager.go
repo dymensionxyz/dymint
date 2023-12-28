@@ -70,15 +70,19 @@ type Manager struct {
 	shouldProduceBlocksCh chan bool
 	produceEmptyBlockCh   chan bool
 
-	syncTarget         uint64
-	lastSubmissionTime int64
-	batchInProcess     atomic.Value
-	isSyncedCond       sync.Cond
-	produceBlockMutex  sync.Mutex
+	syncTarget            uint64
+	lastSubmissionTime    int64
+	batchInProcess        atomic.Value
+	isSyncedCond          sync.Cond
+	produceBlockMutex     sync.Mutex
+	applyCachedBlockMutex sync.Mutex
 
 	syncCache map[uint64]*types.Block
 
 	logger log.Logger
+
+	prevBlock  map[uint64]*types.Block
+	prevCommit map[uint64]*types.Commit
 }
 
 // getInitialState tries to load lastState from Store, and if it's not available it reads GenesisDoc.
@@ -168,6 +172,8 @@ func NewManager(
 		shouldProduceBlocksCh: make(chan bool, 1),
 		produceEmptyBlockCh:   make(chan bool, 1),
 		logger:                logger,
+		prevBlock:             make(map[uint64]*types.Block),
+		prevCommit:            make(map[uint64]*types.Commit),
 	}
 
 	return agg, nil
@@ -212,13 +218,26 @@ func (m *Manager) healthStatusEventCallback(event pubsub.Message) {
 }
 
 func (m *Manager) applyBlockCallback(event pubsub.Message) {
-	m.logger.Debug("Received new block event", "eventData", event.Data())
+	m.logger.Debug("Received new block event", "eventData", event.Data(), "cachedBlocks", len(m.prevBlock))
 	eventData := event.Data().(p2p.GossipedBlock)
 	block := eventData.Block
 	commit := eventData.Commit
-	err := m.applyBlock(context.Background(), &block, &commit, blockMetaData{source: gossipedBlock})
+
+	if block.Header.Height != m.store.Height()+1 {
+		if block.Header.Height > m.store.Height() {
+			m.prevBlock[block.Header.Height] = &block
+			m.prevCommit[block.Header.Height] = &commit
+			m.logger.Debug("Caching block", "block height", block.Header.Height, "store height", m.store.Height())
+		}
+	} else {
+		err := m.applyBlock(context.Background(), &block, &commit, blockMetaData{source: gossipedBlock})
+		if err != nil {
+			m.logger.Debug("Failed to apply block", "err", err)
+		}
+	}
+	err := m.attemptApplyCachedBlocks(context.Background())
 	if err != nil {
-		m.logger.Debug("Failed to apply block", "err", err)
+		m.logger.Debug("Failed to apply previous cached blocks", "err", err)
 	}
 }
 
