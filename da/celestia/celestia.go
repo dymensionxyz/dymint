@@ -202,24 +202,16 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 				continue
 			}
 
+			//double check txResponse is not nil - not supposed to happen
 			if txResponse == nil {
-				c.logger.Error("Failed to submit DA batch. Emitting health event and trying again", "error", "txResponse is nil")
-				res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, false, errors.New("txResponse is nil"))
-				if err != nil {
-					return res
+				err := errors.New("txResponse is nil")
+				c.logger.Error("Failed to submit DA batch", "error", err)
+				return da.ResultSubmitBatch{
+					BaseResult: da.BaseResult{
+						Code:    da.StatusError,
+						Message: err.Error(),
+					},
 				}
-				time.Sleep(c.submitRetryDelay)
-				continue
-			}
-
-			if txResponse.Code != 0 {
-				c.logger.Error("Failed to submit DA batch. Emitting health event and trying again", "txResponse", txResponse.RawLog, "code", txResponse.Code)
-				res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, false, errors.New(txResponse.RawLog))
-				if err != nil {
-					return res
-				}
-				time.Sleep(c.submitRetryDelay)
-				continue
 			}
 
 			c.logger.Info("Successfully submitted DA batch", "txHash", txResponse.TxHash, "daHeight", txResponse.Height, "gasWanted", txResponse.GasWanted, "gasUsed", txResponse.GasUsed)

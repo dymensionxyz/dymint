@@ -50,18 +50,6 @@ func TestSubmitBatch(t *testing.T) {
 			expectedHealthEvent:     &da.EventDataDAHealthStatus{Healthy: true},
 		},
 		{
-			name:                "TestSubmitPFBResponseNil",
-			submitPFBReturn:     []interface{}{nil, nil},
-			sumbitPFDRun:        func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) },
-			expectedHealthEvent: &da.EventDataDAHealthStatus{Healthy: false},
-		},
-		{
-			name:                "TestSubmitPFBResponseCodeFailure",
-			submitPFBReturn:     []interface{}{&state.TxResponse{Code: 1}, nil},
-			sumbitPFDRun:        func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) },
-			expectedHealthEvent: &da.EventDataDAHealthStatus{Healthy: false},
-		},
-		{
 			name:                "TestSubmitPFBErrored",
 			submitPFBReturn:     []interface{}{&state.TxResponse{TxHash: "1234"}, errors.New("timeout")},
 			sumbitPFDRun:        func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) },
