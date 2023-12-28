@@ -179,7 +179,7 @@ func NewNode(ctx context.Context, conf config.NodeConfig, p2pKey crypto.PrivKey,
 
 	// Set p2p client and it's validators
 	p2pValidator := p2p.NewValidator(logger.With("module", "p2p_validator"), pubsubServer)
-	p2pClient, err := p2p.NewClient(conf.P2P, p2pKey, genesis.ChainID, logger.With("module", "p2p"))
+	p2pClient, err := p2p.NewClient(conf.P2P, p2pKey, genesis.ChainID, conf.GossipedBlocksCacheSize, logger.With("module", "p2p"))
 	if err != nil {
 		return nil, err
 	}
