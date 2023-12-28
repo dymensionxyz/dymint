@@ -92,7 +92,10 @@ func (m *Manager) processNextDABatch(ctx context.Context, daHeight uint64) error
 			}
 		}
 	}
-	m.checkPrevCachedBlocks(ctx)
+	err = m.checkPrevCachedBlocks(ctx)
+	if err != nil {
+		m.logger.Debug("Error applying previous cached blocks", "err", err)
+	}
 	return nil
 }
 

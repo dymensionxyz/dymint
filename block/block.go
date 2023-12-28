@@ -123,6 +123,7 @@ func (m *Manager) checkPrevCachedBlocks(ctx context.Context) error {
 		err := m.applyBlock(ctx, prevCachedBlock, m.prevCommit[m.store.Height()+1], blockMetaData{source: gossipedBlock})
 		if err != nil {
 			m.logger.Debug("Failing to apply previously cached block", "err", err)
+			return err
 		}
 		prevCachedBlock, exists = m.prevBlock[m.store.Height()+1]
 	}

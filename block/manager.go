@@ -227,8 +227,10 @@ func (m *Manager) applyBlockCallback(event pubsub.Message) {
 		m.prevBlock[block.Header.Height] = &block
 		m.prevCommit[block.Header.Height] = &commit
 		m.logger.Debug("Caching block", "block height", block.Header.Height, "store height", m.store.Height())
-		m.checkPrevCachedBlocks(context.Background())
-
+		err := m.checkPrevCachedBlocks(context.Background())
+		if err != nil {
+			m.logger.Debug("Error applying previous cached blocks", "err", err)
+		}
 	} else {
 		err := m.applyBlock(context.Background(), &block, &commit, blockMetaData{source: gossipedBlock})
 		if err != nil {
