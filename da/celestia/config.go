@@ -1,9 +1,9 @@
 package celestia
 
 import (
+	"crypto/rand"
 	"encoding/hex"
 	"fmt"
-	"math/rand"
 	"time"
 
 	openrpcns "github.com/rollkit/celestia-openrpc/types/namespace"
@@ -45,7 +45,6 @@ var CelestiaDefaultConfig = Config{
 }
 
 func generateRandNamespaceID() string {
-	rand.Seed(time.Now().UnixNano())
 	nID := make([]byte, 10)
 	_, err := rand.Read(nID)
 	if err != nil {
