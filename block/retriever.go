@@ -102,6 +102,7 @@ func (m *Manager) processNextDABatch(ctx context.Context, daHeight uint64) error
 			}
 		}
 	}
+	m.checkPrevCachedBlocks(ctx)
 	return nil
 }
 

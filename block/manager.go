@@ -80,9 +80,8 @@ type Manager struct {
 
 	logger log.Logger
 
-	prevBlock    map[uint64]*types.Block
-	prevCommit   map[uint64]*types.Commit
-	prevMetaData map[uint64]blockMetaData
+	prevBlock  map[uint64]*types.Block
+	prevCommit map[uint64]*types.Commit
 }
 
 // getInitialState tries to load lastState from Store, and if it's not available it reads GenesisDoc.
@@ -174,7 +173,6 @@ func NewManager(
 		logger:                logger,
 		prevBlock:             make(map[uint64]*types.Block),
 		prevCommit:            make(map[uint64]*types.Commit),
-		prevMetaData:          make(map[uint64]blockMetaData),
 	}
 
 	return agg, nil
@@ -219,13 +217,23 @@ func (m *Manager) healthStatusEventCallback(event pubsub.Message) {
 }
 
 func (m *Manager) applyBlockCallback(event pubsub.Message) {
-	m.logger.Debug("Received new block event", "eventData", event.Data())
+	m.logger.Debug("Received new block event", "eventData", event.Data(), "cachedBlocks", len(m.prevBlock))
 	eventData := event.Data().(p2p.GossipedBlock)
 	block := eventData.Block
 	commit := eventData.Commit
-	err := m.applyBlock(context.Background(), &block, &commit, blockMetaData{source: gossipedBlock})
-	if err != nil {
-		m.logger.Debug("Failed to apply block", "err", err)
+
+	if block.Header.Height != m.store.Height()+1 {
+		// We crashed after the commit and before updating the store height.
+		m.prevBlock[block.Header.Height] = &block
+		m.prevCommit[block.Header.Height] = &commit
+		m.logger.Debug("Caching block", "block height", block.Header.Height, "store height", m.store.Height())
+		m.checkPrevCachedBlocks(context.Background())
+
+	} else {
+		err := m.applyBlock(context.Background(), &block, &commit, blockMetaData{source: gossipedBlock})
+		if err != nil {
+			m.logger.Debug("Failed to apply block", "err", err)
+		}
 	}
 }
 
