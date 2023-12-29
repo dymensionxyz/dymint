@@ -160,8 +160,10 @@ func initConfig(conf settlement.Config) (proposer string, err error) {
 // Start starts the mock client
 func (c *HubGrpcClient) Start() error {
 	c.logger.Info("Starting grpc mock settlement")
-	tick := time.NewTicker(time.Duration(c.refreshTime) * time.Millisecond)
+
 	go func() {
+		tick := time.NewTicker(time.Duration(c.refreshTime) * time.Millisecond)
+		defer tick.Stop()
 		for {
 			select {
 			case <-c.stopchan:
