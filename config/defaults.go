@@ -4,6 +4,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/dymensionxyz/dymint/da/grpc"
 	"github.com/dymensionxyz/dymint/settlement"
 )
 
@@ -49,6 +50,12 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 		chainId = DefaultChainID
 	}
 
+	//Setting default params for sl grpc mock
+	defaultSlGrpcConfig := settlement.GrpcConfig{
+		Host: "127.0.0.1",
+		Port: 7981,
+	}
+
 	defaultSLconfig := settlement.Config{
 		KeyringBackend: "test",
 		NodeAddress:    "http://127.0.0.1:36657",
@@ -56,8 +63,16 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 		KeyringHomeDir: keyringDir,
 		DymAccountName: "sequencer",
 		GasPrices:      "0.025udym",
+		SLGrpc:         defaultSlGrpcConfig,
 	}
 	cfg.SettlementConfig = defaultSLconfig
+
+	//Setting default params for da grpc mock
+	defaultDAGrpc := grpc.Config{
+		Host: "127.0.0.1",
+		Port: 7980,
+	}
+	cfg.DAGrpc = defaultDAGrpc
 
 	return cfg
 }
