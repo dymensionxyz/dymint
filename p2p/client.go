@@ -263,6 +263,8 @@ func (c *Client) setupDHT(ctx context.Context) error {
 		return fmt.Errorf("failed to bootstrap DHT: %w", err)
 	}
 
+	go c.bootstrapLoop(ctx)
+
 	c.host = routedhost.Wrap(c.host, c.dht)
 
 	return nil
@@ -403,5 +405,25 @@ func (c *Client) getBlockTopic() string {
 func (c *Client) NewTxValidator() GossipValidator {
 	return func(g *GossipMessage) bool {
 		return true
+	}
+}
+
+func (c *Client) bootstrapLoop(ctx context.Context) error {
+	ticker := time.NewTicker(30 * time.Second)
+	defer ticker.Stop()
+	for {
+		select {
+		//Context canceled
+		case <-ctx.Done():
+			return nil
+		case <-ticker.C:
+			if len(c.Peers()) == 0 {
+				err := c.dht.Bootstrap(ctx)
+				if err != nil {
+					c.logger.Error("failed to re-bootstrap DHT: %w", err)
+				}
+			}
+
+		}
 	}
 }
