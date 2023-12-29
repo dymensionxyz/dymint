@@ -20,8 +20,9 @@ type Config struct {
 }
 
 type GrpcConfig struct {
-	Host string `json:"host"`
-	Port int    `json:"port"`
+	Host        string `json:"host"`
+	Port        int    `json:"port"`
+	RefreshTime int    `json:"refresh_time"`
 }
 
 func (c Config) Validate() error {

@@ -71,12 +71,13 @@ type HubGrpcClient struct {
 	conn           *grpc.ClientConn
 	sl             slmock.MockSLClient
 	stopchan       chan struct{}
+	refreshTime    int
 }
 
 var _ settlement.HubClient = &HubGrpcClient{}
 
 func newHubClient(config settlement.Config, pubsub *pubsub.Server, logger log.Logger) (*HubGrpcClient, error) {
-	ctx, _ := context.WithCancel(context.Background())
+	ctx := context.Background()
 
 	latestHeight := uint64(0)
 	slStateIndex := uint64(0)
@@ -124,6 +125,7 @@ func newHubClient(config settlement.Config, pubsub *pubsub.Server, logger log.Lo
 		conn:           conn,
 		sl:             client,
 		stopchan:       stopchan,
+		refreshTime:    config.SLGrpc.RefreshTime,
 	}, nil
 }
 
@@ -159,7 +161,7 @@ func initConfig(conf settlement.Config) (proposer string, err error) {
 // Start starts the mock client
 func (c *HubGrpcClient) Start() error {
 	c.logger.Info("Starting grpc mock settlement")
-	tick := time.Tick(1 * time.Second)
+	tick := time.Tick(time.Duration(c.refreshTime) * time.Millisecond)
 	// Keep trying until we're timed out or got a result or got an error
 	go func() {
 		for {

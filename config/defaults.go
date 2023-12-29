@@ -52,8 +52,9 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 
 	//Setting default params for sl grpc mock
 	defaultSlGrpcConfig := settlement.GrpcConfig{
-		Host: "127.0.0.1",
-		Port: 7981,
+		Host:        "127.0.0.1",
+		Port:        7981,
+		RefreshTime: 1000,
 	}
 
 	defaultSLconfig := settlement.Config{
