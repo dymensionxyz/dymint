@@ -1,0 +1,53 @@
+syntax = "proto3";
+
+option go_package = "github.com/dymensionxyz/dymint/settlement/mockserver/proto/settlement";
+
+package settlement;
+
+// The greeting service definition.
+service MockSL {
+  // Sends a greeting
+  rpc GetIndex (SLGetIndexRequest) returns (SLGetIndexReply) {}
+  rpc SetIndex (SLSetIndexRequest) returns (SLSetIndexResult) {}
+  rpc SetBatch (SLSetBatchRequest) returns (SLSetBatchReply) {}
+  rpc GetBatch (SLGetBatchRequest) returns (SLGetBatchReply) {}
+
+}
+
+// The request message containing the user's name.
+message SLGetIndexRequest {
+}
+
+// The response message containing the greetings
+message SLGetIndexReply {
+  uint64 index = 1;
+}
+
+// The request message containing the user's name.
+message SLSetIndexRequest {
+  uint64 index = 1;
+}
+
+// The request message containing the user's name.
+message SLSetIndexResult {
+  uint64 index = 1;
+}
+
+message SLSetBatchRequest {
+  uint64 index = 1;
+  bytes batch = 2;
+}
+
+message SLSetBatchReply {
+  uint64 result = 1;
+}
+
+message SLGetBatchRequest {
+  uint64 index = 1;
+}
+
+message SLGetBatchReply {
+  uint64 index = 1;
+  bytes batch = 2;
+}
+
