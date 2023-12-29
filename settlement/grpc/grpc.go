@@ -3,7 +3,6 @@ package grpc
 import (
 	"context"
 	"crypto/rand"
-	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -161,15 +160,14 @@ func initConfig(conf settlement.Config) (proposer string, err error) {
 // Start starts the mock client
 func (c *HubGrpcClient) Start() error {
 	c.logger.Info("Starting grpc mock settlement")
-	tick := time.Tick(time.Duration(c.refreshTime) * time.Millisecond)
-	// Keep trying until we're timed out or got a result or got an error
+	tick := time.NewTicker(time.Duration(c.refreshTime) * time.Millisecond)
 	go func() {
 		for {
 			select {
 			case <-c.stopchan:
 				// stop
 				return
-			case <-tick:
+			case <-tick.C:
 				index, err := c.sl.GetIndex(c.ctx, &slmock.SLGetIndexRequest{})
 				if err == nil {
 					if c.slStateIndex < index.GetIndex() {
@@ -316,10 +314,4 @@ func (c *HubGrpcClient) retrieveBatchAtStateIndex(slStateIndex uint64) (*settlem
 		Batch:      &settlementBatch,
 	}
 	return &batchResult, nil
-}
-
-func getKey(key uint64) []byte {
-	b := make([]byte, 8)
-	binary.BigEndian.PutUint64(b, key)
-	return b
 }
