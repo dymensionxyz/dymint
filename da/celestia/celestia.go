@@ -118,6 +118,7 @@ func (c *DataAvailabilityLayerClient) Start() (err error) {
 
 	// other client has already been set
 	if c.rpc != nil {
+		c.logger.Info("celestia-node client already set")
 		return nil
 	}
 
@@ -125,10 +126,13 @@ func (c *DataAvailabilityLayerClient) Start() (err error) {
 	if err != nil {
 		return err
 	}
+	c.logger.Info("waiting for celestia-node to start syncing")
 	state, err := rpc.Header.SyncState(c.ctx)
 	if err != nil {
 		return err
 	}
+	c.logger.Info("celestia-node is syncing", "height", state.Height, "target", state.ToHeight)
+
 	if !state.Finished() {
 		c.logger.Info("waiting for celestia-node to finish syncing", "height", state.Height, "target", state.ToHeight)
 		err := rpc.Header.SyncWait(c.ctx)
