@@ -118,7 +118,7 @@ func (c *DataAvailabilityLayerClient) Start() (err error) {
 
 	// other client has already been set
 	if c.rpc != nil {
-		c.logger.Info("celestia-node client already set")
+		c.logger.Debug("celestia-node client already set")
 		return nil
 	}
 
@@ -126,20 +126,37 @@ func (c *DataAvailabilityLayerClient) Start() (err error) {
 	if err != nil {
 		return err
 	}
-	c.logger.Info("waiting for celestia-node to start syncing")
+
 	state, err := rpc.Header.SyncState(c.ctx)
 	if err != nil {
 		return err
 	}
-	c.logger.Info("celestia-node is syncing", "height", state.Height, "target", state.ToHeight)
 
 	if !state.Finished() {
 		c.logger.Info("waiting for celestia-node to finish syncing", "height", state.Height, "target", state.ToHeight)
-		err := rpc.Header.SyncWait(c.ctx)
-		if err != nil {
-			return err
+
+		done := make(chan error, 1)
+		go func() {
+			done <- rpc.Header.SyncWait(c.ctx)
+		}()
+
+		ticker := time.NewTicker(1 * time.Minute)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case err := <-done:
+				if err != nil {
+					return err
+				}
+				return nil
+			case <-ticker.C:
+				c.logger.Info("celestia-node still syncing", "height", state.Height, "target", state.ToHeight)
+			}
 		}
 	}
+
+	c.logger.Info("celestia-node is synced", "height", state.ToHeight)
 
 	c.rpc = NewOpenRPC(rpc)
 	return nil
@@ -210,12 +227,12 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			if txResponse == nil {
 				err := errors.New("txResponse is nil")
 				c.logger.Error("Failed to submit DA batch", "error", err)
-				return da.ResultSubmitBatch{
-					BaseResult: da.BaseResult{
-						Code:    da.StatusError,
-						Message: err.Error(),
-					},
+				res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, false, err)
+				if err != nil {
+					return res
 				}
+				time.Sleep(c.submitRetryDelay)
+				continue
 			}
 
 			c.logger.Info("Successfully submitted DA batch", "txHash", txResponse.TxHash, "daHeight", txResponse.Height, "gasWanted", txResponse.GasWanted, "gasUsed", txResponse.GasUsed)
