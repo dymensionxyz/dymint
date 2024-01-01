@@ -135,7 +135,10 @@ func GenerateBlocks(startHeight uint64, num uint64, proposerKey crypto.PrivKey) 
 // GenerateCommits generates commits based on passed blocks.
 func GenerateCommits(blocks []*types.Block, proposerKey crypto.PrivKey) ([]*types.Commit, error) {
 	commits := make([]*types.Commit, len(blocks))
-	for i, block := range blocks {
+
+	num := uint64(len(blocks))
+	for i := uint64(0); i < num; i++ {
+		block := blocks[i]
 		signature, err := generateSignature(proposerKey, &block.Header)
 		if err != nil {
 			return nil, err
