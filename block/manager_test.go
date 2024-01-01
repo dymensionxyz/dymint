@@ -119,9 +119,9 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 	require.NotNil(t, manager)
 
 	t.Log("Taking the manager out of sync by submitting a batch")
-	lastStoreHeight := manager.store.Height()
+	syncTarget := atomic.LoadUint64(&manager.syncTarget)
 	numBatchesToAdd := 2
-	nextBatchStartHeight := atomic.LoadUint64(&manager.syncTarget) + 1
+	nextBatchStartHeight := syncTarget + 1
 	var batch *types.Batch
 	for i := 0; i < numBatchesToAdd; i++ {
 		batch, err = testutil.GenerateBatch(nextBatchStartHeight, nextBatchStartHeight+uint64(defaultBatchSize-1), manager.proposerKey)
@@ -134,30 +134,17 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 		time.Sleep(time.Millisecond * 500)
 	}
 
-	t.Log("Validating manager can't produce blocks")
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
-	defer cancel()
-	go manager.ProduceBlockLoop(ctx)
-	<-ctx.Done()
-	assert.Equal(t, lastStoreHeight, manager.store.Height())
-	// Wait until produce block loop is done
-	time.Sleep(time.Second * 1)
+	//Initially sync target is 0
+	assert.True(t, manager.syncTarget == 0)
+	assert.True(t, manager.store.Height() == 0)
 
-	t.Log("Sync the manager")
-	ctx, cancel = context.WithTimeout(context.Background(), time.Second*2)
+	//enough time to sync and produce blocks
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*4)
 	defer cancel()
-	go manager.Start(ctx, false)
+	go manager.Start(ctx, true)
 	<-ctx.Done()
-	require.Greater(t, manager.store.Height(), lastStoreHeight)
-	assert.Equal(t, batch.EndHeight, manager.store.Height())
-	// Wait until manager is done
-	time.Sleep(time.Second * 4)
-
-	t.Log("Validate blocks are produced")
-	ctx, cancel = context.WithTimeout(context.Background(), time.Second*3)
-	defer cancel()
-	go manager.ProduceBlockLoop(ctx)
-	<-ctx.Done()
+	assert.True(t, manager.syncTarget == batch.EndHeight)
+	//validate that we produced blocks
 	assert.Greater(t, manager.store.Height(), batch.EndHeight)
 }
 

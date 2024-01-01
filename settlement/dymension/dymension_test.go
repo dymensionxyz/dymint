@@ -106,57 +106,49 @@ func TestPostBatch(t *testing.T) {
 	HealthSubscription, err := pubsubServer.Subscribe(context.Background(), "testPostBatch", settlement.EventQuerySettlementHealthStatus)
 	assert.NoError(t, err)
 
-	// Subscribe to the batch accepted event
-	BatchAcceptedSubscription, err := pubsubServer.Subscribe(context.Background(), "testPostBatch", settlement.EventQueryNewSettlementBatchAccepted)
-	assert.NoError(t, err)
-
 	cases := []struct {
-		name                       string
-		isBatchSubmitSuccess       bool
-		isBatchAcceptedHubEvent    bool
-		shouldMockBatchIncluded    bool
-		isBatchIncludedSuccess     bool
-		expectedBatchAcceptedEvent bool
-		expectedHealthEventValue   bool
-		expectedError              error
+		name                     string
+		isBatchSubmitSuccess     bool
+		isBatchAcceptedHubEvent  bool
+		shouldMockBatchIncluded  bool
+		isBatchIncludedSuccess   bool
+		expectedHealthEventValue bool
+		expectedError            error
 	}{
 		{
-			name:                       "TestSubmitBatchFailure",
-			isBatchSubmitSuccess:       false,
-			isBatchAcceptedHubEvent:    false,
-			shouldMockBatchIncluded:    true,
-			isBatchIncludedSuccess:     false,
-			expectedHealthEventValue:   false,
-			expectedBatchAcceptedEvent: false,
-			expectedError:              submitBatchError,
+			name:                     "TestSubmitBatchFailure",
+			isBatchSubmitSuccess:     false,
+			isBatchAcceptedHubEvent:  false,
+			shouldMockBatchIncluded:  true,
+			isBatchIncludedSuccess:   false,
+			expectedHealthEventValue: false,
+			expectedError:            submitBatchError,
 		},
 		{
-			name:                       "TestSubmitBatchSuccessNoBatchAcceptedHubEventNotIncluded",
-			isBatchSubmitSuccess:       true,
-			isBatchAcceptedHubEvent:    false,
-			shouldMockBatchIncluded:    true,
-			isBatchIncludedSuccess:     false,
-			expectedHealthEventValue:   false,
-			expectedBatchAcceptedEvent: false,
-			expectedError:              settlement.ErrBatchNotAccepted,
+			name:                     "TestSubmitBatchSuccessNoBatchAcceptedHubEventNotIncluded",
+			isBatchSubmitSuccess:     true,
+			isBatchAcceptedHubEvent:  false,
+			shouldMockBatchIncluded:  true,
+			isBatchIncludedSuccess:   false,
+			expectedHealthEventValue: false,
+			expectedError:            settlement.ErrBatchNotAccepted,
 		},
 		{
-			name:                       "TestSubmitBatchSuccessNotAcceptedYesIncluded",
-			isBatchSubmitSuccess:       true,
-			isBatchAcceptedHubEvent:    false,
-			shouldMockBatchIncluded:    true,
-			isBatchIncludedSuccess:     true,
-			expectedHealthEventValue:   true,
-			expectedBatchAcceptedEvent: true,
+			name:                     "TestSubmitBatchSuccessNotAcceptedYesIncluded",
+			isBatchSubmitSuccess:     true,
+			isBatchAcceptedHubEvent:  false,
+			shouldMockBatchIncluded:  true,
+			isBatchIncludedSuccess:   true,
+			expectedHealthEventValue: true,
+			expectedError:            nil,
 		},
 		{
-			name:                       "TestSubmitBatchSuccessAndAccepted",
-			isBatchSubmitSuccess:       true,
-			isBatchAcceptedHubEvent:    true,
-			shouldMockBatchIncluded:    false,
-			expectedHealthEventValue:   true,
-			expectedError:              nil,
-			expectedBatchAcceptedEvent: true,
+			name:                     "TestSubmitBatchSuccessAndAccepted",
+			isBatchSubmitSuccess:     true,
+			isBatchAcceptedHubEvent:  true,
+			shouldMockBatchIncluded:  false,
+			expectedHealthEventValue: true,
+			expectedError:            nil,
 		},
 	}
 
@@ -164,12 +156,7 @@ func TestPostBatch(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			// Init the wait group and set the number of expected events
 			var wg sync.WaitGroup
-			var eventsCount int
-			if c.expectedBatchAcceptedEvent {
-				eventsCount = 2
-			} else {
-				eventsCount = 1
-			}
+			eventsCount := 1
 			wg.Add(eventsCount)
 			// Reset the mock functions
 			testutil.UnsetMockFn(cosmosClientMock.On("BroadcastTx"))
@@ -215,21 +202,7 @@ func TestPostBatch(t *testing.T) {
 				}
 				wg.Done()
 			}()
-			if c.expectedBatchAcceptedEvent {
-				go func() {
-					select {
-					case batchAcceptedEvent := <-BatchAcceptedSubscription.Out():
-						t.Logf("got batch accepted event: %v", batchAcceptedEvent)
-						batchAcceptedEventData := batchAcceptedEvent.Data().(*settlement.EventDataNewSettlementBatchAccepted)
-						assert.Equal(t, batchAcceptedEventData.EndHeight, batch.EndHeight)
-						atomic.AddInt64(&eventsReceivedCount, 1)
-					case <-time.After(10 * time.Second):
-						t.Error("Didn't receive batch accepted event")
-					}
-					wg.Done()
 
-				}()
-			}
 			// Post the batch
 			go hubClient.PostBatch(batch, da.Mock, &da.ResultSubmitBatch{})
 			// Wait for the batch to be submitted and submit an event notifying that the batch was accepted
