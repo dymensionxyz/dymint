@@ -2,6 +2,7 @@ package block
 
 import (
 	"context"
+	"fmt"
 	"sync/atomic"
 	"time"
 
@@ -25,7 +26,7 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 			syncTarget := atomic.LoadUint64(&m.syncTarget)
 			height := m.store.Height()
 			//no new blocks produced yet
-			if (height - syncTarget) == 0 {
+			if height <= syncTarget {
 				continue
 			}
 
@@ -41,20 +42,29 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 			if err != nil {
 				m.logger.Error("error while producing empty block", "error", err)
 			}
-			m.submitNextBatch(ctx)
+
+			syncHeight, err := m.submitNextBatch(ctx)
+			if err != nil {
+				m.logger.Error("error while submitting next batch", "error", err)
+				continue
+			}
+
+			// Update the syncTarget to the height of the last block in the last batch as seen by this node.
+			m.batchInProcess.Store(false)
+			m.updateSyncParams(ctx, syncHeight)
 		}
 	}
 }
 
-func (m *Manager) submitNextBatch(ctx context.Context) {
+func (m *Manager) submitNextBatch(ctx context.Context) (uint64, error) {
 	// Get the batch start and end height
 	startHeight := atomic.LoadUint64(&m.syncTarget) + 1
-	endHeight := uint64(m.lastState.LastBlockHeight)
+	endHeight := uint64(m.store.Height())
 
 	isLastBlockEmpty, err := m.validateLastBlockInBatchIsEmpty(startHeight, endHeight)
 	if err != nil {
 		m.logger.Error("Failed to validate last block in batch is empty", "startHeight", startHeight, "endHeight", endHeight, "error", err)
-		return
+		return 0, err
 	}
 	if !isLastBlockEmpty {
 		m.logger.Info("Requesting for an empty block creation")
@@ -65,7 +75,11 @@ func (m *Manager) submitNextBatch(ctx context.Context) {
 	nextBatch, err := m.createNextDABatch(startHeight, endHeight)
 	if err != nil {
 		m.logger.Error("Failed to create next batch", "startHeight", startHeight, "endHeight", endHeight, "error", err)
-		return
+		return 0, err
+	}
+
+	if err := m.validateBatch(nextBatch); err != nil {
+		return 0, err
 	}
 
 	actualEndHeight := nextBatch.EndHeight
@@ -74,15 +88,32 @@ func (m *Manager) submitNextBatch(ctx context.Context) {
 	m.logger.Info("Submitting next batch", "startHeight", startHeight, "endHeight", actualEndHeight, "size", nextBatch.ToProto().Size())
 	resultSubmitToDA := m.dalc.SubmitBatch(nextBatch)
 	if resultSubmitToDA.Code != da.StatusSuccess {
-		panic("Failed to submit next batch to DA Layer")
+		err = fmt.Errorf("failed to submit next batch to DA Layer: %s", resultSubmitToDA.Message)
+		return 0, err
 	}
 
 	// Submit batch to SL
 	// TODO(omritoptix): Handle a case where the SL submission fails due to syncTarget out of sync with the latestHeight in the SL.
 	// In that case we'll want to update the syncTarget before returning.
-	m.settlementClient.SubmitBatch(nextBatch, m.dalc.GetClientType(), &resultSubmitToDA)
 
-	// FIXME: we can already set the synctarget here after approving inclusion
+	err = m.settlementClient.SubmitBatch(nextBatch, m.dalc.GetClientType(), &resultSubmitToDA)
+	if err != nil {
+		m.logger.Error("Failed to submit batch to SL", "startHeight", startHeight, "endHeight", actualEndHeight, "error", err)
+		return 0, err
+	}
+
+	return actualEndHeight, nil
+}
+
+func (m *Manager) validateBatch(batch *types.Batch) error {
+	syncTarget := atomic.LoadUint64(&m.syncTarget)
+	if batch.StartHeight != syncTarget+1 {
+		return fmt.Errorf("batch start height != syncTarget + 1. StartHeight %d, m.syncTarget %d", batch.StartHeight, syncTarget)
+	}
+	if batch.EndHeight < batch.StartHeight {
+		return fmt.Errorf("batch end height must be greater than start height. EndHeight %d, StartHeight %d", batch.EndHeight, batch.StartHeight)
+	}
+	return nil
 }
 
 func (m *Manager) createNextDABatch(startHeight uint64, endHeight uint64) (*types.Batch, error) {

@@ -203,19 +203,18 @@ func (d *HubClient) Stop() error {
 
 // PostBatch posts a batch to the Dymension Hub. it tries to post the batch until it is accepted by the settlement layer.
 // it emits success and failure events to the event bus accordingly.
-func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) {
+func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) error {
 	msgUpdateState, err := d.convertBatchToMsgUpdateState(batch, daClient, daResult)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
+	//TODO: probably should be changed to inclusion channel, as the eventHandler is also in the HubClient
 	postBatchSubscriberClient := fmt.Sprintf("%s-%d-%s", postBatchSubscriberPrefix, batch.StartHeight, uuid.New().String())
-
-	//FIXME: why we use the internal event in the hub client? we should the hub events
 	subscription, err := d.pubsub.Subscribe(d.ctx, postBatchSubscriberClient, settlement.EventQueryNewSettlementBatchAccepted)
 	if err != nil {
 		d.logger.Error("failed to subscribe to state update events", "err", err)
-		panic(err)
+		return err
 	}
 
 	//nolint:errcheck
@@ -227,7 +226,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 	for {
 		select {
 		case <-d.ctx.Done():
-			return
+			return d.ctx.Err()
 		default:
 			// Try submitting the batch
 			err := d.submitBatch(msgUpdateState)
@@ -250,17 +249,17 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 
 		select {
 		case <-d.ctx.Done():
-			return
+			return d.ctx.Err()
 		case <-subscription.Cancelled():
-			d.logger.Debug("SLBatchPost subscription canceled")
-			return
+			err = fmt.Errorf("subscription canceled")
+			return err
 		case <-subscription.Out():
 			d.logger.Info("Batch accepted by settlement layer. Emitting healthy event",
 				"startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
 			heatlhEventData := &settlement.EventDataSettlementHealthStatus{Healthy: true}
 			utils.SubmitEventOrPanic(d.ctx, d.pubsub, heatlhEventData,
 				map[string][]string{settlement.EventTypeKey: {settlement.EventSettlementHealthStatus}})
-			return
+			return nil
 		case <-ticker.C:
 			// Before emitting unhealthy event, check if the batch was accepted by the settlement layer and
 			// we've just missed the event.
@@ -278,18 +277,11 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 			}
 
 			d.logger.Info("Batch accepted by settlement layer", "startHeight", includedBatch.StartHeight, "endHeight", includedBatch.EndHeight)
-			// Emit batch accepted event
-			batchAcceptedEvent := &settlement.EventDataNewSettlementBatchAccepted{
-				EndHeight:  includedBatch.EndHeight,
-				StateIndex: includedBatch.StateIndex,
-			}
-			utils.SubmitEventOrPanic(d.ctx, d.pubsub, batchAcceptedEvent,
-				map[string][]string{settlement.EventTypeKey: {settlement.EventNewSettlementBatchAccepted}})
 			// Emit health event
 			heatlhEventData := &settlement.EventDataSettlementHealthStatus{Healthy: true}
 			utils.SubmitEventOrPanic(d.ctx, d.pubsub, heatlhEventData,
 				map[string][]string{settlement.EventTypeKey: {settlement.EventSettlementHealthStatus}})
-			return
+			return nil
 		}
 	}
 }

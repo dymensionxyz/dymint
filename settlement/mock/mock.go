@@ -150,7 +150,7 @@ func (c *HubClient) Stop() error {
 }
 
 // PostBatch saves the batch to the kv store
-func (c *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) {
+func (c *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) error {
 	settlementBatch := c.convertBatchtoSettlementBatch(batch, daClient, daResult)
 	c.saveBatch(settlementBatch)
 	go func() {
@@ -161,6 +161,7 @@ func (c *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 			panic(err)
 		}
 	}()
+	return nil
 }
 
 // GetLatestBatch returns the latest batch from the kv store
