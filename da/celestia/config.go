@@ -1,10 +1,12 @@
 package celestia
 
 import (
+	"crypto/rand"
 	"encoding/hex"
+	"fmt"
 	"time"
 
-	cnc "github.com/celestiaorg/go-cnc"
+	openrpcns "github.com/rollkit/celestia-openrpc/types/namespace"
 )
 
 const (
@@ -18,43 +20,59 @@ const (
 
 // Config stores Celestia DALC configuration parameters.
 type Config struct {
-	BaseURL        string        `json:"base_url"`
-	AppNodeURL     string        `json:"app_node_url"`
-	Timeout        time.Duration `json:"timeout"`
-	Fee            int64         `json:"fee"`
-	GasPrices      float64       `json:"gas_prices"`
-	GasAdjustment  float64       `json:"gas_adjustment"`
-	GasLimit       uint64        `json:"gas_limit"`
-	NamespaceIDStr string        `json:"namespace_id"`
-	NamespaceID    cnc.Namespace `json:"-"`
+	BaseURL        string              `json:"base_url"`
+	AppNodeURL     string              `json:"app_node_url"`
+	Timeout        time.Duration       `json:"timeout"`
+	Fee            int64               `json:"fee"`
+	GasPrices      float64             `json:"gas_prices"`
+	GasAdjustment  float64             `json:"gas_adjustment"`
+	GasLimit       uint64              `json:"gas_limit"`
+	NamespaceIDStr string              `json:"namespace_id"`
+	AuthToken      string              `json:"auth_token"`
+	NamespaceID    openrpcns.Namespace `json:"-"`
 }
 
 var CelestiaDefaultConfig = Config{
-	BaseURL:        "http://127.0.0.1:26659",
+	BaseURL:        "http://127.0.0.1:26658",
 	AppNodeURL:     "",
 	Timeout:        30 * time.Second,
 	Fee:            0,
 	GasLimit:       20000000,
 	GasPrices:      defaultGasPrices,
 	GasAdjustment:  defaultGasAdjustment,
-	NamespaceIDStr: "000000000000ffff",
-	NamespaceID:    cnc.Namespace{Version: namespaceVersion, ID: []byte{0, 0, 0, 0, 0, 0, 255, 255}},
+	NamespaceIDStr: "",
+	NamespaceID:    openrpcns.Namespace{Version: namespaceVersion, ID: []byte{0, 0, 0, 0, 0, 0, 0, 0, 255, 255}},
+}
+
+func generateRandNamespaceID() string {
+	nID := make([]byte, 10)
+	_, err := rand.Read(nID)
+	if err != nil {
+		panic(err)
+	}
+	return hex.EncodeToString(nID)
 }
 
 func (c *Config) InitNamespaceID() error {
+	if c.NamespaceIDStr == "" {
+		c.NamespaceIDStr = generateRandNamespaceID()
+	}
 	// Decode NamespaceID from string to byte array
 	namespaceBytes, err := hex.DecodeString(c.NamespaceIDStr)
 	if err != nil {
 		return err
 	}
-	// TODO(omritoptix): a hack. need to enforce in the config
-	if len(namespaceBytes) != cnc.NamespaceIDSize {
-		// pad namespaceBytes with 0s
-		namespaceBytes = append(make([]byte, cnc.NamespaceIDSize-len(namespaceBytes)), namespaceBytes...)
+
+	// Check if NamespaceID is of correct length (10 bytes)
+	if len(namespaceBytes) != openrpcns.NamespaceVersionZeroIDSize {
+		return fmt.Errorf("invalid namespace id length: %v must be %v", len(namespaceBytes), openrpcns.NamespaceVersionZeroIDSize)
 	}
-	c.NamespaceID, err = cnc.New(namespaceVersion, namespaceBytes)
+
+	ns, err := openrpcns.New(openrpcns.NamespaceVersionZero, append(openrpcns.NamespaceVersionZeroPrefix, namespaceBytes...))
 	if err != nil {
 		return err
 	}
+
+	c.NamespaceID = ns
 	return nil
 }

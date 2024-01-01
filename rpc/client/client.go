@@ -10,7 +10,7 @@ import (
 	"sort"
 	"time"
 
-	sdkerrors "github.com/cosmos/cosmos-sdk/types/errors"
+	sdkerrors "cosmossdk.io/errors"
 
 	abciconv "github.com/dymensionxyz/dymint/conv/abci"
 	"github.com/dymensionxyz/dymint/mempool"
