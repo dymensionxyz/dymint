@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"code.cloudfoundry.org/go-diodes"
 
@@ -70,10 +71,11 @@ type Manager struct {
 	shouldProduceBlocksCh chan bool
 	produceEmptyBlockCh   chan bool
 
-	syncTarget            uint64
-	lastSubmissionTime    int64
-	batchInProcess        atomic.Value
-	isSyncedCond          sync.Cond
+	syncTarget         uint64
+	lastSubmissionTime int64
+	batchInProcess     atomic.Value
+	isSyncedCond       sync.Cond
+
 	produceBlockMutex     sync.Mutex
 	applyCachedBlockMutex sync.Mutex
 
@@ -182,18 +184,60 @@ func NewManager(
 // Start starts the block manager.
 func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 	m.logger.Info("Starting the block manager")
+
+	err := m.syncBlockManager(ctx)
+	if err != nil {
+		err = fmt.Errorf("failed to sync block manager: %w", err)
+		return err
+	}
+
 	if isAggregator {
 		m.logger.Info("Starting in aggregator mode")
 		// TODO(omritoptix): change to private methods
 		go m.ProduceBlockLoop(ctx)
 		go m.SubmitLoop(ctx)
+	} else {
+		// TODO(omritoptix): change to private methods
+		go m.RetriveLoop(ctx)
+		go m.SyncTargetLoop(ctx)
 	}
-	// TODO(omritoptix): change to private methods
-	go m.RetriveLoop(ctx)
-	go m.SyncTargetLoop(ctx)
+
 	m.EventListener(ctx)
 
 	return nil
+}
+
+// syncBlockManager enforces the node to be synced on initial run.
+func (m *Manager) syncBlockManager(ctx context.Context) error {
+	resultRetrieveBatch, err := m.getLatestBatchFromSL(ctx)
+	// Set the syncTarget according to the result
+	if err != nil {
+		//FIXME: no better way to check if no batches yet or there's an error?
+		if err == settlement.ErrBatchNotFound {
+			// Since we requested the latest batch and got batch not found it means
+			// the SL still hasn't got any batches for this chain.
+			m.logger.Info("No batches for chain found in SL. Start writing first batch")
+			atomic.StoreUint64(&m.syncTarget, uint64(m.genesis.InitialHeight-1))
+			return nil
+		}
+		return err
+	}
+	atomic.StoreUint64(&m.syncTarget, resultRetrieveBatch.EndHeight)
+	err = m.syncUntilTarget(ctx, resultRetrieveBatch.EndHeight)
+	if err != nil {
+		return err
+	}
+
+	m.logger.Info("Synced", "current height", m.store.Height(), "syncTarget", atomic.LoadUint64(&m.syncTarget))
+	return nil
+}
+
+// updateSyncParams updates the sync target and state index if necessary
+func (m *Manager) updateSyncParams(ctx context.Context, endHeight uint64) {
+	rollappHubHeightGauge.Set(float64(endHeight))
+	m.logger.Info("Received new syncTarget", "syncTarget", endHeight)
+	atomic.StoreUint64(&m.syncTarget, endHeight)
+	atomic.StoreInt64(&m.lastSubmissionTime, time.Now().UnixNano())
 }
 
 func getAddress(key crypto.PrivKey) ([]byte, error) {
