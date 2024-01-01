@@ -202,7 +202,7 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 		go m.SyncTargetLoop(ctx)
 	}
 
-	m.EventListener(ctx)
+	m.EventListener(ctx, isAggregator)
 
 	return nil
 }
@@ -249,9 +249,11 @@ func getAddress(key crypto.PrivKey) ([]byte, error) {
 }
 
 // EventListener registers events to callbacks.
-func (m *Manager) EventListener(ctx context.Context) {
+func (m *Manager) EventListener(ctx context.Context, isAggregator bool) {
 	go utils.SubscribeAndHandleEvents(ctx, m.pubsub, "nodeHealthStatusHandler", events.EventQueryHealthStatus, m.healthStatusEventCallback, m.logger)
-	go utils.SubscribeAndHandleEvents(ctx, m.pubsub, "ApplyBlockLoop", p2p.EventQueryNewNewGossipedBlock, m.applyBlockCallback, m.logger, 100)
+	if !isAggregator {
+		go utils.SubscribeAndHandleEvents(ctx, m.pubsub, "ApplyBlockLoop", p2p.EventQueryNewNewGossipedBlock, m.applyBlockCallback, m.logger, 100)
+	}
 
 }
 
@@ -266,8 +268,6 @@ func (m *Manager) applyBlockCallback(event pubsub.Message) {
 	eventData := event.Data().(p2p.GossipedBlock)
 	block := eventData.Block
 	commit := eventData.Commit
-
-	// FIXME: NEED TO VALIDATE WERE NOT THE AGGREGATOR
 
 	if block.Header.Height != m.store.Height()+1 {
 		if block.Header.Height > m.store.Height() {
