@@ -81,6 +81,8 @@ func (m *Manager) submitNextBatch(ctx context.Context) {
 	// TODO(omritoptix): Handle a case where the SL submission fails due to syncTarget out of sync with the latestHeight in the SL.
 	// In that case we'll want to update the syncTarget before returning.
 	m.settlementClient.SubmitBatch(nextBatch, m.dalc.GetClientType(), &resultSubmitToDA)
+
+	// FIXME: we can already set the synctarget here after approving inclusion
 }
 
 func (m *Manager) createNextDABatch(startHeight uint64, endHeight uint64) (*types.Batch, error) {

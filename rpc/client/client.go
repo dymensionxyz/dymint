@@ -124,60 +124,67 @@ func (c *Client) BroadcastTxCommit(ctx context.Context, tx types.Tx) (*ctypes.Re
 	// add to mempool and wait for CheckTx result
 	checkTxResCh := make(chan *abci.Response, 1)
 	err = c.node.Mempool.CheckTx(tx, func(res *abci.Response) {
-		checkTxResCh <- res
+		select {
+		case <-ctx.Done():
+		case checkTxResCh <- res:
+		}
 	}, mempool.TxInfo{})
 	if err != nil {
 		c.Logger.Error("Error on broadcastTxCommit", "err", err)
 		return nil, fmt.Errorf("error on broadcastTxCommit: %v", err)
 	}
-	checkTxResMsg := <-checkTxResCh
-	checkTxRes := checkTxResMsg.GetCheckTx()
-	if checkTxRes.Code != abci.CodeTypeOK {
-		return &ctypes.ResultBroadcastTxCommit{
-			CheckTx:   *checkTxRes,
-			DeliverTx: abci.ResponseDeliverTx{},
-			Hash:      tx.Hash(),
-		}, nil
-	}
-
-	// broadcast tx
-	err = c.node.P2P.GossipTx(ctx, tx)
-	if err != nil {
-		return nil, fmt.Errorf("tx added to local mempool but failure to broadcast: %w", err)
-	}
-
-	// Wait for the tx to be included in a block or timeout.
 	select {
-	case msg := <-deliverTxSub.Out(): // The tx was included in a block.
-		deliverTxRes := msg.Data().(types.EventDataTx)
-		return &ctypes.ResultBroadcastTxCommit{
-			CheckTx:   *checkTxRes,
-			DeliverTx: deliverTxRes.Result,
-			Hash:      tx.Hash(),
-			Height:    deliverTxRes.Height,
-		}, nil
-	case <-deliverTxSub.Cancelled():
-		var reason string
-		if deliverTxSub.Err() == nil {
-			reason = "Tendermint exited"
-		} else {
-			reason = deliverTxSub.Err().Error()
+	case <-ctx.Done():
+		return nil, fmt.Errorf("broadcast confirmation not received: %w", ctx.Err())
+	case checkTxResMsg := <-checkTxResCh:
+		checkTxRes := checkTxResMsg.GetCheckTx()
+		if checkTxRes.Code != abci.CodeTypeOK {
+			return &ctypes.ResultBroadcastTxCommit{
+				CheckTx:   *checkTxRes,
+				DeliverTx: abci.ResponseDeliverTx{},
+				Hash:      tx.Hash(),
+			}, nil
 		}
-		err = fmt.Errorf("deliverTxSub was cancelled (reason: %s)", reason)
-		c.Logger.Error("Error on broadcastTxCommit", "err", err)
-		return &ctypes.ResultBroadcastTxCommit{
-			CheckTx:   *checkTxRes,
-			DeliverTx: abci.ResponseDeliverTx{},
-			Hash:      tx.Hash(),
-		}, err
-	case <-time.After(c.config.TimeoutBroadcastTxCommit):
-		err = errors.New("timed out waiting for tx to be included in a block")
-		c.Logger.Error("Error on broadcastTxCommit", "err", err)
-		return &ctypes.ResultBroadcastTxCommit{
-			CheckTx:   *checkTxRes,
-			DeliverTx: abci.ResponseDeliverTx{},
-			Hash:      tx.Hash(),
-		}, err
+
+		// broadcast tx
+		err = c.node.P2P.GossipTx(ctx, tx)
+		if err != nil {
+			return nil, fmt.Errorf("tx added to local mempool but failure to broadcast: %w", err)
+		}
+
+		// Wait for the tx to be included in a block or timeout.
+		select {
+		case msg := <-deliverTxSub.Out(): // The tx was included in a block.
+			deliverTxRes := msg.Data().(types.EventDataTx)
+			return &ctypes.ResultBroadcastTxCommit{
+				CheckTx:   *checkTxRes,
+				DeliverTx: deliverTxRes.Result,
+				Hash:      tx.Hash(),
+				Height:    deliverTxRes.Height,
+			}, nil
+		case <-deliverTxSub.Cancelled():
+			var reason string
+			if deliverTxSub.Err() == nil {
+				reason = "Tendermint exited"
+			} else {
+				reason = deliverTxSub.Err().Error()
+			}
+			err = fmt.Errorf("deliverTxSub was cancelled (reason: %s)", reason)
+			c.Logger.Error("Error on broadcastTxCommit", "err", err)
+			return &ctypes.ResultBroadcastTxCommit{
+				CheckTx:   *checkTxRes,
+				DeliverTx: abci.ResponseDeliverTx{},
+				Hash:      tx.Hash(),
+			}, err
+		case <-time.After(c.config.TimeoutBroadcastTxCommit):
+			err = errors.New("timed out waiting for tx to be included in a block")
+			c.Logger.Error("Error on broadcastTxCommit", "err", err)
+			return &ctypes.ResultBroadcastTxCommit{
+				CheckTx:   *checkTxRes,
+				DeliverTx: abci.ResponseDeliverTx{},
+				Hash:      tx.Hash(),
+			}, err
+		}
 	}
 }
 

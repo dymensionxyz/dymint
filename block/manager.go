@@ -223,6 +223,8 @@ func (m *Manager) applyBlockCallback(event pubsub.Message) {
 	block := eventData.Block
 	commit := eventData.Commit
 
+	// FIXME: NEED TO VALIDATE WERE NOT THE AGGREGATOR
+
 	if block.Header.Height != m.store.Height()+1 {
 		if block.Header.Height > m.store.Height() {
 			m.prevBlock[block.Header.Height] = &block

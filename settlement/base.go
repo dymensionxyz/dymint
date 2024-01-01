@@ -8,7 +8,6 @@ import (
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/log"
 	"github.com/dymensionxyz/dymint/types"
-	"github.com/dymensionxyz/dymint/utils"
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
@@ -172,14 +171,17 @@ func (b *BaseLayerClient) stateUpdatesHandler(ready chan bool) {
 		case event := <-subscription.Out():
 			eventData := event.Data().(*EventDataNewSettlementBatchAccepted)
 			b.logger.Debug("received state update event", "latestHeight", eventData.EndHeight)
+
+			//FIXME: make sure it's not out of order
+
 			atomic.StoreUint64(&b.latestHeight, eventData.EndHeight)
-			// Emit new batch event
-			newBatchEventData := &EventDataNewBatchAccepted{
-				EndHeight:  eventData.EndHeight,
-				StateIndex: eventData.StateIndex,
-			}
-			utils.SubmitEventOrPanic(b.ctx, b.pubsub, newBatchEventData,
-				map[string][]string{EventTypeKey: {EventNewBatchAccepted}})
+			// // Emit new batch event
+			// newBatchEventData := &EventDataNewBatchAccepted{
+			// 	EndHeight:  eventData.EndHeight,
+			// 	StateIndex: eventData.StateIndex,
+			// }
+			// utils.SubmitEventOrPanic(b.ctx, b.pubsub, newBatchEventData,
+			// 	map[string][]string{EventTypeKey: {EventNewBatchAccepted}})
 		case <-subscription.Cancelled():
 			b.logger.Info("stateUpdatesHandler subscription canceled")
 			return

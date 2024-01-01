@@ -9,12 +9,22 @@ import (
 	"github.com/dymensionxyz/dymint/settlement"
 )
 
+// FLOW:
+//(settlement/base.go#L160)
+// hubclient get event
+// hub client sends internal event
+
+// synctartloop gets internal event
+// synctartloop updates sync target
+// retrieve loop gets sync target
+// retrieve loop retrieves batch
+
 // SyncTargetLoop is responsible for getting real time updates about batches submission.
 // for non aggregator: updating the sync target which will be used by retrieveLoop to sync until this target.
 // for aggregator: get notification that batch has been accepted so can send next batch.
 func (m *Manager) SyncTargetLoop(ctx context.Context) {
 	m.logger.Info("Started sync target loop")
-	subscription, err := m.pubsub.Subscribe(ctx, "syncTargetLoop", settlement.EventQueryNewBatchAccepted)
+	subscription, err := m.pubsub.Subscribe(ctx, "syncTargetLoop", settlement.EventQueryNewSettlementBatchAccepted)
 	if err != nil {
 		m.logger.Error("failed to subscribe to state update events")
 		panic(err)
@@ -22,6 +32,7 @@ func (m *Manager) SyncTargetLoop(ctx context.Context) {
 	// First time we start we want to get the latest batch from the SL
 	resultRetrieveBatch, err := m.getLatestBatchFromSL(ctx)
 	if err != nil {
+		//FIXME: no better way to check if no batches yet or there's an error?
 		m.logger.Error("failed to retrieve batch from SL", "err", err)
 	} else {
 		m.updateSyncParams(ctx, resultRetrieveBatch.EndHeight)
@@ -30,8 +41,9 @@ func (m *Manager) SyncTargetLoop(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
+		//FIXME: add polling timer in case we missed an event
 		case event := <-subscription.Out():
-			eventData := event.Data().(*settlement.EventDataNewBatchAccepted)
+			eventData := event.Data().(*settlement.EventDataNewSettlementBatchAccepted)
 			m.updateSyncParams(ctx, eventData.EndHeight)
 			// In case we are the aggregator and we've got an update, then we can stop blocking from
 			// the next batches to be published. For non-aggregators this is not needed.

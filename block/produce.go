@@ -6,7 +6,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"cosmossdk.io/errors"
 	abciconv "github.com/dymensionxyz/dymint/conv/abci"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
@@ -33,6 +32,9 @@ func (m *Manager) waitForSync(ctx context.Context) error {
 	} else {
 		m.updateSyncParams(ctx, resultRetrieveBatch.EndHeight)
 	}
+
+	//FIXME: we can call to syncUntilTarget here instead of the loop
+
 	// Wait until isSynced is true and then call the PublishBlockLoop
 	m.isSyncedCond.L.Lock()
 	// Wait until we're synced and that we have got the latest batch (if we didn't, m.syncTarget == 0)
@@ -48,15 +50,8 @@ func (m *Manager) waitForSync(ctx context.Context) error {
 
 // ProduceBlockLoop is calling publishBlock in a loop as long as wer'e synced.
 func (m *Manager) ProduceBlockLoop(ctx context.Context) {
-	atomic.StoreInt64(&m.lastSubmissionTime, time.Now().Unix())
 
-	// We want to wait until we are synced. After that, since there is no leader
-	// election yet, and leader are elected manually, we will not be out of sync until
-	// we are manually being replaced.
-	err := m.waitForSync(ctx)
-	if err != nil {
-		panic(errors.Wrap(err, "failed to wait for sync"))
-	}
+	//PREVIOSOULY IT BEEN WAITFORSYNC
 
 	ticker := time.NewTicker(m.conf.BlockTime)
 	defer ticker.Stop()
