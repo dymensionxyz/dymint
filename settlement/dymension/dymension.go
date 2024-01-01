@@ -60,7 +60,6 @@ var _ settlement.LayerI = &LayerClient{}
 
 // Init is called once. it initializes the struct members.
 func (dlc *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, logger log.Logger, options ...settlement.Option) error {
-
 	DymensionCosmosClient, err := newDymensionHubClient(config, pubsub, logger)
 	if err != nil {
 		return err
@@ -158,7 +157,6 @@ func newDymensionHubClient(config settlement.Config, pubsub *pubsub.Server, logg
 		batchRetryDelay:        batchRetryDelay,
 	}
 
-	//FIXME: pass the keyring backend and home dir as options
 	for _, option := range options {
 		option(dymesionHubClient)
 	}
@@ -209,7 +207,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 		return err
 	}
 
-	//TODO: probably should be changed to inclusion channel, as the eventHandler is also in the HubClient
+	//TODO: probably should be changed to be a channel, as the eventHandler is also in the HubClient in he produces the event
 	postBatchSubscriberClient := fmt.Sprintf("%s-%d-%s", postBatchSubscriberPrefix, batch.StartHeight, uuid.New().String())
 	subscription, err := d.pubsub.Subscribe(d.ctx, postBatchSubscriberClient, settlement.EventQueryNewSettlementBatchAccepted)
 	if err != nil {

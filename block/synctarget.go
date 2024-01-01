@@ -7,16 +7,6 @@ import (
 	"github.com/dymensionxyz/dymint/settlement"
 )
 
-// FLOW:
-//(settlement/base.go#L160)
-// hubclient get event
-// hub client sends internal event
-
-// synctartloop gets internal event
-// synctartloop updates sync target
-// retrieve loop gets sync target
-// retrieve loop retrieves batch
-
 // SyncTargetLoop is responsible for getting real time updates about batches submission.
 // for non aggregator: updating the sync target which will be used by retrieveLoop to sync until this target.
 func (m *Manager) SyncTargetLoop(ctx context.Context) {
