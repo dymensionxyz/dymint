@@ -32,6 +32,7 @@ type NodeConfig struct {
 	SettlementLayer    string                 `mapstructure:"settlement_layer"`
 	SettlementConfig   settlement.Config      `mapstructure:",squash"`
 	Instrumentation    *InstrumentationConfig `mapstructure:"instrumentation"`
+	BootstrapTime      time.Duration          `mapstructure:"bootstrap_time"`
 }
 
 // BlockManagerConfig consists of all parameters required by BlockManagerConfig

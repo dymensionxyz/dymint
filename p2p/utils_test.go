@@ -7,6 +7,7 @@ import (
 	"net"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -101,10 +102,11 @@ func startTestNetwork(ctx context.Context, t *testing.T, n int, conf map[int]hos
 	clients := make([]*Client, n)
 	for i := 0; i < n; i++ {
 		client, err := NewClient(config.P2PConfig{
-			Seeds: seeds[i]},
+			Seeds:           seeds[i],
+			GossipCacheSize: 50,
+			BoostrapTime:    30 * time.Second},
 			mnet.Hosts()[i].Peerstore().PrivKey(mnet.Hosts()[i].ID()),
 			conf[i].chainID,
-			50,
 			logger)
 		require.NoError(err)
 		require.NotNil(client)

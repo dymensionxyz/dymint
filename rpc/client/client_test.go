@@ -106,6 +106,7 @@ func TestGenesisChunked(t *testing.T) {
 			BlockBatchMaxSizeBytes:  1000,
 			GossipedBlocksCacheSize: 50,
 		},
+		BootstrapTime:    30 * time.Second,
 		DALayer:          "mock",
 		DAConfig:         "",
 		SettlementLayer:  "mock",
@@ -441,6 +442,7 @@ func TestTx(t *testing.T) {
 			BlockBatchMaxSizeBytes:  1000,
 			GossipedBlocksCacheSize: 50,
 		},
+		BootstrapTime:    30 * time.Second,
 		SettlementConfig: settlement.Config{ProposerPubKey: hex.EncodeToString(pubKeybytes)},
 	},
 		key, signingKey, proxy.NewLocalClientCreator(mockApp),
@@ -709,6 +711,7 @@ func TestValidatorSetHandling(t *testing.T) {
 			BlockBatchMaxSizeBytes:  1000,
 			GossipedBlocksCacheSize: 50,
 		},
+		BootstrapTime:    30 * time.Second,
 		SettlementConfig: settlement.Config{ProposerPubKey: hex.EncodeToString(proposerPubKeyBytes)},
 	}
 
@@ -828,6 +831,7 @@ func getRPC(t *testing.T) (*mocks.Application, *Client) {
 			BlockBatchMaxSizeBytes:  1000,
 			GossipedBlocksCacheSize: 50,
 		},
+		BootstrapTime:    30 * time.Second,
 		DALayer:          "mock",
 		DAConfig:         "",
 		SettlementLayer:  "mock",
@@ -915,6 +919,7 @@ func TestMempool2Nodes(t *testing.T) {
 			BlockBatchMaxSizeBytes:  1000,
 			GossipedBlocksCacheSize: 50,
 		},
+		BootstrapTime: 30 * time.Second,
 		P2P: config.P2PConfig{
 			ListenAddress: "/ip4/127.0.0.1/tcp/9001",
 		},
@@ -933,6 +938,7 @@ func TestMempool2Nodes(t *testing.T) {
 			BlockBatchMaxSizeBytes:  1000,
 			GossipedBlocksCacheSize: 50,
 		},
+		BootstrapTime: 30 * time.Second,
 		P2P: config.P2PConfig{
 			ListenAddress: "/ip4/127.0.0.1/tcp/9002",
 			Seeds:         "/ip4/127.0.0.1/tcp/9001/p2p/" + id1.String(),

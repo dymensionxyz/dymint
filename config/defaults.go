@@ -39,6 +39,7 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 			Prometheus:           false,
 			PrometheusListenAddr: ":2112",
 		},
+		BootstrapTime: 30 * time.Second,
 	}
 
 	if home == "" {
