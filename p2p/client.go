@@ -72,6 +72,8 @@ type Client struct {
 	cancel context.CancelFunc
 
 	logger log.Logger
+
+	gossipCacheSize int
 }
 
 // NewClient creates new Client object.
