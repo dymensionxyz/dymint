@@ -417,14 +417,14 @@ func (c *Client) NewTxValidator() GossipValidator {
 	}
 }
 
-func (c *Client) bootstrapLoop(ctx context.Context) error {
+func (c *Client) bootstrapLoop(ctx context.Context) {
 	ticker := time.NewTicker(c.conf.BoostrapTime)
 	defer ticker.Stop()
 	for {
 		select {
 		//Context canceled
 		case <-ctx.Done():
-			return nil
+			return
 		case <-ticker.C:
 			if len(c.Peers()) == 0 {
 				err := c.dht.Bootstrap(ctx)
