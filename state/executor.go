@@ -4,7 +4,10 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"os"
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -169,6 +172,14 @@ func (e *BlockExecutor) UpdateStateFromResponses(resp *tmstate.ABCIResponses, st
 
 // Commit commits the block
 func (e *BlockExecutor) Commit(ctx context.Context, state *types.State, block *types.Block, resp *tmstate.ABCIResponses) (int64, error) {
+
+	//TEST FRAUDS
+	getAppHashRes, err := e.proxyAppConsensusConn.GetAppHashSync(abcitypes.RequestGetAppHash{})
+	if err != nil {
+		return 0, err
+	}
+	e.logger.Info("AppHash before commit", "appHash", hex.EncodeToString(getAppHashRes.GetAppHash()))
+
 	appHash, retainHeight, err := e.commit(ctx, state, block, resp.DeliverTxs)
 	if err != nil {
 		return 0, err
@@ -182,6 +193,18 @@ func (e *BlockExecutor) Commit(ctx context.Context, state *types.State, block *t
 		e.logger.Error("failed to fire block events", "error", err)
 		return 0, err
 	}
+
+	e.logger.Info("commit response", "appHash", hex.EncodeToString(state.AppHash[:]))
+
+	getAppHashRes, err = e.proxyAppConsensusConn.GetAppHashSync(abcitypes.RequestGetAppHash{})
+	if err != nil {
+		return 0, err
+	}
+	e.logger.Info("AppHash after commit", "appHash", hex.EncodeToString(getAppHashRes.GetAppHash()))
+	e.logger.Info("header appHash", "appHash", hex.EncodeToString(block.Header.AppHash[:]))
+	// e.proxyAppConsensusConn.GenerateFraudProofSync(abcitypes.RequestGenerateFraudProof{
+	// 	BeginBlockRequest: resp.BeginBlock,
+	// )
 	return retainHeight, nil
 }
 
@@ -310,6 +333,20 @@ func (e *BlockExecutor) Execute(ctx context.Context, state types.State, block *t
 
 	var err error
 
+	//TODO: add e.fraudProofsEnabled
+
+	blockISRs := block.Data.IntermediateStateRoots.RawRootsList
+	if blockISRs != nil && len(blockISRs) != 2 {
+		return nil, errors.New("ISR length of 2 expected")
+	}
+
+	ISRs := make([][]byte, 0)
+	isr, err := e.getAppHash()
+	if err != nil {
+		return nil, err
+	}
+	ISRs = append(ISRs, isr)
+
 	e.proxyAppConsensusConn.SetResponseCallback(func(req *abci.Request, res *abci.Response) {
 		if r, ok := res.Value.(*abci.Response_DeliverTx); ok {
 			txRes := r.DeliverTx
@@ -328,32 +365,115 @@ func (e *BlockExecutor) Execute(ctx context.Context, state types.State, block *t
 	abciHeader := abciconv.ToABCIHeaderPB(&block.Header)
 	abciHeader.ChainID = e.chainID
 	abciHeader.ValidatorsHash = state.Validators.Hash()
-	abciResponses.BeginBlock, err = e.proxyAppConsensusConn.BeginBlockSync(
-		abci.RequestBeginBlock{
-			Hash:   hash[:],
-			Header: abciHeader,
-			LastCommitInfo: abci.LastCommitInfo{
-				Round: 0,
-				Votes: nil,
-			},
-			ByzantineValidators: nil,
-		})
+	reqBeginBlock := abci.RequestBeginBlock{
+		Hash:   hash[:],
+		Header: abciHeader,
+		LastCommitInfo: abci.LastCommitInfo{
+			Round: 0,
+			Votes: nil,
+		},
+		ByzantineValidators: nil,
+	}
+	abciResponses.BeginBlock, err = e.proxyAppConsensusConn.BeginBlockSync(reqBeginBlock)
 	if err != nil {
 		return nil, err
 	}
 
+	if block.Header.Height%5 == 0 {
+		fraud, err := e.generateFraudProof(&reqBeginBlock, nil, nil)
+		if err != nil {
+			e.logger.Error("failed to generate fraud proof", "error", err)
+			return nil, err
+		}
+
+		if fraud == nil {
+			e.logger.Error("fraud proof is nil")
+			return nil, errors.New("fraud proof is nil")
+		}
+
+		e.logger.Error("fraud generated", "fraud", fraud)
+
+		// Open a new file for writing only
+		file, err := os.Create("fraudProof_rollapp.json")
+		if err != nil {
+			return nil, err
+		}
+		defer file.Close()
+
+		// Serialize the struct to JSON and write it to the file
+		jsonEncoder := json.NewEncoder(file)
+		err = jsonEncoder.Encode(fraud)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	deliverTxRequests := make([]*abci.RequestDeliverTx, 0, len(block.Data.Txs))
 	for _, tx := range block.Data.Txs {
-		res := e.proxyAppConsensusConn.DeliverTxAsync(abci.RequestDeliverTx{Tx: tx})
+		deliverTxRequest := abci.RequestDeliverTx{Tx: tx}
+		deliverTxRequests = append(deliverTxRequests, &deliverTxRequest)
+		res := e.proxyAppConsensusConn.DeliverTxAsync(deliverTxRequest)
 		if res.GetException() != nil {
 			return nil, errors.New(res.GetException().GetError())
 		}
 	}
 
-	abciResponses.EndBlock, err = e.proxyAppConsensusConn.EndBlockSync(abci.RequestEndBlock{Height: int64(block.Header.Height)})
+	reqEndBlock := abci.RequestEndBlock{Height: int64(block.Header.Height)}
+	abciResponses.EndBlock, err = e.proxyAppConsensusConn.EndBlockSync(reqEndBlock)
 	if err != nil {
 		return nil, err
 	}
 
+	isr, err = e.getAppHash()
+	if err != nil {
+		return nil, err
+	}
+	ISRs = append(ISRs, isr)
+
+	if blockISRs == nil {
+		//TODO: make sure we're the aggregator here!
+		// Block producer: Initial ISRs generated here
+		e.logger.Info("setting ISRs", "ISRs", ISRs)
+		block.Data.IntermediateStateRoots.RawRootsList = ISRs
+		return abciResponses, nil
+	}
+
+	/* -------------------------------- full node ------------------------------- */
+	blockISRs = block.Data.IntermediateStateRoots.RawRootsList
+
+	//validate no fraud proof
+	var fraud *abci.FraudProof
+	for i := 0; i < len(blockISRs); i++ {
+		e.logger.Info("checking ISR", "ISR", ISRs[i], "blockISR", blockISRs[i])
+		if !bytes.Equal(blockISRs[i], ISRs[i]) {
+			fraud, err = e.generateFraudProof(&reqBeginBlock, deliverTxRequests, &reqEndBlock)
+			if err != nil {
+				e.logger.Error("failed to generate fraud proof", "error", err)
+				return nil, err
+			}
+
+			if fraud == nil {
+				e.logger.Error("fraud proof is nil")
+				return nil, errors.New("fraud proof is nil")
+			}
+
+			e.logger.Error("fraud detected", "fraud", fraud)
+
+			// Open a new file for writing only
+			file, err := os.Create("fraudProof.json")
+			if err != nil {
+				return nil, err
+			}
+			defer file.Close()
+
+			// Serialize the struct to JSON and write it to the file
+			jsonEncoder := json.NewEncoder(file)
+			err = jsonEncoder.Encode(fraud)
+			if err != nil {
+				return nil, err
+			}
+		}
+	}
 	return abciResponses, nil
 }
 
@@ -424,6 +544,36 @@ func fromDymintTxs(optiTxs types.Txs) tmtypes.Txs {
 		txs[i] = []byte(optiTxs[i])
 	}
 	return txs
+}
+
+func (e *BlockExecutor) getAppHash() ([]byte, error) {
+	isrResp, err := e.proxyAppConsensusConn.GetAppHashSync(abci.RequestGetAppHash{})
+	if err != nil {
+		return nil, err
+	}
+	return isrResp.AppHash, nil
+}
+
+func (e *BlockExecutor) generateFraudProof(beginBlockRequest *abci.RequestBeginBlock, deliverTxRequests []*abci.RequestDeliverTx, endBlockRequest *abci.RequestEndBlock) (*abci.FraudProof, error) {
+	generateFraudProofRequest := abci.RequestGenerateFraudProof{}
+	if beginBlockRequest == nil {
+		return nil, fmt.Errorf("begin block request cannot be a nil parameter")
+	}
+	generateFraudProofRequest.BeginBlockRequest = *beginBlockRequest
+	if deliverTxRequests != nil {
+		generateFraudProofRequest.DeliverTxRequests = deliverTxRequests
+		if endBlockRequest != nil {
+			generateFraudProofRequest.EndBlockRequest = endBlockRequest
+		}
+	}
+	resp, err := e.proxyAppConsensusConn.GenerateFraudProofSync(generateFraudProofRequest)
+	if err != nil {
+		return nil, err
+	}
+	if resp.FraudProof == nil {
+		return nil, fmt.Errorf("fraud proof generation failed")
+	}
+	return resp.FraudProof, nil
 }
 
 // func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
