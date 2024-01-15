@@ -95,7 +95,9 @@ func getManager(conf config.BlockManagerConfig, settlementlc settlement.LayerI, 
 
 	// Init p2p client and validator
 	p2pKey, _, _ := crypto.GenerateEd25519Key(rand.Reader)
-	p2pClient, err := p2p.NewClient(config.P2PConfig{}, p2pKey, "TestChain", 50, logger)
+	p2pClient, err := p2p.NewClient(config.P2PConfig{
+		GossipCacheSize: 50,
+		BoostrapTime:    30 * time.Second}, p2pKey, "TestChain", logger)
 	if err != nil {
 		return nil, err
 	}
