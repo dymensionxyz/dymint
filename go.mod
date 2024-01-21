@@ -266,7 +266,7 @@ require (
 
 replace (
 	github.com/centrifuge/go-substrate-rpc-client/v4 => github.com/availproject/go-substrate-rpc-client/v4 v4.0.12-avail-1.4.0-rc1-5e286e3
-	// github.com/tendermint/tendermint => github.com/cometbft/cometbft v0.34.28
+	github.com/cosmos/cosmos-sdk => github.com/dymensionxyz/cosmos-sdk v0.46.15-fraudproof-0.0.1
 
 	github.com/cosmos/iavl => github.com/celestiaorg/iavl v0.0.0-20230105192234-715b65a7ecf1
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.2-alpha.regen.4
@@ -274,7 +274,5 @@ replace (
 	github.com/libp2p/go-libp2p-pubsub => github.com/dymensionxyz/go-libp2p-pubsub v0.0.0-20231220125656-9e904c648367
 
 	github.com/rollkit/celestia-openrpc => github.com/celestiaorg/celestia-openrpc v0.3.0
+	github.com/tendermint/tendermint => github.com/dymensionxyz/cometbft v0.34.29-fraudproof-0.0.1
 )
-
-replace github.com/tendermint/tendermint => /Users/mtsitrin/Applications/dymension/cometbft
-replace github.com/cosmos/cosmos-sdk => /Users/mtsitrin/Applications/dymension/cosmos-sdk
