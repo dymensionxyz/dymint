@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/rand"
 	"os"
 	"time"
 
@@ -37,6 +38,8 @@ type BlockExecutor struct {
 	eventBus *tmtypes.EventBus
 
 	logger log.Logger
+
+	simulateFraud bool
 }
 
 // NewBlockExecutor creates new instance of BlockExecutor.
@@ -55,6 +58,7 @@ func NewBlockExecutor(proposerAddress []byte, namespaceID string, chainID string
 		mempool:               mempool,
 		eventBus:              eventBus,
 		logger:                logger,
+		simulateFraud:         true, //FIXME: add as flag
 	}
 	copy(be.namespaceID[:], bytes)
 	return &be, nil
@@ -322,7 +326,7 @@ func (e *BlockExecutor) validateCommit(proposer *types.Sequencer, commit *types.
 	return nil
 }
 
-func (e *BlockExecutor) setOrVerifyISR(phase string, ISRs [][]byte, generateISR bool, idx int) ([][]byte, error) {
+func (e *BlockExecutor) setOrVerifyISR(phase string, ISRs [][]byte, generateISR bool, idx int, simulateFraud bool) ([][]byte, error) {
 	isr, err := e.getAppHash()
 	if err != nil {
 		return nil, err
@@ -330,8 +334,16 @@ func (e *BlockExecutor) setOrVerifyISR(phase string, ISRs [][]byte, generateISR 
 
 	if generateISR {
 		//sequencer mode
-		ISRs = append(ISRs, isr)
 		e.logger.Info(phase, "ISR", hex.EncodeToString(isr))
+
+		//FIXME: for testing only
+		if simulateFraud {
+			e.logger.Info("simulating fraud", "phase", phase)
+			// isr = []byte("fraud")
+			return nil, types.ErrInvalidISR
+		}
+
+		ISRs[idx] = isr
 		return ISRs, nil
 	} else {
 		//verifier mode
@@ -340,6 +352,7 @@ func (e *BlockExecutor) setOrVerifyISR(phase string, ISRs [][]byte, generateISR 
 			e.logger.Error(phase, "ISR mismatch", "ISR", hex.EncodeToString(isr), "expected", hex.EncodeToString(ISRs[idx]))
 			return nil, types.ErrInvalidISR
 		}
+
 		e.logger.Info(phase, "ISR", hex.EncodeToString(isr))
 		return nil, nil
 	}
@@ -381,8 +394,13 @@ func (e *BlockExecutor) Execute(ctx context.Context, state types.State, block *t
 	}
 
 	//FIXME: return and handle types.ErrInvalidISR for proof generation
-	e.setOrVerifyISR("initial ISR", ISRs, generateISR, currISRIdx)
+	ISRs, err = e.setOrVerifyISR("initial ISR", ISRs, generateISR, currISRIdx, false)
 	currISRIdx++
+	if err == types.ErrInvalidISR {
+		//FIXME: can happen?
+		//panic("invalid ISR")
+		e.generateFraudProof(nil, nil, nil)
+	}
 
 	e.proxyAppConsensusConn.SetResponseCallback(func(req *abci.Request, res *abci.Response) {
 		if r, ok := res.Value.(*abci.Response_DeliverTx); ok {
@@ -416,8 +434,11 @@ func (e *BlockExecutor) Execute(ctx context.Context, state types.State, block *t
 		return nil, err
 	}
 
-	e.setOrVerifyISR("begin block ISR", ISRs, generateISR, currISRIdx)
+	ISRs, err = e.setOrVerifyISR("begin block ISR", ISRs, generateISR, currISRIdx, false)
 	currISRIdx++
+	if err == types.ErrInvalidISR {
+		e.generateFraudProof(&reqBeginBlock, nil, nil)
+	}
 
 	deliverTxRequests := make([]*abci.RequestDeliverTx, 0, len(block.Data.Txs))
 	for _, tx := range block.Data.Txs {
@@ -428,8 +449,12 @@ func (e *BlockExecutor) Execute(ctx context.Context, state types.State, block *t
 			return nil, errors.New(res.GetException().GetError())
 		}
 
-		e.setOrVerifyISR("deliver TX ISR", ISRs, generateISR, currISRIdx)
+		simulateFraud := e.simulateFraud && rand.Float64() < 0.5
+		_, err = e.setOrVerifyISR("deliver TX ISR", ISRs, generateISR, currISRIdx, simulateFraud)
 		currISRIdx++
+		if err == types.ErrInvalidISR {
+			e.generateFraudProof(&reqBeginBlock, deliverTxRequests, nil)
+		}
 	}
 
 	reqEndBlock := abci.RequestEndBlock{Height: int64(block.Header.Height)}
@@ -438,48 +463,21 @@ func (e *BlockExecutor) Execute(ctx context.Context, state types.State, block *t
 		return nil, err
 	}
 
-	e.setOrVerifyISR("endblock ISR", ISRs, generateISR, currISRIdx)
+	ISRs, err = e.setOrVerifyISR("endblock ISR", ISRs, generateISR, currISRIdx, false)
 	currISRIdx++
-
-	if len(block.Data.Txs) > 0 && block.Header.Height > 5 {
-		fraud, err := e.generateFraudProof(&reqBeginBlock, deliverTxRequests, &reqEndBlock)
-		if err != nil {
-			e.logger.Error("failed to generate fraud proof", "error", err)
-			return nil, err
-		}
-
-		if fraud == nil {
-			e.logger.Error("fraud proof is nil")
-			return nil, errors.New("fraud proof is nil")
-		}
-
-		// Open a new file for writing only
-		file, err := os.Create("fraudProof_rollapp_with_tx.json")
-		if err != nil {
-			return nil, err
-		}
-		defer file.Close()
-
-		// Serialize the struct to JSON and write it to the file
-		jsonEncoder := json.NewEncoder(file)
-		err = jsonEncoder.Encode(fraud)
-		if err != nil {
-			return nil, err
-		}
-
-		e.logger.Info("fraud proof generated")
-		panic("fraud proof generated")
+	if err == types.ErrInvalidISR {
+		e.generateFraudProof(&reqBeginBlock, deliverTxRequests, &reqEndBlock)
 	}
 
 	//TODO: add 'if enabled'
 	if blockISRs == nil {
 		//we've already valdiated we're the aggreator in this case
 		//double checking we've produced ISRs as expected
-		if currISRIdx != expectedISRCount || len(ISRs) != expectedISRCount {
-			e.logger.Error("ISR count mismatch", "expected", expectedISRCount, "actual", currISRIdx)
+		if len(ISRs) != expectedISRCount {
+			e.logger.Error("ISR count mismatch", "expected", expectedISRCount, "actual", len(blockISRs))
 			return nil, errors.New("ISR count mismatch")
 		}
-		e.logger.Info("setting ISRs", "ISRs", ISRs)
+		e.logger.Info("setting ISRs")
 		block.Data.IntermediateStateRoots.RawRootsList = ISRs
 		return abciResponses, nil
 	}
@@ -570,21 +568,44 @@ func (e *BlockExecutor) generateFraudProof(beginBlockRequest *abci.RequestBeginB
 		return nil, fmt.Errorf("begin block request cannot be a nil parameter")
 	}
 	generateFraudProofRequest.BeginBlockRequest = *beginBlockRequest
+
 	if deliverTxRequests != nil {
 		generateFraudProofRequest.DeliverTxRequests = deliverTxRequests
+	} else {
+		panic("deliverTxRequests cannot be nil - fraudelet begin block not supported")
 	}
-
-	//FIXME: HACK: always set fraudelent ST as the deliverTxRequest
-	// generateFraudProofRequest.EndBlockRequest = endBlockRequest
+	if endBlockRequest != nil {
+		generateFraudProofRequest.EndBlockRequest = endBlockRequest
+		panic("fraudelent endBlockRequest not supported")
+	}
 
 	resp, err := e.proxyAppConsensusConn.GenerateFraudProofSync(generateFraudProofRequest)
 	if err != nil {
 		return nil, err
 	}
-	if resp.FraudProof == nil {
-		return nil, fmt.Errorf("fraud proof generation failed")
+
+	fraud := resp.FraudProof
+	if fraud == nil {
+		e.logger.Error("fraud proof is nil")
+		return nil, errors.New("fraud proof is nil")
 	}
-	return resp.FraudProof, nil
+
+	// Open a new file for writing only
+	file, err := os.Create("fraudProof_rollapp_with_tx.json")
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	// Serialize the struct to JSON and write it to the file
+	jsonEncoder := json.NewEncoder(file)
+	err = jsonEncoder.Encode(fraud)
+	if err != nil {
+		return nil, err
+	}
+
+	panic("fraud proof generated")
+	return fraud, nil
 }
 
 // func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
