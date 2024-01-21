@@ -176,14 +176,6 @@ func (e *BlockExecutor) UpdateStateFromResponses(resp *tmstate.ABCIResponses, st
 
 // Commit commits the block
 func (e *BlockExecutor) Commit(ctx context.Context, state *types.State, block *types.Block, resp *tmstate.ABCIResponses) (int64, error) {
-
-	//TEST FRAUDS
-	getAppHashRes, err := e.proxyAppConsensusConn.GetAppHashSync(abcitypes.RequestGetAppHash{})
-	if err != nil {
-		return 0, err
-	}
-	e.logger.Info("AppHash before commit", "appHash", hex.EncodeToString(getAppHashRes.GetAppHash()))
-
 	appHash, retainHeight, err := e.commit(ctx, state, block, resp.DeliverTxs)
 	if err != nil {
 		return 0, err
@@ -198,17 +190,6 @@ func (e *BlockExecutor) Commit(ctx context.Context, state *types.State, block *t
 		return 0, err
 	}
 
-	e.logger.Info("commit response", "appHash", hex.EncodeToString(state.AppHash[:]))
-
-	getAppHashRes, err = e.proxyAppConsensusConn.GetAppHashSync(abcitypes.RequestGetAppHash{})
-	if err != nil {
-		return 0, err
-	}
-	e.logger.Info("AppHash after commit", "appHash", hex.EncodeToString(getAppHashRes.GetAppHash()))
-	e.logger.Info("header appHash", "appHash", hex.EncodeToString(block.Header.AppHash[:]))
-	// e.proxyAppConsensusConn.GenerateFraudProofSync(abcitypes.RequestGenerateFraudProof{
-	// 	BeginBlockRequest: resp.BeginBlock,
-	// )
 	return retainHeight, nil
 }
 
