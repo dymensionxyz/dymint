@@ -7,4 +7,7 @@ var (
 	ErrInvalidSignature  = errors.New("invalid signature")
 	ErrNoStateFound      = errors.New("no state found")
 	ErrSkippedEmptyBlock = errors.New("skipped empty block")
+
+	//fraud proof
+	ErrInvalidISR = errors.New("invalid ISR")
 )
