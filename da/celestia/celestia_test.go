@@ -1,6 +1,7 @@
 package celestia_test
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"math/rand"
 	"testing"
@@ -27,6 +28,56 @@ import (
 )
 
 const mockDaBlockTime = 100 * time.Millisecond
+
+func TestRetrievalRealNode(t *testing.T) {
+	pubsubServer := pubsub.NewServer()
+	pubsubServer.Start()
+	defer pubsubServer.Stop()
+	dalc := registry.GetClient("celestia")
+	config := celestia.Config{
+		BaseURL:        "http://localhost:26658",
+		Timeout:        30 * time.Second,
+		GasPrices:      1.0,
+		GasAdjustment:  1.3,
+		NamespaceIDStr: "e06c57a64b049d6463ef",
+		AuthToken:      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJBbGxvdyI6WyJwdWJsaWMiLCJyZWFkIiwid3JpdGUiLCJhZG1pbiJdfQ.cZWEWcvaSnrDX2i9rqUipV-o0NBZY_Pr6Yv_ORbn4SA",
+	}
+	require := require.New(t)
+
+	conf, err := json.Marshal(config)
+	require.NoError(err)
+	err = dalc.Init(conf, pubsubServer, store.NewDefaultInMemoryKVStore(), log.TestingLogger())
+	require.NoError(err)
+
+	err = dalc.Start()
+	require.NoError(err)
+
+	// only blocks b1 and b2 will be submitted to DA
+	block1 := getRandomBlock(1, 10)
+	batch1 := &types.Batch{
+		StartHeight: block1.Header.Height,
+		EndHeight:   block1.Header.Height,
+		Blocks:      []*types.Block{block1},
+	}
+
+	t.Log("Submitting batch")
+	resp := dalc.SubmitBatch(batch1)
+	t.Log("Height:", resp.DAHeight)
+	for i, commitment := range resp.Commitments {
+		t.Log("Commitment:", hex.EncodeToString(commitment))
+		t.Log("Index:", resp.Index[i])
+		t.Log("Num shares:", resp.NumShares[i])
+
+	}
+	resultRetrieveBatch := dalc.(da.BatchRetrieverByCommitment).RetrieveBatchesByCommitment(resp.DAHeight, resp.Commitments)
+
+	if resultRetrieveBatch.Code == da.StatusError {
+		t.Error("Failed to retrieve batch")
+	} else {
+		t.Log("Result:", resultRetrieveBatch.BaseResult.Message)
+	}
+
+}
 
 func TestDALC(t *testing.T) {
 	pubsubServer := pubsub.NewServer()

@@ -13,6 +13,9 @@ import (
 // the underlying DA chain.
 type StatusCode uint64
 
+// Commitment should contain serialized cryptographic commitment to Blob value.
+type Commitment = []byte
+
 // Data Availability return codes.
 const (
 	StatusUnknown StatusCode = iota
@@ -42,6 +45,12 @@ type BaseResult struct {
 	Message string
 	// DAHeight informs about a height on Data Availability Layer for given result.
 	DAHeight uint64
+	// Commitment
+	Commitments []Commitment
+	// Span index
+	Index []int
+	// Num shares
+	NumShares []int
 }
 
 // ResultSubmitBatch contains information returned from DA layer after block submission.
@@ -93,4 +102,11 @@ type DataAvailabilityLayerClient interface {
 type BatchRetriever interface {
 	// RetrieveBatches returns blocks at given data layer height from data availability layer.
 	RetrieveBatches(dataLayerHeight uint64) ResultRetrieveBatch
+}
+
+// BatchRetriever is additional interface that can be implemented by Data Availability Layer Client that is able to retrieve
+// block data from DA layer. This gives the ability to use it for block synchronization.
+type BatchRetrieverByCommitment interface {
+	// RetrieveBatches returns blocks at given data layer height from data availability layer.
+	RetrieveBatchesByCommitment(dataLayerHeight uint64, commitments []Commitment) ResultRetrieveBatch
 }
