@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/celestiaorg/nmt"
+	"github.com/rollkit/celestia-openrpc/types/blob"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -15,7 +17,6 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 
 	mocks "github.com/dymensionxyz/dymint/mocks/da/celestia"
-	"github.com/rollkit/celestia-openrpc/types/state"
 
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/da/celestia"
@@ -82,12 +83,31 @@ func TestDALC(t *testing.T) {
 		Blocks:      []*types.Block{block2},
 	}
 
+	nIDSize := 1
+	tree := exampleNMT(nIDSize, true, 1, 2, 3, 4)
+	// build a proof for an NID that is within the namespace range of the tree
+	nID := []byte{1}
+	proof, err := tree.ProveNamespace(nID)
+	blobProof := blob.Proof([]*nmt.Proof{&proof})
+
 	var mockres1, mockres2 da.ResultSubmitBatch
-	mockRPCClient.On("SubmitPayForBlob", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&state.TxResponse{}, nil).Once().Run(func(args mock.Arguments) {
+	mockRPCClient.On("Submit", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(uint64(1234), nil).Once().Run(func(args mock.Arguments) {
+		mockres1 = mockdlc.SubmitBatch(batch1)
+	})
+	mockRPCClient.On("GetProof", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&blobProof, nil).Once().Run(func(args mock.Arguments) {
+		mockres1 = mockdlc.SubmitBatch(batch1)
+	})
+	mockRPCClient.On("Included", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Once().Run(func(args mock.Arguments) {
 		mockres1 = mockdlc.SubmitBatch(batch1)
 	})
 
-	mockRPCClient.On("SubmitPayForBlob", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&state.TxResponse{}, nil).Once().Run(func(args mock.Arguments) {
+	mockRPCClient.On("Submit", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(uint64(1234), nil).Once().Run(func(args mock.Arguments) {
+		mockres2 = mockdlc.SubmitBatch(batch2)
+	})
+	mockRPCClient.On("GetProof", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&blobProof, nil).Once().Run(func(args mock.Arguments) {
+		mockres2 = mockdlc.SubmitBatch(batch2)
+	})
+	mockRPCClient.On("Included", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Once().Run(func(args mock.Arguments) {
 		mockres2 = mockdlc.SubmitBatch(batch2)
 	})
 
@@ -132,6 +152,10 @@ func TestDALC(t *testing.T) {
 	_ = retriever.RetrieveBatches(2)
 	assert.Equal(da.StatusSuccess, retreiveRes.Code)
 	require.True(len(retreiveRes.Batches) == 0)
+}
+
+func TestLightNode(t *testing.T) {
+	t.Skip()
 }
 
 //TODO: move to testutils
