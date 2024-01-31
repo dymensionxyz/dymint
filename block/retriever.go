@@ -108,6 +108,18 @@ func (m *Manager) fetchBatch(daMetaData *da.DAMetaData) (da.ResultRetrieveBatch,
 		err = fmt.Errorf("failed to retrieve batch from height %d: %s", daMetaData.Height, batchRes.Message)
 	case da.StatusTimeout:
 		err = fmt.Errorf("timeout during retrieve batch from height %d: %s", daMetaData.Height, batchRes.Message)
+	//TODO (srene) : Send dispute to the Hub for these cases
+	case da.StatusBlobNotFound:
+		//The blob is not found for the specified share commitment
+		//Not possible to get proofs
+		//It is necessary to send any rowroot for non-inclusion proof
+	case da.StatusProofNotMatching:
+		//The proofs are not matching the span (index, length), although the share commitment is correct
+		//This will be useful once the Hub can validate proofs by itself using NMT roots, since the span must be correct to validate non-inclusion proofs
+		//It is necessary to send any rowroot for non-inclusion proof
+
+		//TODO(srene) : for invalid transactions there is no specific error code since it will need to be validated somewhere else for fraud proving.
+		//NMT proofs are included in the result batchRes, necessary to be included in the dispute
 	}
 
 	if len(batchRes.Batches) == 0 {

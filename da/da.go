@@ -67,7 +67,9 @@ type DAMetaData struct {
 	//share length
 	Lengths []int
 	//Proofs
-	Proofs *blob.Proof
+	Proofs []*blob.Proof
+	//NMT root
+	Root []byte
 }
 
 // ToPath converts a DAMetaData to a path.

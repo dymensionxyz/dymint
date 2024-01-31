@@ -13,6 +13,7 @@ import (
 	openrpc "github.com/rollkit/celestia-openrpc"
 
 	"github.com/rollkit/celestia-openrpc/types/blob"
+	"github.com/rollkit/celestia-openrpc/types/header"
 
 	"github.com/dymensionxyz/dymint/da"
 	celtypes "github.com/dymensionxyz/dymint/da/celestia/types"
@@ -441,92 +442,112 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 
 func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DAMetaData) da.ResultRetrieveBatch {
 
-	var batches []*types.Batch
-	for i, commitment := range daMetaData.Commitments {
-		blob, err := c.rpc.Get(c.ctx, daMetaData.Height, c.config.NamespaceID.Bytes(), commitment)
-		if err != nil {
-			return da.ResultRetrieveBatch{
-				BaseResult: da.BaseResult{
-					Code:    da.StatusBlobNotFound,
-					Message: err.Error(),
-				},
-			}
-		}
+	for {
+		select {
+		case <-c.ctx.Done():
+			c.logger.Debug("Context cancelled")
+			return da.ResultRetrieveBatch{}
+		default:
+			var batches []*types.Batch
+			var proofs []*blob.Proof
+			for i, commitment := range daMetaData.Commitments {
+				blob, err := c.rpc.Get(c.ctx, daMetaData.Height, c.config.NamespaceID.Bytes(), commitment)
+				if err != nil {
+					return da.ResultRetrieveBatch{
+						BaseResult: da.BaseResult{
+							Code:    da.StatusBlobNotFound,
+							Message: err.Error(),
+						},
+					}
+				}
 
-		var batch pb.Batch
-		err = proto.Unmarshal(blob.Data, &batch)
-		if err != nil {
-			c.logger.Error("failed to unmarshal block", "daHeight", daMetaData.Height, "error", err)
-		}
-		parsedBatch := new(types.Batch)
-		err = parsedBatch.FromProto(&batch)
-		if err != nil {
-			return da.ResultRetrieveBatch{
-				BaseResult: da.BaseResult{
-					Code:    da.StatusError,
-					Message: err.Error(),
-				},
-			}
-		}
-		batches = append(batches, parsedBatch)
+				var batch pb.Batch
+				err = proto.Unmarshal(blob.Data, &batch)
+				if err != nil {
+					c.logger.Error("failed to unmarshal block", "daHeight", daMetaData.Height, "error", err)
+				}
+				parsedBatch := new(types.Batch)
+				err = parsedBatch.FromProto(&batch)
+				if err != nil {
+					return da.ResultRetrieveBatch{
+						BaseResult: da.BaseResult{
+							Code:    da.StatusError,
+							Message: err.Error(),
+						},
+					}
+				}
+				batches = append(batches, parsedBatch)
 
-		proof, err := c.getProof(daMetaData.Height, commitment)
-		if err != nil {
-			c.logger.Error("Failed to submit DA batch", "error", err)
-			return da.ResultRetrieveBatch{
-				BaseResult: da.BaseResult{
-					Code:    da.StatusError,
-					Message: err.Error(),
-				},
-			}
-		}
-		nmtProofs := []*nmt.Proof(*proof)
-		shares := 0
-		index := 0
-		for i, proof := range nmtProofs {
-			if i == 0 {
-				index = proof.Start()
-			}
-			shares += proof.End() - proof.Start()
-		}
+				proof, err := c.getProof(daMetaData.Height, commitment)
+				if err != nil {
+					c.logger.Error("Unable to get proof", "error", err)
+					return da.ResultRetrieveBatch{
+						BaseResult: da.BaseResult{
+							Code:    da.StatusError,
+							Message: err.Error(),
+						},
+					}
+				}
+				proofs = append(proofs, proof)
+				nmtProofs := []*nmt.Proof(*proof)
+				shares := 0
+				index := 0
+				for i, proof := range nmtProofs {
+					if i == 0 {
+						index = proof.Start()
+					}
+					shares += proof.End() - proof.Start()
+				}
 
-		if index != daMetaData.Indexes[i] || shares != daMetaData.Lengths[i] {
+				if index != daMetaData.Indexes[i] || shares != daMetaData.Lengths[i] {
+					headers, err := c.getHeaders(daMetaData.Height)
+					if err == nil {
+						return da.ResultRetrieveBatch{
+							BaseResult: da.BaseResult{
+								Code:    da.StatusProofNotMatching,
+								Message: err.Error(),
+								MetaData: &da.DAMetaData{
+									Height: daMetaData.Height,
+									Proofs: proofs,
+									Root:   headers.DAH.RowRoots[0],
+								},
+							},
+						}
+					}
+				}
+
+				included, err := c.validateProof(daMetaData.Height, commitment, proof)
+				if err != nil {
+					c.logger.Error("Failed to submit DA batch", "error", err)
+					return da.ResultRetrieveBatch{
+						BaseResult: da.BaseResult{
+							Code:    da.StatusError,
+							Message: err.Error(),
+						},
+					}
+				} else if !included {
+					err := errors.New("Blob not included")
+					c.logger.Error("Failed to submit DA batch", "error", err)
+					return da.ResultRetrieveBatch{
+						BaseResult: da.BaseResult{
+							Code:    da.StatusBlobNotIncluded,
+							Message: err.Error(),
+						},
+					}
+				}
+			}
 			return da.ResultRetrieveBatch{
 				BaseResult: da.BaseResult{
-					Code:    da.StatusProofNotMatching,
-					Message: err.Error(),
+					Code:    da.StatusSuccess,
+					Message: "Batch retrieval successful",
+					MetaData: &da.DAMetaData{
+						Height: daMetaData.Height,
+						Proofs: proofs,
+					},
 				},
+				Batches: batches,
 			}
 		}
-		included, err := c.validateProof(daMetaData.Height, commitment, proof)
-		if err != nil {
-			c.logger.Error("Failed to submit DA batch", "error", err)
-			return da.ResultRetrieveBatch{
-				BaseResult: da.BaseResult{
-					Code:    da.StatusError,
-					Message: err.Error(),
-				},
-			}
-		} else if !included {
-			err := errors.New("Blob not included")
-			c.logger.Error("Failed to submit DA batch", "error", err)
-			return da.ResultRetrieveBatch{
-				BaseResult: da.BaseResult{
-					Code:    da.StatusBlobNotIncluded,
-					Message: err.Error(),
-				},
-			}
-		}
-	}
-	return da.ResultRetrieveBatch{
-		BaseResult: da.BaseResult{
-			Code:    da.StatusSuccess,
-			Message: "Batch retrieval successful",
-			MetaData: &da.DAMetaData{
-				Height: daMetaData.Height,
-			},
-		},
-		Batches: batches,
 	}
 }
 
@@ -606,6 +627,15 @@ func (c *DataAvailabilityLayerClient) validateProof(height uint64, commitment da
 	defer cancel()
 	isIncluded, error := c.rpc.Included(ctx, height, c.config.NamespaceID.Bytes(), proof, commitment)
 	return isIncluded, error
+}
+
+func (c *DataAvailabilityLayerClient) getHeaders(height uint64) (*header.ExtendedHeader, error) {
+
+	c.logger.Info("Getting Celestia extended headers via RPC call")
+	ctx, cancel := context.WithTimeout(c.ctx, c.txPollingRetryDelay)
+	defer cancel()
+	headers, error := c.rpc.GetHeaders(ctx, height)
+	return headers, error
 }
 
 /*func splitData(batch *types.Batch, maxBytes int) ([][]byte, error) {
