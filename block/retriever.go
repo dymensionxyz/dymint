@@ -51,7 +51,7 @@ func (m *Manager) syncUntilTarget(ctx context.Context, syncTarget uint64) error 
 			return err
 		}
 
-		err = m.processNextDABatch(ctx, settlementBatch.MetaData.DA.Height)
+		err = m.processNextDABatch(ctx, settlementBatch.MetaData.DA)
 		if err != nil {
 			return err
 		}
@@ -76,18 +76,18 @@ func (m *Manager) updateStateIndex(stateIndex uint64) error {
 	return nil
 }
 
-func (m *Manager) processNextDABatch(ctx context.Context, daHeight uint64) error {
-	m.logger.Debug("trying to retrieve batch from DA", "daHeight", daHeight)
-	batchResp, err := m.fetchBatch(daHeight)
+func (m *Manager) processNextDABatch(ctx context.Context, daMetaData *da.DAMetaData) error {
+	m.logger.Debug("trying to retrieve batch from DA", "daHeight", daMetaData.Height)
+	batchResp, err := m.fetchBatch(daMetaData)
 	if err != nil {
 		return err
 	}
 
-	m.logger.Debug("retrieved batches", "n", len(batchResp.Batches), "daHeight", daHeight)
+	m.logger.Debug("retrieved batches", "n", len(batchResp.Batches), "daHeight", daMetaData.Height)
 
 	for _, batch := range batchResp.Batches {
 		for i, block := range batch.Blocks {
-			err := m.applyBlock(ctx, block, batch.Commits[i], blockMetaData{source: daBlock, daHeight: daHeight})
+			err := m.applyBlock(ctx, block, batch.Commits[i], blockMetaData{source: daBlock, daHeight: daMetaData.Height})
 			if err != nil {
 				return err
 			}
@@ -100,18 +100,18 @@ func (m *Manager) processNextDABatch(ctx context.Context, daHeight uint64) error
 	return nil
 }
 
-func (m *Manager) fetchBatch(daHeight uint64) (da.ResultRetrieveBatch, error) {
+func (m *Manager) fetchBatch(daMetaData *da.DAMetaData) (da.ResultRetrieveBatch, error) {
 	var err error
-	batchRes := m.retriever.RetrieveBatches(daHeight)
+	batchRes := m.retriever.RetrieveBatches(daMetaData)
 	switch batchRes.Code {
 	case da.StatusError:
-		err = fmt.Errorf("failed to retrieve batch from height %d: %s", daHeight, batchRes.Message)
+		err = fmt.Errorf("failed to retrieve batch from height %d: %s", daMetaData.Height, batchRes.Message)
 	case da.StatusTimeout:
-		err = fmt.Errorf("timeout during retrieve batch from height %d: %s", daHeight, batchRes.Message)
+		err = fmt.Errorf("timeout during retrieve batch from height %d: %s", daMetaData.Height, batchRes.Message)
 	}
 
 	if len(batchRes.Batches) == 0 {
-		err = fmt.Errorf("no batches found on height %d", daHeight)
+		err = fmt.Errorf("no batches found on height %d", daMetaData.Height)
 	}
 
 	return batchRes, err

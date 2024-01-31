@@ -108,17 +108,20 @@ func (m *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 
 // CheckBatchAvailability queries DA layer to check data availability of block corresponding to given header.
 func (m *DataAvailabilityLayerClient) CheckBatchAvailability(dataLayerHeight uint64) da.ResultCheckBatch {
-	batchesRes := m.RetrieveBatches(dataLayerHeight)
+	dataMetaData := &da.DAMetaData{
+		Height: dataLayerHeight,
+	}
+	batchesRes := m.RetrieveBatches(dataMetaData)
 	return da.ResultCheckBatch{BaseResult: da.BaseResult{Code: batchesRes.Code}, DataAvailable: len(batchesRes.Batches) > 0}
 }
 
 // RetrieveBatches returns block at given height from data availability layer.
-func (m *DataAvailabilityLayerClient) RetrieveBatches(dataLayerHeight uint64) da.ResultRetrieveBatch {
-	if dataLayerHeight >= atomic.LoadUint64(&m.daHeight) {
+func (m *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DAMetaData) da.ResultRetrieveBatch {
+	if daMetaData.Height >= atomic.LoadUint64(&m.daHeight) {
 		return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: "batch not found"}}
 	}
 
-	iter := m.dalcKV.PrefixIterator(uint64ToBinary(dataLayerHeight))
+	iter := m.dalcKV.PrefixIterator(uint64ToBinary(daMetaData.Height))
 	defer iter.Discard()
 
 	var batches []*types.Batch
@@ -140,7 +143,7 @@ func (m *DataAvailabilityLayerClient) RetrieveBatches(dataLayerHeight uint64) da
 		iter.Next()
 	}
 
-	return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusSuccess}, Batches: batches}
+	return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusSuccess, MetaData: daMetaData}, Batches: batches}
 }
 
 func uint64ToBinary(daHeight uint64) []byte {

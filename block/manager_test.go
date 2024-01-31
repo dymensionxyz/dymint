@@ -155,7 +155,10 @@ func TestRetrieveDaBatchesFailed(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, manager)
 
-	err = manager.processNextDABatch(context.Background(), 1)
+	daMetaData := &da.DAMetaData{
+		Height: 1,
+	}
+	err = manager.processNextDABatch(context.Background(), daMetaData)
 	assert.ErrorContains(t, err, batchNotFoundErrorMessage)
 }
 

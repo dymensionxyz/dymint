@@ -183,15 +183,21 @@ func doTestRetrieve(t *testing.T, dalc da.DataAvailabilityLayerClient) {
 	time.Sleep(mockDaBlockTime + 20*time.Millisecond)
 
 	for h, cnt := range countAtHeight {
+		daMetaData := &da.DAMetaData{
+			Height: h,
+		}
 		t.Log("Retrieving block, DA Height", h)
-		ret := retriever.RetrieveBatches(h)
+		ret := retriever.RetrieveBatches(daMetaData)
 		assert.Equal(da.StatusSuccess, ret.Code, ret.Message)
 		require.NotEmpty(ret.Batches, h)
 		assert.Len(ret.Batches, cnt, h)
 	}
 
 	for b, h := range batches {
-		ret := retriever.RetrieveBatches(h)
+		daMetaData := &da.DAMetaData{
+			Height: h,
+		}
+		ret := retriever.RetrieveBatches(daMetaData)
 		assert.Equal(da.StatusSuccess, ret.Code, h)
 		require.NotEmpty(ret.Batches, h)
 		assert.Contains(ret.Batches, b, h)

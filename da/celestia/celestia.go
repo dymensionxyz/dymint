@@ -13,7 +13,6 @@ import (
 	openrpc "github.com/rollkit/celestia-openrpc"
 
 	"github.com/rollkit/celestia-openrpc/types/blob"
-	"github.com/rollkit/celestia-openrpc/types/share"
 
 	"github.com/dymensionxyz/dymint/da"
 	celtypes "github.com/dymensionxyz/dymint/da/celestia/types"
@@ -39,7 +38,6 @@ type DataAvailabilityLayerClient struct {
 
 var _ da.DataAvailabilityLayerClient = &DataAvailabilityLayerClient{}
 var _ da.BatchRetriever = &DataAvailabilityLayerClient{}
-var _ da.BatchRetrieverByCommitment = &DataAvailabilityLayerClient{}
 
 // TODO(srene): export from github.com/celestiaorg/celestia-app/pkg/appconsts or get them from lightnode
 var DefaultGovMaxSquareSize = 64
@@ -262,79 +260,6 @@ func (c *DataAvailabilityLayerClient) GetClientType() da.Client {
 			}
 		}
 	}
-}*/
-
-func (c *DataAvailabilityLayerClient) RetrieveBatchesByCommitment(dataLayerHeight uint64, commitments []da.Commitment) da.ResultRetrieveBatch {
-
-	var batches []*types.Batch
-	for _, commitment := range commitments {
-		blob, err := c.rpc.Get(c.ctx, dataLayerHeight, c.config.NamespaceID.Bytes(), commitment)
-		if err != nil {
-			return da.ResultRetrieveBatch{
-				BaseResult: da.BaseResult{
-					Code:    da.StatusError,
-					Message: err.Error(),
-				},
-			}
-		}
-
-		var batch pb.Batch
-		err = proto.Unmarshal(blob.Data, &batch)
-		if err != nil {
-			c.logger.Error("failed to unmarshal block", "daHeight", dataLayerHeight, "error", err)
-		}
-		parsedBatch := new(types.Batch)
-		err = parsedBatch.FromProto(&batch)
-		if err != nil {
-			return da.ResultRetrieveBatch{
-				BaseResult: da.BaseResult{
-					Code:    da.StatusError,
-					Message: err.Error(),
-				},
-			}
-		}
-		batches = append(batches, parsedBatch)
-
-		proof, err := c.getProof(dataLayerHeight, commitment)
-		if err != nil {
-			c.logger.Error("Failed to submit DA batch", "error", err)
-			return da.ResultRetrieveBatch{
-				BaseResult: da.BaseResult{
-					Code:    da.StatusError,
-					Message: err.Error(),
-				},
-			}
-		}
-		included, err := c.validateProof(dataLayerHeight, commitment, proof)
-		if err != nil {
-			c.logger.Error("Failed to submit DA batch", "error", err)
-			return da.ResultRetrieveBatch{
-				BaseResult: da.BaseResult{
-					Code:    da.StatusError,
-					Message: err.Error(),
-				},
-			}
-		} else if !included {
-			err := errors.New("Blob not included")
-			c.logger.Error("Failed to submit DA batch", "error", err)
-			return da.ResultRetrieveBatch{
-				BaseResult: da.BaseResult{
-					Code:    da.StatusError,
-					Message: err.Error(),
-				},
-			}
-		}
-	}
-	return da.ResultRetrieveBatch{
-		BaseResult: da.BaseResult{
-			Code:    da.StatusSuccess,
-			Message: "Batch retrieval successful",
-			MetaData: &da.DAMetaData{
-				Height: dataLayerHeight,
-			},
-		},
-		Batches: batches,
-	}
 }
 
 // RetrieveBatches gets a batch of blocks from DA layer.
@@ -379,7 +304,7 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(dataLayerHeight uint64) da
 		},
 		Batches: batches,
 	}
-}
+}*/
 
 // SubmitBatch submits a batch to the DA layer.
 func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultSubmitBatch {
@@ -504,7 +429,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			return da.ResultSubmitBatch{
 				BaseResult: da.BaseResult{
 					Code:    da.StatusSuccess,
-					Message: "Submission succesful",
+					Message: "Submission successful",
 					MetaData: &da.DAMetaData{
 						Height:      uint64(height),
 						Commitments: commitments,
@@ -515,6 +440,97 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 		}
 	}
 
+}
+
+func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DAMetaData) da.ResultRetrieveBatch {
+
+	var batches []*types.Batch
+	for i, commitment := range daMetaData.Commitments {
+		blob, err := c.rpc.Get(c.ctx, daMetaData.Height, c.config.NamespaceID.Bytes(), commitment)
+		if err != nil {
+			return da.ResultRetrieveBatch{
+				BaseResult: da.BaseResult{
+					Code:    da.StatusBlobNotFound,
+					Message: err.Error(),
+				},
+			}
+		}
+
+		var batch pb.Batch
+		err = proto.Unmarshal(blob.Data, &batch)
+		if err != nil {
+			c.logger.Error("failed to unmarshal block", "daHeight", daMetaData.Height, "error", err)
+		}
+		parsedBatch := new(types.Batch)
+		err = parsedBatch.FromProto(&batch)
+		if err != nil {
+			return da.ResultRetrieveBatch{
+				BaseResult: da.BaseResult{
+					Code:    da.StatusError,
+					Message: err.Error(),
+				},
+			}
+		}
+		batches = append(batches, parsedBatch)
+
+		proof, err := c.getProof(daMetaData.Height, commitment)
+		if err != nil {
+			c.logger.Error("Failed to submit DA batch", "error", err)
+			return da.ResultRetrieveBatch{
+				BaseResult: da.BaseResult{
+					Code:    da.StatusError,
+					Message: err.Error(),
+				},
+			}
+		}
+		nmtProofs := []*nmt.Proof(*proof)
+		shares := 0
+		index := 0
+		for i, proof := range nmtProofs {
+			if i == 0 {
+				index = proof.Start()
+			}
+			shares += proof.End() - proof.Start()
+		}
+
+		if index != daMetaData.Indexes[i] || shares != daMetaData.Lengths[i] {
+			return da.ResultRetrieveBatch{
+				BaseResult: da.BaseResult{
+					Code:    da.StatusProofNotMatching,
+					Message: err.Error(),
+				},
+			}
+		}
+		included, err := c.validateProof(daMetaData.Height, commitment, proof)
+		if err != nil {
+			c.logger.Error("Failed to submit DA batch", "error", err)
+			return da.ResultRetrieveBatch{
+				BaseResult: da.BaseResult{
+					Code:    da.StatusError,
+					Message: err.Error(),
+				},
+			}
+		} else if !included {
+			err := errors.New("Blob not included")
+			c.logger.Error("Failed to submit DA batch", "error", err)
+			return da.ResultRetrieveBatch{
+				BaseResult: da.BaseResult{
+					Code:    da.StatusBlobNotIncluded,
+					Message: err.Error(),
+				},
+			}
+		}
+	}
+	return da.ResultRetrieveBatch{
+		BaseResult: da.BaseResult{
+			Code:    da.StatusSuccess,
+			Message: "Batch retrieval successful",
+			MetaData: &da.DAMetaData{
+				Height: daMetaData.Height,
+			},
+		},
+		Batches: batches,
+	}
 }
 
 // Submit submits the Blobs to Data Availability layer.

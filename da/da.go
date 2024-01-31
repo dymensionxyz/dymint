@@ -7,6 +7,7 @@ import (
 	"github.com/dymensionxyz/dymint/log"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/rollkit/celestia-openrpc/types/blob"
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
@@ -25,6 +26,9 @@ const (
 	StatusSuccess
 	StatusTimeout
 	StatusError
+	StatusBlobNotFound
+	StatusBlobNotIncluded
+	StatusProofNotMatching
 )
 
 // Client defines all the possible da clients
@@ -62,6 +66,8 @@ type DAMetaData struct {
 	Indexes []int
 	//share length
 	Lengths []int
+	//Proofs
+	Proofs *blob.Proof
 }
 
 // ToPath converts a DAMetaData to a path.
@@ -132,12 +138,5 @@ type DataAvailabilityLayerClient interface {
 // block data from DA layer. This gives the ability to use it for block synchronization.
 type BatchRetriever interface {
 	// RetrieveBatches returns blocks at given data layer height from data availability layer.
-	RetrieveBatches(dataLayerHeight uint64) ResultRetrieveBatch
-}
-
-// BatchRetriever is additional interface that can be implemented by Data Availability Layer Client that is able to retrieve
-// block data from DA layer. This gives the ability to use it for block synchronization.
-type BatchRetrieverByCommitment interface {
-	// RetrieveBatches returns blocks at given data layer height from data availability layer.
-	RetrieveBatchesByCommitment(dataLayerHeight uint64, commitments []Commitment) ResultRetrieveBatch
+	RetrieveBatches(daMetaData *DAMetaData) ResultRetrieveBatch
 }

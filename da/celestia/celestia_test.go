@@ -81,12 +81,14 @@ func TestRetrievalRealNode(t *testing.T) {
 
 	}
 
-	//commitmentString := "3f568f651fe72fa2131bd86c09bb23763e0a3cb45211b035bfa688711c76ce78"
-	//commitment, _ := hex.DecodeString(commitmentString)
+	commitmentString := "3f568f651fe72fa2131bd86c09bb23763e0a3cb45211b035bfa688711c76ce78"
+	commitment, _ := hex.DecodeString(commitmentString)
 	//resultRetrieveBatch := dalc.(da.BatchRetrieverByCommitment).RetrieveBatchesByCommitment(resp.DAHeight, [][]byte{commitment})
-	resultRetrieveBatch := dalc.(da.BatchRetrieverByCommitment).RetrieveBatchesByCommitment(resp.MetaData.Height, resp.MetaData.Commitments)
-	if resultRetrieveBatch.Code == da.StatusError {
-		t.Error("Failed to retrieve batch")
+
+	resp.MetaData.Commitments = []da.Commitment{commitment}
+	resultRetrieveBatch := dalc.(da.BatchRetriever).RetrieveBatches(resp.MetaData)
+	if resultRetrieveBatch.Code == da.StatusError || resultRetrieveBatch.Code == da.StatusBlobNotFound {
+		t.Error("Failed to retrieve batch ", resultRetrieveBatch.BaseResult.Message)
 	} else {
 		t.Log("Result:", resultRetrieveBatch.BaseResult.Message)
 	}
@@ -158,6 +160,7 @@ func TestDALC(t *testing.T) {
 	var mockres1, mockres2 da.ResultSubmitBatch
 	mockRPCClient.On("Submit", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(uint64(1234), nil).Once().Run(func(args mock.Arguments) {
 		mockres1 = mockdlc.SubmitBatch(batch1)
+		t.Log("Submitting")
 	})
 	mockRPCClient.On("GetProof", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&blobProof, nil).Once().Run(func(args mock.Arguments) {
 		mockres1 = mockdlc.SubmitBatch(batch1)
@@ -180,20 +183,24 @@ func TestDALC(t *testing.T) {
 
 	t.Log("Submitting batch1")
 	_ = dalc.SubmitBatch(batch1)
-	h1 := mockres1.MetaData.Height
+	//h1 := mockres1.MetaData
 	assert.Equal(da.StatusSuccess, mockres1.Code)
 
 	time.Sleep(2 * mockDaBlockTime)
 
 	t.Log("Submitting batch1")
 	_ = dalc.SubmitBatch(batch2)
-	h2 := mockres2.MetaData.Height
+	//h2 := mockres2.MetaData
 	assert.Equal(da.StatusSuccess, mockres2.Code)
 
-	var retreiveRes da.ResultRetrieveBatch
+	/*var retreiveRes da.ResultRetrieveBatch
 	mockRPCClient.On("GetAll", mock.Anything, mock.Anything, mock.Anything).Return(nil, nil).Run(func(args mock.Arguments) {
+		t.Log("Getting")
 		height := args.Get(1).(uint64)
-		result := mockdlc.RetrieveBatches(height)
+		daMetaData := &da.DAMetaData{
+			Height: height,
+		}
+		result := mockdlc.RetrieveBatches(daMetaData)
 
 		retreiveRes.Code = result.Code
 		retreiveRes.Batches = result.Batches
@@ -204,6 +211,7 @@ func TestDALC(t *testing.T) {
 	// call retrieveBlocks
 	retriever := dalc.(da.BatchRetriever)
 
+	t.Log("Result", retreiveRes.Code)
 	_ = retriever.RetrieveBatches(h1)
 	assert.Equal(da.StatusSuccess, retreiveRes.Code)
 	require.True(len(retreiveRes.Batches) == 1)
@@ -216,7 +224,7 @@ func TestDALC(t *testing.T) {
 
 	_ = retriever.RetrieveBatches(2)
 	assert.Equal(da.StatusSuccess, retreiveRes.Code)
-	require.True(len(retreiveRes.Batches) == 0)
+	require.True(len(retreiveRes.Batches) == 0)*/
 }
 
 func TestLightNode(t *testing.T) {

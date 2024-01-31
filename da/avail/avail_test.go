@@ -176,7 +176,10 @@ func TestRetriveBatches(t *testing.T) {
 	}
 	mockSubstrateApiClient.On("GetBlock", mock.Anything).Return(signedBlock, nil)
 	// Retrieve the batches and make sure we only get the batches relevant for our app id
-	batchResult := dalc.RetrieveBatches(1)
+	daMetaData := &da.DAMetaData{
+		Height: 1,
+	}
+	batchResult := dalc.RetrieveBatches(daMetaData)
 	assert.Equal(1, len(batchResult.Batches))
 	assert.Equal(batch1.StartHeight, batchResult.Batches[0].StartHeight)
 

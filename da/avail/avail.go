@@ -155,8 +155,9 @@ func (c *DataAvailabilityLayerClient) GetClientType() da.Client {
 }
 
 // RetrieveBatch retrieves batch from DataAvailabilityLayerClient instance.
-func (c *DataAvailabilityLayerClient) RetrieveBatches(dataLayerHeight uint64) da.ResultRetrieveBatch {
-	blockHash, err := c.client.GetBlockHash(dataLayerHeight)
+func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DAMetaData) da.ResultRetrieveBatch {
+	//nolint:typecheck
+	blockHash, err := c.client.GetBlockHash(daMetaData.Height)
 	if err != nil {
 		return da.ResultRetrieveBatch{
 			BaseResult: da.BaseResult{
@@ -188,14 +189,14 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(dataLayerHeight uint64) da
 				// Attempt to unmarshal the data.
 				err := proto.Unmarshal(data, &pbBatch)
 				if err != nil {
-					c.logger.Error("failed to unmarshal batch", "daHeight", dataLayerHeight, "error", err)
+					c.logger.Error("failed to unmarshal batch", "daHeight", daMetaData.Height, "error", err)
 					continue
 				}
 				// Convert the proto batch to a batch
 				batch := &types.Batch{}
 				err = batch.FromProto(&pbBatch)
 				if err != nil {
-					c.logger.Error("failed to convert batch", "daHeight", dataLayerHeight, "error", err)
+					c.logger.Error("failed to convert batch", "daHeight", daMetaData.Height, "error", err)
 					continue
 				}
 				// Add the batch to the list
@@ -211,7 +212,7 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(dataLayerHeight uint64) da
 		BaseResult: da.BaseResult{
 			Code: da.StatusSuccess,
 			MetaData: &da.DAMetaData{
-				Height: dataLayerHeight,
+				Height: daMetaData.Height,
 			}},
 		Batches: batches,
 	}

@@ -7,6 +7,7 @@ import (
 	tmlog "github.com/tendermint/tendermint/libs/log"
 	"google.golang.org/grpc"
 
+	"github.com/dymensionxyz/dymint/da"
 	grpcda "github.com/dymensionxyz/dymint/da/grpc"
 	"github.com/dymensionxyz/dymint/da/mock"
 	"github.com/dymensionxyz/dymint/store"
@@ -68,7 +69,10 @@ func (m *mockImpl) CheckBatchAvailability(_ context.Context, request *dalc.Check
 }
 
 func (m *mockImpl) RetrieveBatches(context context.Context, request *dalc.RetrieveBatchesRequest) (*dalc.RetrieveBatchesResponse, error) {
-	resp := m.mock.RetrieveBatches(request.DataLayerHeight)
+	dataMetaData := &da.DAMetaData{
+		Height: request.DataLayerHeight,
+	}
+	resp := m.mock.RetrieveBatches(dataMetaData)
 	batches := make([]*dymint.Batch, len(resp.Batches))
 	for i := range resp.Batches {
 		batches[i] = resp.Batches[i].ToProto()
