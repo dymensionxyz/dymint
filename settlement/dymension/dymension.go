@@ -401,8 +401,14 @@ func (d *HubClient) convertBatchToMsgUpdateState(batch *types.Batch, daClient da
 		return nil, err
 	}
 
-	DAMetaData := &settlement.DAMetaData{
-		Height: daResult.DAHeight,
+	height := uint64(0)
+	if daResult.MetaData != nil {
+		height = daResult.MetaData.Height
+	}
+
+	//TODO (srene): Include extra dataMetaDATA to the Hub for inclusion validation
+	DAMetaData := &da.DAMetaData{
+		Height: height,
 		Client: daClient,
 	}
 	blockDescriptors := make([]rollapptypes.BlockDescriptor, len(batch.Blocks))
@@ -478,7 +484,7 @@ func (d *HubClient) convertToNewBatchEvent(rawEventData ctypes.ResultEvent) (*se
 }
 
 func (d *HubClient) convertStateInfoToResultRetrieveBatch(stateInfo *rollapptypes.StateInfo) (*settlement.ResultRetrieveBatch, error) {
-	daMetaData := &settlement.DAMetaData{}
+	daMetaData := &da.DAMetaData{}
 	daMetaData, err := daMetaData.FromPath(stateInfo.DAPath)
 	if err != nil {
 		return nil, err

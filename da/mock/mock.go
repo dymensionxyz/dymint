@@ -97,9 +97,11 @@ func (m *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 
 	return da.ResultSubmitBatch{
 		BaseResult: da.BaseResult{
-			Code:     da.StatusSuccess,
-			Message:  "OK",
-			DAHeight: daHeight,
+			Code:    da.StatusSuccess,
+			Message: "OK",
+			MetaData: &da.DAMetaData{
+				Height: daHeight,
+			},
 		},
 	}
 }

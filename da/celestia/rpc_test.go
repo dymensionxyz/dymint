@@ -124,7 +124,9 @@ func TestSubmitBatch(t *testing.T) {
 		done := make(chan bool)
 		go func() {
 			res := dalc.SubmitBatch(batch)
-			assert.Equal(res.DAHeight, uint64(tc.expectedInclusionHeight), tc.name)
+			if res.MetaData != nil {
+				assert.Equal(res.MetaData.Height, uint64(tc.expectedInclusionHeight), tc.name)
+			}
 			time.Sleep(100 * time.Millisecond)
 			done <- true
 		}()

@@ -90,9 +90,11 @@ func (d *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 	}
 	return da.ResultSubmitBatch{
 		BaseResult: da.BaseResult{
-			Code:     da.StatusCode(resp.Result.Code),
-			Message:  resp.Result.Message,
-			DAHeight: resp.Result.DataLayerHeight,
+			Code:    da.StatusCode(resp.Result.Code),
+			Message: resp.Result.Message,
+			MetaData: &da.DAMetaData{
+				Height: resp.Result.DataLayerHeight,
+			},
 		},
 	}
 }
@@ -127,9 +129,11 @@ func (d *DataAvailabilityLayerClient) RetrieveBatches(dataLayerHeight uint64) da
 	}
 	return da.ResultRetrieveBatch{
 		BaseResult: da.BaseResult{
-			Code:     da.StatusCode(resp.Result.Code),
-			Message:  resp.Result.Message,
-			DAHeight: dataLayerHeight,
+			Code:    da.StatusCode(resp.Result.Code),
+			Message: resp.Result.Message,
+			MetaData: &da.DAMetaData{
+				Height: dataLayerHeight,
+			},
 		},
 		Batches: batches,
 	}

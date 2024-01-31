@@ -172,7 +172,7 @@ func TestPostBatch(t *testing.T) {
 				if c.isBatchIncludedSuccess {
 					rollappQueryClientMock.On("LatestStateIndex", mock.Anything, mock.Anything).Return(
 						&rollapptypes.QueryGetLatestStateIndexResponse{StateIndex: rollapptypes.StateInfoIndex{Index: 1}}, nil)
-					daMetaData := &settlement.DAMetaData{
+					daMetaData := &da.DAMetaData{
 						Height: 1,
 						Client: da.Mock,
 					}

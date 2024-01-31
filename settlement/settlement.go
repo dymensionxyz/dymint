@@ -1,9 +1,6 @@
 package settlement
 
 import (
-	"strconv"
-	"strings"
-
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/log"
 	"github.com/dymensionxyz/dymint/types"
@@ -32,43 +29,9 @@ type BaseResult struct {
 	StateIndex uint64
 }
 
-// DAMetaData contains meta data about a batch on the Data Availability Layer.
-type DAMetaData struct {
-	// Height is the height of the block in the da layer
-	Height uint64
-	// Client is the client to use to fetch data from the da layer
-	Client da.Client
-	//Share commitment
-	Commitment da.Commitment
-	//share position
-	Position int
-	//share length
-	Length int
-}
-
-// ToPath converts a DAMetaData to a path.
-func (d *DAMetaData) ToPath() string {
-	// convert uint64 to string
-	path := []string{string(d.Client), ".", strconv.FormatUint(d.Height, 10)}
-	return strings.Join(path, "")
-}
-
-// FromPath parses a path to a DAMetaData.
-func (d *DAMetaData) FromPath(path string) (*DAMetaData, error) {
-	pathParts := strings.FieldsFunc(path, func(r rune) bool { return r == '.' })
-	height, err := strconv.ParseUint(pathParts[1], 10, 64)
-	if err != nil {
-		return nil, err
-	}
-	return &DAMetaData{
-		Height: height,
-		Client: da.Client(pathParts[0]),
-	}, nil
-}
-
 // BatchMetaData aggregates all the batch metadata.
 type BatchMetaData struct {
-	DA *DAMetaData
+	DA *da.DAMetaData
 }
 
 // Batch defines a batch structure for the settlement layer

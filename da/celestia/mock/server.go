@@ -100,7 +100,7 @@ func (s *Server) submit(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp, err := json.Marshal(cnc.TxResponse{
-		Height: int64(res.DAHeight),
+		Height: int64(res.MetaData.Height),
 		Code:   uint32(code),
 		RawLog: res.Message,
 	})
@@ -145,7 +145,7 @@ func (s *Server) shares(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := json.Marshal(namespacedSharesResponse{
 		Shares: shares,
-		Height: res.DAHeight,
+		Height: res.MetaData.Height,
 	})
 	if err != nil {
 		s.writeError(w, err)
@@ -179,7 +179,7 @@ func (s *Server) data(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := json.Marshal(namespacedDataResponse{
 		Data:   data,
-		Height: res.DAHeight,
+		Height: res.MetaData.Height,
 	})
 	if err != nil {
 		s.writeError(w, err)

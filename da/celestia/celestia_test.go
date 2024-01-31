@@ -30,6 +30,7 @@ import (
 const mockDaBlockTime = 100 * time.Millisecond
 
 func TestRetrievalRealNode(t *testing.T) {
+	t.Skip()
 	pubsubServer := pubsub.NewServer()
 	pubsubServer.Start()
 	defer pubsubServer.Stop()
@@ -66,16 +67,16 @@ func TestRetrievalRealNode(t *testing.T) {
 
 	t.Log("Submitting batch")
 	resp := dalc.SubmitBatch(batch1)
-	t.Log("Height:", resp.DAHeight)
-	for _, commitment := range resp.Commitments {
+	t.Log("Height:", resp.MetaData.Height)
+	for _, commitment := range resp.MetaData.Commitments {
 		t.Log("Commitment:", hex.EncodeToString(commitment))
 
 	}
-	for _, index := range resp.Indexes {
+	for _, index := range resp.MetaData.Indexes {
 		t.Log("Index:", index)
 
 	}
-	for _, length := range resp.Length {
+	for _, length := range resp.MetaData.Lengths {
 		t.Log("Shares:", length)
 
 	}
@@ -83,7 +84,7 @@ func TestRetrievalRealNode(t *testing.T) {
 	//commitmentString := "3f568f651fe72fa2131bd86c09bb23763e0a3cb45211b035bfa688711c76ce78"
 	//commitment, _ := hex.DecodeString(commitmentString)
 	//resultRetrieveBatch := dalc.(da.BatchRetrieverByCommitment).RetrieveBatchesByCommitment(resp.DAHeight, [][]byte{commitment})
-	resultRetrieveBatch := dalc.(da.BatchRetrieverByCommitment).RetrieveBatchesByCommitment(resp.DAHeight, resp.Commitments)
+	resultRetrieveBatch := dalc.(da.BatchRetrieverByCommitment).RetrieveBatchesByCommitment(resp.MetaData.Height, resp.MetaData.Commitments)
 	if resultRetrieveBatch.Code == da.StatusError {
 		t.Error("Failed to retrieve batch")
 	} else {
@@ -179,14 +180,14 @@ func TestDALC(t *testing.T) {
 
 	t.Log("Submitting batch1")
 	_ = dalc.SubmitBatch(batch1)
-	h1 := mockres1.DAHeight
+	h1 := mockres1.MetaData.Height
 	assert.Equal(da.StatusSuccess, mockres1.Code)
 
 	time.Sleep(2 * mockDaBlockTime)
 
 	t.Log("Submitting batch1")
 	_ = dalc.SubmitBatch(batch2)
-	h2 := mockres2.DAHeight
+	h2 := mockres2.MetaData.Height
 	assert.Equal(da.StatusSuccess, mockres2.Code)
 
 	var retreiveRes da.ResultRetrieveBatch

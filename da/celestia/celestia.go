@@ -6,7 +6,6 @@ import (
 	"errors"
 	"time"
 
-	"cosmossdk.io/math"
 	"github.com/celestiaorg/nmt"
 	"github.com/gogo/protobuf/proto"
 	"github.com/tendermint/tendermint/libs/pubsub"
@@ -193,7 +192,7 @@ func (c *DataAvailabilityLayerClient) GetClientType() da.Client {
 }
 
 // SubmitBatch submits a batch to the DA layer.
-func (c *DataAvailabilityLayerClient) SubmitBatchPayForBlob(batch *types.Batch) da.ResultSubmitBatch {
+/*func (c *DataAvailabilityLayerClient) SubmitBatchPayForBlob(batch *types.Batch) da.ResultSubmitBatch {
 	data, err := batch.MarshalBinary()
 	if err != nil {
 		return da.ResultSubmitBatch{
@@ -263,7 +262,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatchPayForBlob(batch *types.Batch) 
 			}
 		}
 	}
-}
+}*/
 
 func (c *DataAvailabilityLayerClient) RetrieveBatchesByCommitment(dataLayerHeight uint64, commitments []da.Commitment) da.ResultRetrieveBatch {
 
@@ -328,9 +327,11 @@ func (c *DataAvailabilityLayerClient) RetrieveBatchesByCommitment(dataLayerHeigh
 	}
 	return da.ResultRetrieveBatch{
 		BaseResult: da.BaseResult{
-			Code:     da.StatusSuccess,
-			Message:  "Batch retrieval successful",
-			DAHeight: dataLayerHeight,
+			Code:    da.StatusSuccess,
+			Message: "Batch retrieval successful",
+			MetaData: &da.DAMetaData{
+				Height: dataLayerHeight,
+			},
 		},
 		Batches: batches,
 	}
@@ -371,8 +372,10 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(dataLayerHeight uint64) da
 
 	return da.ResultRetrieveBatch{
 		BaseResult: da.BaseResult{
-			Code:     da.StatusSuccess,
-			DAHeight: dataLayerHeight,
+			Code: da.StatusSuccess,
+			MetaData: &da.DAMetaData{
+				Height: dataLayerHeight,
+			},
 		},
 		Batches: batches,
 	}
@@ -500,12 +503,13 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			}
 			return da.ResultSubmitBatch{
 				BaseResult: da.BaseResult{
-					Code:        da.StatusSuccess,
-					Message:     "Submission succesful",
-					DAHeight:    uint64(height),
-					Commitments: commitments,
-					Indexes:     indexes,
-					Length:      numShares,
+					Code:    da.StatusSuccess,
+					Message: "Submission succesful",
+					MetaData: &da.DAMetaData{
+						Height:      uint64(height),
+						Commitments: commitments,
+						Indexes:     indexes,
+						Lengths:     numShares},
 				},
 			}
 		}

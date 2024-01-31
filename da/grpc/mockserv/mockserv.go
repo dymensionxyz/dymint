@@ -51,7 +51,7 @@ func (m *mockImpl) SubmitBatch(_ context.Context, request *dalc.SubmitBatchReque
 		Result: &dalc.DAResponse{
 			Code:            dalc.StatusCode(resp.Code),
 			Message:         resp.Message,
-			DataLayerHeight: resp.DAHeight,
+			DataLayerHeight: resp.MetaData.Height,
 		},
 	}, nil
 }
