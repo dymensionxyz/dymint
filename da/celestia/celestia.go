@@ -447,11 +447,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 					time.Sleep(c.submitRetryDelay)
 					continue
 				}
-				/*nmtProof := []*nmt.Proof(*proof)
 
-				spanIndexes = append(spanIndexes, nmtProof[0].Start())
-
-				nmtProof[0].Nodes()*/
 				included, err := c.validateBlob(height, commitment, proof)
 				if err != nil {
 					err := errors.New("Error in validating proof inclusion")
