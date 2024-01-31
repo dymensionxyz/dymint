@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"cosmossdk.io/math"
-	"github.com/celestiaorg/nmt"
 	"github.com/gogo/protobuf/proto"
 	"github.com/tendermint/tendermint/libs/pubsub"
 
@@ -41,6 +40,13 @@ type DataAvailabilityLayerClient struct {
 var _ da.DataAvailabilityLayerClient = &DataAvailabilityLayerClient{}
 var _ da.BatchRetriever = &DataAvailabilityLayerClient{}
 var _ da.BatchRetrieverByCommitment = &DataAvailabilityLayerClient{}
+
+// TODO(srene): export from github.com/celestiaorg/celestia-app/pkg/appconsts or get them from lightnode
+var DefaultGovMaxSquareSize = 64
+var ContinuationSparseShareContentSize = 512 - 29 - 1
+var DefaultMaxBytes = DefaultGovMaxSquareSize * DefaultGovMaxSquareSize * ContinuationSparseShareContentSize
+
+//var DefaultMaxBytes = 5000
 
 // Blob is the data submitted/received from DA interface.
 type Blob = []byte
@@ -373,12 +379,24 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(dataLayerHeight uint64) da
 
 // SubmitBatch submits a batch to the DA layer.
 func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultSubmitBatch {
+
+	var blobs [][]byte
+
 	data, err := batch.MarshalBinary()
+	blobs = [][]byte{data}
 	if err != nil {
 		return da.ResultSubmitBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
 				Message: err.Error(),
+			},
+		}
+	}
+	if len(data) > DefaultMaxBytes {
+		return da.ResultSubmitBatch{
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: "Batch size bigger than maximum blob size",
 			},
 		}
 	}
@@ -394,7 +412,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 				gasPrice = c.config.GasPrices
 			}
 			//TODO(srene):  Split batch in multiple blobs if necessary
-			height, commitments, blobs, numShares, err := c.submit([]Blob{data}, gasPrice)
+			height, commitments, blobs, err := c.submit(blobs, gasPrice)
 
 			c.logger.Info("DA batch submitted", "commitments", len(commitments), "blobs", len(blobs))
 			if err != nil {
@@ -417,7 +435,6 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 				time.Sleep(c.submitRetryDelay)
 				continue
 			}
-			var spanIndexes []int
 			for _, commitment := range commitments {
 				proof, err := c.getProof(height, commitment)
 				if err != nil {
@@ -430,8 +447,11 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 					time.Sleep(c.submitRetryDelay)
 					continue
 				}
-				nmtProof := []*nmt.Proof(*proof)
+				/*nmtProof := []*nmt.Proof(*proof)
+
 				spanIndexes = append(spanIndexes, nmtProof[0].Start())
+
+				nmtProof[0].Nodes()*/
 				included, err := c.validateBlob(height, commitment, proof)
 				if err != nil {
 					err := errors.New("Error in validating proof inclusion")
@@ -475,8 +495,6 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 					Message:     "Submission succesful",
 					DAHeight:    uint64(height),
 					Commitments: commitments,
-					NumShares:   numShares,
-					Index:       spanIndexes,
 				},
 			}
 		}
@@ -485,10 +503,10 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 }
 
 // Submit submits the Blobs to Data Availability layer.
-func (c *DataAvailabilityLayerClient) submit(daBlobs []Blob, gasPrice float64) (uint64, []da.Commitment, []*blob.Blob, []int, error) {
-	blobs, commitments, numShares, err := c.blobsAndCommitments(daBlobs)
+func (c *DataAvailabilityLayerClient) submit(daBlobs []Blob, gasPrice float64) (uint64, []da.Commitment, []*blob.Blob, error) {
+	blobs, commitments, err := c.blobsAndCommitments(daBlobs)
 	if err != nil {
-		return 0, nil, nil, nil, err
+		return 0, nil, nil, err
 	}
 	options := openrpc.DefaultSubmitOptions()
 
@@ -507,11 +525,11 @@ func (c *DataAvailabilityLayerClient) submit(daBlobs []Blob, gasPrice float64) (
 	height, err := c.rpc.Submit(c.ctx, blobs, options)
 
 	if err != nil {
-		return 0, nil, nil, nil, err
+		return 0, nil, nil, err
 	}
 	c.logger.Info("Successfully submitted blobs to Celestia", "height", height, "gas", options.GasLimit, "fee", options.Fee)
 
-	return height, commitments, blobs, numShares, nil
+	return height, commitments, blobs, nil
 }
 
 func (c *DataAvailabilityLayerClient) getProof(height uint64, commitment da.Commitment) (*blob.Proof, error) {
@@ -527,32 +545,24 @@ func (c *DataAvailabilityLayerClient) getProof(height uint64, commitment da.Comm
 
 }
 
-// blobsAndCommitments converts []da.Blob to []*blob.Blob and generates corresponding []da.Commitment
-func (c *DataAvailabilityLayerClient) blobsAndCommitments(daBlobs []Blob) ([]*blob.Blob, []da.Commitment, []int, error) {
+func (c *DataAvailabilityLayerClient) blobsAndCommitments(daBlobs []Blob) ([]*blob.Blob, []da.Commitment, error) {
 	var blobs []*blob.Blob
 	var commitments []da.Commitment
-	var numShares []int
 	for _, daBlob := range daBlobs {
 		b, err := blob.NewBlobV0(c.config.NamespaceID.Bytes(), daBlob)
 		if err != nil {
-			return nil, nil, nil, err
+			return nil, nil, err
 		}
 		blobs = append(blobs, b)
 
 		commitment, err := blob.CreateCommitment(b)
 		if err != nil {
-			return nil, nil, nil, err
+			return nil, nil, err
 		}
 		//commitment := []byte{0}
 		commitments = append(commitments, commitment)
-
-		shares, err := blob.SplitBlobs(*b)
-		if err != nil {
-			return nil, nil, nil, err
-		}
-		numShares = append(numShares, len(shares))
 	}
-	return blobs, commitments, numShares, nil
+	return blobs, commitments, nil
 }
 
 func (c *DataAvailabilityLayerClient) validateBlob(height uint64, commitment da.Commitment, proof *blob.Proof) (bool, error) {
@@ -561,3 +571,52 @@ func (c *DataAvailabilityLayerClient) validateBlob(height uint64, commitment da.
 	isIncluded, error := c.rpc.Included(c.ctx, height, c.config.NamespaceID.Bytes(), proof, commitment)
 	return isIncluded, error
 }
+
+/*func splitData(batch *types.Batch, maxBytes int) ([][]byte, error) {
+
+	size := 0
+	var batches []*types.Batch
+	var blobs [][]byte
+	var blocks []*types.Block
+	var commits []*types.Commit
+
+	tmpBatch := &types.Batch{
+		StartHeight: batch.StartHeight,
+		EndHeight:   batch.EndHeight,
+	}
+	submitted := 1
+	for i, block := range batch.Blocks {
+		size += block.ToProto().Size()
+		if size < maxBytes {
+			blocks = append(blocks, block)
+			if len(batch.Commits) > i {
+				commits = append(commits, batch.Commits[i])
+			}
+		} else {
+			tmpBatch.Blocks = blocks
+			tmpBatch.Commits = commits
+			batches = append(batches, tmpBatch)
+			tmpBatch = &types.Batch{
+				StartHeight: batch.StartHeight,
+				EndHeight:   batch.EndHeight,
+			}
+			submitted += 1
+			size = block.ToProto().Size()
+		}
+	}
+
+	tmpBatch.Blocks = blocks
+	tmpBatch.Commits = commits
+	batches = append(batches, tmpBatch)
+
+	for _, batch := range batches {
+		batch.Submitted = submitted
+		blob, err := batch.MarshalBinary()
+		if err != nil {
+			return nil, err
+		}
+		blobs = append(blobs, blob)
+	}
+
+	return blobs, nil
+}*/
