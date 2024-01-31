@@ -81,11 +81,11 @@ func TestRetrievalRealNode(t *testing.T) {
 
 	}
 
-	commitmentString := "3f568f651fe72fa2131bd86c09bb23763e0a3cb45211b035bfa688711c76ce78"
-	commitment, _ := hex.DecodeString(commitmentString)
+	//commitmentString := "3f568f651fe72fa2131bd86c09bb23763e0a3cb45211b035bfa688711c76ce78"
+	//commitment, _ := hex.DecodeString(commitmentString)
 	//resultRetrieveBatch := dalc.(da.BatchRetrieverByCommitment).RetrieveBatchesByCommitment(resp.DAHeight, [][]byte{commitment})
+	//resp.MetaData.Commitments = []da.Commitment{commitment}
 
-	resp.MetaData.Commitments = []da.Commitment{commitment}
 	resultRetrieveBatch := dalc.(da.BatchRetriever).RetrieveBatches(resp.MetaData)
 	if resultRetrieveBatch.Code == da.StatusError || resultRetrieveBatch.Code == da.StatusBlobNotFound {
 		t.Error("Failed to retrieve batch ", resultRetrieveBatch.BaseResult.Message)

@@ -366,8 +366,11 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			}
 			var numShares []int
 			var indexes []int
+			var proof *blob.Proof
+			included := false
+
 			for _, commitment := range commitments {
-				proof, err := c.getProof(height, commitment)
+				proof, err = c.getProof(height, commitment)
 				if err != nil {
 					err := errors.New("Error getting proofs for commitment")
 					c.logger.Error("Failed to submit DA batch", "error", err)
@@ -375,8 +378,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 					if err != nil {
 						return res
 					}
-					time.Sleep(c.submitRetryDelay)
-					continue
+					break
 				}
 
 				nmtProofs := []*nmt.Proof(*proof)
@@ -389,7 +391,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 				}
 				numShares = append(numShares, shares)
 
-				included, err := c.validateProof(height, commitment, proof)
+				included, err = c.validateProof(height, commitment, proof)
 				if err != nil {
 					err := errors.New("Error in validating proof inclusion")
 					c.logger.Error("Failed to submit DA batch", "error", err)
@@ -397,8 +399,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 					if err != nil {
 						return res
 					}
-					time.Sleep(c.submitRetryDelay)
-					continue
+					break
 				} else if !included {
 					err := errors.New("Blob not included")
 					c.logger.Error("Failed to submit DA batch", "error", err)
@@ -406,14 +407,10 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 					if err != nil {
 						return res
 					}
-					time.Sleep(c.submitRetryDelay)
-					continue
+					break
 				}
 			}
-
-			if err != nil {
-				err := errors.New("da proofs are not valid")
-				c.logger.Error("Failed to submit DA batch", "error", err)
+			if !included || proof == nil {
 				res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, false, err)
 				if err != nil {
 					return res
@@ -553,7 +550,10 @@ func (c *DataAvailabilityLayerClient) submit(daBlobs []Blob, gasPrice float64) (
 		options.Fee = fees
 		options.GasLimit = gasWanted
 	}
-	height, err := c.rpc.Submit(c.ctx, blobs, options)
+	ctx, cancel := context.WithTimeout(c.ctx, c.txPollingRetryDelay)
+	defer cancel()
+
+	height, err := c.rpc.Submit(ctx, blobs, options)
 
 	if err != nil {
 		return 0, nil, nil, err
@@ -566,7 +566,10 @@ func (c *DataAvailabilityLayerClient) submit(daBlobs []Blob, gasPrice float64) (
 func (c *DataAvailabilityLayerClient) getProof(height uint64, commitment da.Commitment) (*blob.Proof, error) {
 
 	c.logger.Info("Getting proof via RPC call")
-	proof, err := c.rpc.GetProof(c.ctx, height, c.config.NamespaceID.Bytes(), commitment)
+	ctx, cancel := context.WithTimeout(c.ctx, c.txPollingRetryDelay)
+	defer cancel()
+
+	proof, err := c.rpc.GetProof(ctx, height, c.config.NamespaceID.Bytes(), commitment)
 	if err != nil {
 		return nil, err
 	}
@@ -599,7 +602,9 @@ func (c *DataAvailabilityLayerClient) blobsAndCommitments(daBlobs []Blob) ([]*bl
 func (c *DataAvailabilityLayerClient) validateProof(height uint64, commitment da.Commitment, proof *blob.Proof) (bool, error) {
 
 	c.logger.Info("Getting inclusion validation via RPC call")
-	isIncluded, error := c.rpc.Included(c.ctx, height, c.config.NamespaceID.Bytes(), proof, commitment)
+	ctx, cancel := context.WithTimeout(c.ctx, c.txPollingRetryDelay)
+	defer cancel()
+	isIncluded, error := c.rpc.Included(ctx, height, c.config.NamespaceID.Bytes(), proof, commitment)
 	return isIncluded, error
 }
 
