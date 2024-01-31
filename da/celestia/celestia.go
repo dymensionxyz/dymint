@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"cosmossdk.io/math"
+	"github.com/celestiaorg/nmt"
 	"github.com/gogo/protobuf/proto"
 	"github.com/tendermint/tendermint/libs/pubsub"
 
@@ -294,8 +295,8 @@ func (c *DataAvailabilityLayerClient) RetrieveBatchesByCommitment(dataLayerHeigh
 			}
 		}
 		batches = append(batches, parsedBatch)
-		//}
-		prof, err := c.getProof(dataLayerHeight, commitment)
+
+		proof, err := c.getProof(dataLayerHeight, commitment)
 		if err != nil {
 			c.logger.Error("Failed to submit DA batch", "error", err)
 			return da.ResultRetrieveBatch{
@@ -305,7 +306,7 @@ func (c *DataAvailabilityLayerClient) RetrieveBatchesByCommitment(dataLayerHeigh
 				},
 			}
 		}
-		included, err := c.validateBlob(dataLayerHeight, commitment, prof)
+		included, err := c.validateProof(dataLayerHeight, commitment, proof)
 		if err != nil {
 			c.logger.Error("Failed to submit DA batch", "error", err)
 			return da.ResultRetrieveBatch{
@@ -411,7 +412,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			if c.config.GasPrices >= 0 {
 				gasPrice = c.config.GasPrices
 			}
-			//TODO(srene):  Split batch in multiple blobs if necessary
+			//TODO(srene):  Split batch in multiple blobs if necessary if supported
 			height, commitments, blobs, err := c.submit(blobs, gasPrice)
 
 			c.logger.Info("DA batch submitted", "commitments", len(commitments), "blobs", len(blobs))
@@ -435,6 +436,8 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 				time.Sleep(c.submitRetryDelay)
 				continue
 			}
+			var numShares []int
+			var indexes []int
 			for _, commitment := range commitments {
 				proof, err := c.getProof(height, commitment)
 				if err != nil {
@@ -448,7 +451,17 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 					continue
 				}
 
-				included, err := c.validateBlob(height, commitment, proof)
+				nmtProofs := []*nmt.Proof(*proof)
+				shares := 0
+				for i, proof := range nmtProofs {
+					if i == 0 {
+						indexes = append(indexes, proof.Start())
+					}
+					shares += proof.End() - proof.Start()
+				}
+				numShares = append(numShares, shares)
+
+				included, err := c.validateProof(height, commitment, proof)
 				if err != nil {
 					err := errors.New("Error in validating proof inclusion")
 					c.logger.Error("Failed to submit DA batch", "error", err)
@@ -491,6 +504,8 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 					Message:     "Submission succesful",
 					DAHeight:    uint64(height),
 					Commitments: commitments,
+					Indexes:     indexes,
+					Length:      numShares,
 				},
 			}
 		}
@@ -555,13 +570,13 @@ func (c *DataAvailabilityLayerClient) blobsAndCommitments(daBlobs []Blob) ([]*bl
 		if err != nil {
 			return nil, nil, err
 		}
-		//commitment := []byte{0}
+
 		commitments = append(commitments, commitment)
 	}
 	return blobs, commitments, nil
 }
 
-func (c *DataAvailabilityLayerClient) validateBlob(height uint64, commitment da.Commitment, proof *blob.Proof) (bool, error) {
+func (c *DataAvailabilityLayerClient) validateProof(height uint64, commitment da.Commitment, proof *blob.Proof) (bool, error) {
 
 	c.logger.Info("Getting inclusion validation via RPC call")
 	isIncluded, error := c.rpc.Included(c.ctx, height, c.config.NamespaceID.Bytes(), proof, commitment)

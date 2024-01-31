@@ -47,6 +47,10 @@ type BaseResult struct {
 	DAHeight uint64
 	// Commitment
 	Commitments []Commitment
+	// Index
+	Indexes []int
+	// Share Length
+	Length []int
 }
 
 // ResultSubmitBatch contains information returned from DA layer after block submission.

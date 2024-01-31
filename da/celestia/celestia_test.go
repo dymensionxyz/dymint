@@ -56,11 +56,12 @@ func TestRetrievalRealNode(t *testing.T) {
 	block1 := getRandomBlock(1, 10)
 	block2 := getRandomBlock(2, 20)
 	block3 := getRandomBlock(3, 20)
+	block4 := getRandomBlock(3, 10)
 
 	batch1 := &types.Batch{
 		StartHeight: block1.Header.Height,
 		EndHeight:   block3.Header.Height,
-		Blocks:      []*types.Block{block1, block2, block3},
+		Blocks:      []*types.Block{block1, block2, block3, block4},
 	}
 
 	t.Log("Submitting batch")
@@ -70,8 +71,19 @@ func TestRetrievalRealNode(t *testing.T) {
 		t.Log("Commitment:", hex.EncodeToString(commitment))
 
 	}
-	resultRetrieveBatch := dalc.(da.BatchRetrieverByCommitment).RetrieveBatchesByCommitment(resp.DAHeight, resp.Commitments)
+	for _, index := range resp.Indexes {
+		t.Log("Index:", index)
 
+	}
+	for _, length := range resp.Length {
+		t.Log("Shares:", length)
+
+	}
+
+	//commitmentString := "3f568f651fe72fa2131bd86c09bb23763e0a3cb45211b035bfa688711c76ce78"
+	//commitment, _ := hex.DecodeString(commitmentString)
+	//resultRetrieveBatch := dalc.(da.BatchRetrieverByCommitment).RetrieveBatchesByCommitment(resp.DAHeight, [][]byte{commitment})
+	resultRetrieveBatch := dalc.(da.BatchRetrieverByCommitment).RetrieveBatchesByCommitment(resp.DAHeight, resp.Commitments)
 	if resultRetrieveBatch.Code == da.StatusError {
 		t.Error("Failed to retrieve batch")
 	} else {

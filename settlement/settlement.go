@@ -38,6 +38,12 @@ type DAMetaData struct {
 	Height uint64
 	// Client is the client to use to fetch data from the da layer
 	Client da.Client
+	//Share commitment
+	Commitment da.Commitment
+	//share position
+	Position int
+	//share length
+	Length int
 }
 
 // ToPath converts a DAMetaData to a path.
