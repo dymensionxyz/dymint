@@ -88,11 +88,11 @@ func doTestDALC(t *testing.T, mockDalc da.DataAvailabilityLayerClient) {
 	}
 
 	resp := dalc.SubmitBatch(batch1)
-	h1 := resp.MetaData.Height
+	h1 := resp.MetaData
 	assert.Equal(da.StatusSuccess, resp.Code)
 
 	resp = dalc.SubmitBatch(batch2)
-	h2 := resp.MetaData.Height
+	h2 := resp.MetaData
 	assert.Equal(da.StatusSuccess, resp.Code)
 
 	// wait a bit more than mockDaBlockTime, so dymint blocks can be "included" in mock block
@@ -108,8 +108,9 @@ func doTestDALC(t *testing.T, mockDalc da.DataAvailabilityLayerClient) {
 	assert.Equal(da.StatusSuccess, check.Code)
 	assert.True(check.DataAvailable)
 
+	h1.Height = h1.Height - 1
 	// this height should not be used by DALC
-	check = dalc.CheckBatchAvailability(h1 - 1)
+	check = dalc.CheckBatchAvailability(h1)
 	assert.Equal(da.StatusSuccess, check.Code)
 	assert.False(check.DataAvailable)
 }

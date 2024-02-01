@@ -40,17 +40,13 @@ type DataAvailabilityLayerClient struct {
 var _ da.DataAvailabilityLayerClient = &DataAvailabilityLayerClient{}
 var _ da.BatchRetriever = &DataAvailabilityLayerClient{}
 
-// TODO(srene): export from github.com/celestiaorg/celestia-app/pkg/appconsts or get them from lightnode
+// TODO(srene): export from github.com/celestiaorg/celestia-app/pkg/appconsts (unable to do it because cometbft/tendermint conflict) or get them from lightnode (not yet available)
 var DefaultGovMaxSquareSize = 64
 var ContinuationSparseShareContentSize = 512 - 29 - 1
 var DefaultMaxBytes = DefaultGovMaxSquareSize * DefaultGovMaxSquareSize * ContinuationSparseShareContentSize
 
-//var DefaultMaxBytes = 5000
-
 // Blob is the data submitted/received from DA interface.
 type Blob = []byte
-
-type Proof = []byte
 
 // WithRPCClient sets rpc client.
 func WithRPCClient(rpc celtypes.CelestiaRPCClient) da.Option {
@@ -191,123 +187,6 @@ func (c *DataAvailabilityLayerClient) GetClientType() da.Client {
 }
 
 // SubmitBatch submits a batch to the DA layer.
-/*func (c *DataAvailabilityLayerClient) SubmitBatchPayForBlob(batch *types.Batch) da.ResultSubmitBatch {
-	data, err := batch.MarshalBinary()
-	if err != nil {
-		return da.ResultSubmitBatch{
-			BaseResult: da.BaseResult{
-				Code:    da.StatusError,
-				Message: err.Error(),
-			},
-		}
-	}
-
-	blockBlob, err := blob.NewBlobV0(c.config.NamespaceID.Bytes(), data)
-	if err != nil {
-		return da.ResultSubmitBatch{
-			BaseResult: da.BaseResult{
-				Code:    da.StatusError,
-				Message: err.Error(),
-			},
-		}
-	}
-	blobs := []*blob.Blob{blockBlob}
-
-	estimatedGas := DefaultEstimateGas(uint32(len(data)))
-	gasWanted := uint64(float64(estimatedGas) * c.config.GasAdjustment)
-	fees := c.calculateFees(gasWanted)
-	c.logger.Debug("Submitting to da blob with size", "size", len(blockBlob.Data), "estimatedGas", estimatedGas, "gasAdjusted", gasWanted, "fees", fees)
-
-	for {
-		select {
-		case <-c.ctx.Done():
-			c.logger.Debug("Context cancelled")
-			return da.ResultSubmitBatch{}
-		default:
-			txResponse, err := c.rpc.SubmitPayForBlob(c.ctx, math.NewInt(fees), gasWanted, blobs)
-			if err != nil {
-				c.logger.Error("Failed to submit DA batch. Emitting health event and trying again", "error", err)
-				res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, false, err)
-				if err != nil {
-					return res
-				}
-				time.Sleep(c.submitRetryDelay)
-				continue
-			}
-
-			//double check txResponse is not nil - not supposed to happen
-			if txResponse == nil {
-				err := errors.New("txResponse is nil")
-				c.logger.Error("Failed to submit DA batch", "error", err)
-				res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, false, err)
-				if err != nil {
-					return res
-				}
-				time.Sleep(c.submitRetryDelay)
-				continue
-			}
-
-			c.logger.Info("Successfully submitted DA batch", "txHash", txResponse.TxHash, "daHeight", txResponse.Height, "gasWanted", txResponse.GasWanted, "gasUsed", txResponse.GasUsed)
-			res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, true, nil)
-			if err != nil {
-				return res
-			}
-			return da.ResultSubmitBatch{
-				BaseResult: da.BaseResult{
-					Code:     da.StatusSuccess,
-					Message:  "tx hash: " + txResponse.TxHash,
-					DAHeight: uint64(txResponse.Height),
-				},
-			}
-		}
-	}
-}
-
-// RetrieveBatches gets a batch of blocks from DA layer.
-func (c *DataAvailabilityLayerClient) RetrieveBatches(dataLayerHeight uint64) da.ResultRetrieveBatch {
-	blobs, err := c.rpc.GetAll(c.ctx, dataLayerHeight, []share.Namespace{c.config.NamespaceID.Bytes()})
-	if err != nil {
-		return da.ResultRetrieveBatch{
-			BaseResult: da.BaseResult{
-				Code:    da.StatusError,
-				Message: err.Error(),
-			},
-		}
-	}
-
-	var batches []*types.Batch
-	for i, blob := range blobs {
-		var batch pb.Batch
-		err = proto.Unmarshal(blob.Data, &batch)
-		if err != nil {
-			c.logger.Error("failed to unmarshal block", "daHeight", dataLayerHeight, "position", i, "error", err)
-			continue
-		}
-		parsedBatch := new(types.Batch)
-		err := parsedBatch.FromProto(&batch)
-		if err != nil {
-			return da.ResultRetrieveBatch{
-				BaseResult: da.BaseResult{
-					Code:    da.StatusError,
-					Message: err.Error(),
-				},
-			}
-		}
-		batches = append(batches, parsedBatch)
-	}
-
-	return da.ResultRetrieveBatch{
-		BaseResult: da.BaseResult{
-			Code: da.StatusSuccess,
-			MetaData: &da.DAMetaData{
-				Height: dataLayerHeight,
-			},
-		},
-		Batches: batches,
-	}
-}*/
-
-// SubmitBatch submits a batch to the DA layer.
 func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultSubmitBatch {
 
 	var blobs [][]byte
@@ -355,9 +234,14 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 				continue
 			}
 
-			if commitments == nil {
-				err := errors.New("Da commitments are nil")
-				c.logger.Error("Failed to submit DA batch", "error", err)
+			daMetaData := &da.DAMetaData{
+				Height:      height,
+				Commitments: commitments,
+			}
+
+			availabilityResult := c.CheckBatchAvailability(daMetaData)
+			if availabilityResult.Code != da.StatusSuccess || !availabilityResult.DataAvailable {
+				c.logger.Error("Failed to submit DA batch. Blob not available")
 				res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, false, err)
 				if err != nil {
 					return res
@@ -365,74 +249,15 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 				time.Sleep(c.submitRetryDelay)
 				continue
 			}
-			var numShares []int
-			var indexes []int
-			var proof *blob.Proof
-			included := false
-
-			for _, commitment := range commitments {
-				proof, err = c.getProof(height, commitment)
-				if err != nil {
-					err := errors.New("Error getting proofs for commitment")
-					c.logger.Error("Failed to submit DA batch", "error", err)
-					res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, false, err)
-					if err != nil {
-						return res
-					}
-					break
-				}
-
-				nmtProofs := []*nmt.Proof(*proof)
-				shares := 0
-				for i, proof := range nmtProofs {
-					if i == 0 {
-						indexes = append(indexes, proof.Start())
-					}
-					shares += proof.End() - proof.Start()
-				}
-				numShares = append(numShares, shares)
-
-				included, err = c.validateProof(height, commitment, proof)
-				if err != nil {
-					err := errors.New("Error in validating proof inclusion")
-					c.logger.Error("Failed to submit DA batch", "error", err)
-					res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, false, err)
-					if err != nil {
-						return res
-					}
-					break
-				} else if !included {
-					err := errors.New("Blob not included")
-					c.logger.Error("Failed to submit DA batch", "error", err)
-					res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, false, err)
-					if err != nil {
-						return res
-					}
-					break
-				}
-			}
-			if !included || proof == nil {
-				res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, false, err)
-				if err != nil {
-					return res
-				}
-				time.Sleep(c.submitRetryDelay)
-				continue
-			}
-
 			res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, true, nil)
 			if err != nil {
 				return res
 			}
 			return da.ResultSubmitBatch{
 				BaseResult: da.BaseResult{
-					Code:    da.StatusSuccess,
-					Message: "Submission successful",
-					MetaData: &da.DAMetaData{
-						Height:      uint64(height),
-						Commitments: commitments,
-						Indexes:     indexes,
-						Lengths:     numShares},
+					Code:     da.StatusSuccess,
+					Message:  "Submission successful",
+					MetaData: availabilityResult.MetaData,
 				},
 			}
 		}
@@ -450,7 +275,7 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DAMetaData)
 		default:
 			var batches []*types.Batch
 			var proofs []*blob.Proof
-			for i, commitment := range daMetaData.Commitments {
+			for _, commitment := range daMetaData.Commitments {
 				blob, err := c.rpc.Get(c.ctx, daMetaData.Height, c.config.NamespaceID.Bytes(), commitment)
 				if err != nil {
 					return da.ResultRetrieveBatch{
@@ -477,64 +302,6 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DAMetaData)
 					}
 				}
 				batches = append(batches, parsedBatch)
-
-				proof, err := c.getProof(daMetaData.Height, commitment)
-				if err != nil {
-					c.logger.Error("Unable to get proof", "error", err)
-					return da.ResultRetrieveBatch{
-						BaseResult: da.BaseResult{
-							Code:    da.StatusError,
-							Message: err.Error(),
-						},
-					}
-				}
-				proofs = append(proofs, proof)
-				nmtProofs := []*nmt.Proof(*proof)
-				shares := 0
-				index := 0
-				for i, proof := range nmtProofs {
-					if i == 0 {
-						index = proof.Start()
-					}
-					shares += proof.End() - proof.Start()
-				}
-
-				if index != daMetaData.Indexes[i] || shares != daMetaData.Lengths[i] {
-					headers, err := c.getHeaders(daMetaData.Height)
-					if err == nil {
-						return da.ResultRetrieveBatch{
-							BaseResult: da.BaseResult{
-								Code:    da.StatusProofNotMatching,
-								Message: err.Error(),
-								MetaData: &da.DAMetaData{
-									Height: daMetaData.Height,
-									Proofs: proofs,
-									Root:   headers.DAH.RowRoots[0],
-								},
-							},
-						}
-					}
-				}
-
-				included, err := c.validateProof(daMetaData.Height, commitment, proof)
-				if err != nil {
-					c.logger.Error("Failed to submit DA batch", "error", err)
-					return da.ResultRetrieveBatch{
-						BaseResult: da.BaseResult{
-							Code:    da.StatusError,
-							Message: err.Error(),
-						},
-					}
-				} else if !included {
-					err := errors.New("Blob not included")
-					c.logger.Error("Failed to submit DA batch", "error", err)
-					return da.ResultRetrieveBatch{
-						BaseResult: da.BaseResult{
-							Code:    da.StatusBlobNotIncluded,
-							Message: err.Error(),
-						},
-					}
-				}
 			}
 			return da.ResultRetrieveBatch{
 				BaseResult: da.BaseResult{
@@ -551,12 +318,101 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DAMetaData)
 	}
 }
 
+func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DAMetaData) da.ResultCheckBatch {
+
+	var numShares []int
+	var indexes []int
+	var proofs []*blob.Proof
+	included := false
+
+	for i, commitment := range daMetaData.Commitments {
+
+		proof, err := c.getProof(daMetaData.Height, commitment)
+		if err != nil {
+			headers, err := c.getHeaders(daMetaData.Height)
+			if err == nil {
+				daMetaData.Root = headers.DAH.RowRoots[0]
+			}
+			return da.ResultCheckBatch{
+				DataAvailable: false,
+				BaseResult: da.BaseResult{
+					Code:     da.StatusUnableToGetProof,
+					Message:  "Error getting proof",
+					MetaData: daMetaData,
+				},
+			}
+		}
+
+		nmtProofs := []*nmt.Proof(*proof)
+		shares := 0
+		for i, proof := range nmtProofs {
+			if i == 0 {
+				indexes = append(indexes, proof.Start())
+			}
+			shares += proof.End() - proof.Start()
+		}
+		numShares = append(numShares, shares)
+
+		if daMetaData.Indexes != nil && daMetaData.Lengths != nil {
+			if indexes[i] != daMetaData.Indexes[i] || shares != daMetaData.Lengths[i] {
+				headers, err := c.getHeaders(daMetaData.Height)
+				if err == nil {
+					daMetaData.Root = headers.DAH.RowRoots[0]
+				}
+				return da.ResultCheckBatch{
+					DataAvailable: false,
+					BaseResult: da.BaseResult{
+						Code:     da.StatusProofNotMatching,
+						Message:  "Proof index not matching",
+						MetaData: daMetaData,
+					},
+				}
+			}
+		}
+
+		included, err = c.validateProof(daMetaData.Height, commitment, proof)
+		if err != nil {
+			return da.ResultCheckBatch{
+				DataAvailable: false,
+				BaseResult: da.BaseResult{
+					Code:     da.StatusError,
+					Message:  "Error validating proof",
+					MetaData: daMetaData,
+				},
+			}
+		} else if !included {
+			return da.ResultCheckBatch{
+				DataAvailable: false,
+				BaseResult: da.BaseResult{
+					Code:     da.StatusSuccess,
+					Message:  "Blob not included",
+					MetaData: daMetaData,
+				},
+			}
+		}
+		proofs = append(proofs, proof)
+	}
+
+	daMetaData.Indexes = indexes
+	daMetaData.Lengths = numShares
+	daMetaData.Proofs = proofs
+	return da.ResultCheckBatch{
+		DataAvailable: true,
+		BaseResult: da.BaseResult{
+			Code:     da.StatusSuccess,
+			Message:  "Blob available",
+			MetaData: daMetaData,
+		},
+	}
+}
+
 // Submit submits the Blobs to Data Availability layer.
 func (c *DataAvailabilityLayerClient) submit(daBlobs []Blob, gasPrice float64) (uint64, []da.Commitment, []*blob.Blob, error) {
 	blobs, commitments, err := c.blobsAndCommitments(daBlobs)
 	if err != nil {
 		return 0, nil, nil, err
 	}
+
 	options := openrpc.DefaultSubmitOptions()
 
 	if gasPrice >= 0 {
@@ -594,7 +450,6 @@ func (c *DataAvailabilityLayerClient) getProof(height uint64, commitment da.Comm
 	if err != nil {
 		return nil, err
 	}
-	c.logger.Info("Proof received", "proof length", proof.Len())
 
 	return proof, nil
 
@@ -637,52 +492,3 @@ func (c *DataAvailabilityLayerClient) getHeaders(height uint64) (*header.Extende
 	headers, error := c.rpc.GetHeaders(ctx, height)
 	return headers, error
 }
-
-/*func splitData(batch *types.Batch, maxBytes int) ([][]byte, error) {
-
-	size := 0
-	var batches []*types.Batch
-	var blobs [][]byte
-	var blocks []*types.Block
-	var commits []*types.Commit
-
-	tmpBatch := &types.Batch{
-		StartHeight: batch.StartHeight,
-		EndHeight:   batch.EndHeight,
-	}
-	submitted := 1
-	for i, block := range batch.Blocks {
-		size += block.ToProto().Size()
-		if size < maxBytes {
-			blocks = append(blocks, block)
-			if len(batch.Commits) > i {
-				commits = append(commits, batch.Commits[i])
-			}
-		} else {
-			tmpBatch.Blocks = blocks
-			tmpBatch.Commits = commits
-			batches = append(batches, tmpBatch)
-			tmpBatch = &types.Batch{
-				StartHeight: batch.StartHeight,
-				EndHeight:   batch.EndHeight,
-			}
-			submitted += 1
-			size = block.ToProto().Size()
-		}
-	}
-
-	tmpBatch.Blocks = blocks
-	tmpBatch.Commits = commits
-	batches = append(batches, tmpBatch)
-
-	for _, batch := range batches {
-		batch.Submitted = submitted
-		blob, err := batch.MarshalBinary()
-		if err != nil {
-			return nil, err
-		}
-		blobs = append(blobs, blob)
-	}
-
-	return blobs, nil
-}*/

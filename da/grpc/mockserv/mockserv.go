@@ -58,7 +58,11 @@ func (m *mockImpl) SubmitBatch(_ context.Context, request *dalc.SubmitBatchReque
 }
 
 func (m *mockImpl) CheckBatchAvailability(_ context.Context, request *dalc.CheckBatchAvailabilityRequest) (*dalc.CheckBatchAvailabilityResponse, error) {
-	resp := m.mock.CheckBatchAvailability(request.DataLayerHeight)
+
+	daMetaData := &da.DAMetaData{
+		Height: request.DataLayerHeight,
+	}
+	resp := m.mock.CheckBatchAvailability(daMetaData)
 	return &dalc.CheckBatchAvailabilityResponse{
 		Result: &dalc.DAResponse{
 			Code:    dalc.StatusCode(resp.Code),

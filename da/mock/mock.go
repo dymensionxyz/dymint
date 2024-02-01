@@ -107,11 +107,9 @@ func (m *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 }
 
 // CheckBatchAvailability queries DA layer to check data availability of block corresponding to given header.
-func (m *DataAvailabilityLayerClient) CheckBatchAvailability(dataLayerHeight uint64) da.ResultCheckBatch {
-	dataMetaData := &da.DAMetaData{
-		Height: dataLayerHeight,
-	}
-	batchesRes := m.RetrieveBatches(dataMetaData)
+func (m *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DAMetaData) da.ResultCheckBatch {
+
+	batchesRes := m.RetrieveBatches(daMetaData)
 	return da.ResultCheckBatch{BaseResult: da.BaseResult{Code: batchesRes.Code}, DataAvailable: len(batchesRes.Batches) > 0}
 }
 

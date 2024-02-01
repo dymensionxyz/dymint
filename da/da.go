@@ -26,6 +26,7 @@ const (
 	StatusSuccess
 	StatusTimeout
 	StatusError
+	StatusUnableToGetProof
 	StatusBlobNotFound
 	StatusBlobNotIncluded
 	StatusProofNotMatching
@@ -60,15 +61,15 @@ type DAMetaData struct {
 	Height uint64
 	// Client is the client to use to fetch data from the da layer
 	Client Client
-	//Share commitment
+	//Share commitment, for each blob, used to obtain blobs and proofs
 	Commitments []Commitment
-	//share position
+	//Initial position for each blob in the NMT
 	Indexes []int
-	//share length
+	//Number of shares of each blob
 	Lengths []int
-	//Proofs
+	//Proofs necessary to validate blob inclusion in the specific height
 	Proofs []*blob.Proof
-	//NMT root
+	//any NMT root for the specific height, necessary for non-inclusion proof
 	Root []byte
 }
 
@@ -134,6 +135,9 @@ type DataAvailabilityLayerClient interface {
 	SubmitBatch(batch *types.Batch) ResultSubmitBatch
 
 	GetClientType() Client
+
+	//Check the availability of the blob submitted getting proofs and validating them
+	CheckBatchAvailability(daMetaData *DAMetaData) ResultCheckBatch
 }
 
 // BatchRetriever is additional interface that can be implemented by Data Availability Layer Client that is able to retrieve
@@ -141,4 +145,6 @@ type DataAvailabilityLayerClient interface {
 type BatchRetriever interface {
 	// RetrieveBatches returns blocks at given data layer height from data availability layer.
 	RetrieveBatches(daMetaData *DAMetaData) ResultRetrieveBatch
+	//Check the availability of the blob received getting proofs and validating them
+	CheckBatchAvailability(daMetaData *DAMetaData) ResultCheckBatch
 }

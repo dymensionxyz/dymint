@@ -111,20 +111,37 @@ func (m *Manager) fetchBatch(daMetaData *da.DAMetaData) (da.ResultRetrieveBatch,
 	//TODO (srene) : Send dispute to the Hub for these cases
 	case da.StatusBlobNotFound:
 		//The blob is not found for the specified share commitment
-		//Not possible to get proofs
-		//It is necessary to send any rowroot for non-inclusion proof
-	case da.StatusProofNotMatching:
-		//The proofs are not matching the span (index, length), although the share commitment is correct
-		//This will be useful once the Hub can validate proofs by itself using NMT roots, since the span must be correct to validate non-inclusion proofs
-		//It is necessary to send any rowroot for non-inclusion proof
+		err = fmt.Errorf("blob not found for the specified commitment %d: %s", daMetaData.Height, batchRes.Message)
 
-		//TODO(srene) : for invalid transactions there is no specific error code since it will need to be validated somewhere else for fraud proving.
-		//NMT proofs are included in the result batchRes, necessary to be included in the dispute
 	}
 
 	if len(batchRes.Batches) == 0 {
 		err = fmt.Errorf("no batches found on height %d", daMetaData.Height)
 	}
 
+	availRes := m.retriever.CheckBatchAvailability(daMetaData)
+	batchRes.MetaData = availRes.MetaData
+
+	switch availRes.Code {
+	case da.StatusUnableToGetProof:
+		//Is not possible to obtain proofs for the specific commitment in the specific height.
+		//This means there is no matching blob for that commitment
+		//No proof is obtained for the blob, but row root is included for non-inclusion proof in availRes.MetaData.Root.
+		err = fmt.Errorf("Unable to get proof on height %d for the commitment", daMetaData.Height)
+
+	case da.StatusProofNotMatching:
+		//The proofs are obtained for the commitment, but not matching with the span (index, length) commited to the Hub.
+		//This will be useful once the Hub can validate proofs by itself using NMT roots, since the span must be correct to validate non-inclusion proofs
+		//It is necessary to send any rowroot for non-inclusion proof available in 	availRes.MetaData.Root.
+		err = fmt.Errorf("Span not matching the commitment")
+
+	}
+	if !availRes.DataAvailable {
+		err = fmt.Errorf("no batches found on height %d", daMetaData.Height)
+	}
+	//batchRes.MetaData includes proofs necessary to open disputes with the Hub
+
+	//TODO(srene) : for invalid transactions there is no specific error code since it will need to be validated somewhere else for fraud proving.
+	//NMT proofs (availRes.MetaData.Proofs) are included in the result batchRes, necessary to be included in the dispute
 	return batchRes, err
 }

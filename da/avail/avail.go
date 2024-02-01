@@ -402,7 +402,7 @@ func (c *DataAvailabilityLayerClient) broadcastTx(tx []byte) (uint64, error) {
 }
 
 // CheckBatchAvailability checks batch availability in DataAvailabilityLayerClient instance.
-func (c *DataAvailabilityLayerClient) CheckBatchAvailability(dataLayerHeight uint64) da.ResultCheckBatch {
+func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DAMetaData) da.ResultCheckBatch {
 	return da.ResultCheckBatch{
 		BaseResult: da.BaseResult{
 			Code:    da.StatusError,
