@@ -387,6 +387,7 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DAMe
 			if err == nil && headers != nil {
 				daMetaData.Root = headers.DAH.RowRoots[0]
 			}
+			//TODO (srene): Add shares proof to DA metadata in case no proofs are obtained (wrong commitment)
 			return da.ResultCheckBatch{
 				DataAvailable: false,
 				BaseResult: da.BaseResult{
@@ -413,6 +414,7 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DAMe
 				if err == nil {
 					daMetaData.Root = headers.DAH.RowRoots[0]
 				}
+				//TODO (srene): Add shares proof to DA metadata in case span does not match commitment
 				return da.ResultCheckBatch{
 					DataAvailable: false,
 					BaseResult: da.BaseResult{
