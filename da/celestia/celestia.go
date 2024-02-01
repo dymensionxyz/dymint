@@ -265,7 +265,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 
 func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DAMetaData) da.ResultRetrieveBatch {
 
-	//Just for backward compatibility, in case no commitments are sent by the Hub, batch can be retrieved using previous implementation.
+	//Just for backward compatibility, in case no commitments are sent from the Hub, batch can be retrieved using previous implementation.
 	if daMetaData.Commitments == nil || len(daMetaData.Commitments) == 0 {
 		return c.retrieveBatches(daMetaData.Height)
 	}
@@ -285,6 +285,14 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DAMetaData)
 						BaseResult: da.BaseResult{
 							Code:    da.StatusBlobNotFound,
 							Message: err.Error(),
+						},
+					}
+				}
+				if blob == nil {
+					return da.ResultRetrieveBatch{
+						BaseResult: da.BaseResult{
+							Code:    da.StatusBlobNotFound,
+							Message: "Blob not found",
 						},
 					}
 				}
@@ -374,9 +382,9 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DAMe
 	for i, commitment := range daMetaData.Commitments {
 
 		proof, err := c.getProof(daMetaData.Height, commitment)
-		if err != nil {
+		if err != nil || proof == nil {
 			headers, err := c.getHeaders(daMetaData.Height)
-			if err == nil {
+			if err == nil && headers != nil {
 				daMetaData.Root = headers.DAH.RowRoots[0]
 			}
 			return da.ResultCheckBatch{
