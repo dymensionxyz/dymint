@@ -14,6 +14,7 @@ import (
 
 	"github.com/rollkit/celestia-openrpc/types/blob"
 	"github.com/rollkit/celestia-openrpc/types/header"
+	"github.com/rollkit/celestia-openrpc/types/share"
 
 	"github.com/dymensionxyz/dymint/da"
 	celtypes "github.com/dymensionxyz/dymint/da/celestia/types"
@@ -264,6 +265,11 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 
 func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DAMetaData) da.ResultRetrieveBatch {
 
+	//Just for backward compatibility, in case no commitments are sent by the Hub, batch can be retrieved using previous implementation.
+	if daMetaData.Commitments == nil || len(daMetaData.Commitments) == 0 {
+		return c.retrieveBatches(daMetaData.Height)
+	}
+
 	for {
 		select {
 		case <-c.ctx.Done():
@@ -312,6 +318,49 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DAMetaData)
 				Batches: batches,
 			}
 		}
+	}
+}
+
+// RetrieveBatches gets a batch of blocks from DA layer.
+func (c *DataAvailabilityLayerClient) retrieveBatches(dataLayerHeight uint64) da.ResultRetrieveBatch {
+	blobs, err := c.rpc.GetAll(c.ctx, dataLayerHeight, []share.Namespace{c.config.NamespaceID.Bytes()})
+	if err != nil {
+		return da.ResultRetrieveBatch{
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: err.Error(),
+			},
+		}
+	}
+
+	var batches []*types.Batch
+	for i, blob := range blobs {
+		var batch pb.Batch
+		err = proto.Unmarshal(blob.Data, &batch)
+		if err != nil {
+			c.logger.Error("failed to unmarshal block", "daHeight", dataLayerHeight, "position", i, "error", err)
+			continue
+		}
+		parsedBatch := new(types.Batch)
+		err := parsedBatch.FromProto(&batch)
+		if err != nil {
+			return da.ResultRetrieveBatch{
+				BaseResult: da.BaseResult{
+					Code:    da.StatusError,
+					Message: err.Error(),
+				},
+			}
+		}
+		batches = append(batches, parsedBatch)
+	}
+
+	return da.ResultRetrieveBatch{
+		BaseResult: da.BaseResult{
+			Code: da.StatusSuccess,
+			MetaData: &da.DAMetaData{
+				Height: dataLayerHeight,
+			}},
+		Batches: batches,
 	}
 }
 
