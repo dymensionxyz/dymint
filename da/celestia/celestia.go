@@ -45,9 +45,6 @@ var DefaultGovMaxSquareSize = 64
 var ContinuationSparseShareContentSize = 512 - 29 - 1
 var DefaultMaxBytes = DefaultGovMaxSquareSize * DefaultGovMaxSquareSize * ContinuationSparseShareContentSize
 
-// Blob is the data submitted/received from DA interface.
-type Blob = []byte
-
 // WithRPCClient sets rpc client.
 func WithRPCClient(rpc celtypes.CelestiaRPCClient) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
@@ -407,7 +404,7 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DAMe
 }
 
 // Submit submits the Blobs to Data Availability layer.
-func (c *DataAvailabilityLayerClient) submit(daBlobs []Blob, gasPrice float64) (uint64, []da.Commitment, []*blob.Blob, error) {
+func (c *DataAvailabilityLayerClient) submit(daBlobs []da.Blob, gasPrice float64) (uint64, []da.Commitment, []*blob.Blob, error) {
 	blobs, commitments, err := c.blobsAndCommitments(daBlobs)
 	if err != nil {
 		return 0, nil, nil, err
@@ -455,7 +452,7 @@ func (c *DataAvailabilityLayerClient) getProof(height uint64, commitment da.Comm
 
 }
 
-func (c *DataAvailabilityLayerClient) blobsAndCommitments(daBlobs []Blob) ([]*blob.Blob, []da.Commitment, error) {
+func (c *DataAvailabilityLayerClient) blobsAndCommitments(daBlobs []da.Blob) ([]*blob.Blob, []da.Commitment, error) {
 	var blobs []*blob.Blob
 	var commitments []da.Commitment
 	for _, daBlob := range daBlobs {

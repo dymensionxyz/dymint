@@ -20,6 +20,9 @@ type StatusCode uint64
 // Commitment should contain serialized cryptographic commitment to Blob value.
 type Commitment = []byte
 
+// Blob is the data submitted/received from DA interface.
+type Blob = []byte
+
 // Data Availability return codes.
 const (
 	StatusUnknown StatusCode = iota

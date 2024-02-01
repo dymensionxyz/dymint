@@ -156,74 +156,41 @@ func TestDALC(t *testing.T) {
 	proof, err := tree.ProveNamespace(nID)
 	blobProof := blob.Proof([]*nmt.Proof{&proof})
 
-	var mockres1, mockres2 da.ResultSubmitBatch
-	mockRPCClient.On("Submit", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(uint64(1234), nil).Once().Run(func(args mock.Arguments) {
-		mockres1 = mockdlc.SubmitBatch(batch1)
-		t.Log("Submitting")
-	})
-	mockRPCClient.On("GetProof", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&blobProof, nil).Once().Run(func(args mock.Arguments) {
-		mockres1 = mockdlc.SubmitBatch(batch1)
-	})
-	mockRPCClient.On("Included", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Once().Run(func(args mock.Arguments) {
-		mockres1 = mockdlc.SubmitBatch(batch1)
-	})
+	mockRPCClient.On("Submit", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(uint64(1234), nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+	mockRPCClient.On("GetProof", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&blobProof, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+	mockRPCClient.On("Included", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
 
-	mockRPCClient.On("Submit", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(uint64(1234), nil).Once().Run(func(args mock.Arguments) {
-		mockres2 = mockdlc.SubmitBatch(batch2)
-	})
-	mockRPCClient.On("GetProof", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&blobProof, nil).Once().Run(func(args mock.Arguments) {
-		mockres2 = mockdlc.SubmitBatch(batch2)
-	})
-	mockRPCClient.On("Included", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Once().Run(func(args mock.Arguments) {
-		mockres2 = mockdlc.SubmitBatch(batch2)
-	})
+	mockRPCClient.On("Submit", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(uint64(1234), nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+	mockRPCClient.On("GetProof", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&blobProof, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+	mockRPCClient.On("Included", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
 
 	time.Sleep(2 * mockDaBlockTime)
 
 	t.Log("Submitting batch1")
-	_ = dalc.SubmitBatch(batch1)
-	//h1 := mockres1.MetaData
-	assert.Equal(da.StatusSuccess, mockres1.Code)
+	res1 := dalc.SubmitBatch(batch1)
+	h1 := res1.MetaData
+	assert.Equal(da.StatusSuccess, res1.Code)
 
 	time.Sleep(2 * mockDaBlockTime)
 
-	t.Log("Submitting batch1")
-	_ = dalc.SubmitBatch(batch2)
-	//h2 := mockres2.MetaData
-	assert.Equal(da.StatusSuccess, mockres2.Code)
+	t.Log("Submitting batch2")
+	res2 := dalc.SubmitBatch(batch2)
+	assert.Equal(da.StatusSuccess, res2.Code)
 
-	/*var retreiveRes da.ResultRetrieveBatch
-	mockRPCClient.On("GetAll", mock.Anything, mock.Anything, mock.Anything).Return(nil, nil).Run(func(args mock.Arguments) {
-		t.Log("Getting")
-		height := args.Get(1).(uint64)
-		daMetaData := &da.DAMetaData{
-			Height: height,
-		}
-		result := mockdlc.RetrieveBatches(daMetaData)
+	data1, _ := batch1.MarshalBinary()
+	blob1, err := blob.NewBlobV0(config.NamespaceID.Bytes(), data1)
 
-		retreiveRes.Code = result.Code
-		retreiveRes.Batches = result.Batches
+	mockRPCClient.On("Get", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(blob1, nil).Run(func(args mock.Arguments) {
 	})
-	// wait a bit more than mockDaBlockTime, so dymint blocks can be "included" in mock block
-	time.Sleep(mockDaBlockTime + 20*time.Millisecond)
 
 	// call retrieveBlocks
 	retriever := dalc.(da.BatchRetriever)
 
-	t.Log("Result", retreiveRes.Code)
-	_ = retriever.RetrieveBatches(h1)
+	retreiveRes := retriever.RetrieveBatches(h1)
 	assert.Equal(da.StatusSuccess, retreiveRes.Code)
 	require.True(len(retreiveRes.Batches) == 1)
 	compareBatches(t, batch1, retreiveRes.Batches[0])
 
-	_ = retriever.RetrieveBatches(h2)
-	assert.Equal(da.StatusSuccess, retreiveRes.Code)
-	require.True(len(retreiveRes.Batches) == 1)
-	compareBatches(t, batch2, retreiveRes.Batches[0])
-
-	_ = retriever.RetrieveBatches(2)
-	assert.Equal(da.StatusSuccess, retreiveRes.Code)
-	require.True(len(retreiveRes.Batches) == 0)*/
 }
 
 func TestLightNode(t *testing.T) {
