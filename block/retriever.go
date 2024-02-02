@@ -111,7 +111,7 @@ func (m *Manager) fetchBatch(daMetaData *da.DAMetaData) (da.ResultRetrieveBatch,
 		err = fmt.Errorf("Unable to get proof on height %d for the commitment", daMetaData.Height)
 
 	case da.StatusProofNotMatching:
-		//The proofs are obtained for the commitment, but not matching with the span (index, length) commited to the Hub.
+		//The proofs are obtained for the commitment, but not matching with the span (index, length) committed to the Hub.
 		err = fmt.Errorf("Span not matching the commitment")
 	case da.StatusError:
 		//There's been an issue validating proofs
