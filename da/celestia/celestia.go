@@ -387,7 +387,10 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DAMe
 			if err == nil && headers != nil {
 				daMetaData.Root = headers.DAH.RowRoots[0]
 			}
-			//TODO (srene): Add shares proof to DA metadata in case no proofs are obtained (wrong commitment)
+			//TODO (srene): Not getting proof means there is no existing data for the namespace and the commitment (the commitment is wrong).
+			//Therefore we need to prove whether the commitment is wrong or the span does not exists.
+			//In case the span is correct it is necessary to return the data for the span and the proofs to the data root, so we can prove the data
+			//is the data for the span, and reproducing the commitment will generate a different one.
 			return da.ResultCheckBatch{
 				DataAvailable: false,
 				BaseResult: da.BaseResult{
@@ -414,7 +417,9 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DAMe
 				if err == nil {
 					daMetaData.Root = headers.DAH.RowRoots[0]
 				}
-				//TODO (srene): Add shares proof to DA metadata in case span does not match commitment
+				//TODO (srene): In this case the commitment is correct but does not match the span.
+				//If the span is correct we have to repeat the previous step (sending data + proof of data)
+				//In case the span is not correct we need to send unavailable proof by sending proof of any row root to data root
 				return da.ResultCheckBatch{
 					DataAvailable: false,
 					BaseResult: da.BaseResult{
@@ -427,6 +432,9 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DAMe
 		}
 
 		included, err = c.validateProof(daMetaData.Height, commitment, proof)
+		//The both cases below (there is an error validating the proof or the proof is wrong) should not happen
+		//if we consider correct functioning of the celestia light node.
+		//This will only happen in case the previous step the celestia light node returned wrong proofs..
 		if err != nil {
 			return da.ResultCheckBatch{
 				DataAvailable: false,
@@ -440,7 +448,7 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DAMe
 			return da.ResultCheckBatch{
 				DataAvailable: false,
 				BaseResult: da.BaseResult{
-					Code:     da.StatusSuccess,
+					Code:     da.StatusError,
 					Message:  "Blob not included",
 					MetaData: daMetaData,
 				},

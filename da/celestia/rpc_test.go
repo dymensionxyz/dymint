@@ -97,6 +97,8 @@ func TestSubmitBatch(t *testing.T) {
 		},
 	}
 	for _, tc := range cases {
+
+		t.Log("Case name ", tc.name)
 		// Create mock clients
 		mockRPCClient := mocks.NewCelestiaRPCClient(t)
 		// Configure DALC options
