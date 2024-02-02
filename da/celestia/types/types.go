@@ -1,7 +1,5 @@
 package types
 
-//TODO: copied from
-
 import (
 	"math"
 )

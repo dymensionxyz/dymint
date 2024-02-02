@@ -120,6 +120,8 @@ func (b *BaseLayerClient) RetrieveBatch(stateIndex ...uint64) (*ResultRetrieveBa
 		if err != nil {
 			return nil, err
 		}
+	} else {
+		return nil, fmt.Errorf("invalid number of arguments. Expected 0 or 1, got %d", len(stateIndex))
 	}
 	return resultRetrieveBatch, nil
 }

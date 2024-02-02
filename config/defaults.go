@@ -30,7 +30,7 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 			BlockTime:               200 * time.Millisecond,
 			EmptyBlocksMaxTime:      3 * time.Second,
 			BatchSubmitMaxTime:      30 * time.Second,
-			NamespaceID:             "000000000000ffff",
+			NamespaceID:             "0000000000000000ffff",
 			BlockBatchSize:          500,
 			BlockBatchMaxSizeBytes:  500000,
 			GossipedBlocksCacheSize: 50},
@@ -40,6 +40,7 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 			Prometheus:           false,
 			PrometheusListenAddr: ":2112",
 		},
+		BootstrapTime: 30 * time.Second,
 	}
 
 	if home == "" {
