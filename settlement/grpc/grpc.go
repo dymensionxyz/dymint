@@ -201,6 +201,7 @@ func (c *HubGrpcClient) Stop() error {
 }
 
 // PostBatch saves the batch to the kv store
+<<<<<<< HEAD
 func (c *HubGrpcClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) error {
 	settlementBatch := c.convertBatchtoSettlementBatch(batch, daClient, daResult)
 	c.saveBatch(settlementBatch)
@@ -212,6 +213,19 @@ func (c *HubGrpcClient) PostBatch(batch *types.Batch, daClient da.Client, daResu
 		return err
 	}
 	return nil
+=======
+func (c *HubGrpcClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) {
+	settlementBatch := c.convertBatchtoSettlementBatch(batch, daClient, daResult)
+	c.saveBatch(settlementBatch)
+	go func() {
+		// sleep for 10 miliseconds to mimic a delay in batch acceptance
+		time.Sleep(10 * time.Millisecond)
+		err := c.pubsub.PublishWithEvents(context.Background(), &settlement.EventDataNewSettlementBatchAccepted{EndHeight: settlementBatch.EndHeight}, map[string][]string{settlement.EventTypeKey: {settlement.EventNewSettlementBatchAccepted}})
+		if err != nil {
+			panic(err)
+		}
+	}()
+>>>>>>> 09c08f0 (feat: Enable shared mock settlement (#549))
 }
 
 // GetLatestBatch returns the latest batch from the kv store
