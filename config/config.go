@@ -34,8 +34,8 @@ type NodeConfig struct {
 	SettlementConfig   settlement.Config      `mapstructure:",squash"`
 	Instrumentation    *InstrumentationConfig `mapstructure:"instrumentation"`
 	//Config params for mock grpc da
-	DAGrpc grpc.Config `mapstructure:",squash"`
-	BootstrapTime      time.Duration          `mapstructure:"bootstrap_time"`
+	DAGrpc        grpc.Config   `mapstructure:",squash"`
+	BootstrapTime time.Duration `mapstructure:"bootstrap_time"`
 }
 
 // BlockManagerConfig consists of all parameters required by BlockManagerConfig
