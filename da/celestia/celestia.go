@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/celestiaorg/nmt"
@@ -190,7 +191,6 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 	var blobs [][]byte
 
 	data, err := batch.MarshalBinary()
-	blobs = [][]byte{data}
 	if err != nil {
 		return da.ResultSubmitBatch{
 			BaseResult: da.BaseResult{
@@ -199,11 +199,13 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			},
 		}
 	}
+	blobs = [][]byte{data}
+
 	if len(data) > DefaultMaxBytes {
 		return da.ResultSubmitBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
-				Message: "Batch size bigger than maximum blob size",
+				Message: fmt.Sprintf("size bigger than maximum blob size of %d bytes", DefaultMaxBytes),
 			},
 		}
 	}
@@ -214,12 +216,9 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			c.logger.Debug("Context cancelled")
 			return da.ResultSubmitBatch{}
 		default:
-			gasPrice := float64(-1)
-			if c.config.GasPrices >= 0 {
-				gasPrice = c.config.GasPrices
-			}
+
 			//TODO(srene):  Split batch in multiple blobs if necessary if supported
-			height, commitments, blobs, err := c.submit(blobs, gasPrice)
+			height, commitments, blobs, err := c.submit(blobs)
 
 			c.logger.Info("DA batch submitted", "commitments", len(commitments), "blobs", len(blobs))
 			if err != nil {
@@ -471,7 +470,7 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DAMe
 }
 
 // Submit submits the Blobs to Data Availability layer.
-func (c *DataAvailabilityLayerClient) submit(daBlobs []da.Blob, gasPrice float64) (uint64, []da.Commitment, []*blob.Blob, error) {
+func (c *DataAvailabilityLayerClient) submit(daBlobs []da.Blob) (uint64, []da.Commitment, []*blob.Blob, error) {
 	blobs, commitments, err := c.blobsAndCommitments(daBlobs)
 	if err != nil {
 		return 0, nil, nil, err
@@ -479,7 +478,7 @@ func (c *DataAvailabilityLayerClient) submit(daBlobs []da.Blob, gasPrice float64
 
 	options := openrpc.DefaultSubmitOptions()
 
-	if gasPrice >= 0 {
+	if c.config.GasPrices >= 0 {
 		blobSizes := make([]uint32, len(blobs))
 		for i, blob := range blobs {
 			blobSizes[i] = uint32(len(blob.Data))
