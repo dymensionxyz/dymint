@@ -217,10 +217,11 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			return da.ResultSubmitBatch{}
 		default:
 
-			//TODO(srene):  Split batch in multiple blobs if necessary if supported
-			height, commitments, blobs, err := c.submit(blobs)
+			c.logger.Info("Submitting DA batch")
 
-			c.logger.Info("DA batch submitted", "commitments", len(commitments), "blobs", len(blobs))
+			//TODO(srene):  Split batch in multiple blobs if necessary if supported
+			height, commitments, err := c.submit(blobs)
+
 			if err != nil {
 				c.logger.Error("Failed to submit DA batch. Emitting health event and trying again", "error", err)
 				res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, false, err)
@@ -238,7 +239,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 
 			availabilityResult := c.CheckBatchAvailability(daMetaData)
 			if availabilityResult.Code != da.StatusSuccess || !availabilityResult.DataAvailable {
-				c.logger.Error("Failed to submit DA batch. Blob not available")
+				c.logger.Error("Unable to confirm submitted blob availability. Retrying")
 				res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, false, err)
 				if err != nil {
 					return res
@@ -470,10 +471,10 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DAMe
 }
 
 // Submit submits the Blobs to Data Availability layer.
-func (c *DataAvailabilityLayerClient) submit(daBlobs []da.Blob) (uint64, []da.Commitment, []*blob.Blob, error) {
+func (c *DataAvailabilityLayerClient) submit(daBlobs []da.Blob) (uint64, []da.Commitment, error) {
 	blobs, commitments, err := c.blobsAndCommitments(daBlobs)
 	if err != nil {
-		return 0, nil, nil, err
+		return 0, nil, err
 	}
 
 	options := openrpc.DefaultSubmitOptions()
@@ -496,11 +497,11 @@ func (c *DataAvailabilityLayerClient) submit(daBlobs []da.Blob) (uint64, []da.Co
 	height, err := c.rpc.Submit(ctx, blobs, options)
 
 	if err != nil {
-		return 0, nil, nil, err
+		return 0, nil, err
 	}
 	c.logger.Info("Successfully submitted blobs to Celestia", "height", height, "gas", options.GasLimit, "fee", options.Fee)
 
-	return height, commitments, blobs, nil
+	return height, commitments, nil
 }
 
 func (c *DataAvailabilityLayerClient) getProof(height uint64, commitment da.Commitment) (*blob.Proof, error) {
