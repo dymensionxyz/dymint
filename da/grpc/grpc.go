@@ -103,11 +103,11 @@ func (d *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 func (d *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DAMetaData) da.ResultCheckBatch {
 	resp, err := d.client.CheckBatchAvailability(context.TODO(), &dalc.CheckBatchAvailabilityRequest{DataLayerHeight: daMetaData.Height})
 	if err != nil {
-		return da.ResultCheckBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error()}}
+		return da.ResultCheckBatch{BaseDACheckResult: da.BaseDACheckResult{Code: da.StatusError, Message: err.Error()}}
 	}
 	return da.ResultCheckBatch{
-		BaseResult:    da.BaseResult{Code: da.StatusCode(resp.Result.Code), Message: resp.Result.Message},
-		DataAvailable: resp.DataAvailable,
+		BaseDACheckResult: da.BaseDACheckResult{Code: da.StatusCode(resp.Result.Code), Message: resp.Result.Message},
+		DataAvailable:     resp.DataAvailable,
 	}
 }
 
@@ -115,7 +115,7 @@ func (d *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DAMe
 func (d *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DAMetaData) da.ResultRetrieveBatch {
 	resp, err := d.client.RetrieveBatches(context.TODO(), &dalc.RetrieveBatchesRequest{DataLayerHeight: daMetaData.Height})
 	if err != nil {
-		return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error()}}
+		return da.ResultRetrieveBatch{BaseDACheckResult: da.BaseDACheckResult{Code: da.StatusError, Message: err.Error()}}
 	}
 
 	batches := make([]*types.Batch, len(resp.Batches))
@@ -123,15 +123,15 @@ func (d *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DAMetaData)
 		var b types.Batch
 		err = b.FromProto(batch)
 		if err != nil {
-			return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error()}}
+			return da.ResultRetrieveBatch{BaseDACheckResult: da.BaseDACheckResult{Code: da.StatusError, Message: err.Error()}}
 		}
 		batches[i] = &b
 	}
 	return da.ResultRetrieveBatch{
-		BaseResult: da.BaseResult{
+		BaseDACheckResult: da.BaseDACheckResult{
 			Code:    da.StatusCode(resp.Result.Code),
 			Message: resp.Result.Message,
-			MetaData: &da.DAMetaData{
+			DACheckMetaData: &da.DACheckMetaData{
 				Height: daMetaData.Height,
 			},
 		},

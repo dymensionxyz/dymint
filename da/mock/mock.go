@@ -110,13 +110,13 @@ func (m *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 func (m *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DAMetaData) da.ResultCheckBatch {
 
 	batchesRes := m.RetrieveBatches(daMetaData)
-	return da.ResultCheckBatch{BaseResult: da.BaseResult{Code: batchesRes.Code}, DataAvailable: len(batchesRes.Batches) > 0}
+	return da.ResultCheckBatch{BaseDACheckResult: da.BaseDACheckResult{Code: batchesRes.Code}, DataAvailable: len(batchesRes.Batches) > 0}
 }
 
 // RetrieveBatches returns block at given height from data availability layer.
 func (m *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DAMetaData) da.ResultRetrieveBatch {
 	if daMetaData.Height >= atomic.LoadUint64(&m.daHeight) {
-		return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: "batch not found"}}
+		return da.ResultRetrieveBatch{BaseDACheckResult: da.BaseDACheckResult{Code: da.StatusError, Message: "batch not found"}}
 	}
 
 	iter := m.dalcKV.PrefixIterator(uint64ToBinary(daMetaData.Height))
@@ -128,20 +128,20 @@ func (m *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DAMetaData)
 
 		blob, err := m.dalcKV.Get(hash)
 		if err != nil {
-			return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error()}}
+			return da.ResultRetrieveBatch{BaseDACheckResult: da.BaseDACheckResult{Code: da.StatusError, Message: err.Error()}}
 		}
 
 		batch := &types.Batch{}
 		err = batch.UnmarshalBinary(blob)
 		if err != nil {
-			return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error()}}
+			return da.ResultRetrieveBatch{BaseDACheckResult: da.BaseDACheckResult{Code: da.StatusError, Message: err.Error()}}
 		}
 		batches = append(batches, batch)
 
 		iter.Next()
 	}
-
-	return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusSuccess, MetaData: daMetaData}, Batches: batches}
+	DACheckMetaData := &da.DACheckMetaData{Height: daMetaData.Height}
+	return da.ResultRetrieveBatch{BaseDACheckResult: da.BaseDACheckResult{Code: da.StatusSuccess, DACheckMetaData: DACheckMetaData}, Batches: batches}
 }
 
 func uint64ToBinary(daHeight uint64) []byte {

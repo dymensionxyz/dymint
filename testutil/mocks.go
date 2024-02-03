@@ -152,7 +152,7 @@ type DALayerClientRetrieveBatchesError struct {
 
 // RetrieveBatches retrieves batches from the data availability layer
 func (m *DALayerClientRetrieveBatchesError) RetrieveBatches(_ *da.DAMetaData) da.ResultRetrieveBatch {
-	return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: batchNotFoundErrorMessage}}
+	return da.ResultRetrieveBatch{BaseDACheckResult: da.BaseDACheckResult{Code: da.StatusError, Message: batchNotFoundErrorMessage}}
 }
 
 // SubscribeMock is a mock to provide a subscription like behavior for testing

@@ -123,13 +123,13 @@ func (m *Manager) fetchBatch(daMetaData *da.DAMetaData) (da.ResultRetrieveBatch,
 		batchRes := da.ResultRetrieveBatch{}
 		batchRes.Code = da.StatusError
 		batchRes.Message = "Error validating data"
-		batchRes.MetaData = availRes.MetaData
+		batchRes.DACheckMetaData = availRes.DACheckMetaData
 		return batchRes, err
 
 	}
 	//batchRes.MetaData includes proofs necessary to open disputes with the Hub
 	batchRes := m.retriever.RetrieveBatches(daMetaData)
-	batchRes.MetaData = availRes.MetaData
+	batchRes.DACheckMetaData = availRes.DACheckMetaData
 
 	switch batchRes.Code {
 	case da.StatusError:

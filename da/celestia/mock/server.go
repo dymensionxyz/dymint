@@ -148,7 +148,7 @@ func (s *Server) shares(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := json.Marshal(namespacedSharesResponse{
 		Shares: shares,
-		Height: res.MetaData.Height,
+		Height: res.DACheckMetaData.Height,
 	})
 	if err != nil {
 		s.writeError(w, err)
@@ -184,7 +184,7 @@ func (s *Server) data(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := json.Marshal(namespacedDataResponse{
 		Data:   data,
-		Height: res.MetaData.Height,
+		Height: res.DACheckMetaData.Height,
 	})
 	if err != nil {
 		s.writeError(w, err)

@@ -160,7 +160,7 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DAMetaData)
 	blockHash, err := c.client.GetBlockHash(daMetaData.Height)
 	if err != nil {
 		return da.ResultRetrieveBatch{
-			BaseResult: da.BaseResult{
+			BaseDACheckResult: da.BaseDACheckResult{
 				Code:    da.StatusError,
 				Message: err.Error(),
 			},
@@ -169,7 +169,7 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DAMetaData)
 	block, err := c.client.GetBlock(blockHash)
 	if err != nil {
 		return da.ResultRetrieveBatch{
-			BaseResult: da.BaseResult{
+			BaseDACheckResult: da.BaseDACheckResult{
 				Code:    da.StatusError,
 				Message: err.Error(),
 			},
@@ -209,9 +209,9 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DAMetaData)
 	}
 
 	return da.ResultRetrieveBatch{
-		BaseResult: da.BaseResult{
+		BaseDACheckResult: da.BaseDACheckResult{
 			Code: da.StatusSuccess,
-			MetaData: &da.DAMetaData{
+			DACheckMetaData: &da.DACheckMetaData{
 				Height: daMetaData.Height,
 			}},
 		Batches: batches,
@@ -404,7 +404,7 @@ func (c *DataAvailabilityLayerClient) broadcastTx(tx []byte) (uint64, error) {
 // CheckBatchAvailability checks batch availability in DataAvailabilityLayerClient instance.
 func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DAMetaData) da.ResultCheckBatch {
 	return da.ResultCheckBatch{
-		BaseResult: da.BaseResult{
+		BaseDACheckResult: da.BaseDACheckResult{
 			Code:    da.StatusError,
 			Message: "not implemented",
 		},
