@@ -237,9 +237,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 				Commitments: commitments,
 			}
 
-			//TODO(srene):  Return Data Root and include it in DAMetaData to submit to Hub
 			availabilityResult := c.CheckBatchAvailability(daMetaData)
-
 			if availabilityResult.Code != da.StatusSuccess || !availabilityResult.DataAvailable {
 				c.logger.Error("Unable to confirm submitted blob availability. Retrying")
 				res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, false, err)
@@ -249,6 +247,8 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 				time.Sleep(c.submitRetryDelay)
 				continue
 			}
+			daMetaData.Root = availabilityResult.CheckMetaData.Root
+
 			res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, true, nil)
 			if err != nil {
 				return res
@@ -382,10 +382,7 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 
 		proof, err := c.getProof(daMetaData.Height, commitment)
 		if err != nil || proof == nil {
-			headers, err := c.getHeaders(daMetaData.Height)
-			if err == nil && headers != nil {
-				daMetaData.Root = headers.DAH.RowRoots[0]
-			}
+
 			//TODO (srene): Not getting proof means there is no existing data for the namespace and the commitment (the commitment is wrong).
 			//Therefore we need to prove whether the commitment is wrong or the span does not exists.
 			//In case the span is correct it is necessary to return the data for the span and the proofs to the data root, so we can prove the data
@@ -400,6 +397,12 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 			}
 		}
 
+		headers, err := c.getHeaders(daMetaData.Height)
+		if err == nil && headers != nil {
+			//Returning Data Availability header Data Root for dispute validation
+			DACheckMetaData.Root = headers.DAH.Hash()
+		}
+
 		nmtProofs := []*nmt.Proof(*proof)
 		shares := 0
 		for i, proof := range nmtProofs {
@@ -412,10 +415,7 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 
 		if daMetaData.Indexes != nil && daMetaData.Lengths != nil {
 			if indexes[i] != daMetaData.Indexes[i] || shares != daMetaData.Lengths[i] {
-				headers, err := c.getHeaders(daMetaData.Height)
-				if err == nil {
-					daMetaData.Root = headers.DAH.RowRoots[0]
-				}
+
 				//TODO (srene): In this case the commitment is correct but does not match the span.
 				//If the span is correct we have to repeat the previous step (sending data + proof of data)
 				//In case the span is not correct we need to send unavailable proof by sending proof of any row root to data root

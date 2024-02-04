@@ -27,9 +27,10 @@ import (
 )
 
 const (
-	submitPFBFuncName = "Submit"
-	getProofFuncName  = "GetProof"
-	includedFuncName  = "Included"
+	submitPFBFuncName  = "Submit"
+	getProofFuncName   = "GetProof"
+	includedFuncName   = "Included"
+	getHeadersFuncName = "GetHeaders"
 )
 
 // exampleNMT creates a new NamespacedMerkleTree with the given namespace ID size and leaf namespace IDs. Each byte in the leavesNIDs parameter corresponds to one leaf's namespace ID. If nidSize is greater than 1, the function repeats each NID in leavesNIDs nidSize times before prepending it to the leaf data.
@@ -122,6 +123,8 @@ func TestSubmitBatch(t *testing.T) {
 		if tc.name == "TestSubmitPFBResponseCodeSuccess" {
 			mockRPCClient.On(getProofFuncName, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(tc.getProofReturn...).Run(tc.getProofDRun)
 			mockRPCClient.On(includedFuncName, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(tc.includedReturn...).Run(tc.includedRun)
+			mockRPCClient.On(getHeadersFuncName, mock.Anything, mock.Anything).Return(nil, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+
 		}
 		done := make(chan bool)
 		go func() {
