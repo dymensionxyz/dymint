@@ -26,7 +26,7 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 			Seeds:         ""},
 		Aggregator: true,
 		BlockManagerConfig: BlockManagerConfig{
-			BlockTime:               200 * time.Microsecond,
+			BlockTime:               200 * time.Millisecond,
 			EmptyBlocksMaxTime:      3 * time.Second,
 			BatchSubmitMaxTime:      100 * time.Second,
 			NamespaceID:             "0000000000000000ffff",
