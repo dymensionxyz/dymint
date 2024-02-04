@@ -71,7 +71,7 @@ func TestSubmitAndRetrieve(t *testing.T) {
 		// Submit the batch
 		daResult := &da.ResultSubmitBatch{
 			BaseResult: da.BaseResult{
-				MetaData: &da.DAMetaData{
+				SubmitMetaData: &da.DASubmitMetaData{
 					Height: batch.EndHeight,
 				},
 			},

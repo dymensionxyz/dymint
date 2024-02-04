@@ -232,7 +232,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 				continue
 			}
 
-			daMetaData := &da.DAMetaData{
+			daMetaData := &da.DASubmitMetaData{
 				Height:      height,
 				Commitments: commitments,
 			}
@@ -255,9 +255,9 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			}
 			return da.ResultSubmitBatch{
 				BaseResult: da.BaseResult{
-					Code:     da.StatusSuccess,
-					Message:  "Submission successful",
-					MetaData: daMetaData,
+					Code:           da.StatusSuccess,
+					Message:        "Submission successful",
+					SubmitMetaData: daMetaData,
 				},
 			}
 		}
@@ -265,7 +265,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 
 }
 
-func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DAMetaData) da.ResultRetrieveBatch {
+func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
 
 	//Just for backward compatibility, in case no commitments are sent from the Hub, batch can be retrieved using previous implementation.
 	if daMetaData.Commitments == nil || len(daMetaData.Commitments) == 0 {
@@ -366,7 +366,7 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(dataLayerHeight uint64) da
 	}
 }
 
-func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DAMetaData) da.ResultCheckBatch {
+func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
 
 	var numShares []int
 	var indexes []int
@@ -393,9 +393,9 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DAMe
 			return da.ResultCheckBatch{
 				DataAvailable: false,
 				BaseDACheckResult: da.BaseDACheckResult{
-					Code:            da.StatusUnableToGetProof,
-					Message:         "Error getting proof",
-					DACheckMetaData: DACheckMetaData,
+					Code:          da.StatusUnableToGetProof,
+					Message:       "Error getting proof",
+					CheckMetaData: DACheckMetaData,
 				},
 			}
 		}
@@ -422,9 +422,9 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DAMe
 				return da.ResultCheckBatch{
 					DataAvailable: false,
 					BaseDACheckResult: da.BaseDACheckResult{
-						Code:            da.StatusProofNotMatching,
-						Message:         "Proof index not matching",
-						DACheckMetaData: DACheckMetaData,
+						Code:          da.StatusProofNotMatching,
+						Message:       "Proof index not matching",
+						CheckMetaData: DACheckMetaData,
 					},
 				}
 			}
@@ -438,18 +438,18 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DAMe
 			return da.ResultCheckBatch{
 				DataAvailable: false,
 				BaseDACheckResult: da.BaseDACheckResult{
-					Code:            da.StatusError,
-					Message:         "Error validating proof",
-					DACheckMetaData: DACheckMetaData,
+					Code:          da.StatusError,
+					Message:       "Error validating proof",
+					CheckMetaData: DACheckMetaData,
 				},
 			}
 		} else if !included {
 			return da.ResultCheckBatch{
 				DataAvailable: false,
 				BaseDACheckResult: da.BaseDACheckResult{
-					Code:            da.StatusError,
-					Message:         "Blob not included",
-					DACheckMetaData: DACheckMetaData,
+					Code:          da.StatusError,
+					Message:       "Blob not included",
+					CheckMetaData: DACheckMetaData,
 				},
 			}
 		}
@@ -462,9 +462,9 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DAMe
 	return da.ResultCheckBatch{
 		DataAvailable: true,
 		BaseDACheckResult: da.BaseDACheckResult{
-			Code:            da.StatusSuccess,
-			Message:         "Blob available",
-			DACheckMetaData: DACheckMetaData,
+			Code:          da.StatusSuccess,
+			Message:       "Blob available",
+			CheckMetaData: DACheckMetaData,
 		},
 	}
 }

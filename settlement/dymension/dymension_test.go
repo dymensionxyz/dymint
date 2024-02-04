@@ -172,7 +172,7 @@ func TestPostBatch(t *testing.T) {
 				if c.isBatchIncludedSuccess {
 					rollappQueryClientMock.On("LatestStateIndex", mock.Anything, mock.Anything).Return(
 						&rollapptypes.QueryGetLatestStateIndexResponse{StateIndex: rollapptypes.StateInfoIndex{Index: 1}}, nil)
-					daMetaData := &da.DAMetaData{
+					daMetaData := &da.DASubmitMetaData{
 						Height: 1,
 						Client: da.Mock,
 					}
@@ -203,8 +203,10 @@ func TestPostBatch(t *testing.T) {
 				wg.Done()
 			}()
 
+			resultSubmitBatch := &da.ResultSubmitBatch{}
+			resultSubmitBatch.SubmitMetaData = &da.DASubmitMetaData{}
 			// Post the batch
-			go hubClient.PostBatch(batch, da.Mock, &da.ResultSubmitBatch{})
+			go hubClient.PostBatch(batch, da.Mock, resultSubmitBatch)
 			// Wait for the batch to be submitted and submit an event notifying that the batch was accepted
 			time.Sleep(50 * time.Millisecond)
 			if c.isBatchAcceptedHubEvent {

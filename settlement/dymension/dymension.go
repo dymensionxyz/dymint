@@ -401,16 +401,16 @@ func (d *HubClient) convertBatchToMsgUpdateState(batch *types.Batch, daClient da
 		return nil, err
 	}
 
-	height := uint64(0)
-	if daResult.MetaData != nil {
-		height = daResult.MetaData.Height
+	/*height := uint64(0)
+	if daResult.SubmitMetaData = nil {
+		height = daResult.SubmitMetaData.Height
 	}
 
 	//TODO (srene): Include extra dataMetaDATA to the Hub for inclusion validation
-	DAMetaData := &da.DAMetaData{
+	SubmitMetaData := &da.DASubmitMetaData{
 		Height: height,
 		Client: daClient,
-	}
+	}*/
 	blockDescriptors := make([]rollapptypes.BlockDescriptor, len(batch.Blocks))
 	for index, block := range batch.Blocks {
 		blockDescriptor := rollapptypes.BlockDescriptor{
@@ -426,7 +426,7 @@ func (d *HubClient) convertBatchToMsgUpdateState(batch *types.Batch, daClient da
 		RollappId:   d.config.RollappID,
 		StartHeight: batch.StartHeight,
 		NumBlocks:   batch.EndHeight - batch.StartHeight + 1,
-		DAPath:      DAMetaData.ToPath(),
+		DAPath:      daResult.SubmitMetaData.ToPath(),
 		Version:     dymRollappVersion,
 		BDs:         rollapptypes.BlockDescriptors{BD: blockDescriptors},
 	}
@@ -484,7 +484,7 @@ func (d *HubClient) convertToNewBatchEvent(rawEventData ctypes.ResultEvent) (*se
 }
 
 func (d *HubClient) convertStateInfoToResultRetrieveBatch(stateInfo *rollapptypes.StateInfo) (*settlement.ResultRetrieveBatch, error) {
-	daMetaData := &da.DAMetaData{}
+	daMetaData := &da.DASubmitMetaData{}
 	daMetaData, err := daMetaData.FromPath(stateInfo.DAPath)
 	if err != nil {
 		return nil, err

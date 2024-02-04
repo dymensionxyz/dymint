@@ -151,7 +151,7 @@ type DALayerClientRetrieveBatchesError struct {
 }
 
 // RetrieveBatches retrieves batches from the data availability layer
-func (m *DALayerClientRetrieveBatchesError) RetrieveBatches(_ *da.DAMetaData) da.ResultRetrieveBatch {
+func (m *DALayerClientRetrieveBatchesError) RetrieveBatches(_ *da.DASubmitMetaData) da.ResultRetrieveBatch {
 	return da.ResultRetrieveBatch{BaseDACheckResult: da.BaseDACheckResult{Code: da.StatusError, Message: batchNotFoundErrorMessage}}
 }
 

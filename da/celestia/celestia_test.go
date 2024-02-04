@@ -66,7 +66,7 @@ func TestDALC(t *testing.T) {
 
 	t.Log("Submitting batch1")
 	res1 := dalc.SubmitBatch(batch1)
-	h1 := res1.MetaData
+	h1 := res1.SubmitMetaData
 	assert.Equal(da.StatusSuccess, res1.Code)
 
 	time.Sleep(2 * mockDaBlockTime)
@@ -122,7 +122,7 @@ func TestRetrievalNotFound(t *testing.T) {
 
 	t.Log("Submitting batch1")
 	res1 := dalc.SubmitBatch(batch1)
-	h1 := res1.MetaData
+	h1 := res1.SubmitMetaData
 	assert.Equal(da.StatusSuccess, res1.Code)
 
 	mockRPCClient.On("Get", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil).Run(func(args mock.Arguments) {
@@ -157,7 +157,7 @@ func TestRetrievalNoCommitment(t *testing.T) {
 
 	retriever := dalc.(da.BatchRetriever)
 
-	h1 := &da.DAMetaData{
+	h1 := &da.DASubmitMetaData{
 		Height: 1,
 	}
 	retreiveRes := retriever.RetrieveBatches(h1)
@@ -197,7 +197,7 @@ func TestAvalabilityOK(t *testing.T) {
 
 	t.Log("Submitting batch1")
 	res1 := dalc.SubmitBatch(batch1)
-	h1 := res1.MetaData
+	h1 := res1.SubmitMetaData
 	assert.Equal(da.StatusSuccess, res1.Code)
 
 	mockRPCClient.On("GetProof", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&blobProof, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
@@ -242,7 +242,7 @@ func TestAvalabilityWrongProof(t *testing.T) {
 
 	t.Log("Submitting batch1")
 	res1 := dalc.SubmitBatch(batch1)
-	h1 := res1.MetaData
+	h1 := res1.SubmitMetaData
 	assert.Equal(da.StatusSuccess, res1.Code)
 
 	mockRPCClient.On("GetProof", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
@@ -271,7 +271,7 @@ func TestRetrievalWrongCommitment(t *testing.T) {
 
 	retriever := dalc.(da.BatchRetriever)
 
-	h1 := &da.DAMetaData{
+	h1 := &da.DASubmitMetaData{
 		Height:      1,
 		Commitments: []da.Commitment{commitment},
 	}

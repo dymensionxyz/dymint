@@ -55,7 +55,7 @@ type BaseResult struct {
 	// Message may contain DA layer specific information (like DA block height/hash, detailed error message, etc)
 	Message string
 	// DAHeight informs about a height on Data Availability Layer for given result.
-	MetaData *DAMetaData
+	SubmitMetaData *DASubmitMetaData
 }
 
 // BaseResult contains basic information returned by DA layer.
@@ -65,11 +65,11 @@ type BaseDACheckResult struct {
 	// Message may contain DA layer specific information (like DA block height/hash, detailed error message, etc)
 	Message string
 	// DAHeight informs about a height on Data Availability Layer for given result.
-	DACheckMetaData *DACheckMetaData
+	CheckMetaData *DACheckMetaData
 }
 
 // DAMetaData contains meta data about a batch on the Data Availability Layer.
-type DAMetaData struct {
+type DASubmitMetaData struct {
 	// Height is the height of the block in the da layer
 	Height uint64
 	// Client is the client to use to fetch data from the da layer
@@ -103,20 +103,20 @@ type DACheckMetaData struct {
 }
 
 // ToPath converts a DAMetaData to a path.
-func (d *DAMetaData) ToPath() string {
+func (d *DASubmitMetaData) ToPath() string {
 	// convert uint64 to string
 	path := []string{string(d.Client), ".", strconv.FormatUint(d.Height, 10)}
 	return strings.Join(path, "")
 }
 
 // FromPath parses a path to a DAMetaData.
-func (d *DAMetaData) FromPath(path string) (*DAMetaData, error) {
+func (d *DASubmitMetaData) FromPath(path string) (*DASubmitMetaData, error) {
 	pathParts := strings.FieldsFunc(path, func(r rune) bool { return r == '.' })
 	height, err := strconv.ParseUint(pathParts[1], 10, 64)
 	if err != nil {
 		return nil, err
 	}
-	return &DAMetaData{
+	return &DASubmitMetaData{
 		Height: height,
 		Client: Client(pathParts[0]),
 	}, nil
@@ -166,14 +166,14 @@ type DataAvailabilityLayerClient interface {
 	GetClientType() Client
 
 	//Check the availability of the blob submitted getting proofs and validating them
-	CheckBatchAvailability(daMetaData *DAMetaData) ResultCheckBatch
+	CheckBatchAvailability(daMetaData *DASubmitMetaData) ResultCheckBatch
 }
 
 // BatchRetriever is additional interface that can be implemented by Data Availability Layer Client that is able to retrieve
 // block data from DA layer. This gives the ability to use it for block synchronization.
 type BatchRetriever interface {
 	// RetrieveBatches returns blocks at given data layer height from data availability layer.
-	RetrieveBatches(daMetaData *DAMetaData) ResultRetrieveBatch
+	RetrieveBatches(daMetaData *DASubmitMetaData) ResultRetrieveBatch
 	//Check the availability of the blob received getting proofs and validating them
-	CheckBatchAvailability(daMetaData *DAMetaData) ResultCheckBatch
+	CheckBatchAvailability(daMetaData *DASubmitMetaData) ResultCheckBatch
 }

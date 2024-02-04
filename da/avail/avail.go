@@ -155,7 +155,7 @@ func (c *DataAvailabilityLayerClient) GetClientType() da.Client {
 }
 
 // RetrieveBatch retrieves batch from DataAvailabilityLayerClient instance.
-func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DAMetaData) da.ResultRetrieveBatch {
+func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
 	//nolint:typecheck
 	blockHash, err := c.client.GetBlockHash(daMetaData.Height)
 	if err != nil {
@@ -211,7 +211,7 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DAMetaData)
 	return da.ResultRetrieveBatch{
 		BaseDACheckResult: da.BaseDACheckResult{
 			Code: da.StatusSuccess,
-			DACheckMetaData: &da.DACheckMetaData{
+			CheckMetaData: &da.DACheckMetaData{
 				Height: daMetaData.Height,
 			}},
 		Batches: batches,
@@ -289,7 +289,7 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 				BaseResult: da.BaseResult{
 					Code:    da.StatusSuccess,
 					Message: "success",
-					MetaData: &da.DAMetaData{
+					SubmitMetaData: &da.DASubmitMetaData{
 						Height: daBlockHeight,
 					},
 				},
@@ -402,7 +402,7 @@ func (c *DataAvailabilityLayerClient) broadcastTx(tx []byte) (uint64, error) {
 }
 
 // CheckBatchAvailability checks batch availability in DataAvailabilityLayerClient instance.
-func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DAMetaData) da.ResultCheckBatch {
+func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
 	return da.ResultCheckBatch{
 		BaseDACheckResult: da.BaseDACheckResult{
 			Code:    da.StatusError,

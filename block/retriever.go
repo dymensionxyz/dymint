@@ -76,7 +76,7 @@ func (m *Manager) updateStateIndex(stateIndex uint64) error {
 	return nil
 }
 
-func (m *Manager) processNextDABatch(ctx context.Context, daMetaData *da.DAMetaData) error {
+func (m *Manager) processNextDABatch(ctx context.Context, daMetaData *da.DASubmitMetaData) error {
 	m.logger.Debug("trying to retrieve batch from DA", "daHeight", daMetaData.Height)
 	batchResp, err := m.fetchBatch(daMetaData)
 	if err != nil {
@@ -100,7 +100,7 @@ func (m *Manager) processNextDABatch(ctx context.Context, daMetaData *da.DAMetaD
 	return nil
 }
 
-func (m *Manager) fetchBatch(daMetaData *da.DAMetaData) (da.ResultRetrieveBatch, error) {
+func (m *Manager) fetchBatch(daMetaData *da.DASubmitMetaData) (da.ResultRetrieveBatch, error) {
 	var err error
 	availRes := m.retriever.CheckBatchAvailability(daMetaData)
 
@@ -122,7 +122,7 @@ func (m *Manager) fetchBatch(daMetaData *da.DAMetaData) (da.ResultRetrieveBatch,
 		batchRes := da.ResultRetrieveBatch{}
 		batchRes.Code = da.StatusError
 		batchRes.Message = "Error validating data"
-		batchRes.DACheckMetaData = availRes.DACheckMetaData
+		batchRes.CheckMetaData = availRes.CheckMetaData
 		return batchRes, err
 
 	}
@@ -145,7 +145,7 @@ func (m *Manager) fetchBatch(daMetaData *da.DAMetaData) (da.ResultRetrieveBatch,
 		err = fmt.Errorf("no batches found on height %d", daMetaData.Height)
 	}
 	if err == nil {
-		batchRes.DACheckMetaData = availRes.DACheckMetaData
+		batchRes.CheckMetaData = availRes.CheckMetaData
 	}
 	//TODO(srene) : for invalid transactions there is no specific error code since it will need to be validated somewhere else for fraud proving.
 	//NMT proofs (availRes.MetaData.Proofs) are included in the result batchRes, necessary to be included in the dispute

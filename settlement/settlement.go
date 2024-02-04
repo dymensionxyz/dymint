@@ -31,7 +31,7 @@ type BaseResult struct {
 
 // BatchMetaData aggregates all the batch metadata.
 type BatchMetaData struct {
-	DA *da.DAMetaData
+	DA *da.DASubmitMetaData
 }
 
 // Batch defines a batch structure for the settlement layer

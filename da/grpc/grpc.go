@@ -92,7 +92,7 @@ func (d *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 		BaseResult: da.BaseResult{
 			Code:    da.StatusCode(resp.Result.Code),
 			Message: resp.Result.Message,
-			MetaData: &da.DAMetaData{
+			SubmitMetaData: &da.DASubmitMetaData{
 				Height: resp.Result.DataLayerHeight,
 			},
 		},
@@ -100,7 +100,7 @@ func (d *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 }
 
 // CheckBatchAvailability proxies CheckBatchAvailability request to gRPC server.
-func (d *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DAMetaData) da.ResultCheckBatch {
+func (d *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
 	resp, err := d.client.CheckBatchAvailability(context.TODO(), &dalc.CheckBatchAvailabilityRequest{DataLayerHeight: daMetaData.Height})
 	if err != nil {
 		return da.ResultCheckBatch{BaseDACheckResult: da.BaseDACheckResult{Code: da.StatusError, Message: err.Error()}}
@@ -112,7 +112,7 @@ func (d *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DAMe
 }
 
 // RetrieveBatches proxies RetrieveBlocks request to gRPC server.
-func (d *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DAMetaData) da.ResultRetrieveBatch {
+func (d *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
 	resp, err := d.client.RetrieveBatches(context.TODO(), &dalc.RetrieveBatchesRequest{DataLayerHeight: daMetaData.Height})
 	if err != nil {
 		return da.ResultRetrieveBatch{BaseDACheckResult: da.BaseDACheckResult{Code: da.StatusError, Message: err.Error()}}
@@ -131,7 +131,7 @@ func (d *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DAMetaData)
 		BaseDACheckResult: da.BaseDACheckResult{
 			Code:    da.StatusCode(resp.Result.Code),
 			Message: resp.Result.Message,
-			DACheckMetaData: &da.DACheckMetaData{
+			CheckMetaData: &da.DACheckMetaData{
 				Height: daMetaData.Height,
 			},
 		},

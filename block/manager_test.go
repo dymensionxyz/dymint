@@ -155,7 +155,7 @@ func TestRetrieveDaBatchesFailed(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, manager)
 
-	daMetaData := &da.DAMetaData{
+	daMetaData := &da.DASubmitMetaData{
 		Height: 1,
 	}
 	err = manager.processNextDABatch(context.Background(), daMetaData)
