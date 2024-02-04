@@ -15,6 +15,14 @@ type Config struct {
 
 	//For testing only. probably should be refactored
 	ProposerPubKey string `json:"proposer_pub_key"`
+	//Config used for sl shared grpc mock
+	SLGrpc GrpcConfig `mapstructure:",squash"`
+}
+
+type GrpcConfig struct {
+	Host        string `json:"host"`
+	Port        int    `json:"port"`
+	RefreshTime int    `json:"refresh_time"`
 }
 
 func (c Config) Validate() error {
