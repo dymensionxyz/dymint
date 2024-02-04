@@ -3,6 +3,7 @@ package block
 import (
 	"context"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -196,12 +197,24 @@ func TestBatchSubmissionAfterTimeout(t *testing.T) {
 
 	require.True(manager.syncTarget == 0)
 
+	var wg sync.WaitGroup
 	mCtx, cancel := context.WithTimeout(context.Background(), runTime)
 	defer cancel()
-	go manager.ProduceBlockLoop(mCtx)
-	go manager.SubmitLoop(mCtx)
-	<-mCtx.Done()
 
+	wg.Add(2) // Add 2 because we have 2 goroutines
+
+	go func() {
+		defer wg.Done() // Decrease counter when this goroutine finishes
+		manager.ProduceBlockLoop(mCtx)
+	}()
+
+	go func() {
+		defer wg.Done() // Decrease counter when this goroutine finishes
+		manager.SubmitLoop(mCtx)
+	}()
+
+	<-mCtx.Done()
+	wg.Wait() // Wait for all goroutines to finish
 	require.True(manager.syncTarget > 0)
 }
 
