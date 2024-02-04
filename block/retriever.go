@@ -13,8 +13,8 @@ import (
 // runs syncUntilTarget on the latest message in the ring buffer.
 func (m *Manager) RetriveLoop(ctx context.Context) {
 	m.logger.Info("Started retrieve loop")
-	//FIXME: this diode needs to be with context, othewise it will block forever
-	syncTargetpoller := diodes.NewPoller(m.syncTargetDiode)
+	syncTargetpoller := diodes.NewPoller(m.syncTargetDiode, diodes.WithPollingContext(ctx))
+
 	for {
 		select {
 		case <-ctx.Done():
