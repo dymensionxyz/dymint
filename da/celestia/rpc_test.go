@@ -16,6 +16,7 @@ import (
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/rollkit/celestia-openrpc/types/blob"
+	"github.com/rollkit/celestia-openrpc/types/header"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -119,11 +120,20 @@ func TestSubmitBatch(t *testing.T) {
 		err = dalc.Start()
 		require.NoError(err, tc.name)
 
+		roots := [][]byte{[]byte("apple"), []byte("watermelon"), []byte("kiwi")}
+		dah := &header.DataAvailabilityHeader{
+			RowRoots:    roots,
+			ColumnRoots: roots,
+		}
+		header := &header.ExtendedHeader{
+			DAH: dah,
+		}
+
 		mockRPCClient.On(submitPFBFuncName, mock.Anything, mock.Anything, mock.Anything).Return(tc.submitPFBReturn...).Run(tc.sumbitPFDRun)
 		if tc.name == "TestSubmitPFBResponseCodeSuccess" {
 			mockRPCClient.On(getProofFuncName, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(tc.getProofReturn...).Run(tc.getProofDRun)
 			mockRPCClient.On(includedFuncName, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(tc.includedReturn...).Run(tc.includedRun)
-			mockRPCClient.On(getHeadersFuncName, mock.Anything, mock.Anything).Return(nil, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+			mockRPCClient.On(getHeadersFuncName, mock.Anything, mock.Anything).Return(header, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
 
 		}
 		done := make(chan bool)

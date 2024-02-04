@@ -4,6 +4,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/cometbft/cometbft/crypto/merkle"
 	"github.com/dymensionxyz/dymint/log"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
@@ -29,7 +30,7 @@ const (
 	StatusSuccess
 	StatusTimeout
 	StatusError
-	StatusUnableToGetProof
+	StatusUnableToGetProofs
 	StatusBlobNotFound
 	StatusBlobNotIncluded
 	StatusProofNotMatching
@@ -98,6 +99,8 @@ type DACheckMetaData struct {
 	Lengths []int
 	//Proofs necessary to validate blob inclusion in the specific height
 	Proofs []*blob.Proof
+	//Proofs necessary to validate blob inclusion in the specific height
+	RowProofs []*merkle.Proof
 	//any NMT root for the specific height, necessary for non-inclusion proof
 	Root []byte
 }

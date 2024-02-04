@@ -2,12 +2,14 @@ package celestia
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
 
 	"github.com/celestiaorg/nmt"
+	"github.com/cometbft/cometbft/crypto/merkle"
 	"github.com/gogo/protobuf/proto"
 	"github.com/tendermint/tendermint/libs/pubsub"
 
@@ -41,11 +43,6 @@ type DataAvailabilityLayerClient struct {
 
 var _ da.DataAvailabilityLayerClient = &DataAvailabilityLayerClient{}
 var _ da.BatchRetriever = &DataAvailabilityLayerClient{}
-
-// TODO(srene): export from github.com/celestiaorg/celestia-app/pkg/appconsts (unable to do it because cometbft/tendermint conflict) or get them from lightnode (not yet available)
-var DefaultGovMaxSquareSize = 64
-var ContinuationSparseShareContentSize = 512 - 29 - 1
-var DefaultMaxBytes = DefaultGovMaxSquareSize * DefaultGovMaxSquareSize * ContinuationSparseShareContentSize
 
 // WithRPCClient sets rpc client.
 func WithRPCClient(rpc celtypes.CelestiaRPCClient) da.Option {
@@ -201,11 +198,11 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 	}
 	blobs = [][]byte{data}
 
-	if len(data) > DefaultMaxBytes {
+	if len(data) > celtypes.DefaultMaxBytes {
 		return da.ResultSubmitBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
-				Message: fmt.Sprintf("size bigger than maximum blob size of %d bytes", DefaultMaxBytes),
+				Message: fmt.Sprintf("size bigger than maximum blob size of %d bytes", celtypes.DefaultMaxBytes),
 			},
 		}
 	}
@@ -371,14 +368,27 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 	var numShares []int
 	var indexes []int
 	var proofs []*blob.Proof
-	included := false
 
 	DACheckMetaData := &da.DACheckMetaData{}
 	DACheckMetaData.Height = daMetaData.Height
 	DACheckMetaData.Client = daMetaData.Client
 	DACheckMetaData.Commitments = daMetaData.Commitments
 
+	dah, err := c.getDataAvailabilityHeaders(daMetaData.Height)
+	if err != nil {
+		//Returning Data Availability header Data Root for dispute validation
+		return da.ResultCheckBatch{
+			DataAvailable: false,
+			BaseDACheckResult: da.BaseDACheckResult{
+				Code:          da.StatusUnableToGetProofs,
+				Message:       "Error getting row to data root proofs",
+				CheckMetaData: DACheckMetaData,
+			},
+		}
+	}
+	DACheckMetaData.Root = dah.Hash()
 	for i, commitment := range daMetaData.Commitments {
+		included := false
 
 		proof, err := c.getProof(daMetaData.Height, commitment)
 		if err != nil || proof == nil {
@@ -390,17 +400,11 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 			return da.ResultCheckBatch{
 				DataAvailable: false,
 				BaseDACheckResult: da.BaseDACheckResult{
-					Code:          da.StatusUnableToGetProof,
-					Message:       "Error getting proof",
+					Code:          da.StatusUnableToGetProofs,
+					Message:       "Error getting NMT proofs",
 					CheckMetaData: DACheckMetaData,
 				},
 			}
-		}
-
-		headers, err := c.getHeaders(daMetaData.Height)
-		if err == nil && headers != nil {
-			//Returning Data Availability header Data Root for dispute validation
-			DACheckMetaData.Root = headers.DAH.Hash()
 		}
 
 		nmtProofs := []*nmt.Proof(*proof)
@@ -467,6 +471,21 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 			CheckMetaData: DACheckMetaData,
 		},
 	}
+}
+
+// TODO (srene): Add tests for GetInclusionProofs
+func (c *DataAvailabilityLayerClient) GetInclusionProofs(height uint64, blob *blob.Blob, proof *blob.Proof, commitment da.Commitment) (*blob.Proof, []*merkle.Proof, error) {
+
+	dah, err := c.getDataAvailabilityHeaders(height)
+	if err != nil {
+		return nil, nil, err
+	}
+	rowProof, err := c.getRowProof(height, dah, blob, commitment, proof)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return proof, rowProof, nil
 }
 
 // Submit submits the Blobs to Data Availability layer.
@@ -547,11 +566,55 @@ func (c *DataAvailabilityLayerClient) validateProof(height uint64, commitment da
 	return isIncluded, error
 }
 
-func (c *DataAvailabilityLayerClient) getHeaders(height uint64) (*header.ExtendedHeader, error) {
+func (c *DataAvailabilityLayerClient) getDataAvailabilityHeaders(height uint64) (*header.DataAvailabilityHeader, error) {
 
 	c.logger.Info("Getting Celestia extended headers via RPC call")
 	ctx, cancel := context.WithTimeout(c.ctx, c.txPollingRetryDelay)
 	defer cancel()
 	headers, error := c.rpc.GetHeaders(ctx, height)
-	return headers, error
+
+	if error != nil {
+		return nil, error
+	}
+	return headers.DAH, error
+
+}
+
+func (c *DataAvailabilityLayerClient) getRowProof(height uint64, dah *header.DataAvailabilityHeader, b *blob.Blob, commitment []byte, proof *blob.Proof) ([]*merkle.Proof, error) {
+
+	_, allProofs := merkle.ProofsFromByteSlices(append(dah.RowRoots, dah.ColumnRoots...))
+
+	shares, err := blob.SplitBlobs(*b)
+	if err != nil {
+		return nil, err
+	}
+	var proofs []*merkle.Proof
+	nmtProofs := []*nmt.Proof(*proof)
+
+	index := 0
+	for i, nmtProof := range nmtProofs {
+		sharesNum := nmtProof.End() - nmtProof.Start()
+		var leafs [][]byte
+
+		for j := index; j < index+sharesNum; j++ {
+			leaf := shares[j].ToBytes()
+			leafs = append(leafs, leaf)
+		}
+		for _, rowRoot := range dah.RowRoots {
+			if nmtProof.VerifyInclusion(sha256.New(), c.config.NamespaceID.Bytes(), leafs, rowRoot) {
+				for _, rProof := range allProofs {
+					if rProof.Verify(dah.Hash(), rowRoot) == nil {
+						proofs = append(proofs, rProof)
+						break
+					}
+				}
+				if len(proofs) > i {
+					break
+				}
+			}
+		}
+		index += sharesNum
+	}
+
+	return proofs, err
 }

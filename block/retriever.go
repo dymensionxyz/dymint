@@ -105,7 +105,7 @@ func (m *Manager) fetchBatch(daMetaData *da.DASubmitMetaData) (da.ResultRetrieve
 	availRes := m.retriever.CheckBatchAvailability(daMetaData)
 
 	switch availRes.Code {
-	case da.StatusUnableToGetProof:
+	case da.StatusUnableToGetProofs:
 		//Is not possible to obtain proofs for the specific commitment in the specific height.
 		//This means there is no matching blob for that commitment
 		err = fmt.Errorf("Unable to get proof on height %d for the commitment", daMetaData.Height)
