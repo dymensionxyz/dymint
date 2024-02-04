@@ -118,7 +118,6 @@ func (m *Manager) fetchBatch(daMetaData *da.DAMetaData) (da.ResultRetrieveBatch,
 		err = fmt.Errorf("Error validating batch")
 	}
 	if !availRes.DataAvailable {
-		err = fmt.Errorf("no batches found on height %d", daMetaData.Height)
 		//There is no point on fetching the data
 		batchRes := da.ResultRetrieveBatch{}
 		batchRes.Code = da.StatusError
@@ -129,7 +128,6 @@ func (m *Manager) fetchBatch(daMetaData *da.DAMetaData) (da.ResultRetrieveBatch,
 	}
 	//batchRes.MetaData includes proofs necessary to open disputes with the Hub
 	batchRes := m.retriever.RetrieveBatches(daMetaData)
-	batchRes.DACheckMetaData = availRes.DACheckMetaData
 
 	switch batchRes.Code {
 	case da.StatusError:
@@ -146,7 +144,9 @@ func (m *Manager) fetchBatch(daMetaData *da.DAMetaData) (da.ResultRetrieveBatch,
 	if len(batchRes.Batches) == 0 {
 		err = fmt.Errorf("no batches found on height %d", daMetaData.Height)
 	}
-
+	if err == nil {
+		batchRes.DACheckMetaData = availRes.DACheckMetaData
+	}
 	//TODO(srene) : for invalid transactions there is no specific error code since it will need to be validated somewhere else for fraud proving.
 	//NMT proofs (availRes.MetaData.Proofs) are included in the result batchRes, necessary to be included in the dispute
 	return batchRes, err

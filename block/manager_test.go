@@ -32,8 +32,8 @@ import (
 )
 
 const (
-	connectionRefusedErrorMessage = "connection refused"
-	batchNotFoundErrorMessage     = "no batches found"
+	connectionRefusedErrorMessage    = "connection refused"
+	errorValidatingBatchErrorMessage = "Error validating batch"
 )
 
 func TestInitialState(t *testing.T) {
@@ -159,7 +159,8 @@ func TestRetrieveDaBatchesFailed(t *testing.T) {
 		Height: 1,
 	}
 	err = manager.processNextDABatch(context.Background(), daMetaData)
-	assert.ErrorContains(t, err, batchNotFoundErrorMessage)
+	t.Log(err)
+	assert.ErrorContains(t, err, errorValidatingBatchErrorMessage)
 }
 
 func TestProduceNewBlock(t *testing.T) {
