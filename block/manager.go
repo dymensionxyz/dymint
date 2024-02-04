@@ -212,7 +212,7 @@ func (m *Manager) syncBlockManager(ctx context.Context) error {
 	resultRetrieveBatch, err := m.getLatestBatchFromSL(ctx)
 	// Set the syncTarget according to the result
 	if err != nil {
-		//TODO: seperate between fresh rollapp and non-registred rollapp
+		//TODO: separate between fresh rollapp and non-registred rollapp
 		if err == settlement.ErrBatchNotFound {
 			// Since we requested the latest batch and got batch not found it means
 			// the SL still hasn't got any batches for this chain.
