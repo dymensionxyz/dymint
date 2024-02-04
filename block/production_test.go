@@ -246,7 +246,7 @@ func TestInvalidBatch(t *testing.T) {
 			EndHeight:   c.endHeight,
 		}
 
-		manager.updateSyncParams(context.Background(), syncTarget)
+		manager.updateSyncParams(syncTarget)
 		err := manager.validateBatch(batch)
 		if c.shouldError {
 			assert.Error(err)

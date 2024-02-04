@@ -27,7 +27,7 @@ func (m *Manager) SyncTargetLoop(ctx context.Context) {
 
 			//FIXME: make sure the event is not old	/ replay
 
-			m.updateSyncParams(ctx, eventData.EndHeight)
+			m.updateSyncParams(eventData.EndHeight)
 			m.syncTargetDiode.Set(diodes.GenericDataType(&eventData.EndHeight))
 		case <-subscription.Cancelled():
 			m.logger.Info("syncTargetLoop subscription canceled")

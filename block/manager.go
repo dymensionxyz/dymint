@@ -233,7 +233,7 @@ func (m *Manager) syncBlockManager(ctx context.Context) error {
 }
 
 // updateSyncParams updates the sync target and state index if necessary
-func (m *Manager) updateSyncParams(ctx context.Context, endHeight uint64) {
+func (m *Manager) updateSyncParams(endHeight uint64) {
 	rollappHubHeightGauge.Set(float64(endHeight))
 	m.logger.Info("Received new syncTarget", "syncTarget", endHeight)
 	atomic.StoreUint64(&m.syncTarget, endHeight)

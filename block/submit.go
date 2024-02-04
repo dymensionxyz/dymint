@@ -51,7 +51,7 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 
 			// Update the syncTarget to the height of the last block in the last batch as seen by this node.
 			m.batchInProcess.Store(false)
-			m.updateSyncParams(ctx, syncHeight)
+			m.updateSyncParams(syncHeight)
 		}
 	}
 }
