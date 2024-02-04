@@ -21,12 +21,12 @@ func (m *Manager) SyncTargetLoop(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
-		//FIXME: add polling timer in case we missed an event
 		case event := <-subscription.Out():
 			eventData := event.Data().(*settlement.EventDataNewSettlementBatchAccepted)
-
-			//FIXME: make sure the event is not old	/ replay
-
+			if eventData.EndHeight <= m.store.Height() {
+				m.logger.Error("syncTargetLoop: event is old, skipping")
+				continue
+			}
 			m.updateSyncParams(eventData.EndHeight)
 			m.syncTargetDiode.Set(diodes.GenericDataType(&eventData.EndHeight))
 		case <-subscription.Cancelled():
