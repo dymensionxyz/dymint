@@ -401,16 +401,6 @@ func (d *HubClient) convertBatchToMsgUpdateState(batch *types.Batch, daClient da
 		return nil, err
 	}
 
-	/*height := uint64(0)
-	if daResult.SubmitMetaData = nil {
-		height = daResult.SubmitMetaData.Height
-	}
-
-	//TODO (srene): Include extra dataMetaDATA to the Hub for inclusion validation
-	SubmitMetaData := &da.DASubmitMetaData{
-		Height: height,
-		Client: daClient,
-	}*/
 	blockDescriptors := make([]rollapptypes.BlockDescriptor, len(batch.Blocks))
 	for index, block := range batch.Blocks {
 		blockDescriptor := rollapptypes.BlockDescriptor{
