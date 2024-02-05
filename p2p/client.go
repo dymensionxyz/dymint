@@ -72,15 +72,13 @@ type Client struct {
 	cancel context.CancelFunc
 
 	logger log.Logger
-
-	gossipCacheSize int
 }
 
 // NewClient creates new Client object.
 //
 // Basic checks on parameters are done, and default parameters are provided for unset-configuration
 // TODO(tzdybal): consider passing entire config, not just P2P config, to reduce number of arguments
-func NewClient(conf config.P2PConfig, privKey crypto.PrivKey, chainID string, gossipCacheSize int, logger log.Logger) (*Client, error) {
+func NewClient(conf config.P2PConfig, privKey crypto.PrivKey, chainID string, logger log.Logger) (*Client, error) {
 	if privKey == nil {
 		return nil, errNoPrivKey
 	}
@@ -88,11 +86,10 @@ func NewClient(conf config.P2PConfig, privKey crypto.PrivKey, chainID string, go
 		conf.ListenAddress = config.DefaultListenAddress
 	}
 	return &Client{
-		conf:            conf,
-		privKey:         privKey,
-		chainID:         chainID,
-		logger:          logger,
-		gossipCacheSize: gossipCacheSize,
+		conf:    conf,
+		privKey: privKey,
+		chainID: chainID,
+		logger:  logger,
 	}, nil
 }
 
@@ -266,6 +263,10 @@ func (c *Client) setupDHT(ctx context.Context) error {
 		return fmt.Errorf("failed to bootstrap DHT: %w", err)
 	}
 
+	if len(seedNodes) > 0 {
+		go c.bootstrapLoop(ctx)
+	}
+
 	c.host = routedhost.Wrap(c.host, c.dht)
 
 	return nil
@@ -332,9 +333,9 @@ func (c *Client) tryConnect(ctx context.Context, peer peer.AddrInfo) {
 
 func (c *Client) setupGossiping(ctx context.Context) error {
 
-	pubsub.GossipSubHistoryGossip = c.gossipCacheSize
-	pubsub.GossipSubHistoryLength = c.gossipCacheSize
-	pubsub.GossipSubMaxIHaveMessages = c.gossipCacheSize
+	pubsub.GossipSubHistoryGossip = c.conf.GossipCacheSize
+	pubsub.GossipSubHistoryLength = c.conf.GossipCacheSize
+	pubsub.GossipSubMaxIHaveMessages = c.conf.GossipCacheSize
 
 	ps, err := pubsub.NewGossipSub(ctx, c.host)
 	if err != nil {
@@ -411,5 +412,25 @@ func (c *Client) getBlockTopic() string {
 func (c *Client) NewTxValidator() GossipValidator {
 	return func(g *GossipMessage) bool {
 		return true
+	}
+}
+
+func (c *Client) bootstrapLoop(ctx context.Context) {
+	ticker := time.NewTicker(c.conf.BoostrapTime)
+	defer ticker.Stop()
+	for {
+		select {
+		//Context canceled
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if len(c.Peers()) == 0 {
+				err := c.dht.Bootstrap(ctx)
+				if err != nil {
+					c.logger.Error("failed to re-bootstrap DHT: %w", err)
+				}
+			}
+
+		}
 	}
 }

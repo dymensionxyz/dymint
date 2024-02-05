@@ -21,7 +21,9 @@ import (
 
 func TestClientStartup(t *testing.T) {
 	privKey, _, _ := crypto.GenerateEd25519Key(rand.Reader)
-	client, err := NewClient(config.P2PConfig{}, privKey, "TestChain", 50, log.TestingLogger())
+	client, err := NewClient(config.P2PConfig{
+		GossipCacheSize: 50,
+		BoostrapTime:    30 * time.Second}, privKey, "TestChain", log.TestingLogger())
 	assert := assert.New(t)
 	assert.NoError(err)
 	assert.NotNil(client)
@@ -165,7 +167,9 @@ func TestSeedStringParsing(t *testing.T) {
 			assert := assert.New(t)
 			require := require.New(t)
 			logger := &test.MockLogger{}
-			client, err := NewClient(config.P2PConfig{}, privKey, "TestNetwork", 50, logger)
+			client, err := NewClient(config.P2PConfig{
+				GossipCacheSize: 50,
+				BoostrapTime:    30 * time.Second}, privKey, "TestNetwork", logger)
 			require.NoError(err)
 			require.NotNil(client)
 			actual := client.getSeedAddrInfo(c.input)

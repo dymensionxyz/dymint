@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/dymensionxyz/dymint/da/grpc"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -32,6 +33,9 @@ type NodeConfig struct {
 	SettlementLayer    string                 `mapstructure:"settlement_layer"`
 	SettlementConfig   settlement.Config      `mapstructure:",squash"`
 	Instrumentation    *InstrumentationConfig `mapstructure:"instrumentation"`
+	//Config params for mock grpc da
+	DAGrpc        grpc.Config   `mapstructure:",squash"`
+	BootstrapTime time.Duration `mapstructure:"bootstrap_time"`
 }
 
 // BlockManagerConfig consists of all parameters required by BlockManagerConfig
