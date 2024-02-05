@@ -405,9 +405,10 @@ func (c *DataAvailabilityLayerClient) broadcastTx(tx []byte) (uint64, error) {
 func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
 	return da.ResultCheckBatch{
 		BaseDACheckResult: da.BaseDACheckResult{
-			Code:    da.StatusError,
+			Code:    da.StatusNotImplemented,
 			Message: "not implemented",
 		},
+		DataAvailable: true,
 	}
 }
 

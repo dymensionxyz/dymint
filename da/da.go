@@ -34,6 +34,7 @@ const (
 	StatusBlobNotFound
 	StatusBlobNotIncluded
 	StatusProofNotMatching
+	StatusNotImplemented
 )
 
 // Client defines all the possible da clients

@@ -474,7 +474,7 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 }
 
 // TODO (srene): Add tests for GetInclusionProofs
-func (c *DataAvailabilityLayerClient) GetInclusionProofs(height uint64, blob *blob.Blob, proof *blob.Proof, commitment da.Commitment) (*blob.Proof, []*merkle.Proof, error) {
+func (c *DataAvailabilityLayerClient) GetInclusionProofsCommitment(height uint64, blob *blob.Blob, proof *blob.Proof, commitment da.Commitment) (*blob.Proof, []*merkle.Proof, error) {
 
 	dah, err := c.getDataAvailabilityHeaders(height)
 	if err != nil {
