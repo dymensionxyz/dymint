@@ -185,8 +185,6 @@ func (c *DataAvailabilityLayerClient) GetClientType() da.Client {
 // SubmitBatch submits a batch to the DA layer.
 func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultSubmitBatch {
 
-	var blobs [][]byte
-
 	data, err := batch.MarshalBinary()
 	if err != nil {
 		return da.ResultSubmitBatch{
@@ -196,7 +194,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			},
 		}
 	}
-	blobs = [][]byte{data}
+	blobs := [][]byte{data}
 
 	if len(data) > celtypes.DefaultMaxBytes {
 		return da.ResultSubmitBatch{
@@ -215,7 +213,6 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 		default:
 
 			c.logger.Info("Submitting DA batch")
-
 			//TODO(srene):  Split batch in multiple blobs if necessary if supported
 			height, commitments, err := c.submit(blobs)
 
