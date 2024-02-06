@@ -409,8 +409,8 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 
 		nmtProofs := []*nmt.Proof(*proof)
 		shares := 0
-		for i, proof := range nmtProofs {
-			if i == 0 {
+		for j, proof := range nmtProofs {
+			if j == 0 {
 				indexes = append(indexes, proof.Start())
 			}
 			shares += proof.End() - proof.Start()
@@ -497,18 +497,16 @@ func (c *DataAvailabilityLayerClient) submit(daBlobs []da.Blob) (uint64, []da.Co
 
 	options := openrpc.DefaultSubmitOptions()
 
-	if c.config.GasPrices >= 0 {
-		blobSizes := make([]uint32, len(blobs))
-		for i, blob := range blobs {
-			blobSizes[i] = uint32(len(blob.Data))
-		}
-
-		estimatedGas := EstimateGas(blobSizes, DefaultGasPerBlobByte, DefaultTxSizeCostPerByte)
-		gasWanted := uint64(float64(estimatedGas) * c.config.GasAdjustment)
-		fees := c.calculateFees(gasWanted)
-		options.Fee = fees
-		options.GasLimit = gasWanted
+	blobSizes := make([]uint32, len(blobs))
+	for i, blob := range blobs {
+		blobSizes[i] = uint32(len(blob.Data))
 	}
+
+	estimatedGas := EstimateGas(blobSizes, DefaultGasPerBlobByte, DefaultTxSizeCostPerByte)
+	gasWanted := uint64(float64(estimatedGas) * c.config.GasAdjustment)
+	fees := c.calculateFees(gasWanted)
+	options.Fee = fees
+	options.GasLimit = gasWanted
 	ctx, cancel := context.WithTimeout(c.ctx, c.txPollingRetryDelay)
 	defer cancel()
 
