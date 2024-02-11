@@ -113,10 +113,16 @@ func NewManager(
 	p2pClient *p2p.Client,
 	logger log.Logger,
 ) (*Manager, error) {
+	var (
+		err             error
+		proposerAddress []byte
+	)
 
-	proposerAddress, err := getAddress(proposerKey)
-	if err != nil {
-		return nil, err
+	if proposerKey != nil {
+		proposerAddress, err = getAddress(proposerKey)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	exec, err := state.NewBlockExecutor(proposerAddress, conf.NamespaceID, genesis.ChainID, mempool, proxyApp, eventBus, logger, conf.SimulateFraud)
