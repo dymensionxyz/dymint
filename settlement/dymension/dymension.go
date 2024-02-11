@@ -12,13 +12,13 @@ import (
 	cdctypes "github.com/cosmos/cosmos-sdk/codec/types"
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	"github.com/dymensionxyz/cosmosclient/cosmosclient"
-	rollapptypes "github.com/dymensionxyz/dymension/x/rollapp/types"
+	rollapptypes "github.com/dymensionxyz/dymension/v3/x/rollapp/types"
 	"github.com/google/uuid"
 	"github.com/ignite/cli/ignite/pkg/cosmosaccount"
 	"github.com/pkg/errors"
 
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
-	sequencertypes "github.com/dymensionxyz/dymension/x/sequencer/types"
+	sequencertypes "github.com/dymensionxyz/dymension/v3/x/sequencer/types"
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/log"
 	"github.com/dymensionxyz/dymint/settlement"
@@ -404,9 +404,9 @@ func (d *HubClient) convertBatchToMsgUpdateState(batch *types.Batch, daClient da
 	blockDescriptors := make([]rollapptypes.BlockDescriptor, len(batch.Blocks))
 	for index, block := range batch.Blocks {
 		blockDescriptor := rollapptypes.BlockDescriptor{
-			Height:                 block.Header.Height,
-			StateRoot:              block.Header.AppHash[:],
-			IntermediateStatesRoot: block.Data.IntermediateStateRoots.RawRootsList,
+			Height:                  block.Header.Height,
+			StateRoot:               block.Header.AppHash[:],
+			IntermediateStatesRoots: block.Data.IntermediateStateRoots.RawRootsList,
 		}
 		blockDescriptors[index] = blockDescriptor
 	}
