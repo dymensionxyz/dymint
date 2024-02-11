@@ -43,7 +43,7 @@ func TestCreateBlock(t *testing.T) {
 	nsID := "0102030405060708"
 
 	mpool := mempoolv1.NewTxMempool(logger, cfg.DefaultMempoolConfig(), proxy.NewAppConnMempool(abciClient), 0)
-	executor, err := NewBlockExecutor([]byte("test address"), nsID, "test", mpool, proxy.NewAppConns(clientCreator), nil, logger)
+	executor, err := NewBlockExecutor([]byte("test address"), nsID, "test", mpool, proxy.NewAppConns(clientCreator), nil, logger, false)
 	assert.NoError(err)
 
 	state := types.State{}
@@ -117,7 +117,7 @@ func TestApplyBlock(t *testing.T) {
 	appConns := &mocks.AppConns{}
 	appConns.On("Consensus").Return(abciClient)
 	appConns.On("Query").Return(abciClient)
-	executor, err := NewBlockExecutor([]byte("test address"), nsID, chainID, mpool, appConns, eventBus, logger)
+	executor, err := NewBlockExecutor([]byte("test address"), nsID, chainID, mpool, appConns, eventBus, logger, false)
 	assert.NoError(err)
 
 	// Subscribe to tx events

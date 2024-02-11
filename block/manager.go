@@ -117,7 +117,7 @@ func NewManager(
 		return nil, err
 	}
 
-	exec, err := state.NewBlockExecutor(proposerAddress, conf.NamespaceID, genesis.ChainID, mempool, proxyApp, eventBus, logger)
+	exec, err := state.NewBlockExecutor(proposerAddress, conf.NamespaceID, genesis.ChainID, mempool, proxyApp, eventBus, logger, conf.SimulateFraud)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create block executor: %w", err)
 	}
