@@ -414,10 +414,9 @@ func (d *HubClient) convertBatchToMsgUpdateState(batch *types.Batch, daClient da
 	blockDescriptors := make([]rollapptypes.BlockDescriptor, len(batch.Blocks))
 	for index, block := range batch.Blocks {
 		blockDescriptor := rollapptypes.BlockDescriptor{
-			Height:    block.Header.Height,
-			StateRoot: block.Header.AppHash[:],
-			// TODO(omritoptix): Change to a real ISR once supported
-			IntermediateStatesRoot: make([]byte, 32),
+			Height:                 block.Header.Height,
+			StateRoot:              block.Header.AppHash[:],
+			IntermediateStatesRoot: block.Data.IntermediateStateRoots.RawRootsList,
 		}
 		blockDescriptors[index] = blockDescriptor
 	}

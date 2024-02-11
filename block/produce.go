@@ -185,15 +185,14 @@ func (m *Manager) produceBlock(ctx context.Context, allowEmpty bool) error {
 				Signature:        tmSignature,
 			},
 		}
-
-	}
-
-	// Gossip the block as soon as it is produced
-	if err := m.gossipBlock(ctx, *block, *commit); err != nil {
-		return err
 	}
 
 	if err := m.applyBlock(ctx, block, commit, blockMetaData{source: producedBlock}); err != nil {
+		return err
+	}
+
+	// Gossip postponed after execution so we'll have the ISRs
+	if err := m.gossipBlock(ctx, *block, *commit); err != nil {
 		return err
 	}
 

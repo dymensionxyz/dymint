@@ -4,11 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
-	"fmt"
-	"math/rand"
-	"os"
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -39,7 +35,8 @@ type BlockExecutor struct {
 
 	logger log.Logger
 
-	simulateFraud bool
+	fraudProofsEnabled bool
+	simulateFraud      bool
 }
 
 // NewBlockExecutor creates new instance of BlockExecutor.
@@ -58,10 +55,15 @@ func NewBlockExecutor(proposerAddress []byte, namespaceID string, chainID string
 		mempool:               mempool,
 		eventBus:              eventBus,
 		logger:                logger,
+		fraudProofsEnabled:    true,
 		simulateFraud:         simulateFraud,
 	}
 	copy(be.namespaceID[:], bytes)
 	return &be, nil
+}
+
+func (e *BlockExecutor) isAggregator() bool {
+	return e.proposerAddress != nil
 }
 
 // InitChain calls InitChainSync using consensus connection to app.
@@ -189,7 +191,6 @@ func (e *BlockExecutor) Commit(ctx context.Context, state *types.State, block *t
 		e.logger.Error("failed to fire block events", "error", err)
 		return 0, err
 	}
-
 	return retainHeight, nil
 }
 
@@ -307,40 +308,9 @@ func (e *BlockExecutor) validateCommit(proposer *types.Sequencer, commit *types.
 	return nil
 }
 
-func (e *BlockExecutor) setOrVerifyISR(phase string, ISRs [][]byte, generateISR bool, idx int, simulateFraud bool) ([][]byte, error) {
-	isr, err := e.getAppHash()
-	if err != nil {
-		return nil, err
-	}
-
-	if generateISR {
-		//sequencer mode
-		e.logger.Info(phase, "ISR", hex.EncodeToString(isr))
-
-		//FIXME: for testing only
-		if simulateFraud {
-			e.logger.Info("simulating fraud", "phase", phase)
-			// isr = []byte("fraud")
-			return nil, types.ErrInvalidISR
-		}
-
-		ISRs[idx] = isr
-		return ISRs, nil
-	} else {
-		//verifier mode
-		e.logger.Info("verifying ISR", "phase", phase)
-		if !bytes.Equal(isr, ISRs[idx]) {
-			e.logger.Error(phase, "ISR mismatch", "ISR", hex.EncodeToString(isr), "expected", hex.EncodeToString(ISRs[idx]))
-			return nil, types.ErrInvalidISR
-		}
-
-		e.logger.Info(phase, "ISR", hex.EncodeToString(isr))
-		return nil, nil
-	}
-}
-
 // Execute executes the block and returns the ABCIResponses.
 func (e *BlockExecutor) Execute(ctx context.Context, state types.State, block *types.Block) (*tmstate.ABCIResponses, error) {
+	var err error
 	abciResponses := new(tmstate.ABCIResponses)
 	abciResponses.DeliverTxs = make([]*abci.ResponseDeliverTx, len(block.Data.Txs))
 
@@ -349,38 +319,38 @@ func (e *BlockExecutor) Execute(ctx context.Context, state types.State, block *t
 	invalidTxs := 0
 
 	expectedISRCount := 3 + len(block.Data.Txs) // initial, beginblock, len(delivertxs), endblock
+
+	//TODO: wrap into struct with helper methods
+	ISRs := make([][]byte, expectedISRCount)
 	currISRIdx := 0
+
 	var generateISR bool //sequencer mode. otherwise it's verifier mode
 
-	var err error
-
-	//FIXME: validate ISRs exists for full node / when syncing
-	//FIXME: the enable fraud proofs flag should be "height guarded" to allow syncing after toggling
-	/*
-		if e.fraudProofsEnabled && fullnode && blockISR == nil {
-	*/
-
-	ISRs := make([][]byte, expectedISRCount)
 	blockISRs := block.Data.IntermediateStateRoots.RawRootsList
 	if blockISRs != nil {
 		if len(blockISRs) != expectedISRCount {
 			e.logger.Error("ISR count mismatch", "expected", expectedISRCount, "actual", len(blockISRs))
-			return nil, errors.New("ISR count mismatch")
+			return nil, types.ErrBlockISRCountMismatch
 		}
 		generateISR = false
 		ISRs = blockISRs
 	} else {
-		//FIXME: make sure we're the aggregator
-		generateISR = true
+		//block with no ISRs acceptable only for sequencer
+		if !e.isAggregator() {
+			if e.fraudProofsEnabled {
+				e.logger.Error("block has no ISRs")
+				return nil, types.ErrBlockMissingISR
+			}
+		} else {
+			generateISR = true
+		}
 	}
 
-	//FIXME: return and handle types.ErrInvalidISR for proof generation
-	ISRs, err = e.setOrVerifyISR("initial ISR", ISRs, generateISR, currISRIdx, false)
+	ISRs, err = e.setOrVerifyISR("initial ISR", ISRs, generateISR, currISRIdx)
 	currISRIdx++
-	if err == types.ErrInvalidISR {
-		//FIXME: can happen?
-		//panic("invalid ISR")
-		e.generateFraudProof(nil, nil, nil)
+	//not supposed to happen as no state changed yet
+	if err != nil {
+		return nil, err
 	}
 
 	e.proxyAppConsensusConn.SetResponseCallback(func(req *abci.Request, res *abci.Response) {
@@ -415,10 +385,13 @@ func (e *BlockExecutor) Execute(ctx context.Context, state types.State, block *t
 		return nil, err
 	}
 
-	ISRs, err = e.setOrVerifyISR("begin block ISR", ISRs, generateISR, currISRIdx, false)
+	ISRs, err = e.setOrVerifyISR("begin block ISR", ISRs, generateISR, currISRIdx)
 	currISRIdx++
-	if err == types.ErrInvalidISR {
-		e.generateFraudProof(&reqBeginBlock, nil, nil)
+	if err != nil {
+		if err == types.ErrInvalidISR {
+			e.generateFraudProof(&reqBeginBlock, nil, nil)
+		}
+		return nil, err
 	}
 
 	deliverTxRequests := make([]*abci.RequestDeliverTx, 0, len(block.Data.Txs))
@@ -430,11 +403,13 @@ func (e *BlockExecutor) Execute(ctx context.Context, state types.State, block *t
 			return nil, errors.New(res.GetException().GetError())
 		}
 
-		simulateFraud := e.simulateFraud && rand.Float64() < 0.5
-		_, err = e.setOrVerifyISR("deliver TX ISR", ISRs, generateISR, currISRIdx, simulateFraud)
+		_, err = e.setOrVerifyISR("deliverTx", ISRs, generateISR, currISRIdx)
 		currISRIdx++
-		if err == types.ErrInvalidISR {
-			e.generateFraudProof(&reqBeginBlock, deliverTxRequests, nil)
+		if err != nil {
+			if err == types.ErrInvalidISR {
+				e.generateFraudProof(&reqBeginBlock, deliverTxRequests, nil)
+			}
+			return nil, err
 		}
 	}
 
@@ -444,13 +419,15 @@ func (e *BlockExecutor) Execute(ctx context.Context, state types.State, block *t
 		return nil, err
 	}
 
-	ISRs, err = e.setOrVerifyISR("endblock ISR", ISRs, generateISR, currISRIdx, false)
+	ISRs, err = e.setOrVerifyISR("endblock ISR", ISRs, generateISR, currISRIdx)
 	currISRIdx++
-	if err == types.ErrInvalidISR {
-		e.generateFraudProof(&reqBeginBlock, deliverTxRequests, &reqEndBlock)
+	if err != nil {
+		if err == types.ErrInvalidISR {
+			e.generateFraudProof(&reqBeginBlock, deliverTxRequests, &reqEndBlock)
+		}
+		return nil, err
 	}
 
-	//TODO: add 'if enabled'
 	if blockISRs == nil {
 		//we've already valdiated we're the aggreator in this case
 		//double checking we've produced ISRs as expected
@@ -534,82 +511,3 @@ func fromDymintTxs(optiTxs types.Txs) tmtypes.Txs {
 	}
 	return txs
 }
-
-func (e *BlockExecutor) getAppHash() ([]byte, error) {
-	isrResp, err := e.proxyAppConsensusConn.GetAppHashSync(abci.RequestGetAppHash{})
-	if err != nil {
-		return nil, err
-	}
-	return isrResp.AppHash, nil
-}
-
-func (e *BlockExecutor) generateFraudProof(beginBlockRequest *abci.RequestBeginBlock, deliverTxRequests []*abci.RequestDeliverTx, endBlockRequest *abci.RequestEndBlock) (*abci.FraudProof, error) {
-	generateFraudProofRequest := abci.RequestGenerateFraudProof{}
-	if beginBlockRequest == nil {
-		return nil, fmt.Errorf("begin block request cannot be a nil parameter")
-	}
-	generateFraudProofRequest.BeginBlockRequest = *beginBlockRequest
-
-	if deliverTxRequests != nil {
-		generateFraudProofRequest.DeliverTxRequests = deliverTxRequests
-	} else {
-		panic("deliverTxRequests cannot be nil - fraudelet begin block not supported")
-	}
-	if endBlockRequest != nil {
-		generateFraudProofRequest.EndBlockRequest = endBlockRequest
-		panic("fraudelent endBlockRequest not supported")
-	}
-
-	resp, err := e.proxyAppConsensusConn.GenerateFraudProofSync(generateFraudProofRequest)
-	if err != nil {
-		return nil, err
-	}
-
-	fraud := resp.FraudProof
-	if fraud == nil {
-		e.logger.Error("fraud proof is nil")
-		return nil, errors.New("fraud proof is nil")
-	}
-
-	// Open a new file for writing only
-	file, err := os.Create("fraudProof_rollapp_with_tx.json")
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
-	// Serialize the struct to JSON and write it to the file
-	jsonEncoder := json.NewEncoder(file)
-	err = jsonEncoder.Encode(fraud)
-	if err != nil {
-		return nil, err
-	}
-
-	panic("fraud proof generated")
-	return fraud, nil
-}
-
-// func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
-// 	params tmproto.ValidatorParams) error {
-// 	for _, valUpdate := range abciUpdates {
-// 		if valUpdate.GetPower() < 0 {
-// 			return fmt.Errorf("voting power can't be negative %v", valUpdate)
-// 		} else if valUpdate.GetPower() == 0 {
-// 			// continue, since this is deleting the validator, and thus there is no
-// 			// pubkey to check
-// 			continue
-// 		}
-
-// 		// Check if validator's pubkey matches an ABCI type in the consensus params
-// 		pk, err := cryptoenc.PubKeyFromProto(valUpdate.PubKey)
-// 		if err != nil {
-// 			return err
-// 		}
-
-// 		if !tmtypes.IsValidPubkeyType(params, pk.Type()) {
-// 			return fmt.Errorf("validator %v is using pubkey %s, which is unsupported for consensus",
-// 				valUpdate, pk.Type())
-// 		}
-// 	}
-// 	return nil
-// }

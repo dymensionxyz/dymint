@@ -2,6 +2,7 @@ package block
 
 import (
 	"context"
+	"fmt"
 
 	"cosmossdk.io/errors"
 	"github.com/dymensionxyz/dymint/p2p"
@@ -41,10 +42,30 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 		return err
 	}
 
+	//if we are the sequencer, we need to make sure the ISRs stored
+	saveWithISRs := false
+	if m.proposerKey != nil && block.Data.IntermediateStateRoots.RawRootsList == nil {
+		saveWithISRs = true
+	}
+
 	responses, err := m.executeBlock(ctx, block, commit)
 	if err != nil {
 		m.logger.Error("Failed to execute block", "error", err)
 		return err
+	}
+
+	if block.Data.IntermediateStateRoots.RawRootsList == nil {
+		m.logger.Error("Failed to get intermediate state roots")
+		return fmt.Errorf("failed to get intermediate state roots")
+	}
+
+	if saveWithISRs {
+		// overwrite the block, now with ISRs
+		_, err = m.store.SaveBlock(block, commit, nil)
+		if err != nil {
+			m.logger.Error("Failed to save block", "error", err)
+			return err
+		}
 	}
 
 	newState, err := m.executor.UpdateStateFromResponses(responses, m.lastState, block)
