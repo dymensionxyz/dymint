@@ -15,9 +15,9 @@ import (
 
 	mock "github.com/stretchr/testify/mock"
 
-	rollapptypes "github.com/dymensionxyz/dymension/x/rollapp/types"
+	rollapptypes "github.com/dymensionxyz/dymension/v3/x/rollapp/types"
 
-	sequencertypes "github.com/dymensionxyz/dymension/x/sequencer/types"
+	sequencertypes "github.com/dymensionxyz/dymension/v3/x/sequencer/types"
 
 	types "github.com/cosmos/cosmos-sdk/types"
 )
