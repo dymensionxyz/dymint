@@ -44,7 +44,7 @@ type BlockExecutor struct {
 
 // NewBlockExecutor creates new instance of BlockExecutor.
 // Proposer address and namespace ID will be used in all newly created blocks.
-func NewBlockExecutor(proposerAddress []byte, namespaceID string, chainID string, mempool mempool.Mempool, proxyApp proxy.AppConns, eventBus *tmtypes.EventBus, logger log.Logger) (*BlockExecutor, error) {
+func NewBlockExecutor(proposerAddress []byte, namespaceID string, chainID string, mempool mempool.Mempool, proxyApp proxy.AppConns, eventBus *tmtypes.EventBus, logger log.Logger, simulateFraud bool) (*BlockExecutor, error) {
 	bytes, err := hex.DecodeString(namespaceID)
 	if err != nil {
 		return nil, err
@@ -58,7 +58,7 @@ func NewBlockExecutor(proposerAddress []byte, namespaceID string, chainID string
 		mempool:               mempool,
 		eventBus:              eventBus,
 		logger:                logger,
-		simulateFraud:         true, //FIXME: add as flag
+		simulateFraud:         simulateFraud,
 	}
 	copy(be.namespaceID[:], bytes)
 	return &be, nil

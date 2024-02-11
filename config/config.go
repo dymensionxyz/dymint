@@ -53,6 +53,8 @@ type BlockManagerConfig struct {
 	BlockBatchMaxSizeBytes uint64 `mapstructure:"block_batch_max_size_bytes"`
 	// The number of messages cached by gossipsub protocol
 	GossipedBlocksCacheSize int `mapstructure:"gossiped_blocks_cache_size"`
+	// When true, the block manager will simulate fraud - USED FOR TESTING PURPOSES ONLY
+	SimulateFraud bool `mapstructure:"simulate_fraud"`
 }
 
 // GetViperConfig reads configuration parameters from Viper instance.

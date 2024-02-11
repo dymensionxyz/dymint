@@ -16,6 +16,7 @@ const (
 	flagNamespaceID            = "dymint.namespace_id"
 	flagBlockBatchSize         = "dymint.block_batch_size"
 	flagBlockBatchMaxSizeBytes = "dymint.block_batch_max_size_bytes"
+	flagSimulateFraud          = "dymint.simulate_fraud"
 )
 
 const (
@@ -59,6 +60,8 @@ func AddNodeFlags(cmd *cobra.Command) {
 	cmd.Flags().Uint64(flagSLGasLimit, def.SettlementConfig.GasLimit, "Settlement Layer batch submit gas limit")
 	cmd.Flags().String(flagRollappID, def.SettlementConfig.RollappID, "The chainID of the rollapp")
 
+	//simulate fraud
+	cmd.Flags().Bool(flagSimulateFraud, false, "simulate fraud")
 }
 
 func BindDymintFlags(cmd *cobra.Command, v *viper.Viper) error {
@@ -116,5 +119,9 @@ func BindDymintFlags(cmd *cobra.Command, v *viper.Viper) error {
 	if err := v.BindPFlag("rollapp_id", cmd.Flags().Lookup(flagRollappID)); err != nil {
 		return err
 	}
+	if err := v.BindPFlag("simulate_fraud", cmd.Flags().Lookup(flagSimulateFraud)); err != nil {
+		return err
+	}
+
 	return nil
 }
