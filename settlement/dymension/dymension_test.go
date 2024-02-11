@@ -24,8 +24,8 @@ import (
 	coretypes "github.com/tendermint/tendermint/rpc/core/types"
 
 	"github.com/dymensionxyz/cosmosclient/cosmosclient"
-	rollapptypes "github.com/dymensionxyz/dymension/x/rollapp/types"
-	sequencertypes "github.com/dymensionxyz/dymension/x/sequencer/types"
+	rollapptypes "github.com/dymensionxyz/dymension/v3/x/rollapp/types"
+	sequencertypes "github.com/dymensionxyz/dymension/v3/x/sequencer/types"
 	"github.com/dymensionxyz/dymint/da"
 	mocks "github.com/dymensionxyz/dymint/mocks"
 	settlementmocks "github.com/dymensionxyz/dymint/mocks/settlement"
