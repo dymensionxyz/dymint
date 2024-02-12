@@ -29,7 +29,7 @@ func (e *BlockExecutor) setOrVerifyISR(phase string, ISRs [][]byte, generateISR 
 
 	//sequencer mode
 	if generateISR {
-		e.logger.Info(phase, "ISR", hex.EncodeToString(isr))
+		e.logger.Debug(phase, "ISR", hex.EncodeToString(isr))
 		simulateFraud := phase == "deliverTx" && e.simulateFraud && rand.Float64() < 0.5
 		if simulateFraud {
 			e.logger.Info("simulating fraud", "phase", phase)
@@ -41,7 +41,7 @@ func (e *BlockExecutor) setOrVerifyISR(phase string, ISRs [][]byte, generateISR 
 	}
 
 	//verifier mode
-	e.logger.Info("verifying ISR", "phase", phase)
+	e.logger.Debug("verifying ISR", "phase", phase)
 	if e.fraudProofsEnabled && !bytes.Equal(isr, ISRs[idx]) {
 		e.logger.Error(phase, "ISR mismatch", "ISR", hex.EncodeToString(isr), "expected", hex.EncodeToString(ISRs[idx]))
 		return nil, types.ErrInvalidISR
