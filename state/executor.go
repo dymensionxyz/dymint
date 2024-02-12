@@ -435,7 +435,6 @@ func (e *BlockExecutor) Execute(ctx context.Context, state types.State, block *t
 			e.logger.Error("ISR count mismatch", "expected", expectedISRCount, "actual", len(blockISRs))
 			return nil, errors.New("ISR count mismatch")
 		}
-		e.logger.Info("setting ISRs")
 		block.Data.IntermediateStateRoots.RawRootsList = ISRs
 		return abciResponses, nil
 	}
