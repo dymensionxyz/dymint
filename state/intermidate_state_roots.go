@@ -33,7 +33,7 @@ func (e *BlockExecutor) setOrVerifyISR(phase string, ISRs [][]byte, generateISR 
 		simulateFraud := phase == "deliverTx" && e.simulateFraud && rand.Float64() < 0.5
 		if simulateFraud {
 			e.logger.Info("simulating fraud", "phase", phase)
-			isr = []byte("fraud")
+			isr = bytes.Repeat([]byte("a"), 32)
 		}
 
 		ISRs[idx] = isr
