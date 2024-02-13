@@ -12,7 +12,7 @@ require (
 	github.com/cosmos/cosmos-sdk v0.46.15
 	github.com/dgraph-io/badger/v3 v3.2103.3
 	github.com/dymensionxyz/cosmosclient v0.4.2-beta
-	github.com/dymensionxyz/dymension v0.2.0-beta.0.20230607115558-745644a96ea6
+	github.com/dymensionxyz/dymension/v3 v3.0.0-rc02.0.20240211193346-b95fe7063196
 	github.com/go-kit/kit v0.12.0
 	github.com/gofrs/uuid v4.3.0+incompatible
 	github.com/gogo/protobuf v1.3.3
@@ -57,7 +57,6 @@ require (
 	github.com/btcsuite/btcd v0.23.4 // indirect
 	github.com/btcsuite/btcd/btcec/v2 v2.3.2 // indirect
 	github.com/btcsuite/btcd/chaincfg/chainhash v1.0.1 // indirect
-	github.com/btcsuite/btcutil v1.0.3-0.20201208143702-a53e38424cce // indirect
 	github.com/celestiaorg/go-fraud v0.2.0 // indirect
 	github.com/celestiaorg/go-header v0.4.0 // indirect
 	github.com/celestiaorg/merkletree v0.0.0-20210714075610-a84dc3ddbbe4 // indirect
@@ -84,7 +83,6 @@ require (
 	github.com/google/pprof v0.0.0-20230817174616-7a8ec2ada47b // indirect
 	github.com/hashicorp/go-uuid v1.0.1 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.5 // indirect
-	github.com/holiman/uint256 v1.2.2 // indirect
 	github.com/ipfs/go-log v1.0.5 // indirect
 	github.com/klauspost/reedsolomon v1.11.8 // indirect
 	github.com/lib/pq v1.10.7 // indirect
@@ -97,7 +95,6 @@ require (
 	github.com/quic-go/quic-go v0.37.6 // indirect
 	github.com/quic-go/webtransport-go v0.5.3 // indirect
 	github.com/satori/go.uuid v1.2.0 // indirect
-	github.com/shirou/gopsutil v3.21.6+incompatible // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/tecbot/gorocksdb v0.0.0-20191217155057-f0fad39f321c // indirect
 	github.com/tidwall/btree v1.5.0 // indirect
@@ -115,7 +112,6 @@ require (
 	go.uber.org/fx v1.20.0 // indirect
 	golang.org/x/exp v0.0.0-20230817173708-d852ddb80c63 // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
-	google.golang.org/api v0.149.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20240125205218-1f4bbc51befe // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240116215550-a9fa1716bcac // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
@@ -256,9 +252,9 @@ require (
 )
 
 require (
+	github.com/btcsuite/btcd/btcutil v1.1.3 // indirect
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
 	github.com/chrispappas/golang-generics-set v1.0.1 // indirect
-	github.com/dymensionxyz/dymension/v3 v3.0.0-rc02.0.20240211193346-b95fe7063196 // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20190812055157-5d271430af9f // indirect
 	github.com/prometheus/common v0.42.0 // indirect
 	github.com/smartystreets/assertions v1.0.1 // indirect
@@ -267,9 +263,13 @@ require (
 
 replace (
 	github.com/centrifuge/go-substrate-rpc-client/v4 => github.com/availproject/go-substrate-rpc-client/v4 v4.0.12-avail-1.4.0-rc1-5e286e3
-	github.com/cosmos/cosmos-sdk => github.com/dymensionxyz/cosmos-sdk v0.46.15-fraudproof-0.0.1
+	github.com/cosmos/cosmos-sdk => github.com/dymensionxyz/cosmos-sdk v0.46.17-0.20240212135616-6c0aa8eab048
 
 	github.com/cosmos/iavl => github.com/celestiaorg/iavl v0.0.0-20230105192234-715b65a7ecf1
+
+	// use Evmos geth fork
+	github.com/ethereum/go-ethereum => github.com/evmos/go-ethereum v1.10.26
+	github.com/evmos/evmos/v12 => github.com/dymensionxyz/evmos/v12 v12.1.7-0.20240204135715-145b7145c0b3
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.2-alpha.regen.4
 	github.com/gorilla/rpc => github.com/dymensionxyz/rpc v1.3.1
 	github.com/libp2p/go-libp2p-pubsub => github.com/dymensionxyz/go-libp2p-pubsub v0.0.0-20231220125656-9e904c648367
