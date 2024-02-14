@@ -280,8 +280,8 @@ func TestRetrievalWrongCommitment(t *testing.T) {
 	retriever := dalc.(da.BatchRetriever)
 
 	h1 := &da.DASubmitMetaData{
-		Height:      1,
-		Commitments: []da.Commitment{commitment},
+		Height:     1,
+		Commitment: commitment,
 	}
 	retreiveRes := retriever.RetrieveBatches(h1)
 	assert.Equal(da.StatusBlobNotFound, retreiveRes.Code)

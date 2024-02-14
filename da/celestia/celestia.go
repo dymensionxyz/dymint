@@ -194,7 +194,6 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			},
 		}
 	}
-	blobs := [][]byte{data}
 
 	if len(data) > celtypes.DefaultMaxBytes {
 		return da.ResultSubmitBatch{
@@ -214,7 +213,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 
 			c.logger.Info("Submitting DA batch")
 			//TODO(srene):  Split batch in multiple blobs if necessary if supported
-			height, commitments, err := c.submit(blobs)
+			height, commitment, err := c.submit(data)
 
 			if err != nil {
 				c.logger.Error("Failed to submit DA batch. Emitting health event and trying again", "error", err)
@@ -227,8 +226,8 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			}
 
 			daMetaData := &da.DASubmitMetaData{
-				Height:      height,
-				Commitments: commitments,
+				Height:     height,
+				Commitment: commitment,
 			}
 
 			availabilityResult := c.CheckBatchAvailability(daMetaData)
@@ -262,7 +261,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
 
 	//Just for backward compatibility, in case no commitments are sent from the Hub, batch can be retrieved using previous implementation.
-	if daMetaData.Commitments == nil || len(daMetaData.Commitments) == 0 {
+	if daMetaData.Commitment == nil {
 		return c.retrieveBatches(daMetaData.Height)
 	}
 
@@ -273,42 +272,42 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 			return da.ResultRetrieveBatch{}
 		default:
 			var batches []*types.Batch
-			for _, commitment := range daMetaData.Commitments {
-				blob, err := c.rpc.Get(c.ctx, daMetaData.Height, c.config.NamespaceID.Bytes(), commitment)
-				if err != nil {
-					return da.ResultRetrieveBatch{
-						BaseDACheckResult: da.BaseDACheckResult{
-							Code:    da.StatusBlobNotFound,
-							Message: err.Error(),
-						},
-					}
+			//for _, commitment := range daMetaData.Commitments {
+			blob, err := c.rpc.Get(c.ctx, daMetaData.Height, c.config.NamespaceID.Bytes(), daMetaData.Commitment)
+			if err != nil {
+				return da.ResultRetrieveBatch{
+					BaseDACheckResult: da.BaseDACheckResult{
+						Code:    da.StatusBlobNotFound,
+						Message: err.Error(),
+					},
 				}
-				if blob == nil {
-					return da.ResultRetrieveBatch{
-						BaseDACheckResult: da.BaseDACheckResult{
-							Code:    da.StatusBlobNotFound,
-							Message: "Blob not found",
-						},
-					}
-				}
-
-				var batch pb.Batch
-				err = proto.Unmarshal(blob.Data, &batch)
-				if err != nil {
-					c.logger.Error("failed to unmarshal block", "daHeight", daMetaData.Height, "error", err)
-				}
-				parsedBatch := new(types.Batch)
-				err = parsedBatch.FromProto(&batch)
-				if err != nil {
-					return da.ResultRetrieveBatch{
-						BaseDACheckResult: da.BaseDACheckResult{
-							Code:    da.StatusError,
-							Message: err.Error(),
-						},
-					}
-				}
-				batches = append(batches, parsedBatch)
 			}
+			if blob == nil {
+				return da.ResultRetrieveBatch{
+					BaseDACheckResult: da.BaseDACheckResult{
+						Code:    da.StatusBlobNotFound,
+						Message: "Blob not found",
+					},
+				}
+			}
+
+			var batch pb.Batch
+			err = proto.Unmarshal(blob.Data, &batch)
+			if err != nil {
+				c.logger.Error("failed to unmarshal block", "daHeight", daMetaData.Height, "error", err)
+			}
+			parsedBatch := new(types.Batch)
+			err = parsedBatch.FromProto(&batch)
+			if err != nil {
+				return da.ResultRetrieveBatch{
+					BaseDACheckResult: da.BaseDACheckResult{
+						Code:    da.StatusError,
+						Message: err.Error(),
+					},
+				}
+			}
+			batches = append(batches, parsedBatch)
+			//}
 			return da.ResultRetrieveBatch{
 				BaseDACheckResult: da.BaseDACheckResult{
 					Code:    da.StatusSuccess,
@@ -362,14 +361,12 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(dataLayerHeight uint64) da
 
 func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
 
-	var numShares []int
-	var indexes []int
 	var proofs []*blob.Proof
 
 	DACheckMetaData := &da.DACheckMetaData{}
 	DACheckMetaData.Height = daMetaData.Height
 	DACheckMetaData.Client = daMetaData.Client
-	DACheckMetaData.Commitments = daMetaData.Commitments
+	DACheckMetaData.Commitment = daMetaData.Commitment
 
 	dah, err := c.getDataAvailabilityHeaders(daMetaData.Height)
 	if err != nil {
@@ -384,81 +381,79 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 		}
 	}
 	DACheckMetaData.Root = dah.Hash()
-	for i, commitment := range daMetaData.Commitments {
-		included := false
+	included := false
 
-		proof, err := c.getProof(daMetaData.Height, commitment)
-		if err != nil || proof == nil {
+	proof, err := c.getProof(daMetaData.Height, daMetaData.Commitment)
+	if err != nil || proof == nil {
 
-			//TODO (srene): Not getting proof means there is no existing data for the namespace and the commitment (the commitment is wrong).
-			//Therefore we need to prove whether the commitment is wrong or the span does not exists.
-			//In case the span is correct it is necessary to return the data for the span and the proofs to the data root, so we can prove the data
-			//is the data for the span, and reproducing the commitment will generate a different one.
-			return da.ResultCheckBatch{
-				DataAvailable: false,
-				BaseDACheckResult: da.BaseDACheckResult{
-					Code:          da.StatusUnableToGetProofs,
-					Message:       "Error getting NMT proofs",
-					CheckMetaData: DACheckMetaData,
-				},
-			}
+		//TODO (srene): Not getting proof means there is no existing data for the namespace and the commitment (the commitment is wrong).
+		//Therefore we need to prove whether the commitment is wrong or the span does not exists.
+		//In case the span is correct it is necessary to return the data for the span and the proofs to the data root, so we can prove the data
+		//is the data for the span, and reproducing the commitment will generate a different one.
+		return da.ResultCheckBatch{
+			DataAvailable: false,
+			BaseDACheckResult: da.BaseDACheckResult{
+				Code:          da.StatusUnableToGetProofs,
+				Message:       "Error getting NMT proofs",
+				CheckMetaData: DACheckMetaData,
+			},
 		}
-
-		nmtProofs := []*nmt.Proof(*proof)
-		shares := 0
-		for j, proof := range nmtProofs {
-			if j == 0 {
-				indexes = append(indexes, proof.Start())
-			}
-			shares += proof.End() - proof.Start()
-		}
-		numShares = append(numShares, shares)
-
-		if daMetaData.Indexes != nil && daMetaData.Lengths != nil {
-			if indexes[i] != daMetaData.Indexes[i] || shares != daMetaData.Lengths[i] {
-
-				//TODO (srene): In this case the commitment is correct but does not match the span.
-				//If the span is correct we have to repeat the previous step (sending data + proof of data)
-				//In case the span is not correct we need to send unavailable proof by sending proof of any row root to data root
-				return da.ResultCheckBatch{
-					DataAvailable: false,
-					BaseDACheckResult: da.BaseDACheckResult{
-						Code:          da.StatusProofNotMatching,
-						Message:       "Proof index not matching",
-						CheckMetaData: DACheckMetaData,
-					},
-				}
-			}
-		}
-
-		included, err = c.validateProof(daMetaData.Height, commitment, proof)
-		//The both cases below (there is an error validating the proof or the proof is wrong) should not happen
-		//if we consider correct functioning of the celestia light node.
-		//This will only happen in case the previous step the celestia light node returned wrong proofs..
-		if err != nil {
-			return da.ResultCheckBatch{
-				DataAvailable: false,
-				BaseDACheckResult: da.BaseDACheckResult{
-					Code:          da.StatusError,
-					Message:       "Error validating proof",
-					CheckMetaData: DACheckMetaData,
-				},
-			}
-		} else if !included {
-			return da.ResultCheckBatch{
-				DataAvailable: false,
-				BaseDACheckResult: da.BaseDACheckResult{
-					Code:          da.StatusError,
-					Message:       "Blob not included",
-					CheckMetaData: DACheckMetaData,
-				},
-			}
-		}
-		proofs = append(proofs, proof)
 	}
 
-	DACheckMetaData.Indexes = indexes
-	DACheckMetaData.Lengths = numShares
+	nmtProofs := []*nmt.Proof(*proof)
+	shares := 0
+	index := 0
+	for j, proof := range nmtProofs {
+		if j == 0 {
+			index = proof.Start()
+		}
+		shares += proof.End() - proof.Start()
+	}
+
+	if daMetaData.Index > 0 && daMetaData.Length > 0 {
+		if index != daMetaData.Index || shares != daMetaData.Length {
+
+			//TODO (srene): In this case the commitment is correct but does not match the span.
+			//If the span is correct we have to repeat the previous step (sending data + proof of data)
+			//In case the span is not correct we need to send unavailable proof by sending proof of any row root to data root
+			return da.ResultCheckBatch{
+				DataAvailable: false,
+				BaseDACheckResult: da.BaseDACheckResult{
+					Code:          da.StatusProofNotMatching,
+					Message:       "Proof index not matching",
+					CheckMetaData: DACheckMetaData,
+				},
+			}
+		}
+	}
+
+	included, err = c.validateProof(daMetaData.Height, daMetaData.Commitment, proof)
+	//The both cases below (there is an error validating the proof or the proof is wrong) should not happen
+	//if we consider correct functioning of the celestia light node.
+	//This will only happen in case the previous step the celestia light node returned wrong proofs..
+	if err != nil {
+		return da.ResultCheckBatch{
+			DataAvailable: false,
+			BaseDACheckResult: da.BaseDACheckResult{
+				Code:          da.StatusError,
+				Message:       "Error validating proof",
+				CheckMetaData: DACheckMetaData,
+			},
+		}
+	} else if !included {
+		return da.ResultCheckBatch{
+			DataAvailable: false,
+			BaseDACheckResult: da.BaseDACheckResult{
+				Code:          da.StatusError,
+				Message:       "Blob not included",
+				CheckMetaData: DACheckMetaData,
+			},
+		}
+	}
+	proofs = append(proofs, proof)
+
+	DACheckMetaData.Index = index
+	DACheckMetaData.Length = shares
 	DACheckMetaData.Proofs = proofs
 	return da.ResultCheckBatch{
 		DataAvailable: true,
@@ -486,8 +481,8 @@ func (c *DataAvailabilityLayerClient) GetInclusionProofsCommitment(height uint64
 }
 
 // Submit submits the Blobs to Data Availability layer.
-func (c *DataAvailabilityLayerClient) submit(daBlobs []da.Blob) (uint64, []da.Commitment, error) {
-	blobs, commitments, err := c.blobsAndCommitments(daBlobs)
+func (c *DataAvailabilityLayerClient) submit(daBlob da.Blob) (uint64, da.Commitment, error) {
+	blobs, commitments, err := c.blobsAndCommitments(daBlob)
 	if err != nil {
 		return 0, nil, err
 	}
@@ -514,7 +509,7 @@ func (c *DataAvailabilityLayerClient) submit(daBlobs []da.Blob) (uint64, []da.Co
 	}
 	c.logger.Info("Successfully submitted blobs to Celestia", "height", height, "gas", options.GasLimit, "fee", options.Fee)
 
-	return height, commitments, nil
+	return height, commitments[0], nil
 }
 
 func (c *DataAvailabilityLayerClient) getProof(height uint64, commitment da.Commitment) (*blob.Proof, error) {
@@ -532,23 +527,21 @@ func (c *DataAvailabilityLayerClient) getProof(height uint64, commitment da.Comm
 
 }
 
-func (c *DataAvailabilityLayerClient) blobsAndCommitments(daBlobs []da.Blob) ([]*blob.Blob, []da.Commitment, error) {
+func (c *DataAvailabilityLayerClient) blobsAndCommitments(daBlob da.Blob) ([]*blob.Blob, []da.Commitment, error) {
 	var blobs []*blob.Blob
 	var commitments []da.Commitment
-	for _, daBlob := range daBlobs {
-		b, err := blob.NewBlobV0(c.config.NamespaceID.Bytes(), daBlob)
-		if err != nil {
-			return nil, nil, err
-		}
-		blobs = append(blobs, b)
-
-		commitment, err := blob.CreateCommitment(b)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		commitments = append(commitments, commitment)
+	b, err := blob.NewBlobV0(c.config.NamespaceID.Bytes(), daBlob)
+	if err != nil {
+		return nil, nil, err
 	}
+	blobs = append(blobs, b)
+
+	commitment, err := blob.CreateCommitment(b)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	commitments = append(commitments, commitment)
 	return blobs, commitments, nil
 }
 

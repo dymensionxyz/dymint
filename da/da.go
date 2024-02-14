@@ -77,11 +77,11 @@ type DASubmitMetaData struct {
 	// Client is the client to use to fetch data from the da layer
 	Client Client
 	//Share commitment, for each blob, used to obtain blobs and proofs
-	Commitments []Commitment
+	Commitment Commitment
 	//Initial position for each blob in the NMT
-	Indexes []int
+	Index int
 	//Number of shares of each blob
-	Lengths []int
+	Length int
 	//any NMT root for the specific height, necessary for non-inclusion proof
 	Root []byte
 }
@@ -93,11 +93,11 @@ type DACheckMetaData struct {
 	// Client is the client to use to fetch data from the da layer
 	Client Client
 	//Share commitment, for each blob, used to obtain blobs and proofs
-	Commitments []Commitment
+	Commitment Commitment
 	//Initial position for each blob in the NMT
-	Indexes []int
+	Index int
 	//Number of shares of each blob
-	Lengths []int
+	Length int
 	//Proofs necessary to validate blob inclusion in the specific height
 	Proofs []*blob.Proof
 	//Proofs necessary to validate blob inclusion in the specific height
@@ -109,8 +109,8 @@ type DACheckMetaData struct {
 // ToPath converts a DAMetaData to a path.
 func (d *DASubmitMetaData) ToPath() string {
 	// convert uint64 to string
-	if len(d.Indexes) > 0 {
-		path := []string{string(d.Client), ".", strconv.FormatUint(d.Height, 10), ".", strconv.Itoa(d.Indexes[0]), ".", strconv.Itoa(d.Lengths[0]), ".", string(d.Commitments[0])}
+	if d.Length > 0 {
+		path := []string{string(d.Client), ".", strconv.FormatUint(d.Height, 10), ".", strconv.Itoa(d.Index), ".", strconv.Itoa(d.Length), ".", string(d.Commitment)}
 		return strings.Join(path, "")
 	} else {
 		path := []string{string(d.Client), ".", strconv.FormatUint(d.Height, 10)}
@@ -137,11 +137,11 @@ func (d *DASubmitMetaData) FromPath(path string) (*DASubmitMetaData, error) {
 		commitment := []byte(pathParts[4])
 
 		return &DASubmitMetaData{
-			Height:      height,
-			Client:      Client(pathParts[0]),
-			Indexes:     []int{index},
-			Lengths:     []int{length},
-			Commitments: [][]byte{commitment},
+			Height:     height,
+			Client:     Client(pathParts[0]),
+			Index:      index,
+			Length:     length,
+			Commitment: commitment,
 		}, nil
 	} else {
 		return &DASubmitMetaData{
