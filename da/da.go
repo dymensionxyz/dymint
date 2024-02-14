@@ -109,8 +109,13 @@ type DACheckMetaData struct {
 // ToPath converts a DAMetaData to a path.
 func (d *DASubmitMetaData) ToPath() string {
 	// convert uint64 to string
-	path := []string{string(d.Client), ".", strconv.FormatUint(d.Height, 10)}
-	return strings.Join(path, "")
+	if len(d.Indexes) > 0 {
+		path := []string{string(d.Client), ".", strconv.FormatUint(d.Height, 10), ".", strconv.Itoa(d.Indexes[0]), ".", strconv.Itoa(d.Lengths[0]), ".", string(d.Commitments[0])}
+		return strings.Join(path, "")
+	} else {
+		path := []string{string(d.Client), ".", strconv.FormatUint(d.Height, 10)}
+		return strings.Join(path, "")
+	}
 }
 
 // FromPath parses a path to a DAMetaData.
@@ -120,10 +125,30 @@ func (d *DASubmitMetaData) FromPath(path string) (*DASubmitMetaData, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &DASubmitMetaData{
-		Height: height,
-		Client: Client(pathParts[0]),
-	}, nil
+	if len(pathParts) > 2 {
+		index, err := strconv.Atoi(pathParts[2])
+		if err != nil {
+			return nil, err
+		}
+		length, err := strconv.Atoi(pathParts[3])
+		if err != nil {
+			return nil, err
+		}
+		commitment := []byte(pathParts[4])
+
+		return &DASubmitMetaData{
+			Height:      height,
+			Client:      Client(pathParts[0]),
+			Indexes:     []int{index},
+			Lengths:     []int{length},
+			Commitments: [][]byte{commitment},
+		}, nil
+	} else {
+		return &DASubmitMetaData{
+			Height: height,
+			Client: Client(pathParts[0]),
+		}, nil
+	}
 }
 
 // ResultSubmitBatch contains information returned from DA layer after block submission.

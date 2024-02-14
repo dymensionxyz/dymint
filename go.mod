@@ -1,6 +1,8 @@
 module github.com/dymensionxyz/dymint
 
-go 1.20
+go 1.21
+
+toolchain go1.22.0
 
 require (
 	code.cloudfoundry.org/go-diodes v0.0.0-20220725190411-383eb6634c40
@@ -63,7 +65,7 @@ require (
 	github.com/celestiaorg/merkletree v0.0.0-20210714075610-a84dc3ddbbe4 // indirect
 	github.com/celestiaorg/nmt v0.20.0
 	github.com/celestiaorg/rsmt2d v0.11.0 // indirect
-	github.com/cometbft/cometbft v0.37.2 // indirect
+	github.com/cometbft/cometbft v0.37.2
 	github.com/cometbft/cometbft-db v0.7.0 // indirect
 	github.com/cosmos/cosmos-proto v1.0.0-beta.3 // indirect
 	github.com/cosmos/gogoproto v1.4.11 // indirect
