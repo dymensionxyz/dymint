@@ -228,6 +228,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			daMetaData := &da.DASubmitMetaData{
 				Height:     height,
 				Commitment: commitment,
+				Namespace:  c.config.NamespaceID.Bytes(),
 			}
 
 			availabilityResult := c.CheckBatchAvailability(daMetaData)
@@ -455,6 +456,7 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 	DACheckMetaData.Index = index
 	DACheckMetaData.Length = shares
 	DACheckMetaData.Proofs = proofs
+	DACheckMetaData.Namespace = c.config.NamespaceID.Bytes()
 	return da.ResultCheckBatch{
 		DataAvailable: true,
 		BaseDACheckResult: da.BaseDACheckResult{
@@ -466,18 +468,18 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 }
 
 // TODO (srene): Add tests for GetInclusionProofs
-func (c *DataAvailabilityLayerClient) GetInclusionProofsCommitment(height uint64, blob *blob.Blob, proof *blob.Proof, commitment da.Commitment) (*blob.Proof, []*merkle.Proof, error) {
+func (c *DataAvailabilityLayerClient) GetInclusionProofsCommitment(height uint64, blob *blob.Blob, proof *blob.Proof, commitment da.Commitment) ([][]byte, []*merkle.Proof, error) {
 
 	dah, err := c.getDataAvailabilityHeaders(height)
 	if err != nil {
 		return nil, nil, err
 	}
-	rowProof, err := c.getRowProof(height, dah, blob, commitment, proof)
+	rowRoots, rowProof, err := c.getRowProof(height, dah, blob, commitment, proof)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return proof, rowProof, nil
+	return rowRoots, rowProof, nil
 }
 
 // Submit submits the Blobs to Data Availability layer.
@@ -568,17 +570,18 @@ func (c *DataAvailabilityLayerClient) getDataAvailabilityHeaders(height uint64) 
 
 }
 
-func (c *DataAvailabilityLayerClient) getRowProof(height uint64, dah *header.DataAvailabilityHeader, b *blob.Blob, commitment []byte, proof *blob.Proof) ([]*merkle.Proof, error) {
+func (c *DataAvailabilityLayerClient) getRowProof(height uint64, dah *header.DataAvailabilityHeader, b *blob.Blob, commitment []byte, proof *blob.Proof) ([][]byte, []*merkle.Proof, error) {
 
 	_, allProofs := merkle.ProofsFromByteSlices(append(dah.RowRoots, dah.ColumnRoots...))
 
 	shares, err := blob.SplitBlobs(*b)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	var proofs []*merkle.Proof
 	nmtProofs := []*nmt.Proof(*proof)
 
+	var rowRoots [][]byte
 	index := 0
 	for i, nmtProof := range nmtProofs {
 		sharesNum := nmtProof.End() - nmtProof.Start()
@@ -592,6 +595,7 @@ func (c *DataAvailabilityLayerClient) getRowProof(height uint64, dah *header.Dat
 			if nmtProof.VerifyInclusion(sha256.New(), c.config.NamespaceID.Bytes(), leafs, rowRoot) {
 				for _, rProof := range allProofs {
 					if rProof.Verify(dah.Hash(), rowRoot) == nil {
+						rowRoots = append(rowRoots, rowRoot)
 						proofs = append(proofs, rProof)
 						break
 					}
@@ -604,5 +608,5 @@ func (c *DataAvailabilityLayerClient) getRowProof(height uint64, dah *header.Dat
 		index += sharesNum
 	}
 
-	return proofs, err
+	return rowRoots, proofs, err
 }
