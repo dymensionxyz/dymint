@@ -94,6 +94,8 @@ type DACheckMetaData struct {
 	Height uint64
 	// Client is the client to use to fetch data from the da layer
 	Client Client
+	// Submission index in the Hub
+	SLIndex uint64
 	// Namespace ID
 	Namespace []byte
 	//Share commitment, for each blob, used to obtain blobs and proofs

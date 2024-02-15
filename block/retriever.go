@@ -123,6 +123,9 @@ func (m *Manager) fetchBatch(daMetaData *da.DASubmitMetaData) (da.ResultRetrieve
 		batchRes.Code = da.StatusError
 		batchRes.Message = "Error validating data"
 		batchRes.CheckMetaData = availRes.CheckMetaData
+		if batchRes.CheckMetaData != nil {
+			batchRes.CheckMetaData.SLIndex = atomic.LoadUint64(&m.lastState.SLStateIndex)
+		}
 		return batchRes, err
 
 	}
