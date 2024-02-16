@@ -118,7 +118,7 @@ type DACheckMetaData struct {
 func (d *DASubmitMetaData) ToPath() string {
 	// convert uint64 to string
 	if d.Length > 0 {
-		path := []string{string(d.Client), ".", strconv.FormatUint(d.Height, 10), ".", strconv.Itoa(d.Index), ".", strconv.Itoa(d.Length), ".", string(d.Commitment), ".", string(d.Namespace)}
+		path := []string{string(d.Client), ".", strconv.FormatUint(d.Height, 10), ".", strconv.Itoa(d.Index), ".", strconv.Itoa(d.Length), ".", string(d.Commitment), ".", string(d.Namespace), ".", string(d.Root)}
 		return strings.Join(path, "")
 	} else {
 		path := []string{string(d.Client), ".", strconv.FormatUint(d.Height, 10)}
@@ -144,6 +144,7 @@ func (d *DASubmitMetaData) FromPath(path string) (*DASubmitMetaData, error) {
 		}
 		commitment := []byte(pathParts[4])
 		namespace := []byte(pathParts[5])
+		root := []byte(pathParts[6])
 		return &DASubmitMetaData{
 			Height:     height,
 			Client:     Client(pathParts[0]),
@@ -151,6 +152,7 @@ func (d *DASubmitMetaData) FromPath(path string) (*DASubmitMetaData, error) {
 			Length:     length,
 			Commitment: commitment,
 			Namespace:  namespace,
+			Root:       root,
 		}, nil
 	} else {
 		return &DASubmitMetaData{

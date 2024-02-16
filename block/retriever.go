@@ -126,6 +126,7 @@ func (m *Manager) fetchBatch(daMetaData *da.DASubmitMetaData) (da.ResultRetrieve
 		if batchRes.CheckMetaData != nil {
 			batchRes.CheckMetaData.SLIndex = atomic.LoadUint64(&m.lastState.SLStateIndex)
 		}
+
 		return batchRes, err
 
 	}
