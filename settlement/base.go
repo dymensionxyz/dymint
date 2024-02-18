@@ -3,12 +3,10 @@ package settlement
 import (
 	"context"
 	"fmt"
-	"sync/atomic"
 
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/log"
 	"github.com/dymensionxyz/dymint/types"
-	"github.com/dymensionxyz/dymint/utils"
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
@@ -16,7 +14,6 @@ import (
 type BaseLayerClient struct {
 	logger         log.Logger
 	pubsub         *pubsub.Server
-	latestHeight   uint64
 	sequencersList []*types.Sequencer
 	config         Config
 	ctx            context.Context
@@ -35,6 +32,7 @@ func WithHubClient(hubClient HubClient) Option {
 
 // Init is called once. it initializes the struct members.
 func (b *BaseLayerClient) Init(config Config, pubsub *pubsub.Server, logger log.Logger, options ...Option) error {
+	var err error
 	b.config = config
 	b.pubsub = pubsub
 	b.logger = logger
@@ -44,19 +42,6 @@ func (b *BaseLayerClient) Init(config Config, pubsub *pubsub.Server, logger log.
 		apply(b)
 	}
 
-	latestBatch, err := b.RetrieveBatch()
-	var endHeight uint64
-	if err != nil {
-		if err == ErrBatchNotFound {
-			endHeight = 0
-		} else {
-			return err
-		}
-	} else {
-		endHeight = latestBatch.EndHeight
-	}
-	b.latestHeight = endHeight
-	b.logger.Info("Updated latest height from settlement layer", "latestHeight", endHeight)
 	b.sequencersList, err = b.fetchSequencersList()
 	if err != nil {
 		return err
@@ -69,11 +54,6 @@ func (b *BaseLayerClient) Init(config Config, pubsub *pubsub.Server, logger log.
 // Start is called once, after init. It initializes the query client.
 func (b *BaseLayerClient) Start() error {
 	b.logger.Debug("settlement Layer Client starting.")
-
-	// Wait until the state updates handler is ready
-	ready := make(chan bool, 1)
-	go b.stateUpdatesHandler(ready)
-	<-ready
 
 	err := b.client.Start()
 	if err != nil {
@@ -95,13 +75,9 @@ func (b *BaseLayerClient) Stop() error {
 }
 
 // SubmitBatch tries submitting the batch in an async broadcast mode to the settlement layer. Events are emitted on success or failure.
-func (b *BaseLayerClient) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) {
+func (b *BaseLayerClient) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) error {
 	b.logger.Debug("Submitting batch to settlement layer", "start height", batch.StartHeight, "end height", batch.EndHeight)
-	err := b.validateBatch(batch)
-	if err != nil {
-		panic(err)
-	}
-	b.client.PostBatch(batch, daClient, daResult)
+	return b.client.PostBatch(batch, daClient, daResult)
 }
 
 // RetrieveBatch Gets the batch which contains the given slHeight. Empty slHeight returns the latest batch.
@@ -147,45 +123,4 @@ func (b *BaseLayerClient) fetchSequencersList() ([]*types.Sequencer, error) {
 		return nil, err
 	}
 	return sequencers, nil
-}
-
-func (b *BaseLayerClient) validateBatch(batch *types.Batch) error {
-	if batch.StartHeight != atomic.LoadUint64(&b.latestHeight)+1 {
-		return fmt.Errorf("batch start height != latest height + 1. StartHeight %d, lastetHeight %d", batch.StartHeight, atomic.LoadUint64(&b.latestHeight))
-	}
-	if batch.EndHeight < batch.StartHeight {
-		return fmt.Errorf("batch end height must be greater than start height. EndHeight %d, StartHeight %d", batch.EndHeight, batch.StartHeight)
-	}
-	return nil
-}
-
-func (b *BaseLayerClient) stateUpdatesHandler(ready chan bool) {
-	b.logger.Info("started state updates handler loop")
-	subscription, err := b.pubsub.Subscribe(b.ctx, "stateUpdatesHandler", EventQueryNewSettlementBatchAccepted)
-	if err != nil {
-		b.logger.Error("failed to subscribe to state update events", "error", err)
-		panic(err)
-	}
-	ready <- true
-	for {
-		select {
-		case event := <-subscription.Out():
-			eventData := event.Data().(*EventDataNewSettlementBatchAccepted)
-			b.logger.Debug("received state update event", "latestHeight", eventData.EndHeight)
-			atomic.StoreUint64(&b.latestHeight, eventData.EndHeight)
-			// Emit new batch event
-			newBatchEventData := &EventDataNewBatchAccepted{
-				EndHeight:  eventData.EndHeight,
-				StateIndex: eventData.StateIndex,
-			}
-			utils.SubmitEventOrPanic(b.ctx, b.pubsub, newBatchEventData,
-				map[string][]string{EventTypeKey: {EventNewBatchAccepted}})
-		case <-subscription.Cancelled():
-			b.logger.Info("stateUpdatesHandler subscription canceled")
-			return
-		case <-b.ctx.Done():
-			b.logger.Info("Context done. Exiting state update handler")
-			return
-		}
-	}
 }

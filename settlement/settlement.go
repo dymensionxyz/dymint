@@ -97,7 +97,7 @@ type LayerI interface {
 
 	// SubmitBatch tries submiting the batch in an async way to the settlement layer. This should create a transaction which (potentially)
 	// triggers a state transition in the settlement layer. Events are emitted on success or failure.
-	SubmitBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch)
+	SubmitBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) error
 
 	// RetrieveBatch Gets the batch which contains the given height. Empty height returns the latest batch.
 	RetrieveBatch(stateIndex ...uint64) (*ResultRetrieveBatch, error)
@@ -115,7 +115,7 @@ type LayerI interface {
 type HubClient interface {
 	Start() error
 	Stop() error
-	PostBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch)
+	PostBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) error
 	GetLatestBatch(rollappID string) (*ResultRetrieveBatch, error)
 	GetBatchAtIndex(rollappID string, index uint64) (*ResultRetrieveBatch, error)
 	GetSequencers(rollappID string) ([]*types.Sequencer, error)

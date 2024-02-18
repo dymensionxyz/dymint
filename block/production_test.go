@@ -3,6 +3,7 @@ package block
 import (
 	"context"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/dymensionxyz/dymint/config"
 	"github.com/dymensionxyz/dymint/mempool"
 	mempoolv1 "github.com/dymensionxyz/dymint/mempool/v1"
+	"github.com/dymensionxyz/dymint/types"
 	tmcfg "github.com/tendermint/tendermint/config"
 
 	"github.com/dymensionxyz/dymint/testutil"
@@ -193,11 +195,63 @@ func TestBatchSubmissionAfterTimeout(t *testing.T) {
 	require.Equal(initialHeight, manager.store.Height())
 	require.True(manager.batchInProcess.Load() == false)
 
+	require.True(manager.syncTarget == 0)
+
+	var wg sync.WaitGroup
 	mCtx, cancel := context.WithTimeout(context.Background(), runTime)
 	defer cancel()
-	go manager.ProduceBlockLoop(mCtx)
-	go manager.SubmitLoop(mCtx)
-	<-mCtx.Done()
 
-	require.True(manager.batchInProcess.Load() == true)
+	wg.Add(2) // Add 2 because we have 2 goroutines
+
+	go func() {
+		defer wg.Done() // Decrease counter when this goroutine finishes
+		manager.ProduceBlockLoop(mCtx)
+	}()
+
+	go func() {
+		defer wg.Done() // Decrease counter when this goroutine finishes
+		manager.SubmitLoop(mCtx)
+	}()
+
+	<-mCtx.Done()
+	wg.Wait() // Wait for all goroutines to finish
+	require.True(manager.syncTarget > 0)
+}
+
+func TestInvalidBatch(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	manager, err := getManager(getManagerConfig(), nil, nil, 1, 1, 0, nil, nil)
+	require.NoError(err)
+
+	batchSize := uint64(5)
+	syncTarget := uint64(10)
+
+	// Create cases
+	cases := []struct {
+		startHeight uint64
+		endHeight   uint64
+		shouldError bool
+	}{
+		{startHeight: syncTarget + 1, endHeight: syncTarget + batchSize, shouldError: false},
+		// batch with endHight < startHeight
+		{startHeight: syncTarget + 1, endHeight: syncTarget, shouldError: true},
+		// batch with startHeight != previousEndHeight + 1
+		{startHeight: syncTarget, endHeight: syncTarget + batchSize + batchSize, shouldError: true},
+	}
+	for _, c := range cases {
+		batch := &types.Batch{
+			StartHeight: c.startHeight,
+			EndHeight:   c.endHeight,
+		}
+
+		manager.updateSyncParams(syncTarget)
+		err := manager.validateBatch(batch)
+		if c.shouldError {
+			assert.Error(err)
+		} else {
+			assert.NoError(err)
+		}
+	}
 }

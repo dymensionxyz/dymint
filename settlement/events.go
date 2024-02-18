@@ -18,10 +18,8 @@ const (
 const (
 	// This event should be emitted internally in order to communicate between the settlement layer and the hub client
 	EventNewSettlementBatchAccepted = "EventNewSettlementBatchAccepted"
-	// This event should be emitted externally when a batch is accepted
-	EventNewBatchAccepted       = "EventNewBatchAccepted"
-	EventSequencersListUpdated  = "SequencersListUpdated"
-	EventSettlementHealthStatus = "SettlementHealthStatus"
+	EventSequencersListUpdated      = "SequencersListUpdated"
+	EventSettlementHealthStatus     = "SettlementHealthStatus"
 )
 
 // EventDataNewBatchAccepted defines the structure of the event data for the EventNewBatchAccepted
@@ -52,7 +50,6 @@ type EventDataSettlementHealthStatus struct {
 // Define queries
 var (
 	EventQueryNewSettlementBatchAccepted = QueryForEvent(EventNewSettlementBatchAccepted)
-	EventQueryNewBatchAccepted           = QueryForEvent(EventNewBatchAccepted)
 	EventQuerySettlementHealthStatus     = QueryForEvent(EventSettlementHealthStatus)
 )
 
