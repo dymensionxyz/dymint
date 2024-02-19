@@ -2,14 +2,12 @@ package celestia
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
 
 	"github.com/celestiaorg/nmt"
-	"github.com/cometbft/cometbft/crypto/merkle"
 	"github.com/gogo/protobuf/proto"
 	"github.com/tendermint/tendermint/libs/pubsub"
 
@@ -467,21 +465,6 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 	}
 }
 
-// TODO (srene): Add tests for GetInclusionProofs
-func (c *DataAvailabilityLayerClient) GetInclusionProofsCommitment(height uint64, blob *blob.Blob, proof *blob.Proof, commitment da.Commitment) ([][]byte, []*merkle.Proof, error) {
-
-	dah, err := c.getDataAvailabilityHeaders(height)
-	if err != nil {
-		return nil, nil, err
-	}
-	rowRoots, rowProof, err := c.getRowProof(height, dah, blob, commitment, proof)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return rowRoots, rowProof, nil
-}
-
 // Submit submits the Blobs to Data Availability layer.
 func (c *DataAvailabilityLayerClient) submit(daBlob da.Blob) (uint64, da.Commitment, error) {
 	blobs, commitments, err := c.blobsAndCommitments(daBlob)
@@ -568,45 +551,4 @@ func (c *DataAvailabilityLayerClient) getDataAvailabilityHeaders(height uint64) 
 	}
 	return headers.DAH, error
 
-}
-
-func (c *DataAvailabilityLayerClient) getRowProof(height uint64, dah *header.DataAvailabilityHeader, b *blob.Blob, commitment []byte, proof *blob.Proof) ([][]byte, []*merkle.Proof, error) {
-
-	_, allProofs := merkle.ProofsFromByteSlices(append(dah.RowRoots, dah.ColumnRoots...))
-
-	shares, err := blob.SplitBlobs(*b)
-	if err != nil {
-		return nil, nil, err
-	}
-	var proofs []*merkle.Proof
-	nmtProofs := []*nmt.Proof(*proof)
-
-	var rowRoots [][]byte
-	index := 0
-	for i, nmtProof := range nmtProofs {
-		sharesNum := nmtProof.End() - nmtProof.Start()
-		var leafs [][]byte
-
-		for j := index; j < index+sharesNum; j++ {
-			leaf := shares[j].ToBytes()
-			leafs = append(leafs, leaf)
-		}
-		for _, rowRoot := range dah.RowRoots {
-			if nmtProof.VerifyInclusion(sha256.New(), c.config.NamespaceID.Bytes(), leafs, rowRoot) {
-				for _, rProof := range allProofs {
-					if rProof.Verify(dah.Hash(), rowRoot) == nil {
-						rowRoots = append(rowRoots, rowRoot)
-						proofs = append(proofs, rProof)
-						break
-					}
-				}
-				if len(proofs) > i {
-					break
-				}
-			}
-		}
-		index += sharesNum
-	}
-
-	return rowRoots, proofs, err
 }
