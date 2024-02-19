@@ -7,18 +7,15 @@ import (
 )
 
 const (
-	flagAggregator                   = "dymint.aggregator"
-	flagDALayer                      = "dymint.da_layer"
-	flagDAConfig                     = "dymint.da_config"
-	flagBlockTime                    = "dymint.block_time"
-	flagEmptyBlocksMaxTime           = "dymint.empty_blocks_max_time"
-	flagBatchSubmitMaxTime           = "dymint.batch_submit_max_time"
-	flagNamespaceID                  = "dymint.namespace_id"
-	flagBlockBatchSize               = "dymint.block_batch_size"
-	flagBlockBatchMaxSizeBytes       = "dymint.block_batch_max_size_bytes"
-	flagSimulateWrongCommitmentFraud = "dymint.simulate_wrongcommitment_fraud"
-	flagSimulateNonInclusionFraud    = "dymint.simulate_noninclusion_fraud"
-	flagEnableInclusionProof         = "dymint.enable_inclusion_proof"
+	flagAggregator             = "dymint.aggregator"
+	flagDALayer                = "dymint.da_layer"
+	flagDAConfig               = "dymint.da_config"
+	flagBlockTime              = "dymint.block_time"
+	flagEmptyBlocksMaxTime     = "dymint.empty_blocks_max_time"
+	flagBatchSubmitMaxTime     = "dymint.batch_submit_max_time"
+	flagNamespaceID            = "dymint.namespace_id"
+	flagBlockBatchSize         = "dymint.block_batch_size"
+	flagBlockBatchMaxSizeBytes = "dymint.block_batch_max_size_bytes"
 )
 
 const (
@@ -62,10 +59,6 @@ func AddNodeFlags(cmd *cobra.Command) {
 	cmd.Flags().Uint64(flagSLGasLimit, def.SettlementConfig.GasLimit, "Settlement Layer batch submit gas limit")
 	cmd.Flags().String(flagRollappID, def.SettlementConfig.RollappID, "The chainID of the rollapp")
 
-	//simulate fraud
-	cmd.Flags().Bool(flagSimulateWrongCommitmentFraud, false, "simulate wrong commitment fraund")
-	cmd.Flags().Bool(flagSimulateNonInclusionFraud, false, "simulate non-inclusion fraud")
-	cmd.Flags().Bool(flagEnableInclusionProof, false, "enable inclusion proof generation")
 }
 
 func BindDymintFlags(cmd *cobra.Command, v *viper.Viper) error {
@@ -121,15 +114,6 @@ func BindDymintFlags(cmd *cobra.Command, v *viper.Viper) error {
 		return err
 	}
 	if err := v.BindPFlag("rollapp_id", cmd.Flags().Lookup(flagRollappID)); err != nil {
-		return err
-	}
-	if err := v.BindPFlag("simulate_noninclusion_fraud", cmd.Flags().Lookup(flagSimulateNonInclusionFraud)); err != nil {
-		return err
-	}
-	if err := v.BindPFlag("simulate_wrongcommitment_fraud", cmd.Flags().Lookup(flagSimulateWrongCommitmentFraud)); err != nil {
-		return err
-	}
-	if err := v.BindPFlag("enable_inclusion_proof", cmd.Flags().Lookup(flagEnableInclusionProof)); err != nil {
 		return err
 	}
 	return nil
