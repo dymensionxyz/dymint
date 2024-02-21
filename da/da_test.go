@@ -102,17 +102,14 @@ func doTestDALC(t *testing.T, mockDalc da.DataAvailabilityLayerClient) {
 	// print the check result
 	t.Logf("CheckBatchAvailability result: %+v", check)
 	assert.Equal(da.StatusSuccess, check.Code)
-	assert.True(check.DataAvailable)
 
 	check = dalc.CheckBatchAvailability(h2)
 	assert.Equal(da.StatusSuccess, check.Code)
-	assert.True(check.DataAvailable)
 
 	h1.Height = h1.Height - 1
 	// this height should not be used by DALC
 	check = dalc.CheckBatchAvailability(h1)
 	assert.Equal(da.StatusSuccess, check.Code)
-	assert.False(check.DataAvailable)
 }
 
 func TestRetrieve(t *testing.T) {

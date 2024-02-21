@@ -28,13 +28,7 @@ type Blob = []byte
 const (
 	StatusUnknown StatusCode = iota
 	StatusSuccess
-	StatusTimeout
 	StatusError
-	StatusUnableToGetProofs
-	StatusBlobNotFound
-	StatusBlobNotIncluded
-	StatusProofNotMatching
-	StatusNotImplemented
 )
 
 // Client defines all the possible da clients
@@ -56,18 +50,8 @@ type BaseResult struct {
 	Code StatusCode
 	// Message may contain DA layer specific information (like DA block height/hash, detailed error message, etc)
 	Message string
-	// DAHeight informs about a height on Data Availability Layer for given result.
-	SubmitMetaData *DASubmitMetaData
-}
-
-// BaseResult contains basic information returned by DA layer.
-type BaseDACheckResult struct {
-	// Code is to determine if the action succeeded.
-	Code StatusCode
-	// Message may contain DA layer specific information (like DA block height/hash, detailed error message, etc)
-	Message string
-	// DAHeight informs about a height on Data Availability Layer for given result.
-	CheckMetaData *DACheckMetaData
+	// Error is the error returned by the DA layer
+	Error error
 }
 
 // DAMetaData contains meta data about a batch on the Data Availability Layer.
@@ -84,32 +68,6 @@ type DASubmitMetaData struct {
 	Index int
 	//Number of shares of each blob
 	Length int
-	//any NMT root for the specific height, necessary for non-inclusion proof
-	Root []byte
-}
-
-// DAMetaData contains meta data about a batch on the Data Availability Layer.
-type DACheckMetaData struct {
-	// Height is the height of the block in the da layer
-	Height uint64
-	// Client is the client to use to fetch data from the da layer
-	Client Client
-	// Submission index in the Hub
-	SLIndex uint64
-	// Namespace ID
-	Namespace []byte
-	//Share commitment, for each blob, used to obtain blobs and proofs
-	Commitment Commitment
-	//Initial position for each blob in the NMT
-	Index int
-	//Number of shares of each blob
-	Length int
-	//Proofs necessary to validate blob inclusion in the specific height
-	Proofs []*blob.Proof
-	//NMT roots for each NMT Proof
-	NMTRoots []byte
-	//Proofs necessary to validate blob inclusion in the specific height
-	RowProofs []*merkle.Proof
 	//any NMT root for the specific height, necessary for non-inclusion proof
 	Root []byte
 }
@@ -162,28 +120,54 @@ func (d *DASubmitMetaData) FromPath(path string) (*DASubmitMetaData, error) {
 	}
 }
 
+// DAMetaData contains meta data about a batch on the Data Availability Layer.
+type DACheckMetaData struct {
+	// Height is the height of the block in the da layer
+	Height uint64
+	// Client is the client to use to fetch data from the da layer
+	Client Client
+	// Submission index in the Hub
+	SLIndex uint64
+	// Namespace ID
+	Namespace []byte
+	//Share commitment, for each blob, used to obtain blobs and proofs
+	Commitment Commitment
+	//Initial position for each blob in the NMT
+	Index int
+	//Number of shares of each blob
+	Length int
+	//Proofs necessary to validate blob inclusion in the specific height
+	Proofs []*blob.Proof
+	//NMT roots for each NMT Proof
+	NMTRoots []byte
+	//Proofs necessary to validate blob inclusion in the specific height
+	RowProofs []*merkle.Proof
+	//any NMT root for the specific height, necessary for non-inclusion proof
+	Root []byte
+}
+
 // ResultSubmitBatch contains information returned from DA layer after block submission.
 type ResultSubmitBatch struct {
 	BaseResult
-	// Not sure if this needs to be bubbled up to other
-	// parts of Dymint.
-	// Hash hash.Hash
+	// DAHeight informs about a height on Data Availability Layer for given result.
+	SubmitMetaData *DASubmitMetaData
 }
 
 // ResultCheckBatch contains information about block availability, returned from DA layer client.
 type ResultCheckBatch struct {
-	BaseDACheckResult
-	// DataAvailable is the actual answer whether the block is available or not.
-	// It can be true if and only if Code is equal to StatusSuccess.
-	DataAvailable bool
+	BaseResult
+	// DAHeight informs about a height on Data Availability Layer for given result.
+	CheckMetaData *DACheckMetaData
 }
 
 // ResultRetrieveBatch contains batch of blocks returned from DA layer client.
 type ResultRetrieveBatch struct {
-	BaseDACheckResult
+	BaseResult
 	// Block is the full block retrieved from Data Availability Layer.
 	// If Code is not equal to StatusSuccess, it has to be nil.
 	Batches []*types.Batch
+	// DAHeight informs about a height on Data Availability Layer for given result.
+	CheckMetaData *DACheckMetaData
 }
 
 // DataAvailabilityLayerClient defines generic interface for DA layer block submission.

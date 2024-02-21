@@ -189,6 +189,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
 				Message: err.Error(),
+				Error:   err,
 			},
 		}
 	}
@@ -198,6 +199,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
 				Message: fmt.Sprintf("size bigger than maximum blob size of %d bytes", celtypes.DefaultMaxBytes),
+				Error:   errors.New("blob size too big"),
 			},
 		}
 	}
@@ -230,7 +232,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			}
 
 			availabilityResult := c.CheckBatchAvailability(daMetaData)
-			if availabilityResult.Code != da.StatusSuccess || !availabilityResult.DataAvailable {
+			if availabilityResult.Code != da.StatusSuccess {
 				c.logger.Error("Unable to confirm submitted blob availability. Retrying")
 				res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, false, err)
 				if err != nil {
@@ -247,10 +249,10 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			}
 			return da.ResultSubmitBatch{
 				BaseResult: da.BaseResult{
-					Code:           da.StatusSuccess,
-					Message:        "Submission successful",
-					SubmitMetaData: daMetaData,
+					Code:    da.StatusSuccess,
+					Message: "Submission successful",
 				},
+				SubmitMetaData: daMetaData,
 			}
 		}
 	}
@@ -275,17 +277,19 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 			blob, err := c.rpc.Get(c.ctx, daMetaData.Height, c.config.NamespaceID.Bytes(), daMetaData.Commitment)
 			if err != nil {
 				return da.ResultRetrieveBatch{
-					BaseDACheckResult: da.BaseDACheckResult{
-						Code:    da.StatusBlobNotFound,
+					BaseResult: da.BaseResult{
+						Code:    da.StatusError,
 						Message: err.Error(),
+						Error:   da.ErrBlobNotFound,
 					},
 				}
 			}
 			if blob == nil {
 				return da.ResultRetrieveBatch{
-					BaseDACheckResult: da.BaseDACheckResult{
-						Code:    da.StatusBlobNotFound,
+					BaseResult: da.BaseResult{
+						Code:    da.StatusError,
 						Message: "Blob not found",
+						Error:   da.ErrBlobNotFound,
 					},
 				}
 			}
@@ -299,16 +303,17 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 			err = parsedBatch.FromProto(&batch)
 			if err != nil {
 				return da.ResultRetrieveBatch{
-					BaseDACheckResult: da.BaseDACheckResult{
+					BaseResult: da.BaseResult{
 						Code:    da.StatusError,
 						Message: err.Error(),
+						Error:   err,
 					},
 				}
 			}
 			batches = append(batches, parsedBatch)
 			//}
 			return da.ResultRetrieveBatch{
-				BaseDACheckResult: da.BaseDACheckResult{
+				BaseResult: da.BaseResult{
 					Code:    da.StatusSuccess,
 					Message: "Batch retrieval successful",
 				},
@@ -323,7 +328,7 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(dataLayerHeight uint64) da
 	blobs, err := c.rpc.GetAll(c.ctx, dataLayerHeight, []share.Namespace{c.config.NamespaceID.Bytes()})
 	if err != nil {
 		return da.ResultRetrieveBatch{
-			BaseDACheckResult: da.BaseDACheckResult{
+			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
 				Message: err.Error(),
 			},
@@ -342,7 +347,7 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(dataLayerHeight uint64) da
 		err := parsedBatch.FromProto(&batch)
 		if err != nil {
 			return da.ResultRetrieveBatch{
-				BaseDACheckResult: da.BaseDACheckResult{
+				BaseResult: da.BaseResult{
 					Code:    da.StatusError,
 					Message: err.Error(),
 				},
@@ -352,7 +357,7 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(dataLayerHeight uint64) da
 	}
 
 	return da.ResultRetrieveBatch{
-		BaseDACheckResult: da.BaseDACheckResult{
+		BaseResult: da.BaseResult{
 			Code: da.StatusSuccess},
 		Batches: batches,
 	}
@@ -371,12 +376,12 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 	if err != nil {
 		//Returning Data Availability header Data Root for dispute validation
 		return da.ResultCheckBatch{
-			DataAvailable: false,
-			BaseDACheckResult: da.BaseDACheckResult{
-				Code:          da.StatusUnableToGetProofs,
-				Message:       "Error getting row to data root proofs",
-				CheckMetaData: DACheckMetaData,
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: fmt.Sprintf("Error getting row to data root proofs: %s", err),
+				Error:   da.ErrUnableToGetProof,
 			},
+			CheckMetaData: DACheckMetaData,
 		}
 	}
 	DACheckMetaData.Root = dah.Hash()
@@ -390,12 +395,12 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 		//In case the span is correct it is necessary to return the data for the span and the proofs to the data root, so we can prove the data
 		//is the data for the span, and reproducing the commitment will generate a different one.
 		return da.ResultCheckBatch{
-			DataAvailable: false,
-			BaseDACheckResult: da.BaseDACheckResult{
-				Code:          da.StatusUnableToGetProofs,
-				Message:       "Error getting NMT proofs",
-				CheckMetaData: DACheckMetaData,
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: fmt.Sprintf("Error getting NMT proof: %s", err),
+				Error:   da.ErrUnableToGetProof,
 			},
+			CheckMetaData: DACheckMetaData,
 		}
 	}
 
@@ -416,11 +421,12 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 			//If the span is correct we have to repeat the previous step (sending data + proof of data)
 			//In case the span is not correct we need to send unavailable proof by sending proof of any row root to data root
 			return da.ResultCheckBatch{
-				DataAvailable: false,
-				BaseDACheckResult: da.BaseDACheckResult{
-					Code:          da.StatusProofNotMatching,
-					Message:       "Proof index not matching",
-					CheckMetaData: DACheckMetaData,
+				CheckMetaData: DACheckMetaData,
+				BaseResult: da.BaseResult{
+					Code: da.StatusError,
+					Message: fmt.Sprintf("Proof index not matching: %d != %d or length not matching: %d != %d",
+						index, daMetaData.Index, shares, daMetaData.Length),
+					Error: da.ErrProofNotMatching,
 				},
 			}
 		}
@@ -432,21 +438,21 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 	//This will only happen in case the previous step the celestia light node returned wrong proofs..
 	if err != nil {
 		return da.ResultCheckBatch{
-			DataAvailable: false,
-			BaseDACheckResult: da.BaseDACheckResult{
-				Code:          da.StatusError,
-				Message:       "Error validating proof",
-				CheckMetaData: DACheckMetaData,
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: "Error validating proof",
+				Error:   err,
 			},
+			CheckMetaData: DACheckMetaData,
 		}
 	} else if !included {
 		return da.ResultCheckBatch{
-			DataAvailable: false,
-			BaseDACheckResult: da.BaseDACheckResult{
-				Code:          da.StatusError,
-				Message:       "Blob not included",
-				CheckMetaData: DACheckMetaData,
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: "Blob not included",
+				Error:   da.ErrBlobNotIncluded,
 			},
+			CheckMetaData: DACheckMetaData,
 		}
 	}
 	proofs = append(proofs, proof)
@@ -456,12 +462,11 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 	DACheckMetaData.Proofs = proofs
 	DACheckMetaData.Namespace = c.config.NamespaceID.Bytes()
 	return da.ResultCheckBatch{
-		DataAvailable: true,
-		BaseDACheckResult: da.BaseDACheckResult{
-			Code:          da.StatusSuccess,
-			Message:       "Blob available",
-			CheckMetaData: DACheckMetaData,
+		BaseResult: da.BaseResult{
+			Code:    da.StatusSuccess,
+			Message: "Blob available",
 		},
+		CheckMetaData: DACheckMetaData,
 	}
 }
 

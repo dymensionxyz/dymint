@@ -78,9 +78,9 @@ func (m *Manager) updateStateIndex(stateIndex uint64) error {
 
 func (m *Manager) processNextDABatch(ctx context.Context, daMetaData *da.DASubmitMetaData) error {
 	m.logger.Debug("trying to retrieve batch from DA", "daHeight", daMetaData.Height)
-	batchResp, err := m.fetchBatch(daMetaData)
-	if err != nil {
-		return err
+	batchResp := m.fetchBatch(daMetaData)
+	if batchResp.Code != da.StatusSuccess {
+		return batchResp.Error
 	}
 
 	m.logger.Debug("retrieved batches", "n", len(batchResp.Batches), "daHeight", daMetaData.Height)
@@ -93,65 +93,28 @@ func (m *Manager) processNextDABatch(ctx context.Context, daMetaData *da.DASubmi
 			}
 		}
 	}
-	err = m.attemptApplyCachedBlocks(ctx)
+	err := m.attemptApplyCachedBlocks(ctx)
 	if err != nil {
 		m.logger.Debug("Error applying previous cached blocks", "err", err)
 	}
 	return nil
 }
 
-func (m *Manager) fetchBatch(daMetaData *da.DASubmitMetaData) (da.ResultRetrieveBatch, error) {
-	var err error
-	availRes := m.retriever.CheckBatchAvailability(daMetaData)
-
-	switch availRes.Code {
-	case da.StatusUnableToGetProofs:
-		//Is not possible to obtain proofs for the specific commitment in the specific height.
-		//This means there is no matching blob for that commitment
-		err = fmt.Errorf("Unable to get proof on height %d for the commitment", daMetaData.Height)
-
-	case da.StatusProofNotMatching:
-		//The proofs are obtained for the commitment, but not matching with the span (index, length) committed to the Hub.
-		err = fmt.Errorf("Span not matching the commitment")
-	case da.StatusError:
-		//There's been an issue validating proofs
-		err = fmt.Errorf("Error validating batch")
-	}
-	if !availRes.DataAvailable {
-		//There is no point on fetching the data
-		batchRes := da.ResultRetrieveBatch{}
-		batchRes.Code = da.StatusError
-		batchRes.Message = "Error validating data"
-		batchRes.CheckMetaData = availRes.CheckMetaData
-		if batchRes.CheckMetaData != nil {
-			batchRes.CheckMetaData.SLIndex = atomic.LoadUint64(&m.lastState.SLStateIndex)
+func (m *Manager) fetchBatch(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
+	// Check batch availability
+	availabilityRes := m.retriever.CheckBatchAvailability(daMetaData)
+	if availabilityRes.Code != da.StatusSuccess {
+		return da.ResultRetrieveBatch{
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: fmt.Sprintf("Error fetching batch: %s", availabilityRes.Message),
+				Error:   availabilityRes.Error,
+			},
 		}
-
-		return batchRes, err
-
 	}
 	//batchRes.MetaData includes proofs necessary to open disputes with the Hub
 	batchRes := m.retriever.RetrieveBatches(daMetaData)
-
-	switch batchRes.Code {
-	case da.StatusError:
-		err = fmt.Errorf("failed to retrieve batch from height %d: %s", daMetaData.Height, batchRes.Message)
-	case da.StatusTimeout:
-		err = fmt.Errorf("timeout during retrieve batch from height %d: %s", daMetaData.Height, batchRes.Message)
-	//TODO (srene) : Send dispute to the Hub for these cases
-	case da.StatusBlobNotFound:
-		//The blob is not found for the specified share commitment
-		err = fmt.Errorf("blob not found for the specified commitment %d: %s", daMetaData.Height, batchRes.Message)
-
-	}
-
-	if len(batchRes.Batches) == 0 {
-		err = fmt.Errorf("no batches found on height %d", daMetaData.Height)
-	}
-	if err == nil {
-		batchRes.CheckMetaData = availRes.CheckMetaData
-	}
 	//TODO(srene) : for invalid transactions there is no specific error code since it will need to be validated somewhere else for fraud proving.
 	//NMT proofs (availRes.MetaData.Proofs) are included in the result batchRes, necessary to be included in the dispute
-	return batchRes, err
+	return batchRes
 }

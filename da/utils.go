@@ -14,6 +14,7 @@ func SubmitBatchHealthEventHelper(pubsubServer *pubsub.Server, ctx context.Conte
 			BaseResult: BaseResult{
 				Code:    StatusError,
 				Message: err.Error(),
+				Error:   err,
 			},
 		}, err
 	} else {
