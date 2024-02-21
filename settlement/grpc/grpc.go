@@ -283,8 +283,8 @@ func (c *HubGrpcClient) convertBatchtoSettlementBatch(batch *types.Batch, daClie
 		StartHeight: batch.StartHeight,
 		EndHeight:   batch.EndHeight,
 		MetaData: &settlement.BatchMetaData{
-			DA: &settlement.DAMetaData{
-				Height: daResult.DAHeight,
+			DA: &da.DASubmitMetaData{
+				Height: daResult.SubmitMetaData.Height,
 				Client: daClient,
 			},
 		},

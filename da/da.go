@@ -1,9 +1,14 @@
 package da
 
 import (
+	"strconv"
+	"strings"
+
+	"github.com/cometbft/cometbft/crypto/merkle"
 	"github.com/dymensionxyz/dymint/log"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/rollkit/celestia-openrpc/types/blob"
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
@@ -13,11 +18,16 @@ import (
 // the underlying DA chain.
 type StatusCode uint64
 
+// Commitment should contain serialized cryptographic commitment to Blob value.
+type Commitment = []byte
+
+// Blob is the data submitted/received from DA interface.
+type Blob = []byte
+
 // Data Availability return codes.
 const (
 	StatusUnknown StatusCode = iota
 	StatusSuccess
-	StatusTimeout
 	StatusError
 )
 
@@ -40,24 +50,114 @@ type BaseResult struct {
 	Code StatusCode
 	// Message may contain DA layer specific information (like DA block height/hash, detailed error message, etc)
 	Message string
-	// DAHeight informs about a height on Data Availability Layer for given result.
-	DAHeight uint64
+	// Error is the error returned by the DA layer
+	Error error
+}
+
+// DAMetaData contains meta data about a batch on the Data Availability Layer.
+type DASubmitMetaData struct {
+	// Height is the height of the block in the da layer
+	Height uint64
+	// Namespace ID
+	Namespace []byte
+	// Client is the client to use to fetch data from the da layer
+	Client Client
+	//Share commitment, for each blob, used to obtain blobs and proofs
+	Commitment Commitment
+	//Initial position for each blob in the NMT
+	Index int
+	//Number of shares of each blob
+	Length int
+	//any NMT root for the specific height, necessary for non-inclusion proof
+	Root []byte
+}
+
+// ToPath converts a DAMetaData to a path.
+func (d *DASubmitMetaData) ToPath() string {
+	// convert uint64 to string
+	if d.Length > 0 {
+		path := []string{string(d.Client), ".", strconv.FormatUint(d.Height, 10), ".", strconv.Itoa(d.Index), ".", strconv.Itoa(d.Length), ".", string(d.Commitment), ".", string(d.Namespace), ".", string(d.Root)}
+		return strings.Join(path, "")
+	} else {
+		path := []string{string(d.Client), ".", strconv.FormatUint(d.Height, 10)}
+		return strings.Join(path, "")
+	}
+}
+
+// FromPath parses a path to a DAMetaData.
+func (d *DASubmitMetaData) FromPath(path string) (*DASubmitMetaData, error) {
+	pathParts := strings.FieldsFunc(path, func(r rune) bool { return r == '.' })
+	height, err := strconv.ParseUint(pathParts[1], 10, 64)
+	if err != nil {
+		return nil, err
+	}
+	if len(pathParts) > 2 {
+		index, err := strconv.Atoi(pathParts[2])
+		if err != nil {
+			return nil, err
+		}
+		length, err := strconv.Atoi(pathParts[3])
+		if err != nil {
+			return nil, err
+		}
+		commitment := []byte(pathParts[4])
+		namespace := []byte(pathParts[5])
+		root := []byte(pathParts[6])
+		return &DASubmitMetaData{
+			Height:     height,
+			Client:     Client(pathParts[0]),
+			Index:      index,
+			Length:     length,
+			Commitment: commitment,
+			Namespace:  namespace,
+			Root:       root,
+		}, nil
+	} else {
+		return &DASubmitMetaData{
+			Height: height,
+			Client: Client(pathParts[0]),
+		}, nil
+	}
+}
+
+// DAMetaData contains meta data about a batch on the Data Availability Layer.
+type DACheckMetaData struct {
+	// Height is the height of the block in the da layer
+	Height uint64
+	// Client is the client to use to fetch data from the da layer
+	Client Client
+	// Submission index in the Hub
+	SLIndex uint64
+	// Namespace ID
+	Namespace []byte
+	//Share commitment, for each blob, used to obtain blobs and proofs
+	Commitment Commitment
+	//Initial position for each blob in the NMT
+	Index int
+	//Number of shares of each blob
+	Length int
+	//Proofs necessary to validate blob inclusion in the specific height
+	Proofs []*blob.Proof
+	//NMT roots for each NMT Proof
+	NMTRoots []byte
+	//Proofs necessary to validate blob inclusion in the specific height
+	RowProofs []*merkle.Proof
+	//any NMT root for the specific height, necessary for non-inclusion proof
+	Root []byte
 }
 
 // ResultSubmitBatch contains information returned from DA layer after block submission.
 type ResultSubmitBatch struct {
 	BaseResult
-	// Not sure if this needs to be bubbled up to other
-	// parts of Dymint.
-	// Hash hash.Hash
+	// DAHeight informs about a height on Data Availability Layer for given result.
+	SubmitMetaData *DASubmitMetaData
 }
 
 // ResultCheckBatch contains information about block availability, returned from DA layer client.
 type ResultCheckBatch struct {
 	BaseResult
-	// DataAvailable is the actual answer whether the block is available or not.
-	// It can be true if and only if Code is equal to StatusSuccess.
-	DataAvailable bool
+	// DAHeight informs about a height on Data Availability Layer for given result.
+	CheckMetaData *DACheckMetaData
 }
 
 // ResultRetrieveBatch contains batch of blocks returned from DA layer client.
@@ -66,6 +166,8 @@ type ResultRetrieveBatch struct {
 	// Block is the full block retrieved from Data Availability Layer.
 	// If Code is not equal to StatusSuccess, it has to be nil.
 	Batches []*types.Batch
+	// DAHeight informs about a height on Data Availability Layer for given result.
+	CheckMetaData *DACheckMetaData
 }
 
 // DataAvailabilityLayerClient defines generic interface for DA layer block submission.
@@ -86,11 +188,16 @@ type DataAvailabilityLayerClient interface {
 	SubmitBatch(batch *types.Batch) ResultSubmitBatch
 
 	GetClientType() Client
+
+	//Check the availability of the blob submitted getting proofs and validating them
+	CheckBatchAvailability(daMetaData *DASubmitMetaData) ResultCheckBatch
 }
 
 // BatchRetriever is additional interface that can be implemented by Data Availability Layer Client that is able to retrieve
 // block data from DA layer. This gives the ability to use it for block synchronization.
 type BatchRetriever interface {
 	// RetrieveBatches returns blocks at given data layer height from data availability layer.
-	RetrieveBatches(dataLayerHeight uint64) ResultRetrieveBatch
+	RetrieveBatches(daMetaData *DASubmitMetaData) ResultRetrieveBatch
+	//Check the availability of the blob received getting proofs and validating them
+	CheckBatchAvailability(daMetaData *DASubmitMetaData) ResultCheckBatch
 }

@@ -155,13 +155,15 @@ func (c *DataAvailabilityLayerClient) GetClientType() da.Client {
 }
 
 // RetrieveBatch retrieves batch from DataAvailabilityLayerClient instance.
-func (c *DataAvailabilityLayerClient) RetrieveBatches(dataLayerHeight uint64) da.ResultRetrieveBatch {
-	blockHash, err := c.client.GetBlockHash(dataLayerHeight)
+func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
+	//nolint:typecheck
+	blockHash, err := c.client.GetBlockHash(daMetaData.Height)
 	if err != nil {
 		return da.ResultRetrieveBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
 				Message: err.Error(),
+				Error:   err,
 			},
 		}
 	}
@@ -171,6 +173,7 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(dataLayerHeight uint64) da
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
 				Message: err.Error(),
+				Error:   err,
 			},
 		}
 
@@ -188,14 +191,14 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(dataLayerHeight uint64) da
 				// Attempt to unmarshal the data.
 				err := proto.Unmarshal(data, &pbBatch)
 				if err != nil {
-					c.logger.Error("failed to unmarshal batch", "daHeight", dataLayerHeight, "error", err)
+					c.logger.Error("failed to unmarshal batch", "daHeight", daMetaData.Height, "error", err)
 					continue
 				}
 				// Convert the proto batch to a batch
 				batch := &types.Batch{}
 				err = batch.FromProto(&pbBatch)
 				if err != nil {
-					c.logger.Error("failed to convert batch", "daHeight", dataLayerHeight, "error", err)
+					c.logger.Error("failed to convert batch", "daHeight", daMetaData.Height, "error", err)
 					continue
 				}
 				// Add the batch to the list
@@ -209,8 +212,10 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(dataLayerHeight uint64) da
 
 	return da.ResultRetrieveBatch{
 		BaseResult: da.BaseResult{
-			Code:     da.StatusSuccess,
-			DAHeight: dataLayerHeight,
+			Code: da.StatusSuccess,
+		},
+		CheckMetaData: &da.DACheckMetaData{
+			Height: daMetaData.Height,
 		},
 		Batches: batches,
 	}
@@ -224,6 +229,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
 				Message: err.Error(),
+				Error:   err,
 			},
 		}
 	}
@@ -243,6 +249,7 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 				BaseResult: da.BaseResult{
 					Code:    da.StatusError,
 					Message: "context done",
+					Error:   c.ctx.Err(),
 				},
 			}
 		default:
@@ -266,6 +273,7 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 						BaseResult: da.BaseResult{
 							Code:    da.StatusError,
 							Message: err.Error(),
+							Error:   err,
 						},
 					}
 				} else {
@@ -285,9 +293,11 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 			}
 			return da.ResultSubmitBatch{
 				BaseResult: da.BaseResult{
-					Code:     da.StatusSuccess,
-					Message:  "success",
-					DAHeight: daBlockHeight,
+					Code:    da.StatusSuccess,
+					Message: "success",
+				},
+				SubmitMetaData: &da.DASubmitMetaData{
+					Height: daBlockHeight,
 				},
 			}
 
@@ -398,10 +408,10 @@ func (c *DataAvailabilityLayerClient) broadcastTx(tx []byte) (uint64, error) {
 }
 
 // CheckBatchAvailability checks batch availability in DataAvailabilityLayerClient instance.
-func (c *DataAvailabilityLayerClient) CheckBatchAvailability(dataLayerHeight uint64) da.ResultCheckBatch {
+func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
 	return da.ResultCheckBatch{
 		BaseResult: da.BaseResult{
-			Code:    da.StatusError,
+			Code:    da.StatusSuccess,
 			Message: "not implemented",
 		},
 	}

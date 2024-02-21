@@ -1,9 +1,12 @@
 package celestia_test
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -12,19 +15,37 @@ import (
 	mocks "github.com/dymensionxyz/dymint/mocks/da/celestia"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/rollkit/celestia-openrpc/types/blob"
+	"github.com/rollkit/celestia-openrpc/types/header"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/libs/log"
 
-	"github.com/rollkit/celestia-openrpc/types/state"
-
 	"github.com/tendermint/tendermint/libs/pubsub"
+
+	"github.com/celestiaorg/nmt"
 )
 
 const (
-	submitPFBFuncName = "SubmitPayForBlob"
+	submitPFBFuncName  = "Submit"
+	getProofFuncName   = "GetProof"
+	includedFuncName   = "Included"
+	getHeadersFuncName = "GetHeaders"
 )
+
+// exampleNMT creates a new NamespacedMerkleTree with the given namespace ID size and leaf namespace IDs. Each byte in the leavesNIDs parameter corresponds to one leaf's namespace ID. If nidSize is greater than 1, the function repeats each NID in leavesNIDs nidSize times before prepending it to the leaf data.
+func exampleNMT(nidSize int, ignoreMaxNamespace bool, leavesNIDs ...byte) *nmt.NamespacedMerkleTree {
+	tree := nmt.New(sha256.New(), nmt.NamespaceIDSize(nidSize), nmt.IgnoreMaxNamespace(ignoreMaxNamespace))
+	for i, nid := range leavesNIDs {
+		namespace := bytes.Repeat([]byte{nid}, nidSize)
+		d := append(namespace, []byte(fmt.Sprintf("leaf_%d", i))...)
+		if err := tree.Push(d); err != nil {
+			panic(fmt.Sprintf("unexpected error: %v", err))
+		}
+	}
+	return tree
+}
 
 func TestSubmitBatch(t *testing.T) {
 	assert := assert.New(t)
@@ -35,28 +56,51 @@ func TestSubmitBatch(t *testing.T) {
 		StartHeight: 0,
 		EndHeight:   1,
 	}
+	nIDSize := 1
+
+	tree := exampleNMT(nIDSize, true, 1, 2, 3, 4)
+
+	// build a proof for an NID that is within the namespace range of the tree
+	nID := []byte{1}
+	proof, err := tree.ProveNamespace(nID)
+	blobProof := blob.Proof([]*nmt.Proof{&proof})
+
 	cases := []struct {
 		name                    string
 		submitPFBReturn         []interface{}
 		sumbitPFDRun            func(args mock.Arguments)
-		expectedInclusionHeight int
+		expectedInclusionHeight uint64
 		expectedHealthEvent     *da.EventDataDAHealthStatus
+		getProofReturn          []interface{}
+		getProofDRun            func(args mock.Arguments)
+		includedReturn          []interface{}
+		includedRun             func(args mock.Arguments)
 	}{
 		{
 			name:                    "TestSubmitPFBResponseCodeSuccess",
-			submitPFBReturn:         []interface{}{&state.TxResponse{Code: 0, Height: int64(143)}, nil},
+			submitPFBReturn:         []interface{}{uint64(1234), nil},
+			getProofReturn:          []interface{}{&blobProof, nil},
+			includedReturn:          []interface{}{true, nil},
 			sumbitPFDRun:            func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) },
-			expectedInclusionHeight: 143,
+			getProofDRun:            func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) },
+			includedRun:             func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) },
+			expectedInclusionHeight: uint64(1234),
 			expectedHealthEvent:     &da.EventDataDAHealthStatus{Healthy: true},
 		},
 		{
 			name:                "TestSubmitPFBErrored",
-			submitPFBReturn:     []interface{}{&state.TxResponse{TxHash: "1234"}, errors.New("timeout")},
+			submitPFBReturn:     []interface{}{uint64(0), errors.New("timeout")},
+			getProofReturn:      []interface{}{&blobProof, nil},
+			includedReturn:      []interface{}{true, nil},
 			sumbitPFDRun:        func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) },
+			getProofDRun:        func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) },
+			includedRun:         func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) },
 			expectedHealthEvent: &da.EventDataDAHealthStatus{Healthy: false},
 		},
 	}
 	for _, tc := range cases {
+
+		t.Log("Case name ", tc.name)
 		// Create mock clients
 		mockRPCClient := mocks.NewCelestiaRPCClient(t)
 		// Configure DALC options
@@ -76,12 +120,28 @@ func TestSubmitBatch(t *testing.T) {
 		err = dalc.Start()
 		require.NoError(err, tc.name)
 
-		mockRPCClient.On(submitPFBFuncName, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(tc.submitPFBReturn...).Run(tc.sumbitPFDRun)
+		roots := [][]byte{[]byte("apple"), []byte("watermelon"), []byte("kiwi")}
+		dah := &header.DataAvailabilityHeader{
+			RowRoots:    roots,
+			ColumnRoots: roots,
+		}
+		header := &header.ExtendedHeader{
+			DAH: dah,
+		}
 
+		mockRPCClient.On(submitPFBFuncName, mock.Anything, mock.Anything, mock.Anything).Return(tc.submitPFBReturn...).Run(tc.sumbitPFDRun)
+		if tc.name == "TestSubmitPFBResponseCodeSuccess" {
+			mockRPCClient.On(getProofFuncName, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(tc.getProofReturn...).Run(tc.getProofDRun)
+			mockRPCClient.On(includedFuncName, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(tc.includedReturn...).Run(tc.includedRun)
+			mockRPCClient.On(getHeadersFuncName, mock.Anything, mock.Anything).Return(header, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+
+		}
 		done := make(chan bool)
 		go func() {
 			res := dalc.SubmitBatch(batch)
-			assert.Equal(res.DAHeight, uint64(tc.expectedInclusionHeight), tc.name)
+			if res.SubmitMetaData != nil {
+				assert.Equal(res.SubmitMetaData.Height, uint64(tc.expectedInclusionHeight), tc.name)
+			}
 			time.Sleep(100 * time.Millisecond)
 			done <- true
 		}()

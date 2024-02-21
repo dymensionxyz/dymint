@@ -401,10 +401,6 @@ func (d *HubClient) convertBatchToMsgUpdateState(batch *types.Batch, daClient da
 		return nil, err
 	}
 
-	DAMetaData := &settlement.DAMetaData{
-		Height: daResult.DAHeight,
-		Client: daClient,
-	}
 	blockDescriptors := make([]rollapptypes.BlockDescriptor, len(batch.Blocks))
 	for index, block := range batch.Blocks {
 		blockDescriptor := rollapptypes.BlockDescriptor{
@@ -420,7 +416,7 @@ func (d *HubClient) convertBatchToMsgUpdateState(batch *types.Batch, daClient da
 		RollappId:   d.config.RollappID,
 		StartHeight: batch.StartHeight,
 		NumBlocks:   batch.EndHeight - batch.StartHeight + 1,
-		DAPath:      DAMetaData.ToPath(),
+		DAPath:      daResult.SubmitMetaData.ToPath(),
 		Version:     dymRollappVersion,
 		BDs:         rollapptypes.BlockDescriptors{BD: blockDescriptors},
 	}
@@ -478,7 +474,7 @@ func (d *HubClient) convertToNewBatchEvent(rawEventData ctypes.ResultEvent) (*se
 }
 
 func (d *HubClient) convertStateInfoToResultRetrieveBatch(stateInfo *rollapptypes.StateInfo) (*settlement.ResultRetrieveBatch, error) {
-	daMetaData := &settlement.DAMetaData{}
+	daMetaData := &da.DASubmitMetaData{}
 	daMetaData, err := daMetaData.FromPath(stateInfo.DAPath)
 	if err != nil {
 		return nil, err

@@ -1,10 +1,15 @@
 package celestia_test
 
 import (
+	"encoding/hex"
 	"encoding/json"
 	"math/rand"
 	"testing"
 	"time"
+
+	"github.com/celestiaorg/nmt"
+	"github.com/rollkit/celestia-openrpc/types/blob"
+	"github.com/rollkit/celestia-openrpc/types/header"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -15,11 +20,9 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 
 	mocks "github.com/dymensionxyz/dymint/mocks/da/celestia"
-	"github.com/rollkit/celestia-openrpc/types/state"
 
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/da/celestia"
-	damock "github.com/dymensionxyz/dymint/da/mock"
 	"github.com/dymensionxyz/dymint/da/registry"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
@@ -28,46 +31,11 @@ import (
 const mockDaBlockTime = 100 * time.Millisecond
 
 func TestDALC(t *testing.T) {
-	pubsubServer := pubsub.NewServer()
-	pubsubServer.Start()
-	defer pubsubServer.Stop()
 
-	require := require.New(t)
 	assert := assert.New(t)
+	require := require.New(t)
 
-	//init mock DA
-	mockdlc := damock.DataAvailabilityLayerClient{}
-	mockconf := []byte(mockDaBlockTime.String())
-	err := mockdlc.Init(mockconf, nil, store.NewDefaultInMemoryKVStore(), log.TestingLogger())
-	require.NoError(err)
-
-	err = mockdlc.Start()
-	require.NoError(err)
-
-	//init celestia DA with mock RPC client
-	dalc := registry.GetClient("celestia")
-	config := celestia.Config{
-		BaseURL:  "http://localhost:26658",
-		Timeout:  30 * time.Second,
-		GasLimit: 3000000,
-		Fee:      200000000,
-	}
-	err = config.InitNamespaceID()
-	require.NoError(err)
-	conf, err := json.Marshal(config)
-	require.NoError(err)
-
-	mockRPCClient := mocks.NewCelestiaRPCClient(t)
-	options := []da.Option{
-		celestia.WithRPCClient(mockRPCClient),
-	}
-
-	err = dalc.Init(conf, pubsubServer, store.NewDefaultInMemoryKVStore(), log.TestingLogger(), options...)
-	require.NoError(err)
-
-	err = dalc.Start()
-	require.NoError(err)
-
+	mockRPCClient, dalc, nID, header := setDAandMock(t)
 	// only blocks b1 and b2 will be submitted to DA
 	block1 := getRandomBlock(1, 10)
 	block2 := getRandomBlock(2, 10)
@@ -82,56 +50,288 @@ func TestDALC(t *testing.T) {
 		Blocks:      []*types.Block{block2},
 	}
 
-	var mockres1, mockres2 da.ResultSubmitBatch
-	mockRPCClient.On("SubmitPayForBlob", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&state.TxResponse{}, nil).Once().Run(func(args mock.Arguments) {
-		mockres1 = mockdlc.SubmitBatch(batch1)
-	})
+	nIDSize := 1
+	tree := exampleNMT(nIDSize, true, 1, 2, 3, 4)
+	// build a proof for an NID that is within the namespace range of the tree
+	proof, _ := tree.ProveNamespace(nID)
+	blobProof := blob.Proof([]*nmt.Proof{&proof})
 
-	mockRPCClient.On("SubmitPayForBlob", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&state.TxResponse{}, nil).Once().Run(func(args mock.Arguments) {
-		mockres2 = mockdlc.SubmitBatch(batch2)
-	})
+	mockRPCClient.On("Submit", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(uint64(1234), nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+	mockRPCClient.On("GetProof", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&blobProof, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+	mockRPCClient.On("Included", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+	mockRPCClient.On("GetHeaders", mock.Anything, mock.Anything).Return(header, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+
+	mockRPCClient.On("Submit", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(uint64(1234), nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+	mockRPCClient.On("GetProof", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&blobProof, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+	mockRPCClient.On("Included", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+	mockRPCClient.On("GetHeaders", mock.Anything, mock.Anything).Return(header, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
 
 	time.Sleep(2 * mockDaBlockTime)
 
 	t.Log("Submitting batch1")
-	_ = dalc.SubmitBatch(batch1)
-	h1 := mockres1.DAHeight
-	assert.Equal(da.StatusSuccess, mockres1.Code)
+	res1 := dalc.SubmitBatch(batch1)
+	h1 := res1.SubmitMetaData
+	assert.Equal(da.StatusSuccess, res1.Code)
 
 	time.Sleep(2 * mockDaBlockTime)
 
-	t.Log("Submitting batch1")
-	_ = dalc.SubmitBatch(batch2)
-	h2 := mockres2.DAHeight
-	assert.Equal(da.StatusSuccess, mockres2.Code)
+	t.Log("Submitting batch2")
+	res2 := dalc.SubmitBatch(batch2)
+	assert.Equal(da.StatusSuccess, res2.Code)
 
-	var retreiveRes da.ResultRetrieveBatch
-	mockRPCClient.On("GetAll", mock.Anything, mock.Anything, mock.Anything).Return(nil, nil).Run(func(args mock.Arguments) {
-		height := args.Get(1).(uint64)
-		result := mockdlc.RetrieveBatches(height)
+	data1, _ := batch1.MarshalBinary()
+	blob1, _ := blob.NewBlobV0(nID, data1)
 
-		retreiveRes.Code = result.Code
-		retreiveRes.Batches = result.Batches
+	mockRPCClient.On("Get", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(blob1, nil).Run(func(args mock.Arguments) {
 	})
-	// wait a bit more than mockDaBlockTime, so dymint blocks can be "included" in mock block
-	time.Sleep(mockDaBlockTime + 20*time.Millisecond)
 
 	// call retrieveBlocks
 	retriever := dalc.(da.BatchRetriever)
 
-	_ = retriever.RetrieveBatches(h1)
+	retreiveRes := retriever.RetrieveBatches(h1)
 	assert.Equal(da.StatusSuccess, retreiveRes.Code)
 	require.True(len(retreiveRes.Batches) == 1)
 	compareBatches(t, batch1, retreiveRes.Batches[0])
 
-	_ = retriever.RetrieveBatches(h2)
+}
+
+func TestRetrievalNotFound(t *testing.T) {
+
+	assert := assert.New(t)
+	require := require.New(t)
+
+	mockRPCClient, dalc, nID, headers := setDAandMock(t)
+	// only blocks b1 and b2 will be submitted to DA
+	block1 := getRandomBlock(1, 10)
+	batch1 := &types.Batch{
+		StartHeight: block1.Header.Height,
+		EndHeight:   block1.Header.Height,
+		Blocks:      []*types.Block{block1},
+	}
+
+	nIDSize := 1
+	tree := exampleNMT(nIDSize, true, 1, 2, 3, 4)
+	// build a proof for an NID that is within the namespace range of the tree
+	proof, _ := tree.ProveNamespace(nID)
+	blobProof := blob.Proof([]*nmt.Proof{&proof})
+
+	mockRPCClient.On("Submit", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(uint64(1234), nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+	mockRPCClient.On("GetProof", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&blobProof, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+	mockRPCClient.On("Included", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+	mockRPCClient.On("GetHeaders", mock.Anything, mock.Anything).Return(headers, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+
+	time.Sleep(2 * mockDaBlockTime)
+
+	//data1, _ := batch1.MarshalBinary()
+	//blob1, _ := blob.NewBlobV0(nID, data1)
+
+	t.Log("Submitting batch1")
+	res1 := dalc.SubmitBatch(batch1)
+	h1 := res1.SubmitMetaData
+	assert.Equal(da.StatusSuccess, res1.Code)
+
+	mockRPCClient.On("Get", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil).Run(func(args mock.Arguments) {
+	})
+
+	retriever := dalc.(da.BatchRetriever)
+
+	retreiveRes := retriever.RetrieveBatches(h1)
+	assert.ErrorIs(retreiveRes.Error, da.ErrBlobNotFound)
+	require.True(len(retreiveRes.Batches) == 0)
+
+}
+
+func TestRetrievalNoCommitment(t *testing.T) {
+
+	assert := assert.New(t)
+	require := require.New(t)
+
+	mockRPCClient, dalc, nID, _ := setDAandMock(t)
+	block1 := getRandomBlock(1, 10)
+	batch1 := &types.Batch{
+		StartHeight: block1.Header.Height,
+		EndHeight:   block1.Header.Height,
+		Blocks:      []*types.Block{block1},
+	}
+	// only blocks b1 and b2 will be submitted to DA
+	data1, _ := batch1.MarshalBinary()
+	blob1, _ := blob.NewBlobV0(nID, data1)
+
+	mockRPCClient.On("GetAll", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return([]*blob.Blob{blob1}, nil).Run(func(args mock.Arguments) {
+	})
+
+	retriever := dalc.(da.BatchRetriever)
+
+	h1 := &da.DASubmitMetaData{
+		Height: 1,
+	}
+	retreiveRes := retriever.RetrieveBatches(h1)
 	assert.Equal(da.StatusSuccess, retreiveRes.Code)
 	require.True(len(retreiveRes.Batches) == 1)
-	compareBatches(t, batch2, retreiveRes.Batches[0])
 
-	_ = retriever.RetrieveBatches(2)
-	assert.Equal(da.StatusSuccess, retreiveRes.Code)
+}
+
+func TestAvalabilityOK(t *testing.T) {
+
+	assert := assert.New(t)
+	//require := require.New(t)
+
+	mockRPCClient, dalc, nID, headers := setDAandMock(t)
+	// only blocks b1 and b2 will be submitted to DA
+	block1 := getRandomBlock(1, 10)
+	batch1 := &types.Batch{
+		StartHeight: block1.Header.Height,
+		EndHeight:   block1.Header.Height,
+		Blocks:      []*types.Block{block1},
+	}
+
+	nIDSize := 1
+	tree := exampleNMT(nIDSize, true, 1, 2, 3, 4)
+	// build a proof for an NID that is within the namespace range of the tree
+	proof, _ := tree.ProveNamespace(nID)
+	blobProof := blob.Proof([]*nmt.Proof{&proof})
+
+	mockRPCClient.On("Submit", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(uint64(1234), nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+	mockRPCClient.On("GetProof", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&blobProof, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+	mockRPCClient.On("Included", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+	mockRPCClient.On("GetHeaders", mock.Anything, mock.Anything).Return(headers, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+
+	time.Sleep(2 * mockDaBlockTime)
+
+	//data1, _ := batch1.MarshalBinary()
+	//blob1, _ := blob.NewBlobV0(nID, data1)
+
+	t.Log("Submitting batch1")
+	res1 := dalc.SubmitBatch(batch1)
+	h1 := res1.SubmitMetaData
+	assert.Equal(da.StatusSuccess, res1.Code)
+
+	mockRPCClient.On("GetProof", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&blobProof, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+	mockRPCClient.On("Included", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+	mockRPCClient.On("GetHeaders", mock.Anything, mock.Anything).Return(headers, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+
+	retriever := dalc.(da.BatchRetriever)
+
+	availRes := retriever.CheckBatchAvailability(h1)
+	assert.Equal(da.StatusSuccess, availRes.Code)
+
+}
+
+func TestAvalabilityWrongProof(t *testing.T) {
+
+	assert := assert.New(t)
+	//require := require.New(t)
+
+	mockRPCClient, dalc, nID, headers := setDAandMock(t)
+	// only blocks b1 and b2 will be submitted to DA
+	block1 := getRandomBlock(1, 10)
+	batch1 := &types.Batch{
+		StartHeight: block1.Header.Height,
+		EndHeight:   block1.Header.Height,
+		Blocks:      []*types.Block{block1},
+	}
+
+	nIDSize := 1
+	tree := exampleNMT(nIDSize, true, 1, 2, 3, 4)
+	// build a proof for an NID that is within the namespace range of the tree
+	proof, _ := tree.ProveNamespace(nID)
+	blobProof := blob.Proof([]*nmt.Proof{&proof})
+
+	mockRPCClient.On("Submit", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(uint64(1234), nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+	mockRPCClient.On("GetProof", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&blobProof, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+	mockRPCClient.On("Included", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+	mockRPCClient.On("GetHeaders", mock.Anything, mock.Anything).Return(headers, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+
+	time.Sleep(2 * mockDaBlockTime)
+
+	//data1, _ := batch1.MarshalBinary()
+	//blob1, _ := blob.NewBlobV0(nID, data1)
+
+	t.Log("Submitting batch1")
+	res1 := dalc.SubmitBatch(batch1)
+	h1 := res1.SubmitMetaData
+	assert.Equal(da.StatusSuccess, res1.Code)
+
+	mockRPCClient.On("GetProof", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+	mockRPCClient.On("GetHeaders", mock.Anything, mock.Anything).Return(headers, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+
+	retriever := dalc.(da.BatchRetriever)
+
+	availRes := retriever.CheckBatchAvailability(h1)
+	assert.ErrorIs(availRes.Error, da.ErrUnableToGetProof)
+
+}
+
+func TestRetrievalWrongCommitment(t *testing.T) {
+
+	assert := assert.New(t)
+	require := require.New(t)
+
+	commitmentString := "3f568f651fe72fa2131bd86c09bb23763e0a3cb45211b035bfa688711c76ce78"
+	commitment, _ := hex.DecodeString(commitmentString)
+
+	mockRPCClient, dalc, _, headers := setDAandMock(t)
+
+	mockRPCClient.On("Get", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil).Run(func(args mock.Arguments) {
+	})
+
+	retriever := dalc.(da.BatchRetriever)
+
+	h1 := &da.DASubmitMetaData{
+		Height:     1,
+		Commitment: commitment,
+	}
+	retreiveRes := retriever.RetrieveBatches(h1)
+	assert.ErrorIs(retreiveRes.Error, da.ErrBlobNotFound)
 	require.True(len(retreiveRes.Batches) == 0)
+
+	mockRPCClient.On("GetProof", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+	mockRPCClient.On("GetHeaders", mock.Anything, mock.Anything).Return(headers, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+
+	availRes := retriever.CheckBatchAvailability(h1)
+	assert.ErrorIs(availRes.Error, da.ErrUnableToGetProof)
+}
+
+func setDAandMock(t *testing.T) (*mocks.CelestiaRPCClient, da.DataAvailabilityLayerClient, []byte, *header.ExtendedHeader) {
+	pubsubServer := pubsub.NewServer()
+	pubsubServer.Start()
+	defer pubsubServer.Stop()
+
+	require := require.New(t)
+
+	//init celestia DA with mock RPC client
+	dalc := registry.GetClient("celestia")
+	config := celestia.Config{
+		BaseURL:  "http://localhost:26658",
+		Timeout:  30 * time.Second,
+		GasLimit: 3000000,
+		Fee:      200000000,
+	}
+	err := config.InitNamespaceID()
+	require.NoError(err)
+	conf, err := json.Marshal(config)
+	require.NoError(err)
+
+	mockRPCClient := mocks.NewCelestiaRPCClient(t)
+	options := []da.Option{
+		celestia.WithRPCClient(mockRPCClient),
+	}
+
+	err = dalc.Init(conf, pubsubServer, store.NewDefaultInMemoryKVStore(), log.TestingLogger(), options...)
+	require.NoError(err)
+
+	err = dalc.Start()
+	require.NoError(err)
+	roots := [][]byte{[]byte("apple"), []byte("watermelon"), []byte("kiwi")}
+	dah := &header.DataAvailabilityHeader{
+		RowRoots:    roots,
+		ColumnRoots: roots,
+	}
+	header := &header.ExtendedHeader{
+		DAH: dah,
+	}
+
+	return mockRPCClient, dalc, config.NamespaceID.Bytes(), header
 }
 
 //TODO: move to testutils

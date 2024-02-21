@@ -88,11 +88,11 @@ func doTestDALC(t *testing.T, mockDalc da.DataAvailabilityLayerClient) {
 	}
 
 	resp := dalc.SubmitBatch(batch1)
-	h1 := resp.DAHeight
+	h1 := resp.SubmitMetaData
 	assert.Equal(da.StatusSuccess, resp.Code)
 
 	resp = dalc.SubmitBatch(batch2)
-	h2 := resp.DAHeight
+	h2 := resp.SubmitMetaData
 	assert.Equal(da.StatusSuccess, resp.Code)
 
 	// wait a bit more than mockDaBlockTime, so dymint blocks can be "included" in mock block
@@ -102,16 +102,14 @@ func doTestDALC(t *testing.T, mockDalc da.DataAvailabilityLayerClient) {
 	// print the check result
 	t.Logf("CheckBatchAvailability result: %+v", check)
 	assert.Equal(da.StatusSuccess, check.Code)
-	assert.True(check.DataAvailable)
 
 	check = dalc.CheckBatchAvailability(h2)
 	assert.Equal(da.StatusSuccess, check.Code)
-	assert.True(check.DataAvailable)
 
+	h1.Height = h1.Height - 1
 	// this height should not be used by DALC
-	check = dalc.CheckBatchAvailability(h1 - 1)
+	check = dalc.CheckBatchAvailability(h1)
 	assert.Equal(da.StatusSuccess, check.Code)
-	assert.False(check.DataAvailable)
 }
 
 func TestRetrieve(t *testing.T) {
@@ -175,23 +173,29 @@ func doTestRetrieve(t *testing.T, dalc da.DataAvailabilityLayerClient) {
 		assert.Equal(da.StatusSuccess, resp.Code, resp.Message)
 		time.Sleep(time.Duration(rand.Int63() % mockDaBlockTime.Milliseconds()))
 
-		countAtHeight[resp.DAHeight]++
-		batches[batch] = resp.DAHeight
+		countAtHeight[resp.SubmitMetaData.Height]++
+		batches[batch] = resp.SubmitMetaData.Height
 	}
 
 	// wait a bit more than mockDaBlockTime, so mock can "produce" last blocks
 	time.Sleep(mockDaBlockTime + 20*time.Millisecond)
 
 	for h, cnt := range countAtHeight {
+		daMetaData := &da.DASubmitMetaData{
+			Height: h,
+		}
 		t.Log("Retrieving block, DA Height", h)
-		ret := retriever.RetrieveBatches(h)
+		ret := retriever.RetrieveBatches(daMetaData)
 		assert.Equal(da.StatusSuccess, ret.Code, ret.Message)
 		require.NotEmpty(ret.Batches, h)
 		assert.Len(ret.Batches, cnt, h)
 	}
 
 	for b, h := range batches {
-		ret := retriever.RetrieveBatches(h)
+		daMetaData := &da.DASubmitMetaData{
+			Height: h,
+		}
+		ret := retriever.RetrieveBatches(daMetaData)
 		assert.Equal(da.StatusSuccess, ret.Code, h)
 		require.NotEmpty(ret.Batches, h)
 		assert.Contains(ret.Batches, b, h)
