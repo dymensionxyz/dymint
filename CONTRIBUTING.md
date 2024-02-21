@@ -15,7 +15,7 @@ good issue to work on:
   towards new contributors
 
 No explicit permission is needed to work on these issues but it would be good idea
-to tag the user who opened the issue and ask that the issue is assinged to yourself.
+to tag the user who opened the issue and ask that the issue is assigned to yourself.
 
 All issue labels can be [found here](https://github.com/dymensionxyz/dymint/labels)
 for you to explore and see what peaks your interest.
@@ -40,7 +40,7 @@ as long as you are kind and constructive when you do so.
 If you want to work on something that there is no GitHub issue for,
 follow these steps:
 
-1. Create a a new GitHub issue and propose your change there.
+1. Create a new GitHub issue and propose your change there.
    Be sure to include implementation details and the rationale for the proposed change.
    We are very reluctant to accept random pull requests without
    a related issue created first.

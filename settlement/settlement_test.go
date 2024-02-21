@@ -70,8 +70,9 @@ func TestSubmitAndRetrieve(t *testing.T) {
 		require.NoError(err)
 		// Submit the batch
 		daResult := &da.ResultSubmitBatch{
-			BaseResult: da.BaseResult{
-				DAHeight: batch.EndHeight,
+			BaseResult: da.BaseResult{},
+			SubmitMetaData: &da.DASubmitMetaData{
+				Height: batch.EndHeight,
 			},
 		}
 		settlementClient.SubmitBatch(batch, da.Mock, daResult)

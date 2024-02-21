@@ -85,35 +85,36 @@ func (d *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 	resp, err := d.client.SubmitBatch(context.TODO(), &dalc.SubmitBatchRequest{Batch: batch.ToProto()})
 	if err != nil {
 		return da.ResultSubmitBatch{
-			BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error()},
+			BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error(), Error: err},
 		}
 	}
 	return da.ResultSubmitBatch{
 		BaseResult: da.BaseResult{
-			Code:     da.StatusCode(resp.Result.Code),
-			Message:  resp.Result.Message,
-			DAHeight: resp.Result.DataLayerHeight,
+			Code:    da.StatusCode(resp.Result.Code),
+			Message: resp.Result.Message,
+		},
+		SubmitMetaData: &da.DASubmitMetaData{
+			Height: resp.Result.DataLayerHeight,
 		},
 	}
 }
 
 // CheckBatchAvailability proxies CheckBatchAvailability request to gRPC server.
-func (d *DataAvailabilityLayerClient) CheckBatchAvailability(dataLayerHeight uint64) da.ResultCheckBatch {
-	resp, err := d.client.CheckBatchAvailability(context.TODO(), &dalc.CheckBatchAvailabilityRequest{DataLayerHeight: dataLayerHeight})
+func (d *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
+	resp, err := d.client.CheckBatchAvailability(context.TODO(), &dalc.CheckBatchAvailabilityRequest{DataLayerHeight: daMetaData.Height})
 	if err != nil {
-		return da.ResultCheckBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error()}}
+		return da.ResultCheckBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error(), Error: err}}
 	}
 	return da.ResultCheckBatch{
-		BaseResult:    da.BaseResult{Code: da.StatusCode(resp.Result.Code), Message: resp.Result.Message},
-		DataAvailable: resp.DataAvailable,
+		BaseResult: da.BaseResult{Code: da.StatusCode(resp.Result.Code), Message: resp.Result.Message},
 	}
 }
 
 // RetrieveBatches proxies RetrieveBlocks request to gRPC server.
-func (d *DataAvailabilityLayerClient) RetrieveBatches(dataLayerHeight uint64) da.ResultRetrieveBatch {
-	resp, err := d.client.RetrieveBatches(context.TODO(), &dalc.RetrieveBatchesRequest{DataLayerHeight: dataLayerHeight})
+func (d *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
+	resp, err := d.client.RetrieveBatches(context.TODO(), &dalc.RetrieveBatchesRequest{DataLayerHeight: daMetaData.Height})
 	if err != nil {
-		return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error()}}
+		return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error(), Error: err}}
 	}
 
 	batches := make([]*types.Batch, len(resp.Batches))
@@ -121,15 +122,17 @@ func (d *DataAvailabilityLayerClient) RetrieveBatches(dataLayerHeight uint64) da
 		var b types.Batch
 		err = b.FromProto(batch)
 		if err != nil {
-			return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error()}}
+			return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error(), Error: err}}
 		}
 		batches[i] = &b
 	}
 	return da.ResultRetrieveBatch{
 		BaseResult: da.BaseResult{
-			Code:     da.StatusCode(resp.Result.Code),
-			Message:  resp.Result.Message,
-			DAHeight: dataLayerHeight,
+			Code:    da.StatusCode(resp.Result.Code),
+			Message: resp.Result.Message,
+		},
+		CheckMetaData: &da.DACheckMetaData{
+			Height: daMetaData.Height,
 		},
 		Batches: batches,
 	}

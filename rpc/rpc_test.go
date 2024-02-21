@@ -37,7 +37,7 @@ func TestNodeHealthRPCPropogation(t *testing.T) {
 			name:               "statusNodeUnhealthy",
 			endpoint:           "/status",
 			isNodeHealthy:      false,
-			expectedStatusCode: http.StatusServiceUnavailable,
+			expectedStatusCode: http.StatusOK,
 		},
 		{
 			name:               "statusNodeHealthyAgain",

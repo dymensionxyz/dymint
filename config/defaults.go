@@ -29,7 +29,7 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 		BlockManagerConfig: BlockManagerConfig{
 			BlockTime:               200 * time.Millisecond,
 			EmptyBlocksMaxTime:      3 * time.Second,
-			BatchSubmitMaxTime:      30 * time.Second,
+			BatchSubmitMaxTime:      100 * time.Second,
 			NamespaceID:             "0000000000000000ffff",
 			BlockBatchSize:          500,
 			BlockBatchMaxSizeBytes:  500000,

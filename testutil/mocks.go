@@ -142,7 +142,7 @@ type DALayerClientSubmitBatchError struct {
 
 // SubmitBatch submits a batch to the data availability layer
 func (s *DALayerClientSubmitBatchError) SubmitBatch(_ *types.Batch) da.ResultSubmitBatch {
-	return da.ResultSubmitBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: connectionRefusedErrorMessage}}
+	return da.ResultSubmitBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: connectionRefusedErrorMessage, Error: errors.New(connectionRefusedErrorMessage)}}
 }
 
 // DALayerClientRetrieveBatchesError is a mock data availability layer client that can be used to test error handling
@@ -151,8 +151,8 @@ type DALayerClientRetrieveBatchesError struct {
 }
 
 // RetrieveBatches retrieves batches from the data availability layer
-func (m *DALayerClientRetrieveBatchesError) RetrieveBatches(_ uint64) da.ResultRetrieveBatch {
-	return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: batchNotFoundErrorMessage}}
+func (m *DALayerClientRetrieveBatchesError) RetrieveBatches(_ *da.DASubmitMetaData) da.ResultRetrieveBatch {
+	return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: batchNotFoundErrorMessage, Error: da.ErrBlobNotFound}}
 }
 
 // SubscribeMock is a mock to provide a subscription like behavior for testing

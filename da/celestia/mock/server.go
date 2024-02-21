@@ -100,7 +100,7 @@ func (s *Server) submit(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp, err := json.Marshal(cnc.TxResponse{
-		Height: int64(res.DAHeight),
+		Height: int64(res.SubmitMetaData.Height),
 		Code:   uint32(code),
 		RawLog: res.Message,
 	})
@@ -119,7 +119,10 @@ func (s *Server) shares(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res := s.mock.RetrieveBatches(height)
+	daMetaData := &da.DASubmitMetaData{
+		Height: height,
+	}
+	res := s.mock.RetrieveBatches(daMetaData)
 	if res.Code != da.StatusSuccess {
 		s.writeError(w, errors.New(res.Message))
 		return
@@ -145,7 +148,7 @@ func (s *Server) shares(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := json.Marshal(namespacedSharesResponse{
 		Shares: shares,
-		Height: res.DAHeight,
+		Height: res.CheckMetaData.Height,
 	})
 	if err != nil {
 		s.writeError(w, err)
@@ -161,8 +164,10 @@ func (s *Server) data(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, err)
 		return
 	}
-
-	res := s.mock.RetrieveBatches(height)
+	daMetaData := &da.DASubmitMetaData{
+		Height: height,
+	}
+	res := s.mock.RetrieveBatches(daMetaData)
 	if res.Code != da.StatusSuccess {
 		s.writeError(w, errors.New(res.Message))
 		return
@@ -179,7 +184,7 @@ func (s *Server) data(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := json.Marshal(namespacedDataResponse{
 		Data:   data,
-		Height: res.DAHeight,
+		Height: res.CheckMetaData.Height,
 	})
 	if err != nil {
 		s.writeError(w, err)
