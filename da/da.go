@@ -28,13 +28,7 @@ type Blob = []byte
 const (
 	StatusUnknown StatusCode = iota
 	StatusSuccess
-	StatusTimeout
 	StatusError
-	StatusUnableToGetProofs
-	StatusBlobNotFound
-	StatusBlobNotIncluded
-	StatusProofNotMatching
-	StatusNotImplemented
 )
 
 // Client defines all the possible da clients
@@ -56,6 +50,8 @@ type BaseResult struct {
 	Code StatusCode
 	// Message may contain DA layer specific information (like DA block height/hash, detailed error message, etc)
 	Message string
+	// Error is the error returned by the DA layer
+	Error error
 }
 
 // DAMetaData contains meta data about a batch on the Data Availability Layer.
@@ -160,9 +156,6 @@ type ResultSubmitBatch struct {
 // ResultCheckBatch contains information about block availability, returned from DA layer client.
 type ResultCheckBatch struct {
 	BaseResult
-	// DataAvailable is the actual answer whether the block is available or not.
-	// It can be true if and only if Code is equal to StatusSuccess.
-	DataAvailable bool
 	// DAHeight informs about a height on Data Availability Layer for given result.
 	CheckMetaData *DACheckMetaData
 }

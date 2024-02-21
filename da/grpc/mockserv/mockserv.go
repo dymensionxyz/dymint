@@ -68,7 +68,6 @@ func (m *mockImpl) CheckBatchAvailability(_ context.Context, request *dalc.Check
 			Code:    dalc.StatusCode(resp.Code),
 			Message: resp.Message,
 		},
-		DataAvailable: resp.DataAvailable,
 	}, nil
 }
 

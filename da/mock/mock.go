@@ -81,16 +81,16 @@ func (m *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 
 	blob, err := batch.MarshalBinary()
 	if err != nil {
-		return da.ResultSubmitBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error()}}
+		return da.ResultSubmitBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error(), Error: err}}
 	}
 	hash := sha1.Sum(uint64ToBinary(batch.EndHeight)) //#nosec
 	err = m.dalcKV.Set(getKey(daHeight, batch.StartHeight), hash[:])
 	if err != nil {
-		return da.ResultSubmitBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error()}}
+		return da.ResultSubmitBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error(), Error: err}}
 	}
 	err = m.dalcKV.Set(hash[:], blob)
 	if err != nil {
-		return da.ResultSubmitBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error()}}
+		return da.ResultSubmitBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error(), Error: err}}
 	}
 
 	atomic.StoreUint64(&m.daHeight, daHeight+1)
@@ -110,13 +110,13 @@ func (m *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 func (m *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
 
 	batchesRes := m.RetrieveBatches(daMetaData)
-	return da.ResultCheckBatch{BaseResult: da.BaseResult{Code: batchesRes.Code}, DataAvailable: len(batchesRes.Batches) > 0}
+	return da.ResultCheckBatch{BaseResult: da.BaseResult{Code: batchesRes.Code, Message: batchesRes.Message, Error: batchesRes.Error}, CheckMetaData: batchesRes.CheckMetaData}
 }
 
 // RetrieveBatches returns block at given height from data availability layer.
 func (m *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
 	if daMetaData.Height >= atomic.LoadUint64(&m.daHeight) {
-		return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: "batch not found"}}
+		return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: "batch not found", Error: da.ErrBlobNotFound}}
 	}
 
 	iter := m.dalcKV.PrefixIterator(uint64ToBinary(daMetaData.Height))
@@ -128,13 +128,13 @@ func (m *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 
 		blob, err := m.dalcKV.Get(hash)
 		if err != nil {
-			return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error()}}
+			return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error(), Error: err}}
 		}
 
 		batch := &types.Batch{}
 		err = batch.UnmarshalBinary(blob)
 		if err != nil {
-			return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error()}}
+			return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error(), Error: err}}
 		}
 		batches = append(batches, batch)
 

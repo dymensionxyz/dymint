@@ -85,7 +85,7 @@ func (d *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 	resp, err := d.client.SubmitBatch(context.TODO(), &dalc.SubmitBatchRequest{Batch: batch.ToProto()})
 	if err != nil {
 		return da.ResultSubmitBatch{
-			BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error()},
+			BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error(), Error: err},
 		}
 	}
 	return da.ResultSubmitBatch{
@@ -103,11 +103,10 @@ func (d *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 func (d *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
 	resp, err := d.client.CheckBatchAvailability(context.TODO(), &dalc.CheckBatchAvailabilityRequest{DataLayerHeight: daMetaData.Height})
 	if err != nil {
-		return da.ResultCheckBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error()}}
+		return da.ResultCheckBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error(), Error: err}}
 	}
 	return da.ResultCheckBatch{
-		BaseResult:    da.BaseResult{Code: da.StatusCode(resp.Result.Code), Message: resp.Result.Message},
-		DataAvailable: resp.DataAvailable,
+		BaseResult: da.BaseResult{Code: da.StatusCode(resp.Result.Code), Message: resp.Result.Message},
 	}
 }
 
@@ -115,7 +114,7 @@ func (d *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 func (d *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
 	resp, err := d.client.RetrieveBatches(context.TODO(), &dalc.RetrieveBatchesRequest{DataLayerHeight: daMetaData.Height})
 	if err != nil {
-		return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error()}}
+		return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error(), Error: err}}
 	}
 
 	batches := make([]*types.Batch, len(resp.Batches))
@@ -123,7 +122,7 @@ func (d *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 		var b types.Batch
 		err = b.FromProto(batch)
 		if err != nil {
-			return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error()}}
+			return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error(), Error: err}}
 		}
 		batches[i] = &b
 	}

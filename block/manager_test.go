@@ -161,7 +161,7 @@ func TestRetrieveDaBatchesFailed(t *testing.T) {
 	}
 	err = manager.processNextDABatch(context.Background(), daMetaData)
 	t.Log(err)
-	assert.ErrorContains(t, err, errorValidatingBatchErrorMessage)
+	assert.ErrorIs(t, err, da.ErrBlobNotFound)
 }
 
 func TestProduceNewBlock(t *testing.T) {

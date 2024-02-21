@@ -136,7 +136,7 @@ func TestRetrievalNotFound(t *testing.T) {
 	retriever := dalc.(da.BatchRetriever)
 
 	retreiveRes := retriever.RetrieveBatches(h1)
-	assert.Equal(da.StatusBlobNotFound, retreiveRes.Code)
+	assert.ErrorIs(retreiveRes.Error, da.ErrBlobNotFound)
 	require.True(len(retreiveRes.Batches) == 0)
 
 }
@@ -214,7 +214,6 @@ func TestAvalabilityOK(t *testing.T) {
 
 	availRes := retriever.CheckBatchAvailability(h1)
 	assert.Equal(da.StatusSuccess, availRes.Code)
-	assert.Equal(true, availRes.DataAvailable)
 
 }
 
@@ -259,8 +258,7 @@ func TestAvalabilityWrongProof(t *testing.T) {
 	retriever := dalc.(da.BatchRetriever)
 
 	availRes := retriever.CheckBatchAvailability(h1)
-	assert.Equal(da.StatusUnableToGetProofs, availRes.Code)
-	assert.Equal(false, availRes.DataAvailable)
+	assert.ErrorIs(availRes.Error, da.ErrUnableToGetProof)
 
 }
 
@@ -284,15 +282,14 @@ func TestRetrievalWrongCommitment(t *testing.T) {
 		Commitment: commitment,
 	}
 	retreiveRes := retriever.RetrieveBatches(h1)
-	assert.Equal(da.StatusBlobNotFound, retreiveRes.Code)
+	assert.ErrorIs(retreiveRes.Error, da.ErrBlobNotFound)
 	require.True(len(retreiveRes.Batches) == 0)
 
 	mockRPCClient.On("GetProof", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
 	mockRPCClient.On("GetHeaders", mock.Anything, mock.Anything).Return(headers, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
 
 	availRes := retriever.CheckBatchAvailability(h1)
-	assert.Equal(da.StatusUnableToGetProofs, availRes.Code)
-	assert.Equal(false, availRes.DataAvailable)
+	assert.ErrorIs(availRes.Error, da.ErrUnableToGetProof)
 }
 
 func setDAandMock(t *testing.T) (*mocks.CelestiaRPCClient, da.DataAvailabilityLayerClient, []byte, *header.ExtendedHeader) {
