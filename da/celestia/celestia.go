@@ -247,10 +247,10 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			}
 			return da.ResultSubmitBatch{
 				BaseResult: da.BaseResult{
-					Code:           da.StatusSuccess,
-					Message:        "Submission successful",
-					SubmitMetaData: daMetaData,
+					Code:    da.StatusSuccess,
+					Message: "Submission successful",
 				},
+				SubmitMetaData: daMetaData,
 			}
 		}
 	}
@@ -275,7 +275,7 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 			blob, err := c.rpc.Get(c.ctx, daMetaData.Height, c.config.NamespaceID.Bytes(), daMetaData.Commitment)
 			if err != nil {
 				return da.ResultRetrieveBatch{
-					BaseDACheckResult: da.BaseDACheckResult{
+					BaseResult: da.BaseResult{
 						Code:    da.StatusBlobNotFound,
 						Message: err.Error(),
 					},
@@ -283,7 +283,7 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 			}
 			if blob == nil {
 				return da.ResultRetrieveBatch{
-					BaseDACheckResult: da.BaseDACheckResult{
+					BaseResult: da.BaseResult{
 						Code:    da.StatusBlobNotFound,
 						Message: "Blob not found",
 					},
@@ -299,7 +299,7 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 			err = parsedBatch.FromProto(&batch)
 			if err != nil {
 				return da.ResultRetrieveBatch{
-					BaseDACheckResult: da.BaseDACheckResult{
+					BaseResult: da.BaseResult{
 						Code:    da.StatusError,
 						Message: err.Error(),
 					},
@@ -308,7 +308,7 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 			batches = append(batches, parsedBatch)
 			//}
 			return da.ResultRetrieveBatch{
-				BaseDACheckResult: da.BaseDACheckResult{
+				BaseResult: da.BaseResult{
 					Code:    da.StatusSuccess,
 					Message: "Batch retrieval successful",
 				},
@@ -323,7 +323,7 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(dataLayerHeight uint64) da
 	blobs, err := c.rpc.GetAll(c.ctx, dataLayerHeight, []share.Namespace{c.config.NamespaceID.Bytes()})
 	if err != nil {
 		return da.ResultRetrieveBatch{
-			BaseDACheckResult: da.BaseDACheckResult{
+			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
 				Message: err.Error(),
 			},
@@ -342,7 +342,7 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(dataLayerHeight uint64) da
 		err := parsedBatch.FromProto(&batch)
 		if err != nil {
 			return da.ResultRetrieveBatch{
-				BaseDACheckResult: da.BaseDACheckResult{
+				BaseResult: da.BaseResult{
 					Code:    da.StatusError,
 					Message: err.Error(),
 				},
@@ -352,7 +352,7 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(dataLayerHeight uint64) da
 	}
 
 	return da.ResultRetrieveBatch{
-		BaseDACheckResult: da.BaseDACheckResult{
+		BaseResult: da.BaseResult{
 			Code: da.StatusSuccess},
 		Batches: batches,
 	}
@@ -372,11 +372,11 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 		//Returning Data Availability header Data Root for dispute validation
 		return da.ResultCheckBatch{
 			DataAvailable: false,
-			BaseDACheckResult: da.BaseDACheckResult{
-				Code:          da.StatusUnableToGetProofs,
-				Message:       "Error getting row to data root proofs",
-				CheckMetaData: DACheckMetaData,
+			BaseResult: da.BaseResult{
+				Code:    da.StatusUnableToGetProofs,
+				Message: "Error getting row to data root proofs",
 			},
+			CheckMetaData: DACheckMetaData,
 		}
 	}
 	DACheckMetaData.Root = dah.Hash()
@@ -391,11 +391,11 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 		//is the data for the span, and reproducing the commitment will generate a different one.
 		return da.ResultCheckBatch{
 			DataAvailable: false,
-			BaseDACheckResult: da.BaseDACheckResult{
-				Code:          da.StatusUnableToGetProofs,
-				Message:       "Error getting NMT proofs",
-				CheckMetaData: DACheckMetaData,
+			BaseResult: da.BaseResult{
+				Code:    da.StatusUnableToGetProofs,
+				Message: "Error getting NMT proofs",
 			},
+			CheckMetaData: DACheckMetaData,
 		}
 	}
 
@@ -417,10 +417,10 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 			//In case the span is not correct we need to send unavailable proof by sending proof of any row root to data root
 			return da.ResultCheckBatch{
 				DataAvailable: false,
-				BaseDACheckResult: da.BaseDACheckResult{
-					Code:          da.StatusProofNotMatching,
-					Message:       "Proof index not matching",
-					CheckMetaData: DACheckMetaData,
+				CheckMetaData: DACheckMetaData,
+				BaseResult: da.BaseResult{
+					Code:    da.StatusProofNotMatching,
+					Message: "Proof index not matching",
 				},
 			}
 		}
@@ -433,20 +433,20 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 	if err != nil {
 		return da.ResultCheckBatch{
 			DataAvailable: false,
-			BaseDACheckResult: da.BaseDACheckResult{
-				Code:          da.StatusError,
-				Message:       "Error validating proof",
-				CheckMetaData: DACheckMetaData,
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: "Error validating proof",
 			},
+			CheckMetaData: DACheckMetaData,
 		}
 	} else if !included {
 		return da.ResultCheckBatch{
 			DataAvailable: false,
-			BaseDACheckResult: da.BaseDACheckResult{
-				Code:          da.StatusError,
-				Message:       "Blob not included",
-				CheckMetaData: DACheckMetaData,
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: "Blob not included",
 			},
+			CheckMetaData: DACheckMetaData,
 		}
 	}
 	proofs = append(proofs, proof)
@@ -457,11 +457,11 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 	DACheckMetaData.Namespace = c.config.NamespaceID.Bytes()
 	return da.ResultCheckBatch{
 		DataAvailable: true,
-		BaseDACheckResult: da.BaseDACheckResult{
-			Code:          da.StatusSuccess,
-			Message:       "Blob available",
-			CheckMetaData: DACheckMetaData,
+		BaseResult: da.BaseResult{
+			Code:    da.StatusSuccess,
+			Message: "Blob available",
 		},
+		CheckMetaData: DACheckMetaData,
 	}
 }
 
