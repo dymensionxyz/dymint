@@ -254,6 +254,10 @@ func getAddress(key crypto.PrivKey) ([]byte, error) {
 	return tmcrypto.AddressHash(rawKey), nil
 }
 
+func (m *Manager) GetFraudProofOutChan() chan *abci.FraudProof {
+	return m.executor.FraudProofOutCh
+}
+
 // EventListener registers events to callbacks.
 func (m *Manager) EventListener(ctx context.Context, isAggregator bool) {
 	go utils.SubscribeAndHandleEvents(ctx, m.pubsub, "nodeHealthStatusHandler", events.EventQueryHealthStatus, m.healthStatusEventCallback, m.logger)

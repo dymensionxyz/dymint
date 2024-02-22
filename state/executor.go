@@ -37,6 +37,8 @@ type BlockExecutor struct {
 
 	fraudProofsEnabled bool
 	simulateFraud      bool
+
+	FraudProofOutCh chan *abci.FraudProof
 }
 
 // NewBlockExecutor creates new instance of BlockExecutor.
@@ -57,6 +59,7 @@ func NewBlockExecutor(proposerAddress []byte, namespaceID string, chainID string
 		logger:                logger,
 		fraudProofsEnabled:    true,
 		simulateFraud:         simulateFraud,
+		FraudProofOutCh:       make(chan *abci.FraudProof),
 	}
 	copy(be.namespaceID[:], bytes)
 	return &be, nil
