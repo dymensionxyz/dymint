@@ -204,8 +204,10 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 		go m.SubmitLoop(ctx)
 	} else {
 		// TODO(omritoptix): change to private methods
-		go m.RetriveLoop(ctx)
+		go m.RetrieveLoop(ctx)
 		go m.SyncTargetLoop(ctx)
+		go m.fraudProofPublishLoop(ctx)
+
 	}
 
 	m.EventListener(ctx, isAggregator)

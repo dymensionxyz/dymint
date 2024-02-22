@@ -2,7 +2,9 @@ package block
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"os"
 	"sync/atomic"
 
 	"code.cloudfoundry.org/go-diodes"
@@ -11,7 +13,7 @@ import (
 
 // RetriveLoop listens for new sync messages written to a ring buffer and in turn
 // runs syncUntilTarget on the latest message in the ring buffer.
-func (m *Manager) RetriveLoop(ctx context.Context) {
+func (m *Manager) RetrieveLoop(ctx context.Context) {
 	m.logger.Info("Started retrieve loop")
 	syncTargetpoller := diodes.NewPoller(m.syncTargetDiode, diodes.WithPollingContext(ctx))
 
@@ -117,4 +119,28 @@ func (m *Manager) fetchBatch(daMetaData *da.DASubmitMetaData) da.ResultRetrieveB
 	//TODO(srene) : for invalid transactions there is no specific error code since it will need to be validated somewhere else for fraud proving.
 	//NMT proofs (availRes.MetaData.Proofs) are included in the result batchRes, necessary to be included in the dispute
 	return batchRes
+}
+
+func (m *Manager) fraudProofPublishLoop(ctx context.Context) {
+	for {
+		select {
+		case fraudProof := <-m.GetFraudProofOutChan():
+
+			// Open a new file for writing only
+			file, err := os.Create("fraudProof_rollapp_with_tx.json")
+			if err != nil {
+				return
+			}
+			defer file.Close()
+
+			// Serialize the struct to JSON and write it to the file
+			jsonEncoder := json.NewEncoder(file)
+			err = jsonEncoder.Encode(fraudProof)
+			if err != nil {
+				return
+			}
+		case <-ctx.Done():
+			return
+		}
+	}
 }

@@ -392,7 +392,12 @@ func (e *BlockExecutor) Execute(ctx context.Context, state types.State, block *t
 	currISRIdx++
 	if err != nil {
 		if err == types.ErrInvalidISR {
-			e.generateFraudProof(&reqBeginBlock, nil, nil)
+			fraudProof, err := e.generateFraudProof(&reqBeginBlock, nil, nil)
+			if err != nil {
+				return nil, err
+			}
+			// genearte Fraud Proof
+			e.FraudProofOutCh <- fraudProof
 		}
 		return nil, err
 	}
@@ -410,7 +415,12 @@ func (e *BlockExecutor) Execute(ctx context.Context, state types.State, block *t
 		currISRIdx++
 		if err != nil {
 			if err == types.ErrInvalidISR {
-				e.generateFraudProof(&reqBeginBlock, deliverTxRequests, nil)
+				fraudProof, err := e.generateFraudProof(&reqBeginBlock, deliverTxRequests, nil)
+				if err != nil {
+					return nil, err
+				}
+				// generate Fraud Proof
+				e.FraudProofOutCh <- fraudProof
 			}
 			return nil, err
 		}
@@ -426,7 +436,12 @@ func (e *BlockExecutor) Execute(ctx context.Context, state types.State, block *t
 	currISRIdx++
 	if err != nil {
 		if err == types.ErrInvalidISR {
-			e.generateFraudProof(&reqBeginBlock, deliverTxRequests, &reqEndBlock)
+			fraudProof, err := e.generateFraudProof(&reqBeginBlock, deliverTxRequests, &reqEndBlock)
+			if err != nil {
+				return nil, err
+			}
+			// generate Fraud Proof
+			e.FraudProofOutCh <- fraudProof
 		}
 		return nil, err
 	}

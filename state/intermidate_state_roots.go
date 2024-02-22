@@ -3,11 +3,9 @@ package state
 import (
 	"bytes"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"math/rand"
-	"os"
 
 	"github.com/dymensionxyz/dymint/types"
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -78,19 +76,6 @@ func (e *BlockExecutor) generateFraudProof(beginBlockRequest *abci.RequestBeginB
 		return nil, errors.New("fraud proof is nil")
 	}
 
-	// Open a new file for writing only
-	file, err := os.Create("fraudProof_rollapp_with_tx.json")
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
+	e.FraudProofOutCh <- fraud
 
-	// Serialize the struct to JSON and write it to the file
-	jsonEncoder := json.NewEncoder(file)
-	err = jsonEncoder.Encode(fraud)
-	if err != nil {
-		return nil, err
-	}
-
-	panic("fraud proof generated")
 }
