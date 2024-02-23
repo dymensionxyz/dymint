@@ -493,18 +493,18 @@ func (d *HubClient) convertStateInfoToResultRetrieveBatch(stateInfo *rollapptype
 // TODO(omritoptix): Change the retry attempts to be only for the batch polling. Also we need to have a more
 // bullet proof check as theoretically the tx can stay in the mempool longer then our retry attempts.
 func (d *HubClient) waitForBatchInclusion(batchStartHeight uint64) (*settlement.ResultRetrieveBatch, error) {
-	var resultRetriveBatch *settlement.ResultRetrieveBatch
+	var resultRetrieveBatch *settlement.ResultRetrieveBatch
 	err := retry.Do(func() error {
 		latestBatch, err := d.GetLatestBatch(d.config.RollappID)
 		if err != nil {
 			return err
 		}
 		if latestBatch.Batch.StartHeight == batchStartHeight {
-			resultRetriveBatch = latestBatch
+			resultRetrieveBatch = latestBatch
 			return nil
 		}
 		return settlement.ErrBatchNotFound
 	}, retry.Context(d.ctx), retry.LastErrorOnly(true),
 		retry.Delay(d.batchRetryDelay), retry.Attempts(d.batchRetryAttempts), retry.MaxDelay(batchRetryMaxDelay))
-	return resultRetriveBatch, err
+	return resultRetrieveBatch, err
 }

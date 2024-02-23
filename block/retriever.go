@@ -13,7 +13,7 @@ import (
 	"github.com/tendermint/tendermint/abci/types"
 )
 
-// RetriveLoop listens for new sync messages written to a ring buffer and in turn
+// RetrieveLoop listens for new sync messages written to a ring buffer and in turn
 // runs syncUntilTarget on the latest message in the ring buffer.
 func (m *Manager) RetrieveLoop(ctx context.Context) {
 	m.logger.Info("Started retrieve loop")
