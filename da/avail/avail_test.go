@@ -109,10 +109,10 @@ const (
 
 // }
 
-// TestRetriveBatches tests the RetrieveBatches function manages
+// TestRetrieveBatches tests the RetrieveBatches function manages
 // to decode the batches from the block extrinsics and only returns
 // the batches relevant for our app id and method index.
-func TestRetriveBatches(t *testing.T) {
+func TestRetrieveBatches(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	const appId = 123
