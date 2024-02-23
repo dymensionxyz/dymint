@@ -76,6 +76,6 @@ func (e *BlockExecutor) generateFraudProof(beginBlockRequest *abci.RequestBeginB
 		return nil, errors.New("fraud proof is nil")
 	}
 
-	e.FraudProofOutCh <- fraud
+	return fraud, nil
 
 }

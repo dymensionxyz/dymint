@@ -8,7 +8,9 @@ import (
 	"sync/atomic"
 
 	"code.cloudfoundry.org/go-diodes"
+	"github.com/celestiaorg/nmt"
 	"github.com/dymensionxyz/dymint/da"
+	"github.com/tendermint/tendermint/abci/types"
 )
 
 // RetriveLoop listens for new sync messages written to a ring buffer and in turn
@@ -114,6 +116,7 @@ func (m *Manager) fetchBatch(daMetaData *da.DASubmitMetaData) da.ResultRetrieveB
 			},
 		}
 	}
+	m.lastBatch = &availabilityRes
 	//batchRes.MetaData includes proofs necessary to open disputes with the Hub
 	batchRes := m.retriever.RetrieveBatches(daMetaData)
 	//TODO(srene) : for invalid transactions there is no specific error code since it will need to be validated somewhere else for fraud proving.
@@ -125,9 +128,11 @@ func (m *Manager) fraudProofPublishLoop(ctx context.Context) {
 	for {
 		select {
 		case fraudProof := <-m.GetFraudProofOutChan():
-
 			// Open a new file for writing only
-			file, err := os.Create("fraudProof_rollapp_with_tx.json")
+			if m.dalc.GetClientType() == da.Celestia {
+				m.addInclusionProofToFraudProof(fraudProof)
+			}
+			file, err := os.Create("fraudProof_rollapp_with_tx_and_inclusionproof.json")
 			if err != nil {
 				return
 			}
@@ -143,4 +148,46 @@ func (m *Manager) fraudProofPublishLoop(ctx context.Context) {
 			return
 		}
 	}
+}
+
+func (m *Manager) addInclusionProofToFraudProof(fraudProof *types.FraudProof) error {
+
+	prover := m.dalc.(da.ProofsRetriever)
+	b, nmtRoots, rowProofs, err := prover.GetInclusionProofsCommitment(m.lastBatch.CheckMetaData.Height, m.lastBatch.CheckMetaData.Proofs[0], m.lastBatch.CheckMetaData.Commitment)
+	if err != nil {
+		return err
+	}
+	blobJSON, err := b.MarshalJSON()
+	if err != nil {
+		return err
+	}
+	fraudProof.InclusionProof.Blob = blobJSON
+
+	nmtProofs := []*nmt.Proof(*m.lastBatch.CheckMetaData.Proofs[0])
+
+	var proofs [][]byte
+
+	for _, proof := range nmtProofs {
+		proofJSON, err := proof.MarshalJSON()
+		if err != nil {
+			return err
+		}
+		proofs = append(proofs, proofJSON)
+	}
+	fraudProof.InclusionProof.Nmtproofs = proofs
+	fraudProof.InclusionProof.Nmtroots = nmtRoots
+	var rproofs [][]byte
+
+	for _, rproof := range rowProofs {
+		pbProof, err := rproof.ToProto().Marshal()
+		if err != nil {
+			return err
+		}
+		rproofs = append(rproofs, pbProof)
+
+	}
+	fraudProof.InclusionProof.Rproofs = rproofs
+	fraudProof.InclusionProof.Dataroot = m.lastBatch.CheckMetaData.Root
+
+	return nil
 }

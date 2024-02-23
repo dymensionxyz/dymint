@@ -275,5 +275,5 @@ replace (
 	github.com/libp2p/go-libp2p-pubsub => github.com/dymensionxyz/go-libp2p-pubsub v0.0.0-20231220125656-9e904c648367
 
 	github.com/rollkit/celestia-openrpc => github.com/celestiaorg/celestia-openrpc v0.3.0
-	github.com/tendermint/tendermint => github.com/dymensionxyz/cometbft v0.34.29-fraudproof-0.0.1
+	github.com/tendermint/tendermint => github.com/dymensionxyz/cometbft v0.34.30-0.20240222135501-2e82437a0511
 )

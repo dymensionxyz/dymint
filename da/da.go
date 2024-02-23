@@ -193,6 +193,11 @@ type DataAvailabilityLayerClient interface {
 	CheckBatchAvailability(daMetaData *DASubmitMetaData) ResultCheckBatch
 }
 
+type ProofsRetriever interface {
+	//Get the inclusion proofs to generate a fraud proof
+	GetInclusionProofsCommitment(height uint64, proof *blob.Proof, commitment Commitment) (*blob.Blob, [][]byte, []*merkle.Proof, error)
+}
+
 // BatchRetriever is additional interface that can be implemented by Data Availability Layer Client that is able to retrieve
 // block data from DA layer. This gives the ability to use it for block synchronization.
 type BatchRetriever interface {

@@ -85,6 +85,8 @@ type Manager struct {
 
 	prevBlock  map[uint64]*types.Block
 	prevCommit map[uint64]*types.Commit
+
+	lastBatch *da.ResultCheckBatch
 }
 
 // getInitialState tries to load lastState from Store, and if it's not available it reads GenesisDoc.
