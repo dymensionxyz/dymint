@@ -3,6 +3,7 @@ package celestia
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -214,9 +215,10 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			return da.ResultSubmitBatch{}
 		default:
 
-			c.logger.Info("Submitting DA batch")
 			//TODO(srene):  Split batch in multiple blobs if necessary if supported
 			height, commitment, err := c.submit(data)
+
+			c.logger.Info("Submitting DA batch", "height", height, "commitment", hex.EncodeToString(commitment))
 
 			if err != nil {
 				c.logger.Error("Failed to submit DA batch. Emitting health event and trying again", "error", err)
@@ -229,6 +231,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			}
 
 			daMetaData := &da.DASubmitMetaData{
+				Client:     da.Celestia,
 				Height:     height,
 				Commitment: commitment,
 				Namespace:  c.config.NamespaceID.Bytes(),
@@ -244,6 +247,9 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 				time.Sleep(c.submitRetryDelay)
 				continue
 			}
+
+			daMetaData.Index = availabilityResult.CheckMetaData.Index
+			daMetaData.Length = availabilityResult.CheckMetaData.Length
 			daMetaData.Root = availabilityResult.CheckMetaData.Root
 
 			res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, true, nil)

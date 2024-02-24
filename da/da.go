@@ -1,6 +1,7 @@
 package da
 
 import (
+	"encoding/hex"
 	"strconv"
 	"strings"
 
@@ -75,8 +76,10 @@ type DASubmitMetaData struct {
 // ToPath converts a DAMetaData to a path.
 func (d *DASubmitMetaData) ToPath() string {
 	// convert uint64 to string
-	if d.Length > 0 {
-		path := []string{string(d.Client), ".", strconv.FormatUint(d.Height, 10), ".", strconv.Itoa(d.Index), ".", strconv.Itoa(d.Length), ".", string(d.Commitment), ".", string(d.Namespace), ".", string(d.Root)}
+	if d.Commitment != nil {
+		commitment := hex.EncodeToString(d.Commitment)
+		dataroot := hex.EncodeToString(d.Root)
+		path := []string{string(d.Client), ".", strconv.FormatUint(d.Height, 10), ".", strconv.Itoa(d.Index), ".", strconv.Itoa(d.Length), ".", commitment, ".", string(d.Namespace), ".", dataroot}
 		return strings.Join(path, "")
 	} else {
 		path := []string{string(d.Client), ".", strconv.FormatUint(d.Height, 10)}
@@ -100,9 +103,15 @@ func (d *DASubmitMetaData) FromPath(path string) (*DASubmitMetaData, error) {
 		if err != nil {
 			return nil, err
 		}
-		commitment := []byte(pathParts[4])
+		commitment, err := hex.DecodeString(pathParts[4])
+		if err != nil {
+			return nil, err
+		}
 		namespace := []byte(pathParts[5])
-		root := []byte(pathParts[6])
+		root, err := hex.DecodeString(pathParts[6])
+		if err != nil {
+			return nil, err
+		}
 		return &DASubmitMetaData{
 			Height:     height,
 			Client:     Client(pathParts[0]),

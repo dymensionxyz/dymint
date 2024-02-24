@@ -410,6 +410,7 @@ func (d *HubClient) convertBatchToMsgUpdateState(batch *types.Batch, daClient da
 		}
 		blockDescriptors[index] = blockDescriptor
 	}
+	d.logger.Info("Submitting batch", "dapath", daResult.SubmitMetaData.ToPath())
 	settlementBatch := &rollapptypes.MsgUpdateState{
 		Creator:     addr,
 		RollappId:   d.config.RollappID,
@@ -474,6 +475,9 @@ func (d *HubClient) convertToNewBatchEvent(rawEventData ctypes.ResultEvent) (*se
 
 func (d *HubClient) convertStateInfoToResultRetrieveBatch(stateInfo *rollapptypes.StateInfo) (*settlement.ResultRetrieveBatch, error) {
 	daMetaData := &da.DASubmitMetaData{}
+
+	d.logger.Info("Getting batch", "dapath", stateInfo.DAPath)
+
 	daMetaData, err := daMetaData.FromPath(stateInfo.DAPath)
 	if err != nil {
 		return nil, err
