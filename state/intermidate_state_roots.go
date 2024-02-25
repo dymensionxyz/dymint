@@ -69,6 +69,7 @@ func (e *BlockExecutor) generateFraudProof(beginBlockRequest *abci.RequestBeginB
 	if err != nil {
 		return nil, err
 	}
+	e.logger.Info("Fraudproof generated")
 
 	fraud := resp.FraudProof
 	if fraud == nil {

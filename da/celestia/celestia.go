@@ -380,6 +380,7 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 	DACheckMetaData.Height = daMetaData.Height
 	DACheckMetaData.Client = daMetaData.Client
 	DACheckMetaData.Commitment = daMetaData.Commitment
+	DACheckMetaData.Namespace = daMetaData.Namespace
 
 	dah, err := c.getDataAvailabilityHeaders(daMetaData.Height)
 	if err != nil {
@@ -469,7 +470,6 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 	DACheckMetaData.Index = index
 	DACheckMetaData.Length = shares
 	DACheckMetaData.Proofs = proofs
-	DACheckMetaData.Namespace = c.config.NamespaceID.Bytes()
 	return da.ResultCheckBatch{
 		BaseResult: da.BaseResult{
 			Code:    da.StatusSuccess,
@@ -607,7 +607,7 @@ func (c *DataAvailabilityLayerClient) getRowProof(height uint64, dah *header.Dat
 	if err != nil {
 		return nil, nil, err
 	}
-	fmt.Println("Shares", len(shares))
+	//fmt.Println("Shares", len(shares))
 	var proofs []*merkle.Proof
 	nmtProofs := []*nmt.Proof(*proof)
 

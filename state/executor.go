@@ -397,6 +397,7 @@ func (e *BlockExecutor) Execute(ctx context.Context, state types.State, block *t
 				return nil, err
 			}
 			// genearte Fraud Proof
+			e.logger.Info("Sending fraud proof to channel")
 			e.FraudProofOutCh <- fraudProof
 		}
 		return nil, err
@@ -412,13 +413,22 @@ func (e *BlockExecutor) Execute(ctx context.Context, state types.State, block *t
 		}
 
 		_, err = e.setOrVerifyISR("deliverTx", ISRs, generateISR, currISRIdx)
+
+		e.logger.Info("Verifying ISR")
 		currISRIdx++
 		if err != nil {
+			e.logger.Info("Error ISR")
+
 			if err == types.ErrInvalidISR {
+				e.logger.Info("Error invalid ISR")
 				fraudProof, err := e.generateFraudProof(&reqBeginBlock, deliverTxRequests, nil)
+
 				if err != nil {
+					e.logger.Info("Error in fraudproof")
 					return nil, err
 				}
+				e.logger.Info("Sending fraudproof")
+
 				// generate Fraud Proof
 				e.FraudProofOutCh <- fraudProof
 			}

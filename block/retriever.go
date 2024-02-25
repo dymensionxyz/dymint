@@ -28,7 +28,8 @@ func (m *Manager) RetrieveLoop(ctx context.Context) {
 			syncTarget := syncTargetpoller.Next()
 			err := m.syncUntilTarget(ctx, *(*uint64)(syncTarget))
 			if err != nil {
-				panic(err)
+				//panic(err)
+				m.logger.Info("Error syncing", "error", err)
 			}
 			// Check if after we sync we are synced or a new syncTarget was already set.
 			// If we are synced then signal all goroutines waiting on isSyncedCond.
@@ -125,25 +126,28 @@ func (m *Manager) fetchBatch(daMetaData *da.DASubmitMetaData) da.ResultRetrieveB
 }
 
 func (m *Manager) fraudProofPublishLoop(ctx context.Context) {
+
 	for {
 		select {
 		case fraudProof := <-m.GetFraudProofOutChan():
 			// Open a new file for writing only
 			if m.dalc.GetClientType() == da.Celestia {
 				m.addInclusionProofToFraudProof(fraudProof)
-			}
-			file, err := os.Create("fraudProof_rollapp_with_tx_and_inclusionproof.json")
-			if err != nil {
-				return
-			}
-			defer file.Close()
+				file, err := os.Create("fraudProof_rollapp_with_tx_and_inclusionproof.json")
+				if err != nil {
+					return
+				}
+				defer file.Close()
 
-			// Serialize the struct to JSON and write it to the file
-			jsonEncoder := json.NewEncoder(file)
-			err = jsonEncoder.Encode(fraudProof)
-			if err != nil {
-				return
+				// Serialize the struct to JSON and write it to the file
+				jsonEncoder := json.NewEncoder(file)
+				err = jsonEncoder.Encode(fraudProof)
+				if err != nil {
+					return
+				}
+				panic("Fraudproof created")
 			}
+
 		case <-ctx.Done():
 			return
 		}
@@ -161,6 +165,7 @@ func (m *Manager) addInclusionProofToFraudProof(fraudProof *types.FraudProof) er
 	if err != nil {
 		return err
 	}
+	fraudProof.InclusionProof = &types.BlobInclusionProof{}
 	fraudProof.InclusionProof.Blob = blobJSON
 
 	nmtProofs := []*nmt.Proof(*m.lastBatch.CheckMetaData.Proofs[0])
@@ -188,6 +193,6 @@ func (m *Manager) addInclusionProofToFraudProof(fraudProof *types.FraudProof) er
 	}
 	fraudProof.InclusionProof.Rproofs = rproofs
 	fraudProof.InclusionProof.Dataroot = m.lastBatch.CheckMetaData.Root
-
+	fraudProof.InclusionProof.Namespace = m.lastBatch.CheckMetaData.Namespace
 	return nil
 }
