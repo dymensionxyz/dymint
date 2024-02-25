@@ -297,6 +297,7 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 					Message: "success",
 				},
 				SubmitMetaData: &da.DASubmitMetaData{
+					Client: da.Avail,
 					Height: daBlockHeight,
 				},
 			}
