@@ -226,6 +226,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			}
 
 			daMetaData := &da.DASubmitMetaData{
+				Client:     da.Celestia,
 				Height:     height,
 				Commitment: commitment,
 				Namespace:  c.config.NamespaceID.Bytes(),
@@ -242,6 +243,8 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 				continue
 			}
 			daMetaData.Root = availabilityResult.CheckMetaData.Root
+			daMetaData.Index = availabilityResult.CheckMetaData.Index
+			daMetaData.Length = availabilityResult.CheckMetaData.Length
 
 			res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, true, nil)
 			if err != nil {
