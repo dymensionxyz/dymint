@@ -29,14 +29,14 @@ import (
 type DataAvailabilityLayerClient struct {
 	rpc celtypes.CelestiaRPCClient
 
-	pubsubServer        *pubsub.Server
-	config              Config
-	logger              log.Logger
-	ctx                 context.Context
-	cancel              context.CancelFunc
-	txPollingRetryDelay time.Duration
-	txPollingAttempts   int
-	submitRetryDelay    time.Duration
+	pubsubServer                *pubsub.Server
+	config                      Config
+	logger                      log.Logger
+	ctx                         context.Context
+	cancel                      context.CancelFunc
+	availabilityCheckRetryDelay time.Duration
+	availabilityCheckAttempts   int
+	submitRetryDelay            time.Duration
 }
 
 var _ da.DataAvailabilityLayerClient = &DataAvailabilityLayerClient{}
@@ -50,16 +50,16 @@ func WithRPCClient(rpc celtypes.CelestiaRPCClient) da.Option {
 }
 
 // WithTxPollingRetryDelay sets tx polling retry delay.
-func WithTxPollingRetryDelay(delay time.Duration) da.Option {
+func WithAvailabilityCheckRetryDelay(delay time.Duration) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
-		daLayerClient.(*DataAvailabilityLayerClient).txPollingRetryDelay = delay
+		daLayerClient.(*DataAvailabilityLayerClient).availabilityCheckRetryDelay = delay
 	}
 }
 
 // WithTxPollingAttempts sets tx polling retry delay.
-func WithTxPollingAttempts(attempts int) da.Option {
+func WithAvailabilityCheckAttempts(attempts int) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
-		daLayerClient.(*DataAvailabilityLayerClient).txPollingAttempts = attempts
+		daLayerClient.(*DataAvailabilityLayerClient).availabilityCheckAttempts = attempts
 	}
 }
 
@@ -100,8 +100,8 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 
 	c.pubsubServer = pubsubServer
 	// Set defaults
-	c.txPollingRetryDelay = defaultTxPollingRetryDelay
-	c.txPollingAttempts = defaultTxPollingAttempts
+	c.availabilityCheckRetryDelay = defaultAvailabilityCheckRetryDelay
+	c.availabilityCheckAttempts = defaultAvailabilityCheckAttempts
 	c.submitRetryDelay = defaultSubmitRetryDelay
 
 	c.ctx, c.cancel = context.WithCancel(context.Background())
