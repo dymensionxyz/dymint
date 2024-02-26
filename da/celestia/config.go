@@ -10,12 +10,12 @@ import (
 )
 
 const (
-	defaultTxPollingRetryDelay         = 20 * time.Second
-	defaultSubmitRetryDelay            = 10 * time.Second
-	defaultTxPollingAttempts           = 5
-	namespaceVersion                   = 0
-	defaultGasPrices                   = 0.1
-	defaultGasAdjustment       float64 = 1.3
+	defaultSubmissionCheckRetryDelay           = 20 * time.Second
+	defaultSubmitRetryDelay                    = 2 * time.Second
+	defaultAvailabilityPollingAttempts         = 5
+	namespaceVersion                           = 0
+	defaultGasPrices                           = 0.1
+	defaultGasAdjustment               float64 = 1.3
 )
 
 // Config stores Celestia DALC configuration parameters.
