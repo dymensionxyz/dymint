@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	defaultAvailabilityCheckRetryDelay         = 20 * time.Second
-	defaultSubmitRetryDelay                    = 2 * time.Second
+	defaultAvailabilityCheckRetryDelay         = 15 * time.Second
+	defaultSubmitRetryDelay                    = 5 * time.Second
 	defaultAvailabilityCheckAttempts           = 5
 	namespaceVersion                           = 0
 	defaultGasPrices                           = 0.1

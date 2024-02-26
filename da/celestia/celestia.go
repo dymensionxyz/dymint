@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/avast/retry-go/v4"
 	"github.com/celestiaorg/nmt"
 	"github.com/gogo/protobuf/proto"
 	"github.com/tendermint/tendermint/libs/pubsub"
@@ -213,7 +214,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 
 			c.logger.Info("Submitting DA batch")
 			//TODO(srene):  Split batch in multiple blobs if necessary if supported
-			height, _, err := c.submit(data)
+			height, commitment, err := c.submit(data)
 
 			if err != nil {
 				c.logger.Error("Failed to submit DA batch. Emitting health event and trying again", "error", err)
@@ -226,13 +227,23 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			}
 
 			daMetaData := &da.DASubmitMetaData{
-				Client: da.Celestia,
-				Height: height,
-				//Commitment: commitment,
-				Namespace: c.config.NamespaceID.Bytes(),
+				Client:     da.Celestia,
+				Height:     height,
+				Commitment: commitment,
+				Namespace:  c.config.NamespaceID.Bytes(),
 			}
+			var availabilityResult da.ResultCheckBatch
+			err = retry.Do(func() error {
+				result := c.CheckBatchAvailability(daMetaData)
+				if result.Code != da.StatusSuccess {
+					c.logger.Error("Blob submitted not found in DA. Retrying availability check")
+					return errors.New("blob not found")
+				}
+				availabilityResult = result
 
-			availabilityResult := c.CheckBatchAvailability(daMetaData)
+				return nil
+			}, retry.Attempts(uint(c.availabilityCheckAttempts)), retry.DelayType(retry.FixedDelay), retry.Delay(c.availabilityCheckRetryDelay))
+
 			if availabilityResult.Code != da.StatusSuccess {
 				c.logger.Error("Unable to confirm submitted blob availability. Retrying")
 				res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, false, err)
