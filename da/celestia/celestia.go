@@ -213,7 +213,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 
 			c.logger.Info("Submitting DA batch")
 			//TODO(srene):  Split batch in multiple blobs if necessary if supported
-			height, commitment, err := c.submit(data)
+			height, _, err := c.submit(data)
 
 			if err != nil {
 				c.logger.Error("Failed to submit DA batch. Emitting health event and trying again", "error", err)
@@ -226,10 +226,10 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			}
 
 			daMetaData := &da.DASubmitMetaData{
-				Client:     da.Celestia,
-				Height:     height,
-				Commitment: commitment,
-				Namespace:  c.config.NamespaceID.Bytes(),
+				Client: da.Celestia,
+				Height: height,
+				//Commitment: commitment,
+				Namespace: c.config.NamespaceID.Bytes(),
 			}
 
 			availabilityResult := c.CheckBatchAvailability(daMetaData)
@@ -264,9 +264,11 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 
 func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
 
+	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
+	defer cancel()
 	//Just for backward compatibility, in case no commitments are sent from the Hub, batch can be retrieved using previous implementation.
 	if daMetaData.Commitment == nil {
-		return c.retrieveBatches(daMetaData.Height)
+		return c.retrieveBatches(ctx, daMetaData.Height)
 	}
 
 	for {
@@ -276,8 +278,7 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 			return da.ResultRetrieveBatch{}
 		default:
 			var batches []*types.Batch
-			//for _, commitment := range daMetaData.Commitments {
-			blob, err := c.rpc.Get(c.ctx, daMetaData.Height, c.config.NamespaceID.Bytes(), daMetaData.Commitment)
+			blob, err := c.rpc.Get(ctx, daMetaData.Height, c.config.NamespaceID.Bytes(), daMetaData.Commitment)
 			if err != nil {
 				return da.ResultRetrieveBatch{
 					BaseResult: da.BaseResult{
@@ -327,8 +328,8 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 }
 
 // RetrieveBatches gets a batch of blocks from DA layer.
-func (c *DataAvailabilityLayerClient) retrieveBatches(dataLayerHeight uint64) da.ResultRetrieveBatch {
-	blobs, err := c.rpc.GetAll(c.ctx, dataLayerHeight, []share.Namespace{c.config.NamespaceID.Bytes()})
+func (c *DataAvailabilityLayerClient) retrieveBatches(ctx context.Context, dataLayerHeight uint64) da.ResultRetrieveBatch {
+	blobs, err := c.rpc.GetAll(ctx, dataLayerHeight, []share.Namespace{c.config.NamespaceID.Bytes()})
 	if err != nil {
 		return da.ResultRetrieveBatch{
 			BaseResult: da.BaseResult{
@@ -492,7 +493,7 @@ func (c *DataAvailabilityLayerClient) submit(daBlob da.Blob) (uint64, da.Commitm
 	fees := c.calculateFees(gasWanted)
 	options.Fee = fees
 	options.GasLimit = gasWanted
-	ctx, cancel := context.WithTimeout(c.ctx, c.txPollingRetryDelay)
+	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
 	height, err := c.rpc.Submit(ctx, blobs, options)
@@ -508,7 +509,7 @@ func (c *DataAvailabilityLayerClient) submit(daBlob da.Blob) (uint64, da.Commitm
 func (c *DataAvailabilityLayerClient) getProof(height uint64, commitment da.Commitment) (*blob.Proof, error) {
 
 	c.logger.Info("Getting proof via RPC call")
-	ctx, cancel := context.WithTimeout(c.ctx, c.txPollingRetryDelay)
+	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
 	proof, err := c.rpc.GetProof(ctx, height, c.config.NamespaceID.Bytes(), commitment)
@@ -541,7 +542,7 @@ func (c *DataAvailabilityLayerClient) blobsAndCommitments(daBlob da.Blob) ([]*bl
 func (c *DataAvailabilityLayerClient) validateProof(height uint64, commitment da.Commitment, proof *blob.Proof) (bool, error) {
 
 	c.logger.Info("Getting inclusion validation via RPC call")
-	ctx, cancel := context.WithTimeout(c.ctx, c.txPollingRetryDelay)
+	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 	isIncluded, error := c.rpc.Included(ctx, height, c.config.NamespaceID.Bytes(), proof, commitment)
 	return isIncluded, error
@@ -550,7 +551,7 @@ func (c *DataAvailabilityLayerClient) validateProof(height uint64, commitment da
 func (c *DataAvailabilityLayerClient) getDataAvailabilityHeaders(height uint64) (*header.DataAvailabilityHeader, error) {
 
 	c.logger.Info("Getting Celestia extended headers via RPC call")
-	ctx, cancel := context.WithTimeout(c.ctx, c.txPollingRetryDelay)
+	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 	headers, error := c.rpc.GetHeaders(ctx, height)
 

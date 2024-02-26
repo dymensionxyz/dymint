@@ -30,6 +30,47 @@ import (
 
 const mockDaBlockTime = 100 * time.Millisecond
 
+func TestRetrievalRealNode(t *testing.T) {
+	pubsubServer := pubsub.NewServer()
+	pubsubServer.Start()
+	defer pubsubServer.Stop()
+	dalc := registry.GetClient("celestia")
+	config := celestia.Config{
+		BaseURL:        "http://192.168.1.5:26658",
+		Timeout:        30 * time.Second,
+		GasPrices:      1.0,
+		GasAdjustment:  1.3,
+		NamespaceIDStr: "e06c57a64b049d6463ef",
+		AuthToken:      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJBbGxvdyI6WyJwdWJsaWMiLCJyZWFkIiwid3JpdGUiLCJhZG1pbiJdfQ.Lo9NywGbESS4dSSIbLsZuuq5bTYL0LnLjlrNgct6aXg",
+	}
+	require := require.New(t)
+
+	conf, err := json.Marshal(config)
+	require.NoError(err)
+	err = dalc.Init(conf, pubsubServer, store.NewDefaultInMemoryKVStore(), log.TestingLogger())
+	require.NoError(err)
+
+	err = dalc.Start()
+	require.NoError(err)
+
+	// only blocks b1 and b2 will be submitted to DA
+	block1 := getRandomBlock(1, 10)
+	block2 := getRandomBlock(2, 20)
+	block3 := getRandomBlock(3, 20)
+	block4 := getRandomBlock(3, 10)
+
+	batch1 := &types.Batch{
+		StartHeight: block1.Header.Height,
+		EndHeight:   block3.Header.Height,
+		Blocks:      []*types.Block{block1, block2, block3, block4},
+	}
+
+	t.Log("Submitting batch")
+	resp := dalc.SubmitBatch(batch1)
+	t.Log("Height:", resp.SubmitMetaData.Height)
+	t.Error("Commitment:", hex.EncodeToString(resp.SubmitMetaData.Commitment))
+
+}
 func TestDALC(t *testing.T) {
 
 	assert := assert.New(t)
