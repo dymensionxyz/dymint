@@ -265,7 +265,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 			if err != nil {
 				// Batch was not accepted by the settlement layer. Emitting unhealthy event
 				d.logger.Error("Batch not accepted by settlement layer. Emitting unhealthy event",
-					"startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
+					"startHeight", batch.StartHeight, "endHeight", batch.EndHeight, "error", err)
 				heatlhEventData := &settlement.EventDataSettlementHealthStatus{Healthy: false, Error: settlement.ErrBatchNotAccepted}
 				utils.SubmitEventOrPanic(d.ctx, d.pubsub, heatlhEventData,
 					map[string][]string{settlement.EventTypeKey: {settlement.EventSettlementHealthStatus}})
