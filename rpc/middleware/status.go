@@ -67,7 +67,10 @@ func (s *StatusMiddleware) Handler(logger log.Logger) HandlerFunc {
 					jsonResponse = jsonResponse[:len(jsonResponse)-2] + healthResponse
 				}
 
-				w.Write([]byte(jsonResponse))
+				_, err = w.Write([]byte(jsonResponse))
+				if err != nil {
+					return
+				}
 
 			}
 
