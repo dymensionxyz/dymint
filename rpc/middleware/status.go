@@ -1,9 +1,10 @@
 package middleware
 
 import (
-	"errors"
-	"fmt"
+	"io"
 	"net/http"
+	"net/http/httptest"
+	"strconv"
 
 	"github.com/dymensionxyz/dymint/rpc/sharedtypes"
 	"github.com/tendermint/tendermint/libs/log"
@@ -24,29 +25,52 @@ func NewStatusMiddleware(healthStatus *sharedtypes.HealthStatus) *StatusMiddlewa
 // Handler returns a MiddlewareFunc that checks the node's health status.
 func (s *StatusMiddleware) Handler(logger log.Logger) HandlerFunc {
 	return func(h http.Handler) http.Handler {
-		return status(s.healthStatus, h, logger)
-	}
-}
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-// status is a middleware that checks if the node is healthy.
-// If the node is not healthy, it returns a 503 Service Unavailable.
-func status(healthStatus *sharedtypes.HealthStatus, h http.Handler, logger log.Logger) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		isHealthy, err := healthStatus.Get()
-		if !isHealthy {
-			w.WriteHeader(http.StatusServiceUnavailable)
-			errorPrefix := "node is unhealthy"
-			if err == nil {
-				err = errors.New(errorPrefix)
+			isHealthy, err := s.healthStatus.Get()
+			//in case the endpoint is health we return health response
+			if r.URL.Path == "/health" {
+
+				w.WriteHeader(http.StatusAccepted)
+				var error string
+				if err != nil {
+					error = err.Error()
+				}
+				json := `{"jsonrpc":"2.0","result":{"isHealthy":` + strconv.FormatBool(isHealthy) + `,:"error":"` + error + `"},"id":-1}`
+				w.Write([]byte(json))
+				return
+
 			} else {
-				err = fmt.Errorf("%s: %w", errorPrefix, err)
+				//in case it is not we append health status to any response
+				rec := httptest.NewRecorder()
+				h.ServeHTTP(rec, r)
+
+				for k, v := range rec.Header() {
+					w.Header()[k] = v
+				}
+
+				healthResponse := `,"isHealthy":` + strconv.FormatBool(isHealthy) + `}`
+				data := []byte(healthResponse)
+
+				clen, _ := strconv.Atoi(r.Header.Get("Content-Length"))
+				clen += len(data)
+				r.Header.Set("Content-Length", strconv.Itoa(clen))
+
+				b, err := io.ReadAll(rec.Body)
+				if err != nil {
+					return
+				}
+
+				jsonResponse := string(b)
+
+				if len(jsonResponse) > 0 {
+					jsonResponse = jsonResponse[:len(jsonResponse)-2] + healthResponse
+				}
+
+				w.Write([]byte(jsonResponse))
+
 			}
-			_, err := w.Write([]byte(err.Error()))
-			if err != nil {
-				logger.Error("failed to write response", "error", err)
-			}
-			return
-		}
-		h.ServeHTTP(w, r)
-	})
+
+		})
+	}
 }
