@@ -273,7 +273,7 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 		default:
 			//Just for backward compatibility, in case no commitments are sent from the Hub, batch can be retrieved using previous implementation.
 			var resultRetrieveBatch da.ResultRetrieveBatch
-			retry.Do(func() error {
+			err := retry.Do(func() error {
 				var result da.ResultRetrieveBatch
 				if daMetaData.Commitment == nil {
 					result = c.retrieveBatchesNoCommitment(daMetaData.Height)
@@ -289,6 +289,8 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 
 				return nil
 			}, retry.Attempts(uint(c.rpcRetryAttempts)), retry.DelayType(retry.FixedDelay), retry.Delay(c.rpcRetryDelay))
+			c.logger.Error("RetrieveBatches process failed", "error", err)
+
 			return resultRetrieveBatch
 
 		}
@@ -406,7 +408,7 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 			c.logger.Debug("Context cancelled")
 			return da.ResultCheckBatch{}
 		default:
-			retry.Do(func() error {
+			err := retry.Do(func() error {
 				result := c.checkBatchAvailability(daMetaData)
 				availabilityResult = result
 
@@ -417,6 +419,7 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 
 				return nil
 			}, retry.Attempts(uint(c.rpcRetryAttempts)), retry.DelayType(retry.FixedDelay), retry.Delay(c.rpcRetryDelay))
+			c.logger.Error("CheckAvailability process failed", "error", err)
 			return availabilityResult
 		}
 	}
