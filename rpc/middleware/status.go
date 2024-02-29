@@ -1,9 +1,7 @@
 package middleware
 
 import (
-	"io"
 	"net/http"
-	"net/http/httptest"
 	"strconv"
 
 	"github.com/dymensionxyz/dymint/rpc/sharedtypes"
@@ -44,37 +42,7 @@ func (s *StatusMiddleware) Handler(logger log.Logger) HandlerFunc {
 				return
 
 			} else {
-				//in case it is not we append health status to any response
-				rec := httptest.NewRecorder()
-				h.ServeHTTP(rec, r)
-
-				for k, v := range rec.Header() {
-					w.Header()[k] = v
-				}
-
-				healthResponse := `,"isHealthy":` + strconv.FormatBool(isHealthy) + `}`
-				data := []byte(healthResponse)
-
-				clen, _ := strconv.Atoi(r.Header.Get("Content-Length"))
-				clen += len(data)
-				r.Header.Set("Content-Length", strconv.Itoa(clen))
-
-				b, err := io.ReadAll(rec.Body)
-				if err != nil {
-					return
-				}
-
-				jsonResponse := string(b)
-
-				if len(jsonResponse) > 0 {
-					jsonResponse = jsonResponse[:len(jsonResponse)-2] + healthResponse
-				}
-
-				_, err = w.Write([]byte(jsonResponse))
-				if err != nil {
-					return
-				}
-
+				h.ServeHTTP(w, r)
 			}
 
 		})
