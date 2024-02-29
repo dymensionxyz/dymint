@@ -31,7 +31,7 @@ func (s *StatusMiddleware) Handler(logger log.Logger) HandlerFunc {
 			//in case the endpoint is health we return health response
 			if r.URL.Path == "/health" {
 
-				w.WriteHeader(http.StatusAccepted)
+				w.WriteHeader(http.StatusOK)
 				var error string
 				if err != nil {
 					error = err.Error()
