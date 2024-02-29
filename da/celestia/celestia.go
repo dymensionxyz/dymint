@@ -282,9 +282,9 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 				}
 				resultRetrieveBatch = result
 
-				if result.Code != da.StatusSuccess {
-					c.logger.Error("Blob submitted not found in DA. Retrying availability check")
-					return errors.New("blob not found")
+				if result.Error == da.ErrRetrieval {
+					c.logger.Error("Failed in retrieving blob")
+					return result.Error
 				}
 
 				return nil
@@ -311,7 +311,7 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMet
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
 				Message: err.Error(),
-				Error:   da.ErrBlobNotFound,
+				Error:   da.ErrRetrieval,
 			},
 		}
 	}
