@@ -37,7 +37,10 @@ func (s *StatusMiddleware) Handler(logger log.Logger) HandlerFunc {
 					error = err.Error()
 				}
 				json := `{"jsonrpc":"2.0","result":{"isHealthy":` + strconv.FormatBool(isHealthy) + `,:"error":"` + error + `"},"id":-1}`
-				w.Write([]byte(json))
+				_, err = w.Write([]byte(json))
+				if err != nil {
+					return
+				}
 				return
 
 			} else {
