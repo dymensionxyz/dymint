@@ -10,12 +10,12 @@ import (
 )
 
 const (
-	defaultAvailabilityCheckRetryDelay         = 15 * time.Second
-	defaultSubmitRetryDelay                    = 5 * time.Second
-	defaultAvailabilityCheckAttempts           = 5
-	namespaceVersion                           = 0
-	defaultGasPrices                           = 0.1
-	defaultGasAdjustment               float64 = 1.3
+	defaultRpcRetryDelay            = 15 * time.Second
+	defaultSubmitRetryDelay         = 5 * time.Second
+	defaultRpcCheckAttempts         = 5
+	namespaceVersion                = 0
+	defaultGasPrices                = 0.1
+	defaultGasAdjustment    float64 = 1.3
 )
 
 // Config stores Celestia DALC configuration parameters.
