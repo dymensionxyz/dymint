@@ -303,11 +303,9 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMet
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
-	fmt.Println("retrieveing batches ")
 	var batches []*types.Batch
 	blob, err := c.rpc.Get(ctx, daMetaData.Height, c.config.NamespaceID.Bytes(), daMetaData.Commitment)
 	if err != nil {
-		fmt.Println("retrieveing batches error", err)
 
 		return da.ResultRetrieveBatch{
 			BaseResult: da.BaseResult{
@@ -318,7 +316,6 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMet
 		}
 	}
 	if blob == nil {
-		fmt.Println("retrieveing batches blob not found")
 
 		return da.ResultRetrieveBatch{
 			BaseResult: da.BaseResult{
@@ -414,7 +411,7 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 
 				if result.Code != da.StatusSuccess {
 					c.logger.Error("Blob submitted not found in DA. Retrying availability check")
-					return errors.New("blob not found")
+					return da.ErrBlobNotFound
 				}
 
 				return nil
@@ -551,8 +548,8 @@ func (c *DataAvailabilityLayerClient) submit(daBlob da.Blob) (uint64, da.Commitm
 	fees := c.calculateFees(gasWanted)
 	options.Fee = fees
 	options.GasLimit = gasWanted
-	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
-	defer cancel()
+	ctx, _ := context.WithTimeout(c.ctx, c.config.Timeout)
+	//defer cancel()
 
 	height, err := c.rpc.Submit(ctx, blobs, options)
 

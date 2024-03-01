@@ -3,7 +3,6 @@ package celestia_test
 import (
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"math/rand"
 	"testing"
 	"time"
@@ -137,7 +136,6 @@ func TestRetrievalNotFound(t *testing.T) {
 	retriever := dalc.(da.BatchRetriever)
 
 	retreiveRes := retriever.RetrieveBatches(h1)
-	fmt.Println(retreiveRes)
 
 	assert.ErrorIs(retreiveRes.Error, da.ErrBlobNotFound)
 	require.True(len(retreiveRes.Batches) == 0)
