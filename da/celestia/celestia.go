@@ -548,8 +548,8 @@ func (c *DataAvailabilityLayerClient) submit(daBlob da.Blob) (uint64, da.Commitm
 	fees := c.calculateFees(gasWanted)
 	options.Fee = fees
 	options.GasLimit = gasWanted
-	ctx, _ := context.WithTimeout(c.ctx, c.config.Timeout)
-	//defer cancel()
+	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
+	defer cancel()
 
 	height, err := c.rpc.Submit(ctx, blobs, options)
 
