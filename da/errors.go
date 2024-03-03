@@ -11,6 +11,8 @@ var (
 	ErrTxBroadcastTimeout = errors.New("Broadcast timeout error")
 	// ErrUnableToGetProof is returned when proof is not available.
 	ErrUnableToGetProof = errors.New("Unable to get proof")
+	// ErrRetrieval is returned when retrieval rpc falls
+	ErrRetrieval = errors.New("Retrieval failed")
 	// ErrBlobNotFound is returned when blob is not found.
 	ErrBlobNotFound = errors.New("Blob not found")
 	// ErrBlobNotIncluded is returned when blob is not included.

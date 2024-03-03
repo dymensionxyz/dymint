@@ -136,6 +136,7 @@ func TestRetrievalNotFound(t *testing.T) {
 	retriever := dalc.(da.BatchRetriever)
 
 	retreiveRes := retriever.RetrieveBatches(h1)
+
 	assert.ErrorIs(retreiveRes.Error, da.ErrBlobNotFound)
 	require.True(len(retreiveRes.Batches) == 0)
 
@@ -301,6 +302,7 @@ func setDAandMock(t *testing.T) (*mocks.CelestiaRPCClient, da.DataAvailabilityLa
 
 	//init celestia DA with mock RPC client
 	dalc := registry.GetClient("celestia")
+
 	config := celestia.Config{
 		BaseURL:  "http://localhost:26658",
 		Timeout:  30 * time.Second,
@@ -315,6 +317,8 @@ func setDAandMock(t *testing.T) (*mocks.CelestiaRPCClient, da.DataAvailabilityLa
 	mockRPCClient := mocks.NewCelestiaRPCClient(t)
 	options := []da.Option{
 		celestia.WithRPCClient(mockRPCClient),
+		celestia.WithRPCAttempts(1),
+		celestia.WithRPCRetryDelay(time.Second * 2),
 	}
 
 	err = dalc.Init(conf, pubsubServer, store.NewDefaultInMemoryKVStore(), log.TestingLogger(), options...)
