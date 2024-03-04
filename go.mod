@@ -5,7 +5,7 @@ go 1.20
 require (
 	code.cloudfoundry.org/go-diodes v0.0.0-20220725190411-383eb6634c40
 	cosmossdk.io/errors v1.0.0-beta.7
-	cosmossdk.io/math v1.2.0
+	cosmossdk.io/math v1.3.0
 	github.com/avast/retry-go/v4 v4.5.0
 	github.com/celestiaorg/go-cnc v0.4.2
 	github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.12
@@ -115,7 +115,7 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20240125205218-1f4bbc51befe // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240125205218-1f4bbc51befe // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
-	sigs.k8s.io/yaml v1.3.0 // indirect
+	sigs.k8s.io/yaml v1.4.0 // indirect
 )
 
 require (
