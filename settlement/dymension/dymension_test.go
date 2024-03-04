@@ -238,7 +238,8 @@ func generateSequencerByRollappResponse(t *testing.T, count int) (*sequencertype
 	require.NoError(t, err)
 	proposer := sequencertypes.Sequencer{
 		DymintPubKey: proposerPubKeyAny,
-		Status:       sequencertypes.Proposer,
+		Status:       sequencertypes.Bonded,
+		Proposer:     true,
 	}
 	squencerInfoList := []sequencertypes.Sequencer{proposer}
 	// Generate the inactive sequencers

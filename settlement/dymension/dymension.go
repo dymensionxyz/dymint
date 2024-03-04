@@ -334,7 +334,7 @@ func (d *HubClient) GetSequencers(rollappID string) ([]*types.Sequencer, error) 
 		}
 
 		status := types.Inactive
-		if sequencer.Status == sequencertypes.Proposer {
+		if sequencer.Proposer {
 			status = types.Proposer
 		}
 
