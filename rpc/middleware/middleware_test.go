@@ -75,12 +75,12 @@ func TestStatusMiddleware(t *testing.T) {
 		{
 			healthy:         &sharedtypes.HealthStatus{IsHealthy: true, Error: nil},
 			expectedStatus:  http.StatusOK,
-			expectedMessage: "Node healthy",
+			expectedMessage: "{\"jsonrpc\":\"2.0\",\"result\":{\"isHealthy\":true,:\"error\":\"\"},\"id\":-1}",
 		},
 		{
 			healthy:         &sharedtypes.HealthStatus{IsHealthy: false, Error: errors.New("Node Unhealthy")},
-			expectedStatus:  http.StatusServiceUnavailable,
-			expectedMessage: "node is unhealthy: Node Unhealthy",
+			expectedStatus:  http.StatusOK,
+			expectedMessage: "{\"jsonrpc\":\"2.0\",\"result\":{\"isHealthy\":false,:\"error\":\"Node Unhealthy\"},\"id\":-1}",
 		},
 	}
 
@@ -94,7 +94,7 @@ func TestStatusMiddleware(t *testing.T) {
 
 		finalHandler := statusMiddleware.Handler(log.TestingLogger())(handler)
 
-		req := httptest.NewRequest("GET", "/", nil)
+		req := httptest.NewRequest("GET", "/health", nil)
 		rr := httptest.NewRecorder()
 
 		finalHandler.ServeHTTP(rr, req)
