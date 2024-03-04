@@ -24,8 +24,8 @@ import (
 	coretypes "github.com/tendermint/tendermint/rpc/core/types"
 
 	"github.com/dymensionxyz/cosmosclient/cosmosclient"
-	rollapptypes "github.com/dymensionxyz/dymension/x/rollapp/types"
-	sequencertypes "github.com/dymensionxyz/dymension/x/sequencer/types"
+	rollapptypes "github.com/dymensionxyz/dymension/v3/x/rollapp/types"
+	sequencertypes "github.com/dymensionxyz/dymension/v3/x/sequencer/types"
 	"github.com/dymensionxyz/dymint/da"
 	mocks "github.com/dymensionxyz/dymint/mocks"
 	settlementmocks "github.com/dymensionxyz/dymint/mocks/settlement"
@@ -42,7 +42,7 @@ func TestGetSequencers(t *testing.T) {
 	sequencerQueryClientMock := settlementmocks.NewSequencerQueryClient(t)
 	count := 5
 	sequencersRollappResponse, _ := generateSequencerByRollappResponse(t, count)
-	sequencerQueryClientMock.On("SequencersByRollapp", mock.Anything, mock.Anything).Return(sequencersRollappResponse, nil)
+	sequencerQueryClientMock.On("SequencersByRollappByStatus", mock.Anything, mock.Anything).Return(sequencersRollappResponse, nil)
 
 	cosmosClientMock.On("GetRollappClient").Return(settlementmocks.NewRollAppQueryClient(t))
 	cosmosClientMock.On("GetSequencerClient").Return(sequencerQueryClientMock)
@@ -232,32 +232,29 @@ func TestPostBatch(t *testing.T) {
 /*                                    Utils                                   */
 /* -------------------------------------------------------------------------- */
 
-func generateSequencerByRollappResponse(t *testing.T, count int) (*sequencertypes.QueryGetSequencersByRollappResponse, sequencertypes.SequencerInfo) {
+func generateSequencerByRollappResponse(t *testing.T, count int) (*sequencertypes.QueryGetSequencersByRollappByStatusResponse, sequencertypes.Sequencer) {
 	// Generate the proposer sequencer
 	proposerPubKeyAny, err := sdkcodectypes.NewAnyWithValue(ed25519.GenPrivKey().PubKey())
 	require.NoError(t, err)
-	proposer := sequencertypes.SequencerInfo{
-		Sequencer: sequencertypes.Sequencer{
-			DymintPubKey: proposerPubKeyAny,
-		},
-		Status: sequencertypes.Proposer,
+	proposer := sequencertypes.Sequencer{
+		DymintPubKey: proposerPubKeyAny,
+		Status:       sequencertypes.Bonded,
+		Proposer:     true,
 	}
-	squencerInfoList := []sequencertypes.SequencerInfo{
-		proposer,
-	}
+	squencerInfoList := []sequencertypes.Sequencer{proposer}
 	// Generate the inactive sequencers
 	for i := 0; i < count-1; i++ {
 		nonProposerPubKeyAny, err := sdkcodectypes.NewAnyWithValue(secp256k1.GenPrivKey().PubKey())
 		require.NoError(t, err)
-		squencerInfoList = append(squencerInfoList, sequencertypes.SequencerInfo{
-			Sequencer: sequencertypes.Sequencer{
-				DymintPubKey: nonProposerPubKeyAny,
-			},
-			Status: sequencertypes.Inactive,
-		})
+
+		nonProposer := sequencertypes.Sequencer{
+			DymintPubKey: nonProposerPubKeyAny,
+			Status:       sequencertypes.Bonded,
+		}
+		squencerInfoList = append(squencerInfoList, nonProposer)
 	}
-	response := &sequencertypes.QueryGetSequencersByRollappResponse{
-		SequencerInfoList: squencerInfoList,
+	response := &sequencertypes.QueryGetSequencersByRollappByStatusResponse{
+		Sequencers: squencerInfoList,
 	}
 	return response, proposer
 }

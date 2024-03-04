@@ -12,13 +12,13 @@ import (
 	cdctypes "github.com/cosmos/cosmos-sdk/codec/types"
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	"github.com/dymensionxyz/cosmosclient/cosmosclient"
-	rollapptypes "github.com/dymensionxyz/dymension/x/rollapp/types"
+	rollapptypes "github.com/dymensionxyz/dymension/v3/x/rollapp/types"
 	"github.com/google/uuid"
 	"github.com/ignite/cli/ignite/pkg/cosmosaccount"
 	"github.com/pkg/errors"
 
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
-	sequencertypes "github.com/dymensionxyz/dymension/x/sequencer/types"
+	sequencertypes "github.com/dymensionxyz/dymension/v3/x/sequencer/types"
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/log"
 	"github.com/dymensionxyz/dymint/settlement"
@@ -314,28 +314,30 @@ func (d *HubClient) GetBatchAtIndex(rollappID string, index uint64) (*settlement
 	return d.convertStateInfoToResultRetrieveBatch(&stateInfoResp.StateInfo)
 }
 
-// GetSequencers returns the sequence of the given rollapp.
+// GetSequencers returns the bonded sequencers of the given rollapp.
 func (d *HubClient) GetSequencers(rollappID string) ([]*types.Sequencer, error) {
-	sequencers, err := d.sequencerQueryClient.SequencersByRollapp(d.ctx, &sequencertypes.QueryGetSequencersByRollappRequest{RollappId: d.config.RollappID})
+	req := &sequencertypes.QueryGetSequencersByRollappByStatusRequest{
+		RollappId: d.config.RollappID,
+		Status:    sequencertypes.Bonded,
+	}
+	res, err := d.sequencerQueryClient.SequencersByRollappByStatus(d.ctx, req)
 	if err != nil {
 		return nil, errors.Wrapf(settlement.ErrNoSequencerForRollapp, "rollappID: %s", rollappID)
 	}
-	sequencersList := []*types.Sequencer{}
-	for _, sequencer := range sequencers.SequencerInfoList {
+
+	sequencersList := make([]*types.Sequencer, 0, len(res.Sequencers))
+	for _, sequencer := range res.Sequencers {
 		var pubKey cryptotypes.PubKey
-		err := d.protoCodec.UnpackAny(sequencer.Sequencer.DymintPubKey, &pubKey)
+		err := d.protoCodec.UnpackAny(sequencer.DymintPubKey, &pubKey)
 		if err != nil {
 			return nil, err
 		}
-		var status types.SequencerStatus
-		if sequencer.Status == sequencertypes.Proposer {
+
+		status := types.Inactive
+		if sequencer.Proposer {
 			status = types.Proposer
-		} else {
-			status = types.Inactive
 		}
-		if err != nil {
-			return nil, err
-		}
+
 		sequencersList = append(sequencersList, &types.Sequencer{
 			PublicKey: pubKey,
 			Status:    status,
