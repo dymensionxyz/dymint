@@ -10,6 +10,7 @@ import (
 
 	cfg "github.com/dymensionxyz/dymint/config"
 	"github.com/dymensionxyz/dymint/conv"
+	"github.com/dymensionxyz/dymint/mempool"
 	"github.com/dymensionxyz/dymint/node"
 	"github.com/dymensionxyz/dymint/rpc"
 	"github.com/spf13/cobra"
@@ -95,6 +96,7 @@ func startInProcess(config *cfg.NodeConfig, tmConfig *tmcfg.Config, logger log.L
 		proxy.DefaultClientCreator(tmConfig.ProxyApp, tmConfig.ABCI, tmConfig.DBDir()),
 		genesis,
 		logger,
+		mempool.PrometheusMetrics("dymint"),
 	)
 	if err != nil {
 		return err

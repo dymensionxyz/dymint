@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dymensionxyz/dymint/mempool"
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/stretchr/testify/assert"
@@ -66,7 +67,7 @@ func TestAggregatorMode(t *testing.T) {
 		SettlementLayer:    "mock",
 		SettlementConfig:   settlement.Config{ProposerPubKey: proposerKey},
 	}
-	node, err := NewNode(context.Background(), nodeConfig, key, signingKey, proxy.NewLocalClientCreator(app), &types.GenesisDoc{ChainID: "test"}, log.TestingLogger())
+	node, err := NewNode(context.Background(), nodeConfig, key, signingKey, proxy.NewLocalClientCreator(app), &types.GenesisDoc{ChainID: "test"}, log.TestingLogger(), mempool.NopMetrics())
 	require.NoError(err)
 	require.NotNil(node)
 

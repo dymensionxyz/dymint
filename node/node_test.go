@@ -76,7 +76,7 @@ func TestMempoolDirectly(t *testing.T) {
 		SettlementLayer:  "mock",
 		SettlementConfig: settlement.Config{},
 	}
-	node, err := NewNode(context.Background(), nodeConfig, key, signingKey, proxy.NewLocalClientCreator(app), &types.GenesisDoc{ChainID: "test"}, log.TestingLogger())
+	node, err := NewNode(context.Background(), nodeConfig, key, signingKey, proxy.NewLocalClientCreator(app), &types.GenesisDoc{ChainID: "test"}, log.TestingLogger(), mempool.NopMetrics())
 	require.NoError(err)
 	require.NotNil(node)
 
