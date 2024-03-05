@@ -26,6 +26,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 
 	"github.com/dymensionxyz/dymint/config"
+	"github.com/dymensionxyz/dymint/mempool"
 	"github.com/dymensionxyz/dymint/mocks"
 	"github.com/dymensionxyz/dymint/node"
 	"github.com/dymensionxyz/dymint/rpc/client"
@@ -307,7 +308,7 @@ func getRPC(t *testing.T) (*mocks.Application, *client.Client) {
 		SettlementConfig: settlement.Config{
 			ProposerPubKey: hex.EncodeToString(proposerPubKeyBytes)},
 	}
-	node, err := node.NewNode(context.Background(), config, key, signingKey, proxy.NewLocalClientCreator(app), &types.GenesisDoc{ChainID: "test"}, log.TestingLogger())
+	node, err := node.NewNode(context.Background(), config, key, signingKey, proxy.NewLocalClientCreator(app), &types.GenesisDoc{ChainID: "test"}, log.TestingLogger(), mempool.NopMetrics())
 	require.NoError(err)
 	require.NotNil(node)
 
