@@ -66,7 +66,6 @@ func NewTxMempool(
 	height int64,
 	options ...TxMempoolOption,
 ) *TxMempool {
-
 	txmp := &TxMempool{
 		logger:       logger,
 		config:       cfg,
@@ -475,6 +474,7 @@ func (txmp *TxMempool) initialTxCallback(wtx *WrappedTx, res *abci.Response) {
 
 	txmp.mtx.Lock()
 	defer txmp.mtx.Unlock()
+	txmp.metrics.TxCount.Add(1)
 
 	var err error
 	if txmp.postCheck != nil {

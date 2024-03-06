@@ -19,6 +19,9 @@ type Metrics struct {
 	// Size of the mempool.
 	Size metrics.Gauge
 
+	// Total number of received transactions
+	TxCount metrics.Counter
+
 	// Histogram of transaction sizes, in bytes.
 	TxSizeBytes metrics.Histogram
 
@@ -55,6 +58,13 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 			Subsystem: MetricsSubsystem,
 			Name:      "size",
 			Help:      "Size of the mempool (number of uncommitted transactions).",
+		}, labels).With(labelsAndValues...),
+
+		TxCount: prometheus.NewCounterFrom(stdprometheus.CounterOpts{
+			Namespace: namespace,
+			Subsystem: MetricsSubsystem,
+			Name:      "tx_count",
+			Help:      "Total number of received transactions.",
 		}, labels).With(labelsAndValues...),
 
 		TxSizeBytes: prometheus.NewHistogramFrom(stdprometheus.HistogramOpts{
@@ -99,6 +109,7 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 func NopMetrics() *Metrics {
 	return &Metrics{
 		Size:         discard.NewGauge(),
+		TxCount:      discard.NewCounter(),
 		TxSizeBytes:  discard.NewHistogram(),
 		FailedTxs:    discard.NewCounter(),
 		RejectedTxs:  discard.NewCounter(),
