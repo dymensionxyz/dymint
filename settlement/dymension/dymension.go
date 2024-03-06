@@ -202,7 +202,7 @@ func (d *HubClient) Stop() error {
 // PostBatch posts a batch to the Dymension Hub. it tries to post the batch until it is accepted by the settlement layer.
 // it emits success and failure events to the event bus accordingly.
 func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) error {
-	msgUpdateState, err := d.convertBatchToMsgUpdateState(batch, daClient, daResult)
+	msgUpdateState, err := d.convertBatchToMsgUpdateState(batch, daResult)
 	if err != nil {
 		return err
 	}
@@ -392,7 +392,7 @@ func (d *HubClient) eventHandler() {
 	}
 }
 
-func (d *HubClient) convertBatchToMsgUpdateState(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) (*rollapptypes.MsgUpdateState, error) {
+func (d *HubClient) convertBatchToMsgUpdateState(batch *types.Batch, daResult *da.ResultSubmitBatch) (*rollapptypes.MsgUpdateState, error) {
 	account, err := d.client.GetAccount(d.config.DymAccountName)
 	if err != nil {
 		return nil, err
