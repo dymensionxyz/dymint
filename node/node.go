@@ -174,7 +174,7 @@ func NewNode(ctx context.Context, conf config.NodeConfig, p2pKey crypto.PrivKey,
 		return nil, err
 	}
 
-	mp := mempoolv1.NewTxMempool(logger, llcfg.DefaultMempoolConfig(), proxyApp.Mempool(), 0)
+	mp := mempoolv1.NewTxMempool(logger, llcfg.DefaultMempoolConfig(), proxyApp.Mempool(), 0, mempoolv1.WithMetrics(metrics))
 	mpIDs := nodemempool.NewMempoolIDs()
 
 	// Set p2p client and it's validators
