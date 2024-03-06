@@ -456,6 +456,12 @@ func (d *HubClient) getEventData(eventType string, rawEventData ctypes.ResultEve
 }
 
 func (d *HubClient) convertToNewBatchEvent(rawEventData ctypes.ResultEvent) (*settlement.EventDataNewSettlementBatchAccepted, error) {
+	//check all expected attirbutes exists
+	events := rawEventData.Events
+	if events["state_update.num_blocks"] == nil || events["state_update.start_height"] == nil || events["state_update.state_info_index"] == nil {
+		return nil, fmt.Errorf("missing expected attributes in event")
+	}
+
 	var multiErr *multierror.Error
 	numBlocks, err := strconv.ParseInt(rawEventData.Events["state_update.num_blocks"][0], 10, 64)
 	multiErr = multierror.Append(multiErr, err)
