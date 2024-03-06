@@ -536,6 +536,10 @@ func (c *DataAvailabilityLayerClient) submit(daBlob da.Blob) (uint64, da.Commitm
 		return 0, nil, err
 	}
 
+	if len(commitments) == 0 {
+		return 0, nil, errors.New("no commitments found")
+	}
+
 	options := openrpc.DefaultSubmitOptions()
 
 	blobSizes := make([]uint32, len(blobs))

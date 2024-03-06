@@ -2,6 +2,7 @@ package da
 
 import (
 	"encoding/hex"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -90,43 +91,41 @@ func (d *DASubmitMetaData) ToPath() string {
 // FromPath parses a path to a DAMetaData.
 func (d *DASubmitMetaData) FromPath(path string) (*DASubmitMetaData, error) {
 	pathParts := strings.FieldsFunc(path, func(r rune) bool { return r == '.' })
+	if len(pathParts) < 2 {
+		return nil, fmt.Errorf("invalid DA path")
+	}
+
 	height, err := strconv.ParseUint(pathParts[1], 10, 64)
 	if err != nil {
 		return nil, err
 	}
-	if len(pathParts) > 2 {
-		index, err := strconv.Atoi(pathParts[2])
-		if err != nil {
-			return nil, err
-		}
-		length, err := strconv.Atoi(pathParts[3])
-		if err != nil {
-			return nil, err
-		}
-		commitment, err := hex.DecodeString(pathParts[4])
-		if err != nil {
-			return nil, err
-		}
-		namespace := []byte(pathParts[5])
-		root, err := hex.DecodeString(pathParts[6])
-		if err != nil {
-			return nil, err
-		}
-		return &DASubmitMetaData{
-			Height:     height,
-			Client:     Client(pathParts[0]),
-			Index:      index,
-			Length:     length,
-			Commitment: commitment,
-			Namespace:  namespace,
-			Root:       root,
-		}, nil
-	} else {
-		return &DASubmitMetaData{
-			Height: height,
-			Client: Client(pathParts[0]),
-		}, nil
+
+	submitData := &DASubmitMetaData{
+		Height: height,
+		Client: Client(pathParts[0]),
 	}
+
+	if len(pathParts) > 7 {
+		submitData.Index, err = strconv.Atoi(pathParts[2])
+		if err != nil {
+			return nil, err
+		}
+		submitData.Length, err = strconv.Atoi(pathParts[3])
+		if err != nil {
+			return nil, err
+		}
+		submitData.Commitment, err = hex.DecodeString(pathParts[4])
+		if err != nil {
+			return nil, err
+		}
+		submitData.Namespace = []byte(pathParts[5])
+		submitData.Root, err = hex.DecodeString(pathParts[6])
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return submitData, nil
 }
 
 // DAMetaData contains meta data about a batch on the Data Availability Layer.
