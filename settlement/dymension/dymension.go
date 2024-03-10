@@ -456,7 +456,7 @@ func (d *HubClient) getEventData(eventType string, rawEventData ctypes.ResultEve
 }
 
 func (d *HubClient) convertToNewBatchEvent(rawEventData ctypes.ResultEvent) (*settlement.EventDataNewSettlementBatchAccepted, error) {
-	//check all expected attirbutes exists
+	//check all expected attributes  exists
 	events := rawEventData.Events
 	if events["state_update.num_blocks"] == nil || events["state_update.start_height"] == nil || events["state_update.state_info_index"] == nil {
 		return nil, fmt.Errorf("missing expected attributes in event")
