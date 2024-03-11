@@ -202,7 +202,7 @@ func (c *HubGrpcClient) Stop() error {
 
 // PostBatch saves the batch to the kv store
 func (c *HubGrpcClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) error {
-	settlementBatch := c.convertBatchtoSettlementBatch(batch, daClient, daResult)
+	settlementBatch := c.convertBatchtoSettlementBatch(batch, daResult)
 	c.saveBatch(settlementBatch)
 
 	// sleep for 10 miliseconds to mimic a delay in batch acceptance
@@ -278,14 +278,14 @@ func (c *HubGrpcClient) saveBatch(batch *settlement.Batch) {
 	atomic.StoreUint64(&c.latestHeight, batch.EndHeight)
 }
 
-func (c *HubGrpcClient) convertBatchtoSettlementBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) *settlement.Batch {
+func (c *HubGrpcClient) convertBatchtoSettlementBatch(batch *types.Batch, daResult *da.ResultSubmitBatch) *settlement.Batch {
 	settlementBatch := &settlement.Batch{
 		StartHeight: batch.StartHeight,
 		EndHeight:   batch.EndHeight,
 		MetaData: &settlement.BatchMetaData{
 			DA: &da.DASubmitMetaData{
 				Height: daResult.SubmitMetaData.Height,
-				Client: daClient,
+				Client: daResult.SubmitMetaData.Client,
 			},
 		},
 	}

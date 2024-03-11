@@ -102,6 +102,7 @@ func (m *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 		},
 		SubmitMetaData: &da.DASubmitMetaData{
 			Height: daHeight,
+			Client: da.Mock,
 		},
 	}
 }

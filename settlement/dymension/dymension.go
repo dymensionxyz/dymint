@@ -202,7 +202,7 @@ func (d *HubClient) Stop() error {
 // PostBatch posts a batch to the Dymension Hub. it tries to post the batch until it is accepted by the settlement layer.
 // it emits success and failure events to the event bus accordingly.
 func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) error {
-	msgUpdateState, err := d.convertBatchToMsgUpdateState(batch, daClient, daResult)
+	msgUpdateState, err := d.convertBatchToMsgUpdateState(batch, daResult)
 	if err != nil {
 		return err
 	}
@@ -392,7 +392,7 @@ func (d *HubClient) eventHandler() {
 	}
 }
 
-func (d *HubClient) convertBatchToMsgUpdateState(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) (*rollapptypes.MsgUpdateState, error) {
+func (d *HubClient) convertBatchToMsgUpdateState(batch *types.Batch, daResult *da.ResultSubmitBatch) (*rollapptypes.MsgUpdateState, error) {
 	account, err := d.client.GetAccount(d.config.DymAccountName)
 	if err != nil {
 		return nil, err
@@ -456,6 +456,12 @@ func (d *HubClient) getEventData(eventType string, rawEventData ctypes.ResultEve
 }
 
 func (d *HubClient) convertToNewBatchEvent(rawEventData ctypes.ResultEvent) (*settlement.EventDataNewSettlementBatchAccepted, error) {
+	//check all expected attributes  exists
+	events := rawEventData.Events
+	if events["state_update.num_blocks"] == nil || events["state_update.start_height"] == nil || events["state_update.state_info_index"] == nil {
+		return nil, fmt.Errorf("missing expected attributes in event")
+	}
+
 	var multiErr *multierror.Error
 	numBlocks, err := strconv.ParseInt(rawEventData.Events["state_update.num_blocks"][0], 10, 64)
 	multiErr = multierror.Append(multiErr, err)
