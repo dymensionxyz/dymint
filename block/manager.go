@@ -130,7 +130,8 @@ func NewManager(
 
 	validators := []*tmtypes.Validator{}
 
-	if s.LastBlockHeight+1 == genesis.InitialHeight {
+	//Check if initChain required on genesis
+	if s.LastBlockHeight == 0 {
 		sequencersList := settlementClient.GetSequencersList()
 		for _, sequencer := range sequencersList {
 			tmPubKey, err := cryptocodec.ToTmPubKeyInterface(sequencer.PublicKey)
@@ -191,6 +192,7 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 		return err
 	}
 
+	//TODO (#283): set aggregator mode by proposer addr on the hub
 	if isAggregator {
 		m.logger.Info("Starting in aggregator mode")
 		// TODO(omritoptix): change to private methods
