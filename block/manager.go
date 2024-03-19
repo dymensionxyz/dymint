@@ -8,20 +8,15 @@ import (
 	"time"
 
 	// Importing the general purpose Cosmos blockchain client
-	"github.com/ignite/cli/ignite/pkg/cosmosaccount"
 
 	"code.cloudfoundry.org/go-diodes"
-	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 
 	"github.com/avast/retry-go/v4"
-	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/utils"
 	"github.com/libp2p/go-libp2p/core/crypto"
-	abci "github.com/tendermint/tendermint/abci/types"
 	tmcrypto "github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	tmtypes "github.com/tendermint/tendermint/types"
 
@@ -132,38 +127,6 @@ func NewManager(
 		return nil, fmt.Errorf("failed to get initial state: %w", err)
 	}
 
-	//InitChain flow
-	if s.LastBlockHeight+1 == genesis.InitialHeight {
-		proposer := settlementClient.GetProposer()
-
-		tmPubKey, err := cryptocodec.ToTmPubKeyInterface(proposer.PublicKey)
-		if err != nil {
-			return nil, err
-		}
-		consensusPubkey := tmtypes.NewValidator(tmPubKey, 1)
-
-		//FIXME: temp hack for testing
-		pubkey, err := getOperatorPubkey("/Users/mtsitrin/.rollapp_evm", "michael")
-		if err != nil {
-			return nil, err
-		}
-		tmPubKey, err = cryptocodec.ToTmPubKeyInterface(pubkey)
-		if err != nil {
-			return nil, err
-		}
-		operatorPubkey := tmtypes.NewValidator(tmPubKey, 1)
-
-		res, err := exec.InitChain(genesis, []*tmtypes.Validator{consensusPubkey, operatorPubkey})
-		if err != nil {
-			return nil, err
-		}
-
-		updateInitChainState(&s, res, []*tmtypes.Validator{consensusPubkey})
-		if _, err := store.UpdateState(s, nil); err != nil {
-			return nil, err
-		}
-	}
-
 	batchInProcess := atomic.Value{}
 	batchInProcess.Store(false)
 
@@ -206,11 +169,18 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 
 	if isAggregator {
 		m.logger.Info("Starting in aggregator mode")
-		// TODO(omritoptix): change to private methods
+
+		// Check if InitChain flow is needed
+		if m.lastState.LastBlockHeight+1 == m.genesis.InitialHeight {
+			err := m.RunInitChain(ctx)
+			if err != nil {
+				return err
+			}
+		}
+
 		go m.ProduceBlockLoop(ctx)
 		go m.SubmitLoop(ctx)
 	} else {
-		// TODO(omritoptix): change to private methods
 		go m.RetriveLoop(ctx)
 		go m.SyncTargetLoop(ctx)
 	}
@@ -321,74 +291,4 @@ func (m *Manager) getLatestBatchFromSL(ctx context.Context) (*settlement.ResultR
 		return resultRetrieveBatch, err
 	}
 	return resultRetrieveBatch, nil
-
-}
-
-// TODO(omritoptix): possible remove this method from the manager
-func updateInitChainState(s *types.State, res *abci.ResponseInitChain, validators []*tmtypes.Validator) {
-	// If the app did not return an app hash, we keep the one set from the genesis doc in
-	// the state. We don't set appHash since we don't want the genesis doc app hash
-	// recorded in the genesis block. We should probably just remove GenesisDoc.AppHash.
-	if len(res.AppHash) > 0 {
-		copy(s.AppHash[:], res.AppHash)
-	}
-
-	//The validators after initChain must be greater than zero, otherwise this state is not loadable
-	if len(validators) <= 0 {
-		panic("Validators must be greater than zero")
-	}
-
-	if res.ConsensusParams != nil {
-		params := res.ConsensusParams
-		if params.Block != nil {
-			s.ConsensusParams.Block.MaxBytes = params.Block.MaxBytes
-			s.ConsensusParams.Block.MaxGas = params.Block.MaxGas
-		}
-		if params.Evidence != nil {
-			s.ConsensusParams.Evidence.MaxAgeNumBlocks = params.Evidence.MaxAgeNumBlocks
-			s.ConsensusParams.Evidence.MaxAgeDuration = params.Evidence.MaxAgeDuration
-			s.ConsensusParams.Evidence.MaxBytes = params.Evidence.MaxBytes
-		}
-		if params.Validator != nil {
-			// Copy params.Validator.PubkeyTypes, and set result's value to the copy.
-			// This avoids having to initialize the slice to 0 values, and then write to it again.
-			s.ConsensusParams.Validator.PubKeyTypes = append([]string{}, params.Validator.PubKeyTypes...)
-		}
-		if params.Version != nil {
-			s.ConsensusParams.Version.AppVersion = params.Version.AppVersion
-		}
-		s.Version.Consensus.App = s.ConsensusParams.Version.AppVersion
-	}
-	// We update the last results hash with the empty hash, to conform with RFC-6962.
-	copy(s.LastResultsHash[:], merkle.HashFromByteSlices(nil))
-
-	// Set the validators in the state
-	s.Validators = tmtypes.NewValidatorSet(validators).CopyIncrementProposerPriority(1)
-	s.NextValidators = s.Validators.Copy()
-	s.LastValidators = s.Validators.Copy()
-}
-
-func getOperatorPubkey(keyDir, accountName string) (cryptotypes.PubKey, error) {
-	// open keyring
-	//load pubkey
-	keyring, err := cosmosaccount.New(
-		cosmosaccount.WithKeyringBackend("test"),
-		cosmosaccount.WithHome(keyDir),
-	)
-	if err != nil {
-		return nil, err
-	}
-
-	// Get account from the keyring
-	account, err := keyring.GetByName(accountName)
-	if err != nil {
-		return nil, err
-	}
-
-	pubkey, err := account.Record.GetPubKey()
-	if err != nil {
-		return nil, err
-	}
-
-	return pubkey, nil
 }

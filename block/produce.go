@@ -120,10 +120,7 @@ func (m *Manager) produceBlock(ctx context.Context, allowEmpty bool) error {
 		if err != nil {
 			return err
 		}
-		proposerAddress, err := getAddress(m.proposerKey)
-		if err != nil {
-			return err
-		}
+		proposerAddress := block.Header.ProposerAddress
 		sign, err := m.proposerKey.Sign(abciHeaderBytes)
 		if err != nil {
 			return err
