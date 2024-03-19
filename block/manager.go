@@ -247,7 +247,7 @@ func (m *Manager) syncBlockManager(ctx context.Context) error {
 
 // updateSyncParams updates the sync target and state index if necessary
 func (m *Manager) updateSyncParams(endHeight uint64) {
-	rollappHubHeightGauge.Set(float64(endHeight))
+	types.RollappHubHeightGauge.Set(float64(endHeight))
 	m.logger.Info("Received new syncTarget", "syncTarget", endHeight)
 	atomic.StoreUint64(&m.syncTarget, endHeight)
 	atomic.StoreInt64(&m.lastSubmissionTime, time.Now().UnixNano())
@@ -298,13 +298,6 @@ func (m *Manager) applyBlockCallback(event pubsub.Message) {
 	if err != nil {
 		m.logger.Debug("Failed to apply previous cached blocks", "err", err)
 	}
-}
-
-// SetDALC is used to set DataAvailabilityLayerClient used by Manager.
-// TODO(omritoptix): Remove this from here as it's only being used for tests.
-func (m *Manager) SetDALC(dalc da.DataAvailabilityLayerClient) {
-	m.dalc = dalc
-	m.retriever = dalc.(da.BatchRetriever)
 }
 
 // getLatestBatchFromSL gets the latest batch from the SL
