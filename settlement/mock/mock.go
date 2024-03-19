@@ -184,19 +184,32 @@ func (c *HubClient) GetBatchAtIndex(rollappID string, index uint64) (*settlement
 	return batchResult, nil
 }
 
-// GetSequencers returns a list of sequencers. Currently only returns a single sequencer
+// GetSequencers returns a list of sequencers. Currently returns between 1 and 5 sequencer
 func (c *HubClient) GetSequencers(rollappID string) ([]*types.Sequencer, error) {
-	pubKeyBytes, err := hex.DecodeString(c.ProposerPubKey)
-	if err != nil {
-		return nil, err
-	}
-	var pubKey cryptotypes.PubKey = &ed25519.PubKey{Key: pubKeyBytes}
-	return []*types.Sequencer{
-		{
+
+	numSequencers := 5
+	var sequencers []*types.Sequencer
+
+	for i := 0; i < numSequencers; i++ {
+		pubKeyBytes, err := hex.DecodeString(c.ProposerPubKey)
+		if err != nil {
+			return nil, err
+		}
+		var pubKey cryptotypes.PubKey = &ed25519.PubKey{Key: pubKeyBytes}
+		var status types.SequencerStatus
+		if i == 0 {
+			status = types.Proposer
+		} else {
+			status = types.Inactive
+		}
+		sequencer := &types.Sequencer{
 			PublicKey: pubKey,
-			Status:    types.Proposer,
-		},
-	}, nil
+			Status:    status,
+		}
+		sequencers = append(sequencers, sequencer)
+
+	}
+	return sequencers, nil
 }
 
 func (c *HubClient) saveBatch(batch *settlement.Batch) {
