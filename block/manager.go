@@ -7,7 +7,11 @@ import (
 	"sync/atomic"
 	"time"
 
+	// Importing the general purpose Cosmos blockchain client
+	"github.com/ignite/cli/ignite/pkg/cosmosaccount"
+
 	"code.cloudfoundry.org/go-diodes"
+	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 
 	"github.com/avast/retry-go/v4"
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
@@ -134,6 +138,16 @@ func NewManager(
 		sequencersList := settlementClient.GetSequencersList()
 		for _, sequencer := range sequencersList {
 			tmPubKey, err := cryptocodec.ToTmPubKeyInterface(sequencer.PublicKey)
+			if err != nil {
+				return nil, err
+			}
+			validators = append(validators, tmtypes.NewValidator(tmPubKey, 1))
+			//FIXME: temp hack for testing
+			pubkey, err := getOperatorPubkey("/Users/mtsitrin/.rollapp_evm", "michael")
+			if err != nil {
+				return nil, err
+			}
+			tmPubKey, err = cryptocodec.ToTmPubKeyInterface(pubkey)
 			if err != nil {
 				return nil, err
 			}
@@ -360,4 +374,29 @@ func updateInitChainState(s *types.State, res *abci.ResponseInitChain, validator
 	s.Validators = tmtypes.NewValidatorSet(validators).CopyIncrementProposerPriority(1)
 	s.NextValidators = s.Validators.Copy()
 	s.LastValidators = s.Validators.Copy()
+}
+
+func getOperatorPubkey(keyDir, accountName string) (cryptotypes.PubKey, error) {
+	// open keyring
+	//load pubkey
+	keyring, err := cosmosaccount.New(
+		cosmosaccount.WithKeyringBackend("test"),
+		cosmosaccount.WithHome(keyDir),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get account from the keyring
+	account, err := keyring.GetByName(accountName)
+	if err != nil {
+		return nil, err
+	}
+
+	pubkey, err := account.Record.GetPubKey()
+	if err != nil {
+		return nil, err
+	}
+
+	return pubkey, nil
 }
