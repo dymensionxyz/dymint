@@ -131,14 +131,13 @@ func NewManager(
 	validators := []*tmtypes.Validator{}
 
 	if s.LastBlockHeight+1 == genesis.InitialHeight {
-		sequencersList := settlementClient.GetSequencersList()
-		for _, sequencer := range sequencersList {
-			tmPubKey, err := cryptocodec.ToTmPubKeyInterface(sequencer.PublicKey)
-			if err != nil {
-				return nil, err
-			}
-			validators = append(validators, tmtypes.NewValidator(tmPubKey, 1))
+
+		sequencer := settlementClient.GetProposer()
+		tmPubKey, err := cryptocodec.ToTmPubKeyInterface(sequencer.PublicKey)
+		if err != nil {
+			return nil, err
 		}
+		validators = append(validators, tmtypes.NewValidator(tmPubKey, 1))
 
 		res, err := exec.InitChain(genesis, validators)
 		if err != nil {

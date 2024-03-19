@@ -454,3 +454,23 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 		})
 	}
 }
+
+func TestManagerSequencer(t *testing.T) {
+
+	pubsubServer := pubsub.NewServer()
+	pubsubServer.Start()
+
+	settlementlc := slregistry.GetClient(slregistry.Client("mock"))
+	err := settlementlc.Init(settlement.Config{}, pubsubServer, log.TestingLogger())
+	require.NoError(t, err)
+
+	manager, err := getManager(getManagerConfig(), settlementlc, nil, 1, 1, 0, nil, nil)
+	require.NoError(t, err)
+
+	proposer := settlementlc.GetProposer()
+
+	validatorPubKey := manager.lastState.NextValidators.Validators[0].PubKey
+	require.Equal(t, len(manager.lastState.NextValidators.Validators), 1)
+	require.Equal(t, validatorPubKey.Address(), proposer.PublicKey.Address())
+
+}
