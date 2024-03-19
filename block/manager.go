@@ -132,34 +132,33 @@ func NewManager(
 		return nil, fmt.Errorf("failed to get initial state: %w", err)
 	}
 
-	validators := []*tmtypes.Validator{}
-
+	//InitChain flow
 	if s.LastBlockHeight+1 == genesis.InitialHeight {
-		sequencersList := settlementClient.GetSequencersList()
-		for _, sequencer := range sequencersList {
-			tmPubKey, err := cryptocodec.ToTmPubKeyInterface(sequencer.PublicKey)
-			if err != nil {
-				return nil, err
-			}
-			validators = append(validators, tmtypes.NewValidator(tmPubKey, 1))
-			//FIXME: temp hack for testing
-			pubkey, err := getOperatorPubkey("/Users/mtsitrin/.rollapp_evm", "michael")
-			if err != nil {
-				return nil, err
-			}
-			tmPubKey, err = cryptocodec.ToTmPubKeyInterface(pubkey)
-			if err != nil {
-				return nil, err
-			}
-			validators = append(validators, tmtypes.NewValidator(tmPubKey, 1))
-		}
+		proposer := settlementClient.GetProposer()
 
-		res, err := exec.InitChain(genesis, validators)
+		tmPubKey, err := cryptocodec.ToTmPubKeyInterface(proposer.PublicKey)
+		if err != nil {
+			return nil, err
+		}
+		consensusPubkey := tmtypes.NewValidator(tmPubKey, 1)
+
+		//FIXME: temp hack for testing
+		pubkey, err := getOperatorPubkey("/Users/mtsitrin/.rollapp_evm", "michael")
+		if err != nil {
+			return nil, err
+		}
+		tmPubKey, err = cryptocodec.ToTmPubKeyInterface(pubkey)
+		if err != nil {
+			return nil, err
+		}
+		operatorPubkey := tmtypes.NewValidator(tmPubKey, 1)
+
+		res, err := exec.InitChain(genesis, []*tmtypes.Validator{consensusPubkey, operatorPubkey})
 		if err != nil {
 			return nil, err
 		}
 
-		updateInitChainState(&s, res, validators)
+		updateInitChainState(&s, res, []*tmtypes.Validator{consensusPubkey})
 		if _, err := store.UpdateState(s, nil); err != nil {
 			return nil, err
 		}
