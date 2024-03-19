@@ -10,16 +10,16 @@ import (
 )
 
 func (m *Manager) RunInitChain(ctx context.Context) error {
+	//get the proposer's consensus pubkey
 	proposer := m.settlementClient.GetProposer()
-
 	tmPubKey, err := cryptocodec.ToTmPubKeyInterface(proposer.PublicKey)
 	if err != nil {
 		return err
 	}
 	consensusPubkey := tmtypes.NewValidator(tmPubKey, 1)
 
-	//FIXME: temp hack for testing
-	pubkey, err := getOperatorPubkey("/Users/mtsitrin/.rollapp_evm", "michael")
+	//get the operator's pubkey
+	pubkey, err := getOperatorPubkey(m.conf.KeyringHomeDir, m.conf.KeyringBackend, m.conf.OperatorAccountName)
 	if err != nil {
 		return err
 	}
@@ -29,11 +29,13 @@ func (m *Manager) RunInitChain(ctx context.Context) error {
 	}
 	operatorPubkey := tmtypes.NewValidator(tmPubKey, 1)
 
+	//call initChain with both addresses
 	res, err := m.executor.InitChain(m.genesis, []*tmtypes.Validator{consensusPubkey, operatorPubkey})
 	if err != nil {
 		return err
 	}
 
+	//update the state with only the consensus pubkey
 	m.executor.UpdateStateAfterInitChain(&m.lastState, res, []*tmtypes.Validator{consensusPubkey})
 	if _, err := m.store.UpdateState(m.lastState, nil); err != nil {
 		return err
@@ -42,11 +44,10 @@ func (m *Manager) RunInitChain(ctx context.Context) error {
 	return nil
 }
 
-func getOperatorPubkey(keyDir, accountName string) (cryptotypes.PubKey, error) {
+func getOperatorPubkey(keyDir, keyringBackend, accountName string) (cryptotypes.PubKey, error) {
 	// open keyring
-	//load pubkey
 	keyring, err := cosmosaccount.New(
-		cosmosaccount.WithKeyringBackend("test"),
+		cosmosaccount.WithKeyringBackend(cosmosaccount.KeyringBackend(keyringBackend)),
 		cosmosaccount.WithHome(keyDir),
 	)
 	if err != nil {
