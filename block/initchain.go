@@ -19,7 +19,7 @@ func (m *Manager) RunInitChain(ctx context.Context) error {
 	consensusPubkey := tmtypes.NewValidator(tmPubKey, 1)
 
 	//get the operator's pubkey
-	pubkey, err := getOperatorPubkey(m.conf.KeyringHomeDir, m.conf.KeyringBackend, m.conf.OperatorAccountName)
+	pubkey, err := getOperatorPubkey(m.conf.OperatorKeyringHomeDir, m.conf.OperatorKeyringBackend, m.conf.OperatorAccountName)
 	if err != nil {
 		return err
 	}

@@ -55,9 +55,9 @@ type BlockManagerConfig struct {
 	GossipedBlocksCacheSize int `mapstructure:"gossiped_blocks_cache_size"`
 
 	// Parameters to get the sequencer's operator address
-	KeyringBackend      string `mapstructure:"keyring_backend"`
-	OperatorAccountName string `mapstructure:"operator_account_name"`
-	KeyringHomeDir      string `mapstructure:"keyring_home_dir"`
+	OperatorKeyringBackend string `mapstructure:"operator_keyring_backend"`
+	OperatorAccountName    string `mapstructure:"operator_account_name"`
+	OperatorKeyringHomeDir string `mapstructure:"operator_keyring_home_dir"`
 }
 
 // GetViperConfig reads configuration parameters from Viper instance.

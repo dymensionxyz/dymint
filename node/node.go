@@ -189,13 +189,6 @@ func NewNode(ctx context.Context, conf config.NodeConfig, p2pKey crypto.PrivKey,
 	p2pClient.SetTxValidator(p2pValidator.TxValidator(mp, mpIDs))
 	p2pClient.SetBlockValidator(p2pValidator.BlockValidator())
 
-	// If operator account name is not set, use the settlement account name
-	if conf.BlockManagerConfig.OperatorAccountName == "" {
-		conf.BlockManagerConfig.OperatorAccountName = conf.SettlementConfig.DymAccountName
-		conf.BlockManagerConfig.KeyringBackend = conf.SettlementConfig.KeyringBackend
-		conf.BlockManagerConfig.KeyringHomeDir = conf.SettlementConfig.KeyringHomeDir
-	}
-
 	blockManager, err := block.NewManager(signingKey, conf.BlockManagerConfig, genesis, s, mp, proxyApp, dalc, settlementlc, eventBus, pubsubServer, p2pClient, logger.With("module", "BlockManager"))
 	if err != nil {
 		return nil, fmt.Errorf("BlockManager initialization error: %w", err)

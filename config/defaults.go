@@ -69,6 +69,11 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 	}
 	cfg.SettlementConfig = defaultSLconfig
 
+	// set operator address
+	cfg.OperatorKeyringBackend = defaultSLconfig.KeyringBackend
+	cfg.OperatorKeyringHomeDir = defaultSLconfig.KeyringHomeDir
+	cfg.OperatorAccountName = defaultSLconfig.DymAccountName
+
 	//Setting default params for da grpc mock
 	defaultDAGrpc := grpc.Config{
 		Host: "127.0.0.1",
