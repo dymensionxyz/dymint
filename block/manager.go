@@ -1,6 +1,7 @@
 package block
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"sync"
@@ -168,6 +169,12 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 	}
 
 	if isAggregator {
+		//make sure local signing key is the registered on the hub
+		slProposerKey := m.settlementClient.GetProposer().PublicKey.Bytes()
+		localProposerKey, _ := m.proposerKey.GetPublic().Raw()
+		if !bytes.Equal(slProposerKey, localProposerKey) {
+			return fmt.Errorf("proposer key mismatch: settlement proposer key: %s, block manager proposer key: %s", slProposerKey, m.proposerKey.GetPublic())
+		}
 		m.logger.Info("Starting in aggregator mode")
 
 		// Check if InitChain flow is needed
