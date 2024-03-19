@@ -2,9 +2,15 @@ package block
 
 import (
 	"context"
+	"os"
 
+	"github.com/cosmos/cosmos-sdk/codec"
+
+	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
+	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
+	"github.com/evmos/evmos/v12/crypto/hd"
 	"github.com/ignite/cli/ignite/pkg/cosmosaccount"
 	tmtypes "github.com/tendermint/tendermint/types"
 )
@@ -46,7 +52,7 @@ func (m *Manager) RunInitChain(ctx context.Context) error {
 
 func getOperatorPubkey(keyDir, keyringBackend, accountName string) (cryptotypes.PubKey, error) {
 	// open keyring
-	keyring, err := cosmosaccount.New(
+	c, err := cosmosaccount.New(
 		cosmosaccount.WithKeyringBackend(cosmosaccount.KeyringBackend(keyringBackend)),
 		cosmosaccount.WithHome(keyDir),
 	)
@@ -54,8 +60,18 @@ func getOperatorPubkey(keyDir, keyringBackend, accountName string) (cryptotypes.
 		return nil, err
 	}
 
+	interfaceRegistry := codectypes.NewInterfaceRegistry()
+	cryptocodec.RegisterInterfaces(interfaceRegistry)
+	cdc := codec.NewProtoCodec(interfaceRegistry)
+
+	customKeyring, err := keyring.New("operatorAddr", keyringBackend, keyDir, os.Stdin, cdc, hd.EthSecp256k1Option())
+	if err != nil {
+		return nil, err
+	}
+	c.Keyring = customKeyring
+
 	// Get account from the keyring
-	account, err := keyring.GetByName(accountName)
+	account, err := c.GetByName(accountName)
 	if err != nil {
 		return nil, err
 	}
