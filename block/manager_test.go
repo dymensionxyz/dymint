@@ -455,6 +455,7 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 	}
 }
 
+// TestManagerSequencer checks that the manager inits the chain with only the proposer as validator
 func TestManagerSequencer(t *testing.T) {
 
 	pubsubServer := pubsub.NewServer()
