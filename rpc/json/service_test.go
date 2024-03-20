@@ -304,6 +304,8 @@ func getRPC(t *testing.T) (*mocks.Application, *client.Client) {
 			BlockBatchSize:          10000,
 			BlockBatchMaxSizeBytes:  1000,
 			GossipedBlocksCacheSize: 50,
+			OperatorKeyringBackend:  "memory",
+			OperatorAccountName:     "default",
 		},
 		SettlementConfig: settlement.Config{
 			ProposerPubKey: hex.EncodeToString(proposerPubKeyBytes)},

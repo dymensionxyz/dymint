@@ -56,7 +56,7 @@ func TestNodeHealthRPCPropogation(t *testing.T) {
 				require.NoError(t, err)
 				time.Sleep(1 * time.Second)
 				// Make the request
-				res, err := http.Get(fmt.Sprintf("http://%s", listener.Addr().String()) + tc.endpoint)
+				res, err := httpGetWithTimeout(fmt.Sprintf("http://%s", listener.Addr().String())+tc.endpoint, 5*time.Second)
 				require.NoError(t, err)
 				defer res.Body.Close()
 				require.NoError(t, err)
@@ -66,4 +66,28 @@ func TestNodeHealthRPCPropogation(t *testing.T) {
 			})
 		}
 	}
+}
+
+func httpGetWithTimeout(url string, timeout time.Duration) (*http.Response, error) {
+	// Create a new context with a timeout
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	// Cancel the context when we're done
+	defer cancel()
+
+	// Create a new HTTP client
+	client := &http.Client{}
+
+	// Create a new HTTP request
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	// Send the HTTP request
+	res, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
 }
