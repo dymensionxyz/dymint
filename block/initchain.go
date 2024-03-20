@@ -70,6 +70,11 @@ func getOperatorPubkey(keyDir, keyringBackend, accountName string) (cryptotypes.
 	}
 	c.Keyring = customKeyring
 
+	// If the keyring is in memory, ensure the default account exists to be used in tests
+	if keyringBackend == "memory" {
+		c.EnsureDefaultAccount()
+	}
+
 	// Get account from the keyring
 	account, err := c.GetByName(accountName)
 	if err != nil {
