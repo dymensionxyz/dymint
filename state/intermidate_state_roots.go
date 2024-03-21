@@ -60,11 +60,11 @@ func (e *BlockExecutor) generateFraudProof(beginBlockRequest *abci.RequestBeginB
 	if deliverTxRequests != nil {
 		generateFraudProofRequest.DeliverTxRequests = deliverTxRequests
 	} else {
-		panic("deliverTxRequests cannot be nil - fraudelet begin block not supported")
+		panic("deliverTxRequests cannot be nil - fraudulent begin block not supported")
 	}
 	if endBlockRequest != nil {
 		generateFraudProofRequest.EndBlockRequest = endBlockRequest
-		panic("fraudelent endBlockRequest not supported")
+		panic("fraudulent endBlockRequest not supported")
 	}
 
 	resp, err := e.proxyAppConsensusConn.GenerateFraudProofSync(generateFraudProofRequest)

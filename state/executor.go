@@ -388,7 +388,7 @@ func (e *BlockExecutor) Execute(ctx context.Context, state types.State, block *t
 	ISRs, err = e.setOrVerifyISR("begin block ISR", ISRs, generateISR, currISRIdx)
 	currISRIdx++
 	if err != nil {
-		if err == types.ErrInvalidISR {
+		if errors.Is(err, types.ErrInvalidISR) {
 			e.generateFraudProof(&reqBeginBlock, nil, nil)
 		}
 		return nil, err
@@ -406,7 +406,7 @@ func (e *BlockExecutor) Execute(ctx context.Context, state types.State, block *t
 		_, err = e.setOrVerifyISR("deliverTx", ISRs, generateISR, currISRIdx)
 		currISRIdx++
 		if err != nil {
-			if err == types.ErrInvalidISR {
+			if errors.Is(err, types.ErrInvalidISR) {
 				e.generateFraudProof(&reqBeginBlock, deliverTxRequests, nil)
 			}
 			return nil, err
@@ -422,15 +422,15 @@ func (e *BlockExecutor) Execute(ctx context.Context, state types.State, block *t
 	ISRs, err = e.setOrVerifyISR("endblock ISR", ISRs, generateISR, currISRIdx)
 	currISRIdx++
 	if err != nil {
-		if err == types.ErrInvalidISR {
+		if errors.Is(err, types.ErrInvalidISR) {
 			e.generateFraudProof(&reqBeginBlock, deliverTxRequests, &reqEndBlock)
 		}
 		return nil, err
 	}
 
 	if blockISRs == nil {
-		//we've already valdiated we're the aggreator in this case
-		//double checking we've produced ISRs as expected
+		// we've already validated we're the aggregator in this case
+		// double-checking we've produced ISRs as expected
 		if len(ISRs) != expectedISRCount {
 			e.logger.Error("ISR count mismatch", "expected", expectedISRCount, "actual", len(blockISRs))
 			return nil, errors.New("ISR count mismatch")
