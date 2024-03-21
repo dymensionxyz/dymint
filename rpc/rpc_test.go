@@ -83,11 +83,5 @@ func httpGetWithTimeout(url string, timeout time.Duration) (*http.Response, erro
 		return nil, err
 	}
 
-	// Send the HTTP request
-	res, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	return res, nil
+	return client.Do(req)
 }
