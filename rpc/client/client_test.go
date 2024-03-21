@@ -442,6 +442,8 @@ func TestTx(t *testing.T) {
 			BatchSubmitMaxTime:      60 * time.Second,
 			BlockBatchMaxSizeBytes:  1000,
 			GossipedBlocksCacheSize: 50,
+			OperatorKeyringBackend:  "memory",
+			OperatorAccountName:     "default",
 		},
 		BootstrapTime:    30 * time.Second,
 		SettlementConfig: settlement.Config{ProposerPubKey: hex.EncodeToString(pubKeybytes)},
@@ -711,12 +713,14 @@ func TestValidatorSetHandling(t *testing.T) {
 			BatchSubmitMaxTime:      60 * time.Second,
 			BlockBatchMaxSizeBytes:  1000,
 			GossipedBlocksCacheSize: 50,
+			OperatorKeyringBackend:  "memory",
+			OperatorAccountName:     "default",
 		},
 		BootstrapTime:    30 * time.Second,
 		SettlementConfig: settlement.Config{ProposerPubKey: hex.EncodeToString(proposerPubKeyBytes)},
 	}
 
-	node, err := node.NewNode(context.Background(), nodeConfig, key, signingKey, proxy.NewLocalClientCreator(app), &tmtypes.GenesisDoc{ChainID: "test", Validators: genesisValidators}, log.TestingLogger(), mempool.NopMetrics())
+	node, err := node.NewNode(context.Background(), nodeConfig, key, signingKey, proxy.NewLocalClientCreator(app), &tmtypes.GenesisDoc{ChainID: "test"}, log.TestingLogger(), mempool.NopMetrics())
 	require.NoError(err)
 	require.NotNil(node)
 
@@ -812,7 +816,6 @@ func getRPC(t *testing.T) (*mocks.Application, *Client) {
 	t.Helper()
 	require := require.New(t)
 	app := &mocks.Application{}
-	app.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 	key, _, _ := crypto.GenerateEd25519Key(crand.Reader)
 	signingKey, pubkey, err := crypto.GenerateEd25519Key(crand.Reader)
 	pubkeyBytes, _ := pubkey.Raw()
