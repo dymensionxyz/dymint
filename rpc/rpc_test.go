@@ -59,7 +59,6 @@ func TestNodeHealthRPCPropogation(t *testing.T) {
 				res, err := httpGetWithTimeout(fmt.Sprintf("http://%s", listener.Addr().String())+tc.endpoint, 5*time.Second)
 				require.NoError(t, err)
 				defer res.Body.Close()
-				require.NoError(t, err)
 				// Check the response
 				assert.Equal(t, tc.expectedStatusCode, res.StatusCode)
 
