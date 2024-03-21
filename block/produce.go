@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"cosmossdk.io/errors"
+	stderrors "errors"
 	abciconv "github.com/dymensionxyz/dymint/conv/abci"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
@@ -21,14 +22,14 @@ import (
 func (m *Manager) waitForSync(ctx context.Context) error {
 	resultRetrieveBatch, err := m.getLatestBatchFromSL(ctx)
 	// Set the syncTarget according to the result
-	if err == settlement.ErrBatchNotFound {
+	if stderrors.Is(err, settlement.ErrBatchNotFound) {
 		// Since we requested the latest batch and got batch not found it means
 		// the SL still hasn't got any batches for this chain.
 		m.logger.Info("No batches for chain found in SL. Start writing first batch")
 		atomic.StoreUint64(&m.syncTarget, uint64(m.genesis.InitialHeight-1))
 		return nil
 	} else if err != nil {
-		m.logger.Error("failed to retrieve batch from SL", "err", err)
+		m.logger.Error("wait for sync: failed to retrieve batch from SL", "err", err)
 		return err
 	} else {
 		m.updateSyncParams(ctx, resultRetrieveBatch.EndHeight)

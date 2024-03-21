@@ -22,7 +22,7 @@ func (m *Manager) SyncTargetLoop(ctx context.Context) {
 	// First time we start we want to get the latest batch from the SL
 	resultRetrieveBatch, err := m.getLatestBatchFromSL(ctx)
 	if err != nil {
-		m.logger.Error("failed to retrieve batch from SL", "err", err)
+		m.logger.Error("sync target loop: failed to retrieve batch from SL", "err", err)
 	} else {
 		m.updateSyncParams(ctx, resultRetrieveBatch.EndHeight)
 	}
