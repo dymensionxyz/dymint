@@ -151,5 +151,7 @@ func getManagerConfig() config.BlockManagerConfig {
 		BatchSubmitMaxTime:      30 * time.Minute,
 		NamespaceID:             "0102030405060708",
 		GossipedBlocksCacheSize: 50,
+		OperatorKeyringBackend:  "memory",
+		OperatorAccountName:     "default",
 	}
 }

@@ -64,10 +64,15 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 		RollappID:      chainId,
 		KeyringHomeDir: keyringDir,
 		DymAccountName: "sequencer",
-		GasPrices:      "0.025udym",
+		GasPrices:      "1000000000adym",
 		SLGrpc:         defaultSlGrpcConfig,
 	}
 	cfg.SettlementConfig = defaultSLconfig
+
+	// set operator address
+	cfg.OperatorKeyringBackend = defaultSLconfig.KeyringBackend
+	cfg.OperatorKeyringHomeDir = defaultSLconfig.KeyringHomeDir
+	cfg.OperatorAccountName = defaultSLconfig.DymAccountName
 
 	//Setting default params for da grpc mock
 	defaultDAGrpc := grpc.Config{

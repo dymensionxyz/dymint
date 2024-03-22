@@ -1,23 +1,23 @@
 package block
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	// Importing the general purpose Cosmos blockchain client
+
 	"code.cloudfoundry.org/go-diodes"
 
 	"github.com/avast/retry-go/v4"
-	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/utils"
 	"github.com/libp2p/go-libp2p/core/crypto"
-	abci "github.com/tendermint/tendermint/abci/types"
 	tmcrypto "github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	tmtypes "github.com/tendermint/tendermint/types"
 
@@ -128,29 +128,6 @@ func NewManager(
 		return nil, fmt.Errorf("failed to get initial state: %w", err)
 	}
 
-	validators := []*tmtypes.Validator{}
-
-	if s.LastBlockHeight+1 == genesis.InitialHeight {
-		sequencersList := settlementClient.GetSequencersList()
-		for _, sequencer := range sequencersList {
-			tmPubKey, err := cryptocodec.ToTmPubKeyInterface(sequencer.PublicKey)
-			if err != nil {
-				return nil, err
-			}
-			validators = append(validators, tmtypes.NewValidator(tmPubKey, 1))
-		}
-
-		res, err := exec.InitChain(genesis, validators)
-		if err != nil {
-			return nil, err
-		}
-
-		updateInitChainState(&s, res, validators)
-		if _, err := store.UpdateState(s, nil); err != nil {
-			return nil, err
-		}
-	}
-
 	batchInProcess := atomic.Value{}
 	batchInProcess.Store(false)
 
@@ -192,12 +169,25 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 	}
 
 	if isAggregator {
+		//make sure local signing key is the registered on the hub
+		slProposerKey := m.settlementClient.GetProposer().PublicKey.Bytes()
+		localProposerKey, _ := m.proposerKey.GetPublic().Raw()
+		if !bytes.Equal(slProposerKey, localProposerKey) {
+			return fmt.Errorf("proposer key mismatch: settlement proposer key: %s, block manager proposer key: %s", slProposerKey, m.proposerKey.GetPublic())
+		}
 		m.logger.Info("Starting in aggregator mode")
-		// TODO(omritoptix): change to private methods
+
+		// Check if InitChain flow is needed
+		if m.lastState.LastBlockHeight+1 == m.genesis.InitialHeight {
+			err := m.RunInitChain(ctx)
+			if err != nil {
+				return err
+			}
+		}
+
 		go m.ProduceBlockLoop(ctx)
 		go m.SubmitLoop(ctx)
 	} else {
-		// TODO(omritoptix): change to private methods
 		go m.RetriveLoop(ctx)
 		go m.SyncTargetLoop(ctx)
 	}
@@ -234,7 +224,7 @@ func (m *Manager) syncBlockManager(ctx context.Context) error {
 
 // updateSyncParams updates the sync target and state index if necessary
 func (m *Manager) updateSyncParams(endHeight uint64) {
-	rollappHubHeightGauge.Set(float64(endHeight))
+	types.RollappHubHeightGauge.Set(float64(endHeight))
 	m.logger.Info("Received new syncTarget", "syncTarget", endHeight)
 	atomic.StoreUint64(&m.syncTarget, endHeight)
 	atomic.StoreInt64(&m.lastSubmissionTime, time.Now().UnixNano())
@@ -287,13 +277,6 @@ func (m *Manager) applyBlockCallback(event pubsub.Message) {
 	}
 }
 
-// SetDALC is used to set DataAvailabilityLayerClient used by Manager.
-// TODO(omritoptix): Remove this from here as it's only being used for tests.
-func (m *Manager) SetDALC(dalc da.DataAvailabilityLayerClient) {
-	m.dalc = dalc
-	m.retriever = dalc.(da.BatchRetriever)
-}
-
 // getLatestBatchFromSL gets the latest batch from the SL
 func (m *Manager) getLatestBatchFromSL(ctx context.Context) (*settlement.ResultRetrieveBatch, error) {
 	var resultRetrieveBatch *settlement.ResultRetrieveBatch
@@ -315,49 +298,4 @@ func (m *Manager) getLatestBatchFromSL(ctx context.Context) (*settlement.ResultR
 		return resultRetrieveBatch, err
 	}
 	return resultRetrieveBatch, nil
-
-}
-
-// TODO(omritoptix): possible remove this method from the manager
-func updateInitChainState(s *types.State, res *abci.ResponseInitChain, validators []*tmtypes.Validator) {
-	// If the app did not return an app hash, we keep the one set from the genesis doc in
-	// the state. We don't set appHash since we don't want the genesis doc app hash
-	// recorded in the genesis block. We should probably just remove GenesisDoc.AppHash.
-	if len(res.AppHash) > 0 {
-		copy(s.AppHash[:], res.AppHash)
-	}
-
-	//The validators after initChain must be greater than zero, otherwise this state is not loadable
-	if len(validators) <= 0 {
-		panic("Validators must be greater than zero")
-	}
-
-	if res.ConsensusParams != nil {
-		params := res.ConsensusParams
-		if params.Block != nil {
-			s.ConsensusParams.Block.MaxBytes = params.Block.MaxBytes
-			s.ConsensusParams.Block.MaxGas = params.Block.MaxGas
-		}
-		if params.Evidence != nil {
-			s.ConsensusParams.Evidence.MaxAgeNumBlocks = params.Evidence.MaxAgeNumBlocks
-			s.ConsensusParams.Evidence.MaxAgeDuration = params.Evidence.MaxAgeDuration
-			s.ConsensusParams.Evidence.MaxBytes = params.Evidence.MaxBytes
-		}
-		if params.Validator != nil {
-			// Copy params.Validator.PubkeyTypes, and set result's value to the copy.
-			// This avoids having to initialize the slice to 0 values, and then write to it again.
-			s.ConsensusParams.Validator.PubKeyTypes = append([]string{}, params.Validator.PubKeyTypes...)
-		}
-		if params.Version != nil {
-			s.ConsensusParams.Version.AppVersion = params.Version.AppVersion
-		}
-		s.Version.Consensus.App = s.ConsensusParams.Version.AppVersion
-	}
-	// We update the last results hash with the empty hash, to conform with RFC-6962.
-	copy(s.LastResultsHash[:], merkle.HashFromByteSlices(nil))
-
-	// Set the validators in the state
-	s.Validators = tmtypes.NewValidatorSet(validators).CopyIncrementProposerPriority(1)
-	s.NextValidators = s.Validators.Copy()
-	s.LastValidators = s.Validators.Copy()
 }
