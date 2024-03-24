@@ -31,11 +31,6 @@ import (
 	"github.com/dymensionxyz/dymint/store"
 )
 
-const (
-	connectionRefusedErrorMessage    = "connection refused"
-	errorValidatingBatchErrorMessage = "Error validating batch"
-)
-
 func TestInitialState(t *testing.T) {
 	assert := assert.New(t)
 	genesis := testutil.GenerateGenesis(123)
@@ -44,7 +39,8 @@ func TestInitialState(t *testing.T) {
 	conf := getManagerConfig()
 	logger := log.TestingLogger()
 	pubsubServer := pubsub.NewServer()
-	pubsubServer.Start()
+	errOnStart := pubsubServer.Start()
+	require.NoError(t, errOnStart)
 	proxyApp := testutil.GetABCIProxyAppMock(logger.With("module", "proxy"))
 	settlementlc := slregistry.GetClient(slregistry.Mock)
 	_ = settlementlc.Init(settlement.Config{}, pubsubServer, logger)
