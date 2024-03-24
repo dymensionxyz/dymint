@@ -36,6 +36,7 @@ import (
 )
 
 func TestGetSequencers(t *testing.T) {
+	var err error
 	require := require.New(t)
 	cosmosClientMock := mocks.NewCosmosClient(t)
 
@@ -52,7 +53,8 @@ func TestGetSequencers(t *testing.T) {
 	}
 
 	pubsubServer := pubsub.NewServer()
-	pubsubServer.Start()
+	err = pubsubServer.Start()
+	require.NoError(err)
 
 	hubClient, err := newDymensionHubClient(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
 	require.NoError(err)
@@ -68,10 +70,12 @@ func TestGetSequencers(t *testing.T) {
 // 3. Batch is submitted successfully, hub event not emitted, but checking for inclusion succeeds
 // 4. Batch is submitted successfully and accepted by catching hub event
 func TestPostBatch(t *testing.T) {
+	var err error
 	require := require.New(t)
 
 	pubsubServer := pubsub.NewServer()
-	pubsubServer.Start()
+	err = pubsubServer.Start()
+	require.NoError(err)
 
 	// Create a mock cosmos client
 	cosmosClientMock := mocks.NewCosmosClient(t)

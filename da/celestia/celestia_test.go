@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"math/rand"
+	cryptoRand "crypto/rand"
 	"testing"
 	"time"
 
@@ -397,6 +398,6 @@ func getRandomTx() types.Tx {
 
 func getRandomBytes(n int) []byte {
 	data := make([]byte, n)
-	_, _ = rand.Read(data)
+	_, _ = cryptoRand.Read(data)
 	return data
 }

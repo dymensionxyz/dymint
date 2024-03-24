@@ -795,7 +795,7 @@ func getRandomTx() types.Tx {
 
 func getRandomBytes(n int) []byte {
 	data := make([]byte, n)
-	_, _ = rand.Read(data)
+	_, _ = crand.Read(data)
 	return data
 }
 

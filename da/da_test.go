@@ -1,8 +1,9 @@
 package da_test
 
 import (
+	cryptoRand "crypto/rand"
 	"encoding/json"
-	"math/rand"
+	"math/rand" //#gosec
 	"testing"
 	"time"
 
@@ -239,12 +240,13 @@ func getRandomBlock(height uint64, nTxs int) *types.Block {
 }
 
 func getRandomTx() types.Tx {
-	size := rand.Int()%100 + 100
+	NuM := rand.Int()
+	size := NuM%100 + 100
 	return types.Tx(getRandomBytes(size))
 }
 
 func getRandomBytes(n int) []byte {
 	data := make([]byte, n)
-	_, _ = rand.Read(data)
+	_, _ = cryptoRand.Read(data)
 	return data
 }

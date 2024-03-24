@@ -24,12 +24,14 @@ import (
 const batchSize = 5
 
 func TestLifecycle(t *testing.T) {
+	var err error
 	client := registry.GetClient(registry.Mock)
 	require := require.New(t)
 
 	pubsubServer := pubsub.NewServer()
-	pubsubServer.Start()
-	err := client.Init(settlement.Config{}, pubsubServer, log.TestingLogger())
+	err = pubsubServer.Start()
+	require.NoError(err)
+	err = client.Init(settlement.Config{}, pubsubServer, log.TestingLogger())
 	require.NoError(err)
 
 	err = client.Start()
@@ -95,6 +97,7 @@ func TestSubmitAndRetrieve(t *testing.T) {
 }
 
 func TestGetSequencersEmptyList(t *testing.T) {
+	var err error
 	settlementClient := registry.GetClient(registry.Mock)
 	hubClientMock := mocks.NewHubClient(t)
 	hubClientMock.On("GetSequencers", tsmock.Anything, tsmock.Anything).Return(nil, settlement.ErrNoSequencerForRollapp)
@@ -103,8 +106,9 @@ func TestGetSequencersEmptyList(t *testing.T) {
 	}
 
 	pubsubServer := pubsub.NewServer()
-	pubsubServer.Start()
-	err := settlementClient.Init(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
+	err = pubsubServer.Start()
+	require.NoError(t, err)
+	err = settlementClient.Init(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
 	assert.Error(t, err, "empty sequencer list should return an error")
 
 }
@@ -149,10 +153,12 @@ func TestGetSequencers(t *testing.T) {
 
 func initClient(t *testing.T, settlementlc settlement.LayerI, options ...settlement.Option) {
 	require := require.New(t)
+	var err error
 
 	pubsubServer := pubsub.NewServer()
-	pubsubServer.Start()
-	err := settlementlc.Init(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
+	err = pubsubServer.Start()
+	require.NoError(err)
+	err = settlementlc.Init(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
 	require.NoError(err)
 
 	err = settlementlc.Start()

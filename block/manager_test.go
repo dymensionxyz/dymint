@@ -32,6 +32,7 @@ import (
 )
 
 func TestInitialState(t *testing.T) {
+	var err error
 	assert := assert.New(t)
 	genesis := testutil.GenerateGenesis(123)
 	sampleState := testutil.GenerateState(1, 128)
@@ -39,8 +40,8 @@ func TestInitialState(t *testing.T) {
 	conf := getManagerConfig()
 	logger := log.TestingLogger()
 	pubsubServer := pubsub.NewServer()
-	errOnStart := pubsubServer.Start()
-	require.NoError(t, errOnStart)
+	err = pubsubServer.Start()
+	require.NoError(t, err)
 	proxyApp := testutil.GetABCIProxyAppMock(logger.With("module", "proxy"))
 	settlementlc := slregistry.GetClient(slregistry.Mock)
 	_ = settlementlc.Init(settlement.Config{}, pubsubServer, logger)
@@ -48,7 +49,7 @@ func TestInitialState(t *testing.T) {
 	// Init empty store and full store
 	emptyStore := store.New(store.NewDefaultInMemoryKVStore())
 	fullStore := store.New(store.NewDefaultInMemoryKVStore())
-	_, err := fullStore.UpdateState(sampleState, nil)
+	_, err = fullStore.UpdateState(sampleState, nil)
 	require.NoError(t, err)
 
 	// Init p2p client
