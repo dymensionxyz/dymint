@@ -77,7 +77,8 @@ func TestSubmitAndRetrieve(t *testing.T) {
 				Height: batch.EndHeight,
 			},
 		}
-		settlementClient.SubmitBatch(batch, da.Mock, daResult)
+		err = settlementClient.SubmitBatch(batch, da.Mock, daResult)
+		require.NoError(err)
 		// sleep for 500 ms to make sure batch got accepted by the settlement layer
 		time.Sleep(500 * time.Millisecond)
 	}

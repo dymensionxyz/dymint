@@ -127,7 +127,8 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 		assert.NoError(t, err)
 		daResultSubmitBatch := manager.dalc.SubmitBatch(batch)
 		assert.Equal(t, daResultSubmitBatch.Code, da.StatusSuccess)
-		manager.settlementClient.SubmitBatch(batch, manager.dalc.GetClientType(), &daResultSubmitBatch)
+		err = manager.settlementClient.SubmitBatch(batch, manager.dalc.GetClientType(), &daResultSubmitBatch)
+		require.NoError(t, err)
 		nextBatchStartHeight = batch.EndHeight + 1
 		// Wait until daHeight is updated
 		time.Sleep(time.Millisecond * 500)
@@ -140,8 +141,19 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 	//enough time to sync and produce blocks
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*4)
 	defer cancel()
-	go manager.Start(ctx, true)
-	<-ctx.Done()
+	// Capture the error returned by manager.Start.
+	errChan := make(chan error, 1)
+	go func() {
+		errChan <- manager.Start(ctx, true) // Assuming manager.Start is modified to return an error.
+	}()
+
+	select {
+	case <-ctx.Done():
+		// Context completed.
+	case err := <-errChan:
+		// Check for error from manager.Start.
+		assert.NoError(t, err, "Manager start should not produce an error")
+	}
 	assert.True(t, manager.syncTarget == batch.EndHeight)
 	//validate that we produced blocks
 	assert.Greater(t, manager.store.Height(), batch.EndHeight)
@@ -268,7 +280,8 @@ func TestBlockProductionNodeHealth(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			manager.pubsub.PublishWithEvents(context.Background(), c.healthStatusEventData, c.healthStatusEvent)
+			err := manager.pubsub.PublishWithEvents(context.Background(), c.healthStatusEventData, c.healthStatusEvent)
+			assert.NoError(err, "PublishWithEvents should not produce an error")
 			time.Sleep(500 * time.Millisecond)
 			blockHeight := manager.store.Height()
 			time.Sleep(500 * time.Millisecond)
@@ -422,7 +435,7 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Produce blocks
 			for i := 0; i < tc.blocksToProduce; i++ {
-				manager.produceBlock(ctx, true)
+				_ = manager.produceBlock(ctx, true)
 			}
 
 			// Call createNextDABatch function

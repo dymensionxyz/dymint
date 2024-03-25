@@ -190,7 +190,8 @@ func TestPostBatch(t *testing.T) {
 			}
 			hubClient, err := newDymensionHubClient(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
 			require.NoError(err)
-			hubClient.Start()
+			err = hubClient.Start()
+			require.NoError(err)
 			// Handle the various events that are emitted and timeout if we don't get them
 			var eventsReceivedCount int64
 			go func() {
@@ -209,8 +210,21 @@ func TestPostBatch(t *testing.T) {
 
 			resultSubmitBatch := &da.ResultSubmitBatch{}
 			resultSubmitBatch.SubmitMetaData = &da.DASubmitMetaData{}
-			// Post the batch
-			go hubClient.PostBatch(batch, da.Mock, resultSubmitBatch)
+			errChan := make(chan error, 1) // Create a channel to receive an error from the goroutine
+			// Post the batch in a goroutine and capture any error.
+			go func() {
+				err := hubClient.PostBatch(batch, da.Mock, resultSubmitBatch)
+				errChan <- err // Send any error to the errChan
+			}()
+
+			// Use a select statement to wait for a potential error or a timeout.
+			select {
+			case err := <-errChan:
+				// Check for error from PostBatch.
+				assert.NoError(t, err, "PostBatch should not produce an error")
+			case <-time.After(50 * time.Millisecond):
+				// Timeout case to avoid blocking forever if PostBatch doesn't return.
+			}
 			// Wait for the batch to be submitted and submit an event notifying that the batch was accepted
 			time.Sleep(50 * time.Millisecond)
 			if c.isBatchAcceptedHubEvent {
@@ -226,7 +240,8 @@ func TestPostBatch(t *testing.T) {
 			wg.Wait()
 			assert.Equal(t, eventsCount, int(eventsReceivedCount))
 			// Stop the hub client and wait for it to stop
-			hubClient.Stop()
+			err = hubClient.Stop()
+			require.NoError(err)
 			time.Sleep(1 * time.Second)
 		})
 	}
