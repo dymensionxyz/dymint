@@ -144,16 +144,12 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 	// Capture the error returned by manager.Start.
 	errChan := make(chan error, 1)
 	go func() {
-		errChan <- manager.Start(ctx, true) // Assuming manager.Start is modified to return an error.
-	}()
-
-	select {
-	case <-ctx.Done():
-		// Context completed.
-	case err := <-errChan:
+		errChan <- manager.Start(ctx, true)
+		err := <-errChan
 		// Check for error from manager.Start.
 		assert.NoError(t, err, "Manager start should not produce an error")
-	}
+	}()
+	<-ctx.Done()
 	assert.True(t, manager.syncTarget == batch.EndHeight)
 	//validate that we produced blocks
 	assert.Greater(t, manager.store.Height(), batch.EndHeight)
@@ -435,7 +431,8 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Produce blocks
 			for i := 0; i < tc.blocksToProduce; i++ {
-				_ = manager.produceBlock(ctx, true)
+				err := manager.produceBlock(ctx, true)
+				assert.NoError(err)
 			}
 
 			// Call createNextDABatch function
