@@ -11,6 +11,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	"github.com/evmos/evmos/v12/crypto/hd"
+	ethermintcodec "github.com/evmos/evmos/v12/encoding/codec"
 	"github.com/ignite/cli/ignite/pkg/cosmosaccount"
 	tmtypes "github.com/tendermint/tendermint/types"
 )
@@ -21,7 +22,7 @@ func (m *Manager) RunInitChain(ctx context.Context) error {
 	// This is a hack to make sure the chain can get both addresses without us needing to change comet signatures:
 	//  The RDK will save a sequencer, and delete the extra validator after initChain, so we also delete it here
 	//  to keep the state in sync.
-	
+
 	//get the proposer's consensus pubkey
 	proposer := m.settlementClient.GetProposer()
 	tmPubKey, err := cryptocodec.ToTmPubKeyInterface(proposer.PublicKey)
@@ -68,6 +69,7 @@ func getOperatorPubkey(keyDir, keyringBackend, accountName string) (cryptotypes.
 
 	interfaceRegistry := codectypes.NewInterfaceRegistry()
 	cryptocodec.RegisterInterfaces(interfaceRegistry)
+	ethermintcodec.RegisterInterfaces(interfaceRegistry)
 	cdc := codec.NewProtoCodec(interfaceRegistry)
 
 	customKeyring, err := keyring.New("operatorAddr", keyringBackend, keyDir, os.Stdin, cdc, hd.EthSecp256k1Option())
