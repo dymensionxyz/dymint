@@ -33,8 +33,6 @@ func CreateNode(isAggregator bool, blockManagerConfig *config.BlockManagerConfig
 			BatchSubmitMaxTime:      60 * time.Second,
 			BlockBatchMaxSizeBytes:  1000,
 			GossipedBlocksCacheSize: 50,
-			OperatorKeyringBackend:  "memory",
-			OperatorAccountName:     "default",
 		}
 	}
 	nodeConfig.BlockManagerConfig = *blockManagerConfig

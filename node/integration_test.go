@@ -53,8 +53,6 @@ func TestAggregatorMode(t *testing.T) {
 		BlockBatchMaxSizeBytes:  1000,
 		NamespaceID:             "0102030405060708",
 		GossipedBlocksCacheSize: 50,
-		OperatorKeyringBackend:  "memory",
-		OperatorAccountName:     "default",
 	}
 
 	nodeConfig := config.NodeConfig{
