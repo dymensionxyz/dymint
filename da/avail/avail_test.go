@@ -129,7 +129,7 @@ func TestRetriveBatches(t *testing.T) {
 		avail.WithClient(mockSubstrateApiClient),
 	}
 	pubsubServer := pubsub.NewServer()
-	pubsubServer.Start()
+	err = pubsubServer.Start()
 	assert.NoError(err)
 	// Start the DALC
 	dalc := avail.DataAvailabilityLayerClient{}

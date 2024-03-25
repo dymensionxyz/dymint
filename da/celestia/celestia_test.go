@@ -4,6 +4,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"math/rand"
+	cryptoRand "crypto/rand"
 	"testing"
 	"time"
 
@@ -294,9 +295,14 @@ func TestRetrievalWrongCommitment(t *testing.T) {
 }
 
 func setDAandMock(t *testing.T) (*mocks.CelestiaRPCClient, da.DataAvailabilityLayerClient, []byte, *header.ExtendedHeader) {
+	var err error
 	pubsubServer := pubsub.NewServer()
-	pubsubServer.Start()
-	defer pubsubServer.Stop()
+	err = pubsubServer.Start()
+	require.NoError(t, err)
+	defer func() {
+		err = pubsubServer.Stop()
+		require.NoError(t, err)
+	}()
 
 	require := require.New(t)
 
@@ -309,7 +315,7 @@ func setDAandMock(t *testing.T) (*mocks.CelestiaRPCClient, da.DataAvailabilityLa
 		GasLimit: 3000000,
 		Fee:      200000000,
 	}
-	err := config.InitNamespaceID()
+	err = config.InitNamespaceID()
 	require.NoError(err)
 	conf, err := json.Marshal(config)
 	require.NoError(err)
@@ -392,6 +398,6 @@ func getRandomTx() types.Tx {
 
 func getRandomBytes(n int) []byte {
 	data := make([]byte, n)
-	_, _ = rand.Read(data)
+	_, _ = cryptoRand.Read(data)
 	return data
 }

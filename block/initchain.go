@@ -21,7 +21,7 @@ func (m *Manager) RunInitChain(ctx context.Context) error {
 	// This is a hack to make sure the chain can get both addresses without us needing to change comet signatures:
 	//  The RDK will save a sequencer, and delete the extra validator after initChain, so we also delete it here
 	//  to keep the state in sync.
-	
+
 	//get the proposer's consensus pubkey
 	proposer := m.settlementClient.GetProposer()
 	tmPubKey, err := cryptocodec.ToTmPubKeyInterface(proposer.PublicKey)

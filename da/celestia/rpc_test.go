@@ -63,6 +63,7 @@ func TestSubmitBatch(t *testing.T) {
 	// build a proof for an NID that is within the namespace range of the tree
 	nID := []byte{1}
 	proof, err := tree.ProveNamespace(nID)
+	require.NoError(err)
 	blobProof := blob.Proof([]*nmt.Proof{&proof})
 
 	cases := []struct {
@@ -110,7 +111,8 @@ func TestSubmitBatch(t *testing.T) {
 		}
 		// Subscribe to the health status event
 		pubsubServer := pubsub.NewServer()
-		pubsubServer.Start()
+		err = pubsubServer.Start()
+		require.NoError(err, tc.name)
 		HealthSubscription, err := pubsubServer.Subscribe(context.Background(), "testSubmitBatch", da.EventQueryDAHealthStatus)
 		assert.NoError(err, tc.name)
 		// Start the DALC

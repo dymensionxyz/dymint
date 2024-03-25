@@ -14,9 +14,12 @@ import (
 )
 
 func TestNodeHealthRPCPropogation(t *testing.T) {
-
+	var err error
 	server, listener := rpctestutils.CreateLocalServer(t)
-	defer server.Stop()
+	defer func() {
+		err = server.Stop()
+		require.NoError(t, err)
+	}()
 	// Wait for some blocks to be produced
 	time.Sleep(1 * time.Second)
 
@@ -58,7 +61,10 @@ func TestNodeHealthRPCPropogation(t *testing.T) {
 				// Make the request
 				res, err := httpGetWithTimeout(fmt.Sprintf("http://%s", listener.Addr().String())+tc.endpoint, 5*time.Second)
 				require.NoError(t, err)
-				defer res.Body.Close()
+				defer func() {
+					err = res.Body.Close()
+					require.NoError(t, err)
+				}()
 				// Check the response
 				assert.Equal(t, tc.expectedStatusCode, res.StatusCode)
 

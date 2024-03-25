@@ -114,7 +114,14 @@ func TestCreateEmptyBlocksNew(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(abciClient)
 	require.NoError(abciClient.Start())
-	defer abciClient.Stop()
+
+	defer func() {
+		// Capture the error returned by abciClient.Stop and handle it.
+		err := abciClient.Stop()
+		if err != nil {
+			t.Logf("Error stopping ABCI client: %v", err)
+		}
+	}()
 
 	mempoolCfg := tmcfg.DefaultMempoolConfig()
 	mempoolCfg.KeepInvalidTxsInCache = false

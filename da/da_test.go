@@ -1,8 +1,9 @@
 package da_test
 
 import (
+	cryptoRand "crypto/rand"
 	"encoding/json"
-	"math/rand"
+	"math/rand" //#gosec
 	"testing"
 	"time"
 
@@ -32,7 +33,8 @@ func doTestLifecycle(t *testing.T, daType string) {
 	var err error
 	require := require.New(t)
 	pubsubServer := pubsub.NewServer()
-	pubsubServer.Start()
+	err = pubsubServer.Start()
+	require.NoError(err)
 
 	dacfg := []byte{}
 	dalc := registry.GetClient(daType)
@@ -54,6 +56,7 @@ func TestDALC(t *testing.T) {
 func doTestDALC(t *testing.T, mockDalc da.DataAvailabilityLayerClient) {
 	require := require.New(t)
 	assert := assert.New(t)
+	var err error
 
 	// mock DALC will advance block height every 100ms
 	if _, ok := mockDalc.(*mock.DataAvailabilityLayerClient); !ok {
@@ -63,8 +66,9 @@ func doTestDALC(t *testing.T, mockDalc da.DataAvailabilityLayerClient) {
 	dalc := mockDalc.(*mock.DataAvailabilityLayerClient)
 
 	pubsubServer := pubsub.NewServer()
-	pubsubServer.Start()
-	err := dalc.Init(conf, pubsubServer, store.NewDefaultInMemoryKVStore(), log.TestingLogger())
+	err = pubsubServer.Start()
+	require.NoError(err)
+	err = dalc.Init(conf, pubsubServer, store.NewDefaultInMemoryKVStore(), log.TestingLogger())
 	require.NoError(err)
 
 	err = dalc.Start()
@@ -124,6 +128,7 @@ func TestRetrieve(t *testing.T) {
 func doTestRetrieve(t *testing.T, dalc da.DataAvailabilityLayerClient) {
 	require := require.New(t)
 	assert := assert.New(t)
+	var err error
 
 	// mock DALC will advance block height every 100ms
 	conf := []byte{}
@@ -143,8 +148,9 @@ func doTestRetrieve(t *testing.T, dalc da.DataAvailabilityLayerClient) {
 	}
 
 	pubsubServer := pubsub.NewServer()
-	pubsubServer.Start()
-	err := dalc.Init(conf, pubsubServer, store.NewDefaultInMemoryKVStore(), log.TestingLogger())
+	err = pubsubServer.Start()
+	require.NoError(err)
+	err = dalc.Init(conf, pubsubServer, store.NewDefaultInMemoryKVStore(), log.TestingLogger())
 	require.NoError(err)
 
 	err = dalc.Start()
@@ -234,12 +240,13 @@ func getRandomBlock(height uint64, nTxs int) *types.Block {
 }
 
 func getRandomTx() types.Tx {
-	size := rand.Int()%100 + 100
+	NuM := rand.Int()
+	size := NuM%100 + 100
 	return types.Tx(getRandomBytes(size))
 }
 
 func getRandomBytes(n int) []byte {
 	data := make([]byte, n)
-	_, _ = rand.Read(data)
+	_, _ = cryptoRand.Read(data)
 	return data
 }

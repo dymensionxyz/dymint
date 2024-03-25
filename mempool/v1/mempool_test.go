@@ -87,7 +87,10 @@ func setup(t testing.TB, cacheSize int, options ...TxMempoolOption) *TxMempool {
 	require.NoError(t, appConnMem.Start())
 
 	t.Cleanup(func() {
-		os.RemoveAll(cfg.RootDir)
+		err := os.RemoveAll(cfg.RootDir)
+		if err != nil {
+			t.Log("failed to remove temporary directory", err)
+		}
 		require.NoError(t, appConnMem.Stop())
 	})
 

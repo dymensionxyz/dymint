@@ -201,5 +201,6 @@ func TestHealthStatusEventHandler(t *testing.T) {
 			<-done
 		})
 	}
-	node.Stop()
+	err = node.Stop()
+	assert.NoError(err)
 }
