@@ -111,11 +111,6 @@ keyring_home_dir = "{{ .SettlementConfig.KeyringHomeDir }}"
 dym_account_name = "{{ .SettlementConfig.DymAccountName }}"
 
 
-#keyring and key name to be used as sequencer's operator address on the rollapp  
-operator_keyring_backend = "{{ .BlockManagerConfig.OperatorKeyringBackend }}"
-operator_keyring_home_dir = "{{ .BlockManagerConfig.OperatorKeyringHomeDir }}"
-operator_account_name = "{{ .BlockManagerConfig.OperatorAccountName }}"
-
 #######################################################
 ###       Instrumentation Configuration Options     ###
 #######################################################

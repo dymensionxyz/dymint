@@ -53,11 +53,6 @@ type BlockManagerConfig struct {
 	BlockBatchMaxSizeBytes uint64 `mapstructure:"block_batch_max_size_bytes"`
 	// The number of messages cached by gossipsub protocol
 	GossipedBlocksCacheSize int `mapstructure:"gossiped_blocks_cache_size"`
-
-	// Parameters to get the sequencer's operator address
-	OperatorKeyringBackend string `mapstructure:"operator_keyring_backend"`
-	OperatorAccountName    string `mapstructure:"operator_account_name"`
-	OperatorKeyringHomeDir string `mapstructure:"operator_keyring_home_dir"`
 }
 
 // GetViperConfig reads configuration parameters from Viper instance.
