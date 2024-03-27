@@ -74,7 +74,7 @@ func TestAggregatorMode(t *testing.T) {
 	assert.False(node.IsRunning())
 
 	err = node.Start()
-	assert.NoError(err)
+	require.NoError(err)
 	defer func() {
 		err := node.Stop()
 		assert.NoError(err)

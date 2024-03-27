@@ -122,10 +122,7 @@ func (m *Manager) produceBlock(ctx context.Context, allowEmpty bool) error {
 		if err != nil {
 			return err
 		}
-		proposerAddress, err := getAddress(m.proposerKey)
-		if err != nil {
-			return err
-		}
+		proposerAddress := block.Header.ProposerAddress
 		sign, err := m.proposerKey.Sign(abciHeaderBytes)
 		if err != nil {
 			return err
@@ -159,9 +156,9 @@ func (m *Manager) produceBlock(ctx context.Context, allowEmpty bool) error {
 	}
 
 	m.logger.Info("block created", "height", newHeight, "num_tx", len(block.Data.Txs))
-	rollappBlockSizeBytesGauge.Set(float64(len(block.Data.Txs)))
-	rollappBlockSizeTxsGauge.Set(float64(len(block.Data.Txs)))
-	rollappHeightGauge.Set(float64(newHeight))
+	types.RollappBlockSizeBytesGauge.Set(float64(len(block.Data.Txs)))
+	types.RollappBlockSizeTxsGauge.Set(float64(len(block.Data.Txs)))
+	types.RollappHeightGauge.Set(float64(newHeight))
 	return nil
 }
 

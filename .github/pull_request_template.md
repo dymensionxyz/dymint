@@ -4,6 +4,10 @@
 
 ---
 
+Close #XXX
+
+<-- Briefly describe the content of this pull request -->
+
 For Author:
 
 - [ ]  Targeted PR against correct branch

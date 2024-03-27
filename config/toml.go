@@ -110,6 +110,7 @@ keyring_backend = "{{ .SettlementConfig.KeyringBackend }}"
 keyring_home_dir = "{{ .SettlementConfig.KeyringHomeDir }}"
 dym_account_name = "{{ .SettlementConfig.DymAccountName }}"
 
+
 #######################################################
 ###       Instrumentation Configuration Options     ###
 #######################################################

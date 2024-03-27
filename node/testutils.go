@@ -16,6 +16,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+// TODO: should be moved to testutils
 func CreateNode(isAggregator bool, blockManagerConfig *config.BlockManagerConfig) (*Node, error) {
 	app := testutil.GetAppMock()
 	key, _, _ := crypto.GenerateEd25519Key(rand.Reader)

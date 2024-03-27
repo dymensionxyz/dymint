@@ -31,12 +31,8 @@ import (
 	"github.com/dymensionxyz/dymint/store"
 )
 
-const (
-	connectionRefusedErrorMessage    = "connection refused"
-	errorValidatingBatchErrorMessage = "Error validating batch"
-)
-
 func TestInitialState(t *testing.T) {
+	var err error
 	assert := assert.New(t)
 	genesis := testutil.GenerateGenesis(123)
 	sampleState := testutil.GenerateState(1, 128)
@@ -44,7 +40,8 @@ func TestInitialState(t *testing.T) {
 	conf := getManagerConfig()
 	logger := log.TestingLogger()
 	pubsubServer := pubsub.NewServer()
-	pubsubServer.Start()
+	err = pubsubServer.Start()
+	require.NoError(t, err)
 	proxyApp := testutil.GetABCIProxyAppMock(logger.With("module", "proxy"))
 	settlementlc := slregistry.GetClient(slregistry.Mock)
 	_ = settlementlc.Init(settlement.Config{}, pubsubServer, logger)
@@ -52,7 +49,7 @@ func TestInitialState(t *testing.T) {
 	// Init empty store and full store
 	emptyStore := store.New(store.NewDefaultInMemoryKVStore())
 	fullStore := store.New(store.NewDefaultInMemoryKVStore())
-	_, err := fullStore.UpdateState(sampleState, nil)
+	_, err = fullStore.UpdateState(sampleState, nil)
 	require.NoError(t, err)
 
 	// Init p2p client
@@ -130,7 +127,8 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 		assert.NoError(t, err)
 		daResultSubmitBatch := manager.dalc.SubmitBatch(batch)
 		assert.Equal(t, daResultSubmitBatch.Code, da.StatusSuccess)
-		manager.settlementClient.SubmitBatch(batch, manager.dalc.GetClientType(), &daResultSubmitBatch)
+		err = manager.settlementClient.SubmitBatch(batch, manager.dalc.GetClientType(), &daResultSubmitBatch)
+		require.NoError(t, err)
 		nextBatchStartHeight = batch.EndHeight + 1
 		// Wait until daHeight is updated
 		time.Sleep(time.Millisecond * 500)
@@ -143,7 +141,14 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 	//enough time to sync and produce blocks
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*4)
 	defer cancel()
-	go manager.Start(ctx, true)
+	// Capture the error returned by manager.Start.
+	errChan := make(chan error, 1)
+	go func() {
+		errChan <- manager.Start(ctx, true)
+		err := <-errChan
+		// Check for error from manager.Start.
+		assert.NoError(t, err, "Manager start should not produce an error")
+	}()
 	<-ctx.Done()
 	assert.True(t, manager.syncTarget == batch.EndHeight)
 	//validate that we produced blocks
@@ -271,7 +276,8 @@ func TestBlockProductionNodeHealth(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			manager.pubsub.PublishWithEvents(context.Background(), c.healthStatusEventData, c.healthStatusEvent)
+			err := manager.pubsub.PublishWithEvents(context.Background(), c.healthStatusEventData, c.healthStatusEvent)
+			assert.NoError(err, "PublishWithEvents should not produce an error")
 			time.Sleep(500 * time.Millisecond)
 			blockHeight := manager.store.Height()
 			time.Sleep(500 * time.Millisecond)
@@ -425,7 +431,8 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Produce blocks
 			for i := 0; i < tc.blocksToProduce; i++ {
-				manager.produceBlock(ctx, true)
+				err := manager.produceBlock(ctx, true)
+				assert.NoError(err)
 			}
 
 			// Call createNextDABatch function

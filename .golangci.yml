@@ -3,13 +3,6 @@ run:
   timeout: 5m
   modules-download-mode: readonly
   # mempool and indexer code is borrowed from Tendermint
-  skip-dirs:
-    - mempool
-    - state/indexer
-    - state/txindex
-  skip-files:
-    - da/celestia/mock/server.go
-    - ./*_test.go
 
 linters:
   disable-all: true
@@ -29,3 +22,10 @@ linters:
 
 issues:
   exclude-use-default: false
+  exclude-files: 
+    - da/celestia/mock/server.go
+    - ./*_test.go
+  exclude-dirs:
+    - mempool
+    - state/indexer
+    - state/txindex
