@@ -79,14 +79,13 @@ func (m *Manager) produceBlock(ctx context.Context, allowEmpty bool) error {
 	var lastHeaderHash [32]byte
 	var newHeight uint64
 	var err error
-	height := m.store.Height()
 
-	//genesis state
-	if height == 0 {
+	if m.lastState.IsGenesis() {
 		newHeight = uint64(m.lastState.InitialHeight)
-		lastCommit = &types.Commit{Height: height, HeaderHash: [32]byte{}}
+		lastCommit = &types.Commit{}
 	} else {
-		newHeight = height + 1
+		height := m.store.Height()
+		newHeight = m.store.Height() + 1
 		lastCommit, err = m.store.LoadCommit(height)
 		if err != nil {
 			return fmt.Errorf("error while loading last commit: %w", err)

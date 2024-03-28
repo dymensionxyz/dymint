@@ -92,7 +92,7 @@ func NewFromGenesisDoc(genDoc *types.GenesisDoc) (State, error) {
 		ConsensusParams:                  *genDoc.ConsensusParams,
 		LastHeightConsensusParamsChanged: genDoc.InitialHeight,
 
-		//FIX: base height should be initial height
+		BaseHeight: 0,
 	}
 	copy(s.AppHash[:], genDoc.AppHash)
 

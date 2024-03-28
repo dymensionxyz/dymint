@@ -18,7 +18,11 @@ import (
 // In that case we'll want to align the store with the app state and continue to the next block.
 func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *types.Commit, blockMetaData blockMetaData) error {
 	//validate block height
-	if block.Header.Height != m.store.Height()+1 && !m.lastState.IsGenesis() {
+	if m.lastState.IsGenesis() {
+		if block.Header.Height != uint64(m.genesis.InitialHeight) {
+			return errors.Wrapf(types.ErrInvalidBlockHeight, "expected height: %d, got: %d", m.genesis.InitialHeight, block.Header.Height)
+		}
+	} else if block.Header.Height != m.store.Height()+1 {
 		// We crashed after the commit and before updating the store height.
 		m.logger.Error("Block not applied. Wrong height", "block height", block.Header.Height, "store height", m.store.Height())
 		//TODO: should return error type, so the caller can decide if it's a fatal error or not.
@@ -41,6 +45,11 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 	if err != nil {
 		m.logger.Error("Failed to save block", "error", err)
 		return err
+	}
+
+	if m.lastState.IsGenesis() {
+		m.lastState.BaseHeight = block.Header.Height
+		m.store.SetBase(block.Header.Height)
 	}
 
 	responses, err := m.executeBlock(ctx, block, commit)
