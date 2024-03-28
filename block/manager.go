@@ -168,6 +168,7 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 		return err
 	}
 
+	//TODO (#283): set aggregator mode by proposer addr on the hub
 	if isAggregator {
 		//make sure local signing key is the registered on the hub
 		slProposerKey := m.settlementClient.GetProposer().PublicKey.Bytes()
@@ -178,7 +179,9 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 		m.logger.Info("Starting in aggregator mode")
 
 		// Check if InitChain flow is needed
-		if m.lastState.LastBlockHeight+1 == m.genesis.InitialHeight {
+		if m.lastState.IsGenesis() {
+			m.logger.Info("Running InitChain")
+
 			err := m.RunInitChain(ctx)
 			if err != nil {
 				return err
