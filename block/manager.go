@@ -179,7 +179,9 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 		m.logger.Info("Starting in aggregator mode")
 
 		// Check if InitChain flow is needed
-		if m.lastState.LastBlockHeight+1 == m.genesis.InitialHeight {
+		if m.store.Height() == 0 {
+			m.logger.Info("Running InitChain")
+
 			err := m.RunInitChain(ctx)
 			if err != nil {
 				return err

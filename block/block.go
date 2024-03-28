@@ -19,6 +19,7 @@ import (
 func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *types.Commit, blockMetaData blockMetaData) error {
 	//validate block height
 	if block.Header.Height != m.store.Height()+1 {
+		// this scenario allowed only on genesis
 		if block.Header.Height != uint64(m.lastState.InitialHeight) {
 			// We crashed after the commit and before updating the store height.
 			m.logger.Error("Block not applied. Wrong height", "block height", block.Header.Height, "store height", m.store.Height())
