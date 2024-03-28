@@ -98,3 +98,7 @@ func NewFromGenesisDoc(genDoc *types.GenesisDoc) (State, error) {
 
 	return s, nil
 }
+
+func (s *State) IsGenesis() bool {
+	return s.LastBlockHeight == 0
+}

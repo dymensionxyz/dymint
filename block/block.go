@@ -18,14 +18,11 @@ import (
 // In that case we'll want to align the store with the app state and continue to the next block.
 func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *types.Commit, blockMetaData blockMetaData) error {
 	//validate block height
-	if block.Header.Height != m.store.Height()+1 {
-		// this scenario allowed only on genesis
-		if block.Header.Height != uint64(m.lastState.InitialHeight) {
-			// We crashed after the commit and before updating the store height.
-			m.logger.Error("Block not applied. Wrong height", "block height", block.Header.Height, "store height", m.store.Height())
-			//TODO: should return error type, so the caller can decide if it's a fatal error or not.
-			return nil
-		}
+	if block.Header.Height != m.store.Height()+1 && !m.lastState.IsGenesis() {
+		// We crashed after the commit and before updating the store height.
+		m.logger.Error("Block not applied. Wrong height", "block height", block.Header.Height, "store height", m.store.Height())
+		//TODO: should return error type, so the caller can decide if it's a fatal error or not.
+		return nil
 	}
 
 	m.logger.Debug("Applying block", "height", block.Header.Height, "source", blockMetaData.source)
