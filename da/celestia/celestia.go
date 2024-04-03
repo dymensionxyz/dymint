@@ -556,7 +556,6 @@ func (c *DataAvailabilityLayerClient) submit(daBlob da.Blob) (uint64, da.Commitm
 	defer cancel()
 
 	height, err := c.rpc.Submit(ctx, blobs, options)
-
 	if err != nil {
 		return 0, nil, err
 	}
@@ -566,7 +565,6 @@ func (c *DataAvailabilityLayerClient) submit(daBlob da.Blob) (uint64, da.Commitm
 }
 
 func (c *DataAvailabilityLayerClient) getProof(height uint64, commitment da.Commitment) (*blob.Proof, error) {
-
 	c.logger.Info("Getting proof via RPC call")
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
@@ -599,24 +597,22 @@ func (c *DataAvailabilityLayerClient) blobsAndCommitments(daBlob da.Blob) ([]*bl
 }
 
 func (c *DataAvailabilityLayerClient) validateProof(height uint64, commitment da.Commitment, proof *blob.Proof) (bool, error) {
-
 	c.logger.Info("Getting inclusion validation via RPC call")
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
-	isIncluded, error := c.rpc.Included(ctx, height, c.config.NamespaceID.Bytes(), proof, commitment)
-	return isIncluded, error
+
+	return c.rpc.Included(ctx, height, c.config.NamespaceID.Bytes(), proof, commitment)
 }
 
 func (c *DataAvailabilityLayerClient) getDataAvailabilityHeaders(height uint64) (*header.DataAvailabilityHeader, error) {
-
 	c.logger.Info("Getting Celestia extended headers via RPC call")
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
-	headers, error := c.rpc.GetHeaders(ctx, height)
 
+	headers, error := c.rpc.GetHeaders(ctx, height)
 	if error != nil {
 		return nil, error
 	}
-	return headers.DAH, error
 
+	return headers.DAH, error
 }

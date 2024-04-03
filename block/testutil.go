@@ -33,8 +33,7 @@ const (
 /* -------------------------------------------------------------------------- */
 /*                                    utils                                   */
 /* -------------------------------------------------------------------------- */
-
-func getManager(conf config.BlockManagerConfig, settlementlc settlement.LayerI, dalc da.DataAvailabilityLayerClient, genesisHeight int64, storeInitialHeight int64, storeLastBlockHeight int64, proxyAppConns proxy.AppConns, mockStore store.Store) (*Manager, error) {
+func getManagerWithProposerKey(conf config.BlockManagerConfig, proposerKey crypto.PrivKey, settlementlc settlement.LayerI, dalc da.DataAvailabilityLayerClient, genesisHeight int64, storeInitialHeight int64, storeLastBlockHeight int64, proxyAppConns proxy.AppConns, mockStore store.Store) (*Manager, error) {
 	genesis := testutil.GenerateGenesis(genesisHeight)
 	// Change the LastBlockHeight to avoid calling InitChainSync within the manager
 	// And updating the state according to the genesis.
@@ -60,11 +59,8 @@ func getManager(conf config.BlockManagerConfig, settlementlc settlement.LayerI, 
 	if settlementlc == nil {
 		settlementlc = slregistry.GetClient(slregistry.Mock)
 	}
-	//TODO(omritoptix): Change the initialization. a bit dirty.
-	proposerKey, proposerPubKey, err := crypto.GenerateEd25519Key(rand.Reader)
-	if err != nil {
-		return nil, err
-	}
+
+	proposerPubKey := proposerKey.GetPublic()
 	pubKeybytes, err := proposerPubKey.Raw()
 	if err != nil {
 		return nil, err
@@ -115,6 +111,14 @@ func getManager(conf config.BlockManagerConfig, settlementlc settlement.LayerI, 
 		return nil, err
 	}
 	return manager, nil
+}
+
+func getManager(conf config.BlockManagerConfig, settlementlc settlement.LayerI, dalc da.DataAvailabilityLayerClient, genesisHeight int64, storeInitialHeight int64, storeLastBlockHeight int64, proxyAppConns proxy.AppConns, mockStore store.Store) (*Manager, error) {
+	proposerKey, _, err := crypto.GenerateEd25519Key(rand.Reader)
+	if err != nil {
+		return nil, err
+	}
+	return getManagerWithProposerKey(conf, proposerKey, settlementlc, dalc, genesisHeight, storeInitialHeight, storeLastBlockHeight, proxyAppConns, mockStore)
 }
 
 // TODO(omritoptix): Possible move out to a generic testutil
