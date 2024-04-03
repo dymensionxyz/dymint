@@ -89,8 +89,7 @@ func (m *Manager) submitNextBatch() (uint64, error) {
 	// This block may not be empty if another block has passed it in line. If that's the case our empty block request will
 	// be sent to the next batch.
 	if !isLastBlockEmpty {
-		m.logger.Info("Last block in batch is not an empty block", "endHeight", actualEndHeight)
-		m.logger.Info("Requesting for an empty block creation")
+		m.logger.Info("Last block in batch is not an empty block. Requesting for an empty block creation", "endHeight", actualEndHeight)
 		m.produceEmptyBlockCh <- true
 	}
 
@@ -103,9 +102,6 @@ func (m *Manager) submitNextBatch() (uint64, error) {
 	}
 
 	// Submit batch to SL
-	// TODO(omritoptix): Handle a case where the SL submission fails due to syncTarget out of sync with the latestHeight in the SL.
-	// In that case we'll want to update the syncTarget before returning.
-
 	err = m.settlementClient.SubmitBatch(nextBatch, m.dalc.GetClientType(), &resultSubmitToDA)
 	if err != nil {
 		m.logger.Error("Failed to submit batch to SL", "startHeight", startHeight, "endHeight", actualEndHeight, "error", err)
