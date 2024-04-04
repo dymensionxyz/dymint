@@ -6,6 +6,9 @@ import (
 	"strconv"
 	"time"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
 	"cosmossdk.io/errors"
 	"github.com/avast/retry-go/v4"
 	"github.com/cosmos/cosmos-sdk/client/flags"
@@ -291,15 +294,17 @@ func (d *HubClient) GetLatestBatch(rollappID string) (*settlement.ResultRetrieve
 		var err error
 		latestStateInfoIndexResp, err = d.rollappQueryClient.LatestStateIndex(d.ctx,
 			&rollapptypes.QueryGetLatestStateIndexRequest{RollappId: d.config.RollappID})
+
+		if status.Code(err) == codes.NotFound {
+			return retry.Unrecoverable(settlement.ErrBatchNotFound)
+		}
+
 		return err
 	}, retry.Context(d.ctx), retry.LastErrorOnly(true),
 		retry.Delay(d.batchRetryDelay), retry.Attempts(d.batchRetryAttempts), retry.MaxDelay(batchRetryMaxDelay))
 
 	if err != nil {
 		return nil, err
-	}
-	if latestStateInfoIndexResp == nil {
-		return nil, settlement.ErrBatchNotFound
 	}
 
 	latestBatch, err := d.GetBatchAtIndex(rollappID, latestStateInfoIndexResp.StateIndex.Index)
@@ -316,6 +321,11 @@ func (d *HubClient) GetBatchAtIndex(rollappID string, index uint64) (*settlement
 		var err error
 		stateInfoResp, err = d.rollappQueryClient.StateInfo(d.ctx,
 			&rollapptypes.QueryGetStateInfoRequest{RollappId: d.config.RollappID, Index: index})
+
+		if status.Code(err) == codes.NotFound {
+			return retry.Unrecoverable(settlement.ErrBatchNotFound)
+		}
+
 		return err
 	}, retry.Context(d.ctx), retry.LastErrorOnly(true),
 		retry.Delay(d.batchRetryDelay), retry.Attempts(d.batchRetryAttempts), retry.MaxDelay(batchRetryMaxDelay))
@@ -533,11 +543,11 @@ func (d *HubClient) waitForBatchInclusion(batchStartHeight uint64) (*settlement.
 		if err != nil {
 			return err
 		}
-		if latestBatch.Batch.StartHeight == batchStartHeight {
-			resultRetriveBatch = latestBatch
-			return nil
+		if latestBatch.Batch.StartHeight != batchStartHeight {
+			return settlement.ErrBatchNotFound
 		}
-		return settlement.ErrBatchNotFound
+		resultRetriveBatch = latestBatch
+		return nil
 	}, retry.Context(d.ctx), retry.LastErrorOnly(true),
 		retry.Delay(d.batchRetryDelay), retry.Attempts(d.batchRetryAttempts), retry.MaxDelay(batchRetryMaxDelay))
 	return resultRetriveBatch, err
