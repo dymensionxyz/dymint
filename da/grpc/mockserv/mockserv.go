@@ -9,7 +9,7 @@ import (
 
 	"github.com/dymensionxyz/dymint/da"
 	grpcda "github.com/dymensionxyz/dymint/da/grpc"
-	"github.com/dymensionxyz/dymint/da/mock"
+	"github.com/dymensionxyz/dymint/da/local"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/dymensionxyz/dymint/types/pb/dalc"
@@ -38,7 +38,7 @@ func GetServer(kv store.KVStore, conf grpcda.Config, mockConfig []byte) *grpc.Se
 }
 
 type mockImpl struct {
-	mock mock.DataAvailabilityLayerClient
+	mock local.DataAvailabilityLayerClient
 }
 
 func (m *mockImpl) SubmitBatch(_ context.Context, request *dalc.SubmitBatchRequest) (*dalc.SubmitBatchResponse, error) {

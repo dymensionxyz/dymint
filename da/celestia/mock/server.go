@@ -15,7 +15,7 @@ import (
 
 	"github.com/celestiaorg/go-cnc"
 	"github.com/dymensionxyz/dymint/da"
-	mockda "github.com/dymensionxyz/dymint/da/mock"
+	"github.com/dymensionxyz/dymint/da/local"
 	"github.com/dymensionxyz/dymint/log"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
@@ -23,7 +23,7 @@ import (
 
 // Server mocks celestia-node HTTP API.
 type Server struct {
-	mock      *mockda.DataAvailabilityLayerClient
+	mock      *local.DataAvailabilityLayerClient
 	blockTime time.Duration
 	server    *http.Server
 	logger    log.Logger
@@ -32,7 +32,7 @@ type Server struct {
 // NewServer creates new instance of Server.
 func NewServer(blockTime time.Duration, logger log.Logger) *Server {
 	return &Server{
-		mock:      new(mockda.DataAvailabilityLayerClient),
+		mock:      new(local.DataAvailabilityLayerClient),
 		blockTime: blockTime,
 		logger:    logger,
 	}

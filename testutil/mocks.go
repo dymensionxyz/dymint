@@ -11,7 +11,7 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 
 	"github.com/dymensionxyz/dymint/da"
-	mockda "github.com/dymensionxyz/dymint/da/mock"
+	localda "github.com/dymensionxyz/dymint/da/local"
 	"github.com/dymensionxyz/dymint/store"
 )
 
@@ -137,7 +137,7 @@ const connectionRefusedErrorMessage = "connection refused"
 
 // DALayerClientSubmitBatchError is a mock data availability layer client that can be used to test error handling
 type DALayerClientSubmitBatchError struct {
-	mockda.DataAvailabilityLayerClient
+	localda.DataAvailabilityLayerClient
 }
 
 // SubmitBatch submits a batch to the data availability layer
@@ -147,7 +147,7 @@ func (s *DALayerClientSubmitBatchError) SubmitBatch(_ *types.Batch) da.ResultSub
 
 // DALayerClientRetrieveBatchesError is a mock data availability layer client that can be used to test error handling
 type DALayerClientRetrieveBatchesError struct {
-	mockda.DataAvailabilityLayerClient
+	localda.DataAvailabilityLayerClient
 }
 
 // RetrieveBatches retrieves batches from the data availability layer
