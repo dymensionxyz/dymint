@@ -57,7 +57,7 @@ func getManagerWithProposerKey(conf config.BlockManagerConfig, proposerKey crypt
 
 	// Init the settlement layer mock
 	if settlementlc == nil {
-		settlementlc = slregistry.GetClient(slregistry.Mock)
+		settlementlc = slregistry.GetClient(slregistry.Local)
 	}
 
 	proposerPubKey := proposerKey.GetPublic()

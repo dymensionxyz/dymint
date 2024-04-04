@@ -43,7 +43,7 @@ func TestInitialState(t *testing.T) {
 	err = pubsubServer.Start()
 	require.NoError(t, err)
 	proxyApp := testutil.GetABCIProxyAppMock(logger.With("module", "proxy"))
-	settlementlc := slregistry.GetClient(slregistry.Mock)
+	settlementlc := slregistry.GetClient(slregistry.Local)
 	_ = settlementlc.Init(settlement.Config{}, pubsubServer, logger)
 
 	// Init empty store and full store

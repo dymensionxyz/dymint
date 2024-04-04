@@ -25,7 +25,7 @@ const batchSize = 5
 
 func TestLifecycle(t *testing.T) {
 	var err error
-	client := registry.GetClient(registry.Mock)
+	client := registry.GetClient(registry.Local)
 	require := require.New(t)
 
 	pubsubServer := pubsub.NewServer()
@@ -45,7 +45,7 @@ func TestSubmitAndRetrieve(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 
-	settlementClient := registry.GetClient(registry.Mock)
+	settlementClient := registry.GetClient(registry.Local)
 
 	initClient(t, settlementClient)
 
@@ -99,7 +99,7 @@ func TestSubmitAndRetrieve(t *testing.T) {
 
 func TestGetSequencersEmptyList(t *testing.T) {
 	var err error
-	settlementClient := registry.GetClient(registry.Mock)
+	settlementClient := registry.GetClient(registry.Local)
 	hubClientMock := mocks.NewHubClient(t)
 	hubClientMock.On("GetSequencers", tsmock.Anything, tsmock.Anything).Return(nil, settlement.ErrNoSequencerForRollapp)
 	options := []settlement.Option{
@@ -125,7 +125,7 @@ func TestGetSequencers(t *testing.T) {
 	options := []settlement.Option{
 		settlement.WithHubClient(hubClientMock),
 	}
-	settlementClient := registry.GetClient(registry.Mock)
+	settlementClient := registry.GetClient(registry.Local)
 	initClient(t, settlementClient, options...)
 
 	sequencersList := settlementClient.GetSequencersList()
