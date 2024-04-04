@@ -9,7 +9,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"cosmossdk.io/errors"
 	"github.com/avast/retry-go/v4"
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/codec"
@@ -349,10 +348,7 @@ func (d *HubClient) GetSequencers(rollappID string) ([]*types.Sequencer, error) 
 	err := retry.Do(func() error {
 		var err error
 		res, err = d.sequencerQueryClient.SequencersByRollappByStatus(d.ctx, req)
-		if err != nil {
-			return errors.Wrapf(settlement.ErrNoSequencerForRollapp, "rollappID: %s", rollappID)
-		}
-		return nil
+		return err
 	}, retry.Context(d.ctx), retry.LastErrorOnly(true),
 		retry.Delay(d.batchRetryDelay), retry.Attempts(d.batchRetryAttempts), retry.MaxDelay(batchRetryMaxDelay))
 
