@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"cosmossdk.io/errors"
 	"github.com/avast/retry-go/v4"
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/codec"
@@ -15,7 +16,6 @@ import (
 	rollapptypes "github.com/dymensionxyz/dymension/v3/x/rollapp/types"
 	"github.com/google/uuid"
 	"github.com/ignite/cli/ignite/pkg/cosmosaccount"
-	"github.com/pkg/errors"
 
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	sequencertypes "github.com/dymensionxyz/dymension/v3/x/sequencer/types"
@@ -286,14 +286,22 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 
 // GetLatestBatch returns the latest batch from the Dymension Hub.
 func (d *HubClient) GetLatestBatch(rollappID string) (*settlement.ResultRetrieveBatch, error) {
-	latestStateInfoIndexResp, err := d.rollappQueryClient.LatestStateIndex(d.ctx,
-		&rollapptypes.QueryGetLatestStateIndexRequest{RollappId: d.config.RollappID})
-	if latestStateInfoIndexResp == nil {
-		return nil, settlement.ErrBatchNotFound
-	}
+	var latestStateInfoIndexResp *rollapptypes.QueryGetLatestStateIndexResponse
+	err := retry.Do(func() error {
+		var err error
+		latestStateInfoIndexResp, err = d.rollappQueryClient.LatestStateIndex(d.ctx,
+			&rollapptypes.QueryGetLatestStateIndexRequest{RollappId: d.config.RollappID})
+		return err
+	}, retry.Context(d.ctx), retry.LastErrorOnly(true),
+		retry.Delay(d.batchRetryDelay), retry.Attempts(d.batchRetryAttempts), retry.MaxDelay(batchRetryMaxDelay))
+
 	if err != nil {
 		return nil, err
 	}
+	if latestStateInfoIndexResp == nil {
+		return nil, settlement.ErrBatchNotFound
+	}
+
 	latestBatch, err := d.GetBatchAtIndex(rollappID, latestStateInfoIndexResp.StateIndex.Index)
 	if err != nil {
 		return nil, err
@@ -303,26 +311,43 @@ func (d *HubClient) GetLatestBatch(rollappID string) (*settlement.ResultRetrieve
 
 // GetBatchAtIndex returns the batch at the given index from the Dymension Hub.
 func (d *HubClient) GetBatchAtIndex(rollappID string, index uint64) (*settlement.ResultRetrieveBatch, error) {
-	stateInfoResp, err := d.rollappQueryClient.StateInfo(d.ctx,
-		&rollapptypes.QueryGetStateInfoRequest{RollappId: d.config.RollappID, Index: index})
-	if stateInfoResp == nil {
-		return nil, settlement.ErrBatchNotFound
-	}
+	var stateInfoResp *rollapptypes.QueryGetStateInfoResponse
+	err := retry.Do(func() error {
+		var err error
+		stateInfoResp, err = d.rollappQueryClient.StateInfo(d.ctx,
+			&rollapptypes.QueryGetStateInfoRequest{RollappId: d.config.RollappID, Index: index})
+		return err
+	}, retry.Context(d.ctx), retry.LastErrorOnly(true),
+		retry.Delay(d.batchRetryDelay), retry.Attempts(d.batchRetryAttempts), retry.MaxDelay(batchRetryMaxDelay))
+
 	if err != nil {
 		return nil, err
+	}
+	if stateInfoResp == nil {
+		return nil, settlement.ErrBatchNotFound
 	}
 	return d.convertStateInfoToResultRetrieveBatch(&stateInfoResp.StateInfo)
 }
 
 // GetSequencers returns the bonded sequencers of the given rollapp.
 func (d *HubClient) GetSequencers(rollappID string) ([]*types.Sequencer, error) {
+	var res *sequencertypes.QueryGetSequencersByRollappByStatusResponse
 	req := &sequencertypes.QueryGetSequencersByRollappByStatusRequest{
 		RollappId: d.config.RollappID,
 		Status:    sequencertypes.Bonded,
 	}
-	res, err := d.sequencerQueryClient.SequencersByRollappByStatus(d.ctx, req)
+	err := retry.Do(func() error {
+		var err error
+		res, err = d.sequencerQueryClient.SequencersByRollappByStatus(d.ctx, req)
+		if err != nil {
+			return errors.Wrapf(settlement.ErrNoSequencerForRollapp, "rollappID: %s", rollappID)
+		}
+		return nil
+	}, retry.Context(d.ctx), retry.LastErrorOnly(true),
+		retry.Delay(d.batchRetryDelay), retry.Attempts(d.batchRetryAttempts), retry.MaxDelay(batchRetryMaxDelay))
+
 	if err != nil {
-		return nil, errors.Wrapf(settlement.ErrNoSequencerForRollapp, "rollappID: %s", rollappID)
+		return nil, err
 	}
 
 	sequencersList := make([]*types.Sequencer, 0, len(res.Sequencers))
