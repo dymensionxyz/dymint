@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 
-	"github.com/dymensionxyz/dymint/log"
 	"github.com/dymensionxyz/dymint/mempool"
 	nodemempool "github.com/dymensionxyz/dymint/node/mempool"
+	"github.com/dymensionxyz/dymint/types"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	corep2p "github.com/tendermint/tendermint/p2p"
@@ -24,14 +24,14 @@ type IValidator interface {
 
 // Validator is a validator for messages gossiped in the p2p network.
 type Validator struct {
-	logger            log.Logger
+	logger            types.Logger
 	localPubsubServer *pubsub.Server
 }
 
 var _ IValidator = (*Validator)(nil)
 
 // NewValidator creates a new Validator.
-func NewValidator(logger log.Logger, pusbsubServer *pubsub.Server) *Validator {
+func NewValidator(logger types.Logger, pusbsubServer *pubsub.Server) *Validator {
 	return &Validator{
 		logger:            logger,
 		localPubsubServer: pusbsubServer,

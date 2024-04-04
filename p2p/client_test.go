@@ -16,7 +16,7 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 
 	"github.com/dymensionxyz/dymint/config"
-	"github.com/dymensionxyz/dymint/log/test"
+	"github.com/dymensionxyz/dymint/testutil"
 )
 
 func TestClientStartup(t *testing.T) {
@@ -166,7 +166,7 @@ func TestSeedStringParsing(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			assert := assert.New(t)
 			require := require.New(t)
-			logger := &test.MockLogger{}
+			logger := &testutil.MockLogger{}
 			client, err := NewClient(config.P2PConfig{
 				GossipCacheSize: 50,
 				BoostrapTime:    30 * time.Second}, privKey, "TestNetwork", logger)

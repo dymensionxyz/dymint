@@ -5,14 +5,13 @@ import (
 	"fmt"
 
 	"github.com/dymensionxyz/dymint/da"
-	"github.com/dymensionxyz/dymint/log"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
 // BaseLayerClient is intended only for usage in tests.
 type BaseLayerClient struct {
-	logger         log.Logger
+	logger         types.Logger
 	pubsub         *pubsub.Server
 	sequencersList []*types.Sequencer
 	config         Config
@@ -31,7 +30,7 @@ func WithHubClient(hubClient HubClient) Option {
 }
 
 // Init is called once. it initializes the struct members.
-func (b *BaseLayerClient) Init(config Config, pubsub *pubsub.Server, logger log.Logger, options ...Option) error {
+func (b *BaseLayerClient) Init(config Config, pubsub *pubsub.Server, logger types.Logger, options ...Option) error {
 	var err error
 	b.config = config
 	b.pubsub = pubsub

@@ -17,7 +17,7 @@ import (
 	"go.uber.org/multierr"
 
 	"github.com/dymensionxyz/dymint/config"
-	"github.com/dymensionxyz/dymint/log"
+	"github.com/dymensionxyz/dymint/types"
 )
 
 type testNet []*Client
@@ -63,7 +63,7 @@ func getAddr(sk crypto.PrivKey) (multiaddr.Multiaddr, error) {
 	return a, nil
 }
 
-func startTestNetwork(ctx context.Context, t *testing.T, n int, conf map[int]hostDescr, validators []GossipValidator, logger log.Logger) testNet {
+func startTestNetwork(ctx context.Context, t *testing.T, n int, conf map[int]hostDescr, validators []GossipValidator, logger types.Logger) testNet {
 	t.Helper()
 	require := require.New(t)
 

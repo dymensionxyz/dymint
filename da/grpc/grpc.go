@@ -9,7 +9,6 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/dymensionxyz/dymint/da"
-	"github.com/dymensionxyz/dymint/log"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/dymensionxyz/dymint/types/pb/dalc"
@@ -23,7 +22,7 @@ type DataAvailabilityLayerClient struct {
 	conn   *grpc.ClientConn
 	client dalc.DALCServiceClient
 
-	logger log.Logger
+	logger types.Logger
 }
 
 // Config contains configuration options for DataAvailabilityLayerClient.
@@ -43,7 +42,7 @@ var _ da.DataAvailabilityLayerClient = &DataAvailabilityLayerClient{}
 var _ da.BatchRetriever = &DataAvailabilityLayerClient{}
 
 // Init sets the configuration options.
-func (d *DataAvailabilityLayerClient) Init(config []byte, _ *pubsub.Server, _ store.KVStore, logger log.Logger, options ...da.Option) error {
+func (d *DataAvailabilityLayerClient) Init(config []byte, _ *pubsub.Server, _ store.KVStore, logger types.Logger, options ...da.Option) error {
 	d.logger = logger
 	if len(config) == 0 {
 		d.config = DefaultConfig

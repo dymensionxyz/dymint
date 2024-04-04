@@ -16,7 +16,6 @@ import (
 	"github.com/celestiaorg/go-cnc"
 	"github.com/dymensionxyz/dymint/da"
 	mockda "github.com/dymensionxyz/dymint/da/mock"
-	"github.com/dymensionxyz/dymint/log"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
 )
@@ -26,11 +25,11 @@ type Server struct {
 	mock      *mockda.DataAvailabilityLayerClient
 	blockTime time.Duration
 	server    *http.Server
-	logger    log.Logger
+	logger    types.Logger
 }
 
 // NewServer creates new instance of Server.
-func NewServer(blockTime time.Duration, logger log.Logger) *Server {
+func NewServer(blockTime time.Duration, logger types.Logger) *Server {
 	return &Server{
 		mock:      new(mockda.DataAvailabilityLayerClient),
 		blockTime: blockTime,

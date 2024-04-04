@@ -9,7 +9,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 
-	"github.com/dymensionxyz/dymint/log"
+	"github.com/dymensionxyz/dymint/types"
 )
 
 // GossipMessage represents message gossiped via P2P network (e.g. transaction, Block etc).
@@ -36,13 +36,13 @@ type Gossiper struct {
 	topic *pubsub.Topic
 	sub   *pubsub.Subscription
 
-	logger log.Logger
+	logger types.Logger
 }
 
 // NewGossiper creates new, ready to use instance of Gossiper.
 //
 // Returned Gossiper object can be used for sending (Publishing) and receiving messages in topic identified by topicStr.
-func NewGossiper(host host.Host, ps *pubsub.PubSub, topicStr string, logger log.Logger, options ...GossiperOption) (*Gossiper, error) {
+func NewGossiper(host host.Host, ps *pubsub.PubSub, topicStr string, logger types.Logger, options ...GossiperOption) (*Gossiper, error) {
 	topic, err := ps.Join(topicStr)
 	if err != nil {
 		return nil, err

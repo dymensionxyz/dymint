@@ -4,7 +4,7 @@ package mocks
 
 import (
 	da "github.com/dymensionxyz/dymint/da"
-	log "github.com/dymensionxyz/dymint/log"
+	log "github.com/dymensionxyz/dymint/types"
 
 	mock "github.com/stretchr/testify/mock"
 

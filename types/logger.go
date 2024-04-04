@@ -1,4 +1,4 @@
-package log
+package types
 
 // Logger interface is compatible with Tendermint logger
 type Logger interface {

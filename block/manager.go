@@ -24,7 +24,6 @@ import (
 
 	"github.com/dymensionxyz/dymint/config"
 	"github.com/dymensionxyz/dymint/da"
-	"github.com/dymensionxyz/dymint/log"
 	"github.com/dymensionxyz/dymint/mempool"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/state"
@@ -80,14 +79,14 @@ type Manager struct {
 
 	syncCache map[uint64]*types.Block
 
-	logger log.Logger
+	logger types.Logger
 
 	prevBlock  map[uint64]*types.Block
 	prevCommit map[uint64]*types.Commit
 }
 
 // getInitialState tries to load lastState from Store, and if it's not available it reads GenesisDoc.
-func getInitialState(store store.Store, genesis *tmtypes.GenesisDoc, logger log.Logger) (types.State, error) {
+func getInitialState(store store.Store, genesis *tmtypes.GenesisDoc, logger types.Logger) (types.State, error) {
 	s, err := store.LoadState()
 	if err == types.ErrNoStateFound {
 		logger.Info("failed to find state in the store, creating new state from genesis")
@@ -110,7 +109,7 @@ func NewManager(
 	eventBus *tmtypes.EventBus,
 	pubsub *pubsub.Server,
 	p2pClient *p2p.Client,
-	logger log.Logger,
+	logger types.Logger,
 ) (*Manager, error) {
 
 	proposerAddress, err := getAddress(proposerKey)

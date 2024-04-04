@@ -22,7 +22,6 @@ import (
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	sequencertypes "github.com/dymensionxyz/dymension/v3/x/sequencer/types"
 	"github.com/dymensionxyz/dymint/da"
-	"github.com/dymensionxyz/dymint/log"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/dymensionxyz/dymint/utils"
@@ -61,7 +60,7 @@ type LayerClient struct {
 var _ settlement.LayerI = &LayerClient{}
 
 // Init is called once. it initializes the struct members.
-func (dlc *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, logger log.Logger, options ...settlement.Option) error {
+func (dlc *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, logger types.Logger, options ...settlement.Option) error {
 	DymensionCosmosClient, err := newDymensionHubClient(config, pubsub, logger)
 	if err != nil {
 		return err
@@ -85,7 +84,7 @@ func (dlc *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, lo
 // HubClient is the client for the Dymension Hub.
 type HubClient struct {
 	config               *settlement.Config
-	logger               log.Logger
+	logger               types.Logger
 	pubsub               *pubsub.Server
 	client               CosmosClient
 	ctx                  context.Context
@@ -135,7 +134,7 @@ func WithBatchRetryDelay(batchRetryDelay time.Duration) Option {
 	}
 }
 
-func newDymensionHubClient(config settlement.Config, pubsub *pubsub.Server, logger log.Logger, options ...Option) (*HubClient, error) {
+func newDymensionHubClient(config settlement.Config, pubsub *pubsub.Server, logger types.Logger, options ...Option) (*HubClient, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	eventMap := map[string]string{
 		fmt.Sprintf(eventStateUpdate, config.RollappID):          settlement.EventNewSettlementBatchAccepted,
