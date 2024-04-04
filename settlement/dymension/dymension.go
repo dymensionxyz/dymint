@@ -306,6 +306,11 @@ func (d *HubClient) GetLatestBatch(rollappID string) (*settlement.ResultRetrieve
 		return nil, err
 	}
 
+	// not supposed to happen, but just in case
+	if latestStateInfoIndexResp == nil {
+		return nil, settlement.ErrEmptyResponse
+	}
+
 	latestBatch, err := d.GetBatchAtIndex(rollappID, latestStateInfoIndexResp.StateIndex.Index)
 	if err != nil {
 		return nil, err
@@ -332,9 +337,11 @@ func (d *HubClient) GetBatchAtIndex(rollappID string, index uint64) (*settlement
 	if err != nil {
 		return nil, err
 	}
+	// not supposed to happen, but just in case
 	if stateInfoResp == nil {
-		return nil, settlement.ErrBatchNotFound
+		return nil, settlement.ErrEmptyResponse
 	}
+
 	return d.convertStateInfoToResultRetrieveBatch(&stateInfoResp.StateInfo)
 }
 
@@ -354,6 +361,11 @@ func (d *HubClient) GetSequencers(rollappID string) ([]*types.Sequencer, error) 
 
 	if err != nil {
 		return nil, err
+	}
+
+	// not supposed to happen, but just in case
+	if res == nil {
+		return nil, settlement.ErrEmptyResponse
 	}
 
 	sequencersList := make([]*types.Sequencer, 0, len(res.Sequencers))
