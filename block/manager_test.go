@@ -299,7 +299,6 @@ func TestBlockProductionNodeHealth(t *testing.T) {
 // 5. Produce third block successfully
 func TestProduceBlockFailAfterCommit(t *testing.T) {
 	require := require.New(t)
-	assert := assert.New(t)
 	// Setup app
 	app := testutil.GetAppMock(testutil.Info, testutil.Commit)
 	// Create proxy app
@@ -382,11 +381,14 @@ func TestProduceBlockFailAfterCommit(t *testing.T) {
 			mockStore.ShouldFailSetHeight = tc.shouldFailSetSetHeight
 			mockStore.ShoudFailUpdateState = tc.shouldFailUpdateState
 			_ = manager.produceBlock(context.Background(), true)
-			assert.Equal(tc.expectedStoreHeight, manager.store.Height())
-			assert.Equal(tc.expectedStateAppHash, manager.lastState.AppHash)
+			require.Equal(tc.expectedStoreHeight, manager.store.Height(), tc.name)
+			require.Equal(tc.expectedStateAppHash, manager.lastState.AppHash, tc.name)
 			storeState, err := manager.store.LoadState()
 			require.NoError(err)
-			assert.Equal(tc.expectedStateAppHash, storeState.AppHash)
+			require.Equal(tc.expectedStateAppHash, storeState.AppHash, tc.name)
+
+			app.On("Commit", mock.Anything).Unset()
+			app.On("Info", mock.Anything).Unset()
 		})
 	}
 }
