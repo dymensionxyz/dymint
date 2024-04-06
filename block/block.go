@@ -13,9 +13,8 @@ import (
 // applyBlock applies the block to the store and the abci app.
 // steps: save block -> execute block with app -> update state -> commit block to app -> update store height and state hash.
 // As the entire process can't be atomic we need to make sure the following condition apply before
-// we're applying the block in the happy path: block height - 1 == abci app last block height.
-// In case the following doesn't hold true, it means we crashed after the commit and before updating the store height.
-// In that case we'll want to align the store with the app state and continue to the next block.
+// - block height is the expected block height on the store (height + 1).
+// - block height is the expected block height on the app (last block height + 1).
 func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *types.Commit, blockMetaData blockMetaData) error {
 	if block.Header.Height != m.store.Height()+1 {
 		// We crashed after the commit and before updating the store height.
@@ -26,10 +25,13 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 	m.logger.Debug("Applying block", "height", block.Header.Height, "source", blockMetaData.source)
 
 	// Check if alignment is needed due to incosistencies between the store and the app.
-	isAlignRequired, err := m.alignStoreWithApp(ctx, block)
+	// In the happy path we expect block height - 1 == abci app last block height.
+	isAlignRequired, err := m.alignStoreWithAppIfNeeded(block)
 	if err != nil {
 		return err
 	}
+	// In case the following true, it means we crashed after the commit and before updating the store height.
+	// In that case we'll want to align the store with the app state and continue to the next block.
 	if isAlignRequired {
 		m.logger.Debug("Aligned with app state required. Skipping to next block", "height", block.Header.Height)
 		return nil
@@ -139,16 +141,20 @@ func (m *Manager) attemptApplyCachedBlocks(ctx context.Context) error {
 	return nil
 }
 
-// alignStoreWithApp is responsible for aligning the state of the store and the abci app if necessary.
-func (m *Manager) alignStoreWithApp(ctx context.Context, block *types.Block) (bool, error) {
+// alignStoreWithAppIfNeeded is responsible for aligning the state of the store and the abci app if necessary.
+func (m *Manager) alignStoreWithAppIfNeeded(block *types.Block) (bool, error) {
 	isRequired := false
 	// Validate incosistency in height wasn't caused by a crash and if so handle it.
 	proxyAppInfo, err := m.executor.GetAppInfo()
 	if err != nil {
-		return isRequired, errors.Wrap(err, "failed to get app info")
+		return false, errors.Wrap(err, "failed to get app info")
 	}
+
+	// TODO: we can assert here that the app isn't > 1 block above the store.
+
+	// no alignment is required if the last block height is less than the current block height.
 	if uint64(proxyAppInfo.LastBlockHeight) != block.Header.Height {
-		return isRequired, nil
+		return false, nil
 	}
 
 	isRequired = true

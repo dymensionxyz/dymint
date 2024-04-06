@@ -383,6 +383,8 @@ func TestProduceBlockFailAfterCommit(t *testing.T) {
 			_ = manager.produceBlock(context.Background(), true)
 			require.Equal(tc.expectedStoreHeight, manager.store.Height(), tc.name)
 			require.Equal(tc.expectedStateAppHash, manager.lastState.AppHash, tc.name)
+			require.Equal(tc.expectedStoreHeight, manager.store.Height(), tc.name)
+			require.Equal(tc.expectedStateAppHash, manager.lastState.AppHash, tc.name)
 			storeState, err := manager.store.LoadState()
 			require.NoError(err)
 			require.Equal(tc.expectedStateAppHash, storeState.AppHash, tc.name)
