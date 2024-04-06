@@ -17,7 +17,7 @@ import (
 
 	"github.com/dymensionxyz/dymint/config"
 	"github.com/dymensionxyz/dymint/da"
-	mockda "github.com/dymensionxyz/dymint/da/mock"
+	localda "github.com/dymensionxyz/dymint/da/local"
 	mempoolv1 "github.com/dymensionxyz/dymint/mempool/v1"
 	nodemempool "github.com/dymensionxyz/dymint/node/mempool"
 	slregistry "github.com/dymensionxyz/dymint/settlement/registry"
@@ -57,7 +57,7 @@ func getManagerWithProposerKey(conf config.BlockManagerConfig, proposerKey crypt
 
 	// Init the settlement layer mock
 	if settlementlc == nil {
-		settlementlc = slregistry.GetClient(slregistry.Mock)
+		settlementlc = slregistry.GetClient(slregistry.Local)
 	}
 
 	proposerPubKey := proposerKey.GetPublic()
@@ -72,7 +72,7 @@ func getManagerWithProposerKey(conf config.BlockManagerConfig, proposerKey crypt
 	}
 
 	if dalc == nil {
-		dalc = &mockda.DataAvailabilityLayerClient{}
+		dalc = &localda.DataAvailabilityLayerClient{}
 	}
 	initDALCMock(dalc, pubsubServer, logger)
 
@@ -123,7 +123,7 @@ func getManager(conf config.BlockManagerConfig, settlementlc settlement.LayerI, 
 
 // TODO(omritoptix): Possible move out to a generic testutil
 func getMockDALC(logger log.Logger) da.DataAvailabilityLayerClient {
-	dalc := &mockda.DataAvailabilityLayerClient{}
+	dalc := &localda.DataAvailabilityLayerClient{}
 	initDALCMock(dalc, pubsub.NewServer(), logger)
 	return dalc
 }
