@@ -16,10 +16,11 @@ import (
 // - block height is the expected block height on the store (height + 1).
 // - block height is the expected block height on the app (last block height + 1).
 func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *types.Commit, blockMetaData blockMetaData) error {
-	if block.Header.Height != m.store.Height()+1 {
-		// We crashed after the commit and before updating the store height.
-		m.logger.Error("Block not applied. Wrong height", "block height", block.Header.Height, "store height", m.store.Height())
-		return nil
+	// TODO: add switch case to have defined behavior for each case.
+	//validate block height
+	if block.Header.Height != m.store.NextHeight() {
+		m.logger.Error("Block not applied. wrong height", "block height", block.Header.Height, "expected height", m.store.NextHeight())
+		return types.ErrInvalidBlockHeight
 	}
 
 	m.logger.Debug("Applying block", "height", block.Header.Height, "source", blockMetaData.source)
@@ -119,17 +120,23 @@ func (m *Manager) attemptApplyCachedBlocks(ctx context.Context) error {
 	m.applyCachedBlockMutex.Lock()
 	defer m.applyCachedBlockMutex.Unlock()
 
-	prevCachedBlock, exists := m.prevBlock[m.store.Height()+1]
+	expectedHeight := m.store.NextHeight()
 
-	for exists {
-		m.logger.Debug("Applying cached block", "height", m.store.Height()+1)
+	prevCachedBlock, blockExists := m.prevBlock[expectedHeight]
+	prevCachedCommit, commitExists := m.prevCommit[expectedHeight]
 
-		err := m.applyBlock(ctx, prevCachedBlock, m.prevCommit[m.store.Height()+1], blockMetaData{source: gossipedBlock})
+	for blockExists && commitExists {
+		m.logger.Debug("Applying cached block", "height", expectedHeight)
+		err := m.applyBlock(ctx, prevCachedBlock, prevCachedCommit, blockMetaData{source: gossipedBlock})
 		if err != nil {
 			m.logger.Debug("Failed to apply previously cached block", "err", err)
 			return err
 		}
-		prevCachedBlock, exists = m.prevBlock[m.store.Height()+1]
+
+		expectedHeight := m.store.NextHeight()
+
+		prevCachedBlock, blockExists = m.prevBlock[expectedHeight]
+		prevCachedCommit, commitExists = m.prevCommit[expectedHeight]
 	}
 
 	for k := range m.prevBlock {

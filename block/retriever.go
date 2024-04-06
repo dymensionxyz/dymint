@@ -87,7 +87,7 @@ func (m *Manager) processNextDABatch(ctx context.Context, daMetaData *da.DASubmi
 
 	for _, batch := range batchResp.Batches {
 		for i, block := range batch.Blocks {
-			if block.Header.Height != m.store.Height()+1 {
+			if block.Header.Height != m.store.NextHeight() {
 				continue
 			}
 			err := m.applyBlock(ctx, block, batch.Commits[i], blockMetaData{source: daBlock, daHeight: daMetaData.Height})

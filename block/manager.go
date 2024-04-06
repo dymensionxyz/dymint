@@ -151,7 +151,9 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 		m.logger.Info("Starting in aggregator mode")
 
 		// Check if InitChain flow is needed
-		if m.lastState.LastBlockHeight+1 == m.genesis.InitialHeight {
+		if m.lastState.IsGenesis() {
+			m.logger.Info("Running InitChain")
+
 			err := m.RunInitChain(ctx)
 			if err != nil {
 				return err
@@ -232,21 +234,17 @@ func (m *Manager) applyBlockCallback(event pubsub.Message) {
 	block := eventData.Block
 	commit := eventData.Commit
 
-	if block.Header.Height != m.store.Height()+1 {
-		if block.Header.Height > m.store.Height() {
-			m.prevBlock[block.Header.Height] = &block
-			m.prevCommit[block.Header.Height] = &commit
-			m.logger.Debug("Caching block", "block height", block.Header.Height, "store height", m.store.Height())
-		}
-	} else {
+	// if height is expected, apply
+	// if height is higher than expected (future block), cache
+	if block.Header.Height == m.store.NextHeight() {
 		err := m.applyBlock(context.Background(), &block, &commit, blockMetaData{source: gossipedBlock})
 		if err != nil {
-			m.logger.Debug("Failed to apply block", "err", err)
+			m.logger.Error("failed to apply gossiped block", "err", err)
 		}
-	}
-	err := m.attemptApplyCachedBlocks(context.Background())
-	if err != nil {
-		m.logger.Debug("Failed to apply previous cached blocks", "err", err)
+	} else if block.Header.Height > m.store.Height() {
+		m.prevBlock[block.Header.Height] = &block
+		m.prevCommit[block.Header.Height] = &commit
+		m.logger.Debug("Caching block", "block height", block.Header.Height, "store height", m.store.Height())
 	}
 }
 
