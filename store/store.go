@@ -114,7 +114,7 @@ func (s *DefaultStore) SaveBlock(block *types.Block, commit *types.Commit, batch
 		return nil, fmt.Errorf("failed to commit db batch: %w", err)
 	}
 
-	return bb, nil
+	return nil, nil
 }
 
 // LoadBlock returns block at given height, or error if it's not found in Store.

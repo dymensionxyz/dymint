@@ -14,6 +14,7 @@ import (
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/utils"
 	"github.com/libp2p/go-libp2p/core/crypto"
+
 	tmcrypto "github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	tmtypes "github.com/tendermint/tendermint/types"
@@ -24,7 +25,6 @@ import (
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/mempool"
 	"github.com/dymensionxyz/dymint/settlement"
-	"github.com/dymensionxyz/dymint/state"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
 )
@@ -39,7 +39,7 @@ type Manager struct {
 	// Store and execution
 	store     store.Store
 	lastState types.State
-	executor  *state.BlockExecutor
+	executor  *BlockExecutor
 
 	// Clients and servers
 	pubsub           *pubsub.Server
@@ -92,7 +92,7 @@ func NewManager(
 		return nil, err
 	}
 
-	exec, err := state.NewBlockExecutor(proposerAddress, conf.NamespaceID, genesis.ChainID, mempool, proxyApp, eventBus, logger)
+	exec, err := NewBlockExecutor(proposerAddress, conf.NamespaceID, genesis.ChainID, mempool, proxyApp, eventBus, logger)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create block executor: %w", err)
 	}

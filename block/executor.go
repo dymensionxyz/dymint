@@ -1,4 +1,4 @@
-package state
+package block
 
 import (
 	"bytes"
@@ -9,7 +9,6 @@ import (
 
 	"github.com/cometbft/cometbft/crypto/merkle"
 	abci "github.com/tendermint/tendermint/abci/types"
-	abcitypes "github.com/tendermint/tendermint/abci/types"
 	tmcrypto "github.com/tendermint/tendermint/crypto/encoding"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -60,7 +59,7 @@ func NewBlockExecutor(proposerAddress []byte, namespaceID string, chainID string
 // InitChain calls InitChainSync using consensus connection to app.
 func (e *BlockExecutor) InitChain(genesis *tmtypes.GenesisDoc, validators []*tmtypes.Validator) (*abci.ResponseInitChain, error) {
 	params := genesis.ConsensusParams
-	valUpates := abcitypes.ValidatorUpdates{}
+	valUpates := abci.ValidatorUpdates{}
 
 	for _, validator := range validators {
 		tmkey, err := tmcrypto.PubKeyToProto(validator.PubKey)
@@ -68,7 +67,7 @@ func (e *BlockExecutor) InitChain(genesis *tmtypes.GenesisDoc, validators []*tmt
 			return nil, err
 		}
 
-		valUpates = append(valUpates, abcitypes.ValidatorUpdate{
+		valUpates = append(valUpates, abci.ValidatorUpdate{
 			PubKey: tmkey,
 			Power:  validator.VotingPower,
 		})
@@ -157,7 +156,7 @@ func (e *BlockExecutor) CreateBlock(height uint64, lastCommit *types.Commit, las
 				App:   state.Version.Consensus.App,
 			},
 			ChainID:         e.chainID,
-			NamespaceID:     e.namespaceID,
+			NamespaceID:     e.namespaceID, //TODO: used?????
 			Height:          height,
 			Time:            uint64(time.Now().UTC().UnixNano()),
 			LastHeaderHash:  lastHeaderHash,
@@ -277,8 +276,8 @@ func (e *BlockExecutor) updateState(state types.State, block *types.Block, abciR
 }
 
 // GetAppInfo returns the latest AppInfo from the proxyApp.
-func (e *BlockExecutor) GetAppInfo() (*abcitypes.ResponseInfo, error) {
-	return e.proxyAppQueryConn.InfoSync(abcitypes.RequestInfo{})
+func (e *BlockExecutor) GetAppInfo() (*abci.ResponseInfo, error) {
+	return e.proxyAppQueryConn.InfoSync(abci.RequestInfo{})
 }
 
 func (e *BlockExecutor) commit(ctx context.Context, state *types.State, block *types.Block, deliverTxs []*abci.ResponseDeliverTx) ([]byte, int64, error) {
@@ -468,28 +467,3 @@ func fromDymintTxs(optiTxs types.Txs) tmtypes.Txs {
 	}
 	return txs
 }
-
-// func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
-// 	params tmproto.ValidatorParams) error {
-// 	for _, valUpdate := range abciUpdates {
-// 		if valUpdate.GetPower() < 0 {
-// 			return fmt.Errorf("voting power can't be negative %v", valUpdate)
-// 		} else if valUpdate.GetPower() == 0 {
-// 			// continue, since this is deleting the validator, and thus there is no
-// 			// pubkey to check
-// 			continue
-// 		}
-
-// 		// Check if validator's pubkey matches an ABCI type in the consensus params
-// 		pk, err := cryptoenc.PubKeyFromProto(valUpdate.PubKey)
-// 		if err != nil {
-// 			return err
-// 		}
-
-// 		if !tmtypes.IsValidPubkeyType(params, pk.Type()) {
-// 			return fmt.Errorf("validator %v is using pubkey %s, which is unsupported for consensus",
-// 				valUpdate, pk.Type())
-// 		}
-// 	}
-// 	return nil
-// }

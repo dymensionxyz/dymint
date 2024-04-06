@@ -16,6 +16,7 @@ import (
 // - block height is the expected block height on the store (height + 1).
 // - block height is the expected block height on the app (last block height + 1).
 func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *types.Commit, blockMetaData blockMetaData) error {
+	// TODO (#330): allow genesis block with heigh > 0 to be applied.
 	// TODO: add switch case to have defined behavior for each case.
 	//validate block height
 	if block.Header.Height != m.store.NextHeight() {
@@ -157,9 +158,8 @@ func (m *Manager) alignStoreWithAppIfNeeded(block *types.Block) (bool, error) {
 		return false, errors.Wrap(err, "failed to get app info")
 	}
 
-	// TODO: we can assert here that the app isn't > 1 block above the store.
-
 	// no alignment is required if the last block height is less than the current block height.
+	// TODO: add switch case to have defined behavior for each case.
 	if uint64(proxyAppInfo.LastBlockHeight) != block.Header.Height {
 		return false, nil
 	}
