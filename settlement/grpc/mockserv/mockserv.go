@@ -11,8 +11,10 @@ import (
 	"github.com/dymensionxyz/dymint/store"
 )
 
-var settlementKVPrefix = []byte{0}
-var slStateIndexKey = []byte("slStateIndex")
+var (
+	settlementKVPrefix = []byte{0}
+	slStateIndexKey    = []byte("slStateIndex")
+)
 
 type server struct {
 	slmock.UnimplementedMockSLServer
@@ -63,7 +65,6 @@ func (s *server) SetBatch(ctx context.Context, in *slmock.SLSetBatchRequest) (*s
 }
 
 func GetServer(conf settlement.GrpcConfig) *grpc.Server {
-
 	srv := grpc.NewServer()
 
 	slstore := store.NewDefaultKVStore(".", "db", "settlement")
