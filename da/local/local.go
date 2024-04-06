@@ -1,4 +1,4 @@
-package mock
+package local
 
 import (
 	"crypto/sha1" //#nosec

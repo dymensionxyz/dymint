@@ -15,7 +15,7 @@ import (
 
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/da/celestia"
-	"github.com/dymensionxyz/dymint/da/mock"
+	"github.com/dymensionxyz/dymint/da/local"
 	"github.com/dymensionxyz/dymint/da/registry"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
@@ -59,11 +59,11 @@ func doTestDALC(t *testing.T, mockDalc da.DataAvailabilityLayerClient) {
 	var err error
 
 	// mock DALC will advance block height every 100ms
-	if _, ok := mockDalc.(*mock.DataAvailabilityLayerClient); !ok {
-		t.Fatal("mock DALC is not of type *mock.DataAvailabilityLayerClient")
+	if _, ok := mockDalc.(*local.DataAvailabilityLayerClient); !ok {
+		t.Fatal("mock DALC is not of type *local.DataAvailabilityLayerClient")
 	}
 	conf := []byte(mockDaBlockTime.String())
-	dalc := mockDalc.(*mock.DataAvailabilityLayerClient)
+	dalc := mockDalc.(*local.DataAvailabilityLayerClient)
 
 	pubsubServer := pubsub.NewServer()
 	err = pubsubServer.Start()
@@ -132,7 +132,7 @@ func doTestRetrieve(t *testing.T, dalc da.DataAvailabilityLayerClient) {
 
 	// mock DALC will advance block height every 100ms
 	conf := []byte{}
-	if _, ok := dalc.(*mock.DataAvailabilityLayerClient); ok {
+	if _, ok := dalc.(*local.DataAvailabilityLayerClient); ok {
 		conf = []byte(mockDaBlockTime.String())
 	}
 	if _, ok := dalc.(*celestia.DataAvailabilityLayerClient); ok {

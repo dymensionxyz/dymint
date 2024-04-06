@@ -15,14 +15,14 @@ import (
 
 	"github.com/celestiaorg/go-cnc"
 	"github.com/dymensionxyz/dymint/da"
-	mockda "github.com/dymensionxyz/dymint/da/mock"
+	"github.com/dymensionxyz/dymint/da/local"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
 )
 
 // Server mocks celestia-node HTTP API.
 type Server struct {
-	mock      *mockda.DataAvailabilityLayerClient
+	da        *local.DataAvailabilityLayerClient
 	blockTime time.Duration
 	server    *http.Server
 	logger    types.Logger
@@ -31,7 +31,7 @@ type Server struct {
 // NewServer creates new instance of Server.
 func NewServer(blockTime time.Duration, logger types.Logger) *Server {
 	return &Server{
-		mock:      new(mockda.DataAvailabilityLayerClient),
+		da:        new(local.DataAvailabilityLayerClient),
 		blockTime: blockTime,
 		logger:    logger,
 	}
@@ -39,11 +39,11 @@ func NewServer(blockTime time.Duration, logger types.Logger) *Server {
 
 // Start starts HTTP server with given listener.
 func (s *Server) Start(listener net.Listener) error {
-	err := s.mock.Init([]byte(s.blockTime.String()), pubsub.NewServer(), store.NewDefaultInMemoryKVStore(), s.logger)
+	err := s.da.Init([]byte(s.blockTime.String()), pubsub.NewServer(), store.NewDefaultInMemoryKVStore(), s.logger)
 	if err != nil {
 		return err
 	}
-	err = s.mock.Start()
+	err = s.da.Start()
 	if err != nil {
 		return err
 	}
@@ -92,7 +92,7 @@ func (s *Server) submit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res := s.mock.SubmitBatch(&batch)
+	res := s.da.SubmitBatch(&batch)
 	code := 0
 	if res.Code != da.StatusSuccess {
 		code = 3
@@ -121,7 +121,7 @@ func (s *Server) shares(w http.ResponseWriter, r *http.Request) {
 	daMetaData := &da.DASubmitMetaData{
 		Height: height,
 	}
-	res := s.mock.RetrieveBatches(daMetaData)
+	res := s.da.RetrieveBatches(daMetaData)
 	if res.Code != da.StatusSuccess {
 		s.writeError(w, errors.New(res.Message))
 		return
@@ -166,7 +166,7 @@ func (s *Server) data(w http.ResponseWriter, r *http.Request) {
 	daMetaData := &da.DASubmitMetaData{
 		Height: height,
 	}
-	res := s.mock.RetrieveBatches(daMetaData)
+	res := s.da.RetrieveBatches(daMetaData)
 	if res.Code != da.StatusSuccess {
 		s.writeError(w, errors.New(res.Message))
 		return
