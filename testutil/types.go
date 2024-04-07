@@ -244,3 +244,34 @@ func getEmptyLastResultsHash() [32]byte {
 	lastResults := []*abci.ResponseDeliverTx{}
 	return *(*[32]byte)(tmtypes.NewResults(lastResults).Hash())
 }
+
+func GetRandomBlock(height uint64, nTxs int) *types.Block {
+	block := &types.Block{
+		Header: types.Header{
+			Height: height,
+		},
+		Data: types.Data{
+			Txs: make(types.Txs, nTxs),
+			IntermediateStateRoots: types.IntermediateStateRoots{
+				RawRootsList: make([][]byte, nTxs),
+			},
+		},
+	}
+
+	for i := 0; i < nTxs; i++ {
+		block.Data.Txs[i] = GetRandomTx()
+		block.Data.IntermediateStateRoots.RawRootsList[i] = GetRandomBytes(32)
+	}
+
+	return block
+}
+
+func GetRandomValidatorSet() *tmtypes.ValidatorSet {
+	pubKey := ed25519.GenPrivKey().PubKey()
+	return &tmtypes.ValidatorSet{
+		Proposer: &tmtypes.Validator{PubKey: pubKey, Address: pubKey.Address()},
+		Validators: []*tmtypes.Validator{
+			{PubKey: pubKey, Address: pubKey.Address()},
+		},
+	}
+}

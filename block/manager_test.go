@@ -37,7 +37,7 @@ func TestInitialState(t *testing.T) {
 	genesis := testutil.GenerateGenesis(123)
 	sampleState := testutil.GenerateState(1, 128)
 	key, _, _ := crypto.GenerateEd25519Key(rand.Reader)
-	conf := getManagerConfig()
+	conf := testutil.GetManagerConfig()
 	logger := log.TestingLogger()
 	pubsubServer := pubsub.NewServer()
 	err = pubsubServer.Start()
