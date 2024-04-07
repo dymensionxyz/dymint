@@ -1,4 +1,4 @@
-package dymension
+package dymension_test
 
 import (
 	"context"
@@ -30,6 +30,7 @@ import (
 	mocks "github.com/dymensionxyz/dymint/mocks"
 	settlementmocks "github.com/dymensionxyz/dymint/mocks/settlement"
 	"github.com/dymensionxyz/dymint/settlement"
+	"github.com/dymensionxyz/dymint/settlement/dymension"
 	"github.com/dymensionxyz/dymint/testutil"
 
 	sdkcodectypes "github.com/cosmos/cosmos-sdk/codec/types"
@@ -48,15 +49,15 @@ func TestGetSequencers(t *testing.T) {
 	cosmosClientMock.On("GetRollappClient").Return(settlementmocks.NewRollAppQueryClient(t))
 	cosmosClientMock.On("GetSequencerClient").Return(sequencerQueryClientMock)
 
-	options := []Option{
-		WithCosmosClient(cosmosClientMock),
+	options := []dymension.Option{
+		dymension.WithCosmosClient(cosmosClientMock),
 	}
 
 	pubsubServer := pubsub.NewServer()
 	err = pubsubServer.Start()
 	require.NoError(err)
 
-	hubClient, err := newDymensionHubClient(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
+	hubClient, err := dymension.NewDymensionHubClient(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
 	require.NoError(err)
 
 	sequencers, err := hubClient.GetSequencers("mock-rollapp")
@@ -94,11 +95,11 @@ func TestPostBatch(t *testing.T) {
 	require.NoError(err)
 	cosmosClientMock.On("SubscribeToEvents", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return((<-chan coretypes.ResultEvent)(batchAcceptedCh), nil)
 
-	options := []Option{
-		WithCosmosClient(cosmosClientMock),
-		WithBatchAcceptanceTimeout(time.Millisecond * 300),
-		WithBatchRetryAttempts(2),
-		WithBatchRetryDelay(time.Millisecond * 200),
+	options := []dymension.Option{
+		dymension.WithCosmosClient(cosmosClientMock),
+		dymension.WithBatchAcceptanceTimeout(time.Millisecond * 300),
+		dymension.WithBatchRetryAttempts(2),
+		dymension.WithBatchRetryDelay(time.Millisecond * 200),
 	}
 
 	// Create a batch which will be submitted
@@ -189,7 +190,7 @@ func TestPostBatch(t *testing.T) {
 					rollappQueryClientMock.On("LatestStateIndex", mock.Anything, mock.Anything).Return(nil, fmt.Errorf("error"))
 				}
 			}
-			hubClient, err := newDymensionHubClient(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
+			hubClient, err := dymension.NewDymensionHubClient(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
 			require.NoError(err)
 			err = hubClient.Start()
 			require.NoError(err)
