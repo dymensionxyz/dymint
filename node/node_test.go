@@ -12,6 +12,7 @@ import (
 	"github.com/dymensionxyz/dymint/node"
 	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/settlement"
+	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -33,7 +34,7 @@ func TestStartup(t *testing.T) {
 	require := require.New(t)
 
 	// TODO(omritoptix): Test with and without aggregator mode.
-	node, err := node.CreateNode(false, nil)
+	node, err := testutil.CreateNode(false, nil)
 	require.NoError(err)
 	require.NotNil(node)
 
@@ -112,7 +113,7 @@ func TestMempoolDirectly(t *testing.T) {
 func TestHealthStatusEventHandler(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	node, err := node.CreateNode(false, nil)
+	node, err := testutil.CreateNode(false, nil)
 	require.NoError(err)
 	require.NotNil(node)
 
