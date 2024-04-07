@@ -54,8 +54,8 @@ type Client struct {
 	chainID string
 	privKey crypto.PrivKey
 
-	host host.Host
-	dht  *dht.IpfsDHT
+	Host host.Host
+	DHT  *dht.IpfsDHT
 	disc *discovery.RoutingDiscovery
 
 	txGossiper  *Gossiper
@@ -108,13 +108,13 @@ func (c *Client) Start(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	return c.startWithHost(ctx, host)
+	return c.StartWithHost(ctx, host)
 }
 
-func (c *Client) startWithHost(ctx context.Context, h host.Host) error {
-	c.host = h
-	for _, a := range c.host.Addrs() {
-		c.logger.Info("listening on", "address", fmt.Sprintf("%s/p2p/%s", a, c.host.ID()))
+func (c *Client) StartWithHost(ctx context.Context, h host.Host) error {
+	c.Host = h
+	for _, a := range c.Host.Addrs() {
+		c.logger.Info("listening on", "address", fmt.Sprintf("%s/p2p/%s", a, c.Host.ID()))
 	}
 
 	c.logger.Debug("setting up gossiping")
@@ -146,8 +146,8 @@ func (c *Client) Close() error {
 		c.txGossiper.Close(),
 		c.headerGossiper.Close(),
 		c.blockGossiper.Close(),
-		c.dht.Close(),
-		c.host.Close(),
+		c.DHT.Close(),
+		c.Host.Close(),
 	)
 }
 
@@ -186,12 +186,12 @@ func (c *Client) SetBlockValidator(validator GossipValidator) {
 
 // Addrs returns listen addresses of Client.
 func (c *Client) Addrs() []multiaddr.Multiaddr {
-	return c.host.Addrs()
+	return c.Host.Addrs()
 }
 
 // Info returns p2p info
 func (c *Client) Info() (p2p.ID, string, string) {
-	return p2p.ID(hex.EncodeToString([]byte(c.host.ID()))), c.conf.ListenAddress, c.chainID
+	return p2p.ID(hex.EncodeToString([]byte(c.Host.ID()))), c.conf.ListenAddress, c.chainID
 }
 
 // PeerConnection describe basic information about P2P connection.
@@ -205,7 +205,7 @@ type PeerConnection struct {
 
 // Peers returns list of peers connected to Client.
 func (c *Client) Peers() []PeerConnection {
-	conns := c.host.Network().Conns()
+	conns := c.Host.Network().Conns()
 	res := make([]PeerConnection, 0, len(conns))
 	for _, conn := range conns {
 		pc := PeerConnection{
@@ -243,7 +243,7 @@ func (c *Client) listen(ctx context.Context) (host.Host, error) {
 }
 
 func (c *Client) setupDHT(ctx context.Context) error {
-	seedNodes := c.getSeedAddrInfo(c.conf.Seeds)
+	seedNodes := c.GetSeedAddrInfo(c.conf.Seeds)
 	if len(seedNodes) == 0 {
 		c.logger.Info("no seed nodes - only listening for connections")
 	}
@@ -253,12 +253,12 @@ func (c *Client) setupDHT(ctx context.Context) error {
 	}
 
 	var err error
-	c.dht, err = dht.New(ctx, c.host, dht.Mode(dht.ModeServer), dht.BootstrapPeers(seedNodes...))
+	c.DHT, err = dht.New(ctx, c.Host, dht.Mode(dht.ModeServer), dht.BootstrapPeers(seedNodes...))
 	if err != nil {
 		return fmt.Errorf("failed to create DHT: %w", err)
 	}
 
-	err = c.dht.Bootstrap(ctx)
+	err = c.DHT.Bootstrap(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to bootstrap DHT: %w", err)
 	}
@@ -267,7 +267,7 @@ func (c *Client) setupDHT(ctx context.Context) error {
 		go c.bootstrapLoop(ctx)
 	}
 
-	c.host = routedhost.Wrap(c.host, c.dht)
+	c.Host = routedhost.Wrap(c.Host, c.DHT)
 
 	return nil
 }
@@ -296,9 +296,9 @@ func (c *Client) setupPeerDiscovery(ctx context.Context) error {
 	select {
 	case <-ctx.Done():
 		return ctx.Err()
-	case <-c.dht.RefreshRoutingTable():
+	case <-c.DHT.RefreshRoutingTable():
 	}
-	c.disc = discovery.NewRoutingDiscovery(c.dht)
+	c.disc = discovery.NewRoutingDiscovery(c.DHT)
 	return nil
 }
 
@@ -323,7 +323,7 @@ func (c *Client) findPeers(ctx context.Context) error {
 // tryConnect attempts to connect to a peer and logs error if necessary
 func (c *Client) tryConnect(ctx context.Context, peer peer.AddrInfo) {
 	c.logger.Debug("trying to connect to peer", "peer", peer)
-	err := c.host.Connect(ctx, peer)
+	err := c.Host.Connect(ctx, peer)
 	if err != nil {
 		c.logger.Error("failed to connect to peer", "peer", peer, "error", err)
 		return
@@ -337,25 +337,25 @@ func (c *Client) setupGossiping(ctx context.Context) error {
 	pubsub.GossipSubHistoryLength = c.conf.GossipCacheSize
 	pubsub.GossipSubMaxIHaveMessages = c.conf.GossipCacheSize
 
-	ps, err := pubsub.NewGossipSub(ctx, c.host)
+	ps, err := pubsub.NewGossipSub(ctx, c.Host)
 	if err != nil {
 		return err
 	}
 
-	c.txGossiper, err = NewGossiper(c.host, ps, c.getTxTopic(), c.logger, WithValidator(c.txValidator))
+	c.txGossiper, err = NewGossiper(c.Host, ps, c.getTxTopic(), c.logger, WithValidator(c.txValidator))
 	if err != nil {
 		return err
 	}
 	go c.txGossiper.ProcessMessages(ctx)
 
-	c.headerGossiper, err = NewGossiper(c.host, ps, c.getHeaderTopic(), c.logger,
+	c.headerGossiper, err = NewGossiper(c.Host, ps, c.getHeaderTopic(), c.logger,
 		WithValidator(c.headerValidator))
 	if err != nil {
 		return err
 	}
 	go c.headerGossiper.ProcessMessages(ctx)
 
-	c.blockGossiper, err = NewGossiper(c.host, ps, c.getBlockTopic(), c.logger,
+	c.blockGossiper, err = NewGossiper(c.Host, ps, c.getBlockTopic(), c.logger,
 		WithValidator(c.blockValidator))
 	if err != nil {
 		return err
@@ -365,7 +365,7 @@ func (c *Client) setupGossiping(ctx context.Context) error {
 	return nil
 }
 
-func (c *Client) getSeedAddrInfo(seedStr string) []peer.AddrInfo {
+func (c *Client) GetSeedAddrInfo(seedStr string) []peer.AddrInfo {
 	if len(seedStr) == 0 {
 		return []peer.AddrInfo{}
 	}
@@ -425,7 +425,7 @@ func (c *Client) bootstrapLoop(ctx context.Context) {
 			return
 		case <-ticker.C:
 			if len(c.Peers()) == 0 {
-				err := c.dht.Bootstrap(ctx)
+				err := c.DHT.Bootstrap(ctx)
 				if err != nil {
 					c.logger.Error("failed to re-bootstrap DHT: %w", err)
 				}
