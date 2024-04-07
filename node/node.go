@@ -85,7 +85,7 @@ func (bl *BaseLayersHealthStatus) get() (settlementHealthy bool, daHealthy bool)
 type Node struct {
 	service.BaseService
 	eventBus     *tmtypes.EventBus
-	pubsubServer *pubsub.Server
+	PubsubServer *pubsub.Server
 	proxyApp     proxy.AppConns
 
 	genesis *tmtypes.GenesisDoc
@@ -96,9 +96,9 @@ type Node struct {
 	P2P  *p2p.Client
 
 	// TODO(tzdybal): consider extracting "mempool reactor"
-	Mempool      mempool.Mempool
-	mempoolIDs   *nodemempool.MempoolIDs
-	incomingTxCh chan *p2p.GossipMessage
+	Mempool    mempool.Mempool
+	MempoolIDs *nodemempool.MempoolIDs
+	// incomingTxCh chan *p2p.GossipMessage
 
 	Store        store.Store
 	blockManager *block.Manager
@@ -113,7 +113,7 @@ type Node struct {
 
 	// keep context here only because of API compatibility
 	// - it's used in `OnStart` (defined in service.Service interface)
-	ctx context.Context
+	Ctx context.Context
 }
 
 // NewNode creates new Dymint node.
@@ -195,23 +195,23 @@ func NewNode(ctx context.Context, conf config.NodeConfig, p2pKey crypto.PrivKey,
 	}
 
 	node := &Node{
-		proxyApp:       proxyApp,
-		eventBus:       eventBus,
-		pubsubServer:   pubsubServer,
-		genesis:        genesis,
-		conf:           conf,
-		P2P:            p2pClient,
-		blockManager:   blockManager,
-		dalc:           dalc,
-		settlementlc:   settlementlc,
-		Mempool:        mp,
-		mempoolIDs:     mpIDs,
-		incomingTxCh:   make(chan *p2p.GossipMessage),
+		proxyApp:     proxyApp,
+		eventBus:     eventBus,
+		PubsubServer: pubsubServer,
+		genesis:      genesis,
+		conf:         conf,
+		P2P:          p2pClient,
+		blockManager: blockManager,
+		dalc:         dalc,
+		settlementlc: settlementlc,
+		Mempool:      mp,
+		MempoolIDs:   mpIDs,
+		// incomingTxCh:   make(chan *p2p.GossipMessage),
 		Store:          s,
 		TxIndexer:      txIndexer,
 		IndexerService: indexerService,
 		BlockIndexer:   blockIndexer,
-		ctx:            ctx,
+		Ctx:            ctx,
 	}
 
 	node.BaseService = *service.NewBaseService(logger, "Node", node)
@@ -251,12 +251,12 @@ func (n *Node) initGenesisChunks() error {
 // OnStart is a part of Service interface.
 func (n *Node) OnStart() error {
 	n.Logger.Info("starting P2P client")
-	err := n.P2P.Start(n.ctx)
+	err := n.P2P.Start(n.Ctx)
 	if err != nil {
 		return fmt.Errorf("error while starting P2P client: %w", err)
 	}
 	// start the pubsub server
-	err = n.pubsubServer.Start()
+	err = n.PubsubServer.Start()
 	if err != nil {
 		return fmt.Errorf("error while starting pubsub server: %w", err)
 	}
@@ -283,7 +283,7 @@ func (n *Node) OnStart() error {
 	n.eventListener()
 
 	// start the block manager
-	err = n.blockManager.Start(n.ctx, n.conf.Aggregator)
+	err = n.blockManager.Start(n.Ctx, n.conf.Aggregator)
 	if err != nil {
 		return fmt.Errorf("error while starting block manager: %w", err)
 	}
@@ -345,7 +345,7 @@ func (n *Node) EventBus() *tmtypes.EventBus {
 
 // PubSubServer gives access to the Node's pubsub server
 func (n *Node) PubSubServer() *pubsub.Server {
-	return n.pubsubServer
+	return n.PubsubServer
 }
 
 // ProxyApp returns ABCI proxy connections to communicate with application.
@@ -380,8 +380,8 @@ func createAndStartIndexerService(
 
 // All events listeners should be registered here
 func (n *Node) eventListener() {
-	go utils.SubscribeAndHandleEvents(n.ctx, n.pubsubServer, "settlementHealthStatusHandler", settlement.EventQuerySettlementHealthStatus, n.healthStatusEventCallback, n.Logger)
-	go utils.SubscribeAndHandleEvents(n.ctx, n.pubsubServer, "daHealthStatusHandler", da.EventQueryDAHealthStatus, n.healthStatusEventCallback, n.Logger)
+	go utils.SubscribeAndHandleEvents(n.Ctx, n.PubsubServer, "settlementHealthStatusHandler", settlement.EventQuerySettlementHealthStatus, n.healthStatusEventCallback, n.Logger)
+	go utils.SubscribeAndHandleEvents(n.Ctx, n.PubsubServer, "daHealthStatusHandler", da.EventQueryDAHealthStatus, n.healthStatusEventCallback, n.Logger)
 
 }
 
@@ -403,14 +403,14 @@ func (n *Node) healthStatusHandler(err error) {
 	if daHealthy && settlementHealthy {
 		n.Logger.Info("All base layers are healthy")
 		healthStatusEvent := &events.EventDataHealthStatus{Healthy: true}
-		if err = n.pubsubServer.PublishWithEvents(n.ctx, healthStatusEvent, map[string][]string{events.EventNodeTypeKey: {events.EventHealthStatus}}); err != nil {
+		if err = n.PubsubServer.PublishWithEvents(n.Ctx, healthStatusEvent, map[string][]string{events.EventNodeTypeKey: {events.EventHealthStatus}}); err != nil {
 			panic(err)
 		}
 		// Only if err is not nil, we publish the event. Otherwise it could come from a previous unhealthy state.
 	} else if err != nil {
 		n.Logger.Info("Base layer is unhealthy")
 		healthStatusEvent := &events.EventDataHealthStatus{Healthy: false, Error: err}
-		if err = n.pubsubServer.PublishWithEvents(n.ctx, healthStatusEvent, map[string][]string{events.EventNodeTypeKey: {events.EventHealthStatus}}); err != nil {
+		if err = n.PubsubServer.PublishWithEvents(n.Ctx, healthStatusEvent, map[string][]string{events.EventNodeTypeKey: {events.EventHealthStatus}}); err != nil {
 			panic(err)
 		}
 
