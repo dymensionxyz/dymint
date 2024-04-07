@@ -9,7 +9,7 @@ import (
 )
 
 // TranslateAddresses updates conf by changing Cosmos-style addresses to Multiaddr format.
-func translateAddresses(conf *config.NodeConfig) error {
+func TranslateAddresses(conf *config.NodeConfig) error {
 	if conf.P2P.ListenAddress != "" {
 		addr, err := GetMultiAddr(conf.P2P.ListenAddress)
 		if err != nil {
@@ -54,7 +54,7 @@ func GetMultiAddr(addr string) (multiaddr.Multiaddr, error) {
 	}
 	parts = strings.Split(addr, ":")
 	if len(parts) != 2 {
-		return nil, errInvalidAddress
+		return nil, ErrInvalidAddress
 	}
 	maddr, err := multiaddr.NewMultiaddr("/ip4/" + parts[0] + "/" + proto + "/" + parts[1])
 	if err != nil {

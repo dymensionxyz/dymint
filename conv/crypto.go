@@ -1,7 +1,6 @@
 package conv
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
@@ -9,15 +8,10 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 )
 
-var (
-	errNilKey             = errors.New("key can't be nil")
-	errUnsupportedKeyType = errors.New("unsupported key type")
-)
-
 // GetNodeKey creates libp2p private key from Tendermints NodeKey.
 func GetNodeKey(nodeKey *p2p.NodeKey) (crypto.PrivKey, error) {
 	if nodeKey == nil || nodeKey.PrivKey == nil {
-		return nil, errNilKey
+		return nil, ErrNilKey
 	}
 	switch nodeKey.PrivKey.Type() {
 	case "ed25519":
@@ -27,6 +21,6 @@ func GetNodeKey(nodeKey *p2p.NodeKey) (crypto.PrivKey, error) {
 		}
 		return privKey, nil
 	default:
-		return nil, errUnsupportedKeyType
+		return nil, ErrUnsupportedKeyType
 	}
 }

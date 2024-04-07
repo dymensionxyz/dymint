@@ -3,5 +3,7 @@ package conv
 import "errors"
 
 var (
-	errInvalidAddress = errors.New("invalid address format, expected [protocol://][<NODE_ID>@]<IPv4>:<PORT>")
+	ErrInvalidAddress     = errors.New("invalid address format, expected [protocol://][<NODE_ID>@]<IPv4>:<PORT>")
+	ErrNilKey             = errors.New("key cannot be nil")
+	ErrUnsupportedKeyType = errors.New("unsupported key type")
 )

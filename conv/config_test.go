@@ -1,4 +1,4 @@
-package conv
+package conv_test
 
 import (
 	"testing"
@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/dymensionxyz/dymint/config"
+	"github.com/dymensionxyz/dymint/conv"
 	tmcfg "github.com/tendermint/tendermint/config"
 )
 
@@ -32,7 +33,7 @@ func TestGetNodeConfig(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			var actual config.NodeConfig
-			err := GetNodeConfig(&actual, c.input)
+			err := conv.GetNodeConfig(&actual, c.input)
 			if c.expectError {
 				assert.Error(t, err)
 			} else {
