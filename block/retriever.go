@@ -28,8 +28,8 @@ func (m *Manager) RetriveLoop(ctx context.Context) {
 			}
 			// Check if after we sync we are synced or a new syncTarget was already set.
 			// If we are synced then signal all goroutines waiting on isSyncedCond.
-			if m.store.Height() >= atomic.LoadUint64(&m.syncTarget) {
-				m.logger.Info("Synced at height", "height", m.store.Height())
+			if m.Store.Height() >= atomic.LoadUint64(&m.SyncTarget) {
+				m.logger.Info("Synced at height", "height", m.Store.Height())
 				m.isSyncedCond.L.Lock()
 				m.isSyncedCond.Signal()
 				m.isSyncedCond.L.Unlock()
@@ -42,21 +42,21 @@ func (m *Manager) RetriveLoop(ctx context.Context) {
 // It fetches the batches from the settlement, gets the DA height and gets
 // the actual blocks from the DA.
 func (m *Manager) syncUntilTarget(ctx context.Context, syncTarget uint64) error {
-	currentHeight := m.store.Height()
+	currentHeight := m.Store.Height()
 	for currentHeight < syncTarget {
-		currStateIdx := atomic.LoadUint64(&m.lastState.SLStateIndex) + 1
+		currStateIdx := atomic.LoadUint64(&m.LastState.SLStateIndex) + 1
 		m.logger.Info("Syncing until target", "height", currentHeight, "state_index", currStateIdx, "syncTarget", syncTarget)
-		settlementBatch, err := m.settlementClient.RetrieveBatch(currStateIdx)
+		settlementBatch, err := m.SLClient.RetrieveBatch(currStateIdx)
 		if err != nil {
 			return err
 		}
 
-		err = m.processNextDABatch(ctx, settlementBatch.MetaData.DA)
+		err = m.ProcessNextDABatch(ctx, settlementBatch.MetaData.DA)
 		if err != nil {
 			return err
 		}
 
-		currentHeight = m.store.Height()
+		currentHeight = m.Store.Height()
 
 		err = m.updateStateIndex(settlementBatch.StateIndex)
 		if err != nil {
@@ -67,8 +67,8 @@ func (m *Manager) syncUntilTarget(ctx context.Context, syncTarget uint64) error 
 }
 
 func (m *Manager) updateStateIndex(stateIndex uint64) error {
-	atomic.StoreUint64(&m.lastState.SLStateIndex, stateIndex)
-	_, err := m.store.UpdateState(m.lastState, nil)
+	atomic.StoreUint64(&m.LastState.SLStateIndex, stateIndex)
+	_, err := m.Store.UpdateState(m.LastState, nil)
 	if err != nil {
 		m.logger.Error("Failed to update state", "error", err)
 		return err
@@ -76,7 +76,7 @@ func (m *Manager) updateStateIndex(stateIndex uint64) error {
 	return nil
 }
 
-func (m *Manager) processNextDABatch(ctx context.Context, daMetaData *da.DASubmitMetaData) error {
+func (m *Manager) ProcessNextDABatch(ctx context.Context, daMetaData *da.DASubmitMetaData) error {
 	m.logger.Debug("trying to retrieve batch from DA", "daHeight", daMetaData.Height)
 	batchResp := m.fetchBatch(daMetaData)
 	if batchResp.Code != da.StatusSuccess {
@@ -87,7 +87,7 @@ func (m *Manager) processNextDABatch(ctx context.Context, daMetaData *da.DASubmi
 
 	for _, batch := range batchResp.Batches {
 		for i, block := range batch.Blocks {
-			if block.Header.Height != m.store.NextHeight() {
+			if block.Header.Height != m.Store.NextHeight() {
 				continue
 			}
 			err := m.applyBlock(ctx, block, batch.Commits[i], blockMetaData{source: daBlock, daHeight: daMetaData.Height})
@@ -107,7 +107,7 @@ func (m *Manager) processNextDABatch(ctx context.Context, daMetaData *da.DASubmi
 
 func (m *Manager) fetchBatch(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
 	// Check batch availability
-	availabilityRes := m.retriever.CheckBatchAvailability(daMetaData)
+	availabilityRes := m.Retriever.CheckBatchAvailability(daMetaData)
 	if availabilityRes.Code != da.StatusSuccess {
 		return da.ResultRetrieveBatch{
 			BaseResult: da.BaseResult{
@@ -118,7 +118,7 @@ func (m *Manager) fetchBatch(daMetaData *da.DASubmitMetaData) da.ResultRetrieveB
 		}
 	}
 	//batchRes.MetaData includes proofs necessary to open disputes with the Hub
-	batchRes := m.retriever.RetrieveBatches(daMetaData)
+	batchRes := m.Retriever.RetrieveBatches(daMetaData)
 	//TODO(srene) : for invalid transactions there is no specific error code since it will need to be validated somewhere else for fraud proving.
 	//NMT proofs (availRes.MetaData.Proofs) are included in the result batchRes, necessary to be included in the dispute
 	return batchRes

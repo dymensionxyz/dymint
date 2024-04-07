@@ -11,7 +11,7 @@ import (
 // for non aggregator: updating the sync target which will be used by retrieveLoop to sync until this target.
 func (m *Manager) SyncTargetLoop(ctx context.Context) {
 	m.logger.Info("Started sync target loop")
-	subscription, err := m.pubsub.Subscribe(ctx, "syncTargetLoop", settlement.EventQueryNewSettlementBatchAccepted)
+	subscription, err := m.Pubsub.Subscribe(ctx, "syncTargetLoop", settlement.EventQueryNewSettlementBatchAccepted)
 	if err != nil {
 		m.logger.Error("failed to subscribe to state update events")
 		panic(err)
@@ -23,11 +23,11 @@ func (m *Manager) SyncTargetLoop(ctx context.Context) {
 			return
 		case event := <-subscription.Out():
 			eventData := event.Data().(*settlement.EventDataNewSettlementBatchAccepted)
-			if eventData.EndHeight <= m.store.Height() {
+			if eventData.EndHeight <= m.Store.Height() {
 				m.logger.Error("syncTargetLoop: event is old, skipping")
 				continue
 			}
-			m.updateSyncParams(eventData.EndHeight)
+			m.UpdateSyncParams(eventData.EndHeight)
 			m.syncTargetDiode.Set(diodes.GenericDataType(&eventData.EndHeight))
 		case <-subscription.Cancelled():
 			m.logger.Info("syncTargetLoop subscription canceled")

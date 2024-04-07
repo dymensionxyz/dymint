@@ -32,27 +32,28 @@ import (
 // Manager is responsible for aggregating transactions into blocks.
 type Manager struct {
 	// Configuration
-	conf        config.BlockManagerConfig
-	genesis     *tmtypes.GenesisDoc
-	proposerKey crypto.PrivKey
+	Conf        config.BlockManagerConfig
+	Genesis     *tmtypes.GenesisDoc
+	ProposerKey crypto.PrivKey
 
 	// Store and execution
-	store     store.Store
-	lastState types.State
-	executor  *BlockExecutor
+	Store     store.Store
+	LastState types.State
+	Executor  *BlockExecutor
 
 	// Clients and servers
-	pubsub           *pubsub.Server
-	p2pClient        *p2p.Client
-	dalc             da.DataAvailabilityLayerClient
-	settlementClient settlement.LayerI
+	Pubsub    *pubsub.Server
+	p2pClient *p2p.Client
+	DAClient  da.DataAvailabilityLayerClient
+	SLClient  settlement.LayerI
 
 	// Data retrieval
-	retriever da.BatchRetriever
+	Retriever  da.BatchRetriever
+	SyncTarget uint64
 
+	/* -------------------------------- internal -------------------------------- */
 	// Synchronization
 	syncTargetDiode diodes.Diode
-	syncTarget      uint64
 	isSyncedCond    sync.Cond
 
 	// Block production
@@ -105,17 +106,17 @@ func NewManager(
 	batchInProcess.Store(false)
 
 	agg := &Manager{
-		pubsub:           pubsub,
-		p2pClient:        p2pClient,
-		proposerKey:      proposerKey,
-		conf:             conf,
-		genesis:          genesis,
-		lastState:        s,
-		store:            store,
-		executor:         exec,
-		dalc:             dalc,
-		settlementClient: settlementClient,
-		retriever:        dalc.(da.BatchRetriever),
+		Pubsub:      pubsub,
+		p2pClient:   p2pClient,
+		ProposerKey: proposerKey,
+		Conf:        conf,
+		Genesis:     genesis,
+		LastState:   s,
+		Store:       store,
+		Executor:    exec,
+		DAClient:    dalc,
+		SLClient:    settlementClient,
+		Retriever:   dalc.(da.BatchRetriever),
 		// channels are buffered to avoid blocking on input/output operations, buffer sizes are arbitrary
 		syncTargetDiode:       diodes.NewOneToOne(1, nil),
 		isSyncedCond:          *sync.NewCond(new(sync.Mutex)),
@@ -134,7 +135,7 @@ func NewManager(
 func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 	m.logger.Info("Starting the block manager")
 
-	err := m.syncBlockManager(ctx)
+	err := m.syncBlockManagerOnInit(ctx)
 	if err != nil {
 		err = fmt.Errorf("failed to sync block manager: %w", err)
 		return err
@@ -143,15 +144,15 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 	//TODO (#283): set aggregator mode by proposer addr on the hub
 	if isAggregator {
 		//make sure local signing key is the registered on the hub
-		slProposerKey := m.settlementClient.GetProposer().PublicKey.Bytes()
-		localProposerKey, _ := m.proposerKey.GetPublic().Raw()
+		slProposerKey := m.SLClient.GetProposer().PublicKey.Bytes()
+		localProposerKey, _ := m.ProposerKey.GetPublic().Raw()
 		if !bytes.Equal(slProposerKey, localProposerKey) {
-			return fmt.Errorf("proposer key mismatch: settlement proposer key: %s, block manager proposer key: %s", slProposerKey, m.proposerKey.GetPublic())
+			return fmt.Errorf("proposer key mismatch: settlement proposer key: %s, block manager proposer key: %s", slProposerKey, m.ProposerKey.GetPublic())
 		}
 		m.logger.Info("Starting in aggregator mode")
 
 		// Check if InitChain flow is needed
-		if m.lastState.IsGenesis() {
+		if m.LastState.IsGenesis() {
 			m.logger.Info("Running InitChain")
 
 			err := m.RunInitChain(ctx)
@@ -172,9 +173,9 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 	return nil
 }
 
-// syncBlockManager enforces the node to be synced on initial run.
-func (m *Manager) syncBlockManager(ctx context.Context) error {
-	resultRetrieveBatch, err := m.getLatestBatchFromSL(ctx)
+// syncBlockManagerOnInit enforces the node to be synced on initial run.
+func (m *Manager) syncBlockManagerOnInit(ctx context.Context) error {
+	resultRetrieveBatch, err := m.SLClient.RetrieveBatch()
 	// Set the syncTarget according to the result
 	if err != nil {
 		//TODO: separate between fresh rollapp and non-registred rollapp
@@ -182,26 +183,26 @@ func (m *Manager) syncBlockManager(ctx context.Context) error {
 			// Since we requested the latest batch and got batch not found it means
 			// the SL still hasn't got any batches for this chain.
 			m.logger.Info("No batches for chain found in SL. Start writing first batch")
-			atomic.StoreUint64(&m.syncTarget, uint64(m.genesis.InitialHeight-1))
+			atomic.StoreUint64(&m.SyncTarget, uint64(m.Genesis.InitialHeight-1))
 			return nil
 		}
 		return err
 	}
-	atomic.StoreUint64(&m.syncTarget, resultRetrieveBatch.EndHeight)
+	atomic.StoreUint64(&m.SyncTarget, resultRetrieveBatch.EndHeight)
 	err = m.syncUntilTarget(ctx, resultRetrieveBatch.EndHeight)
 	if err != nil {
 		return err
 	}
 
-	m.logger.Info("Synced", "current height", m.store.Height(), "syncTarget", atomic.LoadUint64(&m.syncTarget))
+	m.logger.Info("Synced", "current height", m.Store.Height(), "syncTarget", atomic.LoadUint64(&m.SyncTarget))
 	return nil
 }
 
-// updateSyncParams updates the sync target and state index if necessary
-func (m *Manager) updateSyncParams(endHeight uint64) {
+// UpdateSyncParams updates the sync target and state index if necessary
+func (m *Manager) UpdateSyncParams(endHeight uint64) {
 	types.RollappHubHeightGauge.Set(float64(endHeight))
 	m.logger.Info("Received new syncTarget", "syncTarget", endHeight)
-	atomic.StoreUint64(&m.syncTarget, endHeight)
+	atomic.StoreUint64(&m.SyncTarget, endHeight)
 	atomic.StoreInt64(&m.lastSubmissionTime, time.Now().UnixNano())
 }
 
@@ -215,9 +216,9 @@ func getAddress(key crypto.PrivKey) ([]byte, error) {
 
 // EventListener registers events to callbacks.
 func (m *Manager) EventListener(ctx context.Context, isAggregator bool) {
-	go utils.SubscribeAndHandleEvents(ctx, m.pubsub, "nodeHealthStatusHandler", events.EventQueryHealthStatus, m.healthStatusEventCallback, m.logger)
+	go utils.SubscribeAndHandleEvents(ctx, m.Pubsub, "nodeHealthStatusHandler", events.EventQueryHealthStatus, m.healthStatusEventCallback, m.logger)
 	if !isAggregator {
-		go utils.SubscribeAndHandleEvents(ctx, m.pubsub, "ApplyBlockLoop", p2p.EventQueryNewNewGossipedBlock, m.applyBlockCallback, m.logger, 100)
+		go utils.SubscribeAndHandleEvents(ctx, m.Pubsub, "ApplyBlockLoop", p2p.EventQueryNewNewGossipedBlock, m.applyBlockCallback, m.logger, 100)
 	}
 
 }
@@ -236,21 +237,16 @@ func (m *Manager) applyBlockCallback(event pubsub.Message) {
 
 	// if height is expected, apply
 	// if height is higher than expected (future block), cache
-	if block.Header.Height == m.store.NextHeight() {
+	if block.Header.Height == m.Store.NextHeight() {
 		err := m.applyBlock(context.Background(), &block, &commit, blockMetaData{source: gossipedBlock})
 		if err != nil {
 			m.logger.Error("failed to apply gossiped block", "err", err)
 		}
-	} else if block.Header.Height > m.store.Height() {
+	} else if block.Header.Height > m.Store.Height() {
 		m.prevBlock[block.Header.Height] = &block
 		m.prevCommit[block.Header.Height] = &commit
-		m.logger.Debug("Caching block", "block height", block.Header.Height, "store height", m.store.Height())
+		m.logger.Debug("Caching block", "block height", block.Header.Height, "store height", m.Store.Height())
 	}
-}
-
-// getLatestBatchFromSL gets the latest batch from the SL
-func (m *Manager) getLatestBatchFromSL(ctx context.Context) (*settlement.ResultRetrieveBatch, error) {
-	return m.settlementClient.RetrieveBatch()
 }
 
 // getInitialState tries to load lastState from Store, and if it's not available it reads GenesisDoc.

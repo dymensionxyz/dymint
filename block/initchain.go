@@ -9,7 +9,7 @@ import (
 
 func (m *Manager) RunInitChain(ctx context.Context) error {
 	//get the proposer's consensus pubkey
-	proposer := m.settlementClient.GetProposer()
+	proposer := m.SLClient.GetProposer()
 	tmPubKey, err := cryptocodec.ToTmPubKeyInterface(proposer.PublicKey)
 	if err != nil {
 		return err
@@ -17,14 +17,14 @@ func (m *Manager) RunInitChain(ctx context.Context) error {
 	gensisValSet := []*tmtypes.Validator{tmtypes.NewValidator(tmPubKey, 1)}
 
 	//call initChain with both addresses
-	res, err := m.executor.InitChain(m.genesis, gensisValSet)
+	res, err := m.Executor.InitChain(m.Genesis, gensisValSet)
 	if err != nil {
 		return err
 	}
 
 	//update the state with only the consensus pubkey
-	m.executor.UpdateStateAfterInitChain(&m.lastState, res, gensisValSet)
-	if _, err := m.store.UpdateState(m.lastState, nil); err != nil {
+	m.Executor.UpdateStateAfterInitChain(&m.LastState, res, gensisValSet)
+	if _, err := m.Store.UpdateState(m.LastState, nil); err != nil {
 		return err
 	}
 

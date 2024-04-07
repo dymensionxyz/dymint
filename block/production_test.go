@@ -1,4 +1,4 @@
-package block
+package block_test
 
 import (
 	"context"
@@ -34,22 +34,22 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 	require.NoError(err)
 
 	// Init manager with empty blocks feature disabled
-	managerConfigCreatesEmptyBlocks := getManagerConfig()
+	managerConfigCreatesEmptyBlocks := testutil.GetManagerConfig()
 	managerConfigCreatesEmptyBlocks.BlockTime = blockTime
 	managerConfigCreatesEmptyBlocks.EmptyBlocksMaxTime = 0 * time.Second
-	managerWithEmptyBlocks, err := getManager(managerConfigCreatesEmptyBlocks, nil, nil, 1, 1, 0, proxyApp, nil)
+	managerWithEmptyBlocks, err := testutil.GetManager(managerConfigCreatesEmptyBlocks, nil, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
 	// Init manager with empty blocks feature enabled
-	managerConfig := getManagerConfig()
+	managerConfig := testutil.GetManagerConfig()
 	managerConfig.BlockTime = blockTime
 	managerConfig.EmptyBlocksMaxTime = EmptyBlocksMaxTime
-	manager, err := getManager(managerConfig, nil, nil, 1, 1, 0, proxyApp, nil)
+	manager, err := testutil.GetManager(managerConfig, nil, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
 	//Check initial height
 	initialHeight := uint64(0)
-	require.Equal(initialHeight, manager.store.Height())
+	require.Equal(initialHeight, manager.Store.Height())
 
 	mCtx, cancel := context.WithTimeout(context.Background(), runTime)
 	defer cancel()
@@ -57,19 +57,19 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 	go managerWithEmptyBlocks.ProduceBlockLoop(mCtx)
 	<-mCtx.Done()
 
-	require.Greater(manager.store.Height(), initialHeight)
-	require.Greater(managerWithEmptyBlocks.store.Height(), initialHeight)
-	assert.Greater(managerWithEmptyBlocks.store.Height(), manager.store.Height())
+	require.Greater(manager.Store.Height(), initialHeight)
+	require.Greater(managerWithEmptyBlocks.Store.Height(), initialHeight)
+	assert.Greater(managerWithEmptyBlocks.Store.Height(), manager.Store.Height())
 
 	// Check that blocks are created with empty blocks feature disabled
-	assert.LessOrEqual(manager.store.Height(), uint64(runTime/EmptyBlocksMaxTime))
-	assert.LessOrEqual(managerWithEmptyBlocks.store.Height(), uint64(runTime/blockTime))
+	assert.LessOrEqual(manager.Store.Height(), uint64(runTime/EmptyBlocksMaxTime))
+	assert.LessOrEqual(managerWithEmptyBlocks.Store.Height(), uint64(runTime/blockTime))
 
-	for i := uint64(2); i < managerWithEmptyBlocks.store.Height(); i++ {
-		prevBlock, err := managerWithEmptyBlocks.store.LoadBlock(i - 1)
+	for i := uint64(2); i < managerWithEmptyBlocks.Store.Height(); i++ {
+		prevBlock, err := managerWithEmptyBlocks.Store.LoadBlock(i - 1)
 		assert.NoError(err)
 
-		block, err := managerWithEmptyBlocks.store.LoadBlock(i)
+		block, err := managerWithEmptyBlocks.Store.LoadBlock(i)
 		assert.NoError(err)
 		assert.NotZero(block.Header.Time)
 
@@ -78,16 +78,16 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 		assert.Less(diff, blockTime+blockTime/10)
 	}
 
-	for i := uint64(2); i < manager.store.Height(); i++ {
-		prevBlock, err := manager.store.LoadBlock(i - 1)
+	for i := uint64(2); i < manager.Store.Height(); i++ {
+		prevBlock, err := manager.Store.LoadBlock(i - 1)
 		assert.NoError(err)
 
-		block, err := manager.store.LoadBlock(i)
+		block, err := manager.Store.LoadBlock(i)
 		assert.NoError(err)
 		assert.NotZero(block.Header.Time)
 
 		diff := time.Unix(0, int64(block.Header.Time)).Sub(time.Unix(0, int64(prevBlock.Header.Time)))
-		assert.Greater(diff, manager.conf.EmptyBlocksMaxTime)
+		assert.Greater(diff, manager.Conf.EmptyBlocksMaxTime)
 	}
 }
 
@@ -102,10 +102,10 @@ func TestCreateEmptyBlocksNew(t *testing.T) {
 	err := proxyApp.Start()
 	require.NoError(err)
 	// Init manager
-	managerConfig := getManagerConfig()
+	managerConfig := testutil.GetManagerConfig()
 	managerConfig.BlockTime = 200 * time.Millisecond
 	managerConfig.EmptyBlocksMaxTime = 1 * time.Second
-	manager, err := getManager(managerConfig, nil, nil, 1, 1, 0, proxyApp, nil)
+	manager, err := testutil.GetManager(managerConfig, nil, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
 	abciClient, err := clientCreator.NewABCIClient()
@@ -129,7 +129,7 @@ func TestCreateEmptyBlocksNew(t *testing.T) {
 
 	//Check initial height
 	expectedHeight := uint64(0)
-	assert.Equal(expectedHeight, manager.store.Height())
+	assert.Equal(expectedHeight, manager.Store.Height())
 
 	mCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -141,23 +141,23 @@ func TestCreateEmptyBlocksNew(t *testing.T) {
 
 	<-mCtx.Done()
 	foundTx := false
-	assert.LessOrEqual(manager.store.Height(), uint64(10))
-	for i := uint64(2); i < manager.store.Height(); i++ {
-		prevBlock, err := manager.store.LoadBlock(i - 1)
+	assert.LessOrEqual(manager.Store.Height(), uint64(10))
+	for i := uint64(2); i < manager.Store.Height(); i++ {
+		prevBlock, err := manager.Store.LoadBlock(i - 1)
 		assert.NoError(err)
 
-		block, err := manager.store.LoadBlock(i)
+		block, err := manager.Store.LoadBlock(i)
 		assert.NoError(err)
 		assert.NotZero(block.Header.Time)
 
 		diff := time.Unix(0, int64(block.Header.Time)).Sub(time.Unix(0, int64(prevBlock.Header.Time)))
 		txsCount := len(block.Data.Txs)
 		if txsCount == 0 {
-			assert.Greater(diff, manager.conf.EmptyBlocksMaxTime)
-			assert.Less(diff, manager.conf.EmptyBlocksMaxTime+1*time.Second)
+			assert.Greater(diff, manager.Conf.EmptyBlocksMaxTime)
+			assert.Less(diff, manager.Conf.EmptyBlocksMaxTime+1*time.Second)
 		} else {
 			foundTx = true
-			assert.Less(diff, manager.conf.BlockTime+100*time.Millisecond)
+			assert.Less(diff, manager.Conf.BlockTime+100*time.Millisecond)
 		}
 
 		fmt.Println("time diff:", diff, "tx len", 0)
@@ -169,7 +169,7 @@ func TestInvalidBatch(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	manager, err := getManager(getManagerConfig(), nil, nil, 1, 1, 0, nil, nil)
+	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, nil, 1, 1, 0, nil, nil)
 	require.NoError(err)
 
 	batchSize := uint64(5)
@@ -193,8 +193,8 @@ func TestInvalidBatch(t *testing.T) {
 			EndHeight:   c.endHeight,
 		}
 
-		manager.updateSyncParams(syncTarget)
-		err := manager.validateBatch(batch)
+		manager.UpdateSyncParams(syncTarget)
+		err := manager.ValidateBatch(batch)
 		if c.shouldError {
 			assert.Error(err)
 		} else {
