@@ -18,7 +18,6 @@ import (
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	rollapptypes "github.com/dymensionxyz/dymension/v3/x/rollapp/types"
 	"github.com/dymensionxyz/dymint/da"
-	"github.com/dymensionxyz/dymint/log"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
@@ -42,7 +41,7 @@ type LayerClient struct {
 var _ settlement.LayerI = (*LayerClient)(nil)
 
 // Init initializes the mock layer client.
-func (m *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, logger log.Logger, options ...settlement.Option) error {
+func (m *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, logger types.Logger, options ...settlement.Option) error {
 	HubClientMock, err := newHubClient(config, pubsub, logger)
 	if err != nil {
 		return err
@@ -67,7 +66,7 @@ func (m *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, logg
 type HubClient struct {
 	ProposerPubKey string
 	slStateIndex   uint64
-	logger         log.Logger
+	logger         types.Logger
 	pubsub         *pubsub.Server
 	latestHeight   uint64
 	settlementKV   store.KVStore
@@ -75,7 +74,7 @@ type HubClient struct {
 
 var _ settlement.HubClient = &HubClient{}
 
-func newHubClient(config settlement.Config, pubsub *pubsub.Server, logger log.Logger) (*HubClient, error) {
+func newHubClient(config settlement.Config, pubsub *pubsub.Server, logger types.Logger) (*HubClient, error) {
 	latestHeight := uint64(0)
 	slStateIndex := uint64(0)
 	slstore, proposer, err := initConfig(config)

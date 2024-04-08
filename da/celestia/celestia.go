@@ -20,7 +20,6 @@ import (
 
 	"github.com/dymensionxyz/dymint/da"
 	celtypes "github.com/dymensionxyz/dymint/da/celestia/types"
-	"github.com/dymensionxyz/dymint/log"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
 	pb "github.com/dymensionxyz/dymint/types/pb/dymint"
@@ -32,7 +31,7 @@ type DataAvailabilityLayerClient struct {
 
 	pubsubServer     *pubsub.Server
 	config           Config
-	logger           log.Logger
+	logger           types.Logger
 	ctx              context.Context
 	cancel           context.CancelFunc
 	rpcRetryDelay    time.Duration
@@ -72,7 +71,7 @@ func WithSubmitRetryDelay(delay time.Duration) da.Option {
 }
 
 // Init initializes DataAvailabilityLayerClient instance.
-func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.Server, kvStore store.KVStore, logger log.Logger, options ...da.Option) error {
+func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.Server, kvStore store.KVStore, logger types.Logger, options ...da.Option) error {
 	c.logger = logger
 
 	if len(config) <= 0 {

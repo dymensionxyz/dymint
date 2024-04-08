@@ -7,8 +7,8 @@ import (
 	availtypes "github.com/centrifuge/go-substrate-rpc-client/v4/types"
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/da/avail"
-	"github.com/dymensionxyz/dymint/log/test"
 	mocks "github.com/dymensionxyz/dymint/mocks/da/avail"
+	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -133,7 +133,7 @@ func TestRetriveBatches(t *testing.T) {
 	assert.NoError(err)
 	// Start the DALC
 	dalc := avail.DataAvailabilityLayerClient{}
-	err = dalc.Init(configBytes, pubsubServer, nil, test.NewLogger(t), options...)
+	err = dalc.Init(configBytes, pubsubServer, nil, testutil.NewLogger(t), options...)
 	require.NoError(err)
 	err = dalc.Start()
 	require.NoError(err)

@@ -3,12 +3,12 @@ package utils
 import (
 	"context"
 
-	"github.com/dymensionxyz/dymint/log"
+	"github.com/dymensionxyz/dymint/types"
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
 // SubscribeAndHandleEvents subscribes to events and sends back a callback
-func SubscribeAndHandleEvents(ctx context.Context, pubsubServer *pubsub.Server, clientID string, eventQuery pubsub.Query, callback func(event pubsub.Message), logger log.Logger, outCapacity ...int) {
+func SubscribeAndHandleEvents(ctx context.Context, pubsubServer *pubsub.Server, clientID string, eventQuery pubsub.Query, callback func(event pubsub.Message), logger types.Logger, outCapacity ...int) {
 	subscription, err := pubsubServer.Subscribe(ctx, clientID, eventQuery, outCapacity...)
 	if err != nil {
 		logger.Error("failed to subscribe to events")

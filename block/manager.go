@@ -8,8 +8,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	// Importing the general purpose Cosmos blockchain client
-
 	"code.cloudfoundry.org/go-diodes"
 
 	"github.com/dymensionxyz/dymint/node/events"
@@ -24,7 +22,6 @@ import (
 
 	"github.com/dymensionxyz/dymint/config"
 	"github.com/dymensionxyz/dymint/da"
-	"github.com/dymensionxyz/dymint/log"
 	"github.com/dymensionxyz/dymint/mempool"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/state"
@@ -32,69 +29,46 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
-type blockSource string
-
-const (
-	producedBlock blockSource = "produced"
-	gossipedBlock blockSource = "gossip"
-	daBlock       blockSource = "da"
-)
-
-type blockMetaData struct {
-	source   blockSource
-	daHeight uint64
-}
-
 // Manager is responsible for aggregating transactions into blocks.
 type Manager struct {
-	pubsub *pubsub.Server
-
-	p2pClient *p2p.Client
-
-	lastState types.State
-
-	conf    config.BlockManagerConfig
-	genesis *tmtypes.GenesisDoc
-
+	// Configuration
+	conf        config.BlockManagerConfig
+	genesis     *tmtypes.GenesisDoc
 	proposerKey crypto.PrivKey
 
-	store    store.Store
-	executor *state.BlockExecutor
+	// Store and execution
+	store     store.Store
+	lastState types.State
+	executor  *state.BlockExecutor
 
+	// Clients and servers
+	pubsub           *pubsub.Server
+	p2pClient        *p2p.Client
 	dalc             da.DataAvailabilityLayerClient
 	settlementClient settlement.LayerI
-	retriever        da.BatchRetriever
 
+	// Data retrieval
+	retriever da.BatchRetriever
+
+	// Synchronization
 	syncTargetDiode diodes.Diode
+	syncTarget      uint64
+	isSyncedCond    sync.Cond
 
+	// Block production
 	shouldProduceBlocksCh chan bool
 	produceEmptyBlockCh   chan bool
-
-	syncTarget         uint64
-	lastSubmissionTime int64
-	batchInProcess     atomic.Value
-	isSyncedCond       sync.Cond
-
+	lastSubmissionTime    int64
+	batchInProcess        atomic.Value
 	produceBlockMutex     sync.Mutex
 	applyCachedBlockMutex sync.Mutex
 
-	syncCache map[uint64]*types.Block
+	// Logging
+	logger types.Logger
 
-	logger log.Logger
-
+	// Previous data
 	prevBlock  map[uint64]*types.Block
 	prevCommit map[uint64]*types.Commit
-}
-
-// getInitialState tries to load lastState from Store, and if it's not available it reads GenesisDoc.
-func getInitialState(store store.Store, genesis *tmtypes.GenesisDoc, logger log.Logger) (types.State, error) {
-	s, err := store.LoadState()
-	if err == types.ErrNoStateFound {
-		logger.Info("failed to find state in the store, creating new state from genesis")
-		return types.NewFromGenesisDoc(genesis)
-	}
-
-	return s, err
 }
 
 // NewManager creates new block Manager.
@@ -110,7 +84,7 @@ func NewManager(
 	eventBus *tmtypes.EventBus,
 	pubsub *pubsub.Server,
 	p2pClient *p2p.Client,
-	logger log.Logger,
+	logger types.Logger,
 ) (*Manager, error) {
 
 	proposerAddress, err := getAddress(proposerKey)
@@ -144,7 +118,6 @@ func NewManager(
 		retriever:        dalc.(da.BatchRetriever),
 		// channels are buffered to avoid blocking on input/output operations, buffer sizes are arbitrary
 		syncTargetDiode:       diodes.NewOneToOne(1, nil),
-		syncCache:             make(map[uint64]*types.Block),
 		isSyncedCond:          *sync.NewCond(new(sync.Mutex)),
 		batchInProcess:        batchInProcess,
 		shouldProduceBlocksCh: make(chan bool, 1),
@@ -279,4 +252,15 @@ func (m *Manager) applyBlockCallback(event pubsub.Message) {
 // getLatestBatchFromSL gets the latest batch from the SL
 func (m *Manager) getLatestBatchFromSL(ctx context.Context) (*settlement.ResultRetrieveBatch, error) {
 	return m.settlementClient.RetrieveBatch()
+}
+
+// getInitialState tries to load lastState from Store, and if it's not available it reads GenesisDoc.
+func getInitialState(store store.Store, genesis *tmtypes.GenesisDoc, logger types.Logger) (types.State, error) {
+	s, err := store.LoadState()
+	if err == types.ErrNoStateFound {
+		logger.Info("failed to find state in the store, creating new state from genesis")
+		return types.NewFromGenesisDoc(genesis)
+	}
+
+	return s, err
 }

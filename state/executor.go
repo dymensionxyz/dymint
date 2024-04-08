@@ -18,7 +18,6 @@ import (
 	"go.uber.org/multierr"
 
 	abciconv "github.com/dymensionxyz/dymint/conv/abci"
-	"github.com/dymensionxyz/dymint/log"
 	"github.com/dymensionxyz/dymint/mempool"
 	"github.com/dymensionxyz/dymint/types"
 )
@@ -34,12 +33,12 @@ type BlockExecutor struct {
 
 	eventBus *tmtypes.EventBus
 
-	logger log.Logger
+	logger types.Logger
 }
 
 // NewBlockExecutor creates new instance of BlockExecutor.
 // Proposer address and namespace ID will be used in all newly created blocks.
-func NewBlockExecutor(proposerAddress []byte, namespaceID string, chainID string, mempool mempool.Mempool, proxyApp proxy.AppConns, eventBus *tmtypes.EventBus, logger log.Logger) (*BlockExecutor, error) {
+func NewBlockExecutor(proposerAddress []byte, namespaceID string, chainID string, mempool mempool.Mempool, proxyApp proxy.AppConns, eventBus *tmtypes.EventBus, logger types.Logger) (*BlockExecutor, error) {
 	bytes, err := hex.DecodeString(namespaceID)
 	if err != nil {
 		return nil, err

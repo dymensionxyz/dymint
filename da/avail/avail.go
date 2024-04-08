@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/avast/retry-go/v4"
-	"github.com/dymensionxyz/dymint/log"
 	"github.com/gogo/protobuf/proto"
 
 	"github.com/dymensionxyz/dymint/types"
@@ -59,7 +58,7 @@ type DataAvailabilityLayerClient struct {
 	client             SubstrateApiI
 	pubsubServer       *pubsub.Server
 	config             Config
-	logger             log.Logger
+	logger             types.Logger
 	ctx                context.Context
 	cancel             context.CancelFunc
 	txInclusionTimeout time.Duration
@@ -99,7 +98,7 @@ func WithBatchRetryAttempts(attempts uint) da.Option {
 }
 
 // Init initializes DataAvailabilityLayerClient instance.
-func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.Server, kvStore store.KVStore, logger log.Logger, options ...da.Option) error {
+func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.Server, kvStore store.KVStore, logger types.Logger, options ...da.Option) error {
 	c.logger = logger
 
 	if len(config) > 0 {

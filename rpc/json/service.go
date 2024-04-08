@@ -17,12 +17,12 @@ import (
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 
-	"github.com/dymensionxyz/dymint/log"
 	"github.com/dymensionxyz/dymint/rpc/client"
+	"github.com/dymensionxyz/dymint/types"
 )
 
 // GetHTTPHandler returns handler configured to serve Tendermint-compatible RPC.
-func GetHTTPHandler(l *client.Client, logger log.Logger) (http.Handler, error) {
+func GetHTTPHandler(l *client.Client, logger types.Logger) (http.Handler, error) {
 	return newHandler(newService(l, logger), json2.NewCodec(), logger), nil
 }
 
@@ -47,10 +47,10 @@ func newMethod(m interface{}) *method {
 type service struct {
 	client  *client.Client
 	methods map[string]*method
-	logger  log.Logger
+	logger  types.Logger
 }
 
-func newService(c *client.Client, l log.Logger) *service {
+func newService(c *client.Client, l types.Logger) *service {
 	s := service{
 		client: c,
 		logger: l,

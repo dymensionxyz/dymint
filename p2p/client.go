@@ -23,7 +23,7 @@ import (
 	"go.uber.org/multierr"
 
 	"github.com/dymensionxyz/dymint/config"
-	"github.com/dymensionxyz/dymint/log"
+	"github.com/dymensionxyz/dymint/types"
 )
 
 // TODO(tzdybal): refactor to configuration parameters
@@ -71,14 +71,14 @@ type Client struct {
 	// it's required because of discovery.Advertise call
 	cancel context.CancelFunc
 
-	logger log.Logger
+	logger types.Logger
 }
 
 // NewClient creates new Client object.
 //
 // Basic checks on parameters are done, and default parameters are provided for unset-configuration
 // TODO(tzdybal): consider passing entire config, not just P2P config, to reduce number of arguments
-func NewClient(conf config.P2PConfig, privKey crypto.PrivKey, chainID string, logger log.Logger) (*Client, error) {
+func NewClient(conf config.P2PConfig, privKey crypto.PrivKey, chainID string, logger types.Logger) (*Client, error) {
 	if privKey == nil {
 		return nil, errNoPrivKey
 	}

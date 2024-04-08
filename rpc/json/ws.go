@@ -8,14 +8,14 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"github.com/dymensionxyz/dymint/log"
+	"github.com/dymensionxyz/dymint/types"
 	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 )
 
 type wsConn struct {
 	conn   *websocket.Conn
 	queue  chan []byte
-	logger log.Logger
+	logger types.Logger
 }
 
 func (wsc *wsConn) sendLoop() {
