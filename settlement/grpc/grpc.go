@@ -130,7 +130,6 @@ func newHubClient(config settlement.Config, pubsub *pubsub.Server, logger log.Lo
 
 func initConfig(conf settlement.Config) (proposer string, err error) {
 	if conf.KeyringHomeDir == "" {
-
 		if conf.ProposerPubKey != "" {
 			proposer = conf.ProposerPubKey
 		} else {

@@ -182,10 +182,11 @@ func TestPostBatch(t *testing.T) {
 					}
 					rollappQueryClientMock.On("StateInfo", mock.Anything, mock.Anything).Return(
 						&rollapptypes.QueryGetStateInfoResponse{StateInfo: rollapptypes.StateInfo{
-							StartHeight: batch.StartHeight, StateInfoIndex: rollapptypes.StateInfoIndex{Index: 1}, DAPath: daMetaData.ToPath(), NumBlocks: 1}},
+							StartHeight: batch.StartHeight, StateInfoIndex: rollapptypes.StateInfoIndex{Index: 1}, DAPath: daMetaData.ToPath(), NumBlocks: 1,
+						}},
 						nil)
 				} else {
-					rollappQueryClientMock.On("LatestStateIndex", mock.Anything, mock.Anything).Return(nil, nil)
+					rollappQueryClientMock.On("LatestStateIndex", mock.Anything, mock.Anything).Return(nil, fmt.Errorf("error"))
 				}
 			}
 			hubClient, err := newDymensionHubClient(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)

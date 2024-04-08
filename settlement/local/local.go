@@ -28,8 +28,10 @@ import (
 
 const kvStoreDBName = "settlement"
 
-var settlementKVPrefix = []byte{0}
-var slStateIndexKey = []byte("slStateIndex")
+var (
+	settlementKVPrefix = []byte{0}
+	slStateIndexKey    = []byte("slStateIndex")
+)
 
 // LayerClient is an extension of the base settlement layer client
 // for usage in tests and local development.

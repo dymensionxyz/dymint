@@ -6,6 +6,9 @@ import (
 	"strconv"
 	"time"
 
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
 	"github.com/avast/retry-go/v4"
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/codec"
@@ -15,7 +18,6 @@ import (
 	rollapptypes "github.com/dymensionxyz/dymension/v3/x/rollapp/types"
 	"github.com/google/uuid"
 	"github.com/ignite/cli/ignite/pkg/cosmosaccount"
-	"github.com/pkg/errors"
 
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	sequencertypes "github.com/dymensionxyz/dymension/v3/x/sequencer/types"
@@ -185,7 +187,6 @@ func (d *HubClient) Start() error {
 	}
 	go d.eventHandler()
 	return nil
-
 }
 
 // Stop stops the HubClient.
@@ -286,14 +287,28 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 
 // GetLatestBatch returns the latest batch from the Dymension Hub.
 func (d *HubClient) GetLatestBatch(rollappID string) (*settlement.ResultRetrieveBatch, error) {
-	latestStateInfoIndexResp, err := d.rollappQueryClient.LatestStateIndex(d.ctx,
-		&rollapptypes.QueryGetLatestStateIndexRequest{RollappId: d.config.RollappID})
-	if latestStateInfoIndexResp == nil {
-		return nil, settlement.ErrBatchNotFound
-	}
+	var latestStateInfoIndexResp *rollapptypes.QueryGetLatestStateIndexResponse
+
+	err := d.RunWithRetry(func() error {
+		var err error
+		latestStateInfoIndexResp, err = d.rollappQueryClient.LatestStateIndex(d.ctx,
+			&rollapptypes.QueryGetLatestStateIndexRequest{RollappId: d.config.RollappID})
+
+		if status.Code(err) == codes.NotFound {
+			return retry.Unrecoverable(settlement.ErrBatchNotFound)
+		}
+
+		return err
+	})
 	if err != nil {
 		return nil, err
 	}
+
+	// not supposed to happen, but just in case
+	if latestStateInfoIndexResp == nil {
+		return nil, settlement.ErrEmptyResponse
+	}
+
 	latestBatch, err := d.GetBatchAtIndex(rollappID, latestStateInfoIndexResp.StateIndex.Index)
 	if err != nil {
 		return nil, err
@@ -303,26 +318,48 @@ func (d *HubClient) GetLatestBatch(rollappID string) (*settlement.ResultRetrieve
 
 // GetBatchAtIndex returns the batch at the given index from the Dymension Hub.
 func (d *HubClient) GetBatchAtIndex(rollappID string, index uint64) (*settlement.ResultRetrieveBatch, error) {
-	stateInfoResp, err := d.rollappQueryClient.StateInfo(d.ctx,
-		&rollapptypes.QueryGetStateInfoRequest{RollappId: d.config.RollappID, Index: index})
-	if stateInfoResp == nil {
-		return nil, settlement.ErrBatchNotFound
-	}
+	var stateInfoResp *rollapptypes.QueryGetStateInfoResponse
+	err := d.RunWithRetry(func() error {
+		var err error
+		stateInfoResp, err = d.rollappQueryClient.StateInfo(d.ctx,
+			&rollapptypes.QueryGetStateInfoRequest{RollappId: d.config.RollappID, Index: index})
+
+		if status.Code(err) == codes.NotFound {
+			return retry.Unrecoverable(settlement.ErrBatchNotFound)
+		}
+
+		return err
+	})
 	if err != nil {
 		return nil, err
 	}
+	// not supposed to happen, but just in case
+	if stateInfoResp == nil {
+		return nil, settlement.ErrEmptyResponse
+	}
+
 	return d.convertStateInfoToResultRetrieveBatch(&stateInfoResp.StateInfo)
 }
 
 // GetSequencers returns the bonded sequencers of the given rollapp.
 func (d *HubClient) GetSequencers(rollappID string) ([]*types.Sequencer, error) {
+	var res *sequencertypes.QueryGetSequencersByRollappByStatusResponse
 	req := &sequencertypes.QueryGetSequencersByRollappByStatusRequest{
 		RollappId: d.config.RollappID,
 		Status:    sequencertypes.Bonded,
 	}
-	res, err := d.sequencerQueryClient.SequencersByRollappByStatus(d.ctx, req)
+	err := d.RunWithRetry(func() error {
+		var err error
+		res, err = d.sequencerQueryClient.SequencersByRollappByStatus(d.ctx, req)
+		return err
+	})
 	if err != nil {
-		return nil, errors.Wrapf(settlement.ErrNoSequencerForRollapp, "rollappID: %s", rollappID)
+		return nil, err
+	}
+
+	// not supposed to happen, but just in case
+	if res == nil {
+		return nil, settlement.ErrEmptyResponse
 	}
 
 	sequencersList := make([]*types.Sequencer, 0, len(res.Sequencers))
@@ -347,15 +384,14 @@ func (d *HubClient) GetSequencers(rollappID string) ([]*types.Sequencer, error) 
 }
 
 func (d *HubClient) submitBatch(msgUpdateState *rollapptypes.MsgUpdateState) error {
-	err := retry.Do(func() error {
+	err := d.RunWithRetry(func() error {
 		txResp, err := d.client.BroadcastTx(d.config.DymAccountName, msgUpdateState)
 		if err != nil || txResp.Code != 0 {
 			d.logger.Error("Error sending batch to settlement layer", "error", err)
 			return err
 		}
 		return nil
-	}, retry.Context(d.ctx), retry.LastErrorOnly(true), retry.Delay(d.batchRetryDelay),
-		retry.MaxDelay(batchRetryMaxDelay), retry.Attempts(d.batchRetryAttempts))
+	})
 	return err
 }
 
@@ -423,7 +459,6 @@ func (d *HubClient) convertBatchToMsgUpdateState(batch *types.Batch, daResult *d
 		BDs:         rollapptypes.BlockDescriptors{BD: blockDescriptors},
 	}
 	return settlementBatch, nil
-
 }
 
 func getCosmosClientOptions(config *settlement.Config) []cosmosclient.Option {
@@ -496,24 +531,34 @@ func (d *HubClient) convertStateInfoToResultRetrieveBatch(stateInfo *rollapptype
 	}
 	return &settlement.ResultRetrieveBatch{
 		BaseResult: settlement.BaseResult{Code: settlement.StatusSuccess, StateIndex: stateInfo.StateInfoIndex.Index},
-		Batch:      batchResult}, nil
+		Batch:      batchResult,
+	}, nil
 }
 
 // TODO(omritoptix): Change the retry attempts to be only for the batch polling. Also we need to have a more
 // bullet proof check as theoretically the tx can stay in the mempool longer then our retry attempts.
 func (d *HubClient) waitForBatchInclusion(batchStartHeight uint64) (*settlement.ResultRetrieveBatch, error) {
 	var resultRetriveBatch *settlement.ResultRetrieveBatch
-	err := retry.Do(func() error {
+	err := d.RunWithRetry(func() error {
 		latestBatch, err := d.GetLatestBatch(d.config.RollappID)
 		if err != nil {
 			return err
 		}
-		if latestBatch.Batch.StartHeight == batchStartHeight {
-			resultRetriveBatch = latestBatch
-			return nil
+		if latestBatch.Batch.StartHeight != batchStartHeight {
+			return settlement.ErrBatchNotFound
 		}
-		return settlement.ErrBatchNotFound
-	}, retry.Context(d.ctx), retry.LastErrorOnly(true),
-		retry.Delay(d.batchRetryDelay), retry.Attempts(d.batchRetryAttempts), retry.MaxDelay(batchRetryMaxDelay))
+		resultRetriveBatch = latestBatch
+		return nil
+	})
 	return resultRetriveBatch, err
+}
+
+func (d *HubClient) RunWithRetry(operation func() error) error {
+	return retry.Do(operation,
+		retry.Context(d.ctx),
+		retry.LastErrorOnly(true),
+		retry.Delay(d.batchRetryDelay),
+		retry.Attempts(d.batchRetryAttempts),
+		retry.MaxDelay(batchRetryMaxDelay),
+	)
 }

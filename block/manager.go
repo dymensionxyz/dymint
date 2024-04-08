@@ -12,7 +12,6 @@ import (
 
 	"code.cloudfoundry.org/go-diodes"
 
-	"github.com/avast/retry-go/v4"
 	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/utils"
@@ -279,23 +278,5 @@ func (m *Manager) applyBlockCallback(event pubsub.Message) {
 
 // getLatestBatchFromSL gets the latest batch from the SL
 func (m *Manager) getLatestBatchFromSL(ctx context.Context) (*settlement.ResultRetrieveBatch, error) {
-	var resultRetrieveBatch *settlement.ResultRetrieveBatch
-	var err error
-	// Get latest batch from SL
-	err = retry.Do(
-		func() error {
-			resultRetrieveBatch, err = m.settlementClient.RetrieveBatch()
-			if err != nil {
-				return err
-			}
-			return nil
-		},
-		retry.LastErrorOnly(true),
-		retry.Context(ctx),
-		retry.Attempts(1),
-	)
-	if err != nil {
-		return resultRetrieveBatch, err
-	}
-	return resultRetrieveBatch, nil
+	return m.settlementClient.RetrieveBatch()
 }
