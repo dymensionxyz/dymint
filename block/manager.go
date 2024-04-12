@@ -134,12 +134,6 @@ func NewManager(
 func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 	m.logger.Info("Starting the block manager")
 
-	err := m.syncBlockManager(ctx)
-	if err != nil {
-		err = fmt.Errorf("failed to sync block manager: %w", err)
-		return err
-	}
-
 	if isAggregator {
 		//make sure local signing key is the registered on the hub
 		slProposerKey := m.settlementClient.GetProposer().PublicKey.Bytes()
@@ -156,6 +150,12 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	err := m.syncBlockManager(ctx)
+	if err != nil {
+		err = fmt.Errorf("failed to sync block manager: %w", err)
+		return err
 	}
 
 	if isAggregator {
