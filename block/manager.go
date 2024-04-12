@@ -148,15 +148,17 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 			return fmt.Errorf("proposer key mismatch: settlement proposer key: %s, block manager proposer key: %s", slProposerKey, m.proposerKey.GetPublic())
 		}
 		m.logger.Info("Starting in aggregator mode")
+	}
 
-		// Check if InitChain flow is needed
-		if m.lastState.LastBlockHeight+1 == m.genesis.InitialHeight {
-			err := m.RunInitChain(ctx)
-			if err != nil {
-				return err
-			}
+	// Check if InitChain flow is needed
+	if m.lastState.LastBlockHeight+1 == m.genesis.InitialHeight {
+		err := m.RunInitChain(ctx)
+		if err != nil {
+			return err
 		}
+	}
 
+	if isAggregator {
 		go m.ProduceBlockLoop(ctx)
 		go m.SubmitLoop(ctx)
 	} else {
