@@ -134,12 +134,6 @@ func NewManager(
 func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 	m.logger.Info("Starting the block manager")
 
-	err := m.syncBlockManager(ctx)
-	if err != nil {
-		err = fmt.Errorf("failed to sync block manager: %w", err)
-		return err
-	}
-
 	if isAggregator {
 		//make sure local signing key is the registered on the hub
 		slProposerKey := m.settlementClient.GetProposer().PublicKey.Bytes()
@@ -148,15 +142,23 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 			return fmt.Errorf("proposer key mismatch: settlement proposer key: %s, block manager proposer key: %s", slProposerKey, m.proposerKey.GetPublic())
 		}
 		m.logger.Info("Starting in aggregator mode")
+	}
 
-		// Check if InitChain flow is needed
-		if m.lastState.LastBlockHeight+1 == m.genesis.InitialHeight {
-			err := m.RunInitChain(ctx)
-			if err != nil {
-				return err
-			}
+	// Check if InitChain flow is needed
+	if m.lastState.LastBlockHeight+1 == m.genesis.InitialHeight {
+		err := m.RunInitChain(ctx)
+		if err != nil {
+			return err
 		}
+	}
 
+	err := m.syncBlockManager(ctx)
+	if err != nil {
+		err = fmt.Errorf("failed to sync block manager: %w", err)
+		return err
+	}
+
+	if isAggregator {
 		go m.ProduceBlockLoop(ctx)
 		go m.SubmitLoop(ctx)
 	} else {
