@@ -83,8 +83,8 @@ func (m *Manager) produceBlock(ctx context.Context, allowEmpty bool) error {
 	if m.lastState.IsGenesis() {
 		newHeight = uint64(m.lastState.InitialHeight)
 		lastCommit = &types.Commit{}
-		m.lastState.BaseHeight = uint64(m.lastState.InitialHeight)
-		m.store.SetBase(uint64(m.lastState.InitialHeight))
+		m.lastState.BaseHeight = newHeight
+		m.store.SetBase(newHeight)
 	} else {
 		height := m.store.Height()
 		newHeight = m.store.Height() + 1

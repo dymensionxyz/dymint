@@ -124,23 +124,22 @@ func (m *Manager) attemptApplyCachedBlocks(ctx context.Context) error {
 	m.applyCachedBlockMutex.Lock()
 	defer m.applyCachedBlockMutex.Unlock()
 
-	expectedHeight := m.store.NextHeight()
+	for {
+		expectedHeight := m.store.NextHeight()
 
-	prevCachedBlock, blockExists := m.prevBlock[expectedHeight]
-	prevCachedCommit, commitExists := m.prevCommit[expectedHeight]
+		prevCachedBlock, blockExists := m.prevBlock[expectedHeight]
+		prevCachedCommit, commitExists := m.prevCommit[expectedHeight]
 
-	for blockExists && commitExists {
+		if !blockExists || !commitExists {
+			break
+		}
+
 		m.logger.Debug("Applying cached block", "height", expectedHeight)
 		err := m.applyBlock(ctx, prevCachedBlock, prevCachedCommit, blockMetaData{source: gossipedBlock})
 		if err != nil {
 			m.logger.Debug("Failed to apply previously cached block", "err", err)
 			return err
 		}
-
-		expectedHeight := m.store.NextHeight()
-
-		prevCachedBlock, blockExists = m.prevBlock[expectedHeight]
-		prevCachedCommit, commitExists = m.prevCommit[expectedHeight]
 	}
 
 	for k := range m.prevBlock {

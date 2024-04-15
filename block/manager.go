@@ -241,9 +241,9 @@ func (m *Manager) applyBlockCallback(event pubsub.Message) {
 	if block.Header.Height == m.store.NextHeight() {
 		err := m.applyBlock(context.Background(), &block, &commit, blockMetaData{source: gossipedBlock})
 		if err != nil {
-			m.logger.Error("failed to apply gossiped block", "err", err)
+			m.logger.Error("apply gossiped block", "err", err)
 		}
-	} else if block.Header.Height > m.store.Height() {
+	} else if block.Header.Height > m.store.NextHeight() {
 		m.prevBlock[block.Header.Height] = &block
 		m.prevCommit[block.Header.Height] = &commit
 		m.logger.Debug("Caching block", "block height", block.Header.Height, "store height", m.store.Height())
