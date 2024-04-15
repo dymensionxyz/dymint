@@ -26,15 +26,18 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 
 	m.logger.Debug("Applying block", "height", block.Header.Height, "source", blockMetaData.source)
 
-	// Check if alignment is needed due to incosistencies between the store and the app.
-	// In the happy path we expect block height - 1 == abci app last block height.
-	isAlignRequired, err := m.alignStoreWithAppIfNeeded(block)
+	// Check if the app's last block height is the same as the currently produced block height
+	isBlockAlreadyApplied, err := m.isHeightAlreadyApplied(block.Header.Height)
 	if err != nil {
 		return err
 	}
 	// In case the following true, it means we crashed after the commit and before updating the store height.
 	// In that case we'll want to align the store with the app state and continue to the next block.
-	if isAlignRequired {
+	if isBlockAlreadyApplied {
+		err := m.UpdateStateFromApp(block)
+		if err != nil {
+			return err
+		}
 		m.logger.Debug("Aligned with app state required. Skipping to next block", "height", block.Header.Height)
 		return nil
 	}
@@ -149,40 +152,46 @@ func (m *Manager) attemptApplyCachedBlocks(ctx context.Context) error {
 	return nil
 }
 
-// alignStoreWithAppIfNeeded is responsible for aligning the state of the store and the abci app if necessary.
-func (m *Manager) alignStoreWithAppIfNeeded(block *types.Block) (bool, error) {
-	isRequired := false
-	// Validate incosistency in height wasn't caused by a crash and if so handle it.
+// isHeightAlreadyApplied checks if the block height is already applied to the app.
+func (m *Manager) isHeightAlreadyApplied(blockHeight uint64) (bool, error) {
 	proxyAppInfo, err := m.executor.GetAppInfo()
 	if err != nil {
-		return false, errors.Wrap(err, "failed to get app info")
+		return false, errors.Wrap(err, "get app info")
 	}
 
-	// no alignment is required if the last block height is less than the current block height.
-	// TODO: add switch case to have defined behavior for each case.
-	if uint64(proxyAppInfo.LastBlockHeight) != block.Header.Height {
-		return false, nil
+	isBlockAlreadyApplied := uint64(proxyAppInfo.LastBlockHeight) == blockHeight
+
+	// TODO: add switch case to validate better the current app state
+
+	return isBlockAlreadyApplied, nil
+}
+
+// UpdateStateFromApp is responsible for aligning the state of the store from the abci app
+func (m *Manager) UpdateStateFromApp(block *types.Block) error {
+	proxyAppInfo, err := m.executor.GetAppInfo()
+	if err != nil {
+		return errors.Wrap(err, "get app info")
 	}
 
-	isRequired = true
-	m.logger.Info("Skipping block application and only updating store height and state hash", "height", block.Header.Height)
+	appHeight := uint64(proxyAppInfo.LastBlockHeight)
+
 	// update the state with the hash, last store height and last validators.
 	m.lastState.AppHash = *(*[32]byte)(proxyAppInfo.LastBlockAppHash)
-	m.lastState.LastStoreHeight = block.Header.Height
+	m.lastState.LastStoreHeight = appHeight
 	m.lastState.LastValidators = m.lastState.Validators.Copy()
 
-	resp, err := m.store.LoadBlockResponses(block.Header.Height)
+	resp, err := m.store.LoadBlockResponses(appHeight)
 	if err != nil {
-		return isRequired, errors.Wrap(err, "failed to load block responses")
+		return errors.Wrap(err, "failed to load block responses")
 	}
 	copy(m.lastState.LastResultsHash[:], tmtypes.NewResults(resp.DeliverTxs).Hash())
 
 	_, err = m.store.UpdateState(m.lastState, nil)
 	if err != nil {
-		return isRequired, errors.Wrap(err, "failed to update state")
+		return errors.Wrap(err, "failed to update state")
 	}
-	m.store.SetHeight(block.Header.Height)
-	return isRequired, nil
+	m.store.SetHeight(appHeight)
+	return nil
 }
 
 func (m *Manager) executeBlock(ctx context.Context, block *types.Block, commit *types.Commit) (*tmstate.ABCIResponses, error) {

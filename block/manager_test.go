@@ -377,7 +377,7 @@ func TestProduceBlockFailAfterCommit(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			app.On("Commit", mock.Anything).Return(abci.ResponseCommit{Data: tc.AppCommitHash[:]}).Once()
 			app.On("Info", mock.Anything).Return(abci.ResponseInfo{LastBlockHeight: tc.LastAppBlockHeight,
-				LastBlockAppHash: tc.LastAppCommitHash[:]}).Once()
+				LastBlockAppHash: tc.LastAppCommitHash[:]})
 			mockStore.ShouldFailSetHeight = tc.shouldFailSetSetHeight
 			mockStore.ShoudFailUpdateState = tc.shouldFailUpdateState
 			_ = manager.produceBlock(context.Background(), true)
