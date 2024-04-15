@@ -2,6 +2,7 @@ package block
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -46,8 +47,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 		// Produce block
 		case <-ticker.C:
 			err := m.produceBlock(ctx, produceEmptyBlock)
-			if err == types.ErrSkippedEmptyBlock {
-				// m.logger.Debug("Skipped empty block")
+			if errors.Is(err, types.ErrSkippedEmptyBlock) {
 				continue
 			}
 			if err != nil {

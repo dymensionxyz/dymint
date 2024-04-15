@@ -71,7 +71,7 @@ func (m *Manager) submitNextBatch() (uint64, error) {
 	// Create the batch
 	nextBatch, err := m.createNextDABatch(startHeight, endHeight)
 	if err != nil {
-		m.logger.Error("Failed to create next batch", "startHeight", startHeight, "endHeight", endHeight, "error", err)
+		m.logger.Error("create next batch", "startHeight", startHeight, "endHeight", endHeight, "error", err)
 		return 0, err
 	}
 
@@ -82,7 +82,7 @@ func (m *Manager) submitNextBatch() (uint64, error) {
 
 	isLastBlockEmpty, err := m.isBlockEmpty(actualEndHeight)
 	if err != nil {
-		m.logger.Error("Failed to validate last block in batch is empty", "startHeight", startHeight, "endHeight", actualEndHeight, "error", err)
+		m.logger.Error("validate last block in batch is empty", "startHeight", startHeight, "endHeight", actualEndHeight, "error", err)
 		return 0, err
 	}
 	// Verify the last block in the batch is an empty block and that no ibc messages has accidentially passed through.
@@ -97,14 +97,14 @@ func (m *Manager) submitNextBatch() (uint64, error) {
 	m.logger.Info("Submitting next batch", "startHeight", startHeight, "endHeight", actualEndHeight, "size", nextBatch.ToProto().Size())
 	resultSubmitToDA := m.dalc.SubmitBatch(nextBatch)
 	if resultSubmitToDA.Code != da.StatusSuccess {
-		err = fmt.Errorf("failed to submit next batch to DA Layer: %s", resultSubmitToDA.Message)
+		err = fmt.Errorf("submit next batch to DA Layer: %s", resultSubmitToDA.Message)
 		return 0, err
 	}
 
 	// Submit batch to SL
 	err = m.settlementClient.SubmitBatch(nextBatch, m.dalc.GetClientType(), &resultSubmitToDA)
 	if err != nil {
-		m.logger.Error("Failed to submit batch to SL", "startHeight", startHeight, "endHeight", actualEndHeight, "error", err)
+		m.logger.Error("submit batch to SL", "startHeight", startHeight, "endHeight", actualEndHeight, "error", err)
 		return 0, err
 	}
 
@@ -137,12 +137,12 @@ func (m *Manager) createNextDABatch(startHeight uint64, endHeight uint64) (*type
 	for height = startHeight; height <= endHeight; height++ {
 		block, err := m.store.LoadBlock(height)
 		if err != nil {
-			m.logger.Error("Failed to load block", "height", height)
+			m.logger.Error("load block", "height", height)
 			return nil, err
 		}
 		commit, err := m.store.LoadCommit(height)
 		if err != nil {
-			m.logger.Error("Failed to load commit", "height", height)
+			m.logger.Error("load commit", "height", height)
 			return nil, err
 		}
 
@@ -171,7 +171,7 @@ func (m *Manager) isBlockEmpty(endHeight uint64) (isEmpty bool, err error) {
 	m.logger.Debug("Verifying last block in batch is an empty block", "endHeight", endHeight, "height")
 	lastBlock, err := m.store.LoadBlock(endHeight)
 	if err != nil {
-		m.logger.Error("Failed to load block", "height", endHeight, "error", err)
+		m.logger.Error("load block", "height", endHeight, "error", err)
 		return false, err
 	}
 

@@ -70,7 +70,7 @@ func (m *Manager) updateStateIndex(stateIndex uint64) error {
 	atomic.StoreUint64(&m.lastState.SLStateIndex, stateIndex)
 	_, err := m.store.UpdateState(m.lastState, nil)
 	if err != nil {
-		m.logger.Error("Failed to update state", "error", err)
+		m.logger.Error("update state", "error", err)
 		return err
 	}
 	return nil

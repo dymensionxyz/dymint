@@ -22,15 +22,15 @@ func (wsc *wsConn) sendLoop() {
 	for msg := range wsc.queue {
 		writer, err := wsc.conn.NextWriter(websocket.TextMessage)
 		if err != nil {
-			wsc.logger.Error("failed to create writer", "error", err)
+			wsc.logger.Error("create writer", "error", err)
 			continue
 		}
 		_, err = writer.Write(msg)
 		if err != nil {
-			wsc.logger.Error("failed to write message", "error", err)
+			wsc.logger.Error("write message", "error", err)
 		}
 		if err = writer.Close(); err != nil {
-			wsc.logger.Error("failed to close writer", "error", err)
+			wsc.logger.Error("close writer", "error", err)
 		}
 	}
 }
@@ -47,14 +47,14 @@ func (h *handler) wsHandler(w http.ResponseWriter, r *http.Request) {
 
 	wsc, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		h.logger.Error("failed to update to WebSocket connection", "error", err)
+		h.logger.Error("update to WebSocket connection", "error", err)
 		return
 	}
 	remoteAddr := wsc.RemoteAddr().String()
 	defer func() {
 		err := wsc.Close()
 		if err != nil {
-			h.logger.Error("failed to close WebSocket connection", "err")
+			h.logger.Error("close WebSocket connection", "err")
 		}
 	}()
 
@@ -72,10 +72,10 @@ func (h *handler) wsHandler(w http.ResponseWriter, r *http.Request) {
 				h.logger.Debug("WebSocket connection closed")
 				err := h.srv.client.EventBus.UnsubscribeAll(context.Background(), remoteAddr)
 				if err != nil && err != tmpubsub.ErrSubscriptionNotFound {
-					h.logger.Error("Failed to unsubscribe addr from events", "addr", remoteAddr, "err", err)
+					h.logger.Error("unsubscribe addr from events", "addr", remoteAddr, "err", err)
 				}
 			} else {
-				h.logger.Error("failed to read next WebSocket message", "error", err)
+				h.logger.Error("read next WebSocket message", "error", err)
 			}
 			break
 		}
@@ -88,7 +88,7 @@ func (h *handler) wsHandler(w http.ResponseWriter, r *http.Request) {
 		req, err := http.NewRequest(http.MethodGet, "", r)
 		req.RemoteAddr = remoteAddr
 		if err != nil {
-			h.logger.Error("failed to create request", "error", err)
+			h.logger.Error("create request", "error", err)
 			continue
 		}
 

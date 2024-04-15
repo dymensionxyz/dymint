@@ -216,7 +216,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			// TODO(srene):  Split batch in multiple blobs if necessary if supported
 			height, commitment, err := c.submit(data)
 			if err != nil {
-				c.logger.Error("Failed to submit DA batch. Emitting health event and trying again", "error", err)
+				c.logger.Error("submit DA batch. Emitting health event and trying again", "error", err)
 				res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, false, err)
 				if err != nil {
 					return res
@@ -323,7 +323,7 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMet
 	var batch pb.Batch
 	err = proto.Unmarshal(blob.Data, &batch)
 	if err != nil {
-		c.logger.Error("failed to unmarshal block", "daHeight", daMetaData.Height, "error", err)
+		c.logger.Error("unmarshal block", "daHeight", daMetaData.Height, "error", err)
 	}
 	parsedBatch := new(types.Batch)
 	err = parsedBatch.FromProto(&batch)
@@ -366,7 +366,7 @@ func (c *DataAvailabilityLayerClient) retrieveBatchesNoCommitment(dataLayerHeigh
 		var batch pb.Batch
 		err = proto.Unmarshal(blob.Data, &batch)
 		if err != nil {
-			c.logger.Error("failed to unmarshal block", "daHeight", dataLayerHeight, "position", i, "error", err)
+			c.logger.Error("unmarshal block", "daHeight", dataLayerHeight, "position", i, "error", err)
 			continue
 		}
 		parsedBatch := new(types.Batch)

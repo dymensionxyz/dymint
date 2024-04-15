@@ -38,11 +38,11 @@ func New(store store.KVStore) *BlockerIndexer {
 func (idx *BlockerIndexer) Has(height int64) (bool, error) {
 	key, err := heightKey(height)
 	if err != nil {
-		return false, fmt.Errorf("failed to create block height index key: %w", err)
+		return false, fmt.Errorf("create block height index key: %w", err)
 	}
 
 	_, err = idx.store.Get(key)
-	if err == store.ErrKeyNotFound {
+	if errors.Is(err, store.ErrKeyNotFound) {
 		return false, nil
 	}
 	return err == nil, err
@@ -63,7 +63,7 @@ func (idx *BlockerIndexer) Index(bh types.EventDataNewBlockHeader) error {
 	// 1. index by height
 	key, err := heightKey(height)
 	if err != nil {
-		return fmt.Errorf("failed to create block height index key: %w", err)
+		return fmt.Errorf("create block height index key: %w", err)
 	}
 	if err := batch.Set(key, int64ToBytes(height)); err != nil {
 		return err
@@ -71,12 +71,12 @@ func (idx *BlockerIndexer) Index(bh types.EventDataNewBlockHeader) error {
 
 	// 2. index BeginBlock events
 	if err := idx.indexEvents(batch, bh.ResultBeginBlock.Events, "begin_block", height); err != nil {
-		return fmt.Errorf("failed to index BeginBlock events: %w", err)
+		return fmt.Errorf("index BeginBlock events: %w", err)
 	}
 
 	// 3. index EndBlock events
 	if err := idx.indexEvents(batch, bh.ResultEndBlock.Events, "end_block", height); err != nil {
-		return fmt.Errorf("failed to index EndBlock events: %w", err)
+		return fmt.Errorf("index EndBlock events: %w", err)
 	}
 
 	return batch.Commit()
@@ -98,7 +98,7 @@ func (idx *BlockerIndexer) Search(ctx context.Context, q *query.Query) ([]int64,
 
 	conditions, err := q.Conditions()
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse query conditions: %w", err)
+		return nil, fmt.Errorf("parse query conditions: %w", err)
 	}
 
 	// If there is an exact height query, return the result immediately
@@ -132,7 +132,7 @@ func (idx *BlockerIndexer) Search(ctx context.Context, q *query.Query) ([]int64,
 		for _, qr := range ranges {
 			prefix, err := orderedcode.Append(nil, qr.Key)
 			if err != nil {
-				return nil, fmt.Errorf("failed to create prefix key: %w", err)
+				return nil, fmt.Errorf("create prefix key: %w", err)
 			}
 
 			if !heightsInitialized {
@@ -502,7 +502,7 @@ func (idx *BlockerIndexer) indexEvents(batch store.Batch, events []abci.Event, t
 			if attr.GetIndex() {
 				key, err := eventKey(compositeKey, typ, string(attr.Value), height)
 				if err != nil {
-					return fmt.Errorf("failed to create block index key: %w", err)
+					return fmt.Errorf("create block index key: %w", err)
 				}
 
 				if err := batch.Set(key, heightBz); err != nil {

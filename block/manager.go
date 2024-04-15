@@ -3,6 +3,7 @@ package block
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -93,11 +94,11 @@ func NewManager(
 
 	exec, err := state.NewBlockExecutor(proposerAddress, conf.NamespaceID, genesis.ChainID, mempool, proxyApp, eventBus, logger)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create block executor: %w", err)
+		return nil, fmt.Errorf("create block executor: %w", err)
 	}
 	s, err := getInitialState(store, genesis, logger)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get initial state: %w", err)
+		return nil, fmt.Errorf("get initial state: %w", err)
 	}
 
 	batchInProcess := atomic.Value{}
@@ -153,7 +154,7 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 
 	err := m.syncBlockManager(ctx)
 	if err != nil {
-		err = fmt.Errorf("failed to sync block manager: %w", err)
+		err = fmt.Errorf("sync block manager: %w", err)
 		return err
 	}
 
@@ -175,8 +176,8 @@ func (m *Manager) syncBlockManager(ctx context.Context) error {
 	resultRetrieveBatch, err := m.getLatestBatchFromSL(ctx)
 	// Set the syncTarget according to the result
 	if err != nil {
-		// TODO: separate between fresh rollapp and non-registred rollapp
-		if err == settlement.ErrBatchNotFound {
+		// TODO: separate between fresh rollapp and non-registered rollapp
+		if errors.Is(err, settlement.ErrBatchNotFound) {
 			// Since we requested the latest batch and got batch not found it means
 			// the SL still hasn't got any batches for this chain.
 			m.logger.Info("No batches for chain found in SL. Start writing first batch")
@@ -240,12 +241,12 @@ func (m *Manager) applyBlockCallback(event pubsub.Message) {
 	} else {
 		err := m.applyBlock(context.Background(), &block, &commit, blockMetaData{source: gossipedBlock})
 		if err != nil {
-			m.logger.Debug("Failed to apply block", "err", err)
+			m.logger.Debug("apply block", "err", err)
 		}
 	}
 	err := m.attemptApplyCachedBlocks(context.Background())
 	if err != nil {
-		m.logger.Debug("Failed to apply previous cached blocks", "err", err)
+		m.logger.Debug("apply previous cached blocks", "err", err)
 	}
 }
 
@@ -257,7 +258,7 @@ func (m *Manager) getLatestBatchFromSL(ctx context.Context) (*settlement.ResultR
 // getInitialState tries to load lastState from Store, and if it's not available it reads GenesisDoc.
 func getInitialState(store store.Store, genesis *tmtypes.GenesisDoc, logger types.Logger) (types.State, error) {
 	s, err := store.LoadState()
-	if err == types.ErrNoStateFound {
+	if errors.Is(err, types.ErrNoStateFound) {
 		logger.Info("failed to find state in the store, creating new state from genesis")
 		return types.NewFromGenesisDoc(genesis)
 	}
