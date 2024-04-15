@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"context"
+	"errors"
 
 	"go.uber.org/multierr"
 
