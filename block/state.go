@@ -11,8 +11,7 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
-//TODO: move all those methods from blockExecutor to manager
-
+// TODO: move all those methods from blockExecutor to manager
 func (e *Executor) updateState(state types.State, block *types.Block, abciResponses *tmstate.ABCIResponses, validatorUpdates []*tmtypes.Validator) (types.State, error) {
 	nValSet := state.NextValidators.Copy()
 	lastHeightValSetChanged := state.LastHeightValidatorsChanged
@@ -32,7 +31,7 @@ func (e *Executor) updateState(state types.State, block *types.Block, abciRespon
 	}
 
 	hash := block.Header.Hash()
-	//TODO: we can probably pass the state as a pointer and update it directly
+	// TODO: we can probably pass the state as a pointer and update it directly
 	s := types.State{
 		Version:         state.Version,
 		ChainID:         state.ChainID,
@@ -69,7 +68,7 @@ func (e *Executor) UpdateStateAfterInitChain(s *types.State, res *abci.ResponseI
 		copy(s.AppHash[:], res.AppHash)
 	}
 
-	//The validators after initChain must be greater than zero, otherwise this state is not loadable
+	// The validators after initChain must be greater than zero, otherwise this state is not loadable
 	if len(validators) <= 0 {
 		panic("Validators must be greater than zero")
 	}
@@ -106,8 +105,8 @@ func (e *Executor) UpdateStateAfterInitChain(s *types.State, res *abci.ResponseI
 
 // UpdateStateFromResponses updates state based on the ABCIResponses.
 func (e *Executor) UpdateStateFromResponses(resp *tmstate.ABCIResponses, state types.State, block *types.Block) (types.State, error) {
-	//Dymint ignores any setValidator responses from the app, as it is manages the validator set based on the settlement consensus
-	//TODO: this will be changed when supporting multiple sequencers from the hub
+	// Dymint ignores any setValidator responses from the app, as it is manages the validator set based on the settlement consensus
+	// TODO: this will be changed when supporting multiple sequencers from the hub
 	validatorUpdates := []*tmtypes.Validator{}
 
 	if state.ConsensusParams.Block.MaxBytes == 0 {

@@ -131,7 +131,7 @@ func NewManager(
 func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 	m.logger.Info("Starting the block manager")
 
-	//TODO (#283): set aggregator mode by proposer addr on the hub
+	// TODO (#283): set aggregator mode by proposer addr on the hub
 	if isAggregator {
 		// make sure local signing key is the registered on the hub
 		slProposerKey := m.settlementClient.GetProposer().PublicKey.Bytes()

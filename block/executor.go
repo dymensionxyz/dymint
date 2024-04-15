@@ -42,7 +42,7 @@ func NewBlockExecutor(proposerAddress []byte, namespaceID string, chainID string
 		return nil, err
 	}
 
-	var be = Executor{
+	be := Executor{
 		proposerAddress:       proposerAddress,
 		chainID:               chainID,
 		proxyAppConsensusConn: proxyApp.Consensus(),
@@ -112,7 +112,7 @@ func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHead
 				App:   state.Version.Consensus.App,
 			},
 			ChainID:         e.chainID,
-			NamespaceID:     e.namespaceID, //TODO: used?????
+			NamespaceID:     e.namespaceID, // TODO: used?????
 			Height:          height,
 			Time:            uint64(time.Now().UTC().UnixNano()),
 			LastHeaderHash:  lastHeaderHash,
