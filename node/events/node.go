@@ -21,9 +21,7 @@ const (
 
 // EventDataHealthStatus defines the structure of the event data for the EventHealthStatus
 type EventDataHealthStatus struct {
-	// Healthy is true if the base layers are healthy
-	Healthy bool
-	// Error is the error that was encountered in case of a health check failure
+	// Error is the error that was encountered in case of a health check failure. Nil implies both
 	Error error
 }
 
