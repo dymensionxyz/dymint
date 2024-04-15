@@ -53,13 +53,14 @@ type Manager struct {
 
 	// Synchronization
 	syncTargetDiode diodes.Diode
-	syncTarget      uint64
-	isSyncedCond    sync.Cond
+
+	syncTarget   atomic.Uint64
+	isSyncedCond sync.Cond
 
 	// Block production
 	shouldProduceBlocksCh chan bool
 	produceEmptyBlockCh   chan bool
-	lastSubmissionTime    int64
+	lastSubmissionTime    atomic.Int64
 	batchInProcess        sync.Mutex
 	produceBlockMutex     sync.Mutex
 	applyCachedBlockMutex sync.Mutex
@@ -177,18 +178,18 @@ func (m *Manager) syncBlockManager(ctx context.Context) error {
 			// Since we requested the latest batch and got batch not found it means
 			// the SL still hasn't got any batches for this chain.
 			m.logger.Info("No batches for chain found in SL. Start writing first batch")
-			atomic.StoreUint64(&m.syncTarget, uint64(m.genesis.InitialHeight-1))
+			m.syncTarget.Store(uint64(m.genesis.InitialHeight - 1))
 			return nil
 		}
 		return err
 	}
-	atomic.StoreUint64(&m.syncTarget, resultRetrieveBatch.EndHeight)
+	m.syncTarget.Store(resultRetrieveBatch.EndHeight)
 	err = m.syncUntilTarget(ctx, resultRetrieveBatch.EndHeight)
 	if err != nil {
 		return err
 	}
 
-	m.logger.Info("Synced", "current height", m.store.Height(), "syncTarget", atomic.LoadUint64(&m.syncTarget))
+	m.logger.Info("Synced", "current height", m.store.Height(), "syncTarget", m.syncTarget.Load())
 	return nil
 }
 
@@ -196,8 +197,8 @@ func (m *Manager) syncBlockManager(ctx context.Context) error {
 func (m *Manager) updateSyncParams(endHeight uint64) {
 	types.RollappHubHeightGauge.Set(float64(endHeight))
 	m.logger.Info("Received new syncTarget", "syncTarget", endHeight)
-	atomic.StoreUint64(&m.syncTarget, endHeight)
-	atomic.StoreInt64(&m.lastSubmissionTime, time.Now().UnixNano())
+	m.syncTarget.Store(endHeight)
+	m.lastSubmissionTime.Store(time.Now().UnixNano())
 }
 
 func getAddress(key crypto.PrivKey) ([]byte, error) {

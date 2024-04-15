@@ -2,11 +2,10 @@ package block
 
 import (
 	"fmt"
-	"sync/atomic"
 )
 
 func (m *Manager) pruneBlocks(retainHeight int64) (uint64, error) {
-	syncTarget := atomic.LoadUint64(&m.syncTarget)
+	syncTarget := m.syncTarget.Load()
 
 	if retainHeight > int64(syncTarget) {
 		return 0, fmt.Errorf("cannot prune uncommitted blocks")

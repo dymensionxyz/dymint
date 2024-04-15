@@ -28,7 +28,7 @@ func (m *Manager) RetriveLoop(ctx context.Context) {
 			}
 			// Check if after we sync we are synced or a new syncTarget was already set.
 			// If we are synced then signal all goroutines waiting on isSyncedCond.
-			if m.store.Height() >= atomic.LoadUint64(&m.syncTarget) {
+			if m.store.Height() >= m.syncTarget.Load() {
 				m.logger.Info("Synced at height", "height", m.store.Height())
 				m.isSyncedCond.L.Lock()
 				m.isSyncedCond.Signal()

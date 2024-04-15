@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -118,7 +117,8 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 	require.NotNil(t, manager)
 
 	t.Log("Taking the manager out of sync by submitting a batch")
-	syncTarget := atomic.LoadUint64(&manager.syncTarget)
+
+	syncTarget := manager.syncTarget.Load()
 	numBatchesToAdd := 2
 	nextBatchStartHeight := syncTarget + 1
 	var batch *types.Batch
@@ -135,7 +135,7 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 	}
 
 	// Initially sync target is 0
-	assert.True(t, manager.syncTarget == 0)
+	assert.Zero(t, manager.syncTarget.Load())
 	assert.True(t, manager.store.Height() == 0)
 
 	// enough time to sync and produce blocks
@@ -150,7 +150,7 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 		assert.NoError(t, err, "Manager start should not produce an error")
 	}()
 	<-ctx.Done()
-	assert.True(t, manager.syncTarget == batch.EndHeight)
+	assert.Equal(t, batch.EndHeight, manager.syncTarget.Load())
 	// validate that we produced blocks
 	assert.Greater(t, manager.store.Height(), batch.EndHeight)
 }
@@ -440,7 +440,7 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 			}
 
 			// Call createNextDABatch function
-			startHeight := atomic.LoadUint64(&manager.syncTarget) + 1
+			startHeight := manager.syncTarget.Load() + 1
 			endHeight := startHeight + uint64(tc.blocksToProduce) - 1
 			batch, err := manager.createNextDABatch(startHeight, endHeight)
 			assert.NoError(err)

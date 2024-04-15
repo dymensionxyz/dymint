@@ -92,7 +92,7 @@ func (s *Server) OnStop() {
 	ctx, cancel := context.WithTimeout(s.ctx, 5*time.Second)
 	defer cancel()
 	if err := s.server.Shutdown(ctx); err != nil {
-		s.Logger.Error("error while shuting down RPC server", "error", err)
+		s.Logger.Error("while shuting down RPC server", "error", err)
 	}
 }
 
@@ -167,7 +167,7 @@ func (s *Server) startRPC() error {
 	go func() {
 		err := s.serve(listener, handler)
 		if err != http.ErrServerClosed {
-			s.Logger.Error("error while serving HTTP", "error", err)
+			s.Logger.Error("while serving HTTP", "error", err)
 		}
 	}()
 

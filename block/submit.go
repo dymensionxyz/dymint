@@ -3,7 +3,6 @@ package block
 import (
 	"context"
 	"fmt"
-	"sync/atomic"
 	"time"
 
 	"github.com/dymensionxyz/dymint/da"
@@ -29,7 +28,7 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 
 func (m *Manager) handleSubmissionTrigger(ctx context.Context) {
 	// SyncTarget is the height of the last block in the last batch as seen by this node.
-	syncTarget := atomic.LoadUint64(&m.syncTarget)
+	syncTarget := m.syncTarget.Load()
 	height := m.store.Height()
 	// no new blocks produced yet
 	if height <= syncTarget {
@@ -48,12 +47,12 @@ func (m *Manager) handleSubmissionTrigger(ctx context.Context) {
 	// We try and produce an empty block to make sure releavnt ibc messages will pass through during the batch submission: https://github.com/dymensionxyz/research/issues/173.
 	err := m.produceBlock(ctx, true)
 	if err != nil {
-		m.logger.Error("error while producing empty block", "error", err)
+		m.logger.Error("while producing empty block", "error", err)
 	}
 
 	syncHeight, err := m.submitNextBatch()
 	if err != nil {
-		m.logger.Error("error while submitting next batch", "error", err)
+		m.logger.Error("while submitting next batch", "error", err)
 		return
 	}
 
@@ -63,7 +62,7 @@ func (m *Manager) handleSubmissionTrigger(ctx context.Context) {
 
 func (m *Manager) submitNextBatch() (uint64, error) {
 	// Get the batch start and end height
-	startHeight := atomic.LoadUint64(&m.syncTarget) + 1
+	startHeight := m.syncTarget.Load() + 1
 	endHeight := uint64(m.store.Height())
 
 	// Create the batch
@@ -110,7 +109,7 @@ func (m *Manager) submitNextBatch() (uint64, error) {
 }
 
 func (m *Manager) validateBatch(batch *types.Batch) error {
-	syncTarget := atomic.LoadUint64(&m.syncTarget)
+	syncTarget := m.syncTarget.Load()
 	if batch.StartHeight != syncTarget+1 {
 		return fmt.Errorf("batch start height != syncTarget + 1. StartHeight %d, m.syncTarget %d", batch.StartHeight, syncTarget)
 	}
