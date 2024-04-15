@@ -24,9 +24,8 @@ func NewStatusMiddleware(healthStatus *sharedtypes.HealthStatus) *StatusMiddlewa
 func (s *StatusMiddleware) Handler(logger log.Logger) HandlerFunc {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
 			isHealthy, err := s.healthStatus.Get()
-			//in case the endpoint is health we return health response
+			// in case the endpoint is health we return health response
 			if r.URL.Path == "/health" {
 
 				w.WriteHeader(http.StatusOK)
@@ -44,7 +43,6 @@ func (s *StatusMiddleware) Handler(logger log.Logger) HandlerFunc {
 			} else {
 				h.ServeHTTP(w, r)
 			}
-
 		})
 	}
 }

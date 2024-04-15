@@ -37,7 +37,6 @@ const (
 
 // GetABCIProxyAppMock returns a dummy abci proxy app mock for testing
 func GetABCIProxyAppMock(logger log.Logger) proxy.AppConns {
-
 	app := GetAppMock()
 
 	clientCreator := proxy.NewLocalClientCreator(app)
@@ -132,8 +131,10 @@ func NewMockStore() *MockStore {
 	}
 }
 
-const batchNotFoundErrorMessage = "batch not found"
-const connectionRefusedErrorMessage = "connection refused"
+const (
+	batchNotFoundErrorMessage     = "batch not found"
+	connectionRefusedErrorMessage = "connection refused"
+)
 
 // DALayerClientSubmitBatchError is a mock data availability layer client that can be used to test error handling
 type DALayerClientSubmitBatchError struct {
