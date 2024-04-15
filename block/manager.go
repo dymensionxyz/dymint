@@ -3,6 +3,7 @@ package block
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"sync/atomic"
@@ -175,8 +176,8 @@ func (m *Manager) syncBlockManager(ctx context.Context) error {
 	resultRetrieveBatch, err := m.getLatestBatchFromSL(ctx)
 	// Set the syncTarget according to the result
 	if err != nil {
-		// TODO: separate between fresh rollapp and non-registred rollapp
-		if err == settlement.ErrBatchNotFound {
+		// TODO: separate between fresh rollapp and non-registered rollapp
+		if errors.Is(err, settlement.ErrBatchNotFound) {
 			// Since we requested the latest batch and got batch not found it means
 			// the SL still hasn't got any batches for this chain.
 			m.logger.Info("No batches for chain found in SL. Start writing first batch")
@@ -257,7 +258,7 @@ func (m *Manager) getLatestBatchFromSL(ctx context.Context) (*settlement.ResultR
 // getInitialState tries to load lastState from Store, and if it's not available it reads GenesisDoc.
 func getInitialState(store store.Store, genesis *tmtypes.GenesisDoc, logger types.Logger) (types.State, error) {
 	s, err := store.LoadState()
-	if err == types.ErrNoStateFound {
+	if errors.Is(err, types.ErrNoStateFound) {
 		logger.Info("failed to find state in the store, creating new state from genesis")
 		return types.NewFromGenesisDoc(genesis)
 	}

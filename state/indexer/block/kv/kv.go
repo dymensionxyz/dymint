@@ -42,7 +42,7 @@ func (idx *BlockerIndexer) Has(height int64) (bool, error) {
 	}
 
 	_, err = idx.store.Get(key)
-	if err == store.ErrKeyNotFound {
+	if errors.Is(err, store.ErrKeyNotFound) {
 		return false, nil
 	}
 	return err == nil, err

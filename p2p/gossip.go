@@ -89,7 +89,7 @@ func (g *Gossiper) Publish(ctx context.Context, data []byte) error {
 func (g *Gossiper) ProcessMessages(ctx context.Context) {
 	for {
 		_, err := g.sub.Next(ctx)
-		if err == context.Canceled {
+		if errors.Is(err, context.Canceled) {
 			return
 		}
 		if err != nil {
