@@ -117,7 +117,7 @@ func (s *service) Subscribe(req *http.Request, args *subscribeArgs, wsConn *wsCo
 
 	out, err := s.client.Subscribe(req.Context(), addr, args.Query, s.subscribeBufferSize)
 	if err != nil {
-		return nil, fmt.Errorf("failed to subscribe: %w", err)
+		return nil, fmt.Errorf("subscribe: %w", err)
 	}
 	go func(subscriptionID []byte) {
 		for {
@@ -136,7 +136,7 @@ func (s *service) Subscribe(req *http.Request, args *subscribeArgs, wsConn *wsCo
 				// Marshal response to JSON and send it to the websocket queue
 				jsonBytes, err := json.MarshalIndent(resp, "", "  ")
 				if err != nil {
-					s.logger.Error("Failed to marshal RPCResponse to JSON", "err", err)
+					s.logger.Error("marshal RPCResponse to JSON", "err", err)
 					continue
 				}
 				if wsConn != nil {
@@ -153,7 +153,7 @@ func (s *service) Unsubscribe(req *http.Request, args *unsubscribeArgs) (*emptyR
 	s.logger.Debug("unsubscribe from query", "remote", req.RemoteAddr, "query", args.Query)
 	err := s.client.Unsubscribe(req.Context(), req.RemoteAddr, args.Query)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unsubscribe: %w", err)
+		return nil, fmt.Errorf("unsubscribe: %w", err)
 	}
 	return &emptyResult{}, nil
 }
@@ -162,7 +162,7 @@ func (s *service) UnsubscribeAll(req *http.Request, args *unsubscribeAllArgs) (*
 	s.logger.Debug("unsubscribe from all queries", "remote", req.RemoteAddr)
 	err := s.client.UnsubscribeAll(req.Context(), req.RemoteAddr)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unsubscribe all: %w", err)
+		return nil, fmt.Errorf("unsubscribe all: %w", err)
 	}
 	return &emptyResult{}, nil
 }

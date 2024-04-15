@@ -208,7 +208,7 @@ func (s *Server) writeResponse(w http.ResponseWriter, payload []byte) {
 	w.WriteHeader(http.StatusOK)
 	_, err := w.Write(payload)
 	if err != nil {
-		s.logger.Error("failed to write response", "error", err)
+		s.logger.Error("write response", "error", err)
 	}
 }
 
@@ -217,10 +217,10 @@ func (s *Server) writeError(w http.ResponseWriter, err error) {
 	w.WriteHeader(http.StatusInternalServerError)
 	resp, jerr := json.Marshal(err.Error())
 	if jerr != nil {
-		s.logger.Error("failed to serialize error message", "error", jerr)
+		s.logger.Error("serialize error message", "error", jerr)
 	}
 	_, werr := w.Write(resp)
 	if werr != nil {
-		s.logger.Error("failed to write response", "error", werr)
+		s.logger.Error("write response", "error", werr)
 	}
 }

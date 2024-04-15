@@ -121,7 +121,7 @@ func NewNode(ctx context.Context, conf config.NodeConfig, p2pKey crypto.PrivKey,
 	proxyApp := proxy.NewAppConns(clientCreator)
 	proxyApp.SetLogger(logger.With("module", "proxy"))
 	if err := proxyApp.Start(); err != nil {
-		return nil, fmt.Errorf("error starting proxy app connections: %w", err)
+		return nil, fmt.Errorf("starting proxy app connections: %w", err)
 	}
 
 	eventBus := tmtypes.NewEventBus()
@@ -253,22 +253,22 @@ func (n *Node) OnStart() error {
 	n.Logger.Info("starting P2P client")
 	err := n.P2P.Start(n.ctx)
 	if err != nil {
-		return fmt.Errorf("error while starting P2P client: %w", err)
+		return fmt.Errorf("while starting P2P client: %w", err)
 	}
 	// start the pubsub server
 	err = n.pubsubServer.Start()
 	if err != nil {
-		return fmt.Errorf("error while starting pubsub server: %w", err)
+		return fmt.Errorf("while starting pubsub server: %w", err)
 	}
 	// Start the da client
 	err = n.dalc.Start()
 	if err != nil {
-		return fmt.Errorf("error while starting data availability layer client: %w", err)
+		return fmt.Errorf("while starting data availability layer client: %w", err)
 	}
 	// Start the settlement layer client
 	err = n.settlementlc.Start()
 	if err != nil {
-		return fmt.Errorf("error while starting settlement layer client: %w", err)
+		return fmt.Errorf("while starting settlement layer client: %w", err)
 	}
 	go func() {
 		if err := n.startPrometheusServer(); err != nil {
@@ -285,7 +285,7 @@ func (n *Node) OnStart() error {
 	// start the block manager
 	err = n.blockManager.Start(n.ctx, n.conf.Aggregator)
 	if err != nil {
-		return fmt.Errorf("error while starting block manager: %w", err)
+		return fmt.Errorf("while starting block manager: %w", err)
 	}
 
 	return nil
@@ -309,17 +309,17 @@ func (n *Node) GetGenesisChunks() ([]string, error) {
 func (n *Node) OnStop() {
 	err := n.dalc.Stop()
 	if err != nil {
-		n.Logger.Error("error while stopping data availability layer client", "error", err)
+		n.Logger.Error("while stopping data availability layer client", "error", err)
 	}
 
 	err = n.settlementlc.Stop()
 	if err != nil {
-		n.Logger.Error("error while stopping settlement layer client", "error", err)
+		n.Logger.Error("while stopping settlement layer client", "error", err)
 	}
 
 	err = n.P2P.Close()
 	if err != nil {
-		n.Logger.Error("error while stopping P2P client", "error", err)
+		n.Logger.Error("while stopping P2P client", "error", err)
 	}
 }
 
@@ -359,7 +359,6 @@ func createAndStartIndexerService(
 	eventBus *tmtypes.EventBus,
 	logger log.Logger,
 ) (*txindex.IndexerService, txindex.TxIndexer, indexer.BlockIndexer, error) {
-
 	var (
 		txIndexer    txindex.TxIndexer
 		blockIndexer indexer.BlockIndexer
@@ -382,7 +381,6 @@ func createAndStartIndexerService(
 func (n *Node) eventListener() {
 	go utils.SubscribeAndHandleEvents(n.ctx, n.pubsubServer, "settlementHealthStatusHandler", settlement.EventQuerySettlementHealthStatus, n.healthStatusEventCallback, n.Logger)
 	go utils.SubscribeAndHandleEvents(n.ctx, n.pubsubServer, "daHealthStatusHandler", da.EventQueryDAHealthStatus, n.healthStatusEventCallback, n.Logger)
-
 }
 
 // Event handling callback function for health status events

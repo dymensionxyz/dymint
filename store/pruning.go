@@ -25,7 +25,7 @@ func (s *DefaultStore) PruneBlocks(heightInt int64) (uint64, error) {
 	flush := func(batch Batch, base uint64) error {
 		err := batch.Commit()
 		if err != nil {
-			return fmt.Errorf("failed to prune up to height %v: %w", base, err)
+			return fmt.Errorf("prune up to height %v: %w", base, err)
 		}
 		s.SetBase(base)
 		return nil

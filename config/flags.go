@@ -34,7 +34,7 @@ const (
 //
 // This function is called in cosmos-sdk.
 func AddNodeFlags(cmd *cobra.Command) {
-	//Add tendermint default flags
+	// Add tendermint default flags
 	tmcmd.AddNodeFlags(cmd)
 
 	def := DefaultNodeConfig
@@ -58,7 +58,6 @@ func AddNodeFlags(cmd *cobra.Command) {
 	cmd.Flags().String(flagSLGasPrices, def.SettlementConfig.GasPrices, "Settlement Layer gas prices")
 	cmd.Flags().Uint64(flagSLGasLimit, def.SettlementConfig.GasLimit, "Settlement Layer batch submit gas limit")
 	cmd.Flags().String(flagRollappID, def.SettlementConfig.RollappID, "The chainID of the rollapp")
-
 }
 
 func BindDymintFlags(cmd *cobra.Command, v *viper.Viper) error {

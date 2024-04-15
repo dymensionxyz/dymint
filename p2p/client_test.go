@@ -23,7 +23,8 @@ func TestClientStartup(t *testing.T) {
 	privKey, _, _ := crypto.GenerateEd25519Key(rand.Reader)
 	client, err := NewClient(config.P2PConfig{
 		GossipCacheSize: 50,
-		BoostrapTime:    30 * time.Second}, privKey, "TestChain", log.TestingLogger())
+		BoostrapTime:    30 * time.Second,
+	}, privKey, "TestChain", log.TestingLogger())
 	assert := assert.New(t)
 	assert.NoError(err)
 	assert.NotNil(client)
@@ -81,7 +82,7 @@ func TestGossiping(t *testing.T) {
 
 	ctx := context.Background()
 
-	var expectedMsg = []byte("foobar")
+	expectedMsg := []byte("foobar")
 	var wg sync.WaitGroup
 
 	wg.Add(2)
@@ -169,7 +170,8 @@ func TestSeedStringParsing(t *testing.T) {
 			logger := &testutil.MockLogger{}
 			client, err := NewClient(config.P2PConfig{
 				GossipCacheSize: 50,
-				BoostrapTime:    30 * time.Second}, privKey, "TestNetwork", logger)
+				BoostrapTime:    30 * time.Second,
+			}, privKey, "TestNetwork", logger)
 			require.NoError(err)
 			require.NotNil(client)
 			actual := client.getSeedAddrInfo(c.input)

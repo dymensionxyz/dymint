@@ -2,9 +2,9 @@ package mempool
 
 import (
 	"container/list"
+	"sync"
 
 	"github.com/tendermint/tendermint/types"
-	"sync"
 )
 
 // TxCache defines an interface for raw transaction caching in a mempool.

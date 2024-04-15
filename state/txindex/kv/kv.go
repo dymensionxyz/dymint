@@ -55,7 +55,7 @@ func (txi *TxIndex) Get(hash []byte) (*abci.TxResult, error) {
 	txResult := new(abci.TxResult)
 	err = proto.Unmarshal(rawBytes, txResult)
 	if err != nil {
-		return nil, fmt.Errorf("error reading TxResult: %v", err)
+		return nil, fmt.Errorf("reading TxResult: %w", err)
 	}
 
 	return txResult, nil
@@ -184,18 +184,18 @@ func (txi *TxIndex) Search(ctx context.Context, q *query.Query) ([]*abci.TxResul
 	// get a list of conditions (like "tx.height > 5")
 	conditions, err := q.Conditions()
 	if err != nil {
-		return nil, fmt.Errorf("error during parsing conditions from query: %w", err)
+		return nil, fmt.Errorf("during parsing conditions from query: %w", err)
 	}
 
 	// if there is a hash condition, return the result immediately
 	hash, ok, err := lookForHash(conditions)
 	if err != nil {
-		return nil, fmt.Errorf("error during searching for a hash in the query: %w", err)
+		return nil, fmt.Errorf("during searching for a hash in the query: %w", err)
 	} else if ok {
 		res, err := txi.Get(hash)
 		switch {
 		case err != nil:
-			return []*abci.TxResult{}, fmt.Errorf("error while retrieving the result: %w", err)
+			return []*abci.TxResult{}, fmt.Errorf("while retrieving the result: %w", err)
 		case res == nil:
 			return []*abci.TxResult{}, nil
 		default:
@@ -258,7 +258,7 @@ func (txi *TxIndex) Search(ctx context.Context, q *query.Query) ([]*abci.TxResul
 
 		res, err := txi.Get(h)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get Tx{%X}: %w", h, err)
+			return nil, fmt.Errorf("get Tx{%X}: %w", h, err)
 		}
 		if res == nil {
 			continue
