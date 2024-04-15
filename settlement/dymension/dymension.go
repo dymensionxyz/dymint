@@ -254,8 +254,8 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 		case <-subscription.Out():
 			d.logger.Info("Batch accepted by settlement layer. Emitting healthy event",
 				"startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
-			heatlhEventData := &settlement.EventDataSettlementHealthStatus{Healthy: true}
-			utils.SubmitEventOrPanic(d.ctx, d.pubsub, heatlhEventData,
+			healthEventData := &settlement.EventDataSettlementHealthStatus{Healthy: true}
+			utils.SubmitEventOrPanic(d.ctx, d.pubsub, healthEventData,
 				map[string][]string{settlement.EventTypeKey: {settlement.EventSettlementHealthStatus}})
 			return nil
 		case <-ticker.C:
@@ -276,8 +276,8 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 
 			d.logger.Info("Batch accepted by settlement layer", "startHeight", includedBatch.StartHeight, "endHeight", includedBatch.EndHeight)
 			// Emit health event
-			heatlhEventData := &settlement.EventDataSettlementHealthStatus{Healthy: true}
-			utils.SubmitEventOrPanic(d.ctx, d.pubsub, heatlhEventData,
+			healthEventData := &settlement.EventDataSettlementHealthStatus{Healthy: true}
+			utils.SubmitEventOrPanic(d.ctx, d.pubsub, healthEventData,
 				map[string][]string{settlement.EventTypeKey: {settlement.EventSettlementHealthStatus}})
 			return nil
 		}
