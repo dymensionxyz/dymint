@@ -21,9 +21,30 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
+const (
+	// DefaultSubscribeTimeout is the default timeout for a subscription.
+	defaultSubscribeTimeout = 5 * time.Second
+	// DefaultSubscribeBufferSize is the default buffer size for a subscription.
+	defaultSubscribeBufferSize = 100
+)
+
 // GetHTTPHandler returns handler configured to serve Tendermint-compatible RPC.
-func GetHTTPHandler(l *client.Client, logger types.Logger) (http.Handler, error) {
-	return newHandler(newService(l, logger), json2.NewCodec(), logger), nil
+func GetHTTPHandler(l *client.Client, logger types.Logger, opts ...option) (http.Handler, error) {
+	return newHandler(newService(l, logger, opts...), json2.NewCodec(), logger), nil
+}
+
+type option func(*service)
+
+func WithSubscribeTimeout(timeout time.Duration) option {
+	return func(s *service) {
+		s.subscribeTimeout = timeout
+	}
+}
+
+func WithSubscribeBufferSize(size int) option {
+	return func(s *service) {
+		s.subscribeBufferSize = size
+	}
 }
 
 type method struct {
@@ -33,7 +54,7 @@ type method struct {
 	ws         bool
 }
 
-func newMethod(m interface{}) *method {
+func newMethod(m any) *method {
 	mType := reflect.TypeOf(m)
 
 	return &method{
@@ -48,12 +69,17 @@ type service struct {
 	client  *client.Client
 	methods map[string]*method
 	logger  types.Logger
+
+	subscribeTimeout    time.Duration
+	subscribeBufferSize int
 }
 
-func newService(c *client.Client, l types.Logger) *service {
+func newService(c *client.Client, l types.Logger, opts ...option) *service {
 	s := service{
-		client: c,
-		logger: l,
+		client:              c,
+		logger:              l,
+		subscribeTimeout:    defaultSubscribeTimeout,
+		subscribeBufferSize: defaultSubscribeBufferSize,
 	}
 	s.methods = map[string]*method{
 		"subscribe":            newMethod(s.Subscribe),
@@ -86,6 +112,11 @@ func newService(c *client.Client, l types.Logger) *service {
 		"abci_info":            newMethod(s.ABCIInfo),
 		"broadcast_evidence":   newMethod(s.BroadcastEvidence),
 	}
+
+	for _, opt := range opts {
+		opt(&s)
+	}
+
 	return &s
 }
 
@@ -103,13 +134,10 @@ func (s *service) Subscribe(req *http.Request, args *subscribeArgs, wsConn *wsCo
 
 	s.logger.Debug("subscribe to query", "remote", addr, "query", args.Query)
 
-	// TODO(tzdybal): extract consts or configs
-	const SubscribeTimeout = 5 * time.Second
-	const subBufferSize = 100
-	ctx, cancel := context.WithTimeout(req.Context(), SubscribeTimeout)
+	ctx, cancel := context.WithTimeout(req.Context(), s.subscribeTimeout)
 	defer cancel()
 
-	sub, err := s.client.EventBus.Subscribe(ctx, addr, q, subBufferSize)
+	sub, err := s.client.EventBus.Subscribe(ctx, addr, q, s.subscribeBufferSize)
 	if err != nil {
 		return nil, fmt.Errorf("failed to subscribe: %w", err)
 	}
