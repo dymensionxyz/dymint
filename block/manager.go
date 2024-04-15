@@ -219,7 +219,7 @@ func (m *Manager) StartEventListener(ctx context.Context, isAggregator bool) {
 
 func (m *Manager) healthStatusEventCallback(event pubsub.Message) {
 	eventData := event.Data().(*events.EventDataHealthStatus)
-	m.logger.Info("Received health status event", "eventData", eventData)
+	m.logger.Info("received health status event", "eventData", eventData)
 	m.shouldProduceBlocksCh <- eventData.Healthy
 }
 
