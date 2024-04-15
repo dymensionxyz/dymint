@@ -9,14 +9,14 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/go-diodes"
-
-	"github.com/dymensionxyz/dymint/node/events"
-	"github.com/dymensionxyz/dymint/p2p"
-	"github.com/dymensionxyz/dymint/utils"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	tmcrypto "github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	tmtypes "github.com/tendermint/tendermint/types"
+
+	"github.com/dymensionxyz/dymint/node/events"
+	"github.com/dymensionxyz/dymint/p2p"
+	"github.com/dymensionxyz/dymint/utils"
 
 	"github.com/tendermint/tendermint/proxy"
 
@@ -135,7 +135,7 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 	m.logger.Info("Starting the block manager")
 
 	if isAggregator {
-		//make sure local signing key is the registered on the hub
+		// make sure local signing key is the registered on the hub
 		slProposerKey := m.settlementClient.GetProposer().PublicKey.Bytes()
 		localProposerKey, _ := m.proposerKey.GetPublic().Raw()
 		if !bytes.Equal(slProposerKey, localProposerKey) {
@@ -176,7 +176,7 @@ func (m *Manager) syncBlockManager(ctx context.Context) error {
 	resultRetrieveBatch, err := m.getLatestBatchFromSL(ctx)
 	// Set the syncTarget according to the result
 	if err != nil {
-		//TODO: separate between fresh rollapp and non-registred rollapp
+		// TODO: separate between fresh rollapp and non-registred rollapp
 		if err == settlement.ErrBatchNotFound {
 			// Since we requested the latest batch and got batch not found it means
 			// the SL still hasn't got any batches for this chain.
@@ -214,11 +214,11 @@ func getAddress(key crypto.PrivKey) ([]byte, error) {
 
 // EventListener registers events to callbacks.
 func (m *Manager) EventListener(ctx context.Context, isAggregator bool) {
-	go utils.SubscribeAndHandleEvents(ctx, m.pubsub, "nodeHealthStatusHandler", events.EventQueryHealthStatus, m.healthStatusEventCallback, m.logger)
-	if !isAggregator {
+	if isAggregator {
+		go utils.SubscribeAndHandleEvents(ctx, m.pubsub, "nodeHealthStatusHandler", events.EventQueryHealthStatus, m.healthStatusEventCallback, m.logger)
+	} else {
 		go utils.SubscribeAndHandleEvents(ctx, m.pubsub, "ApplyBlockLoop", p2p.EventQueryNewNewGossipedBlock, m.applyBlockCallback, m.logger, 100)
 	}
-
 }
 
 func (m *Manager) healthStatusEventCallback(event pubsub.Message) {
