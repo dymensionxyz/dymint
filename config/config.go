@@ -33,7 +33,7 @@ type NodeConfig struct {
 	SettlementLayer    string                 `mapstructure:"settlement_layer"`
 	SettlementConfig   settlement.Config      `mapstructure:",squash"`
 	Instrumentation    *InstrumentationConfig `mapstructure:"instrumentation"`
-	//Config params for mock grpc da
+	// Config params for mock grpc da
 	DAGrpc        grpc.Config   `mapstructure:",squash"`
 	BootstrapTime time.Duration `mapstructure:"bootstrap_time"`
 }
@@ -59,7 +59,7 @@ type BlockManagerConfig struct {
 func (nc *NodeConfig) GetViperConfig(cmd *cobra.Command, homeDir string) error {
 	v := viper.GetViper()
 
-	//Loads dymint toml config file
+	// Loads dymint toml config file
 	EnsureRoot(homeDir, nil)
 	v.SetConfigName("dymint")
 	v.AddConfigPath(homeDir)                                      // search root directory
@@ -138,7 +138,7 @@ func (c NodeConfig) Validate() error {
 		}
 	}
 
-	//TODO: validate DA config
+	// TODO: validate DA config
 
 	return nil
 }

@@ -67,7 +67,6 @@ func TestNodeHealthRPCPropogation(t *testing.T) {
 				}()
 				// Check the response
 				assert.Equal(t, tc.expectedStatusCode, res.StatusCode)
-
 			})
 		}
 	}

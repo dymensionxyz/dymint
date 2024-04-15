@@ -96,7 +96,6 @@ func (h *handler) wsHandler(w http.ResponseWriter, r *http.Request) {
 		h.serveJSONRPCforWS(newResponseWriter(writer), req, ws)
 		ws.queue <- writer.Bytes()
 	}
-
 }
 
 func newResponseWriter(w io.Writer) http.ResponseWriter {
@@ -117,7 +116,6 @@ func (w wsResponse) Write(bytes []byte) (int, error) {
 
 func (w wsResponse) Header() http.Header {
 	return http.Header{}
-
 }
 
 func (w wsResponse) WriteHeader(statusCode int) {

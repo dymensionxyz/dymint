@@ -87,7 +87,7 @@ func (s *DefaultStore) SaveBlock(block *types.Block, commit *types.Commit, batch
 		return batch, fmt.Errorf("failed to marshal Commit to binary: %w", err)
 	}
 
-	//Not sure it's neeeded, as it's not used anywhere
+	// Not sure it's neeeded, as it's not used anywhere
 	if batch != nil {
 		err = multierr.Append(err, batch.Set(getBlockKey(hash), blockBlob))
 		err = multierr.Append(err, batch.Set(getCommitKey(hash), commitBlob))

@@ -24,9 +24,7 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 )
 
-var (
-	genesisHash []byte
-)
+var genesisHash []byte
 
 // NewRunNodeCmd returns the command that allows the CLI to start a node.
 // It can be used with a custom PrivValidator and in-process ABCI application.

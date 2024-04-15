@@ -25,6 +25,7 @@ type CelestiaRPCClient struct {
 }
 
 // Get provides a mock function with given fields: ctx, height, namespace, commitment
+//
 //nolint:typecheck
 func (_m *CelestiaRPCClient) Get(ctx context.Context, height uint64, namespace share.Namespace, commitment blob.Commitment) (*blob.Blob, error) {
 	ret := _m.Called(ctx, height, namespace, commitment)
@@ -86,6 +87,7 @@ func (_m *CelestiaRPCClient) GetAll(_a0 context.Context, _a1 uint64, _a2 []share
 }
 
 // GetHeaders provides a mock function with given fields: ctx, height
+//
 //nolint:typecheck
 func (_m *CelestiaRPCClient) GetHeaders(ctx context.Context, height uint64) (*header.ExtendedHeader, error) {
 	ret := _m.Called(ctx, height)
@@ -117,6 +119,7 @@ func (_m *CelestiaRPCClient) GetHeaders(ctx context.Context, height uint64) (*he
 }
 
 // GetProof provides a mock function with given fields: ctx, height, namespace, commitment
+//
 //nolint:typecheck
 func (_m *CelestiaRPCClient) GetProof(ctx context.Context, height uint64, namespace share.Namespace, commitment blob.Commitment) (*blob.Proof, error) {
 	ret := _m.Called(ctx, height, namespace, commitment)
@@ -148,6 +151,7 @@ func (_m *CelestiaRPCClient) GetProof(ctx context.Context, height uint64, namesp
 }
 
 // Included provides a mock function with given fields: ctx, height, namespace, proof, commitment
+//
 //nolint:typecheck
 func (_m *CelestiaRPCClient) Included(ctx context.Context, height uint64, namespace share.Namespace, proof *blob.Proof, commitment blob.Commitment) (bool, error) {
 	ret := _m.Called(ctx, height, namespace, proof, commitment)
@@ -177,6 +181,7 @@ func (_m *CelestiaRPCClient) Included(ctx context.Context, height uint64, namesp
 }
 
 // Submit provides a mock function with given fields: ctx, blobs, options
+//
 //nolint:typecheck
 func (_m *CelestiaRPCClient) Submit(ctx context.Context, blobs []*blob.Blob, options *client.SubmitOptions) (uint64, error) {
 	ret := _m.Called(ctx, blobs, options)

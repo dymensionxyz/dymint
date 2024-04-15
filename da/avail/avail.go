@@ -66,8 +66,10 @@ type DataAvailabilityLayerClient struct {
 	batchRetryAttempts uint
 }
 
-var _ da.DataAvailabilityLayerClient = &DataAvailabilityLayerClient{}
-var _ da.BatchRetriever = &DataAvailabilityLayerClient{}
+var (
+	_ da.DataAvailabilityLayerClient = &DataAvailabilityLayerClient{}
+	_ da.BatchRetriever              = &DataAvailabilityLayerClient{}
+)
 
 // WithClient is an option which sets the client.
 func WithClient(client SubstrateApiI) da.Option {
@@ -175,7 +177,6 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 				Error:   err,
 			},
 		}
-
 	}
 	// Convert the data returned to batches
 	var batches []*types.Batch
@@ -235,7 +236,6 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 
 	c.logger.Debug("Submitting to da batch with size", "size", len(blob))
 	return c.submitBatchLoop(blob)
-
 }
 
 // submitBatchLoop tries submitting the batch. In case we get a configuration error we would like to stop trying,
@@ -303,7 +303,6 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 
 		}
 	}
-
 }
 
 // broadcastTx broadcasts the transaction to the network and in case of success

@@ -43,6 +43,7 @@ func newHandler(s *service, codec rpc.Codec, logger types.Logger) *handler {
 
 	return h
 }
+
 func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.mux.ServeHTTP(w, r)
 }
