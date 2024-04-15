@@ -14,10 +14,10 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 	ticker := time.NewTicker(m.conf.BatchSubmitMaxTime)
 	defer ticker.Stop()
 
-	//TODO: add submission trigger by batch size (should be signaled from the the block production)
+	// TODO: add submission trigger by batch size (should be signaled from the the block production)
 	for {
 		select {
-		//Context canceled
+		// Context canceled
 		case <-ctx.Done():
 			return
 		// trigger by time
@@ -31,21 +31,19 @@ func (m *Manager) handleSubmissionTrigger(ctx context.Context) {
 	// SyncTarget is the height of the last block in the last batch as seen by this node.
 	syncTarget := atomic.LoadUint64(&m.syncTarget)
 	height := m.store.Height()
-	//no new blocks produced yet
+	// no new blocks produced yet
 	if height <= syncTarget {
 		return
 	}
 
 	// Submit batch if we've reached the batch size and there isn't another batch currently in submission process.
-	if m.batchInProcess.Load() == true {
+
+	if !m.batchInProcess.TryLock() {
 		m.logger.Debug("Batch submission already in process, skipping submission")
 		return
 	}
 
-	m.batchInProcess.Store(true)
-	defer func() {
-		m.batchInProcess.Store(false)
-	}()
+	defer m.batchInProcess.Unlock()
 
 	// We try and produce an empty block to make sure releavnt ibc messages will pass through during the batch submission: https://github.com/dymensionxyz/research/issues/173.
 	err := m.produceBlock(ctx, true)
@@ -149,7 +147,7 @@ func (m *Manager) createNextDABatch(startHeight uint64, endHeight uint64) (*type
 		batch.Blocks = append(batch.Blocks, block)
 		batch.Commits = append(batch.Commits, commit)
 
-		//Check if the batch size is too big
+		// Check if the batch size is too big
 		totalSize := batch.ToProto().Size()
 		if totalSize > int(m.conf.BlockBatchMaxSizeBytes) {
 			// Nil out the last block and commit
