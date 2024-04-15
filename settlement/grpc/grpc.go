@@ -90,7 +90,7 @@ func newHubClient(config settlement.Config, pubsub *pubsub.Server, logger types.
 
 	conn, err := grpc.Dial(config.SLGrpc.Host+":"+strconv.Itoa(config.SLGrpc.Port), opts...)
 	if err != nil {
-		logger.Error("Error grpc sl connecting")
+		logger.Error("grpc sl connecting")
 		return nil, err
 	}
 
