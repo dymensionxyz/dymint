@@ -40,7 +40,6 @@ func TestBatchSubmissionHappyFlow(t *testing.T) {
 	// Check initial assertions
 	initialHeight := uint64(0)
 	require.Zero(manager.store.Height())
-	require.True(manager.batchInProcess.Load() == false)
 	require.Zero(manager.syncTarget.Load())
 
 	// Produce block and validate that we produced blocks
@@ -87,7 +86,6 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 	// Check initial assertions
 	initialHeight := uint64(0)
 	require.Zero(manager.store.Height())
-	require.True(manager.batchInProcess.Load() == false)
 	require.Zero(manager.syncTarget.Load())
 
 	// Produce block and validate that we produced blocks
@@ -140,7 +138,6 @@ func TestBatchSubmissionAfterTimeout(t *testing.T) {
 	// Check initial height
 	initialHeight := uint64(0)
 	require.Equal(initialHeight, manager.store.Height())
-	require.True(manager.batchInProcess.Load() == false)
 
 	require.Zero(manager.syncTarget.Load())
 

@@ -36,15 +36,13 @@ func (m *Manager) handleSubmissionTrigger(ctx context.Context) {
 	}
 
 	// Submit batch if we've reached the batch size and there isn't another batch currently in submission process.
-	if m.batchInProcess.Load() == true {
+
+	if !m.batchInProcess.TryLock() {
 		m.logger.Debug("Batch submission already in process, skipping submission")
 		return
 	}
 
-	m.batchInProcess.Store(true)
-	defer func() {
-		m.batchInProcess.Store(false)
-	}()
+	defer m.batchInProcess.Unlock()
 
 	// We try and produce an empty block to make sure releavnt ibc messages will pass through during the batch submission: https://github.com/dymensionxyz/research/issues/173.
 	err := m.produceBlock(ctx, true)

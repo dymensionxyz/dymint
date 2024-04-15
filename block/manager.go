@@ -61,7 +61,7 @@ type Manager struct {
 	shouldProduceBlocksCh chan bool
 	produceEmptyBlockCh   chan bool
 	lastSubmissionTime    atomic.Int64
-	batchInProcess        atomic.Value
+	batchInProcess        sync.Mutex
 	produceBlockMutex     sync.Mutex
 	applyCachedBlockMutex sync.Mutex
 
@@ -102,9 +102,6 @@ func NewManager(
 		return nil, fmt.Errorf("get initial state: %w", err)
 	}
 
-	batchInProcess := atomic.Value{}
-	batchInProcess.Store(false)
-
 	agg := &Manager{
 		pubsub:           pubsub,
 		p2pClient:        p2pClient,
@@ -120,7 +117,6 @@ func NewManager(
 		// channels are buffered to avoid blocking on input/output operations, buffer sizes are arbitrary
 		syncTargetDiode:       diodes.NewOneToOne(1, nil),
 		isSyncedCond:          *sync.NewCond(new(sync.Mutex)),
-		batchInProcess:        batchInProcess,
 		shouldProduceBlocksCh: make(chan bool, 1),
 		produceEmptyBlockCh:   make(chan bool, 1),
 		logger:                logger,
