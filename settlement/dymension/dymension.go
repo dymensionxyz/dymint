@@ -231,8 +231,8 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 			if err != nil {
 				d.logger.Error("Failed submitting batch to settlement layer. Emitting unhealthy event",
 					"startHeight", batch.StartHeight, "endHeight", batch.EndHeight, "error", err)
-				heatlhEventData := &settlement.EventDataSettlementHealthStatus{Healthy: false, Error: err}
-				utils.SubmitEventOrPanic(d.ctx, d.pubsub, heatlhEventData,
+				healthEventData := &settlement.EventDataSettlementHealthStatus{Healthy: false, Error: err}
+				utils.SubmitEventOrPanic(d.ctx, d.pubsub, healthEventData,
 					map[string][]string{settlement.EventTypeKey: {settlement.EventSettlementHealthStatus}})
 				// Sleep to allow context cancellation to take effect before retrying
 
