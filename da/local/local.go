@@ -3,7 +3,6 @@ package local
 import (
 	"crypto/sha1" //#nosec
 	"encoding/binary"
-	"fmt"
 	"math/rand"
 	"sync/atomic"
 	"time"
@@ -96,11 +95,7 @@ func (m *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 		return da.ResultSubmitBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error(), Error: err}}
 	}
 
-	ok := m.daHeight.CompareAndSwap(daHeight, daHeight+1)
-	if !ok {
-		err = fmt.Errorf("da height cas: old: %d: new: %d", daHeight, daHeight+1)
-		return da.ResultSubmitBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error(), Error: err}}
-	}
+	m.daHeight.Store(daHeight + 1) // guaranteed no ABA problem as submit batch is only called when the object is locked
 
 	return da.ResultSubmitBatch{
 		BaseResult: da.BaseResult{
