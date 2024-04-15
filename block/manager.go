@@ -240,12 +240,12 @@ func (m *Manager) applyBlockCallback(event pubsub.Message) {
 	} else {
 		err := m.applyBlock(context.Background(), &block, &commit, blockMetaData{source: gossipedBlock})
 		if err != nil {
-			m.logger.Debug("Failed to apply block", "err", err)
+			m.logger.Debug("apply block", "err", err)
 		}
 	}
 	err := m.attemptApplyCachedBlocks(context.Background())
 	if err != nil {
-		m.logger.Debug("Failed to apply previous cached blocks", "err", err)
+		m.logger.Debug("apply previous cached blocks", "err", err)
 	}
 }
 
