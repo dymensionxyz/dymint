@@ -61,7 +61,7 @@ func (s *DefaultStore) Height() uint64 {
 
 // NextHeight returns the next height that expected to be stored in store.
 func (s *DefaultStore) NextHeight() uint64 {
-	return atomic.LoadUint64(&s.height) + 1
+	return s.Height() + 1
 }
 
 // SetBase sets the height saved in the Store of the earliest block

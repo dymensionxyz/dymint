@@ -34,7 +34,7 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 	// In case the following true, it means we crashed after the commit and before updating the store height.
 	// In that case we'll want to align the store with the app state and continue to the next block.
 	if isBlockAlreadyApplied {
-		err := m.UpdateStateFromApp(block)
+		err := m.UpdateStateFromApp()
 		if err != nil {
 			return err
 		}
@@ -166,7 +166,7 @@ func (m *Manager) isHeightAlreadyApplied(blockHeight uint64) (bool, error) {
 }
 
 // UpdateStateFromApp is responsible for aligning the state of the store from the abci app
-func (m *Manager) UpdateStateFromApp(block *types.Block) error {
+func (m *Manager) UpdateStateFromApp() error {
 	proxyAppInfo, err := m.executor.GetAppInfo()
 	if err != nil {
 		return errors.Wrap(err, "get app info")
