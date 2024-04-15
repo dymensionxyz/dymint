@@ -112,18 +112,19 @@ func newHubClient(config settlement.Config, pubsub *pubsub.Server, logger types.
 	}
 	logger.Debug("Starting grpc SL ", "index", slStateIndex)
 
-	return &HubGrpcClient{
+	ret := &HubGrpcClient{
 		ctx:            ctx,
 		ProposerPubKey: proposer,
 		logger:         logger,
 		pubsub:         pubsub,
-		latestHeight:   latestHeight,
 		slStateIndex:   slStateIndex,
 		conn:           conn,
 		sl:             client,
 		stopchan:       stopchan,
 		refreshTime:    config.SLGrpc.RefreshTime,
-	}, nil
+	}
+	ret.latestHeight.Store(latestHeight)
+	return ret, nil
 }
 
 func initConfig(conf settlement.Config) (proposer string, err error) {
