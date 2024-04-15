@@ -207,7 +207,7 @@ func (h *handler) encodeAndWriteResponse(w http.ResponseWriter, result interface
 	encoder := json.NewEncoder(w)
 	err := encoder.Encode(resp)
 	if err != nil {
-		h.logger.Error("failed to encode RPC response", "error", err)
+		h.logger.Error("encode RPC response", "error", err)
 	}
 }
 

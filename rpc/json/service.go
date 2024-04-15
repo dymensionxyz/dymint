@@ -131,7 +131,7 @@ func (s *service) Subscribe(req *http.Request, args *subscribeArgs, wsConn *wsCo
 				// Marshal response to JSON and send it to the websocket queue
 				jsonBytes, err := json.MarshalIndent(resp, "", "  ")
 				if err != nil {
-					s.logger.Error("Failed to marshal RPCResponse to JSON", "err", err)
+					s.logger.Error("marshal RPCResponse to JSON", "err", err)
 					continue
 				}
 				if wsConn != nil {

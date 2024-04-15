@@ -93,7 +93,7 @@ func (g *Gossiper) ProcessMessages(ctx context.Context) {
 			return
 		}
 		if err != nil {
-			g.logger.Error("failed to read message", "error", err)
+			g.logger.Error("read message", "error", err)
 			return
 		}
 		// Logic is handled in validator

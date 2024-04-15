@@ -70,7 +70,7 @@ func (m *Manager) updateStateIndex(stateIndex uint64) error {
 	atomic.StoreUint64(&m.lastState.SLStateIndex, stateIndex)
 	_, err := m.store.UpdateState(m.lastState, nil)
 	if err != nil {
-		m.logger.Error("Failed to update state", "error", err)
+		m.logger.Error("update state", "error", err)
 		return err
 	}
 	return nil
@@ -115,9 +115,9 @@ func (m *Manager) fetchBatch(daMetaData *da.DASubmitMetaData) da.ResultRetrieveB
 			},
 		}
 	}
-	//batchRes.MetaData includes proofs necessary to open disputes with the Hub
+	// batchRes.MetaData includes proofs necessary to open disputes with the Hub
 	batchRes := m.retriever.RetrieveBatches(daMetaData)
-	//TODO(srene) : for invalid transactions there is no specific error code since it will need to be validated somewhere else for fraud proving.
-	//NMT proofs (availRes.MetaData.Proofs) are included in the result batchRes, necessary to be included in the dispute
+	// TODO(srene) : for invalid transactions there is no specific error code since it will need to be validated somewhere else for fraud proving.
+	// NMT proofs (availRes.MetaData.Proofs) are included in the result batchRes, necessary to be included in the dispute
 	return batchRes
 }
