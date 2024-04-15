@@ -12,9 +12,6 @@ import (
 
 	sdkerrors "cosmossdk.io/errors"
 
-	abciconv "github.com/dymensionxyz/dymint/conv/abci"
-	"github.com/dymensionxyz/dymint/mempool"
-	"github.com/dymensionxyz/dymint/node"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
@@ -28,6 +25,10 @@ import (
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
 	tm_version "github.com/tendermint/tendermint/version"
+
+	abciconv "github.com/dymensionxyz/dymint/conv/abci"
+	"github.com/dymensionxyz/dymint/mempool"
+	"github.com/dymensionxyz/dymint/node"
 )
 
 const (
@@ -165,7 +166,7 @@ func (c *Client) BroadcastTxCommit(ctx context.Context, tx types.Tx) (*ctypes.Re
 		case <-deliverTxSub.Cancelled():
 			var reason string
 			if deliverTxSub.Err() == nil {
-				reason = "Tendermint exited"
+				reason = "Dymint exited"
 			} else {
 				reason = deliverTxSub.Err().Error()
 			}
