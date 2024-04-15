@@ -129,7 +129,7 @@ func (c *Client) BroadcastTxCommit(ctx context.Context, tx types.Tx) (*ctypes.Re
 	}, mempool.TxInfo{})
 	if err != nil {
 		c.Logger.Error("on broadcastTxCommit", "err", err)
-		return nil, fmt.Errorf("on broadcastTxCommit: %v", err)
+		return nil, fmt.Errorf("on broadcastTxCommit: %w", err)
 	}
 	select {
 	case <-ctx.Done():

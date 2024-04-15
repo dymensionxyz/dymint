@@ -8,11 +8,6 @@ import (
 	"io"
 	"os"
 
-	cfg "github.com/dymensionxyz/dymint/config"
-	"github.com/dymensionxyz/dymint/conv"
-	"github.com/dymensionxyz/dymint/mempool"
-	"github.com/dymensionxyz/dymint/node"
-	"github.com/dymensionxyz/dymint/rpc"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	tmcfg "github.com/tendermint/tendermint/config"
@@ -22,6 +17,12 @@ import (
 	tmnode "github.com/tendermint/tendermint/node"
 	tmp2p "github.com/tendermint/tendermint/p2p"
 	"github.com/tendermint/tendermint/proxy"
+
+	cfg "github.com/dymensionxyz/dymint/config"
+	"github.com/dymensionxyz/dymint/conv"
+	"github.com/dymensionxyz/dymint/mempool"
+	"github.com/dymensionxyz/dymint/node"
+	"github.com/dymensionxyz/dymint/rpc"
 )
 
 var genesisHash []byte
@@ -128,7 +129,11 @@ func startInProcess(config *cfg.NodeConfig, tmConfig *tmcfg.Config, logger log.L
 }
 
 func checkGenesisHash(config *tmcfg.Config) error {
-	if len(genesisHash) == 0 || config.Genesis == "" {
+	if config.Genesis == "" {
+		return fmt.Errorf("genesis file is not set")
+	}
+
+	if len(genesisHash) == 0 {
 		return nil
 	}
 

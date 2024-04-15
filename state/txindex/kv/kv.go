@@ -55,7 +55,7 @@ func (txi *TxIndex) Get(hash []byte) (*abci.TxResult, error) {
 	txResult := new(abci.TxResult)
 	err = proto.Unmarshal(rawBytes, txResult)
 	if err != nil {
-		return nil, fmt.Errorf("reading TxResult: %v", err)
+		return nil, fmt.Errorf("reading TxResult: %w", err)
 	}
 
 	return txResult, nil
