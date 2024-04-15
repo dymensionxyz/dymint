@@ -58,7 +58,7 @@ func getAddr(sk crypto.PrivKey) (multiaddr.Multiaddr, error) {
 	copy(ip[net.IPv6len-len(suffix):], suffix)
 	a, err := multiaddr.NewMultiaddr(fmt.Sprintf("/ip6/%s/tcp/4242", ip))
 	if err != nil {
-		return nil, fmt.Errorf("failed to create test multiaddr: %s", err)
+		return nil, fmt.Errorf("create test multiaddr: %s", err)
 	}
 	return a, nil
 }
@@ -104,7 +104,8 @@ func startTestNetwork(ctx context.Context, t *testing.T, n int, conf map[int]hos
 		client, err := NewClient(config.P2PConfig{
 			Seeds:           seeds[i],
 			GossipCacheSize: 50,
-			BoostrapTime:    30 * time.Second},
+			BoostrapTime:    30 * time.Second,
+		},
 			mnet.Hosts()[i].Peerstore().PrivKey(mnet.Hosts()[i].ID()),
 			conf[i].chainID,
 			logger)

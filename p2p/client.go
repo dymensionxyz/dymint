@@ -255,12 +255,12 @@ func (c *Client) setupDHT(ctx context.Context) error {
 	var err error
 	c.dht, err = dht.New(ctx, c.host, dht.Mode(dht.ModeServer), dht.BootstrapPeers(seedNodes...))
 	if err != nil {
-		return fmt.Errorf("failed to create DHT: %w", err)
+		return fmt.Errorf("create DHT: %w", err)
 	}
 
 	err = c.dht.Bootstrap(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to bootstrap DHT: %w", err)
+		return fmt.Errorf("bootstrap DHT: %w", err)
 	}
 
 	if len(seedNodes) > 0 {
@@ -332,7 +332,6 @@ func (c *Client) tryConnect(ctx context.Context, peer peer.AddrInfo) {
 }
 
 func (c *Client) setupGossiping(ctx context.Context) error {
-
 	pubsub.GossipSubHistoryGossip = c.conf.GossipCacheSize
 	pubsub.GossipSubHistoryLength = c.conf.GossipCacheSize
 	pubsub.GossipSubMaxIHaveMessages = c.conf.GossipCacheSize
@@ -420,7 +419,7 @@ func (c *Client) bootstrapLoop(ctx context.Context) {
 	defer ticker.Stop()
 	for {
 		select {
-		//Context canceled
+		// Context canceled
 		case <-ctx.Done():
 			return
 		case <-ticker.C:

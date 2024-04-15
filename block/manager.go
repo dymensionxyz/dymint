@@ -86,7 +86,6 @@ func NewManager(
 	p2pClient *p2p.Client,
 	logger types.Logger,
 ) (*Manager, error) {
-
 	proposerAddress, err := getAddress(proposerKey)
 	if err != nil {
 		return nil, err
@@ -94,11 +93,11 @@ func NewManager(
 
 	exec, err := state.NewBlockExecutor(proposerAddress, conf.NamespaceID, genesis.ChainID, mempool, proxyApp, eventBus, logger)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create block executor: %w", err)
+		return nil, fmt.Errorf("create block executor: %w", err)
 	}
 	s, err := getInitialState(store, genesis, logger)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get initial state: %w", err)
+		return nil, fmt.Errorf("get initial state: %w", err)
 	}
 
 	batchInProcess := atomic.Value{}
@@ -135,7 +134,7 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 	m.logger.Info("Starting the block manager")
 
 	if isAggregator {
-		//make sure local signing key is the registered on the hub
+		// make sure local signing key is the registered on the hub
 		slProposerKey := m.settlementClient.GetProposer().PublicKey.Bytes()
 		localProposerKey, _ := m.proposerKey.GetPublic().Raw()
 		if !bytes.Equal(slProposerKey, localProposerKey) {
@@ -154,7 +153,7 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 
 	err := m.syncBlockManager(ctx)
 	if err != nil {
-		err = fmt.Errorf("failed to sync block manager: %w", err)
+		err = fmt.Errorf("sync block manager: %w", err)
 		return err
 	}
 
@@ -176,7 +175,7 @@ func (m *Manager) syncBlockManager(ctx context.Context) error {
 	resultRetrieveBatch, err := m.getLatestBatchFromSL(ctx)
 	// Set the syncTarget according to the result
 	if err != nil {
-		//TODO: separate between fresh rollapp and non-registred rollapp
+		// TODO: separate between fresh rollapp and non-registred rollapp
 		if err == settlement.ErrBatchNotFound {
 			// Since we requested the latest batch and got batch not found it means
 			// the SL still hasn't got any batches for this chain.
@@ -218,7 +217,6 @@ func (m *Manager) EventListener(ctx context.Context, isAggregator bool) {
 	if !isAggregator {
 		go utils.SubscribeAndHandleEvents(ctx, m.pubsub, "ApplyBlockLoop", p2p.EventQueryNewNewGossipedBlock, m.applyBlockCallback, m.logger, 100)
 	}
-
 }
 
 func (m *Manager) healthStatusEventCallback(event pubsub.Message) {

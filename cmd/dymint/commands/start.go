@@ -24,9 +24,7 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 )
 
-var (
-	genesisHash []byte
-)
+var genesisHash []byte
 
 // NewRunNodeCmd returns the command that allows the CLI to start a node.
 // It can be used with a custom PrivValidator and in-process ABCI application.
@@ -63,7 +61,7 @@ func NewRunNodeCmd() *cobra.Command {
 func startInProcess(config *cfg.NodeConfig, tmConfig *tmcfg.Config, logger log.Logger) error {
 	nodeKey, err := tmp2p.LoadOrGenNodeKey(tmConfig.NodeKeyFile())
 	if err != nil {
-		return fmt.Errorf("failed to load or gen node key %s: %w", tmConfig.NodeKeyFile(), err)
+		return fmt.Errorf("load or gen node key %s: %w", tmConfig.NodeKeyFile(), err)
 	}
 	privValKey, err := tmp2p.LoadOrGenNodeKey(tmConfig.PrivValidatorKeyFile())
 	if err != nil {
