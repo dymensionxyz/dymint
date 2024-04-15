@@ -93,11 +93,11 @@ func NewManager(
 
 	exec, err := state.NewBlockExecutor(proposerAddress, conf.NamespaceID, genesis.ChainID, mempool, proxyApp, eventBus, logger)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create block executor: %w", err)
+		return nil, fmt.Errorf("create block executor: %w", err)
 	}
 	s, err := getInitialState(store, genesis, logger)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get initial state: %w", err)
+		return nil, fmt.Errorf("get initial state: %w", err)
 	}
 
 	batchInProcess := atomic.Value{}
@@ -153,7 +153,7 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 
 	err := m.syncBlockManager(ctx)
 	if err != nil {
-		err = fmt.Errorf("failed to sync block manager: %w", err)
+		err = fmt.Errorf("sync block manager: %w", err)
 		return err
 	}
 
@@ -240,12 +240,12 @@ func (m *Manager) applyBlockCallback(event pubsub.Message) {
 	} else {
 		err := m.applyBlock(context.Background(), &block, &commit, blockMetaData{source: gossipedBlock})
 		if err != nil {
-			m.logger.Debug("Failed to apply block", "err", err)
+			m.logger.Debug("apply block", "err", err)
 		}
 	}
 	err := m.attemptApplyCachedBlocks(context.Background())
 	if err != nil {
-		m.logger.Debug("Failed to apply previous cached blocks", "err", err)
+		m.logger.Debug("apply previous cached blocks", "err", err)
 	}
 }
 

@@ -191,14 +191,14 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 				// Attempt to unmarshal the data.
 				err := proto.Unmarshal(data, &pbBatch)
 				if err != nil {
-					c.logger.Error("failed to unmarshal batch", "daHeight", daMetaData.Height, "error", err)
+					c.logger.Error("unmarshal batch", "daHeight", daMetaData.Height, "error", err)
 					continue
 				}
 				// Convert the proto batch to a batch
 				batch := &types.Batch{}
 				err = batch.FromProto(&pbBatch)
 				if err != nil {
-					c.logger.Error("failed to convert batch", "daHeight", daMetaData.Height, "error", err)
+					c.logger.Error("convert batch", "daHeight", daMetaData.Height, "error", err)
 					continue
 				}
 				// Add the batch to the list

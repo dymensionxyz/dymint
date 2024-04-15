@@ -258,7 +258,7 @@ func (txi *TxIndex) Search(ctx context.Context, q *query.Query) ([]*abci.TxResul
 
 		res, err := txi.Get(h)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get Tx{%X}: %w", h, err)
+			return nil, fmt.Errorf("get Tx{%X}: %w", h, err)
 		}
 		if res == nil {
 			continue

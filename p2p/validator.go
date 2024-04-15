@@ -74,7 +74,7 @@ func (v *Validator) BlockValidator() GossipValidator {
 		v.logger.Debug("block event received", "from", blockMsg.From, "bytes", len(blockMsg.Data))
 		var gossipedBlock GossipedBlock
 		if err := gossipedBlock.UnmarshalBinary(blockMsg.Data); err != nil {
-			v.logger.Error("failed to deserialize gossiped block", "error", err)
+			v.logger.Error("deserialize gossiped block", "error", err)
 			return false
 		}
 		if err := gossipedBlock.Validate(); err != nil {

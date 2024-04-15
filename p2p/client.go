@@ -255,12 +255,12 @@ func (c *Client) setupDHT(ctx context.Context) error {
 	var err error
 	c.dht, err = dht.New(ctx, c.host, dht.Mode(dht.ModeServer), dht.BootstrapPeers(seedNodes...))
 	if err != nil {
-		return fmt.Errorf("failed to create DHT: %w", err)
+		return fmt.Errorf("create DHT: %w", err)
 	}
 
 	err = c.dht.Bootstrap(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to bootstrap DHT: %w", err)
+		return fmt.Errorf("bootstrap DHT: %w", err)
 	}
 
 	if len(seedNodes) > 0 {
@@ -325,7 +325,7 @@ func (c *Client) tryConnect(ctx context.Context, peer peer.AddrInfo) {
 	c.logger.Debug("trying to connect to peer", "peer", peer)
 	err := c.host.Connect(ctx, peer)
 	if err != nil {
-		c.logger.Error("failed to connect to peer", "peer", peer, "error", err)
+		c.logger.Error("connect to peer", "peer", peer, "error", err)
 		return
 	}
 	c.logger.Debug("connected to peer", "peer", peer)
@@ -373,12 +373,12 @@ func (c *Client) getSeedAddrInfo(seedStr string) []peer.AddrInfo {
 	for _, s := range seeds {
 		maddr, err := multiaddr.NewMultiaddr(s)
 		if err != nil {
-			c.logger.Error("failed to parse seed node", "address", s, "error", err)
+			c.logger.Error("parse seed node", "address", s, "error", err)
 			continue
 		}
 		addrInfo, err := peer.AddrInfoFromP2pAddr(maddr)
 		if err != nil {
-			c.logger.Error("failed to create addr info for seed", "address", maddr, "error", err)
+			c.logger.Error("create addr info for seed", "address", maddr, "error", err)
 			continue
 		}
 		addrs = append(addrs, *addrInfo)
@@ -426,7 +426,7 @@ func (c *Client) bootstrapLoop(ctx context.Context) {
 			if len(c.Peers()) == 0 {
 				err := c.dht.Bootstrap(ctx)
 				if err != nil {
-					c.logger.Error("failed to re-bootstrap DHT: %w", err)
+					c.logger.Error("re-bootstrap DHT: %w", err)
 				}
 			}
 

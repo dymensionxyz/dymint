@@ -73,8 +73,8 @@ func TestREST(t *testing.T) {
 		{"invalid/missing param", "/block", http.StatusOK, int(json2.E_INVALID_REQ), `missing param 'height'`},
 		{"valid/no params", "/abci_info", http.StatusOK, -1, `"last_block_height":"345"`},
 		// to keep test simple, allow returning application error in following case
-		{"valid/int param", "/block?height=321", http.StatusOK, int(json2.E_INTERNAL), "failed to load hash from index"},
-		{"invalid/int param", "/block?height=foo", http.StatusOK, int(json2.E_PARSE), "failed to parse param 'height'"},
+		{"valid/int param", "/block?height=321", http.StatusOK, int(json2.E_INTERNAL), "load hash from index"}, // TODO: use errors.Is instead of strcmp
+		{"invalid/int param", "/block?height=foo", http.StatusOK, int(json2.E_PARSE), "parse param 'height'"},  // TODO: use errors.Is instead of strcmp
 		{
 			"valid/bool int string params",
 			"/tx_search?" + txSearchParams.Encode(),
@@ -83,10 +83,10 @@ func TestREST(t *testing.T) {
 		{
 			"invalid/bool int string params",
 			"/tx_search?" + strings.Replace(txSearchParams.Encode(), "true", "blue", 1),
-			http.StatusOK, int(json2.E_PARSE), "failed to parse param 'prove'",
+			http.StatusOK, int(json2.E_PARSE), "parse param 'prove'", // TODO: use errors.Is instead of strcmp
 		},
 		{"valid/hex param", "/check_tx?tx=DEADBEEF", http.StatusOK, -1, `"gas_used":"1000"`},
-		{"invalid/hex param", "/check_tx?tx=QWERTY", http.StatusOK, int(json2.E_PARSE), "failed to parse param 'tx'"},
+		{"invalid/hex param", "/check_tx?tx=QWERTY", http.StatusOK, int(json2.E_PARSE), "parse param 'tx'"}, // TODO: use errors.Is instead of strcmp
 	}
 
 	_, local := getRPC(t)
@@ -220,7 +220,7 @@ func TestSubscription(t *testing.T) {
 	jsonResp = response{}
 	assert.NoError(json.Unmarshal(resp.Body.Bytes(), &jsonResp))
 	require.NotNil(jsonResp.Error)
-	assert.Contains(jsonResp.Error.Message, "failed to parse query")
+	assert.Contains(jsonResp.Error.Message, "parse query") // TODO: use errors.Is
 
 	// test valid, but duplicate subscription
 	req = httptest.NewRequest(http.MethodGet, "/", bytes.NewReader(subscribeReq))

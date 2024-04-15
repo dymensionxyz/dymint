@@ -97,7 +97,7 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 	assert.Zero(t, manager.syncTarget)
 
 	// try to submit, we expect failure
-	mockLayerI.On("SubmitBatch", mock.Anything, mock.Anything, mock.Anything).Return(fmt.Errorf("Failed to submit batch")).Once()
+	mockLayerI.On("SubmitBatch", mock.Anything, mock.Anything, mock.Anything).Return(fmt.Errorf("submit batch")).Once()
 	manager.handleSubmissionTrigger(ctx)
 	assert.EqualValues(t, 0, manager.syncTarget)
 

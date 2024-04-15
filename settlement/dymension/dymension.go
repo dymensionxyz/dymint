@@ -211,7 +211,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 	postBatchSubscriberClient := fmt.Sprintf("%s-%d-%s", postBatchSubscriberPrefix, batch.StartHeight, uuid.New().String())
 	subscription, err := d.pubsub.Subscribe(d.ctx, postBatchSubscriberClient, settlement.EventQueryNewSettlementBatchAccepted)
 	if err != nil {
-		d.logger.Error("failed to subscribe to state update events", "err", err)
+		d.logger.Error("subscribe to state update events", "err", err)
 		return err
 	}
 

@@ -76,13 +76,13 @@ func (is *IndexerService) OnStart() error {
 			}
 
 			if err := is.blockIdxr.Index(eventDataHeader); err != nil {
-				is.Logger.Error("failed to index block", "height", height, "err", err)
+				is.Logger.Error("index block", "height", height, "err", err)
 			} else {
 				is.Logger.Debug("indexed block", "height", height)
 			}
 
 			if err = is.txIdxr.AddBatch(batch); err != nil {
-				is.Logger.Error("failed to index block txs", "height", height, "err", err)
+				is.Logger.Error("index block txs", "height", height, "err", err)
 			} else {
 				is.Logger.Debug("indexed block txs", "height", height, "num_txs", eventDataHeader.NumTxs)
 			}

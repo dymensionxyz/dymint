@@ -109,7 +109,7 @@ func (c *Client) BroadcastTxCommit(ctx context.Context, tx types.Tx) (*ctypes.Re
 	q := types.EventQueryTxFor(tx)
 	deliverTxSub, err := c.EventBus.Subscribe(subCtx, subscriber, q)
 	if err != nil {
-		err = fmt.Errorf("failed to subscribe to tx: %w", err)
+		err = fmt.Errorf("subscribe to tx: %w", err)
 		c.Logger.Error("Error on broadcast_tx_commit", "err", err)
 		return nil, err
 	}
@@ -227,7 +227,7 @@ func (c *Client) BroadcastTxSync(ctx context.Context, tx types.Tx) (*ctypes.Resu
 			// this node, as the CheckTx call above will return an error indicating that
 			// the tx is already in the mempool
 			_ = c.node.Mempool.RemoveTxByKey(tx.Key())
-			return nil, fmt.Errorf("failed to gossip tx: %w", err)
+			return nil, fmt.Errorf("gossip tx: %w", err)
 		}
 	}
 
@@ -244,7 +244,7 @@ func (c *Client) BroadcastTxSync(ctx context.Context, tx types.Tx) (*ctypes.Resu
 func (c *Client) Subscribe(ctx context.Context, subscriber, query string, outCapacity ...int) (out <-chan ctypes.ResultEvent, err error) {
 	q, err := tmquery.New(query)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse query: %w", err)
+		return nil, fmt.Errorf("parse query: %w", err)
 	}
 
 	outCap := 1
@@ -259,7 +259,7 @@ func (c *Client) Subscribe(ctx context.Context, subscriber, query string, outCap
 		sub, err = c.EventBus.SubscribeUnbuffered(ctx, subscriber, q)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("failed to subscribe: %w", err)
+		return nil, fmt.Errorf("subscribe: %w", err)
 	}
 
 	outc := make(chan ctypes.ResultEvent, outCap)
@@ -272,7 +272,7 @@ func (c *Client) Subscribe(ctx context.Context, subscriber, query string, outCap
 func (c *Client) Unsubscribe(ctx context.Context, subscriber, query string) error {
 	q, err := tmquery.New(query)
 	if err != nil {
-		return fmt.Errorf("failed to parse query: %w", err)
+		return fmt.Errorf("parse query: %w", err)
 	}
 	return c.EventBus.Unsubscribe(ctx, subscriber, q)
 }
@@ -511,7 +511,7 @@ func (c *Client) Validators(ctx context.Context, heightPtr *int64, pagePtr, perP
 	height := c.normalizeHeight(heightPtr)
 	validators, err := c.node.Store.LoadValidators(height)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load validators for height %d: %w", height, err)
+		return nil, fmt.Errorf("load validators for height %d: %w", height, err)
 	}
 
 	totalCount := len(validators.Validators)
@@ -700,7 +700,7 @@ func (c *Client) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
 	latest, err := c.node.Store.LoadBlock(c.node.Store.Height())
 	if err != nil {
 		// TODO(tzdybal): extract error
-		return nil, fmt.Errorf("failed to find latest block: %w", err)
+		return nil, fmt.Errorf("find latest block: %w", err)
 	}
 
 	latestBlockHash := latest.Header.DataHash
@@ -710,16 +710,16 @@ func (c *Client) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
 
 	validators, err := c.node.Store.LoadValidators(latest.Header.Height)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch the validator info at latest block: %w", err)
+		return nil, fmt.Errorf("fetch the validator info at latest block: %w", err)
 	}
 	_, validator := validators.GetByAddress(latest.Header.ProposerAddress)
 	if validator == nil {
-		return nil, fmt.Errorf("failed to find proposer %s in the valSet", string(latest.Header.ProposerAddress))
+		return nil, fmt.Errorf("find proposer %s in the valSet", string(latest.Header.ProposerAddress))
 	}
 
 	state, err := c.node.Store.LoadState()
 	if err != nil {
-		return nil, fmt.Errorf("failed to load the last saved state: %w", err)
+		return nil, fmt.Errorf("load the last saved state: %w", err)
 	}
 	defaultProtocolVersion := p2p.NewProtocolVersion(
 		tm_version.P2PProtocol,
