@@ -24,7 +24,8 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 	cfg := &NodeConfig{
 		P2P: P2PConfig{
 			ListenAddress: DefaultListenAddress,
-			Seeds:         ""},
+			Seeds:         "",
+		},
 		Aggregator: true,
 		BlockManagerConfig: BlockManagerConfig{
 			BlockTime:               200 * time.Millisecond,
@@ -33,7 +34,8 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 			NamespaceID:             "0000000000000000ffff",
 			BlockBatchSize:          500,
 			BlockBatchMaxSizeBytes:  500000,
-			GossipedBlocksCacheSize: 50},
+			GossipedBlocksCacheSize: 50,
+		},
 		DALayer:         "mock",
 		SettlementLayer: "mock",
 		Instrumentation: &InstrumentationConfig{
@@ -51,7 +53,7 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 		chainId = DefaultChainID
 	}
 
-	//Setting default params for sl grpc mock
+	// Setting default params for sl grpc mock
 	defaultSlGrpcConfig := settlement.GrpcConfig{
 		Host:        "127.0.0.1",
 		Port:        7981,
@@ -69,7 +71,7 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 	}
 	cfg.SettlementConfig = defaultSLconfig
 
-	//Setting default params for da grpc mock
+	// Setting default params for da grpc mock
 	defaultDAGrpc := grpc.Config{
 		Host: "127.0.0.1",
 		Port: 7980,

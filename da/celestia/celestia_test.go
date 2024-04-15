@@ -1,10 +1,10 @@
 package celestia_test
 
 import (
+	cryptoRand "crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"math/rand"
-	cryptoRand "crypto/rand"
 	"testing"
 	"time"
 
@@ -32,7 +32,6 @@ import (
 const mockDaBlockTime = 100 * time.Millisecond
 
 func TestDALC(t *testing.T) {
-
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -93,11 +92,9 @@ func TestDALC(t *testing.T) {
 	assert.Equal(da.StatusSuccess, retreiveRes.Code)
 	require.True(len(retreiveRes.Batches) == 1)
 	compareBatches(t, batch1, retreiveRes.Batches[0])
-
 }
 
 func TestRetrievalNotFound(t *testing.T) {
-
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -123,8 +120,8 @@ func TestRetrievalNotFound(t *testing.T) {
 
 	time.Sleep(2 * mockDaBlockTime)
 
-	//data1, _ := batch1.MarshalBinary()
-	//blob1, _ := blob.NewBlobV0(nID, data1)
+	// data1, _ := batch1.MarshalBinary()
+	// blob1, _ := blob.NewBlobV0(nID, data1)
 
 	t.Log("Submitting batch1")
 	res1 := dalc.SubmitBatch(batch1)
@@ -140,11 +137,9 @@ func TestRetrievalNotFound(t *testing.T) {
 
 	assert.ErrorIs(retreiveRes.Error, da.ErrBlobNotFound)
 	require.True(len(retreiveRes.Batches) == 0)
-
 }
 
 func TestRetrievalNoCommitment(t *testing.T) {
-
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -170,13 +165,11 @@ func TestRetrievalNoCommitment(t *testing.T) {
 	retreiveRes := retriever.RetrieveBatches(h1)
 	assert.Equal(da.StatusSuccess, retreiveRes.Code)
 	require.True(len(retreiveRes.Batches) == 1)
-
 }
 
 func TestAvalabilityOK(t *testing.T) {
-
 	assert := assert.New(t)
-	//require := require.New(t)
+	// require := require.New(t)
 
 	mockRPCClient, dalc, nID, headers := setDAandMock(t)
 	// only blocks b1 and b2 will be submitted to DA
@@ -200,8 +193,8 @@ func TestAvalabilityOK(t *testing.T) {
 
 	time.Sleep(2 * mockDaBlockTime)
 
-	//data1, _ := batch1.MarshalBinary()
-	//blob1, _ := blob.NewBlobV0(nID, data1)
+	// data1, _ := batch1.MarshalBinary()
+	// blob1, _ := blob.NewBlobV0(nID, data1)
 
 	t.Log("Submitting batch1")
 	res1 := dalc.SubmitBatch(batch1)
@@ -216,13 +209,11 @@ func TestAvalabilityOK(t *testing.T) {
 
 	availRes := retriever.CheckBatchAvailability(h1)
 	assert.Equal(da.StatusSuccess, availRes.Code)
-
 }
 
 func TestAvalabilityWrongProof(t *testing.T) {
-
 	assert := assert.New(t)
-	//require := require.New(t)
+	// require := require.New(t)
 
 	mockRPCClient, dalc, nID, headers := setDAandMock(t)
 	// only blocks b1 and b2 will be submitted to DA
@@ -246,8 +237,8 @@ func TestAvalabilityWrongProof(t *testing.T) {
 
 	time.Sleep(2 * mockDaBlockTime)
 
-	//data1, _ := batch1.MarshalBinary()
-	//blob1, _ := blob.NewBlobV0(nID, data1)
+	// data1, _ := batch1.MarshalBinary()
+	// blob1, _ := blob.NewBlobV0(nID, data1)
 
 	t.Log("Submitting batch1")
 	res1 := dalc.SubmitBatch(batch1)
@@ -261,11 +252,9 @@ func TestAvalabilityWrongProof(t *testing.T) {
 
 	availRes := retriever.CheckBatchAvailability(h1)
 	assert.ErrorIs(availRes.Error, da.ErrUnableToGetProof)
-
 }
 
 func TestRetrievalWrongCommitment(t *testing.T) {
-
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -306,7 +295,7 @@ func setDAandMock(t *testing.T) (*mocks.CelestiaRPCClient, da.DataAvailabilityLa
 
 	require := require.New(t)
 
-	//init celestia DA with mock RPC client
+	// init celestia DA with mock RPC client
 	dalc := registry.GetClient("celestia")
 
 	config := celestia.Config{

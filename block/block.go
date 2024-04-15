@@ -44,13 +44,13 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 	// Start applying the block assuming no inconsistency was found.
 	_, err = m.store.SaveBlock(block, commit, nil)
 	if err != nil {
-		m.logger.Error("Failed to save block", "error", err)
+		m.logger.Error("save block", "error", err)
 		return err
 	}
 
 	responses, err := m.executeBlock(ctx, block, commit)
 	if err != nil {
-		m.logger.Error("Failed to execute block", "error", err)
+		m.logger.Error("execute block", "error", err)
 		return err
 	}
 
@@ -81,14 +81,14 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 
 	err = batch.Commit()
 	if err != nil {
-		m.logger.Error("Failed to persist batch to disk", "error", err)
+		m.logger.Error("persist batch to disk", "error", err)
 		return err
 	}
 
 	// Commit block to app
 	retainHeight, err := m.executor.Commit(ctx, &newState, block, responses)
 	if err != nil {
-		m.logger.Error("Failed to commit to the block", "error", err)
+		m.logger.Error("commit to the block", "error", err)
 		return err
 	}
 
@@ -96,7 +96,7 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 	if retainHeight > 0 {
 		pruned, err := m.pruneBlocks(retainHeight)
 		if err != nil {
-			m.logger.Error("failed to prune blocks", "retain_height", retainHeight, "err", err)
+			m.logger.Error("prune blocks", "retain_height", retainHeight, "err", err)
 		} else {
 			m.logger.Debug("pruned blocks", "pruned", pruned, "retain_height", retainHeight)
 		}
@@ -110,7 +110,7 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 
 	_, err = m.store.UpdateState(newState, nil)
 	if err != nil {
-		m.logger.Error("Failed to update state", "error", err)
+		m.logger.Error("update state", "error", err)
 		return err
 	}
 	m.lastState = newState
@@ -137,7 +137,7 @@ func (m *Manager) attemptApplyCachedBlocks(ctx context.Context) error {
 		m.logger.Debug("Applying cached block", "height", expectedHeight)
 		err := m.applyBlock(ctx, prevCachedBlock, prevCachedCommit, blockMetaData{source: gossipedBlock})
 		if err != nil {
-			m.logger.Debug("Failed to apply previously cached block", "err", err)
+			m.logger.Debug("apply previously cached block", "err", err)
 			return err
 		}
 	}
@@ -181,13 +181,13 @@ func (m *Manager) UpdateStateFromApp() error {
 
 	resp, err := m.store.LoadBlockResponses(appHeight)
 	if err != nil {
-		return errors.Wrap(err, "failed to load block responses")
+		return errors.Wrap(err, "load block responses")
 	}
 	copy(m.lastState.LastResultsHash[:], tmtypes.NewResults(resp.DeliverTxs).Hash())
 
 	_, err = m.store.UpdateState(m.lastState, nil)
 	if err != nil {
-		return errors.Wrap(err, "failed to update state")
+		return errors.Wrap(err, "update state")
 	}
 	m.store.SetHeight(appHeight)
 	return nil
@@ -214,13 +214,12 @@ func (m *Manager) gossipBlock(ctx context.Context, block types.Block, commit typ
 	gossipedBlock := p2p.GossipedBlock{Block: block, Commit: commit}
 	gossipedBlockBytes, err := gossipedBlock.MarshalBinary()
 	if err != nil {
-		m.logger.Error("Failed to marshal block", "error", err)
+		m.logger.Error("marshal block", "error", err)
 		return err
 	}
 	if err := m.p2pClient.GossipBlock(ctx, gossipedBlockBytes); err != nil {
-		m.logger.Error("Failed to gossip block", "error", err)
+		m.logger.Error("gossip block", "error", err)
 		return err
 	}
 	return nil
-
 }

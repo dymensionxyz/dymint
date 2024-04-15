@@ -159,7 +159,7 @@ func (e *Executor) Commit(ctx context.Context, state *types.State, block *types.
 
 	err = e.publishEvents(resp, block, *state)
 	if err != nil {
-		e.logger.Error("failed to fire block events", "error", err)
+		e.logger.Error("fire block events", "error", err)
 		return 0, err
 	}
 	return retainHeight, nil
