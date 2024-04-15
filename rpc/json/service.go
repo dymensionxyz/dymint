@@ -157,8 +157,6 @@ func (s *service) Subscribe(req *http.Request, args *subscribeArgs, wsConn *wsCo
 				if wsConn != nil {
 					wsConn.queue <- jsonBytes
 				}
-			case <-ctx.Done():
-				return
 			}
 		}
 	}(subscriptionID)
