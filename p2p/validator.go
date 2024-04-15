@@ -83,7 +83,7 @@ func (v *Validator) BlockValidator() GossipValidator {
 		}
 		err := v.localPubsubServer.PublishWithEvents(context.Background(), gossipedBlock, map[string][]string{EventTypeKey: {EventNewGossipedBlock}})
 		if err != nil {
-			v.logger.Error("Error publishing event", "err", err)
+			v.logger.Error("publishing event", "err", err)
 			return false
 		}
 		return true

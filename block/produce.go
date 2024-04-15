@@ -51,7 +51,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 				continue
 			}
 			if err != nil {
-				m.logger.Error("error while producing block", "error", err)
+				m.logger.Error("while producing block", "error", err)
 				m.shouldProduceBlocksCh <- false
 				continue
 			}
@@ -87,11 +87,11 @@ func (m *Manager) produceBlock(ctx context.Context, allowEmpty bool) error {
 	} else {
 		lastCommit, err = m.store.LoadCommit(height)
 		if err != nil {
-			return fmt.Errorf("error while loading last commit: %w", err)
+			return fmt.Errorf("while loading last commit: %w", err)
 		}
 		lastBlock, err := m.store.LoadBlock(height)
 		if err != nil {
-			return fmt.Errorf("error while loading last block: %w", err)
+			return fmt.Errorf("while loading last block: %w", err)
 		}
 		lastHeaderHash = lastBlock.Header.Hash()
 	}

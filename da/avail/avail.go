@@ -257,7 +257,7 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 				var err error
 				daBlockHeight, err = c.broadcastTx(dataBlob)
 				if err != nil {
-					c.logger.Error("Error broadcasting batch", "error", err)
+					c.logger.Error("broadcasting batch", "error", err)
 					if errors.Is(err, da.ErrTxBroadcastConfigError) {
 						err = retry.Unrecoverable(err)
 					}
@@ -276,7 +276,7 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 						},
 					}
 				} else {
-					c.logger.Error("Error broadcasting batch. Emitting DA unhealthy event and Trying again.", "error", err)
+					c.logger.Error("broadcasting batch. Emitting DA unhealthy event and Trying again.", "error", err)
 					res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, false, err)
 					if err != nil {
 						return res

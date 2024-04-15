@@ -144,7 +144,7 @@ func checkGenesisHash(config *tmcfg.Config) error {
 	}()
 	h := sha256.New()
 	if _, err := io.Copy(h, f); err != nil {
-		return fmt.Errorf("error when hashing genesis file: %w", err)
+		return fmt.Errorf("when hashing genesis file: %w", err)
 	}
 	actualHash := h.Sum(nil)
 

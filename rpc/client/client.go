@@ -110,12 +110,12 @@ func (c *Client) BroadcastTxCommit(ctx context.Context, tx types.Tx) (*ctypes.Re
 	deliverTxSub, err := c.EventBus.Subscribe(subCtx, subscriber, q)
 	if err != nil {
 		err = fmt.Errorf("failed to subscribe to tx: %w", err)
-		c.Logger.Error("Error on broadcast_tx_commit", "err", err)
+		c.Logger.Error("on broadcast_tx_commit", "err", err)
 		return nil, err
 	}
 	defer func() {
 		if err := c.EventBus.Unsubscribe(context.Background(), subscriber, q); err != nil {
-			c.Logger.Error("Error unsubscribing from eventBus", "err", err)
+			c.Logger.Error("unsubscribing from eventBus", "err", err)
 		}
 	}()
 
@@ -128,8 +128,8 @@ func (c *Client) BroadcastTxCommit(ctx context.Context, tx types.Tx) (*ctypes.Re
 		}
 	}, mempool.TxInfo{})
 	if err != nil {
-		c.Logger.Error("Error on broadcastTxCommit", "err", err)
-		return nil, fmt.Errorf("error on broadcastTxCommit: %v", err)
+		c.Logger.Error("on broadcastTxCommit", "err", err)
+		return nil, fmt.Errorf("on broadcastTxCommit: %v", err)
 	}
 	select {
 	case <-ctx.Done():
@@ -168,7 +168,7 @@ func (c *Client) BroadcastTxCommit(ctx context.Context, tx types.Tx) (*ctypes.Re
 				reason = deliverTxSub.Err().Error()
 			}
 			err = fmt.Errorf("deliverTxSub was cancelled (reason: %s)", reason)
-			c.Logger.Error("Error on broadcastTxCommit", "err", err)
+			c.Logger.Error("on broadcastTxCommit", "err", err)
 			return &ctypes.ResultBroadcastTxCommit{
 				CheckTx:   *checkTxRes,
 				DeliverTx: abci.ResponseDeliverTx{},
@@ -176,7 +176,7 @@ func (c *Client) BroadcastTxCommit(ctx context.Context, tx types.Tx) (*ctypes.Re
 			}, err
 		case <-time.After(c.config.TimeoutBroadcastTxCommit):
 			err = errors.New("timed out waiting for tx to be included in a block")
-			c.Logger.Error("Error on broadcastTxCommit", "err", err)
+			c.Logger.Error("on broadcastTxCommit", "err", err)
 			return &ctypes.ResultBroadcastTxCommit{
 				CheckTx:   *checkTxRes,
 				DeliverTx: abci.ResponseDeliverTx{},
@@ -286,7 +286,7 @@ func (c *Client) Genesis(_ context.Context) (*ctypes.ResultGenesis, error) {
 func (c *Client) GenesisChunked(context context.Context, id uint) (*ctypes.ResultGenesisChunk, error) {
 	genChunks, err := c.node.GetGenesisChunks()
 	if err != nil {
-		return nil, fmt.Errorf("error while creating chunks of the genesis document: %w", err)
+		return nil, fmt.Errorf("while creating chunks of the genesis document: %w", err)
 	}
 	if genChunks == nil {
 		return nil, fmt.Errorf("service configuration error, genesis chunks are not initialized")

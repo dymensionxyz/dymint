@@ -50,12 +50,12 @@ func (m *Manager) handleSubmissionTrigger(ctx context.Context) {
 	// We try and produce an empty block to make sure releavnt ibc messages will pass through during the batch submission: https://github.com/dymensionxyz/research/issues/173.
 	err := m.produceBlock(ctx, true)
 	if err != nil {
-		m.logger.Error("error while producing empty block", "error", err)
+		m.logger.Error("while producing empty block", "error", err)
 	}
 
 	syncHeight, err := m.submitNextBatch()
 	if err != nil {
-		m.logger.Error("error while submitting next batch", "error", err)
+		m.logger.Error("while submitting next batch", "error", err)
 		return
 	}
 
