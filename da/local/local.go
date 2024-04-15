@@ -28,8 +28,10 @@ type config struct {
 	BlockTime time.Duration
 }
 
-var _ da.DataAvailabilityLayerClient = &DataAvailabilityLayerClient{}
-var _ da.BatchRetriever = &DataAvailabilityLayerClient{}
+var (
+	_ da.DataAvailabilityLayerClient = &DataAvailabilityLayerClient{}
+	_ da.BatchRetriever              = &DataAvailabilityLayerClient{}
+)
 
 // Init is called once to allow DA client to read configuration and initialize resources.
 func (m *DataAvailabilityLayerClient) Init(config []byte, _ *pubsub.Server, dalcKV store.KVStore, logger types.Logger, options ...da.Option) error {
@@ -108,7 +110,6 @@ func (m *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 
 // CheckBatchAvailability queries DA layer to check data availability of block corresponding to given header.
 func (m *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
-
 	batchesRes := m.RetrieveBatches(daMetaData)
 	return da.ResultCheckBatch{BaseResult: da.BaseResult{Code: batchesRes.Code, Message: batchesRes.Message, Error: batchesRes.Error}, CheckMetaData: batchesRes.CheckMetaData}
 }

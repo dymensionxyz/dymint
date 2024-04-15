@@ -39,8 +39,10 @@ type DataAvailabilityLayerClient struct {
 	submitRetryDelay time.Duration
 }
 
-var _ da.DataAvailabilityLayerClient = &DataAvailabilityLayerClient{}
-var _ da.BatchRetriever = &DataAvailabilityLayerClient{}
+var (
+	_ da.DataAvailabilityLayerClient = &DataAvailabilityLayerClient{}
+	_ da.BatchRetriever              = &DataAvailabilityLayerClient{}
+)
 
 // WithRPCClient sets rpc client.
 func WithRPCClient(rpc celtypes.CelestiaRPCClient) da.Option {
@@ -182,7 +184,6 @@ func (c *DataAvailabilityLayerClient) GetClientType() da.Client {
 
 // SubmitBatch submits a batch to the DA layer.
 func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultSubmitBatch {
-
 	data, err := batch.MarshalBinary()
 	if err != nil {
 		return da.ResultSubmitBatch{
@@ -212,9 +213,8 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 		default:
 
 			c.logger.Info("Submitting DA batch")
-			//TODO(srene):  Split batch in multiple blobs if necessary if supported
+			// TODO(srene):  Split batch in multiple blobs if necessary if supported
 			height, commitment, err := c.submit(data)
-
 			if err != nil {
 				c.logger.Error("Failed to submit DA batch. Emitting health event and trying again", "error", err)
 				res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, false, err)
@@ -259,18 +259,16 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			}
 		}
 	}
-
 }
 
 func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
-
 	for {
 		select {
 		case <-c.ctx.Done():
 			c.logger.Debug("Context cancelled")
 			return da.ResultRetrieveBatch{}
 		default:
-			//Just for backward compatibility, in case no commitments are sent from the Hub, batch can be retrieved using previous implementation.
+			// Just for backward compatibility, in case no commitments are sent from the Hub, batch can be retrieved using previous implementation.
 			var resultRetrieveBatch da.ResultRetrieveBatch
 			err := retry.Do(func() error {
 				var result da.ResultRetrieveBatch
@@ -295,18 +293,15 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 
 		}
 	}
-
 }
 
 func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
-
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
 	var batches []*types.Batch
 	blob, err := c.rpc.Get(ctx, daMetaData.Height, c.config.NamespaceID.Bytes(), daMetaData.Commitment)
 	if err != nil {
-
 		return da.ResultRetrieveBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
@@ -316,7 +311,6 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMet
 		}
 	}
 	if blob == nil {
-
 		return da.ResultRetrieveBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
@@ -355,7 +349,6 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMet
 
 // RetrieveBatches gets a batch of blocks from DA layer.
 func (c *DataAvailabilityLayerClient) retrieveBatchesNoCommitment(dataLayerHeight uint64) da.ResultRetrieveBatch {
-
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 	blobs, err := c.rpc.GetAll(ctx, dataLayerHeight, []share.Namespace{c.config.NamespaceID.Bytes()})
@@ -391,13 +384,13 @@ func (c *DataAvailabilityLayerClient) retrieveBatchesNoCommitment(dataLayerHeigh
 
 	return da.ResultRetrieveBatch{
 		BaseResult: da.BaseResult{
-			Code: da.StatusSuccess},
+			Code: da.StatusSuccess,
+		},
 		Batches: batches,
 	}
 }
 
 func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
-
 	var availabilityResult da.ResultCheckBatch
 	for {
 		select {
@@ -425,7 +418,6 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 }
 
 func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
-
 	var proofs []*blob.Proof
 
 	DACheckMetaData := &da.DACheckMetaData{}
@@ -435,7 +427,7 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 
 	dah, err := c.getDataAvailabilityHeaders(daMetaData.Height)
 	if err != nil {
-		//Returning Data Availability header Data Root for dispute validation
+		// Returning Data Availability header Data Root for dispute validation
 		return da.ResultCheckBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
@@ -450,11 +442,10 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 
 	proof, err := c.getProof(daMetaData.Height, daMetaData.Commitment)
 	if err != nil || proof == nil {
-
-		//TODO (srene): Not getting proof means there is no existing data for the namespace and the commitment (the commitment is wrong).
-		//Therefore we need to prove whether the commitment is wrong or the span does not exists.
-		//In case the span is correct it is necessary to return the data for the span and the proofs to the data root, so we can prove the data
-		//is the data for the span, and reproducing the commitment will generate a different one.
+		// TODO (srene): Not getting proof means there is no existing data for the namespace and the commitment (the commitment is wrong).
+		// Therefore we need to prove whether the commitment is wrong or the span does not exists.
+		// In case the span is correct it is necessary to return the data for the span and the proofs to the data root, so we can prove the data
+		// is the data for the span, and reproducing the commitment will generate a different one.
 		return da.ResultCheckBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
@@ -477,10 +468,9 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 
 	if daMetaData.Index > 0 && daMetaData.Length > 0 {
 		if index != daMetaData.Index || shares != daMetaData.Length {
-
-			//TODO (srene): In this case the commitment is correct but does not match the span.
-			//If the span is correct we have to repeat the previous step (sending data + proof of data)
-			//In case the span is not correct we need to send unavailable proof by sending proof of any row root to data root
+			// TODO (srene): In this case the commitment is correct but does not match the span.
+			// If the span is correct we have to repeat the previous step (sending data + proof of data)
+			// In case the span is not correct we need to send unavailable proof by sending proof of any row root to data root
 			return da.ResultCheckBatch{
 				CheckMetaData: DACheckMetaData,
 				BaseResult: da.BaseResult{
@@ -494,9 +484,9 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 	}
 
 	included, err = c.validateProof(daMetaData.Height, daMetaData.Commitment, proof)
-	//The both cases below (there is an error validating the proof or the proof is wrong) should not happen
-	//if we consider correct functioning of the celestia light node.
-	//This will only happen in case the previous step the celestia light node returned wrong proofs..
+	// The both cases below (there is an error validating the proof or the proof is wrong) should not happen
+	// if we consider correct functioning of the celestia light node.
+	// This will only happen in case the previous step the celestia light node returned wrong proofs..
 	if err != nil {
 		return da.ResultCheckBatch{
 			BaseResult: da.BaseResult{
@@ -577,7 +567,6 @@ func (c *DataAvailabilityLayerClient) getProof(height uint64, commitment da.Comm
 	}
 
 	return proof, nil
-
 }
 
 func (c *DataAvailabilityLayerClient) blobsAndCommitments(daBlob da.Blob) ([]*blob.Blob, []da.Commitment, error) {

@@ -1,7 +1,9 @@
 package store
 
-var _ KVStore = &PrefixKV{}
-var _ Batch = &PrefixKVBatch{}
+var (
+	_ KVStore = &PrefixKV{}
+	_ Batch   = &PrefixKVBatch{}
+)
 
 // PrefixKV is a key-value store that prepends all keys with given prefix.
 type PrefixKV struct {

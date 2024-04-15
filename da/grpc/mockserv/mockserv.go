@@ -58,7 +58,6 @@ func (m *mockImpl) SubmitBatch(_ context.Context, request *dalc.SubmitBatchReque
 }
 
 func (m *mockImpl) CheckBatchAvailability(_ context.Context, request *dalc.CheckBatchAvailabilityRequest) (*dalc.CheckBatchAvailabilityResponse, error) {
-
 	daMetaData := &da.DASubmitMetaData{
 		Height: request.DataLayerHeight,
 	}
