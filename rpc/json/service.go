@@ -1,13 +1,11 @@
 package json
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"reflect"
 	"strconv"
-	"time"
 
 	"cosmossdk.io/errors"
 	"github.com/gorilla/rpc/v2/json2"
@@ -20,8 +18,6 @@ import (
 )
 
 const (
-	// DefaultSubscribeTimeout is the default timeout for a subscription.
-	defaultSubscribeTimeout = 5 * time.Second
 	// DefaultSubscribeBufferSize is the default buffer size for a subscription.
 	defaultSubscribeBufferSize = 100
 )
@@ -32,12 +28,6 @@ func GetHTTPHandler(l *client.Client, logger types.Logger, opts ...option) (http
 }
 
 type option func(*service)
-
-func WithSubscribeTimeout(timeout time.Duration) option {
-	return func(s *service) {
-		s.subscribeTimeout = timeout
-	}
-}
 
 func WithSubscribeBufferSize(size int) option {
 	return func(s *service) {
@@ -68,7 +58,6 @@ type service struct {
 	methods map[string]*method
 	logger  types.Logger
 
-	subscribeTimeout    time.Duration
 	subscribeBufferSize int
 }
 
@@ -76,7 +65,6 @@ func newService(c *client.Client, l types.Logger, opts ...option) *service {
 	s := service{
 		client:              c,
 		logger:              l,
-		subscribeTimeout:    defaultSubscribeTimeout,
 		subscribeBufferSize: defaultSubscribeBufferSize,
 	}
 	s.methods = map[string]*method{
@@ -127,10 +115,7 @@ func (s *service) Subscribe(req *http.Request, args *subscribeArgs, wsConn *wsCo
 
 	s.logger.Debug("subscribe to query", "remote", addr, "query", args.Query)
 
-	ctx, cancel := context.WithTimeout(req.Context(), s.subscribeTimeout)
-	defer cancel()
-
-	out, err := s.client.Subscribe(ctx, addr, args.Query, s.subscribeBufferSize)
+	out, err := s.client.Subscribe(req.Context(), addr, args.Query, s.subscribeBufferSize)
 	if err != nil {
 		return nil, fmt.Errorf("failed to subscribe: %w", err)
 	}
@@ -166,10 +151,7 @@ func (s *service) Subscribe(req *http.Request, args *subscribeArgs, wsConn *wsCo
 
 func (s *service) Unsubscribe(req *http.Request, args *unsubscribeArgs) (*emptyResult, error) {
 	s.logger.Debug("unsubscribe from query", "remote", req.RemoteAddr, "query", args.Query)
-	ctx, cancel := context.WithTimeout(req.Context(), s.subscribeTimeout)
-	defer cancel()
-
-	err := s.client.Unsubscribe(ctx, req.RemoteAddr, args.Query)
+	err := s.client.Unsubscribe(req.Context(), req.RemoteAddr, args.Query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unsubscribe: %w", err)
 	}
@@ -178,10 +160,7 @@ func (s *service) Unsubscribe(req *http.Request, args *unsubscribeArgs) (*emptyR
 
 func (s *service) UnsubscribeAll(req *http.Request, args *unsubscribeAllArgs) (*emptyResult, error) {
 	s.logger.Debug("unsubscribe from all queries", "remote", req.RemoteAddr)
-	ctx, cancel := context.WithTimeout(req.Context(), s.subscribeTimeout)
-	defer cancel()
-
-	err := s.client.UnsubscribeAll(ctx, req.RemoteAddr)
+	err := s.client.UnsubscribeAll(req.Context(), req.RemoteAddr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unsubscribe all: %w", err)
 	}
@@ -238,15 +217,11 @@ func (s *service) Tx(req *http.Request, args *txArgs) (*ctypes.ResultTx, error) 
 }
 
 func (s *service) TxSearch(req *http.Request, args *txSearchArgs) (*ctypes.ResultTxSearch, error) {
-	ctx, cancel := context.WithTimeout(req.Context(), s.subscribeTimeout)
-	defer cancel()
-	return s.client.TxSearch(ctx, args.Query, args.Prove, (*int)(&args.Page), (*int)(&args.PerPage), args.OrderBy)
+	return s.client.TxSearch(req.Context(), args.Query, args.Prove, (*int)(&args.Page), (*int)(&args.PerPage), args.OrderBy)
 }
 
 func (s *service) BlockSearch(req *http.Request, args *blockSearchArgs) (*ctypes.ResultBlockSearch, error) {
-	ctx, cancel := context.WithTimeout(req.Context(), s.subscribeTimeout)
-	defer cancel()
-	return s.client.BlockSearch(ctx, args.Query, (*int)(&args.Page), (*int)(&args.PerPage), args.OrderBy)
+	return s.client.BlockSearch(req.Context(), args.Query, (*int)(&args.Page), (*int)(&args.PerPage), args.OrderBy)
 }
 
 func (s *service) Validators(req *http.Request, args *validatorsArgs) (*ctypes.ResultValidators, error) {
@@ -275,15 +250,11 @@ func (s *service) NumUnconfirmedTxs(req *http.Request, args *numUnconfirmedTxsAr
 
 // tx broadcast API
 func (s *service) BroadcastTxCommit(req *http.Request, args *broadcastTxCommitArgs) (*ctypes.ResultBroadcastTxCommit, error) {
-	ctx, cancel := context.WithTimeout(req.Context(), s.subscribeTimeout)
-	defer cancel()
-	return s.client.BroadcastTxCommit(ctx, args.Tx)
+	return s.client.BroadcastTxCommit(req.Context(), args.Tx)
 }
 
 func (s *service) BroadcastTxSync(req *http.Request, args *broadcastTxSyncArgs) (*ctypes.ResultBroadcastTx, error) {
-	ctx, cancel := context.WithTimeout(req.Context(), s.subscribeTimeout)
-	defer cancel()
-	return s.client.BroadcastTxSync(ctx, args.Tx)
+	return s.client.BroadcastTxSync(req.Context(), args.Tx)
 }
 
 func (s *service) BroadcastTxAsync(req *http.Request, args *broadcastTxAsyncArgs) (*ctypes.ResultBroadcastTx, error) {
