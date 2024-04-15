@@ -178,13 +178,6 @@ func TestNodeConfig_Validate(t *testing.T) {
 			},
 			wantErr: assert.Error,
 		}, {
-			name: "instrumentation: prometheus disabled, but listen addr not empty",
-			malleate: func(nc *NodeConfig) {
-				nc.Instrumentation.Prometheus = false
-				nc.Instrumentation.PrometheusListenAddr = "localhost:9090"
-			},
-			wantErr: assert.Error,
-		}, {
 			name: "instrumentation: prometheus disabled, listen addr empty",
 			malleate: func(nc *NodeConfig) {
 				nc.Instrumentation.Prometheus = false

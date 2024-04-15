@@ -206,9 +206,5 @@ func (ic InstrumentationConfig) Validate() error {
 		return fmt.Errorf("PrometheusListenAddr cannot be empty")
 	}
 
-	if !ic.Prometheus && ic.PrometheusListenAddr != "" {
-		return fmt.Errorf("PrometheusListenAddr cannot be set when Prometheus is disabled")
-	}
-
 	return nil
 }
