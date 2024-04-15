@@ -58,7 +58,8 @@ func (m *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, logg
 	return nil
 }
 
-// HubClient implements The HubClient interface
+var _ settlement.HubClient = (*HubGrpcClient)(nil)
+
 type HubGrpcClient struct {
 	ctx            context.Context
 	ProposerPubKey string
@@ -71,8 +72,6 @@ type HubGrpcClient struct {
 	stopchan       chan struct{}
 	refreshTime    int
 }
-
-var _ settlement.HubClient = &HubGrpcClient{}
 
 func newHubClient(config settlement.Config, pubsub *pubsub.Server, logger types.Logger) (*HubGrpcClient, error) {
 	ctx := context.Background()
