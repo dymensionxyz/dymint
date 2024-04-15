@@ -3,6 +3,7 @@ package local
 import (
 	"crypto/sha1" //#nosec
 	"encoding/binary"
+	"fmt"
 	"math/rand"
 	"sync/atomic"
 	"time"
@@ -18,7 +19,7 @@ import (
 type DataAvailabilityLayerClient struct {
 	logger   types.Logger
 	dalcKV   store.KVStore
-	daHeight uint64
+	daHeight atomic.Uint64
 	config   config
 }
 
@@ -28,14 +29,16 @@ type config struct {
 	BlockTime time.Duration
 }
 
-var _ da.DataAvailabilityLayerClient = &DataAvailabilityLayerClient{}
-var _ da.BatchRetriever = &DataAvailabilityLayerClient{}
+var (
+	_ da.DataAvailabilityLayerClient = &DataAvailabilityLayerClient{}
+	_ da.BatchRetriever              = &DataAvailabilityLayerClient{}
+)
 
 // Init is called once to allow DA client to read configuration and initialize resources.
 func (m *DataAvailabilityLayerClient) Init(config []byte, _ *pubsub.Server, dalcKV store.KVStore, logger types.Logger, options ...da.Option) error {
 	m.logger = logger
 	m.dalcKV = dalcKV
-	m.daHeight = 1
+	m.daHeight.Store(1)
 	if len(config) > 0 {
 		var err error
 		m.config.BlockTime, err = time.ParseDuration(string(config))
@@ -75,7 +78,8 @@ func (m *DataAvailabilityLayerClient) GetClientType() da.Client {
 // This should create a transaction which (potentially)
 // triggers a state transition in the DA layer.
 func (m *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultSubmitBatch {
-	daHeight := atomic.LoadUint64(&m.daHeight)
+	daHeight := m.daHeight.Load()
+
 	m.logger.Debug("Submitting batch to DA layer", "start height", batch.StartHeight, "end height", batch.EndHeight, "da height", daHeight)
 
 	blob, err := batch.MarshalBinary()
@@ -92,7 +96,11 @@ func (m *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 		return da.ResultSubmitBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error(), Error: err}}
 	}
 
-	atomic.StoreUint64(&m.daHeight, daHeight+1)
+	ok := m.daHeight.CompareAndSwap(daHeight, daHeight+1)
+	if !ok {
+		err = fmt.Errorf("da height cas: old: %d: new: %d", daHeight, daHeight+1)
+		return da.ResultSubmitBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error(), Error: err}}
+	}
 
 	return da.ResultSubmitBatch{
 		BaseResult: da.BaseResult{
@@ -108,14 +116,13 @@ func (m *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 
 // CheckBatchAvailability queries DA layer to check data availability of block corresponding to given header.
 func (m *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
-
 	batchesRes := m.RetrieveBatches(daMetaData)
 	return da.ResultCheckBatch{BaseResult: da.BaseResult{Code: batchesRes.Code, Message: batchesRes.Message, Error: batchesRes.Error}, CheckMetaData: batchesRes.CheckMetaData}
 }
 
 // RetrieveBatches returns block at given height from data availability layer.
 func (m *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
-	if daMetaData.Height >= atomic.LoadUint64(&m.daHeight) {
+	if daMetaData.Height >= m.daHeight.Load() {
 		return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: "batch not found", Error: da.ErrBlobNotFound}}
 	}
 
@@ -159,5 +166,5 @@ func getKey(daHeight uint64, height uint64) []byte {
 
 func (m *DataAvailabilityLayerClient) updateDAHeight() {
 	blockStep := rand.Uint64()%10 + 1 //#nosec
-	atomic.AddUint64(&m.daHeight, blockStep)
+	m.daHeight.Add(blockStep)
 }
