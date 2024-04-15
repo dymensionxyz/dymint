@@ -2,6 +2,7 @@ package block
 
 import (
 	"context"
+	"crypto/ed25519"
 	"crypto/rand"
 	"fmt"
 	"sync"
@@ -13,8 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/proxy"
 
-	"crypto/ed25519"
-
 	cosmosed25519 "github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
 	"github.com/libp2p/go-libp2p/core/crypto"
 
@@ -24,9 +23,7 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
-var (
-	ctx = context.Background()
-)
+var ctx = context.Background()
 
 func TestBatchSubmissionHappyFlow(t *testing.T) {
 	require := require.New(t)
@@ -40,7 +37,7 @@ func TestBatchSubmissionHappyFlow(t *testing.T) {
 	manager, err := getManager(getManagerConfig(), nil, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
-	//Check initial assertions
+	// Check initial assertions
 	initialHeight := uint64(0)
 	require.Zero(manager.store.Height())
 	require.True(manager.batchInProcess.Load() == false)
@@ -87,7 +84,7 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 	manager, err := getManagerWithProposerKey(getManagerConfig(), lib2pPrivKey, mockLayerI, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
-	//Check initial assertions
+	// Check initial assertions
 	initialHeight := uint64(0)
 	require.Zero(manager.store.Height())
 	require.True(manager.batchInProcess.Load() == false)
@@ -108,7 +105,6 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 	mockLayerI.On("SubmitBatch", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 	manager.handleSubmissionTrigger(ctx)
 	assert.EqualValues(t, 1, manager.syncTarget)
-
 }
 
 func TestBatchSubmissionAfterTimeout(t *testing.T) {
@@ -141,7 +137,7 @@ func TestBatchSubmissionAfterTimeout(t *testing.T) {
 	manager, err := getManager(managerConfig, nil, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
-	//Check initial height
+	// Check initial height
 	initialHeight := uint64(0)
 	require.Equal(initialHeight, manager.store.Height())
 	require.True(manager.batchInProcess.Load() == false)

@@ -359,7 +359,6 @@ func createAndStartIndexerService(
 	eventBus *tmtypes.EventBus,
 	logger log.Logger,
 ) (*txindex.IndexerService, txindex.TxIndexer, indexer.BlockIndexer, error) {
-
 	var (
 		txIndexer    txindex.TxIndexer
 		blockIndexer indexer.BlockIndexer
@@ -382,7 +381,6 @@ func createAndStartIndexerService(
 func (n *Node) eventListener() {
 	go utils.SubscribeAndHandleEvents(n.ctx, n.pubsubServer, "settlementHealthStatusHandler", settlement.EventQuerySettlementHealthStatus, n.healthStatusEventCallback, n.Logger)
 	go utils.SubscribeAndHandleEvents(n.ctx, n.pubsubServer, "daHealthStatusHandler", da.EventQueryDAHealthStatus, n.healthStatusEventCallback, n.Logger)
-
 }
 
 // Event handling callback function for health status events

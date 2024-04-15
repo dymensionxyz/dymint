@@ -104,7 +104,8 @@ func startTestNetwork(ctx context.Context, t *testing.T, n int, conf map[int]hos
 		client, err := NewClient(config.P2PConfig{
 			Seeds:           seeds[i],
 			GossipCacheSize: 50,
-			BoostrapTime:    30 * time.Second},
+			BoostrapTime:    30 * time.Second,
+		},
 			mnet.Hosts()[i].Peerstore().PrivKey(mnet.Hosts()[i].ID()),
 			conf[i].chainID,
 			logger)

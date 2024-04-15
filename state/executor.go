@@ -44,7 +44,7 @@ func NewBlockExecutor(proposerAddress []byte, namespaceID string, chainID string
 		return nil, err
 	}
 
-	var be = BlockExecutor{
+	be := BlockExecutor{
 		proposerAddress:       proposerAddress,
 		chainID:               chainID,
 		proxyAppConsensusConn: proxyApp.Consensus(),
@@ -108,7 +108,7 @@ func (e *BlockExecutor) UpdateStateAfterInitChain(s *types.State, res *abci.Resp
 		copy(s.AppHash[:], res.AppHash)
 	}
 
-	//The validators after initChain must be greater than zero, otherwise this state is not loadable
+	// The validators after initChain must be greater than zero, otherwise this state is not loadable
 	if len(validators) <= 0 {
 		panic("Validators must be greater than zero")
 	}
@@ -194,8 +194,8 @@ func (e *BlockExecutor) Validate(state types.State, block *types.Block, commit *
 
 // UpdateStateFromResponses updates state based on the ABCIResponses.
 func (e *BlockExecutor) UpdateStateFromResponses(resp *tmstate.ABCIResponses, state types.State, block *types.Block) (types.State, error) {
-	//Dymint ignores any setValidator responses from the app, as it is manages the validator set based on the settlement consensus
-	//TODO: this will be changed when supporting multiple sequencers from the hub
+	// Dymint ignores any setValidator responses from the app, as it is manages the validator set based on the settlement consensus
+	// TODO: this will be changed when supporting multiple sequencers from the hub
 	validatorUpdates := []*tmtypes.Validator{}
 
 	if state.ConsensusParams.Block.MaxBytes == 0 {
@@ -247,7 +247,7 @@ func (e *BlockExecutor) updateState(state types.State, block *types.Block, abciR
 	}
 
 	hash := block.Header.Hash()
-	//TODO: we can probably pass the state as a pointer and update it directly
+	// TODO: we can probably pass the state as a pointer and update it directly
 	s := types.State{
 		Version:         state.Version,
 		ChainID:         state.ChainID,

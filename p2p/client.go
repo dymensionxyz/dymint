@@ -332,7 +332,6 @@ func (c *Client) tryConnect(ctx context.Context, peer peer.AddrInfo) {
 }
 
 func (c *Client) setupGossiping(ctx context.Context) error {
-
 	pubsub.GossipSubHistoryGossip = c.conf.GossipCacheSize
 	pubsub.GossipSubHistoryLength = c.conf.GossipCacheSize
 	pubsub.GossipSubMaxIHaveMessages = c.conf.GossipCacheSize
@@ -420,7 +419,7 @@ func (c *Client) bootstrapLoop(ctx context.Context) {
 	defer ticker.Stop()
 	for {
 		select {
-		//Context canceled
+		// Context canceled
 		case <-ctx.Done():
 			return
 		case <-ticker.C:

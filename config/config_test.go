@@ -38,4 +38,4 @@ func TestViperAndCobra(t *testing.T) {
 	assert.Equal(uint64(10), nc.BlockBatchSize)
 }
 
-//TODO: check invalid config
+// TODO: check invalid config

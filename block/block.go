@@ -201,5 +201,4 @@ func (m *Manager) gossipBlock(ctx context.Context, block types.Block, commit typ
 		return err
 	}
 	return nil
-
 }

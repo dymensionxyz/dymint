@@ -2,7 +2,7 @@ package types
 
 import crypto "github.com/cosmos/cosmos-sdk/crypto/types"
 
-//TODO: remove this, as we can use the sequencers objects directly
+// TODO: remove this, as we can use the sequencers objects directly
 
 // SequencerStatus defines the operating status of a sequencer
 type SequencerStatus int32

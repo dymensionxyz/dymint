@@ -17,9 +17,7 @@ const (
 	blockStoreDBName = "dymint"
 )
 
-var (
-	mainPrefix = [1]byte{0}
-)
+var mainPrefix = [1]byte{0}
 
 // BlockStore is a thin wrapper around the DefaultStore which will be used for inspecting the blocks
 type BlockStore struct {
@@ -109,7 +107,6 @@ func main() {
 			"\tMaximum Latency: %s\n"+
 			"\tAverage Latency: %s\n"+
 			"\tStandard Deviation: %s\n\n", r.ID, r.Connections, r.Rate, r.Size, len(r.All), r.TPS, r.NegativeCount, r.Min, r.Max, r.Avg, r.StdDev)
-
 	}
 	fmt.Printf("Total Invalid Tx: %d\n", rs.ErrorCount())
 }
