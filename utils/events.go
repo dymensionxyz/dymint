@@ -8,6 +8,7 @@ import (
 )
 
 // SubscribeAndHandleEvents subscribes to events and sends back a callback
+// clientID is essentially the subscriber id, see https://pkg.go.dev/github.com/tendermint/tendermint/libs/pubsub#pkg-overview
 func SubscribeAndHandleEvents(
 	ctx context.Context,
 	pubsubServer *pubsub.Server,

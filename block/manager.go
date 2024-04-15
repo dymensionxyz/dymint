@@ -155,7 +155,7 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 		return err
 	}
 
-	m.EventListener(ctx, isAggregator)
+	m.StartEventListener(ctx, isAggregator)
 
 	if isAggregator {
 		go m.ProduceBlockLoop(ctx)
@@ -209,8 +209,8 @@ func getAddress(key crypto.PrivKey) ([]byte, error) {
 	return tmcrypto.AddressHash(rawKey), nil
 }
 
-// EventListener registers events to callbacks.
-func (m *Manager) EventListener(ctx context.Context, isAggregator bool) {
+// StartEventListener registers events to callbacks.
+func (m *Manager) StartEventListener(ctx context.Context, isAggregator bool) {
 	go utils.SubscribeAndHandleEvents(ctx, m.pubsub, "nodeHealthStatusHandler", events.EventQueryHealthStatus, m.healthStatusEventCallback, m.logger)
 	if !isAggregator {
 		go utils.SubscribeAndHandleEvents(ctx, m.pubsub, "ApplyBlockLoop", p2p.EventQueryNewNewGossipedBlock, m.applyBlockCallback, m.logger, 100)

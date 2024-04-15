@@ -83,7 +83,7 @@ func (s *Server) PubSubServer() *pubsub.Server {
 
 // OnStart is called when Server is started (see service.BaseService for details).
 func (s *Server) OnStart() error {
-	go s.eventListener()
+	s.startEventListener()
 	return s.startRPC()
 }
 
@@ -97,7 +97,7 @@ func (s *Server) OnStop() {
 }
 
 // EventListener registers events to callbacks.
-func (s *Server) eventListener() {
+func (s *Server) startEventListener() {
 	go utils.SubscribeAndHandleEvents(s.ctx, s.PubSubServer(), "RPCNodeHealthStatusHandler", events.EventQueryHealthStatus, s.healthStatusEventCallback, s.Logger)
 }
 

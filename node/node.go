@@ -280,7 +280,7 @@ func (n *Node) OnStart() error {
 		settlementHealthy: true,
 		daHealthy:         true,
 	}
-	n.eventListener()
+	n.startEventListener()
 
 	// start the block manager
 	err = n.blockManager.Start(n.ctx, n.conf.Aggregator)
@@ -378,7 +378,7 @@ func createAndStartIndexerService(
 }
 
 // All events listeners should be registered here
-func (n *Node) eventListener() {
+func (n *Node) startEventListener() {
 	go utils.SubscribeAndHandleEvents(n.ctx, n.pubsubServer, "settlementHealthStatusHandler", settlement.EventQuerySettlementHealthStatus, n.healthStatusEventCallback, n.Logger)
 	go utils.SubscribeAndHandleEvents(n.ctx, n.pubsubServer, "daHealthStatusHandler", da.EventQueryDAHealthStatus, n.healthStatusEventCallback, n.Logger)
 }
@@ -397,21 +397,18 @@ func (n *Node) healthStatusEventCallback(event pubsub.Message) {
 
 // handler for health status change
 func (n *Node) healthStatusHandler(err error) {
-	daHealthy, settlementHealthy := n.baseLayersHealthStatus.get()
-	if daHealthy && settlementHealthy {
-		n.Logger.Info("All base layers are healthy")
-		healthStatusEvent := &events.EventDataHealthStatus{Healthy: true}
-		if err = n.pubsubServer.PublishWithEvents(n.ctx, healthStatusEvent, map[string][]string{events.EventNodeTypeKey: {events.EventHealthStatus}}); err != nil {
+	var evt *events.EventDataHealthStatus
+	if err != nil {
+		evt = &events.EventDataHealthStatus{Healthy: false, Error: err}
+	} else if daHealthy, slHealthy := n.baseLayersHealthStatus.get(); daHealthy && slHealthy {
+		evt = &events.EventDataHealthStatus{Healthy: true}
+	}
+	if evt != nil {
+		n.Logger.Info("Publishing health status event", "eventData", evt)
+		err = n.pubsubServer.PublishWithEvents(n.ctx, evt, map[string][]string{events.EventNodeTypeKey: {events.EventHealthStatus}}
+		if err!=nil{
 			panic(err)
 		}
-		// Only if err is not nil, we publish the event. Otherwise it could come from a previous unhealthy state.
-	} else if err != nil {
-		n.Logger.Info("Base layer is unhealthy")
-		healthStatusEvent := &events.EventDataHealthStatus{Healthy: false, Error: err}
-		if err = n.pubsubServer.PublishWithEvents(n.ctx, healthStatusEvent, map[string][]string{events.EventNodeTypeKey: {events.EventHealthStatus}}); err != nil {
-			panic(err)
-		}
-
 	}
 }
 
