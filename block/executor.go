@@ -20,8 +20,8 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
-// BlockExecutor creates and applies blocks and maintains state.
-type BlockExecutor struct {
+// Executor creates and applies blocks and maintains state.
+type Executor struct {
 	proposerAddress       []byte
 	namespaceID           [8]byte
 	chainID               string
@@ -36,13 +36,13 @@ type BlockExecutor struct {
 
 // NewBlockExecutor creates new instance of BlockExecutor.
 // Proposer address and namespace ID will be used in all newly created blocks.
-func NewBlockExecutor(proposerAddress []byte, namespaceID string, chainID string, mempool mempool.Mempool, proxyApp proxy.AppConns, eventBus *tmtypes.EventBus, logger types.Logger) (*BlockExecutor, error) {
+func NewBlockExecutor(proposerAddress []byte, namespaceID string, chainID string, mempool mempool.Mempool, proxyApp proxy.AppConns, eventBus *tmtypes.EventBus, logger types.Logger) (*Executor, error) {
 	bytes, err := hex.DecodeString(namespaceID)
 	if err != nil {
 		return nil, err
 	}
 
-	var be = BlockExecutor{
+	var be = Executor{
 		proposerAddress:       proposerAddress,
 		chainID:               chainID,
 		proxyAppConsensusConn: proxyApp.Consensus(),
@@ -56,7 +56,7 @@ func NewBlockExecutor(proposerAddress []byte, namespaceID string, chainID string
 }
 
 // InitChain calls InitChainSync using consensus connection to app.
-func (e *BlockExecutor) InitChain(genesis *tmtypes.GenesisDoc, validators []*tmtypes.Validator) (*abci.ResponseInitChain, error) {
+func (e *Executor) InitChain(genesis *tmtypes.GenesisDoc, validators []*tmtypes.Validator) (*abci.ResponseInitChain, error) {
 	params := genesis.ConsensusParams
 	valUpates := abci.ValidatorUpdates{}
 
@@ -99,7 +99,7 @@ func (e *BlockExecutor) InitChain(genesis *tmtypes.GenesisDoc, validators []*tmt
 }
 
 // CreateBlock reaps transactions from mempool and builds a block.
-func (e *BlockExecutor) CreateBlock(height uint64, lastCommit *types.Commit, lastHeaderHash [32]byte, state types.State) *types.Block {
+func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHeaderHash [32]byte, state types.State) *types.Block {
 	maxBytes := state.ConsensusParams.Block.MaxBytes
 	maxGas := state.ConsensusParams.Block.MaxGas
 
@@ -137,7 +137,7 @@ func (e *BlockExecutor) CreateBlock(height uint64, lastCommit *types.Commit, las
 }
 
 // Validate validates block and commit.
-func (e *BlockExecutor) Validate(state types.State, block *types.Block, commit *types.Commit, proposer *types.Sequencer) error {
+func (e *Executor) Validate(state types.State, block *types.Block, commit *types.Commit, proposer *types.Sequencer) error {
 	if err := e.validateBlock(state, block); err != nil {
 		return err
 	}
@@ -148,7 +148,7 @@ func (e *BlockExecutor) Validate(state types.State, block *types.Block, commit *
 }
 
 // Commit commits the block
-func (e *BlockExecutor) Commit(ctx context.Context, state *types.State, block *types.Block, resp *tmstate.ABCIResponses) (int64, error) {
+func (e *Executor) Commit(ctx context.Context, state *types.State, block *types.Block, resp *tmstate.ABCIResponses) (int64, error) {
 	appHash, retainHeight, err := e.commit(ctx, state, block, resp.DeliverTxs)
 	if err != nil {
 		return 0, err
@@ -166,11 +166,11 @@ func (e *BlockExecutor) Commit(ctx context.Context, state *types.State, block *t
 }
 
 // GetAppInfo returns the latest AppInfo from the proxyApp.
-func (e *BlockExecutor) GetAppInfo() (*abci.ResponseInfo, error) {
+func (e *Executor) GetAppInfo() (*abci.ResponseInfo, error) {
 	return e.proxyAppQueryConn.InfoSync(abci.RequestInfo{})
 }
 
-func (e *BlockExecutor) commit(ctx context.Context, state *types.State, block *types.Block, deliverTxs []*abci.ResponseDeliverTx) ([]byte, int64, error) {
+func (e *Executor) commit(ctx context.Context, state *types.State, block *types.Block, deliverTxs []*abci.ResponseDeliverTx) ([]byte, int64, error) {
 	e.mempool.Lock()
 	defer e.mempool.Unlock()
 
@@ -194,7 +194,7 @@ func (e *BlockExecutor) commit(ctx context.Context, state *types.State, block *t
 	return resp.Data, resp.RetainHeight, err
 }
 
-func (e *BlockExecutor) validateBlock(state types.State, block *types.Block) error {
+func (e *Executor) validateBlock(state types.State, block *types.Block) error {
 	err := block.ValidateBasic()
 	if err != nil {
 		return err
@@ -219,7 +219,7 @@ func (e *BlockExecutor) validateBlock(state types.State, block *types.Block) err
 	return nil
 }
 
-func (e *BlockExecutor) validateCommit(proposer *types.Sequencer, commit *types.Commit, header *types.Header) error {
+func (e *Executor) validateCommit(proposer *types.Sequencer, commit *types.Commit, header *types.Header) error {
 	abciHeaderPb := abciconv.ToABCIHeaderPB(header)
 	abciHeaderBytes, err := abciHeaderPb.Marshal()
 	if err != nil {
@@ -232,7 +232,7 @@ func (e *BlockExecutor) validateCommit(proposer *types.Sequencer, commit *types.
 }
 
 // Execute executes the block and returns the ABCIResponses.
-func (e *BlockExecutor) Execute(ctx context.Context, state types.State, block *types.Block) (*tmstate.ABCIResponses, error) {
+func (e *Executor) Execute(ctx context.Context, state types.State, block *types.Block) (*tmstate.ABCIResponses, error) {
 	abciResponses := new(tmstate.ABCIResponses)
 	abciResponses.DeliverTxs = make([]*abci.ResponseDeliverTx, len(block.Data.Txs))
 
@@ -289,19 +289,19 @@ func (e *BlockExecutor) Execute(ctx context.Context, state types.State, block *t
 	return abciResponses, nil
 }
 
-func (e *BlockExecutor) getLastCommitHash(lastCommit *types.Commit, header *types.Header) []byte {
+func (e *Executor) getLastCommitHash(lastCommit *types.Commit, header *types.Header) []byte {
 	lastABCICommit := abciconv.ToABCICommit(lastCommit, header)
 	return lastABCICommit.Hash()
 }
 
-func (e *BlockExecutor) getDataHash(block *types.Block) []byte {
+func (e *Executor) getDataHash(block *types.Block) []byte {
 	abciData := tmtypes.Data{
 		Txs: abciconv.ToABCIBlockDataTxs(&block.Data),
 	}
 	return abciData.Hash()
 }
 
-func (e *BlockExecutor) publishEvents(resp *tmstate.ABCIResponses, block *types.Block, state types.State) error {
+func (e *Executor) publishEvents(resp *tmstate.ABCIResponses, block *types.Block, state types.State) error {
 	if e.eventBus == nil {
 		return nil
 	}

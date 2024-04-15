@@ -39,7 +39,7 @@ type Manager struct {
 	// Store and execution
 	store     store.Store
 	lastState types.State
-	executor  *BlockExecutor
+	executor  *Executor
 
 	// Clients and servers
 	pubsub           *pubsub.Server

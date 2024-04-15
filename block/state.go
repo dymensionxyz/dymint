@@ -13,7 +13,7 @@ import (
 
 //TODO: move all those methods from blockExecutor to manager
 
-func (e *BlockExecutor) updateState(state types.State, block *types.Block, abciResponses *tmstate.ABCIResponses, validatorUpdates []*tmtypes.Validator) (types.State, error) {
+func (e *Executor) updateState(state types.State, block *types.Block, abciResponses *tmstate.ABCIResponses, validatorUpdates []*tmtypes.Validator) (types.State, error) {
 	nValSet := state.NextValidators.Copy()
 	lastHeightValSetChanged := state.LastHeightValidatorsChanged
 	// Dymint can work without validators
@@ -61,7 +61,7 @@ func (e *BlockExecutor) updateState(state types.State, block *types.Block, abciR
 	return s, nil
 }
 
-func (e *BlockExecutor) UpdateStateAfterInitChain(s *types.State, res *abci.ResponseInitChain, validators []*tmtypes.Validator) {
+func (e *Executor) UpdateStateAfterInitChain(s *types.State, res *abci.ResponseInitChain, validators []*tmtypes.Validator) {
 	// If the app did not return an app hash, we keep the one set from the genesis doc in
 	// the state. We don't set appHash since we don't want the genesis doc app hash
 	// recorded in the genesis block. We should probably just remove GenesisDoc.AppHash.
@@ -105,7 +105,7 @@ func (e *BlockExecutor) UpdateStateAfterInitChain(s *types.State, res *abci.Resp
 }
 
 // UpdateStateFromResponses updates state based on the ABCIResponses.
-func (e *BlockExecutor) UpdateStateFromResponses(resp *tmstate.ABCIResponses, state types.State, block *types.Block) (types.State, error) {
+func (e *Executor) UpdateStateFromResponses(resp *tmstate.ABCIResponses, state types.State, block *types.Block) (types.State, error) {
 	//Dymint ignores any setValidator responses from the app, as it is manages the validator set based on the settlement consensus
 	//TODO: this will be changed when supporting multiple sequencers from the hub
 	validatorUpdates := []*tmtypes.Validator{}
