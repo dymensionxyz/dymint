@@ -407,7 +407,7 @@ func (n *Node) healthStatusHandler(err error) {
 		n.Logger.Info("Publishing health status event", "eventData", evt)
 		err = n.pubsubServer.PublishWithEvents(n.ctx, evt, map[string][]string{events.EventNodeTypeKey: {events.EventHealthStatus}})
 		if err != nil {
-			panic(err)
+			panic(err) // TODO: not ideal to panic here as it could happen
 		}
 	}
 }
