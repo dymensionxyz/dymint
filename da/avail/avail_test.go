@@ -20,7 +20,7 @@ const (
 	seed = "copper mother insect grunt blue cute tell side welcome domain border oxygen"
 )
 
-//FIXME(omritoptix): This test is currently not working as I couldn't find a way to mock the SubmitAndWatchExtrinsic function.
+// FIXME(omritoptix): This test is currently not working as I couldn't find a way to mock the SubmitAndWatchExtrinsic function.
 // func TestSubmitBatch(t *testing.T) {
 // 	assert := assert.New(t)
 // 	require := require.New(t)
@@ -182,5 +182,4 @@ func TestRetriveBatches(t *testing.T) {
 	batchResult := dalc.RetrieveBatches(daMetaData)
 	assert.Equal(1, len(batchResult.Batches))
 	assert.Equal(batch1.StartHeight, batchResult.Batches[0].StartHeight)
-
 }

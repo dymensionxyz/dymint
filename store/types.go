@@ -9,7 +9,6 @@ import (
 
 // Store is minimal interface for storing and retrieving blocks, commits and state.
 type Store interface {
-
 	// NewBatch creates a new db batch.
 	NewBatch() Batch
 

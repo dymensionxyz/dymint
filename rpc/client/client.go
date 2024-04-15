@@ -3,12 +3,11 @@ package client
 import (
 	"context"
 	"errors"
-
-	"github.com/dymensionxyz/dymint/version"
-
 	"fmt"
 	"sort"
 	"time"
+
+	"github.com/dymensionxyz/dymint/version"
 
 	sdkerrors "cosmossdk.io/errors"
 
@@ -39,10 +38,8 @@ const (
 	subscribeTimeout = 5 * time.Second
 )
 
-var (
-	// ErrConsensusStateNotAvailable is returned because Dymint doesn't use Tendermint consensus.
-	ErrConsensusStateNotAvailable = errors.New("consensus state not available in Dymint")
-)
+// ErrConsensusStateNotAvailable is returned because Dymint doesn't use Tendermint consensus.
+var ErrConsensusStateNotAvailable = errors.New("consensus state not available in Dymint")
 
 var _ rpcclient.Client = &Client{}
 
@@ -100,7 +97,7 @@ func (c *Client) BroadcastTxCommit(ctx context.Context, tx types.Tx) (*ctypes.Re
 	// This implementation corresponds to Tendermints implementation from rpc/core/mempool.go.
 	// ctx.RemoteAddr godoc: If neither HTTPReq nor WSConn is set, an empty string is returned.
 	// This code is a local client, so we can assume that subscriber is ""
-	subscriber := "" //ctx.RemoteAddr()
+	subscriber := "" // ctx.RemoteAddr()
 
 	if err := c.IsSubscriptionAllowed(subscriber); err != nil {
 		return nil, sdkerrors.Wrap(err, "subscription not allowed")
@@ -346,7 +343,6 @@ func (c *Client) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64)
 		LastHeight: int64(c.node.Store.Height()),
 		BlockMetas: blocks,
 	}, nil
-
 }
 
 // NetInfo returns basic information about client P2P connections.
@@ -701,7 +697,6 @@ func (c *Client) BlockSearch(ctx context.Context, query string, page, perPage *i
 
 // Status returns detailed information about current status of the node.
 func (c *Client) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
-
 	latest, err := c.node.Store.LoadBlock(c.node.Store.Height())
 	if err != nil {
 		// TODO(tzdybal): extract error
@@ -755,12 +750,12 @@ func (c *Client) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
 			LatestBlockHeight: int64(latestHeight),
 			LatestBlockTime:   time.Unix(0, int64(latestBlockTimeNano)),
 			// TODO(tzdybal): add missing fields
-			//EarliestBlockHash:   earliestBlockHash,
-			//EarliestAppHash:     earliestAppHash,
-			//EarliestBlockHeight: earliestBloc
-			//kHeight,
-			//EarliestBlockTime:   time.Unix(0, earliestBlockTimeNano),
-			//CatchingUp:          env.ConsensusReactor.WaitSync(),
+			// EarliestBlockHash:   earliestBlockHash,
+			// EarliestAppHash:     earliestAppHash,
+			// EarliestBlockHeight: earliestBloc
+			// kHeight,
+			// EarliestBlockTime:   time.Unix(0, earliestBlockTimeNano),
+			// CatchingUp:          env.ConsensusReactor.WaitSync(),
 		},
 		// TODO(ItzhakBokris): update ValidatorInfo fields
 		ValidatorInfo: ctypes.ValidatorInfo{
@@ -786,7 +781,6 @@ func (c *Client) NumUnconfirmedTxs(ctx context.Context) (*ctypes.ResultUnconfirm
 		Total:      c.node.Mempool.Size(),
 		TotalBytes: c.node.Mempool.SizeBytes(),
 	}, nil
-
 }
 
 // UnconfirmedTxs returns transactions in mempool.
@@ -799,7 +793,8 @@ func (c *Client) UnconfirmedTxs(ctx context.Context, limitPtr *int) (*ctypes.Res
 		Count:      len(txs),
 		Total:      c.node.Mempool.Size(),
 		TotalBytes: c.node.Mempool.SizeBytes(),
-		Txs:        txs}, nil
+		Txs:        txs,
+	}, nil
 }
 
 // CheckTx executes a new transaction against the application to determine its validity.

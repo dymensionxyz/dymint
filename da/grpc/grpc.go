@@ -38,8 +38,10 @@ var DefaultConfig = Config{
 	Port: 7980,
 }
 
-var _ da.DataAvailabilityLayerClient = &DataAvailabilityLayerClient{}
-var _ da.BatchRetriever = &DataAvailabilityLayerClient{}
+var (
+	_ da.DataAvailabilityLayerClient = &DataAvailabilityLayerClient{}
+	_ da.BatchRetriever              = &DataAvailabilityLayerClient{}
+)
 
 // Init sets the configuration options.
 func (d *DataAvailabilityLayerClient) Init(config []byte, _ *pubsub.Server, _ store.KVStore, logger types.Logger, options ...da.Option) error {

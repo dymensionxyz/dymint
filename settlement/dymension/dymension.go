@@ -207,7 +207,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 		return err
 	}
 
-	//TODO: probably should be changed to be a channel, as the eventHandler is also in the HubClient in he produces the event
+	// TODO: probably should be changed to be a channel, as the eventHandler is also in the HubClient in he produces the event
 	postBatchSubscriberClient := fmt.Sprintf("%s-%d-%s", postBatchSubscriberPrefix, batch.StartHeight, uuid.New().String())
 	subscription, err := d.pubsub.Subscribe(d.ctx, postBatchSubscriberClient, settlement.EventQueryNewSettlementBatchAccepted)
 	if err != nil {
@@ -488,7 +488,7 @@ func (d *HubClient) getEventData(eventType string, rawEventData ctypes.ResultEve
 }
 
 func (d *HubClient) convertToNewBatchEvent(rawEventData ctypes.ResultEvent) (*settlement.EventDataNewSettlementBatchAccepted, error) {
-	//check all expected attributes  exists
+	// check all expected attributes  exists
 	events := rawEventData.Events
 	if events["state_update.num_blocks"] == nil || events["state_update.start_height"] == nil || events["state_update.state_info_index"] == nil {
 		return nil, fmt.Errorf("missing expected attributes in event")

@@ -69,19 +69,22 @@ func TestREST(t *testing.T) {
 		jsonrpcCode  int
 		bodyContains string
 	}{
-
 		{"invalid/malformed request", "/block?so{}wrong!", http.StatusOK, int(json2.E_INVALID_REQ), ``},
 		{"invalid/missing param", "/block", http.StatusOK, int(json2.E_INVALID_REQ), `missing param 'height'`},
 		{"valid/no params", "/abci_info", http.StatusOK, -1, `"last_block_height":"345"`},
 		// to keep test simple, allow returning application error in following case
 		{"valid/int param", "/block?height=321", http.StatusOK, int(json2.E_INTERNAL), "failed to load hash from index"},
 		{"invalid/int param", "/block?height=foo", http.StatusOK, int(json2.E_PARSE), "failed to parse param 'height'"},
-		{"valid/bool int string params",
+		{
+			"valid/bool int string params",
 			"/tx_search?" + txSearchParams.Encode(),
-			http.StatusOK, -1, `"total_count":"0"`},
-		{"invalid/bool int string params",
+			http.StatusOK, -1, `"total_count":"0"`,
+		},
+		{
+			"invalid/bool int string params",
 			"/tx_search?" + strings.Replace(txSearchParams.Encode(), "true", "blue", 1),
-			http.StatusOK, int(json2.E_PARSE), "failed to parse param 'prove'"},
+			http.StatusOK, int(json2.E_PARSE), "failed to parse param 'prove'",
+		},
 		{"valid/hex param", "/check_tx?tx=DEADBEEF", http.StatusOK, -1, `"gas_used":"1000"`},
 		{"invalid/hex param", "/check_tx?tx=QWERTY", http.StatusOK, int(json2.E_PARSE), "failed to parse param 'tx'"},
 	}
@@ -110,7 +113,6 @@ func TestREST(t *testing.T) {
 			t.Log(s)
 		})
 	}
-
 }
 
 func TestEmptyRequest(t *testing.T) {
@@ -190,9 +192,7 @@ func TestSubscription(t *testing.T) {
 	handler, err := GetHTTPHandler(local, log.TestingLogger())
 	require.NoError(err)
 
-	var (
-		jsonResp response
-	)
+	var jsonResp response
 
 	// test valid subscription
 	req := httptest.NewRequest(http.MethodGet, "/", bytes.NewReader(subscribeReq))
@@ -295,7 +295,8 @@ func getRPC(t *testing.T) (*mocks.Application, *client.Client) {
 	signingKey, proposerPubKey, _ := crypto.GenerateEd25519Key(rand.Reader)
 	proposerPubKeyBytes, err := proposerPubKey.Raw()
 	require.NoError(err)
-	config := config.NodeConfig{Aggregator: true, DALayer: "mock", SettlementLayer: "mock",
+	config := config.NodeConfig{
+		Aggregator: true, DALayer: "mock", SettlementLayer: "mock",
 		BlockManagerConfig: config.BlockManagerConfig{
 			BlockTime:               1 * time.Second,
 			EmptyBlocksMaxTime:      0,
@@ -306,7 +307,8 @@ func getRPC(t *testing.T) (*mocks.Application, *client.Client) {
 			GossipedBlocksCacheSize: 50,
 		},
 		SettlementConfig: settlement.Config{
-			ProposerPubKey: hex.EncodeToString(proposerPubKeyBytes)},
+			ProposerPubKey: hex.EncodeToString(proposerPubKeyBytes),
+		},
 	}
 	node, err := node.NewNode(context.Background(), config, key, signingKey, proxy.NewLocalClientCreator(app), &types.GenesisDoc{ChainID: "test"}, log.TestingLogger(), mempool.NopMetrics())
 	require.NoError(err)

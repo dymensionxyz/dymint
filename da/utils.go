@@ -20,5 +20,4 @@ func SubmitBatchHealthEventHelper(pubsubServer *pubsub.Server, ctx context.Conte
 	} else {
 		return ResultSubmitBatch{}, nil
 	}
-
 }

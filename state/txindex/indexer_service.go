@@ -30,7 +30,6 @@ func NewIndexerService(
 	blockIdxr indexer.BlockIndexer,
 	eventBus *types.EventBus,
 ) *IndexerService {
-
 	is := &IndexerService{txIdxr: txIdxr, blockIdxr: blockIdxr, eventBus: eventBus}
 	is.BaseService = *service.NewBaseService(nil, "IndexerService", is)
 	return is
