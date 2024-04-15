@@ -48,7 +48,7 @@ func (s *DefaultStore) NewBatch() Batch {
 
 // SetHeight sets the height saved in the Store if it is higher than the existing height
 func (s *DefaultStore) SetHeight(height uint64) {
-	storeHeight := atomic.LoadUint64(&s.height)
+	storeHeight := s.Height()
 	if height > storeHeight {
 		_ = atomic.CompareAndSwapUint64(&s.height, storeHeight, height)
 	}
@@ -61,7 +61,7 @@ func (s *DefaultStore) Height() uint64 {
 
 // SetBase sets the height saved in the Store of the earliest block
 func (s *DefaultStore) SetBase(height uint64) {
-	baseHeight := atomic.LoadUint64(&s.baseHeight)
+	baseHeight := s.Base()
 	if height > baseHeight {
 		_ = atomic.CompareAndSwapUint64(&s.baseHeight, baseHeight, height)
 	}
@@ -87,7 +87,7 @@ func (s *DefaultStore) SaveBlock(block *types.Block, commit *types.Commit, batch
 		return batch, fmt.Errorf("failed to marshal Commit to binary: %w", err)
 	}
 
-	//Not sure it's neeeded, as it's not used anywhere
+	// Not sure it's neeeded, as it's not used anywhere
 	if batch != nil {
 		err = multierr.Append(err, batch.Set(getBlockKey(hash), blockBlob))
 		err = multierr.Append(err, batch.Set(getCommitKey(hash), commitBlob))
