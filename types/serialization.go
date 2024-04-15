@@ -261,14 +261,14 @@ func (s *State) ToProto() (*pb.State, error) {
 		ChainId:                          s.ChainID,
 		InitialHeight:                    s.InitialHeight,
 		LastBlockHeight:                  s.LastBlockHeight,
-		SLStateIndex:                     s.SLStateIndex,
+		SLStateIndex:                     s.SLStateIndex.Load(),
 		LastBlockID:                      s.LastBlockID.ToProto(),
 		LastBlockTime:                    s.LastBlockTime,
 		NextValidators:                   nextValidators,
 		Validators:                       validators,
 		LastValidators:                   lastValidators,
-		LastStoreHeight:                  s.LastStoreHeight,
-		BaseHeight:                       s.BaseHeight,
+		LastStoreHeight:                  s.LastStoreHeight.Load(),
+		BaseHeight:                       s.BaseHeight.Load(),
 		LastHeightValidatorsChanged:      s.LastHeightValidatorsChanged,
 		ConsensusParams:                  s.ConsensusParams,
 		LastHeightConsensusParamsChanged: s.LastHeightConsensusParamsChanged,
@@ -284,15 +284,16 @@ func (s *State) FromProto(other *pb.State) error {
 	s.ChainID = other.ChainId
 	s.InitialHeight = other.InitialHeight
 	s.LastBlockHeight = other.LastBlockHeight
-	//TODO(omritoptix): remove this as this is only for backwards compatibility
+	// TODO(omritoptix): remove this as this is only for backwards compatibility
 	// with old state files that don't have this field.
+	s.LastStoreHeight.Store(other.LastStoreHeight)
+
 	if other.LastStoreHeight == 0 && other.LastBlockHeight > 1 {
-		s.LastStoreHeight = uint64(other.LastBlockHeight)
-	} else {
-		s.LastStoreHeight = other.LastStoreHeight
+		s.LastStoreHeight.Store(uint64(other.LastBlockHeight))
 	}
-	s.BaseHeight = other.BaseHeight
-	s.SLStateIndex = other.SLStateIndex
+
+	s.BaseHeight.Store(other.BaseHeight)
+	s.SLStateIndex.Store(other.SLStateIndex)
 	lastBlockID, err := types.BlockIDFromProto(&other.LastBlockID)
 	if err != nil {
 		return err

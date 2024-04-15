@@ -3,9 +3,9 @@ package block
 import (
 	"context"
 	"fmt"
-	"sync/atomic"
 
 	"code.cloudfoundry.org/go-diodes"
+
 	"github.com/dymensionxyz/dymint/da"
 )
 
@@ -44,7 +44,7 @@ func (m *Manager) RetriveLoop(ctx context.Context) {
 func (m *Manager) syncUntilTarget(ctx context.Context, syncTarget uint64) error {
 	currentHeight := m.store.Height()
 	for currentHeight < syncTarget {
-		currStateIdx := atomic.LoadUint64(&m.lastState.SLStateIndex) + 1
+		currStateIdx := m.lastState.SLStateIndex.Load() + 1
 		m.logger.Info("Syncing until target", "height", currentHeight, "state_index", currStateIdx, "syncTarget", syncTarget)
 		settlementBatch, err := m.settlementClient.RetrieveBatch(currStateIdx)
 		if err != nil {
@@ -67,7 +67,7 @@ func (m *Manager) syncUntilTarget(ctx context.Context, syncTarget uint64) error 
 }
 
 func (m *Manager) updateStateIndex(stateIndex uint64) error {
-	atomic.StoreUint64(&m.lastState.SLStateIndex, stateIndex)
+	m.lastState.SLStateIndex.Store(stateIndex)
 	_, err := m.store.UpdateState(m.lastState, nil)
 	if err != nil {
 		m.logger.Error("Failed to update state", "error", err)

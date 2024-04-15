@@ -160,7 +160,7 @@ func TestRetrieveDaBatchesFailed(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, manager)
 
-	t.Log(manager.lastState.SLStateIndex)
+	t.Log(manager.lastState.SLStateIndex.Load())
 	daMetaData := &da.DASubmitMetaData{
 		Height: 1,
 	}

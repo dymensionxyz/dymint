@@ -87,7 +87,7 @@ func (s *DefaultStore) SaveBlock(block *types.Block, commit *types.Commit, batch
 		return batch, fmt.Errorf("failed to marshal Commit to binary: %w", err)
 	}
 
-	//Not sure it's neeeded, as it's not used anywhere
+	// Not sure it's neeeded, as it's not used anywhere
 	if batch != nil {
 		err = multierr.Append(err, batch.Set(getBlockKey(hash), blockBlob))
 		err = multierr.Append(err, batch.Set(getCommitKey(hash), commitBlob))
@@ -191,7 +191,7 @@ func (s *DefaultStore) LoadCommitByHash(hash [32]byte) (*types.Commit, error) {
 
 // UpdateState updates state saved in Store. Only one State is stored.
 // If there is no State in Store, state will be saved.
-func (s *DefaultStore) UpdateState(state types.State, batch Batch) (Batch, error) {
+func (s *DefaultStore) UpdateState(state *types.State, batch Batch) (Batch, error) {
 	pbState, err := state.ToProto()
 	if err != nil {
 		return batch, fmt.Errorf("failed to marshal state to JSON: %w", err)
