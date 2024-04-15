@@ -22,7 +22,9 @@ const (
 	EventSettlementHealthStatus     = "SettlementHealthStatus"
 )
 
-// EventDataNewBatchAccepted defines the structure of the event data for the EventNewBatchAccepted
+// HealthEvent is a convenience object
+var HealthEvent = map[string][]string{EventTypeKey: {EventSettlementHealthStatus}}
+
 type EventDataNewBatchAccepted struct {
 	// EndHeight is the height of the last accepted batch
 	EndHeight uint64
@@ -30,16 +32,13 @@ type EventDataNewBatchAccepted struct {
 	StateIndex uint64
 }
 
-// EventDataNewSettlementBatchAccepted defines the structure of the event data for the EventNewSettlementBatchAccepted
 type EventDataNewSettlementBatchAccepted EventDataNewBatchAccepted
 
-// EventDataSequencersListUpdated defines the structure of the event data for the EventSequencersListUpdated
 type EventDataSequencersListUpdated struct {
 	// Sequencers is the list of sequencers
 	Sequencers []types.Sequencer
 }
 
-// EventDataHealth defines the structure of the event data for the EventDataHealth
 type EventDataHealth struct {
 	// Error is the error that was encountered in case of a health check failure, nil implies healthy
 	Error error

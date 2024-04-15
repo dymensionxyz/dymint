@@ -14,22 +14,19 @@ const (
 )
 
 // Define the event types
+
 const (
 	EventDAHealthStatus = "DAHealthStatus"
 )
 
-// EventDataDAHealthStatus defines the structure of the event data for the EventDataDAHealthStatus
-type EventDataDAHealthStatus struct {
-	// Healthy is true if the da layer is healthy
-	Healthy bool
-	// Error is the error that was encountered in case of a health check failure
+type EventDataHealth struct {
+	// Error is the error that was encountered in case of a health check failure, nil implies healthy
 	Error error
 }
 
 // Define queries
-var (
-	EventQueryDAHealthStatus = QueryForEvent(EventDAHealthStatus)
-)
+
+var EventQueryDAHealthStatus = QueryForEvent(EventDAHealthStatus)
 
 // QueryForEvent returns a query for the given event.
 func QueryForEvent(eventType string) tmpubsub.Query {

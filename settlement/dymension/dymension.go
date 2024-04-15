@@ -219,7 +219,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 	//nolint:errcheck
 	defer d.pubsub.Unsubscribe(d.ctx, postBatchSubscriberClient, settlement.EventQueryNewSettlementBatchAccepted)
 
-	// Try submitting the batch to the settlement layer. If submission (i.e only submission, not acceptance) fails we emit an unhealthy event
+	// Try submitting the batch to the settlement layer. If submission (i.e. only submission, not acceptance) fails we emit an unhealthy event
 	// and try again in the next loop. If submission succeeds we wait for the batch to be accepted by the settlement layer.
 	// If it is not accepted we emit an unhealthy event and start again the submission loop.
 	for {
@@ -232,11 +232,10 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 
 				err = fmt.Errorf("submit batch:%w", err)
 
-				event_util.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{Error: err},
-					map[string][]string{settlement.EventTypeKey: {settlement.EventSettlementHealthStatus}})
+				event_util.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{Error: err}, settlement.HealthEvent)
 
 				d.logger.Error(
-					"submitting batch to settlement layer. Emitted unhealthy event",
+					"submit batch to settlement layer, emitted unhealthy event",
 
 					"startHeight",
 					batch.StartHeight,
@@ -253,34 +252,31 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 		}
 
 		// Batch was submitted successfully. Wait for it to be accepted by the settlement layer.
-		ticker := time.NewTicker(d.batchAcceptanceTimeout)
-		defer ticker.Stop()
+		timer := time.NewTimer(d.batchAcceptanceTimeout)
+		defer timer.Stop()
 
 		select {
 		case <-d.ctx.Done():
 			return d.ctx.Err()
 		case <-subscription.Cancelled():
-			err = fmt.Errorf("subscription canceled")
-			return err
+			return fmt.Errorf("subscription canceled: %w", err)
 		case <-subscription.Out():
-			d.logger.Info("Batch accepted by settlement layer. Emitting healthy event",
+			event_util.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{}, settlement.HealthEvent)
+			d.logger.Info("batch accepted by settlement layer. emitted healthy event",
 				"startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
-			event_util.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{},
-				map[string][]string{settlement.EventTypeKey: {settlement.EventSettlementHealthStatus}})
 			return nil
-		case <-ticker.C:
-			// Before emitting unhealthy event, check if the batch was accepted by the settlement layer and
-			// we've just missed the event.
+		case <-timer.C:
+			// Before emitting unhealthy event, check if the batch was accepted by the settlement
+			// layer, and we've just missed the event.
 			includedBatch, err := d.waitForBatchInclusion(batch.StartHeight)
 			if err != nil {
 
 				err = fmt.Errorf("%w:%w", settlement.ErrBatchNotAccepted, err)
 
-				event_util.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{Error: err},
-					map[string][]string{settlement.EventTypeKey: {settlement.EventSettlementHealthStatus}})
+				event_util.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{Error: err}, settlement.HealthEvent)
 
 				d.logger.Error(
-					"Batch not accepted by settlement layer. Emitted unhealthy event",
+					"batch not accepted by settlement layer. Emitted unhealthy event",
 					"startHeight",
 					batch.StartHeight,
 					"endHeight",
@@ -290,14 +286,14 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 				)
 
 				// restart the loop
-				ticker.Stop()
+				timer.Stop()
 				continue
 			}
 
-			d.logger.Info("Batch accepted by settlement layer", "startHeight", includedBatch.StartHeight, "endHeight", includedBatch.EndHeight)
+			// all good
+			d.logger.Info("batch accepted by settlement layer", "startHeight", includedBatch.StartHeight, "endHeight", includedBatch.EndHeight)
 
-			event_util.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{},
-				map[string][]string{settlement.EventTypeKey: {settlement.EventSettlementHealthStatus}})
+			event_util.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{}, settlement.HealthEvent)
 			return nil
 		}
 	}
@@ -552,9 +548,9 @@ func (d *HubClient) convertStateInfoToResultRetrieveBatch(stateInfo *rollapptype
 }
 
 // TODO(omritoptix): Change the retry attempts to be only for the batch polling. Also we need to have a more
-// bullet proof check as theoretically the tx can stay in the mempool longer then our retry attempts.
+// TODO: bullet proof check as theoretically the tx can stay in the mempool longer then our retry attempts.
 func (d *HubClient) waitForBatchInclusion(batchStartHeight uint64) (*settlement.ResultRetrieveBatch, error) {
-	var resultRetriveBatch *settlement.ResultRetrieveBatch
+	var res *settlement.ResultRetrieveBatch
 	err := d.RunWithRetry(func() error {
 		latestBatch, err := d.GetLatestBatch(d.config.RollappID)
 		if err != nil {
@@ -563,12 +559,14 @@ func (d *HubClient) waitForBatchInclusion(batchStartHeight uint64) (*settlement.
 		if latestBatch.Batch.StartHeight != batchStartHeight {
 			return settlement.ErrBatchNotFound
 		}
-		resultRetriveBatch = latestBatch
+		res = latestBatch
 		return nil
 	})
-	return resultRetriveBatch, err
+	return res, err
 }
 
+// RunWithRetry runs the given operation with retry, doing a number of attempts, and taking the last
+// error only. It uses the context of the HubClient.
 func (d *HubClient) RunWithRetry(operation func() error) error {
 	return retry.Do(operation,
 		retry.Context(d.ctx),

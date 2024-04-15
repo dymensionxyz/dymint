@@ -71,7 +71,7 @@ func TestSubmitBatch(t *testing.T) {
 		submitPFBReturn         []interface{}
 		sumbitPFDRun            func(args mock.Arguments)
 		expectedInclusionHeight uint64
-		expectedHealthEvent     *da.EventDataDAHealthStatus
+		expectedHealthEvent     *da.EventDataHealth
 		getProofReturn          []interface{}
 		getProofDRun            func(args mock.Arguments)
 		includedReturn          []interface{}
@@ -86,7 +86,7 @@ func TestSubmitBatch(t *testing.T) {
 			getProofDRun:            func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) },
 			includedRun:             func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) },
 			expectedInclusionHeight: uint64(1234),
-			expectedHealthEvent:     &da.EventDataDAHealthStatus{Healthy: true},
+			expectedHealthEvent:     &da.EventDataHealth{Healthy: true},
 		},
 		{
 			name:                "TestSubmitPFBErrored",
@@ -96,7 +96,7 @@ func TestSubmitBatch(t *testing.T) {
 			sumbitPFDRun:        func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) },
 			getProofDRun:        func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) },
 			includedRun:         func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) },
-			expectedHealthEvent: &da.EventDataDAHealthStatus{Healthy: false},
+			expectedHealthEvent: &da.EventDataHealth{Healthy: false},
 		},
 	}
 	for _, tc := range cases {
@@ -150,7 +150,7 @@ func TestSubmitBatch(t *testing.T) {
 
 		select {
 		case event := <-HealthSubscription.Out():
-			healthStatusEvent := event.Data().(*da.EventDataDAHealthStatus)
+			healthStatusEvent := event.Data().(*da.EventDataHealth)
 			t.Log("got health status event", healthStatusEvent.Healthy)
 			assert.Equal(tc.expectedHealthEvent.Healthy, healthStatusEvent.Healthy, tc.name)
 		case <-time.After(1 * time.Second):

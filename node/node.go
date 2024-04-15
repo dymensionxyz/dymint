@@ -357,7 +357,7 @@ func (n *Node) healthStatusEventCallback(event pubsub.Message) {
 	switch e := event.Data().(type) {
 	case *settlement.EventDataHealth:
 		_ = e // TODO:
-	case *da.EventDataDAHealthStatus:
+	case *da.EventDataHealth:
 		// TODO:
 	}
 }
