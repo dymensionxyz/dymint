@@ -227,7 +227,7 @@ func TestBatch(t *testing.T) {
 	assert.NoError(err)
 
 	resp, err := s.LoadBlockResponses(1)
-	assert.EqualError(err, "failed to retrieve block results from height 1: key not found")
+	assert.EqualError(err, "retrieve block results from height 1: key not found") // TODO: use errors.Is
 	assert.Nil(resp)
 
 	err = batch.Commit()
