@@ -11,8 +11,6 @@ import (
 
 	"cosmossdk.io/errors"
 	"github.com/gorilla/rpc/v2/json2"
-	"github.com/tendermint/tendermint/libs/pubsub"
-	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
@@ -54,7 +52,7 @@ type method struct {
 	ws         bool
 }
 
-func newMethod(m any) *method {
+func newMethod(m interface{}) *method {
 	mType := reflect.TypeOf(m)
 
 	return &method{
@@ -127,34 +125,28 @@ func (s *service) Subscribe(req *http.Request, args *subscribeArgs, wsConn *wsCo
 		return nil, errors.Wrap(err, "subscription not allowed")
 	}
 
-	q, err := tmquery.New(args.Query)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse query: %w", err)
-	}
-
 	s.logger.Debug("subscribe to query", "remote", addr, "query", args.Query)
 
 	ctx, cancel := context.WithTimeout(req.Context(), s.subscribeTimeout)
 	defer cancel()
 
-	sub, err := s.client.EventBus.Subscribe(ctx, addr, q, s.subscribeBufferSize)
+	out, err := s.client.Subscribe(ctx, addr, args.Query, s.subscribeBufferSize)
 	if err != nil {
 		return nil, fmt.Errorf("failed to subscribe: %w", err)
 	}
 	go func(subscriptionID []byte) {
 		for {
 			select {
-			case msg := <-sub.Out():
+			case msg := <-out:
 				// build the base response
-				resultEvent := &ctypes.ResultEvent{Query: args.Query, Data: msg.Data(), Events: msg.Events()}
 				var resp rpctypes.RPCResponse
 				// Check if subscriptionID is string or int and generate the rest of the response accordingly
 				subscriptionIDInt, err := strconv.Atoi(string(subscriptionID))
 				if err != nil {
 					s.logger.Info("Failed to convert subscriptionID to int")
-					resp = rpctypes.NewRPCSuccessResponse(rpctypes.JSONRPCStringID(subscriptionID), resultEvent)
+					resp = rpctypes.NewRPCSuccessResponse(rpctypes.JSONRPCStringID(subscriptionID), msg)
 				} else {
-					resp = rpctypes.NewRPCSuccessResponse(rpctypes.JSONRPCIntID(subscriptionIDInt), resultEvent)
+					resp = rpctypes.NewRPCSuccessResponse(rpctypes.JSONRPCIntID(subscriptionIDInt), msg)
 				}
 				// Marshal response to JSON and send it to the websocket queue
 				jsonBytes, err := json.MarshalIndent(resp, "", "  ")
@@ -165,16 +157,7 @@ func (s *service) Subscribe(req *http.Request, args *subscribeArgs, wsConn *wsCo
 				if wsConn != nil {
 					wsConn.queue <- jsonBytes
 				}
-			case <-sub.Cancelled():
-				if sub.Err() != pubsub.ErrUnsubscribed {
-					var reason string
-					if sub.Err() == nil {
-						reason = "unknown failure"
-					} else {
-						reason = sub.Err().Error()
-					}
-					s.logger.Error("subscription was cancelled", "reason", reason)
-				}
+			case <-ctx.Done():
 				return
 			}
 		}
@@ -185,7 +168,10 @@ func (s *service) Subscribe(req *http.Request, args *subscribeArgs, wsConn *wsCo
 
 func (s *service) Unsubscribe(req *http.Request, args *unsubscribeArgs) (*emptyResult, error) {
 	s.logger.Debug("unsubscribe from query", "remote", req.RemoteAddr, "query", args.Query)
-	err := s.client.Unsubscribe(context.Background(), req.RemoteAddr, args.Query)
+	ctx, cancel := context.WithTimeout(req.Context(), s.subscribeTimeout)
+	defer cancel()
+
+	err := s.client.Unsubscribe(ctx, req.RemoteAddr, args.Query)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unsubscribe: %w", err)
 	}
@@ -194,7 +180,10 @@ func (s *service) Unsubscribe(req *http.Request, args *unsubscribeArgs) (*emptyR
 
 func (s *service) UnsubscribeAll(req *http.Request, args *unsubscribeAllArgs) (*emptyResult, error) {
 	s.logger.Debug("unsubscribe from all queries", "remote", req.RemoteAddr)
-	err := s.client.UnsubscribeAll(context.Background(), req.RemoteAddr)
+	ctx, cancel := context.WithTimeout(req.Context(), s.subscribeTimeout)
+	defer cancel()
+
+	err := s.client.UnsubscribeAll(ctx, req.RemoteAddr)
 	if err != nil {
 		return nil, fmt.Errorf("failed to unsubscribe all: %w", err)
 	}
@@ -251,11 +240,15 @@ func (s *service) Tx(req *http.Request, args *txArgs) (*ctypes.ResultTx, error) 
 }
 
 func (s *service) TxSearch(req *http.Request, args *txSearchArgs) (*ctypes.ResultTxSearch, error) {
-	return s.client.TxSearch(req.Context(), args.Query, args.Prove, (*int)(&args.Page), (*int)(&args.PerPage), args.OrderBy)
+	ctx, cancel := context.WithTimeout(req.Context(), s.subscribeTimeout)
+	defer cancel()
+	return s.client.TxSearch(ctx, args.Query, args.Prove, (*int)(&args.Page), (*int)(&args.PerPage), args.OrderBy)
 }
 
 func (s *service) BlockSearch(req *http.Request, args *blockSearchArgs) (*ctypes.ResultBlockSearch, error) {
-	return s.client.BlockSearch(req.Context(), args.Query, (*int)(&args.Page), (*int)(&args.PerPage), args.OrderBy)
+	ctx, cancel := context.WithTimeout(req.Context(), s.subscribeTimeout)
+	defer cancel()
+	return s.client.BlockSearch(ctx, args.Query, (*int)(&args.Page), (*int)(&args.PerPage), args.OrderBy)
 }
 
 func (s *service) Validators(req *http.Request, args *validatorsArgs) (*ctypes.ResultValidators, error) {
@@ -284,11 +277,15 @@ func (s *service) NumUnconfirmedTxs(req *http.Request, args *numUnconfirmedTxsAr
 
 // tx broadcast API
 func (s *service) BroadcastTxCommit(req *http.Request, args *broadcastTxCommitArgs) (*ctypes.ResultBroadcastTxCommit, error) {
-	return s.client.BroadcastTxCommit(req.Context(), args.Tx)
+	ctx, cancel := context.WithTimeout(req.Context(), s.subscribeTimeout)
+	defer cancel()
+	return s.client.BroadcastTxCommit(ctx, args.Tx)
 }
 
 func (s *service) BroadcastTxSync(req *http.Request, args *broadcastTxSyncArgs) (*ctypes.ResultBroadcastTx, error) {
-	return s.client.BroadcastTxSync(req.Context(), args.Tx)
+	ctx, cancel := context.WithTimeout(req.Context(), s.subscribeTimeout)
+	defer cancel()
+	return s.client.BroadcastTxSync(ctx, args.Tx)
 }
 
 func (s *service) BroadcastTxAsync(req *http.Request, args *broadcastTxAsyncArgs) (*ctypes.ResultBroadcastTx, error) {
