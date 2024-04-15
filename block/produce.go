@@ -148,7 +148,7 @@ func (m *Manager) produceBlock(ctx context.Context, allowEmpty bool) error {
 		return err
 	}
 
-	// Gossip the block as soon as it is produced
+	// Gossip the block after it's been committed
 	if err := m.gossipBlock(ctx, *block, *commit); err != nil {
 		return err
 	}
