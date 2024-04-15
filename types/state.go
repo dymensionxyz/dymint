@@ -2,7 +2,6 @@ package types
 
 import (
 	"fmt"
-	"sync/atomic"
 	"time"
 
 	// TODO(tzdybal): copy to local project?
@@ -39,7 +38,7 @@ type State struct {
 	LastBlockTime   time.Time
 
 	// SLStateIndex identifies the Settlement Layer state index we're synced with
-	SLStateIndex atomic.Uint64
+	SLStateIndex uint64
 
 	// In the MVP implementation, there will be only one Validator
 	NextValidators              *types.ValidatorSet
@@ -56,10 +55,10 @@ type State struct {
 	LastResultsHash [32]byte
 
 	// LastStore height is the last height we've saved to the store.
-	LastStoreHeight atomic.Uint64
+	LastStoreHeight uint64
 
 	// BaseHeight is the height of the first block we have in store after pruning.
-	BaseHeight atomic.Uint64
+	BaseHeight uint64
 
 	// the latest AppHash we've received from calling abci.Commit()
 	AppHash [32]byte

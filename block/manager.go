@@ -38,7 +38,7 @@ type Manager struct {
 
 	// Store and execution
 	store     store.Store
-	lastState *types.State
+	lastState types.State
 	executor  *state.BlockExecutor
 
 	// Clients and servers

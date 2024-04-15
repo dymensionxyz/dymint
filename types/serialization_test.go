@@ -91,9 +91,8 @@ func TestStateRoundTrip(t *testing.T) {
 	valSet := getRandomValidatorSet()
 
 	cases := []struct {
-		name            string
-		state           State
-		lastStoreHeight uint64
+		name  string
+		state State
 	}{
 		{
 			"with max bytes",
@@ -109,7 +108,6 @@ func TestStateRoundTrip(t *testing.T) {
 					},
 				},
 			},
-			0,
 		},
 		{
 			name: "with all fields set",
@@ -124,6 +122,7 @@ func TestStateRoundTrip(t *testing.T) {
 				ChainID:         "testchain",
 				InitialHeight:   987,
 				LastBlockHeight: 987654321,
+				LastStoreHeight: 987654321,
 				LastBlockID: tmtypes.BlockID{
 					Hash: nil,
 					PartSetHeader: tmtypes.PartSetHeader{
@@ -158,13 +157,11 @@ func TestStateRoundTrip(t *testing.T) {
 				LastResultsHash:                  [32]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2},
 				AppHash:                          [32]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1},
 			},
-			lastStoreHeight: 987654321,
 		},
 	}
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			c.state.LastStoreHeight.Store(c.lastStoreHeight)
 			require := require.New(t)
 			assert := assert.New(t)
 			pState, err := c.state.ToProto()

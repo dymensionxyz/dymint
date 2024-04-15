@@ -9,6 +9,7 @@ import (
 
 // Store is minimal interface for storing and retrieving blocks, commits and state.
 type Store interface {
+
 	// NewBatch creates a new db batch.
 	NewBatch() Batch
 
@@ -45,7 +46,7 @@ type Store interface {
 
 	// UpdateState updates state saved in Store. Only one State is stored.
 	// If there is no State in Store, state will be saved.
-	UpdateState(state *types.State, batch Batch) (Batch, error)
+	UpdateState(state types.State, batch Batch) (Batch, error)
 
 	// LoadState returns last state saved with UpdateState.
 	LoadState() (types.State, error)
