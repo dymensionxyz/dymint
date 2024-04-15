@@ -9,11 +9,12 @@ import (
 
 // Define the event type keys
 const (
-	// EventTypeKey is a reserved composite key for event name.
+	// EventNodeTypeKey is a reserved composite key for event name.
 	EventNodeTypeKey = "node.event"
 )
 
 // Define the event types
+
 const (
 	EventHealthStatus = "HealthStatus"
 )
@@ -27,9 +28,8 @@ type EventDataHealthStatus struct {
 }
 
 // Define queries
-var (
-	EventQueryHealthStatus = QueryForEvent(EventHealthStatus)
-)
+
+var EventQueryHealthStatus = QueryForEvent(EventHealthStatus)
 
 // QueryForEvent returns a query for the given event.
 func QueryForEvent(eventType string) tmpubsub.Query {
