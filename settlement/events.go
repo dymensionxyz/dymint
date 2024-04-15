@@ -16,7 +16,7 @@ const (
 
 // Define the event types
 const (
-	// This event should be emitted internally in order to communicate between the settlement layer and the hub client
+	// EventNewSettlementBatchAccepted should be emitted internally in order to communicate between the settlement layer and the hub client
 	EventNewSettlementBatchAccepted = "EventNewSettlementBatchAccepted"
 	EventSequencersListUpdated      = "SequencersListUpdated"
 	EventSettlementHealthStatus     = "SettlementHealthStatus"
