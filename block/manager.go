@@ -155,6 +155,8 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 		return err
 	}
 
+	m.EventListener(ctx, isAggregator)
+
 	if isAggregator {
 		go m.ProduceBlockLoop(ctx)
 		go m.SubmitLoop(ctx)
@@ -162,8 +164,6 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 		go m.RetriveLoop(ctx)
 		go m.SyncTargetLoop(ctx)
 	}
-
-	m.EventListener(ctx, isAggregator)
 
 	return nil
 }
