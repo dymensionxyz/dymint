@@ -59,7 +59,7 @@ type Manager struct {
 	// Block production
 	shouldProduceBlocksCh chan bool
 	produceEmptyBlockCh   chan bool
-	lastSubmissionTime    int64
+	lastSubmissionTime    atomic.Int64
 	batchInProcess        atomic.Value
 	produceBlockMutex     sync.Mutex
 	applyCachedBlockMutex sync.Mutex
@@ -201,7 +201,7 @@ func (m *Manager) updateSyncParams(endHeight uint64) {
 	types.RollappHubHeightGauge.Set(float64(endHeight))
 	m.logger.Info("Received new syncTarget", "syncTarget", endHeight)
 	m.syncTarget.Store(endHeight)
-	atomic.StoreInt64(&m.lastSubmissionTime, time.Now().UnixNano())
+	m.lastSubmissionTime.Store(time.Now().UnixNano())
 }
 
 func getAddress(key crypto.PrivKey) ([]byte, error) {
