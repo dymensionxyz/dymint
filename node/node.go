@@ -355,7 +355,7 @@ func (n *Node) startEventListener() {
 // Event handling callback function for health status events
 func (n *Node) healthStatusEventCallback(event pubsub.Message) {
 	switch e := event.Data().(type) {
-	case *settlement.EventDataSettlementHealthStatus:
+	case *settlement.EventDataHealth:
 		_ = e // TODO:
 	case *da.EventDataDAHealthStatus:
 		// TODO:

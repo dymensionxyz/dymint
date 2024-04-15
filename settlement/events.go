@@ -39,11 +39,9 @@ type EventDataSequencersListUpdated struct {
 	Sequencers []types.Sequencer
 }
 
-// EventDataSettlementHealthStatus defines the structure of the event data for the EventDataSettlementHealthStatus
-type EventDataSettlementHealthStatus struct {
-	// Healthy is true if the settlement layer is healthy
-	Healthy bool
-	// Error is the error that was encountered in case of a health check failure
+// EventDataHealth defines the structure of the event data for the EventDataHealth
+type EventDataHealth struct {
+	// Error is the error that was encountered in case of a health check failure, nil implies healthy
 	Error error
 }
 

@@ -227,16 +227,26 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 		case <-d.ctx.Done():
 			return d.ctx.Err()
 		default:
-			// Try submitting the batch
 			err := d.submitBatch(msgUpdateState)
 			if err != nil {
-				d.logger.Error("Failed submitting batch to settlement layer. Emitting unhealthy event",
-					"startHeight", batch.StartHeight, "endHeight", batch.EndHeight, "error", err)
-				healthEventData := &settlement.EventDataSettlementHealthStatus{Healthy: false, Error: err}
-				event_util.MustPublish(d.ctx, d.pubsub, healthEventData,
-					map[string][]string{settlement.EventTypeKey: {settlement.EventSettlementHealthStatus}})
-				// Sleep to allow context cancellation to take effect before retrying
 
+				err = fmt.Errorf("submit batch:%w", err)
+
+				event_util.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{Error: err},
+					map[string][]string{settlement.EventTypeKey: {settlement.EventSettlementHealthStatus}})
+
+				d.logger.Error(
+					"submitting batch to settlement layer. Emitted unhealthy event",
+
+					"startHeight",
+					batch.StartHeight,
+					"endHeight",
+					batch.EndHeight,
+					"error",
+					err,
+				)
+
+				// Sleep to allow context cancellation to take effect before retrying
 				time.Sleep(100 * time.Millisecond)
 				continue
 			}
@@ -255,8 +265,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 		case <-subscription.Out():
 			d.logger.Info("Batch accepted by settlement layer. Emitting healthy event",
 				"startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
-			healthEventData := &settlement.EventDataSettlementHealthStatus{Healthy: true}
-			event_util.MustPublish(d.ctx, d.pubsub, healthEventData,
+			event_util.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{},
 				map[string][]string{settlement.EventTypeKey: {settlement.EventSettlementHealthStatus}})
 			return nil
 		case <-ticker.C:
@@ -264,21 +273,30 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 			// we've just missed the event.
 			includedBatch, err := d.waitForBatchInclusion(batch.StartHeight)
 			if err != nil {
-				// Batch was not accepted by the settlement layer. Emitting unhealthy event
-				d.logger.Error("Batch not accepted by settlement layer. Emitting unhealthy event",
-					"startHeight", batch.StartHeight, "endHeight", batch.EndHeight, "error", err)
-				heatlhEventData := &settlement.EventDataSettlementHealthStatus{Healthy: false, Error: settlement.ErrBatchNotAccepted}
-				event_util.MustPublish(d.ctx, d.pubsub, heatlhEventData,
+
+				err = fmt.Errorf("%w:%w", settlement.ErrBatchNotAccepted, err)
+
+				event_util.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{Error: err},
 					map[string][]string{settlement.EventTypeKey: {settlement.EventSettlementHealthStatus}})
-				// Stop the ticker and restart the loop
+
+				d.logger.Error(
+					"Batch not accepted by settlement layer. Emitted unhealthy event",
+					"startHeight",
+					batch.StartHeight,
+					"endHeight",
+					batch.EndHeight,
+					"error",
+					err,
+				)
+
+				// restart the loop
 				ticker.Stop()
 				continue
 			}
 
 			d.logger.Info("Batch accepted by settlement layer", "startHeight", includedBatch.StartHeight, "endHeight", includedBatch.EndHeight)
-			// Emit health event
-			healthEventData := &settlement.EventDataSettlementHealthStatus{Healthy: true}
-			event_util.MustPublish(d.ctx, d.pubsub, healthEventData,
+
+			event_util.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{},
 				map[string][]string{settlement.EventTypeKey: {settlement.EventSettlementHealthStatus}})
 			return nil
 		}
