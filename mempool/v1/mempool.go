@@ -392,8 +392,6 @@ func (txmp *TxMempool) Update(
 	blockHeight int64,
 	blockTxs types.Txs,
 	deliverTxResponses []*abci.ResponseDeliverTx,
-	newPreFn mempool.PreCheckFunc,
-	newPostFn mempool.PostCheckFunc,
 ) error {
 	// TODO(creachadair): This would be a nice safety check but requires Go 1.18.
 	// // Safety check: The caller is required to hold the lock.
@@ -409,13 +407,6 @@ func (txmp *TxMempool) Update(
 
 	txmp.height = blockHeight
 	txmp.notifiedTxsAvailable = false
-
-	if newPreFn != nil {
-		txmp.preCheck = newPreFn
-	}
-	if newPostFn != nil {
-		txmp.postCheck = newPostFn
-	}
 
 	for i, tx := range blockTxs {
 		// Add successful committed transactions to the cache (if they are not
@@ -433,7 +424,7 @@ func (txmp *TxMempool) Update(
 
 	txmp.purgeExpiredTxs(blockHeight)
 
-	// If there any uncommitted transactions left in the mempool, we either
+	// If there are any uncommitted transactions left in the mempool, we either
 	// initiate re-CheckTx per remaining transaction or notify that remaining
 	// transactions are left.
 	size := txmp.Size()
@@ -446,6 +437,14 @@ func (txmp *TxMempool) Update(
 		}
 	}
 	return nil
+}
+
+func (txmp *TxMempool) SetPreCheckFn(fn mempool.PreCheckFunc) {
+	txmp.preCheck = fn
+}
+
+func (txmp *TxMempool) SetPostCheckFn(fn mempool.PostCheckFunc) {
+	txmp.postCheck = fn
 }
 
 // initialTxCallback handles the ABCI CheckTx response for the first time a

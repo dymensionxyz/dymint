@@ -143,6 +143,11 @@ func (e *BlockExecutor) UpdateStateAfterInitChain(s *types.State, res *abci.Resp
 	s.LastValidators = s.Validators.Copy()
 }
 
+func (e *BlockExecutor) UpdateMempoolAfterInitChain(s *types.State) {
+	e.mempool.SetPreCheckFn(mempool.PreCheckMaxBytes(s.ConsensusParams.Block.MaxBytes))
+	e.mempool.SetPostCheckFn(mempool.PostCheckMaxGas(s.ConsensusParams.Block.MaxGas))
+}
+
 // CreateBlock reaps transactions from mempool and builds a block.
 func (e *BlockExecutor) CreateBlock(height uint64, lastCommit *types.Commit, lastHeaderHash [32]byte, state types.State) *types.Block {
 	maxBytes := state.ConsensusParams.Block.MaxBytes
@@ -297,10 +302,12 @@ func (e *BlockExecutor) commit(ctx context.Context, state *types.State, block *t
 
 	maxBytes := state.ConsensusParams.Block.MaxBytes
 	maxGas := state.ConsensusParams.Block.MaxGas
-	err = e.mempool.Update(int64(block.Header.Height), fromDymintTxs(block.Data.Txs), deliverTxs, mempool.PreCheckMaxBytes(maxBytes), mempool.PostCheckMaxGas(maxGas))
+	err = e.mempool.Update(int64(block.Header.Height), fromDymintTxs(block.Data.Txs), deliverTxs)
 	if err != nil {
 		return nil, 0, err
 	}
+	e.mempool.SetPreCheckFn(mempool.PreCheckMaxBytes(maxBytes))
+	e.mempool.SetPostCheckFn(mempool.PostCheckMaxGas(maxGas))
 
 	return resp.Data, resp.RetainHeight, err
 }
