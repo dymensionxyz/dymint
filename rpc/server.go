@@ -92,7 +92,7 @@ func (s *Server) OnStop() {
 	ctx, cancel := context.WithTimeout(s.ctx, 5*time.Second)
 	defer cancel()
 	if err := s.server.Shutdown(ctx); err != nil {
-		s.Logger.Error("error while shuting down RPC server", "error", err)
+		s.Logger.Error("while shuting down RPC server", "error", err)
 	}
 }
 
@@ -166,8 +166,8 @@ func (s *Server) startRPC() error {
 	// Start HTTP server
 	go func() {
 		err := s.serve(listener, handler)
-		if err != http.ErrServerClosed {
-			s.Logger.Error("error while serving HTTP", "error", err)
+		if !errors.Is(err, http.ErrServerClosed) {
+			s.Logger.Error("while serving HTTP", "error", err)
 		}
 	}()
 
@@ -176,7 +176,7 @@ func (s *Server) startRPC() error {
 
 func (s *Server) serve(listener net.Listener, handler http.Handler) error {
 	s.Logger.Info("serving HTTP", "listen address", listener.Addr())
-	s.server = http.Server{Handler: handler} //#nosec
+	s.server = http.Server{Handler: handler} // #nosec
 	if s.config.TLSCertFile != "" && s.config.TLSKeyFile != "" {
 		return s.server.ServeTLS(listener, s.config.CertFile(), s.config.KeyFile())
 	}

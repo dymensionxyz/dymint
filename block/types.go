@@ -1,7 +1,6 @@
 package block
 
-//TODO: move to types package
-
+// TODO: move to types package
 type blockSource string
 
 const (

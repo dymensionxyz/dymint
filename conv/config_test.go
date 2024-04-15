@@ -23,7 +23,7 @@ func TestGetNodeConfig(t *testing.T) {
 	}{
 		{"empty", nil, config.NodeConfig{}, true},
 		{"Seeds", &tmcfg.Config{P2P: &tmcfg.P2PConfig{Seeds: validCosmos + "," + validCosmos}}, config.NodeConfig{P2P: config.P2PConfig{Seeds: validDymint + "," + validDymint}}, false},
-		//GetNodeConfig translates the listen address, so we expect the translated address
+		// GetNodeConfig translates the listen address, so we expect the translated address
 		{"ListenAddress", &tmcfg.Config{P2P: &tmcfg.P2PConfig{ListenAddress: validCosmos}}, config.NodeConfig{P2P: config.P2PConfig{ListenAddress: validDymint}}, false},
 		{"RootDir", &tmcfg.Config{BaseConfig: tmcfg.BaseConfig{RootDir: "~/root"}}, config.NodeConfig{RootDir: "~/root"}, false},
 		{"DBPath", &tmcfg.Config{BaseConfig: tmcfg.BaseConfig{DBPath: "./database"}}, config.NodeConfig{DBPath: "./database"}, false},
