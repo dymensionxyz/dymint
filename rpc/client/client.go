@@ -3,18 +3,14 @@ package client
 import (
 	"context"
 	"errors"
-
-	"github.com/dymensionxyz/dymint/version"
-
 	"fmt"
 	"sort"
 	"time"
 
+	"github.com/dymensionxyz/dymint/version"
+
 	sdkerrors "cosmossdk.io/errors"
 
-	abciconv "github.com/dymensionxyz/dymint/conv/abci"
-	"github.com/dymensionxyz/dymint/mempool"
-	"github.com/dymensionxyz/dymint/node"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
@@ -28,6 +24,10 @@ import (
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"github.com/tendermint/tendermint/types"
 	tm_version "github.com/tendermint/tendermint/version"
+
+	abciconv "github.com/dymensionxyz/dymint/conv/abci"
+	"github.com/dymensionxyz/dymint/mempool"
+	"github.com/dymensionxyz/dymint/node"
 )
 
 const (
@@ -38,10 +38,8 @@ const (
 	subscribeTimeout = 5 * time.Second
 )
 
-var (
-	// ErrConsensusStateNotAvailable is returned because Dymint doesn't use Tendermint consensus.
-	ErrConsensusStateNotAvailable = errors.New("consensus state not available in Dymint")
-)
+// ErrConsensusStateNotAvailable is returned because Dymint doesn't use Tendermint consensus.
+var ErrConsensusStateNotAvailable = errors.New("consensus state not available in Dymint")
 
 var _ rpcclient.Client = &Client{}
 
@@ -99,7 +97,7 @@ func (c *Client) BroadcastTxCommit(ctx context.Context, tx types.Tx) (*ctypes.Re
 	// This implementation corresponds to Tendermints implementation from rpc/core/mempool.go.
 	// ctx.RemoteAddr godoc: If neither HTTPReq nor WSConn is set, an empty string is returned.
 	// This code is a local client, so we can assume that subscriber is ""
-	subscriber := "" //ctx.RemoteAddr()
+	subscriber := "" // ctx.RemoteAddr()
 
 	if err := c.IsSubscriptionAllowed(subscriber); err != nil {
 		return nil, sdkerrors.Wrap(err, "subscription not allowed")
@@ -111,7 +109,7 @@ func (c *Client) BroadcastTxCommit(ctx context.Context, tx types.Tx) (*ctypes.Re
 	q := types.EventQueryTxFor(tx)
 	deliverTxSub, err := c.EventBus.Subscribe(subCtx, subscriber, q)
 	if err != nil {
-		err = fmt.Errorf("failed to subscribe to tx: %w", err)
+		err = fmt.Errorf("subscribe to tx: %w", err)
 		c.Logger.Error("Error on broadcast_tx_commit", "err", err)
 		return nil, err
 	}
@@ -131,7 +129,7 @@ func (c *Client) BroadcastTxCommit(ctx context.Context, tx types.Tx) (*ctypes.Re
 	}, mempool.TxInfo{})
 	if err != nil {
 		c.Logger.Error("Error on broadcastTxCommit", "err", err)
-		return nil, fmt.Errorf("error on broadcastTxCommit: %v", err)
+		return nil, fmt.Errorf("error on broadcastTxCommit: %w", err)
 	}
 	select {
 	case <-ctx.Done():
@@ -165,7 +163,7 @@ func (c *Client) BroadcastTxCommit(ctx context.Context, tx types.Tx) (*ctypes.Re
 		case <-deliverTxSub.Cancelled():
 			var reason string
 			if deliverTxSub.Err() == nil {
-				reason = "Tendermint exited"
+				reason = "Dymint exited"
 			} else {
 				reason = deliverTxSub.Err().Error()
 			}
@@ -229,7 +227,7 @@ func (c *Client) BroadcastTxSync(ctx context.Context, tx types.Tx) (*ctypes.Resu
 			// this node, as the CheckTx call above will return an error indicating that
 			// the tx is already in the mempool
 			_ = c.node.Mempool.RemoveTxByKey(tx.Key())
-			return nil, fmt.Errorf("failed to gossip tx: %w", err)
+			return nil, fmt.Errorf("gossip tx: %w", err)
 		}
 	}
 
@@ -246,7 +244,7 @@ func (c *Client) BroadcastTxSync(ctx context.Context, tx types.Tx) (*ctypes.Resu
 func (c *Client) Subscribe(ctx context.Context, subscriber, query string, outCapacity ...int) (out <-chan ctypes.ResultEvent, err error) {
 	q, err := tmquery.New(query)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse query: %w", err)
+		return nil, fmt.Errorf("parse query: %w", err)
 	}
 
 	outCap := 1
@@ -261,7 +259,7 @@ func (c *Client) Subscribe(ctx context.Context, subscriber, query string, outCap
 		sub, err = c.EventBus.SubscribeUnbuffered(ctx, subscriber, q)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("failed to subscribe: %w", err)
+		return nil, fmt.Errorf("subscribe: %w", err)
 	}
 
 	outc := make(chan ctypes.ResultEvent, outCap)
@@ -274,7 +272,7 @@ func (c *Client) Subscribe(ctx context.Context, subscriber, query string, outCap
 func (c *Client) Unsubscribe(ctx context.Context, subscriber, query string) error {
 	q, err := tmquery.New(query)
 	if err != nil {
-		return fmt.Errorf("failed to parse query: %w", err)
+		return fmt.Errorf("parse query: %w", err)
 	}
 	return c.EventBus.Unsubscribe(ctx, subscriber, q)
 }
@@ -345,7 +343,6 @@ func (c *Client) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64)
 		LastHeight: int64(c.node.Store.Height()),
 		BlockMetas: blocks,
 	}, nil
-
 }
 
 // NetInfo returns basic information about client P2P connections.
@@ -514,7 +511,7 @@ func (c *Client) Validators(ctx context.Context, heightPtr *int64, pagePtr, perP
 	height := c.normalizeHeight(heightPtr)
 	validators, err := c.node.Store.LoadValidators(height)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load validators for height %d: %w", height, err)
+		return nil, fmt.Errorf("load validators for height %d: %w", height, err)
 	}
 
 	totalCount := len(validators.Validators)
@@ -700,11 +697,10 @@ func (c *Client) BlockSearch(ctx context.Context, query string, page, perPage *i
 
 // Status returns detailed information about current status of the node.
 func (c *Client) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
-
 	latest, err := c.node.Store.LoadBlock(c.node.Store.Height())
 	if err != nil {
 		// TODO(tzdybal): extract error
-		return nil, fmt.Errorf("failed to find latest block: %w", err)
+		return nil, fmt.Errorf("find latest block: %w", err)
 	}
 
 	latestBlockHash := latest.Header.DataHash
@@ -714,16 +710,16 @@ func (c *Client) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
 
 	validators, err := c.node.Store.LoadValidators(latest.Header.Height)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch the validator info at latest block: %w", err)
+		return nil, fmt.Errorf("fetch the validator info at latest block: %w", err)
 	}
 	_, validator := validators.GetByAddress(latest.Header.ProposerAddress)
 	if validator == nil {
-		return nil, fmt.Errorf("failed to find proposer %s in the valSet", string(latest.Header.ProposerAddress))
+		return nil, fmt.Errorf("find proposer %s in the valSet", string(latest.Header.ProposerAddress))
 	}
 
 	state, err := c.node.Store.LoadState()
 	if err != nil {
-		return nil, fmt.Errorf("failed to load the last saved state: %w", err)
+		return nil, fmt.Errorf("load the last saved state: %w", err)
 	}
 	defaultProtocolVersion := p2p.NewProtocolVersion(
 		tm_version.P2PProtocol,
@@ -754,12 +750,12 @@ func (c *Client) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
 			LatestBlockHeight: int64(latestHeight),
 			LatestBlockTime:   time.Unix(0, int64(latestBlockTimeNano)),
 			// TODO(tzdybal): add missing fields
-			//EarliestBlockHash:   earliestBlockHash,
-			//EarliestAppHash:     earliestAppHash,
-			//EarliestBlockHeight: earliestBloc
-			//kHeight,
-			//EarliestBlockTime:   time.Unix(0, earliestBlockTimeNano),
-			//CatchingUp:          env.ConsensusReactor.WaitSync(),
+			// EarliestBlockHash:   earliestBlockHash,
+			// EarliestAppHash:     earliestAppHash,
+			// EarliestBlockHeight: earliestBloc
+			// kHeight,
+			// EarliestBlockTime:   time.Unix(0, earliestBlockTimeNano),
+			// CatchingUp:          env.ConsensusReactor.WaitSync(),
 		},
 		// TODO(ItzhakBokris): update ValidatorInfo fields
 		ValidatorInfo: ctypes.ValidatorInfo{
@@ -785,7 +781,6 @@ func (c *Client) NumUnconfirmedTxs(ctx context.Context) (*ctypes.ResultUnconfirm
 		Total:      c.node.Mempool.Size(),
 		TotalBytes: c.node.Mempool.SizeBytes(),
 	}, nil
-
 }
 
 // UnconfirmedTxs returns transactions in mempool.
@@ -798,7 +793,8 @@ func (c *Client) UnconfirmedTxs(ctx context.Context, limitPtr *int) (*ctypes.Res
 		Count:      len(txs),
 		Total:      c.node.Mempool.Size(),
 		TotalBytes: c.node.Mempool.SizeBytes(),
-		Txs:        txs}, nil
+		Txs:        txs,
+	}, nil
 }
 
 // CheckTx executes a new transaction against the application to determine its validity.

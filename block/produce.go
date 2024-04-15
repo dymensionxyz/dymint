@@ -2,6 +2,7 @@ package block
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -29,25 +30,24 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 		defer tickerEmptyBlocksMaxTime.Stop()
 	}
 
-	//Allow the initial block to be empty
+	// Allow the initial block to be empty
 	produceEmptyBlock := true
 	for {
 		select {
-		//Context canceled
+		// Context canceled
 		case <-ctx.Done():
 			return
 		// If we got a request for an empty block produce it and don't wait for the ticker
 		case <-m.produceEmptyBlockCh:
 			produceEmptyBlock = true
-		//Empty blocks timeout
+		// Empty blocks timeout
 		case <-tickerEmptyBlocksMaxTimeCh:
 			m.logger.Debug(fmt.Sprintf("No transactions for %.2f seconds, producing empty block", m.conf.EmptyBlocksMaxTime.Seconds()))
 			produceEmptyBlock = true
-		//Produce block
+		// Produce block
 		case <-ticker.C:
 			err := m.produceBlock(ctx, produceEmptyBlock)
-			if err == types.ErrSkippedEmptyBlock {
-				// m.logger.Debug("Skipped empty block")
+			if errors.Is(err, types.ErrSkippedEmptyBlock) {
 				continue
 			}
 			if err != nil {
@@ -55,13 +55,13 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 				m.shouldProduceBlocksCh <- false
 				continue
 			}
-			//If empty blocks enabled, after block produced, reset the timeout timer
+			// If empty blocks enabled, after block produced, reset the timeout timer
 			if tickerEmptyBlocksMaxTime != nil {
 				produceEmptyBlock = false
 				tickerEmptyBlocksMaxTime.Reset(m.conf.EmptyBlocksMaxTime)
 			}
 
-		//Node's health check channel
+		// Node's health check channel
 		case shouldProduceBlocks := <-m.shouldProduceBlocksCh:
 			for !shouldProduceBlocks {
 				m.logger.Info("Stopped block production")
@@ -193,5 +193,4 @@ func (m *Manager) createTMSignature(block *types.Block, proposerAddress []byte, 
 		return nil, fmt.Errorf("wrong signature")
 	}
 	return vote.Signature, nil
-
 }

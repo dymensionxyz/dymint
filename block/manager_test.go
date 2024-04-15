@@ -56,7 +56,8 @@ func TestInitialState(t *testing.T) {
 	privKey, _, _ := crypto.GenerateEd25519Key(rand.Reader)
 	p2pClient, err := p2p.NewClient(config.P2PConfig{
 		GossipCacheSize: 50,
-		BoostrapTime:    30 * time.Second}, privKey, "TestChain", logger)
+		BoostrapTime:    30 * time.Second,
+	}, privKey, "TestChain", logger)
 	assert.NoError(err)
 	assert.NotNil(p2pClient)
 
@@ -94,7 +95,6 @@ func TestInitialState(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-
 			dalc := getMockDALC(logger)
 			agg, err := NewManager(key, conf, c.genesis, c.store, nil, proxyApp, dalc, settlementlc,
 				nil, pubsubServer, p2pClient, logger)
@@ -134,11 +134,11 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 		time.Sleep(time.Millisecond * 500)
 	}
 
-	//Initially sync target is 0
+	// Initially sync target is 0
 	assert.True(t, manager.syncTarget == 0)
 	assert.True(t, manager.store.Height() == 0)
 
-	//enough time to sync and produce blocks
+	// enough time to sync and produce blocks
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*4)
 	defer cancel()
 	// Capture the error returned by manager.Start.
@@ -151,7 +151,7 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 	}()
 	<-ctx.Done()
 	assert.True(t, manager.syncTarget == batch.EndHeight)
-	//validate that we produced blocks
+	// validate that we produced blocks
 	assert.Greater(t, manager.store.Height(), batch.EndHeight)
 }
 
@@ -376,8 +376,10 @@ func TestProduceBlockFailAfterCommit(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			app.On("Commit", mock.Anything).Return(abci.ResponseCommit{Data: tc.AppCommitHash[:]}).Once()
-			app.On("Info", mock.Anything).Return(abci.ResponseInfo{LastBlockHeight: tc.LastAppBlockHeight,
-				LastBlockAppHash: tc.LastAppCommitHash[:]}).Once()
+			app.On("Info", mock.Anything).Return(abci.ResponseInfo{
+				LastBlockHeight:  tc.LastAppBlockHeight,
+				LastBlockAppHash: tc.LastAppCommitHash[:],
+			}).Once()
 			mockStore.ShouldFailSetHeight = tc.shouldFailSetSetHeight
 			mockStore.ShoudFailUpdateState = tc.shouldFailUpdateState
 			_ = manager.produceBlock(context.Background(), true)
@@ -405,7 +407,7 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 	// Init manager
 	managerConfig := getManagerConfig()
 	managerConfig.BlockBatchSize = 1000
-	managerConfig.BlockBatchMaxSizeBytes = batchLimitBytes //enough for 2 block, not enough for 10 blocks
+	managerConfig.BlockBatchMaxSizeBytes = batchLimitBytes // enough for 2 block, not enough for 10 blocks
 	manager, err := getManager(managerConfig, nil, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
@@ -452,8 +454,8 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 				assert.Equal(batch.EndHeight, batch.StartHeight+uint64(len(batch.Blocks))-1)
 				assert.Less(batch.EndHeight, endHeight)
 
-				//validate next added block to batch would have been actually too big
-				//First relax the byte limit so we could proudce larger batch
+				// validate next added block to batch would have been actually too big
+				// First relax the byte limit so we could proudce larger batch
 				manager.conf.BlockBatchMaxSizeBytes = 10 * manager.conf.BlockBatchMaxSizeBytes
 				newBatch, err := manager.createNextDABatch(startHeight, batch.EndHeight+1)
 				assert.Greater(newBatch.ToProto().Size(), batchLimitBytes)

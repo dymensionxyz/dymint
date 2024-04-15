@@ -63,13 +63,13 @@ type DASubmitMetaData struct {
 	Namespace []byte
 	// Client is the client to use to fetch data from the da layer
 	Client Client
-	//Share commitment, for each blob, used to obtain blobs and proofs
+	// Share commitment, for each blob, used to obtain blobs and proofs
 	Commitment Commitment
-	//Initial position for each blob in the NMT
+	// Initial position for each blob in the NMT
 	Index int
-	//Number of shares of each blob
+	// Number of shares of each blob
 	Length int
-	//any NMT root for the specific height, necessary for non-inclusion proof
+	// any NMT root for the specific height, necessary for non-inclusion proof
 	Root []byte
 }
 
@@ -137,19 +137,19 @@ type DACheckMetaData struct {
 	SLIndex uint64
 	// Namespace ID
 	Namespace []byte
-	//Share commitment, for each blob, used to obtain blobs and proofs
+	// Share commitment, for each blob, used to obtain blobs and proofs
 	Commitment Commitment
-	//Initial position for each blob in the NMT
+	// Initial position for each blob in the NMT
 	Index int
-	//Number of shares of each blob
+	// Number of shares of each blob
 	Length int
-	//Proofs necessary to validate blob inclusion in the specific height
+	// Proofs necessary to validate blob inclusion in the specific height
 	Proofs []*blob.Proof
-	//NMT roots for each NMT Proof
+	// NMT roots for each NMT Proof
 	NMTRoots []byte
-	//Proofs necessary to validate blob inclusion in the specific height
+	// Proofs necessary to validate blob inclusion in the specific height
 	RowProofs []*merkle.Proof
-	//any NMT root for the specific height, necessary for non-inclusion proof
+	// any NMT root for the specific height, necessary for non-inclusion proof
 	Root []byte
 }
 
@@ -196,7 +196,7 @@ type DataAvailabilityLayerClient interface {
 
 	GetClientType() Client
 
-	//Check the availability of the blob submitted getting proofs and validating them
+	// Check the availability of the blob submitted getting proofs and validating them
 	CheckBatchAvailability(daMetaData *DASubmitMetaData) ResultCheckBatch
 }
 
@@ -205,6 +205,6 @@ type DataAvailabilityLayerClient interface {
 type BatchRetriever interface {
 	// RetrieveBatches returns blocks at given data layer height from data availability layer.
 	RetrieveBatches(daMetaData *DASubmitMetaData) ResultRetrieveBatch
-	//Check the availability of the blob received getting proofs and validating them
+	// Check the availability of the blob received getting proofs and validating them
 	CheckBatchAvailability(daMetaData *DASubmitMetaData) ResultCheckBatch
 }

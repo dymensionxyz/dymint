@@ -110,9 +110,9 @@ func newHubClient(config settlement.Config, pubsub *pubsub.Server, logger types.
 
 func initConfig(conf settlement.Config) (slstore store.KVStore, proposer string, err error) {
 	if conf.KeyringHomeDir == "" {
-		//init store
+		// init store
 		slstore = store.NewDefaultInMemoryKVStore()
-		//init proposer pub key
+		// init proposer pub key
 		if conf.ProposerPubKey != "" {
 			proposer = conf.ProposerPubKey
 		} else {

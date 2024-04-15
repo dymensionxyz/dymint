@@ -23,8 +23,7 @@ import (
 
 const mockDaBlockTime = 100 * time.Millisecond
 
-//TODO: move to mock DA test
-
+// TODO: move to mock DA test
 func TestLifecycle(t *testing.T) {
 	doTestLifecycle(t, "mock")
 }
@@ -169,10 +168,11 @@ func doTestRetrieve(t *testing.T, dalc da.DataAvailabilityLayerClient) {
 			StartHeight: i,
 			EndHeight:   i,
 			Blocks:      []*types.Block{b},
-			Commits: []*types.Commit{{
-				Height:     b.Header.Height,
-				HeaderHash: b.Header.Hash(),
-			},
+			Commits: []*types.Commit{
+				{
+					Height:     b.Header.Height,
+					HeaderHash: b.Header.Hash(),
+				},
 			},
 		}
 		resp := dalc.SubmitBatch(batch)
@@ -208,7 +208,7 @@ func doTestRetrieve(t *testing.T, dalc da.DataAvailabilityLayerClient) {
 	}
 }
 
-//TODO: move to testutils
+// TODO: move to testutils
 
 // copy-pasted from store/store_test.go
 func getRandomBlock(height uint64, nTxs int) *types.Block {

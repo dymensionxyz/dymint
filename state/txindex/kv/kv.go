@@ -55,7 +55,7 @@ func (txi *TxIndex) Get(hash []byte) (*abci.TxResult, error) {
 	txResult := new(abci.TxResult)
 	err = proto.Unmarshal(rawBytes, txResult)
 	if err != nil {
-		return nil, fmt.Errorf("error reading TxResult: %v", err)
+		return nil, fmt.Errorf("error reading TxResult: %w", err)
 	}
 
 	return txResult, nil
@@ -258,7 +258,7 @@ func (txi *TxIndex) Search(ctx context.Context, q *query.Query) ([]*abci.TxResul
 
 		res, err := txi.Get(h)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get Tx{%X}: %w", h, err)
+			return nil, fmt.Errorf("get Tx{%X}: %w", h, err)
 		}
 		if res == nil {
 			continue
