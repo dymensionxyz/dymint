@@ -131,12 +131,12 @@ func startInProcess(config *cfg.NodeConfig, tmConfig *tmcfg.Config, logger log.L
 }
 
 func checkGenesisHash(config *tmcfg.Config) error {
-	if len(genesisHash) == 0 {
-		return nil
-	}
-
 	if config.Genesis == "" {
 		return fmt.Errorf("genesis file is not set")
+	}
+
+	if len(genesisHash) == 0 {
+		return nil
 	}
 
 	// Calculate SHA-256 hash of the genesis file.
