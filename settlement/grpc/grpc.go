@@ -58,21 +58,20 @@ func (m *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, logg
 	return nil
 }
 
-// HubClient implements The HubClient interface
+var _ settlement.HubClient = (*HubGrpcClient)(nil)
+
 type HubGrpcClient struct {
 	ctx            context.Context
 	ProposerPubKey string
 	slStateIndex   uint64
 	logger         types.Logger
 	pubsub         *pubsub.Server
-	latestHeight   uint64
+	latestHeight   atomic.Uint64
 	conn           *grpc.ClientConn
 	sl             slmock.MockSLClient
 	stopchan       chan struct{}
 	refreshTime    int
 }
-
-var _ settlement.HubClient = &HubGrpcClient{}
 
 func newHubClient(config settlement.Config, pubsub *pubsub.Server, logger types.Logger) (*HubGrpcClient, error) {
 	ctx := context.Background()
@@ -113,18 +112,19 @@ func newHubClient(config settlement.Config, pubsub *pubsub.Server, logger types.
 	}
 	logger.Debug("Starting grpc SL ", "index", slStateIndex)
 
-	return &HubGrpcClient{
+	ret := &HubGrpcClient{
 		ctx:            ctx,
 		ProposerPubKey: proposer,
 		logger:         logger,
 		pubsub:         pubsub,
-		latestHeight:   latestHeight,
 		slStateIndex:   slStateIndex,
 		conn:           conn,
 		sl:             client,
 		stopchan:       stopchan,
 		refreshTime:    config.SLGrpc.RefreshTime,
-	}, nil
+	}
+	ret.latestHeight.Store(latestHeight)
+	return ret, nil
 }
 
 func initConfig(conf settlement.Config) (proposer string, err error) {
@@ -273,7 +273,7 @@ func (c *HubGrpcClient) saveBatch(batch *settlement.Batch) {
 	}
 	c.logger.Debug("Setting grpc SL Index to ", "index", setIndexReply.GetIndex())
 	// Save latest height in memory and in store
-	atomic.StoreUint64(&c.latestHeight, batch.EndHeight)
+	c.latestHeight.Store(batch.EndHeight)
 }
 
 func (c *HubGrpcClient) convertBatchtoSettlementBatch(batch *types.Batch, daResult *da.ResultSubmitBatch) *settlement.Batch {

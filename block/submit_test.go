@@ -41,17 +41,17 @@ func TestBatchSubmissionHappyFlow(t *testing.T) {
 	initialHeight := uint64(0)
 	require.Zero(manager.store.Height())
 	require.True(manager.batchInProcess.Load() == false)
-	require.Zero(manager.syncTarget)
+	require.Zero(manager.syncTarget.Load())
 
 	// Produce block and validate that we produced blocks
 	err = manager.produceBlock(ctx, true)
 	require.NoError(err)
 	assert.Greater(t, manager.store.Height(), initialHeight)
-	assert.Zero(t, manager.syncTarget)
+	assert.Zero(t, manager.syncTarget.Load())
 
 	// submit and validate sync target
 	manager.handleSubmissionTrigger(ctx)
-	assert.EqualValues(t, 1, manager.syncTarget)
+	assert.EqualValues(t, 1, manager.syncTarget.Load())
 }
 
 func TestBatchSubmissionFailedSubmission(t *testing.T) {
@@ -88,23 +88,23 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 	initialHeight := uint64(0)
 	require.Zero(manager.store.Height())
 	require.True(manager.batchInProcess.Load() == false)
-	require.Zero(manager.syncTarget)
+	require.Zero(manager.syncTarget.Load())
 
 	// Produce block and validate that we produced blocks
 	err = manager.produceBlock(ctx, true)
 	require.NoError(err)
 	assert.Greater(t, manager.store.Height(), initialHeight)
-	assert.Zero(t, manager.syncTarget)
+	assert.Zero(t, manager.syncTarget.Load())
 
 	// try to submit, we expect failure
 	mockLayerI.On("SubmitBatch", mock.Anything, mock.Anything, mock.Anything).Return(fmt.Errorf("submit batch")).Once()
 	manager.handleSubmissionTrigger(ctx)
-	assert.EqualValues(t, 0, manager.syncTarget)
+	assert.EqualValues(t, 0, manager.syncTarget.Load())
 
 	// try to submit again, we expect success
 	mockLayerI.On("SubmitBatch", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 	manager.handleSubmissionTrigger(ctx)
-	assert.EqualValues(t, 1, manager.syncTarget)
+	assert.EqualValues(t, 1, manager.syncTarget.Load())
 }
 
 func TestBatchSubmissionAfterTimeout(t *testing.T) {
@@ -142,7 +142,7 @@ func TestBatchSubmissionAfterTimeout(t *testing.T) {
 	require.Equal(initialHeight, manager.store.Height())
 	require.True(manager.batchInProcess.Load() == false)
 
-	require.True(manager.syncTarget == 0)
+	require.Zero(manager.syncTarget.Load())
 
 	var wg sync.WaitGroup
 	mCtx, cancel := context.WithTimeout(context.Background(), runTime)
@@ -162,5 +162,5 @@ func TestBatchSubmissionAfterTimeout(t *testing.T) {
 
 	<-mCtx.Done()
 	wg.Wait() // Wait for all goroutines to finish
-	require.True(manager.syncTarget > 0)
+	require.True(manager.syncTarget.Load() > 0)
 }
