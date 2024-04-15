@@ -288,8 +288,9 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 
 				return nil
 			}, retry.Attempts(uint(c.rpcRetryAttempts)), retry.DelayType(retry.FixedDelay), retry.Delay(c.rpcRetryDelay))
-			c.logger.Error("RetrieveBatches process failed", "error", err)
-
+			if err != nil {
+				c.logger.Error("RetrieveBatches process failed", "error", err)
+			}
 			return resultRetrieveBatch
 
 		}
@@ -415,7 +416,9 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 
 				return nil
 			}, retry.Attempts(uint(c.rpcRetryAttempts)), retry.DelayType(retry.FixedDelay), retry.Delay(c.rpcRetryDelay))
-			c.logger.Error("CheckAvailability process failed", "error", err)
+			if err != nil {
+				c.logger.Error("CheckAvailability process failed", "error", err)
+			}
 			return availabilityResult
 		}
 	}
