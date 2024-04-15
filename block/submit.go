@@ -3,7 +3,6 @@ package block
 import (
 	"context"
 	"fmt"
-	"sync/atomic"
 	"time"
 
 	"github.com/dymensionxyz/dymint/da"
@@ -14,10 +13,10 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 	ticker := time.NewTicker(m.conf.BatchSubmitMaxTime)
 	defer ticker.Stop()
 
-	//TODO: add submission trigger by batch size (should be signaled from the the block production)
+	// TODO: add submission trigger by batch size (should be signaled from the the block production)
 	for {
 		select {
-		//Context canceled
+		// Context canceled
 		case <-ctx.Done():
 			return
 		// trigger by time
@@ -29,9 +28,9 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 
 func (m *Manager) handleSubmissionTrigger(ctx context.Context) {
 	// SyncTarget is the height of the last block in the last batch as seen by this node.
-	syncTarget := atomic.LoadUint64(&m.syncTarget)
+	syncTarget := m.syncTarget.Load()
 	height := m.store.Height()
-	//no new blocks produced yet
+	// no new blocks produced yet
 	if height <= syncTarget {
 		return
 	}
@@ -65,7 +64,7 @@ func (m *Manager) handleSubmissionTrigger(ctx context.Context) {
 
 func (m *Manager) submitNextBatch() (uint64, error) {
 	// Get the batch start and end height
-	startHeight := atomic.LoadUint64(&m.syncTarget) + 1
+	startHeight := m.syncTarget.Load() + 1
 	endHeight := uint64(m.store.Height())
 
 	// Create the batch
@@ -112,7 +111,7 @@ func (m *Manager) submitNextBatch() (uint64, error) {
 }
 
 func (m *Manager) validateBatch(batch *types.Batch) error {
-	syncTarget := atomic.LoadUint64(&m.syncTarget)
+	syncTarget := m.syncTarget.Load()
 	if batch.StartHeight != syncTarget+1 {
 		return fmt.Errorf("batch start height != syncTarget + 1. StartHeight %d, m.syncTarget %d", batch.StartHeight, syncTarget)
 	}
@@ -149,7 +148,7 @@ func (m *Manager) createNextDABatch(startHeight uint64, endHeight uint64) (*type
 		batch.Blocks = append(batch.Blocks, block)
 		batch.Commits = append(batch.Commits, commit)
 
-		//Check if the batch size is too big
+		// Check if the batch size is too big
 		totalSize := batch.ToProto().Size()
 		if totalSize > int(m.conf.BlockBatchMaxSizeBytes) {
 			// Nil out the last block and commit

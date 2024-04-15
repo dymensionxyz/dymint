@@ -28,7 +28,7 @@ func (m *Manager) RetriveLoop(ctx context.Context) {
 			}
 			// Check if after we sync we are synced or a new syncTarget was already set.
 			// If we are synced then signal all goroutines waiting on isSyncedCond.
-			if m.store.Height() >= atomic.LoadUint64(&m.syncTarget) {
+			if m.store.Height() >= m.syncTarget.Load() {
 				m.logger.Info("Synced at height", "height", m.store.Height())
 				m.isSyncedCond.L.Lock()
 				m.isSyncedCond.Signal()
@@ -115,9 +115,9 @@ func (m *Manager) fetchBatch(daMetaData *da.DASubmitMetaData) da.ResultRetrieveB
 			},
 		}
 	}
-	//batchRes.MetaData includes proofs necessary to open disputes with the Hub
+	// batchRes.MetaData includes proofs necessary to open disputes with the Hub
 	batchRes := m.retriever.RetrieveBatches(daMetaData)
-	//TODO(srene) : for invalid transactions there is no specific error code since it will need to be validated somewhere else for fraud proving.
-	//NMT proofs (availRes.MetaData.Proofs) are included in the result batchRes, necessary to be included in the dispute
+	// TODO(srene) : for invalid transactions there is no specific error code since it will need to be validated somewhere else for fraud proving.
+	// NMT proofs (availRes.MetaData.Proofs) are included in the result batchRes, necessary to be included in the dispute
 	return batchRes
 }
