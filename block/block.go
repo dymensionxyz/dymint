@@ -145,7 +145,7 @@ func (m *Manager) alignStoreWithApp(ctx context.Context, block *types.Block) (bo
 	// Validate incosistency in height wasn't caused by a crash and if so handle it.
 	proxyAppInfo, err := m.executor.GetAppInfo()
 	if err != nil {
-		return isRequired, errors.Wrap(err, "failed to get app info")
+		return isRequired, errors.Wrap(err, "get app info")
 	}
 	if uint64(proxyAppInfo.LastBlockHeight) != block.Header.Height {
 		return isRequired, nil
@@ -160,13 +160,13 @@ func (m *Manager) alignStoreWithApp(ctx context.Context, block *types.Block) (bo
 
 	resp, err := m.store.LoadBlockResponses(block.Header.Height)
 	if err != nil {
-		return isRequired, errors.Wrap(err, "failed to load block responses")
+		return isRequired, errors.Wrap(err, "load block responses")
 	}
 	copy(m.lastState.LastResultsHash[:], tmtypes.NewResults(resp.DeliverTxs).Hash())
 
 	_, err = m.store.UpdateState(m.lastState, nil)
 	if err != nil {
-		return isRequired, errors.Wrap(err, "failed to update state")
+		return isRequired, errors.Wrap(err, "update state")
 	}
 	m.store.SetHeight(block.Header.Height)
 	return isRequired, nil
