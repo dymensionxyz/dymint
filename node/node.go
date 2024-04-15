@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/dymensionxyz/dymint/event_util"
+
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
@@ -34,7 +36,6 @@ import (
 	"github.com/dymensionxyz/dymint/state/txindex"
 	"github.com/dymensionxyz/dymint/state/txindex/kv"
 	"github.com/dymensionxyz/dymint/store"
-	"github.com/dymensionxyz/dymint/utils"
 )
 
 // prefixes used in KV store to separate main node data from DALC data
@@ -347,15 +348,15 @@ func createAndStartIndexerService(
 
 // All events listeners should be registered here
 func (n *Node) startEventListener() {
-	go utils.SubscribeAndHandleEvents(n.ctx, n.pubsubServer, "settlementHealthStatusHandler", settlement.EventQuerySettlementHealthStatus, n.healthStatusEventCallback, n.Logger)
-	go utils.SubscribeAndHandleEvents(n.ctx, n.pubsubServer, "daHealthStatusHandler", da.EventQueryDAHealthStatus, n.healthStatusEventCallback, n.Logger)
+	go event_util.MustSubscribe(n.ctx, n.pubsubServer, "settlementHealthStatusHandler", settlement.EventQuerySettlementHealthStatus, n.healthStatusEventCallback, n.Logger)
+	go event_util.MustSubscribe(n.ctx, n.pubsubServer, "daHealthStatusHandler", da.EventQueryDAHealthStatus, n.healthStatusEventCallback, n.Logger)
 }
 
 // Event handling callback function for health status events
 func (n *Node) healthStatusEventCallback(event pubsub.Message) {
 	switch e := event.Data().(type) {
 	case *settlement.EventDataSettlementHealthStatus:
-		// TODO:
+		_ = e // TODO:
 	case *da.EventDataDAHealthStatus:
 		// TODO:
 	}

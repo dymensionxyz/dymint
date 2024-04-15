@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/dymensionxyz/dymint/event_util"
+
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -24,7 +26,6 @@ import (
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
-	"github.com/dymensionxyz/dymint/utils"
 	"github.com/hashicorp/go-multierror"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
@@ -232,7 +233,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 				d.logger.Error("Failed submitting batch to settlement layer. Emitting unhealthy event",
 					"startHeight", batch.StartHeight, "endHeight", batch.EndHeight, "error", err)
 				healthEventData := &settlement.EventDataSettlementHealthStatus{Healthy: false, Error: err}
-				utils.SubmitEventOrPanic(d.ctx, d.pubsub, healthEventData,
+				event_util.MustPublish(d.ctx, d.pubsub, healthEventData,
 					map[string][]string{settlement.EventTypeKey: {settlement.EventSettlementHealthStatus}})
 				// Sleep to allow context cancellation to take effect before retrying
 
@@ -255,7 +256,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 			d.logger.Info("Batch accepted by settlement layer. Emitting healthy event",
 				"startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
 			healthEventData := &settlement.EventDataSettlementHealthStatus{Healthy: true}
-			utils.SubmitEventOrPanic(d.ctx, d.pubsub, healthEventData,
+			event_util.MustPublish(d.ctx, d.pubsub, healthEventData,
 				map[string][]string{settlement.EventTypeKey: {settlement.EventSettlementHealthStatus}})
 			return nil
 		case <-ticker.C:
@@ -267,7 +268,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 				d.logger.Error("Batch not accepted by settlement layer. Emitting unhealthy event",
 					"startHeight", batch.StartHeight, "endHeight", batch.EndHeight, "error", err)
 				heatlhEventData := &settlement.EventDataSettlementHealthStatus{Healthy: false, Error: settlement.ErrBatchNotAccepted}
-				utils.SubmitEventOrPanic(d.ctx, d.pubsub, heatlhEventData,
+				event_util.MustPublish(d.ctx, d.pubsub, heatlhEventData,
 					map[string][]string{settlement.EventTypeKey: {settlement.EventSettlementHealthStatus}})
 				// Stop the ticker and restart the loop
 				ticker.Stop()
@@ -277,7 +278,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 			d.logger.Info("Batch accepted by settlement layer", "startHeight", includedBatch.StartHeight, "endHeight", includedBatch.EndHeight)
 			// Emit health event
 			healthEventData := &settlement.EventDataSettlementHealthStatus{Healthy: true}
-			utils.SubmitEventOrPanic(d.ctx, d.pubsub, healthEventData,
+			event_util.MustPublish(d.ctx, d.pubsub, healthEventData,
 				map[string][]string{settlement.EventTypeKey: {settlement.EventSettlementHealthStatus}})
 			return nil
 		}

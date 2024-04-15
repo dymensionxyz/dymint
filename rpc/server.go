@@ -22,7 +22,6 @@ import (
 	"github.com/dymensionxyz/dymint/rpc/json"
 	"github.com/dymensionxyz/dymint/rpc/middleware"
 	"github.com/dymensionxyz/dymint/rpc/sharedtypes"
-	"github.com/dymensionxyz/dymint/utils"
 )
 
 // Server handles HTTP and JSON-RPC requests, exposing Tendermint-compatible API.
@@ -98,7 +97,7 @@ func (s *Server) OnStop() {
 
 // EventListener registers events to callbacks.
 func (s *Server) startEventListener() {
-	go utils.SubscribeAndHandleEvents(s.ctx, s.PubSubServer(), "RPCNodeHealthStatusHandler", events.EventQueryHealthStatus, s.healthStatusEventCallback, s.Logger)
+	go event_util.MustSubscribe(s.ctx, s.PubSubServer(), "RPCNodeHealthStatusHandler", events.EventQueryHealthStatus, s.healthStatusEventCallback, s.Logger)
 }
 
 // healthStatusEventCallback is a callback function that handles health status events.

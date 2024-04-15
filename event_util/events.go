@@ -1,4 +1,4 @@
-package utils
+package event_util
 
 import (
 	"context"
@@ -7,9 +7,9 @@ import (
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
-// SubscribeAndHandleEvents subscribes to events and sends back a callback
+// MustSubscribe subscribes to events and sends back a callback
 // clientID is essentially the subscriber id, see https://pkg.go.dev/github.com/tendermint/tendermint/libs/pubsub#pkg-overview
-func SubscribeAndHandleEvents(
+func MustSubscribe(
 	ctx context.Context,
 	pubsubServer *pubsub.Server,
 	clientID string,
@@ -37,8 +37,8 @@ func SubscribeAndHandleEvents(
 	}
 }
 
-// SubmitEventOrPanic submits an event or panics
-func SubmitEventOrPanic(ctx context.Context, pubsubServer *pubsub.Server, msg interface{}, events map[string][]string) {
+// MustPublish submits an event or panics
+func MustPublish(ctx context.Context, pubsubServer *pubsub.Server, msg any, events map[string][]string) {
 	err := pubsubServer.PublishWithEvents(ctx, msg, events)
 	if err != nil {
 		panic(err)

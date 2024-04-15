@@ -9,11 +9,12 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/dymensionxyz/dymint/event_util"
+
 	"code.cloudfoundry.org/go-diodes"
 
 	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/p2p"
-	"github.com/dymensionxyz/dymint/utils"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	tmcrypto "github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/pubsub"
@@ -211,9 +212,9 @@ func getAddress(key crypto.PrivKey) ([]byte, error) {
 
 // StartEventListener registers events to callbacks.
 func (m *Manager) StartEventListener(ctx context.Context, isAggregator bool) {
-	go utils.SubscribeAndHandleEvents(ctx, m.pubsub, "nodeHealthStatusHandler", events.EventQueryHealthStatus, m.healthStatusEventCallback, m.logger)
+	go event_util.SubscribeHandler(ctx, m.pubsub, "nodeHealthStatusHandler", events.EventQueryHealthStatus, m.healthStatusEventCallback, m.logger)
 	if !isAggregator {
-		go utils.SubscribeAndHandleEvents(ctx, m.pubsub, "ApplyBlockLoop", p2p.EventQueryNewNewGossipedBlock, m.applyBlockCallback, m.logger, 100)
+		go event_util.SubscribeHandler(ctx, m.pubsub, "ApplyBlockLoop", p2p.EventQueryNewNewGossipedBlock, m.applyBlockCallback, m.logger, 100)
 	}
 }
 
