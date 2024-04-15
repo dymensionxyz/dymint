@@ -14,7 +14,7 @@ import (
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
-// ProduceBlockLoop is calling publishBlock in a loop as long as wer'e synced.
+// ProduceBlockLoop is calling publishBlock in a loop as long as we're synced.
 func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 	m.logger.Debug("Started produce loop")
 
