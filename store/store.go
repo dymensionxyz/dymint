@@ -48,7 +48,7 @@ func (s *DefaultStore) NewBatch() Batch {
 
 // SetHeight sets the height saved in the Store if it is higher than the existing height
 func (s *DefaultStore) SetHeight(height uint64) {
-	storeHeight := atomic.LoadUint64(&s.height)
+	storeHeight := s.Height()
 	if height > storeHeight {
 		_ = atomic.CompareAndSwapUint64(&s.height, storeHeight, height)
 	}
@@ -61,7 +61,7 @@ func (s *DefaultStore) Height() uint64 {
 
 // SetBase sets the height saved in the Store of the earliest block
 func (s *DefaultStore) SetBase(height uint64) {
-	baseHeight := atomic.LoadUint64(&s.baseHeight)
+	baseHeight := s.Base()
 	if height > baseHeight {
 		_ = atomic.CompareAndSwapUint64(&s.baseHeight, baseHeight, height)
 	}
@@ -79,15 +79,15 @@ func (s *DefaultStore) SaveBlock(block *types.Block, commit *types.Commit, batch
 	hash := block.Header.Hash()
 	blockBlob, err := block.MarshalBinary()
 	if err != nil {
-		return batch, fmt.Errorf("failed to marshal Block to binary: %w", err)
+		return batch, fmt.Errorf("marshal Block to binary: %w", err)
 	}
 
 	commitBlob, err := commit.MarshalBinary()
 	if err != nil {
-		return batch, fmt.Errorf("failed to marshal Commit to binary: %w", err)
+		return batch, fmt.Errorf("marshal Commit to binary: %w", err)
 	}
 
-	//Not sure it's neeeded, as it's not used anywhere
+	// Not sure it's neeeded, as it's not used anywhere
 	if batch != nil {
 		err = multierr.Append(err, batch.Set(getBlockKey(hash), blockBlob))
 		err = multierr.Append(err, batch.Set(getCommitKey(hash), commitBlob))
@@ -102,11 +102,11 @@ func (s *DefaultStore) SaveBlock(block *types.Block, commit *types.Commit, batch
 	err = multierr.Append(err, bb.Set(getCommitKey(hash), commitBlob))
 	err = multierr.Append(err, bb.Set(getIndexKey(block.Header.Height), hash[:]))
 	if err != nil {
-		return batch, fmt.Errorf("failed to create db batch: %w", err)
+		return batch, fmt.Errorf("create db batch: %w", err)
 	}
 
 	if err = bb.Commit(); err != nil {
-		return nil, fmt.Errorf("failed to commit db batch: %w", err)
+		return nil, fmt.Errorf("commit db batch: %w", err)
 	}
 
 	return bb, nil
@@ -119,7 +119,7 @@ func (s *DefaultStore) SaveBlock(block *types.Block, commit *types.Commit, batch
 func (s *DefaultStore) LoadBlock(height uint64) (*types.Block, error) {
 	h, err := s.loadHashFromIndex(height)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load hash from index: %w", err)
+		return nil, fmt.Errorf("load hash from index: %w", err)
 	}
 	return s.LoadBlockByHash(h)
 }
@@ -128,12 +128,12 @@ func (s *DefaultStore) LoadBlock(height uint64) (*types.Block, error) {
 func (s *DefaultStore) LoadBlockByHash(hash [32]byte) (*types.Block, error) {
 	blockData, err := s.db.Get(getBlockKey(hash))
 	if err != nil {
-		return nil, fmt.Errorf("failed to load block data: %w", err)
+		return nil, fmt.Errorf("load block data: %w", err)
 	}
 	block := new(types.Block)
 	err = block.UnmarshalBinary(blockData)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal block data: %w", err)
+		return nil, fmt.Errorf("unmarshal block data: %w", err)
 	}
 
 	return block, nil
@@ -143,7 +143,7 @@ func (s *DefaultStore) LoadBlockByHash(hash [32]byte) (*types.Block, error) {
 func (s *DefaultStore) SaveBlockResponses(height uint64, responses *tmstate.ABCIResponses, batch Batch) (Batch, error) {
 	data, err := responses.Marshal()
 	if err != nil {
-		return batch, fmt.Errorf("failed to marshal response: %w", err)
+		return batch, fmt.Errorf("marshal response: %w", err)
 	}
 	if batch == nil {
 		return nil, s.db.Set(getResponsesKey(height), data)
@@ -156,12 +156,12 @@ func (s *DefaultStore) SaveBlockResponses(height uint64, responses *tmstate.ABCI
 func (s *DefaultStore) LoadBlockResponses(height uint64) (*tmstate.ABCIResponses, error) {
 	data, err := s.db.Get(getResponsesKey(height))
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve block results from height %v: %w", height, err)
+		return nil, fmt.Errorf("retrieve block results from height %v: %w", height, err)
 	}
 	var responses tmstate.ABCIResponses
 	err = responses.Unmarshal(data)
 	if err != nil {
-		return &responses, fmt.Errorf("failed to unmarshal data: %w", err)
+		return &responses, fmt.Errorf("unmarshal data: %w", err)
 	}
 	return &responses, nil
 }
@@ -170,7 +170,7 @@ func (s *DefaultStore) LoadBlockResponses(height uint64) (*tmstate.ABCIResponses
 func (s *DefaultStore) LoadCommit(height uint64) (*types.Commit, error) {
 	hash, err := s.loadHashFromIndex(height)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load hash from index: %w", err)
+		return nil, fmt.Errorf("load hash from index: %w", err)
 	}
 	return s.LoadCommitByHash(hash)
 }
@@ -179,12 +179,12 @@ func (s *DefaultStore) LoadCommit(height uint64) (*types.Commit, error) {
 func (s *DefaultStore) LoadCommitByHash(hash [32]byte) (*types.Commit, error) {
 	commitData, err := s.db.Get(getCommitKey(hash))
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve commit from hash %v: %w", hash, err)
+		return nil, fmt.Errorf("retrieve commit from hash %v: %w", hash, err)
 	}
 	commit := new(types.Commit)
 	err = commit.UnmarshalBinary(commitData)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal Commit into object: %w", err)
+		return nil, fmt.Errorf("marshal Commit into object: %w", err)
 	}
 	return commit, nil
 }
@@ -194,7 +194,7 @@ func (s *DefaultStore) LoadCommitByHash(hash [32]byte) (*types.Commit, error) {
 func (s *DefaultStore) UpdateState(state types.State, batch Batch) (Batch, error) {
 	pbState, err := state.ToProto()
 	if err != nil {
-		return batch, fmt.Errorf("failed to marshal state to JSON: %w", err)
+		return batch, fmt.Errorf("marshal state to JSON: %w", err)
 	}
 	data, err := pbState.Marshal()
 	if err != nil {
@@ -217,13 +217,13 @@ func (s *DefaultStore) LoadState() (types.State, error) {
 	var pbState pb.State
 	err = pbState.Unmarshal(blob)
 	if err != nil {
-		return types.State{}, fmt.Errorf("failed to unmarshal state from store: %w", err)
+		return types.State{}, fmt.Errorf("unmarshal state from store: %w", err)
 	}
 
 	var state types.State
 	err = state.FromProto(&pbState)
 	if err != nil {
-		return types.State{}, fmt.Errorf("failed to unmarshal state from proto: %w", err)
+		return types.State{}, fmt.Errorf("unmarshal state from proto: %w", err)
 	}
 
 	atomic.StoreUint64(&s.height, state.LastStoreHeight)
@@ -235,11 +235,11 @@ func (s *DefaultStore) LoadState() (types.State, error) {
 func (s *DefaultStore) SaveValidators(height uint64, validatorSet *tmtypes.ValidatorSet, batch Batch) (Batch, error) {
 	pbValSet, err := validatorSet.ToProto()
 	if err != nil {
-		return batch, fmt.Errorf("failed to marshal ValidatorSet to protobuf: %w", err)
+		return batch, fmt.Errorf("marshal ValidatorSet to protobuf: %w", err)
 	}
 	blob, err := pbValSet.Marshal()
 	if err != nil {
-		return batch, fmt.Errorf("failed to marshal ValidatorSet: %w", err)
+		return batch, fmt.Errorf("marshal ValidatorSet: %w", err)
 	}
 
 	if batch == nil {
@@ -253,12 +253,12 @@ func (s *DefaultStore) SaveValidators(height uint64, validatorSet *tmtypes.Valid
 func (s *DefaultStore) LoadValidators(height uint64) (*tmtypes.ValidatorSet, error) {
 	blob, err := s.db.Get(getValidatorsKey(height))
 	if err != nil {
-		return nil, fmt.Errorf("failed to load Validators for height %v: %w", height, err)
+		return nil, fmt.Errorf("load Validators for height %v: %w", height, err)
 	}
 	var pbValSet tmproto.ValidatorSet
 	err = pbValSet.Unmarshal(blob)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unmarshal to protobuf: %w", err)
+		return nil, fmt.Errorf("unmarshal to protobuf: %w", err)
 	}
 
 	return tmtypes.ValidatorSetFromProto(&pbValSet)
@@ -269,7 +269,7 @@ func (s *DefaultStore) loadHashFromIndex(height uint64) ([32]byte, error) {
 
 	var hash [32]byte
 	if err != nil {
-		return hash, fmt.Errorf("failed to load block hash for height %v: %w", height, err)
+		return hash, fmt.Errorf("load block hash for height %v: %w", height, err)
 	}
 	if len(blob) != len(hash) {
 		return hash, errors.New("invalid hash length")

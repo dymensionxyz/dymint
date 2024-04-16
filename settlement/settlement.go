@@ -23,7 +23,7 @@ type BaseResult struct {
 	Code StatusCode
 	// Message may contain settlement layer specific information (like detailed error message, etc)
 	Message string
-	//TODO(omritoptix): Move StateIndex to be part of the batch struct
+	// TODO(omritoptix): Move StateIndex to be part of the batch struct
 	// StateIndex is the rollapp-specific index the batch was saved in the SL
 	StateIndex uint64
 }
@@ -53,7 +53,6 @@ type Option func(LayerI)
 
 // LayerI defines generic interface for Settlement layer interaction.
 type LayerI interface {
-
 	// Init is called once for the client initialization
 	Init(config Config, pubsub *pubsub.Server, logger types.Logger, options ...Option) error
 

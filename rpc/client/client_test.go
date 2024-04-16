@@ -665,7 +665,6 @@ func TestBlockchainInfo(t *testing.T) {
 				assert.Contains(result.BlockMetas, test.exp[0])
 				assert.Contains(result.BlockMetas, test.exp[1])
 			}
-
 		})
 	}
 }
@@ -890,8 +889,8 @@ func indexBlocks(t *testing.T, rpc *Client, heights []int64) {
 			},
 		}))
 	}
-
 }
+
 func TestMempool2Nodes(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)

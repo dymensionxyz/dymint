@@ -94,7 +94,6 @@ func TestSubmitAndRetrieve(t *testing.T) {
 	middleOfBatchHeight := uint64(numBatches-1)*(batchSize) - (batchSize / 2)
 	assert.LessOrEqual(batchResult.StartHeight, middleOfBatchHeight)
 	assert.GreaterOrEqual(batchResult.EndHeight, middleOfBatchHeight)
-
 }
 
 func TestGetSequencersEmptyList(t *testing.T) {
@@ -111,7 +110,6 @@ func TestGetSequencersEmptyList(t *testing.T) {
 	require.NoError(t, err)
 	err = settlementClient.Init(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
 	assert.Error(t, err, "empty sequencer list should return an error")
-
 }
 
 func TestGetSequencers(t *testing.T) {

@@ -145,5 +145,4 @@ func TestWebsocketCloseUnsubscribe(t *testing.T) {
 	assert.Eventually(func() bool {
 		return subscribed_clients == local.EventBus.NumClients()
 	}, 3*time.Second, 100*time.Millisecond)
-
 }
