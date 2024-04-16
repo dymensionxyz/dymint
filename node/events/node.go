@@ -19,7 +19,6 @@ const (
 	EventHealthStatus = "HealthStatus"
 )
 
-// EventDataHealthStatus defines the structure of the event data for the EventHealthStatus
 type EventDataHealthStatus struct {
 	// Error is the error that was encountered in case of a health check failure. Nil implies both
 	Error error

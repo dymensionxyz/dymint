@@ -225,27 +225,26 @@ func (m *Manager) onHealthStatus(event pubsub.Message) {
 	m.shouldProduceBlocksCh <- eventData.Healthy
 }
 
+// onNewGossippedBlock will take a block and apply it
 func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
 	m.logger.Debug("Received new block event", "eventData", event.Data(), "cachedBlocks", len(m.prevBlock))
 	eventData := event.Data().(p2p.GossipedBlock)
 	block := eventData.Block
 	commit := eventData.Commit
-
-	if block.Header.Height != m.store.Height()+1 {
-		if block.Header.Height > m.store.Height() {
-			m.prevBlock[block.Header.Height] = &block
-			m.prevCommit[block.Header.Height] = &commit
-			m.logger.Debug("Caching block", "block height", block.Header.Height, "store height", m.store.Height())
-		}
+	h := block.Header.Height
+	if m.store.Height()+1 < h {
+		m.prevBlock[h] = &block
+		m.prevCommit[h] = &commit
+		m.logger.Debug("Caching block", "block height", h, "store height", m.store.Height())
 	} else {
 		err := m.applyBlock(context.Background(), &block, &commit, blockMetaData{source: gossipedBlock})
 		if err != nil {
-			m.logger.Debug("apply block", "err", err)
+			m.logger.Debug("apply block", "err", err) // TODO: should these be debug?
 		}
 	}
 	err := m.attemptApplyCachedBlocks(context.Background())
 	if err != nil {
-		m.logger.Debug("apply previous cached blocks", "err", err)
+		m.logger.Debug("apply previous cached blocks", "err", err) // TODO: should these be debug?
 	}
 }
 
