@@ -2,6 +2,8 @@ package sharedtypes
 
 import "sync"
 
+// TODO: can remove ishealthy state?
+
 // HealthStatus is a struct that holds the health status of the node.
 // Should be safe for concurrent access.
 type HealthStatus struct {
@@ -10,12 +12,12 @@ type HealthStatus struct {
 	mutex     sync.RWMutex
 }
 
-// Set sets the health status of the node.
-func (h *HealthStatus) Set(isHealthy bool, err error) {
+// Set sets the health status of the node. err is nil if the node is healthy.
+func (h *HealthStatus) Set(err error) {
 	h.mutex.Lock()
 	defer h.mutex.Unlock()
 
-	h.IsHealthy = isHealthy
+	h.IsHealthy = err == nil
 	h.Error = err
 }
 

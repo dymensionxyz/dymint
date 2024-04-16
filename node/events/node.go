@@ -7,13 +7,13 @@ import (
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
 )
 
-// Define the event type keys
+// The event type keys
 const (
 	// EventNodeTypeKey is a reserved composite key for event name.
 	EventNodeTypeKey = "node.event"
 )
 
-// Define the event types
+//  The event types
 
 const (
 	EventHealthStatus = "HealthStatus"
@@ -24,7 +24,7 @@ type EventDataHealthStatus struct {
 	Error error
 }
 
-// Define queries
+//  Queries
 
 var EventQueryHealthStatus = QueryForEvent(EventHealthStatus)
 

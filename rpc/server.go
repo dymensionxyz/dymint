@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dymensionxyz/dymint/utilevent"
+
 	"github.com/rs/cors"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
@@ -97,14 +99,16 @@ func (s *Server) OnStop() {
 
 // EventListener registers events to callbacks.
 func (s *Server) startEventListener() {
-	go utilevent.MustSubscribe(s.ctx, s.PubSubServer(), "RPCNodeHealthStatusHandler", events.EventQueryHealthStatus, s.healthStatusEventCallback, s.Logger)
+	go utilevent.MustSubscribe(s.ctx, s.PubSubServer(), "RPCNodeHealthStatusHandler", events.EventQueryHealthStatus, s.onHealthStatus, s.Logger)
 }
 
-// healthStatusEventCallback is a callback function that handles health status events.
-func (s *Server) healthStatusEventCallback(event pubsub.Message) {
+// onHealthStatus is a callback function that handles health status events.
+func (s *Server) onHealthStatus(event pubsub.Message) {
 	eventData := event.Data().(*events.EventDataHealthStatus)
-	s.Logger.Info("Received health status event", "eventData", eventData)
-	s.healthStatus.Set(eventData.Healthy, eventData.Error)
+	if eventData.Error != nil {
+		s.Logger.Error("node is unhealthy: got error health check from sublayer", "error", eventData.Error)
+	}
+	s.healthStatus.Set(eventData.Error)
 }
 
 func (s *Server) startRPC() error {
