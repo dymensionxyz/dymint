@@ -1,10 +1,7 @@
 package events
 
 import (
-	"fmt"
-
-	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
-	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
+	"github.com/dymensionxyz/dymint/utilevent"
 )
 
 // Type Keys
@@ -26,9 +23,4 @@ type DataHealthStatus struct {
 
 //  Queries
 
-var QueryHealthStatus = QueryFor(HealthStatus)
-
-// QueryFor returns a query for the given event.
-func QueryFor(eventType string) tmpubsub.Query {
-	return tmquery.MustParse(fmt.Sprintf("%s='%s'", NodeTypeKey, eventType))
-}
+var QueryHealthStatus = utilevent.QueryFor(NodeTypeKey, HealthStatus)

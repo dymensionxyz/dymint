@@ -2,9 +2,13 @@ package utilevent
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/tendermint/tendermint/libs/pubsub"
+
+	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
+	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
 )
 
 // MustSubscribe subscribes to events and sends back a callback
@@ -43,4 +47,9 @@ func MustPublish(ctx context.Context, pubsubServer *pubsub.Server, msg any, even
 	if err != nil {
 		panic(err)
 	}
+}
+
+// QueryFor returns a query for the given event.
+func QueryFor(eventTypeKey, eventType string) tmpubsub.Query {
+	return tmquery.MustParse(fmt.Sprintf("%s='%s'", eventTypeKey, eventType))
 }

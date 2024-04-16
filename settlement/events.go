@@ -1,11 +1,9 @@
 package settlement
 
 import (
-	"fmt"
+	"github.com/dymensionxyz/dymint/utilevent"
 
 	"github.com/dymensionxyz/dymint/types"
-	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
-	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
 )
 
 // Type keys
@@ -31,6 +29,8 @@ var (
 	NewBatchAccepted = map[string][]string{EventTypeKey: {EventNewBatchAccepted}} // TODO: rename with event somewhere
 )
 
+// Data
+
 type EventDataNewBatchAccepted struct {
 	// EndHeight is the height of the last accepted batch
 	EndHeight uint64
@@ -50,11 +50,6 @@ type EventDataHealth struct {
 
 // Queries
 var (
-	EventQueryNewSettlementBatchAccepted = QueryForEvent(EventNewBatchAccepted)
-	EventQuerySettlementHealthStatus     = QueryForEvent(EventHealthStatus)
+	EventQueryNewSettlementBatchAccepted = utilevent.QueryFor(EventTypeKey, EventNewBatchAccepted)
+	EventQuerySettlementHealthStatus     = utilevent.QueryFor(EventTypeKey, EventHealthStatus)
 )
-
-// QueryForEvent returns a query for the given event.
-func QueryForEvent(eventType string) tmpubsub.Query {
-	return tmquery.MustParse(fmt.Sprintf("%s='%s'", EventTypeKey, eventType))
-}
