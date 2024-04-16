@@ -213,19 +213,19 @@ func getAddress(key crypto.PrivKey) ([]byte, error) {
 // StartEventListener registers events to callbacks.
 func (m *Manager) StartEventListener(ctx context.Context, isAggregator bool) {
 	if isAggregator {
-		go utilevent.MustSubscribe(ctx, m.pubsub, "nodeHealthStatusHandler", events.EventQueryHealthStatus, m.healthStatusEventCallback, m.logger)
+		go utilevent.MustSubscribe(ctx, m.pubsub, "nodeHealthStatusHandler", events.EventQueryHealthStatus, m.onHealthStatus, m.logger)
 	} else {
-		go utilevent.MustSubscribe(ctx, m.pubsub, "ApplyBlockLoop", p2p.EventQueryNewNewGossipedBlock, m.applyBlockCallback, m.logger, 100)
+		go utilevent.MustSubscribe(ctx, m.pubsub, "ApplyBlockLoop", p2p.EventQueryNewNewGossipedBlock, m.onNewGossipedBlock, m.logger, 100)
 	}
 }
 
-func (m *Manager) healthStatusEventCallback(event pubsub.Message) {
+func (m *Manager) onHealthStatus(event pubsub.Message) {
 	eventData := event.Data().(*events.EventDataHealthStatus)
 	m.logger.Info("received health status event", "eventData", eventData)
 	m.shouldProduceBlocksCh <- eventData.Healthy
 }
 
-func (m *Manager) applyBlockCallback(event pubsub.Message) {
+func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
 	m.logger.Debug("Received new block event", "eventData", event.Data(), "cachedBlocks", len(m.prevBlock))
 	eventData := event.Data().(p2p.GossipedBlock)
 	block := eventData.Block
