@@ -223,8 +223,7 @@ func (m *Manager) onHealthStatus(event pubsub.Message) {
 	eventData := event.Data().(*events.DataHealthStatus)
 	m.logger.Info("received health status event", "eventData", eventData)
 	// TODO: do something with the info
-	_ = m.shouldProduceBlocksCh
-	_ = eventData.Error
+	m.shouldProduceBlocksCh <- eventData.Error == nil
 }
 
 // onNewGossippedBlock will take a block and apply it
