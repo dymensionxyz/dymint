@@ -157,9 +157,8 @@ func TestApplyBlock(t *testing.T) {
 
 	// Create proposer for the block
 	proposerKey := ed25519.GenPrivKey()
-	proposer := &types.Sequencer{
-		PublicKey: proposerKey.PubKey(),
-	}
+	proposerPubkey := proposerKey.PubKey()
+
 	// Create commit for the block
 	abciHeaderPb := abciconv.ToABCIHeaderPB(&block.Header)
 	abciHeaderBytes, err := abciHeaderPb.Marshal()
@@ -173,7 +172,7 @@ func TestApplyBlock(t *testing.T) {
 	}
 
 	// Apply the block
-	err = executor.Validate(state, block, commit, proposer)
+	err = executor.Validate(state, block, commit, proposerPubkey)
 	require.NoError(err)
 	resp, err := executor.Execute(context.Background(), state, block)
 	require.NoError(err)
@@ -213,7 +212,7 @@ func TestApplyBlock(t *testing.T) {
 	}
 
 	// Apply the block with an invalid commit
-	err = executor.Validate(state, block, invalidCommit, proposer)
+	err = executor.Validate(state, block, invalidCommit, proposerPubkey)
 
 	// FIXME: This test didn't check for specific error. It was just checking for error.
 	// If checking for this specific error, it fails
@@ -230,7 +229,7 @@ func TestApplyBlock(t *testing.T) {
 	}
 
 	// Apply the block
-	err = executor.Validate(newState, block, commit, proposer)
+	err = executor.Validate(newState, block, commit, proposerPubkey)
 	require.NoError(err)
 	resp, err = executor.Execute(context.Background(), state, block)
 	require.NoError(err)

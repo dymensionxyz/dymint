@@ -7,6 +7,7 @@ import (
 	"errors"
 	"time"
 
+	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmcrypto "github.com/tendermint/tendermint/crypto/encoding"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
@@ -137,11 +138,11 @@ func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHead
 }
 
 // Validate validates block and commit.
-func (e *Executor) Validate(state types.State, block *types.Block, commit *types.Commit, proposer *types.Sequencer) error {
+func (e *Executor) Validate(state types.State, block *types.Block, commit *types.Commit, pubkey cryptotypes.PubKey) error {
 	if err := e.validateBlock(state, block); err != nil {
 		return err
 	}
-	if err := e.validateCommit(proposer, commit, &block.Header); err != nil {
+	if err := e.validateCommit(pubkey, commit, &block.Header); err != nil {
 		return err
 	}
 	return nil
@@ -219,13 +220,13 @@ func (e *Executor) validateBlock(state types.State, block *types.Block) error {
 	return nil
 }
 
-func (e *Executor) validateCommit(proposer *types.Sequencer, commit *types.Commit, header *types.Header) error {
+func (e *Executor) validateCommit(pubkey cryptotypes.PubKey, commit *types.Commit, header *types.Header) error {
 	abciHeaderPb := abciconv.ToABCIHeaderPB(header)
 	abciHeaderBytes, err := abciHeaderPb.Marshal()
 	if err != nil {
 		return err
 	}
-	if err = commit.Validate(proposer, abciHeaderBytes); err != nil {
+	if err = commit.Validate(pubkey, abciHeaderBytes); err != nil {
 		return err
 	}
 	return nil

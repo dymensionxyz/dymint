@@ -193,12 +193,13 @@ func (m *Manager) UpdateStateFromApp() error {
 	return nil
 }
 
+// TODO: move to executor.go
 func (m *Manager) executeBlock(ctx context.Context, block *types.Block, commit *types.Commit) (*tmstate.ABCIResponses, error) {
 	// Currently we're assuming proposer is never nil as it's a pre-condition for
 	// dymint to start
 	proposer := m.settlementClient.GetProposer()
 
-	if err := m.executor.Validate(m.lastState, block, commit, proposer); err != nil {
+	if err := m.executor.Validate(m.lastState, block, commit, proposer.PublicKey); err != nil {
 		return &tmstate.ABCIResponses{}, err
 	}
 

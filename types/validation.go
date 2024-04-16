@@ -3,6 +3,7 @@ package types
 import (
 	"errors"
 
+	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	tmtypes "github.com/tendermint/tendermint/types"
 )
 
@@ -55,11 +56,11 @@ func (c *Commit) ValidateBasic() error {
 }
 
 // Validate performs full validation of a commit.
-func (c *Commit) Validate(proposer *Sequencer, msg []byte) error {
+func (c *Commit) Validate(pubkey cryptotypes.PubKey, msg []byte) error {
 	if err := c.ValidateBasic(); err != nil {
 		return err
 	}
-	if !proposer.PublicKey.VerifySignature(msg, c.Signatures[0]) {
+	if !pubkey.VerifySignature(msg, c.Signatures[0]) {
 		return ErrInvalidSignature
 	}
 	return nil
