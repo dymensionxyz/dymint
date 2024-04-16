@@ -222,22 +222,19 @@ func (n *Node) OnStart() error {
 	n.Logger.Info("starting P2P client")
 	err := n.P2P.Start(n.ctx)
 	if err != nil {
-		return fmt.Errorf("while starting P2P client: %w", err)
+		return fmt.Errorf("start P2P client: %w", err)
 	}
-	// start the pubsub server
 	err = n.pubsubServer.Start()
 	if err != nil {
-		return fmt.Errorf("while starting pubsub server: %w", err)
+		return fmt.Errorf("start pubsub server: %w", err)
 	}
-	// Start the da client
 	err = n.dalc.Start()
 	if err != nil {
-		return fmt.Errorf("while starting data availability layer client: %w", err)
+		return fmt.Errorf("start data availability layer client: %w", err)
 	}
-	// Start the settlement layer client
 	err = n.settlementlc.Start()
 	if err != nil {
-		return fmt.Errorf("while starting settlement layer client: %w", err)
+		return fmt.Errorf("start settlement layer client: %w", err)
 	}
 	go func() {
 		if err := n.startPrometheusServer(); err != nil {
@@ -245,10 +242,6 @@ func (n *Node) OnStart() error {
 		}
 	}()
 
-	n.baseLayersHealthStatus = BaseLayersHealthStatus{
-		settlementHealthy: true,
-		daHealthy:         true,
-	}
 	n.startEventListener()
 
 	// start the block manager
