@@ -217,7 +217,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			height, commitment, err := c.submit(data)
 			if err != nil {
 				c.logger.Error("submit DA batch. Emitting health event and trying again", "error", err)
-				res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, false, err)
+				res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, err)
 				if err != nil {
 					return res
 				}
@@ -235,7 +235,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			result := c.CheckBatchAvailability(daMetaData)
 			if result.Code != da.StatusSuccess {
 				c.logger.Error("Unable to confirm submitted blob availability. Retrying")
-				res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, false, err)
+				res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, err)
 				if err != nil {
 					return res
 				}
@@ -246,7 +246,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			daMetaData.Index = result.CheckMetaData.Index
 			daMetaData.Length = result.CheckMetaData.Length
 
-			res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, true, nil)
+			res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, nil)
 			if err != nil {
 				return res
 			}
@@ -270,22 +270,27 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 		default:
 			// Just for backward compatibility, in case no commitments are sent from the Hub, batch can be retrieved using previous implementation.
 			var resultRetrieveBatch da.ResultRetrieveBatch
-			err := retry.Do(func() error {
-				var result da.ResultRetrieveBatch
-				if daMetaData.Commitment == nil {
-					result = c.retrieveBatchesNoCommitment(daMetaData.Height)
-				} else {
-					result = c.retrieveBatches(daMetaData)
-				}
-				resultRetrieveBatch = result
+			err := retry.Do(
+				func() error {
+					var result da.ResultRetrieveBatch
+					if daMetaData.Commitment == nil {
+						result = c.retrieveBatchesNoCommitment(daMetaData.Height)
+					} else {
+						result = c.retrieveBatches(daMetaData)
+					}
+					resultRetrieveBatch = result
 
-				if result.Error == da.ErrRetrieval {
-					c.logger.Error("Failed in retrieving blob")
-					return result.Error
-				}
+					if errors.Is(result.Error, da.ErrRetrieval) {
+						c.logger.Error("retrieve batch", "error", result.Error)
+						return result.Error
+					}
 
-				return nil
-			}, retry.Attempts(uint(c.rpcRetryAttempts)), retry.DelayType(retry.FixedDelay), retry.Delay(c.rpcRetryDelay))
+					return nil
+				},
+				retry.Attempts(uint(c.rpcRetryAttempts)),
+				retry.DelayType(retry.FixedDelay),
+				retry.Delay(c.rpcRetryDelay),
+			)
 			if err != nil {
 				c.logger.Error("RetrieveBatches process failed", "error", err)
 			}
@@ -337,7 +342,6 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMet
 		}
 	}
 	batches = append(batches, parsedBatch)
-	//}
 	return da.ResultRetrieveBatch{
 		BaseResult: da.BaseResult{
 			Code:    da.StatusSuccess,
