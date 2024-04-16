@@ -1,7 +1,6 @@
 package block
 
 import (
-	"bytes"
 	"context"
 	"encoding/hex"
 	"errors"
@@ -138,7 +137,7 @@ func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHead
 
 // Validate validates block and commit.
 func (e *Executor) Validate(state types.State, block *types.Block, commit *types.Commit, proposer *types.Sequencer) error {
-	if err := e.validateBlock(state, block); err != nil {
+	if err := block.ValidateWithState(state); err != nil {
 		return err
 	}
 	if err := e.validateCommit(proposer, commit, &block.Header); err != nil {
@@ -192,31 +191,6 @@ func (e *Executor) commit(ctx context.Context, state *types.State, block *types.
 	}
 
 	return resp.Data, resp.RetainHeight, err
-}
-
-func (e *Executor) validateBlock(state types.State, block *types.Block) error {
-	err := block.ValidateBasic()
-	if err != nil {
-		return err
-	}
-	if block.Header.Version.App != state.Version.Consensus.App ||
-		block.Header.Version.Block != state.Version.Consensus.Block {
-		return errors.New("block version mismatch")
-	}
-	if state.LastBlockHeight <= 0 && block.Header.Height != uint64(state.InitialHeight) {
-		return errors.New("initial block height mismatch")
-	}
-	if state.LastBlockHeight > 0 && block.Header.Height != uint64(state.LastStoreHeight)+1 {
-		return errors.New("block height mismatch")
-	}
-	if !bytes.Equal(block.Header.AppHash[:], state.AppHash[:]) {
-		return errors.New("AppHash mismatch")
-	}
-	if !bytes.Equal(block.Header.LastResultsHash[:], state.LastResultsHash[:]) {
-		return errors.New("LastResultsHash mismatch")
-	}
-
-	return nil
 }
 
 func (e *Executor) validateCommit(proposer *types.Sequencer, commit *types.Commit, header *types.Header) error {

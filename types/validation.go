@@ -1,6 +1,7 @@
 package types
 
 import (
+	"bytes"
 	"errors"
 
 	tmtypes "github.com/tendermint/tendermint/types"
@@ -21,6 +22,31 @@ func (b *Block) ValidateBasic() error {
 	err = b.LastCommit.ValidateBasic()
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func (b *Block) ValidateWithState(state State) error {
+	err := b.ValidateBasic()
+	if err != nil {
+		return err
+	}
+	if b.Header.Version.App != state.Version.Consensus.App ||
+		b.Header.Version.Block != state.Version.Consensus.Block {
+		return errors.New("b version mismatch")
+	}
+	if state.LastBlockHeight <= 0 && b.Header.Height != uint64(state.InitialHeight) {
+		return errors.New("initial b height mismatch")
+	}
+	if state.LastBlockHeight > 0 && b.Header.Height != uint64(state.LastStoreHeight)+1 {
+		return errors.New("b height mismatch")
+	}
+	if !bytes.Equal(b.Header.AppHash[:], state.AppHash[:]) {
+		return errors.New("AppHash mismatch")
+	}
+	if !bytes.Equal(b.Header.LastResultsHash[:], state.LastResultsHash[:]) {
+		return errors.New("LastResultsHash mismatch")
 	}
 
 	return nil
