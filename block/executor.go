@@ -14,7 +14,6 @@ import (
 	tmtypes "github.com/tendermint/tendermint/types"
 	"go.uber.org/multierr"
 
-	abciconv "github.com/dymensionxyz/dymint/conv/abci"
 	"github.com/dymensionxyz/dymint/mempool"
 	"github.com/dymensionxyz/dymint/types"
 )
@@ -182,9 +181,6 @@ func (e *Executor) commit(ctx context.Context, state *types.State, block *types.
 	return resp.Data, resp.RetainHeight, err
 }
 
-func (e *Executor) validateCommit(proposer *types.Sequencer, commit *types.Commit, header *types.Header) error {
-}
-
 // Execute executes the block and returns the ABCIResponses.
 func (e *Executor) Execute(ctx context.Context, state types.State, block *types.Block) (*tmstate.ABCIResponses, error) {
 	abciResponses := new(tmstate.ABCIResponses)
@@ -211,7 +207,7 @@ func (e *Executor) Execute(ctx context.Context, state types.State, block *types.
 	})
 
 	hash := block.Hash()
-	abciHeader := abciconv.ToABCIHeaderPB(&block.Header)
+	abciHeader := types.ToABCIHeaderPB(&block.Header)
 	abciHeader.ChainID = e.chainID
 	abciHeader.ValidatorsHash = state.Validators.Hash()
 	abciResponses.BeginBlock, err = e.proxyAppConsensusConn.BeginBlockSync(
@@ -244,13 +240,13 @@ func (e *Executor) Execute(ctx context.Context, state types.State, block *types.
 }
 
 func (e *Executor) getLastCommitHash(lastCommit *types.Commit, header *types.Header) []byte {
-	lastABCICommit := abciconv.ToABCICommit(lastCommit, header)
+	lastABCICommit := types.ToABCICommit(lastCommit, header)
 	return lastABCICommit.Hash()
 }
 
 func (e *Executor) getDataHash(block *types.Block) []byte {
 	abciData := tmtypes.Data{
-		Txs: abciconv.ToABCIBlockDataTxs(&block.Data),
+		Txs: types.ToABCIBlockDataTxs(&block.Data),
 	}
 	return abciData.Hash()
 }
@@ -260,7 +256,7 @@ func (e *Executor) publishEvents(resp *tmstate.ABCIResponses, block *types.Block
 		return nil
 	}
 
-	abciBlock, err := abciconv.ToABCIBlock(block)
+	abciBlock, err := types.ToABCIBlock(block)
 	abciBlock.Header.ValidatorsHash = state.Validators.Hash()
 	if err != nil {
 		return err

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	abciconv "github.com/dymensionxyz/dymint/conv/abci"
 	"github.com/dymensionxyz/dymint/types"
 	tmed25519 "github.com/tendermint/tendermint/crypto/ed25519"
 	cmtproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -76,10 +75,10 @@ func (m *Manager) produceBlock(ctx context.Context, allowEmpty bool) error {
 	m.produceBlockMutex.Lock()
 	defer m.produceBlockMutex.Unlock()
 	var (
-	    lastCommit *types.Commit
-	    lastHeaderHash [32]byte
-	    newHeight uint64
-	    err error
+		lastCommit     *types.Commit
+		lastHeaderHash [32]byte
+		newHeight      uint64
+		err            error
 	)
 
 	if m.lastState.IsGenesis() {
@@ -120,7 +119,7 @@ func (m *Manager) produceBlock(ctx context.Context, allowEmpty bool) error {
 			return types.ErrSkippedEmptyBlock
 		}
 
-		abciHeaderPb := abciconv.ToABCIHeaderPB(&block.Header)
+		abciHeaderPb := types.ToABCIHeaderPB(&block.Header)
 		abciHeaderBytes, err := abciHeaderPb.Marshal()
 		if err != nil {
 			return err

@@ -7,6 +7,8 @@ import (
 	"sort"
 	"time"
 
+	types2 "github.com/dymensionxyz/dymint/types"
+
 	"github.com/dymensionxyz/dymint/version"
 
 	sdkerrors "cosmossdk.io/errors"
@@ -25,7 +27,6 @@ import (
 	"github.com/tendermint/tendermint/types"
 	tm_version "github.com/tendermint/tendermint/version"
 
-	abciconv "github.com/dymensionxyz/dymint/conv/abci"
 	"github.com/dymensionxyz/dymint/mempool"
 	"github.com/dymensionxyz/dymint/node"
 )
@@ -331,7 +332,7 @@ func (c *Client) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64)
 			return nil, err
 		}
 		if block != nil {
-			tmblockmeta, err := abciconv.ToABCIBlockMeta(block)
+			tmblockmeta, err := types2.ToABCIBlockMeta(block)
 			if err != nil {
 				return nil, err
 			}
@@ -421,7 +422,7 @@ func (c *Client) Block(ctx context.Context, height *int64) (*ctypes.ResultBlock,
 		return nil, err
 	}
 	hash := block.Hash()
-	abciBlock, err := abciconv.ToABCIBlock(block)
+	abciBlock, err := types2.ToABCIBlock(block)
 	if err != nil {
 		return nil, err
 	}
@@ -447,7 +448,7 @@ func (c *Client) BlockByHash(ctx context.Context, hash []byte) (*ctypes.ResultBl
 		return nil, err
 	}
 
-	abciBlock, err := abciconv.ToABCIBlock(block)
+	abciBlock, err := types2.ToABCIBlock(block)
 	if err != nil {
 		return nil, err
 	}
@@ -497,8 +498,8 @@ func (c *Client) Commit(ctx context.Context, height *int64) (*ctypes.ResultCommi
 	if err != nil {
 		return nil, err
 	}
-	commit := abciconv.ToABCICommit(com, &b.Header)
-	block, err := abciconv.ToABCIBlock(b)
+	commit := types2.ToABCICommit(com, &b.Header)
+	block, err := types2.ToABCIBlock(b)
 	if err != nil {
 		return nil, err
 	}
@@ -680,7 +681,7 @@ func (c *Client) BlockSearch(ctx context.Context, query string, page, perPage *i
 		if err != nil {
 			return nil, err
 		}
-		block, err := abciconv.ToABCIBlock(b)
+		block, err := types2.ToABCIBlock(b)
 		if err != nil {
 			return nil, err
 		}

@@ -5,8 +5,6 @@ import (
 	"errors"
 	"fmt"
 
-	abciconv "github.com/dymensionxyz/dymint/conv/abci"
-
 	tmtypes "github.com/tendermint/tendermint/types"
 )
 
@@ -17,18 +15,6 @@ func ValidateProposedTransition(state State, block *Block, commit *Commit, propo
 
 	if err := commit.ValidateWithHeader(proposer, &block.Header); err != nil {
 		return fmt.Errorf("commit: %w", err)
-	}
-	return nil
-}
-
-func (c *Commit) ValidateWithHeader(proposer *Sequencer, header *Header) error {
-	abciHeaderPb := abciconv.ToABCIHeaderPB(header)
-	abciHeaderBytes, err := abciHeaderPb.Marshal()
-	if err != nil {
-		return err
-	}
-	if err = c.Validate(proposer, abciHeaderBytes); err != nil {
-		return err
 	}
 	return nil
 }
@@ -113,6 +99,18 @@ func (c *Commit) Validate(proposer *Sequencer, abciHeaderBytes []byte) error {
 	}
 	if !proposer.PublicKey.VerifySignature(abciHeaderBytes, c.Signatures[0]) {
 		return ErrInvalidSignature
+	}
+	return nil
+}
+
+func (c *Commit) ValidateWithHeader(proposer *Sequencer, header *Header) error {
+	abciHeaderPb := ToABCIHeaderPB(header)
+	abciHeaderBytes, err := abciHeaderPb.Marshal()
+	if err != nil {
+		return err
+	}
+	if err = c.Validate(proposer, abciHeaderBytes); err != nil {
+		return err
 	}
 	return nil
 }

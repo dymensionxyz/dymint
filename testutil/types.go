@@ -7,7 +7,6 @@ import (
 
 	"github.com/libp2p/go-libp2p/core/crypto"
 
-	abciconv "github.com/dymensionxyz/dymint/conv/abci"
 	"github.com/dymensionxyz/dymint/types"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/ed25519"
@@ -153,7 +152,7 @@ func GenerateCommits(blocks []*types.Block, proposerKey crypto.PrivKey) ([]*type
 }
 
 func generateSignature(proposerKey crypto.PrivKey, header *types.Header) ([]byte, error) {
-	abciHeaderPb := abciconv.ToABCIHeaderPB(header)
+	abciHeaderPb := types.ToABCIHeaderPB(header)
 	abciHeaderBytes, err := abciHeaderPb.Marshal()
 	if err != nil {
 		return nil, err
