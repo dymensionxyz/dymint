@@ -89,16 +89,21 @@ func (m *Manager) produceAndGossipBlock(ctx context.Context, allowEmpty bool) er
 func (m *Manager) produceBlock(ctx context.Context, allowEmpty bool) (*types.Block, *types.Commit, error) {
 	m.produceBlockMutex.Lock()
 	defer m.produceBlockMutex.Unlock()
-	var lastCommit *types.Commit
-	var lastHeaderHash [32]byte
-	var err error
-	height := m.store.Height()
-	newHeight := height + 1
+	var (
+		lastCommit     *types.Commit
+		lastHeaderHash [32]byte
+		newHeight      uint64
+		err            error
+	)
 
-	// this is a special case, when first block is produced - there is no previous commit
-	if newHeight == uint64(m.genesis.InitialHeight) {
-		lastCommit = &types.Commit{Height: height, HeaderHash: [32]byte{}}
+	if m.lastState.IsGenesis() {
+		newHeight = uint64(m.lastState.InitialHeight)
+		lastCommit = &types.Commit{}
+		m.lastState.BaseHeight = newHeight
+		m.store.SetBase(newHeight)
 	} else {
+		height := m.store.Height()
+		newHeight = height + 1
 		lastCommit, err = m.store.LoadCommit(height)
 		if err != nil {
 			return nil, nil, fmt.Errorf("load commit: height: %d: %w: %w", height, err, ErrNonRecoverable)
@@ -156,14 +161,14 @@ func (m *Manager) produceBlock(ctx context.Context, allowEmpty bool) (*types.Blo
 	}
 
 	if err := m.applyBlock(ctx, block, commit, blockMetaData{source: producedBlock}); err != nil {
-		return err
+		return nil, nil, fmt.Errorf("apply block: %w", err) // TODO: recovery
 	}
 
 	m.logger.Info("block created", "height", newHeight, "num_tx", len(block.Data.Txs))
 	types.RollappBlockSizeBytesGauge.Set(float64(len(block.Data.Txs)))
 	types.RollappBlockSizeTxsGauge.Set(float64(len(block.Data.Txs)))
 	types.RollappHeightGauge.Set(float64(newHeight))
-	return nil
+	return block, commit, nil
 }
 
 func (m *Manager) createTMSignature(block *types.Block, proposerAddress []byte, voteTimestamp time.Time) ([]byte, error) {

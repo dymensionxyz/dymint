@@ -112,6 +112,11 @@ func (m *MockStore) Height() uint64 {
 	return m.height
 }
 
+// Height returns the height of the mock store
+func (m *MockStore) NextHeight() uint64 {
+	return m.height + 1
+}
+
 // UpdateState updates the state of the mock store
 func (m *MockStore) UpdateState(state types.State, batch store.Batch) (store.Batch, error) {
 	if batch != nil && m.ShouldFailUpdateStateWithBatch || m.ShoudFailUpdateState && batch == nil {

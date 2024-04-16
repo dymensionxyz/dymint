@@ -379,7 +379,7 @@ func TestProduceBlockFailAfterCommit(t *testing.T) {
 			app.On("Info", mock.Anything).Return(abci.ResponseInfo{
 				LastBlockHeight:  tc.LastAppBlockHeight,
 				LastBlockAppHash: tc.LastAppCommitHash[:],
-			}).Once()
+			})
 			mockStore.ShouldFailSetHeight = tc.shouldFailSetSetHeight
 			mockStore.ShoudFailUpdateState = tc.shouldFailUpdateState
 			_ = manager.produceAndGossipBlock(context.Background(), true)

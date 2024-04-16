@@ -1,10 +1,12 @@
-package state
+package block_test
 
 import (
 	"context"
 	"crypto/rand"
 	"testing"
 	"time"
+
+	"github.com/dymensionxyz/dymint/block"
 
 	"github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
 	"github.com/stretchr/testify/assert"
@@ -43,7 +45,7 @@ func TestCreateBlock(t *testing.T) {
 	nsID := "0102030405060708"
 
 	mpool := mempoolv1.NewTxMempool(logger, cfg.DefaultMempoolConfig(), proxy.NewAppConnMempool(abciClient), 0)
-	executor, err := NewBlockExecutor([]byte("test address"), nsID, "test", mpool, proxy.NewAppConns(clientCreator), nil, logger)
+	executor, err := block.NewExecutor([]byte("test address"), nsID, "test", mpool, proxy.NewAppConns(clientCreator), nil, logger)
 	assert.NoError(err)
 
 	state := types.State{}
@@ -117,7 +119,7 @@ func TestApplyBlock(t *testing.T) {
 	appConns := &mocks.AppConns{}
 	appConns.On("Consensus").Return(abciClient)
 	appConns.On("Query").Return(abciClient)
-	executor, err := NewBlockExecutor([]byte("test address"), nsID, chainID, mpool, appConns, eventBus, logger)
+	executor, err := block.NewExecutor([]byte("test address"), nsID, chainID, mpool, appConns, eventBus, logger)
 	assert.NoError(err)
 
 	// Subscribe to tx events

@@ -2,10 +2,8 @@ package block
 
 import (
 	"context"
-	"fmt"
 
 	"cosmossdk.io/errors"
-
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/types"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
@@ -15,41 +13,50 @@ import (
 // applyBlock applies the block to the store and the abci app.
 // steps: save block -> execute block with app -> update state -> commit block to app -> update store height and state hash.
 // As the entire process can't be atomic we need to make sure the following condition apply before
-// we're applying the block in the happy path: block height - 1 == abci app last block height.
-// In case the following doesn't hold true, it means we crashed after the commit and before updating the store height.
-// In that case we'll want to align the store with the app state and continue to the next block.
+// - block height is the expected block height on the store (height + 1).
+// - block height is the expected block height on the app (last block height + 1).
 func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *types.Commit, blockMetaData blockMetaData) error {
-	if block.Header.Height != m.store.Height()+1 {
-		// We crashed after the commit and before updating the store height.
-		m.logger.Error("block not applied, wrong height", "block height", block.Header.Height, "store height", m.store.Height())
-		return nil
+	// TODO (#330): allow genesis block with height > 0 to be applied.
+	// TODO: add switch case to have defined behavior for each case.
+	// validate block height
+	if block.Header.Height != m.store.NextHeight() {
+		m.logger.Error("Block not applied. wrong height", "block height", block.Header.Height, "expected height", m.store.NextHeight())
+		return types.ErrInvalidBlockHeight
 	}
 
-	m.logger.Debug("applying block", "height", block.Header.Height, "source", blockMetaData.source)
+	m.logger.Debug("Applying block", "height", block.Header.Height, "source", blockMetaData.source)
 
-	// Check if alignment is needed due to inconsistencies between the store and the app.
-	isAlignRequired, err := m.alignStoreWithApp(ctx, block)
+	// Check if the app's last block height is the same as the currently produced block height
+	isBlockAlreadyApplied, err := m.isHeightAlreadyApplied(block.Header.Height)
 	if err != nil {
 		return err
 	}
-	if isAlignRequired {
-		m.logger.Debug("aligned with app state required, skipping to next block", "height", block.Header.Height)
+	// In case the following true, it means we crashed after the commit and before updating the store height.
+	// In that case we'll want to align the store with the app state and continue to the next block.
+	if isBlockAlreadyApplied {
+		err := m.UpdateStateFromApp()
+		if err != nil {
+			return err
+		}
+		m.logger.Debug("Aligned with app state required. Skipping to next block", "height", block.Header.Height)
 		return nil
 	}
 	// Start applying the block assuming no inconsistency was found.
 	_, err = m.store.SaveBlock(block, commit, nil)
 	if err != nil {
-		return fmt.Errorf("save block: %w", err)
+		m.logger.Error("save block", "error", err)
+		return err
 	}
 
 	responses, err := m.executeBlock(ctx, block, commit)
 	if err != nil {
-		return fmt.Errorf("execute block: %w", err)
+		m.logger.Error("execute block", "error", err)
+		return err
 	}
 
 	newState, err := m.executor.UpdateStateFromResponses(responses, m.lastState, block)
 	if err != nil {
-		return fmt.Errorf("update state from responses: %w", err)
+		return err
 	}
 
 	batch := m.store.NewBatch()
@@ -57,31 +64,32 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 	batch, err = m.store.SaveBlockResponses(block.Header.Height, responses, batch)
 	if err != nil {
 		batch.Discard()
-		return fmt.Errorf("save block responses: %w", err)
+		return err
 	}
 
 	m.lastState = newState
 	batch, err = m.store.UpdateState(m.lastState, batch)
 	if err != nil {
 		batch.Discard()
-		return fmt.Errorf("update state: %w", err)
+		return err
 	}
-
 	batch, err = m.store.SaveValidators(block.Header.Height, m.lastState.Validators, batch)
 	if err != nil {
 		batch.Discard()
-		return fmt.Errorf("save validators: %w", err)
+		return err
 	}
 
 	err = batch.Commit()
 	if err != nil {
-		return fmt.Errorf("commit batch to disk: %w", err)
+		m.logger.Error("persist batch to disk", "error", err)
+		return err
 	}
 
 	// Commit block to app
 	retainHeight, err := m.executor.Commit(ctx, &newState, block, responses)
 	if err != nil {
-		return fmt.Errorf("commit to app: %w", err)
+		m.logger.Error("commit to the block", "error", err)
+		return err
 	}
 
 	// Prune old heights, if requested by ABCI app.
@@ -102,9 +110,9 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 
 	_, err = m.store.UpdateState(newState, nil)
 	if err != nil {
-		return fmt.Errorf("update state with new state: %w", err)
+		m.logger.Error("update state", "error", err)
+		return err
 	}
-
 	m.lastState = newState
 
 	m.store.SetHeight(block.Header.Height)
@@ -116,17 +124,22 @@ func (m *Manager) attemptApplyCachedBlocks(ctx context.Context) error {
 	m.applyCachedBlockMutex.Lock()
 	defer m.applyCachedBlockMutex.Unlock()
 
-	prevCachedBlock, exists := m.prevBlock[m.store.Height()+1]
+	for {
+		expectedHeight := m.store.NextHeight()
 
-	for exists {
-		h := m.store.Height() + 1
-		m.logger.Debug("Applying cached block", "height", h)
+		prevCachedBlock, blockExists := m.prevBlock[expectedHeight]
+		prevCachedCommit, commitExists := m.prevCommit[expectedHeight]
 
-		err := m.applyBlock(ctx, prevCachedBlock, m.prevCommit[h], blockMetaData{source: gossipedBlock})
-		if err != nil {
-			return fmt.Errorf("apply block: height: %d: %w", h, err)
+		if !blockExists || !commitExists {
+			break
 		}
-		prevCachedBlock, exists = m.prevBlock[h]
+
+		m.logger.Debug("Applying cached block", "height", expectedHeight)
+		err := m.applyBlock(ctx, prevCachedBlock, prevCachedCommit, blockMetaData{source: gossipedBlock})
+		if err != nil {
+			m.logger.Debug("apply previously cached block", "err", err)
+			return err
+		}
 	}
 
 	for k := range m.prevBlock {
@@ -138,38 +151,46 @@ func (m *Manager) attemptApplyCachedBlocks(ctx context.Context) error {
 	return nil
 }
 
-// alignStoreWithApp is responsible for aligning the state of the store and the abci app if necessary.
-// returns if an alignment is necessary
-func (m *Manager) alignStoreWithApp(ctx context.Context, block *types.Block) (bool, error) {
-	// Validate inconsistency in height wasn't caused by a crash and if so handle it.
+// isHeightAlreadyApplied checks if the block height is already applied to the app.
+func (m *Manager) isHeightAlreadyApplied(blockHeight uint64) (bool, error) {
 	proxyAppInfo, err := m.executor.GetAppInfo()
 	if err != nil {
 		return false, errors.Wrap(err, "get app info")
 	}
-	if uint64(proxyAppInfo.LastBlockHeight) != block.Header.Height {
-		return false, nil
+
+	isBlockAlreadyApplied := uint64(proxyAppInfo.LastBlockHeight) == blockHeight
+
+	// TODO: add switch case to validate better the current app state
+
+	return isBlockAlreadyApplied, nil
+}
+
+// UpdateStateFromApp is responsible for aligning the state of the store from the abci app
+func (m *Manager) UpdateStateFromApp() error {
+	proxyAppInfo, err := m.executor.GetAppInfo()
+	if err != nil {
+		return errors.Wrap(err, "get app info")
 	}
 
-	m.logger.Debug("skipping block application and only updating store height and state hash", "height", block.Header.Height)
+	appHeight := uint64(proxyAppInfo.LastBlockHeight)
+
 	// update the state with the hash, last store height and last validators.
 	m.lastState.AppHash = *(*[32]byte)(proxyAppInfo.LastBlockAppHash)
-	m.lastState.LastStoreHeight = block.Header.Height
+	m.lastState.LastStoreHeight = appHeight
 	m.lastState.LastValidators = m.lastState.Validators.Copy()
 
-	resp, err := m.store.LoadBlockResponses(block.Header.Height)
+	resp, err := m.store.LoadBlockResponses(appHeight)
 	if err != nil {
-		return true, errors.Wrap(err, "load block responses")
+		return errors.Wrap(err, "load block responses")
 	}
 	copy(m.lastState.LastResultsHash[:], tmtypes.NewResults(resp.DeliverTxs).Hash())
 
 	_, err = m.store.UpdateState(m.lastState, nil)
 	if err != nil {
-		return true, errors.Wrap(err, "update state")
+		return errors.Wrap(err, "update state")
 	}
-	m.store.SetHeight(block.Header.Height)
-
-	m.logger.Info("skipped block application and only updated store height and state hash", "height", block.Header.Height)
-	return true, nil
+	m.store.SetHeight(appHeight)
+	return nil
 }
 
 func (m *Manager) executeBlock(ctx context.Context, block *types.Block, commit *types.Commit) (*tmstate.ABCIResponses, error) {

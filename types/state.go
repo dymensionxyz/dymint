@@ -91,8 +91,14 @@ func NewFromGenesisDoc(genDoc *types.GenesisDoc) (State, error) {
 
 		ConsensusParams:                  *genDoc.ConsensusParams,
 		LastHeightConsensusParamsChanged: genDoc.InitialHeight,
+
+		BaseHeight: 0,
 	}
 	copy(s.AppHash[:], genDoc.AppHash)
 
 	return s, nil
+}
+
+func (s *State) IsGenesis() bool {
+	return s.LastBlockHeight == 0
 }
