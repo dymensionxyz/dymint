@@ -262,6 +262,8 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 			return fmt.Errorf("subscription canceled: %w", err)
 		case <-subscription.Out():
 			utilevent.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{}, settlement.HealthStatus)
+			d.logger.Debug("batch accepted by settlement layer. emitted healthy event",
+				"startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
 			return nil
 		case <-timer.C:
 			// Before emitting unhealthy event, check if the batch was accepted by the settlement
