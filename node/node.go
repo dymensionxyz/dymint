@@ -393,10 +393,10 @@ func (n *Node) onBaseLayerHealthUpdate(event pubsub.Message) {
 	shouldPublish := newStatusIsDifferentFromOldOne || haveNewErr
 	if shouldPublish {
 		evt := &events.DataHealthStatus{Error: newStatus}
-		utilevent.MustPublish(n.ctx, n.pubsubServer, evt, events.HealthStatusList)
 		if newStatus != nil {
 			n.Logger.Error("node is unhealthy: base layer has problem", "error", newStatus)
 		}
+		utilevent.MustPublish(n.ctx, n.pubsubServer, evt, events.HealthStatusList)
 	}
 }
 
