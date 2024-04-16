@@ -39,18 +39,16 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 
 	for {
 		select {
-		// Context canceled
-		case <-ctx.Done():
+		case <-ctx.Done(): // Context canceled
 			return
-		// If we got a request for an empty block produce it and don't wait for the ticker
-		case <-m.produceEmptyBlockCh:
+		case <-m.produceEmptyBlockCh: // If we got a request for an empty block produce it and don't wait for the ticker
 			produceEmptyBlock = true
-		// Empty blocks timeout
-		case <-emptyBlocksTimer:
+		case <-emptyBlocksTimer: // Empty blocks timeout
+			produceEmptyBlock = true
 			m.logger.Debug(fmt.Sprintf("no transactions, producing empty block: elapsed: %.2f", m.conf.EmptyBlocksMaxTime.Seconds()))
-			produceEmptyBlock = true
 		// Produce block
 		case <-ticker.C:
+			resetEmptyBlocksTimer()
 			err := m.produceAndGossipBlock(ctx, produceEmptyBlock)
 			if errors.Is(err, ErrRecoverable) {
 				m.logger.Info("produce and gossip: recoverable", "error", err)
@@ -64,7 +62,6 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 				m.logger.Error("produce and gossip: uncategorized", "error", err)
 				continue
 			}
-			resetEmptyBlocksTimer()
 
 		case shouldProduceBlocks := <-m.shouldProduceBlocksCh:
 			for !shouldProduceBlocks {
