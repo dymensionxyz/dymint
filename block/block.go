@@ -198,7 +198,7 @@ func (m *Manager) executeBlock(ctx context.Context, block *types.Block, commit *
 	// dymint to start
 	proposer := m.settlementClient.GetProposer()
 
-	if err := m.executor.Validate(m.lastState, block, commit, proposer); err != nil {
+	if err := types.ValidateProposedTransition(m.lastState, block, commit, proposer); err != nil {
 		return &tmstate.ABCIResponses{}, err
 	}
 

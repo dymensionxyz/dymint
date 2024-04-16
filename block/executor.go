@@ -135,17 +135,6 @@ func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHead
 	return block
 }
 
-// Validate validates block and commit.
-func (e *Executor) Validate(state types.State, block *types.Block, commit *types.Commit, proposer *types.Sequencer) error {
-	if err := block.ValidateWithState(state); err != nil {
-		return err
-	}
-	if err := e.validateCommit(proposer, commit, &block.Header); err != nil {
-		return err
-	}
-	return nil
-}
-
 // Commit commits the block
 func (e *Executor) Commit(ctx context.Context, state *types.State, block *types.Block, resp *tmstate.ABCIResponses) (int64, error) {
 	appHash, retainHeight, err := e.commit(ctx, state, block, resp.DeliverTxs)
@@ -194,15 +183,6 @@ func (e *Executor) commit(ctx context.Context, state *types.State, block *types.
 }
 
 func (e *Executor) validateCommit(proposer *types.Sequencer, commit *types.Commit, header *types.Header) error {
-	abciHeaderPb := abciconv.ToABCIHeaderPB(header)
-	abciHeaderBytes, err := abciHeaderPb.Marshal()
-	if err != nil {
-		return err
-	}
-	if err = commit.Validate(proposer, abciHeaderBytes); err != nil {
-		return err
-	}
-	return nil
 }
 
 // Execute executes the block and returns the ABCIResponses.

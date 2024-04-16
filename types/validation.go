@@ -3,9 +3,23 @@ package types
 import (
 	"bytes"
 	"errors"
+	"fmt"
+
+	abciconv "github.com/dymensionxyz/dymint/conv/abci"
 
 	tmtypes "github.com/tendermint/tendermint/types"
 )
+
+func ValidateProposedTransition(state State, block *Block, commit *Commit, proposer *Sequencer) error {
+	if err := block.ValidateWithState(state); err != nil {
+		return fmt.Errorf("block: %w", err)
+	}
+
+	if err := commit.ValidateWithHeader(proposer, &block.Header); err != nil {
+		return fmt.Errorf("commit: %w", err)
+	}
+	return nil
+}
 
 // ValidateBasic performs basic validation of a block.
 func (b *Block) ValidateBasic() error {
@@ -87,6 +101,18 @@ func (c *Commit) Validate(proposer *Sequencer, msg []byte) error {
 	}
 	if !proposer.PublicKey.VerifySignature(msg, c.Signatures[0]) {
 		return ErrInvalidSignature
+	}
+	return nil
+}
+
+func (c *Commit) ValidateWithHeader(proposer *Sequencer, header *Header) error {
+	abciHeaderPb := abciconv.ToABCIHeaderPB(header)
+	abciHeaderBytes, err := abciHeaderPb.Marshal()
+	if err != nil {
+		return err
+	}
+	if err = c.Validate(proposer, abciHeaderBytes); err != nil {
+		return err
 	}
 	return nil
 }
