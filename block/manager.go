@@ -3,20 +3,21 @@ package block
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"code.cloudfoundry.org/go-diodes"
-
-	"github.com/dymensionxyz/dymint/node/events"
-	"github.com/dymensionxyz/dymint/p2p"
-	"github.com/dymensionxyz/dymint/utils"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	tmcrypto "github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	tmtypes "github.com/tendermint/tendermint/types"
+
+	"github.com/dymensionxyz/dymint/node/events"
+	"github.com/dymensionxyz/dymint/p2p"
+	"github.com/dymensionxyz/dymint/utils"
 
 	"github.com/tendermint/tendermint/proxy"
 
@@ -52,14 +53,15 @@ type Manager struct {
 
 	// Synchronization
 	syncTargetDiode diodes.Diode
-	syncTarget      uint64
-	isSyncedCond    sync.Cond
+
+	syncTarget   atomic.Uint64
+	isSyncedCond sync.Cond
 
 	// Block production
 	shouldProduceBlocksCh chan bool
 	produceEmptyBlockCh   chan bool
-	lastSubmissionTime    int64
-	batchInProcess        atomic.Value
+	lastSubmissionTime    atomic.Int64
+	batchInProcess        sync.Mutex
 	produceBlockMutex     sync.Mutex
 	applyCachedBlockMutex sync.Mutex
 
@@ -86,7 +88,6 @@ func NewManager(
 	p2pClient *p2p.Client,
 	logger types.Logger,
 ) (*Manager, error) {
-
 	proposerAddress, err := getAddress(proposerKey)
 	if err != nil {
 		return nil, err
@@ -94,15 +95,12 @@ func NewManager(
 
 	exec, err := state.NewBlockExecutor(proposerAddress, conf.NamespaceID, genesis.ChainID, mempool, proxyApp, eventBus, logger)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create block executor: %w", err)
+		return nil, fmt.Errorf("create block executor: %w", err)
 	}
 	s, err := getInitialState(store, genesis, logger)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get initial state: %w", err)
+		return nil, fmt.Errorf("get initial state: %w", err)
 	}
-
-	batchInProcess := atomic.Value{}
-	batchInProcess.Store(false)
 
 	agg := &Manager{
 		pubsub:           pubsub,
@@ -119,7 +117,6 @@ func NewManager(
 		// channels are buffered to avoid blocking on input/output operations, buffer sizes are arbitrary
 		syncTargetDiode:       diodes.NewOneToOne(1, nil),
 		isSyncedCond:          *sync.NewCond(new(sync.Mutex)),
-		batchInProcess:        batchInProcess,
 		shouldProduceBlocksCh: make(chan bool, 1),
 		produceEmptyBlockCh:   make(chan bool, 1),
 		logger:                logger,
@@ -134,29 +131,31 @@ func NewManager(
 func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 	m.logger.Info("Starting the block manager")
 
-	err := m.syncBlockManager(ctx)
-	if err != nil {
-		err = fmt.Errorf("failed to sync block manager: %w", err)
-		return err
-	}
-
 	if isAggregator {
-		//make sure local signing key is the registered on the hub
+		// make sure local signing key is the registered on the hub
 		slProposerKey := m.settlementClient.GetProposer().PublicKey.Bytes()
 		localProposerKey, _ := m.proposerKey.GetPublic().Raw()
 		if !bytes.Equal(slProposerKey, localProposerKey) {
 			return fmt.Errorf("proposer key mismatch: settlement proposer key: %s, block manager proposer key: %s", slProposerKey, m.proposerKey.GetPublic())
 		}
 		m.logger.Info("Starting in aggregator mode")
+	}
 
-		// Check if InitChain flow is needed
-		if m.lastState.LastBlockHeight+1 == m.genesis.InitialHeight {
-			err := m.RunInitChain(ctx)
-			if err != nil {
-				return err
-			}
+	// Check if InitChain flow is needed
+	if m.lastState.LastBlockHeight+1 == m.genesis.InitialHeight {
+		err := m.RunInitChain(ctx)
+		if err != nil {
+			return err
 		}
+	}
 
+	err := m.syncBlockManager(ctx)
+	if err != nil {
+		err = fmt.Errorf("sync block manager: %w", err)
+		return err
+	}
+
+	if isAggregator {
 		go m.ProduceBlockLoop(ctx)
 		go m.SubmitLoop(ctx)
 	} else {
@@ -174,23 +173,23 @@ func (m *Manager) syncBlockManager(ctx context.Context) error {
 	resultRetrieveBatch, err := m.getLatestBatchFromSL(ctx)
 	// Set the syncTarget according to the result
 	if err != nil {
-		//TODO: separate between fresh rollapp and non-registred rollapp
-		if err == settlement.ErrBatchNotFound {
+		// TODO: separate between fresh rollapp and non-registered rollapp
+		if errors.Is(err, settlement.ErrBatchNotFound) {
 			// Since we requested the latest batch and got batch not found it means
 			// the SL still hasn't got any batches for this chain.
 			m.logger.Info("No batches for chain found in SL. Start writing first batch")
-			atomic.StoreUint64(&m.syncTarget, uint64(m.genesis.InitialHeight-1))
+			m.syncTarget.Store(uint64(m.genesis.InitialHeight - 1))
 			return nil
 		}
 		return err
 	}
-	atomic.StoreUint64(&m.syncTarget, resultRetrieveBatch.EndHeight)
+	m.syncTarget.Store(resultRetrieveBatch.EndHeight)
 	err = m.syncUntilTarget(ctx, resultRetrieveBatch.EndHeight)
 	if err != nil {
 		return err
 	}
 
-	m.logger.Info("Synced", "current height", m.store.Height(), "syncTarget", atomic.LoadUint64(&m.syncTarget))
+	m.logger.Info("Synced", "current height", m.store.Height(), "syncTarget", m.syncTarget.Load())
 	return nil
 }
 
@@ -198,8 +197,8 @@ func (m *Manager) syncBlockManager(ctx context.Context) error {
 func (m *Manager) updateSyncParams(endHeight uint64) {
 	types.RollappHubHeightGauge.Set(float64(endHeight))
 	m.logger.Info("Received new syncTarget", "syncTarget", endHeight)
-	atomic.StoreUint64(&m.syncTarget, endHeight)
-	atomic.StoreInt64(&m.lastSubmissionTime, time.Now().UnixNano())
+	m.syncTarget.Store(endHeight)
+	m.lastSubmissionTime.Store(time.Now().UnixNano())
 }
 
 func getAddress(key crypto.PrivKey) ([]byte, error) {
@@ -212,11 +211,11 @@ func getAddress(key crypto.PrivKey) ([]byte, error) {
 
 // EventListener registers events to callbacks.
 func (m *Manager) EventListener(ctx context.Context, isAggregator bool) {
-	go utils.SubscribeAndHandleEvents(ctx, m.pubsub, "nodeHealthStatusHandler", events.EventQueryHealthStatus, m.healthStatusEventCallback, m.logger)
-	if !isAggregator {
+	if isAggregator {
+		go utils.SubscribeAndHandleEvents(ctx, m.pubsub, "nodeHealthStatusHandler", events.EventQueryHealthStatus, m.healthStatusEventCallback, m.logger)
+	} else {
 		go utils.SubscribeAndHandleEvents(ctx, m.pubsub, "ApplyBlockLoop", p2p.EventQueryNewNewGossipedBlock, m.applyBlockCallback, m.logger, 100)
 	}
-
 }
 
 func (m *Manager) healthStatusEventCallback(event pubsub.Message) {
@@ -240,12 +239,12 @@ func (m *Manager) applyBlockCallback(event pubsub.Message) {
 	} else {
 		err := m.applyBlock(context.Background(), &block, &commit, blockMetaData{source: gossipedBlock})
 		if err != nil {
-			m.logger.Debug("Failed to apply block", "err", err)
+			m.logger.Debug("apply block", "err", err)
 		}
 	}
 	err := m.attemptApplyCachedBlocks(context.Background())
 	if err != nil {
-		m.logger.Debug("Failed to apply previous cached blocks", "err", err)
+		m.logger.Debug("apply previous cached blocks", "err", err)
 	}
 }
 
@@ -257,7 +256,7 @@ func (m *Manager) getLatestBatchFromSL(ctx context.Context) (*settlement.ResultR
 // getInitialState tries to load lastState from Store, and if it's not available it reads GenesisDoc.
 func getInitialState(store store.Store, genesis *tmtypes.GenesisDoc, logger types.Logger) (types.State, error) {
 	s, err := store.LoadState()
-	if err == types.ErrNoStateFound {
+	if errors.Is(err, types.ErrNoStateFound) {
 		logger.Info("failed to find state in the store, creating new state from genesis")
 		return types.NewFromGenesisDoc(genesis)
 	}

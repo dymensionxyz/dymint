@@ -43,6 +43,7 @@ func newHandler(s *service, codec rpc.Codec, logger types.Logger) *handler {
 
 	return h
 }
+
 func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.mux.ServeHTTP(w, r)
 }
@@ -158,7 +159,7 @@ func (h *handler) newHandler(methodSpec *method) func(http.ResponseWriter, *http
 					err = errors.New("unknown type")
 				}
 				if err != nil {
-					err = fmt.Errorf("failed to parse param '%s': %w", name, err)
+					err = fmt.Errorf("parse param '%s': %w", name, err)
 					h.encodeAndWriteResponse(w, nil, err, int(json2.E_PARSE))
 					return
 				}
@@ -206,7 +207,7 @@ func (h *handler) encodeAndWriteResponse(w http.ResponseWriter, result interface
 	encoder := json.NewEncoder(w)
 	err := encoder.Encode(resp)
 	if err != nil {
-		h.logger.Error("failed to encode RPC response", "error", err)
+		h.logger.Error("encode RPC response", "error", err)
 	}
 }
 

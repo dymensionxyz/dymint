@@ -144,6 +144,7 @@ func TestBroadcastTxAsync(t *testing.T) {
 
 	mockApp, rpc := getRPC(t)
 	mockApp.On("CheckTx", abci.RequestCheckTx{Tx: expectedTx}).Return(abci.ResponseCheckTx{})
+	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 
 	err := rpc.node.Start()
 	require.NoError(t, err)
@@ -178,6 +179,7 @@ func TestBroadcastTxSync(t *testing.T) {
 	}
 
 	mockApp, rpc := getRPC(t)
+	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 
 	err := rpc.node.Start()
 	require.NoError(t, err)
@@ -228,7 +230,7 @@ func TestBroadcastTxCommit(t *testing.T) {
 	mockApp.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
 	mockApp.BeginBlock(abci.RequestBeginBlock{})
 	mockApp.On("CheckTx", abci.RequestCheckTx{Tx: expectedTx}).Return(expectedCheckResp)
-
+	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 	// in order to broadcast, the node must be started
 	err := rpc.node.Start()
 	require.NoError(err)
@@ -264,6 +266,7 @@ func TestGetBlock(t *testing.T) {
 	mockApp.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{})
 	mockApp.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{})
 	mockApp.On("Commit", mock.Anything).Return(abci.ResponseCommit{})
+	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 
 	err := rpc.node.Start()
 	require.NoError(err)
@@ -289,6 +292,7 @@ func TestGetCommit(t *testing.T) {
 	mockApp, rpc := getRPC(t)
 	mockApp.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
 	mockApp.On("Commit", mock.Anything).Return(abci.ResponseCommit{})
+	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 
 	blocks := []*types.Block{getRandomBlock(1, 5), getRandomBlock(2, 6), getRandomBlock(3, 8), getRandomBlock(4, 10)}
 
@@ -391,6 +395,7 @@ func TestGetBlockByHash(t *testing.T) {
 	mockApp.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{})
 	mockApp.On("Commit", mock.Anything).Return(abci.ResponseCommit{})
 	mockApp.On("Info", mock.Anything).Return(abci.ResponseInfo{LastBlockHeight: 0, LastBlockAppHash: []byte{0}})
+	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 
 	err := rpc.node.Start()
 	require.NoError(err)
@@ -507,6 +512,7 @@ func TestUnconfirmedTxs(t *testing.T) {
 			mockApp, rpc := getRPC(t)
 			mockApp.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
 			mockApp.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{})
+			mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 
 			err := rpc.node.Start()
 			require.NoError(err)
@@ -659,7 +665,6 @@ func TestBlockchainInfo(t *testing.T) {
 				assert.Contains(result.BlockMetas, test.exp[0])
 				assert.Contains(result.BlockMetas, test.exp[1])
 			}
-
 		})
 	}
 }
@@ -884,8 +889,8 @@ func indexBlocks(t *testing.T, rpc *Client, heights []int64) {
 			},
 		}))
 	}
-
 }
+
 func TestMempool2Nodes(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)

@@ -87,4 +87,4 @@ func TestStorePruning(t *testing.T) {
 	}
 }
 
-//TODO: prune twice
+// TODO: prune twice

@@ -11,7 +11,7 @@ import (
 func SubscribeAndHandleEvents(ctx context.Context, pubsubServer *pubsub.Server, clientID string, eventQuery pubsub.Query, callback func(event pubsub.Message), logger types.Logger, outCapacity ...int) {
 	subscription, err := pubsubServer.Subscribe(ctx, clientID, eventQuery, outCapacity...)
 	if err != nil {
-		logger.Error("failed to subscribe to events")
+		logger.Error("subscribe to events")
 		panic(err)
 	}
 

@@ -2,6 +2,7 @@ package block
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -29,39 +30,38 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 		defer tickerEmptyBlocksMaxTime.Stop()
 	}
 
-	//Allow the initial block to be empty
+	// Allow the initial block to be empty
 	produceEmptyBlock := true
 	for {
 		select {
-		//Context canceled
+		// Context canceled
 		case <-ctx.Done():
 			return
 		// If we got a request for an empty block produce it and don't wait for the ticker
 		case <-m.produceEmptyBlockCh:
 			produceEmptyBlock = true
-		//Empty blocks timeout
+		// Empty blocks timeout
 		case <-tickerEmptyBlocksMaxTimeCh:
 			m.logger.Debug(fmt.Sprintf("No transactions for %.2f seconds, producing empty block", m.conf.EmptyBlocksMaxTime.Seconds()))
 			produceEmptyBlock = true
-		//Produce block
+		// Produce block
 		case <-ticker.C:
 			err := m.produceBlock(ctx, produceEmptyBlock)
-			if err == types.ErrSkippedEmptyBlock {
-				// m.logger.Debug("Skipped empty block")
+			if errors.Is(err, types.ErrSkippedEmptyBlock) {
 				continue
 			}
 			if err != nil {
-				m.logger.Error("error while producing block", "error", err)
+				m.logger.Error("while producing block", "error", err)
 				m.shouldProduceBlocksCh <- false
 				continue
 			}
-			//If empty blocks enabled, after block produced, reset the timeout timer
+			// If empty blocks enabled, after block produced, reset the timeout timer
 			if tickerEmptyBlocksMaxTime != nil {
 				produceEmptyBlock = false
 				tickerEmptyBlocksMaxTime.Reset(m.conf.EmptyBlocksMaxTime)
 			}
 
-		//Node's health check channel
+		// Node's health check channel
 		case shouldProduceBlocks := <-m.shouldProduceBlocksCh:
 			for !shouldProduceBlocks {
 				m.logger.Info("Stopped block production")
@@ -87,11 +87,11 @@ func (m *Manager) produceBlock(ctx context.Context, allowEmpty bool) error {
 	} else {
 		lastCommit, err = m.store.LoadCommit(height)
 		if err != nil {
-			return fmt.Errorf("error while loading last commit: %w", err)
+			return fmt.Errorf("while loading last commit: %w", err)
 		}
 		lastBlock, err := m.store.LoadBlock(height)
 		if err != nil {
-			return fmt.Errorf("error while loading last block: %w", err)
+			return fmt.Errorf("while loading last block: %w", err)
 		}
 		lastHeaderHash = lastBlock.Header.Hash()
 	}
@@ -144,12 +144,12 @@ func (m *Manager) produceBlock(ctx context.Context, allowEmpty bool) error {
 
 	}
 
-	// Gossip the block as soon as it is produced
-	if err := m.gossipBlock(ctx, *block, *commit); err != nil {
+	if err := m.applyBlock(ctx, block, commit, blockMetaData{source: producedBlock}); err != nil {
 		return err
 	}
 
-	if err := m.applyBlock(ctx, block, commit, blockMetaData{source: producedBlock}); err != nil {
+	// Gossip the block after it's been committed
+	if err := m.gossipBlock(ctx, *block, *commit); err != nil {
 		return err
 	}
 
@@ -193,5 +193,4 @@ func (m *Manager) createTMSignature(block *types.Block, proposerAddress []byte, 
 		return nil, fmt.Errorf("wrong signature")
 	}
 	return vote.Signature, nil
-
 }

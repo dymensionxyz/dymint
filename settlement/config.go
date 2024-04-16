@@ -13,9 +13,9 @@ type Config struct {
 	GasPrices      string `mapstructure:"gas_prices"`
 	GasFees        string `mapstructure:"gas_fees"`
 
-	//For testing only. probably should be refactored
+	// For testing only. probably should be refactored
 	ProposerPubKey string `json:"proposer_pub_key"`
-	//Config used for sl shared grpc mock
+	// Config used for sl shared grpc mock
 	SLGrpc GrpcConfig `mapstructure:",squash"`
 }
 

@@ -85,10 +85,8 @@ func (e *GossipedBlock) Validate() error {
 /*                                   Queries                                  */
 /* -------------------------------------------------------------------------- */
 
-var (
-	// EventQueryNewNewGossipedBlock is the query used for getting EventNewGossipedBlock
-	EventQueryNewNewGossipedBlock = QueryForEvent(EventNewGossipedBlock)
-)
+// EventQueryNewNewGossipedBlock is the query used for getting EventNewGossipedBlock
+var EventQueryNewNewGossipedBlock = QueryForEvent(EventNewGossipedBlock)
 
 // QueryForEvent returns a query for the given event.
 func QueryForEvent(eventType string) tmpubsub.Query {

@@ -284,7 +284,7 @@ func (s *State) FromProto(other *pb.State) error {
 	s.ChainID = other.ChainId
 	s.InitialHeight = other.InitialHeight
 	s.LastBlockHeight = other.LastBlockHeight
-	//TODO(omritoptix): remove this as this is only for backwards compatibility
+	// TODO(omritoptix): remove this as this is only for backwards compatibility
 	// with old state files that don't have this field.
 	if other.LastStoreHeight == 0 && other.LastBlockHeight > 1 {
 		s.LastStoreHeight = uint64(other.LastBlockHeight)
