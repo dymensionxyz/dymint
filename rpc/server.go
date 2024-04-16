@@ -109,7 +109,7 @@ func (s *Server) OnStop() {
 
 // startEventListener registers events to callbacks.
 func (s *Server) startEventListener() {
-	go utilevent.MustSubscribe(s.ctx, s.PubSubServer(), "RPCNodeHealthStatusHandler", events.QueryHealthStatus, s.onNodeHealthUpdate, s.Logger)
+	go utilevent.MustSubscribe(context.Background(), s.PubSubServer(), "RPCNodeHealthStatusHandler", events.QueryHealthStatus, s.onNodeHealthUpdate, s.Logger)
 }
 
 // onNodeHealthUpdate is a callback function that handles health status events from the node.
