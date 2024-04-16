@@ -21,13 +21,13 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 	ticker := time.NewTicker(m.conf.BlockTime)
 	defer ticker.Stop()
 
-	var tickerEmptyBlocksMaxTime *time.Ticker
+	var emptyBlocksTicker *time.Ticker
 	var tickerEmptyBlocksMaxTimeCh <-chan time.Time
 	// Setup ticker for empty blocks if enabled
 	if m.conf.EmptyBlocksMaxTime > 0 {
-		tickerEmptyBlocksMaxTime = time.NewTicker(m.conf.EmptyBlocksMaxTime)
-		tickerEmptyBlocksMaxTimeCh = tickerEmptyBlocksMaxTime.C
-		defer tickerEmptyBlocksMaxTime.Stop()
+		emptyBlocksTicker = time.NewTicker(m.conf.EmptyBlocksMaxTime)
+		tickerEmptyBlocksMaxTimeCh = emptyBlocksTicker.C
+		defer emptyBlocksTicker.Stop()
 	}
 
 	// Allow the initial block to be empty
@@ -41,30 +41,34 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 		case <-m.produceEmptyBlockCh:
 			produceEmptyBlock = true
 		// Empty blocks timeout
-		case <-tickerEmptyBlocksMaxTimeCh:
+		case <-emptyBlocksTicker.C:
 			m.logger.Debug(fmt.Sprintf("no transactions, producing empty block: elapsed: %.2f", m.conf.EmptyBlocksMaxTime.Seconds()))
 			produceEmptyBlock = true
 		// Produce block
 		case <-ticker.C:
 			err := m.produceAndGossipBlock(ctx, produceEmptyBlock)
-			if errors.Is(err, types.ErrSkippedEmptyBlock) {
+			if errors.Is(err, ErrRecoverable) {
+				m.logger.Info("produce and gossip: recoverable", "error", err)
 				continue
 			}
+			if errors.Is(err, ErrNonRecoverable) {
+				m.logger.Error("produce and gossip: non-recoverable", "error", err)
+				panic(fmt.Errorf("produce and gossip block: %w", err))
+			}
 			if err != nil {
-				m.logger.Error("while producing block", "error", err)
-				m.shouldProduceBlocksCh <- false
+				m.logger.Error("produce and gossip: uncategorized", "error", err)
 				continue
 			}
 			// If empty blocks enabled, after block produced, reset the timeout timer
-			if tickerEmptyBlocksMaxTime != nil {
+			if emptyBlocksTicker != nil {
 				produceEmptyBlock = false
-				tickerEmptyBlocksMaxTime.Reset(m.conf.EmptyBlocksMaxTime)
+				emptyBlocksTicker.Reset(m.conf.EmptyBlocksMaxTime)
 			}
 
 		// Node's health check channel
 		case shouldProduceBlocks := <-m.shouldProduceBlocksCh:
 			for !shouldProduceBlocks {
-				m.logger.Info("Stopped block production")
+				m.logger.Info("paused block production")
 				shouldProduceBlocks = <-m.shouldProduceBlocksCh
 			}
 			m.logger.Info("Resumed Block production")
@@ -78,9 +82,8 @@ func (m *Manager) produceAndGossipBlock(ctx context.Context, allowEmpty bool) er
 		return fmt.Errorf("produce block: %w", err)
 	}
 
-	// Gossip the block after it's been committed
 	if err := m.gossipBlock(ctx, *block, *commit); err != nil {
-		return fmt.Errorf("gossip block: %w", err)
+		return fmt.Errorf("gossip block: %w: %w", err, ErrNonRecoverable) // from inspecting the gossip impl, it's clear there is no point retrying
 	}
 
 	return nil
@@ -161,9 +164,8 @@ func (m *Manager) produceBlock(ctx context.Context, allowEmpty bool) (*types.Blo
 	}
 
 	if err := m.applyBlock(ctx, block, commit, blockMetaData{source: producedBlock}); err != nil {
-		if errors.Is(err, types.ErrInvalidBlockHeight) {
-		}
-		return nil, nil, fmt.Errorf("apply block: %w", err) // TODO: recovery
+		// TODO: ask michael what to do about invalid height, can it happen in the happy path?
+		return nil, nil, fmt.Errorf("apply block: %w: %w", err, ErrNonRecoverable)
 	}
 
 	m.logger.Info("block created", "height", newHeight, "num_tx", len(block.Data.Txs))

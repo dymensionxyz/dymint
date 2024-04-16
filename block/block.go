@@ -209,12 +209,10 @@ func (m *Manager) gossipBlock(ctx context.Context, block types.Block, commit typ
 	gossipedBlock := p2p.GossipedBlock{Block: block, Commit: commit}
 	gossipedBlockBytes, err := gossipedBlock.MarshalBinary()
 	if err != nil {
-		m.logger.Error("marshal block", "error", err)
-		return err
+		return fmt.Errorf("marshal binary: %w", err)
 	}
 	if err := m.p2pClient.GossipBlock(ctx, gossipedBlockBytes); err != nil {
-		m.logger.Error("gossip block", "error", err)
-		return err
+		return fmt.Errorf("p2p gossip block: %w", err)
 	}
 	return nil
 }
