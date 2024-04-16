@@ -155,7 +155,7 @@ func (c *DataAvailabilityLayerClient) GetClientType() da.Client {
 	return da.Avail
 }
 
-// RetrieveBatch retrieves batch from DataAvailabilityLayerClient instance.
+// RetrieveBatches retrieves batch from DataAvailabilityLayerClient instance.
 func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
 	//nolint:typecheck
 	blockHash, err := c.client.GetBlockHash(daMetaData.Height)
@@ -185,10 +185,10 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 		if ext.Signature.AppID.Int64() == c.config.AppID &&
 			ext.Method.CallIndex.SectionIndex == DataCallSectionIndex &&
 			ext.Method.CallIndex.MethodIndex == DataCallMethodIndex {
+
 			data := ext.Method.Args
-			for len(data) > 0 {
+			for 0 < len(data) {
 				var pbBatch pb.Batch
-				// Attempt to unmarshal the data.
 				err := proto.Unmarshal(data, &pbBatch)
 				if err != nil {
 					c.logger.Error("unmarshal batch", "daHeight", daMetaData.Height, "error", err)
@@ -198,7 +198,7 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 				batch := &types.Batch{}
 				err = batch.FromProto(&pbBatch)
 				if err != nil {
-					c.logger.Error("convert batch", "daHeight", daMetaData.Height, "error", err)
+					c.logger.Error("batch from proto", "daHeight", daMetaData.Height, "error", err)
 					continue
 				}
 				// Add the batch to the list

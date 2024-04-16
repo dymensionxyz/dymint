@@ -63,7 +63,7 @@ func (m *Manager) handleSubmissionTrigger(ctx context.Context) {
 func (m *Manager) submitNextBatch() (uint64, error) {
 	// Get the batch start and end height
 	startHeight := m.syncTarget.Load() + 1
-	endHeight := uint64(m.store.Height())
+	endHeight := m.store.Height()
 
 	// Create the batch
 	nextBatch, err := m.createNextDABatch(startHeight, endHeight)
