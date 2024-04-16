@@ -120,8 +120,8 @@ func TestHealthStatusEventHandler(t *testing.T) {
 	// wait for node to start
 	time.Sleep(1 * time.Second)
 
-	slError := errors.New("settlement layer is unhealthy")
-	daError := errors.New("da layer is unhealthy")
+	slError := errors.New("settlement")
+	daError := errors.New("da")
 
 	cases := []struct {
 		name                           string
@@ -130,33 +130,29 @@ func TestHealthStatusEventHandler(t *testing.T) {
 		expectHealthStatusEventEmitted bool
 		expectedError                  error
 	}{
-		// settlement layer is healthy, DA layer is healthy
 		{
-			name:                           "TestSettlementUnhealthyDAHealthy",
+			name:                           "settlement layer is healthy and da layer is healthy",
 			baseLayerHealthStatusEvent:     settlement.EventHealthStatusList,
 			baseLayerHealthStatusEventData: &settlement.EventDataHealth{Error: slError},
 			expectHealthStatusEventEmitted: true,
 			expectedError:                  slError,
 		},
-		// Now da also becomes unhealthy
 		{
-			name:                           "TestDAUnhealthySettlementUnhealthy",
+			name:                           "now da also becomes unhealthy",
 			baseLayerHealthStatusEvent:     da.EventHealthStatusList,
 			baseLayerHealthStatusEventData: &da.EventDataHealth{Error: daError},
 			expectHealthStatusEventEmitted: true,
 			expectedError:                  daError,
 		},
-		// Now the settlement layer becomes healthy
 		{
-			name:                           "TestSettlementHealthyDAHealthy",
+			name:                           "now the settlement layer becomes healthy",
 			baseLayerHealthStatusEvent:     settlement.EventHealthStatusList,
 			baseLayerHealthStatusEventData: &settlement.EventDataHealth{},
 			expectHealthStatusEventEmitted: false,
 			expectedError:                  nil,
 		},
-		// Now the da layer becomes healthy, so we expect the health status to be healthy and the event to be emitted
 		{
-			name:                           "TestDAHealthySettlementHealthy",
+			name:                           "now the da layer becomes healthy, so we expect the health status to be healthy and the event to be emitted",
 			baseLayerHealthStatusEvent:     da.EventHealthStatusList,
 			baseLayerHealthStatusEventData: &da.EventDataHealth{},
 			expectHealthStatusEventEmitted: true,

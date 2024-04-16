@@ -64,14 +64,18 @@ type baseLayerHealth struct {
 func (bl *baseLayerHealth) setSettlement(err error) {
 	bl.mu.Lock()
 	defer bl.mu.Unlock()
-
+	if err != nil {
+		err = fmt.Errorf("settlement: %w", err)
+	}
 	bl.settlement = err
 }
 
 func (bl *baseLayerHealth) setDA(err error) {
 	bl.mu.Lock()
 	defer bl.mu.Unlock()
-
+	if err != nil {
+		err = fmt.Errorf("da: %w", err)
+	}
 	bl.da = err
 }
 
@@ -383,10 +387,10 @@ func (n *Node) onBaseLayerHealthUpdate(event pubsub.Message) {
 	switch e := event.Data().(type) {
 	case *settlement.EventDataHealth:
 		haveNewErr = e.Error != nil
-		n.baseLayerHealth.setSettlement(fmt.Errorf("settlement layer: %w", e.Error))
+		n.baseLayerHealth.setSettlement(e.Error)
 	case *da.EventDataHealth:
 		haveNewErr = e.Error != nil
-		n.baseLayerHealth.setDA(fmt.Errorf("data availability layer: %w", e.Error))
+		n.baseLayerHealth.setDA(e.Error)
 	}
 	newStatus := n.baseLayerHealth.get()
 	newStatusIsDifferentFromOldOne := (oldStatus == nil) != (newStatus == nil)
