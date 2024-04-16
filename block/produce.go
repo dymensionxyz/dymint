@@ -31,7 +31,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 		t := time.NewTicker(m.conf.EmptyBlocksMaxTime)
 		emptyBlocksTimer = t.C
 		resetEmptyBlocksTimer = func() {
-			produceEmptyBlock = true
+			produceEmptyBlock = false
 			t.Reset(m.conf.EmptyBlocksMaxTime)
 		}
 		defer t.Stop()
