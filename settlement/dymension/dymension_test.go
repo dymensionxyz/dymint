@@ -111,48 +111,43 @@ func TestPostBatch(t *testing.T) {
 	assert.NoError(t, err)
 
 	cases := []struct {
-		name                     string
-		isBatchSubmitSuccess     bool
-		isBatchAcceptedHubEvent  bool
-		shouldMockBatchIncluded  bool
-		isBatchIncludedSuccess   bool
-		expectedHealthEventValue bool
-		expectedError            error
+		name                    string
+		isBatchSubmitSuccess    bool
+		isBatchAcceptedHubEvent bool
+		shouldMockBatchIncluded bool
+		isBatchIncludedSuccess  bool
+		expectedError           error
 	}{
 		{
-			name:                     "TestSubmitBatchFailure",
-			isBatchSubmitSuccess:     false,
-			isBatchAcceptedHubEvent:  false,
-			shouldMockBatchIncluded:  true,
-			isBatchIncludedSuccess:   false,
-			expectedHealthEventValue: false,
-			expectedError:            submitBatchError,
+			name:                    "TestSubmitBatchFailure",
+			isBatchSubmitSuccess:    false,
+			isBatchAcceptedHubEvent: false,
+			shouldMockBatchIncluded: true,
+			isBatchIncludedSuccess:  false,
+			expectedError:           submitBatchError,
 		},
 		{
-			name:                     "TestSubmitBatchSuccessNoBatchAcceptedHubEventNotIncluded",
-			isBatchSubmitSuccess:     true,
-			isBatchAcceptedHubEvent:  false,
-			shouldMockBatchIncluded:  true,
-			isBatchIncludedSuccess:   false,
-			expectedHealthEventValue: false,
-			expectedError:            settlement.ErrBatchNotAccepted,
+			name:                    "TestSubmitBatchSuccessNoBatchAcceptedHubEventNotIncluded",
+			isBatchSubmitSuccess:    true,
+			isBatchAcceptedHubEvent: false,
+			shouldMockBatchIncluded: true,
+			isBatchIncludedSuccess:  false,
+			expectedError:           settlement.ErrBatchNotAccepted,
 		},
 		{
-			name:                     "TestSubmitBatchSuccessNotAcceptedYesIncluded",
-			isBatchSubmitSuccess:     true,
-			isBatchAcceptedHubEvent:  false,
-			shouldMockBatchIncluded:  true,
-			isBatchIncludedSuccess:   true,
-			expectedHealthEventValue: true,
-			expectedError:            nil,
+			name:                    "TestSubmitBatchSuccessNotAcceptedYesIncluded",
+			isBatchSubmitSuccess:    true,
+			isBatchAcceptedHubEvent: false,
+			shouldMockBatchIncluded: true,
+			isBatchIncludedSuccess:  true,
+			expectedError:           nil,
 		},
 		{
-			name:                     "TestSubmitBatchSuccessAndAccepted",
-			isBatchSubmitSuccess:     true,
-			isBatchAcceptedHubEvent:  true,
-			shouldMockBatchIncluded:  false,
-			expectedHealthEventValue: true,
-			expectedError:            nil,
+			name:                    "TestSubmitBatchSuccessAndAccepted",
+			isBatchSubmitSuccess:    true,
+			isBatchAcceptedHubEvent: true,
+			shouldMockBatchIncluded: false,
+			expectedError:           nil,
 		},
 	}
 
@@ -200,7 +195,6 @@ func TestPostBatch(t *testing.T) {
 				case healthEvent := <-HealthSubscription.Out():
 					t.Logf("got health event: %v", healthEvent)
 					healthStatusEvent := healthEvent.Data().(*settlement.EventDataHealth)
-					assert.Equal(t, c.expectedHealthEventValue, healthStatusEvent.Healthy)
 					assert.Equal(t, c.expectedError, healthStatusEvent.Error)
 					atomic.AddInt64(&eventsReceivedCount, 1)
 				case <-time.After(10 * time.Second):

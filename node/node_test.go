@@ -120,14 +120,13 @@ func TestHealthStatusEventHandler(t *testing.T) {
 	// wait for node to start
 	time.Sleep(1 * time.Second)
 
-	slUnealthyError := errors.New("settlement layer is unhealthy")
-	daUnealthyError := errors.New("da layer is unhealthy")
+	slError := errors.New("settlement layer is unhealthy")
+	daError := errors.New("da layer is unhealthy")
 
 	cases := []struct {
 		name                           string
 		baseLayerHealthStatusEvent     map[string][]string
 		baseLayerHealthStatusEventData interface{}
-		expectedHealthStatus           bool
 		expectHealthStatusEventEmitted bool
 		expectedError                  error
 	}{
@@ -135,35 +134,31 @@ func TestHealthStatusEventHandler(t *testing.T) {
 		{
 			name:                           "TestSettlementUnhealthyDAHealthy",
 			baseLayerHealthStatusEvent:     map[string][]string{settlement.EventTypeKey: {settlement.EventHealthStatus}},
-			baseLayerHealthStatusEventData: &settlement.EventDataHealth{Healthy: false, Error: slUnealthyError},
-			expectedHealthStatus:           false,
+			baseLayerHealthStatusEventData: &settlement.EventDataHealth{Error: slError},
 			expectHealthStatusEventEmitted: true,
-			expectedError:                  slUnealthyError,
+			expectedError:                  slError,
 		},
 		// Now da also becomes unhealthy
 		{
 			name:                           "TestDAUnhealthySettlementUnhealthy",
 			baseLayerHealthStatusEvent:     map[string][]string{da.EventTypeKey: {da.EventDAHealthStatus}},
-			baseLayerHealthStatusEventData: &da.EventDataHealth{Healthy: false, Error: daUnealthyError},
-			expectedHealthStatus:           false,
+			baseLayerHealthStatusEventData: &da.EventDataHealth{Error: daError},
 			expectHealthStatusEventEmitted: true,
-			expectedError:                  daUnealthyError,
+			expectedError:                  daError,
 		},
 		// Now the settlement layer becomes healthy
 		{
 			name:                           "TestSettlementHealthyDAHealthy",
 			baseLayerHealthStatusEvent:     map[string][]string{settlement.EventTypeKey: {settlement.EventHealthStatus}},
-			baseLayerHealthStatusEventData: &settlement.EventDataHealth{Healthy: true, Error: nil},
-			expectedHealthStatus:           false,
+			baseLayerHealthStatusEventData: &settlement.EventDataHealth{},
 			expectHealthStatusEventEmitted: false,
 			expectedError:                  nil,
 		},
-		// Now the da layer becomes healthy so we expect the health status to be healthy and the event to be emitted
+		// Now the da layer becomes healthy, so we expect the health status to be healthy and the event to be emitted
 		{
 			name:                           "TestDAHealthySettlementHealthy",
 			baseLayerHealthStatusEvent:     map[string][]string{da.EventTypeKey: {da.EventDAHealthStatus}},
-			baseLayerHealthStatusEventData: &da.EventDataHealth{Healthy: true, Error: nil},
-			expectedHealthStatus:           true,
+			baseLayerHealthStatusEventData: &da.EventDataHealth{},
 			expectHealthStatusEventEmitted: true,
 			expectedError:                  nil,
 		},
@@ -183,7 +178,6 @@ func TestHealthStatusEventHandler(t *testing.T) {
 						t.Error("didn't expect health status event but got one")
 					}
 					healthStatusEvent := event.Data().(*events.DataHealthStatus)
-					assert.Equal(c.expectedHealthStatus, healthStatusEvent.Healthy)
 					assert.Equal(c.expectedError, healthStatusEvent.Error)
 					done <- true
 					break
