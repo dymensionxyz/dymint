@@ -3,6 +3,6 @@ package block
 import "errors"
 
 var (
-	ErrProduceAndGossipBlockNonRecoverable = errors.New("non recoverable")
-	ErrProduceAndGossipBlockRecoverable    = errors.New("recoverable")
+	ErrNonRecoverable = errors.New("non recoverable")
+	ErrRecoverable    = errors.New("recoverable")
 )

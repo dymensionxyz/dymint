@@ -101,11 +101,11 @@ func (m *Manager) produceBlock(ctx context.Context, allowEmpty bool) (*types.Blo
 	} else {
 		lastCommit, err = m.store.LoadCommit(height)
 		if err != nil {
-			return nil, nil, fmt.Errorf("load commit: height: %d: %w: %w", height, err, ErrProduceAndGossipBlockNonRecoverable)
+			return nil, nil, fmt.Errorf("load commit: height: %d: %w: %w", height, err, ErrNonRecoverable)
 		}
 		lastBlock, err := m.store.LoadBlock(height)
 		if err != nil {
-			return nil, nil, fmt.Errorf("load block after load commit: height: %d: %w: %w", height, err, ErrProduceAndGossipBlockNonRecoverable)
+			return nil, nil, fmt.Errorf("load block after load commit: height: %d: %w: %w", height, err, ErrNonRecoverable)
 		}
 		lastHeaderHash = lastBlock.Header.Hash()
 	}
@@ -119,28 +119,28 @@ func (m *Manager) produceBlock(ctx context.Context, allowEmpty bool) (*types.Blo
 		block = pendingBlock
 		commit, err = m.store.LoadCommit(newHeight)
 		if err != nil {
-			return nil, nil, fmt.Errorf("load commit after load block: height: %d: %w: %w", newHeight, err, ErrProduceAndGossipBlockNonRecoverable)
+			return nil, nil, fmt.Errorf("load commit after load block: height: %d: %w: %w", newHeight, err, ErrNonRecoverable)
 		}
 		m.logger.Info("using pending block", "height", newHeight)
 	} else {
 		block = m.executor.CreateBlock(newHeight, lastCommit, lastHeaderHash, m.lastState)
 		if !allowEmpty && len(block.Data.Txs) == 0 {
-			return nil, nil, fmt.Errorf("%w: %w", types.ErrSkippedEmptyBlock, ErrProduceAndGossipBlockRecoverable)
+			return nil, nil, fmt.Errorf("%w: %w", types.ErrSkippedEmptyBlock, ErrRecoverable)
 		}
 		abciHeaderPb := abciconv.ToABCIHeaderPB(&block.Header)
 		abciHeaderBytes, err := abciHeaderPb.Marshal()
 		if err != nil {
-			return nil, nil, fmt.Errorf("marshal abci header: %w: %w", err, ErrProduceAndGossipBlockNonRecoverable)
+			return nil, nil, fmt.Errorf("marshal abci header: %w: %w", err, ErrNonRecoverable)
 		}
 		proposerAddress := block.Header.ProposerAddress
 		sign, err := m.proposerKey.Sign(abciHeaderBytes)
 		if err != nil {
-			return nil, nil, fmt.Errorf("sign abci header: %w: %w", err, ErrProduceAndGossipBlockNonRecoverable)
+			return nil, nil, fmt.Errorf("sign abci header: %w: %w", err, ErrNonRecoverable)
 		}
 		voteTimestamp := tmtime.Now()
 		tmSignature, err := m.createTMSignature(block, proposerAddress, voteTimestamp)
 		if err != nil {
-			return nil, nil, fmt.Errorf("create tm signature: %w: %w", err, ErrProduceAndGossipBlockNonRecoverable)
+			return nil, nil, fmt.Errorf("create tm signature: %w: %w", err, ErrNonRecoverable)
 		}
 		commit = &types.Commit{
 			Height:     block.Header.Height,
