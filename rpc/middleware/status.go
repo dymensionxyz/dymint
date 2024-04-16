@@ -7,12 +7,14 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 )
 
-type Status func() error
+type Status struct {
+	Err func() error
+}
 
 func (s Status) Handler(logger log.Logger) HandlerFunc {
 	return func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			err := s()
+			err := s.Err()
 			isHealthy := err == nil
 			// in case the endpoint is health we return health response
 			if r.URL.Path == "/health" {

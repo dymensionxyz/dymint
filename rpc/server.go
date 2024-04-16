@@ -167,7 +167,7 @@ func (s *Server) startRPC() error {
 
 	// Apply Middleware
 	reg := middleware.GetRegistry()
-	reg.Register(middleware.Status(s.getHealthStatus))
+	reg.Register(middleware.Status{Err: s.getHealthStatus})
 	middlewareClient := middleware.NewClient(*reg, s.Logger.With("module", "rpc/middleware"))
 	handler = middlewareClient.Handle(handler)
 
