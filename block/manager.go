@@ -233,6 +233,13 @@ func (m *Manager) applyBlockCallback(event pubsub.Message) {
 	block := eventData.Block
 	commit := eventData.Commit
 
+	// TODO: need to validate here
+
+	if err := m.validateBlock(&block, &commit); err != nil {
+		// TODO: something! kick the peer/sequencer ...
+		return
+	}
+
 	// if height is expected, apply
 	// if height is higher than expected (future block), cache
 	if block.Header.Height == m.store.NextHeight() {

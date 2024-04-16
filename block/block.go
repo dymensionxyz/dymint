@@ -2,13 +2,15 @@ package block
 
 import (
 	"context"
+	"errors"
+	"fmt"
 
-	"cosmossdk.io/errors"
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/types"
-	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmtypes "github.com/tendermint/tendermint/types"
 )
+
+var errInvalidBlock = errors.New("block not passed validation")
 
 // applyBlock applies the block to the store and the abci app.
 // steps: save block -> execute block with app -> update state -> commit block to app -> update store height and state hash.
@@ -25,6 +27,11 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 	}
 
 	m.logger.Debug("Applying block", "height", block.Header.Height, "source", blockMetaData.source)
+
+	err := m.validateBlock(block, commit) // TODO: is this redundant? Have we done it before in enough places?
+	if err != nil {
+		return fmt.Errorf("validate block: %w: %w", err, errInvalidBlock)
+	}
 
 	// Check if the app's last block height is the same as the currently produced block height
 	isBlockAlreadyApplied, err := m.isHeightAlreadyApplied(block.Header.Height)
@@ -48,9 +55,9 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 		return err
 	}
 
-	responses, err := m.executeBlock(ctx, block, commit)
+	responses, err := m.executor.ExecuteValidBlock(ctx, m.lastState, block)
 	if err != nil {
-		m.logger.Error("execute block", "error", err)
+		m.logger.Error("execute valid block", "error", err)
 		return err
 	}
 
@@ -193,21 +200,12 @@ func (m *Manager) UpdateStateFromApp() error {
 	return nil
 }
 
-func (m *Manager) executeBlock(ctx context.Context, block *types.Block, commit *types.Commit) (*tmstate.ABCIResponses, error) {
+func (m *Manager) validateBlock(block *types.Block, commit *types.Commit) error {
 	// Currently we're assuming proposer is never nil as it's a pre-condition for
 	// dymint to start
 	proposer := m.settlementClient.GetProposer()
 
-	if err := types.ValidateProposedTransition(m.lastState, block, commit, proposer); err != nil {
-		return &tmstate.ABCIResponses{}, err
-	}
-
-	responses, err := m.executor.Execute(ctx, m.lastState, block)
-	if err != nil {
-		return &tmstate.ABCIResponses{}, err
-	}
-
-	return responses, nil
+	return types.ValidateProposedTransition(m.lastState, block, commit, proposer)
 }
 
 func (m *Manager) gossipBlock(ctx context.Context, block types.Block, commit types.Commit) error {

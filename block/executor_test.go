@@ -174,7 +174,7 @@ func TestApplyBlock(t *testing.T) {
 	// Apply the block
 	err = types.ValidateProposedTransition(state, block, commit, proposer)
 	require.NoError(err)
-	resp, err := executor.Execute(context.Background(), state, block)
+	resp, err := executor.ExecuteValidBlock(context.Background(), state, block)
 	require.NoError(err)
 	require.NotNil(resp)
 	newState, err := executor.UpdateStateFromResponses(resp, state, block)
@@ -228,7 +228,7 @@ func TestApplyBlock(t *testing.T) {
 	// Apply the block
 	err = types.ValidateProposedTransition(newState, block, commit, proposer)
 	require.NoError(err)
-	resp, err = executor.Execute(context.Background(), state, block)
+	resp, err = executor.ExecuteValidBlock(context.Background(), state, block)
 	require.NoError(err)
 	require.NotNil(resp)
 	newState, err = executor.UpdateStateFromResponses(resp, state, block)
