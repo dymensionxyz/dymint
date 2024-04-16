@@ -21,17 +21,22 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 	ticker := time.NewTicker(m.conf.BlockTime)
 	defer ticker.Stop()
 
-	var emptyBlocksTicker *time.Ticker
-	var tickerEmptyBlocksMaxTimeCh <-chan time.Time
-	// Setup ticker for empty blocks if enabled
-	if m.conf.EmptyBlocksMaxTime > 0 {
-		emptyBlocksTicker = time.NewTicker(m.conf.EmptyBlocksMaxTime)
-		tickerEmptyBlocksMaxTimeCh = emptyBlocksTicker.C
-		defer emptyBlocksTicker.Stop()
-	}
-
 	// Allow the initial block to be empty
 	produceEmptyBlock := true
+
+	var emptyBlocksTimer <-chan time.Time
+	resetEmptyBlocksTimer := func() {}
+	// Setup ticker for empty blocks if enabled
+	if 0 < m.conf.EmptyBlocksMaxTime {
+		t := time.NewTicker(m.conf.EmptyBlocksMaxTime)
+		emptyBlocksTimer = t.C
+		resetEmptyBlocksTimer = func() {
+			produceEmptyBlock = true
+			t.Reset(m.conf.EmptyBlocksMaxTime)
+		}
+		defer t.Stop()
+	}
+
 	for {
 		select {
 		// Context canceled
@@ -41,7 +46,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 		case <-m.produceEmptyBlockCh:
 			produceEmptyBlock = true
 		// Empty blocks timeout
-		case <-emptyBlocksTicker.C:
+		case <-emptyBlocksTimer:
 			m.logger.Debug(fmt.Sprintf("no transactions, producing empty block: elapsed: %.2f", m.conf.EmptyBlocksMaxTime.Seconds()))
 			produceEmptyBlock = true
 		// Produce block
@@ -52,26 +57,21 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 				continue
 			}
 			if errors.Is(err, ErrNonRecoverable) {
-				m.logger.Error("produce and gossip: non-recoverable", "error", err)
+				m.logger.Error("produce and gossip: non-recoverable", "error", err) // TODO: flush? or don't log at all?
 				panic(fmt.Errorf("produce and gossip block: %w", err))
 			}
 			if err != nil {
 				m.logger.Error("produce and gossip: uncategorized", "error", err)
 				continue
 			}
-			// If empty blocks enabled, after block produced, reset the timeout timer
-			if emptyBlocksTicker != nil {
-				produceEmptyBlock = false
-				emptyBlocksTicker.Reset(m.conf.EmptyBlocksMaxTime)
-			}
+			resetEmptyBlocksTimer()
 
-		// Node's health check channel
 		case shouldProduceBlocks := <-m.shouldProduceBlocksCh:
 			for !shouldProduceBlocks {
-				m.logger.Info("paused block production")
+				m.logger.Info("block production paused - awaiting continuation signal")
 				shouldProduceBlocks = <-m.shouldProduceBlocksCh
 			}
-			m.logger.Info("Resumed Block production")
+			m.logger.Info("resumed block resumed")
 		}
 	}
 }
