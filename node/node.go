@@ -352,8 +352,10 @@ func (n *Node) startEventListener() {
 	go utilevent.MustSubscribe(n.ctx, n.pubsubServer, "daHealthStatusHandler", da.EventQueryDAHealthStatus, n.onHealthStatus, n.Logger)
 }
 
-// Event handling callback function for health status events
 func (n *Node) onHealthStatus(event pubsub.Message) {
+	// TODO: this used to aggregate them and publish a new event
+	// TODO: which was listened to by the rpc server and the manager
+	//
 	switch e := event.Data().(type) {
 	case *settlement.EventDataHealth:
 		_ = e // TODO:
