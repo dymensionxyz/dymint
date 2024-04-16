@@ -15,6 +15,9 @@ type Store interface {
 	// Height returns height of the highest block in store.
 	Height() uint64
 
+	// NextHeight returns the next height that expected to be stored in store.
+	NextHeight() uint64
+
 	// SetHeight sets the height saved in the Store if it is higher than the existing height.
 	SetHeight(height uint64)
 

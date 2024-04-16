@@ -1,4 +1,4 @@
-package state
+package block
 
 import (
 	"bytes"
@@ -7,9 +7,7 @@ import (
 	"errors"
 	"time"
 
-	"github.com/cometbft/cometbft/crypto/merkle"
 	abci "github.com/tendermint/tendermint/abci/types"
-	abcitypes "github.com/tendermint/tendermint/abci/types"
 	tmcrypto "github.com/tendermint/tendermint/crypto/encoding"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -22,8 +20,8 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
-// BlockExecutor creates and applies blocks and maintains state.
-type BlockExecutor struct {
+// Executor creates and applies blocks and maintains state.
+type Executor struct {
 	proposerAddress       []byte
 	namespaceID           [8]byte
 	chainID               string
@@ -36,15 +34,15 @@ type BlockExecutor struct {
 	logger types.Logger
 }
 
-// NewBlockExecutor creates new instance of BlockExecutor.
+// NewExecutor creates new instance of BlockExecutor.
 // Proposer address and namespace ID will be used in all newly created blocks.
-func NewBlockExecutor(proposerAddress []byte, namespaceID string, chainID string, mempool mempool.Mempool, proxyApp proxy.AppConns, eventBus *tmtypes.EventBus, logger types.Logger) (*BlockExecutor, error) {
+func NewExecutor(proposerAddress []byte, namespaceID string, chainID string, mempool mempool.Mempool, proxyApp proxy.AppConns, eventBus *tmtypes.EventBus, logger types.Logger) (*Executor, error) {
 	bytes, err := hex.DecodeString(namespaceID)
 	if err != nil {
 		return nil, err
 	}
 
-	be := BlockExecutor{
+	be := Executor{
 		proposerAddress:       proposerAddress,
 		chainID:               chainID,
 		proxyAppConsensusConn: proxyApp.Consensus(),
@@ -58,9 +56,9 @@ func NewBlockExecutor(proposerAddress []byte, namespaceID string, chainID string
 }
 
 // InitChain calls InitChainSync using consensus connection to app.
-func (e *BlockExecutor) InitChain(genesis *tmtypes.GenesisDoc, validators []*tmtypes.Validator) (*abci.ResponseInitChain, error) {
+func (e *Executor) InitChain(genesis *tmtypes.GenesisDoc, validators []*tmtypes.Validator) (*abci.ResponseInitChain, error) {
 	params := genesis.ConsensusParams
-	valUpates := abcitypes.ValidatorUpdates{}
+	valUpates := abci.ValidatorUpdates{}
 
 	for _, validator := range validators {
 		tmkey, err := tmcrypto.PubKeyToProto(validator.PubKey)
@@ -68,7 +66,7 @@ func (e *BlockExecutor) InitChain(genesis *tmtypes.GenesisDoc, validators []*tmt
 			return nil, err
 		}
 
-		valUpates = append(valUpates, abcitypes.ValidatorUpdate{
+		valUpates = append(valUpates, abci.ValidatorUpdate{
 			PubKey: tmkey,
 			Power:  validator.VotingPower,
 		})
@@ -100,51 +98,8 @@ func (e *BlockExecutor) InitChain(genesis *tmtypes.GenesisDoc, validators []*tmt
 	})
 }
 
-func (e *BlockExecutor) UpdateStateAfterInitChain(s *types.State, res *abci.ResponseInitChain, validators []*tmtypes.Validator) {
-	// If the app did not return an app hash, we keep the one set from the genesis doc in
-	// the state. We don't set appHash since we don't want the genesis doc app hash
-	// recorded in the genesis block. We should probably just remove GenesisDoc.AppHash.
-	if len(res.AppHash) > 0 {
-		copy(s.AppHash[:], res.AppHash)
-	}
-
-	// The validators after initChain must be greater than zero, otherwise this state is not loadable
-	if len(validators) <= 0 {
-		panic("Validators must be greater than zero")
-	}
-
-	if res.ConsensusParams != nil {
-		params := res.ConsensusParams
-		if params.Block != nil {
-			s.ConsensusParams.Block.MaxBytes = params.Block.MaxBytes
-			s.ConsensusParams.Block.MaxGas = params.Block.MaxGas
-		}
-		if params.Evidence != nil {
-			s.ConsensusParams.Evidence.MaxAgeNumBlocks = params.Evidence.MaxAgeNumBlocks
-			s.ConsensusParams.Evidence.MaxAgeDuration = params.Evidence.MaxAgeDuration
-			s.ConsensusParams.Evidence.MaxBytes = params.Evidence.MaxBytes
-		}
-		if params.Validator != nil {
-			// Copy params.Validator.PubkeyTypes, and set result's value to the copy.
-			// This avoids having to initialize the slice to 0 values, and then write to it again.
-			s.ConsensusParams.Validator.PubKeyTypes = append([]string{}, params.Validator.PubKeyTypes...)
-		}
-		if params.Version != nil {
-			s.ConsensusParams.Version.AppVersion = params.Version.AppVersion
-		}
-		s.Version.Consensus.App = s.ConsensusParams.Version.AppVersion
-	}
-	// We update the last results hash with the empty hash, to conform with RFC-6962.
-	copy(s.LastResultsHash[:], merkle.HashFromByteSlices(nil))
-
-	// Set the validators in the state
-	s.Validators = tmtypes.NewValidatorSet(validators).CopyIncrementProposerPriority(1)
-	s.NextValidators = s.Validators.Copy()
-	s.LastValidators = s.Validators.Copy()
-}
-
 // CreateBlock reaps transactions from mempool and builds a block.
-func (e *BlockExecutor) CreateBlock(height uint64, lastCommit *types.Commit, lastHeaderHash [32]byte, state types.State) *types.Block {
+func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHeaderHash [32]byte, state types.State) *types.Block {
 	maxBytes := state.ConsensusParams.Block.MaxBytes
 	maxGas := state.ConsensusParams.Block.MaxGas
 
@@ -157,7 +112,7 @@ func (e *BlockExecutor) CreateBlock(height uint64, lastCommit *types.Commit, las
 				App:   state.Version.Consensus.App,
 			},
 			ChainID:         e.chainID,
-			NamespaceID:     e.namespaceID,
+			NamespaceID:     e.namespaceID, // TODO: used?????
 			Height:          height,
 			Time:            uint64(time.Now().UTC().UnixNano()),
 			LastHeaderHash:  lastHeaderHash,
@@ -182,7 +137,7 @@ func (e *BlockExecutor) CreateBlock(height uint64, lastCommit *types.Commit, las
 }
 
 // Validate validates block and commit.
-func (e *BlockExecutor) Validate(state types.State, block *types.Block, commit *types.Commit, proposer *types.Sequencer) error {
+func (e *Executor) Validate(state types.State, block *types.Block, commit *types.Commit, proposer *types.Sequencer) error {
 	if err := e.validateBlock(state, block); err != nil {
 		return err
 	}
@@ -192,26 +147,8 @@ func (e *BlockExecutor) Validate(state types.State, block *types.Block, commit *
 	return nil
 }
 
-// UpdateStateFromResponses updates state based on the ABCIResponses.
-func (e *BlockExecutor) UpdateStateFromResponses(resp *tmstate.ABCIResponses, state types.State, block *types.Block) (types.State, error) {
-	// Dymint ignores any setValidator responses from the app, as it is manages the validator set based on the settlement consensus
-	// TODO: this will be changed when supporting multiple sequencers from the hub
-	validatorUpdates := []*tmtypes.Validator{}
-
-	if state.ConsensusParams.Block.MaxBytes == 0 {
-		e.logger.Error("maxBytes=0", "state.ConsensusParams.Block", state.ConsensusParams.Block)
-	}
-
-	state, err := e.updateState(state, block, resp, validatorUpdates)
-	if err != nil {
-		return types.State{}, err
-	}
-
-	return state, nil
-}
-
 // Commit commits the block
-func (e *BlockExecutor) Commit(ctx context.Context, state *types.State, block *types.Block, resp *tmstate.ABCIResponses) (int64, error) {
+func (e *Executor) Commit(ctx context.Context, state *types.State, block *types.Block, resp *tmstate.ABCIResponses) (int64, error) {
 	appHash, retainHeight, err := e.commit(ctx, state, block, resp.DeliverTxs)
 	if err != nil {
 		return 0, err
@@ -228,60 +165,12 @@ func (e *BlockExecutor) Commit(ctx context.Context, state *types.State, block *t
 	return retainHeight, nil
 }
 
-func (e *BlockExecutor) updateState(state types.State, block *types.Block, abciResponses *tmstate.ABCIResponses, validatorUpdates []*tmtypes.Validator) (types.State, error) {
-	nValSet := state.NextValidators.Copy()
-	lastHeightValSetChanged := state.LastHeightValidatorsChanged
-	// Dymint can work without validators
-	if len(nValSet.Validators) > 0 {
-		if len(validatorUpdates) > 0 {
-			err := nValSet.UpdateWithChangeSet(validatorUpdates)
-			if err != nil {
-				return state, nil
-			}
-			// Change results from this height but only applies to the next next height.
-			lastHeightValSetChanged = int64(block.Header.Height + 1 + 1)
-		}
-
-		// TODO(tzdybal):  right now, it's for backward compatibility, may need to change this
-		nValSet.IncrementProposerPriority(1)
-	}
-
-	hash := block.Header.Hash()
-	// TODO: we can probably pass the state as a pointer and update it directly
-	s := types.State{
-		Version:         state.Version,
-		ChainID:         state.ChainID,
-		InitialHeight:   state.InitialHeight,
-		SLStateIndex:    state.SLStateIndex,
-		LastBlockHeight: int64(block.Header.Height),
-		LastBlockTime:   time.Unix(0, int64(block.Header.Time)),
-		LastBlockID: tmtypes.BlockID{
-			Hash: hash[:],
-			// for now, we don't care about part set headers
-		},
-		NextValidators:                   nValSet,
-		Validators:                       state.NextValidators.Copy(),
-		LastHeightValidatorsChanged:      lastHeightValSetChanged,
-		ConsensusParams:                  state.ConsensusParams,
-		LastHeightConsensusParamsChanged: state.LastHeightConsensusParamsChanged,
-		// We're gonna update those fields only after we commit the blocks
-		AppHash:         state.AppHash,
-		LastValidators:  state.LastValidators.Copy(),
-		LastStoreHeight: state.LastStoreHeight,
-
-		LastResultsHash: state.LastResultsHash,
-		BaseHeight:      state.BaseHeight,
-	}
-
-	return s, nil
-}
-
 // GetAppInfo returns the latest AppInfo from the proxyApp.
-func (e *BlockExecutor) GetAppInfo() (*abcitypes.ResponseInfo, error) {
-	return e.proxyAppQueryConn.InfoSync(abcitypes.RequestInfo{})
+func (e *Executor) GetAppInfo() (*abci.ResponseInfo, error) {
+	return e.proxyAppQueryConn.InfoSync(abci.RequestInfo{})
 }
 
-func (e *BlockExecutor) commit(ctx context.Context, state *types.State, block *types.Block, deliverTxs []*abci.ResponseDeliverTx) ([]byte, int64, error) {
+func (e *Executor) commit(ctx context.Context, state *types.State, block *types.Block, deliverTxs []*abci.ResponseDeliverTx) ([]byte, int64, error) {
 	e.mempool.Lock()
 	defer e.mempool.Unlock()
 
@@ -305,7 +194,7 @@ func (e *BlockExecutor) commit(ctx context.Context, state *types.State, block *t
 	return resp.Data, resp.RetainHeight, err
 }
 
-func (e *BlockExecutor) validateBlock(state types.State, block *types.Block) error {
+func (e *Executor) validateBlock(state types.State, block *types.Block) error {
 	err := block.ValidateBasic()
 	if err != nil {
 		return err
@@ -330,7 +219,7 @@ func (e *BlockExecutor) validateBlock(state types.State, block *types.Block) err
 	return nil
 }
 
-func (e *BlockExecutor) validateCommit(proposer *types.Sequencer, commit *types.Commit, header *types.Header) error {
+func (e *Executor) validateCommit(proposer *types.Sequencer, commit *types.Commit, header *types.Header) error {
 	abciHeaderPb := abciconv.ToABCIHeaderPB(header)
 	abciHeaderBytes, err := abciHeaderPb.Marshal()
 	if err != nil {
@@ -343,7 +232,7 @@ func (e *BlockExecutor) validateCommit(proposer *types.Sequencer, commit *types.
 }
 
 // Execute executes the block and returns the ABCIResponses.
-func (e *BlockExecutor) Execute(ctx context.Context, state types.State, block *types.Block) (*tmstate.ABCIResponses, error) {
+func (e *Executor) Execute(ctx context.Context, state types.State, block *types.Block) (*tmstate.ABCIResponses, error) {
 	abciResponses := new(tmstate.ABCIResponses)
 	abciResponses.DeliverTxs = make([]*abci.ResponseDeliverTx, len(block.Data.Txs))
 
@@ -400,19 +289,19 @@ func (e *BlockExecutor) Execute(ctx context.Context, state types.State, block *t
 	return abciResponses, nil
 }
 
-func (e *BlockExecutor) getLastCommitHash(lastCommit *types.Commit, header *types.Header) []byte {
+func (e *Executor) getLastCommitHash(lastCommit *types.Commit, header *types.Header) []byte {
 	lastABCICommit := abciconv.ToABCICommit(lastCommit, header)
 	return lastABCICommit.Hash()
 }
 
-func (e *BlockExecutor) getDataHash(block *types.Block) []byte {
+func (e *Executor) getDataHash(block *types.Block) []byte {
 	abciData := tmtypes.Data{
 		Txs: abciconv.ToABCIBlockDataTxs(&block.Data),
 	}
 	return abciData.Hash()
 }
 
-func (e *BlockExecutor) publishEvents(resp *tmstate.ABCIResponses, block *types.Block, state types.State) error {
+func (e *Executor) publishEvents(resp *tmstate.ABCIResponses, block *types.Block, state types.State) error {
 	if e.eventBus == nil {
 		return nil
 	}
@@ -468,28 +357,3 @@ func fromDymintTxs(optiTxs types.Txs) tmtypes.Txs {
 	}
 	return txs
 }
-
-// func validateValidatorUpdates(abciUpdates []abci.ValidatorUpdate,
-// 	params tmproto.ValidatorParams) error {
-// 	for _, valUpdate := range abciUpdates {
-// 		if valUpdate.GetPower() < 0 {
-// 			return fmt.Errorf("voting power can't be negative %v", valUpdate)
-// 		} else if valUpdate.GetPower() == 0 {
-// 			// continue, since this is deleting the validator, and thus there is no
-// 			// pubkey to check
-// 			continue
-// 		}
-
-// 		// Check if validator's pubkey matches an ABCI type in the consensus params
-// 		pk, err := cryptoenc.PubKeyFromProto(valUpdate.PubKey)
-// 		if err != nil {
-// 			return err
-// 		}
-
-// 		if !tmtypes.IsValidPubkeyType(params, pk.Type()) {
-// 			return fmt.Errorf("validator %v is using pubkey %s, which is unsupported for consensus",
-// 				valUpdate, pk.Type())
-// 		}
-// 	}
-// 	return nil
-// }

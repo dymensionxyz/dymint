@@ -11,6 +11,7 @@ import (
 
 	"code.cloudfoundry.org/go-diodes"
 	"github.com/libp2p/go-libp2p/core/crypto"
+
 	tmcrypto "github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	tmtypes "github.com/tendermint/tendermint/types"
@@ -25,7 +26,6 @@ import (
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/mempool"
 	"github.com/dymensionxyz/dymint/settlement"
-	"github.com/dymensionxyz/dymint/state"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
 )
@@ -40,7 +40,7 @@ type Manager struct {
 	// Store and execution
 	store     store.Store
 	lastState types.State
-	executor  *state.BlockExecutor
+	executor  *Executor
 
 	// Clients and servers
 	pubsub           *pubsub.Server
@@ -93,7 +93,7 @@ func NewManager(
 		return nil, err
 	}
 
-	exec, err := state.NewBlockExecutor(proposerAddress, conf.NamespaceID, genesis.ChainID, mempool, proxyApp, eventBus, logger)
+	exec, err := NewExecutor(proposerAddress, conf.NamespaceID, genesis.ChainID, mempool, proxyApp, eventBus, logger)
 	if err != nil {
 		return nil, fmt.Errorf("create block executor: %w", err)
 	}
@@ -131,6 +131,7 @@ func NewManager(
 func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 	m.logger.Info("Starting the block manager")
 
+	// TODO (#283): set aggregator mode by proposer addr on the hub
 	if isAggregator {
 		// make sure local signing key is the registered on the hub
 		slProposerKey := m.settlementClient.GetProposer().PublicKey.Bytes()
@@ -142,7 +143,9 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 	}
 
 	// Check if InitChain flow is needed
-	if m.lastState.LastBlockHeight+1 == m.genesis.InitialHeight {
+	if m.lastState.IsGenesis() {
+		m.logger.Info("Running InitChain")
+
 		err := m.RunInitChain(ctx)
 		if err != nil {
 			return err
@@ -230,21 +233,17 @@ func (m *Manager) applyBlockCallback(event pubsub.Message) {
 	block := eventData.Block
 	commit := eventData.Commit
 
-	if block.Header.Height != m.store.Height()+1 {
-		if block.Header.Height > m.store.Height() {
-			m.prevBlock[block.Header.Height] = &block
-			m.prevCommit[block.Header.Height] = &commit
-			m.logger.Debug("Caching block", "block height", block.Header.Height, "store height", m.store.Height())
-		}
-	} else {
+	// if height is expected, apply
+	// if height is higher than expected (future block), cache
+	if block.Header.Height == m.store.NextHeight() {
 		err := m.applyBlock(context.Background(), &block, &commit, blockMetaData{source: gossipedBlock})
 		if err != nil {
-			m.logger.Debug("apply block", "err", err)
+			m.logger.Error("apply gossiped block", "err", err)
 		}
-	}
-	err := m.attemptApplyCachedBlocks(context.Background())
-	if err != nil {
-		m.logger.Debug("apply previous cached blocks", "err", err)
+	} else if block.Header.Height > m.store.NextHeight() {
+		m.prevBlock[block.Header.Height] = &block
+		m.prevCommit[block.Header.Height] = &commit
+		m.logger.Debug("Caching block", "block height", block.Header.Height, "store height", m.store.Height())
 	}
 }
 

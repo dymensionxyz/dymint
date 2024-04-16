@@ -75,16 +75,21 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 func (m *Manager) produceBlock(ctx context.Context, allowEmpty bool) error {
 	m.produceBlockMutex.Lock()
 	defer m.produceBlockMutex.Unlock()
-	var lastCommit *types.Commit
-	var lastHeaderHash [32]byte
-	var err error
-	height := m.store.Height()
-	newHeight := height + 1
+	var (
+	    lastCommit *types.Commit
+	    lastHeaderHash [32]byte
+	    newHeight uint64
+	    err error
+	)
 
-	// this is a special case, when first block is produced - there is no previous commit
-	if newHeight == uint64(m.genesis.InitialHeight) {
-		lastCommit = &types.Commit{Height: height, HeaderHash: [32]byte{}}
+	if m.lastState.IsGenesis() {
+		newHeight = uint64(m.lastState.InitialHeight)
+		lastCommit = &types.Commit{}
+		m.lastState.BaseHeight = newHeight
+		m.store.SetBase(newHeight)
 	} else {
+		height := m.store.Height()
+		newHeight = height + 1
 		lastCommit, err = m.store.LoadCommit(height)
 		if err != nil {
 			return fmt.Errorf("while loading last commit: %w", err)
