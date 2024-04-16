@@ -8,8 +8,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/dymensionxyz/dymint/event_util"
-
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
@@ -348,8 +346,8 @@ func createAndStartIndexerService(
 
 // All events listeners should be registered here
 func (n *Node) startEventListener() {
-	go event_util.MustSubscribe(n.ctx, n.pubsubServer, "settlementHealthStatusHandler", settlement.EventQuerySettlementHealthStatus, n.healthStatusEventCallback, n.Logger)
-	go event_util.MustSubscribe(n.ctx, n.pubsubServer, "daHealthStatusHandler", da.EventQueryDAHealthStatus, n.healthStatusEventCallback, n.Logger)
+	go utilevent.MustSubscribe(n.ctx, n.pubsubServer, "settlementHealthStatusHandler", settlement.EventQuerySettlementHealthStatus, n.healthStatusEventCallback, n.Logger)
+	go utilevent.MustSubscribe(n.ctx, n.pubsubServer, "daHealthStatusHandler", da.EventQueryDAHealthStatus, n.healthStatusEventCallback, n.Logger)
 }
 
 // Event handling callback function for health status events

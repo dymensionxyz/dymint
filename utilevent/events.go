@@ -1,4 +1,4 @@
-package event_util
+package utilevent
 
 import (
 	"context"
