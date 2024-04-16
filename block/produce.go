@@ -42,7 +42,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 			produceEmptyBlock = true
 		// Empty blocks timeout
 		case <-tickerEmptyBlocksMaxTimeCh:
-			m.logger.Debug(fmt.Sprintf("No transactions for %.2f seconds, producing empty block", m.conf.EmptyBlocksMaxTime.Seconds()))
+			m.logger.Debug(fmt.Sprintf("no transactions, producing empty block: elapsed: %.2f", m.conf.EmptyBlocksMaxTime.Seconds()))
 			produceEmptyBlock = true
 		// Produce block
 		case <-ticker.C:
@@ -73,6 +73,20 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 }
 
 func (m *Manager) produceAndGossipBlock(ctx context.Context, allowEmpty bool) error {
+	block, commit, err := m.produceBlock(ctx, allowEmpty)
+	if err != nil {
+		return fmt.Errorf("produce block: %w", err)
+	}
+
+	// Gossip the block after it's been committed
+	if err := m.gossipBlock(ctx, *block, *commit); err != nil {
+		return fmt.Errorf("gossip block: %w", err)
+	}
+
+	return nil
+}
+
+func (m *Manager) produceBlock(ctx context.Context, allowEmpty bool) (*types.Block, *types.Commit, error) {
 	m.produceBlockMutex.Lock()
 	defer m.produceBlockMutex.Unlock()
 	var lastCommit *types.Commit
@@ -87,48 +101,46 @@ func (m *Manager) produceAndGossipBlock(ctx context.Context, allowEmpty bool) er
 	} else {
 		lastCommit, err = m.store.LoadCommit(height)
 		if err != nil {
-			return fmt.Errorf("while loading last commit: %w", err)
+			return nil, nil, fmt.Errorf("load commit: height: %d: %w: %w", height, err, ErrProduceAndGossipBlockNonRecoverable)
 		}
 		lastBlock, err := m.store.LoadBlock(height)
 		if err != nil {
-			return fmt.Errorf("while loading last block: %w", err)
+			return nil, nil, fmt.Errorf("load block after load commit: height: %d: %w: %w", height, err, ErrProduceAndGossipBlockNonRecoverable)
 		}
 		lastHeaderHash = lastBlock.Header.Hash()
 	}
 
 	var block *types.Block
+	var commit *types.Commit
 	// Check if there's an already stored block and commit at a newer height
 	// If there is use that instead of creating a new block
-	var commit *types.Commit
 	pendingBlock, err := m.store.LoadBlock(newHeight)
 	if err == nil {
-		m.logger.Info("Using pending block", "height", newHeight)
 		block = pendingBlock
 		commit, err = m.store.LoadCommit(newHeight)
 		if err != nil {
-			m.logger.Error("Loaded block but failed to load commit", "height", newHeight, "error", err)
-			return err
+			return nil, nil, fmt.Errorf("load commit after load block: height: %d: %w: %w", newHeight, err, ErrProduceAndGossipBlockNonRecoverable)
 		}
+		m.logger.Info("using pending block", "height", newHeight)
 	} else {
 		block = m.executor.CreateBlock(newHeight, lastCommit, lastHeaderHash, m.lastState)
 		if !allowEmpty && len(block.Data.Txs) == 0 {
-			return types.ErrSkippedEmptyBlock
+			return nil, nil, fmt.Errorf("%w: %w", types.ErrSkippedEmptyBlock, ErrProduceAndGossipBlockRecoverable)
 		}
-
 		abciHeaderPb := abciconv.ToABCIHeaderPB(&block.Header)
 		abciHeaderBytes, err := abciHeaderPb.Marshal()
 		if err != nil {
-			return err
+			return nil, nil, fmt.Errorf("marshal abci header: %w: %w", err, ErrProduceAndGossipBlockNonRecoverable)
 		}
 		proposerAddress := block.Header.ProposerAddress
 		sign, err := m.proposerKey.Sign(abciHeaderBytes)
 		if err != nil {
-			return err
+			return nil, nil, fmt.Errorf("sign abci header: %w: %w", err, ErrProduceAndGossipBlockNonRecoverable)
 		}
 		voteTimestamp := tmtime.Now()
 		tmSignature, err := m.createTMSignature(block, proposerAddress, voteTimestamp)
 		if err != nil {
-			return err
+			return nil, nil, fmt.Errorf("create tm signature: %w: %w", err, ErrProduceAndGossipBlockNonRecoverable)
 		}
 		commit = &types.Commit{
 			Height:     block.Header.Height,
@@ -141,15 +153,9 @@ func (m *Manager) produceAndGossipBlock(ctx context.Context, allowEmpty bool) er
 				Signature:        tmSignature,
 			},
 		}
-
 	}
 
 	if err := m.applyBlock(ctx, block, commit, blockMetaData{source: producedBlock}); err != nil {
-		return err
-	}
-
-	// Gossip the block after it's been committed
-	if err := m.gossipBlock(ctx, *block, *commit); err != nil {
 		return err
 	}
 

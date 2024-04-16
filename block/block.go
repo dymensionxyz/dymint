@@ -25,7 +25,7 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 
 	m.logger.Debug("Applying block", "height", block.Header.Height, "source", blockMetaData.source)
 
-	// Check if alignment is needed due to incosistencies between the store and the app.
+	// Check if alignment is needed due to inconsistencies between the store and the app.
 	isAlignRequired, err := m.alignStoreWithApp(ctx, block)
 	if err != nil {
 		return err
