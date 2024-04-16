@@ -502,7 +502,7 @@ func (d *HubClient) getEventData(eventType string, rawEventData ctypes.ResultEve
 	return nil, fmt.Errorf("event type %s not recognized", eventType)
 }
 
-func (d *HubClient) convertToNewBatchEvent(rawEventData ctypes.ResultEvent) (*settlement.EventDataNewSettlementBatchAccepted, error) {
+func (d *HubClient) convertToNewBatchEvent(rawEventData ctypes.ResultEvent) (*settlement.EventDataNewBatchAccepted, error) {
 	// check all expected attributes  exists
 	events := rawEventData.Events
 	if events["state_update.num_blocks"] == nil || events["state_update.start_height"] == nil || events["state_update.state_info_index"] == nil {
@@ -521,7 +521,7 @@ func (d *HubClient) convertToNewBatchEvent(rawEventData ctypes.ResultEvent) (*se
 		return nil, multiErr
 	}
 	endHeight := uint64(startHeight + numBlocks - 1)
-	NewBatchEvent := &settlement.EventDataNewSettlementBatchAccepted{
+	NewBatchEvent := &settlement.EventDataNewBatchAccepted{
 		EndHeight:  endHeight,
 		StateIndex: uint64(stateIndex),
 	}

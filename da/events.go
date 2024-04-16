@@ -21,14 +21,14 @@ const (
 
 // Convenience objects
 
-var HealthStatus = map[string][]string{EventTypeKey: {EventDAHealthStatus}}
+var HealthStatus = map[string][]string{EventTypeKey: {EventDAHealthStatus}} // TODO: rename
 
 type EventDataHealth struct {
 	// Error is the error that was encountered in case of a health check failure, nil implies healthy
 	Error error
 }
 
-// Define queries
+// Queries
 
 var EventQueryDAHealthStatus = QueryForEvent(EventDAHealthStatus)
 

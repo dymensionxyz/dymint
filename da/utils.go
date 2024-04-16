@@ -10,7 +10,7 @@ func SubmitBatchHealthEventHelper(pubsubServer *pubsub.Server, ctx context.Conte
 	err = pubsubServer.PublishWithEvents(
 		ctx,
 		&EventDataHealth{Error: err},
-		map[string][]string{EventTypeKey: {EventDAHealthStatus}},
+		HealthStatus,
 	)
 	if err != nil {
 		return ResultSubmitBatch{

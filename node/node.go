@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/dymensionxyz/dymint/utilevent"
+
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
@@ -346,12 +348,12 @@ func createAndStartIndexerService(
 
 // All events listeners should be registered here
 func (n *Node) startEventListener() {
-	go utilevent.MustSubscribe(n.ctx, n.pubsubServer, "settlementHealthStatusHandler", settlement.EventQuerySettlementHealthStatus, n.healthStatusEventCallback, n.Logger)
-	go utilevent.MustSubscribe(n.ctx, n.pubsubServer, "daHealthStatusHandler", da.EventQueryDAHealthStatus, n.healthStatusEventCallback, n.Logger)
+	go utilevent.MustSubscribe(n.ctx, n.pubsubServer, "settlementHealthStatusHandler", settlement.EventQuerySettlementHealthStatus, n.onHealthStatus, n.Logger)
+	go utilevent.MustSubscribe(n.ctx, n.pubsubServer, "daHealthStatusHandler", da.EventQueryDAHealthStatus, n.onHealthStatus, n.Logger)
 }
 
 // Event handling callback function for health status events
-func (n *Node) healthStatusEventCallback(event pubsub.Message) {
+func (n *Node) onHealthStatus(event pubsub.Message) {
 	switch e := event.Data().(type) {
 	case *settlement.EventDataHealth:
 		_ = e // TODO:

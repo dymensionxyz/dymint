@@ -27,8 +27,8 @@ const (
 // Convenience objects
 
 var (
-	HealthStatus     = map[string][]string{EventTypeKey: {EventHealthStatus}}
-	NewBatchAccepted = map[string][]string{EventTypeKey: {EventNewBatchAccepted}}
+	HealthStatus     = map[string][]string{EventTypeKey: {EventHealthStatus}}     // TODO: rename with event somewhere
+	NewBatchAccepted = map[string][]string{EventTypeKey: {EventNewBatchAccepted}} // TODO: rename with event somewhere
 )
 
 type EventDataNewBatchAccepted struct {
@@ -38,10 +38,8 @@ type EventDataNewBatchAccepted struct {
 	StateIndex uint64
 }
 
-type EventDataNewSettlementBatchAccepted EventDataNewBatchAccepted
-
 type EventDataSequencersListUpdated struct {
-	// Sequencers is the list of sequencers
+	// Sequencers is the list of new sequencers
 	Sequencers []types.Sequencer
 }
 
@@ -50,7 +48,7 @@ type EventDataHealth struct {
 	Error error
 }
 
-// Define queries
+// Queries
 var (
 	EventQueryNewSettlementBatchAccepted = QueryForEvent(EventNewBatchAccepted)
 	EventQuerySettlementHealthStatus     = QueryForEvent(EventHealthStatus)
