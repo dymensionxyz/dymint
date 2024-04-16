@@ -21,6 +21,18 @@ func ValidateProposedTransition(state State, block *Block, commit *Commit, propo
 	return nil
 }
 
+func (c *Commit) ValidateWithHeader(proposer *Sequencer, header *Header) error {
+	abciHeaderPb := abciconv.ToABCIHeaderPB(header)
+	abciHeaderBytes, err := abciHeaderPb.Marshal()
+	if err != nil {
+		return err
+	}
+	if err = c.Validate(proposer, abciHeaderBytes); err != nil {
+		return err
+	}
+	return nil
+}
+
 // ValidateBasic performs basic validation of a block.
 func (b *Block) ValidateBasic() error {
 	err := b.Header.ValidateBasic()
@@ -95,24 +107,12 @@ func (c *Commit) ValidateBasic() error {
 }
 
 // Validate performs full validation of a commit.
-func (c *Commit) Validate(proposer *Sequencer, msg []byte) error {
+func (c *Commit) Validate(proposer *Sequencer, abciHeaderBytes []byte) error {
 	if err := c.ValidateBasic(); err != nil {
 		return err
 	}
-	if !proposer.PublicKey.VerifySignature(msg, c.Signatures[0]) {
+	if !proposer.PublicKey.VerifySignature(abciHeaderBytes, c.Signatures[0]) {
 		return ErrInvalidSignature
-	}
-	return nil
-}
-
-func (c *Commit) ValidateWithHeader(proposer *Sequencer, header *Header) error {
-	abciHeaderPb := abciconv.ToABCIHeaderPB(header)
-	abciHeaderBytes, err := abciHeaderPb.Marshal()
-	if err != nil {
-		return err
-	}
-	if err = c.Validate(proposer, abciHeaderBytes); err != nil {
-		return err
 	}
 	return nil
 }
