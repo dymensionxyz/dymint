@@ -212,10 +212,10 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			return da.ResultSubmitBatch{}
 		default:
 
-			c.logger.Info("Submitting DA batch")
 			// TODO(srene):  Split batch in multiple blobs if necessary if supported
 			height, commitment, err := c.submit(data)
 			if err != nil {
+				err = fmt.Errorf("submit batch: %w", err)
 				c.logger.Error("submit DA batch. Emitting health event and trying again", "error", err)
 				res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, err)
 				if err != nil {
@@ -232,9 +232,12 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 				Namespace:  c.config.NamespaceID.Bytes(),
 			}
 
+			c.logger.Info("submitted DA batch")
+
 			result := c.CheckBatchAvailability(daMetaData)
 			if result.Code != da.StatusSuccess {
-				c.logger.Error("Unable to confirm submitted blob availability. Retrying")
+				err = fmt.Errorf("submitted batch but did not get availability success: %w", err)
+				c.logger.Error("unable to confirm submitted blob availability, retrying")
 				res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, err)
 				if err != nil {
 					return res

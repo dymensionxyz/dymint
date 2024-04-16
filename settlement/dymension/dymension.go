@@ -230,7 +230,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 			err := d.submitBatch(msgUpdateState)
 			if err != nil {
 
-				err = fmt.Errorf("submit batch:%w", err)
+				err = fmt.Errorf("submit batch: %w", err)
 
 				utilevent.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{Error: err}, settlement.EventHealthStatusList)
 
@@ -262,7 +262,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 			return fmt.Errorf("subscription canceled: %w", err)
 		case <-subscription.Out():
 			utilevent.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{}, settlement.EventHealthStatusList)
-			d.logger.Debug("batch accepted by settlement layer. emitted healthy event",
+			d.logger.Debug("batch accepted by settlement layer, emitted healthy event",
 				"startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
 			return nil
 		case <-timer.C:
@@ -271,7 +271,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 			includedBatch, err := d.waitForBatchInclusion(batch.StartHeight)
 			if err != nil {
 
-				err = fmt.Errorf("%w:%w", settlement.ErrBatchNotAccepted, err)
+				err = fmt.Errorf("wait for batch inclusion: %w: %w", settlement.ErrBatchNotAccepted, err)
 
 				utilevent.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{Error: err}, settlement.EventHealthStatusList)
 
@@ -303,17 +303,19 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 func (d *HubClient) GetLatestBatch(rollappID string) (*settlement.ResultRetrieveBatch, error) {
 	var latestStateInfoIndexResp *rollapptypes.QueryGetLatestStateIndexResponse
 
-	err := d.RunWithRetry(func() error {
-		var err error
-		latestStateInfoIndexResp, err = d.rollappQueryClient.LatestStateIndex(d.ctx,
-			&rollapptypes.QueryGetLatestStateIndexRequest{RollappId: d.config.RollappID})
+	err := d.RunWithRetry(
+		func() error {
+			var err error
+			latestStateInfoIndexResp, err = d.rollappQueryClient.LatestStateIndex(d.ctx,
+				&rollapptypes.QueryGetLatestStateIndexRequest{RollappId: d.config.RollappID})
 
-		if status.Code(err) == codes.NotFound {
-			return retry.Unrecoverable(settlement.ErrBatchNotFound)
-		}
+			if status.Code(err) == codes.NotFound {
+				return retry.Unrecoverable(settlement.ErrBatchNotFound)
+			}
 
-		return err
-	})
+			return err
+		},
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -401,8 +403,7 @@ func (d *HubClient) submitBatch(msgUpdateState *rollapptypes.MsgUpdateState) err
 	err := d.RunWithRetry(func() error {
 		txResp, err := d.client.BroadcastTx(d.config.DymAccountName, msgUpdateState)
 		if err != nil || txResp.Code != 0 {
-			d.logger.Error("sending batch to settlement layer", "error", err)
-			return err
+			return fmt.Errorf("broadcast tx: %w", err)
 		}
 		return nil
 	})
@@ -551,17 +552,19 @@ func (d *HubClient) convertStateInfoToResultRetrieveBatch(stateInfo *rollapptype
 // TODO: bullet proof check as theoretically the tx can stay in the mempool longer then our retry attempts.
 func (d *HubClient) waitForBatchInclusion(batchStartHeight uint64) (*settlement.ResultRetrieveBatch, error) {
 	var res *settlement.ResultRetrieveBatch
-	err := d.RunWithRetry(func() error {
-		latestBatch, err := d.GetLatestBatch(d.config.RollappID)
-		if err != nil {
-			return err
-		}
-		if latestBatch.Batch.StartHeight != batchStartHeight {
-			return settlement.ErrBatchNotFound
-		}
-		res = latestBatch
-		return nil
-	})
+	err := d.RunWithRetry(
+		func() error {
+			latestBatch, err := d.GetLatestBatch(d.config.RollappID)
+			if err != nil {
+				return fmt.Errorf("get latest batch: %w", err)
+			}
+			if latestBatch.Batch.StartHeight != batchStartHeight {
+				return fmt.Errorf("latest batch start height not match expected start height: %w", settlement.ErrBatchNotFound)
+			}
+			res = latestBatch
+			return nil
+		},
+	)
 	return res, err
 }
 

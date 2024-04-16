@@ -303,17 +303,17 @@ func (n *Node) GetGenesisChunks() ([]string, error) {
 func (n *Node) OnStop() {
 	err := n.dalc.Stop()
 	if err != nil {
-		n.Logger.Error("while stopping data availability layer client", "error", err)
+		n.Logger.Error("stop data availability layer client", "error", err)
 	}
 
 	err = n.settlementlc.Stop()
 	if err != nil {
-		n.Logger.Error("while stopping settlement layer client", "error", err)
+		n.Logger.Error("stop settlement layer client", "error", err)
 	}
 
 	err = n.P2P.Close()
 	if err != nil {
-		n.Logger.Error("while stopping P2P client", "error", err)
+		n.Logger.Error("stop P2P client", "error", err)
 	}
 }
 
@@ -383,10 +383,10 @@ func (n *Node) onBaseLayerHealthUpdate(event pubsub.Message) {
 	switch e := event.Data().(type) {
 	case *settlement.EventDataHealth:
 		haveNewErr = e.Error != nil
-		n.baseLayerHealth.setSettlement(e.Error)
+		n.baseLayerHealth.setSettlement(fmt.Errorf("settlement layer: %w", e.Error))
 	case *da.EventDataHealth:
 		haveNewErr = e.Error != nil
-		n.baseLayerHealth.setDA(e.Error)
+		n.baseLayerHealth.setDA(fmt.Errorf("data availability layer: %w", e.Error))
 	}
 	newStatus := n.baseLayerHealth.get()
 	newStatusIsDifferentFromOldOne := (oldStatus == nil) != (newStatus == nil)
