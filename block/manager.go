@@ -165,7 +165,7 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 		go m.ProduceBlockLoop(ctx)
 		go m.SubmitLoop(ctx)
 	} else {
-		go m.RetriveLoop(ctx)
+		go m.RetrieveLoop(ctx)
 		go m.SyncTargetLoop(ctx)
 	}
 

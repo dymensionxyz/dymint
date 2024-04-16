@@ -13,7 +13,7 @@ func (m *Manager) SyncTargetLoop(ctx context.Context) {
 	m.logger.Info("Started sync target loop")
 	subscription, err := m.pubsub.Subscribe(ctx, "syncTargetLoop", settlement.EventQueryNewSettlementBatchAccepted)
 	if err != nil {
-		m.logger.Error("subscribe to state update events")
+		m.logger.Error("subscribe to state update events", "error", err)
 		panic(err)
 	}
 

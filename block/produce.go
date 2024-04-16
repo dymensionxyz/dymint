@@ -53,6 +53,9 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 				m.logger.Error("produce and gossip: context canceled", "error", err)
 				return
 			}
+			if errors.Is(err, types.ErrSkippedEmptyBlock) {
+				continue
+			}
 			if errors.Is(err, ErrRecoverable) {
 				m.logger.Info("produce and gossip: recoverable", "error", err)
 				continue
@@ -124,6 +127,8 @@ func (m *Manager) produceBlock(ctx context.Context, allowEmpty bool) (*types.Blo
 	// If there is use that instead of creating a new block
 	pendingBlock, err := m.store.LoadBlock(newHeight)
 	if err == nil {
+		// Using an existing block
+
 		block = pendingBlock
 		commit, err = m.store.LoadCommit(newHeight)
 		if err != nil {
@@ -131,6 +136,8 @@ func (m *Manager) produceBlock(ctx context.Context, allowEmpty bool) (*types.Blo
 		}
 		m.logger.Info("using pending block", "height", newHeight)
 	} else {
+		//
+
 		block = m.executor.CreateBlock(newHeight, lastCommit, lastHeaderHash, m.lastState)
 		if !allowEmpty && len(block.Data.Txs) == 0 {
 			return nil, nil, fmt.Errorf("%w: %w", types.ErrSkippedEmptyBlock, ErrRecoverable)
@@ -164,7 +171,6 @@ func (m *Manager) produceBlock(ctx context.Context, allowEmpty bool) (*types.Blo
 	}
 
 	if err := m.applyBlock(ctx, block, commit, blockMetaData{source: producedBlock}); err != nil {
-		// TODO: ask michael what to do about invalid height, can it happen in the happy path?
 		return nil, nil, fmt.Errorf("apply block: %w: %w", err, ErrNonRecoverable)
 	}
 
