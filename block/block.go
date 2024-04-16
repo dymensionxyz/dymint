@@ -20,7 +20,6 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 	// TODO: add switch case to have defined behavior for each case.
 	// validate block height
 	if block.Header.Height != m.store.NextHeight() {
-		m.logger.Error("Block not applied. wrong height", "block height", block.Header.Height, "expected height", m.store.NextHeight())
 		return types.ErrInvalidBlockHeight
 	}
 
