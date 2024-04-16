@@ -19,6 +19,10 @@ const (
 	EventDAHealthStatus = "DAHealthStatus"
 )
 
+// Convenience objects
+
+var HealthStatus = map[string][]string{EventTypeKey: {EventDAHealthStatus}}
+
 type EventDataHealth struct {
 	// Error is the error that was encountered in case of a health check failure, nil implies healthy
 	Error error

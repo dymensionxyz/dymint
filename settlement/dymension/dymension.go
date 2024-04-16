@@ -138,7 +138,7 @@ func WithBatchRetryDelay(batchRetryDelay time.Duration) Option {
 func newDymensionHubClient(config settlement.Config, pubsub *pubsub.Server, logger types.Logger, options ...Option) (*HubClient, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	eventMap := map[string]string{
-		fmt.Sprintf(eventStateUpdate, config.RollappID):          settlement.EventNewSettlementBatchAccepted,
+		fmt.Sprintf(eventStateUpdate, config.RollappID):          settlement.EventNewBatchAccepted,
 		fmt.Sprintf(eventSequencersListUpdate, config.RollappID): settlement.EventSequencersListUpdated,
 	}
 
@@ -232,7 +232,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 
 				err = fmt.Errorf("submit batch:%w", err)
 
-				utilevent.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{Error: err}, settlement.HealthEvent)
+				utilevent.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{Error: err}, settlement.HealthStatus)
 
 				d.logger.Error(
 					"submit batch to settlement layer, emitted unhealthy event",
@@ -261,7 +261,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 		case <-subscription.Cancelled():
 			return fmt.Errorf("subscription canceled: %w", err)
 		case <-subscription.Out():
-			utilevent.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{}, settlement.HealthEvent)
+			utilevent.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{}, settlement.HealthStatus)
 			d.logger.Info("batch accepted by settlement layer. emitted healthy event",
 				"startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
 			return nil
@@ -273,7 +273,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 
 				err = fmt.Errorf("%w:%w", settlement.ErrBatchNotAccepted, err)
 
-				utilevent.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{Error: err}, settlement.HealthEvent)
+				utilevent.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{Error: err}, settlement.HealthStatus)
 
 				d.logger.Error(
 					"batch not accepted by settlement layer. Emitted unhealthy event",
@@ -293,7 +293,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 			// all good
 			d.logger.Info("batch accepted by settlement layer", "startHeight", includedBatch.StartHeight, "endHeight", includedBatch.EndHeight)
 
-			utilevent.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{}, settlement.HealthEvent)
+			utilevent.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{}, settlement.HealthStatus)
 			return nil
 		}
 	}
@@ -496,7 +496,7 @@ func getCosmosClientOptions(config *settlement.Config) []cosmosclient.Option {
 
 func (d *HubClient) getEventData(eventType string, rawEventData ctypes.ResultEvent) (interface{}, error) {
 	switch eventType {
-	case settlement.EventNewSettlementBatchAccepted:
+	case settlement.EventNewBatchAccepted:
 		return d.convertToNewBatchEvent(rawEventData)
 	}
 	return nil, fmt.Errorf("event type %s not recognized", eventType)

@@ -134,7 +134,7 @@ func TestHealthStatusEventHandler(t *testing.T) {
 		// settlement layer is healthy, DA layer is healthy
 		{
 			name:                           "TestSettlementUnhealthyDAHealthy",
-			baseLayerHealthStatusEvent:     map[string][]string{settlement.EventTypeKey: {settlement.EventSettlementHealthStatus}},
+			baseLayerHealthStatusEvent:     map[string][]string{settlement.EventTypeKey: {settlement.EventHealthStatus}},
 			baseLayerHealthStatusEventData: &settlement.EventDataHealth{Healthy: false, Error: slUnealthyError},
 			expectedHealthStatus:           false,
 			expectHealthStatusEventEmitted: true,
@@ -152,7 +152,7 @@ func TestHealthStatusEventHandler(t *testing.T) {
 		// Now the settlement layer becomes healthy
 		{
 			name:                           "TestSettlementHealthyDAHealthy",
-			baseLayerHealthStatusEvent:     map[string][]string{settlement.EventTypeKey: {settlement.EventSettlementHealthStatus}},
+			baseLayerHealthStatusEvent:     map[string][]string{settlement.EventTypeKey: {settlement.EventHealthStatus}},
 			baseLayerHealthStatusEventData: &settlement.EventDataHealth{Healthy: true, Error: nil},
 			expectedHealthStatus:           false,
 			expectHealthStatusEventEmitted: false,

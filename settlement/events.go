@@ -8,22 +8,28 @@ import (
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
 )
 
-// Define the event type keys
+// Type keys
+
 const (
 	// EventTypeKey is a reserved composite key for event name.
 	EventTypeKey = "settlement.event"
 )
 
-// Define the event types
+// Types
+
 const (
-	// EventNewSettlementBatchAccepted should be emitted internally in order to communicate between the settlement layer and the hub client
-	EventNewSettlementBatchAccepted = "EventNewSettlementBatchAccepted"
-	EventSequencersListUpdated      = "SequencersListUpdated"
-	EventSettlementHealthStatus     = "SettlementHealthStatus"
+	// EventNewBatchAccepted should be emitted internally in order to communicate between the settlement layer and the hub client
+	EventNewBatchAccepted      = "EventNewBatchAccepted"
+	EventSequencersListUpdated = "SequencersListUpdated"
+	EventHealthStatus          = "SettlementHealthStatus"
 )
 
-// HealthEvent is a convenience object
-var HealthEvent = map[string][]string{EventTypeKey: {EventSettlementHealthStatus}}
+// Convenience objects
+
+var (
+	HealthStatus     = map[string][]string{EventTypeKey: {EventHealthStatus}}
+	NewBatchAccepted = map[string][]string{EventTypeKey: {EventNewBatchAccepted}}
+)
 
 type EventDataNewBatchAccepted struct {
 	// EndHeight is the height of the last accepted batch
@@ -46,8 +52,8 @@ type EventDataHealth struct {
 
 // Define queries
 var (
-	EventQueryNewSettlementBatchAccepted = QueryForEvent(EventNewSettlementBatchAccepted)
-	EventQuerySettlementHealthStatus     = QueryForEvent(EventSettlementHealthStatus)
+	EventQueryNewSettlementBatchAccepted = QueryForEvent(EventNewBatchAccepted)
+	EventQuerySettlementHealthStatus     = QueryForEvent(EventHealthStatus)
 )
 
 // QueryForEvent returns a query for the given event.

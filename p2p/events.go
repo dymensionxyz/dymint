@@ -18,7 +18,6 @@ const (
 	EventTypeKey = "p2p.event"
 )
 
-// Define the event types
 const (
 	EventNewGossipedBlock = "NewGossipedBlock"
 )
