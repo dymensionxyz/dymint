@@ -46,7 +46,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 			produceEmptyBlock = true
 		// Produce block
 		case <-ticker.C:
-			err := m.produceBlock(ctx, produceEmptyBlock)
+			err := m.produceAndGossipBlock(ctx, produceEmptyBlock)
 			if errors.Is(err, types.ErrSkippedEmptyBlock) {
 				continue
 			}
@@ -72,7 +72,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 	}
 }
 
-func (m *Manager) produceBlock(ctx context.Context, allowEmpty bool) error {
+func (m *Manager) produceAndGossipBlock(ctx context.Context, allowEmpty bool) error {
 	m.produceBlockMutex.Lock()
 	defer m.produceBlockMutex.Unlock()
 	var lastCommit *types.Commit
