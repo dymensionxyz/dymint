@@ -42,6 +42,9 @@ func (m *Manager) RetriveLoop(ctx context.Context) {
 // It fetches the batches from the settlement, gets the DA height and gets
 // the actual blocks from the DA.
 func (m *Manager) syncUntilTarget(ctx context.Context, syncTarget uint64) error {
+	m.blockExecutionMutex.Lock()
+	defer m.blockExecutionMutex.Unlock()
+
 	currentHeight := m.store.Height()
 	for currentHeight < syncTarget {
 		currStateIdx := atomic.LoadUint64(&m.lastState.SLStateIndex) + 1
@@ -62,7 +65,14 @@ func (m *Manager) syncUntilTarget(ctx context.Context, syncTarget uint64) error 
 		if err != nil {
 			return err
 		}
+
 	}
+	// check for cached blocks
+	err := m.attemptApplyCachedBlocks(ctx)
+	if err != nil {
+		m.logger.Debug("Error applying previous cached blocks", "err", err)
+	}
+
 	return nil
 }
 
@@ -97,10 +107,6 @@ func (m *Manager) processNextDABatch(ctx context.Context, daMetaData *da.DASubmi
 		}
 	}
 
-	err := m.attemptApplyCachedBlocks(ctx)
-	if err != nil {
-		m.logger.Debug("Error applying previous cached blocks", "err", err)
-	}
 	return nil
 }
 
@@ -121,4 +127,32 @@ func (m *Manager) fetchBatch(daMetaData *da.DASubmitMetaData) da.ResultRetrieveB
 	// TODO(srene) : for invalid transactions there is no specific error code since it will need to be validated somewhere else for fraud proving.
 	// NMT proofs (availRes.MetaData.Proofs) are included in the result batchRes, necessary to be included in the dispute
 	return batchRes
+}
+
+func (m *Manager) attemptApplyCachedBlocks(ctx context.Context) error {
+	for {
+		expectedHeight := m.store.NextHeight()
+
+		prevCachedBlock, blockExists := m.prevBlock[expectedHeight]
+		prevCachedCommit, commitExists := m.prevCommit[expectedHeight]
+
+		if !blockExists || !commitExists {
+			break
+		}
+
+		m.logger.Debug("Applying cached block", "height", expectedHeight)
+		err := m.applyBlock(ctx, prevCachedBlock, prevCachedCommit, blockMetaData{source: gossipedBlock})
+		if err != nil {
+			m.logger.Debug("apply previously cached block", "err", err)
+			return err
+		}
+	}
+
+	for k := range m.prevBlock {
+		if k <= m.store.Height() {
+			delete(m.prevBlock, k)
+			delete(m.prevCommit, k)
+		}
+	}
+	return nil
 }

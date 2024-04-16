@@ -61,9 +61,9 @@ type Manager struct {
 	shouldProduceBlocksCh chan bool
 	produceEmptyBlockCh   chan bool
 	lastSubmissionTime    atomic.Int64
-	batchInProcess        sync.Mutex
+	submitBatchMutex      sync.Mutex
 	produceBlockMutex     sync.Mutex
-	applyCachedBlockMutex sync.Mutex
+	blockExecutionMutex   sync.Mutex
 
 	// Logging
 	logger types.Logger
@@ -227,7 +227,11 @@ func (m *Manager) healthStatusEventCallback(event pubsub.Message) {
 	m.shouldProduceBlocksCh <- eventData.Healthy
 }
 
+// TODO: move to gossip.go
 func (m *Manager) applyBlockCallback(event pubsub.Message) {
+	m.blockExecutionMutex.Lock()
+	defer m.blockExecutionMutex.Unlock()
+
 	m.logger.Debug("Received new block event", "eventData", event.Data(), "cachedBlocks", len(m.prevBlock))
 	eventData := event.Data().(p2p.GossipedBlock)
 	block := eventData.Block

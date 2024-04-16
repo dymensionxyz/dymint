@@ -116,38 +116,6 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 	m.lastState = newState
 
 	m.store.SetHeight(block.Header.Height)
-
-	return nil
-}
-
-func (m *Manager) attemptApplyCachedBlocks(ctx context.Context) error {
-	m.applyCachedBlockMutex.Lock()
-	defer m.applyCachedBlockMutex.Unlock()
-
-	for {
-		expectedHeight := m.store.NextHeight()
-
-		prevCachedBlock, blockExists := m.prevBlock[expectedHeight]
-		prevCachedCommit, commitExists := m.prevCommit[expectedHeight]
-
-		if !blockExists || !commitExists {
-			break
-		}
-
-		m.logger.Debug("Applying cached block", "height", expectedHeight)
-		err := m.applyBlock(ctx, prevCachedBlock, prevCachedCommit, blockMetaData{source: gossipedBlock})
-		if err != nil {
-			m.logger.Debug("apply previously cached block", "err", err)
-			return err
-		}
-	}
-
-	for k := range m.prevBlock {
-		if k <= m.store.Height() {
-			delete(m.prevBlock, k)
-			delete(m.prevCommit, k)
-		}
-	}
 	return nil
 }
 
