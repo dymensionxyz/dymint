@@ -133,7 +133,7 @@ func TestHealthStatusEventHandler(t *testing.T) {
 		// settlement layer is healthy, DA layer is healthy
 		{
 			name:                           "TestSettlementUnhealthyDAHealthy",
-			baseLayerHealthStatusEvent:     map[string][]string{settlement.EventTypeKey: {settlement.EventHealthStatus}},
+			baseLayerHealthStatusEvent:     settlement.EventHealthStatusList,
 			baseLayerHealthStatusEventData: &settlement.EventDataHealth{Error: slError},
 			expectHealthStatusEventEmitted: true,
 			expectedError:                  slError,
@@ -141,7 +141,7 @@ func TestHealthStatusEventHandler(t *testing.T) {
 		// Now da also becomes unhealthy
 		{
 			name:                           "TestDAUnhealthySettlementUnhealthy",
-			baseLayerHealthStatusEvent:     map[string][]string{da.EventTypeKey: {da.EventHealthStatus}},
+			baseLayerHealthStatusEvent:     da.EventHealthStatusList,
 			baseLayerHealthStatusEventData: &da.EventDataHealth{Error: daError},
 			expectHealthStatusEventEmitted: true,
 			expectedError:                  daError,
@@ -149,7 +149,7 @@ func TestHealthStatusEventHandler(t *testing.T) {
 		// Now the settlement layer becomes healthy
 		{
 			name:                           "TestSettlementHealthyDAHealthy",
-			baseLayerHealthStatusEvent:     map[string][]string{settlement.EventTypeKey: {settlement.EventHealthStatus}},
+			baseLayerHealthStatusEvent:     settlement.EventHealthStatusList,
 			baseLayerHealthStatusEventData: &settlement.EventDataHealth{},
 			expectHealthStatusEventEmitted: false,
 			expectedError:                  nil,
@@ -157,7 +157,7 @@ func TestHealthStatusEventHandler(t *testing.T) {
 		// Now the da layer becomes healthy, so we expect the health status to be healthy and the event to be emitted
 		{
 			name:                           "TestDAHealthySettlementHealthy",
-			baseLayerHealthStatusEvent:     map[string][]string{da.EventTypeKey: {da.EventHealthStatus}},
+			baseLayerHealthStatusEvent:     da.EventHealthStatusList,
 			baseLayerHealthStatusEventData: &da.EventDataHealth{},
 			expectHealthStatusEventEmitted: true,
 			expectedError:                  nil,

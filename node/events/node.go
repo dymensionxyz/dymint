@@ -18,7 +18,7 @@ const (
 
 // Convenience
 
-var HealthStatusEvent = map[string][]string{NodeTypeKey: {HealthStatus}}
+var HealthStatusList = map[string][]string{NodeTypeKey: {HealthStatus}}
 
 type DataHealthStatus struct {
 	// Error is the error that was encountered in case of a health check failure. Nil implies healthy.
