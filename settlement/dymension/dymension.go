@@ -276,7 +276,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 				utilevent.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{Error: err}, settlement.HealthStatus)
 
 				d.logger.Error(
-					"batch not accepted by settlement layer. Emitted unhealthy event",
+					"batch not accepted by settlement layer, emitted unhealthy event",
 					"startHeight",
 					batch.StartHeight,
 					"endHeight",

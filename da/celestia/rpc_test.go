@@ -96,7 +96,7 @@ func TestSubmitBatch(t *testing.T) {
 			sumbitPFDRun:        func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) },
 			getProofDRun:        func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) },
 			includedRun:         func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) },
-			expectedHealthEvent: &da.EventDataHealth{Error: errors.New("problem")},
+			expectedHealthEvent: &da.EventDataHealth{Error: errors.New("timeout")},
 		},
 	}
 	for _, tc := range cases {

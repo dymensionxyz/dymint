@@ -195,7 +195,7 @@ func TestPostBatch(t *testing.T) {
 				case healthEvent := <-HealthSubscription.Out():
 					t.Logf("got health event: %v", healthEvent)
 					healthStatusEvent := healthEvent.Data().(*settlement.EventDataHealth)
-					assert.Equal(t, c.expectedError, healthStatusEvent.Error)
+					assert.ErrorIs(t, healthStatusEvent.Error, c.expectedError)
 					atomic.AddInt64(&eventsReceivedCount, 1)
 				case <-time.After(10 * time.Second):
 					t.Error("Didn't receive health event")

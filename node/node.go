@@ -110,7 +110,7 @@ type Node struct {
 	BlockIndexer   indexer.BlockIndexer
 	IndexerService *txindex.IndexerService
 
-	baseLayerHealth *baseLayerHealth
+	baseLayerHealth baseLayerHealth
 
 	// keep context here only because of API compatibility
 	// - it's used in `OnStart` (defined in service.Service interface)
