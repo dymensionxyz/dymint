@@ -25,8 +25,8 @@ const (
 // Convenience objects
 
 var (
-	HealthStatus     = map[string][]string{EventTypeKey: {EventHealthStatus}}     // TODO: rename with event somewhere
-	NewBatchAccepted = map[string][]string{EventTypeKey: {EventNewBatchAccepted}} // TODO: rename with event somewhere
+	EventHealthStatusList     = map[string][]string{EventTypeKey: {EventHealthStatus}}
+	EventNewBatchAcceptedList = map[string][]string{EventTypeKey: {EventNewBatchAccepted}}
 )
 
 // Data

@@ -11,12 +11,12 @@ const (
 // Types
 
 const (
-	EventDAHealthStatus = "DAHealthStatus"
+	EventHealthStatus = "DAHealthStatus"
 )
 
 // Convenience objects
 
-var HealthStatus = map[string][]string{EventTypeKey: {EventDAHealthStatus}} // TODO: rename
+var EventHealthStatusList = map[string][]string{EventTypeKey: {EventHealthStatus}}
 
 // Data
 
@@ -27,4 +27,4 @@ type EventDataHealth struct {
 
 // Queries
 
-var EventQueryDAHealthStatus = utilevent.QueryFor(EventTypeKey, EventDAHealthStatus)
+var EventQueryDAHealthStatus = utilevent.QueryFor(EventTypeKey, EventHealthStatus)
