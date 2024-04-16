@@ -49,6 +49,10 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 		// Produce block
 		case <-ticker.C:
 			err := m.produceAndGossipBlock(ctx, produceEmptyBlock)
+			if errors.Is(err, context.Canceled) {
+				m.logger.Error("produce and gossip: context canceled", "error", err)
+				return
+			}
 			if errors.Is(err, ErrRecoverable) {
 				m.logger.Info("produce and gossip: recoverable", "error", err)
 				continue

@@ -225,7 +225,6 @@ func (m *Manager) StartEventListener(ctx context.Context, isAggregator bool) {
 func (m *Manager) onNodeHealthStatus(event pubsub.Message) {
 	eventData := event.Data().(*events.DataHealthStatus)
 	m.logger.Info("received health status event", "eventData", eventData)
-	// TODO: do something with the info
 	m.shouldProduceBlocksCh <- eventData.Error == nil
 }
 
