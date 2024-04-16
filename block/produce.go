@@ -161,6 +161,8 @@ func (m *Manager) produceBlock(ctx context.Context, allowEmpty bool) (*types.Blo
 	}
 
 	if err := m.applyBlock(ctx, block, commit, blockMetaData{source: producedBlock}); err != nil {
+		if errors.Is(err, types.ErrInvalidBlockHeight) {
+		}
 		return nil, nil, fmt.Errorf("apply block: %w", err) // TODO: recovery
 	}
 

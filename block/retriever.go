@@ -92,14 +92,14 @@ func (m *Manager) processNextDABatch(ctx context.Context, daMetaData *da.DASubmi
 			}
 			err := m.applyBlock(ctx, block, batch.Commits[i], blockMetaData{source: daBlock, daHeight: daMetaData.Height})
 			if err != nil {
-				return err
+				return fmt.Errorf("apply block: height: %d: %w", block.Header.Height, err)
 			}
 		}
 	}
 
 	err := m.attemptApplyCachedBlocks(ctx)
 	if err != nil {
-		m.logger.Debug("Error applying previous cached blocks", "err", err)
+		m.logger.Error("applying previous cached blocks", "err", err)
 	}
 	return nil
 }

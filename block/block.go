@@ -2,8 +2,10 @@ package block
 
 import (
 	"context"
+	"fmt"
 
 	"cosmossdk.io/errors"
+
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/types"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
@@ -28,14 +30,14 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 	// Check if the app's last block height is the same as the currently produced block height
 	isBlockAlreadyApplied, err := m.isHeightAlreadyApplied(block.Header.Height)
 	if err != nil {
-		return err
+		return fmt.Errorf("check if block is already applied: %w", err)
 	}
 	// In case the following true, it means we crashed after the commit and before updating the store height.
 	// In that case we'll want to align the store with the app state and continue to the next block.
 	if isBlockAlreadyApplied {
 		err := m.UpdateStateFromApp()
 		if err != nil {
-			return err
+			return fmt.Errorf("update state from app: %w", err)
 		}
 		m.logger.Debug("Aligned with app state required. Skipping to next block", "height", block.Header.Height)
 		return nil
@@ -43,19 +45,17 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 	// Start applying the block assuming no inconsistency was found.
 	_, err = m.store.SaveBlock(block, commit, nil)
 	if err != nil {
-		m.logger.Error("save block", "error", err)
-		return err
+		return fmt.Errorf("save block: %w", err)
 	}
 
 	responses, err := m.executeBlock(ctx, block, commit)
 	if err != nil {
-		m.logger.Error("execute block", "error", err)
-		return err
+		return fmt.Errorf("execute block: %w", err)
 	}
 
 	newState, err := m.executor.UpdateStateFromResponses(responses, m.lastState, block)
 	if err != nil {
-		return err
+		return fmt.Errorf("update state from responses: %w", err)
 	}
 
 	batch := m.store.NewBatch()
@@ -63,32 +63,30 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 	batch, err = m.store.SaveBlockResponses(block.Header.Height, responses, batch)
 	if err != nil {
 		batch.Discard()
-		return err
+		return fmt.Errorf("save block responses: %w", err)
 	}
 
 	m.lastState = newState
 	batch, err = m.store.UpdateState(m.lastState, batch)
 	if err != nil {
 		batch.Discard()
-		return err
+		return fmt.Errorf("update state: %w", err)
 	}
 	batch, err = m.store.SaveValidators(block.Header.Height, m.lastState.Validators, batch)
 	if err != nil {
 		batch.Discard()
-		return err
+		return fmt.Errorf("save validators: %w", err)
 	}
 
 	err = batch.Commit()
 	if err != nil {
-		m.logger.Error("persist batch to disk", "error", err)
-		return err
+		return fmt.Errorf("commit batch to disk: %w", err)
 	}
 
 	// Commit block to app
 	retainHeight, err := m.executor.Commit(ctx, &newState, block, responses)
 	if err != nil {
-		m.logger.Error("commit to the block", "error", err)
-		return err
+		return fmt.Errorf("commit block: %w", err)
 	}
 
 	// Prune old heights, if requested by ABCI app.
@@ -109,8 +107,7 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 
 	_, err = m.store.UpdateState(newState, nil)
 	if err != nil {
-		m.logger.Error("update state", "error", err)
-		return err
+		return fmt.Errorf("final update state: %w", err)
 	}
 	m.lastState = newState
 
@@ -136,8 +133,7 @@ func (m *Manager) attemptApplyCachedBlocks(ctx context.Context) error {
 		m.logger.Debug("Applying cached block", "height", expectedHeight)
 		err := m.applyBlock(ctx, prevCachedBlock, prevCachedCommit, blockMetaData{source: gossipedBlock})
 		if err != nil {
-			m.logger.Debug("apply previously cached block", "err", err)
-			return err
+			return fmt.Errorf("apply block: expected height: %d: %w", expectedHeight, err)
 		}
 	}
 
