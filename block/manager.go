@@ -93,7 +93,7 @@ func NewManager(
 		return nil, err
 	}
 
-	exec, err := NewBlockExecutor(proposerAddress, conf.NamespaceID, genesis.ChainID, mempool, proxyApp, eventBus, logger)
+	exec, err := NewExecutor(proposerAddress, conf.NamespaceID, genesis.ChainID, mempool, proxyApp, eventBus, logger)
 	if err != nil {
 		return nil, fmt.Errorf("create block executor: %w", err)
 	}
