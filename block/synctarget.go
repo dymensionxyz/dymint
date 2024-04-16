@@ -22,7 +22,7 @@ func (m *Manager) SyncTargetLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case event := <-subscription.Out():
-			eventData := event.Data().(*settlement.EventDataNewSettlementBatchAccepted)
+			eventData := event.Data().(*settlement.EventDataNewBatchAccepted)
 			if eventData.EndHeight <= m.store.Height() {
 				m.logger.Error("syncTargetLoop: event is old, skipping")
 				continue

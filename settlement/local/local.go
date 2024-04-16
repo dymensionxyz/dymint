@@ -155,9 +155,8 @@ func (c *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 	settlementBatch := c.convertBatchtoSettlementBatch(batch, daResult)
 	c.saveBatch(settlementBatch)
 	go func() {
-		// sleep for 10 miliseconds to mimic a delay in batch acceptance
-		time.Sleep(10 * time.Millisecond)
-		err := c.pubsub.PublishWithEvents(context.Background(), &settlement.EventDataNewSettlementBatchAccepted{EndHeight: settlementBatch.EndHeight}, settlement.NewBatchAccepted)
+		time.Sleep(10 * time.Millisecond) // mimic a delay in batch acceptance
+		err := c.pubsub.PublishWithEvents(context.Background(), &settlement.EventDataNewBatchAccepted{EndHeight: settlementBatch.EndHeight}, settlement.NewBatchAccepted)
 		if err != nil {
 			panic(err)
 		}

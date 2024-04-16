@@ -17,7 +17,7 @@ const (
 )
 
 type DataHealthStatus struct {
-	// Error is the error that was encountered in case of a health check failure. Nil implies both
+	// Error is the error that was encountered in case of a health check failure. Nil implies healthy.
 	Error error
 }
 
