@@ -388,9 +388,9 @@ func (n *Node) onBaseLayerHealthUpdate(event pubsub.Message) {
 	newStatus := n.baseLayerHealth.get()
 	if (oldStatus == nil) != (newStatus == nil) {
 		evt := &events.DataHealthStatus{Error: newStatus}
-		err := n.pubsubServer.PublishWithEvents(n.ctx, evt, map[string][]string{events.NodeTypeKey: {events.HealthStatus}})
-		if err != nil {
-			panic(err)
+		utilevent.MustPublish(n.ctx, n.pubsubServer, evt, map[string][]string{events.NodeTypeKey: {events.HealthStatus}})
+		if newStatus != nil {
+			n.Logger.Error("node is unhealthy: base layer has problem", "error", newStatus)
 		}
 	}
 }
