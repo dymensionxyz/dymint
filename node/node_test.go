@@ -178,7 +178,7 @@ func TestHealthStatusEventHandler(t *testing.T) {
 						t.Error("didn't expect health status event but got one")
 					}
 					healthStatusEvent := event.Data().(*events.DataHealthStatus)
-					assert.Equal(c.expectedError, healthStatusEvent.Error)
+					assert.ErrorIs(healthStatusEvent.Error, c.expectedError)
 					done <- true
 					break
 				case <-time.After(1 * time.Second):

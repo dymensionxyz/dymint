@@ -378,15 +378,20 @@ func (n *Node) startEventListener() {
 }
 
 func (n *Node) onBaseLayerHealthUpdate(event pubsub.Message) {
+	haveNewErr := false
 	oldStatus := n.baseLayerHealth.get()
 	switch e := event.Data().(type) {
 	case *settlement.EventDataHealth:
+		haveNewErr = e.Error != nil
 		n.baseLayerHealth.setSettlement(e.Error)
 	case *da.EventDataHealth:
+		haveNewErr = e.Error != nil
 		n.baseLayerHealth.setDA(e.Error)
 	}
 	newStatus := n.baseLayerHealth.get()
-	if (oldStatus == nil) != (newStatus == nil) {
+	newStatusIsDifferentFromOldOne := (oldStatus == nil) != (newStatus == nil)
+	shouldPublish := newStatusIsDifferentFromOldOne || haveNewErr
+	if shouldPublish {
 		evt := &events.DataHealthStatus{Error: newStatus}
 		utilevent.MustPublish(n.ctx, n.pubsubServer, evt, map[string][]string{events.NodeTypeKey: {events.HealthStatus}})
 		if newStatus != nil {
