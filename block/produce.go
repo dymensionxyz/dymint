@@ -48,7 +48,6 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 			m.logger.Debug(fmt.Sprintf("no transactions, producing empty block: elapsed: %.2f", m.conf.EmptyBlocksMaxTime.Seconds()))
 		// Produce block
 		case <-ticker.C:
-			resetEmptyBlocksTimer()
 			err := m.produceAndGossipBlock(ctx, produceEmptyBlock)
 			if errors.Is(err, ErrRecoverable) {
 				m.logger.Info("produce and gossip: recoverable", "error", err)
@@ -62,10 +61,10 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 				m.logger.Error("produce and gossip: uncategorized", "error", err)
 				continue
 			}
-
+			resetEmptyBlocksTimer()
 		case shouldProduceBlocks := <-m.shouldProduceBlocksCh:
 			for !shouldProduceBlocks {
-				m.logger.Info("block production paused - awaiting continuation signal")
+				m.logger.Info("block production paused - awaiting positive continuation signal")
 				shouldProduceBlocks = <-m.shouldProduceBlocksCh
 			}
 			m.logger.Info("resumed block resumed")
