@@ -93,18 +93,18 @@ func (s *Server) OnStop() {
 	ctx, cancel := context.WithTimeout(s.ctx, 5*time.Second)
 	defer cancel()
 	if err := s.server.Shutdown(ctx); err != nil {
-		s.Logger.Error("while shuting down RPC server", "error", err)
+		s.Logger.Error("while shutting down RPC server", "error", err)
 	}
 }
 
 // EventListener registers events to callbacks.
 func (s *Server) startEventListener() {
-	go utilevent.MustSubscribe(s.ctx, s.PubSubServer(), "RPCNodeHealthStatusHandler", events.EventQueryHealthStatus, s.onHealthStatus, s.Logger)
+	go utilevent.MustSubscribe(s.ctx, s.PubSubServer(), "RPCNodeHealthStatusHandler", events.QueryHealthStatus, s.onHealthStatus, s.Logger)
 }
 
 // onHealthStatus is a callback function that handles health status events.
 func (s *Server) onHealthStatus(event pubsub.Message) {
-	eventData := event.Data().(*events.EventDataHealthStatus)
+	eventData := event.Data().(*events.DataHealthStatus)
 	if eventData.Error != nil {
 		s.Logger.Error("node is unhealthy: got error health check from sublayer", "error", eventData.Error)
 	}

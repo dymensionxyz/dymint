@@ -54,8 +54,8 @@ func TestNodeHealthRPCPropogation(t *testing.T) {
 			t.Run(tc.name, func(t *testing.T) {
 				// Emit an event to make the node unhealthy
 				pubsubServer := server.PubSubServer()
-				err := pubsubServer.PublishWithEvents(context.Background(), &events.EventDataHealthStatus{Healthy: tc.isNodeHealthy},
-					map[string][]string{events.EventNodeTypeKey: {events.EventHealthStatus}})
+				err := pubsubServer.PublishWithEvents(context.Background(), &events.DataHealthStatus{Healthy: tc.isNodeHealthy},
+					map[string][]string{events.NodeTypeKey: {events.HealthStatus}})
 				require.NoError(t, err)
 				time.Sleep(1 * time.Second)
 				// Make the request

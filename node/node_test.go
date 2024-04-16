@@ -174,7 +174,7 @@ func TestHealthStatusEventHandler(t *testing.T) {
 			done := make(chan bool, 1)
 			ready := make(chan bool, 1)
 			go func() {
-				HealthSubscription, err := node.pubsubServer.Subscribe(node.ctx, c.name, events.EventQueryHealthStatus)
+				HealthSubscription, err := node.pubsubServer.Subscribe(node.ctx, c.name, events.QueryHealthStatus)
 				ready <- true
 				assert.NoError(err)
 				select {
@@ -182,7 +182,7 @@ func TestHealthStatusEventHandler(t *testing.T) {
 					if !c.expectHealthStatusEventEmitted {
 						t.Error("didn't expect health status event but got one")
 					}
-					healthStatusEvent := event.Data().(*events.EventDataHealthStatus)
+					healthStatusEvent := event.Data().(*events.DataHealthStatus)
 					assert.Equal(c.expectedHealthStatus, healthStatusEvent.Healthy)
 					assert.Equal(c.expectedError, healthStatusEvent.Error)
 					done <- true

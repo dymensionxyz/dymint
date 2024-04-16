@@ -7,28 +7,28 @@ import (
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
 )
 
-// The event type keys
+// Type Keys
 const (
-	// EventNodeTypeKey is a reserved composite key for event name.
-	EventNodeTypeKey = "node.event"
+	// NodeTypeKey is a reserved composite key for event name.
+	NodeTypeKey = "node.event"
 )
 
-//  The event types
+//  Types
 
 const (
-	EventHealthStatus = "HealthStatus"
+	HealthStatus = "HealthStatus"
 )
 
-type EventDataHealthStatus struct {
+type DataHealthStatus struct {
 	// Error is the error that was encountered in case of a health check failure. Nil implies both
 	Error error
 }
 
 //  Queries
 
-var EventQueryHealthStatus = QueryForEvent(EventHealthStatus)
+var QueryHealthStatus = QueryFor(HealthStatus)
 
-// QueryForEvent returns a query for the given event.
-func QueryForEvent(eventType string) tmpubsub.Query {
-	return tmquery.MustParse(fmt.Sprintf("%s='%s'", EventNodeTypeKey, eventType))
+// QueryFor returns a query for the given event.
+func QueryFor(eventType string) tmpubsub.Query {
+	return tmquery.MustParse(fmt.Sprintf("%s='%s'", NodeTypeKey, eventType))
 }
