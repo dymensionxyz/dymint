@@ -4,9 +4,13 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
+
+	"github.com/dymensionxyz/dymint/node/events"
 
 	"github.com/dymensionxyz/dymint/utilevent"
 
@@ -51,6 +55,32 @@ const (
 	genesisChunkSize = 16 * 1024 * 1024 // 16 MiB
 )
 
+type baseLayerHealth struct {
+	settlement error
+	da         error
+	mu         sync.RWMutex
+}
+
+func (bl *baseLayerHealth) setSettlement(err error) {
+	bl.mu.Lock()
+	defer bl.mu.Unlock()
+
+	bl.settlement = err
+}
+
+func (bl *baseLayerHealth) setDA(err error) {
+	bl.mu.Lock()
+	defer bl.mu.Unlock()
+
+	bl.da = err
+}
+
+func (bl *baseLayerHealth) get() error {
+	bl.mu.RLock()
+	defer bl.mu.RUnlock()
+	return errors.Join(bl.settlement, bl.da)
+}
+
 // Node represents a client node in Dymint network.
 // It connects all the components and orchestrates their work.
 type Node struct {
@@ -79,6 +109,8 @@ type Node struct {
 	TxIndexer      txindex.TxIndexer
 	BlockIndexer   indexer.BlockIndexer
 	IndexerService *txindex.IndexerService
+
+	baseLayerHealth *baseLayerHealth
 
 	// keep context here only because of API compatibility
 	// - it's used in `OnStart` (defined in service.Service interface)
@@ -341,19 +373,25 @@ func createAndStartIndexerService(
 
 // All events listeners should be registered here
 func (n *Node) startEventListener() {
-	go utilevent.MustSubscribe(n.ctx, n.pubsubServer, "settlementHealthStatusHandler", settlement.EventQuerySettlementHealthStatus, n.onHealthStatus, n.Logger)
-	go utilevent.MustSubscribe(n.ctx, n.pubsubServer, "daHealthStatusHandler", da.EventQueryDAHealthStatus, n.onHealthStatus, n.Logger)
+	go utilevent.MustSubscribe(n.ctx, n.pubsubServer, "settlementHealthStatusHandler", settlement.EventQuerySettlementHealthStatus, n.onBaseLayerHealthUpdate, n.Logger)
+	go utilevent.MustSubscribe(n.ctx, n.pubsubServer, "daHealthStatusHandler", da.EventQueryDAHealthStatus, n.onBaseLayerHealthUpdate, n.Logger)
 }
 
-func (n *Node) onHealthStatus(event pubsub.Message) {
-	// TODO: this used to aggregate them and publish a new event
-	// TODO: which was listened to by the rpc server and the manager
-	//
+func (n *Node) onBaseLayerHealthUpdate(event pubsub.Message) {
+	oldStatus := n.baseLayerHealth.get()
 	switch e := event.Data().(type) {
 	case *settlement.EventDataHealth:
-		_ = e // TODO:
+		n.baseLayerHealth.setSettlement(e.Error)
 	case *da.EventDataHealth:
-		// TODO:
+		n.baseLayerHealth.setDA(e.Error)
+	}
+	newStatus := n.baseLayerHealth.get()
+	if (oldStatus == nil) != (newStatus == nil) {
+		evt := &events.DataHealthStatus{Error: newStatus}
+		err := n.pubsubServer.PublishWithEvents(n.ctx, evt, map[string][]string{events.NodeTypeKey: {events.HealthStatus}})
+		if err != nil {
+			panic(err)
+		}
 	}
 }
 
