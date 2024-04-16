@@ -253,19 +253,25 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 			}
 		default:
 			var daBlockHeight uint64
-			err := retry.Do(func() error {
-				var err error
-				daBlockHeight, err = c.broadcastTx(dataBlob)
-				if err != nil {
-					c.logger.Error("broadcasting batch", "error", err)
-					if errors.Is(err, da.ErrTxBroadcastConfigError) {
-						err = retry.Unrecoverable(err)
+			err := retry.Do(
+				func() error {
+					var err error
+					daBlockHeight, err = c.broadcastTx(dataBlob)
+					if err != nil {
+						c.logger.Error("broadcasting batch", "error", err)
+						if errors.Is(err, da.ErrTxBroadcastConfigError) {
+							err = retry.Unrecoverable(err)
+						}
+						return err
 					}
-					return err
-				}
-				return nil
-			}, retry.Context(c.ctx), retry.LastErrorOnly(true), retry.Delay(c.batchRetryDelay),
-				retry.DelayType(retry.FixedDelay), retry.Attempts(c.batchRetryAttempts))
+					return nil
+				},
+				retry.Context(c.ctx),
+				retry.LastErrorOnly(true),
+				retry.Delay(c.batchRetryDelay),
+				retry.DelayType(retry.FixedDelay),
+				retry.Attempts(c.batchRetryAttempts),
+			)
 			if err != nil {
 				if !retry.IsRecoverable(err) {
 					return da.ResultSubmitBatch{
@@ -276,8 +282,8 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 						},
 					}
 				} else {
-					c.logger.Error("broadcasting batch. Emitting DA unhealthy event and Trying again.", "error", err)
-					res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, false, err)
+					c.logger.Error("broadcasting batch, emitting DA unhealthy event and trying again", "error", err)
+					res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, err)
 					if err != nil {
 						return res
 					}
@@ -286,7 +292,7 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 			}
 
 			c.logger.Debug("Successfully submitted DA batch")
-			res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, true, nil)
+			res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, nil)
 			if err != nil {
 				return res
 			}
