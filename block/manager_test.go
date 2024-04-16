@@ -245,25 +245,25 @@ func TestBlockProductionNodeHealth(t *testing.T) {
 		{
 			name:                  "HealthyEventBlocksProduced",
 			healthStatusEvent:     map[string][]string{events.NodeTypeKey: {events.HealthStatus}},
-			healthStatusEventData: &events.DataHealthStatus{Healthy: true, Error: nil},
+			healthStatusEventData: &events.DataHealthStatus{Error: nil},
 			shouldProduceBlocks:   true,
 		},
 		{
 			name:                  "UnhealthyEventBlocksNotProduced",
 			healthStatusEvent:     map[string][]string{events.NodeTypeKey: {events.HealthStatus}},
-			healthStatusEventData: &events.DataHealthStatus{Healthy: false, Error: errors.New("Unhealthy")},
+			healthStatusEventData: &events.DataHealthStatus{Error: errors.New("unhealthy")},
 			shouldProduceBlocks:   false,
 		},
 		{
 			name:                  "UnhealthyEventBlocksStillNotProduced",
 			healthStatusEvent:     map[string][]string{events.NodeTypeKey: {events.HealthStatus}},
-			healthStatusEventData: &events.DataHealthStatus{Healthy: false, Error: errors.New("Unhealthy")},
+			healthStatusEventData: &events.DataHealthStatus{Error: errors.New("unhealthy")},
 			shouldProduceBlocks:   false,
 		},
 		{
 			name:                  "HealthyEventBlocksProduced",
 			healthStatusEvent:     map[string][]string{events.NodeTypeKey: {events.HealthStatus}},
-			healthStatusEventData: &events.DataHealthStatus{Healthy: true, Error: nil},
+			healthStatusEventData: &events.DataHealthStatus{Error: nil},
 			shouldProduceBlocks:   true,
 		},
 	}
