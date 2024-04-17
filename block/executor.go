@@ -186,10 +186,12 @@ func (e *Executor) commit(ctx context.Context, state *types.State, block *types.
 
 	maxBytes := state.ConsensusParams.Block.MaxBytes
 	maxGas := state.ConsensusParams.Block.MaxGas
-	err = e.mempool.Update(int64(block.Header.Height), fromDymintTxs(block.Data.Txs), deliverTxs, mempool.PreCheckMaxBytes(maxBytes), mempool.PostCheckMaxGas(maxGas))
+	err = e.mempool.Update(int64(block.Header.Height), fromDymintTxs(block.Data.Txs), deliverTxs)
 	if err != nil {
 		return nil, 0, err
 	}
+	e.mempool.SetPreCheckFn(mempool.PreCheckMaxBytes(maxBytes))
+	e.mempool.SetPostCheckFn(mempool.PostCheckMaxGas(maxGas))
 
 	return resp.Data, resp.RetainHeight, err
 }
