@@ -233,10 +233,9 @@ func (m *Manager) applyBlockCallback(event pubsub.Message) {
 	block := eventData.Block
 	commit := eventData.Commit
 
-	// TODO: need to validate here
-
 	if err := m.validateBlock(&block, &commit); err != nil {
-		// TODO: something! kick the peer/sequencer ...
+		m.logger.Debug("apply block callback, block not valid: dropping it", "err", err)
+		/// TODO: can we take an action here such as dropping the peer / reducing their reputation?
 		return
 	}
 
