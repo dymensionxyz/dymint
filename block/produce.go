@@ -28,7 +28,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 	resetEmptyBlocksTimer := func() {}
 	// Setup ticker for empty blocks if enabled
 	if 0 < m.conf.EmptyBlocksMaxTime {
-		t := time.NewTicker(m.conf.EmptyBlocksMaxTime)
+		t := time.NewTimer(m.conf.EmptyBlocksMaxTime)
 		emptyBlocksTimer = t.C
 		resetEmptyBlocksTimer = func() {
 			produceEmptyBlock = false
