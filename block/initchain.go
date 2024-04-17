@@ -24,6 +24,8 @@ func (m *Manager) RunInitChain(ctx context.Context) error {
 
 	// update the state with only the consensus pubkey
 	m.executor.UpdateStateAfterInitChain(&m.lastState, res, gensisValSet)
+	m.executor.UpdateMempoolAfterInitChain(&m.lastState)
+
 	if _, err := m.store.UpdateState(m.lastState, nil); err != nil {
 		return err
 	}

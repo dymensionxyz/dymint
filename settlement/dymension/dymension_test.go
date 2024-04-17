@@ -159,7 +159,6 @@ func TestPostBatch(t *testing.T) {
 			wg.Add(eventsCount)
 			// Reset the mock functions
 			testutil.UnsetMockFn(cosmosClientMock.On("BroadcastTx"))
-			testutil.UnsetMockFn(rollappQueryClientMock.On("LatestStateIndex"))
 			testutil.UnsetMockFn(rollappQueryClientMock.On("StateInfo"))
 			// Set the mock logic based on the test case
 			if !c.isBatchSubmitSuccess {
@@ -169,8 +168,6 @@ func TestPostBatch(t *testing.T) {
 			}
 			if c.shouldMockBatchIncluded {
 				if c.isBatchIncludedSuccess {
-					rollappQueryClientMock.On("LatestStateIndex", mock.Anything, mock.Anything).Return(
-						&rollapptypes.QueryGetLatestStateIndexResponse{StateIndex: rollapptypes.StateInfoIndex{Index: 1}}, nil)
 					daMetaData := &da.DASubmitMetaData{
 						Height: 1,
 						Client: da.Mock,
@@ -181,7 +178,7 @@ func TestPostBatch(t *testing.T) {
 						}},
 						nil)
 				} else {
-					rollappQueryClientMock.On("LatestStateIndex", mock.Anything, mock.Anything).Return(nil, fmt.Errorf("error"))
+					rollappQueryClientMock.On("StateInfo", mock.Anything, mock.Anything).Return(nil, fmt.Errorf("error"))
 				}
 			}
 			hubClient, err := newDymensionHubClient(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)

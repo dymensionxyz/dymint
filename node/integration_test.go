@@ -8,10 +8,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/dymensionxyz/dymint/mempool"
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/settlement"
-	"github.com/stretchr/testify/assert"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -55,6 +56,8 @@ func TestAggregatorMode(t *testing.T) {
 		GossipedBlocksCacheSize: 50,
 	}
 
+	rollappID := "rollapp_1234-1"
+
 	nodeConfig := config.NodeConfig{
 		RootDir:            "",
 		DBPath:             "",
@@ -65,9 +68,18 @@ func TestAggregatorMode(t *testing.T) {
 		DALayer:            "mock",
 		DAConfig:           "",
 		SettlementLayer:    "mock",
-		SettlementConfig:   settlement.Config{ProposerPubKey: proposerKey},
+		SettlementConfig:   settlement.Config{ProposerPubKey: proposerKey, RollappID: rollappID},
 	}
-	node, err := NewNode(context.Background(), nodeConfig, key, signingKey, proxy.NewLocalClientCreator(app), &types.GenesisDoc{ChainID: "test"}, log.TestingLogger(), mempool.NopMetrics())
+	node, err := NewNode(
+		context.Background(),
+		nodeConfig,
+		key,
+		signingKey,
+		proxy.NewLocalClientCreator(app),
+		&types.GenesisDoc{ChainID: rollappID},
+		log.TestingLogger(),
+		mempool.NopMetrics(),
+	)
 	require.NoError(err)
 	require.NotNil(node)
 

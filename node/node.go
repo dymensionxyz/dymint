@@ -123,6 +123,9 @@ type Node struct {
 
 // NewNode creates new Dymint node.
 func NewNode(ctx context.Context, conf config.NodeConfig, p2pKey crypto.PrivKey, signingKey crypto.PrivKey, clientCreator proxy.ClientCreator, genesis *tmtypes.GenesisDoc, logger log.Logger, metrics *mempool.Metrics) (*Node, error) {
+	if conf.SettlementConfig.RollappID != genesis.ChainID {
+		return nil, fmt.Errorf("rollapp ID in settlement config doesn't match chain ID in genesis")
+	}
 	proxyApp := proxy.NewAppConns(clientCreator)
 	proxyApp.SetLogger(logger.With("module", "proxy"))
 	if err := proxyApp.Start(); err != nil {

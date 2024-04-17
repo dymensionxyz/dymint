@@ -7,13 +7,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/mempool"
 	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/settlement"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -57,6 +58,7 @@ func TestMempoolDirectly(t *testing.T) {
 	key, _, _ := crypto.GenerateEd25519Key(rand.Reader)
 	signingKey, _, _ := crypto.GenerateEd25519Key(rand.Reader)
 	anotherKey, _, _ := crypto.GenerateEd25519Key(rand.Reader)
+	rollappID := "rollapp_1234-1"
 
 	nodeConfig := config.NodeConfig{
 		RootDir:    "",
@@ -71,12 +73,23 @@ func TestMempoolDirectly(t *testing.T) {
 			BlockBatchMaxSizeBytes:  1000,
 			GossipedBlocksCacheSize: 50,
 		},
-		DALayer:          "mock",
-		DAConfig:         "",
-		SettlementLayer:  "mock",
-		SettlementConfig: settlement.Config{},
+		DALayer:         "mock",
+		DAConfig:        "",
+		SettlementLayer: "mock",
+		SettlementConfig: settlement.Config{
+			RollappID: rollappID,
+		},
 	}
-	node, err := NewNode(context.Background(), nodeConfig, key, signingKey, proxy.NewLocalClientCreator(app), &types.GenesisDoc{ChainID: "test"}, log.TestingLogger(), mempool.NopMetrics())
+	node, err := NewNode(
+		context.Background(),
+		nodeConfig,
+		key,
+		signingKey,
+		proxy.NewLocalClientCreator(app),
+		&types.GenesisDoc{ChainID: rollappID},
+		log.TestingLogger(),
+		mempool.NopMetrics(),
+	)
 	require.NoError(err)
 	require.NotNil(node)
 
