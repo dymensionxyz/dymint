@@ -191,10 +191,7 @@ func NewNode(
 		return nil, fmt.Errorf("querying info: %w", err)
 	}
 
-	height := genesis.InitialHeight
-	if info.LastBlockHeight > height {
-		height = info.LastBlockHeight
-	}
+	height := max(genesis.InitialHeight, info.LastBlockHeight)
 
 	mp := mempoolv1.NewTxMempool(logger, llcfg.DefaultMempoolConfig(), proxyApp.Mempool(), height)
 	mpIDs := nodemempool.NewMempoolIDs()
