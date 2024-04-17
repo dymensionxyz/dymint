@@ -139,12 +139,13 @@ func (m *Manager) attemptApplyCachedBlocks(ctx context.Context) error {
 			break
 		}
 
-		m.logger.Debug("Applying cached block", "height", expectedHeight)
+		// Note: cached <block,commit> pairs have passed basic validation, so no need to validate again
 		err := m.applyBlock(ctx, prevCachedBlock, prevCachedCommit, blockMetaData{source: gossipedBlock})
 		if err != nil {
-			m.logger.Debug("apply previously cached block", "err", err)
+			m.logger.Debug("applying cached block", "err", err)
 			return err
 		}
+		m.logger.Debug("applied cached block", "height", expectedHeight)
 	}
 
 	for k := range m.prevBlock {
