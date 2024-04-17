@@ -23,7 +23,7 @@ import (
 	"github.com/dymensionxyz/dymint/block"
 	"github.com/dymensionxyz/dymint/config"
 	"github.com/dymensionxyz/dymint/da"
-	daregsitry "github.com/dymensionxyz/dymint/da/registry"
+	daregistry "github.com/dymensionxyz/dymint/da/registry"
 	"github.com/dymensionxyz/dymint/mempool"
 	mempoolv1 "github.com/dymensionxyz/dymint/mempool/v1"
 	"github.com/dymensionxyz/dymint/node/events"
@@ -117,7 +117,16 @@ type Node struct {
 }
 
 // NewNode creates new Dymint node.
-func NewNode(ctx context.Context, conf config.NodeConfig, p2pKey crypto.PrivKey, signingKey crypto.PrivKey, clientCreator proxy.ClientCreator, genesis *tmtypes.GenesisDoc, logger log.Logger, metrics *mempool.Metrics) (*Node, error) {
+func NewNode(
+	ctx context.Context,
+	conf config.NodeConfig,
+	p2pKey crypto.PrivKey,
+	signingKey crypto.PrivKey,
+	clientCreator proxy.ClientCreator,
+	genesis *tmtypes.GenesisDoc,
+	logger log.Logger,
+	metrics *mempool.Metrics,
+) (*Node, error) {
 	if conf.SettlementConfig.RollappID != genesis.ChainID {
 		return nil, fmt.Errorf("rollapp ID in settlement config doesn't match chain ID in genesis")
 	}
@@ -150,26 +159,26 @@ func NewNode(ctx context.Context, conf config.NodeConfig, p2pKey crypto.PrivKey,
 
 	s := store.New(mainKV)
 
-	dalc := daregsitry.GetClient(conf.DALayer)
+	dalc := daregistry.GetClient(conf.DALayer)
 	if dalc == nil {
-		return nil, fmt.Errorf("couldn't get data availability client named '%s'", conf.DALayer)
+		return nil, fmt.Errorf("get data availability client named '%s'", conf.DALayer)
 	}
 	err := dalc.Init([]byte(conf.DAConfig), pubsubServer, dalcKV, logger.With("module", string(dalc.GetClientType())))
 	if err != nil {
-		return nil, fmt.Errorf("data availability layer client initialization error: %w", err)
+		return nil, fmt.Errorf("data availability layer client initialization  %w", err)
 	}
 
 	// Init the settlement layer client
 	settlementlc := slregistry.GetClient(slregistry.Client(conf.SettlementLayer))
 	if settlementlc == nil {
-		return nil, fmt.Errorf("couldn't get settlement client named '%s'", conf.SettlementLayer)
+		return nil, fmt.Errorf("get settlement client: named: %s", conf.SettlementLayer)
 	}
 	if conf.SettlementLayer == "mock" {
 		conf.SettlementConfig.KeyringHomeDir = conf.RootDir
 	}
 	err = settlementlc.Init(conf.SettlementConfig, pubsubServer, logger.With("module", "settlement_client"))
 	if err != nil {
-		return nil, fmt.Errorf("settlement layer client initialization error: %w", err)
+		return nil, fmt.Errorf("settlement layer client initialization: %w", err)
 	}
 
 	indexerService, txIndexer, blockIndexer, err := createAndStartIndexerService(conf, indexerKV, eventBus, logger)
@@ -177,7 +186,14 @@ func NewNode(ctx context.Context, conf config.NodeConfig, p2pKey crypto.PrivKey,
 		return nil, err
 	}
 
-	mp := mempoolv1.NewTxMempool(logger, llcfg.DefaultMempoolConfig(), proxyApp.Mempool(), 0)
+	info, err := proxyApp.Query().InfoSync(proxy.RequestInfo)
+	if err != nil {
+		return nil, fmt.Errorf("querying info: %w", err)
+	}
+
+	height := max(genesis.InitialHeight, info.LastBlockHeight)
+
+	mp := mempoolv1.NewTxMempool(logger, llcfg.DefaultMempoolConfig(), proxyApp.Mempool(), height)
 	mpIDs := nodemempool.NewMempoolIDs()
 
 	// Set p2p client and it's validators
@@ -192,7 +208,20 @@ func NewNode(ctx context.Context, conf config.NodeConfig, p2pKey crypto.PrivKey,
 	p2pClient.SetTxValidator(p2pValidator.TxValidator(mp, mpIDs))
 	p2pClient.SetBlockValidator(p2pValidator.BlockValidator())
 
-	blockManager, err := block.NewManager(signingKey, conf.BlockManagerConfig, genesis, s, mp, proxyApp, dalc, settlementlc, eventBus, pubsubServer, p2pClient, logger.With("module", "BlockManager"))
+	blockManager, err := block.NewManager(
+		signingKey,
+		conf.BlockManagerConfig,
+		genesis,
+		s,
+		mp,
+		proxyApp,
+		dalc,
+		settlementlc,
+		eventBus,
+		pubsubServer,
+		p2pClient,
+		logger.With("module", "BlockManager"),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("BlockManager initialization error: %w", err)
 	}

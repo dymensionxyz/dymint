@@ -28,8 +28,8 @@ var (
 type DefaultStore struct {
 	db KVStore
 
-	height     uint64
-	baseHeight uint64
+	height     uint64 // the highest block saved
+	baseHeight uint64 // the lowest block saved
 }
 
 var _ Store = &DefaultStore{}
@@ -47,11 +47,14 @@ func (s *DefaultStore) NewBatch() Batch {
 }
 
 // SetHeight sets the height saved in the Store if it is higher than the existing height
-func (s *DefaultStore) SetHeight(height uint64) {
+// returns OK if the value was updated successfully or did not need to be updated
+func (s *DefaultStore) SetHeight(height uint64) bool {
+	ok := true
 	storeHeight := s.Height()
 	if height > storeHeight {
-		_ = atomic.CompareAndSwapUint64(&s.height, storeHeight, height)
+		ok = atomic.CompareAndSwapUint64(&s.height, storeHeight, height)
 	}
+	return ok
 }
 
 // Height returns height of the highest block saved in the Store.
@@ -64,12 +67,15 @@ func (s *DefaultStore) NextHeight() uint64 {
 	return s.Height() + 1
 }
 
-// SetBase sets the height saved in the Store of the earliest block
-func (s *DefaultStore) SetBase(height uint64) {
+// SetBase sets the base height if it is higher than the existing base height
+// returns OK if the value was updated successfully or did not need to be updated
+func (s *DefaultStore) SetBase(height uint64) bool {
+	ok := true
 	baseHeight := s.Base()
 	if height > baseHeight {
-		_ = atomic.CompareAndSwapUint64(&s.baseHeight, baseHeight, height)
+		ok = atomic.CompareAndSwapUint64(&s.baseHeight, baseHeight, height)
 	}
+	return ok
 }
 
 // Base returns height of the earliest block saved in the Store.
