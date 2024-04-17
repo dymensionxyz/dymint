@@ -8,6 +8,7 @@ import (
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmtypes "github.com/tendermint/tendermint/types"
 
+	"github.com/dymensionxyz/dymint/mempool"
 	"github.com/dymensionxyz/dymint/types"
 )
 
@@ -101,6 +102,11 @@ func (e *Executor) UpdateStateAfterInitChain(s *types.State, res *abci.ResponseI
 	s.Validators = tmtypes.NewValidatorSet(validators).CopyIncrementProposerPriority(1)
 	s.NextValidators = s.Validators.Copy()
 	s.LastValidators = s.Validators.Copy()
+}
+
+func (e *Executor) UpdateMempoolAfterInitChain(s *types.State) {
+	e.mempool.SetPreCheckFn(mempool.PreCheckMaxBytes(s.ConsensusParams.Block.MaxBytes))
+	e.mempool.SetPostCheckFn(mempool.PostCheckMaxGas(s.ConsensusParams.Block.MaxGas))
 }
 
 // UpdateStateFromResponses updates state based on the ABCIResponses.
