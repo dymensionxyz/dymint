@@ -63,19 +63,19 @@ type Manager struct {
 	lastSubmissionTime    atomic.Int64
 
 	/*
-		Used to guard against triggering a new batch submission when the old one is still going on (taking a while)
+		Guard against triggering a new batch submission when the old one is still going on (taking a while)
 	*/
 	submitBatchMutex sync.Mutex
 
 	/*
-		Used to protect against producing two blocks at once if the first one is taking a while
+		Protect against producing two blocks at once if the first one is taking a while
 		Also, used to protect against the block production that occurs when batch submission thread
 		creates its empty block.
 	*/
 	produceBlockMutex sync.Mutex
 
 	/*
-		Used to protect against processing two blocks at once when there are two routines handling incoming gossiped blocks,
+		Protect against processing two blocks at once when there are two routines handling incoming gossiped blocks,
 		and incoming DA blocks, respectively.
 	*/
 	executeBlockMutex sync.Mutex
