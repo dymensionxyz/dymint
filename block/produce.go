@@ -76,17 +76,19 @@ func (m *Manager) produceBlock(ctx context.Context, allowEmpty bool) error {
 	m.produceBlockMutex.Lock()
 	defer m.produceBlockMutex.Unlock()
 	var (
-	    lastCommit *types.Commit
-	    lastHeaderHash [32]byte
-	    newHeight uint64
-	    err error
+		lastCommit     *types.Commit
+		lastHeaderHash [32]byte
+		newHeight      uint64
+		err            error
 	)
 
 	if m.lastState.IsGenesis() {
 		newHeight = uint64(m.lastState.InitialHeight)
 		lastCommit = &types.Commit{}
 		m.lastState.BaseHeight = newHeight
-		m.store.SetBase(newHeight)
+		if ok := m.store.SetBase(newHeight); !ok {
+			return fmt.Errorf("store set base: %d", newHeight)
+		}
 	} else {
 		height := m.store.Height()
 		newHeight = height + 1
