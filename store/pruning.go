@@ -27,7 +27,9 @@ func (s *DefaultStore) PruneBlocks(heightInt int64) (uint64, error) {
 		if err != nil {
 			return fmt.Errorf("prune up to height %v: %w", base, err)
 		}
-		s.SetBase(base)
+		if ok := s.SetBase(base); !ok {
+			return fmt.Errorf("set base height: %v", base)
+		}
 		return nil
 	}
 

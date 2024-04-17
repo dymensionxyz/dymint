@@ -99,20 +99,18 @@ type MockStore struct {
 
 // SetHeight sets the height of the mock store
 // Don't set the height to mock failure in setting the height
-func (m *MockStore) SetHeight(height uint64) {
-	// Fail the first time
+func (m *MockStore) SetHeight(height uint64) bool {
 	if m.ShouldFailSetHeight {
-		return
+		return false
 	}
 	m.height = height
+	return true
 }
 
-// Height returns the height of the mock store
 func (m *MockStore) Height() uint64 {
 	return m.height
 }
 
-// Height returns the height of the mock store
 func (m *MockStore) NextHeight() uint64 {
 	return m.height + 1
 }
