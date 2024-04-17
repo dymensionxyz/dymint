@@ -173,7 +173,7 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 
 // syncBlockManager enforces the node to be synced on initial run.
 func (m *Manager) syncBlockManager(ctx context.Context) error {
-	resultRetrieveBatch, err := m.getLatestBatchFromSL(ctx)
+	resultRetrieveBatch, err := m.getLatestBatchFromSL()
 	// Set the syncTarget according to the result
 	if err != nil {
 		// TODO: separate between fresh rollapp and non-registered rollapp
@@ -254,7 +254,7 @@ func (m *Manager) applyBlockCallback(event pubsub.Message) {
 }
 
 // getLatestBatchFromSL gets the latest batch from the SL
-func (m *Manager) getLatestBatchFromSL(ctx context.Context) (*settlement.ResultRetrieveBatch, error) {
+func (m *Manager) getLatestBatchFromSL() (*settlement.ResultRetrieveBatch, error) {
 	return m.settlementClient.RetrieveBatch()
 }
 
