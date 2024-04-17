@@ -92,6 +92,7 @@ func TestGenesisChunked(t *testing.T) {
 
 	mockApp := &mocks.Application{}
 	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
+	mockApp.On("Info", mock.Anything).Return(expectedInfo)
 	privKey, _, _ := crypto.GenerateEd25519Key(crand.Reader)
 	signingKey, _, _ := crypto.GenerateEd25519Key(crand.Reader)
 
@@ -443,6 +444,7 @@ func TestTx(t *testing.T) {
 
 	mockApp := &mocks.Application{}
 	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
+	mockApp.On("Info", mock.Anything).Return(expectedInfo)
 	key, _, _ := crypto.GenerateEd25519Key(crand.Reader)
 	signingKey, proposerPubKey, err := crypto.GenerateEd25519Key(crand.Reader)
 	require.NoError(err)
@@ -847,6 +849,7 @@ func getRPC(t *testing.T) (*mocks.Application, *Client) {
 	t.Helper()
 	require := require.New(t)
 	app := &mocks.Application{}
+	app.On("Info", mock.Anything).Return(expectedInfo)
 	key, _, _ := crypto.GenerateEd25519Key(crand.Reader)
 	signingKey, pubkey, err := crypto.GenerateEd25519Key(crand.Reader)
 	pubkeyBytes, _ := pubkey.Raw()
@@ -943,6 +946,8 @@ func TestMempool2Nodes(t *testing.T) {
 	app.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 	app.On("CheckTx", abci.RequestCheckTx{Tx: []byte("bad")}).Return(abci.ResponseCheckTx{Code: 1})
 	app.On("CheckTx", abci.RequestCheckTx{Tx: []byte("good")}).Return(abci.ResponseCheckTx{Code: 0})
+	app.On("Info", mock.Anything).Return(expectedInfo)
+
 	key1, _, _ := crypto.GenerateEd25519Key(crand.Reader)
 	key2, _, _ := crypto.GenerateEd25519Key(crand.Reader)
 	signingKey1, proposerPubKey1, _ := crypto.GenerateEd25519Key(crand.Reader)
