@@ -63,7 +63,7 @@ type Manager struct {
 	lastSubmissionTime    atomic.Int64
 	submitBatchMutex      sync.Mutex
 	produceBlockMutex     sync.Mutex
-	blockExecutionMutex   sync.Mutex
+	executeBlockMutex     sync.Mutex
 
 	// Logging
 	logger types.Logger
@@ -229,8 +229,8 @@ func (m *Manager) healthStatusEventCallback(event pubsub.Message) {
 
 // TODO: move to gossip.go
 func (m *Manager) applyBlockCallback(event pubsub.Message) {
-	m.blockExecutionMutex.Lock()
-	defer m.blockExecutionMutex.Unlock()
+	m.executeBlockMutex.Lock()
+	defer m.executeBlockMutex.Unlock()
 
 	m.logger.Debug("Received new block event", "eventData", event.Data(), "cachedBlocks", len(m.prevBlock))
 	eventData := event.Data().(p2p.GossipedBlock)

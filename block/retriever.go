@@ -42,8 +42,8 @@ func (m *Manager) RetriveLoop(ctx context.Context) {
 // It fetches the batches from the settlement, gets the DA height and gets
 // the actual blocks from the DA.
 func (m *Manager) syncUntilTarget(ctx context.Context, syncTarget uint64) error {
-	m.blockExecutionMutex.Lock()
-	defer m.blockExecutionMutex.Unlock()
+	m.executeBlockMutex.Lock()
+	defer m.executeBlockMutex.Unlock()
 
 	currentHeight := m.store.Height()
 	for currentHeight < syncTarget {
