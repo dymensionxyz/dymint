@@ -2,8 +2,9 @@ package block
 
 import (
 	"context"
-	"errors"
 	"fmt"
+
+	errorsmod "cosmossdk.io/errors"
 
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/types"
@@ -161,7 +162,7 @@ func (m *Manager) attemptApplyCachedBlocks(ctx context.Context) error {
 func (m *Manager) isHeightAlreadyApplied(blockHeight uint64) (bool, error) {
 	proxyAppInfo, err := m.executor.GetAppInfo()
 	if err != nil {
-		return false, errors.Wrap(err, "get app info")
+		return false, errorsmod.Wrap(err, "get app info")
 	}
 
 	isBlockAlreadyApplied := uint64(proxyAppInfo.LastBlockHeight) == blockHeight
@@ -175,7 +176,7 @@ func (m *Manager) isHeightAlreadyApplied(blockHeight uint64) (bool, error) {
 func (m *Manager) UpdateStateFromApp() error {
 	proxyAppInfo, err := m.executor.GetAppInfo()
 	if err != nil {
-		return errors.Wrap(err, "get app info")
+		return errorsmod.Wrap(err, "get app info")
 	}
 
 	appHeight := uint64(proxyAppInfo.LastBlockHeight)
@@ -187,13 +188,13 @@ func (m *Manager) UpdateStateFromApp() error {
 
 	resp, err := m.store.LoadBlockResponses(appHeight)
 	if err != nil {
-		return errors.Wrap(err, "load block responses")
+		return errorsmod.Wrap(err, "load block responses")
 	}
 	copy(m.lastState.LastResultsHash[:], tmtypes.NewResults(resp.DeliverTxs).Hash())
 
 	_, err = m.store.UpdateState(m.lastState, nil)
 	if err != nil {
-		return errors.Wrap(err, "update state")
+		return errorsmod.Wrap(err, "update state")
 	}
 	m.store.SetHeight(appHeight)
 	return nil
