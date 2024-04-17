@@ -30,9 +30,6 @@ func (m *Manager) RetriveLoop(ctx context.Context) {
 			// If we are synced then signal all goroutines waiting on isSyncedCond.
 			if m.store.Height() >= m.syncTarget.Load() {
 				m.logger.Info("Synced at height", "height", m.store.Height())
-				m.isSyncedCond.L.Lock()
-				m.isSyncedCond.Signal()
-				m.isSyncedCond.L.Unlock()
 			}
 		}
 	}

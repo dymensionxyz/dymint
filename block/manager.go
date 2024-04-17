@@ -54,8 +54,7 @@ type Manager struct {
 	// Synchronization
 	syncTargetDiode diodes.Diode
 
-	syncTarget   atomic.Uint64
-	isSyncedCond sync.Cond
+	syncTarget atomic.Uint64
 
 	// Block production
 	shouldProduceBlocksCh chan bool
