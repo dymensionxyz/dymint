@@ -2,35 +2,26 @@ package middleware
 
 import (
 	"bufio"
-	"context"
 	"fmt"
 	"net"
 	"net/http"
 	"time"
 )
 
-func NewTimeoutHandler(handler http.Handler, timeout time.Duration) http.Handler {
-	return &timeoutHandler{
-		handler: handler,
-		timeout: timeout,
+func NewHijackableTimeoutHandler(handler http.Handler, timeout time.Duration) *hijackableTimeoutHandler {
+	return &hijackableTimeoutHandler{
+		Handler:     http.TimeoutHandler(handler, timeout, "Server Timeout"),
+		nextHandler: handler,
 	}
 }
 
-type timeoutHandler struct {
-	handler http.Handler
-	timeout time.Duration
+type hijackableTimeoutHandler struct {
+	http.Handler
+	nextHandler http.Handler
 }
 
-func (h *timeoutHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel := context.WithTimeout(r.Context(), h.timeout)
-	defer cancel()
-
-	r = r.WithContext(ctx)
-	h.handler.ServeHTTP(w, r)
-}
-
-func (h *timeoutHandler) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	hijacker, ok := h.handler.(http.Hijacker)
+func (h *hijackableTimeoutHandler) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	hijacker, ok := h.nextHandler.(http.Hijacker)
 	if !ok {
 		return nil, nil, fmt.Errorf("the handler does not support Hijacker interface")
 	}

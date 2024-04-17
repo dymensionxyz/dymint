@@ -185,7 +185,7 @@ func (s *Server) startRPC() error {
 	middlewareClient := middleware.NewClient(*reg, s.Logger.With("module", "rpc/middleware"))
 	handler = middlewareClient.Handle(handler)
 	// Set a global timeout
-	handlerWithTimeout := middleware.NewTimeoutHandler(handler, s.timeout)
+	handlerWithTimeout := middleware.NewHijackableTimeoutHandler(handler, s.timeout)
 
 	// Start HTTP server
 	go func() {
