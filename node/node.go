@@ -161,24 +161,24 @@ func NewNode(
 
 	dalc := daregistry.GetClient(conf.DALayer)
 	if dalc == nil {
-		return nil, fmt.Errorf("couldn't get data availability client named '%s'", conf.DALayer)
+		return nil, fmt.Errorf("get data availability client named '%s'", conf.DALayer)
 	}
 	err := dalc.Init([]byte(conf.DAConfig), pubsubServer, dalcKV, logger.With("module", string(dalc.GetClientType())))
 	if err != nil {
-		return nil, fmt.Errorf("data availability layer client initialization error: %w", err)
+		return nil, fmt.Errorf("data availability layer client initialization  %w", err)
 	}
 
 	// Init the settlement layer client
 	settlementlc := slregistry.GetClient(slregistry.Client(conf.SettlementLayer))
 	if settlementlc == nil {
-		return nil, fmt.Errorf("couldn't get settlement client named '%s'", conf.SettlementLayer)
+		return nil, fmt.Errorf("get settlement client: named: %s", conf.SettlementLayer)
 	}
 	if conf.SettlementLayer == "mock" {
 		conf.SettlementConfig.KeyringHomeDir = conf.RootDir
 	}
 	err = settlementlc.Init(conf.SettlementConfig, pubsubServer, logger.With("module", "settlement_client"))
 	if err != nil {
-		return nil, fmt.Errorf("settlement layer client initialization error: %w", err)
+		return nil, fmt.Errorf("settlement layer client initialization: %w", err)
 	}
 
 	indexerService, txIndexer, blockIndexer, err := createAndStartIndexerService(conf, indexerKV, eventBus, logger)
