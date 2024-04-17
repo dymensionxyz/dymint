@@ -61,49 +61,65 @@ func (m *Manager) handleSubmissionTrigger(ctx context.Context) {
 }
 
 func (m *Manager) submitNextBatch() (uint64, error) {
-	// Get the batch start and end height
-	startHeight := m.syncTarget.Load() + 1
-	endHeight := uint64(m.store.Height())
+	var (
+		err             error
+		actualEndHeight uint64
 
-	// Create the batch
-	nextBatch, err := m.createNextDABatch(startHeight, endHeight)
-	if err != nil {
-		m.logger.Error("create next batch", "startHeight", startHeight, "endHeight", endHeight, "error", err)
-		return 0, err
-	}
+		// Get the batch start and end height
+		startHeight = m.syncTarget.Load() + 1
+		endHeight   = uint64(m.store.Height())
+	)
 
-	if err := m.validateBatch(nextBatch); err != nil {
-		return 0, err
-	}
-	actualEndHeight := nextBatch.EndHeight
+	//check if pending batch exists.
+	if m.pendingBatch != nil {
+		m.logger.Info("Pending batch exists, submitting it", "startHeight", m.pendingBatch.batch.StartHeight, "endHeight", m.pendingBatch.batch.EndHeight)
+	} else {
+		// Create the batch
+		nextBatch, err := m.createNextDABatch(startHeight, endHeight)
+		if err != nil {
+			m.logger.Error("create next batch", "startHeight", startHeight, "endHeight", endHeight, "error", err)
+			return 0, err
+		}
 
-	isLastBlockEmpty, err := m.isBlockEmpty(actualEndHeight)
-	if err != nil {
-		m.logger.Error("validate last block in batch is empty", "startHeight", startHeight, "endHeight", actualEndHeight, "error", err)
-		return 0, err
-	}
-	// Verify the last block in the batch is an empty block and that no ibc messages has accidentially passed through.
-	// This block may not be empty if another block has passed it in line. If that's the case our empty block request will
-	// be sent to the next batch.
-	if !isLastBlockEmpty {
-		m.logger.Info("Last block in batch is not an empty block. Requesting for an empty block creation", "endHeight", actualEndHeight)
-		m.produceEmptyBlockCh <- true
-	}
+		if err := m.validateBatch(nextBatch); err != nil {
+			return 0, err
+		}
 
-	// Submit batch to the DA
-	m.logger.Info("Submitting next batch", "startHeight", startHeight, "endHeight", actualEndHeight, "size", nextBatch.ToProto().Size())
-	resultSubmitToDA := m.dalc.SubmitBatch(nextBatch)
-	if resultSubmitToDA.Code != da.StatusSuccess {
-		err = fmt.Errorf("submit next batch to DA Layer: %s", resultSubmitToDA.Message)
-		return 0, err
+		actualEndHeight = nextBatch.EndHeight
+
+		isLastBlockEmpty, err := m.isBlockEmpty(actualEndHeight)
+		if err != nil {
+			m.logger.Error("validate last block in batch is empty", "startHeight", startHeight, "endHeight", actualEndHeight, "error", err)
+			return 0, err
+		}
+		// Verify the last block in the batch is an empty block and that no ibc messages has accidentially passed through.
+		// This block may not be empty if another block has passed it in line. If that's the case our empty block request will
+		// be sent to the next batch.
+		if !isLastBlockEmpty {
+			m.logger.Info("Last block in batch is not an empty block. Requesting for an empty block creation", "endHeight", actualEndHeight)
+			m.produceEmptyBlockCh <- true
+		}
+
+		// Submit batch to the DA
+		m.logger.Info("Submitting next batch", "startHeight", startHeight, "endHeight", actualEndHeight, "size", nextBatch.ToProto().Size())
+		resultSubmitToDA := m.dalc.SubmitBatch(nextBatch)
+		if resultSubmitToDA.Code != da.StatusSuccess {
+			err = fmt.Errorf("submit next batch to DA Layer: %s", resultSubmitToDA.Message)
+			return 0, err
+		}
+		m.pendingBatch.daResult = &resultSubmitToDA
+		m.pendingBatch.batch = nextBatch
 	}
 
 	// Submit batch to SL
-	err = m.settlementClient.SubmitBatch(nextBatch, m.dalc.GetClientType(), &resultSubmitToDA)
+	err = m.settlementClient.SubmitBatch(m.pendingBatch.batch, m.dalc.GetClientType(), m.pendingBatch.daResult)
 	if err != nil {
 		m.logger.Error("submit batch to SL", "startHeight", startHeight, "endHeight", actualEndHeight, "error", err)
 		return 0, err
 	}
+
+	// Clear pending batch
+	m.pendingBatch = nil
 
 	return actualEndHeight, nil
 }
