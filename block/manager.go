@@ -68,7 +68,7 @@ type Manager struct {
 	// Logging
 	logger types.Logger
 
-	// Previous data
+	// Cached blocks and commits for applying at future heights. Invariant: the block and commit are .Valid() (validated sigs etc)
 	prevBlock  map[uint64]*types.Block
 	prevCommit map[uint64]*types.Commit
 }

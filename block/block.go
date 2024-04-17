@@ -10,9 +10,8 @@ import (
 	tmtypes "github.com/tendermint/tendermint/types"
 )
 
-var errInvalidBlock = errors.New("block not passed validation")
-
 // applyBlock applies the block to the store and the abci app.
+// Contract: block and commit must be validated before calling this function!
 // steps: save block -> execute block with app -> update state -> commit block to app -> update store height and state hash.
 // As the entire process can't be atomic we need to make sure the following condition apply before
 // - block height is the expected block height on the store (height + 1).
@@ -28,9 +27,8 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 
 	m.logger.Debug("Applying block", "height", block.Header.Height, "source", blockMetaData.source)
 
-	err := m.validateBlock(block, commit) // TODO: is this redundant? Have we done it before in enough places?
-	if err != nil {
-		return fmt.Errorf("validate block: %w: %w", err, errInvalidBlock)
+	if err := m.validateBlock(block, commit); err != nil { // TODO: we can remove this sanity check once we gain confidence
+		panic(fmt.Errorf("block should already have been validated: %w", err))
 	}
 
 	// Check if the app's last block height is the same as the currently produced block height
