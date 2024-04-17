@@ -34,10 +34,18 @@ type Server struct {
 	node         *node.Node
 	healthStatus sharedtypes.HealthStatus
 	listener     net.Listener
-	ctx          context.Context
+	timeout      time.Duration
 
 	server http.Server
 }
+
+const (
+	// defaultServerTimeout is the time limit for handling HTTP requests.
+	defaultServerTimeout = 15 * time.Second
+
+	// ReadHeaderTimeout is the timeout for reading the request headers.
+	ReadHeaderTimeout = 5 * time.Second
+)
 
 // Option is a function that configures the Server.
 type Option func(*Server)
@@ -46,6 +54,13 @@ type Option func(*Server)
 func WithListener(listener net.Listener) Option {
 	return func(d *Server) {
 		d.listener = listener
+	}
+}
+
+// WithTimeout is an option that sets the global timeout for the server.
+func WithTimeout(timeout time.Duration) Option {
+	return func(d *Server) {
+		d.timeout = timeout
 	}
 }
 
@@ -59,7 +74,7 @@ func NewServer(node *node.Node, config *config.RPCConfig, logger log.Logger, opt
 			IsHealthy: true,
 			Error:     nil,
 		},
-		ctx: context.Background(),
+		timeout: defaultServerTimeout,
 	}
 	srv.BaseService = service.NewBaseService(logger, "RPC", srv)
 
@@ -89,16 +104,23 @@ func (s *Server) OnStart() error {
 
 // OnStop is called when Server is stopped (see service.BaseService for details).
 func (s *Server) OnStop() {
-	ctx, cancel := context.WithTimeout(s.ctx, 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), s.timeout)
 	defer cancel()
 	if err := s.server.Shutdown(ctx); err != nil {
-		s.Logger.Error("while shuting down RPC server", "error", err)
+		s.Logger.Error("while shutting down RPC server", "error", err)
 	}
 }
 
 // EventListener registers events to callbacks.
 func (s *Server) eventListener() {
-	go utils.SubscribeAndHandleEvents(s.ctx, s.PubSubServer(), "RPCNodeHealthStatusHandler", events.EventQueryHealthStatus, s.healthStatusEventCallback, s.Logger)
+	go utils.SubscribeAndHandleEvents(
+		context.Background(),
+		s.PubSubServer(),
+		"RPCNodeHealthStatusHandler",
+		events.EventQueryHealthStatus,
+		s.healthStatusEventCallback,
+		s.Logger,
+	)
 }
 
 // healthStatusEventCallback is a callback function that handles health status events.
@@ -162,11 +184,13 @@ func (s *Server) startRPC() error {
 	)
 	middlewareClient := middleware.NewClient(*reg, s.Logger.With("module", "rpc/middleware"))
 	handler = middlewareClient.Handle(handler)
+	// Set a global timeout
+	handlerWithTimeout := http.TimeoutHandler(handler, s.timeout, "Server Timeout")
 
 	// Start HTTP server
 	go func() {
-		err := s.serve(listener, handler)
-		if err != http.ErrServerClosed {
+		err := s.serve(listener, handlerWithTimeout)
+		if !errors.Is(err, http.ErrServerClosed) {
 			s.Logger.Error("while serving HTTP", "error", err)
 		}
 	}()
@@ -176,7 +200,10 @@ func (s *Server) startRPC() error {
 
 func (s *Server) serve(listener net.Listener, handler http.Handler) error {
 	s.Logger.Info("serving HTTP", "listen address", listener.Addr())
-	s.server = http.Server{Handler: handler} //#nosec
+	s.server = http.Server{
+		Handler:           handler,
+		ReadHeaderTimeout: ReadHeaderTimeout,
+	}
 	if s.config.TLSCertFile != "" && s.config.TLSKeyFile != "" {
 		return s.server.ServeTLS(listener, s.config.CertFile(), s.config.KeyFile())
 	}
