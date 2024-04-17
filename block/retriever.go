@@ -90,6 +90,10 @@ func (m *Manager) processNextDABatch(ctx context.Context, daMetaData *da.DASubmi
 			if block.Header.Height != m.store.NextHeight() {
 				continue
 			}
+			if err := m.validateBlock(block, batch.Commits[i]); err != nil {
+				m.logger.Error("processing da batch, invalid block: dropping it", "err", err, "height", block.Header.Height)
+				continue
+			}
 			err := m.applyBlock(ctx, block, batch.Commits[i], blockMetaData{source: daBlock, daHeight: daMetaData.Height})
 			if err != nil {
 				return err
@@ -99,7 +103,7 @@ func (m *Manager) processNextDABatch(ctx context.Context, daMetaData *da.DASubmi
 
 	err := m.attemptApplyCachedBlocks(ctx)
 	if err != nil {
-		m.logger.Debug("Error applying previous cached blocks", "err", err)
+		m.logger.Debug("error applying previous cached blocks", "err", err)
 	}
 	return nil
 }

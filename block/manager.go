@@ -234,7 +234,7 @@ func (m *Manager) applyBlockCallback(event pubsub.Message) {
 	commit := eventData.Commit
 
 	if err := m.validateBlock(&block, &commit); err != nil {
-		m.logger.Debug("apply block callback, block not valid: dropping it", "err", err)
+		m.logger.Error("apply block callback, block not valid: dropping it", "err", err, "height", block.Header.Height)
 		/// TODO: can we take an action here such as dropping the peer / reducing their reputation?
 		return
 	}
