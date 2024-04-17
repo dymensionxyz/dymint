@@ -295,6 +295,9 @@ func getRPC(t *testing.T) (*mocks.Application, *client.Client) {
 	signingKey, proposerPubKey, _ := crypto.GenerateEd25519Key(rand.Reader)
 	proposerPubKeyBytes, err := proposerPubKey.Raw()
 	require.NoError(err)
+
+	rollappID := "rollapp_1234-1"
+
 	config := config.NodeConfig{
 		Aggregator: true, DALayer: "mock", SettlementLayer: "mock",
 		BlockManagerConfig: config.BlockManagerConfig{
@@ -308,9 +311,19 @@ func getRPC(t *testing.T) (*mocks.Application, *client.Client) {
 		},
 		SettlementConfig: settlement.Config{
 			ProposerPubKey: hex.EncodeToString(proposerPubKeyBytes),
+			RollappID:      rollappID,
 		},
 	}
-	node, err := node.NewNode(context.Background(), config, key, signingKey, proxy.NewLocalClientCreator(app), &types.GenesisDoc{ChainID: "test"}, log.TestingLogger(), mempool.NopMetrics())
+	node, err := node.NewNode(
+		context.Background(),
+		config,
+		key,
+		signingKey,
+		proxy.NewLocalClientCreator(app),
+		&types.GenesisDoc{ChainID: rollappID},
+		log.TestingLogger(),
+		mempool.NopMetrics(),
+	)
 	require.NoError(err)
 	require.NotNil(node)
 

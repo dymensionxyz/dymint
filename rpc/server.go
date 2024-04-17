@@ -40,8 +40,11 @@ type Server struct {
 }
 
 const (
-	// DefaultServerTimeout is the default global timeout for the server.
+	// defaultServerTimeout is the time limit for handling HTTP requests.
 	defaultServerTimeout = 15 * time.Second
+
+	// ReadHeaderTimeout is the timeout for reading the request headers.
+	ReadHeaderTimeout = 5 * time.Second
 )
 
 // Option is a function that configures the Server.
@@ -197,7 +200,10 @@ func (s *Server) startRPC() error {
 
 func (s *Server) serve(listener net.Listener, handler http.Handler) error {
 	s.Logger.Info("serving HTTP", "listen address", listener.Addr())
-	s.server = http.Server{Handler: handler} // #nosec
+	s.server = http.Server{
+		Handler:           handler,
+		ReadHeaderTimeout: ReadHeaderTimeout,
+	}
 	if s.config.TLSCertFile != "" && s.config.TLSKeyFile != "" {
 		return s.server.ServeTLS(listener, s.config.CertFile(), s.config.KeyFile())
 	}
