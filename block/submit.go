@@ -44,7 +44,9 @@ func (m *Manager) handleSubmissionTrigger(ctx context.Context) {
 
 	defer m.submitBatchMutex.Unlock()
 
-	// We try and produce an empty block to make sure releavnt ibc messages will pass through during the batch submission: https://github.com/dymensionxyz/research/issues/173.
+	// For various reasons we add an empty block onto every batch. For example, to make sure relayers
+	// have the necessary commit in order to relay a TX from the first of two blocks.
+	// See https://github.com/dymensionxyz/research/issues/173 details
 	err := m.produceBlock(ctx, true)
 	if err != nil {
 		m.logger.Error("while producing empty block", "error", err)

@@ -61,9 +61,24 @@ type Manager struct {
 	shouldProduceBlocksCh chan bool
 	produceEmptyBlockCh   chan bool
 	lastSubmissionTime    atomic.Int64
-	submitBatchMutex      sync.Mutex
-	produceBlockMutex     sync.Mutex
-	executeBlockMutex     sync.Mutex
+
+	/*
+		Used to guard against triggering a new batch submission when the old one is still going on (taking a while)
+	*/
+	submitBatchMutex sync.Mutex
+
+	/*
+		Used to protect against producing two blocks at once if the first one is taking a while
+		Also, used to protect against the block production that occurs when batch submission thread
+		creates its empty block.
+	*/
+	produceBlockMutex sync.Mutex
+
+	/*
+		Used to protect against processing two blocks at once when there are two routines handling incoming gossiped blocks,
+		and incoming DA blocks, respectively.
+	*/
+	executeBlockMutex sync.Mutex
 
 	// Logging
 	logger types.Logger
