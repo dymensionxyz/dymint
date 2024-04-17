@@ -2,7 +2,6 @@ package block
 
 import (
 	"context"
-	"fmt"
 
 	errorsmod "cosmossdk.io/errors"
 
@@ -27,10 +26,6 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 	}
 
 	m.logger.Debug("Applying block", "height", block.Header.Height, "source", blockMetaData.source)
-
-	if err := m.validateBlock(block, commit); err != nil { // TODO: we can remove this sanity check once we gain confidence
-		panic(fmt.Errorf("block should already have been validated: %w", err))
-	}
 
 	// Check if the app's last block height is the same as the currently produced block height
 	isBlockAlreadyApplied, err := m.isHeightAlreadyApplied(block.Header.Height)
