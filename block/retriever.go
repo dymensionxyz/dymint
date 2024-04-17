@@ -131,6 +131,9 @@ func (m *Manager) fetchBatch(daMetaData *da.DASubmitMetaData) da.ResultRetrieveB
 }
 
 func (m *Manager) attemptApplyCachedBlocks(ctx context.Context) error {
+	m.executeBlockMutex.Lock()
+	defer m.executeBlockMutex.Unlock()
+
 	for {
 		expectedHeight := m.store.NextHeight()
 
