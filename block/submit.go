@@ -61,20 +61,13 @@ func (m *Manager) handleSubmissionTrigger(ctx context.Context) {
 }
 
 func (m *Manager) submitNextBatch() (uint64, error) {
-	var (
-		err             error
-		actualEndHeight uint64
-
-		// Get the batch start and end height
-		startHeight = m.syncTarget.Load() + 1
-		endHeight   = uint64(m.store.Height())
-	)
-
 	//check if pending batch exists.
 	if m.pendingBatch != nil {
 		m.logger.Info("Pending batch exists, submitting it", "startHeight", m.pendingBatch.batch.StartHeight, "endHeight", m.pendingBatch.batch.EndHeight)
 	} else {
 		// Create the batch
+		startHeight := m.syncTarget.Load() + 1
+		endHeight := uint64(m.store.Height())
 		nextBatch, err := m.createNextDABatch(startHeight, endHeight)
 		if err != nil {
 			m.logger.Error("create next batch", "startHeight", startHeight, "endHeight", endHeight, "error", err)
@@ -85,7 +78,7 @@ func (m *Manager) submitNextBatch() (uint64, error) {
 			return 0, err
 		}
 
-		actualEndHeight = nextBatch.EndHeight
+		actualEndHeight := nextBatch.EndHeight
 
 		isLastBlockEmpty, err := m.isBlockEmpty(actualEndHeight)
 		if err != nil {
@@ -107,12 +100,18 @@ func (m *Manager) submitNextBatch() (uint64, error) {
 			err = fmt.Errorf("submit next batch to DA Layer: %s", resultSubmitToDA.Message)
 			return 0, err
 		}
+		m.pendingBatch = &struct {
+			daResult *da.ResultSubmitBatch
+			batch    *types.Batch
+		}{}
 		m.pendingBatch.daResult = &resultSubmitToDA
 		m.pendingBatch.batch = nextBatch
 	}
 
 	// Submit batch to SL
-	err = m.settlementClient.SubmitBatch(m.pendingBatch.batch, m.dalc.GetClientType(), m.pendingBatch.daResult)
+	startHeight := m.pendingBatch.batch.StartHeight
+	actualEndHeight := m.pendingBatch.batch.EndHeight
+	err := m.settlementClient.SubmitBatch(m.pendingBatch.batch, m.dalc.GetClientType(), m.pendingBatch.daResult)
 	if err != nil {
 		m.logger.Error("submit batch to SL", "startHeight", startHeight, "endHeight", actualEndHeight, "error", err)
 		return 0, err
