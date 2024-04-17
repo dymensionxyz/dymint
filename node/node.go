@@ -100,7 +100,6 @@ type Node struct {
 	mempoolIDs   *nodemempool.MempoolIDs
 	incomingTxCh chan *p2p.GossipMessage
 
-	Store        store.Store
 	blockManager *block.Manager
 	dalc         da.DataAvailabilityLayerClient
 	settlementlc settlement.LayerI
