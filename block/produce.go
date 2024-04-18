@@ -82,7 +82,7 @@ func (m *Manager) produceAndGossipBlock(ctx context.Context, allowEmpty bool) er
 	}
 
 	if err := m.gossipBlock(ctx, *block, *commit); err != nil {
-		return fmt.Errorf("gossip block: %w: %w", err, ErrNonRecoverable) // from inspecting the gossip impl, it's clear there is no point retrying
+		return fmt.Errorf("gossip block: %w", err)
 	}
 
 	return nil

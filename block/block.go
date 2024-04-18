@@ -213,10 +213,12 @@ func (m *Manager) gossipBlock(ctx context.Context, block types.Block, commit typ
 	gossipedBlock := p2p.GossipedBlock{Block: block, Commit: commit}
 	gossipedBlockBytes, err := gossipedBlock.MarshalBinary()
 	if err != nil {
-		return fmt.Errorf("marshal binary: %w", err)
+		return fmt.Errorf("marshal binary: %w: %w", err, ErrNonRecoverable)
 	}
 	if err := m.p2pClient.GossipBlock(ctx, gossipedBlockBytes); err != nil {
-		return fmt.Errorf("p2p gossip block: %w", err)
+		// Although this boils down to publishing on a topic, we don't want to speculate too much on what
+		// could cause that to fail, so we assume recoverable.
+		return fmt.Errorf("p2p gossip block: %w: %w", err, ErrRecoverable)
 	}
 	return nil
 }
