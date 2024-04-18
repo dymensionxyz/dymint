@@ -40,8 +40,8 @@ type Server struct {
 }
 
 const (
-	// defaultServerTimeout is the time limit for handling HTTP requests.
-	defaultServerTimeout = 15 * time.Second
+	// defaultSubscribeTimeout is the time limit for handling HTTP requests.
+	defaultSubscribeTimeout = 5 * time.Second
 
 	// ReadHeaderTimeout is the timeout for reading the request headers.
 	ReadHeaderTimeout = 5 * time.Second
@@ -57,8 +57,8 @@ func WithListener(listener net.Listener) Option {
 	}
 }
 
-// WithTimeout is an option that sets the global timeout for the server.
-func WithTimeout(timeout time.Duration) Option {
+// WithSubscribeTimeout is an option that sets the timeout for subscription.
+func WithSubscribeTimeout(timeout time.Duration) Option {
 	return func(d *Server) {
 		d.timeout = timeout
 	}
@@ -74,7 +74,7 @@ func NewServer(node *node.Node, config *config.RPCConfig, logger log.Logger, opt
 			IsHealthy: true,
 			Error:     nil,
 		},
-		timeout: defaultServerTimeout,
+		timeout: defaultSubscribeTimeout,
 	}
 	srv.BaseService = service.NewBaseService(logger, "RPC", srv)
 
@@ -184,12 +184,10 @@ func (s *Server) startRPC() error {
 	)
 	middlewareClient := middleware.NewClient(*reg, s.Logger.With("module", "rpc/middleware"))
 	handler = middlewareClient.Handle(handler)
-	// Set a global timeout
-	handlerWithTimeout := middleware.NewHijackableTimeoutHandler(handler, s.timeout)
 
 	// Start HTTP server
 	go func() {
-		err := s.serve(listener, handlerWithTimeout)
+		err := s.serve(listener, handler)
 		if !errors.Is(err, http.ErrServerClosed) {
 			s.Logger.Error("while serving HTTP", "error", err)
 		}
