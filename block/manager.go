@@ -9,7 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/dymensionxyz/dymint/utils/event"
+	uevent "github.com/dymensionxyz/dymint/utils/event"
 
 	"code.cloudfoundry.org/go-diodes"
 
@@ -214,9 +214,9 @@ func getAddress(key crypto.PrivKey) ([]byte, error) {
 // StartEventListener registers events to callbacks.
 func (m *Manager) StartEventListener(ctx context.Context, isAggregator bool) {
 	if isAggregator {
-		go event.MustSubscribe(ctx, m.pubsub, "nodeHealth", events.QueryHealthStatus, m.onNodeHealthStatus, m.logger)
+		go uevent.MustSubscribe(ctx, m.pubsub, "nodeHealth", events.QueryHealthStatus, m.onNodeHealthStatus, m.logger)
 	} else {
-		go event.MustSubscribe(ctx, m.pubsub, "applyBlockLoop", p2p.EventQueryNewNewGossipedBlock, m.onNewGossipedBlock, m.logger, 100)
+		go uevent.MustSubscribe(ctx, m.pubsub, "applyBlockLoop", p2p.EventQueryNewNewGossipedBlock, m.onNewGossipedBlock, m.logger, 100)
 	}
 }
 

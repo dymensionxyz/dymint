@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dymensionxyz/dymint/utils/event"
+	uevent "github.com/dymensionxyz/dymint/utils/event"
 
 	"github.com/rs/cors"
 	"github.com/tendermint/tendermint/config"
@@ -112,7 +112,7 @@ func (s *Server) OnStop() {
 
 // startEventListener registers events to callbacks.
 func (s *Server) startEventListener() {
-	go event.MustSubscribe(context.Background(), s.PubSubServer(), "RPCNodeHealthStatusHandler", events.QueryHealthStatus, s.onNodeHealthUpdate, s.Logger)
+	go uevent.MustSubscribe(context.Background(), s.PubSubServer(), "RPCNodeHealthStatusHandler", events.QueryHealthStatus, s.onNodeHealthUpdate, s.Logger)
 }
 
 // onNodeHealthUpdate is a callback function that handles health status events from the node.

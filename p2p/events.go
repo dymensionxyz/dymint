@@ -3,7 +3,7 @@ package p2p
 import (
 	"github.com/dymensionxyz/dymint/p2p/pb"
 	"github.com/dymensionxyz/dymint/types"
-	"github.com/dymensionxyz/dymint/utils/event"
+	uevent "github.com/dymensionxyz/dymint/utils/event"
 )
 
 /* -------------------------------------------------------------------------- */
@@ -82,4 +82,4 @@ func (e *GossipedBlock) Validate() error {
 /* -------------------------------------------------------------------------- */
 
 // EventQueryNewNewGossipedBlock is the query used for getting EventNewGossipedBlock
-var EventQueryNewNewGossipedBlock = event.QueryFor(EventTypeKey, EventNewGossipedBlock)
+var EventQueryNewNewGossipedBlock = uevent.QueryFor(EventTypeKey, EventNewGossipedBlock)
