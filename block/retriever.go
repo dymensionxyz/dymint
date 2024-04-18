@@ -63,7 +63,7 @@ func (m *Manager) syncUntilTarget(syncTarget uint64) error {
 
 	}
 	// check for cached blocks
-	err := m.attemptApplyCachedBlocks(ctx)
+	err := m.attemptApplyCachedBlocks()
 	if err != nil {
 		m.logger.Debug("Error applying previous cached blocks", "err", err)
 	}
@@ -134,35 +134,4 @@ func (m *Manager) fetchBatch(daMetaData *da.DASubmitMetaData) da.ResultRetrieveB
 	// TODO(srene) : for invalid transactions there is no specific error code since it will need to be validated somewhere else for fraud proving.
 	// NMT proofs (availRes.MetaData.Proofs) are included in the result batchRes, necessary to be included in the dispute
 	return batchRes
-}
-
-func (m *Manager) attemptApplyCachedBlocks(ctx context.Context) error {
-	m.executeBlockMutex.Lock()
-	defer m.executeBlockMutex.Unlock()
-
-	for {
-		expectedHeight := m.store.NextHeight()
-
-		prevCachedBlock, blockExists := m.prevBlock[expectedHeight]
-		prevCachedCommit, commitExists := m.prevCommit[expectedHeight]
-
-		if !blockExists || !commitExists {
-			break
-		}
-
-		m.logger.Debug("Applying cached block", "height", expectedHeight)
-		err := m.applyBlock(ctx, prevCachedBlock, prevCachedCommit, blockMetaData{source: gossipedBlock})
-		if err != nil {
-			m.logger.Debug("apply previously cached block", "err", err)
-			return err
-		}
-	}
-
-	for k := range m.prevBlock {
-		if k <= m.store.Height() {
-			delete(m.prevBlock, k)
-			delete(m.prevCommit, k)
-		}
-	}
-	return nil
 }

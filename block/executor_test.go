@@ -156,8 +156,9 @@ func TestApplyBlock(t *testing.T) {
 
 	// Create proposer for the block
 	proposerKey := ed25519.GenPrivKey()
-	proposerPubkey := proposerKey.PubKey()
-
+	proposer := &types.Sequencer{
+		PublicKey: proposerKey.PubKey(),
+	}
 	// Create commit for the block
 	abciHeaderPb := types.ToABCIHeaderPB(&block.Header)
 	abciHeaderBytes, err := abciHeaderPb.Marshal()

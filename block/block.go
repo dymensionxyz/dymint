@@ -119,8 +119,8 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 }
 
 func (m *Manager) attemptApplyCachedBlocks() error {
-	m.applyCachedBlockMutex.Lock()
-	defer m.applyCachedBlockMutex.Unlock()
+	m.executeBlockMutex.Lock()
+	defer m.executeBlockMutex.Unlock()
 
 	for {
 		expectedHeight := m.store.NextHeight()
