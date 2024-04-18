@@ -152,7 +152,7 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 		}
 	}
 
-	err := m.syncBlockManager(ctx)
+	err := m.syncBlockManager()
 	if err != nil {
 		err = fmt.Errorf("sync block manager: %w", err)
 		return err
@@ -172,7 +172,7 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 }
 
 // syncBlockManager enforces the node to be synced on initial run.
-func (m *Manager) syncBlockManager(ctx context.Context) error {
+func (m *Manager) syncBlockManager() error {
 	resultRetrieveBatch, err := m.getLatestBatchFromSL()
 	// Set the syncTarget according to the result
 	if err != nil {
