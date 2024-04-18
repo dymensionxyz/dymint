@@ -56,16 +56,12 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 			if errors.Is(err, types.ErrSkippedEmptyBlock) {
 				continue
 			}
-			if errors.Is(err, ErrRecoverable) {
-				m.logger.Info("produce and gossip: recoverable", "error", err)
-				continue
-			}
 			if errors.Is(err, ErrNonRecoverable) {
 				m.logger.Error("produce and gossip: non-recoverable", "error", err) // TODO: flush? or don't log at all?
 				panic(fmt.Errorf("produce and gossip block: %w", err))
 			}
 			if err != nil {
-				m.logger.Error("produce and gossip: uncategorized", "error", err)
+				m.logger.Error("produce and gossip: uncategorized, assuming recoverable", "error", err)
 				continue
 			}
 			resetEmptyBlocksTimer()
