@@ -4,19 +4,20 @@ import (
 	"context"
 	"fmt"
 
-	"cosmossdk.io/errors"
+	errorsmod "cosmossdk.io/errors"
+
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/types"
-	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmtypes "github.com/tendermint/tendermint/types"
 )
 
 // applyBlock applies the block to the store and the abci app.
+// Contract: block and commit must be validated before calling this function!
 // steps: save block -> execute block with app -> update state -> commit block to app -> update store height and state hash.
 // As the entire process can't be atomic we need to make sure the following condition apply before
 // - block height is the expected block height on the store (height + 1).
 // - block height is the expected block height on the app (last block height + 1).
-func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *types.Commit, blockMetaData blockMetaData) error {
+func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMetaData blockMetaData) error {
 	// TODO (#330): allow genesis block with height > 0 to be applied.
 	// TODO: add switch case to have defined behavior for each case.
 	// validate block height
@@ -49,9 +50,9 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 		return err
 	}
 
-	responses, err := m.executeBlock(ctx, block, commit)
+	responses, err := m.executor.ExecuteBlock(m.lastState, block)
 	if err != nil {
-		m.logger.Error("execute block", "error", err)
+		m.logger.Error("execute valid block", "error", err)
 		return err
 	}
 
@@ -87,7 +88,7 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 	}
 
 	// Commit block to app
-	retainHeight, err := m.executor.Commit(ctx, &newState, block, responses)
+	retainHeight, err := m.executor.Commit(&newState, block, responses)
 	if err != nil {
 		m.logger.Error("commit to the block", "error", err)
 		return err
@@ -123,7 +124,7 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 	return nil
 }
 
-func (m *Manager) attemptApplyCachedBlocks(ctx context.Context) error {
+func (m *Manager) attemptApplyCachedBlocks() error {
 	m.applyCachedBlockMutex.Lock()
 	defer m.applyCachedBlockMutex.Unlock()
 
@@ -137,12 +138,13 @@ func (m *Manager) attemptApplyCachedBlocks(ctx context.Context) error {
 			break
 		}
 
-		m.logger.Debug("Applying cached block", "height", expectedHeight)
-		err := m.applyBlock(ctx, prevCachedBlock, prevCachedCommit, blockMetaData{source: gossipedBlock})
+		// Note: cached <block,commit> pairs have passed basic validation, so no need to validate again
+		err := m.applyBlock(prevCachedBlock, prevCachedCommit, blockMetaData{source: gossipedBlock})
 		if err != nil {
-			m.logger.Debug("apply previously cached block", "err", err)
+			m.logger.Debug("applying cached block", "err", err)
 			return err
 		}
+		m.logger.Debug("applied cached block", "height", expectedHeight)
 	}
 
 	for k := range m.prevBlock {
@@ -158,7 +160,7 @@ func (m *Manager) attemptApplyCachedBlocks(ctx context.Context) error {
 func (m *Manager) isHeightAlreadyApplied(blockHeight uint64) (bool, error) {
 	proxyAppInfo, err := m.executor.GetAppInfo()
 	if err != nil {
-		return false, errors.Wrap(err, "get app info")
+		return false, errorsmod.Wrap(err, "get app info")
 	}
 
 	isBlockAlreadyApplied := uint64(proxyAppInfo.LastBlockHeight) == blockHeight
@@ -172,7 +174,7 @@ func (m *Manager) isHeightAlreadyApplied(blockHeight uint64) (bool, error) {
 func (m *Manager) UpdateStateFromApp() error {
 	proxyAppInfo, err := m.executor.GetAppInfo()
 	if err != nil {
-		return errors.Wrap(err, "get app info")
+		return errorsmod.Wrap(err, "get app info")
 	}
 
 	appHeight := uint64(proxyAppInfo.LastBlockHeight)
@@ -184,13 +186,13 @@ func (m *Manager) UpdateStateFromApp() error {
 
 	resp, err := m.store.LoadBlockResponses(appHeight)
 	if err != nil {
-		return errors.Wrap(err, "load block responses")
+		return errorsmod.Wrap(err, "load block responses")
 	}
 	copy(m.lastState.LastResultsHash[:], tmtypes.NewResults(resp.DeliverTxs).Hash())
 
 	_, err = m.store.UpdateState(m.lastState, nil)
 	if err != nil {
-		return errors.Wrap(err, "update state")
+		return errorsmod.Wrap(err, "update state")
 	}
 	if ok := m.store.SetHeight(appHeight); !ok {
 		return fmt.Errorf("store set height: %d", appHeight)
@@ -198,21 +200,12 @@ func (m *Manager) UpdateStateFromApp() error {
 	return nil
 }
 
-func (m *Manager) executeBlock(ctx context.Context, block *types.Block, commit *types.Commit) (*tmstate.ABCIResponses, error) {
+func (m *Manager) validateBlock(block *types.Block, commit *types.Commit) error {
 	// Currently we're assuming proposer is never nil as it's a pre-condition for
 	// dymint to start
 	proposer := m.settlementClient.GetProposer()
 
-	if err := m.executor.Validate(m.lastState, block, commit, proposer); err != nil {
-		return &tmstate.ABCIResponses{}, err
-	}
-
-	responses, err := m.executor.Execute(ctx, m.lastState, block)
-	if err != nil {
-		return &tmstate.ABCIResponses{}, err
-	}
-
-	return responses, nil
+	return types.ValidateProposedTransition(m.lastState, block, commit, proposer)
 }
 
 func (m *Manager) gossipBlock(ctx context.Context, block types.Block, commit types.Commit) error {

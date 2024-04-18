@@ -22,7 +22,7 @@ func (m *Manager) RetriveLoop(ctx context.Context) {
 		default:
 			// Get only the latest sync target
 			syncTarget := syncTargetpoller.Next()
-			err := m.syncUntilTarget(ctx, *(*uint64)(syncTarget))
+			err := m.syncUntilTarget(*(*uint64)(syncTarget))
 			if err != nil {
 				panic(err)
 			}
@@ -33,7 +33,7 @@ func (m *Manager) RetriveLoop(ctx context.Context) {
 // syncUntilTarget syncs the block until the syncTarget is reached.
 // It fetches the batches from the settlement, gets the DA height and gets
 // the actual blocks from the DA.
-func (m *Manager) syncUntilTarget(ctx context.Context, syncTarget uint64) error {
+func (m *Manager) syncUntilTarget(syncTarget uint64) error {
 	currentHeight := m.store.Height()
 
 	if currentHeight >= syncTarget {
@@ -49,7 +49,7 @@ func (m *Manager) syncUntilTarget(ctx context.Context, syncTarget uint64) error 
 			return err
 		}
 
-		err = m.processNextDABatch(ctx, settlementBatch.MetaData.DA)
+		err = m.processNextDABatch(settlementBatch.MetaData.DA)
 		if err != nil {
 			return err
 		}
@@ -75,7 +75,7 @@ func (m *Manager) updateStateIndex(stateIndex uint64) error {
 	return nil
 }
 
-func (m *Manager) processNextDABatch(ctx context.Context, daMetaData *da.DASubmitMetaData) error {
+func (m *Manager) processNextDABatch(daMetaData *da.DASubmitMetaData) error {
 	m.logger.Debug("trying to retrieve batch from DA", "daHeight", daMetaData.Height)
 	batchResp := m.fetchBatch(daMetaData)
 	if batchResp.Code != da.StatusSuccess {
@@ -89,16 +89,20 @@ func (m *Manager) processNextDABatch(ctx context.Context, daMetaData *da.DASubmi
 			if block.Header.Height != m.store.NextHeight() {
 				continue
 			}
-			err := m.applyBlock(ctx, block, batch.Commits[i], blockMetaData{source: daBlock, daHeight: daMetaData.Height})
+			if err := m.validateBlock(block, batch.Commits[i]); err != nil {
+				m.logger.Error("validate block from DA - someone is behaving badly", "height", block.Header.Height, "err", err)
+				continue
+			}
+			err := m.applyBlock(block, batch.Commits[i], blockMetaData{source: daBlock, daHeight: daMetaData.Height})
 			if err != nil {
 				return err
 			}
 		}
 	}
 
-	err := m.attemptApplyCachedBlocks(ctx)
+	err := m.attemptApplyCachedBlocks()
 	if err != nil {
-		m.logger.Debug("Error applying previous cached blocks", "err", err)
+		m.logger.Debug("error applying previous cached blocks", "err", err)
 	}
 	return nil
 }
