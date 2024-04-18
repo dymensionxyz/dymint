@@ -83,6 +83,7 @@ type Manager struct {
 	// Logging
 	logger types.Logger
 
+	//TODO: refactor to kvstore to allow quicker iteration when applying blocks by order
 	// Cached blocks and commits for applying at future heights. Invariant: the block and commit are .Valid() (validated sigs etc)
 	prevBlock  map[uint64]*types.Block
 	prevCommit map[uint64]*types.Commit
@@ -233,11 +234,8 @@ func (m *Manager) onNodeHealthStatus(event pubsub.Message) {
 }
 
 // TODO: move to gossip.go
-
 // onNewGossippedBlock will take a block and apply it
 func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
-	m.executeBlockMutex.Lock()
-	defer m.executeBlockMutex.Unlock()
 	m.logger.Debug("Received new block event", "eventData", event.Data(), "cachedBlocks", len(m.prevBlock))
 	eventData := event.Data().(p2p.GossipedBlock)
 	block := eventData.Block
@@ -249,17 +247,15 @@ func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
 		return
 	}
 
-	// if height is expected, apply
-	// if height is higher than expected (future block), cache
-	if block.Header.Height == m.store.NextHeight() {
-		err := m.applyBlock(&block, &commit, blockMetaData{source: gossipedBlock})
-		if err != nil {
-			m.logger.Error("apply gossiped block", "err", err)
-		}
-	} else if block.Header.Height > m.store.NextHeight() {
+	if block.Header.Height >= m.store.NextHeight() {
 		m.prevBlock[block.Header.Height] = &block
 		m.prevCommit[block.Header.Height] = &commit
-		m.logger.Debug("Caching block", "block height", block.Header.Height, "store height", m.store.Height())
+		m.logger.Debug("caching block", "block height", block.Header.Height, "store height", m.store.Height())
+	}
+
+	err := m.attemptApplyCachedBlocks()
+	if err != nil {
+		m.logger.Error("applying cached blocks", "err", err)
 	}
 }
 

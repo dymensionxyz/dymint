@@ -118,6 +118,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	return nil
 }
 
+// TODO: move to gossip.go
 func (m *Manager) attemptApplyCachedBlocks() error {
 	m.executeBlockMutex.Lock()
 	defer m.executeBlockMutex.Unlock()
@@ -140,13 +141,17 @@ func (m *Manager) attemptApplyCachedBlocks() error {
 		m.logger.Debug("applied cached block", "height", expectedHeight)
 	}
 
+	return nil
+}
+
+// pruneCache prunes the cache of gossiped blocks.
+func (m *Manager) pruneCache() {
 	for k := range m.prevBlock {
 		if k <= m.store.Height() {
 			delete(m.prevBlock, k)
 			delete(m.prevCommit, k)
 		}
 	}
-	return nil
 }
 
 // isHeightAlreadyApplied checks if the block height is already applied to the app.

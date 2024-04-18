@@ -60,15 +60,17 @@ func (m *Manager) syncUntilTarget(syncTarget uint64) error {
 		if err != nil {
 			return err
 		}
-
 	}
+	m.logger.Info("Synced", "current height", currentHeight, "syncTarget", syncTarget)
+
 	// check for cached blocks
 	err := m.attemptApplyCachedBlocks()
 	if err != nil {
-		m.logger.Debug("Error applying previous cached blocks", "err", err)
+		m.logger.Error("applying previous cached blocks", "err", err)
 	}
 
-	m.logger.Info("Synced", "current height", currentHeight, "syncTarget", syncTarget)
+	m.pruneCache()
+
 	return nil
 }
 
@@ -108,11 +110,6 @@ func (m *Manager) processNextDABatch(daMetaData *da.DASubmitMetaData) error {
 				return fmt.Errorf("apply block: height: %d: %w", block.Header.Height, err)
 			}
 		}
-	}
-
-	err := m.attemptApplyCachedBlocks()
-	if err != nil {
-		m.logger.Error("applying previous cached blocks", "err", err)
 	}
 	return nil
 }
