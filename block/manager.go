@@ -157,12 +157,12 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 		return err
 	}
 
-	m.StartEventListener(ctx, isAggregator)
-
 	if isAggregator {
+		go uevent.MustSubscribe(ctx, m.pubsub, "nodeHealth", events.QueryHealthStatus, m.onNodeHealthStatus, m.logger)
 		go m.ProduceBlockLoop(ctx)
 		go m.SubmitLoop(ctx)
 	} else {
+		go uevent.MustSubscribe(ctx, m.pubsub, "applyBlockLoop", p2p.EventQueryNewNewGossipedBlock, m.onNewGossipedBlock, m.logger, 100)
 		go m.RetrieveLoop(ctx)
 		go m.SyncTargetLoop(ctx)
 	}
@@ -209,15 +209,6 @@ func getAddress(key crypto.PrivKey) ([]byte, error) {
 		return nil, err
 	}
 	return tmcrypto.AddressHash(rawKey), nil
-}
-
-// StartEventListener registers events to callbacks.
-func (m *Manager) StartEventListener(ctx context.Context, isAggregator bool) {
-	if isAggregator {
-		go uevent.MustSubscribe(ctx, m.pubsub, "nodeHealth", events.QueryHealthStatus, m.onNodeHealthStatus, m.logger)
-	} else {
-		go uevent.MustSubscribe(ctx, m.pubsub, "applyBlockLoop", p2p.EventQueryNewNewGossipedBlock, m.onNewGossipedBlock, m.logger, 100)
-	}
 }
 
 func (m *Manager) onNodeHealthStatus(event pubsub.Message) {
