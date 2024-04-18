@@ -58,14 +58,21 @@ func (m *Manager) handleSubmissionTrigger(ctx context.Context) {
 			return
 		}
 
-		err = m.submitNextBatchToDA(nextBatch)
+		resultSubmitToDA, err := m.submitNextBatchToDA(nextBatch)
 		if err != nil {
 			m.logger.Error("submit next batch", "error", err)
 			return
 		}
+
+		m.pendingBatch = &struct {
+			daResult *da.ResultSubmitBatch
+			batch    *types.Batch
+		}{}
+		m.pendingBatch.daResult = resultSubmitToDA
+		m.pendingBatch.batch = nextBatch
 	}
 
-	syncHeight, err := m.submitNextBatchToSL()
+	syncHeight, err := m.submitPendingBatchToSL()
 	if err != nil {
 		m.logger.Error("submit next batch to SL", "error", err)
 		return
@@ -92,14 +99,14 @@ func (m *Manager) createNextBatch() (*types.Batch, error) {
 	return nextBatch, nil
 }
 
-func (m *Manager) submitNextBatchToDA(nextBatch *types.Batch) error {
+func (m *Manager) submitNextBatchToDA(nextBatch *types.Batch) (*da.ResultSubmitBatch, error) {
 	startHeight := nextBatch.StartHeight
 	actualEndHeight := nextBatch.EndHeight
 
 	isLastBlockEmpty, err := m.isBlockEmpty(actualEndHeight)
 	if err != nil {
 		m.logger.Error("validate last block in batch is empty", "startHeight", startHeight, "endHeight", actualEndHeight, "error", err)
-		return err
+		return nil, err
 	}
 	// Verify the last block in the batch is an empty block and that no ibc messages has accidentially passed through.
 	// This block may not be empty if another block has passed it in line. If that's the case our empty block request will
@@ -114,18 +121,16 @@ func (m *Manager) submitNextBatchToDA(nextBatch *types.Batch) error {
 	resultSubmitToDA := m.dalc.SubmitBatch(nextBatch)
 	if resultSubmitToDA.Code != da.StatusSuccess {
 		err = fmt.Errorf("submit next batch to DA Layer: %s", resultSubmitToDA.Message)
-		return err
+		return nil, err
 	}
-	m.pendingBatch = &struct {
-		daResult *da.ResultSubmitBatch
-		batch    *types.Batch
-	}{}
-	m.pendingBatch.daResult = &resultSubmitToDA
-	m.pendingBatch.batch = nextBatch
-	return nil
+	return &resultSubmitToDA, nil
 }
 
-func (m *Manager) submitNextBatchToSL() (uint64, error) {
+func (m *Manager) submitPendingBatchToSL() (uint64, error) {
+	if m.pendingBatch == nil {
+		return 0, fmt.Errorf("no pending batch to submit")
+	}
+
 	// Submit batch to SL
 	startHeight := m.pendingBatch.batch.StartHeight
 	actualEndHeight := m.pendingBatch.batch.EndHeight
