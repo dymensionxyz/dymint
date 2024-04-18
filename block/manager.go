@@ -187,7 +187,7 @@ func (m *Manager) syncBlockManager(ctx context.Context) error {
 		return err
 	}
 	m.syncTarget.Store(resultRetrieveBatch.EndHeight)
-	err = m.syncUntilTarget(ctx, resultRetrieveBatch.EndHeight)
+	err = m.syncUntilTarget(resultRetrieveBatch.EndHeight)
 	if err != nil {
 		return err
 	}

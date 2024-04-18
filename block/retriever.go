@@ -22,7 +22,7 @@ func (m *Manager) RetriveLoop(ctx context.Context) {
 		default:
 			// Get only the latest sync target
 			syncTarget := syncTargetpoller.Next()
-			err := m.syncUntilTarget(ctx, *(*uint64)(syncTarget))
+			err := m.syncUntilTarget(*(*uint64)(syncTarget))
 			if err != nil {
 				panic(err)
 			}
@@ -41,7 +41,7 @@ func (m *Manager) RetriveLoop(ctx context.Context) {
 // syncUntilTarget syncs the block until the syncTarget is reached.
 // It fetches the batches from the settlement, gets the DA height and gets
 // the actual blocks from the DA.
-func (m *Manager) syncUntilTarget(ctx context.Context, syncTarget uint64) error {
+func (m *Manager) syncUntilTarget(syncTarget uint64) error {
 	currentHeight := m.store.Height()
 	for currentHeight < syncTarget {
 		currStateIdx := atomic.LoadUint64(&m.lastState.SLStateIndex) + 1
