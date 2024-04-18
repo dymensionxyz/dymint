@@ -68,7 +68,7 @@ type Manager struct {
 	// Logging
 	logger types.Logger
 
-	// Previous data
+	// Cached blocks and commits for applying at future heights. Invariant: the block and commit are .Valid() (validated sigs etc)
 	prevBlock  map[uint64]*types.Block
 	prevCommit map[uint64]*types.Commit
 }
@@ -151,7 +151,7 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 		}
 	}
 
-	err := m.syncBlockManager(ctx)
+	err := m.syncBlockManager()
 	if err != nil {
 		err = fmt.Errorf("sync block manager: %w", err)
 		return err
@@ -171,8 +171,8 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 }
 
 // syncBlockManager enforces the node to be synced on initial run.
-func (m *Manager) syncBlockManager(ctx context.Context) error {
-	resultRetrieveBatch, err := m.getLatestBatchFromSL(ctx)
+func (m *Manager) syncBlockManager() error {
+	resultRetrieveBatch, err := m.getLatestBatchFromSL()
 	// Set the syncTarget according to the result
 	if err != nil {
 		// TODO: separate between fresh rollapp and non-registered rollapp
@@ -186,7 +186,7 @@ func (m *Manager) syncBlockManager(ctx context.Context) error {
 		return err
 	}
 	m.syncTarget.Store(resultRetrieveBatch.EndHeight)
-	err = m.syncUntilTarget(ctx, resultRetrieveBatch.EndHeight)
+	err = m.syncUntilTarget(resultRetrieveBatch.EndHeight)
 	if err != nil {
 		return err
 	}
@@ -233,10 +233,16 @@ func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
 	block := eventData.Block
 	commit := eventData.Commit
 
+	if err := m.validateBlock(&block, &commit); err != nil {
+		m.logger.Error("apply block callback, block not valid: dropping it", "err", err, "height", block.Header.Height)
+		/// TODO: can we take an action here such as dropping the peer / reducing their reputation?
+		return
+	}
+
 	// if height is expected, apply
 	// if height is higher than expected (future block), cache
 	if block.Header.Height == m.store.NextHeight() {
-		err := m.applyBlock(context.Background(), &block, &commit, blockMetaData{source: gossipedBlock})
+		err := m.applyBlock(&block, &commit, blockMetaData{source: gossipedBlock})
 		if err != nil {
 			m.logger.Error("apply gossiped block", "err", err)
 		}
@@ -248,7 +254,7 @@ func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
 }
 
 // getLatestBatchFromSL gets the latest batch from the SL
-func (m *Manager) getLatestBatchFromSL(ctx context.Context) (*settlement.ResultRetrieveBatch, error) {
+func (m *Manager) getLatestBatchFromSL() (*settlement.ResultRetrieveBatch, error) {
 	return m.settlementClient.RetrieveBatch()
 }
 

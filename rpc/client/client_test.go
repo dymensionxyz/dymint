@@ -26,7 +26,6 @@ import (
 	tmtypes "github.com/tendermint/tendermint/types"
 
 	"github.com/dymensionxyz/dymint/config"
-	abciconv "github.com/dymensionxyz/dymint/conv/abci"
 	"github.com/dymensionxyz/dymint/mempool"
 	"github.com/dymensionxyz/dymint/mocks"
 	"github.com/dymensionxyz/dymint/node"
@@ -417,7 +416,7 @@ func TestGetBlockByHash(t *testing.T) {
 	block := getRandomBlock(1, 10)
 	_, err = rpc.node.Store.SaveBlock(block, &types.Commit{}, nil)
 	require.NoError(err)
-	abciBlock, err := abciconv.ToABCIBlock(block)
+	abciBlock, err := types.ToABCIBlock(block)
 	require.NoError(err)
 
 	height := int64(block.Header.Height)
@@ -837,7 +836,7 @@ func getBlockMeta(rpc *Client, n int64) *tmtypes.BlockMeta {
 	if err != nil {
 		return nil
 	}
-	bmeta, err := abciconv.ToABCIBlockMeta(b)
+	bmeta, err := types.ToABCIBlockMeta(b)
 	if err != nil {
 		return nil
 	}
