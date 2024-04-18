@@ -148,7 +148,7 @@ func (m *Manager) produceBlock(ctx context.Context, allowEmpty bool) error {
 
 	}
 
-	if err := m.applyBlock(ctx, block, commit, blockMetaData{source: producedBlock}); err != nil {
+	if err := m.applyBlock(block, commit, blockMetaData{source: producedBlock}); err != nil {
 		return err
 	}
 

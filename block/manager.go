@@ -242,7 +242,7 @@ func (m *Manager) applyBlockCallback(event pubsub.Message) {
 	// if height is expected, apply
 	// if height is higher than expected (future block), cache
 	if block.Header.Height == m.store.NextHeight() {
-		err := m.applyBlock(context.Background(), &block, &commit, blockMetaData{source: gossipedBlock})
+		err := m.applyBlock(&block, &commit, blockMetaData{source: gossipedBlock})
 		if err != nil {
 			m.logger.Error("apply gossiped block", "err", err)
 		}

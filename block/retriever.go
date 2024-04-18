@@ -93,7 +93,7 @@ func (m *Manager) processNextDABatch(ctx context.Context, daMetaData *da.DASubmi
 			if err := m.validateBlock(block, batch.Commits[i]); err != nil {
 				return fmt.Errorf("validate block: height: %d: %w", block.Header.Height, err)
 			}
-			err := m.applyBlock(ctx, block, batch.Commits[i], blockMetaData{source: daBlock, daHeight: daMetaData.Height})
+			err := m.applyBlock(block, batch.Commits[i], blockMetaData{source: daBlock, daHeight: daMetaData.Height})
 			if err != nil {
 				return err
 			}

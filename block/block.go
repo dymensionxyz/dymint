@@ -16,7 +16,7 @@ import (
 // As the entire process can't be atomic we need to make sure the following condition apply before
 // - block height is the expected block height on the store (height + 1).
 // - block height is the expected block height on the app (last block height + 1).
-func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *types.Commit, blockMetaData blockMetaData) error {
+func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMetaData blockMetaData) error {
 	// TODO (#330): allow genesis block with height > 0 to be applied.
 	// TODO: add switch case to have defined behavior for each case.
 	// validate block height
@@ -136,7 +136,7 @@ func (m *Manager) attemptApplyCachedBlocks(ctx context.Context) error {
 		}
 
 		// Note: cached <block,commit> pairs have passed basic validation, so no need to validate again
-		err := m.applyBlock(ctx, prevCachedBlock, prevCachedCommit, blockMetaData{source: gossipedBlock})
+		err := m.applyBlock(prevCachedBlock, prevCachedCommit, blockMetaData{source: gossipedBlock})
 		if err != nil {
 			m.logger.Debug("applying cached block", "err", err)
 			return err
