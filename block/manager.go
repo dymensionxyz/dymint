@@ -9,16 +9,17 @@ import (
 	"sync/atomic"
 	"time"
 
+	uevent "github.com/dymensionxyz/dymint/utils/event"
+
 	"code.cloudfoundry.org/go-diodes"
+
+	"github.com/dymensionxyz/dymint/node/events"
+	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/libp2p/go-libp2p/core/crypto"
 
 	tmcrypto "github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	tmtypes "github.com/tendermint/tendermint/types"
-
-	"github.com/dymensionxyz/dymint/node/events"
-	"github.com/dymensionxyz/dymint/p2p"
-	"github.com/dymensionxyz/dymint/utils"
 
 	"github.com/tendermint/tendermint/proxy"
 
@@ -54,8 +55,7 @@ type Manager struct {
 	// Synchronization
 	syncTargetDiode diodes.Diode
 
-	syncTarget   atomic.Uint64
-	isSyncedCond sync.Cond
+	syncTarget atomic.Uint64
 
 	// Block production
 	shouldProduceBlocksCh chan bool
@@ -77,7 +77,7 @@ type Manager struct {
 	// Logging
 	logger types.Logger
 
-	// Previous data
+	// Cached blocks and commits for applying at future heights. Invariant: the block and commit are .Valid() (validated sigs etc)
 	prevBlock  map[uint64]*types.Block
 	prevCommit map[uint64]*types.Commit
 }
@@ -125,7 +125,6 @@ func NewManager(
 		retriever:        dalc.(da.BatchRetriever),
 		// channels are buffered to avoid blocking on input/output operations, buffer sizes are arbitrary
 		syncTargetDiode:       diodes.NewOneToOne(1, nil),
-		isSyncedCond:          *sync.NewCond(new(sync.Mutex)),
 		shouldProduceBlocksCh: make(chan bool, 1),
 		produceEmptyBlockCh:   make(chan bool, 1),
 		logger:                logger,
@@ -161,28 +160,28 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 		}
 	}
 
-	err := m.syncBlockManager(ctx)
+	err := m.syncBlockManager()
 	if err != nil {
 		err = fmt.Errorf("sync block manager: %w", err)
 		return err
 	}
 
 	if isAggregator {
+		go uevent.MustSubscribe(ctx, m.pubsub, "nodeHealth", events.QueryHealthStatus, m.onNodeHealthStatus, m.logger)
 		go m.ProduceBlockLoop(ctx)
 		go m.SubmitLoop(ctx)
 	} else {
-		go m.RetriveLoop(ctx)
+		go uevent.MustSubscribe(ctx, m.pubsub, "applyBlockLoop", p2p.EventQueryNewNewGossipedBlock, m.onNewGossipedBlock, m.logger, 100)
+		go m.RetrieveLoop(ctx)
 		go m.SyncTargetLoop(ctx)
 	}
-
-	m.EventListener(ctx, isAggregator)
 
 	return nil
 }
 
 // syncBlockManager enforces the node to be synced on initial run.
-func (m *Manager) syncBlockManager(ctx context.Context) error {
-	resultRetrieveBatch, err := m.getLatestBatchFromSL(ctx)
+func (m *Manager) syncBlockManager() error {
+	resultRetrieveBatch, err := m.getLatestBatchFromSL()
 	// Set the syncTarget according to the result
 	if err != nil {
 		// TODO: separate between fresh rollapp and non-registered rollapp
@@ -196,7 +195,7 @@ func (m *Manager) syncBlockManager(ctx context.Context) error {
 		return err
 	}
 	m.syncTarget.Store(resultRetrieveBatch.EndHeight)
-	err = m.syncUntilTarget(ctx, resultRetrieveBatch.EndHeight)
+	err = m.syncUntilTarget(resultRetrieveBatch.EndHeight)
 	if err != nil {
 		return err
 	}
@@ -221,31 +220,29 @@ func getAddress(key crypto.PrivKey) ([]byte, error) {
 	return tmcrypto.AddressHash(rawKey), nil
 }
 
-// EventListener registers events to callbacks.
-func (m *Manager) EventListener(ctx context.Context, isAggregator bool) {
-	if isAggregator {
-		go utils.SubscribeAndHandleEvents(ctx, m.pubsub, "nodeHealthStatusHandler", events.EventQueryHealthStatus, m.healthStatusEventCallback, m.logger)
-	} else {
-		go utils.SubscribeAndHandleEvents(ctx, m.pubsub, "ApplyBlockLoop", p2p.EventQueryNewNewGossipedBlock, m.applyBlockCallback, m.logger, 100)
-	}
+func (m *Manager) onNodeHealthStatus(event pubsub.Message) {
+	eventData := event.Data().(*events.DataHealthStatus)
+	m.logger.Info("received health status event", "eventData", eventData)
+	m.shouldProduceBlocksCh <- eventData.Error == nil
 }
 
-func (m *Manager) healthStatusEventCallback(event pubsub.Message) {
-	eventData := event.Data().(*events.EventDataHealthStatus)
-	m.logger.Info("Received health status event", "eventData", eventData)
-	m.shouldProduceBlocksCh <- eventData.Healthy
-}
-
-func (m *Manager) applyBlockCallback(event pubsub.Message) {
+// onNewGossippedBlock will take a block and apply it
+func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
 	m.logger.Debug("Received new block event", "eventData", event.Data(), "cachedBlocks", len(m.prevBlock))
 	eventData := event.Data().(p2p.GossipedBlock)
 	block := eventData.Block
 	commit := eventData.Commit
 
+	if err := m.validateBlock(&block, &commit); err != nil {
+		m.logger.Error("apply block callback, block not valid: dropping it", "err", err, "height", block.Header.Height)
+		/// TODO: can we take an action here such as dropping the peer / reducing their reputation?
+		return
+	}
+
 	// if height is expected, apply
 	// if height is higher than expected (future block), cache
 	if block.Header.Height == m.store.NextHeight() {
-		err := m.applyBlock(context.Background(), &block, &commit, blockMetaData{source: gossipedBlock})
+		err := m.applyBlock(&block, &commit, blockMetaData{source: gossipedBlock})
 		if err != nil {
 			m.logger.Error("apply gossiped block", "err", err)
 		}
@@ -257,7 +254,7 @@ func (m *Manager) applyBlockCallback(event pubsub.Message) {
 }
 
 // getLatestBatchFromSL gets the latest batch from the SL
-func (m *Manager) getLatestBatchFromSL(ctx context.Context) (*settlement.ResultRetrieveBatch, error) {
+func (m *Manager) getLatestBatchFromSL() (*settlement.ResultRetrieveBatch, error) {
 	return m.settlementClient.RetrieveBatch()
 }
 

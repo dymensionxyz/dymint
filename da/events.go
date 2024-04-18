@@ -1,37 +1,30 @@
 package da
 
-import (
-	"fmt"
+import uevent "github.com/dymensionxyz/dymint/utils/event"
 
-	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
-	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
-)
-
-// Define the event type keys
+// Type keys
 const (
 	// EventTypeKey is a reserved composite key for event name.
 	EventTypeKey = "da.event"
 )
 
-// Define the event types
+// Types
+
 const (
-	EventDAHealthStatus = "DAHealthStatus"
+	EventHealthStatus = "DAHealthStatus"
 )
 
-// EventDataDAHealthStatus defines the structure of the event data for the EventDataDAHealthStatus
-type EventDataDAHealthStatus struct {
-	// Healthy is true if the da layer is healthy
-	Healthy bool
-	// Error is the error that was encountered in case of a health check failure
+// Convenience objects
+
+var EventHealthStatusList = map[string][]string{EventTypeKey: {EventHealthStatus}}
+
+// Data
+
+type EventDataHealth struct {
+	// Error is the error that was encountered in case of a health check failure, nil implies healthy
 	Error error
 }
 
-// Define queries
-var (
-	EventQueryDAHealthStatus = QueryForEvent(EventDAHealthStatus)
-)
+// Queries
 
-// QueryForEvent returns a query for the given event.
-func QueryForEvent(eventType string) tmpubsub.Query {
-	return tmquery.MustParse(fmt.Sprintf("%s='%s'", EventTypeKey, eventType))
-}
+var EventQueryDAHealthStatus = uevent.QueryFor(EventTypeKey, EventHealthStatus)

@@ -164,7 +164,7 @@ func TestRetrieveDaBatchesFailed(t *testing.T) {
 	daMetaData := &da.DASubmitMetaData{
 		Height: 1,
 	}
-	err = manager.processNextDABatch(context.Background(), daMetaData)
+	err = manager.processNextDABatch(daMetaData)
 	t.Log(err)
 	assert.ErrorIs(t, err, da.ErrBlobNotFound)
 }
@@ -183,7 +183,7 @@ func TestProduceNewBlock(t *testing.T) {
 	manager, err := getManager(getManagerConfig(), nil, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(t, err)
 	// Produce block
-	err = manager.produceBlock(context.Background(), true)
+	err = manager.produceAndGossipBlock(context.Background(), true)
 	require.NoError(t, err)
 	// Validate state is updated with the commit hash
 	assert.Equal(t, uint64(1), manager.store.Height())
@@ -210,7 +210,7 @@ func TestProducePendingBlock(t *testing.T) {
 	_, err = manager.store.SaveBlock(block, &block.LastCommit, nil)
 	require.NoError(t, err)
 	// Produce block
-	err = manager.produceBlock(context.Background(), true)
+	err = manager.produceAndGossipBlock(context.Background(), true)
 	require.NoError(t, err)
 	// Validate state is updated with the block that was saved in the store
 	assert.Equal(t, block.Header.Hash(), *(*[32]byte)(manager.lastState.LastBlockID.Hash))
@@ -244,26 +244,26 @@ func TestBlockProductionNodeHealth(t *testing.T) {
 	}{
 		{
 			name:                  "HealthyEventBlocksProduced",
-			healthStatusEvent:     map[string][]string{events.EventNodeTypeKey: {events.EventHealthStatus}},
-			healthStatusEventData: &events.EventDataHealthStatus{Healthy: true, Error: nil},
+			healthStatusEvent:     events.HealthStatusList,
+			healthStatusEventData: &events.DataHealthStatus{},
 			shouldProduceBlocks:   true,
 		},
 		{
 			name:                  "UnhealthyEventBlocksNotProduced",
-			healthStatusEvent:     map[string][]string{events.EventNodeTypeKey: {events.EventHealthStatus}},
-			healthStatusEventData: &events.EventDataHealthStatus{Healthy: false, Error: errors.New("Unhealthy")},
+			healthStatusEvent:     events.HealthStatusList,
+			healthStatusEventData: &events.DataHealthStatus{Error: errors.New("unhealthy")},
 			shouldProduceBlocks:   false,
 		},
 		{
 			name:                  "UnhealthyEventBlocksStillNotProduced",
-			healthStatusEvent:     map[string][]string{events.EventNodeTypeKey: {events.EventHealthStatus}},
-			healthStatusEventData: &events.EventDataHealthStatus{Healthy: false, Error: errors.New("Unhealthy")},
+			healthStatusEvent:     events.HealthStatusList,
+			healthStatusEventData: &events.DataHealthStatus{Error: errors.New("unhealthy")},
 			shouldProduceBlocks:   false,
 		},
 		{
 			name:                  "HealthyEventBlocksProduced",
-			healthStatusEvent:     map[string][]string{events.EventNodeTypeKey: {events.EventHealthStatus}},
-			healthStatusEventData: &events.EventDataHealthStatus{Healthy: true, Error: nil},
+			healthStatusEvent:     events.HealthStatusList,
+			healthStatusEventData: &events.DataHealthStatus{},
 			shouldProduceBlocks:   true,
 		},
 	}
@@ -382,7 +382,7 @@ func TestProduceBlockFailAfterCommit(t *testing.T) {
 			})
 			mockStore.ShouldFailSetHeight = tc.shouldFailSetSetHeight
 			mockStore.ShoudFailUpdateState = tc.shouldFailUpdateState
-			_ = manager.produceBlock(context.Background(), true)
+			_ = manager.produceAndGossipBlock(context.Background(), true)
 			require.Equal(tc.expectedStoreHeight, manager.store.Height(), tc.name)
 			require.Equal(tc.expectedStateAppHash, manager.lastState.AppHash, tc.name)
 			storeState, err := manager.store.LoadState()
@@ -435,7 +435,7 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Produce blocks
 			for i := 0; i < tc.blocksToProduce; i++ {
-				err := manager.produceBlock(ctx, true)
+				err := manager.produceAndGossipBlock(ctx, true)
 				assert.NoError(err)
 			}
 

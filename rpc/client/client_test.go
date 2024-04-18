@@ -26,7 +26,6 @@ import (
 	tmtypes "github.com/tendermint/tendermint/types"
 
 	"github.com/dymensionxyz/dymint/config"
-	abciconv "github.com/dymensionxyz/dymint/conv/abci"
 	"github.com/dymensionxyz/dymint/mempool"
 	"github.com/dymensionxyz/dymint/mocks"
 	"github.com/dymensionxyz/dymint/node"
@@ -92,6 +91,7 @@ func TestGenesisChunked(t *testing.T) {
 
 	mockApp := &mocks.Application{}
 	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
+	mockApp.On("Info", mock.Anything).Return(expectedInfo)
 	privKey, _, _ := crypto.GenerateEd25519Key(crand.Reader)
 	signingKey, _, _ := crypto.GenerateEd25519Key(crand.Reader)
 
@@ -416,7 +416,7 @@ func TestGetBlockByHash(t *testing.T) {
 	block := getRandomBlock(1, 10)
 	_, err = rpc.node.Store.SaveBlock(block, &types.Commit{}, nil)
 	require.NoError(err)
-	abciBlock, err := abciconv.ToABCIBlock(block)
+	abciBlock, err := types.ToABCIBlock(block)
 	require.NoError(err)
 
 	height := int64(block.Header.Height)
@@ -443,6 +443,7 @@ func TestTx(t *testing.T) {
 
 	mockApp := &mocks.Application{}
 	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
+	mockApp.On("Info", mock.Anything).Return(expectedInfo)
 	key, _, _ := crypto.GenerateEd25519Key(crand.Reader)
 	signingKey, proposerPubKey, err := crypto.GenerateEd25519Key(crand.Reader)
 	require.NoError(err)
@@ -835,7 +836,7 @@ func getBlockMeta(rpc *Client, n int64) *tmtypes.BlockMeta {
 	if err != nil {
 		return nil
 	}
-	bmeta, err := abciconv.ToABCIBlockMeta(b)
+	bmeta, err := types.ToABCIBlockMeta(b)
 	if err != nil {
 		return nil
 	}
@@ -847,6 +848,7 @@ func getRPC(t *testing.T) (*mocks.Application, *Client) {
 	t.Helper()
 	require := require.New(t)
 	app := &mocks.Application{}
+	app.On("Info", mock.Anything).Return(expectedInfo)
 	key, _, _ := crypto.GenerateEd25519Key(crand.Reader)
 	signingKey, pubkey, err := crypto.GenerateEd25519Key(crand.Reader)
 	pubkeyBytes, _ := pubkey.Raw()
@@ -943,6 +945,8 @@ func TestMempool2Nodes(t *testing.T) {
 	app.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 	app.On("CheckTx", abci.RequestCheckTx{Tx: []byte("bad")}).Return(abci.ResponseCheckTx{Code: 1})
 	app.On("CheckTx", abci.RequestCheckTx{Tx: []byte("good")}).Return(abci.ResponseCheckTx{Code: 0})
+	app.On("Info", mock.Anything).Return(expectedInfo)
+
 	key1, _, _ := crypto.GenerateEd25519Key(crand.Reader)
 	key2, _, _ := crypto.GenerateEd25519Key(crand.Reader)
 	signingKey1, proposerPubKey1, _ := crypto.GenerateEd25519Key(crand.Reader)
