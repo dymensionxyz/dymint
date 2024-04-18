@@ -87,7 +87,7 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 	}
 
 	// Commit block to app
-	retainHeight, err := m.executor.Commit(ctx, &newState, block, responses)
+	retainHeight, err := m.executor.Commit(&newState, block, responses)
 	if err != nil {
 		m.logger.Error("commit to the block", "error", err)
 		return err

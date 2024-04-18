@@ -1,7 +1,6 @@
 package block
 
 import (
-	"context"
 	"encoding/hex"
 	"errors"
 	"time"
@@ -135,7 +134,7 @@ func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHead
 }
 
 // Commit commits the block
-func (e *Executor) Commit(ctx context.Context, state *types.State, block *types.Block, resp *tmstate.ABCIResponses) (int64, error) {
+func (e *Executor) Commit(state *types.State, block *types.Block, resp *tmstate.ABCIResponses) (int64, error) {
 	appHash, retainHeight, err := e.commit(state, block, resp.DeliverTxs)
 	if err != nil {
 		return 0, err
