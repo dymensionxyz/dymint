@@ -111,7 +111,9 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 	}
 	m.lastState = newState
 
-	m.store.SetHeight(block.Header.Height)
+	if ok := m.store.SetHeight(block.Header.Height); !ok {
+		return fmt.Errorf("store set height: %d", block.Header.Height)
+	}
 
 	return nil
 }
@@ -184,7 +186,9 @@ func (m *Manager) UpdateStateFromApp() error {
 	if err != nil {
 		return errors.Wrap(err, "update state")
 	}
-	m.store.SetHeight(appHeight)
+	if ok := m.store.SetHeight(appHeight); !ok {
+		return fmt.Errorf("store set height: %d", appHeight)
+	}
 	return nil
 }
 

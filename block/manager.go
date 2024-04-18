@@ -55,8 +55,7 @@ type Manager struct {
 	// Synchronization
 	syncTargetDiode diodes.Diode
 
-	syncTarget   atomic.Uint64
-	isSyncedCond sync.Cond
+	syncTarget atomic.Uint64
 
 	// Block production
 	shouldProduceBlocksCh chan bool
@@ -117,7 +116,6 @@ func NewManager(
 		retriever:        dalc.(da.BatchRetriever),
 		// channels are buffered to avoid blocking on input/output operations, buffer sizes are arbitrary
 		syncTargetDiode:       diodes.NewOneToOne(1, nil),
-		isSyncedCond:          *sync.NewCond(new(sync.Mutex)),
 		shouldProduceBlocksCh: make(chan bool, 1),
 		produceEmptyBlockCh:   make(chan bool, 1),
 		logger:                logger,

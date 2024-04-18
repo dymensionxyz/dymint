@@ -26,14 +26,6 @@ func (m *Manager) RetrieveLoop(ctx context.Context) {
 			if err != nil {
 				panic(fmt.Errorf("sync until target: %w", err))
 			}
-			// Check if after we sync we are synced or a new syncTarget was already set.
-			// If we are synced then signal all goroutines waiting on isSyncedCond.
-			if m.store.Height() >= m.syncTarget.Load() {
-				m.logger.Info("Synced at height", "height", m.store.Height())
-				m.isSyncedCond.L.Lock()
-				m.isSyncedCond.Signal()
-				m.isSyncedCond.L.Unlock()
-			}
 		}
 	}
 }
@@ -43,6 +35,12 @@ func (m *Manager) RetrieveLoop(ctx context.Context) {
 // the actual blocks from the DA.
 func (m *Manager) syncUntilTarget(ctx context.Context, syncTarget uint64) error {
 	currentHeight := m.store.Height()
+
+	if currentHeight >= syncTarget {
+		m.logger.Info("Already synced", "current height", currentHeight, "syncTarget", syncTarget)
+		return nil
+	}
+
 	for currentHeight < syncTarget {
 		currStateIdx := atomic.LoadUint64(&m.lastState.SLStateIndex) + 1
 		m.logger.Info("Syncing until target", "height", currentHeight, "state_index", currStateIdx, "syncTarget", syncTarget)
@@ -63,6 +61,7 @@ func (m *Manager) syncUntilTarget(ctx context.Context, syncTarget uint64) error 
 			return err
 		}
 	}
+	m.logger.Info("Synced", "current height", currentHeight, "syncTarget", syncTarget)
 	return nil
 }
 

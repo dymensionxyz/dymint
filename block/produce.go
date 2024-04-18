@@ -106,7 +106,9 @@ func (m *Manager) produceBlock(ctx context.Context, allowEmpty bool) (*types.Blo
 		newHeight = uint64(m.lastState.InitialHeight)
 		lastCommit = &types.Commit{}
 		m.lastState.BaseHeight = newHeight
-		m.store.SetBase(newHeight)
+		if ok := m.store.SetBase(newHeight); !ok {
+			return fmt.Errorf("store set base: %d", newHeight)
+		}
 	} else {
 		height := m.store.Height()
 		newHeight = height + 1
