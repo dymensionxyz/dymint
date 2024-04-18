@@ -164,7 +164,7 @@ func TestRetrieveDaBatchesFailed(t *testing.T) {
 	daMetaData := &da.DASubmitMetaData{
 		Height: 1,
 	}
-	err = manager.processNextDABatch(context.Background(), daMetaData)
+	err = manager.processNextDABatch(daMetaData)
 	t.Log(err)
 	assert.ErrorIs(t, err, da.ErrBlobNotFound)
 }

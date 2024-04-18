@@ -51,7 +51,7 @@ func (m *Manager) syncUntilTarget(ctx context.Context, syncTarget uint64) error 
 			return err
 		}
 
-		err = m.processNextDABatch(ctx, settlementBatch.MetaData.DA)
+		err = m.processNextDABatch(settlementBatch.MetaData.DA)
 		if err != nil {
 			return err
 		}
@@ -76,7 +76,7 @@ func (m *Manager) updateStateIndex(stateIndex uint64) error {
 	return nil
 }
 
-func (m *Manager) processNextDABatch(ctx context.Context, daMetaData *da.DASubmitMetaData) error {
+func (m *Manager) processNextDABatch(daMetaData *da.DASubmitMetaData) error {
 	m.logger.Debug("trying to retrieve batch from DA", "daHeight", daMetaData.Height)
 	batchResp := m.fetchBatch(daMetaData)
 	if batchResp.Code != da.StatusSuccess {
