@@ -5,7 +5,7 @@ import (
 
 	"github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/proto/tendermint/version"
-	types2 "github.com/tendermint/tendermint/types"
+	tmtypes "github.com/tendermint/tendermint/types"
 )
 
 // ToABCIHeaderPB converts Dymint header to Header format defined in ABCI.
@@ -32,7 +32,7 @@ func ToABCIHeaderPB(header *Header) types.Header {
 		ConsensusHash:      header.ConsensusHash[:],
 		AppHash:            header.AppHash[:],
 		LastResultsHash:    header.LastResultsHash[:],
-		EvidenceHash:       new(types2.EvidenceData).Hash(),
+		EvidenceHash:       new(tmtypes.EvidenceData).Hash(),
 		ProposerAddress:    header.ProposerAddress,
 		ChainID:            header.ChainID,
 	}
@@ -40,17 +40,17 @@ func ToABCIHeaderPB(header *Header) types.Header {
 
 // ToABCIHeader converts Dymint header to Header format defined in ABCI.
 // Caller should fill all the fields that are not available in Dymint header (like ChainID).
-func ToABCIHeader(header *Header) types2.Header {
-	return types2.Header{
+func ToABCIHeader(header *Header) tmtypes.Header {
+	return tmtypes.Header{
 		Version: version.Consensus{
 			Block: header.Version.Block,
 			App:   header.Version.App,
 		},
 		Height: int64(header.Height),
 		Time:   time.Unix(0, int64(header.Time)),
-		LastBlockID: types2.BlockID{
+		LastBlockID: tmtypes.BlockID{
 			Hash: header.LastHeaderHash[:],
-			PartSetHeader: types2.PartSetHeader{
+			PartSetHeader: tmtypes.PartSetHeader{
 				Total: 1,
 				Hash:  header.LastHeaderHash[:],
 			},
@@ -62,7 +62,7 @@ func ToABCIHeader(header *Header) types2.Header {
 		ConsensusHash:      header.ConsensusHash[:],
 		AppHash:            header.AppHash[:],
 		LastResultsHash:    header.LastResultsHash[:],
-		EvidenceHash:       new(types2.EvidenceData).Hash(),
+		EvidenceHash:       new(tmtypes.EvidenceData).Hash(),
 		ProposerAddress:    header.ProposerAddress,
 		ChainID:            header.ChainID,
 	}
@@ -70,16 +70,16 @@ func ToABCIHeader(header *Header) types2.Header {
 
 // ToABCIBlock converts Dymint block into block format defined by ABCI.
 // Returned block should pass `ValidateBasic`.
-func ToABCIBlock(block *Block) (*types2.Block, error) {
+func ToABCIBlock(block *Block) (*tmtypes.Block, error) {
 	abciHeader := ToABCIHeader(&block.Header)
 	abciCommit := ToABCICommit(&block.LastCommit, &block.Header)
 	// This assumes that we have only one signature
 	if len(abciCommit.Signatures) == 1 {
 		abciCommit.Signatures[0].ValidatorAddress = block.Header.ProposerAddress
 	}
-	abciBlock := types2.Block{
+	abciBlock := tmtypes.Block{
 		Header: abciHeader,
-		Evidence: types2.EvidenceData{
+		Evidence: tmtypes.EvidenceData{
 			Evidence: nil,
 		},
 		LastCommit: abciCommit,
@@ -91,23 +91,23 @@ func ToABCIBlock(block *Block) (*types2.Block, error) {
 }
 
 // ToABCIBlockDataTxs converts Dymint block-data into block-data format defined by ABCI.
-func ToABCIBlockDataTxs(data *Data) []types2.Tx {
-	txs := make([]types2.Tx, len(data.Txs))
+func ToABCIBlockDataTxs(data *Data) []tmtypes.Tx {
+	txs := make([]tmtypes.Tx, len(data.Txs))
 	for i := range data.Txs {
-		txs[i] = types2.Tx(data.Txs[i])
+		txs[i] = tmtypes.Tx(data.Txs[i])
 	}
 	return txs
 }
 
 // ToABCIBlockMeta converts Dymint block into BlockMeta format defined by ABCI
-func ToABCIBlockMeta(block *Block) (*types2.BlockMeta, error) {
+func ToABCIBlockMeta(block *Block) (*tmtypes.BlockMeta, error) {
 	tmblock, err := ToABCIBlock(block)
 	if err != nil {
 		return nil, err
 	}
-	blockID := types2.BlockID{Hash: tmblock.Hash()}
+	blockID := tmtypes.BlockID{Hash: tmblock.Hash()}
 
-	return &types2.BlockMeta{
+	return &tmtypes.BlockMeta{
 		BlockID:   blockID,
 		BlockSize: tmblock.Size(),
 		Header:    tmblock.Header,
@@ -118,14 +118,14 @@ func ToABCIBlockMeta(block *Block) (*types2.BlockMeta, error) {
 // ToABCICommit converts Dymint commit into commit format defined by ABCI.
 // This function only converts fields that are available in Dymint commit.
 // Other fields (especially ValidatorAddress and Timestamp of Signature) has to be filled by caller.
-func ToABCICommit(commit *Commit, header *Header) *types2.Commit {
+func ToABCICommit(commit *Commit, header *Header) *tmtypes.Commit {
 	headerHash := header.Hash()
-	tmCommit := types2.Commit{
+	tmCommit := tmtypes.Commit{
 		Height: int64(commit.Height),
 		Round:  0,
-		BlockID: types2.BlockID{
+		BlockID: tmtypes.BlockID{
 			Hash: headerHash[:],
-			PartSetHeader: types2.PartSetHeader{
+			PartSetHeader: tmtypes.PartSetHeader{
 				Total: 1,
 				Hash:  headerHash[:],
 			},
@@ -134,8 +134,8 @@ func ToABCICommit(commit *Commit, header *Header) *types2.Commit {
 	// Check if TMSignature exists. if not use the previous dymint signature for backwards compatibility.
 	if len(commit.TMSignature.Signature) == 0 {
 		for _, sig := range commit.Signatures {
-			commitSig := types2.CommitSig{
-				BlockIDFlag: types2.BlockIDFlagCommit,
+			commitSig := tmtypes.CommitSig{
+				BlockIDFlag: tmtypes.BlockIDFlagCommit,
 				Signature:   sig,
 			}
 			tmCommit.Signatures = append(tmCommit.Signatures, commitSig)
