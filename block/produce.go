@@ -77,7 +77,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 }
 
 func (m *Manager) produceAndGossipBlock(ctx context.Context, allowEmpty bool) error {
-	block, commit, err := m.produceBlock(ctx, allowEmpty)
+	block, commit, err := m.produceBlock(allowEmpty)
 	if err != nil {
 		return fmt.Errorf("produce block: %w", err)
 	}
@@ -89,7 +89,7 @@ func (m *Manager) produceAndGossipBlock(ctx context.Context, allowEmpty bool) er
 	return nil
 }
 
-func (m *Manager) produceBlock(ctx context.Context, allowEmpty bool) (*types.Block, *types.Commit, error) {
+func (m *Manager) produceBlock(allowEmpty bool) (*types.Block, *types.Commit, error) {
 	m.produceBlockMutex.Lock()
 	defer m.produceBlockMutex.Unlock()
 	var (
