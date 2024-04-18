@@ -1,7 +1,7 @@
 package events
 
 import (
-	"github.com/dymensionxyz/dymint/utilevent"
+	"github.com/dymensionxyz/dymint/utils/event"
 )
 
 // Type Keys
@@ -27,4 +27,4 @@ type DataHealthStatus struct {
 
 //  Queries
 
-var QueryHealthStatus = utilevent.QueryFor(NodeTypeKey, HealthStatus)
+var QueryHealthStatus = event.QueryFor(NodeTypeKey, HealthStatus)

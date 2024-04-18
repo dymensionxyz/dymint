@@ -1,7 +1,7 @@
 package settlement
 
 import (
-	"github.com/dymensionxyz/dymint/utilevent"
+	"github.com/dymensionxyz/dymint/utils/event"
 
 	"github.com/dymensionxyz/dymint/types"
 )
@@ -50,6 +50,6 @@ type EventDataHealth struct {
 
 // Queries
 var (
-	EventQueryNewSettlementBatchAccepted = utilevent.QueryFor(EventTypeKey, EventNewBatchAccepted)
-	EventQuerySettlementHealthStatus     = utilevent.QueryFor(EventTypeKey, EventHealthStatus)
+	EventQueryNewSettlementBatchAccepted = event.QueryFor(EventTypeKey, EventNewBatchAccepted)
+	EventQuerySettlementHealthStatus     = event.QueryFor(EventTypeKey, EventHealthStatus)
 )

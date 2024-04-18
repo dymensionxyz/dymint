@@ -10,9 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dymensionxyz/dymint/node/events"
+	uevent "github.com/dymensionxyz/dymint/utils/event"
 
-	"github.com/dymensionxyz/dymint/utilevent"
+	"github.com/dymensionxyz/dymint/node/events"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
@@ -409,8 +409,8 @@ func createAndStartIndexerService(
 
 // All events listeners should be registered here
 func (n *Node) startEventListener() {
-	go utilevent.MustSubscribe(n.ctx, n.pubsubServer, "settlementHealthStatusHandler", settlement.EventQuerySettlementHealthStatus, n.onBaseLayerHealthUpdate, n.Logger)
-	go utilevent.MustSubscribe(n.ctx, n.pubsubServer, "daHealthStatusHandler", da.EventQueryDAHealthStatus, n.onBaseLayerHealthUpdate, n.Logger)
+	go uevent.MustSubscribe(n.ctx, n.pubsubServer, "settlementHealthStatusHandler", settlement.EventQuerySettlementHealthStatus, n.onBaseLayerHealthUpdate, n.Logger)
+	go uevent.MustSubscribe(n.ctx, n.pubsubServer, "daHealthStatusHandler", da.EventQueryDAHealthStatus, n.onBaseLayerHealthUpdate, n.Logger)
 }
 
 func (n *Node) onBaseLayerHealthUpdate(event pubsub.Message) {
@@ -432,7 +432,7 @@ func (n *Node) onBaseLayerHealthUpdate(event pubsub.Message) {
 		if newStatus != nil {
 			n.Logger.Error("node is unhealthy: base layer has problem", "error", newStatus)
 		}
-		utilevent.MustPublish(n.ctx, n.pubsubServer, evt, events.HealthStatusList)
+		uevent.MustPublish(n.ctx, n.pubsubServer, evt, events.HealthStatusList)
 	}
 }
 

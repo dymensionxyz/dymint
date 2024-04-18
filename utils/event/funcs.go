@@ -1,4 +1,4 @@
-package utilevent
+package event
 
 import (
 	"context"

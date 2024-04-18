@@ -1,6 +1,8 @@
 package da
 
-import "github.com/dymensionxyz/dymint/utilevent"
+import (
+	"github.com/dymensionxyz/dymint/utils/event"
+)
 
 // Type keys
 const (
@@ -27,4 +29,4 @@ type EventDataHealth struct {
 
 // Queries
 
-var EventQueryDAHealthStatus = utilevent.QueryFor(EventTypeKey, EventHealthStatus)
+var EventQueryDAHealthStatus = event.QueryFor(EventTypeKey, EventHealthStatus)

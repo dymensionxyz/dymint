@@ -6,7 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/dymensionxyz/dymint/utilevent"
+	"github.com/dymensionxyz/dymint/utils/event"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -232,7 +232,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 
 				err = fmt.Errorf("submit batch: %w", err)
 
-				utilevent.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{Error: err}, settlement.EventHealthStatusList)
+				event.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{Error: err}, settlement.EventHealthStatusList)
 
 				d.logger.Error(
 					"submit batch to settlement layer, emitted unhealthy event",
@@ -261,7 +261,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 		case <-subscription.Cancelled():
 			return fmt.Errorf("subscription canceled: %w", err)
 		case <-subscription.Out():
-			utilevent.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{}, settlement.EventHealthStatusList)
+			event.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{}, settlement.EventHealthStatusList)
 			d.logger.Debug("batch accepted by settlement layer, emitted healthy event",
 				"startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
 			return nil
@@ -273,7 +273,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 
 				err = fmt.Errorf("wait for batch inclusion: %w: %w", settlement.ErrBatchNotAccepted, err)
 
-				utilevent.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{Error: err}, settlement.EventHealthStatusList)
+				event.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{Error: err}, settlement.EventHealthStatusList)
 
 				d.logger.Error(
 					"batch not accepted by settlement layer, emitted unhealthy event",
@@ -293,7 +293,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 			// all good
 			d.logger.Info("batch accepted by settlement layer", "startHeight", includedBatch.StartHeight, "endHeight", includedBatch.EndHeight)
 
-			utilevent.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{}, settlement.EventHealthStatusList)
+			event.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{}, settlement.EventHealthStatusList)
 			return nil
 		}
 	}
