@@ -247,15 +247,18 @@ func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
 		return
 	}
 
-	if block.Header.Height >= m.store.NextHeight() {
+	nextHeight := m.store.NextHeight()
+	if block.Header.Height >= nextHeight {
 		m.prevBlock[block.Header.Height] = &block
 		m.prevCommit[block.Header.Height] = &commit
 		m.logger.Debug("caching block", "block height", block.Header.Height, "store height", m.store.Height())
 	}
 
-	err := m.attemptApplyCachedBlocks()
-	if err != nil {
-		m.logger.Error("applying cached blocks", "err", err)
+	if block.Header.Height == nextHeight {
+		err := m.attemptApplyCachedBlocks()
+		if err != nil {
+			m.logger.Error("applying cached blocks", "err", err)
+		}
 	}
 }
 
