@@ -43,7 +43,7 @@ func TestBatchSubmissionHappyFlow(t *testing.T) {
 	require.Zero(manager.syncTarget.Load())
 
 	// Produce block and validate that we produced blocks
-	err = manager.produceBlock(ctx, true)
+	err = manager.produceAndGossipBlock(ctx, true)
 	require.NoError(err)
 	assert.Greater(t, manager.store.Height(), initialHeight)
 	assert.Zero(t, manager.syncTarget.Load())
@@ -89,7 +89,7 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 	require.Zero(manager.syncTarget.Load())
 
 	// Produce block and validate that we produced blocks
-	err = manager.produceBlock(ctx, true)
+	err = manager.produceAndGossipBlock(ctx, true)
 	require.NoError(err)
 	assert.Greater(t, manager.store.Height(), initialHeight)
 	assert.Zero(t, manager.syncTarget.Load())

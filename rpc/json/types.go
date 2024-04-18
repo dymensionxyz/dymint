@@ -28,12 +28,14 @@ type (
 		MaxHeight StrInt64 `json:"maxHeight"`
 	}
 )
+
 type (
 	genesisArgs        struct{}
 	genesisChunkedArgs struct {
 		ID StrInt `json:"chunk"`
 	}
 )
+
 type blockArgs struct {
 	Height StrInt64 `json:"height"`
 }
@@ -78,6 +80,7 @@ type (
 		Height StrInt64 `json:"height"`
 	}
 )
+
 type unconfirmedTxsArgs struct {
 	Limit StrInt `json:"limit"`
 }

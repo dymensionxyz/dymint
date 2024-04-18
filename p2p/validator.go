@@ -4,12 +4,13 @@ import (
 	"context"
 	"errors"
 
-	"github.com/dymensionxyz/dymint/mempool"
-	nodemempool "github.com/dymensionxyz/dymint/node/mempool"
-	"github.com/dymensionxyz/dymint/types"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	corep2p "github.com/tendermint/tendermint/p2p"
+
+	"github.com/dymensionxyz/dymint/mempool"
+	nodemempool "github.com/dymensionxyz/dymint/node/mempool"
+	"github.com/dymensionxyz/dymint/types"
 )
 
 // GossipValidator is a callback function type.
@@ -39,13 +40,14 @@ func NewValidator(logger types.Logger, pusbsubServer *pubsub.Server) *Validator 
 }
 
 // TxValidator creates a pubsub validator that uses the node's mempool to check the
-// transaction. If the transaction is valid, then it is added to the mempool.
+// transaction.
+// False means the TX is considered invalid and should not be gossiped.
 func (v *Validator) TxValidator(mp mempool.Mempool, mpoolIDS *nodemempool.MempoolIDs) GossipValidator {
 	return func(txMessage *GossipMessage) bool {
 		v.logger.Debug("transaction received", "bytes", len(txMessage.Data))
-		checkTxResCh := make(chan *abci.Response, 1)
+		var res *abci.Response
 		err := mp.CheckTx(txMessage.Data, func(resp *abci.Response) {
-			checkTxResCh <- resp
+			res = resp
 		}, mempool.TxInfo{
 			SenderID:    mpoolIDS.GetForPeer(txMessage.From),
 			SenderP2PID: corep2p.ID(txMessage.From),
@@ -54,17 +56,17 @@ func (v *Validator) TxValidator(mp mempool.Mempool, mpoolIDS *nodemempool.Mempoo
 		case errors.Is(err, mempool.ErrTxInCache):
 			return true
 		case errors.Is(err, mempool.ErrMempoolIsFull{}):
-			return true
+			return true // we have no reason to believe that we should throw away the message
 		case errors.Is(err, mempool.ErrTxTooLarge{}):
 			return false
 		case errors.Is(err, mempool.ErrPreCheck{}):
 			return false
-		default:
+		case err != nil:
+			v.logger.Error("check tx", "error", err)
+			return false
 		}
-		res := <-checkTxResCh
-		checkTxResp := res.GetCheckTx()
 
-		return checkTxResp.Code == abci.CodeTypeOK
+		return res.GetCheckTx().Code == abci.CodeTypeOK
 	}
 }
 

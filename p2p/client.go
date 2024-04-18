@@ -173,7 +173,7 @@ func (c *Client) SetHeaderValidator(validator GossipValidator) {
 	c.headerValidator = validator
 }
 
-// GossipBlock sends the block and it's commit to the P2P network.
+// GossipBlock sends the block, and it's commit to the P2P network.
 func (c *Client) GossipBlock(ctx context.Context, blockBytes []byte) error {
 	c.logger.Debug("Gossiping block", "len", len(blockBytes))
 	return c.blockGossiper.Publish(ctx, blockBytes)

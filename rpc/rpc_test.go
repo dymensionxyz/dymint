@@ -2,6 +2,7 @@ package rpc_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"testing"
@@ -13,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestNodeHealthRPCPropogation(t *testing.T) {
+func TestNodeHealthRPCPropagation(t *testing.T) {
 	var err error
 	server, listener := rpctestutils.CreateLocalServer(t)
 	defer func() {
@@ -27,25 +28,25 @@ func TestNodeHealthRPCPropogation(t *testing.T) {
 	cases := []struct {
 		name               string
 		endpoint           string
-		isNodeHealthy      bool
+		health             error
 		expectedStatusCode int
 	}{
 		{
 			name:               "statusNodeHealthy",
 			endpoint:           "/status",
-			isNodeHealthy:      true,
+			health:             nil,
 			expectedStatusCode: http.StatusOK,
 		},
 		{
 			name:               "statusNodeUnhealthy",
 			endpoint:           "/status",
-			isNodeHealthy:      false,
+			health:             errors.New("unhealthy"),
 			expectedStatusCode: http.StatusOK,
 		},
 		{
 			name:               "statusNodeHealthyAgain",
 			endpoint:           "/status",
-			isNodeHealthy:      true,
+			health:             nil,
 			expectedStatusCode: http.StatusOK,
 		},
 	}
@@ -54,8 +55,8 @@ func TestNodeHealthRPCPropogation(t *testing.T) {
 			t.Run(tc.name, func(t *testing.T) {
 				// Emit an event to make the node unhealthy
 				pubsubServer := server.PubSubServer()
-				err := pubsubServer.PublishWithEvents(context.Background(), &events.EventDataHealthStatus{Healthy: tc.isNodeHealthy},
-					map[string][]string{events.EventNodeTypeKey: {events.EventHealthStatus}})
+				err := pubsubServer.PublishWithEvents(context.Background(), &events.DataHealthStatus{Error: tc.health},
+					map[string][]string{events.NodeTypeKey: {events.HealthStatus}})
 				require.NoError(t, err)
 				time.Sleep(1 * time.Second)
 				// Make the request

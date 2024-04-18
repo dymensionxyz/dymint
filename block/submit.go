@@ -26,35 +26,32 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 	}
 }
 
+// handleSubmissionTrigger processes the submission trigger event. It checks if there are new blocks produced since the last submission.
+// If there are, it attempts to submit a batch of blocks. It then attempts to produce an empty block to ensure IBC messages
+// pass through during the batch submission process due to proofs requires for ibc messages only exist on the next block.
+// Finally, it submits the next batch of blocks and updates the sync target to the height of
+// the last block in the submitted batch.
 func (m *Manager) handleSubmissionTrigger(ctx context.Context) {
-	// SyncTarget is the height of the last block in the last batch as seen by this node.
-	syncTarget := m.syncTarget.Load()
-	height := m.store.Height()
-	// no new blocks produced yet
-	if height <= syncTarget {
-		return
-	}
-
-	// Submit batch if we've reached the batch size and there isn't another batch currently in submission process.
-
-	if !m.submitBatchMutex.TryLock() {
+	if !m.submitBatchMutex.TryLock() { // Attempt to lock for batch processing
 		m.logger.Debug("Batch submission already in process, skipping submission")
 		return
 	}
+	defer m.submitBatchMutex.Unlock() // Ensure unlocking at the end
 
-	defer m.submitBatchMutex.Unlock()
-
-	// For various reasons we add an empty block onto every batch. For example, to make sure relayers
-	// have the necessary commit in order to relay a TX from the first of two blocks.
-	// See https://github.com/dymensionxyz/research/issues/173 details
-	err := m.produceBlock(ctx, true)
+	// Load current sync target and height to determine if new blocks are available for submission.
+	syncTarget, height := m.syncTarget.Load(), m.store.Height()
+	if height <= syncTarget { // Check if there are new blocks since last sync target.
+		return // Exit if no new blocks are produced.
+	}
+	// We try and produce an empty block to make sure relevant ibc messages will pass through during the batch submission: https://github.com/dymensionxyz/research/issues/173.
+	err := m.produceAndGossipBlock(ctx, true)
 	if err != nil {
-		m.logger.Error("while producing empty block", "error", err)
+		m.logger.Error("produce empty block", "error", err)
 	}
 
 	syncHeight, err := m.submitNextBatch()
 	if err != nil {
-		m.logger.Error("while submitting next batch", "error", err)
+		m.logger.Error("submit next batch", "error", err)
 		return
 	}
 
@@ -65,7 +62,7 @@ func (m *Manager) handleSubmissionTrigger(ctx context.Context) {
 func (m *Manager) submitNextBatch() (uint64, error) {
 	// Get the batch start and end height
 	startHeight := m.syncTarget.Load() + 1
-	endHeight := uint64(m.store.Height())
+	endHeight := m.store.Height()
 
 	// Create the batch
 	nextBatch, err := m.createNextDABatch(startHeight, endHeight)

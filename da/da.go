@@ -196,7 +196,7 @@ type DataAvailabilityLayerClient interface {
 
 	GetClientType() Client
 
-	// Check the availability of the blob submitted getting proofs and validating them
+	// CheckBatchAvailability checks the availability of the blob submitted getting proofs and validating them
 	CheckBatchAvailability(daMetaData *DASubmitMetaData) ResultCheckBatch
 }
 
@@ -205,6 +205,6 @@ type DataAvailabilityLayerClient interface {
 type BatchRetriever interface {
 	// RetrieveBatches returns blocks at given data layer height from data availability layer.
 	RetrieveBatches(daMetaData *DASubmitMetaData) ResultRetrieveBatch
-	// Check the availability of the blob received getting proofs and validating them
+	// CheckBatchAvailability checks the availability of the blob received getting proofs and validating them
 	CheckBatchAvailability(daMetaData *DASubmitMetaData) ResultCheckBatch
 }
