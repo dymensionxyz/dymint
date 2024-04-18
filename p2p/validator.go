@@ -40,7 +40,8 @@ func NewValidator(logger types.Logger, pusbsubServer *pubsub.Server) *Validator 
 }
 
 // TxValidator creates a pubsub validator that uses the node's mempool to check the
-// transaction. If the transaction is valid, then it is added to the mempool.
+// transaction.
+// False means the TX is considered invalid and should not be gossiped.
 func (v *Validator) TxValidator(mp mempool.Mempool, mpoolIDS *nodemempool.MempoolIDs) GossipValidator {
 	return func(txMessage *GossipMessage) bool {
 		v.logger.Debug("transaction received", "bytes", len(txMessage.Data))
@@ -55,7 +56,7 @@ func (v *Validator) TxValidator(mp mempool.Mempool, mpoolIDS *nodemempool.Mempoo
 		case errors.Is(err, mempool.ErrTxInCache):
 			return true
 		case errors.Is(err, mempool.ErrMempoolIsFull{}):
-			return true
+			return true // we have no reason to believe that we should throw away the message
 		case errors.Is(err, mempool.ErrTxTooLarge{}):
 			return false
 		case errors.Is(err, mempool.ErrPreCheck{}):
