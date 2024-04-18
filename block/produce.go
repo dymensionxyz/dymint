@@ -127,7 +127,6 @@ func (m *Manager) produceBlock(allowEmpty bool) (*types.Block, *types.Commit, er
 	pendingBlock, err := m.store.LoadBlock(newHeight)
 	if err == nil {
 		// Using an existing block
-
 		block = pendingBlock
 		commit, err = m.store.LoadCommit(newHeight)
 		if err != nil {
