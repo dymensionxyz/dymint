@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/dymensionxyz/dymint/store"
+
 	abciconv "github.com/dymensionxyz/dymint/conv/abci"
 	"github.com/dymensionxyz/dymint/types"
 	tmed25519 "github.com/tendermint/tendermint/crypto/ed25519"
@@ -133,9 +135,9 @@ func (m *Manager) produceBlock(ctx context.Context, allowEmpty bool) (*types.Blo
 			return nil, nil, fmt.Errorf("load commit after load block: height: %d: %w: %w", newHeight, err, ErrNonRecoverable)
 		}
 		m.logger.Info("using pending block", "height", newHeight)
+	} else if !errors.Is(err, store.ErrKeyNotFound) {
+		return nil, nil, fmt.Errorf("load block: height: %d: %w: %w", newHeight, err, ErrNonRecoverable)
 	} else {
-		//
-
 		block = m.executor.CreateBlock(newHeight, lastCommit, lastHeaderHash, m.lastState)
 		if !allowEmpty && len(block.Data.Txs) == 0 {
 			return nil, nil, fmt.Errorf("%w: %w", types.ErrSkippedEmptyBlock, ErrRecoverable)
