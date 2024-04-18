@@ -7,7 +7,7 @@ import (
 	"sort"
 	"time"
 
-	types2 "github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/dymint/types"
 
 	"github.com/dymensionxyz/dymint/version"
 
@@ -24,7 +24,7 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	"github.com/tendermint/tendermint/types"
+	tmtypes "github.com/tendermint/tendermint/types"
 	tm_version "github.com/tendermint/tendermint/version"
 
 	"github.com/dymensionxyz/dymint/mempool"
@@ -48,7 +48,7 @@ var _ rpcclient.Client = &Client{}
 //
 // This is the type that is used in communication between cosmos-sdk app and Dymint.
 type Client struct {
-	*types.EventBus
+	*tmtypes.EventBus
 	config *config.RPCConfig
 
 	node *node.Node
@@ -94,7 +94,7 @@ func (c *Client) ABCIQueryWithOptions(ctx context.Context, path string, data tmb
 
 // BroadcastTxCommit returns with the responses from CheckTx and DeliverTx.
 // More: https://docs.tendermint.com/master/rpc/#/Tx/broadcast_tx_commit
-func (c *Client) BroadcastTxCommit(ctx context.Context, tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
+func (c *Client) BroadcastTxCommit(ctx context.Context, tx tmtypes.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 	// This implementation corresponds to Tendermints implementation from rpc/core/mempool.go.
 	// ctx.RemoteAddr godoc: If neither HTTPReq nor WSConn is set, an empty string is returned.
 	// This code is a local client, so we can assume that subscriber is ""
@@ -107,7 +107,7 @@ func (c *Client) BroadcastTxCommit(ctx context.Context, tx types.Tx) (*ctypes.Re
 	// Subscribe to tx being committed in block.
 	subCtx, cancel := context.WithTimeout(ctx, subscribeTimeout)
 	defer cancel()
-	q := types.EventQueryTxFor(tx)
+	q := tmtypes.EventQueryTxFor(tx)
 	deliverTxSub, err := c.EventBus.Subscribe(subCtx, subscriber, q)
 	if err != nil {
 		err = fmt.Errorf("subscribe to tx: %w", err)
@@ -154,7 +154,7 @@ func (c *Client) BroadcastTxCommit(ctx context.Context, tx types.Tx) (*ctypes.Re
 		// Wait for the tx to be included in a block or timeout.
 		select {
 		case msg := <-deliverTxSub.Out(): // The tx was included in a block.
-			deliverTxRes := msg.Data().(types.EventDataTx)
+			deliverTxRes := msg.Data().(tmtypes.EventDataTx)
 			return &ctypes.ResultBroadcastTxCommit{
 				CheckTx:   *checkTxRes,
 				DeliverTx: deliverTxRes.Result,
@@ -190,7 +190,7 @@ func (c *Client) BroadcastTxCommit(ctx context.Context, tx types.Tx) (*ctypes.Re
 // BroadcastTxAsync returns right away, with no response. Does not wait for
 // CheckTx nor DeliverTx results.
 // More: https://docs.tendermint.com/master/rpc/#/Tx/broadcast_tx_async
-func (c *Client) BroadcastTxAsync(ctx context.Context, tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
+func (c *Client) BroadcastTxAsync(ctx context.Context, tx tmtypes.Tx) (*ctypes.ResultBroadcastTx, error) {
 	err := c.node.Mempool.CheckTx(tx, nil, mempool.TxInfo{})
 	if err != nil {
 		return nil, err
@@ -206,7 +206,7 @@ func (c *Client) BroadcastTxAsync(ctx context.Context, tx types.Tx) (*ctypes.Res
 // BroadcastTxSync returns with the response from CheckTx. Does not wait for
 // DeliverTx result.
 // More: https://docs.tendermint.com/master/rpc/#/Tx/broadcast_tx_sync
-func (c *Client) BroadcastTxSync(ctx context.Context, tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
+func (c *Client) BroadcastTxSync(ctx context.Context, tx tmtypes.Tx) (*ctypes.ResultBroadcastTx, error) {
 	resCh := make(chan *abci.Response, 1)
 	err := c.node.Mempool.CheckTx(tx, func(res *abci.Response) {
 		resCh <- res
@@ -253,7 +253,7 @@ func (c *Client) Subscribe(ctx context.Context, subscriber, query string, outCap
 		outCap = outCapacity[0]
 	}
 
-	var sub types.Subscription
+	var sub tmtypes.Subscription
 	if outCap > 0 {
 		sub, err = c.EventBus.Subscribe(ctx, subscriber, q, outCap)
 	} else {
@@ -325,14 +325,14 @@ func (c *Client) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64)
 	}
 	c.Logger.Debug("BlockchainInfo", "maxHeight", maxHeight, "minHeight", minHeight)
 
-	blocks := make([]*types.BlockMeta, 0, maxHeight-minHeight+1)
+	blocks := make([]*tmtypes.BlockMeta, 0, maxHeight-minHeight+1)
 	for height := maxHeight; height >= minHeight; height-- {
 		block, err := c.node.Store.LoadBlock(uint64(height))
 		if err != nil {
 			return nil, err
 		}
 		if block != nil {
-			tmblockmeta, err := types2.ToABCIBlockMeta(block)
+			tmblockmeta, err := types.ToABCIBlockMeta(block)
 			if err != nil {
 				return nil, err
 			}
@@ -422,14 +422,14 @@ func (c *Client) Block(ctx context.Context, height *int64) (*ctypes.ResultBlock,
 		return nil, err
 	}
 	hash := block.Hash()
-	abciBlock, err := types2.ToABCIBlock(block)
+	abciBlock, err := types.ToABCIBlock(block)
 	if err != nil {
 		return nil, err
 	}
 	return &ctypes.ResultBlock{
-		BlockID: types.BlockID{
+		BlockID: tmtypes.BlockID{
 			Hash: hash[:],
-			PartSetHeader: types.PartSetHeader{
+			PartSetHeader: tmtypes.PartSetHeader{
 				Total: 1,
 				Hash:  hash[:],
 			},
@@ -448,14 +448,14 @@ func (c *Client) BlockByHash(ctx context.Context, hash []byte) (*ctypes.ResultBl
 		return nil, err
 	}
 
-	abciBlock, err := types2.ToABCIBlock(block)
+	abciBlock, err := types.ToABCIBlock(block)
 	if err != nil {
 		return nil, err
 	}
 	return &ctypes.ResultBlock{
-		BlockID: types.BlockID{
+		BlockID: tmtypes.BlockID{
 			Hash: h[:],
-			PartSetHeader: types.PartSetHeader{
+			PartSetHeader: tmtypes.PartSetHeader{
 				Total: 1,
 				Hash:  h[:],
 			},
@@ -498,8 +498,8 @@ func (c *Client) Commit(ctx context.Context, height *int64) (*ctypes.ResultCommi
 	if err != nil {
 		return nil, err
 	}
-	commit := types2.ToABCICommit(com, &b.Header)
-	block, err := types2.ToABCIBlock(b)
+	commit := types.ToABCICommit(com, &b.Header)
+	block, err := types.ToABCIBlock(b)
 	if err != nil {
 		return nil, err
 	}
@@ -546,13 +546,13 @@ func (c *Client) Tx(ctx context.Context, hash []byte, prove bool) (*ctypes.Resul
 	height := res.Height
 	index := res.Index
 
-	var proof types.TxProof
+	var proof tmtypes.TxProof
 	if prove {
 		block, _ := c.node.Store.LoadBlock(uint64(height))
 		blockProof := block.Data.Txs.Proof(int(index)) // XXX: overflow on 32-bit machines
-		proof = types.TxProof{
+		proof = tmtypes.TxProof{
 			RootHash: blockProof.RootHash,
-			Data:     types.Tx(blockProof.Data),
+			Data:     tmtypes.Tx(blockProof.Data),
 			Proof:    blockProof.Proof,
 		}
 	}
@@ -615,14 +615,14 @@ func (c *Client) TxSearch(ctx context.Context, query string, prove bool, pagePtr
 	for i := skipCount; i < skipCount+pageSize; i++ {
 		r := results[i]
 
-		var proof types.TxProof
+		var proof tmtypes.TxProof
 		/*if prove {
 			block := nil                               //env.BlockStore.LoadBlock(r.Height)
 			proof = block.Data.Txs.Proof(int(r.Index)) // XXX: overflow on 32-bit machines
 		}*/
 
 		apiResults = append(apiResults, &ctypes.ResultTx{
-			Hash:     types.Tx(r.Tx).Hash(),
+			Hash:     tmtypes.Tx(r.Tx).Hash(),
 			Height:   r.Height,
 			Index:    r.Index,
 			TxResult: r.Result,
@@ -681,13 +681,13 @@ func (c *Client) BlockSearch(ctx context.Context, query string, page, perPage *i
 		if err != nil {
 			return nil, err
 		}
-		block, err := types2.ToABCIBlock(b)
+		block, err := types.ToABCIBlock(b)
 		if err != nil {
 			return nil, err
 		}
 		blocks = append(blocks, &ctypes.ResultBlock{
 			Block: block,
-			BlockID: types.BlockID{
+			BlockID: tmtypes.BlockID{
 				Hash: block.Hash(),
 			},
 		})
@@ -769,7 +769,7 @@ func (c *Client) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
 }
 
 // BroadcastEvidence is not yet implemented.
-func (c *Client) BroadcastEvidence(ctx context.Context, evidence types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
+func (c *Client) BroadcastEvidence(ctx context.Context, evidence tmtypes.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
 	return &ctypes.ResultBroadcastEvidence{
 		Hash: evidence.Hash(),
 	}, nil
@@ -801,7 +801,7 @@ func (c *Client) UnconfirmedTxs(ctx context.Context, limitPtr *int) (*ctypes.Res
 // CheckTx executes a new transaction against the application to determine its validity.
 //
 // If valid, the tx is automatically added to the mempool.
-func (c *Client) CheckTx(ctx context.Context, tx types.Tx) (*ctypes.ResultCheckTx, error) {
+func (c *Client) CheckTx(ctx context.Context, tx tmtypes.Tx) (*ctypes.ResultCheckTx, error) {
 	res, err := c.mempool().CheckTxSync(abci.RequestCheckTx{Tx: tx})
 	if err != nil {
 		return nil, err
@@ -809,7 +809,7 @@ func (c *Client) CheckTx(ctx context.Context, tx types.Tx) (*ctypes.ResultCheckT
 	return &ctypes.ResultCheckTx{ResponseCheckTx: *res}, nil
 }
 
-func (c *Client) eventsRoutine(sub types.Subscription, subscriber string, q tmpubsub.Query, outc chan<- ctypes.ResultEvent) {
+func (c *Client) eventsRoutine(sub tmtypes.Subscription, subscriber string, q tmpubsub.Query, outc chan<- ctypes.ResultEvent) {
 	for {
 		select {
 		case msg := <-sub.Out():
@@ -824,7 +824,7 @@ func (c *Client) eventsRoutine(sub types.Subscription, subscriber string, q tmpu
 				}
 			}
 		case <-sub.Cancelled():
-			if sub.Err() == tmpubsub.ErrUnsubscribed {
+			if errors.Is(sub.Err(), tmpubsub.ErrUnsubscribed) {
 				return
 			}
 
@@ -840,7 +840,7 @@ func (c *Client) eventsRoutine(sub types.Subscription, subscriber string, q tmpu
 }
 
 // Try to resubscribe with exponential backoff.
-func (c *Client) resubscribe(subscriber string, q tmpubsub.Query) types.Subscription {
+func (c *Client) resubscribe(subscriber string, q tmpubsub.Query) tmtypes.Subscription {
 	attempts := 0
 	for {
 		if !c.IsRunning() {
