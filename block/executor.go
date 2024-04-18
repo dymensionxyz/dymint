@@ -181,8 +181,8 @@ func (e *Executor) commit(ctx context.Context, state *types.State, block *types.
 	return resp.Data, resp.RetainHeight, err
 }
 
-// ExecuteValidBlock executes the block and returns the ABCIResponses.
-func (e *Executor) ExecuteValidBlock(ctx context.Context, state types.State, block *types.Block) (*tmstate.ABCIResponses, error) {
+// ExecuteBlock executes the block and returns the ABCIResponses.
+func (e *Executor) ExecuteBlock(ctx context.Context, state types.State, block *types.Block) (*tmstate.ABCIResponses, error) {
 	abciResponses := new(tmstate.ABCIResponses)
 	abciResponses.DeliverTxs = make([]*abci.ResponseDeliverTx, len(block.Data.Txs))
 

@@ -49,7 +49,7 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 		return err
 	}
 
-	responses, err := m.executor.ExecuteValidBlock(ctx, m.lastState, block)
+	responses, err := m.executor.ExecuteBlock(ctx, m.lastState, block)
 	if err != nil {
 		m.logger.Error("execute valid block", "error", err)
 		return err
