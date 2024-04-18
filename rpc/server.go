@@ -34,17 +34,14 @@ type Server struct {
 	node         *node.Node
 	healthStatus sharedtypes.HealthStatus
 	listener     net.Listener
-	timeout      time.Duration
 
 	server http.Server
 }
 
 const (
-	// defaultSubscribeTimeout is the time limit for handling HTTP requests.
-	defaultSubscribeTimeout = 5 * time.Second
-
-	// ReadHeaderTimeout is the timeout for reading the request headers.
-	ReadHeaderTimeout = 5 * time.Second
+	onStopTimeout = 5 * time.Second
+	// readHeaderTimeout is the timeout for reading the request headers.
+	readHeaderTimeout = 5 * time.Second
 )
 
 // Option is a function that configures the Server.
@@ -54,13 +51,6 @@ type Option func(*Server)
 func WithListener(listener net.Listener) Option {
 	return func(d *Server) {
 		d.listener = listener
-	}
-}
-
-// WithSubscribeTimeout is an option that sets the timeout for subscription.
-func WithSubscribeTimeout(timeout time.Duration) Option {
-	return func(d *Server) {
-		d.timeout = timeout
 	}
 }
 
@@ -74,7 +64,6 @@ func NewServer(node *node.Node, config *config.RPCConfig, logger log.Logger, opt
 			IsHealthy: true,
 			Error:     nil,
 		},
-		timeout: defaultSubscribeTimeout,
 	}
 	srv.BaseService = service.NewBaseService(logger, "RPC", srv)
 
@@ -104,7 +93,7 @@ func (s *Server) OnStart() error {
 
 // OnStop is called when Server is stopped (see service.BaseService for details).
 func (s *Server) OnStop() {
-	ctx, cancel := context.WithTimeout(context.Background(), s.timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), onStopTimeout)
 	defer cancel()
 	if err := s.server.Shutdown(ctx); err != nil {
 		s.Logger.Error("while shutting down RPC server", "error", err)
@@ -200,7 +189,7 @@ func (s *Server) serve(listener net.Listener, handler http.Handler) error {
 	s.Logger.Info("serving HTTP", "listen address", listener.Addr())
 	s.server = http.Server{
 		Handler:           handler,
-		ReadHeaderTimeout: ReadHeaderTimeout,
+		ReadHeaderTimeout: readHeaderTimeout,
 	}
 	if s.config.TLSCertFile != "" && s.config.TLSKeyFile != "" {
 		return s.server.ServeTLS(listener, s.config.CertFile(), s.config.KeyFile())
