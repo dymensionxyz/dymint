@@ -100,7 +100,7 @@ func (m *Manager) processNextDABatch(ctx context.Context, daMetaData *da.DASubmi
 		}
 	}
 
-	err := m.attemptApplyCachedBlocks(ctx)
+	err := m.attemptApplyCachedBlocks()
 	if err != nil {
 		m.logger.Debug("error applying previous cached blocks", "err", err)
 	}

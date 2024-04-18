@@ -121,7 +121,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	return nil
 }
 
-func (m *Manager) attemptApplyCachedBlocks(ctx context.Context) error {
+func (m *Manager) attemptApplyCachedBlocks() error {
 	m.applyCachedBlockMutex.Lock()
 	defer m.applyCachedBlockMutex.Unlock()
 
