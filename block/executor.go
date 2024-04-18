@@ -136,7 +136,7 @@ func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHead
 
 // Commit commits the block
 func (e *Executor) Commit(ctx context.Context, state *types.State, block *types.Block, resp *tmstate.ABCIResponses) (int64, error) {
-	appHash, retainHeight, err := e.commit(ctx, state, block, resp.DeliverTxs)
+	appHash, retainHeight, err := e.commit(state, block, resp.DeliverTxs)
 	if err != nil {
 		return 0, err
 	}
@@ -157,7 +157,7 @@ func (e *Executor) GetAppInfo() (*abci.ResponseInfo, error) {
 	return e.proxyAppQueryConn.InfoSync(abci.RequestInfo{})
 }
 
-func (e *Executor) commit(ctx context.Context, state *types.State, block *types.Block, deliverTxs []*abci.ResponseDeliverTx) ([]byte, int64, error) {
+func (e *Executor) commit(state *types.State, block *types.Block, deliverTxs []*abci.ResponseDeliverTx) ([]byte, int64, error) {
 	e.mempool.Lock()
 	defer e.mempool.Unlock()
 
