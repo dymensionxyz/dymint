@@ -134,50 +134,41 @@ func TestHealthStatusEventHandler(t *testing.T) {
 	// wait for node to start
 	time.Sleep(1 * time.Second)
 
-	slUnealthyError := errors.New("settlement layer is unhealthy")
-	daUnealthyError := errors.New("da layer is unhealthy")
+	slError := errors.New("settlement")
+	daError := errors.New("da")
 
 	cases := []struct {
 		name                           string
 		baseLayerHealthStatusEvent     map[string][]string
 		baseLayerHealthStatusEventData interface{}
-		expectedHealthStatus           bool
 		expectHealthStatusEventEmitted bool
 		expectedError                  error
 	}{
-		// settlement layer is healthy, DA layer is healthy
 		{
-			name:                           "TestSettlementUnhealthyDAHealthy",
-			baseLayerHealthStatusEvent:     map[string][]string{settlement.EventTypeKey: {settlement.EventSettlementHealthStatus}},
-			baseLayerHealthStatusEventData: &settlement.EventDataSettlementHealthStatus{Healthy: false, Error: slUnealthyError},
-			expectedHealthStatus:           false,
+			name:                           "settlement layer is healthy and da layer is healthy",
+			baseLayerHealthStatusEvent:     settlement.EventHealthStatusList,
+			baseLayerHealthStatusEventData: &settlement.EventDataHealth{Error: slError},
 			expectHealthStatusEventEmitted: true,
-			expectedError:                  slUnealthyError,
+			expectedError:                  slError,
 		},
-		// Now da also becomes unhealthy
 		{
-			name:                           "TestDAUnhealthySettlementUnhealthy",
-			baseLayerHealthStatusEvent:     map[string][]string{da.EventTypeKey: {da.EventDAHealthStatus}},
-			baseLayerHealthStatusEventData: &da.EventDataDAHealthStatus{Healthy: false, Error: daUnealthyError},
-			expectedHealthStatus:           false,
+			name:                           "now da also becomes unhealthy",
+			baseLayerHealthStatusEvent:     da.EventHealthStatusList,
+			baseLayerHealthStatusEventData: &da.EventDataHealth{Error: daError},
 			expectHealthStatusEventEmitted: true,
-			expectedError:                  daUnealthyError,
+			expectedError:                  daError,
 		},
-		// Now the settlement layer becomes healthy
 		{
-			name:                           "TestSettlementHealthyDAHealthy",
-			baseLayerHealthStatusEvent:     map[string][]string{settlement.EventTypeKey: {settlement.EventSettlementHealthStatus}},
-			baseLayerHealthStatusEventData: &settlement.EventDataSettlementHealthStatus{Healthy: true, Error: nil},
-			expectedHealthStatus:           false,
+			name:                           "now the settlement layer becomes healthy",
+			baseLayerHealthStatusEvent:     settlement.EventHealthStatusList,
+			baseLayerHealthStatusEventData: &settlement.EventDataHealth{},
 			expectHealthStatusEventEmitted: false,
 			expectedError:                  nil,
 		},
-		// Now the da layer becomes healthy so we expect the health status to be healthy and the event to be emitted
 		{
-			name:                           "TestDAHealthySettlementHealthy",
-			baseLayerHealthStatusEvent:     map[string][]string{da.EventTypeKey: {da.EventDAHealthStatus}},
-			baseLayerHealthStatusEventData: &da.EventDataDAHealthStatus{Healthy: true, Error: nil},
-			expectedHealthStatus:           true,
+			name:                           "now the da layer becomes healthy, so we expect the health status to be healthy and the event to be emitted",
+			baseLayerHealthStatusEvent:     da.EventHealthStatusList,
+			baseLayerHealthStatusEventData: &da.EventDataHealth{},
 			expectHealthStatusEventEmitted: true,
 			expectedError:                  nil,
 		},
@@ -188,7 +179,7 @@ func TestHealthStatusEventHandler(t *testing.T) {
 			done := make(chan bool, 1)
 			ready := make(chan bool, 1)
 			go func() {
-				HealthSubscription, err := node.pubsubServer.Subscribe(node.ctx, c.name, events.EventQueryHealthStatus)
+				HealthSubscription, err := node.pubsubServer.Subscribe(node.ctx, c.name, events.QueryHealthStatus)
 				ready <- true
 				assert.NoError(err)
 				select {
@@ -196,9 +187,8 @@ func TestHealthStatusEventHandler(t *testing.T) {
 					if !c.expectHealthStatusEventEmitted {
 						t.Error("didn't expect health status event but got one")
 					}
-					healthStatusEvent := event.Data().(*events.EventDataHealthStatus)
-					assert.Equal(c.expectedHealthStatus, healthStatusEvent.Healthy)
-					assert.Equal(c.expectedError, healthStatusEvent.Error)
+					healthStatusEvent := event.Data().(*events.DataHealthStatus)
+					assert.ErrorIs(healthStatusEvent.Error, c.expectedError)
 					done <- true
 					break
 				case <-time.After(1 * time.Second):

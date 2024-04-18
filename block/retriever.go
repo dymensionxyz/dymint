@@ -9,11 +9,11 @@ import (
 	"github.com/dymensionxyz/dymint/da"
 )
 
-// RetriveLoop listens for new sync messages written to a ring buffer and in turn
+// RetrieveLoop listens for new sync messages written to a ring buffer and in turn
 // runs syncUntilTarget on the latest message in the ring buffer.
-func (m *Manager) RetriveLoop(ctx context.Context) {
-	m.logger.Info("Started retrieve loop")
-	syncTargetpoller := diodes.NewPoller(m.syncTargetDiode, diodes.WithPollingContext(ctx))
+func (m *Manager) RetrieveLoop(ctx context.Context) {
+	m.logger.Info("started retrieve loop")
+	syncTargetPoller := diodes.NewPoller(m.syncTargetDiode, diodes.WithPollingContext(ctx))
 
 	for {
 		select {
@@ -21,10 +21,10 @@ func (m *Manager) RetriveLoop(ctx context.Context) {
 			return
 		default:
 			// Get only the latest sync target
-			syncTarget := syncTargetpoller.Next()
+			syncTarget := syncTargetPoller.Next()
 			err := m.syncUntilTarget(*(*uint64)(syncTarget))
 			if err != nil {
-				panic(err)
+				panic(fmt.Errorf("sync until target: %w", err))
 			}
 		}
 	}
@@ -95,14 +95,14 @@ func (m *Manager) processNextDABatch(daMetaData *da.DASubmitMetaData) error {
 			}
 			err := m.applyBlock(block, batch.Commits[i], blockMetaData{source: daBlock, daHeight: daMetaData.Height})
 			if err != nil {
-				return err
+				return fmt.Errorf("apply block: height: %d: %w", block.Header.Height, err)
 			}
 		}
 	}
 
 	err := m.attemptApplyCachedBlocks()
 	if err != nil {
-		m.logger.Debug("error applying previous cached blocks", "err", err)
+		m.logger.Error("applying previous cached blocks", "err", err)
 	}
 	return nil
 }

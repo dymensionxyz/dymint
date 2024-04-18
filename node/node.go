@@ -4,10 +4,15 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"sync"
 	"time"
+
+	uevent "github.com/dymensionxyz/dymint/utils/event"
+
+	"github.com/dymensionxyz/dymint/node/events"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
@@ -26,7 +31,6 @@ import (
 	daregistry "github.com/dymensionxyz/dymint/da/registry"
 	"github.com/dymensionxyz/dymint/mempool"
 	mempoolv1 "github.com/dymensionxyz/dymint/mempool/v1"
-	"github.com/dymensionxyz/dymint/node/events"
 	nodemempool "github.com/dymensionxyz/dymint/node/mempool"
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/settlement"
@@ -36,7 +40,6 @@ import (
 	"github.com/dymensionxyz/dymint/state/txindex"
 	"github.com/dymensionxyz/dymint/state/txindex/kv"
 	"github.com/dymensionxyz/dymint/store"
-	"github.com/dymensionxyz/dymint/utils"
 )
 
 // prefixes used in KV store to separate main node data from DALC data
@@ -52,32 +55,34 @@ const (
 	genesisChunkSize = 16 * 1024 * 1024 // 16 MiB
 )
 
-// BaseLayersHealthStatus contains information about health of base layers.
-type BaseLayersHealthStatus struct {
-	settlementHealthy bool
-	daHealthy         bool
-	mutex             sync.RWMutex
+type baseLayerHealth struct {
+	settlement error
+	da         error
+	mu         sync.RWMutex
 }
 
-func (bl *BaseLayersHealthStatus) setSettlementHealth(isHealthy bool) {
-	bl.mutex.Lock()
-	defer bl.mutex.Unlock()
-
-	bl.settlementHealthy = isHealthy
+func (bl *baseLayerHealth) setSettlement(err error) {
+	bl.mu.Lock()
+	defer bl.mu.Unlock()
+	if err != nil {
+		err = fmt.Errorf("settlement: %w", err)
+	}
+	bl.settlement = err
 }
 
-func (bl *BaseLayersHealthStatus) setDAHealth(isHealthy bool) {
-	bl.mutex.Lock()
-	defer bl.mutex.Unlock()
-
-	bl.daHealthy = isHealthy
+func (bl *baseLayerHealth) setDA(err error) {
+	bl.mu.Lock()
+	defer bl.mu.Unlock()
+	if err != nil {
+		err = fmt.Errorf("da: %w", err)
+	}
+	bl.da = err
 }
 
-func (bl *BaseLayersHealthStatus) get() (settlementHealthy bool, daHealthy bool) {
-	bl.mutex.RLock()
-	defer bl.mutex.RUnlock()
-
-	return bl.settlementHealthy, bl.daHealthy
+func (bl *baseLayerHealth) get() error {
+	bl.mu.RLock()
+	defer bl.mu.RUnlock()
+	return errors.Join(bl.settlement, bl.da)
 }
 
 // Node represents a client node in Dymint network.
@@ -109,7 +114,7 @@ type Node struct {
 	BlockIndexer   indexer.BlockIndexer
 	IndexerService *txindex.IndexerService
 
-	baseLayersHealthStatus BaseLayersHealthStatus
+	baseLayerHealth baseLayerHealth
 
 	// keep context here only because of API compatibility
 	// - it's used in `OnStart` (defined in service.Service interface)
@@ -285,22 +290,19 @@ func (n *Node) OnStart() error {
 	n.Logger.Info("starting P2P client")
 	err := n.P2P.Start(n.ctx)
 	if err != nil {
-		return fmt.Errorf("while starting P2P client: %w", err)
+		return fmt.Errorf("start P2P client: %w", err)
 	}
-	// start the pubsub server
 	err = n.pubsubServer.Start()
 	if err != nil {
-		return fmt.Errorf("while starting pubsub server: %w", err)
+		return fmt.Errorf("start pubsub server: %w", err)
 	}
-	// Start the da client
 	err = n.dalc.Start()
 	if err != nil {
-		return fmt.Errorf("while starting data availability layer client: %w", err)
+		return fmt.Errorf("start data availability layer client: %w", err)
 	}
-	// Start the settlement layer client
 	err = n.settlementlc.Start()
 	if err != nil {
-		return fmt.Errorf("while starting settlement layer client: %w", err)
+		return fmt.Errorf("start settlement layer client: %w", err)
 	}
 	go func() {
 		if err := n.startPrometheusServer(); err != nil {
@@ -308,11 +310,7 @@ func (n *Node) OnStart() error {
 		}
 	}()
 
-	n.baseLayersHealthStatus = BaseLayersHealthStatus{
-		settlementHealthy: true,
-		daHealthy:         true,
-	}
-	n.eventListener()
+	n.startEventListener()
 
 	// start the block manager
 	err = n.blockManager.Start(n.ctx, n.conf.Aggregator)
@@ -341,17 +339,17 @@ func (n *Node) GetGenesisChunks() ([]string, error) {
 func (n *Node) OnStop() {
 	err := n.dalc.Stop()
 	if err != nil {
-		n.Logger.Error("while stopping data availability layer client", "error", err)
+		n.Logger.Error("stop data availability layer client", "error", err)
 	}
 
 	err = n.settlementlc.Stop()
 	if err != nil {
-		n.Logger.Error("while stopping settlement layer client", "error", err)
+		n.Logger.Error("stop settlement layer client", "error", err)
 	}
 
 	err = n.P2P.Close()
 	if err != nil {
-		n.Logger.Error("while stopping P2P client", "error", err)
+		n.Logger.Error("stop P2P client", "error", err)
 	}
 }
 
@@ -410,40 +408,31 @@ func createAndStartIndexerService(
 }
 
 // All events listeners should be registered here
-func (n *Node) eventListener() {
-	go utils.SubscribeAndHandleEvents(n.ctx, n.pubsubServer, "settlementHealthStatusHandler", settlement.EventQuerySettlementHealthStatus, n.healthStatusEventCallback, n.Logger)
-	go utils.SubscribeAndHandleEvents(n.ctx, n.pubsubServer, "daHealthStatusHandler", da.EventQueryDAHealthStatus, n.healthStatusEventCallback, n.Logger)
+func (n *Node) startEventListener() {
+	go uevent.MustSubscribe(n.ctx, n.pubsubServer, "settlementHealthStatusHandler", settlement.EventQuerySettlementHealthStatus, n.onBaseLayerHealthUpdate, n.Logger)
+	go uevent.MustSubscribe(n.ctx, n.pubsubServer, "daHealthStatusHandler", da.EventQueryDAHealthStatus, n.onBaseLayerHealthUpdate, n.Logger)
 }
 
-// Event handling callback function for health status events
-func (n *Node) healthStatusEventCallback(event pubsub.Message) {
+func (n *Node) onBaseLayerHealthUpdate(event pubsub.Message) {
+	haveNewErr := false
+	oldStatus := n.baseLayerHealth.get()
 	switch e := event.Data().(type) {
-	case *settlement.EventDataSettlementHealthStatus:
-		n.baseLayersHealthStatus.setSettlementHealth(e.Healthy)
-		n.healthStatusHandler(e.Error)
-	case *da.EventDataDAHealthStatus:
-		n.baseLayersHealthStatus.setDAHealth(e.Healthy)
-		n.healthStatusHandler(e.Error)
+	case *settlement.EventDataHealth:
+		haveNewErr = e.Error != nil
+		n.baseLayerHealth.setSettlement(e.Error)
+	case *da.EventDataHealth:
+		haveNewErr = e.Error != nil
+		n.baseLayerHealth.setDA(e.Error)
 	}
-}
-
-// handler for health status change
-func (n *Node) healthStatusHandler(err error) {
-	daHealthy, settlementHealthy := n.baseLayersHealthStatus.get()
-	if daHealthy && settlementHealthy {
-		n.Logger.Info("All base layers are healthy")
-		healthStatusEvent := &events.EventDataHealthStatus{Healthy: true}
-		if err = n.pubsubServer.PublishWithEvents(n.ctx, healthStatusEvent, map[string][]string{events.EventNodeTypeKey: {events.EventHealthStatus}}); err != nil {
-			panic(err)
+	newStatus := n.baseLayerHealth.get()
+	newStatusIsDifferentFromOldOne := (oldStatus == nil) != (newStatus == nil)
+	shouldPublish := newStatusIsDifferentFromOldOne || haveNewErr
+	if shouldPublish {
+		evt := &events.DataHealthStatus{Error: newStatus}
+		if newStatus != nil {
+			n.Logger.Error("node is unhealthy: base layer has problem", "error", newStatus)
 		}
-		// Only if err is not nil, we publish the event. Otherwise it could come from a previous unhealthy state.
-	} else if err != nil {
-		n.Logger.Info("Base layer is unhealthy")
-		healthStatusEvent := &events.EventDataHealthStatus{Healthy: false, Error: err}
-		if err = n.pubsubServer.PublishWithEvents(n.ctx, healthStatusEvent, map[string][]string{events.EventNodeTypeKey: {events.EventHealthStatus}}); err != nil {
-			panic(err)
-		}
-
+		uevent.MustPublish(n.ctx, n.pubsubServer, evt, events.HealthStatusList)
 	}
 }
 

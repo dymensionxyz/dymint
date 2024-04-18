@@ -178,7 +178,7 @@ func (c *HubGrpcClient) Start() error {
 						if err != nil {
 							panic(err)
 						}
-						err = c.pubsub.PublishWithEvents(context.Background(), &settlement.EventDataNewSettlementBatchAccepted{EndHeight: b.EndHeight}, map[string][]string{settlement.EventTypeKey: {settlement.EventNewSettlementBatchAccepted}})
+						err = c.pubsub.PublishWithEvents(context.Background(), &settlement.EventDataNewBatchAccepted{EndHeight: b.EndHeight}, settlement.EventNewBatchAcceptedList)
 						if err != nil {
 							panic(err)
 						}
@@ -203,9 +203,8 @@ func (c *HubGrpcClient) PostBatch(batch *types.Batch, daClient da.Client, daResu
 	settlementBatch := c.convertBatchtoSettlementBatch(batch, daResult)
 	c.saveBatch(settlementBatch)
 
-	// sleep for 10 miliseconds to mimic a delay in batch acceptance
-	time.Sleep(10 * time.Millisecond)
-	err := c.pubsub.PublishWithEvents(context.Background(), &settlement.EventDataNewSettlementBatchAccepted{EndHeight: settlementBatch.EndHeight}, map[string][]string{settlement.EventTypeKey: {settlement.EventNewSettlementBatchAccepted}})
+	time.Sleep(10 * time.Millisecond) // mimic a delay in batch acceptance
+	err := c.pubsub.PublishWithEvents(context.Background(), &settlement.EventDataNewBatchAccepted{EndHeight: settlementBatch.EndHeight}, settlement.EventNewBatchAcceptedList)
 	if err != nil {
 		return err
 	}

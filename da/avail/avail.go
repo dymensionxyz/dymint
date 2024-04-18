@@ -155,7 +155,7 @@ func (c *DataAvailabilityLayerClient) GetClientType() da.Client {
 	return da.Avail
 }
 
-// RetrieveBatch retrieves batch from DataAvailabilityLayerClient instance.
+// RetrieveBatches retrieves batch from DataAvailabilityLayerClient instance.
 func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
 	//nolint:typecheck
 	blockHash, err := c.client.GetBlockHash(daMetaData.Height)
@@ -185,10 +185,10 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 		if ext.Signature.AppID.Int64() == c.config.AppID &&
 			ext.Method.CallIndex.SectionIndex == DataCallSectionIndex &&
 			ext.Method.CallIndex.MethodIndex == DataCallMethodIndex {
+
 			data := ext.Method.Args
-			for len(data) > 0 {
+			for 0 < len(data) {
 				var pbBatch pb.Batch
-				// Attempt to unmarshal the data.
 				err := proto.Unmarshal(data, &pbBatch)
 				if err != nil {
 					c.logger.Error("unmarshal batch", "daHeight", daMetaData.Height, "error", err)
@@ -198,7 +198,7 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 				batch := &types.Batch{}
 				err = batch.FromProto(&pbBatch)
 				if err != nil {
-					c.logger.Error("convert batch", "daHeight", daMetaData.Height, "error", err)
+					c.logger.Error("batch from proto", "daHeight", daMetaData.Height, "error", err)
 					continue
 				}
 				// Add the batch to the list
@@ -253,19 +253,25 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 			}
 		default:
 			var daBlockHeight uint64
-			err := retry.Do(func() error {
-				var err error
-				daBlockHeight, err = c.broadcastTx(dataBlob)
-				if err != nil {
-					c.logger.Error("broadcasting batch", "error", err)
-					if errors.Is(err, da.ErrTxBroadcastConfigError) {
-						err = retry.Unrecoverable(err)
+			err := retry.Do(
+				func() error {
+					var err error
+					daBlockHeight, err = c.broadcastTx(dataBlob)
+					if err != nil {
+						c.logger.Error("broadcasting batch", "error", err)
+						if errors.Is(err, da.ErrTxBroadcastConfigError) {
+							err = retry.Unrecoverable(err)
+						}
+						return err
 					}
-					return err
-				}
-				return nil
-			}, retry.Context(c.ctx), retry.LastErrorOnly(true), retry.Delay(c.batchRetryDelay),
-				retry.DelayType(retry.FixedDelay), retry.Attempts(c.batchRetryAttempts))
+					return nil
+				},
+				retry.Context(c.ctx),
+				retry.LastErrorOnly(true),
+				retry.Delay(c.batchRetryDelay),
+				retry.DelayType(retry.FixedDelay),
+				retry.Attempts(c.batchRetryAttempts),
+			)
 			if err != nil {
 				if !retry.IsRecoverable(err) {
 					return da.ResultSubmitBatch{
@@ -275,18 +281,18 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 							Error:   err,
 						},
 					}
-				} else {
-					c.logger.Error("broadcasting batch. Emitting DA unhealthy event and Trying again.", "error", err)
-					res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, false, err)
-					if err != nil {
-						return res
-					}
-					continue
 				}
+				err = fmt.Errorf("broadcast data blob: %w", err)
+				c.logger.Error("broadcasting batch, emitting DA unhealthy event and trying again", "error", err)
+				res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, err)
+				if err != nil {
+					return res
+				}
+				continue
 			}
 
 			c.logger.Debug("Successfully submitted DA batch")
-			res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, true, nil)
+			res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, nil)
 			if err != nil {
 				return res
 			}

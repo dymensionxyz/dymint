@@ -22,7 +22,6 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	// TODO: add switch case to have defined behavior for each case.
 	// validate block height
 	if block.Header.Height != m.store.NextHeight() {
-		m.logger.Error("Block not applied. wrong height", "block height", block.Header.Height, "expected height", m.store.NextHeight())
 		return types.ErrInvalidBlockHeight
 	}
 
@@ -31,14 +30,14 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	// Check if the app's last block height is the same as the currently produced block height
 	isBlockAlreadyApplied, err := m.isHeightAlreadyApplied(block.Header.Height)
 	if err != nil {
-		return err
+		return fmt.Errorf("check if block is already applied: %w", err)
 	}
 	// In case the following true, it means we crashed after the commit and before updating the store height.
 	// In that case we'll want to align the store with the app state and continue to the next block.
 	if isBlockAlreadyApplied {
 		err := m.UpdateStateFromApp()
 		if err != nil {
-			return err
+			return fmt.Errorf("update state from app: %w", err)
 		}
 		m.logger.Debug("Aligned with app state required. Skipping to next block", "height", block.Header.Height)
 		return nil
@@ -46,19 +45,17 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	// Start applying the block assuming no inconsistency was found.
 	_, err = m.store.SaveBlock(block, commit, nil)
 	if err != nil {
-		m.logger.Error("save block", "error", err)
-		return err
+		return fmt.Errorf("save block: %w", err)
 	}
 
 	responses, err := m.executor.ExecuteBlock(m.lastState, block)
 	if err != nil {
-		m.logger.Error("execute valid block", "error", err)
-		return err
+		return fmt.Errorf("execute block: %w", err)
 	}
 
 	newState, err := m.executor.UpdateStateFromResponses(responses, m.lastState, block)
 	if err != nil {
-		return err
+		return fmt.Errorf("update state from responses: %w", err)
 	}
 
 	batch := m.store.NewBatch()
@@ -66,32 +63,30 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	batch, err = m.store.SaveBlockResponses(block.Header.Height, responses, batch)
 	if err != nil {
 		batch.Discard()
-		return err
+		return fmt.Errorf("save block responses: %w", err)
 	}
 
 	m.lastState = newState
 	batch, err = m.store.UpdateState(m.lastState, batch)
 	if err != nil {
 		batch.Discard()
-		return err
+		return fmt.Errorf("update state: %w", err)
 	}
 	batch, err = m.store.SaveValidators(block.Header.Height, m.lastState.Validators, batch)
 	if err != nil {
 		batch.Discard()
-		return err
+		return fmt.Errorf("save validators: %w", err)
 	}
 
 	err = batch.Commit()
 	if err != nil {
-		m.logger.Error("persist batch to disk", "error", err)
-		return err
+		return fmt.Errorf("commit batch to disk: %w", err)
 	}
 
 	// Commit block to app
 	retainHeight, err := m.executor.Commit(&newState, block, responses)
 	if err != nil {
-		m.logger.Error("commit to the block", "error", err)
-		return err
+		return fmt.Errorf("commit block: %w", err)
 	}
 
 	// Prune old heights, if requested by ABCI app.
@@ -112,8 +107,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 
 	_, err = m.store.UpdateState(newState, nil)
 	if err != nil {
-		m.logger.Error("update state", "error", err)
-		return err
+		return fmt.Errorf("final update state: %w", err)
 	}
 	m.lastState = newState
 
@@ -141,8 +135,7 @@ func (m *Manager) attemptApplyCachedBlocks() error {
 		// Note: cached <block,commit> pairs have passed basic validation, so no need to validate again
 		err := m.applyBlock(prevCachedBlock, prevCachedCommit, blockMetaData{source: gossipedBlock})
 		if err != nil {
-			m.logger.Debug("applying cached block", "err", err)
-			return err
+			return fmt.Errorf("apply cached block: expected height: %d: %w", expectedHeight, err)
 		}
 		m.logger.Debug("applied cached block", "height", expectedHeight)
 	}
@@ -212,12 +205,12 @@ func (m *Manager) gossipBlock(ctx context.Context, block types.Block, commit typ
 	gossipedBlock := p2p.GossipedBlock{Block: block, Commit: commit}
 	gossipedBlockBytes, err := gossipedBlock.MarshalBinary()
 	if err != nil {
-		m.logger.Error("marshal block", "error", err)
-		return err
+		return fmt.Errorf("marshal binary: %w: %w", err, ErrNonRecoverable)
 	}
 	if err := m.p2pClient.GossipBlock(ctx, gossipedBlockBytes); err != nil {
-		m.logger.Error("gossip block", "error", err)
-		return err
+		// Although this boils down to publishing on a topic, we don't want to speculate too much on what
+		// could cause that to fail, so we assume recoverable.
+		return fmt.Errorf("p2p gossip block: %w: %w", err, ErrRecoverable)
 	}
 	return nil
 }

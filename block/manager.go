@@ -9,16 +9,17 @@ import (
 	"sync/atomic"
 	"time"
 
+	uevent "github.com/dymensionxyz/dymint/utils/event"
+
 	"code.cloudfoundry.org/go-diodes"
+
+	"github.com/dymensionxyz/dymint/node/events"
+	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/libp2p/go-libp2p/core/crypto"
 
 	tmcrypto "github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	tmtypes "github.com/tendermint/tendermint/types"
-
-	"github.com/dymensionxyz/dymint/node/events"
-	"github.com/dymensionxyz/dymint/p2p"
-	"github.com/dymensionxyz/dymint/utils"
 
 	"github.com/tendermint/tendermint/proxy"
 
@@ -156,15 +157,15 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 		return err
 	}
 
+	m.StartEventListener(ctx, isAggregator)
+
 	if isAggregator {
 		go m.ProduceBlockLoop(ctx)
 		go m.SubmitLoop(ctx)
 	} else {
-		go m.RetriveLoop(ctx)
+		go m.RetrieveLoop(ctx)
 		go m.SyncTargetLoop(ctx)
 	}
-
-	m.EventListener(ctx, isAggregator)
 
 	return nil
 }
@@ -210,22 +211,23 @@ func getAddress(key crypto.PrivKey) ([]byte, error) {
 	return tmcrypto.AddressHash(rawKey), nil
 }
 
-// EventListener registers events to callbacks.
-func (m *Manager) EventListener(ctx context.Context, isAggregator bool) {
+// StartEventListener registers events to callbacks.
+func (m *Manager) StartEventListener(ctx context.Context, isAggregator bool) {
 	if isAggregator {
-		go utils.SubscribeAndHandleEvents(ctx, m.pubsub, "nodeHealthStatusHandler", events.EventQueryHealthStatus, m.healthStatusEventCallback, m.logger)
+		go uevent.MustSubscribe(ctx, m.pubsub, "nodeHealth", events.QueryHealthStatus, m.onNodeHealthStatus, m.logger)
 	} else {
-		go utils.SubscribeAndHandleEvents(ctx, m.pubsub, "ApplyBlockLoop", p2p.EventQueryNewNewGossipedBlock, m.applyBlockCallback, m.logger, 100)
+		go uevent.MustSubscribe(ctx, m.pubsub, "applyBlockLoop", p2p.EventQueryNewNewGossipedBlock, m.onNewGossipedBlock, m.logger, 100)
 	}
 }
 
-func (m *Manager) healthStatusEventCallback(event pubsub.Message) {
-	eventData := event.Data().(*events.EventDataHealthStatus)
-	m.logger.Info("Received health status event", "eventData", eventData)
-	m.shouldProduceBlocksCh <- eventData.Healthy
+func (m *Manager) onNodeHealthStatus(event pubsub.Message) {
+	eventData := event.Data().(*events.DataHealthStatus)
+	m.logger.Info("received health status event", "eventData", eventData)
+	m.shouldProduceBlocksCh <- eventData.Error == nil
 }
 
-func (m *Manager) applyBlockCallback(event pubsub.Message) {
+// onNewGossippedBlock will take a block and apply it
+func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
 	m.logger.Debug("Received new block event", "eventData", event.Data(), "cachedBlocks", len(m.prevBlock))
 	eventData := event.Data().(p2p.GossipedBlock)
 	block := eventData.Block
