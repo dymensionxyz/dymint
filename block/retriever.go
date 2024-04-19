@@ -86,7 +86,7 @@ func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
 	m.logger.Debug("trying to retrieve batch from DA", "daHeight", daMetaData.Height)
 	batchResp := m.fetchBatch(daMetaData)
 	if batchResp.Code != da.StatusSuccess {
-		m.logger.Error("Failed fetching batch from DA", batchResp.Message)
+		m.logger.Error("Unable to retrieve batch", batchResp.Message)
 		return batchResp.Error
 	}
 
@@ -116,13 +116,12 @@ func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
 }
 
 func (m *Manager) fetchBatch(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
-
 	// Check DA client
 	if daMetaData.Client != m.dalc.GetClientType() {
 		return da.ResultRetrieveBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
-				Message: fmt.Sprintf("DA batch client from SL does not match node config: DA client SL: %s: DA client config: %s", daMetaData.Client, m.dalc.GetClientType()),
+				Message: fmt.Sprintf("DA client for the batch does not match node config: DA client batch: %s: DA client config: %s", daMetaData.Client, m.dalc.GetClientType()),
 				Error:   ErrWrongDA,
 			},
 		}
