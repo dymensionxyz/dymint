@@ -90,8 +90,7 @@ type Manager struct {
 
 	//TODO: refactor to kvstore to allow quicker iteration when applying blocks by order
 	// Cached blocks and commits for applying at future heights. Invariant: the block and commit are .Valid() (validated sigs etc)
-	prevBlock  map[uint64]*types.Block
-	prevCommit map[uint64]*types.Commit
+	blockCache map[uint64]CachedBlock
 }
 
 // NewManager creates new block Manager.
@@ -140,8 +139,7 @@ func NewManager(
 		shouldProduceBlocksCh: make(chan bool, 1),
 		produceEmptyBlockCh:   make(chan bool, 1),
 		logger:                logger,
-		prevBlock:             make(map[uint64]*types.Block),
-		prevCommit:            make(map[uint64]*types.Commit),
+		blockCache:            make(map[uint64]CachedBlock),
 	}
 
 	return agg, nil
@@ -241,7 +239,7 @@ func (m *Manager) onNodeHealthStatus(event pubsub.Message) {
 // TODO: move to gossip.go
 // onNewGossippedBlock will take a block and apply it
 func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
-	m.logger.Debug("Received new block event", "eventData", event.Data(), "cachedBlocks", len(m.prevBlock))
+	m.logger.Debug("Received new block event", "eventData", event.Data(), "cachedBlocks", len(m.blockCache))
 	eventData := event.Data().(p2p.GossipedBlock)
 	block := eventData.Block
 	commit := eventData.Commit
@@ -254,8 +252,10 @@ func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
 
 	nextHeight := m.store.NextHeight()
 	if block.Header.Height >= nextHeight {
-		m.prevBlock[block.Header.Height] = &block
-		m.prevCommit[block.Header.Height] = &commit
+		m.blockCache[block.Header.Height] = CachedBlock{
+			Block:  &block,
+			Commit: &commit,
+		}
 		m.logger.Debug("caching block", "block height", block.Header.Height, "store height", m.store.Height())
 	}
 

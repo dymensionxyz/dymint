@@ -126,15 +126,13 @@ func (m *Manager) attemptApplyCachedBlocks() error {
 	for {
 		expectedHeight := m.store.NextHeight()
 
-		prevCachedBlock, blockExists := m.prevBlock[expectedHeight]
-		prevCachedCommit, commitExists := m.prevCommit[expectedHeight]
-
-		if !blockExists || !commitExists {
+		cachedBlock, blockExists := m.blockCache[expectedHeight]
+		if !blockExists {
 			break
 		}
 
 		// Note: cached <block,commit> pairs have passed basic validation, so no need to validate again
-		err := m.applyBlock(prevCachedBlock, prevCachedCommit, blockMetaData{source: gossipedBlock})
+		err := m.applyBlock(cachedBlock.Block, cachedBlock.Commit, blockMetaData{source: gossipedBlock})
 		if err != nil {
 			return fmt.Errorf("apply cached block: expected height: %d: %w", expectedHeight, err)
 		}
@@ -146,10 +144,9 @@ func (m *Manager) attemptApplyCachedBlocks() error {
 
 // pruneCache prunes the cache of gossiped blocks.
 func (m *Manager) pruneCache() {
-	for k := range m.prevBlock {
+	for k := range m.blockCache {
 		if k <= m.store.Height() {
-			delete(m.prevBlock, k)
-			delete(m.prevCommit, k)
+			delete(m.blockCache, k)
 		}
 	}
 }
