@@ -86,7 +86,7 @@ func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
 	m.logger.Debug("trying to retrieve batch from DA", "daHeight", daMetaData.Height)
 	batchResp := m.fetchBatch(daMetaData)
 	if batchResp.Code != da.StatusSuccess {
-		m.logger.Error("Unable to retrieve batch", batchResp.Message)
+		m.logger.Error("fetching batch from DA", batchResp.Message)
 		return batchResp.Error
 	}
 
