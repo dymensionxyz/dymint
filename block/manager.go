@@ -78,7 +78,7 @@ type Manager struct {
 		Protect against processing two blocks at once when there are two routines handling incoming gossiped blocks,
 		and incoming DA blocks, respectively.
 	*/
-	executeBlockMutex sync.Mutex
+	retrieverMutex sync.Mutex
 
 	// pendingBatch is the result of the last DA submission
 	// that is pending settlement layer submission.

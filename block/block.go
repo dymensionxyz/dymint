@@ -120,8 +120,8 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 
 // TODO: move to gossip.go
 func (m *Manager) attemptApplyCachedBlocks() error {
-	m.executeBlockMutex.Lock()
-	defer m.executeBlockMutex.Unlock()
+	m.retrieverMutex.Lock()
+	defer m.retrieverMutex.Unlock()
 
 	for {
 		expectedHeight := m.store.NextHeight()
@@ -144,6 +144,9 @@ func (m *Manager) attemptApplyCachedBlocks() error {
 
 // pruneCache prunes the cache of gossiped blocks.
 func (m *Manager) pruneCache() {
+	m.retrieverMutex.Lock()
+	defer m.retrieverMutex.Unlock()
+
 	for k := range m.blockCache {
 		if k <= m.store.Height() {
 			delete(m.blockCache, k)
