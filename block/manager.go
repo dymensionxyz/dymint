@@ -60,10 +60,16 @@ type Manager struct {
 	// Block production
 	shouldProduceBlocksCh chan bool
 	produceEmptyBlockCh   chan bool
-	lastSubmissionTime    atomic.Int64
-	batchInProcess        sync.Mutex
 	produceBlockMutex     sync.Mutex
 	applyCachedBlockMutex sync.Mutex
+
+	// batch submission
+	batchInProcess     sync.Mutex
+	lastSubmissionTime atomic.Int64
+	// pendingBatch is the result of the last DA submission
+	// that is pending settlement layer submission.
+	// It is used to avoid double submission of the same batch.
+	pendingBatch *PendingBatch
 
 	// Logging
 	logger types.Logger
