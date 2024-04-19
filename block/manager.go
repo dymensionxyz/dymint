@@ -69,10 +69,7 @@ type Manager struct {
 	// pendingBatch is the result of the last DA submission
 	// that is pending settlement layer submission.
 	// It is used to avoid double submission of the same batch.
-	pendingBatch *struct {
-		daResult *da.ResultSubmitBatch
-		batch    *types.Batch
-	}
+	pendingBatch *PendingBatch
 
 	// Logging
 	logger types.Logger

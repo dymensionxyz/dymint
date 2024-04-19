@@ -64,12 +64,10 @@ func (m *Manager) handleSubmissionTrigger(ctx context.Context) {
 			return
 		}
 
-		m.pendingBatch = &struct {
-			daResult *da.ResultSubmitBatch
-			batch    *types.Batch
-		}{}
-		m.pendingBatch.daResult = resultSubmitToDA
-		m.pendingBatch.batch = nextBatch
+		m.pendingBatch = &PendingBatch{
+			daResult: resultSubmitToDA,
+			batch:    nextBatch,
+		}
 	}
 
 	syncHeight, err := m.submitPendingBatchToSL()
