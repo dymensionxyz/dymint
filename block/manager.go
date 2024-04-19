@@ -80,6 +80,11 @@ type Manager struct {
 	*/
 	executeBlockMutex sync.Mutex
 
+	// pendingBatch is the result of the last DA submission
+	// that is pending settlement layer submission.
+	// It is used to avoid double submission of the same batch.
+	pendingBatch *PendingBatch
+
 	// Logging
 	logger types.Logger
 
