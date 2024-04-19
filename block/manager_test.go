@@ -164,6 +164,7 @@ func TestRetrieveDaBatchesFailed(t *testing.T) {
 
 	t.Log(manager.LastState.SLStateIndex)
 	daMetaData := &da.DASubmitMetaData{
+		Client: da.Mock,
 		Height: 1,
 	}
 	err = manager.ProcessNextDABatch(daMetaData)
@@ -466,6 +467,59 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 
 				assert.NoError(err)
 			}
+		})
+	}
+}
+
+func TestDAFetch(t *testing.T) {
+
+	require := require.New(t)
+	// Setup app
+	app := testutil.GetAppMock(testutil.Info, testutil.Commit)
+	// Create proxy app
+	clientCreator := proxy.NewLocalClientCreator(app)
+	proxyApp := proxy.NewAppConns(clientCreator)
+	err := proxyApp.Start()
+	require.NoError(err)
+	// Create a new mock store which should succeed to save the first block
+	mockStore := testutil.NewMockStore()
+	// Init manager
+	manager, err := getManager(getManagerConfig(), nil, nil, 1, 1, 0, proxyApp, mockStore)
+	require.NoError(err)
+
+	syncTarget := manager.syncTarget.Load()
+	nextBatchStartHeight := syncTarget + 1
+	batch, err := testutil.GenerateBatch(nextBatchStartHeight, nextBatchStartHeight+uint64(defaultBatchSize-1), manager.proposerKey)
+	require.NoError(err)
+	daResultSubmitBatch := manager.dalc.SubmitBatch(batch)
+	require.Equal(daResultSubmitBatch.Code, da.StatusSuccess)
+	err = manager.settlementClient.SubmitBatch(batch, manager.dalc.GetClientType(), &daResultSubmitBatch)
+	require.NoError(err)
+
+	cases := []struct {
+		name       string
+		manager    *Manager
+		daMetaData *da.DASubmitMetaData
+		err        error
+	}{
+		{
+			name:       "valid DA",
+			manager:    manager,
+			daMetaData: daResultSubmitBatch.SubmitMetaData,
+			err:        nil,
+		},
+		{
+			name:       "wrong DA",
+			manager:    manager,
+			daMetaData: &da.DASubmitMetaData{Client: da.Celestia, Height: daResultSubmitBatch.SubmitMetaData.Height},
+			err:        ErrWrongDA,
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			result := manager.fetchBatch(c.daMetaData)
+			require.Equal(c.err, result.Error)
 		})
 	}
 }
