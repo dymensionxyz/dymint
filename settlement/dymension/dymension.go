@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"time"
 
+	uevent "github.com/dymensionxyz/dymint/utils/event"
+
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -24,7 +26,6 @@ import (
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
-	"github.com/dymensionxyz/dymint/utils"
 	"github.com/hashicorp/go-multierror"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
@@ -137,7 +138,7 @@ func WithBatchRetryDelay(batchRetryDelay time.Duration) Option {
 func NewDymensionHubClient(config settlement.Config, pubsub *pubsub.Server, logger types.Logger, options ...Option) (*HubClient, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	eventMap := map[string]string{
-		fmt.Sprintf(eventStateUpdate, config.RollappID):          settlement.EventNewSettlementBatchAccepted,
+		fmt.Sprintf(eventStateUpdate, config.RollappID):          settlement.EventNewBatchAccepted,
 		fmt.Sprintf(eventSequencersListUpdate, config.RollappID): settlement.EventSequencersListUpdated,
 	}
 
@@ -207,18 +208,18 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 		return err
 	}
 
-	//TODO: probably should be changed to be a channel, as the eventHandler is also in the HubClient in he produces the event
+	// TODO: probably should be changed to be a channel, as the eventHandler is also in the HubClient in he produces the event
 	postBatchSubscriberClient := fmt.Sprintf("%s-%d-%s", postBatchSubscriberPrefix, batch.StartHeight, uuid.New().String())
 	subscription, err := d.pubsub.Subscribe(d.ctx, postBatchSubscriberClient, settlement.EventQueryNewSettlementBatchAccepted)
 	if err != nil {
-		d.logger.Error("failed to subscribe to state update events", "err", err)
+		d.logger.Error("subscribe to state update events", "err", err)
 		return err
 	}
 
 	//nolint:errcheck
 	defer d.pubsub.Unsubscribe(d.ctx, postBatchSubscriberClient, settlement.EventQueryNewSettlementBatchAccepted)
 
-	// Try submitting the batch to the settlement layer. If submission (i.e only submission, not acceptance) fails we emit an unhealthy event
+	// Try submitting the batch to the settlement layer. If submission (i.e. only submission, not acceptance) fails we emit an unhealthy event
 	// and try again in the next loop. If submission succeeds we wait for the batch to be accepted by the settlement layer.
 	// If it is not accepted we emit an unhealthy event and start again the submission loop.
 	for {
@@ -226,59 +227,73 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 		case <-d.ctx.Done():
 			return d.ctx.Err()
 		default:
-			// Try submitting the batch
 			err := d.submitBatch(msgUpdateState)
 			if err != nil {
-				d.logger.Error("Failed submitting batch to settlement layer. Emitting unhealthy event",
-					"startHeight", batch.StartHeight, "endHeight", batch.EndHeight, "error", err)
-				heatlhEventData := &settlement.EventDataSettlementHealthStatus{Healthy: false, Error: err}
-				utils.SubmitEventOrPanic(d.ctx, d.pubsub, heatlhEventData,
-					map[string][]string{settlement.EventTypeKey: {settlement.EventSettlementHealthStatus}})
-				// Sleep to allow context cancellation to take effect before retrying
 
+				err = fmt.Errorf("submit batch: %w", err)
+
+				uevent.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{Error: err}, settlement.EventHealthStatusList)
+
+				d.logger.Error(
+					"submit batch to settlement layer, emitted unhealthy event",
+
+					"startHeight",
+					batch.StartHeight,
+					"endHeight",
+					batch.EndHeight,
+					"error",
+					err,
+				)
+
+				// Sleep to allow context cancellation to take effect before retrying
 				time.Sleep(100 * time.Millisecond)
 				continue
 			}
 		}
 
 		// Batch was submitted successfully. Wait for it to be accepted by the settlement layer.
-		ticker := time.NewTicker(d.batchAcceptanceTimeout)
-		defer ticker.Stop()
+		timer := time.NewTimer(d.batchAcceptanceTimeout)
+		defer timer.Stop()
 
 		select {
 		case <-d.ctx.Done():
 			return d.ctx.Err()
 		case <-subscription.Cancelled():
-			err = fmt.Errorf("subscription canceled")
-			return err
+			return fmt.Errorf("subscription canceled: %w", err)
 		case <-subscription.Out():
-			d.logger.Info("Batch accepted by settlement layer. Emitting healthy event",
+			uevent.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{}, settlement.EventHealthStatusList)
+			d.logger.Debug("batch accepted by settlement layer, emitted healthy event",
 				"startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
-			heatlhEventData := &settlement.EventDataSettlementHealthStatus{Healthy: true}
-			utils.SubmitEventOrPanic(d.ctx, d.pubsub, heatlhEventData,
-				map[string][]string{settlement.EventTypeKey: {settlement.EventSettlementHealthStatus}})
 			return nil
-		case <-ticker.C:
-			// Before emitting unhealthy event, check if the batch was accepted by the settlement layer and
-			// we've just missed the event.
+		case <-timer.C:
+			// Before emitting unhealthy event, check if the batch was accepted by the settlement
+			// layer, and we've just missed the event.
 			includedBatch, err := d.waitForBatchInclusion(batch.StartHeight)
 			if err != nil {
-				// Batch was not accepted by the settlement layer. Emitting unhealthy event
-				d.logger.Error("Batch not accepted by settlement layer. Emitting unhealthy event",
-					"startHeight", batch.StartHeight, "endHeight", batch.EndHeight, "error", err)
-				heatlhEventData := &settlement.EventDataSettlementHealthStatus{Healthy: false, Error: settlement.ErrBatchNotAccepted}
-				utils.SubmitEventOrPanic(d.ctx, d.pubsub, heatlhEventData,
-					map[string][]string{settlement.EventTypeKey: {settlement.EventSettlementHealthStatus}})
-				// Stop the ticker and restart the loop
-				ticker.Stop()
+
+				err = fmt.Errorf("wait for batch inclusion: %w: %w", settlement.ErrBatchNotAccepted, err)
+
+				uevent.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{Error: err}, settlement.EventHealthStatusList)
+
+				d.logger.Error(
+					"batch not accepted by settlement layer, emitted unhealthy event",
+					"startHeight",
+					batch.StartHeight,
+					"endHeight",
+					batch.EndHeight,
+					"error",
+					err,
+				)
+
+				// restart the loop
+				timer.Stop()
 				continue
 			}
 
-			d.logger.Info("Batch accepted by settlement layer", "startHeight", includedBatch.StartHeight, "endHeight", includedBatch.EndHeight)
-			// Emit health event
-			heatlhEventData := &settlement.EventDataSettlementHealthStatus{Healthy: true}
-			utils.SubmitEventOrPanic(d.ctx, d.pubsub, heatlhEventData,
-				map[string][]string{settlement.EventTypeKey: {settlement.EventSettlementHealthStatus}})
+			// all good
+			d.logger.Info("batch accepted by settlement layer", "startHeight", includedBatch.StartHeight, "endHeight", includedBatch.EndHeight)
+
+			uevent.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{}, settlement.EventHealthStatusList)
 			return nil
 		}
 	}
@@ -286,33 +301,28 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 
 // GetLatestBatch returns the latest batch from the Dymension Hub.
 func (d *HubClient) GetLatestBatch(rollappID string) (*settlement.ResultRetrieveBatch, error) {
-	var latestStateInfoIndexResp *rollapptypes.QueryGetLatestStateIndexResponse
-
+	var stateInfoResp *rollapptypes.QueryGetStateInfoResponse
 	err := d.RunWithRetry(func() error {
 		var err error
-		latestStateInfoIndexResp, err = d.rollappQueryClient.LatestStateIndex(d.ctx,
-			&rollapptypes.QueryGetLatestStateIndexRequest{RollappId: d.config.RollappID})
+		stateInfoResp, err = d.rollappQueryClient.StateInfo(d.ctx,
+			&rollapptypes.QueryGetStateInfoRequest{RollappId: d.config.RollappID})
 
 		if status.Code(err) == codes.NotFound {
 			return retry.Unrecoverable(settlement.ErrBatchNotFound)
 		}
 
 		return err
-	})
+	},
+	)
 	if err != nil {
 		return nil, err
 	}
-
 	// not supposed to happen, but just in case
-	if latestStateInfoIndexResp == nil {
+	if stateInfoResp == nil {
 		return nil, settlement.ErrEmptyResponse
 	}
 
-	latestBatch, err := d.GetBatchAtIndex(rollappID, latestStateInfoIndexResp.StateIndex.Index)
-	if err != nil {
-		return nil, err
-	}
-	return latestBatch, nil
+	return d.convertStateInfoToResultRetrieveBatch(&stateInfoResp.StateInfo)
 }
 
 // GetBatchAtIndex returns the batch at the given index from the Dymension Hub.
@@ -386,8 +396,7 @@ func (d *HubClient) submitBatch(msgUpdateState *rollapptypes.MsgUpdateState) err
 	err := d.RunWithRetry(func() error {
 		txResp, err := d.client.BroadcastTx(d.config.DymAccountName, msgUpdateState)
 		if err != nil || txResp.Code != 0 {
-			d.logger.Error("Error sending batch to settlement layer", "error", err)
-			return err
+			return fmt.Errorf("broadcast tx: %w", err)
 		}
 		return nil
 	})
@@ -443,8 +452,6 @@ func (d *HubClient) convertBatchToMsgUpdateState(batch *types.Batch, daResult *d
 		blockDescriptor := rollapptypes.BlockDescriptor{
 			Height:    block.Header.Height,
 			StateRoot: block.Header.AppHash[:],
-			// TODO(omritoptix): Change to a real ISR once supported
-			IntermediateStatesRoot: make([]byte, 32),
 		}
 		blockDescriptors[index] = blockDescriptor
 	}
@@ -483,14 +490,14 @@ func getCosmosClientOptions(config *settlement.Config) []cosmosclient.Option {
 
 func (d *HubClient) getEventData(eventType string, rawEventData ctypes.ResultEvent) (interface{}, error) {
 	switch eventType {
-	case settlement.EventNewSettlementBatchAccepted:
+	case settlement.EventNewBatchAccepted:
 		return d.convertToNewBatchEvent(rawEventData)
 	}
 	return nil, fmt.Errorf("event type %s not recognized", eventType)
 }
 
-func (d *HubClient) convertToNewBatchEvent(rawEventData ctypes.ResultEvent) (*settlement.EventDataNewSettlementBatchAccepted, error) {
-	//check all expected attributes  exists
+func (d *HubClient) convertToNewBatchEvent(rawEventData ctypes.ResultEvent) (*settlement.EventDataNewBatchAccepted, error) {
+	// check all expected attributes  exists
 	events := rawEventData.Events
 	if events["state_update.num_blocks"] == nil || events["state_update.start_height"] == nil || events["state_update.state_info_index"] == nil {
 		return nil, fmt.Errorf("missing expected attributes in event")
@@ -508,7 +515,7 @@ func (d *HubClient) convertToNewBatchEvent(rawEventData ctypes.ResultEvent) (*se
 		return nil, multiErr
 	}
 	endHeight := uint64(startHeight + numBlocks - 1)
-	NewBatchEvent := &settlement.EventDataNewSettlementBatchAccepted{
+	NewBatchEvent := &settlement.EventDataNewBatchAccepted{
 		EndHeight:  endHeight,
 		StateIndex: uint64(stateIndex),
 	}
@@ -535,23 +542,27 @@ func (d *HubClient) convertStateInfoToResultRetrieveBatch(stateInfo *rollapptype
 }
 
 // TODO(omritoptix): Change the retry attempts to be only for the batch polling. Also we need to have a more
-// bullet proof check as theoretically the tx can stay in the mempool longer then our retry attempts.
+// TODO: bullet proof check as theoretically the tx can stay in the mempool longer then our retry attempts.
 func (d *HubClient) waitForBatchInclusion(batchStartHeight uint64) (*settlement.ResultRetrieveBatch, error) {
-	var resultRetriveBatch *settlement.ResultRetrieveBatch
-	err := d.RunWithRetry(func() error {
-		latestBatch, err := d.GetLatestBatch(d.config.RollappID)
-		if err != nil {
-			return err
-		}
-		if latestBatch.Batch.StartHeight != batchStartHeight {
-			return settlement.ErrBatchNotFound
-		}
-		resultRetriveBatch = latestBatch
-		return nil
-	})
-	return resultRetriveBatch, err
+	var res *settlement.ResultRetrieveBatch
+	err := d.RunWithRetry(
+		func() error {
+			latestBatch, err := d.GetLatestBatch(d.config.RollappID)
+			if err != nil {
+				return fmt.Errorf("get latest batch: %w", err)
+			}
+			if latestBatch.Batch.StartHeight != batchStartHeight {
+				return fmt.Errorf("latest batch start height not match expected start height: %w", settlement.ErrBatchNotFound)
+			}
+			res = latestBatch
+			return nil
+		},
+	)
+	return res, err
 }
 
+// RunWithRetry runs the given operation with retry, doing a number of attempts, and taking the last
+// error only. It uses the context of the HubClient.
 func (d *HubClient) RunWithRetry(operation func() error) error {
 	return retry.Do(operation,
 		retry.Context(d.ctx),

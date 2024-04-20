@@ -1,12 +1,9 @@
 package p2p
 
 import (
-	"fmt"
-
 	"github.com/dymensionxyz/dymint/p2p/pb"
 	"github.com/dymensionxyz/dymint/types"
-	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
-	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
+	uevent "github.com/dymensionxyz/dymint/utils/event"
 )
 
 /* -------------------------------------------------------------------------- */
@@ -18,7 +15,6 @@ const (
 	EventTypeKey = "p2p.event"
 )
 
-// Define the event types
 const (
 	EventNewGossipedBlock = "NewGossipedBlock"
 )
@@ -85,12 +81,5 @@ func (e *GossipedBlock) Validate() error {
 /*                                   Queries                                  */
 /* -------------------------------------------------------------------------- */
 
-var (
-	// EventQueryNewNewGossipedBlock is the query used for getting EventNewGossipedBlock
-	EventQueryNewNewGossipedBlock = QueryForEvent(EventNewGossipedBlock)
-)
-
-// QueryForEvent returns a query for the given event.
-func QueryForEvent(eventType string) tmpubsub.Query {
-	return tmquery.MustParse(fmt.Sprintf("%s='%s'", EventTypeKey, eventType))
-}
+// EventQueryNewNewGossipedBlock is the query used for getting EventNewGossipedBlock
+var EventQueryNewNewGossipedBlock = uevent.QueryFor(EventTypeKey, EventNewGossipedBlock)

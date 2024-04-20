@@ -1,7 +1,11 @@
 package block
 
-//TODO: move to types package
+import (
+	"github.com/dymensionxyz/dymint/da"
+	"github.com/dymensionxyz/dymint/types"
+)
 
+// TODO: move to types package
 type blockSource string
 
 const (
@@ -13,4 +17,9 @@ const (
 type blockMetaData struct {
 	source   blockSource
 	daHeight uint64
+}
+
+type PendingBatch struct {
+	daResult *da.ResultSubmitBatch
+	batch    *types.Batch
 }

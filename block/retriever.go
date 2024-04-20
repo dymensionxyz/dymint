@@ -9,11 +9,11 @@ import (
 	"github.com/dymensionxyz/dymint/da"
 )
 
-// RetriveLoop listens for new sync messages written to a ring buffer and in turn
+// RetrieveLoop listens for new sync messages written to a ring buffer and in turn
 // runs syncUntilTarget on the latest message in the ring buffer.
-func (m *Manager) RetriveLoop(ctx context.Context) {
-	m.logger.Info("Started retrieve loop")
-	syncTargetpoller := diodes.NewPoller(m.syncTargetDiode, diodes.WithPollingContext(ctx))
+func (m *Manager) RetrieveLoop(ctx context.Context) {
+	m.logger.Info("started retrieve loop")
+	syncTargetPoller := diodes.NewPoller(m.syncTargetDiode, diodes.WithPollingContext(ctx))
 
 	for {
 		select {
@@ -21,18 +21,10 @@ func (m *Manager) RetriveLoop(ctx context.Context) {
 			return
 		default:
 			// Get only the latest sync target
-			syncTarget := syncTargetpoller.Next()
-			err := m.syncUntilTarget(ctx, *(*uint64)(syncTarget))
+			syncTarget := syncTargetPoller.Next()
+			err := m.syncUntilTarget(*(*uint64)(syncTarget))
 			if err != nil {
-				panic(err)
-			}
-			// Check if after we sync we are synced or a new syncTarget was already set.
-			// If we are synced then signal all goroutines waiting on isSyncedCond.
-			if m.Store.Height() >= atomic.LoadUint64(&m.SyncTarget) {
-				m.logger.Info("Synced at height", "height", m.Store.Height())
-				m.isSyncedCond.L.Lock()
-				m.isSyncedCond.Signal()
-				m.isSyncedCond.L.Unlock()
+				panic(fmt.Errorf("sync until target: %w", err))
 			}
 		}
 	}
@@ -41,8 +33,14 @@ func (m *Manager) RetriveLoop(ctx context.Context) {
 // syncUntilTarget syncs the block until the syncTarget is reached.
 // It fetches the batches from the settlement, gets the DA height and gets
 // the actual blocks from the DA.
-func (m *Manager) syncUntilTarget(ctx context.Context, syncTarget uint64) error {
+func (m *Manager) syncUntilTarget(syncTarget uint64) error {
 	currentHeight := m.Store.Height()
+
+	if currentHeight >= syncTarget {
+		m.logger.Info("Already synced", "current height", currentHeight, "syncTarget", syncTarget)
+		return nil
+	}
+
 	for currentHeight < syncTarget {
 		currStateIdx := atomic.LoadUint64(&m.LastState.SLStateIndex) + 1
 		m.logger.Info("Syncing until target", "height", currentHeight, "state_index", currStateIdx, "syncTarget", syncTarget)
@@ -51,7 +49,7 @@ func (m *Manager) syncUntilTarget(ctx context.Context, syncTarget uint64) error 
 			return err
 		}
 
-		err = m.ProcessNextDABatch(ctx, settlementBatch.MetaData.DA)
+		err = m.processNextDABatch(settlementBatch.MetaData.DA)
 		if err != nil {
 			return err
 		}
@@ -63,6 +61,7 @@ func (m *Manager) syncUntilTarget(ctx context.Context, syncTarget uint64) error 
 			return err
 		}
 	}
+	m.logger.Info("Synced", "current height", currentHeight, "syncTarget", syncTarget)
 	return nil
 }
 
@@ -70,13 +69,13 @@ func (m *Manager) updateStateIndex(stateIndex uint64) error {
 	atomic.StoreUint64(&m.LastState.SLStateIndex, stateIndex)
 	_, err := m.Store.UpdateState(m.LastState, nil)
 	if err != nil {
-		m.logger.Error("Failed to update state", "error", err)
+		m.logger.Error("update state", "error", err)
 		return err
 	}
 	return nil
 }
 
-func (m *Manager) ProcessNextDABatch(ctx context.Context, daMetaData *da.DASubmitMetaData) error {
+func (m *Manager) processNextDABatch(daMetaData *da.DASubmitMetaData) error {
 	m.logger.Debug("trying to retrieve batch from DA", "daHeight", daMetaData.Height)
 	batchResp := m.fetchBatch(daMetaData)
 	if batchResp.Code != da.StatusSuccess {
@@ -90,17 +89,20 @@ func (m *Manager) ProcessNextDABatch(ctx context.Context, daMetaData *da.DASubmi
 			if block.Header.Height != m.Store.NextHeight() {
 				continue
 			}
-			err := m.applyBlock(ctx, block, batch.Commits[i], blockMetaData{source: daBlock, daHeight: daMetaData.Height})
+			if err := m.validateBlock(block, batch.Commits[i]); err != nil {
+				m.logger.Error("validate block from DA - someone is behaving badly", "height", block.Header.Height, "err", err)
+				continue
+			}
+			err := m.applyBlock(block, batch.Commits[i], blockMetaData{source: daBlock, daHeight: daMetaData.Height})
 			if err != nil {
-				return err
+				return fmt.Errorf("apply block: height: %d: %w", block.Header.Height, err)
 			}
 		}
 	}
 
-	// try to apply cached blocks
-	err := m.attemptApplyCachedBlocks(ctx)
+	err := m.attemptApplyCachedBlocks()
 	if err != nil {
-		m.logger.Debug("Error applying previous cached blocks", "err", err)
+		m.logger.Error("applying previous cached blocks", "err", err)
 	}
 	return nil
 }
@@ -117,9 +119,9 @@ func (m *Manager) fetchBatch(daMetaData *da.DASubmitMetaData) da.ResultRetrieveB
 			},
 		}
 	}
-	//batchRes.MetaData includes proofs necessary to open disputes with the Hub
+	// batchRes.MetaData includes proofs necessary to open disputes with the Hub
 	batchRes := m.Retriever.RetrieveBatches(daMetaData)
-	//TODO(srene) : for invalid transactions there is no specific error code since it will need to be validated somewhere else for fraud proving.
-	//NMT proofs (availRes.MetaData.Proofs) are included in the result batchRes, necessary to be included in the dispute
+	// TODO(srene) : for invalid transactions there is no specific error code since it will need to be validated somewhere else for fraud proving.
+	// NMT proofs (availRes.MetaData.Proofs) are included in the result batchRes, necessary to be included in the dispute
 	return batchRes
 }

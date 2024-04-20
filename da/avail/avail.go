@@ -66,8 +66,10 @@ type DataAvailabilityLayerClient struct {
 	batchRetryAttempts uint
 }
 
-var _ da.DataAvailabilityLayerClient = &DataAvailabilityLayerClient{}
-var _ da.BatchRetriever = &DataAvailabilityLayerClient{}
+var (
+	_ da.DataAvailabilityLayerClient = &DataAvailabilityLayerClient{}
+	_ da.BatchRetriever              = &DataAvailabilityLayerClient{}
+)
 
 // WithClient is an option which sets the client.
 func WithClient(client SubstrateApiI) da.Option {
@@ -153,7 +155,7 @@ func (c *DataAvailabilityLayerClient) GetClientType() da.Client {
 	return da.Avail
 }
 
-// RetrieveBatch retrieves batch from DataAvailabilityLayerClient instance.
+// RetrieveBatches retrieves batch from DataAvailabilityLayerClient instance.
 func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
 	//nolint:typecheck
 	blockHash, err := c.client.GetBlockHash(daMetaData.Height)
@@ -175,7 +177,6 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 				Error:   err,
 			},
 		}
-
 	}
 	// Convert the data returned to batches
 	var batches []*types.Batch
@@ -184,20 +185,20 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 		if ext.Signature.AppID.Int64() == c.config.AppID &&
 			ext.Method.CallIndex.SectionIndex == DataCallSectionIndex &&
 			ext.Method.CallIndex.MethodIndex == DataCallMethodIndex {
+
 			data := ext.Method.Args
-			for len(data) > 0 {
+			for 0 < len(data) {
 				var pbBatch pb.Batch
-				// Attempt to unmarshal the data.
 				err := proto.Unmarshal(data, &pbBatch)
 				if err != nil {
-					c.logger.Error("failed to unmarshal batch", "daHeight", daMetaData.Height, "error", err)
+					c.logger.Error("unmarshal batch", "daHeight", daMetaData.Height, "error", err)
 					continue
 				}
 				// Convert the proto batch to a batch
 				batch := &types.Batch{}
 				err = batch.FromProto(&pbBatch)
 				if err != nil {
-					c.logger.Error("failed to convert batch", "daHeight", daMetaData.Height, "error", err)
+					c.logger.Error("batch from proto", "daHeight", daMetaData.Height, "error", err)
 					continue
 				}
 				// Add the batch to the list
@@ -235,7 +236,6 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 
 	c.logger.Debug("Submitting to da batch with size", "size", len(blob))
 	return c.submitBatchLoop(blob)
-
 }
 
 // submitBatchLoop tries submitting the batch. In case we get a configuration error we would like to stop trying,
@@ -253,19 +253,25 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 			}
 		default:
 			var daBlockHeight uint64
-			err := retry.Do(func() error {
-				var err error
-				daBlockHeight, err = c.broadcastTx(dataBlob)
-				if err != nil {
-					c.logger.Error("Error broadcasting batch", "error", err)
-					if errors.Is(err, da.ErrTxBroadcastConfigError) {
-						err = retry.Unrecoverable(err)
+			err := retry.Do(
+				func() error {
+					var err error
+					daBlockHeight, err = c.broadcastTx(dataBlob)
+					if err != nil {
+						c.logger.Error("broadcasting batch", "error", err)
+						if errors.Is(err, da.ErrTxBroadcastConfigError) {
+							err = retry.Unrecoverable(err)
+						}
+						return err
 					}
-					return err
-				}
-				return nil
-			}, retry.Context(c.ctx), retry.LastErrorOnly(true), retry.Delay(c.batchRetryDelay),
-				retry.DelayType(retry.FixedDelay), retry.Attempts(c.batchRetryAttempts))
+					return nil
+				},
+				retry.Context(c.ctx),
+				retry.LastErrorOnly(true),
+				retry.Delay(c.batchRetryDelay),
+				retry.DelayType(retry.FixedDelay),
+				retry.Attempts(c.batchRetryAttempts),
+			)
 			if err != nil {
 				if !retry.IsRecoverable(err) {
 					return da.ResultSubmitBatch{
@@ -275,18 +281,18 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 							Error:   err,
 						},
 					}
-				} else {
-					c.logger.Error("Error broadcasting batch. Emitting DA unhealthy event and Trying again.", "error", err)
-					res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, false, err)
-					if err != nil {
-						return res
-					}
-					continue
 				}
+				err = fmt.Errorf("broadcast data blob: %w", err)
+				c.logger.Error("broadcasting batch, emitting DA unhealthy event and trying again", "error", err)
+				res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, err)
+				if err != nil {
+					return res
+				}
+				continue
 			}
 
 			c.logger.Debug("Successfully submitted DA batch")
-			res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, true, nil)
+			res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, nil)
 			if err != nil {
 				return res
 			}
@@ -303,7 +309,6 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 
 		}
 	}
-
 }
 
 // broadcastTx broadcasts the transaction to the network and in case of success
@@ -311,7 +316,7 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 func (c *DataAvailabilityLayerClient) broadcastTx(tx []byte) (uint64, error) {
 	meta, err := c.client.GetMetadataLatest()
 	if err != nil {
-		return 0, fmt.Errorf("%s: %s", "failed to GetMetadataLatest", err)
+		return 0, fmt.Errorf("GetMetadataLatest: %w", err)
 	}
 	newCall, err := availtypes.NewCall(meta, DataCallSection+"."+DataCallMethod, availtypes.NewBytes(tx))
 	if err != nil {
@@ -321,11 +326,11 @@ func (c *DataAvailabilityLayerClient) broadcastTx(tx []byte) (uint64, error) {
 	ext := availtypes.NewExtrinsic(newCall)
 	genesisHash, err := c.client.GetBlockHash(0)
 	if err != nil {
-		return 0, fmt.Errorf("%s: %s", "failed to GetBlockHash", err)
+		return 0, fmt.Errorf("GetBlockHash: %w", err)
 	}
 	rv, err := c.client.GetRuntimeVersionLatest()
 	if err != nil {
-		return 0, fmt.Errorf("%s: %s", "failed to GetRuntimeVersionLatest", err)
+		return 0, fmt.Errorf("GetRuntimeVersionLatest: %w", err)
 	}
 	keyringPair, err := signature.KeyringPairFromSecret(c.config.Seed, keyringNetworkID)
 	if err != nil {
@@ -340,7 +345,7 @@ func (c *DataAvailabilityLayerClient) broadcastTx(tx []byte) (uint64, error) {
 	var accountInfo availtypes.AccountInfo
 	ok, err := c.client.GetStorageLatest(key, &accountInfo)
 	if err != nil || !ok {
-		return 0, fmt.Errorf("%s: %s", "failed to GetStorageLatest", err)
+		return 0, fmt.Errorf("GetStorageLatest: %w", err)
 	}
 
 	nonce := uint32(accountInfo.Nonce)
@@ -386,7 +391,7 @@ func (c *DataAvailabilityLayerClient) broadcastTx(tx []byte) (uint64, error) {
 				hash := status.AsFinalized
 				blockHeight, err := c.getHeightFromHash(hash)
 				if err != nil {
-					return 0, fmt.Errorf("%s: %s", "failed to getHeightFromHash", err)
+					return 0, fmt.Errorf("getHeightFromHash: %w", err)
 				}
 				return blockHeight, nil
 			} else if status.IsInBlock {
@@ -396,7 +401,7 @@ func (c *DataAvailabilityLayerClient) broadcastTx(tx []byte) (uint64, error) {
 			} else {
 				recievedStatus, err := status.MarshalJSON()
 				if err != nil {
-					return 0, fmt.Errorf("%s: %s", "failed to MarshalJSON of received status", err)
+					return 0, fmt.Errorf("MarshalJSON of received status: %w", err)
 				}
 				c.logger.Debug("unsupported status, still waiting for inclusion", "status", string(recievedStatus))
 				continue

@@ -103,5 +103,4 @@ func TestPrefixKVBatch(t *testing.T) {
 	prefixbatchkv2 := prefixkv.NewBatch()
 	err = prefixbatchkv2.Delete([]byte("key1"))
 	require.NoError(err)
-
 }

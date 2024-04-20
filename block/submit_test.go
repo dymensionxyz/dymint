@@ -2,6 +2,7 @@ package block_test
 
 import (
 	"context"
+	"crypto/ed25519"
 	"crypto/rand"
 	"fmt"
 	"sync"
@@ -13,8 +14,6 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/proxy"
 
-	"crypto/ed25519"
-
 	cosmosed25519 "github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
 	"github.com/libp2p/go-libp2p/core/crypto"
 
@@ -24,9 +23,7 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
-var (
-	ctx = context.Background()
-)
+var ctx = context.Background()
 
 func TestBatchSubmissionHappyFlow(t *testing.T) {
 	require := require.New(t)
@@ -40,7 +37,7 @@ func TestBatchSubmissionHappyFlow(t *testing.T) {
 	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
-	//Check initial assertions
+	// Check initial assertions
 	initialHeight := uint64(0)
 	require.Zero(manager.Store.Height())
 	require.Zero(manager.SyncTarget)
@@ -86,7 +83,7 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 	manager, err := testutil.GetManagerWithProposerKey(testutil.GetManagerConfig(), lib2pPrivKey, mockLayerI, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
-	//Check initial assertions
+	// Check initial assertions
 	initialHeight := uint64(0)
 	require.Zero(manager.Store.Height())
 	require.Zero(manager.SyncTarget)
@@ -139,10 +136,10 @@ func TestBatchSubmissionAfterTimeout(t *testing.T) {
 	manager, err := testutil.GetManager(managerConfig, nil, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
-	//Check initial height
+	// Check initial height
 	initialHeight := uint64(0)
 	require.Equal(initialHeight, manager.Store.Height())
-	require.True(manager.SyncTarget == 0)
+	require.Zero(manager.SyncTarget.Load())
 
 	var wg sync.WaitGroup
 	mCtx, cancel := context.WithTimeout(context.Background(), runTime)
@@ -162,5 +159,5 @@ func TestBatchSubmissionAfterTimeout(t *testing.T) {
 
 	<-mCtx.Done()
 	wg.Wait() // Wait for all goroutines to finish
-	require.True(manager.SyncTarget > 0)
+	require.True(manager.SyncTarget.Load() > 0)
 }

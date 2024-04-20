@@ -6,14 +6,15 @@ import (
 	"encoding/hex"
 	"time"
 
-	"github.com/dymensionxyz/dymint/config"
-	"github.com/dymensionxyz/dymint/mempool"
-	"github.com/dymensionxyz/dymint/node"
-	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
+
+	"github.com/dymensionxyz/dymint/config"
+	"github.com/dymensionxyz/dymint/mempool"
+	"github.com/dymensionxyz/dymint/node"
+	"github.com/dymensionxyz/dymint/settlement"
 )
 
 func CreateNode(isAggregator bool, blockManagerConfig *config.BlockManagerConfig) (*node.Node, error) {
@@ -37,10 +38,21 @@ func CreateNode(isAggregator bool, blockManagerConfig *config.BlockManagerConfig
 	nodeConfig.BlockManagerConfig = *blockManagerConfig
 	nodeConfig.Aggregator = isAggregator
 
-	// SL config
-	nodeConfig.SettlementConfig = settlement.Config{ProposerPubKey: hex.EncodeToString(pubkeyBytes)}
+	rollappID := "rollapp_1234-1"
 
-	node, err := node.NewNode(context.Background(), nodeConfig, key, signingKey, proxy.NewLocalClientCreator(app), &types.GenesisDoc{ChainID: "test"}, log.TestingLogger(), mempool.NopMetrics())
+	// SL config
+	nodeConfig.SettlementConfig = settlement.Config{ProposerPubKey: hex.EncodeToString(pubkeyBytes), RollappID: rollappID}
+
+	node, err := node.NewNode(
+		context.Background(),
+		nodeConfig,
+		key,
+		signingKey,
+		proxy.NewLocalClientCreator(app),
+		&types.GenesisDoc{ChainID: rollappID},
+		log.TestingLogger(),
+		mempool.NopMetrics(),
+	)
 	if err != nil {
 		return nil, err
 	}

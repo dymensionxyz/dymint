@@ -9,7 +9,6 @@ import (
 
 // Store is minimal interface for storing and retrieving blocks, commits and state.
 type Store interface {
-
 	// NewBatch creates a new db batch.
 	NewBatch() Batch
 
@@ -20,13 +19,13 @@ type Store interface {
 	NextHeight() uint64
 
 	// SetHeight sets the height saved in the Store if it is higher than the existing height.
-	SetHeight(height uint64)
+	SetHeight(height uint64) bool
 
 	// Base returns height of the lowest block in store.
 	Base() uint64
 
 	// SetBase sets the height saved in the Store for the lowest block
-	SetBase(height uint64)
+	SetBase(height uint64) bool
 
 	// SaveBlock saves block along with its seen commit (which will be included in the next block).
 	SaveBlock(block *types.Block, commit *types.Commit, batch Batch) (Batch, error)

@@ -8,12 +8,12 @@ import (
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmtypes "github.com/tendermint/tendermint/types"
 
+	"github.com/dymensionxyz/dymint/mempool"
 	"github.com/dymensionxyz/dymint/types"
 )
 
-//TODO: move all those methods from blockExecutor to manager
-
-func (e *BlockExecutor) updateState(state types.State, block *types.Block, abciResponses *tmstate.ABCIResponses, validatorUpdates []*tmtypes.Validator) (types.State, error) {
+// TODO: move all those methods from blockExecutor to manager
+func (e *Executor) updateState(state types.State, block *types.Block, abciResponses *tmstate.ABCIResponses, validatorUpdates []*tmtypes.Validator) (types.State, error) {
 	nValSet := state.NextValidators.Copy()
 	lastHeightValSetChanged := state.LastHeightValidatorsChanged
 	// Dymint can work without validators
@@ -32,7 +32,7 @@ func (e *BlockExecutor) updateState(state types.State, block *types.Block, abciR
 	}
 
 	hash := block.Header.Hash()
-	//TODO: we can probably pass the state as a pointer and update it directly
+	// TODO: we can probably pass the state as a pointer and update it directly
 	s := types.State{
 		Version:         state.Version,
 		ChainID:         state.ChainID,
@@ -61,7 +61,7 @@ func (e *BlockExecutor) updateState(state types.State, block *types.Block, abciR
 	return s, nil
 }
 
-func (e *BlockExecutor) UpdateStateAfterInitChain(s *types.State, res *abci.ResponseInitChain, validators []*tmtypes.Validator) {
+func (e *Executor) UpdateStateAfterInitChain(s *types.State, res *abci.ResponseInitChain, validators []*tmtypes.Validator) {
 	// If the app did not return an app hash, we keep the one set from the genesis doc in
 	// the state. We don't set appHash since we don't want the genesis doc app hash
 	// recorded in the genesis block. We should probably just remove GenesisDoc.AppHash.
@@ -69,7 +69,7 @@ func (e *BlockExecutor) UpdateStateAfterInitChain(s *types.State, res *abci.Resp
 		copy(s.AppHash[:], res.AppHash)
 	}
 
-	//The validators after initChain must be greater than zero, otherwise this state is not loadable
+	// The validators after initChain must be greater than zero, otherwise this state is not loadable
 	if len(validators) <= 0 {
 		panic("Validators must be greater than zero")
 	}
@@ -104,10 +104,15 @@ func (e *BlockExecutor) UpdateStateAfterInitChain(s *types.State, res *abci.Resp
 	s.LastValidators = s.Validators.Copy()
 }
 
+func (e *Executor) UpdateMempoolAfterInitChain(s *types.State) {
+	e.mempool.SetPreCheckFn(mempool.PreCheckMaxBytes(s.ConsensusParams.Block.MaxBytes))
+	e.mempool.SetPostCheckFn(mempool.PostCheckMaxGas(s.ConsensusParams.Block.MaxGas))
+}
+
 // UpdateStateFromResponses updates state based on the ABCIResponses.
-func (e *BlockExecutor) UpdateStateFromResponses(resp *tmstate.ABCIResponses, state types.State, block *types.Block) (types.State, error) {
-	//Dymint ignores any setValidator responses from the app, as it is manages the validator set based on the settlement consensus
-	//TODO: this will be changed when supporting multiple sequencers from the hub
+func (e *Executor) UpdateStateFromResponses(resp *tmstate.ABCIResponses, state types.State, block *types.Block) (types.State, error) {
+	// Dymint ignores any setValidator responses from the app, as it is manages the validator set based on the settlement consensus
+	// TODO: this will be changed when supporting multiple sequencers from the hub
 	validatorUpdates := []*tmtypes.Validator{}
 
 	if state.ConsensusParams.Block.MaxBytes == 0 {

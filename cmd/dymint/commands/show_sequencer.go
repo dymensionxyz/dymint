@@ -33,7 +33,7 @@ func showSequencer(cmd *cobra.Command, args []string) error {
 
 	bz, err := tmjson.Marshal(pubKey)
 	if err != nil {
-		return fmt.Errorf("failed to marshal sequencer pubkey: %w", err)
+		return fmt.Errorf("marshal sequencer pubkey: %w", err)
 	}
 
 	fmt.Println(string(bz))

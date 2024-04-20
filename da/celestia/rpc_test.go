@@ -66,12 +66,13 @@ func TestSubmitBatch(t *testing.T) {
 	require.NoError(err)
 	blobProof := blob.Proof([]*nmt.Proof{&proof})
 
+	timeOutErr := errors.New("timeout")
 	cases := []struct {
 		name                    string
 		submitPFBReturn         []interface{}
 		sumbitPFDRun            func(args mock.Arguments)
 		expectedInclusionHeight uint64
-		expectedHealthEvent     *da.EventDataDAHealthStatus
+		expectedHealthEvent     *da.EventDataHealth
 		getProofReturn          []interface{}
 		getProofDRun            func(args mock.Arguments)
 		includedReturn          []interface{}
@@ -86,17 +87,17 @@ func TestSubmitBatch(t *testing.T) {
 			getProofDRun:            func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) },
 			includedRun:             func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) },
 			expectedInclusionHeight: uint64(1234),
-			expectedHealthEvent:     &da.EventDataDAHealthStatus{Healthy: true},
+			expectedHealthEvent:     &da.EventDataHealth{},
 		},
 		{
 			name:                "TestSubmitPFBErrored",
-			submitPFBReturn:     []interface{}{uint64(0), errors.New("timeout")},
+			submitPFBReturn:     []interface{}{uint64(0), timeOutErr},
 			getProofReturn:      []interface{}{&blobProof, nil},
 			includedReturn:      []interface{}{true, nil},
 			sumbitPFDRun:        func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) },
 			getProofDRun:        func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) },
 			includedRun:         func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) },
-			expectedHealthEvent: &da.EventDataDAHealthStatus{Healthy: false},
+			expectedHealthEvent: &da.EventDataHealth{Error: timeOutErr},
 		},
 	}
 	for _, tc := range cases {
@@ -142,7 +143,7 @@ func TestSubmitBatch(t *testing.T) {
 		go func() {
 			res := dalc.SubmitBatch(batch)
 			if res.SubmitMetaData != nil {
-				assert.Equal(res.SubmitMetaData.Height, uint64(tc.expectedInclusionHeight), tc.name)
+				assert.Equal(res.SubmitMetaData.Height, tc.expectedInclusionHeight, tc.name)
 			}
 			time.Sleep(100 * time.Millisecond)
 			done <- true
@@ -150,9 +151,9 @@ func TestSubmitBatch(t *testing.T) {
 
 		select {
 		case event := <-HealthSubscription.Out():
-			healthStatusEvent := event.Data().(*da.EventDataDAHealthStatus)
-			t.Log("got health status event", healthStatusEvent.Healthy)
-			assert.Equal(tc.expectedHealthEvent.Healthy, healthStatusEvent.Healthy, tc.name)
+			healthStatusEvent := event.Data().(*da.EventDataHealth)
+			t.Log("got health status event", healthStatusEvent.Error)
+			assert.ErrorIs(healthStatusEvent.Error, tc.expectedHealthEvent.Error, tc.name)
 		case <-time.After(1 * time.Second):
 			t.Error("timeout. expected health status event but didn't get one")
 		case <-done:

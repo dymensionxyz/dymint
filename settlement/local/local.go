@@ -110,9 +110,9 @@ func newHubClient(config settlement.Config, pubsub *pubsub.Server, logger types.
 
 func initConfig(conf settlement.Config) (slstore store.KVStore, proposer string, err error) {
 	if conf.KeyringHomeDir == "" {
-		//init store
+		// init store
 		slstore = store.NewDefaultInMemoryKVStore()
-		//init proposer pub key
+		// init proposer pub key
 		if conf.ProposerPubKey != "" {
 			proposer = conf.ProposerPubKey
 		} else {
@@ -155,9 +155,8 @@ func (c *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 	settlementBatch := c.convertBatchtoSettlementBatch(batch, daResult)
 	c.saveBatch(settlementBatch)
 	go func() {
-		// sleep for 10 miliseconds to mimic a delay in batch acceptance
-		time.Sleep(10 * time.Millisecond)
-		err := c.pubsub.PublishWithEvents(context.Background(), &settlement.EventDataNewSettlementBatchAccepted{EndHeight: settlementBatch.EndHeight}, map[string][]string{settlement.EventTypeKey: {settlement.EventNewSettlementBatchAccepted}})
+		time.Sleep(10 * time.Millisecond) // mimic a delay in batch acceptance
+		err := c.pubsub.PublishWithEvents(context.Background(), &settlement.EventDataNewBatchAccepted{EndHeight: settlementBatch.EndHeight}, settlement.EventNewBatchAcceptedList)
 		if err != nil {
 			panic(err)
 		}

@@ -5,10 +5,11 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/dymensionxyz/dymint/da/grpc"
-	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
+	"github.com/dymensionxyz/dymint/da/grpc"
+	"github.com/dymensionxyz/dymint/settlement"
 )
 
 const (
@@ -33,7 +34,7 @@ type NodeConfig struct {
 	SettlementLayer    string                 `mapstructure:"settlement_layer"`
 	SettlementConfig   settlement.Config      `mapstructure:",squash"`
 	Instrumentation    *InstrumentationConfig `mapstructure:"instrumentation"`
-	//Config params for mock grpc da
+	// Config params for mock grpc da
 	DAGrpc        grpc.Config   `mapstructure:",squash"`
 	BootstrapTime time.Duration `mapstructure:"bootstrap_time"`
 }
@@ -59,7 +60,7 @@ type BlockManagerConfig struct {
 func (nc *NodeConfig) GetViperConfig(cmd *cobra.Command, homeDir string) error {
 	v := viper.GetViper()
 
-	//Loads dymint toml config file
+	// Loads dymint toml config file
 	EnsureRoot(homeDir, nil)
 	v.SetConfigName("dymint")
 	v.AddConfigPath(homeDir)                                      // search root directory
@@ -90,7 +91,27 @@ func (nc *NodeConfig) GetViperConfig(cmd *cobra.Command, homeDir string) error {
 	return nil
 }
 
-// validate BlockManagerConfig
+func (nc NodeConfig) Validate() error {
+	if err := nc.BlockManagerConfig.Validate(); err != nil {
+		return fmt.Errorf("BlockManagerConfig: %w", err)
+	}
+
+	if err := nc.validateSettlementLayer(); err != nil {
+		return fmt.Errorf("SettlementLayer: %w", err)
+	}
+
+	if err := nc.validateDALayer(); err != nil {
+		return fmt.Errorf("DALayer: %w", err)
+	}
+
+	if err := nc.validateInstrumentation(); err != nil {
+		return fmt.Errorf("Instrumentation: %w", err)
+	}
+
+	return nil
+}
+
+// Validate BlockManagerConfig
 func (c BlockManagerConfig) Validate() error {
 	if c.BlockTime <= 0 {
 		return fmt.Errorf("block_time must be positive")
@@ -127,20 +148,46 @@ func (c BlockManagerConfig) Validate() error {
 	return nil
 }
 
-func (c NodeConfig) Validate() error {
-	if err := c.BlockManagerConfig.Validate(); err != nil {
-		return err
+func (nc NodeConfig) validateSettlementLayer() error {
+	if nc.SettlementLayer == "" {
+		return fmt.Errorf("SettlementLayer cannot be empty")
 	}
 
-	if c.SettlementLayer != "mock" {
-		if err := c.SettlementConfig.Validate(); err != nil {
-			return err
-		}
+	if nc.SettlementLayer == "mock" {
+		return nil
 	}
 
-	//TODO: validate DA config
+	return nc.SettlementConfig.Validate()
+}
+
+func (nc NodeConfig) validateDALayer() error {
+	if nc.DALayer == "" {
+		return fmt.Errorf("DALayer cannot be empty")
+	}
+
+	if nc.DALayer == "mock" {
+		return nil
+	}
+
+	if nc.DAConfig == "" {
+		return fmt.Errorf("DAConfig cannot be empty")
+	}
+	if nc.DAGrpc.Host == "" {
+		return fmt.Errorf("DAGrpc.Host cannot be empty")
+	}
+	if nc.DAGrpc.Port == 0 {
+		return fmt.Errorf("DAGrpc.Port cannot be 0")
+	}
 
 	return nil
+}
+
+func (nc NodeConfig) validateInstrumentation() error {
+	if nc.Instrumentation == nil {
+		return nil
+	}
+
+	return nc.Instrumentation.Validate()
 }
 
 // InstrumentationConfig defines the configuration for metrics reporting.
@@ -152,4 +199,12 @@ type InstrumentationConfig struct {
 
 	// Address to listen for Prometheus collector(s) connections.
 	PrometheusListenAddr string `mapstructure:"prometheus_listen_addr"`
+}
+
+func (ic InstrumentationConfig) Validate() error {
+	if ic.Prometheus && ic.PrometheusListenAddr == "" {
+		return fmt.Errorf("PrometheusListenAddr cannot be empty")
+	}
+
+	return nil
 }

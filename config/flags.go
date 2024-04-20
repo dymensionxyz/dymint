@@ -34,7 +34,7 @@ const (
 //
 // This function is called in cosmos-sdk.
 func AddNodeFlags(cmd *cobra.Command) {
-	//Add tendermint default flags
+	// Add tendermint default flags
 	tmcmd.AddNodeFlags(cmd)
 
 	def := DefaultNodeConfig

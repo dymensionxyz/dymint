@@ -3,16 +3,18 @@ package block
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	uevent "github.com/dymensionxyz/dymint/utils/event"
+
 	"code.cloudfoundry.org/go-diodes"
 
 	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/p2p"
-	"github.com/dymensionxyz/dymint/utils"
 	"github.com/libp2p/go-libp2p/core/crypto"
 
 	tmcrypto "github.com/tendermint/tendermint/crypto"
@@ -39,7 +41,7 @@ type Manager struct {
 	// Store and execution
 	Store     store.Store
 	LastState types.State
-	Executor  *BlockExecutor
+	Executor  *Executor
 
 	// Clients and servers
 	Pubsub    *pubsub.Server
@@ -48,26 +50,32 @@ type Manager struct {
 	SLClient  settlement.LayerI
 
 	// Data retrieval
-	Retriever  da.BatchRetriever
-	SyncTarget uint64
+	Retriever da.BatchRetriever
 
-	/* -------------------------------- internal -------------------------------- */
 	// Synchronization
 	syncTargetDiode diodes.Diode
 	isSyncedCond    sync.Cond
 
+	SyncTarget atomic.Uint64
+
 	// Block production
 	shouldProduceBlocksCh chan bool
 	produceEmptyBlockCh   chan bool
-	lastSubmissionTime    int64
-	batchInProcess        atomic.Value
 	produceBlockMutex     sync.Mutex
 	applyCachedBlockMutex sync.Mutex
+
+	// batch submission
+	batchInProcess     sync.Mutex
+	lastSubmissionTime atomic.Int64
+	// pendingBatch is the result of the last DA submission
+	// that is pending settlement layer submission.
+	// It is used to avoid double submission of the same batch.
+	pendingBatch *PendingBatch
 
 	// Logging
 	logger types.Logger
 
-	// Previous data
+	// Cached blocks and commits for applying at future heights. Invariant: the block and commit are .Valid() (validated sigs etc)
 	prevBlock  map[uint64]*types.Block
 	prevCommit map[uint64]*types.Commit
 }
@@ -87,23 +95,19 @@ func NewManager(
 	p2pClient *p2p.Client,
 	logger types.Logger,
 ) (*Manager, error) {
-
 	proposerAddress, err := getAddress(proposerKey)
 	if err != nil {
 		return nil, err
 	}
 
-	exec, err := NewBlockExecutor(proposerAddress, conf.NamespaceID, genesis.ChainID, mempool, proxyApp, eventBus, logger)
+	exec, err := NewExecutor(proposerAddress, conf.NamespaceID, genesis.ChainID, mempool, proxyApp, eventBus, logger)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create block executor: %w", err)
+		return nil, fmt.Errorf("create block executor: %w", err)
 	}
 	s, err := getInitialState(store, genesis, logger)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get initial state: %w", err)
+		return nil, fmt.Errorf("get initial state: %w", err)
 	}
-
-	batchInProcess := atomic.Value{}
-	batchInProcess.Store(false)
 
 	agg := &Manager{
 		Pubsub:      pubsub,
@@ -119,8 +123,6 @@ func NewManager(
 		Retriever:   dalc.(da.BatchRetriever),
 		// channels are buffered to avoid blocking on input/output operations, buffer sizes are arbitrary
 		syncTargetDiode:       diodes.NewOneToOne(1, nil),
-		isSyncedCond:          *sync.NewCond(new(sync.Mutex)),
-		batchInProcess:        batchInProcess,
 		shouldProduceBlocksCh: make(chan bool, 1),
 		produceEmptyBlockCh:   make(chan bool, 1),
 		logger:                logger,
@@ -135,66 +137,68 @@ func NewManager(
 func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 	m.logger.Info("Starting the block manager")
 
-	err := m.syncBlockManagerOnInit(ctx)
-	if err != nil {
-		err = fmt.Errorf("failed to sync block manager: %w", err)
-		return err
-	}
-
-	//TODO (#283): set aggregator mode by proposer addr on the hub
+	// TODO (#283): set aggregator mode by proposer addr on the hub
 	if isAggregator {
-		//make sure local signing key is the registered on the hub
+		// make sure local signing key is the registered on the hub
 		slProposerKey := m.SLClient.GetProposer().PublicKey.Bytes()
 		localProposerKey, _ := m.ProposerKey.GetPublic().Raw()
 		if !bytes.Equal(slProposerKey, localProposerKey) {
 			return fmt.Errorf("proposer key mismatch: settlement proposer key: %s, block manager proposer key: %s", slProposerKey, m.ProposerKey.GetPublic())
 		}
 		m.logger.Info("Starting in aggregator mode")
+	}
 
-		// Check if InitChain flow is needed
-		if m.LastState.IsGenesis() {
-			m.logger.Info("Running InitChain")
+	// Check if InitChain flow is needed
+	if m.LastState.IsGenesis() {
+		m.logger.Info("Running InitChain")
 
-			err := m.RunInitChain(ctx)
-			if err != nil {
-				return err
-			}
+		err := m.RunInitChain(ctx)
+		if err != nil {
+			return err
 		}
+	}
 
+	err := m.syncBlockManager()
+	if err != nil {
+		err = fmt.Errorf("sync block manager: %w", err)
+		return err
+	}
+
+	if isAggregator {
+		go uevent.MustSubscribe(ctx, m.Pubsub, "nodeHealth", events.QueryHealthStatus, m.onNodeHealthStatus, m.logger)
 		go m.ProduceBlockLoop(ctx)
 		go m.SubmitLoop(ctx)
 	} else {
-		go m.RetriveLoop(ctx)
+		go uevent.MustSubscribe(ctx, m.Pubsub, "applyBlockLoop", p2p.EventQueryNewNewGossipedBlock, m.onNewGossipedBlock, m.logger, 100)
+		go m.RetrieveLoop(ctx)
 		go m.SyncTargetLoop(ctx)
 	}
-
-	m.EventListener(ctx, isAggregator)
 
 	return nil
 }
 
-// syncBlockManagerOnInit enforces the node to be synced on initial run.
-func (m *Manager) syncBlockManagerOnInit(ctx context.Context) error {
-	resultRetrieveBatch, err := m.SLClient.RetrieveBatch()
+// syncBlockManager enforces the node to be synced on initial run.
+func (m *Manager) syncBlockManager() error {
+	resultRetrieveBatch, err := m.getLatestBatchFromSL()
 	// Set the syncTarget according to the result
 	if err != nil {
-		//TODO: separate between fresh rollapp and non-registred rollapp
-		if err == settlement.ErrBatchNotFound {
+		// TODO: separate between fresh rollapp and non-registered rollapp
+		if errors.Is(err, settlement.ErrBatchNotFound) {
 			// Since we requested the latest batch and got batch not found it means
 			// the SL still hasn't got any batches for this chain.
 			m.logger.Info("No batches for chain found in SL. Start writing first batch")
-			atomic.StoreUint64(&m.SyncTarget, uint64(m.Genesis.InitialHeight-1))
+			m.SyncTarget.Store(uint64(m.Genesis.InitialHeight - 1))
 			return nil
 		}
 		return err
 	}
-	atomic.StoreUint64(&m.SyncTarget, resultRetrieveBatch.EndHeight)
-	err = m.syncUntilTarget(ctx, resultRetrieveBatch.EndHeight)
+	m.SyncTarget.Store(resultRetrieveBatch.EndHeight)
+	err = m.syncUntilTarget(resultRetrieveBatch.EndHeight)
 	if err != nil {
 		return err
 	}
 
-	m.logger.Info("Synced", "current height", m.Store.Height(), "syncTarget", atomic.LoadUint64(&m.SyncTarget))
+	m.logger.Info("Synced", "current height", m.Store.Height(), "syncTarget", m.SyncTarget.Load())
 	return nil
 }
 
@@ -202,8 +206,8 @@ func (m *Manager) syncBlockManagerOnInit(ctx context.Context) error {
 func (m *Manager) UpdateSyncParams(endHeight uint64) {
 	types.RollappHubHeightGauge.Set(float64(endHeight))
 	m.logger.Info("Received new syncTarget", "syncTarget", endHeight)
-	atomic.StoreUint64(&m.SyncTarget, endHeight)
-	atomic.StoreInt64(&m.lastSubmissionTime, time.Now().UnixNano())
+	m.SyncTarget.Store(endHeight)
+	m.lastSubmissionTime.Store(time.Now().UnixNano())
 }
 
 func getAddress(key crypto.PrivKey) ([]byte, error) {
@@ -214,45 +218,48 @@ func getAddress(key crypto.PrivKey) ([]byte, error) {
 	return tmcrypto.AddressHash(rawKey), nil
 }
 
-// EventListener registers events to callbacks.
-func (m *Manager) EventListener(ctx context.Context, isAggregator bool) {
-	go utils.SubscribeAndHandleEvents(ctx, m.Pubsub, "nodeHealthStatusHandler", events.EventQueryHealthStatus, m.healthStatusEventCallback, m.logger)
-	if !isAggregator {
-		go utils.SubscribeAndHandleEvents(ctx, m.Pubsub, "ApplyBlockLoop", p2p.EventQueryNewNewGossipedBlock, m.applyBlockCallback, m.logger, 100)
-	}
-
+func (m *Manager) onNodeHealthStatus(event pubsub.Message) {
+	eventData := event.Data().(*events.DataHealthStatus)
+	m.logger.Info("received health status event", "eventData", eventData)
+	m.shouldProduceBlocksCh <- eventData.Error == nil
 }
 
-func (m *Manager) healthStatusEventCallback(event pubsub.Message) {
-	eventData := event.Data().(*events.EventDataHealthStatus)
-	m.logger.Info("Received health status event", "eventData", eventData)
-	m.shouldProduceBlocksCh <- eventData.Healthy
-}
-
-func (m *Manager) applyBlockCallback(event pubsub.Message) {
+// onNewGossippedBlock will take a block and apply it
+func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
 	m.logger.Debug("Received new block event", "eventData", event.Data(), "cachedBlocks", len(m.prevBlock))
 	eventData := event.Data().(p2p.GossipedBlock)
 	block := eventData.Block
 	commit := eventData.Commit
 
+	if err := m.validateBlock(&block, &commit); err != nil {
+		m.logger.Error("apply block callback, block not valid: dropping it", "err", err, "height", block.Header.Height)
+		/// TODO: can we take an action here such as dropping the peer / reducing their reputation?
+		return
+	}
+
 	// if height is expected, apply
 	// if height is higher than expected (future block), cache
 	if block.Header.Height == m.Store.NextHeight() {
-		err := m.applyBlock(context.Background(), &block, &commit, blockMetaData{source: gossipedBlock})
+		err := m.applyBlock(&block, &commit, blockMetaData{source: gossipedBlock})
 		if err != nil {
-			m.logger.Error("failed to apply gossiped block", "err", err)
+			m.logger.Error("apply gossiped block", "err", err)
 		}
-	} else if block.Header.Height > m.Store.Height() {
+	} else if block.Header.Height > m.Store.NextHeight() {
 		m.prevBlock[block.Header.Height] = &block
 		m.prevCommit[block.Header.Height] = &commit
 		m.logger.Debug("Caching block", "block height", block.Header.Height, "store height", m.Store.Height())
 	}
 }
 
+// getLatestBatchFromSL gets the latest batch from the SL
+func (m *Manager) getLatestBatchFromSL() (*settlement.ResultRetrieveBatch, error) {
+	return m.SLClient.RetrieveBatch()
+}
+
 // getInitialState tries to load lastState from Store, and if it's not available it reads GenesisDoc.
 func getInitialState(store store.Store, genesis *tmtypes.GenesisDoc, logger types.Logger) (types.State, error) {
 	s, err := store.LoadState()
-	if err == types.ErrNoStateFound {
+	if errors.Is(err, types.ErrNoStateFound) {
 		logger.Info("failed to find state in the store, creating new state from genesis")
 		return types.NewFromGenesisDoc(genesis)
 	}

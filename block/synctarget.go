@@ -13,7 +13,7 @@ func (m *Manager) SyncTargetLoop(ctx context.Context) {
 	m.logger.Info("Started sync target loop")
 	subscription, err := m.Pubsub.Subscribe(ctx, "syncTargetLoop", settlement.EventQueryNewSettlementBatchAccepted)
 	if err != nil {
-		m.logger.Error("failed to subscribe to state update events")
+		m.logger.Error("subscribe to state update events", "error", err)
 		panic(err)
 	}
 
@@ -22,7 +22,7 @@ func (m *Manager) SyncTargetLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case event := <-subscription.Out():
-			eventData := event.Data().(*settlement.EventDataNewSettlementBatchAccepted)
+			eventData := event.Data().(*settlement.EventDataNewBatchAccepted)
 			if eventData.EndHeight <= m.Store.Height() {
 				m.logger.Error("syncTargetLoop: event is old, skipping")
 				continue

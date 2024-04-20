@@ -47,7 +47,7 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 	manager, err := testutil.GetManager(managerConfig, nil, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
-	//Check initial height
+	// Check initial height
 	initialHeight := uint64(0)
 	require.Equal(initialHeight, manager.Store.Height())
 
@@ -127,7 +127,7 @@ func TestCreateEmptyBlocksNew(t *testing.T) {
 
 	mpool := mempoolv1.NewTxMempool(log.TestingLogger(), tmcfg.DefaultMempoolConfig(), proxy.NewAppConnMempool(abciClient), 0)
 
-	//Check initial height
+	// Check initial height
 	expectedHeight := uint64(0)
 	assert.Equal(expectedHeight, manager.Store.Height())
 

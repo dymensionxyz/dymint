@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -57,7 +56,8 @@ func TestInitialState(t *testing.T) {
 	privKey, _, _ := crypto.GenerateEd25519Key(rand.Reader)
 	p2pClient, err := p2p.NewClient(config.P2PConfig{
 		GossipCacheSize: 50,
-		BoostrapTime:    30 * time.Second}, privKey, "TestChain", logger)
+		BoostrapTime:    30 * time.Second,
+	}, privKey, "TestChain", logger)
 	assert.NoError(err)
 	assert.NotNil(p2pClient)
 
@@ -119,7 +119,8 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 	require.NotNil(t, manager)
 
 	t.Log("Taking the manager out of sync by submitting a batch")
-	syncTarget := atomic.LoadUint64(&manager.SyncTarget)
+
+	syncTarget := manager.SyncTarget.Load()
 	numBatchesToAdd := 2
 	nextBatchStartHeight := syncTarget + 1
 	var batch *types.Batch
@@ -135,11 +136,11 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 		time.Sleep(time.Millisecond * 500)
 	}
 
-	//Initially sync target is 0
-	assert.True(t, manager.SyncTarget == 0)
-	assert.True(t, manager.Store.Height() == 0)
+	// Initially sync target is 0
+	assert.Zero(t, manager.syncTarget.Load())
+	assert.True(t, manager.store.Height() == 0)
 
-	//enough time to sync and produce blocks
+	// enough time to sync and produce blocks
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*4)
 	defer cancel()
 	// Capture the error returned by manager.Start.
@@ -151,9 +152,9 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 		assert.NoError(t, err, "Manager start should not produce an error")
 	}()
 	<-ctx.Done()
-	assert.True(t, manager.SyncTarget == batch.EndHeight)
-	//validate that we produced blocks
-	assert.Greater(t, manager.Store.Height(), batch.EndHeight)
+	assert.Equal(t, batch.EndHeight, manager.syncTarget.Load())
+	// validate that we produced blocks
+	assert.Greater(t, manager.store.Height(), batch.EndHeight)
 }
 
 func TestRetrieveDaBatchesFailed(t *testing.T) {
@@ -165,7 +166,7 @@ func TestRetrieveDaBatchesFailed(t *testing.T) {
 	daMetaData := &da.DASubmitMetaData{
 		Height: 1,
 	}
-	err = manager.ProcessNextDABatch(context.Background(), daMetaData)
+	err = manager.processNextDABatch(daMetaData)
 	t.Log(err)
 	assert.ErrorIs(t, err, da.ErrBlobNotFound)
 }
@@ -184,7 +185,7 @@ func TestProduceNewBlock(t *testing.T) {
 	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(t, err)
 	// Produce block
-	err = manager.ProduceBlock(context.Background(), true)
+	err = manager.produceAndGossipBlock(context.Background(), true)
 	require.NoError(t, err)
 	// Validate state is updated with the commit hash
 	assert.Equal(t, uint64(1), manager.Store.Height())
@@ -211,7 +212,7 @@ func TestProducePendingBlock(t *testing.T) {
 	_, err = manager.Store.SaveBlock(block, &block.LastCommit, nil)
 	require.NoError(t, err)
 	// Produce block
-	err = manager.ProduceBlock(context.Background(), true)
+	err = manager.produceAndGossipBlock(context.Background(), true)
 	require.NoError(t, err)
 	// Validate state is updated with the block that was saved in the store
 	assert.Equal(t, block.Header.Hash(), *(*[32]byte)(manager.LastState.LastBlockID.Hash))
@@ -245,26 +246,26 @@ func TestBlockProductionNodeHealth(t *testing.T) {
 	}{
 		{
 			name:                  "HealthyEventBlocksProduced",
-			healthStatusEvent:     map[string][]string{events.EventNodeTypeKey: {events.EventHealthStatus}},
-			healthStatusEventData: &events.EventDataHealthStatus{Healthy: true, Error: nil},
+			healthStatusEvent:     events.HealthStatusList,
+			healthStatusEventData: &events.DataHealthStatus{},
 			shouldProduceBlocks:   true,
 		},
 		{
 			name:                  "UnhealthyEventBlocksNotProduced",
-			healthStatusEvent:     map[string][]string{events.EventNodeTypeKey: {events.EventHealthStatus}},
-			healthStatusEventData: &events.EventDataHealthStatus{Healthy: false, Error: errors.New("Unhealthy")},
+			healthStatusEvent:     events.HealthStatusList,
+			healthStatusEventData: &events.DataHealthStatus{Error: errors.New("unhealthy")},
 			shouldProduceBlocks:   false,
 		},
 		{
 			name:                  "UnhealthyEventBlocksStillNotProduced",
-			healthStatusEvent:     map[string][]string{events.EventNodeTypeKey: {events.EventHealthStatus}},
-			healthStatusEventData: &events.EventDataHealthStatus{Healthy: false, Error: errors.New("Unhealthy")},
+			healthStatusEvent:     events.HealthStatusList,
+			healthStatusEventData: &events.DataHealthStatus{Error: errors.New("unhealthy")},
 			shouldProduceBlocks:   false,
 		},
 		{
 			name:                  "HealthyEventBlocksProduced",
-			healthStatusEvent:     map[string][]string{events.EventNodeTypeKey: {events.EventHealthStatus}},
-			healthStatusEventData: &events.EventDataHealthStatus{Healthy: true, Error: nil},
+			healthStatusEvent:     events.HealthStatusList,
+			healthStatusEventData: &events.DataHealthStatus{},
 			shouldProduceBlocks:   true,
 		},
 	}
@@ -377,14 +378,16 @@ func TestProduceBlockFailAfterCommit(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			app.On("Commit", mock.Anything).Return(abci.ResponseCommit{Data: tc.AppCommitHash[:]}).Once()
-			app.On("Info", mock.Anything).Return(abci.ResponseInfo{LastBlockHeight: tc.LastAppBlockHeight,
-				LastBlockAppHash: tc.LastAppCommitHash[:]}).Once()
+			app.On("Info", mock.Anything).Return(abci.ResponseInfo{
+				LastBlockHeight:  tc.LastAppBlockHeight,
+				LastBlockAppHash: tc.LastAppCommitHash[:],
+			})
 			mockStore.ShouldFailSetHeight = tc.shouldFailSetSetHeight
 			mockStore.ShoudFailUpdateState = tc.shouldFailUpdateState
-			_ = manager.ProduceBlock(context.Background(), true)
-			require.Equal(tc.expectedStoreHeight, manager.Store.Height(), tc.name)
-			require.Equal(tc.expectedStateAppHash, manager.LastState.AppHash, tc.name)
-			storeState, err := manager.Store.LoadState()
+			_ = manager.produceAndGossipBlock(context.Background(), true)
+			require.Equal(tc.expectedStoreHeight, manager.store.Height(), tc.name)
+			require.Equal(tc.expectedStateAppHash, manager.lastState.AppHash, tc.name)
+			storeState, err := manager.store.LoadState()
 			require.NoError(err)
 			require.Equal(tc.expectedStateAppHash, storeState.AppHash, tc.name)
 
@@ -408,8 +411,8 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 	// Init manager
 	managerConfig := testutil.GetManagerConfig()
 	managerConfig.BlockBatchSize = 1000
-	managerConfig.BlockBatchMaxSizeBytes = batchLimitBytes //enough for 2 block, not enough for 10 blocks
-	manager, err := testutil.GetManager(managerConfig, nil, nil, 1, 1, 0, proxyApp, nil)
+	managerConfig.BlockBatchMaxSizeBytes = batchLimitBytes // enough for 2 block, not enough for 10 blocks
+	manager, err := getManager(managerConfig, nil, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -436,12 +439,12 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Produce blocks
 			for i := 0; i < tc.blocksToProduce; i++ {
-				err := manager.ProduceBlock(ctx, true)
+				err := manager.produceAndGossipBlock(ctx, true)
 				assert.NoError(err)
 			}
 
 			// Call createNextDABatch function
-			startHeight := atomic.LoadUint64(&manager.SyncTarget) + 1
+			startHeight := manager.syncTarget.Load() + 1
 			endHeight := startHeight + uint64(tc.blocksToProduce) - 1
 			batch, err := manager.CreateNextDABatch(startHeight, endHeight)
 			assert.NoError(err)
@@ -455,10 +458,10 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 				assert.Equal(batch.EndHeight, batch.StartHeight+uint64(len(batch.Blocks))-1)
 				assert.Less(batch.EndHeight, endHeight)
 
-				//validate next added block to batch would have been actually too big
-				//First relax the byte limit so we could proudce larger batch
-				manager.Conf.BlockBatchMaxSizeBytes = 10 * manager.Conf.BlockBatchMaxSizeBytes
-				newBatch, err := manager.CreateNextDABatch(startHeight, batch.EndHeight+1)
+				// validate next added block to batch would have been actually too big
+				// First relax the byte limit so we could proudce larger batch
+				manager.conf.BlockBatchMaxSizeBytes = 10 * manager.conf.BlockBatchMaxSizeBytes
+				newBatch, err := manager.createNextDABatch(startHeight, batch.EndHeight+1)
 				assert.Greater(newBatch.ToProto().Size(), batchLimitBytes)
 
 				assert.NoError(err)
