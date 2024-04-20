@@ -53,8 +53,7 @@ type Manager struct {
 	Retriever da.BatchRetriever
 
 	// Synchronization
-	syncTargetDiode diodes.Diode
-	isSyncedCond    sync.Cond
+	SyncTargetDiode diodes.Diode
 
 	SyncTarget atomic.Uint64
 
@@ -122,7 +121,7 @@ func NewManager(
 		SLClient:    settlementClient,
 		Retriever:   dalc.(da.BatchRetriever),
 		// channels are buffered to avoid blocking on input/output operations, buffer sizes are arbitrary
-		syncTargetDiode:       diodes.NewOneToOne(1, nil),
+		SyncTargetDiode:       diodes.NewOneToOne(1, nil),
 		shouldProduceBlocksCh: make(chan bool, 1),
 		produceEmptyBlockCh:   make(chan bool, 1),
 		logger:                logger,

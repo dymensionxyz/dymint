@@ -101,9 +101,9 @@ type Node struct {
 	P2P  *p2p.Client
 
 	// TODO(tzdybal): consider extracting "mempool reactor"
-	Mempool    mempool.Mempool
-	MempoolIDs *nodemempool.MempoolIDs
-	// incomingTxCh chan *p2p.GossipMessage
+	Mempool      mempool.Mempool
+	MempoolIDs   *nodemempool.MempoolIDs
+	incomingTxCh chan *p2p.GossipMessage
 
 	Store        store.Store
 	blockManager *block.Manager
@@ -232,18 +232,18 @@ func NewNode(
 	}
 
 	node := &Node{
-		proxyApp:     proxyApp,
-		eventBus:     eventBus,
-		PubsubServer: pubsubServer,
-		genesis:      genesis,
-		conf:         conf,
-		P2P:          p2pClient,
-		blockManager: blockManager,
-		dalc:         dalc,
-		settlementlc: settlementlc,
-		Mempool:      mp,
-		MempoolIDs:   mpIDs,
-		// incomingTxCh:   make(chan *p2p.GossipMessage),
+		proxyApp:       proxyApp,
+		eventBus:       eventBus,
+		PubsubServer:   pubsubServer,
+		genesis:        genesis,
+		conf:           conf,
+		P2P:            p2pClient,
+		blockManager:   blockManager,
+		dalc:           dalc,
+		settlementlc:   settlementlc,
+		Mempool:        mp,
+		MempoolIDs:     mpIDs,
+		incomingTxCh:   make(chan *p2p.GossipMessage),
 		Store:          s,
 		TxIndexer:      txIndexer,
 		IndexerService: indexerService,
@@ -292,7 +292,6 @@ func (n *Node) OnStart() error {
 	if err != nil {
 		return fmt.Errorf("start P2P client: %w", err)
 	}
-	// start the pubsub server
 	err = n.PubsubServer.Start()
 	if err != nil {
 		return fmt.Errorf("start pubsub server: %w", err)

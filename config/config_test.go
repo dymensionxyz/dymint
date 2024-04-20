@@ -46,7 +46,7 @@ func TestViperAndCobra(t *testing.T) {
 func TestNodeConfig_Validate(t *testing.T) {
 	tests := []struct {
 		name     string
-		malleate func(*NodeConfig)
+		malleate func(*config.NodeConfig)
 
 		wantErr assert.ErrorAssertionFunc
 	}{
@@ -55,132 +55,132 @@ func TestNodeConfig_Validate(t *testing.T) {
 			wantErr: assert.NoError,
 		}, {
 			name: "missing block time",
-			malleate: func(nc *NodeConfig) {
+			malleate: func(nc *config.NodeConfig) {
 				nc.BlockTime = 0
 			},
 			wantErr: assert.Error,
 		}, {
 			name: "missing empty blocks max time",
-			malleate: func(nc *NodeConfig) {
+			malleate: func(nc *config.NodeConfig) {
 				nc.EmptyBlocksMaxTime = -1
 			},
 			wantErr: assert.Error,
 		}, {
 			name: "missing batch submit max time",
-			malleate: func(nc *NodeConfig) {
+			malleate: func(nc *config.NodeConfig) {
 				nc.BlockManagerConfig.BatchSubmitMaxTime = 0
 			},
 			wantErr: assert.Error,
 		}, {
 			name: "empty_blocks_max_time not greater than block_time",
-			malleate: func(nc *NodeConfig) {
+			malleate: func(nc *config.NodeConfig) {
 				nc.BlockManagerConfig.EmptyBlocksMaxTime = 1
 				nc.BlockManagerConfig.BlockTime = 2
 			},
 			wantErr: assert.Error,
 		}, {
 			name: "batch_submit_max_time not greater than block_time",
-			malleate: func(nc *NodeConfig) {
+			malleate: func(nc *config.NodeConfig) {
 				nc.BlockManagerConfig.BatchSubmitMaxTime = 1
 				nc.BlockManagerConfig.BlockTime = 2
 			},
 			wantErr: assert.Error,
 		}, {
 			name: "missing block batch size",
-			malleate: func(nc *NodeConfig) {
+			malleate: func(nc *config.NodeConfig) {
 				nc.BlockManagerConfig.BlockBatchSize = 0
 			},
 			wantErr: assert.Error,
 		}, {
 			name: "missing block batch max size bytes",
-			malleate: func(nc *NodeConfig) {
+			malleate: func(nc *config.NodeConfig) {
 				nc.BlockManagerConfig.BlockBatchMaxSizeBytes = 0
 			},
 			wantErr: assert.Error,
 		}, {
 			name: "missing gossiped blocks cache size",
-			malleate: func(nc *NodeConfig) {
+			malleate: func(nc *config.NodeConfig) {
 				nc.BlockManagerConfig.GossipedBlocksCacheSize = 0
 			},
 			wantErr: assert.Error,
 		}, {
 			name: "empty settlement layer",
-			malleate: func(nc *NodeConfig) {
+			malleate: func(nc *config.NodeConfig) {
 				nc.SettlementLayer = ""
 			},
 			wantErr: assert.Error,
 		}, {
 			name: "settlement: provide both fees and gas prices",
-			malleate: func(nc *NodeConfig) {
+			malleate: func(nc *config.NodeConfig) {
 				nc.SettlementConfig.GasPrices = "1"
 				nc.SettlementConfig.GasFees = "1"
 			},
 			wantErr: assert.Error,
 		}, {
 			name: "settlement: provide neither fees nor gas prices",
-			malleate: func(nc *NodeConfig) {
+			malleate: func(nc *config.NodeConfig) {
 				nc.SettlementConfig.GasPrices = ""
 				nc.SettlementConfig.GasFees = ""
 			},
 			wantErr: assert.Error,
 		}, {
 			name: "settlement: missing rollapp id",
-			malleate: func(nc *NodeConfig) {
+			malleate: func(nc *config.NodeConfig) {
 				nc.SettlementConfig.RollappID = ""
 			},
 			wantErr: assert.Error,
 		}, {
 			name: "settlement: mock",
-			malleate: func(nc *NodeConfig) {
+			malleate: func(nc *config.NodeConfig) {
 				nc.SettlementLayer = "mock"
 			},
 			wantErr: assert.NoError,
 		}, {
 			name: "DALayer: empty",
-			malleate: func(nc *NodeConfig) {
+			malleate: func(nc *config.NodeConfig) {
 				nc.DALayer = ""
 			},
 			wantErr: assert.Error,
 		}, {
 			name: "DALayer: mock",
-			malleate: func(nc *NodeConfig) {
+			malleate: func(nc *config.NodeConfig) {
 				nc.DALayer = "mock"
 			},
 			wantErr: assert.NoError,
 		}, {
 			name: "DAConfig: empty",
-			malleate: func(nc *NodeConfig) {
+			malleate: func(nc *config.NodeConfig) {
 				nc.DAConfig = ""
 			},
 			wantErr: assert.Error,
 		}, {
 			name: "DAGrpc.Host empty",
-			malleate: func(nc *NodeConfig) {
+			malleate: func(nc *config.NodeConfig) {
 				nc.DAGrpc.Host = ""
 			},
 			wantErr: assert.Error,
 		}, {
 			name: "DAGrpc.Port 0",
-			malleate: func(nc *NodeConfig) {
+			malleate: func(nc *config.NodeConfig) {
 				nc.DAGrpc.Port = 0
 			},
 			wantErr: assert.Error,
 		}, {
 			name: "instrumentation: missing prometheus listen addr",
-			malleate: func(nc *NodeConfig) {
+			malleate: func(nc *config.NodeConfig) {
 				nc.Instrumentation.PrometheusListenAddr = ""
 			},
 			wantErr: assert.Error,
 		}, {
 			name: "instrumentation: prometheus enabled, but listen addr empty",
-			malleate: func(nc *NodeConfig) {
+			malleate: func(nc *config.NodeConfig) {
 				nc.Instrumentation.Prometheus = true
 				nc.Instrumentation.PrometheusListenAddr = ""
 			},
 			wantErr: assert.Error,
 		}, {
 			name: "instrumentation: prometheus disabled, listen addr empty",
-			malleate: func(nc *NodeConfig) {
+			malleate: func(nc *config.NodeConfig) {
 				nc.Instrumentation.Prometheus = false
 				nc.Instrumentation.PrometheusListenAddr = ""
 			},
@@ -198,9 +198,9 @@ func TestNodeConfig_Validate(t *testing.T) {
 	}
 }
 
-func fullNodeConfig() NodeConfig {
-	return NodeConfig{
-		BlockManagerConfig: BlockManagerConfig{
+func fullNodeConfig() config.NodeConfig {
+	return config.NodeConfig{
+		BlockManagerConfig: config.BlockManagerConfig{
 			BlockTime:               1 * time.Second,
 			EmptyBlocksMaxTime:      2 * time.Second,
 			BatchSubmitMaxTime:      1 * time.Second,
@@ -228,7 +228,7 @@ func fullNodeConfig() NodeConfig {
 				RefreshTime: 1,
 			},
 		},
-		Instrumentation: &InstrumentationConfig{
+		Instrumentation: &config.InstrumentationConfig{
 			Prometheus:           true,
 			PrometheusListenAddr: "localhost:9090",
 		},

@@ -40,17 +40,17 @@ func TestBatchSubmissionHappyFlow(t *testing.T) {
 	// Check initial assertions
 	initialHeight := uint64(0)
 	require.Zero(manager.Store.Height())
-	require.Zero(manager.SyncTarget)
+	require.Zero(manager.SyncTarget.Load())
 
 	// Produce block and validate that we produced blocks
-	err = manager.ProduceBlock(ctx, true)
+	err = manager.ProduceAndGossipBlock(ctx, true)
 	require.NoError(err)
 	assert.Greater(t, manager.Store.Height(), initialHeight)
-	assert.Zero(t, manager.SyncTarget)
+	assert.Zero(t, manager.SyncTarget.Load())
 
 	// submit and validate sync target
 	manager.HandleSubmissionTrigger(ctx)
-	assert.EqualValues(t, 1, manager.SyncTarget)
+	assert.EqualValues(t, 1, manager.SyncTarget.Load())
 }
 
 func TestBatchSubmissionFailedSubmission(t *testing.T) {
@@ -86,23 +86,23 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 	// Check initial assertions
 	initialHeight := uint64(0)
 	require.Zero(manager.Store.Height())
-	require.Zero(manager.SyncTarget)
+	require.Zero(manager.SyncTarget.Load())
 
 	// Produce block and validate that we produced blocks
-	err = manager.ProduceBlock(ctx, true)
+	err = manager.ProduceAndGossipBlock(ctx, true)
 	require.NoError(err)
 	assert.Greater(t, manager.Store.Height(), initialHeight)
-	assert.Zero(t, manager.SyncTarget)
+	assert.Zero(t, manager.SyncTarget.Load())
 
 	// try to submit, we expect failure
 	mockLayerI.On("SubmitBatch", mock.Anything, mock.Anything, mock.Anything).Return(fmt.Errorf("Failed to submit batch")).Once()
 	manager.HandleSubmissionTrigger(ctx)
-	assert.EqualValues(t, 0, manager.SyncTarget)
+	assert.EqualValues(t, 0, manager.SyncTarget.Load())
 
 	// try to submit again, we expect success
 	mockLayerI.On("SubmitBatch", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 	manager.HandleSubmissionTrigger(ctx)
-	assert.EqualValues(t, 1, manager.SyncTarget)
+	assert.EqualValues(t, 1, manager.SyncTarget.Load())
 
 }
 

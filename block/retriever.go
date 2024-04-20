@@ -13,7 +13,7 @@ import (
 // runs syncUntilTarget on the latest message in the ring buffer.
 func (m *Manager) RetrieveLoop(ctx context.Context) {
 	m.logger.Info("started retrieve loop")
-	syncTargetPoller := diodes.NewPoller(m.syncTargetDiode, diodes.WithPollingContext(ctx))
+	syncTargetPoller := diodes.NewPoller(m.SyncTargetDiode, diodes.WithPollingContext(ctx))
 
 	for {
 		select {
@@ -49,7 +49,7 @@ func (m *Manager) syncUntilTarget(syncTarget uint64) error {
 			return err
 		}
 
-		err = m.processNextDABatch(settlementBatch.MetaData.DA)
+		err = m.ProcessNextDABatch(settlementBatch.MetaData.DA)
 		if err != nil {
 			return err
 		}
@@ -75,7 +75,7 @@ func (m *Manager) updateStateIndex(stateIndex uint64) error {
 	return nil
 }
 
-func (m *Manager) processNextDABatch(daMetaData *da.DASubmitMetaData) error {
+func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
 	m.logger.Debug("trying to retrieve batch from DA", "daHeight", daMetaData.Height)
 	batchResp := m.fetchBatch(daMetaData)
 	if batchResp.Code != da.StatusSuccess {

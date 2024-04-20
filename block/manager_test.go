@@ -137,8 +137,8 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 	}
 
 	// Initially sync target is 0
-	assert.Zero(t, manager.syncTarget.Load())
-	assert.True(t, manager.store.Height() == 0)
+	assert.Zero(t, manager.SyncTarget.Load())
+	assert.True(t, manager.Store.Height() == 0)
 
 	// enough time to sync and produce blocks
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*4)
@@ -152,9 +152,9 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 		assert.NoError(t, err, "Manager start should not produce an error")
 	}()
 	<-ctx.Done()
-	assert.Equal(t, batch.EndHeight, manager.syncTarget.Load())
+	assert.Equal(t, batch.EndHeight, manager.SyncTarget.Load())
 	// validate that we produced blocks
-	assert.Greater(t, manager.store.Height(), batch.EndHeight)
+	assert.Greater(t, manager.Store.Height(), batch.EndHeight)
 }
 
 func TestRetrieveDaBatchesFailed(t *testing.T) {
@@ -166,7 +166,7 @@ func TestRetrieveDaBatchesFailed(t *testing.T) {
 	daMetaData := &da.DASubmitMetaData{
 		Height: 1,
 	}
-	err = manager.processNextDABatch(daMetaData)
+	err = manager.ProcessNextDABatch(daMetaData)
 	t.Log(err)
 	assert.ErrorIs(t, err, da.ErrBlobNotFound)
 }
@@ -185,7 +185,7 @@ func TestProduceNewBlock(t *testing.T) {
 	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(t, err)
 	// Produce block
-	err = manager.produceAndGossipBlock(context.Background(), true)
+	err = manager.ProduceAndGossipBlock(context.Background(), true)
 	require.NoError(t, err)
 	// Validate state is updated with the commit hash
 	assert.Equal(t, uint64(1), manager.Store.Height())
@@ -212,7 +212,7 @@ func TestProducePendingBlock(t *testing.T) {
 	_, err = manager.Store.SaveBlock(block, &block.LastCommit, nil)
 	require.NoError(t, err)
 	// Produce block
-	err = manager.produceAndGossipBlock(context.Background(), true)
+	err = manager.ProduceAndGossipBlock(context.Background(), true)
 	require.NoError(t, err)
 	// Validate state is updated with the block that was saved in the store
 	assert.Equal(t, block.Header.Hash(), *(*[32]byte)(manager.LastState.LastBlockID.Hash))
@@ -384,10 +384,10 @@ func TestProduceBlockFailAfterCommit(t *testing.T) {
 			})
 			mockStore.ShouldFailSetHeight = tc.shouldFailSetSetHeight
 			mockStore.ShoudFailUpdateState = tc.shouldFailUpdateState
-			_ = manager.produceAndGossipBlock(context.Background(), true)
-			require.Equal(tc.expectedStoreHeight, manager.store.Height(), tc.name)
-			require.Equal(tc.expectedStateAppHash, manager.lastState.AppHash, tc.name)
-			storeState, err := manager.store.LoadState()
+			_ = manager.ProduceAndGossipBlock(context.Background(), true)
+			require.Equal(tc.expectedStoreHeight, manager.Store.Height(), tc.name)
+			require.Equal(tc.expectedStateAppHash, manager.LastState.AppHash, tc.name)
+			storeState, err := manager.Store.LoadState()
 			require.NoError(err)
 			require.Equal(tc.expectedStateAppHash, storeState.AppHash, tc.name)
 
@@ -412,7 +412,7 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 	managerConfig := testutil.GetManagerConfig()
 	managerConfig.BlockBatchSize = 1000
 	managerConfig.BlockBatchMaxSizeBytes = batchLimitBytes // enough for 2 block, not enough for 10 blocks
-	manager, err := getManager(managerConfig, nil, nil, 1, 1, 0, proxyApp, nil)
+	manager, err := testutil.GetManager(managerConfig, nil, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -439,12 +439,12 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Produce blocks
 			for i := 0; i < tc.blocksToProduce; i++ {
-				err := manager.produceAndGossipBlock(ctx, true)
+				err := manager.ProduceAndGossipBlock(ctx, true)
 				assert.NoError(err)
 			}
 
 			// Call createNextDABatch function
-			startHeight := manager.syncTarget.Load() + 1
+			startHeight := manager.SyncTarget.Load() + 1
 			endHeight := startHeight + uint64(tc.blocksToProduce) - 1
 			batch, err := manager.CreateNextDABatch(startHeight, endHeight)
 			assert.NoError(err)
@@ -460,8 +460,8 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 
 				// validate next added block to batch would have been actually too big
 				// First relax the byte limit so we could proudce larger batch
-				manager.conf.BlockBatchMaxSizeBytes = 10 * manager.conf.BlockBatchMaxSizeBytes
-				newBatch, err := manager.createNextDABatch(startHeight, batch.EndHeight+1)
+				manager.Conf.BlockBatchMaxSizeBytes = 10 * manager.Conf.BlockBatchMaxSizeBytes
+				newBatch, err := manager.CreateNextDABatch(startHeight, batch.EndHeight+1)
 				assert.Greater(newBatch.ToProto().Size(), batchLimitBytes)
 
 				assert.NoError(err)

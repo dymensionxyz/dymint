@@ -31,7 +31,7 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 // pass through during the batch submission process due to proofs requires for ibc messages only exist on the next block.
 // Finally, it submits the next batch of blocks and updates the sync target to the height of
 // the last block in the submitted batch.
-func (m *Manager) handleSubmissionTrigger(ctx context.Context) {
+func (m *Manager) HandleSubmissionTrigger(ctx context.Context) {
 	if !m.batchInProcess.TryLock() { // Attempt to lock for batch processing
 		m.logger.Debug("Batch submission already in process, skipping submission")
 		return
@@ -44,7 +44,7 @@ func (m *Manager) handleSubmissionTrigger(ctx context.Context) {
 		return // Exit if no new blocks are produced.
 	}
 	// We try and produce an empty block to make sure relevant ibc messages will pass through during the batch submission: https://github.com/dymensionxyz/research/issues/173.
-	err := m.produceAndGossipBlock(ctx, true)
+	err := m.ProduceAndGossipBlock(ctx, true)
 	if err != nil {
 		m.logger.Error("produce empty block", "error", err)
 	}
@@ -84,13 +84,13 @@ func (m *Manager) createNextBatch() (*types.Batch, error) {
 	// Create the batch
 	startHeight := m.SyncTarget.Load() + 1
 	endHeight := m.Store.Height()
-	nextBatch, err := m.createNextDABatch(startHeight, endHeight)
+	nextBatch, err := m.CreateNextDABatch(startHeight, endHeight)
 	if err != nil {
 		m.logger.Error("create next batch", "startHeight", startHeight, "endHeight", endHeight, "error", err)
 		return nil, err
 	}
 
-	if err := m.validateBatch(nextBatch); err != nil {
+	if err := m.ValidateBatch(nextBatch); err != nil {
 		return nil, err
 	}
 
@@ -144,10 +144,10 @@ func (m *Manager) submitPendingBatchToSL() (uint64, error) {
 	return actualEndHeight, nil
 }
 
-func (m *Manager) validateBatch(batch *types.Batch) error {
+func (m *Manager) ValidateBatch(batch *types.Batch) error {
 	syncTarget := m.SyncTarget.Load()
 	if batch.StartHeight != syncTarget+1 {
-		return fmt.Errorf("batch start height != syncTarget + 1. StartHeight %d, m.syncTarget %d", batch.StartHeight, syncTarget)
+		return fmt.Errorf("batch start height != syncTarget + 1. StartHeight %d, m.SyncTarget %d", batch.StartHeight, syncTarget)
 	}
 	if batch.EndHeight < batch.StartHeight {
 		return fmt.Errorf("batch end height must be greater than start height. EndHeight %d, StartHeight %d", batch.EndHeight, batch.StartHeight)

@@ -49,7 +49,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 			m.logger.Debug(fmt.Sprintf("no transactions, producing empty block: elapsed: %.2f", m.Conf.EmptyBlocksMaxTime.Seconds()))
 		// Produce block
 		case <-ticker.C:
-			err := m.produceAndGossipBlock(ctx, produceEmptyBlock)
+			err := m.ProduceAndGossipBlock(ctx, produceEmptyBlock)
 			if errors.Is(err, context.Canceled) {
 				m.logger.Error("produce and gossip: context canceled", "error", err)
 				return
@@ -76,7 +76,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 	}
 }
 
-func (m *Manager) produceAndGossipBlock(ctx context.Context, allowEmpty bool) error {
+func (m *Manager) ProduceAndGossipBlock(ctx context.Context, allowEmpty bool) error {
 	block, commit, err := m.produceBlock(allowEmpty)
 	if err != nil {
 		return fmt.Errorf("produce block: %w", err)
