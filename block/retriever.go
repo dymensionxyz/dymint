@@ -69,8 +69,6 @@ func (m *Manager) syncUntilTarget(syncTarget uint64) error {
 		m.logger.Error("applying previous cached blocks", "err", err)
 	}
 
-	m.pruneCache()
-
 	return nil
 }
 
@@ -109,6 +107,8 @@ func (m *Manager) processNextDABatch(daMetaData *da.DASubmitMetaData) error {
 			if err != nil {
 				return fmt.Errorf("apply block: height: %d: %w", block.Header.Height, err)
 			}
+
+			delete(m.blockCache, block.Header.Height)
 		}
 	}
 	return nil

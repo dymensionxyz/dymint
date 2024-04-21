@@ -137,21 +137,11 @@ func (m *Manager) attemptApplyCachedBlocks() error {
 			return fmt.Errorf("apply cached block: expected height: %d: %w", expectedHeight, err)
 		}
 		m.logger.Debug("applied cached block", "height", expectedHeight)
+
+		delete(m.blockCache, cachedBlock.Block.Header.Height)
 	}
 
 	return nil
-}
-
-// pruneCache prunes the cache of gossiped blocks.
-func (m *Manager) pruneCache() {
-	m.retrieverMutex.Lock()
-	defer m.retrieverMutex.Unlock()
-
-	for k := range m.blockCache {
-		if k <= m.store.Height() {
-			delete(m.blockCache, k)
-		}
-	}
 }
 
 // isHeightAlreadyApplied checks if the block height is already applied to the app.

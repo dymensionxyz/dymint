@@ -88,7 +88,6 @@ type Manager struct {
 	// Logging
 	logger types.Logger
 
-	//TODO: refactor to kvstore to allow quicker iteration when applying blocks by order
 	// Cached blocks and commits for applying at future heights. Invariant: the block and commit are .Valid() (validated sigs etc)
 	blockCache map[uint64]CachedBlock
 }
