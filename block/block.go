@@ -118,34 +118,29 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	return nil
 }
 
+// TODO: move to gossip.go
 func (m *Manager) attemptApplyCachedBlocks() error {
-	m.applyCachedBlockMutex.Lock()
-	defer m.applyCachedBlockMutex.Unlock()
+	m.retrieverMutex.Lock()
+	defer m.retrieverMutex.Unlock()
 
 	for {
 		expectedHeight := m.Store.NextHeight()
 
-		prevCachedBlock, blockExists := m.prevBlock[expectedHeight]
-		prevCachedCommit, commitExists := m.prevCommit[expectedHeight]
-
-		if !blockExists || !commitExists {
+		cachedBlock, blockExists := m.blockCache[expectedHeight]
+		if !blockExists {
 			break
 		}
 
 		// Note: cached <block,commit> pairs have passed basic validation, so no need to validate again
-		err := m.applyBlock(prevCachedBlock, prevCachedCommit, blockMetaData{source: gossipedBlock})
+		err := m.applyBlock(cachedBlock.Block, cachedBlock.Commit, blockMetaData{source: gossipedBlock})
 		if err != nil {
 			return fmt.Errorf("apply cached block: expected height: %d: %w", expectedHeight, err)
 		}
 		m.logger.Debug("applied cached block", "height", expectedHeight)
+
+		delete(m.blockCache, cachedBlock.Block.Header.Height)
 	}
 
-	for k := range m.prevBlock {
-		if k <= m.Store.Height() {
-			delete(m.prevBlock, k)
-			delete(m.prevCommit, k)
-		}
-	}
 	return nil
 }
 

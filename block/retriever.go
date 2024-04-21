@@ -62,6 +62,13 @@ func (m *Manager) syncUntilTarget(syncTarget uint64) error {
 		}
 	}
 	m.logger.Info("Synced", "current height", currentHeight, "syncTarget", syncTarget)
+
+	// check for cached blocks
+	err := m.attemptApplyCachedBlocks()
+	if err != nil {
+		m.logger.Error("applying previous cached blocks", "err", err)
+	}
+
 	return nil
 }
 
@@ -84,6 +91,9 @@ func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
 
 	m.logger.Debug("retrieved batches", "n", len(batchResp.Batches), "daHeight", daMetaData.Height)
 
+	m.retrieverMutex.Lock()
+	defer m.retrieverMutex.Unlock()
+
 	for _, batch := range batchResp.Batches {
 		for i, block := range batch.Blocks {
 			if block.Header.Height != m.Store.NextHeight() {
@@ -97,12 +107,9 @@ func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
 			if err != nil {
 				return fmt.Errorf("apply block: height: %d: %w", block.Header.Height, err)
 			}
-		}
-	}
 
-	err := m.attemptApplyCachedBlocks()
-	if err != nil {
-		m.logger.Error("applying previous cached blocks", "err", err)
+			delete(m.blockCache, block.Header.Height)
+		}
 	}
 	return nil
 }

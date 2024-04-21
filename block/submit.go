@@ -32,11 +32,11 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 // Finally, it submits the next batch of blocks and updates the sync target to the height of
 // the last block in the submitted batch.
 func (m *Manager) HandleSubmissionTrigger(ctx context.Context) {
-	if !m.batchInProcess.TryLock() { // Attempt to lock for batch processing
+	if !m.submitBatchMutex.TryLock() { // Attempt to lock for batch processing
 		m.logger.Debug("Batch submission already in process, skipping submission")
 		return
 	}
-	defer m.batchInProcess.Unlock() // Ensure unlocking at the end
+	defer m.submitBatchMutex.Unlock() // Ensure unlocking at the end
 
 	// Load current sync target and height to determine if new blocks are available for submission.
 	syncTarget, height := m.SyncTarget.Load(), m.Store.Height()
