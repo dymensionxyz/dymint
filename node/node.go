@@ -90,7 +90,7 @@ func (bl *baseLayerHealth) get() error {
 type Node struct {
 	service.BaseService
 	eventBus     *tmtypes.EventBus
-	pubsubServer *pubsub.Server
+	PubsubServer *pubsub.Server
 	proxyApp     proxy.AppConns
 
 	genesis *tmtypes.GenesisDoc
@@ -102,7 +102,7 @@ type Node struct {
 
 	// TODO(tzdybal): consider extracting "mempool reactor"
 	Mempool      mempool.Mempool
-	mempoolIDs   *nodemempool.MempoolIDs
+	MempoolIDs   *nodemempool.MempoolIDs
 	incomingTxCh chan *p2p.GossipMessage
 
 	Store        store.Store
@@ -118,7 +118,7 @@ type Node struct {
 
 	// keep context here only because of API compatibility
 	// - it's used in `OnStart` (defined in service.Service interface)
-	ctx context.Context
+	Ctx context.Context
 }
 
 // NewNode creates new Dymint node.
@@ -234,7 +234,7 @@ func NewNode(
 	node := &Node{
 		proxyApp:       proxyApp,
 		eventBus:       eventBus,
-		pubsubServer:   pubsubServer,
+		PubsubServer:   pubsubServer,
 		genesis:        genesis,
 		conf:           conf,
 		P2P:            p2pClient,
@@ -242,13 +242,13 @@ func NewNode(
 		dalc:           dalc,
 		settlementlc:   settlementlc,
 		Mempool:        mp,
-		mempoolIDs:     mpIDs,
+		MempoolIDs:     mpIDs,
 		incomingTxCh:   make(chan *p2p.GossipMessage),
 		Store:          s,
 		TxIndexer:      txIndexer,
 		IndexerService: indexerService,
 		BlockIndexer:   blockIndexer,
-		ctx:            ctx,
+		Ctx:            ctx,
 	}
 
 	node.BaseService = *service.NewBaseService(logger, "Node", node)
@@ -288,11 +288,11 @@ func (n *Node) initGenesisChunks() error {
 // OnStart is a part of Service interface.
 func (n *Node) OnStart() error {
 	n.Logger.Info("starting P2P client")
-	err := n.P2P.Start(n.ctx)
+	err := n.P2P.Start(n.Ctx)
 	if err != nil {
 		return fmt.Errorf("start P2P client: %w", err)
 	}
-	err = n.pubsubServer.Start()
+	err = n.PubsubServer.Start()
 	if err != nil {
 		return fmt.Errorf("start pubsub server: %w", err)
 	}
@@ -313,7 +313,7 @@ func (n *Node) OnStart() error {
 	n.startEventListener()
 
 	// start the block manager
-	err = n.blockManager.Start(n.ctx, n.conf.Aggregator)
+	err = n.blockManager.Start(n.Ctx, n.conf.Aggregator)
 	if err != nil {
 		return fmt.Errorf("while starting block manager: %w", err)
 	}
@@ -375,7 +375,7 @@ func (n *Node) EventBus() *tmtypes.EventBus {
 
 // PubSubServer gives access to the Node's pubsub server
 func (n *Node) PubSubServer() *pubsub.Server {
-	return n.pubsubServer
+	return n.PubsubServer
 }
 
 // ProxyApp returns ABCI proxy connections to communicate with application.
@@ -409,8 +409,8 @@ func createAndStartIndexerService(
 
 // All events listeners should be registered here
 func (n *Node) startEventListener() {
-	go uevent.MustSubscribe(n.ctx, n.pubsubServer, "settlementHealthStatusHandler", settlement.EventQuerySettlementHealthStatus, n.onBaseLayerHealthUpdate, n.Logger)
-	go uevent.MustSubscribe(n.ctx, n.pubsubServer, "daHealthStatusHandler", da.EventQueryDAHealthStatus, n.onBaseLayerHealthUpdate, n.Logger)
+	go uevent.MustSubscribe(n.Ctx, n.PubsubServer, "settlementHealthStatusHandler", settlement.EventQuerySettlementHealthStatus, n.onBaseLayerHealthUpdate, n.Logger)
+	go uevent.MustSubscribe(n.Ctx, n.PubsubServer, "daHealthStatusHandler", da.EventQueryDAHealthStatus, n.onBaseLayerHealthUpdate, n.Logger)
 }
 
 func (n *Node) onBaseLayerHealthUpdate(event pubsub.Message) {
@@ -432,7 +432,7 @@ func (n *Node) onBaseLayerHealthUpdate(event pubsub.Message) {
 		if newStatus != nil {
 			n.Logger.Error("node is unhealthy: base layer has problem", "error", newStatus)
 		}
-		uevent.MustPublish(n.ctx, n.pubsubServer, evt, events.HealthStatusList)
+		uevent.MustPublish(n.Ctx, n.PubsubServer, evt, events.HealthStatusList)
 	}
 }
 

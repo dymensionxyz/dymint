@@ -32,7 +32,7 @@ func GetNodeConfig(nodeConf *config.NodeConfig, tmConf *tmcfg.Config) error {
 		nodeConf.RPC.TLSKeyFile = tmConf.RPC.TLSKeyFile
 	}
 
-	err := translateAddresses(nodeConf)
+	err := TranslateAddresses(nodeConf)
 	if err != nil {
 		return err
 	}

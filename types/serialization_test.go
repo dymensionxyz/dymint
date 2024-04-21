@@ -1,4 +1,4 @@
-package types
+package types_test
 
 import (
 	"crypto/rand"
@@ -14,6 +14,7 @@ import (
 	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 	tmtypes "github.com/tendermint/tendermint/types"
 
+	"github.com/dymensionxyz/dymint/types"
 	pb "github.com/dymensionxyz/dymint/types/pb/dymint"
 )
 
@@ -34,12 +35,12 @@ func TestBlockSerializationRoundTrip(t *testing.T) {
 
 	cases := []struct {
 		name  string
-		input *Block
+		input *types.Block
 	}{
-		{"empty block", &Block{}},
-		{"full", &Block{
-			Header: Header{
-				Version: Version{
+		{"empty block", &types.Block{}},
+		{"full", &types.Block{
+			Header: types.Header{
+				Version: types.Version{
 					Block: 1,
 					App:   2,
 				},
@@ -55,16 +56,16 @@ func TestBlockSerializationRoundTrip(t *testing.T) {
 				ProposerAddress: []byte{4, 3, 2, 1},
 				AggregatorsHash: h[6],
 			},
-			Data: Data{
+			Data: types.Data{
 				Txs:                    nil,
-				IntermediateStateRoots: IntermediateStateRoots{RawRootsList: [][]byte{{0x1}}},
+				IntermediateStateRoots: types.IntermediateStateRoots{RawRootsList: [][]byte{{0x1}}},
 				// TODO(tzdybal): update when we have actual evidence types
-				Evidence: EvidenceData{Evidence: nil},
+				Evidence: types.EvidenceData{Evidence: nil},
 			},
-			LastCommit: Commit{
+			LastCommit: types.Commit{
 				Height:     8,
 				HeaderHash: h[7],
-				Signatures: []Signature{Signature([]byte{1, 1, 1}), Signature([]byte{2, 2, 2})},
+				Signatures: []types.Signature{types.Signature([]byte{1, 1, 1}), types.Signature([]byte{2, 2, 2})},
 			},
 		}},
 	}
@@ -76,7 +77,7 @@ func TestBlockSerializationRoundTrip(t *testing.T) {
 			assert.NoError(err)
 			assert.NotEmpty(blob)
 
-			deserialized := &Block{}
+			deserialized := &types.Block{}
 			err = deserialized.UnmarshalBinary(blob)
 			assert.NoError(err)
 
@@ -92,11 +93,11 @@ func TestStateRoundTrip(t *testing.T) {
 
 	cases := []struct {
 		name  string
-		state State
+		state types.State
 	}{
 		{
 			"with max bytes",
-			State{
+			types.State{
 				LastValidators: valSet,
 				Validators:     valSet,
 				NextValidators: valSet,
@@ -111,7 +112,7 @@ func TestStateRoundTrip(t *testing.T) {
 		},
 		{
 			name: "with all fields set",
-			state: State{
+			state: types.State{
 				Version: tmstate.Version{
 					Consensus: tmversion.Consensus{
 						Block: 123,
@@ -173,7 +174,7 @@ func TestStateRoundTrip(t *testing.T) {
 			require.NotEmpty(bytes)
 
 			var newProtoState pb.State
-			var newState State
+			var newState types.State
 			err = newProtoState.Unmarshal(bytes)
 			require.NoError(err)
 

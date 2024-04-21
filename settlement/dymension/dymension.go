@@ -62,7 +62,7 @@ var _ settlement.LayerI = &LayerClient{}
 
 // Init is called once. it initializes the struct members.
 func (dlc *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, logger types.Logger, options ...settlement.Option) error {
-	DymensionCosmosClient, err := newDymensionHubClient(config, pubsub, logger)
+	DymensionCosmosClient, err := NewDymensionHubClient(config, pubsub, logger)
 	if err != nil {
 		return err
 	}
@@ -135,7 +135,7 @@ func WithBatchRetryDelay(batchRetryDelay time.Duration) Option {
 	}
 }
 
-func newDymensionHubClient(config settlement.Config, pubsub *pubsub.Server, logger types.Logger, options ...Option) (*HubClient, error) {
+func NewDymensionHubClient(config settlement.Config, pubsub *pubsub.Server, logger types.Logger, options ...Option) (*HubClient, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	eventMap := map[string]string{
 		fmt.Sprintf(eventStateUpdate, config.RollappID):          settlement.EventNewBatchAccepted,

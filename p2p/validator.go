@@ -4,13 +4,12 @@ import (
 	"context"
 	"errors"
 
-	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/libs/pubsub"
-	corep2p "github.com/tendermint/tendermint/p2p"
-
 	"github.com/dymensionxyz/dymint/mempool"
 	nodemempool "github.com/dymensionxyz/dymint/node/mempool"
 	"github.com/dymensionxyz/dymint/types"
+	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/libs/pubsub"
+	corep2p "github.com/tendermint/tendermint/p2p"
 )
 
 // GossipValidator is a callback function type.

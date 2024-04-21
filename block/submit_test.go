@@ -1,4 +1,4 @@
-package block
+package block_test
 
 import (
 	"context"
@@ -34,23 +34,23 @@ func TestBatchSubmissionHappyFlow(t *testing.T) {
 	err := proxyApp.Start()
 	require.NoError(err)
 
-	manager, err := getManager(getManagerConfig(), nil, nil, 1, 1, 0, proxyApp, nil)
+	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
 	// Check initial assertions
 	initialHeight := uint64(0)
-	require.Zero(manager.store.Height())
-	require.Zero(manager.syncTarget.Load())
+	require.Zero(manager.Store.Height())
+	require.Zero(manager.SyncTarget.Load())
 
 	// Produce block and validate that we produced blocks
-	err = manager.produceAndGossipBlock(ctx, true)
+	err = manager.ProduceAndGossipBlock(ctx, true)
 	require.NoError(err)
-	assert.Greater(t, manager.store.Height(), initialHeight)
-	assert.Zero(t, manager.syncTarget.Load())
+	assert.Greater(t, manager.Store.Height(), initialHeight)
+	assert.Zero(t, manager.SyncTarget.Load())
 
 	// submit and validate sync target
-	manager.handleSubmissionTrigger(ctx)
-	assert.EqualValues(t, 1, manager.syncTarget.Load())
+	manager.HandleSubmissionTrigger(ctx)
+	assert.EqualValues(t, 1, manager.SyncTarget.Load())
 }
 
 func TestBatchSubmissionFailedSubmission(t *testing.T) {
@@ -80,29 +80,30 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 	mockLayerI.On("Start").Return(nil)
 	mockLayerI.On("GetProposer").Return(proposer)
 
-	manager, err := getManagerWithProposerKey(getManagerConfig(), lib2pPrivKey, mockLayerI, nil, 1, 1, 0, proxyApp, nil)
+	manager, err := testutil.GetManagerWithProposerKey(testutil.GetManagerConfig(), lib2pPrivKey, mockLayerI, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
 	// Check initial assertions
 	initialHeight := uint64(0)
-	require.Zero(manager.store.Height())
-	require.Zero(manager.syncTarget.Load())
+	require.Zero(manager.Store.Height())
+	require.Zero(manager.SyncTarget.Load())
 
 	// Produce block and validate that we produced blocks
-	err = manager.produceAndGossipBlock(ctx, true)
+	err = manager.ProduceAndGossipBlock(ctx, true)
 	require.NoError(err)
-	assert.Greater(t, manager.store.Height(), initialHeight)
-	assert.Zero(t, manager.syncTarget.Load())
+	assert.Greater(t, manager.Store.Height(), initialHeight)
+	assert.Zero(t, manager.SyncTarget.Load())
 
 	// try to submit, we expect failure
-	mockLayerI.On("SubmitBatch", mock.Anything, mock.Anything, mock.Anything).Return(fmt.Errorf("submit batch")).Once()
-	manager.handleSubmissionTrigger(ctx)
-	assert.EqualValues(t, 0, manager.syncTarget.Load())
+	mockLayerI.On("SubmitBatch", mock.Anything, mock.Anything, mock.Anything).Return(fmt.Errorf("Failed to submit batch")).Once()
+	manager.HandleSubmissionTrigger(ctx)
+	assert.EqualValues(t, 0, manager.SyncTarget.Load())
 
 	// try to submit again, we expect success
 	mockLayerI.On("SubmitBatch", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
-	manager.handleSubmissionTrigger(ctx)
-	assert.EqualValues(t, 1, manager.syncTarget.Load())
+	manager.HandleSubmissionTrigger(ctx)
+	assert.EqualValues(t, 1, manager.SyncTarget.Load())
+
 }
 
 func TestBatchSubmissionAfterTimeout(t *testing.T) {
@@ -132,14 +133,13 @@ func TestBatchSubmissionAfterTimeout(t *testing.T) {
 		GossipedBlocksCacheSize: 50,
 	}
 
-	manager, err := getManager(managerConfig, nil, nil, 1, 1, 0, proxyApp, nil)
+	manager, err := testutil.GetManager(managerConfig, nil, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
 	// Check initial height
 	initialHeight := uint64(0)
-	require.Equal(initialHeight, manager.store.Height())
-
-	require.Zero(manager.syncTarget.Load())
+	require.Equal(initialHeight, manager.Store.Height())
+	require.Zero(manager.SyncTarget.Load())
 
 	var wg sync.WaitGroup
 	mCtx, cancel := context.WithTimeout(context.Background(), runTime)
@@ -159,5 +159,5 @@ func TestBatchSubmissionAfterTimeout(t *testing.T) {
 
 	<-mCtx.Done()
 	wg.Wait() // Wait for all goroutines to finish
-	require.True(manager.syncTarget.Load() > 0)
+	require.True(manager.SyncTarget.Load() > 0)
 }

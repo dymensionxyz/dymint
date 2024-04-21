@@ -1,4 +1,4 @@
-package node
+package node_test
 
 import (
 	"context"
@@ -13,8 +13,10 @@ import (
 
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/mempool"
+	"github.com/dymensionxyz/dymint/node"
 	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/settlement"
+	"github.com/dymensionxyz/dymint/testutil"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -33,7 +35,7 @@ func TestStartup(t *testing.T) {
 	require := require.New(t)
 
 	// TODO(omritoptix): Test with and without aggregator mode.
-	node, err := CreateNode(false, nil)
+	node, err := testutil.CreateNode(false, nil)
 	require.NoError(err)
 	require.NotNil(node)
 
@@ -81,7 +83,7 @@ func TestMempoolDirectly(t *testing.T) {
 			RollappID: rollappID,
 		},
 	}
-	node, err := NewNode(
+	node, err := node.NewNode(
 		context.Background(),
 		nodeConfig,
 		key,
@@ -100,20 +102,20 @@ func TestMempoolDirectly(t *testing.T) {
 	pid, err := peer.IDFromPrivateKey(anotherKey)
 	require.NoError(err)
 	err = node.Mempool.CheckTx([]byte("tx1"), func(r *abci.Response) {}, mempool.TxInfo{
-		SenderID: node.mempoolIDs.GetForPeer(pid),
+		SenderID: node.MempoolIDs.GetForPeer(pid),
 	})
 	require.NoError(err)
 	err = node.Mempool.CheckTx([]byte("tx2"), func(r *abci.Response) {}, mempool.TxInfo{
-		SenderID: node.mempoolIDs.GetForPeer(pid),
+		SenderID: node.MempoolIDs.GetForPeer(pid),
 	})
 	require.NoError(err)
 	time.Sleep(100 * time.Millisecond)
 	err = node.Mempool.CheckTx([]byte("tx3"), func(r *abci.Response) {}, mempool.TxInfo{
-		SenderID: node.mempoolIDs.GetForPeer(pid),
+		SenderID: node.MempoolIDs.GetForPeer(pid),
 	})
 	require.NoError(err)
 	err = node.Mempool.CheckTx([]byte("tx4"), func(r *abci.Response) {}, mempool.TxInfo{
-		SenderID: node.mempoolIDs.GetForPeer(pid),
+		SenderID: node.MempoolIDs.GetForPeer(pid),
 	})
 	require.NoError(err)
 
@@ -125,7 +127,7 @@ func TestMempoolDirectly(t *testing.T) {
 func TestHealthStatusEventHandler(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	node, err := CreateNode(false, nil)
+	node, err := testutil.CreateNode(false, nil)
 	require.NoError(err)
 	require.NotNil(node)
 
@@ -179,7 +181,7 @@ func TestHealthStatusEventHandler(t *testing.T) {
 			done := make(chan bool, 1)
 			ready := make(chan bool, 1)
 			go func() {
-				HealthSubscription, err := node.pubsubServer.Subscribe(node.ctx, c.name, events.QueryHealthStatus)
+				HealthSubscription, err := node.PubsubServer.Subscribe(node.Ctx, c.name, events.QueryHealthStatus)
 				ready <- true
 				assert.NoError(err)
 				select {
@@ -201,7 +203,7 @@ func TestHealthStatusEventHandler(t *testing.T) {
 			}()
 			<-ready
 			// Emit an event.
-			node.pubsubServer.PublishWithEvents(context.Background(), c.baseLayerHealthStatusEventData, c.baseLayerHealthStatusEvent)
+			node.PubsubServer.PublishWithEvents(context.Background(), c.baseLayerHealthStatusEventData, c.baseLayerHealthStatusEvent)
 			<-done
 		})
 	}

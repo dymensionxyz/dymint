@@ -10,7 +10,7 @@ import (
 )
 
 func (m *Manager) SubmitLoop(ctx context.Context) {
-	ticker := time.NewTicker(m.conf.BatchSubmitMaxTime)
+	ticker := time.NewTicker(m.Conf.BatchSubmitMaxTime)
 	defer ticker.Stop()
 
 	// TODO: add submission trigger by batch size (should be signaled from the the block production)
@@ -21,7 +21,7 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 			return
 		// trigger by time
 		case <-ticker.C:
-			m.handleSubmissionTrigger(ctx)
+			m.HandleSubmissionTrigger(ctx)
 		}
 	}
 }
@@ -31,7 +31,7 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 // pass through during the batch submission process due to proofs requires for ibc messages only exist on the next block.
 // Finally, it submits the next batch of blocks and updates the sync target to the height of
 // the last block in the submitted batch.
-func (m *Manager) handleSubmissionTrigger(ctx context.Context) {
+func (m *Manager) HandleSubmissionTrigger(ctx context.Context) {
 	if !m.submitBatchMutex.TryLock() { // Attempt to lock for batch processing
 		m.logger.Debug("Batch submission already in process, skipping submission")
 		return
@@ -39,12 +39,12 @@ func (m *Manager) handleSubmissionTrigger(ctx context.Context) {
 	defer m.submitBatchMutex.Unlock() // Ensure unlocking at the end
 
 	// Load current sync target and height to determine if new blocks are available for submission.
-	syncTarget, height := m.syncTarget.Load(), m.store.Height()
+	syncTarget, height := m.SyncTarget.Load(), m.Store.Height()
 	if height <= syncTarget { // Check if there are new blocks since last sync target.
 		return // Exit if no new blocks are produced.
 	}
 	// We try and produce an empty block to make sure relevant ibc messages will pass through during the batch submission: https://github.com/dymensionxyz/research/issues/173.
-	err := m.produceAndGossipBlock(ctx, true)
+	err := m.ProduceAndGossipBlock(ctx, true)
 	if err != nil {
 		m.logger.Error("produce empty block", "error", err)
 	}
@@ -77,20 +77,20 @@ func (m *Manager) handleSubmissionTrigger(ctx context.Context) {
 	}
 
 	// Update the syncTarget to the height of the last block in the last batch as seen by this node.
-	m.updateSyncParams(syncHeight)
+	m.UpdateSyncParams(syncHeight)
 }
 
 func (m *Manager) createNextBatch() (*types.Batch, error) {
 	// Create the batch
-	startHeight := m.syncTarget.Load() + 1
-	endHeight := m.store.Height()
-	nextBatch, err := m.createNextDABatch(startHeight, endHeight)
+	startHeight := m.SyncTarget.Load() + 1
+	endHeight := m.Store.Height()
+	nextBatch, err := m.CreateNextDABatch(startHeight, endHeight)
 	if err != nil {
 		m.logger.Error("create next batch", "startHeight", startHeight, "endHeight", endHeight, "error", err)
 		return nil, err
 	}
 
-	if err := m.validateBatch(nextBatch); err != nil {
+	if err := m.ValidateBatch(nextBatch); err != nil {
 		return nil, err
 	}
 
@@ -116,7 +116,7 @@ func (m *Manager) submitNextBatchToDA(nextBatch *types.Batch) (*da.ResultSubmitB
 
 	// Submit batch to the DA
 	m.logger.Info("Submitting next batch", "startHeight", startHeight, "endHeight", actualEndHeight, "size", nextBatch.ToProto().Size())
-	resultSubmitToDA := m.dalc.SubmitBatch(nextBatch)
+	resultSubmitToDA := m.DAClient.SubmitBatch(nextBatch)
 	if resultSubmitToDA.Code != da.StatusSuccess {
 		err = fmt.Errorf("submit next batch to DA Layer: %s", resultSubmitToDA.Message)
 		return nil, err
@@ -132,7 +132,7 @@ func (m *Manager) submitPendingBatchToSL() (uint64, error) {
 	// Submit batch to SL
 	startHeight := m.pendingBatch.batch.StartHeight
 	actualEndHeight := m.pendingBatch.batch.EndHeight
-	err := m.settlementClient.SubmitBatch(m.pendingBatch.batch, m.dalc.GetClientType(), m.pendingBatch.daResult)
+	err := m.SLClient.SubmitBatch(m.pendingBatch.batch, m.DAClient.GetClientType(), m.pendingBatch.daResult)
 	if err != nil {
 		m.logger.Error("submit batch to SL", "startHeight", startHeight, "endHeight", actualEndHeight, "error", err)
 		return 0, err
@@ -144,10 +144,10 @@ func (m *Manager) submitPendingBatchToSL() (uint64, error) {
 	return actualEndHeight, nil
 }
 
-func (m *Manager) validateBatch(batch *types.Batch) error {
-	syncTarget := m.syncTarget.Load()
+func (m *Manager) ValidateBatch(batch *types.Batch) error {
+	syncTarget := m.SyncTarget.Load()
 	if batch.StartHeight != syncTarget+1 {
-		return fmt.Errorf("batch start height != syncTarget + 1. StartHeight %d, m.syncTarget %d", batch.StartHeight, syncTarget)
+		return fmt.Errorf("batch start height != syncTarget + 1. StartHeight %d, m.SyncTarget %d", batch.StartHeight, syncTarget)
 	}
 	if batch.EndHeight < batch.StartHeight {
 		return fmt.Errorf("batch end height must be greater than start height. EndHeight %d, StartHeight %d", batch.EndHeight, batch.StartHeight)
@@ -155,7 +155,7 @@ func (m *Manager) validateBatch(batch *types.Batch) error {
 	return nil
 }
 
-func (m *Manager) createNextDABatch(startHeight uint64, endHeight uint64) (*types.Batch, error) {
+func (m *Manager) CreateNextDABatch(startHeight uint64, endHeight uint64) (*types.Batch, error) {
 	var height uint64
 	// Create the batch
 	batchSize := endHeight - startHeight + 1
@@ -168,12 +168,12 @@ func (m *Manager) createNextDABatch(startHeight uint64, endHeight uint64) (*type
 
 	// Populate the batch
 	for height = startHeight; height <= endHeight; height++ {
-		block, err := m.store.LoadBlock(height)
+		block, err := m.Store.LoadBlock(height)
 		if err != nil {
 			m.logger.Error("load block", "height", height)
 			return nil, err
 		}
-		commit, err := m.store.LoadCommit(height)
+		commit, err := m.Store.LoadCommit(height)
 		if err != nil {
 			m.logger.Error("load commit", "height", height)
 			return nil, err
@@ -184,7 +184,7 @@ func (m *Manager) createNextDABatch(startHeight uint64, endHeight uint64) (*type
 
 		// Check if the batch size is too big
 		totalSize := batch.ToProto().Size()
-		if totalSize > int(m.conf.BlockBatchMaxSizeBytes) {
+		if totalSize > int(m.Conf.BlockBatchMaxSizeBytes) {
 			// Nil out the last block and commit
 			batch.Blocks[len(batch.Blocks)-1] = nil
 			batch.Commits[len(batch.Commits)-1] = nil
@@ -202,7 +202,7 @@ func (m *Manager) createNextDABatch(startHeight uint64, endHeight uint64) (*type
 
 func (m *Manager) isBlockEmpty(endHeight uint64) (isEmpty bool, err error) {
 	m.logger.Debug("Verifying last block in batch is an empty block", "endHeight", endHeight, "height")
-	lastBlock, err := m.store.LoadBlock(endHeight)
+	lastBlock, err := m.Store.LoadBlock(endHeight)
 	if err != nil {
 		m.logger.Error("load block", "height", endHeight, "error", err)
 		return false, err

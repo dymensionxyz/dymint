@@ -1,8 +1,9 @@
-package conv
+package conv_test
 
 import (
 	"testing"
 
+	"github.com/dymensionxyz/dymint/conv"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -29,15 +30,15 @@ func TestGetNodeKey(t *testing.T) {
 		expectedType pb.KeyType
 		err          error
 	}{
-		{"nil", nil, pb.KeyType(-1), errNilKey},
-		{"empty", &p2p.NodeKey{}, pb.KeyType(-1), errNilKey},
-		{"invalid", &invalid, pb.KeyType(-1), errUnsupportedKeyType},
+		{"nil", nil, pb.KeyType(-1), conv.ErrNilKey},
+		{"empty", &p2p.NodeKey{}, pb.KeyType(-1), conv.ErrNilKey},
+		{"invalid", &invalid, pb.KeyType(-1), conv.ErrUnsupportedKeyType},
 		{"valid", &valid, pb.KeyType_Ed25519, nil},
 	}
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			actual, err := GetNodeKey(c.input)
+			actual, err := conv.GetNodeKey(c.input)
 			if c.err != nil {
 				assert.Nil(t, actual)
 				assert.Error(t, err)

@@ -1,4 +1,4 @@
-package p2p
+package p2p_test
 
 import (
 	"context"
@@ -16,12 +16,13 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 
 	"github.com/dymensionxyz/dymint/config"
+	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/testutil"
 )
 
 func TestClientStartup(t *testing.T) {
 	privKey, _, _ := crypto.GenerateEd25519Key(rand.Reader)
-	client, err := NewClient(config.P2PConfig{
+	client, err := p2p.NewClient(config.P2PConfig{
 		GossipCacheSize: 50,
 		BoostrapTime:    30 * time.Second,
 	}, privKey, "TestChain", log.TestingLogger())
@@ -42,17 +43,17 @@ func TestBootstrapping(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	clients := startTestNetwork(ctx, t, 4, map[int]hostDescr{
-		1: {conns: []int{0}},
-		2: {conns: []int{0, 1}},
-		3: {conns: []int{0}},
-	}, make([]GossipValidator, 4), logger)
+	clients := testutil.StartTestNetwork(ctx, t, 4, map[int]testutil.HostDescr{
+		1: {Conns: []int{0}},
+		2: {Conns: []int{0, 1}},
+		3: {Conns: []int{0}},
+	}, make([]p2p.GossipValidator, 4), logger)
 
 	// wait for clients to finish refreshing routing tables
 	clients.WaitForDHT()
 
 	for _, client := range clients {
-		assert.Equal(3, len(client.host.Network().Peers()))
+		assert.Equal(3, len(client.Host.Network().Peers()))
 	}
 }
 
@@ -62,18 +63,18 @@ func TestDiscovery(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	clients := startTestNetwork(ctx, t, 5, map[int]hostDescr{
-		1: {conns: []int{0}, chainID: "ORU2"},
-		2: {conns: []int{0}, chainID: "ORU2"},
-		3: {conns: []int{1}, chainID: "ORU1"},
-		4: {conns: []int{2}, chainID: "ORU1"},
-	}, make([]GossipValidator, 5), logger)
+	clients := testutil.StartTestNetwork(ctx, t, 5, map[int]testutil.HostDescr{
+		1: {Conns: []int{0}, ChainID: "ORU2"},
+		2: {Conns: []int{0}, ChainID: "ORU2"},
+		3: {Conns: []int{1}, ChainID: "ORU1"},
+		4: {Conns: []int{2}, ChainID: "ORU1"},
+	}, make([]p2p.GossipValidator, 5), logger)
 
 	// wait for clients to finish refreshing routing tables
 	clients.WaitForDHT()
 
-	assert.Contains(clients[3].host.Network().Peers(), clients[4].host.ID())
-	assert.Contains(clients[4].host.Network().Peers(), clients[3].host.ID())
+	assert.Contains(clients[3].Host.Network().Peers(), clients[4].Host.ID())
+	assert.Contains(clients[4].Host.Network().Peers(), clients[3].Host.ID())
 }
 
 func TestGossiping(t *testing.T) {
@@ -88,7 +89,7 @@ func TestGossiping(t *testing.T) {
 	wg.Add(2)
 
 	// ensure that Tx is delivered to client
-	assertRecv := func(tx *GossipMessage) bool {
+	assertRecv := func(tx *p2p.GossipMessage) bool {
 		logger.Debug("received tx", "body", string(tx.Data), "from", tx.From)
 		assert.Equal(expectedMsg, tx.Data)
 		wg.Done()
@@ -96,20 +97,20 @@ func TestGossiping(t *testing.T) {
 	}
 
 	// ensure that Tx is not delivered to client
-	assertNotRecv := func(*GossipMessage) bool {
+	assertNotRecv := func(*p2p.GossipMessage) bool {
 		t.Fatal("unexpected Tx received")
 		return false
 	}
 
-	validators := []GossipValidator{assertRecv, assertNotRecv, assertNotRecv, assertRecv, assertNotRecv}
+	validators := []p2p.GossipValidator{assertRecv, assertNotRecv, assertNotRecv, assertRecv, assertNotRecv}
 
 	// network connections topology: 3<->1<->0<->2<->4
-	clients := startTestNetwork(ctx, t, 5, map[int]hostDescr{
-		0: {conns: []int{}, chainID: "2"},
-		1: {conns: []int{0}, chainID: "1", realKey: true},
-		2: {conns: []int{0}, chainID: "1", realKey: true},
-		3: {conns: []int{1}, chainID: "2", realKey: true},
-		4: {conns: []int{2}, chainID: "2", realKey: true},
+	clients := testutil.StartTestNetwork(ctx, t, 5, map[int]testutil.HostDescr{
+		0: {Conns: []int{}, ChainID: "2"},
+		1: {Conns: []int{0}, ChainID: "1", RealKey: true},
+		2: {Conns: []int{0}, ChainID: "1", RealKey: true},
+		3: {Conns: []int{1}, ChainID: "2", RealKey: true},
+		4: {Conns: []int{2}, ChainID: "2", RealKey: true},
 	}, validators, logger)
 
 	// wait for clients to finish refreshing routing tables
@@ -168,13 +169,13 @@ func TestSeedStringParsing(t *testing.T) {
 			assert := assert.New(t)
 			require := require.New(t)
 			logger := &testutil.MockLogger{}
-			client, err := NewClient(config.P2PConfig{
+			client, err := p2p.NewClient(config.P2PConfig{
 				GossipCacheSize: 50,
 				BoostrapTime:    30 * time.Second,
 			}, privKey, "TestNetwork", logger)
 			require.NoError(err)
 			require.NotNil(client)
-			actual := client.getSeedAddrInfo(c.input)
+			actual := client.GetSeedAddrInfo(c.input)
 			assert.NotNil(actual)
 			assert.Equal(c.expected, actual)
 			// ensure that errors are logged

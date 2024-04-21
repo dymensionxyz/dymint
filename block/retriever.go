@@ -13,7 +13,7 @@ import (
 // runs syncUntilTarget on the latest message in the ring buffer.
 func (m *Manager) RetrieveLoop(ctx context.Context) {
 	m.logger.Info("started retrieve loop")
-	syncTargetPoller := diodes.NewPoller(m.syncTargetDiode, diodes.WithPollingContext(ctx))
+	syncTargetPoller := diodes.NewPoller(m.SyncTargetDiode, diodes.WithPollingContext(ctx))
 
 	for {
 		select {
@@ -34,7 +34,7 @@ func (m *Manager) RetrieveLoop(ctx context.Context) {
 // It fetches the batches from the settlement, gets the DA height and gets
 // the actual blocks from the DA.
 func (m *Manager) syncUntilTarget(syncTarget uint64) error {
-	currentHeight := m.store.Height()
+	currentHeight := m.Store.Height()
 
 	if currentHeight >= syncTarget {
 		m.logger.Info("Already synced", "current height", currentHeight, "syncTarget", syncTarget)
@@ -42,19 +42,19 @@ func (m *Manager) syncUntilTarget(syncTarget uint64) error {
 	}
 
 	for currentHeight < syncTarget {
-		currStateIdx := atomic.LoadUint64(&m.lastState.SLStateIndex) + 1
+		currStateIdx := atomic.LoadUint64(&m.LastState.SLStateIndex) + 1
 		m.logger.Info("Syncing until target", "height", currentHeight, "state_index", currStateIdx, "syncTarget", syncTarget)
-		settlementBatch, err := m.settlementClient.RetrieveBatch(currStateIdx)
+		settlementBatch, err := m.SLClient.RetrieveBatch(currStateIdx)
 		if err != nil {
 			return err
 		}
 
-		err = m.processNextDABatch(settlementBatch.MetaData.DA)
+		err = m.ProcessNextDABatch(settlementBatch.MetaData.DA)
 		if err != nil {
 			return err
 		}
 
-		currentHeight = m.store.Height()
+		currentHeight = m.Store.Height()
 
 		err = m.updateStateIndex(settlementBatch.StateIndex)
 		if err != nil {
@@ -73,8 +73,8 @@ func (m *Manager) syncUntilTarget(syncTarget uint64) error {
 }
 
 func (m *Manager) updateStateIndex(stateIndex uint64) error {
-	atomic.StoreUint64(&m.lastState.SLStateIndex, stateIndex)
-	_, err := m.store.UpdateState(m.lastState, nil)
+	atomic.StoreUint64(&m.LastState.SLStateIndex, stateIndex)
+	_, err := m.Store.UpdateState(m.LastState, nil)
 	if err != nil {
 		m.logger.Error("update state", "error", err)
 		return err
@@ -82,7 +82,7 @@ func (m *Manager) updateStateIndex(stateIndex uint64) error {
 	return nil
 }
 
-func (m *Manager) processNextDABatch(daMetaData *da.DASubmitMetaData) error {
+func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
 	m.logger.Debug("trying to retrieve batch from DA", "daHeight", daMetaData.Height)
 	batchResp := m.fetchBatch(daMetaData)
 	if batchResp.Code != da.StatusSuccess {
@@ -96,7 +96,7 @@ func (m *Manager) processNextDABatch(daMetaData *da.DASubmitMetaData) error {
 
 	for _, batch := range batchResp.Batches {
 		for i, block := range batch.Blocks {
-			if block.Header.Height != m.store.NextHeight() {
+			if block.Header.Height != m.Store.NextHeight() {
 				continue
 			}
 			if err := m.validateBlock(block, batch.Commits[i]); err != nil {
@@ -116,7 +116,7 @@ func (m *Manager) processNextDABatch(daMetaData *da.DASubmitMetaData) error {
 
 func (m *Manager) fetchBatch(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
 	// Check batch availability
-	availabilityRes := m.retriever.CheckBatchAvailability(daMetaData)
+	availabilityRes := m.Retriever.CheckBatchAvailability(daMetaData)
 	if availabilityRes.Code != da.StatusSuccess {
 		return da.ResultRetrieveBatch{
 			BaseResult: da.BaseResult{
@@ -127,7 +127,7 @@ func (m *Manager) fetchBatch(daMetaData *da.DASubmitMetaData) da.ResultRetrieveB
 		}
 	}
 	// batchRes.MetaData includes proofs necessary to open disputes with the Hub
-	batchRes := m.retriever.RetrieveBatches(daMetaData)
+	batchRes := m.Retriever.RetrieveBatches(daMetaData)
 	// TODO(srene) : for invalid transactions there is no specific error code since it will need to be validated somewhere else for fraud proving.
 	// NMT proofs (availRes.MetaData.Proofs) are included in the result batchRes, necessary to be included in the dispute
 	return batchRes

@@ -1,4 +1,4 @@
-package node
+package testutil
 
 import (
 	"context"
@@ -13,13 +13,12 @@ import (
 
 	"github.com/dymensionxyz/dymint/config"
 	"github.com/dymensionxyz/dymint/mempool"
+	"github.com/dymensionxyz/dymint/node"
 	"github.com/dymensionxyz/dymint/settlement"
-	"github.com/dymensionxyz/dymint/testutil"
 )
 
-// TODO: should be moved to testutils
-func CreateNode(isAggregator bool, blockManagerConfig *config.BlockManagerConfig) (*Node, error) {
-	app := testutil.GetAppMock()
+func CreateNode(isAggregator bool, blockManagerConfig *config.BlockManagerConfig) (*node.Node, error) {
+	app := GetAppMock()
 	key, _, _ := crypto.GenerateEd25519Key(rand.Reader)
 	signingKey, pubkey, _ := crypto.GenerateEd25519Key(rand.Reader)
 	pubkeyBytes, _ := pubkey.Raw()
@@ -44,7 +43,7 @@ func CreateNode(isAggregator bool, blockManagerConfig *config.BlockManagerConfig
 	// SL config
 	nodeConfig.SettlementConfig = settlement.Config{ProposerPubKey: hex.EncodeToString(pubkeyBytes), RollappID: rollappID}
 
-	node, err := NewNode(
+	node, err := node.NewNode(
 		context.Background(),
 		nodeConfig,
 		key,

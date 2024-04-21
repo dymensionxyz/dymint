@@ -21,7 +21,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	// TODO (#330): allow genesis block with height > 0 to be applied.
 	// TODO: add switch case to have defined behavior for each case.
 	// validate block height
-	if block.Header.Height != m.store.NextHeight() {
+	if block.Header.Height != m.Store.NextHeight() {
 		return types.ErrInvalidBlockHeight
 	}
 
@@ -43,36 +43,36 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		return nil
 	}
 	// Start applying the block assuming no inconsistency was found.
-	_, err = m.store.SaveBlock(block, commit, nil)
+	_, err = m.Store.SaveBlock(block, commit, nil)
 	if err != nil {
 		return fmt.Errorf("save block: %w", err)
 	}
 
-	responses, err := m.executor.ExecuteBlock(m.lastState, block)
+	responses, err := m.Executor.ExecuteBlock(m.LastState, block)
 	if err != nil {
 		return fmt.Errorf("execute block: %w", err)
 	}
 
-	newState, err := m.executor.UpdateStateFromResponses(responses, m.lastState, block)
+	newState, err := m.Executor.UpdateStateFromResponses(responses, m.LastState, block)
 	if err != nil {
 		return fmt.Errorf("update state from responses: %w", err)
 	}
 
-	batch := m.store.NewBatch()
+	batch := m.Store.NewBatch()
 
-	batch, err = m.store.SaveBlockResponses(block.Header.Height, responses, batch)
+	batch, err = m.Store.SaveBlockResponses(block.Header.Height, responses, batch)
 	if err != nil {
 		batch.Discard()
 		return fmt.Errorf("save block responses: %w", err)
 	}
 
-	m.lastState = newState
-	batch, err = m.store.UpdateState(m.lastState, batch)
+	m.LastState = newState
+	batch, err = m.Store.UpdateState(m.LastState, batch)
 	if err != nil {
 		batch.Discard()
 		return fmt.Errorf("update state: %w", err)
 	}
-	batch, err = m.store.SaveValidators(block.Header.Height, m.lastState.Validators, batch)
+	batch, err = m.Store.SaveValidators(block.Header.Height, m.LastState.Validators, batch)
 	if err != nil {
 		batch.Discard()
 		return fmt.Errorf("save validators: %w", err)
@@ -84,7 +84,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	}
 
 	// Commit block to app
-	retainHeight, err := m.executor.Commit(&newState, block, responses)
+	retainHeight, err := m.Executor.Commit(&newState, block, responses)
 	if err != nil {
 		return fmt.Errorf("commit block: %w", err)
 	}
@@ -101,17 +101,17 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 
 	// Update the state with the new app hash, last validators and store height from the commit.
 	// Every one of those, if happens before commit, prevents us from re-executing the block in case failed during commit.
-	newState.LastValidators = m.lastState.Validators.Copy()
+	newState.LastValidators = m.LastState.Validators.Copy()
 	newState.LastStoreHeight = block.Header.Height
-	newState.BaseHeight = m.store.Base()
+	newState.BaseHeight = m.Store.Base()
 
-	_, err = m.store.UpdateState(newState, nil)
+	_, err = m.Store.UpdateState(newState, nil)
 	if err != nil {
 		return fmt.Errorf("final update state: %w", err)
 	}
-	m.lastState = newState
+	m.LastState = newState
 
-	if ok := m.store.SetHeight(block.Header.Height); !ok {
+	if ok := m.Store.SetHeight(block.Header.Height); !ok {
 		return fmt.Errorf("store set height: %d", block.Header.Height)
 	}
 
@@ -124,7 +124,7 @@ func (m *Manager) attemptApplyCachedBlocks() error {
 	defer m.retrieverMutex.Unlock()
 
 	for {
-		expectedHeight := m.store.NextHeight()
+		expectedHeight := m.Store.NextHeight()
 
 		cachedBlock, blockExists := m.blockCache[expectedHeight]
 		if !blockExists {
@@ -146,7 +146,7 @@ func (m *Manager) attemptApplyCachedBlocks() error {
 
 // isHeightAlreadyApplied checks if the block height is already applied to the app.
 func (m *Manager) isHeightAlreadyApplied(blockHeight uint64) (bool, error) {
-	proxyAppInfo, err := m.executor.GetAppInfo()
+	proxyAppInfo, err := m.Executor.GetAppInfo()
 	if err != nil {
 		return false, errorsmod.Wrap(err, "get app info")
 	}
@@ -160,7 +160,7 @@ func (m *Manager) isHeightAlreadyApplied(blockHeight uint64) (bool, error) {
 
 // UpdateStateFromApp is responsible for aligning the state of the store from the abci app
 func (m *Manager) UpdateStateFromApp() error {
-	proxyAppInfo, err := m.executor.GetAppInfo()
+	proxyAppInfo, err := m.Executor.GetAppInfo()
 	if err != nil {
 		return errorsmod.Wrap(err, "get app info")
 	}
@@ -168,21 +168,21 @@ func (m *Manager) UpdateStateFromApp() error {
 	appHeight := uint64(proxyAppInfo.LastBlockHeight)
 
 	// update the state with the hash, last store height and last validators.
-	m.lastState.AppHash = *(*[32]byte)(proxyAppInfo.LastBlockAppHash)
-	m.lastState.LastStoreHeight = appHeight
-	m.lastState.LastValidators = m.lastState.Validators.Copy()
+	m.LastState.AppHash = *(*[32]byte)(proxyAppInfo.LastBlockAppHash)
+	m.LastState.LastStoreHeight = appHeight
+	m.LastState.LastValidators = m.LastState.Validators.Copy()
 
-	resp, err := m.store.LoadBlockResponses(appHeight)
+	resp, err := m.Store.LoadBlockResponses(appHeight)
 	if err != nil {
 		return errorsmod.Wrap(err, "load block responses")
 	}
-	copy(m.lastState.LastResultsHash[:], tmtypes.NewResults(resp.DeliverTxs).Hash())
+	copy(m.LastState.LastResultsHash[:], tmtypes.NewResults(resp.DeliverTxs).Hash())
 
-	_, err = m.store.UpdateState(m.lastState, nil)
+	_, err = m.Store.UpdateState(m.LastState, nil)
 	if err != nil {
 		return errorsmod.Wrap(err, "update state")
 	}
-	if ok := m.store.SetHeight(appHeight); !ok {
+	if ok := m.Store.SetHeight(appHeight); !ok {
 		return fmt.Errorf("store set height: %d", appHeight)
 	}
 	return nil
@@ -191,9 +191,9 @@ func (m *Manager) UpdateStateFromApp() error {
 func (m *Manager) validateBlock(block *types.Block, commit *types.Commit) error {
 	// Currently we're assuming proposer is never nil as it's a pre-condition for
 	// dymint to start
-	proposer := m.settlementClient.GetProposer()
+	proposer := m.SLClient.GetProposer()
 
-	return types.ValidateProposedTransition(m.lastState, block, commit, proposer)
+	return types.ValidateProposedTransition(m.LastState, block, commit, proposer)
 }
 
 func (m *Manager) gossipBlock(ctx context.Context, block types.Block, commit types.Commit) error {

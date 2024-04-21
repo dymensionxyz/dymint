@@ -9,14 +9,14 @@ import (
 	"time"
 
 	"github.com/dymensionxyz/dymint/node/events"
-	rpctestutils "github.com/dymensionxyz/dymint/rpc/testutils"
+	testutil "github.com/dymensionxyz/dymint/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func TestNodeHealthRPCPropagation(t *testing.T) {
 	var err error
-	server, listener := rpctestutils.CreateLocalServer(t)
+	server, listener := testutil.CreateLocalServer(t)
 	defer func() {
 		err = server.Stop()
 		require.NoError(t, err)

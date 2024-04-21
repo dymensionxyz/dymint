@@ -19,7 +19,7 @@ import (
 func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 	m.logger.Debug("Started produce loop")
 
-	ticker := time.NewTicker(m.conf.BlockTime)
+	ticker := time.NewTicker(m.Conf.BlockTime)
 	defer ticker.Stop()
 
 	// Allow the initial block to be empty
@@ -28,12 +28,12 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 	var emptyBlocksTimer <-chan time.Time
 	resetEmptyBlocksTimer := func() {}
 	// Setup ticker for empty blocks if enabled
-	if 0 < m.conf.EmptyBlocksMaxTime {
-		t := time.NewTimer(m.conf.EmptyBlocksMaxTime)
+	if 0 < m.Conf.EmptyBlocksMaxTime {
+		t := time.NewTimer(m.Conf.EmptyBlocksMaxTime)
 		emptyBlocksTimer = t.C
 		resetEmptyBlocksTimer = func() {
 			produceEmptyBlock = false
-			t.Reset(m.conf.EmptyBlocksMaxTime)
+			t.Reset(m.Conf.EmptyBlocksMaxTime)
 		}
 		defer t.Stop()
 	}
@@ -46,10 +46,10 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 			produceEmptyBlock = true
 		case <-emptyBlocksTimer: // Empty blocks timeout
 			produceEmptyBlock = true
-			m.logger.Debug(fmt.Sprintf("no transactions, producing empty block: elapsed: %.2f", m.conf.EmptyBlocksMaxTime.Seconds()))
+			m.logger.Debug(fmt.Sprintf("no transactions, producing empty block: elapsed: %.2f", m.Conf.EmptyBlocksMaxTime.Seconds()))
 		// Produce block
 		case <-ticker.C:
-			err := m.produceAndGossipBlock(ctx, produceEmptyBlock)
+			err := m.ProduceAndGossipBlock(ctx, produceEmptyBlock)
 			if errors.Is(err, context.Canceled) {
 				m.logger.Error("produce and gossip: context canceled", "error", err)
 				return
@@ -76,7 +76,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 	}
 }
 
-func (m *Manager) produceAndGossipBlock(ctx context.Context, allowEmpty bool) error {
+func (m *Manager) ProduceAndGossipBlock(ctx context.Context, allowEmpty bool) error {
 	block, commit, err := m.produceBlock(allowEmpty)
 	if err != nil {
 		return fmt.Errorf("produce block: %w", err)
@@ -99,21 +99,21 @@ func (m *Manager) produceBlock(allowEmpty bool) (*types.Block, *types.Commit, er
 		err            error
 	)
 
-	if m.lastState.IsGenesis() {
-		newHeight = uint64(m.lastState.InitialHeight)
+	if m.LastState.IsGenesis() {
+		newHeight = uint64(m.LastState.InitialHeight)
 		lastCommit = &types.Commit{}
-		m.lastState.BaseHeight = newHeight
-		if ok := m.store.SetBase(newHeight); !ok {
+		m.LastState.BaseHeight = newHeight
+		if ok := m.Store.SetBase(newHeight); !ok {
 			return nil, nil, fmt.Errorf("store set base: %d", newHeight)
 		}
 	} else {
-		height := m.store.Height()
+		height := m.Store.Height()
 		newHeight = height + 1
-		lastCommit, err = m.store.LoadCommit(height)
+		lastCommit, err = m.Store.LoadCommit(height)
 		if err != nil {
 			return nil, nil, fmt.Errorf("load commit: height: %d: %w: %w", height, err, ErrNonRecoverable)
 		}
-		lastBlock, err := m.store.LoadBlock(height)
+		lastBlock, err := m.Store.LoadBlock(height)
 		if err != nil {
 			return nil, nil, fmt.Errorf("load block after load commit: height: %d: %w: %w", height, err, ErrNonRecoverable)
 		}
@@ -124,11 +124,11 @@ func (m *Manager) produceBlock(allowEmpty bool) (*types.Block, *types.Commit, er
 	var commit *types.Commit
 	// Check if there's an already stored block and commit at a newer height
 	// If there is use that instead of creating a new block
-	pendingBlock, err := m.store.LoadBlock(newHeight)
+	pendingBlock, err := m.Store.LoadBlock(newHeight)
 	if err == nil {
 		// Using an existing block
 		block = pendingBlock
-		commit, err = m.store.LoadCommit(newHeight)
+		commit, err = m.Store.LoadCommit(newHeight)
 		if err != nil {
 			return nil, nil, fmt.Errorf("load commit after load block: height: %d: %w: %w", newHeight, err, ErrNonRecoverable)
 		}
@@ -136,7 +136,7 @@ func (m *Manager) produceBlock(allowEmpty bool) (*types.Block, *types.Commit, er
 	} else if !errors.Is(err, store.ErrKeyNotFound) {
 		return nil, nil, fmt.Errorf("load block: height: %d: %w: %w", newHeight, err, ErrNonRecoverable)
 	} else {
-		block = m.executor.CreateBlock(newHeight, lastCommit, lastHeaderHash, m.lastState)
+		block = m.Executor.CreateBlock(newHeight, lastCommit, lastHeaderHash, m.LastState)
 		if !allowEmpty && len(block.Data.Txs) == 0 {
 			return nil, nil, fmt.Errorf("%w: %w", types.ErrSkippedEmptyBlock, ErrRecoverable)
 		}
@@ -147,7 +147,7 @@ func (m *Manager) produceBlock(allowEmpty bool) (*types.Block, *types.Commit, er
 			return nil, nil, fmt.Errorf("marshal abci header: %w: %w", err, ErrNonRecoverable)
 		}
 		proposerAddress := block.Header.ProposerAddress
-		sign, err := m.proposerKey.Sign(abciHeaderBytes)
+		sign, err := m.ProposerKey.Sign(abciHeaderBytes)
 		if err != nil {
 			return nil, nil, fmt.Errorf("sign abci header: %w: %w", err, ErrNonRecoverable)
 		}
@@ -196,19 +196,19 @@ func (m *Manager) createTMSignature(block *types.Block, proposerAddress []byte, 
 	}
 	v := vote.ToProto()
 	// convert libp2p key to tm key
-	raw_key, _ := m.proposerKey.Raw()
+	raw_key, _ := m.ProposerKey.Raw()
 	tmprivkey := tmed25519.PrivKey(raw_key)
 	tmprivkey.PubKey().Bytes()
 	// Create a mock validator to sign the vote
 	tmvalidator := tmtypes.NewMockPVWithParams(tmprivkey, false, false)
-	err := tmvalidator.SignVote(m.lastState.ChainID, v)
+	err := tmvalidator.SignVote(m.LastState.ChainID, v)
 	if err != nil {
 		return nil, err
 	}
 	// Update the vote with the signature
 	vote.Signature = v.Signature
 	pubKey := tmprivkey.PubKey()
-	voteSignBytes := tmtypes.VoteSignBytes(m.lastState.ChainID, v)
+	voteSignBytes := tmtypes.VoteSignBytes(m.LastState.ChainID, v)
 	if !pubKey.VerifySignature(voteSignBytes, vote.Signature) {
 		return nil, fmt.Errorf("wrong signature")
 	}
