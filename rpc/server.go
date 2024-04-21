@@ -34,7 +34,6 @@ type Server struct {
 	client   *client.Client
 	node     *node.Node
 	listener net.Listener
-	timeout  time.Duration
 
 	server http.Server
 
@@ -43,11 +42,9 @@ type Server struct {
 }
 
 const (
-	// defaultServerTimeout is the time limit for handling HTTP requests.
-	defaultServerTimeout = 15 * time.Second
-
-	// ReadHeaderTimeout is the timeout for reading the request headers.
-	ReadHeaderTimeout = 5 * time.Second
+	onStopTimeout = 5 * time.Second
+	// readHeaderTimeout is the timeout for reading the request headers.
+	readHeaderTimeout = 5 * time.Second
 )
 
 // Option is a function that configures the Server.
@@ -60,20 +57,12 @@ func WithListener(listener net.Listener) Option {
 	}
 }
 
-// WithTimeout is an option that sets the global timeout for the server.
-func WithTimeout(timeout time.Duration) Option {
-	return func(d *Server) {
-		d.timeout = timeout
-	}
-}
-
 // NewServer creates new instance of Server with given configuration.
 func NewServer(node *node.Node, config *config.RPCConfig, logger log.Logger, options ...Option) *Server {
 	srv := &Server{
-		config:  config,
-		client:  client.NewClient(node),
-		node:    node,
-		timeout: defaultServerTimeout,
+		config: config,
+		client: client.NewClient(node),
+		node:   node,
 	}
 	srv.BaseService = service.NewBaseService(logger, "RPC", srv)
 
@@ -103,7 +92,7 @@ func (s *Server) OnStart() error {
 
 // OnStop is called when Server is stopped (see service.BaseService for details).
 func (s *Server) OnStop() {
-	ctx, cancel := context.WithTimeout(context.Background(), s.timeout)
+	ctx, cancel := context.WithTimeout(context.Background(), onStopTimeout)
 	defer cancel()
 	if err := s.server.Shutdown(ctx); err != nil {
 		s.Logger.Error("while shutting down RPC server", "error", err)
@@ -185,12 +174,10 @@ func (s *Server) startRPC() error {
 	reg.Register(middleware.Status{Err: s.getHealthStatus})
 	middlewareClient := middleware.NewClient(*reg, s.Logger.With("module", "rpc/middleware"))
 	handler = middlewareClient.Handle(handler)
-	// Set a global timeout
-	handlerWithTimeout := http.TimeoutHandler(handler, s.timeout, "Server Timeout")
 
 	// Start HTTP server
 	go func() {
-		err := s.serve(listener, handlerWithTimeout)
+		err := s.serve(listener, handler)
 		if !errors.Is(err, http.ErrServerClosed) {
 			s.Logger.Error("while serving HTTP", "error", err)
 		}
@@ -203,7 +190,7 @@ func (s *Server) serve(listener net.Listener, handler http.Handler) error {
 	s.Logger.Info("serving HTTP", "listen address", listener.Addr())
 	s.server = http.Server{
 		Handler:           handler,
-		ReadHeaderTimeout: ReadHeaderTimeout,
+		ReadHeaderTimeout: readHeaderTimeout,
 	}
 	if s.config.TLSCertFile != "" && s.config.TLSKeyFile != "" {
 		return s.server.ServeTLS(listener, s.config.CertFile(), s.config.KeyFile())

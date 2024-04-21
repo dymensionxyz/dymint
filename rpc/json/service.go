@@ -1,11 +1,13 @@
 package json
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"reflect"
 	"strconv"
+	"time"
 
 	"cosmossdk.io/errors"
 	"github.com/gorilla/rpc/v2/json2"
@@ -18,7 +20,9 @@ import (
 )
 
 const (
-	// DefaultSubscribeBufferSize is the default buffer size for a subscription.
+	// defaultSubscribeTimeout is the default timeout for a subscription.
+	defaultSubscribeTimeout = 5 * time.Second
+	// defaultSubscribeBufferSize is the default buffer size for a subscription.
 	defaultSubscribeBufferSize = 100
 )
 
@@ -28,6 +32,12 @@ func GetHTTPHandler(l *client.Client, logger types.Logger, opts ...option) (http
 }
 
 type option func(*service)
+
+func WithSubscribeTimeout(timeout time.Duration) option {
+	return func(s *service) {
+		s.subscribeTimeout = timeout
+	}
+}
 
 func WithSubscribeBufferSize(size int) option {
 	return func(s *service) {
@@ -58,6 +68,7 @@ type service struct {
 	methods map[string]*method
 	logger  types.Logger
 
+	subscribeTimeout    time.Duration
 	subscribeBufferSize int
 }
 
@@ -65,6 +76,7 @@ func newService(c *client.Client, l types.Logger, opts ...option) *service {
 	s := service{
 		client:              c,
 		logger:              l,
+		subscribeTimeout:    defaultSubscribeTimeout,
 		subscribeBufferSize: defaultSubscribeBufferSize,
 	}
 	s.methods = map[string]*method{
@@ -115,7 +127,10 @@ func (s *service) Subscribe(req *http.Request, args *subscribeArgs, wsConn *wsCo
 
 	s.logger.Debug("subscribe to query", "remote", addr, "query", args.Query)
 
-	out, err := s.client.Subscribe(req.Context(), addr, args.Query, s.subscribeBufferSize)
+	ctx, cancel := context.WithTimeout(req.Context(), s.subscribeTimeout)
+	defer cancel()
+
+	out, err := s.client.Subscribe(ctx, addr, args.Query, s.subscribeBufferSize)
 	if err != nil {
 		return nil, fmt.Errorf("subscribe: %w", err)
 	}
