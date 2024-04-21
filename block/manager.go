@@ -60,12 +60,26 @@ type Manager struct {
 	// Block production
 	shouldProduceBlocksCh chan bool
 	produceEmptyBlockCh   chan bool
-	produceBlockMutex     sync.Mutex
-	applyCachedBlockMutex sync.Mutex
+	lastSubmissionTime    atomic.Int64
 
-	// batch submission
-	batchInProcess     sync.Mutex
-	lastSubmissionTime atomic.Int64
+	/*
+		Guard against triggering a new batch submission when the old one is still going on (taking a while)
+	*/
+	submitBatchMutex sync.Mutex
+
+	/*
+		Protect against producing two blocks at once if the first one is taking a while
+		Also, used to protect against the block production that occurs when batch submission thread
+		creates its empty block.
+	*/
+	produceBlockMutex sync.Mutex
+
+	/*
+		Protect against processing two blocks at once when there are two routines handling incoming gossiped blocks,
+		and incoming DA blocks, respectively.
+	*/
+	retrieverMutex sync.Mutex
+
 	// pendingBatch is the result of the last DA submission
 	// that is pending settlement layer submission.
 	// It is used to avoid double submission of the same batch.
@@ -75,8 +89,7 @@ type Manager struct {
 	logger types.Logger
 
 	// Cached blocks and commits for applying at future heights. Invariant: the block and commit are .Valid() (validated sigs etc)
-	prevBlock  map[uint64]*types.Block
-	prevCommit map[uint64]*types.Commit
+	blockCache map[uint64]CachedBlock
 }
 
 // NewManager creates new block Manager.
@@ -125,8 +138,7 @@ func NewManager(
 		shouldProduceBlocksCh: make(chan bool, 1),
 		produceEmptyBlockCh:   make(chan bool, 1),
 		logger:                logger,
-		prevBlock:             make(map[uint64]*types.Block),
-		prevCommit:            make(map[uint64]*types.Commit),
+		blockCache:            make(map[uint64]CachedBlock),
 	}
 
 	return agg, nil
@@ -223,9 +235,10 @@ func (m *Manager) onNodeHealthStatus(event pubsub.Message) {
 	m.shouldProduceBlocksCh <- eventData.Error == nil
 }
 
+// TODO: move to gossip.go
 // onNewGossippedBlock will take a block and apply it
 func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
-	m.logger.Debug("Received new block event", "eventData", event.Data(), "cachedBlocks", len(m.prevBlock))
+	m.logger.Debug("Received new block event", "eventData", event.Data(), "cachedBlocks", len(m.blockCache))
 	eventData := event.Data().(p2p.GossipedBlock)
 	block := eventData.Block
 	commit := eventData.Commit
@@ -236,17 +249,20 @@ func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
 		return
 	}
 
-	// if height is expected, apply
-	// if height is higher than expected (future block), cache
-	if block.Header.Height == m.store.NextHeight() {
-		err := m.applyBlock(&block, &commit, blockMetaData{source: gossipedBlock})
-		if err != nil {
-			m.logger.Error("apply gossiped block", "err", err)
+	nextHeight := m.store.NextHeight()
+	if block.Header.Height >= nextHeight {
+		m.blockCache[block.Header.Height] = CachedBlock{
+			Block:  &block,
+			Commit: &commit,
 		}
-	} else if block.Header.Height > m.store.NextHeight() {
-		m.prevBlock[block.Header.Height] = &block
-		m.prevCommit[block.Header.Height] = &commit
-		m.logger.Debug("Caching block", "block height", block.Header.Height, "store height", m.store.Height())
+		m.logger.Debug("caching block", "block height", block.Header.Height, "store height", m.store.Height())
+	}
+
+	if block.Header.Height == nextHeight {
+		err := m.attemptApplyCachedBlocks()
+		if err != nil {
+			m.logger.Error("applying cached blocks", "err", err)
+		}
 	}
 }
 

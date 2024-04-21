@@ -23,3 +23,8 @@ type PendingBatch struct {
 	daResult *da.ResultSubmitBatch
 	batch    *types.Batch
 }
+
+type CachedBlock struct {
+	Block  *types.Block
+	Commit *types.Commit
+}
