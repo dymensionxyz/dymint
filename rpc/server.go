@@ -6,7 +6,10 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
+
+	uevent "github.com/dymensionxyz/dymint/utils/event"
 
 	"github.com/rs/cors"
 	"github.com/tendermint/tendermint/config"
@@ -21,21 +24,21 @@ import (
 	"github.com/dymensionxyz/dymint/rpc/client"
 	"github.com/dymensionxyz/dymint/rpc/json"
 	"github.com/dymensionxyz/dymint/rpc/middleware"
-	"github.com/dymensionxyz/dymint/rpc/sharedtypes"
-	"github.com/dymensionxyz/dymint/utils"
 )
 
 // Server handles HTTP and JSON-RPC requests, exposing Tendermint-compatible API.
 type Server struct {
 	*service.BaseService
 
-	config       *config.RPCConfig
-	client       *client.Client
-	node         *node.Node
-	healthStatus sharedtypes.HealthStatus
-	listener     net.Listener
+	config   *config.RPCConfig
+	client   *client.Client
+	node     *node.Node
+	listener net.Listener
 
 	server http.Server
+
+	health   error
+	healthMU sync.RWMutex
 }
 
 const (
@@ -60,10 +63,6 @@ func NewServer(node *node.Node, config *config.RPCConfig, logger log.Logger, opt
 		config: config,
 		client: client.NewClient(node),
 		node:   node,
-		healthStatus: sharedtypes.HealthStatus{
-			IsHealthy: true,
-			Error:     nil,
-		},
 	}
 	srv.BaseService = service.NewBaseService(logger, "RPC", srv)
 
@@ -87,7 +86,7 @@ func (s *Server) PubSubServer() *pubsub.Server {
 
 // OnStart is called when Server is started (see service.BaseService for details).
 func (s *Server) OnStart() error {
-	go s.eventListener()
+	s.startEventListener()
 	return s.startRPC()
 }
 
@@ -100,23 +99,27 @@ func (s *Server) OnStop() {
 	}
 }
 
-// EventListener registers events to callbacks.
-func (s *Server) eventListener() {
-	go utils.SubscribeAndHandleEvents(
-		context.Background(),
-		s.PubSubServer(),
-		"RPCNodeHealthStatusHandler",
-		events.EventQueryHealthStatus,
-		s.healthStatusEventCallback,
-		s.Logger,
-	)
+// startEventListener registers events to callbacks.
+func (s *Server) startEventListener() {
+	go uevent.MustSubscribe(context.Background(), s.PubSubServer(), "RPCNodeHealthStatusHandler", events.QueryHealthStatus, s.onNodeHealthUpdate, s.Logger)
 }
 
-// healthStatusEventCallback is a callback function that handles health status events.
-func (s *Server) healthStatusEventCallback(event pubsub.Message) {
-	eventData := event.Data().(*events.EventDataHealthStatus)
-	s.Logger.Info("Received health status event", "eventData", eventData)
-	s.healthStatus.Set(eventData.Healthy, eventData.Error)
+// onNodeHealthUpdate is a callback function that handles health status events from the node.
+func (s *Server) onNodeHealthUpdate(event pubsub.Message) {
+	eventData := event.Data().(*events.DataHealthStatus)
+	if eventData.Error != nil {
+		s.Logger.Error("node is unhealthy: got error health check from sublayer", "error", eventData.Error)
+	}
+	s.healthMU.Lock()
+	defer s.healthMU.Unlock()
+	s.health = eventData.Error
+}
+
+func (s *Server) getHealthStatus() error {
+	s.healthMU.RLock()
+	defer s.healthMU.RUnlock()
+
+	return s.health
 }
 
 func (s *Server) startRPC() error {
@@ -168,9 +171,7 @@ func (s *Server) startRPC() error {
 
 	// Apply Middleware
 	reg := middleware.GetRegistry()
-	reg.Register(
-		middleware.NewStatusMiddleware(&s.healthStatus),
-	)
+	reg.Register(middleware.Status{Err: s.getHealthStatus})
 	middlewareClient := middleware.NewClient(*reg, s.Logger.With("module", "rpc/middleware"))
 	handler = middlewareClient.Handle(handler)
 

@@ -1,4 +1,4 @@
-package conv
+package conv_test
 
 import (
 	"strings"
@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/dymensionxyz/dymint/config"
+	"github.com/dymensionxyz/dymint/conv"
 )
 
 func TestTranslateAddresses(t *testing.T) {
@@ -40,13 +41,13 @@ func TestTranslateAddresses(t *testing.T) {
 			"invalid listen address",
 			config.NodeConfig{P2P: config.P2PConfig{ListenAddress: invalidCosmos}},
 			config.NodeConfig{},
-			errInvalidAddress.Error(),
+			conv.ErrInvalidAddress.Error(),
 		},
 		{
 			"invalid seed address",
 			config.NodeConfig{P2P: config.P2PConfig{Seeds: validCosmos + "," + invalidCosmos}},
 			config.NodeConfig{},
-			errInvalidAddress.Error(),
+			conv.ErrInvalidAddress.Error(),
 		},
 	}
 
@@ -54,7 +55,7 @@ func TestTranslateAddresses(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			assert := assert.New(t)
 			// c.input is changed in place
-			err := translateAddresses(&c.input)
+			err := conv.TranslateAddresses(&c.input)
 			if c.expectedErr != "" {
 				assert.Error(err)
 				assert.True(strings.HasPrefix(err.Error(), c.expectedErr), "invalid error message")
@@ -79,9 +80,9 @@ func TestGetMultiaddr(t *testing.T) {
 		expected    multiaddr.Multiaddr
 		expectedErr string
 	}{
-		{"empty", "", nil, errInvalidAddress.Error()},
+		{"empty", "", nil, conv.ErrInvalidAddress.Error()},
 		{"no port", "127.0.0.1:", nil, "failed to parse multiaddr"},
-		{"ip only", "127.0.0.1", nil, errInvalidAddress.Error()},
+		{"ip only", "127.0.0.1", nil, conv.ErrInvalidAddress.Error()},
 		{"with invalid id", "deadbeef@127.0.0.1:1234", nil, "failed to parse multiaddr"},
 		{"valid", "127.0.0.1:1234", valid, ""},
 		{"valid with id", "k2k4r8oqamigqdo6o7hsbfwd45y70oyynp98usk7zmyfrzpqxh1pohl7@127.0.0.1:1234", withID, ""},
@@ -91,7 +92,7 @@ func TestGetMultiaddr(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			assert := assert.New(t)
-			actual, err := GetMultiAddr(c.input)
+			actual, err := conv.GetMultiAddr(c.input)
 			if c.expectedErr != "" {
 				assert.Error(err)
 				assert.Nil(actual)

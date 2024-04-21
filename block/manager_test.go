@@ -1,4 +1,4 @@
-package block
+package block_test
 
 import (
 	"context"
@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/dymensionxyz/dymint/block"
 	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/settlement"
@@ -36,7 +37,7 @@ func TestInitialState(t *testing.T) {
 	genesis := testutil.GenerateGenesis(123)
 	sampleState := testutil.GenerateState(1, 128)
 	key, _, _ := crypto.GenerateEd25519Key(rand.Reader)
-	conf := getManagerConfig()
+	conf := testutil.GetManagerConfig()
 	logger := log.TestingLogger()
 	pubsubServer := pubsub.NewServer()
 	err = pubsubServer.Start()
@@ -94,14 +95,15 @@ func TestInitialState(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			dalc := getMockDALC(logger)
-			agg, err := NewManager(key, conf, c.genesis, c.store, nil, proxyApp, dalc, settlementlc,
+
+			dalc := testutil.GetMockDALC(logger)
+			agg, err := block.NewManager(key, conf, c.genesis, c.store, nil, proxyApp, dalc, settlementlc,
 				nil, pubsubServer, p2pClient, logger)
 			assert.NoError(err)
 			assert.NotNil(agg)
-			assert.Equal(c.expectedChainID, agg.lastState.ChainID)
-			assert.Equal(c.expectedInitialHeight, agg.lastState.InitialHeight)
-			assert.Equal(c.expectedLastBlockHeight, agg.lastState.LastBlockHeight)
+			assert.Equal(c.expectedChainID, agg.LastState.ChainID)
+			assert.Equal(c.expectedInitialHeight, agg.LastState.InitialHeight)
+			assert.Equal(c.expectedLastBlockHeight, agg.LastState.LastBlockHeight)
 		})
 	}
 }
@@ -112,22 +114,22 @@ func TestInitialState(t *testing.T) {
 // 2. Sync the manager
 // 3. Succeed to produce blocks
 func TestProduceOnlyAfterSynced(t *testing.T) {
-	manager, err := getManager(getManagerConfig(), nil, nil, 1, 1, 0, nil, nil)
+	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, nil, 1, 1, 0, nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, manager)
 
 	t.Log("Taking the manager out of sync by submitting a batch")
 
-	syncTarget := manager.syncTarget.Load()
+	syncTarget := manager.SyncTarget.Load()
 	numBatchesToAdd := 2
 	nextBatchStartHeight := syncTarget + 1
 	var batch *types.Batch
 	for i := 0; i < numBatchesToAdd; i++ {
-		batch, err = testutil.GenerateBatch(nextBatchStartHeight, nextBatchStartHeight+uint64(defaultBatchSize-1), manager.proposerKey)
+		batch, err = testutil.GenerateBatch(nextBatchStartHeight, nextBatchStartHeight+uint64(testutil.DefaultTestBatchSize-1), manager.ProposerKey)
 		assert.NoError(t, err)
-		daResultSubmitBatch := manager.dalc.SubmitBatch(batch)
+		daResultSubmitBatch := manager.DAClient.SubmitBatch(batch)
 		assert.Equal(t, daResultSubmitBatch.Code, da.StatusSuccess)
-		err = manager.settlementClient.SubmitBatch(batch, manager.dalc.GetClientType(), &daResultSubmitBatch)
+		err = manager.SLClient.SubmitBatch(batch, manager.DAClient.GetClientType(), &daResultSubmitBatch)
 		require.NoError(t, err)
 		nextBatchStartHeight = batch.EndHeight + 1
 		// Wait until daHeight is updated
@@ -135,8 +137,8 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 	}
 
 	// Initially sync target is 0
-	assert.Zero(t, manager.syncTarget.Load())
-	assert.True(t, manager.store.Height() == 0)
+	assert.Zero(t, manager.SyncTarget.Load())
+	assert.True(t, manager.Store.Height() == 0)
 
 	// enough time to sync and produce blocks
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*4)
@@ -150,21 +152,21 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 		assert.NoError(t, err, "Manager start should not produce an error")
 	}()
 	<-ctx.Done()
-	assert.Equal(t, batch.EndHeight, manager.syncTarget.Load())
+	assert.Equal(t, batch.EndHeight, manager.SyncTarget.Load())
 	// validate that we produced blocks
-	assert.Greater(t, manager.store.Height(), batch.EndHeight)
+	assert.Greater(t, manager.Store.Height(), batch.EndHeight)
 }
 
 func TestRetrieveDaBatchesFailed(t *testing.T) {
-	manager, err := getManager(getManagerConfig(), nil, &testutil.DALayerClientRetrieveBatchesError{}, 1, 1, 0, nil, nil)
+	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, &testutil.DALayerClientRetrieveBatchesError{}, 1, 1, 0, nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, manager)
 
-	t.Log(manager.lastState.SLStateIndex)
+	t.Log(manager.LastState.SLStateIndex)
 	daMetaData := &da.DASubmitMetaData{
 		Height: 1,
 	}
-	err = manager.processNextDABatch(context.Background(), daMetaData)
+	err = manager.ProcessNextDABatch(daMetaData)
 	t.Log(err)
 	assert.ErrorIs(t, err, da.ErrBlobNotFound)
 }
@@ -180,14 +182,14 @@ func TestProduceNewBlock(t *testing.T) {
 	err := proxyApp.Start()
 	require.NoError(t, err)
 	// Init manager
-	manager, err := getManager(getManagerConfig(), nil, nil, 1, 1, 0, proxyApp, nil)
+	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(t, err)
 	// Produce block
-	err = manager.produceBlock(context.Background(), true)
+	err = manager.ProduceAndGossipBlock(context.Background(), true)
 	require.NoError(t, err)
 	// Validate state is updated with the commit hash
-	assert.Equal(t, uint64(1), manager.store.Height())
-	assert.Equal(t, commitHash, manager.lastState.AppHash)
+	assert.Equal(t, uint64(1), manager.Store.Height())
+	assert.Equal(t, commitHash, manager.LastState.AppHash)
 }
 
 func TestProducePendingBlock(t *testing.T) {
@@ -201,19 +203,19 @@ func TestProducePendingBlock(t *testing.T) {
 	err := proxyApp.Start()
 	require.NoError(t, err)
 	// Init manager
-	manager, err := getManager(getManagerConfig(), nil, nil, 1, 1, 0, proxyApp, nil)
+	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(t, err)
 	// Generate block and commit and save it to the store
-	blocks, err := testutil.GenerateBlocks(1, 1, manager.proposerKey)
+	blocks, err := testutil.GenerateBlocks(1, 1, manager.ProposerKey)
 	require.NoError(t, err)
 	block := blocks[0]
-	_, err = manager.store.SaveBlock(block, &block.LastCommit, nil)
+	_, err = manager.Store.SaveBlock(block, &block.LastCommit, nil)
 	require.NoError(t, err)
 	// Produce block
-	err = manager.produceBlock(context.Background(), true)
+	err = manager.ProduceAndGossipBlock(context.Background(), true)
 	require.NoError(t, err)
 	// Validate state is updated with the block that was saved in the store
-	assert.Equal(t, block.Header.Hash(), *(*[32]byte)(manager.lastState.LastBlockID.Hash))
+	assert.Equal(t, block.Header.Hash(), *(*[32]byte)(manager.LastState.LastBlockID.Hash))
 }
 
 // TestBlockProductionNodeHealth tests the different scenarios of block production when the node health is toggling.
@@ -233,7 +235,7 @@ func TestBlockProductionNodeHealth(t *testing.T) {
 	err := proxyApp.Start()
 	require.NoError(err)
 	// Init manager
-	manager, err := getManager(getManagerConfig(), nil, nil, 1, 1, 0, proxyApp, nil)
+	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
 	cases := []struct {
@@ -244,26 +246,26 @@ func TestBlockProductionNodeHealth(t *testing.T) {
 	}{
 		{
 			name:                  "HealthyEventBlocksProduced",
-			healthStatusEvent:     map[string][]string{events.EventNodeTypeKey: {events.EventHealthStatus}},
-			healthStatusEventData: &events.EventDataHealthStatus{Healthy: true, Error: nil},
+			healthStatusEvent:     events.HealthStatusList,
+			healthStatusEventData: &events.DataHealthStatus{},
 			shouldProduceBlocks:   true,
 		},
 		{
 			name:                  "UnhealthyEventBlocksNotProduced",
-			healthStatusEvent:     map[string][]string{events.EventNodeTypeKey: {events.EventHealthStatus}},
-			healthStatusEventData: &events.EventDataHealthStatus{Healthy: false, Error: errors.New("Unhealthy")},
+			healthStatusEvent:     events.HealthStatusList,
+			healthStatusEventData: &events.DataHealthStatus{Error: errors.New("unhealthy")},
 			shouldProduceBlocks:   false,
 		},
 		{
 			name:                  "UnhealthyEventBlocksStillNotProduced",
-			healthStatusEvent:     map[string][]string{events.EventNodeTypeKey: {events.EventHealthStatus}},
-			healthStatusEventData: &events.EventDataHealthStatus{Healthy: false, Error: errors.New("Unhealthy")},
+			healthStatusEvent:     events.HealthStatusList,
+			healthStatusEventData: &events.DataHealthStatus{Error: errors.New("unhealthy")},
 			shouldProduceBlocks:   false,
 		},
 		{
 			name:                  "HealthyEventBlocksProduced",
-			healthStatusEvent:     map[string][]string{events.EventNodeTypeKey: {events.EventHealthStatus}},
-			healthStatusEventData: &events.EventDataHealthStatus{Healthy: true, Error: nil},
+			healthStatusEvent:     events.HealthStatusList,
+			healthStatusEventData: &events.DataHealthStatus{},
 			shouldProduceBlocks:   true,
 		},
 	}
@@ -276,15 +278,15 @@ func TestBlockProductionNodeHealth(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			err := manager.pubsub.PublishWithEvents(context.Background(), c.healthStatusEventData, c.healthStatusEvent)
+			err := manager.Pubsub.PublishWithEvents(context.Background(), c.healthStatusEventData, c.healthStatusEvent)
 			assert.NoError(err, "PublishWithEvents should not produce an error")
 			time.Sleep(500 * time.Millisecond)
-			blockHeight := manager.store.Height()
+			blockHeight := manager.Store.Height()
 			time.Sleep(500 * time.Millisecond)
 			if c.shouldProduceBlocks {
-				assert.Greater(manager.store.Height(), blockHeight)
+				assert.Greater(manager.Store.Height(), blockHeight)
 			} else {
-				assert.Equal(blockHeight, manager.store.Height())
+				assert.Equal(blockHeight, manager.Store.Height())
 			}
 		})
 	}
@@ -309,7 +311,7 @@ func TestProduceBlockFailAfterCommit(t *testing.T) {
 	// Create a new mock store which should succeed to save the first block
 	mockStore := testutil.NewMockStore()
 	// Init manager
-	manager, err := getManager(getManagerConfig(), nil, nil, 1, 1, 0, proxyApp, mockStore)
+	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, nil, 1, 1, 0, proxyApp, mockStore)
 	require.NoError(err)
 
 	cases := []struct {
@@ -382,10 +384,10 @@ func TestProduceBlockFailAfterCommit(t *testing.T) {
 			})
 			mockStore.ShouldFailSetHeight = tc.shouldFailSetSetHeight
 			mockStore.ShoudFailUpdateState = tc.shouldFailUpdateState
-			_ = manager.produceBlock(context.Background(), true)
-			require.Equal(tc.expectedStoreHeight, manager.store.Height(), tc.name)
-			require.Equal(tc.expectedStateAppHash, manager.lastState.AppHash, tc.name)
-			storeState, err := manager.store.LoadState()
+			_ = manager.ProduceAndGossipBlock(context.Background(), true)
+			require.Equal(tc.expectedStoreHeight, manager.Store.Height(), tc.name)
+			require.Equal(tc.expectedStateAppHash, manager.LastState.AppHash, tc.name)
+			storeState, err := manager.Store.LoadState()
 			require.NoError(err)
 			require.Equal(tc.expectedStateAppHash, storeState.AppHash, tc.name)
 
@@ -396,6 +398,8 @@ func TestProduceBlockFailAfterCommit(t *testing.T) {
 }
 
 func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
+	const batchLimitBytes = 2000
+
 	assert := assert.New(t)
 	require := require.New(t)
 	app := testutil.GetAppMock()
@@ -405,10 +409,10 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 	err := proxyApp.Start()
 	require.NoError(err)
 	// Init manager
-	managerConfig := getManagerConfig()
+	managerConfig := testutil.GetManagerConfig()
 	managerConfig.BlockBatchSize = 1000
 	managerConfig.BlockBatchMaxSizeBytes = batchLimitBytes // enough for 2 block, not enough for 10 blocks
-	manager, err := getManager(managerConfig, nil, nil, 1, 1, 0, proxyApp, nil)
+	manager, err := testutil.GetManager(managerConfig, nil, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -435,14 +439,14 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Produce blocks
 			for i := 0; i < tc.blocksToProduce; i++ {
-				err := manager.produceBlock(ctx, true)
+				err := manager.ProduceAndGossipBlock(ctx, true)
 				assert.NoError(err)
 			}
 
 			// Call createNextDABatch function
-			startHeight := manager.syncTarget.Load() + 1
+			startHeight := manager.SyncTarget.Load() + 1
 			endHeight := startHeight + uint64(tc.blocksToProduce) - 1
-			batch, err := manager.createNextDABatch(startHeight, endHeight)
+			batch, err := manager.CreateNextDABatch(startHeight, endHeight)
 			assert.NoError(err)
 
 			assert.Equal(batch.StartHeight, startHeight)
@@ -456,8 +460,8 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 
 				// validate next added block to batch would have been actually too big
 				// First relax the byte limit so we could proudce larger batch
-				manager.conf.BlockBatchMaxSizeBytes = 10 * manager.conf.BlockBatchMaxSizeBytes
-				newBatch, err := manager.createNextDABatch(startHeight, batch.EndHeight+1)
+				manager.Conf.BlockBatchMaxSizeBytes = 10 * manager.Conf.BlockBatchMaxSizeBytes
+				newBatch, err := manager.CreateNextDABatch(startHeight, batch.EndHeight+1)
 				assert.Greater(newBatch.ToProto().Size(), batchLimitBytes)
 
 				assert.NoError(err)

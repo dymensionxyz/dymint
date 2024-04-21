@@ -1,8 +1,6 @@
 package block
 
 import (
-	"bytes"
-	"context"
 	"encoding/hex"
 	"errors"
 	"time"
@@ -15,7 +13,6 @@ import (
 	tmtypes "github.com/tendermint/tendermint/types"
 	"go.uber.org/multierr"
 
-	abciconv "github.com/dymensionxyz/dymint/conv/abci"
 	"github.com/dymensionxyz/dymint/mempool"
 	"github.com/dymensionxyz/dymint/types"
 )
@@ -136,20 +133,9 @@ func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHead
 	return block
 }
 
-// Validate validates block and commit.
-func (e *Executor) Validate(state types.State, block *types.Block, commit *types.Commit, proposer *types.Sequencer) error {
-	if err := e.validateBlock(state, block); err != nil {
-		return err
-	}
-	if err := e.validateCommit(proposer, commit, &block.Header); err != nil {
-		return err
-	}
-	return nil
-}
-
 // Commit commits the block
-func (e *Executor) Commit(ctx context.Context, state *types.State, block *types.Block, resp *tmstate.ABCIResponses) (int64, error) {
-	appHash, retainHeight, err := e.commit(ctx, state, block, resp.DeliverTxs)
+func (e *Executor) Commit(state *types.State, block *types.Block, resp *tmstate.ABCIResponses) (int64, error) {
+	appHash, retainHeight, err := e.commit(state, block, resp.DeliverTxs)
 	if err != nil {
 		return 0, err
 	}
@@ -170,7 +156,7 @@ func (e *Executor) GetAppInfo() (*abci.ResponseInfo, error) {
 	return e.proxyAppQueryConn.InfoSync(abci.RequestInfo{})
 }
 
-func (e *Executor) commit(ctx context.Context, state *types.State, block *types.Block, deliverTxs []*abci.ResponseDeliverTx) ([]byte, int64, error) {
+func (e *Executor) commit(state *types.State, block *types.Block, deliverTxs []*abci.ResponseDeliverTx) ([]byte, int64, error) {
 	e.mempool.Lock()
 	defer e.mempool.Unlock()
 
@@ -186,53 +172,18 @@ func (e *Executor) commit(ctx context.Context, state *types.State, block *types.
 
 	maxBytes := state.ConsensusParams.Block.MaxBytes
 	maxGas := state.ConsensusParams.Block.MaxGas
-	err = e.mempool.Update(int64(block.Header.Height), fromDymintTxs(block.Data.Txs), deliverTxs, mempool.PreCheckMaxBytes(maxBytes), mempool.PostCheckMaxGas(maxGas))
+	err = e.mempool.Update(int64(block.Header.Height), fromDymintTxs(block.Data.Txs), deliverTxs)
 	if err != nil {
 		return nil, 0, err
 	}
+	e.mempool.SetPreCheckFn(mempool.PreCheckMaxBytes(maxBytes))
+	e.mempool.SetPostCheckFn(mempool.PostCheckMaxGas(maxGas))
 
 	return resp.Data, resp.RetainHeight, err
 }
 
-func (e *Executor) validateBlock(state types.State, block *types.Block) error {
-	err := block.ValidateBasic()
-	if err != nil {
-		return err
-	}
-	if block.Header.Version.App != state.Version.Consensus.App ||
-		block.Header.Version.Block != state.Version.Consensus.Block {
-		return errors.New("block version mismatch")
-	}
-	if state.LastBlockHeight <= 0 && block.Header.Height != uint64(state.InitialHeight) {
-		return errors.New("initial block height mismatch")
-	}
-	if state.LastBlockHeight > 0 && block.Header.Height != uint64(state.LastStoreHeight)+1 {
-		return errors.New("block height mismatch")
-	}
-	if !bytes.Equal(block.Header.AppHash[:], state.AppHash[:]) {
-		return errors.New("AppHash mismatch")
-	}
-	if !bytes.Equal(block.Header.LastResultsHash[:], state.LastResultsHash[:]) {
-		return errors.New("LastResultsHash mismatch")
-	}
-
-	return nil
-}
-
-func (e *Executor) validateCommit(proposer *types.Sequencer, commit *types.Commit, header *types.Header) error {
-	abciHeaderPb := abciconv.ToABCIHeaderPB(header)
-	abciHeaderBytes, err := abciHeaderPb.Marshal()
-	if err != nil {
-		return err
-	}
-	if err = commit.Validate(proposer, abciHeaderBytes); err != nil {
-		return err
-	}
-	return nil
-}
-
-// Execute executes the block and returns the ABCIResponses.
-func (e *Executor) Execute(ctx context.Context, state types.State, block *types.Block) (*tmstate.ABCIResponses, error) {
+// ExecuteBlock executes the block and returns the ABCIResponses. Block should be valid (passed validation checks).
+func (e *Executor) ExecuteBlock(state types.State, block *types.Block) (*tmstate.ABCIResponses, error) {
 	abciResponses := new(tmstate.ABCIResponses)
 	abciResponses.DeliverTxs = make([]*abci.ResponseDeliverTx, len(block.Data.Txs))
 
@@ -257,7 +208,7 @@ func (e *Executor) Execute(ctx context.Context, state types.State, block *types.
 	})
 
 	hash := block.Hash()
-	abciHeader := abciconv.ToABCIHeaderPB(&block.Header)
+	abciHeader := types.ToABCIHeaderPB(&block.Header)
 	abciHeader.ChainID = e.chainID
 	abciHeader.ValidatorsHash = state.Validators.Hash()
 	abciResponses.BeginBlock, err = e.proxyAppConsensusConn.BeginBlockSync(
@@ -290,13 +241,13 @@ func (e *Executor) Execute(ctx context.Context, state types.State, block *types.
 }
 
 func (e *Executor) getLastCommitHash(lastCommit *types.Commit, header *types.Header) []byte {
-	lastABCICommit := abciconv.ToABCICommit(lastCommit, header)
+	lastABCICommit := types.ToABCICommit(lastCommit, header)
 	return lastABCICommit.Hash()
 }
 
 func (e *Executor) getDataHash(block *types.Block) []byte {
 	abciData := tmtypes.Data{
-		Txs: abciconv.ToABCIBlockDataTxs(&block.Data),
+		Txs: types.ToABCIBlockDataTxs(&block.Data),
 	}
 	return abciData.Hash()
 }
@@ -306,7 +257,7 @@ func (e *Executor) publishEvents(resp *tmstate.ABCIResponses, block *types.Block
 		return nil
 	}
 
-	abciBlock, err := abciconv.ToABCIBlock(block)
+	abciBlock, err := types.ToABCIBlock(block)
 	abciBlock.Header.ValidatorsHash = state.Validators.Hash()
 	if err != nil {
 		return err

@@ -1,4 +1,4 @@
-package node
+package node_test
 
 import (
 	"context"
@@ -7,13 +7,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dymensionxyz/dymint/da"
-	"github.com/dymensionxyz/dymint/mempool"
-	"github.com/dymensionxyz/dymint/node/events"
-	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+
+	"github.com/dymensionxyz/dymint/da"
+	"github.com/dymensionxyz/dymint/mempool"
+	"github.com/dymensionxyz/dymint/node"
+	"github.com/dymensionxyz/dymint/node/events"
+	"github.com/dymensionxyz/dymint/settlement"
+	"github.com/dymensionxyz/dymint/testutil"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -32,7 +35,7 @@ func TestStartup(t *testing.T) {
 	require := require.New(t)
 
 	// TODO(omritoptix): Test with and without aggregator mode.
-	node, err := CreateNode(false, nil)
+	node, err := testutil.CreateNode(false, nil)
 	require.NoError(err)
 	require.NotNil(node)
 
@@ -54,9 +57,11 @@ func TestMempoolDirectly(t *testing.T) {
 	app := &mocks.Application{}
 	app.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 	app.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{})
+	app.On("Info", mock.Anything).Return(abci.ResponseInfo{})
 	key, _, _ := crypto.GenerateEd25519Key(rand.Reader)
 	signingKey, _, _ := crypto.GenerateEd25519Key(rand.Reader)
 	anotherKey, _, _ := crypto.GenerateEd25519Key(rand.Reader)
+	rollappID := "rollapp_1234-1"
 
 	nodeConfig := config.NodeConfig{
 		RootDir:    "",
@@ -71,12 +76,23 @@ func TestMempoolDirectly(t *testing.T) {
 			BlockBatchMaxSizeBytes:  1000,
 			GossipedBlocksCacheSize: 50,
 		},
-		DALayer:          "mock",
-		DAConfig:         "",
-		SettlementLayer:  "mock",
-		SettlementConfig: settlement.Config{},
+		DALayer:         "mock",
+		DAConfig:        "",
+		SettlementLayer: "mock",
+		SettlementConfig: settlement.Config{
+			RollappID: rollappID,
+		},
 	}
-	node, err := NewNode(context.Background(), nodeConfig, key, signingKey, proxy.NewLocalClientCreator(app), &types.GenesisDoc{ChainID: "test"}, log.TestingLogger(), mempool.NopMetrics())
+	node, err := node.NewNode(
+		context.Background(),
+		nodeConfig,
+		key,
+		signingKey,
+		proxy.NewLocalClientCreator(app),
+		&types.GenesisDoc{ChainID: rollappID},
+		log.TestingLogger(),
+		mempool.NopMetrics(),
+	)
 	require.NoError(err)
 	require.NotNil(node)
 
@@ -86,20 +102,20 @@ func TestMempoolDirectly(t *testing.T) {
 	pid, err := peer.IDFromPrivateKey(anotherKey)
 	require.NoError(err)
 	err = node.Mempool.CheckTx([]byte("tx1"), func(r *abci.Response) {}, mempool.TxInfo{
-		SenderID: node.mempoolIDs.GetForPeer(pid),
+		SenderID: node.MempoolIDs.GetForPeer(pid),
 	})
 	require.NoError(err)
 	err = node.Mempool.CheckTx([]byte("tx2"), func(r *abci.Response) {}, mempool.TxInfo{
-		SenderID: node.mempoolIDs.GetForPeer(pid),
+		SenderID: node.MempoolIDs.GetForPeer(pid),
 	})
 	require.NoError(err)
 	time.Sleep(100 * time.Millisecond)
 	err = node.Mempool.CheckTx([]byte("tx3"), func(r *abci.Response) {}, mempool.TxInfo{
-		SenderID: node.mempoolIDs.GetForPeer(pid),
+		SenderID: node.MempoolIDs.GetForPeer(pid),
 	})
 	require.NoError(err)
 	err = node.Mempool.CheckTx([]byte("tx4"), func(r *abci.Response) {}, mempool.TxInfo{
-		SenderID: node.mempoolIDs.GetForPeer(pid),
+		SenderID: node.MempoolIDs.GetForPeer(pid),
 	})
 	require.NoError(err)
 
@@ -111,7 +127,7 @@ func TestMempoolDirectly(t *testing.T) {
 func TestHealthStatusEventHandler(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	node, err := CreateNode(false, nil)
+	node, err := testutil.CreateNode(false, nil)
 	require.NoError(err)
 	require.NotNil(node)
 
@@ -120,50 +136,41 @@ func TestHealthStatusEventHandler(t *testing.T) {
 	// wait for node to start
 	time.Sleep(1 * time.Second)
 
-	slUnealthyError := errors.New("settlement layer is unhealthy")
-	daUnealthyError := errors.New("da layer is unhealthy")
+	slError := errors.New("settlement")
+	daError := errors.New("da")
 
 	cases := []struct {
 		name                           string
 		baseLayerHealthStatusEvent     map[string][]string
 		baseLayerHealthStatusEventData interface{}
-		expectedHealthStatus           bool
 		expectHealthStatusEventEmitted bool
 		expectedError                  error
 	}{
-		// settlement layer is healthy, DA layer is healthy
 		{
-			name:                           "TestSettlementUnhealthyDAHealthy",
-			baseLayerHealthStatusEvent:     map[string][]string{settlement.EventTypeKey: {settlement.EventSettlementHealthStatus}},
-			baseLayerHealthStatusEventData: &settlement.EventDataSettlementHealthStatus{Healthy: false, Error: slUnealthyError},
-			expectedHealthStatus:           false,
+			name:                           "settlement layer is healthy and da layer is healthy",
+			baseLayerHealthStatusEvent:     settlement.EventHealthStatusList,
+			baseLayerHealthStatusEventData: &settlement.EventDataHealth{Error: slError},
 			expectHealthStatusEventEmitted: true,
-			expectedError:                  slUnealthyError,
+			expectedError:                  slError,
 		},
-		// Now da also becomes unhealthy
 		{
-			name:                           "TestDAUnhealthySettlementUnhealthy",
-			baseLayerHealthStatusEvent:     map[string][]string{da.EventTypeKey: {da.EventDAHealthStatus}},
-			baseLayerHealthStatusEventData: &da.EventDataDAHealthStatus{Healthy: false, Error: daUnealthyError},
-			expectedHealthStatus:           false,
+			name:                           "now da also becomes unhealthy",
+			baseLayerHealthStatusEvent:     da.EventHealthStatusList,
+			baseLayerHealthStatusEventData: &da.EventDataHealth{Error: daError},
 			expectHealthStatusEventEmitted: true,
-			expectedError:                  daUnealthyError,
+			expectedError:                  daError,
 		},
-		// Now the settlement layer becomes healthy
 		{
-			name:                           "TestSettlementHealthyDAHealthy",
-			baseLayerHealthStatusEvent:     map[string][]string{settlement.EventTypeKey: {settlement.EventSettlementHealthStatus}},
-			baseLayerHealthStatusEventData: &settlement.EventDataSettlementHealthStatus{Healthy: true, Error: nil},
-			expectedHealthStatus:           false,
+			name:                           "now the settlement layer becomes healthy",
+			baseLayerHealthStatusEvent:     settlement.EventHealthStatusList,
+			baseLayerHealthStatusEventData: &settlement.EventDataHealth{},
 			expectHealthStatusEventEmitted: false,
 			expectedError:                  nil,
 		},
-		// Now the da layer becomes healthy so we expect the health status to be healthy and the event to be emitted
 		{
-			name:                           "TestDAHealthySettlementHealthy",
-			baseLayerHealthStatusEvent:     map[string][]string{da.EventTypeKey: {da.EventDAHealthStatus}},
-			baseLayerHealthStatusEventData: &da.EventDataDAHealthStatus{Healthy: true, Error: nil},
-			expectedHealthStatus:           true,
+			name:                           "now the da layer becomes healthy, so we expect the health status to be healthy and the event to be emitted",
+			baseLayerHealthStatusEvent:     da.EventHealthStatusList,
+			baseLayerHealthStatusEventData: &da.EventDataHealth{},
 			expectHealthStatusEventEmitted: true,
 			expectedError:                  nil,
 		},
@@ -174,7 +181,7 @@ func TestHealthStatusEventHandler(t *testing.T) {
 			done := make(chan bool, 1)
 			ready := make(chan bool, 1)
 			go func() {
-				HealthSubscription, err := node.pubsubServer.Subscribe(node.ctx, c.name, events.EventQueryHealthStatus)
+				HealthSubscription, err := node.PubsubServer.Subscribe(node.Ctx, c.name, events.QueryHealthStatus)
 				ready <- true
 				assert.NoError(err)
 				select {
@@ -182,9 +189,8 @@ func TestHealthStatusEventHandler(t *testing.T) {
 					if !c.expectHealthStatusEventEmitted {
 						t.Error("didn't expect health status event but got one")
 					}
-					healthStatusEvent := event.Data().(*events.EventDataHealthStatus)
-					assert.Equal(c.expectedHealthStatus, healthStatusEvent.Healthy)
-					assert.Equal(c.expectedError, healthStatusEvent.Error)
+					healthStatusEvent := event.Data().(*events.DataHealthStatus)
+					assert.ErrorIs(healthStatusEvent.Error, c.expectedError)
 					done <- true
 					break
 				case <-time.After(1 * time.Second):
@@ -197,7 +203,7 @@ func TestHealthStatusEventHandler(t *testing.T) {
 			}()
 			<-ready
 			// Emit an event.
-			node.pubsubServer.PublishWithEvents(context.Background(), c.baseLayerHealthStatusEventData, c.baseLayerHealthStatusEvent)
+			node.PubsubServer.PublishWithEvents(context.Background(), c.baseLayerHealthStatusEventData, c.baseLayerHealthStatusEvent)
 			<-done
 		})
 	}

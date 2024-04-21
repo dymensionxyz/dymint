@@ -9,11 +9,11 @@ import (
 	"github.com/dymensionxyz/dymint/da"
 )
 
-// RetriveLoop listens for new sync messages written to a ring buffer and in turn
+// RetrieveLoop listens for new sync messages written to a ring buffer and in turn
 // runs syncUntilTarget on the latest message in the ring buffer.
-func (m *Manager) RetriveLoop(ctx context.Context) {
-	m.logger.Info("Started retrieve loop")
-	syncTargetpoller := diodes.NewPoller(m.syncTargetDiode, diodes.WithPollingContext(ctx))
+func (m *Manager) RetrieveLoop(ctx context.Context) {
+	m.logger.Info("started retrieve loop")
+	syncTargetPoller := diodes.NewPoller(m.SyncTargetDiode, diodes.WithPollingContext(ctx))
 
 	for {
 		select {
@@ -21,18 +21,10 @@ func (m *Manager) RetriveLoop(ctx context.Context) {
 			return
 		default:
 			// Get only the latest sync target
-			syncTarget := syncTargetpoller.Next()
-			err := m.syncUntilTarget(ctx, *(*uint64)(syncTarget))
+			syncTarget := syncTargetPoller.Next()
+			err := m.syncUntilTarget(*(*uint64)(syncTarget))
 			if err != nil {
-				panic(err)
-			}
-			// Check if after we sync we are synced or a new syncTarget was already set.
-			// If we are synced then signal all goroutines waiting on isSyncedCond.
-			if m.store.Height() >= m.syncTarget.Load() {
-				m.logger.Info("Synced at height", "height", m.store.Height())
-				m.isSyncedCond.L.Lock()
-				m.isSyncedCond.Signal()
-				m.isSyncedCond.L.Unlock()
+				panic(fmt.Errorf("sync until target: %w", err))
 			}
 		}
 	}
@@ -41,34 +33,48 @@ func (m *Manager) RetriveLoop(ctx context.Context) {
 // syncUntilTarget syncs the block until the syncTarget is reached.
 // It fetches the batches from the settlement, gets the DA height and gets
 // the actual blocks from the DA.
-func (m *Manager) syncUntilTarget(ctx context.Context, syncTarget uint64) error {
-	currentHeight := m.store.Height()
+func (m *Manager) syncUntilTarget(syncTarget uint64) error {
+	currentHeight := m.Store.Height()
+
+	if currentHeight >= syncTarget {
+		m.logger.Info("Already synced", "current height", currentHeight, "syncTarget", syncTarget)
+		return nil
+	}
+
 	for currentHeight < syncTarget {
-		currStateIdx := atomic.LoadUint64(&m.lastState.SLStateIndex) + 1
+		currStateIdx := atomic.LoadUint64(&m.LastState.SLStateIndex) + 1
 		m.logger.Info("Syncing until target", "height", currentHeight, "state_index", currStateIdx, "syncTarget", syncTarget)
-		settlementBatch, err := m.settlementClient.RetrieveBatch(currStateIdx)
+		settlementBatch, err := m.SLClient.RetrieveBatch(currStateIdx)
 		if err != nil {
 			return err
 		}
 
-		err = m.processNextDABatch(ctx, settlementBatch.MetaData.DA)
+		err = m.ProcessNextDABatch(settlementBatch.MetaData.DA)
 		if err != nil {
 			return err
 		}
 
-		currentHeight = m.store.Height()
+		currentHeight = m.Store.Height()
 
 		err = m.updateStateIndex(settlementBatch.StateIndex)
 		if err != nil {
 			return err
 		}
 	}
+	m.logger.Info("Synced", "current height", currentHeight, "syncTarget", syncTarget)
+
+	// check for cached blocks
+	err := m.attemptApplyCachedBlocks()
+	if err != nil {
+		m.logger.Error("applying previous cached blocks", "err", err)
+	}
+
 	return nil
 }
 
 func (m *Manager) updateStateIndex(stateIndex uint64) error {
-	atomic.StoreUint64(&m.lastState.SLStateIndex, stateIndex)
-	_, err := m.store.UpdateState(m.lastState, nil)
+	atomic.StoreUint64(&m.LastState.SLStateIndex, stateIndex)
+	_, err := m.Store.UpdateState(m.LastState, nil)
 	if err != nil {
 		m.logger.Error("update state", "error", err)
 		return err
@@ -76,7 +82,7 @@ func (m *Manager) updateStateIndex(stateIndex uint64) error {
 	return nil
 }
 
-func (m *Manager) processNextDABatch(ctx context.Context, daMetaData *da.DASubmitMetaData) error {
+func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
 	m.logger.Debug("trying to retrieve batch from DA", "daHeight", daMetaData.Height)
 	batchResp := m.fetchBatch(daMetaData)
 	if batchResp.Code != da.StatusSuccess {
@@ -85,28 +91,32 @@ func (m *Manager) processNextDABatch(ctx context.Context, daMetaData *da.DASubmi
 
 	m.logger.Debug("retrieved batches", "n", len(batchResp.Batches), "daHeight", daMetaData.Height)
 
+	m.retrieverMutex.Lock()
+	defer m.retrieverMutex.Unlock()
+
 	for _, batch := range batchResp.Batches {
 		for i, block := range batch.Blocks {
-			if block.Header.Height != m.store.NextHeight() {
+			if block.Header.Height != m.Store.NextHeight() {
 				continue
 			}
-			err := m.applyBlock(ctx, block, batch.Commits[i], blockMetaData{source: daBlock, daHeight: daMetaData.Height})
-			if err != nil {
-				return err
+			if err := m.validateBlock(block, batch.Commits[i]); err != nil {
+				m.logger.Error("validate block from DA - someone is behaving badly", "height", block.Header.Height, "err", err)
+				continue
 			}
-		}
-	}
+			err := m.applyBlock(block, batch.Commits[i], blockMetaData{source: daBlock, daHeight: daMetaData.Height})
+			if err != nil {
+				return fmt.Errorf("apply block: height: %d: %w", block.Header.Height, err)
+			}
 
-	err := m.attemptApplyCachedBlocks(ctx)
-	if err != nil {
-		m.logger.Debug("Error applying previous cached blocks", "err", err)
+			delete(m.blockCache, block.Header.Height)
+		}
 	}
 	return nil
 }
 
 func (m *Manager) fetchBatch(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
 	// Check batch availability
-	availabilityRes := m.retriever.CheckBatchAvailability(daMetaData)
+	availabilityRes := m.Retriever.CheckBatchAvailability(daMetaData)
 	if availabilityRes.Code != da.StatusSuccess {
 		return da.ResultRetrieveBatch{
 			BaseResult: da.BaseResult{
@@ -117,7 +127,7 @@ func (m *Manager) fetchBatch(daMetaData *da.DASubmitMetaData) da.ResultRetrieveB
 		}
 	}
 	// batchRes.MetaData includes proofs necessary to open disputes with the Hub
-	batchRes := m.retriever.RetrieveBatches(daMetaData)
+	batchRes := m.Retriever.RetrieveBatches(daMetaData)
 	// TODO(srene) : for invalid transactions there is no specific error code since it will need to be validated somewhere else for fraud proving.
 	// NMT proofs (availRes.MetaData.Proofs) are included in the result batchRes, necessary to be included in the dispute
 	return batchRes

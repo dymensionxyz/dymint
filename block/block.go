@@ -2,25 +2,26 @@ package block
 
 import (
 	"context"
+	"fmt"
 
-	"cosmossdk.io/errors"
+	errorsmod "cosmossdk.io/errors"
+
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/types"
-	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmtypes "github.com/tendermint/tendermint/types"
 )
 
 // applyBlock applies the block to the store and the abci app.
+// Contract: block and commit must be validated before calling this function!
 // steps: save block -> execute block with app -> update state -> commit block to app -> update store height and state hash.
 // As the entire process can't be atomic we need to make sure the following condition apply before
 // - block height is the expected block height on the store (height + 1).
 // - block height is the expected block height on the app (last block height + 1).
-func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *types.Commit, blockMetaData blockMetaData) error {
+func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMetaData blockMetaData) error {
 	// TODO (#330): allow genesis block with height > 0 to be applied.
 	// TODO: add switch case to have defined behavior for each case.
 	// validate block height
-	if block.Header.Height != m.store.NextHeight() {
-		m.logger.Error("Block not applied. wrong height", "block height", block.Header.Height, "expected height", m.store.NextHeight())
+	if block.Header.Height != m.Store.NextHeight() {
 		return types.ErrInvalidBlockHeight
 	}
 
@@ -29,67 +30,63 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 	// Check if the app's last block height is the same as the currently produced block height
 	isBlockAlreadyApplied, err := m.isHeightAlreadyApplied(block.Header.Height)
 	if err != nil {
-		return err
+		return fmt.Errorf("check if block is already applied: %w", err)
 	}
 	// In case the following true, it means we crashed after the commit and before updating the store height.
 	// In that case we'll want to align the store with the app state and continue to the next block.
 	if isBlockAlreadyApplied {
 		err := m.UpdateStateFromApp()
 		if err != nil {
-			return err
+			return fmt.Errorf("update state from app: %w", err)
 		}
 		m.logger.Debug("Aligned with app state required. Skipping to next block", "height", block.Header.Height)
 		return nil
 	}
 	// Start applying the block assuming no inconsistency was found.
-	_, err = m.store.SaveBlock(block, commit, nil)
+	_, err = m.Store.SaveBlock(block, commit, nil)
 	if err != nil {
-		m.logger.Error("save block", "error", err)
-		return err
+		return fmt.Errorf("save block: %w", err)
 	}
 
-	responses, err := m.executeBlock(ctx, block, commit)
+	responses, err := m.Executor.ExecuteBlock(m.LastState, block)
 	if err != nil {
-		m.logger.Error("execute block", "error", err)
-		return err
+		return fmt.Errorf("execute block: %w", err)
 	}
 
-	newState, err := m.executor.UpdateStateFromResponses(responses, m.lastState, block)
+	newState, err := m.Executor.UpdateStateFromResponses(responses, m.LastState, block)
 	if err != nil {
-		return err
+		return fmt.Errorf("update state from responses: %w", err)
 	}
 
-	batch := m.store.NewBatch()
+	batch := m.Store.NewBatch()
 
-	batch, err = m.store.SaveBlockResponses(block.Header.Height, responses, batch)
+	batch, err = m.Store.SaveBlockResponses(block.Header.Height, responses, batch)
 	if err != nil {
 		batch.Discard()
-		return err
+		return fmt.Errorf("save block responses: %w", err)
 	}
 
-	m.lastState = newState
-	batch, err = m.store.UpdateState(m.lastState, batch)
+	m.LastState = newState
+	batch, err = m.Store.UpdateState(m.LastState, batch)
 	if err != nil {
 		batch.Discard()
-		return err
+		return fmt.Errorf("update state: %w", err)
 	}
-	batch, err = m.store.SaveValidators(block.Header.Height, m.lastState.Validators, batch)
+	batch, err = m.Store.SaveValidators(block.Header.Height, m.LastState.Validators, batch)
 	if err != nil {
 		batch.Discard()
-		return err
+		return fmt.Errorf("save validators: %w", err)
 	}
 
 	err = batch.Commit()
 	if err != nil {
-		m.logger.Error("persist batch to disk", "error", err)
-		return err
+		return fmt.Errorf("commit batch to disk: %w", err)
 	}
 
 	// Commit block to app
-	retainHeight, err := m.executor.Commit(ctx, &newState, block, responses)
+	retainHeight, err := m.Executor.Commit(&newState, block, responses)
 	if err != nil {
-		m.logger.Error("commit to the block", "error", err)
-		return err
+		return fmt.Errorf("commit block: %w", err)
 	}
 
 	// Prune old heights, if requested by ABCI app.
@@ -104,58 +101,54 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 
 	// Update the state with the new app hash, last validators and store height from the commit.
 	// Every one of those, if happens before commit, prevents us from re-executing the block in case failed during commit.
-	newState.LastValidators = m.lastState.Validators.Copy()
+	newState.LastValidators = m.LastState.Validators.Copy()
 	newState.LastStoreHeight = block.Header.Height
-	newState.BaseHeight = m.store.Base()
+	newState.BaseHeight = m.Store.Base()
 
-	_, err = m.store.UpdateState(newState, nil)
+	_, err = m.Store.UpdateState(newState, nil)
 	if err != nil {
-		m.logger.Error("update state", "error", err)
-		return err
+		return fmt.Errorf("final update state: %w", err)
 	}
-	m.lastState = newState
+	m.LastState = newState
 
-	m.store.SetHeight(block.Header.Height)
+	if ok := m.Store.SetHeight(block.Header.Height); !ok {
+		return fmt.Errorf("store set height: %d", block.Header.Height)
+	}
 
 	return nil
 }
 
-func (m *Manager) attemptApplyCachedBlocks(ctx context.Context) error {
-	m.applyCachedBlockMutex.Lock()
-	defer m.applyCachedBlockMutex.Unlock()
+// TODO: move to gossip.go
+func (m *Manager) attemptApplyCachedBlocks() error {
+	m.retrieverMutex.Lock()
+	defer m.retrieverMutex.Unlock()
 
 	for {
-		expectedHeight := m.store.NextHeight()
+		expectedHeight := m.Store.NextHeight()
 
-		prevCachedBlock, blockExists := m.prevBlock[expectedHeight]
-		prevCachedCommit, commitExists := m.prevCommit[expectedHeight]
-
-		if !blockExists || !commitExists {
+		cachedBlock, blockExists := m.blockCache[expectedHeight]
+		if !blockExists {
 			break
 		}
 
-		m.logger.Debug("Applying cached block", "height", expectedHeight)
-		err := m.applyBlock(ctx, prevCachedBlock, prevCachedCommit, blockMetaData{source: gossipedBlock})
+		// Note: cached <block,commit> pairs have passed basic validation, so no need to validate again
+		err := m.applyBlock(cachedBlock.Block, cachedBlock.Commit, blockMetaData{source: gossipedBlock})
 		if err != nil {
-			m.logger.Debug("apply previously cached block", "err", err)
-			return err
+			return fmt.Errorf("apply cached block: expected height: %d: %w", expectedHeight, err)
 		}
+		m.logger.Debug("applied cached block", "height", expectedHeight)
+
+		delete(m.blockCache, cachedBlock.Block.Header.Height)
 	}
 
-	for k := range m.prevBlock {
-		if k <= m.store.Height() {
-			delete(m.prevBlock, k)
-			delete(m.prevCommit, k)
-		}
-	}
 	return nil
 }
 
 // isHeightAlreadyApplied checks if the block height is already applied to the app.
 func (m *Manager) isHeightAlreadyApplied(blockHeight uint64) (bool, error) {
-	proxyAppInfo, err := m.executor.GetAppInfo()
+	proxyAppInfo, err := m.Executor.GetAppInfo()
 	if err != nil {
-		return false, errors.Wrap(err, "get app info")
+		return false, errorsmod.Wrap(err, "get app info")
 	}
 
 	isBlockAlreadyApplied := uint64(proxyAppInfo.LastBlockHeight) == blockHeight
@@ -167,59 +160,52 @@ func (m *Manager) isHeightAlreadyApplied(blockHeight uint64) (bool, error) {
 
 // UpdateStateFromApp is responsible for aligning the state of the store from the abci app
 func (m *Manager) UpdateStateFromApp() error {
-	proxyAppInfo, err := m.executor.GetAppInfo()
+	proxyAppInfo, err := m.Executor.GetAppInfo()
 	if err != nil {
-		return errors.Wrap(err, "get app info")
+		return errorsmod.Wrap(err, "get app info")
 	}
 
 	appHeight := uint64(proxyAppInfo.LastBlockHeight)
 
 	// update the state with the hash, last store height and last validators.
-	m.lastState.AppHash = *(*[32]byte)(proxyAppInfo.LastBlockAppHash)
-	m.lastState.LastStoreHeight = appHeight
-	m.lastState.LastValidators = m.lastState.Validators.Copy()
+	m.LastState.AppHash = *(*[32]byte)(proxyAppInfo.LastBlockAppHash)
+	m.LastState.LastStoreHeight = appHeight
+	m.LastState.LastValidators = m.LastState.Validators.Copy()
 
-	resp, err := m.store.LoadBlockResponses(appHeight)
+	resp, err := m.Store.LoadBlockResponses(appHeight)
 	if err != nil {
-		return errors.Wrap(err, "load block responses")
+		return errorsmod.Wrap(err, "load block responses")
 	}
-	copy(m.lastState.LastResultsHash[:], tmtypes.NewResults(resp.DeliverTxs).Hash())
+	copy(m.LastState.LastResultsHash[:], tmtypes.NewResults(resp.DeliverTxs).Hash())
 
-	_, err = m.store.UpdateState(m.lastState, nil)
+	_, err = m.Store.UpdateState(m.LastState, nil)
 	if err != nil {
-		return errors.Wrap(err, "update state")
+		return errorsmod.Wrap(err, "update state")
 	}
-	m.store.SetHeight(appHeight)
+	if ok := m.Store.SetHeight(appHeight); !ok {
+		return fmt.Errorf("store set height: %d", appHeight)
+	}
 	return nil
 }
 
-func (m *Manager) executeBlock(ctx context.Context, block *types.Block, commit *types.Commit) (*tmstate.ABCIResponses, error) {
+func (m *Manager) validateBlock(block *types.Block, commit *types.Commit) error {
 	// Currently we're assuming proposer is never nil as it's a pre-condition for
 	// dymint to start
-	proposer := m.settlementClient.GetProposer()
+	proposer := m.SLClient.GetProposer()
 
-	if err := m.executor.Validate(m.lastState, block, commit, proposer); err != nil {
-		return &tmstate.ABCIResponses{}, err
-	}
-
-	responses, err := m.executor.Execute(ctx, m.lastState, block)
-	if err != nil {
-		return &tmstate.ABCIResponses{}, err
-	}
-
-	return responses, nil
+	return types.ValidateProposedTransition(m.LastState, block, commit, proposer)
 }
 
 func (m *Manager) gossipBlock(ctx context.Context, block types.Block, commit types.Commit) error {
 	gossipedBlock := p2p.GossipedBlock{Block: block, Commit: commit}
 	gossipedBlockBytes, err := gossipedBlock.MarshalBinary()
 	if err != nil {
-		m.logger.Error("marshal block", "error", err)
-		return err
+		return fmt.Errorf("marshal binary: %w: %w", err, ErrNonRecoverable)
 	}
 	if err := m.p2pClient.GossipBlock(ctx, gossipedBlockBytes); err != nil {
-		m.logger.Error("gossip block", "error", err)
-		return err
+		// Although this boils down to publishing on a topic, we don't want to speculate too much on what
+		// could cause that to fail, so we assume recoverable.
+		return fmt.Errorf("p2p gossip block: %w: %w", err, ErrRecoverable)
 	}
 	return nil
 }

@@ -135,28 +135,25 @@ func (s *service) Subscribe(req *http.Request, args *subscribeArgs, wsConn *wsCo
 		return nil, fmt.Errorf("subscribe: %w", err)
 	}
 	go func(subscriptionID []byte) {
-		for {
-			select {
-			case msg := <-out:
-				// build the base response
-				var resp rpctypes.RPCResponse
-				// Check if subscriptionID is string or int and generate the rest of the response accordingly
-				subscriptionIDInt, err := strconv.Atoi(string(subscriptionID))
-				if err != nil {
-					s.logger.Info("Failed to convert subscriptionID to int")
-					resp = rpctypes.NewRPCSuccessResponse(rpctypes.JSONRPCStringID(subscriptionID), msg)
-				} else {
-					resp = rpctypes.NewRPCSuccessResponse(rpctypes.JSONRPCIntID(subscriptionIDInt), msg)
-				}
-				// Marshal response to JSON and send it to the websocket queue
-				jsonBytes, err := json.MarshalIndent(resp, "", "  ")
-				if err != nil {
-					s.logger.Error("marshal RPCResponse to JSON", "err", err)
-					continue
-				}
-				if wsConn != nil {
-					wsConn.queue <- jsonBytes
-				}
+		for msg := range out {
+			// build the base response
+			var resp rpctypes.RPCResponse
+			// Check if subscriptionID is string or int and generate the rest of the response accordingly
+			subscriptionIDInt, err := strconv.Atoi(string(subscriptionID))
+			if err != nil {
+				s.logger.Info("Failed to convert subscriptionID to int")
+				resp = rpctypes.NewRPCSuccessResponse(rpctypes.JSONRPCStringID(subscriptionID), msg)
+			} else {
+				resp = rpctypes.NewRPCSuccessResponse(rpctypes.JSONRPCIntID(subscriptionIDInt), msg)
+			}
+			// Marshal response to JSON and send it to the websocket queue
+			jsonBytes, err := json.MarshalIndent(resp, "", "  ")
+			if err != nil {
+				s.logger.Error("marshal RPCResponse to JSON", "err", err)
+				continue
+			}
+			if wsConn != nil {
+				wsConn.queue <- jsonBytes
 			}
 		}
 	}(subscriptionID)

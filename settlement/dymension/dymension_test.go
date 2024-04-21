@@ -1,4 +1,4 @@
-package dymension
+package dymension_test
 
 import (
 	"context"
@@ -30,6 +30,7 @@ import (
 	mocks "github.com/dymensionxyz/dymint/mocks"
 	settlementmocks "github.com/dymensionxyz/dymint/mocks/settlement"
 	"github.com/dymensionxyz/dymint/settlement"
+	"github.com/dymensionxyz/dymint/settlement/dymension"
 	"github.com/dymensionxyz/dymint/testutil"
 
 	sdkcodectypes "github.com/cosmos/cosmos-sdk/codec/types"
@@ -48,15 +49,15 @@ func TestGetSequencers(t *testing.T) {
 	cosmosClientMock.On("GetRollappClient").Return(settlementmocks.NewRollAppQueryClient(t))
 	cosmosClientMock.On("GetSequencerClient").Return(sequencerQueryClientMock)
 
-	options := []Option{
-		WithCosmosClient(cosmosClientMock),
+	options := []dymension.Option{
+		dymension.WithCosmosClient(cosmosClientMock),
 	}
 
 	pubsubServer := pubsub.NewServer()
 	err = pubsubServer.Start()
 	require.NoError(err)
 
-	hubClient, err := newDymensionHubClient(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
+	hubClient, err := dymension.NewDymensionHubClient(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
 	require.NoError(err)
 
 	sequencers, err := hubClient.GetSequencers("mock-rollapp")
@@ -94,11 +95,11 @@ func TestPostBatch(t *testing.T) {
 	require.NoError(err)
 	cosmosClientMock.On("SubscribeToEvents", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return((<-chan coretypes.ResultEvent)(batchAcceptedCh), nil)
 
-	options := []Option{
-		WithCosmosClient(cosmosClientMock),
-		WithBatchAcceptanceTimeout(time.Millisecond * 300),
-		WithBatchRetryAttempts(2),
-		WithBatchRetryDelay(time.Millisecond * 200),
+	options := []dymension.Option{
+		dymension.WithCosmosClient(cosmosClientMock),
+		dymension.WithBatchAcceptanceTimeout(time.Millisecond * 300),
+		dymension.WithBatchRetryAttempts(2),
+		dymension.WithBatchRetryDelay(time.Millisecond * 200),
 	}
 
 	// Create a batch which will be submitted
@@ -111,48 +112,43 @@ func TestPostBatch(t *testing.T) {
 	assert.NoError(t, err)
 
 	cases := []struct {
-		name                     string
-		isBatchSubmitSuccess     bool
-		isBatchAcceptedHubEvent  bool
-		shouldMockBatchIncluded  bool
-		isBatchIncludedSuccess   bool
-		expectedHealthEventValue bool
-		expectedError            error
+		name                    string
+		isBatchSubmitSuccess    bool
+		isBatchAcceptedHubEvent bool
+		shouldMockBatchIncluded bool
+		isBatchIncludedSuccess  bool
+		expectedError           error
 	}{
 		{
-			name:                     "TestSubmitBatchFailure",
-			isBatchSubmitSuccess:     false,
-			isBatchAcceptedHubEvent:  false,
-			shouldMockBatchIncluded:  true,
-			isBatchIncludedSuccess:   false,
-			expectedHealthEventValue: false,
-			expectedError:            submitBatchError,
+			name:                    "TestSubmitBatchFailure",
+			isBatchSubmitSuccess:    false,
+			isBatchAcceptedHubEvent: false,
+			shouldMockBatchIncluded: true,
+			isBatchIncludedSuccess:  false,
+			expectedError:           submitBatchError,
 		},
 		{
-			name:                     "TestSubmitBatchSuccessNoBatchAcceptedHubEventNotIncluded",
-			isBatchSubmitSuccess:     true,
-			isBatchAcceptedHubEvent:  false,
-			shouldMockBatchIncluded:  true,
-			isBatchIncludedSuccess:   false,
-			expectedHealthEventValue: false,
-			expectedError:            settlement.ErrBatchNotAccepted,
+			name:                    "TestSubmitBatchSuccessNoBatchAcceptedHubEventNotIncluded",
+			isBatchSubmitSuccess:    true,
+			isBatchAcceptedHubEvent: false,
+			shouldMockBatchIncluded: true,
+			isBatchIncludedSuccess:  false,
+			expectedError:           settlement.ErrBatchNotAccepted,
 		},
 		{
-			name:                     "TestSubmitBatchSuccessNotAcceptedYesIncluded",
-			isBatchSubmitSuccess:     true,
-			isBatchAcceptedHubEvent:  false,
-			shouldMockBatchIncluded:  true,
-			isBatchIncludedSuccess:   true,
-			expectedHealthEventValue: true,
-			expectedError:            nil,
+			name:                    "TestSubmitBatchSuccessNotAcceptedYesIncluded",
+			isBatchSubmitSuccess:    true,
+			isBatchAcceptedHubEvent: false,
+			shouldMockBatchIncluded: true,
+			isBatchIncludedSuccess:  true,
+			expectedError:           nil,
 		},
 		{
-			name:                     "TestSubmitBatchSuccessAndAccepted",
-			isBatchSubmitSuccess:     true,
-			isBatchAcceptedHubEvent:  true,
-			shouldMockBatchIncluded:  false,
-			expectedHealthEventValue: true,
-			expectedError:            nil,
+			name:                    "TestSubmitBatchSuccessAndAccepted",
+			isBatchSubmitSuccess:    true,
+			isBatchAcceptedHubEvent: true,
+			shouldMockBatchIncluded: false,
+			expectedError:           nil,
 		},
 	}
 
@@ -186,7 +182,7 @@ func TestPostBatch(t *testing.T) {
 					rollappQueryClientMock.On("StateInfo", mock.Anything, mock.Anything).Return(nil, fmt.Errorf("error"))
 				}
 			}
-			hubClient, err := newDymensionHubClient(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
+			hubClient, err := dymension.NewDymensionHubClient(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
 			require.NoError(err)
 			err = hubClient.Start()
 			require.NoError(err)
@@ -196,9 +192,8 @@ func TestPostBatch(t *testing.T) {
 				select {
 				case healthEvent := <-HealthSubscription.Out():
 					t.Logf("got health event: %v", healthEvent)
-					healthStatusEvent := healthEvent.Data().(*settlement.EventDataSettlementHealthStatus)
-					assert.Equal(t, c.expectedHealthEventValue, healthStatusEvent.Healthy)
-					assert.Equal(t, c.expectedError, healthStatusEvent.Error)
+					healthStatusEvent := healthEvent.Data().(*settlement.EventDataHealth)
+					assert.ErrorIs(t, healthStatusEvent.Error, c.expectedError)
 					atomic.AddInt64(&eventsReceivedCount, 1)
 				case <-time.After(10 * time.Second):
 					t.Error("Didn't receive health event")

@@ -1,11 +1,10 @@
-package testutils
+package testutil
 
 import (
 	"fmt"
 	"net"
 	"testing"
 
-	"github.com/dymensionxyz/dymint/node"
 	"github.com/dymensionxyz/dymint/rpc"
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/config"
@@ -23,7 +22,7 @@ func CreateLocalServer(t *testing.T) (*rpc.Server, net.Listener) {
 	var server *rpc.Server
 	// Start server with listener
 	go func() {
-		node, err := node.CreateNode(true, nil)
+		node, err := CreateNode(true, nil)
 		require.NoError(t, err)
 		err = node.Start()
 		require.NoError(t, err)

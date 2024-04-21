@@ -66,9 +66,13 @@ type Mempool interface {
 		blockHeight int64,
 		blockTxs types.Txs,
 		deliverTxResponses []*abci.ResponseDeliverTx,
-		newPreFn PreCheckFunc,
-		newPostFn PostCheckFunc,
 	) error
+
+	// SetPreCheckFn sets the pre-check function.
+	SetPreCheckFn(fn PreCheckFunc)
+
+	// SetPostCheckFn sets the post-check function.
+	SetPostCheckFn(fn PostCheckFunc)
 
 	// FlushAppConn flushes the mempool connection to ensure async callback calls
 	// are done, e.g. from CheckTx.
