@@ -427,11 +427,12 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
 	var proofs []*blob.Proof
 
-	DACheckMetaData := &da.DACheckMetaData{}
-	DACheckMetaData.Height = daMetaData.Height
-	DACheckMetaData.Client = daMetaData.Client
-	DACheckMetaData.Commitment = daMetaData.Commitment
-	DACheckMetaData.Namespace = daMetaData.Namespace
+	DACheckMetaData := &da.DACheckMetaData{
+		Client:     daMetaData.Client,
+		Height:     daMetaData.Height,
+		Commitment: daMetaData.Commitment,
+		Namespace:  daMetaData.Namespace,
+	}
 
 	dah, err := c.getDataAvailabilityHeaders(daMetaData.Height)
 	if err != nil {
