@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"slices"
 	"time"
 
 	"github.com/avast/retry-go/v4"
@@ -400,17 +399,6 @@ func (c *DataAvailabilityLayerClient) retrieveBatchesNoCommitment(dataLayerHeigh
 
 func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
 	var availabilityResult da.ResultCheckBatch
-	//check namespace
-	if !slices.Equal(daMetaData.Namespace, c.config.NamespaceID.Bytes()) {
-		return da.ResultCheckBatch{
-			BaseResult: da.BaseResult{
-				Code:    da.StatusError,
-				Message: fmt.Sprintf("namespace not matching: daMetaData %v: config: %v", daMetaData.Namespace, c.config.NamespaceID.Bytes()),
-				Error:   da.ErrNameSpace,
-			},
-			CheckMetaData: &da.DACheckMetaData{},
-		}
-	}
 	for {
 		select {
 		case <-c.ctx.Done():
