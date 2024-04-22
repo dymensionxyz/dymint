@@ -164,6 +164,7 @@ func TestRetrieveDaBatchesFailed(t *testing.T) {
 
 	t.Log(manager.LastState.SLStateIndex)
 	daMetaData := &da.DASubmitMetaData{
+		Client: da.Mock,
 		Height: 1,
 	}
 	err = manager.ProcessNextDABatch(daMetaData)
@@ -466,6 +467,70 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 
 				assert.NoError(err)
 			}
+		})
+	}
+}
+
+func TestDAFetch(t *testing.T) {
+
+	require := require.New(t)
+	// Setup app
+	app := testutil.GetAppMock(testutil.Info, testutil.Commit)
+	// Create proxy app
+	clientCreator := proxy.NewLocalClientCreator(app)
+	proxyApp := proxy.NewAppConns(clientCreator)
+	err := proxyApp.Start()
+	require.NoError(err)
+	// Create a new mock store which should succeed to save the first block
+	mockStore := testutil.NewMockStore()
+	// Init manager
+	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, nil, 1, 1, 0, proxyApp, mockStore)
+	require.NoError(err)
+	commitHash := [32]byte{1}
+
+	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{Data: commitHash[:]})
+
+	syncTarget := manager.SyncTarget.Load()
+	nextBatchStartHeight := syncTarget + 1
+	batch, err := testutil.GenerateBatch(nextBatchStartHeight, nextBatchStartHeight+uint64(testutil.DefaultTestBatchSize-1), manager.ProposerKey)
+	require.NoError(err)
+	daResultSubmitBatch := manager.DAClient.SubmitBatch(batch)
+	require.Equal(daResultSubmitBatch.Code, da.StatusSuccess)
+	err = manager.SLClient.SubmitBatch(batch, manager.DAClient.GetClientType(), &daResultSubmitBatch)
+	require.NoError(err)
+
+	cases := []struct {
+		name       string
+		manager    *block.Manager
+		daMetaData *da.DASubmitMetaData
+		batch      *types.Batch
+		err        error
+	}{
+		{
+			name:       "valid DA",
+			manager:    manager,
+			daMetaData: daResultSubmitBatch.SubmitMetaData,
+			batch:      batch,
+			err:        nil,
+		},
+		{
+			name:       "wrong DA",
+			manager:    manager,
+			daMetaData: &da.DASubmitMetaData{Client: da.Celestia, Height: daResultSubmitBatch.SubmitMetaData.Height},
+			batch:      batch,
+			err:        block.ErrWrongDA,
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			app.On("Commit", mock.Anything).Return(abci.ResponseCommit{Data: commitHash[:]}).Once()
+			app.On("Info", mock.Anything).Return(abci.ResponseInfo{
+				LastBlockHeight:  int64(batch.EndHeight),
+				LastBlockAppHash: commitHash[:],
+			})
+			err := manager.ProcessNextDABatch(c.daMetaData)
+			require.Equal(c.err, err)
 		})
 	}
 }

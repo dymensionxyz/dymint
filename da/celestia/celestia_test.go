@@ -254,6 +254,21 @@ func TestAvalabilityWrongProof(t *testing.T) {
 	assert.ErrorIs(availRes.Error, da.ErrUnableToGetProof)
 }
 
+func TestRetrievalWrongNamespace(t *testing.T) {
+	assert := assert.New(t)
+
+	_, dalc, _, _ := setDAandMock(t)
+
+	retriever := dalc.(da.BatchRetriever)
+
+	h1 := &da.DASubmitMetaData{
+		Height: 1,
+	}
+
+	availRes := retriever.CheckBatchAvailability(h1)
+	assert.ErrorIs(availRes.Error, da.ErrNameSpace)
+}
+
 func TestRetrievalWrongCommitment(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
@@ -261,7 +276,7 @@ func TestRetrievalWrongCommitment(t *testing.T) {
 	commitmentString := "3f568f651fe72fa2131bd86c09bb23763e0a3cb45211b035bfa688711c76ce78"
 	commitment, _ := hex.DecodeString(commitmentString)
 
-	mockRPCClient, dalc, _, headers := setDAandMock(t)
+	mockRPCClient, dalc, namespace, headers := setDAandMock(t)
 
 	mockRPCClient.On("Get", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil).Run(func(args mock.Arguments) {
 	})
@@ -271,6 +286,7 @@ func TestRetrievalWrongCommitment(t *testing.T) {
 	h1 := &da.DASubmitMetaData{
 		Height:     1,
 		Commitment: commitment,
+		Namespace:  namespace,
 	}
 	retreiveRes := retriever.RetrieveBatches(h1)
 	assert.ErrorIs(retreiveRes.Error, da.ErrBlobNotFound)
@@ -299,10 +315,11 @@ func setDAandMock(t *testing.T) (*mocks.CelestiaRPCClient, da.DataAvailabilityLa
 	dalc := registry.GetClient("celestia")
 
 	config := celestia.Config{
-		BaseURL:  "http://localhost:26658",
-		Timeout:  30 * time.Second,
-		GasLimit: 3000000,
-		Fee:      200000000,
+		BaseURL:        "http://localhost:26658",
+		Timeout:        30 * time.Second,
+		GasLimit:       3000000,
+		Fee:            200000000,
+		NamespaceIDStr: "0000000000000000ffff",
 	}
 	err = config.InitNamespaceID()
 	require.NoError(err)

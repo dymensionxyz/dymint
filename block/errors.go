@@ -5,4 +5,5 @@ import "errors"
 var (
 	ErrNonRecoverable = errors.New("non recoverable")
 	ErrRecoverable    = errors.New("recoverable")
+	ErrWrongDA        = errors.New("wrong DA")
 )
