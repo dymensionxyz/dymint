@@ -35,7 +35,7 @@ type BlockExecutor struct {
 
 	logger log.Logger
 
-	fraudProofsEnabled bool
+	fraudProofsEnabled bool // TODO: rename. Does this mean enabled to generate ISR, or enabled to verify and create proofs?
 	simulateFraud      bool
 }
 
@@ -47,7 +47,7 @@ func NewBlockExecutor(proposerAddress []byte, namespaceID string, chainID string
 		return nil, err
 	}
 
-	var be = BlockExecutor{
+	be := BlockExecutor{
 		proposerAddress:       proposerAddress,
 		chainID:               chainID,
 		proxyAppConsensusConn: proxyApp.Consensus(),
@@ -160,8 +160,8 @@ func (e *BlockExecutor) Validate(state types.State, block *types.Block, commit *
 
 // UpdateStateFromResponses updates state based on the ABCIResponses.
 func (e *BlockExecutor) UpdateStateFromResponses(resp *tmstate.ABCIResponses, state types.State, block *types.Block) (types.State, error) {
-	//Dymint ignores any setValidator responses from the app, as it is manages the validator set based on the settlement consensus
-	//TODO: this will be changed when supporting multiple sequencers from the hub
+	// Dymint ignores any setValidator responses from the app, as it is manages the validator set based on the settlement consensus
+	// TODO: this will be changed when supporting multiple sequencers from the hub
 	validatorUpdates := []*tmtypes.Validator{}
 
 	if state.ConsensusParams.Block.MaxBytes == 0 {
@@ -213,7 +213,7 @@ func (e *BlockExecutor) updateState(state types.State, block *types.Block, abciR
 	}
 
 	hash := block.Header.Hash()
-	//TODO: we can probably pass the state as a pointer and update it directly
+	// TODO: we can probably pass the state as a pointer and update it directly
 	s := types.State{
 		Version:         state.Version,
 		ChainID:         state.ChainID,
@@ -309,7 +309,7 @@ func (e *BlockExecutor) validateCommit(proposer *types.Sequencer, commit *types.
 }
 
 // Execute executes the block and returns the ABCIResponses.
-func (e *BlockExecutor) Execute(ctx context.Context, state types.State, block *types.Block) (*tmstate.ABCIResponses, error) {
+func (e *BlockExecutor) Execute(ctx context.Context, state types.State, block *types.Block) (*tmstate.ABCIResponses, error) { // TODO: unused?
 	var err error
 	abciResponses := new(tmstate.ABCIResponses)
 	abciResponses.DeliverTxs = make([]*abci.ResponseDeliverTx, len(block.Data.Txs))
@@ -320,35 +320,30 @@ func (e *BlockExecutor) Execute(ctx context.Context, state types.State, block *t
 
 	expectedISRCount := 3 + len(block.Data.Txs) // initial, beginblock, len(delivertxs), endblock
 
-	//TODO: wrap into struct with helper methods
+	// TODO: wrap into struct with helper methods
 	ISRs := make([][]byte, expectedISRCount)
 	currISRIdx := 0
 
-	var generateISR bool //sequencer mode. otherwise it's verifier mode
+	generateISR := false // verifier mode. True implies sequencer mode
 
 	blockISRs := block.Data.IntermediateStateRoots.RawRootsList
-	if blockISRs != nil {
+	if blockISRs == nil {
+		if e.fraudProofsEnabled && !e.isAggregator() {
+			e.logger.Error("block has no ISRs")
+			return nil, types.ErrBlockMissingISR
+		}
+		generateISR = true
+	} else {
 		if len(blockISRs) != expectedISRCount {
 			e.logger.Error("ISR count mismatch", "expected", expectedISRCount, "actual", len(blockISRs))
 			return nil, types.ErrBlockISRCountMismatch
 		}
-		generateISR = false
 		ISRs = blockISRs
-	} else {
-		//block with no ISRs acceptable only for sequencer
-		if !e.isAggregator() {
-			if e.fraudProofsEnabled {
-				e.logger.Error("block has no ISRs")
-				return nil, types.ErrBlockMissingISR
-			}
-		} else {
-			generateISR = true
-		}
 	}
 
 	ISRs, err = e.setOrVerifyISR("initial ISR", ISRs, generateISR, currISRIdx)
 	currISRIdx++
-	//not supposed to happen as no state changed yet
+	// not supposed to happen as no state changed yet
 	if err != nil {
 		return nil, err
 	}
@@ -389,7 +384,7 @@ func (e *BlockExecutor) Execute(ctx context.Context, state types.State, block *t
 	currISRIdx++
 	if err != nil {
 		if errors.Is(err, types.ErrInvalidISR) {
-			e.generateFraudProof(&reqBeginBlock, nil, nil)
+			e.generateFraudProof(&reqBeginBlock, nil, nil) // TODO: return early? Handle error?
 		}
 		return nil, err
 	}
@@ -407,7 +402,7 @@ func (e *BlockExecutor) Execute(ctx context.Context, state types.State, block *t
 		currISRIdx++
 		if err != nil {
 			if errors.Is(err, types.ErrInvalidISR) {
-				e.generateFraudProof(&reqBeginBlock, deliverTxRequests, nil)
+				e.generateFraudProof(&reqBeginBlock, deliverTxRequests, nil) // TODO: return early? Handle error?
 			}
 			return nil, err
 		}
@@ -423,7 +418,7 @@ func (e *BlockExecutor) Execute(ctx context.Context, state types.State, block *t
 	currISRIdx++
 	if err != nil {
 		if errors.Is(err, types.ErrInvalidISR) {
-			e.generateFraudProof(&reqBeginBlock, deliverTxRequests, &reqEndBlock)
+			e.generateFraudProof(&reqBeginBlock, deliverTxRequests, &reqEndBlock) // TODO: return early? Handle error?
 		}
 		return nil, err
 	}

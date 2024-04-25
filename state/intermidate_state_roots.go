@@ -27,7 +27,7 @@ func (e *BlockExecutor) setOrVerifyISR(phase string, ISRs [][]byte, generateISR 
 		return nil, err
 	}
 
-	//sequencer mode
+	// sequencer mode
 	if generateISR {
 		e.logger.Debug(phase, "ISR", hex.EncodeToString(isr))
 		simulateFraud := phase == "deliverTx" && e.simulateFraud && rand.Float64() < 0.5
@@ -40,7 +40,7 @@ func (e *BlockExecutor) setOrVerifyISR(phase string, ISRs [][]byte, generateISR 
 		return ISRs, nil
 	}
 
-	//verifier mode
+	// verifier mode
 	e.logger.Debug("verifying ISR", "phase", phase)
 	if e.fraudProofsEnabled && !bytes.Equal(isr, ISRs[idx]) {
 		e.logger.Error(phase, "ISR mismatch", "ISR", hex.EncodeToString(isr), "expected", hex.EncodeToString(ISRs[idx]))
@@ -50,7 +50,11 @@ func (e *BlockExecutor) setOrVerifyISR(phase string, ISRs [][]byte, generateISR 
 	return ISRs, nil
 }
 
-func (e *BlockExecutor) generateFraudProof(beginBlockRequest *abci.RequestBeginBlock, deliverTxRequests []*abci.RequestDeliverTx, endBlockRequest *abci.RequestEndBlock) (*abci.FraudProof, error) {
+func (e *BlockExecutor) generateFraudProof(
+	beginBlockRequest *abci.RequestBeginBlock,
+	deliverTxRequests []*abci.RequestDeliverTx,
+	endBlockRequest *abci.RequestEndBlock,
+) (*abci.FraudProof, error) {
 	generateFraudProofRequest := abci.RequestGenerateFraudProof{}
 	if beginBlockRequest == nil {
 		return nil, fmt.Errorf("begin block request cannot be a nil parameter")

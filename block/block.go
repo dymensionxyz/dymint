@@ -42,7 +42,7 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 		return err
 	}
 
-	//if we are the sequencer, we need to make sure the ISRs stored
+	// if we are the sequencer, we need to make sure the ISRs stored
 	saveWithISRs := false
 	if m.proposerKey != nil && block.Data.IntermediateStateRoots.RawRootsList == nil {
 		saveWithISRs = true
@@ -55,6 +55,9 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 	}
 
 	if block.Data.IntermediateStateRoots.RawRootsList == nil {
+		/*
+			TODO: why is this check here? It should be assumed in the sequencer case and already checked before in the non-sequencer case
+		*/
 		m.logger.Error("Failed to get intermediate state roots")
 		return fmt.Errorf("failed to get intermediate state roots")
 	}
@@ -222,5 +225,4 @@ func (m *Manager) gossipBlock(ctx context.Context, block types.Block, commit typ
 		return err
 	}
 	return nil
-
 }
