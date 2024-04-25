@@ -337,7 +337,7 @@ func (e *BlockExecutor) Execute(ctx context.Context, state types.State, block *t
 	if e.isAggregator() {
 		isrCollector.CollectNext(fraudproof.PhaseInit)
 	} else if !isrVerifier.VerifyNext() {
-		fraudproof.Generate(e.logger, e.proxyAppConsensusConn, nil, nil, nil) // TODO: return early? Handle error?
+		fraudproof.Generate(e.proxyAppConsensusConn, nil, nil, nil) // TODO: return early? Handle error?
 	}
 
 	e.proxyAppConsensusConn.SetResponseCallback(func(req *abci.Request, res *abci.Response) {
@@ -375,7 +375,7 @@ func (e *BlockExecutor) Execute(ctx context.Context, state types.State, block *t
 	if e.isAggregator() {
 		isrCollector.CollectNext(fraudproof.PhaseBeginBlock)
 	} else if !isrVerifier.VerifyNext() {
-		fraudproof.Generate(e.logger, e.proxyAppConsensusConn, &reqBeginBlock, nil, nil) // TODO: return early? Handle error?
+		fraudproof.Generate(e.proxyAppConsensusConn, &reqBeginBlock, nil, nil) // TODO: return early? Handle error?
 	}
 
 	txReqs := make([]*abci.RequestDeliverTx, 0, len(block.Data.Txs))
@@ -390,7 +390,7 @@ func (e *BlockExecutor) Execute(ctx context.Context, state types.State, block *t
 		if e.isAggregator() {
 			isrCollector.CollectNext(fraudproof.PhaseDeliverTx)
 		} else if !isrVerifier.VerifyNext() {
-			fraudproof.Generate(e.logger, e.proxyAppConsensusConn, &reqBeginBlock, txReqs, nil) // TODO: return early? Handle error?
+			fraudproof.Generate(e.proxyAppConsensusConn, &reqBeginBlock, txReqs, nil) // TODO: return early? Handle error?
 		}
 	}
 
@@ -404,7 +404,7 @@ func (e *BlockExecutor) Execute(ctx context.Context, state types.State, block *t
 		isrCollector.CollectNext(fraudproof.PhaseEndBlock)
 		block.Data.IntermediateStateRoots.RawRootsList = isrCollector.Isrs
 	} else if !isrVerifier.VerifyNext() {
-		fraudproof.Generate(e.logger, e.proxyAppConsensusConn, &reqBeginBlock, txReqs, &reqEndBlock) // TODO: return early? Handle error?
+		fraudproof.Generate(e.proxyAppConsensusConn, &reqBeginBlock, txReqs, &reqEndBlock) // TODO: return early? Handle error?
 	}
 
 	if err := isrCollector.Err(); err != nil {

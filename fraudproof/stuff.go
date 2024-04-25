@@ -40,6 +40,7 @@ func (c *ISRCollector) CollectNext(p Phase) {
 	hashRes, err := c.ProxyAppConsensusConn.GetAppHashSync(types.RequestGetAppHash{})
 	if err != nil {
 		c.err = fmt.Errorf("get app hash sync: %w", err)
+		return
 	}
 	hash := hashRes.AppHash
 	simulateFraud := p == PhaseDeliverTx && c.SimulateFraud && rand.Float64() < 0.5
@@ -72,6 +73,7 @@ func (v *ISRVerifier) VerifyNext() bool {
 	hashRes, err := v.ProxyAppConsensusConn.GetAppHashSync(types.RequestGetAppHash{})
 	if err != nil {
 		v.err = fmt.Errorf("get app hash sync: %w", err)
+		return true // TODO: debate
 	}
 	if v.FraudProofsEnabled && !bytes.Equal(hashRes.AppHash, v.Isrs[v.Ix]) {
 		return false
@@ -84,13 +86,7 @@ func (v *ISRVerifier) Err() error {
 	return v.err
 }
 
-func Generate(
-	logger log.Logger,
-	proxyAppConsensusConn proxy.AppConnConsensus,
-	beginBlockRequest *types.RequestBeginBlock,
-	deliverTxRequests []*types.RequestDeliverTx,
-	endBlockRequest *types.RequestEndBlock,
-) (*types.FraudProof, error) {
+func Generate(proxyAppConsensusConn proxy.AppConnConsensus, beginBlockRequest *types.RequestBeginBlock, deliverTxRequests []*types.RequestDeliverTx, endBlockRequest *types.RequestEndBlock) (*types.FraudProof, error) {
 	generateFraudProofRequest := types.RequestGenerateFraudProof{}
 	if beginBlockRequest == nil {
 		return nil, fmt.Errorf("begin block request cannot be a nil parameter")
@@ -114,7 +110,6 @@ func Generate(
 
 	fraud := resp.FraudProof
 	if fraud == nil {
-		logger.Error("fraud proof is nil")
 		return nil, errors.New("fraud proof is nil")
 	}
 

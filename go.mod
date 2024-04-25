@@ -1,6 +1,8 @@
 module github.com/dymensionxyz/dymint
 
-go 1.20
+go 1.21
+
+toolchain go1.22.2
 
 require (
 	code.cloudfoundry.org/go-diodes v0.0.0-20220725190411-383eb6634c40
@@ -276,4 +278,8 @@ replace (
 
 	github.com/rollkit/celestia-openrpc => github.com/celestiaorg/celestia-openrpc v0.3.0
 	github.com/tendermint/tendermint => github.com/dymensionxyz/cometbft v0.34.29-fraudproof-0.0.1
+)
+
+replace (
+    github.com/osmosis-labs/osmosis/v15 => github.com/dymensionxyz/osmosis/v15 v15.2.0-dymension-v1.1.2
 )
