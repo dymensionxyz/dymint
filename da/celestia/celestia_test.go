@@ -254,21 +254,6 @@ func TestAvalabilityWrongProof(t *testing.T) {
 	assert.ErrorIs(availRes.Error, da.ErrUnableToGetProof)
 }
 
-func TestRetrievalWrongNamespace(t *testing.T) {
-	assert := assert.New(t)
-
-	_, dalc, _, _ := setDAandMock(t)
-
-	retriever := dalc.(da.BatchRetriever)
-
-	h1 := &da.DASubmitMetaData{
-		Height: 1,
-	}
-
-	availRes := retriever.CheckBatchAvailability(h1)
-	assert.ErrorIs(availRes.Error, da.ErrNameSpace)
-}
-
 func TestRetrievalWrongCommitment(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
@@ -288,9 +273,9 @@ func TestRetrievalWrongCommitment(t *testing.T) {
 		Commitment: commitment,
 		Namespace:  namespace,
 	}
-	retreiveRes := retriever.RetrieveBatches(h1)
-	assert.ErrorIs(retreiveRes.Error, da.ErrBlobNotFound)
-	require.True(len(retreiveRes.Batches) == 0)
+	retrieveRes := retriever.RetrieveBatches(h1)
+	assert.ErrorIs(retrieveRes.Error, da.ErrBlobNotFound)
+	require.True(len(retrieveRes.Batches) == 0)
 
 	mockRPCClient.On("GetProof", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
 	mockRPCClient.On("GetHeaders", mock.Anything, mock.Anything).Return(headers, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })

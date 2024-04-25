@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"slices"
 	"time"
 
 	"github.com/avast/retry-go/v4"
@@ -309,7 +308,7 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMet
 	defer cancel()
 
 	var batches []*types.Batch
-	blob, err := c.rpc.Get(ctx, daMetaData.Height, c.config.NamespaceID.Bytes(), daMetaData.Commitment)
+	blob, err := c.rpc.Get(ctx, daMetaData.Height, daMetaData.Namespace, daMetaData.Commitment)
 	if err != nil {
 		return da.ResultRetrieveBatch{
 			BaseResult: da.BaseResult{
@@ -400,17 +399,6 @@ func (c *DataAvailabilityLayerClient) retrieveBatchesNoCommitment(dataLayerHeigh
 
 func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
 	var availabilityResult da.ResultCheckBatch
-	//check namespace
-	if !slices.Equal(daMetaData.Namespace, c.config.NamespaceID.Bytes()) {
-		return da.ResultCheckBatch{
-			BaseResult: da.BaseResult{
-				Code:    da.StatusError,
-				Message: fmt.Sprintf("namespace not matching: daMetaData %v: config: %v", daMetaData.Namespace, c.config.NamespaceID.Bytes()),
-				Error:   da.ErrNameSpace,
-			},
-			CheckMetaData: &da.DACheckMetaData{},
-		}
-	}
 	for {
 		select {
 		case <-c.ctx.Done():
@@ -439,10 +427,12 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
 	var proofs []*blob.Proof
 
-	DACheckMetaData := &da.DACheckMetaData{}
-	DACheckMetaData.Height = daMetaData.Height
-	DACheckMetaData.Client = daMetaData.Client
-	DACheckMetaData.Commitment = daMetaData.Commitment
+	DACheckMetaData := &da.DACheckMetaData{
+		Client:     daMetaData.Client,
+		Height:     daMetaData.Height,
+		Commitment: daMetaData.Commitment,
+		Namespace:  daMetaData.Namespace,
+	}
 
 	dah, err := c.getDataAvailabilityHeaders(daMetaData.Height)
 	if err != nil {
@@ -459,7 +449,7 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 	DACheckMetaData.Root = dah.Hash()
 	included := false
 
-	proof, err := c.getProof(daMetaData.Height, daMetaData.Commitment)
+	proof, err := c.getProof(daMetaData)
 	if err != nil || proof == nil {
 		// TODO (srene): Not getting proof means there is no existing data for the namespace and the commitment (the commitment is wrong).
 		// Therefore we need to prove whether the commitment is wrong or the span does not exists.
@@ -502,7 +492,7 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 		}
 	}
 
-	included, err = c.validateProof(daMetaData.Height, daMetaData.Commitment, proof)
+	included, err = c.validateProof(daMetaData, proof)
 	// The both cases below (there is an error validating the proof or the proof is wrong) should not happen
 	// if we consider correct functioning of the celestia light node.
 	// This will only happen in case the previous step the celestia light node returned wrong proofs..
@@ -530,7 +520,6 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 	DACheckMetaData.Index = index
 	DACheckMetaData.Length = shares
 	DACheckMetaData.Proofs = proofs
-	DACheckMetaData.Namespace = c.config.NamespaceID.Bytes()
 	return da.ResultCheckBatch{
 		BaseResult: da.BaseResult{
 			Code:    da.StatusSuccess,
@@ -575,12 +564,12 @@ func (c *DataAvailabilityLayerClient) submit(daBlob da.Blob) (uint64, da.Commitm
 	return height, commitments[0], nil
 }
 
-func (c *DataAvailabilityLayerClient) getProof(height uint64, commitment da.Commitment) (*blob.Proof, error) {
+func (c *DataAvailabilityLayerClient) getProof(daMetadata *da.DASubmitMetaData) (*blob.Proof, error) {
 	c.logger.Info("Getting proof via RPC call")
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
-	proof, err := c.rpc.GetProof(ctx, height, c.config.NamespaceID.Bytes(), commitment)
+	proof, err := c.rpc.GetProof(ctx, daMetadata.Height, daMetadata.Namespace, daMetadata.Commitment)
 	if err != nil {
 		return nil, err
 	}
@@ -606,12 +595,12 @@ func (c *DataAvailabilityLayerClient) blobsAndCommitments(daBlob da.Blob) ([]*bl
 	return blobs, commitments, nil
 }
 
-func (c *DataAvailabilityLayerClient) validateProof(height uint64, commitment da.Commitment, proof *blob.Proof) (bool, error) {
+func (c *DataAvailabilityLayerClient) validateProof(daMetaData *da.DASubmitMetaData, proof *blob.Proof) (bool, error) {
 	c.logger.Info("Getting inclusion validation via RPC call")
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
-	return c.rpc.Included(ctx, height, c.config.NamespaceID.Bytes(), proof, commitment)
+	return c.rpc.Included(ctx, daMetaData.Height, daMetaData.Namespace, proof, daMetaData.Commitment)
 }
 
 func (c *DataAvailabilityLayerClient) getDataAvailabilityHeaders(height uint64) (*header.DataAvailabilityHeader, error) {
