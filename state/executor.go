@@ -318,34 +318,23 @@ func (e *BlockExecutor) Execute(ctx context.Context, state types.State, block *t
 	validTxs := 0
 	invalidTxs := 0
 
-	expectedISRCount := 3 + len(block.Data.Txs) // initial, beginblock, len(delivertxs), endblock
-
-	// TODO: wrap into struct with helper methods
-	ISRs := make([][]byte, expectedISRCount)
-	currISRIdx := 0
-
-	generateISR := false // verifier mode. True implies sequencer mode
-
-	blockISRs := block.Data.IntermediateStateRoots.RawRootsList
-	if blockISRs == nil {
-		if e.fraudProofsEnabled && !e.isAggregator() {
-			e.logger.Error("block has no ISRs")
-			return nil, types.ErrBlockMissingISR
-		}
-		generateISR = true
-	} else {
-		if len(blockISRs) != expectedISRCount {
-			e.logger.Error("ISR count mismatch", "expected", expectedISRCount, "actual", len(blockISRs))
-			return nil, types.ErrBlockISRCountMismatch
-		}
-		ISRs = blockISRs
+	isrCollector := ISRCollector{
+		proxyAppConsensusConn: e.proxyAppConsensusConn,
+		logger:                e.logger,
+		isrs:                  make([]ISR, 0), // TODO: could supply 3 + len(block.Data.Txs) as capacity
+		simulateFraud:         e.simulateFraud,
+	}
+	// TODO: need to do validation that the block has 3 + len(block.Data.Txs) ISRs. Probably better on receipt via gossip
+	isrVerifier := ISRVerifier{
+		proxyAppConsensusConn: e.proxyAppConsensusConn,
+		logger:                e.logger,
+		isrs:                  block.Data.IntermediateStateRoots.RawRootsList,
 	}
 
-	ISRs, err = e.setOrVerifyISR("initial ISR", ISRs, generateISR, currISRIdx)
-	currISRIdx++
-	// not supposed to happen as no state changed yet
-	if err != nil {
-		return nil, err
+	if e.isAggregator() {
+		isrCollector.CollectNext(phaseInit)
+	} else if !isrVerifier.VerifyNext() {
+		e.generateFraudProof(nil, nil, nil) // TODO: return early? Handle error?
 	}
 
 	e.proxyAppConsensusConn.SetResponseCallback(func(req *abci.Request, res *abci.Response) {
@@ -380,31 +369,25 @@ func (e *BlockExecutor) Execute(ctx context.Context, state types.State, block *t
 		return nil, err
 	}
 
-	ISRs, err = e.setOrVerifyISR("begin block ISR", ISRs, generateISR, currISRIdx)
-	currISRIdx++
-	if err != nil {
-		if errors.Is(err, types.ErrInvalidISR) {
-			e.generateFraudProof(&reqBeginBlock, nil, nil) // TODO: return early? Handle error?
-		}
-		return nil, err
+	if e.isAggregator() {
+		isrCollector.CollectNext(phaseBeginBlock)
+	} else if !isrVerifier.VerifyNext() {
+		e.generateFraudProof(&reqBeginBlock, nil, nil) // TODO: return early? Handle error?
 	}
 
-	deliverTxRequests := make([]*abci.RequestDeliverTx, 0, len(block.Data.Txs))
+	txReqs := make([]*abci.RequestDeliverTx, 0, len(block.Data.Txs))
 	for _, tx := range block.Data.Txs {
-		deliverTxRequest := abci.RequestDeliverTx{Tx: tx}
-		deliverTxRequests = append(deliverTxRequests, &deliverTxRequest)
-		res := e.proxyAppConsensusConn.DeliverTxAsync(deliverTxRequest)
+		tx := abci.RequestDeliverTx{Tx: tx}
+		txReqs = append(txReqs, &tx)
+		res := e.proxyAppConsensusConn.DeliverTxAsync(tx)
 		if res.GetException() != nil {
 			return nil, errors.New(res.GetException().GetError())
 		}
 
-		_, err = e.setOrVerifyISR("deliverTx", ISRs, generateISR, currISRIdx)
-		currISRIdx++
-		if err != nil {
-			if errors.Is(err, types.ErrInvalidISR) {
-				e.generateFraudProof(&reqBeginBlock, deliverTxRequests, nil) // TODO: return early? Handle error?
-			}
-			return nil, err
+		if e.isAggregator() {
+			isrCollector.CollectNext(phaseDeliverTx)
+		} else if !isrVerifier.VerifyNext() {
+			e.generateFraudProof(&reqBeginBlock, txReqs, nil) // TODO: return early? Handle error?
 		}
 	}
 
@@ -414,24 +397,11 @@ func (e *BlockExecutor) Execute(ctx context.Context, state types.State, block *t
 		return nil, err
 	}
 
-	ISRs, err = e.setOrVerifyISR("endblock ISR", ISRs, generateISR, currISRIdx)
-	currISRIdx++
-	if err != nil {
-		if errors.Is(err, types.ErrInvalidISR) {
-			e.generateFraudProof(&reqBeginBlock, deliverTxRequests, &reqEndBlock) // TODO: return early? Handle error?
-		}
-		return nil, err
-	}
-
-	if blockISRs == nil {
-		// we've already validated we're the aggregator in this case
-		// double-checking we've produced ISRs as expected
-		if len(ISRs) != expectedISRCount {
-			e.logger.Error("ISR count mismatch", "expected", expectedISRCount, "actual", len(blockISRs))
-			return nil, errors.New("ISR count mismatch")
-		}
-		block.Data.IntermediateStateRoots.RawRootsList = ISRs
-		return abciResponses, nil
+	if e.isAggregator() {
+		isrCollector.CollectNext(phaseEndBlock)
+		block.Data.IntermediateStateRoots.RawRootsList = isrCollector.isrs
+	} else if !isrVerifier.VerifyNext() {
+		e.generateFraudProof(&reqBeginBlock, txReqs, &reqEndBlock) // TODO: return early? Handle error?
 	}
 
 	return abciResponses, nil

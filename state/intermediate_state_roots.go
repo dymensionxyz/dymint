@@ -9,45 +9,72 @@ import (
 	"math/rand"
 	"os"
 
-	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/dymint/log"
+
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/proxy"
 )
 
-func (e *BlockExecutor) getAppHash() ([]byte, error) {
-	isrResp, err := e.proxyAppConsensusConn.GetAppHashSync(abci.RequestGetAppHash{})
-	if err != nil {
-		return nil, err
-	}
-	return isrResp.AppHash, nil
+type phase = string
+
+const (
+	phaseInit       phase = "init"
+	phaseBeginBlock phase = "beginBlock"
+	phaseDeliverTx  phase = "deliverTx"
+	phaseEndBlock   phase = "endBlock"
+)
+
+type ISR = []byte
+
+type ISRCollector struct {
+	proxyAppConsensusConn proxy.AppConnConsensus
+	logger                log.Logger
+	isrs                  []ISR
+	simulateFraud         bool
+	err                   error
 }
 
-func (e *BlockExecutor) setOrVerifyISR(phase string, ISRs [][]byte, generateISR bool, idx int) ([][]byte, error) {
-	isr, err := e.getAppHash()
+func (c *ISRCollector) CollectNext(p phase) {
+	if c.err != nil {
+		return
+	}
+	hashRes, err := c.proxyAppConsensusConn.GetAppHashSync(abci.RequestGetAppHash{})
 	if err != nil {
-		return nil, err
+		c.err = fmt.Errorf("get app hash sync: %w", err)
 	}
-
-	// sequencer mode
-	if generateISR {
-		e.logger.Debug(phase, "ISR", hex.EncodeToString(isr))
-		simulateFraud := phase == "deliverTx" && e.simulateFraud && rand.Float64() < 0.5
-		if simulateFraud {
-			e.logger.Info("simulating fraud", "phase", phase)
-			isr = bytes.Repeat([]byte("a"), 32)
-		}
-
-		ISRs[idx] = isr
-		return ISRs, nil
+	hash := hashRes.AppHash
+	simulateFraud := p == phaseDeliverTx && c.simulateFraud && rand.Float64() < 0.5
+	if simulateFraud {
+		c.logger.Info("simulating fraud", "phase", p)
+		hash = bytes.Repeat([]byte("a"), 32)
 	}
+	c.isrs = append(c.isrs, hash)
+	c.logger.Debug("isr collected", "phase", p, "ISR", hex.EncodeToString(hash))
+}
 
-	// verifier mode
-	e.logger.Debug("verifying ISR", "phase", phase)
-	if e.fraudProofsEnabled && !bytes.Equal(isr, ISRs[idx]) {
-		e.logger.Error(phase, "ISR mismatch", "ISR", hex.EncodeToString(isr), "expected", hex.EncodeToString(ISRs[idx]))
-		return nil, types.ErrInvalidISR
+type ISRVerifier struct {
+	proxyAppConsensusConn proxy.AppConnConsensus
+	logger                log.Logger
+	isrs                  []ISR
+	ix                    int
+	fraudProofsEnabled    bool
+	err                   error
+}
+
+// VerifyNext returns if the next ISR is ok
+func (v *ISRVerifier) VerifyNext() bool {
+	if v.err != nil {
+		return true // TODO: debate
 	}
-
-	return ISRs, nil
+	hashRes, err := v.proxyAppConsensusConn.GetAppHashSync(abci.RequestGetAppHash{})
+	if err != nil {
+		v.err = fmt.Errorf("get app hash sync: %w", err)
+	}
+	if v.fraudProofsEnabled && !bytes.Equal(hashRes.AppHash, v.isrs[v.ix]) {
+		return false
+	}
+	v.ix++ // TODO: I guess you don't need to do it only if FP are enabled, but worth a check
+	return true
 }
 
 func (e *BlockExecutor) generateFraudProof(

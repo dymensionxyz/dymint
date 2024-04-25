@@ -8,7 +8,8 @@ var (
 	ErrNoStateFound      = errors.New("no state found")
 	ErrSkippedEmptyBlock = errors.New("skipped empty block")
 
-	//fraud proof
+	// fraud proofs..
+
 	ErrInvalidISR            = errors.New("invalid ISR")
 	ErrBlockISRCountMismatch = errors.New("block ISR count mismatch")
 	ErrBlockMissingISR       = errors.New("block missing ISRs")
