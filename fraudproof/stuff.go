@@ -30,16 +30,16 @@ type ISRCollector struct {
 	Logger                log.Logger
 	Isrs                  []ISR
 	SimulateFraud         bool
-	Err                   error
+	err                   error
 }
 
 func (c *ISRCollector) CollectNext(p Phase) {
-	if c.Err != nil {
+	if c.err != nil {
 		return
 	}
 	hashRes, err := c.ProxyAppConsensusConn.GetAppHashSync(types.RequestGetAppHash{})
 	if err != nil {
-		c.Err = fmt.Errorf("get app hash sync: %w", err)
+		c.err = fmt.Errorf("get app hash sync: %w", err)
 	}
 	hash := hashRes.AppHash
 	simulateFraud := p == PhaseDeliverTx && c.SimulateFraud && rand.Float64() < 0.5
@@ -51,29 +51,37 @@ func (c *ISRCollector) CollectNext(p Phase) {
 	c.Logger.Debug("isr collected", "phase", p, "ISR", hex.EncodeToString(hash))
 }
 
+func (c *ISRCollector) Err() error {
+	return c.err
+}
+
 type ISRVerifier struct {
 	ProxyAppConsensusConn proxy.AppConnConsensus
 	Logger                log.Logger
 	Isrs                  []ISR
 	Ix                    int
 	FraudProofsEnabled    bool
-	Err                   error
+	err                   error
 }
 
 // VerifyNext returns if the next ISR is ok
 func (v *ISRVerifier) VerifyNext() bool {
-	if v.Err != nil {
+	if v.err != nil {
 		return true // TODO: debate
 	}
 	hashRes, err := v.ProxyAppConsensusConn.GetAppHashSync(types.RequestGetAppHash{})
 	if err != nil {
-		v.Err = fmt.Errorf("get app hash sync: %w", err)
+		v.err = fmt.Errorf("get app hash sync: %w", err)
 	}
 	if v.FraudProofsEnabled && !bytes.Equal(hashRes.AppHash, v.Isrs[v.Ix]) {
 		return false
 	}
 	v.Ix++ // TODO: I guess you don't need to do it only if FP are enabled, but worth a check
 	return true
+}
+
+func (v *ISRVerifier) Err() error {
+	return v.err
 }
 
 func Generate(

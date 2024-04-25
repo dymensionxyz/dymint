@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/dymensionxyz/dymint/fraudproof"
@@ -404,6 +405,13 @@ func (e *BlockExecutor) Execute(ctx context.Context, state types.State, block *t
 		block.Data.IntermediateStateRoots.RawRootsList = isrCollector.Isrs
 	} else if !isrVerifier.VerifyNext() {
 		fraudproof.Generate(e.logger, e.proxyAppConsensusConn, &reqBeginBlock, txReqs, &reqEndBlock) // TODO: return early? Handle error?
+	}
+
+	if err := isrCollector.Err(); err != nil {
+		return nil, fmt.Errorf("ISR collector: %w", err)
+	}
+	if err := isrVerifier.Err(); err != nil {
+		return nil, fmt.Errorf("ISR verifier: %w", err)
 	}
 
 	return abciResponses, nil
