@@ -7,6 +7,8 @@ import (
 	"errors"
 	"time"
 
+	"github.com/dymensionxyz/dymint/fraudproof"
+
 	abci "github.com/tendermint/tendermint/abci/types"
 	abcitypes "github.com/tendermint/tendermint/abci/types"
 	tmcrypto "github.com/tendermint/tendermint/crypto/encoding"
@@ -318,23 +320,23 @@ func (e *BlockExecutor) Execute(ctx context.Context, state types.State, block *t
 	validTxs := 0
 	invalidTxs := 0
 
-	isrCollector := ISRCollector{
-		proxyAppConsensusConn: e.proxyAppConsensusConn,
-		logger:                e.logger,
-		isrs:                  make([]ISR, 0), // TODO: could supply 3 + len(block.Data.Txs) as capacity
-		simulateFraud:         e.simulateFraud,
+	isrCollector := fraudproof.ISRCollector{
+		ProxyAppConsensusConn: e.proxyAppConsensusConn,
+		Logger:                e.logger,
+		Isrs:                  make([]fraudproof.ISR, 0), // TODO: could supply 3 + len(block.Data.Txs) as capacity
+		SimulateFraud:         e.simulateFraud,
 	}
 	// TODO: need to do validation that the block has 3 + len(block.Data.Txs) ISRs. Probably better on receipt via gossip
-	isrVerifier := ISRVerifier{
-		proxyAppConsensusConn: e.proxyAppConsensusConn,
-		logger:                e.logger,
-		isrs:                  block.Data.IntermediateStateRoots.RawRootsList,
+	isrVerifier := fraudproof.ISRVerifier{
+		ProxyAppConsensusConn: e.proxyAppConsensusConn,
+		Logger:                e.logger,
+		Isrs:                  block.Data.IntermediateStateRoots.RawRootsList,
 	}
 
 	if e.isAggregator() {
-		isrCollector.CollectNext(phaseInit)
+		isrCollector.CollectNext(fraudproof.PhaseInit)
 	} else if !isrVerifier.VerifyNext() {
-		e.generateFraudProof(nil, nil, nil) // TODO: return early? Handle error?
+		fraudproof.Generate(e.logger, e.proxyAppConsensusConn, nil, nil, nil) // TODO: return early? Handle error?
 	}
 
 	e.proxyAppConsensusConn.SetResponseCallback(func(req *abci.Request, res *abci.Response) {
@@ -370,9 +372,9 @@ func (e *BlockExecutor) Execute(ctx context.Context, state types.State, block *t
 	}
 
 	if e.isAggregator() {
-		isrCollector.CollectNext(phaseBeginBlock)
+		isrCollector.CollectNext(fraudproof.PhaseBeginBlock)
 	} else if !isrVerifier.VerifyNext() {
-		e.generateFraudProof(&reqBeginBlock, nil, nil) // TODO: return early? Handle error?
+		fraudproof.Generate(e.logger, e.proxyAppConsensusConn, &reqBeginBlock, nil, nil) // TODO: return early? Handle error?
 	}
 
 	txReqs := make([]*abci.RequestDeliverTx, 0, len(block.Data.Txs))
@@ -385,9 +387,9 @@ func (e *BlockExecutor) Execute(ctx context.Context, state types.State, block *t
 		}
 
 		if e.isAggregator() {
-			isrCollector.CollectNext(phaseDeliverTx)
+			isrCollector.CollectNext(fraudproof.PhaseDeliverTx)
 		} else if !isrVerifier.VerifyNext() {
-			e.generateFraudProof(&reqBeginBlock, txReqs, nil) // TODO: return early? Handle error?
+			fraudproof.Generate(e.logger, e.proxyAppConsensusConn, &reqBeginBlock, txReqs, nil) // TODO: return early? Handle error?
 		}
 	}
 
@@ -398,10 +400,10 @@ func (e *BlockExecutor) Execute(ctx context.Context, state types.State, block *t
 	}
 
 	if e.isAggregator() {
-		isrCollector.CollectNext(phaseEndBlock)
-		block.Data.IntermediateStateRoots.RawRootsList = isrCollector.isrs
+		isrCollector.CollectNext(fraudproof.PhaseEndBlock)
+		block.Data.IntermediateStateRoots.RawRootsList = isrCollector.Isrs
 	} else if !isrVerifier.VerifyNext() {
-		e.generateFraudProof(&reqBeginBlock, txReqs, &reqEndBlock) // TODO: return early? Handle error?
+		fraudproof.Generate(e.logger, e.proxyAppConsensusConn, &reqBeginBlock, txReqs, &reqEndBlock) // TODO: return early? Handle error?
 	}
 
 	return abciResponses, nil
