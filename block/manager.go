@@ -85,6 +85,10 @@ type Manager struct {
 	prevCommit map[uint64]*types.Commit
 }
 
+func (m *Manager) isSequencer() bool {
+	return m.proposerKey != nil
+}
+
 // getInitialState tries to load lastState from Store, and if it's not available it reads GenesisDoc.
 func getInitialState(store store.Store, genesis *tmtypes.GenesisDoc, logger log.Logger) (types.State, error) {
 	s, err := store.LoadState()
@@ -214,7 +218,6 @@ func getAddress(key crypto.PrivKey) ([]byte, error) {
 func (m *Manager) EventListener(ctx context.Context) {
 	go utils.SubscribeAndHandleEvents(ctx, m.pubsub, "nodeHealthStatusHandler", events.EventQueryHealthStatus, m.healthStatusEventCallback, m.logger)
 	go utils.SubscribeAndHandleEvents(ctx, m.pubsub, "ApplyBlockLoop", p2p.EventQueryNewNewGossipedBlock, m.applyBlockCallback, m.logger, 100)
-
 }
 
 func (m *Manager) healthStatusEventCallback(event pubsub.Message) {
@@ -275,7 +278,6 @@ func (m *Manager) getLatestBatchFromSL(ctx context.Context) (*settlement.ResultR
 		return resultRetrieveBatch, err
 	}
 	return resultRetrieveBatch, nil
-
 }
 
 // TODO(omritoptix): possible remove this method from the manager
@@ -287,7 +289,7 @@ func updateInitChainState(s *types.State, res *abci.ResponseInitChain, validator
 		copy(s.AppHash[:], res.AppHash)
 	}
 
-	//The validators after initChain must be greater than zero, otherwise this state is not loadable
+	// The validators after initChain must be greater than zero, otherwise this state is not loadable
 	if len(validators) <= 0 {
 		panic("Validators must be greater than zero")
 	}

@@ -44,7 +44,7 @@ func (m *Manager) applyBlock(ctx context.Context, block *types.Block, commit *ty
 
 	// if we are the sequencer, we need to make sure the ISRs stored
 	saveWithISRs := false
-	if m.proposerKey != nil && block.Data.IntermediateStateRoots.RawRootsList == nil {
+	if m.isSequencer() && block.Data.IntermediateStateRoots.RawRootsList == nil { // TODO: why would this be non-nil at this point?
 		saveWithISRs = true
 	}
 
