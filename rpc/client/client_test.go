@@ -26,7 +26,7 @@ import (
 	tmtypes "github.com/tendermint/tendermint/types"
 
 	"github.com/dymensionxyz/dymint/config"
-	abciconv "github.com/dymensionxyz/dymint/conv/abci"
+	"github.com/dymensionxyz/dymint/mempool"
 	"github.com/dymensionxyz/dymint/mocks"
 	"github.com/dymensionxyz/dymint/node"
 	"github.com/dymensionxyz/dymint/settlement"
@@ -78,9 +78,10 @@ func TestCheckTx(t *testing.T) {
 
 func TestGenesisChunked(t *testing.T) {
 	assert := assert.New(t)
+	rollappID := "rollapp_1234-1"
 
 	genDoc := &tmtypes.GenesisDoc{
-		ChainID:       "test",
+		ChainID:       rollappID,
 		InitialHeight: int64(1),
 		AppHash:       []byte("test hash"),
 		Validators: []tmtypes.GenesisValidator{
@@ -90,6 +91,7 @@ func TestGenesisChunked(t *testing.T) {
 
 	mockApp := &mocks.Application{}
 	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
+	mockApp.On("Info", mock.Anything).Return(expectedInfo)
 	privKey, _, _ := crypto.GenerateEd25519Key(crand.Reader)
 	signingKey, _, _ := crypto.GenerateEd25519Key(crand.Reader)
 
@@ -106,13 +108,25 @@ func TestGenesisChunked(t *testing.T) {
 			BlockBatchMaxSizeBytes:  1000,
 			GossipedBlocksCacheSize: 50,
 		},
-		BootstrapTime:    30 * time.Second,
-		DALayer:          "mock",
-		DAConfig:         "",
-		SettlementLayer:  "mock",
-		SettlementConfig: settlement.Config{},
+		BootstrapTime:   30 * time.Second,
+		DALayer:         "mock",
+		DAConfig:        "",
+		SettlementLayer: "mock",
+		SettlementConfig: settlement.Config{
+			RollappID: rollappID,
+		},
 	}
-	n, _ := node.NewNode(context.Background(), config, privKey, signingKey, proxy.NewLocalClientCreator(mockApp), genDoc, log.TestingLogger())
+	n, err := node.NewNode(
+		context.Background(),
+		config,
+		privKey,
+		signingKey,
+		proxy.NewLocalClientCreator(mockApp),
+		genDoc,
+		log.TestingLogger(),
+		mempool.NopMetrics(),
+	)
+	require.NoError(t, err)
 
 	rpc := NewClient(n)
 
@@ -143,6 +157,7 @@ func TestBroadcastTxAsync(t *testing.T) {
 
 	mockApp, rpc := getRPC(t)
 	mockApp.On("CheckTx", abci.RequestCheckTx{Tx: expectedTx}).Return(abci.ResponseCheckTx{})
+	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 
 	err := rpc.node.Start()
 	require.NoError(t, err)
@@ -177,6 +192,7 @@ func TestBroadcastTxSync(t *testing.T) {
 	}
 
 	mockApp, rpc := getRPC(t)
+	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 
 	err := rpc.node.Start()
 	require.NoError(t, err)
@@ -227,7 +243,7 @@ func TestBroadcastTxCommit(t *testing.T) {
 	mockApp.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
 	mockApp.BeginBlock(abci.RequestBeginBlock{})
 	mockApp.On("CheckTx", abci.RequestCheckTx{Tx: expectedTx}).Return(expectedCheckResp)
-
+	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 	// in order to broadcast, the node must be started
 	err := rpc.node.Start()
 	require.NoError(err)
@@ -263,6 +279,7 @@ func TestGetBlock(t *testing.T) {
 	mockApp.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{})
 	mockApp.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{})
 	mockApp.On("Commit", mock.Anything).Return(abci.ResponseCommit{})
+	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 
 	err := rpc.node.Start()
 	require.NoError(err)
@@ -288,6 +305,7 @@ func TestGetCommit(t *testing.T) {
 	mockApp, rpc := getRPC(t)
 	mockApp.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
 	mockApp.On("Commit", mock.Anything).Return(abci.ResponseCommit{})
+	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 
 	blocks := []*types.Block{getRandomBlock(1, 5), getRandomBlock(2, 6), getRandomBlock(3, 8), getRandomBlock(4, 10)}
 
@@ -390,6 +408,7 @@ func TestGetBlockByHash(t *testing.T) {
 	mockApp.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{})
 	mockApp.On("Commit", mock.Anything).Return(abci.ResponseCommit{})
 	mockApp.On("Info", mock.Anything).Return(abci.ResponseInfo{LastBlockHeight: 0, LastBlockAppHash: []byte{0}})
+	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 
 	err := rpc.node.Start()
 	require.NoError(err)
@@ -397,7 +416,7 @@ func TestGetBlockByHash(t *testing.T) {
 	block := getRandomBlock(1, 10)
 	_, err = rpc.node.Store.SaveBlock(block, &types.Commit{}, nil)
 	require.NoError(err)
-	abciBlock, err := abciconv.ToABCIBlock(block)
+	abciBlock, err := types.ToABCIBlock(block)
 	require.NoError(err)
 
 	height := int64(block.Header.Height)
@@ -424,12 +443,14 @@ func TestTx(t *testing.T) {
 
 	mockApp := &mocks.Application{}
 	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
+	mockApp.On("Info", mock.Anything).Return(expectedInfo)
 	key, _, _ := crypto.GenerateEd25519Key(crand.Reader)
 	signingKey, proposerPubKey, err := crypto.GenerateEd25519Key(crand.Reader)
 	require.NoError(err)
 
 	pubKeybytes, err := proposerPubKey.Raw()
 	require.NoError(err)
+	rollappID := "rollapp_1234-1"
 
 	node, err := node.NewNode(context.Background(), config.NodeConfig{
 		DALayer:         "mock",
@@ -442,12 +463,15 @@ func TestTx(t *testing.T) {
 			BlockBatchMaxSizeBytes:  1000,
 			GossipedBlocksCacheSize: 50,
 		},
-		BootstrapTime:    30 * time.Second,
-		SettlementConfig: settlement.Config{ProposerPubKey: hex.EncodeToString(pubKeybytes)},
+		BootstrapTime: 30 * time.Second,
+		SettlementConfig: settlement.Config{
+			ProposerPubKey: hex.EncodeToString(pubKeybytes),
+			RollappID:      rollappID,
+		},
 	},
 		key, signingKey, proxy.NewLocalClientCreator(mockApp),
-		&tmtypes.GenesisDoc{ChainID: "test"},
-		log.TestingLogger())
+		&tmtypes.GenesisDoc{ChainID: rollappID},
+		log.TestingLogger(), mempool.NopMetrics())
 	require.NoError(err)
 	require.NotNil(node)
 
@@ -506,6 +530,7 @@ func TestUnconfirmedTxs(t *testing.T) {
 			mockApp, rpc := getRPC(t)
 			mockApp.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
 			mockApp.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{})
+			mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 
 			err := rpc.node.Start()
 			require.NoError(err)
@@ -658,7 +683,6 @@ func TestBlockchainInfo(t *testing.T) {
 				assert.Contains(result.BlockMetas, test.exp[0])
 				assert.Contains(result.BlockMetas, test.exp[1])
 			}
-
 		})
 	}
 }
@@ -699,6 +723,7 @@ func TestValidatorSetHandling(t *testing.T) {
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{}).Run(func(args mock.Arguments) {
 		waitCh <- nil
 	})
+	rollappID := "rollapp_1234-1"
 
 	nodeConfig := config.NodeConfig{
 		DALayer:         "mock",
@@ -711,11 +736,23 @@ func TestValidatorSetHandling(t *testing.T) {
 			BlockBatchMaxSizeBytes:  1000,
 			GossipedBlocksCacheSize: 50,
 		},
-		BootstrapTime:    30 * time.Second,
-		SettlementConfig: settlement.Config{ProposerPubKey: hex.EncodeToString(proposerPubKeyBytes)},
+		BootstrapTime: 30 * time.Second,
+		SettlementConfig: settlement.Config{
+			ProposerPubKey: hex.EncodeToString(proposerPubKeyBytes),
+			RollappID:      rollappID,
+		},
 	}
 
-	node, err := node.NewNode(context.Background(), nodeConfig, key, signingKey, proxy.NewLocalClientCreator(app), &tmtypes.GenesisDoc{ChainID: "test", Validators: genesisValidators}, log.TestingLogger())
+	node, err := node.NewNode(
+		context.Background(),
+		nodeConfig,
+		key,
+		signingKey,
+		proxy.NewLocalClientCreator(app),
+		&tmtypes.GenesisDoc{ChainID: rollappID},
+		log.TestingLogger(),
+		mempool.NopMetrics(),
+	)
 	require.NoError(err)
 	require.NotNil(node)
 
@@ -790,7 +827,7 @@ func getRandomTx() types.Tx {
 
 func getRandomBytes(n int) []byte {
 	data := make([]byte, n)
-	_, _ = rand.Read(data)
+	_, _ = crand.Read(data)
 	return data
 }
 
@@ -799,7 +836,7 @@ func getBlockMeta(rpc *Client, n int64) *tmtypes.BlockMeta {
 	if err != nil {
 		return nil
 	}
-	bmeta, err := abciconv.ToABCIBlockMeta(b)
+	bmeta, err := types.ToABCIBlockMeta(b)
 	if err != nil {
 		return nil
 	}
@@ -811,12 +848,14 @@ func getRPC(t *testing.T) (*mocks.Application, *Client) {
 	t.Helper()
 	require := require.New(t)
 	app := &mocks.Application{}
-	app.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
+	app.On("Info", mock.Anything).Return(expectedInfo)
 	key, _, _ := crypto.GenerateEd25519Key(crand.Reader)
 	signingKey, pubkey, err := crypto.GenerateEd25519Key(crand.Reader)
 	pubkeyBytes, _ := pubkey.Raw()
 	proposerKey := hex.EncodeToString(pubkeyBytes)
 	require.NoError(err)
+
+	rollappID := "rollapp_1234-1"
 
 	config := config.NodeConfig{
 		RootDir:    "",
@@ -831,13 +870,25 @@ func getRPC(t *testing.T) (*mocks.Application, *Client) {
 			BlockBatchMaxSizeBytes:  1000,
 			GossipedBlocksCacheSize: 50,
 		},
-		BootstrapTime:    30 * time.Second,
-		DALayer:          "mock",
-		DAConfig:         "",
-		SettlementLayer:  "mock",
-		SettlementConfig: settlement.Config{ProposerPubKey: proposerKey},
+		BootstrapTime:   30 * time.Second,
+		DALayer:         "mock",
+		DAConfig:        "",
+		SettlementLayer: "mock",
+		SettlementConfig: settlement.Config{
+			ProposerPubKey: proposerKey,
+			RollappID:      rollappID,
+		},
 	}
-	node, err := node.NewNode(context.Background(), config, key, signingKey, proxy.NewLocalClientCreator(app), &tmtypes.GenesisDoc{ChainID: "test"}, log.TestingLogger())
+	node, err := node.NewNode(
+		context.Background(),
+		config,
+		key,
+		signingKey,
+		proxy.NewLocalClientCreator(app),
+		&tmtypes.GenesisDoc{ChainID: rollappID},
+		log.TestingLogger(),
+		mempool.NopMetrics(),
+	)
 	require.NoError(err)
 	require.NotNil(node)
 
@@ -884,8 +935,8 @@ func indexBlocks(t *testing.T, rpc *Client, heights []int64) {
 			},
 		}))
 	}
-
 }
+
 func TestMempool2Nodes(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
@@ -894,6 +945,8 @@ func TestMempool2Nodes(t *testing.T) {
 	app.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 	app.On("CheckTx", abci.RequestCheckTx{Tx: []byte("bad")}).Return(abci.ResponseCheckTx{Code: 1})
 	app.On("CheckTx", abci.RequestCheckTx{Tx: []byte("good")}).Return(abci.ResponseCheckTx{Code: 0})
+	app.On("Info", mock.Anything).Return(expectedInfo)
+
 	key1, _, _ := crypto.GenerateEd25519Key(crand.Reader)
 	key2, _, _ := crypto.GenerateEd25519Key(crand.Reader)
 	signingKey1, proposerPubKey1, _ := crypto.GenerateEd25519Key(crand.Reader)
@@ -908,10 +961,15 @@ func TestMempool2Nodes(t *testing.T) {
 	proposerPubKey2Bytes, err := proposerPubKey2.Raw()
 	require.NoError(err)
 
+	rollappID := "rollapp_1234-1"
+
 	node1, err := node.NewNode(context.Background(), config.NodeConfig{
-		DALayer:          "mock",
-		SettlementLayer:  "mock",
-		SettlementConfig: settlement.Config{ProposerPubKey: hex.EncodeToString(proposerPubKey1Bytes)},
+		DALayer:         "mock",
+		SettlementLayer: "mock",
+		SettlementConfig: settlement.Config{
+			ProposerPubKey: hex.EncodeToString(proposerPubKey1Bytes),
+			RollappID:      rollappID,
+		},
 		BlockManagerConfig: config.BlockManagerConfig{
 			BlockBatchSize:          1,
 			BlockTime:               100 * time.Millisecond,
@@ -923,14 +981,17 @@ func TestMempool2Nodes(t *testing.T) {
 		P2P: config.P2PConfig{
 			ListenAddress: "/ip4/127.0.0.1/tcp/9001",
 		},
-	}, key1, signingKey1, proxy.NewLocalClientCreator(app), &tmtypes.GenesisDoc{ChainID: "test"}, log.TestingLogger())
+	}, key1, signingKey1, proxy.NewLocalClientCreator(app), &tmtypes.GenesisDoc{ChainID: rollappID}, log.TestingLogger(), mempool.NopMetrics())
 	require.NoError(err)
 	require.NotNil(node1)
 
 	node2, err := node.NewNode(context.Background(), config.NodeConfig{
-		DALayer:          "mock",
-		SettlementLayer:  "mock",
-		SettlementConfig: settlement.Config{ProposerPubKey: hex.EncodeToString(proposerPubKey2Bytes)},
+		DALayer:         "mock",
+		SettlementLayer: "mock",
+		SettlementConfig: settlement.Config{
+			ProposerPubKey: hex.EncodeToString(proposerPubKey2Bytes),
+			RollappID:      rollappID,
+		},
 		BlockManagerConfig: config.BlockManagerConfig{
 			BlockBatchSize:          1,
 			BlockTime:               100 * time.Millisecond,
@@ -943,7 +1004,7 @@ func TestMempool2Nodes(t *testing.T) {
 			ListenAddress: "/ip4/127.0.0.1/tcp/9002",
 			Seeds:         "/ip4/127.0.0.1/tcp/9001/p2p/" + id1.String(),
 		},
-	}, key2, signingKey2, proxy.NewLocalClientCreator(app), &tmtypes.GenesisDoc{ChainID: "test"}, log.TestingLogger())
+	}, key2, signingKey2, proxy.NewLocalClientCreator(app), &tmtypes.GenesisDoc{ChainID: rollappID}, log.TestingLogger(), mempool.NopMetrics())
 	require.NoError(err)
 	require.NotNil(node1)
 

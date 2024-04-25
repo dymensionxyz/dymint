@@ -3,7 +3,6 @@ package kv
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -329,9 +328,12 @@ func txResultWithEvents(events []abci.Event) *abci.TxResult {
 }
 
 func benchmarkTxIndex(txsCount int64, b *testing.B) {
-	dir, err := ioutil.TempDir("", "tx_index_db")
+	dir, err := os.MkdirTemp("", "tx_index_db")
 	require.NoError(b, err)
-	defer os.RemoveAll(dir)
+	defer func() {
+		err := os.RemoveAll(dir)
+		require.NoError(b, err)
+	}()
 
 	store := store.NewDefaultKVStore(dir, "db", "tx_index")
 	require.NoError(b, err)

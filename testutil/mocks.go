@@ -11,7 +11,7 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 
 	"github.com/dymensionxyz/dymint/da"
-	mockda "github.com/dymensionxyz/dymint/da/mock"
+	localda "github.com/dymensionxyz/dymint/da/local"
 	"github.com/dymensionxyz/dymint/store"
 )
 
@@ -37,7 +37,6 @@ const (
 
 // GetABCIProxyAppMock returns a dummy abci proxy app mock for testing
 func GetABCIProxyAppMock(logger log.Logger) proxy.AppConns {
-
 	app := GetAppMock()
 
 	clientCreator := proxy.NewLocalClientCreator(app)
@@ -100,17 +99,20 @@ type MockStore struct {
 
 // SetHeight sets the height of the mock store
 // Don't set the height to mock failure in setting the height
-func (m *MockStore) SetHeight(height uint64) {
-	// Fail the first time
+func (m *MockStore) SetHeight(height uint64) bool {
 	if m.ShouldFailSetHeight {
-		return
+		return false
 	}
 	m.height = height
+	return true
 }
 
-// Height returns the height of the mock store
 func (m *MockStore) Height() uint64 {
 	return m.height
+}
+
+func (m *MockStore) NextHeight() uint64 {
+	return m.height + 1
 }
 
 // UpdateState updates the state of the mock store
@@ -132,27 +134,29 @@ func NewMockStore() *MockStore {
 	}
 }
 
-const batchNotFoundErrorMessage = "batch not found"
-const connectionRefusedErrorMessage = "connection refused"
+const (
+	batchNotFoundErrorMessage     = "batch not found"
+	connectionRefusedErrorMessage = "connection refused"
+)
 
 // DALayerClientSubmitBatchError is a mock data availability layer client that can be used to test error handling
 type DALayerClientSubmitBatchError struct {
-	mockda.DataAvailabilityLayerClient
+	localda.DataAvailabilityLayerClient
 }
 
 // SubmitBatch submits a batch to the data availability layer
 func (s *DALayerClientSubmitBatchError) SubmitBatch(_ *types.Batch) da.ResultSubmitBatch {
-	return da.ResultSubmitBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: connectionRefusedErrorMessage}}
+	return da.ResultSubmitBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: connectionRefusedErrorMessage, Error: errors.New(connectionRefusedErrorMessage)}}
 }
 
 // DALayerClientRetrieveBatchesError is a mock data availability layer client that can be used to test error handling
 type DALayerClientRetrieveBatchesError struct {
-	mockda.DataAvailabilityLayerClient
+	localda.DataAvailabilityLayerClient
 }
 
 // RetrieveBatches retrieves batches from the data availability layer
-func (m *DALayerClientRetrieveBatchesError) RetrieveBatches(_ uint64) da.ResultRetrieveBatch {
-	return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: batchNotFoundErrorMessage}}
+func (m *DALayerClientRetrieveBatchesError) RetrieveBatches(_ *da.DASubmitMetaData) da.ResultRetrieveBatch {
+	return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: batchNotFoundErrorMessage, Error: da.ErrBlobNotFound}}
 }
 
 // SubscribeMock is a mock to provide a subscription like behavior for testing

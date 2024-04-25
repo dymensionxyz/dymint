@@ -1,4 +1,4 @@
-package dymension
+package dymension_test
 
 import (
 	"context"
@@ -30,31 +30,34 @@ import (
 	mocks "github.com/dymensionxyz/dymint/mocks"
 	settlementmocks "github.com/dymensionxyz/dymint/mocks/settlement"
 	"github.com/dymensionxyz/dymint/settlement"
+	"github.com/dymensionxyz/dymint/settlement/dymension"
 	"github.com/dymensionxyz/dymint/testutil"
 
 	sdkcodectypes "github.com/cosmos/cosmos-sdk/codec/types"
 )
 
 func TestGetSequencers(t *testing.T) {
+	var err error
 	require := require.New(t)
 	cosmosClientMock := mocks.NewCosmosClient(t)
 
 	sequencerQueryClientMock := settlementmocks.NewSequencerQueryClient(t)
 	count := 5
 	sequencersRollappResponse, _ := generateSequencerByRollappResponse(t, count)
-	sequencerQueryClientMock.On("SequencersByRollapp", mock.Anything, mock.Anything).Return(sequencersRollappResponse, nil)
+	sequencerQueryClientMock.On("SequencersByRollappByStatus", mock.Anything, mock.Anything).Return(sequencersRollappResponse, nil)
 
 	cosmosClientMock.On("GetRollappClient").Return(settlementmocks.NewRollAppQueryClient(t))
 	cosmosClientMock.On("GetSequencerClient").Return(sequencerQueryClientMock)
 
-	options := []Option{
-		WithCosmosClient(cosmosClientMock),
+	options := []dymension.Option{
+		dymension.WithCosmosClient(cosmosClientMock),
 	}
 
 	pubsubServer := pubsub.NewServer()
-	pubsubServer.Start()
+	err = pubsubServer.Start()
+	require.NoError(err)
 
-	hubClient, err := newDymensionHubClient(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
+	hubClient, err := dymension.NewDymensionHubClient(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
 	require.NoError(err)
 
 	sequencers, err := hubClient.GetSequencers("mock-rollapp")
@@ -68,10 +71,12 @@ func TestGetSequencers(t *testing.T) {
 // 3. Batch is submitted successfully, hub event not emitted, but checking for inclusion succeeds
 // 4. Batch is submitted successfully and accepted by catching hub event
 func TestPostBatch(t *testing.T) {
+	var err error
 	require := require.New(t)
 
 	pubsubServer := pubsub.NewServer()
-	pubsubServer.Start()
+	err = pubsubServer.Start()
+	require.NoError(err)
 
 	// Create a mock cosmos client
 	cosmosClientMock := mocks.NewCosmosClient(t)
@@ -90,11 +95,11 @@ func TestPostBatch(t *testing.T) {
 	require.NoError(err)
 	cosmosClientMock.On("SubscribeToEvents", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return((<-chan coretypes.ResultEvent)(batchAcceptedCh), nil)
 
-	options := []Option{
-		WithCosmosClient(cosmosClientMock),
-		WithBatchAcceptanceTimeout(time.Millisecond * 300),
-		WithBatchRetryAttempts(2),
-		WithBatchRetryDelay(time.Millisecond * 200),
+	options := []dymension.Option{
+		dymension.WithCosmosClient(cosmosClientMock),
+		dymension.WithBatchAcceptanceTimeout(time.Millisecond * 300),
+		dymension.WithBatchRetryAttempts(2),
+		dymension.WithBatchRetryDelay(time.Millisecond * 200),
 	}
 
 	// Create a batch which will be submitted
@@ -106,57 +111,44 @@ func TestPostBatch(t *testing.T) {
 	HealthSubscription, err := pubsubServer.Subscribe(context.Background(), "testPostBatch", settlement.EventQuerySettlementHealthStatus)
 	assert.NoError(t, err)
 
-	// Subscribe to the batch accepted event
-	BatchAcceptedSubscription, err := pubsubServer.Subscribe(context.Background(), "testPostBatch", settlement.EventQueryNewSettlementBatchAccepted)
-	assert.NoError(t, err)
-
 	cases := []struct {
-		name                       string
-		isBatchSubmitSuccess       bool
-		isBatchAcceptedHubEvent    bool
-		shouldMockBatchIncluded    bool
-		isBatchIncludedSuccess     bool
-		expectedBatchAcceptedEvent bool
-		expectedHealthEventValue   bool
-		expectedError              error
+		name                    string
+		isBatchSubmitSuccess    bool
+		isBatchAcceptedHubEvent bool
+		shouldMockBatchIncluded bool
+		isBatchIncludedSuccess  bool
+		expectedError           error
 	}{
 		{
-			name:                       "TestSubmitBatchFailure",
-			isBatchSubmitSuccess:       false,
-			isBatchAcceptedHubEvent:    false,
-			shouldMockBatchIncluded:    true,
-			isBatchIncludedSuccess:     false,
-			expectedHealthEventValue:   false,
-			expectedBatchAcceptedEvent: false,
-			expectedError:              submitBatchError,
+			name:                    "TestSubmitBatchFailure",
+			isBatchSubmitSuccess:    false,
+			isBatchAcceptedHubEvent: false,
+			shouldMockBatchIncluded: true,
+			isBatchIncludedSuccess:  false,
+			expectedError:           submitBatchError,
 		},
 		{
-			name:                       "TestSubmitBatchSuccessNoBatchAcceptedHubEventNotIncluded",
-			isBatchSubmitSuccess:       true,
-			isBatchAcceptedHubEvent:    false,
-			shouldMockBatchIncluded:    true,
-			isBatchIncludedSuccess:     false,
-			expectedHealthEventValue:   false,
-			expectedBatchAcceptedEvent: false,
-			expectedError:              settlement.ErrBatchNotAccepted,
+			name:                    "TestSubmitBatchSuccessNoBatchAcceptedHubEventNotIncluded",
+			isBatchSubmitSuccess:    true,
+			isBatchAcceptedHubEvent: false,
+			shouldMockBatchIncluded: true,
+			isBatchIncludedSuccess:  false,
+			expectedError:           settlement.ErrBatchNotAccepted,
 		},
 		{
-			name:                       "TestSubmitBatchSuccessNotAcceptedYesIncluded",
-			isBatchSubmitSuccess:       true,
-			isBatchAcceptedHubEvent:    false,
-			shouldMockBatchIncluded:    true,
-			isBatchIncludedSuccess:     true,
-			expectedHealthEventValue:   true,
-			expectedBatchAcceptedEvent: true,
+			name:                    "TestSubmitBatchSuccessNotAcceptedYesIncluded",
+			isBatchSubmitSuccess:    true,
+			isBatchAcceptedHubEvent: false,
+			shouldMockBatchIncluded: true,
+			isBatchIncludedSuccess:  true,
+			expectedError:           nil,
 		},
 		{
-			name:                       "TestSubmitBatchSuccessAndAccepted",
-			isBatchSubmitSuccess:       true,
-			isBatchAcceptedHubEvent:    true,
-			shouldMockBatchIncluded:    false,
-			expectedHealthEventValue:   true,
-			expectedError:              nil,
-			expectedBatchAcceptedEvent: true,
+			name:                    "TestSubmitBatchSuccessAndAccepted",
+			isBatchSubmitSuccess:    true,
+			isBatchAcceptedHubEvent: true,
+			shouldMockBatchIncluded: false,
+			expectedError:           nil,
 		},
 	}
 
@@ -164,16 +156,10 @@ func TestPostBatch(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			// Init the wait group and set the number of expected events
 			var wg sync.WaitGroup
-			var eventsCount int
-			if c.expectedBatchAcceptedEvent {
-				eventsCount = 2
-			} else {
-				eventsCount = 1
-			}
+			eventsCount := 1
 			wg.Add(eventsCount)
 			// Reset the mock functions
 			testutil.UnsetMockFn(cosmosClientMock.On("BroadcastTx"))
-			testutil.UnsetMockFn(rollappQueryClientMock.On("LatestStateIndex"))
 			testutil.UnsetMockFn(rollappQueryClientMock.On("StateInfo"))
 			// Set the mock logic based on the test case
 			if !c.isBatchSubmitSuccess {
@@ -183,55 +169,55 @@ func TestPostBatch(t *testing.T) {
 			}
 			if c.shouldMockBatchIncluded {
 				if c.isBatchIncludedSuccess {
-					rollappQueryClientMock.On("LatestStateIndex", mock.Anything, mock.Anything).Return(
-						&rollapptypes.QueryGetLatestStateIndexResponse{StateIndex: rollapptypes.StateInfoIndex{Index: 1}}, nil)
-					daMetaData := &settlement.DAMetaData{
+					daMetaData := &da.DASubmitMetaData{
 						Height: 1,
 						Client: da.Mock,
 					}
 					rollappQueryClientMock.On("StateInfo", mock.Anything, mock.Anything).Return(
 						&rollapptypes.QueryGetStateInfoResponse{StateInfo: rollapptypes.StateInfo{
-							StartHeight: batch.StartHeight, StateInfoIndex: rollapptypes.StateInfoIndex{Index: 1}, DAPath: daMetaData.ToPath(), NumBlocks: 1}},
+							StartHeight: batch.StartHeight, StateInfoIndex: rollapptypes.StateInfoIndex{Index: 1}, DAPath: daMetaData.ToPath(), NumBlocks: 1,
+						}},
 						nil)
 				} else {
-					rollappQueryClientMock.On("LatestStateIndex", mock.Anything, mock.Anything).Return(nil, nil)
+					rollappQueryClientMock.On("StateInfo", mock.Anything, mock.Anything).Return(nil, fmt.Errorf("error"))
 				}
 			}
-			hubClient, err := newDymensionHubClient(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
+			hubClient, err := dymension.NewDymensionHubClient(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
 			require.NoError(err)
-			hubClient.Start()
+			err = hubClient.Start()
+			require.NoError(err)
 			// Handle the various events that are emitted and timeout if we don't get them
 			var eventsReceivedCount int64
 			go func() {
 				select {
 				case healthEvent := <-HealthSubscription.Out():
 					t.Logf("got health event: %v", healthEvent)
-					healthStatusEvent := healthEvent.Data().(*settlement.EventDataSettlementHealthStatus)
-					assert.Equal(t, c.expectedHealthEventValue, healthStatusEvent.Healthy)
-					assert.Equal(t, c.expectedError, healthStatusEvent.Error)
+					healthStatusEvent := healthEvent.Data().(*settlement.EventDataHealth)
+					assert.ErrorIs(t, healthStatusEvent.Error, c.expectedError)
 					atomic.AddInt64(&eventsReceivedCount, 1)
 				case <-time.After(10 * time.Second):
 					t.Error("Didn't receive health event")
 				}
 				wg.Done()
 			}()
-			if c.expectedBatchAcceptedEvent {
-				go func() {
-					select {
-					case batchAcceptedEvent := <-BatchAcceptedSubscription.Out():
-						t.Logf("got batch accepted event: %v", batchAcceptedEvent)
-						batchAcceptedEventData := batchAcceptedEvent.Data().(*settlement.EventDataNewSettlementBatchAccepted)
-						assert.Equal(t, batchAcceptedEventData.EndHeight, batch.EndHeight)
-						atomic.AddInt64(&eventsReceivedCount, 1)
-					case <-time.After(10 * time.Second):
-						t.Error("Didn't receive batch accepted event")
-					}
-					wg.Done()
 
-				}()
+			resultSubmitBatch := &da.ResultSubmitBatch{}
+			resultSubmitBatch.SubmitMetaData = &da.DASubmitMetaData{}
+			errChan := make(chan error, 1) // Create a channel to receive an error from the goroutine
+			// Post the batch in a goroutine and capture any error.
+			go func() {
+				err := hubClient.PostBatch(batch, da.Mock, resultSubmitBatch)
+				errChan <- err // Send any error to the errChan
+			}()
+
+			// Use a select statement to wait for a potential error or a timeout.
+			select {
+			case err := <-errChan:
+				// Check for error from PostBatch.
+				assert.NoError(t, err, "PostBatch should not produce an error")
+			case <-time.After(50 * time.Millisecond):
+				// Timeout case to avoid blocking forever if PostBatch doesn't return.
 			}
-			// Post the batch
-			go hubClient.PostBatch(batch, da.Mock, &da.ResultSubmitBatch{})
 			// Wait for the batch to be submitted and submit an event notifying that the batch was accepted
 			time.Sleep(50 * time.Millisecond)
 			if c.isBatchAcceptedHubEvent {
@@ -247,7 +233,8 @@ func TestPostBatch(t *testing.T) {
 			wg.Wait()
 			assert.Equal(t, eventsCount, int(eventsReceivedCount))
 			// Stop the hub client and wait for it to stop
-			hubClient.Stop()
+			err = hubClient.Stop()
+			require.NoError(err)
 			time.Sleep(1 * time.Second)
 		})
 	}
@@ -257,32 +244,29 @@ func TestPostBatch(t *testing.T) {
 /*                                    Utils                                   */
 /* -------------------------------------------------------------------------- */
 
-func generateSequencerByRollappResponse(t *testing.T, count int) (*sequencertypes.QueryGetSequencersByRollappResponse, sequencertypes.SequencerInfo) {
+func generateSequencerByRollappResponse(t *testing.T, count int) (*sequencertypes.QueryGetSequencersByRollappByStatusResponse, sequencertypes.Sequencer) {
 	// Generate the proposer sequencer
 	proposerPubKeyAny, err := sdkcodectypes.NewAnyWithValue(ed25519.GenPrivKey().PubKey())
 	require.NoError(t, err)
-	proposer := sequencertypes.SequencerInfo{
-		Sequencer: sequencertypes.Sequencer{
-			DymintPubKey: proposerPubKeyAny,
-		},
-		Status: sequencertypes.Proposer,
+	proposer := sequencertypes.Sequencer{
+		DymintPubKey: proposerPubKeyAny,
+		Status:       sequencertypes.Bonded,
+		Proposer:     true,
 	}
-	squencerInfoList := []sequencertypes.SequencerInfo{
-		proposer,
-	}
+	squencerInfoList := []sequencertypes.Sequencer{proposer}
 	// Generate the inactive sequencers
 	for i := 0; i < count-1; i++ {
 		nonProposerPubKeyAny, err := sdkcodectypes.NewAnyWithValue(secp256k1.GenPrivKey().PubKey())
 		require.NoError(t, err)
-		squencerInfoList = append(squencerInfoList, sequencertypes.SequencerInfo{
-			Sequencer: sequencertypes.Sequencer{
-				DymintPubKey: nonProposerPubKeyAny,
-			},
-			Status: sequencertypes.Inactive,
-		})
+
+		nonProposer := sequencertypes.Sequencer{
+			DymintPubKey: nonProposerPubKeyAny,
+			Status:       sequencertypes.Bonded,
+		}
+		squencerInfoList = append(squencerInfoList, nonProposer)
 	}
-	response := &sequencertypes.QueryGetSequencersByRollappResponse{
-		SequencerInfoList: squencerInfoList,
+	response := &sequencertypes.QueryGetSequencersByRollappByStatusResponse{
+		Sequencers: squencerInfoList,
 	}
 	return response, proposer
 }

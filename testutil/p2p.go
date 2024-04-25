@@ -1,4 +1,4 @@
-package p2p
+package testutil
 
 import (
 	"context"
@@ -17,28 +17,29 @@ import (
 	"go.uber.org/multierr"
 
 	"github.com/dymensionxyz/dymint/config"
-	"github.com/dymensionxyz/dymint/log"
+	"github.com/dymensionxyz/dymint/p2p"
+	"github.com/dymensionxyz/dymint/types"
 )
 
-type testNet []*Client
+type TestNet []*p2p.Client
 
-func (tn testNet) Close() (err error) {
+func (tn TestNet) Close() (err error) {
 	for i := range tn {
 		err = multierr.Append(err, tn[i].Close())
 	}
 	return
 }
 
-func (tn testNet) WaitForDHT() {
+func (tn TestNet) WaitForDHT() {
 	for i := range tn {
-		<-tn[i].dht.RefreshRoutingTable()
+		<-tn[i].DHT.RefreshRoutingTable()
 	}
 }
 
-type hostDescr struct {
-	chainID string
-	conns   []int
-	realKey bool
+type HostDescr struct {
+	ChainID string
+	Conns   []int
+	RealKey bool
 }
 
 // copied from libp2p net/mock
@@ -58,22 +59,22 @@ func getAddr(sk crypto.PrivKey) (multiaddr.Multiaddr, error) {
 	copy(ip[net.IPv6len-len(suffix):], suffix)
 	a, err := multiaddr.NewMultiaddr(fmt.Sprintf("/ip6/%s/tcp/4242", ip))
 	if err != nil {
-		return nil, fmt.Errorf("failed to create test multiaddr: %s", err)
+		return nil, fmt.Errorf("create test multiaddr: %w", err)
 	}
 	return a, nil
 }
 
-func startTestNetwork(ctx context.Context, t *testing.T, n int, conf map[int]hostDescr, validators []GossipValidator, logger log.Logger) testNet {
+func StartTestNetwork(ctx context.Context, t *testing.T, n int, conf map[int]HostDescr, validators []p2p.GossipValidator, logger types.Logger) TestNet {
 	t.Helper()
 	require := require.New(t)
 
 	mnet := mocknet.New()
 	for i := 0; i < n; i++ {
-		var descr hostDescr
+		var descr HostDescr
 		if d, ok := conf[i]; ok {
 			descr = d
 		}
-		if descr.realKey {
+		if descr.RealKey {
 			privKey, _, _ := crypto.GenerateEd25519Key(rand.Reader)
 			addr, err := getAddr(privKey)
 			require.NoError(err)
@@ -92,21 +93,22 @@ func startTestNetwork(ctx context.Context, t *testing.T, n int, conf map[int]hos
 	seeds := make([]string, n)
 	for src, descr := range conf {
 		require.Less(src, n)
-		for _, dst := range descr.conns {
+		for _, dst := range descr.Conns {
 			require.Less(dst, n)
 			seeds[src] += mnet.Hosts()[dst].Addrs()[0].String() + "/p2p/" + mnet.Peers()[dst].String() + ","
 		}
 		seeds[src] = strings.TrimSuffix(seeds[src], ",")
 	}
 
-	clients := make([]*Client, n)
+	clients := make([]*p2p.Client, n)
 	for i := 0; i < n; i++ {
-		client, err := NewClient(config.P2PConfig{
+		client, err := p2p.NewClient(config.P2PConfig{
 			Seeds:           seeds[i],
 			GossipCacheSize: 50,
-			BoostrapTime:    30 * time.Second},
+			BoostrapTime:    30 * time.Second,
+		},
 			mnet.Hosts()[i].Peerstore().PrivKey(mnet.Hosts()[i].ID()),
-			conf[i].chainID,
+			conf[i].ChainID,
 			logger)
 		require.NoError(err)
 		require.NotNil(client)
@@ -116,7 +118,7 @@ func startTestNetwork(ctx context.Context, t *testing.T, n int, conf map[int]hos
 	}
 
 	for i, c := range clients {
-		err := c.startWithHost(ctx, mnet.Hosts()[i])
+		err := c.StartWithHost(ctx, mnet.Hosts()[i])
 		require.NoError(err)
 	}
 

@@ -58,7 +58,7 @@ func TestStorePruning(t *testing.T) {
 
 			for _, block := range c.blocks {
 				_, err := bstore.SaveBlock(block, &types.Commit{}, nil)
-				bstore.SetHeight(block.Header.Height)
+				_ = bstore.SetHeight(block.Header.Height)
 				assert.NoError(err)
 			}
 
@@ -87,4 +87,4 @@ func TestStorePruning(t *testing.T) {
 	}
 }
 
-//TODO: prune twice
+// TODO: prune twice

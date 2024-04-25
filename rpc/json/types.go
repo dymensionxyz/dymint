@@ -16,25 +16,26 @@ type subscribeArgs struct {
 type unsubscribeArgs struct {
 	Query string `json:"query"`
 }
-type unsubscribeAllArgs struct {
-}
+type unsubscribeAllArgs struct{}
 
 // info API
-type healthArgs struct {
-}
-type statusArgs struct {
-}
-type netInfoArgs struct {
-}
-type blockchainInfoArgs struct {
-	MinHeight StrInt64 `json:"minHeight"`
-	MaxHeight StrInt64 `json:"maxHeight"`
-}
-type genesisArgs struct {
-}
-type genesisChunkedArgs struct {
-	ID StrInt `json:"chunk"`
-}
+type (
+	healthArgs         struct{}
+	statusArgs         struct{}
+	netInfoArgs        struct{}
+	blockchainInfoArgs struct {
+		MinHeight StrInt64 `json:"minHeight"`
+		MaxHeight StrInt64 `json:"maxHeight"`
+	}
+)
+
+type (
+	genesisArgs        struct{}
+	genesisChunkedArgs struct {
+		ID StrInt `json:"chunk"`
+	}
+)
+
 type blockArgs struct {
 	Height StrInt64 `json:"height"`
 }
@@ -72,18 +73,18 @@ type validatorsArgs struct {
 	Page    StrInt   `json:"page"`
 	PerPage StrInt   `json:"per_page"`
 }
-type dumpConsensusStateArgs struct {
-}
-type getConsensusStateArgs struct {
-}
-type consensusParamsArgs struct {
-	Height StrInt64 `json:"height"`
-}
+type (
+	dumpConsensusStateArgs struct{}
+	getConsensusStateArgs  struct{}
+	consensusParamsArgs    struct {
+		Height StrInt64 `json:"height"`
+	}
+)
+
 type unconfirmedTxsArgs struct {
 	Limit StrInt `json:"limit"`
 }
-type numUnconfirmedTxsArgs struct {
-}
+type numUnconfirmedTxsArgs struct{}
 
 // tx broadcast API
 type broadcastTxCommitArgs struct {
@@ -107,8 +108,7 @@ type ABCIQueryArgs struct {
 }
 
 // ABCIInfoArgs defines args for ABCI Info method.
-type ABCIInfoArgs struct {
-}
+type ABCIInfoArgs struct{}
 
 // evidence API
 

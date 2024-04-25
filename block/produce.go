@@ -2,14 +2,12 @@ package block
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"sync/atomic"
 	"time"
 
-	"cosmossdk.io/errors"
-	stderrors "errors"
-	abciconv "github.com/dymensionxyz/dymint/conv/abci"
-	"github.com/dymensionxyz/dymint/settlement"
+	"github.com/dymensionxyz/dymint/store"
+
 	"github.com/dymensionxyz/dymint/types"
 	tmed25519 "github.com/tendermint/tendermint/crypto/ed25519"
 	cmtproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -17,163 +15,146 @@ import (
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
-// waitForSync enforces the aggregator to be synced before it can produce blocks.
-// It requires the retriveBlockLoop to be running.
-func (m *Manager) waitForSync(ctx context.Context) error {
-	resultRetrieveBatch, err := m.getLatestBatchFromSL(ctx)
-	// Set the syncTarget according to the result
-	if stderrors.Is(err, settlement.ErrBatchNotFound) {
-		// Since we requested the latest batch and got batch not found it means
-		// the SL still hasn't got any batches for this chain.
-		m.logger.Info("No batches for chain found in SL. Start writing first batch")
-		atomic.StoreUint64(&m.syncTarget, uint64(m.genesis.InitialHeight-1))
-		return nil
-	} else if err != nil {
-		m.logger.Error("wait for sync: failed to retrieve batch from SL", "err", err)
-		return err
-	} else {
-		m.updateSyncParams(ctx, resultRetrieveBatch.EndHeight)
+// ProduceBlockLoop is calling publishBlock in a loop as long as we're synced.
+func (m *Manager) ProduceBlockLoop(ctx context.Context) {
+	m.logger.Debug("Started produce loop")
+
+	ticker := time.NewTicker(m.Conf.BlockTime)
+	defer ticker.Stop()
+
+	// Allow the initial block to be empty
+	produceEmptyBlock := true
+
+	var emptyBlocksTimer <-chan time.Time
+	resetEmptyBlocksTimer := func() {}
+	// Setup ticker for empty blocks if enabled
+	if 0 < m.Conf.EmptyBlocksMaxTime {
+		t := time.NewTimer(m.Conf.EmptyBlocksMaxTime)
+		emptyBlocksTimer = t.C
+		resetEmptyBlocksTimer = func() {
+			produceEmptyBlock = false
+			t.Reset(m.Conf.EmptyBlocksMaxTime)
+		}
+		defer t.Stop()
 	}
-	// Wait until isSynced is true and then call the PublishBlockLoop
-	m.isSyncedCond.L.Lock()
-	// Wait until we're synced and that we have got the latest batch (if we didn't, m.syncTarget == 0)
-	// before we start publishing blocks
-	for m.store.Height() < atomic.LoadUint64(&m.syncTarget) {
-		m.logger.Info("Waiting for sync", "current height", m.store.Height(), "syncTarget", atomic.LoadUint64(&m.syncTarget))
-		m.isSyncedCond.Wait()
+
+	for {
+		select {
+		case <-ctx.Done(): // Context canceled
+			return
+		case <-m.produceEmptyBlockCh: // If we got a request for an empty block produce it and don't wait for the ticker
+			produceEmptyBlock = true
+		case <-emptyBlocksTimer: // Empty blocks timeout
+			produceEmptyBlock = true
+			m.logger.Debug(fmt.Sprintf("no transactions, producing empty block: elapsed: %.2f", m.Conf.EmptyBlocksMaxTime.Seconds()))
+		// Produce block
+		case <-ticker.C:
+			err := m.ProduceAndGossipBlock(ctx, produceEmptyBlock)
+			if errors.Is(err, context.Canceled) {
+				m.logger.Error("produce and gossip: context canceled", "error", err)
+				return
+			}
+			if errors.Is(err, types.ErrSkippedEmptyBlock) {
+				continue
+			}
+			if errors.Is(err, ErrNonRecoverable) {
+				m.logger.Error("produce and gossip: non-recoverable", "error", err) // TODO: flush? or don't log at all?
+				panic(fmt.Errorf("produce and gossip block: %w", err))
+			}
+			if err != nil {
+				m.logger.Error("produce and gossip: uncategorized, assuming recoverable", "error", err)
+				continue
+			}
+			resetEmptyBlocksTimer()
+		case shouldProduceBlocks := <-m.shouldProduceBlocksCh:
+			for !shouldProduceBlocks {
+				m.logger.Info("block production paused - awaiting positive continuation signal")
+				shouldProduceBlocks = <-m.shouldProduceBlocksCh
+			}
+			m.logger.Info("resumed block resumed")
+		}
 	}
-	m.isSyncedCond.L.Unlock()
-	m.logger.Info("Synced, Starting to produce", "current height", m.store.Height(), "syncTarget", atomic.LoadUint64(&m.syncTarget))
+}
+
+func (m *Manager) ProduceAndGossipBlock(ctx context.Context, allowEmpty bool) error {
+	block, commit, err := m.produceBlock(allowEmpty)
+	if err != nil {
+		return fmt.Errorf("produce block: %w", err)
+	}
+
+	if err := m.gossipBlock(ctx, *block, *commit); err != nil {
+		return fmt.Errorf("gossip block: %w", err)
+	}
+
 	return nil
 }
 
-// ProduceBlockLoop is calling publishBlock in a loop as long as wer'e synced.
-func (m *Manager) ProduceBlockLoop(ctx context.Context) {
-	atomic.StoreInt64(&m.lastSubmissionTime, time.Now().Unix())
-
-	// We want to wait until we are synced. After that, since there is no leader
-	// election yet, and leader are elected manually, we will not be out of sync until
-	// we are manually being replaced.
-	err := m.waitForSync(ctx)
-	if err != nil {
-		panic(errors.Wrap(err, "failed to wait for sync"))
-	}
-
-	ticker := time.NewTicker(m.conf.BlockTime)
-	defer ticker.Stop()
-
-	var tickerEmptyBlocksMaxTime *time.Ticker
-	var tickerEmptyBlocksMaxTimeCh <-chan time.Time
-	// Setup ticker for empty blocks if enabled
-	if m.conf.EmptyBlocksMaxTime > 0 {
-		tickerEmptyBlocksMaxTime = time.NewTicker(m.conf.EmptyBlocksMaxTime)
-		tickerEmptyBlocksMaxTimeCh = tickerEmptyBlocksMaxTime.C
-		defer tickerEmptyBlocksMaxTime.Stop()
-	}
-
-	//Allow the initial block to be empty
-	produceEmptyBlock := true
-	for {
-		select {
-		//Context canceled
-		case <-ctx.Done():
-			return
-		// If we got a request for an empty block produce it and don't wait for the ticker
-		case <-m.produceEmptyBlockCh:
-			produceEmptyBlock = true
-		//Empty blocks timeout
-		case <-tickerEmptyBlocksMaxTimeCh:
-			m.logger.Debug(fmt.Sprintf("No transactions for %.2f seconds, producing empty block", m.conf.EmptyBlocksMaxTime.Seconds()))
-			produceEmptyBlock = true
-		//Produce block
-		case <-ticker.C:
-			err := m.produceBlock(ctx, produceEmptyBlock)
-			if err == types.ErrSkippedEmptyBlock {
-				// m.logger.Debug("Skipped empty block")
-				continue
-			}
-			if err != nil {
-				m.logger.Error("error while producing block", "error", err)
-				m.shouldProduceBlocksCh <- false
-				continue
-			}
-			//If empty blocks enabled, after block produced, reset the timeout timer
-			if tickerEmptyBlocksMaxTime != nil {
-				produceEmptyBlock = false
-				tickerEmptyBlocksMaxTime.Reset(m.conf.EmptyBlocksMaxTime)
-			}
-
-		//Node's health check channel
-		case shouldProduceBlocks := <-m.shouldProduceBlocksCh:
-			for !shouldProduceBlocks {
-				m.logger.Info("Stopped block production")
-				shouldProduceBlocks = <-m.shouldProduceBlocksCh
-			}
-			m.logger.Info("Resumed Block production")
-		}
-	}
-}
-
-func (m *Manager) produceBlock(ctx context.Context, allowEmpty bool) error {
+func (m *Manager) produceBlock(allowEmpty bool) (*types.Block, *types.Commit, error) {
 	m.produceBlockMutex.Lock()
 	defer m.produceBlockMutex.Unlock()
-	var lastCommit *types.Commit
-	var lastHeaderHash [32]byte
-	var err error
-	height := m.store.Height()
-	newHeight := height + 1
+	var (
+		lastCommit     *types.Commit
+		lastHeaderHash [32]byte
+		newHeight      uint64
+		err            error
+	)
 
-	// this is a special case, when first block is produced - there is no previous commit
-	if newHeight == uint64(m.genesis.InitialHeight) {
-		lastCommit = &types.Commit{Height: height, HeaderHash: [32]byte{}}
-	} else {
-		lastCommit, err = m.store.LoadCommit(height)
-		if err != nil {
-			return fmt.Errorf("error while loading last commit: %w", err)
+	if m.LastState.IsGenesis() {
+		newHeight = uint64(m.LastState.InitialHeight)
+		lastCommit = &types.Commit{}
+		m.LastState.BaseHeight = newHeight
+		if ok := m.Store.SetBase(newHeight); !ok {
+			return nil, nil, fmt.Errorf("store set base: %d", newHeight)
 		}
-		lastBlock, err := m.store.LoadBlock(height)
+	} else {
+		height := m.Store.Height()
+		newHeight = height + 1
+		lastCommit, err = m.Store.LoadCommit(height)
 		if err != nil {
-			return fmt.Errorf("error while loading last block: %w", err)
+			return nil, nil, fmt.Errorf("load commit: height: %d: %w: %w", height, err, ErrNonRecoverable)
+		}
+		lastBlock, err := m.Store.LoadBlock(height)
+		if err != nil {
+			return nil, nil, fmt.Errorf("load block after load commit: height: %d: %w: %w", height, err, ErrNonRecoverable)
 		}
 		lastHeaderHash = lastBlock.Header.Hash()
 	}
 
 	var block *types.Block
+	var commit *types.Commit
 	// Check if there's an already stored block and commit at a newer height
 	// If there is use that instead of creating a new block
-	var commit *types.Commit
-	pendingBlock, err := m.store.LoadBlock(newHeight)
+	pendingBlock, err := m.Store.LoadBlock(newHeight)
 	if err == nil {
-		m.logger.Info("Using pending block", "height", newHeight)
+		// Using an existing block
 		block = pendingBlock
-		commit, err = m.store.LoadCommit(newHeight)
+		commit, err = m.Store.LoadCommit(newHeight)
 		if err != nil {
-			m.logger.Error("Loaded block but failed to load commit", "height", newHeight, "error", err)
-			return err
+			return nil, nil, fmt.Errorf("load commit after load block: height: %d: %w: %w", newHeight, err, ErrNonRecoverable)
 		}
+		m.logger.Info("using pending block", "height", newHeight)
+	} else if !errors.Is(err, store.ErrKeyNotFound) {
+		return nil, nil, fmt.Errorf("load block: height: %d: %w: %w", newHeight, err, ErrNonRecoverable)
 	} else {
-		block = m.executor.CreateBlock(newHeight, lastCommit, lastHeaderHash, m.lastState)
+		block = m.Executor.CreateBlock(newHeight, lastCommit, lastHeaderHash, m.LastState)
 		if !allowEmpty && len(block.Data.Txs) == 0 {
-			return types.ErrSkippedEmptyBlock
+			return nil, nil, fmt.Errorf("%w: %w", types.ErrSkippedEmptyBlock, ErrRecoverable)
 		}
 
-		abciHeaderPb := abciconv.ToABCIHeaderPB(&block.Header)
+		abciHeaderPb := types.ToABCIHeaderPB(&block.Header)
 		abciHeaderBytes, err := abciHeaderPb.Marshal()
 		if err != nil {
-			return err
+			return nil, nil, fmt.Errorf("marshal abci header: %w: %w", err, ErrNonRecoverable)
 		}
-		proposerAddress, err := getAddress(m.proposerKey)
+		proposerAddress := block.Header.ProposerAddress
+		sign, err := m.ProposerKey.Sign(abciHeaderBytes)
 		if err != nil {
-			return err
-		}
-		sign, err := m.proposerKey.Sign(abciHeaderBytes)
-		if err != nil {
-			return err
+			return nil, nil, fmt.Errorf("sign abci header: %w: %w", err, ErrNonRecoverable)
 		}
 		voteTimestamp := tmtime.Now()
 		tmSignature, err := m.createTMSignature(block, proposerAddress, voteTimestamp)
 		if err != nil {
-			return err
+			return nil, nil, fmt.Errorf("create tm signature: %w: %w", err, ErrNonRecoverable)
 		}
 		commit = &types.Commit{
 			Height:     block.Header.Height,
@@ -188,8 +169,8 @@ func (m *Manager) produceBlock(ctx context.Context, allowEmpty bool) error {
 		}
 	}
 
-	if err := m.applyBlock(ctx, block, commit, blockMetaData{source: producedBlock}); err != nil {
-		return err
+	if err := m.applyBlock(block, commit, blockMetaData{source: producedBlock}); err != nil {
+		return nil, nil, fmt.Errorf("apply block: %w: %w", err, ErrNonRecoverable)
 	}
 
 	// Gossip postponed after execution so we'll have the ISRs
@@ -198,8 +179,10 @@ func (m *Manager) produceBlock(ctx context.Context, allowEmpty bool) error {
 	}
 
 	m.logger.Info("block created", "height", newHeight, "num_tx", len(block.Data.Txs))
-	rollappHeightGauge.Set(float64(newHeight))
-	return nil
+	types.RollappBlockSizeBytesGauge.Set(float64(len(block.Data.Txs)))
+	types.RollappBlockSizeTxsGauge.Set(float64(len(block.Data.Txs)))
+	types.RollappHeightGauge.Set(float64(newHeight))
+	return block, commit, nil
 }
 
 func (m *Manager) createTMSignature(block *types.Block, proposerAddress []byte, voteTimestamp time.Time) ([]byte, error) {
@@ -218,22 +201,21 @@ func (m *Manager) createTMSignature(block *types.Block, proposerAddress []byte, 
 	}
 	v := vote.ToProto()
 	// convert libp2p key to tm key
-	raw_key, _ := m.proposerKey.Raw()
+	raw_key, _ := m.ProposerKey.Raw()
 	tmprivkey := tmed25519.PrivKey(raw_key)
 	tmprivkey.PubKey().Bytes()
 	// Create a mock validator to sign the vote
 	tmvalidator := tmtypes.NewMockPVWithParams(tmprivkey, false, false)
-	err := tmvalidator.SignVote(m.lastState.ChainID, v)
+	err := tmvalidator.SignVote(m.LastState.ChainID, v)
 	if err != nil {
 		return nil, err
 	}
 	// Update the vote with the signature
 	vote.Signature = v.Signature
 	pubKey := tmprivkey.PubKey()
-	voteSignBytes := tmtypes.VoteSignBytes(m.lastState.ChainID, v)
+	voteSignBytes := tmtypes.VoteSignBytes(m.LastState.ChainID, v)
 	if !pubKey.VerifySignature(voteSignBytes, vote.Signature) {
 		return nil, fmt.Errorf("wrong signature")
 	}
 	return vote.Signature, nil
-
 }

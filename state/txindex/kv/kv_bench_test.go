@@ -4,7 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"testing"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -15,14 +15,14 @@ import (
 )
 
 func BenchmarkTxSearch(b *testing.B) {
-	dbDir, err := ioutil.TempDir("", "benchmark_tx_search_test")
+	dbDir, err := os.MkdirTemp("", "benchmark_tx_search_test")
 	if err != nil {
-		b.Errorf("failed to create temporary directory: %s", err)
+		b.Errorf("create temporary directory: %s", err)
 	}
 
 	db := store.NewDefaultKVStore(dbDir, "db", "benchmark_tx_search_test")
 	if err != nil {
-		b.Errorf("failed to create database: %s", err)
+		b.Errorf("create database: %s", err)
 	}
 
 	indexer := NewTxIndex(db)
@@ -56,7 +56,7 @@ func BenchmarkTxSearch(b *testing.B) {
 		}
 
 		if err := indexer.Index(txResult); err != nil {
-			b.Errorf("failed to index tx: %s", err)
+			b.Errorf("index tx: %s", err)
 		}
 	}
 
@@ -68,7 +68,7 @@ func BenchmarkTxSearch(b *testing.B) {
 
 	for i := 0; i < b.N; i++ {
 		if _, err := indexer.Search(ctx, txQuery); err != nil {
-			b.Errorf("failed to query for txs: %s", err)
+			b.Errorf("query for txs: %s", err)
 		}
 	}
 }

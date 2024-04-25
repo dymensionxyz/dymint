@@ -11,19 +11,38 @@ import (
 
 	"cosmossdk.io/errors"
 	"github.com/gorilla/rpc/v2/json2"
-	"github.com/tendermint/tendermint/libs/pubsub"
-	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 
-	"github.com/dymensionxyz/dymint/log"
 	"github.com/dymensionxyz/dymint/rpc/client"
+	"github.com/dymensionxyz/dymint/types"
+)
+
+const (
+	// defaultSubscribeTimeout is the default timeout for a subscription.
+	defaultSubscribeTimeout = 5 * time.Second
+	// defaultSubscribeBufferSize is the default buffer size for a subscription.
+	defaultSubscribeBufferSize = 100
 )
 
 // GetHTTPHandler returns handler configured to serve Tendermint-compatible RPC.
-func GetHTTPHandler(l *client.Client, logger log.Logger) (http.Handler, error) {
-	return newHandler(newService(l, logger), json2.NewCodec(), logger), nil
+func GetHTTPHandler(l *client.Client, logger types.Logger, opts ...option) (http.Handler, error) {
+	return newHandler(newService(l, logger, opts...), json2.NewCodec(), logger), nil
+}
+
+type option func(*service)
+
+func WithSubscribeTimeout(timeout time.Duration) option {
+	return func(s *service) {
+		s.subscribeTimeout = timeout
+	}
+}
+
+func WithSubscribeBufferSize(size int) option {
+	return func(s *service) {
+		s.subscribeBufferSize = size
+	}
 }
 
 type method struct {
@@ -47,13 +66,18 @@ func newMethod(m interface{}) *method {
 type service struct {
 	client  *client.Client
 	methods map[string]*method
-	logger  log.Logger
+	logger  types.Logger
+
+	subscribeTimeout    time.Duration
+	subscribeBufferSize int
 }
 
-func newService(c *client.Client, l log.Logger) *service {
+func newService(c *client.Client, l types.Logger, opts ...option) *service {
 	s := service{
-		client: c,
-		logger: l,
+		client:              c,
+		logger:              l,
+		subscribeTimeout:    defaultSubscribeTimeout,
+		subscribeBufferSize: defaultSubscribeBufferSize,
 	}
 	s.methods = map[string]*method{
 		"subscribe":            newMethod(s.Subscribe),
@@ -86,6 +110,11 @@ func newService(c *client.Client, l log.Logger) *service {
 		"abci_info":            newMethod(s.ABCIInfo),
 		"broadcast_evidence":   newMethod(s.BroadcastEvidence),
 	}
+
+	for _, opt := range opts {
+		opt(&s)
+	}
+
 	return &s
 }
 
@@ -96,58 +125,35 @@ func (s *service) Subscribe(req *http.Request, args *subscribeArgs, wsConn *wsCo
 		return nil, errors.Wrap(err, "subscription not allowed")
 	}
 
-	q, err := tmquery.New(args.Query)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse query: %w", err)
-	}
-
 	s.logger.Debug("subscribe to query", "remote", addr, "query", args.Query)
 
-	// TODO(tzdybal): extract consts or configs
-	const SubscribeTimeout = 5 * time.Second
-	const subBufferSize = 100
-	ctx, cancel := context.WithTimeout(req.Context(), SubscribeTimeout)
+	ctx, cancel := context.WithTimeout(req.Context(), s.subscribeTimeout)
 	defer cancel()
 
-	sub, err := s.client.EventBus.Subscribe(ctx, addr, q, subBufferSize)
+	out, err := s.client.Subscribe(ctx, addr, args.Query, s.subscribeBufferSize)
 	if err != nil {
-		return nil, fmt.Errorf("failed to subscribe: %w", err)
+		return nil, fmt.Errorf("subscribe: %w", err)
 	}
 	go func(subscriptionID []byte) {
-		for {
-			select {
-			case msg := <-sub.Out():
-				// build the base response
-				resultEvent := &ctypes.ResultEvent{Query: args.Query, Data: msg.Data(), Events: msg.Events()}
-				var resp rpctypes.RPCResponse
-				// Check if subscriptionID is string or int and generate the rest of the response accordingly
-				subscriptionIDInt, err := strconv.Atoi(string(subscriptionID))
-				if err != nil {
-					s.logger.Info("Failed to convert subscriptionID to int")
-					resp = rpctypes.NewRPCSuccessResponse(rpctypes.JSONRPCStringID(subscriptionID), resultEvent)
-				} else {
-					resp = rpctypes.NewRPCSuccessResponse(rpctypes.JSONRPCIntID(subscriptionIDInt), resultEvent)
-				}
-				// Marshal response to JSON and send it to the websocket queue
-				jsonBytes, err := json.MarshalIndent(resp, "", "  ")
-				if err != nil {
-					s.logger.Error("Failed to marshal RPCResponse to JSON", "err", err)
-					continue
-				}
-				if wsConn != nil {
-					wsConn.queue <- jsonBytes
-				}
-			case <-sub.Cancelled():
-				if sub.Err() != pubsub.ErrUnsubscribed {
-					var reason string
-					if sub.Err() == nil {
-						reason = "unknown failure"
-					} else {
-						reason = sub.Err().Error()
-					}
-					s.logger.Error("subscription was cancelled", "reason", reason)
-				}
-				return
+		for msg := range out {
+			// build the base response
+			var resp rpctypes.RPCResponse
+			// Check if subscriptionID is string or int and generate the rest of the response accordingly
+			subscriptionIDInt, err := strconv.Atoi(string(subscriptionID))
+			if err != nil {
+				s.logger.Info("Failed to convert subscriptionID to int")
+				resp = rpctypes.NewRPCSuccessResponse(rpctypes.JSONRPCStringID(subscriptionID), msg)
+			} else {
+				resp = rpctypes.NewRPCSuccessResponse(rpctypes.JSONRPCIntID(subscriptionIDInt), msg)
+			}
+			// Marshal response to JSON and send it to the websocket queue
+			jsonBytes, err := json.MarshalIndent(resp, "", "  ")
+			if err != nil {
+				s.logger.Error("marshal RPCResponse to JSON", "err", err)
+				continue
+			}
+			if wsConn != nil {
+				wsConn.queue <- jsonBytes
 			}
 		}
 	}(subscriptionID)
@@ -157,18 +163,18 @@ func (s *service) Subscribe(req *http.Request, args *subscribeArgs, wsConn *wsCo
 
 func (s *service) Unsubscribe(req *http.Request, args *unsubscribeArgs) (*emptyResult, error) {
 	s.logger.Debug("unsubscribe from query", "remote", req.RemoteAddr, "query", args.Query)
-	err := s.client.Unsubscribe(context.Background(), req.RemoteAddr, args.Query)
+	err := s.client.Unsubscribe(req.Context(), req.RemoteAddr, args.Query)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unsubscribe: %w", err)
+		return nil, fmt.Errorf("unsubscribe: %w", err)
 	}
 	return &emptyResult{}, nil
 }
 
 func (s *service) UnsubscribeAll(req *http.Request, args *unsubscribeAllArgs) (*emptyResult, error) {
 	s.logger.Debug("unsubscribe from all queries", "remote", req.RemoteAddr)
-	err := s.client.UnsubscribeAll(context.Background(), req.RemoteAddr)
+	err := s.client.UnsubscribeAll(req.Context(), req.RemoteAddr)
 	if err != nil {
-		return nil, fmt.Errorf("failed to unsubscribe all: %w", err)
+		return nil, fmt.Errorf("unsubscribe all: %w", err)
 	}
 	return &emptyResult{}, nil
 }

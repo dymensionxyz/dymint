@@ -57,7 +57,7 @@ func parseValueFromPrimaryKey(key []byte) (string, error) {
 
 	remaining, err := orderedcode.Parse(string(key), &compositeKey, &height)
 	if err != nil {
-		return "", fmt.Errorf("failed to parse event key: %w", err)
+		return "", fmt.Errorf("parse event key: %w", err)
 	}
 
 	if len(remaining) != 0 {
@@ -75,7 +75,7 @@ func parseValueFromEventKey(key []byte) (string, error) {
 
 	remaining, err := orderedcode.Parse(string(key), &compositeKey, &eventValue, &height, &typ)
 	if err != nil {
-		return "", fmt.Errorf("failed to parse event key: %w", err)
+		return "", fmt.Errorf("parse event key: %w", err)
 	}
 
 	if len(remaining) != 0 {

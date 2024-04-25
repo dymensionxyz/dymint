@@ -7,8 +7,9 @@ import (
 	tmlog "github.com/tendermint/tendermint/libs/log"
 	"google.golang.org/grpc"
 
+	"github.com/dymensionxyz/dymint/da"
 	grpcda "github.com/dymensionxyz/dymint/da/grpc"
-	"github.com/dymensionxyz/dymint/da/mock"
+	"github.com/dymensionxyz/dymint/da/local"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/dymensionxyz/dymint/types/pb/dalc"
@@ -22,14 +23,14 @@ func GetServer(kv store.KVStore, conf grpcda.Config, mockConfig []byte) *grpc.Se
 
 	srv := grpc.NewServer()
 	mockImpl := &mockImpl{}
-	err := mockImpl.mock.Init(mockConfig, pubsub.NewServer(), kv, logger)
+	err := mockImpl.da.Init(mockConfig, pubsub.NewServer(), kv, logger)
 	if err != nil {
-		logger.Error("failed to initialize mock DALC", "error", err)
+		logger.Error("initialize mock DALC", "error", err)
 		panic(err)
 	}
-	err = mockImpl.mock.Start()
+	err = mockImpl.da.Start()
 	if err != nil {
-		logger.Error("failed to start mock DALC", "error", err)
+		logger.Error("start mock DALC", "error", err)
 		panic(err)
 	}
 	dalc.RegisterDALCServiceServer(srv, mockImpl)
@@ -37,7 +38,7 @@ func GetServer(kv store.KVStore, conf grpcda.Config, mockConfig []byte) *grpc.Se
 }
 
 type mockImpl struct {
-	mock mock.DataAvailabilityLayerClient
+	da local.DataAvailabilityLayerClient
 }
 
 func (m *mockImpl) SubmitBatch(_ context.Context, request *dalc.SubmitBatchRequest) (*dalc.SubmitBatchResponse, error) {
@@ -46,29 +47,34 @@ func (m *mockImpl) SubmitBatch(_ context.Context, request *dalc.SubmitBatchReque
 	if err != nil {
 		return nil, err
 	}
-	resp := m.mock.SubmitBatch(&b)
+	resp := m.da.SubmitBatch(&b)
 	return &dalc.SubmitBatchResponse{
 		Result: &dalc.DAResponse{
 			Code:            dalc.StatusCode(resp.Code),
 			Message:         resp.Message,
-			DataLayerHeight: resp.DAHeight,
+			DataLayerHeight: resp.SubmitMetaData.Height,
 		},
 	}, nil
 }
 
 func (m *mockImpl) CheckBatchAvailability(_ context.Context, request *dalc.CheckBatchAvailabilityRequest) (*dalc.CheckBatchAvailabilityResponse, error) {
-	resp := m.mock.CheckBatchAvailability(request.DataLayerHeight)
+	daMetaData := &da.DASubmitMetaData{
+		Height: request.DataLayerHeight,
+	}
+	resp := m.da.CheckBatchAvailability(daMetaData)
 	return &dalc.CheckBatchAvailabilityResponse{
 		Result: &dalc.DAResponse{
 			Code:    dalc.StatusCode(resp.Code),
 			Message: resp.Message,
 		},
-		DataAvailable: resp.DataAvailable,
 	}, nil
 }
 
 func (m *mockImpl) RetrieveBatches(context context.Context, request *dalc.RetrieveBatchesRequest) (*dalc.RetrieveBatchesResponse, error) {
-	resp := m.mock.RetrieveBatches(request.DataLayerHeight)
+	dataMetaData := &da.DASubmitMetaData{
+		Height: request.DataLayerHeight,
+	}
+	resp := m.da.RetrieveBatches(dataMetaData)
 	batches := make([]*dymint.Batch, len(resp.Batches))
 	for i := range resp.Batches {
 		batches[i] = resp.Batches[i].ToProto()

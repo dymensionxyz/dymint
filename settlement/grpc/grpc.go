@@ -20,7 +20,6 @@ import (
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	rollapptypes "github.com/dymensionxyz/dymension/v3/x/rollapp/types"
 	"github.com/dymensionxyz/dymint/da"
-	"github.com/dymensionxyz/dymint/log"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
 
@@ -38,7 +37,7 @@ type LayerClient struct {
 var _ settlement.LayerI = (*LayerClient)(nil)
 
 // Init initializes the mock layer client.
-func (m *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, logger log.Logger, options ...settlement.Option) error {
+func (m *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, logger types.Logger, options ...settlement.Option) error {
 	HubClientMock, err := newHubClient(config, pubsub, logger)
 	if err != nil {
 		return err
@@ -59,23 +58,22 @@ func (m *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, logg
 	return nil
 }
 
-// HubClient implements The HubClient interface
+var _ settlement.HubClient = (*HubGrpcClient)(nil)
+
 type HubGrpcClient struct {
 	ctx            context.Context
 	ProposerPubKey string
 	slStateIndex   uint64
-	logger         log.Logger
+	logger         types.Logger
 	pubsub         *pubsub.Server
-	latestHeight   uint64
+	latestHeight   atomic.Uint64
 	conn           *grpc.ClientConn
 	sl             slmock.MockSLClient
 	stopchan       chan struct{}
 	refreshTime    int
 }
 
-var _ settlement.HubClient = &HubGrpcClient{}
-
-func newHubClient(config settlement.Config, pubsub *pubsub.Server, logger log.Logger) (*HubGrpcClient, error) {
+func newHubClient(config settlement.Config, pubsub *pubsub.Server, logger types.Logger) (*HubGrpcClient, error) {
 	ctx := context.Background()
 
 	latestHeight := uint64(0)
@@ -91,7 +89,7 @@ func newHubClient(config settlement.Config, pubsub *pubsub.Server, logger log.Lo
 
 	conn, err := grpc.Dial(config.SLGrpc.Host+":"+strconv.Itoa(config.SLGrpc.Port), opts...)
 	if err != nil {
-		logger.Error("Error grpc sl connecting")
+		logger.Error("grpc sl connecting")
 		return nil, err
 	}
 
@@ -114,23 +112,23 @@ func newHubClient(config settlement.Config, pubsub *pubsub.Server, logger log.Lo
 	}
 	logger.Debug("Starting grpc SL ", "index", slStateIndex)
 
-	return &HubGrpcClient{
+	ret := &HubGrpcClient{
 		ctx:            ctx,
 		ProposerPubKey: proposer,
 		logger:         logger,
 		pubsub:         pubsub,
-		latestHeight:   latestHeight,
 		slStateIndex:   slStateIndex,
 		conn:           conn,
 		sl:             client,
 		stopchan:       stopchan,
 		refreshTime:    config.SLGrpc.RefreshTime,
-	}, nil
+	}
+	ret.latestHeight.Store(latestHeight)
+	return ret, nil
 }
 
 func initConfig(conf settlement.Config) (proposer string, err error) {
 	if conf.KeyringHomeDir == "" {
-
 		if conf.ProposerPubKey != "" {
 			proposer = conf.ProposerPubKey
 		} else {
@@ -180,7 +178,7 @@ func (c *HubGrpcClient) Start() error {
 						if err != nil {
 							panic(err)
 						}
-						err = c.pubsub.PublishWithEvents(context.Background(), &settlement.EventDataNewSettlementBatchAccepted{EndHeight: b.EndHeight}, map[string][]string{settlement.EventTypeKey: {settlement.EventNewSettlementBatchAccepted}})
+						err = c.pubsub.PublishWithEvents(context.Background(), &settlement.EventDataNewBatchAccepted{EndHeight: b.EndHeight}, settlement.EventNewBatchAcceptedList)
 						if err != nil {
 							panic(err)
 						}
@@ -201,17 +199,16 @@ func (c *HubGrpcClient) Stop() error {
 }
 
 // PostBatch saves the batch to the kv store
-func (c *HubGrpcClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) {
-	settlementBatch := c.convertBatchtoSettlementBatch(batch, daClient, daResult)
+func (c *HubGrpcClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) error {
+	settlementBatch := c.convertBatchtoSettlementBatch(batch, daResult)
 	c.saveBatch(settlementBatch)
-	go func() {
-		// sleep for 10 miliseconds to mimic a delay in batch acceptance
-		time.Sleep(10 * time.Millisecond)
-		err := c.pubsub.PublishWithEvents(context.Background(), &settlement.EventDataNewSettlementBatchAccepted{EndHeight: settlementBatch.EndHeight}, map[string][]string{settlement.EventTypeKey: {settlement.EventNewSettlementBatchAccepted}})
-		if err != nil {
-			panic(err)
-		}
-	}()
+
+	time.Sleep(10 * time.Millisecond) // mimic a delay in batch acceptance
+	err := c.pubsub.PublishWithEvents(context.Background(), &settlement.EventDataNewBatchAccepted{EndHeight: settlementBatch.EndHeight}, settlement.EventNewBatchAcceptedList)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // GetLatestBatch returns the latest batch from the kv store
@@ -275,17 +272,17 @@ func (c *HubGrpcClient) saveBatch(batch *settlement.Batch) {
 	}
 	c.logger.Debug("Setting grpc SL Index to ", "index", setIndexReply.GetIndex())
 	// Save latest height in memory and in store
-	atomic.StoreUint64(&c.latestHeight, batch.EndHeight)
+	c.latestHeight.Store(batch.EndHeight)
 }
 
-func (c *HubGrpcClient) convertBatchtoSettlementBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) *settlement.Batch {
+func (c *HubGrpcClient) convertBatchtoSettlementBatch(batch *types.Batch, daResult *da.ResultSubmitBatch) *settlement.Batch {
 	settlementBatch := &settlement.Batch{
 		StartHeight: batch.StartHeight,
 		EndHeight:   batch.EndHeight,
 		MetaData: &settlement.BatchMetaData{
-			DA: &settlement.DAMetaData{
-				Height: daResult.DAHeight,
-				Client: daClient,
+			DA: &da.DASubmitMetaData{
+				Height: daResult.SubmitMetaData.Height,
+				Client: daResult.SubmitMetaData.Client,
 			},
 		},
 	}

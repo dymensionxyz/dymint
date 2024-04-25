@@ -24,12 +24,13 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 	cfg := &NodeConfig{
 		P2P: P2PConfig{
 			ListenAddress: DefaultListenAddress,
-			Seeds:         ""},
+			Seeds:         "",
+		},
 		Aggregator: true,
 		BlockManagerConfig: BlockManagerConfig{
 			BlockTime:               200 * time.Millisecond,
-			EmptyBlocksMaxTime:      3 * time.Second,
-			BatchSubmitMaxTime:      30 * time.Second,
+			EmptyBlocksMaxTime:      3600 * time.Second,
+			BatchSubmitMaxTime:      100 * time.Second,
 			NamespaceID:             "0000000000000000ffff",
 			BlockBatchSize:          500,
 			BlockBatchMaxSizeBytes:  500000,
@@ -52,7 +53,7 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 		chainId = DefaultChainID
 	}
 
-	//Setting default params for sl grpc mock
+	// Setting default params for sl grpc mock
 	defaultSlGrpcConfig := settlement.GrpcConfig{
 		Host:        "127.0.0.1",
 		Port:        7981,
@@ -65,12 +66,12 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 		RollappID:      chainId,
 		KeyringHomeDir: keyringDir,
 		DymAccountName: "sequencer",
-		GasPrices:      "0.025udym",
+		GasPrices:      "1000000000adym",
 		SLGrpc:         defaultSlGrpcConfig,
 	}
 	cfg.SettlementConfig = defaultSLconfig
 
-	//Setting default params for da grpc mock
+	// Setting default params for da grpc mock
 	defaultDAGrpc := grpc.Config{
 		Host: "127.0.0.1",
 		Port: 7980,

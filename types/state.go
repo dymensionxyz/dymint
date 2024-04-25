@@ -68,7 +68,7 @@ type State struct {
 func NewFromGenesisDoc(genDoc *types.GenesisDoc) (State, error) {
 	err := genDoc.ValidateAndComplete()
 	if err != nil {
-		return State{}, fmt.Errorf("error in genesis doc: %w", err)
+		return State{}, fmt.Errorf("in genesis doc: %w", err)
 	}
 
 	var validatorSet, nextValidatorSet *types.ValidatorSet
@@ -91,8 +91,14 @@ func NewFromGenesisDoc(genDoc *types.GenesisDoc) (State, error) {
 
 		ConsensusParams:                  *genDoc.ConsensusParams,
 		LastHeightConsensusParamsChanged: genDoc.InitialHeight,
+
+		BaseHeight: 0,
 	}
 	copy(s.AppHash[:], genDoc.AppHash)
 
 	return s, nil
+}
+
+func (s *State) IsGenesis() bool {
+	return s.LastBlockHeight == 0
 }

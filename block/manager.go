@@ -1,22 +1,23 @@
 package block
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 	"sync/atomic"
+	"time"
+
+	uevent "github.com/dymensionxyz/dymint/utils/event"
 
 	"code.cloudfoundry.org/go-diodes"
 
-	"github.com/avast/retry-go/v4"
-	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/p2p"
-	"github.com/dymensionxyz/dymint/utils"
 	"github.com/libp2p/go-libp2p/core/crypto"
-	abci "github.com/tendermint/tendermint/abci/types"
+
 	tmcrypto "github.com/tendermint/tendermint/crypto"
-	"github.com/tendermint/tendermint/crypto/merkle"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	tmtypes "github.com/tendermint/tendermint/types"
 
@@ -24,80 +25,71 @@ import (
 
 	"github.com/dymensionxyz/dymint/config"
 	"github.com/dymensionxyz/dymint/da"
-	"github.com/dymensionxyz/dymint/log"
 	"github.com/dymensionxyz/dymint/mempool"
 	"github.com/dymensionxyz/dymint/settlement"
-	"github.com/dymensionxyz/dymint/state"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
 )
 
-type blockSource string
-
-const (
-	producedBlock blockSource = "produced"
-	gossipedBlock blockSource = "gossip"
-	daBlock       blockSource = "da"
-)
-
-type blockMetaData struct {
-	source   blockSource
-	daHeight uint64
-}
-
 // Manager is responsible for aggregating transactions into blocks.
 type Manager struct {
-	pubsub *pubsub.Server
+	// Configuration
+	Conf        config.BlockManagerConfig
+	Genesis     *tmtypes.GenesisDoc
+	ProposerKey crypto.PrivKey
 
+	// Store and execution
+	Store     store.Store
+	LastState types.State
+	Executor  *Executor
+
+	// Clients and servers
+	Pubsub    *pubsub.Server
 	p2pClient *p2p.Client
+	DAClient  da.DataAvailabilityLayerClient
+	SLClient  settlement.LayerI
 
-	lastState types.State
+	// Data retrieval
+	Retriever da.BatchRetriever
 
-	conf    config.BlockManagerConfig
-	genesis *tmtypes.GenesisDoc
+	// Synchronization
+	SyncTargetDiode diodes.Diode
 
-	proposerKey crypto.PrivKey
+	SyncTarget atomic.Uint64
 
-	store    store.Store
-	executor *state.BlockExecutor
-
-	dalc             da.DataAvailabilityLayerClient
-	settlementClient settlement.LayerI
-	retriever        da.BatchRetriever
-
-	syncTargetDiode diodes.Diode
-
+	// Block production
 	shouldProduceBlocksCh chan bool
 	produceEmptyBlockCh   chan bool
+	lastSubmissionTime    atomic.Int64
 
-	syncTarget            uint64
-	lastSubmissionTime    int64
-	batchInProcess        atomic.Value
-	isSyncedCond          sync.Cond
-	produceBlockMutex     sync.Mutex
-	applyCachedBlockMutex sync.Mutex
+	/*
+		Guard against triggering a new batch submission when the old one is still going on (taking a while)
+	*/
+	submitBatchMutex sync.Mutex
 
-	syncCache map[uint64]*types.Block
+	/*
+		Protect against producing two blocks at once if the first one is taking a while
+		Also, used to protect against the block production that occurs when batch submission thread
+		creates its empty block.
+	*/
+	produceBlockMutex sync.Mutex
 
-	logger log.Logger
+	/*
+		Protect against processing two blocks at once when there are two routines handling incoming gossiped blocks,
+		and incoming DA blocks, respectively.
+	*/
+	retrieverMutex sync.Mutex
 
-	prevBlock  map[uint64]*types.Block
-	prevCommit map[uint64]*types.Commit
-}
+	// pendingBatch is the result of the last DA submission
+	// that is pending settlement layer submission.
+	// It is used to avoid double submission of the same batch.
+	pendingBatch *PendingBatch
 
-func (m *Manager) isSequencer() bool {
-	return m.proposerKey != nil
-}
+	// Logging
+	logger types.Logger
 
-// getInitialState tries to load lastState from Store, and if it's not available it reads GenesisDoc.
-func getInitialState(store store.Store, genesis *tmtypes.GenesisDoc, logger log.Logger) (types.State, error) {
-	s, err := store.LoadState()
-	if err == types.ErrNoStateFound {
-		logger.Info("failed to find state in the store, creating new state from genesis")
-		return types.NewFromGenesisDoc(genesis)
-	}
-
-	return s, err
+	// Cached blocks and commits for applying at future heights. Invariant: the block and commit are .Valid() (validated sigs etc)
+	blockCache map[uint64]CachedBlock
 }
 
 // NewManager creates new block Manager.
@@ -113,77 +105,40 @@ func NewManager(
 	eventBus *tmtypes.EventBus,
 	pubsub *pubsub.Server,
 	p2pClient *p2p.Client,
-	logger log.Logger,
+	logger types.Logger,
 ) (*Manager, error) {
-	var (
-		err             error
-		proposerAddress []byte
-	)
-
-	if proposerKey != nil {
-		proposerAddress, err = getAddress(proposerKey)
-		if err != nil {
-			return nil, err
-		}
+	proposerAddress, err := getAddress(proposerKey)
+	if err != nil {
+		return nil, err
 	}
 
-	exec, err := state.NewBlockExecutor(proposerAddress, conf.NamespaceID, genesis.ChainID, mempool, proxyApp, eventBus, logger, conf.SimulateFraud)
+	exec, err := NewExecutor(proposerAddress, conf.NamespaceID, genesis.ChainID, mempool, proxyApp, eventBus, logger)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create block executor: %w", err)
+		return nil, fmt.Errorf("create block executor: %w", err)
 	}
 	s, err := getInitialState(store, genesis, logger)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get initial state: %w", err)
+		return nil, fmt.Errorf("get initial state: %w", err)
 	}
-
-	validators := []*tmtypes.Validator{}
-
-	if s.LastBlockHeight+1 == genesis.InitialHeight {
-		sequencersList := settlementClient.GetSequencersList()
-		for _, sequencer := range sequencersList {
-			tmPubKey, err := cryptocodec.ToTmPubKeyInterface(sequencer.PublicKey)
-			if err != nil {
-				return nil, err
-			}
-			validators = append(validators, tmtypes.NewValidator(tmPubKey, 1))
-		}
-
-		res, err := exec.InitChain(genesis, validators)
-		if err != nil {
-			return nil, err
-		}
-
-		updateInitChainState(&s, res, validators)
-		if _, err := store.UpdateState(s, nil); err != nil {
-			return nil, err
-		}
-	}
-
-	batchInProcess := atomic.Value{}
-	batchInProcess.Store(false)
 
 	agg := &Manager{
-		pubsub:           pubsub,
-		p2pClient:        p2pClient,
-		proposerKey:      proposerKey,
-		conf:             conf,
-		genesis:          genesis,
-		lastState:        s,
-		store:            store,
-		executor:         exec,
-		dalc:             dalc,
-		settlementClient: settlementClient,
-		retriever:        dalc.(da.BatchRetriever),
+		Pubsub:      pubsub,
+		p2pClient:   p2pClient,
+		ProposerKey: proposerKey,
+		Conf:        conf,
+		Genesis:     genesis,
+		LastState:   s,
+		Store:       store,
+		Executor:    exec,
+		DAClient:    dalc,
+		SLClient:    settlementClient,
+		Retriever:   dalc.(da.BatchRetriever),
 		// channels are buffered to avoid blocking on input/output operations, buffer sizes are arbitrary
-		syncTargetDiode:       diodes.NewOneToOne(1, nil),
-		syncCache:             make(map[uint64]*types.Block),
-		isSyncedCond:          *sync.NewCond(new(sync.Mutex)),
-		batchInProcess:        batchInProcess,
+		SyncTargetDiode:       diodes.NewOneToOne(1, nil),
 		shouldProduceBlocksCh: make(chan bool, 1),
 		produceEmptyBlockCh:   make(chan bool, 1),
 		logger:                logger,
-		prevBlock:             make(map[uint64]*types.Block),
-		prevCommit:            make(map[uint64]*types.Commit),
+		blockCache:            make(map[uint64]CachedBlock),
 	}
 
 	return agg, nil
@@ -192,18 +147,78 @@ func NewManager(
 // Start starts the block manager.
 func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 	m.logger.Info("Starting the block manager")
+
+	// TODO (#283): set aggregator mode by proposer addr on the hub
 	if isAggregator {
+		// make sure local signing key is the registered on the hub
+		slProposerKey := m.SLClient.GetProposer().PublicKey.Bytes()
+		localProposerKey, _ := m.ProposerKey.GetPublic().Raw()
+		if !bytes.Equal(slProposerKey, localProposerKey) {
+			return fmt.Errorf("proposer key mismatch: settlement proposer key: %s, block manager proposer key: %s", slProposerKey, m.ProposerKey.GetPublic())
+		}
 		m.logger.Info("Starting in aggregator mode")
-		// TODO(omritoptix): change to private methods
+	}
+
+	// Check if InitChain flow is needed
+	if m.LastState.IsGenesis() {
+		m.logger.Info("Running InitChain")
+
+		err := m.RunInitChain(ctx)
+		if err != nil {
+			return err
+		}
+	}
+
+	err := m.syncBlockManager()
+	if err != nil {
+		err = fmt.Errorf("sync block manager: %w", err)
+		return err
+	}
+
+	if isAggregator {
+		go uevent.MustSubscribe(ctx, m.Pubsub, "nodeHealth", events.QueryHealthStatus, m.onNodeHealthStatus, m.logger)
 		go m.ProduceBlockLoop(ctx)
 		go m.SubmitLoop(ctx)
+	} else {
+		go uevent.MustSubscribe(ctx, m.Pubsub, "applyBlockLoop", p2p.EventQueryNewNewGossipedBlock, m.onNewGossipedBlock, m.logger, 100)
+		go m.RetrieveLoop(ctx)
+		go m.SyncTargetLoop(ctx)
 	}
-	// TODO(omritoptix): change to private methods
-	go m.RetriveLoop(ctx)
-	go m.SyncTargetLoop(ctx)
-	m.EventListener(ctx)
 
 	return nil
+}
+
+// syncBlockManager enforces the node to be synced on initial run.
+func (m *Manager) syncBlockManager() error {
+	resultRetrieveBatch, err := m.getLatestBatchFromSL()
+	// Set the syncTarget according to the result
+	if err != nil {
+		// TODO: separate between fresh rollapp and non-registered rollapp
+		if errors.Is(err, settlement.ErrBatchNotFound) {
+			// Since we requested the latest batch and got batch not found it means
+			// the SL still hasn't got any batches for this chain.
+			m.logger.Info("No batches for chain found in SL. Start writing first batch")
+			m.SyncTarget.Store(uint64(m.Genesis.InitialHeight - 1))
+			return nil
+		}
+		return err
+	}
+	m.SyncTarget.Store(resultRetrieveBatch.EndHeight)
+	err = m.syncUntilTarget(resultRetrieveBatch.EndHeight)
+	if err != nil {
+		return err
+	}
+
+	m.logger.Info("Synced", "current height", m.Store.Height(), "syncTarget", m.SyncTarget.Load())
+	return nil
+}
+
+// UpdateSyncParams updates the sync target and state index if necessary
+func (m *Manager) UpdateSyncParams(endHeight uint64) {
+	types.RollappHubHeightGauge.Set(float64(endHeight))
+	m.logger.Info("Received new syncTarget", "syncTarget", endHeight)
+	m.SyncTarget.Store(endHeight)
+	m.lastSubmissionTime.Store(time.Now().UnixNano())
 }
 
 func getAddress(key crypto.PrivKey) ([]byte, error) {
@@ -214,112 +229,55 @@ func getAddress(key crypto.PrivKey) ([]byte, error) {
 	return tmcrypto.AddressHash(rawKey), nil
 }
 
-// EventListener registers events to callbacks.
-func (m *Manager) EventListener(ctx context.Context) {
-	go utils.SubscribeAndHandleEvents(ctx, m.pubsub, "nodeHealthStatusHandler", events.EventQueryHealthStatus, m.healthStatusEventCallback, m.logger)
-	go utils.SubscribeAndHandleEvents(ctx, m.pubsub, "ApplyBlockLoop", p2p.EventQueryNewNewGossipedBlock, m.applyBlockCallback, m.logger, 100)
+func (m *Manager) onNodeHealthStatus(event pubsub.Message) {
+	eventData := event.Data().(*events.DataHealthStatus)
+	m.logger.Info("received health status event", "eventData", eventData)
+	m.shouldProduceBlocksCh <- eventData.Error == nil
 }
 
-func (m *Manager) healthStatusEventCallback(event pubsub.Message) {
-	eventData := event.Data().(*events.EventDataHealthStatus)
-	m.logger.Info("Received health status event", "eventData", eventData)
-	m.shouldProduceBlocksCh <- eventData.Healthy
-}
-
-func (m *Manager) applyBlockCallback(event pubsub.Message) {
-	m.logger.Debug("Received new block event", "eventData", event.Data(), "cachedBlocks", len(m.prevBlock))
+// TODO: move to gossip.go
+// onNewGossippedBlock will take a block and apply it
+func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
+	m.logger.Debug("Received new block event", "eventData", event.Data(), "cachedBlocks", len(m.blockCache))
 	eventData := event.Data().(p2p.GossipedBlock)
 	block := eventData.Block
 	commit := eventData.Commit
 
-	if block.Header.Height != m.store.Height()+1 {
-		if block.Header.Height > m.store.Height() {
-			m.prevBlock[block.Header.Height] = &block
-			m.prevCommit[block.Header.Height] = &commit
-			m.logger.Debug("Caching block", "block height", block.Header.Height, "store height", m.store.Height())
-		}
-	} else {
-		err := m.applyBlock(context.Background(), &block, &commit, blockMetaData{source: gossipedBlock})
-		if err != nil {
-			m.logger.Debug("Failed to apply block", "err", err)
-		}
+	if err := m.validateBlock(&block, &commit); err != nil {
+		m.logger.Error("apply block callback, block not valid: dropping it", "err", err, "height", block.Header.Height)
+		/// TODO: can we take an action here such as dropping the peer / reducing their reputation?
+		return
 	}
-	err := m.attemptApplyCachedBlocks(context.Background())
-	if err != nil {
-		m.logger.Debug("Failed to apply previous cached blocks", "err", err)
-	}
-}
 
-// SetDALC is used to set DataAvailabilityLayerClient used by Manager.
-// TODO(omritoptix): Remove this from here as it's only being used for tests.
-func (m *Manager) SetDALC(dalc da.DataAvailabilityLayerClient) {
-	m.dalc = dalc
-	m.retriever = dalc.(da.BatchRetriever)
+	nextHeight := m.Store.NextHeight()
+	if block.Header.Height >= nextHeight {
+		m.blockCache[block.Header.Height] = CachedBlock{
+			Block:  &block,
+			Commit: &commit,
+		}
+		m.logger.Debug("caching block", "block height", block.Header.Height, "store height", m.Store.Height())
+	}
+
+	if block.Header.Height == nextHeight {
+		err := m.attemptApplyCachedBlocks()
+		if err != nil {
+			m.logger.Error("applying cached blocks", "err", err)
+		}
+	}
 }
 
 // getLatestBatchFromSL gets the latest batch from the SL
-func (m *Manager) getLatestBatchFromSL(ctx context.Context) (*settlement.ResultRetrieveBatch, error) {
-	var resultRetrieveBatch *settlement.ResultRetrieveBatch
-	var err error
-	// Get latest batch from SL
-	err = retry.Do(
-		func() error {
-			resultRetrieveBatch, err = m.settlementClient.RetrieveBatch()
-			if err != nil {
-				return err
-			}
-			return nil
-		},
-		retry.LastErrorOnly(true),
-		retry.Context(ctx),
-		retry.Attempts(1),
-	)
-	if err != nil {
-		return resultRetrieveBatch, err
-	}
-	return resultRetrieveBatch, nil
+func (m *Manager) getLatestBatchFromSL() (*settlement.ResultRetrieveBatch, error) {
+	return m.SLClient.RetrieveBatch()
 }
 
-// TODO(omritoptix): possible remove this method from the manager
-func updateInitChainState(s *types.State, res *abci.ResponseInitChain, validators []*tmtypes.Validator) {
-	// If the app did not return an app hash, we keep the one set from the genesis doc in
-	// the state. We don't set appHash since we don't want the genesis doc app hash
-	// recorded in the genesis block. We should probably just remove GenesisDoc.AppHash.
-	if len(res.AppHash) > 0 {
-		copy(s.AppHash[:], res.AppHash)
+// getInitialState tries to load lastState from Store, and if it's not available it reads GenesisDoc.
+func getInitialState(store store.Store, genesis *tmtypes.GenesisDoc, logger types.Logger) (types.State, error) {
+	s, err := store.LoadState()
+	if errors.Is(err, types.ErrNoStateFound) {
+		logger.Info("failed to find state in the store, creating new state from genesis")
+		return types.NewFromGenesisDoc(genesis)
 	}
 
-	// The validators after initChain must be greater than zero, otherwise this state is not loadable
-	if len(validators) <= 0 {
-		panic("Validators must be greater than zero")
-	}
-
-	if res.ConsensusParams != nil {
-		params := res.ConsensusParams
-		if params.Block != nil {
-			s.ConsensusParams.Block.MaxBytes = params.Block.MaxBytes
-			s.ConsensusParams.Block.MaxGas = params.Block.MaxGas
-		}
-		if params.Evidence != nil {
-			s.ConsensusParams.Evidence.MaxAgeNumBlocks = params.Evidence.MaxAgeNumBlocks
-			s.ConsensusParams.Evidence.MaxAgeDuration = params.Evidence.MaxAgeDuration
-			s.ConsensusParams.Evidence.MaxBytes = params.Evidence.MaxBytes
-		}
-		if params.Validator != nil {
-			// Copy params.Validator.PubkeyTypes, and set result's value to the copy.
-			// This avoids having to initialize the slice to 0 values, and then write to it again.
-			s.ConsensusParams.Validator.PubKeyTypes = append([]string{}, params.Validator.PubKeyTypes...)
-		}
-		if params.Version != nil {
-			s.ConsensusParams.Version.AppVersion = params.Version.AppVersion
-		}
-		s.Version.Consensus.App = s.ConsensusParams.Version.AppVersion
-	}
-	// We update the last results hash with the empty hash, to conform with RFC-6962.
-	copy(s.LastResultsHash[:], merkle.HashFromByteSlices(nil))
-
-	// Set the validators in the state
-	s.Validators = tmtypes.NewValidatorSet(validators).CopyIncrementProposerPriority(1)
-	s.NextValidators = s.Validators.Copy()
-	s.LastValidators = s.Validators.Copy()
+	return s, err
 }

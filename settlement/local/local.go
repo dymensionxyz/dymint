@@ -1,4 +1,4 @@
-package mock
+package local
 
 import (
 	"context"
@@ -18,7 +18,6 @@ import (
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	rollapptypes "github.com/dymensionxyz/dymension/v3/x/rollapp/types"
 	"github.com/dymensionxyz/dymint/da"
-	"github.com/dymensionxyz/dymint/log"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
@@ -28,8 +27,10 @@ import (
 
 const kvStoreDBName = "settlement"
 
-var settlementKVPrefix = []byte{0}
-var slStateIndexKey = []byte("slStateIndex")
+var (
+	settlementKVPrefix = []byte{0}
+	slStateIndexKey    = []byte("slStateIndex")
+)
 
 // LayerClient is an extension of the base settlement layer client
 // for usage in tests and local development.
@@ -40,7 +41,7 @@ type LayerClient struct {
 var _ settlement.LayerI = (*LayerClient)(nil)
 
 // Init initializes the mock layer client.
-func (m *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, logger log.Logger, options ...settlement.Option) error {
+func (m *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, logger types.Logger, options ...settlement.Option) error {
 	HubClientMock, err := newHubClient(config, pubsub, logger)
 	if err != nil {
 		return err
@@ -65,7 +66,7 @@ func (m *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, logg
 type HubClient struct {
 	ProposerPubKey string
 	slStateIndex   uint64
-	logger         log.Logger
+	logger         types.Logger
 	pubsub         *pubsub.Server
 	latestHeight   uint64
 	settlementKV   store.KVStore
@@ -73,7 +74,7 @@ type HubClient struct {
 
 var _ settlement.HubClient = &HubClient{}
 
-func newHubClient(config settlement.Config, pubsub *pubsub.Server, logger log.Logger) (*HubClient, error) {
+func newHubClient(config settlement.Config, pubsub *pubsub.Server, logger types.Logger) (*HubClient, error) {
 	latestHeight := uint64(0)
 	slStateIndex := uint64(0)
 	slstore, proposer, err := initConfig(config)
@@ -109,9 +110,9 @@ func newHubClient(config settlement.Config, pubsub *pubsub.Server, logger log.Lo
 
 func initConfig(conf settlement.Config) (slstore store.KVStore, proposer string, err error) {
 	if conf.KeyringHomeDir == "" {
-		//init store
+		// init store
 		slstore = store.NewDefaultInMemoryKVStore()
-		//init proposer pub key
+		// init proposer pub key
 		if conf.ProposerPubKey != "" {
 			proposer = conf.ProposerPubKey
 		} else {
@@ -150,17 +151,17 @@ func (c *HubClient) Stop() error {
 }
 
 // PostBatch saves the batch to the kv store
-func (c *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) {
-	settlementBatch := c.convertBatchtoSettlementBatch(batch, daClient, daResult)
+func (c *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) error {
+	settlementBatch := c.convertBatchtoSettlementBatch(batch, daResult)
 	c.saveBatch(settlementBatch)
 	go func() {
-		// sleep for 10 miliseconds to mimic a delay in batch acceptance
-		time.Sleep(10 * time.Millisecond)
-		err := c.pubsub.PublishWithEvents(context.Background(), &settlement.EventDataNewSettlementBatchAccepted{EndHeight: settlementBatch.EndHeight}, map[string][]string{settlement.EventTypeKey: {settlement.EventNewSettlementBatchAccepted}})
+		time.Sleep(10 * time.Millisecond) // mimic a delay in batch acceptance
+		err := c.pubsub.PublishWithEvents(context.Background(), &settlement.EventDataNewBatchAccepted{EndHeight: settlementBatch.EndHeight}, settlement.EventNewBatchAcceptedList)
 		if err != nil {
 			panic(err)
 		}
 	}()
+	return nil
 }
 
 // GetLatestBatch returns the latest batch from the kv store
@@ -223,14 +224,14 @@ func (c *HubClient) saveBatch(batch *settlement.Batch) {
 	atomic.StoreUint64(&c.latestHeight, batch.EndHeight)
 }
 
-func (c *HubClient) convertBatchtoSettlementBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) *settlement.Batch {
+func (c *HubClient) convertBatchtoSettlementBatch(batch *types.Batch, daResult *da.ResultSubmitBatch) *settlement.Batch {
 	settlementBatch := &settlement.Batch{
 		StartHeight: batch.StartHeight,
 		EndHeight:   batch.EndHeight,
 		MetaData: &settlement.BatchMetaData{
-			DA: &settlement.DAMetaData{
-				Height: daResult.DAHeight,
-				Client: daClient,
+			DA: &da.DASubmitMetaData{
+				Height: daResult.SubmitMetaData.Height,
+				Client: daResult.SubmitMetaData.Client,
 			},
 		},
 	}

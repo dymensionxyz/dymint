@@ -4,15 +4,15 @@ import (
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/settlement/dymension"
 	"github.com/dymensionxyz/dymint/settlement/grpc"
-	"github.com/dymensionxyz/dymint/settlement/mock"
+	"github.com/dymensionxyz/dymint/settlement/local"
 )
 
 // Client represents a settlement layer client
 type Client string
 
 const (
-	// Mock is a mock client for the settlement layer
-	Mock Client = "mock"
+	// Local is a mock client for the settlement layer
+	Local Client = "mock"
 	// Dymension is a client for interacting with dymension settlement layer
 	Dymension Client = "dymension"
 	// Mock client using grpc for a shared use
@@ -21,7 +21,7 @@ const (
 
 // A central registry for all Settlement Layer Clients
 var clients = map[Client]func() settlement.LayerI{
-	Mock:      func() settlement.LayerI { return &mock.LayerClient{} },
+	Local:     func() settlement.LayerI { return &local.LayerClient{} },
 	Dymension: func() settlement.LayerI { return &dymension.LayerClient{} },
 	Grpc:      func() settlement.LayerI { return &grpc.LayerClient{} },
 }

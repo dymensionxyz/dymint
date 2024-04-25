@@ -45,8 +45,10 @@ type Header struct {
 	ChainID string
 }
 
-var _ encoding.BinaryMarshaler = &Header{}
-var _ encoding.BinaryUnmarshaler = &Header{}
+var (
+	_ encoding.BinaryMarshaler   = &Header{}
+	_ encoding.BinaryUnmarshaler = &Header{}
+)
 
 // Version captures the consensus rules for processing a block in the blockchain,
 // including all blockchain data structures and the rules of the application's
@@ -64,8 +66,10 @@ type Block struct {
 	LastCommit Commit
 }
 
-var _ encoding.BinaryMarshaler = &Block{}
-var _ encoding.BinaryUnmarshaler = &Block{}
+var (
+	_ encoding.BinaryMarshaler   = &Block{}
+	_ encoding.BinaryUnmarshaler = &Block{}
+)
 
 // Data defines Dymint block data.
 type Data struct {

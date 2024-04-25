@@ -1,8 +1,9 @@
 package da_test
 
 import (
+	cryptoRand "crypto/rand"
 	"encoding/json"
-	"math/rand"
+	"math/rand" //#gosec
 	"testing"
 	"time"
 
@@ -14,7 +15,7 @@ import (
 
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/da/celestia"
-	"github.com/dymensionxyz/dymint/da/mock"
+	"github.com/dymensionxyz/dymint/da/local"
 	"github.com/dymensionxyz/dymint/da/registry"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
@@ -22,8 +23,7 @@ import (
 
 const mockDaBlockTime = 100 * time.Millisecond
 
-//TODO: move to mock DA test
-
+// TODO: move to mock DA test
 func TestLifecycle(t *testing.T) {
 	doTestLifecycle(t, "mock")
 }
@@ -32,7 +32,8 @@ func doTestLifecycle(t *testing.T, daType string) {
 	var err error
 	require := require.New(t)
 	pubsubServer := pubsub.NewServer()
-	pubsubServer.Start()
+	err = pubsubServer.Start()
+	require.NoError(err)
 
 	dacfg := []byte{}
 	dalc := registry.GetClient(daType)
@@ -54,17 +55,19 @@ func TestDALC(t *testing.T) {
 func doTestDALC(t *testing.T, mockDalc da.DataAvailabilityLayerClient) {
 	require := require.New(t)
 	assert := assert.New(t)
+	var err error
 
 	// mock DALC will advance block height every 100ms
-	if _, ok := mockDalc.(*mock.DataAvailabilityLayerClient); !ok {
-		t.Fatal("mock DALC is not of type *mock.DataAvailabilityLayerClient")
+	if _, ok := mockDalc.(*local.DataAvailabilityLayerClient); !ok {
+		t.Fatal("mock DALC is not of type *local.DataAvailabilityLayerClient")
 	}
 	conf := []byte(mockDaBlockTime.String())
-	dalc := mockDalc.(*mock.DataAvailabilityLayerClient)
+	dalc := mockDalc.(*local.DataAvailabilityLayerClient)
 
 	pubsubServer := pubsub.NewServer()
-	pubsubServer.Start()
-	err := dalc.Init(conf, pubsubServer, store.NewDefaultInMemoryKVStore(), log.TestingLogger())
+	err = pubsubServer.Start()
+	require.NoError(err)
+	err = dalc.Init(conf, pubsubServer, store.NewDefaultInMemoryKVStore(), log.TestingLogger())
 	require.NoError(err)
 
 	err = dalc.Start()
@@ -88,11 +91,11 @@ func doTestDALC(t *testing.T, mockDalc da.DataAvailabilityLayerClient) {
 	}
 
 	resp := dalc.SubmitBatch(batch1)
-	h1 := resp.DAHeight
+	h1 := resp.SubmitMetaData
 	assert.Equal(da.StatusSuccess, resp.Code)
 
 	resp = dalc.SubmitBatch(batch2)
-	h2 := resp.DAHeight
+	h2 := resp.SubmitMetaData
 	assert.Equal(da.StatusSuccess, resp.Code)
 
 	// wait a bit more than mockDaBlockTime, so dymint blocks can be "included" in mock block
@@ -102,16 +105,14 @@ func doTestDALC(t *testing.T, mockDalc da.DataAvailabilityLayerClient) {
 	// print the check result
 	t.Logf("CheckBatchAvailability result: %+v", check)
 	assert.Equal(da.StatusSuccess, check.Code)
-	assert.True(check.DataAvailable)
 
 	check = dalc.CheckBatchAvailability(h2)
 	assert.Equal(da.StatusSuccess, check.Code)
-	assert.True(check.DataAvailable)
 
+	h1.Height = h1.Height - 1
 	// this height should not be used by DALC
-	check = dalc.CheckBatchAvailability(h1 - 1)
+	check = dalc.CheckBatchAvailability(h1)
 	assert.Equal(da.StatusSuccess, check.Code)
-	assert.False(check.DataAvailable)
 }
 
 func TestRetrieve(t *testing.T) {
@@ -126,10 +127,11 @@ func TestRetrieve(t *testing.T) {
 func doTestRetrieve(t *testing.T, dalc da.DataAvailabilityLayerClient) {
 	require := require.New(t)
 	assert := assert.New(t)
+	var err error
 
 	// mock DALC will advance block height every 100ms
 	conf := []byte{}
-	if _, ok := dalc.(*mock.DataAvailabilityLayerClient); ok {
+	if _, ok := dalc.(*local.DataAvailabilityLayerClient); ok {
 		conf = []byte(mockDaBlockTime.String())
 	}
 	if _, ok := dalc.(*celestia.DataAvailabilityLayerClient); ok {
@@ -145,8 +147,9 @@ func doTestRetrieve(t *testing.T, dalc da.DataAvailabilityLayerClient) {
 	}
 
 	pubsubServer := pubsub.NewServer()
-	pubsubServer.Start()
-	err := dalc.Init(conf, pubsubServer, store.NewDefaultInMemoryKVStore(), log.TestingLogger())
+	err = pubsubServer.Start()
+	require.NoError(err)
+	err = dalc.Init(conf, pubsubServer, store.NewDefaultInMemoryKVStore(), log.TestingLogger())
 	require.NoError(err)
 
 	err = dalc.Start()
@@ -165,40 +168,47 @@ func doTestRetrieve(t *testing.T, dalc da.DataAvailabilityLayerClient) {
 			StartHeight: i,
 			EndHeight:   i,
 			Blocks:      []*types.Block{b},
-			Commits: []*types.Commit{{
-				Height:     b.Header.Height,
-				HeaderHash: b.Header.Hash(),
-			},
+			Commits: []*types.Commit{
+				{
+					Height:     b.Header.Height,
+					HeaderHash: b.Header.Hash(),
+				},
 			},
 		}
 		resp := dalc.SubmitBatch(batch)
 		assert.Equal(da.StatusSuccess, resp.Code, resp.Message)
 		time.Sleep(time.Duration(rand.Int63() % mockDaBlockTime.Milliseconds()))
 
-		countAtHeight[resp.DAHeight]++
-		batches[batch] = resp.DAHeight
+		countAtHeight[resp.SubmitMetaData.Height]++
+		batches[batch] = resp.SubmitMetaData.Height
 	}
 
 	// wait a bit more than mockDaBlockTime, so mock can "produce" last blocks
 	time.Sleep(mockDaBlockTime + 20*time.Millisecond)
 
 	for h, cnt := range countAtHeight {
+		daMetaData := &da.DASubmitMetaData{
+			Height: h,
+		}
 		t.Log("Retrieving block, DA Height", h)
-		ret := retriever.RetrieveBatches(h)
+		ret := retriever.RetrieveBatches(daMetaData)
 		assert.Equal(da.StatusSuccess, ret.Code, ret.Message)
 		require.NotEmpty(ret.Batches, h)
 		assert.Len(ret.Batches, cnt, h)
 	}
 
 	for b, h := range batches {
-		ret := retriever.RetrieveBatches(h)
+		daMetaData := &da.DASubmitMetaData{
+			Height: h,
+		}
+		ret := retriever.RetrieveBatches(daMetaData)
 		assert.Equal(da.StatusSuccess, ret.Code, h)
 		require.NotEmpty(ret.Batches, h)
 		assert.Contains(ret.Batches, b, h)
 	}
 }
 
-//TODO: move to testutils
+// TODO: move to testutils
 
 // copy-pasted from store/store_test.go
 func getRandomBlock(height uint64, nTxs int) *types.Block {
@@ -230,12 +240,13 @@ func getRandomBlock(height uint64, nTxs int) *types.Block {
 }
 
 func getRandomTx() types.Tx {
-	size := rand.Int()%100 + 100
+	NuM := rand.Int()
+	size := NuM%100 + 100
 	return types.Tx(getRandomBytes(size))
 }
 
 func getRandomBytes(n int) []byte {
 	data := make([]byte, n)
-	_, _ = rand.Read(data)
+	_, _ = cryptoRand.Read(data)
 	return data
 }

@@ -1,52 +1,39 @@
 package middleware
 
 import (
-	"errors"
-	"fmt"
 	"net/http"
+	"strconv"
 
-	"github.com/dymensionxyz/dymint/rpc/sharedtypes"
 	"github.com/tendermint/tendermint/libs/log"
 )
 
-// StatusMiddleware is a struct that holds the health status of the node.
-type StatusMiddleware struct {
-	healthStatus *sharedtypes.HealthStatus
+type Status struct {
+	Err func() error
 }
 
-// NewStatusMiddleware creates and returns a new Status instance with the given healthStatus.
-func NewStatusMiddleware(healthStatus *sharedtypes.HealthStatus) *StatusMiddleware {
-	return &StatusMiddleware{
-		healthStatus: healthStatus,
-	}
-}
-
-// Handler returns a MiddlewareFunc that checks the node's health status.
-func (s *StatusMiddleware) Handler(logger log.Logger) HandlerFunc {
+func (s Status) Handler(logger log.Logger) HandlerFunc {
 	return func(h http.Handler) http.Handler {
-		return status(s.healthStatus, h, logger)
-	}
-}
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			err := s.Err()
+			isHealthy := err == nil
+			// in case the endpoint is health we return health response
+			if r.URL.Path == "/health" {
 
-// status is a middleware that checks if the node is healthy.
-// If the node is not healthy, it returns a 503 Service Unavailable.
-func status(healthStatus *sharedtypes.HealthStatus, h http.Handler, logger log.Logger) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		isHealthy, err := healthStatus.Get()
-		if !isHealthy {
-			w.WriteHeader(http.StatusServiceUnavailable)
-			errorPrefix := "node is unhealthy"
-			if err == nil {
-				err = errors.New(errorPrefix)
+				w.WriteHeader(http.StatusOK)
+				var errS string
+				if err != nil {
+					errS = err.Error()
+				}
+				json := `{"jsonrpc":"2.0","result":{"isHealthy":` + strconv.FormatBool(isHealthy) + `,:"error":"` + errS + `"},"id":-1}`
+				_, err = w.Write([]byte(json))
+				if err != nil {
+					return
+				}
+				return
+
 			} else {
-				err = fmt.Errorf("%s: %w", errorPrefix, err)
+				h.ServeHTTP(w, r)
 			}
-			_, err := w.Write([]byte(err.Error()))
-			if err != nil {
-				logger.Error("failed to write response", "error", err)
-			}
-			return
-		}
-		h.ServeHTTP(w, r)
-	})
+		})
+	}
 }

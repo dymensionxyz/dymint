@@ -6,7 +6,10 @@ import (
 	"net"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
+
+	uevent "github.com/dymensionxyz/dymint/utils/event"
 
 	"github.com/rs/cors"
 	"github.com/tendermint/tendermint/config"
@@ -21,23 +24,28 @@ import (
 	"github.com/dymensionxyz/dymint/rpc/client"
 	"github.com/dymensionxyz/dymint/rpc/json"
 	"github.com/dymensionxyz/dymint/rpc/middleware"
-	"github.com/dymensionxyz/dymint/rpc/sharedtypes"
-	"github.com/dymensionxyz/dymint/utils"
 )
 
 // Server handles HTTP and JSON-RPC requests, exposing Tendermint-compatible API.
 type Server struct {
 	*service.BaseService
 
-	config       *config.RPCConfig
-	client       *client.Client
-	node         *node.Node
-	healthStatus sharedtypes.HealthStatus
-	listener     net.Listener
-	ctx          context.Context
+	config   *config.RPCConfig
+	client   *client.Client
+	node     *node.Node
+	listener net.Listener
 
 	server http.Server
+
+	health   error
+	healthMU sync.RWMutex
 }
+
+const (
+	onStopTimeout = 5 * time.Second
+	// readHeaderTimeout is the timeout for reading the request headers.
+	readHeaderTimeout = 5 * time.Second
+)
 
 // Option is a function that configures the Server.
 type Option func(*Server)
@@ -55,11 +63,6 @@ func NewServer(node *node.Node, config *config.RPCConfig, logger log.Logger, opt
 		config: config,
 		client: client.NewClient(node),
 		node:   node,
-		healthStatus: sharedtypes.HealthStatus{
-			IsHealthy: true,
-			Error:     nil,
-		},
-		ctx: context.Background(),
 	}
 	srv.BaseService = service.NewBaseService(logger, "RPC", srv)
 
@@ -83,29 +86,40 @@ func (s *Server) PubSubServer() *pubsub.Server {
 
 // OnStart is called when Server is started (see service.BaseService for details).
 func (s *Server) OnStart() error {
-	go s.eventListener()
+	s.startEventListener()
 	return s.startRPC()
 }
 
 // OnStop is called when Server is stopped (see service.BaseService for details).
 func (s *Server) OnStop() {
-	ctx, cancel := context.WithTimeout(s.ctx, 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), onStopTimeout)
 	defer cancel()
 	if err := s.server.Shutdown(ctx); err != nil {
-		s.Logger.Error("error while shuting down RPC server", "error", err)
+		s.Logger.Error("while shutting down RPC server", "error", err)
 	}
 }
 
-// EventListener registers events to callbacks.
-func (s *Server) eventListener() {
-	go utils.SubscribeAndHandleEvents(s.ctx, s.PubSubServer(), "RPCNodeHealthStatusHandler", events.EventQueryHealthStatus, s.healthStatusEventCallback, s.Logger)
+// startEventListener registers events to callbacks.
+func (s *Server) startEventListener() {
+	go uevent.MustSubscribe(context.Background(), s.PubSubServer(), "RPCNodeHealthStatusHandler", events.QueryHealthStatus, s.onNodeHealthUpdate, s.Logger)
 }
 
-// healthStatusEventCallback is a callback function that handles health status events.
-func (s *Server) healthStatusEventCallback(event pubsub.Message) {
-	eventData := event.Data().(*events.EventDataHealthStatus)
-	s.Logger.Info("Received health status event", "eventData", eventData)
-	s.healthStatus.Set(eventData.Healthy, eventData.Error)
+// onNodeHealthUpdate is a callback function that handles health status events from the node.
+func (s *Server) onNodeHealthUpdate(event pubsub.Message) {
+	eventData := event.Data().(*events.DataHealthStatus)
+	if eventData.Error != nil {
+		s.Logger.Error("node is unhealthy: got error health check from sublayer", "error", eventData.Error)
+	}
+	s.healthMU.Lock()
+	defer s.healthMU.Unlock()
+	s.health = eventData.Error
+}
+
+func (s *Server) getHealthStatus() error {
+	s.healthMU.RLock()
+	defer s.healthMU.RUnlock()
+
+	return s.health
 }
 
 func (s *Server) startRPC() error {
@@ -157,17 +171,15 @@ func (s *Server) startRPC() error {
 
 	// Apply Middleware
 	reg := middleware.GetRegistry()
-	reg.Register(
-		middleware.NewStatusMiddleware(&s.healthStatus),
-	)
+	reg.Register(middleware.Status{Err: s.getHealthStatus})
 	middlewareClient := middleware.NewClient(*reg, s.Logger.With("module", "rpc/middleware"))
 	handler = middlewareClient.Handle(handler)
 
 	// Start HTTP server
 	go func() {
 		err := s.serve(listener, handler)
-		if err != http.ErrServerClosed {
-			s.Logger.Error("error while serving HTTP", "error", err)
+		if !errors.Is(err, http.ErrServerClosed) {
+			s.Logger.Error("while serving HTTP", "error", err)
 		}
 	}()
 
@@ -176,7 +188,10 @@ func (s *Server) startRPC() error {
 
 func (s *Server) serve(listener net.Listener, handler http.Handler) error {
 	s.Logger.Info("serving HTTP", "listen address", listener.Addr())
-	s.server = http.Server{Handler: handler} //#nosec
+	s.server = http.Server{
+		Handler:           handler,
+		ReadHeaderTimeout: readHeaderTimeout,
+	}
 	if s.config.TLSCertFile != "" && s.config.TLSKeyFile != "" {
 		return s.server.ServeTLS(listener, s.config.CertFile(), s.config.KeyFile())
 	}

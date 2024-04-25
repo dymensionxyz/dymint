@@ -15,24 +15,23 @@ import (
 
 	"github.com/celestiaorg/go-cnc"
 	"github.com/dymensionxyz/dymint/da"
-	mockda "github.com/dymensionxyz/dymint/da/mock"
-	"github.com/dymensionxyz/dymint/log"
+	"github.com/dymensionxyz/dymint/da/local"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
 )
 
 // Server mocks celestia-node HTTP API.
 type Server struct {
-	mock      *mockda.DataAvailabilityLayerClient
+	da        *local.DataAvailabilityLayerClient
 	blockTime time.Duration
 	server    *http.Server
-	logger    log.Logger
+	logger    types.Logger
 }
 
 // NewServer creates new instance of Server.
-func NewServer(blockTime time.Duration, logger log.Logger) *Server {
+func NewServer(blockTime time.Duration, logger types.Logger) *Server {
 	return &Server{
-		mock:      new(mockda.DataAvailabilityLayerClient),
+		da:        new(local.DataAvailabilityLayerClient),
 		blockTime: blockTime,
 		logger:    logger,
 	}
@@ -40,11 +39,11 @@ func NewServer(blockTime time.Duration, logger log.Logger) *Server {
 
 // Start starts HTTP server with given listener.
 func (s *Server) Start(listener net.Listener) error {
-	err := s.mock.Init([]byte(s.blockTime.String()), pubsub.NewServer(), store.NewDefaultInMemoryKVStore(), s.logger)
+	err := s.da.Init([]byte(s.blockTime.String()), pubsub.NewServer(), store.NewDefaultInMemoryKVStore(), s.logger)
 	if err != nil {
 		return err
 	}
-	err = s.mock.Start()
+	err = s.da.Start()
 	if err != nil {
 		return err
 	}
@@ -93,14 +92,14 @@ func (s *Server) submit(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res := s.mock.SubmitBatch(&batch)
+	res := s.da.SubmitBatch(&batch)
 	code := 0
 	if res.Code != da.StatusSuccess {
 		code = 3
 	}
 
 	resp, err := json.Marshal(cnc.TxResponse{
-		Height: int64(res.DAHeight),
+		Height: int64(res.SubmitMetaData.Height),
 		Code:   uint32(code),
 		RawLog: res.Message,
 	})
@@ -119,7 +118,10 @@ func (s *Server) shares(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res := s.mock.RetrieveBatches(height)
+	daMetaData := &da.DASubmitMetaData{
+		Height: height,
+	}
+	res := s.da.RetrieveBatches(daMetaData)
 	if res.Code != da.StatusSuccess {
 		s.writeError(w, errors.New(res.Message))
 		return
@@ -145,7 +147,7 @@ func (s *Server) shares(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := json.Marshal(namespacedSharesResponse{
 		Shares: shares,
-		Height: res.DAHeight,
+		Height: res.CheckMetaData.Height,
 	})
 	if err != nil {
 		s.writeError(w, err)
@@ -161,8 +163,10 @@ func (s *Server) data(w http.ResponseWriter, r *http.Request) {
 		s.writeError(w, err)
 		return
 	}
-
-	res := s.mock.RetrieveBatches(height)
+	daMetaData := &da.DASubmitMetaData{
+		Height: height,
+	}
+	res := s.da.RetrieveBatches(daMetaData)
 	if res.Code != da.StatusSuccess {
 		s.writeError(w, errors.New(res.Message))
 		return
@@ -179,7 +183,7 @@ func (s *Server) data(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := json.Marshal(namespacedDataResponse{
 		Data:   data,
-		Height: res.DAHeight,
+		Height: res.CheckMetaData.Height,
 	})
 	if err != nil {
 		s.writeError(w, err)
@@ -204,7 +208,7 @@ func (s *Server) writeResponse(w http.ResponseWriter, payload []byte) {
 	w.WriteHeader(http.StatusOK)
 	_, err := w.Write(payload)
 	if err != nil {
-		s.logger.Error("failed to write response", "error", err)
+		s.logger.Error("write response", "error", err)
 	}
 }
 
@@ -213,10 +217,10 @@ func (s *Server) writeError(w http.ResponseWriter, err error) {
 	w.WriteHeader(http.StatusInternalServerError)
 	resp, jerr := json.Marshal(err.Error())
 	if jerr != nil {
-		s.logger.Error("failed to serialize error message", "error", jerr)
+		s.logger.Error("serialize error message", "error", jerr)
 	}
 	_, werr := w.Write(resp)
 	if werr != nil {
-		s.logger.Error("failed to write response", "error", werr)
+		s.logger.Error("write response", "error", werr)
 	}
 }

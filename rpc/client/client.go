@@ -3,18 +3,16 @@ package client
 import (
 	"context"
 	"errors"
-
-	"github.com/dymensionxyz/dymint/version"
-
 	"fmt"
 	"sort"
 	"time"
 
+	"github.com/dymensionxyz/dymint/types"
+
+	"github.com/dymensionxyz/dymint/version"
+
 	sdkerrors "cosmossdk.io/errors"
 
-	abciconv "github.com/dymensionxyz/dymint/conv/abci"
-	"github.com/dymensionxyz/dymint/mempool"
-	"github.com/dymensionxyz/dymint/node"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
@@ -26,8 +24,11 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
-	"github.com/tendermint/tendermint/types"
+	tmtypes "github.com/tendermint/tendermint/types"
 	tm_version "github.com/tendermint/tendermint/version"
+
+	"github.com/dymensionxyz/dymint/mempool"
+	"github.com/dymensionxyz/dymint/node"
 )
 
 const (
@@ -38,10 +39,8 @@ const (
 	subscribeTimeout = 5 * time.Second
 )
 
-var (
-	// ErrConsensusStateNotAvailable is returned because Dymint doesn't use Tendermint consensus.
-	ErrConsensusStateNotAvailable = errors.New("consensus state not available in Dymint")
-)
+// ErrConsensusStateNotAvailable is returned because Dymint doesn't use Tendermint consensus.
+var ErrConsensusStateNotAvailable = errors.New("consensus state not available in Dymint")
 
 var _ rpcclient.Client = &Client{}
 
@@ -49,7 +48,7 @@ var _ rpcclient.Client = &Client{}
 //
 // This is the type that is used in communication between cosmos-sdk app and Dymint.
 type Client struct {
-	*types.EventBus
+	*tmtypes.EventBus
 	config *config.RPCConfig
 
 	node *node.Node
@@ -95,11 +94,11 @@ func (c *Client) ABCIQueryWithOptions(ctx context.Context, path string, data tmb
 
 // BroadcastTxCommit returns with the responses from CheckTx and DeliverTx.
 // More: https://docs.tendermint.com/master/rpc/#/Tx/broadcast_tx_commit
-func (c *Client) BroadcastTxCommit(ctx context.Context, tx types.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
+func (c *Client) BroadcastTxCommit(ctx context.Context, tx tmtypes.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
 	// This implementation corresponds to Tendermints implementation from rpc/core/mempool.go.
 	// ctx.RemoteAddr godoc: If neither HTTPReq nor WSConn is set, an empty string is returned.
 	// This code is a local client, so we can assume that subscriber is ""
-	subscriber := "" //ctx.RemoteAddr()
+	subscriber := "" // ctx.RemoteAddr()
 
 	if err := c.IsSubscriptionAllowed(subscriber); err != nil {
 		return nil, sdkerrors.Wrap(err, "subscription not allowed")
@@ -108,83 +107,90 @@ func (c *Client) BroadcastTxCommit(ctx context.Context, tx types.Tx) (*ctypes.Re
 	// Subscribe to tx being committed in block.
 	subCtx, cancel := context.WithTimeout(ctx, subscribeTimeout)
 	defer cancel()
-	q := types.EventQueryTxFor(tx)
+	q := tmtypes.EventQueryTxFor(tx)
 	deliverTxSub, err := c.EventBus.Subscribe(subCtx, subscriber, q)
 	if err != nil {
-		err = fmt.Errorf("failed to subscribe to tx: %w", err)
-		c.Logger.Error("Error on broadcast_tx_commit", "err", err)
+		err = fmt.Errorf("subscribe to tx: %w", err)
+		c.Logger.Error("on broadcast_tx_commit", "err", err)
 		return nil, err
 	}
 	defer func() {
 		if err := c.EventBus.Unsubscribe(context.Background(), subscriber, q); err != nil {
-			c.Logger.Error("Error unsubscribing from eventBus", "err", err)
+			c.Logger.Error("unsubscribing from eventBus", "err", err)
 		}
 	}()
 
 	// add to mempool and wait for CheckTx result
 	checkTxResCh := make(chan *abci.Response, 1)
 	err = c.node.Mempool.CheckTx(tx, func(res *abci.Response) {
-		checkTxResCh <- res
+		select {
+		case <-ctx.Done():
+		case checkTxResCh <- res:
+		}
 	}, mempool.TxInfo{})
 	if err != nil {
-		c.Logger.Error("Error on broadcastTxCommit", "err", err)
-		return nil, fmt.Errorf("error on broadcastTxCommit: %v", err)
+		c.Logger.Error("on broadcastTxCommit", "err", err)
+		return nil, fmt.Errorf("on broadcastTxCommit: %w", err)
 	}
-	checkTxResMsg := <-checkTxResCh
-	checkTxRes := checkTxResMsg.GetCheckTx()
-	if checkTxRes.Code != abci.CodeTypeOK {
-		return &ctypes.ResultBroadcastTxCommit{
-			CheckTx:   *checkTxRes,
-			DeliverTx: abci.ResponseDeliverTx{},
-			Hash:      tx.Hash(),
-		}, nil
-	}
-
-	// broadcast tx
-	err = c.node.P2P.GossipTx(ctx, tx)
-	if err != nil {
-		return nil, fmt.Errorf("tx added to local mempool but failure to broadcast: %w", err)
-	}
-
-	// Wait for the tx to be included in a block or timeout.
 	select {
-	case msg := <-deliverTxSub.Out(): // The tx was included in a block.
-		deliverTxRes := msg.Data().(types.EventDataTx)
-		return &ctypes.ResultBroadcastTxCommit{
-			CheckTx:   *checkTxRes,
-			DeliverTx: deliverTxRes.Result,
-			Hash:      tx.Hash(),
-			Height:    deliverTxRes.Height,
-		}, nil
-	case <-deliverTxSub.Cancelled():
-		var reason string
-		if deliverTxSub.Err() == nil {
-			reason = "Tendermint exited"
-		} else {
-			reason = deliverTxSub.Err().Error()
+	case <-ctx.Done():
+		return nil, fmt.Errorf("broadcast confirmation not received: %w", ctx.Err())
+	case checkTxResMsg := <-checkTxResCh:
+		checkTxRes := checkTxResMsg.GetCheckTx()
+		if checkTxRes.Code != abci.CodeTypeOK {
+			return &ctypes.ResultBroadcastTxCommit{
+				CheckTx:   *checkTxRes,
+				DeliverTx: abci.ResponseDeliverTx{},
+				Hash:      tx.Hash(),
+			}, nil
 		}
-		err = fmt.Errorf("deliverTxSub was cancelled (reason: %s)", reason)
-		c.Logger.Error("Error on broadcastTxCommit", "err", err)
-		return &ctypes.ResultBroadcastTxCommit{
-			CheckTx:   *checkTxRes,
-			DeliverTx: abci.ResponseDeliverTx{},
-			Hash:      tx.Hash(),
-		}, err
-	case <-time.After(c.config.TimeoutBroadcastTxCommit):
-		err = errors.New("timed out waiting for tx to be included in a block")
-		c.Logger.Error("Error on broadcastTxCommit", "err", err)
-		return &ctypes.ResultBroadcastTxCommit{
-			CheckTx:   *checkTxRes,
-			DeliverTx: abci.ResponseDeliverTx{},
-			Hash:      tx.Hash(),
-		}, err
+
+		// broadcast tx
+		err = c.node.P2P.GossipTx(ctx, tx)
+		if err != nil {
+			return nil, fmt.Errorf("tx added to local mempool but failure to broadcast: %w", err)
+		}
+
+		// Wait for the tx to be included in a block or timeout.
+		select {
+		case msg := <-deliverTxSub.Out(): // The tx was included in a block.
+			deliverTxRes := msg.Data().(tmtypes.EventDataTx)
+			return &ctypes.ResultBroadcastTxCommit{
+				CheckTx:   *checkTxRes,
+				DeliverTx: deliverTxRes.Result,
+				Hash:      tx.Hash(),
+				Height:    deliverTxRes.Height,
+			}, nil
+		case <-deliverTxSub.Cancelled():
+			var reason string
+			if deliverTxSub.Err() == nil {
+				reason = "Dymint exited"
+			} else {
+				reason = deliverTxSub.Err().Error()
+			}
+			err = fmt.Errorf("deliverTxSub was cancelled (reason: %s)", reason)
+			c.Logger.Error("on broadcastTxCommit", "err", err)
+			return &ctypes.ResultBroadcastTxCommit{
+				CheckTx:   *checkTxRes,
+				DeliverTx: abci.ResponseDeliverTx{},
+				Hash:      tx.Hash(),
+			}, err
+		case <-time.After(c.config.TimeoutBroadcastTxCommit):
+			err = errors.New("timed out waiting for tx to be included in a block")
+			c.Logger.Error("on broadcastTxCommit", "err", err)
+			return &ctypes.ResultBroadcastTxCommit{
+				CheckTx:   *checkTxRes,
+				DeliverTx: abci.ResponseDeliverTx{},
+				Hash:      tx.Hash(),
+			}, err
+		}
 	}
 }
 
 // BroadcastTxAsync returns right away, with no response. Does not wait for
 // CheckTx nor DeliverTx results.
 // More: https://docs.tendermint.com/master/rpc/#/Tx/broadcast_tx_async
-func (c *Client) BroadcastTxAsync(ctx context.Context, tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
+func (c *Client) BroadcastTxAsync(ctx context.Context, tx tmtypes.Tx) (*ctypes.ResultBroadcastTx, error) {
 	err := c.node.Mempool.CheckTx(tx, nil, mempool.TxInfo{})
 	if err != nil {
 		return nil, err
@@ -200,7 +206,7 @@ func (c *Client) BroadcastTxAsync(ctx context.Context, tx types.Tx) (*ctypes.Res
 // BroadcastTxSync returns with the response from CheckTx. Does not wait for
 // DeliverTx result.
 // More: https://docs.tendermint.com/master/rpc/#/Tx/broadcast_tx_sync
-func (c *Client) BroadcastTxSync(ctx context.Context, tx types.Tx) (*ctypes.ResultBroadcastTx, error) {
+func (c *Client) BroadcastTxSync(ctx context.Context, tx tmtypes.Tx) (*ctypes.ResultBroadcastTx, error) {
 	resCh := make(chan *abci.Response, 1)
 	err := c.node.Mempool.CheckTx(tx, func(res *abci.Response) {
 		resCh <- res
@@ -222,7 +228,7 @@ func (c *Client) BroadcastTxSync(ctx context.Context, tx types.Tx) (*ctypes.Resu
 			// this node, as the CheckTx call above will return an error indicating that
 			// the tx is already in the mempool
 			_ = c.node.Mempool.RemoveTxByKey(tx.Key())
-			return nil, fmt.Errorf("failed to gossip tx: %w", err)
+			return nil, fmt.Errorf("gossip tx: %w", err)
 		}
 	}
 
@@ -239,7 +245,7 @@ func (c *Client) BroadcastTxSync(ctx context.Context, tx types.Tx) (*ctypes.Resu
 func (c *Client) Subscribe(ctx context.Context, subscriber, query string, outCapacity ...int) (out <-chan ctypes.ResultEvent, err error) {
 	q, err := tmquery.New(query)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse query: %w", err)
+		return nil, fmt.Errorf("parse query: %w", err)
 	}
 
 	outCap := 1
@@ -247,14 +253,14 @@ func (c *Client) Subscribe(ctx context.Context, subscriber, query string, outCap
 		outCap = outCapacity[0]
 	}
 
-	var sub types.Subscription
+	var sub tmtypes.Subscription
 	if outCap > 0 {
 		sub, err = c.EventBus.Subscribe(ctx, subscriber, q, outCap)
 	} else {
 		sub, err = c.EventBus.SubscribeUnbuffered(ctx, subscriber, q)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("failed to subscribe: %w", err)
+		return nil, fmt.Errorf("subscribe: %w", err)
 	}
 
 	outc := make(chan ctypes.ResultEvent, outCap)
@@ -267,7 +273,7 @@ func (c *Client) Subscribe(ctx context.Context, subscriber, query string, outCap
 func (c *Client) Unsubscribe(ctx context.Context, subscriber, query string) error {
 	q, err := tmquery.New(query)
 	if err != nil {
-		return fmt.Errorf("failed to parse query: %w", err)
+		return fmt.Errorf("parse query: %w", err)
 	}
 	return c.EventBus.Unsubscribe(ctx, subscriber, q)
 }
@@ -281,7 +287,7 @@ func (c *Client) Genesis(_ context.Context) (*ctypes.ResultGenesis, error) {
 func (c *Client) GenesisChunked(context context.Context, id uint) (*ctypes.ResultGenesisChunk, error) {
 	genChunks, err := c.node.GetGenesisChunks()
 	if err != nil {
-		return nil, fmt.Errorf("error while creating chunks of the genesis document: %w", err)
+		return nil, fmt.Errorf("while creating chunks of the genesis document: %w", err)
 	}
 	if genChunks == nil {
 		return nil, fmt.Errorf("service configuration error, genesis chunks are not initialized")
@@ -319,14 +325,14 @@ func (c *Client) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64)
 	}
 	c.Logger.Debug("BlockchainInfo", "maxHeight", maxHeight, "minHeight", minHeight)
 
-	blocks := make([]*types.BlockMeta, 0, maxHeight-minHeight+1)
+	blocks := make([]*tmtypes.BlockMeta, 0, maxHeight-minHeight+1)
 	for height := maxHeight; height >= minHeight; height-- {
 		block, err := c.node.Store.LoadBlock(uint64(height))
 		if err != nil {
 			return nil, err
 		}
 		if block != nil {
-			tmblockmeta, err := abciconv.ToABCIBlockMeta(block)
+			tmblockmeta, err := types.ToABCIBlockMeta(block)
 			if err != nil {
 				return nil, err
 			}
@@ -338,7 +344,6 @@ func (c *Client) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64)
 		LastHeight: int64(c.node.Store.Height()),
 		BlockMetas: blocks,
 	}, nil
-
 }
 
 // NetInfo returns basic information about client P2P connections.
@@ -417,14 +422,14 @@ func (c *Client) Block(ctx context.Context, height *int64) (*ctypes.ResultBlock,
 		return nil, err
 	}
 	hash := block.Hash()
-	abciBlock, err := abciconv.ToABCIBlock(block)
+	abciBlock, err := types.ToABCIBlock(block)
 	if err != nil {
 		return nil, err
 	}
 	return &ctypes.ResultBlock{
-		BlockID: types.BlockID{
+		BlockID: tmtypes.BlockID{
 			Hash: hash[:],
-			PartSetHeader: types.PartSetHeader{
+			PartSetHeader: tmtypes.PartSetHeader{
 				Total: 1,
 				Hash:  hash[:],
 			},
@@ -443,14 +448,14 @@ func (c *Client) BlockByHash(ctx context.Context, hash []byte) (*ctypes.ResultBl
 		return nil, err
 	}
 
-	abciBlock, err := abciconv.ToABCIBlock(block)
+	abciBlock, err := types.ToABCIBlock(block)
 	if err != nil {
 		return nil, err
 	}
 	return &ctypes.ResultBlock{
-		BlockID: types.BlockID{
+		BlockID: tmtypes.BlockID{
 			Hash: h[:],
-			PartSetHeader: types.PartSetHeader{
+			PartSetHeader: tmtypes.PartSetHeader{
 				Total: 1,
 				Hash:  h[:],
 			},
@@ -493,8 +498,8 @@ func (c *Client) Commit(ctx context.Context, height *int64) (*ctypes.ResultCommi
 	if err != nil {
 		return nil, err
 	}
-	commit := abciconv.ToABCICommit(com, &b.Header)
-	block, err := abciconv.ToABCIBlock(b)
+	commit := types.ToABCICommit(com, &b.Header)
+	block, err := types.ToABCIBlock(b)
 	if err != nil {
 		return nil, err
 	}
@@ -507,7 +512,7 @@ func (c *Client) Validators(ctx context.Context, heightPtr *int64, pagePtr, perP
 	height := c.normalizeHeight(heightPtr)
 	validators, err := c.node.Store.LoadValidators(height)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load validators for height %d: %w", height, err)
+		return nil, fmt.Errorf("load validators for height %d: %w", height, err)
 	}
 
 	totalCount := len(validators.Validators)
@@ -541,13 +546,13 @@ func (c *Client) Tx(ctx context.Context, hash []byte, prove bool) (*ctypes.Resul
 	height := res.Height
 	index := res.Index
 
-	var proof types.TxProof
+	var proof tmtypes.TxProof
 	if prove {
 		block, _ := c.node.Store.LoadBlock(uint64(height))
 		blockProof := block.Data.Txs.Proof(int(index)) // XXX: overflow on 32-bit machines
-		proof = types.TxProof{
+		proof = tmtypes.TxProof{
 			RootHash: blockProof.RootHash,
-			Data:     types.Tx(blockProof.Data),
+			Data:     tmtypes.Tx(blockProof.Data),
 			Proof:    blockProof.Proof,
 		}
 	}
@@ -610,14 +615,14 @@ func (c *Client) TxSearch(ctx context.Context, query string, prove bool, pagePtr
 	for i := skipCount; i < skipCount+pageSize; i++ {
 		r := results[i]
 
-		var proof types.TxProof
+		var proof tmtypes.TxProof
 		/*if prove {
 			block := nil                               //env.BlockStore.LoadBlock(r.Height)
 			proof = block.Data.Txs.Proof(int(r.Index)) // XXX: overflow on 32-bit machines
 		}*/
 
 		apiResults = append(apiResults, &ctypes.ResultTx{
-			Hash:     types.Tx(r.Tx).Hash(),
+			Hash:     tmtypes.Tx(r.Tx).Hash(),
 			Height:   r.Height,
 			Index:    r.Index,
 			TxResult: r.Result,
@@ -676,13 +681,13 @@ func (c *Client) BlockSearch(ctx context.Context, query string, page, perPage *i
 		if err != nil {
 			return nil, err
 		}
-		block, err := abciconv.ToABCIBlock(b)
+		block, err := types.ToABCIBlock(b)
 		if err != nil {
 			return nil, err
 		}
 		blocks = append(blocks, &ctypes.ResultBlock{
 			Block: block,
-			BlockID: types.BlockID{
+			BlockID: tmtypes.BlockID{
 				Hash: block.Hash(),
 			},
 		})
@@ -693,11 +698,10 @@ func (c *Client) BlockSearch(ctx context.Context, query string, page, perPage *i
 
 // Status returns detailed information about current status of the node.
 func (c *Client) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
-
 	latest, err := c.node.Store.LoadBlock(c.node.Store.Height())
 	if err != nil {
 		// TODO(tzdybal): extract error
-		return nil, fmt.Errorf("failed to find latest block: %w", err)
+		return nil, fmt.Errorf("find latest block: %w", err)
 	}
 
 	latestBlockHash := latest.Header.DataHash
@@ -707,16 +711,16 @@ func (c *Client) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
 
 	validators, err := c.node.Store.LoadValidators(latest.Header.Height)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch the validator info at latest block: %w", err)
+		return nil, fmt.Errorf("fetch the validator info at latest block: %w", err)
 	}
 	_, validator := validators.GetByAddress(latest.Header.ProposerAddress)
 	if validator == nil {
-		return nil, fmt.Errorf("failed to find proposer %s in the valSet", string(latest.Header.ProposerAddress))
+		return nil, fmt.Errorf("find proposer %s in the valSet", string(latest.Header.ProposerAddress))
 	}
 
 	state, err := c.node.Store.LoadState()
 	if err != nil {
-		return nil, fmt.Errorf("failed to load the last saved state: %w", err)
+		return nil, fmt.Errorf("load the last saved state: %w", err)
 	}
 	defaultProtocolVersion := p2p.NewProtocolVersion(
 		tm_version.P2PProtocol,
@@ -747,12 +751,12 @@ func (c *Client) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
 			LatestBlockHeight: int64(latestHeight),
 			LatestBlockTime:   time.Unix(0, int64(latestBlockTimeNano)),
 			// TODO(tzdybal): add missing fields
-			//EarliestBlockHash:   earliestBlockHash,
-			//EarliestAppHash:     earliestAppHash,
-			//EarliestBlockHeight: earliestBloc
-			//kHeight,
-			//EarliestBlockTime:   time.Unix(0, earliestBlockTimeNano),
-			//CatchingUp:          env.ConsensusReactor.WaitSync(),
+			// EarliestBlockHash:   earliestBlockHash,
+			// EarliestAppHash:     earliestAppHash,
+			// EarliestBlockHeight: earliestBloc
+			// kHeight,
+			// EarliestBlockTime:   time.Unix(0, earliestBlockTimeNano),
+			// CatchingUp:          env.ConsensusReactor.WaitSync(),
 		},
 		// TODO(ItzhakBokris): update ValidatorInfo fields
 		ValidatorInfo: ctypes.ValidatorInfo{
@@ -765,7 +769,7 @@ func (c *Client) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
 }
 
 // BroadcastEvidence is not yet implemented.
-func (c *Client) BroadcastEvidence(ctx context.Context, evidence types.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
+func (c *Client) BroadcastEvidence(ctx context.Context, evidence tmtypes.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
 	return &ctypes.ResultBroadcastEvidence{
 		Hash: evidence.Hash(),
 	}, nil
@@ -778,7 +782,6 @@ func (c *Client) NumUnconfirmedTxs(ctx context.Context) (*ctypes.ResultUnconfirm
 		Total:      c.node.Mempool.Size(),
 		TotalBytes: c.node.Mempool.SizeBytes(),
 	}, nil
-
 }
 
 // UnconfirmedTxs returns transactions in mempool.
@@ -791,13 +794,14 @@ func (c *Client) UnconfirmedTxs(ctx context.Context, limitPtr *int) (*ctypes.Res
 		Count:      len(txs),
 		Total:      c.node.Mempool.Size(),
 		TotalBytes: c.node.Mempool.SizeBytes(),
-		Txs:        txs}, nil
+		Txs:        txs,
+	}, nil
 }
 
 // CheckTx executes a new transaction against the application to determine its validity.
 //
 // If valid, the tx is automatically added to the mempool.
-func (c *Client) CheckTx(ctx context.Context, tx types.Tx) (*ctypes.ResultCheckTx, error) {
+func (c *Client) CheckTx(ctx context.Context, tx tmtypes.Tx) (*ctypes.ResultCheckTx, error) {
 	res, err := c.mempool().CheckTxSync(abci.RequestCheckTx{Tx: tx})
 	if err != nil {
 		return nil, err
@@ -805,7 +809,8 @@ func (c *Client) CheckTx(ctx context.Context, tx types.Tx) (*ctypes.ResultCheckT
 	return &ctypes.ResultCheckTx{ResponseCheckTx: *res}, nil
 }
 
-func (c *Client) eventsRoutine(sub types.Subscription, subscriber string, q tmpubsub.Query, outc chan<- ctypes.ResultEvent) {
+func (c *Client) eventsRoutine(sub tmtypes.Subscription, subscriber string, q tmpubsub.Query, outc chan<- ctypes.ResultEvent) {
+	defer close(outc)
 	for {
 		select {
 		case msg := <-sub.Out():
@@ -820,7 +825,7 @@ func (c *Client) eventsRoutine(sub types.Subscription, subscriber string, q tmpu
 				}
 			}
 		case <-sub.Cancelled():
-			if sub.Err() == tmpubsub.ErrUnsubscribed {
+			if errors.Is(sub.Err(), tmpubsub.ErrUnsubscribed) {
 				return
 			}
 
@@ -836,7 +841,7 @@ func (c *Client) eventsRoutine(sub types.Subscription, subscriber string, q tmpu
 }
 
 // Try to resubscribe with exponential backoff.
-func (c *Client) resubscribe(subscriber string, q tmpubsub.Query) types.Subscription {
+func (c *Client) resubscribe(subscriber string, q tmpubsub.Query) tmtypes.Subscription {
 	attempts := 0
 	for {
 		if !c.IsRunning() {

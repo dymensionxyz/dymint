@@ -24,7 +24,6 @@ func NewClient(reg Registry, logger log.Logger) *Client {
 // Handle wraps the provided http.Handler with the registered middlewares and returns the final http.Handler.
 func (mc *Client) Handle(h http.Handler) http.Handler {
 	registeredMiddlewares := mc.registry.GetRegistered()
-
 	finalHandler := h
 	for i := len(registeredMiddlewares) - 1; i >= 0; i-- {
 		finalHandler = registeredMiddlewares[i].Handler(mc.logger)(finalHandler)

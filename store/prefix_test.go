@@ -1,8 +1,9 @@
-package store
+package store_test
 
 import (
 	"testing"
 
+	"github.com/dymensionxyz/dymint/store"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -13,10 +14,10 @@ func TestPrefixKV(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	base := NewDefaultInMemoryKVStore()
+	base := store.NewDefaultInMemoryKVStore()
 
-	p1 := NewPrefixKV(base, []byte{1})
-	p2 := NewPrefixKV(base, []byte{2})
+	p1 := store.NewPrefixKV(base, []byte{1})
+	p2 := store.NewPrefixKV(base, []byte{2})
 
 	key1 := []byte("key1")
 	key2 := []byte("key2")
@@ -78,8 +79,8 @@ func TestPrefixKVBatch(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	basekv := NewDefaultInMemoryKVStore()
-	prefixkv := NewPrefixKV(basekv, []byte("prefix1"))
+	basekv := store.NewDefaultInMemoryKVStore()
+	prefixkv := store.NewPrefixKV(basekv, []byte("prefix1"))
 	prefixbatchkv1 := prefixkv.NewBatch()
 
 	keys := [][]byte{[]byte("key1"), []byte("key2"), []byte("key3"), []byte("key4")}
@@ -102,5 +103,4 @@ func TestPrefixKVBatch(t *testing.T) {
 	prefixbatchkv2 := prefixkv.NewBatch()
 	err = prefixbatchkv2.Delete([]byte("key1"))
 	require.NoError(err)
-
 }

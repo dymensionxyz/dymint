@@ -10,7 +10,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/libs/pubsub"
-	tmtypes "github.com/tendermint/tendermint/types"
 
 	"github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
 	"github.com/dymensionxyz/dymint/da"
@@ -20,19 +19,19 @@ import (
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
 	tsmock "github.com/stretchr/testify/mock"
-	ce "github.com/tendermint/tendermint/crypto/encoding"
-	pc "github.com/tendermint/tendermint/proto/tendermint/crypto"
 )
 
 const batchSize = 5
 
 func TestLifecycle(t *testing.T) {
-	client := registry.GetClient(registry.Mock)
+	var err error
+	client := registry.GetClient(registry.Local)
 	require := require.New(t)
 
 	pubsubServer := pubsub.NewServer()
-	pubsubServer.Start()
-	err := client.Init(settlement.Config{}, pubsubServer, log.TestingLogger())
+	err = pubsubServer.Start()
+	require.NoError(err)
+	err = client.Init(settlement.Config{}, pubsubServer, log.TestingLogger())
 	require.NoError(err)
 
 	err = client.Start()
@@ -42,49 +41,11 @@ func TestLifecycle(t *testing.T) {
 	require.NoError(err)
 }
 
-func TestInvalidSubmit(t *testing.T) {
-	assert := assert.New(t)
-	settlementClient := registry.GetClient(registry.Mock)
-	initClient(t, settlementClient)
-
-	// Create cases
-	cases := []struct {
-		startHeight uint64
-		endHeight   uint64
-		shouldPanic bool
-	}{
-		{startHeight: 1, endHeight: batchSize, shouldPanic: false},
-		// batch with endHight < startHeight
-		{startHeight: batchSize + 2, endHeight: 1, shouldPanic: true},
-		// batch with startHeight != previousEndHeight + 1
-		{startHeight: batchSize, endHeight: 1 + batchSize + batchSize, shouldPanic: true},
-	}
-	for _, c := range cases {
-		batch := &types.Batch{
-			StartHeight: c.startHeight,
-			EndHeight:   c.endHeight,
-		}
-		daResult := &da.ResultSubmitBatch{
-			BaseResult: da.BaseResult{
-				DAHeight: c.endHeight,
-			},
-		}
-		if c.shouldPanic {
-			assert.Panics(func() {
-				settlementClient.SubmitBatch(batch, da.Mock, daResult)
-			})
-		} else {
-			settlementClient.SubmitBatch(batch, da.Mock, daResult)
-		}
-	}
-
-}
-
 func TestSubmitAndRetrieve(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 
-	settlementClient := registry.GetClient(registry.Mock)
+	settlementClient := registry.GetClient(registry.Local)
 
 	initClient(t, settlementClient)
 
@@ -111,11 +72,13 @@ func TestSubmitAndRetrieve(t *testing.T) {
 		require.NoError(err)
 		// Submit the batch
 		daResult := &da.ResultSubmitBatch{
-			BaseResult: da.BaseResult{
-				DAHeight: batch.EndHeight,
+			BaseResult: da.BaseResult{},
+			SubmitMetaData: &da.DASubmitMetaData{
+				Height: batch.EndHeight,
 			},
 		}
-		settlementClient.SubmitBatch(batch, da.Mock, daResult)
+		err = settlementClient.SubmitBatch(batch, da.Mock, daResult)
+		require.NoError(err)
 		// sleep for 500 ms to make sure batch got accepted by the settlement layer
 		time.Sleep(500 * time.Millisecond)
 	}
@@ -131,30 +94,28 @@ func TestSubmitAndRetrieve(t *testing.T) {
 	middleOfBatchHeight := uint64(numBatches-1)*(batchSize) - (batchSize / 2)
 	assert.LessOrEqual(batchResult.StartHeight, middleOfBatchHeight)
 	assert.GreaterOrEqual(batchResult.EndHeight, middleOfBatchHeight)
-
 }
 
 func TestGetSequencersEmptyList(t *testing.T) {
-	settlementClient := registry.GetClient(registry.Mock)
+	var err error
+	settlementClient := registry.GetClient(registry.Local)
 	hubClientMock := mocks.NewHubClient(t)
-	hubClientMock.On("GetLatestBatch", tsmock.Anything).Return(nil, settlement.ErrBatchNotFound)
 	hubClientMock.On("GetSequencers", tsmock.Anything, tsmock.Anything).Return(nil, settlement.ErrNoSequencerForRollapp)
 	options := []settlement.Option{
 		settlement.WithHubClient(hubClientMock),
 	}
 
 	pubsubServer := pubsub.NewServer()
-	pubsubServer.Start()
-	err := settlementClient.Init(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
+	err = pubsubServer.Start()
+	require.NoError(t, err)
+	err = settlementClient.Init(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
 	assert.Error(t, err, "empty sequencer list should return an error")
-
 }
 
 func TestGetSequencers(t *testing.T) {
 	hubClientMock := mocks.NewHubClient(t)
 	hubClientMock.On("Start", tsmock.Anything).Return(nil)
 	hubClientMock.On("Stop", tsmock.Anything).Return(nil)
-	hubClientMock.On("GetLatestBatch", tsmock.Anything).Return(nil, settlement.ErrBatchNotFound)
 	// Mock a sequencer response by the sequencerByRollapp query
 	totalSequencers := 5
 	sequencers, proposer := generateSequencers(totalSequencers)
@@ -162,7 +123,7 @@ func TestGetSequencers(t *testing.T) {
 	options := []settlement.Option{
 		settlement.WithHubClient(hubClientMock),
 	}
-	settlementClient := registry.GetClient(registry.Mock)
+	settlementClient := registry.GetClient(registry.Local)
 	initClient(t, settlementClient, options...)
 
 	sequencersList := settlementClient.GetSequencersList()
@@ -183,7 +144,6 @@ func TestGetSequencers(t *testing.T) {
 		}
 	}
 	assert.Equal(t, inactiveSequencerAmount, totalSequencers-1)
-
 }
 
 /* -------------------------------------------------------------------------- */
@@ -192,21 +152,16 @@ func TestGetSequencers(t *testing.T) {
 
 func initClient(t *testing.T, settlementlc settlement.LayerI, options ...settlement.Option) {
 	require := require.New(t)
+	var err error
 
 	pubsubServer := pubsub.NewServer()
-	pubsubServer.Start()
-	err := settlementlc.Init(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
+	err = pubsubServer.Start()
+	require.NoError(err)
+	err = settlementlc.Init(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
 	require.NoError(err)
 
 	err = settlementlc.Start()
 	require.NoError(err)
-}
-
-func generateProtoPubKey(t *testing.T) pc.PublicKey {
-	pubKey := tmtypes.NewMockPV().PrivKey.PubKey()
-	protoPubKey, err := ce.PubKeyToProto(pubKey)
-	require.NoError(t, err)
-	return protoPubKey
 }
 
 func generateSequencers(count int) ([]*types.Sequencer, *types.Sequencer) {

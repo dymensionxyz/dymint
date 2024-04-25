@@ -1,10 +1,12 @@
-package state
+package block_test
 
 import (
 	"context"
 	"crypto/rand"
 	"testing"
 	"time"
+
+	"github.com/dymensionxyz/dymint/block"
 
 	"github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
 	"github.com/stretchr/testify/assert"
@@ -18,7 +20,6 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	tmtypes "github.com/tendermint/tendermint/types"
 
-	abciconv "github.com/dymensionxyz/dymint/conv/abci"
 	"github.com/dymensionxyz/dymint/mempool"
 	mempoolv1 "github.com/dymensionxyz/dymint/mempool/v1"
 	"github.com/dymensionxyz/dymint/mocks"
@@ -43,7 +44,7 @@ func TestCreateBlock(t *testing.T) {
 	nsID := "0102030405060708"
 
 	mpool := mempoolv1.NewTxMempool(logger, cfg.DefaultMempoolConfig(), proxy.NewAppConnMempool(abciClient), 0)
-	executor, err := NewBlockExecutor([]byte("test address"), nsID, "test", mpool, proxy.NewAppConns(clientCreator), nil, logger, false)
+	executor, err := block.NewExecutor([]byte("test address"), nsID, "test", mpool, proxy.NewAppConns(clientCreator), nil, logger)
 	assert.NoError(err)
 
 	state := types.State{}
@@ -117,7 +118,7 @@ func TestApplyBlock(t *testing.T) {
 	appConns := &mocks.AppConns{}
 	appConns.On("Consensus").Return(abciClient)
 	appConns.On("Query").Return(abciClient)
-	executor, err := NewBlockExecutor([]byte("test address"), nsID, chainID, mpool, appConns, eventBus, logger, false)
+	executor, err := block.NewExecutor([]byte("test address"), nsID, chainID, mpool, appConns, eventBus, logger)
 	assert.NoError(err)
 
 	// Subscribe to tx events
@@ -159,7 +160,7 @@ func TestApplyBlock(t *testing.T) {
 		PublicKey: proposerKey.PubKey(),
 	}
 	// Create commit for the block
-	abciHeaderPb := abciconv.ToABCIHeaderPB(&block.Header)
+	abciHeaderPb := types.ToABCIHeaderPB(&block.Header)
 	abciHeaderBytes, err := abciHeaderPb.Marshal()
 	require.NoError(err)
 	signature, err := proposerKey.Sign(abciHeaderBytes)
@@ -171,16 +172,16 @@ func TestApplyBlock(t *testing.T) {
 	}
 
 	// Apply the block
-	err = executor.Validate(state, block, commit, proposer)
+	err = types.ValidateProposedTransition(state, block, commit, proposer)
 	require.NoError(err)
-	resp, err := executor.Execute(context.Background(), state, block)
+	resp, err := executor.ExecuteBlock(state, block)
 	require.NoError(err)
 	require.NotNil(resp)
 	newState, err := executor.UpdateStateFromResponses(resp, state, block)
 	require.NoError(err)
 	require.NotNil(newState)
 	assert.Equal(int64(1), newState.LastBlockHeight)
-	_, err = executor.Commit(context.Background(), &newState, block, resp)
+	_, err = executor.Commit(&newState, block, resp)
 	require.NoError(err)
 	assert.Equal(mockAppHash, newState.AppHash)
 	newState.LastStoreHeight = uint64(newState.LastBlockHeight)
@@ -196,7 +197,7 @@ func TestApplyBlock(t *testing.T) {
 	assert.Len(block.Data.Txs, 3)
 
 	// Get the header bytes
-	abciHeaderPb = abciconv.ToABCIHeaderPB(&block.Header)
+	abciHeaderPb = types.ToABCIHeaderPB(&block.Header)
 	abciHeaderBytes, err = abciHeaderPb.Marshal()
 	require.NoError(err)
 
@@ -211,12 +212,9 @@ func TestApplyBlock(t *testing.T) {
 	}
 
 	// Apply the block with an invalid commit
-	err = executor.Validate(state, block, invalidCommit, proposer)
+	err = types.ValidateProposedTransition(newState, block, invalidCommit, proposer)
 
-	// FIXME: This test didn't check for specific error. It was just checking for error.
-	// If checking for this specific error, it fails
-	// require.ErrorIs(err, types.ErrInvalidSignature)
-	require.Error(err)
+	require.ErrorIs(err, types.ErrInvalidSignature)
 
 	// Create a valid commit for the block
 	signature, err = proposerKey.Sign(abciHeaderBytes)
@@ -228,16 +226,16 @@ func TestApplyBlock(t *testing.T) {
 	}
 
 	// Apply the block
-	err = executor.Validate(newState, block, commit, proposer)
+	err = types.ValidateProposedTransition(newState, block, commit, proposer)
 	require.NoError(err)
-	resp, err = executor.Execute(context.Background(), state, block)
+	resp, err = executor.ExecuteBlock(state, block)
 	require.NoError(err)
 	require.NotNil(resp)
 	newState, err = executor.UpdateStateFromResponses(resp, state, block)
 	require.NoError(err)
 	require.NotNil(newState)
 	assert.Equal(int64(2), newState.LastBlockHeight)
-	_, err = executor.Commit(context.Background(), &newState, block, resp)
+	_, err = executor.Commit(&newState, block, resp)
 	require.NoError(err)
 
 	// wait for at least 4 Tx events, for up to 3 second.

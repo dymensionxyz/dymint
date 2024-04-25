@@ -87,7 +87,10 @@ func setup(t testing.TB, cacheSize int, options ...TxMempoolOption) *TxMempool {
 	require.NoError(t, appConnMem.Start())
 
 	t.Cleanup(func() {
-		os.RemoveAll(cfg.RootDir)
+		err := os.RemoveAll(cfg.RootDir)
+		if err != nil {
+			t.Log("failed to remove temporary directory", err)
+		}
 		require.NoError(t, appConnMem.Stop())
 	})
 
@@ -172,7 +175,7 @@ func TestTxMempool_TxsAvailable(t *testing.T) {
 
 	// commit half the transactions and ensure we fire an event
 	txmp.Lock()
-	require.NoError(t, txmp.Update(1, rawTxs[:50], responses, nil, nil))
+	require.NoError(t, txmp.Update(1, rawTxs[:50], responses))
 	txmp.Unlock()
 	ensureTxFire()
 	ensureNoTxFire()
@@ -200,7 +203,7 @@ func TestTxMempool_Size(t *testing.T) {
 	}
 
 	txmp.Lock()
-	require.NoError(t, txmp.Update(1, rawTxs[:50], responses, nil, nil))
+	require.NoError(t, txmp.Update(1, rawTxs[:50], responses))
 	txmp.Unlock()
 
 	require.Equal(t, len(rawTxs)/2, txmp.Size())
@@ -295,7 +298,7 @@ func TestTxMempool_Flush(t *testing.T) {
 	}
 
 	txmp.Lock()
-	require.NoError(t, txmp.Update(1, rawTxs[:50], responses, nil, nil))
+	require.NoError(t, txmp.Update(1, rawTxs[:50], responses))
 	txmp.Unlock()
 
 	txmp.Flush()
@@ -500,7 +503,7 @@ func TestTxMempool_ConcurrentTxs(t *testing.T) {
 				}
 
 				txmp.Lock()
-				require.NoError(t, txmp.Update(height, reapedTxs, responses, nil, nil))
+				require.NoError(t, txmp.Update(height, reapedTxs, responses))
 				txmp.Unlock()
 
 				height++
@@ -548,7 +551,7 @@ func TestTxMempool_ExpiredTxs_Timestamp(t *testing.T) {
 	// Trigger an update so that pruning will occur.
 	txmp.Lock()
 	defer txmp.Unlock()
-	require.NoError(t, txmp.Update(txmp.height+1, nil, nil, nil, nil))
+	require.NoError(t, txmp.Update(txmp.height+1, nil, nil))
 
 	// All the transactions in the original set should have been purged.
 	for _, tx := range added1 {
@@ -585,7 +588,7 @@ func TestTxMempool_ExpiredTxs_NumBlocks(t *testing.T) {
 	}
 
 	txmp.Lock()
-	require.NoError(t, txmp.Update(txmp.height+1, reapedTxs, responses, nil, nil))
+	require.NoError(t, txmp.Update(txmp.height+1, reapedTxs, responses))
 	txmp.Unlock()
 
 	require.Equal(t, 95, txmp.Size())
@@ -609,7 +612,7 @@ func TestTxMempool_ExpiredTxs_NumBlocks(t *testing.T) {
 	}
 
 	txmp.Lock()
-	require.NoError(t, txmp.Update(txmp.height+10, reapedTxs, responses, nil, nil))
+	require.NoError(t, txmp.Update(txmp.height+10, reapedTxs, responses))
 	txmp.Unlock()
 
 	require.GreaterOrEqual(t, txmp.Size(), 45)

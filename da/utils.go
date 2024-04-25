@@ -6,18 +6,20 @@ import (
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
-func SubmitBatchHealthEventHelper(pubsubServer *pubsub.Server, ctx context.Context, healthy bool, err error) (ResultSubmitBatch, error) {
-	err = pubsubServer.PublishWithEvents(ctx, &EventDataDAHealthStatus{Healthy: healthy, Error: err},
-		map[string][]string{EventTypeKey: {EventDAHealthStatus}})
+func SubmitBatchHealthEventHelper(pubsubServer *pubsub.Server, ctx context.Context, err error) (ResultSubmitBatch, error) {
+	err = pubsubServer.PublishWithEvents(
+		ctx,
+		&EventDataHealth{Error: err},
+		EventHealthStatusList,
+	)
 	if err != nil {
 		return ResultSubmitBatch{
 			BaseResult: BaseResult{
 				Code:    StatusError,
 				Message: err.Error(),
+				Error:   err,
 			},
 		}, err
-	} else {
-		return ResultSubmitBatch{}, nil
 	}
-
+	return ResultSubmitBatch{}, nil
 }

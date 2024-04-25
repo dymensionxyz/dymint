@@ -7,7 +7,6 @@ import (
 
 	"github.com/libp2p/go-libp2p/core/crypto"
 
-	abciconv "github.com/dymensionxyz/dymint/conv/abci"
 	"github.com/dymensionxyz/dymint/types"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/ed25519"
@@ -153,7 +152,7 @@ func GenerateCommits(blocks []*types.Block, proposerKey crypto.PrivKey) ([]*type
 }
 
 func generateSignature(proposerKey crypto.PrivKey, header *types.Header) ([]byte, error) {
-	abciHeaderPb := abciconv.ToABCIHeaderPB(header)
+	abciHeaderPb := types.ToABCIHeaderPB(header)
 	abciHeaderBytes, err := abciHeaderPb.Marshal()
 	if err != nil {
 		return nil, err
@@ -243,4 +242,35 @@ func GenerateGenesis(initialHeight int64) *tmtypes.GenesisDoc {
 func getEmptyLastResultsHash() [32]byte {
 	lastResults := []*abci.ResponseDeliverTx{}
 	return *(*[32]byte)(tmtypes.NewResults(lastResults).Hash())
+}
+
+func GetRandomBlock(height uint64, nTxs int) *types.Block {
+	block := &types.Block{
+		Header: types.Header{
+			Height: height,
+		},
+		Data: types.Data{
+			Txs: make(types.Txs, nTxs),
+			IntermediateStateRoots: types.IntermediateStateRoots{
+				RawRootsList: make([][]byte, nTxs),
+			},
+		},
+	}
+
+	for i := 0; i < nTxs; i++ {
+		block.Data.Txs[i] = GetRandomTx()
+		block.Data.IntermediateStateRoots.RawRootsList[i] = GetRandomBytes(32)
+	}
+
+	return block
+}
+
+func GetRandomValidatorSet() *tmtypes.ValidatorSet {
+	pubKey := ed25519.GenPrivKey().PubKey()
+	return &tmtypes.ValidatorSet{
+		Proposer: &tmtypes.Validator{PubKey: pubKey, Address: pubKey.Address()},
+		Validators: []*tmtypes.Validator{
+			{PubKey: pubKey, Address: pubKey.Address()},
+		},
+	}
 }

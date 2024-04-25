@@ -7,7 +7,6 @@ import (
 	"testing"
 
 	"github.com/dymensionxyz/dymint/rpc/middleware"
-	"github.com/dymensionxyz/dymint/rpc/sharedtypes"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/libs/log"
@@ -29,12 +28,14 @@ func (t testMiddleware) Handler(log.Logger) middleware.HandlerFunc {
 func TestRegistry(t *testing.T) {
 	reg := middleware.GetRegistry()
 
-	m1 := middleware.NewStatusMiddleware(&sharedtypes.HealthStatus{IsHealthy: true, Error: nil})
-	reg.Register(m1)
+	m1 := middleware.Status{Err: func() error {
+		return nil
+	}}
+	reg.Register(&m1)
 	registeredMiddlewares := reg.GetRegistered()
 
 	assert.Equal(t, 1, len(registeredMiddlewares), "Expected 1 middleware registered")
-	assert.Equal(t, m1, registeredMiddlewares[0], "Expected the first middleware to be the registered one")
+	assert.Equal(t, &m1, registeredMiddlewares[0], "Expected the first middleware to be the registered one")
 }
 
 // TestMiddlewareClient checks if the MiddlewareClient correctly handles the registered middlewares.
@@ -68,24 +69,26 @@ func TestMiddlewareClient(t *testing.T) {
 func TestStatusMiddleware(t *testing.T) {
 	// Test cases for both healthy and unhealthy status
 	testCases := []struct {
-		healthy         *sharedtypes.HealthStatus
+		healthy         error
 		expectedStatus  int
 		expectedMessage string
 	}{
 		{
-			healthy:         &sharedtypes.HealthStatus{IsHealthy: true, Error: nil},
+			healthy:         nil,
 			expectedStatus:  http.StatusOK,
-			expectedMessage: "Node healthy",
+			expectedMessage: "{\"jsonrpc\":\"2.0\",\"result\":{\"isHealthy\":true,:\"error\":\"\"},\"id\":-1}",
 		},
 		{
-			healthy:         &sharedtypes.HealthStatus{IsHealthy: false, Error: errors.New("Node Unhealthy")},
-			expectedStatus:  http.StatusServiceUnavailable,
-			expectedMessage: "node is unhealthy: Node Unhealthy",
+			healthy:         errors.New("node unhealthy"),
+			expectedStatus:  http.StatusOK,
+			expectedMessage: "{\"jsonrpc\":\"2.0\",\"result\":{\"isHealthy\":false,:\"error\":\"node unhealthy\"},\"id\":-1}",
 		},
 	}
 
 	for _, tc := range testCases {
-		statusMiddleware := middleware.NewStatusMiddleware(tc.healthy)
+		statusMiddleware := middleware.Status{Err: func() error {
+			return tc.healthy
+		}}
 		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
 			_, err := w.Write([]byte("Node healthy"))
@@ -94,7 +97,7 @@ func TestStatusMiddleware(t *testing.T) {
 
 		finalHandler := statusMiddleware.Handler(log.TestingLogger())(handler)
 
-		req := httptest.NewRequest("GET", "/", nil)
+		req := httptest.NewRequest("GET", "/health", nil)
 		rr := httptest.NewRecorder()
 
 		finalHandler.ServeHTTP(rr, req)

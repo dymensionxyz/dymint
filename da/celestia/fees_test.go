@@ -1,8 +1,9 @@
-package celestia
+package celestia_test
 
 import (
 	"testing"
 
+	"github.com/dymensionxyz/dymint/da/celestia"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -68,7 +69,7 @@ func Test(t *testing.T) {
 	}
 	for _, tC := range testCases {
 		t.Run(tC.desc, func(t *testing.T) {
-			expectedGas := DefaultEstimateGas(tC.blobSize)
+			expectedGas := celestia.DefaultEstimateGas(tC.blobSize)
 			if tC.gasAdjust != 0 {
 				expectedGas = uint64(float64(expectedGas) * tC.gasAdjust)
 			}

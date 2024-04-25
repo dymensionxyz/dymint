@@ -4,3 +4,5 @@ proto/pb
 .idea
 .go-version
 build
+
+vendor/

@@ -1,30 +1,35 @@
 package settlement
 
 import (
-	"fmt"
-
 	"github.com/dymensionxyz/dymint/types"
-	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
-	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
+	uevent "github.com/dymensionxyz/dymint/utils/event"
 )
 
-// Define the event type keys
+// Type keys
+
 const (
 	// EventTypeKey is a reserved composite key for event name.
 	EventTypeKey = "settlement.event"
 )
 
-// Define the event types
+// Types
+
 const (
-	// This event should be emitted internally in order to communicate between the settlement layer and the hub client
-	EventNewSettlementBatchAccepted = "EventNewSettlementBatchAccepted"
-	// This event should be emitted externally when a batch is accepted
-	EventNewBatchAccepted       = "EventNewBatchAccepted"
-	EventSequencersListUpdated  = "SequencersListUpdated"
-	EventSettlementHealthStatus = "SettlementHealthStatus"
+	// EventNewBatchAccepted should be emitted internally in order to communicate between the settlement layer and the hub client
+	EventNewBatchAccepted      = "EventNewBatchAccepted"
+	EventSequencersListUpdated = "SequencersListUpdated"
+	EventHealthStatus          = "SettlementHealthStatus"
 )
 
-// EventDataNewBatchAccepted defines the structure of the event data for the EventNewBatchAccepted
+// Convenience objects
+
+var (
+	EventHealthStatusList     = map[string][]string{EventTypeKey: {EventHealthStatus}}
+	EventNewBatchAcceptedList = map[string][]string{EventTypeKey: {EventNewBatchAccepted}}
+)
+
+// Data
+
 type EventDataNewBatchAccepted struct {
 	// EndHeight is the height of the last accepted batch
 	EndHeight uint64
@@ -32,31 +37,18 @@ type EventDataNewBatchAccepted struct {
 	StateIndex uint64
 }
 
-// EventDataNewSettlementBatchAccepted defines the structure of the event data for the EventNewSettlementBatchAccepted
-type EventDataNewSettlementBatchAccepted EventDataNewBatchAccepted
-
-// EventDataSequencersListUpdated defines the structure of the event data for the EventSequencersListUpdated
 type EventDataSequencersListUpdated struct {
-	// Sequencers is the list of sequencers
+	// Sequencers is the list of new sequencers
 	Sequencers []types.Sequencer
 }
 
-// EventDataSettlementHealthStatus defines the structure of the event data for the EventDataSettlementHealthStatus
-type EventDataSettlementHealthStatus struct {
-	// Healthy is true if the settlement layer is healthy
-	Healthy bool
-	// Error is the error that was encountered in case of a health check failure
+type EventDataHealth struct {
+	// Error is the error that was encountered in case of a health check failure, nil implies healthy
 	Error error
 }
 
-// Define queries
+// Queries
 var (
-	EventQueryNewSettlementBatchAccepted = QueryForEvent(EventNewSettlementBatchAccepted)
-	EventQueryNewBatchAccepted           = QueryForEvent(EventNewBatchAccepted)
-	EventQuerySettlementHealthStatus     = QueryForEvent(EventSettlementHealthStatus)
+	EventQueryNewSettlementBatchAccepted = uevent.QueryFor(EventTypeKey, EventNewBatchAccepted)
+	EventQuerySettlementHealthStatus     = uevent.QueryFor(EventTypeKey, EventHealthStatus)
 )
-
-// QueryForEvent returns a query for the given event.
-func QueryForEvent(eventType string) tmpubsub.Query {
-	return tmquery.MustParse(fmt.Sprintf("%s='%s'", EventTypeKey, eventType))
-}

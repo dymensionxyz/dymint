@@ -68,6 +68,12 @@ const (
 
 	// MaxShareVersion is the maximum value a share version can be.
 	MaxShareVersion = 127
+
+	// Celestia matrix size
+	DefaultGovMaxSquareSize = 64
+
+	// Default maximum bytes per blob allowed
+	DefaultMaxBytes = DefaultGovMaxSquareSize * DefaultGovMaxSquareSize * ContinuationSparseShareContentSize
 )
 
 // SparseSharesNeeded returns the number of shares needed to store a sequence of

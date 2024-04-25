@@ -7,8 +7,8 @@ import (
 	availtypes "github.com/centrifuge/go-substrate-rpc-client/v4/types"
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/da/avail"
-	"github.com/dymensionxyz/dymint/log/test"
 	mocks "github.com/dymensionxyz/dymint/mocks/da/avail"
+	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -20,7 +20,7 @@ const (
 	seed = "copper mother insect grunt blue cute tell side welcome domain border oxygen"
 )
 
-//FIXME(omritoptix): This test is currently not working as I couldn't find a way to mock the SubmitAndWatchExtrinsic function.
+// FIXME(omritoptix): This test is currently not working as I couldn't find a way to mock the SubmitAndWatchExtrinsic function.
 // func TestSubmitBatch(t *testing.T) {
 // 	assert := assert.New(t)
 // 	require := require.New(t)
@@ -129,11 +129,11 @@ func TestRetriveBatches(t *testing.T) {
 		avail.WithClient(mockSubstrateApiClient),
 	}
 	pubsubServer := pubsub.NewServer()
-	pubsubServer.Start()
+	err = pubsubServer.Start()
 	assert.NoError(err)
 	// Start the DALC
 	dalc := avail.DataAvailabilityLayerClient{}
-	err = dalc.Init(configBytes, pubsubServer, nil, test.NewLogger(t), options...)
+	err = dalc.Init(configBytes, pubsubServer, nil, testutil.NewLogger(t), options...)
 	require.NoError(err)
 	err = dalc.Start()
 	require.NoError(err)
@@ -176,8 +176,10 @@ func TestRetriveBatches(t *testing.T) {
 	}
 	mockSubstrateApiClient.On("GetBlock", mock.Anything).Return(signedBlock, nil)
 	// Retrieve the batches and make sure we only get the batches relevant for our app id
-	batchResult := dalc.RetrieveBatches(1)
+	daMetaData := &da.DASubmitMetaData{
+		Height: 1,
+	}
+	batchResult := dalc.RetrieveBatches(daMetaData)
 	assert.Equal(1, len(batchResult.Batches))
 	assert.Equal(batch1.StartHeight, batchResult.Batches[0].StartHeight)
-
 }

@@ -66,7 +66,6 @@ func NewTxMempool(
 	height int64,
 	options ...TxMempoolOption,
 ) *TxMempool {
-
 	txmp := &TxMempool{
 		logger:       logger,
 		config:       cfg,
@@ -177,7 +176,6 @@ func (txmp *TxMempool) TxsAvailable() <-chan struct{} { return txmp.txsAvailable
 // the size of tx, and adds tx instead. If no such transactions exist, tx is
 // discarded.
 func (txmp *TxMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo mempool.TxInfo) error {
-
 	// During the initial phase of CheckTx, we do not need to modify any state.
 	// A transaction will not actually be added to the mempool until it survives
 	// a call to the ABCI CheckTx method and size constraint checks.
@@ -394,15 +392,12 @@ func (txmp *TxMempool) Update(
 	blockHeight int64,
 	blockTxs types.Txs,
 	deliverTxResponses []*abci.ResponseDeliverTx,
-	newPreFn mempool.PreCheckFunc,
-	newPostFn mempool.PostCheckFunc,
 ) error {
-	// TODO(creachadair): This would be a nice safety check but requires Go 1.18.
-	// // Safety check: The caller is required to hold the lock.
-	// if txmp.mtx.TryLock() {
-	// 	txmp.mtx.Unlock()
-	// 	panic("mempool: Update caller does not hold the lock")
-	// }
+	// Safety sanity check: The caller is required to hold the lock.
+	if txmp.mtx.TryLock() {
+		txmp.mtx.Unlock()
+		panic("mempool: Update caller does not hold the lock")
+	}
 	// Safety check: Transactions and responses must match in number.
 	if len(blockTxs) != len(deliverTxResponses) {
 		panic(fmt.Sprintf("mempool: got %d transactions but %d DeliverTx responses",
@@ -411,13 +406,6 @@ func (txmp *TxMempool) Update(
 
 	txmp.height = blockHeight
 	txmp.notifiedTxsAvailable = false
-
-	if newPreFn != nil {
-		txmp.preCheck = newPreFn
-	}
-	if newPostFn != nil {
-		txmp.postCheck = newPostFn
-	}
 
 	for i, tx := range blockTxs {
 		// Add successful committed transactions to the cache (if they are not
@@ -435,7 +423,7 @@ func (txmp *TxMempool) Update(
 
 	txmp.purgeExpiredTxs(blockHeight)
 
-	// If there any uncommitted transactions left in the mempool, we either
+	// If there are any uncommitted transactions left in the mempool, we either
 	// initiate re-CheckTx per remaining transaction or notify that remaining
 	// transactions are left.
 	size := txmp.Size()
@@ -448,6 +436,14 @@ func (txmp *TxMempool) Update(
 		}
 	}
 	return nil
+}
+
+func (txmp *TxMempool) SetPreCheckFn(fn mempool.PreCheckFunc) {
+	txmp.preCheck = fn
+}
+
+func (txmp *TxMempool) SetPostCheckFn(fn mempool.PostCheckFunc) {
+	txmp.postCheck = fn
 }
 
 // initialTxCallback handles the ABCI CheckTx response for the first time a
@@ -522,9 +518,8 @@ func (txmp *TxMempool) initialTxCallback(wtx *WrappedTx, res *abci.Response) {
 				"tx", fmt.Sprintf("%X", w.tx.Hash()),
 				"sender", sender,
 			)
-			checkTxRes.CheckTx.MempoolError =
-				fmt.Sprintf("rejected valid incoming transaction; tx already exists for sender %q (%X)",
-					sender, w.tx.Hash())
+			checkTxRes.CheckTx.MempoolError = fmt.Sprintf("rejected valid incoming transaction; tx already exists for sender %q (%X)",
+				sender, w.tx.Hash())
 			txmp.metrics.RejectedTxs.Add(1)
 			return
 		}
@@ -557,9 +552,8 @@ func (txmp *TxMempool) initialTxCallback(wtx *WrappedTx, res *abci.Response) {
 				"tx", fmt.Sprintf("%X", wtx.tx.Hash()),
 				"err", err.Error(),
 			)
-			checkTxRes.CheckTx.MempoolError =
-				fmt.Sprintf("rejected valid incoming transaction; mempool is full (%X)",
-					wtx.tx.Hash())
+			checkTxRes.CheckTx.MempoolError = fmt.Sprintf("rejected valid incoming transaction; mempool is full (%X)",
+				wtx.tx.Hash())
 			txmp.metrics.RejectedTxs.Add(1)
 			return
 		}
