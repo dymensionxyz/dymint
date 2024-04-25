@@ -82,6 +82,7 @@ func (m *Manager) ProduceAndGossipBlock(ctx context.Context, allowEmpty bool) er
 		return fmt.Errorf("produce block: %w", err)
 	}
 
+	// TODO: in Michael's work, it was critical to have gossip after, so that the isrs are available, check
 	if err := m.gossipBlock(ctx, *block, *commit); err != nil {
 		return fmt.Errorf("gossip block: %w", err)
 	}
@@ -171,11 +172,6 @@ func (m *Manager) produceBlock(allowEmpty bool) (*types.Block, *types.Commit, er
 
 	if err := m.applyBlock(block, commit, blockMetaData{source: producedBlock}); err != nil {
 		return nil, nil, fmt.Errorf("apply block: %w: %w", err, ErrNonRecoverable)
-	}
-
-	// Gossip postponed after execution so we'll have the ISRs
-	if err := m.gossipBlock(ctx, *block, *commit); err != nil {
-		return err
 	}
 
 	m.logger.Info("block created", "height", newHeight, "num_tx", len(block.Data.Txs))

@@ -9,7 +9,7 @@ import (
 	"math/rand"
 	"os"
 
-	"github.com/dymensionxyz/dymint/log"
+	dtypes "github.com/dymensionxyz/dymint/types"
 	"github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/proxy"
 )
@@ -27,7 +27,7 @@ type ISR = []byte
 
 type ISRCollector struct {
 	ProxyAppConsensusConn proxy.AppConnConsensus
-	Logger                log.Logger
+	Logger                dtypes.Logger
 	Isrs                  []ISR
 	SimulateFraud         bool
 	err                   error
@@ -58,7 +58,7 @@ func (c *ISRCollector) Err() error {
 
 type ISRVerifier struct {
 	ProxyAppConsensusConn proxy.AppConnConsensus
-	Logger                log.Logger
+	Logger                dtypes.Logger
 	Isrs                  []ISR
 	Ix                    int
 	FraudProofsEnabled    bool
