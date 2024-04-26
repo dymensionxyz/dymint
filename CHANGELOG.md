@@ -1,4 +1,8 @@
-# [](https://github.com/dymensionxyz/dymint/compare/v1.1.0-rc01...v) (2024-04-26)
+# [](https://github.com/dymensionxyz/dymint/compare/v1.1.0-rc02...v) (2024-04-26)
+
+
+
+# [1.1.0-rc02](https://github.com/dymensionxyz/dymint/compare/v1.1.0-rc01...v1.1.0-rc02) (2024-04-26)
 
 
 
