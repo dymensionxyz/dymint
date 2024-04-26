@@ -132,6 +132,7 @@ func (m *Manager) attemptApplyCachedBlocks() error {
 		}
 		if err := m.validateBlock(cachedBlock.Block, cachedBlock.Commit); err != nil {
 			m.logger.Error("apply cached block, block not valid: dropping it", "err", err, "height", cachedBlock.Block.Header.Height)
+			delete(m.blockCache, cachedBlock.Block.Header.Height)
 			/// TODO: can we take an action here such as dropping the peer / reducing their reputation?
 			return err
 		}
