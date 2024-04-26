@@ -136,7 +136,6 @@ func (m *Manager) attemptApplyCachedBlocks() error {
 			return err
 		}
 
-		// Note: cached <block,commit> pairs have passed basic validation, so no need to validate again
 		err := m.applyBlock(cachedBlock.Block, cachedBlock.Commit, blockMetaData{source: gossipedBlock})
 		if err != nil {
 			return fmt.Errorf("apply cached block: expected height: %d: %w", expectedHeight, err)
