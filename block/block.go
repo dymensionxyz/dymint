@@ -130,6 +130,11 @@ func (m *Manager) attemptApplyCachedBlocks() error {
 		if !blockExists {
 			break
 		}
+		if err := m.validateBlock(cachedBlock.Block, cachedBlock.Commit); err != nil {
+			m.logger.Error("apply cached block, block not valid: dropping it", "err", err, "height", cachedBlock.Block.Header.Height)
+			/// TODO: can we take an action here such as dropping the peer / reducing their reputation?
+			return err
+		}
 
 		// Note: cached <block,commit> pairs have passed basic validation, so no need to validate again
 		err := m.applyBlock(cachedBlock.Block, cachedBlock.Commit, blockMetaData{source: gossipedBlock})

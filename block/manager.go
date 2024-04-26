@@ -243,12 +243,6 @@ func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
 	block := eventData.Block
 	commit := eventData.Commit
 
-	if err := m.validateBlock(&block, &commit); err != nil {
-		m.logger.Error("apply block callback, block not valid: dropping it", "err", err, "height", block.Header.Height)
-		/// TODO: can we take an action here such as dropping the peer / reducing their reputation?
-		return
-	}
-
 	nextHeight := m.Store.NextHeight()
 	if block.Header.Height >= nextHeight {
 		m.blockCache[block.Header.Height] = CachedBlock{
