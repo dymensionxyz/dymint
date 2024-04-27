@@ -26,7 +26,7 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 	}
 }
 
-// handleSubmissionTrigger processes the submission trigger event. It checks if there are new blocks produced since the last submission.
+// HandleSubmissionTrigger processes the submission trigger event. It checks if there are new blocks produced since the last submission.
 // If there are, it attempts to submit a batch of blocks. It then attempts to produce an empty block to ensure IBC messages
 // pass through during the batch submission process due to proofs requires for ibc messages only exist on the next block.
 // Finally, it submits the next batch of blocks and updates the sync target to the height of
@@ -46,7 +46,7 @@ func (m *Manager) HandleSubmissionTrigger(ctx context.Context) {
 	// We try and produce an empty block to make sure relevant ibc messages will pass through during the batch submission: https://github.com/dymensionxyz/research/issues/173.
 	err := m.ProduceAndGossipBlock(ctx, true)
 	if err != nil {
-		m.logger.Error("produce empty block", "error", err)
+		m.logger.Error("produce and gossip empty block", "error", err)
 	}
 
 	if m.pendingBatch != nil {
@@ -54,13 +54,13 @@ func (m *Manager) HandleSubmissionTrigger(ctx context.Context) {
 	} else {
 		nextBatch, err := m.createNextBatch()
 		if err != nil {
-			m.logger.Error("get next batch", "error", err)
+			m.logger.Error("create next batch", "error", err)
 			return
 		}
 
 		resultSubmitToDA, err := m.submitNextBatchToDA(nextBatch)
 		if err != nil {
-			m.logger.Error("submit next batch", "error", err)
+			m.logger.Error("submit next batch to da", "error", err)
 			return
 		}
 
@@ -72,7 +72,7 @@ func (m *Manager) HandleSubmissionTrigger(ctx context.Context) {
 
 	syncHeight, err := m.submitPendingBatchToSL()
 	if err != nil {
-		m.logger.Error("submit next batch to SL", "error", err)
+		m.logger.Error("submit pending batch to SL", "error", err)
 		return
 	}
 
@@ -126,7 +126,7 @@ func (m *Manager) submitNextBatchToDA(nextBatch *types.Batch) (*da.ResultSubmitB
 
 func (m *Manager) submitPendingBatchToSL() (uint64, error) {
 	if m.pendingBatch == nil {
-		return 0, fmt.Errorf("no pending batch to submit")
+		return 0, fmt.Errorf("pending batch is nil, nothing to submit")
 	}
 
 	// Submit batch to SL
@@ -134,8 +134,7 @@ func (m *Manager) submitPendingBatchToSL() (uint64, error) {
 	actualEndHeight := m.pendingBatch.batch.EndHeight
 	err := m.SLClient.SubmitBatch(m.pendingBatch.batch, m.DAClient.GetClientType(), m.pendingBatch.daResult)
 	if err != nil {
-		m.logger.Error("submit batch to SL", "startHeight", startHeight, "endHeight", actualEndHeight, "error", err)
-		return 0, err
+		return 0, fmt.Errorf("sl client submit batch: startheight: %d: actual end height: %d %w", startHeight, actualEndHeight, err)
 	}
 
 	// Clear pending batch
