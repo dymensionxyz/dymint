@@ -125,10 +125,6 @@ func (m *Manager) submitNextBatchToDA(nextBatch *types.Batch) (*da.ResultSubmitB
 }
 
 func (m *Manager) submitPendingBatchToSL() (uint64, error) {
-	if m.pendingBatch == nil {
-		return 0, fmt.Errorf("pending batch is nil, nothing to submit")
-	}
-
 	// Submit batch to SL
 	startHeight := m.pendingBatch.batch.StartHeight
 	actualEndHeight := m.pendingBatch.batch.EndHeight
