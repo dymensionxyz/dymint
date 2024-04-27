@@ -87,6 +87,7 @@ func (m *Manager) HandleSubmissionTrigger(ctx context.Context) error {
 
 	// Update the syncTarget to the height of the last block in the last batch as seen by this node.
 	m.UpdateSyncParams(syncHeight)
+	return nil
 }
 
 func (m *Manager) createNextBatch() (*types.Batch, error) {

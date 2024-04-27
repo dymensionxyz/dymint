@@ -74,7 +74,7 @@ func (c *cosmosClient) GetAccount(accountName string) (cosmosaccount.Account, er
 		if strings.Contains(err.Error(), "too many failed passphrase attempts") {
 			return cosmosaccount.Account{}, fmt.Errorf("account registry get by name: %w:%w", gerr.ErrUnauthenticated, err)
 		}
-		var accNotExistErr cosmosaccount.AccountDoesNotExistError
+		var accNotExistErr *cosmosaccount.AccountDoesNotExistError
 		if errors.As(err, &accNotExistErr) {
 			return cosmosaccount.Account{}, fmt.Errorf("account registry get by name: %w:%w", gerr.ErrNotFound, err)
 		}
