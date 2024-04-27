@@ -115,7 +115,7 @@ func (m *Manager) submitNextBatchToDA(nextBatch *types.Batch) (*da.ResultSubmitB
 		m.logger.Error("validate last block in batch is empty", "startHeight", startHeight, "endHeight", actualEndHeight, "error", err)
 		return nil, err
 	}
-	// Verify the last block in the batch is an empty block and that no ibc messages has accidentially passed through.
+	// Verify the last block in the batch is an empty block and that no ibc messages has accidentally passed through.
 	// This block may not be empty if another block has passed it in line. If that's the case our empty block request will
 	// be sent to the next batch.
 	if !isLastBlockEmpty {
