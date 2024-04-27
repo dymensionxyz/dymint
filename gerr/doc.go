@@ -11,4 +11,5 @@
 //	be for error handling, which would not be a good developer experience."
 //
 // Note: this package can be extended to automatically return the correct GRPC/HTTP codes too, if needed.
+// Note: this package could be lifted out and shared across more dymension code, to help us standardise.
 package gerr
