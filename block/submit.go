@@ -2,8 +2,11 @@ package block
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
+
+	"github.com/dymensionxyz/dymint/gerr"
 
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/types"
@@ -21,7 +24,16 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 			return
 		// trigger by time
 		case <-ticker.C:
-			m.HandleSubmissionTrigger(ctx)
+			err := m.HandleSubmissionTrigger(ctx)
+			if errors.Is(err, gerr.ErrFailedPrecondition) {
+				continue
+			}
+			if errors.Is(err, gerr.ErrUnauthenticated) {
+				panic(fmt.Errorf("handle submission trigger: %w", err))
+			}
+			if err != nil {
+				m.logger.Error("handle submission trigger", "error", err)
+			}
 		}
 	}
 }
@@ -31,17 +43,16 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 // pass through during the batch submission process due to proofs requires for ibc messages only exist on the next block.
 // Finally, it submits the next batch of blocks and updates the sync target to the height of
 // the last block in the submitted batch.
-func (m *Manager) HandleSubmissionTrigger(ctx context.Context) {
-	if !m.submitBatchMutex.TryLock() { // Attempt to lock for batch processing
-		m.logger.Debug("Batch submission already in process, skipping submission")
-		return
+func (m *Manager) HandleSubmissionTrigger(ctx context.Context) error {
+	if !m.submitBatchMutex.TryLock() {
+		return fmt.Errorf("batch submission already in process, skipping submission: %w", gerr.ErrFailedPrecondition)
 	}
 	defer m.submitBatchMutex.Unlock() // Ensure unlocking at the end
 
 	// Load current sync target and height to determine if new blocks are available for submission.
 	syncTarget, height := m.SyncTarget.Load(), m.Store.Height()
 	if height <= syncTarget { // Check if there are new blocks since last sync target.
-		return // Exit if no new blocks are produced.
+		return nil // Exit if no new blocks are produced.
 	}
 	// We try and produce an empty block to make sure relevant ibc messages will pass through during the batch submission: https://github.com/dymensionxyz/research/issues/173.
 	err := m.ProduceAndGossipBlock(ctx, true)
@@ -52,14 +63,12 @@ func (m *Manager) HandleSubmissionTrigger(ctx context.Context) {
 	if m.pendingBatch == nil {
 		nextBatch, err := m.createNextBatch()
 		if err != nil {
-			m.logger.Error("create next batch", "error", err)
-			return
+			return fmt.Errorf("create next batch: %w", err)
 		}
 
 		resultSubmitToDA, err := m.submitNextBatchToDA(nextBatch)
 		if err != nil {
-			m.logger.Error("submit next batch to da", "error", err)
-			return
+			return fmt.Errorf("submit next batch to da: %w", err)
 		}
 
 		m.pendingBatch = &PendingBatch{
@@ -72,8 +81,7 @@ func (m *Manager) HandleSubmissionTrigger(ctx context.Context) {
 
 	syncHeight, err := m.submitPendingBatchToSL(*m.pendingBatch)
 	if err != nil {
-		m.logger.Error("submit pending batch to SL: will retry same batch next time", "error", err)
-		return
+		return fmt.Errorf("submit pending batch to sl: %w", err)
 	}
 	m.pendingBatch = nil
 
