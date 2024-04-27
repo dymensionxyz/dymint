@@ -126,7 +126,6 @@ func (m *Manager) submitNextBatchToDA(nextBatch *types.Batch) (*da.ResultSubmitB
 }
 
 func (m *Manager) submitPendingBatchToSL(p PendingBatch) (uint64, error) {
-	// Submit batch to SL
 	startHeight := p.batch.StartHeight
 	actualEndHeight := p.batch.EndHeight
 	err := m.SLClient.SubmitBatch(p.batch, m.DAClient.GetClientType(), p.daResult)
