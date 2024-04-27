@@ -49,9 +49,7 @@ func (m *Manager) HandleSubmissionTrigger(ctx context.Context) {
 		m.logger.Error("produce and gossip empty block", "error", err)
 	}
 
-	if m.pendingBatch != nil {
-		m.logger.Info("pending batch exists", "startHeight", m.pendingBatch.batch.StartHeight, "endHeight", m.pendingBatch.batch.EndHeight)
-	} else {
+	if m.pendingBatch == nil {
 		nextBatch, err := m.createNextBatch()
 		if err != nil {
 			m.logger.Error("create next batch", "error", err)
@@ -68,13 +66,16 @@ func (m *Manager) HandleSubmissionTrigger(ctx context.Context) {
 			daResult: resultSubmitToDA,
 			batch:    nextBatch,
 		}
+	} else {
+		m.logger.Info("pending batch already exists", "startHeight", m.pendingBatch.batch.StartHeight, "endHeight", m.pendingBatch.batch.EndHeight)
 	}
 
-	syncHeight, err := m.submitPendingBatchToSL()
+	syncHeight, err := m.submitPendingBatchToSL(*m.pendingBatch)
 	if err != nil {
-		m.logger.Error("submit pending batch to SL", "error", err)
+		m.logger.Error("submit pending batch to SL: will retry same batch next time", "error", err)
 		return
 	}
+	m.pendingBatch = nil
 
 	// Update the syncTarget to the height of the last block in the last batch as seen by this node.
 	m.UpdateSyncParams(syncHeight)
@@ -124,17 +125,14 @@ func (m *Manager) submitNextBatchToDA(nextBatch *types.Batch) (*da.ResultSubmitB
 	return &resultSubmitToDA, nil
 }
 
-func (m *Manager) submitPendingBatchToSL() (uint64, error) {
+func (m *Manager) submitPendingBatchToSL(p PendingBatch) (uint64, error) {
 	// Submit batch to SL
-	startHeight := m.pendingBatch.batch.StartHeight
-	actualEndHeight := m.pendingBatch.batch.EndHeight
-	err := m.SLClient.SubmitBatch(m.pendingBatch.batch, m.DAClient.GetClientType(), m.pendingBatch.daResult)
+	startHeight := p.batch.StartHeight
+	actualEndHeight := p.batch.EndHeight
+	err := m.SLClient.SubmitBatch(p.batch, m.DAClient.GetClientType(), p.daResult)
 	if err != nil {
 		return 0, fmt.Errorf("sl client submit batch: startheight: %d: actual end height: %d %w", startHeight, actualEndHeight, err)
 	}
-
-	// Clear pending batch
-	m.pendingBatch = nil
 
 	return actualEndHeight, nil
 }
