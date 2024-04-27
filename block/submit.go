@@ -25,7 +25,7 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 		// trigger by time
 		case <-ticker.C:
 			err := m.HandleSubmissionTrigger(ctx)
-			if errors.Is(err, gerr.ErrFailedPrecondition) {
+			if errors.Is(err, gerr.ErrAborted) {
 				continue
 			}
 			if errors.Is(err, gerr.ErrUnauthenticated) {
@@ -45,7 +45,7 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 // the last block in the submitted batch.
 func (m *Manager) HandleSubmissionTrigger(ctx context.Context) error {
 	if !m.submitBatchMutex.TryLock() {
-		return fmt.Errorf("batch submission already in process, skipping submission: %w", gerr.ErrFailedPrecondition)
+		return fmt.Errorf("batch submission already in process, skipping submission: %w", gerr.ErrAborted)
 	}
 	defer m.submitBatchMutex.Unlock() // Ensure unlocking at the end
 
