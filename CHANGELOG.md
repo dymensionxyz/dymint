@@ -1,4 +1,9 @@
-# [](https://github.com/dymensionxyz/dymint/compare/v1.1.0-rc02...v) (2024-04-26)
+# [](https://github.com/dymensionxyz/dymint/compare/v1.1.0-rc02...v) (2024-04-27)
+
+
+### Bug Fixes
+
+* **p2p:** validate block before applying and not before caching in p2p gossiping ([#723](https://github.com/dymensionxyz/dymint/issues/723)) ([98371b5](https://github.com/dymensionxyz/dymint/commit/98371b5220613e70f3274fab5593e02ba532f7db))
 
 
 

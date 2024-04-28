@@ -2,6 +2,11 @@ package dymension
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"strings"
+
+	"github.com/dymensionxyz/dymint/gerr"
 
 	sdkclient "github.com/cosmos/cosmos-sdk/client"
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
@@ -64,5 +69,15 @@ func (c *cosmosClient) GetSequencerClient() sequencertypes.QueryClient {
 }
 
 func (c *cosmosClient) GetAccount(accountName string) (cosmosaccount.Account, error) {
-	return c.AccountRegistry.GetByName(accountName)
+	acc, err := c.AccountRegistry.GetByName(accountName)
+	if err != nil {
+		if strings.Contains(err.Error(), "too many failed passphrase attempts") {
+			return cosmosaccount.Account{}, fmt.Errorf("account registry get by name: %w:%w", gerr.ErrUnauthenticated, err)
+		}
+		var accNotExistErr *cosmosaccount.AccountDoesNotExistError
+		if errors.As(err, &accNotExistErr) {
+			return cosmosaccount.Account{}, fmt.Errorf("account registry get by name: %w:%w", gerr.ErrNotFound, err)
+		}
+	}
+	return acc, err
 }
