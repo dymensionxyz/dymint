@@ -82,7 +82,7 @@ func (d *DASubmitMetaData) ToPath() string {
 		commitment := hex.EncodeToString(d.Commitment)
 		dataroot := hex.EncodeToString(d.Root)
 		path := []string{
-			string((d.Client)),
+			string(d.Client),
 			strconv.FormatUint(d.Height, 10),
 			strconv.Itoa(d.Index),
 			strconv.Itoa(d.Length),
