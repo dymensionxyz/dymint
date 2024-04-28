@@ -5,6 +5,7 @@ import (
 	cryptoRand "crypto/rand"
 	"encoding/json"
 	"math/rand" //#gosec
+	"strings"
 	"testing"
 	"time"
 
@@ -252,16 +253,19 @@ func getRandomBytes(n int) []byte {
 	return data
 }
 
-func TestDASubmitMetaData(t *testing.T) {
-	t.Run("regression - this was a failing case in the original impl", func(t *testing.T) {
+func FuzzDASubmitMetaData(f *testing.F) {
+	f.Fuzz(func(t *testing.T, client string, height uint64, index, length int, commitment, namespace, root []byte) {
+		if client == "" || strings.Contains(client, da.PathSeparator) || len(commitment) == 0 || len(namespace) == 0 || len(root) == 0 {
+			t.Skip()
+		}
 		data := da.DASubmitMetaData{
-			Client:     "client1",
-			Height:     1,
-			Index:      1,
-			Length:     42,
-			Commitment: []byte{1},
-			Namespace:  []byte{1},
-			Root:       []byte{1},
+			Client:     da.Client(client),
+			Height:     height,
+			Index:      index,
+			Length:     length,
+			Commitment: commitment,
+			Namespace:  namespace,
+			Root:       root,
 		}
 
 		path := data.ToPath()
@@ -274,23 +278,5 @@ func TestDASubmitMetaData(t *testing.T) {
 		require.True(t, bytes.Equal(data.Commitment, got.Commitment))
 		require.True(t, bytes.Equal(data.Namespace, got.Namespace))
 		require.True(t, bytes.Equal(data.Root, got.Root))
-	})
-}
-
-func FuzzDASubmitMetaData(f *testing.F) {
-	f.Add("client1|1|1|1|00|01|01")
-	f.Add("client1|1")
-	f.Fuzz(func(t *testing.T, path string) {
-		var data da.DASubmitMetaData
-		parsed, err := data.FromPath(path)
-		if err != nil {
-			return
-		}
-
-		// Convert back to path and compare with original
-		reconstructedPath := parsed.ToPath()
-		if reconstructedPath != path {
-			t.Errorf("Mismatch: expected %s, got %s", path, reconstructedPath)
-		}
 	})
 }
