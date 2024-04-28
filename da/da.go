@@ -77,27 +77,25 @@ const PathSeparator = "|"
 
 // ToPath converts a DAMetaData to a path.
 func (d *DASubmitMetaData) ToPath() string {
-	// convert uint64 to string
-	if d.Commitment != nil {
-		commitment := hex.EncodeToString(d.Commitment)
-		dataroot := hex.EncodeToString(d.Root)
-		path := []string{
-			string(d.Client),
-			strconv.FormatUint(d.Height, 10),
-			strconv.Itoa(d.Index),
-			strconv.Itoa(d.Length),
-			commitment,
-			hex.EncodeToString(d.Namespace),
-			dataroot,
-		}
-		for i, part := range path {
-			path[i] = strings.Trim(part, PathSeparator)
-		}
-		return strings.Join(path, PathSeparator)
-	} else {
-		path := []string{string(d.Client), PathSeparator, strconv.FormatUint(d.Height, 10)}
-		return strings.Join(path, PathSeparator)
+	parts := []string{
+		string(d.Client),
+		strconv.FormatUint(d.Height, 10),
 	}
+
+	if d.Commitment != nil {
+		parts = append(parts, strconv.Itoa(d.Index))
+		parts = append(parts, strconv.Itoa(d.Length))
+		parts = append(parts, hex.EncodeToString(d.Commitment))
+		parts = append(parts, strconv.Itoa(d.Index))
+		parts = append(parts, hex.EncodeToString(d.Namespace))
+		parts = append(parts, hex.EncodeToString(d.Root))
+	}
+
+	for i, part := range parts {
+		parts[i] = strings.Trim(part, PathSeparator)
+	}
+
+	return strings.Join(parts, PathSeparator)
 }
 
 // FromPath parses a path to a DAMetaData.
