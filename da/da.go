@@ -93,10 +93,10 @@ func (d *DASubmitMetaData) ToPath() string {
 		for i, part := range path {
 			path[i] = strings.Trim(part, PathSeparator)
 		}
-		return strings.Join(path, "")
+		return strings.Join(path, PathSeparator)
 	} else {
 		path := []string{string(d.Client), PathSeparator, strconv.FormatUint(d.Height, 10)}
-		return strings.Join(path, "")
+		return strings.Join(path, PathSeparator)
 	}
 }
 
