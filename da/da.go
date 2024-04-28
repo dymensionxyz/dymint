@@ -86,7 +86,6 @@ func (d *DASubmitMetaData) ToPath() string {
 		parts = append(parts, strconv.Itoa(d.Index))
 		parts = append(parts, strconv.Itoa(d.Length))
 		parts = append(parts, hex.EncodeToString(d.Commitment))
-		parts = append(parts, strconv.Itoa(d.Index))
 		parts = append(parts, hex.EncodeToString(d.Namespace))
 		parts = append(parts, hex.EncodeToString(d.Root))
 	}
@@ -100,45 +99,45 @@ func (d *DASubmitMetaData) ToPath() string {
 
 // FromPath parses a path to a DAMetaData.
 func (d *DASubmitMetaData) FromPath(path string) (*DASubmitMetaData, error) {
-	pathParts := strings.FieldsFunc(path, func(r rune) bool { return r == rune(PathSeparator[0]) })
-	if len(pathParts) < 2 {
+	parts := strings.FieldsFunc(path, func(r rune) bool { return r == rune(PathSeparator[0]) })
+	if len(parts) != 2 && len(parts) != 7 {
 		return nil, fmt.Errorf("invalid DA path")
 	}
 
-	height, err := strconv.ParseUint(pathParts[1], 10, 64)
+	ret := &DASubmitMetaData{}
+	ret.Client = Client(parts[0])
+
+	height, err := strconv.ParseUint(parts[1], 10, 64)
 	if err != nil {
 		return nil, err
 	}
+	ret.Height = height
 
-	submitData := &DASubmitMetaData{
-		Height: height,
-		Client: Client(pathParts[0]),
-	}
 	// TODO: check per DA and panic if not enough parts
-	if len(pathParts) == 7 {
-		submitData.Index, err = strconv.Atoi(pathParts[2])
+	if len(parts) == 7 {
+		ret.Index, err = strconv.Atoi(parts[2])
 		if err != nil {
 			return nil, err
 		}
-		submitData.Length, err = strconv.Atoi(pathParts[3])
+		ret.Length, err = strconv.Atoi(parts[3])
 		if err != nil {
 			return nil, err
 		}
-		submitData.Commitment, err = hex.DecodeString(pathParts[4])
+		ret.Commitment, err = hex.DecodeString(parts[4])
 		if err != nil {
 			return nil, err
 		}
-		submitData.Namespace, err = hex.DecodeString(pathParts[5])
+		ret.Namespace, err = hex.DecodeString(parts[5])
 		if err != nil {
 			return nil, err
 		}
-		submitData.Root, err = hex.DecodeString(pathParts[6])
+		ret.Root, err = hex.DecodeString(parts[6])
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	return submitData, nil
+	return ret, nil
 }
 
 // DAMetaData contains meta data about a batch on the Data Availability Layer.
