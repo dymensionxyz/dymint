@@ -1,9 +1,11 @@
 package da_test
 
 import (
+	"bytes"
 	cryptoRand "crypto/rand"
 	"encoding/json"
 	"math/rand" //#gosec
+	"strings"
 	"testing"
 	"time"
 
@@ -249,4 +251,32 @@ func getRandomBytes(n int) []byte {
 	data := make([]byte, n)
 	_, _ = cryptoRand.Read(data)
 	return data
+}
+
+func FuzzDASubmitMetaData(f *testing.F) {
+	f.Fuzz(func(t *testing.T, client string, height uint64, index, length int, commitment, namespace, root []byte) {
+		if client == "" || strings.Contains(client, da.PathSeparator) || len(commitment) == 0 || len(namespace) == 0 || len(root) == 0 {
+			t.Skip()
+		}
+		data := da.DASubmitMetaData{
+			Client:     da.Client(client),
+			Height:     height,
+			Index:      index,
+			Length:     length,
+			Commitment: commitment,
+			Namespace:  namespace,
+			Root:       root,
+		}
+
+		path := data.ToPath()
+		got, err := data.FromPath(path)
+		require.NoError(t, err)
+		require.Equal(t, data.Client, got.Client)
+		require.Equal(t, data.Height, got.Height)
+		require.Equal(t, data.Index, got.Index)
+		require.Equal(t, data.Length, got.Length)
+		require.True(t, bytes.Equal(data.Commitment, got.Commitment))
+		require.True(t, bytes.Equal(data.Namespace, got.Namespace))
+		require.True(t, bytes.Equal(data.Root, got.Root))
+	})
 }
