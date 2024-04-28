@@ -255,30 +255,30 @@ func getRandomBytes(n int) []byte {
 func TestDASubmitMetaData(t *testing.T) {
 	t.Run("regression - this was a failing case in the original impl", func(t *testing.T) {
 		data := da.DASubmitMetaData{
-			Height:     1,
-			Namespace:  []byte{1},
 			Client:     "client1",
-			Commitment: []byte{1},
+			Height:     1,
 			Index:      1,
 			Length:     42,
+			Commitment: []byte{1},
+			Namespace:  []byte{1},
 			Root:       []byte{1},
 		}
 
 		path := data.ToPath()
 		got, err := data.FromPath(path)
 		require.NoError(t, err)
-		require.Equal(t, data.Height, got.Height)
-		require.True(t, bytes.Equal(data.Namespace, got.Namespace))
 		require.Equal(t, data.Client, got.Client)
-		require.True(t, bytes.Equal(data.Commitment, got.Commitment))
+		require.Equal(t, data.Height, got.Height)
 		require.Equal(t, data.Index, got.Index)
 		require.Equal(t, data.Length, got.Length)
+		require.True(t, bytes.Equal(data.Commitment, got.Commitment))
+		require.True(t, bytes.Equal(data.Namespace, got.Namespace))
 		require.True(t, bytes.Equal(data.Root, got.Root))
 	})
 }
 
 func FuzzDASubmitMetaData(f *testing.F) {
-	f.Add("client1|1|1|1|00|1|01|01")
+	f.Add("client1|1|1|1|00|01|01")
 	f.Add("client1|1")
 	f.Fuzz(func(t *testing.T, path string) {
 		var data da.DASubmitMetaData
