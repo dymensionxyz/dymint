@@ -52,10 +52,8 @@ type Manager struct {
 	// Data retrieval
 	Retriever da.BatchRetriever
 
-	// Synchronization
 	SyncTargetDiode diodes.Diode
-
-	SyncTarget atomic.Uint64
+	SyncTarget      atomic.Uint64
 
 	// Block production
 	shouldProduceBlocksCh chan bool
@@ -83,9 +81,9 @@ type Manager struct {
 	// pendingBatch is the result of the last DA submission
 	// that is pending settlement layer submission.
 	// It is used to avoid double submission of the same batch.
+	// It's protected by submitBatchMutex.
 	pendingBatch *PendingBatch
 
-	// Logging
 	logger types.Logger
 
 	// Cached blocks and commits for applying at future heights. Invariant: the block and commit are .Valid() (validated sigs etc)
@@ -242,12 +240,6 @@ func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
 	eventData := event.Data().(p2p.GossipedBlock)
 	block := eventData.Block
 	commit := eventData.Commit
-
-	if err := m.validateBlock(&block, &commit); err != nil {
-		m.logger.Error("apply block callback, block not valid: dropping it", "err", err, "height", block.Header.Height)
-		/// TODO: can we take an action here such as dropping the peer / reducing their reputation?
-		return
-	}
 
 	nextHeight := m.Store.NextHeight()
 	if block.Header.Height >= nextHeight {

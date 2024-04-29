@@ -1,6 +1,6 @@
 module github.com/dymensionxyz/dymint
 
-go 1.22.1
+go 1.22.2
 
 require (
 	code.cloudfoundry.org/go-diodes v0.0.0-20220725190411-383eb6634c40
@@ -11,7 +11,7 @@ require (
 	github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.12
 	github.com/cosmos/cosmos-sdk v0.46.16
 	github.com/dgraph-io/badger/v3 v3.2103.3
-	github.com/dymensionxyz/cosmosclient v0.4.2-beta.0.20240421130646-b8980ec7aade
+	github.com/dymensionxyz/cosmosclient v0.4.2-beta
 	github.com/dymensionxyz/dymension/v3 v3.1.0-rc03.0.20240411195658-f7cd96f53b56
 	github.com/go-kit/kit v0.12.0
 	github.com/gofrs/uuid v4.3.0+incompatible
@@ -69,7 +69,7 @@ require (
 	github.com/decred/base58 v1.0.4 // indirect
 	github.com/decred/dcrd/crypto/blake256 v1.0.1 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
-	github.com/ethereum/go-ethereum v1.10.26 // indirect
+	github.com/ethereum/go-ethereum v1.12.0 // indirect
 	github.com/filecoin-project/go-jsonrpc v0.3.1 // indirect
 	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/go-logr/logr v1.2.4 // indirect
@@ -260,9 +260,10 @@ require (
 	github.com/cockroachdb/tokenbucket v0.0.0-20230807174530-cc333fc44b06 // indirect
 	github.com/cosmos/ibc-go/v6 v6.2.1 // indirect
 	github.com/decred/dcrd/dcrec/edwards v1.0.0 // indirect
-	github.com/evmos/ethermint v0.22.0 // indirect
+	github.com/evmos/evmos/v12 v12.1.6 // indirect
 	github.com/getsentry/sentry-go v0.18.0 // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20190812055157-5d271430af9f // indirect
+	github.com/holiman/uint256 v1.2.2 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/linxGnu/grocksdb v1.8.12 // indirect
@@ -276,6 +277,7 @@ require (
 
 replace (
 	github.com/centrifuge/go-substrate-rpc-client/v4 => github.com/availproject/go-substrate-rpc-client/v4 v4.0.12-avail-1.4.0-rc1-5e286e3
+	github.com/evmos/evmos/v12 => github.com/dymensionxyz/evmos/v12 v12.1.6-dymension-v0.3
 
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.2-alpha.regen.4
 	github.com/gorilla/rpc => github.com/dymensionxyz/rpc v1.3.1
