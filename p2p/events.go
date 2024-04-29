@@ -4,6 +4,7 @@ import (
 	"github.com/dymensionxyz/dymint/p2p/pb"
 	"github.com/dymensionxyz/dymint/types"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
+	tmtypes "github.com/tendermint/tendermint/types"
 )
 
 /* -------------------------------------------------------------------------- */
@@ -67,12 +68,21 @@ func (e *GossipedBlock) FromProto(other *pb.GossipedBlock) error {
 }
 
 // Validate run basic validation on the gossiped block
-func (e *GossipedBlock) Validate() error {
+func (e *GossipedBlock) Validate(proposer *types.Sequencer) error {
 	if err := e.Block.ValidateBasic(); err != nil {
 		return err
 	}
 	if err := e.Commit.ValidateBasic(); err != nil {
 		return err
+	}
+	if err := e.Commit.ValidateWithHeader(proposer, &e.Block.Header); err != nil {
+		return err
+	}
+	abciData := tmtypes.Data{
+		Txs: types.ToABCIBlockDataTxs(&e.Block.Data),
+	}
+	if e.Block.Header.DataHash != [32]byte(abciData.Hash()) {
+		return types.ErrInvalidHeaderDataHash
 	}
 	return nil
 }

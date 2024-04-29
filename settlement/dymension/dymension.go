@@ -454,6 +454,7 @@ func (d *HubClient) convertBatchToMsgUpdateState(batch *types.Batch, daResult *d
 		}
 		blockDescriptors[index] = blockDescriptor
 	}
+
 	settlementBatch := &rollapptypes.MsgUpdateState{
 		Creator:     addr,
 		RollappId:   d.config.RollappID,
