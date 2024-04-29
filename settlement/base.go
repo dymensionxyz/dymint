@@ -41,6 +41,9 @@ func (b *BaseLayerClient) Init(config Config, pubsub *pubsub.Server, logger type
 		apply(b)
 	}
 
+	//TODO(srene): For a correct validation, sequencer list would need to be updated after a sequencer list change on the Hub.
+	//e.g. after receiving an event from the Hub. Right now, node will need to be restarted after a sequencer change, since it is
+	//only getting the sequencers list during Init.
 	b.sequencersList, err = b.fetchSequencersList()
 	if err != nil {
 		return err
