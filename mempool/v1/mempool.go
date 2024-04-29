@@ -70,7 +70,7 @@ func NewTxMempool(
 		logger:       logger,
 		config:       cfg,
 		proxyAppConn: proxyAppConn,
-		metrics:      mempool.NopMetrics(),
+		metrics:      mempool.PrometheusMetrics("dymint"),
 		cache:        mempool.NopTxCache{},
 		txs:          clist.New(),
 		mtx:          new(sync.RWMutex),
