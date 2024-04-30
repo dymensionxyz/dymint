@@ -55,10 +55,13 @@ type Manager struct {
 	SyncTargetDiode diodes.Diode
 	SyncTarget      atomic.Uint64
 
-	// Block production
-	shouldProduceBlocksCh chan bool
-	produceEmptyBlockCh   chan bool
-	lastSubmissionTime    atomic.Int64
+	/*
+		Block production
+	*/
+
+	nodeHealthErrorHandler nodeHealthErrorHandler
+	produceEmptyBlockCh    chan bool
+	lastSubmissionTime     atomic.Int64
 
 	/*
 		Guard against triggering a new batch submission when the old one is still going on (taking a while)
@@ -132,11 +135,11 @@ func NewManager(
 		SLClient:    settlementClient,
 		Retriever:   dalc.(da.BatchRetriever),
 		// channels are buffered to avoid blocking on input/output operations, buffer sizes are arbitrary
-		SyncTargetDiode:       diodes.NewOneToOne(1, nil),
-		shouldProduceBlocksCh: make(chan bool, 1),
-		produceEmptyBlockCh:   make(chan bool, 1),
-		logger:                logger,
-		blockCache:            make(map[uint64]CachedBlock),
+		SyncTargetDiode:        diodes.NewOneToOne(1, nil),
+		nodeHealthErrorHandler: makeNodeHealthErrorHandler(conf.ProduceBlocksUnhealthyNodeTolerance),
+		produceEmptyBlockCh:    make(chan bool, 1),
+		logger:                 logger,
+		blockCache:             make(map[uint64]CachedBlock),
 	}
 
 	return agg, nil
@@ -230,7 +233,7 @@ func getAddress(key crypto.PrivKey) ([]byte, error) {
 func (m *Manager) onNodeHealthStatus(event pubsub.Message) {
 	eventData := event.Data().(*events.DataHealthStatus)
 	m.logger.Info("Received node health status event.", "eventData", eventData)
-	m.shouldProduceBlocksCh <- eventData.Error == nil
+	m.nodeHealthErrorHandler.handle(eventData.Error)
 }
 
 // TODO: move to gossip.go
