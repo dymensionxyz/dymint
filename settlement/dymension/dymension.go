@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"time"
 
+	uretry "github.com/dymensionxyz/dymint/utils/retry"
+
 	uevent "github.com/dymensionxyz/dymint/utils/event"
 
 	"google.golang.org/grpc/codes"
@@ -218,6 +220,8 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 	//nolint:errcheck
 	defer d.pubsub.Unsubscribe(d.ctx, postBatchSubscriberClient, settlement.EventQueryNewSettlementBatchAccepted)
 
+	b := uretry.NewBackoffConfig().Backoff()
+
 	// Try submitting the batch to the settlement layer. If submission (i.e. only submission, not acceptance) fails we emit an unhealthy event
 	// and try again in the next loop. If submission succeeds we wait for the batch to be accepted by the settlement layer.
 	// If it is not accepted we emit an unhealthy event and start again the submission loop.
@@ -243,8 +247,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 					err,
 				)
 
-				// Sleep to allow context cancellation to take effect before retrying
-				time.Sleep(100 * time.Millisecond)
+				b.Sleep()
 				continue
 			}
 		}
