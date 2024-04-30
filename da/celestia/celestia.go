@@ -202,7 +202,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 		return da.ResultSubmitBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
-				Message: fmt.Sprintf("size bigger than maximum blob size of %d bytes", celtypes.DefaultMaxBytes),
+				Message: fmt.Sprintf("size bigger than maximum blob size: max n bytes: %d", celtypes.DefaultMaxBytes),
 				Error:   errors.New("blob size too big"),
 			},
 		}
@@ -213,7 +213,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 	for {
 		select {
 		case <-c.ctx.Done():
-			c.logger.Debug("context cancelled")
+			c.logger.Debug("Context cancelled.")
 			return da.ResultSubmitBatch{}
 		default:
 
@@ -227,7 +227,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 					return res
 				}
 
-				c.logger.Error("submitted bad health event: trying again", "error", err)
+				c.logger.Error("Submitted bad health event: trying again.", "error", err)
 				backoff.Sleep()
 				continue
 			}
@@ -250,7 +250,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 					return res
 				}
 
-				c.logger.Error("submitted bad health event: trying again", "error", err)
+				c.logger.Error("Submitted bad health event: trying again.", "error", err)
 				backoff.Sleep()
 				continue
 			}
