@@ -32,7 +32,7 @@ func (h *nodeHealthErrorHandler) handle(err error) {
 
 	if err == nil {
 		// everything is fine!
-		h.shouldProduceBlocks <- true // cancel any existing pause in production (NOTE: this line must go 2nd)
+		h.shouldProduceBlocks <- true // cancel any existing pause
 		return
 	}
 
