@@ -20,7 +20,7 @@ const (
 )
 
 var defaultSubmitBatchDelay = uretry.NewBackoffConfig(
-	uretry.WithInitialDelay(time.Second*5),
+	uretry.WithInitialDelay(time.Second*6),
 	uretry.WithMaxDelay(time.Second*30),
 	uretry.WithGrowthFactor(1.6),
 )
