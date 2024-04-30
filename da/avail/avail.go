@@ -273,6 +273,8 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 				retry.Attempts(c.batchRetryAttempts),
 			)
 			if err != nil {
+				err = fmt.Errorf("broadcast data blob: %w", err)
+
 				if !retry.IsRecoverable(err) {
 					return da.ResultSubmitBatch{
 						BaseResult: da.BaseResult{
@@ -282,16 +284,16 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 						},
 					}
 				}
-				err = fmt.Errorf("broadcast data blob: %w", err)
-				c.logger.Error("broadcasting batch, emitting DA unhealthy event and trying again", "error", err)
+
 				res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, err)
 				if err != nil {
 					return res
 				}
+				c.logger.Error("Submitted bad health event: trying again.", "error", err)
 				continue
 			}
 
-			c.logger.Debug("Successfully submitted DA batch")
+			c.logger.Debug("Successfully submitted batch.")
 			res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, nil)
 			if err != nil {
 				return res
