@@ -15,28 +15,28 @@ type nodeHealthErrorHandler struct {
 	shouldProduceBlocks chan bool
 
 	// cancel any scheduled pause that was set to happen in the future
-	cancelFutureBlockPause func()
+	cancelFutureBlockPause []func()
 }
 
 func makeNodeHealthErrorHandler(blockPauseTolerance time.Duration) nodeHealthErrorHandler {
 	return nodeHealthErrorHandler{
-		blockPauseTolerance:    blockPauseTolerance,
-		shouldProduceBlocks:    make(chan bool, 1),
-		cancelFutureBlockPause: func() {},
+		blockPauseTolerance: blockPauseTolerance,
+		shouldProduceBlocks: make(chan bool, 1),
 	}
 }
 
 // handle must not be called concurrently
 func (h *nodeHealthErrorHandler) handle(err error) {
-	h.cancelFutureBlockPause()
-
 	if err == nil {
+		for _, cancel := range h.cancelFutureBlockPause {
+			cancel()
+		}
 		// everything is fine!
 		h.shouldProduceBlocks <- true // cancel any existing pause
 		return
 	}
 
-	h.cancelFutureBlockPause = utime.CancellableAfterFunc(h.blockPauseTolerance, func() {
+	h.cancelFutureBlockPause = append(h.cancelFutureBlockPause, utime.CancellableAfterFunc(h.blockPauseTolerance, func() {
 		h.shouldProduceBlocks <- false
-	})
+	}))
 }
