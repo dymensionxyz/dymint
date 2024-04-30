@@ -73,7 +73,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 				shouldProduceBlocks = <-m.nodeHealthErrorHandler.shouldProduceBlocksCh
 			}
 			if didPause {
-				m.logger.Info("resumed block resumed")
+				m.logger.Info("resumed block production")
 			}
 		}
 	}

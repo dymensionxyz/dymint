@@ -234,8 +234,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 				uevent.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{Error: err}, settlement.EventHealthStatusList)
 
 				d.logger.Error(
-					"submit batch to settlement layer, emitted unhealthy event",
-
+					"Submitted bad health event: trying again.",
 					"startHeight",
 					batch.StartHeight,
 					"endHeight",
@@ -257,13 +256,16 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 		select {
 		case <-d.ctx.Done():
 			return d.ctx.Err()
+
 		case <-subscription.Cancelled():
-			return fmt.Errorf("subscription canceled: %w", err)
+			return fmt.Errorf("subscription cancelled: %w", err)
+
 		case <-subscription.Out():
 			uevent.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{}, settlement.EventHealthStatusList)
-			d.logger.Debug("batch accepted by settlement layer, emitted healthy event",
-				"startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
+			d.logger.Debug("Batch accepted: emitted healthy event.", "startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
+
 			return nil
+
 		case <-timer.C:
 			// Before emitting unhealthy event, check if the batch was accepted by the settlement
 			// layer, and we've just missed the event.
@@ -275,7 +277,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 				uevent.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{Error: err}, settlement.EventHealthStatusList)
 
 				d.logger.Error(
-					"batch not accepted by settlement layer, emitted unhealthy event",
+					"Submitted bad health event: trying again.",
 					"startHeight",
 					batch.StartHeight,
 					"endHeight",
@@ -284,15 +286,14 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 					err,
 				)
 
-				// restart the loop
-				timer.Stop()
+				timer.Stop() // we don't forget to clean up
 				continue
 			}
 
 			// all good
-			d.logger.Info("batch accepted by settlement layer", "startHeight", includedBatch.StartHeight, "endHeight", includedBatch.EndHeight)
-
 			uevent.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{}, settlement.EventHealthStatusList)
+			d.logger.Info("Batch accepted, emitted healthy event.", "startHeight", includedBatch.StartHeight, "endHeight", includedBatch.EndHeight)
+
 			return nil
 		}
 	}
