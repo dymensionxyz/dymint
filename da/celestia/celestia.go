@@ -221,11 +221,13 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			height, commitment, err := c.submit(data)
 			if err != nil {
 				err = fmt.Errorf("submit batch: %w", err)
-				c.logger.Error("submit DA batch, emitting bad health event and trying again", "error", err)
+
 				res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, err)
 				if err != nil {
 					return res
 				}
+
+				c.logger.Error("submitted bad health event: trying again", "error", err)
 				backoff.Sleep()
 				continue
 			}
@@ -241,12 +243,14 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 
 			result := c.CheckBatchAvailability(daMetaData)
 			if result.Code != da.StatusSuccess {
-				err = fmt.Errorf("submitted batch but did not get availability success: %w", err)
-				c.logger.Error("unable to confirm submitted blob availability, retrying")
+				err = fmt.Errorf("check batch availability: submitted batch but did not get availability success status: %w", err)
+
 				res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, err)
 				if err != nil {
 					return res
 				}
+
+				c.logger.Error("submitted bad health event: trying again", "error", err)
 				backoff.Sleep()
 				continue
 			}
