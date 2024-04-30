@@ -23,6 +23,7 @@ import (
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
 	pb "github.com/dymensionxyz/dymint/types/pb/dymint"
+	uretry "github.com/dymensionxyz/dymint/utils/retry"
 )
 
 // DataAvailabilityLayerClient use celestia-node public API.
@@ -36,7 +37,7 @@ type DataAvailabilityLayerClient struct {
 	cancel           context.CancelFunc
 	rpcRetryDelay    time.Duration
 	rpcRetryAttempts int
-	submitRetryDelay time.Duration
+	submitRetryDelay uretry.BackoffConfig
 }
 
 var (
@@ -65,10 +66,10 @@ func WithRPCAttempts(attempts int) da.Option {
 	}
 }
 
-// WithSubmitRetryDelay sets submit retry delay.
-func WithSubmitRetryDelay(delay time.Duration) da.Option {
+// WithSubmitRetryDelay sets submit retry delay config.
+func WithSubmitRetryDelay(c uretry.BackoffConfig) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
-		daLayerClient.(*DataAvailabilityLayerClient).submitRetryDelay = delay
+		daLayerClient.(*DataAvailabilityLayerClient).submitRetryDelay = c
 	}
 }
 
@@ -104,7 +105,7 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 	// Set defaults
 	c.rpcRetryAttempts = defaultRpcCheckAttempts
 	c.rpcRetryDelay = defaultRpcRetryDelay
-	c.submitRetryDelay = defaultSubmitRetryDelay
+	c.submitRetryDelay = uretry.NewBackoffConfig()
 
 	c.ctx, c.cancel = context.WithCancel(context.Background())
 
@@ -205,6 +206,8 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 		}
 	}
 
+	backoff := c.submitRetryDelay.Backoff()
+
 	for {
 		select {
 		case <-c.ctx.Done():
@@ -216,12 +219,12 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			height, commitment, err := c.submit(data)
 			if err != nil {
 				err = fmt.Errorf("submit batch: %w", err)
-				c.logger.Error("submit DA batch. Emitting health event and trying again", "error", err)
+				c.logger.Error("submit DA batch, emitting bad health event and trying again", "error", err)
 				res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, err)
 				if err != nil {
 					return res
 				}
-				time.Sleep(c.submitRetryDelay)
+				backoff.Sleep()
 				continue
 			}
 
@@ -242,7 +245,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 				if err != nil {
 					return res
 				}
-				time.Sleep(c.submitRetryDelay)
+				backoff.Sleep()
 				continue
 			}
 			daMetaData.Root = result.CheckMetaData.Root
