@@ -40,7 +40,7 @@ func TestFoo(t *testing.T) {
 	t.Run("all unhealthies are cancelled, and no stack overflow", func(t *testing.T) {
 		h := makeNodeHealthErrorHandler(time.Millisecond * 100)
 
-		for range 1000 {
+		for range 1000 { // regression test: catch SO in recursive impl
 			h.handle(errors.New("foo"))
 		}
 		h.handle(nil) // healthy overrides unhealthy
@@ -58,18 +58,23 @@ func TestFoo(t *testing.T) {
 
 		h.handle(errors.New("foo"))
 		time.Sleep(time.Millisecond * 50)
+		t.Logf("a")
 
 		h.handle(nil) // healthy overrides unhealthy
 		time.Sleep(time.Millisecond * 25)
+		t.Logf("b")
 
 		h.handle(errors.New("bar")) // another unhealthy one!
+		t.Logf("c")
 
 		ok := <-h.shouldProduceBlocksCh
 		require.True(t, ok) // we got the healthy event
 
-		time.Sleep(time.Millisecond * 80)
+		t.Logf("d")
+		time.Sleep(time.Millisecond * 50)
 
 		require.Len(t, h.shouldProduceBlocksCh, 0) // first op must have been cancelled!
+		t.Logf("e")
 
 		time.Sleep(time.Millisecond * 200)
 		ok = <-h.shouldProduceBlocksCh

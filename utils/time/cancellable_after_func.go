@@ -12,7 +12,12 @@ func CancellableAfterFunc(d time.Duration, f func()) (blockingCancel func()) {
 		f()
 		close(c)
 	})
+	hasBeenCalled := false
 	return func() {
+		if hasBeenCalled {
+			return
+		}
+		hasBeenCalled = true
 		/*
 		 'For a timer created with AfterFunc(d, f), if t.Stop returns false, then the timer
 		 has already expired and the function f has been started in its own goroutine;
