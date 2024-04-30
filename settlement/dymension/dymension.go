@@ -393,15 +393,13 @@ func (d *HubClient) GetSequencers(rollappID string) ([]*types.Sequencer, error) 
 }
 
 func (d *HubClient) submitBatch(msgUpdateState *rollapptypes.MsgUpdateState) error {
-	err := d.RunWithRetry(
-		func() error {
-			txResp, err := d.client.BroadcastTx(d.config.DymAccountName, msgUpdateState)
-			if err != nil || txResp.Code != 0 {
-				return fmt.Errorf("broadcast tx: %w", err)
-			}
-			return nil
-		})
-	return err
+	resp, err := d.client.BroadcastTx(d.config.DymAccountName, msgUpdateState)
+	if err != nil {
+		return fmt.Errorf("broadcast tx: %w", err)
+	}
+	if resp.Code != 0 {
+		return fmt.Errorf("broadcast tx resp code not 0: %d", resp.Code)
+	}
 }
 
 func (d *HubClient) eventHandler() {
