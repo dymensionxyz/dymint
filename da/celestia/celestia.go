@@ -567,10 +567,28 @@ func (c *DataAvailabilityLayerClient) submit(daBlob da.Blob) (uint64, da.Commitm
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
-	height, err := c.rpc.Submit(ctx, blobs, options)
+	/*
+		TODO: dry out all retries
+	*/
+
+	var height uint64
+
+	err = retry.Do(
+		func() error {
+			var err error
+			height, err = c.rpc.Submit(ctx, blobs, options)
+			return err
+		},
+		retry.Context(c.ctx),
+		retry.LastErrorOnly(true),
+		retry.Delay(c.rpcRetryDelay),
+		retry.Attempts(uint(c.rpcRetryAttempts)),
+		retry.DelayType(retry.FixedDelay),
+	)
 	if err != nil {
-		return 0, nil, fmt.Errorf("rpc submit: %w", err)
+		return 0, nil, fmt.Errorf("do rpc submit: %w", err)
 	}
+
 	c.logger.Info("Successfully submitted blobs to Celestia", "height", height, "gas", options.GasLimit, "fee", options.Fee)
 
 	return height, commitments[0], nil
