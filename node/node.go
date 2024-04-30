@@ -191,6 +191,10 @@ func NewNode(
 		return nil, err
 	}
 
+	if !conf.Aggregator {
+		signingKey = nil // TODO: what's the significance of this?
+	}
+
 	info, err := proxyApp.Query().InfoSync(proxy.RequestInfo)
 	if err != nil {
 		return nil, fmt.Errorf("querying info: %w", err)

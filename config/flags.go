@@ -16,6 +16,7 @@ const (
 	FlagNamespaceID            = "dymint.namespace_id"
 	FlagBlockBatchSize         = "dymint.block_batch_size"
 	FlagBlockBatchMaxSizeBytes = "dymint.block_batch_max_size_bytes"
+	FlagSimulateFraud          = "dymint.simulate_fraud"
 )
 
 const (
@@ -30,7 +31,7 @@ const (
 	FlagRollappID        = "dymint.settlement_config.rollapp_id"
 )
 
-// AddFlags adds Dymint specific configuration options to cobra Command.
+// AddNodeFlags adds Dymint specific configuration options to cobra Command.
 //
 // This function is called in cosmos-sdk.
 func AddNodeFlags(cmd *cobra.Command) {
@@ -58,6 +59,8 @@ func AddNodeFlags(cmd *cobra.Command) {
 	cmd.Flags().String(FlagSLGasPrices, def.SettlementConfig.GasPrices, "Settlement Layer gas prices")
 	cmd.Flags().Uint64(FlagSLGasLimit, def.SettlementConfig.GasLimit, "Settlement Layer batch submit gas limit")
 	cmd.Flags().String(FlagRollappID, def.SettlementConfig.RollappID, "The chainID of the rollapp")
+
+	cmd.Flags().Bool(FlagSimulateFraud, false, "commit fraud with some probability on every operation") // TODO: better to just replace with a fraud probability
 }
 
 func BindDymintFlags(cmd *cobra.Command, v *viper.Viper) error {
@@ -113,6 +116,9 @@ func BindDymintFlags(cmd *cobra.Command, v *viper.Viper) error {
 		return err
 	}
 	if err := v.BindPFlag("rollapp_id", cmd.Flags().Lookup(FlagRollappID)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag("simulate_fraud", cmd.Flags().Lookup(FlagSimulateFraud)); err != nil {
 		return err
 	}
 	return nil
