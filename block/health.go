@@ -25,6 +25,8 @@ func makeNodeHealthErrorHandler(errorTolerance time.Duration) nodeHealthErrorHan
 }
 
 func (h *nodeHealthErrorHandler) handle(err error) {
+	t := time.Timer{}
+	t.Stop()
 	/*
 		This implementation ended up being simpler than trying to use timer cancelling.
 	*/
