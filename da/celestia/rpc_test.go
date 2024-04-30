@@ -109,7 +109,7 @@ func TestSubmitBatch(t *testing.T) {
 		mockRPCClient := mocks.NewCelestiaRPCClient(t)
 		// Configure DALC options
 		options := []da.Option{
-			celestia.WithSubmitRetryDelay(uretry.NewBackoffConfig(uretry.WithInitialDelay(10 * time.Millisecond))),
+			celestia.WithSubmitBackoff(uretry.NewBackoffConfig(uretry.WithInitialDelay(10 * time.Millisecond))),
 			celestia.WithRPCClient(mockRPCClient),
 		}
 		// Subscribe to the health status event

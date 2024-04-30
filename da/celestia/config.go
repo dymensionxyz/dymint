@@ -19,8 +19,8 @@ const (
 	defaultGasAdjustment    float64 = 1.3
 )
 
-var defaultSubmitBatchDelay = uretry.NewBackoffConfig(
-	uretry.WithInitialDelay(time.Second*6),
+var defaultSubmitBackoff = uretry.NewBackoffConfig(
+	uretry.WithInitialDelay(time.Second*4),
 	uretry.WithMaxDelay(time.Second*30),
 	uretry.WithGrowthFactor(1.6),
 )
