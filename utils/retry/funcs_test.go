@@ -9,7 +9,7 @@ import (
 
 func TestBackoff(t *testing.T) {
 	t.Run("default", func(t *testing.T) {
-		b := NewBackoff()
+		b := NewBackoffConfig().Backoff()
 		last := time.Duration(0)
 		for range 9 { // growing
 			d := b.Delay()
@@ -25,7 +25,7 @@ func TestBackoff(t *testing.T) {
 	t.Run("decimal growth factor", func(t *testing.T) {
 		initial := time.Second
 		factor := 1.5
-		b := NewBackoff(WithInitialDelay(initial), WithGrowthFactor(factor), WithMaxDelay(0))
+		b := NewBackoffConfig(WithInitialDelay(initial), WithGrowthFactor(factor), WithMaxDelay(0)).Backoff()
 		b.Delay() // skip first so that last is initial
 		last := initial
 		for range 10 {
