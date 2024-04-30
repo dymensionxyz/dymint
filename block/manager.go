@@ -58,15 +58,10 @@ type Manager struct {
 	/*
 		Block production
 	*/
-	// how long between a transition (node healthy -> unhealthy) before pausing block production.
-	// if a node is unhealthy for longer than this, we stop producing blocks
-	// if it becomes healthy again, the timer is cancelled
-	// note: in future, we could add the inverse for (node unhealthy -> healthy) to start producing
-	//       blocks again, but for now we will do that instantly
-	shouldProduceBlocksUnhealthyNodeTolerance time.Duration
-	shouldProduceBlocksCh                     chan bool
-	produceEmptyBlockCh                       chan bool
-	lastSubmissionTime                        atomic.Int64
+
+	nodeHealthStatusHandler nodeHealthStatusHandler
+	produceEmptyBlockCh     chan bool
+	lastSubmissionTime      atomic.Int64
 
 	/*
 		Guard against triggering a new batch submission when the old one is still going on (taking a while)
@@ -141,11 +136,13 @@ func NewManager(
 		Retriever:   dalc.(da.BatchRetriever),
 		// channels are buffered to avoid blocking on input/output operations, buffer sizes are arbitrary
 		SyncTargetDiode: diodes.NewOneToOne(1, nil),
-		shouldProduceBlocksUnhealthyNodeTolerance: conf.ProduceBlocksUnhealthyNodeTolerance,
-		shouldProduceBlocksCh:                     make(chan bool, 1),
-		produceEmptyBlockCh:                       make(chan bool, 1),
-		logger:                                    logger,
-		blockCache:                                make(map[uint64]CachedBlock),
+		nodeHealthStatusHandler: nodeHealthStatusHandler{
+			shouldProduceBlocksUnhealthyNodeTolerance: conf.ProduceBlocksUnhealthyNodeTolerance,
+			shouldProduceBlocksCh:                     make(chan bool, 1),
+		},
+		produceEmptyBlockCh: make(chan bool, 1),
+		logger:              logger,
+		blockCache:          make(map[uint64]CachedBlock),
 	}
 
 	return agg, nil
