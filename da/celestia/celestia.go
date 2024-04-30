@@ -105,7 +105,7 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 	// Set defaults
 	c.rpcRetryAttempts = defaultRpcCheckAttempts
 	c.rpcRetryDelay = defaultRpcRetryDelay
-	c.submitRetryDelay = uretry.NewBackoffConfig()
+	c.submitRetryDelay = defaultSubmitBatchDelay
 
 	c.ctx, c.cancel = context.WithCancel(context.Background())
 
