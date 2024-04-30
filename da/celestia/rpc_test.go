@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	uretry "github.com/dymensionxyz/dymint/utils/retry"
+
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/da/celestia"
 	mocks "github.com/dymensionxyz/dymint/mocks/da/celestia"
@@ -107,7 +109,7 @@ func TestSubmitBatch(t *testing.T) {
 		mockRPCClient := mocks.NewCelestiaRPCClient(t)
 		// Configure DALC options
 		options := []da.Option{
-			celestia.WithSubmitRetryDelay(10 * time.Millisecond),
+			celestia.WithSubmitRetryDelay(uretry.NewBackoffConfig(uretry.WithInitialDelay(10 * time.Millisecond))),
 			celestia.WithRPCClient(mockRPCClient),
 		}
 		// Subscribe to the health status event
