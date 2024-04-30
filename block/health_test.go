@@ -37,6 +37,19 @@ func TestFoo(t *testing.T) {
 		time.Sleep(time.Millisecond * 200)
 		require.Len(t, h.shouldProduceBlocksCh, 0) // must be cancelled
 	})
+	t.Run("all unhealthies are cancelled, and no stack overflow", func(t *testing.T) {
+		h := makeNodeHealthErrorHandler(time.Millisecond * 100)
+
+		for range 1000 {
+			h.handle(errors.New("foo"))
+		}
+		h.handle(nil) // healthy overrides unhealthy
+		ok := <-h.shouldProduceBlocksCh
+		require.True(t, ok)
+
+		time.Sleep(time.Millisecond * 200)
+		require.Len(t, h.shouldProduceBlocksCh, 0) // must be cancelled
+	})
 	t.Run("unhealthy->healthy->unhealthy does not trigger too fast", func(t *testing.T) {
 		/*
 			Make sure that the healthy event COMPLETELY cancels out the first unhealthy event
