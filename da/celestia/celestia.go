@@ -262,6 +262,9 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			if err != nil {
 				return res
 			}
+
+			c.logger.Debug("Batch accepted, emitted healthy event.")
+
 			return da.ResultSubmitBatch{
 				BaseResult: da.BaseResult{
 					Code:    da.StatusSuccess,

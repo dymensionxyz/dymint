@@ -291,9 +291,9 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 			}
 
 			// all good
-			d.logger.Info("Batch accepted.", "startHeight", includedBatch.StartHeight, "endHeight", includedBatch.EndHeight)
-
 			uevent.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{}, settlement.EventHealthStatusList)
+			d.logger.Info("Batch accepted, emitted healthy event.", "startHeight", includedBatch.StartHeight, "endHeight", includedBatch.EndHeight)
+
 			return nil
 		}
 	}
