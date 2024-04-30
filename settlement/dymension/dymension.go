@@ -403,6 +403,7 @@ func (d *HubClient) submitBatch(msgUpdateState *rollapptypes.MsgUpdateState) err
 	if resp.Code != 0 {
 		return fmt.Errorf("broadcast tx resp code not 0: %d", resp.Code)
 	}
+	return nil
 }
 
 func (d *HubClient) eventHandler() {
