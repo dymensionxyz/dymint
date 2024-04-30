@@ -11,32 +11,32 @@ type nodeHealthErrorHandler struct {
 	// if a node is unhealthy for longer than this, we stop producing blocks
 	// note: in future, we could add the inverse for (node unhealthy -> healthy) to start producing
 	//       blocks again, but for now we will do that instantly
-	shouldProduceBlocksUnhealthyNodeTolerance time.Duration
-	shouldProduceBlocksCh                     chan bool
+	blockPauseTolerance time.Duration
+	shouldProduceBlocks chan bool
 
 	// cancel any scheduled pause that was set to happen in the future
-	cancelScheduledBlockPause func()
+	cancelFutureBlockPause func()
 }
 
-func makeNodeHealthErrorHandler(errorTolerance time.Duration) nodeHealthErrorHandler {
+func makeNodeHealthErrorHandler(blockPauseTolerance time.Duration) nodeHealthErrorHandler {
 	return nodeHealthErrorHandler{
-		shouldProduceBlocksUnhealthyNodeTolerance: errorTolerance,
-		shouldProduceBlocksCh:                     make(chan bool, 1),
-		cancelScheduledBlockPause:                 func() {},
+		blockPauseTolerance:    blockPauseTolerance,
+		shouldProduceBlocks:    make(chan bool, 1),
+		cancelFutureBlockPause: func() {},
 	}
 }
 
 // handle must not be called concurrently
 func (h *nodeHealthErrorHandler) handle(err error) {
-	h.cancelScheduledBlockPause()
+	h.cancelFutureBlockPause()
 
 	if err == nil {
 		// everything is fine!
-		h.shouldProduceBlocksCh <- true // cancel any existing pause in production (NOTE: this line must go 2nd)
+		h.shouldProduceBlocks <- true // cancel any existing pause in production (NOTE: this line must go 2nd)
 		return
 	}
 
-	h.cancelScheduledBlockPause = utime.CancellableAfterFunc(h.shouldProduceBlocksUnhealthyNodeTolerance, func() {
-		h.shouldProduceBlocksCh <- false
+	h.cancelFutureBlockPause = utime.CancellableAfterFunc(h.blockPauseTolerance, func() {
+		h.shouldProduceBlocks <- false
 	})
 }

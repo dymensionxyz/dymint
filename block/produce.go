@@ -66,11 +66,11 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 				continue
 			}
 			resetEmptyBlocksTimer()
-		case shouldProduceBlocks := <-m.nodeHealthErrorHandler.shouldProduceBlocksCh:
+		case shouldProduceBlocks := <-m.nodeHealthErrorHandler.shouldProduceBlocks:
 			didPause := !shouldProduceBlocks
 			for !shouldProduceBlocks {
 				m.logger.Info("block production paused - awaiting positive continuation signal")
-				shouldProduceBlocks = <-m.nodeHealthErrorHandler.shouldProduceBlocksCh
+				shouldProduceBlocks = <-m.nodeHealthErrorHandler.shouldProduceBlocks
 			}
 			if didPause {
 				m.logger.Info("resumed block production")

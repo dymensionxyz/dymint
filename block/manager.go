@@ -136,7 +136,7 @@ func NewManager(
 		Retriever:   dalc.(da.BatchRetriever),
 		// channels are buffered to avoid blocking on input/output operations, buffer sizes are arbitrary
 		SyncTargetDiode:        diodes.NewOneToOne(1, nil),
-		nodeHealthErrorHandler: makeNodeHealthErrorHandler(conf.ProduceBlocksUnhealthyNodeTolerance),
+		nodeHealthErrorHandler: makeNodeHealthErrorHandler(conf.BlockPauseTolerance),
 		produceEmptyBlockCh:    make(chan bool, 1),
 		logger:                 logger,
 		blockCache:             make(map[uint64]CachedBlock),

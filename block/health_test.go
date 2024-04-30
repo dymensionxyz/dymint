@@ -17,14 +17,14 @@ func TestFoo(t *testing.T) {
 		h := makeNodeHealthErrorHandler(time.Millisecond * 100)
 
 		h.handle(nil)
-		ok := <-h.shouldProduceBlocksCh
+		ok := <-h.shouldProduceBlocks
 		require.True(t, ok)
 	})
 	t.Run("unhealthy", func(t *testing.T) {
 		h := makeNodeHealthErrorHandler(time.Millisecond * 100)
 
 		h.handle(errors.New("foo"))
-		ok := <-h.shouldProduceBlocksCh
+		ok := <-h.shouldProduceBlocks
 		require.False(t, ok)
 	})
 	t.Run("healthy overrides unhealthy", func(t *testing.T) {
@@ -32,10 +32,10 @@ func TestFoo(t *testing.T) {
 
 		h.handle(errors.New("foo"))
 		h.handle(nil) // healthy overrides unhealthy
-		ok := <-h.shouldProduceBlocksCh
+		ok := <-h.shouldProduceBlocks
 		require.True(t, ok)
 		time.Sleep(time.Millisecond * 200)
-		require.Len(t, h.shouldProduceBlocksCh, 0) // must be cancelled
+		require.Len(t, h.shouldProduceBlocks, 0) // must be cancelled
 	})
 	t.Run("all unhealthies are cancelled, and no stack overflow", func(t *testing.T) {
 		h := makeNodeHealthErrorHandler(time.Millisecond * 100)
@@ -44,11 +44,11 @@ func TestFoo(t *testing.T) {
 			h.handle(errors.New("foo"))
 		}
 		h.handle(nil) // healthy overrides unhealthy
-		ok := <-h.shouldProduceBlocksCh
+		ok := <-h.shouldProduceBlocks
 		require.True(t, ok)
 
 		time.Sleep(time.Millisecond * 200)
-		require.Len(t, h.shouldProduceBlocksCh, 0) // must be cancelled
+		require.Len(t, h.shouldProduceBlocks, 0) // must be cancelled
 	})
 	t.Run("unhealthy->healthy->unhealthy does not trigger too fast", func(t *testing.T) {
 		/*
@@ -67,17 +67,17 @@ func TestFoo(t *testing.T) {
 		h.handle(errors.New("bar")) // another unhealthy one!
 		t.Logf("c")
 
-		ok := <-h.shouldProduceBlocksCh
+		ok := <-h.shouldProduceBlocks
 		require.True(t, ok) // we got the healthy event
 
 		t.Logf("d")
 		time.Sleep(time.Millisecond * 50)
 
-		require.Len(t, h.shouldProduceBlocksCh, 0) // first op must have been cancelled!
+		require.Len(t, h.shouldProduceBlocks, 0) // first op must have been cancelled!
 		t.Logf("e")
 
 		time.Sleep(time.Millisecond * 200)
-		ok = <-h.shouldProduceBlocksCh
+		ok = <-h.shouldProduceBlocks
 		require.False(t, ok) // make sure we eventually get the second event
 	})
 }

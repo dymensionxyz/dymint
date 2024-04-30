@@ -54,8 +54,8 @@ type BlockManagerConfig struct {
 	BlockBatchMaxSizeBytes uint64 `mapstructure:"block_batch_max_size_bytes"`
 	// The number of messages cached by gossipsub protocol
 	GossipedBlocksCacheSize int `mapstructure:"gossiped_blocks_cache_size"`
-	// ProduceBlocksUnhealthyNodeTolerance defines how long between a transition (node healthy -> unhealthy) before pausing block production.
-	ProduceBlocksUnhealthyNodeTolerance time.Duration `mapstructure:"produce_blocks_unhealthy_node_tolerance"`
+	// BlockPauseTolerance defines how long between a transition (node healthy -> unhealthy) before pausing block production.
+	BlockPauseTolerance time.Duration `mapstructure:"block_pause_tolerance_time"`
 }
 
 // GetViperConfig reads configuration parameters from Viper instance.
