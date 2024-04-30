@@ -135,14 +135,11 @@ func NewManager(
 		SLClient:    settlementClient,
 		Retriever:   dalc.(da.BatchRetriever),
 		// channels are buffered to avoid blocking on input/output operations, buffer sizes are arbitrary
-		SyncTargetDiode: diodes.NewOneToOne(1, nil),
-		nodeHealthErrorHandler: nodeHealthErrorHandler{
-			shouldProduceBlocksUnhealthyNodeTolerance: conf.ProduceBlocksUnhealthyNodeTolerance,
-			shouldProduceBlocksCh:                     make(chan bool, 1),
-		},
-		produceEmptyBlockCh: make(chan bool, 1),
-		logger:              logger,
-		blockCache:          make(map[uint64]CachedBlock),
+		SyncTargetDiode:        diodes.NewOneToOne(1, nil),
+		nodeHealthErrorHandler: makeNodeHealthErrorHandler(conf.ProduceBlocksUnhealthyNodeTolerance),
+		produceEmptyBlockCh:    make(chan bool, 1),
+		logger:                 logger,
+		blockCache:             make(map[uint64]CachedBlock),
 	}
 
 	return agg, nil

@@ -13,15 +13,22 @@ type nodeHealthErrorHandler struct {
 	shouldProduceBlocksUnhealthyNodeTolerance time.Duration
 	shouldProduceBlocksCh                     chan bool
 
-	delayedFunc        time.Timer
-	cancelDelayedPause func() bool
+	cancelFuturePause func()
+}
+
+func makeNodeHealthErrorHandler(errorTolerance time.Duration) nodeHealthErrorHandler {
+	return nodeHealthErrorHandler{
+		shouldProduceBlocksUnhealthyNodeTolerance: errorTolerance,
+		shouldProduceBlocksCh:                     make(chan bool, 1),
+		cancelFuturePause:                         func() {},
+	}
 }
 
 func (h *nodeHealthErrorHandler) handle(err error) {
 	if err == nil { // everything is fine!
-		if h.cancelDelayedPause != nil {
+		if h.cancelFuturePause != nil {
 			// if we were unhealthy recently, make sure we dont stop producing blocks
-			h.cancelDelayedPause()
+			h.cancelFuturePause()
 		}
 		h.shouldProduceBlocksCh <- true
 		return
@@ -30,5 +37,7 @@ func (h *nodeHealthErrorHandler) handle(err error) {
 	t := time.AfterFunc(h.shouldProduceBlocksUnhealthyNodeTolerance, func() {
 		h.shouldProduceBlocksCh <- false
 	})
-	h.cancelDelayedPause = t.Stop
+	h.cancelFuturePause = func() {
+		t.Stop()
+	}
 }
