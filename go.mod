@@ -1,6 +1,6 @@
 module github.com/dymensionxyz/dymint
 
-go 1.22.1
+go 1.22.2
 
 require (
 	code.cloudfoundry.org/go-diodes v0.0.0-20220725190411-383eb6634c40
@@ -11,8 +11,8 @@ require (
 	github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.12
 	github.com/cosmos/cosmos-sdk v0.46.16
 	github.com/dgraph-io/badger/v3 v3.2103.3
-	github.com/dymensionxyz/cosmosclient v0.4.2-beta.0.20240421130646-b8980ec7aade
-	github.com/dymensionxyz/dymension/v3 v3.0.0-rc02.0.20240211193346-b95fe7063196
+	github.com/dymensionxyz/cosmosclient v0.4.2-beta
+	github.com/dymensionxyz/dymension/v3 v3.1.0-rc03.0.20240411195658-f7cd96f53b56
 	github.com/go-kit/kit v0.12.0
 	github.com/gofrs/uuid v4.3.0+incompatible
 	github.com/gogo/protobuf v1.3.3
@@ -258,9 +258,12 @@ require (
 	github.com/cockroachdb/pebble v1.1.0 // indirect
 	github.com/cockroachdb/redact v1.1.5 // indirect
 	github.com/cockroachdb/tokenbucket v0.0.0-20230807174530-cc333fc44b06 // indirect
-	github.com/evmos/ethermint v0.22.0 // indirect
+	github.com/cosmos/ibc-go/v6 v6.2.1 // indirect
+	github.com/decred/dcrd/dcrec/edwards v1.0.0 // indirect
+	github.com/evmos/evmos/v12 v12.1.6 // indirect
 	github.com/getsentry/sentry-go v0.18.0 // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20190812055157-5d271430af9f // indirect
+	github.com/holiman/uint256 v1.2.2 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/linxGnu/grocksdb v1.8.12 // indirect
@@ -274,11 +277,7 @@ require (
 replace (
 
 	github.com/centrifuge/go-substrate-rpc-client/v4 => github.com/availproject/go-substrate-rpc-client/v4 v4.0.12-avail-1.4.0-rc1-5e286e3
-	github.com/cosmos/cosmos-sdk => github.com/dymensionxyz/cosmos-sdk v0.46.17-0.20240212135616-6c0aa8eab048
-	github.com/cosmos/iavl => github.com/celestiaorg/iavl v0.0.0-20230105192234-715b65a7ecf1
-	// use Evmos geth fork
-	github.com/ethereum/go-ethereum => github.com/evmos/go-ethereum v1.10.26
-	github.com/evmos/evmos/v12 => github.com/dymensionxyz/evmos/v12 v12.1.7-0.20240204135715-145b7145c0b3
+	github.com/evmos/evmos/v12 => github.com/dymensionxyz/evmos/v12 v12.1.6-dymension-v0.3
 
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.2-alpha.regen.4
 	github.com/gorilla/rpc => github.com/dymensionxyz/rpc v1.3.1

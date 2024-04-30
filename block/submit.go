@@ -2,8 +2,11 @@ package block
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
+
+	"github.com/dymensionxyz/dymint/gerr"
 
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/types"
@@ -21,63 +24,70 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 			return
 		// trigger by time
 		case <-ticker.C:
-			m.HandleSubmissionTrigger(ctx)
+			err := m.HandleSubmissionTrigger(ctx)
+			if errors.Is(err, gerr.ErrAborted) {
+				continue
+			}
+			if errors.Is(err, gerr.ErrUnauthenticated) {
+				panic(fmt.Errorf("handle submission trigger: %w", err))
+			}
+			if err != nil {
+				m.logger.Error("handle submission trigger", "error", err)
+			}
 		}
 	}
 }
 
-// handleSubmissionTrigger processes the submission trigger event. It checks if there are new blocks produced since the last submission.
+// HandleSubmissionTrigger processes the submission trigger event. It checks if there are new blocks produced since the last submission.
 // If there are, it attempts to submit a batch of blocks. It then attempts to produce an empty block to ensure IBC messages
 // pass through during the batch submission process due to proofs requires for ibc messages only exist on the next block.
 // Finally, it submits the next batch of blocks and updates the sync target to the height of
 // the last block in the submitted batch.
-func (m *Manager) HandleSubmissionTrigger(ctx context.Context) {
-	if !m.submitBatchMutex.TryLock() { // Attempt to lock for batch processing
-		m.logger.Debug("Batch submission already in process, skipping submission")
-		return
+func (m *Manager) HandleSubmissionTrigger(ctx context.Context) error {
+	if !m.submitBatchMutex.TryLock() {
+		return fmt.Errorf("batch submission already in process, skipping submission: %w", gerr.ErrAborted)
 	}
 	defer m.submitBatchMutex.Unlock() // Ensure unlocking at the end
 
 	// Load current sync target and height to determine if new blocks are available for submission.
 	syncTarget, height := m.SyncTarget.Load(), m.Store.Height()
 	if height <= syncTarget { // Check if there are new blocks since last sync target.
-		return // Exit if no new blocks are produced.
+		return nil // Exit if no new blocks are produced.
 	}
 	// We try and produce an empty block to make sure relevant ibc messages will pass through during the batch submission: https://github.com/dymensionxyz/research/issues/173.
 	err := m.ProduceAndGossipBlock(ctx, true)
 	if err != nil {
-		m.logger.Error("produce empty block", "error", err)
+		m.logger.Error("produce and gossip empty block", "error", err)
 	}
 
-	if m.pendingBatch != nil {
-		m.logger.Info("pending batch exists", "startHeight", m.pendingBatch.batch.StartHeight, "endHeight", m.pendingBatch.batch.EndHeight)
-	} else {
+	if m.pendingBatch == nil {
 		nextBatch, err := m.createNextBatch()
 		if err != nil {
-			m.logger.Error("get next batch", "error", err)
-			return
+			return fmt.Errorf("create next batch: %w", err)
 		}
 
 		resultSubmitToDA, err := m.submitNextBatchToDA(nextBatch)
 		if err != nil {
-			m.logger.Error("submit next batch", "error", err)
-			return
+			return fmt.Errorf("submit next batch to da: %w", err)
 		}
 
 		m.pendingBatch = &PendingBatch{
 			daResult: resultSubmitToDA,
 			batch:    nextBatch,
 		}
+	} else {
+		m.logger.Info("pending batch already exists", "startHeight", m.pendingBatch.batch.StartHeight, "endHeight", m.pendingBatch.batch.EndHeight)
 	}
 
-	syncHeight, err := m.submitPendingBatchToSL()
+	syncHeight, err := m.submitPendingBatchToSL(*m.pendingBatch)
 	if err != nil {
-		m.logger.Error("submit next batch to SL", "error", err)
-		return
+		return fmt.Errorf("submit pending batch to sl: %w", err)
 	}
+	m.pendingBatch = nil
 
 	// Update the syncTarget to the height of the last block in the last batch as seen by this node.
 	m.UpdateSyncParams(syncHeight)
+	return nil
 }
 
 func (m *Manager) createNextBatch() (*types.Batch, error) {
@@ -106,7 +116,7 @@ func (m *Manager) submitNextBatchToDA(nextBatch *types.Batch) (*da.ResultSubmitB
 		m.logger.Error("validate last block in batch is empty", "startHeight", startHeight, "endHeight", actualEndHeight, "error", err)
 		return nil, err
 	}
-	// Verify the last block in the batch is an empty block and that no ibc messages has accidentially passed through.
+	// Verify the last block in the batch is an empty block and that no ibc messages has accidentally passed through.
 	// This block may not be empty if another block has passed it in line. If that's the case our empty block request will
 	// be sent to the next batch.
 	if !isLastBlockEmpty {
@@ -124,22 +134,13 @@ func (m *Manager) submitNextBatchToDA(nextBatch *types.Batch) (*da.ResultSubmitB
 	return &resultSubmitToDA, nil
 }
 
-func (m *Manager) submitPendingBatchToSL() (uint64, error) {
-	if m.pendingBatch == nil {
-		return 0, fmt.Errorf("no pending batch to submit")
-	}
-
-	// Submit batch to SL
-	startHeight := m.pendingBatch.batch.StartHeight
-	actualEndHeight := m.pendingBatch.batch.EndHeight
-	err := m.SLClient.SubmitBatch(m.pendingBatch.batch, m.DAClient.GetClientType(), m.pendingBatch.daResult)
+func (m *Manager) submitPendingBatchToSL(p PendingBatch) (uint64, error) {
+	startHeight := p.batch.StartHeight
+	actualEndHeight := p.batch.EndHeight
+	err := m.SLClient.SubmitBatch(p.batch, m.DAClient.GetClientType(), p.daResult)
 	if err != nil {
-		m.logger.Error("submit batch to SL", "startHeight", startHeight, "endHeight", actualEndHeight, "error", err)
-		return 0, err
+		return 0, fmt.Errorf("sl client submit batch: startheight: %d: actual end height: %d: %w", startHeight, actualEndHeight, err)
 	}
-
-	// Clear pending batch
-	m.pendingBatch = nil
 
 	return actualEndHeight, nil
 }

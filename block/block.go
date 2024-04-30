@@ -151,8 +151,12 @@ func (m *Manager) attemptApplyCachedBlocks() error {
 		if !blockExists {
 			break
 		}
+		if err := m.validateBlock(cachedBlock.Block, cachedBlock.Commit); err != nil {
+			delete(m.blockCache, cachedBlock.Block.Header.Height)
+			/// TODO: can we take an action here such as dropping the peer / reducing their reputation?
+			return fmt.Errorf("block not valid at height %d, dropping it: err:%w", cachedBlock.Block.Header.Height, err)
+		}
 
-		// Note: cached <block,commit> pairs have passed basic validation, so no need to validate again
 		err := m.applyBlock(cachedBlock.Block, cachedBlock.Commit, blockMetaData{source: gossipedBlock})
 		if err != nil {
 			return fmt.Errorf("apply cached block: expected height: %d: %w", expectedHeight, err)

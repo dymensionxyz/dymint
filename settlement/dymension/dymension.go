@@ -205,15 +205,14 @@ func (d *HubClient) Stop() error {
 func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) error {
 	msgUpdateState, err := d.convertBatchToMsgUpdateState(batch, daResult)
 	if err != nil {
-		return err
+		return fmt.Errorf("convert batch to msg update state: %w", err)
 	}
 
 	// TODO: probably should be changed to be a channel, as the eventHandler is also in the HubClient in he produces the event
 	postBatchSubscriberClient := fmt.Sprintf("%s-%d-%s", postBatchSubscriberPrefix, batch.StartHeight, uuid.New().String())
 	subscription, err := d.pubsub.Subscribe(d.ctx, postBatchSubscriberClient, settlement.EventQueryNewSettlementBatchAccepted)
 	if err != nil {
-		d.logger.Error("subscribe to state update events", "err", err)
-		return err
+		return fmt.Errorf("pub sub subscribe to settlement state updates: %w", err)
 	}
 
 	//nolint:errcheck
@@ -439,12 +438,12 @@ func (d *HubClient) eventHandler() {
 func (d *HubClient) convertBatchToMsgUpdateState(batch *types.Batch, daResult *da.ResultSubmitBatch) (*rollapptypes.MsgUpdateState, error) {
 	account, err := d.client.GetAccount(d.config.DymAccountName)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get account: %w", err)
 	}
 
 	addr, err := account.Address(addressPrefix)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("derive address: %w", err)
 	}
 
 	blockDescriptors := make([]rollapptypes.BlockDescriptor, len(batch.Blocks))
