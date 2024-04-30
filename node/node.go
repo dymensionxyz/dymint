@@ -251,7 +251,7 @@ func NewNode(
 		Ctx:            ctx,
 	}
 
-	node.BaseService = *service.NewBaseService(logger, "Node", node)
+	node.BaseService = *service.NewBaseService(logger.With("module", "node"), "Node", node)
 
 	return node, nil
 }

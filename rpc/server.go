@@ -64,7 +64,7 @@ func NewServer(node *node.Node, config *config.RPCConfig, logger log.Logger, opt
 		client: client.NewClient(node),
 		node:   node,
 	}
-	srv.BaseService = service.NewBaseService(logger, "RPC", srv)
+	srv.BaseService = service.NewBaseService(logger.With("module", "rpc server"), "RPC", srv)
 
 	// Apply options
 	for _, option := range options {
