@@ -71,7 +71,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 				m.logger.Info("block production paused - awaiting positive continuation signal")
 				shouldProduceBlocks = <-m.shouldProduceBlocksCh
 			}
-			m.logger.Info("resumed block resumed")
+			m.logger.Info("resumed block production")
 		}
 	}
 }
