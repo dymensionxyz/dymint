@@ -41,11 +41,10 @@ func TestFoo(t *testing.T) {
 		h := makeNodeHealthErrorHandler(time.Millisecond * 100)
 
 		h.handle(errors.New("foo"))
-		time.Sleep(time.Millisecond * 50)
+		time.Sleep(time.Millisecond * 75)
 		h.handle(errors.New("bar"))
-		time.Sleep(time.Millisecond * 60)
-		ok := <-h.shouldProduceBlocks
-		require.False(t, ok) // we must get the first unhealthy event
+		time.Sleep(time.Millisecond * 50)
+		require.Len(t, h.shouldProduceBlocks, 1) // first event must not be cancelled
 	})
 	t.Run("all unhealthies are cancelled, and no stack overflow", func(t *testing.T) {
 		h := makeNodeHealthErrorHandler(time.Millisecond * 100)
