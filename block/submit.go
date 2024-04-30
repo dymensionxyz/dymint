@@ -139,7 +139,7 @@ func (m *Manager) submitPendingBatchToSL(p PendingBatch) (uint64, error) {
 	actualEndHeight := p.batch.EndHeight
 	err := m.SLClient.SubmitBatch(p.batch, m.DAClient.GetClientType(), p.daResult)
 	if err != nil {
-		return 0, fmt.Errorf("sl client submit batch: startheight: %d: actual end height: %d: %w", startHeight, actualEndHeight, err)
+		return 0, fmt.Errorf("sl client submit batch: start height: %d: actual end height: %d: %w", startHeight, actualEndHeight, err)
 	}
 
 	return actualEndHeight, nil

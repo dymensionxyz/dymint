@@ -393,13 +393,14 @@ func (d *HubClient) GetSequencers(rollappID string) ([]*types.Sequencer, error) 
 }
 
 func (d *HubClient) submitBatch(msgUpdateState *rollapptypes.MsgUpdateState) error {
-	err := d.RunWithRetry(func() error {
-		txResp, err := d.client.BroadcastTx(d.config.DymAccountName, msgUpdateState)
-		if err != nil || txResp.Code != 0 {
-			return fmt.Errorf("broadcast tx: %w", err)
-		}
-		return nil
-	})
+	err := d.RunWithRetry(
+		func() error {
+			txResp, err := d.client.BroadcastTx(d.config.DymAccountName, msgUpdateState)
+			if err != nil || txResp.Code != 0 {
+				return fmt.Errorf("broadcast tx: %w", err)
+			}
+			return nil
+		})
 	return err
 }
 
@@ -564,8 +565,10 @@ func (d *HubClient) waitForBatchInclusion(batchStartHeight uint64) (*settlement.
 // RunWithRetry runs the given operation with retry, doing a number of attempts, and taking the last
 // error only. It uses the context of the HubClient.
 func (d *HubClient) RunWithRetry(operation func() error) error {
+	ctx, cancel := context.WithTimeout(d.ctx, time.Second*20)
+	defer cancel()
 	return retry.Do(operation,
-		retry.Context(d.ctx),
+		retry.Context(ctx),
 		retry.LastErrorOnly(true),
 		retry.Delay(d.batchRetryDelay),
 		retry.Attempts(d.batchRetryAttempts),
