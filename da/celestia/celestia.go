@@ -39,7 +39,7 @@ type DataAvailabilityLayerClient struct {
 	cancel           context.CancelFunc
 	rpcRetryDelay    time.Duration
 	rpcRetryAttempts int
-	submitRetryDelay uretry.BackoffConfig
+	submitBackoff    uretry.BackoffConfig
 }
 
 var (
@@ -71,7 +71,7 @@ func WithRPCAttempts(attempts int) da.Option {
 // WithSubmitRetryDelay sets submit retry delay config.
 func WithSubmitRetryDelay(c uretry.BackoffConfig) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
-		daLayerClient.(*DataAvailabilityLayerClient).submitRetryDelay = c
+		daLayerClient.(*DataAvailabilityLayerClient).submitBackoff = c
 	}
 }
 
@@ -107,7 +107,7 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 	// Set defaults
 	c.rpcRetryAttempts = defaultRpcCheckAttempts
 	c.rpcRetryDelay = defaultRpcRetryDelay
-	c.submitRetryDelay = defaultSubmitBatchDelay
+	c.submitBackoff = defaultSubmitBatchDelay
 
 	c.ctx, c.cancel = context.WithCancel(context.Background())
 
@@ -208,7 +208,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 		}
 	}
 
-	backoff := c.submitRetryDelay.Backoff()
+	backoff := c.submitBackoff.Backoff()
 
 	for {
 		select {
