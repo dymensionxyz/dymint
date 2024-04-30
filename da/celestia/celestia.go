@@ -213,7 +213,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 	for {
 		select {
 		case <-c.ctx.Done():
-			c.logger.Debug("Context cancelled")
+			c.logger.Debug("context cancelled")
 			return da.ResultSubmitBatch{}
 		default:
 
