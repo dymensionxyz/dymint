@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"time"
 
+	uretry "github.com/dymensionxyz/dymint/utils/retry"
+
 	uevent "github.com/dymensionxyz/dymint/utils/event"
 
 	"google.golang.org/grpc/codes"
@@ -218,6 +220,8 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 	//nolint:errcheck
 	defer d.pubsub.Unsubscribe(d.ctx, postBatchSubscriberClient, settlement.EventQueryNewSettlementBatchAccepted)
 
+	b := uretry.NewBackoffConfig().Backoff()
+
 	// Try submitting the batch to the settlement layer. If submission (i.e. only submission, not acceptance) fails we emit an unhealthy event
 	// and try again in the next loop. If submission succeeds we wait for the batch to be accepted by the settlement layer.
 	// If it is not accepted we emit an unhealthy event and start again the submission loop.
@@ -243,8 +247,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 					err,
 				)
 
-				// Sleep to allow context cancellation to take effect before retrying
-				time.Sleep(100 * time.Millisecond)
+				b.Sleep()
 				continue
 			}
 		}
@@ -393,14 +396,14 @@ func (d *HubClient) GetSequencers(rollappID string) ([]*types.Sequencer, error) 
 }
 
 func (d *HubClient) submitBatch(msgUpdateState *rollapptypes.MsgUpdateState) error {
-	err := d.RunWithRetry(func() error {
-		txResp, err := d.client.BroadcastTx(d.config.DymAccountName, msgUpdateState)
-		if err != nil || txResp.Code != 0 {
-			return fmt.Errorf("broadcast tx: %w", err)
-		}
-		return nil
-	})
-	return err
+	resp, err := d.client.BroadcastTx(d.config.DymAccountName, msgUpdateState)
+	if err != nil {
+		return fmt.Errorf("broadcast tx: %w", err)
+	}
+	if resp.Code != 0 {
+		return fmt.Errorf("broadcast tx resp code not 0: %d", resp.Code)
+	}
+	return nil
 }
 
 func (d *HubClient) eventHandler() {
@@ -564,8 +567,10 @@ func (d *HubClient) waitForBatchInclusion(batchStartHeight uint64) (*settlement.
 // RunWithRetry runs the given operation with retry, doing a number of attempts, and taking the last
 // error only. It uses the context of the HubClient.
 func (d *HubClient) RunWithRetry(operation func() error) error {
+	ctx, cancel := context.WithTimeout(d.ctx, time.Second*20)
+	defer cancel()
 	return retry.Do(operation,
-		retry.Context(d.ctx),
+		retry.Context(ctx),
 		retry.LastErrorOnly(true),
 		retry.Delay(d.batchRetryDelay),
 		retry.Attempts(d.batchRetryAttempts),

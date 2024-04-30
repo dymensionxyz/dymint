@@ -64,7 +64,7 @@ func NewServer(node *node.Node, config *config.RPCConfig, logger log.Logger, opt
 		client: client.NewClient(node),
 		node:   node,
 	}
-	srv.BaseService = service.NewBaseService(logger, "RPC", srv)
+	srv.BaseService = service.NewBaseService(logger.With("module", "rpc server"), "RPC", srv)
 
 	// Apply options
 	for _, option := range options {
@@ -108,7 +108,7 @@ func (s *Server) startEventListener() {
 func (s *Server) onNodeHealthUpdate(event pubsub.Message) {
 	eventData := event.Data().(*events.DataHealthStatus)
 	if eventData.Error != nil {
-		s.Logger.Error("node is unhealthy: got error health check from sublayer", "error", eventData.Error)
+		s.Logger.Error("Node is unhealthy: got error health check from sublayer.", "error", eventData.Error)
 	}
 	s.healthMU.Lock()
 	defer s.healthMU.Unlock()

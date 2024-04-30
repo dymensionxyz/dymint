@@ -35,6 +35,7 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 			BlockBatchSize:          500,
 			BlockBatchMaxSizeBytes:  500000,
 			GossipedBlocksCacheSize: 50,
+			BlockPauseTolerance:     20 * time.Minute,
 		},
 		DALayer:         "mock",
 		SettlementLayer: "mock",

@@ -251,7 +251,7 @@ func NewNode(
 		Ctx:            ctx,
 	}
 
-	node.BaseService = *service.NewBaseService(logger, "Node", node)
+	node.BaseService = *service.NewBaseService(logger.With("module", "node"), "Node", node)
 
 	return node, nil
 }
@@ -429,9 +429,6 @@ func (n *Node) onBaseLayerHealthUpdate(event pubsub.Message) {
 	shouldPublish := newStatusIsDifferentFromOldOne || haveNewErr
 	if shouldPublish {
 		evt := &events.DataHealthStatus{Error: newStatus}
-		if newStatus != nil {
-			n.Logger.Error("Node is unhealthy: base layer has problem.", "error", newStatus)
-		}
 		uevent.MustPublish(n.Ctx, n.PubsubServer, evt, events.HealthStatusList)
 	}
 }

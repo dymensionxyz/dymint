@@ -75,8 +75,9 @@ func (b *BaseLayerClient) Stop() error {
 
 // SubmitBatch tries submitting the batch in an async broadcast mode to the settlement layer. Events are emitted on success or failure.
 func (b *BaseLayerClient) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) error {
-	b.logger.Debug("Submitting batch to settlement layer", "start height", batch.StartHeight, "end height", batch.EndHeight)
-	return b.client.PostBatch(batch, daClient, daResult)
+	err := b.client.PostBatch(batch, daClient, daResult)
+	b.logger.Debug("Submitted batch to settlement layer", "start height", batch.StartHeight, "end height", batch.EndHeight)
+	return err
 }
 
 // RetrieveBatch Gets the batch which contains the given slHeight. Empty slHeight returns the latest batch.
