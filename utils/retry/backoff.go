@@ -5,9 +5,9 @@ import (
 )
 
 const (
-	defaultInitialDelay = 200 * time.Millisecond
-	defaultMaxDelay     = 30 * time.Second
-	defaultFactor       = 2
+	defaultBackoffInitialDelay = 200 * time.Millisecond
+	defaultBackoffMaxDelay     = 30 * time.Second
+	defaultBackoffFactor       = 2
 )
 
 // BackoffConfig is a configuration for a backoff, it's used to create new instances
@@ -32,9 +32,9 @@ type Backoff struct {
 	growthFactor float64
 }
 
-type Option func(*BackoffConfig)
+type BackoffOption func(*BackoffConfig)
 
-func WithInitialDelay(d time.Duration) Option {
+func WithInitialDelay(d time.Duration) BackoffOption {
 	return func(b *BackoffConfig) {
 		b.InitialDelay = d
 	}
@@ -42,7 +42,7 @@ func WithInitialDelay(d time.Duration) Option {
 
 // WithMaxDelay sets the maximum delay for the backoff. The delay will not exceed this value.
 // Set 0 to disable the maximum delay.
-func WithMaxDelay(d time.Duration) Option {
+func WithMaxDelay(d time.Duration) BackoffOption {
 	return func(b *BackoffConfig) {
 		b.MaxDelay = d
 	}
@@ -50,17 +50,17 @@ func WithMaxDelay(d time.Duration) Option {
 
 // WithGrowthFactor sets the growth factor for the backoff. The delay will be multiplied by this factor on each call to Delay.
 // The factor should be greater than 1.0
-func WithGrowthFactor(x float64) Option {
+func WithGrowthFactor(x float64) BackoffOption {
 	return func(b *BackoffConfig) {
 		b.GrowthFactor = x
 	}
 }
 
-func NewBackoffConfig(opts ...Option) BackoffConfig {
+func NewBackoffConfig(opts ...BackoffOption) BackoffConfig {
 	ret := BackoffConfig{
-		InitialDelay: defaultInitialDelay,
-		MaxDelay:     defaultMaxDelay,
-		GrowthFactor: defaultFactor,
+		InitialDelay: defaultBackoffInitialDelay,
+		MaxDelay:     defaultBackoffMaxDelay,
+		GrowthFactor: defaultBackoffFactor,
 	}
 	for _, o := range opts {
 		o(&ret)
