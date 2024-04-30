@@ -1,4 +1,4 @@
-# [](https://github.com/dymensionxyz/dymint/compare/v1.1.0-rc02...v) (2024-04-28)
+# [](https://github.com/dymensionxyz/dymint/compare/v1.1.0-rc02...v) (2024-04-30)
 
 
 ### Bug Fixes
