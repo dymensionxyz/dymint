@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/dymensionxyz/dymint/gerr"
+
 	"github.com/avast/retry-go/v4"
 	"github.com/celestiaorg/nmt"
 	"github.com/gogo/protobuf/proto"
@@ -536,11 +538,11 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 func (c *DataAvailabilityLayerClient) submit(daBlob da.Blob) (uint64, da.Commitment, error) {
 	blobs, commitments, err := c.blobsAndCommitments(daBlob)
 	if err != nil {
-		return 0, nil, err
+		return 0, nil, fmt.Errorf("blobs and commitments: %w", err)
 	}
 
 	if len(commitments) == 0 {
-		return 0, nil, errors.New("no commitments found")
+		return 0, nil, fmt.Errorf("zero commitments: %w", gerr.ErrNotFound)
 	}
 
 	options := openrpc.DefaultSubmitOptions()
@@ -560,7 +562,7 @@ func (c *DataAvailabilityLayerClient) submit(daBlob da.Blob) (uint64, da.Commitm
 
 	height, err := c.rpc.Submit(ctx, blobs, options)
 	if err != nil {
-		return 0, nil, err
+		return 0, nil, fmt.Errorf("rpc submit: %w", err)
 	}
 	c.logger.Info("Successfully submitted blobs to Celestia", "height", height, "gas", options.GasLimit, "fee", options.Fee)
 
@@ -591,7 +593,7 @@ func (c *DataAvailabilityLayerClient) blobsAndCommitments(daBlob da.Blob) ([]*bl
 
 	commitment, err := blob.CreateCommitment(b)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("create commitment: %w", err)
 	}
 
 	commitments = append(commitments, commitment)
