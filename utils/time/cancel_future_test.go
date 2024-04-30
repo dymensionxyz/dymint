@@ -43,7 +43,7 @@ func TestCancellableAfterFunc(t *testing.T) {
 				if cnt.Load() == 0 {
 					cnt.Add(1)
 				}
-				require.Equal(t, int64(1), cnt.Load())
+				require.Equal(t, int64(1), cnt.Load()) // Must never be 2!!
 			}()
 		}
 	})

@@ -1,8 +1,9 @@
 package block
 
 import (
-	"sync/atomic"
 	"time"
+
+	utime "github.com/dymensionxyz/dymint/utils/time"
 )
 
 type nodeHealthErrorHandler struct {
@@ -13,33 +14,29 @@ type nodeHealthErrorHandler struct {
 	shouldProduceBlocksUnhealthyNodeTolerance time.Duration
 	shouldProduceBlocksCh                     chan bool
 
-	// Something we will send on the channel in future
-	futureValueToSend atomic.Bool
+	// cancel any scheduled pause that was set to happen in the future
+	cancelScheduledBlockPause func()
 }
 
 func makeNodeHealthErrorHandler(errorTolerance time.Duration) nodeHealthErrorHandler {
 	return nodeHealthErrorHandler{
 		shouldProduceBlocksUnhealthyNodeTolerance: errorTolerance,
 		shouldProduceBlocksCh:                     make(chan bool, 1),
+		cancelScheduledBlockPause:                 func() {},
 	}
 }
 
+// handle must not be called concurrently
 func (h *nodeHealthErrorHandler) handle(err error) {
-	t := time.Timer{}
-	t.Stop()
-	/*
-		This implementation ended up being simpler than trying to use timer cancelling.
-	*/
-
 	if err == nil {
 		// everything is fine!
-		h.futureValueToSend.Store(true) // cancel any scheduled pause in production
-		h.shouldProduceBlocksCh <- true // cancel any existing pause in production
+
+		h.cancelScheduledBlockPause()   // potentially blocking action!!
+		h.shouldProduceBlocksCh <- true // cancel any existing pause in production (NOTE: this line must go 2nd)
 		return
 	}
 
-	h.futureValueToSend.Store(false)
-	time.AfterFunc(h.shouldProduceBlocksUnhealthyNodeTolerance, func() {
-		h.shouldProduceBlocksCh <- h.futureValueToSend.Load()
+	h.cancelScheduledBlockPause = utime.CancellableAfterFunc(h.shouldProduceBlocksUnhealthyNodeTolerance, func() {
+		h.shouldProduceBlocksCh <- false
 	})
 }
