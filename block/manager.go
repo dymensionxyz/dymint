@@ -229,7 +229,7 @@ func getAddress(key crypto.PrivKey) ([]byte, error) {
 
 func (m *Manager) onNodeHealthStatus(event pubsub.Message) {
 	eventData := event.Data().(*events.DataHealthStatus)
-	m.logger.Info("received health status event", "eventData", eventData)
+	m.logger.Info("received node health status event", "eventData", eventData)
 	m.shouldProduceBlocksCh <- eventData.Error == nil
 }
 
