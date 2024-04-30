@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/dymensionxyz/dymint/gerr"
+
 	"github.com/avast/retry-go/v4"
 	"github.com/celestiaorg/nmt"
 	"github.com/gogo/protobuf/proto"
@@ -23,6 +25,7 @@ import (
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
 	pb "github.com/dymensionxyz/dymint/types/pb/dymint"
+	uretry "github.com/dymensionxyz/dymint/utils/retry"
 )
 
 // DataAvailabilityLayerClient use celestia-node public API.
@@ -36,7 +39,7 @@ type DataAvailabilityLayerClient struct {
 	cancel           context.CancelFunc
 	rpcRetryDelay    time.Duration
 	rpcRetryAttempts int
-	submitRetryDelay time.Duration
+	submitBackoff    uretry.BackoffConfig
 }
 
 var (
@@ -65,10 +68,10 @@ func WithRPCAttempts(attempts int) da.Option {
 	}
 }
 
-// WithSubmitRetryDelay sets submit retry delay.
-func WithSubmitRetryDelay(delay time.Duration) da.Option {
+// WithSubmitBackoff sets submit retry delay config.
+func WithSubmitBackoff(c uretry.BackoffConfig) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
-		daLayerClient.(*DataAvailabilityLayerClient).submitRetryDelay = delay
+		daLayerClient.(*DataAvailabilityLayerClient).submitBackoff = c
 	}
 }
 
@@ -104,7 +107,7 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 	// Set defaults
 	c.rpcRetryAttempts = defaultRpcCheckAttempts
 	c.rpcRetryDelay = defaultRpcRetryDelay
-	c.submitRetryDelay = defaultSubmitRetryDelay
+	c.submitBackoff = defaultSubmitBackoff
 
 	c.ctx, c.cancel = context.WithCancel(context.Background())
 
@@ -199,16 +202,18 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 		return da.ResultSubmitBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
-				Message: fmt.Sprintf("size bigger than maximum blob size of %d bytes", celtypes.DefaultMaxBytes),
+				Message: fmt.Sprintf("size bigger than maximum blob size: max n bytes: %d", celtypes.DefaultMaxBytes),
 				Error:   errors.New("blob size too big"),
 			},
 		}
 	}
 
+	backoff := c.submitBackoff.Backoff()
+
 	for {
 		select {
 		case <-c.ctx.Done():
-			c.logger.Debug("Context cancelled")
+			c.logger.Debug("Context cancelled.")
 			return da.ResultSubmitBatch{}
 		default:
 
@@ -216,12 +221,14 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			height, commitment, err := c.submit(data)
 			if err != nil {
 				err = fmt.Errorf("submit batch: %w", err)
-				c.logger.Error("submit DA batch. Emitting health event and trying again", "error", err)
+
 				res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, err)
 				if err != nil {
 					return res
 				}
-				time.Sleep(c.submitRetryDelay)
+
+				c.logger.Error("Submitted bad health event: trying again.", "error", err)
+				backoff.Sleep()
 				continue
 			}
 
@@ -236,13 +243,15 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 
 			result := c.CheckBatchAvailability(daMetaData)
 			if result.Code != da.StatusSuccess {
-				err = fmt.Errorf("submitted batch but did not get availability success: %w", err)
-				c.logger.Error("unable to confirm submitted blob availability, retrying")
+				err = fmt.Errorf("check batch availability: submitted batch but did not get availability success status: %w", err)
+
 				res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, err)
 				if err != nil {
 					return res
 				}
-				time.Sleep(c.submitRetryDelay)
+
+				c.logger.Error("Submitted bad health event: trying again.", "error", err)
+				backoff.Sleep()
 				continue
 			}
 			daMetaData.Root = result.CheckMetaData.Root
@@ -253,6 +262,9 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			if err != nil {
 				return res
 			}
+
+			c.logger.Debug("Batch accepted, emitted healthy event.")
+
 			return da.ResultSubmitBatch{
 				BaseResult: da.BaseResult{
 					Code:    da.StatusSuccess,
@@ -533,11 +545,11 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 func (c *DataAvailabilityLayerClient) submit(daBlob da.Blob) (uint64, da.Commitment, error) {
 	blobs, commitments, err := c.blobsAndCommitments(daBlob)
 	if err != nil {
-		return 0, nil, err
+		return 0, nil, fmt.Errorf("blobs and commitments: %w", err)
 	}
 
 	if len(commitments) == 0 {
-		return 0, nil, errors.New("no commitments found")
+		return 0, nil, fmt.Errorf("zero commitments: %w", gerr.ErrNotFound)
 	}
 
 	options := openrpc.DefaultSubmitOptions()
@@ -557,7 +569,7 @@ func (c *DataAvailabilityLayerClient) submit(daBlob da.Blob) (uint64, da.Commitm
 
 	height, err := c.rpc.Submit(ctx, blobs, options)
 	if err != nil {
-		return 0, nil, err
+		return 0, nil, fmt.Errorf("rpc submit: %w", err)
 	}
 	c.logger.Info("Successfully submitted blobs to Celestia", "height", height, "gas", options.GasLimit, "fee", options.Fee)
 
@@ -588,7 +600,7 @@ func (c *DataAvailabilityLayerClient) blobsAndCommitments(daBlob da.Blob) ([]*bl
 
 	commitment, err := blob.CreateCommitment(b)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("create commitment: %w", err)
 	}
 
 	commitments = append(commitments, commitment)
