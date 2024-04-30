@@ -59,9 +59,9 @@ type Manager struct {
 		Block production
 	*/
 
-	nodeHealthStatusHandler nodeHealthStatusHandler
-	produceEmptyBlockCh     chan bool
-	lastSubmissionTime      atomic.Int64
+	nodeHealthErrorHandler nodeHealthErrorHandler
+	produceEmptyBlockCh    chan bool
+	lastSubmissionTime     atomic.Int64
 
 	/*
 		Guard against triggering a new batch submission when the old one is still going on (taking a while)
@@ -136,7 +136,7 @@ func NewManager(
 		Retriever:   dalc.(da.BatchRetriever),
 		// channels are buffered to avoid blocking on input/output operations, buffer sizes are arbitrary
 		SyncTargetDiode: diodes.NewOneToOne(1, nil),
-		nodeHealthStatusHandler: nodeHealthStatusHandler{
+		nodeHealthErrorHandler: nodeHealthErrorHandler{
 			shouldProduceBlocksUnhealthyNodeTolerance: conf.ProduceBlocksUnhealthyNodeTolerance,
 			shouldProduceBlocksCh:                     make(chan bool, 1),
 		},
@@ -236,7 +236,7 @@ func getAddress(key crypto.PrivKey) ([]byte, error) {
 func (m *Manager) onNodeHealthStatus(event pubsub.Message) {
 	eventData := event.Data().(*events.DataHealthStatus)
 	m.logger.Info("received health status event", "eventData", eventData)
-	m.shouldProduceBlocksCh <- eventData.Error == nil
+	m.nodeHealthErrorHandler.handle(eventData.Error)
 }
 
 // TODO: move to gossip.go
