@@ -28,6 +28,15 @@ func TestCancellableAfterFunc(t *testing.T) {
 		time.Sleep(2 * d)
 		require.False(t, ok.Load())
 	})
+	t.Run("simple - cancel long after completion", func(t *testing.T) {
+		ok := atomic.Bool{}
+		cancel := CancellableAfterFunc(d, func() {
+			ok.Store(true)
+		})
+		time.Sleep(2 * d)
+		cancel() // cancel well after the func is called
+		require.True(t, ok.Load())
+	})
 	t.Run("race - if func started then cancel waits until its done", func(t *testing.T) {
 		/*
 			Note: should run this with race flag
