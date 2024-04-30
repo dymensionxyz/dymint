@@ -274,14 +274,24 @@ require (
 replace (
 	github.com/centrifuge/go-substrate-rpc-client/v4 => github.com/availproject/go-substrate-rpc-client/v4 v4.0.12-avail-1.4.0-rc1-5e286e3
 
+	// ~~~~
 	//github.com/cosmos/cosmos-sdk => github.com/dymensionxyz/cosmos-sdk v0.46.17-0.20240212135616-6c0aa8eab048
 	github.com/cosmos/cosmos-sdk => /Users/danwt/Documents/dym/d-cosmos-sdk
+	// ~~~~
 
+
+	// ~~~~
 	//github.com/cosmos/iavl => github.com/celestiaorg/iavl v0.0.0-20230105192234-715b65a7ecf1
 	github.com/cosmos/iavl => /Users/danwt/Documents/dym/d-iavl
+	// ~~~~
 
+
+	// ~~~~
 	//github.com/dymensionxyz/dymension/v3 => github.com/dymensionxyz/dymension/v3 v3.0.0-rc02.0.20240211193346-b95fe7063196
 	github.com/dymensionxyz/dymension/v3 => /Users/danwt/Documents/dym/d-dymension
+	// ~~~~
+
+
 	github.com/evmos/evmos/v12 => github.com/dymensionxyz/evmos/v12 v12.1.6-dymension-v0.3
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.2-alpha.regen.4
 	github.com/gorilla/rpc => github.com/dymensionxyz/rpc v1.3.1
@@ -290,6 +300,10 @@ replace (
 	github.com/osmosis-labs/osmosis/v15 => github.com/dymensionxyz/osmosis/v15 v15.2.0-dymension-v1.1.2
 
 	github.com/rollkit/celestia-openrpc => github.com/celestiaorg/celestia-openrpc v0.3.0
+
+
+	// ~~~~
 	//github.com/tendermint/tendermint => github.com/dymensionxyz/cometbft v0.34.29-fraudproof-0.0.1
 	github.com/tendermint/tendermint => /Users/danwt/Documents/dym/d-cometbft
+	// ~~~~
 )
