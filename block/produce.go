@@ -39,6 +39,8 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 	}
 
 	for {
+		m.logger.Debug("PRODUCE LOOP SANITY")
+
 		select {
 		case <-ctx.Done(): // Context canceled
 			return

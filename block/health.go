@@ -36,7 +36,11 @@ func (h *nodeHealthErrorHandler) handle(err error) {
 		return
 	}
 
-	h.cancelScheduledBlockPause = utime.CancellableAfterFunc(h.shouldProduceBlocksUnhealthyNodeTolerance, func() {
+	cancel := utime.CancellableAfterFunc(h.shouldProduceBlocksUnhealthyNodeTolerance, func() {
 		h.shouldProduceBlocksCh <- false
 	})
+	h.cancelScheduledBlockPause = func() {
+		h.cancelScheduledBlockPause() // make sure any existing scheduled pause is also cancelled!
+		cancel()
+	}
 }
