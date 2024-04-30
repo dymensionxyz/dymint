@@ -567,10 +567,8 @@ func (d *HubClient) waitForBatchInclusion(batchStartHeight uint64) (*settlement.
 // RunWithRetry runs the given operation with retry, doing a number of attempts, and taking the last
 // error only. It uses the context of the HubClient.
 func (d *HubClient) RunWithRetry(operation func() error) error {
-	ctx, cancel := context.WithTimeout(d.ctx, time.Second*20)
-	defer cancel()
 	return retry.Do(operation,
-		retry.Context(ctx),
+		retry.Context(d.ctx),
 		retry.LastErrorOnly(true),
 		retry.Delay(d.batchRetryDelay),
 		retry.Attempts(d.batchRetryAttempts),

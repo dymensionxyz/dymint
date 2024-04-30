@@ -39,7 +39,6 @@ func TestFoo(t *testing.T) {
 	})
 	t.Run("unhealthy does not override unhealthy", func(t *testing.T) {
 		h := makeNodeHealthErrorHandler(time.Millisecond * 100)
-
 		h.handle(errors.New("foo"))
 		time.Sleep(time.Millisecond * 75)
 		h.handle(errors.New("bar"))
