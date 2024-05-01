@@ -236,7 +236,7 @@ func (m *Manager) onNodeHealthStatus(event pubsub.Message) {
 // TODO: move to gossip.go
 // onNewGossippedBlock will take a block and apply it
 func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
-	m.logger.Debug("Received new block event", "eventData", event.Data(), "cachedBlocks", len(m.blockCache))
+	m.logger.Debug("Received new block via gossip", "n cachedBlocks", len(m.blockCache))
 	eventData := event.Data().(p2p.GossipedBlock)
 	block := eventData.Block
 	commit := eventData.Commit
