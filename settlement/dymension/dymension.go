@@ -350,6 +350,39 @@ func (d *HubClient) GetBatchAtIndex(rollappID string, index uint64) (*settlement
 	return d.convertStateInfoToResultRetrieveBatch(&stateInfoResp.StateInfo)
 }
 
+func (d *HubClient) GetHeightState(rollappID string, h uint64) (*settlement.ResultGetHeightState, error) {
+	// TODO: dry out with GetBatchAtIndex
+	var stateInfoResp *rollapptypes.QueryGetStateInfoResponse
+	err := d.RunWithRetry(func() error {
+		var err error
+		stateInfoResp, err = d.rollappQueryClient.StateInfo(d.ctx,
+			&rollapptypes.QueryGetStateInfoRequest{RollappId: d.config.RollappID, Height: h})
+
+		if status.Code(err) == codes.NotFound {
+			return retry.Unrecoverable(settlement.ErrBatchNotFound)
+		}
+
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+	// not supposed to happen, but just in case
+	if stateInfoResp == nil {
+		return nil, settlement.ErrEmptyResponse
+	}
+	res, err := d.convertStateInfoToResultRetrieveBatch(&stateInfoResp.StateInfo)
+	if err != nil {
+		return nil, fmt.Errorf("convert state info to result retrieve batch: %w", err)
+	}
+	return &settlement.ResultGetHeightState{
+		BaseResult: res.BaseResult,
+		State: settlement.State{
+			StateIndex: res.BaseResult.StateIndex,
+		},
+	}, nil
+}
+
 // GetSequencers returns the bonded sequencers of the given rollapp.
 func (d *HubClient) GetSequencers(rollappID string) ([]*types.Sequencer, error) {
 	var res *sequencertypes.QueryGetSequencersByRollappByStatusResponse
@@ -428,10 +461,7 @@ func (d *HubClient) eventHandler() {
 			if err != nil {
 				panic(err)
 			}
-			err = d.pubsub.PublishWithEvents(d.ctx, eventData, map[string][]string{settlement.EventTypeKey: {d.eventMap[event.Query]}})
-			if err != nil {
-				panic(err)
-			}
+			uevent.MustPublish(d.ctx, d.pubsub, eventData, map[string][]string{settlement.EventTypeKey: {d.eventMap[event.Query]}})
 		}
 	}
 }
