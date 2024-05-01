@@ -59,6 +59,7 @@ func (m *Manager) syncUntilTarget(syncTarget uint64) error {
 		retry.Attempts(0),
 		retry.Delay(500*time.Millisecond),
 		retry.LastErrorOnly(true),
+		retry.DelayType(retry.FixedDelay),
 	)
 	if err != nil {
 		return fmt.Errorf("get height state: %w", err)
