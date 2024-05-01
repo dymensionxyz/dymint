@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	defaultRpcRetryDelay         = 30 * time.Second
+	defaultRpcRetryDelay         = 3 * time.Second
 	namespaceVersion             = 0
 	defaultGasPrices             = 0.1
 	defaultGasAdjustment float64 = 1.3
