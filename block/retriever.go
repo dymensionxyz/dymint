@@ -3,7 +3,6 @@ package block
 import (
 	"context"
 	"fmt"
-	"sync/atomic"
 	"time"
 
 	"github.com/avast/retry-go/v4"
@@ -44,33 +43,33 @@ func (m *Manager) syncUntilTarget(syncTarget uint64) error {
 		return nil
 	}
 
-	var stateIndex uint64
-	h := m.Store.Height()
-	err := retry.Do(
-		func() error {
-			res, err := m.SLClient.GetHeightState(h)
-			if err != nil {
-				m.logger.Debug("sl client get height state", "error", err)
-				return err
-			}
-			stateIndex = res.State.StateIndex
-			return nil
-		},
-		retry.Attempts(0),
-		retry.Delay(500*time.Millisecond),
-		retry.LastErrorOnly(true),
-		retry.DelayType(retry.FixedDelay),
-	)
-	if err != nil {
-		return fmt.Errorf("get height state: %w", err)
-	}
-	m.updateStateIndex(stateIndex - 1)
-	m.logger.Debug("Sync until target: updated state index pre loop", "stateIndex", stateIndex, "height", h, "syncTarget", syncTarget)
-
 	for currentHeight < syncTarget {
-		currStateIdx := atomic.LoadUint64(&m.LastState.SLStateIndex) + 1
-		m.logger.Info("Syncing until target", "height", currentHeight, "state_index", currStateIdx, "syncTarget", syncTarget)
-		settlementBatch, err := m.SLClient.RetrieveBatch(currStateIdx)
+		var stateIndex uint64
+		h := m.Store.Height() + 1
+
+		m.logger.Debug("Sync until target: updated state index pre loop", "height", h, "syncTarget", syncTarget)
+
+		err := retry.Do(
+			func() error {
+				res, err := m.SLClient.GetHeightState(h)
+				if err != nil {
+					m.logger.Debug("sl client get height state", "error", err)
+					return err
+				}
+				stateIndex = res.State.StateIndex
+				return nil
+			},
+			retry.Attempts(0),
+			retry.Delay(500*time.Millisecond),
+			retry.LastErrorOnly(true),
+			retry.DelayType(retry.FixedDelay),
+		)
+		if err != nil {
+			return fmt.Errorf("get height state: %w", err)
+		}
+
+		m.logger.Info("Retrieving batch", "state_index", stateIndex)
+		settlementBatch, err := m.SLClient.RetrieveBatch(stateIndex)
 		if err != nil {
 			return err
 		}
@@ -82,29 +81,15 @@ func (m *Manager) syncUntilTarget(syncTarget uint64) error {
 
 		currentHeight = m.Store.Height()
 
-		err = m.updateStateIndex(settlementBatch.StateIndex)
-		if err != nil {
-			return err
-		}
 	}
 	m.logger.Info("Synced", "current height", currentHeight, "syncTarget", syncTarget)
 
 	// check for cached blocks
-	err = m.attemptApplyCachedBlocks()
+	err := m.attemptApplyCachedBlocks()
 	if err != nil {
 		m.logger.Error("applying previous cached blocks", "err", err)
 	}
 
-	return nil
-}
-
-func (m *Manager) updateStateIndex(stateIndex uint64) error {
-	atomic.StoreUint64(&m.LastState.SLStateIndex, stateIndex)
-	_, err := m.Store.UpdateState(m.LastState, nil)
-	if err != nil {
-		m.logger.Error("update state", "error", err)
-		return err
-	}
 	return nil
 }
 
@@ -153,7 +138,7 @@ func (m *Manager) fetchBatch(daMetaData *da.DASubmitMetaData) da.ResultRetrieveB
 		}
 	}
 	// Check batch availability
-	availabilityRes := m.Retriever.CheckBatchAvailability(daMetaData)
+	/*availabilityRes := m.Retriever.CheckBatchAvailability(daMetaData)
 	if availabilityRes.Code != da.StatusSuccess {
 		return da.ResultRetrieveBatch{
 			BaseResult: da.BaseResult{
@@ -162,7 +147,7 @@ func (m *Manager) fetchBatch(daMetaData *da.DASubmitMetaData) da.ResultRetrieveB
 				Error:   availabilityRes.Error,
 			},
 		}
-	}
+	}*/
 	// batchRes.MetaData includes proofs necessary to open disputes with the Hub
 	batchRes := m.Retriever.RetrieveBatches(daMetaData)
 	// TODO(srene) : for invalid transactions there is no specific error code since it will need to be validated somewhere else for fraud proving.
