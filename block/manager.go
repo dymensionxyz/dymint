@@ -144,8 +144,6 @@ func NewManager(
 
 // Start starts the block manager.
 func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
-	m.logger.Debug("SANITY CHECK ~~~~~~~~~~")
-
 	m.logger.Info("Starting the block manager")
 
 	// TODO (#283): set aggregator mode by proposer addr on the hub

@@ -139,32 +139,29 @@ func (c *DataAvailabilityLayerClient) Start() (err error) {
 		return err
 	}
 
-	/*
-		TODO: bring back
-			if !state.Finished() {
-				c.logger.Info("waiting for celestia-node to finish syncing", "height", state.Height, "target", state.ToHeight)
+	if !state.Finished() {
+		c.logger.Info("waiting for celestia-node to finish syncing", "height", state.Height, "target", state.ToHeight)
 
-				done := make(chan error, 1)
-				go func() {
-					done <- rpc.Header.SyncWait(c.ctx)
-				}()
+		done := make(chan error, 1)
+		go func() {
+			done <- rpc.Header.SyncWait(c.ctx)
+		}()
 
-				ticker := time.NewTicker(1 * time.Minute)
-				defer ticker.Stop()
+		ticker := time.NewTicker(1 * time.Minute)
+		defer ticker.Stop()
 
-				for {
-					select {
-					case err := <-done:
-						if err != nil {
-							return err
-						}
-						return nil
-					case <-ticker.C:
-						c.logger.Info("celestia-node still syncing", "height", state.Height, "target", state.ToHeight)
-					}
+		for {
+			select {
+			case err := <-done:
+				if err != nil {
+					return err
 				}
+				return nil
+			case <-ticker.C:
+				c.logger.Info("celestia-node still syncing", "height", state.Height, "target", state.ToHeight)
 			}
-	*/
+		}
+	}
 
 	c.logger.Info("celestia-node is synced", "height", state.ToHeight)
 
