@@ -428,10 +428,7 @@ func (d *HubClient) eventHandler() {
 			if err != nil {
 				panic(err)
 			}
-			err = d.pubsub.PublishWithEvents(d.ctx, eventData, map[string][]string{settlement.EventTypeKey: {d.eventMap[event.Query]}})
-			if err != nil {
-				panic(err)
-			}
+			uevent.MustPublish(d.ctx, d.pubsub, eventData, map[string][]string{settlement.EventTypeKey: {d.eventMap[event.Query]}})
 		}
 	}
 }
