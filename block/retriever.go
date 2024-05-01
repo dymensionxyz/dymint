@@ -70,7 +70,7 @@ func (m *Manager) syncUntilTarget(syncTarget uint64) error {
 	m.logger.Info("Synced", "current height", currentHeight, "syncTarget", syncTarget)
 
 	// check for cached blocks
-	err := m.attemptApplyCachedBlocks()
+	err = m.attemptApplyCachedBlocks()
 	if err != nil {
 		m.logger.Error("applying previous cached blocks", "err", err)
 	}
