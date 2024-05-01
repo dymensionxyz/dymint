@@ -27,16 +27,19 @@ var defaultSubmitBackoff = uretry.NewBackoffConfig(
 
 // Config stores Celestia DALC configuration parameters.
 type Config struct {
-	BaseURL        string              `json:"base_url,omitempty"`
-	AppNodeURL     string              `json:"app_node_url,omitempty"`
-	Timeout        time.Duration       `json:"timeout,omitempty"`
-	Fee            int64               `json:"fee,omitempty"`
-	GasPrices      float64             `json:"gas_prices,omitempty"`
-	GasAdjustment  float64             `json:"gas_adjustment,omitempty"`
-	GasLimit       uint64              `json:"gas_limit,omitempty"`
-	NamespaceIDStr string              `json:"namespace_id,omitempty"`
-	AuthToken      string              `json:"auth_token,omitempty"`
-	NamespaceID    openrpcns.Namespace `json:"-"`
+	BaseURL        string               `json:"base_url,omitempty"`
+	AppNodeURL     string               `json:"app_node_url,omitempty"`
+	Timeout        time.Duration        `json:"timeout,omitempty"`
+	Fee            int64                `json:"fee,omitempty"`
+	GasPrices      float64              `json:"gas_prices,omitempty"`
+	GasAdjustment  float64              `json:"gas_adjustment,omitempty"`
+	GasLimit       uint64               `json:"gas_limit,omitempty"`
+	NamespaceIDStr string               `json:"namespace_id,omitempty"`
+	AuthToken      string               `json:"auth_token,omitempty"`
+	BackoffConfig  uretry.BackoffConfig `json:"backoff_config,omitempty"`
+	RetryAttempts  int                  `json:"retry_attempts,omitempty"`
+	RetryDelay     time.Duration        `json:"retry_delay,omitempty"`
+	NamespaceID    openrpcns.Namespace  `json:"-"`
 }
 
 var TestConfig = Config{

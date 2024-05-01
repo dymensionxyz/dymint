@@ -79,11 +79,10 @@ func WithSubmitBackoff(c uretry.BackoffConfig) da.Option {
 func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.Server, kvStore store.KVStore, logger types.Logger, options ...da.Option) error {
 	c.logger = logger
 
-	c.config = TestConfig
-
 	if len(config) <= 0 {
 		return errors.New("config is empty")
 	}
+
 	err := json.Unmarshal(config, &c.config)
 	if err != nil {
 		return err
@@ -101,18 +100,23 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 		cnt++
 	}
 	if cnt != 1 {
-		return fmt.Errorf("exactly one of fee or gas prices must be set: %w", gerr.ErrInvalidArgument)
+		return fmt.Errorf("exactly one of fee or gas prices must be non-zero: %w", gerr.ErrInvalidArgument)
 	}
+
+	c.pubsubServer = pubsubServer
 
 	if c.config.GasAdjustment == 0 {
 		c.config.GasAdjustment = defaultGasAdjustment
 	}
-
-	c.pubsubServer = pubsubServer
-	// Set defaults
-	c.rpcRetryAttempts = defaultRpcCheckAttempts
-	c.rpcRetryDelay = defaultRpcRetryDelay
-	c.submitBackoff = defaultSubmitBackoff
+	if c.rpcRetryAttempts == 0 {
+		c.rpcRetryAttempts = defaultRpcCheckAttempts
+	}
+	if c.rpcRetryDelay == 0 {
+		c.rpcRetryDelay = defaultRpcRetryDelay
+	}
+	if c.submitBackoff == (uretry.BackoffConfig{}) {
+		c.submitBackoff = defaultSubmitBackoff
+	}
 
 	c.ctx, c.cancel = context.WithCancel(context.Background())
 
