@@ -36,7 +36,7 @@ type Config struct {
 	GasLimit       uint64               `json:"gas_limit,omitempty"`
 	NamespaceIDStr string               `json:"namespace_id,omitempty"`
 	AuthToken      string               `json:"auth_token,omitempty"`
-	BackoffConfig  uretry.BackoffConfig `json:"backoff_config,omitempty"`
+	Backoff        uretry.BackoffConfig `json:"backoff,omitempty"`
 	RetryAttempts  int                  `json:"retry_attempts,omitempty"`
 	RetryDelay     time.Duration        `json:"retry_delay,omitempty"`
 	NamespaceID    openrpcns.Namespace  `json:"-"`
