@@ -79,7 +79,7 @@ func WithSubmitBackoff(c uretry.BackoffConfig) da.Option {
 func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.Server, kvStore store.KVStore, logger types.Logger, options ...da.Option) error {
 	c.logger = logger
 
-	c.config = DefaultConfig
+	c.config = TestConfig
 
 	if len(config) <= 0 {
 		return errors.New("config is empty")

@@ -39,7 +39,7 @@ type Config struct {
 	NamespaceID    openrpcns.Namespace `json:"-"`
 }
 
-var DefaultConfig = Config{
+var TestConfig = Config{
 	BaseURL:        "http://127.0.0.1:26658",
 	AppNodeURL:     "",
 	Timeout:        30 * time.Second,
