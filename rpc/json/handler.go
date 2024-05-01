@@ -13,9 +13,10 @@ import (
 
 	tmjson "github.com/tendermint/tendermint/libs/json"
 
-	"github.com/dymensionxyz/dymint/types"
 	"github.com/gorilla/rpc/v2"
 	"github.com/gorilla/rpc/v2/json2"
+
+	"github.com/dymensionxyz/dymint/types"
 )
 
 type handler struct {
@@ -70,6 +71,7 @@ func (h *handler) serveJSONRPCforWS(w http.ResponseWriter, r *http.Request, wsCo
 	}
 	methodSpec, ok := h.srv.methods[method]
 	if !ok {
+		err := fmt.Errorf("method %s not found", method)
 		codecReq.WriteError(w, int(json2.E_NO_METHOD), err)
 		return
 	}
