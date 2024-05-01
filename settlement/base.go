@@ -101,6 +101,10 @@ func (b *BaseLayerClient) RetrieveBatch(stateIndex ...uint64) (*ResultRetrieveBa
 	return resultRetrieveBatch, nil
 }
 
+func (b *BaseLayerClient) GetHeightState(u uint64) (*ResultGetHeightState, error) {
+	b.client.GetHeightState(b.config.RollappID, u)
+}
+
 // GetSequencersList returns the current list of sequencers from the settlement layer
 func (b *BaseLayerClient) GetSequencersList() []*types.Sequencer {
 	return b.sequencersList

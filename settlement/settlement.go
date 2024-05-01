@@ -48,6 +48,15 @@ type ResultRetrieveBatch struct {
 	*Batch
 }
 
+type State struct {
+	StateIndex uint64
+}
+
+type ResultGetHeightState struct {
+	BaseResult // NOTE: the state index of this will not be populated
+	State
+}
+
 // Option is a function that sets a parameter on the settlement layer.
 type Option func(LayerI)
 
@@ -74,6 +83,8 @@ type LayerI interface {
 
 	// GetProposer returns the current proposer for this chain.
 	GetProposer() *types.Sequencer
+
+	GetHeightState(uint64) (*ResultGetHeightState, error)
 }
 
 // HubClient is a helper interface for a more granular interaction with the hub.
@@ -85,5 +96,6 @@ type HubClient interface {
 	PostBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) error
 	GetLatestBatch(rollappID string) (*ResultRetrieveBatch, error)
 	GetBatchAtIndex(rollappID string, index uint64) (*ResultRetrieveBatch, error)
+	GetHeightState(rollappID string, index uint64) (*ResultGetHeightState, error)
 	GetSequencers(rollappID string) ([]*types.Sequencer, error)
 }
