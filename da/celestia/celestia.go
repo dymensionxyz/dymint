@@ -79,6 +79,8 @@ func WithSubmitBackoff(c uretry.BackoffConfig) da.Option {
 func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.Server, kvStore store.KVStore, logger types.Logger, options ...da.Option) error {
 	c.logger = logger
 
+	c.config = DefaultConfig
+
 	if len(config) <= 0 {
 		return errors.New("config is empty")
 	}
@@ -91,12 +93,15 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 		return err
 	}
 
-	if c.config.GasPrices != 0 && c.config.Fee != 0 {
-		return errors.New("can't set both gas prices and fee")
+	cnt := 0
+	if c.config.GasPrices != 0 {
+		cnt++
 	}
-
-	if c.config.Fee == 0 && c.config.GasPrices == 0 {
-		return errors.New("fee or gas prices must be set")
+	if c.config.Fee != 0 {
+		cnt++
+	}
+	if cnt != 1 {
+		return fmt.Errorf("exactly one of fee or gas prices must be set: %w", gerr.ErrInvalidArgument)
 	}
 
 	if c.config.GasAdjustment == 0 {
