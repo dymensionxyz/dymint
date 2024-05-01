@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 	"sync/atomic"
+	"time"
+
+	"github.com/avast/retry-go/v4"
 
 	"code.cloudfoundry.org/go-diodes"
 	"github.com/dymensionxyz/dymint/da"
@@ -41,6 +44,29 @@ func (m *Manager) syncUntilTarget(syncTarget uint64) error {
 		return nil
 	}
 
+	var stateIndex uint64
+	h := m.Store.Height()
+	err := retry.Do(
+		func() error {
+			res, err := m.SLClient.GetHeightState(h)
+			if err != nil {
+				m.logger.Debug("sl client get height state", "error", err)
+				return err
+			}
+			stateIndex = res.State.StateIndex
+			return nil
+		},
+		retry.Attempts(0),
+		retry.Delay(500*time.Millisecond),
+		retry.LastErrorOnly(true),
+		retry.DelayType(retry.FixedDelay),
+	)
+	if err != nil {
+		return fmt.Errorf("get height state: %w", err)
+	}
+	m.updateStateIndex(stateIndex - 1)
+	m.logger.Debug("Sync until target: updated state index pre loop", "stateIndex", stateIndex, "height", h, "syncTarget", syncTarget)
+
 	for currentHeight < syncTarget {
 		currStateIdx := atomic.LoadUint64(&m.LastState.SLStateIndex) + 1
 		m.logger.Info("Syncing until target", "height", currentHeight, "state_index", currStateIdx, "syncTarget", syncTarget)
@@ -64,7 +90,7 @@ func (m *Manager) syncUntilTarget(syncTarget uint64) error {
 	m.logger.Info("Synced", "current height", currentHeight, "syncTarget", syncTarget)
 
 	// check for cached blocks
-	err := m.attemptApplyCachedBlocks()
+	err = m.attemptApplyCachedBlocks()
 	if err != nil {
 		m.logger.Error("applying previous cached blocks", "err", err)
 	}
