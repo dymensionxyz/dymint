@@ -188,6 +188,12 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 
 // syncBlockManager enforces the node to be synced on initial run.
 func (m *Manager) syncBlockManager() error {
+	res, err := m.SLClient.GetHeightState(m.Store.Height())
+	if err != nil {
+		return fmt.Errorf("get height state: %w", err)
+	}
+	m.updateStateIndex(res.State.StateIndex)
+
 	resultRetrieveBatch, err := m.getLatestBatchFromSL()
 	// Set the syncTarget according to the result
 	if err != nil {
