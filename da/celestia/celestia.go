@@ -54,21 +54,21 @@ func WithRPCClient(rpc celtypes.CelestiaRPCClient) da.Option {
 // WithRPCRetryDelay sets failed rpc calls retry delay.
 func WithRPCRetryDelay(delay time.Duration) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
-		daLayerClient.(*DataAvailabilityLayerClient).rpcRetryDelay = delay
+		daLayerClient.(*DataAvailabilityLayerClient).config.RetryDelay = delay
 	}
 }
 
 // WithRPCAttempts sets failed rpc calls retry attempts.
 func WithRPCAttempts(attempts int) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
-		daLayerClient.(*DataAvailabilityLayerClient).rpcRetryAttempts = attempts
+		daLayerClient.(*DataAvailabilityLayerClient).config.RetryAttempts = attempts
 	}
 }
 
 // WithSubmitBackoff sets submit retry delay config.
 func WithSubmitBackoff(c uretry.BackoffConfig) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
-		daLayerClient.(*DataAvailabilityLayerClient).submitBackoff = c
+		daLayerClient.(*DataAvailabilityLayerClient).config.BackoffConfig = c
 	}
 }
 
