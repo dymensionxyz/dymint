@@ -41,6 +41,12 @@ func (m *Manager) syncUntilTarget(syncTarget uint64) error {
 		return nil
 	}
 
+	res, err := m.SLClient.GetHeightState(m.Store.Height())
+	if err != nil {
+		return fmt.Errorf("get height state: %w", err)
+	}
+	m.updateStateIndex(res.State.StateIndex)
+
 	for currentHeight < syncTarget {
 		currStateIdx := atomic.LoadUint64(&m.LastState.SLStateIndex) + 1
 		m.logger.Info("Syncing until target", "height", currentHeight, "state_index", currStateIdx, "syncTarget", syncTarget)
