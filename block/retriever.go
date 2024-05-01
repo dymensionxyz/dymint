@@ -75,10 +75,12 @@ func (m *Manager) syncUntilTarget(syncTarget uint64) error {
 			return err
 		}
 
-		err = m.ProcessNextDABatch(settlementBatch.MetaData.DA)
-		if err != nil {
-			return err
-		}
+		/*
+			err = m.ProcessNextDABatch(settlementBatch.MetaData.DA)
+			if err != nil {
+				return err
+			}
+		*/
 
 		currentHeight = m.Store.Height()
 
