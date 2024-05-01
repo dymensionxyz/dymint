@@ -9,6 +9,7 @@ import (
 	"github.com/avast/retry-go/v4"
 
 	"code.cloudfoundry.org/go-diodes"
+
 	"github.com/dymensionxyz/dymint/da"
 )
 
@@ -46,6 +47,11 @@ func (m *Manager) syncUntilTarget(syncTarget uint64) error {
 
 	var stateIndex uint64
 	h := m.Store.Height()
+	// If height is 0, `GetHeightState` returns the latest state index instead of the first
+	if h == 0 {
+		h = 1
+	}
+
 	err := retry.Do(
 		func() error {
 			res, err := m.SLClient.GetHeightState(h)
@@ -64,7 +70,12 @@ func (m *Manager) syncUntilTarget(syncTarget uint64) error {
 	if err != nil {
 		return fmt.Errorf("get height state: %w", err)
 	}
-	m.updateStateIndex(stateIndex - 1)
+
+	err = m.updateStateIndex(stateIndex - 1)
+	if err != nil {
+		return fmt.Errorf("update state index: %w", err)
+	}
+
 	m.logger.Debug("Sync until target: updated state index pre loop", "stateIndex", stateIndex, "height", h, "syncTarget", syncTarget)
 
 	for currentHeight < syncTarget {
