@@ -52,7 +52,7 @@ func exampleNMT(nidSize int, ignoreMaxNamespace bool, leavesNIDs ...byte) *nmt.N
 func TestSubmitBatch(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	configBytes, err := json.Marshal(celestia.CelestiaDefaultConfig)
+	configBytes, err := json.Marshal(celestia.DefaultConfig)
 	require.NoError(err)
 	batch := &types.Batch{
 		StartHeight: 0,
