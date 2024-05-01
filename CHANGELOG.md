@@ -3,7 +3,6 @@
 
 ### Bug Fixes
 
-* **rpc:** fixed nil pointer panic in rpc/json handler ([#751](https://github.com/dymensionxyz/dymint/issues/751)) ([8ecc8cc](https://github.com/dymensionxyz/dymint/commit/8ecc8cc0f36022d75df414fa6159793319c8a063))
 * **celestia:** impl retry on submit ([#748](https://github.com/dymensionxyz/dymint/issues/748)) ([61630eb](https://github.com/dymensionxyz/dymint/commit/61630eb458197abe2440a81426210000dff25d40))
 * **da:** fixed da path seperator and encoding issue ([#731](https://github.com/dymensionxyz/dymint/issues/731)) ([3a3b219](https://github.com/dymensionxyz/dymint/commit/3a3b21932750fee7eaaa9c186f78e36e3e597746))
 * **DA:** use expo backoff in retries ([#739](https://github.com/dymensionxyz/dymint/issues/739)) ([848085f](https://github.com/dymensionxyz/dymint/commit/848085f70bcaae81fb80da3ab78c4d8b399e13b1))
