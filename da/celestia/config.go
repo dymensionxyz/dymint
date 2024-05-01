@@ -70,12 +70,12 @@ func (c *Config) InitNamespaceID() error {
 	// Decode NamespaceID from string to byte array
 	namespaceBytes, err := hex.DecodeString(c.NamespaceIDStr)
 	if err != nil {
-		return err
+		return fmt.Errorf("decode string: %w", err)
 	}
 
 	// Check if NamespaceID is of correct length (10 bytes)
 	if len(namespaceBytes) != openrpcns.NamespaceVersionZeroIDSize {
-		return fmt.Errorf("invalid namespace id length: %v must be %v", len(namespaceBytes), openrpcns.NamespaceVersionZeroIDSize)
+		return fmt.Errorf("wrong length: got: %v: expect %v", len(namespaceBytes), openrpcns.NamespaceVersionZeroIDSize)
 	}
 
 	ns, err := openrpcns.New(openrpcns.NamespaceVersionZero, append(openrpcns.NamespaceVersionZeroPrefix, namespaceBytes...))

@@ -32,14 +32,11 @@ import (
 type DataAvailabilityLayerClient struct {
 	rpc celtypes.CelestiaRPCClient
 
-	pubsubServer     *pubsub.Server
-	config           Config
-	logger           types.Logger
-	ctx              context.Context
-	cancel           context.CancelFunc
-	rpcRetryDelay    time.Duration
-	rpcRetryAttempts int
-	submitBackoff    uretry.BackoffConfig
+	pubsubServer *pubsub.Server
+	config       Config
+	logger       types.Logger
+	ctx          context.Context
+	cancel       context.CancelFunc
 }
 
 var (
@@ -79,46 +76,15 @@ func WithSubmitBackoff(c uretry.BackoffConfig) da.Option {
 func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.Server, kvStore store.KVStore, logger types.Logger, options ...da.Option) error {
 	c.logger = logger
 
-	if len(config) <= 0 {
-		return errors.New("config is empty")
-	}
-
-	err := json.Unmarshal(config, &c.config)
+	var err error
+	c.config, err = createConfig(config)
 	if err != nil {
-		return err
-	}
-	err = (&c.config).InitNamespaceID()
-	if err != nil {
-		return err
-	}
-
-	cnt := 0
-	if c.config.GasPrices != 0 {
-		cnt++
-	}
-	if c.config.Fee != 0 {
-		cnt++
-	}
-	if cnt != 1 {
-		return fmt.Errorf("exactly one of fee or gas prices must be non-zero: %w", gerr.ErrInvalidArgument)
-	}
-
-	c.pubsubServer = pubsubServer
-
-	if c.config.GasAdjustment == 0 {
-		c.config.GasAdjustment = defaultGasAdjustment
-	}
-	if c.rpcRetryAttempts == 0 {
-		c.rpcRetryAttempts = defaultRpcCheckAttempts
-	}
-	if c.rpcRetryDelay == 0 {
-		c.rpcRetryDelay = defaultRpcRetryDelay
-	}
-	if c.submitBackoff == (uretry.BackoffConfig{}) {
-		c.submitBackoff = defaultSubmitBackoff
+		return fmt.Errorf("create config: %w: %w", err, gerr.ErrInvalidArgument)
 	}
 
 	c.ctx, c.cancel = context.WithCancel(context.Background())
+
+	c.pubsubServer = pubsubServer
 
 	// Apply options
 	for _, apply := range options {
@@ -126,6 +92,47 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 	}
 
 	return nil
+}
+
+func createConfig(bz []byte) (c Config, err error) {
+	if len(bz) <= 0 {
+		return c, errors.New("supplied config is empty")
+	}
+	var config Config
+	err = json.Unmarshal(bz, &config)
+	if err != nil {
+		return c, fmt.Errorf("json unmarshal: %w", err)
+	}
+
+	err = c.InitNamespaceID()
+	if err != nil {
+		return c, fmt.Errorf("init namespace id: %w", err)
+	}
+
+	cnt := 0
+	if c.GasPrices != 0 {
+		cnt++
+	}
+	if c.Fee != 0 {
+		cnt++
+	}
+	if cnt != 1 {
+		return c, errors.New("exactly one of fee or gas prices must be non-zero")
+	}
+
+	if c.GasAdjustment == 0 {
+		c.GasAdjustment = defaultGasAdjustment
+	}
+	if c.RetryAttempts == 0 {
+		c.RetryAttempts = defaultRpcCheckAttempts
+	}
+	if c.RetryDelay == 0 {
+		c.RetryDelay = defaultRpcRetryDelay
+	}
+	if c.BackoffConfig == (uretry.BackoffConfig{}) {
+		c.BackoffConfig = defaultSubmitBackoff
+	}
+	return c, nil
 }
 
 // Start prepares DataAvailabilityLayerClient to work.
