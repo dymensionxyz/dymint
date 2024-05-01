@@ -122,9 +122,6 @@ func createConfig(bz []byte) (c Config, err error) {
 	if c.GasAdjustment == 0 {
 		c.GasAdjustment = defaultGasAdjustment
 	}
-	if c.RetryAttempts == 0 {
-		c.RetryAttempts = defaultRpcCheckAttempts
-	}
 	if c.RetryDelay == 0 {
 		c.RetryDelay = defaultRpcRetryDelay
 	}

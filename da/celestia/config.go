@@ -12,11 +12,10 @@ import (
 )
 
 const (
-	defaultRpcRetryDelay            = 30 * time.Second
-	defaultRpcCheckAttempts         = 10
-	namespaceVersion                = 0
-	defaultGasPrices                = 0.1
-	defaultGasAdjustment    float64 = 1.3
+	defaultRpcRetryDelay         = 30 * time.Second
+	namespaceVersion             = 0
+	defaultGasPrices             = 0.1
+	defaultGasAdjustment float64 = 1.3
 )
 
 var defaultSubmitBackoff = uretry.NewBackoffConfig(
