@@ -71,7 +71,7 @@ func (h *handler) serveJSONRPCforWS(w http.ResponseWriter, r *http.Request, wsCo
 	}
 	methodSpec, ok := h.srv.methods[method]
 	if !ok {
-		err := fmt.Errorf("method %s not found", method)
+		err := fmt.Errorf("method not found: %s", method)
 		codecReq.WriteError(w, int(json2.E_NO_METHOD), err)
 		return
 	}
