@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 	"sync/atomic"
+	"time"
+
+	"github.com/avast/retry-go/v4"
 
 	"code.cloudfoundry.org/go-diodes"
 	"github.com/dymensionxyz/dymint/da"
@@ -41,11 +44,26 @@ func (m *Manager) syncUntilTarget(syncTarget uint64) error {
 		return nil
 	}
 
-	res, err := m.SLClient.GetHeightState(m.Store.Height())
+	var stateIndex uint64
+	h := m.Store.Height()
+	err := retry.Do(
+		func() error {
+			res, err := m.SLClient.GetHeightState(h)
+			if err != nil {
+				return err
+			}
+			stateIndex = res.State.StateIndex
+			return nil
+		},
+		retry.Attempts(3),
+		retry.Delay(500*time.Millisecond),
+		retry.LastErrorOnly(true),
+	)
 	if err != nil {
 		return fmt.Errorf("get height state: %w", err)
 	}
-	m.updateStateIndex(res.State.StateIndex)
+	m.updateStateIndex(stateIndex)
+	m.logger.Debug("Sync until target: updated state index pre loop", "stateIndex", stateIndex, "height", h, "syncTarget", syncTarget)
 
 	for currentHeight < syncTarget {
 		currStateIdx := atomic.LoadUint64(&m.LastState.SLStateIndex) + 1
