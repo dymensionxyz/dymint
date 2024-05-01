@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/dymensionxyz/dymint/gerr"
+
 	uevent "github.com/dymensionxyz/dymint/utils/event"
 
 	"google.golang.org/grpc/codes"
@@ -359,7 +361,7 @@ func (d *HubClient) GetHeightState(rollappID string, h uint64) (*settlement.Resu
 			&rollapptypes.QueryGetStateInfoRequest{RollappId: d.config.RollappID, Height: h})
 
 		if status.Code(err) == codes.NotFound {
-			return retry.Unrecoverable(settlement.ErrBatchNotFound)
+			return retry.Unrecoverable(gerr.ErrNotFound)
 		}
 
 		return err

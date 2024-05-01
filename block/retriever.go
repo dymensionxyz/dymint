@@ -50,19 +50,20 @@ func (m *Manager) syncUntilTarget(syncTarget uint64) error {
 		func() error {
 			res, err := m.SLClient.GetHeightState(h)
 			if err != nil {
+				m.logger.Debug("sl client get height state", "error", err)
 				return err
 			}
 			stateIndex = res.State.StateIndex
 			return nil
 		},
-		retry.Attempts(3),
+		retry.Attempts(0),
 		retry.Delay(500*time.Millisecond),
 		retry.LastErrorOnly(true),
 	)
 	if err != nil {
 		return fmt.Errorf("get height state: %w", err)
 	}
-	m.updateStateIndex(stateIndex)
+	m.updateStateIndex(stateIndex - 1)
 	m.logger.Debug("Sync until target: updated state index pre loop", "stateIndex", stateIndex, "height", h, "syncTarget", syncTarget)
 
 	for currentHeight < syncTarget {
@@ -73,12 +74,10 @@ func (m *Manager) syncUntilTarget(syncTarget uint64) error {
 			return err
 		}
 
-		/*
-			err = m.ProcessNextDABatch(settlementBatch.MetaData.DA)
-			if err != nil {
-				return err
-			}
-		*/
+		err = m.ProcessNextDABatch(settlementBatch.MetaData.DA)
+		if err != nil {
+			return err
+		}
 
 		currentHeight = m.Store.Height()
 
