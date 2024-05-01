@@ -46,11 +46,8 @@ func (m *Manager) syncUntilTarget(syncTarget uint64) error {
 	}
 
 	var stateIndex uint64
-	h := m.Store.Height()
 	// If height is 0, `GetHeightState` returns the latest state index instead of the first
-	if h == 0 {
-		h = 1
-	}
+	h := max(currentHeight, 1)
 
 	err := retry.Do(
 		func() error {
