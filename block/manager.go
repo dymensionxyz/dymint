@@ -238,6 +238,7 @@ func (m *Manager) onNodeHealthStatus(event pubsub.Message) {
 // TODO: move to gossip.go
 // onNewGossippedBlock will take a block and apply it
 func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
+	m.retrieverMutex.Lock() // needed to protect blockCache access
 	m.logger.Debug("Received new block event", "eventData", event.Data(), "cachedBlocks", len(m.blockCache))
 	eventData := event.Data().(p2p.GossipedBlock)
 	block := eventData.Block
@@ -251,7 +252,7 @@ func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
 		}
 		m.logger.Debug("caching block", "block height", block.Header.Height, "store height", m.Store.Height())
 	}
-
+	m.retrieverMutex.Unlock() // have to give this up as it's locked again in attempt apply, and we're not re-entrant
 	if block.Header.Height == nextHeight {
 		err := m.attemptApplyCachedBlocks()
 		if err != nil {
