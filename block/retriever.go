@@ -36,18 +36,10 @@ func (m *Manager) RetrieveLoop(ctx context.Context) {
 // It fetches the batches from the settlement, gets the DA height and gets
 // the actual blocks from the DA.
 func (m *Manager) syncUntilTarget(syncTarget uint64) error {
-	currentHeight := m.Store.Height()
+	for currH := m.Store.Height(); currH < syncTarget; {
 
-	if currentHeight >= syncTarget {
-		m.logger.Info("Already synced", "current height", currentHeight, "syncTarget", syncTarget)
-		return nil
-	}
-
-	for currentHeight < syncTarget {
 		var stateIndex uint64
 		h := m.Store.Height() + 1
-
-		m.logger.Debug("Sync until target: updated state index pre loop", "height", h, "syncTarget", syncTarget)
 
 		err := retry.Do(
 			func() error {
@@ -68,26 +60,26 @@ func (m *Manager) syncUntilTarget(syncTarget uint64) error {
 			return fmt.Errorf("get height state: %w", err)
 		}
 
-		m.logger.Info("Retrieving batch", "state_index", stateIndex)
 		settlementBatch, err := m.SLClient.RetrieveBatch(stateIndex)
 		if err != nil {
 			return err
 		}
+
+		m.logger.Info("Retrieved batch.", "state_index", stateIndex)
 
 		err = m.ProcessNextDABatch(settlementBatch.MetaData.DA)
 		if err != nil {
 			return err
 		}
 
-		currentHeight = m.Store.Height()
-
 	}
-	m.logger.Info("Synced", "current height", currentHeight, "syncTarget", syncTarget)
+
+	m.logger.Info("Synced", "store height", m.Store.Height(), "sync target", syncTarget)
 
 	// check for cached blocks
 	err := m.attemptApplyCachedBlocks()
 	if err != nil {
-		m.logger.Error("applying previous cached blocks", "err", err)
+		m.logger.Error("Attempt apply cache blocks.", "err", err)
 	}
 
 	return nil
