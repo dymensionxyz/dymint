@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	uevent "github.com/dymensionxyz/dymint/utils/event"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -95,7 +97,6 @@ func TestInitialState(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-
 			dalc := testutil.GetMockDALC(logger)
 			agg, err := block.NewManager(key, conf, c.genesis, c.store, nil, proxyApp, dalc, settlementlc,
 				nil, pubsubServer, p2pClient, logger)
@@ -279,7 +280,7 @@ func TestBlockProductionNodeHealth(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			err := manager.Pubsub.PublishWithEvents(context.Background(), c.healthStatusEventData, c.healthStatusEvent)
+			uevent.MustPublish(context.Background(), manager.Pubsub, c.healthStatusEventData, c.healthStatusEvent)
 			assert.NoError(err, "PublishWithEvents should not produce an error")
 			time.Sleep(500 * time.Millisecond)
 			blockHeight := manager.Store.Height()
@@ -472,7 +473,6 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 }
 
 func TestDAFetch(t *testing.T) {
-
 	require := require.New(t)
 	// Setup app
 	app := testutil.GetAppMock(testutil.Info, testutil.Commit)
