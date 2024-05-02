@@ -18,7 +18,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/crypto"
 
 	"github.com/dymensionxyz/dymint/config"
-	mocks "github.com/dymensionxyz/dymint/mocks/settlement"
+	mocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
 )
@@ -75,7 +75,7 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 	}
 
 	// Create a new mock LayerI
-	mockLayerI := &mocks.LayerI{}
+	mockLayerI := &mocks.MockLayerI{}
 	mockLayerI.On("Init", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	mockLayerI.On("Start").Return(nil)
 	mockLayerI.On("GetProposer").Return(proposer)
@@ -103,7 +103,6 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 	mockLayerI.On("SubmitBatch", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 	manager.HandleSubmissionTrigger(ctx)
 	assert.EqualValues(t, 1, manager.SyncTarget.Load())
-
 }
 
 func TestBatchSubmissionAfterTimeout(t *testing.T) {

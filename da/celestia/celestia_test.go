@@ -20,7 +20,7 @@ import (
 
 	"github.com/tendermint/tendermint/libs/log"
 
-	mocks "github.com/dymensionxyz/dymint/mocks/da/celestia"
+	mocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/da/celestia/types"
 
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/da/celestia"
@@ -284,7 +284,7 @@ func TestRetrievalWrongCommitment(t *testing.T) {
 	assert.ErrorIs(availRes.Error, da.ErrUnableToGetProof)
 }
 
-func setDAandMock(t *testing.T) (*mocks.CelestiaRPCClient, da.DataAvailabilityLayerClient, []byte, *header.ExtendedHeader) {
+func setDAandMock(t *testing.T) (*mocks.MockCelestiaRPCClient, da.DataAvailabilityLayerClient, []byte, *header.ExtendedHeader) {
 	var err error
 	pubsubServer := pubsub.NewServer()
 	err = pubsubServer.Start()
@@ -311,7 +311,7 @@ func setDAandMock(t *testing.T) (*mocks.CelestiaRPCClient, da.DataAvailabilityLa
 	conf, err := json.Marshal(config)
 	require.NoError(err)
 
-	mockRPCClient := mocks.NewCelestiaRPCClient(t)
+	mockRPCClient := mocks.NewMockCelestiaRPCClient(t)
 	options := []da.Option{
 		celestia.WithRPCClient(mockRPCClient),
 		celestia.WithRPCAttempts(1),
