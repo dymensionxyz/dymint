@@ -1,10 +1,6 @@
 with-expecter: true
 recursive: true
 packages:
-  github.com/tendermint/tendermint/proxy:
-    interfaces:
-      AppConnConsensus:
-
   github.com/dymensionxyz/dymint/settlement/dymension:
     interfaces:
       CosmosClient:
@@ -14,7 +10,9 @@ packages:
   github.com/tendermint/tendermint/abci/types:
     interfaces:
       Application:
-
+  github.com/tendermint/tendermint/proxy:
+    interfaces:
+      AppConnConsensus:
   github.com/dymensionxyz/dymint/da/celestia/types:
     interfaces:
       CelestiaRPCClient:
