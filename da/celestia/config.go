@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	defaultRpcRetryDelay            = 30 * time.Second
+	defaultRpcRetryDelay            = 1 * time.Second
 	defaultRpcCheckAttempts         = 10
 	namespaceVersion                = 0
 	defaultGasPrices                = 0.1
@@ -42,7 +42,7 @@ type Config struct {
 var CelestiaDefaultConfig = Config{
 	BaseURL:        "http://127.0.0.1:26658",
 	AppNodeURL:     "",
-	Timeout:        30 * time.Second,
+	Timeout:        5 * time.Second,
 	Fee:            0,
 	GasLimit:       20000000,
 	GasPrices:      defaultGasPrices,

@@ -2,6 +2,7 @@ package celestia
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -319,6 +320,7 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMet
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
+	c.logger.Debug("Celestia DA getting blob", "height", daMetaData.Height, "namespace", hex.EncodeToString(daMetaData.Namespace), "commitment", hex.EncodeToString(daMetaData.Commitment))
 	var batches []*types.Batch
 	blob, err := c.rpc.Get(ctx, daMetaData.Height, daMetaData.Namespace, daMetaData.Commitment)
 	if err != nil {
@@ -345,6 +347,9 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMet
 	if err != nil {
 		c.logger.Error("unmarshal block", "daHeight", daMetaData.Height, "error", err)
 	}
+
+	c.logger.Debug("Celestia DA get blob successful", "DA height", daMetaData.Height, "lastBlockHeight", batch.EndHeight)
+
 	parsedBatch := new(types.Batch)
 	err = parsedBatch.FromProto(&batch)
 	if err != nil {

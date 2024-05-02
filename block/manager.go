@@ -166,6 +166,9 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 			return err
 		}
 	}
+	if !isAggregator {
+		go uevent.MustSubscribe(ctx, m.Pubsub, "applyBlockLoop", p2p.EventQueryNewNewGossipedBlock, m.onNewGossipedBlock, m.logger, m.p2pClient.GetCacheSize())
+	}
 
 	err := m.syncBlockManager()
 	if err != nil {
@@ -178,7 +181,6 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 		go m.ProduceBlockLoop(ctx)
 		go m.SubmitLoop(ctx)
 	} else {
-		go uevent.MustSubscribe(ctx, m.Pubsub, "applyBlockLoop", p2p.EventQueryNewNewGossipedBlock, m.onNewGossipedBlock, m.logger, 100)
 		go m.RetrieveLoop(ctx)
 		go m.SyncTargetLoop(ctx)
 	}
