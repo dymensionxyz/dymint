@@ -86,7 +86,8 @@ type Manager struct {
 
 	logger types.Logger
 
-	// Cached blocks and commits for applying at future heights. Invariant: the block and commit are .Valid() (validated sigs etc)
+	// Cached blocks and commits for applying at future heights. The blocks may not be valid, because
+	// we can only do full validation in sequential order.
 	blockCache map[uint64]CachedBlock
 }
 
