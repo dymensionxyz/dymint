@@ -231,7 +231,7 @@ func (c *HubGrpcClient) GetBatchAtIndex(rollappID string, index uint64) (*settle
 	batchResult, err := c.retrieveBatchAtStateIndex(index)
 	if err != nil {
 		return &settlement.ResultRetrieveBatch{
-			BaseResult: settlement.BaseResult{Code: settlement.StatusError, Message: err.Error()},
+			ResultBase: settlement.ResultBase{Code: settlement.StatusError, Message: err.Error()},
 		}, err
 	}
 	return batchResult, nil
@@ -314,7 +314,7 @@ func (c *HubGrpcClient) retrieveBatchAtStateIndex(slStateIndex uint64) (*settlem
 		return nil, errors.New("error unmarshalling batch")
 	}
 	batchResult := settlement.ResultRetrieveBatch{
-		BaseResult: settlement.BaseResult{Code: settlement.StatusSuccess, StateIndex: slStateIndex},
+		ResultBase: settlement.ResultBase{Code: settlement.StatusSuccess, StateIndex: slStateIndex},
 		Batch:      &settlementBatch,
 	}
 	return &batchResult, nil
