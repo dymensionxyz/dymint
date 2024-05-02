@@ -6,6 +6,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dymensionxyz/dymint/mocks"
+
 	"github.com/dymensionxyz/dymint/block"
 
 	"github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
@@ -32,7 +34,7 @@ func TestCreateBlock(t *testing.T) {
 
 	logger := log.TestingLogger()
 
-	app := &mocks.Application{}
+	app := &tmmocks.MockApplication{}
 	app.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{})
 
 	clientCreator := proxy.NewLocalClientCreator(app)
