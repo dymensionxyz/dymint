@@ -13,6 +13,9 @@
 * **produce loop:** handle unauthenticated error in settlement layer ([#726](https://github.com/dymensionxyz/dymint/issues/726)) ([33e78d1](https://github.com/dymensionxyz/dymint/commit/33e78d116b5f14b91b8b3bda2b6cbfee9040e2d3))
 * **rpc:** nil panic in rpc/json/handler.go WriteError ([#750](https://github.com/dymensionxyz/dymint/issues/750)) ([e09709b](https://github.com/dymensionxyz/dymint/commit/e09709b428a33da002defb9f13178fa19b81a69b))
 
+### Features
+
+* **DA:** expose configuration options for retry loop backoff ([#756](https://github.com/dymensionxyz/dymint/issues/756)) ([8dfc89](https://github.com/dymensionxyz/dymint/commit/8dfc89d4ec8360682c063b107b71701214f3928b))
 
 
 # [1.1.0-rc02](https://github.com/dymensionxyz/dymint/compare/v1.1.0-rc01...v1.1.0-rc02) (2024-04-26)

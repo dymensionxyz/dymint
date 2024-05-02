@@ -12,17 +12,18 @@ import (
 
 	uretry "github.com/dymensionxyz/dymint/utils/retry"
 
-	"github.com/dymensionxyz/dymint/da"
-	"github.com/dymensionxyz/dymint/da/celestia"
-	mocks "github.com/dymensionxyz/dymint/mocks/da/celestia"
-	"github.com/dymensionxyz/dymint/testutil"
-	"github.com/dymensionxyz/dymint/types"
 	"github.com/rollkit/celestia-openrpc/types/blob"
 	"github.com/rollkit/celestia-openrpc/types/header"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/libs/log"
+
+	"github.com/dymensionxyz/dymint/da"
+	"github.com/dymensionxyz/dymint/da/celestia"
+	mocks "github.com/dymensionxyz/dymint/mocks/da/celestia"
+	"github.com/dymensionxyz/dymint/testutil"
+	"github.com/dymensionxyz/dymint/types"
 
 	"github.com/tendermint/tendermint/libs/pubsub"
 
@@ -52,7 +53,7 @@ func exampleNMT(nidSize int, ignoreMaxNamespace bool, leavesNIDs ...byte) *nmt.N
 func TestSubmitBatch(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	configBytes, err := json.Marshal(celestia.CelestiaDefaultConfig)
+	configBytes, err := json.Marshal(celestia.TestConfig)
 	require.NoError(err)
 	batch := &types.Batch{
 		StartHeight: 0,
@@ -103,7 +104,6 @@ func TestSubmitBatch(t *testing.T) {
 		},
 	}
 	for _, tc := range cases {
-
 		t.Log("Case name ", tc.name)
 		// Create mock clients
 		mockRPCClient := mocks.NewCelestiaRPCClient(t)
@@ -112,7 +112,6 @@ func TestSubmitBatch(t *testing.T) {
 			celestia.WithSubmitBackoff(uretry.NewBackoffConfig(uretry.WithInitialDelay(10*time.Millisecond), uretry.WithMaxDelay(10*time.Millisecond))),
 			celestia.WithRPCClient(mockRPCClient),
 			celestia.WithRPCAttempts(1),
-			celestia.WithRPCRetryDelay(10 * time.Millisecond),
 		}
 		// Subscribe to the health status event
 		pubsubServer := pubsub.NewServer()
