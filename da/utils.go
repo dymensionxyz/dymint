@@ -7,7 +7,7 @@ import (
 )
 
 func SubmitBatchHealthEventHelper(pubsubServer *pubsub.Server, ctx context.Context, err error) (ResultSubmitBatch, error) {
-	err = pubsubServer.PublishWithEvents(
+	err = pubsubServer.PublishWithEvents( // TODO:
 		ctx,
 		&EventDataHealth{Error: err},
 		EventHealthStatusList,
