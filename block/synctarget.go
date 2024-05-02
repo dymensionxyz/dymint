@@ -23,8 +23,15 @@ func (m *Manager) SyncTargetLoop(ctx context.Context) {
 			return
 		case event := <-subscription.Out():
 			eventData := event.Data().(*settlement.EventDataNewBatchAccepted)
+
 			if eventData.EndHeight <= m.Store.Height() {
-				m.logger.Error("syncTargetLoop: event is old, skipping")
+				m.logger.Debug(
+					"syncTargetLoop: received new settlement batch accepted with batch end height <= current store height, skipping.",
+					"height",
+					eventData.EndHeight,
+					"currentHeight",
+					m.Store.Height(),
+				)
 				continue
 			}
 			m.UpdateSyncParams(eventData.EndHeight)

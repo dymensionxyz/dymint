@@ -73,6 +73,11 @@ type HubGrpcClient struct {
 	refreshTime    int
 }
 
+func (c *HubGrpcClient) GetHeightState(rollappID string, index uint64) (*settlement.ResultGetHeightState, error) {
+	// TODO implement me
+	panic("implement me")
+}
+
 func newHubClient(config settlement.Config, pubsub *pubsub.Server, logger types.Logger) (*HubGrpcClient, error) {
 	ctx := context.Background()
 
