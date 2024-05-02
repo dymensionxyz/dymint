@@ -69,7 +69,7 @@ func (h *handler) wsHandler(w http.ResponseWriter, r *http.Request) {
 		mt, r, err := wsc.NextReader()
 		if err != nil {
 			if _, ok := err.(*websocket.CloseError); ok {
-				h.logger.Debug("WebSocket connection closed")
+				h.logger.Debug("WebSocket connection closed", "reason", err)
 				err := h.srv.client.EventBus.UnsubscribeAll(context.Background(), remoteAddr)
 				if err != nil && err != tmpubsub.ErrSubscriptionNotFound {
 					h.logger.Error("unsubscribe addr from events", "addr", remoteAddr, "err", err)

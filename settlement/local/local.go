@@ -72,6 +72,11 @@ type HubClient struct {
 	settlementKV   store.KVStore
 }
 
+func (c *HubClient) GetHeightState(rollappID string, index uint64) (*settlement.ResultGetHeightState, error) {
+	// TODO implement me
+	panic("implement me")
+}
+
 var _ settlement.HubClient = &HubClient{}
 
 func newHubClient(config settlement.Config, pubsub *pubsub.Server, logger types.Logger) (*HubClient, error) {
