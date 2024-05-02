@@ -11,6 +11,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/dymensionxyz/dymint/gerr"
+
 	"github.com/libp2p/go-libp2p/core/crypto"
 	tmp2p "github.com/tendermint/tendermint/p2p"
 
@@ -250,7 +252,7 @@ func (c *HubClient) retrieveBatchAtStateIndex(slStateIndex uint64) (*settlement.
 	b, err := c.settlementKV.Get(getKey(slStateIndex))
 	c.logger.Debug("Retrieving batch from settlement layer", "SL state index", slStateIndex)
 	if err != nil {
-		return nil, settlement.ErrBatchNotFound
+		return nil, gerr.ErrNotFound
 	}
 	var settlementBatch settlement.Batch
 	err = json.Unmarshal(b, &settlementBatch)

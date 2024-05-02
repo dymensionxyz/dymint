@@ -310,7 +310,7 @@ func (d *HubClient) GetLatestBatch(rollappID string) (*settlement.ResultRetrieve
 			&rollapptypes.QueryGetStateInfoRequest{RollappId: d.config.RollappID})
 
 		if status.Code(err) == codes.NotFound {
-			return retry.Unrecoverable(settlement.ErrBatchNotFound)
+			return retry.Unrecoverable(gerr.ErrNotFound)
 		}
 
 		return err
@@ -570,7 +570,7 @@ func (d *HubClient) waitForBatchInclusion(batchStartHeight uint64) (*settlement.
 				return fmt.Errorf("get latest batch: %w", err)
 			}
 			if latestBatch.Batch.StartHeight != batchStartHeight {
-				return fmt.Errorf("latest batch start height not match expected start height: %w", settlement.ErrBatchNotFound)
+				return fmt.Errorf("latest batch start height not match expected start height: %w", gerr.ErrNotFound)
 			}
 			res = latestBatch
 			return nil

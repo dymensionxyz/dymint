@@ -11,6 +11,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/dymensionxyz/dymint/gerr"
+
 	"github.com/libp2p/go-libp2p/core/crypto"
 	tmp2p "github.com/tendermint/tendermint/p2p"
 	"google.golang.org/grpc"
@@ -302,11 +304,11 @@ func (c *HubGrpcClient) retrieveBatchAtStateIndex(slStateIndex uint64) (*settlem
 
 	getBatchReply, err := c.sl.GetBatch(c.ctx, &slmock.SLGetBatchRequest{Index: slStateIndex})
 	if err != nil {
-		return nil, settlement.ErrBatchNotFound
+		return nil, gerr.ErrNotFound
 	}
 	b := getBatchReply.GetBatch()
 	if b == nil {
-		return nil, settlement.ErrBatchNotFound
+		return nil, gerr.ErrNotFound
 	}
 	var settlementBatch settlement.Batch
 	err = json.Unmarshal(b, &settlementBatch)

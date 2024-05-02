@@ -9,6 +9,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/dymensionxyz/dymint/gerr"
+
 	uevent "github.com/dymensionxyz/dymint/utils/event"
 
 	"code.cloudfoundry.org/go-diodes"
@@ -193,7 +195,7 @@ func (m *Manager) syncBlockManager() error {
 	// Set the syncTarget according to the result
 	if err != nil {
 		// TODO: separate between fresh rollapp and non-registered rollapp
-		if errors.Is(err, settlement.ErrBatchNotFound) {
+		if errors.Is(err, gerr.ErrNotFound) {
 			// Since we requested the latest batch and got batch not found it means
 			// the SL still hasn't got any batches for this chain.
 			m.logger.Info("No batches for chain found in SL. Start writing first batch")

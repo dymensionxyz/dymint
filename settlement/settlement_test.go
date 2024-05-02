@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dymensionxyz/dymint/gerr"
+
 	"github.com/tendermint/tendermint/libs/log"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
@@ -51,13 +53,11 @@ func TestSubmitAndRetrieve(t *testing.T) {
 
 	// Get settlement lastest batch and check if there is an error as we haven't written anything yet.
 	_, err := settlementClient.RetrieveBatch()
-	require.Error(err)
-	assert.Equal(err, settlement.ErrBatchNotFound)
+	assert.ErrorIs(err, gerr.ErrNotFound)
 
 	// Get nonexisting stateIndex from the settlement layer
 	_, err = settlementClient.RetrieveBatch(uint64(100))
-	require.Error(err)
-	assert.Equal(err, settlement.ErrBatchNotFound)
+	assert.ErrorIs(err, gerr.ErrNotFound)
 
 	// Create and submit multiple batches
 	numBatches := 4
