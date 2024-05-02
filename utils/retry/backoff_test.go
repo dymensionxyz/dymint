@@ -34,4 +34,11 @@ func TestBackoff(t *testing.T) {
 			last = d
 		}
 	})
+	t.Run("maximum", func(t *testing.T) {
+		d := time.Second
+		b := NewBackoffConfig(WithInitialDelay(time.Second), WithMaxDelay(d)).Backoff()
+		for range 10 {
+			require.Equal(t, time.Second, b.Delay())
+		}
+	})
 }

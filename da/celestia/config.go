@@ -20,9 +20,8 @@ const (
 )
 
 var defaultSubmitBackoff = uretry.NewBackoffConfig(
-	uretry.WithInitialDelay(time.Second*4),
-	uretry.WithMaxDelay(time.Second*30),
-	uretry.WithGrowthFactor(1.6),
+	uretry.WithInitialDelay(time.Second*6),
+	uretry.WithMaxDelay(time.Second*6),
 )
 
 // Config stores Celestia DALC configuration parameters.
