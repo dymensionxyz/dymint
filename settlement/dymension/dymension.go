@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/dymensionxyz/dymint/gerr"
+
 	uevent "github.com/dymensionxyz/dymint/utils/event"
 
 	"google.golang.org/grpc/codes"
@@ -337,12 +339,12 @@ func (d *HubClient) getStateInfo(index, height *uint64) (res *rollapptypes.Query
 		res, err = d.rollappQueryClient.StateInfo(d.ctx, req)
 
 		if status.Code(err) == codes.NotFound {
-			return retry.Unrecoverable(settlement.ErrBatchNotFound) // TODO: change it
+			return retry.Unrecoverable(gerr.ErrNotFound)
 		}
 		return err
 	})
 	if res == nil {
-		return nil, settlement.ErrEmptyResponse // TODO: change it
+		return nil, settlement.ErrEmptyResponse
 	}
 	return
 }
