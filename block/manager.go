@@ -166,14 +166,14 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 			return err
 		}
 	}
+
 	if !isAggregator {
-		go uevent.MustSubscribe(ctx, m.Pubsub, "applyBlockLoop", p2p.EventQueryNewNewGossipedBlock, m.onNewGossipedBlock, m.logger)
+		go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewNewGossipedBlock, m.onNewGossipedBlock, m.logger)
 	}
 
 	err := m.syncBlockManager()
 	if err != nil {
-		err = fmt.Errorf("sync block manager: %w", err)
-		return err
+		return fmt.Errorf("sync block manager: %w", err)
 	}
 
 	if isAggregator {
