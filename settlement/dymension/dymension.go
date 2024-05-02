@@ -301,32 +301,6 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 	}
 }
 
-// GetLatestBatch returns the latest batch from the Dymension Hub.
-func (d *HubClient) GetLatestBatch(rollappID string) (*settlement.ResultRetrieveBatch, error) {
-	var stateInfoResp *rollapptypes.QueryGetStateInfoResponse
-	err := d.RunWithRetry(func() error {
-		var err error
-		stateInfoResp, err = d.rollappQueryClient.StateInfo(d.ctx,
-			&rollapptypes.QueryGetStateInfoRequest{RollappId: d.config.RollappID})
-
-		if status.Code(err) == codes.NotFound {
-			return retry.Unrecoverable(gerr.ErrNotFound)
-		}
-
-		return err
-	},
-	)
-	if err != nil {
-		return nil, err
-	}
-	// not supposed to happen, but just in case
-	if stateInfoResp == nil {
-		return nil, settlement.ErrEmptyResponse
-	}
-
-	return d.convertStateInfoToResultRetrieveBatch(&stateInfoResp.StateInfo)
-}
-
 func (d *HubClient) getStateInfo(index, height *uint64) (res *rollapptypes.QueryGetStateInfoResponse, err error) {
 	req := &rollapptypes.QueryGetStateInfoRequest{RollappId: d.config.RollappID}
 	if index != nil {
@@ -347,6 +321,15 @@ func (d *HubClient) getStateInfo(index, height *uint64) (res *rollapptypes.Query
 		return nil, settlement.ErrEmptyResponse
 	}
 	return
+}
+
+// GetLatestBatch returns the latest batch from the Dymension Hub.
+func (d *HubClient) GetLatestBatch(rollappID string) (*settlement.ResultRetrieveBatch, error) {
+	res, err := d.getStateInfo(nil, nil)
+	if err != nil {
+		return nil, fmt.Errorf("get state info: %w", err)
+	}
+	return d.convertStateInfoToResultRetrieveBatch(&res.StateInfo)
 }
 
 // GetBatchAtIndex returns the batch at the given index from the Dymension Hub.
