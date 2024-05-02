@@ -22,8 +22,6 @@ message State {
   tendermint.types.BlockID last_block_id = 5 [(gogoproto.nullable) = false, (gogoproto.customname) = "LastBlockID"];
   google.protobuf.Timestamp last_block_time = 6 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
 
-  uint64 sl_state_index = 7 [(gogoproto.customname) = "SLStateIndex"];
-
   tendermint.types.ValidatorSet next_validators = 8;
   tendermint.types.ValidatorSet validators = 9;
   tendermint.types.ValidatorSet last_validators = 10;

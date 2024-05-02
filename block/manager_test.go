@@ -95,7 +95,6 @@ func TestInitialState(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-
 			dalc := testutil.GetMockDALC(logger)
 			agg, err := block.NewManager(key, conf, c.genesis, c.store, nil, proxyApp, dalc, settlementlc,
 				nil, pubsubServer, p2pClient, logger)
@@ -162,7 +161,6 @@ func TestRetrieveDaBatchesFailed(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, manager)
 
-	t.Log(manager.LastState.SLStateIndex)
 	daMetaData := &da.DASubmitMetaData{
 		Client: da.Mock,
 		Height: 1,
@@ -472,7 +470,6 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 }
 
 func TestDAFetch(t *testing.T) {
-
 	require := require.New(t)
 	// Setup app
 	app := testutil.GetAppMock(testutil.Info, testutil.Commit)
