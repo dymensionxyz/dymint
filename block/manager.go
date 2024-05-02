@@ -167,7 +167,7 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 		}
 	}
 	if !isAggregator {
-		go uevent.MustSubscribe(ctx, m.Pubsub, "applyBlockLoop", p2p.EventQueryNewNewGossipedBlock, m.onNewGossipedBlock, m.logger, 100)
+		go uevent.MustSubscribe(ctx, m.Pubsub, "applyBlockLoop", p2p.EventQueryNewNewGossipedBlock, m.onNewGossipedBlock, m.logger, 10000)
 	}
 
 	err := m.syncBlockManager()
