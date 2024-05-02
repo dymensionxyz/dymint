@@ -317,8 +317,8 @@ func (d *HubClient) getStateInfo(index, height *uint64) (res *rollapptypes.Query
 		}
 		return err
 	})
-	if res == nil {
-		return nil, settlement.ErrEmptyResponse
+	if res == nil { // not supposed to happen
+		return nil, fmt.Errorf("empty response: %w", gerr.ErrUnknown)
 	}
 	return
 }
@@ -372,7 +372,7 @@ func (d *HubClient) GetSequencers(rollappID string) ([]*types.Sequencer, error) 
 
 	// not supposed to happen, but just in case
 	if res == nil {
-		return nil, settlement.ErrEmptyResponse
+		return nil, fmt.Errorf("empty response: %w", gerr.ErrUnknown)
 	}
 
 	sequencersList := make([]*types.Sequencer, 0, len(res.Sequencers))
