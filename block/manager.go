@@ -168,10 +168,13 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 		}
 	}
 
+	if !isAggregator {
+		go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewNewGossipedBlock, m.onNewGossipedBlock, m.logger)
+	}
+
 	err := m.syncBlockManager()
 	if err != nil {
-		err = fmt.Errorf("sync block manager: %w", err)
-		return err
+		return fmt.Errorf("sync block manager: %w", err)
 	}
 
 	if isAggregator {
@@ -179,7 +182,6 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 		go m.ProduceBlockLoop(ctx)
 		go m.SubmitLoop(ctx)
 	} else {
-		go uevent.MustSubscribe(ctx, m.Pubsub, "applyBlockLoop", p2p.EventQueryNewNewGossipedBlock, m.onNewGossipedBlock, m.logger, 100)
 		go m.RetrieveLoop(ctx)
 		go m.SyncTargetLoop(ctx)
 	}
@@ -238,7 +240,6 @@ func (m *Manager) onNodeHealthStatus(event pubsub.Message) {
 // onNewGossippedBlock will take a block and apply it
 func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
 	m.retrieverMutex.Lock() // needed to protect blockCache access
-
 	m.logger.Debug("Received new block via gossip", "n cachedBlocks", len(m.blockCache))
 	eventData := event.Data().(p2p.GossipedBlock)
 	block := eventData.Block
@@ -252,9 +253,7 @@ func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
 		}
 		m.logger.Debug("caching block", "block height", block.Header.Height, "store height", m.Store.Height())
 	}
-
 	m.retrieverMutex.Unlock() // have to give this up as it's locked again in attempt apply, and we're not re-entrant
-
 	if block.Header.Height == nextHeight {
 		err := m.attemptApplyCachedBlocks()
 		if err != nil {
