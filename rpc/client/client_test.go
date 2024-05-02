@@ -27,7 +27,7 @@ import (
 
 	"github.com/dymensionxyz/dymint/config"
 	"github.com/dymensionxyz/dymint/mempool"
-	"github.com/dymensionxyz/dymint/mocks"
+	tmmocks "github.com/dymensionxyz/dymint/mocks/github.com/tendermint/tendermint/abci/types"
 	"github.com/dymensionxyz/dymint/node"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
@@ -844,10 +844,10 @@ func getBlockMeta(rpc *Client, n int64) *tmtypes.BlockMeta {
 	return bmeta
 }
 
-func getRPC(t *testing.T) (*mocks.Application, *Client) {
+func getRPC(t *testing.T) (*tmmocks.MockApplication, *Client) {
 	t.Helper()
 	require := require.New(t)
-	app := &mocks.Application{}
+	app := &tmmocks.MockApplication{}
 	app.On("Info", mock.Anything).Return(expectedInfo)
 	key, _, _ := crypto.GenerateEd25519Key(crand.Reader)
 	signingKey, pubkey, err := crypto.GenerateEd25519Key(crand.Reader)

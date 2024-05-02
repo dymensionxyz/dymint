@@ -1,0 +1,24 @@
+with-expecter: true
+recursive: true
+packages:
+  github.com/dymensionxyz/dymint/settlement/dymension:
+    interfaces:
+      CosmosClient:
+  github.com/dymensionxyz/dymint/settlement:
+    interfaces:
+      LayerI:
+      HubClient:
+  github.com/tendermint/tendermint/abci/types:
+    interfaces:
+      Application:
+  github.com/tendermint/tendermint/proxy:
+    interfaces:
+      AppConnConsensus:
+  github.com/dymensionxyz/dymint/da/celestia/types:
+    interfaces:
+      CelestiaRPCClient:
+  github.com/dymensionxyz/dymint/da/avail:
+    interfaces:
+     SubstrateApiI:
+
+
