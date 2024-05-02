@@ -11,8 +11,9 @@ import (
 	"github.com/dymensionxyz/dymint/da"
 )
 
-// RetrieveLoop listens for new sync messages written to a ring buffer and in turn
-// runs syncUntilTarget on the latest message in the ring buffer.
+// RetrieveLoop listens for new target sync heights and then syncs the chain by
+// fetching batches from the settlement layer and then fetching the actual blocks
+// from the DA.
 func (m *Manager) RetrieveLoop(ctx context.Context) {
 	m.logger.Info("started retrieve loop")
 	syncTargetPoller := diodes.NewPoller(m.SyncTargetDiode, diodes.WithPollingContext(ctx))
@@ -23,8 +24,8 @@ func (m *Manager) RetrieveLoop(ctx context.Context) {
 			return
 		default:
 			// Get only the latest sync target
-			syncTarget := syncTargetPoller.Next()
-			err := m.syncUntilTarget(*(*uint64)(syncTarget))
+			targetHeight := syncTargetPoller.Next()
+			err := m.syncUntilTarget(*(*uint64)(targetHeight))
 			if err != nil {
 				panic(fmt.Errorf("sync until target: %w", err))
 			}
@@ -32,11 +33,11 @@ func (m *Manager) RetrieveLoop(ctx context.Context) {
 	}
 }
 
-// syncUntilTarget syncs the block until the syncTarget is reached.
+// syncUntilTarget syncs blocks until the target height is reached.
 // It fetches the batches from the settlement, gets the DA height and gets
 // the actual blocks from the DA.
-func (m *Manager) syncUntilTarget(syncTarget uint64) error {
-	for currH := m.Store.Height(); currH < syncTarget; {
+func (m *Manager) syncUntilTarget(targetHeight uint64) error {
+	for currH := m.Store.Height(); currH < targetHeight; {
 
 		// It's important that we query the state index before fetching the batch, rather
 		// than e.g. keep it and increment it, because we might be concurrently applying blocks
@@ -60,7 +61,7 @@ func (m *Manager) syncUntilTarget(syncTarget uint64) error {
 
 	}
 
-	m.logger.Info("Synced", "store height", m.Store.Height(), "sync target", syncTarget)
+	m.logger.Info("Synced", "store height", m.Store.Height(), "target height", targetHeight)
 
 	err := m.attemptApplyCachedBlocks()
 	if err != nil {
