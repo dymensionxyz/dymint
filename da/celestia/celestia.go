@@ -627,7 +627,7 @@ func (c *DataAvailabilityLayerClient) getDataAvailabilityHeaders(height uint64) 
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
-	headers, error := c.rpc.GetHeaders(ctx, height)
+	headers, error := c.rpc.GetByHeight(ctx, height)
 	if error != nil {
 		return nil, error
 	}

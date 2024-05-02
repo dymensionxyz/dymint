@@ -59,12 +59,12 @@ func TestDALC(t *testing.T) {
 	mockRPCClient.On("Submit", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(uint64(1234), nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
 	mockRPCClient.On("GetProof", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&blobProof, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
 	mockRPCClient.On("Included", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
-	mockRPCClient.On("GetHeaders", mock.Anything, mock.Anything).Return(header, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+	mockRPCClient.On("GetByHeight", mock.Anything, mock.Anything).Return(header, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
 
 	mockRPCClient.On("Submit", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(uint64(1234), nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
 	mockRPCClient.On("GetProof", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&blobProof, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
 	mockRPCClient.On("Included", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
-	mockRPCClient.On("GetHeaders", mock.Anything, mock.Anything).Return(header, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+	mockRPCClient.On("GetByHeight", mock.Anything, mock.Anything).Return(header, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
 
 	time.Sleep(2 * mockDaBlockTime)
 
@@ -116,7 +116,7 @@ func TestRetrievalNotFound(t *testing.T) {
 	mockRPCClient.On("Submit", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(uint64(1234), nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
 	mockRPCClient.On("GetProof", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&blobProof, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
 	mockRPCClient.On("Included", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
-	mockRPCClient.On("GetHeaders", mock.Anything, mock.Anything).Return(headers, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+	mockRPCClient.On("GetByHeight", mock.Anything, mock.Anything).Return(headers, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
 
 	time.Sleep(2 * mockDaBlockTime)
 
@@ -189,7 +189,7 @@ func TestAvalabilityOK(t *testing.T) {
 	mockRPCClient.On("Submit", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(uint64(1234), nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
 	mockRPCClient.On("GetProof", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&blobProof, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
 	mockRPCClient.On("Included", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
-	mockRPCClient.On("GetHeaders", mock.Anything, mock.Anything).Return(headers, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+	mockRPCClient.On("GetByHeight", mock.Anything, mock.Anything).Return(headers, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
 
 	time.Sleep(2 * mockDaBlockTime)
 
@@ -203,7 +203,7 @@ func TestAvalabilityOK(t *testing.T) {
 
 	mockRPCClient.On("GetProof", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&blobProof, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
 	mockRPCClient.On("Included", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
-	mockRPCClient.On("GetHeaders", mock.Anything, mock.Anything).Return(headers, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+	mockRPCClient.On("GetByHeight", mock.Anything, mock.Anything).Return(headers, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
 
 	retriever := dalc.(da.BatchRetriever)
 
@@ -233,7 +233,7 @@ func TestAvalabilityWrongProof(t *testing.T) {
 	mockRPCClient.On("Submit", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(uint64(1234), nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
 	mockRPCClient.On("GetProof", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&blobProof, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
 	mockRPCClient.On("Included", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
-	mockRPCClient.On("GetHeaders", mock.Anything, mock.Anything).Return(headers, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+	mockRPCClient.On("GetByHeight", mock.Anything, mock.Anything).Return(headers, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
 
 	time.Sleep(2 * mockDaBlockTime)
 
@@ -246,7 +246,7 @@ func TestAvalabilityWrongProof(t *testing.T) {
 	assert.Equal(da.StatusSuccess, res1.Code)
 
 	mockRPCClient.On("GetProof", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
-	mockRPCClient.On("GetHeaders", mock.Anything, mock.Anything).Return(headers, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+	mockRPCClient.On("GetByHeight", mock.Anything, mock.Anything).Return(headers, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
 
 	retriever := dalc.(da.BatchRetriever)
 
@@ -278,7 +278,7 @@ func TestRetrievalWrongCommitment(t *testing.T) {
 	require.True(len(retrieveRes.Batches) == 0)
 
 	mockRPCClient.On("GetProof", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
-	mockRPCClient.On("GetHeaders", mock.Anything, mock.Anything).Return(headers, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+	mockRPCClient.On("GetByHeight", mock.Anything, mock.Anything).Return(headers, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
 
 	availRes := retriever.CheckBatchAvailability(h1)
 	assert.ErrorIs(availRes.Error, da.ErrUnableToGetProof)

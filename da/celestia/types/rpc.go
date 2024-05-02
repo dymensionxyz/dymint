@@ -7,7 +7,6 @@ import (
 	"github.com/celestiaorg/celestia-openrpc/types/blob"
 	"github.com/celestiaorg/celestia-openrpc/types/header"
 	"github.com/celestiaorg/celestia-openrpc/types/share"
-	"github.com/celestiaorg/celestia-openrpc/types/state"
 )
 
 type CelestiaRPCClient interface {
@@ -18,13 +17,6 @@ type CelestiaRPCClient interface {
 	Included(ctx context.Context, height uint64, namespace share.Namespace, proof *blob.Proof, commitment blob.Commitment) (bool, error)
 	Submit(ctx context.Context, blobs []*blob.Blob, gasPrice openrpc.GasPrice) (uint64, error)
 
-	GetHeaders(ctx context.Context, height uint64) (*header.ExtendedHeader, error)
-
-	/* ---------------------------------- state --------------------------------- */
-	SubmitPayForBlob(
-		ctx context.Context,
-		fee state.Int,
-		gasLim uint64,
-		blobs []*blob.Blob,
-	) (*state.TxResponse, error)
+	/* --------------------------------- header --------------------------------- */
+	GetByHeight(ctx context.Context, height uint64) (*header.ExtendedHeader, error)
 }

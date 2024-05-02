@@ -7,7 +7,6 @@ import (
 	"github.com/celestiaorg/celestia-openrpc/types/blob"
 	"github.com/celestiaorg/celestia-openrpc/types/header"
 	"github.com/celestiaorg/celestia-openrpc/types/share"
-	"github.com/celestiaorg/celestia-openrpc/types/state"
 
 	"github.com/dymensionxyz/dymint/da/celestia/types"
 )
@@ -24,16 +23,6 @@ func NewOpenRPC(rpc *openrpc.Client) *OpenRPC {
 	return &OpenRPC{
 		rpc: rpc,
 	}
-}
-
-// SubmitPayForBlob submits a pay for blob transaction.
-func (c *OpenRPC) SubmitPayForBlob(
-	ctx context.Context,
-	fee state.Int,
-	gasLim uint64,
-	blobs []*blob.Blob,
-) (*state.TxResponse, error) {
-	return c.rpc.State.SubmitPayForBlob(ctx, fee, gasLim, blobs)
 }
 
 // GetAll gets all blobs.
@@ -57,7 +46,7 @@ func (c *OpenRPC) Get(ctx context.Context, height uint64, namespace share.Namesp
 }
 
 // Get extended Celestia headers for a specific height
-func (c *OpenRPC) GetHeaders(ctx context.Context, height uint64) (*header.ExtendedHeader, error) {
+func (c *OpenRPC) GetByHeight(ctx context.Context, height uint64) (*header.ExtendedHeader, error) {
 	return c.rpc.Header.GetByHeight(ctx, height)
 }
 
