@@ -1,10 +1,25 @@
 with-expecter: true
+recursive: true
 packages:
-  github.com/dymensionxyz/dymint:
-    # place your package-specific config here
-    config:
+  github.com/tendermint/tendermint/proxy:
     interfaces:
-      # select the interfaces you want mocked
+      AppConnConsensus:
+
+  github.com/dymensionxyz/dymint/settlement/dymension:
+    interfaces:
+      CosmosClient:
+  github.com/dymensionxyz/dymint/settlement:
+    interfaces:
       LayerI:
-        # Modify package-level config for this specific interface (if applicable)
-        config:
+  github.com/tendermint/tendermint/abci/types:
+    interfaces:
+      Application:
+
+  github.com/dymensionxyz/dymint/da/celestia/types:
+    interfaces:
+      CelestiaRPCClient:
+  github.com/dymensionxyz/dymint/da/avail:
+    interfaces:
+     SubstrateApiI:
+
+

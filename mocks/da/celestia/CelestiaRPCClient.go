@@ -245,7 +245,8 @@ func (_m *CelestiaRPCClient) SubmitPayForBlob(ctx context.Context, fee math.Int,
 func NewCelestiaRPCClient(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *CelestiaRPCClient {
+},
+) *CelestiaRPCClient {
 	mock := &CelestiaRPCClient{}
 	mock.Mock.Test(t)
 
