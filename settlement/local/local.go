@@ -11,6 +11,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	uevent "github.com/dymensionxyz/dymint/utils/event"
+
 	"github.com/libp2p/go-libp2p/core/crypto"
 	tmp2p "github.com/tendermint/tendermint/p2p"
 
@@ -161,10 +163,7 @@ func (c *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 	c.saveBatch(settlementBatch)
 	go func() {
 		time.Sleep(10 * time.Millisecond) // mimic a delay in batch acceptance
-		err := c.pubsub.PublishWithEvents(context.Background(), &settlement.EventDataNewBatchAccepted{EndHeight: settlementBatch.EndHeight}, settlement.EventNewBatchAcceptedList)
-		if err != nil {
-			panic(err)
-		}
+		uevent.MustPublish(context.Background(), c.pubsub, &settlement.EventDataNewBatchAccepted{EndHeight: settlementBatch.EndHeight}, settlement.EventNewBatchAcceptedList)
 	}()
 	return nil
 }

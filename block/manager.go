@@ -179,7 +179,7 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 		go m.ProduceBlockLoop(ctx)
 		go m.SubmitLoop(ctx)
 	} else {
-		go uevent.MustSubscribe(ctx, m.Pubsub, "applyBlockLoop", p2p.EventQueryNewNewGossipedBlock, m.onNewGossipedBlock, m.logger, 100)
+		go uevent.MustSubscribe(ctx, m.Pubsub, "applyBlockLoop", p2p.EventQueryNewNewGossipedBlock, m.onNewGossipedBlock, m.logger)
 		go m.RetrieveLoop(ctx)
 		go m.SyncTargetLoop(ctx)
 	}
