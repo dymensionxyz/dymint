@@ -20,10 +20,8 @@ func MustSubscribe(
 	eventQuery pubsub.Query,
 	callback func(event pubsub.Message),
 	logger types.Logger,
-	outCapacity ...int,
 ) {
 	subscription, err := pubsubServer.SubscribeUnbuffered(ctx, clientID, eventQuery)
-	// subscription, err := pubsubServer.Subscribe(ctx, clientID, eventQuery, outCapacity...)
 	if err != nil {
 		panic(fmt.Errorf("subscribe: %w", err))
 	}
