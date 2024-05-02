@@ -38,51 +38,53 @@ func (m *Manager) RetrieveLoop(ctx context.Context) {
 func (m *Manager) syncUntilTarget(syncTarget uint64) error {
 	for currH := m.Store.Height(); currH < syncTarget; {
 
-		var stateIndex uint64
-		h := m.Store.Height() + 1
-
-		err := retry.Do(
-			func() error {
-				res, err := m.SLClient.GetHeightState(h)
-				if err != nil {
-					m.logger.Debug("sl client get height state", "error", err)
-					return err
-				}
-				stateIndex = res.State.StateIndex
-				return nil
-			},
-			retry.Attempts(0),
-			retry.Delay(500*time.Millisecond),
-			retry.LastErrorOnly(true),
-			retry.DelayType(retry.FixedDelay),
-		)
+		stateIndex, err := m.queryStateIndex()
 		if err != nil {
-			return fmt.Errorf("get height state: %w", err)
+			return fmt.Errorf("query state index: %w", err)
 		}
 
 		settlementBatch, err := m.SLClient.RetrieveBatch(stateIndex)
 		if err != nil {
-			return err
+			return fmt.Errorf("retrieve batch: %w", err)
 		}
 
 		m.logger.Info("Retrieved batch.", "state_index", stateIndex)
 
 		err = m.ProcessNextDABatch(settlementBatch.MetaData.DA)
 		if err != nil {
-			return err
+			return fmt.Errorf("process next DA batch: %w", err)
 		}
 
 	}
 
 	m.logger.Info("Synced", "store height", m.Store.Height(), "sync target", syncTarget)
 
-	// check for cached blocks
 	err := m.attemptApplyCachedBlocks()
 	if err != nil {
-		m.logger.Error("Attempt apply cache blocks.", "err", err)
+		m.logger.Error("Attempt apply cached blocks.", "err", err)
 	}
 
 	return nil
+}
+
+// TODO: we could encapsulate the retry in the SL client
+func (m *Manager) queryStateIndex() (uint64, error) {
+	var stateIndex uint64
+	return stateIndex, retry.Do(
+		func() error {
+			res, err := m.SLClient.GetHeightState(m.Store.Height() + 1)
+			if err != nil {
+				m.logger.Debug("sl client get height state", "error", err)
+				return err
+			}
+			stateIndex = res.State.StateIndex
+			return nil
+		},
+		retry.Attempts(0), // try forever
+		retry.Delay(500*time.Millisecond),
+		retry.LastErrorOnly(true),
+		retry.DelayType(retry.FixedDelay),
+	)
 }
 
 func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
