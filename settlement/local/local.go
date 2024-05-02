@@ -74,7 +74,7 @@ type HubClient struct {
 	settlementKV   store.KVStore
 }
 
-func (c *HubClient) GetHeightState(rollappID string, index uint64) (*settlement.ResultGetHeightState, error) {
+func (c *HubClient) GetHeightState(index uint64) (*settlement.ResultGetHeightState, error) {
 	// TODO implement me
 	panic("implement me")
 }

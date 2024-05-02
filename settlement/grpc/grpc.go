@@ -75,7 +75,7 @@ type HubGrpcClient struct {
 	refreshTime    int
 }
 
-func (c *HubGrpcClient) GetHeightState(rollappID string, index uint64) (*settlement.ResultGetHeightState, error) {
+func (c *HubGrpcClient) GetHeightState(index uint64) (*settlement.ResultGetHeightState, error) {
 	// TODO implement me
 	panic("implement me")
 }
