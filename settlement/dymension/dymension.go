@@ -274,7 +274,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 			includedBatch, err := d.waitForBatchInclusion(batch.StartHeight)
 			if err != nil {
 
-				err = fmt.Errorf("wait for batch inclusion: %w: %w", settlement.ErrBatchNotAccepted, err)
+				err = fmt.Errorf("wait for batch inclusion: %w", err)
 
 				uevent.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{Error: err}, settlement.EventHealthStatusList)
 

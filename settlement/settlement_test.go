@@ -100,7 +100,7 @@ func TestGetSequencersEmptyList(t *testing.T) {
 	var err error
 	settlementClient := registry.GetClient(registry.Local)
 	hubClientMock := mocks.NewHubClient(t)
-	hubClientMock.On("GetSequencers", tsmock.Anything, tsmock.Anything).Return(nil, settlement.ErrNoSequencerForRollapp)
+	hubClientMock.On("GetSequencers", tsmock.Anything, tsmock.Anything).Return(nil, gerr.ErrNotFound)
 	options := []settlement.Option{
 		settlement.WithHubClient(hubClientMock),
 	}
