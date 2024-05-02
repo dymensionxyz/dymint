@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/celestiaorg/celestia-openrpc/types/blob"
+	"github.com/celestiaorg/celestia-openrpc/types/header"
 	uretry "github.com/dymensionxyz/dymint/utils/retry"
 
 	"github.com/dymensionxyz/dymint/da"
@@ -17,8 +19,6 @@ import (
 	mocks "github.com/dymensionxyz/dymint/mocks/da/celestia"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
-	"github.com/rollkit/celestia-openrpc/types/blob"
-	"github.com/rollkit/celestia-openrpc/types/header"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"

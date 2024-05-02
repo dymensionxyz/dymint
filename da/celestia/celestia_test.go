@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/celestiaorg/celestia-openrpc/types/blob"
+	"github.com/celestiaorg/celestia-openrpc/types/header"
 	"github.com/celestiaorg/nmt"
-	"github.com/rollkit/celestia-openrpc/types/blob"
-	"github.com/rollkit/celestia-openrpc/types/header"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -302,8 +302,6 @@ func setDAandMock(t *testing.T) (*mocks.CelestiaRPCClient, da.DataAvailabilityLa
 	config := celestia.Config{
 		BaseURL:        "http://localhost:26658",
 		Timeout:        30 * time.Second,
-		GasLimit:       3000000,
-		Fee:            200000000,
 		NamespaceIDStr: "0000000000000000ffff",
 	}
 	err = config.InitNamespaceID()

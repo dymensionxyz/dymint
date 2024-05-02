@@ -3,12 +3,11 @@ package celestia
 import (
 	"context"
 
-	"github.com/rollkit/celestia-openrpc/types/blob"
-	"github.com/rollkit/celestia-openrpc/types/header"
-	"github.com/rollkit/celestia-openrpc/types/share"
-	"github.com/rollkit/celestia-openrpc/types/state"
-
-	openrpc "github.com/rollkit/celestia-openrpc"
+	openrpc "github.com/celestiaorg/celestia-openrpc"
+	"github.com/celestiaorg/celestia-openrpc/types/blob"
+	"github.com/celestiaorg/celestia-openrpc/types/header"
+	"github.com/celestiaorg/celestia-openrpc/types/share"
+	"github.com/celestiaorg/celestia-openrpc/types/state"
 
 	"github.com/dymensionxyz/dymint/da/celestia/types"
 )
@@ -43,8 +42,8 @@ func (c *OpenRPC) GetAll(ctx context.Context, height uint64, namespaces []share.
 }
 
 // Submit  blobs.
-func (c *OpenRPC) Submit(ctx context.Context, blobs []*blob.Blob, options *openrpc.SubmitOptions) (uint64, error) {
-	return c.rpc.Blob.Submit(ctx, blobs, options)
+func (c *OpenRPC) Submit(ctx context.Context, blobs []*blob.Blob, gasPrice openrpc.GasPrice) (uint64, error) {
+	return c.rpc.Blob.Submit(ctx, blobs, gasPrice)
 }
 
 // Getting proof for submitted blob

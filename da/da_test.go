@@ -138,10 +138,8 @@ func doTestRetrieve(t *testing.T, dalc da.DataAvailabilityLayerClient) {
 	}
 	if _, ok := dalc.(*celestia.DataAvailabilityLayerClient); ok {
 		config := celestia.Config{
-			BaseURL:  "http://localhost:26658",
-			Timeout:  30 * time.Second,
-			GasLimit: 3000000,
-			Fee:      2000000,
+			BaseURL: "http://localhost:26658",
+			Timeout: 30 * time.Second,
 		}
 		err := config.InitNamespaceID()
 		require.NoError(err)
