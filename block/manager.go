@@ -189,7 +189,7 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 
 // syncBlockManager enforces the node to be synced on initial run.
 func (m *Manager) syncBlockManager() error {
-	resultRetrieveBatch, err := m.getLatestBatchFromSL()
+	resultRetrieveBatch, err := m.SLClient.RetrieveBatch()
 	// Set the syncTarget according to the result
 	if err != nil {
 		// TODO: separate between fresh rollapp and non-registered rollapp
@@ -261,11 +261,6 @@ func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
 			m.logger.Error("applying cached blocks", "err", err)
 		}
 	}
-}
-
-// getLatestBatchFromSL gets the latest batch from the SL
-func (m *Manager) getLatestBatchFromSL() (*settlement.ResultRetrieveBatch, error) {
-	return m.SLClient.RetrieveBatch()
 }
 
 // getInitialState tries to load lastState from Store, and if it's not available it reads GenesisDoc.

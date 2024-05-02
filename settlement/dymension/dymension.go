@@ -6,8 +6,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/dymensionxyz/dymint/gerr"
-
 	uevent "github.com/dymensionxyz/dymint/utils/event"
 
 	"google.golang.org/grpc/codes"
@@ -327,60 +325,46 @@ func (d *HubClient) GetLatestBatch(rollappID string) (*settlement.ResultRetrieve
 	return d.convertStateInfoToResultRetrieveBatch(&stateInfoResp.StateInfo)
 }
 
-// GetBatchAtIndex returns the batch at the given index from the Dymension Hub.
-func (d *HubClient) GetBatchAtIndex(rollappID string, index uint64) (*settlement.ResultRetrieveBatch, error) {
-	var stateInfoResp *rollapptypes.QueryGetStateInfoResponse
-	err := d.RunWithRetry(func() error {
-		var err error
-		stateInfoResp, err = d.rollappQueryClient.StateInfo(d.ctx,
-			&rollapptypes.QueryGetStateInfoRequest{RollappId: d.config.RollappID, Index: index})
+func (d *HubClient) getStateInfo(index, height *uint64) (res *rollapptypes.QueryGetStateInfoResponse, err error) {
+	req := &rollapptypes.QueryGetStateInfoRequest{RollappId: d.config.RollappID}
+	if index != nil {
+		req.Index = *index
+	}
+	if height != nil {
+		req.Height = *height
+	}
+	err = d.RunWithRetry(func() error {
+		res, err = d.rollappQueryClient.StateInfo(d.ctx, req)
 
 		if status.Code(err) == codes.NotFound {
-			return retry.Unrecoverable(settlement.ErrBatchNotFound)
+			return retry.Unrecoverable(settlement.ErrBatchNotFound) // TODO: change it
 		}
-
 		return err
 	})
-	if err != nil {
-		return nil, err
+	if res == nil {
+		return nil, settlement.ErrEmptyResponse // TODO: change it
 	}
-	// not supposed to happen, but just in case
-	if stateInfoResp == nil {
-		return nil, settlement.ErrEmptyResponse
-	}
-
-	return d.convertStateInfoToResultRetrieveBatch(&stateInfoResp.StateInfo)
+	return
 }
 
-func (d *HubClient) GetHeightState(rollappID string, h uint64) (*settlement.ResultGetHeightState, error) {
-	// TODO: dry out with GetBatchAtIndex
-	var stateInfoResp *rollapptypes.QueryGetStateInfoResponse
-	err := d.RunWithRetry(func() error {
-		var err error
-		stateInfoResp, err = d.rollappQueryClient.StateInfo(d.ctx,
-			&rollapptypes.QueryGetStateInfoRequest{RollappId: d.config.RollappID, Height: h})
-
-		if status.Code(err) == codes.NotFound {
-			return retry.Unrecoverable(gerr.ErrNotFound)
-		}
-
-		return err
-	})
+// GetBatchAtIndex returns the batch at the given index from the Dymension Hub.
+func (d *HubClient) GetBatchAtIndex(rollappID string, index uint64) (*settlement.ResultRetrieveBatch, error) {
+	res, err := d.getStateInfo(&index, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get state info: %w", err)
 	}
-	// not supposed to happen, but just in case
-	if stateInfoResp == nil {
-		return nil, settlement.ErrEmptyResponse
-	}
-	res, err := d.convertStateInfoToResultRetrieveBatch(&stateInfoResp.StateInfo)
+	return d.convertStateInfoToResultRetrieveBatch(&res.StateInfo)
+}
+
+func (d *HubClient) GetHeightState(h uint64) (*settlement.ResultGetHeightState, error) {
+	res, err := d.getStateInfo(nil, &h)
 	if err != nil {
-		return nil, fmt.Errorf("convert state info to result retrieve batch: %w", err)
+		return nil, fmt.Errorf("get state info: %w", err)
 	}
 	return &settlement.ResultGetHeightState{
-		BaseResult: res.BaseResult,
+		ResultBase: settlement.ResultBase{Code: settlement.StatusSuccess},
 		State: settlement.State{
-			StateIndex: res.BaseResult.StateIndex,
+			StateIndex: res.GetStateInfo().StateInfoIndex.Index,
 		},
 	}, nil
 }
@@ -568,7 +552,7 @@ func (d *HubClient) convertStateInfoToResultRetrieveBatch(stateInfo *rollapptype
 		},
 	}
 	return &settlement.ResultRetrieveBatch{
-		BaseResult: settlement.BaseResult{Code: settlement.StatusSuccess, StateIndex: stateInfo.StateInfoIndex.Index},
+		ResultBase: settlement.ResultBase{Code: settlement.StatusSuccess, StateIndex: stateInfo.StateInfoIndex.Index},
 		Batch:      batchResult,
 	}, nil
 }
