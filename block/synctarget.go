@@ -13,6 +13,7 @@ import (
 // SyncTargetLoop is responsible for getting real time updates about batches submission.
 // for non aggregator: updating the sync target which will be used by retrieveLoop to sync until this target.
 func (m *Manager) SyncTargetLoop(ctx context.Context) {
+	m.logger.Info("Started sync target loop")
 	uevent.MustSubscribe(
 		ctx,
 		m.Pubsub,
