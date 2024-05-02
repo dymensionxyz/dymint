@@ -643,5 +643,5 @@ func (c *DataAvailabilityLayerClient) getDataAvailabilityHeaders(height uint64) 
 		return nil, err
 	}
 
-	return headers.DAH, err
+	return headers.DAH, nil
 }
