@@ -3,7 +3,6 @@ package block
 import (
 	"context"
 	"fmt"
-	"sync/atomic"
 	"time"
 
 	"github.com/avast/retry-go/v4"
@@ -12,8 +11,9 @@ import (
 	"github.com/dymensionxyz/dymint/da"
 )
 
-// RetrieveLoop listens for new sync messages written to a ring buffer and in turn
-// runs syncUntilTarget on the latest message in the ring buffer.
+// RetrieveLoop listens for new target sync heights and then syncs the chain by
+// fetching batches from the settlement layer and then fetching the actual blocks
+// from the DA.
 func (m *Manager) RetrieveLoop(ctx context.Context) {
 	m.logger.Info("started retrieve loop")
 	syncTargetPoller := diodes.NewPoller(m.SyncTargetDiode, diodes.WithPollingContext(ctx))
@@ -24,8 +24,8 @@ func (m *Manager) RetrieveLoop(ctx context.Context) {
 			return
 		default:
 			// Get only the latest sync target
-			syncTarget := syncTargetPoller.Next()
-			err := m.syncUntilTarget(*(*uint64)(syncTarget))
+			targetHeight := syncTargetPoller.Next()
+			err := m.syncUntilTarget(*(*uint64)(targetHeight))
 			if err != nil {
 				panic(fmt.Errorf("sync until target: %w", err))
 			}
@@ -33,22 +33,50 @@ func (m *Manager) RetrieveLoop(ctx context.Context) {
 	}
 }
 
-// syncUntilTarget syncs the block until the syncTarget is reached.
+// syncUntilTarget syncs blocks until the target height is reached.
 // It fetches the batches from the settlement, gets the DA height and gets
 // the actual blocks from the DA.
-func (m *Manager) syncUntilTarget(syncTarget uint64) error {
-	currentHeight := m.Store.Height()
+func (m *Manager) syncUntilTarget(targetHeight uint64) error {
+	for currH := m.Store.Height(); currH < targetHeight; {
 
-	if currentHeight >= syncTarget {
-		m.logger.Info("Already synced", "current height", currentHeight, "syncTarget", syncTarget)
-		return nil
+		// It's important that we query the state index before fetching the batch, rather
+		// than e.g. keep it and increment it, because we might be concurrently applying blocks
+		// and may require a higher index than expected.
+		stateIndex, err := m.queryStateIndex()
+		if err != nil {
+			return fmt.Errorf("query state index: %w", err)
+		}
+
+		settlementBatch, err := m.SLClient.RetrieveBatch(stateIndex)
+		if err != nil {
+			return fmt.Errorf("retrieve batch: %w", err)
+		}
+
+		m.logger.Info("Retrieved batch.", "state_index", stateIndex)
+
+		err = m.ProcessNextDABatch(settlementBatch.MetaData.DA)
+		if err != nil {
+			return fmt.Errorf("process next DA batch: %w", err)
+		}
+
 	}
 
+	m.logger.Info("Synced", "store height", m.Store.Height(), "target height", targetHeight)
+
+	err := m.attemptApplyCachedBlocks()
+	if err != nil {
+		m.logger.Error("Attempt apply cached blocks.", "err", err)
+	}
+
+	return nil
+}
+
+// TODO: we could encapsulate the retry in the SL client
+func (m *Manager) queryStateIndex() (uint64, error) {
 	var stateIndex uint64
-	h := m.Store.Height()
-	err := retry.Do(
+	return stateIndex, retry.Do(
 		func() error {
-			res, err := m.SLClient.GetHeightState(h)
+			res, err := m.SLClient.GetHeightState(m.Store.Height() + 1)
 			if err != nil {
 				m.logger.Debug("sl client get height state", "error", err)
 				return err
@@ -56,56 +84,11 @@ func (m *Manager) syncUntilTarget(syncTarget uint64) error {
 			stateIndex = res.State.StateIndex
 			return nil
 		},
-		retry.Attempts(0),
+		retry.Attempts(0), // try forever
 		retry.Delay(500*time.Millisecond),
 		retry.LastErrorOnly(true),
 		retry.DelayType(retry.FixedDelay),
 	)
-	if err != nil {
-		return fmt.Errorf("get height state: %w", err)
-	}
-	m.updateStateIndex(stateIndex - 1)
-	m.logger.Debug("Sync until target: updated state index pre loop", "stateIndex", stateIndex, "height", h, "syncTarget", syncTarget)
-
-	for currentHeight < syncTarget {
-		currStateIdx := atomic.LoadUint64(&m.LastState.SLStateIndex) + 1
-		m.logger.Info("Syncing until target", "height", currentHeight, "state_index", currStateIdx, "syncTarget", syncTarget)
-		settlementBatch, err := m.SLClient.RetrieveBatch(currStateIdx)
-		if err != nil {
-			return err
-		}
-
-		err = m.ProcessNextDABatch(settlementBatch.MetaData.DA)
-		if err != nil {
-			return err
-		}
-
-		currentHeight = m.Store.Height()
-
-		err = m.updateStateIndex(settlementBatch.StateIndex)
-		if err != nil {
-			return err
-		}
-	}
-	m.logger.Info("Synced", "current height", currentHeight, "syncTarget", syncTarget)
-
-	// check for cached blocks
-	err = m.attemptApplyCachedBlocks()
-	if err != nil {
-		m.logger.Error("applying previous cached blocks", "err", err)
-	}
-
-	return nil
-}
-
-func (m *Manager) updateStateIndex(stateIndex uint64) error {
-	atomic.StoreUint64(&m.LastState.SLStateIndex, stateIndex)
-	_, err := m.Store.UpdateState(m.LastState, nil)
-	if err != nil {
-		m.logger.Error("update state", "error", err)
-		return err
-	}
-	return nil
 }
 
 func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
