@@ -47,13 +47,15 @@ func TestCreateBlock(t *testing.T) {
 	executor, err := block.NewExecutor([]byte("test address"), nsID, "test", mpool, proxy.NewAppConns(clientCreator), nil, logger)
 	assert.NoError(err)
 
+	maxBytes := uint64(100)
+
 	state := types.State{}
-	state.ConsensusParams.Block.MaxBytes = 100
+	state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
 	state.ConsensusParams.Block.MaxGas = 100000
 	state.Validators = tmtypes.NewValidatorSet(nil)
 
 	// empty block
-	block := executor.CreateBlock(1, &types.Commit{}, [32]byte{}, state)
+	block := executor.CreateBlock(1, &types.Commit{}, [32]byte{}, state, maxBytes)
 	require.NotNil(block)
 	assert.Empty(block.Data.Txs)
 	assert.Equal(uint64(1), block.Header.Height)
@@ -61,7 +63,7 @@ func TestCreateBlock(t *testing.T) {
 	// one small Tx
 	err = mpool.CheckTx([]byte{1, 2, 3, 4}, func(r *abci.Response) {}, mempool.TxInfo{})
 	require.NoError(err)
-	block = executor.CreateBlock(2, &types.Commit{}, [32]byte{}, state)
+	block = executor.CreateBlock(2, &types.Commit{}, [32]byte{}, state, maxBytes)
 	require.NotNil(block)
 	assert.Equal(uint64(2), block.Header.Height)
 	assert.Len(block.Data.Txs, 1)
@@ -71,7 +73,7 @@ func TestCreateBlock(t *testing.T) {
 	require.NoError(err)
 	err = mpool.CheckTx(make([]byte, 100), func(r *abci.Response) {}, mempool.TxInfo{})
 	require.NoError(err)
-	block = executor.CreateBlock(3, &types.Commit{}, [32]byte{}, state)
+	block = executor.CreateBlock(3, &types.Commit{}, [32]byte{}, state, maxBytes)
 	require.NotNil(block)
 	assert.Len(block.Data.Txs, 2)
 }
@@ -143,13 +145,14 @@ func TestApplyBlock(t *testing.T) {
 	}
 	state.InitialHeight = 1
 	state.LastBlockHeight = 0
-	state.ConsensusParams.Block.MaxBytes = 100
+	maxBytes := uint64(100)
+	state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
 	state.ConsensusParams.Block.MaxGas = 100000
 
 	// Create first block with one Tx from mempool
 	_ = mpool.CheckTx([]byte{1, 2, 3, 4}, func(r *abci.Response) {}, mempool.TxInfo{})
 	require.NoError(err)
-	block := executor.CreateBlock(1, &types.Commit{Height: 0}, [32]byte{}, state)
+	block := executor.CreateBlock(1, &types.Commit{Height: 0}, [32]byte{}, state, maxBytes)
 	require.NotNil(block)
 	assert.Equal(uint64(1), block.Header.Height)
 	assert.Len(block.Data.Txs, 1)
@@ -191,7 +194,7 @@ func TestApplyBlock(t *testing.T) {
 	require.NoError(mpool.CheckTx([]byte{5, 6, 7, 8, 9}, func(r *abci.Response) {}, mempool.TxInfo{}))
 	require.NoError(mpool.CheckTx([]byte{1, 2, 3, 4, 5}, func(r *abci.Response) {}, mempool.TxInfo{}))
 	require.NoError(mpool.CheckTx(make([]byte, 90), func(r *abci.Response) {}, mempool.TxInfo{}))
-	block = executor.CreateBlock(2, commit, [32]byte{}, newState)
+	block = executor.CreateBlock(2, commit, [32]byte{}, newState, maxBytes)
 	require.NotNil(block)
 	assert.Equal(uint64(2), block.Header.Height)
 	assert.Len(block.Data.Txs, 3)
