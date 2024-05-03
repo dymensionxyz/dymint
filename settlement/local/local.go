@@ -31,7 +31,7 @@ const kvStoreDBName = "settlement"
 
 var (
 	settlementKVPrefix = []byte{0}
-	slStateIndexKey    = []byte("slStateIndex")
+	slStateIndexKey    = []byte("slStateIndex") // used to recover after reboot
 )
 
 // LayerClient is an extension of the base settlement layer client
