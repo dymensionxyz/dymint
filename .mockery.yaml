@@ -8,12 +8,19 @@ packages:
     interfaces:
       LayerI:
       HubClient:
+  github.com/dymensionxyz/dymension/v3/x/sequencer/types:
+    interfaces:
+      QueryClient:
+  github.com/dymensionxyz/dymension/v3/x/rollapp/types:
+    interfaces:
+      QueryClient:
   github.com/tendermint/tendermint/abci/types:
     interfaces:
       Application:
   github.com/tendermint/tendermint/proxy:
     interfaces:
       AppConnConsensus:
+      AppConns:
   github.com/dymensionxyz/dymint/da/celestia/types:
     interfaces:
       CelestiaRPCClient:

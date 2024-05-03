@@ -23,6 +23,8 @@ import (
 	"github.com/dymensionxyz/dymint/mempool"
 	mempoolv1 "github.com/dymensionxyz/dymint/mempool/v1"
 	tmmocks "github.com/dymensionxyz/dymint/mocks/github.com/tendermint/tendermint/abci/types"
+	tmmocksproxy "github.com/dymensionxyz/dymint/mocks/github.com/tendermint/tendermint/proxy"
+
 	"github.com/dymensionxyz/dymint/types"
 )
 
@@ -32,7 +34,7 @@ func TestCreateBlock(t *testing.T) {
 
 	logger := log.TestingLogger()
 
-	app := &mocks.Application{}
+	app := &tmmocks.MockApplication{}
 	app.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{})
 
 	clientCreator := proxy.NewLocalClientCreator(app)
@@ -117,7 +119,7 @@ func TestApplyBlock(t *testing.T) {
 	require.NoError(eventBus.Start())
 
 	// Mock app connections
-	appConns := &mocks.AppConns{}
+	appConns := &tmmocksproxy.MockAppConns{}
 	appConns.On("Consensus").Return(abciClient)
 	appConns.On("Query").Return(abciClient)
 	executor, err := block.NewExecutor([]byte("test address"), nsID, chainID, mpool, appConns, eventBus, logger)

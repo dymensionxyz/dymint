@@ -317,8 +317,11 @@ func (d *HubClient) getStateInfo(index, height *uint64) (res *rollapptypes.Query
 		}
 		return err
 	})
+	if err != nil {
+		return nil, fmt.Errorf("query state info: %w: %w", gerr.ErrUnknown, err)
+	}
 	if res == nil { // not supposed to happen
-		return nil, fmt.Errorf("empty response: %w", gerr.ErrUnknown)
+		return nil, fmt.Errorf("empty response with nil err: %w", gerr.ErrUnknown)
 	}
 	return
 }
