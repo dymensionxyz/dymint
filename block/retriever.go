@@ -39,7 +39,6 @@ func (m *Manager) RetrieveLoop(ctx context.Context) {
 func (m *Manager) syncUntilTarget(targetHeight uint64) error {
 	for currH := m.Store.Height(); currH < targetHeight; currH = m.Store.Height() {
 
-		m.logger.Error(fmt.Sprintf("Current height: %d, target height: %d\n, store height: %d", currH, targetHeight, m.Store.Height()))
 		// It's important that we query the state index before fetching the batch, rather
 		// than e.g. keep it and increment it, because we might be concurrently applying blocks
 		// and may require a higher index than expected.
