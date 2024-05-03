@@ -14,6 +14,7 @@ packages:
   github.com/tendermint/tendermint/proxy:
     interfaces:
       AppConnConsensus:
+      AppConns:
   github.com/dymensionxyz/dymint/da/celestia/types:
     interfaces:
       CelestiaRPCClient:
