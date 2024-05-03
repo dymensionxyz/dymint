@@ -29,7 +29,7 @@ import (
 	rollapptypes "github.com/dymensionxyz/dymension/v3/x/rollapp/types"
 	sequencertypes "github.com/dymensionxyz/dymension/v3/x/sequencer/types"
 	"github.com/dymensionxyz/dymint/da"
-	mocks "github.com/dymensionxyz/dymint/mocks"
+	mocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/settlement/dymension"
 	settlementmocks "github.com/dymensionxyz/dymint/mocks/settlement"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/settlement/dymension"
@@ -41,7 +41,7 @@ import (
 func TestGetSequencers(t *testing.T) {
 	var err error
 	require := require.New(t)
-	cosmosClientMock := mocks.NewCosmosClient(t)
+	cosmosClientMock := mocks.NewMockCosmosClient(t)
 
 	sequencerQueryClientMock := settlementmocks.NewSequencerQueryClient(t)
 	count := 5
@@ -81,7 +81,7 @@ func TestPostBatch(t *testing.T) {
 	require.NoError(err)
 
 	// Create a mock cosmos client
-	cosmosClientMock := mocks.NewCosmosClient(t)
+	cosmosClientMock := mocks.NewMockCosmosClient(t)
 	sequencerQueryClientMock := settlementmocks.NewSequencerQueryClient(t)
 	rollappQueryClientMock := settlementmocks.NewRollAppQueryClient(t)
 	cosmosClientMock.On("GetRollappClient").Return(rollappQueryClientMock)
