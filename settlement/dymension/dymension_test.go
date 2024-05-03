@@ -29,8 +29,9 @@ import (
 	rollapptypes "github.com/dymensionxyz/dymension/v3/x/rollapp/types"
 	sequencertypes "github.com/dymensionxyz/dymension/v3/x/sequencer/types"
 	"github.com/dymensionxyz/dymint/da"
+	rollappmocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymension/v3/x/rollapp/types"
+	settlementmocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymension/v3/x/sequencer/types"
 	mocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/settlement/dymension"
-	settlementmocks "github.com/dymensionxyz/dymint/mocks/settlement"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/settlement/dymension"
 	"github.com/dymensionxyz/dymint/testutil"
@@ -43,12 +44,12 @@ func TestGetSequencers(t *testing.T) {
 	require := require.New(t)
 	cosmosClientMock := mocks.NewMockCosmosClient(t)
 
-	sequencerQueryClientMock := settlementmocks.NewSequencerQueryClient(t)
+	sequencerQueryClientMock := settlementmocks.NewMockQueryClient(t)
 	count := 5
 	sequencersRollappResponse, _ := generateSequencerByRollappResponse(t, count)
 	sequencerQueryClientMock.On("SequencersByRollappByStatus", mock.Anything, mock.Anything).Return(sequencersRollappResponse, nil)
 
-	cosmosClientMock.On("GetRollappClient").Return(settlementmocks.NewRollAppQueryClient(t))
+	cosmosClientMock.On("GetRollappClient").Return(rollappmocks.NewMockQueryClient(t))
 	cosmosClientMock.On("GetSequencerClient").Return(sequencerQueryClientMock)
 
 	options := []dymension.Option{
@@ -82,8 +83,8 @@ func TestPostBatch(t *testing.T) {
 
 	// Create a mock cosmos client
 	cosmosClientMock := mocks.NewMockCosmosClient(t)
-	sequencerQueryClientMock := settlementmocks.NewSequencerQueryClient(t)
-	rollappQueryClientMock := settlementmocks.NewRollAppQueryClient(t)
+	sequencerQueryClientMock := settlementmocks.NewMockQueryClient(t)
+	rollappQueryClientMock := rollappmocks.NewMockQueryClient(t)
 	cosmosClientMock.On("GetRollappClient").Return(rollappQueryClientMock)
 	cosmosClientMock.On("GetSequencerClient").Return(sequencerQueryClientMock)
 	submitBatchError := errors.New("failed to submit batch")
