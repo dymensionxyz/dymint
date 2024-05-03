@@ -123,7 +123,7 @@ func TestPostBatch(t *testing.T) {
 		expectedError           error
 	}{
 		{
-			name:                    "TestSubmitBatchFailure",
+			name:                    "SubmitBatchFailure",
 			isBatchSubmitSuccess:    false,
 			isBatchAcceptedHubEvent: false,
 			shouldMockBatchIncluded: true,
@@ -131,7 +131,7 @@ func TestPostBatch(t *testing.T) {
 			expectedError:           submitBatchError,
 		},
 		{
-			name:                    "TestSubmitBatchSuccessNoBatchAcceptedHubEventNotIncluded",
+			name:                    "SubmitBatchSuccessNoBatchAcceptedHubEventNotIncluded",
 			isBatchSubmitSuccess:    true,
 			isBatchAcceptedHubEvent: false,
 			shouldMockBatchIncluded: true,
@@ -139,7 +139,7 @@ func TestPostBatch(t *testing.T) {
 			expectedError:           gerr.ErrNotFound,
 		},
 		{
-			name:                    "TestSubmitBatchSuccessNotAcceptedYesIncluded",
+			name:                    "SubmitBatchSuccessNotAcceptedYesIncluded",
 			isBatchSubmitSuccess:    true,
 			isBatchAcceptedHubEvent: false,
 			shouldMockBatchIncluded: true,
@@ -147,7 +147,7 @@ func TestPostBatch(t *testing.T) {
 			expectedError:           nil,
 		},
 		{
-			name:                    "TestSubmitBatchSuccessAndAccepted",
+			name:                    "SubmitBatchSuccessAndAccepted",
 			isBatchSubmitSuccess:    true,
 			isBatchAcceptedHubEvent: true,
 			shouldMockBatchIncluded: false,
