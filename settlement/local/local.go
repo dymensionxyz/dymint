@@ -194,7 +194,7 @@ func (c *HubClient) GetBatchAtIndex(rollappID string, index uint64) (*settlement
 func (c *HubClient) GetHeightState(h uint64) (*settlement.ResultGetHeightState, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	// TODO: optimize
+	// TODO: optimize (binary search, or just make another index)
 	for i := c.slStateIndex; i > 0; i-- {
 		b, err := c.GetBatchAtIndex("", i)
 		if err != nil {
