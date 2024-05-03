@@ -9,6 +9,10 @@ import (
 	"testing"
 	"time"
 
+	"google.golang.org/grpc/codes"
+
+	"google.golang.org/grpc/status"
+
 	"github.com/dymensionxyz/dymint/gerr"
 
 	"github.com/tendermint/tendermint/libs/log"
@@ -182,7 +186,7 @@ func TestPostBatch(t *testing.T) {
 						}},
 						nil)
 				} else {
-					rollappQueryClientMock.On("StateInfo", mock.Anything, mock.Anything).Return(nil, fmt.Errorf("error"))
+					rollappQueryClientMock.On("StateInfo", mock.Anything, mock.Anything).Return(nil, status.New(codes.NotFound, "not found").Err())
 				}
 			}
 			hubClient, err := dymension.NewDymensionHubClient(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
