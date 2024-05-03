@@ -22,7 +22,7 @@ import (
 
 	"github.com/dymensionxyz/dymint/mempool"
 	mempoolv1 "github.com/dymensionxyz/dymint/mempool/v1"
-	"github.com/dymensionxyz/dymint/mocks"
+	tmmocks "github.com/dymensionxyz/dymint/mocks/github.com/tendermint/tendermint/abci/types"
 	"github.com/dymensionxyz/dymint/types"
 )
 
@@ -83,7 +83,7 @@ func TestApplyBlock(t *testing.T) {
 	logger := log.TestingLogger()
 
 	// Mock ABCI app
-	app := &mocks.Application{}
+	app := &tmmocks.MockApplication{}
 	app.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{})
 	app.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
 	app.On("DeliverTx", mock.Anything).Return(abci.ResponseDeliverTx{})

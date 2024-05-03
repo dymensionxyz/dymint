@@ -11,6 +11,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/dymensionxyz/dymint/gerr"
+
 	"github.com/libp2p/go-libp2p/core/crypto"
 	tmp2p "github.com/tendermint/tendermint/p2p"
 
@@ -72,7 +74,7 @@ type HubClient struct {
 	settlementKV   store.KVStore
 }
 
-func (c *HubClient) GetHeightState(rollappID string, index uint64) (*settlement.ResultGetHeightState, error) {
+func (c *HubClient) GetHeightState(index uint64) (*settlement.ResultGetHeightState, error) {
 	// TODO implement me
 	panic("implement me")
 }
@@ -183,7 +185,7 @@ func (c *HubClient) GetBatchAtIndex(rollappID string, index uint64) (*settlement
 	batchResult, err := c.retrieveBatchAtStateIndex(index)
 	if err != nil {
 		return &settlement.ResultRetrieveBatch{
-			BaseResult: settlement.BaseResult{Code: settlement.StatusError, Message: err.Error()},
+			ResultBase: settlement.ResultBase{Code: settlement.StatusError, Message: err.Error()},
 		}, err
 	}
 	return batchResult, nil
@@ -250,7 +252,7 @@ func (c *HubClient) retrieveBatchAtStateIndex(slStateIndex uint64) (*settlement.
 	b, err := c.settlementKV.Get(getKey(slStateIndex))
 	c.logger.Debug("Retrieving batch from settlement layer", "SL state index", slStateIndex)
 	if err != nil {
-		return nil, settlement.ErrBatchNotFound
+		return nil, gerr.ErrNotFound
 	}
 	var settlementBatch settlement.Batch
 	err = json.Unmarshal(b, &settlementBatch)
@@ -258,7 +260,7 @@ func (c *HubClient) retrieveBatchAtStateIndex(slStateIndex uint64) (*settlement.
 		return nil, errors.New("error unmarshalling batch")
 	}
 	batchResult := settlement.ResultRetrieveBatch{
-		BaseResult: settlement.BaseResult{Code: settlement.StatusSuccess, StateIndex: slStateIndex},
+		ResultBase: settlement.ResultBase{Code: settlement.StatusSuccess, StateIndex: slStateIndex},
 		Batch:      &settlementBatch,
 	}
 	return &batchResult, nil

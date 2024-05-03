@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dymensionxyz/dymint/gerr"
+
 	"github.com/tendermint/tendermint/libs/log"
 
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
@@ -133,7 +135,7 @@ func TestPostBatch(t *testing.T) {
 			isBatchAcceptedHubEvent: false,
 			shouldMockBatchIncluded: true,
 			isBatchIncludedSuccess:  false,
-			expectedError:           settlement.ErrBatchNotAccepted,
+			expectedError:           gerr.ErrNotFound,
 		},
 		{
 			name:                    "TestSubmitBatchSuccessNotAcceptedYesIncluded",
