@@ -255,11 +255,9 @@ func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
 		m.logger.Debug("caching block", "block height", block.Header.Height, "store height", m.Store.Height())
 	}
 	m.retrieverMutex.Unlock() // have to give this up as it's locked again in attempt apply, and we're not re-entrant
-	if block.Header.Height == nextHeight {
-		err := m.attemptApplyCachedBlocks()
-		if err != nil {
-			m.logger.Error("applying cached blocks", "err", err)
-		}
+	err := m.attemptApplyCachedBlocks()
+	if err != nil {
+		m.logger.Error("applying cached blocks", "err", err)
 	}
 }
 

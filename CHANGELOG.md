@@ -18,6 +18,12 @@
 * **rpc:** nil panic in rpc/json/handler.go WriteError ([#750](https://github.com/dymensionxyz/dymint/issues/750)) ([e09709b](https://github.com/dymensionxyz/dymint/commit/e09709b428a33da002defb9f13178fa19b81a69b))
 * **settlement:** remove state index from proto ([#777](https://github.com/dymensionxyz/dymint/issues/777)) ([767b8fd](https://github.com/dymensionxyz/dymint/commit/767b8fdb490c37deee43ac023688410bbb98ccb0))
 * **sync:** make sure we use a latest state index as a start point ([#760](https://github.com/dymensionxyz/dymint/issues/760)) ([43e2d96](https://github.com/dymensionxyz/dymint/commit/43e2d965f2b505751f8e5260549e909c976141ee))
+* **tests:** fix unit tests, mocks, cleanup/dry hub queries ([#782](https://github.com/dymensionxyz/dymint/issues/782)) ([c276aea](https://github.com/dymensionxyz/dymint/commit/c276aea12c9cd37f62fcf9d684c4efe901a510bf))
+
+
+### Features
+
+* **produce:** limiting block size by maxBatchSize ([#784](https://github.com/dymensionxyz/dymint/issues/784)) ([f90042c](https://github.com/dymensionxyz/dymint/commit/f90042cd61fc6b60093478cd65491f8aa1106457))
 
 
 
