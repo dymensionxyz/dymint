@@ -58,14 +58,11 @@ type Manager struct {
 	SyncTarget      atomic.Uint64
 
 	// Block production
-	shouldProduceBlocksCh chan bool
-	produceEmptyBlockCh   chan bool
-	lastSubmissionTime    atomic.Int64
-
-	/*
-		Guard against triggering a new batch submission when the old one is still going on (taking a while)
-	*/
-	submitBatchMutex sync.Mutex
+	accumulatedProducedSize uint64
+	shouldProduceBlocksCh   chan bool
+	shouldSubmitBatchCh     chan bool
+	produceEmptyBlockCh     chan bool
+	lastSubmissionTime      atomic.Int64
 
 	/*
 		Protect against producing two blocks at once if the first one is taking a while
@@ -79,12 +76,6 @@ type Manager struct {
 		and incoming DA blocks, respectively.
 	*/
 	retrieverMutex sync.Mutex
-
-	// pendingBatch is the result of the last DA submission
-	// that is pending settlement layer submission.
-	// It is used to avoid double submission of the same batch.
-	// It's protected by submitBatchMutex.
-	pendingBatch *PendingBatch
 
 	logger types.Logger
 
@@ -123,20 +114,20 @@ func NewManager(
 	}
 
 	agg := &Manager{
-		Pubsub:      pubsub,
-		p2pClient:   p2pClient,
-		ProposerKey: proposerKey,
-		Conf:        conf,
-		Genesis:     genesis,
-		LastState:   s,
-		Store:       store,
-		Executor:    exec,
-		DAClient:    dalc,
-		SLClient:    settlementClient,
-		Retriever:   dalc.(da.BatchRetriever),
-		// channels are buffered to avoid blocking on input/output operations, buffer sizes are arbitrary
+		Pubsub:                pubsub,
+		p2pClient:             p2pClient,
+		ProposerKey:           proposerKey,
+		Conf:                  conf,
+		Genesis:               genesis,
+		LastState:             s,
+		Store:                 store,
+		Executor:              exec,
+		DAClient:              dalc,
+		SLClient:              settlementClient,
+		Retriever:             dalc.(da.BatchRetriever),
 		SyncTargetDiode:       diodes.NewOneToOne(1, nil),
 		shouldProduceBlocksCh: make(chan bool, 1),
+		shouldSubmitBatchCh:   make(chan bool, 10), //allow capacity for multiple pending batches to support bursts
 		produceEmptyBlockCh:   make(chan bool, 1),
 		logger:                logger,
 		blockCache:            make(map[uint64]CachedBlock),

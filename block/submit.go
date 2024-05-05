@@ -17,25 +17,27 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 	ticker := time.NewTicker(m.Conf.BatchSubmitMaxTime)
 	defer ticker.Stop()
 
-	// TODO: add submission trigger by batch size (should be signaled from the the block production)
 	for {
+		var err error
 		select {
 		// Context canceled
 		case <-ctx.Done():
 			return
+		// Trigger by block production
+		case <-m.shouldSubmitBatchCh:
+			err = m.HandleSubmissionTrigger(ctx)
 		// trigger by time
 		case <-ticker.C:
-			err := m.HandleSubmissionTrigger(ctx)
-			if errors.Is(err, gerr.ErrAborted) {
-				continue
-			}
-			if errors.Is(err, gerr.ErrUnauthenticated) {
-				panic(fmt.Errorf("handle submission trigger: %w", err))
-			}
-			if err != nil {
-				m.logger.Error("handle submission trigger", "error", err)
-			}
+			err = m.HandleSubmissionTrigger(ctx)
 		}
+		if err == nil {
+			continue
+		}
+		if errors.Is(err, gerr.ErrUnauthenticated) {
+			panic(fmt.Errorf("handle submission trigger: %w", err))
+		}
+
+		m.logger.Error("handle submission trigger", "error", err)
 	}
 }
 
@@ -44,11 +46,6 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 // pass through during the batch submission process due to proofs requires for ibc messages only exist on the next block.
 // Finally, it submits the next batch of blocks and updates the sync target to the height of the last block in the submitted batch.
 func (m *Manager) HandleSubmissionTrigger(ctx context.Context) error {
-	if !m.submitBatchMutex.TryLock() {
-		return fmt.Errorf("batch submission already in process, skipping submission: %w", gerr.ErrAborted)
-	}
-	defer m.submitBatchMutex.Unlock()
-
 	// Load current sync target and height to determine if new blocks are available for submission.
 	if m.Store.Height() <= m.SyncTarget.Load() {
 		return nil // No new blocks have been produced
@@ -60,31 +57,20 @@ func (m *Manager) HandleSubmissionTrigger(ctx context.Context) error {
 		m.logger.Error("Produce and gossip empty block.", "error", err)
 	}
 
-	if m.pendingBatch == nil {
-		nextBatch, err := m.createNextBatch()
-		if err != nil {
-			return fmt.Errorf("create next batch: %w", err)
-		}
-
-		resultSubmitToDA, err := m.submitNextBatchToDA(nextBatch)
-		if err != nil {
-			return fmt.Errorf("submit next batch to da: %w", err)
-		}
-
-		m.pendingBatch = &PendingBatch{
-			daResult: resultSubmitToDA,
-			batch:    nextBatch,
-		}
-	} else {
-		m.logger.Info("Pending batch already exists.", "startHeight", m.pendingBatch.batch.StartHeight, "endHeight", m.pendingBatch.batch.EndHeight)
-	}
-
-	syncHeight, err := m.submitPendingBatchToSL(*m.pendingBatch)
+	nextBatch, err := m.createNextBatch()
 	if err != nil {
-		return fmt.Errorf("submit pending batch to sl: %w", err)
+		return fmt.Errorf("create next batch: %w", err)
 	}
 
-	m.pendingBatch = nil
+	resultSubmitToDA, err := m.submitNextBatchToDA(nextBatch)
+	if err != nil {
+		return fmt.Errorf("submit next batch to da: %w", err)
+	}
+
+	syncHeight, err := m.submitPendingBatchToSL(nextBatch, resultSubmitToDA)
+	if err != nil {
+		panic(fmt.Errorf("submit pending batch to sl: %w", err))
+	}
 
 	// Update the syncTarget to the height of the last block in the last batch as seen by this node.
 	m.UpdateSyncParams(syncHeight)
@@ -135,10 +121,10 @@ func (m *Manager) submitNextBatchToDA(nextBatch *types.Batch) (*da.ResultSubmitB
 	return &resultSubmitToDA, nil
 }
 
-func (m *Manager) submitPendingBatchToSL(p PendingBatch) (uint64, error) {
-	startHeight := p.batch.StartHeight
-	actualEndHeight := p.batch.EndHeight
-	err := m.SLClient.SubmitBatch(p.batch, m.DAClient.GetClientType(), p.daResult)
+func (m *Manager) submitPendingBatchToSL(batch *types.Batch, daResult *da.ResultSubmitBatch) (uint64, error) {
+	startHeight := batch.StartHeight
+	actualEndHeight := batch.EndHeight
+	err := m.SLClient.SubmitBatch(batch, m.DAClient.GetClientType(), daResult)
 	if err != nil {
 		return 0, fmt.Errorf("sl client submit batch: startheight: %d: actual end height: %d: %w", startHeight, actualEndHeight, err)
 	}

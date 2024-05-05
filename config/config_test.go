@@ -202,8 +202,8 @@ func fullNodeConfig() config.NodeConfig {
 	return config.NodeConfig{
 		BlockManagerConfig: config.BlockManagerConfig{
 			BlockTime:               1 * time.Second,
-			EmptyBlocksMaxTime:      2 * time.Second,
-			BatchSubmitMaxTime:      1 * time.Second,
+			EmptyBlocksMaxTime:      20 * time.Second,
+			BatchSubmitMaxTime:      20 * time.Second,
 			NamespaceID:             "test",
 			BlockBatchSize:          1,
 			BlockBatchMaxSizeBytes:  1,

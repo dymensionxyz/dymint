@@ -49,6 +49,7 @@ type BlockManagerConfig struct {
 	BatchSubmitMaxTime time.Duration `mapstructure:"batch_submit_max_time"`
 	NamespaceID        string        `mapstructure:"namespace_id"`
 	// The size of the batch in blocks. Every batch we'll write to the DA and the settlement layer.
+	//TODO: remove
 	BlockBatchSize uint64 `mapstructure:"block_batch_size"`
 	// The size of the batch in Bytes. Every batch we'll write to the DA and the settlement layer.
 	BlockBatchMaxSizeBytes uint64 `mapstructure:"block_batch_max_size_bytes"`
@@ -131,6 +132,10 @@ func (c BlockManagerConfig) Validate() error {
 
 	if c.BatchSubmitMaxTime < c.BlockTime {
 		return fmt.Errorf("batch_submit_max_time must be greater than block_time")
+	}
+
+	if c.BatchSubmitMaxTime < c.EmptyBlocksMaxTime {
+		return fmt.Errorf("batch_submit_max_time must be greater than empty_blocks_max_time")
 	}
 
 	if c.BlockBatchSize <= 0 {

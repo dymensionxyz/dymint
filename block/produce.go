@@ -82,11 +82,31 @@ func (m *Manager) ProduceAndGossipBlock(ctx context.Context, allowEmpty bool) er
 		return fmt.Errorf("produce block: %w", err)
 	}
 
+	size := uint64(block.ToProto().Size() + commit.ToProto().Size())
+	_ = m.updateAccumaltedSize(size)
+
 	if err := m.gossipBlock(ctx, *block, *commit); err != nil {
 		return fmt.Errorf("gossip block: %w", err)
 	}
 
 	return nil
+}
+
+func (m *Manager) updateAccumaltedSize(size uint64) bool {
+	m.accumulatedProducedSize += size
+
+	// Check if accumulated size is greater than the max size
+	// TODO: allow some tolerance for block size (aim for BlockBatchMaxSize +- 10%)
+	if m.accumulatedProducedSize > m.Conf.BlockBatchMaxSizeBytes {
+		select {
+		case m.shouldSubmitBatchCh <- true:
+		default:
+			m.logger.Debug("new batch accumualted, but channel is full, skipping submission signal")
+		}
+		m.accumulatedProducedSize = 0
+		return true
+	}
+	return false
 }
 
 func (m *Manager) produceBlock(allowEmpty bool) (*types.Block, *types.Commit, error) {
