@@ -21,7 +21,9 @@ import (
 
 	"github.com/dymensionxyz/dymint/block"
 	"github.com/dymensionxyz/dymint/mempool"
-	"github.com/dymensionxyz/dymint/mocks"
+
+	tmmocks "github.com/dymensionxyz/dymint/mocks/github.com/tendermint/tendermint/abci/types"
+
 	nodemempool "github.com/dymensionxyz/dymint/node/mempool"
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/settlement"
@@ -119,7 +121,8 @@ func TestValidator_BlockValidator(t *testing.T) {
 			logger := log.TestingLogger()
 
 			//Create Block executor
-			app := &mocks.Application{}
+			app := &tmmocks.MockApplication{}
+
 			clientCreator := proxy.NewLocalClientCreator(app)
 			abciClient, err := clientCreator.NewABCIClient()
 			require.NoError(t, err)
@@ -131,13 +134,14 @@ func TestValidator_BlockValidator(t *testing.T) {
 			assert.NoError(t, err)
 
 			//Create state
+			maxBytes := uint64(100)
 			state := types.State{}
-			state.ConsensusParams.Block.MaxBytes = 100
+			state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
 			state.ConsensusParams.Block.MaxGas = 100000
 			state.Validators = tmtypes.NewValidatorSet(nil)
 
 			//Create empty block
-			block := executor.CreateBlock(1, &types.Commit{}, [32]byte{}, state)
+			block := executor.CreateBlock(1, &types.Commit{}, [32]byte{}, state, maxBytes)
 
 			//Create slclient
 			client := registry.GetClient(registry.Local)
