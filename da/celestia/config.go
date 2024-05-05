@@ -14,7 +14,7 @@ import (
 const (
 	defaultRpcRetryDelay = 3 * time.Second
 	namespaceVersion     = 0
-	defaultGasPrices     = 0.1
+	DefaultGasPrices     = 0.1
 )
 
 var defaultSubmitBackoff = uretry.NewBackoffConfig(
@@ -40,7 +40,7 @@ var TestConfig = Config{
 	BaseURL:        "http://127.0.0.1:26658",
 	AppNodeURL:     "",
 	Timeout:        5 * time.Second,
-	GasPrices:      defaultGasPrices,
+	GasPrices:      DefaultGasPrices,
 	NamespaceIDStr: "",
 	NamespaceID:    openrpcns.Namespace{Version: namespaceVersion, ID: []byte{0, 0, 0, 0, 0, 0, 0, 0, 255, 255}},
 }
