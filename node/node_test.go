@@ -28,7 +28,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 
 	"github.com/dymensionxyz/dymint/config"
-	"github.com/dymensionxyz/dymint/mocks"
+	tmmocks "github.com/dymensionxyz/dymint/mocks/github.com/tendermint/tendermint/abci/types"
 )
 
 // simply check that node is starting and stopping without panicking
@@ -56,7 +56,7 @@ func TestMempoolDirectly(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	app := &mocks.Application{}
+	app := &tmmocks.MockApplication{}
 	app.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 	app.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{})
 	app.On("Info", mock.Anything).Return(abci.ResponseInfo{})

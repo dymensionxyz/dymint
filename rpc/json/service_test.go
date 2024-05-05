@@ -27,7 +27,8 @@ import (
 
 	"github.com/dymensionxyz/dymint/config"
 	"github.com/dymensionxyz/dymint/mempool"
-	"github.com/dymensionxyz/dymint/mocks"
+	tmmocks "github.com/dymensionxyz/dymint/mocks/github.com/tendermint/tendermint/abci/types"
+
 	"github.com/dymensionxyz/dymint/node"
 	"github.com/dymensionxyz/dymint/rpc/client"
 	"github.com/dymensionxyz/dymint/settlement"
@@ -272,10 +273,10 @@ func TestSubscription(t *testing.T) {
 }
 
 // copied from rpc
-func getRPC(t *testing.T) (*mocks.Application, *client.Client) {
+func getRPC(t *testing.T) (*tmmocks.MockApplication, *client.Client) {
 	t.Helper()
 	require := require.New(t)
-	app := &mocks.Application{}
+	app := &tmmocks.MockApplication{}
 	app.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 	app.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{})

@@ -10,8 +10,9 @@ import (
 	"github.com/dymensionxyz/dymint/settlement"
 )
 
-// SyncTargetLoop is responsible for getting real time updates about batches submission.
-// for non aggregator: updating the sync target which will be used by retrieveLoop to sync until this target.
+// SyncTargetLoop is responsible for getting real time updates about settlement batch submissions.
+// For non aggregator: updating the sync target which will be used by retrieveLoop to sync until this target.
+// It publishes new sync height targets which will then be synced by another process.
 func (m *Manager) SyncTargetLoop(ctx context.Context) {
 	m.logger.Info("Started sync target loop")
 	uevent.MustSubscribe(

@@ -12,6 +12,7 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
+// SubmitLoop submits a batch of blocks to the DA and SL layers on a time interval.
 func (m *Manager) SubmitLoop(ctx context.Context) {
 	ticker := time.NewTicker(m.Conf.BatchSubmitMaxTime)
 	defer ticker.Stop()
@@ -38,26 +39,25 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 	}
 }
 
-// HandleSubmissionTrigger processes the submission trigger event. It checks if there are new blocks produced since the last submission.
+// HandleSubmissionTrigger processes the sublayer submission trigger event. It checks if there are new blocks produced since the last submission.
 // If there are, it attempts to submit a batch of blocks. It then attempts to produce an empty block to ensure IBC messages
 // pass through during the batch submission process due to proofs requires for ibc messages only exist on the next block.
-// Finally, it submits the next batch of blocks and updates the sync target to the height of
-// the last block in the submitted batch.
+// Finally, it submits the next batch of blocks and updates the sync target to the height of the last block in the submitted batch.
 func (m *Manager) HandleSubmissionTrigger(ctx context.Context) error {
 	if !m.submitBatchMutex.TryLock() {
 		return fmt.Errorf("batch submission already in process, skipping submission: %w", gerr.ErrAborted)
 	}
-	defer m.submitBatchMutex.Unlock() // Ensure unlocking at the end
+	defer m.submitBatchMutex.Unlock()
 
 	// Load current sync target and height to determine if new blocks are available for submission.
-	syncTarget, height := m.SyncTarget.Load(), m.Store.Height()
-	if height <= syncTarget { // Check if there are new blocks since last sync target.
-		return nil // Exit if no new blocks are produced.
+	if m.Store.Height() <= m.SyncTarget.Load() {
+		return nil // No new blocks have been produced
 	}
+
 	// We try and produce an empty block to make sure relevant ibc messages will pass through during the batch submission: https://github.com/dymensionxyz/research/issues/173.
 	err := m.ProduceAndGossipBlock(ctx, true)
 	if err != nil {
-		m.logger.Error("produce and gossip empty block", "error", err)
+		m.logger.Error("Produce and gossip empty block.", "error", err)
 	}
 
 	if m.pendingBatch == nil {
@@ -76,13 +76,14 @@ func (m *Manager) HandleSubmissionTrigger(ctx context.Context) error {
 			batch:    nextBatch,
 		}
 	} else {
-		m.logger.Info("pending batch already exists", "startHeight", m.pendingBatch.batch.StartHeight, "endHeight", m.pendingBatch.batch.EndHeight)
+		m.logger.Info("Pending batch already exists.", "startHeight", m.pendingBatch.batch.StartHeight, "endHeight", m.pendingBatch.batch.EndHeight)
 	}
 
 	syncHeight, err := m.submitPendingBatchToSL(*m.pendingBatch)
 	if err != nil {
 		return fmt.Errorf("submit pending batch to sl: %w", err)
 	}
+
 	m.pendingBatch = nil
 
 	// Update the syncTarget to the height of the last block in the last batch as seen by this node.

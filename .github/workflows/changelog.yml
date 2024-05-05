@@ -40,5 +40,5 @@ jobs:
           git config user.name 'github-actions'
           git config user.email 'github-actions@github.com'
           git add CHANGELOG.md
-          git commit -m "Update CHANGELOG.md [skip ci]"
+          git commit -m "Update CHANGELOG.md"
           git push origin HEAD:refs/heads/${{ github.head_ref }}

@@ -11,6 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/dymensionxyz/dymint/gerr"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
@@ -73,11 +74,6 @@ type HubGrpcClient struct {
 	sl             slmock.MockSLClient
 	stopchan       chan struct{}
 	refreshTime    int
-}
-
-func (c *HubGrpcClient) GetHeightState(rollappID string, index uint64) (*settlement.ResultGetHeightState, error) {
-	// TODO implement me
-	panic("implement me")
 }
 
 func newHubClient(config settlement.Config, pubsub *pubsub.Server, logger types.Logger) (*HubGrpcClient, error) {
@@ -229,10 +225,14 @@ func (c *HubGrpcClient) GetBatchAtIndex(rollappID string, index uint64) (*settle
 	batchResult, err := c.retrieveBatchAtStateIndex(index)
 	if err != nil {
 		return &settlement.ResultRetrieveBatch{
-			BaseResult: settlement.BaseResult{Code: settlement.StatusError, Message: err.Error()},
+			ResultBase: settlement.ResultBase{Code: settlement.StatusError, Message: err.Error()},
 		}, err
 	}
 	return batchResult, nil
+}
+
+func (c *HubGrpcClient) GetHeightState(index uint64) (*settlement.ResultGetHeightState, error) {
+	panic("hub grpc client get height state is not implemented: implement me") // TODO: impl
 }
 
 // GetSequencers returns a list of sequencers. Currently only returns a single sequencer
@@ -300,11 +300,11 @@ func (c *HubGrpcClient) retrieveBatchAtStateIndex(slStateIndex uint64) (*settlem
 
 	getBatchReply, err := c.sl.GetBatch(c.ctx, &slmock.SLGetBatchRequest{Index: slStateIndex})
 	if err != nil {
-		return nil, settlement.ErrBatchNotFound
+		return nil, gerr.ErrNotFound
 	}
 	b := getBatchReply.GetBatch()
 	if b == nil {
-		return nil, settlement.ErrBatchNotFound
+		return nil, gerr.ErrNotFound
 	}
 	var settlementBatch settlement.Batch
 	err = json.Unmarshal(b, &settlementBatch)
@@ -312,7 +312,7 @@ func (c *HubGrpcClient) retrieveBatchAtStateIndex(slStateIndex uint64) (*settlem
 		return nil, errors.New("error unmarshalling batch")
 	}
 	batchResult := settlement.ResultRetrieveBatch{
-		BaseResult: settlement.BaseResult{Code: settlement.StatusSuccess, StateIndex: slStateIndex},
+		ResultBase: settlement.ResultBase{Code: settlement.StatusSuccess, StateIndex: slStateIndex},
 		Batch:      &settlementBatch,
 	}
 	return &batchResult, nil
