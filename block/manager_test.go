@@ -408,7 +408,6 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 	require.NoError(err)
 	// Init manager
 	managerConfig := testutil.GetManagerConfig()
-	managerConfig.BlockBatchSize = 1000
 	managerConfig.BlockBatchMaxSizeBytes = batchLimitBytes // enough for 2 block, not enough for 10 blocks
 	manager, err := testutil.GetManager(managerConfig, nil, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)

@@ -48,9 +48,6 @@ type BlockManagerConfig struct {
 	// BatchSubmitMaxTime defines how long should block manager wait for before submitting batch
 	BatchSubmitMaxTime time.Duration `mapstructure:"batch_submit_max_time"`
 	NamespaceID        string        `mapstructure:"namespace_id"`
-	// The size of the batch in blocks. Every batch we'll write to the DA and the settlement layer.
-	//TODO: remove
-	BlockBatchSize uint64 `mapstructure:"block_batch_size"`
 	// The size of the batch in Bytes. Every batch we'll write to the DA and the settlement layer.
 	BlockBatchMaxSizeBytes uint64 `mapstructure:"block_batch_max_size_bytes"`
 	// The number of messages cached by gossipsub protocol
@@ -136,10 +133,6 @@ func (c BlockManagerConfig) Validate() error {
 
 	if c.BatchSubmitMaxTime < c.EmptyBlocksMaxTime {
 		return fmt.Errorf("batch_submit_max_time must be greater than empty_blocks_max_time")
-	}
-
-	if c.BlockBatchSize <= 0 {
-		return fmt.Errorf("block_batch_size must be positive")
 	}
 
 	if c.BlockBatchMaxSizeBytes <= 0 {

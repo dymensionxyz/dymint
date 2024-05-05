@@ -73,16 +73,16 @@ block_time = "{{ .BlockManagerConfig.BlockTime }}"
 empty_blocks_max_time = "{{ .BlockManagerConfig.EmptyBlocksMaxTime }}"
 
 # triggers to submit batch to DA and settlement (both required)
-block_batch_size = {{ .BlockManagerConfig.BlockBatchSize }}
 batch_submit_max_time = "{{ .BlockManagerConfig.BatchSubmitMaxTime }}"
+
+# max size of batch in bytes that can be accepted by DA
+block_batch_max_size_bytes = {{ .BlockManagerConfig.BlockBatchMaxSizeBytes }}
 
 ### da config ###
 da_layer = "{{ .DALayer }}" # mock, celestia, avail
 namespace_id = "{{ .BlockManagerConfig.NamespaceID }}"
 da_config = "{{ .DAConfig }}"
 
-# max size of batch in bytes that can be accepted by DA
-block_batch_max_size_bytes = {{ .BlockManagerConfig.BlockBatchMaxSizeBytes }}
 
 # max number of cached messages by gossipsub protocol
 gossiped_blocks_cache_size = {{ .BlockManagerConfig.GossipedBlocksCacheSize }}

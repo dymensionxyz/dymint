@@ -306,7 +306,6 @@ func getRPC(t *testing.T) (*tmmocks.MockApplication, *client.Client) {
 			EmptyBlocksMaxTime:      0,
 			BatchSubmitMaxTime:      30 * time.Minute,
 			NamespaceID:             "0102030405060708",
-			BlockBatchSize:          10000,
 			BlockBatchMaxSizeBytes:  1000,
 			GossipedBlocksCacheSize: 50,
 		},

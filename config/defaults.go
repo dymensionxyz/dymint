@@ -32,7 +32,6 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 			EmptyBlocksMaxTime:      3600 * time.Second,
 			BatchSubmitMaxTime:      100 * time.Second,
 			NamespaceID:             "0000000000000000ffff",
-			BlockBatchSize:          500,
 			BlockBatchMaxSizeBytes:  500000,
 			GossipedBlocksCacheSize: 50,
 		},

@@ -103,7 +103,6 @@ func TestGenesisChunked(t *testing.T) {
 		Aggregator: false,
 		BlockManagerConfig: config.BlockManagerConfig{
 			BlockTime:               100 * time.Millisecond,
-			BlockBatchSize:          1,
 			BatchSubmitMaxTime:      60 * time.Second,
 			BlockBatchMaxSizeBytes:  1000,
 			GossipedBlocksCacheSize: 50,
@@ -457,7 +456,6 @@ func TestTx(t *testing.T) {
 		SettlementLayer: "mock",
 		Aggregator:      true,
 		BlockManagerConfig: config.BlockManagerConfig{
-			BlockBatchSize:          1,
 			BlockTime:               200 * time.Millisecond,
 			BatchSubmitMaxTime:      60 * time.Second,
 			BlockBatchMaxSizeBytes:  1000,
@@ -731,7 +729,6 @@ func TestValidatorSetHandling(t *testing.T) {
 		Aggregator:      true,
 		BlockManagerConfig: config.BlockManagerConfig{
 			BlockTime:               10 * time.Millisecond,
-			BlockBatchSize:          1,
 			BatchSubmitMaxTime:      60 * time.Second,
 			BlockBatchMaxSizeBytes:  1000,
 			GossipedBlocksCacheSize: 50,
@@ -865,7 +862,6 @@ func getRPC(t *testing.T) (*tmmocks.MockApplication, *Client) {
 		Aggregator: false,
 		BlockManagerConfig: config.BlockManagerConfig{
 			BlockTime:               100 * time.Millisecond,
-			BlockBatchSize:          1,
 			BatchSubmitMaxTime:      60 * time.Second,
 			BlockBatchMaxSizeBytes:  1000,
 			GossipedBlocksCacheSize: 50,
@@ -971,7 +967,6 @@ func TestMempool2Nodes(t *testing.T) {
 			RollappID:      rollappID,
 		},
 		BlockManagerConfig: config.BlockManagerConfig{
-			BlockBatchSize:          1,
 			BlockTime:               100 * time.Millisecond,
 			BatchSubmitMaxTime:      60 * time.Second,
 			BlockBatchMaxSizeBytes:  1000,
@@ -993,7 +988,6 @@ func TestMempool2Nodes(t *testing.T) {
 			RollappID:      rollappID,
 		},
 		BlockManagerConfig: config.BlockManagerConfig{
-			BlockBatchSize:          1,
 			BlockTime:               100 * time.Millisecond,
 			BatchSubmitMaxTime:      60 * time.Second,
 			BlockBatchMaxSizeBytes:  1000,

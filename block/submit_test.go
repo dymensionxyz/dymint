@@ -50,7 +50,7 @@ func TestBatchSubmissionHappyFlow(t *testing.T) {
 
 	// submit and validate sync target
 	manager.HandleSubmissionTrigger(ctx)
-	assert.EqualValues(t, 1, manager.SyncTarget.Load())
+	assert.EqualValues(t, manager.Store.Height(), manager.SyncTarget.Load())
 }
 
 func TestBatchSubmissionFailedSubmission(t *testing.T) {
@@ -103,13 +103,12 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 	// try to submit again, we expect success
 	mockLayerI.On("SubmitBatch", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 	manager.HandleSubmissionTrigger(ctx)
-	assert.EqualValues(t, 1, manager.SyncTarget.Load())
+	assert.EqualValues(t, manager.Store.Height(), manager.SyncTarget.Load())
 }
 
 func TestBatchSubmissionAfterTimeout(t *testing.T) {
 	const (
 		// large batch size, so we expect the trigger to be the timeout
-		batchSize     = 100000
 		submitTimeout = 2 * time.Second
 		blockTime     = 200 * time.Millisecond
 		runTime       = submitTimeout + 1*time.Second
@@ -128,7 +127,6 @@ func TestBatchSubmissionAfterTimeout(t *testing.T) {
 		BlockTime:               blockTime,
 		EmptyBlocksMaxTime:      0,
 		BatchSubmitMaxTime:      submitTimeout,
-		BlockBatchSize:          batchSize,
 		BlockBatchMaxSizeBytes:  1000,
 		GossipedBlocksCacheSize: 50,
 	}

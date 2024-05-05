@@ -44,7 +44,6 @@ func TestAggregatorMode(t *testing.T) {
 	proposerKey := hex.EncodeToString(pubkeyBytes)
 
 	blockManagerConfig := config.BlockManagerConfig{
-		BlockBatchSize:          1,
 		BlockTime:               1 * time.Second,
 		BatchSubmitMaxTime:      60 * time.Second,
 		BlockBatchMaxSizeBytes:  1000,

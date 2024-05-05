@@ -14,7 +14,6 @@ const (
 	FlagEmptyBlocksMaxTime     = "dymint.empty_blocks_max_time"
 	FlagBatchSubmitMaxTime     = "dymint.batch_submit_max_time"
 	FlagNamespaceID            = "dymint.namespace_id"
-	FlagBlockBatchSize         = "dymint.block_batch_size"
 	FlagBlockBatchMaxSizeBytes = "dymint.block_batch_max_size_bytes"
 )
 
@@ -46,7 +45,6 @@ func AddNodeFlags(cmd *cobra.Command) {
 	cmd.Flags().Duration(FlagEmptyBlocksMaxTime, def.EmptyBlocksMaxTime, "max time for empty blocks (for aggregator mode)")
 	cmd.Flags().Duration(FlagBatchSubmitMaxTime, def.BatchSubmitMaxTime, "max time for batch submit (for aggregator mode)")
 	cmd.Flags().String(FlagNamespaceID, def.NamespaceID, "namespace identifies (8 bytes in hex)")
-	cmd.Flags().Uint64(FlagBlockBatchSize, def.BlockBatchSize, "block batch size")
 	cmd.Flags().Uint64(FlagBlockBatchMaxSizeBytes, def.BlockBatchMaxSizeBytes, "block batch size in bytes")
 
 	cmd.Flags().String(FlagSettlementLayer, def.SettlementLayer, "Settlement Layer Client name")
@@ -80,9 +78,6 @@ func BindDymintFlags(cmd *cobra.Command, v *viper.Viper) error {
 		return err
 	}
 	if err := v.BindPFlag("namespace_id", cmd.Flags().Lookup(FlagNamespaceID)); err != nil {
-		return err
-	}
-	if err := v.BindPFlag("block_batch_size", cmd.Flags().Lookup(FlagBlockBatchSize)); err != nil {
 		return err
 	}
 	if err := v.BindPFlag("block_batch_max_size_bytes", cmd.Flags().Lookup(FlagBlockBatchMaxSizeBytes)); err != nil {

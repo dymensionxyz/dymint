@@ -71,7 +71,6 @@ func TestMempoolDirectly(t *testing.T) {
 		Aggregator: false,
 		BlockManagerConfig: config.BlockManagerConfig{
 			BlockTime:               100 * time.Millisecond,
-			BlockBatchSize:          2,
 			BatchSubmitMaxTime:      60 * time.Second,
 			BlockBatchMaxSizeBytes:  1000,
 			GossipedBlocksCacheSize: 50,
