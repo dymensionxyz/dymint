@@ -8,8 +8,10 @@ import (
 	"encoding/json"
 	"errors"
 	"path/filepath"
-	"sync/atomic"
+	"sync"
 	"time"
+
+	"github.com/dymensionxyz/dymint/gerr"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
 	tmp2p "github.com/tendermint/tendermint/p2p"
@@ -29,7 +31,7 @@ const kvStoreDBName = "settlement"
 
 var (
 	settlementKVPrefix = []byte{0}
-	slStateIndexKey    = []byte("slStateIndex")
+	slStateIndexKey    = []byte("slStateIndex") // used to recover after reboot
 )
 
 // LayerClient is an extension of the base settlement layer client
@@ -65,16 +67,13 @@ func (m *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, logg
 // HubClient implements The HubClient interface
 type HubClient struct {
 	ProposerPubKey string
-	slStateIndex   uint64
 	logger         types.Logger
 	pubsub         *pubsub.Server
-	latestHeight   uint64
-	settlementKV   store.KVStore
-}
 
-func (c *HubClient) GetHeightState(rollappID string, index uint64) (*settlement.ResultGetHeightState, error) {
-	// TODO implement me
-	panic("implement me")
+	mu           sync.Mutex // keep the following in sync with *each other*
+	slStateIndex uint64
+	latestHeight uint64
+	settlementKV store.KVStore
 }
 
 var _ settlement.HubClient = &HubClient{}
@@ -92,7 +91,7 @@ func newHubClient(config settlement.Config, pubsub *pubsub.Server, logger types.
 		slStateIndex = binary.BigEndian.Uint64(b)
 		// Get the latest height from the stateIndex
 		var settlementBatch rollapptypes.MsgUpdateState
-		b, err := settlementKV.Get(getKey(slStateIndex))
+		b, err := settlementKV.Get(keyFromIndex(slStateIndex))
 		if err != nil {
 			return nil, err
 		}
@@ -157,7 +156,7 @@ func (c *HubClient) Stop() error {
 
 // PostBatch saves the batch to the kv store
 func (c *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) error {
-	settlementBatch := c.convertBatchtoSettlementBatch(batch, daResult)
+	settlementBatch := convertBatchToSettlementBatch(batch, daResult)
 	c.saveBatch(settlementBatch)
 	go func() {
 		time.Sleep(10 * time.Millisecond) // mimic a delay in batch acceptance
@@ -171,7 +170,10 @@ func (c *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 
 // GetLatestBatch returns the latest batch from the kv store
 func (c *HubClient) GetLatestBatch(rollappID string) (*settlement.ResultRetrieveBatch, error) {
-	batchResult, err := c.GetBatchAtIndex(rollappID, atomic.LoadUint64(&c.slStateIndex))
+	c.mu.Lock()
+	ix := c.slStateIndex
+	c.mu.Unlock()
+	batchResult, err := c.GetBatchAtIndex(rollappID, ix)
 	if err != nil {
 		return nil, err
 	}
@@ -183,10 +185,31 @@ func (c *HubClient) GetBatchAtIndex(rollappID string, index uint64) (*settlement
 	batchResult, err := c.retrieveBatchAtStateIndex(index)
 	if err != nil {
 		return &settlement.ResultRetrieveBatch{
-			BaseResult: settlement.BaseResult{Code: settlement.StatusError, Message: err.Error()},
+			ResultBase: settlement.ResultBase{Code: settlement.StatusError, Message: err.Error()},
 		}, err
 	}
 	return batchResult, nil
+}
+
+func (c *HubClient) GetHeightState(h uint64) (*settlement.ResultGetHeightState, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	// TODO: optimize (binary search, or just make another index)
+	for i := c.slStateIndex; i > 0; i-- {
+		b, err := c.GetBatchAtIndex("", i)
+		if err != nil {
+			panic(err)
+		}
+		if b.StartHeight <= h && b.EndHeight >= h {
+			return &settlement.ResultGetHeightState{
+				ResultBase: settlement.ResultBase{Code: settlement.StatusSuccess},
+				State: settlement.State{
+					StateIndex: i,
+				},
+			}, nil
+		}
+	}
+	return nil, gerr.ErrNotFound // TODO: need to return a cosmos specific error?
 }
 
 // GetSequencers returns a list of sequencers. Currently only returns a single sequencer
@@ -205,31 +228,50 @@ func (c *HubClient) GetSequencers(rollappID string) ([]*types.Sequencer, error) 
 }
 
 func (c *HubClient) saveBatch(batch *settlement.Batch) {
-	c.logger.Debug("Saving batch to settlement layer", "start height",
+	c.logger.Debug("Saving batch to settlement layer.", "start height",
 		batch.StartHeight, "end height", batch.EndHeight)
+
 	b, err := json.Marshal(batch)
 	if err != nil {
 		panic(err)
 	}
+
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	// Save the batch to the next state index
-	slStateIndex := atomic.LoadUint64(&c.slStateIndex)
-	err = c.settlementKV.Set(getKey(slStateIndex+1), b)
+	c.slStateIndex++
+	err = c.settlementKV.Set(keyFromIndex(c.slStateIndex), b)
 	if err != nil {
 		panic(err)
 	}
-	// Save SL state index in memory and in store
-	atomic.StoreUint64(&c.slStateIndex, slStateIndex+1)
 	b = make([]byte, 8)
-	binary.BigEndian.PutUint64(b, slStateIndex+1)
+	binary.BigEndian.PutUint64(b, c.slStateIndex)
 	err = c.settlementKV.Set(slStateIndexKey, b)
 	if err != nil {
 		panic(err)
 	}
-	// Save latest height in memory and in store
-	atomic.StoreUint64(&c.latestHeight, batch.EndHeight)
+	c.latestHeight = batch.EndHeight
 }
 
-func (c *HubClient) convertBatchtoSettlementBatch(batch *types.Batch, daResult *da.ResultSubmitBatch) *settlement.Batch {
+func (c *HubClient) retrieveBatchAtStateIndex(slStateIndex uint64) (*settlement.ResultRetrieveBatch, error) {
+	b, err := c.settlementKV.Get(keyFromIndex(slStateIndex))
+	c.logger.Debug("Retrieving batch from settlement layer.", "SL state index", slStateIndex)
+	if err != nil {
+		return nil, gerr.ErrNotFound
+	}
+	var settlementBatch settlement.Batch
+	err = json.Unmarshal(b, &settlementBatch)
+	if err != nil {
+		return nil, errors.New("unmarshalling batch")
+	}
+	batchResult := settlement.ResultRetrieveBatch{
+		ResultBase: settlement.ResultBase{Code: settlement.StatusSuccess, StateIndex: slStateIndex},
+		Batch:      &settlementBatch,
+	}
+	return &batchResult, nil
+}
+
+func convertBatchToSettlementBatch(batch *types.Batch, daResult *da.ResultSubmitBatch) *settlement.Batch {
 	settlementBatch := &settlement.Batch{
 		StartHeight: batch.StartHeight,
 		EndHeight:   batch.EndHeight,
@@ -246,26 +288,9 @@ func (c *HubClient) convertBatchtoSettlementBatch(batch *types.Batch, daResult *
 	return settlementBatch
 }
 
-func (c *HubClient) retrieveBatchAtStateIndex(slStateIndex uint64) (*settlement.ResultRetrieveBatch, error) {
-	b, err := c.settlementKV.Get(getKey(slStateIndex))
-	c.logger.Debug("Retrieving batch from settlement layer", "SL state index", slStateIndex)
-	if err != nil {
-		return nil, settlement.ErrBatchNotFound
-	}
-	var settlementBatch settlement.Batch
-	err = json.Unmarshal(b, &settlementBatch)
-	if err != nil {
-		return nil, errors.New("error unmarshalling batch")
-	}
-	batchResult := settlement.ResultRetrieveBatch{
-		BaseResult: settlement.BaseResult{Code: settlement.StatusSuccess, StateIndex: slStateIndex},
-		Batch:      &settlementBatch,
-	}
-	return &batchResult, nil
-}
-
-func getKey(key uint64) []byte {
+func keyFromIndex(ix uint64) []byte {
 	b := make([]byte, 8)
-	binary.BigEndian.PutUint64(b, key)
+	b = append(b, byte('i'))
+	binary.BigEndian.PutUint64(b, ix)
 	return b
 }

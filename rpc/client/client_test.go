@@ -27,7 +27,7 @@ import (
 
 	"github.com/dymensionxyz/dymint/config"
 	"github.com/dymensionxyz/dymint/mempool"
-	"github.com/dymensionxyz/dymint/mocks"
+	tmmocks "github.com/dymensionxyz/dymint/mocks/github.com/tendermint/tendermint/abci/types"
 	"github.com/dymensionxyz/dymint/node"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
@@ -89,7 +89,7 @@ func TestGenesisChunked(t *testing.T) {
 		},
 	}
 
-	mockApp := &mocks.Application{}
+	mockApp := &tmmocks.MockApplication{}
 	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 	mockApp.On("Info", mock.Anything).Return(expectedInfo)
 	privKey, _, _ := crypto.GenerateEd25519Key(crand.Reader)
@@ -441,7 +441,7 @@ func TestTx(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	mockApp := &mocks.Application{}
+	mockApp := &tmmocks.MockApplication{}
 	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 	mockApp.On("Info", mock.Anything).Return(expectedInfo)
 	key, _, _ := crypto.GenerateEd25519Key(crand.Reader)
@@ -690,7 +690,7 @@ func TestBlockchainInfo(t *testing.T) {
 func TestValidatorSetHandling(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	app := &mocks.Application{}
+	app := &tmmocks.MockApplication{}
 	app.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 	app.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{})
 	app.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
@@ -844,10 +844,10 @@ func getBlockMeta(rpc *Client, n int64) *tmtypes.BlockMeta {
 	return bmeta
 }
 
-func getRPC(t *testing.T) (*mocks.Application, *Client) {
+func getRPC(t *testing.T) (*tmmocks.MockApplication, *Client) {
 	t.Helper()
 	require := require.New(t)
-	app := &mocks.Application{}
+	app := &tmmocks.MockApplication{}
 	app.On("Info", mock.Anything).Return(expectedInfo)
 	key, _, _ := crypto.GenerateEd25519Key(crand.Reader)
 	signingKey, pubkey, err := crypto.GenerateEd25519Key(crand.Reader)
@@ -941,7 +941,7 @@ func TestMempool2Nodes(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	app := &mocks.Application{}
+	app := &tmmocks.MockApplication{}
 	app.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 	app.On("CheckTx", abci.RequestCheckTx{Tx: []byte("bad")}).Return(abci.ResponseCheckTx{Code: 1})
 	app.On("CheckTx", abci.RequestCheckTx{Tx: []byte("good")}).Return(abci.ResponseCheckTx{Code: 0})

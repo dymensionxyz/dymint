@@ -16,7 +16,7 @@ import (
 
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/da/celestia"
-	mocks "github.com/dymensionxyz/dymint/mocks/da/celestia"
+	mocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/da/celestia/types"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/stretchr/testify/assert"
@@ -106,7 +106,7 @@ func TestSubmitBatch(t *testing.T) {
 
 		t.Log("Case name ", tc.name)
 		// Create mock clients
-		mockRPCClient := mocks.NewCelestiaRPCClient(t)
+		mockRPCClient := mocks.NewMockCelestiaRPCClient(t)
 		// Configure DALC options
 		options := []da.Option{
 			celestia.WithSubmitBackoff(uretry.NewBackoffConfig(uretry.WithInitialDelay(10*time.Millisecond), uretry.WithMaxDelay(10*time.Millisecond))),

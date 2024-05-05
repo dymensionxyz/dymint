@@ -9,6 +9,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/dymensionxyz/dymint/gerr"
+
 	uevent "github.com/dymensionxyz/dymint/utils/event"
 
 	"code.cloudfoundry.org/go-diodes"
@@ -191,26 +193,25 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 
 // syncBlockManager enforces the node to be synced on initial run.
 func (m *Manager) syncBlockManager() error {
-	resultRetrieveBatch, err := m.getLatestBatchFromSL()
-	// Set the syncTarget according to the result
+	res, err := m.SLClient.RetrieveBatch()
+	if errors.Is(err, gerr.ErrNotFound) {
+		// The SL hasn't got any batches for this chain yet.
+		m.logger.Info("No batches for chain found in SL. Start writing first batch.")
+		m.SyncTarget.Store(uint64(m.Genesis.InitialHeight - 1))
+		return nil
+	}
 	if err != nil {
 		// TODO: separate between fresh rollapp and non-registered rollapp
-		if errors.Is(err, settlement.ErrBatchNotFound) {
-			// Since we requested the latest batch and got batch not found it means
-			// the SL still hasn't got any batches for this chain.
-			m.logger.Info("No batches for chain found in SL. Start writing first batch")
-			m.SyncTarget.Store(uint64(m.Genesis.InitialHeight - 1))
-			return nil
-		}
 		return err
 	}
-	m.SyncTarget.Store(resultRetrieveBatch.EndHeight)
-	err = m.syncUntilTarget(resultRetrieveBatch.EndHeight)
+	// Set the syncTarget according to the result
+	m.SyncTarget.Store(res.EndHeight)
+	err = m.syncUntilTarget(res.EndHeight)
 	if err != nil {
 		return err
 	}
 
-	m.logger.Info("Synced", "current height", m.Store.Height(), "syncTarget", m.SyncTarget.Load())
+	m.logger.Info("Synced.", "current height", m.Store.Height(), "syncTarget", m.SyncTarget.Load())
 	return nil
 }
 
@@ -254,17 +255,10 @@ func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
 		m.logger.Debug("caching block", "block height", block.Header.Height, "store height", m.Store.Height())
 	}
 	m.retrieverMutex.Unlock() // have to give this up as it's locked again in attempt apply, and we're not re-entrant
-	if block.Header.Height == nextHeight {
-		err := m.attemptApplyCachedBlocks()
-		if err != nil {
-			m.logger.Error("applying cached blocks", "err", err)
-		}
+	err := m.attemptApplyCachedBlocks()
+	if err != nil {
+		m.logger.Error("applying cached blocks", "err", err)
 	}
-}
-
-// getLatestBatchFromSL gets the latest batch from the SL
-func (m *Manager) getLatestBatchFromSL() (*settlement.ResultRetrieveBatch, error) {
-	return m.SLClient.RetrieveBatch()
 }
 
 // getInitialState tries to load lastState from Store, and if it's not available it reads GenesisDoc.

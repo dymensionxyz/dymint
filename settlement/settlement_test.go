@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dymensionxyz/dymint/gerr"
+
 	"github.com/tendermint/tendermint/libs/log"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
@@ -13,7 +15,7 @@ import (
 
 	"github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
 	"github.com/dymensionxyz/dymint/da"
-	mocks "github.com/dymensionxyz/dymint/mocks/settlement"
+	mocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/settlement/registry"
 	"github.com/dymensionxyz/dymint/testutil"
@@ -51,13 +53,11 @@ func TestSubmitAndRetrieve(t *testing.T) {
 
 	// Get settlement lastest batch and check if there is an error as we haven't written anything yet.
 	_, err := settlementClient.RetrieveBatch()
-	require.Error(err)
-	assert.Equal(err, settlement.ErrBatchNotFound)
+	assert.ErrorIs(err, gerr.ErrNotFound)
 
 	// Get nonexisting stateIndex from the settlement layer
 	_, err = settlementClient.RetrieveBatch(uint64(100))
-	require.Error(err)
-	assert.Equal(err, settlement.ErrBatchNotFound)
+	assert.ErrorIs(err, gerr.ErrNotFound)
 
 	// Create and submit multiple batches
 	numBatches := 4
@@ -99,8 +99,8 @@ func TestSubmitAndRetrieve(t *testing.T) {
 func TestGetSequencersEmptyList(t *testing.T) {
 	var err error
 	settlementClient := registry.GetClient(registry.Local)
-	hubClientMock := mocks.NewHubClient(t)
-	hubClientMock.On("GetSequencers", tsmock.Anything, tsmock.Anything).Return(nil, settlement.ErrNoSequencerForRollapp)
+	hubClientMock := mocks.NewMockHubClient(t)
+	hubClientMock.On("GetSequencers", tsmock.Anything, tsmock.Anything).Return(nil, gerr.ErrNotFound)
 	options := []settlement.Option{
 		settlement.WithHubClient(hubClientMock),
 	}
@@ -113,7 +113,7 @@ func TestGetSequencersEmptyList(t *testing.T) {
 }
 
 func TestGetSequencers(t *testing.T) {
-	hubClientMock := mocks.NewHubClient(t)
+	hubClientMock := mocks.NewMockHubClient(t)
 	hubClientMock.On("Start", tsmock.Anything).Return(nil)
 	hubClientMock.On("Stop", tsmock.Anything).Return(nil)
 	// Mock a sequencer response by the sequencerByRollapp query

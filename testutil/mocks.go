@@ -3,7 +3,7 @@ package testutil
 import (
 	"errors"
 
-	"github.com/dymensionxyz/dymint/mocks"
+	tmmocks "github.com/dymensionxyz/dymint/mocks/github.com/tendermint/tendermint/abci/types"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/stretchr/testify/mock"
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -47,8 +47,8 @@ func GetABCIProxyAppMock(logger log.Logger) proxy.AppConns {
 }
 
 // GetAppMock returns a dummy abci app mock for testing
-func GetAppMock(excludeMethods ...ABCIMethod) *mocks.Application {
-	app := &mocks.Application{}
+func GetAppMock(excludeMethods ...ABCIMethod) *tmmocks.MockApplication {
+	app := &tmmocks.MockApplication{}
 	app.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 	app.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{})
 	app.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
