@@ -6,6 +6,7 @@ import (
 
 	"github.com/dymensionxyz/dymint/mempool"
 	nodemempool "github.com/dymensionxyz/dymint/node/mempool"
+	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/pubsub"
@@ -26,15 +27,17 @@ type IValidator interface {
 type Validator struct {
 	logger            types.Logger
 	localPubsubServer *pubsub.Server
+	slClient          settlement.LayerI
 }
 
 var _ IValidator = (*Validator)(nil)
 
 // NewValidator creates a new Validator.
-func NewValidator(logger types.Logger, pusbsubServer *pubsub.Server) *Validator {
+func NewValidator(logger types.Logger, pusbsubServer *pubsub.Server, slClient settlement.LayerI) *Validator {
 	return &Validator{
 		logger:            logger,
 		localPubsubServer: pusbsubServer,
+		slClient:          slClient,
 	}
 }
 
@@ -78,10 +81,11 @@ func (v *Validator) BlockValidator() GossipValidator {
 			v.logger.Error("deserialize gossiped block", "error", err)
 			return false
 		}
-		if err := gossipedBlock.Validate(); err != nil {
+		if err := gossipedBlock.Validate(v.slClient.GetProposer()); err != nil {
 			v.logger.Error("Invalid gossiped block", "error", err)
 			return false
 		}
+
 		err := v.localPubsubServer.PublishWithEvents(context.Background(), gossipedBlock, map[string][]string{EventTypeKey: {EventNewGossipedBlock}})
 		if err != nil {
 			v.logger.Error("publishing event", "err", err)

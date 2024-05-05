@@ -2,6 +2,7 @@ package celestia
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -10,15 +11,14 @@ import (
 	"github.com/dymensionxyz/dymint/gerr"
 
 	"github.com/avast/retry-go/v4"
+	"github.com/celestiaorg/celestia-openrpc/types/blob"
+	"github.com/celestiaorg/celestia-openrpc/types/header"
 	"github.com/celestiaorg/nmt"
 	"github.com/gogo/protobuf/proto"
 	"github.com/tendermint/tendermint/libs/pubsub"
 
-	openrpc "github.com/rollkit/celestia-openrpc"
-
-	"github.com/rollkit/celestia-openrpc/types/blob"
-	"github.com/rollkit/celestia-openrpc/types/header"
-	"github.com/rollkit/celestia-openrpc/types/share"
+	openrpc "github.com/celestiaorg/celestia-openrpc"
+	"github.com/celestiaorg/celestia-openrpc/types/share"
 
 	"github.com/dymensionxyz/dymint/da"
 	celtypes "github.com/dymensionxyz/dymint/da/celestia/types"
@@ -108,20 +108,10 @@ func createConfig(bz []byte) (c Config, err error) {
 		return c, fmt.Errorf("init namespace id: %w", err)
 	}
 
-	cnt := 0
-	if c.GasPrices != 0 {
-		cnt++
-	}
-	if c.Fee != 0 {
-		cnt++
-	}
-	if cnt != 1 {
-		return c, errors.New("exactly one of fee or gas prices must be non-zero")
+	if c.GasPrices == 0 {
+		return c, errors.New("gas prices must be set")
 	}
 
-	if c.GasAdjustment == 0 {
-		c.GasAdjustment = defaultGasAdjustment
-	}
 	if c.RetryDelay == 0 {
 		c.RetryDelay = defaultRpcRetryDelay
 	}
@@ -331,6 +321,7 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMet
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
+	c.logger.Debug("Celestia DA getting blob", "height", daMetaData.Height, "namespace", hex.EncodeToString(daMetaData.Namespace), "commitment", hex.EncodeToString(daMetaData.Commitment))
 	var batches []*types.Batch
 	blob, err := c.rpc.Get(ctx, daMetaData.Height, daMetaData.Namespace, daMetaData.Commitment)
 	if err != nil {
@@ -357,6 +348,9 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMet
 	if err != nil {
 		c.logger.Error("unmarshal block", "daHeight", daMetaData.Height, "error", err)
 	}
+
+	c.logger.Debug("Celestia DA get blob successful", "DA height", daMetaData.Height, "lastBlockHeight", batch.EndHeight)
+
 	parsedBatch := new(types.Batch)
 	err = parsedBatch.FromProto(&batch)
 	if err != nil {
@@ -564,18 +558,11 @@ func (c *DataAvailabilityLayerClient) submit(daBlob da.Blob) (uint64, da.Commitm
 		return 0, nil, fmt.Errorf("zero commitments: %w", gerr.ErrNotFound)
 	}
 
-	options := openrpc.DefaultSubmitOptions()
-
 	blobSizes := make([]uint32, len(blobs))
 	for i, blob := range blobs {
 		blobSizes[i] = uint32(len(blob.Data))
 	}
 
-	estimatedGas := EstimateGas(blobSizes, DefaultGasPerBlobByte, DefaultTxSizeCostPerByte)
-	gasWanted := uint64(float64(estimatedGas) * c.config.GasAdjustment)
-	fees := c.calculateFees(gasWanted)
-	options.Fee = fees
-	options.GasLimit = gasWanted
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
@@ -588,7 +575,7 @@ func (c *DataAvailabilityLayerClient) submit(daBlob da.Blob) (uint64, da.Commitm
 	err = retry.Do(
 		func() error {
 			var err error
-			height, err = c.rpc.Submit(ctx, blobs, options)
+			height, err = c.rpc.Submit(ctx, blobs, openrpc.GasPrice(c.config.GasPrices))
 			return err
 		},
 		retry.Context(c.ctx),
@@ -601,7 +588,7 @@ func (c *DataAvailabilityLayerClient) submit(daBlob da.Blob) (uint64, da.Commitm
 		return 0, nil, fmt.Errorf("do rpc submit: %w", err)
 	}
 
-	c.logger.Info("Successfully submitted blobs to Celestia", "height", height, "gas", options.GasLimit, "fee", options.Fee)
+	c.logger.Info("Successfully submitted blobs to Celestia", "height", height)
 
 	return height, commitments[0], nil
 }
@@ -650,10 +637,10 @@ func (c *DataAvailabilityLayerClient) getDataAvailabilityHeaders(height uint64) 
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
-	headers, error := c.rpc.GetHeaders(ctx, height)
-	if error != nil {
-		return nil, error
+	headers, err := c.rpc.GetByHeight(ctx, height)
+	if err != nil {
+		return nil, err
 	}
 
-	return headers.DAH, error
+	return headers.DAH, nil
 }

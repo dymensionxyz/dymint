@@ -202,7 +202,7 @@ func NewNode(
 	mpIDs := nodemempool.NewMempoolIDs()
 
 	// Set p2p client and it's validators
-	p2pValidator := p2p.NewValidator(logger.With("module", "p2p_validator"), pubsubServer)
+	p2pValidator := p2p.NewValidator(logger.With("module", "p2p_validator"), pubsubServer, settlementlc)
 
 	conf.P2P.GossipCacheSize = conf.BlockManagerConfig.GossipedBlocksCacheSize
 	conf.P2P.BoostrapTime = conf.BootstrapTime
