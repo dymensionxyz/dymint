@@ -1,4 +1,4 @@
-# [](https://github.com/dymensionxyz/dymint/compare/v1.1.0-rc02...v) (2024-05-03)
+# [](https://github.com/dymensionxyz/dymint/compare/v1.1.0-rc02...v) (2024-05-05)
 
 
 ### Bug Fixes
@@ -13,11 +13,13 @@
 * **doc:** manager cache comment ([#767](https://github.com/dymensionxyz/dymint/issues/767)) ([b88bf6e](https://github.com/dymensionxyz/dymint/commit/b88bf6e72820c944b290147724255cc8466ada50))
 * **logging:** added reason for websocket closed debug msg ([#746](https://github.com/dymensionxyz/dymint/issues/746)) ([3aa7d80](https://github.com/dymensionxyz/dymint/commit/3aa7d80ace92b3b0f79e4f338f10bb94c96ab6dd))
 * **logs:** make logs more readable in a couple places, fix race cond ([#749](https://github.com/dymensionxyz/dymint/issues/749)) ([f05ef39](https://github.com/dymensionxyz/dymint/commit/f05ef3957b754c05fbc90aa39eabce80bbe65933))
+* **manager:** get fresh height in loop ([#781](https://github.com/dymensionxyz/dymint/issues/781)) ([e4df480](https://github.com/dymensionxyz/dymint/commit/e4df48037a78965dbac9e747dd296f39360e396c))
 * **p2p:** validate block before applying and not before caching in p2p gossiping ([#723](https://github.com/dymensionxyz/dymint/issues/723)) ([98371b5](https://github.com/dymensionxyz/dymint/commit/98371b5220613e70f3274fab5593e02ba532f7db))
 * **produce loop:** handle unauthenticated error in settlement layer ([#726](https://github.com/dymensionxyz/dymint/issues/726)) ([33e78d1](https://github.com/dymensionxyz/dymint/commit/33e78d116b5f14b91b8b3bda2b6cbfee9040e2d3))
 * **rpc:** nil panic in rpc/json/handler.go WriteError ([#750](https://github.com/dymensionxyz/dymint/issues/750)) ([e09709b](https://github.com/dymensionxyz/dymint/commit/e09709b428a33da002defb9f13178fa19b81a69b))
 * **settlement:** remove state index from proto ([#777](https://github.com/dymensionxyz/dymint/issues/777)) ([767b8fd](https://github.com/dymensionxyz/dymint/commit/767b8fdb490c37deee43ac023688410bbb98ccb0))
 * **sync:** make sure we use a latest state index as a start point ([#760](https://github.com/dymensionxyz/dymint/issues/760)) ([43e2d96](https://github.com/dymensionxyz/dymint/commit/43e2d965f2b505751f8e5260549e909c976141ee))
+* **sync:** removing height condition for applying cached blocks from p2p ([#787](https://github.com/dymensionxyz/dymint/issues/787)) ([b97299c](https://github.com/dymensionxyz/dymint/commit/b97299ce7f78168863c5e1c2d7fc479aed2ae6da))
 * **tests:** fix unit tests, mocks, cleanup/dry hub queries ([#782](https://github.com/dymensionxyz/dymint/issues/782)) ([c276aea](https://github.com/dymensionxyz/dymint/commit/c276aea12c9cd37f62fcf9d684c4efe901a510bf))
 
 
