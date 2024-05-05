@@ -95,7 +95,6 @@ func TestInitialState(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-
 			dalc := testutil.GetMockDALC(logger)
 			agg, err := block.NewManager(key, conf, c.genesis, c.store, nil, proxyApp, dalc, settlementlc,
 				nil, pubsubServer, p2pClient, logger)
@@ -109,7 +108,7 @@ func TestInitialState(t *testing.T) {
 }
 
 // TestProduceOnlyAfterSynced should test that we are resuming publishing blocks after we are synced
-// 1. Submit a batch and outsync the manager
+// 1. Submit a batch and desync the manager
 // 2. Fail to produce blocks
 // 2. Sync the manager
 // 3. Succeed to produce blocks
@@ -148,8 +147,7 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 	go func() {
 		errChan <- manager.Start(ctx, true)
 		err := <-errChan
-		// Check for error from manager.Start.
-		assert.NoError(t, err, "Manager start should not produce an error")
+		assert.NoError(t, err)
 	}()
 	<-ctx.Done()
 	assert.Equal(t, batch.EndHeight, manager.SyncTarget.Load())
@@ -162,7 +160,6 @@ func TestRetrieveDaBatchesFailed(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, manager)
 
-	t.Log(manager.LastState.SLStateIndex)
 	daMetaData := &da.DASubmitMetaData{
 		Client: da.Mock,
 		Height: 1,
@@ -472,7 +469,6 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 }
 
 func TestDAFetch(t *testing.T) {
-
 	require := require.New(t)
 	// Setup app
 	app := testutil.GetAppMock(testutil.Info, testutil.Commit)

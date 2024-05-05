@@ -10,9 +10,11 @@ import (
 	"testing"
 	"time"
 
+	uretry "github.com/dymensionxyz/dymint/utils/retry"
+
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/da/celestia"
-	mocks "github.com/dymensionxyz/dymint/mocks/da/celestia"
+	mocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/da/celestia/types"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/rollkit/celestia-openrpc/types/blob"
@@ -104,11 +106,13 @@ func TestSubmitBatch(t *testing.T) {
 
 		t.Log("Case name ", tc.name)
 		// Create mock clients
-		mockRPCClient := mocks.NewCelestiaRPCClient(t)
+		mockRPCClient := mocks.NewMockCelestiaRPCClient(t)
 		// Configure DALC options
 		options := []da.Option{
-			celestia.WithSubmitRetryDelay(10 * time.Millisecond),
+			celestia.WithSubmitBackoff(uretry.NewBackoffConfig(uretry.WithInitialDelay(10*time.Millisecond), uretry.WithMaxDelay(10*time.Millisecond))),
 			celestia.WithRPCClient(mockRPCClient),
+			celestia.WithRPCAttempts(1),
+			celestia.WithRPCRetryDelay(10 * time.Millisecond),
 		}
 		// Subscribe to the health status event
 		pubsubServer := pubsub.NewServer()
@@ -162,7 +166,7 @@ func TestSubmitBatch(t *testing.T) {
 		err = dalc.Stop()
 		require.NoError(err, tc.name)
 		// Wait for the goroutines to finish before accessing the mock calls
-		time.Sleep(3 * time.Second)
+		<-done
 		assert.GreaterOrEqual(testutil.CountMockCalls(mockRPCClient.Calls, submitPFBFuncName), 1, tc.name)
 	}
 }

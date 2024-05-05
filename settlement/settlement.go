@@ -17,8 +17,7 @@ const (
 	StatusError
 )
 
-// BaseResult contains basic information returned by the settlement layer.
-type BaseResult struct {
+type ResultBase struct {
 	// Code is to determine if the action succeeded.
 	Code StatusCode
 	// Message may contain settlement layer specific information (like detailed error message, etc)
@@ -28,12 +27,10 @@ type BaseResult struct {
 	StateIndex uint64
 }
 
-// BatchMetaData aggregates all the batch metadata.
 type BatchMetaData struct {
 	DA *da.DASubmitMetaData
 }
 
-// Batch defines a batch structure for the settlement layer
 type Batch struct {
 	StartHeight uint64
 	EndHeight   uint64
@@ -42,10 +39,18 @@ type Batch struct {
 	MetaData *BatchMetaData
 }
 
-// ResultRetrieveBatch contains information returned from settlement layer after batch retrieva
 type ResultRetrieveBatch struct {
-	BaseResult
+	ResultBase
 	*Batch
+}
+
+type State struct {
+	StateIndex uint64
+}
+
+type ResultGetHeightState struct {
+	ResultBase // NOTE: the state index of this will not be populated
+	State
 }
 
 // Option is a function that sets a parameter on the settlement layer.
@@ -74,6 +79,8 @@ type LayerI interface {
 
 	// GetProposer returns the current proposer for this chain.
 	GetProposer() *types.Sequencer
+
+	GetHeightState(uint64) (*ResultGetHeightState, error)
 }
 
 // HubClient is a helper interface for a more granular interaction with the hub.
@@ -85,5 +92,6 @@ type HubClient interface {
 	PostBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) error
 	GetLatestBatch(rollappID string) (*ResultRetrieveBatch, error)
 	GetBatchAtIndex(rollappID string, index uint64) (*ResultRetrieveBatch, error)
+	GetHeightState(index uint64) (*ResultGetHeightState, error)
 	GetSequencers(rollappID string) ([]*types.Sequencer, error)
 }

@@ -30,7 +30,7 @@ const (
 	FlagRollappID        = "dymint.settlement_config.rollapp_id"
 )
 
-// AddFlags adds Dymint specific configuration options to cobra Command.
+// AddNodeFlags adds Dymint specific configuration options to cobra Command.
 //
 // This function is called in cosmos-sdk.
 func AddNodeFlags(cmd *cobra.Command) {

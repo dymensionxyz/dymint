@@ -37,9 +37,6 @@ type State struct {
 	LastBlockID     types.BlockID
 	LastBlockTime   time.Time
 
-	// SLStateIndex identifies the Settlement Layer state index we're synced with
-	SLStateIndex uint64
-
 	// In the MVP implementation, there will be only one Validator
 	NextValidators              *types.ValidatorSet
 	Validators                  *types.ValidatorSet

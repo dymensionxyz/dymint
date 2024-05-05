@@ -1,6 +1,10 @@
 package events
 
-import uevent "github.com/dymensionxyz/dymint/utils/event"
+import (
+	"fmt"
+
+	uevent "github.com/dymensionxyz/dymint/utils/event"
+)
 
 // Type Keys
 const (
@@ -21,6 +25,10 @@ var HealthStatusList = map[string][]string{NodeTypeKey: {HealthStatus}}
 type DataHealthStatus struct {
 	// Error is the error that was encountered in case of a health check failure. Nil implies healthy.
 	Error error
+}
+
+func (dhs DataHealthStatus) String() string {
+	return fmt.Sprintf("DataHealthStatus{Error: %v}", dhs.Error)
 }
 
 //  Queries
