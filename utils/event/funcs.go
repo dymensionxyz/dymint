@@ -23,8 +23,7 @@ func MustSubscribe(
 ) {
 	subscription, err := pubsubServer.SubscribeUnbuffered(ctx, clientID, eventQuery)
 	if err != nil {
-		logger.Error("subscribe to events")
-		panic(err)
+		panic(fmt.Errorf("subscribe: %w", err))
 	}
 
 	for {
@@ -34,7 +33,7 @@ func MustSubscribe(
 		case event := <-subscription.Out():
 			callback(event)
 		case <-subscription.Cancelled():
-			logger.Info(clientID + " subscription canceled")
+			logger.Error(clientID + " subscription canceled")
 			return
 		}
 	}

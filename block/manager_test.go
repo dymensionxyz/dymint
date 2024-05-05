@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	uevent "github.com/dymensionxyz/dymint/utils/event"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -276,7 +278,7 @@ func TestBlockProductionNodeHealth(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			err := manager.Pubsub.PublishWithEvents(context.Background(), c.healthStatusEventData, c.healthStatusEvent)
+			uevent.MustPublish(context.Background(), manager.Pubsub, c.healthStatusEventData, c.healthStatusEvent)
 			assert.NoError(err, "PublishWithEvents should not produce an error")
 			time.Sleep(500 * time.Millisecond)
 			blockHeight := manager.Store.Height()

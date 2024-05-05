@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	uevent "github.com/dymensionxyz/dymint/utils/event"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -202,8 +204,7 @@ func TestHealthStatusEventHandler(t *testing.T) {
 				}
 			}()
 			<-ready
-			// Emit an event.
-			node.PubsubServer.PublishWithEvents(context.Background(), c.baseLayerHealthStatusEventData, c.baseLayerHealthStatusEvent)
+			uevent.MustPublish(context.Background(), node.PubsubServer, c.baseLayerHealthStatusEventData, c.baseLayerHealthStatusEvent)
 			<-done
 		})
 	}

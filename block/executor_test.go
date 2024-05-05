@@ -128,14 +128,14 @@ func TestApplyBlock(t *testing.T) {
 	// Subscribe to tx events
 	txQuery, err := query.New("tm.event='Tx'")
 	require.NoError(err)
-	txSub, err := eventBus.Subscribe(context.Background(), "test", txQuery, 1000)
+	txSub, err := eventBus.SubscribeUnbuffered(context.Background(), "test", txQuery)
 	require.NoError(err)
 	require.NotNil(txSub)
 
 	// Subscribe to block header events
 	headerQuery, err := query.New("tm.event='NewBlockHeader'")
 	require.NoError(err)
-	headerSub, err := eventBus.Subscribe(context.Background(), "test", headerQuery, 100)
+	headerSub, err := eventBus.SubscribeUnbuffered(context.Background(), "test", headerQuery)
 	require.NoError(err)
 	require.NotNil(headerSub)
 

@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 
+	uevent "github.com/dymensionxyz/dymint/utils/event"
+
 	"github.com/dymensionxyz/dymint/mempool"
 	nodemempool "github.com/dymensionxyz/dymint/node/mempool"
 	"github.com/dymensionxyz/dymint/settlement"
@@ -85,12 +87,7 @@ func (v *Validator) BlockValidator() GossipValidator {
 			v.logger.Error("Invalid gossiped block", "error", err)
 			return false
 		}
-
-		err := v.localPubsubServer.PublishWithEvents(context.Background(), gossipedBlock, map[string][]string{EventTypeKey: {EventNewGossipedBlock}})
-		if err != nil {
-			v.logger.Error("publishing event", "err", err)
-			return false
-		}
+		uevent.MustPublish(context.Background(), v.localPubsubServer, gossipedBlock, map[string][]string{EventTypeKey: {EventNewGossipedBlock}})
 		return true
 	}
 }

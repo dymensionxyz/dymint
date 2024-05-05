@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	uevent "github.com/dymensionxyz/dymint/utils/event"
+
 	"github.com/dymensionxyz/dymint/node/events"
 	testutil "github.com/dymensionxyz/dymint/testutil"
 	"github.com/stretchr/testify/assert"
@@ -55,9 +57,8 @@ func TestNodeHealthRPCPropagation(t *testing.T) {
 			t.Run(tc.name, func(t *testing.T) {
 				// Emit an event to make the node unhealthy
 				pubsubServer := server.PubSubServer()
-				err := pubsubServer.PublishWithEvents(context.Background(), &events.DataHealthStatus{Error: tc.health},
+				uevent.MustPublish(context.Background(), pubsubServer, &events.DataHealthStatus{Error: tc.health},
 					map[string][]string{events.NodeTypeKey: {events.HealthStatus}})
-				require.NoError(t, err)
 				time.Sleep(1 * time.Second)
 				// Make the request
 				res, err := httpGetWithTimeout(fmt.Sprintf("http://%s", listener.Addr().String())+tc.endpoint, 5*time.Second)
