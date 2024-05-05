@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/celestiaorg/celestia-openrpc/types/blob"
+	"github.com/celestiaorg/celestia-openrpc/types/header"
 	uretry "github.com/dymensionxyz/dymint/utils/retry"
 
 	"github.com/dymensionxyz/dymint/da"
@@ -17,8 +19,6 @@ import (
 	mocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/da/celestia/types"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
-	"github.com/rollkit/celestia-openrpc/types/blob"
-	"github.com/rollkit/celestia-openrpc/types/header"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -30,10 +30,10 @@ import (
 )
 
 const (
-	submitPFBFuncName  = "Submit"
-	getProofFuncName   = "GetProof"
-	includedFuncName   = "Included"
-	getHeadersFuncName = "GetHeaders"
+	submitPFBFuncName   = "Submit"
+	getProofFuncName    = "GetProof"
+	includedFuncName    = "Included"
+	getByHeightFuncName = "GetByHeight"
 )
 
 // exampleNMT creates a new NamespacedMerkleTree with the given namespace ID size and leaf namespace IDs. Each byte in the leavesNIDs parameter corresponds to one leaf's namespace ID. If nidSize is greater than 1, the function repeats each NID in leavesNIDs nidSize times before prepending it to the leaf data.
@@ -140,7 +140,7 @@ func TestSubmitBatch(t *testing.T) {
 		if tc.name == "TestSubmitPFBResponseCodeSuccess" {
 			mockRPCClient.On(getProofFuncName, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(tc.getProofReturn...).Run(tc.getProofDRun)
 			mockRPCClient.On(includedFuncName, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(tc.includedReturn...).Run(tc.includedRun)
-			mockRPCClient.On(getHeadersFuncName, mock.Anything, mock.Anything).Return(header, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+			mockRPCClient.On(getByHeightFuncName, mock.Anything, mock.Anything).Return(header, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
 
 		}
 		done := make(chan bool)

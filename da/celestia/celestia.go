@@ -11,15 +11,14 @@ import (
 	"github.com/dymensionxyz/dymint/gerr"
 
 	"github.com/avast/retry-go/v4"
+	"github.com/celestiaorg/celestia-openrpc/types/blob"
+	"github.com/celestiaorg/celestia-openrpc/types/header"
 	"github.com/celestiaorg/nmt"
 	"github.com/gogo/protobuf/proto"
 	"github.com/tendermint/tendermint/libs/pubsub"
 
-	openrpc "github.com/rollkit/celestia-openrpc"
-
-	"github.com/rollkit/celestia-openrpc/types/blob"
-	"github.com/rollkit/celestia-openrpc/types/header"
-	"github.com/rollkit/celestia-openrpc/types/share"
+	openrpc "github.com/celestiaorg/celestia-openrpc"
+	"github.com/celestiaorg/celestia-openrpc/types/share"
 
 	"github.com/dymensionxyz/dymint/da"
 	celtypes "github.com/dymensionxyz/dymint/da/celestia/types"
@@ -92,16 +91,8 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 		return err
 	}
 
-	if c.config.GasPrices != 0 && c.config.Fee != 0 {
-		return errors.New("can't set both gas prices and fee")
-	}
-
-	if c.config.Fee == 0 && c.config.GasPrices == 0 {
-		return errors.New("fee or gas prices must be set")
-	}
-
-	if c.config.GasAdjustment == 0 {
-		c.config.GasAdjustment = defaultGasAdjustment
+	if c.config.GasPrices == 0 {
+		return errors.New("gas prices must be set")
 	}
 
 	c.pubsubServer = pubsubServer
@@ -557,18 +548,11 @@ func (c *DataAvailabilityLayerClient) submit(daBlob da.Blob) (uint64, da.Commitm
 		return 0, nil, fmt.Errorf("zero commitments: %w", gerr.ErrNotFound)
 	}
 
-	options := openrpc.DefaultSubmitOptions()
-
 	blobSizes := make([]uint32, len(blobs))
 	for i, blob := range blobs {
 		blobSizes[i] = uint32(len(blob.Data))
 	}
 
-	estimatedGas := EstimateGas(blobSizes, DefaultGasPerBlobByte, DefaultTxSizeCostPerByte)
-	gasWanted := uint64(float64(estimatedGas) * c.config.GasAdjustment)
-	fees := c.calculateFees(gasWanted)
-	options.Fee = fees
-	options.GasLimit = gasWanted
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
@@ -581,7 +565,7 @@ func (c *DataAvailabilityLayerClient) submit(daBlob da.Blob) (uint64, da.Commitm
 	err = retry.Do(
 		func() error {
 			var err error
-			height, err = c.rpc.Submit(ctx, blobs, options)
+			height, err = c.rpc.Submit(ctx, blobs, openrpc.GasPrice(c.config.GasPrices))
 			return err
 		},
 		retry.Context(c.ctx),
@@ -594,7 +578,7 @@ func (c *DataAvailabilityLayerClient) submit(daBlob da.Blob) (uint64, da.Commitm
 		return 0, nil, fmt.Errorf("do rpc submit: %w", err)
 	}
 
-	c.logger.Info("Successfully submitted blobs to Celestia", "height", height, "gas", options.GasLimit, "fee", options.Fee)
+	c.logger.Info("Successfully submitted blobs to Celestia", "height", height)
 
 	return height, commitments[0], nil
 }
@@ -643,7 +627,7 @@ func (c *DataAvailabilityLayerClient) getDataAvailabilityHeaders(height uint64) 
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
-	headers, err := c.rpc.GetHeaders(ctx, height)
+	headers, err := c.rpc.GetByHeight(ctx, height)
 	if err != nil {
 		return nil, err
 	}
