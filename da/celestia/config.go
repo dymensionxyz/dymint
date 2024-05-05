@@ -12,10 +12,9 @@ import (
 )
 
 const (
-	defaultRpcRetryDelay    = 1 * time.Second
-	defaultRpcCheckAttempts = 10
-	namespaceVersion        = 0
-	defaultGasPrices        = 0.1
+	defaultRpcRetryDelay = 3 * time.Second
+	namespaceVersion     = 0
+	DefaultGasPrices     = 0.1
 )
 
 var defaultSubmitBackoff = uretry.NewBackoffConfig(
@@ -25,20 +24,23 @@ var defaultSubmitBackoff = uretry.NewBackoffConfig(
 
 // Config stores Celestia DALC configuration parameters.
 type Config struct {
-	BaseURL        string              `json:"base_url"`
-	AppNodeURL     string              `json:"app_node_url"`
-	Timeout        time.Duration       `json:"timeout"`
-	GasPrices      float64             `json:"gas_prices"`
-	NamespaceIDStr string              `json:"namespace_id"`
-	AuthToken      string              `json:"auth_token"`
-	NamespaceID    openrpcns.Namespace `json:"-"`
+	BaseURL        string               `json:"base_url,omitempty"`
+	AppNodeURL     string               `json:"app_node_url,omitempty"`
+	Timeout        time.Duration        `json:"timeout,omitempty"`
+	GasPrices      float64              `json:"gas_prices,omitempty"`
+	NamespaceIDStr string               `json:"namespace_id,omitempty"`
+	AuthToken      string               `json:"auth_token,omitempty"`
+	Backoff        uretry.BackoffConfig `json:"backoff,omitempty"`
+	RetryAttempts  int                  `json:"retry_attempts,omitempty"`
+	RetryDelay     time.Duration        `json:"retry_delay,omitempty"`
+	NamespaceID    openrpcns.Namespace  `json:"-"`
 }
 
-var CelestiaDefaultConfig = Config{
+var TestConfig = Config{
 	BaseURL:        "http://127.0.0.1:26658",
 	AppNodeURL:     "",
 	Timeout:        5 * time.Second,
-	GasPrices:      defaultGasPrices,
+	GasPrices:      DefaultGasPrices,
 	NamespaceIDStr: "",
 	NamespaceID:    openrpcns.Namespace{Version: namespaceVersion, ID: []byte{0, 0, 0, 0, 0, 0, 0, 0, 255, 255}},
 }
@@ -59,12 +61,12 @@ func (c *Config) InitNamespaceID() error {
 	// Decode NamespaceID from string to byte array
 	namespaceBytes, err := hex.DecodeString(c.NamespaceIDStr)
 	if err != nil {
-		return err
+		return fmt.Errorf("decode string: %w", err)
 	}
 
 	// Check if NamespaceID is of correct length (10 bytes)
 	if len(namespaceBytes) != openrpcns.NamespaceVersionZeroIDSize {
-		return fmt.Errorf("invalid namespace id length: %v must be %v", len(namespaceBytes), openrpcns.NamespaceVersionZeroIDSize)
+		return fmt.Errorf("wrong length: got: %v: expect %v", len(namespaceBytes), openrpcns.NamespaceVersionZeroIDSize)
 	}
 
 	ns, err := openrpcns.New(openrpcns.NamespaceVersionZero, append(openrpcns.NamespaceVersionZeroPrefix, namespaceBytes...))
