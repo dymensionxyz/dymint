@@ -50,7 +50,7 @@ func GetRandomBytes(n int) []byte {
 	return data
 }
 
-// GenerateBlocks generates random blocks.
+// generateBlock generates random blocks.
 func generateBlock(height uint64) *types.Block {
 	h := createRandomHashes()
 	block := &types.Block{
