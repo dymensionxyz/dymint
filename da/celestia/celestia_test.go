@@ -302,6 +302,7 @@ func setDAandMock(t *testing.T) (*mocks.MockCelestiaRPCClient, da.DataAvailabili
 	config := celestia.Config{
 		BaseURL:        "http://localhost:26658",
 		Timeout:        30 * time.Second,
+		GasPrices:      celestia.CelestiaDefaultConfig.GasPrices,
 		NamespaceIDStr: "0000000000000000ffff",
 	}
 	err = config.InitNamespaceID()
