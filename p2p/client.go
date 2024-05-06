@@ -37,9 +37,6 @@ const (
 	// txTopicSuffix is added after namespace to create pubsub topic for TX gossiping.
 	txTopicSuffix = "-tx"
 
-	// headerTopicSuffix is added after namespace to create pubsub topic for block header gossiping.
-	headerTopicSuffix = "-header"
-
 	// blockTopicSuffix is added after namespace to create pubsub topic for block gossiping.
 	blockTopicSuffix = "-block"
 )
@@ -60,9 +57,6 @@ type Client struct {
 
 	txGossiper  *Gossiper
 	txValidator GossipValidator
-
-	headerGossiper  *Gossiper
-	headerValidator GossipValidator
 
 	blockGossiper  *Gossiper
 	blockValidator GossipValidator
@@ -144,7 +138,6 @@ func (c *Client) Close() error {
 
 	return multierr.Combine(
 		c.txGossiper.Close(),
-		c.headerGossiper.Close(),
 		c.blockGossiper.Close(),
 		c.DHT.Close(),
 		c.Host.Close(),
@@ -160,17 +153,6 @@ func (c *Client) GossipTx(ctx context.Context, tx []byte) error {
 // SetTxValidator sets the callback function, that will be invoked during message gossiping.
 func (c *Client) SetTxValidator(val GossipValidator) {
 	c.txValidator = val
-}
-
-// GossipHeader sends the block header to the P2P network.
-func (c *Client) GossipHeader(ctx context.Context, headerBytes []byte) error {
-	c.logger.Debug("Gossiping block header", "len", len(headerBytes))
-	return c.headerGossiper.Publish(ctx, headerBytes)
-}
-
-// SetHeaderValidator sets the callback function, that will be invoked after block header is received from P2P network.
-func (c *Client) SetHeaderValidator(validator GossipValidator) {
-	c.headerValidator = validator
 }
 
 // GossipBlock sends the block, and it's commit to the P2P network.
@@ -347,13 +329,6 @@ func (c *Client) setupGossiping(ctx context.Context) error {
 	}
 	go c.txGossiper.ProcessMessages(ctx)
 
-	c.headerGossiper, err = NewGossiper(c.Host, ps, c.getHeaderTopic(), c.logger,
-		WithValidator(c.headerValidator))
-	if err != nil {
-		return err
-	}
-	go c.headerGossiper.ProcessMessages(ctx)
-
 	c.blockGossiper, err = NewGossiper(c.Host, ps, c.getBlockTopic(), c.logger,
 		WithValidator(c.blockValidator))
 	if err != nil {
@@ -396,10 +371,6 @@ func (c *Client) getNamespace() string {
 
 func (c *Client) getTxTopic() string {
 	return c.getNamespace() + txTopicSuffix
-}
-
-func (c *Client) getHeaderTopic() string {
-	return c.getNamespace() + headerTopicSuffix
 }
 
 func (c *Client) getBlockTopic() string {
