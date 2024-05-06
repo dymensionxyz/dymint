@@ -28,9 +28,10 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 		},
 		Aggregator: true,
 		BlockManagerConfig: BlockManagerConfig{
-			BlockTime:               200 * time.Millisecond,
-			EmptyBlocksMaxTime:      3600 * time.Second,
-			BatchSubmitMaxTime:      100 * time.Second,
+			BlockTime: 200 * time.Millisecond,
+			//TODO (#807): empty block will increase once we'll have dedicated timer to support IBC transfers
+			EmptyBlocksMaxTime:      100 * time.Second,
+			BatchSubmitMaxTime:      3600 * time.Second,
 			NamespaceID:             "0000000000000000ffff",
 			BlockBatchMaxSizeBytes:  500000,
 			GossipedBlocksCacheSize: 50,
