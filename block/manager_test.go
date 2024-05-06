@@ -216,6 +216,8 @@ func TestProducePendingBlock(t *testing.T) {
 	assert.Equal(t, block.Header.Hash(), *(*[32]byte)(manager.LastState.LastBlockID.Hash))
 }
 
+//FIXME: REFACTOR THIS TEST
+
 // TestBlockProductionNodeHealth tests the different scenarios of block production when the node health is toggling.
 // The test does the following:
 // 1. Send healthy event and validate blocks are produced

@@ -230,13 +230,8 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 		default:
 			err := d.submitBatch(msgUpdateState)
 			if err != nil {
-
-				err = fmt.Errorf("submit batch: %w", err)
-
-				uevent.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{Error: err}, settlement.EventHealthStatusList)
-
 				d.logger.Error(
-					"Submitted bad health event: trying again.",
+					"submit batch",
 					"startHeight",
 					batch.StartHeight,
 					"endHeight",
@@ -263,9 +258,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 			return fmt.Errorf("subscription cancelled: %w", err)
 
 		case <-subscription.Out():
-			uevent.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{}, settlement.EventHealthStatusList)
-			d.logger.Debug("Batch accepted: emitted healthy event.", "startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
-
+			d.logger.Debug("Batch accepted", "startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
 			return nil
 
 		case <-timer.C:
@@ -273,13 +266,8 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 			// layer, and we've just missed the event.
 			includedBatch, err := d.waitForBatchInclusion(batch.StartHeight)
 			if err != nil {
-
-				err = fmt.Errorf("wait for batch inclusion: %w", err)
-
-				uevent.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{Error: err}, settlement.EventHealthStatusList)
-
 				d.logger.Error(
-					"Submitted bad health event: trying again.",
+					"wait for batch inclusion",
 					"startHeight",
 					batch.StartHeight,
 					"endHeight",
@@ -293,9 +281,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 			}
 
 			// all good
-			uevent.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{}, settlement.EventHealthStatusList)
-			d.logger.Info("Batch accepted, emitted healthy event.", "startHeight", includedBatch.StartHeight, "endHeight", includedBatch.EndHeight)
-
+			d.logger.Info("Batch accepted", "startHeight", includedBatch.StartHeight, "endHeight", includedBatch.EndHeight)
 			return nil
 		}
 	}

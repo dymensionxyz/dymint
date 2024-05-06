@@ -212,14 +212,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			// TODO(srene):  Split batch in multiple blobs if necessary if supported
 			height, commitment, err := c.submit(data)
 			if err != nil {
-				err = fmt.Errorf("submit batch: %w", err)
-
-				res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, err)
-				if err != nil {
-					return res
-				}
-
-				c.logger.Error("Submitted bad health event: trying again.", "error", err)
+				c.logger.Error("submit batch", "error", err)
 				backoff.Sleep()
 				continue
 			}
@@ -235,14 +228,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 
 			result := c.CheckBatchAvailability(daMetaData)
 			if result.Code != da.StatusSuccess {
-				err = fmt.Errorf("check batch availability: submitted batch but did not get availability success status: %w", err)
-
-				res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, err)
-				if err != nil {
-					return res
-				}
-
-				c.logger.Error("Submitted bad health event: trying again.", "error", err)
+				c.logger.Error("check batch availability: submitted batch but did not get availability success status", "error", err)
 				backoff.Sleep()
 				continue
 			}
@@ -250,12 +236,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			daMetaData.Index = result.CheckMetaData.Index
 			daMetaData.Length = result.CheckMetaData.Length
 
-			res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, nil)
-			if err != nil {
-				return res
-			}
-
-			c.logger.Debug("Batch accepted, emitted healthy event.")
+			c.logger.Debug("Batch accepted")
 
 			return da.ResultSubmitBatch{
 				BaseResult: da.BaseResult{

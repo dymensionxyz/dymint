@@ -15,7 +15,6 @@ import (
 
 	"code.cloudfoundry.org/go-diodes"
 
-	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/libp2p/go-libp2p/core/crypto"
 
@@ -129,7 +128,7 @@ func NewManager(
 		SyncTargetDiode:       diodes.NewOneToOne(1, nil),
 		shouldProduceBlocksCh: make(chan bool, 1),
 		shouldSubmitBatchCh:   make(chan bool, 10), //allow capacity for multiple pending batches to support bursts
-		produceEmptyBlockCh:   make(chan bool, 1),
+		produceEmptyBlockCh:   make(chan bool, 5),  //TODO: arbitrary number for now, gonna be refactored
 		logger:                logger,
 		blockCache:            make(map[uint64]CachedBlock),
 	}
@@ -172,7 +171,6 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 	}
 
 	if isAggregator {
-		go uevent.MustSubscribe(ctx, m.Pubsub, "nodeHealth", events.QueryHealthStatus, m.onNodeHealthStatus, m.logger)
 		go m.ProduceBlockLoop(ctx)
 		go m.SubmitLoop(ctx)
 	} else {
@@ -221,12 +219,6 @@ func getAddress(key crypto.PrivKey) ([]byte, error) {
 		return nil, err
 	}
 	return tmcrypto.AddressHash(rawKey), nil
-}
-
-func (m *Manager) onNodeHealthStatus(event pubsub.Message) {
-	eventData := event.Data().(*events.DataHealthStatus)
-	m.logger.Info("Received node health status event.", "eventData", eventData)
-	m.shouldProduceBlocksCh <- eventData.Error == nil
 }
 
 // TODO: move to gossip.go

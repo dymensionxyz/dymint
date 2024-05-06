@@ -10,10 +10,6 @@ import (
 	"sync"
 	"time"
 
-	uevent "github.com/dymensionxyz/dymint/utils/event"
-
-	"github.com/dymensionxyz/dymint/node/events"
-
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
@@ -310,8 +306,6 @@ func (n *Node) OnStart() error {
 		}
 	}()
 
-	n.startEventListener()
-
 	// start the block manager
 	err = n.blockManager.Start(n.Ctx, n.conf.Aggregator)
 	if err != nil {
@@ -405,35 +399,6 @@ func createAndStartIndexerService(
 	}
 
 	return indexerService, txIndexer, blockIndexer, nil
-}
-
-// All events listeners should be registered here
-func (n *Node) startEventListener() {
-	go uevent.MustSubscribe(n.Ctx, n.PubsubServer, "settlementHealthStatusHandler", settlement.EventQuerySettlementHealthStatus, n.onBaseLayerHealthUpdate, n.Logger)
-	go uevent.MustSubscribe(n.Ctx, n.PubsubServer, "daHealthStatusHandler", da.EventQueryDAHealthStatus, n.onBaseLayerHealthUpdate, n.Logger)
-}
-
-func (n *Node) onBaseLayerHealthUpdate(event pubsub.Message) {
-	haveNewErr := false
-	oldStatus := n.baseLayerHealth.get()
-	switch e := event.Data().(type) {
-	case *settlement.EventDataHealth:
-		haveNewErr = e.Error != nil
-		n.baseLayerHealth.setSettlement(e.Error)
-	case *da.EventDataHealth:
-		haveNewErr = e.Error != nil
-		n.baseLayerHealth.setDA(e.Error)
-	}
-	newStatus := n.baseLayerHealth.get()
-	newStatusIsDifferentFromOldOne := (oldStatus == nil) != (newStatus == nil)
-	shouldPublish := newStatusIsDifferentFromOldOne || haveNewErr
-	if shouldPublish {
-		evt := &events.DataHealthStatus{Error: newStatus}
-		if newStatus != nil {
-			n.Logger.Error("Node is unhealthy: base layer has problem.", "error", newStatus)
-		}
-		uevent.MustPublish(n.Ctx, n.PubsubServer, evt, events.HealthStatusList)
-	}
 }
 
 func (n *Node) startPrometheusServer() error {

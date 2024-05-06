@@ -98,6 +98,7 @@ func (m *Manager) submitNextBatchToDA(nextBatch *types.Batch) (*da.ResultSubmitB
 	isLastBlockEmpty := nextBatch.Blocks[len(nextBatch.Blocks)-1].Data.Txs == nil
 	if !isLastBlockEmpty {
 		m.logger.Info("Last block in batch is not an empty block. Requesting for an empty block creation", "endHeight", actualEndHeight)
+		//TODO: remove from here and move to the block production loop.
 		m.produceEmptyBlockCh <- true
 	}
 
@@ -105,8 +106,7 @@ func (m *Manager) submitNextBatchToDA(nextBatch *types.Batch) (*da.ResultSubmitB
 	m.logger.Info("Submitting next batch", "startHeight", startHeight, "endHeight", actualEndHeight, "size", nextBatch.ToProto().Size())
 	resultSubmitToDA := m.DAClient.SubmitBatch(nextBatch)
 	if resultSubmitToDA.Code != da.StatusSuccess {
-		err = fmt.Errorf("submit next batch to DA Layer: %s", resultSubmitToDA.Message)
-		return nil, err
+		return nil, fmt.Errorf("submit next batch to DA Layer: %s", resultSubmitToDA.Message)
 	}
 	return &resultSubmitToDA, nil
 }
@@ -176,15 +176,4 @@ func (m *Manager) CreateNextBatchToSubmit(startHeight uint64, endHeight uint64) 
 
 	batch.EndHeight = height - 1
 	return batch, nil
-}
-
-func (m *Manager) isBlockEmpty(endHeight uint64) (isEmpty bool, err error) {
-	m.logger.Debug("Verifying last block in batch is an empty block", "endHeight", endHeight, "height")
-	lastBlock, err := m.Store.LoadBlock(endHeight)
-	if err != nil {
-		m.logger.Error("load block", "height", endHeight, "error", err)
-		return false, err
-	}
-
-	return len(lastBlock.Data.Txs) == 0, nil
 }

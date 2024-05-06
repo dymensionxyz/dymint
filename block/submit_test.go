@@ -96,9 +96,7 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 
 	// try to submit, we expect failure
 	mockLayerI.On("SubmitBatch", mock.Anything, mock.Anything, mock.Anything).Return(fmt.Errorf("Failed to submit batch")).Once()
-	assert.Panics(t, func() {
-		manager.HandleSubmissionTrigger(ctx)
-	})
+	assert.Error(t, manager.HandleSubmissionTrigger(ctx))
 
 	// try to submit again, we expect success
 	mockLayerI.On("SubmitBatch", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()

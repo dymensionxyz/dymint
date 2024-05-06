@@ -1,11 +1,8 @@
 package dymension_test
 
 import (
-	"context"
 	"errors"
 	"fmt"
-	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -114,9 +111,6 @@ func TestPostBatch(t *testing.T) {
 	require.NoError(err)
 	batch, err := testutil.GenerateBatch(1, 1, propserKey)
 	require.NoError(err)
-	// Subscribe to the health status event
-	HealthSubscription, err := pubsubServer.Subscribe(context.Background(), "testPostBatch", settlement.EventQuerySettlementHealthStatus)
-	assert.NoError(t, err)
 
 	cases := []struct {
 		name                    string
@@ -161,10 +155,6 @@ func TestPostBatch(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			// Init the wait group and set the number of expected events
-			var wg sync.WaitGroup
-			eventsCount := 1
-			wg.Add(eventsCount)
 			// Reset the mock functions
 			testutil.UnsetMockFn(cosmosClientMock.On("BroadcastTx"))
 			testutil.UnsetMockFn(rollappQueryClientMock.On("StateInfo"))
@@ -193,20 +183,6 @@ func TestPostBatch(t *testing.T) {
 			require.NoError(err)
 			err = hubClient.Start()
 			require.NoError(err)
-			// Handle the various events that are emitted and timeout if we don't get them
-			var eventsReceivedCount int64
-			go func() {
-				select {
-				case healthEvent := <-HealthSubscription.Out():
-					t.Logf("got health event: %v", healthEvent)
-					healthStatusEvent := healthEvent.Data().(*settlement.EventDataHealth)
-					assert.ErrorIs(t, healthStatusEvent.Error, c.expectedError)
-					atomic.AddInt64(&eventsReceivedCount, 1)
-				case <-time.After(10 * time.Second):
-					t.Error("Didn't receive health event")
-				}
-				wg.Done()
-			}()
 
 			resultSubmitBatch := &da.ResultSubmitBatch{}
 			resultSubmitBatch.SubmitMetaData = &da.DASubmitMetaData{}
@@ -237,8 +213,6 @@ func TestPostBatch(t *testing.T) {
 					},
 				}
 			}
-			wg.Wait()
-			assert.Equal(t, eventsCount, int(eventsReceivedCount))
 			// Stop the hub client and wait for it to stop
 			err = hubClient.Stop()
 			require.NoError(err)

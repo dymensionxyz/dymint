@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/dymensionxyz/dymint/node/events"
+	uevent "github.com/dymensionxyz/dymint/utils/event"
+
 	"github.com/dymensionxyz/dymint/store"
 
 	"github.com/dymensionxyz/dymint/types"
@@ -66,12 +69,27 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 				continue
 			}
 			resetEmptyBlocksTimer()
-		case shouldProduceBlocks := <-m.shouldProduceBlocksCh:
-			for !shouldProduceBlocks {
-				m.logger.Info("block production paused - awaiting positive continuation signal")
-				shouldProduceBlocks = <-m.shouldProduceBlocksCh
+
+			// Check if we should submit the accumulated data
+			if m.shouldSubmitBatch() {
+				select {
+				case m.shouldSubmitBatchCh <- true:
+				default:
+					m.logger.Error("new batch accumualted, but channel is full, stopping block production until the signal is consumed")
+					// emit unhealthy event for the node
+					evt := &events.DataHealthStatus{Error: fmt.Errorf("submission channel is full")}
+					uevent.MustPublish(ctx, m.Pubsub, evt, events.HealthStatusList)
+					// wait for the signal to be consumed
+					m.shouldSubmitBatchCh <- true
+					m.logger.Info("resumed block production")
+					// emit healthy event for the node
+					evt = &events.DataHealthStatus{Error: nil}
+					uevent.MustPublish(ctx, m.Pubsub, evt, events.HealthStatusList)
+				}
+				m.produceBlockMutex.Lock()
+				m.accumulatedProducedSize = 0
+				m.produceBlockMutex.Unlock()
 			}
-			m.logger.Info("resumed block production")
 		}
 	}
 }
@@ -89,21 +107,15 @@ func (m *Manager) ProduceAndGossipBlock(ctx context.Context, allowEmpty bool) er
 	return nil
 }
 
-func (m *Manager) updateAccumaltedSize(size uint64) bool {
+func (m *Manager) updateAccumaltedSize(size uint64) {
 	m.accumulatedProducedSize += size
+}
 
+// check if we should submit the accumulated data
+func (m *Manager) shouldSubmitBatch() bool {
 	// Check if accumulated size is greater than the max size
 	// TODO: allow some tolerance for block size (aim for BlockBatchMaxSize +- 10%)
-	if m.accumulatedProducedSize > m.Conf.BlockBatchMaxSizeBytes {
-		select {
-		case m.shouldSubmitBatchCh <- true:
-		default:
-			m.logger.Debug("new batch accumualted, but channel is full, skipping submission signal")
-		}
-		m.accumulatedProducedSize = 0
-		return true
-	}
-	return false
+	return m.accumulatedProducedSize > m.Conf.BlockBatchMaxSizeBytes
 }
 
 func (m *Manager) produceBlock(allowEmpty bool) (*types.Block, *types.Commit, error) {
@@ -191,7 +203,7 @@ func (m *Manager) produceBlock(allowEmpty bool) (*types.Block, *types.Commit, er
 	}
 
 	size := uint64(block.ToProto().Size() + commit.ToProto().Size())
-	_ = m.updateAccumaltedSize(size)
+	m.updateAccumaltedSize(size)
 
 	m.logger.Info("block created", "height", newHeight, "num_tx", len(block.Data.Txs), "accumulated_size", m.accumulatedProducedSize)
 	types.RollappBlockSizeBytesGauge.Set(float64(len(block.Data.Txs)))
