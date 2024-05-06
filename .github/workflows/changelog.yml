@@ -12,9 +12,9 @@ jobs:
       - name: Checkout the repository
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0  # Ensure all history is fetched
+          fetch-depth: 0
 
-      - name: Setup Node.js (if using a Node.js tool for changelog generation)
+      - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '18'
@@ -31,7 +31,7 @@ jobs:
         with:
           commit-message: "Update CHANGELOG.md [skip ci]"
           title: "Automated Changelog Update [skip ci]"
-          body: "Update the CHANGELOG.md with recent commits. [skip ci]"
+          body: "Update the CHANGELOG.md with recent pushs. [skip ci]"
           branch: auto-changelog-update-${{ github.run_number }}
           delete-branch: true
           branch-suffix: timestamp
