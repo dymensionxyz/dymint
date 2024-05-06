@@ -234,7 +234,7 @@ func TestSubmissionTrigger(t *testing.T) {
 		require.NoError(err)
 
 		//validate initial accumalted is zero
-		require.Equal(manager.AccumulatedProducedSize, uint64(0))
+		require.Equal(manager.AccumulatedProducedSize.Load(), uint64(0))
 		assert.Equal(manager.Store.Height(), uint64(0))
 
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
@@ -246,7 +246,7 @@ func TestSubmissionTrigger(t *testing.T) {
 		//wait for block to be produced but not for submission threshold
 		time.Sleep(400 * time.Millisecond)
 		assert.Greater(manager.Store.Height(), uint64(0))
-		assert.Greater(manager.AccumulatedProducedSize, uint64(0))
+		assert.Greater(manager.AccumulatedProducedSize.Load(), uint64(0))
 
 		//wait for submission signal
 		sent := false
@@ -255,7 +255,7 @@ func TestSubmissionTrigger(t *testing.T) {
 		case <-manager.ShouldSubmitBatchCh:
 			sent = true
 			time.Sleep(100 * time.Millisecond)
-			assert.Equal(manager.AccumulatedProducedSize, uint64(0))
+			assert.Equal(manager.AccumulatedProducedSize.Load(), uint64(0))
 		}
 
 		assert.Equal(c.expectedSubmission, sent)
@@ -272,7 +272,7 @@ func TestStopBlockProduction(t *testing.T) {
 	require.NoError(err)
 
 	//validate initial accumalted is zero
-	require.Equal(manager.AccumulatedProducedSize, uint64(0))
+	require.Equal(manager.AccumulatedProducedSize.Load(), uint64(0))
 	assert.Equal(manager.Store.Height(), uint64(0))
 
 	// subscribe to health status event
@@ -291,7 +291,7 @@ func TestStopBlockProduction(t *testing.T) {
 	//validate block production works
 	time.Sleep(400 * time.Millisecond)
 	assert.Greater(manager.Store.Height(), uint64(0))
-	assert.Greater(manager.AccumulatedProducedSize, uint64(0))
+	assert.Greater(manager.AccumulatedProducedSize.Load(), uint64(0))
 
 	// we don't read from the submit channel, so we assume it get full
 	// we expect the block production to stop and unhealthy event to be emitted

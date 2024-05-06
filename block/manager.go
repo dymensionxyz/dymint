@@ -60,7 +60,7 @@ type Manager struct {
 	SyncTarget      atomic.Uint64
 
 	// Block production
-	AccumulatedProducedSize uint64
+	AccumulatedProducedSize atomic.Uint64
 	ShouldSubmitBatchCh     chan bool
 	produceEmptyBlockCh     chan bool
 	lastSubmissionTime      atomic.Int64
@@ -115,23 +115,22 @@ func NewManager(
 	}
 
 	agg := &Manager{
-		Pubsub:                  pubsub,
-		p2pClient:               p2pClient,
-		ProposerKey:             proposerKey,
-		Conf:                    conf,
-		Genesis:                 genesis,
-		LastState:               s,
-		Store:                   store,
-		Executor:                exec,
-		DAClient:                dalc,
-		SLClient:                settlementClient,
-		Retriever:               dalc.(da.BatchRetriever),
-		SyncTargetDiode:         diodes.NewOneToOne(1, nil),
-		AccumulatedProducedSize: 0,
-		ShouldSubmitBatchCh:     make(chan bool, maxSupportedBatchSkew), //allow capacity for multiple pending batches to support bursts
-		produceEmptyBlockCh:     make(chan bool, 5),                     //TODO(#807): arbitrary number for now, gonna be refactored
-		logger:                  logger,
-		blockCache:              make(map[uint64]CachedBlock),
+		Pubsub:              pubsub,
+		p2pClient:           p2pClient,
+		ProposerKey:         proposerKey,
+		Conf:                conf,
+		Genesis:             genesis,
+		LastState:           s,
+		Store:               store,
+		Executor:            exec,
+		DAClient:            dalc,
+		SLClient:            settlementClient,
+		Retriever:           dalc.(da.BatchRetriever),
+		SyncTargetDiode:     diodes.NewOneToOne(1, nil),
+		ShouldSubmitBatchCh: make(chan bool, maxSupportedBatchSkew), //allow capacity for multiple pending batches to support bursts
+		produceEmptyBlockCh: make(chan bool, 5),                     //TODO(#807): arbitrary number for now, gonna be refactored
+		logger:              logger,
+		blockCache:          make(map[uint64]CachedBlock),
 	}
 
 	return agg, nil
