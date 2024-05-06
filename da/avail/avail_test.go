@@ -7,7 +7,7 @@ import (
 	availtypes "github.com/centrifuge/go-substrate-rpc-client/v4/types"
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/da/avail"
-	mocks "github.com/dymensionxyz/dymint/mocks/da/avail"
+	mocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/da/avail"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/stretchr/testify/assert"
@@ -123,7 +123,7 @@ func TestRetriveBatches(t *testing.T) {
 	})
 	require.NoError(err)
 	// Create mock client
-	mockSubstrateApiClient := mocks.NewSubstrateApiI(t)
+	mockSubstrateApiClient := mocks.NewMockSubstrateApiI(t)
 	// Configure DALC options
 	options := []da.Option{
 		avail.WithClient(mockSubstrateApiClient),

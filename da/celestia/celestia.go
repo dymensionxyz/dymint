@@ -2,27 +2,30 @@ package celestia
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
 
+	"github.com/dymensionxyz/dymint/gerr"
+
 	"github.com/avast/retry-go/v4"
+	"github.com/celestiaorg/celestia-openrpc/types/blob"
+	"github.com/celestiaorg/celestia-openrpc/types/header"
 	"github.com/celestiaorg/nmt"
 	"github.com/gogo/protobuf/proto"
 	"github.com/tendermint/tendermint/libs/pubsub"
 
-	openrpc "github.com/rollkit/celestia-openrpc"
-
-	"github.com/rollkit/celestia-openrpc/types/blob"
-	"github.com/rollkit/celestia-openrpc/types/header"
-	"github.com/rollkit/celestia-openrpc/types/share"
+	openrpc "github.com/celestiaorg/celestia-openrpc"
+	"github.com/celestiaorg/celestia-openrpc/types/share"
 
 	"github.com/dymensionxyz/dymint/da"
 	celtypes "github.com/dymensionxyz/dymint/da/celestia/types"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
 	pb "github.com/dymensionxyz/dymint/types/pb/dymint"
+	uretry "github.com/dymensionxyz/dymint/utils/retry"
 )
 
 // DataAvailabilityLayerClient use celestia-node public API.
@@ -36,7 +39,7 @@ type DataAvailabilityLayerClient struct {
 	cancel           context.CancelFunc
 	rpcRetryDelay    time.Duration
 	rpcRetryAttempts int
-	submitRetryDelay time.Duration
+	submitBackoff    uretry.BackoffConfig
 }
 
 var (
@@ -65,10 +68,10 @@ func WithRPCAttempts(attempts int) da.Option {
 	}
 }
 
-// WithSubmitRetryDelay sets submit retry delay.
-func WithSubmitRetryDelay(delay time.Duration) da.Option {
+// WithSubmitBackoff sets submit retry delay config.
+func WithSubmitBackoff(c uretry.BackoffConfig) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
-		daLayerClient.(*DataAvailabilityLayerClient).submitRetryDelay = delay
+		daLayerClient.(*DataAvailabilityLayerClient).submitBackoff = c
 	}
 }
 
@@ -88,23 +91,15 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 		return err
 	}
 
-	if c.config.GasPrices != 0 && c.config.Fee != 0 {
-		return errors.New("can't set both gas prices and fee")
-	}
-
-	if c.config.Fee == 0 && c.config.GasPrices == 0 {
-		return errors.New("fee or gas prices must be set")
-	}
-
-	if c.config.GasAdjustment == 0 {
-		c.config.GasAdjustment = defaultGasAdjustment
+	if c.config.GasPrices == 0 {
+		return errors.New("gas prices must be set")
 	}
 
 	c.pubsubServer = pubsubServer
 	// Set defaults
 	c.rpcRetryAttempts = defaultRpcCheckAttempts
 	c.rpcRetryDelay = defaultRpcRetryDelay
-	c.submitRetryDelay = defaultSubmitRetryDelay
+	c.submitBackoff = defaultSubmitBackoff
 
 	c.ctx, c.cancel = context.WithCancel(context.Background())
 
@@ -199,16 +194,18 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 		return da.ResultSubmitBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
-				Message: fmt.Sprintf("size bigger than maximum blob size of %d bytes", celtypes.DefaultMaxBytes),
+				Message: fmt.Sprintf("size bigger than maximum blob size: max n bytes: %d", celtypes.DefaultMaxBytes),
 				Error:   errors.New("blob size too big"),
 			},
 		}
 	}
 
+	backoff := c.submitBackoff.Backoff()
+
 	for {
 		select {
 		case <-c.ctx.Done():
-			c.logger.Debug("Context cancelled")
+			c.logger.Debug("Context cancelled.")
 			return da.ResultSubmitBatch{}
 		default:
 
@@ -216,12 +213,14 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			height, commitment, err := c.submit(data)
 			if err != nil {
 				err = fmt.Errorf("submit batch: %w", err)
-				c.logger.Error("submit DA batch. Emitting health event and trying again", "error", err)
+
 				res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, err)
 				if err != nil {
 					return res
 				}
-				time.Sleep(c.submitRetryDelay)
+
+				c.logger.Error("Submitted bad health event: trying again.", "error", err)
+				backoff.Sleep()
 				continue
 			}
 
@@ -236,13 +235,15 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 
 			result := c.CheckBatchAvailability(daMetaData)
 			if result.Code != da.StatusSuccess {
-				err = fmt.Errorf("submitted batch but did not get availability success: %w", err)
-				c.logger.Error("unable to confirm submitted blob availability, retrying")
+				err = fmt.Errorf("check batch availability: submitted batch but did not get availability success status: %w", err)
+
 				res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, err)
 				if err != nil {
 					return res
 				}
-				time.Sleep(c.submitRetryDelay)
+
+				c.logger.Error("Submitted bad health event: trying again.", "error", err)
+				backoff.Sleep()
 				continue
 			}
 			daMetaData.Root = result.CheckMetaData.Root
@@ -253,6 +254,9 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			if err != nil {
 				return res
 			}
+
+			c.logger.Debug("Batch accepted, emitted healthy event.")
+
 			return da.ResultSubmitBatch{
 				BaseResult: da.BaseResult{
 					Code:    da.StatusSuccess,
@@ -307,6 +311,7 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMet
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
+	c.logger.Debug("Celestia DA getting blob", "height", daMetaData.Height, "namespace", hex.EncodeToString(daMetaData.Namespace), "commitment", hex.EncodeToString(daMetaData.Commitment))
 	var batches []*types.Batch
 	blob, err := c.rpc.Get(ctx, daMetaData.Height, daMetaData.Namespace, daMetaData.Commitment)
 	if err != nil {
@@ -333,6 +338,9 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMet
 	if err != nil {
 		c.logger.Error("unmarshal block", "daHeight", daMetaData.Height, "error", err)
 	}
+
+	c.logger.Debug("Celestia DA get blob successful", "DA height", daMetaData.Height, "lastBlockHeight", batch.EndHeight)
+
 	parsedBatch := new(types.Batch)
 	err = parsedBatch.FromProto(&batch)
 	if err != nil {
@@ -533,33 +541,44 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 func (c *DataAvailabilityLayerClient) submit(daBlob da.Blob) (uint64, da.Commitment, error) {
 	blobs, commitments, err := c.blobsAndCommitments(daBlob)
 	if err != nil {
-		return 0, nil, err
+		return 0, nil, fmt.Errorf("blobs and commitments: %w", err)
 	}
 
 	if len(commitments) == 0 {
-		return 0, nil, errors.New("no commitments found")
+		return 0, nil, fmt.Errorf("zero commitments: %w", gerr.ErrNotFound)
 	}
-
-	options := openrpc.DefaultSubmitOptions()
 
 	blobSizes := make([]uint32, len(blobs))
 	for i, blob := range blobs {
 		blobSizes[i] = uint32(len(blob.Data))
 	}
 
-	estimatedGas := EstimateGas(blobSizes, DefaultGasPerBlobByte, DefaultTxSizeCostPerByte)
-	gasWanted := uint64(float64(estimatedGas) * c.config.GasAdjustment)
-	fees := c.calculateFees(gasWanted)
-	options.Fee = fees
-	options.GasLimit = gasWanted
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
-	height, err := c.rpc.Submit(ctx, blobs, options)
+	/*
+		TODO: dry out all retries
+	*/
+
+	var height uint64
+
+	err = retry.Do(
+		func() error {
+			var err error
+			height, err = c.rpc.Submit(ctx, blobs, openrpc.GasPrice(c.config.GasPrices))
+			return err
+		},
+		retry.Context(c.ctx),
+		retry.LastErrorOnly(true),
+		retry.Delay(c.rpcRetryDelay),
+		retry.Attempts(uint(c.rpcRetryAttempts)),
+		retry.DelayType(retry.FixedDelay),
+	)
 	if err != nil {
-		return 0, nil, err
+		return 0, nil, fmt.Errorf("do rpc submit: %w", err)
 	}
-	c.logger.Info("Successfully submitted blobs to Celestia", "height", height, "gas", options.GasLimit, "fee", options.Fee)
+
+	c.logger.Info("Successfully submitted blobs to Celestia", "height", height)
 
 	return height, commitments[0], nil
 }
@@ -588,7 +607,7 @@ func (c *DataAvailabilityLayerClient) blobsAndCommitments(daBlob da.Blob) ([]*bl
 
 	commitment, err := blob.CreateCommitment(b)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("create commitment: %w", err)
 	}
 
 	commitments = append(commitments, commitment)
@@ -608,10 +627,10 @@ func (c *DataAvailabilityLayerClient) getDataAvailabilityHeaders(height uint64) 
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
-	headers, error := c.rpc.GetHeaders(ctx, height)
-	if error != nil {
-		return nil, error
+	headers, err := c.rpc.GetByHeight(ctx, height)
+	if err != nil {
+		return nil, err
 	}
 
-	return headers.DAH, error
+	return headers.DAH, nil
 }

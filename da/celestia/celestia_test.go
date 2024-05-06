@@ -8,9 +8,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/celestiaorg/celestia-openrpc/types/blob"
+	"github.com/celestiaorg/celestia-openrpc/types/header"
 	"github.com/celestiaorg/nmt"
-	"github.com/rollkit/celestia-openrpc/types/blob"
-	"github.com/rollkit/celestia-openrpc/types/header"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -20,7 +20,7 @@ import (
 
 	"github.com/tendermint/tendermint/libs/log"
 
-	mocks "github.com/dymensionxyz/dymint/mocks/da/celestia"
+	mocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/da/celestia/types"
 
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/da/celestia"
@@ -59,12 +59,12 @@ func TestDALC(t *testing.T) {
 	mockRPCClient.On("Submit", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(uint64(1234), nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
 	mockRPCClient.On("GetProof", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&blobProof, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
 	mockRPCClient.On("Included", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
-	mockRPCClient.On("GetHeaders", mock.Anything, mock.Anything).Return(header, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+	mockRPCClient.On("GetByHeight", mock.Anything, mock.Anything).Return(header, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
 
 	mockRPCClient.On("Submit", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(uint64(1234), nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
 	mockRPCClient.On("GetProof", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&blobProof, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
 	mockRPCClient.On("Included", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
-	mockRPCClient.On("GetHeaders", mock.Anything, mock.Anything).Return(header, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+	mockRPCClient.On("GetByHeight", mock.Anything, mock.Anything).Return(header, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
 
 	time.Sleep(2 * mockDaBlockTime)
 
@@ -116,7 +116,7 @@ func TestRetrievalNotFound(t *testing.T) {
 	mockRPCClient.On("Submit", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(uint64(1234), nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
 	mockRPCClient.On("GetProof", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&blobProof, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
 	mockRPCClient.On("Included", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
-	mockRPCClient.On("GetHeaders", mock.Anything, mock.Anything).Return(headers, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+	mockRPCClient.On("GetByHeight", mock.Anything, mock.Anything).Return(headers, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
 
 	time.Sleep(2 * mockDaBlockTime)
 
@@ -189,7 +189,7 @@ func TestAvalabilityOK(t *testing.T) {
 	mockRPCClient.On("Submit", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(uint64(1234), nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
 	mockRPCClient.On("GetProof", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&blobProof, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
 	mockRPCClient.On("Included", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
-	mockRPCClient.On("GetHeaders", mock.Anything, mock.Anything).Return(headers, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+	mockRPCClient.On("GetByHeight", mock.Anything, mock.Anything).Return(headers, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
 
 	time.Sleep(2 * mockDaBlockTime)
 
@@ -203,7 +203,7 @@ func TestAvalabilityOK(t *testing.T) {
 
 	mockRPCClient.On("GetProof", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&blobProof, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
 	mockRPCClient.On("Included", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
-	mockRPCClient.On("GetHeaders", mock.Anything, mock.Anything).Return(headers, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+	mockRPCClient.On("GetByHeight", mock.Anything, mock.Anything).Return(headers, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
 
 	retriever := dalc.(da.BatchRetriever)
 
@@ -233,7 +233,7 @@ func TestAvalabilityWrongProof(t *testing.T) {
 	mockRPCClient.On("Submit", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(uint64(1234), nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
 	mockRPCClient.On("GetProof", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&blobProof, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
 	mockRPCClient.On("Included", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
-	mockRPCClient.On("GetHeaders", mock.Anything, mock.Anything).Return(headers, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+	mockRPCClient.On("GetByHeight", mock.Anything, mock.Anything).Return(headers, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
 
 	time.Sleep(2 * mockDaBlockTime)
 
@@ -246,7 +246,7 @@ func TestAvalabilityWrongProof(t *testing.T) {
 	assert.Equal(da.StatusSuccess, res1.Code)
 
 	mockRPCClient.On("GetProof", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
-	mockRPCClient.On("GetHeaders", mock.Anything, mock.Anything).Return(headers, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+	mockRPCClient.On("GetByHeight", mock.Anything, mock.Anything).Return(headers, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
 
 	retriever := dalc.(da.BatchRetriever)
 
@@ -278,13 +278,13 @@ func TestRetrievalWrongCommitment(t *testing.T) {
 	require.True(len(retrieveRes.Batches) == 0)
 
 	mockRPCClient.On("GetProof", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
-	mockRPCClient.On("GetHeaders", mock.Anything, mock.Anything).Return(headers, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+	mockRPCClient.On("GetByHeight", mock.Anything, mock.Anything).Return(headers, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
 
 	availRes := retriever.CheckBatchAvailability(h1)
 	assert.ErrorIs(availRes.Error, da.ErrUnableToGetProof)
 }
 
-func setDAandMock(t *testing.T) (*mocks.CelestiaRPCClient, da.DataAvailabilityLayerClient, []byte, *header.ExtendedHeader) {
+func setDAandMock(t *testing.T) (*mocks.MockCelestiaRPCClient, da.DataAvailabilityLayerClient, []byte, *header.ExtendedHeader) {
 	var err error
 	pubsubServer := pubsub.NewServer()
 	err = pubsubServer.Start()
@@ -302,8 +302,7 @@ func setDAandMock(t *testing.T) (*mocks.CelestiaRPCClient, da.DataAvailabilityLa
 	config := celestia.Config{
 		BaseURL:        "http://localhost:26658",
 		Timeout:        30 * time.Second,
-		GasLimit:       3000000,
-		Fee:            200000000,
+		GasPrices:      celestia.CelestiaDefaultConfig.GasPrices,
 		NamespaceIDStr: "0000000000000000ffff",
 	}
 	err = config.InitNamespaceID()
@@ -311,7 +310,7 @@ func setDAandMock(t *testing.T) (*mocks.CelestiaRPCClient, da.DataAvailabilityLa
 	conf, err := json.Marshal(config)
 	require.NoError(err)
 
-	mockRPCClient := mocks.NewCelestiaRPCClient(t)
+	mockRPCClient := mocks.NewMockCelestiaRPCClient(t)
 	options := []da.Option{
 		celestia.WithRPCClient(mockRPCClient),
 		celestia.WithRPCAttempts(1),

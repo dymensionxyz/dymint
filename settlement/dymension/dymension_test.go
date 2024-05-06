@@ -9,6 +9,12 @@ import (
 	"testing"
 	"time"
 
+	"google.golang.org/grpc/codes"
+
+	"google.golang.org/grpc/status"
+
+	"github.com/dymensionxyz/dymint/gerr"
+
 	"github.com/tendermint/tendermint/libs/log"
 
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
@@ -27,8 +33,9 @@ import (
 	rollapptypes "github.com/dymensionxyz/dymension/v3/x/rollapp/types"
 	sequencertypes "github.com/dymensionxyz/dymension/v3/x/sequencer/types"
 	"github.com/dymensionxyz/dymint/da"
-	mocks "github.com/dymensionxyz/dymint/mocks"
-	settlementmocks "github.com/dymensionxyz/dymint/mocks/settlement"
+	rollapptypesmock "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymension/v3/x/rollapp/types"
+	sequencertypesmock "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymension/v3/x/sequencer/types"
+	dymensionmock "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/settlement/dymension"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/settlement/dymension"
 	"github.com/dymensionxyz/dymint/testutil"
@@ -39,14 +46,14 @@ import (
 func TestGetSequencers(t *testing.T) {
 	var err error
 	require := require.New(t)
-	cosmosClientMock := mocks.NewCosmosClient(t)
+	cosmosClientMock := dymensionmock.NewMockCosmosClient(t)
 
-	sequencerQueryClientMock := settlementmocks.NewSequencerQueryClient(t)
+	sequencerQueryClientMock := sequencertypesmock.NewMockQueryClient(t)
 	count := 5
 	sequencersRollappResponse, _ := generateSequencerByRollappResponse(t, count)
 	sequencerQueryClientMock.On("SequencersByRollappByStatus", mock.Anything, mock.Anything).Return(sequencersRollappResponse, nil)
 
-	cosmosClientMock.On("GetRollappClient").Return(settlementmocks.NewRollAppQueryClient(t))
+	cosmosClientMock.On("GetRollappClient").Return(rollapptypesmock.NewMockQueryClient(t))
 	cosmosClientMock.On("GetSequencerClient").Return(sequencerQueryClientMock)
 
 	options := []dymension.Option{
@@ -79,9 +86,9 @@ func TestPostBatch(t *testing.T) {
 	require.NoError(err)
 
 	// Create a mock cosmos client
-	cosmosClientMock := mocks.NewCosmosClient(t)
-	sequencerQueryClientMock := settlementmocks.NewSequencerQueryClient(t)
-	rollappQueryClientMock := settlementmocks.NewRollAppQueryClient(t)
+	cosmosClientMock := dymensionmock.NewMockCosmosClient(t)
+	sequencerQueryClientMock := sequencertypesmock.NewMockQueryClient(t)
+	rollappQueryClientMock := rollapptypesmock.NewMockQueryClient(t)
 	cosmosClientMock.On("GetRollappClient").Return(rollappQueryClientMock)
 	cosmosClientMock.On("GetSequencerClient").Return(sequencerQueryClientMock)
 	submitBatchError := errors.New("failed to submit batch")
@@ -120,7 +127,7 @@ func TestPostBatch(t *testing.T) {
 		expectedError           error
 	}{
 		{
-			name:                    "TestSubmitBatchFailure",
+			name:                    "SubmitBatchFailure",
 			isBatchSubmitSuccess:    false,
 			isBatchAcceptedHubEvent: false,
 			shouldMockBatchIncluded: true,
@@ -128,15 +135,15 @@ func TestPostBatch(t *testing.T) {
 			expectedError:           submitBatchError,
 		},
 		{
-			name:                    "TestSubmitBatchSuccessNoBatchAcceptedHubEventNotIncluded",
+			name:                    "SubmitBatchSuccessNoBatchAcceptedHubEventNotIncluded",
 			isBatchSubmitSuccess:    true,
 			isBatchAcceptedHubEvent: false,
 			shouldMockBatchIncluded: true,
 			isBatchIncludedSuccess:  false,
-			expectedError:           settlement.ErrBatchNotAccepted,
+			expectedError:           gerr.ErrNotFound,
 		},
 		{
-			name:                    "TestSubmitBatchSuccessNotAcceptedYesIncluded",
+			name:                    "SubmitBatchSuccessNotAcceptedYesIncluded",
 			isBatchSubmitSuccess:    true,
 			isBatchAcceptedHubEvent: false,
 			shouldMockBatchIncluded: true,
@@ -144,7 +151,7 @@ func TestPostBatch(t *testing.T) {
 			expectedError:           nil,
 		},
 		{
-			name:                    "TestSubmitBatchSuccessAndAccepted",
+			name:                    "SubmitBatchSuccessAndAccepted",
 			isBatchSubmitSuccess:    true,
 			isBatchAcceptedHubEvent: true,
 			shouldMockBatchIncluded: false,
@@ -179,7 +186,7 @@ func TestPostBatch(t *testing.T) {
 						}},
 						nil)
 				} else {
-					rollappQueryClientMock.On("StateInfo", mock.Anything, mock.Anything).Return(nil, fmt.Errorf("error"))
+					rollappQueryClientMock.On("StateInfo", mock.Anything, mock.Anything).Return(nil, status.New(codes.NotFound, "not found").Err())
 				}
 			}
 			hubClient, err := dymension.NewDymensionHubClient(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)

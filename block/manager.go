@@ -9,6 +9,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/dymensionxyz/dymint/gerr"
+
 	uevent "github.com/dymensionxyz/dymint/utils/event"
 
 	"code.cloudfoundry.org/go-diodes"
@@ -86,7 +88,8 @@ type Manager struct {
 
 	logger types.Logger
 
-	// Cached blocks and commits for applying at future heights. Invariant: the block and commit are .Valid() (validated sigs etc)
+	// Cached blocks and commits for applying at future heights. The blocks may not be valid, because
+	// we can only do full validation in sequential order.
 	blockCache map[uint64]CachedBlock
 }
 
@@ -167,10 +170,13 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 		}
 	}
 
+	if !isAggregator {
+		go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewNewGossipedBlock, m.onNewGossipedBlock, m.logger)
+	}
+
 	err := m.syncBlockManager()
 	if err != nil {
-		err = fmt.Errorf("sync block manager: %w", err)
-		return err
+		return fmt.Errorf("sync block manager: %w", err)
 	}
 
 	if isAggregator {
@@ -178,7 +184,6 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 		go m.ProduceBlockLoop(ctx)
 		go m.SubmitLoop(ctx)
 	} else {
-		go uevent.MustSubscribe(ctx, m.Pubsub, "applyBlockLoop", p2p.EventQueryNewNewGossipedBlock, m.onNewGossipedBlock, m.logger, 100)
 		go m.RetrieveLoop(ctx)
 		go m.SyncTargetLoop(ctx)
 	}
@@ -188,26 +193,25 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 
 // syncBlockManager enforces the node to be synced on initial run.
 func (m *Manager) syncBlockManager() error {
-	resultRetrieveBatch, err := m.getLatestBatchFromSL()
-	// Set the syncTarget according to the result
+	res, err := m.SLClient.RetrieveBatch()
+	if errors.Is(err, gerr.ErrNotFound) {
+		// The SL hasn't got any batches for this chain yet.
+		m.logger.Info("No batches for chain found in SL. Start writing first batch.")
+		m.SyncTarget.Store(uint64(m.Genesis.InitialHeight - 1))
+		return nil
+	}
 	if err != nil {
 		// TODO: separate between fresh rollapp and non-registered rollapp
-		if errors.Is(err, settlement.ErrBatchNotFound) {
-			// Since we requested the latest batch and got batch not found it means
-			// the SL still hasn't got any batches for this chain.
-			m.logger.Info("No batches for chain found in SL. Start writing first batch")
-			m.SyncTarget.Store(uint64(m.Genesis.InitialHeight - 1))
-			return nil
-		}
 		return err
 	}
-	m.SyncTarget.Store(resultRetrieveBatch.EndHeight)
-	err = m.syncUntilTarget(resultRetrieveBatch.EndHeight)
+	// Set the syncTarget according to the result
+	m.SyncTarget.Store(res.EndHeight)
+	err = m.syncUntilTarget(res.EndHeight)
 	if err != nil {
 		return err
 	}
 
-	m.logger.Info("Synced", "current height", m.Store.Height(), "syncTarget", m.SyncTarget.Load())
+	m.logger.Info("Synced.", "current height", m.Store.Height(), "syncTarget", m.SyncTarget.Load())
 	return nil
 }
 
@@ -229,14 +233,15 @@ func getAddress(key crypto.PrivKey) ([]byte, error) {
 
 func (m *Manager) onNodeHealthStatus(event pubsub.Message) {
 	eventData := event.Data().(*events.DataHealthStatus)
-	m.logger.Info("received health status event", "eventData", eventData)
+	m.logger.Info("Received node health status event.", "eventData", eventData)
 	m.shouldProduceBlocksCh <- eventData.Error == nil
 }
 
 // TODO: move to gossip.go
 // onNewGossippedBlock will take a block and apply it
 func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
-	m.logger.Debug("Received new block event", "eventData", event.Data(), "cachedBlocks", len(m.blockCache))
+	m.retrieverMutex.Lock() // needed to protect blockCache access
+	m.logger.Debug("Received new block via gossip", "n cachedBlocks", len(m.blockCache))
 	eventData := event.Data().(p2p.GossipedBlock)
 	block := eventData.Block
 	commit := eventData.Commit
@@ -249,18 +254,11 @@ func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
 		}
 		m.logger.Debug("caching block", "block height", block.Header.Height, "store height", m.Store.Height())
 	}
-
-	if block.Header.Height == nextHeight {
-		err := m.attemptApplyCachedBlocks()
-		if err != nil {
-			m.logger.Error("applying cached blocks", "err", err)
-		}
+	m.retrieverMutex.Unlock() // have to give this up as it's locked again in attempt apply, and we're not re-entrant
+	err := m.attemptApplyCachedBlocks()
+	if err != nil {
+		m.logger.Error("applying cached blocks", "err", err)
 	}
-}
-
-// getLatestBatchFromSL gets the latest batch from the SL
-func (m *Manager) getLatestBatchFromSL() (*settlement.ResultRetrieveBatch, error) {
-	return m.SLClient.RetrieveBatch()
 }
 
 // getInitialState tries to load lastState from Store, and if it's not available it reads GenesisDoc.

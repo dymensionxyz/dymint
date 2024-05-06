@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/dymensionxyz/dymint/gerr"
+
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/tendermint/tendermint/libs/pubsub"
@@ -41,6 +43,9 @@ func (b *BaseLayerClient) Init(config Config, pubsub *pubsub.Server, logger type
 		apply(b)
 	}
 
+	//TODO(srene): For a correct validation, sequencer list would need to be updated after a sequencer list change on the Hub.
+	//e.g. after receiving an event from the Hub. Right now, node will need to be restarted after a sequencer change, since it is
+	//only getting the sequencers list during Init.
 	b.sequencersList, err = b.fetchSequencersList()
 	if err != nil {
 		return err
@@ -79,26 +84,22 @@ func (b *BaseLayerClient) SubmitBatch(batch *types.Batch, daClient da.Client, da
 	return b.client.PostBatch(batch, daClient, daResult)
 }
 
-// RetrieveBatch Gets the batch which contains the given slHeight. Empty slHeight returns the latest batch.
+// RetrieveBatch gets the batch at a particular index. If no index is given, it returns the latest batch.
 func (b *BaseLayerClient) RetrieveBatch(stateIndex ...uint64) (*ResultRetrieveBatch, error) {
-	var resultRetrieveBatch *ResultRetrieveBatch
-	var err error
 	if len(stateIndex) == 0 {
 		b.logger.Debug("Getting latest batch from settlement layer")
-		resultRetrieveBatch, err = b.client.GetLatestBatch(b.config.RollappID)
-		if err != nil {
-			return nil, err
-		}
-	} else if len(stateIndex) == 1 {
-		b.logger.Debug("Getting batch from settlement layer", "state index", stateIndex)
-		resultRetrieveBatch, err = b.client.GetBatchAtIndex(b.config.RollappID, stateIndex[0])
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		return nil, fmt.Errorf("invalid number of arguments. Expected 0 or 1, got %d", len(stateIndex))
+		return b.client.GetLatestBatch(b.config.RollappID)
 	}
-	return resultRetrieveBatch, nil
+	if len(stateIndex) == 1 {
+		b.logger.Debug("Getting batch from settlement layer", "state index", stateIndex)
+		return b.client.GetBatchAtIndex(b.config.RollappID, stateIndex[0])
+	}
+	return nil, fmt.Errorf("expected 0 or 1 index: got %d: %w", len(stateIndex), gerr.ErrInvalidArgument)
+}
+
+// GetHeightState returns the state at the given height.
+func (b *BaseLayerClient) GetHeightState(h uint64) (*ResultGetHeightState, error) {
+	return b.client.GetHeightState(h)
 }
 
 // GetSequencersList returns the current list of sequencers from the settlement layer

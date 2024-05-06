@@ -71,7 +71,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 				m.logger.Info("block production paused - awaiting positive continuation signal")
 				shouldProduceBlocks = <-m.shouldProduceBlocksCh
 			}
-			m.logger.Info("resumed block resumed")
+			m.logger.Info("resumed block production")
 		}
 	}
 }
@@ -136,7 +136,7 @@ func (m *Manager) produceBlock(allowEmpty bool) (*types.Block, *types.Commit, er
 	} else if !errors.Is(err, store.ErrKeyNotFound) {
 		return nil, nil, fmt.Errorf("load block: height: %d: %w: %w", newHeight, err, ErrNonRecoverable)
 	} else {
-		block = m.Executor.CreateBlock(newHeight, lastCommit, lastHeaderHash, m.LastState)
+		block = m.Executor.CreateBlock(newHeight, lastCommit, lastHeaderHash, m.LastState, m.Conf.BlockBatchMaxSizeBytes)
 		if !allowEmpty && len(block.Data.Txs) == 0 {
 			return nil, nil, fmt.Errorf("%w: %w", types.ErrSkippedEmptyBlock, ErrRecoverable)
 		}

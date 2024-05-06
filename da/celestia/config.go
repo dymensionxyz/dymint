@@ -6,16 +6,21 @@ import (
 	"fmt"
 	"time"
 
-	openrpcns "github.com/rollkit/celestia-openrpc/types/namespace"
+	uretry "github.com/dymensionxyz/dymint/utils/retry"
+
+	openrpcns "github.com/celestiaorg/celestia-openrpc/types/namespace"
 )
 
 const (
-	defaultRpcRetryDelay            = 15 * time.Second
-	defaultSubmitRetryDelay         = 5 * time.Second
-	defaultRpcCheckAttempts         = 5
-	namespaceVersion                = 0
-	defaultGasPrices                = 0.1
-	defaultGasAdjustment    float64 = 1.3
+	defaultRpcRetryDelay    = 1 * time.Second
+	defaultRpcCheckAttempts = 10
+	namespaceVersion        = 0
+	defaultGasPrices        = 0.1
+)
+
+var defaultSubmitBackoff = uretry.NewBackoffConfig(
+	uretry.WithInitialDelay(time.Second*6),
+	uretry.WithMaxDelay(time.Second*6),
 )
 
 // Config stores Celestia DALC configuration parameters.
@@ -23,10 +28,7 @@ type Config struct {
 	BaseURL        string              `json:"base_url"`
 	AppNodeURL     string              `json:"app_node_url"`
 	Timeout        time.Duration       `json:"timeout"`
-	Fee            int64               `json:"fee"`
 	GasPrices      float64             `json:"gas_prices"`
-	GasAdjustment  float64             `json:"gas_adjustment"`
-	GasLimit       uint64              `json:"gas_limit"`
 	NamespaceIDStr string              `json:"namespace_id"`
 	AuthToken      string              `json:"auth_token"`
 	NamespaceID    openrpcns.Namespace `json:"-"`
@@ -35,11 +37,8 @@ type Config struct {
 var CelestiaDefaultConfig = Config{
 	BaseURL:        "http://127.0.0.1:26658",
 	AppNodeURL:     "",
-	Timeout:        30 * time.Second,
-	Fee:            0,
-	GasLimit:       20000000,
+	Timeout:        5 * time.Second,
 	GasPrices:      defaultGasPrices,
-	GasAdjustment:  defaultGasAdjustment,
 	NamespaceIDStr: "",
 	NamespaceID:    openrpcns.Namespace{Version: namespaceVersion, ID: []byte{0, 0, 0, 0, 0, 0, 0, 0, 255, 255}},
 }

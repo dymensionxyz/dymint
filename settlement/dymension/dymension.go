@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/dymensionxyz/dymint/gerr"
+
 	uevent "github.com/dymensionxyz/dymint/utils/event"
 
 	"google.golang.org/grpc/codes"
@@ -234,8 +236,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 				uevent.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{Error: err}, settlement.EventHealthStatusList)
 
 				d.logger.Error(
-					"submit batch to settlement layer, emitted unhealthy event",
-
+					"Submitted bad health event: trying again.",
 					"startHeight",
 					batch.StartHeight,
 					"endHeight",
@@ -257,25 +258,28 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 		select {
 		case <-d.ctx.Done():
 			return d.ctx.Err()
+
 		case <-subscription.Cancelled():
-			return fmt.Errorf("subscription canceled: %w", err)
+			return fmt.Errorf("subscription cancelled: %w", err)
+
 		case <-subscription.Out():
 			uevent.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{}, settlement.EventHealthStatusList)
-			d.logger.Debug("batch accepted by settlement layer, emitted healthy event",
-				"startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
+			d.logger.Debug("Batch accepted: emitted healthy event.", "startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
+
 			return nil
+
 		case <-timer.C:
 			// Before emitting unhealthy event, check if the batch was accepted by the settlement
 			// layer, and we've just missed the event.
 			includedBatch, err := d.waitForBatchInclusion(batch.StartHeight)
 			if err != nil {
 
-				err = fmt.Errorf("wait for batch inclusion: %w: %w", settlement.ErrBatchNotAccepted, err)
+				err = fmt.Errorf("wait for batch inclusion: %w", err)
 
 				uevent.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{Error: err}, settlement.EventHealthStatusList)
 
 				d.logger.Error(
-					"batch not accepted by settlement layer, emitted unhealthy event",
+					"Submitted bad health event: trying again.",
 					"startHeight",
 					batch.StartHeight,
 					"endHeight",
@@ -284,69 +288,73 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 					err,
 				)
 
-				// restart the loop
-				timer.Stop()
+				timer.Stop() // we don't forget to clean up
 				continue
 			}
 
 			// all good
-			d.logger.Info("batch accepted by settlement layer", "startHeight", includedBatch.StartHeight, "endHeight", includedBatch.EndHeight)
-
 			uevent.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{}, settlement.EventHealthStatusList)
+			d.logger.Info("Batch accepted, emitted healthy event.", "startHeight", includedBatch.StartHeight, "endHeight", includedBatch.EndHeight)
+
 			return nil
 		}
 	}
 }
 
-// GetLatestBatch returns the latest batch from the Dymension Hub.
-func (d *HubClient) GetLatestBatch(rollappID string) (*settlement.ResultRetrieveBatch, error) {
-	var stateInfoResp *rollapptypes.QueryGetStateInfoResponse
-	err := d.RunWithRetry(func() error {
-		var err error
-		stateInfoResp, err = d.rollappQueryClient.StateInfo(d.ctx,
-			&rollapptypes.QueryGetStateInfoRequest{RollappId: d.config.RollappID})
+func (d *HubClient) getStateInfo(index, height *uint64) (res *rollapptypes.QueryGetStateInfoResponse, err error) {
+	req := &rollapptypes.QueryGetStateInfoRequest{RollappId: d.config.RollappID}
+	if index != nil {
+		req.Index = *index
+	}
+	if height != nil {
+		req.Height = *height
+	}
+	err = d.RunWithRetry(func() error {
+		res, err = d.rollappQueryClient.StateInfo(d.ctx, req)
 
 		if status.Code(err) == codes.NotFound {
-			return retry.Unrecoverable(settlement.ErrBatchNotFound)
+			return retry.Unrecoverable(gerr.ErrNotFound)
 		}
-
 		return err
-	},
-	)
+	})
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("query state info: %w: %w", gerr.ErrUnknown, err)
 	}
-	// not supposed to happen, but just in case
-	if stateInfoResp == nil {
-		return nil, settlement.ErrEmptyResponse
+	if res == nil { // not supposed to happen
+		return nil, fmt.Errorf("empty response with nil err: %w", gerr.ErrUnknown)
 	}
+	return
+}
 
-	return d.convertStateInfoToResultRetrieveBatch(&stateInfoResp.StateInfo)
+// GetLatestBatch returns the latest batch from the Dymension Hub.
+func (d *HubClient) GetLatestBatch(rollappID string) (*settlement.ResultRetrieveBatch, error) {
+	res, err := d.getStateInfo(nil, nil)
+	if err != nil {
+		return nil, fmt.Errorf("get state info: %w", err)
+	}
+	return d.convertStateInfoToResultRetrieveBatch(&res.StateInfo)
 }
 
 // GetBatchAtIndex returns the batch at the given index from the Dymension Hub.
 func (d *HubClient) GetBatchAtIndex(rollappID string, index uint64) (*settlement.ResultRetrieveBatch, error) {
-	var stateInfoResp *rollapptypes.QueryGetStateInfoResponse
-	err := d.RunWithRetry(func() error {
-		var err error
-		stateInfoResp, err = d.rollappQueryClient.StateInfo(d.ctx,
-			&rollapptypes.QueryGetStateInfoRequest{RollappId: d.config.RollappID, Index: index})
-
-		if status.Code(err) == codes.NotFound {
-			return retry.Unrecoverable(settlement.ErrBatchNotFound)
-		}
-
-		return err
-	})
+	res, err := d.getStateInfo(&index, nil)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("get state info: %w", err)
 	}
-	// not supposed to happen, but just in case
-	if stateInfoResp == nil {
-		return nil, settlement.ErrEmptyResponse
-	}
+	return d.convertStateInfoToResultRetrieveBatch(&res.StateInfo)
+}
 
-	return d.convertStateInfoToResultRetrieveBatch(&stateInfoResp.StateInfo)
+func (d *HubClient) GetHeightState(h uint64) (*settlement.ResultGetHeightState, error) {
+	res, err := d.getStateInfo(nil, &h)
+	if err != nil {
+		return nil, fmt.Errorf("get state info: %w", err)
+	}
+	return &settlement.ResultGetHeightState{
+		ResultBase: settlement.ResultBase{Code: settlement.StatusSuccess},
+		State: settlement.State{
+			StateIndex: res.GetStateInfo().StateInfoIndex.Index,
+		},
+	}, nil
 }
 
 // GetSequencers returns the bonded sequencers of the given rollapp.
@@ -367,7 +375,7 @@ func (d *HubClient) GetSequencers(rollappID string) ([]*types.Sequencer, error) 
 
 	// not supposed to happen, but just in case
 	if res == nil {
-		return nil, settlement.ErrEmptyResponse
+		return nil, fmt.Errorf("empty response: %w", gerr.ErrUnknown)
 	}
 
 	sequencersList := make([]*types.Sequencer, 0, len(res.Sequencers))
@@ -427,10 +435,7 @@ func (d *HubClient) eventHandler() {
 			if err != nil {
 				panic(err)
 			}
-			err = d.pubsub.PublishWithEvents(d.ctx, eventData, map[string][]string{settlement.EventTypeKey: {d.eventMap[event.Query]}})
-			if err != nil {
-				panic(err)
-			}
+			uevent.MustPublish(d.ctx, d.pubsub, eventData, map[string][]string{settlement.EventTypeKey: {d.eventMap[event.Query]}})
 		}
 	}
 }
@@ -454,6 +459,7 @@ func (d *HubClient) convertBatchToMsgUpdateState(batch *types.Batch, daResult *d
 		}
 		blockDescriptors[index] = blockDescriptor
 	}
+
 	settlementBatch := &rollapptypes.MsgUpdateState{
 		Creator:     addr,
 		RollappId:   d.config.RollappID,
@@ -535,7 +541,7 @@ func (d *HubClient) convertStateInfoToResultRetrieveBatch(stateInfo *rollapptype
 		},
 	}
 	return &settlement.ResultRetrieveBatch{
-		BaseResult: settlement.BaseResult{Code: settlement.StatusSuccess, StateIndex: stateInfo.StateInfoIndex.Index},
+		ResultBase: settlement.ResultBase{Code: settlement.StatusSuccess, StateIndex: stateInfo.StateInfoIndex.Index},
 		Batch:      batchResult,
 	}, nil
 }
@@ -551,7 +557,7 @@ func (d *HubClient) waitForBatchInclusion(batchStartHeight uint64) (*settlement.
 				return fmt.Errorf("get latest batch: %w", err)
 			}
 			if latestBatch.Batch.StartHeight != batchStartHeight {
-				return fmt.Errorf("latest batch start height not match expected start height: %w", settlement.ErrBatchNotFound)
+				return fmt.Errorf("latest batch start height not match expected start height: %w", gerr.ErrNotFound)
 			}
 			res = latestBatch
 			return nil
