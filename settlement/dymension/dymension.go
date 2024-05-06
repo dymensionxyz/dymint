@@ -262,8 +262,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 			return nil
 
 		case <-timer.C:
-			// Before emitting unhealthy event, check if the batch was accepted by the settlement
-			// layer, and we've just missed the event.
+			// Check if the batch was accepted by the settlement layer, and we've just missed the event.
 			includedBatch, err := d.waitForBatchInclusion(batch.StartHeight)
 			if err != nil {
 				d.logger.Error(

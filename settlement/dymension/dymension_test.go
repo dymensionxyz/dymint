@@ -198,11 +198,9 @@ func TestPostBatch(t *testing.T) {
 			case err := <-errChan:
 				// Check for error from PostBatch.
 				assert.NoError(t, err, "PostBatch should not produce an error")
-			case <-time.After(50 * time.Millisecond):
-				// Timeout case to avoid blocking forever if PostBatch doesn't return.
+			case <-time.After(100 * time.Millisecond):
 			}
 			// Wait for the batch to be submitted and submit an event notifying that the batch was accepted
-			time.Sleep(50 * time.Millisecond)
 			if c.isBatchAcceptedHubEvent {
 				batchAcceptedCh <- coretypes.ResultEvent{
 					Query: fmt.Sprintf("state_update.rollapp_id='%s'", ""),
@@ -213,6 +211,9 @@ func TestPostBatch(t *testing.T) {
 					},
 				}
 			}
+
+			time.Sleep(300 * time.Millisecond)
+
 			// Stop the hub client and wait for it to stop
 			err = hubClient.Stop()
 			require.NoError(err)
