@@ -82,9 +82,6 @@ func (m *Manager) ProduceAndGossipBlock(ctx context.Context, allowEmpty bool) er
 		return fmt.Errorf("produce block: %w", err)
 	}
 
-	size := uint64(block.ToProto().Size() + commit.ToProto().Size())
-	_ = m.updateAccumaltedSize(size)
-
 	if err := m.gossipBlock(ctx, *block, *commit); err != nil {
 		return fmt.Errorf("gossip block: %w", err)
 	}
@@ -193,7 +190,10 @@ func (m *Manager) produceBlock(allowEmpty bool) (*types.Block, *types.Commit, er
 		return nil, nil, fmt.Errorf("apply block: %w: %w", err, ErrNonRecoverable)
 	}
 
-	m.logger.Info("block created", "height", newHeight, "num_tx", len(block.Data.Txs))
+	size := uint64(block.ToProto().Size() + commit.ToProto().Size())
+	_ = m.updateAccumaltedSize(size)
+
+	m.logger.Info("block created", "height", newHeight, "num_tx", len(block.Data.Txs), "accumulated_size", m.accumulatedProducedSize)
 	types.RollappBlockSizeBytesGauge.Set(float64(len(block.Data.Txs)))
 	types.RollappBlockSizeTxsGauge.Set(float64(len(block.Data.Txs)))
 	types.RollappHeightGauge.Set(float64(newHeight))
