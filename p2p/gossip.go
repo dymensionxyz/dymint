@@ -22,6 +22,8 @@ type GossipMessage struct {
 // GossiperOption sets optional parameters of Gossiper.
 type GossiperOption func(*Gossiper) error
 
+type NewMessage func(msg *GossipMessage)
+
 // WithValidator options registers topic validator for Gossiper.
 func WithValidator(validator GossipValidator) GossiperOption {
 	return func(g *Gossiper) error {
@@ -33,17 +35,17 @@ func WithValidator(validator GossipValidator) GossiperOption {
 type Gossiper struct {
 	ownID peer.ID
 
-	ps    *pubsub.PubSub
-	topic *pubsub.Topic
-	sub   *pubsub.Subscription
-
-	logger types.Logger
+	ps          *pubsub.PubSub
+	topic       *pubsub.Topic
+	sub         *pubsub.Subscription
+	msgReceiver NewMessage
+	logger      types.Logger
 }
 
 // NewGossiper creates new, ready to use instance of Gossiper.
 //
 // Returned Gossiper object can be used for sending (Publishing) and receiving messages in topic identified by topicStr.
-func NewGossiper(host host.Host, ps *pubsub.PubSub, topicStr string, logger types.Logger, options ...GossiperOption) (*Gossiper, error) {
+func NewGossiper(host host.Host, ps *pubsub.PubSub, topicStr string, msgReceiver NewMessage, logger types.Logger, options ...GossiperOption) (*Gossiper, error) {
 	topic, err := ps.Join(topicStr)
 	if err != nil {
 		return nil, err
@@ -54,11 +56,12 @@ func NewGossiper(host host.Host, ps *pubsub.PubSub, topicStr string, logger type
 		return nil, err
 	}
 	g := &Gossiper{
-		ownID:  host.ID(),
-		ps:     ps,
-		topic:  topic,
-		sub:    subscription,
-		logger: logger,
+		ownID:       host.ID(),
+		ps:          ps,
+		topic:       topic,
+		sub:         subscription,
+		logger:      logger,
+		msgReceiver: msgReceiver,
 	}
 
 	for _, option := range options {
@@ -89,7 +92,7 @@ func (g *Gossiper) Publish(ctx context.Context, data []byte) error {
 // ProcessMessages waits for messages published in the topic and execute handler.
 func (g *Gossiper) ProcessMessages(ctx context.Context) {
 	for {
-		_, err := g.sub.Next(ctx)
+		msg, err := g.sub.Next(ctx)
 		if errors.Is(err, context.Canceled) {
 			return
 		}
@@ -97,7 +100,12 @@ func (g *Gossiper) ProcessMessages(ctx context.Context) {
 			g.logger.Error("read message", "error", err)
 			return
 		}
-		// Logic is handled in validator
+		if g.msgReceiver != nil {
+			g.msgReceiver(&GossipMessage{
+				Data: msg.Data,
+				From: msg.GetFrom(),
+			})
+		}
 	}
 }
 

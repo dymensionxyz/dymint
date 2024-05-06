@@ -87,7 +87,7 @@ func TestValidator_TxValidator(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			logger := log.TestingLogger()
-			validateTx := p2p.NewValidator(logger, nil, nil).TxValidator(tt.args.mp, nodemempool.NewMempoolIDs())
+			validateTx := p2p.NewValidator(logger, nil).TxValidator(tt.args.mp, nodemempool.NewMempoolIDs())
 			valid := validateTx(txMsg)
 			assert.Equalf(t, tt.want, valid, "validateTx() = %v, want %v", valid, tt.want)
 		})
@@ -179,7 +179,7 @@ func TestValidator_BlockValidator(t *testing.T) {
 			}
 
 			//Check block validity
-			validateBlock := p2p.NewValidator(logger, pubsubServer, client).BlockValidator()
+			validateBlock := p2p.NewValidator(logger, client).BlockValidator()
 			valid := validateBlock(blockMsg)
 			require.Equal(t, tt.valid, valid)
 		})

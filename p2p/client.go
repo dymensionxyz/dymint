@@ -19,6 +19,7 @@ import (
 	discutil "github.com/libp2p/go-libp2p/p2p/discovery/util"
 	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	"github.com/multiformats/go-multiaddr"
+	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/p2p"
 	"go.uber.org/multierr"
 
@@ -65,6 +66,8 @@ type Client struct {
 	// it's required because of discovery.Advertise call
 	cancel context.CancelFunc
 
+	localPubsubServer *tmpubsub.Server
+
 	logger types.Logger
 }
 
@@ -72,7 +75,7 @@ type Client struct {
 //
 // Basic checks on parameters are done, and default parameters are provided for unset-configuration
 // TODO(tzdybal): consider passing entire config, not just P2P config, to reduce number of arguments
-func NewClient(conf config.P2PConfig, privKey crypto.PrivKey, chainID string, logger types.Logger) (*Client, error) {
+func NewClient(conf config.P2PConfig, privKey crypto.PrivKey, chainID string, localPubsubServer *tmpubsub.Server, logger types.Logger) (*Client, error) {
 	if privKey == nil {
 		return nil, errNoPrivKey
 	}
@@ -80,10 +83,11 @@ func NewClient(conf config.P2PConfig, privKey crypto.PrivKey, chainID string, lo
 		conf.ListenAddress = config.DefaultListenAddress
 	}
 	return &Client{
-		conf:    conf,
-		privKey: privKey,
-		chainID: chainID,
-		logger:  logger,
+		conf:              conf,
+		privKey:           privKey,
+		chainID:           chainID,
+		logger:            logger,
+		localPubsubServer: localPubsubServer,
 	}, nil
 }
 
@@ -323,13 +327,13 @@ func (c *Client) setupGossiping(ctx context.Context) error {
 		return err
 	}
 
-	c.txGossiper, err = NewGossiper(c.Host, ps, c.getTxTopic(), c.logger, WithValidator(c.txValidator))
+	c.txGossiper, err = NewGossiper(c.Host, ps, c.getTxTopic(), nil, c.logger, WithValidator(c.txValidator))
 	if err != nil {
 		return err
 	}
 	go c.txGossiper.ProcessMessages(ctx)
 
-	c.blockGossiper, err = NewGossiper(c.Host, ps, c.getBlockTopic(), c.logger,
+	c.blockGossiper, err = NewGossiper(c.Host, ps, c.getBlockTopic(), c.gossipedBlockReceived, c.logger,
 		WithValidator(c.blockValidator))
 	if err != nil {
 		return err
@@ -382,6 +386,17 @@ func (c *Client) getBlockTopic() string {
 func (c *Client) NewTxValidator() GossipValidator {
 	return func(g *GossipMessage) bool {
 		return true
+	}
+}
+
+func (c *Client) gossipedBlockReceived(msg *GossipMessage) {
+	var gossipedBlock GossipedBlock
+	if err := gossipedBlock.UnmarshalBinary(msg.Data); err != nil {
+		c.logger.Error("deserialize gossiped block", "error", err)
+	}
+	err := c.localPubsubServer.PublishWithEvents(context.Background(), gossipedBlock, map[string][]string{EventTypeKey: {EventNewGossipedBlock}})
+	if err != nil {
+		c.logger.Error("publishing event", "err", err)
 	}
 }
 
