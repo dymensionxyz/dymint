@@ -101,9 +101,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 					evt = &events.DataHealthStatus{Error: nil}
 					uevent.MustPublish(ctx, m.Pubsub, evt, events.HealthStatusList)
 				}
-				m.produceBlockMutex.Lock()
 				m.AccumulatedProducedSize = 0
-				m.produceBlockMutex.Unlock()
 			}
 		}
 	}
@@ -134,8 +132,6 @@ func (m *Manager) shouldSubmitBatch() bool {
 }
 
 func (m *Manager) produceBlock(allowEmpty bool) (*types.Block, *types.Commit, error) {
-	m.produceBlockMutex.Lock()
-	defer m.produceBlockMutex.Unlock()
 	var (
 		lastCommit     *types.Commit
 		lastHeaderHash [32]byte

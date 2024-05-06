@@ -65,13 +65,6 @@ type Manager struct {
 	lastSubmissionTime      atomic.Int64
 
 	/*
-		Protect against producing two blocks at once if the first one is taking a while
-		Also, used to protect against the block production that occurs when batch submission thread
-		creates its empty block.
-	*/
-	produceBlockMutex sync.Mutex
-
-	/*
 		Protect against processing two blocks at once when there are two routines handling incoming gossiped blocks,
 		and incoming DA blocks, respectively.
 	*/
