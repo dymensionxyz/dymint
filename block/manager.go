@@ -51,15 +51,12 @@ type Manager struct {
 	SLClient  settlement.LayerI
 
 	// Data retrieval
-	Retriever da.BatchRetriever
-
+	Retriever       da.BatchRetriever
 	SyncTargetDiode diodes.Diode
 	SyncTarget      atomic.Uint64
 
 	// Block production
-	//TODO: populate the accumualtedSize on startup
 	accumulatedProducedSize uint64
-	shouldProduceBlocksCh   chan bool
 	shouldSubmitBatchCh     chan bool
 	produceEmptyBlockCh     chan bool
 	lastSubmissionTime      atomic.Int64
@@ -114,23 +111,23 @@ func NewManager(
 	}
 
 	agg := &Manager{
-		Pubsub:                pubsub,
-		p2pClient:             p2pClient,
-		ProposerKey:           proposerKey,
-		Conf:                  conf,
-		Genesis:               genesis,
-		LastState:             s,
-		Store:                 store,
-		Executor:              exec,
-		DAClient:              dalc,
-		SLClient:              settlementClient,
-		Retriever:             dalc.(da.BatchRetriever),
-		SyncTargetDiode:       diodes.NewOneToOne(1, nil),
-		shouldProduceBlocksCh: make(chan bool, 1),
-		shouldSubmitBatchCh:   make(chan bool, 10), //allow capacity for multiple pending batches to support bursts
-		produceEmptyBlockCh:   make(chan bool, 5),  //TODO: arbitrary number for now, gonna be refactored
-		logger:                logger,
-		blockCache:            make(map[uint64]CachedBlock),
+		Pubsub:                  pubsub,
+		p2pClient:               p2pClient,
+		ProposerKey:             proposerKey,
+		Conf:                    conf,
+		Genesis:                 genesis,
+		LastState:               s,
+		Store:                   store,
+		Executor:                exec,
+		DAClient:                dalc,
+		SLClient:                settlementClient,
+		Retriever:               dalc.(da.BatchRetriever),
+		SyncTargetDiode:         diodes.NewOneToOne(1, nil),
+		accumulatedProducedSize: 0,
+		shouldSubmitBatchCh:     make(chan bool, 10), //allow capacity for multiple pending batches to support bursts
+		produceEmptyBlockCh:     make(chan bool, 5),  //TODO: arbitrary number for now, gonna be refactored
+		logger:                  logger,
+		blockCache:              make(map[uint64]CachedBlock),
 	}
 
 	return agg, nil
@@ -171,6 +168,7 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 	}
 
 	if isAggregator {
+		//TODO: populate the accumualtedSize on startup
 		go m.ProduceBlockLoop(ctx)
 		go m.SubmitLoop(ctx)
 	} else {
