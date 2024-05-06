@@ -62,7 +62,6 @@ type Manager struct {
 	// Block production
 	AccumulatedProducedSize uint64
 	ShouldSubmitBatchCh     chan bool
-	produceEmptyBlockCh     chan bool
 	lastSubmissionTime      atomic.Int64
 
 	/*
@@ -129,7 +128,6 @@ func NewManager(
 		SyncTargetDiode:         diodes.NewOneToOne(1, nil),
 		AccumulatedProducedSize: 0,
 		ShouldSubmitBatchCh:     make(chan bool, maxSupportedBatchSkew), //allow capacity for multiple pending batches to support bursts
-		produceEmptyBlockCh:     make(chan bool, 5),                     //TODO(#807): arbitrary number for now, gonna be refactored
 		logger:                  logger,
 		blockCache:              make(map[uint64]CachedBlock),
 	}
