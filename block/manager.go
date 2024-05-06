@@ -58,6 +58,7 @@ type Manager struct {
 	SyncTarget      atomic.Uint64
 
 	// Block production
+	//TODO: populate the accumualtedSize on startup
 	accumulatedProducedSize uint64
 	shouldProduceBlocksCh   chan bool
 	shouldSubmitBatchCh     chan bool
