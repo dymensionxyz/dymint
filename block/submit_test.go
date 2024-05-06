@@ -23,11 +23,10 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
-var ctx = context.Background()
-
 func TestBatchSubmissionHappyFlow(t *testing.T) {
 	require := require.New(t)
 	app := testutil.GetAppMock()
+	ctx := context.Background()
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(clientCreator)
@@ -56,6 +55,7 @@ func TestBatchSubmissionHappyFlow(t *testing.T) {
 func TestBatchSubmissionFailedSubmission(t *testing.T) {
 	require := require.New(t)
 	app := testutil.GetAppMock()
+	ctx := context.Background()
 
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)

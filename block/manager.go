@@ -32,6 +32,10 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
+const (
+	maxSupportedBatchSkew = 10
+)
+
 // Manager is responsible for aggregating transactions into blocks.
 type Manager struct {
 	// Configuration
@@ -56,8 +60,8 @@ type Manager struct {
 	SyncTarget      atomic.Uint64
 
 	// Block production
-	accumulatedProducedSize uint64
-	shouldSubmitBatchCh     chan bool
+	AccumulatedProducedSize uint64
+	ShouldSubmitBatchCh     chan bool
 	produceEmptyBlockCh     chan bool
 	lastSubmissionTime      atomic.Int64
 
@@ -123,9 +127,9 @@ func NewManager(
 		SLClient:                settlementClient,
 		Retriever:               dalc.(da.BatchRetriever),
 		SyncTargetDiode:         diodes.NewOneToOne(1, nil),
-		accumulatedProducedSize: 0,
-		shouldSubmitBatchCh:     make(chan bool, 10), //allow capacity for multiple pending batches to support bursts
-		produceEmptyBlockCh:     make(chan bool, 5),  //TODO: arbitrary number for now, gonna be refactored
+		AccumulatedProducedSize: 0,
+		ShouldSubmitBatchCh:     make(chan bool, maxSupportedBatchSkew), //allow capacity for multiple pending batches to support bursts
+		produceEmptyBlockCh:     make(chan bool, 5),                     //TODO(#807): arbitrary number for now, gonna be refactored
 		logger:                  logger,
 		blockCache:              make(map[uint64]CachedBlock),
 	}

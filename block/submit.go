@@ -21,7 +21,7 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 		// Context canceled
 		case <-ctx.Done():
 			return
-		case <-m.shouldSubmitBatchCh: // Trigger by block production
+		case <-m.ShouldSubmitBatchCh: // Trigger by block production
 		case <-ticker.C: // trigger by max time
 		}
 

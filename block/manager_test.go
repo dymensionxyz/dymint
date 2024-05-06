@@ -3,7 +3,6 @@ package block_test
 import (
 	"context"
 	"crypto/rand"
-	"errors"
 	"testing"
 	"time"
 
@@ -12,7 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/dymensionxyz/dymint/block"
-	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/testutil"
@@ -214,82 +212,6 @@ func TestProducePendingBlock(t *testing.T) {
 	require.NoError(t, err)
 	// Validate state is updated with the block that was saved in the store
 	assert.Equal(t, block.Header.Hash(), *(*[32]byte)(manager.LastState.LastBlockID.Hash))
-}
-
-//FIXME: REFACTOR THIS TEST
-
-// TestBlockProductionNodeHealth tests the different scenarios of block production when the node health is toggling.
-// The test does the following:
-// 1. Send healthy event and validate blocks are produced
-// 2. Send unhealthy event and validate blocks are not produced
-// 3. Send another unhealthy event and validate blocks are still not produced
-// 4. Send healthy event and validate blocks are produced
-func TestBlockProductionNodeHealth(t *testing.T) {
-	require := require.New(t)
-	assert := assert.New(t)
-	// Setup app
-	app := testutil.GetAppMock()
-	// Create proxy app
-	clientCreator := proxy.NewLocalClientCreator(app)
-	proxyApp := proxy.NewAppConns(clientCreator)
-	err := proxyApp.Start()
-	require.NoError(err)
-	// Init manager
-	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, nil, 1, 1, 0, proxyApp, nil)
-	require.NoError(err)
-
-	cases := []struct {
-		name                  string
-		healthStatusEvent     map[string][]string
-		healthStatusEventData interface{}
-		shouldProduceBlocks   bool
-	}{
-		{
-			name:                  "HealthyEventBlocksProduced",
-			healthStatusEvent:     events.HealthStatusList,
-			healthStatusEventData: &events.DataHealthStatus{},
-			shouldProduceBlocks:   true,
-		},
-		{
-			name:                  "UnhealthyEventBlocksNotProduced",
-			healthStatusEvent:     events.HealthStatusList,
-			healthStatusEventData: &events.DataHealthStatus{Error: errors.New("unhealthy")},
-			shouldProduceBlocks:   false,
-		},
-		{
-			name:                  "UnhealthyEventBlocksStillNotProduced",
-			healthStatusEvent:     events.HealthStatusList,
-			healthStatusEventData: &events.DataHealthStatus{Error: errors.New("unhealthy")},
-			shouldProduceBlocks:   false,
-		},
-		{
-			name:                  "HealthyEventBlocksProduced",
-			healthStatusEvent:     events.HealthStatusList,
-			healthStatusEventData: &events.DataHealthStatus{},
-			shouldProduceBlocks:   true,
-		},
-	}
-	// Start the manager
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	err = manager.Start(ctx, true)
-	require.NoError(err)
-	time.Sleep(100 * time.Millisecond)
-
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			err := manager.Pubsub.PublishWithEvents(context.Background(), c.healthStatusEventData, c.healthStatusEvent)
-			assert.NoError(err, "PublishWithEvents should not produce an error")
-			time.Sleep(500 * time.Millisecond)
-			blockHeight := manager.Store.Height()
-			time.Sleep(500 * time.Millisecond)
-			if c.shouldProduceBlocks {
-				assert.Greater(manager.Store.Height(), blockHeight)
-			} else {
-				assert.Equal(blockHeight, manager.Store.Height())
-			}
-		})
-	}
 }
 
 // Test that in case we fail after the proxy app commit, next time we won't commit again to the proxy app

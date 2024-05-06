@@ -11,11 +11,14 @@ import (
 
 	"github.com/dymensionxyz/dymint/mempool"
 	mempoolv1 "github.com/dymensionxyz/dymint/mempool/v1"
+	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/types"
+	uevent "github.com/dymensionxyz/dymint/utils/event"
 	tmcfg "github.com/tendermint/tendermint/config"
 
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/proxy"
 )
 
@@ -92,7 +95,7 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 }
 
 func TestCreateEmptyBlocksNew(t *testing.T) {
-	t.Skip("FIXME: fails to submit tx to test the empty blocks feature")
+	t.Skip("FIXME: fails to submit tx to test the empty blocks feature") //TODO(#352)
 	assert := assert.New(t)
 	require := require.New(t)
 	app := testutil.GetAppMock()
@@ -201,4 +204,122 @@ func TestInvalidBatch(t *testing.T) {
 			assert.NoError(err)
 		}
 	}
+}
+
+func TestSubmissionTrigger(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	cases := []struct {
+		name                   string
+		blockBatchMaxSizeBytes uint64
+		expectedSubmission     bool
+	}{
+		{
+			name:                   "block batch max size is fullfilled",
+			blockBatchMaxSizeBytes: 1000,
+			expectedSubmission:     true,
+		},
+		{
+			name:                   "block batch max size is not fullfilled",
+			blockBatchMaxSizeBytes: 100000,
+			expectedSubmission:     false,
+		},
+	}
+
+	for _, c := range cases {
+		managerConfig := testutil.GetManagerConfig()
+		managerConfig.BlockBatchMaxSizeBytes = c.blockBatchMaxSizeBytes
+		manager, err := testutil.GetManager(managerConfig, nil, nil, 1, 1, 0, nil, nil)
+		require.NoError(err)
+
+		//validate initial accumalted is zero
+		require.Equal(manager.AccumulatedProducedSize, uint64(0))
+		assert.Equal(manager.Store.Height(), uint64(0))
+
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+
+		// produce block
+		go manager.ProduceBlockLoop(ctx)
+
+		//wait for block to be produced but not for submission threshold
+		time.Sleep(400 * time.Millisecond)
+		assert.Greater(manager.Store.Height(), uint64(0))
+		assert.Greater(manager.AccumulatedProducedSize, uint64(0))
+
+		//wait for submission signal
+		sent := false
+		select {
+		case <-ctx.Done():
+		case <-manager.ShouldSubmitBatchCh:
+			sent = true
+			time.Sleep(100 * time.Millisecond)
+			assert.Equal(manager.AccumulatedProducedSize, uint64(0))
+		}
+
+		assert.Equal(c.expectedSubmission, sent)
+	}
+}
+
+func TestStopBlockProduction(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	managerConfig := testutil.GetManagerConfig()
+	managerConfig.BlockBatchMaxSizeBytes = 1000 // small batch size to fill up quickly
+	manager, err := testutil.GetManager(managerConfig, nil, nil, 1, 1, 0, nil, nil)
+	require.NoError(err)
+
+	//validate initial accumalted is zero
+	require.Equal(manager.AccumulatedProducedSize, uint64(0))
+	assert.Equal(manager.Store.Height(), uint64(0))
+
+	// subscribe to health status event
+	eventRecievedCh := make(chan error)
+	cb := func(event pubsub.Message) {
+		eventRecievedCh <- event.Data().(*events.DataHealthStatus).Error
+	}
+	go uevent.MustSubscribe(context.Background(), manager.Pubsub, "HealthStatusHandler", events.QueryHealthStatus, cb, log.TestingLogger())
+
+	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
+	defer cancel()
+
+	// produce block
+	go manager.ProduceBlockLoop(ctx)
+
+	//validate block production works
+	time.Sleep(400 * time.Millisecond)
+	assert.Greater(manager.Store.Height(), uint64(0))
+	assert.Greater(manager.AccumulatedProducedSize, uint64(0))
+
+	// we don't read from the submit channel, so we assume it get full
+	// we expect the block production to stop and unhealthy event to be emitted
+	select {
+	case <-ctx.Done():
+		t.Error("expected unhealthy event")
+	case err := <-eventRecievedCh:
+		assert.Error(err)
+	}
+
+	stoppedHeight := manager.Store.Height()
+
+	// make sure block production is stopped
+	time.Sleep(400 * time.Millisecond)
+	assert.Equal(stoppedHeight, manager.Store.Height())
+
+	// consume the signal
+	<-manager.ShouldSubmitBatchCh
+
+	// check for health status event and block production to continue
+	select {
+	case <-ctx.Done():
+		t.Error("expected unhealthy event")
+	case err := <-eventRecievedCh:
+		assert.NoError(err)
+	}
+
+	// make sure block production is resumed
+	time.Sleep(400 * time.Millisecond)
+	assert.Greater(manager.Store.Height(), stoppedHeight)
 }
