@@ -78,7 +78,7 @@ func (v *Validator) BlockValidator() GossipValidator {
 			return false
 		}
 		if err := gossipedBlock.Validate(v.slClient.GetProposer()); err != nil {
-			v.logger.Error("Invalid gossiped block", "height", gossipedBlock.Block.Header.Height, "error", err)
+			v.logger.Error("Invalid gossiped block.", "height", gossipedBlock.Block.Header.Height, "error", err)
 			return false
 		}
 
