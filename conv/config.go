@@ -35,7 +35,7 @@ func GetNodeConfig(nodeConf *config.NodeConfig, tmConf *tmcfg.Config) error {
 		return errors.New("tendermint mempool config is nil but required to populate Dymint config")
 	}
 	/*
-		In the above, we are copying the MempoolConfig from Tendermint's configuration to Dymint's configuration.
+		In the above, we are copying the rpc/p2p from Tendermint's configuration to Dymint's configuration.
 		This was implemented by the original rollkit authors, and they have not provided any explanation for this.
 
 		For the mempool we simply copy the object. If we want to be more selective, we can adjust later.
