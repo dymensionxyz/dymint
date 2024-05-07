@@ -40,7 +40,7 @@ const (
 // 	// Subscribe to the health status event
 // 	pubsubServer := pubsub.NewServer()
 // 	pubsubServer.Start()
-// 	// HealthSubscription, err := pubsubServer.Subscribe(context.Background(), "testSubmitBatch", da.EventQueryDAHealthStatus)
+// 	// HealthSubscription, err := pubsubServer.SubscribeUnbuffered(context.Background(), "testSubmitBatch", da.EventQueryDAHealthStatus)
 // 	assert.NoError(err)
 // 	// Start the DALC
 // 	dalc := avail.DataAvailabilityLayerClient{}
