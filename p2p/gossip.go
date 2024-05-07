@@ -22,7 +22,7 @@ type GossipMessage struct {
 // GossiperOption sets optional parameters of Gossiper.
 type GossiperOption func(*Gossiper) error
 
-type NewMessage func(msg *GossipMessage)
+type GossipMessageHandler func(msg *GossipMessage)
 
 // WithValidator options registers topic validator for Gossiper.
 func WithValidator(validator GossipValidator) GossiperOption {
@@ -35,17 +35,17 @@ func WithValidator(validator GossipValidator) GossiperOption {
 type Gossiper struct {
 	ownID peer.ID
 
-	ps          *pubsub.PubSub
-	topic       *pubsub.Topic
-	sub         *pubsub.Subscription
-	msgReceiver NewMessage
-	logger      types.Logger
+	ps         *pubsub.PubSub
+	topic      *pubsub.Topic
+	sub        *pubsub.Subscription
+	msgHandler GossipMessageHandler
+	logger     types.Logger
 }
 
 // NewGossiper creates new, ready to use instance of Gossiper.
 //
 // Returned Gossiper object can be used for sending (Publishing) and receiving messages in topic identified by topicStr.
-func NewGossiper(host host.Host, ps *pubsub.PubSub, topicStr string, msgReceiver NewMessage, logger types.Logger, options ...GossiperOption) (*Gossiper, error) {
+func NewGossiper(host host.Host, ps *pubsub.PubSub, topicStr string, msgHandler GossipMessageHandler, logger types.Logger, options ...GossiperOption) (*Gossiper, error) {
 	topic, err := ps.Join(topicStr)
 	if err != nil {
 		return nil, err
@@ -56,12 +56,12 @@ func NewGossiper(host host.Host, ps *pubsub.PubSub, topicStr string, msgReceiver
 		return nil, err
 	}
 	g := &Gossiper{
-		ownID:       host.ID(),
-		ps:          ps,
-		topic:       topic,
-		sub:         subscription,
-		logger:      logger,
-		msgReceiver: msgReceiver,
+		ownID:      host.ID(),
+		ps:         ps,
+		topic:      topic,
+		sub:        subscription,
+		logger:     logger,
+		msgHandler: msgHandler,
 	}
 
 	for _, option := range options {
@@ -100,8 +100,8 @@ func (g *Gossiper) ProcessMessages(ctx context.Context) {
 			g.logger.Error("read message", "error", err)
 			return
 		}
-		if g.msgReceiver != nil {
-			g.msgReceiver(&GossipMessage{
+		if g.msgHandler != nil {
+			g.msgHandler(&GossipMessage{
 				Data: msg.Data,
 				From: msg.GetFrom(),
 			})
