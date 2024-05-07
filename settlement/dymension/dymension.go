@@ -212,7 +212,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 
 	// TODO: probably should be changed to be a channel, as the eventHandler is also in the HubClient in he produces the event
 	postBatchSubscriberClient := fmt.Sprintf("%s-%d-%s", postBatchSubscriberPrefix, batch.StartHeight, uuid.New().String())
-	subscription, err := d.pubsub.Subscribe(d.ctx, postBatchSubscriberClient, settlement.EventQueryNewSettlementBatchAccepted)
+	subscription, err := d.pubsub.SubscribeUnbuffered(d.ctx, postBatchSubscriberClient, settlement.EventQueryNewSettlementBatchAccepted)
 	if err != nil {
 		return fmt.Errorf("pub sub subscribe to settlement state updates: %w", err)
 	}
