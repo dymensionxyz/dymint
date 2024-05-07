@@ -115,7 +115,7 @@ func TestPostBatch(t *testing.T) {
 	batch, err := testutil.GenerateBatch(1, 1, propserKey)
 	require.NoError(err)
 	// Subscribe to the health status event
-	HealthSubscription, err := pubsubServer.Subscribe(context.Background(), "testPostBatch", settlement.EventQuerySettlementHealthStatus)
+	HealthSubscription, err := pubsubServer.SubscribeUnbuffered(context.Background(), "testPostBatch", settlement.EventQuerySettlementHealthStatus)
 	assert.NoError(t, err)
 
 	cases := []struct {
