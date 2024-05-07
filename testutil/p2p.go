@@ -114,6 +114,7 @@ func StartTestNetwork(ctx context.Context, t *testing.T, n int, conf map[int]Hos
 		},
 			mnet.Hosts()[i].Peerstore().PrivKey(mnet.Hosts()[i].ID()),
 			conf[i].ChainID,
+			time.Millisecond*200,
 			pubsubServer,
 			logger)
 		require.NoError(err)
