@@ -127,8 +127,8 @@ func NewManager(
 		SLClient:            settlementClient,
 		Retriever:           dalc.(da.BatchRetriever),
 		SyncTargetDiode:     diodes.NewOneToOne(1, nil),
-		ShouldSubmitBatchCh: make(chan bool, maxSupportedBatchSkew), //allow capacity for multiple pending batches to support bursts
-		produceEmptyBlockCh: make(chan bool, 5),                     //TODO(#807): arbitrary number for now, gonna be refactored
+		ShouldSubmitBatchCh: make(chan bool, maxSupportedBatchSkew), // allow capacity for multiple pending batches to support bursts
+		produceEmptyBlockCh: make(chan bool, 5),                     // TODO(#807): arbitrary number for now, gonna be refactored
 		logger:              logger,
 		blockCache:          make(map[uint64]CachedBlock),
 	}
@@ -171,7 +171,7 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 	}
 
 	if isAggregator {
-		//TODO: populate the accumualtedSize on startup
+		// TODO: populate the accumulatedSize on startup
 		go m.ProduceBlockLoop(ctx)
 		go m.SubmitLoop(ctx)
 	} else {

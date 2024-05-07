@@ -10,7 +10,7 @@ import (
 )
 
 // SubmitLoop is the main loop for submitting blocks to the DA and SL layers.
-// It is triggered by the shouldSubmitBatchCh channel, which is triggered by the block production loop when accumualted produced size is enogh to submit.
+// It is triggered by the shouldSubmitBatchCh channel, which is triggered by the block production loop when accumulated produced size is enogh to submit.
 // It is also triggered by a BatchSubmitMaxTime timer to limit the time between submissions.
 func (m *Manager) SubmitLoop(ctx context.Context) {
 	ticker := time.NewTicker(m.Conf.BatchSubmitMaxTime)
@@ -98,7 +98,7 @@ func (m *Manager) submitNextBatchToDA(nextBatch *types.Batch) (*da.ResultSubmitB
 	isLastBlockEmpty := nextBatch.Blocks[len(nextBatch.Blocks)-1].Data.Txs == nil
 	if !isLastBlockEmpty {
 		m.logger.Info("Last block in batch is not an empty block. Requesting for an empty block creation", "endHeight", actualEndHeight)
-		//TODO: remove from here and move to the block production loop.
+		// TODO: remove from here and move to the block production loop.
 		m.produceEmptyBlockCh <- true
 	}
 

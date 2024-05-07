@@ -74,9 +74,9 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 			if m.shouldSubmitBatch() {
 				select {
 				case m.ShouldSubmitBatchCh <- true:
-					m.logger.Info("new batch accumualted, signal sent to submit the batch")
+					m.logger.Info("new batch accumulated, signal sent to submit the batch")
 				default:
-					m.logger.Error("new batch accumualted, but channel is full, stopping block production until the signal is consumed")
+					m.logger.Error("new batch accumulated, but channel is full, stopping block production until the signal is consumed")
 					// emit unhealthy event for the node
 					evt := &events.DataHealthStatus{Error: fmt.Errorf("submission channel is full")}
 					uevent.MustPublish(ctx, m.Pubsub, evt, events.HealthStatusList)
