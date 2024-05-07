@@ -38,9 +38,6 @@ func NewIndexerService(
 // OnStart implements service.Service by subscribing for all transactions
 // and indexing them by events.
 func (is *IndexerService) OnStart() error {
-	// Use SubscribeUnbuffered here to ensure both subscriptions does not get
-	// cancelled due to not pulling messages fast enough. Cause this might
-	// sometimes happen when there are no other subscribers.
 	blockHeadersSub, err := is.eventBus.Subscribe(
 		context.Background(),
 		subscriber,
@@ -49,6 +46,8 @@ func (is *IndexerService) OnStart() error {
 		return err
 	}
 
+	// TODO: use unbuffered, see https://github.com/dymensionxyz/dymint/blob/e9d069e3b41cdde724b2b986f4d5a03a7670c3e1/state/txindex/indexer_service.go#L41-L43
+	// TODO: will probably want to pull off the pub sub and put on our own local queue
 	txsSub, err := is.eventBus.Subscribe(context.Background(), subscriber, types.EventQueryTx, 10000)
 	if err != nil {
 		return err
