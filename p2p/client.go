@@ -320,9 +320,8 @@ func (c *Client) tryConnect(ctx context.Context, peer peer.AddrInfo) {
 func (c *Client) setupGossiping(ctx context.Context) error {
 	pubsub.GossipSubHistoryGossip = c.conf.GossipCacheSize
 	pubsub.GossipSubHistoryLength = c.conf.GossipCacheSize
-	pubsub.GossipSubMaxIHaveMessages = c.conf.GossipCacheSize
 
-	ps, err := pubsub.NewGossipSub(ctx, c.Host)
+	ps, err := pubsub.NewGossipSub(ctx, c.Host, pubsub.WithSeenMessagesTTL(time.Duration(int(c.blockTime.Nanoseconds()*int64(c.conf.GossipCacheSize)))))
 	if err != nil {
 		return err
 	}
