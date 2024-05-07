@@ -327,6 +327,7 @@ func (c *Client) setupGossiping(ctx context.Context) error {
 		return err
 	}
 
+	//tx gossiper receives the tx to add to the mempool through validation process, since it is a joint process
 	c.txGossiper, err = NewGossiper(c.Host, ps, c.getTxTopic(), nil, c.logger, WithValidator(c.txValidator))
 	if err != nil {
 		return err
