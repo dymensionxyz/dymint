@@ -34,7 +34,7 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 			NamespaceID:             "0000000000000000ffff",
 			BlockBatchSize:          500,
 			BlockBatchMaxSizeBytes:  500000,
-			GossipedBlocksCacheSize: 5000,
+			GossipedBlocksCacheSize: 50,
 		},
 		DALayer:         "mock",
 		SettlementLayer: "mock",

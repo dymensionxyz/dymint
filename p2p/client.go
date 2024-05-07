@@ -68,15 +68,14 @@ type Client struct {
 
 	localPubsubServer *tmpubsub.Server
 
-	blockTime time.Duration
-	logger    types.Logger
+	logger types.Logger
 }
 
 // NewClient creates new Client object.
 //
 // Basic checks on parameters are done, and default parameters are provided for unset-configuration
 // TODO(tzdybal): consider passing entire config, not just P2P config, to reduce number of arguments
-func NewClient(conf config.P2PConfig, privKey crypto.PrivKey, chainID string, blockTime time.Duration, localPubsubServer *tmpubsub.Server, logger types.Logger) (*Client, error) {
+func NewClient(conf config.P2PConfig, privKey crypto.PrivKey, chainID string, localPubsubServer *tmpubsub.Server, logger types.Logger) (*Client, error) {
 	if privKey == nil {
 		return nil, errNoPrivKey
 	}
@@ -89,7 +88,6 @@ func NewClient(conf config.P2PConfig, privKey crypto.PrivKey, chainID string, bl
 		chainID:           chainID,
 		logger:            logger,
 		localPubsubServer: localPubsubServer,
-		blockTime:         blockTime,
 	}, nil
 }
 
@@ -322,9 +320,9 @@ func (c *Client) tryConnect(ctx context.Context, peer peer.AddrInfo) {
 func (c *Client) setupGossiping(ctx context.Context) error {
 	pubsub.GossipSubHistoryGossip = c.conf.GossipCacheSize
 	pubsub.GossipSubHistoryLength = c.conf.GossipCacheSize
+	pubsub.GossipSubMaxIHaveMessages = c.conf.GossipCacheSize
 
-	//seen messages TTL is added according to the cache size  to the Gossipsub router to avoid re-requesting messages in the cache several times
-	ps, err := pubsub.NewGossipSub(ctx, c.Host, pubsub.WithSeenMessagesTTL(time.Duration(c.blockTime.Milliseconds()*int64(c.conf.GossipCacheSize))))
+	ps, err := pubsub.NewGossipSub(ctx, c.Host)
 	if err != nil {
 		return err
 	}
