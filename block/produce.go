@@ -101,7 +101,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 					evt = &events.DataHealthStatus{Error: nil}
 					uevent.MustPublish(ctx, m.Pubsub, evt, events.HealthStatusList)
 				}
-				m.AccumulatedProducedSize.Store(0)
+				m.AccumulatedProducedSize = 0
 			}
 		}
 	}
@@ -121,15 +121,14 @@ func (m *Manager) ProduceAndGossipBlock(ctx context.Context, allowEmpty bool) (*
 }
 
 func (m *Manager) updateAccumulatedSize(size uint64) {
-	curr := m.AccumulatedProducedSize.Load()
-	_ = m.AccumulatedProducedSize.CompareAndSwap(curr, curr+size)
+	m.AccumulatedProducedSize += size
 }
 
 // check if we should submit the accumulated data
 func (m *Manager) shouldSubmitBatch() bool {
 	// Check if accumulated size is greater than the max size
 	// TODO: allow some tolerance for block size (aim for BlockBatchMaxSize +- 10%)
-	return m.AccumulatedProducedSize.Load() > m.Conf.BlockBatchMaxSizeBytes
+	return m.AccumulatedProducedSize > m.Conf.BlockBatchMaxSizeBytes
 }
 
 func (m *Manager) produceBlock(allowEmpty bool) (*types.Block, *types.Commit, error) {
@@ -217,7 +216,7 @@ func (m *Manager) produceBlock(allowEmpty bool) (*types.Block, *types.Commit, er
 	size := uint64(block.ToProto().Size() + commit.ToProto().Size())
 	m.updateAccumulatedSize(size)
 
-	m.logger.Info("block created", "height", newHeight, "num_tx", len(block.Data.Txs), "accumulated_size", m.AccumulatedProducedSize.Load())
+	m.logger.Info("block created", "height", newHeight, "num_tx", len(block.Data.Txs), "accumulated_size", m.AccumulatedProducedSize)
 	types.RollappBlockSizeBytesGauge.Set(float64(len(block.Data.Txs)))
 	types.RollappBlockSizeTxsGauge.Set(float64(len(block.Data.Txs)))
 	types.RollappHeightGauge.Set(float64(newHeight))

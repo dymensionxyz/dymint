@@ -60,7 +60,7 @@ type Manager struct {
 	SyncTarget      atomic.Uint64
 
 	// Block production
-	AccumulatedProducedSize atomic.Uint64
+	AccumulatedProducedSize uint64
 	ShouldSubmitBatchCh     chan bool
 	lastSubmissionTime      atomic.Int64
 
