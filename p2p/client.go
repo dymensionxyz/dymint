@@ -323,8 +323,8 @@ func (c *Client) setupGossiping(ctx context.Context) error {
 	pubsub.GossipSubHistoryGossip = c.conf.GossipCacheSize
 	pubsub.GossipSubHistoryLength = c.conf.GossipCacheSize
 
-	//seen messages TTL is added according to the cache size  to the Gossipsub router to avoid re-requesting messages in the cache several times
-	ps, err := pubsub.NewGossipSub(ctx, c.Host, pubsub.WithSeenMessagesTTL(time.Duration(c.blockTime.Milliseconds()*int64(c.conf.GossipCacheSize))))
+	//seen messages TTL is added according to the cache size to the Gossipsub router to avoid re-requesting messages in the cache several times
+	ps, err := pubsub.NewGossipSub(ctx, c.Host, pubsub.WithSeenMessagesTTL(time.Duration(c.blockTime.Nanoseconds()*int64(c.conf.GossipCacheSize))))
 	if err != nil {
 		return err
 	}
