@@ -112,6 +112,8 @@ func createConfig(bz []byte) (c Config, err error) {
 		return c, errors.New("gas prices must be set")
 	}
 
+	// NOTE: 0 is valid value for RetryAttempts
+
 	if c.RetryDelay == 0 {
 		c.RetryDelay = defaultRpcRetryDelay
 	}
