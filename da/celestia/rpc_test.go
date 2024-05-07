@@ -117,7 +117,7 @@ func TestSubmitBatch(t *testing.T) {
 		pubsubServer := pubsub.NewServer()
 		err = pubsubServer.Start()
 		require.NoError(err, tc.name)
-		HealthSubscription, err := pubsubServer.SubscribeUnbuffered(icontext.Background(), "testSubmitBatch", da.EventQueryDAHealthStatus)
+		HealthSubscription, err := pubsubServer.SubscribeUnbuffered(context.Background(), "testSubmitBatch", da.EventQueryDAHealthStatus)
 		assert.NoError(err, tc.name)
 		// Start the DALC
 		dalc := celestia.DataAvailabilityLayerClient{}
