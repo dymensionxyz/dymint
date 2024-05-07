@@ -10,7 +10,7 @@ import (
 )
 
 // SubmitLoop is the main loop for submitting blocks to the DA and SL layers.
-// It is triggered by the shouldSubmitBatchCh channel, which is triggered by the block production loop when accumualted produced size is enogh to submit.
+// It is triggered by the shouldSubmitBatchCh channel, which is triggered by the block production loop when accumulated produced size is enogh to submit.
 // It is also triggered by a BatchSubmitMaxTime timer to limit the time between submissions.
 func (m *Manager) SubmitLoop(ctx context.Context) {
 	ticker := time.NewTicker(m.Conf.BatchSubmitMaxTime)

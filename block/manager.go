@@ -60,7 +60,7 @@ type Manager struct {
 	SyncTarget      atomic.Uint64
 
 	// Block production
-	AccumulatedProducedSize uint64
+	AccumulatedProducedSize atomic.Uint64
 	ShouldSubmitBatchCh     chan bool
 	lastSubmissionTime      atomic.Int64
 
@@ -107,22 +107,21 @@ func NewManager(
 	}
 
 	agg := &Manager{
-		Pubsub:                  pubsub,
-		p2pClient:               p2pClient,
-		ProposerKey:             proposerKey,
-		Conf:                    conf,
-		Genesis:                 genesis,
-		LastState:               s,
-		Store:                   store,
-		Executor:                exec,
-		DAClient:                dalc,
-		SLClient:                settlementClient,
-		Retriever:               dalc.(da.BatchRetriever),
-		SyncTargetDiode:         diodes.NewOneToOne(1, nil),
-		AccumulatedProducedSize: 0,
-		ShouldSubmitBatchCh:     make(chan bool, maxSupportedBatchSkew), //allow capacity for multiple pending batches to support bursts
-		logger:                  logger,
-		blockCache:              make(map[uint64]CachedBlock),
+		Pubsub:              pubsub,
+		p2pClient:           p2pClient,
+		ProposerKey:         proposerKey,
+		Conf:                conf,
+		Genesis:             genesis,
+		LastState:           s,
+		Store:               store,
+		Executor:            exec,
+		DAClient:            dalc,
+		SLClient:            settlementClient,
+		Retriever:           dalc.(da.BatchRetriever),
+		SyncTargetDiode:     diodes.NewOneToOne(1, nil),
+		ShouldSubmitBatchCh: make(chan bool, maxSupportedBatchSkew), //allow capacity for multiple pending batches to support bursts
+		logger:              logger,
+		blockCache:          make(map[uint64]CachedBlock),
 	}
 
 	return agg, nil
@@ -163,7 +162,7 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 	}
 
 	if isAggregator {
-		//TODO: populate the accumualtedSize on startup
+		// TODO: populate the accumulatedSize on startup
 		go m.ProduceBlockLoop(ctx)
 		go m.SubmitLoop(ctx)
 	} else {

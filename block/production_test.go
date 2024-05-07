@@ -95,7 +95,7 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 }
 
 func TestCreateEmptyBlocksNew(t *testing.T) {
-	t.Skip("FIXME: fails to submit tx to test the empty blocks feature") //TODO(#352)
+	t.Skip("FIXME: fails to submit tx to test the empty blocks feature") // TODO(#352)
 	assert := assert.New(t)
 	require := require.New(t)
 	app := testutil.GetAppMock()
@@ -233,8 +233,8 @@ func TestSubmissionTrigger(t *testing.T) {
 		manager, err := testutil.GetManager(managerConfig, nil, nil, 1, 1, 0, nil, nil)
 		require.NoError(err)
 
-		//validate initial accumalted is zero
-		require.Equal(manager.AccumulatedProducedSize, uint64(0))
+		// validate initial accumulated is zero
+		require.Equal(manager.AccumulatedProducedSize.Load(), uint64(0))
 		assert.Equal(manager.Store.Height(), uint64(0))
 
 		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
@@ -243,19 +243,19 @@ func TestSubmissionTrigger(t *testing.T) {
 		// produce block
 		go manager.ProduceBlockLoop(ctx)
 
-		//wait for block to be produced but not for submission threshold
+		// wait for block to be produced but not for submission threshold
 		time.Sleep(400 * time.Millisecond)
 		assert.Greater(manager.Store.Height(), uint64(0))
-		assert.Greater(manager.AccumulatedProducedSize, uint64(0))
+		assert.Greater(manager.AccumulatedProducedSize.Load(), uint64(0))
 
-		//wait for submission signal
+		// wait for submission signal
 		sent := false
 		select {
 		case <-ctx.Done():
 		case <-manager.ShouldSubmitBatchCh:
 			sent = true
 			time.Sleep(100 * time.Millisecond)
-			assert.Equal(manager.AccumulatedProducedSize, uint64(0))
+			assert.Equal(manager.AccumulatedProducedSize.Load(), uint64(0))
 		}
 
 		assert.Equal(c.expectedSubmission, sent)
@@ -271,8 +271,8 @@ func TestStopBlockProduction(t *testing.T) {
 	manager, err := testutil.GetManager(managerConfig, nil, nil, 1, 1, 0, nil, nil)
 	require.NoError(err)
 
-	//validate initial accumalted is zero
-	require.Equal(manager.AccumulatedProducedSize, uint64(0))
+	// validate initial accumulated is zero
+	require.Equal(manager.AccumulatedProducedSize.Load(), uint64(0))
 	assert.Equal(manager.Store.Height(), uint64(0))
 
 	// subscribe to health status event
@@ -288,10 +288,10 @@ func TestStopBlockProduction(t *testing.T) {
 	// produce block
 	go manager.ProduceBlockLoop(ctx)
 
-	//validate block production works
+	// validate block production works
 	time.Sleep(400 * time.Millisecond)
 	assert.Greater(manager.Store.Height(), uint64(0))
-	assert.Greater(manager.AccumulatedProducedSize, uint64(0))
+	assert.Greater(manager.AccumulatedProducedSize.Load(), uint64(0))
 
 	// we don't read from the submit channel, so we assume it get full
 	// we expect the block production to stop and unhealthy event to be emitted
