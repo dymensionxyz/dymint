@@ -10,6 +10,7 @@ import (
 
 	"github.com/dymensionxyz/dymint/da/grpc"
 	"github.com/dymensionxyz/dymint/settlement"
+	tmcfg "github.com/tendermint/tendermint/config"
 )
 
 const (
@@ -22,10 +23,12 @@ const (
 // NodeConfig stores Dymint node configuration.
 type NodeConfig struct {
 	// parameters below are translated from existing config
-	RootDir string
-	DBPath  string
-	P2P     P2PConfig
-	RPC     RPCConfig
+	RootDir       string
+	DBPath        string
+	P2P           P2PConfig
+	RPC           RPCConfig
+	MempoolConfig tmcfg.MempoolConfig
+
 	// parameters below are dymint specific and read from config
 	Aggregator         bool `mapstructure:"aggregator"`
 	BlockManagerConfig `mapstructure:",squash"`

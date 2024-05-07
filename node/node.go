@@ -18,7 +18,6 @@ import (
 
 	"github.com/libp2p/go-libp2p/core/crypto"
 
-	llcfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/libs/service"
@@ -198,7 +197,7 @@ func NewNode(
 
 	height := max(genesis.InitialHeight, info.LastBlockHeight)
 
-	mp := mempoolv1.NewTxMempool(logger, llcfg.DefaultMempoolConfig(), proxyApp.Mempool(), height)
+	mp := mempoolv1.NewTxMempool(logger, &conf.MempoolConfig, proxyApp.Mempool(), height)
 	mpIDs := nodemempool.NewMempoolIDs()
 
 	// Set p2p client and it's validators
