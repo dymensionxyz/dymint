@@ -183,7 +183,7 @@ func TestHealthStatusEventHandler(t *testing.T) {
 			done := make(chan bool, 1)
 			ready := make(chan bool, 1)
 			go func() {
-				HealthSubscription, err := node.PubsubServer.Subscribe(node.Ctx, c.name, events.QueryHealthStatus)
+				HealthSubscription, err := node.PubsubServer.SubscribeUnbuffered(node.Ctx, c.name, events.QueryHealthStatus)
 				ready <- true
 				assert.NoError(err)
 				select {
