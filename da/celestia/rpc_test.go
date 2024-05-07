@@ -2,7 +2,6 @@ package celestia_test
 
 import (
 	"bytes"
-	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
@@ -118,7 +117,7 @@ func TestSubmitBatch(t *testing.T) {
 		pubsubServer := pubsub.NewServer()
 		err = pubsubServer.Start()
 		require.NoError(err, tc.name)
-		HealthSubscription, err := pubsubServer.Subscribe(context.Background(), "testSubmitBatch", da.EventQueryDAHealthStatus)
+		HealthSubscription, err := pubsubServer.SubscribeUnbuffered(icontext.Background(), "testSubmitBatch", da.EventQueryDAHealthStatus)
 		assert.NoError(err, tc.name)
 		// Start the DALC
 		dalc := celestia.DataAvailabilityLayerClient{}
