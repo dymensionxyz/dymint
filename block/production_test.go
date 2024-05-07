@@ -95,7 +95,7 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 }
 
 func TestCreateEmptyBlocksNew(t *testing.T) {
-	t.Skip("FIXME: fails to submit tx to test the empty blocks feature") //TODO(#352)
+	t.Skip("FIXME: fails to submit tx to test the empty blocks feature") // TODO(#352)
 	assert := assert.New(t)
 	require := require.New(t)
 	app := testutil.GetAppMock()
@@ -233,7 +233,7 @@ func TestSubmissionTrigger(t *testing.T) {
 		manager, err := testutil.GetManager(managerConfig, nil, nil, 1, 1, 0, nil, nil)
 		require.NoError(err)
 
-		//validate initial accumalted is zero
+		// validate initial accumulated is zero
 		require.Equal(manager.AccumulatedProducedSize.Load(), uint64(0))
 		assert.Equal(manager.Store.Height(), uint64(0))
 
@@ -243,12 +243,12 @@ func TestSubmissionTrigger(t *testing.T) {
 		// produce block
 		go manager.ProduceBlockLoop(ctx)
 
-		//wait for block to be produced but not for submission threshold
+		// wait for block to be produced but not for submission threshold
 		time.Sleep(400 * time.Millisecond)
 		assert.Greater(manager.Store.Height(), uint64(0))
 		assert.Greater(manager.AccumulatedProducedSize.Load(), uint64(0))
 
-		//wait for submission signal
+		// wait for submission signal
 		sent := false
 		select {
 		case <-ctx.Done():
@@ -271,7 +271,7 @@ func TestStopBlockProduction(t *testing.T) {
 	manager, err := testutil.GetManager(managerConfig, nil, nil, 1, 1, 0, nil, nil)
 	require.NoError(err)
 
-	//validate initial accumalted is zero
+	// validate initial accumulated is zero
 	require.Equal(manager.AccumulatedProducedSize.Load(), uint64(0))
 	assert.Equal(manager.Store.Height(), uint64(0))
 
@@ -288,7 +288,7 @@ func TestStopBlockProduction(t *testing.T) {
 	// produce block
 	go manager.ProduceBlockLoop(ctx)
 
-	//validate block production works
+	// validate block production works
 	time.Sleep(400 * time.Millisecond)
 	assert.Greater(manager.Store.Height(), uint64(0))
 	assert.Greater(manager.AccumulatedProducedSize.Load(), uint64(0))

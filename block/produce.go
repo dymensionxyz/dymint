@@ -108,7 +108,7 @@ func (m *Manager) ProduceAndGossipBlock(ctx context.Context, allowEmpty bool) er
 	return nil
 }
 
-func (m *Manager) updateAccumaltedSize(size uint64) {
+func (m *Manager) updateAccumulatedSize(size uint64) {
 	curr := m.AccumulatedProducedSize.Load()
 	_ = m.AccumulatedProducedSize.CompareAndSwap(curr, curr+size)
 }
@@ -205,7 +205,7 @@ func (m *Manager) produceBlock(allowEmpty bool) (*types.Block, *types.Commit, er
 	}
 
 	size := uint64(block.ToProto().Size() + commit.ToProto().Size())
-	m.updateAccumaltedSize(size)
+	m.updateAccumulatedSize(size)
 
 	m.logger.Info("block created", "height", newHeight, "num_tx", len(block.Data.Txs), "accumulated_size", m.AccumulatedProducedSize.Load())
 	types.RollappBlockSizeBytesGauge.Set(float64(len(block.Data.Txs)))
