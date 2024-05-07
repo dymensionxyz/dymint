@@ -1,6 +1,7 @@
 # [](https://github.com/dymensionxyz/dymint/compare/v1.1.0-rc02...v) (2024-05-05)
 
 
+
 ### Bug Fixes
 
 * **bug:** sync from da and p2p when starting a node ([#763](https://github.com/dymensionxyz/dymint/issues/763)) ([68ffd05](https://github.com/dymensionxyz/dymint/commit/68ffd05794949ddc42df1c132d1fde5f21b505f4))
@@ -27,6 +28,11 @@
 ### Features
 
 * **produce:** limiting block size by maxBatchSize ([#784](https://github.com/dymensionxyz/dymint/issues/784)) ([f90042c](https://github.com/dymensionxyz/dymint/commit/f90042cd61fc6b60093478cd65491f8aa1106457))
+
+
+### Features
+
+* **ci:** changelog workflow ([c096f2f](https://github.com/dymensionxyz/dymint/commit/c096f2f5196e5cbcba8ff81097d8bad7534c46ae))
 
 
 
