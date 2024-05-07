@@ -17,7 +17,6 @@ func TestCreateConfig(t *testing.T) {
 		bz, _ := json.Marshal(v)
 		return bz
 	}
-
 	t.Run("simple", func(t *testing.T) {
 		c := Config{
 			BaseURL:       TestConfig.BaseURL,
@@ -46,5 +45,19 @@ func TestCreateConfig(t *testing.T) {
 		gotC, err := createConfig(bz)
 		require.NoError(t, err)
 		assert.Equal(t, defaultSubmitBackoff, gotC.Backoff)
+	})
+	t.Run("generate example", func(t *testing.T) {
+		c := Config{
+			BaseURL:       TestConfig.BaseURL,
+			AppNodeURL:    TestConfig.AppNodeURL,
+			Timeout:       TestConfig.Timeout,
+			GasPrices:     0.1,
+			AuthToken:     "TOKEN",
+			Backoff:       defaultSubmitBackoff,
+			RetryAttempts: 4,
+			RetryDelay:    3 * time.Second,
+		}
+		bz := mustMarshal(c)
+		t.Log(string(bz))
 	})
 }
