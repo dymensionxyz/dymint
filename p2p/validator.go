@@ -1,7 +1,6 @@
 package p2p
 
 import (
-	"context"
 	"errors"
 
 	"github.com/dymensionxyz/dymint/mempool"
@@ -9,7 +8,6 @@ import (
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
 	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/libs/pubsub"
 	corep2p "github.com/tendermint/tendermint/p2p"
 )
 
@@ -25,19 +23,17 @@ type IValidator interface {
 
 // Validator is a validator for messages gossiped in the p2p network.
 type Validator struct {
-	logger            types.Logger
-	localPubsubServer *pubsub.Server
-	slClient          settlement.LayerI
+	logger   types.Logger
+	slClient settlement.LayerI
 }
 
 var _ IValidator = (*Validator)(nil)
 
 // NewValidator creates a new Validator.
-func NewValidator(logger types.Logger, pusbsubServer *pubsub.Server, slClient settlement.LayerI) *Validator {
+func NewValidator(logger types.Logger, slClient settlement.LayerI) *Validator {
 	return &Validator{
-		logger:            logger,
-		localPubsubServer: pusbsubServer,
-		slClient:          slClient,
+		logger:   logger,
+		slClient: slClient,
 	}
 }
 
@@ -82,15 +78,10 @@ func (v *Validator) BlockValidator() GossipValidator {
 			return false
 		}
 		if err := gossipedBlock.Validate(v.slClient.GetProposer()); err != nil {
-			v.logger.Error("Invalid gossiped block", "error", err)
+			v.logger.Error("Invalid gossiped block.", "height", gossipedBlock.Block.Header.Height, "error", err)
 			return false
 		}
 
-		err := v.localPubsubServer.PublishWithEvents(context.Background(), gossipedBlock, map[string][]string{EventTypeKey: {EventNewGossipedBlock}})
-		if err != nil {
-			v.logger.Error("publishing event", "err", err)
-			return false
-		}
 		return true
 	}
 }
