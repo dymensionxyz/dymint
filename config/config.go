@@ -43,9 +43,9 @@ type NodeConfig struct {
 type BlockManagerConfig struct {
 	// BlockTime defines how often new blocks are produced
 	BlockTime time.Duration `mapstructure:"block_time"`
-	// EmptyBlocksMaxTime defines how long should block manager wait for new transactions before producing empty block
-	EmptyBlocksMaxTime time.Duration `mapstructure:"empty_blocks_max_time"`
-	// PriorityMaxIdleTime is lower than EmptyBlocksMaxTime, in case required
+	// MaxIdleTime defines how long should block manager wait for new transactions before producing empty block
+	MaxIdleTime time.Duration `mapstructure:"max_idle_time"`
+	// PriorityMaxIdleTime is lower than MaxIdleTime, in case required
 	// This is to ensure that the IBC transactions can be proven and relayed
 	PriorityMaxIdleTime time.Duration `mapstructure:"priority_max_idle_time"`
 	// BatchSubmitMaxTime defines how long should block manager wait for before submitting batch
@@ -118,16 +118,16 @@ func (c BlockManagerConfig) Validate() error {
 		return fmt.Errorf("block_time must be positive")
 	}
 
-	if c.EmptyBlocksMaxTime < 0 {
-		return fmt.Errorf("empty_blocks_max_time must be positive or zero to disable")
+	if c.MaxIdleTime < 0 {
+		return fmt.Errorf("max_idle_time must be positive or zero to disable")
 	}
-	// EmptyBlocksMaxTime zero disables adaptive block production.
-	if c.EmptyBlocksMaxTime != 0 {
-		if c.EmptyBlocksMaxTime <= c.BlockTime {
-			return fmt.Errorf("empty_blocks_max_time must be greater than block_time")
+	// MaxIdleTime zero disables adaptive block production.
+	if c.MaxIdleTime != 0 {
+		if c.MaxIdleTime <= c.BlockTime {
+			return fmt.Errorf("max_idle_time must be greater than block_time")
 		}
-		if c.PriorityMaxIdleTime <= 0 || c.PriorityMaxIdleTime > c.EmptyBlocksMaxTime {
-			return fmt.Errorf("priority_max_idle_time must be positive and not greater than empty_blocks_max_time")
+		if c.PriorityMaxIdleTime <= 0 || c.PriorityMaxIdleTime > c.MaxIdleTime {
+			return fmt.Errorf("priority_max_idle_time must be positive and not greater than max_idle_time")
 		}
 	}
 
@@ -139,8 +139,8 @@ func (c BlockManagerConfig) Validate() error {
 		return fmt.Errorf("batch_submit_max_time must be greater than block_time")
 	}
 
-	if c.BatchSubmitMaxTime < c.EmptyBlocksMaxTime {
-		return fmt.Errorf("batch_submit_max_time must be greater than empty_blocks_max_time")
+	if c.BatchSubmitMaxTime < c.MaxIdleTime {
+		return fmt.Errorf("batch_submit_max_time must be greater than max_idle_time")
 	}
 
 	if c.BlockBatchMaxSizeBytes <= 0 {

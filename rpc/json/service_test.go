@@ -303,7 +303,7 @@ func getRPC(t *testing.T) (*tmmocks.MockApplication, *client.Client) {
 		Aggregator: true, DALayer: "mock", SettlementLayer: "mock",
 		BlockManagerConfig: config.BlockManagerConfig{
 			BlockTime:               1 * time.Second,
-			EmptyBlocksMaxTime:      0,
+			MaxIdleTime:             0,
 			BatchSubmitMaxTime:      30 * time.Minute,
 			NamespaceID:             "0102030405060708",
 			BlockBatchMaxSizeBytes:  1000,

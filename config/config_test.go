@@ -27,7 +27,7 @@ func TestViperAndCobra(t *testing.T) {
 	assert.NoError(cmd.Flags().Set(config.FlagDALayer, "foobar"))
 	assert.NoError(cmd.Flags().Set(config.FlagDAConfig, `{"json":true}`))
 	assert.NoError(cmd.Flags().Set(config.FlagBlockTime, "1234s"))
-	assert.NoError(cmd.Flags().Set(config.FlagEmptyBlocksMaxTime, "2000s"))
+	assert.NoError(cmd.Flags().Set(config.FlagMaxIdleTime, "2000s"))
 	assert.NoError(cmd.Flags().Set(config.FlagBatchSubmitMaxTime, "3000s"))
 	assert.NoError(cmd.Flags().Set(config.FlagNamespaceID, "0102030405060708"))
 	assert.NoError(cmd.Flags().Set(config.FlagBlockBatchMaxSizeBytes, "1000"))
@@ -61,7 +61,7 @@ func TestNodeConfig_Validate(t *testing.T) {
 		}, {
 			name: "missing empty blocks max time",
 			malleate: func(nc *config.NodeConfig) {
-				nc.EmptyBlocksMaxTime = -1
+				nc.MaxIdleTime = -1
 			},
 			wantErr: assert.Error,
 		}, {
@@ -71,9 +71,9 @@ func TestNodeConfig_Validate(t *testing.T) {
 			},
 			wantErr: assert.Error,
 		}, {
-			name: "empty_blocks_max_time not greater than block_time",
+			name: "max_idle_time not greater than block_time",
 			malleate: func(nc *config.NodeConfig) {
-				nc.BlockManagerConfig.EmptyBlocksMaxTime = 1
+				nc.BlockManagerConfig.MaxIdleTime = 1
 				nc.BlockManagerConfig.PriorityMaxIdleTime = 1
 				nc.BlockManagerConfig.BlockTime = 2
 			},
@@ -196,7 +196,7 @@ func fullNodeConfig() config.NodeConfig {
 	return config.NodeConfig{
 		BlockManagerConfig: config.BlockManagerConfig{
 			BlockTime:               1 * time.Second,
-			EmptyBlocksMaxTime:      20 * time.Second,
+			MaxIdleTime:             20 * time.Second,
 			PriorityMaxIdleTime:     20 * time.Second,
 			BatchSubmitMaxTime:      20 * time.Second,
 			NamespaceID:             "test",

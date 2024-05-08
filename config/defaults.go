@@ -30,7 +30,7 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 		BlockManagerConfig: BlockManagerConfig{
 			BlockTime: 200 * time.Millisecond,
 			//TODO (#807): empty block will increase once we'll have dedicated timer to support IBC transfers
-			EmptyBlocksMaxTime:      100 * time.Second,
+			MaxIdleTime:             100 * time.Second,
 			PriorityMaxIdleTime:     10 * time.Second,
 			BatchSubmitMaxTime:      3600 * time.Second,
 			NamespaceID:             "0000000000000000ffff",

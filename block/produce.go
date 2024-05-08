@@ -28,15 +28,15 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 	var emptyBlocksTimer <-chan time.Time
 	resetEmptyBlocksTimer := func(_ bool) {}
 	// Setup ticker for empty blocks if enabled
-	if 0 < m.Conf.EmptyBlocksMaxTime {
-		t := time.NewTimer(m.Conf.EmptyBlocksMaxTime)
+	if 0 < m.Conf.MaxIdleTime {
+		t := time.NewTimer(m.Conf.MaxIdleTime)
 		emptyBlocksTimer = t.C
 		resetEmptyBlocksTimer = func(priority bool) {
 			produceEmptyBlock = false
 			if priority {
 				t.Reset(m.Conf.PriorityMaxIdleTime)
 			} else {
-				t.Reset(m.Conf.EmptyBlocksMaxTime)
+				t.Reset(m.Conf.MaxIdleTime)
 			}
 		}
 		defer t.Stop()
@@ -48,7 +48,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 			return
 		case <-emptyBlocksTimer: // Empty blocks timeout
 			produceEmptyBlock = true
-			m.logger.Debug(fmt.Sprintf("no transactions, producing empty block: elapsed: %.2f", m.Conf.EmptyBlocksMaxTime.Seconds()))
+			m.logger.Debug(fmt.Sprintf("no transactions, producing empty block: elapsed: %.2f", m.Conf.MaxIdleTime.Seconds()))
 		// Produce block
 		case <-ticker.C:
 			block, commit, err := m.ProduceAndGossipBlock(ctx, produceEmptyBlock)

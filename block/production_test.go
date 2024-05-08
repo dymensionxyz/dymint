@@ -25,7 +25,7 @@ import (
 
 func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 	const blockTime = 200 * time.Millisecond
-	const EmptyBlocksMaxTime = blockTime * 10
+	const MaxIdleTime = blockTime * 10
 	const runTime = 10 * time.Second
 
 	assert := assert.New(t)
@@ -40,15 +40,15 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 	// Init manager with empty blocks feature disabled
 	managerConfigCreatesEmptyBlocks := testutil.GetManagerConfig()
 	managerConfigCreatesEmptyBlocks.BlockTime = blockTime
-	managerConfigCreatesEmptyBlocks.EmptyBlocksMaxTime = 0 * time.Second
+	managerConfigCreatesEmptyBlocks.MaxIdleTime = 0 * time.Second
 	managerWithEmptyBlocks, err := testutil.GetManager(managerConfigCreatesEmptyBlocks, nil, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
 	// Init manager with empty blocks feature enabled
 	managerConfig := testutil.GetManagerConfig()
 	managerConfig.BlockTime = blockTime
-	managerConfig.EmptyBlocksMaxTime = EmptyBlocksMaxTime
-	managerConfig.PriorityMaxIdleTime = EmptyBlocksMaxTime
+	managerConfig.MaxIdleTime = MaxIdleTime
+	managerConfig.PriorityMaxIdleTime = MaxIdleTime
 	manager, err := testutil.GetManager(managerConfig, nil, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
@@ -72,7 +72,7 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 	assert.Greater(managerWithEmptyBlocks.Store.Height(), manager.Store.Height())
 
 	// Check that blocks are created with empty blocks feature disabled
-	assert.LessOrEqual(manager.Store.Height(), uint64(runTime/EmptyBlocksMaxTime))
+	assert.LessOrEqual(manager.Store.Height(), uint64(runTime/MaxIdleTime))
 	assert.LessOrEqual(managerWithEmptyBlocks.Store.Height(), uint64(runTime/blockTime))
 
 	for i := uint64(2); i < managerWithEmptyBlocks.Store.Height(); i++ {
@@ -97,7 +97,7 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 		assert.NotZero(block.Header.Time)
 
 		diff := time.Unix(0, int64(block.Header.Time)).Sub(time.Unix(0, int64(prevBlock.Header.Time)))
-		assert.Greater(diff, manager.Conf.EmptyBlocksMaxTime)
+		assert.Greater(diff, manager.Conf.MaxIdleTime)
 	}
 }
 
@@ -115,7 +115,7 @@ func TestCreateEmptyBlocksNew(t *testing.T) {
 	// Init manager
 	managerConfig := testutil.GetManagerConfig()
 	managerConfig.BlockTime = 200 * time.Millisecond
-	managerConfig.EmptyBlocksMaxTime = 1 * time.Second
+	managerConfig.MaxIdleTime = 1 * time.Second
 	manager, err := testutil.GetManager(managerConfig, nil, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
@@ -164,8 +164,8 @@ func TestCreateEmptyBlocksNew(t *testing.T) {
 		diff := time.Unix(0, int64(block.Header.Time)).Sub(time.Unix(0, int64(prevBlock.Header.Time)))
 		txsCount := len(block.Data.Txs)
 		if txsCount == 0 {
-			assert.Greater(diff, manager.Conf.EmptyBlocksMaxTime)
-			assert.Less(diff, manager.Conf.EmptyBlocksMaxTime+1*time.Second)
+			assert.Greater(diff, manager.Conf.MaxIdleTime)
+			assert.Less(diff, manager.Conf.MaxIdleTime+1*time.Second)
 		} else {
 			foundTx = true
 			assert.Less(diff, manager.Conf.BlockTime+100*time.Millisecond)
