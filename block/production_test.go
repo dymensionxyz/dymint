@@ -3,6 +3,7 @@ package block_test
 import (
 	"context"
 	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -206,62 +207,6 @@ func TestInvalidBatch(t *testing.T) {
 	}
 }
 
-func TestSubmissionTrigger(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
-
-	cases := []struct {
-		name                   string
-		blockBatchMaxSizeBytes uint64
-		expectedSubmission     bool
-	}{
-		{
-			name:                   "block batch max size is fullfilled",
-			blockBatchMaxSizeBytes: 1000,
-			expectedSubmission:     true,
-		},
-		{
-			name:                   "block batch max size is not fullfilled",
-			blockBatchMaxSizeBytes: 100000,
-			expectedSubmission:     false,
-		},
-	}
-
-	for _, c := range cases {
-		managerConfig := testutil.GetManagerConfig()
-		managerConfig.BlockBatchMaxSizeBytes = c.blockBatchMaxSizeBytes
-		manager, err := testutil.GetManager(managerConfig, nil, nil, 1, 1, 0, nil, nil)
-		require.NoError(err)
-
-		// validate initial accumulated is zero
-		require.Equal(manager.AccumulatedProducedSize.Load(), uint64(0))
-		assert.Equal(manager.Store.Height(), uint64(0))
-
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-		defer cancel()
-
-		// produce block
-		go manager.ProduceBlockLoop(ctx)
-
-		// wait for block to be produced but not for submission threshold
-		time.Sleep(400 * time.Millisecond)
-		assert.Greater(manager.Store.Height(), uint64(0))
-		assert.Greater(manager.AccumulatedProducedSize.Load(), uint64(0))
-
-		// wait for submission signal
-		sent := false
-		select {
-		case <-ctx.Done():
-		case <-manager.ShouldSubmitBatchCh:
-			sent = true
-			time.Sleep(100 * time.Millisecond)
-			assert.Equal(manager.AccumulatedProducedSize.Load(), uint64(0))
-		}
-
-		assert.Equal(c.expectedSubmission, sent)
-	}
-}
-
 func TestStopBlockProduction(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
@@ -282,11 +227,22 @@ func TestStopBlockProduction(t *testing.T) {
 	}
 	go uevent.MustSubscribe(context.Background(), manager.Pubsub, "HealthStatusHandler", events.QueryHealthStatus, cb, log.TestingLogger())
 
-	ctx, cancel := context.WithTimeout(context.Background(), 4*time.Second)
+	var wg sync.WaitGroup
+	wg.Add(2) // Add 2 because we have 2 goroutines
+
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	// produce block
-	go manager.ProduceBlockLoop(ctx)
+	go func() {
+		manager.ProduceBlockLoop(ctx)
+		wg.Done() // Decrease counter when this goroutine finishes
+	}()
+
+	toSubmit := make(chan bool)
+	go func() {
+		manager.AccumulatedDataLoop(ctx, toSubmit)
+		wg.Done() // Decrease counter when this goroutine finishes
+	}()
 
 	// validate block production works
 	time.Sleep(400 * time.Millisecond)
@@ -309,12 +265,12 @@ func TestStopBlockProduction(t *testing.T) {
 	assert.Equal(stoppedHeight, manager.Store.Height())
 
 	// consume the signal
-	<-manager.ShouldSubmitBatchCh
+	<-toSubmit
 
 	// check for health status event and block production to continue
 	select {
 	case <-ctx.Done():
-		t.Error("expected unhealthy event")
+		t.Error("expected health event")
 	case err := <-eventRecievedCh:
 		assert.NoError(err)
 	}

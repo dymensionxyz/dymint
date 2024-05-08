@@ -306,7 +306,7 @@ func TestProduceBlockFailAfterCommit(t *testing.T) {
 			})
 			mockStore.ShouldFailSetHeight = tc.shouldFailSetSetHeight
 			mockStore.ShoudFailUpdateState = tc.shouldFailUpdateState
-			_, _, err = manager.ProduceAndGossipBlock(context.Background(), true)
+			_, _, _ = manager.ProduceAndGossipBlock(context.Background(), true)
 			require.Equal(tc.expectedStoreHeight, manager.Store.Height(), tc.name)
 			require.Equal(tc.expectedStateAppHash, manager.LastState.AppHash, tc.name)
 			storeState, err := manager.Store.LoadState()

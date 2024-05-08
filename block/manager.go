@@ -33,6 +33,8 @@ import (
 )
 
 const (
+	// max amount of pending batches to be submitted. block production will be paused if this limit is reached.
+	// TODO: make this configurable
 	maxSupportedBatchSkew = 10
 )
 
@@ -60,8 +62,11 @@ type Manager struct {
 	SyncTarget      atomic.Uint64
 
 	// Block production
+	ProducedSizeCh      chan uint64 // channel for the producer to report the size of the block it produced
+	produceEmptyBlockCh chan bool
+
+	// Submitter
 	AccumulatedProducedSize atomic.Uint64
-	ShouldSubmitBatchCh     chan bool
 	lastSubmissionTime      atomic.Int64
 
 	/*
@@ -107,21 +112,21 @@ func NewManager(
 	}
 
 	agg := &Manager{
-		Pubsub:              pubsub,
-		p2pClient:           p2pClient,
-		ProposerKey:         proposerKey,
-		Conf:                conf,
-		Genesis:             genesis,
-		LastState:           s,
-		Store:               store,
-		Executor:            exec,
-		DAClient:            dalc,
-		SLClient:            settlementClient,
-		Retriever:           dalc.(da.BatchRetriever),
-		SyncTargetDiode:     diodes.NewOneToOne(1, nil),
-		ShouldSubmitBatchCh: make(chan bool, maxSupportedBatchSkew), //allow capacity for multiple pending batches to support bursts
-		logger:              logger,
-		blockCache:          make(map[uint64]CachedBlock),
+		Pubsub:          pubsub,
+		p2pClient:       p2pClient,
+		ProposerKey:     proposerKey,
+		Conf:            conf,
+		Genesis:         genesis,
+		LastState:       s,
+		Store:           store,
+		Executor:        exec,
+		DAClient:        dalc,
+		SLClient:        settlementClient,
+		Retriever:       dalc.(da.BatchRetriever),
+		SyncTargetDiode: diodes.NewOneToOne(1, nil),
+		ProducedSizeCh:  make(chan uint64),
+		logger:          logger,
+		blockCache:      make(map[uint64]CachedBlock),
 	}
 
 	return agg, nil
