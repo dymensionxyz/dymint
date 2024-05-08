@@ -52,7 +52,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 
 	for {
 		select {
-		case <-ctx.Done(): // Context canceled
+		case <-ctx.Done():
 			return
 		case <-forceCreationTimer.C: // Force block creation
 			produceEmptyBlock = true
@@ -87,7 +87,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 			select {
 			case <-ctx.Done():
 				return
-			case m.ProducedSizeCh <- size:
+			case m.producedSizeCh <- size:
 			}
 		}
 	}

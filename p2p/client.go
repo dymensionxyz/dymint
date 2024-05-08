@@ -419,7 +419,6 @@ func (c *Client) bootstrapLoop(ctx context.Context) {
 	defer ticker.Stop()
 	for {
 		select {
-		// Context canceled
 		case <-ctx.Done():
 			return
 		case <-ticker.C:

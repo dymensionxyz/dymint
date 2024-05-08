@@ -4,10 +4,8 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
-	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -51,36 +49,6 @@ const (
 	genesisChunkSize = 16 * 1024 * 1024 // 16 MiB
 )
 
-type baseLayerHealth struct {
-	settlement error
-	da         error
-	mu         sync.RWMutex
-}
-
-func (bl *baseLayerHealth) setSettlement(err error) {
-	bl.mu.Lock()
-	defer bl.mu.Unlock()
-	if err != nil {
-		err = fmt.Errorf("settlement: %w", err)
-	}
-	bl.settlement = err
-}
-
-func (bl *baseLayerHealth) setDA(err error) {
-	bl.mu.Lock()
-	defer bl.mu.Unlock()
-	if err != nil {
-		err = fmt.Errorf("da: %w", err)
-	}
-	bl.da = err
-}
-
-func (bl *baseLayerHealth) get() error {
-	bl.mu.RLock()
-	defer bl.mu.RUnlock()
-	return errors.Join(bl.settlement, bl.da)
-}
-
 // Node represents a client node in Dymint network.
 // It connects all the components and orchestrates their work.
 type Node struct {
@@ -109,8 +77,6 @@ type Node struct {
 	TxIndexer      txindex.TxIndexer
 	BlockIndexer   indexer.BlockIndexer
 	IndexerService *txindex.IndexerService
-
-	baseLayerHealth baseLayerHealth
 
 	// keep context here only because of API compatibility
 	// - it's used in `OnStart` (defined in service.Service interface)

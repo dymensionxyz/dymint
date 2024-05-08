@@ -392,11 +392,11 @@ func (c *DataAvailabilityLayerClient) broadcastTx(tx []byte) (uint64, error) {
 				inclusionTimer.Reset(c.txInclusionTimeout)
 				continue
 			} else {
-				recievedStatus, err := status.MarshalJSON()
+				receivedStatus, err := status.MarshalJSON()
 				if err != nil {
 					return 0, fmt.Errorf("MarshalJSON of received status: %w", err)
 				}
-				c.logger.Debug("unsupported status, still waiting for inclusion", "status", string(recievedStatus))
+				c.logger.Debug("unsupported status, still waiting for inclusion", "status", string(receivedStatus))
 				continue
 			}
 		case <-inclusionTimer.C:

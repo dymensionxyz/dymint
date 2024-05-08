@@ -10,8 +10,6 @@ import (
 
 	"google.golang.org/grpc/status"
 
-	"github.com/dymensionxyz/dymint/gerr"
-
 	"github.com/tendermint/tendermint/libs/log"
 
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
@@ -118,7 +116,6 @@ func TestPostBatch(t *testing.T) {
 		isBatchAcceptedHubEvent bool
 		shouldMockBatchIncluded bool
 		isBatchIncludedSuccess  bool
-		expectedError           error
 	}{
 		{
 			name:                    "SubmitBatchFailure",
@@ -126,7 +123,6 @@ func TestPostBatch(t *testing.T) {
 			isBatchAcceptedHubEvent: false,
 			shouldMockBatchIncluded: true,
 			isBatchIncludedSuccess:  false,
-			expectedError:           submitBatchError,
 		},
 		{
 			name:                    "SubmitBatchSuccessNoBatchAcceptedHubEventNotIncluded",
@@ -134,7 +130,6 @@ func TestPostBatch(t *testing.T) {
 			isBatchAcceptedHubEvent: false,
 			shouldMockBatchIncluded: true,
 			isBatchIncludedSuccess:  false,
-			expectedError:           gerr.ErrNotFound,
 		},
 		{
 			name:                    "SubmitBatchSuccessNotAcceptedYesIncluded",
@@ -142,14 +137,12 @@ func TestPostBatch(t *testing.T) {
 			isBatchAcceptedHubEvent: false,
 			shouldMockBatchIncluded: true,
 			isBatchIncludedSuccess:  true,
-			expectedError:           nil,
 		},
 		{
 			name:                    "SubmitBatchSuccessAndAccepted",
 			isBatchSubmitSuccess:    true,
 			isBatchAcceptedHubEvent: true,
 			shouldMockBatchIncluded: false,
-			expectedError:           nil,
 		},
 	}
 
@@ -211,8 +204,6 @@ func TestPostBatch(t *testing.T) {
 					},
 				}
 			}
-
-			time.Sleep(300 * time.Millisecond)
 
 			// Stop the hub client and wait for it to stop
 			err = hubClient.Stop()

@@ -231,7 +231,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 			err := d.submitBatch(msgUpdateState)
 			if err != nil {
 				d.logger.Error(
-					"submit batch",
+					"Submit batch",
 					"startHeight",
 					batch.StartHeight,
 					"endHeight",
@@ -266,7 +266,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 			includedBatch, err := d.waitForBatchInclusion(batch.StartHeight)
 			if err != nil {
 				d.logger.Error(
-					"wait for batch inclusion",
+					"Wait for batch inclusion",
 					"startHeight",
 					batch.StartHeight,
 					"endHeight",

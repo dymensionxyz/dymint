@@ -104,6 +104,7 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 	assert.EqualValues(t, manager.Store.Height(), manager.SyncTarget.Load())
 }
 
+// TestSubmissionByTime tests the submission trigger by time
 func TestSubmissionByTime(t *testing.T) {
 	const (
 		// large batch size, so we expect the trigger to be the timeout
@@ -156,6 +157,7 @@ func TestSubmissionByTime(t *testing.T) {
 	require.True(manager.SyncTarget.Load() > 0)
 }
 
+// TestSubmissionByBatchSize tests the submission trigger by batch size
 func TestSubmissionByBatchSize(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
@@ -184,7 +186,7 @@ func TestSubmissionByBatchSize(t *testing.T) {
 		require.NoError(err)
 
 		// validate initial accumulated is zero
-		require.Equal(manager.AccumulatedProducedSize.Load(), uint64(0))
+		require.Equal(manager.AccumulatedBatchSize.Load(), uint64(0))
 		assert.Equal(manager.Store.Height(), uint64(0))
 
 		var wg sync.WaitGroup
@@ -207,7 +209,7 @@ func TestSubmissionByBatchSize(t *testing.T) {
 		time.Sleep(200 * time.Millisecond)
 		// assert block produced but nothing submitted yet
 		assert.Greater(manager.Store.Height(), uint64(0))
-		assert.Greater(manager.AccumulatedProducedSize.Load(), uint64(0))
+		assert.Greater(manager.AccumulatedBatchSize.Load(), uint64(0))
 		assert.Zero(manager.SyncTarget.Load())
 
 		wg.Wait() // Wait for all goroutines to finish

@@ -101,7 +101,8 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 }
 
 func TestCreateEmptyBlocksNew(t *testing.T) {
-	t.Skip("FIXME: fails to submit tx to test the empty blocks feature") // TODO(#352)
+	// TODO(https://github.com/dymensionxyz/dymint/issues/352)
+	t.Skip("FIXME: fails to submit tx to test the empty blocks feature")
 	assert := assert.New(t)
 	require := require.New(t)
 	app := testutil.GetAppMock()
@@ -212,6 +213,8 @@ func TestInvalidBatch(t *testing.T) {
 	}
 }
 
+// TestStopBlockProduction tests the block production stops when submitter is full
+// and resumes when submitter is ready to accept more batches
 func TestStopBlockProduction(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
@@ -222,13 +225,13 @@ func TestStopBlockProduction(t *testing.T) {
 	require.NoError(err)
 
 	// validate initial accumulated is zero
-	require.Equal(manager.AccumulatedProducedSize.Load(), uint64(0))
+	require.Equal(manager.AccumulatedBatchSize.Load(), uint64(0))
 	assert.Equal(manager.Store.Height(), uint64(0))
 
 	// subscribe to health status event
-	eventRecievedCh := make(chan error)
+	eventReceivedCh := make(chan error)
 	cb := func(event pubsub.Message) {
-		eventRecievedCh <- event.Data().(*events.DataHealthStatus).Error
+		eventReceivedCh <- event.Data().(*events.DataHealthStatus).Error
 	}
 	go uevent.MustSubscribe(context.Background(), manager.Pubsub, "HealthStatusHandler", events.QueryHealthStatus, cb, log.TestingLogger())
 
@@ -252,14 +255,14 @@ func TestStopBlockProduction(t *testing.T) {
 	// validate block production works
 	time.Sleep(400 * time.Millisecond)
 	assert.Greater(manager.Store.Height(), uint64(0))
-	assert.Greater(manager.AccumulatedProducedSize.Load(), uint64(0))
+	assert.Greater(manager.AccumulatedBatchSize.Load(), uint64(0))
 
 	// we don't read from the submit channel, so we assume it get full
 	// we expect the block production to stop and unhealthy event to be emitted
 	select {
 	case <-ctx.Done():
 		t.Error("expected unhealthy event")
-	case err := <-eventRecievedCh:
+	case err := <-eventReceivedCh:
 		assert.Error(err)
 	}
 
@@ -276,7 +279,7 @@ func TestStopBlockProduction(t *testing.T) {
 	select {
 	case <-ctx.Done():
 		t.Error("expected health event")
-	case err := <-eventRecievedCh:
+	case err := <-eventReceivedCh:
 		assert.NoError(err)
 	}
 

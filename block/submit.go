@@ -23,11 +23,11 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 	submitByAccumulatedSizeCh := make(chan bool, maxSupportedBatchSkew)
 	go m.AccumulatedDataLoop(ctx, submitByAccumulatedSizeCh)
 
-	// defer func to clear the channels
+	// defer func to clear the channels to release blocked goroutines on shutdown
 	defer func() {
 		for {
 			select {
-			case <-m.ProducedSizeCh:
+			case <-m.producedSizeCh:
 			case <-submitByAccumulatedSizeCh:
 			default:
 				return
@@ -37,14 +37,13 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 
 	for {
 		select {
-		// Context canceled
 		case <-ctx.Done():
 			return
-		case <-submitByAccumulatedSizeCh: // Trigger by block production
-		case <-ticker.C: // trigger by max time
+		case <-submitByAccumulatedSizeCh: // block production
+		case <-ticker.C: // max time
 			// reset the accumulated size when triggered by time,
 			// as we gonna submit all our data anyway
-			m.AccumulatedProducedSize.Store(0)
+			m.AccumulatedBatchSize.Store(0)
 		}
 
 		// modular submission methods have own retries mechanism.
@@ -66,8 +65,8 @@ func (m *Manager) AccumulatedDataLoop(ctx context.Context, toSubmit chan bool) {
 		select {
 		case <-ctx.Done():
 			return
-		case size := <-m.ProducedSizeCh:
-			total := m.AccumulatedProducedSize.Add(size)
+		case size := <-m.producedSizeCh:
+			total := m.AccumulatedBatchSize.Add(size)
 
 			// Check if accumulated size is greater than the max size
 			// TODO: allow some tolerance for block size (e.g support for BlockBatchMaxSize +- 10%)
@@ -91,7 +90,7 @@ func (m *Manager) AccumulatedDataLoop(ctx context.Context, toSubmit chan bool) {
 					evt = &events.DataHealthStatus{Error: nil}
 					uevent.MustPublish(ctx, m.Pubsub, evt, events.HealthStatusList)
 				}
-				m.AccumulatedProducedSize.Store(0)
+				m.AccumulatedBatchSize.Store(0)
 			}
 		}
 	}

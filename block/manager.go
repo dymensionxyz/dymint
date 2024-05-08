@@ -62,12 +62,11 @@ type Manager struct {
 	SyncTarget      atomic.Uint64
 
 	// Block production
-	ProducedSizeCh      chan uint64 // channel for the producer to report the size of the block it produced
-	produceEmptyBlockCh chan bool
+	producedSizeCh chan uint64 // channel for the producer to report the size of the block it produced
 
 	// Submitter
-	AccumulatedProducedSize atomic.Uint64
-	lastSubmissionTime      atomic.Int64
+	AccumulatedBatchSize atomic.Uint64
+	lastSubmissionTime   atomic.Int64
 
 	/*
 		Protect against processing two blocks at once when there are two routines handling incoming gossiped blocks,
@@ -124,7 +123,7 @@ func NewManager(
 		SLClient:        settlementClient,
 		Retriever:       dalc.(da.BatchRetriever),
 		SyncTargetDiode: diodes.NewOneToOne(1, nil),
-		ProducedSizeCh:  make(chan uint64),
+		producedSizeCh:  make(chan uint64),
 		logger:          logger,
 		blockCache:      make(map[uint64]CachedBlock),
 	}
