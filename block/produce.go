@@ -26,7 +26,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 
 	// Timer for empty blocks
 	var emptyBlocksTimer <-chan time.Time
-	resetEmptyBlocksTimer := func(_ bool) {}
+	resetEmptyBlocksTimer := func(priority bool) {}
 	// Setup ticker for empty blocks if enabled
 	if 0 < m.Conf.MaxIdleTime {
 		t := time.NewTimer(m.Conf.MaxIdleTime)
@@ -67,8 +67,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 				m.logger.Error("produce and gossip: uncategorized, assuming recoverable", "error", err)
 				continue
 			}
-			isLastBlockEmpty := len(block.Data.Txs) == 0
-			resetEmptyBlocksTimer(isLastBlockEmpty)
+			resetEmptyBlocksTimer(len(block.Data.Txs) != 0) //set priority if block has transactions
 
 			// Send the size to the accumulated size channel
 			// This will block in case the submitter is too slow and it's buffer is full

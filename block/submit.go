@@ -20,7 +20,7 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 	defer ticker.Stop()
 
 	// get produced size from the block production loop and signal to submit the batch when batch size reached
-	submitByAccumulatedSizeCh := make(chan bool, maxSupportedBatchSkew)
+	submitByAccumulatedSizeCh := make(chan bool, m.Conf.MaxSupportedBatchSkew)
 	go m.AccumulatedDataLoop(ctx, submitByAccumulatedSizeCh)
 
 	// defer func to clear the channels to release blocked goroutines on shutdown
