@@ -65,7 +65,7 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 }
 
 // AccumulatedDataLoop is the main loop for accumulating the produced data size.
-// It is triggered by the ProducedSizeCh channel, which is triggered by the block production loop when a new block is produced.
+// It is triggered by the ProducedSizeCh channel, which is populated by the block production loop when a new block is produced.
 // It accumulates the size of the produced data and triggers the submission of the batch when the accumulated size is greater than the max size.
 // It also emits a health status event when the submission channel is full.
 func (m *Manager) AccumulatedDataLoop(ctx context.Context, toSubmit chan struct{}) {

@@ -61,8 +61,8 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 	go manager.ProduceBlockLoop(mCtx)
 	go managerWithEmptyBlocks.ProduceBlockLoop(mCtx)
 
-	buf1 := make(chan bool, 100) //dummy to avoid unhealthy event
-	buf2 := make(chan bool, 100) //dummy to avoid unhealthy event
+	buf1 := make(chan struct{}, 100) //dummy to avoid unhealthy event
+	buf2 := make(chan struct{}, 100) //dummy to avoid unhealthy event
 	go manager.AccumulatedDataLoop(mCtx, buf1)
 	go managerWithEmptyBlocks.AccumulatedDataLoop(mCtx, buf2)
 	<-mCtx.Done()
@@ -247,7 +247,7 @@ func TestStopBlockProduction(t *testing.T) {
 		wg.Done() // Decrease counter when this goroutine finishes
 	}()
 
-	toSubmit := make(chan bool)
+	toSubmit := make(chan struct{})
 	go func() {
 		manager.AccumulatedDataLoop(ctx, toSubmit)
 		wg.Done() // Decrease counter when this goroutine finishes
