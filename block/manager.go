@@ -50,17 +50,20 @@ type Manager struct {
 	DAClient  da.DataAvailabilityLayerClient
 	SLClient  settlement.LayerI
 
-	// Data retrieval
+	// Retrieval
 	Retriever       da.BatchRetriever
 	SyncTargetDiode diodes.Diode
-	SyncTarget      atomic.Uint64
+
+	// For aggregator: tracks the last height which was sent to SL and DA
+	// For non-aggregator: tracks the last height which is available on SL, and should be fetched
+	SyncTargetHeight     atomic.Uint64
+	AccumulatedBatchSize atomic.Uint64
 
 	// Block production
 	producedSizeCh chan uint64 // channel for the producer to report the size of the block it produced
 
 	// Submitter
-	AccumulatedBatchSize atomic.Uint64
-	lastSubmissionTime   atomic.Int64
+	lastSubmissionTime atomic.Int64
 
 	/*
 		Protect against processing two blocks at once when there are two routines handling incoming gossiped blocks,
@@ -177,7 +180,7 @@ func (m *Manager) syncBlockManager() error {
 	if errors.Is(err, gerr.ErrNotFound) {
 		// The SL hasn't got any batches for this chain yet.
 		m.logger.Info("No batches for chain found in SL. Start writing first batch.")
-		m.SyncTarget.Store(uint64(m.Genesis.InitialHeight - 1))
+		m.SyncTargetHeight.Store(uint64(m.Genesis.InitialHeight - 1))
 		return nil
 	}
 	if err != nil {
@@ -185,13 +188,13 @@ func (m *Manager) syncBlockManager() error {
 		return err
 	}
 	// Set the syncTarget according to the result
-	m.SyncTarget.Store(res.EndHeight)
+	m.SyncTargetHeight.Store(res.EndHeight)
 	err = m.syncUntilTarget(res.EndHeight)
 	if err != nil {
 		return err
 	}
 
-	m.logger.Info("Synced.", "current height", m.Store.Height(), "syncTarget", m.SyncTarget.Load())
+	m.logger.Info("Synced.", "current height", m.Store.Height(), "syncTarget", m.SyncTargetHeight.Load())
 	return nil
 }
 
@@ -199,7 +202,7 @@ func (m *Manager) syncBlockManager() error {
 func (m *Manager) UpdateSyncParams(endHeight uint64) {
 	types.RollappHubHeightGauge.Set(float64(endHeight))
 	m.logger.Info("Received new syncTarget", "syncTarget", endHeight)
-	m.SyncTarget.Store(endHeight)
+	m.SyncTargetHeight.Store(endHeight)
 	m.lastSubmissionTime.Store(time.Now().UnixNano())
 }
 
