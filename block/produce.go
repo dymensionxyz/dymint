@@ -32,8 +32,8 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 	}
 
 	timeLast := time.Now()
+	allowEmpty := true // the first block can be empty
 	for {
-		allowEmpty := false
 
 		select {
 		case <-ctx.Done():
@@ -68,6 +68,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 		}
 
 		timeLast = time.Now()
+		allowEmpty = false
 
 		// Send the size to the accumulated size channel
 		// This will block in case the submitter is too slow and it's buffer is full
@@ -76,6 +77,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case m.producedSizeCh <- size:
+
 		}
 	}
 }
