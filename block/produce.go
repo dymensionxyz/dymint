@@ -18,7 +18,6 @@ import (
 // ProduceBlockLoop is calling publishBlock in a loop as long as we're synced.
 func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 	m.logger.Debug("Started produce loop")
-	produceEmptyBlock := true // Allow the initial block to be empty
 
 	// Regular block production
 	ticker := time.NewTicker(m.Conf.BlockTime)
@@ -32,46 +31,51 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 		defer emptyBlocksTimer.Stop()
 	}
 
+	timeLast := time.Now()
 	for {
+		allowEmpty := false
+
 		select {
 		case <-ctx.Done():
 			return
 		case <-emptyBlocksTimer.C:
-			produceEmptyBlock = true
-			m.logger.Debug(fmt.Sprintf("no transactions, producing empty block: elapsed: %.2f", m.Conf.MaxIdleTime.Seconds()))
-		// Produce block
+			m.logger.Debug(fmt.Sprintf("no transactions, producing empty block: elapsed: %s", time.Since(timeLast)))
+			allowEmpty = true
 		case <-ticker.C:
-			block, commit, err := m.ProduceAndGossipBlock(ctx, produceEmptyBlock)
-			if errors.Is(err, context.Canceled) {
-				m.logger.Error("produce and gossip: context canceled", "error", err)
-				return
-			}
-			if errors.Is(err, types.ErrSkippedEmptyBlock) {
-				continue
-			}
-			if errors.Is(err, ErrNonRecoverable) {
-				m.logger.Error("produce and gossip: non-recoverable", "error", err) // TODO: flush? or don't log at all?
-				panic(fmt.Errorf("produce and gossip block: %w", err))
-			}
-			if err != nil {
-				m.logger.Error("produce and gossip: uncategorized, assuming recoverable", "error", err)
-				continue
-			}
-			if len(block.Data.Txs) == 0 {
-				emptyBlocksTimer.Reset(m.Conf.MaxIdleTime)
-			} else {
-				emptyBlocksTimer.Reset(m.Conf.PriorityMaxIdleTime)
-			}
-			produceEmptyBlock = false
+		}
 
-			// Send the size to the accumulated size channel
-			// This will block in case the submitter is too slow and it's buffer is full
-			size := uint64(block.ToProto().Size()) + uint64(commit.ToProto().Size())
-			select {
-			case <-ctx.Done():
-				return
-			case m.producedSizeCh <- size:
-			}
+		block, commit, err := m.ProduceAndGossipBlock(ctx, allowEmpty)
+		if errors.Is(err, context.Canceled) {
+			m.logger.Error("produce and gossip: context canceled", "error", err)
+			return
+		}
+		if errors.Is(err, types.ErrSkippedEmptyBlock) {
+			continue
+		}
+		if errors.Is(err, ErrNonRecoverable) {
+			m.logger.Error("produce and gossip: non-recoverable", "error", err) // TODO: flush? or don't log at all?
+			panic(fmt.Errorf("produce and gossip block: %w", err))
+		}
+		if err != nil {
+			m.logger.Error("produce and gossip: uncategorized, assuming recoverable", "error", err)
+			continue
+		}
+
+		if len(block.Data.Txs) == 0 {
+			emptyBlocksTimer.Reset(m.Conf.MaxIdleTime)
+		} else {
+			emptyBlocksTimer.Reset(m.Conf.PriorityMaxIdleTime)
+		}
+
+		timeLast = time.Now()
+
+		// Send the size to the accumulated size channel
+		// This will block in case the submitter is too slow and it's buffer is full
+		size := uint64(block.ToProto().Size()) + uint64(commit.ToProto().Size())
+		select {
+		case <-ctx.Done():
+			return
+		case m.producedSizeCh <- size:
 		}
 	}
 }
