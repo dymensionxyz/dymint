@@ -81,10 +81,14 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 			isLastBlockEmpty := len(block.Data.Txs) == 0
 			resetForceCreationTimer(isLastBlockEmpty)
 
-			size := uint64(block.ToProto().Size()) + uint64(commit.ToProto().Size())
 			// Send the size to the accumulated size channel
 			// This will block in case the submitter is too slow and it's buffer is full
-			m.ProducedSizeCh <- size
+			size := uint64(block.ToProto().Size()) + uint64(commit.ToProto().Size())
+			select {
+			case <-ctx.Done():
+				return
+			case m.ProducedSizeCh <- size:
+			}
 		}
 	}
 }

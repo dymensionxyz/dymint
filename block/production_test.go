@@ -59,6 +59,11 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 	defer cancel()
 	go manager.ProduceBlockLoop(mCtx)
 	go managerWithEmptyBlocks.ProduceBlockLoop(mCtx)
+
+	buf1 := make(chan bool, 100) //dummy to avoid unhealthy event
+	buf2 := make(chan bool, 100) //dummy to avoid unhealthy event
+	go manager.AccumulatedDataLoop(mCtx, buf1)
+	go managerWithEmptyBlocks.AccumulatedDataLoop(mCtx, buf2)
 	<-mCtx.Done()
 
 	require.Greater(manager.Store.Height(), initialHeight)

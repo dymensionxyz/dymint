@@ -20,30 +20,30 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 	defer ticker.Stop()
 
 	// get produced size from the block production loop and signal to submit the batch when batch size reached
-	toSubmit := make(chan bool, maxSupportedBatchSkew)
-	// defer to clear the channels
+	submitByAccumulatedSizeCh := make(chan bool, maxSupportedBatchSkew)
+	go m.AccumulatedDataLoop(ctx, submitByAccumulatedSizeCh)
+
+	// defer func to clear the channels
 	defer func() {
 		for {
 			select {
-			case <-toSubmit:
 			case <-m.ProducedSizeCh:
+			case <-submitByAccumulatedSizeCh:
 			default:
 				return
 			}
 		}
 	}()
 
-	go m.AccumulatedDataLoop(ctx, toSubmit)
-
 	for {
 		select {
 		// Context canceled
 		case <-ctx.Done():
 			return
-		case <-toSubmit: // Trigger by block production
+		case <-submitByAccumulatedSizeCh: // Trigger by block production
 		case <-ticker.C: // trigger by max time
 			// reset the accumulated size when triggered by time,
-			// as we have less data than batch size, and we gonna submit all our data anyway
+			// as we gonna submit all our data anyway
 			m.AccumulatedProducedSize.Store(0)
 		}
 
@@ -57,6 +57,10 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 	}
 }
 
+// AccumulatedDataLoop is the main loop for accumulating the produced data size.
+// It is triggered by the ProducedSizeCh channel, which is triggered by the block production loop when a new block is produced.
+// It accumulates the size of the produced data and triggers the submission of the batch when the accumulated size is greater than the max size.
+// It also emits a health status event when the submission channel is full.
 func (m *Manager) AccumulatedDataLoop(ctx context.Context, toSubmit chan bool) {
 	for {
 		select {
@@ -66,7 +70,7 @@ func (m *Manager) AccumulatedDataLoop(ctx context.Context, toSubmit chan bool) {
 			total := m.AccumulatedProducedSize.Add(size)
 
 			// Check if accumulated size is greater than the max size
-			// TODO: allow some tolerance for block size (aim for BlockBatchMaxSize +- 10%)
+			// TODO: allow some tolerance for block size (e.g support for BlockBatchMaxSize +- 10%)
 			if total > m.Conf.BlockBatchMaxSizeBytes {
 				select {
 				case toSubmit <- true:
@@ -77,7 +81,11 @@ func (m *Manager) AccumulatedDataLoop(ctx context.Context, toSubmit chan bool) {
 					evt := &events.DataHealthStatus{Error: fmt.Errorf("submission channel is full")}
 					uevent.MustPublish(ctx, m.Pubsub, evt, events.HealthStatusList)
 					// wait for the signal to be consumed
-					toSubmit <- true
+					select {
+					case <-ctx.Done():
+						return
+					case toSubmit <- true:
+					}
 					m.logger.Info("resumed block production")
 					// emit healthy event for the node
 					evt = &events.DataHealthStatus{Error: nil}
@@ -86,7 +94,6 @@ func (m *Manager) AccumulatedDataLoop(ctx context.Context, toSubmit chan bool) {
 				m.AccumulatedProducedSize.Store(0)
 			}
 		}
-
 	}
 }
 
