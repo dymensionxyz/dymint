@@ -148,7 +148,7 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 	<-ctx.Done()
-	assert.Equal(t, batch.EndHeight, manager.SyncTarget.Load())
+	assert.Equal(t, int(batch.EndHeight), int(manager.SyncTarget.Load()))
 	// validate that we produced blocks
 	assert.Greater(t, manager.Store.Height(), batch.EndHeight)
 }

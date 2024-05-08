@@ -61,9 +61,9 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 			continue
 		}
 
-		if len(block.Data.Txs) == 0 {
+		if len(block.Data.Txs) == 0 && m.Conf.MaxIdleTime > 0 {
 			emptyBlocksTimer.Reset(m.Conf.MaxIdleTime)
-		} else {
+		} else if m.Conf.PriorityMaxIdleTime > 0 {
 			emptyBlocksTimer.Reset(m.Conf.PriorityMaxIdleTime)
 		}
 
