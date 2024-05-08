@@ -44,6 +44,12 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 		case <-maxSizeC:
 		case <-maxTime.C:
 		}
+
+		/*
+			Note: since we dont explicitly coordinate changes to the accumulated size with actual batch creation
+			we don't have a guarantee that the accumulated size is the same as the actual batch size that will be made.
+			See https://github.com/dymensionxyz/dymint/issues/828
+		*/
 		m.AccumulatedBatchSize.Store(0)
 
 		// modular submission methods have own retries mechanism.
