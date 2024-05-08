@@ -56,17 +56,8 @@ type Manager struct {
 
 	// For aggregator: tracks the last height which was sent to SL and DA
 	// For non-aggregator: tracks the last height which is available on SL, and should be fetched
-	SyncTargetHeight atomic.Uint64
-	// For aggregator: the size of the batch that is being accumulated.
-	// It is set to 0 after SyncTargetHeight increases.
-	AccumulatedBatchSize uint64
-	/*
-		TODO(danwt): Where was I at?
-			1) SyncTarget height is a non concurrent variable on the aggregator, should be treated as such
-			2) the accumulated batch size is probably error prone because it doesnt stay in sync with the actual batch submissions
-			We should unify the approach and just have a list of heights on the submitter, which will be cleared as size needs dictate
-	*/
-	AccumulatedBatchSizeMu sync.Mutex // mutex to keep accumulated batch size in sync with SyncTargetHeight
+	SyncTargetHeight     atomic.Uint64
+	AccumulatedBatchSize atomic.Uint64
 
 	// Block production
 	producedSizeCh chan uint64 // channel for the producer to report the size of the block it produced
