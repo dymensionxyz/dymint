@@ -5,7 +5,7 @@ import (
 )
 
 func (m *Manager) pruneBlocks(retainHeight int64) (uint64, error) {
-	syncTarget := m.SyncTargetHeight.Load()
+	syncTarget := m.SyncTarget.Load()
 
 	if retainHeight > int64(syncTarget) {
 		return 0, fmt.Errorf("cannot prune uncommitted blocks")

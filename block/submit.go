@@ -105,7 +105,7 @@ func (m *Manager) AccumulatedDataLoop(ctx context.Context, toSubmit chan struct{
 // Finally, it submits the next batch of blocks and updates the sync target to the height of the last block in the submitted batch.
 func (m *Manager) HandleSubmissionTrigger() error {
 	// Load current sync target and height to determine if new blocks are available for submission.
-	if m.Store.Height() <= m.SyncTargetHeight.Load() {
+	if m.Store.Height() <= m.SyncTarget.Load() {
 		return nil // No new blocks have been produced
 	}
 
@@ -131,7 +131,7 @@ func (m *Manager) HandleSubmissionTrigger() error {
 
 func (m *Manager) createNextBatch() (*types.Batch, error) {
 	// Create the batch
-	startHeight := m.SyncTargetHeight.Load() + 1
+	startHeight := m.SyncTarget.Load() + 1
 	endHeight := m.Store.Height()
 	nextBatch, err := m.CreateNextBatchToSubmit(startHeight, endHeight)
 	if err != nil {
@@ -171,9 +171,9 @@ func (m *Manager) submitNextBatchToSL(batch *types.Batch, daResult *da.ResultSub
 }
 
 func (m *Manager) ValidateBatch(batch *types.Batch) error {
-	syncTarget := m.SyncTargetHeight.Load()
+	syncTarget := m.SyncTarget.Load()
 	if batch.StartHeight != syncTarget+1 {
-		return fmt.Errorf("batch start height != syncTarget + 1. StartHeight %d, m.SyncTargetHeight %d", batch.StartHeight, syncTarget)
+		return fmt.Errorf("batch start height != syncTarget + 1. StartHeight %d, m.SyncTarget %d", batch.StartHeight, syncTarget)
 	}
 	if batch.EndHeight < batch.StartHeight {
 		return fmt.Errorf("batch end height must be greater than start height. EndHeight %d, StartHeight %d", batch.EndHeight, batch.StartHeight)
