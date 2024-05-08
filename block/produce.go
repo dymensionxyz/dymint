@@ -24,7 +24,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 	defer ticker.Stop()
 
 	// Block production in the idle case (no transactions)
-	emptyBlocksTimer := time.NewTimer(time.Hour * 24 * 365 * 1000)
+	emptyBlocksTimer := time.NewTimer(time.Hour * 24 * 365 * 290) // max duration
 	defer emptyBlocksTimer.Stop()
 	if 0 < m.Conf.MaxIdleTime {
 		emptyBlocksTimer = time.NewTimer(m.Conf.MaxIdleTime)
