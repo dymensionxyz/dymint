@@ -62,15 +62,7 @@ type Manager struct {
 	// Block production
 	AccumulatedProducedSize atomic.Uint64
 	ShouldSubmitBatchCh     chan bool
-	produceEmptyBlockCh     chan bool
 	lastSubmissionTime      atomic.Int64
-
-	/*
-		Protect against producing two blocks at once if the first one is taking a while
-		Also, used to protect against the block production that occurs when batch submission thread
-		creates its empty block.
-	*/
-	produceBlockMutex sync.Mutex
 
 	/*
 		Protect against processing two blocks at once when there are two routines handling incoming gossiped blocks,
@@ -127,8 +119,7 @@ func NewManager(
 		SLClient:            settlementClient,
 		Retriever:           dalc.(da.BatchRetriever),
 		SyncTargetDiode:     diodes.NewOneToOne(1, nil),
-		ShouldSubmitBatchCh: make(chan bool, maxSupportedBatchSkew), // allow capacity for multiple pending batches to support bursts
-		produceEmptyBlockCh: make(chan bool, 5),                     // TODO(#807): arbitrary number for now, gonna be refactored
+		ShouldSubmitBatchCh: make(chan bool, maxSupportedBatchSkew), //allow capacity for multiple pending batches to support bursts
 		logger:              logger,
 		blockCache:          make(map[uint64]CachedBlock),
 	}

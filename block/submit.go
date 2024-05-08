@@ -45,12 +45,6 @@ func (m *Manager) HandleSubmissionTrigger(ctx context.Context) error {
 		return nil // No new blocks have been produced
 	}
 
-	// We try and produce an empty block to make sure relevant ibc messages will pass through during the batch submission: https://github.com/dymensionxyz/research/issues/173.
-	err := m.ProduceAndGossipBlock(ctx, true)
-	if err != nil {
-		m.logger.Error("Produce and gossip empty block.", "error", err)
-	}
-
 	nextBatch, err := m.createNextBatch()
 	if err != nil {
 		return fmt.Errorf("create next batch: %w", err)
@@ -91,16 +85,6 @@ func (m *Manager) createNextBatch() (*types.Batch, error) {
 func (m *Manager) submitNextBatchToDA(nextBatch *types.Batch) (*da.ResultSubmitBatch, error) {
 	startHeight := nextBatch.StartHeight
 	actualEndHeight := nextBatch.EndHeight
-
-	// Verify the last block in the batch is an empty block and that no ibc messages has accidentally passed through.
-	// This block may not be empty if another block has passed it in line. If that's the case our empty block request will
-	// be sent to the next batch.
-	isLastBlockEmpty := nextBatch.Blocks[len(nextBatch.Blocks)-1].Data.Txs == nil
-	if !isLastBlockEmpty {
-		m.logger.Info("Last block in batch is not an empty block. Requesting for an empty block creation", "endHeight", actualEndHeight)
-		// TODO: remove from here and move to the block production loop.
-		m.produceEmptyBlockCh <- true
-	}
 
 	// Submit batch to the DA
 	m.logger.Info("Submitting next batch", "startHeight", startHeight, "endHeight", actualEndHeight, "size", nextBatch.ToProto().Size())

@@ -181,7 +181,7 @@ func TestProduceNewBlock(t *testing.T) {
 	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(t, err)
 	// Produce block
-	err = manager.ProduceAndGossipBlock(context.Background(), true)
+	_, _, err = manager.ProduceAndGossipBlock(context.Background(), true)
 	require.NoError(t, err)
 	// Validate state is updated with the commit hash
 	assert.Equal(t, uint64(1), manager.Store.Height())
@@ -208,7 +208,7 @@ func TestProducePendingBlock(t *testing.T) {
 	_, err = manager.Store.SaveBlock(block, &block.LastCommit, nil)
 	require.NoError(t, err)
 	// Produce block
-	err = manager.ProduceAndGossipBlock(context.Background(), true)
+	_, _, err = manager.ProduceAndGossipBlock(context.Background(), true)
 	require.NoError(t, err)
 	// Validate state is updated with the block that was saved in the store
 	assert.Equal(t, block.Header.Hash(), *(*[32]byte)(manager.LastState.LastBlockID.Hash))
@@ -306,7 +306,7 @@ func TestProduceBlockFailAfterCommit(t *testing.T) {
 			})
 			mockStore.ShouldFailSetHeight = tc.shouldFailSetSetHeight
 			mockStore.ShoudFailUpdateState = tc.shouldFailUpdateState
-			_ = manager.ProduceAndGossipBlock(context.Background(), true)
+			_, _, err = manager.ProduceAndGossipBlock(context.Background(), true)
 			require.Equal(tc.expectedStoreHeight, manager.Store.Height(), tc.name)
 			require.Equal(tc.expectedStateAppHash, manager.LastState.AppHash, tc.name)
 			storeState, err := manager.Store.LoadState()
@@ -360,7 +360,7 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Produce blocks
 			for i := 0; i < tc.blocksToProduce; i++ {
-				err := manager.ProduceAndGossipBlock(ctx, true)
+				_, _, err := manager.ProduceAndGossipBlock(ctx, true)
 				assert.NoError(err)
 			}
 

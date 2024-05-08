@@ -21,13 +21,13 @@ import (
 // ProduceBlockLoop is calling publishBlock in a loop as long as we're synced.
 func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 	m.logger.Debug("Started produce loop")
+	produceEmptyBlock := true // Allow the initial block to be empty
 
+	// Main ticker for block production
 	ticker := time.NewTicker(m.Conf.BlockTime)
 	defer ticker.Stop()
 
-	// Allow the initial block to be empty
-	produceEmptyBlock := true
-
+	// Timer for empty blockss
 	var emptyBlocksTimer <-chan time.Time
 	resetEmptyBlocksTimer := func() {}
 	// Setup ticker for empty blocks if enabled
@@ -41,18 +41,30 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 		defer t.Stop()
 	}
 
+	// Timer for block progression to support IBC transfers
+	forceCreationTimer := time.NewTimer(5 * time.Second) //TODO: change to own constant
+	defer forceCreationTimer.Stop()
+	forceCreationTimer.Stop() // Don't start it initially
+	resetForceCreationTimer := func(lastBlockEmpty bool) {
+		if lastBlockEmpty {
+			forceCreationTimer.Stop()
+		} else {
+			forceCreationTimer.Reset(5 * time.Second)
+		}
+	}
+
 	for {
 		select {
 		case <-ctx.Done(): // Context canceled
 			return
-		case <-m.produceEmptyBlockCh: // If we got a request for an empty block produce it and don't wait for the ticker
+		case <-forceCreationTimer.C: // Force block creation
 			produceEmptyBlock = true
 		case <-emptyBlocksTimer: // Empty blocks timeout
 			produceEmptyBlock = true
 			m.logger.Debug(fmt.Sprintf("no transactions, producing empty block: elapsed: %.2f", m.Conf.EmptyBlocksMaxTime.Seconds()))
 		// Produce block
 		case <-ticker.C:
-			err := m.ProduceAndGossipBlock(ctx, produceEmptyBlock)
+			block, _, err := m.ProduceAndGossipBlock(ctx, produceEmptyBlock)
 			if errors.Is(err, context.Canceled) {
 				m.logger.Error("produce and gossip: context canceled", "error", err)
 				return
@@ -69,6 +81,8 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 				continue
 			}
 			resetEmptyBlocksTimer()
+			isLastBlockEmpty := len(block.Data.Txs) == 0
+			resetForceCreationTimer(isLastBlockEmpty)
 
 			// Check if we should submit the accumulated data
 			if m.shouldSubmitBatch() {
@@ -87,25 +101,23 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 					evt = &events.DataHealthStatus{Error: nil}
 					uevent.MustPublish(ctx, m.Pubsub, evt, events.HealthStatusList)
 				}
-				m.produceBlockMutex.Lock()
 				m.AccumulatedProducedSize.Store(0)
-				m.produceBlockMutex.Unlock()
 			}
 		}
 	}
 }
 
-func (m *Manager) ProduceAndGossipBlock(ctx context.Context, allowEmpty bool) error {
+func (m *Manager) ProduceAndGossipBlock(ctx context.Context, allowEmpty bool) (*types.Block, *types.Commit, error) {
 	block, commit, err := m.produceBlock(allowEmpty)
 	if err != nil {
-		return fmt.Errorf("produce block: %w", err)
+		return nil, nil, fmt.Errorf("produce block: %w", err)
 	}
 
 	if err := m.gossipBlock(ctx, *block, *commit); err != nil {
-		return fmt.Errorf("gossip block: %w", err)
+		return nil, nil, fmt.Errorf("gossip block: %w", err)
 	}
 
-	return nil
+	return block, commit, nil
 }
 
 func (m *Manager) updateAccumulatedSize(size uint64) {
@@ -121,8 +133,6 @@ func (m *Manager) shouldSubmitBatch() bool {
 }
 
 func (m *Manager) produceBlock(allowEmpty bool) (*types.Block, *types.Commit, error) {
-	m.produceBlockMutex.Lock()
-	defer m.produceBlockMutex.Unlock()
 	var (
 		lastCommit     *types.Commit
 		lastHeaderHash [32]byte
