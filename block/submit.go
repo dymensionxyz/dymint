@@ -48,7 +48,7 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 
 		// modular submission methods have own retries mechanism.
 		// if error returned, we assume it's unrecoverable.
-		err := m.HandleSubmissionTrigger(ctx)
+		err := m.HandleSubmissionTrigger()
 		if err != nil {
 			panic(fmt.Errorf("handle submission trigger: %w", err))
 		}
