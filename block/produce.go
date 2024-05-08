@@ -36,7 +36,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
-		case <-emptyBlocksTimer.C: // Empty blocks timeout
+		case <-emptyBlocksTimer.C:
 			produceEmptyBlock = true
 			m.logger.Debug(fmt.Sprintf("no transactions, producing empty block: elapsed: %.2f", m.Conf.MaxIdleTime.Seconds()))
 		// Produce block
@@ -62,6 +62,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 			} else {
 				emptyBlocksTimer.Reset(m.Conf.PriorityMaxIdleTime)
 			}
+			produceEmptyBlock = false
 
 			// Send the size to the accumulated size channel
 			// This will block in case the submitter is too slow and it's buffer is full
