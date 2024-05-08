@@ -149,6 +149,7 @@ func GetManagerConfig() config.BlockManagerConfig {
 		BlockTime:               100 * time.Millisecond,
 		BlockBatchMaxSizeBytes:  1000000,
 		BatchSubmitMaxTime:      30 * time.Minute,
+		MaxSupportedBatchSkew:   10,
 		NamespaceID:             "0102030405060708",
 		GossipedBlocksCacheSize: 50,
 	}

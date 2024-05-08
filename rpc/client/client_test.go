@@ -106,6 +106,7 @@ func TestGenesisChunked(t *testing.T) {
 			BatchSubmitMaxTime:      60 * time.Second,
 			BlockBatchMaxSizeBytes:  1000,
 			GossipedBlocksCacheSize: 50,
+			MaxSupportedBatchSkew:   10,
 		},
 		BootstrapTime:   30 * time.Second,
 		DALayer:         "mock",
@@ -460,6 +461,7 @@ func TestTx(t *testing.T) {
 			BatchSubmitMaxTime:      60 * time.Second,
 			BlockBatchMaxSizeBytes:  1000,
 			GossipedBlocksCacheSize: 50,
+			MaxSupportedBatchSkew:   10,
 		},
 		BootstrapTime: 30 * time.Second,
 		SettlementConfig: settlement.Config{
@@ -732,6 +734,7 @@ func TestValidatorSetHandling(t *testing.T) {
 			BatchSubmitMaxTime:      60 * time.Second,
 			BlockBatchMaxSizeBytes:  1000,
 			GossipedBlocksCacheSize: 50,
+			MaxSupportedBatchSkew:   10,
 		},
 		BootstrapTime: 30 * time.Second,
 		SettlementConfig: settlement.Config{
@@ -865,6 +868,7 @@ func getRPC(t *testing.T) (*tmmocks.MockApplication, *Client) {
 			BatchSubmitMaxTime:      60 * time.Second,
 			BlockBatchMaxSizeBytes:  1000,
 			GossipedBlocksCacheSize: 50,
+			MaxSupportedBatchSkew:   10,
 		},
 		BootstrapTime:   30 * time.Second,
 		DALayer:         "mock",
@@ -971,6 +975,7 @@ func TestMempool2Nodes(t *testing.T) {
 			BatchSubmitMaxTime:      60 * time.Second,
 			BlockBatchMaxSizeBytes:  1000,
 			GossipedBlocksCacheSize: 50,
+			MaxSupportedBatchSkew:   10,
 		},
 		BootstrapTime: 30 * time.Second,
 		P2P: config.P2PConfig{
@@ -992,6 +997,7 @@ func TestMempool2Nodes(t *testing.T) {
 			BatchSubmitMaxTime:      60 * time.Second,
 			BlockBatchMaxSizeBytes:  1000,
 			GossipedBlocksCacheSize: 50,
+			MaxSupportedBatchSkew:   10,
 		},
 		BootstrapTime: 30 * time.Second,
 		P2P: config.P2PConfig{

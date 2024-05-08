@@ -70,6 +70,7 @@ func TestMempoolDirectly(t *testing.T) {
 			BlockTime:               100 * time.Millisecond,
 			BatchSubmitMaxTime:      60 * time.Second,
 			BlockBatchMaxSizeBytes:  1000,
+			MaxSupportedBatchSkew:   10,
 			GossipedBlocksCacheSize: 50,
 		},
 		DALayer:         "mock",

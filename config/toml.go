@@ -72,6 +72,8 @@ block_time = "{{ .BlockManagerConfig.BlockTime }}"
 # block production interval in case of no transactions ("0s" produces empty blocks)
 max_idle_time = "{{ .BlockManagerConfig.MaxIdleTime }}"
 priority_max_idle_time = "{{ .BlockManagerConfig.PriorityMaxIdleTime }}"
+max_supported_batch_skew = {{ .BlockManagerConfig.MaxSupportedBatchSkew }}
+
 
 # triggers to submit batch to DA and settlement (both required)
 batch_submit_max_time = "{{ .BlockManagerConfig.BatchSubmitMaxTime }}"

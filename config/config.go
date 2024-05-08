@@ -50,11 +50,13 @@ type BlockManagerConfig struct {
 	PriorityMaxIdleTime time.Duration `mapstructure:"priority_max_idle_time"`
 	// BatchSubmitMaxTime defines how long should block manager wait for before submitting batch
 	BatchSubmitMaxTime time.Duration `mapstructure:"batch_submit_max_time"`
-	NamespaceID        string        `mapstructure:"namespace_id"`
+	// Max amount of pending batches to be submitted. block production will be paused if this limit is reached.
+	MaxSupportedBatchSkew uint64 `mapstructure:"max_supported_batch_skew"`
 	// The size of the batch in Bytes. Every batch we'll write to the DA and the settlement layer.
 	BlockBatchMaxSizeBytes uint64 `mapstructure:"block_batch_max_size_bytes"`
 	// The number of messages cached by gossipsub protocol
-	GossipedBlocksCacheSize int `mapstructure:"gossiped_blocks_cache_size"`
+	GossipedBlocksCacheSize int    `mapstructure:"gossiped_blocks_cache_size"`
+	NamespaceID             string `mapstructure:"namespace_id"`
 }
 
 // GetViperConfig reads configuration parameters from Viper instance.
@@ -149,6 +151,10 @@ func (c BlockManagerConfig) Validate() error {
 
 	if c.GossipedBlocksCacheSize <= 0 {
 		return fmt.Errorf("gossiped_blocks_cache_size must be positive")
+	}
+
+	if c.MaxSupportedBatchSkew <= 0 {
+		return fmt.Errorf("max_supported_batch_skew must be positive")
 	}
 
 	return nil

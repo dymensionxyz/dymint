@@ -199,6 +199,7 @@ func fullNodeConfig() config.NodeConfig {
 			MaxIdleTime:             20 * time.Second,
 			PriorityMaxIdleTime:     20 * time.Second,
 			BatchSubmitMaxTime:      20 * time.Second,
+			MaxSupportedBatchSkew:   10,
 			NamespaceID:             "test",
 			BlockBatchMaxSizeBytes:  1,
 			GossipedBlocksCacheSize: 1,

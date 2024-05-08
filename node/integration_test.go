@@ -47,6 +47,7 @@ func TestAggregatorMode(t *testing.T) {
 		BlockTime:               1 * time.Second,
 		BatchSubmitMaxTime:      60 * time.Second,
 		BlockBatchMaxSizeBytes:  1000,
+		MaxSupportedBatchSkew:   10,
 		NamespaceID:             "0102030405060708",
 		GossipedBlocksCacheSize: 50,
 	}

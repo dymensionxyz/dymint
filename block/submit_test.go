@@ -124,6 +124,7 @@ func TestSubmissionByTime(t *testing.T) {
 	managerConfig := config.BlockManagerConfig{
 		BlockTime:               blockTime,
 		MaxIdleTime:             0,
+		MaxSupportedBatchSkew:   10,
 		BatchSubmitMaxTime:      submitTimeout,
 		BlockBatchMaxSizeBytes:  1000,
 		GossipedBlocksCacheSize: 50,

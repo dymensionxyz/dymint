@@ -32,12 +32,6 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
-const (
-	// max amount of pending batches to be submitted. block production will be paused if this limit is reached.
-	// TODO: make this configurable
-	maxSupportedBatchSkew = 10
-)
-
 // Manager is responsible for aggregating transactions into blocks.
 type Manager struct {
 	// Configuration
