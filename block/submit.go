@@ -113,13 +113,21 @@ func (m *Manager) AccumulatedDataLoop(ctx context.Context, toSubmit chan struct{
 // Finally, it submits the next batch of blocks and updates the sync target to the height of the last block in the submitted batch.
 func (m *Manager) HandleSubmissionTrigger() error {
 	// Load current sync target and height to determine if new blocks are available for submission.
-	if m.Store.Height() <= m.SyncTarget.Load() {
+
+	startHeight := m.SyncTarget.Load() + 1
+	endHeightInclusive := m.Store.Height()
+
+	if endHeightInclusive < startHeight {
 		return nil // No new blocks have been produced
 	}
 
-	nextBatch, err := m.createNextBatch()
+	nextBatch, err := m.CreateNextBatchToSubmit(startHeight, endHeightInclusive)
 	if err != nil {
-		return fmt.Errorf("create next batch: %w", err)
+		return fmt.Errorf("create next batch to submit: %w", err)
+	}
+
+	if err := m.ValidateBatch(nextBatch); err != nil {
+		return fmt.Errorf("validate batch: %w", err)
 	}
 
 	resultSubmitToDA, err := m.submitNextBatchToDA(nextBatch)
@@ -135,23 +143,6 @@ func (m *Manager) HandleSubmissionTrigger() error {
 	// Update the syncTarget to the height of the last block in the last batch as seen by this node.
 	m.UpdateSyncParams(syncHeight)
 	return nil
-}
-
-func (m *Manager) createNextBatch() (*types.Batch, error) {
-	// Create the batch
-	startHeight := m.SyncTarget.Load() + 1
-	endHeight := m.Store.Height()
-	nextBatch, err := m.CreateNextBatchToSubmit(startHeight, endHeight)
-	if err != nil {
-		m.logger.Error("create next batch", "startHeight", startHeight, "endHeight", endHeight, "error", err)
-		return nil, err
-	}
-
-	if err := m.ValidateBatch(nextBatch); err != nil {
-		return nil, err
-	}
-
-	return nextBatch, nil
 }
 
 func (m *Manager) submitNextBatchToDA(nextBatch *types.Batch) (*da.ResultSubmitBatch, error) {
@@ -189,19 +180,19 @@ func (m *Manager) ValidateBatch(batch *types.Batch) error {
 	return nil
 }
 
-func (m *Manager) CreateNextBatchToSubmit(startHeight uint64, endHeight uint64) (*types.Batch, error) {
+func (m *Manager) CreateNextBatchToSubmit(startHeight uint64, endHeightInclusive uint64) (*types.Batch, error) {
 	var height uint64
 	// Create the batch
-	batchSize := endHeight - startHeight + 1
+	batchSize := endHeightInclusive - startHeight + 1
 	batch := &types.Batch{
 		StartHeight: startHeight,
-		EndHeight:   endHeight,
+		EndHeight:   endHeightInclusive,
 		Blocks:      make([]*types.Block, 0, batchSize),
 		Commits:     make([]*types.Commit, 0, batchSize),
 	}
 
 	// Populate the batch
-	for height = startHeight; height <= endHeight; height++ {
+	for height = startHeight; height <= endHeightInclusive; height++ {
 		block, err := m.Store.LoadBlock(height)
 		if err != nil {
 			m.logger.Error("load block", "height", height)
