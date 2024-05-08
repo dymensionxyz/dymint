@@ -180,11 +180,7 @@ func TestSeedStringParsing(t *testing.T) {
 			client, err := p2p.NewClient(config.P2PConfig{
 				GossipCacheSize: 50,
 				BoostrapTime:    30 * time.Second,
-<<<<<<< HEAD
 			}, privKey, "TestNetwork", pubsubServer, logger)
-=======
-			}, privKey, "TestNetwork", 200*time.Millisecond, logger)
->>>>>>> 6f91baf (update new client)
 			require.NoError(err)
 			require.NotNil(client)
 			actual := client.GetSeedAddrInfo(c.input)
