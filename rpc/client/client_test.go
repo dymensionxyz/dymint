@@ -96,11 +96,10 @@ func TestGenesisChunked(t *testing.T) {
 	signingKey, _, _ := crypto.GenerateEd25519Key(crand.Reader)
 
 	config := config.NodeConfig{
-		RootDir:    "",
-		DBPath:     "",
-		P2P:        config.P2PConfig{},
-		RPC:        config.RPCConfig{},
-		Aggregator: false,
+		RootDir: "",
+		DBPath:  "",
+		P2P:     config.P2PConfig{},
+		RPC:     config.RPCConfig{},
 		BlockManagerConfig: config.BlockManagerConfig{
 			BlockTime:               100 * time.Millisecond,
 			BlockBatchSize:          1,
@@ -455,7 +454,6 @@ func TestTx(t *testing.T) {
 	node, err := node.NewNode(context.Background(), config.NodeConfig{
 		DALayer:         "mock",
 		SettlementLayer: "mock",
-		Aggregator:      true,
 		BlockManagerConfig: config.BlockManagerConfig{
 			BlockBatchSize:          1,
 			BlockTime:               200 * time.Millisecond,
@@ -728,7 +726,6 @@ func TestValidatorSetHandling(t *testing.T) {
 	nodeConfig := config.NodeConfig{
 		DALayer:         "mock",
 		SettlementLayer: "mock",
-		Aggregator:      true,
 		BlockManagerConfig: config.BlockManagerConfig{
 			BlockTime:               10 * time.Millisecond,
 			BlockBatchSize:          1,
@@ -858,11 +855,10 @@ func getRPC(t *testing.T) (*tmmocks.MockApplication, *Client) {
 	rollappID := "rollapp_1234-1"
 
 	config := config.NodeConfig{
-		RootDir:    "",
-		DBPath:     "",
-		P2P:        config.P2PConfig{},
-		RPC:        config.RPCConfig{},
-		Aggregator: false,
+		RootDir: "",
+		DBPath:  "",
+		P2P:     config.P2PConfig{},
+		RPC:     config.RPCConfig{},
 		BlockManagerConfig: config.BlockManagerConfig{
 			BlockTime:               100 * time.Millisecond,
 			BlockBatchSize:          1,
@@ -949,16 +945,13 @@ func TestMempool2Nodes(t *testing.T) {
 
 	key1, _, _ := crypto.GenerateEd25519Key(crand.Reader)
 	key2, _, _ := crypto.GenerateEd25519Key(crand.Reader)
-	signingKey1, proposerPubKey1, _ := crypto.GenerateEd25519Key(crand.Reader)
-	signingKey2, proposerPubKey2, _ := crypto.GenerateEd25519Key(crand.Reader)
+	signingKey1, _, _ := crypto.GenerateEd25519Key(crand.Reader)
+	signingKey2, _, _ := crypto.GenerateEd25519Key(crand.Reader)
+	_, proposerPubkey, _ := crypto.GenerateEd25519Key(crand.Reader)
+	proposerPK, err := proposerPubkey.Raw()
+	require.NoError(err)
 
 	id1, err := peer.IDFromPrivateKey(key1)
-	require.NoError(err)
-
-	proposerPubKey1Bytes, err := proposerPubKey1.Raw()
-	require.NoError(err)
-
-	proposerPubKey2Bytes, err := proposerPubKey2.Raw()
 	require.NoError(err)
 
 	rollappID := "rollapp_1234-1"
@@ -967,7 +960,7 @@ func TestMempool2Nodes(t *testing.T) {
 		DALayer:         "mock",
 		SettlementLayer: "mock",
 		SettlementConfig: settlement.Config{
-			ProposerPubKey: hex.EncodeToString(proposerPubKey1Bytes),
+			ProposerPubKey: hex.EncodeToString(proposerPK),
 			RollappID:      rollappID,
 		},
 		BlockManagerConfig: config.BlockManagerConfig{
@@ -989,7 +982,7 @@ func TestMempool2Nodes(t *testing.T) {
 		DALayer:         "mock",
 		SettlementLayer: "mock",
 		SettlementConfig: settlement.Config{
-			ProposerPubKey: hex.EncodeToString(proposerPubKey2Bytes),
+			ProposerPubKey: hex.EncodeToString(proposerPK),
 			RollappID:      rollappID,
 		},
 		BlockManagerConfig: config.BlockManagerConfig{
@@ -1022,15 +1015,15 @@ func TestMempool2Nodes(t *testing.T) {
 	local := NewClient(node1)
 	require.NotNil(local)
 
-	// broadcast the bad Tx, this should not be propogated or added to the local mempool
+	// broadcast the bad Tx, this should not be propagated or added to the local mempool
 	resp, err := local.BroadcastTxSync(ctx, []byte("bad"))
 	assert.NoError(err)
 	assert.NotNil(resp)
-	// broadcast the good Tx, this should be propogated and added to the local mempool
+	// broadcast the good Tx, this should be propagated and added to the local mempool
 	resp, err = local.BroadcastTxSync(ctx, []byte("good"))
 	assert.NoError(err)
 	assert.NotNil(resp)
-	// broadcast the good Tx again in the same block, this should not be propogated and
+	// broadcast the good Tx again in the same block, this should not be propagated and
 	// added to the local mempool
 	resp, err = local.BroadcastTxSync(ctx, []byte("good"))
 	assert.Error(err)

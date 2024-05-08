@@ -36,7 +36,6 @@ func CreateNode(isAggregator bool, blockManagerConfig *config.BlockManagerConfig
 		}
 	}
 	nodeConfig.BlockManagerConfig = *blockManagerConfig
-	nodeConfig.Aggregator = isAggregator
 
 	rollappID := "rollapp_1234-1"
 

@@ -65,8 +65,6 @@ const defaultConfigTemplate = `
 #######################################################
 ###       Dymint Configuration Options     ###
 #######################################################
-aggregator = "{{ .Aggregator }}"
-
 # block production interval
 block_time = "{{ .BlockManagerConfig.BlockTime }}"
 # block production interval in case of no transactions ("0s" produces empty blocks)
