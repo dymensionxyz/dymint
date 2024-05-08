@@ -20,33 +20,23 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 	m.logger.Debug("Started produce loop")
 	produceEmptyBlock := true // Allow the initial block to be empty
 
-	// Main ticker for block production
+	// Regular block production
 	ticker := time.NewTicker(m.Conf.BlockTime)
 	defer ticker.Stop()
 
-	// Timer for empty blocks
-	var emptyBlocksTimer <-chan time.Time
-	resetEmptyBlocksTimer := func(priority bool) {}
-	// Setup ticker for empty blocks if enabled
+	// Block production in the idle case (no transactions)
+	emptyBlocksTimer := time.NewTimer(time.Hour * 24 * 365 * 1000)
+	defer emptyBlocksTimer.Stop()
 	if 0 < m.Conf.MaxIdleTime {
-		t := time.NewTimer(m.Conf.MaxIdleTime)
-		emptyBlocksTimer = t.C
-		resetEmptyBlocksTimer = func(priority bool) {
-			produceEmptyBlock = false
-			if priority {
-				t.Reset(m.Conf.PriorityMaxIdleTime)
-			} else {
-				t.Reset(m.Conf.MaxIdleTime)
-			}
-		}
-		defer t.Stop()
+		emptyBlocksTimer = time.NewTimer(m.Conf.MaxIdleTime)
+		defer emptyBlocksTimer.Stop()
 	}
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-emptyBlocksTimer: // Empty blocks timeout
+		case <-emptyBlocksTimer.C: // Empty blocks timeout
 			produceEmptyBlock = true
 			m.logger.Debug(fmt.Sprintf("no transactions, producing empty block: elapsed: %.2f", m.Conf.MaxIdleTime.Seconds()))
 		// Produce block
@@ -67,7 +57,11 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 				m.logger.Error("produce and gossip: uncategorized, assuming recoverable", "error", err)
 				continue
 			}
-			resetEmptyBlocksTimer(len(block.Data.Txs) != 0) //set priority if block has transactions
+			if len(block.Data.Txs) == 0 {
+				emptyBlocksTimer.Reset(m.Conf.MaxIdleTime)
+			} else {
+				emptyBlocksTimer.Reset(m.Conf.PriorityMaxIdleTime)
+			}
 
 			// Send the size to the accumulated size channel
 			// This will block in case the submitter is too slow and it's buffer is full
