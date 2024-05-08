@@ -1,6 +1,7 @@
 # [](https://github.com/dymensionxyz/dymint/compare/v1.1.0-rc02...v) (2024-05-05)
 
 
+
 ### Bug Fixes
 
 * **bug:** sync from da and p2p when starting a node ([#763](https://github.com/dymensionxyz/dymint/issues/763)) ([68ffd05](https://github.com/dymensionxyz/dymint/commit/68ffd05794949ddc42df1c132d1fde5f21b505f4))
@@ -15,6 +16,7 @@
 * **logs:** make logs more readable in a couple places, fix race cond ([#749](https://github.com/dymensionxyz/dymint/issues/749)) ([f05ef39](https://github.com/dymensionxyz/dymint/commit/f05ef3957b754c05fbc90aa39eabce80bbe65933))
 * **manager:** get fresh height in loop ([#781](https://github.com/dymensionxyz/dymint/issues/781)) ([e4df480](https://github.com/dymensionxyz/dymint/commit/e4df48037a78965dbac9e747dd296f39360e396c))
 * **p2p:** validate block before applying and not before caching in p2p gossiping ([#723](https://github.com/dymensionxyz/dymint/issues/723)) ([98371b5](https://github.com/dymensionxyz/dymint/commit/98371b5220613e70f3274fab5593e02ba532f7db))
+* **p2p:** validating gossiped block is created by the proposer ([#737](https://github.com/dymensionxyz/dymint/issues/737)) ([851b312](https://github.com/dymensionxyz/dymint/commit/851b312620233a9fb1abe55214a678322e7b0c68))
 * **produce loop:** handle unauthenticated error in settlement layer ([#726](https://github.com/dymensionxyz/dymint/issues/726)) ([33e78d1](https://github.com/dymensionxyz/dymint/commit/33e78d116b5f14b91b8b3bda2b6cbfee9040e2d3))
 * **rpc:** nil panic in rpc/json/handler.go WriteError ([#750](https://github.com/dymensionxyz/dymint/issues/750)) ([e09709b](https://github.com/dymensionxyz/dymint/commit/e09709b428a33da002defb9f13178fa19b81a69b))
 * **settlement:** remove state index from proto ([#777](https://github.com/dymensionxyz/dymint/issues/777)) ([767b8fd](https://github.com/dymensionxyz/dymint/commit/767b8fdb490c37deee43ac023688410bbb98ccb0))
@@ -26,6 +28,11 @@
 ### Features
 
 * **produce:** limiting block size by maxBatchSize ([#784](https://github.com/dymensionxyz/dymint/issues/784)) ([f90042c](https://github.com/dymensionxyz/dymint/commit/f90042cd61fc6b60093478cd65491f8aa1106457))
+
+
+### Features
+
+* **ci:** changelog workflow ([c096f2f](https://github.com/dymensionxyz/dymint/commit/c096f2f5196e5cbcba8ff81097d8bad7534c46ae))
 
 
 

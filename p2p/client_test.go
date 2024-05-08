@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/libs/pubsub"
 
 	"github.com/dymensionxyz/dymint/config"
 	"github.com/dymensionxyz/dymint/p2p"
@@ -22,10 +23,13 @@ import (
 
 func TestClientStartup(t *testing.T) {
 	privKey, _, _ := crypto.GenerateEd25519Key(rand.Reader)
+	pubsubServer := pubsub.NewServer()
+	err := pubsubServer.Start()
+	require.NoError(t, err)
 	client, err := p2p.NewClient(config.P2PConfig{
 		GossipCacheSize: 50,
 		BoostrapTime:    30 * time.Second,
-	}, privKey, "TestChain", log.TestingLogger())
+	}, privKey, "TestChain", pubsubServer, log.TestingLogger())
 	assert := assert.New(t)
 	assert.NoError(err)
 	assert.NotNil(client)
@@ -149,6 +153,10 @@ func TestSeedStringParsing(t *testing.T) {
 	// this one is a valid multiaddr, but can't be converted to PeerID (because there is no ID)
 	seed3 := "/ip4/127.0.0.1/tcp/12345"
 
+	pubsubServer := pubsub.NewServer()
+	err = pubsubServer.Start()
+	require.NoError(t, err)
+
 	cases := []struct {
 		name     string
 		input    string
@@ -172,7 +180,7 @@ func TestSeedStringParsing(t *testing.T) {
 			client, err := p2p.NewClient(config.P2PConfig{
 				GossipCacheSize: 50,
 				BoostrapTime:    30 * time.Second,
-			}, privKey, "TestNetwork", logger)
+			}, privKey, "TestNetwork", pubsubServer, logger)
 			require.NoError(err)
 			require.NotNil(client)
 			actual := client.GetSeedAddrInfo(c.input)
