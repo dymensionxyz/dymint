@@ -74,6 +74,7 @@ func TestNodeConfig_Validate(t *testing.T) {
 			name: "empty_blocks_max_time not greater than block_time",
 			malleate: func(nc *config.NodeConfig) {
 				nc.BlockManagerConfig.EmptyBlocksMaxTime = 1
+				nc.BlockManagerConfig.PriorityMaxIdleTime = 1
 				nc.BlockManagerConfig.BlockTime = 2
 			},
 			wantErr: assert.Error,
@@ -196,6 +197,7 @@ func fullNodeConfig() config.NodeConfig {
 		BlockManagerConfig: config.BlockManagerConfig{
 			BlockTime:               1 * time.Second,
 			EmptyBlocksMaxTime:      20 * time.Second,
+			PriorityMaxIdleTime:     20 * time.Second,
 			BatchSubmitMaxTime:      20 * time.Second,
 			NamespaceID:             "test",
 			BlockBatchMaxSizeBytes:  1,

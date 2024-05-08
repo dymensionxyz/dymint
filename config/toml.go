@@ -71,6 +71,7 @@ aggregator = "{{ .Aggregator }}"
 block_time = "{{ .BlockManagerConfig.BlockTime }}"
 # block production interval in case of no transactions ("0s" produces empty blocks)
 empty_blocks_max_time = "{{ .BlockManagerConfig.EmptyBlocksMaxTime }}"
+priority_max_idle_time = "{{ .BlockManagerConfig.PriorityMaxIdleTime }}"
 
 # triggers to submit batch to DA and settlement (both required)
 batch_submit_max_time = "{{ .BlockManagerConfig.BatchSubmitMaxTime }}"

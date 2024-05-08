@@ -48,6 +48,7 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 	managerConfig := testutil.GetManagerConfig()
 	managerConfig.BlockTime = blockTime
 	managerConfig.EmptyBlocksMaxTime = EmptyBlocksMaxTime
+	managerConfig.PriorityMaxIdleTime = EmptyBlocksMaxTime
 	manager, err := testutil.GetManager(managerConfig, nil, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 

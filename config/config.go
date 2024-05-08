@@ -45,6 +45,9 @@ type BlockManagerConfig struct {
 	BlockTime time.Duration `mapstructure:"block_time"`
 	// EmptyBlocksMaxTime defines how long should block manager wait for new transactions before producing empty block
 	EmptyBlocksMaxTime time.Duration `mapstructure:"empty_blocks_max_time"`
+	// PriorityMaxIdleTime is lower than EmptyBlocksMaxTime, in case required
+	// This is to ensure that the IBC transactions can be proven and relayed
+	PriorityMaxIdleTime time.Duration `mapstructure:"priority_max_idle_time"`
 	// BatchSubmitMaxTime defines how long should block manager wait for before submitting batch
 	BatchSubmitMaxTime time.Duration `mapstructure:"batch_submit_max_time"`
 	NamespaceID        string        `mapstructure:"namespace_id"`
@@ -118,13 +121,18 @@ func (c BlockManagerConfig) Validate() error {
 	if c.EmptyBlocksMaxTime < 0 {
 		return fmt.Errorf("empty_blocks_max_time must be positive or zero to disable")
 	}
+	// EmptyBlocksMaxTime zero disables adaptive block production.
+	if c.EmptyBlocksMaxTime != 0 {
+		if c.EmptyBlocksMaxTime <= c.BlockTime {
+			return fmt.Errorf("empty_blocks_max_time must be greater than block_time")
+		}
+		if c.PriorityMaxIdleTime <= 0 || c.PriorityMaxIdleTime > c.EmptyBlocksMaxTime {
+			return fmt.Errorf("priority_max_idle_time must be positive and not greater than empty_blocks_max_time")
+		}
+	}
 
 	if c.BatchSubmitMaxTime <= 0 {
 		return fmt.Errorf("batch_submit_max_time must be positive")
-	}
-
-	if c.EmptyBlocksMaxTime != 0 && c.EmptyBlocksMaxTime <= c.BlockTime {
-		return fmt.Errorf("empty_blocks_max_time must be greater than block_time")
 	}
 
 	if c.BatchSubmitMaxTime < c.BlockTime {
