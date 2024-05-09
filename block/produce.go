@@ -35,18 +35,18 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 	if 0 < m.Conf.MaxIdleTime {
 		t := time.NewTimer(m.Conf.MaxIdleTime)
 		emptyBlocksTimer = t.C
+		defer t.Stop()
+
+		//define a reset function to reset the timer
 		resetEmptyBlocksFn = func(proofRequired bool) {
 			produceEmptyBlock = false
-			if !t.Stop() {
-				<-t.C
-			}
 			if proofRequired {
 				t.Reset(m.Conf.MaxProofTime)
 			} else {
 				t.Reset(m.Conf.MaxIdleTime)
 			}
+			emptyBlocksTimer = t.C
 		}
-		defer t.Stop()
 	}
 
 	for {
@@ -56,7 +56,6 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 		case <-emptyBlocksTimer: // When the timer expires, allow producing empty blocks (forces a block to be produced)
 			produceEmptyBlock = true
 			m.logger.Debug("no transactions, producing empty block")
-			emptyBlocksTimer = nil //reset the timer, will be set on the next block
 		// Produce block
 		case <-ticker.C:
 			block, commit, err := m.ProduceAndGossipBlock(ctx, produceEmptyBlock)
