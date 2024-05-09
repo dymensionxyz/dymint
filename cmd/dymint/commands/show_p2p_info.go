@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cosmos/cosmos-sdk/server"
 	"github.com/dymensionxyz/dymint/conv"
 	"github.com/libp2p/go-libp2p"
 	"github.com/spf13/cobra"
@@ -34,7 +35,9 @@ func init() {
 
 func showP2PInfo(cmd *cobra.Command, args []string) error {
 
-	nodeKey, err := p2p.LoadNodeKey(tmconfig.NodeKeyFile())
+	serverCtx := server.GetServerContextFromCmd(cmd)
+	cfg := serverCtx.Config
+	nodeKey, err := p2p.LoadNodeKey(cfg.NodeKeyFile())
 	if err != nil {
 		return err
 	}
