@@ -18,23 +18,30 @@ import (
 // ProduceBlockLoop is calling publishBlock in a loop as long as we're synced.
 func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 	m.logger.Debug("Started produce loop")
-	produceEmptyBlock := true // Allow the initial block to be empty
+
+	// Setup variables for empty block production
+	var (
+		produceEmptyBlock  = true // Allow the initial block to be empty
+		emptyBlocksTimer   <-chan time.Time
+		resetEmptyBlocksFn = func(bool) {}
+	)
 
 	// Main ticker for block production
 	ticker := time.NewTicker(m.Conf.BlockTime)
 	defer ticker.Stop()
 
-	// Timer for empty blocks
-	var emptyBlocksTimer <-chan time.Time
-	resetEmptyBlocksTimer := func(priority bool) {}
 	// Setup ticker for empty blocks if enabled
+	// if disabled, produceEmptyBlock will remain true and the block will be produced every block time
 	if 0 < m.Conf.MaxIdleTime {
 		t := time.NewTimer(m.Conf.MaxIdleTime)
 		emptyBlocksTimer = t.C
-		resetEmptyBlocksTimer = func(priority bool) {
+		resetEmptyBlocksFn = func(proofRequired bool) {
 			produceEmptyBlock = false
-			if priority {
-				t.Reset(m.Conf.PriorityMaxIdleTime)
+			if !t.Stop() {
+				<-t.C
+			}
+			if proofRequired {
+				t.Reset(m.Conf.MaxProofTime)
 			} else {
 				t.Reset(m.Conf.MaxIdleTime)
 			}
@@ -46,9 +53,9 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
-		case <-emptyBlocksTimer: // Empty blocks timeout
+		case <-emptyBlocksTimer: // When the timer expires, allow producing empty blocks (forces a block to be produced)
 			produceEmptyBlock = true
-			m.logger.Debug(fmt.Sprintf("no transactions, producing empty block: elapsed: %.2f", m.Conf.MaxIdleTime.Seconds()))
+			m.logger.Debug("no transactions, producing empty block")
 		// Produce block
 		case <-ticker.C:
 			block, commit, err := m.ProduceAndGossipBlock(ctx, produceEmptyBlock)
@@ -67,7 +74,11 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 				m.logger.Error("produce and gossip: uncategorized, assuming recoverable", "error", err)
 				continue
 			}
-			resetEmptyBlocksTimer(len(block.Data.Txs) != 0) //set priority if block has transactions
+			// If IBC transactions are present, set proof required to true
+			// This will set a shorter timer for the next block
+			// currently we set it for all txs as we don't have a way to determine if an IBC tx is present (https://github.com/dymensionxyz/dymint/issues/709)
+			proofRequired := len(block.Data.Txs) != 0
+			resetEmptyBlocksFn(proofRequired)
 
 			// Send the size to the accumulated size channel
 			// This will block in case the submitter is too slow and it's buffer is full

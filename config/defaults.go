@@ -30,7 +30,7 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 		BlockManagerConfig: BlockManagerConfig{
 			BlockTime:               200 * time.Millisecond,
 			MaxIdleTime:             3600 * time.Second,
-			PriorityMaxIdleTime:     100 * time.Second,
+			MaxProofTime:            100 * time.Second,
 			BatchSubmitMaxTime:      3600 * time.Second,
 			MaxSupportedBatchSkew:   20,
 			NamespaceID:             "0000000000000000ffff",

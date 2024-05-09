@@ -45,9 +45,8 @@ type BlockManagerConfig struct {
 	BlockTime time.Duration `mapstructure:"block_time"`
 	// MaxIdleTime defines how long should block manager wait for new transactions before producing empty block
 	MaxIdleTime time.Duration `mapstructure:"max_idle_time"`
-	// PriorityMaxIdleTime is lower than MaxIdleTime, in case required
-	// This is to ensure that the IBC transactions can be proven and relayed
-	PriorityMaxIdleTime time.Duration `mapstructure:"priority_max_idle_time"`
+	// MaxProofTime defines the max time to be idle, if txs that requires proof were included in last block
+	MaxProofTime time.Duration `mapstructure:"max_proof_time"`
 	// BatchSubmitMaxTime defines how long should block manager wait for before submitting batch
 	BatchSubmitMaxTime time.Duration `mapstructure:"batch_submit_max_time"`
 	// Max amount of pending batches to be submitted. block production will be paused if this limit is reached.
@@ -128,8 +127,8 @@ func (c BlockManagerConfig) Validate() error {
 		if c.MaxIdleTime <= c.BlockTime {
 			return fmt.Errorf("max_idle_time must be greater than block_time")
 		}
-		if c.PriorityMaxIdleTime <= 0 || c.PriorityMaxIdleTime > c.MaxIdleTime {
-			return fmt.Errorf("priority_max_idle_time must be positive and not greater than max_idle_time")
+		if c.MaxProofTime <= 0 || c.MaxProofTime > c.MaxIdleTime {
+			return fmt.Errorf("max_proof_time must be positive and not greater than max_idle_time")
 		}
 	}
 
