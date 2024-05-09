@@ -128,7 +128,7 @@ func (m *Manager) HandleSubmissionTrigger() error {
 
 	resultSubmitToDA := m.DAClient.SubmitBatch(nextBatch)
 
-	if resultSubmitToDA.Code == da.StatusSuccess {
+	if resultSubmitToDA.Code != da.StatusSuccess {
 		return fmt.Errorf("submit next batch to da: %s", resultSubmitToDA.Message)
 	}
 
