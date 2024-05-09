@@ -126,10 +126,6 @@ func (m *Manager) HandleSubmissionTrigger() error {
 		return fmt.Errorf("create next batch to submit: %w", err)
 	}
 
-	if err := m.ValidateBatch(nextBatch); err != nil {
-		return fmt.Errorf("validate batch: %w", err)
-	}
-
 	resultSubmitToDA, err := m.submitNextBatchToDA(nextBatch)
 	if err != nil {
 		return fmt.Errorf("submit next batch to da: %w", err)
@@ -167,17 +163,6 @@ func (m *Manager) submitNextBatchToSL(batch *types.Batch, daResult *da.ResultSub
 	}
 
 	return actualEndHeight, nil
-}
-
-func (m *Manager) ValidateBatch(batch *types.Batch) error {
-	syncTarget := m.SyncTarget.Load()
-	if batch.StartHeight != syncTarget+1 {
-		return fmt.Errorf("batch start height != syncTarget + 1. StartHeight %d, m.SyncTarget %d", batch.StartHeight, syncTarget)
-	}
-	if batch.EndHeight < batch.StartHeight {
-		return fmt.Errorf("batch end height must be greater than start height. EndHeight %d, StartHeight %d", batch.EndHeight, batch.StartHeight)
-	}
-	return nil
 }
 
 func (m *Manager) CreateNextBatchToSubmit(startHeight uint64, endHeightInclusive uint64) (*types.Batch, error) {
