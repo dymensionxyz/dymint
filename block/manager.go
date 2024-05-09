@@ -240,7 +240,6 @@ func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
 	eventData := event.Data().(p2p.GossipedBlock)
 	block := eventData.Block
 	commit := eventData.Commit
-	m.logger.Debug("Received new block via gossip", "height", block.Header.Height, "n cachedBlocks", len(m.blockCache))
 	m.retrieverMutex.Lock() // needed to protect blockCache access
 	_, found := m.blockCache[block.Header.Height]
 	if found {
