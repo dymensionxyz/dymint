@@ -6,10 +6,10 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/celestiaorg/celestia-openrpc/types/blob"
 	"github.com/cometbft/cometbft/crypto/merkle"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
-	"github.com/rollkit/celestia-openrpc/types/blob"
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 

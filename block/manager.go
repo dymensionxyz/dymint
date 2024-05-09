@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"github.com/dymensionxyz/dymint/gerr"
 
@@ -60,7 +59,6 @@ type Manager struct {
 	// Block production
 	shouldProduceBlocksCh chan bool
 	produceEmptyBlockCh   chan bool
-	lastSubmissionTime    atomic.Int64
 
 	/*
 		Guard against triggering a new batch submission when the old one is still going on (taking a while)
@@ -220,7 +218,6 @@ func (m *Manager) UpdateSyncParams(endHeight uint64) {
 	types.RollappHubHeightGauge.Set(float64(endHeight))
 	m.logger.Info("Received new syncTarget", "syncTarget", endHeight)
 	m.SyncTarget.Store(endHeight)
-	m.lastSubmissionTime.Store(time.Now().UnixNano())
 }
 
 func getAddress(key crypto.PrivKey) ([]byte, error) {
@@ -241,10 +238,10 @@ func (m *Manager) onNodeHealthStatus(event pubsub.Message) {
 // onNewGossippedBlock will take a block and apply it
 func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
 	m.retrieverMutex.Lock() // needed to protect blockCache access
-	m.logger.Debug("Received new block via gossip", "n cachedBlocks", len(m.blockCache))
 	eventData := event.Data().(p2p.GossipedBlock)
 	block := eventData.Block
 	commit := eventData.Commit
+	m.logger.Debug("Received new block via gossip", "height", block.Header.Height, "n cachedBlocks", len(m.blockCache))
 
 	nextHeight := m.Store.NextHeight()
 	if block.Header.Height >= nextHeight {

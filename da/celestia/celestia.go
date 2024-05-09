@@ -11,15 +11,14 @@ import (
 	"github.com/dymensionxyz/dymint/gerr"
 
 	"github.com/avast/retry-go/v4"
+	"github.com/celestiaorg/celestia-openrpc/types/blob"
+	"github.com/celestiaorg/celestia-openrpc/types/header"
 	"github.com/celestiaorg/nmt"
 	"github.com/gogo/protobuf/proto"
 	"github.com/tendermint/tendermint/libs/pubsub"
 
-	openrpc "github.com/rollkit/celestia-openrpc"
-
-	"github.com/rollkit/celestia-openrpc/types/blob"
-	"github.com/rollkit/celestia-openrpc/types/header"
-	"github.com/rollkit/celestia-openrpc/types/share"
+	openrpc "github.com/celestiaorg/celestia-openrpc"
+	"github.com/celestiaorg/celestia-openrpc/types/share"
 
 	"github.com/dymensionxyz/dymint/da"
 	celtypes "github.com/dymensionxyz/dymint/da/celestia/types"
@@ -33,14 +32,11 @@ import (
 type DataAvailabilityLayerClient struct {
 	rpc celtypes.CelestiaRPCClient
 
-	pubsubServer     *pubsub.Server
-	config           Config
-	logger           types.Logger
-	ctx              context.Context
-	cancel           context.CancelFunc
-	rpcRetryDelay    time.Duration
-	rpcRetryAttempts int
-	submitBackoff    uretry.BackoffConfig
+	pubsubServer *pubsub.Server
+	config       Config
+	logger       types.Logger
+	ctx          context.Context
+	cancel       context.CancelFunc
 }
 
 var (
@@ -58,21 +54,21 @@ func WithRPCClient(rpc celtypes.CelestiaRPCClient) da.Option {
 // WithRPCRetryDelay sets failed rpc calls retry delay.
 func WithRPCRetryDelay(delay time.Duration) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
-		daLayerClient.(*DataAvailabilityLayerClient).rpcRetryDelay = delay
+		daLayerClient.(*DataAvailabilityLayerClient).config.RetryDelay = delay
 	}
 }
 
 // WithRPCAttempts sets failed rpc calls retry attempts.
 func WithRPCAttempts(attempts int) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
-		daLayerClient.(*DataAvailabilityLayerClient).rpcRetryAttempts = attempts
+		daLayerClient.(*DataAvailabilityLayerClient).config.RetryAttempts = attempts
 	}
 }
 
 // WithSubmitBackoff sets submit retry delay config.
 func WithSubmitBackoff(c uretry.BackoffConfig) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
-		daLayerClient.(*DataAvailabilityLayerClient).submitBackoff = c
+		daLayerClient.(*DataAvailabilityLayerClient).config.Backoff = c
 	}
 }
 
@@ -80,37 +76,15 @@ func WithSubmitBackoff(c uretry.BackoffConfig) da.Option {
 func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.Server, kvStore store.KVStore, logger types.Logger, options ...da.Option) error {
 	c.logger = logger
 
-	if len(config) <= 0 {
-		return errors.New("config is empty")
-	}
-	err := json.Unmarshal(config, &c.config)
+	var err error
+	c.config, err = createConfig(config)
 	if err != nil {
-		return err
+		return fmt.Errorf("create config: %w: %w", err, gerr.ErrInvalidArgument)
 	}
-	err = (&c.config).InitNamespaceID()
-	if err != nil {
-		return err
-	}
-
-	if c.config.GasPrices != 0 && c.config.Fee != 0 {
-		return errors.New("can't set both gas prices and fee")
-	}
-
-	if c.config.Fee == 0 && c.config.GasPrices == 0 {
-		return errors.New("fee or gas prices must be set")
-	}
-
-	if c.config.GasAdjustment == 0 {
-		c.config.GasAdjustment = defaultGasAdjustment
-	}
-
-	c.pubsubServer = pubsubServer
-	// Set defaults
-	c.rpcRetryAttempts = defaultRpcCheckAttempts
-	c.rpcRetryDelay = defaultRpcRetryDelay
-	c.submitBackoff = defaultSubmitBackoff
 
 	c.ctx, c.cancel = context.WithCancel(context.Background())
+
+	c.pubsubServer = pubsubServer
 
 	// Apply options
 	for _, apply := range options {
@@ -118,6 +92,35 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 	}
 
 	return nil
+}
+
+func createConfig(bz []byte) (c Config, err error) {
+	if len(bz) <= 0 {
+		return c, errors.New("supplied config is empty")
+	}
+	err = json.Unmarshal(bz, &c)
+	if err != nil {
+		return c, fmt.Errorf("json unmarshal: %w", err)
+	}
+
+	err = c.InitNamespaceID()
+	if err != nil {
+		return c, fmt.Errorf("init namespace id: %w", err)
+	}
+
+	if c.GasPrices == 0 {
+		return c, errors.New("gas prices must be set")
+	}
+
+	// NOTE: 0 is valid value for RetryAttempts
+
+	if c.RetryDelay == 0 {
+		c.RetryDelay = defaultRpcRetryDelay
+	}
+	if c.Backoff == (uretry.BackoffConfig{}) {
+		c.Backoff = defaultSubmitBackoff
+	}
+	return c, nil
 }
 
 // Start prepares DataAvailabilityLayerClient to work.
@@ -209,7 +212,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 		}
 	}
 
-	backoff := c.submitBackoff.Backoff()
+	backoff := c.config.Backoff.Backoff()
 
 	for {
 		select {
@@ -303,9 +306,9 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 
 					return nil
 				},
-				retry.Attempts(uint(c.rpcRetryAttempts)),
+				retry.Attempts(uint(c.config.RetryAttempts)),
 				retry.DelayType(retry.FixedDelay),
-				retry.Delay(c.rpcRetryDelay),
+				retry.Delay(c.config.RetryDelay),
 			)
 			if err != nil {
 				c.logger.Error("RetrieveBatches process failed", "error", err)
@@ -432,7 +435,7 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 				}
 
 				return nil
-			}, retry.Attempts(uint(c.rpcRetryAttempts)), retry.DelayType(retry.FixedDelay), retry.Delay(c.rpcRetryDelay))
+			}, retry.Attempts(uint(c.config.RetryAttempts)), retry.DelayType(retry.FixedDelay), retry.Delay(c.config.RetryDelay))
 			if err != nil {
 				c.logger.Error("CheckAvailability process failed", "error", err)
 			}
@@ -557,18 +560,11 @@ func (c *DataAvailabilityLayerClient) submit(daBlob da.Blob) (uint64, da.Commitm
 		return 0, nil, fmt.Errorf("zero commitments: %w", gerr.ErrNotFound)
 	}
 
-	options := openrpc.DefaultSubmitOptions()
-
 	blobSizes := make([]uint32, len(blobs))
 	for i, blob := range blobs {
 		blobSizes[i] = uint32(len(blob.Data))
 	}
 
-	estimatedGas := EstimateGas(blobSizes, DefaultGasPerBlobByte, DefaultTxSizeCostPerByte)
-	gasWanted := uint64(float64(estimatedGas) * c.config.GasAdjustment)
-	fees := c.calculateFees(gasWanted)
-	options.Fee = fees
-	options.GasLimit = gasWanted
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
@@ -581,20 +577,20 @@ func (c *DataAvailabilityLayerClient) submit(daBlob da.Blob) (uint64, da.Commitm
 	err = retry.Do(
 		func() error {
 			var err error
-			height, err = c.rpc.Submit(ctx, blobs, options)
+			height, err = c.rpc.Submit(ctx, blobs, openrpc.GasPrice(c.config.GasPrices))
 			return err
 		},
 		retry.Context(c.ctx),
 		retry.LastErrorOnly(true),
-		retry.Delay(c.rpcRetryDelay),
-		retry.Attempts(uint(c.rpcRetryAttempts)),
+		retry.Delay(c.config.RetryDelay),
+		retry.Attempts(uint(c.config.RetryAttempts)),
 		retry.DelayType(retry.FixedDelay),
 	)
 	if err != nil {
 		return 0, nil, fmt.Errorf("do rpc submit: %w", err)
 	}
 
-	c.logger.Info("Successfully submitted blobs to Celestia", "height", height, "gas", options.GasLimit, "fee", options.Fee)
+	c.logger.Info("Successfully submitted blobs to Celestia", "height", height)
 
 	return height, commitments[0], nil
 }
@@ -643,7 +639,7 @@ func (c *DataAvailabilityLayerClient) getDataAvailabilityHeaders(height uint64) 
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
-	headers, err := c.rpc.GetHeaders(ctx, height)
+	headers, err := c.rpc.GetByHeight(ctx, height)
 	if err != nil {
 		return nil, err
 	}

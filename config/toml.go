@@ -79,6 +79,7 @@ batch_submit_max_time = "{{ .BlockManagerConfig.BatchSubmitMaxTime }}"
 ### da config ###
 da_layer = "{{ .DALayer }}" # mock, celestia, avail
 namespace_id = "{{ .BlockManagerConfig.NamespaceID }}"
+# this should be json matching the celestia.Config type
 da_config = "{{ .DAConfig }}"
 
 # max size of batch in bytes that can be accepted by DA
@@ -91,7 +92,7 @@ gossiped_blocks_cache_size = {{ .BlockManagerConfig.GossipedBlocksCacheSize }}
 bootstrap_time = "{{ .BootstrapTime }}"
 
 #celestia config example:
-# da_config = "{\"base_url\": \"http://127.0.0.1:26658\", \"timeout\": 60000000000, \"gas_prices\":0.1, \"gas_adjustment\": 1.3, \"token\":\"TOKEN\"}"
+# da_config = "{\"base_url\":\"http:\/\/127.0.0.1:26658\",\"timeout\":5000000000,\"gas_prices\":0.1,\"auth_token\":\"TOKEN\",\"backoff\":{\"initial_delay\":6000000000,\"max_delay\":6000000000,\"growth_factor\":2},\"retry_attempts\":4,\"retry_delay\":3000000000}"
 # Avail config example:
 # da_config = "{\"seed\": \"MNEMONIC\", \"api_url\": \"wss://kate.avail.tools/ws\", \"app_id\": 0, \"tip\":10}"
 

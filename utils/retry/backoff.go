@@ -12,9 +12,9 @@ const (
 
 // BackoffConfig is a configuration for a backoff, it's used to create new instances
 type BackoffConfig struct {
-	InitialDelay time.Duration
-	MaxDelay     time.Duration
-	GrowthFactor float64
+	InitialDelay time.Duration `json:"initial_delay"`
+	MaxDelay     time.Duration `json:"max_delay"`
+	GrowthFactor float64       `json:"growth_factor"`
 }
 
 // Backoff creates a new Backoff instance with the configuration (starting at 0 attempts made so far)

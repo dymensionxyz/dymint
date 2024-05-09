@@ -93,11 +93,11 @@ func GetManagerWithProposerKey(conf config.BlockManagerConfig, proposerKey crypt
 	p2pClient, err := p2p.NewClient(config.P2PConfig{
 		GossipCacheSize: 50,
 		BoostrapTime:    30 * time.Second,
-	}, p2pKey, "TestChain", logger)
+	}, p2pKey, "TestChain", pubsubServer, logger)
 	if err != nil {
 		return nil, err
 	}
-	p2pValidator := p2p.NewValidator(logger, pubsubServer, settlementlc)
+	p2pValidator := p2p.NewValidator(logger, settlementlc)
 	p2pClient.SetTxValidator(p2pValidator.TxValidator(mp, mpIDs))
 	p2pClient.SetBlockValidator(p2pValidator.BlockValidator())
 

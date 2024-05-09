@@ -19,6 +19,7 @@ import (
 	discutil "github.com/libp2p/go-libp2p/p2p/discovery/util"
 	routedhost "github.com/libp2p/go-libp2p/p2p/host/routed"
 	"github.com/multiformats/go-multiaddr"
+	tmpubsub "github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/p2p"
 	"go.uber.org/multierr"
 
@@ -36,9 +37,6 @@ const (
 
 	// txTopicSuffix is added after namespace to create pubsub topic for TX gossiping.
 	txTopicSuffix = "-tx"
-
-	// headerTopicSuffix is added after namespace to create pubsub topic for block header gossiping.
-	headerTopicSuffix = "-header"
 
 	// blockTopicSuffix is added after namespace to create pubsub topic for block gossiping.
 	blockTopicSuffix = "-block"
@@ -61,15 +59,14 @@ type Client struct {
 	txGossiper  *Gossiper
 	txValidator GossipValidator
 
-	headerGossiper  *Gossiper
-	headerValidator GossipValidator
-
 	blockGossiper  *Gossiper
 	blockValidator GossipValidator
 
 	// cancel is used to cancel context passed to libp2p functions
 	// it's required because of discovery.Advertise call
 	cancel context.CancelFunc
+
+	localPubsubServer *tmpubsub.Server
 
 	logger types.Logger
 }
@@ -78,7 +75,7 @@ type Client struct {
 //
 // Basic checks on parameters are done, and default parameters are provided for unset-configuration
 // TODO(tzdybal): consider passing entire config, not just P2P config, to reduce number of arguments
-func NewClient(conf config.P2PConfig, privKey crypto.PrivKey, chainID string, logger types.Logger) (*Client, error) {
+func NewClient(conf config.P2PConfig, privKey crypto.PrivKey, chainID string, localPubsubServer *tmpubsub.Server, logger types.Logger) (*Client, error) {
 	if privKey == nil {
 		return nil, errNoPrivKey
 	}
@@ -86,10 +83,11 @@ func NewClient(conf config.P2PConfig, privKey crypto.PrivKey, chainID string, lo
 		conf.ListenAddress = config.DefaultListenAddress
 	}
 	return &Client{
-		conf:    conf,
-		privKey: privKey,
-		chainID: chainID,
-		logger:  logger,
+		conf:              conf,
+		privKey:           privKey,
+		chainID:           chainID,
+		logger:            logger,
+		localPubsubServer: localPubsubServer,
 	}, nil
 }
 
@@ -144,7 +142,6 @@ func (c *Client) Close() error {
 
 	return multierr.Combine(
 		c.txGossiper.Close(),
-		c.headerGossiper.Close(),
 		c.blockGossiper.Close(),
 		c.DHT.Close(),
 		c.Host.Close(),
@@ -160,17 +157,6 @@ func (c *Client) GossipTx(ctx context.Context, tx []byte) error {
 // SetTxValidator sets the callback function, that will be invoked during message gossiping.
 func (c *Client) SetTxValidator(val GossipValidator) {
 	c.txValidator = val
-}
-
-// GossipHeader sends the block header to the P2P network.
-func (c *Client) GossipHeader(ctx context.Context, headerBytes []byte) error {
-	c.logger.Debug("Gossiping block header", "len", len(headerBytes))
-	return c.headerGossiper.Publish(ctx, headerBytes)
-}
-
-// SetHeaderValidator sets the callback function, that will be invoked after block header is received from P2P network.
-func (c *Client) SetHeaderValidator(validator GossipValidator) {
-	c.headerValidator = validator
 }
 
 // GossipBlock sends the block, and it's commit to the P2P network.
@@ -341,20 +327,14 @@ func (c *Client) setupGossiping(ctx context.Context) error {
 		return err
 	}
 
-	c.txGossiper, err = NewGossiper(c.Host, ps, c.getTxTopic(), c.logger, WithValidator(c.txValidator))
+	//tx gossiper receives the tx to add to the mempool through validation process, since it is a joint process
+	c.txGossiper, err = NewGossiper(c.Host, ps, c.getTxTopic(), nil, c.logger, WithValidator(c.txValidator))
 	if err != nil {
 		return err
 	}
 	go c.txGossiper.ProcessMessages(ctx)
 
-	c.headerGossiper, err = NewGossiper(c.Host, ps, c.getHeaderTopic(), c.logger,
-		WithValidator(c.headerValidator))
-	if err != nil {
-		return err
-	}
-	go c.headerGossiper.ProcessMessages(ctx)
-
-	c.blockGossiper, err = NewGossiper(c.Host, ps, c.getBlockTopic(), c.logger,
+	c.blockGossiper, err = NewGossiper(c.Host, ps, c.getBlockTopic(), c.gossipedBlockReceived, c.logger,
 		WithValidator(c.blockValidator))
 	if err != nil {
 		return err
@@ -398,10 +378,6 @@ func (c *Client) getTxTopic() string {
 	return c.getNamespace() + txTopicSuffix
 }
 
-func (c *Client) getHeaderTopic() string {
-	return c.getNamespace() + headerTopicSuffix
-}
-
 func (c *Client) getBlockTopic() string {
 	return c.getNamespace() + blockTopicSuffix
 }
@@ -411,6 +387,17 @@ func (c *Client) getBlockTopic() string {
 func (c *Client) NewTxValidator() GossipValidator {
 	return func(g *GossipMessage) bool {
 		return true
+	}
+}
+
+func (c *Client) gossipedBlockReceived(msg *GossipMessage) {
+	var gossipedBlock GossipedBlock
+	if err := gossipedBlock.UnmarshalBinary(msg.Data); err != nil {
+		c.logger.Error("deserialize gossiped block", "error", err)
+	}
+	err := c.localPubsubServer.PublishWithEvents(context.Background(), gossipedBlock, map[string][]string{EventTypeKey: {EventNewGossipedBlock}})
+	if err != nil {
+		c.logger.Error("publishing event", "err", err)
 	}
 }
 
