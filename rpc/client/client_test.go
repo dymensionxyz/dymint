@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	tmcfg "github.com/tendermint/tendermint/config"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -858,11 +860,12 @@ func getRPC(t *testing.T) (*tmmocks.MockApplication, *Client) {
 	rollappID := "rollapp_1234-1"
 
 	config := config.NodeConfig{
-		RootDir:    "",
-		DBPath:     "",
-		P2P:        config.P2PConfig{},
-		RPC:        config.RPCConfig{},
-		Aggregator: false,
+		RootDir:       "",
+		DBPath:        "",
+		P2P:           config.P2PConfig{},
+		RPC:           config.RPCConfig{},
+		MempoolConfig: *tmcfg.DefaultMempoolConfig(),
+		Aggregator:    false,
 		BlockManagerConfig: config.BlockManagerConfig{
 			BlockTime:               100 * time.Millisecond,
 			BlockBatchSize:          1,

@@ -27,6 +27,7 @@ import (
 
 	"github.com/dymensionxyz/dymint/config"
 	tmmocks "github.com/dymensionxyz/dymint/mocks/github.com/tendermint/tendermint/abci/types"
+	tmcfg "github.com/tendermint/tendermint/config"
 )
 
 // simply check that node is starting and stopping without panicking
@@ -64,11 +65,12 @@ func TestMempoolDirectly(t *testing.T) {
 	rollappID := "rollapp_1234-1"
 
 	nodeConfig := config.NodeConfig{
-		RootDir:    "",
-		DBPath:     "",
-		P2P:        config.P2PConfig{},
-		RPC:        config.RPCConfig{},
-		Aggregator: false,
+		RootDir:       "",
+		DBPath:        "",
+		P2P:           config.P2PConfig{},
+		RPC:           config.RPCConfig{},
+		MempoolConfig: *tmcfg.DefaultMempoolConfig(),
+		Aggregator:    false,
 		BlockManagerConfig: config.BlockManagerConfig{
 			BlockTime:               100 * time.Millisecond,
 			BlockBatchSize:          2,
