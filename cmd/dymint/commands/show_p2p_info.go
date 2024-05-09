@@ -6,7 +6,9 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/dymensionxyz/dymint/conv"
 	"github.com/libp2p/go-libp2p"
@@ -80,14 +82,27 @@ func showP2PInfo(cmd *cobra.Command, args []string) error {
 		fmt.Println("Error unmarshal:", err)
 		return nil
 	}
-	peers := netinfo["peers"].([]interface{})
 	fmt.Println("Host ID:", host.ID())
 	fmt.Println("Listening P2P addresses:", netinfo["listeners"])
 
-	for i, p := range peers {
-		peer := p.(map[string]interface{})
-		info := peer["node_info"].(map[string]interface{})
-		fmt.Printf("Peer %d Id:%s Multiaddress:%s\n", i, info["id"], peer["remote_ip"])
+	if netinfo["peers"] != nil {
+
+		peers := netinfo["peers"].([]interface{})
+
+		for i, p := range peers {
+
+			peer := p.(map[string]interface{})
+			info := peer["node_info"].(map[string]interface{})
+			status := peer["connection_status"].(map[string]interface{})
+
+			duration, err := strconv.ParseInt(status["Duration"].(string), 10, 64)
+			if err != nil {
+				fmt.Println("Error parsing connection duration:", err)
+			}
+			fmt.Printf("Peer %d Id:%s Multiaddress:%s Duration:%s\n", i, info["id"], peer["remote_ip"], time.Duration(duration))
+		}
+	} else {
+		fmt.Println("0 peers connected")
 	}
 
 	return nil
