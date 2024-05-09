@@ -16,6 +16,7 @@ func main() {
 		commands.InitFilesCmd,
 		commands.ShowSequencer,
 		commands.ShowNodeIDCmd,
+		commands.ShowP2PInfoCmd,
 		debug.DebugCmd,
 		cli.NewCompletionCmd(rootCmd, true),
 	)
