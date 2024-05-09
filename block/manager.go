@@ -237,15 +237,14 @@ func (m *Manager) onNodeHealthStatus(event pubsub.Message) {
 // TODO: move to gossip.go
 // onNewGossippedBlock will take a block and apply it
 func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
-	m.retrieverMutex.Lock() // needed to protect blockCache access
 	eventData := event.Data().(p2p.GossipedBlock)
 	block := eventData.Block
 	commit := eventData.Commit
 	m.logger.Debug("Received new block via gossip", "height", block.Header.Height, "n cachedBlocks", len(m.blockCache))
 	m.retrieverMutex.Lock() // needed to protect blockCache access
-
 	_, found := m.blockCache[block.Header.Height]
 	if found {
+		m.retrieverMutex.Unlock()
 		return
 	}
 
