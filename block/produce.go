@@ -22,42 +22,41 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 	// Setup variables for empty block production
 	var (
 		produceEmptyBlock  = true // Allow the initial block to be empty
-		emptyBlocksTimer   <-chan time.Time
 		resetEmptyBlocksFn = func(bool) {}
+		nextEmptyBlock     = time.Time{}
 	)
+
+	// Setup ticker for empty blocks if enabled
+	// if disabled, produceEmptyBlock will remain true and the block will be produced every block time
+	if 0 < m.Conf.MaxIdleTime {
+		//define a reset function to reset the timer
+		resetEmptyBlocksFn = func(proofRequired bool) {
+			produceEmptyBlock = false
+			if proofRequired {
+				nextEmptyBlock = time.Now().Add(m.Conf.MaxProofTime)
+			} else {
+				nextEmptyBlock = time.Now().Add(m.Conf.MaxIdleTime)
+			}
+		}
+		resetEmptyBlocksFn(false)
+	}
 
 	// Main ticker for block production
 	ticker := time.NewTicker(m.Conf.BlockTime)
 	defer ticker.Stop()
 
-	// Setup ticker for empty blocks if enabled
-	// if disabled, produceEmptyBlock will remain true and the block will be produced every block time
-	if 0 < m.Conf.MaxIdleTime {
-		t := time.NewTimer(m.Conf.MaxIdleTime)
-		emptyBlocksTimer = t.C
-		defer t.Stop()
-
-		//define a reset function to reset the timer
-		resetEmptyBlocksFn = func(proofRequired bool) {
-			produceEmptyBlock = false
-			if proofRequired {
-				t.Reset(m.Conf.MaxProofTime)
-			} else {
-				t.Reset(m.Conf.MaxIdleTime)
-			}
-			emptyBlocksTimer = t.C
-		}
-	}
-
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-emptyBlocksTimer: // When the timer expires, allow producing empty blocks (forces a block to be produced)
-			produceEmptyBlock = true
-			m.logger.Debug("no transactions, producing empty block")
-		// Produce block
 		case <-ticker.C:
+			//check if we can produce a block even if there are no transactions
+			//if the time has passed, we will produce an empty block
+			if !nextEmptyBlock.IsZero() && nextEmptyBlock.Before(time.Now()) {
+				m.logger.Debug("no transactions, producing empty block")
+				produceEmptyBlock = true
+			}
+
 			block, commit, err := m.ProduceAndGossipBlock(ctx, produceEmptyBlock)
 			if errors.Is(err, context.Canceled) {
 				m.logger.Error("produce and gossip: context canceled", "error", err)
