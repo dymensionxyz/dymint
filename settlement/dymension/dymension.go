@@ -210,7 +210,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 
 	// TODO: probably should be changed to be a channel, as the eventHandler is also in the HubClient in he produces the event
 	postBatchSubscriberClient := fmt.Sprintf("%s-%d-%s", postBatchSubscriberPrefix, batch.StartHeight, uuid.New().String())
-	subscription, err := d.pubsub.Subscribe(d.ctx, postBatchSubscriberClient, settlement.EventQueryNewSettlementBatchAccepted)
+	subscription, err := d.pubsub.Subscribe(d.ctx, postBatchSubscriberClient, settlement.EventQueryNewSettlementBatchAccepted, 100)
 	if err != nil {
 		return fmt.Errorf("pub sub subscribe to settlement state updates: %w", err)
 	}
@@ -260,10 +260,15 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 		case <-subscription.Cancelled():
 			return fmt.Errorf("subscription cancelled: %w", err)
 
-		case <-subscription.Out():
+		case event := <-subscription.Out():
+			eventData := event.Data().(*settlement.EventDataNewBatchAccepted)
+			if eventData.EndHeight != batch.EndHeight {
+				d.logger.Error("Received event for a different batch, ignoring.", "event", eventData)
+				continue
+			}
+
 			uevent.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{}, settlement.EventHealthStatusList)
 			d.logger.Debug("Batch accepted: emitted healthy event.", "startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
-
 			return nil
 
 		case <-timer.C:
@@ -405,10 +410,13 @@ func (d *HubClient) submitBatch(msgUpdateState *rollapptypes.MsgUpdateState) err
 
 func (d *HubClient) eventHandler() {
 	// TODO(omritoptix): eventsChannel should be a generic channel which is later filtered by the event type.
-	eventsChannel, err := d.client.SubscribeToEvents(d.ctx, "dymension-client", fmt.Sprintf(eventStateUpdate, d.config.RollappID))
+	subscriber := fmt.Sprintf("dymension-client-%s", uuid.New().String())
+	eventsChannel, err := d.client.SubscribeToEvents(d.ctx, subscriber, fmt.Sprintf(eventStateUpdate, d.config.RollappID), 100)
 	if err != nil {
 		panic("Error subscribing to events")
 	}
+	//TODO: add defer unsubscribeAll
+
 	for {
 		select {
 		case <-d.ctx.Done():
@@ -418,7 +426,6 @@ func (d *HubClient) eventHandler() {
 			panic("Settlement WS disconnected")
 		case event := <-eventsChannel:
 			// Assert value is in map and publish it to the event bus
-			d.logger.Debug("Received event from settlement layer")
 			_, ok := d.eventMap[event.Query]
 			if !ok {
 				d.logger.Debug("Ignoring event. Type not supported", "event", event)
@@ -428,6 +435,7 @@ func (d *HubClient) eventHandler() {
 			if err != nil {
 				panic(err)
 			}
+			d.logger.Debug("Received event from settlement layer", "event", eventData)
 			err = d.pubsub.PublishWithEvents(d.ctx, eventData, map[string][]string{settlement.EventTypeKey: {d.eventMap[event.Query]}})
 			if err != nil {
 				panic(err)
