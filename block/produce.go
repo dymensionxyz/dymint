@@ -23,6 +23,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 	defer ticker.Stop()
 
 	var nextEmptyBlock time.Time
+	firstBlock := true
 
 	for {
 		select {
@@ -31,7 +32,8 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 		case <-ticker.C:
 
 			// if empty blocks are configured to be enabled, and one is scheduled...
-			produceEmptyBlock := 0 < m.Conf.MaxProofTime && nextEmptyBlock.Before(time.Now())
+			produceEmptyBlock := firstBlock || 0 < m.Conf.MaxProofTime && nextEmptyBlock.Before(time.Now())
+			firstBlock = false
 
 			block, commit, err := m.ProduceAndGossipBlock(ctx, produceEmptyBlock)
 			if errors.Is(err, context.Canceled) {
