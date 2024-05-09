@@ -56,6 +56,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 		case <-emptyBlocksTimer: // When the timer expires, allow producing empty blocks (forces a block to be produced)
 			produceEmptyBlock = true
 			m.logger.Debug("no transactions, producing empty block")
+			emptyBlocksTimer = nil //reset the timer, will be set on the next block
 		// Produce block
 		case <-ticker.C:
 			block, commit, err := m.ProduceAndGossipBlock(ctx, produceEmptyBlock)
