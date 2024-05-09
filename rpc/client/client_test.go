@@ -443,41 +443,45 @@ func TestTx(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	mockApp := &tmmocks.MockApplication{}
-	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
-	mockApp.On("Info", mock.Anything).Return(expectedInfo)
-	key, _, _ := crypto.GenerateEd25519Key(crand.Reader)
-	signingKey, proposerPubKey, err := crypto.GenerateEd25519Key(crand.Reader)
-	require.NoError(err)
+	/*
+			mockApp := &tmmocks.MockApplication{}
+			mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
+			mockApp.On("Info", mock.Anything).Return(expectedInfo)
+			key, _, _ := crypto.GenerateEd25519Key(crand.Reader)
+			signingKey, proposerPubKey, err := crypto.GenerateEd25519Key(crand.Reader)
+			require.NoError(err)
 
-	pubKeybytes, err := proposerPubKey.Raw()
-	require.NoError(err)
-	rollappID := "rollapp_1234-1"
+			pubKeybytes, err := proposerPubKey.Raw()
+			require.NoError(err)
+			rollappID := "rollapp_1234-1"
 
-	node, err := node.NewNode(context.Background(), config.NodeConfig{
-		DALayer:         "mock",
-		SettlementLayer: "mock",
-		Aggregator:      true,
-		BlockManagerConfig: config.BlockManagerConfig{
-			BlockBatchSize:          1,
-			BlockTime:               200 * time.Millisecond,
-			BatchSubmitMaxTime:      60 * time.Second,
-			BlockBatchMaxSizeBytes:  1000,
-			GossipedBlocksCacheSize: 50,
-		},
-		BootstrapTime: 30 * time.Second,
-		SettlementConfig: settlement.Config{
-			ProposerPubKey: hex.EncodeToString(pubKeybytes),
-			RollappID:      rollappID,
-		},
-	},
-		key, signingKey, proxy.NewLocalClientCreator(mockApp),
-		&tmtypes.GenesisDoc{ChainID: rollappID},
-		log.TestingLogger(), mempool.NopMetrics())
-	require.NoError(err)
-	require.NotNil(node)
+			node, err := node.NewNode(context.Background(), config.NodeConfig{
+				DALayer:         "mock",
+				SettlementLayer: "mock",
+				Aggregator:      true,
+				BlockManagerConfig: config.BlockManagerConfig{
+					BlockBatchSize:          1,
+					BlockTime:               200 * time.Millisecond,
+					BatchSubmitMaxTime:      60 * time.Second,
+					BlockBatchMaxSizeBytes:  1000,
+					GossipedBlocksCacheSize: 50,
+				},
+				BootstrapTime: 30 * time.Second,
+				SettlementConfig: settlement.Config{
+					ProposerPubKey: hex.EncodeToString(pubKeybytes),
+					RollappID:      rollappID,
+				},
+			},
+				key, signingKey, proxy.NewLocalClientCreator(mockApp),
+				&tmtypes.GenesisDoc{ChainID: rollappID},
+				log.TestingLogger(), mempool.NopMetrics())
+			require.NoError(err)
+			require.NotNil(node)
+		rpc := NewClient(node)
+	*/
 
-	rpc := NewClient(node)
+	mockApp, rpc := getRPC(t, withAggregator())
+
 	require.NotNil(rpc)
 	mockApp.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
 	mockApp.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{})
@@ -485,8 +489,9 @@ func TestTx(t *testing.T) {
 	mockApp.On("DeliverTx", mock.Anything).Return(abci.ResponseDeliverTx{})
 	mockApp.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{})
 	mockApp.On("Info", mock.Anything).Return(abci.ResponseInfo{LastBlockHeight: 0, LastBlockAppHash: []byte{0}})
+	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 
-	err = rpc.node.Start()
+	err := rpc.node.Start()
 	require.NoError(err)
 
 	tx1 := tmtypes.Tx("tx1")
@@ -497,8 +502,8 @@ func TestTx(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	resTx, errTx := rpc.Tx(context.Background(), res.Hash, true)
-	assert.NoError(errTx)
 	assert.NotNil(resTx)
+	assert.NoError(errTx)
 	assert.EqualValues(tx1, resTx.Tx)
 	assert.EqualValues(res.Hash, resTx.Hash)
 
@@ -846,7 +851,19 @@ func getBlockMeta(rpc *Client, n int64) *tmtypes.BlockMeta {
 	return bmeta
 }
 
-func getRPC(t *testing.T) (*tmmocks.MockApplication, *Client) {
+type getRPCOpts struct {
+	aggregator bool
+}
+
+type getRPCOption func(*getRPCOpts)
+
+func withAggregator() getRPCOption {
+	return func(o *getRPCOpts) {
+		o.aggregator = true
+	}
+}
+
+func getRPC(t *testing.T, options ...getRPCOption) (*tmmocks.MockApplication, *Client) {
 	t.Helper()
 	require := require.New(t)
 	app := &tmmocks.MockApplication{}
@@ -859,13 +876,18 @@ func getRPC(t *testing.T) (*tmmocks.MockApplication, *Client) {
 
 	rollappID := "rollapp_1234-1"
 
+	opts := getRPCOpts{}
+	for _, o := range options {
+		o(&opts)
+	}
+
 	config := config.NodeConfig{
 		RootDir:       "",
 		DBPath:        "",
 		P2P:           config.P2PConfig{},
 		RPC:           config.RPCConfig{},
 		MempoolConfig: *tmcfg.DefaultMempoolConfig(),
-		Aggregator:    false,
+		Aggregator:    opts.aggregator,
 		BlockManagerConfig: config.BlockManagerConfig{
 			BlockTime:               100 * time.Millisecond,
 			BlockBatchSize:          1,
