@@ -242,6 +242,7 @@ func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
 	block := eventData.Block
 	commit := eventData.Commit
 	m.logger.Debug("Received new block via gossip", "height", block.Header.Height, "n cachedBlocks", len(m.blockCache))
+	m.retrieverMutex.Lock() // needed to protect blockCache access
 
 	_, found := m.blockCache[block.Header.Height]
 	if found {
@@ -252,13 +253,13 @@ func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
 
 	nextHeight := m.Store.NextHeight()
 	if block.Header.Height >= nextHeight {
-		m.retrieverMutex.Lock() // needed to protect blockCache access
 		m.blockCache[block.Header.Height] = CachedBlock{
 			Block:  &block,
 			Commit: &commit,
 		}
-		m.retrieverMutex.Unlock() // have to give this up as it's locked again in attempt apply, and we're not re-entrant
 	}
+	m.retrieverMutex.Unlock() // have to give this up as it's locked again in attempt apply, and we're not re-entrant
+
 	err := m.attemptApplyCachedBlocks()
 	if err != nil {
 		m.logger.Error("applying cached blocks", "err", err)
