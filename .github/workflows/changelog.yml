@@ -24,7 +24,7 @@ jobs:
           npm install -g conventional-changelog-cli
           conventional-changelog -p angular -i CHANGELOG.md -s
 
-      - name: Check if "auto-changelog-update" branch exists
+      - name: Check if "auto-changelog-update" branch exists and update if needed
         id: check_branch
         run: |
           git fetch origin auto-changelog-update:auto-changelog-update --no-tags
