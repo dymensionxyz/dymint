@@ -40,15 +40,15 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 	// Init manager with empty blocks feature disabled
 	managerConfigCreatesEmptyBlocks := testutil.GetManagerConfig()
 	managerConfigCreatesEmptyBlocks.BlockTime = blockTime
-	managerConfigCreatesEmptyBlocks.MaxIdleTime = MaxIdleTime
-	managerConfigCreatesEmptyBlocks.MaxProofTime = MaxIdleTime
+	managerConfigCreatesEmptyBlocks.MaxIdleTime = 0 * time.Second
 	managerWithEmptyBlocks, err := testutil.GetManager(managerConfigCreatesEmptyBlocks, nil, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
 	// Init manager with empty blocks feature enabled
 	managerConfig := testutil.GetManagerConfig()
 	managerConfig.BlockTime = blockTime
-	managerConfig.MaxIdleTime = 0
+	managerConfig.MaxIdleTime = MaxIdleTime
+	managerConfig.MaxProofTime = MaxIdleTime
 	manager, err := testutil.GetManager(managerConfig, nil, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
@@ -61,8 +61,8 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 	go manager.ProduceBlockLoop(mCtx)
 	go managerWithEmptyBlocks.ProduceBlockLoop(mCtx)
 
-	buf1 := make(chan struct{}, 100) // dummy to avoid unhealthy event
-	buf2 := make(chan struct{}, 100) // dummy to avoid unhealthy event
+	buf1 := make(chan struct{}, 100) //dummy to avoid unhealthy event
+	buf2 := make(chan struct{}, 100) //dummy to avoid unhealthy event
 	go manager.AccumulatedDataLoop(mCtx, buf1)
 	go managerWithEmptyBlocks.AccumulatedDataLoop(mCtx, buf2)
 	<-mCtx.Done()
