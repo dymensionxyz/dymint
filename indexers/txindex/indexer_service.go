@@ -3,7 +3,7 @@ package txindex
 import (
 	"context"
 
-	"github.com/dymensionxyz/dymint/state/indexer"
+	indexer "github.com/dymensionxyz/dymint/indexers/blockindexer"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/types"
 )

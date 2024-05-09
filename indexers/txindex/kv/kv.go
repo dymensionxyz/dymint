@@ -12,11 +12,11 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
-	"github.com/tendermint/tendermint/types"
+	tmtypes "github.com/tendermint/tendermint/types"
 
-	"github.com/dymensionxyz/dymint/state/indexer"
-	"github.com/dymensionxyz/dymint/state/txindex"
-	"github.com/dymensionxyz/dymint/store"
+	indexer "github.com/dymensionxyz/dymint/indexers/blockindexer"
+	"github.com/dymensionxyz/dymint/indexers/txindex"
+	"github.com/dymensionxyz/dymint/types"
 )
 
 const (
@@ -27,11 +27,11 @@ var _ txindex.TxIndexer = (*TxIndex)(nil)
 
 // TxIndex is the simplest possible indexer, backed by key-value storage (levelDB).
 type TxIndex struct {
-	store store.KVStore
+	store types.KVStore
 }
 
 // NewTxIndex creates new KV indexer.
-func NewTxIndex(store store.KVStore) *TxIndex {
+func NewTxIndex(store types.KVStore) *TxIndex {
 	return &TxIndex{
 		store: store,
 	}
@@ -133,7 +133,7 @@ func (txi *TxIndex) Index(result *abci.TxResult) error {
 	return b.Commit()
 }
 
-func (txi *TxIndex) indexEvents(result *abci.TxResult, hash []byte, store store.Batch) error {
+func (txi *TxIndex) indexEvents(result *abci.TxResult, hash []byte, store types.StoreBatch) error {
 	for _, event := range result.Result.Events {
 		// only index events with a non-empty type
 		if len(event.Type) == 0 {
@@ -282,7 +282,7 @@ func (txi *TxIndex) Search(ctx context.Context, q *query.Query) ([]*abci.TxResul
 
 func lookForHash(conditions []query.Condition) (hash []byte, ok bool, err error) {
 	for _, c := range conditions {
-		if c.CompositeKey == types.TxHashKey {
+		if c.CompositeKey == tmtypes.TxHashKey {
 			decoded, err := hex.DecodeString(c.Operand.(string))
 			return decoded, true, err
 		}
@@ -293,7 +293,7 @@ func lookForHash(conditions []query.Condition) (hash []byte, ok bool, err error)
 // lookForHeight returns a height if there is an "height=X" condition.
 func lookForHeight(conditions []query.Condition) (height int64) {
 	for _, c := range conditions {
-		if c.CompositeKey == types.TxHeightKey && c.Op == query.OpEqual {
+		if c.CompositeKey == tmtypes.TxHeightKey && c.Op == query.OpEqual {
 			return c.Operand.(int64)
 		}
 	}
@@ -574,7 +574,7 @@ func keyForEvent(key string, value []byte, result *abci.TxResult) []byte {
 
 func keyForHeight(result *abci.TxResult) []byte {
 	return []byte(fmt.Sprintf("%s/%d/%d/%d",
-		types.TxHeightKey,
+		tmtypes.TxHeightKey,
 		result.Height,
 		result.Height,
 		result.Index,
