@@ -279,7 +279,6 @@ func TestBlockProductionNodeHealth(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			uevent.MustPublish(context.Background(), manager.Pubsub, c.healthStatusEventData, c.healthStatusEvent)
-			assert.NoError(err, "PublishWithEvents should not produce an error")
 			time.Sleep(500 * time.Millisecond)
 			blockHeight := manager.Store.Height()
 			time.Sleep(500 * time.Millisecond)
