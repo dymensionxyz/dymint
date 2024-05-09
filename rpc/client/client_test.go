@@ -443,43 +443,6 @@ func TestTx(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	/*
-			mockApp := &tmmocks.MockApplication{}
-			mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
-			mockApp.On("Info", mock.Anything).Return(expectedInfo)
-			key, _, _ := crypto.GenerateEd25519Key(crand.Reader)
-			signingKey, proposerPubKey, err := crypto.GenerateEd25519Key(crand.Reader)
-			require.NoError(err)
-
-			pubKeybytes, err := proposerPubKey.Raw()
-			require.NoError(err)
-			rollappID := "rollapp_1234-1"
-
-			node, err := node.NewNode(context.Background(), config.NodeConfig{
-				DALayer:         "mock",
-				SettlementLayer: "mock",
-				Aggregator:      true,
-				BlockManagerConfig: config.BlockManagerConfig{
-					BlockBatchSize:          1,
-					BlockTime:               200 * time.Millisecond,
-					BatchSubmitMaxTime:      60 * time.Second,
-					BlockBatchMaxSizeBytes:  1000,
-					GossipedBlocksCacheSize: 50,
-				},
-				BootstrapTime: 30 * time.Second,
-				SettlementConfig: settlement.Config{
-					ProposerPubKey: hex.EncodeToString(pubKeybytes),
-					RollappID:      rollappID,
-				},
-			},
-				key, signingKey, proxy.NewLocalClientCreator(mockApp),
-				&tmtypes.GenesisDoc{ChainID: rollappID},
-				log.TestingLogger(), mempool.NopMetrics())
-			require.NoError(err)
-			require.NotNil(node)
-		rpc := NewClient(node)
-	*/
-
 	mockApp, rpc := getRPC(t, withAggregator())
 
 	require.NotNil(rpc)
