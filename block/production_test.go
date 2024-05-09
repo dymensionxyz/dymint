@@ -13,7 +13,6 @@ import (
 	"github.com/dymensionxyz/dymint/mempool"
 	mempoolv1 "github.com/dymensionxyz/dymint/mempool/v1"
 	"github.com/dymensionxyz/dymint/node/events"
-	"github.com/dymensionxyz/dymint/types"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
 	tmcfg "github.com/tendermint/tendermint/config"
 
@@ -61,8 +60,8 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 	go manager.ProduceBlockLoop(mCtx)
 	go managerWithEmptyBlocks.ProduceBlockLoop(mCtx)
 
-	buf1 := make(chan struct{}, 100) //dummy to avoid unhealthy event
-	buf2 := make(chan struct{}, 100) //dummy to avoid unhealthy event
+	buf1 := make(chan struct{}, 100) // dummy to avoid unhealthy event
+	buf2 := make(chan struct{}, 100) // dummy to avoid unhealthy event
 	go manager.AccumulatedDataLoop(mCtx, buf1)
 	go managerWithEmptyBlocks.AccumulatedDataLoop(mCtx, buf2)
 	<-mCtx.Done()
@@ -174,44 +173,6 @@ func TestCreateEmptyBlocksNew(t *testing.T) {
 		fmt.Println("time diff:", diff, "tx len", 0)
 	}
 	assert.True(foundTx)
-}
-
-func TestInvalidBatch(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
-
-	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, nil, 1, 1, 0, nil, nil)
-	require.NoError(err)
-
-	batchSize := uint64(5)
-	syncTarget := uint64(10)
-
-	// Create cases
-	cases := []struct {
-		startHeight uint64
-		endHeight   uint64
-		shouldError bool
-	}{
-		{startHeight: syncTarget + 1, endHeight: syncTarget + batchSize, shouldError: false},
-		// batch with endHight < startHeight
-		{startHeight: syncTarget + 1, endHeight: syncTarget, shouldError: true},
-		// batch with startHeight != previousEndHeight + 1
-		{startHeight: syncTarget, endHeight: syncTarget + batchSize + batchSize, shouldError: true},
-	}
-	for _, c := range cases {
-		batch := &types.Batch{
-			StartHeight: c.startHeight,
-			EndHeight:   c.endHeight,
-		}
-
-		manager.UpdateSyncParams(syncTarget)
-		err := manager.ValidateBatch(batch)
-		if c.shouldError {
-			assert.Error(err)
-		} else {
-			assert.NoError(err)
-		}
-	}
 }
 
 // TestStopBlockProduction tests the block production stops when submitter is full
