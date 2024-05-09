@@ -52,7 +52,7 @@ func exampleNMT(nidSize int, ignoreMaxNamespace bool, leavesNIDs ...byte) *nmt.N
 func TestSubmitBatch(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	configBytes, err := json.Marshal(celestia.CelestiaDefaultConfig)
+	configBytes, err := json.Marshal(celestia.TestConfig)
 	require.NoError(err)
 	batch := &types.Batch{
 		StartHeight: 0,
@@ -103,7 +103,6 @@ func TestSubmitBatch(t *testing.T) {
 		},
 	}
 	for _, tc := range cases {
-
 		t.Log("Case name ", tc.name)
 		// Create mock clients
 		mockRPCClient := mocks.NewMockCelestiaRPCClient(t)
@@ -112,7 +111,6 @@ func TestSubmitBatch(t *testing.T) {
 			celestia.WithSubmitBackoff(uretry.NewBackoffConfig(uretry.WithInitialDelay(10*time.Millisecond), uretry.WithMaxDelay(10*time.Millisecond))),
 			celestia.WithRPCClient(mockRPCClient),
 			celestia.WithRPCAttempts(1),
-			celestia.WithRPCRetryDelay(10 * time.Millisecond),
 		}
 		// Subscribe to the health status event
 		pubsubServer := pubsub.NewServer()
