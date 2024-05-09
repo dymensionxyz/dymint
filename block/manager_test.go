@@ -69,15 +69,15 @@ func TestInitialState(t *testing.T) {
 		name                    string
 		store                   store.Store
 		genesis                 *tmtypes.GenesisDoc
-		expectedInitialHeight   int64
-		expectedLastBlockHeight int64
+		expectedInitialHeight   uint64
+		expectedLastBlockHeight uint64
 		expectedChainID         string
 	}{
 		{
 			name:                    "empty store",
 			store:                   emptyStore,
 			genesis:                 genesis,
-			expectedInitialHeight:   genesis.InitialHeight,
+			expectedInitialHeight:   uint64(genesis.InitialHeight),
 			expectedLastBlockHeight: 0,
 			expectedChainID:         genesis.ChainID,
 		},
@@ -98,9 +98,9 @@ func TestInitialState(t *testing.T) {
 				nil, pubsubServer, p2pClient, logger)
 			assert.NoError(err)
 			assert.NotNil(agg)
-			assert.Equal(c.expectedChainID, agg.LastState.ChainID)
-			assert.Equal(c.expectedInitialHeight, agg.LastState.InitialHeight)
-			assert.Equal(c.expectedLastBlockHeight, agg.LastState.LastBlockHeight)
+			assert.Equal(c.expectedChainID, agg.State.ChainID)
+			assert.Equal(c.expectedInitialHeight, agg.State.InitialHeight)
+			assert.Equal(c.expectedLastBlockHeight, agg.State.LastBlockHeight)
 		})
 	}
 }
@@ -185,7 +185,7 @@ func TestProduceNewBlock(t *testing.T) {
 	require.NoError(t, err)
 	// Validate state is updated with the commit hash
 	assert.Equal(t, uint64(1), manager.Store.Height())
-	assert.Equal(t, commitHash, manager.LastState.AppHash)
+	assert.Equal(t, commitHash, manager.State.AppHash)
 }
 
 func TestProducePendingBlock(t *testing.T) {
@@ -211,7 +211,7 @@ func TestProducePendingBlock(t *testing.T) {
 	_, _, err = manager.ProduceAndGossipBlock(context.Background(), true)
 	require.NoError(t, err)
 	// Validate state is updated with the block that was saved in the store
-	assert.Equal(t, block.Header.Hash(), *(*[32]byte)(manager.LastState.LastBlockID.Hash))
+	assert.Equal(t, block.Header.Hash(), *(*[32]byte)(manager.State.LastBlockID.Hash))
 }
 
 // Test that in case we fail after the proxy app commit, next time we won't commit again to the proxy app
@@ -308,7 +308,7 @@ func TestProduceBlockFailAfterCommit(t *testing.T) {
 			mockStore.ShoudFailUpdateState = tc.shouldFailUpdateState
 			_, _, _ = manager.ProduceAndGossipBlock(context.Background(), true)
 			require.Equal(tc.expectedStoreHeight, manager.Store.Height(), tc.name)
-			require.Equal(tc.expectedStateAppHash, manager.LastState.AppHash, tc.name)
+			require.Equal(tc.expectedStateAppHash, manager.State.AppHash, tc.name)
 			storeState, err := manager.Store.LoadState()
 			require.NoError(err)
 			require.Equal(tc.expectedStateAppHash, storeState.AppHash, tc.name)

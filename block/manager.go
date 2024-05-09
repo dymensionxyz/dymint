@@ -46,9 +46,9 @@ type Manager struct {
 	ProposerKey crypto.PrivKey
 
 	// Store and execution
-	Store     store.Store
-	LastState types.State
-	Executor  *Executor
+	Store    types.Store
+	State    types.State
+	Executor *Executor
 
 	// Clients and servers
 	Pubsub    *pubsub.Server
@@ -116,7 +116,7 @@ func NewManager(
 		ProposerKey:     proposerKey,
 		Conf:            conf,
 		Genesis:         genesis,
-		LastState:       s,
+		State:           s,
 		Store:           store,
 		Executor:        exec,
 		DAClient:        dalc,
@@ -147,7 +147,7 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 	}
 
 	// Check if InitChain flow is needed
-	if m.LastState.IsGenesis() {
+	if m.State.IsGenesis() {
 		m.logger.Info("Running InitChain")
 
 		err := m.RunInitChain(ctx)

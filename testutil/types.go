@@ -196,7 +196,7 @@ func GenerateRandomValidatorSet() *tmtypes.ValidatorSet {
 func GenerateState(initialHeight int64, lastBlockHeight int64) types.State {
 	return types.State{
 		ChainID:         "test-chain",
-		InitialHeight:   initialHeight,
+		InitialHeight:   uint64(initialHeight),
 		AppHash:         [32]byte{},
 		LastResultsHash: getEmptyLastResultsHash(),
 		Version: tmstate.Version{
@@ -205,7 +205,7 @@ func GenerateState(initialHeight int64, lastBlockHeight int64) types.State {
 				App:   AppVersion,
 			},
 		},
-		LastBlockHeight: lastBlockHeight,
+		LastBlockHeight: uint64(lastBlockHeight),
 		LastValidators:  GenerateRandomValidatorSet(),
 		Validators:      GenerateRandomValidatorSet(),
 		NextValidators:  GenerateRandomValidatorSet(),

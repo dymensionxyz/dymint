@@ -48,12 +48,12 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		return fmt.Errorf("save block: %w", err)
 	}
 
-	responses, err := m.Executor.ExecuteBlock(m.LastState, block)
+	responses, err := m.Executor.ExecuteBlock(m.State, block)
 	if err != nil {
 		return fmt.Errorf("execute block: %w", err)
 	}
 
-	newState, err := m.Executor.UpdateStateFromResponses(responses, m.LastState, block)
+	newState, err := m.Executor.UpdateStateFromResponses(responses, m.State, block)
 	if err != nil {
 		return fmt.Errorf("update state from responses: %w", err)
 	}
@@ -66,13 +66,13 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		return fmt.Errorf("save block responses: %w", err)
 	}
 
-	m.LastState = newState
-	batch, err = m.Store.UpdateState(m.LastState, batch)
+	m.State = newState
+	batch, err = m.Store.UpdateState(m.State, batch)
 	if err != nil {
 		batch.Discard()
 		return fmt.Errorf("update state: %w", err)
 	}
-	batch, err = m.Store.SaveValidators(block.Header.Height, m.LastState.Validators, batch)
+	batch, err = m.Store.SaveValidators(block.Header.Height, m.State.Validators, batch)
 	if err != nil {
 		batch.Discard()
 		return fmt.Errorf("save validators: %w", err)
@@ -91,7 +91,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 
 	// Prune old heights, if requested by ABCI app.
 	if retainHeight > 0 {
-		pruned, err := m.pruneBlocks(retainHeight)
+		pruned, err := m.pruneBlocks(uint64(retainHeight))
 		if err != nil {
 			m.logger.Error("prune blocks", "retain_height", retainHeight, "err", err)
 		} else {
@@ -101,7 +101,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 
 	// Update the state with the new app hash, last validators and store height from the commit.
 	// Every one of those, if happens before commit, prevents us from re-executing the block in case failed during commit.
-	newState.LastValidators = m.LastState.Validators.Copy()
+	newState.LastValidators = m.State.Validators.Copy()
 	newState.LastStoreHeight = block.Header.Height
 	newState.BaseHeight = m.Store.Base()
 
@@ -109,7 +109,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	if err != nil {
 		return fmt.Errorf("final update state: %w", err)
 	}
-	m.LastState = newState
+	m.State = newState
 
 	if ok := m.Store.SetHeight(block.Header.Height); !ok {
 		return fmt.Errorf("store set height: %d", block.Header.Height)
@@ -172,15 +172,15 @@ func (m *Manager) UpdateStateFromApp() error {
 	appHeight := uint64(proxyAppInfo.LastBlockHeight)
 
 	// update the state with the hash, last store height and last validators.
-	m.LastState.AppHash = *(*[32]byte)(proxyAppInfo.LastBlockAppHash)
-	m.LastState.LastStoreHeight = appHeight
-	m.LastState.LastValidators = m.LastState.Validators.Copy()
+	m.State.AppHash = *(*[32]byte)(proxyAppInfo.LastBlockAppHash)
+	m.State.LastStoreHeight = appHeight
+	m.State.LastValidators = m.State.Validators.Copy()
 
 	resp, err := m.Store.LoadBlockResponses(appHeight)
 	if err != nil {
 		return errorsmod.Wrap(err, "load block responses")
 	}
-	copy(m.LastState.LastResultsHash[:], tmtypes.NewResults(resp.DeliverTxs).Hash())
+	copy(m.State.LastResultsHash[:], tmtypes.NewResults(resp.DeliverTxs).Hash())
 
 	_, err = m.Store.UpdateState(m.LastState, nil)
 	if err != nil {
@@ -197,7 +197,7 @@ func (m *Manager) validateBlock(block *types.Block, commit *types.Commit) error 
 	// dymint to start
 	proposer := m.SLClient.GetProposer()
 
-	return types.ValidateProposedTransition(m.LastState, block, commit, proposer)
+	return types.ValidateProposedTransition(m.State, block, commit, proposer)
 }
 
 func (m *Manager) gossipBlock(ctx context.Context, block types.Block, commit types.Commit) error {

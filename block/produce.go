@@ -114,8 +114,8 @@ func (m *Manager) produceBlock(allowEmpty bool) (*types.Block, *types.Commit, er
 		err            error
 	)
 
-	if m.LastState.IsGenesis() {
-		newHeight = uint64(m.LastState.InitialHeight)
+	if m.State.IsGenesis() {
+		newHeight = uint64(m.State.InitialHeight)
 		lastCommit = &types.Commit{}
 		m.LastState.BaseHeight = newHeight
 		if ok := m.Store.SetBase(newHeight); !ok {
@@ -151,7 +151,7 @@ func (m *Manager) produceBlock(allowEmpty bool) (*types.Block, *types.Commit, er
 	} else if !errors.Is(err, store.ErrKeyNotFound) {
 		return nil, nil, fmt.Errorf("load block: height: %d: %w: %w", newHeight, err, ErrNonRecoverable)
 	} else {
-		block = m.Executor.CreateBlock(newHeight, lastCommit, lastHeaderHash, m.LastState, m.Conf.BlockBatchMaxSizeBytes)
+		block = m.Executor.CreateBlock(newHeight, lastCommit, lastHeaderHash, m.State, m.Conf.BlockBatchMaxSizeBytes)
 		if !allowEmpty && len(block.Data.Txs) == 0 {
 			return nil, nil, fmt.Errorf("%w: %w", types.ErrSkippedEmptyBlock, ErrRecoverable)
 		}
@@ -216,14 +216,14 @@ func (m *Manager) createTMSignature(block *types.Block, proposerAddress []byte, 
 	tmprivkey.PubKey().Bytes()
 	// Create a mock validator to sign the vote
 	tmvalidator := tmtypes.NewMockPVWithParams(tmprivkey, false, false)
-	err := tmvalidator.SignVote(m.LastState.ChainID, v)
+	err := tmvalidator.SignVote(m.State.ChainID, v)
 	if err != nil {
 		return nil, err
 	}
 	// Update the vote with the signature
 	vote.Signature = v.Signature
 	pubKey := tmprivkey.PubKey()
-	voteSignBytes := tmtypes.VoteSignBytes(m.LastState.ChainID, v)
+	voteSignBytes := tmtypes.VoteSignBytes(m.State.ChainID, v)
 	if !pubKey.VerifySignature(voteSignBytes, vote.Signature) {
 		return nil, fmt.Errorf("wrong signature")
 	}

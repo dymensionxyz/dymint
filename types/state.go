@@ -2,6 +2,7 @@ package types
 
 import (
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	// TODO(tzdybal): copy to local project?
@@ -12,28 +13,16 @@ import (
 	"github.com/tendermint/tendermint/version"
 )
 
-// InitStateVersion sets the Consensus.Block and Software versions,
-// but leaves the Consensus.App version blank.
-// The Consensus.App version will be set during the Handshake, once
-// we hear from the app what protocol version it is running.
-var InitStateVersion = tmstate.Version{
-	Consensus: tmversion.Consensus{
-		Block: version.BlockProtocol,
-		App:   0,
-	},
-	Software: version.TMCoreSemVer,
-}
-
 // State contains information about current state of the blockchain.
 type State struct {
 	Version tmstate.Version
 
 	// immutable
 	ChainID       string
-	InitialHeight int64 // should be 1, not 0, when starting from height 1
+	InitialHeight uint64 // should be 1, not 0, when starting from height 1
 
 	// LastBlockHeight=0 at genesis (ie. block(H=0) does not exist)
-	LastBlockHeight int64
+	LastBlockHeight uint64
 	LastBlockID     types.BlockID
 	LastBlockTime   time.Time
 
@@ -61,6 +50,7 @@ type State struct {
 	AppHash [32]byte
 }
 
+// FIXME: move from types package
 // NewFromGenesisDoc reads blockchain State from genesis.
 func NewFromGenesisDoc(genDoc *types.GenesisDoc) (State, error) {
 	err := genDoc.ValidateAndComplete()
@@ -72,10 +62,22 @@ func NewFromGenesisDoc(genDoc *types.GenesisDoc) (State, error) {
 	validatorSet = types.NewValidatorSet(nil)
 	nextValidatorSet = types.NewValidatorSet(nil)
 
+	// InitStateVersion sets the Consensus.Block and Software versions,
+	// but leaves the Consensus.App version blank.
+	// The Consensus.App version will be set during the Handshake, once
+	// we hear from the app what protocol version it is running.
+	var InitStateVersion = tmstate.Version{
+		Consensus: tmversion.Consensus{
+			Block: version.BlockProtocol,
+			App:   0,
+		},
+		Software: version.TMCoreSemVer,
+	}
+
 	s := State{
 		Version:       InitStateVersion,
 		ChainID:       genDoc.ChainID,
-		InitialHeight: genDoc.InitialHeight,
+		InitialHeight: uint64(genDoc.InitialHeight),
 
 		LastBlockHeight: 0,
 		LastBlockID:     types.BlockID{},
