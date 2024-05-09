@@ -56,6 +56,8 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 			nextEmptyBlock = time.Now().Add(m.Conf.MaxIdleTime)
 			if 0 < len(block.Data.Txs) {
 				nextEmptyBlock = time.Now().Add(m.Conf.MaxProofTime)
+			} else {
+				m.logger.Info("produced empty block")
 			}
 
 			// Send the size to the accumulated size channel
