@@ -18,8 +18,6 @@ import (
 
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/libp2p/go-libp2p/core/crypto"
-
-	tmcrypto "github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	tmtypes "github.com/tendermint/tendermint/types"
 
@@ -207,14 +205,6 @@ func (m *Manager) UpdateSyncParams(endHeight uint64) {
 	m.logger.Info("Received new syncTarget", "syncTarget", endHeight)
 	m.SyncTarget.Store(endHeight)
 	m.lastSubmissionTime.Store(time.Now().UnixNano())
-}
-
-func getAddress(key crypto.PrivKey) ([]byte, error) {
-	rawKey, err := key.GetPublic().Raw()
-	if err != nil {
-		return nil, err
-	}
-	return tmcrypto.AddressHash(rawKey), nil
 }
 
 // TODO: move to gossip.go

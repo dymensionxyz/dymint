@@ -118,7 +118,6 @@ func (m *Manager) produceBlock(allowEmpty bool) (*types.Block, *types.Commit, er
 		newHeight = uint64(m.State.InitialHeight)
 		lastCommit = &types.Commit{}
 		m.State.BaseHeight = newHeight
-		m.State.SetBase(newHeight)
 	} else {
 		height := m.State.Height()
 		newHeight = height + 1
