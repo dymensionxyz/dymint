@@ -135,7 +135,17 @@ func (m *Manager) fetchBatch(daMetaData *da.DASubmitMetaData) da.ResultRetrieveB
 			},
 		}
 	}
-
+	// Check batch availability
+	availabilityRes := m.Retriever.CheckBatchAvailability(daMetaData)
+	if availabilityRes.Code != da.StatusSuccess {
+		return da.ResultRetrieveBatch{
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: fmt.Sprintf("Error fetching batch: %s", availabilityRes.Message),
+				Error:   availabilityRes.Error,
+			},
+		}
+	}
 	// batchRes.MetaData includes proofs necessary to open disputes with the Hub
 	batchRes := m.Retriever.RetrieveBatches(daMetaData)
 	// TODO(srene) : for invalid transactions there is no specific error code since it will need to be validated somewhere else for fraud proving.
