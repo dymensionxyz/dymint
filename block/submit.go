@@ -126,33 +126,21 @@ func (m *Manager) HandleSubmissionTrigger() error {
 		return fmt.Errorf("create next batch to submit: %w", err)
 	}
 
-	resultSubmitToDA, err := m.submitNextBatchToDA(nextBatch)
-	if err != nil {
-		return fmt.Errorf("submit next batch to da: %w", err)
+	resultSubmitToDA := m.DAClient.SubmitBatch(nextBatch)
+
+	if resultSubmitToDA.Code == da.StatusSuccess {
+		return fmt.Errorf("submit next batch to da: %s", resultSubmitToDA.Message)
 	}
 
 	actualEndHeight := nextBatch.EndHeight
 
-	err = m.SLClient.SubmitBatch(nextBatch, m.DAClient.GetClientType(), resultSubmitToDA)
+	err = m.SLClient.SubmitBatch(nextBatch, m.DAClient.GetClientType(), &resultSubmitToDA)
 	if err != nil {
 		return fmt.Errorf("sl client submit batch: start height: %d: inclusive end height: %d: %w", startHeight, actualEndHeight, err)
 	}
 
 	m.UpdateSyncParams(actualEndHeight)
 	return nil
-}
-
-func (m *Manager) submitNextBatchToDA(nextBatch *types.Batch) (*da.ResultSubmitBatch, error) {
-	startHeight := nextBatch.StartHeight
-	actualEndHeight := nextBatch.EndHeight
-
-	// Submit batch to the DA
-	m.logger.Info("Submitting next batch", "startHeight", startHeight, "endHeight", actualEndHeight, "size", nextBatch.ToProto().Size())
-	resultSubmitToDA := m.DAClient.SubmitBatch(nextBatch)
-	if resultSubmitToDA.Code != da.StatusSuccess {
-		return nil, fmt.Errorf("submit next batch to DA Layer: %s", resultSubmitToDA.Message)
-	}
-	return &resultSubmitToDA, nil
 }
 
 func (m *Manager) CreateNextBatchToSubmit(startHeight uint64, endHeightInclusive uint64) (*types.Batch, error) {
@@ -189,7 +177,7 @@ func (m *Manager) CreateNextBatchToSubmit(startHeight uint64, endHeightInclusive
 			batch.Commits = batch.Commits[:len(batch.Commits)-1]
 
 			if height == startHeight {
-				return nil, fmt.Errorf("batch size exceeds max size: %d", totalSize)
+				return nil, fmt.Errorf("block size exceeds max batch size: height %d: size: %d", height, totalSize)
 			}
 			break
 		}
