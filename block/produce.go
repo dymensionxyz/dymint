@@ -32,7 +32,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 		case <-ticker.C:
 
 			// if empty blocks are configured to be enabled, and one is scheduled...
-			produceEmptyBlock := firstBlock || 0 < m.Conf.MaxProofTime && nextEmptyBlock.Before(time.Now())
+			produceEmptyBlock := firstBlock || (0 < m.Conf.MaxProofTime && nextEmptyBlock.Before(time.Now()))
 			firstBlock = false
 
 			block, commit, err := m.ProduceAndGossipBlock(ctx, produceEmptyBlock)
