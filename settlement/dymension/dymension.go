@@ -274,9 +274,8 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 		case <-timer.C:
 			// Before emitting unhealthy event, check if the batch was accepted by the settlement
 			// layer, and we've just missed the event.
-			includedBatch, err := d.waitForBatchInclusion(batch.StartHeight)
-			if err != nil {
-
+			includedBatch, err := d.pollForBatchInclusion(batch.EndHeight)
+			if err != nil || !includedBatch {
 				err = fmt.Errorf("wait for batch inclusion: %w: %w", settlement.ErrBatchNotAccepted, err)
 
 				uevent.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{Error: err}, settlement.EventHealthStatusList)
@@ -297,7 +296,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 
 			// all good
 			uevent.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{}, settlement.EventHealthStatusList)
-			d.logger.Info("Batch accepted, emitted healthy event.", "startHeight", includedBatch.StartHeight, "endHeight", includedBatch.EndHeight)
+			d.logger.Info("Batch accepted, emitted healthy event.", "startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
 
 			return nil
 		}
@@ -549,24 +548,13 @@ func (d *HubClient) convertStateInfoToResultRetrieveBatch(stateInfo *rollapptype
 	}, nil
 }
 
-// TODO(omritoptix): Change the retry attempts to be only for the batch polling. Also we need to have a more
-// TODO: bullet proof check as theoretically the tx can stay in the mempool longer then our retry attempts.
-func (d *HubClient) waitForBatchInclusion(batchStartHeight uint64) (*settlement.ResultRetrieveBatch, error) {
-	var res *settlement.ResultRetrieveBatch
-	err := d.RunWithRetry(
-		func() error {
-			latestBatch, err := d.GetLatestBatch(d.config.RollappID)
-			if err != nil {
-				return fmt.Errorf("get latest batch: %w", err)
-			}
-			if latestBatch.Batch.StartHeight != batchStartHeight {
-				return fmt.Errorf("latest batch start height not match expected start height: %w", settlement.ErrBatchNotFound)
-			}
-			res = latestBatch
-			return nil
-		},
-	)
-	return res, err
+// pollForBatchInclusion polls the hub for the inclusion of a batch with the given end height.
+func (d *HubClient) pollForBatchInclusion(batchEndHeight uint64) (bool, error) {
+	latestBatch, err := d.GetLatestBatch(d.config.RollappID)
+	if err != nil {
+		return false, fmt.Errorf("get latest batch: %w", err)
+	}
+	return latestBatch.Batch.EndHeight == batchEndHeight, nil
 }
 
 // RunWithRetry runs the given operation with retry, doing a number of attempts, and taking the last
