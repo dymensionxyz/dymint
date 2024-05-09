@@ -253,7 +253,5 @@ func getInitialState(store store.Store, genesis *tmtypes.GenesisDoc, logger type
 		return types.State{}, fmt.Errorf("get initial state: %w", err)
 	}
 
-	// init store according to state
-	store.SetHeight(s.Height())
 	return s, nil
 }

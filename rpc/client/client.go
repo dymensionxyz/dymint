@@ -313,10 +313,9 @@ func (c *Client) GenesisChunked(context context.Context, id uint) (*ctypes.Resul
 func (c *Client) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, error) {
 	const limit int64 = 20
 
-	// Currently blocks are not pruned and are synced linearly so the base height is 0
 	minHeight, maxHeight, err := filterMinMax(
-		0,
-		int64(c.node.Store.Height()),
+		0, //FIXME: we might be pruned
+		int64(c.node.GetBlockManagerHeight()),
 		minHeight,
 		maxHeight,
 		limit)
@@ -341,7 +340,7 @@ func (c *Client) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64)
 	}
 
 	return &ctypes.ResultBlockchainInfo{
-		LastHeight: int64(c.node.Store.Height()),
+		LastHeight: int64(c.node.GetBlockManagerHeight()),
 		BlockMetas: blocks,
 	}, nil
 }
@@ -468,7 +467,7 @@ func (c *Client) BlockByHash(ctx context.Context, hash []byte) (*ctypes.ResultBl
 func (c *Client) BlockResults(ctx context.Context, height *int64) (*ctypes.ResultBlockResults, error) {
 	var h uint64
 	if height == nil {
-		h = c.node.Store.Height()
+		h = c.node.GetBlockManagerHeight()
 	} else {
 		h = uint64(*height)
 	}
@@ -698,7 +697,7 @@ func (c *Client) BlockSearch(ctx context.Context, query string, page, perPage *i
 
 // Status returns detailed information about current status of the node.
 func (c *Client) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
-	latest, err := c.node.Store.LoadBlock(c.node.Store.Height())
+	latest, err := c.node.Store.LoadBlock(c.node.GetBlockManagerHeight())
 	if err != nil {
 		// TODO(tzdybal): extract error
 		return nil, fmt.Errorf("find latest block: %w", err)
@@ -877,7 +876,7 @@ func (c *Client) Snapshot() proxy.AppConnSnapshot {
 func (c *Client) normalizeHeight(height *int64) uint64 {
 	var heightValue uint64
 	if height == nil || *height == 0 {
-		heightValue = c.node.Store.Height()
+		heightValue = c.node.GetBlockManagerHeight()
 	} else {
 		heightValue = uint64(*height)
 	}

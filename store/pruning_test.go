@@ -50,7 +50,6 @@ func TestStorePruning(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			assert := assert.New(t)
 			bstore := store.New(store.NewDefaultInMemoryKVStore())
-			assert.Equal(uint64(0), bstore.Height())
 
 			savedHeights := make(map[uint64]bool)
 			for _, block := range c.blocks {
@@ -61,7 +60,7 @@ func TestStorePruning(t *testing.T) {
 				//TODO: add block responses and commits
 			}
 
-			// TODO: assert blocks exists
+			// Validate all blocks are saved
 			for k, _ := range savedHeights {
 				_, err := bstore.LoadBlock(k)
 				assert.NoError(err)

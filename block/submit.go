@@ -102,7 +102,7 @@ func (m *Manager) AccumulatedDataLoop(ctx context.Context, toSubmit chan bool) {
 // Finally, it submits the next batch of blocks and updates the sync target to the height of the last block in the submitted batch.
 func (m *Manager) HandleSubmissionTrigger(ctx context.Context) error {
 	// Load current sync target and height to determine if new blocks are available for submission.
-	if m.Store.Height() <= m.SyncTarget.Load() {
+	if m.State.Height() <= m.SyncTarget.Load() {
 		return nil // No new blocks have been produced
 	}
 
@@ -129,7 +129,7 @@ func (m *Manager) HandleSubmissionTrigger(ctx context.Context) error {
 func (m *Manager) createNextBatch() (*types.Batch, error) {
 	// Create the batch
 	startHeight := m.SyncTarget.Load() + 1
-	endHeight := m.Store.Height()
+	endHeight := m.State.Height()
 	nextBatch, err := m.CreateNextBatchToSubmit(startHeight, endHeight)
 	if err != nil {
 		m.logger.Error("create next batch", "startHeight", startHeight, "endHeight", endHeight, "error", err)

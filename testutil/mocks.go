@@ -99,12 +99,8 @@ type MockStore struct {
 
 // SetHeight sets the height of the mock store
 // Don't set the height to mock failure in setting the height
-func (m *MockStore) SetHeight(height uint64) bool {
-	if m.ShouldFailSetHeight {
-		return false
-	}
+func (m *MockStore) SetHeight(height uint64) {
 	m.height = height
-	return true
 }
 
 func (m *MockStore) Height() uint64 {

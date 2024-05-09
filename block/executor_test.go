@@ -185,7 +185,7 @@ func TestApplyBlock(t *testing.T) {
 	newState, err := executor.UpdateStateFromResponses(resp, state, block)
 	require.NoError(err)
 	require.NotNil(newState)
-	assert.Equal(int64(1), newState.LastBlockHeight)
+	assert.Equal(1, newState.LastBlockHeight)
 	_, err = executor.Commit(&newState, block, resp)
 	require.NoError(err)
 	assert.Equal(mockAppHash, newState.AppHash)
@@ -239,7 +239,7 @@ func TestApplyBlock(t *testing.T) {
 	newState, err = executor.UpdateStateFromResponses(resp, state, block)
 	require.NoError(err)
 	require.NotNil(newState)
-	assert.Equal(int64(2), newState.LastBlockHeight)
+	assert.Equal(uint64(2), newState.LastBlockHeight)
 	_, err = executor.Commit(&newState, block, resp)
 	require.NoError(err)
 

@@ -135,7 +135,7 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 
 	// Initially sync target is 0
 	assert.Zero(t, manager.SyncTarget.Load())
-	assert.True(t, manager.Store.Height() == 0)
+	assert.True(t, manager.State.Height() == 0)
 
 	// enough time to sync and produce blocks
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*4)
@@ -150,7 +150,7 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 	<-ctx.Done()
 	assert.Equal(t, batch.EndHeight, manager.SyncTarget.Load())
 	// validate that we produced blocks
-	assert.Greater(t, manager.Store.Height(), batch.EndHeight)
+	assert.Greater(t, manager.State.Height(), batch.EndHeight)
 }
 
 func TestRetrieveDaBatchesFailed(t *testing.T) {
@@ -184,7 +184,7 @@ func TestProduceNewBlock(t *testing.T) {
 	_, _, err = manager.ProduceAndGossipBlock(context.Background(), true)
 	require.NoError(t, err)
 	// Validate state is updated with the commit hash
-	assert.Equal(t, uint64(1), manager.Store.Height())
+	assert.Equal(t, uint64(1), manager.State.Height())
 	assert.Equal(t, commitHash, manager.State.AppHash)
 }
 
@@ -307,7 +307,7 @@ func TestProduceBlockFailAfterCommit(t *testing.T) {
 			mockStore.ShouldFailSetHeight = tc.shouldFailSetSetHeight
 			mockStore.ShoudFailUpdateState = tc.shouldFailUpdateState
 			_, _, _ = manager.ProduceAndGossipBlock(context.Background(), true)
-			require.Equal(tc.expectedStoreHeight, manager.Store.Height(), tc.name)
+			require.Equal(tc.expectedStoreHeight, manager.State.Height(), tc.name)
 			require.Equal(tc.expectedStateAppHash, manager.State.AppHash, tc.name)
 			storeState, err := manager.Store.LoadState()
 			require.NoError(err)

@@ -15,47 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestStoreHeight(t *testing.T) {
-	t.Parallel()
-	cases := []struct {
-		name     string
-		blocks   []*types.Block
-		expected uint64
-	}{
-		{"single block", []*types.Block{testutil.GetRandomBlock(1, 0)}, 1},
-		{"two consecutive blocks", []*types.Block{
-			testutil.GetRandomBlock(1, 0),
-			testutil.GetRandomBlock(2, 0),
-		}, 2},
-		{"blocks out of order", []*types.Block{
-			testutil.GetRandomBlock(2, 0),
-			testutil.GetRandomBlock(3, 0),
-			testutil.GetRandomBlock(1, 0),
-		}, 3},
-		{"with a gap", []*types.Block{
-			testutil.GetRandomBlock(1, 0),
-			testutil.GetRandomBlock(9, 0),
-			testutil.GetRandomBlock(10, 0),
-		}, 10},
-	}
-
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			assert := assert.New(t)
-			bstore := store.New(store.NewDefaultInMemoryKVStore())
-			assert.Equal(uint64(0), bstore.Height())
-
-			for _, block := range c.blocks {
-				_, err := bstore.SaveBlock(block, &types.Commit{}, nil)
-				bstore.SetHeight(block.Header.Height)
-				assert.NoError(err)
-			}
-
-			assert.Equal(c.expected, bstore.Height())
-		})
-	}
-}
-
 func TestStoreLoad(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
@@ -124,7 +83,7 @@ func TestStoreLoad(t *testing.T) {
 	}
 }
 
-func TestRestart(t *testing.T) {
+func TestLoadState(t *testing.T) {
 	t.Parallel()
 
 	assert := assert.New(t)
@@ -144,10 +103,10 @@ func TestRestart(t *testing.T) {
 	assert.NoError(err)
 
 	s2 := store.New(kv)
-	_, err = s2.LoadState()
+	state, err := s2.LoadState()
 	assert.NoError(err)
 
-	assert.Equal(expectedHeight, s2.Height())
+	assert.Equal(expectedHeight, state.LastBlockHeight)
 }
 
 func TestBlockResponses(t *testing.T) {

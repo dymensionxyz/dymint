@@ -382,3 +382,8 @@ func (n *Node) startPrometheusServer() error {
 	}
 	return nil
 }
+
+// FIXME: read from block manager
+func (n *Node) GetBlockManagerHeight() uint64 {
+	return 0
+}
