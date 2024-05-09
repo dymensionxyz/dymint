@@ -131,12 +131,13 @@ func (m *Manager) HandleSubmissionTrigger() error {
 		return fmt.Errorf("submit next batch to da: %w", err)
 	}
 
-	err = m.SLClient.SubmitBatch(nextBatch, m.DAClient.GetClientType(), resultSubmitToDA)
+	syncHeight, err := m.submitNextBatchToSL(nextBatch, resultSubmitToDA)
 	if err != nil {
-		return fmt.Errorf("sl client submit batch: start height: %d: inclusive end height: %d: %w", startHeight, endHeightInclusive, err)
+		return fmt.Errorf("submit pending batch to sl: %w", err)
 	}
 
-	m.UpdateSyncParams(endHeightInclusive)
+	// Update the syncTarget to the height of the last block in the last batch as seen by this node.
+	m.UpdateSyncParams(syncHeight)
 	return nil
 }
 
@@ -151,6 +152,17 @@ func (m *Manager) submitNextBatchToDA(nextBatch *types.Batch) (*da.ResultSubmitB
 		return nil, fmt.Errorf("submit next batch to DA Layer: %s", resultSubmitToDA.Message)
 	}
 	return &resultSubmitToDA, nil
+}
+
+func (m *Manager) submitNextBatchToSL(batch *types.Batch, daResult *da.ResultSubmitBatch) (uint64, error) {
+	startHeight := batch.StartHeight
+	actualEndHeight := batch.EndHeight
+	err := m.SLClient.SubmitBatch(batch, m.DAClient.GetClientType(), daResult)
+	if err != nil {
+		return 0, fmt.Errorf("sl client submit batch: startheight: %d: actual end height: %d: %w", startHeight, actualEndHeight, err)
+	}
+
+	return actualEndHeight, nil
 }
 
 func (m *Manager) CreateNextBatchToSubmit(startHeight uint64, endHeightInclusive uint64) (*types.Batch, error) {
