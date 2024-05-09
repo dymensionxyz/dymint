@@ -21,7 +21,6 @@ jobs:
 
       - name: Generate Changelog Update
         run: |
-          # Example: Using conventional-changelog to update CHANGELOG.md
           npm install -g conventional-changelog-cli
           conventional-changelog -p angular -i CHANGELOG.md -s
 
@@ -30,12 +29,11 @@ jobs:
         uses: peter-evans/create-pull-request@v4
         with:
           commit-message: "Update CHANGELOG.md [skip ci]"
-          title: "Automated Changelog Update [skip ci]"
-          body: "Update the CHANGELOG.md with recent pushs. [skip ci]"
-          branch: auto-changelog-update-${{ github.run_number }}
-          delete-branch: true
-          branch-suffix: timestamp
-
+          title: "Automated Changelog Update"
+          body: "Update the CHANGELOG.md with recent pushes to branch main."
+          branch: "auto-changelog-update"  # Static branch name
+          delete-branch: false  # Do not delete the branch after merging so we can reuse ?
+          branch-suffix: none
       - name: Check if PR needs to be updated
         if: steps.cpr.outputs.pull-request-operation == 'updated'
         run: |
