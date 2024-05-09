@@ -19,43 +19,19 @@ import (
 func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 	m.logger.Debug("Started produce loop")
 
-	// Setup variables for empty block production
-	var (
-		produceEmptyBlock  = true // Allow the initial block to be empty
-		resetEmptyBlocksFn = func(bool) {}
-		nextEmptyBlock     = time.Time{}
-	)
-
-	// Setup ticker for empty blocks if enabled
-	// if disabled, produceEmptyBlock will remain true and the block will be produced every block time
-	if 0 < m.Conf.MaxIdleTime {
-		//define a reset function to reset the timer
-		resetEmptyBlocksFn = func(proofRequired bool) {
-			produceEmptyBlock = false
-			if proofRequired {
-				nextEmptyBlock = time.Now().Add(m.Conf.MaxProofTime)
-			} else {
-				nextEmptyBlock = time.Now().Add(m.Conf.MaxIdleTime)
-			}
-		}
-		resetEmptyBlocksFn(false)
-	}
-
-	// Main ticker for block production
 	ticker := time.NewTicker(m.Conf.BlockTime)
 	defer ticker.Stop()
+
+	var nextEmptyBlock time.Time
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			//check if we can produce a block even if there are no transactions
-			//if the time has passed, we will produce an empty block
-			if !nextEmptyBlock.IsZero() && nextEmptyBlock.Before(time.Now()) {
-				m.logger.Debug("no transactions, producing empty block")
-				produceEmptyBlock = true
-			}
+
+			// if empty blocks are configured to be enabled, and one is scheduled...
+			produceEmptyBlock := 0 < m.Conf.MaxProofTime && nextEmptyBlock.Before(time.Now())
 
 			block, commit, err := m.ProduceAndGossipBlock(ctx, produceEmptyBlock)
 			if errors.Is(err, context.Canceled) {
@@ -73,11 +49,14 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 				m.logger.Error("produce and gossip: uncategorized, assuming recoverable", "error", err)
 				continue
 			}
+
 			// If IBC transactions are present, set proof required to true
 			// This will set a shorter timer for the next block
 			// currently we set it for all txs as we don't have a way to determine if an IBC tx is present (https://github.com/dymensionxyz/dymint/issues/709)
-			proofRequired := len(block.Data.Txs) != 0
-			resetEmptyBlocksFn(proofRequired)
+			nextEmptyBlock = time.Now().Add(m.Conf.MaxIdleTime)
+			if 0 < len(block.Data.Txs) {
+				nextEmptyBlock = time.Now().Add(m.Conf.MaxProofTime)
+			}
 
 			// Send the size to the accumulated size channel
 			// This will block in case the submitter is too slow and it's buffer is full
