@@ -16,6 +16,7 @@ import (
 
 	indexer "github.com/dymensionxyz/dymint/indexers/blockindexer"
 	"github.com/dymensionxyz/dymint/indexers/txindex"
+	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
 )
 
@@ -27,11 +28,11 @@ var _ txindex.TxIndexer = (*TxIndex)(nil)
 
 // TxIndex is the simplest possible indexer, backed by key-value storage (levelDB).
 type TxIndex struct {
-	store types.KVStore
+	store store.KVStore
 }
 
 // NewTxIndex creates new KV indexer.
-func NewTxIndex(store types.KVStore) *TxIndex {
+func NewTxIndex(store store.KVStore) *TxIndex {
 	return &TxIndex{
 		store: store,
 	}
@@ -133,7 +134,7 @@ func (txi *TxIndex) Index(result *abci.TxResult) error {
 	return b.Commit()
 }
 
-func (txi *TxIndex) indexEvents(result *abci.TxResult, hash []byte, store types.StoreBatch) error {
+func (txi *TxIndex) indexEvents(result *abci.TxResult, hash []byte, store store.Batch) error {
 	for _, event := range result.Result.Events {
 		// only index events with a non-empty type
 		if len(event.Type) == 0 {

@@ -8,6 +8,7 @@ import (
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 
 	"github.com/dymensionxyz/dymint/store"
+
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/stretchr/testify/assert"
@@ -134,7 +135,7 @@ func TestRestart(t *testing.T) {
 	s1 := store.New(kv)
 	expectedHeight := uint64(10)
 	_, err := s1.UpdateState(types.State{
-		LastBlockHeight: int64(expectedHeight),
+		LastBlockHeight: expectedHeight,
 		LastStoreHeight: uint64(expectedHeight),
 		NextValidators:  validatorSet,
 		Validators:      validatorSet,

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/dymensionxyz/dymint/gerr"
+	"github.com/dymensionxyz/dymint/store"
 
 	uevent "github.com/dymensionxyz/dymint/utils/event"
 
@@ -28,7 +29,6 @@ import (
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/mempool"
 	"github.com/dymensionxyz/dymint/settlement"
-	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
 )
 
@@ -46,7 +46,7 @@ type Manager struct {
 	ProposerKey crypto.PrivKey
 
 	// Store and execution
-	Store    types.Store
+	Store    store.Store
 	State    types.State
 	Executor *Executor
 

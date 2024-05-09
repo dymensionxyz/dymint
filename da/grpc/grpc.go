@@ -5,11 +5,11 @@ import (
 	"encoding/json"
 	"strconv"
 
+	"github.com/dymensionxyz/dymint/store"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/dymensionxyz/dymint/da"
-	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/dymensionxyz/dymint/types/pb/dalc"
 	"github.com/tendermint/tendermint/libs/pubsub"

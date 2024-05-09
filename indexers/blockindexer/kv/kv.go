@@ -15,7 +15,6 @@ import (
 
 	indexer "github.com/dymensionxyz/dymint/indexers/blockindexer"
 	"github.com/dymensionxyz/dymint/store"
-	"github.com/dymensionxyz/dymint/types"
 
 	tmtypes "github.com/tendermint/tendermint/types"
 )
@@ -26,10 +25,10 @@ var _ indexer.BlockIndexer = (*BlockerIndexer)(nil)
 // events with an underlying KV store. Block events are indexed by their height,
 // such that matching search criteria returns the respective block height(s).
 type BlockerIndexer struct {
-	store types.KVStore
+	store store.KVStore
 }
 
-func New(store types.KVStore) *BlockerIndexer {
+func New(store store.KVStore) *BlockerIndexer {
 	return &BlockerIndexer{
 		store: store,
 	}
@@ -481,7 +480,7 @@ func (idx *BlockerIndexer) match(
 	return filteredHeights, nil
 }
 
-func (idx *BlockerIndexer) indexEvents(batch types.StoreBatch, events []abci.Event, typ string, height int64) error {
+func (idx *BlockerIndexer) indexEvents(batch store.Batch, events []abci.Event, typ string, height int64) error {
 	heightBz := int64ToBytes(height)
 
 	for _, event := range events {
