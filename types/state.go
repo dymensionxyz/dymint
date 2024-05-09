@@ -101,3 +101,35 @@ func NewFromGenesisDoc(genDoc *types.GenesisDoc) (State, error) {
 func (s *State) IsGenesis() bool {
 	return s.LastBlockHeight == 0
 }
+
+// SetHeight sets the height saved in the Store if it is higher than the existing height
+// returns OK if the value was updated successfully or did not need to be updated
+func (s *State) SetHeight(height uint64) bool {
+	ok := true
+	storeHeight := s.Height()
+	if height > storeHeight {
+		ok = atomic.CompareAndSwapUint64(&s.LastBlockHeight, storeHeight, height)
+	}
+	return ok
+}
+
+// Height returns height of the highest block saved in the Store.
+func (s *State) Height() uint64 {
+	return uint64(s.LastBlockHeight)
+}
+
+// NextHeight returns the next height that expected to be stored in store.
+func (s *State) NextHeight() uint64 {
+	return s.Height() + 1
+}
+
+// SetBase sets the base height if it is higher than the existing base height
+// returns OK if the value was updated successfully or did not need to be updated
+func (s *State) SetBase(height uint64) {
+	s.BaseHeight = height
+}
+
+// Base returns height of the earliest block saved in the Store.
+func (s *State) Base() uint64 {
+	return s.BaseHeight
+}

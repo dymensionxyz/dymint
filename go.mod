@@ -5,7 +5,6 @@ go 1.22.2
 require (
 	code.cloudfoundry.org/go-diodes v0.0.0-20220725190411-383eb6634c40
 	cosmossdk.io/errors v1.0.1
-	cosmossdk.io/math v1.3.0
 	github.com/avast/retry-go/v4 v4.5.0
 	github.com/celestiaorg/celestia-openrpc v0.4.0-rc.1
 	github.com/celestiaorg/go-cnc v0.4.2
@@ -248,6 +247,7 @@ require (
 )
 
 require (
+	cosmossdk.io/math v1.3.0 // indirect
 	github.com/DataDog/zstd v1.5.2 // indirect
 	github.com/agl/ed25519 v0.0.0-20170116200512-5312a6153412 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect

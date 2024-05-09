@@ -117,12 +117,10 @@ func (m *Manager) produceBlock(allowEmpty bool) (*types.Block, *types.Commit, er
 	if m.State.IsGenesis() {
 		newHeight = uint64(m.State.InitialHeight)
 		lastCommit = &types.Commit{}
-		m.LastState.BaseHeight = newHeight
-		if ok := m.Store.SetBase(newHeight); !ok {
-			return nil, nil, fmt.Errorf("store set base: %d", newHeight)
-		}
+		m.State.BaseHeight = newHeight
+		m.State.SetBase(newHeight)
 	} else {
-		height := m.Store.Height()
+		height := m.State.Height()
 		newHeight = height + 1
 		lastCommit, err = m.Store.LoadCommit(height)
 		if err != nil {

@@ -65,7 +65,7 @@ func NewClient(node *node.Node) *Client {
 
 // ABCIInfo returns basic information about application state.
 func (c *Client) ABCIInfo(ctx context.Context) (*ctypes.ResultABCIInfo, error) {
-	resInfo, err := c.query().InfoSync(proxy.RequestInfo)
+	resInfo, err := c.Query().InfoSync(proxy.RequestInfo)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +79,7 @@ func (c *Client) ABCIQuery(ctx context.Context, path string, data tmbytes.HexByt
 
 // ABCIQueryWithOptions queries for data from application.
 func (c *Client) ABCIQueryWithOptions(ctx context.Context, path string, data tmbytes.HexBytes, opts rpcclient.ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
-	resQuery, err := c.query().QuerySync(abci.RequestQuery{
+	resQuery, err := c.Query().QuerySync(abci.RequestQuery{
 		Path:   path,
 		Data:   data,
 		Height: opts.Height,
@@ -802,7 +802,7 @@ func (c *Client) UnconfirmedTxs(ctx context.Context, limitPtr *int) (*ctypes.Res
 //
 // If valid, the tx is automatically added to the mempool.
 func (c *Client) CheckTx(ctx context.Context, tx tmtypes.Tx) (*ctypes.ResultCheckTx, error) {
-	res, err := c.mempool().CheckTxSync(abci.RequestCheckTx{Tx: tx})
+	res, err := c.Mempool().CheckTxSync(abci.RequestCheckTx{Tx: tx})
 	if err != nil {
 		return nil, err
 	}
@@ -858,19 +858,19 @@ func (c *Client) resubscribe(subscriber string, q tmpubsub.Query) tmtypes.Subscr
 	}
 }
 
-func (c *Client) consensus() proxy.AppConnConsensus {
+func (c *Client) Consensus() proxy.AppConnConsensus {
 	return c.node.ProxyApp().Consensus()
 }
 
-func (c *Client) mempool() proxy.AppConnMempool {
+func (c *Client) Mempool() proxy.AppConnMempool {
 	return c.node.ProxyApp().Mempool()
 }
 
-func (c *Client) query() proxy.AppConnQuery {
+func (c *Client) Query() proxy.AppConnQuery {
 	return c.node.ProxyApp().Query()
 }
 
-func (c *Client) snapshot() proxy.AppConnSnapshot {
+func (c *Client) Snapshot() proxy.AppConnSnapshot {
 	return c.node.ProxyApp().Snapshot()
 }
 

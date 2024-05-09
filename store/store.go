@@ -24,12 +24,11 @@ var (
 	validatorsPrefix = [1]byte{6}
 )
 
-// DefaultStore is a default store implmementation.
+// DefaultStore is a default store implementation.
 type DefaultStore struct {
 	db KVStore
 
-	height     uint64 // the highest block saved
-	baseHeight uint64 // the lowest block saved
+	height uint64 // the highest block saved
 }
 
 var _ Store = &DefaultStore{}
@@ -46,41 +45,14 @@ func (s *DefaultStore) NewBatch() Batch {
 	return s.db.NewBatch()
 }
 
-// SetHeight sets the height saved in the Store if it is higher than the existing height
-// returns OK if the value was updated successfully or did not need to be updated
-func (s *DefaultStore) SetHeight(height uint64) bool {
-	ok := true
-	storeHeight := s.Height()
-	if height > storeHeight {
-		ok = atomic.CompareAndSwapUint64(&s.height, storeHeight, height)
-	}
-	return ok
+// SetHeight sets the height of the store
+func (s *DefaultStore) SetHeight(height uint64) {
+	atomic.StoreUint64(&s.height, height)
 }
 
 // Height returns height of the highest block saved in the Store.
 func (s *DefaultStore) Height() uint64 {
 	return atomic.LoadUint64(&s.height)
-}
-
-// NextHeight returns the next height that expected to be stored in store.
-func (s *DefaultStore) NextHeight() uint64 {
-	return s.Height() + 1
-}
-
-// SetBase sets the base height if it is higher than the existing base height
-// returns OK if the value was updated successfully or did not need to be updated
-func (s *DefaultStore) SetBase(height uint64) bool {
-	ok := true
-	baseHeight := s.Base()
-	if height > baseHeight {
-		ok = atomic.CompareAndSwapUint64(&s.baseHeight, baseHeight, height)
-	}
-	return ok
-}
-
-// Base returns height of the earliest block saved in the Store.
-func (s *DefaultStore) Base() uint64 {
-	return atomic.LoadUint64(&s.baseHeight)
 }
 
 // SaveBlock adds block to the store along with corresponding commit.
@@ -237,8 +209,6 @@ func (s *DefaultStore) LoadState() (types.State, error) {
 		return types.State{}, fmt.Errorf("unmarshal state from proto: %w", err)
 	}
 
-	atomic.StoreUint64(&s.height, state.LastStoreHeight)
-	atomic.StoreUint64(&s.baseHeight, state.BaseHeight)
 	return state, nil
 }
 

@@ -106,7 +106,7 @@ func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
 
 	for _, batch := range batchResp.Batches {
 		for i, block := range batch.Blocks {
-			if block.Header.Height != m.Store.NextHeight() {
+			if block.Header.Height != m.State.NextHeight() {
 				continue
 			}
 			if err := m.validateBlock(block, batch.Commits[i]); err != nil {

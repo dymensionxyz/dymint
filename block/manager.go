@@ -197,7 +197,7 @@ func (m *Manager) syncBlockManager() error {
 		return err
 	}
 
-	m.logger.Info("Synced.", "current height", m.Store.Height(), "syncTarget", m.SyncTarget.Load())
+	m.logger.Info("Synced.", "current height", m.State.Height(), "syncTarget", m.SyncTarget.Load())
 	return nil
 }
 
@@ -226,13 +226,13 @@ func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
 	block := eventData.Block
 	commit := eventData.Commit
 
-	nextHeight := m.Store.NextHeight()
+	nextHeight := m.State.NextHeight()
 	if block.Header.Height >= nextHeight {
 		m.blockCache[block.Header.Height] = CachedBlock{
 			Block:  &block,
 			Commit: &commit,
 		}
-		m.logger.Debug("caching block", "block height", block.Header.Height, "store height", m.Store.Height())
+		m.logger.Debug("caching block", "block height", block.Header.Height, "store height", m.State.Height())
 	}
 	m.retrieverMutex.Unlock() // have to give this up as it's locked again in attempt apply, and we're not re-entrant
 	err := m.attemptApplyCachedBlocks()
@@ -242,12 +242,18 @@ func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
 }
 
 // getInitialState tries to load lastState from Store, and if it's not available it reads GenesisDoc.
-func getInitialState(store store.Store, genesis *tmtypes.GenesisDoc, logger types.Logger) (types.State, error) {
-	s, err := store.LoadState()
+func getInitialState(store store.Store, genesis *tmtypes.GenesisDoc, logger types.Logger) (s types.State, err error) {
+	s, err = store.LoadState()
 	if errors.Is(err, types.ErrNoStateFound) {
 		logger.Info("failed to find state in the store, creating new state from genesis")
-		return types.NewFromGenesisDoc(genesis)
+		s, err = types.NewFromGenesisDoc(genesis)
 	}
 
-	return s, err
+	if err != nil {
+		return types.State{}, fmt.Errorf("get initial state: %w", err)
+	}
+
+	// init store according to state
+	store.SetHeight(s.Height())
+	return s, nil
 }

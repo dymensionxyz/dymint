@@ -73,7 +73,8 @@ type Store interface {
 	// Pruning functions
 	PruneBlocks(from, to uint64) (uint64, error)
 
-	// Left those for backward comptability. Should be removed in the future.
+	// TODO: Left those for backward compatibility all over the UT.
+	// Should be removed in the future.
 	SetHeight(height uint64)
 	Height() uint64
 }

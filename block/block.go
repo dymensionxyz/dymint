@@ -21,7 +21,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	// TODO (#330): allow genesis block with height > 0 to be applied.
 	// TODO: add switch case to have defined behavior for each case.
 	// validate block height
-	if block.Header.Height != m.Store.NextHeight() {
+	if block.Header.Height != m.State.NextHeight() {
 		return types.ErrInvalidBlockHeight
 	}
 
@@ -103,7 +103,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	// Every one of those, if happens before commit, prevents us from re-executing the block in case failed during commit.
 	newState.LastValidators = m.State.Validators.Copy()
 	newState.LastStoreHeight = block.Header.Height
-	newState.BaseHeight = m.Store.Base()
+	newState.BaseHeight = m.State.Base()
 
 	_, err = m.Store.UpdateState(newState, nil)
 	if err != nil {
@@ -111,7 +111,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	}
 	m.State = newState
 
-	if ok := m.Store.SetHeight(block.Header.Height); !ok {
+	if ok := m.State.SetHeight(block.Header.Height); !ok {
 		return fmt.Errorf("store set height: %d", block.Header.Height)
 	}
 
@@ -124,7 +124,7 @@ func (m *Manager) attemptApplyCachedBlocks() error {
 	defer m.retrieverMutex.Unlock()
 
 	for {
-		expectedHeight := m.Store.NextHeight()
+		expectedHeight := m.State.NextHeight()
 
 		cachedBlock, blockExists := m.blockCache[expectedHeight]
 		if !blockExists {
@@ -182,12 +182,12 @@ func (m *Manager) UpdateStateFromApp() error {
 	}
 	copy(m.State.LastResultsHash[:], tmtypes.NewResults(resp.DeliverTxs).Hash())
 
-	_, err = m.Store.UpdateState(m.LastState, nil)
+	if ok := m.State.SetHeight(appHeight); !ok {
+		return fmt.Errorf("state set height: %d", appHeight)
+	}
+	_, err = m.Store.UpdateState(m.State, nil)
 	if err != nil {
 		return errorsmod.Wrap(err, "update state")
-	}
-	if ok := m.Store.SetHeight(appHeight); !ok {
-		return fmt.Errorf("store set height: %d", appHeight)
 	}
 	return nil
 }
