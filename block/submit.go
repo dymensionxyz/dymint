@@ -167,13 +167,11 @@ func (m *Manager) CreateNextBatchToSubmit(startHeight uint64, endHeightInclusive
 	for height := startHeight; height <= endHeightInclusive; height++ {
 		block, err := m.Store.LoadBlock(height)
 		if err != nil {
-			m.logger.Error("load block", "height", height)
-			return nil, err
+			return nil, fmt.Errorf("load block: height: %d: %w", height, err)
 		}
 		commit, err := m.Store.LoadCommit(height)
 		if err != nil {
-			m.logger.Error("load commit", "height", height)
-			return nil, err
+			return nil, fmt.Errorf("load commit: height: %d: %w", height, err)
 		}
 
 		batch.Blocks = append(batch.Blocks, block)
