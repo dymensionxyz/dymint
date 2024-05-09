@@ -969,6 +969,7 @@ func TestMempool2Nodes(t *testing.T) {
 		P2P: config.P2PConfig{
 			ListenAddress: "/ip4/127.0.0.1/tcp/9001",
 		},
+		MempoolConfig: *tmcfg.DefaultMempoolConfig(),
 	}, key1, signingKey1, proxy.NewLocalClientCreator(app), &tmtypes.GenesisDoc{ChainID: rollappID}, log.TestingLogger(), mempool.NopMetrics())
 	require.NoError(err)
 	require.NotNil(node1)
@@ -992,6 +993,7 @@ func TestMempool2Nodes(t *testing.T) {
 			ListenAddress: "/ip4/127.0.0.1/tcp/9002",
 			Seeds:         "/ip4/127.0.0.1/tcp/9001/p2p/" + id1.String(),
 		},
+		MempoolConfig: *tmcfg.DefaultMempoolConfig(),
 	}, key2, signingKey2, proxy.NewLocalClientCreator(app), &tmtypes.GenesisDoc{ChainID: rollappID}, log.TestingLogger(), mempool.NopMetrics())
 	require.NoError(err)
 	require.NotNil(node1)
