@@ -3,7 +3,6 @@ package mockserv
 import (
 	"context"
 	"os"
-	"time"
 
 	"github.com/dymensionxyz/dymint/store"
 	tmlog "github.com/tendermint/tendermint/libs/log"

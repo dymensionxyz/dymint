@@ -12,42 +12,38 @@ import (
 func TestStorePruning(t *testing.T) {
 	t.Parallel()
 
-	pruningHeight := uint64(3)
-
 	cases := []struct {
-		name           string
-		blocks         []*types.Block
-		pruningHeight  uint64
-		expectedBase   uint64
-		expectedHeight uint64
-		shouldError    bool
+		name        string
+		blocks      []*types.Block
+		from        uint64
+		to          uint64
+		shouldError bool
 	}{
+		//todo :check exclusion of pruning height
+
 		{"blocks with pruning", []*types.Block{
 			testutil.GetRandomBlock(1, 0),
 			testutil.GetRandomBlock(2, 0),
 			testutil.GetRandomBlock(3, 0),
 			testutil.GetRandomBlock(4, 0),
 			testutil.GetRandomBlock(5, 0),
-		}, pruningHeight, pruningHeight, 5, false},
+		}, 3, 5, false},
 		{"blocks out of order", []*types.Block{
 			testutil.GetRandomBlock(2, 0),
 			testutil.GetRandomBlock(3, 0),
 			testutil.GetRandomBlock(1, 0),
-		}, pruningHeight, pruningHeight, 3, false},
+			testutil.GetRandomBlock(5, 0),
+		}, 3, 5, false},
 		{"with a gap", []*types.Block{
 			testutil.GetRandomBlock(1, 0),
 			testutil.GetRandomBlock(9, 0),
 			testutil.GetRandomBlock(10, 0),
-		}, pruningHeight, pruningHeight, 10, false},
-		{"pruning beyond latest height", []*types.Block{
-			testutil.GetRandomBlock(1, 0),
-			testutil.GetRandomBlock(2, 0),
-		}, pruningHeight, 1, 2, true}, // should error because pruning height > latest height
+		}, 3, 5, false},
 		{"pruning height 0", []*types.Block{
 			testutil.GetRandomBlock(1, 0),
 			testutil.GetRandomBlock(2, 0),
 			testutil.GetRandomBlock(3, 0),
-		}, 0, 1, 3, true},
+		}, 0, 1, true},
 	}
 
 	for _, c := range cases {
@@ -56,31 +52,43 @@ func TestStorePruning(t *testing.T) {
 			bstore := store.New(store.NewDefaultInMemoryKVStore())
 			assert.Equal(uint64(0), bstore.Height())
 
+			savedHeights := make(map[uint64]bool)
 			for _, block := range c.blocks {
 				_, err := bstore.SaveBlock(block, &types.Commit{}, nil)
-				_ = bstore.SetHeight(block.Header.Height)
+				assert.NoError(err)
+				savedHeights[block.Header.Height] = true
+
+				//TODO: add block responses and commits
+			}
+
+			// TODO: assert blocks exists
+			for k, _ := range savedHeights {
+				_, err := bstore.LoadBlock(k)
 				assert.NoError(err)
 			}
 
-			_, err := bstore.PruneBlocks(int64(c.pruningHeight))
+			_, err := bstore.PruneBlocks(c.from, c.to)
 			if c.shouldError {
 				assert.Error(err)
-			} else {
-				assert.NoError(err)
-				assert.Equal(pruningHeight, bstore.Base())
-				assert.Equal(c.expectedHeight, bstore.Height())
-				assert.Equal(c.expectedBase, bstore.Base())
+				return
+			}
 
-				// Check if pruned blocks are really removed from the store
-				for h := uint64(1); h < pruningHeight; h++ {
-					_, err := bstore.LoadBlock(h)
-					assert.Error(err, "Block at height %d should be pruned", h)
+			assert.NoError(err)
 
-					_, err = bstore.LoadBlockResponses(h)
-					assert.Error(err, "BlockResponse at height %d should be pruned", h)
+			// Validate only blocks in the range are pruned
+			for k, _ := range savedHeights {
+				if k >= c.from && k < c.to {
+					_, err := bstore.LoadBlock(k)
+					assert.Error(err, "Block at height %d should be pruned", k)
 
-					_, err = bstore.LoadCommit(h)
-					assert.Error(err, "Commit at height %d should be pruned", h)
+					_, err = bstore.LoadBlockResponses(k)
+					assert.Error(err, "BlockResponse at height %d should be pruned", k)
+
+					_, err = bstore.LoadCommit(k)
+					assert.Error(err, "Commit at height %d should be pruned", k)
+				} else {
+					_, err := bstore.LoadBlock(k)
+					assert.NoError(err)
 				}
 			}
 		})

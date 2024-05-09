@@ -5,14 +5,14 @@ import (
 )
 
 // PruneBlocks removes block up to (but not including) a height. It returns number of blocks pruned.
-func (s *DefaultStore) PruneBlocks(base, height uint64) (uint64, error) {
-	if base <= 0 {
+func (s *DefaultStore) PruneBlocks(from, to uint64) (uint64, error) {
+	if from <= 0 {
 		return 0, fmt.Errorf("from height must be greater than 0")
 	}
 
-	if height < base {
+	if to < from {
 		return 0, fmt.Errorf("cannot prune to height %v, it is lower than base height %v",
-			height, base)
+			to, from)
 	}
 
 	pruned := uint64(0)
@@ -27,7 +27,7 @@ func (s *DefaultStore) PruneBlocks(base, height uint64) (uint64, error) {
 		return nil
 	}
 
-	for h := base; h < height; h++ {
+	for h := from; h < to; h++ {
 		hash, err := s.loadHashFromIndex(h)
 		if err != nil {
 			continue
@@ -61,7 +61,7 @@ func (s *DefaultStore) PruneBlocks(base, height uint64) (uint64, error) {
 		}
 	}
 
-	err := flush(batch, height)
+	err := flush(batch, to)
 	if err != nil {
 		return 0, err
 	}

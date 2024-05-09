@@ -104,16 +104,14 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	newState.LastValidators = m.State.Validators.Copy()
 	newState.LastStoreHeight = block.Header.Height
 	newState.BaseHeight = m.State.Base()
-
+	if ok := m.State.SetHeight(block.Header.Height); !ok {
+		return fmt.Errorf("store set height: %d", block.Header.Height)
+	}
 	_, err = m.Store.UpdateState(newState, nil)
 	if err != nil {
 		return fmt.Errorf("final update state: %w", err)
 	}
 	m.State = newState
-
-	if ok := m.State.SetHeight(block.Header.Height); !ok {
-		return fmt.Errorf("store set height: %d", block.Header.Height)
-	}
 
 	return nil
 }
