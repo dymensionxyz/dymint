@@ -264,7 +264,7 @@ submitLoop:
 		case event := <-subscription.Out():
 			eventData := event.Data().(*settlement.EventDataNewBatchAccepted)
 			if eventData.EndHeight != batch.EndHeight {
-				d.logger.Error("Received event for a different batch, ignoring.", "event", eventData)
+				d.logger.Info("Received event for a different batch, ignoring.", "event", eventData)
 				continue
 			}
 			uevent.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{}, settlement.EventHealthStatusList)
