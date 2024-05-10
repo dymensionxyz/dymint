@@ -6,19 +6,22 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/cosmos/cosmos-sdk/server"
-	"github.com/dymensionxyz/dymint/conv"
-	"github.com/libp2p/go-libp2p"
 	"github.com/spf13/cobra"
-	"github.com/tendermint/tendermint/p2p"
 	rpctypes "github.com/tendermint/tendermint/rpc/jsonrpc/types"
 )
 
 var ip, port string // used for flags
+
+type peerInfo struct {
+	peerId             string
+	multiAddress       string
+	connectionDuration time.Duration
+}
 
 // ShowNodeIDCmd dumps node's ID to the standard output.
 var ShowP2PInfoCmd = &cobra.Command{
@@ -35,21 +38,6 @@ func init() {
 
 func showP2PInfo(cmd *cobra.Command, args []string) error {
 
-	serverCtx := server.GetServerContextFromCmd(cmd)
-	cfg := serverCtx.Config
-	nodeKey, err := p2p.LoadNodeKey(cfg.NodeKeyFile())
-	if err != nil {
-		return err
-	}
-	signingKey, err := conv.GetNodeKey(nodeKey)
-	if err != nil {
-		return err
-	}
-	// convert nodeKey to libp2p key
-	host, err := libp2p.New(libp2p.Identity(signingKey))
-	if err != nil {
-		return err
-	}
 	data, err := json.Marshal(map[string]interface{}{
 		"method":  "net_info",
 		"jsonrpc": "2.0",
@@ -71,7 +59,6 @@ func showP2PInfo(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 	response := rpctypes.RPCResponse{}
-	//result := make(map[string]interface{})
 	err = json.Unmarshal(body, &response)
 	if err != nil {
 		fmt.Println("Error unmarshal:", err)
@@ -79,33 +66,53 @@ func showP2PInfo(cmd *cobra.Command, args []string) error {
 	}
 	var netinfo map[string]interface{}
 
-	//netinfo := ctypes.ResultNetInfo{}
 	err = json.Unmarshal([]byte(response.Result), &netinfo)
 	if err != nil {
 		fmt.Println("Error unmarshal:", err)
 		return nil
 	}
-	fmt.Println("Host ID:", host.ID())
-	fmt.Println("Listening P2P addresses:", netinfo["listeners"])
+	listeners := netinfo["listeners"].([]interface{})
+	fmt.Println("Host ID:", listeners[0])
+	fmt.Println("Listening P2P addresses:", listeners[1:])
 
+	var peers []peerInfo
+
+	//peer info is stored from the rpc response
 	if netinfo["peers"] != nil {
 
-		peers := netinfo["peers"].([]interface{})
+		ps := netinfo["peers"].([]interface{})
 
-		for i, p := range peers {
+		for _, p := range ps {
 
 			peer := p.(map[string]interface{})
 			info := peer["node_info"].(map[string]interface{})
 			status := peer["connection_status"].(map[string]interface{})
 
+			//duration is in int64 nanoseconds
 			duration, err := strconv.ParseInt(status["Duration"].(string), 10, 64)
 			if err != nil {
 				fmt.Println("Error parsing connection duration:", err)
 			}
-			fmt.Printf("Peer %d Id:%s Multiaddress:%s Duration:%s\n", i, info["id"], peer["remote_ip"], time.Duration(duration))
+
+			newPeer := peerInfo{
+				peerId:             info["id"].(string),
+				multiAddress:       peer["remote_ip"].(string),
+				connectionDuration: time.Duration(duration),
+			}
+			peers = append(peers, newPeer)
 		}
 	} else {
 		fmt.Println("0 peers connected")
+	}
+
+	//Peers ordered by oldest connection
+	sort.Slice(peers[:], func(i, j int) bool {
+		return peers[i].connectionDuration > peers[j].connectionDuration
+	})
+
+	//Info displayed: Libp2p Peeer ID, Multiaddress (connection info) and time pasted since connection
+	for i, p := range peers {
+		fmt.Printf("Peer %d Id:%s Multiaddress:%s Connection duration:%s\n", i, p.peerId, p.multiAddress, p.connectionDuration)
 	}
 
 	return nil

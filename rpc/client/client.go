@@ -351,6 +351,8 @@ func (c *Client) NetInfo(ctx context.Context) (*ctypes.ResultNetInfo, error) {
 	res := ctypes.ResultNetInfo{
 		Listening: true,
 	}
+	res.Listeners = append(res.Listeners, c.node.P2P.Host.ID().String())
+
 	for _, ma := range c.node.P2P.Addrs() {
 		res.Listeners = append(res.Listeners, ma.String())
 	}
