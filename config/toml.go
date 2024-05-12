@@ -68,11 +68,16 @@ const defaultConfigTemplate = `
 # block production interval
 block_time = "{{ .BlockManagerConfig.BlockTime }}"
 # block production interval in case of no transactions ("0s" produces empty blocks)
-empty_blocks_max_time = "{{ .BlockManagerConfig.EmptyBlocksMaxTime }}"
+max_idle_time = "{{ .BlockManagerConfig.MaxIdleTime }}"
+max_proof_time = "{{ .BlockManagerConfig.MaxProofTime }}"
+max_supported_batch_skew = {{ .BlockManagerConfig.MaxSupportedBatchSkew }}
+
 
 # triggers to submit batch to DA and settlement (both required)
-block_batch_size = {{ .BlockManagerConfig.BlockBatchSize }}
 batch_submit_max_time = "{{ .BlockManagerConfig.BatchSubmitMaxTime }}"
+
+# max size of batch in bytes that can be accepted by DA
+block_batch_max_size_bytes = {{ .BlockManagerConfig.BlockBatchMaxSizeBytes }}
 
 ### da config ###
 da_layer = "{{ .DALayer }}" # mock, celestia, avail
@@ -80,8 +85,6 @@ namespace_id = "{{ .BlockManagerConfig.NamespaceID }}"
 # this should be json matching the celestia.Config type
 da_config = "{{ .DAConfig }}"
 
-# max size of batch in bytes that can be accepted by DA
-block_batch_max_size_bytes = {{ .BlockManagerConfig.BlockBatchMaxSizeBytes }}
 
 # max number of cached messages by gossipsub protocol
 gossiped_blocks_cache_size = {{ .BlockManagerConfig.GossipedBlocksCacheSize }}

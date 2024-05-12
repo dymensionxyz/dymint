@@ -22,34 +22,20 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 	ticker := time.NewTicker(m.Conf.BlockTime)
 	defer ticker.Stop()
 
-	// Allow the initial block to be empty
-	produceEmptyBlock := true
-
-	var emptyBlocksTimer <-chan time.Time
-	resetEmptyBlocksTimer := func() {}
-	// Setup ticker for empty blocks if enabled
-	if 0 < m.Conf.EmptyBlocksMaxTime {
-		t := time.NewTimer(m.Conf.EmptyBlocksMaxTime)
-		emptyBlocksTimer = t.C
-		resetEmptyBlocksTimer = func() {
-			produceEmptyBlock = false
-			t.Reset(m.Conf.EmptyBlocksMaxTime)
-		}
-		defer t.Stop()
-	}
+	var nextEmptyBlock time.Time
+	firstBlock := true
 
 	for {
 		select {
-		case <-ctx.Done(): // Context canceled
+		case <-ctx.Done():
 			return
-		case <-m.produceEmptyBlockCh: // If we got a request for an empty block produce it and don't wait for the ticker
-			produceEmptyBlock = true
-		case <-emptyBlocksTimer: // Empty blocks timeout
-			produceEmptyBlock = true
-			m.logger.Debug(fmt.Sprintf("no transactions, producing empty block: elapsed: %.2f", m.Conf.EmptyBlocksMaxTime.Seconds()))
-		// Produce block
 		case <-ticker.C:
-			err := m.ProduceAndGossipBlock(ctx, produceEmptyBlock)
+
+			// if empty blocks are configured to be enabled, and one is scheduled...
+			produceEmptyBlock := firstBlock || 0 == m.Conf.MaxIdleTime || nextEmptyBlock.Before(time.Now())
+			firstBlock = false
+
+			block, commit, err := m.ProduceAndGossipBlock(ctx, produceEmptyBlock)
 			if errors.Is(err, context.Canceled) {
 				m.logger.Error("produce and gossip: context canceled", "error", err)
 				return
@@ -65,33 +51,43 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 				m.logger.Error("produce and gossip: uncategorized, assuming recoverable", "error", err)
 				continue
 			}
-			resetEmptyBlocksTimer()
-		case shouldProduceBlocks := <-m.shouldProduceBlocksCh:
-			for !shouldProduceBlocks {
-				m.logger.Info("block production paused - awaiting positive continuation signal")
-				shouldProduceBlocks = <-m.shouldProduceBlocksCh
+
+			// If IBC transactions are present, set proof required to true
+			// This will set a shorter timer for the next block
+			// currently we set it for all txs as we don't have a way to determine if an IBC tx is present (https://github.com/dymensionxyz/dymint/issues/709)
+			nextEmptyBlock = time.Now().Add(m.Conf.MaxIdleTime)
+			if 0 < len(block.Data.Txs) {
+				nextEmptyBlock = time.Now().Add(m.Conf.MaxProofTime)
+			} else {
+				m.logger.Info("produced empty block")
 			}
-			m.logger.Info("resumed block production")
+
+			// Send the size to the accumulated size channel
+			// This will block in case the submitter is too slow and it's buffer is full
+			size := uint64(block.ToProto().Size()) + uint64(commit.ToProto().Size())
+			select {
+			case <-ctx.Done():
+				return
+			case m.producedSizeCh <- size:
+			}
 		}
 	}
 }
 
-func (m *Manager) ProduceAndGossipBlock(ctx context.Context, allowEmpty bool) error {
+func (m *Manager) ProduceAndGossipBlock(ctx context.Context, allowEmpty bool) (*types.Block, *types.Commit, error) {
 	block, commit, err := m.produceBlock(allowEmpty)
 	if err != nil {
-		return fmt.Errorf("produce block: %w", err)
+		return nil, nil, fmt.Errorf("produce block: %w", err)
 	}
 
 	if err := m.gossipBlock(ctx, *block, *commit); err != nil {
-		return fmt.Errorf("gossip block: %w", err)
+		return nil, nil, fmt.Errorf("gossip block: %w", err)
 	}
 
-	return nil
+	return block, commit, nil
 }
 
 func (m *Manager) produceBlock(allowEmpty bool) (*types.Block, *types.Commit, error) {
-	m.produceBlockMutex.Lock()
-	defer m.produceBlockMutex.Unlock()
 	var (
 		lastCommit     *types.Commit
 		lastHeaderHash [32]byte

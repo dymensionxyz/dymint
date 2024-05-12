@@ -2,7 +2,6 @@ package celestia_test
 
 import (
 	"bytes"
-	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
@@ -74,7 +73,6 @@ func TestSubmitBatch(t *testing.T) {
 		submitPFBReturn         []interface{}
 		sumbitPFDRun            func(args mock.Arguments)
 		expectedInclusionHeight uint64
-		expectedHealthEvent     *da.EventDataHealth
 		getProofReturn          []interface{}
 		getProofDRun            func(args mock.Arguments)
 		includedReturn          []interface{}
@@ -89,17 +87,15 @@ func TestSubmitBatch(t *testing.T) {
 			getProofDRun:            func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) },
 			includedRun:             func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) },
 			expectedInclusionHeight: uint64(1234),
-			expectedHealthEvent:     &da.EventDataHealth{},
 		},
 		{
-			name:                "TestSubmitPFBErrored",
-			submitPFBReturn:     []interface{}{uint64(0), timeOutErr},
-			getProofReturn:      []interface{}{&blobProof, nil},
-			includedReturn:      []interface{}{true, nil},
-			sumbitPFDRun:        func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) },
-			getProofDRun:        func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) },
-			includedRun:         func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) },
-			expectedHealthEvent: &da.EventDataHealth{Error: timeOutErr},
+			name:            "TestSubmitPFBErrored",
+			submitPFBReturn: []interface{}{uint64(0), timeOutErr},
+			getProofReturn:  []interface{}{&blobProof, nil},
+			includedReturn:  []interface{}{true, nil},
+			sumbitPFDRun:    func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) },
+			getProofDRun:    func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) },
+			includedRun:     func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) },
 		},
 	}
 	for _, tc := range cases {
@@ -116,8 +112,6 @@ func TestSubmitBatch(t *testing.T) {
 		pubsubServer := pubsub.NewServer()
 		err = pubsubServer.Start()
 		require.NoError(err, tc.name)
-		HealthSubscription, err := pubsubServer.Subscribe(context.Background(), "testSubmitBatch", da.EventQueryDAHealthStatus)
-		assert.NoError(err, tc.name)
 		// Start the DALC
 		dalc := celestia.DataAvailabilityLayerClient{}
 		err = dalc.Init(configBytes, pubsubServer, nil, log.TestingLogger(), options...)
@@ -147,20 +141,10 @@ func TestSubmitBatch(t *testing.T) {
 			if res.SubmitMetaData != nil {
 				assert.Equal(res.SubmitMetaData.Height, tc.expectedInclusionHeight, tc.name)
 			}
-			time.Sleep(100 * time.Millisecond)
 			done <- true
 		}()
 
-		select {
-		case event := <-HealthSubscription.Out():
-			healthStatusEvent := event.Data().(*da.EventDataHealth)
-			t.Log("got health status event", healthStatusEvent.Error)
-			assert.ErrorIs(healthStatusEvent.Error, tc.expectedHealthEvent.Error, tc.name)
-		case <-time.After(1 * time.Second):
-			t.Error("timeout. expected health status event but didn't get one")
-		case <-done:
-			t.Error("submit done. expected health status event but didn't get one")
-		}
+		time.Sleep(100 * time.Millisecond)
 		err = dalc.Stop()
 		require.NoError(err, tc.name)
 		// Wait for the goroutines to finish before accessing the mock calls

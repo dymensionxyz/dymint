@@ -17,8 +17,6 @@ import (
 )
 
 const (
-	// DefaultBatchSize is the default batch size for testing
-	DefaultBatchSize = 5
 	// BlockVersion is the default block version for testing
 	BlockVersion = 1
 	// AppVersion is the default app version for testing
