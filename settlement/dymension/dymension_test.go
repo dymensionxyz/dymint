@@ -1,19 +1,14 @@
 package dymension_test
 
 import (
-	"context"
 	"errors"
 	"fmt"
-	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 
 	"google.golang.org/grpc/codes"
 
 	"google.golang.org/grpc/status"
-
-	"github.com/dymensionxyz/dymint/gerr"
 
 	"github.com/tendermint/tendermint/libs/log"
 
@@ -114,9 +109,6 @@ func TestPostBatch(t *testing.T) {
 	require.NoError(err)
 	batch, err := testutil.GenerateBatch(1, 1, propserKey)
 	require.NoError(err)
-	// Subscribe to the health status event
-	HealthSubscription, err := pubsubServer.Subscribe(context.Background(), "testPostBatch", settlement.EventQuerySettlementHealthStatus)
-	assert.NoError(t, err)
 
 	cases := []struct {
 		name                    string
@@ -124,7 +116,6 @@ func TestPostBatch(t *testing.T) {
 		isBatchAcceptedHubEvent bool
 		shouldMockBatchIncluded bool
 		isBatchIncludedSuccess  bool
-		expectedError           error
 	}{
 		{
 			name:                    "SubmitBatchFailure",
@@ -132,7 +123,6 @@ func TestPostBatch(t *testing.T) {
 			isBatchAcceptedHubEvent: false,
 			shouldMockBatchIncluded: true,
 			isBatchIncludedSuccess:  false,
-			expectedError:           submitBatchError,
 		},
 		{
 			name:                    "SubmitBatchSuccessNoBatchAcceptedHubEventNotIncluded",
@@ -140,7 +130,6 @@ func TestPostBatch(t *testing.T) {
 			isBatchAcceptedHubEvent: false,
 			shouldMockBatchIncluded: true,
 			isBatchIncludedSuccess:  false,
-			expectedError:           gerr.ErrNotFound,
 		},
 		{
 			name:                    "SubmitBatchSuccessNotAcceptedYesIncluded",
@@ -148,23 +137,17 @@ func TestPostBatch(t *testing.T) {
 			isBatchAcceptedHubEvent: false,
 			shouldMockBatchIncluded: true,
 			isBatchIncludedSuccess:  true,
-			expectedError:           nil,
 		},
 		{
 			name:                    "SubmitBatchSuccessAndAccepted",
 			isBatchSubmitSuccess:    true,
 			isBatchAcceptedHubEvent: true,
 			shouldMockBatchIncluded: false,
-			expectedError:           nil,
 		},
 	}
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			// Init the wait group and set the number of expected events
-			var wg sync.WaitGroup
-			eventsCount := 1
-			wg.Add(eventsCount)
 			// Reset the mock functions
 			testutil.UnsetMockFn(cosmosClientMock.On("BroadcastTx"))
 			testutil.UnsetMockFn(rollappQueryClientMock.On("StateInfo"))
@@ -193,20 +176,6 @@ func TestPostBatch(t *testing.T) {
 			require.NoError(err)
 			err = hubClient.Start()
 			require.NoError(err)
-			// Handle the various events that are emitted and timeout if we don't get them
-			var eventsReceivedCount int64
-			go func() {
-				select {
-				case healthEvent := <-HealthSubscription.Out():
-					t.Logf("got health event: %v", healthEvent)
-					healthStatusEvent := healthEvent.Data().(*settlement.EventDataHealth)
-					assert.ErrorIs(t, healthStatusEvent.Error, c.expectedError)
-					atomic.AddInt64(&eventsReceivedCount, 1)
-				case <-time.After(10 * time.Second):
-					t.Error("Didn't receive health event")
-				}
-				wg.Done()
-			}()
 
 			resultSubmitBatch := &da.ResultSubmitBatch{}
 			resultSubmitBatch.SubmitMetaData = &da.DASubmitMetaData{}
@@ -217,17 +186,9 @@ func TestPostBatch(t *testing.T) {
 				errChan <- err // Send any error to the errChan
 			}()
 
-			// Use a select statement to wait for a potential error or a timeout.
-			select {
-			case err := <-errChan:
-				// Check for error from PostBatch.
-				assert.NoError(t, err, "PostBatch should not produce an error")
-			case <-time.After(50 * time.Millisecond):
-				// Timeout case to avoid blocking forever if PostBatch doesn't return.
-			}
 			// Wait for the batch to be submitted and submit an event notifying that the batch was accepted
-			time.Sleep(50 * time.Millisecond)
 			if c.isBatchAcceptedHubEvent {
+				time.Sleep(100 * time.Millisecond)
 				batchAcceptedCh <- coretypes.ResultEvent{
 					Query: fmt.Sprintf("state_update.rollapp_id='%s'", ""),
 					Events: map[string][]string{
@@ -237,8 +198,14 @@ func TestPostBatch(t *testing.T) {
 					},
 				}
 			}
-			wg.Wait()
-			assert.Equal(t, eventsCount, int(eventsReceivedCount))
+			// Use a select statement to wait for a potential error or a timeout.
+			select {
+			case err := <-errChan:
+				// Check for error from PostBatch.
+				assert.NoError(t, err, "PostBatch should not produce an error")
+			case <-time.After(200 * time.Millisecond):
+			}
+
 			// Stop the hub client and wait for it to stop
 			err = hubClient.Stop()
 			require.NoError(err)

@@ -285,19 +285,11 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 					}
 				}
 
-				res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, err)
-				if err != nil {
-					return res
-				}
-				c.logger.Error("Submitted bad health event: trying again.", "error", err)
+				c.logger.Error(err.Error())
 				continue
 			}
 
 			c.logger.Debug("Successfully submitted batch.")
-			res, err := da.SubmitBatchHealthEventHelper(c.pubsubServer, c.ctx, nil)
-			if err != nil {
-				return res
-			}
 			return da.ResultSubmitBatch{
 				BaseResult: da.BaseResult{
 					Code:    da.StatusSuccess,
@@ -308,7 +300,6 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 					Height: daBlockHeight,
 				},
 			}
-
 		}
 	}
 }
@@ -401,11 +392,11 @@ func (c *DataAvailabilityLayerClient) broadcastTx(tx []byte) (uint64, error) {
 				inclusionTimer.Reset(c.txInclusionTimeout)
 				continue
 			} else {
-				recievedStatus, err := status.MarshalJSON()
+				receivedStatus, err := status.MarshalJSON()
 				if err != nil {
 					return 0, fmt.Errorf("MarshalJSON of received status: %w", err)
 				}
-				c.logger.Debug("unsupported status, still waiting for inclusion", "status", string(recievedStatus))
+				c.logger.Debug("unsupported status, still waiting for inclusion", "status", string(receivedStatus))
 				continue
 			}
 		case <-inclusionTimer.C:

@@ -65,24 +65,26 @@ const defaultConfigTemplate = `
 #######################################################
 ###       Dymint Configuration Options     ###
 #######################################################
-aggregator = "{{ .Aggregator }}"
-
 # block production interval
 block_time = "{{ .BlockManagerConfig.BlockTime }}"
 # block production interval in case of no transactions ("0s" produces empty blocks)
-empty_blocks_max_time = "{{ .BlockManagerConfig.EmptyBlocksMaxTime }}"
+max_idle_time = "{{ .BlockManagerConfig.MaxIdleTime }}"
+max_proof_time = "{{ .BlockManagerConfig.MaxProofTime }}"
+max_supported_batch_skew = {{ .BlockManagerConfig.MaxSupportedBatchSkew }}
+
 
 # triggers to submit batch to DA and settlement (both required)
-block_batch_size = {{ .BlockManagerConfig.BlockBatchSize }}
 batch_submit_max_time = "{{ .BlockManagerConfig.BatchSubmitMaxTime }}"
+
+# max size of batch in bytes that can be accepted by DA
+block_batch_max_size_bytes = {{ .BlockManagerConfig.BlockBatchMaxSizeBytes }}
 
 ### da config ###
 da_layer = "{{ .DALayer }}" # mock, celestia, avail
 namespace_id = "{{ .BlockManagerConfig.NamespaceID }}"
+# this should be json matching the celestia.Config type
 da_config = "{{ .DAConfig }}"
 
-# max size of batch in bytes that can be accepted by DA
-block_batch_max_size_bytes = {{ .BlockManagerConfig.BlockBatchMaxSizeBytes }}
 
 # max number of cached messages by gossipsub protocol
 gossiped_blocks_cache_size = {{ .BlockManagerConfig.GossipedBlocksCacheSize }}
@@ -91,7 +93,7 @@ gossiped_blocks_cache_size = {{ .BlockManagerConfig.GossipedBlocksCacheSize }}
 bootstrap_time = "{{ .BootstrapTime }}"
 
 #celestia config example:
-# da_config = "{\"base_url\": \"http://127.0.0.1:26658\", \"timeout\": 60000000000, \"gas_prices\":0.1, \"token\":\"TOKEN\"}"
+# da_config = "{\"base_url\":\"http:\/\/127.0.0.1:26658\",\"timeout\":5000000000,\"gas_prices\":0.1,\"auth_token\":\"TOKEN\",\"backoff\":{\"initial_delay\":6000000000,\"max_delay\":6000000000,\"growth_factor\":2},\"retry_attempts\":4,\"retry_delay\":3000000000}"
 # Avail config example:
 # da_config = "{\"seed\": \"MNEMONIC\", \"api_url\": \"wss://kate.avail.tools/ws\", \"app_id\": 0, \"tip\":10}"
 

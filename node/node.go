@@ -4,15 +4,9 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
-	"sync"
 	"time"
-
-	uevent "github.com/dymensionxyz/dymint/utils/event"
-
-	"github.com/dymensionxyz/dymint/node/events"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
@@ -54,36 +48,6 @@ const (
 	genesisChunkSize = 16 * 1024 * 1024 // 16 MiB
 )
 
-type baseLayerHealth struct {
-	settlement error
-	da         error
-	mu         sync.RWMutex
-}
-
-func (bl *baseLayerHealth) setSettlement(err error) {
-	bl.mu.Lock()
-	defer bl.mu.Unlock()
-	if err != nil {
-		err = fmt.Errorf("settlement: %w", err)
-	}
-	bl.settlement = err
-}
-
-func (bl *baseLayerHealth) setDA(err error) {
-	bl.mu.Lock()
-	defer bl.mu.Unlock()
-	if err != nil {
-		err = fmt.Errorf("da: %w", err)
-	}
-	bl.da = err
-}
-
-func (bl *baseLayerHealth) get() error {
-	bl.mu.RLock()
-	defer bl.mu.RUnlock()
-	return errors.Join(bl.settlement, bl.da)
-}
-
 // Node represents a client node in Dymint network.
 // It connects all the components and orchestrates their work.
 type Node struct {
@@ -113,11 +77,8 @@ type Node struct {
 	BlockIndexer   indexer.BlockIndexer
 	IndexerService *txindex.IndexerService
 
-	baseLayerHealth baseLayerHealth
-
-	// keep context here only because of API compatibility
-	// - it's used in `OnStart` (defined in service.Service interface)
-	Ctx context.Context
+	// shared context for all dymint components
+	ctx context.Context
 }
 
 // NewNode creates new Dymint node.
@@ -201,11 +162,11 @@ func NewNode(
 	mpIDs := nodemempool.NewMempoolIDs()
 
 	// Set p2p client and it's validators
-	p2pValidator := p2p.NewValidator(logger.With("module", "p2p_validator"), pubsubServer, settlementlc)
+	p2pValidator := p2p.NewValidator(logger.With("module", "p2p_validator"), settlementlc)
 
 	conf.P2P.GossipCacheSize = conf.BlockManagerConfig.GossipedBlocksCacheSize
 	conf.P2P.BoostrapTime = conf.BootstrapTime
-	p2pClient, err := p2p.NewClient(conf.P2P, p2pKey, genesis.ChainID, logger.With("module", "p2p"))
+	p2pClient, err := p2p.NewClient(conf.P2P, p2pKey, genesis.ChainID, pubsubServer, logger.With("module", "p2p"))
 	if err != nil {
 		return nil, err
 	}
@@ -247,7 +208,7 @@ func NewNode(
 		TxIndexer:      txIndexer,
 		IndexerService: indexerService,
 		BlockIndexer:   blockIndexer,
-		Ctx:            ctx,
+		ctx:            ctx,
 	}
 
 	node.BaseService = *service.NewBaseService(logger, "Node", node)
@@ -287,7 +248,7 @@ func (n *Node) initGenesisChunks() error {
 // OnStart is a part of Service interface.
 func (n *Node) OnStart() error {
 	n.Logger.Info("starting P2P client")
-	err := n.P2P.Start(n.Ctx)
+	err := n.P2P.Start(n.ctx)
 	if err != nil {
 		return fmt.Errorf("start P2P client: %w", err)
 	}
@@ -309,10 +270,8 @@ func (n *Node) OnStart() error {
 		}
 	}()
 
-	n.startEventListener()
-
 	// start the block manager
-	err = n.blockManager.Start(n.Ctx, n.conf.Aggregator)
+	err = n.blockManager.Start(n.ctx)
 	if err != nil {
 		return fmt.Errorf("while starting block manager: %w", err)
 	}
@@ -404,35 +363,6 @@ func createAndStartIndexerService(
 	}
 
 	return indexerService, txIndexer, blockIndexer, nil
-}
-
-// All events listeners should be registered here
-func (n *Node) startEventListener() {
-	go uevent.MustSubscribe(n.Ctx, n.PubsubServer, "settlementHealthStatusHandler", settlement.EventQuerySettlementHealthStatus, n.onBaseLayerHealthUpdate, n.Logger)
-	go uevent.MustSubscribe(n.Ctx, n.PubsubServer, "daHealthStatusHandler", da.EventQueryDAHealthStatus, n.onBaseLayerHealthUpdate, n.Logger)
-}
-
-func (n *Node) onBaseLayerHealthUpdate(event pubsub.Message) {
-	haveNewErr := false
-	oldStatus := n.baseLayerHealth.get()
-	switch e := event.Data().(type) {
-	case *settlement.EventDataHealth:
-		haveNewErr = e.Error != nil
-		n.baseLayerHealth.setSettlement(e.Error)
-	case *da.EventDataHealth:
-		haveNewErr = e.Error != nil
-		n.baseLayerHealth.setDA(e.Error)
-	}
-	newStatus := n.baseLayerHealth.get()
-	newStatusIsDifferentFromOldOne := (oldStatus == nil) != (newStatus == nil)
-	shouldPublish := newStatusIsDifferentFromOldOne || haveNewErr
-	if shouldPublish {
-		evt := &events.DataHealthStatus{Error: newStatus}
-		if newStatus != nil {
-			n.Logger.Error("Node is unhealthy: base layer has problem.", "error", newStatus)
-		}
-		uevent.MustPublish(n.Ctx, n.PubsubServer, evt, events.HealthStatusList)
-	}
 }
 
 func (n *Node) startPrometheusServer() error {

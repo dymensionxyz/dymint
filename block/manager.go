@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"github.com/dymensionxyz/dymint/gerr"
 
@@ -15,7 +14,6 @@ import (
 
 	"code.cloudfoundry.org/go-diodes"
 
-	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/libp2p/go-libp2p/core/crypto"
 
@@ -52,39 +50,21 @@ type Manager struct {
 	SLClient  settlement.LayerI
 
 	// Data retrieval
-	Retriever da.BatchRetriever
-
+	Retriever       da.BatchRetriever
 	SyncTargetDiode diodes.Diode
 	SyncTarget      atomic.Uint64
 
 	// Block production
-	shouldProduceBlocksCh chan bool
-	produceEmptyBlockCh   chan bool
-	lastSubmissionTime    atomic.Int64
+	producedSizeCh chan uint64 // channel for the producer to report the size of the block it produced
 
-	/*
-		Guard against triggering a new batch submission when the old one is still going on (taking a while)
-	*/
-	submitBatchMutex sync.Mutex
-
-	/*
-		Protect against producing two blocks at once if the first one is taking a while
-		Also, used to protect against the block production that occurs when batch submission thread
-		creates its empty block.
-	*/
-	produceBlockMutex sync.Mutex
+	// Submitter
+	AccumulatedBatchSize atomic.Uint64
 
 	/*
 		Protect against processing two blocks at once when there are two routines handling incoming gossiped blocks,
 		and incoming DA blocks, respectively.
 	*/
 	retrieverMutex sync.Mutex
-
-	// pendingBatch is the result of the last DA submission
-	// that is pending settlement layer submission.
-	// It is used to avoid double submission of the same batch.
-	// It's protected by submitBatchMutex.
-	pendingBatch *PendingBatch
 
 	logger types.Logger
 
@@ -123,41 +103,42 @@ func NewManager(
 	}
 
 	agg := &Manager{
-		Pubsub:      pubsub,
-		p2pClient:   p2pClient,
-		ProposerKey: proposerKey,
-		Conf:        conf,
-		Genesis:     genesis,
-		LastState:   s,
-		Store:       store,
-		Executor:    exec,
-		DAClient:    dalc,
-		SLClient:    settlementClient,
-		Retriever:   dalc.(da.BatchRetriever),
-		// channels are buffered to avoid blocking on input/output operations, buffer sizes are arbitrary
-		SyncTargetDiode:       diodes.NewOneToOne(1, nil),
-		shouldProduceBlocksCh: make(chan bool, 1),
-		produceEmptyBlockCh:   make(chan bool, 1),
-		logger:                logger,
-		blockCache:            make(map[uint64]CachedBlock),
+		Pubsub:          pubsub,
+		p2pClient:       p2pClient,
+		ProposerKey:     proposerKey,
+		Conf:            conf,
+		Genesis:         genesis,
+		LastState:       s,
+		Store:           store,
+		Executor:        exec,
+		DAClient:        dalc,
+		SLClient:        settlementClient,
+		Retriever:       dalc.(da.BatchRetriever),
+		SyncTargetDiode: diodes.NewOneToOne(1, nil),
+		producedSizeCh:  make(chan uint64),
+		logger:          logger,
+		blockCache:      make(map[uint64]CachedBlock),
 	}
 
 	return agg, nil
 }
 
 // Start starts the block manager.
-func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
+func (m *Manager) Start(ctx context.Context) error {
 	m.logger.Info("Starting the block manager")
 
-	// TODO (#283): set aggregator mode by proposer addr on the hub
-	if isAggregator {
-		// make sure local signing key is the registered on the hub
-		slProposerKey := m.SLClient.GetProposer().PublicKey.Bytes()
-		localProposerKey, _ := m.ProposerKey.GetPublic().Raw()
-		if !bytes.Equal(slProposerKey, localProposerKey) {
-			return fmt.Errorf("proposer key mismatch: settlement proposer key: %s, block manager proposer key: %s", slProposerKey, m.ProposerKey.GetPublic())
-		}
+	// Check if proposer key matches to the one in the settlement layer
+	var isAggregator bool
+	slProposerKey := m.SLClient.GetProposer().PublicKey.Bytes()
+	localProposerKey, err := m.ProposerKey.GetPublic().Raw()
+	if err != nil {
+		return fmt.Errorf("get local node public key: %w", err)
+	}
+	if bytes.Equal(slProposerKey, localProposerKey) {
 		m.logger.Info("Starting in aggregator mode")
+		isAggregator = true
+	} else {
+		m.logger.Info("Starting in non-aggregator mode")
 	}
 
 	// Check if InitChain flow is needed
@@ -174,13 +155,13 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 		go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewNewGossipedBlock, m.onNewGossipedBlock, m.logger)
 	}
 
-	err := m.syncBlockManager()
+	err = m.syncBlockManager()
 	if err != nil {
 		return fmt.Errorf("sync block manager: %w", err)
 	}
 
 	if isAggregator {
-		go uevent.MustSubscribe(ctx, m.Pubsub, "nodeHealth", events.QueryHealthStatus, m.onNodeHealthStatus, m.logger)
+		// TODO: populate the accumulatedSize on startup
 		go m.ProduceBlockLoop(ctx)
 		go m.SubmitLoop(ctx)
 	} else {
@@ -220,7 +201,6 @@ func (m *Manager) UpdateSyncParams(endHeight uint64) {
 	types.RollappHubHeightGauge.Set(float64(endHeight))
 	m.logger.Info("Received new syncTarget", "syncTarget", endHeight)
 	m.SyncTarget.Store(endHeight)
-	m.lastSubmissionTime.Store(time.Now().UnixNano())
 }
 
 func getAddress(key crypto.PrivKey) ([]byte, error) {
@@ -231,20 +211,14 @@ func getAddress(key crypto.PrivKey) ([]byte, error) {
 	return tmcrypto.AddressHash(rawKey), nil
 }
 
-func (m *Manager) onNodeHealthStatus(event pubsub.Message) {
-	eventData := event.Data().(*events.DataHealthStatus)
-	m.logger.Info("Received node health status event.", "eventData", eventData)
-	m.shouldProduceBlocksCh <- eventData.Error == nil
-}
-
 // TODO: move to gossip.go
 // onNewGossippedBlock will take a block and apply it
 func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
 	m.retrieverMutex.Lock() // needed to protect blockCache access
-	m.logger.Debug("Received new block via gossip", "n cachedBlocks", len(m.blockCache))
 	eventData := event.Data().(p2p.GossipedBlock)
 	block := eventData.Block
 	commit := eventData.Commit
+	m.logger.Debug("Received new block via gossip", "height", block.Header.Height, "n cachedBlocks", len(m.blockCache))
 
 	nextHeight := m.Store.NextHeight()
 	if block.Header.Height >= nextHeight {

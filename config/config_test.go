@@ -1,7 +1,6 @@
 package config_test
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -24,23 +23,21 @@ func TestViperAndCobra(t *testing.T) {
 	nc := config.DefaultConfig("", "")
 	config.EnsureRoot(dir, nc)
 
-	assert.NoError(cmd.Flags().Set(config.FlagAggregator, "true"))
 	assert.NoError(cmd.Flags().Set(config.FlagDALayer, "foobar"))
 	assert.NoError(cmd.Flags().Set(config.FlagDAConfig, `{"json":true}`))
 	assert.NoError(cmd.Flags().Set(config.FlagBlockTime, "1234s"))
-	assert.NoError(cmd.Flags().Set(config.FlagEmptyBlocksMaxTime, "2000s"))
+	assert.NoError(cmd.Flags().Set(config.FlagMaxIdleTime, "2000s"))
 	assert.NoError(cmd.Flags().Set(config.FlagBatchSubmitMaxTime, "3000s"))
 	assert.NoError(cmd.Flags().Set(config.FlagNamespaceID, "0102030405060708"))
-	assert.NoError(cmd.Flags().Set(config.FlagBlockBatchSize, "10"))
+	assert.NoError(cmd.Flags().Set(config.FlagBlockBatchMaxSizeBytes, "1000"))
 
 	assert.NoError(nc.GetViperConfig(cmd, dir))
 
-	assert.Equal(true, nc.Aggregator)
 	assert.Equal("foobar", nc.DALayer)
 	assert.Equal(`{"json":true}`, nc.DAConfig)
 	assert.Equal(1234*time.Second, nc.BlockTime)
 	assert.Equal("0102030405060708", nc.NamespaceID)
-	assert.Equal(uint64(10), nc.BlockBatchSize)
+	assert.Equal(uint64(1000), nc.BlockManagerConfig.BlockBatchMaxSizeBytes)
 }
 
 func TestNodeConfig_Validate(t *testing.T) {
@@ -62,7 +59,7 @@ func TestNodeConfig_Validate(t *testing.T) {
 		}, {
 			name: "missing empty blocks max time",
 			malleate: func(nc *config.NodeConfig) {
-				nc.EmptyBlocksMaxTime = -1
+				nc.MaxIdleTime = -1
 			},
 			wantErr: assert.Error,
 		}, {
@@ -72,9 +69,10 @@ func TestNodeConfig_Validate(t *testing.T) {
 			},
 			wantErr: assert.Error,
 		}, {
-			name: "empty_blocks_max_time not greater than block_time",
+			name: "max_idle_time not greater than block_time",
 			malleate: func(nc *config.NodeConfig) {
-				nc.BlockManagerConfig.EmptyBlocksMaxTime = 1
+				nc.BlockManagerConfig.MaxIdleTime = 1
+				nc.BlockManagerConfig.MaxProofTime = 1
 				nc.BlockManagerConfig.BlockTime = 2
 			},
 			wantErr: assert.Error,
@@ -83,12 +81,6 @@ func TestNodeConfig_Validate(t *testing.T) {
 			malleate: func(nc *config.NodeConfig) {
 				nc.BlockManagerConfig.BatchSubmitMaxTime = 1
 				nc.BlockManagerConfig.BlockTime = 2
-			},
-			wantErr: assert.Error,
-		}, {
-			name: "missing block batch size",
-			malleate: func(nc *config.NodeConfig) {
-				nc.BlockManagerConfig.BlockBatchSize = 0
 			},
 			wantErr: assert.Error,
 		}, {
@@ -193,7 +185,7 @@ func TestNodeConfig_Validate(t *testing.T) {
 			if tt.malleate != nil {
 				tt.malleate(&nc)
 			}
-			tt.wantErr(t, nc.Validate(), fmt.Sprintf("Validate()"))
+			tt.wantErr(t, nc.Validate(), "Validate()")
 		})
 	}
 }
@@ -202,10 +194,11 @@ func fullNodeConfig() config.NodeConfig {
 	return config.NodeConfig{
 		BlockManagerConfig: config.BlockManagerConfig{
 			BlockTime:               1 * time.Second,
-			EmptyBlocksMaxTime:      2 * time.Second,
-			BatchSubmitMaxTime:      1 * time.Second,
+			MaxIdleTime:             20 * time.Second,
+			MaxProofTime:            20 * time.Second,
+			BatchSubmitMaxTime:      20 * time.Second,
+			MaxSupportedBatchSkew:   10,
 			NamespaceID:             "test",
-			BlockBatchSize:          1,
 			BlockBatchMaxSizeBytes:  1,
 			GossipedBlocksCacheSize: 1,
 		},
