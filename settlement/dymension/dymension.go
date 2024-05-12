@@ -40,7 +40,7 @@ const (
 )
 
 const (
-	eventStateUpdate          = "state_update.rollapp_id='%s'"
+	eventStateUpdate          = "state_update.rollapp_id='%s' AND state_update.status='PENDING'"
 	eventSequencersListUpdate = "sequencers_list_update.rollapp_id='%s'"
 )
 

@@ -190,7 +190,7 @@ func TestPostBatch(t *testing.T) {
 			if c.isBatchAcceptedHubEvent {
 				time.Sleep(100 * time.Millisecond)
 				batchAcceptedCh <- coretypes.ResultEvent{
-					Query: fmt.Sprintf("state_update.rollapp_id='%s'", ""),
+					Query: fmt.Sprintf("state_update.rollapp_id='%s' AND state_update.status='PENDING'", ""),
 					Events: map[string][]string{
 						"state_update.num_blocks":       {"1"},
 						"state_update.start_height":     {"1"},
