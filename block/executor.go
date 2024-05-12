@@ -140,8 +140,7 @@ func (e *Executor) Commit(state types.State, block *types.Block, resp *tmstate.A
 		return nil, 0, err
 	}
 
-	//FIXME: state is wrong here
-	err = e.publishEvents(resp, block, state)
+	err = e.publishEvents(resp, block)
 	if err != nil {
 		e.logger.Error("fire block events", "error", err)
 		return nil, 0, err
@@ -250,13 +249,12 @@ func (e *Executor) getDataHash(block *types.Block) []byte {
 	return abciData.Hash()
 }
 
-func (e *Executor) publishEvents(resp *tmstate.ABCIResponses, block *types.Block, state types.State) error {
+func (e *Executor) publishEvents(resp *tmstate.ABCIResponses, block *types.Block) error {
 	if e.eventBus == nil {
 		return nil
 	}
 
 	abciBlock, err := types.ToABCIBlock(block)
-	abciBlock.Header.ValidatorsHash = state.Validators.Hash()
 	if err != nil {
 		return err
 	}
