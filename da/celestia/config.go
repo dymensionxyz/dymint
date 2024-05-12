@@ -6,16 +6,23 @@ import (
 	"fmt"
 	"time"
 
+	uretry "github.com/dymensionxyz/dymint/utils/retry"
+
 	openrpcns "github.com/rollkit/celestia-openrpc/types/namespace"
 )
 
 const (
 	defaultRpcRetryDelay            = 15 * time.Second
-	defaultSubmitRetryDelay         = 5 * time.Second
 	defaultRpcCheckAttempts         = 5
 	namespaceVersion                = 0
 	defaultGasPrices                = 0.1
 	defaultGasAdjustment    float64 = 1.3
+)
+
+var defaultSubmitBackoff = uretry.NewBackoffConfig(
+	uretry.WithInitialDelay(time.Second*4),
+	uretry.WithMaxDelay(time.Second*30),
+	uretry.WithGrowthFactor(1.6),
 )
 
 // Config stores Celestia DALC configuration parameters.
