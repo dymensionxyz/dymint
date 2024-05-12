@@ -13,8 +13,6 @@ import (
 	tmtypes "github.com/tendermint/tendermint/types"
 	"go.uber.org/multierr"
 
-	libp2pcrypto "github.com/libp2p/go-libp2p/core/crypto"
-
 	"github.com/dymensionxyz/dymint/mempool"
 	"github.com/dymensionxyz/dymint/types"
 )
@@ -35,12 +33,7 @@ type Executor struct {
 
 // NewExecutor creates new instance of BlockExecutor.
 // Proposer address and namespace ID will be used in all newly created blocks.
-func NewExecutor(proposerKey libp2pcrypto.PrivKey, namespaceID string, chainID string, mempool mempool.Mempool, proxyApp proxy.AppConns, eventBus *tmtypes.EventBus, logger types.Logger) (*Executor, error) {
-	proposerAddress, err := getAddress(proposerKey)
-	if err != nil {
-		return nil, err
-	}
-
+func NewExecutor(proposerAddress []byte, namespaceID string, chainID string, mempool mempool.Mempool, proxyApp proxy.AppConns, eventBus *tmtypes.EventBus, logger types.Logger) (*Executor, error) {
 	bytes, err := hex.DecodeString(namespaceID)
 	if err != nil {
 		return nil, err
@@ -141,13 +134,14 @@ func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHead
 }
 
 // Commit commits the block
-func (e *Executor) Commit(state *types.State, block *types.Block, resp *tmstate.ABCIResponses) ([]byte, int64, error) {
+func (e *Executor) Commit(state types.State, block *types.Block, resp *tmstate.ABCIResponses) ([]byte, int64, error) {
 	appHash, retainHeight, err := e.commit(state, block, resp.DeliverTxs)
 	if err != nil {
 		return nil, 0, err
 	}
 
-	err = e.publishEvents(resp, block, *state)
+	//FIXME: state is wrong here
+	err = e.publishEvents(resp, block, state)
 	if err != nil {
 		e.logger.Error("fire block events", "error", err)
 		return nil, 0, err
@@ -160,7 +154,7 @@ func (e *Executor) GetAppInfo() (*abci.ResponseInfo, error) {
 	return e.proxyAppQueryConn.InfoSync(abci.RequestInfo{})
 }
 
-func (e *Executor) commit(state *types.State, block *types.Block, deliverTxs []*abci.ResponseDeliverTx) ([]byte, int64, error) {
+func (e *Executor) commit(state types.State, block *types.Block, deliverTxs []*abci.ResponseDeliverTx) ([]byte, int64, error) {
 	e.mempool.Lock()
 	defer e.mempool.Unlock()
 

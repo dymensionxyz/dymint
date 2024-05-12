@@ -19,7 +19,6 @@ import (
 func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 	m.logger.Debug("Started produce loop")
 
-	// Main ticker for block production
 	ticker := time.NewTicker(m.Conf.BlockTime)
 	defer ticker.Stop()
 
@@ -90,19 +89,14 @@ func (m *Manager) ProduceAndGossipBlock(ctx context.Context, allowEmpty bool) (*
 
 func (m *Manager) produceBlock(allowEmpty bool) (*types.Block, *types.Commit, error) {
 	var (
-		lastCommit     *types.Commit
-		lastHeaderHash [32]byte
-		newHeight      uint64
 		err            error
+		lastHeaderHash [32]byte
+		lastCommit     = &types.Commit{}
+		newHeight      = m.State.NextHeight()
 	)
 
-	if m.State.IsGenesis() {
-		newHeight = uint64(m.State.InitialHeight)
-		lastCommit = &types.Commit{}
-		m.State.BaseHeight = newHeight
-	} else {
-		height := m.State.Height()
-		newHeight = height + 1
+	if !m.State.IsGenesis() {
+		height := newHeight - 1
 		lastCommit, err = m.Store.LoadCommit(height)
 		if err != nil {
 			return nil, nil, fmt.Errorf("load commit: height: %d: %w: %w", height, err, ErrNonRecoverable)
@@ -190,6 +184,7 @@ func (m *Manager) createTMSignature(block *types.Block, proposerAddress []byte, 
 	}
 	v := vote.ToProto()
 	// convert libp2p key to tm key
+	//TODO: move to types
 	raw_key, _ := m.ProposerKey.Raw()
 	tmprivkey := tmed25519.PrivKey(raw_key)
 	tmprivkey.PubKey().Bytes()

@@ -112,11 +112,11 @@ func (m *MockStore) NextHeight() uint64 {
 }
 
 // UpdateState updates the state of the mock store
-func (m *MockStore) UpdateState(state types.State, batch store.Batch) (store.Batch, error) {
+func (m *MockStore) SaveState(state types.State, batch store.Batch) (store.Batch, error) {
 	if batch != nil && m.ShouldFailUpdateStateWithBatch || m.ShoudFailUpdateState && batch == nil {
 		return nil, errors.New("failed to update state")
 	}
-	return m.DefaultStore.UpdateState(state, batch)
+	return m.DefaultStore.SaveState(state, batch)
 }
 
 // NewMockStore returns a new mock store

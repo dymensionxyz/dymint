@@ -2,10 +2,7 @@ package types
 
 import (
 	"fmt"
-	"sync/atomic"
 	"time"
-
-	tmtypes "github.com/tendermint/tendermint/types"
 
 	// TODO(tzdybal): copy to local project?
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
@@ -27,8 +24,9 @@ type State struct {
 	LastBlockHeight uint64
 	LastBlockID     types.BlockID
 	LastBlockTime   time.Time
+	// BaseHeight is the height of the first block we have in store after pruning.
+	BaseHeight uint64
 
-	// In the MVP implementation, there will be only one Validator
 	NextValidators              *types.ValidatorSet
 	Validators                  *types.ValidatorSet
 	LastValidators              *types.ValidatorSet
@@ -45,24 +43,16 @@ type State struct {
 	// LastStore height is the last height we've saved to the store.
 	LastStoreHeight uint64
 
-	// BaseHeight is the height of the first block we have in store after pruning.
-	BaseHeight uint64
-
 	// the latest AppHash we've received from calling abci.Commit()
 	AppHash [32]byte
 }
 
-// FIXME: move from types package
-// NewFromGenesisDoc reads blockchain State from genesis.
-func NewFromGenesisDoc(genDoc *types.GenesisDoc) (State, error) {
+// NewStateFromGenesis reads blockchain State from genesis.
+func NewStateFromGenesis(genDoc *types.GenesisDoc) (State, error) {
 	err := genDoc.ValidateAndComplete()
 	if err != nil {
 		return State{}, fmt.Errorf("in genesis doc: %w", err)
 	}
-
-	var validatorSet, nextValidatorSet *types.ValidatorSet
-	validatorSet = types.NewValidatorSet(nil)
-	nextValidatorSet = types.NewValidatorSet(nil)
 
 	// InitStateVersion sets the Consensus.Block and Software versions,
 	// but leaves the Consensus.App version blank.
@@ -83,17 +73,16 @@ func NewFromGenesisDoc(genDoc *types.GenesisDoc) (State, error) {
 
 		LastBlockHeight: 0,
 		LastBlockID:     types.BlockID{},
-		LastBlockTime:   genDoc.GenesisTime,
+		LastBlockTime:   time.Time{},
+		BaseHeight:      uint64(genDoc.InitialHeight),
 
-		NextValidators:              nextValidatorSet,
-		Validators:                  validatorSet,
+		NextValidators:              types.NewValidatorSet(nil),
+		Validators:                  types.NewValidatorSet(nil),
 		LastValidators:              types.NewValidatorSet(nil),
 		LastHeightValidatorsChanged: genDoc.InitialHeight,
 
 		ConsensusParams:                  *genDoc.ConsensusParams,
 		LastHeightConsensusParamsChanged: genDoc.InitialHeight,
-
-		BaseHeight: 0,
 	}
 	copy(s.AppHash[:], genDoc.AppHash)
 
@@ -101,27 +90,25 @@ func NewFromGenesisDoc(genDoc *types.GenesisDoc) (State, error) {
 }
 
 func (s *State) IsGenesis() bool {
-	return s.LastBlockHeight == 0
+	return s.Height() == 0
 }
 
 // SetHeight sets the height saved in the Store if it is higher than the existing height
 // returns OK if the value was updated successfully or did not need to be updated
-func (s *State) SetHeight(height uint64) bool {
-	ok := true
-	storeHeight := s.Height()
-	if height > storeHeight {
-		ok = atomic.CompareAndSwapUint64(&s.LastBlockHeight, storeHeight, height)
-	}
-	return ok
+func (s *State) SetHeight(height uint64) {
+	s.LastBlockHeight = height
 }
 
 // Height returns height of the highest block saved in the Store.
 func (s *State) Height() uint64 {
-	return uint64(s.LastBlockHeight)
+	return s.LastBlockHeight
 }
 
 // NextHeight returns the next height that expected to be stored in store.
 func (s *State) NextHeight() uint64 {
+	if s.IsGenesis() {
+		return s.InitialHeight
+	}
 	return s.Height() + 1
 }
 
@@ -134,14 +121,4 @@ func (s *State) SetBase(height uint64) {
 // Base returns height of the earliest block saved in the Store.
 func (s *State) Base() uint64 {
 	return s.BaseHeight
-}
-
-// SetABCICommitResult
-func (s *State) SetABCICommitResult(resp *tmstate.ABCIResponses, appHash []byte, height uint64) {
-	copy(s.AppHash[:], appHash[:])
-	copy(s.LastResultsHash[:], tmtypes.NewResults(resp.DeliverTxs).Hash())
-
-	s.LastValidators = s.Validators.Copy()
-	s.LastStoreHeight = height
-	s.SetHeight(height)
 }

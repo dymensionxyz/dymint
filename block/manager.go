@@ -86,7 +86,12 @@ func NewManager(
 	p2pClient *p2p.Client,
 	logger types.Logger,
 ) (*Manager, error) {
-	exec, err := NewExecutor(proposerKey, conf.NamespaceID, genesis.ChainID, mempool, proxyApp, eventBus, logger)
+	proposerAddress, err := getAddress(proposerKey)
+	if err != nil {
+		return nil, err
+	}
+
+	exec, err := NewExecutor(proposerAddress, conf.NamespaceID, genesis.ChainID, mempool, proxyApp, eventBus, logger)
 	if err != nil {
 		return nil, fmt.Errorf("create block executor: %w", err)
 	}
@@ -170,8 +175,7 @@ func (m *Manager) syncBlockManager() error {
 	res, err := m.SLClient.RetrieveBatch()
 	if errors.Is(err, gerr.ErrNotFound) {
 		// The SL hasn't got any batches for this chain yet.
-		m.logger.Info("No batches for chain found in SL. Start writing first batch.")
-		//FIXME: set correct syncTarget
+		m.logger.Info("No batches for chain found in SL.")
 		m.SyncTarget.Store(uint64(m.Genesis.InitialHeight - 1))
 		return nil
 	}
@@ -195,19 +199,4 @@ func (m *Manager) UpdateSyncParams(endHeight uint64) {
 	types.RollappHubHeightGauge.Set(float64(endHeight))
 	m.logger.Info("Received new syncTarget", "syncTarget", endHeight)
 	m.SyncTarget.Store(endHeight)
-}
-
-// getInitialState tries to load lastState from Store, and if it's not available it reads GenesisDoc.
-func getInitialState(store store.Store, genesis *tmtypes.GenesisDoc, logger types.Logger) (s types.State, err error) {
-	s, err = store.LoadState()
-	if errors.Is(err, types.ErrNoStateFound) {
-		logger.Info("failed to find state in the store, creating new state from genesis")
-		s, err = types.NewFromGenesisDoc(genesis)
-	}
-
-	if err != nil {
-		return types.State{}, fmt.Errorf("get initial state: %w", err)
-	}
-
-	return s, nil
 }

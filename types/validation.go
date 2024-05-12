@@ -48,12 +48,11 @@ func (b *Block) ValidateWithState(state State) error {
 		b.Header.Version.Block != state.Version.Consensus.Block {
 		return errors.New("b version mismatch")
 	}
-	if state.LastBlockHeight <= 0 && b.Header.Height != uint64(state.InitialHeight) {
-		return errors.New("initial b height mismatch")
+
+	if b.Header.Height != state.NextHeight() {
+		return errors.New("height mismatch")
 	}
-	if state.LastBlockHeight > 0 && b.Header.Height != uint64(state.LastStoreHeight)+1 {
-		return errors.New("b height mismatch")
-	}
+
 	if !bytes.Equal(b.Header.AppHash[:], state.AppHash[:]) {
 		return errors.New("AppHash mismatch")
 	}

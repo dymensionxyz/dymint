@@ -185,10 +185,10 @@ func TestApplyBlock(t *testing.T) {
 	newState, err := executor.UpdateStateFromResponses(resp, state, block)
 	require.NoError(err)
 	require.NotNil(newState)
-	assert.Equal(1, newState.LastBlockHeight)
-	_, err = executor.Commit(&newState, block, resp)
+	assert.Equal(uint64(1), newState.LastBlockHeight)
+	appHash, _, err := executor.Commit(newState, block, resp)
 	require.NoError(err)
-	assert.Equal(mockAppHash, newState.AppHash)
+	assert.Equal(mockAppHash, appHash)
 	newState.LastStoreHeight = uint64(newState.LastBlockHeight)
 
 	// Create another block with multiple Tx from mempool
@@ -240,7 +240,7 @@ func TestApplyBlock(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(newState)
 	assert.Equal(uint64(2), newState.LastBlockHeight)
-	_, err = executor.Commit(&newState, block, resp)
+	_, _, err = executor.Commit(newState, block, resp)
 	require.NoError(err)
 
 	// wait for at least 4 Tx events, for up to 3 second.

@@ -10,7 +10,6 @@ import (
 	"github.com/avast/retry-go/v4"
 	"github.com/gogo/protobuf/proto"
 
-	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
 
 	gsrpc "github.com/centrifuge/go-substrate-rpc-client/v4"
@@ -20,6 +19,7 @@ import (
 	"github.com/centrifuge/go-substrate-rpc-client/v4/signature"
 	availtypes "github.com/centrifuge/go-substrate-rpc-client/v4/types"
 	"github.com/dymensionxyz/dymint/da"
+	"github.com/dymensionxyz/dymint/store"
 	pb "github.com/dymensionxyz/dymint/types/pb/dymint"
 	"github.com/tendermint/tendermint/libs/pubsub"
 )

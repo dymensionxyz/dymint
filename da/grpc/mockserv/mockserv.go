@@ -4,13 +4,13 @@ import (
 	"context"
 	"os"
 
-	"github.com/dymensionxyz/dymint/store"
 	tmlog "github.com/tendermint/tendermint/libs/log"
 	"google.golang.org/grpc"
 
 	"github.com/dymensionxyz/dymint/da"
 	grpcda "github.com/dymensionxyz/dymint/da/grpc"
 	"github.com/dymensionxyz/dymint/da/local"
+	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/dymensionxyz/dymint/types/pb/dalc"
 	"github.com/dymensionxyz/dymint/types/pb/dymint"

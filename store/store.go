@@ -174,7 +174,7 @@ func (s *DefaultStore) LoadCommitByHash(hash [32]byte) (*types.Commit, error) {
 
 // UpdateState updates state saved in Store. Only one State is stored.
 // If there is no State in Store, state will be saved.
-func (s *DefaultStore) UpdateState(state types.State, batch Batch) (Batch, error) {
+func (s *DefaultStore) SaveState(state types.State, batch Batch) (Batch, error) {
 	pbState, err := state.ToProto()
 	if err != nil {
 		return batch, fmt.Errorf("marshal state to JSON: %w", err)

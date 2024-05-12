@@ -61,7 +61,7 @@ type Store interface {
 
 	// UpdateState updates state saved in Store. Only one State is stored.
 	// If there is no State in Store, state will be saved.
-	UpdateState(state types.State, batch Batch) (Batch, error)
+	SaveState(state types.State, batch Batch) (Batch, error)
 
 	// LoadState returns last state saved with UpdateState.
 	LoadState() (types.State, error)

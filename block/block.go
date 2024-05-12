@@ -62,7 +62,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	}
 
 	m.State = newState
-	dbBatch, err = m.Store.UpdateState(m.State, dbBatch)
+	dbBatch, err = m.Store.SaveState(m.State, dbBatch)
 	if err != nil {
 		dbBatch.Discard()
 		return fmt.Errorf("update state: %w", err)
@@ -79,15 +79,15 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	}
 
 	// Commit block to app
-	appHash, retainHeight, err := m.Executor.Commit(&newState, block, responses)
+	appHash, retainHeight, err := m.Executor.Commit(newState, block, responses)
 	if err != nil {
 		return fmt.Errorf("commit block: %w", err)
 	}
 
 	// Update the state with the new app hash, last validators and store height from the commit.
 	// Every one of those, if happens before commit, prevents us from re-executing the block in case failed during commit.
-	newState.SetABCICommitResult(responses, appHash, block.Header.Height)
-	_, err = m.Store.UpdateState(newState, nil)
+	m.Executor.UpdateStateFromCommitResponse(&newState, responses, appHash, block.Header.Height)
+	_, err = m.Store.SaveState(newState, nil)
 	if err != nil {
 		return fmt.Errorf("final update state: %w", err)
 	}
@@ -100,12 +100,13 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		} else {
 			m.logger.Debug("pruned blocks", "pruned", pruned, "retain_height", retainHeight)
 		}
-		newState.BaseHeight = m.State.Base()
-		//TODO: update state
+		newState.BaseHeight = m.State.BaseHeight
+		_, err = m.Store.SaveState(newState, nil)
+		if err != nil {
+			return fmt.Errorf("final update state: %w", err)
+		}
 	}
-
 	m.State = newState
-
 	return nil
 }
 
