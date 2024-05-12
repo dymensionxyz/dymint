@@ -116,9 +116,8 @@ type Node struct {
 
 	baseLayerHealth baseLayerHealth
 
-	// keep context here only because of API compatibility
-	// - it's used in `OnStart` (defined in service.Service interface)
-	Ctx context.Context
+	// shared context for all dymint components
+	ctx context.Context
 }
 
 // NewNode creates new Dymint node.
@@ -248,7 +247,7 @@ func NewNode(
 		TxIndexer:      txIndexer,
 		IndexerService: indexerService,
 		BlockIndexer:   blockIndexer,
-		Ctx:            ctx,
+		ctx:            ctx,
 	}
 
 	node.BaseService = *service.NewBaseService(logger, "Node", node)
@@ -288,7 +287,7 @@ func (n *Node) initGenesisChunks() error {
 // OnStart is a part of Service interface.
 func (n *Node) OnStart() error {
 	n.Logger.Info("starting P2P client")
-	err := n.P2P.Start(n.Ctx)
+	err := n.P2P.Start(n.ctx)
 	if err != nil {
 		return fmt.Errorf("start P2P client: %w", err)
 	}
@@ -313,7 +312,7 @@ func (n *Node) OnStart() error {
 	n.startEventListener()
 
 	// start the block manager
-	err = n.blockManager.Start(n.Ctx, n.conf.Aggregator)
+	err = n.blockManager.Start(n.ctx)
 	if err != nil {
 		return fmt.Errorf("while starting block manager: %w", err)
 	}
@@ -409,8 +408,8 @@ func createAndStartIndexerService(
 
 // All events listeners should be registered here
 func (n *Node) startEventListener() {
-	go uevent.MustSubscribe(n.Ctx, n.PubsubServer, "settlementHealthStatusHandler", settlement.EventQuerySettlementHealthStatus, n.onBaseLayerHealthUpdate, n.Logger)
-	go uevent.MustSubscribe(n.Ctx, n.PubsubServer, "daHealthStatusHandler", da.EventQueryDAHealthStatus, n.onBaseLayerHealthUpdate, n.Logger)
+	go uevent.MustSubscribe(n.ctx, n.PubsubServer, "settlementHealthStatusHandler", settlement.EventQuerySettlementHealthStatus, n.onBaseLayerHealthUpdate, n.Logger)
+	go uevent.MustSubscribe(n.ctx, n.PubsubServer, "daHealthStatusHandler", da.EventQueryDAHealthStatus, n.onBaseLayerHealthUpdate, n.Logger)
 }
 
 func (n *Node) onBaseLayerHealthUpdate(event pubsub.Message) {
@@ -432,7 +431,7 @@ func (n *Node) onBaseLayerHealthUpdate(event pubsub.Message) {
 		if newStatus != nil {
 			n.Logger.Error("Node is unhealthy: base layer has problem.", "error", newStatus)
 		}
-		uevent.MustPublish(n.Ctx, n.PubsubServer, evt, events.HealthStatusList)
+		uevent.MustPublish(n.ctx, n.PubsubServer, evt, events.HealthStatusList)
 	}
 }
 

@@ -272,7 +272,7 @@ func TestSubscription(t *testing.T) {
 	assert.Contains(jsonResp.Error.Message, "subscription not found")
 }
 
-// copied from rpc
+// getRPC returns a mock ABCI application and a local client. (aggregator-mode)
 func getRPC(t *testing.T) (*tmmocks.MockApplication, *client.Client) {
 	t.Helper()
 	require := require.New(t)
@@ -300,7 +300,7 @@ func getRPC(t *testing.T) (*tmmocks.MockApplication, *client.Client) {
 	rollappID := "rollapp_1234-1"
 
 	config := config.NodeConfig{
-		Aggregator: true, DALayer: "mock", SettlementLayer: "mock",
+		DALayer: "mock", SettlementLayer: "mock",
 		BlockManagerConfig: config.BlockManagerConfig{
 			BlockTime:               1 * time.Second,
 			EmptyBlocksMaxTime:      0,

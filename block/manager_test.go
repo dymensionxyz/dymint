@@ -145,7 +145,7 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 	// Capture the error returned by manager.Start.
 	errChan := make(chan error, 1)
 	go func() {
-		errChan <- manager.Start(ctx, true)
+		errChan <- manager.Start(ctx)
 		err := <-errChan
 		assert.NoError(t, err)
 	}()
@@ -270,7 +270,7 @@ func TestBlockProductionNodeHealth(t *testing.T) {
 	// Start the manager
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	err = manager.Start(ctx, true)
+	err = manager.Start(ctx)
 	require.NoError(err)
 	time.Sleep(100 * time.Millisecond)
 

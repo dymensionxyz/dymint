@@ -26,7 +26,6 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 			ListenAddress: DefaultListenAddress,
 			Seeds:         "",
 		},
-		Aggregator: true,
 		BlockManagerConfig: BlockManagerConfig{
 			BlockTime:               200 * time.Millisecond,
 			EmptyBlocksMaxTime:      3600 * time.Second,
