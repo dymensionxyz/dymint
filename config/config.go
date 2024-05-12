@@ -27,7 +27,6 @@ type NodeConfig struct {
 	P2P     P2PConfig
 	RPC     RPCConfig
 	// parameters below are dymint specific and read from config
-	Aggregator         bool `mapstructure:"aggregator"`
 	BlockManagerConfig `mapstructure:",squash"`
 	DALayer            string                 `mapstructure:"da_layer"`
 	DAConfig           string                 `mapstructure:"da_config"`

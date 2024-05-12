@@ -64,11 +64,10 @@ func TestMempoolDirectly(t *testing.T) {
 	rollappID := "rollapp_1234-1"
 
 	nodeConfig := config.NodeConfig{
-		RootDir:    "",
-		DBPath:     "",
-		P2P:        config.P2PConfig{},
-		RPC:        config.RPCConfig{},
-		Aggregator: false,
+		RootDir: "",
+		DBPath:  "",
+		P2P:     config.P2PConfig{},
+		RPC:     config.RPCConfig{},
 		BlockManagerConfig: config.BlockManagerConfig{
 			BlockTime:               100 * time.Millisecond,
 			BlockBatchSize:          2,
@@ -181,7 +180,7 @@ func TestHealthStatusEventHandler(t *testing.T) {
 			done := make(chan bool, 1)
 			ready := make(chan bool, 1)
 			go func() {
-				HealthSubscription, err := node.PubsubServer.Subscribe(node.Ctx, c.name, events.QueryHealthStatus)
+				HealthSubscription, err := node.PubsubServer.Subscribe(context.Background(), c.name, events.QueryHealthStatus)
 				ready <- true
 				assert.NoError(err)
 				select {

@@ -83,7 +83,7 @@ type EvidenceData struct {
 	Evidence []Evidence
 }
 
-// Commit cointains evidence of block creation.
+// Commit contains evidence of block creation.
 type Commit struct {
 	Height     uint64
 	HeaderHash [32]byte
