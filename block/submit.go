@@ -126,82 +126,40 @@ func (m *Manager) HandleSubmissionTrigger() error {
 		return fmt.Errorf("create next batch to submit: %w", err)
 	}
 
-	if err := m.ValidateBatch(nextBatch); err != nil {
-		return fmt.Errorf("validate batch: %w", err)
+	resultSubmitToDA := m.DAClient.SubmitBatch(nextBatch)
+
+	if resultSubmitToDA.Code != da.StatusSuccess {
+		return fmt.Errorf("submit next batch to da: %s", resultSubmitToDA.Message)
 	}
 
-	resultSubmitToDA, err := m.submitNextBatchToDA(nextBatch)
-	if err != nil {
-		return fmt.Errorf("submit next batch to da: %w", err)
-	}
-
-	syncHeight, err := m.submitNextBatchToSL(nextBatch, resultSubmitToDA)
-	if err != nil {
-		return fmt.Errorf("submit pending batch to sl: %w", err)
-	}
-
-	// Update the syncTarget to the height of the last block in the last batch as seen by this node.
-	m.UpdateSyncParams(syncHeight)
-	return nil
-}
-
-func (m *Manager) submitNextBatchToDA(nextBatch *types.Batch) (*da.ResultSubmitBatch, error) {
-	startHeight := nextBatch.StartHeight
 	actualEndHeight := nextBatch.EndHeight
 
-	// Submit batch to the DA
-	m.logger.Info("Submitting next batch", "startHeight", startHeight, "endHeight", actualEndHeight, "size", nextBatch.ToProto().Size())
-	resultSubmitToDA := m.DAClient.SubmitBatch(nextBatch)
-	if resultSubmitToDA.Code != da.StatusSuccess {
-		return nil, fmt.Errorf("submit next batch to DA Layer: %s", resultSubmitToDA.Message)
-	}
-	return &resultSubmitToDA, nil
-}
-
-func (m *Manager) submitNextBatchToSL(batch *types.Batch, daResult *da.ResultSubmitBatch) (uint64, error) {
-	startHeight := batch.StartHeight
-	actualEndHeight := batch.EndHeight
-	err := m.SLClient.SubmitBatch(batch, m.DAClient.GetClientType(), daResult)
+	err = m.SLClient.SubmitBatch(nextBatch, m.DAClient.GetClientType(), &resultSubmitToDA)
 	if err != nil {
-		return 0, fmt.Errorf("sl client submit batch: startheight: %d: actual end height: %d: %w", startHeight, actualEndHeight, err)
+		return fmt.Errorf("sl client submit batch: start height: %d: inclusive end height: %d: %w", startHeight, actualEndHeight, err)
 	}
 
-	return actualEndHeight, nil
-}
-
-func (m *Manager) ValidateBatch(batch *types.Batch) error {
-	syncTarget := m.SyncTarget.Load()
-	if batch.StartHeight != syncTarget+1 {
-		return fmt.Errorf("batch start height != syncTarget + 1. StartHeight %d, m.SyncTarget %d", batch.StartHeight, syncTarget)
-	}
-	if batch.EndHeight < batch.StartHeight {
-		return fmt.Errorf("batch end height must be greater than start height. EndHeight %d, StartHeight %d", batch.EndHeight, batch.StartHeight)
-	}
+	m.UpdateSyncParams(actualEndHeight)
 	return nil
 }
 
 func (m *Manager) CreateNextBatchToSubmit(startHeight uint64, endHeightInclusive uint64) (*types.Batch, error) {
-	var height uint64
-	// Create the batch
 	batchSize := endHeightInclusive - startHeight + 1
 	batch := &types.Batch{
 		StartHeight: startHeight,
-		EndHeight:   endHeightInclusive,
 		Blocks:      make([]*types.Block, 0, batchSize),
 		Commits:     make([]*types.Commit, 0, batchSize),
 	}
 
 	// Populate the batch
-	for height = startHeight; height <= endHeightInclusive; height++ {
+	for height := startHeight; height <= endHeightInclusive; height++ {
 		block, err := m.Store.LoadBlock(height)
 		if err != nil {
-			m.logger.Error("load block", "height", height)
-			return nil, err
+			return nil, fmt.Errorf("load block: height: %d: %w", height, err)
 		}
 		commit, err := m.Store.LoadCommit(height)
 		if err != nil {
-			m.logger.Error("load commit", "height", height)
-			return nil, err
+			return nil, fmt.Errorf("load commit: height: %d: %w", height, err)
 		}
 
 		batch.Blocks = append(batch.Blocks, block)
@@ -217,10 +175,15 @@ func (m *Manager) CreateNextBatchToSubmit(startHeight uint64, endHeightInclusive
 			// Remove the last block and commit from the batch
 			batch.Blocks = batch.Blocks[:len(batch.Blocks)-1]
 			batch.Commits = batch.Commits[:len(batch.Commits)-1]
+
+			if height == startHeight {
+				return nil, fmt.Errorf("block size exceeds max batch size: height %d: size: %d", height, totalSize)
+			}
 			break
 		}
+
+		batch.EndHeight = height
 	}
 
-	batch.EndHeight = height - 1
 	return batch, nil
 }
