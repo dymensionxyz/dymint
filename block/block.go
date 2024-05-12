@@ -31,6 +31,8 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	// In case the following true, it means we crashed after the commit and before updating the store height.
 	// In that case we'll want to align the store with the app state and continue to the next block.
 	if isBlockAlreadyApplied {
+		// In this case, where the app was committed, but the state wasn't updated
+		// it will update the state from appInfo, saved responses and validators.
 		err := m.UpdateStateFromApp()
 		if err != nil {
 			return fmt.Errorf("update state from app: %w", err)
@@ -49,12 +51,6 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		return fmt.Errorf("execute block: %w", err)
 	}
 
-	// Updates the state with validator changes and consensus params changes from the app
-	err = m.Executor.UpdateStateFromResponses(&m.State, responses, block)
-	if err != nil {
-		return fmt.Errorf("update state from responses: %w", err)
-	}
-
 	dbBatch := m.Store.NewBatch()
 	dbBatch, err = m.Store.SaveBlockResponses(block.Header.Height, responses, dbBatch)
 	if err != nil {
@@ -62,7 +58,13 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		return fmt.Errorf("save block responses: %w", err)
 	}
 
-	dbBatch, err = m.Store.SaveValidators(block.Header.Height, m.State.Validators, dbBatch)
+	// Updates the state with validator changes and consensus params changes from the app
+	validators, err := m.Executor.NextValSetFromResponses(m.State, responses, block)
+	if err != nil {
+		return fmt.Errorf("update state from responses: %w", err)
+	}
+
+	dbBatch, err = m.Store.SaveValidators(block.Header.Height, validators, dbBatch)
 	if err != nil {
 		dbBatch.Discard()
 		return fmt.Errorf("save validators: %w", err)
@@ -79,26 +81,23 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		return fmt.Errorf("commit block: %w", err)
 	}
 
+	// If failed here, after the app committed, but before the state is updated, we'll update the state on
+	// UpdateStateFromApp using the saved responses and validators.
+
 	// Update the state with the new app hash, last validators and store height from the commit.
 	// Every one of those, if happens before commit, prevents us from re-executing the block in case failed during commit.
-	m.Executor.UpdateStateFromCommitResponse(&m.State, responses, appHash, block.Header.Height)
-	_, err = m.Store.SaveState(m.State, nil)
+	newState := m.Executor.UpdateStateAfterCommit(m.State, responses, appHash, block.Header.Height, validators)
+	_, err = m.Store.SaveState(newState, nil)
 	if err != nil {
-		return fmt.Errorf("final update state: %w", err)
+		return fmt.Errorf("update state: %w", err)
 	}
+	m.State = newState
 
 	// Prune old heights, if requested by ABCI app.
 	if retainHeight > 0 {
-		pruned, err := m.pruneBlocks(uint64(retainHeight))
+		_, err := m.pruneBlocks(uint64(retainHeight))
 		if err != nil {
 			m.logger.Error("prune blocks", "retain_height", retainHeight, "err", err)
-		} else {
-			m.logger.Debug("pruned blocks", "pruned", pruned, "retain_height", retainHeight)
-		}
-		m.State.BaseHeight = m.State.BaseHeight
-		_, err = m.Store.SaveState(m.State, nil)
-		if err != nil {
-			return fmt.Errorf("final update state: %w", err)
 		}
 	}
 	return nil

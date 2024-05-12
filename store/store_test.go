@@ -95,10 +95,8 @@ func TestLoadState(t *testing.T) {
 	expectedHeight := uint64(10)
 	_, err := s1.SaveState(types.State{
 		LastBlockHeight: expectedHeight,
-		LastStoreHeight: uint64(expectedHeight),
 		NextValidators:  validatorSet,
 		Validators:      validatorSet,
-		LastValidators:  validatorSet,
 	}, nil)
 	assert.NoError(err)
 

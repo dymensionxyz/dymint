@@ -66,7 +66,7 @@ func generateBlock(height uint64) *types.Block {
 			ConsensusHash:  h[3],
 			// AppHash:         h[4],
 			AppHash:         [32]byte{},
-			LastResultsHash: getEmptyLastResultsHash(),
+			LastResultsHash: GetEmptyLastResultsHash(),
 			ProposerAddress: []byte{4, 3, 2, 1},
 			AggregatorsHash: h[6],
 		},
@@ -198,7 +198,7 @@ func GenerateState(initialHeight int64, lastBlockHeight int64) types.State {
 		ChainID:         "test-chain",
 		InitialHeight:   uint64(initialHeight),
 		AppHash:         [32]byte{},
-		LastResultsHash: getEmptyLastResultsHash(),
+		LastResultsHash: GetEmptyLastResultsHash(),
 		Version: tmstate.Version{
 			Consensus: version.Consensus{
 				Block: BlockVersion,
@@ -206,7 +206,6 @@ func GenerateState(initialHeight int64, lastBlockHeight int64) types.State {
 			},
 		},
 		LastBlockHeight: uint64(lastBlockHeight),
-		LastValidators:  GenerateRandomValidatorSet(),
 		Validators:      GenerateRandomValidatorSet(),
 		NextValidators:  GenerateRandomValidatorSet(),
 	}
@@ -237,7 +236,7 @@ func GenerateGenesis(initialHeight int64) *tmtypes.GenesisDoc {
 	}
 }
 
-func getEmptyLastResultsHash() [32]byte {
+func GetEmptyLastResultsHash() [32]byte {
 	lastResults := []*abci.ResponseDeliverTx{}
 	return *(*[32]byte)(tmtypes.NewResults(lastResults).Hash())
 }

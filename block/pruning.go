@@ -18,5 +18,14 @@ func (m *Manager) pruneBlocks(retainHeight uint64) (uint64, error) {
 
 	// TODO: prune state/indexer and state/txindexer??
 
+	newState := m.State
+	newState.BaseHeight = retainHeight
+	_, err = m.Store.SaveState(newState, nil)
+	if err != nil {
+		return 0, fmt.Errorf("final update state: %w", err)
+	}
+	m.State = newState
+
+	m.logger.Info("pruned blocks", "pruned", pruned, "retain_height", retainHeight)
 	return pruned, nil
 }

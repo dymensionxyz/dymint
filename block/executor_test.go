@@ -143,7 +143,6 @@ func TestApplyBlock(t *testing.T) {
 	state := types.State{
 		NextValidators: tmtypes.NewValidatorSet(nil),
 		Validators:     tmtypes.NewValidatorSet(nil),
-		LastValidators: tmtypes.NewValidatorSet(nil),
 	}
 	state.InitialHeight = 1
 	state.LastBlockHeight = 0
@@ -182,13 +181,10 @@ func TestApplyBlock(t *testing.T) {
 	resp, err := executor.ExecuteBlock(state, block)
 	require.NoError(err)
 	require.NotNil(resp)
-	err = executor.UpdateStateFromResponses(&state, resp, block)
-	require.NoError(err)
-	require.NotNil(state)
-	assert.Equal(uint64(1), state.LastBlockHeight)
 	appHash, _, err := executor.Commit(state, block, resp)
 	require.NoError(err)
-	executor.UpdateStateFromCommitResponse(&state, resp, appHash, block.Header.Height)
+	state = executor.UpdateStateAfterCommit(state, resp, appHash, block.Header.Height, state.Validators)
+	assert.Equal(uint64(1), state.Height())
 	assert.Equal(mockAppHash, state.AppHash)
 
 	// Create another block with multiple Tx from mempool
@@ -236,12 +232,13 @@ func TestApplyBlock(t *testing.T) {
 	resp, err = executor.ExecuteBlock(state, block)
 	require.NoError(err)
 	require.NotNil(resp)
-	err = executor.UpdateStateFromResponses(&state, resp, block)
+	vals, err := executor.NextValSetFromResponses(state, resp, block)
 	require.NoError(err)
-	require.NotNil(state)
-	assert.Equal(uint64(2), state.LastBlockHeight)
 	_, _, err = executor.Commit(state, block, resp)
 	require.NoError(err)
+	state = executor.UpdateStateAfterCommit(state, resp, appHash, block.Header.Height, vals)
+
+	assert.Equal(uint64(2), state.Height())
 
 	// wait for at least 4 Tx events, for up to 3 second.
 	// 3 seconds is a fail-scenario only

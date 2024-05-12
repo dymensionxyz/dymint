@@ -289,6 +289,7 @@ func TestGetBlock(t *testing.T) {
 
 	block := getRandomBlock(1, 10)
 	_, err = node.Store.SaveBlock(block, &types.Commit{}, nil)
+	node.BlockManager.State.SetHeight(block.Header.Height)
 	require.NoError(err)
 
 	blockResp, err := rpc.Block(context.Background(), nil)
@@ -316,6 +317,7 @@ func TestGetCommit(t *testing.T) {
 
 	for _, b := range blocks {
 		_, err = node.Store.SaveBlock(b, &types.Commit{Height: b.Header.Height}, nil)
+		node.BlockManager.State.SetHeight(b.Header.Height)
 		require.NoError(err)
 	}
 	t.Run("Fetch all commits", func(t *testing.T) {
@@ -585,7 +587,6 @@ func TestConsensusState(t *testing.T) {
 }
 
 func TestBlockchainInfo(t *testing.T) {
-	t.Skip("Test disabled as we need to increase the height of the block manager") //FIXME
 	require := require.New(t)
 	assert := assert.New(t)
 	mockApp, rpc, node := getRPCAndNode(t)
@@ -600,6 +601,7 @@ func TestBlockchainInfo(t *testing.T) {
 			HeaderHash: block.Header.Hash(),
 		}, nil)
 		require.NoError(err)
+		node.BlockManager.State.SetHeight(block.Header.Height)
 	}
 
 	tests := []struct {

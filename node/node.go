@@ -69,7 +69,7 @@ type Node struct {
 	incomingTxCh chan *p2p.GossipMessage
 
 	Store        store.Store
-	blockManager *block.Manager
+	BlockManager *block.Manager
 	dalc         da.DataAvailabilityLayerClient
 	settlementlc settlement.LayerI
 
@@ -198,7 +198,7 @@ func NewNode(
 		genesis:        genesis,
 		conf:           conf,
 		P2P:            p2pClient,
-		blockManager:   blockManager,
+		BlockManager:   blockManager,
 		dalc:           dalc,
 		settlementlc:   settlementlc,
 		Mempool:        mp,
@@ -271,7 +271,7 @@ func (n *Node) OnStart() error {
 	}()
 
 	// start the block manager
-	err = n.blockManager.Start(n.ctx)
+	err = n.BlockManager.Start(n.ctx)
 	if err != nil {
 		return fmt.Errorf("while starting block manager: %w", err)
 	}
@@ -383,5 +383,5 @@ func (n *Node) startPrometheusServer() error {
 
 // FIXME: read from block manager
 func (n *Node) GetBlockManagerHeight() uint64 {
-	return 0
+	return n.BlockManager.State.Height()
 }

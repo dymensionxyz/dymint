@@ -251,10 +251,6 @@ func (s *State) ToProto() (*pb.State, error) {
 	if err != nil {
 		return nil, err
 	}
-	lastValidators, err := s.LastValidators.ToProto()
-	if err != nil {
-		return nil, err
-	}
 
 	return &pb.State{
 		Version:                          &s.Version,
@@ -263,7 +259,6 @@ func (s *State) ToProto() (*pb.State, error) {
 		LastBlockHeight:                  int64(s.LastBlockHeight),
 		NextValidators:                   nextValidators,
 		Validators:                       validators,
-		LastValidators:                   lastValidators,
 		BaseHeight:                       s.BaseHeight,
 		LastHeightValidatorsChanged:      s.LastHeightValidatorsChanged,
 		ConsensusParams:                  s.ConsensusParams,
@@ -287,10 +282,6 @@ func (s *State) FromProto(other *pb.State) error {
 		return err
 	}
 	s.Validators, err = types.ValidatorSetFromProto(other.Validators)
-	if err != nil {
-		return err
-	}
-	s.LastValidators, err = types.ValidatorSetFromProto(other.LastValidators)
 	if err != nil {
 		return err
 	}

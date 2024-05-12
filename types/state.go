@@ -20,6 +20,7 @@ type State struct {
 	InitialHeight uint64 // should be 1, not 0, when starting from height 1
 
 	// LastBlockHeight=0 at genesis (ie. block(H=0) does not exist)
+	//TODO: should be atomic as can be queried by the RPC
 	LastBlockHeight uint64
 
 	// BaseHeight is the height of the first block we have in store after pruning.
@@ -27,7 +28,6 @@ type State struct {
 
 	NextValidators              *types.ValidatorSet
 	Validators                  *types.ValidatorSet
-	LastValidators              *types.ValidatorSet
 	LastHeightValidatorsChanged int64
 
 	// Consensus parameters used for validating blocks.
@@ -71,7 +71,6 @@ func NewStateFromGenesis(genDoc *types.GenesisDoc) (State, error) {
 
 		NextValidators:              types.NewValidatorSet(nil),
 		Validators:                  types.NewValidatorSet(nil),
-		LastValidators:              types.NewValidatorSet(nil),
 		LastHeightValidatorsChanged: genDoc.InitialHeight,
 
 		ConsensusParams:                  *genDoc.ConsensusParams,

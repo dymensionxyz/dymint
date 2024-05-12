@@ -43,26 +43,18 @@ func (m *Manager) UpdateStateFromApp() error {
 	if err != nil {
 		return errorsmod.Wrap(err, "load block responses")
 	}
-
 	vals, err := m.Store.LoadValidators(appHeight)
 	if err != nil {
 		return errorsmod.Wrap(err, "load block responses")
 	}
 
 	// update the state with the hash, last store height and last validators.
-	//TODO: DRY with the post commit update
-	m.State.AppHash = *(*[32]byte)(proxyAppInfo.LastBlockAppHash)
-	m.State.Validators = m.State.NextValidators.Copy()
-	m.State.NextValidators = vals
-	copy(m.State.LastResultsHash[:], tmtypes.NewResults(resp.DeliverTxs).Hash())
-	m.State.SetHeight(appHeight)
-
-	//FIXME: load consensus params
-
-	_, err = m.Store.SaveState(m.State, nil)
+	state := m.Executor.UpdateStateAfterCommit(m.State, resp, proxyAppInfo.LastBlockAppHash, appHeight, vals)
+	_, err = m.Store.SaveState(state, nil)
 	if err != nil {
 		return errorsmod.Wrap(err, "update state")
 	}
+	m.State = state
 	return nil
 }
 
@@ -113,44 +105,42 @@ func (e *Executor) UpdateMempoolAfterInitChain(s types.State) {
 	e.mempool.SetPostCheckFn(mempool.PostCheckMaxGas(s.ConsensusParams.Block.MaxGas))
 }
 
-// UpdateStateFromResponses updates state based on the ABCIResponses.
-func (e *Executor) UpdateStateFromResponses(state *types.State, resp *tmstate.ABCIResponses, block *types.Block) error {
+// NextValSetFromResponses updates state based on the ABCIResponses.
+func (e *Executor) NextValSetFromResponses(state types.State, resp *tmstate.ABCIResponses, block *types.Block) (*tmtypes.ValidatorSet, error) {
 	// Dymint ignores any setValidator responses from the app, as it is manages the validator set based on the settlement consensus
 	// TODO: this will be changed when supporting multiple sequencers from the hub
-	validatorUpdates := []*tmtypes.Validator{}
+	return state.NextValidators.Copy(), nil
 
-	if state.ConsensusParams.Block.MaxBytes == 0 {
-		e.logger.Error("maxBytes=0", "state.ConsensusParams.Block", state.ConsensusParams.Block)
-	}
-
-	nValSet := state.NextValidators.Copy()
-	lastHeightValSetChanged := state.LastHeightValidatorsChanged
-	// Dymint can work without validators
-	if len(nValSet.Validators) > 0 {
-		if len(validatorUpdates) > 0 {
-			err := nValSet.UpdateWithChangeSet(validatorUpdates)
-			if err != nil {
-				return err
+	/*
+		nValSet := state.NextValidators.Copy()
+		lastHeightValSetChanged := state.LastHeightValidatorsChanged
+		// Dymint can work without validators
+		if len(nValSet.Validators) > 0 {
+			if len(validatorUpdates) > 0 {
+				err := nValSet.UpdateWithChangeSet(validatorUpdates)
+				if err != nil {
+					return err
+				}
+				// Change results from this height but only applies to the next next height.
+				lastHeightValSetChanged = int64(block.Header.Height + 1 + 1)
 			}
-			// Change results from this height but only applies to the next next height.
-			lastHeightValSetChanged = int64(block.Header.Height + 1 + 1)
+
+			// TODO(tzdybal):  right now, it's for backward compatibility, may need to change this
+			nValSet.IncrementProposerPriority(1)
 		}
-
-		// TODO(tzdybal):  right now, it's for backward compatibility, may need to change this
-		nValSet.IncrementProposerPriority(1)
-	}
-
-	state.Validators = state.NextValidators.Copy()
-	state.NextValidators = nValSet
-	state.LastHeightValidatorsChanged = lastHeightValSetChanged
-
-	return nil
+	*/
 }
 
 // Update state from Commit response
-func (e *Executor) UpdateStateFromCommitResponse(s *types.State, resp *tmstate.ABCIResponses, appHash []byte, height uint64) {
-	// validators already set on UpdateStateFromResponses
+func (e *Executor) UpdateStateAfterCommit(s types.State, resp *tmstate.ABCIResponses, appHash []byte, height uint64, valSet *tmtypes.ValidatorSet) types.State {
 	copy(s.AppHash[:], appHash[:])
 	copy(s.LastResultsHash[:], tmtypes.NewResults(resp.DeliverTxs).Hash())
+
+	//TODO: load consensus params from endblock?
+
+	s.Validators = s.NextValidators.Copy()
+	s.NextValidators = valSet.Copy()
+
 	s.SetHeight(height)
+	return s
 }
