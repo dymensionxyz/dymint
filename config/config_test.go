@@ -23,7 +23,6 @@ func TestViperAndCobra(t *testing.T) {
 	nc := config.DefaultConfig("", "")
 	config.EnsureRoot(dir, nc)
 
-	assert.NoError(cmd.Flags().Set(config.FlagAggregator, "true"))
 	assert.NoError(cmd.Flags().Set(config.FlagDALayer, "foobar"))
 	assert.NoError(cmd.Flags().Set(config.FlagDAConfig, `{"json":true}`))
 	assert.NoError(cmd.Flags().Set(config.FlagBlockTime, "1234s"))
@@ -34,7 +33,6 @@ func TestViperAndCobra(t *testing.T) {
 
 	assert.NoError(nc.GetViperConfig(cmd, dir))
 
-	assert.Equal(true, nc.Aggregator)
 	assert.Equal("foobar", nc.DALayer)
 	assert.Equal(`{"json":true}`, nc.DAConfig)
 	assert.Equal(1234*time.Second, nc.BlockTime)

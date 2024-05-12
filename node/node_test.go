@@ -61,11 +61,10 @@ func TestMempoolDirectly(t *testing.T) {
 	rollappID := "rollapp_1234-1"
 
 	nodeConfig := config.NodeConfig{
-		RootDir:    "",
-		DBPath:     "",
-		P2P:        config.P2PConfig{},
-		RPC:        config.RPCConfig{},
-		Aggregator: false,
+		RootDir: "",
+		DBPath:  "",
+		P2P:     config.P2PConfig{},
+		RPC:     config.RPCConfig{},
 		BlockManagerConfig: config.BlockManagerConfig{
 			BlockTime:               100 * time.Millisecond,
 			BatchSubmitMaxTime:      60 * time.Second,

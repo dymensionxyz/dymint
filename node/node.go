@@ -78,9 +78,8 @@ type Node struct {
 	BlockIndexer   indexer.BlockIndexer
 	IndexerService *txindex.IndexerService
 
-	// keep context here only because of API compatibility
-	// - it's used in `OnStart` (defined in service.Service interface)
-	Ctx context.Context
+	// shared context for all dymint components
+	ctx context.Context
 }
 
 // NewNode creates new Dymint node.
@@ -210,7 +209,7 @@ func NewNode(
 		TxIndexer:      txIndexer,
 		IndexerService: indexerService,
 		BlockIndexer:   blockIndexer,
-		Ctx:            ctx,
+		ctx:            ctx,
 	}
 
 	node.BaseService = *service.NewBaseService(logger, "Node", node)
@@ -250,7 +249,7 @@ func (n *Node) initGenesisChunks() error {
 // OnStart is a part of Service interface.
 func (n *Node) OnStart() error {
 	n.Logger.Info("starting P2P client")
-	err := n.P2P.Start(n.Ctx)
+	err := n.P2P.Start(n.ctx)
 	if err != nil {
 		return fmt.Errorf("start P2P client: %w", err)
 	}
@@ -273,7 +272,7 @@ func (n *Node) OnStart() error {
 	}()
 
 	// start the block manager
-	err = n.blockManager.Start(n.Ctx, n.conf.Aggregator)
+	err = n.blockManager.Start(n.ctx)
 	if err != nil {
 		return fmt.Errorf("while starting block manager: %w", err)
 	}

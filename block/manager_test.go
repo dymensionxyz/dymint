@@ -143,7 +143,7 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 	// Capture the error returned by manager.Start.
 	errChan := make(chan error, 1)
 	go func() {
-		errChan <- manager.Start(ctx, true)
+		errChan <- manager.Start(ctx)
 		err := <-errChan
 		assert.NoError(t, err)
 	}()

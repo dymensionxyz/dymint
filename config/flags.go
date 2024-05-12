@@ -7,7 +7,6 @@ import (
 )
 
 const (
-	FlagAggregator             = "dymint.aggregator"
 	FlagDALayer                = "dymint.da_layer"
 	FlagDAConfig               = "dymint.da_config"
 	FlagBlockTime              = "dymint.block_time"
@@ -38,7 +37,6 @@ func AddNodeFlags(cmd *cobra.Command) {
 
 	def := DefaultNodeConfig
 
-	cmd.Flags().Bool(FlagAggregator, false, "run node in aggregator mode")
 	cmd.Flags().String(FlagDALayer, def.DALayer, "Data Availability Layer Client name (mock or grpc")
 	cmd.Flags().String(FlagDAConfig, def.DAConfig, "Data Availability Layer Client config")
 	cmd.Flags().Duration(FlagBlockTime, def.BlockTime, "block time (for aggregator mode)")
@@ -59,9 +57,6 @@ func AddNodeFlags(cmd *cobra.Command) {
 }
 
 func BindDymintFlags(cmd *cobra.Command, v *viper.Viper) error {
-	if err := v.BindPFlag("aggregator", cmd.Flags().Lookup(FlagAggregator)); err != nil {
-		return err
-	}
 	if err := v.BindPFlag("da_layer", cmd.Flags().Lookup(FlagDALayer)); err != nil {
 		return err
 	}

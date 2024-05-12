@@ -124,18 +124,21 @@ func NewManager(
 }
 
 // Start starts the block manager.
-func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
+func (m *Manager) Start(ctx context.Context) error {
 	m.logger.Info("Starting the block manager")
 
-	// TODO (#283): set aggregator mode by proposer addr on the hub
-	if isAggregator {
-		// make sure local signing key is the registered on the hub
-		slProposerKey := m.SLClient.GetProposer().PublicKey.Bytes()
-		localProposerKey, _ := m.ProposerKey.GetPublic().Raw()
-		if !bytes.Equal(slProposerKey, localProposerKey) {
-			return fmt.Errorf("proposer key mismatch: settlement proposer key: %s, block manager proposer key: %s", slProposerKey, m.ProposerKey.GetPublic())
-		}
+	// Check if proposer key matches to the one in the settlement layer
+	var isAggregator bool
+	slProposerKey := m.SLClient.GetProposer().PublicKey.Bytes()
+	localProposerKey, err := m.ProposerKey.GetPublic().Raw()
+	if err != nil {
+		return fmt.Errorf("get local node public key: %w", err)
+	}
+	if bytes.Equal(slProposerKey, localProposerKey) {
 		m.logger.Info("Starting in aggregator mode")
+		isAggregator = true
+	} else {
+		m.logger.Info("Starting in non-aggregator mode")
 	}
 
 	// Check if InitChain flow is needed
@@ -152,7 +155,7 @@ func (m *Manager) Start(ctx context.Context, isAggregator bool) error {
 		go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewNewGossipedBlock, m.onNewGossipedBlock, m.logger)
 	}
 
-	err := m.syncBlockManager()
+	err = m.syncBlockManager()
 	if err != nil {
 		return fmt.Errorf("sync block manager: %w", err)
 	}
