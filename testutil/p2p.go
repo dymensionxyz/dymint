@@ -14,6 +14,7 @@ import (
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
 	"github.com/multiformats/go-multiaddr"
 	"github.com/stretchr/testify/require"
+	"github.com/tendermint/tendermint/libs/pubsub"
 	"go.uber.org/multierr"
 
 	"github.com/dymensionxyz/dymint/config"
@@ -100,6 +101,10 @@ func StartTestNetwork(ctx context.Context, t *testing.T, n int, conf map[int]Hos
 		seeds[src] = strings.TrimSuffix(seeds[src], ",")
 	}
 
+	pubsubServer := pubsub.NewServer()
+	err = pubsubServer.Start()
+	require.NoError(err)
+
 	clients := make([]*p2p.Client, n)
 	for i := 0; i < n; i++ {
 		client, err := p2p.NewClient(config.P2PConfig{
@@ -109,6 +114,7 @@ func StartTestNetwork(ctx context.Context, t *testing.T, n int, conf map[int]Hos
 		},
 			mnet.Hosts()[i].Peerstore().PrivKey(mnet.Hosts()[i].ID()),
 			conf[i].ChainID,
+			pubsubServer,
 			logger)
 		require.NoError(err)
 		require.NotNil(client)

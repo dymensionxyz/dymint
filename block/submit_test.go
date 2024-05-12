@@ -48,7 +48,7 @@ func TestBatchSubmissionHappyFlow(t *testing.T) {
 	assert.Zero(t, manager.SyncTarget.Load())
 
 	// submit and validate sync target
-	manager.HandleSubmissionTrigger(ctx)
+	manager.HandleSubmissionTrigger()
 	assert.EqualValues(t, manager.State.Height(), manager.SyncTarget.Load())
 }
 
@@ -96,11 +96,11 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 
 	// try to submit, we expect failure
 	mockLayerI.On("SubmitBatch", mock.Anything, mock.Anything, mock.Anything).Return(fmt.Errorf("Failed to submit batch")).Once()
-	assert.Error(t, manager.HandleSubmissionTrigger(ctx))
+	assert.Error(t, manager.HandleSubmissionTrigger())
 
 	// try to submit again, we expect success
 	mockLayerI.On("SubmitBatch", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
-	manager.HandleSubmissionTrigger(ctx)
+	manager.HandleSubmissionTrigger()
 	assert.EqualValues(t, manager.State.Height(), manager.SyncTarget.Load())
 }
 
@@ -123,7 +123,8 @@ func TestSubmissionByTime(t *testing.T) {
 	// Init manager with empty blocks feature enabled
 	managerConfig := config.BlockManagerConfig{
 		BlockTime:               blockTime,
-		EmptyBlocksMaxTime:      0,
+		MaxIdleTime:             0,
+		MaxSupportedBatchSkew:   10,
 		BatchSubmitMaxTime:      submitTimeout,
 		BlockBatchMaxSizeBytes:  1000,
 		GossipedBlocksCacheSize: 50,

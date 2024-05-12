@@ -186,23 +186,24 @@ func TestPostBatch(t *testing.T) {
 				errChan <- err // Send any error to the errChan
 			}()
 
-			// Use a select statement to wait for a potential error or a timeout.
-			select {
-			case err := <-errChan:
-				// Check for error from PostBatch.
-				assert.NoError(t, err, "PostBatch should not produce an error")
-			case <-time.After(100 * time.Millisecond):
-			}
 			// Wait for the batch to be submitted and submit an event notifying that the batch was accepted
 			if c.isBatchAcceptedHubEvent {
+				time.Sleep(100 * time.Millisecond)
 				batchAcceptedCh <- coretypes.ResultEvent{
-					Query: fmt.Sprintf("state_update.rollapp_id='%s'", ""),
+					Query: fmt.Sprintf("state_update.rollapp_id='%s' AND state_update.status='PENDING'", ""),
 					Events: map[string][]string{
 						"state_update.num_blocks":       {"1"},
 						"state_update.start_height":     {"1"},
 						"state_update.state_info_index": {"1"},
 					},
 				}
+			}
+			// Use a select statement to wait for a potential error or a timeout.
+			select {
+			case err := <-errChan:
+				// Check for error from PostBatch.
+				assert.NoError(t, err, "PostBatch should not produce an error")
+			case <-time.After(200 * time.Millisecond):
 			}
 
 			// Stop the hub client and wait for it to stop

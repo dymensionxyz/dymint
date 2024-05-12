@@ -12,7 +12,6 @@ import (
 
 	"github.com/libp2p/go-libp2p/core/crypto"
 
-	llcfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/libs/service"
@@ -78,9 +77,8 @@ type Node struct {
 	BlockIndexer   indexer.BlockIndexer
 	IndexerService *txindex.IndexerService
 
-	// keep context here only because of API compatibility
-	// - it's used in `OnStart` (defined in service.Service interface)
-	Ctx context.Context
+	// shared context for all dymint components
+	ctx context.Context
 }
 
 // NewNode creates new Dymint node.
@@ -160,15 +158,15 @@ func NewNode(
 
 	height := max(genesis.InitialHeight, info.LastBlockHeight)
 
-	mp := mempoolv1.NewTxMempool(logger, llcfg.DefaultMempoolConfig(), proxyApp.Mempool(), height)
+	mp := mempoolv1.NewTxMempool(logger, &conf.MempoolConfig, proxyApp.Mempool(), height)
 	mpIDs := nodemempool.NewMempoolIDs()
 
 	// Set p2p client and it's validators
-	p2pValidator := p2p.NewValidator(logger.With("module", "p2p_validator"), pubsubServer, settlementlc)
+	p2pValidator := p2p.NewValidator(logger.With("module", "p2p_validator"), settlementlc)
 
 	conf.P2P.GossipCacheSize = conf.BlockManagerConfig.GossipedBlocksCacheSize
 	conf.P2P.BoostrapTime = conf.BootstrapTime
-	p2pClient, err := p2p.NewClient(conf.P2P, p2pKey, genesis.ChainID, logger.With("module", "p2p"))
+	p2pClient, err := p2p.NewClient(conf.P2P, p2pKey, genesis.ChainID, pubsubServer, logger.With("module", "p2p"))
 	if err != nil {
 		return nil, err
 	}
@@ -210,7 +208,7 @@ func NewNode(
 		TxIndexer:      txIndexer,
 		IndexerService: indexerService,
 		BlockIndexer:   blockIndexer,
-		Ctx:            ctx,
+		ctx:            ctx,
 	}
 
 	node.BaseService = *service.NewBaseService(logger, "Node", node)
@@ -250,7 +248,7 @@ func (n *Node) initGenesisChunks() error {
 // OnStart is a part of Service interface.
 func (n *Node) OnStart() error {
 	n.Logger.Info("starting P2P client")
-	err := n.P2P.Start(n.Ctx)
+	err := n.P2P.Start(n.ctx)
 	if err != nil {
 		return fmt.Errorf("start P2P client: %w", err)
 	}
@@ -273,7 +271,7 @@ func (n *Node) OnStart() error {
 	}()
 
 	// start the block manager
-	err = n.blockManager.Start(n.Ctx, n.conf.Aggregator)
+	err = n.blockManager.Start(n.ctx)
 	if err != nil {
 		return fmt.Errorf("while starting block manager: %w", err)
 	}

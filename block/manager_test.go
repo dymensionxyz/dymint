@@ -55,7 +55,7 @@ func TestInitialState(t *testing.T) {
 	p2pClient, err := p2p.NewClient(config.P2PConfig{
 		GossipCacheSize: 50,
 		BoostrapTime:    30 * time.Second,
-	}, privKey, "TestChain", logger)
+	}, privKey, "TestChain", pubsubServer, logger)
 	assert.NoError(err)
 	assert.NotNil(p2pClient)
 
@@ -143,7 +143,7 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 	// Capture the error returned by manager.Start.
 	errChan := make(chan error, 1)
 	go func() {
-		errChan <- manager.Start(ctx, true)
+		errChan <- manager.Start(ctx)
 		err := <-errChan
 		assert.NoError(t, err)
 	}()

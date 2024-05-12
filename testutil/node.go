@@ -32,10 +32,10 @@ func CreateNode(isAggregator bool, blockManagerConfig *config.BlockManagerConfig
 			BatchSubmitMaxTime:      60 * time.Second,
 			BlockBatchMaxSizeBytes:  1000,
 			GossipedBlocksCacheSize: 50,
+			MaxSupportedBatchSkew:   10,
 		}
 	}
 	nodeConfig.BlockManagerConfig = *blockManagerConfig
-	nodeConfig.Aggregator = isAggregator
 
 	rollappID := "rollapp_1234-1"
 

@@ -18,29 +18,65 @@ func TestGetNodeConfig(t *testing.T) {
 
 	cases := []struct {
 		name        string
-		input       *tmcfg.Config
-		expected    config.NodeConfig
+		input       func(*tmcfg.Config)
+		ok          func(*config.NodeConfig) bool
 		expectError bool
 	}{
-		{"empty", nil, config.NodeConfig{}, true},
-		{"Seeds", &tmcfg.Config{P2P: &tmcfg.P2PConfig{Seeds: validCosmos + "," + validCosmos}}, config.NodeConfig{P2P: config.P2PConfig{Seeds: validDymint + "," + validDymint}}, false},
+		{
+			"empty",
+			func(c *tmcfg.Config) {
+				*c = tmcfg.Config{}
+			},
+			nil,
+			true,
+		},
+		{
+			"Seeds",
+			func(c *tmcfg.Config) {
+				c.P2P.Seeds = validCosmos + "," + validCosmos
+			},
+			func(nc *config.NodeConfig) bool { return nc.P2P.Seeds == validDymint+","+validDymint },
+			false,
+		},
 		// GetNodeConfig translates the listen address, so we expect the translated address
-		{"ListenAddress", &tmcfg.Config{P2P: &tmcfg.P2PConfig{ListenAddress: validCosmos}}, config.NodeConfig{P2P: config.P2PConfig{ListenAddress: validDymint}}, false},
-		{"RootDir", &tmcfg.Config{BaseConfig: tmcfg.BaseConfig{RootDir: "~/root"}}, config.NodeConfig{RootDir: "~/root"}, false},
-		{"DBPath", &tmcfg.Config{BaseConfig: tmcfg.BaseConfig{DBPath: "./database"}}, config.NodeConfig{DBPath: "./database"}, false},
+		{
+			"ListenAddress",
+			func(c *tmcfg.Config) {
+				c.P2P.ListenAddress = validCosmos
+			},
+			func(nc *config.NodeConfig) bool { return nc.P2P.ListenAddress == validDymint },
+			false,
+		},
+		{
+			"RootDir",
+			func(c *tmcfg.Config) {
+				c.BaseConfig.RootDir = "~/root"
+			},
+			func(nc *config.NodeConfig) bool { return nc.RootDir == "~/root" },
+			false,
+		},
+		{
+			"DBPath",
+			func(c *tmcfg.Config) {
+				c.BaseConfig.DBPath = "./database"
+			},
+			func(nc *config.NodeConfig) bool { return nc.DBPath == "./database" },
+			false,
+		},
 	}
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			var actual config.NodeConfig
-			err := conv.GetNodeConfig(&actual, c.input)
+			tmConfig := tmcfg.DefaultConfig()
+			c.input(tmConfig)
+			err := conv.GetNodeConfig(&actual, tmConfig)
 			if c.expectError {
 				assert.Error(t, err)
 			} else {
 				assert.NoError(t, err)
-				assert.Equal(t, c.expected, actual)
+				assert.True(t, c.ok(&actual))
 			}
-			assert.Equal(t, c.expected, actual)
 		})
 	}
 }

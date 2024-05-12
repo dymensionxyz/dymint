@@ -10,6 +10,7 @@ import (
 
 	"github.com/dymensionxyz/dymint/da/grpc"
 	"github.com/dymensionxyz/dymint/settlement"
+	tmcfg "github.com/tendermint/tendermint/config"
 )
 
 const (
@@ -22,12 +23,13 @@ const (
 // NodeConfig stores Dymint node configuration.
 type NodeConfig struct {
 	// parameters below are translated from existing config
-	RootDir string
-	DBPath  string
-	P2P     P2PConfig
-	RPC     RPCConfig
+	RootDir       string
+	DBPath        string
+	P2P           P2PConfig
+	RPC           RPCConfig
+	MempoolConfig tmcfg.MempoolConfig
+
 	// parameters below are dymint specific and read from config
-	Aggregator         bool `mapstructure:"aggregator"`
 	BlockManagerConfig `mapstructure:",squash"`
 	DALayer            string                 `mapstructure:"da_layer"`
 	DAConfig           string                 `mapstructure:"da_config"`
@@ -43,15 +45,19 @@ type NodeConfig struct {
 type BlockManagerConfig struct {
 	// BlockTime defines how often new blocks are produced
 	BlockTime time.Duration `mapstructure:"block_time"`
-	// EmptyBlocksMaxTime defines how long should block manager wait for new transactions before producing empty block
-	EmptyBlocksMaxTime time.Duration `mapstructure:"empty_blocks_max_time"`
+	// MaxIdleTime defines how long should block manager wait for new transactions before producing empty block
+	MaxIdleTime time.Duration `mapstructure:"max_idle_time"`
+	// MaxProofTime defines the max time to be idle, if txs that requires proof were included in last block
+	MaxProofTime time.Duration `mapstructure:"max_proof_time"`
 	// BatchSubmitMaxTime defines how long should block manager wait for before submitting batch
 	BatchSubmitMaxTime time.Duration `mapstructure:"batch_submit_max_time"`
-	NamespaceID        string        `mapstructure:"namespace_id"`
+	// Max amount of pending batches to be submitted. block production will be paused if this limit is reached.
+	MaxSupportedBatchSkew uint64 `mapstructure:"max_supported_batch_skew"`
 	// The size of the batch in Bytes. Every batch we'll write to the DA and the settlement layer.
 	BlockBatchMaxSizeBytes uint64 `mapstructure:"block_batch_max_size_bytes"`
 	// The number of messages cached by gossipsub protocol
-	GossipedBlocksCacheSize int `mapstructure:"gossiped_blocks_cache_size"`
+	GossipedBlocksCacheSize int    `mapstructure:"gossiped_blocks_cache_size"`
+	NamespaceID             string `mapstructure:"namespace_id"`
 }
 
 // GetViperConfig reads configuration parameters from Viper instance.
@@ -115,24 +121,29 @@ func (c BlockManagerConfig) Validate() error {
 		return fmt.Errorf("block_time must be positive")
 	}
 
-	if c.EmptyBlocksMaxTime < 0 {
-		return fmt.Errorf("empty_blocks_max_time must be positive or zero to disable")
+	if c.MaxIdleTime < 0 {
+		return fmt.Errorf("max_idle_time must be positive or zero to disable")
+	}
+	// MaxIdleTime zero disables adaptive block production.
+	if c.MaxIdleTime != 0 {
+		if c.MaxIdleTime <= c.BlockTime {
+			return fmt.Errorf("max_idle_time must be greater than block_time")
+		}
+		if c.MaxProofTime <= 0 || c.MaxProofTime > c.MaxIdleTime {
+			return fmt.Errorf("max_proof_time must be positive and not greater than max_idle_time")
+		}
 	}
 
 	if c.BatchSubmitMaxTime <= 0 {
 		return fmt.Errorf("batch_submit_max_time must be positive")
 	}
 
-	if c.EmptyBlocksMaxTime != 0 && c.EmptyBlocksMaxTime <= c.BlockTime {
-		return fmt.Errorf("empty_blocks_max_time must be greater than block_time")
-	}
-
 	if c.BatchSubmitMaxTime < c.BlockTime {
 		return fmt.Errorf("batch_submit_max_time must be greater than block_time")
 	}
 
-	if c.BatchSubmitMaxTime < c.EmptyBlocksMaxTime {
-		return fmt.Errorf("batch_submit_max_time must be greater than empty_blocks_max_time")
+	if c.BatchSubmitMaxTime < c.MaxIdleTime {
+		return fmt.Errorf("batch_submit_max_time must be greater than max_idle_time")
 	}
 
 	if c.BlockBatchMaxSizeBytes <= 0 {
@@ -141,6 +152,10 @@ func (c BlockManagerConfig) Validate() error {
 
 	if c.GossipedBlocksCacheSize <= 0 {
 		return fmt.Errorf("gossiped_blocks_cache_size must be positive")
+	}
+
+	if c.MaxSupportedBatchSkew <= 0 {
+		return fmt.Errorf("max_supported_batch_skew must be positive")
 	}
 
 	return nil

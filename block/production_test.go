@@ -13,7 +13,6 @@ import (
 	"github.com/dymensionxyz/dymint/mempool"
 	mempoolv1 "github.com/dymensionxyz/dymint/mempool/v1"
 	"github.com/dymensionxyz/dymint/node/events"
-	"github.com/dymensionxyz/dymint/types"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
 	tmcfg "github.com/tendermint/tendermint/config"
 
@@ -25,7 +24,7 @@ import (
 
 func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 	const blockTime = 200 * time.Millisecond
-	const EmptyBlocksMaxTime = blockTime * 10
+	const MaxIdleTime = blockTime * 10
 	const runTime = 10 * time.Second
 
 	assert := assert.New(t)
@@ -40,14 +39,15 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 	// Init manager with empty blocks feature disabled
 	managerConfigCreatesEmptyBlocks := testutil.GetManagerConfig()
 	managerConfigCreatesEmptyBlocks.BlockTime = blockTime
-	managerConfigCreatesEmptyBlocks.EmptyBlocksMaxTime = 0 * time.Second
+	managerConfigCreatesEmptyBlocks.MaxIdleTime = 0 * time.Second
 	managerWithEmptyBlocks, err := testutil.GetManager(managerConfigCreatesEmptyBlocks, nil, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
 	// Init manager with empty blocks feature enabled
 	managerConfig := testutil.GetManagerConfig()
 	managerConfig.BlockTime = blockTime
-	managerConfig.EmptyBlocksMaxTime = EmptyBlocksMaxTime
+	managerConfig.MaxIdleTime = MaxIdleTime
+	managerConfig.MaxProofTime = MaxIdleTime
 	manager, err := testutil.GetManager(managerConfig, nil, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
@@ -60,8 +60,8 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 	go manager.ProduceBlockLoop(mCtx)
 	go managerWithEmptyBlocks.ProduceBlockLoop(mCtx)
 
-	buf1 := make(chan bool, 100) //dummy to avoid unhealthy event
-	buf2 := make(chan bool, 100) //dummy to avoid unhealthy event
+	buf1 := make(chan struct{}, 100) // dummy to avoid unhealthy event
+	buf2 := make(chan struct{}, 100) // dummy to avoid unhealthy event
 	go manager.AccumulatedDataLoop(mCtx, buf1)
 	go managerWithEmptyBlocks.AccumulatedDataLoop(mCtx, buf2)
 	<-mCtx.Done()
@@ -71,7 +71,7 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 	assert.Greater(managerWithEmptyBlocks.State.Height(), manager.State.Height())
 
 	// Check that blocks are created with empty blocks feature disabled
-	assert.LessOrEqual(manager.State.Height(), uint64(runTime/EmptyBlocksMaxTime))
+	assert.LessOrEqual(manager.State.Height(), uint64(runTime/MaxIdleTime))
 	assert.LessOrEqual(managerWithEmptyBlocks.State.Height(), uint64(runTime/blockTime))
 
 	for i := uint64(2); i < managerWithEmptyBlocks.State.Height(); i++ {
@@ -96,7 +96,7 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 		assert.NotZero(block.Header.Time)
 
 		diff := time.Unix(0, int64(block.Header.Time)).Sub(time.Unix(0, int64(prevBlock.Header.Time)))
-		assert.Greater(diff, manager.Conf.EmptyBlocksMaxTime)
+		assert.Greater(diff, manager.Conf.MaxIdleTime)
 	}
 }
 
@@ -114,7 +114,7 @@ func TestCreateEmptyBlocksNew(t *testing.T) {
 	// Init manager
 	managerConfig := testutil.GetManagerConfig()
 	managerConfig.BlockTime = 200 * time.Millisecond
-	managerConfig.EmptyBlocksMaxTime = 1 * time.Second
+	managerConfig.MaxIdleTime = 1 * time.Second
 	manager, err := testutil.GetManager(managerConfig, nil, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
@@ -163,8 +163,8 @@ func TestCreateEmptyBlocksNew(t *testing.T) {
 		diff := time.Unix(0, int64(block.Header.Time)).Sub(time.Unix(0, int64(prevBlock.Header.Time)))
 		txsCount := len(block.Data.Txs)
 		if txsCount == 0 {
-			assert.Greater(diff, manager.Conf.EmptyBlocksMaxTime)
-			assert.Less(diff, manager.Conf.EmptyBlocksMaxTime+1*time.Second)
+			assert.Greater(diff, manager.Conf.MaxIdleTime)
+			assert.Less(diff, manager.Conf.MaxIdleTime+1*time.Second)
 		} else {
 			foundTx = true
 			assert.Less(diff, manager.Conf.BlockTime+100*time.Millisecond)
@@ -173,44 +173,6 @@ func TestCreateEmptyBlocksNew(t *testing.T) {
 		fmt.Println("time diff:", diff, "tx len", 0)
 	}
 	assert.True(foundTx)
-}
-
-func TestInvalidBatch(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
-
-	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, nil, 1, 1, 0, nil, nil)
-	require.NoError(err)
-
-	batchSize := uint64(5)
-	syncTarget := uint64(10)
-
-	// Create cases
-	cases := []struct {
-		startHeight uint64
-		endHeight   uint64
-		shouldError bool
-	}{
-		{startHeight: syncTarget + 1, endHeight: syncTarget + batchSize, shouldError: false},
-		// batch with endHight < startHeight
-		{startHeight: syncTarget + 1, endHeight: syncTarget, shouldError: true},
-		// batch with startHeight != previousEndHeight + 1
-		{startHeight: syncTarget, endHeight: syncTarget + batchSize + batchSize, shouldError: true},
-	}
-	for _, c := range cases {
-		batch := &types.Batch{
-			StartHeight: c.startHeight,
-			EndHeight:   c.endHeight,
-		}
-
-		manager.UpdateSyncParams(syncTarget)
-		err := manager.ValidateBatch(batch)
-		if c.shouldError {
-			assert.Error(err)
-		} else {
-			assert.NoError(err)
-		}
-	}
 }
 
 // TestStopBlockProduction tests the block production stops when submitter is full
@@ -246,7 +208,7 @@ func TestStopBlockProduction(t *testing.T) {
 		wg.Done() // Decrease counter when this goroutine finishes
 	}()
 
-	toSubmit := make(chan bool)
+	toSubmit := make(chan struct{})
 	go func() {
 		manager.AccumulatedDataLoop(ctx, toSubmit)
 		wg.Done() // Decrease counter when this goroutine finishes

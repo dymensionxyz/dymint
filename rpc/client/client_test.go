@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	tmcfg "github.com/tendermint/tendermint/config"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -98,16 +100,16 @@ func TestGenesisChunked(t *testing.T) {
 	signingKey, _, _ := crypto.GenerateEd25519Key(crand.Reader)
 
 	config := config.NodeConfig{
-		RootDir:    "",
-		DBPath:     "",
-		P2P:        config.P2PConfig{},
-		RPC:        config.RPCConfig{},
-		Aggregator: false,
+		RootDir: "",
+		DBPath:  "",
+		P2P:     config.P2PConfig{},
+		RPC:     config.RPCConfig{},
 		BlockManagerConfig: config.BlockManagerConfig{
 			BlockTime:               100 * time.Millisecond,
 			BatchSubmitMaxTime:      60 * time.Second,
 			BlockBatchMaxSizeBytes:  1000,
 			GossipedBlocksCacheSize: 50,
+			MaxSupportedBatchSkew:   10,
 		},
 		BootstrapTime:   30 * time.Second,
 		DALayer:         "mock",
@@ -441,40 +443,8 @@ func TestTx(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	mockApp := &tmmocks.MockApplication{}
-	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
-	mockApp.On("Info", mock.Anything).Return(expectedInfo)
-	key, _, _ := crypto.GenerateEd25519Key(crand.Reader)
-	signingKey, proposerPubKey, err := crypto.GenerateEd25519Key(crand.Reader)
-	require.NoError(err)
+	mockApp, rpc, node := getRPCAndNodeAggregator(t)
 
-	pubKeybytes, err := proposerPubKey.Raw()
-	require.NoError(err)
-	rollappID := "rollapp_1234-1"
-
-	node, err := node.NewNode(context.Background(), config.NodeConfig{
-		DALayer:         "mock",
-		SettlementLayer: "mock",
-		Aggregator:      true,
-		BlockManagerConfig: config.BlockManagerConfig{
-			BlockTime:               200 * time.Millisecond,
-			BatchSubmitMaxTime:      60 * time.Second,
-			BlockBatchMaxSizeBytes:  1000,
-			GossipedBlocksCacheSize: 50,
-		},
-		BootstrapTime: 30 * time.Second,
-		SettlementConfig: settlement.Config{
-			ProposerPubKey: hex.EncodeToString(pubKeybytes),
-			RollappID:      rollappID,
-		},
-	},
-		key, signingKey, proxy.NewLocalClientCreator(mockApp),
-		&tmtypes.GenesisDoc{ChainID: rollappID},
-		log.TestingLogger(), mempool.NopMetrics())
-	require.NoError(err)
-	require.NotNil(node)
-
-	rpc := client.NewClient(node)
 	require.NotNil(rpc)
 	mockApp.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
 	mockApp.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{})
@@ -482,8 +452,9 @@ func TestTx(t *testing.T) {
 	mockApp.On("DeliverTx", mock.Anything).Return(abci.ResponseDeliverTx{})
 	mockApp.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{})
 	mockApp.On("Info", mock.Anything).Return(abci.ResponseInfo{LastBlockHeight: 0, LastBlockAppHash: []byte{0}})
+	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 
-	err = node.Start()
+	err := node.Start()
 	require.NoError(err)
 
 	tx1 := tmtypes.Tx("tx1")
@@ -494,8 +465,8 @@ func TestTx(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	resTx, errTx := rpc.Tx(context.Background(), res.Hash, true)
-	assert.NoError(errTx)
 	assert.NotNil(resTx)
+	assert.NoError(errTx)
 	assert.EqualValues(tx1, resTx.Tx)
 	assert.EqualValues(res.Hash, resTx.Hash)
 
@@ -727,12 +698,12 @@ func TestValidatorSetHandling(t *testing.T) {
 	nodeConfig := config.NodeConfig{
 		DALayer:         "mock",
 		SettlementLayer: "mock",
-		Aggregator:      true,
 		BlockManagerConfig: config.BlockManagerConfig{
 			BlockTime:               10 * time.Millisecond,
 			BatchSubmitMaxTime:      60 * time.Second,
 			BlockBatchMaxSizeBytes:  1000,
 			GossipedBlocksCacheSize: 50,
+			MaxSupportedBatchSkew:   10,
 		},
 		BootstrapTime: 30 * time.Second,
 		SettlementConfig: settlement.Config{
@@ -842,35 +813,53 @@ func getBlockMeta(node *node.Node, n int64) *tmtypes.BlockMeta {
 	return bmeta
 }
 
+// getRPC returns a mock application and a new RPC client (non-aggregator mode)
 func getRPC(t *testing.T) (*tmmocks.MockApplication, *client.Client) {
 	app, rpc, _ := getRPCAndNode(t)
 	return app, rpc
 }
 
 func getRPCAndNode(t *testing.T) (*tmmocks.MockApplication, *client.Client, *node.Node) {
+	return getRPCInternal(t, false)
+}
+
+func getRPCAndNodeAggregator(t *testing.T) (*tmmocks.MockApplication, *client.Client, *node.Node) {
+	return getRPCInternal(t, true)
+}
+
+// getRPC returns a mock application and a new RPC client (non-aggregator mode)
+func getRPCInternal(t *testing.T, aggregator bool) (*tmmocks.MockApplication, *client.Client, *node.Node) {
 	t.Helper()
 	require := require.New(t)
 	app := &tmmocks.MockApplication{}
 	app.On("Info", mock.Anything).Return(expectedInfo)
 	key, _, _ := crypto.GenerateEd25519Key(crand.Reader)
-	signingKey, pubkey, err := crypto.GenerateEd25519Key(crand.Reader)
+	localKey, _, err := crypto.GenerateEd25519Key(crand.Reader)
+	require.NoError(err)
+
+	slSeqKey, pubkey, err := crypto.GenerateEd25519Key(crand.Reader)
 	pubkeyBytes, _ := pubkey.Raw()
 	proposerKey := hex.EncodeToString(pubkeyBytes)
 	require.NoError(err)
 
+	if aggregator {
+		localKey = slSeqKey
+	}
+
 	rollappID := "rollapp_1234-1"
 
 	config := config.NodeConfig{
-		RootDir:    "",
-		DBPath:     "",
-		P2P:        config.P2PConfig{},
-		RPC:        config.RPCConfig{},
-		Aggregator: false,
+		RootDir:       "",
+		DBPath:        "",
+		P2P:           config.P2PConfig{},
+		RPC:           config.RPCConfig{},
+		MempoolConfig: *tmcfg.DefaultMempoolConfig(),
 		BlockManagerConfig: config.BlockManagerConfig{
 			BlockTime:               100 * time.Millisecond,
 			BatchSubmitMaxTime:      60 * time.Second,
 			BlockBatchMaxSizeBytes:  1000,
 			GossipedBlocksCacheSize: 50,
+			MaxSupportedBatchSkew:   10,
 		},
 		BootstrapTime:   30 * time.Second,
 		DALayer:         "mock",
@@ -885,7 +874,7 @@ func getRPCAndNode(t *testing.T) (*tmmocks.MockApplication, *client.Client, *nod
 		context.Background(),
 		config,
 		key,
-		signingKey,
+		localKey, // this is where aggregator mode is set. if same key as in settlement.Config, it's aggregator
 		proxy.NewLocalClientCreator(app),
 		&tmtypes.GenesisDoc{ChainID: rollappID},
 		log.TestingLogger(),
@@ -945,22 +934,20 @@ func TestMempool2Nodes(t *testing.T) {
 
 	app := &tmmocks.MockApplication{}
 	app.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
+	app.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
 	app.On("CheckTx", abci.RequestCheckTx{Tx: []byte("bad")}).Return(abci.ResponseCheckTx{Code: 1})
 	app.On("CheckTx", abci.RequestCheckTx{Tx: []byte("good")}).Return(abci.ResponseCheckTx{Code: 0})
 	app.On("Info", mock.Anything).Return(expectedInfo)
 
 	key1, _, _ := crypto.GenerateEd25519Key(crand.Reader)
 	key2, _, _ := crypto.GenerateEd25519Key(crand.Reader)
-	signingKey1, proposerPubKey1, _ := crypto.GenerateEd25519Key(crand.Reader)
-	signingKey2, proposerPubKey2, _ := crypto.GenerateEd25519Key(crand.Reader)
+	signingKey1, _, _ := crypto.GenerateEd25519Key(crand.Reader)
+	signingKey2, _, _ := crypto.GenerateEd25519Key(crand.Reader)
+	_, proposerPubkey, _ := crypto.GenerateEd25519Key(crand.Reader)
+	proposerPK, err := proposerPubkey.Raw()
+	require.NoError(err)
 
 	id1, err := peer.IDFromPrivateKey(key1)
-	require.NoError(err)
-
-	proposerPubKey1Bytes, err := proposerPubKey1.Raw()
-	require.NoError(err)
-
-	proposerPubKey2Bytes, err := proposerPubKey2.Raw()
 	require.NoError(err)
 
 	rollappID := "rollapp_1234-1"
@@ -969,7 +956,7 @@ func TestMempool2Nodes(t *testing.T) {
 		DALayer:         "mock",
 		SettlementLayer: "mock",
 		SettlementConfig: settlement.Config{
-			ProposerPubKey: hex.EncodeToString(proposerPubKey1Bytes),
+			ProposerPubKey: hex.EncodeToString(proposerPK),
 			RollappID:      rollappID,
 		},
 		BlockManagerConfig: config.BlockManagerConfig{
@@ -977,11 +964,13 @@ func TestMempool2Nodes(t *testing.T) {
 			BatchSubmitMaxTime:      60 * time.Second,
 			BlockBatchMaxSizeBytes:  1000,
 			GossipedBlocksCacheSize: 50,
+			MaxSupportedBatchSkew:   10,
 		},
 		BootstrapTime: 30 * time.Second,
 		P2P: config.P2PConfig{
 			ListenAddress: "/ip4/127.0.0.1/tcp/9001",
 		},
+		MempoolConfig: *tmcfg.DefaultMempoolConfig(),
 	}, key1, signingKey1, proxy.NewLocalClientCreator(app), &tmtypes.GenesisDoc{ChainID: rollappID}, log.TestingLogger(), mempool.NopMetrics())
 	require.NoError(err)
 	require.NotNil(node1)
@@ -990,7 +979,7 @@ func TestMempool2Nodes(t *testing.T) {
 		DALayer:         "mock",
 		SettlementLayer: "mock",
 		SettlementConfig: settlement.Config{
-			ProposerPubKey: hex.EncodeToString(proposerPubKey2Bytes),
+			ProposerPubKey: hex.EncodeToString(proposerPK),
 			RollappID:      rollappID,
 		},
 		BlockManagerConfig: config.BlockManagerConfig{
@@ -998,12 +987,14 @@ func TestMempool2Nodes(t *testing.T) {
 			BatchSubmitMaxTime:      60 * time.Second,
 			BlockBatchMaxSizeBytes:  1000,
 			GossipedBlocksCacheSize: 50,
+			MaxSupportedBatchSkew:   10,
 		},
 		BootstrapTime: 30 * time.Second,
 		P2P: config.P2PConfig{
 			ListenAddress: "/ip4/127.0.0.1/tcp/9002",
 			Seeds:         "/ip4/127.0.0.1/tcp/9001/p2p/" + id1.String(),
 		},
+		MempoolConfig: *tmcfg.DefaultMempoolConfig(),
 	}, key2, signingKey2, proxy.NewLocalClientCreator(app), &tmtypes.GenesisDoc{ChainID: rollappID}, log.TestingLogger(), mempool.NopMetrics())
 	require.NoError(err)
 	require.NotNil(node1)
@@ -1022,15 +1013,15 @@ func TestMempool2Nodes(t *testing.T) {
 	local := client.NewClient(node1)
 	require.NotNil(local)
 
-	// broadcast the bad Tx, this should not be propogated or added to the local mempool
+	// broadcast the bad Tx, this should not be propagated or added to the local mempool
 	resp, err := local.BroadcastTxSync(ctx, []byte("bad"))
 	assert.NoError(err)
 	assert.NotNil(resp)
-	// broadcast the good Tx, this should be propogated and added to the local mempool
+	// broadcast the good Tx, this should be propagated and added to the local mempool
 	resp, err = local.BroadcastTxSync(ctx, []byte("good"))
 	assert.NoError(err)
 	assert.NotNil(resp)
-	// broadcast the good Tx again in the same block, this should not be propogated and
+	// broadcast the good Tx again in the same block, this should not be propagated and
 	// added to the local mempool
 	resp, err = local.BroadcastTxSync(ctx, []byte("good"))
 	assert.Error(err)

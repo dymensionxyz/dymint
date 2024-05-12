@@ -18,49 +18,24 @@ import (
 // ProduceBlockLoop is calling publishBlock in a loop as long as we're synced.
 func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 	m.logger.Debug("Started produce loop")
-	produceEmptyBlock := true // Allow the initial block to be empty
 
 	// Main ticker for block production
 	ticker := time.NewTicker(m.Conf.BlockTime)
 	defer ticker.Stop()
 
-	// Timer for empty blockss
-	var emptyBlocksTimer <-chan time.Time
-	resetEmptyBlocksTimer := func() {}
-	// Setup ticker for empty blocks if enabled
-	if 0 < m.Conf.EmptyBlocksMaxTime {
-		t := time.NewTimer(m.Conf.EmptyBlocksMaxTime)
-		emptyBlocksTimer = t.C
-		resetEmptyBlocksTimer = func() {
-			produceEmptyBlock = false
-			t.Reset(m.Conf.EmptyBlocksMaxTime)
-		}
-		defer t.Stop()
-	}
-
-	// Timer for block progression to support IBC transfers
-	forceCreationTimer := time.NewTimer(5 * time.Second) //TODO: change to own constant
-	defer forceCreationTimer.Stop()
-	forceCreationTimer.Stop() // Don't start it initially
-	resetForceCreationTimer := func(lastBlockEmpty bool) {
-		if lastBlockEmpty {
-			forceCreationTimer.Stop()
-		} else {
-			forceCreationTimer.Reset(5 * time.Second)
-		}
-	}
+	var nextEmptyBlock time.Time
+	firstBlock := true
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-forceCreationTimer.C: // Force block creation
-			produceEmptyBlock = true
-		case <-emptyBlocksTimer: // Empty blocks timeout
-			produceEmptyBlock = true
-			m.logger.Debug(fmt.Sprintf("no transactions, producing empty block: elapsed: %.2f", m.Conf.EmptyBlocksMaxTime.Seconds()))
-		// Produce block
 		case <-ticker.C:
+
+			// if empty blocks are configured to be enabled, and one is scheduled...
+			produceEmptyBlock := firstBlock || 0 == m.Conf.MaxIdleTime || nextEmptyBlock.Before(time.Now())
+			firstBlock = false
+
 			block, commit, err := m.ProduceAndGossipBlock(ctx, produceEmptyBlock)
 			if errors.Is(err, context.Canceled) {
 				m.logger.Error("produce and gossip: context canceled", "error", err)
@@ -77,9 +52,16 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 				m.logger.Error("produce and gossip: uncategorized, assuming recoverable", "error", err)
 				continue
 			}
-			resetEmptyBlocksTimer()
-			isLastBlockEmpty := len(block.Data.Txs) == 0
-			resetForceCreationTimer(isLastBlockEmpty)
+
+			// If IBC transactions are present, set proof required to true
+			// This will set a shorter timer for the next block
+			// currently we set it for all txs as we don't have a way to determine if an IBC tx is present (https://github.com/dymensionxyz/dymint/issues/709)
+			nextEmptyBlock = time.Now().Add(m.Conf.MaxIdleTime)
+			if 0 < len(block.Data.Txs) {
+				nextEmptyBlock = time.Now().Add(m.Conf.MaxProofTime)
+			} else {
+				m.logger.Info("produced empty block")
+			}
 
 			// Send the size to the accumulated size channel
 			// This will block in case the submitter is too slow and it's buffer is full
