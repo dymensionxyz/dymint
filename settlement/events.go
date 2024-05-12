@@ -20,13 +20,11 @@ const (
 	// EventNewBatchAccepted should be emitted internally in order to communicate between the settlement layer and the hub client
 	EventNewBatchAccepted      = "EventNewBatchAccepted"
 	EventSequencersListUpdated = "SequencersListUpdated"
-	EventHealthStatus          = "SettlementHealthStatus"
 )
 
 // Convenience objects
 
 var (
-	EventHealthStatusList     = map[string][]string{EventTypeKey: {EventHealthStatus}}
 	EventNewBatchAcceptedList = map[string][]string{EventTypeKey: {EventNewBatchAccepted}}
 )
 
@@ -48,13 +46,7 @@ type EventDataSequencersListUpdated struct {
 	Sequencers []types.Sequencer
 }
 
-type EventDataHealth struct {
-	// Error is the error that was encountered in case of a health check failure, nil implies healthy
-	Error error
-}
-
 // Queries
 var (
 	EventQueryNewSettlementBatchAccepted = uevent.QueryFor(EventTypeKey, EventNewBatchAccepted)
-	EventQuerySettlementHealthStatus     = uevent.QueryFor(EventTypeKey, EventHealthStatus)
 )

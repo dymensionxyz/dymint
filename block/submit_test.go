@@ -23,11 +23,10 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
-var ctx = context.Background()
-
 func TestBatchSubmissionHappyFlow(t *testing.T) {
 	require := require.New(t)
 	app := testutil.GetAppMock()
+	ctx := context.Background()
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(clientCreator)
@@ -43,19 +42,20 @@ func TestBatchSubmissionHappyFlow(t *testing.T) {
 	require.Zero(manager.SyncTarget.Load())
 
 	// Produce block and validate that we produced blocks
-	err = manager.ProduceAndGossipBlock(ctx, true)
+	_, _, err = manager.ProduceAndGossipBlock(ctx, true)
 	require.NoError(err)
 	assert.Greater(t, manager.Store.Height(), initialHeight)
 	assert.Zero(t, manager.SyncTarget.Load())
 
 	// submit and validate sync target
-	manager.HandleSubmissionTrigger(ctx)
-	assert.EqualValues(t, 1, manager.SyncTarget.Load())
+	manager.HandleSubmissionTrigger()
+	assert.EqualValues(t, manager.Store.Height(), manager.SyncTarget.Load())
 }
 
 func TestBatchSubmissionFailedSubmission(t *testing.T) {
 	require := require.New(t)
 	app := testutil.GetAppMock()
+	ctx := context.Background()
 
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)
@@ -89,29 +89,27 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 	require.Zero(manager.SyncTarget.Load())
 
 	// Produce block and validate that we produced blocks
-	err = manager.ProduceAndGossipBlock(ctx, true)
+	_, _, err = manager.ProduceAndGossipBlock(ctx, true)
 	require.NoError(err)
 	assert.Greater(t, manager.Store.Height(), initialHeight)
 	assert.Zero(t, manager.SyncTarget.Load())
 
 	// try to submit, we expect failure
 	mockLayerI.On("SubmitBatch", mock.Anything, mock.Anything, mock.Anything).Return(fmt.Errorf("Failed to submit batch")).Once()
-	manager.HandleSubmissionTrigger(ctx)
-	assert.EqualValues(t, 0, manager.SyncTarget.Load())
+	assert.Error(t, manager.HandleSubmissionTrigger())
 
 	// try to submit again, we expect success
 	mockLayerI.On("SubmitBatch", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
-	manager.HandleSubmissionTrigger(ctx)
-	assert.EqualValues(t, 1, manager.SyncTarget.Load())
+	manager.HandleSubmissionTrigger()
+	assert.EqualValues(t, manager.Store.Height(), manager.SyncTarget.Load())
 }
 
-func TestBatchSubmissionAfterTimeout(t *testing.T) {
+// TestSubmissionByTime tests the submission trigger by time
+func TestSubmissionByTime(t *testing.T) {
 	const (
 		// large batch size, so we expect the trigger to be the timeout
-		batchSize     = 100000
-		submitTimeout = 2 * time.Second
+		submitTimeout = 1 * time.Second
 		blockTime     = 200 * time.Millisecond
-		runTime       = submitTimeout + 1*time.Second
 	)
 
 	require := require.New(t)
@@ -125,9 +123,9 @@ func TestBatchSubmissionAfterTimeout(t *testing.T) {
 	// Init manager with empty blocks feature enabled
 	managerConfig := config.BlockManagerConfig{
 		BlockTime:               blockTime,
-		EmptyBlocksMaxTime:      0,
+		MaxIdleTime:             0,
+		MaxSupportedBatchSkew:   10,
 		BatchSubmitMaxTime:      submitTimeout,
-		BlockBatchSize:          batchSize,
 		BlockBatchMaxSizeBytes:  1000,
 		GossipedBlocksCacheSize: 50,
 	}
@@ -141,22 +139,86 @@ func TestBatchSubmissionAfterTimeout(t *testing.T) {
 	require.Zero(manager.SyncTarget.Load())
 
 	var wg sync.WaitGroup
-	mCtx, cancel := context.WithTimeout(context.Background(), runTime)
+	mCtx, cancel := context.WithTimeout(context.Background(), 2*submitTimeout)
 	defer cancel()
 
 	wg.Add(2) // Add 2 because we have 2 goroutines
 
 	go func() {
-		defer wg.Done() // Decrease counter when this goroutine finishes
 		manager.ProduceBlockLoop(mCtx)
+		wg.Done() // Decrease counter when this goroutine finishes
 	}()
 
 	go func() {
-		defer wg.Done() // Decrease counter when this goroutine finishes
 		manager.SubmitLoop(mCtx)
+		wg.Done() // Decrease counter when this goroutine finishes
 	}()
 
-	<-mCtx.Done()
 	wg.Wait() // Wait for all goroutines to finish
 	require.True(manager.SyncTarget.Load() > 0)
+}
+
+// TestSubmissionByBatchSize tests the submission trigger by batch size
+func TestSubmissionByBatchSize(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	cases := []struct {
+		name                   string
+		blockBatchMaxSizeBytes uint64
+		expectedSubmission     bool
+	}{
+		{
+			name:                   "block batch max size is fulfilled",
+			blockBatchMaxSizeBytes: 2000,
+			expectedSubmission:     true,
+		},
+		{
+			name:                   "block batch max size is not fulfilled",
+			blockBatchMaxSizeBytes: 100000,
+			expectedSubmission:     false,
+		},
+	}
+
+	for _, c := range cases {
+		managerConfig := testutil.GetManagerConfig()
+		managerConfig.BlockBatchMaxSizeBytes = c.blockBatchMaxSizeBytes
+		manager, err := testutil.GetManager(managerConfig, nil, nil, 1, 1, 0, nil, nil)
+		require.NoError(err)
+
+		// validate initial accumulated is zero
+		require.Equal(manager.AccumulatedBatchSize.Load(), uint64(0))
+		assert.Equal(manager.Store.Height(), uint64(0))
+
+		var wg sync.WaitGroup
+		wg.Add(2) // Add 2 because we have 2 goroutines
+
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
+
+		go func() {
+			manager.ProduceBlockLoop(ctx)
+			wg.Done() // Decrease counter when this goroutine finishes
+		}()
+
+		go func() {
+			manager.SubmitLoop(ctx)
+			wg.Done() // Decrease counter when this goroutine finishes
+		}()
+
+		// wait for block to be produced but not for submission threshold
+		time.Sleep(200 * time.Millisecond)
+		// assert block produced but nothing submitted yet
+		assert.Greater(manager.Store.Height(), uint64(0))
+		assert.Greater(manager.AccumulatedBatchSize.Load(), uint64(0))
+		assert.Zero(manager.SyncTarget.Load())
+
+		wg.Wait() // Wait for all goroutines to finish
+
+		if c.expectedSubmission {
+			assert.Positive(manager.SyncTarget.Load())
+		} else {
+			assert.Zero(manager.SyncTarget.Load())
+		}
+	}
 }

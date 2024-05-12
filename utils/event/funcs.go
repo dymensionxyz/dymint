@@ -41,7 +41,7 @@ func MustSubscribe(
 }
 
 // MustPublish submits an event or panics
-func MustPublish(ctx context.Context, pubsubServer *pubsub.Server, msg any, events map[string][]string) {
+func MustPublish(ctx context.Context, pubsubServer *pubsub.Server, msg interface{}, events map[string][]string) {
 	err := pubsubServer.PublishWithEvents(ctx, msg, events)
 	if err != nil {
 		panic(err)

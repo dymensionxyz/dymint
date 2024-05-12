@@ -40,7 +40,7 @@ const (
 )
 
 const (
-	eventStateUpdate          = "state_update.rollapp_id='%s'"
+	eventStateUpdate          = "state_update.rollapp_id='%s' AND state_update.status='PENDING'"
 	eventSequencersListUpdate = "sequencers_list_update.rollapp_id='%s'"
 )
 
@@ -231,10 +231,8 @@ submitLoop:
 		default:
 			err := d.submitBatch(msgUpdateState)
 			if err != nil {
-				err = fmt.Errorf("submit batch: %w", err)
-				uevent.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{Error: err}, settlement.EventHealthStatusList)
 				d.logger.Error(
-					"Submitted bad health event: trying again.",
+					"Submit batch",
 					"startHeight",
 					batch.StartHeight,
 					"endHeight",
@@ -269,19 +267,19 @@ submitLoop:
 				d.logger.Info("Received event for a different batch, ignoring.", "event", eventData)
 				continue
 			}
-			uevent.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{}, settlement.EventHealthStatusList)
-			d.logger.Debug("Batch accepted: emitted healthy event.", "startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
+			d.logger.Debug("Batch accepted.", "startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
 			return nil
 
 		case <-timer.C:
-			// Before emitting unhealthy event, check if the batch was accepted by the settlement
-			// layer, and we've just missed the event.
+			// Check if the batch was accepted by the settlement layer, and we've just missed the event.
 			includedBatch, err := d.pollForBatchInclusion(batch.EndHeight)
 			if err != nil || !includedBatch {
-				err = fmt.Errorf("wait for batch inclusion: %w", settlement.ErrBatchNotAccepted)
-				uevent.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{Error: err}, settlement.EventHealthStatusList)
+				if err == nil {
+					err = settlement.ErrBatchNotAccepted
+				}
+				err = fmt.Errorf("wait for batch inclusion: %w", err)
 				d.logger.Error(
-					"Submitted bad health event: trying again.",
+					"Wait for batch inclusion",
 					"startHeight",
 					batch.StartHeight,
 					"endHeight",
@@ -293,8 +291,9 @@ submitLoop:
 				timer.Reset(d.batchAcceptanceTimeout)
 				continue
 			}
-			uevent.MustPublish(d.ctx, d.pubsub, &settlement.EventDataHealth{}, settlement.EventHealthStatusList)
-			d.logger.Info("Batch accepted, emitted healthy event.", "startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
+
+			// all good
+			d.logger.Info("Batch accepted", "startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
 			return nil
 		}
 	}
