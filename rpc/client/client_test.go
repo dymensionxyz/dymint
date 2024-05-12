@@ -102,10 +102,10 @@ func TestGenesisChunked(t *testing.T) {
 		RPC:     config.RPCConfig{},
 		BlockManagerConfig: config.BlockManagerConfig{
 			BlockTime:               100 * time.Millisecond,
-			BlockBatchSize:          1,
 			BatchSubmitMaxTime:      60 * time.Second,
 			BlockBatchMaxSizeBytes:  1000,
 			GossipedBlocksCacheSize: 50,
+			MaxSupportedBatchSkew:   10,
 		},
 		BootstrapTime:   30 * time.Second,
 		DALayer:         "mock",
@@ -455,11 +455,11 @@ func TestTx(t *testing.T) {
 		DALayer:         "mock",
 		SettlementLayer: "mock",
 		BlockManagerConfig: config.BlockManagerConfig{
-			BlockBatchSize:          1,
 			BlockTime:               200 * time.Millisecond,
 			BatchSubmitMaxTime:      60 * time.Second,
 			BlockBatchMaxSizeBytes:  1000,
 			GossipedBlocksCacheSize: 50,
+			MaxSupportedBatchSkew:   10,
 		},
 		BootstrapTime: 30 * time.Second,
 		SettlementConfig: settlement.Config{
@@ -728,10 +728,10 @@ func TestValidatorSetHandling(t *testing.T) {
 		SettlementLayer: "mock",
 		BlockManagerConfig: config.BlockManagerConfig{
 			BlockTime:               10 * time.Millisecond,
-			BlockBatchSize:          1,
 			BatchSubmitMaxTime:      60 * time.Second,
 			BlockBatchMaxSizeBytes:  1000,
 			GossipedBlocksCacheSize: 50,
+			MaxSupportedBatchSkew:   10,
 		},
 		BootstrapTime: 30 * time.Second,
 		SettlementConfig: settlement.Config{
@@ -865,10 +865,10 @@ func getRPC(t *testing.T) (*tmmocks.MockApplication, *Client) {
 		RPC:     config.RPCConfig{},
 		BlockManagerConfig: config.BlockManagerConfig{
 			BlockTime:               100 * time.Millisecond,
-			BlockBatchSize:          1,
 			BatchSubmitMaxTime:      60 * time.Second,
 			BlockBatchMaxSizeBytes:  1000,
 			GossipedBlocksCacheSize: 50,
+			MaxSupportedBatchSkew:   10,
 		},
 		BootstrapTime:   30 * time.Second,
 		DALayer:         "mock",
@@ -969,11 +969,11 @@ func TestMempool2Nodes(t *testing.T) {
 			RollappID:      rollappID,
 		},
 		BlockManagerConfig: config.BlockManagerConfig{
-			BlockBatchSize:          1,
 			BlockTime:               100 * time.Millisecond,
 			BatchSubmitMaxTime:      60 * time.Second,
 			BlockBatchMaxSizeBytes:  1000,
 			GossipedBlocksCacheSize: 50,
+			MaxSupportedBatchSkew:   10,
 		},
 		BootstrapTime: 30 * time.Second,
 		P2P: config.P2PConfig{
@@ -991,11 +991,11 @@ func TestMempool2Nodes(t *testing.T) {
 			RollappID:      rollappID,
 		},
 		BlockManagerConfig: config.BlockManagerConfig{
-			BlockBatchSize:          1,
 			BlockTime:               100 * time.Millisecond,
 			BatchSubmitMaxTime:      60 * time.Second,
 			BlockBatchMaxSizeBytes:  1000,
 			GossipedBlocksCacheSize: 50,
+			MaxSupportedBatchSkew:   10,
 		},
 		BootstrapTime: 30 * time.Second,
 		P2P: config.P2PConfig{

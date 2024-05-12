@@ -1,7 +1,6 @@
 package block
 
 import (
-	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/types"
 )
 
@@ -17,11 +16,6 @@ const (
 type blockMetaData struct {
 	source   blockSource
 	daHeight uint64
-}
-
-type PendingBatch struct {
-	daResult *da.ResultSubmitBatch
-	batch    *types.Batch
 }
 
 type CachedBlock struct {

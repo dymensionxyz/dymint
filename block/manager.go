@@ -14,7 +14,6 @@ import (
 
 	"code.cloudfoundry.org/go-diodes"
 
-	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/libp2p/go-libp2p/core/crypto"
 
@@ -51,38 +50,21 @@ type Manager struct {
 	SLClient  settlement.LayerI
 
 	// Data retrieval
-	Retriever da.BatchRetriever
-
+	Retriever       da.BatchRetriever
 	SyncTargetDiode diodes.Diode
 	SyncTarget      atomic.Uint64
 
 	// Block production
-	shouldProduceBlocksCh chan bool
-	produceEmptyBlockCh   chan bool
+	producedSizeCh chan uint64 // channel for the producer to report the size of the block it produced
 
-	/*
-		Guard against triggering a new batch submission when the old one is still going on (taking a while)
-	*/
-	submitBatchMutex sync.Mutex
-
-	/*
-		Protect against producing two blocks at once if the first one is taking a while
-		Also, used to protect against the block production that occurs when batch submission thread
-		creates its empty block.
-	*/
-	produceBlockMutex sync.Mutex
+	// Submitter
+	AccumulatedBatchSize atomic.Uint64
 
 	/*
 		Protect against processing two blocks at once when there are two routines handling incoming gossiped blocks,
 		and incoming DA blocks, respectively.
 	*/
 	retrieverMutex sync.Mutex
-
-	// pendingBatch is the result of the last DA submission
-	// that is pending settlement layer submission.
-	// It is used to avoid double submission of the same batch.
-	// It's protected by submitBatchMutex.
-	pendingBatch *PendingBatch
 
 	logger types.Logger
 
@@ -121,23 +103,21 @@ func NewManager(
 	}
 
 	agg := &Manager{
-		Pubsub:      pubsub,
-		p2pClient:   p2pClient,
-		ProposerKey: proposerKey,
-		Conf:        conf,
-		Genesis:     genesis,
-		LastState:   s,
-		Store:       store,
-		Executor:    exec,
-		DAClient:    dalc,
-		SLClient:    settlementClient,
-		Retriever:   dalc.(da.BatchRetriever),
-		// channels are buffered to avoid blocking on input/output operations, buffer sizes are arbitrary
-		SyncTargetDiode:       diodes.NewOneToOne(1, nil),
-		shouldProduceBlocksCh: make(chan bool, 1),
-		produceEmptyBlockCh:   make(chan bool, 1),
-		logger:                logger,
-		blockCache:            make(map[uint64]CachedBlock),
+		Pubsub:          pubsub,
+		p2pClient:       p2pClient,
+		ProposerKey:     proposerKey,
+		Conf:            conf,
+		Genesis:         genesis,
+		LastState:       s,
+		Store:           store,
+		Executor:        exec,
+		DAClient:        dalc,
+		SLClient:        settlementClient,
+		Retriever:       dalc.(da.BatchRetriever),
+		SyncTargetDiode: diodes.NewOneToOne(1, nil),
+		producedSizeCh:  make(chan uint64),
+		logger:          logger,
+		blockCache:      make(map[uint64]CachedBlock),
 	}
 
 	return agg, nil
@@ -181,7 +161,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	}
 
 	if isAggregator {
-		go uevent.MustSubscribe(ctx, m.Pubsub, "nodeHealth", events.QueryHealthStatus, m.onNodeHealthStatus, m.logger)
+		// TODO: populate the accumulatedSize on startup
 		go m.ProduceBlockLoop(ctx)
 		go m.SubmitLoop(ctx)
 	} else {
@@ -229,12 +209,6 @@ func getAddress(key crypto.PrivKey) ([]byte, error) {
 		return nil, err
 	}
 	return tmcrypto.AddressHash(rawKey), nil
-}
-
-func (m *Manager) onNodeHealthStatus(event pubsub.Message) {
-	eventData := event.Data().(*events.DataHealthStatus)
-	m.logger.Info("Received node health status event.", "eventData", eventData)
-	m.shouldProduceBlocksCh <- eventData.Error == nil
 }
 
 // TODO: move to gossip.go

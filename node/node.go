@@ -4,15 +4,9 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
-	"sync"
 	"time"
-
-	uevent "github.com/dymensionxyz/dymint/utils/event"
-
-	"github.com/dymensionxyz/dymint/node/events"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
@@ -55,36 +49,6 @@ const (
 	genesisChunkSize = 16 * 1024 * 1024 // 16 MiB
 )
 
-type baseLayerHealth struct {
-	settlement error
-	da         error
-	mu         sync.RWMutex
-}
-
-func (bl *baseLayerHealth) setSettlement(err error) {
-	bl.mu.Lock()
-	defer bl.mu.Unlock()
-	if err != nil {
-		err = fmt.Errorf("settlement: %w", err)
-	}
-	bl.settlement = err
-}
-
-func (bl *baseLayerHealth) setDA(err error) {
-	bl.mu.Lock()
-	defer bl.mu.Unlock()
-	if err != nil {
-		err = fmt.Errorf("da: %w", err)
-	}
-	bl.da = err
-}
-
-func (bl *baseLayerHealth) get() error {
-	bl.mu.RLock()
-	defer bl.mu.RUnlock()
-	return errors.Join(bl.settlement, bl.da)
-}
-
 // Node represents a client node in Dymint network.
 // It connects all the components and orchestrates their work.
 type Node struct {
@@ -113,8 +77,6 @@ type Node struct {
 	TxIndexer      txindex.TxIndexer
 	BlockIndexer   indexer.BlockIndexer
 	IndexerService *txindex.IndexerService
-
-	baseLayerHealth baseLayerHealth
 
 	// shared context for all dymint components
 	ctx context.Context
@@ -309,8 +271,6 @@ func (n *Node) OnStart() error {
 		}
 	}()
 
-	n.startEventListener()
-
 	// start the block manager
 	err = n.blockManager.Start(n.ctx)
 	if err != nil {
@@ -404,35 +364,6 @@ func createAndStartIndexerService(
 	}
 
 	return indexerService, txIndexer, blockIndexer, nil
-}
-
-// All events listeners should be registered here
-func (n *Node) startEventListener() {
-	go uevent.MustSubscribe(n.ctx, n.PubsubServer, "settlementHealthStatusHandler", settlement.EventQuerySettlementHealthStatus, n.onBaseLayerHealthUpdate, n.Logger)
-	go uevent.MustSubscribe(n.ctx, n.PubsubServer, "daHealthStatusHandler", da.EventQueryDAHealthStatus, n.onBaseLayerHealthUpdate, n.Logger)
-}
-
-func (n *Node) onBaseLayerHealthUpdate(event pubsub.Message) {
-	haveNewErr := false
-	oldStatus := n.baseLayerHealth.get()
-	switch e := event.Data().(type) {
-	case *settlement.EventDataHealth:
-		haveNewErr = e.Error != nil
-		n.baseLayerHealth.setSettlement(e.Error)
-	case *da.EventDataHealth:
-		haveNewErr = e.Error != nil
-		n.baseLayerHealth.setDA(e.Error)
-	}
-	newStatus := n.baseLayerHealth.get()
-	newStatusIsDifferentFromOldOne := (oldStatus == nil) != (newStatus == nil)
-	shouldPublish := newStatusIsDifferentFromOldOne || haveNewErr
-	if shouldPublish {
-		evt := &events.DataHealthStatus{Error: newStatus}
-		if newStatus != nil {
-			n.Logger.Error("Node is unhealthy: base layer has problem.", "error", newStatus)
-		}
-		uevent.MustPublish(n.ctx, n.PubsubServer, evt, events.HealthStatusList)
-	}
 }
 
 func (n *Node) startPrometheusServer() error {

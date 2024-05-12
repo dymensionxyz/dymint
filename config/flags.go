@@ -10,10 +10,9 @@ const (
 	FlagDALayer                = "dymint.da_layer"
 	FlagDAConfig               = "dymint.da_config"
 	FlagBlockTime              = "dymint.block_time"
-	FlagEmptyBlocksMaxTime     = "dymint.empty_blocks_max_time"
+	FlagMaxIdleTime            = "dymint.max_idle_time"
 	FlagBatchSubmitMaxTime     = "dymint.batch_submit_max_time"
 	FlagNamespaceID            = "dymint.namespace_id"
-	FlagBlockBatchSize         = "dymint.block_batch_size"
 	FlagBlockBatchMaxSizeBytes = "dymint.block_batch_max_size_bytes"
 )
 
@@ -41,10 +40,9 @@ func AddNodeFlags(cmd *cobra.Command) {
 	cmd.Flags().String(FlagDALayer, def.DALayer, "Data Availability Layer Client name (mock or grpc")
 	cmd.Flags().String(FlagDAConfig, def.DAConfig, "Data Availability Layer Client config")
 	cmd.Flags().Duration(FlagBlockTime, def.BlockTime, "block time (for aggregator mode)")
-	cmd.Flags().Duration(FlagEmptyBlocksMaxTime, def.EmptyBlocksMaxTime, "max time for empty blocks (for aggregator mode)")
+	cmd.Flags().Duration(FlagMaxIdleTime, def.MaxIdleTime, "max time for empty blocks (for aggregator mode)")
 	cmd.Flags().Duration(FlagBatchSubmitMaxTime, def.BatchSubmitMaxTime, "max time for batch submit (for aggregator mode)")
 	cmd.Flags().String(FlagNamespaceID, def.NamespaceID, "namespace identifies (8 bytes in hex)")
-	cmd.Flags().Uint64(FlagBlockBatchSize, def.BlockBatchSize, "block batch size")
 	cmd.Flags().Uint64(FlagBlockBatchMaxSizeBytes, def.BlockBatchMaxSizeBytes, "block batch size in bytes")
 
 	cmd.Flags().String(FlagSettlementLayer, def.SettlementLayer, "Settlement Layer Client name")
@@ -68,16 +66,13 @@ func BindDymintFlags(cmd *cobra.Command, v *viper.Viper) error {
 	if err := v.BindPFlag("block_time", cmd.Flags().Lookup(FlagBlockTime)); err != nil {
 		return err
 	}
-	if err := v.BindPFlag("empty_blocks_max_time", cmd.Flags().Lookup(FlagEmptyBlocksMaxTime)); err != nil {
+	if err := v.BindPFlag("max_idle_time", cmd.Flags().Lookup(FlagMaxIdleTime)); err != nil {
 		return err
 	}
 	if err := v.BindPFlag("batch_submit_max_time", cmd.Flags().Lookup(FlagBatchSubmitMaxTime)); err != nil {
 		return err
 	}
 	if err := v.BindPFlag("namespace_id", cmd.Flags().Lookup(FlagNamespaceID)); err != nil {
-		return err
-	}
-	if err := v.BindPFlag("block_batch_size", cmd.Flags().Lookup(FlagBlockBatchSize)); err != nil {
 		return err
 	}
 	if err := v.BindPFlag("block_batch_max_size_bytes", cmd.Flags().Lookup(FlagBlockBatchMaxSizeBytes)); err != nil {
