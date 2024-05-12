@@ -13,6 +13,8 @@ import (
 	tmtypes "github.com/tendermint/tendermint/types"
 	"go.uber.org/multierr"
 
+	libp2pcrypto "github.com/libp2p/go-libp2p-core/crypto"
+
 	"github.com/dymensionxyz/dymint/mempool"
 	"github.com/dymensionxyz/dymint/types"
 )
@@ -33,7 +35,12 @@ type Executor struct {
 
 // NewExecutor creates new instance of BlockExecutor.
 // Proposer address and namespace ID will be used in all newly created blocks.
-func NewExecutor(proposerAddress []byte, namespaceID string, chainID string, mempool mempool.Mempool, proxyApp proxy.AppConns, eventBus *tmtypes.EventBus, logger types.Logger) (*Executor, error) {
+func NewExecutor(proposerKey libp2pcrypto.PrivKey, namespaceID string, chainID string, mempool mempool.Mempool, proxyApp proxy.AppConns, eventBus *tmtypes.EventBus, logger types.Logger) (*Executor, error) {
+	proposerAddress, err := getAddress(proposerKey)
+	if err != nil {
+		return nil, err
+	}
+
 	bytes, err := hex.DecodeString(namespaceID)
 	if err != nil {
 		return nil, err
@@ -134,21 +141,18 @@ func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHead
 }
 
 // Commit commits the block
-func (e *Executor) Commit(state *types.State, block *types.Block, resp *tmstate.ABCIResponses) (int64, error) {
+func (e *Executor) Commit(state *types.State, block *types.Block, resp *tmstate.ABCIResponses) ([]byte, int64, error) {
 	appHash, retainHeight, err := e.commit(state, block, resp.DeliverTxs)
 	if err != nil {
-		return 0, err
+		return nil, 0, err
 	}
-
-	copy(state.AppHash[:], appHash[:])
-	copy(state.LastResultsHash[:], tmtypes.NewResults(resp.DeliverTxs).Hash())
 
 	err = e.publishEvents(resp, block, *state)
 	if err != nil {
 		e.logger.Error("fire block events", "error", err)
-		return 0, err
+		return nil, 0, err
 	}
-	return retainHeight, nil
+	return appHash, retainHeight, nil
 }
 
 // GetAppInfo returns the latest AppInfo from the proxyApp.

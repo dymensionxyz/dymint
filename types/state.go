@@ -5,6 +5,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	tmtypes "github.com/tendermint/tendermint/types"
+
 	// TODO(tzdybal): copy to local project?
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -132,4 +134,14 @@ func (s *State) SetBase(height uint64) {
 // Base returns height of the earliest block saved in the Store.
 func (s *State) Base() uint64 {
 	return s.BaseHeight
+}
+
+// SetABCICommitResult
+func (s *State) SetABCICommitResult(resp *tmstate.ABCIResponses, appHash []byte, height uint64) {
+	copy(s.AppHash[:], appHash[:])
+	copy(s.LastResultsHash[:], tmtypes.NewResults(resp.DeliverTxs).Hash())
+
+	s.LastValidators = s.Validators.Copy()
+	s.LastStoreHeight = height
+	s.SetHeight(height)
 }

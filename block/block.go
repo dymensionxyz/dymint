@@ -1,14 +1,11 @@
 package block
 
 import (
-	"context"
 	"fmt"
 
 	errorsmod "cosmossdk.io/errors"
 
-	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/types"
-	tmtypes "github.com/tendermint/tendermint/types"
 )
 
 // applyBlock applies the block to the store and the abci app.
@@ -18,7 +15,6 @@ import (
 // - block height is the expected block height on the store (height + 1).
 // - block height is the expected block height on the app (last block height + 1).
 func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMetaData blockMetaData) error {
-	// TODO (#330): allow genesis block with height > 0 to be applied.
 	// TODO: add switch case to have defined behavior for each case.
 	// validate block height
 	if block.Header.Height != m.State.NextHeight() {
@@ -58,33 +54,32 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		return fmt.Errorf("update state from responses: %w", err)
 	}
 
-	batch := m.Store.NewBatch()
-
-	batch, err = m.Store.SaveBlockResponses(block.Header.Height, responses, batch)
+	dbBatch := m.Store.NewBatch()
+	dbBatch, err = m.Store.SaveBlockResponses(block.Header.Height, responses, dbBatch)
 	if err != nil {
-		batch.Discard()
+		dbBatch.Discard()
 		return fmt.Errorf("save block responses: %w", err)
 	}
 
 	m.State = newState
-	batch, err = m.Store.UpdateState(m.State, batch)
+	dbBatch, err = m.Store.UpdateState(m.State, dbBatch)
 	if err != nil {
-		batch.Discard()
+		dbBatch.Discard()
 		return fmt.Errorf("update state: %w", err)
 	}
-	batch, err = m.Store.SaveValidators(block.Header.Height, m.State.Validators, batch)
+	dbBatch, err = m.Store.SaveValidators(block.Header.Height, m.State.Validators, dbBatch)
 	if err != nil {
-		batch.Discard()
+		dbBatch.Discard()
 		return fmt.Errorf("save validators: %w", err)
 	}
 
-	err = batch.Commit()
+	err = dbBatch.Commit()
 	if err != nil {
 		return fmt.Errorf("commit batch to disk: %w", err)
 	}
 
 	// Commit block to app
-	retainHeight, err := m.Executor.Commit(&newState, block, responses)
+	appHash, retainHeight, err := m.Executor.Commit(&newState, block, responses)
 	if err != nil {
 		return fmt.Errorf("commit block: %w", err)
 	}
@@ -97,16 +92,12 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		} else {
 			m.logger.Debug("pruned blocks", "pruned", pruned, "retain_height", retainHeight)
 		}
+		newState.BaseHeight = m.State.Base()
 	}
 
 	// Update the state with the new app hash, last validators and store height from the commit.
 	// Every one of those, if happens before commit, prevents us from re-executing the block in case failed during commit.
-	newState.LastValidators = m.State.Validators.Copy()
-	newState.LastStoreHeight = block.Header.Height
-	newState.BaseHeight = m.State.Base()
-	if ok := m.State.SetHeight(block.Header.Height); !ok {
-		return fmt.Errorf("store set height: %d", block.Header.Height)
-	}
+	newState.SetABCICommitResult(responses, appHash, block.Header.Height)
 	_, err = m.Store.UpdateState(newState, nil)
 	if err != nil {
 		return fmt.Errorf("final update state: %w", err)
@@ -158,36 +149,6 @@ func (m *Manager) isHeightAlreadyApplied(blockHeight uint64) (bool, error) {
 	// TODO: add switch case to validate better the current app state
 
 	return isBlockAlreadyApplied, nil
-}
-
-// UpdateStateFromApp is responsible for aligning the state of the store from the abci app
-func (m *Manager) UpdateStateFromApp() error {
-	proxyAppInfo, err := m.Executor.GetAppInfo()
-	if err != nil {
-		return errorsmod.Wrap(err, "get app info")
-	}
-
-	appHeight := uint64(proxyAppInfo.LastBlockHeight)
-
-	// update the state with the hash, last store height and last validators.
-	m.State.AppHash = *(*[32]byte)(proxyAppInfo.LastBlockAppHash)
-	m.State.LastStoreHeight = appHeight
-	m.State.LastValidators = m.State.Validators.Copy()
-
-	resp, err := m.Store.LoadBlockResponses(appHeight)
-	if err != nil {
-		return errorsmod.Wrap(err, "load block responses")
-	}
-	copy(m.State.LastResultsHash[:], tmtypes.NewResults(resp.DeliverTxs).Hash())
-
-	if ok := m.State.SetHeight(appHeight); !ok {
-		return fmt.Errorf("state set height: %d", appHeight)
-	}
-	_, err = m.Store.UpdateState(m.State, nil)
-	if err != nil {
-		return errorsmod.Wrap(err, "update state")
-	}
-	return nil
 }
 
 func (m *Manager) validateBlock(block *types.Block, commit *types.Commit) error {

@@ -1,7 +1,10 @@
 package block
 
 import (
+	"fmt"
 	"time"
+
+	errorsmod "cosmossdk.io/errors"
 
 	"github.com/cometbft/cometbft/crypto/merkle"
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -13,6 +16,37 @@ import (
 )
 
 // TODO: move all those methods from blockExecutor to manager
+
+// UpdateStateFromApp is responsible for aligning the state of the store from the abci app
+func (m *Manager) UpdateStateFromApp() error {
+	proxyAppInfo, err := m.Executor.GetAppInfo()
+	if err != nil {
+		return errorsmod.Wrap(err, "get app info")
+	}
+
+	appHeight := uint64(proxyAppInfo.LastBlockHeight)
+
+	// update the state with the hash, last store height and last validators.
+	m.State.AppHash = *(*[32]byte)(proxyAppInfo.LastBlockAppHash)
+	m.State.LastStoreHeight = appHeight
+	m.State.LastValidators = m.State.Validators.Copy()
+
+	resp, err := m.Store.LoadBlockResponses(appHeight)
+	if err != nil {
+		return errorsmod.Wrap(err, "load block responses")
+	}
+	copy(m.State.LastResultsHash[:], tmtypes.NewResults(resp.DeliverTxs).Hash())
+
+	if ok := m.State.SetHeight(appHeight); !ok {
+		return fmt.Errorf("state set height: %d", appHeight)
+	}
+	_, err = m.Store.UpdateState(m.State, nil)
+	if err != nil {
+		return errorsmod.Wrap(err, "update state")
+	}
+	return nil
+}
+
 func (e *Executor) updateState(state types.State, block *types.Block, abciResponses *tmstate.ABCIResponses, validatorUpdates []*tmtypes.Validator) (types.State, error) {
 	nValSet := state.NextValidators.Copy()
 	lastHeightValSetChanged := state.LastHeightValidatorsChanged

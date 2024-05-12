@@ -29,12 +29,6 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
-const (
-	// max amount of pending batches to be submitted. block production will be paused if this limit is reached.
-	// TODO: make this configurable
-	maxSupportedBatchSkew = 10
-)
-
 // Manager is responsible for aggregating transactions into blocks.
 type Manager struct {
 	// Configuration
@@ -92,12 +86,7 @@ func NewManager(
 	p2pClient *p2p.Client,
 	logger types.Logger,
 ) (*Manager, error) {
-	proposerAddress, err := getAddress(proposerKey)
-	if err != nil {
-		return nil, err
-	}
-
-	exec, err := NewExecutor(proposerAddress, conf.NamespaceID, genesis.ChainID, mempool, proxyApp, eventBus, logger)
+	exec, err := NewExecutor(proposerKey, conf.NamespaceID, genesis.ChainID, mempool, proxyApp, eventBus, logger)
 	if err != nil {
 		return nil, fmt.Errorf("create block executor: %w", err)
 	}
