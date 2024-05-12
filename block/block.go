@@ -84,6 +84,14 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		return fmt.Errorf("commit block: %w", err)
 	}
 
+	// Update the state with the new app hash, last validators and store height from the commit.
+	// Every one of those, if happens before commit, prevents us from re-executing the block in case failed during commit.
+	newState.SetABCICommitResult(responses, appHash, block.Header.Height)
+	_, err = m.Store.UpdateState(newState, nil)
+	if err != nil {
+		return fmt.Errorf("final update state: %w", err)
+	}
+
 	// Prune old heights, if requested by ABCI app.
 	if retainHeight > 0 {
 		pruned, err := m.pruneBlocks(uint64(retainHeight))
@@ -93,46 +101,10 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 			m.logger.Debug("pruned blocks", "pruned", pruned, "retain_height", retainHeight)
 		}
 		newState.BaseHeight = m.State.Base()
+		//TODO: update state
 	}
 
-	// Update the state with the new app hash, last validators and store height from the commit.
-	// Every one of those, if happens before commit, prevents us from re-executing the block in case failed during commit.
-	newState.SetABCICommitResult(responses, appHash, block.Header.Height)
-	_, err = m.Store.UpdateState(newState, nil)
-	if err != nil {
-		return fmt.Errorf("final update state: %w", err)
-	}
 	m.State = newState
-
-	return nil
-}
-
-// TODO: move to gossip.go
-func (m *Manager) attemptApplyCachedBlocks() error {
-	m.retrieverMutex.Lock()
-	defer m.retrieverMutex.Unlock()
-
-	for {
-		expectedHeight := m.State.NextHeight()
-
-		cachedBlock, blockExists := m.blockCache[expectedHeight]
-		if !blockExists {
-			break
-		}
-		if err := m.validateBlock(cachedBlock.Block, cachedBlock.Commit); err != nil {
-			delete(m.blockCache, cachedBlock.Block.Header.Height)
-			/// TODO: can we take an action here such as dropping the peer / reducing their reputation?
-			return fmt.Errorf("block not valid at height %d, dropping it: err:%w", cachedBlock.Block.Header.Height, err)
-		}
-
-		err := m.applyBlock(cachedBlock.Block, cachedBlock.Commit, blockMetaData{source: gossipedBlock})
-		if err != nil {
-			return fmt.Errorf("apply cached block: expected height: %d: %w", expectedHeight, err)
-		}
-		m.logger.Debug("applied cached block", "height", expectedHeight)
-
-		delete(m.blockCache, cachedBlock.Block.Header.Height)
-	}
 
 	return nil
 }
@@ -157,18 +129,4 @@ func (m *Manager) validateBlock(block *types.Block, commit *types.Commit) error 
 	proposer := m.SLClient.GetProposer()
 
 	return types.ValidateProposedTransition(m.State, block, commit, proposer)
-}
-
-func (m *Manager) gossipBlock(ctx context.Context, block types.Block, commit types.Commit) error {
-	gossipedBlock := p2p.GossipedBlock{Block: block, Commit: commit}
-	gossipedBlockBytes, err := gossipedBlock.MarshalBinary()
-	if err != nil {
-		return fmt.Errorf("marshal binary: %w: %w", err, ErrNonRecoverable)
-	}
-	if err := m.p2pClient.GossipBlock(ctx, gossipedBlockBytes); err != nil {
-		// Although this boils down to publishing on a topic, we don't want to speculate too much on what
-		// could cause that to fail, so we assume recoverable.
-		return fmt.Errorf("p2p gossip block: %w: %w", err, ErrRecoverable)
-	}
-	return nil
 }

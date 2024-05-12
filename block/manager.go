@@ -171,6 +171,7 @@ func (m *Manager) syncBlockManager() error {
 	if errors.Is(err, gerr.ErrNotFound) {
 		// The SL hasn't got any batches for this chain yet.
 		m.logger.Info("No batches for chain found in SL. Start writing first batch.")
+		//FIXME: set correct syncTarget
 		m.SyncTarget.Store(uint64(m.Genesis.InitialHeight - 1))
 		return nil
 	}
@@ -194,30 +195,6 @@ func (m *Manager) UpdateSyncParams(endHeight uint64) {
 	types.RollappHubHeightGauge.Set(float64(endHeight))
 	m.logger.Info("Received new syncTarget", "syncTarget", endHeight)
 	m.SyncTarget.Store(endHeight)
-}
-
-// TODO: move to gossip.go
-// onNewGossippedBlock will take a block and apply it
-func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
-	m.retrieverMutex.Lock() // needed to protect blockCache access
-	eventData := event.Data().(p2p.GossipedBlock)
-	block := eventData.Block
-	commit := eventData.Commit
-	m.logger.Debug("Received new block via gossip", "height", block.Header.Height, "n cachedBlocks", len(m.blockCache))
-
-	nextHeight := m.State.NextHeight()
-	if block.Header.Height >= nextHeight {
-		m.blockCache[block.Header.Height] = CachedBlock{
-			Block:  &block,
-			Commit: &commit,
-		}
-		m.logger.Debug("caching block", "block height", block.Header.Height, "store height", m.State.Height())
-	}
-	m.retrieverMutex.Unlock() // have to give this up as it's locked again in attempt apply, and we're not re-entrant
-	err := m.attemptApplyCachedBlocks()
-	if err != nil {
-		m.logger.Error("applying cached blocks", "err", err)
-	}
 }
 
 // getInitialState tries to load lastState from Store, and if it's not available it reads GenesisDoc.
