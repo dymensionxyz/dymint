@@ -158,7 +158,7 @@ func NewNode(
 
 	height := max(genesis.InitialHeight, info.LastBlockHeight)
 
-	mp := mempoolv1.NewTxMempool(logger, &conf.MempoolConfig, proxyApp.Mempool(), height)
+	mp := mempoolv1.NewTxMempool(logger, &conf.MempoolConfig, proxyApp.Mempool(), height, mempoolv1.WithMetrics(metrics))
 	mpIDs := nodemempool.NewMempoolIDs()
 
 	// Set p2p client and it's validators
