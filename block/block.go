@@ -10,7 +10,7 @@ import (
 
 // applyBlock applies the block to the store and the abci app.
 // Contract: block and commit must be validated before calling this function!
-// steps: save block -> execute block with app -> update state -> commit block to app -> update store height and state hash.
+// steps: save block -> execute block with app -> update state -> commit block to app -> update state's height and commit result.
 // As the entire process can't be atomic we need to make sure the following condition apply before
 // - block height is the expected block height on the store (height + 1).
 // - block height is the expected block height on the app (last block height + 1).
@@ -49,7 +49,8 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		return fmt.Errorf("execute block: %w", err)
 	}
 
-	newState, err := m.Executor.UpdateStateFromResponses(responses, m.State, block)
+	// Updates the state with validator changes and consensus params changes from the app
+	err = m.Executor.UpdateStateFromResponses(&m.State, responses, block)
 	if err != nil {
 		return fmt.Errorf("update state from responses: %w", err)
 	}
@@ -61,12 +62,6 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		return fmt.Errorf("save block responses: %w", err)
 	}
 
-	m.State = newState
-	dbBatch, err = m.Store.SaveState(m.State, dbBatch)
-	if err != nil {
-		dbBatch.Discard()
-		return fmt.Errorf("update state: %w", err)
-	}
 	dbBatch, err = m.Store.SaveValidators(block.Header.Height, m.State.Validators, dbBatch)
 	if err != nil {
 		dbBatch.Discard()
@@ -79,15 +74,15 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	}
 
 	// Commit block to app
-	appHash, retainHeight, err := m.Executor.Commit(newState, block, responses)
+	appHash, retainHeight, err := m.Executor.Commit(m.State, block, responses)
 	if err != nil {
 		return fmt.Errorf("commit block: %w", err)
 	}
 
 	// Update the state with the new app hash, last validators and store height from the commit.
 	// Every one of those, if happens before commit, prevents us from re-executing the block in case failed during commit.
-	m.Executor.UpdateStateFromCommitResponse(&newState, responses, appHash, block.Header.Height)
-	_, err = m.Store.SaveState(newState, nil)
+	m.Executor.UpdateStateFromCommitResponse(&m.State, responses, appHash, block.Header.Height)
+	_, err = m.Store.SaveState(m.State, nil)
 	if err != nil {
 		return fmt.Errorf("final update state: %w", err)
 	}
@@ -100,13 +95,12 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		} else {
 			m.logger.Debug("pruned blocks", "pruned", pruned, "retain_height", retainHeight)
 		}
-		newState.BaseHeight = m.State.BaseHeight
-		_, err = m.Store.SaveState(newState, nil)
+		m.State.BaseHeight = m.State.BaseHeight
+		_, err = m.Store.SaveState(m.State, nil)
 		if err != nil {
 			return fmt.Errorf("final update state: %w", err)
 		}
 	}
-	m.State = newState
 	return nil
 }
 

@@ -6,3 +6,4 @@ proto/pb
 build
 
 vendor/
+da/grpc/mockserv/db/

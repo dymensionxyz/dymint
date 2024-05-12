@@ -2,7 +2,6 @@ package types
 
 import (
 	"fmt"
-	"time"
 
 	// TODO(tzdybal): copy to local project?
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
@@ -22,8 +21,7 @@ type State struct {
 
 	// LastBlockHeight=0 at genesis (ie. block(H=0) does not exist)
 	LastBlockHeight uint64
-	LastBlockID     types.BlockID
-	LastBlockTime   time.Time
+
 	// BaseHeight is the height of the first block we have in store after pruning.
 	BaseHeight uint64
 
@@ -39,9 +37,6 @@ type State struct {
 
 	// Merkle root of the results from executing prev block
 	LastResultsHash [32]byte
-
-	// LastStore height is the last height we've saved to the store.
-	LastStoreHeight uint64
 
 	// the latest AppHash we've received from calling abci.Commit()
 	AppHash [32]byte
@@ -72,8 +67,6 @@ func NewStateFromGenesis(genDoc *types.GenesisDoc) (State, error) {
 		InitialHeight: uint64(genDoc.InitialHeight),
 
 		LastBlockHeight: 0,
-		LastBlockID:     types.BlockID{},
-		LastBlockTime:   time.Time{},
 		BaseHeight:      uint64(genDoc.InitialHeight),
 
 		NextValidators:              types.NewValidatorSet(nil),

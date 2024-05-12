@@ -3,7 +3,6 @@ package block
 import (
 	"errors"
 	"fmt"
-	"time"
 
 	errorsmod "cosmossdk.io/errors"
 
@@ -45,14 +44,20 @@ func (m *Manager) UpdateStateFromApp() error {
 		return errorsmod.Wrap(err, "load block responses")
 	}
 
+	vals, err := m.Store.LoadValidators(appHeight)
+	if err != nil {
+		return errorsmod.Wrap(err, "load block responses")
+	}
+
 	// update the state with the hash, last store height and last validators.
 	//TODO: DRY with the post commit update
 	m.State.AppHash = *(*[32]byte)(proxyAppInfo.LastBlockAppHash)
-	m.State.LastStoreHeight = appHeight
-	m.State.LastValidators = m.State.Validators.Copy()
-
+	m.State.Validators = m.State.NextValidators.Copy()
+	m.State.NextValidators = vals
 	copy(m.State.LastResultsHash[:], tmtypes.NewResults(resp.DeliverTxs).Hash())
 	m.State.SetHeight(appHeight)
+
+	//FIXME: load consensus params
 
 	_, err = m.Store.SaveState(m.State, nil)
 	if err != nil {
@@ -101,7 +106,6 @@ func (e *Executor) UpdateStateAfterInitChain(s *types.State, res *abci.ResponseI
 	// Set the validators in the state
 	s.Validators = tmtypes.NewValidatorSet(validators).CopyIncrementProposerPriority(1)
 	s.NextValidators = s.Validators.Copy()
-	s.LastValidators = s.Validators.Copy()
 }
 
 func (e *Executor) UpdateMempoolAfterInitChain(s types.State) {
@@ -110,7 +114,7 @@ func (e *Executor) UpdateMempoolAfterInitChain(s types.State) {
 }
 
 // UpdateStateFromResponses updates state based on the ABCIResponses.
-func (e *Executor) UpdateStateFromResponses(resp *tmstate.ABCIResponses, state types.State, block *types.Block) (types.State, error) {
+func (e *Executor) UpdateStateFromResponses(state *types.State, resp *tmstate.ABCIResponses, block *types.Block) error {
 	// Dymint ignores any setValidator responses from the app, as it is manages the validator set based on the settlement consensus
 	// TODO: this will be changed when supporting multiple sequencers from the hub
 	validatorUpdates := []*tmtypes.Validator{}
@@ -126,7 +130,7 @@ func (e *Executor) UpdateStateFromResponses(resp *tmstate.ABCIResponses, state t
 		if len(validatorUpdates) > 0 {
 			err := nValSet.UpdateWithChangeSet(validatorUpdates)
 			if err != nil {
-				return state, nil
+				return err
 			}
 			// Change results from this height but only applies to the next next height.
 			lastHeightValSetChanged = int64(block.Header.Height + 1 + 1)
@@ -136,41 +140,17 @@ func (e *Executor) UpdateStateFromResponses(resp *tmstate.ABCIResponses, state t
 		nValSet.IncrementProposerPriority(1)
 	}
 
-	hash := block.Header.Hash()
-	// TODO: we can probably pass the state as a pointer and update it directly
-	s := types.State{
-		Version:         state.Version,
-		ChainID:         state.ChainID,
-		InitialHeight:   state.InitialHeight,
-		LastBlockHeight: block.Header.Height,
-		LastBlockTime:   time.Unix(0, int64(block.Header.Time)),
-		LastBlockID: tmtypes.BlockID{
-			Hash: hash[:],
-			// for now, we don't care about part set headers
-		},
-		NextValidators:                   nValSet,
-		Validators:                       state.NextValidators.Copy(),
-		LastHeightValidatorsChanged:      lastHeightValSetChanged,
-		ConsensusParams:                  state.ConsensusParams,
-		LastHeightConsensusParamsChanged: state.LastHeightConsensusParamsChanged,
-		// We're gonna update those fields only after we commit the blocks
-		AppHash:         state.AppHash,
-		LastValidators:  state.LastValidators.Copy(),
-		LastStoreHeight: state.LastStoreHeight,
+	state.Validators = state.NextValidators.Copy()
+	state.NextValidators = nValSet
+	state.LastHeightValidatorsChanged = lastHeightValSetChanged
 
-		LastResultsHash: state.LastResultsHash,
-		BaseHeight:      state.BaseHeight,
-	}
-
-	return s, nil
+	return nil
 }
 
 // Update state from Commit response
 func (e *Executor) UpdateStateFromCommitResponse(s *types.State, resp *tmstate.ABCIResponses, appHash []byte, height uint64) {
+	// validators already set on UpdateStateFromResponses
 	copy(s.AppHash[:], appHash[:])
 	copy(s.LastResultsHash[:], tmtypes.NewResults(resp.DeliverTxs).Hash())
-
-	s.LastValidators = s.Validators.Copy()
-	s.LastStoreHeight = height
 	s.SetHeight(height)
 }

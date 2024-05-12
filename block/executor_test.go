@@ -182,21 +182,21 @@ func TestApplyBlock(t *testing.T) {
 	resp, err := executor.ExecuteBlock(state, block)
 	require.NoError(err)
 	require.NotNil(resp)
-	newState, err := executor.UpdateStateFromResponses(resp, state, block)
+	err = executor.UpdateStateFromResponses(&state, resp, block)
 	require.NoError(err)
-	require.NotNil(newState)
-	assert.Equal(uint64(1), newState.LastBlockHeight)
-	appHash, _, err := executor.Commit(newState, block, resp)
+	require.NotNil(state)
+	assert.Equal(uint64(1), state.LastBlockHeight)
+	appHash, _, err := executor.Commit(state, block, resp)
 	require.NoError(err)
-	assert.Equal(mockAppHash, appHash)
-	newState.LastStoreHeight = uint64(newState.LastBlockHeight)
+	executor.UpdateStateFromCommitResponse(&state, resp, appHash, block.Header.Height)
+	assert.Equal(mockAppHash, state.AppHash)
 
 	// Create another block with multiple Tx from mempool
 	require.NoError(mpool.CheckTx([]byte{0, 1, 2, 3, 4}, func(r *abci.Response) {}, mempool.TxInfo{}))
 	require.NoError(mpool.CheckTx([]byte{5, 6, 7, 8, 9}, func(r *abci.Response) {}, mempool.TxInfo{}))
 	require.NoError(mpool.CheckTx([]byte{1, 2, 3, 4, 5}, func(r *abci.Response) {}, mempool.TxInfo{}))
 	require.NoError(mpool.CheckTx(make([]byte, 90), func(r *abci.Response) {}, mempool.TxInfo{}))
-	block = executor.CreateBlock(2, commit, [32]byte{}, newState, maxBytes)
+	block = executor.CreateBlock(2, commit, [32]byte{}, state, maxBytes)
 	require.NotNil(block)
 	assert.Equal(uint64(2), block.Header.Height)
 	assert.Len(block.Data.Txs, 3)
@@ -217,7 +217,7 @@ func TestApplyBlock(t *testing.T) {
 	}
 
 	// Apply the block with an invalid commit
-	err = types.ValidateProposedTransition(newState, block, invalidCommit, proposer)
+	err = types.ValidateProposedTransition(state, block, invalidCommit, proposer)
 
 	require.ErrorIs(err, types.ErrInvalidSignature)
 
@@ -231,16 +231,16 @@ func TestApplyBlock(t *testing.T) {
 	}
 
 	// Apply the block
-	err = types.ValidateProposedTransition(newState, block, commit, proposer)
+	err = types.ValidateProposedTransition(state, block, commit, proposer)
 	require.NoError(err)
 	resp, err = executor.ExecuteBlock(state, block)
 	require.NoError(err)
 	require.NotNil(resp)
-	newState, err = executor.UpdateStateFromResponses(resp, state, block)
+	err = executor.UpdateStateFromResponses(&state, resp, block)
 	require.NoError(err)
-	require.NotNil(newState)
-	assert.Equal(uint64(2), newState.LastBlockHeight)
-	_, _, err = executor.Commit(newState, block, resp)
+	require.NotNil(state)
+	assert.Equal(uint64(2), state.LastBlockHeight)
+	_, _, err = executor.Commit(state, block, resp)
 	require.NoError(err)
 
 	// wait for at least 4 Tx events, for up to 3 second.
