@@ -37,7 +37,6 @@ func (m *Manager) SyncTargetLoop(ctx context.Context) {
 				)
 				continue
 			}
-			m.UpdateSyncParams(eventData.EndHeight)
 			m.SyncTargetDiode.Set(diodes.GenericDataType(&eventData.EndHeight))
 			m.logger.Info("Received new sync target height", "height", eventData.EndHeight)
 			types.RollappHubHeightGauge.Set(float64(eventData.EndHeight)) // TODO(danwt): needed?

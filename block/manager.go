@@ -197,13 +197,6 @@ func (m *Manager) syncBlockManager() error {
 	return nil
 }
 
-// UpdateSyncParams updates the sync target and state index if necessary
-func (m *Manager) UpdateSyncParams(endHeight uint64) {
-	types.RollappHubHeightGauge.Set(float64(endHeight))
-	m.logger.Info("Received new syncTarget", "syncTarget", endHeight)
-	m.SyncTarget.Store(endHeight)
-}
-
 func getAddress(key crypto.PrivKey) ([]byte, error) {
 	rawKey, err := key.GetPublic().Raw()
 	if err != nil {
