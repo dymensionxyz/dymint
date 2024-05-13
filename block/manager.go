@@ -38,7 +38,7 @@ type Manager struct {
 
 	// Store and execution
 	Store    store.Store
-	State    types.State
+	State    *types.State
 	Executor *Executor
 
 	// Clients and servers

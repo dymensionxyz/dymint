@@ -8,7 +8,7 @@ import (
 	tmtypes "github.com/tendermint/tendermint/types"
 )
 
-func ValidateProposedTransition(state State, block *Block, commit *Commit, proposer *Sequencer) error {
+func ValidateProposedTransition(state *State, block *Block, commit *Commit, proposer *Sequencer) error {
 	if err := block.ValidateWithState(state); err != nil {
 		return fmt.Errorf("block: %w", err)
 	}
@@ -39,7 +39,7 @@ func (b *Block) ValidateBasic() error {
 	return nil
 }
 
-func (b *Block) ValidateWithState(state State) error {
+func (b *Block) ValidateWithState(state *State) error {
 	err := b.ValidateBasic()
 	if err != nil {
 		return err

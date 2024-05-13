@@ -96,7 +96,7 @@ func (e *Executor) InitChain(genesis *tmtypes.GenesisDoc, validators []*tmtypes.
 }
 
 // CreateBlock reaps transactions from mempool and builds a block.
-func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHeaderHash [32]byte, state types.State, maxBytes uint64) *types.Block {
+func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHeaderHash [32]byte, state *types.State, maxBytes uint64) *types.Block {
 	if state.ConsensusParams.Block.MaxBytes > 0 {
 		maxBytes = min(maxBytes, uint64(state.ConsensusParams.Block.MaxBytes))
 	}
@@ -134,7 +134,7 @@ func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHead
 }
 
 // Commit commits the block
-func (e *Executor) Commit(state types.State, block *types.Block, resp *tmstate.ABCIResponses) ([]byte, int64, error) {
+func (e *Executor) Commit(state *types.State, block *types.Block, resp *tmstate.ABCIResponses) ([]byte, int64, error) {
 	appHash, retainHeight, err := e.commit(state, block, resp.DeliverTxs)
 	if err != nil {
 		return nil, 0, err
@@ -153,7 +153,7 @@ func (e *Executor) GetAppInfo() (*abci.ResponseInfo, error) {
 	return e.proxyAppQueryConn.InfoSync(abci.RequestInfo{})
 }
 
-func (e *Executor) commit(state types.State, block *types.Block, deliverTxs []*abci.ResponseDeliverTx) ([]byte, int64, error) {
+func (e *Executor) commit(state *types.State, block *types.Block, deliverTxs []*abci.ResponseDeliverTx) ([]byte, int64, error) {
 	e.mempool.Lock()
 	defer e.mempool.Unlock()
 
@@ -180,7 +180,7 @@ func (e *Executor) commit(state types.State, block *types.Block, deliverTxs []*a
 }
 
 // ExecuteBlock executes the block and returns the ABCIResponses. Block should be valid (passed validation checks).
-func (e *Executor) ExecuteBlock(state types.State, block *types.Block) (*tmstate.ABCIResponses, error) {
+func (e *Executor) ExecuteBlock(state *types.State, block *types.Block) (*tmstate.ABCIResponses, error) {
 	abciResponses := new(tmstate.ABCIResponses)
 	abciResponses.DeliverTxs = make([]*abci.ResponseDeliverTx, len(block.Data.Txs))
 

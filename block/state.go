@@ -17,15 +17,15 @@ import (
 )
 
 // getInitialState tries to load lastState from Store, and if it's not available it reads GenesisDoc.
-func getInitialState(store store.Store, genesis *tmtypes.GenesisDoc, logger types.Logger) (s types.State, err error) {
-	s, err = store.LoadState()
+func getInitialState(store store.Store, genesis *tmtypes.GenesisDoc, logger types.Logger) (*types.State, error) {
+	s, err := store.LoadState()
 	if errors.Is(err, types.ErrNoStateFound) {
 		logger.Info("failed to find state in the store, creating new state from genesis")
 		s, err = types.NewStateFromGenesis(genesis)
 	}
 
 	if err != nil {
-		return types.State{}, fmt.Errorf("get initial state: %w", err)
+		return nil, fmt.Errorf("get initial state: %w", err)
 	}
 
 	return s, nil
@@ -49,7 +49,7 @@ func (m *Manager) UpdateStateFromApp() error {
 	}
 
 	// update the state with the hash, last store height and last validators.
-	_ = m.Executor.UpdateStateAfterCommit(&m.State, resp, proxyAppInfo.LastBlockAppHash, appHeight, vals)
+	_ = m.Executor.UpdateStateAfterCommit(m.State, resp, proxyAppInfo.LastBlockAppHash, appHeight, vals)
 	_, err = m.Store.SaveState(m.State, nil)
 	if err != nil {
 		return errorsmod.Wrap(err, "update state")
@@ -99,13 +99,13 @@ func (e *Executor) UpdateStateAfterInitChain(s *types.State, res *abci.ResponseI
 	s.NextValidators = s.Validators.Copy()
 }
 
-func (e *Executor) UpdateMempoolAfterInitChain(s types.State) {
+func (e *Executor) UpdateMempoolAfterInitChain(s *types.State) {
 	e.mempool.SetPreCheckFn(mempool.PreCheckMaxBytes(s.ConsensusParams.Block.MaxBytes))
 	e.mempool.SetPostCheckFn(mempool.PostCheckMaxGas(s.ConsensusParams.Block.MaxGas))
 }
 
 // NextValSetFromResponses updates state based on the ABCIResponses.
-func (e *Executor) NextValSetFromResponses(state types.State, resp *tmstate.ABCIResponses, block *types.Block) (*tmtypes.ValidatorSet, error) {
+func (e *Executor) NextValSetFromResponses(state *types.State, resp *tmstate.ABCIResponses, block *types.Block) (*tmtypes.ValidatorSet, error) {
 	// Dymint ignores any setValidator responses from the app, as it is manages the validator set based on the settlement consensus
 	// TODO: this will be changed when supporting multiple sequencers from the hub
 	return state.NextValidators.Copy(), nil

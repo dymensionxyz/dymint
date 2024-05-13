@@ -51,7 +51,7 @@ func TestCreateBlock(t *testing.T) {
 
 	maxBytes := uint64(100)
 
-	state := types.State{}
+	state := &types.State{}
 	state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
 	state.ConsensusParams.Block.MaxGas = 100000
 	state.Validators = tmtypes.NewValidatorSet(nil)
@@ -140,7 +140,7 @@ func TestApplyBlock(t *testing.T) {
 	require.NotNil(headerSub)
 
 	// Init state
-	state := types.State{
+	state := &types.State{
 		NextValidators: tmtypes.NewValidatorSet(nil),
 		Validators:     tmtypes.NewValidatorSet(nil),
 	}
@@ -183,7 +183,7 @@ func TestApplyBlock(t *testing.T) {
 	require.NotNil(resp)
 	appHash, _, err := executor.Commit(state, block, resp)
 	require.NoError(err)
-	_ = executor.UpdateStateAfterCommit(&state, resp, appHash, block.Header.Height, state.Validators)
+	_ = executor.UpdateStateAfterCommit(state, resp, appHash, block.Header.Height, state.Validators)
 	assert.Equal(uint64(1), state.Height())
 	assert.Equal(mockAppHash, state.AppHash)
 
@@ -236,7 +236,7 @@ func TestApplyBlock(t *testing.T) {
 	require.NoError(err)
 	_, _, err = executor.Commit(state, block, resp)
 	require.NoError(err)
-	_ = executor.UpdateStateAfterCommit(&state, resp, appHash, block.Header.Height, vals)
+	_ = executor.UpdateStateAfterCommit(state, resp, appHash, block.Header.Height, vals)
 	assert.Equal(uint64(2), state.Height())
 
 	// wait for at least 4 Tx events, for up to 3 second.

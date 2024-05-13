@@ -93,7 +93,7 @@ func TestLoadState(t *testing.T) {
 	kv := store.NewDefaultInMemoryKVStore()
 	s1 := store.New(kv)
 	expectedHeight := uint64(10)
-	s := types.State{
+	s := &types.State{
 		NextValidators: validatorSet,
 		Validators:     validatorSet,
 	}

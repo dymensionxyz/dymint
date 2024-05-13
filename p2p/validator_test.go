@@ -141,7 +141,7 @@ func TestValidator_BlockValidator(t *testing.T) {
 			state.Validators = tmtypes.NewValidatorSet(nil)
 
 			//Create empty block
-			block := executor.CreateBlock(1, &types.Commit{}, [32]byte{}, state, maxBytes)
+			block := executor.CreateBlock(1, &types.Commit{}, [32]byte{}, &state, maxBytes)
 
 			//Create slclient
 			client := registry.GetClient(registry.Local)

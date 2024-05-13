@@ -43,10 +43,10 @@ type State struct {
 }
 
 // NewStateFromGenesis reads blockchain State from genesis.
-func NewStateFromGenesis(genDoc *types.GenesisDoc) (State, error) {
+func NewStateFromGenesis(genDoc *types.GenesisDoc) (*State, error) {
 	err := genDoc.ValidateAndComplete()
 	if err != nil {
-		return State{}, fmt.Errorf("in genesis doc: %w", err)
+		return nil, fmt.Errorf("in genesis doc: %w", err)
 	}
 
 	// InitStateVersion sets the Consensus.Block and Software versions,
@@ -78,7 +78,7 @@ func NewStateFromGenesis(genDoc *types.GenesisDoc) (State, error) {
 	s.LastBlockHeight.Store(0)
 	copy(s.AppHash[:], genDoc.AppHash)
 
-	return s, nil
+	return &s, nil
 }
 
 func (s *State) IsGenesis() bool {

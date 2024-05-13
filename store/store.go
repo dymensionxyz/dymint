@@ -26,8 +26,6 @@ var (
 // DefaultStore is a default store implementation.
 type DefaultStore struct {
 	db KVStore
-
-	height uint64 // the highest block saved
 }
 
 var _ Store = &DefaultStore{}
@@ -163,7 +161,7 @@ func (s *DefaultStore) LoadCommitByHash(hash [32]byte) (*types.Commit, error) {
 
 // UpdateState updates state saved in Store. Only one State is stored.
 // If there is no State in Store, state will be saved.
-func (s *DefaultStore) SaveState(state types.State, batch Batch) (Batch, error) {
+func (s *DefaultStore) SaveState(state *types.State, batch Batch) (Batch, error) {
 	pbState, err := state.ToProto()
 	if err != nil {
 		return batch, fmt.Errorf("marshal state to JSON: %w", err)
@@ -181,24 +179,24 @@ func (s *DefaultStore) SaveState(state types.State, batch Batch) (Batch, error) 
 }
 
 // LoadState returns last state saved with UpdateState.
-func (s *DefaultStore) LoadState() (types.State, error) {
+func (s *DefaultStore) LoadState() (*types.State, error) {
 	blob, err := s.db.Get(getStateKey())
 	if err != nil {
-		return types.State{}, types.ErrNoStateFound
+		return nil, types.ErrNoStateFound
 	}
 	var pbState pb.State
 	err = pbState.Unmarshal(blob)
 	if err != nil {
-		return types.State{}, fmt.Errorf("unmarshal state from store: %w", err)
+		return nil, fmt.Errorf("unmarshal state from store: %w", err)
 	}
 
 	var state types.State
 	err = state.FromProto(&pbState)
 	if err != nil {
-		return types.State{}, fmt.Errorf("unmarshal state from proto: %w", err)
+		return nil, fmt.Errorf("unmarshal state from proto: %w", err)
 	}
 
-	return state, nil
+	return &state, nil
 }
 
 // SaveValidators stores validator set for given block height in store.
