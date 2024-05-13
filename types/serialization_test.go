@@ -120,7 +120,6 @@ func TestStateRoundTrip(t *testing.T) {
 				},
 				ChainID:                     "testchain",
 				InitialHeight:               987,
-				LastBlockHeight:             987654321,
 				NextValidators:              valSet,
 				Validators:                  valSet,
 				LastHeightValidatorsChanged: 8272,
@@ -153,6 +152,11 @@ func TestStateRoundTrip(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			require := require.New(t)
 			assert := assert.New(t)
+
+			if c.state.InitialHeight != 0 {
+				c.state.LastBlockHeight.Store(986321)
+			}
+
 			pState, err := c.state.ToProto()
 			require.NoError(err)
 			require.NotNil(pState)

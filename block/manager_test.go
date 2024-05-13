@@ -86,7 +86,7 @@ func TestInitialState(t *testing.T) {
 			store:                   fullStore,
 			genesis:                 genesis,
 			expectedInitialHeight:   sampleState.InitialHeight,
-			expectedLastBlockHeight: sampleState.LastBlockHeight,
+			expectedLastBlockHeight: sampleState.LastBlockHeight.Load(),
 			expectedChainID:         sampleState.ChainID,
 		},
 	}
@@ -100,7 +100,7 @@ func TestInitialState(t *testing.T) {
 			assert.NotNil(agg)
 			assert.Equal(c.expectedChainID, agg.State.ChainID)
 			assert.Equal(c.expectedInitialHeight, agg.State.InitialHeight)
-			assert.Equal(c.expectedLastBlockHeight, agg.State.LastBlockHeight)
+			assert.Equal(c.expectedLastBlockHeight, agg.State.LastBlockHeight.Load())
 		})
 	}
 }
@@ -306,6 +306,7 @@ func TestProduceBlockFailAfterCommit(t *testing.T) {
 			_, _, _ = manager.ProduceAndGossipBlock(context.Background(), true)
 			storeState, err := manager.Store.LoadState()
 			assert.NoError(err)
+			manager.State = storeState
 			assert.Equal(tc.expectedStoreHeight, storeState.Height(), tc.name)
 			assert.Equal(tc.expectedStateAppHash, storeState.AppHash, tc.name)
 

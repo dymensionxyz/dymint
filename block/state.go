@@ -49,12 +49,11 @@ func (m *Manager) UpdateStateFromApp() error {
 	}
 
 	// update the state with the hash, last store height and last validators.
-	state := m.Executor.UpdateStateAfterCommit(m.State, resp, proxyAppInfo.LastBlockAppHash, appHeight, vals)
-	_, err = m.Store.SaveState(state, nil)
+	_ = m.Executor.UpdateStateAfterCommit(&m.State, resp, proxyAppInfo.LastBlockAppHash, appHeight, vals)
+	_, err = m.Store.SaveState(m.State, nil)
 	if err != nil {
 		return errorsmod.Wrap(err, "update state")
 	}
-	m.State = state
 	return nil
 }
 
@@ -132,7 +131,7 @@ func (e *Executor) NextValSetFromResponses(state types.State, resp *tmstate.ABCI
 }
 
 // Update state from Commit response
-func (e *Executor) UpdateStateAfterCommit(s types.State, resp *tmstate.ABCIResponses, appHash []byte, height uint64, valSet *tmtypes.ValidatorSet) types.State {
+func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResponses, appHash []byte, height uint64, valSet *tmtypes.ValidatorSet) *types.State {
 	copy(s.AppHash[:], appHash[:])
 	copy(s.LastResultsHash[:], tmtypes.NewResults(resp.DeliverTxs).Hash())
 

@@ -145,7 +145,7 @@ func TestApplyBlock(t *testing.T) {
 		Validators:     tmtypes.NewValidatorSet(nil),
 	}
 	state.InitialHeight = 1
-	state.LastBlockHeight = 0
+	state.LastBlockHeight.Store(0)
 	maxBytes := uint64(100)
 	state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
 	state.ConsensusParams.Block.MaxGas = 100000
@@ -183,7 +183,7 @@ func TestApplyBlock(t *testing.T) {
 	require.NotNil(resp)
 	appHash, _, err := executor.Commit(state, block, resp)
 	require.NoError(err)
-	state = executor.UpdateStateAfterCommit(state, resp, appHash, block.Header.Height, state.Validators)
+	_ = executor.UpdateStateAfterCommit(&state, resp, appHash, block.Header.Height, state.Validators)
 	assert.Equal(uint64(1), state.Height())
 	assert.Equal(mockAppHash, state.AppHash)
 
@@ -236,8 +236,7 @@ func TestApplyBlock(t *testing.T) {
 	require.NoError(err)
 	_, _, err = executor.Commit(state, block, resp)
 	require.NoError(err)
-	state = executor.UpdateStateAfterCommit(state, resp, appHash, block.Header.Height, vals)
-
+	_ = executor.UpdateStateAfterCommit(&state, resp, appHash, block.Header.Height, vals)
 	assert.Equal(uint64(2), state.Height())
 
 	// wait for at least 4 Tx events, for up to 3 second.

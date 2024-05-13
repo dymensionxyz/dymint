@@ -58,7 +58,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		return fmt.Errorf("save block responses: %w", err)
 	}
 
-	// Updates the state with validator changes and consensus params changes from the app
+	// Get the validator changes from the app
 	validators, err := m.Executor.NextValSetFromResponses(m.State, responses, block)
 	if err != nil {
 		return fmt.Errorf("update state from responses: %w", err)
@@ -86,12 +86,11 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 
 	// Update the state with the new app hash, last validators and store height from the commit.
 	// Every one of those, if happens before commit, prevents us from re-executing the block in case failed during commit.
-	newState := m.Executor.UpdateStateAfterCommit(m.State, responses, appHash, block.Header.Height, validators)
-	_, err = m.Store.SaveState(newState, nil)
+	_ = m.Executor.UpdateStateAfterCommit(&m.State, responses, appHash, block.Header.Height, validators)
+	_, err = m.Store.SaveState(m.State, nil)
 	if err != nil {
 		return fmt.Errorf("update state: %w", err)
 	}
-	m.State = newState
 
 	// Prune old heights, if requested by ABCI app.
 	if retainHeight > 0 {

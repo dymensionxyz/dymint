@@ -256,7 +256,7 @@ func (s *State) ToProto() (*pb.State, error) {
 		Version:                          &s.Version,
 		ChainId:                          s.ChainID,
 		InitialHeight:                    int64(s.InitialHeight),
-		LastBlockHeight:                  int64(s.LastBlockHeight),
+		LastBlockHeight:                  int64(s.LastBlockHeight.Load()),
 		NextValidators:                   nextValidators,
 		Validators:                       validators,
 		BaseHeight:                       s.BaseHeight,
@@ -274,7 +274,7 @@ func (s *State) FromProto(other *pb.State) error {
 	s.Version = *other.Version
 	s.ChainID = other.ChainId
 	s.InitialHeight = uint64(other.InitialHeight)
-	s.LastBlockHeight = uint64(other.LastBlockHeight)
+	s.LastBlockHeight.Store(uint64(other.LastBlockHeight))
 	s.BaseHeight = other.BaseHeight
 
 	s.NextValidators, err = types.ValidatorSetFromProto(other.NextValidators)

@@ -2,6 +2,7 @@ package types
 
 import (
 	"fmt"
+	"sync/atomic"
 
 	// TODO(tzdybal): copy to local project?
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
@@ -20,8 +21,7 @@ type State struct {
 	InitialHeight uint64 // should be 1, not 0, when starting from height 1
 
 	// LastBlockHeight=0 at genesis (ie. block(H=0) does not exist)
-	//TODO: should be atomic as can be queried by the RPC
-	LastBlockHeight uint64
+	LastBlockHeight atomic.Uint64
 
 	// BaseHeight is the height of the first block we have in store after pruning.
 	BaseHeight uint64
@@ -66,8 +66,7 @@ func NewStateFromGenesis(genDoc *types.GenesisDoc) (State, error) {
 		ChainID:       genDoc.ChainID,
 		InitialHeight: uint64(genDoc.InitialHeight),
 
-		LastBlockHeight: 0,
-		BaseHeight:      uint64(genDoc.InitialHeight),
+		BaseHeight: uint64(genDoc.InitialHeight),
 
 		NextValidators:              types.NewValidatorSet(nil),
 		Validators:                  types.NewValidatorSet(nil),
@@ -76,6 +75,7 @@ func NewStateFromGenesis(genDoc *types.GenesisDoc) (State, error) {
 		ConsensusParams:                  *genDoc.ConsensusParams,
 		LastHeightConsensusParamsChanged: genDoc.InitialHeight,
 	}
+	s.LastBlockHeight.Store(0)
 	copy(s.AppHash[:], genDoc.AppHash)
 
 	return s, nil
@@ -88,12 +88,12 @@ func (s *State) IsGenesis() bool {
 // SetHeight sets the height saved in the Store if it is higher than the existing height
 // returns OK if the value was updated successfully or did not need to be updated
 func (s *State) SetHeight(height uint64) {
-	s.LastBlockHeight = height
+	s.LastBlockHeight.Store(height)
 }
 
 // Height returns height of the highest block saved in the Store.
 func (s *State) Height() uint64 {
-	return s.LastBlockHeight
+	return s.LastBlockHeight.Load()
 }
 
 // NextHeight returns the next height that expected to be stored in store.

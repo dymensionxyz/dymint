@@ -194,7 +194,7 @@ func GenerateRandomValidatorSet() *tmtypes.ValidatorSet {
 
 // GenerateState generates an initial state for testing.
 func GenerateState(initialHeight int64, lastBlockHeight int64) types.State {
-	return types.State{
+	s := types.State{
 		ChainID:         "test-chain",
 		InitialHeight:   uint64(initialHeight),
 		AppHash:         [32]byte{},
@@ -205,10 +205,11 @@ func GenerateState(initialHeight int64, lastBlockHeight int64) types.State {
 				App:   AppVersion,
 			},
 		},
-		LastBlockHeight: uint64(lastBlockHeight),
-		Validators:      GenerateRandomValidatorSet(),
-		NextValidators:  GenerateRandomValidatorSet(),
+		Validators:     GenerateRandomValidatorSet(),
+		NextValidators: GenerateRandomValidatorSet(),
 	}
+	s.LastBlockHeight.Store(uint64(lastBlockHeight))
+	return s
 }
 
 // GenerateGenesis generates a genesis for testing.

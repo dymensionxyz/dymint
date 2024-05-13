@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"sync/atomic"
 
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -43,16 +42,6 @@ func New(kv KVStore) Store {
 // NewBatch creates a new db batch.
 func (s *DefaultStore) NewBatch() Batch {
 	return s.db.NewBatch()
-}
-
-// SetHeight sets the height of the store
-func (s *DefaultStore) SetHeight(height uint64) {
-	atomic.StoreUint64(&s.height, height)
-}
-
-// Height returns height of the highest block saved in the Store.
-func (s *DefaultStore) Height() uint64 {
-	return atomic.LoadUint64(&s.height)
 }
 
 // SaveBlock adds block to the store along with corresponding commit.

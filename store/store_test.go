@@ -93,18 +93,19 @@ func TestLoadState(t *testing.T) {
 	kv := store.NewDefaultInMemoryKVStore()
 	s1 := store.New(kv)
 	expectedHeight := uint64(10)
-	_, err := s1.SaveState(types.State{
-		LastBlockHeight: expectedHeight,
-		NextValidators:  validatorSet,
-		Validators:      validatorSet,
-	}, nil)
+	s := types.State{
+		NextValidators: validatorSet,
+		Validators:     validatorSet,
+	}
+	s.LastBlockHeight.Store(expectedHeight)
+	_, err := s1.SaveState(s, nil)
 	assert.NoError(err)
 
 	s2 := store.New(kv)
 	state, err := s2.LoadState()
 	assert.NoError(err)
 
-	assert.Equal(expectedHeight, state.LastBlockHeight)
+	assert.Equal(expectedHeight, state.LastBlockHeight.Load())
 }
 
 func TestBlockResponses(t *testing.T) {
