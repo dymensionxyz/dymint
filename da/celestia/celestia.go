@@ -37,6 +37,7 @@ type DataAvailabilityLayerClient struct {
 	logger       types.Logger
 	ctx          context.Context
 	cancel       context.CancelFunc
+	started      bool
 }
 
 var (
@@ -75,7 +76,7 @@ func WithSubmitBackoff(c uretry.BackoffConfig) da.Option {
 // Init initializes DataAvailabilityLayerClient instance.
 func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.Server, kvStore store.KVStore, logger types.Logger, options ...da.Option) error {
 	c.logger = logger
-
+	c.started = false
 	var err error
 	c.config, err = createConfig(config)
 	if err != nil {
@@ -94,6 +95,9 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 	return nil
 }
 
+func (c *DataAvailabilityLayerClient) HasStarted() bool {
+	return c.started
+}
 func createConfig(bz []byte) (c Config, err error) {
 	if len(bz) <= 0 {
 		return c, errors.New("supplied config is empty")
@@ -138,43 +142,56 @@ func (c *DataAvailabilityLayerClient) Start() (err error) {
 		return err
 	}
 
-	state, err := rpc.Header.SyncState(c.ctx)
-	if err != nil {
-		return err
-	}
-
-	if !state.Finished() {
-		c.logger.Info("Waiting for celestia-node to finish syncing.", "height", state.Height, "target", state.ToHeight)
-
-		done := make(chan error, 1)
-		go func() {
-			done <- rpc.Header.SyncWait(c.ctx)
-		}()
-
-		ticker := time.NewTicker(1 * time.Minute)
-		defer ticker.Stop()
-
-		for {
-			select {
-			case err := <-done:
-				if err != nil {
-					return err
-				}
-				return nil
-			case <-ticker.C:
-				state, err := rpc.Header.SyncState(c.ctx)
-				if err != nil {
-					return err
-				}
-				c.logger.Info("Celestia-node still syncing.", "height", state.Height, "target", state.ToHeight)
+	go retry.Do(
+		func() error {
+			state, err := rpc.Header.SyncState(c.ctx)
+			if err != nil {
+				c.logger.Error("Failed to start Celestia DA.", "Error", err)
+				return err
 			}
-		}
-	}
 
-	c.logger.Info("Celestia-node is synced.", "height", state.ToHeight)
+			if !state.Finished() {
+				c.logger.Info("waiting for celestia-node to finish syncing", "height", state.Height, "target", state.ToHeight)
 
-	c.rpc = NewOpenRPC(rpc)
+				done := make(chan error, 1)
+				go func() {
+					done <- rpc.Header.SyncWait(c.ctx)
+				}()
+
+				ticker := time.NewTicker(1 * time.Minute)
+				defer ticker.Stop()
+
+				for {
+					select {
+					case err := <-done:
+						if err != nil {
+							return err
+						}
+						return nil
+					case <-ticker.C:
+						state, err := rpc.Header.SyncState(c.ctx)
+						if err != nil {
+							return err
+						}
+						c.logger.Info("celestia-node still syncing", "height", state.Height, "target", state.ToHeight)
+					}
+				}
+			}
+
+			c.rpc = NewOpenRPC(rpc)
+
+			c.logger.Info("celestia-node is synced", "height", state.ToHeight)
+
+			return nil
+		},
+		retry.Attempts(0), // try forever
+		retry.Delay(10*time.Second),
+		retry.LastErrorOnly(true),
+		retry.DelayType(retry.FixedDelay),
+	)
+	c.started = true
 	return nil
+
 }
 
 // Stop stops DataAvailabilityLayerClient.
@@ -308,7 +325,20 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMet
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
+<<<<<<< HEAD
 	c.logger.Debug("Getting blob from DA.", "height", daMetaData.Height, "namespace", hex.EncodeToString(daMetaData.Namespace), "commitment", hex.EncodeToString(daMetaData.Commitment))
+=======
+	if c.rpc == nil {
+		return da.ResultRetrieveBatch{
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: "DA not available",
+				Error:   da.ErrRetrieval,
+			},
+		}
+	}
+	c.logger.Debug("Celestia DA getting blob", "height", daMetaData.Height, "namespace", hex.EncodeToString(daMetaData.Namespace), "commitment", hex.EncodeToString(daMetaData.Commitment))
+>>>>>>> 0ffc865 (retry if celestia fails to start + start check)
 	var batches []*types.Batch
 	blob, err := c.rpc.Get(ctx, daMetaData.Height, daMetaData.Namespace, daMetaData.Commitment)
 	if err != nil {
