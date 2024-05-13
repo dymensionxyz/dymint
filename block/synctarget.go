@@ -37,9 +37,9 @@ func (m *Manager) SyncToTargetHeightLoop(ctx context.Context) {
 				)
 				continue
 			}
+			types.RollappHubHeightGauge.Set(float64(h))
 			m.targetSyncHeight.Set(diodes.GenericDataType(&h))
 			m.logger.Info("Set new target sync height", "height", h)
-			types.RollappHubHeightGauge.Set(float64(h)) // TODO(danwt): needed?
 		case <-subscription.Cancelled():
 			m.logger.Info("syncTargetLoop subscription canceled")
 			return
