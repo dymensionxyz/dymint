@@ -160,9 +160,15 @@ func (m *Manager) Start(ctx context.Context) error {
 
 	if isSequencer {
 		// TODO: populate the accumulatedSize on startup
+		err = m.syncBlockManager()
+		if err != nil {
+			return fmt.Errorf("sync block manager: %w", err)
+		}
 		go m.ProduceBlockLoop(ctx)
 		go m.SubmitLoop(ctx)
 	} else {
+		go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewNewGossipedBlock, m.onNewGossipedBlock, m.logger)
+
 		go m.RetrieveLoop(ctx)
 		go m.SyncToTargetHeightLoop(ctx)
 	}
