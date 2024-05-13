@@ -15,16 +15,18 @@ import (
 // fetching batches from the settlement layer and then fetching the actual blocks
 // from the DA.
 func (m *Manager) RetrieveLoop(ctx context.Context) {
-	m.logger.Info("started retrieve loop")
-	targetSyncHeightPoller := diodes.NewPoller(m.targetSyncHeight, diodes.WithPollingContext(ctx))
+	m.logger.Info("Started retrieve loop.")
+	p := diodes.NewPoller(m.targetSyncHeight, diodes.WithPollingContext(ctx))
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		default:
-			// Get only the latest sync target
-			targetHeight := targetSyncHeightPoller.Next()
+			/*
+				We only care about the latest one
+			*/
+			targetHeight := p.Next()
 			err := m.syncToTargetHeight(*(*uint64)(targetHeight))
 			if err != nil {
 				panic(fmt.Errorf("sync until target: %w", err))
