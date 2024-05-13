@@ -52,8 +52,8 @@ message Header {
 	// pubkey can't be recovered by the signature (e.g. ed25519).
 	bytes proposer_address = 11;
 
-	// Hash of block aggregator set, at a time of block creation
-	bytes aggregators_hash = 12;
+	// Hash of block sequencer set, at a time of block creation
+	bytes sequencers_hash = 12;
 
 	// Chain ID the block belongs to
 	string chain_id = 13;
