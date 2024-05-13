@@ -54,7 +54,7 @@ func TestBlockSerializationRoundTrip(t *testing.T) {
 				AppHash:         h[4],
 				LastResultsHash: h[5],
 				ProposerAddress: []byte{4, 3, 2, 1},
-				AggregatorsHash: h[6],
+				SequencersHash:  h[6],
 			},
 			Data: types.Data{
 				Txs:                    nil,

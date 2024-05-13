@@ -39,7 +39,7 @@ type Header struct {
 	ProposerAddress []byte // original proposer of the block
 
 	// Hash of block aggregator set, at a time of block creation
-	AggregatorsHash [32]byte
+	SequencersHash [32]byte
 
 	// The Chain ID
 	ChainID string
