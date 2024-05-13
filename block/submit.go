@@ -114,7 +114,7 @@ func (m *Manager) AccumulatedDataLoop(ctx context.Context, toSubmit chan struct{
 func (m *Manager) HandleSubmissionTrigger() error {
 	// Load current sync target and height to determine if new blocks are available for submission.
 
-	startHeight := m.SyncTarget.Load() + 1
+	startHeight := m.lastSubmittedHeight + 1
 	endHeightInclusive := m.Store.Height()
 
 	if endHeightInclusive < startHeight {
@@ -139,7 +139,7 @@ func (m *Manager) HandleSubmissionTrigger() error {
 		return fmt.Errorf("sl client submit batch: start height: %d: inclusive end height: %d: %w", startHeight, actualEndHeight, err)
 	}
 
-	m.UpdateSyncParams(actualEndHeight)
+	m.lastSubmittedHeight = actualEndHeight
 	return nil
 }
 

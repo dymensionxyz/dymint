@@ -3,6 +3,8 @@ package block
 import (
 	"context"
 
+	"github.com/dymensionxyz/dymint/types"
+
 	"code.cloudfoundry.org/go-diodes"
 	"github.com/dymensionxyz/dymint/settlement"
 )
@@ -37,6 +39,8 @@ func (m *Manager) SyncTargetLoop(ctx context.Context) {
 			}
 			m.UpdateSyncParams(eventData.EndHeight)
 			m.SyncTargetDiode.Set(diodes.GenericDataType(&eventData.EndHeight))
+			m.logger.Info("Received new sync target height", "height", eventData.EndHeight)
+			types.RollappHubHeightGauge.Set(float64(eventData.EndHeight)) // TODO(danwt): needed?
 		case <-subscription.Cancelled():
 			m.logger.Info("syncTargetLoop subscription canceled")
 			return

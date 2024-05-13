@@ -52,13 +52,14 @@ type Manager struct {
 	// Data retrieval
 	Retriever       da.BatchRetriever
 	SyncTargetDiode diodes.Diode
-	SyncTarget      atomic.Uint64
 
 	// Block production
 	producedSizeCh chan uint64 // channel for the producer to report the size of the block it produced
 
 	// Submitter
 	AccumulatedBatchSize atomic.Uint64
+	// The last height which was submitted to both sublayers
+	lastSubmittedHeight uint64
 
 	/*
 		Protect against processing two blocks at once when there are two routines handling incoming gossiped blocks,
