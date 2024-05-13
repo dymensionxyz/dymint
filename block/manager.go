@@ -169,10 +169,6 @@ func (m *Manager) Start(ctx context.Context) error {
 		go m.ProduceBlockLoop(ctx)
 		go m.SubmitLoop(ctx)
 	} else {
-		fmt.Println("waiting")
-		<-m.DAClient.Started()
-		fmt.Println("started")
-
 		go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewNewGossipedBlock, m.onNewGossipedBlock, m.logger)
 		go m.RetrieveLoop(ctx)
 		go m.SyncToTargetHeightLoop(ctx)
