@@ -22,7 +22,7 @@ type Header struct {
 	LastHeaderHash [32]byte
 
 	// hashes of block data
-	LastCommitHash [32]byte // commit from aggregator(s) from the last block
+	LastCommitHash [32]byte // commit from sequencer(s) from the last block
 	DataHash       [32]byte // Block.Data root aka Transactions
 	ConsensusHash  [32]byte // consensus params for current block
 	AppHash        [32]byte // state after applying txs from the current block
@@ -38,7 +38,7 @@ type Header struct {
 	// pubkey can't be recovered by the signature (e.g. ed25519).
 	ProposerAddress []byte // original proposer of the block
 
-	// Hash of block aggregator set, at a time of block creation
+	// Hash of block sequencer set, at a time of block creation
 	SequencersHash [32]byte
 
 	// The Chain ID

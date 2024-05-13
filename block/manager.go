@@ -128,17 +128,17 @@ func (m *Manager) Start(ctx context.Context) error {
 	m.logger.Info("Starting the block manager")
 
 	// Check if proposer key matches to the one in the settlement layer
-	var isAggregator bool
+	var isSequencer bool
 	slProposerKey := m.SLClient.GetProposer().PublicKey.Bytes()
 	localProposerKey, err := m.ProposerKey.GetPublic().Raw()
 	if err != nil {
 		return fmt.Errorf("get local node public key: %w", err)
 	}
 	if bytes.Equal(slProposerKey, localProposerKey) {
-		m.logger.Info("Starting in aggregator mode")
-		isAggregator = true
+		m.logger.Info("Starting in sequencer mode")
+		isSequencer = true
 	} else {
-		m.logger.Info("Starting in non-aggregator mode")
+		m.logger.Info("Starting in non-sequencer mode")
 	}
 
 	// Check if InitChain flow is needed
@@ -151,7 +151,7 @@ func (m *Manager) Start(ctx context.Context) error {
 		}
 	}
 
-	if !isAggregator {
+	if !isSequencer {
 		go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewNewGossipedBlock, m.onNewGossipedBlock, m.logger)
 	}
 
@@ -160,7 +160,7 @@ func (m *Manager) Start(ctx context.Context) error {
 		return fmt.Errorf("sync block manager: %w", err)
 	}
 
-	if isAggregator {
+	if isSequencer {
 		// TODO: populate the accumulatedSize on startup
 		go m.ProduceBlockLoop(ctx)
 		go m.SubmitLoop(ctx)
