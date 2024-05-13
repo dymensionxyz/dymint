@@ -176,6 +176,7 @@ func (c *DataAvailabilityLayerClient) Start() (err error) {
 			}
 
 			c.rpc = NewOpenRPC(rpc)
+			c.started <- struct{}{}
 
 			c.logger.Info("celestia-node is synced", "height", state.ToHeight)
 
@@ -186,7 +187,6 @@ func (c *DataAvailabilityLayerClient) Start() (err error) {
 		retry.LastErrorOnly(true),
 		retry.DelayType(retry.FixedDelay),
 	)
-	c.started <- struct{}{}
 	return nil
 
 }
