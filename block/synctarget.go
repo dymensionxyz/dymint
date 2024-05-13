@@ -26,20 +26,21 @@ func (m *Manager) SyncTargetLoop(ctx context.Context) {
 			return
 		case event := <-subscription.Out():
 			eventData := event.Data().(*settlement.EventDataNewBatchAccepted)
+			h := eventData.EndHeight
 
-			if eventData.EndHeight <= m.Store.Height() {
+			if h <= m.Store.Height() {
 				m.logger.Debug(
 					"syncTargetLoop: received new settlement batch accepted with batch end height <= current store height, skipping.",
-					"height",
-					eventData.EndHeight,
-					"currentHeight",
+					"target sync height (batch end height)",
+					h,
+					"current store height",
 					m.Store.Height(),
 				)
 				continue
 			}
-			m.SyncTargetDiode.Set(diodes.GenericDataType(&eventData.EndHeight))
-			m.logger.Info("Received new sync target height", "height", eventData.EndHeight)
-			types.RollappHubHeightGauge.Set(float64(eventData.EndHeight)) // TODO(danwt): needed?
+			m.targetSyncHeight.Set(diodes.GenericDataType(&h))
+			m.logger.Info("Set new target sync height", "height", h)
+			types.RollappHubHeightGauge.Set(float64(h)) // TODO(danwt): needed?
 		case <-subscription.Cancelled():
 			m.logger.Info("syncTargetLoop subscription canceled")
 			return

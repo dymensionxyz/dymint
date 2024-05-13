@@ -33,6 +33,8 @@ import (
 
 // Manager is responsible for aggregating transactions into blocks.
 type Manager struct {
+	logger types.Logger
+
 	// Configuration
 	Conf        config.BlockManagerConfig
 	Genesis     *tmtypes.GenesisDoc
@@ -49,26 +51,27 @@ type Manager struct {
 	DAClient  da.DataAvailabilityLayerClient
 	SLClient  settlement.LayerI
 
-	// Data retrieval
-	Retriever       da.BatchRetriever
-	SyncTargetDiode diodes.Diode
+	/*
+		Production
+	*/
+	producedSizeCh chan uint64 // for the producer to report the size of the block it produced
 
-	// Block production
-	producedSizeCh chan uint64 // channel for the producer to report the size of the block it produced
-
-	// Submitter
+	/*
+		Submission
+	*/
 	AccumulatedBatchSize atomic.Uint64
 	// The last height which was submitted to both sublayers
 	lastSubmittedHeight uint64
 
 	/*
-		Protect against processing two blocks at once when there are two routines handling incoming gossiped blocks,
-		and incoming DA blocks, respectively.
+		Retrieval
 	*/
+	Retriever da.BatchRetriever
+	// get the next target height to sync local state to
+	targetSyncHeight diodes.Diode
+	// Protect against processing two blocks at once when there are two routines handling incoming gossiped blocks,
+	// and incoming DA blocks, respectively.
 	retrieverMutex sync.Mutex
-
-	logger types.Logger
-
 	// Cached blocks and commits for applying at future heights. The blocks may not be valid, because
 	// we can only do full validation in sequential order.
 	blockCache map[uint64]CachedBlock
@@ -104,21 +107,21 @@ func NewManager(
 	}
 
 	agg := &Manager{
-		Pubsub:          pubsub,
-		p2pClient:       p2pClient,
-		ProposerKey:     proposerKey,
-		Conf:            conf,
-		Genesis:         genesis,
-		LastState:       s,
-		Store:           store,
-		Executor:        exec,
-		DAClient:        dalc,
-		SLClient:        settlementClient,
-		Retriever:       dalc.(da.BatchRetriever),
-		SyncTargetDiode: diodes.NewOneToOne(1, nil),
-		producedSizeCh:  make(chan uint64),
-		logger:          logger,
-		blockCache:      make(map[uint64]CachedBlock),
+		Pubsub:           pubsub,
+		p2pClient:        p2pClient,
+		ProposerKey:      proposerKey,
+		Conf:             conf,
+		Genesis:          genesis,
+		LastState:        s,
+		Store:            store,
+		Executor:         exec,
+		DAClient:         dalc,
+		SLClient:         settlementClient,
+		Retriever:        dalc.(da.BatchRetriever),
+		targetSyncHeight: diodes.NewOneToOne(1, nil),
+		producedSizeCh:   make(chan uint64),
+		logger:           logger,
+		blockCache:       make(map[uint64]CachedBlock),
 	}
 
 	return agg, nil

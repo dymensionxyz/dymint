@@ -16,7 +16,7 @@ import (
 // from the DA.
 func (m *Manager) RetrieveLoop(ctx context.Context) {
 	m.logger.Info("started retrieve loop")
-	syncTargetPoller := diodes.NewPoller(m.SyncTargetDiode, diodes.WithPollingContext(ctx))
+	targetSyncHeightPoller := diodes.NewPoller(m.targetSyncHeight, diodes.WithPollingContext(ctx))
 
 	for {
 		select {
@@ -24,7 +24,7 @@ func (m *Manager) RetrieveLoop(ctx context.Context) {
 			return
 		default:
 			// Get only the latest sync target
-			targetHeight := syncTargetPoller.Next()
+			targetHeight := targetSyncHeightPoller.Next()
 			err := m.syncToTargetHeight(*(*uint64)(targetHeight))
 			if err != nil {
 				panic(fmt.Errorf("sync until target: %w", err))
