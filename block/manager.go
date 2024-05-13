@@ -188,7 +188,7 @@ func (m *Manager) syncBlockManager() error {
 	}
 	// Set the syncTarget according to the result
 	m.SyncTarget.Store(res.EndHeight)
-	err = m.syncUntilTarget(res.EndHeight)
+	err = m.syncToTargetHeight(res.EndHeight)
 	if err != nil {
 		return err
 	}

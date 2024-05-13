@@ -25,7 +25,7 @@ func (m *Manager) RetrieveLoop(ctx context.Context) {
 		default:
 			// Get only the latest sync target
 			targetHeight := syncTargetPoller.Next()
-			err := m.syncUntilTarget(*(*uint64)(targetHeight))
+			err := m.syncToTargetHeight(*(*uint64)(targetHeight))
 			if err != nil {
 				panic(fmt.Errorf("sync until target: %w", err))
 			}
@@ -33,10 +33,10 @@ func (m *Manager) RetrieveLoop(ctx context.Context) {
 	}
 }
 
-// syncUntilTarget syncs blocks until the target height is reached.
+// syncToTargetHeight syncs blocks until the target height is reached.
 // It fetches the batches from the settlement, gets the DA height and gets
 // the actual blocks from the DA.
-func (m *Manager) syncUntilTarget(targetHeight uint64) error {
+func (m *Manager) syncToTargetHeight(targetHeight uint64) error {
 	for currH := m.Store.Height(); currH < targetHeight; currH = m.Store.Height() {
 
 		// It's important that we query the state index before fetching the batch, rather
