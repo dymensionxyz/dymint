@@ -171,7 +171,7 @@ func (m *Manager) Start(ctx context.Context) error {
 		go m.SubmitLoop(ctx)
 	} else {
 		go m.RetrieveLoop(ctx)
-		go m.SyncTargetLoop(ctx)
+		go m.SyncToTargetHeightLoop(ctx)
 	}
 
 	return nil
