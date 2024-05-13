@@ -9,9 +9,8 @@ import (
 	"github.com/dymensionxyz/dymint/settlement"
 )
 
-// SyncToTargetHeightLoop is responsible for getting real time updates about settlement batch submissions.
-// For non aggregator: updating the sync target which will be used by retrieveLoop to sync until this target.
-// It publishes new sync height targets which will then be synced by another process.
+// SyncToTargetHeightLoop gets real time updates about settlement batch submissions and sends the latest height downstream
+// to be retrieved by another process.
 func (m *Manager) SyncToTargetHeightLoop(ctx context.Context) {
 	m.logger.Info("Started sync target loop")
 	subscription, err := m.Pubsub.Subscribe(ctx, "syncTargetLoop", settlement.EventQueryNewSettlementBatchAccepted)

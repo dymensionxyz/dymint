@@ -23,10 +23,7 @@ func (m *Manager) RetrieveLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		default:
-			/*
-				We only care about the latest one
-			*/
-			targetHeight := p.Next()
+			targetHeight := p.Next() // We only care about the latest one
 			err := m.syncToTargetHeight(*(*uint64)(targetHeight))
 			if err != nil {
 				panic(fmt.Errorf("sync until target: %w", err))
