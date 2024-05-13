@@ -114,7 +114,7 @@ func (m *Manager) AccumulatedDataLoop(ctx context.Context, toSubmit chan struct{
 func (m *Manager) HandleSubmissionTrigger() error {
 	// Load current sync target and height to determine if new blocks are available for submission.
 
-	startHeight := m.lastSubmittedHeight + 1
+	startHeight := m.LastSubmittedHeight + 1
 	endHeightInclusive := m.Store.Height()
 
 	if endHeightInclusive < startHeight {
@@ -140,7 +140,7 @@ func (m *Manager) HandleSubmissionTrigger() error {
 	}
 
 	types.RollappHubHeightGauge.Set(float64(actualEndHeight)) // TODO(danwt): check
-	m.lastSubmittedHeight = actualEndHeight
+	m.LastSubmittedHeight = actualEndHeight
 	return nil
 }
 

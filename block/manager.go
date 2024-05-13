@@ -62,7 +62,7 @@ type Manager struct {
 	AccumulatedBatchSize atomic.Uint64
 	// The last height which was submitted to both sublayers, that we know of. When we produce new batches, we will
 	// start at this height + 1.
-	lastSubmittedHeight uint64
+	LastSubmittedHeight uint64
 
 	/*
 		Retrieval
@@ -183,20 +183,20 @@ func (m *Manager) syncBlockManager() error {
 	if errors.Is(err, gerr.ErrNotFound) {
 		// The SL hasn't got any batches for this chain yet.
 		m.logger.Info("No batches for chain found in SL. Start writing first batch.")
-		m.lastSubmittedHeight = uint64(m.Genesis.InitialHeight - 1)
+		m.LastSubmittedHeight = uint64(m.Genesis.InitialHeight - 1)
 		return nil
 	}
 	if err != nil {
 		// TODO: separate between fresh rollapp and non-registered rollapp
 		return err
 	}
-	m.lastSubmittedHeight = res.EndHeight
+	m.LastSubmittedHeight = res.EndHeight
 	err = m.syncToTargetHeight(res.EndHeight)
 	if err != nil {
 		return err
 	}
 
-	m.logger.Info("Synced.", "current height", m.Store.Height(), "last submitted height", m.lastSubmittedHeight)
+	m.logger.Info("Synced.", "current height", m.Store.Height(), "last submitted height", m.LastSubmittedHeight)
 	return nil
 }
 
