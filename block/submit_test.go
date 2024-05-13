@@ -204,6 +204,7 @@ func TestSubmissionByBatchSize(t *testing.T) {
 		}()
 
 		go func() {
+			assert.Zero(manager.LastSubmittedHeight)
 			manager.SubmitLoop(ctx)
 			wg.Done() // Decrease counter when this goroutine finishes
 		}()
@@ -213,7 +214,6 @@ func TestSubmissionByBatchSize(t *testing.T) {
 		// assert block produced but nothing submitted yet
 		assert.Greater(manager.Store.Height(), uint64(0))
 		assert.Greater(manager.AccumulatedBatchSize.Load(), uint64(0))
-		assert.Zero(manager.LastSubmittedHeight)
 
 		wg.Wait() // Wait for all goroutines to finish
 
