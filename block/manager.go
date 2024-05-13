@@ -242,7 +242,7 @@ func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
 	commit := eventData.Commit
 	m.retrieverMutex.Lock() // needed to protect blockCache access
 	_, found := m.blockCache[block.Header.Height]
-	//we return early if the block is already received, since it is not necessary to cache again the same block (and therefore it is not necessary to call attemptApplyCachedBlocks() if actually no new block is received).
+	// It is not strictly necessary to return early, for correctness, but doing so helps us avoid mutex pressure and unnecessary repeated attempts to apply cached blocks
 	if found {
 		m.retrieverMutex.Unlock()
 		return
