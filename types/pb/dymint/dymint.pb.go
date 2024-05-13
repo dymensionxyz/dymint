@@ -91,7 +91,7 @@ type Header struct {
 	Time uint64 `protobuf:"varint,4,opt,name=time,proto3" json:"time,omitempty"`
 	// Previous block info
 	LastHeaderHash []byte `protobuf:"bytes,5,opt,name=last_header_hash,json=lastHeaderHash,proto3" json:"last_header_hash,omitempty"`
-	// Commit from aggregator(s) from the last block
+	// Commit from sequencers(s) from the last block
 	LastCommitHash []byte `protobuf:"bytes,6,opt,name=last_commit_hash,json=lastCommitHash,proto3" json:"last_commit_hash,omitempty"`
 	// Block.Data root aka Transactions
 	DataHash []byte `protobuf:"bytes,7,opt,name=data_hash,json=dataHash,proto3" json:"data_hash,omitempty"`
