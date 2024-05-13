@@ -322,7 +322,7 @@ func (c *Client) setupGossiping(ctx context.Context) error {
 	pubsub.GossipSubHistoryLength = c.conf.GossipCacheSize
 
 	//We add WithSeenMessagesTTL (with 1 year time) option to avoid ever requesting already seen blocks
-	ps, err := pubsub.NewGossipSub(ctx, c.Host, pubsub.WithSeenMessagesTTL(8760*time.Hour))
+	ps, err := pubsub.NewGossipSub(ctx, c.Host)
 	if err != nil {
 		return err
 	}
