@@ -103,7 +103,7 @@ func WithBatchRetryAttempts(attempts uint) da.Option {
 // Init initializes DataAvailabilityLayerClient instance.
 func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.Server, kvStore store.KVStore, logger types.Logger, options ...da.Option) error {
 	c.logger = logger
-	c.started = make(chan struct{})
+	c.started = make(chan struct{}, 1)
 
 	if len(config) > 0 {
 		err := json.Unmarshal(config, &c.config)
@@ -149,6 +149,7 @@ func (c *DataAvailabilityLayerClient) Start() error {
 // Stop stops DataAvailabilityLayerClient instance.
 func (c *DataAvailabilityLayerClient) Stop() error {
 	c.cancel()
+	close(c.started)
 	return nil
 }
 

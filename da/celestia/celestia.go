@@ -76,7 +76,7 @@ func WithSubmitBackoff(c uretry.BackoffConfig) da.Option {
 // Init initializes DataAvailabilityLayerClient instance.
 func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.Server, kvStore store.KVStore, logger types.Logger, options ...da.Option) error {
 	c.logger = logger
-	c.started = make(chan struct{})
+	c.started = make(chan struct{}, 1)
 	var err error
 	c.config, err = createConfig(config)
 	if err != nil {
@@ -177,7 +177,6 @@ func (c *DataAvailabilityLayerClient) Start() (err error) {
 
 			c.rpc = NewOpenRPC(rpc)
 			c.started <- struct{}{}
-
 			c.logger.Info("celestia-node is synced", "height", state.ToHeight)
 
 			return nil
@@ -199,6 +198,7 @@ func (c *DataAvailabilityLayerClient) Stop() error {
 		return err
 	}
 	c.cancel()
+	close(c.started)
 	return nil
 }
 

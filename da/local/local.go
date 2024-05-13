@@ -48,26 +48,28 @@ func (m *DataAvailabilityLayerClient) Init(config []byte, _ *pubsub.Server, dalc
 	} else {
 		m.config.BlockTime = defaultBlockTime
 	}
-	m.started = make(chan struct{})
+	m.started = make(chan struct{}, 1)
 	return nil
 }
 
 // Start implements DataAvailabilityLayerClient interface.
 func (m *DataAvailabilityLayerClient) Start() error {
 	m.logger.Debug("Mock Data Availability Layer Client starting")
+	m.started <- struct{}{}
 	go func() {
 		for {
 			time.Sleep(m.config.BlockTime)
 			m.updateDAHeight()
 		}
 	}()
-	m.started <- struct{}{}
+
 	return nil
 }
 
 // Stop implements DataAvailabilityLayerClient interface.
 func (m *DataAvailabilityLayerClient) Stop() error {
 	m.logger.Debug("Mock Data Availability Layer Client stopped")
+	close(m.started)
 	return nil
 }
 

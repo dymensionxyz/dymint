@@ -50,13 +50,15 @@ func (d *DataAvailabilityLayerClient) Init(config []byte, _ *pubsub.Server, _ st
 		d.config = DefaultConfig
 		return nil
 	}
-	d.started = make(chan struct{})
+	d.started = make(chan struct{}, 1)
 	return json.Unmarshal(config, &d.config)
 }
 
 // Start creates connection to gRPC server and instantiates gRPC client.
 func (d *DataAvailabilityLayerClient) Start() error {
 	d.logger.Info("starting GRPC DALC", "host", d.config.Host, "port", d.config.Port)
+	d.started <- struct{}{}
+
 	var err error
 	var opts []grpc.DialOption
 	// TODO(tzdybal): add more options
@@ -67,7 +69,6 @@ func (d *DataAvailabilityLayerClient) Start() error {
 	}
 
 	d.client = dalc.NewDALCServiceClient(d.conn)
-	d.started <- struct{}{}
 	return nil
 }
 
