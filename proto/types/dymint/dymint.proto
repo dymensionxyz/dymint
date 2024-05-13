@@ -28,7 +28,7 @@ message Header {
 	// Previous block info
 	bytes last_header_hash = 5;
 
-	// Commit from aggregator(s) from the last block
+	// Commit from sequencers(s) from the last block
 	bytes last_commit_hash = 6;
 	
 	// Block.Data root aka Transactions
