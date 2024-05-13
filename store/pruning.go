@@ -1,6 +1,10 @@
 package store
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/dymensionxyz/dymint/gerr"
+)
 
 // PruneBlocks removes block up to (but not including) a height. It returns number of blocks pruned.
 func (s *DefaultStore) PruneBlocks(heightInt int64) (uint64, error) {
@@ -10,7 +14,7 @@ func (s *DefaultStore) PruneBlocks(heightInt int64) (uint64, error) {
 
 	height := uint64(heightInt)
 	if height > s.Height() {
-		return 0, fmt.Errorf("cannot prune beyond the latest height %v", s.height)
+		return 0, fmt.Errorf("cannot prune beyond the latest height %v: %w", s.height, gerr.ErrInvalidArgument)
 	}
 	base := s.Base()
 	if height < base {
