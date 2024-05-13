@@ -160,6 +160,8 @@ func (m *Manager) Start(ctx context.Context) error {
 
 	if isSequencer {
 		// TODO: populate the accumulatedSize on startup
+		//Wait till DA is up and running
+		<-m.DAClient.Started()
 		err = m.syncBlockManager()
 		if err != nil {
 			return fmt.Errorf("sync block manager: %w", err)

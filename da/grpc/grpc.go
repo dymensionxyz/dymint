@@ -21,7 +21,7 @@ type DataAvailabilityLayerClient struct {
 
 	conn    *grpc.ClientConn
 	client  dalc.DALCServiceClient
-	started bool
+	started chan struct{}
 	logger  types.Logger
 }
 
@@ -50,7 +50,7 @@ func (d *DataAvailabilityLayerClient) Init(config []byte, _ *pubsub.Server, _ st
 		d.config = DefaultConfig
 		return nil
 	}
-	d.started = false
+	d.started = make(chan struct{})
 	return json.Unmarshal(config, &d.config)
 }
 
@@ -67,7 +67,7 @@ func (d *DataAvailabilityLayerClient) Start() error {
 	}
 
 	d.client = dalc.NewDALCServiceClient(d.conn)
-	d.started = true
+	d.started <- struct{}{}
 	return nil
 }
 
@@ -77,8 +77,9 @@ func (d *DataAvailabilityLayerClient) Stop() error {
 	return d.conn.Close()
 }
 
-func (d *DataAvailabilityLayerClient) HasStarted() bool {
-	return d.started
+// Started returns channel for on start event
+func (m *DataAvailabilityLayerClient) Started() <-chan struct{} {
+	return m.started
 }
 
 // GetClientType returns client type.

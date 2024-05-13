@@ -20,7 +20,7 @@ type DataAvailabilityLayerClient struct {
 	dalcKV   store.KVStore
 	daHeight atomic.Uint64
 	config   config
-	started  bool
+	started  chan struct{}
 }
 
 const defaultBlockTime = 3 * time.Second
@@ -48,7 +48,7 @@ func (m *DataAvailabilityLayerClient) Init(config []byte, _ *pubsub.Server, dalc
 	} else {
 		m.config.BlockTime = defaultBlockTime
 	}
-	m.started = false
+	m.started = make(chan struct{})
 	return nil
 }
 
@@ -61,7 +61,7 @@ func (m *DataAvailabilityLayerClient) Start() error {
 			m.updateDAHeight()
 		}
 	}()
-	m.started = true
+	m.started <- struct{}{}
 	return nil
 }
 
@@ -71,7 +71,8 @@ func (m *DataAvailabilityLayerClient) Stop() error {
 	return nil
 }
 
-func (m *DataAvailabilityLayerClient) HasStarted() bool {
+// Started returns channel for on start event
+func (m *DataAvailabilityLayerClient) Started() <-chan struct{} {
 	return m.started
 }
 

@@ -64,7 +64,7 @@ type DataAvailabilityLayerClient struct {
 	txInclusionTimeout time.Duration
 	batchRetryDelay    time.Duration
 	batchRetryAttempts uint
-	started            bool
+	started            chan struct{}
 }
 
 var (
@@ -103,7 +103,7 @@ func WithBatchRetryAttempts(attempts uint) da.Option {
 // Init initializes DataAvailabilityLayerClient instance.
 func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.Server, kvStore store.KVStore, logger types.Logger, options ...da.Option) error {
 	c.logger = logger
-	c.started = false
+	c.started = make(chan struct{})
 
 	if len(config) > 0 {
 		err := json.Unmarshal(config, &c.config)
@@ -142,7 +142,7 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 
 // Start starts DataAvailabilityLayerClient instance.
 func (c *DataAvailabilityLayerClient) Start() error {
-	c.started = true
+	c.started <- struct{}{}
 	return nil
 }
 
@@ -152,7 +152,7 @@ func (c *DataAvailabilityLayerClient) Stop() error {
 	return nil
 }
 
-func (c *DataAvailabilityLayerClient) HasStarted() bool {
+func (c *DataAvailabilityLayerClient) Started() <-chan struct{} {
 	return c.started
 }
 

@@ -215,7 +215,7 @@ type DataAvailabilityLayerClient interface {
 	// CheckBatchAvailability checks the availability of the blob submitted getting proofs and validating them
 	CheckBatchAvailability(daMetaData *DASubmitMetaData) ResultCheckBatch
 
-	HasStarted() bool
+	Started() <-chan struct{}
 }
 
 // BatchRetriever is additional interface that can be implemented by Data Availability Layer Client that is able to retrieve
