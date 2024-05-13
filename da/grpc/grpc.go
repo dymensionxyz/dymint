@@ -19,10 +19,10 @@ import (
 type DataAvailabilityLayerClient struct {
 	config Config
 
-	conn   *grpc.ClientConn
-	client dalc.DALCServiceClient
-
-	logger types.Logger
+	conn    *grpc.ClientConn
+	client  dalc.DALCServiceClient
+	started bool
+	logger  types.Logger
 }
 
 // Config contains configuration options for DataAvailabilityLayerClient.
@@ -50,6 +50,7 @@ func (d *DataAvailabilityLayerClient) Init(config []byte, _ *pubsub.Server, _ st
 		d.config = DefaultConfig
 		return nil
 	}
+	d.started = false
 	return json.Unmarshal(config, &d.config)
 }
 
@@ -66,7 +67,7 @@ func (d *DataAvailabilityLayerClient) Start() error {
 	}
 
 	d.client = dalc.NewDALCServiceClient(d.conn)
-
+	d.started = true
 	return nil
 }
 
@@ -74,6 +75,10 @@ func (d *DataAvailabilityLayerClient) Start() error {
 func (d *DataAvailabilityLayerClient) Stop() error {
 	d.logger.Info("stopoing GRPC DALC")
 	return d.conn.Close()
+}
+
+func (d *DataAvailabilityLayerClient) HasStarted() bool {
+	return d.started
 }
 
 // GetClientType returns client type.

@@ -64,6 +64,7 @@ type DataAvailabilityLayerClient struct {
 	txInclusionTimeout time.Duration
 	batchRetryDelay    time.Duration
 	batchRetryAttempts uint
+	started            bool
 }
 
 var (
@@ -102,6 +103,7 @@ func WithBatchRetryAttempts(attempts uint) da.Option {
 // Init initializes DataAvailabilityLayerClient instance.
 func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.Server, kvStore store.KVStore, logger types.Logger, options ...da.Option) error {
 	c.logger = logger
+	c.started = false
 
 	if len(config) > 0 {
 		err := json.Unmarshal(config, &c.config)
@@ -135,12 +137,12 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 	}
 
 	c.ctx, c.cancel = context.WithCancel(context.Background())
-
 	return nil
 }
 
 // Start starts DataAvailabilityLayerClient instance.
 func (c *DataAvailabilityLayerClient) Start() error {
+	c.started = true
 	return nil
 }
 
@@ -148,6 +150,10 @@ func (c *DataAvailabilityLayerClient) Start() error {
 func (c *DataAvailabilityLayerClient) Stop() error {
 	c.cancel()
 	return nil
+}
+
+func (c *DataAvailabilityLayerClient) HasStarted() bool {
+	return c.started
 }
 
 // GetClientType returns client type.

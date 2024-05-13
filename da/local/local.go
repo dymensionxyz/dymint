@@ -20,6 +20,7 @@ type DataAvailabilityLayerClient struct {
 	dalcKV   store.KVStore
 	daHeight atomic.Uint64
 	config   config
+	started  bool
 }
 
 const defaultBlockTime = 3 * time.Second
@@ -47,6 +48,7 @@ func (m *DataAvailabilityLayerClient) Init(config []byte, _ *pubsub.Server, dalc
 	} else {
 		m.config.BlockTime = defaultBlockTime
 	}
+	m.started = false
 	return nil
 }
 
@@ -59,6 +61,7 @@ func (m *DataAvailabilityLayerClient) Start() error {
 			m.updateDAHeight()
 		}
 	}()
+	m.started = true
 	return nil
 }
 
@@ -66,6 +69,10 @@ func (m *DataAvailabilityLayerClient) Start() error {
 func (m *DataAvailabilityLayerClient) Stop() error {
 	m.logger.Debug("Mock Data Availability Layer Client stopped")
 	return nil
+}
+
+func (m *DataAvailabilityLayerClient) HasStarted() bool {
+	return m.started
 }
 
 // GetClientType returns client type.
