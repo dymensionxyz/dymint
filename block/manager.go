@@ -177,6 +177,10 @@ func (m *Manager) Start(ctx context.Context) error {
 	return nil
 }
 
+func (m *Manager) NextHeightToSubmit() uint64 {
+	return m.LastSubmittedHeight + 1
+}
+
 // syncBlockManager enforces the node to be synced on initial run.
 func (m *Manager) syncBlockManager() error {
 	res, err := m.SLClient.RetrieveBatch()

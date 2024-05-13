@@ -39,17 +39,18 @@ func TestBatchSubmissionHappyFlow(t *testing.T) {
 	// Check initial assertions
 	initialHeight := uint64(0)
 	require.Zero(manager.Store.Height())
-	require.Zero(manager.SyncTarget.Load())
+	require.Zero(manager.LastSubmittedHeight)
 
 	// Produce block and validate that we produced blocks
 	_, _, err = manager.ProduceAndGossipBlock(ctx, true)
 	require.NoError(err)
 	assert.Greater(t, manager.Store.Height(), initialHeight)
-	assert.Zero(t, manager.SyncTarget.Load())
+	assert.Zero(t, manager.LastSubmittedHeight)
 
 	// submit and validate sync target
-	manager.HandleSubmissionTrigger()
-	assert.EqualValues(t, manager.Store.Height(), manager.SyncTarget.Load())
+	err = manager.HandleSubmissionTrigger()
+	require.NoError(err)
+	assert.EqualValues(t, manager.Store.Height(), manager.LastSubmittedHeight)
 }
 
 func TestBatchSubmissionFailedSubmission(t *testing.T) {
@@ -86,22 +87,23 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 	// Check initial assertions
 	initialHeight := uint64(0)
 	require.Zero(manager.Store.Height())
-	require.Zero(manager.SyncTarget.Load())
+	require.Zero(manager.LastSubmittedHeight)
 
 	// Produce block and validate that we produced blocks
 	_, _, err = manager.ProduceAndGossipBlock(ctx, true)
 	require.NoError(err)
 	assert.Greater(t, manager.Store.Height(), initialHeight)
-	assert.Zero(t, manager.SyncTarget.Load())
+	assert.Zero(t, manager.LastSubmittedHeight)
 
 	// try to submit, we expect failure
-	mockLayerI.On("SubmitBatch", mock.Anything, mock.Anything, mock.Anything).Return(fmt.Errorf("Failed to submit batch")).Once()
+	mockLayerI.On("SubmitBatch", mock.Anything, mock.Anything, mock.Anything).Return(fmt.Errorf("submit batch")).Once()
 	assert.Error(t, manager.HandleSubmissionTrigger())
 
 	// try to submit again, we expect success
 	mockLayerI.On("SubmitBatch", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
-	manager.HandleSubmissionTrigger()
-	assert.EqualValues(t, manager.Store.Height(), manager.SyncTarget.Load())
+	err = manager.HandleSubmissionTrigger()
+	require.NoError(err)
+	assert.EqualValues(t, manager.Store.Height(), manager.LastSubmittedHeight)
 }
 
 // TestSubmissionByTime tests the submission trigger by time
@@ -136,7 +138,7 @@ func TestSubmissionByTime(t *testing.T) {
 	// Check initial height
 	initialHeight := uint64(0)
 	require.Equal(initialHeight, manager.Store.Height())
-	require.Zero(manager.SyncTarget.Load())
+	require.Zero(manager.LastSubmittedHeight)
 
 	var wg sync.WaitGroup
 	mCtx, cancel := context.WithTimeout(context.Background(), 2*submitTimeout)
@@ -155,7 +157,7 @@ func TestSubmissionByTime(t *testing.T) {
 	}()
 
 	wg.Wait() // Wait for all goroutines to finish
-	require.True(manager.SyncTarget.Load() > 0)
+	require.True(0 < manager.LastSubmittedHeight)
 }
 
 // TestSubmissionByBatchSize tests the submission trigger by batch size
@@ -211,14 +213,14 @@ func TestSubmissionByBatchSize(t *testing.T) {
 		// assert block produced but nothing submitted yet
 		assert.Greater(manager.Store.Height(), uint64(0))
 		assert.Greater(manager.AccumulatedBatchSize.Load(), uint64(0))
-		assert.Zero(manager.SyncTarget.Load())
+		assert.Zero(manager.LastSubmittedHeight)
 
 		wg.Wait() // Wait for all goroutines to finish
 
 		if c.expectedSubmission {
-			assert.Positive(manager.SyncTarget.Load())
+			assert.Positive(manager.LastSubmittedHeight)
 		} else {
-			assert.Zero(manager.SyncTarget.Load())
+			assert.Zero(manager.LastSubmittedHeight)
 		}
 	}
 }
