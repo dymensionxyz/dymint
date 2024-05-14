@@ -15,6 +15,8 @@ type P2PConfig struct {
 	GossipedBlocksCacheSize int `mapstructure:"p2p_gossiped_blocks_cache_size"`
 	//Time interval a node tries to bootstrap again, in case no nodes connected
 	BootstrapTime time.Duration `mapstructure:"p2p_bootstrap_time"`
+	//Time interval a node tries to bootstrap again, in case no nodes connected
+	Advertising bool `mapstructure:"p2p_advertising"`
 }
 
 // Validate P2PConfig

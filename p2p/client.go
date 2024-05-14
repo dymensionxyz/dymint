@@ -264,9 +264,11 @@ func (c *Client) peerDiscovery(ctx context.Context) error {
 		return err
 	}
 
-	err = c.advertise(ctx)
-	if err != nil {
-		return err
+	if c.conf.Advertising {
+		err = c.advertise(ctx)
+		if err != nil {
+			return err
+		}
 	}
 
 	err = c.findPeers(ctx)
