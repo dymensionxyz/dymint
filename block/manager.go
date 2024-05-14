@@ -11,8 +11,6 @@ import (
 	"github.com/dymensionxyz/dymint/gerr"
 	"github.com/dymensionxyz/dymint/store"
 
-	uevent "github.com/dymensionxyz/dymint/utils/event"
-
 	"code.cloudfoundry.org/go-diodes"
 
 	"github.com/dymensionxyz/dymint/p2p"
@@ -149,15 +147,21 @@ func (m *Manager) Start(ctx context.Context) error {
 		}
 	}
 
+	//Fullnode loop can start before syncing from DA
 	if !isSequencer {
-		go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewNewGossipedBlock, m.onNewGossipedBlock, m.logger)
+		m.startNonSequencerLoop(ctx)
 	}
 
+	// TODO: populate the accumulatedSize on startup
+	//Wait till DA is up and running
+	<-m.DAClient.Started()
+	//Start syncing from DA
 	err = m.syncBlockManager()
 	if err != nil {
 		return fmt.Errorf("sync block manager: %w", err)
 	}
 
+	//Aggregator producer loop is started only when finished syncing from DA
 	if isSequencer {
 		// TODO: populate the accumulatedSize on startup
 		//Wait till DA is up and running
@@ -173,7 +177,6 @@ func (m *Manager) Start(ctx context.Context) error {
 		go m.RetrieveLoop(ctx)
 		go m.SyncToTargetHeightLoop(ctx)
 	}
-
 	return nil
 }
 

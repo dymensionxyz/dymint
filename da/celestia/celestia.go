@@ -327,20 +327,7 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMet
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
-<<<<<<< HEAD
 	c.logger.Debug("Getting blob from DA.", "height", daMetaData.Height, "namespace", hex.EncodeToString(daMetaData.Namespace), "commitment", hex.EncodeToString(daMetaData.Commitment))
-=======
-	if c.rpc == nil {
-		return da.ResultRetrieveBatch{
-			BaseResult: da.BaseResult{
-				Code:    da.StatusError,
-				Message: "DA not available",
-				Error:   da.ErrRetrieval,
-			},
-		}
-	}
-	c.logger.Debug("Celestia DA getting blob", "height", daMetaData.Height, "namespace", hex.EncodeToString(daMetaData.Namespace), "commitment", hex.EncodeToString(daMetaData.Commitment))
->>>>>>> 0ffc865 (retry if celestia fails to start + start check)
 	var batches []*types.Batch
 	blob, err := c.rpc.Get(ctx, daMetaData.Height, daMetaData.Namespace, daMetaData.Commitment)
 	if err != nil {
