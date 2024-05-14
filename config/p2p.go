@@ -12,9 +12,9 @@ type P2PConfig struct {
 	//List of nodes used for P2P bootstrapping
 	BootstrapNodes string `mapstructure:"p2p_bootstrap_nodes"`
 	//Size of the Gossipsub router cache
-	GossipedBlocksCacheSize int `mapstructure:"gossiped_blocks_cache_size"`
+	GossipedBlocksCacheSize int `mapstructure:"p2p_gossiped_blocks_cache_size"`
 	//Time interval a node tries to bootstrap again, in case no nodes connected
-	BootstrapTime time.Duration `mapstructure:"bootstrap_time"`
+	BootstrapTime time.Duration `mapstructure:"p2p_bootstrap_time"`
 }
 
 // Validate P2PConfig

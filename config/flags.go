@@ -121,10 +121,13 @@ func BindDymintFlags(cmd *cobra.Command, v *viper.Viper) error {
 	if err := v.BindPFlag("p2p_listen_address", cmd.Flags().Lookup(FlagP2PListenAddress)); err != nil {
 		return err
 	}
-	if err := v.BindPFlag("gossiped_blocks_cache_size", cmd.Flags().Lookup(FlagP2PGossipCacheSize)); err != nil {
+	if err := v.BindPFlag("p2p_gossiped_blocks_cache_size", cmd.Flags().Lookup(FlagP2PGossipCacheSize)); err != nil {
 		return err
 	}
-	if err := v.BindPFlag("bootstrap_time", cmd.Flags().Lookup(FlagP2PBootstrapTime)); err != nil {
+	if err := v.BindPFlag("p2p_bootstrap_time", cmd.Flags().Lookup(FlagP2PBootstrapTime)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag("p2p_bootstrap_nodes", cmd.Flags().Lookup(FlagP2PBootstrapNodes)); err != nil {
 		return err
 	}
 
