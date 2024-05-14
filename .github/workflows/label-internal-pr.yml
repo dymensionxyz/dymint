@@ -1,0 +1,28 @@
+name: "Label PRs from Dymension internal"
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  label-prs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v3
+
+      - name: Get Pull Request Author Organization
+        id: pr
+        run: |
+          pr_author=$(jq -r .pull_request.user.login "$GITHUB_EVENT_PATH")
+          org=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" "https://api.github.com/users/$pr_author/orgs" | jq -r '.[].login')
+          echo "pr_author=${pr_author}" >> $GITHUB_ENV
+          echo "org=${org}" >> $GITHUB_ENV
+
+      - name: Add Label if Author is from Organization
+        if: contains(env.org, 'Dymensionxyz')
+        run: |
+          curl -s -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          -H "Accept: application/vnd.github.v3+json" \
+          https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/labels \
+          -d '{"labels":["dym-internal"]}'
+
