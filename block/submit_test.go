@@ -122,12 +122,11 @@ func TestSubmissionByTime(t *testing.T) {
 
 	// Init manager with empty blocks feature enabled
 	managerConfig := config.BlockManagerConfig{
-		BlockTime:               blockTime,
-		MaxIdleTime:             0,
-		MaxSupportedBatchSkew:   10,
-		BatchSubmitMaxTime:      submitTimeout,
-		BlockBatchMaxSizeBytes:  1000,
-		GossipedBlocksCacheSize: 50,
+		BlockTime:              blockTime,
+		MaxIdleTime:            0,
+		MaxSupportedBatchSkew:  10,
+		BatchSubmitMaxTime:     submitTimeout,
+		BlockBatchMaxSizeBytes: 1000,
 	}
 
 	manager, err := testutil.GetManager(managerConfig, nil, nil, 1, 1, 0, proxyApp, nil)

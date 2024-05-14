@@ -90,12 +90,6 @@ func TestNodeConfig_Validate(t *testing.T) {
 			},
 			wantErr: assert.Error,
 		}, {
-			name: "missing gossiped blocks cache size",
-			malleate: func(nc *config.NodeConfig) {
-				nc.BlockManagerConfig.GossipedBlocksCacheSize = 0
-			},
-			wantErr: assert.Error,
-		}, {
 			name: "empty settlement layer",
 			malleate: func(nc *config.NodeConfig) {
 				nc.SettlementLayer = ""
@@ -193,14 +187,13 @@ func TestNodeConfig_Validate(t *testing.T) {
 func fullNodeConfig() config.NodeConfig {
 	return config.NodeConfig{
 		BlockManagerConfig: config.BlockManagerConfig{
-			BlockTime:               1 * time.Second,
-			MaxIdleTime:             20 * time.Second,
-			MaxProofTime:            20 * time.Second,
-			BatchSubmitMaxTime:      20 * time.Second,
-			MaxSupportedBatchSkew:   10,
-			NamespaceID:             "test",
-			BlockBatchMaxSizeBytes:  1,
-			GossipedBlocksCacheSize: 1,
+			BlockTime:              1 * time.Second,
+			MaxIdleTime:            20 * time.Second,
+			MaxProofTime:           20 * time.Second,
+			BatchSubmitMaxTime:     20 * time.Second,
+			MaxSupportedBatchSkew:  10,
+			NamespaceID:            "test",
+			BlockBatchMaxSizeBytes: 1,
 		},
 		DALayer:         "celestia",
 		DAConfig:        "da-config",
@@ -228,6 +221,12 @@ func fullNodeConfig() config.NodeConfig {
 		DAGrpc: grpc.Config{
 			Host: "localhost",
 			Port: 9090,
+		},
+		P2P: config.P2PConfig{
+			GossipedBlocksCacheSize: 50,
+			BootstrapTime:           30 * time.Second,
+			ListenAddress:           config.DefaultListenAddress,
+			BootstrapNodes:          "",
 		},
 	}
 }

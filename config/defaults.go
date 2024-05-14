@@ -10,7 +10,7 @@ import (
 
 const (
 	// DefaultListenAddress is a default listen address for P2P client.
-	DefaultListenAddress = "/ip4/0.0.0.0/tcp/7676"
+	DefaultListenAddress = "/ip4/0.0.0.0/tcp/26656"
 
 	DefaultHomeDir = "sequencer_keys"
 	DefaultChainID = "dymint-testnet"
@@ -22,19 +22,14 @@ var DefaultNodeConfig = *DefaultConfig("", "")
 // DefaultConfig returns a default configuration for dymint node.
 func DefaultConfig(home, chainId string) *NodeConfig {
 	cfg := &NodeConfig{
-		P2P: P2PConfig{
-			ListenAddress: DefaultListenAddress,
-			Seeds:         "",
-		},
 		BlockManagerConfig: BlockManagerConfig{
-			BlockTime:               200 * time.Millisecond,
-			MaxIdleTime:             3600 * time.Second,
-			MaxProofTime:            100 * time.Second,
-			BatchSubmitMaxTime:      3600 * time.Second,
-			MaxSupportedBatchSkew:   20,
-			NamespaceID:             "0000000000000000ffff",
-			BlockBatchMaxSizeBytes:  500000,
-			GossipedBlocksCacheSize: 50,
+			BlockTime:              200 * time.Millisecond,
+			MaxIdleTime:            3600 * time.Second,
+			MaxProofTime:           100 * time.Second,
+			BatchSubmitMaxTime:     3600 * time.Second,
+			MaxSupportedBatchSkew:  20,
+			NamespaceID:            "0000000000000000ffff",
+			BlockBatchMaxSizeBytes: 500000,
 		},
 		DALayer:         "mock",
 		SettlementLayer: "mock",
@@ -42,7 +37,12 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 			Prometheus:           false,
 			PrometheusListenAddr: ":2112",
 		},
-		BootstrapTime: 30 * time.Second,
+		P2P: P2PConfig{
+			GossipedBlocksCacheSize: 50,
+			BootstrapTime:           30 * time.Second,
+			ListenAddress:           DefaultListenAddress,
+			BootstrapNodes:          "",
+		},
 	}
 
 	if home == "" {
