@@ -255,7 +255,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 			return d.ctx.Err()
 
 		case <-subscription.Cancelled():
-			return fmt.Errorf("subscription cancelled: %w", err)
+			return fmt.Errorf("subscription cancelled")
 
 		case <-subscription.Out():
 			d.logger.Debug("Batch accepted", "startHeight", batch.StartHeight, "endHeight", batch.EndHeight)

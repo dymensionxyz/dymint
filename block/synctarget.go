@@ -38,7 +38,7 @@ func (m *Manager) SyncTargetLoop(ctx context.Context) {
 			m.UpdateSyncParams(eventData.EndHeight)
 			m.SyncTargetDiode.Set(diodes.GenericDataType(&eventData.EndHeight))
 		case <-subscription.Cancelled():
-			m.logger.Info("syncTargetLoop subscription canceled")
+			m.logger.Error("syncTargetLoop subscription canceled")
 			return
 		}
 	}
