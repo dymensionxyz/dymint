@@ -91,11 +91,8 @@ da_config = "{{ .DAConfig }}"
 # p2p listen address in the format of /ip4/ip_address/tcp/tcp_port
 p2p_listen_address = "{{ .P2P.ListenAddress }}"
 
-# list of nodes used for P2P bootstrapping
+# list of nodes used for P2P bootstrapping in the format of /ip4/ip_address/tcp/port/p2p/ID
 p2p_bootstrap_nodes = "{{ .P2P.BootstrapNodes }}"
-
-# if not enabled, nodes will not advertised to other nodes to accept connections
-advertising = "{{ .P2P.AdvertisingEnabled }}"
 
 # max number of cached messages by gossipsub protocol
 gossiped_blocks_cache_size = {{ .P2P.GossipedBlocksCacheSize }}

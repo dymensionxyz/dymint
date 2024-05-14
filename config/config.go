@@ -25,7 +25,6 @@ type NodeConfig struct {
 	// parameters below are translated from existing config
 	RootDir       string
 	DBPath        string
-	P2P           P2PConfig
 	RPC           RPCConfig
 	MempoolConfig tmcfg.MempoolConfig
 
@@ -38,6 +37,8 @@ type NodeConfig struct {
 	Instrumentation    *InstrumentationConfig `mapstructure:"instrumentation"`
 	// Config params for mock grpc da
 	DAGrpc grpc.Config `mapstructure:",squash"`
+	//P2P Options
+	P2PConfig `mapstructure:",squash"`
 }
 
 // BlockManagerConfig consists of all parameters required by BlockManagerConfig
@@ -98,8 +99,8 @@ func (nc NodeConfig) Validate() error {
 		return fmt.Errorf("BlockManagerConfig: %w", err)
 	}
 
-	if err := nc.P2P.Validate(); err != nil {
-		return fmt.Errorf("BlockManagerConfig: %w", err)
+	if err := nc.P2PConfig.Validate(); err != nil {
+		return fmt.Errorf("P2PConfig: %w", err)
 	}
 
 	if err := nc.validateSettlementLayer(); err != nil {

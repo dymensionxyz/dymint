@@ -102,7 +102,6 @@ func NewClient(conf config.P2PConfig, privKey crypto.PrivKey, chainID string, lo
 func (c *Client) Start(ctx context.Context) error {
 	// create new, cancelable context
 	ctx, c.cancel = context.WithCancel(ctx)
-	c.logger.Debug("starting P2P client")
 	host, err := c.listen(ctx)
 	if err != nil {
 		return err

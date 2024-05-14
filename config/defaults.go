@@ -37,7 +37,7 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 			Prometheus:           false,
 			PrometheusListenAddr: ":2112",
 		},
-		P2P: P2PConfig{
+		P2PConfig: P2PConfig{
 			GossipedBlocksCacheSize: 50,
 			BootstrapTime:           30 * time.Second,
 			ListenAddress:           DefaultListenAddress,

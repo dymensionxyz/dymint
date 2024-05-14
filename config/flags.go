@@ -28,6 +28,13 @@ const (
 	FlagRollappID        = "dymint.settlement_config.rollapp_id"
 )
 
+const (
+	FlagP2PListenAddress   = "dymint.p2p_config.listen_address"
+	FlagP2PBootstrapNodes  = "dymint.p2p_config.bootstrap_nodes"
+	FlagP2PGossipCacheSize = "dymint.p2p_config.gossip_cache_size"
+	FlagP2PBootstrapTime   = "dymint.p2p_config.bootstrap_time"
+)
+
 // AddNodeFlags adds Dymint specific configuration options to cobra Command.
 //
 // This function is called in cosmos-sdk.
@@ -54,6 +61,12 @@ func AddNodeFlags(cmd *cobra.Command) {
 	cmd.Flags().String(FlagSLGasPrices, def.SettlementConfig.GasPrices, "Settlement Layer gas prices")
 	cmd.Flags().Uint64(FlagSLGasLimit, def.SettlementConfig.GasLimit, "Settlement Layer batch submit gas limit")
 	cmd.Flags().String(FlagRollappID, def.SettlementConfig.RollappID, "The chainID of the rollapp")
+
+	cmd.Flags().String(FlagP2PListenAddress, def.P2PConfig.ListenAddress, "P2P listen address")
+	cmd.Flags().String(FlagP2PBootstrapNodes, def.P2PConfig.BootstrapNodes, "P2P bootstrap nodes")
+	cmd.Flags().Duration(FlagP2PBootstrapTime, def.P2PConfig.BootstrapTime, "P2P bootstrap time")
+	cmd.Flags().Uint64(FlagP2PGossipCacheSize, uint64(def.P2PConfig.GossipedBlocksCacheSize), "P2P Gossiped blocks cache size")
+
 }
 
 func BindDymintFlags(cmd *cobra.Command, v *viper.Viper) error {
@@ -105,5 +118,15 @@ func BindDymintFlags(cmd *cobra.Command, v *viper.Viper) error {
 	if err := v.BindPFlag("rollapp_id", cmd.Flags().Lookup(FlagRollappID)); err != nil {
 		return err
 	}
+	if err := v.BindPFlag("p2p_listen_address", cmd.Flags().Lookup(FlagP2PListenAddress)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag("gossiped_blocks_cache_size", cmd.Flags().Lookup(FlagP2PGossipCacheSize)); err != nil {
+		return err
+	}
+	if err := v.BindPFlag("bootstrap_time", cmd.Flags().Lookup(FlagP2PBootstrapTime)); err != nil {
+		return err
+	}
+
 	return nil
 }

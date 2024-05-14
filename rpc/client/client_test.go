@@ -102,9 +102,8 @@ func TestGenesisChunked(t *testing.T) {
 	config := config.NodeConfig{
 		RootDir: "",
 		DBPath:  "",
-		P2P: config.P2PConfig{
+		P2PConfig: config.P2PConfig{
 			ListenAddress:           config.DefaultListenAddress,
-			AdvertisingEnabled:      true,
 			BootstrapNodes:          "",
 			GossipedBlocksCacheSize: 50,
 			BootstrapTime:           30 * time.Second,
@@ -704,9 +703,8 @@ func TestValidatorSetHandling(t *testing.T) {
 	nodeConfig := config.NodeConfig{
 		DALayer:         "mock",
 		SettlementLayer: "mock",
-		P2P: config.P2PConfig{
+		P2PConfig: config.P2PConfig{
 			ListenAddress:           config.DefaultListenAddress,
-			AdvertisingEnabled:      true,
 			BootstrapNodes:          "",
 			GossipedBlocksCacheSize: 50,
 			BootstrapTime:           30 * time.Second,
@@ -862,9 +860,8 @@ func getRPCInternal(t *testing.T, sequencer bool) (*tmmocks.MockApplication, *cl
 	config := config.NodeConfig{
 		RootDir: "",
 		DBPath:  "",
-		P2P: config.P2PConfig{
+		P2PConfig: config.P2PConfig{
 			ListenAddress:           config.DefaultListenAddress,
-			AdvertisingEnabled:      true,
 			BootstrapNodes:          "",
 			GossipedBlocksCacheSize: 50,
 			BootstrapTime:           30 * time.Second,
@@ -974,9 +971,8 @@ func TestMempool2Nodes(t *testing.T) {
 			ProposerPubKey: hex.EncodeToString(proposerPK),
 			RollappID:      rollappID,
 		},
-		P2P: config.P2PConfig{
+		P2PConfig: config.P2PConfig{
 			ListenAddress:           "/ip4/127.0.0.1/tcp/9001",
-			AdvertisingEnabled:      true,
 			BootstrapNodes:          "",
 			GossipedBlocksCacheSize: 50,
 			BootstrapTime:           30 * time.Second,
@@ -1005,10 +1001,9 @@ func TestMempool2Nodes(t *testing.T) {
 			BlockBatchMaxSizeBytes: 1000,
 			MaxSupportedBatchSkew:  10,
 		},
-		P2P: config.P2PConfig{
+		P2PConfig: config.P2PConfig{
 			ListenAddress:           "/ip4/127.0.0.1/tcp/9002",
 			BootstrapNodes:          "/ip4/127.0.0.1/tcp/9001/p2p/" + id1.String(),
-			AdvertisingEnabled:      true,
 			BootstrapTime:           30 * time.Second,
 			GossipedBlocksCacheSize: 50,
 		},

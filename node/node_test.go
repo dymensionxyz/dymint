@@ -64,10 +64,9 @@ func TestMempoolDirectly(t *testing.T) {
 	nodeConfig := config.NodeConfig{
 		RootDir: "",
 		DBPath:  "",
-		P2P: config.P2PConfig{
+		P2PConfig: config.P2PConfig{
 			ListenAddress:           config.DefaultListenAddress,
 			GossipedBlocksCacheSize: 50,
-			AdvertisingEnabled:      true,
 			BootstrapTime:           30 * time.Second,
 			BootstrapNodes:          "",
 		},
