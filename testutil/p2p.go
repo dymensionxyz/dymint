@@ -111,7 +111,6 @@ func StartTestNetwork(ctx context.Context, t *testing.T, n int, conf map[int]Hos
 			BootstrapNodes:          seeds[i],
 			GossipedBlocksCacheSize: 50,
 			BootstrapTime:           30 * time.Second,
-			AdvertisingEnabled:      true,
 			ListenAddress:           config.DefaultListenAddress,
 		},
 			mnet.Hosts()[i].Peerstore().PrivKey(mnet.Hosts()[i].ID()),

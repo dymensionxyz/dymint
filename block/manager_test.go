@@ -56,7 +56,6 @@ func TestInitialState(t *testing.T) {
 		ListenAddress:           config.DefaultListenAddress,
 		GossipedBlocksCacheSize: 50,
 		BootstrapTime:           30 * time.Second,
-		AdvertisingEnabled:      true,
 	}, privKey, "TestChain", pubsubServer, logger)
 	assert.NoError(err)
 	assert.NotNil(p2pClient)

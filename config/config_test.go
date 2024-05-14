@@ -222,7 +222,7 @@ func fullNodeConfig() config.NodeConfig {
 			Host: "localhost",
 			Port: 9090,
 		},
-		P2P: config.P2PConfig{
+		P2PConfig: config.P2PConfig{
 			GossipedBlocksCacheSize: 50,
 			BootstrapTime:           30 * time.Second,
 			ListenAddress:           config.DefaultListenAddress,
