@@ -86,11 +86,22 @@ namespace_id = "{{ .BlockManagerConfig.NamespaceID }}"
 da_config = "{{ .DAConfig }}"
 
 
+### p2p config ###
+
+# p2p listen address in the format of /ip4/ip_address/tcp/tcp_port
+p2p_listen_address = "{{ .P2P.ListenAddress }}"
+
+# list of nodes used for P2P bootstrapping
+p2p_bootstrap_nodes = "{{ .P2P.BootstrapNodes }}"
+
+# if not enabled, nodes will not advertised to other nodes to accept connections
+advertising = "{{ .P2P.AdvertisingEnabled }}"
+
 # max number of cached messages by gossipsub protocol
-gossiped_blocks_cache_size = {{ .BlockManagerConfig.GossipedBlocksCacheSize }}
+gossiped_blocks_cache_size = {{ .P2P.GossipedBlocksCacheSize }}
 
 # time interval to check if no p2p nodes are connected to bootstrap again
-bootstrap_time = "{{ .BootstrapTime }}"
+bootstrap_time = "{{ .P2P.BootstrapTime }}"
 
 #celestia config example:
 # da_config = "{\"base_url\":\"http:\/\/127.0.0.1:26658\",\"timeout\":5000000000,\"gas_prices\":0.1,\"auth_token\":\"TOKEN\",\"backoff\":{\"initial_delay\":6000000000,\"max_delay\":6000000000,\"growth_factor\":2},\"retry_attempts\":4,\"retry_delay\":3000000000}"

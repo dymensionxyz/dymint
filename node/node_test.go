@@ -62,9 +62,15 @@ func TestMempoolDirectly(t *testing.T) {
 	rollappID := "rollapp_1234-1"
 
 	nodeConfig := config.NodeConfig{
-		RootDir:       "",
-		DBPath:        "",
-		P2P:           config.P2PConfig{},
+		RootDir: "",
+		DBPath:  "",
+		P2P: config.P2PConfig{
+			ListenAddress:           config.DefaultListenAddress,
+			GossipedBlocksCacheSize: 50,
+			AdvertisingEnabled:      true,
+			BootstrapTime:           30 * time.Second,
+			BootstrapNodes:          "",
+		},
 		RPC:           config.RPCConfig{},
 		MempoolConfig: *tmcfg.DefaultMempoolConfig(),
 		BlockManagerConfig: config.BlockManagerConfig{

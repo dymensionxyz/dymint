@@ -313,6 +313,12 @@ func getRPC(t *testing.T) (*tmmocks.MockApplication, *client.Client) {
 			ProposerPubKey: hex.EncodeToString(proposerPubKeyBytes),
 			RollappID:      rollappID,
 		},
+		P2P: config.P2PConfig{
+			ListenAddress:           config.DefaultListenAddress,
+			GossipedBlocksCacheSize: 50,
+			AdvertisingEnabled:      true,
+			BootstrapTime:           30 * time.Second,
+		},
 	}
 	node, err := node.NewNode(
 		context.Background(),

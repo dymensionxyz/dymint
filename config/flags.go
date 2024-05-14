@@ -42,6 +42,7 @@ func AddNodeFlags(cmd *cobra.Command) {
 	cmd.Flags().Duration(FlagBlockTime, def.BlockTime, "block time (for aggregator mode)")
 	cmd.Flags().Duration(FlagMaxIdleTime, def.MaxIdleTime, "max time for empty blocks (for aggregator mode)")
 	cmd.Flags().Duration(FlagBatchSubmitMaxTime, def.BatchSubmitMaxTime, "max time for batch submit (for aggregator mode)")
+	cmd.Flags().String(FlagNamespaceID, def.NamespaceID, "namespace identifies (8 bytes in hex)")
 	cmd.Flags().Uint64(FlagBlockBatchMaxSizeBytes, def.BlockBatchMaxSizeBytes, "block batch size in bytes")
 
 	cmd.Flags().String(FlagSettlementLayer, def.SettlementLayer, "Settlement Layer Client name")
