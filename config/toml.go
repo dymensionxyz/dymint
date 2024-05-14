@@ -106,6 +106,9 @@ node_address = "{{ .SettlementConfig.NodeAddress }}"
 gas_limit = {{ .SettlementConfig.GasLimit }}
 gas_prices = "{{ .SettlementConfig.GasPrices }}"
 gas_fees = "{{ .SettlementConfig.GasFees }}"
+max_delay = "{{ .SettlementConfig.MaxDelay }}"
+min_delay = "{{ .SettlementConfig.MinDelay }}"
+retry_attempts = "{{ .SettlementConfig.RetryAttempts }}"
 
 #keyring and key name to be used for sequencer 
 keyring_backend = "{{ .SettlementConfig.KeyringBackend }}"
