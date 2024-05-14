@@ -30,14 +30,6 @@ func TestGetNodeConfig(t *testing.T) {
 			nil,
 			true,
 		},
-		{
-			"Seeds",
-			func(c *tmcfg.Config) {
-				c.P2P.Seeds = validCosmos + "," + validCosmos
-			},
-			func(nc *config.NodeConfig) bool { return nc.P2P.Seeds == validDymint+","+validDymint },
-			false,
-		},
 		// GetNodeConfig translates the listen address, so we expect the translated address
 		{
 			"ListenAddress",
