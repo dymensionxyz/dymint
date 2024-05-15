@@ -8,7 +8,7 @@ import (
 	tmtypes "github.com/tendermint/tendermint/types"
 )
 
-func ValidateProposedTransition(state State, block *Block, commit *Commit, proposer *Sequencer) error {
+func ValidateProposedTransition(state *State, block *Block, commit *Commit, proposer *Sequencer) error {
 	if err := block.ValidateWithState(state); err != nil {
 		return fmt.Errorf("block: %w", err)
 	}
@@ -39,7 +39,7 @@ func (b *Block) ValidateBasic() error {
 	return nil
 }
 
-func (b *Block) ValidateWithState(state State) error {
+func (b *Block) ValidateWithState(state *State) error {
 	err := b.ValidateBasic()
 	if err != nil {
 		return err
@@ -48,12 +48,11 @@ func (b *Block) ValidateWithState(state State) error {
 		b.Header.Version.Block != state.Version.Consensus.Block {
 		return errors.New("b version mismatch")
 	}
-	if state.LastBlockHeight <= 0 && b.Header.Height != uint64(state.InitialHeight) {
-		return errors.New("initial b height mismatch")
+
+	if b.Header.Height != state.NextHeight() {
+		return errors.New("height mismatch")
 	}
-	if state.LastBlockHeight > 0 && b.Header.Height != uint64(state.LastStoreHeight)+1 {
-		return errors.New("b height mismatch")
-	}
+
 	if !bytes.Equal(b.Header.AppHash[:], state.AppHash[:]) {
 		return errors.New("AppHash mismatch")
 	}

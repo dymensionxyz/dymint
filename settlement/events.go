@@ -24,9 +24,7 @@ const (
 
 // Convenience objects
 
-var (
-	EventNewBatchAcceptedList = map[string][]string{EventTypeKey: {EventNewBatchAccepted}}
-)
+var EventNewBatchAcceptedList = map[string][]string{EventTypeKey: {EventNewBatchAccepted}}
 
 // Data
 

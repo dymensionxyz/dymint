@@ -206,7 +206,7 @@ func (txmp *TxMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo memp
 		if !txmp.cache.Push(tx) {
 			// If the cached transaction is also in the pool, record its sender.
 			if elt, ok := txmp.txByKey[txKey]; ok {
-				w := elt.Value.(*WrappedTx)
+				w, _ := elt.Value.(*WrappedTx)
 				w.SetPeer(txInfo.SenderID)
 			}
 			return 0, mempool.ErrTxInCache

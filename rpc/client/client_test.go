@@ -1,4 +1,4 @@
-package client
+package client_test
 
 import (
 	"context"
@@ -31,7 +31,9 @@ import (
 	"github.com/dymensionxyz/dymint/mempool"
 	tmmocks "github.com/dymensionxyz/dymint/mocks/github.com/tendermint/tendermint/abci/types"
 	"github.com/dymensionxyz/dymint/node"
+	"github.com/dymensionxyz/dymint/rpc/client"
 	"github.com/dymensionxyz/dymint/settlement"
+	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
 )
 
@@ -47,10 +49,10 @@ func TestConnectionGetters(t *testing.T) {
 	assert := assert.New(t)
 
 	_, rpc := getRPC(t)
-	assert.NotNil(rpc.consensus())
-	assert.NotNil(rpc.mempool())
-	assert.NotNil(rpc.snapshot())
-	assert.NotNil(rpc.query())
+	assert.NotNil(rpc.Consensus())
+	assert.NotNil(rpc.Mempool())
+	assert.NotNil(rpc.Snapshot())
+	assert.NotNil(rpc.Query())
 }
 
 func TestInfo(t *testing.T) {
@@ -129,14 +131,14 @@ func TestGenesisChunked(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	rpc := NewClient(n)
+	rpc := client.NewClient(n)
 
 	var expectedID uint = 2
 	gc, err := rpc.GenesisChunked(context.Background(), expectedID)
 	assert.Error(err)
 	assert.Nil(gc)
 
-	err = rpc.node.Start()
+	err = n.Start()
 	require.NoError(t, err)
 
 	expectedID = 0
@@ -156,11 +158,11 @@ func TestBroadcastTxAsync(t *testing.T) {
 
 	expectedTx := []byte("tx data")
 
-	mockApp, rpc := getRPC(t)
+	mockApp, rpc, node := getRPCAndNode(t)
 	mockApp.On("CheckTx", abci.RequestCheckTx{Tx: expectedTx}).Return(abci.ResponseCheckTx{})
 	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 
-	err := rpc.node.Start()
+	err := node.Start()
 	require.NoError(t, err)
 
 	res, err := rpc.BroadcastTxAsync(context.Background(), expectedTx)
@@ -173,7 +175,7 @@ func TestBroadcastTxAsync(t *testing.T) {
 	assert.NotEmpty(res.Hash)
 	mockApp.AssertExpectations(t)
 
-	err = rpc.node.Stop()
+	err = node.Stop()
 	require.NoError(t, err)
 }
 
@@ -192,10 +194,10 @@ func TestBroadcastTxSync(t *testing.T) {
 		Codespace: "space",
 	}
 
-	mockApp, rpc := getRPC(t)
+	mockApp, rpc, node := getRPCAndNode(t)
 	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 
-	err := rpc.node.Start()
+	err := node.Start()
 	require.NoError(t, err)
 
 	mockApp.On("CheckTx", abci.RequestCheckTx{Tx: expectedTx}).Return(expectedResponse)
@@ -210,7 +212,7 @@ func TestBroadcastTxSync(t *testing.T) {
 	assert.NotEmpty(res.Hash)
 	mockApp.AssertExpectations(t)
 
-	err = rpc.node.Stop()
+	err = node.Stop()
 	require.NoError(t, err)
 }
 
@@ -240,18 +242,18 @@ func TestBroadcastTxCommit(t *testing.T) {
 		Codespace: "space",
 	}
 
-	mockApp, rpc := getRPC(t)
+	mockApp, rpc, node := getRPCAndNode(t)
 	mockApp.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
 	mockApp.BeginBlock(abci.RequestBeginBlock{})
 	mockApp.On("CheckTx", abci.RequestCheckTx{Tx: expectedTx}).Return(expectedCheckResp)
 	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 	// in order to broadcast, the node must be started
-	err := rpc.node.Start()
+	err := node.Start()
 	require.NoError(err)
 
 	go func() {
 		time.Sleep(mockTxProcessingTime)
-		err := rpc.node.EventBus().PublishEventTx(tmtypes.EventDataTx{TxResult: abci.TxResult{
+		err := node.EventBus().PublishEventTx(tmtypes.EventDataTx{TxResult: abci.TxResult{
 			Height: 1,
 			Index:  0,
 			Tx:     expectedTx,
@@ -267,7 +269,7 @@ func TestBroadcastTxCommit(t *testing.T) {
 	assert.Equal(expectedDeliverResp, res.DeliverTx)
 	mockApp.AssertExpectations(t)
 
-	err = rpc.node.Stop()
+	err = node.Stop()
 	require.NoError(err)
 }
 
@@ -275,47 +277,47 @@ func TestGetBlock(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	mockApp, rpc := getRPC(t)
+	mockApp, rpc, node := getRPCAndNode(t)
 	mockApp.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
 	mockApp.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{})
 	mockApp.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{})
 	mockApp.On("Commit", mock.Anything).Return(abci.ResponseCommit{})
 	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 
-	err := rpc.node.Start()
+	err := node.Start()
 	require.NoError(err)
 
 	block := getRandomBlock(1, 10)
-	_, err = rpc.node.Store.SaveBlock(block, &types.Commit{}, nil)
-	rpc.node.Store.SetHeight(block.Header.Height)
+	_, err = node.Store.SaveBlock(block, &types.Commit{}, nil)
+	node.BlockManager.State.SetHeight(block.Header.Height)
 	require.NoError(err)
 
 	blockResp, err := rpc.Block(context.Background(), nil)
 	require.NoError(err)
 	require.NotNil(blockResp)
-
 	assert.NotNil(blockResp.Block)
 
-	err = rpc.node.Stop()
+	err = node.Stop()
 	require.NoError(err)
 }
 
 func TestGetCommit(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
-	mockApp, rpc := getRPC(t)
+	mockApp, rpc, node := getRPCAndNode(t)
+
 	mockApp.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
 	mockApp.On("Commit", mock.Anything).Return(abci.ResponseCommit{})
 	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 
 	blocks := []*types.Block{getRandomBlock(1, 5), getRandomBlock(2, 6), getRandomBlock(3, 8), getRandomBlock(4, 10)}
 
-	err := rpc.node.Start()
+	err := node.Start()
 	require.NoError(err)
 
 	for _, b := range blocks {
-		_, err = rpc.node.Store.SaveBlock(b, &types.Commit{Height: b.Header.Height}, nil)
-		rpc.node.Store.SetHeight(b.Header.Height)
+		_, err = node.Store.SaveBlock(b, &types.Commit{Height: b.Header.Height}, nil)
+		node.BlockManager.State.SetHeight(b.Header.Height)
 		require.NoError(err)
 	}
 	t.Run("Fetch all commits", func(t *testing.T) {
@@ -335,27 +337,28 @@ func TestGetCommit(t *testing.T) {
 		assert.Equal(blocks[3].Header.Height, uint64(commit.Height))
 	})
 
-	err = rpc.node.Stop()
+	err = node.Stop()
 	require.NoError(err)
 }
 
 func TestBlockSearch(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
-	mockApp, rpc := getRPC(t)
+	mockApp, rpc, node := getRPCAndNode(t)
+
 	mockApp.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
 	mockApp.On("Commit", mock.Anything).Return(abci.ResponseCommit{})
 
 	heights := []int64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
 	for _, h := range heights {
 		block := getRandomBlock(uint64(h), 5)
-		_, err := rpc.node.Store.SaveBlock(block, &types.Commit{
+		_, err := node.Store.SaveBlock(block, &types.Commit{
 			Height:     uint64(h),
 			HeaderHash: block.Header.Hash(),
 		}, nil)
 		require.NoError(err)
 	}
-	indexBlocks(t, rpc, heights)
+	indexBlocks(t, node, heights)
 
 	tests := []struct {
 		query      string
@@ -403,7 +406,7 @@ func TestGetBlockByHash(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	mockApp, rpc := getRPC(t)
+	mockApp, rpc, node := getRPCAndNode(t)
 	mockApp.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
 	mockApp.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{})
 	mockApp.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{})
@@ -411,11 +414,11 @@ func TestGetBlockByHash(t *testing.T) {
 	mockApp.On("Info", mock.Anything).Return(abci.ResponseInfo{LastBlockHeight: 0, LastBlockAppHash: []byte{0}})
 	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 
-	err := rpc.node.Start()
+	err := node.Start()
 	require.NoError(err)
 
 	block := getRandomBlock(1, 10)
-	_, err = rpc.node.Store.SaveBlock(block, &types.Commit{}, nil)
+	_, err = node.Store.SaveBlock(block, &types.Commit{}, nil)
 	require.NoError(err)
 	abciBlock, err := types.ToABCIBlock(block)
 	require.NoError(err)
@@ -434,7 +437,7 @@ func TestGetBlockByHash(t *testing.T) {
 
 	assert.NotNil(blockResp.Block)
 
-	err = rpc.node.Stop()
+	err = node.Stop()
 	require.NoError(err)
 }
 
@@ -442,7 +445,7 @@ func TestTx(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	mockApp, rpc := getRPCAggregator(t)
+	mockApp, rpc, node := getRPCAndNodeSequencer(t)
 
 	require.NotNil(rpc)
 	mockApp.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
@@ -453,7 +456,7 @@ func TestTx(t *testing.T) {
 	mockApp.On("Info", mock.Anything).Return(abci.ResponseInfo{LastBlockHeight: 0, LastBlockAppHash: []byte{0}})
 	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 
-	err := rpc.node.Start()
+	err := node.Start()
 	require.NoError(err)
 
 	tx1 := tmtypes.Tx("tx1")
@@ -496,12 +499,12 @@ func TestUnconfirmedTxs(t *testing.T) {
 			assert := assert.New(t)
 			require := require.New(t)
 
-			mockApp, rpc := getRPC(t)
+			mockApp, rpc, node := getRPCAndNode(t)
 			mockApp.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
 			mockApp.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{})
 			mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 
-			err := rpc.node.Start()
+			err := node.Start()
 			require.NoError(err)
 
 			for _, tx := range c.txs {
@@ -537,11 +540,11 @@ func TestUnconfirmedTxsLimit(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	mockApp, rpc := getRPC(t)
+	mockApp, rpc, node := getRPCAndNode(t)
 	mockApp.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
 	mockApp.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{})
 
-	err := rpc.node.Start()
+	err := node.Start()
 	require.NoError(err)
 
 	tx1 := tmtypes.Tx("tx1")
@@ -576,29 +579,29 @@ func TestConsensusState(t *testing.T) {
 
 	resp1, err := rpc.ConsensusState(context.Background())
 	assert.Nil(resp1)
-	assert.ErrorIs(err, ErrConsensusStateNotAvailable)
+	assert.ErrorIs(err, client.ErrConsensusStateNotAvailable)
 
 	resp2, err := rpc.DumpConsensusState(context.Background())
 	assert.Nil(resp2)
-	assert.ErrorIs(err, ErrConsensusStateNotAvailable)
+	assert.ErrorIs(err, client.ErrConsensusStateNotAvailable)
 }
 
 func TestBlockchainInfo(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
-	mockApp, rpc := getRPC(t)
+	mockApp, rpc, node := getRPCAndNode(t)
 	mockApp.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
 	mockApp.On("Commit", mock.Anything).Return(abci.ResponseCommit{})
 
 	heights := []int64{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
 	for _, h := range heights {
 		block := getRandomBlock(uint64(h), 5)
-		_, err := rpc.node.Store.SaveBlock(block, &types.Commit{
+		_, err := node.Store.SaveBlock(block, &types.Commit{
 			Height:     uint64(h),
 			HeaderHash: block.Header.Hash(),
 		}, nil)
-		rpc.node.Store.SetHeight(block.Header.Height)
 		require.NoError(err)
+		node.BlockManager.State.SetHeight(block.Header.Height)
 	}
 
 	tests := []struct {
@@ -612,19 +615,19 @@ func TestBlockchainInfo(t *testing.T) {
 			desc: "min = 1 and max = 5",
 			min:  1,
 			max:  5,
-			exp:  []*tmtypes.BlockMeta{getBlockMeta(rpc, 1), getBlockMeta(rpc, 5)},
+			exp:  []*tmtypes.BlockMeta{getBlockMeta(node, 1), getBlockMeta(node, 5)},
 			err:  false,
 		}, {
 			desc: "min height is 0",
 			min:  0,
 			max:  10,
-			exp:  []*tmtypes.BlockMeta{getBlockMeta(rpc, 1), getBlockMeta(rpc, 10)},
+			exp:  []*tmtypes.BlockMeta{getBlockMeta(node, 1), getBlockMeta(node, 10)},
 			err:  false,
 		}, {
 			desc: "max height is out of range",
 			min:  0,
 			max:  15,
-			exp:  []*tmtypes.BlockMeta{getBlockMeta(rpc, 1), getBlockMeta(rpc, 10)},
+			exp:  []*tmtypes.BlockMeta{getBlockMeta(node, 1), getBlockMeta(node, 10)},
 			err:  false,
 		}, {
 			desc: "negative min height",
@@ -724,7 +727,7 @@ func TestValidatorSetHandling(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(node)
 
-	rpc := NewClient(node)
+	rpc := client.NewClient(node)
 	require.NotNil(rpc)
 
 	err = node.Start()
@@ -756,7 +759,7 @@ func getRandomBlock(height uint64, nTxs int) *types.Block {
 	block := &types.Block{
 		Header: types.Header{
 			Height:          height,
-			Version:         types.Version{Block: types.InitStateVersion.Consensus.Block},
+			Version:         types.Version{Block: testutil.BlockVersion},
 			ProposerAddress: getRandomBytes(20),
 		},
 		Data: types.Data{
@@ -799,8 +802,8 @@ func getRandomBytes(n int) []byte {
 	return data
 }
 
-func getBlockMeta(rpc *Client, n int64) *tmtypes.BlockMeta {
-	b, err := rpc.node.Store.LoadBlock(uint64(n))
+func getBlockMeta(node *node.Node, n int64) *tmtypes.BlockMeta {
+	b, err := node.Store.LoadBlock(uint64(n))
 	if err != nil {
 		return nil
 	}
@@ -812,17 +815,22 @@ func getBlockMeta(rpc *Client, n int64) *tmtypes.BlockMeta {
 	return bmeta
 }
 
-// getRPC returns a mock application and a new RPC client (non-aggregator mode)
-func getRPC(t *testing.T) (*tmmocks.MockApplication, *Client) {
+// getRPC returns a mock application and a new RPC client (non-sequencer mode)
+func getRPC(t *testing.T) (*tmmocks.MockApplication, *client.Client) {
+	app, rpc, _ := getRPCAndNode(t)
+	return app, rpc
+}
+
+func getRPCAndNode(t *testing.T) (*tmmocks.MockApplication, *client.Client, *node.Node) {
 	return getRPCInternal(t, false)
 }
 
-func getRPCAggregator(t *testing.T) (*tmmocks.MockApplication, *Client) {
+func getRPCAndNodeSequencer(t *testing.T) (*tmmocks.MockApplication, *client.Client, *node.Node) {
 	return getRPCInternal(t, true)
 }
 
-// getRPC returns a mock application and a new RPC client (non-aggregator mode)
-func getRPCInternal(t *testing.T, aggregator bool) (*tmmocks.MockApplication, *Client) {
+// getRPC returns a mock application and a new RPC client (non-sequencer mode)
+func getRPCInternal(t *testing.T, sequencer bool) (*tmmocks.MockApplication, *client.Client, *node.Node) {
 	t.Helper()
 	require := require.New(t)
 	app := &tmmocks.MockApplication{}
@@ -836,7 +844,7 @@ func getRPCInternal(t *testing.T, aggregator bool) (*tmmocks.MockApplication, *C
 	proposerKey := hex.EncodeToString(pubkeyBytes)
 	require.NoError(err)
 
-	if aggregator {
+	if sequencer {
 		localKey = slSeqKey
 	}
 
@@ -868,7 +876,7 @@ func getRPCInternal(t *testing.T, aggregator bool) (*tmmocks.MockApplication, *C
 		context.Background(),
 		config,
 		key,
-		localKey, // this is where aggregator mode is set. if same key as in settlement.Config, it's aggregator
+		localKey, // this is where sequencer mode is set. if same key as in settlement.Config, it's sequencer
 		proxy.NewLocalClientCreator(app),
 		&tmtypes.GenesisDoc{ChainID: rollappID},
 		log.TestingLogger(),
@@ -877,18 +885,18 @@ func getRPCInternal(t *testing.T, aggregator bool) (*tmmocks.MockApplication, *C
 	require.NoError(err)
 	require.NotNil(node)
 
-	rpc := NewClient(node)
+	rpc := client.NewClient(node)
 	require.NotNil(rpc)
 
-	return app, rpc
+	return app, rpc, node
 }
 
 // From state/indexer/block/kv/kv_test
-func indexBlocks(t *testing.T, rpc *Client, heights []int64) {
+func indexBlocks(t *testing.T, node *node.Node, heights []int64) {
 	t.Helper()
 
 	for _, h := range heights {
-		require.NoError(t, rpc.node.BlockIndexer.Index(tmtypes.EventDataNewBlockHeader{
+		require.NoError(t, node.BlockIndexer.Index(tmtypes.EventDataNewBlockHeader{
 			Header: tmtypes.Header{Height: h},
 			ResultBeginBlock: abci.ResponseBeginBlock{
 				Events: []abci.Event{
@@ -1004,7 +1012,7 @@ func TestMempool2Nodes(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	local := NewClient(node1)
+	local := client.NewClient(node1)
 	require.NotNil(local)
 
 	// broadcast the bad Tx, this should not be propagated or added to the local mempool

@@ -3,7 +3,6 @@ package types_test
 import (
 	"crypto/rand"
 	"testing"
-	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -54,7 +53,7 @@ func TestBlockSerializationRoundTrip(t *testing.T) {
 				AppHash:         h[4],
 				LastResultsHash: h[5],
 				ProposerAddress: []byte{4, 3, 2, 1},
-				AggregatorsHash: h[6],
+				SequencersHash:  h[6],
 			},
 			Data: types.Data{
 				Txs:                    nil,
@@ -98,7 +97,6 @@ func TestStateRoundTrip(t *testing.T) {
 		{
 			"with max bytes",
 			types.State{
-				LastValidators: valSet,
 				Validators:     valSet,
 				NextValidators: valSet,
 				ConsensusParams: tmproto.ConsensusParams{
@@ -120,21 +118,10 @@ func TestStateRoundTrip(t *testing.T) {
 					},
 					Software: "dymint",
 				},
-				ChainID:         "testchain",
-				InitialHeight:   987,
-				LastBlockHeight: 987654321,
-				LastStoreHeight: 987654321,
-				LastBlockID: tmtypes.BlockID{
-					Hash: nil,
-					PartSetHeader: tmtypes.PartSetHeader{
-						Total: 0,
-						Hash:  nil,
-					},
-				},
-				LastBlockTime:               time.Date(2022, 6, 6, 12, 12, 33, 44, time.UTC),
+				ChainID:                     "testchain",
+				InitialHeight:               987,
 				NextValidators:              valSet,
 				Validators:                  valSet,
-				LastValidators:              valSet,
 				LastHeightValidatorsChanged: 8272,
 				ConsensusParams: tmproto.ConsensusParams{
 					Block: tmproto.BlockParams{
@@ -165,6 +152,11 @@ func TestStateRoundTrip(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			require := require.New(t)
 			assert := assert.New(t)
+
+			if c.state.InitialHeight != 0 {
+				c.state.LastBlockHeight.Store(986321)
+			}
+
 			pState, err := c.state.ToProto()
 			require.NoError(err)
 			require.NotNil(pState)

@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/dymensionxyz/dymint/gerr"
-
 	"github.com/dymensionxyz/dymint/da"
+	"github.com/dymensionxyz/dymint/gerr"
 	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/types"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
@@ -46,11 +45,9 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 		}
 
 		/*
-				Note: since we dont explicitly coordinate changes to the accumulated size with actual batch creation
-				we don't have a guarantee that the accumulated size is the same as the actual batch size that will be made.
-				See https://github.com/dymensionxyz/dymint/issues/828
-				Until that is fixed, it's technically possibly to undercount, by having a some blocks be produced in between
-			    setting the counter to 0, and actually producing the batch.
+			Note: since we dont explicitly coordinate changes to the accumulated size with actual batch creation
+			we don't have a guarantee that the accumulated size is the same as the actual batch size that will be made.
+			But the batch creation step will also check the size is OK, so it's not a problem.
 		*/
 		m.AccumulatedBatchSize.Store(0)
 
@@ -115,7 +112,7 @@ func (m *Manager) HandleSubmissionTrigger() error {
 	// Load current sync target and height to determine if new blocks are available for submission.
 
 	startHeight := m.SyncTarget.Load() + 1
-	endHeightInclusive := m.Store.Height()
+	endHeightInclusive := m.State.Height()
 
 	if endHeightInclusive < startHeight {
 		return nil // No new blocks have been produced

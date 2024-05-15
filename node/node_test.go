@@ -32,7 +32,7 @@ func TestStartup(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	// TODO(omritoptix): Test with and without aggregator mode.
+	// TODO(omritoptix): Test with and without sequencer mode.
 	node, err := testutil.CreateNode(false, nil)
 	require.NoError(err)
 	require.NotNil(node)

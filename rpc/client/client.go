@@ -65,7 +65,7 @@ func NewClient(node *node.Node) *Client {
 
 // ABCIInfo returns basic information about application state.
 func (c *Client) ABCIInfo(ctx context.Context) (*ctypes.ResultABCIInfo, error) {
-	resInfo, err := c.query().InfoSync(proxy.RequestInfo)
+	resInfo, err := c.Query().InfoSync(proxy.RequestInfo)
 	if err != nil {
 		return nil, err
 	}
@@ -79,7 +79,7 @@ func (c *Client) ABCIQuery(ctx context.Context, path string, data tmbytes.HexByt
 
 // ABCIQueryWithOptions queries for data from application.
 func (c *Client) ABCIQueryWithOptions(ctx context.Context, path string, data tmbytes.HexBytes, opts rpcclient.ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
-	resQuery, err := c.query().QuerySync(abci.RequestQuery{
+	resQuery, err := c.Query().QuerySync(abci.RequestQuery{
 		Path:   path,
 		Data:   data,
 		Height: opts.Height,
@@ -154,7 +154,7 @@ func (c *Client) BroadcastTxCommit(ctx context.Context, tx tmtypes.Tx) (*ctypes.
 		// Wait for the tx to be included in a block or timeout.
 		select {
 		case msg := <-deliverTxSub.Out(): // The tx was included in a block.
-			deliverTxRes := msg.Data().(tmtypes.EventDataTx)
+			deliverTxRes, _ := msg.Data().(tmtypes.EventDataTx)
 			return &ctypes.ResultBroadcastTxCommit{
 				CheckTx:   *checkTxRes,
 				DeliverTx: deliverTxRes.Result,
@@ -313,10 +313,9 @@ func (c *Client) GenesisChunked(context context.Context, id uint) (*ctypes.Resul
 func (c *Client) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, error) {
 	const limit int64 = 20
 
-	// Currently blocks are not pruned and are synced linearly so the base height is 0
 	minHeight, maxHeight, err := filterMinMax(
-		0,
-		int64(c.node.Store.Height()),
+		0, // FIXME: we might be pruned
+		int64(c.node.GetBlockManagerHeight()),
 		minHeight,
 		maxHeight,
 		limit)
@@ -341,7 +340,7 @@ func (c *Client) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64)
 	}
 
 	return &ctypes.ResultBlockchainInfo{
-		LastHeight: int64(c.node.Store.Height()),
+		LastHeight: int64(c.node.GetBlockManagerHeight()),
 		BlockMetas: blocks,
 	}, nil
 }
@@ -468,7 +467,7 @@ func (c *Client) BlockByHash(ctx context.Context, hash []byte) (*ctypes.ResultBl
 func (c *Client) BlockResults(ctx context.Context, height *int64) (*ctypes.ResultBlockResults, error) {
 	var h uint64
 	if height == nil {
-		h = c.node.Store.Height()
+		h = c.node.GetBlockManagerHeight()
 	} else {
 		h = uint64(*height)
 	}
@@ -698,7 +697,7 @@ func (c *Client) BlockSearch(ctx context.Context, query string, page, perPage *i
 
 // Status returns detailed information about current status of the node.
 func (c *Client) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
-	latest, err := c.node.Store.LoadBlock(c.node.Store.Height())
+	latest, err := c.node.Store.LoadBlock(c.node.GetBlockManagerHeight())
 	if err != nil {
 		// TODO(tzdybal): extract error
 		return nil, fmt.Errorf("find latest block: %w", err)
@@ -802,7 +801,7 @@ func (c *Client) UnconfirmedTxs(ctx context.Context, limitPtr *int) (*ctypes.Res
 //
 // If valid, the tx is automatically added to the mempool.
 func (c *Client) CheckTx(ctx context.Context, tx tmtypes.Tx) (*ctypes.ResultCheckTx, error) {
-	res, err := c.mempool().CheckTxSync(abci.RequestCheckTx{Tx: tx})
+	res, err := c.Mempool().CheckTxSync(abci.RequestCheckTx{Tx: tx})
 	if err != nil {
 		return nil, err
 	}
@@ -858,26 +857,26 @@ func (c *Client) resubscribe(subscriber string, q tmpubsub.Query) tmtypes.Subscr
 	}
 }
 
-func (c *Client) consensus() proxy.AppConnConsensus {
+func (c *Client) Consensus() proxy.AppConnConsensus {
 	return c.node.ProxyApp().Consensus()
 }
 
-func (c *Client) mempool() proxy.AppConnMempool {
+func (c *Client) Mempool() proxy.AppConnMempool {
 	return c.node.ProxyApp().Mempool()
 }
 
-func (c *Client) query() proxy.AppConnQuery {
+func (c *Client) Query() proxy.AppConnQuery {
 	return c.node.ProxyApp().Query()
 }
 
-func (c *Client) snapshot() proxy.AppConnSnapshot {
+func (c *Client) Snapshot() proxy.AppConnSnapshot {
 	return c.node.ProxyApp().Snapshot()
 }
 
 func (c *Client) normalizeHeight(height *int64) uint64 {
 	var heightValue uint64
 	if height == nil || *height == 0 {
-		heightValue = c.node.Store.Height()
+		heightValue = c.node.GetBlockManagerHeight()
 	} else {
 		heightValue = uint64(*height)
 	}

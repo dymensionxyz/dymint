@@ -34,7 +34,7 @@ func MustSubscribe(
 		case event := <-subscription.Out():
 			callback(event)
 		case <-subscription.Cancelled():
-			logger.Info(clientID + " subscription canceled")
+			logger.Error("subscription cancelled", "clientID", clientID)
 			return
 		}
 	}
