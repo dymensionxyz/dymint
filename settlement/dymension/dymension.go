@@ -263,7 +263,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 				return fmt.Errorf("subscription cancelled")
 
 			case event := <-subscription.Out():
-				eventData := event.Data().(*settlement.EventDataNewBatchAccepted)
+				eventData, _ := event.Data().(*settlement.EventDataNewBatchAccepted)
 				if eventData.EndHeight != batch.EndHeight {
 					d.logger.Info("Received event for a different batch, ignoring.", "event", eventData)
 					continue

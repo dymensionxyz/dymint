@@ -272,7 +272,7 @@ func (txmp *TxMempool) removeTxByKey(key types.TxKey) error {
 // removeTxByElement removes the specified transaction element from the mempool.
 // The caller must hold txmp.mtx exclusively.
 func (txmp *TxMempool) removeTxByElement(elt *clist.CElement) {
-	w := elt.Value.(*WrappedTx)
+	w, _ := elt.Value.(*WrappedTx)
 	delete(txmp.txByKey, w.tx.Key())
 	delete(txmp.txBySender, w.sender)
 	txmp.txs.Remove(elt)
