@@ -14,7 +14,7 @@ type P2PConfig struct {
 	//Size of the Gossipsub router cache
 	GossipedBlocksCacheSize int `mapstructure:"p2p_gossiped_blocks_cache_size"`
 	//Time interval a node tries to bootstrap again, in case no nodes connected
-	BootstrapTime time.Duration `mapstructure:"p2p_bootstrap_time"`
+	BootstrapRetryTime time.Duration `mapstructure:"p2p_bootstrap_retry_time"`
 }
 
 // Validate P2PConfig
@@ -22,7 +22,7 @@ func (c P2PConfig) Validate() error {
 	if c.GossipedBlocksCacheSize < 0 {
 		return fmt.Errorf("gossipsub cache size cannot be negative")
 	}
-	if c.BootstrapTime <= 0 {
+	if c.BootstrapRetryTime <= 0 {
 		return fmt.Errorf("bootstrap time must be positive")
 	}
 	return nil

@@ -29,7 +29,7 @@ func TestClientStartup(t *testing.T) {
 	client, err := p2p.NewClient(config.P2PConfig{
 		ListenAddress:           config.DefaultListenAddress,
 		GossipedBlocksCacheSize: 50,
-		BootstrapTime:           30 * time.Second,
+		BootstrapRetryTime:      30 * time.Second,
 	}, privKey, "TestChain", pubsubServer, log.TestingLogger())
 	assert := assert.New(t)
 	assert.NoError(err)
@@ -180,7 +180,7 @@ func TestSeedStringParsing(t *testing.T) {
 			logger := &testutil.MockLogger{}
 			client, err := p2p.NewClient(config.P2PConfig{
 				GossipedBlocksCacheSize: 50,
-				BootstrapTime:           30 * time.Second,
+				BootstrapRetryTime:      30 * time.Second,
 			}, privKey, "TestNetwork", pubsubServer, logger)
 			require.NoError(err)
 			require.NotNil(client)

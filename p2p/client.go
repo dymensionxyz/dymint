@@ -402,7 +402,7 @@ func (c *Client) gossipedBlockReceived(msg *GossipMessage) {
 }
 
 func (c *Client) bootstrapLoop(ctx context.Context) {
-	ticker := time.NewTicker(c.conf.BootstrapTime)
+	ticker := time.NewTicker(c.conf.BootstrapRetryTime)
 	defer ticker.Stop()
 	for {
 		select {

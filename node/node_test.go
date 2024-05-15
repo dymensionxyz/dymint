@@ -67,7 +67,7 @@ func TestMempoolDirectly(t *testing.T) {
 		P2PConfig: config.P2PConfig{
 			ListenAddress:           config.DefaultListenAddress,
 			GossipedBlocksCacheSize: 50,
-			BootstrapTime:           30 * time.Second,
+			BootstrapRetryTime:      30 * time.Second,
 			BootstrapNodes:          "",
 		},
 		RPC:           config.RPCConfig{},

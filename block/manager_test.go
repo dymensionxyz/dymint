@@ -55,7 +55,7 @@ func TestInitialState(t *testing.T) {
 	p2pClient, err := p2p.NewClient(config.P2PConfig{
 		ListenAddress:           config.DefaultListenAddress,
 		GossipedBlocksCacheSize: 50,
-		BootstrapTime:           30 * time.Second,
+		BootstrapRetryTime:      30 * time.Second,
 	}, privKey, "TestChain", pubsubServer, logger)
 	assert.NoError(err)
 	assert.NotNil(p2pClient)

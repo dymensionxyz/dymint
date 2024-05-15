@@ -29,10 +29,10 @@ const (
 )
 
 const (
-	FlagP2PListenAddress   = "dymint.p2p_config.listen_address"
-	FlagP2PBootstrapNodes  = "dymint.p2p_config.bootstrap_nodes"
-	FlagP2PGossipCacheSize = "dymint.p2p_config.gossip_cache_size"
-	FlagP2PBootstrapTime   = "dymint.p2p_config.bootstrap_time"
+	FlagP2PListenAddress      = "dymint.p2p_config.listen_address"
+	FlagP2PBootstrapNodes     = "dymint.p2p_config.bootstrap_nodes"
+	FlagP2PGossipCacheSize    = "dymint.p2p_config.gossip_cache_size"
+	FlagP2PBootstrapRetryTime = "dymint.p2p_config.bootstrap_retry_time"
 )
 
 // AddNodeFlags adds Dymint specific configuration options to cobra Command.
@@ -64,7 +64,7 @@ func AddNodeFlags(cmd *cobra.Command) {
 
 	cmd.Flags().String(FlagP2PListenAddress, def.P2PConfig.ListenAddress, "P2P listen address")
 	cmd.Flags().String(FlagP2PBootstrapNodes, def.P2PConfig.BootstrapNodes, "P2P bootstrap nodes")
-	cmd.Flags().Duration(FlagP2PBootstrapTime, def.P2PConfig.BootstrapTime, "P2P bootstrap time")
+	cmd.Flags().Duration(FlagP2PBootstrapRetryTime, def.P2PConfig.BootstrapRetryTime, "P2P bootstrap time")
 	cmd.Flags().Uint64(FlagP2PGossipCacheSize, uint64(def.P2PConfig.GossipedBlocksCacheSize), "P2P Gossiped blocks cache size")
 
 }
@@ -124,7 +124,7 @@ func BindDymintFlags(cmd *cobra.Command, v *viper.Viper) error {
 	if err := v.BindPFlag("p2p_gossiped_blocks_cache_size", cmd.Flags().Lookup(FlagP2PGossipCacheSize)); err != nil {
 		return err
 	}
-	if err := v.BindPFlag("p2p_bootstrap_time", cmd.Flags().Lookup(FlagP2PBootstrapTime)); err != nil {
+	if err := v.BindPFlag("p2p_bootstrap_retry_time", cmd.Flags().Lookup(FlagP2PBootstrapRetryTime)); err != nil {
 		return err
 	}
 	if err := v.BindPFlag("p2p_bootstrap_nodes", cmd.Flags().Lookup(FlagP2PBootstrapNodes)); err != nil {

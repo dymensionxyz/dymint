@@ -106,7 +106,7 @@ func TestGenesisChunked(t *testing.T) {
 			ListenAddress:           config.DefaultListenAddress,
 			BootstrapNodes:          "",
 			GossipedBlocksCacheSize: 50,
-			BootstrapTime:           30 * time.Second,
+			BootstrapRetryTime:      30 * time.Second,
 		},
 		RPC: config.RPCConfig{},
 		BlockManagerConfig: config.BlockManagerConfig{
@@ -707,7 +707,7 @@ func TestValidatorSetHandling(t *testing.T) {
 			ListenAddress:           config.DefaultListenAddress,
 			BootstrapNodes:          "",
 			GossipedBlocksCacheSize: 50,
-			BootstrapTime:           30 * time.Second,
+			BootstrapRetryTime:      30 * time.Second,
 		},
 		BlockManagerConfig: config.BlockManagerConfig{
 			BlockTime:              10 * time.Millisecond,
@@ -864,7 +864,7 @@ func getRPCInternal(t *testing.T, sequencer bool) (*tmmocks.MockApplication, *cl
 			ListenAddress:           config.DefaultListenAddress,
 			BootstrapNodes:          "",
 			GossipedBlocksCacheSize: 50,
-			BootstrapTime:           30 * time.Second,
+			BootstrapRetryTime:      30 * time.Second,
 		},
 		RPC:           config.RPCConfig{},
 		MempoolConfig: *tmcfg.DefaultMempoolConfig(),
@@ -975,7 +975,7 @@ func TestMempool2Nodes(t *testing.T) {
 			ListenAddress:           "/ip4/127.0.0.1/tcp/9001",
 			BootstrapNodes:          "",
 			GossipedBlocksCacheSize: 50,
-			BootstrapTime:           30 * time.Second,
+			BootstrapRetryTime:      30 * time.Second,
 		},
 		BlockManagerConfig: config.BlockManagerConfig{
 			BlockTime:              100 * time.Millisecond,
@@ -1004,7 +1004,7 @@ func TestMempool2Nodes(t *testing.T) {
 		P2PConfig: config.P2PConfig{
 			ListenAddress:           "/ip4/127.0.0.1/tcp/9002",
 			BootstrapNodes:          "/ip4/127.0.0.1/tcp/9001/p2p/" + id1.String(),
-			BootstrapTime:           30 * time.Second,
+			BootstrapRetryTime:      30 * time.Second,
 			GossipedBlocksCacheSize: 50,
 		},
 		MempoolConfig: *tmcfg.DefaultMempoolConfig(),

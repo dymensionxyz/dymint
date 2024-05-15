@@ -92,7 +92,7 @@ func GetManagerWithProposerKey(conf config.BlockManagerConfig, proposerKey crypt
 	p2pKey, _, _ := crypto.GenerateEd25519Key(rand.Reader)
 	p2pClient, err := p2p.NewClient(config.P2PConfig{
 		GossipedBlocksCacheSize: 50,
-		BootstrapTime:           30 * time.Second,
+		BootstrapRetryTime:      30 * time.Second,
 	}, p2pKey, "TestChain", pubsubServer, logger)
 	if err != nil {
 		return nil, err
