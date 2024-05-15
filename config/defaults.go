@@ -61,16 +61,17 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 	}
 
 	defaultSLconfig := settlement.Config{
-		KeyringBackend: "test",
-		NodeAddress:    "http://127.0.0.1:36657",
-		RollappID:      chainId,
-		KeyringHomeDir: keyringDir,
-		DymAccountName: "sequencer",
-		GasPrices:      "1000000000adym",
-		SLGrpc:         defaultSlGrpcConfig,
-		MinDelay:       1 * time.Second,
-		MaxDelay:       10 * time.Second,
-		RetryAttempts:  10,
+		KeyringBackend:         "test",
+		NodeAddress:            "http://127.0.0.1:36657",
+		RollappID:              chainId,
+		KeyringHomeDir:         keyringDir,
+		DymAccountName:         "sequencer",
+		GasPrices:              "1000000000adym",
+		SLGrpc:                 defaultSlGrpcConfig,
+		RetryMinDelay:          1 * time.Second,
+		RetryMaxDelay:          10 * time.Second,
+		BatchAcceptanceTimeout: 120 * time.Second,
+		RetryAttempts:          10,
 	}
 	cfg.SettlementConfig = defaultSLconfig
 
