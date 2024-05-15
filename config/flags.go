@@ -66,7 +66,6 @@ func AddNodeFlags(cmd *cobra.Command) {
 	cmd.Flags().String(FlagP2PBootstrapNodes, def.P2PConfig.BootstrapNodes, "P2P bootstrap nodes")
 	cmd.Flags().Duration(FlagP2PBootstrapRetryTime, def.P2PConfig.BootstrapRetryTime, "P2P bootstrap time")
 	cmd.Flags().Uint64(FlagP2PGossipCacheSize, uint64(def.P2PConfig.GossipedBlocksCacheSize), "P2P Gossiped blocks cache size")
-
 }
 
 func BindDymintFlags(cmd *cobra.Command, v *viper.Viper) error {

@@ -37,7 +37,7 @@ type NodeConfig struct {
 	Instrumentation    *InstrumentationConfig `mapstructure:"instrumentation"`
 	// Config params for mock grpc da
 	DAGrpc grpc.Config `mapstructure:",squash"`
-	//P2P Options
+	// P2P Options
 	P2PConfig `mapstructure:",squash"`
 }
 
