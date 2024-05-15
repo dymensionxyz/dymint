@@ -148,7 +148,7 @@ func (m *Manager) Start(ctx context.Context) error {
 		}
 	}
 
-	//Fullnode loop can start before syncing from DA
+	// Fullnode loop can start before syncing from DA
 	if !isSequencer {
 		go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewNewGossipedBlock, m.onNewGossipedBlock, m.logger)
 		go m.RetrieveLoop(ctx)
@@ -156,15 +156,15 @@ func (m *Manager) Start(ctx context.Context) error {
 	}
 
 	// TODO: populate the accumulatedSize on startup
-	//Wait till DA is up and running
+	// Wait till DA is up and running
 	<-m.DAClient.Started()
-	//Start syncing from DA
+	// Start syncing from DA
 	err = m.syncBlockManager()
 	if err != nil {
 		return fmt.Errorf("sync block manager: %w", err)
 	}
 
-	//Aggregator producer loop is started only when finished syncing from DA
+	// Aggregator producer loop is started only when finished syncing from DA
 	if isSequencer {
 		// TODO: populate the accumulatedSize on startup
 		//Wait till DA is up and running

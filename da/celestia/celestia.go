@@ -165,7 +165,6 @@ func (c *DataAvailabilityLayerClient) Start() (err error) {
 					}
 				}
 			}
-
 		}
 
 		c.rpc = NewOpenRPC(rpc)
