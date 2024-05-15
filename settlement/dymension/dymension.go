@@ -229,7 +229,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 			case <-d.ctx.Done():
 				return d.ctx.Err()
 			default:
-				err := d.submitBatch(msgUpdateState)
+				err := d.broadcastBatch(msgUpdateState)
 				if err != nil {
 					d.logger.Error(
 						"Submit batch",
@@ -275,7 +275,8 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 				// Check if the batch was accepted by the settlement layer, and we've just missed the event.
 				includedBatch, err := d.pollForBatchInclusion(batch.EndHeight)
 				if err == nil && !includedBatch {
-					batchAcceptanceAttempts -= 1
+					// no error, but still not included
+					batchAcceptanceAttempts--
 					if batchAcceptanceAttempts > 0 {
 						timer.Reset(d.batchAcceptanceTimeout)
 						continue
@@ -403,7 +404,7 @@ func (d *HubClient) GetSequencers(rollappID string) ([]*types.Sequencer, error) 
 	return sequencersList, nil
 }
 
-func (d *HubClient) submitBatch(msgUpdateState *rollapptypes.MsgUpdateState) error {
+func (d *HubClient) broadcastBatch(msgUpdateState *rollapptypes.MsgUpdateState) error {
 	err := d.RunWithRetry(func() error {
 		txResp, err := d.client.BroadcastTx(d.config.DymAccountName, msgUpdateState)
 		if err != nil || txResp.Code != 0 {
@@ -421,7 +422,7 @@ func (d *HubClient) eventHandler() {
 	if err != nil {
 		panic("Error subscribing to events")
 	}
-	//TODO: add defer unsubscribeAll
+	// TODO: add defer unsubscribeAll
 
 	for {
 		select {
