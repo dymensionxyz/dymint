@@ -23,7 +23,7 @@ func (m *Manager) SyncTargetLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case event := <-subscription.Out():
-			eventData := event.Data().(*settlement.EventDataNewBatchAccepted)
+			eventData, _ := event.Data().(*settlement.EventDataNewBatchAccepted)
 
 			if eventData.EndHeight <= m.State.Height() {
 				m.logger.Debug(
