@@ -10,7 +10,7 @@ func (s *DefaultStore) PruneBlocks(from, to uint64) (uint64, error) {
 		return 0, fmt.Errorf("from height must be greater than 0")
 	}
 
-	if to < from {
+	if to <= from {
 		return 0, fmt.Errorf("cannot prune to height %v, it is lower than base height %v",
 			to, from)
 	}

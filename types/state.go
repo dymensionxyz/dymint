@@ -103,14 +103,3 @@ func (s *State) NextHeight() uint64 {
 	}
 	return s.Height() + 1
 }
-
-// SetBase sets the base height if it is higher than the existing base height
-// returns OK if the value was updated successfully or did not need to be updated
-func (s *State) SetBase(height uint64) {
-	s.BaseHeight = height
-}
-
-// Base returns height of the earliest block saved in the Store.
-func (s *State) Base() uint64 {
-	return s.BaseHeight
-}

@@ -240,7 +240,7 @@ func TestProduceBlockFailAfterCommit(t *testing.T) {
 
 	cases := []struct {
 		name                 string
-		shoudFailSaveState   bool
+		shoudFailOnSaveState bool
 		LastAppBlockHeight   int64
 		AppCommitHash        [32]byte
 		LastAppCommitHash    [32]byte
@@ -248,47 +248,37 @@ func TestProduceBlockFailAfterCommit(t *testing.T) {
 		expectedStateAppHash [32]byte
 	}{
 		{
-			name:               "ProduceFirstBlockSuccessfully",
-			shoudFailSaveState: false,
-			AppCommitHash:      [32]byte{1},
-			// LastAppCommitHash:    [32]byte{0},
-			// LastAppBlockHeight:   0,
+			name:                 "ProduceFirstBlockSuccessfully",
+			shoudFailOnSaveState: false,
+			AppCommitHash:        [32]byte{1},
 			expectedStoreHeight:  1,
 			expectedStateAppHash: [32]byte{1},
 		},
 		{
-			name:               "ProduceSecondBlockFailOnUpdateState",
-			shoudFailSaveState: true,
-			AppCommitHash:      [32]byte{2},
-			// LastAppCommitHash:  [32]byte{},
-			// LastAppBlockHeight: 0,
-			// state not changed on failed save state
-			expectedStoreHeight:  1,
+			name:                 "ProduceSecondBlockFailOnUpdateState",
+			shoudFailOnSaveState: true,
+			AppCommitHash:        [32]byte{2},
+			expectedStoreHeight:  1, // height not changed on failed save state
 			expectedStateAppHash: [32]byte{1},
 		},
 		{
-			name:               "ProduceSecondBlockSuccessfullyFromApp",
-			shoudFailSaveState: false,
-			// AppCommitHash:          [32]byte{},
-			// expected return from app
-			LastAppCommitHash:    [32]byte{2},
+			name:                 "ProduceSecondBlockSuccessfullyFromApp",
+			shoudFailOnSaveState: false,
+			LastAppCommitHash:    [32]byte{2}, // loading state from app
 			LastAppBlockHeight:   2,
 			expectedStoreHeight:  2,
 			expectedStateAppHash: [32]byte{2},
 		},
 		{
-			name:               "ProduceThirdBlockFailOnUpdateStoreHeight",
-			shoudFailSaveState: true,
-			AppCommitHash:      [32]byte{3},
-			// LastAppCommitHash:    [32]byte{2},
-			// LastAppBlockHeight:   2,
-			expectedStoreHeight:  2,
+			name:                 "ProduceThirdBlockFailOnUpdateStoreHeight",
+			shoudFailOnSaveState: true,
+			AppCommitHash:        [32]byte{3},
+			expectedStoreHeight:  2, // height not changed on failed save state
 			expectedStateAppHash: [32]byte{2},
 		},
 		{
 			name:                 "ProduceThirdBlockSuccessfully",
-			shoudFailSaveState:   false,
-			AppCommitHash:        [32]byte{},
+			shoudFailOnSaveState: false,
 			LastAppCommitHash:    [32]byte{3},
 			LastAppBlockHeight:   3,
 			expectedStoreHeight:  3,
@@ -302,7 +292,7 @@ func TestProduceBlockFailAfterCommit(t *testing.T) {
 				LastBlockHeight:  tc.LastAppBlockHeight,
 				LastBlockAppHash: tc.LastAppCommitHash[:],
 			})
-			mockStore.ShoudFailSaveState = tc.shoudFailSaveState
+			mockStore.ShoudFailSaveState = tc.shoudFailOnSaveState
 			_, _, _ = manager.ProduceAndGossipBlock(context.Background(), true)
 			storeState, err := manager.Store.LoadState()
 			assert.NoError(err)

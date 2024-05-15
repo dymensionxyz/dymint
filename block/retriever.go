@@ -76,7 +76,7 @@ func (m *Manager) queryStateIndex() (uint64, error) {
 	var stateIndex uint64
 	return stateIndex, retry.Do(
 		func() error {
-			res, err := m.SLClient.GetHeightState(m.State.Height() + 1)
+			res, err := m.SLClient.GetHeightState(m.State.NextHeight())
 			if err != nil {
 				m.logger.Debug("sl client get height state", "error", err)
 				return err

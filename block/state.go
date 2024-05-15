@@ -49,7 +49,7 @@ func (m *Manager) UpdateStateFromApp() error {
 	}
 
 	// update the state with the hash, last store height and last validators.
-	_ = m.Executor.UpdateStateAfterCommit(m.State, resp, proxyAppInfo.LastBlockAppHash, appHeight, vals)
+	m.Executor.UpdateStateAfterCommit(m.State, resp, proxyAppInfo.LastBlockAppHash, appHeight, vals)
 	_, err = m.Store.SaveState(m.State, nil)
 	if err != nil {
 		return errorsmod.Wrap(err, "update state")
@@ -109,29 +109,10 @@ func (e *Executor) NextValSetFromResponses(state *types.State, resp *tmstate.ABC
 	// Dymint ignores any setValidator responses from the app, as it is manages the validator set based on the settlement consensus
 	// TODO: this will be changed when supporting multiple sequencers from the hub
 	return state.NextValidators.Copy(), nil
-
-	/*
-		nValSet := state.NextValidators.Copy()
-		lastHeightValSetChanged := state.LastHeightValidatorsChanged
-		// Dymint can work without validators
-		if len(nValSet.Validators) > 0 {
-			if len(validatorUpdates) > 0 {
-				err := nValSet.UpdateWithChangeSet(validatorUpdates)
-				if err != nil {
-					return err
-				}
-				// Change results from this height but only applies to the next next height.
-				lastHeightValSetChanged = int64(block.Header.Height + 1 + 1)
-			}
-
-			// TODO(tzdybal):  right now, it's for backward compatibility, may need to change this
-			nValSet.IncrementProposerPriority(1)
-		}
-	*/
 }
 
 // Update state from Commit response
-func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResponses, appHash []byte, height uint64, valSet *tmtypes.ValidatorSet) *types.State {
+func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResponses, appHash []byte, height uint64, valSet *tmtypes.ValidatorSet) {
 	copy(s.AppHash[:], appHash[:])
 	copy(s.LastResultsHash[:], tmtypes.NewResults(resp.DeliverTxs).Hash())
 
@@ -141,5 +122,4 @@ func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResp
 	s.NextValidators = valSet.Copy()
 
 	s.SetHeight(height)
-	return s
 }

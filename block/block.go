@@ -86,7 +86,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 
 	// Update the state with the new app hash, last validators and store height from the commit.
 	// Every one of those, if happens before commit, prevents us from re-executing the block in case failed during commit.
-	_ = m.Executor.UpdateStateAfterCommit(m.State, responses, appHash, block.Header.Height, validators)
+	m.Executor.UpdateStateAfterCommit(m.State, responses, appHash, block.Header.Height, validators)
 	_, err = m.Store.SaveState(m.State, nil)
 	if err != nil {
 		return fmt.Errorf("update state: %w", err)
