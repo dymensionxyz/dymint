@@ -445,7 +445,7 @@ func TestTx(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	mockApp, rpc, node := getRPCAndNodeAggregator(t)
+	mockApp, rpc, node := getRPCAndNodeSequencer(t)
 
 	require.NotNil(rpc)
 	mockApp.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
@@ -815,7 +815,7 @@ func getBlockMeta(node *node.Node, n int64) *tmtypes.BlockMeta {
 	return bmeta
 }
 
-// getRPC returns a mock application and a new RPC client (non-aggregator mode)
+// getRPC returns a mock application and a new RPC client (non-sequencer mode)
 func getRPC(t *testing.T) (*tmmocks.MockApplication, *client.Client) {
 	app, rpc, _ := getRPCAndNode(t)
 	return app, rpc
@@ -825,12 +825,12 @@ func getRPCAndNode(t *testing.T) (*tmmocks.MockApplication, *client.Client, *nod
 	return getRPCInternal(t, false)
 }
 
-func getRPCAndNodeAggregator(t *testing.T) (*tmmocks.MockApplication, *client.Client, *node.Node) {
+func getRPCAndNodeSequencer(t *testing.T) (*tmmocks.MockApplication, *client.Client, *node.Node) {
 	return getRPCInternal(t, true)
 }
 
-// getRPC returns a mock application and a new RPC client (non-aggregator mode)
-func getRPCInternal(t *testing.T, aggregator bool) (*tmmocks.MockApplication, *client.Client, *node.Node) {
+// getRPC returns a mock application and a new RPC client (non-sequencer mode)
+func getRPCInternal(t *testing.T, sequencer bool) (*tmmocks.MockApplication, *client.Client, *node.Node) {
 	t.Helper()
 	require := require.New(t)
 	app := &tmmocks.MockApplication{}
@@ -844,7 +844,7 @@ func getRPCInternal(t *testing.T, aggregator bool) (*tmmocks.MockApplication, *c
 	proposerKey := hex.EncodeToString(pubkeyBytes)
 	require.NoError(err)
 
-	if aggregator {
+	if sequencer {
 		localKey = slSeqKey
 	}
 
@@ -876,7 +876,7 @@ func getRPCInternal(t *testing.T, aggregator bool) (*tmmocks.MockApplication, *c
 		context.Background(),
 		config,
 		key,
-		localKey, // this is where aggregator mode is set. if same key as in settlement.Config, it's aggregator
+		localKey, // this is where sequencer mode is set. if same key as in settlement.Config, it's sequencer
 		proxy.NewLocalClientCreator(app),
 		&tmtypes.GenesisDoc{ChainID: rollappID},
 		log.TestingLogger(),

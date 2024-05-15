@@ -68,7 +68,7 @@ func generateBlock(height uint64) *types.Block {
 			AppHash:         [32]byte{},
 			LastResultsHash: GetEmptyLastResultsHash(),
 			ProposerAddress: []byte{4, 3, 2, 1},
-			AggregatorsHash: h[6],
+			SequencersHash:  h[6],
 		},
 		Data: types.Data{
 			Txs:                    nil,

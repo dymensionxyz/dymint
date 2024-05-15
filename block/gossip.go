@@ -11,11 +11,18 @@ import (
 
 // onNewGossippedBlock will take a block and apply it
 func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
-	m.retrieverMutex.Lock() // needed to protect blockCache access
 	eventData := event.Data().(p2p.GossipedBlock)
 	block := eventData.Block
 	commit := eventData.Commit
-	m.logger.Debug("Received new block via gossip", "height", block.Header.Height, "n cachedBlocks", len(m.blockCache))
+	m.retrieverMutex.Lock() // needed to protect blockCache access
+	_, found := m.blockCache[block.Header.Height]
+	// It is not strictly necessary to return early, for correctness, but doing so helps us avoid mutex pressure and unnecessary repeated attempts to apply cached blocks
+	if found {
+		m.retrieverMutex.Unlock()
+		return
+	}
+
+	m.logger.Debug("Received new block via gossip", "block height", block.Header.Height, "store height", m.State.Height(), "n cachedBlocks", len(m.blockCache))
 
 	nextHeight := m.State.NextHeight()
 	if block.Header.Height >= nextHeight {
@@ -23,9 +30,9 @@ func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
 			Block:  &block,
 			Commit: &commit,
 		}
-		m.logger.Debug("caching block", "block height", block.Header.Height, "store height", m.State.Height())
 	}
 	m.retrieverMutex.Unlock() // have to give this up as it's locked again in attempt apply, and we're not re-entrant
+
 	err := m.attemptApplyCachedBlocks()
 	if err != nil {
 		m.logger.Error("applying cached blocks", "err", err)

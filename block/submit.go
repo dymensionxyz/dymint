@@ -45,11 +45,9 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 		}
 
 		/*
-				Note: since we dont explicitly coordinate changes to the accumulated size with actual batch creation
-				we don't have a guarantee that the accumulated size is the same as the actual batch size that will be made.
-				See https://github.com/dymensionxyz/dymint/issues/828
-				Until that is fixed, it's technically possibly to undercount, by having a some blocks be produced in between
-			    setting the counter to 0, and actually producing the batch.
+			Note: since we dont explicitly coordinate changes to the accumulated size with actual batch creation
+			we don't have a guarantee that the accumulated size is the same as the actual batch size that will be made.
+			But the batch creation step will also check the size is OK, so it's not a problem.
 		*/
 		m.AccumulatedBatchSize.Store(0)
 

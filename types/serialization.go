@@ -97,7 +97,7 @@ func (h *Header) ToProto() *pb.Header {
 		AppHash:         h.AppHash[:],
 		LastResultsHash: h.LastResultsHash[:],
 		ProposerAddress: h.ProposerAddress[:],
-		AggregatorsHash: h.AggregatorsHash[:],
+		SequencersHash:  h.SequencersHash[:],
 	}
 }
 
@@ -129,8 +129,8 @@ func (h *Header) FromProto(other *pb.Header) error {
 	if !safeCopy(h.LastResultsHash[:], other.LastResultsHash) {
 		return errors.New("invalid length of 'LastResultsHash'")
 	}
-	if !safeCopy(h.AggregatorsHash[:], other.AggregatorsHash) {
-		return errors.New("invalid length of 'AggregatorsHash'")
+	if !safeCopy(h.SequencersHash[:], other.SequencersHash) {
+		return errors.New("invalid length of 'SequencersHash'")
 	}
 	if len(other.ProposerAddress) > 0 {
 		h.ProposerAddress = make([]byte, len(other.ProposerAddress))

@@ -162,6 +162,10 @@ func (c *DataAvailabilityLayerClient) Start() (err error) {
 				}
 				return nil
 			case <-ticker.C:
+				state, err := rpc.Header.SyncState(c.ctx)
+				if err != nil {
+					return err
+				}
 				c.logger.Info("celestia-node still syncing", "height", state.Height, "target", state.ToHeight)
 			}
 		}
