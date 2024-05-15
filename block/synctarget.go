@@ -8,7 +8,7 @@ import (
 )
 
 // SyncTargetLoop is responsible for getting real time updates about settlement batch submissions.
-// For non aggregator: updating the sync target which will be used by retrieveLoop to sync until this target.
+// For non sequencer: updating the sync target which will be used by retrieveLoop to sync until this target.
 // It publishes new sync height targets which will then be synced by another process.
 func (m *Manager) SyncTargetLoop(ctx context.Context) {
 	m.logger.Info("Started sync target loop")
