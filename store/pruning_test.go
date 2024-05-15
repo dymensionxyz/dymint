@@ -19,7 +19,6 @@ func TestStorePruning(t *testing.T) {
 		to          uint64
 		shouldError bool
 	}{
-
 		{"blocks with pruning", []*types.Block{
 			testutil.GetRandomBlock(1, 0),
 			testutil.GetRandomBlock(2, 0),
@@ -79,7 +78,7 @@ func TestStorePruning(t *testing.T) {
 
 			// Validate only blocks in the range are pruned
 			for k := range savedHeights {
-				if k >= c.from && k < c.to { //k < c.to is the exclusion test
+				if k >= c.from && k < c.to { // k < c.to is the exclusion test
 					_, err := bstore.LoadBlock(k)
 					assert.Error(err, "Block at height %d should be pruned", k)
 

@@ -314,7 +314,7 @@ func (c *Client) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64)
 	const limit int64 = 20
 
 	minHeight, maxHeight, err := filterMinMax(
-		0, //FIXME: we might be pruned
+		0, // FIXME: we might be pruned
 		int64(c.node.GetBlockManagerHeight()),
 		minHeight,
 		maxHeight,

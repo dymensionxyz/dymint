@@ -116,7 +116,7 @@ func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResp
 	copy(s.AppHash[:], appHash[:])
 	copy(s.LastResultsHash[:], tmtypes.NewResults(resp.DeliverTxs).Hash())
 
-	//TODO: load consensus params from endblock?
+	// TODO: load consensus params from endblock?
 
 	s.Validators = s.NextValidators.Copy()
 	s.NextValidators = valSet.Copy()

@@ -53,7 +53,7 @@ func NewStateFromGenesis(genDoc *types.GenesisDoc) (*State, error) {
 	// but leaves the Consensus.App version blank.
 	// The Consensus.App version will be set during the Handshake, once
 	// we hear from the app what protocol version it is running.
-	var InitStateVersion = tmstate.Version{
+	InitStateVersion := tmstate.Version{
 		Consensus: tmversion.Consensus{
 			Block: version.BlockProtocol,
 			App:   0,

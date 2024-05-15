@@ -210,8 +210,8 @@ func TestProducePendingBlock(t *testing.T) {
 	require.NoError(t, err)
 	// Validate state is updated with the block that was saved in the store
 
-	//TODO: fix this test
-	//hacky way to validate the block was indeed contain txs
+	// TODO: fix this test
+	// hacky way to validate the block was indeed contain txs
 	assert.NotEqual(t, manager.State.LastResultsHash, testutil.GetEmptyLastResultsHash())
 }
 

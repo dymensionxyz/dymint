@@ -103,7 +103,7 @@ func (m *Manager) produceBlock(allowEmpty bool) (*types.Block, *types.Commit, er
 	newHeight := m.State.NextHeight()
 	lastHeaderHash, lastCommit, err := loadPrevBlock(m.Store, newHeight-1)
 	if err != nil {
-		if !m.State.IsGenesis() { //allow prevBlock not to be found only on genesis
+		if !m.State.IsGenesis() { // allow prevBlock not to be found only on genesis
 			return nil, nil, fmt.Errorf("load prev block: %w: %w", err, ErrNonRecoverable)
 		}
 		lastHeaderHash = [32]byte{}
@@ -186,7 +186,7 @@ func (m *Manager) createTMSignature(block *types.Block, proposerAddress []byte, 
 	}
 	v := vote.ToProto()
 	// convert libp2p key to tm key
-	//TODO: move to types
+	// TODO: move to types
 	raw_key, _ := m.ProposerKey.Raw()
 	tmprivkey := tmed25519.PrivKey(raw_key)
 	tmprivkey.PubKey().Bytes()
