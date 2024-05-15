@@ -127,19 +127,14 @@ func NewManager(
 func (m *Manager) Start(ctx context.Context) error {
 	m.logger.Info("Starting the block manager")
 
-	// Check if proposer key matches to the one in the settlement layer
-	var isSequencer bool
 	slProposerKey := m.SLClient.GetProposer().PublicKey.Bytes()
 	localProposerKey, err := m.ProposerKey.GetPublic().Raw()
 	if err != nil {
 		return fmt.Errorf("get local node public key: %w", err)
 	}
-	if bytes.Equal(slProposerKey, localProposerKey) {
-		m.logger.Info("Starting in sequencer mode")
-		isSequencer = true
-	} else {
-		m.logger.Info("Starting in non-sequencer mode")
-	}
+
+	isSequencer := bytes.Equal(slProposerKey, localProposerKey)
+	m.logger.Info("Starting block manager", "isSequencer", isSequencer)
 
 	// Check if InitChain flow is needed
 	if m.LastState.IsGenesis() {
