@@ -1,7 +1,10 @@
 package block
 
 import (
-	"time"
+	"errors"
+	"fmt"
+
+	errorsmod "cosmossdk.io/errors"
 
 	"github.com/cometbft/cometbft/crypto/merkle"
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -9,55 +12,49 @@ import (
 	tmtypes "github.com/tendermint/tendermint/types"
 
 	"github.com/dymensionxyz/dymint/mempool"
+	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
 )
 
-// TODO: move all those methods from blockExecutor to manager
-func (e *Executor) updateState(state types.State, block *types.Block, abciResponses *tmstate.ABCIResponses, validatorUpdates []*tmtypes.Validator) (types.State, error) {
-	nValSet := state.NextValidators.Copy()
-	lastHeightValSetChanged := state.LastHeightValidatorsChanged
-	// Dymint can work without validators
-	if len(nValSet.Validators) > 0 {
-		if len(validatorUpdates) > 0 {
-			err := nValSet.UpdateWithChangeSet(validatorUpdates)
-			if err != nil {
-				return state, nil
-			}
-			// Change results from this height but only applies to the next next height.
-			lastHeightValSetChanged = int64(block.Header.Height + 1 + 1)
-		}
-
-		// TODO(tzdybal):  right now, it's for backward compatibility, may need to change this
-		nValSet.IncrementProposerPriority(1)
+// getInitialState tries to load lastState from Store, and if it's not available it reads GenesisDoc.
+func getInitialState(store store.Store, genesis *tmtypes.GenesisDoc, logger types.Logger) (*types.State, error) {
+	s, err := store.LoadState()
+	if errors.Is(err, types.ErrNoStateFound) {
+		logger.Info("failed to find state in the store, creating new state from genesis")
+		s, err = types.NewStateFromGenesis(genesis)
 	}
 
-	hash := block.Header.Hash()
-	// TODO: we can probably pass the state as a pointer and update it directly
-	s := types.State{
-		Version:         state.Version,
-		ChainID:         state.ChainID,
-		InitialHeight:   state.InitialHeight,
-		LastBlockHeight: int64(block.Header.Height),
-		LastBlockTime:   time.Unix(0, int64(block.Header.Time)),
-		LastBlockID: tmtypes.BlockID{
-			Hash: hash[:],
-			// for now, we don't care about part set headers
-		},
-		NextValidators:                   nValSet,
-		Validators:                       state.NextValidators.Copy(),
-		LastHeightValidatorsChanged:      lastHeightValSetChanged,
-		ConsensusParams:                  state.ConsensusParams,
-		LastHeightConsensusParamsChanged: state.LastHeightConsensusParamsChanged,
-		// We're gonna update those fields only after we commit the blocks
-		AppHash:         state.AppHash,
-		LastValidators:  state.LastValidators.Copy(),
-		LastStoreHeight: state.LastStoreHeight,
-
-		LastResultsHash: state.LastResultsHash,
-		BaseHeight:      state.BaseHeight,
+	if err != nil {
+		return nil, fmt.Errorf("get initial state: %w", err)
 	}
 
 	return s, nil
+}
+
+// UpdateStateFromApp is responsible for aligning the state of the store from the abci app
+func (m *Manager) UpdateStateFromApp() error {
+	proxyAppInfo, err := m.Executor.GetAppInfo()
+	if err != nil {
+		return errorsmod.Wrap(err, "get app info")
+	}
+
+	appHeight := uint64(proxyAppInfo.LastBlockHeight)
+	resp, err := m.Store.LoadBlockResponses(appHeight)
+	if err != nil {
+		return errorsmod.Wrap(err, "load block responses")
+	}
+	vals, err := m.Store.LoadValidators(appHeight)
+	if err != nil {
+		return errorsmod.Wrap(err, "load block responses")
+	}
+
+	// update the state with the hash, last store height and last validators.
+	m.Executor.UpdateStateAfterCommit(m.State, resp, proxyAppInfo.LastBlockAppHash, appHeight, vals)
+	_, err = m.Store.SaveState(m.State, nil)
+	if err != nil {
+		return errorsmod.Wrap(err, "update state")
+	}
+	return nil
 }
 
 func (e *Executor) UpdateStateAfterInitChain(s *types.State, res *abci.ResponseInitChain, validators []*tmtypes.Validator) {
@@ -100,7 +97,6 @@ func (e *Executor) UpdateStateAfterInitChain(s *types.State, res *abci.ResponseI
 	// Set the validators in the state
 	s.Validators = tmtypes.NewValidatorSet(validators).CopyIncrementProposerPriority(1)
 	s.NextValidators = s.Validators.Copy()
-	s.LastValidators = s.Validators.Copy()
 }
 
 func (e *Executor) UpdateMempoolAfterInitChain(s *types.State) {
@@ -108,20 +104,22 @@ func (e *Executor) UpdateMempoolAfterInitChain(s *types.State) {
 	e.mempool.SetPostCheckFn(mempool.PostCheckMaxGas(s.ConsensusParams.Block.MaxGas))
 }
 
-// UpdateStateFromResponses updates state based on the ABCIResponses.
-func (e *Executor) UpdateStateFromResponses(resp *tmstate.ABCIResponses, state types.State, block *types.Block) (types.State, error) {
+// NextValSetFromResponses updates state based on the ABCIResponses.
+func (e *Executor) NextValSetFromResponses(state *types.State, resp *tmstate.ABCIResponses, block *types.Block) (*tmtypes.ValidatorSet, error) {
 	// Dymint ignores any setValidator responses from the app, as it is manages the validator set based on the settlement consensus
 	// TODO: this will be changed when supporting multiple sequencers from the hub
-	validatorUpdates := []*tmtypes.Validator{}
+	return state.NextValidators.Copy(), nil
+}
 
-	if state.ConsensusParams.Block.MaxBytes == 0 {
-		e.logger.Error("maxBytes=0", "state.ConsensusParams.Block", state.ConsensusParams.Block)
-	}
+// Update state from Commit response
+func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResponses, appHash []byte, height uint64, valSet *tmtypes.ValidatorSet) {
+	copy(s.AppHash[:], appHash[:])
+	copy(s.LastResultsHash[:], tmtypes.NewResults(resp.DeliverTxs).Hash())
 
-	state, err := e.updateState(state, block, resp, validatorUpdates)
-	if err != nil {
-		return types.State{}, err
-	}
+	// TODO: load consensus params from endblock?
 
-	return state, nil
+	s.Validators = s.NextValidators.Copy()
+	s.NextValidators = valSet.Copy()
+
+	s.SetHeight(height)
 }

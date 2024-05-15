@@ -22,16 +22,16 @@ import (
 	"github.com/dymensionxyz/dymint/config"
 	"github.com/dymensionxyz/dymint/da"
 	daregistry "github.com/dymensionxyz/dymint/da/registry"
+	indexer "github.com/dymensionxyz/dymint/indexers/blockindexer"
+	blockidxkv "github.com/dymensionxyz/dymint/indexers/blockindexer/kv"
+	"github.com/dymensionxyz/dymint/indexers/txindex"
+	"github.com/dymensionxyz/dymint/indexers/txindex/kv"
 	"github.com/dymensionxyz/dymint/mempool"
 	mempoolv1 "github.com/dymensionxyz/dymint/mempool/v1"
 	nodemempool "github.com/dymensionxyz/dymint/node/mempool"
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/settlement"
 	slregistry "github.com/dymensionxyz/dymint/settlement/registry"
-	"github.com/dymensionxyz/dymint/state/indexer"
-	blockidxkv "github.com/dymensionxyz/dymint/state/indexer/block/kv"
-	"github.com/dymensionxyz/dymint/state/txindex"
-	"github.com/dymensionxyz/dymint/state/txindex/kv"
 	"github.com/dymensionxyz/dymint/store"
 )
 
@@ -69,7 +69,7 @@ type Node struct {
 	incomingTxCh chan *p2p.GossipMessage
 
 	Store        store.Store
-	blockManager *block.Manager
+	BlockManager *block.Manager
 	dalc         da.DataAvailabilityLayerClient
 	settlementlc settlement.LayerI
 
@@ -198,7 +198,7 @@ func NewNode(
 		genesis:        genesis,
 		conf:           conf,
 		P2P:            p2pClient,
-		blockManager:   blockManager,
+		BlockManager:   blockManager,
 		dalc:           dalc,
 		settlementlc:   settlementlc,
 		Mempool:        mp,
@@ -271,7 +271,7 @@ func (n *Node) OnStart() error {
 	}()
 
 	// start the block manager
-	err = n.blockManager.Start(n.ctx)
+	err = n.BlockManager.Start(n.ctx)
 	if err != nil {
 		return fmt.Errorf("while starting block manager: %w", err)
 	}
@@ -379,4 +379,8 @@ func (n *Node) startPrometheusServer() error {
 		}
 	}
 	return nil
+}
+
+func (n *Node) GetBlockManagerHeight() uint64 {
+	return n.BlockManager.State.Height()
 }

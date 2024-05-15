@@ -3,7 +3,7 @@ package txindex
 import (
 	"context"
 
-	"github.com/dymensionxyz/dymint/state/indexer"
+	indexer "github.com/dymensionxyz/dymint/indexers/blockindexer"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/types"
 )
@@ -57,7 +57,7 @@ func (is *IndexerService) OnStart() error {
 	go func() {
 		for {
 			msg := <-blockHeadersSub.Out()
-			eventDataHeader := msg.Data().(types.EventDataNewBlockHeader)
+			eventDataHeader, _ := msg.Data().(types.EventDataNewBlockHeader)
 			height := eventDataHeader.Header.Height
 			batch := NewBatch(eventDataHeader.NumTxs)
 

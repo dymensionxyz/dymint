@@ -12,10 +12,11 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
-	"github.com/tendermint/tendermint/types"
 
-	"github.com/dymensionxyz/dymint/state/indexer"
+	indexer "github.com/dymensionxyz/dymint/indexers/blockindexer"
 	"github.com/dymensionxyz/dymint/store"
+
+	tmtypes "github.com/tendermint/tendermint/types"
 )
 
 var _ indexer.BlockIndexer = (*BlockerIndexer)(nil)
@@ -54,7 +55,7 @@ func (idx *BlockerIndexer) Has(height int64) (bool, error) {
 // primary key: encode(block.height | height) => encode(height)
 // BeginBlock events: encode(eventType.eventAttr|eventValue|height|begin_block) => encode(height)
 // EndBlock events: encode(eventType.eventAttr|eventValue|height|end_block) => encode(height)
-func (idx *BlockerIndexer) Index(bh types.EventDataNewBlockHeader) error {
+func (idx *BlockerIndexer) Index(bh tmtypes.EventDataNewBlockHeader) error {
 	batch := idx.store.NewBatch()
 	defer batch.Discard()
 
@@ -255,7 +256,7 @@ LOOP:
 			err        error
 		)
 
-		if qr.Key == types.BlockHeightKey {
+		if qr.Key == tmtypes.BlockHeightKey {
 			eventValue, err = parseValueFromPrimaryKey(it.Key())
 		} else {
 			eventValue, err = parseValueFromEventKey(it.Key())
@@ -495,7 +496,7 @@ func (idx *BlockerIndexer) indexEvents(batch store.Batch, events []abci.Event, t
 
 			// index iff the event specified index:true and it's not a reserved event
 			compositeKey := fmt.Sprintf("%s.%s", event.Type, string(attr.Key))
-			if compositeKey == types.BlockHeightKey {
+			if compositeKey == tmtypes.BlockHeightKey {
 				return fmt.Errorf("event type and attribute key \"%s\" is reserved; please use a different key", compositeKey)
 			}
 
