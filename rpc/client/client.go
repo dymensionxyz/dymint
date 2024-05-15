@@ -154,7 +154,7 @@ func (c *Client) BroadcastTxCommit(ctx context.Context, tx tmtypes.Tx) (*ctypes.
 		// Wait for the tx to be included in a block or timeout.
 		select {
 		case msg := <-deliverTxSub.Out(): // The tx was included in a block.
-			deliverTxRes := msg.Data().(tmtypes.EventDataTx)
+			deliverTxRes, _ := msg.Data().(tmtypes.EventDataTx)
 			return &ctypes.ResultBroadcastTxCommit{
 				CheckTx:   *checkTxRes,
 				DeliverTx: deliverTxRes.Result,
