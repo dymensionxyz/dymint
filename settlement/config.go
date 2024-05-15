@@ -16,8 +16,8 @@ type Config struct {
 	GasPrices              string        `mapstructure:"gas_prices"`
 	GasFees                string        `mapstructure:"gas_fees"`
 	RetryAttempts          uint          `mapstructure:"retry_attempts"`
-	RetryMaxDelay          time.Duration `mapstructure:"max_delay"`
-	RetryMinDelay          time.Duration `mapstructure:"min_delay"`
+	RetryMaxDelay          time.Duration `mapstructure:"retry_max_delay"`
+	RetryMinDelay          time.Duration `mapstructure:"retry_min_delay"`
 	BatchAcceptanceTimeout time.Duration `mapstructure:"batch_acceptance_timeout"`
 	// For testing only. probably should be refactored
 	ProposerPubKey string `json:"proposer_pub_key"`
