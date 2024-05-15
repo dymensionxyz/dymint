@@ -87,25 +87,28 @@ func (m *Manager) ProduceAndGossipBlock(ctx context.Context, allowEmpty bool) (*
 	return block, commit, nil
 }
 
-func (m *Manager) produceBlock(allowEmpty bool) (*types.Block, *types.Commit, error) {
-	var (
-		err            error
-		lastHeaderHash [32]byte
-		lastCommit     = &types.Commit{}
-		newHeight      = m.State.NextHeight()
-	)
+func loadPrevBlock(store store.Store, height uint64) ([32]byte, *types.Commit, error) {
+	lastCommit, err := store.LoadCommit(height)
+	if err != nil {
+		return [32]byte{}, nil, fmt.Errorf("load commit: height: %d: %w", height, err)
+	}
+	lastBlock, err := store.LoadBlock(height)
+	if err != nil {
+		return [32]byte{}, nil, fmt.Errorf("load block after load commit: height: %d: %w", height, err)
+	}
+	return lastBlock.Header.Hash(), lastCommit, nil
+}
 
-	if !m.State.IsGenesis() {
-		height := newHeight - 1
-		lastCommit, err = m.Store.LoadCommit(height)
-		if err != nil {
-			return nil, nil, fmt.Errorf("load commit: height: %d: %w: %w", height, err, ErrNonRecoverable)
+func (m *Manager) produceBlock(allowEmpty bool) (*types.Block, *types.Commit, error) {
+	newHeight := m.State.NextHeight()
+	lastHeaderHash, lastCommit, err := loadPrevBlock(m.Store, newHeight-1)
+	if err != nil {
+		if m.State.IsGenesis() { //allow prevBlock not to be found only on genesis
+			lastHeaderHash = [32]byte{}
+			lastCommit = &types.Commit{}
+		} else {
+			return nil, nil, fmt.Errorf("load prev block: %w: %w", err, ErrNonRecoverable)
 		}
-		lastBlock, err := m.Store.LoadBlock(height)
-		if err != nil {
-			return nil, nil, fmt.Errorf("load block after load commit: height: %d: %w: %w", height, err, ErrNonRecoverable)
-		}
-		lastHeaderHash = lastBlock.Header.Hash()
 	}
 
 	var block *types.Block
