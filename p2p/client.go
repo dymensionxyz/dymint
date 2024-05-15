@@ -321,13 +321,13 @@ func (c *Client) setupGossiping(ctx context.Context) error {
 	pubsub.GossipSubHistoryGossip = c.conf.GossipCacheSize
 	pubsub.GossipSubHistoryLength = c.conf.GossipCacheSize
 
-	//We add WithSeenMessagesTTL (with 1 year time) option to avoid ever requesting already seen blocks
+	// We add WithSeenMessagesTTL (with 1 year time) option to avoid ever requesting already seen blocks
 	ps, err := pubsub.NewGossipSub(ctx, c.Host)
 	if err != nil {
 		return err
 	}
 
-	//tx gossiper receives the tx to add to the mempool through validation process, since it is a joint process
+	// tx gossiper receives the tx to add to the mempool through validation process, since it is a joint process
 	c.txGossiper, err = NewGossiper(c.Host, ps, c.getTxTopic(), nil, c.logger, WithValidator(c.txValidator))
 	if err != nil {
 		return err
