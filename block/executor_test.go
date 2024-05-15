@@ -51,7 +51,7 @@ func TestCreateBlock(t *testing.T) {
 
 	maxBytes := uint64(100)
 
-	state := types.State{}
+	state := &types.State{}
 	state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
 	state.ConsensusParams.Block.MaxGas = 100000
 	state.Validators = tmtypes.NewValidatorSet(nil)
@@ -140,13 +140,12 @@ func TestApplyBlock(t *testing.T) {
 	require.NotNil(headerSub)
 
 	// Init state
-	state := types.State{
+	state := &types.State{
 		NextValidators: tmtypes.NewValidatorSet(nil),
 		Validators:     tmtypes.NewValidatorSet(nil),
-		LastValidators: tmtypes.NewValidatorSet(nil),
 	}
 	state.InitialHeight = 1
-	state.LastBlockHeight = 0
+	state.LastBlockHeight.Store(0)
 	maxBytes := uint64(100)
 	state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
 	state.ConsensusParams.Block.MaxGas = 100000
@@ -182,21 +181,18 @@ func TestApplyBlock(t *testing.T) {
 	resp, err := executor.ExecuteBlock(state, block)
 	require.NoError(err)
 	require.NotNil(resp)
-	newState, err := executor.UpdateStateFromResponses(resp, state, block)
+	appHash, _, err := executor.Commit(state, block, resp)
 	require.NoError(err)
-	require.NotNil(newState)
-	assert.Equal(int64(1), newState.LastBlockHeight)
-	_, err = executor.Commit(&newState, block, resp)
-	require.NoError(err)
-	assert.Equal(mockAppHash, newState.AppHash)
-	newState.LastStoreHeight = uint64(newState.LastBlockHeight)
+	executor.UpdateStateAfterCommit(state, resp, appHash, block.Header.Height, state.Validators)
+	assert.Equal(uint64(1), state.Height())
+	assert.Equal(mockAppHash, state.AppHash)
 
 	// Create another block with multiple Tx from mempool
 	require.NoError(mpool.CheckTx([]byte{0, 1, 2, 3, 4}, func(r *abci.Response) {}, mempool.TxInfo{}))
 	require.NoError(mpool.CheckTx([]byte{5, 6, 7, 8, 9}, func(r *abci.Response) {}, mempool.TxInfo{}))
 	require.NoError(mpool.CheckTx([]byte{1, 2, 3, 4, 5}, func(r *abci.Response) {}, mempool.TxInfo{}))
 	require.NoError(mpool.CheckTx(make([]byte, 90), func(r *abci.Response) {}, mempool.TxInfo{}))
-	block = executor.CreateBlock(2, commit, [32]byte{}, newState, maxBytes)
+	block = executor.CreateBlock(2, commit, [32]byte{}, state, maxBytes)
 	require.NotNil(block)
 	assert.Equal(uint64(2), block.Header.Height)
 	assert.Len(block.Data.Txs, 3)
@@ -217,7 +213,7 @@ func TestApplyBlock(t *testing.T) {
 	}
 
 	// Apply the block with an invalid commit
-	err = types.ValidateProposedTransition(newState, block, invalidCommit, proposer)
+	err = types.ValidateProposedTransition(state, block, invalidCommit, proposer)
 
 	require.ErrorIs(err, types.ErrInvalidSignature)
 
@@ -231,17 +227,17 @@ func TestApplyBlock(t *testing.T) {
 	}
 
 	// Apply the block
-	err = types.ValidateProposedTransition(newState, block, commit, proposer)
+	err = types.ValidateProposedTransition(state, block, commit, proposer)
 	require.NoError(err)
 	resp, err = executor.ExecuteBlock(state, block)
 	require.NoError(err)
 	require.NotNil(resp)
-	newState, err = executor.UpdateStateFromResponses(resp, state, block)
+	vals, err := executor.NextValSetFromResponses(state, resp, block)
 	require.NoError(err)
-	require.NotNil(newState)
-	assert.Equal(int64(2), newState.LastBlockHeight)
-	_, err = executor.Commit(&newState, block, resp)
+	_, _, err = executor.Commit(state, block, resp)
 	require.NoError(err)
+	executor.UpdateStateAfterCommit(state, resp, appHash, block.Header.Height, vals)
+	assert.Equal(uint64(2), state.Height())
 
 	// wait for at least 4 Tx events, for up to 3 second.
 	// 3 seconds is a fail-scenario only

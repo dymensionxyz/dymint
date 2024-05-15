@@ -66,7 +66,7 @@ func generateBlock(height uint64) *types.Block {
 			ConsensusHash:  h[3],
 			// AppHash:         h[4],
 			AppHash:         [32]byte{},
-			LastResultsHash: getEmptyLastResultsHash(),
+			LastResultsHash: GetEmptyLastResultsHash(),
 			ProposerAddress: []byte{4, 3, 2, 1},
 			SequencersHash:  h[6],
 		},
@@ -193,23 +193,23 @@ func GenerateRandomValidatorSet() *tmtypes.ValidatorSet {
 }
 
 // GenerateState generates an initial state for testing.
-func GenerateState(initialHeight int64, lastBlockHeight int64) types.State {
-	return types.State{
+func GenerateState(initialHeight int64, lastBlockHeight int64) *types.State {
+	s := &types.State{
 		ChainID:         "test-chain",
-		InitialHeight:   initialHeight,
+		InitialHeight:   uint64(initialHeight),
 		AppHash:         [32]byte{},
-		LastResultsHash: getEmptyLastResultsHash(),
+		LastResultsHash: GetEmptyLastResultsHash(),
 		Version: tmstate.Version{
 			Consensus: version.Consensus{
 				Block: BlockVersion,
 				App:   AppVersion,
 			},
 		},
-		LastBlockHeight: lastBlockHeight,
-		LastValidators:  GenerateRandomValidatorSet(),
-		Validators:      GenerateRandomValidatorSet(),
-		NextValidators:  GenerateRandomValidatorSet(),
+		Validators:     GenerateRandomValidatorSet(),
+		NextValidators: GenerateRandomValidatorSet(),
 	}
+	s.LastBlockHeight.Store(uint64(lastBlockHeight))
+	return s
 }
 
 // GenerateGenesis generates a genesis for testing.
@@ -237,7 +237,7 @@ func GenerateGenesis(initialHeight int64) *tmtypes.GenesisDoc {
 	}
 }
 
-func getEmptyLastResultsHash() [32]byte {
+func GetEmptyLastResultsHash() [32]byte {
 	lastResults := []*abci.ResponseDeliverTx{}
 	return *(*[32]byte)(tmtypes.NewResults(lastResults).Hash())
 }

@@ -22,7 +22,13 @@ var mainPrefix = [1]byte{0}
 // BlockStore is a thin wrapper around the DefaultStore which will be used for inspecting the blocks
 type BlockStore struct {
 	*store.DefaultStore
-	base uint64
+	base   uint64
+	height uint64
+}
+
+// Height implements report.BlockStore.
+func (b *BlockStore) Height() uint64 {
+	return b.height
 }
 
 // Base will be used to get the block height of the first block we want to generate the report for
@@ -40,13 +46,14 @@ func getStore(directory string) *store.PrefixKV {
 
 func newBlockStore(kvstore store.KVStore, baseHeight uint64) *BlockStore {
 	store, _ := store.New(kvstore).(*store.DefaultStore)
-	_, err := store.LoadState()
+	state, err := store.LoadState()
 	if err != nil {
 		log.Fatalf("loading state %s", err)
 	}
 	return &BlockStore{
 		DefaultStore: store,
-		base:         baseHeight,
+		base:         state.BaseHeight,
+		height:       state.LastBlockHeight.Load(),
 	}
 }
 
