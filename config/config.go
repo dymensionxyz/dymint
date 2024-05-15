@@ -100,7 +100,7 @@ func (nc NodeConfig) Validate() error {
 	}
 
 	if err := nc.P2PConfig.Validate(); err != nil {
-		return fmt.Errorf("P2PConfig: %w", err)
+		return fmt.Errorf("p2p config: %w", err)
 	}
 
 	if err := nc.validateSettlementLayer(); err != nil {
