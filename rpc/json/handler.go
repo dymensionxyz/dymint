@@ -104,7 +104,7 @@ func (h *handler) serveJSONRPCforWS(w http.ResponseWriter, r *http.Request, wsCo
 	errInter := rets[1].Interface()
 	if errInter != nil {
 		statusCode = http.StatusBadRequest
-		errResult = errInter.(error)
+		errResult, _ = errInter.(error)
 	}
 
 	// Prevents Internet Explorer from MIME-sniffing a response away
@@ -177,7 +177,7 @@ func (h *handler) newHandler(methodSpec *method) func(http.ResponseWriter, *http
 		errInter := rets[1].Interface()
 		if errInter != nil {
 			statusCode = int(json2.E_INTERNAL)
-			err = errInter.(error)
+			err, _ = errInter.(error)
 		}
 
 		h.encodeAndWriteResponse(w, rets[0].Interface(), err, statusCode)

@@ -106,7 +106,7 @@ func (s *Server) startEventListener() {
 
 // onNodeHealthUpdate is a callback function that handles health status events from the node.
 func (s *Server) onNodeHealthUpdate(event pubsub.Message) {
-	eventData := event.Data().(*events.DataHealthStatus)
+	eventData, _ := event.Data().(*events.DataHealthStatus)
 	if eventData.Error != nil {
 		s.Logger.Error("node is unhealthy", "error", eventData.Error)
 	}
