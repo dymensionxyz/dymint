@@ -116,6 +116,35 @@ func (m *Manager) isHeightAlreadyApplied(blockHeight uint64) (bool, error) {
 	return isBlockAlreadyApplied, nil
 }
 
+func (m *Manager) attemptApplyCachedBlocks() error {
+	m.retrieverMutex.Lock()
+	defer m.retrieverMutex.Unlock()
+
+	for {
+		expectedHeight := m.State.NextHeight()
+
+		cachedBlock, blockExists := m.blockCache[expectedHeight]
+		if !blockExists {
+			break
+		}
+		if err := m.validateBlock(cachedBlock.Block, cachedBlock.Commit); err != nil {
+			delete(m.blockCache, cachedBlock.Block.Header.Height)
+			/// TODO: can we take an action here such as dropping the peer / reducing their reputation?
+			return fmt.Errorf("block not valid at height %d, dropping it: err:%w", cachedBlock.Block.Header.Height, err)
+		}
+
+		err := m.applyBlock(cachedBlock.Block, cachedBlock.Commit, blockMetaData{source: gossipedBlock})
+		if err != nil {
+			return fmt.Errorf("apply cached block: expected height: %d: %w", expectedHeight, err)
+		}
+		m.logger.Debug("applied cached block", "height", expectedHeight)
+
+		delete(m.blockCache, cachedBlock.Block.Header.Height)
+	}
+
+	return nil
+}
+
 func (m *Manager) validateBlock(block *types.Block, commit *types.Commit) error {
 	// Currently we're assuming proposer is never nil as it's a pre-condition for
 	// dymint to start

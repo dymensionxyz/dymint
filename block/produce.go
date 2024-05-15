@@ -103,12 +103,11 @@ func (m *Manager) produceBlock(allowEmpty bool) (*types.Block, *types.Commit, er
 	newHeight := m.State.NextHeight()
 	lastHeaderHash, lastCommit, err := loadPrevBlock(m.Store, newHeight-1)
 	if err != nil {
-		if m.State.IsGenesis() { //allow prevBlock not to be found only on genesis
-			lastHeaderHash = [32]byte{}
-			lastCommit = &types.Commit{}
-		} else {
+		if !m.State.IsGenesis() { //allow prevBlock not to be found only on genesis
 			return nil, nil, fmt.Errorf("load prev block: %w: %w", err, ErrNonRecoverable)
 		}
+		lastHeaderHash = [32]byte{}
+		lastCommit = &types.Commit{}
 	}
 
 	var block *types.Block

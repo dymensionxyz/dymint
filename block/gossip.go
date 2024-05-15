@@ -39,35 +39,6 @@ func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
 	}
 }
 
-func (m *Manager) attemptApplyCachedBlocks() error {
-	m.retrieverMutex.Lock()
-	defer m.retrieverMutex.Unlock()
-
-	for {
-		expectedHeight := m.State.NextHeight()
-
-		cachedBlock, blockExists := m.blockCache[expectedHeight]
-		if !blockExists {
-			break
-		}
-		if err := m.validateBlock(cachedBlock.Block, cachedBlock.Commit); err != nil {
-			delete(m.blockCache, cachedBlock.Block.Header.Height)
-			/// TODO: can we take an action here such as dropping the peer / reducing their reputation?
-			return fmt.Errorf("block not valid at height %d, dropping it: err:%w", cachedBlock.Block.Header.Height, err)
-		}
-
-		err := m.applyBlock(cachedBlock.Block, cachedBlock.Commit, blockMetaData{source: gossipedBlock})
-		if err != nil {
-			return fmt.Errorf("apply cached block: expected height: %d: %w", expectedHeight, err)
-		}
-		m.logger.Debug("applied cached block", "height", expectedHeight)
-
-		delete(m.blockCache, cachedBlock.Block.Header.Height)
-	}
-
-	return nil
-}
-
 func (m *Manager) gossipBlock(ctx context.Context, block types.Block, commit types.Commit) error {
 	gossipedBlock := p2p.GossipedBlock{Block: block, Commit: commit}
 	gossipedBlockBytes, err := gossipedBlock.MarshalBinary()
