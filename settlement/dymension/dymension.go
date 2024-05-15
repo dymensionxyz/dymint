@@ -246,6 +246,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 					continue
 				}
 			}
+			break
 		}
 
 		// Batch was submitted successfully. Wait for it to be accepted by the settlement layer.
