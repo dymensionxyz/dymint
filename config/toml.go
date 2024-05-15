@@ -101,7 +101,7 @@ p2p_gossiped_blocks_cache_size = {{ .P2PConfig.GossipedBlocksCacheSize }}
 p2p_bootstrap_time = "{{ .P2PConfig.BootstrapTime }}"
 
 # set to false to disable advertising the node to the P2P network
-p2p_advertising= "{{ .P2PConfig.Advertising }}"
+p2p_advertising_enabled= "{{ .P2PConfig.AdvertisingEnabled }}"
 
 
 #celestia config example:

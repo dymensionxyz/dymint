@@ -42,7 +42,7 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 			BootstrapTime:           30 * time.Second,
 			ListenAddress:           DefaultListenAddress,
 			BootstrapNodes:          "",
-			Advertising:             true,
+			AdvertisingEnabled:      true,
 		},
 	}
 
