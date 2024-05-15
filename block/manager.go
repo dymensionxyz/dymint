@@ -12,6 +12,7 @@ import (
 	"github.com/dymensionxyz/dymint/store"
 
 	"code.cloudfoundry.org/go-diodes"
+	uevent "github.com/dymensionxyz/dymint/utils/event"
 
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/libp2p/go-libp2p/core/crypto"
@@ -149,7 +150,9 @@ func (m *Manager) Start(ctx context.Context) error {
 
 	//Fullnode loop can start before syncing from DA
 	if !isSequencer {
-		m.startNonSequencerLoop(ctx)
+		go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewNewGossipedBlock, m.onNewGossipedBlock, m.logger)
+		go m.RetrieveLoop(ctx)
+		go m.SyncTargetLoop(ctx)
 	}
 
 	// TODO: populate the accumulatedSize on startup
