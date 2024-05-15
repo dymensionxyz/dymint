@@ -133,17 +133,17 @@ func (m *Manager) Start(ctx context.Context) error {
 	m.logger.Info("Starting the block manager")
 
 	// Check if proposer key matches to the one in the settlement layer
-	var isAggregator bool
+	var isSequencer bool
 	slProposerKey := m.SLClient.GetProposer().PublicKey.Bytes()
 	localProposerKey, err := m.ProposerKey.GetPublic().Raw()
 	if err != nil {
 		return fmt.Errorf("get local node public key: %w", err)
 	}
 	if bytes.Equal(slProposerKey, localProposerKey) {
-		m.logger.Info("Starting in aggregator mode")
-		isAggregator = true
+		m.logger.Info("Starting in sequencer mode")
+		isSequencer = true
 	} else {
-		m.logger.Info("Starting in non-aggregator mode")
+		m.logger.Info("Starting in non-sequencer mode")
 	}
 
 	// Check if InitChain flow is needed
@@ -156,7 +156,7 @@ func (m *Manager) Start(ctx context.Context) error {
 		}
 	}
 
-	if !isAggregator {
+	if !isSequencer {
 		go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewNewGossipedBlock, m.onNewGossipedBlock, m.logger)
 	}
 
@@ -165,7 +165,7 @@ func (m *Manager) Start(ctx context.Context) error {
 		return fmt.Errorf("sync block manager: %w", err)
 	}
 
-	if isAggregator {
+	if isSequencer {
 		// TODO: populate the accumulatedSize on startup
 		go m.ProduceBlockLoop(ctx)
 		go m.SubmitLoop(ctx)
@@ -215,11 +215,18 @@ func getAddress(key crypto.PrivKey) ([]byte, error) {
 // TODO: move to gossip.go
 // onNewGossippedBlock will take a block and apply it
 func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
-	m.retrieverMutex.Lock() // needed to protect blockCache access
 	eventData := event.Data().(p2p.GossipedBlock)
 	block := eventData.Block
 	commit := eventData.Commit
-	m.logger.Debug("Received new block via gossip", "height", block.Header.Height, "n cachedBlocks", len(m.blockCache))
+	m.retrieverMutex.Lock() // needed to protect blockCache access
+	_, found := m.blockCache[block.Header.Height]
+	// It is not strictly necessary to return early, for correctness, but doing so helps us avoid mutex pressure and unnecessary repeated attempts to apply cached blocks
+	if found {
+		m.retrieverMutex.Unlock()
+		return
+	}
+
+	m.logger.Debug("Received new block via gossip", "block height", block.Header.Height, "store height", m.Store.Height(), "n cachedBlocks", len(m.blockCache))
 
 	nextHeight := m.Store.NextHeight()
 	if block.Header.Height >= nextHeight {
@@ -227,9 +234,9 @@ func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
 			Block:  &block,
 			Commit: &commit,
 		}
-		m.logger.Debug("caching block", "block height", block.Header.Height, "store height", m.Store.Height())
 	}
 	m.retrieverMutex.Unlock() // have to give this up as it's locked again in attempt apply, and we're not re-entrant
+
 	err := m.attemptApplyCachedBlocks()
 	if err != nil {
 		m.logger.Error("applying cached blocks", "err", err)

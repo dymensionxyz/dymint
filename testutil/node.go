@@ -17,7 +17,7 @@ import (
 	"github.com/dymensionxyz/dymint/settlement"
 )
 
-func CreateNode(isAggregator bool, blockManagerConfig *config.BlockManagerConfig) (*node.Node, error) {
+func CreateNode(isSequencer bool, blockManagerConfig *config.BlockManagerConfig) (*node.Node, error) {
 	app := GetAppMock()
 	key, _, _ := crypto.GenerateEd25519Key(rand.Reader)
 	signingKey, pubkey, _ := crypto.GenerateEd25519Key(rand.Reader)
