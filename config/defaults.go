@@ -68,6 +68,9 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 		DymAccountName: "sequencer",
 		GasPrices:      "1000000000adym",
 		SLGrpc:         defaultSlGrpcConfig,
+		MinDelay:       1 * time.Second,
+		MaxDelay:       10 * time.Second,
+		RetryAttempts:  10,
 	}
 	cfg.SettlementConfig = defaultSLconfig
 

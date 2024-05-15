@@ -64,6 +64,8 @@ var _ settlement.LayerI = &LayerClient{}
 
 // Init is called once. it initializes the struct members.
 func (dlc *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, logger types.Logger, options ...settlement.Option) error {
+
+	fmt.Println(config.MaxDelay, config.MinDelay, config.RetryAttempts)
 	DymensionCosmosClient, err := NewDymensionHubClient(config, pubsub, logger)
 	if err != nil {
 		return err
