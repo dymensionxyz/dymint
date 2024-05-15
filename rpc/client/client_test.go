@@ -442,7 +442,7 @@ func TestTx(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	mockApp, rpc := getRPCAggregator(t)
+	mockApp, rpc := getRPCSequencer(t)
 
 	require.NotNil(rpc)
 	mockApp.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
@@ -812,17 +812,17 @@ func getBlockMeta(rpc *Client, n int64) *tmtypes.BlockMeta {
 	return bmeta
 }
 
-// getRPC returns a mock application and a new RPC client (non-aggregator mode)
+// getRPC returns a mock application and a new RPC client (non-sequencer mode)
 func getRPC(t *testing.T) (*tmmocks.MockApplication, *Client) {
 	return getRPCInternal(t, false)
 }
 
-func getRPCAggregator(t *testing.T) (*tmmocks.MockApplication, *Client) {
+func getRPCSequencer(t *testing.T) (*tmmocks.MockApplication, *Client) {
 	return getRPCInternal(t, true)
 }
 
-// getRPC returns a mock application and a new RPC client (non-aggregator mode)
-func getRPCInternal(t *testing.T, aggregator bool) (*tmmocks.MockApplication, *Client) {
+// getRPC returns a mock application and a new RPC client (non-sequencer mode)
+func getRPCInternal(t *testing.T, sequencer bool) (*tmmocks.MockApplication, *Client) {
 	t.Helper()
 	require := require.New(t)
 	app := &tmmocks.MockApplication{}
@@ -836,7 +836,7 @@ func getRPCInternal(t *testing.T, aggregator bool) (*tmmocks.MockApplication, *C
 	proposerKey := hex.EncodeToString(pubkeyBytes)
 	require.NoError(err)
 
-	if aggregator {
+	if sequencer {
 		localKey = slSeqKey
 	}
 
@@ -868,7 +868,7 @@ func getRPCInternal(t *testing.T, aggregator bool) (*tmmocks.MockApplication, *C
 		context.Background(),
 		config,
 		key,
-		localKey, // this is where aggregator mode is set. if same key as in settlement.Config, it's aggregator
+		localKey, // this is where sequencer mode is set. if same key as in settlement.Config, it's sequencer
 		proxy.NewLocalClientCreator(app),
 		&tmtypes.GenesisDoc{ChainID: rollappID},
 		log.TestingLogger(),
