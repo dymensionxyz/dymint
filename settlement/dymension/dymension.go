@@ -220,81 +220,86 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 	//nolint:errcheck
 	defer d.pubsub.Unsubscribe(d.ctx, postBatchSubscriberClient, settlement.EventQueryNewSettlementBatchAccepted)
 
-	// Try submitting the batch to the settlement layer. If submission (i.e. only submission, not acceptance) fails we emit an unhealthy event
-	// and try again in the next loop. If submission succeeds we wait for the batch to be accepted by the settlement layer.
-	// If it is not accepted we emit an unhealthy event and start again the submission loop.
-submitLoop:
+	// Try submitting the batch to the settlement layer:
+	// 1.broadcasting the transaction to the blockchain (with retries).
+	// 2.waiting for the batch to be accepted by the settlement layer.
 	for {
-		select {
-		case <-d.ctx.Done():
-			return d.ctx.Err()
-		default:
-			err := d.submitBatch(msgUpdateState)
-			if err != nil {
-				d.logger.Error(
-					"Submit batch",
-					"startHeight",
-					batch.StartHeight,
-					"endHeight",
-					batch.EndHeight,
-					"error",
-					err,
-				)
-				// Sleep to allow context cancellation to take effect before retrying
-				time.Sleep(100 * time.Millisecond)
-				continue
-			}
-			// Break out of the loop after successful submission
-			break submitLoop
-		}
-	}
-
-	// Batch was submitted successfully. Wait for it to be accepted by the settlement layer.
-	timer := time.NewTimer(d.batchAcceptanceTimeout)
-	defer timer.Stop()
-
-	for {
-		select {
-		case <-d.ctx.Done():
-			return d.ctx.Err()
-
-		case <-subscription.Cancelled():
-			return fmt.Errorf("subscription cancelled")
-
-		case event := <-subscription.Out():
-			eventData := event.Data().(*settlement.EventDataNewBatchAccepted)
-			if eventData.EndHeight != batch.EndHeight {
-				d.logger.Info("Received event for a different batch, ignoring.", "event", eventData)
-				continue
-			}
-			d.logger.Debug("Batch accepted.", "startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
-			return nil
-
-		case <-timer.C:
-			// Check if the batch was accepted by the settlement layer, and we've just missed the event.
-			includedBatch, err := d.pollForBatchInclusion(batch.EndHeight)
-			if err != nil || !includedBatch {
-				if err == nil {
-					err = settlement.ErrBatchNotAccepted
+		for {
+			select {
+			case <-d.ctx.Done():
+				return d.ctx.Err()
+			default:
+				err := d.submitBatch(msgUpdateState)
+				if err != nil {
+					d.logger.Error(
+						"Submit batch",
+						"startHeight",
+						batch.StartHeight,
+						"endHeight",
+						batch.EndHeight,
+						"error",
+						err,
+					)
+					// If submission (i.e. only submission, not acceptance) fails we try submitting again.
+					// Sleep to allow context cancellation to take effect before retrying
+					time.Sleep(100 * time.Millisecond)
+					continue
 				}
-				err = fmt.Errorf("wait for batch inclusion: %w", err)
-				d.logger.Error(
-					"Wait for batch inclusion",
-					"startHeight",
-					batch.StartHeight,
-					"endHeight",
-					batch.EndHeight,
-					"error",
-					err,
-				)
-				timer.Stop() // we don't forget to clean up
-				timer.Reset(d.batchAcceptanceTimeout)
-				continue
 			}
+		}
 
-			// all good
-			d.logger.Info("Batch accepted", "startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
-			return nil
+		// Batch was submitted successfully. Wait for it to be accepted by the settlement layer.
+		timer := time.NewTimer(d.batchAcceptanceTimeout)
+		defer timer.Stop()
+		batchAcceptanceAttempts := 5
+
+		for {
+			select {
+			case <-d.ctx.Done():
+				return d.ctx.Err()
+
+			case <-subscription.Cancelled():
+				return fmt.Errorf("subscription cancelled")
+
+			case event := <-subscription.Out():
+				eventData := event.Data().(*settlement.EventDataNewBatchAccepted)
+				if eventData.EndHeight != batch.EndHeight {
+					d.logger.Info("Received event for a different batch, ignoring.", "event", eventData)
+					continue
+				}
+				d.logger.Debug("Batch accepted.", "startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
+				return nil
+
+			case <-timer.C:
+				// Check if the batch was accepted by the settlement layer, and we've just missed the event.
+				includedBatch, err := d.pollForBatchInclusion(batch.EndHeight)
+				if err == nil && !includedBatch {
+					batchAcceptanceAttempts -= 1
+					if batchAcceptanceAttempts > 0 {
+						timer.Reset(d.batchAcceptanceTimeout)
+						continue
+					}
+					err = fmt.Errorf("batch not accepted by the settlement layer")
+				}
+
+				if err != nil {
+					d.logger.Error(
+						"Wait for batch inclusion",
+						"startHeight",
+						batch.StartHeight,
+						"endHeight",
+						batch.EndHeight,
+						"error",
+						err,
+					)
+					// If errored polling, start again the submission loop.
+					break
+				}
+
+				// all good
+				d.logger.Info("Batch accepted", "startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
+				return nil
+			}
 		}
 	}
 }
