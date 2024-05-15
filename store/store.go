@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"sync/atomic"
 
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -24,12 +23,9 @@ var (
 	validatorsPrefix = [1]byte{6}
 )
 
-// DefaultStore is a default store implmementation.
+// DefaultStore is a default store implementation.
 type DefaultStore struct {
 	db KVStore
-
-	height     uint64 // the highest block saved
-	baseHeight uint64 // the lowest block saved
 }
 
 var _ Store = &DefaultStore{}
@@ -44,43 +40,6 @@ func New(kv KVStore) Store {
 // NewBatch creates a new db batch.
 func (s *DefaultStore) NewBatch() Batch {
 	return s.db.NewBatch()
-}
-
-// SetHeight sets the height saved in the Store if it is higher than the existing height
-// returns OK if the value was updated successfully or did not need to be updated
-func (s *DefaultStore) SetHeight(height uint64) bool {
-	ok := true
-	storeHeight := s.Height()
-	if height > storeHeight {
-		ok = atomic.CompareAndSwapUint64(&s.height, storeHeight, height)
-	}
-	return ok
-}
-
-// Height returns height of the highest block saved in the Store.
-func (s *DefaultStore) Height() uint64 {
-	return atomic.LoadUint64(&s.height)
-}
-
-// NextHeight returns the next height that expected to be stored in store.
-func (s *DefaultStore) NextHeight() uint64 {
-	return s.Height() + 1
-}
-
-// SetBase sets the base height if it is higher than the existing base height
-// returns OK if the value was updated successfully or did not need to be updated
-func (s *DefaultStore) SetBase(height uint64) bool {
-	ok := true
-	baseHeight := s.Base()
-	if height > baseHeight {
-		ok = atomic.CompareAndSwapUint64(&s.baseHeight, baseHeight, height)
-	}
-	return ok
-}
-
-// Base returns height of the earliest block saved in the Store.
-func (s *DefaultStore) Base() uint64 {
-	return atomic.LoadUint64(&s.baseHeight)
 }
 
 // SaveBlock adds block to the store along with corresponding commit.
@@ -202,7 +161,7 @@ func (s *DefaultStore) LoadCommitByHash(hash [32]byte) (*types.Commit, error) {
 
 // UpdateState updates state saved in Store. Only one State is stored.
 // If there is no State in Store, state will be saved.
-func (s *DefaultStore) UpdateState(state types.State, batch Batch) (Batch, error) {
+func (s *DefaultStore) SaveState(state *types.State, batch Batch) (Batch, error) {
 	pbState, err := state.ToProto()
 	if err != nil {
 		return batch, fmt.Errorf("marshal state to JSON: %w", err)
@@ -220,26 +179,24 @@ func (s *DefaultStore) UpdateState(state types.State, batch Batch) (Batch, error
 }
 
 // LoadState returns last state saved with UpdateState.
-func (s *DefaultStore) LoadState() (types.State, error) {
+func (s *DefaultStore) LoadState() (*types.State, error) {
 	blob, err := s.db.Get(getStateKey())
 	if err != nil {
-		return types.State{}, types.ErrNoStateFound
+		return nil, types.ErrNoStateFound
 	}
 	var pbState pb.State
 	err = pbState.Unmarshal(blob)
 	if err != nil {
-		return types.State{}, fmt.Errorf("unmarshal state from store: %w", err)
+		return nil, fmt.Errorf("unmarshal state from store: %w", err)
 	}
 
 	var state types.State
 	err = state.FromProto(&pbState)
 	if err != nil {
-		return types.State{}, fmt.Errorf("unmarshal state from proto: %w", err)
+		return nil, fmt.Errorf("unmarshal state from proto: %w", err)
 	}
 
-	atomic.StoreUint64(&s.height, state.LastStoreHeight)
-	atomic.StoreUint64(&s.baseHeight, state.BaseHeight)
-	return state, nil
+	return &state, nil
 }
 
 // SaveValidators stores validator set for given block height in store.

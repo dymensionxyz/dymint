@@ -96,7 +96,7 @@ func (e *Executor) InitChain(genesis *tmtypes.GenesisDoc, validators []*tmtypes.
 }
 
 // CreateBlock reaps transactions from mempool and builds a block.
-func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHeaderHash [32]byte, state types.State, maxBytes uint64) *types.Block {
+func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHeaderHash [32]byte, state *types.State, maxBytes uint64) *types.Block {
 	if state.ConsensusParams.Block.MaxBytes > 0 {
 		maxBytes = min(maxBytes, uint64(state.ConsensusParams.Block.MaxBytes))
 	}
@@ -134,21 +134,18 @@ func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHead
 }
 
 // Commit commits the block
-func (e *Executor) Commit(state *types.State, block *types.Block, resp *tmstate.ABCIResponses) (int64, error) {
+func (e *Executor) Commit(state *types.State, block *types.Block, resp *tmstate.ABCIResponses) ([]byte, int64, error) {
 	appHash, retainHeight, err := e.commit(state, block, resp.DeliverTxs)
 	if err != nil {
-		return 0, err
+		return nil, 0, err
 	}
 
-	copy(state.AppHash[:], appHash[:])
-	copy(state.LastResultsHash[:], tmtypes.NewResults(resp.DeliverTxs).Hash())
-
-	err = e.publishEvents(resp, block, *state)
+	err = e.publishEvents(resp, block)
 	if err != nil {
 		e.logger.Error("fire block events", "error", err)
-		return 0, err
+		return nil, 0, err
 	}
-	return retainHeight, nil
+	return appHash, retainHeight, nil
 }
 
 // GetAppInfo returns the latest AppInfo from the proxyApp.
@@ -183,7 +180,7 @@ func (e *Executor) commit(state *types.State, block *types.Block, deliverTxs []*
 }
 
 // ExecuteBlock executes the block and returns the ABCIResponses. Block should be valid (passed validation checks).
-func (e *Executor) ExecuteBlock(state types.State, block *types.Block) (*tmstate.ABCIResponses, error) {
+func (e *Executor) ExecuteBlock(state *types.State, block *types.Block) (*tmstate.ABCIResponses, error) {
 	abciResponses := new(tmstate.ABCIResponses)
 	abciResponses.DeliverTxs = make([]*abci.ResponseDeliverTx, len(block.Data.Txs))
 
@@ -252,13 +249,12 @@ func (e *Executor) getDataHash(block *types.Block) []byte {
 	return abciData.Hash()
 }
 
-func (e *Executor) publishEvents(resp *tmstate.ABCIResponses, block *types.Block, state types.State) error {
+func (e *Executor) publishEvents(resp *tmstate.ABCIResponses, block *types.Block) error {
 	if e.eventBus == nil {
 		return nil
 	}
 
 	abciBlock, err := types.ToABCIBlock(block)
-	abciBlock.Header.ValidatorsHash = state.Validators.Hash()
 	if err != nil {
 		return err
 	}

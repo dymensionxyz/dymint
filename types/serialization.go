@@ -251,22 +251,14 @@ func (s *State) ToProto() (*pb.State, error) {
 	if err != nil {
 		return nil, err
 	}
-	lastValidators, err := s.LastValidators.ToProto()
-	if err != nil {
-		return nil, err
-	}
 
 	return &pb.State{
 		Version:                          &s.Version,
 		ChainId:                          s.ChainID,
-		InitialHeight:                    s.InitialHeight,
-		LastBlockHeight:                  s.LastBlockHeight,
-		LastBlockID:                      s.LastBlockID.ToProto(),
-		LastBlockTime:                    s.LastBlockTime,
+		InitialHeight:                    int64(s.InitialHeight),
+		LastBlockHeight:                  int64(s.LastBlockHeight.Load()),
 		NextValidators:                   nextValidators,
 		Validators:                       validators,
-		LastValidators:                   lastValidators,
-		LastStoreHeight:                  s.LastStoreHeight,
 		BaseHeight:                       s.BaseHeight,
 		LastHeightValidatorsChanged:      s.LastHeightValidatorsChanged,
 		ConsensusParams:                  s.ConsensusParams,
@@ -281,31 +273,15 @@ func (s *State) FromProto(other *pb.State) error {
 	var err error
 	s.Version = *other.Version
 	s.ChainID = other.ChainId
-	s.InitialHeight = other.InitialHeight
-	s.LastBlockHeight = other.LastBlockHeight
-	// TODO(omritoptix): remove this as this is only for backwards compatibility
-	// with old state files that don't have this field.
-	if other.LastStoreHeight == 0 && other.LastBlockHeight > 1 {
-		s.LastStoreHeight = uint64(other.LastBlockHeight)
-	} else {
-		s.LastStoreHeight = other.LastStoreHeight
-	}
+	s.InitialHeight = uint64(other.InitialHeight)
+	s.LastBlockHeight.Store(uint64(other.LastBlockHeight))
 	s.BaseHeight = other.BaseHeight
-	lastBlockID, err := types.BlockIDFromProto(&other.LastBlockID)
-	if err != nil {
-		return err
-	}
-	s.LastBlockID = *lastBlockID
-	s.LastBlockTime = other.LastBlockTime
+
 	s.NextValidators, err = types.ValidatorSetFromProto(other.NextValidators)
 	if err != nil {
 		return err
 	}
 	s.Validators, err = types.ValidatorSetFromProto(other.Validators)
-	if err != nil {
-		return err
-	}
-	s.LastValidators, err = types.ValidatorSetFromProto(other.LastValidators)
 	if err != nil {
 		return err
 	}

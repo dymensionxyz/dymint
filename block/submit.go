@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/dymensionxyz/dymint/gerr"
-
 	"github.com/dymensionxyz/dymint/da"
+	"github.com/dymensionxyz/dymint/gerr"
 	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/types"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
@@ -113,7 +112,7 @@ func (m *Manager) HandleSubmissionTrigger() error {
 	// Load current sync target and height to determine if new blocks are available for submission.
 
 	startHeight := m.SyncTarget.Load() + 1
-	endHeightInclusive := m.Store.Height()
+	endHeightInclusive := m.State.Height()
 
 	if endHeightInclusive < startHeight {
 		return nil // No new blocks have been produced

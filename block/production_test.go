@@ -53,7 +53,7 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 
 	// Check initial height
 	initialHeight := uint64(0)
-	require.Equal(initialHeight, manager.Store.Height())
+	require.Equal(initialHeight, manager.State.Height())
 
 	mCtx, cancel := context.WithTimeout(context.Background(), runTime)
 	defer cancel()
@@ -66,15 +66,15 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 	go managerWithEmptyBlocks.AccumulatedDataLoop(mCtx, buf2)
 	<-mCtx.Done()
 
-	require.Greater(manager.Store.Height(), initialHeight)
-	require.Greater(managerWithEmptyBlocks.Store.Height(), initialHeight)
-	assert.Greater(managerWithEmptyBlocks.Store.Height(), manager.Store.Height())
+	require.Greater(manager.State.Height(), initialHeight)
+	require.Greater(managerWithEmptyBlocks.State.Height(), initialHeight)
+	assert.Greater(managerWithEmptyBlocks.State.Height(), manager.State.Height())
 
 	// Check that blocks are created with empty blocks feature disabled
-	assert.LessOrEqual(manager.Store.Height(), uint64(runTime/MaxIdleTime))
-	assert.LessOrEqual(managerWithEmptyBlocks.Store.Height(), uint64(runTime/blockTime))
+	assert.LessOrEqual(manager.State.Height(), uint64(runTime/MaxIdleTime))
+	assert.LessOrEqual(managerWithEmptyBlocks.State.Height(), uint64(runTime/blockTime))
 
-	for i := uint64(2); i < managerWithEmptyBlocks.Store.Height(); i++ {
+	for i := uint64(2); i < managerWithEmptyBlocks.State.Height(); i++ {
 		prevBlock, err := managerWithEmptyBlocks.Store.LoadBlock(i - 1)
 		assert.NoError(err)
 
@@ -87,7 +87,7 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 		assert.Less(diff, blockTime+blockTime/10)
 	}
 
-	for i := uint64(2); i < manager.Store.Height(); i++ {
+	for i := uint64(2); i < manager.State.Height(); i++ {
 		prevBlock, err := manager.Store.LoadBlock(i - 1)
 		assert.NoError(err)
 
@@ -139,7 +139,7 @@ func TestCreateEmptyBlocksNew(t *testing.T) {
 
 	// Check initial height
 	expectedHeight := uint64(0)
-	assert.Equal(expectedHeight, manager.Store.Height())
+	assert.Equal(expectedHeight, manager.State.Height())
 
 	mCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -151,8 +151,8 @@ func TestCreateEmptyBlocksNew(t *testing.T) {
 
 	<-mCtx.Done()
 	foundTx := false
-	assert.LessOrEqual(manager.Store.Height(), uint64(10))
-	for i := uint64(2); i < manager.Store.Height(); i++ {
+	assert.LessOrEqual(manager.State.Height(), uint64(10))
+	for i := uint64(2); i < manager.State.Height(); i++ {
 		prevBlock, err := manager.Store.LoadBlock(i - 1)
 		assert.NoError(err)
 
@@ -188,7 +188,7 @@ func TestStopBlockProduction(t *testing.T) {
 
 	// validate initial accumulated is zero
 	require.Equal(manager.AccumulatedBatchSize.Load(), uint64(0))
-	assert.Equal(manager.Store.Height(), uint64(0))
+	assert.Equal(manager.State.Height(), uint64(0))
 
 	// subscribe to health status event
 	eventReceivedCh := make(chan error)
@@ -216,7 +216,7 @@ func TestStopBlockProduction(t *testing.T) {
 
 	// validate block production works
 	time.Sleep(400 * time.Millisecond)
-	assert.Greater(manager.Store.Height(), uint64(0))
+	assert.Greater(manager.State.Height(), uint64(0))
 	assert.Greater(manager.AccumulatedBatchSize.Load(), uint64(0))
 
 	// we don't read from the submit channel, so we assume it get full
@@ -228,11 +228,11 @@ func TestStopBlockProduction(t *testing.T) {
 		assert.Error(err)
 	}
 
-	stoppedHeight := manager.Store.Height()
+	stoppedHeight := manager.State.Height()
 
 	// make sure block production is stopped
 	time.Sleep(400 * time.Millisecond)
-	assert.Equal(stoppedHeight, manager.Store.Height())
+	assert.Equal(stoppedHeight, manager.State.Height())
 
 	// consume the signal
 	<-toSubmit
@@ -247,5 +247,5 @@ func TestStopBlockProduction(t *testing.T) {
 
 	// make sure block production is resumed
 	time.Sleep(400 * time.Millisecond)
-	assert.Greater(manager.Store.Height(), stoppedHeight)
+	assert.Greater(manager.State.Height(), stoppedHeight)
 }

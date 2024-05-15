@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/dymensionxyz/dymint/state/indexer"
+	indexer "github.com/dymensionxyz/dymint/indexers/blockindexer"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
 	"github.com/tendermint/tendermint/types"
 )
