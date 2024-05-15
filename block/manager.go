@@ -214,7 +214,7 @@ func getAddress(key crypto.PrivKey) ([]byte, error) {
 // TODO: move to gossip.go
 // onNewGossippedBlock will take a block and apply it
 func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
-	eventData := event.Data().(p2p.GossipedBlock)
+	eventData, _ := event.Data().(p2p.GossipedBlock)
 	block := eventData.Block
 	commit := eventData.Commit
 	m.retrieverMutex.Lock() // needed to protect blockCache access
