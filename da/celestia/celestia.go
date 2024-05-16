@@ -125,11 +125,11 @@ func createConfig(bz []byte) (c Config, err error) {
 
 // Start prepares DataAvailabilityLayerClient to work.
 func (c *DataAvailabilityLayerClient) Start() (err error) {
-	c.logger.Info("starting Celestia Data Availability Layer Client")
+	c.logger.Info("Starting Celestia Data Availability Layer Client.")
 
 	// other client has already been set
 	if c.rpc != nil {
-		c.logger.Info("celestia-node client already set")
+		c.logger.Info("Celestia-node client already set.")
 		return nil
 	}
 
@@ -144,7 +144,7 @@ func (c *DataAvailabilityLayerClient) Start() (err error) {
 	}
 
 	if !state.Finished() {
-		c.logger.Info("waiting for celestia-node to finish syncing", "height", state.Height, "target", state.ToHeight)
+		c.logger.Info("Waiting for celestia-node to finish syncing.", "height", state.Height, "target", state.ToHeight)
 
 		done := make(chan error, 1)
 		go func() {
@@ -166,12 +166,12 @@ func (c *DataAvailabilityLayerClient) Start() (err error) {
 				if err != nil {
 					return err
 				}
-				c.logger.Info("celestia-node still syncing", "height", state.Height, "target", state.ToHeight)
+				c.logger.Info("Celestia-node still syncing.", "height", state.Height, "target", state.ToHeight)
 			}
 		}
 	}
 
-	c.logger.Info("celestia-node is synced", "height", state.ToHeight)
+	c.logger.Info("Celestia-node is synced.", "height", state.ToHeight)
 
 	c.rpc = NewOpenRPC(rpc)
 	return nil
@@ -179,7 +179,7 @@ func (c *DataAvailabilityLayerClient) Start() (err error) {
 
 // Stop stops DataAvailabilityLayerClient.
 func (c *DataAvailabilityLayerClient) Stop() error {
-	c.logger.Info("stopping Celestia Data Availability Layer Client")
+	c.logger.Info("Stopping Celestia Data Availability Layer Client.")
 	err := c.pubsubServer.Stop()
 	if err != nil {
 		return err
@@ -228,7 +228,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			// TODO(srene):  Split batch in multiple blobs if necessary if supported
 			height, commitment, err := c.submit(data)
 			if err != nil {
-				c.logger.Error("submit blob", "error", err)
+				c.logger.Error("Submit blob.", "error", err)
 				backoff.Sleep()
 				continue
 			}
@@ -240,11 +240,11 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 				Namespace:  c.config.NamespaceID.Bytes(),
 			}
 
-			c.logger.Debug("submitted blob to DA successfully")
+			c.logger.Debug("Submitted blob to DA successfully.")
 
 			result := c.CheckBatchAvailability(daMetaData)
 			if result.Code != da.StatusSuccess {
-				c.logger.Error("check batch availability: submitted batch but did not get availability success status", "error", err)
+				c.logger.Error("Check batch availability: submitted batch but did not get availability success status.", "error", err)
 				backoff.Sleep()
 				continue
 			}
@@ -252,7 +252,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			daMetaData.Index = result.CheckMetaData.Index
 			daMetaData.Length = result.CheckMetaData.Length
 
-			c.logger.Debug("blob availability check passed successfully")
+			c.logger.Debug("Blob availability check passed successfully.")
 
 			return da.ResultSubmitBatch{
 				BaseResult: da.BaseResult{
@@ -269,7 +269,7 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 	for {
 		select {
 		case <-c.ctx.Done():
-			c.logger.Debug("Context cancelled")
+			c.logger.Debug("Context cancelled.")
 			return da.ResultRetrieveBatch{}
 		default:
 			// Just for backward compatibility, in case no commitments are sent from the Hub, batch can be retrieved using previous implementation.
@@ -285,7 +285,7 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 					resultRetrieveBatch = result
 
 					if errors.Is(result.Error, da.ErrRetrieval) {
-						c.logger.Error("retrieve batch", "error", result.Error)
+						c.logger.Error("Retrieve batch.", "error", result.Error)
 						return result.Error
 					}
 
@@ -296,7 +296,7 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 				retry.Delay(c.config.RetryDelay),
 			)
 			if err != nil {
-				c.logger.Error("RetrieveBatches process failed", "error", err)
+				c.logger.Error("RetrieveBatches process failed.", "error", err)
 			}
 			return resultRetrieveBatch
 
@@ -308,7 +308,7 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMet
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
-	c.logger.Debug("getting blob from DA", "height", daMetaData.Height, "namespace", hex.EncodeToString(daMetaData.Namespace), "commitment", hex.EncodeToString(daMetaData.Commitment))
+	c.logger.Debug("Getting blob from DA.", "height", daMetaData.Height, "namespace", hex.EncodeToString(daMetaData.Namespace), "commitment", hex.EncodeToString(daMetaData.Commitment))
 	var batches []*types.Batch
 	blob, err := c.rpc.Get(ctx, daMetaData.Height, daMetaData.Namespace, daMetaData.Commitment)
 	if err != nil {
@@ -333,10 +333,10 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMet
 	var batch pb.Batch
 	err = proto.Unmarshal(blob.Data, &batch)
 	if err != nil {
-		c.logger.Error("unmarshal block", "daHeight", daMetaData.Height, "error", err)
+		c.logger.Error("Unmarshal block.", "daHeight", daMetaData.Height, "error", err)
 	}
 
-	c.logger.Debug("blob retrieved successfully from DA", "DA height", daMetaData.Height, "lastBlockHeight", batch.EndHeight)
+	c.logger.Debug("Blob retrieved successfully from DA.", "DA height", daMetaData.Height, "lastBlockHeight", batch.EndHeight)
 
 	parsedBatch := new(types.Batch)
 	err = parsedBatch.FromProto(&batch)
@@ -378,7 +378,7 @@ func (c *DataAvailabilityLayerClient) retrieveBatchesNoCommitment(dataLayerHeigh
 		var batch pb.Batch
 		err = proto.Unmarshal(blob.Data, &batch)
 		if err != nil {
-			c.logger.Error("unmarshal block", "daHeight", dataLayerHeight, "position", i, "error", err)
+			c.logger.Error("Unmarshal block.", "daHeight", dataLayerHeight, "position", i, "error", err)
 			continue
 		}
 		parsedBatch := new(types.Batch)
@@ -415,14 +415,14 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 				availabilityResult = result
 
 				if result.Code != da.StatusSuccess {
-					c.logger.Error("Blob submitted not found in DA. Retrying availability check")
+					c.logger.Error("Blob submitted not found in DA. Retrying availability check.")
 					return da.ErrBlobNotFound
 				}
 
 				return nil
 			}, retry.Attempts(uint(c.config.RetryAttempts)), retry.DelayType(retry.FixedDelay), retry.Delay(c.config.RetryDelay))
 			if err != nil {
-				c.logger.Error("CheckAvailability process failed", "error", err)
+				c.logger.Error("CheckAvailability process failed.", "error", err)
 			}
 			return availabilityResult
 		}
@@ -579,7 +579,7 @@ func (c *DataAvailabilityLayerClient) submit(daBlob da.Blob) (uint64, da.Commitm
 }
 
 func (c *DataAvailabilityLayerClient) getProof(daMetaData *da.DASubmitMetaData) (*blob.Proof, error) {
-	c.logger.Debug("getting proof via RPC call", "height", daMetaData.Height, "namespace", daMetaData.Namespace, "commitment", daMetaData.Commitment)
+	c.logger.Debug("Getting proof via RPC call.", "height", daMetaData.Height, "namespace", daMetaData.Namespace, "commitment", daMetaData.Commitment)
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
@@ -610,7 +610,7 @@ func (c *DataAvailabilityLayerClient) blobsAndCommitments(daBlob da.Blob) ([]*bl
 }
 
 func (c *DataAvailabilityLayerClient) validateProof(daMetaData *da.DASubmitMetaData, proof *blob.Proof) (bool, error) {
-	c.logger.Debug("validating proof via RPC call", "height", daMetaData.Height, "namespace", daMetaData.Namespace, "commitment", daMetaData.Commitment)
+	c.logger.Debug("Validating proof via RPC call.", "height", daMetaData.Height, "namespace", daMetaData.Namespace, "commitment", daMetaData.Commitment)
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
@@ -618,7 +618,7 @@ func (c *DataAvailabilityLayerClient) validateProof(daMetaData *da.DASubmitMetaD
 }
 
 func (c *DataAvailabilityLayerClient) getDataAvailabilityHeaders(height uint64) (*header.DataAvailabilityHeader, error) {
-	c.logger.Debug("getting extended headers via RPC call", "height", height)
+	c.logger.Debug("Getting extended headers via RPC call.", "height", height)
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
