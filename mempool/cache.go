@@ -76,7 +76,7 @@ func (c *LRUTxCache) Push(tx types.Tx) bool {
 	if c.list.Len() >= c.size {
 		front := c.list.Front()
 		if front != nil {
-			frontKey := front.Value.(types.TxKey)
+			frontKey, _ := front.Value.(types.TxKey)
 			delete(c.cacheMap, frontKey)
 			c.list.Remove(front)
 		}

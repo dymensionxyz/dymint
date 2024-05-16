@@ -272,7 +272,7 @@ func TestSubscription(t *testing.T) {
 	assert.Contains(jsonResp.Error.Message, "subscription not found")
 }
 
-// getRPC returns a mock ABCI application and a local client. (aggregator-mode)
+// getRPC returns a mock ABCI application and a local client. (sequencer-mode)
 func getRPC(t *testing.T) (*tmmocks.MockApplication, *client.Client) {
 	t.Helper()
 	require := require.New(t)
@@ -316,7 +316,7 @@ func getRPC(t *testing.T) (*tmmocks.MockApplication, *client.Client) {
 		P2PConfig: config.P2PConfig{
 			ListenAddress:           config.DefaultListenAddress,
 			GossipedBlocksCacheSize: 50,
-			BootstrapTime:           30 * time.Second,
+			BootstrapRetryTime:      30 * time.Second,
 		},
 	}
 	node, err := node.NewNode(

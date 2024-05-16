@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/dymensionxyz/dymint/state/txindex"
+	"github.com/dymensionxyz/dymint/indexers/txindex"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
 )

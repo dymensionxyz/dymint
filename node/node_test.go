@@ -32,7 +32,7 @@ func TestStartup(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	// TODO(omritoptix): Test with and without aggregator mode.
+	// TODO(omritoptix): Test with and without sequencer mode.
 	node, err := testutil.CreateNode(false, nil)
 	require.NoError(err)
 	require.NotNil(node)
@@ -67,7 +67,7 @@ func TestMempoolDirectly(t *testing.T) {
 		P2PConfig: config.P2PConfig{
 			ListenAddress:           config.DefaultListenAddress,
 			GossipedBlocksCacheSize: 50,
-			BootstrapTime:           30 * time.Second,
+			BootstrapRetryTime:      30 * time.Second,
 			BootstrapNodes:          "",
 		},
 		RPC:           config.RPCConfig{},

@@ -10,7 +10,7 @@ import (
 	"github.com/tendermint/tendermint/libs/pubsub/query"
 	"github.com/tendermint/tendermint/types"
 
-	blockidxkv "github.com/dymensionxyz/dymint/state/indexer/block/kv"
+	blockidxkv "github.com/dymensionxyz/dymint/indexers/blockindexer/kv"
 	"github.com/dymensionxyz/dymint/store"
 )
 
