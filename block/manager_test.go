@@ -118,9 +118,8 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 
 	t.Log("Taking the manager out of sync by submitting a batch")
 
-	syncTarget := manager.SyncTarget.Load()
 	numBatchesToAdd := 2
-	nextBatchStartHeight := syncTarget + 1
+	nextBatchStartHeight := manager.NextHeightToSubmit()
 	var batch *types.Batch
 	for i := 0; i < numBatchesToAdd; i++ {
 		batch, err = testutil.GenerateBatch(nextBatchStartHeight, nextBatchStartHeight+uint64(testutil.DefaultTestBatchSize-1), manager.ProposerKey)
@@ -135,7 +134,7 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 	}
 
 	// Initially sync target is 0
-	assert.Zero(t, manager.SyncTarget.Load())
+	assert.Zero(t, manager.LastSubmittedHeight.Load())
 	assert.True(t, manager.State.Height() == 0)
 
 	// enough time to sync and produce blocks
@@ -149,7 +148,7 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 	<-ctx.Done()
-	assert.Equal(t, batch.EndHeight, manager.SyncTarget.Load())
+	assert.Equal(t, batch.EndHeight, manager.LastSubmittedHeight.Load())
 	// validate that we produced blocks
 	assert.Greater(t, manager.State.Height(), batch.EndHeight)
 }
@@ -353,7 +352,7 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 			}
 
 			// Call createNextDABatch function
-			startHeight := manager.SyncTarget.Load() + 1
+			startHeight := manager.NextHeightToSubmit()
 			endHeight := startHeight + uint64(tc.blocksToProduce) - 1
 			batch, err := manager.CreateNextBatchToSubmit(startHeight, endHeight)
 			assert.NoError(err)
@@ -397,8 +396,7 @@ func TestDAFetch(t *testing.T) {
 
 	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{Data: commitHash[:]})
 
-	syncTarget := manager.SyncTarget.Load()
-	nextBatchStartHeight := syncTarget + 1
+	nextBatchStartHeight := manager.NextHeightToSubmit()
 	batch, err := testutil.GenerateBatch(nextBatchStartHeight, nextBatchStartHeight+uint64(testutil.DefaultTestBatchSize-1), manager.ProposerKey)
 	require.NoError(err)
 	daResultSubmitBatch := manager.DAClient.SubmitBatch(batch)
