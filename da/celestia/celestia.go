@@ -152,12 +152,13 @@ func (c *DataAvailabilityLayerClient) Start() (err error) {
 				select {
 				case err := <-done:
 					if err != nil {
-						c.logger.Error("Failed to start Celestia DA.", "Error", err)
+						c.logger.Error("Failed to sync Celestia DA.", "Error", err)
 					}
 					return err
 				case <-ticker.C:
 					state, err := rpc.Header.SyncState(c.ctx)
 					if err != nil {
+						c.logger.Error("Failed to sync Celestia DA.", "Error", err)
 						return err
 					}
 					if !state.Finished() {
