@@ -61,8 +61,6 @@ func (m *Manager) syncToTargetHeight(targetHeight uint64) error {
 
 	}
 
-	m.logger.Info("Synced", "store height", m.State.Height(), "target height", targetHeight)
-
 	err := m.attemptApplyCachedBlocks()
 	if err != nil {
 		m.logger.Error("Attempt apply cached blocks.", "err", err)
