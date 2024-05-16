@@ -2,13 +2,13 @@ package block
 
 import (
 	"fmt"
+
+	"github.com/dymensionxyz/dymint/gerr"
 )
 
 func (m *Manager) pruneBlocks(retainHeight uint64) error {
-	wantToPrune := 0 < retainHeight
-	canPrune := !m.IsSequencer() || (retainHeight <= m.NextHeightToSubmit()) // do not delete anything that we might submit in future
-	if !(wantToPrune && canPrune) {
-		return nil
+	if m.IsSequencer() && retainHeight <= m.NextHeightToSubmit() { // do not delete anything that we might submit in future
+		return fmt.Errorf("cannot prune blocks before they have been submitted: %d: %w", retainHeight, gerr.ErrInvalidArgument)
 	}
 
 	pruned, err := m.Store.PruneBlocks(m.State.BaseHeight, retainHeight)

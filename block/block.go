@@ -93,9 +93,11 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	}
 
 	// Prune old heights, if requested by ABCI app.
-	err = m.pruneBlocks(uint64(retainHeight))
-	if err != nil {
-		m.logger.Error("prune blocks", "retain_height", retainHeight, "err", err)
+	if 0 < retainHeight {
+		err = m.pruneBlocks(uint64(retainHeight))
+		if err != nil {
+			m.logger.Error("prune blocks", "retain_height", retainHeight, "err", err)
+		}
 	}
 	return nil
 }
