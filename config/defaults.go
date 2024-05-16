@@ -42,6 +42,7 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 			BootstrapRetryTime:      30 * time.Second,
 			ListenAddress:           DefaultListenAddress,
 			BootstrapNodes:          "",
+			AdvertisingEnabled:      true,
 		},
 	}
 
