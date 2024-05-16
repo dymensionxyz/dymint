@@ -232,8 +232,7 @@ func TestApplyBlock(t *testing.T) {
 	resp, err = executor.ExecuteBlock(state, block)
 	require.NoError(err)
 	require.NotNil(resp)
-	vals, err := executor.NextValSetFromResponses(state, resp, block)
-	require.NoError(err)
+	vals := state.NextValidators.Copy() // TODO: this will be changed when supporting multiple sequencers from the hub
 	_, _, err = executor.Commit(state, block, resp)
 	require.NoError(err)
 	executor.UpdateStateAfterCommit(state, resp, appHash, block.Header.Height, vals)
