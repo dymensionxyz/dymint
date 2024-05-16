@@ -121,6 +121,7 @@ retry_max_delay = "{{ .SettlementConfig.RetryMaxDelay }}"
 retry_min_delay = "{{ .SettlementConfig.RetryMinDelay }}"
 retry_attempts = "{{ .SettlementConfig.RetryAttempts }}"
 batch_acceptance_timeout = "{{ .SettlementConfig.BatchAcceptanceTimeout }}"
+batch_acceptance_attempts = "{{ .SettlementConfig.BatchAcceptanceAttempts }}"
 
 #keyring and key name to be used for sequencer 
 keyring_backend = "{{ .SettlementConfig.KeyringBackend }}"
