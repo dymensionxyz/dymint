@@ -59,7 +59,9 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	}
 
 	// Get the validator changes from the app
-	validators, err := m.Executor.NextValSetFromResponses(m.State, responses, block)
+	// Dymint ignores any setValidator responses from the app, as it is manages the validator set based on the settlement consensus
+	// TODO: this will be changed when supporting multiple sequencers from the hub
+	validators := m.State.NextValidators.Copy()
 	if err != nil {
 		return fmt.Errorf("update state from responses: %w", err)
 	}

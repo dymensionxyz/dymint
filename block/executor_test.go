@@ -232,7 +232,9 @@ func TestApplyBlock(t *testing.T) {
 	resp, err = executor.ExecuteBlock(state, block)
 	require.NoError(err)
 	require.NotNil(resp)
-	vals, err := executor.NextValSetFromResponses(state, resp, block)
+	// Dymint ignores any setValidator responses from the app, as it is manages the validator set based on the settlement consensus
+	// TODO: this will be changed when supporting multiple sequencers from the hub
+	vals := state.NextValidators.Copy()
 	require.NoError(err)
 	_, _, err = executor.Commit(state, block, resp)
 	require.NoError(err)
