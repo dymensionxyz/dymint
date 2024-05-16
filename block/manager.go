@@ -167,7 +167,7 @@ func (m *Manager) Start(ctx context.Context) error {
 
 // syncBlockManager enforces the node to be synced on initial run.
 func (m *Manager) syncBlockManager() error {
-	res, err := m.SLClient.RetrieveBatch()
+	res, err := m.SLClient.GetLatestBatch()
 	if errors.Is(err, gerr.ErrNotFound) {
 		// The SL hasn't got any batches for this chain yet.
 		m.logger.Info("No batches for chain found in SL.")

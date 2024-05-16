@@ -33,37 +33,8 @@ import (
 // LayerClient is an extension of the base settlement layer client
 // for usage in tests and local development.
 type LayerClient struct {
-	*settlement.BaseLayerClient
-}
-
-var _ settlement.LayerI = (*LayerClient)(nil)
-
-// Init initializes the mock layer client.
-func (m *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, logger types.Logger, options ...settlement.Option) error {
-	HubClientMock, err := newHubClient(config, pubsub, logger)
-	if err != nil {
-		return err
-	}
-	baseOptions := []settlement.Option{
-		settlement.WithHubClient(HubClientMock),
-	}
-	if options == nil {
-		options = baseOptions
-	} else {
-		options = append(baseOptions, options...)
-	}
-	m.BaseLayerClient = &settlement.BaseLayerClient{}
-	err = m.BaseLayerClient.Init(config, pubsub, logger, options...)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-var _ settlement.HubClient = (*HubGrpcClient)(nil)
-
-type HubGrpcClient struct {
 	ctx            context.Context
+	rollappID      string
 	ProposerPubKey string
 	slStateIndex   uint64
 	logger         types.Logger
@@ -75,14 +46,17 @@ type HubGrpcClient struct {
 	refreshTime    int
 }
 
-func newHubClient(config settlement.Config, pubsub *pubsub.Server, logger types.Logger) (*HubGrpcClient, error) {
+var _ settlement.LayerI = (*LayerClient)(nil)
+
+// Init initializes the mock layer client.
+func (m *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, logger types.Logger) error {
 	ctx := context.Background()
 
 	latestHeight := uint64(0)
 	slStateIndex := uint64(0)
 	proposer, err := initConfig(config)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	var opts []grpc.DialOption
 	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
@@ -92,7 +66,7 @@ func newHubClient(config settlement.Config, pubsub *pubsub.Server, logger types.
 	conn, err := grpc.Dial(config.SLGrpc.Host+":"+strconv.Itoa(config.SLGrpc.Port), opts...)
 	if err != nil {
 		logger.Error("grpc sl connecting")
-		return nil, err
+		return err
 	}
 
 	client := slmock.NewMockSLClient(conn)
@@ -104,29 +78,29 @@ func newHubClient(config settlement.Config, pubsub *pubsub.Server, logger types.
 		var settlementBatch rollapptypes.MsgUpdateState
 		batchReply, err := client.GetBatch(ctx, &slmock.SLGetBatchRequest{Index: slStateIndex})
 		if err != nil {
-			return nil, err
+			return err
 		}
 		err = json.Unmarshal(batchReply.GetBatch(), &settlementBatch)
 		if err != nil {
-			return nil, errors.New("error unmarshalling batch")
+			return errors.New("error unmarshalling batch")
 		}
 		latestHeight = settlementBatch.StartHeight + settlementBatch.NumBlocks - 1
 	}
 	logger.Debug("Starting grpc SL ", "index", slStateIndex)
 
-	ret := &HubGrpcClient{
-		ctx:            ctx,
-		ProposerPubKey: proposer,
-		logger:         logger,
-		pubsub:         pubsub,
-		slStateIndex:   slStateIndex,
-		conn:           conn,
-		sl:             client,
-		stopchan:       stopchan,
-		refreshTime:    config.SLGrpc.RefreshTime,
-	}
-	ret.latestHeight.Store(latestHeight)
-	return ret, nil
+	m.rollappID = config.RollappID
+	m.ProposerPubKey = proposer
+	m.logger = logger
+	m.ctx = ctx
+	m.pubsub = pubsub
+	m.slStateIndex = slStateIndex
+	m.conn = conn
+	m.sl = client
+	m.stopchan = stopchan
+	m.refreshTime = config.SLGrpc.RefreshTime
+	m.latestHeight.Store(latestHeight)
+
+	return nil
 }
 
 func initConfig(conf settlement.Config) (proposer string, err error) {
@@ -158,7 +132,7 @@ func initConfig(conf settlement.Config) (proposer string, err error) {
 }
 
 // Start starts the mock client
-func (c *HubGrpcClient) Start() error {
+func (c *LayerClient) Start() error {
 	c.logger.Info("Starting grpc mock settlement")
 
 	go func() {
@@ -194,14 +168,14 @@ func (c *HubGrpcClient) Start() error {
 }
 
 // Stop stops the mock client
-func (c *HubGrpcClient) Stop() error {
+func (c *LayerClient) Stop() error {
 	c.logger.Info("Stopping grpc mock settlement")
 	close(c.stopchan)
 	return nil
 }
 
 // PostBatch saves the batch to the kv store
-func (c *HubGrpcClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) error {
+func (c *LayerClient) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) error {
 	settlementBatch := c.convertBatchtoSettlementBatch(batch, daResult)
 	c.saveBatch(settlementBatch)
 
@@ -214,9 +188,9 @@ func (c *HubGrpcClient) PostBatch(batch *types.Batch, daClient da.Client, daResu
 }
 
 // GetLatestBatch returns the latest batch from the kv store
-func (c *HubGrpcClient) GetLatestBatch(rollappID string) (*settlement.ResultRetrieveBatch, error) {
+func (c *LayerClient) GetLatestBatch() (*settlement.ResultRetrieveBatch, error) {
 	c.logger.Info("GetLatestBatch grpc", "index", c.slStateIndex)
-	batchResult, err := c.GetBatchAtIndex(rollappID, atomic.LoadUint64(&c.slStateIndex))
+	batchResult, err := c.GetBatchAtIndex(atomic.LoadUint64(&c.slStateIndex))
 	if err != nil {
 		return nil, err
 	}
@@ -224,7 +198,7 @@ func (c *HubGrpcClient) GetLatestBatch(rollappID string) (*settlement.ResultRetr
 }
 
 // GetBatchAtIndex returns the batch at the given index
-func (c *HubGrpcClient) GetBatchAtIndex(rollappID string, index uint64) (*settlement.ResultRetrieveBatch, error) {
+func (c *LayerClient) GetBatchAtIndex(index uint64) (*settlement.ResultRetrieveBatch, error) {
 	batchResult, err := c.retrieveBatchAtStateIndex(index)
 	if err != nil {
 		return &settlement.ResultRetrieveBatch{
@@ -234,26 +208,29 @@ func (c *HubGrpcClient) GetBatchAtIndex(rollappID string, index uint64) (*settle
 	return batchResult, nil
 }
 
-func (c *HubGrpcClient) GetHeightState(index uint64) (*settlement.ResultGetHeightState, error) {
+func (c *LayerClient) GetHeightState(index uint64) (*settlement.ResultGetHeightState, error) {
 	panic("hub grpc client get height state is not implemented: implement me") // TODO: impl
 }
 
-// GetSequencers returns a list of sequencers. Currently only returns a single sequencer
-func (c *HubGrpcClient) GetSequencers(rollappID string) ([]*types.Sequencer, error) {
+// GetProposer implements settlement.LayerI.
+func (c *LayerClient) GetProposer() *types.Sequencer {
 	pubKeyBytes, err := hex.DecodeString(c.ProposerPubKey)
 	if err != nil {
-		return nil, err
+		return nil
 	}
 	var pubKey cryptotypes.PubKey = &ed25519.PubKey{Key: pubKeyBytes}
-	return []*types.Sequencer{
-		{
-			PublicKey: pubKey,
-			Status:    types.Proposer,
-		},
-	}, nil
+	return &types.Sequencer{
+		PublicKey: pubKey,
+		Status:    types.Proposer,
+	}
 }
 
-func (c *HubGrpcClient) saveBatch(batch *settlement.Batch) {
+// GetSequencersList implements settlement.LayerI.
+func (m *LayerClient) GetSequencers() ([]*types.Sequencer, error) {
+	return []*types.Sequencer{m.GetProposer()}, nil
+}
+
+func (c *LayerClient) saveBatch(batch *settlement.Batch) {
 	c.logger.Debug("Saving batch to grpc settlement layer", "start height",
 		batch.StartHeight, "end height", batch.EndHeight)
 	b, err := json.Marshal(batch)
@@ -281,7 +258,7 @@ func (c *HubGrpcClient) saveBatch(batch *settlement.Batch) {
 	c.latestHeight.Store(batch.EndHeight)
 }
 
-func (c *HubGrpcClient) convertBatchtoSettlementBatch(batch *types.Batch, daResult *da.ResultSubmitBatch) *settlement.Batch {
+func (c *LayerClient) convertBatchtoSettlementBatch(batch *types.Batch, daResult *da.ResultSubmitBatch) *settlement.Batch {
 	settlementBatch := &settlement.Batch{
 		StartHeight: batch.StartHeight,
 		EndHeight:   batch.EndHeight,
@@ -298,7 +275,7 @@ func (c *HubGrpcClient) convertBatchtoSettlementBatch(batch *types.Batch, daResu
 	return settlementBatch
 }
 
-func (c *HubGrpcClient) retrieveBatchAtStateIndex(slStateIndex uint64) (*settlement.ResultRetrieveBatch, error) {
+func (c *LayerClient) retrieveBatchAtStateIndex(slStateIndex uint64) (*settlement.ResultRetrieveBatch, error) {
 	c.logger.Debug("Retrieving batch from grpc settlement layer", "SL state index", slStateIndex)
 
 	getBatchReply, err := c.sl.GetBatch(c.ctx, &slmock.SLGetBatchRequest{Index: slStateIndex})

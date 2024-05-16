@@ -34,38 +34,10 @@ var (
 	slStateIndexKey    = []byte("slStateIndex") // used to recover after reboot
 )
 
-// LayerClient is an extension of the base settlement layer client
+// LocalClient is an extension of the base settlement layer client
 // for usage in tests and local development.
-type LayerClient struct {
-	*settlement.BaseLayerClient
-}
-
-var _ settlement.LayerI = (*LayerClient)(nil)
-
-// Init initializes the mock layer client.
-func (m *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, logger types.Logger, options ...settlement.Option) error {
-	HubClientMock, err := newHubClient(config, pubsub, logger)
-	if err != nil {
-		return err
-	}
-	baseOptions := []settlement.Option{
-		settlement.WithHubClient(HubClientMock),
-	}
-	if options == nil {
-		options = baseOptions
-	} else {
-		options = append(baseOptions, options...)
-	}
-	m.BaseLayerClient = &settlement.BaseLayerClient{}
-	err = m.BaseLayerClient.Init(config, pubsub, logger, options...)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-// HubClient implements The HubClient interface
-type HubClient struct {
+type LocalClient struct {
+	rollappID      string
 	ProposerPubKey string
 	logger         types.Logger
 	pubsub         *pubsub.Server
@@ -76,15 +48,17 @@ type HubClient struct {
 	settlementKV store.KVStore
 }
 
-var _ settlement.HubClient = &HubClient{}
+var _ settlement.LayerI = (*LocalClient)(nil)
 
-func newHubClient(config settlement.Config, pubsub *pubsub.Server, logger types.Logger) (*HubClient, error) {
-	latestHeight := uint64(0)
-	slStateIndex := uint64(0)
+// Init initializes the mock layer client.
+func (m *LocalClient) Init(config settlement.Config, pubsub *pubsub.Server, logger types.Logger) error {
 	slstore, proposer, err := initConfig(config)
 	if err != nil {
-		return nil, err
+		return err
 	}
+
+	latestHeight := uint64(0)
+	slStateIndex := uint64(0)
 	settlementKV := store.NewPrefixKV(slstore, settlementKVPrefix)
 	b, err := settlementKV.Get(slStateIndexKey)
 	if err == nil {
@@ -93,23 +67,22 @@ func newHubClient(config settlement.Config, pubsub *pubsub.Server, logger types.
 		var settlementBatch rollapptypes.MsgUpdateState
 		b, err := settlementKV.Get(keyFromIndex(slStateIndex))
 		if err != nil {
-			return nil, err
+			return err
 		}
 		err = json.Unmarshal(b, &settlementBatch)
 		if err != nil {
-			return nil, errors.New("error unmarshalling batch")
+			return errors.New("error unmarshalling batch")
 		}
 		latestHeight = settlementBatch.StartHeight + settlementBatch.NumBlocks - 1
 	}
-
-	return &HubClient{
-		ProposerPubKey: proposer,
-		logger:         logger,
-		pubsub:         pubsub,
-		latestHeight:   latestHeight,
-		slStateIndex:   slStateIndex,
-		settlementKV:   settlementKV,
-	}, nil
+	m.rollappID = config.RollappID
+	m.ProposerPubKey = proposer
+	m.logger = logger
+	m.pubsub = pubsub
+	m.latestHeight = latestHeight
+	m.slStateIndex = slStateIndex
+	m.settlementKV = settlementKV
+	return nil
 }
 
 func initConfig(conf settlement.Config) (slstore store.KVStore, proposer string, err error) {
@@ -145,17 +118,17 @@ func initConfig(conf settlement.Config) (slstore store.KVStore, proposer string,
 }
 
 // Start starts the mock client
-func (c *HubClient) Start() error {
+func (c *LocalClient) Start() error {
 	return nil
 }
 
 // Stop stops the mock client
-func (c *HubClient) Stop() error {
+func (c *LocalClient) Stop() error {
 	return nil
 }
 
 // PostBatch saves the batch to the kv store
-func (c *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) error {
+func (c *LocalClient) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) error {
 	settlementBatch := convertBatchToSettlementBatch(batch, daResult)
 	c.saveBatch(settlementBatch)
 	go func() {
@@ -169,11 +142,11 @@ func (c *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 }
 
 // GetLatestBatch returns the latest batch from the kv store
-func (c *HubClient) GetLatestBatch(rollappID string) (*settlement.ResultRetrieveBatch, error) {
+func (c *LocalClient) GetLatestBatch() (*settlement.ResultRetrieveBatch, error) {
 	c.mu.Lock()
 	ix := c.slStateIndex
 	c.mu.Unlock()
-	batchResult, err := c.GetBatchAtIndex(rollappID, ix)
+	batchResult, err := c.GetBatchAtIndex(ix)
 	if err != nil {
 		return nil, err
 	}
@@ -181,7 +154,7 @@ func (c *HubClient) GetLatestBatch(rollappID string) (*settlement.ResultRetrieve
 }
 
 // GetBatchAtIndex returns the batch at the given index
-func (c *HubClient) GetBatchAtIndex(rollappID string, index uint64) (*settlement.ResultRetrieveBatch, error) {
+func (c *LocalClient) GetBatchAtIndex(index uint64) (*settlement.ResultRetrieveBatch, error) {
 	batchResult, err := c.retrieveBatchAtStateIndex(index)
 	if err != nil {
 		return &settlement.ResultRetrieveBatch{
@@ -191,12 +164,12 @@ func (c *HubClient) GetBatchAtIndex(rollappID string, index uint64) (*settlement
 	return batchResult, nil
 }
 
-func (c *HubClient) GetHeightState(h uint64) (*settlement.ResultGetHeightState, error) {
+func (c *LocalClient) GetHeightState(h uint64) (*settlement.ResultGetHeightState, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	// TODO: optimize (binary search, or just make another index)
 	for i := c.slStateIndex; i > 0; i-- {
-		b, err := c.GetBatchAtIndex("", i)
+		b, err := c.GetBatchAtIndex(i)
 		if err != nil {
 			panic(err)
 		}
@@ -212,22 +185,25 @@ func (c *HubClient) GetHeightState(h uint64) (*settlement.ResultGetHeightState, 
 	return nil, gerr.ErrNotFound // TODO: need to return a cosmos specific error?
 }
 
-// GetSequencers returns a list of sequencers. Currently only returns a single sequencer
-func (c *HubClient) GetSequencers(rollappID string) ([]*types.Sequencer, error) {
+// GetProposer implements settlement.LayerI.
+func (c *LocalClient) GetProposer() *types.Sequencer {
 	pubKeyBytes, err := hex.DecodeString(c.ProposerPubKey)
 	if err != nil {
-		return nil, err
+		return nil
 	}
 	var pubKey cryptotypes.PubKey = &ed25519.PubKey{Key: pubKeyBytes}
-	return []*types.Sequencer{
-		{
-			PublicKey: pubKey,
-			Status:    types.Proposer,
-		},
-	}, nil
+	return &types.Sequencer{
+		PublicKey: pubKey,
+		Status:    types.Proposer,
+	}
 }
 
-func (c *HubClient) saveBatch(batch *settlement.Batch) {
+// GetSequencersList implements settlement.LayerI.
+func (m *LocalClient) GetSequencers() ([]*types.Sequencer, error) {
+	return []*types.Sequencer{m.GetProposer()}, nil
+}
+
+func (c *LocalClient) saveBatch(batch *settlement.Batch) {
 	c.logger.Debug("Saving batch to settlement layer.", "start height",
 		batch.StartHeight, "end height", batch.EndHeight)
 
@@ -253,7 +229,7 @@ func (c *HubClient) saveBatch(batch *settlement.Batch) {
 	c.latestHeight = batch.EndHeight
 }
 
-func (c *HubClient) retrieveBatchAtStateIndex(slStateIndex uint64) (*settlement.ResultRetrieveBatch, error) {
+func (c *LocalClient) retrieveBatchAtStateIndex(slStateIndex uint64) (*settlement.ResultRetrieveBatch, error) {
 	b, err := c.settlementKV.Get(keyFromIndex(slStateIndex))
 	c.logger.Debug("Retrieving batch from settlement layer.", "SL state index", slStateIndex)
 	if err != nil {

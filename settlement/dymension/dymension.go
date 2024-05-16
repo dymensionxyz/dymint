@@ -48,41 +48,12 @@ const (
 	postBatchSubscriberPrefix = "postBatchSubscriber"
 )
 
-// LayerClient is intended only for usage in tests.
+// LayerClient is the client for the Dymension Hub.
 type LayerClient struct {
-	*settlement.BaseLayerClient
-}
-
-var _ settlement.LayerI = &LayerClient{}
-
-// Init is called once. it initializes the struct members.
-func (dlc *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, logger types.Logger, options ...settlement.Option) error {
-	DymensionCosmosClient, err := NewDymensionHubClient(config, pubsub, logger)
-	if err != nil {
-		return err
-	}
-	baseOptions := []settlement.Option{
-		settlement.WithHubClient(DymensionCosmosClient),
-	}
-	if options == nil {
-		options = baseOptions
-	} else {
-		options = append(baseOptions, options...)
-	}
-	dlc.BaseLayerClient = &settlement.BaseLayerClient{}
-	err = dlc.BaseLayerClient.Init(config, pubsub, logger, options...)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-// HubClient is the client for the Dymension Hub.
-type HubClient struct {
 	config               *settlement.Config
 	logger               types.Logger
 	pubsub               *pubsub.Server
-	client               CosmosClient
+	cosmosClient         CosmosClient
 	ctx                  context.Context
 	cancel               context.CancelFunc
 	rollappQueryClient   rollapptypes.QueryClient
@@ -98,47 +69,9 @@ type HubClient struct {
 	batchAcceptanceTimeout time.Duration
 }
 
-var _ settlement.HubClient = &HubClient{}
+var _ settlement.LayerI = &LayerClient{}
 
-// Option is a function that configures the HubClient.
-type Option func(*HubClient)
-
-// WithCosmosClient is an option that sets the CosmosClient.
-func WithCosmosClient(cosmosClient CosmosClient) Option {
-	return func(d *HubClient) {
-		d.client = cosmosClient
-	}
-}
-
-// WithRetryAttempts is an option that sets the number of attempts to retry when interacting with the settlement layer.
-func WithRetryAttempts(batchRetryAttempts uint) Option {
-	return func(d *HubClient) {
-		d.retryAttempts = batchRetryAttempts
-	}
-}
-
-// WithBatchAcceptanceTimeout is an option that sets the timeout for waiting for a batch to be accepted by the settlement layer.
-func WithBatchAcceptanceTimeout(batchAcceptanceTimeout time.Duration) Option {
-	return func(d *HubClient) {
-		d.batchAcceptanceTimeout = batchAcceptanceTimeout
-	}
-}
-
-// WithRetryMinDelay is an option that sets the retry function mindelay between hub retry attempts.
-func WithRetryMinDelay(retryMinDelay time.Duration) Option {
-	return func(d *HubClient) {
-		d.retryMinDelay = retryMinDelay
-	}
-}
-
-// WithRetryMaxDelay is an option that sets the retry function max delay between hub retry attempts.
-func WithRetryMaxDelay(retryMaxDelay time.Duration) Option {
-	return func(d *HubClient) {
-		d.retryMaxDelay = retryMaxDelay
-	}
-}
-
-func NewDymensionHubClient(config settlement.Config, pubsub *pubsub.Server, logger types.Logger, options ...Option) (*HubClient, error) {
+func NewDymensionHubClient(config settlement.Config, pubsub *pubsub.Server, logger types.Logger, options ...Option) (*LayerClient, error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	eventMap := map[string]string{
 		fmt.Sprintf(eventStateUpdate, config.RollappID):          settlement.EventNewBatchAccepted,
@@ -149,7 +82,7 @@ func NewDymensionHubClient(config settlement.Config, pubsub *pubsub.Server, logg
 	cryptocodec.RegisterInterfaces(interfaceRegistry)
 	protoCodec := codec.NewProtoCodec(interfaceRegistry)
 
-	dymesionHubClient := &HubClient{
+	dymesionHubClient := &LayerClient{
 		config:                 &config,
 		logger:                 logger,
 		pubsub:                 pubsub,
@@ -167,7 +100,7 @@ func NewDymensionHubClient(config settlement.Config, pubsub *pubsub.Server, logg
 		option(dymesionHubClient)
 	}
 
-	if dymesionHubClient.client == nil {
+	if dymesionHubClient.cosmosClient == nil {
 		client, err := cosmosclient.New(
 			ctx,
 			getCosmosClientOptions(&config)...,
@@ -175,17 +108,57 @@ func NewDymensionHubClient(config settlement.Config, pubsub *pubsub.Server, logg
 		if err != nil {
 			return nil, err
 		}
-		dymesionHubClient.client = NewCosmosClient(client)
+		dymesionHubClient.cosmosClient = NewCosmosClient(client)
 	}
-	dymesionHubClient.rollappQueryClient = dymesionHubClient.client.GetRollappClient()
-	dymesionHubClient.sequencerQueryClient = dymesionHubClient.client.GetSequencerClient()
+	dymesionHubClient.rollappQueryClient = dymesionHubClient.cosmosClient.GetRollappClient()
+	dymesionHubClient.sequencerQueryClient = dymesionHubClient.cosmosClient.GetSequencerClient()
 
 	return dymesionHubClient, nil
 }
 
+// Init is called once. it initializes the struct members.
+func (dlc *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, logger types.Logger) error {
+	ctx, cancel := context.WithCancel(context.Background())
+	eventMap := map[string]string{
+		fmt.Sprintf(eventStateUpdate, config.RollappID):          settlement.EventNewBatchAccepted,
+		fmt.Sprintf(eventSequencersListUpdate, config.RollappID): settlement.EventSequencersListUpdated,
+	}
+
+	interfaceRegistry := cdctypes.NewInterfaceRegistry()
+	cryptocodec.RegisterInterfaces(interfaceRegistry)
+	protoCodec := codec.NewProtoCodec(interfaceRegistry)
+
+	dlc.config = &config
+	dlc.logger = logger
+	dlc.pubsub = pubsub
+	dlc.ctx = ctx
+	dlc.cancel = cancel
+	dlc.eventMap = eventMap
+	dlc.protoCodec = protoCodec
+	dlc.retryAttempts = config.RetryAttempts
+	dlc.batchAcceptanceTimeout = config.BatchAcceptanceTimeout
+	dlc.retryMinDelay = config.RetryMinDelay
+	dlc.retryMaxDelay = config.RetryMaxDelay
+
+	if dlc.cosmosClient == nil {
+		client, err := cosmosclient.New(
+			ctx,
+			getCosmosClientOptions(&config)...,
+		)
+		if err != nil {
+			return err
+		}
+		dlc.cosmosClient = NewCosmosClient(client)
+	}
+	dlc.rollappQueryClient = dlc.cosmosClient.GetRollappClient()
+	dlc.sequencerQueryClient = dlc.cosmosClient.GetSequencerClient()
+
+	return nil
+}
+
 // Start starts the HubClient.
-func (d *HubClient) Start() error {
-	err := d.client.StartEventListener()
+func (d *LayerClient) Start() error {
+	err := d.cosmosClient.StartEventListener()
 	if err != nil {
 		return err
 	}
@@ -194,9 +167,9 @@ func (d *HubClient) Start() error {
 }
 
 // Stop stops the HubClient.
-func (d *HubClient) Stop() error {
+func (d *LayerClient) Stop() error {
 	d.cancel()
-	err := d.client.StopEventListener()
+	err := d.cosmosClient.StopEventListener()
 	if err != nil {
 		return err
 	}
@@ -204,9 +177,9 @@ func (d *HubClient) Stop() error {
 	return nil
 }
 
-// PostBatch posts a batch to the Dymension Hub. it tries to post the batch until it is accepted by the settlement layer.
+// SubmitBatch posts a batch to the Dymension Hub. it tries to post the batch until it is accepted by the settlement layer.
 // it emits success and failure events to the event bus accordingly.
-func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) error {
+func (d *LayerClient) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) error {
 	msgUpdateState, err := d.convertBatchToMsgUpdateState(batch, daResult)
 	if err != nil {
 		return fmt.Errorf("convert batch to msg update state: %w", err)
@@ -288,7 +261,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 	}
 }
 
-func (d *HubClient) getStateInfo(index, height *uint64) (res *rollapptypes.QueryGetStateInfoResponse, err error) {
+func (d *LayerClient) getStateInfo(index, height *uint64) (res *rollapptypes.QueryGetStateInfoResponse, err error) {
 	req := &rollapptypes.QueryGetStateInfoRequest{RollappId: d.config.RollappID}
 	if index != nil {
 		req.Index = *index
@@ -313,8 +286,21 @@ func (d *HubClient) getStateInfo(index, height *uint64) (res *rollapptypes.Query
 	return
 }
 
+// RetrieveBatch implements settlement.LayerI.
+func (dlc *LayerClient) RetrieveBatch(stateIndex ...uint64) (*settlement.ResultRetrieveBatch, error) {
+	if len(stateIndex) == 0 {
+		dlc.logger.Debug("Getting latest batch from settlement layer")
+		return dlc.GetLatestBatch()
+	}
+	if len(stateIndex) == 1 {
+		dlc.logger.Debug("Getting batch from settlement layer", "state index", stateIndex)
+		return dlc.GetBatchAtIndex(stateIndex[0])
+	}
+	return nil, fmt.Errorf("expected 0 or 1 index: got %d: %w", len(stateIndex), gerr.ErrInvalidArgument)
+}
+
 // GetLatestBatch returns the latest batch from the Dymension Hub.
-func (d *HubClient) GetLatestBatch(rollappID string) (*settlement.ResultRetrieveBatch, error) {
+func (d *LayerClient) GetLatestBatch() (*settlement.ResultRetrieveBatch, error) {
 	res, err := d.getStateInfo(nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("get state info: %w", err)
@@ -323,7 +309,7 @@ func (d *HubClient) GetLatestBatch(rollappID string) (*settlement.ResultRetrieve
 }
 
 // GetBatchAtIndex returns the batch at the given index from the Dymension Hub.
-func (d *HubClient) GetBatchAtIndex(rollappID string, index uint64) (*settlement.ResultRetrieveBatch, error) {
+func (d *LayerClient) GetBatchAtIndex(index uint64) (*settlement.ResultRetrieveBatch, error) {
 	res, err := d.getStateInfo(&index, nil)
 	if err != nil {
 		return nil, fmt.Errorf("get state info: %w", err)
@@ -331,7 +317,7 @@ func (d *HubClient) GetBatchAtIndex(rollappID string, index uint64) (*settlement
 	return d.convertStateInfoToResultRetrieveBatch(&res.StateInfo)
 }
 
-func (d *HubClient) GetHeightState(h uint64) (*settlement.ResultGetHeightState, error) {
+func (d *LayerClient) GetHeightState(h uint64) (*settlement.ResultGetHeightState, error) {
 	res, err := d.getStateInfo(nil, &h)
 	if err != nil {
 		return nil, fmt.Errorf("get state info: %w", err)
@@ -344,8 +330,24 @@ func (d *HubClient) GetHeightState(h uint64) (*settlement.ResultGetHeightState, 
 	}, nil
 }
 
+// GetProposer implements settlement.LayerI.
+func (dlc *LayerClient) GetProposer() *types.Sequencer {
+	seqs, err := dlc.GetSequencers()
+	if err != nil {
+		dlc.logger.Error("Get sequencers", "error", err)
+		return nil
+	}
+	for _, sequencer := range seqs {
+		if sequencer.Status == types.Proposer {
+			return sequencer
+		}
+	}
+	return nil
+}
+
 // GetSequencers returns the bonded sequencers of the given rollapp.
-func (d *HubClient) GetSequencers(rollappID string) ([]*types.Sequencer, error) {
+// FIXME: add caching
+func (d *LayerClient) GetSequencers() ([]*types.Sequencer, error) {
 	var res *sequencertypes.QueryGetSequencersByRollappByStatusResponse
 	req := &sequencertypes.QueryGetSequencersByRollappByStatusRequest{
 		RollappId: d.config.RollappID,
@@ -386,9 +388,9 @@ func (d *HubClient) GetSequencers(rollappID string) ([]*types.Sequencer, error) 
 	return sequencersList, nil
 }
 
-func (d *HubClient) submitBatch(msgUpdateState *rollapptypes.MsgUpdateState) error {
+func (d *LayerClient) submitBatch(msgUpdateState *rollapptypes.MsgUpdateState) error {
 	err := d.RunWithRetry(func() error {
-		txResp, err := d.client.BroadcastTx(d.config.DymAccountName, msgUpdateState)
+		txResp, err := d.cosmosClient.BroadcastTx(d.config.DymAccountName, msgUpdateState)
 		if err != nil || txResp.Code != 0 {
 			return fmt.Errorf("broadcast tx: %w", err)
 		}
@@ -397,9 +399,9 @@ func (d *HubClient) submitBatch(msgUpdateState *rollapptypes.MsgUpdateState) err
 	return err
 }
 
-func (d *HubClient) eventHandler() {
+func (d *LayerClient) eventHandler() {
 	// TODO(omritoptix): eventsChannel should be a generic channel which is later filtered by the event type.
-	eventsChannel, err := d.client.SubscribeToEvents(d.ctx, "dymension-client", fmt.Sprintf(eventStateUpdate, d.config.RollappID))
+	eventsChannel, err := d.cosmosClient.SubscribeToEvents(d.ctx, "dymension-client", fmt.Sprintf(eventStateUpdate, d.config.RollappID))
 	if err != nil {
 		panic("Error subscribing to events")
 	}
@@ -407,7 +409,7 @@ func (d *HubClient) eventHandler() {
 		select {
 		case <-d.ctx.Done():
 			return
-		case <-d.client.EventListenerQuit():
+		case <-d.cosmosClient.EventListenerQuit():
 			// TODO(omritoptix): Fallback to polling
 			panic("Settlement WS disconnected")
 		case event := <-eventsChannel:
@@ -427,8 +429,8 @@ func (d *HubClient) eventHandler() {
 	}
 }
 
-func (d *HubClient) convertBatchToMsgUpdateState(batch *types.Batch, daResult *da.ResultSubmitBatch) (*rollapptypes.MsgUpdateState, error) {
-	account, err := d.client.GetAccount(d.config.DymAccountName)
+func (d *LayerClient) convertBatchToMsgUpdateState(batch *types.Batch, daResult *da.ResultSubmitBatch) (*rollapptypes.MsgUpdateState, error) {
+	account, err := d.cosmosClient.GetAccount(d.config.DymAccountName)
 	if err != nil {
 		return nil, fmt.Errorf("get account: %w", err)
 	}
@@ -480,7 +482,7 @@ func getCosmosClientOptions(config *settlement.Config) []cosmosclient.Option {
 	return options
 }
 
-func (d *HubClient) getEventData(eventType string, rawEventData ctypes.ResultEvent) (interface{}, error) {
+func (d *LayerClient) getEventData(eventType string, rawEventData ctypes.ResultEvent) (interface{}, error) {
 	switch eventType {
 	case settlement.EventNewBatchAccepted:
 		return d.convertToNewBatchEvent(rawEventData)
@@ -488,7 +490,7 @@ func (d *HubClient) getEventData(eventType string, rawEventData ctypes.ResultEve
 	return nil, fmt.Errorf("event type %s not recognized", eventType)
 }
 
-func (d *HubClient) convertToNewBatchEvent(rawEventData ctypes.ResultEvent) (*settlement.EventDataNewBatchAccepted, error) {
+func (d *LayerClient) convertToNewBatchEvent(rawEventData ctypes.ResultEvent) (*settlement.EventDataNewBatchAccepted, error) {
 	// check all expected attributes  exists
 	events := rawEventData.Events
 	if events["state_update.num_blocks"] == nil || events["state_update.start_height"] == nil || events["state_update.state_info_index"] == nil {
@@ -514,7 +516,7 @@ func (d *HubClient) convertToNewBatchEvent(rawEventData ctypes.ResultEvent) (*se
 	return NewBatchEvent, nil
 }
 
-func (d *HubClient) convertStateInfoToResultRetrieveBatch(stateInfo *rollapptypes.StateInfo) (*settlement.ResultRetrieveBatch, error) {
+func (d *LayerClient) convertStateInfoToResultRetrieveBatch(stateInfo *rollapptypes.StateInfo) (*settlement.ResultRetrieveBatch, error) {
 	daMetaData := &da.DASubmitMetaData{}
 	daMetaData, err := daMetaData.FromPath(stateInfo.DAPath)
 	if err != nil {
@@ -535,11 +537,11 @@ func (d *HubClient) convertStateInfoToResultRetrieveBatch(stateInfo *rollapptype
 
 // TODO(omritoptix): Change the retry attempts to be only for the batch polling. Also we need to have a more
 // TODO: bullet proof check as theoretically the tx can stay in the mempool longer then our retry attempts.
-func (d *HubClient) waitForBatchInclusion(batchStartHeight uint64) (*settlement.ResultRetrieveBatch, error) {
+func (d *LayerClient) waitForBatchInclusion(batchStartHeight uint64) (*settlement.ResultRetrieveBatch, error) {
 	var res *settlement.ResultRetrieveBatch
 	err := d.RunWithRetry(
 		func() error {
-			latestBatch, err := d.GetLatestBatch(d.config.RollappID)
+			latestBatch, err := d.GetLatestBatch()
 			if err != nil {
 				return fmt.Errorf("get latest batch: %w", err)
 			}
@@ -555,7 +557,7 @@ func (d *HubClient) waitForBatchInclusion(batchStartHeight uint64) (*settlement.
 
 // RunWithRetry runs the given operation with retry, doing a number of attempts, and taking the last
 // error only. It uses the context of the HubClient.
-func (d *HubClient) RunWithRetry(operation func() error) error {
+func (d *LayerClient) RunWithRetry(operation func() error) error {
 	return retry.Do(operation,
 		retry.Context(d.ctx),
 		retry.LastErrorOnly(true),

@@ -56,42 +56,25 @@ type ResultGetHeightState struct {
 // Option is a function that sets a parameter on the settlement layer.
 type Option func(LayerI)
 
+// FIXME: fix retrieveBatch, fix getSeq to retuern err
 // LayerI defines generic interface for Settlement layer interaction.
 type LayerI interface {
 	// Init is called once for the client initialization
-	Init(config Config, pubsub *pubsub.Server, logger types.Logger, options ...Option) error
-
+	Init(config Config, pubsub *pubsub.Server, logger types.Logger) error
 	// Start is called once, after Init. It's implementation should start the client service.
 	Start() error
-
 	// Stop is called once, after Start. It should stop the client service.
 	Stop() error
-
 	// SubmitBatch tries submitting the batch in an async way to the settlement layer. This should create a transaction which (potentially)
 	// triggers a state transition in the settlement layer. Events are emitted on success or failure.
 	SubmitBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) error
-
-	// RetrieveBatch Gets the batch which contains the given height. Empty height returns the latest batch.
-	RetrieveBatch(stateIndex ...uint64) (*ResultRetrieveBatch, error)
+	GetLatestBatch() (*ResultRetrieveBatch, error)
+	GetBatchAtIndex(index uint64) (*ResultRetrieveBatch, error)
 
 	// GetSequencersList returns the list of the sequencers for this chain.
-	GetSequencersList() []*types.Sequencer
-
+	GetSequencers() ([]*types.Sequencer, error)
 	// GetProposer returns the current proposer for this chain.
 	GetProposer() *types.Sequencer
 
 	GetHeightState(uint64) (*ResultGetHeightState, error)
-}
-
-// HubClient is a helper interface for a more granular interaction with the hub.
-// Implementing a new settlement layer client basically requires embedding the base client
-// and implementing the helper interfaces.
-type HubClient interface {
-	Start() error
-	Stop() error
-	PostBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) error
-	GetLatestBatch(rollappID string) (*ResultRetrieveBatch, error)
-	GetBatchAtIndex(rollappID string, index uint64) (*ResultRetrieveBatch, error)
-	GetHeightState(index uint64) (*ResultGetHeightState, error)
-	GetSequencers(rollappID string) ([]*types.Sequencer, error)
 }
