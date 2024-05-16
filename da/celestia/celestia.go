@@ -129,7 +129,7 @@ func (c *DataAvailabilityLayerClient) Start() (err error) {
 
 	// other client has already been set
 	if c.rpc != nil {
-		c.logger.Debug("celestia-node client already set")
+		c.logger.Info("celestia-node client already set")
 		return nil
 	}
 
@@ -228,7 +228,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			// TODO(srene):  Split batch in multiple blobs if necessary if supported
 			height, commitment, err := c.submit(data)
 			if err != nil {
-				c.logger.Error("submit batch", "error", err)
+				c.logger.Error("submit blob", "error", err)
 				backoff.Sleep()
 				continue
 			}
@@ -240,7 +240,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 				Namespace:  c.config.NamespaceID.Bytes(),
 			}
 
-			c.logger.Info("submitted DA batch")
+			c.logger.Debug("submitted blob to DA successfully")
 
 			result := c.CheckBatchAvailability(daMetaData)
 			if result.Code != da.StatusSuccess {
@@ -252,7 +252,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			daMetaData.Index = result.CheckMetaData.Index
 			daMetaData.Length = result.CheckMetaData.Length
 
-			c.logger.Debug("Batch accepted")
+			c.logger.Debug("blob availability check passed successfully")
 
 			return da.ResultSubmitBatch{
 				BaseResult: da.BaseResult{
@@ -308,7 +308,7 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMet
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
-	c.logger.Debug("Celestia DA getting blob", "height", daMetaData.Height, "namespace", hex.EncodeToString(daMetaData.Namespace), "commitment", hex.EncodeToString(daMetaData.Commitment))
+	c.logger.Debug("getting blob from DA", "height", daMetaData.Height, "namespace", hex.EncodeToString(daMetaData.Namespace), "commitment", hex.EncodeToString(daMetaData.Commitment))
 	var batches []*types.Batch
 	blob, err := c.rpc.Get(ctx, daMetaData.Height, daMetaData.Namespace, daMetaData.Commitment)
 	if err != nil {
@@ -336,7 +336,7 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMet
 		c.logger.Error("unmarshal block", "daHeight", daMetaData.Height, "error", err)
 	}
 
-	c.logger.Debug("Celestia DA get blob successful", "DA height", daMetaData.Height, "lastBlockHeight", batch.EndHeight)
+	c.logger.Debug("blob retrieved successfully from DA", "DA height", daMetaData.Height, "lastBlockHeight", batch.EndHeight)
 
 	parsedBatch := new(types.Batch)
 	err = parsedBatch.FromProto(&batch)
@@ -575,17 +575,15 @@ func (c *DataAvailabilityLayerClient) submit(daBlob da.Blob) (uint64, da.Commitm
 		return 0, nil, fmt.Errorf("do rpc submit: %w", err)
 	}
 
-	c.logger.Info("Successfully submitted blobs to Celestia", "height", height)
-
 	return height, commitments[0], nil
 }
 
-func (c *DataAvailabilityLayerClient) getProof(daMetadata *da.DASubmitMetaData) (*blob.Proof, error) {
-	c.logger.Info("Getting proof via RPC call")
+func (c *DataAvailabilityLayerClient) getProof(daMetaData *da.DASubmitMetaData) (*blob.Proof, error) {
+	c.logger.Debug("getting proof via RPC call", "height", daMetaData.Height, "namespace", daMetaData.Namespace, "commitment", daMetaData.Commitment)
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
-	proof, err := c.rpc.GetProof(ctx, daMetadata.Height, daMetadata.Namespace, daMetadata.Commitment)
+	proof, err := c.rpc.GetProof(ctx, daMetaData.Height, daMetaData.Namespace, daMetaData.Commitment)
 	if err != nil {
 		return nil, err
 	}
@@ -612,7 +610,7 @@ func (c *DataAvailabilityLayerClient) blobsAndCommitments(daBlob da.Blob) ([]*bl
 }
 
 func (c *DataAvailabilityLayerClient) validateProof(daMetaData *da.DASubmitMetaData, proof *blob.Proof) (bool, error) {
-	c.logger.Info("Getting inclusion validation via RPC call")
+	c.logger.Debug("validating proof via RPC call", "height", daMetaData.Height, "namespace", daMetaData.Namespace, "commitment", daMetaData.Commitment)
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
@@ -620,7 +618,7 @@ func (c *DataAvailabilityLayerClient) validateProof(daMetaData *da.DASubmitMetaD
 }
 
 func (c *DataAvailabilityLayerClient) getDataAvailabilityHeaders(height uint64) (*header.DataAvailabilityHeader, error) {
-	c.logger.Info("Getting Celestia extended headers via RPC call")
+	c.logger.Debug("getting extended headers via RPC call", "height", height)
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
