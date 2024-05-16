@@ -59,10 +59,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	}
 
 	// Get the validator changes from the app
-	validators, err := m.Executor.NextValSetFromResponses(m.State, responses, block)
-	if err != nil {
-		return fmt.Errorf("update state from responses: %w", err)
-	}
+	validators := m.State.NextValidators.Copy() // TODO: this will be changed when supporting multiple sequencers from the hub
 
 	dbBatch, err = m.Store.SaveValidators(block.Header.Height, validators, dbBatch)
 	if err != nil {
@@ -93,8 +90,8 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	}
 
 	// Prune old heights, if requested by ABCI app.
-	if retainHeight > 0 {
-		_, err := m.pruneBlocks(uint64(retainHeight))
+	if 0 < retainHeight {
+		err = m.pruneBlocks(uint64(retainHeight))
 		if err != nil {
 			m.logger.Error("prune blocks", "retain_height", retainHeight, "err", err)
 		}
@@ -117,8 +114,8 @@ func (m *Manager) isHeightAlreadyApplied(blockHeight uint64) (bool, error) {
 }
 
 func (m *Manager) attemptApplyCachedBlocks() error {
-	m.retrieverMutex.Lock()
-	defer m.retrieverMutex.Unlock()
+	m.retrieverMu.Lock()
+	defer m.retrieverMu.Unlock()
 
 	for {
 		expectedHeight := m.State.NextHeight()

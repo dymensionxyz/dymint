@@ -111,7 +111,7 @@ func (m *Manager) AccumulatedDataLoop(ctx context.Context, toSubmit chan struct{
 func (m *Manager) HandleSubmissionTrigger() error {
 	// Load current sync target and height to determine if new blocks are available for submission.
 
-	startHeight := m.SyncTarget.Load() + 1
+	startHeight := m.NextHeightToSubmit()
 	endHeightInclusive := m.State.Height()
 
 	if endHeightInclusive < startHeight {
@@ -124,7 +124,7 @@ func (m *Manager) HandleSubmissionTrigger() error {
 	}
 
 	resultSubmitToDA := m.DAClient.SubmitBatch(nextBatch)
-
+	m.logger.Info("Submitted batch to DA", "start height", nextBatch.StartHeight, "end height", nextBatch.EndHeight)
 	if resultSubmitToDA.Code != da.StatusSuccess {
 		return fmt.Errorf("submit next batch to da: %s", resultSubmitToDA.Message)
 	}
@@ -135,8 +135,10 @@ func (m *Manager) HandleSubmissionTrigger() error {
 	if err != nil {
 		return fmt.Errorf("sl client submit batch: start height: %d: inclusive end height: %d: %w", startHeight, actualEndHeight, err)
 	}
+	m.logger.Info("Submitted batch to SL.", "start height", resultSubmitToDA, "end height", nextBatch.EndHeight)
 
-	m.UpdateSyncParams(actualEndHeight)
+	types.RollappHubHeightGauge.Set(float64(actualEndHeight))
+	m.LastSubmittedHeight.Store(actualEndHeight)
 	return nil
 }
 

@@ -1,6 +1,8 @@
 package settlement
 
 import (
+	"fmt"
+
 	"github.com/dymensionxyz/dymint/types"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
 )
@@ -31,6 +33,10 @@ type EventDataNewBatchAccepted struct {
 	EndHeight uint64
 	// StateIndex is the rollapp-specific index the batch was saved in the SL
 	StateIndex uint64
+}
+
+func (e EventDataNewBatchAccepted) String() string {
+	return fmt.Sprintf("EndHeight: %d, StateIndex: %d", e.EndHeight, e.StateIndex)
 }
 
 type EventDataSequencersListUpdated struct {

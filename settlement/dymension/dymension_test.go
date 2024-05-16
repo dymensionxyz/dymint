@@ -59,7 +59,7 @@ func TestGetSequencers(t *testing.T) {
 	err = pubsubServer.Start()
 	require.NoError(err)
 
-	hubClient, err := dymension.NewDymensionHubClient(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
+	hubClient, err := dymension.LayerClient(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
 	require.NoError(err)
 
 	sequencers, err := hubClient.GetSequencers()

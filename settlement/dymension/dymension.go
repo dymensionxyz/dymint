@@ -63,58 +63,14 @@ type LayerClient struct {
 	// channel for getting notified when a batch is accepted by the settlement layer.
 	// only one batch of a specific height can get accepted and we can are currently sending only one batch at a time.
 	// for that reason it's safe to assume that if a batch is accepted, it refers to the last batch we've sent.
-	retryAttempts          uint
-	retryMinDelay          time.Duration
-	retryMaxDelay          time.Duration
-	batchAcceptanceTimeout time.Duration
+	retryAttempts           uint
+	retryMinDelay           time.Duration
+	retryMaxDelay           time.Duration
+	batchAcceptanceTimeout  time.Duration
+	batchAcceptanceAttempts uint
 }
 
 var _ settlement.LayerI = &LayerClient{}
-
-func NewDymensionHubClient(config settlement.Config, pubsub *pubsub.Server, logger types.Logger, options ...Option) (*LayerClient, error) {
-	ctx, cancel := context.WithCancel(context.Background())
-	eventMap := map[string]string{
-		fmt.Sprintf(eventStateUpdate, config.RollappID):          settlement.EventNewBatchAccepted,
-		fmt.Sprintf(eventSequencersListUpdate, config.RollappID): settlement.EventSequencersListUpdated,
-	}
-
-	interfaceRegistry := cdctypes.NewInterfaceRegistry()
-	cryptocodec.RegisterInterfaces(interfaceRegistry)
-	protoCodec := codec.NewProtoCodec(interfaceRegistry)
-
-	dymesionHubClient := &LayerClient{
-		config:                 &config,
-		logger:                 logger,
-		pubsub:                 pubsub,
-		ctx:                    ctx,
-		cancel:                 cancel,
-		eventMap:               eventMap,
-		protoCodec:             protoCodec,
-		retryAttempts:          config.RetryAttempts,
-		batchAcceptanceTimeout: config.BatchAcceptanceTimeout,
-		retryMinDelay:          config.RetryMinDelay,
-		retryMaxDelay:          config.RetryMaxDelay,
-	}
-
-	for _, option := range options {
-		option(dymesionHubClient)
-	}
-
-	if dymesionHubClient.cosmosClient == nil {
-		client, err := cosmosclient.New(
-			ctx,
-			getCosmosClientOptions(&config)...,
-		)
-		if err != nil {
-			return nil, err
-		}
-		dymesionHubClient.cosmosClient = NewCosmosClient(client)
-	}
-	dymesionHubClient.rollappQueryClient = dymesionHubClient.cosmosClient.GetRollappClient()
-	dymesionHubClient.sequencerQueryClient = dymesionHubClient.cosmosClient.GetSequencerClient()
-
-	return dymesionHubClient, nil
-}
 
 // Init is called once. it initializes the struct members.
 func (dlc *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, logger types.Logger) error {
@@ -137,6 +93,7 @@ func (dlc *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, lo
 	dlc.protoCodec = protoCodec
 	dlc.retryAttempts = config.RetryAttempts
 	dlc.batchAcceptanceTimeout = config.BatchAcceptanceTimeout
+	dlc.batchAcceptanceAttempts = config.BatchAcceptanceAttempts
 	dlc.retryMinDelay = config.RetryMinDelay
 	dlc.retryMaxDelay = config.RetryMaxDelay
 
@@ -187,7 +144,7 @@ func (d *LayerClient) SubmitBatch(batch *types.Batch, daClient da.Client, daResu
 
 	// TODO: probably should be changed to be a channel, as the eventHandler is also in the HubClient in he produces the event
 	postBatchSubscriberClient := fmt.Sprintf("%s-%d-%s", postBatchSubscriberPrefix, batch.StartHeight, uuid.New().String())
-	subscription, err := d.pubsub.Subscribe(d.ctx, postBatchSubscriberClient, settlement.EventQueryNewSettlementBatchAccepted)
+	subscription, err := d.pubsub.Subscribe(d.ctx, postBatchSubscriberClient, settlement.EventQueryNewSettlementBatchAccepted, 1000)
 	if err != nil {
 		return fmt.Errorf("pub sub subscribe to settlement state updates: %w", err)
 	}
@@ -195,15 +152,12 @@ func (d *LayerClient) SubmitBatch(batch *types.Batch, daClient da.Client, daResu
 	//nolint:errcheck
 	defer d.pubsub.Unsubscribe(d.ctx, postBatchSubscriberClient, settlement.EventQueryNewSettlementBatchAccepted)
 
-	// Try submitting the batch to the settlement layer. If submission (i.e. only submission, not acceptance) fails we emit an unhealthy event
-	// and try again in the next loop. If submission succeeds we wait for the batch to be accepted by the settlement layer.
-	// If it is not accepted we emit an unhealthy event and start again the submission loop.
+	// Try submitting the batch to the settlement layer:
+	// 1. broadcast the transaction to the blockchain (with retries).
+	// 2. wait for the batch to be accepted by the settlement layer.
 	for {
-		select {
-		case <-d.ctx.Done():
-			return d.ctx.Err()
-		default:
-			err := d.submitBatch(msgUpdateState)
+		err := d.RunWithRetryInfinitely(func() error {
+			err := d.broadcastBatch(msgUpdateState)
 			if err != nil {
 				d.logger.Error(
 					"Submit batch",
@@ -214,49 +168,61 @@ func (d *LayerClient) SubmitBatch(batch *types.Batch, daClient da.Client, daResu
 					"error",
 					err,
 				)
-
-				// Sleep to allow context cancellation to take effect before retrying
-				time.Sleep(100 * time.Millisecond)
-				continue
 			}
+			return err
+		})
+		if err != nil {
+			return fmt.Errorf("broadcast batch: %w", err)
 		}
 
 		// Batch was submitted successfully. Wait for it to be accepted by the settlement layer.
 		timer := time.NewTimer(d.batchAcceptanceTimeout)
 		defer timer.Stop()
+		attempt := uint64(0)
 
-		select {
-		case <-d.ctx.Done():
-			return d.ctx.Err()
+		for {
+			select {
+			case <-d.ctx.Done():
+				return d.ctx.Err()
 
-		case <-subscription.Cancelled():
-			return fmt.Errorf("subscription cancelled")
+			case <-subscription.Cancelled():
+				return fmt.Errorf("subscription cancelled")
 
-		case <-subscription.Out():
-			d.logger.Debug("Batch accepted", "startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
-			return nil
+			case event := <-subscription.Out():
+				eventData, _ := event.Data().(*settlement.EventDataNewBatchAccepted)
+				if eventData.EndHeight != batch.EndHeight {
+					d.logger.Debug("Received event for a different batch, ignoring.", "event", eventData)
+					continue
+				}
+				d.logger.Info("Batch accepted.", "startHeight", batch.StartHeight, "endHeight", batch.EndHeight, "stateIndex", eventData.StateIndex)
+				return nil
 
-		case <-timer.C:
-			// Check if the batch was accepted by the settlement layer, and we've just missed the event.
-			includedBatch, err := d.waitForBatchInclusion(batch.StartHeight)
-			if err != nil {
-				d.logger.Error(
-					"Wait for batch inclusion",
-					"startHeight",
-					batch.StartHeight,
-					"endHeight",
-					batch.EndHeight,
-					"error",
-					err,
-				)
-
-				timer.Stop() // we don't forget to clean up
-				continue
+			case <-timer.C:
+				// Check if the batch was accepted by the settlement layer, and we've just missed the event.
+				attempt++
+				includedBatch, err := d.pollForBatchInclusion(batch.EndHeight, attempt)
+				if err == nil && !includedBatch {
+					// no error, but still not included
+					timer.Reset(d.batchAcceptanceTimeout)
+					continue
+				}
+				// all good
+				if err == nil {
+					d.logger.Info("Batch accepted", "startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
+					return nil
+				}
 			}
-
-			// all good
-			d.logger.Info("Batch accepted", "startHeight", includedBatch.StartHeight, "endHeight", includedBatch.EndHeight)
-			return nil
+			// If errored polling, start again the submission loop.
+			d.logger.Error(
+				"Wait for batch inclusion",
+				"startHeight",
+				batch.StartHeight,
+				"endHeight",
+				batch.EndHeight,
+				"error",
+				err,
+			)
+			break
 		}
 	}
 }
@@ -388,23 +354,23 @@ func (d *LayerClient) GetSequencers() ([]*types.Sequencer, error) {
 	return sequencersList, nil
 }
 
-func (d *LayerClient) submitBatch(msgUpdateState *rollapptypes.MsgUpdateState) error {
-	err := d.RunWithRetry(func() error {
-		txResp, err := d.cosmosClient.BroadcastTx(d.config.DymAccountName, msgUpdateState)
-		if err != nil || txResp.Code != 0 {
-			return fmt.Errorf("broadcast tx: %w", err)
-		}
-		return nil
-	})
-	return err
+func (d *LayerClient) broadcastBatch(msgUpdateState *rollapptypes.MsgUpdateState) error {
+	txResp, err := d.cosmosClient.BroadcastTx(d.config.DymAccountName, msgUpdateState)
+	if err != nil || txResp.Code != 0 {
+		return fmt.Errorf("broadcast tx: %w", err)
+	}
+	return nil
 }
 
 func (d *LayerClient) eventHandler() {
 	// TODO(omritoptix): eventsChannel should be a generic channel which is later filtered by the event type.
-	eventsChannel, err := d.cosmosClient.SubscribeToEvents(d.ctx, "dymension-client", fmt.Sprintf(eventStateUpdate, d.config.RollappID))
+	subscriber := fmt.Sprintf("dymension-client-%s", uuid.New().String())
+	eventsChannel, err := d.cosmosClient.SubscribeToEvents(d.ctx, subscriber, fmt.Sprintf(eventStateUpdate, d.config.RollappID), 1000)
 	if err != nil {
 		panic("Error subscribing to events")
 	}
+	// TODO: add defer unsubscribeAll
+
 	for {
 		select {
 		case <-d.ctx.Done():
@@ -414,7 +380,6 @@ func (d *LayerClient) eventHandler() {
 			panic("Settlement WS disconnected")
 		case event := <-eventsChannel:
 			// Assert value is in map and publish it to the event bus
-			d.logger.Debug("Received event from settlement layer")
 			_, ok := d.eventMap[event.Query]
 			if !ok {
 				d.logger.Debug("Ignoring event. Type not supported", "event", event)
@@ -535,24 +500,19 @@ func (d *LayerClient) convertStateInfoToResultRetrieveBatch(stateInfo *rollappty
 	}, nil
 }
 
-// TODO(omritoptix): Change the retry attempts to be only for the batch polling. Also we need to have a more
-// TODO: bullet proof check as theoretically the tx can stay in the mempool longer then our retry attempts.
-func (d *LayerClient) waitForBatchInclusion(batchStartHeight uint64) (*settlement.ResultRetrieveBatch, error) {
-	var res *settlement.ResultRetrieveBatch
-	err := d.RunWithRetry(
-		func() error {
-			latestBatch, err := d.GetLatestBatch()
-			if err != nil {
-				return fmt.Errorf("get latest batch: %w", err)
-			}
-			if latestBatch.Batch.StartHeight != batchStartHeight {
-				return fmt.Errorf("latest batch start height not match expected start height: %w", gerr.ErrNotFound)
-			}
-			res = latestBatch
-			return nil
-		},
-	)
-	return res, err
+// pollForBatchInclusion polls the hub for the inclusion of a batch with the given end height.
+func (d *LayerClient) pollForBatchInclusion(batchEndHeight, attempt uint64) (bool, error) {
+	latestBatch, err := d.GetLatestBatch()
+	if err != nil {
+		return false, fmt.Errorf("get latest batch: %w", err)
+	}
+
+	// no error, but still not included
+	if attempt >= uint64(d.batchAcceptanceAttempts) {
+		return false, fmt.Errorf("timed out waiting for batch inclusion on settlement layer")
+	}
+
+	return latestBatch.Batch.EndHeight == batchEndHeight, nil
 }
 
 // RunWithRetry runs the given operation with retry, doing a number of attempts, and taking the last
@@ -563,6 +523,18 @@ func (d *LayerClient) RunWithRetry(operation func() error) error {
 		retry.LastErrorOnly(true),
 		retry.Delay(d.retryMinDelay),
 		retry.Attempts(d.retryAttempts),
+		retry.MaxDelay(d.retryMaxDelay),
+	)
+}
+
+// RunWithRetryInfinitely runs the given operation with retry, doing a number of attempts, and taking the last
+// error only. It uses the context of the HubClient.
+func (d *LayerClient) RunWithRetryInfinitely(operation func() error) error {
+	return retry.Do(operation,
+		retry.Context(d.ctx),
+		retry.LastErrorOnly(true),
+		retry.Delay(d.retryMinDelay),
+		retry.Attempts(0),
 		retry.MaxDelay(d.retryMaxDelay),
 	)
 }

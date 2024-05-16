@@ -31,6 +31,8 @@ import (
 
 // Manager is responsible for aggregating transactions into blocks.
 type Manager struct {
+	logger types.Logger
+
 	// Configuration
 	Conf        config.BlockManagerConfig
 	Genesis     *tmtypes.GenesisDoc
@@ -47,25 +49,30 @@ type Manager struct {
 	DAClient  da.DataAvailabilityLayerClient
 	SLClient  settlement.LayerI
 
-	// Data retrieval
-	Retriever       da.BatchRetriever
-	SyncTargetDiode diodes.Diode
-	SyncTarget      atomic.Uint64
-
-	// Block production
-	producedSizeCh chan uint64 // channel for the producer to report the size of the block it produced
-
-	// Submitter
-	AccumulatedBatchSize atomic.Uint64
+	/*
+		Production
+	*/
+	producedSizeCh chan uint64 // for the producer to report the size of the block it produced
 
 	/*
-		Protect against processing two blocks at once when there are two routines handling incoming gossiped blocks,
-		and incoming DA blocks, respectively.
+		Submission
 	*/
-	retrieverMutex sync.Mutex
+	AccumulatedBatchSize atomic.Uint64
+	// The last height which was submitted to both sublayers, that we know of. When we produce new batches, we will
+	// start at this height + 1. Note: only accessed by one thread at a time so doesn't need synchro.
+	// It is ALSO used by the producer, because the producer needs to check if it can prune blocks and it wont'
+	// prune anything that might be submitted in the future. Therefore, it must be atomic.
+	LastSubmittedHeight atomic.Uint64
 
-	logger types.Logger
-
+	/*
+		Retrieval
+	*/
+	// Protect against processing two blocks at once when there are two routines handling incoming gossiped blocks,
+	// and incoming DA blocks, respectively.
+	retrieverMu sync.Mutex
+	Retriever   da.BatchRetriever
+	// get the next target height to sync local state to
+	targetSyncHeight diodes.Diode
 	// Cached blocks and commits for applying at future heights. The blocks may not be valid, because
 	// we can only do full validation in sequential order.
 	blockCache map[uint64]CachedBlock
@@ -101,21 +108,21 @@ func NewManager(
 	}
 
 	agg := &Manager{
-		Pubsub:          pubsub,
-		p2pClient:       p2pClient,
-		ProposerKey:     proposerKey,
-		Conf:            conf,
-		Genesis:         genesis,
-		State:           s,
-		Store:           store,
-		Executor:        exec,
-		DAClient:        dalc,
-		SLClient:        settlementClient,
-		Retriever:       dalc.(da.BatchRetriever),
-		SyncTargetDiode: diodes.NewOneToOne(1, nil),
-		producedSizeCh:  make(chan uint64),
-		logger:          logger,
-		blockCache:      make(map[uint64]CachedBlock),
+		Pubsub:           pubsub,
+		p2pClient:        p2pClient,
+		ProposerKey:      proposerKey,
+		Conf:             conf,
+		Genesis:          genesis,
+		State:            s,
+		Store:            store,
+		Executor:         exec,
+		DAClient:         dalc,
+		SLClient:         settlementClient,
+		Retriever:        dalc.(da.BatchRetriever),
+		targetSyncHeight: diodes.NewOneToOne(1, nil),
+		producedSizeCh:   make(chan uint64),
+		logger:           logger,
+		blockCache:       make(map[uint64]CachedBlock),
 	}
 
 	return agg, nil
@@ -125,13 +132,11 @@ func NewManager(
 func (m *Manager) Start(ctx context.Context) error {
 	m.logger.Info("Starting the block manager")
 
-	slProposerKey := m.SLClient.GetProposer().PublicKey.Bytes()
-	localProposerKey, err := m.ProposerKey.GetPublic().Raw()
+	isSequencer, err := m.IsSequencerVerify()
 	if err != nil {
-		return fmt.Errorf("get local node public key: %w", err)
+		return err
 	}
 
-	isSequencer := bytes.Equal(slProposerKey, localProposerKey)
 	m.logger.Info("Starting block manager", "isSequencer", isSequencer)
 
 	// Check if InitChain flow is needed
@@ -159,10 +164,28 @@ func (m *Manager) Start(ctx context.Context) error {
 		go m.SubmitLoop(ctx)
 	} else {
 		go m.RetrieveLoop(ctx)
-		go m.SyncTargetLoop(ctx)
+		go m.SyncToTargetHeightLoop(ctx)
 	}
 
 	return nil
+}
+
+func (m *Manager) IsSequencerVerify() (bool, error) {
+	slProposerKey := m.SLClient.GetProposer().PublicKey.Bytes()
+	localProposerKey, err := m.ProposerKey.GetPublic().Raw()
+	if err != nil {
+		return false, fmt.Errorf("get local node public key: %w", err)
+	}
+	return bytes.Equal(slProposerKey, localProposerKey), nil
+}
+
+func (m *Manager) IsSequencer() bool {
+	ret, _ := m.IsSequencerVerify()
+	return ret
+}
+
+func (m *Manager) NextHeightToSubmit() uint64 {
+	return m.LastSubmittedHeight.Load() + 1
 }
 
 // syncBlockManager enforces the node to be synced on initial run.
@@ -171,27 +194,19 @@ func (m *Manager) syncBlockManager() error {
 	if errors.Is(err, gerr.ErrNotFound) {
 		// The SL hasn't got any batches for this chain yet.
 		m.logger.Info("No batches for chain found in SL.")
-		m.SyncTarget.Store(uint64(m.Genesis.InitialHeight - 1))
+		m.LastSubmittedHeight.Store(uint64(m.Genesis.InitialHeight - 1))
 		return nil
 	}
 	if err != nil {
 		// TODO: separate between fresh rollapp and non-registered rollapp
 		return err
 	}
-	// Set the syncTarget according to the result
-	m.SyncTarget.Store(res.EndHeight)
-	err = m.syncUntilTarget(res.EndHeight)
+	m.LastSubmittedHeight.Store(res.EndHeight)
+	err = m.syncToTargetHeight(res.EndHeight)
 	if err != nil {
 		return err
 	}
 
-	m.logger.Info("Synced.", "current height", m.State.Height(), "syncTarget", m.SyncTarget.Load())
+	m.logger.Info("Synced.", "current height", m.State.Height(), "last submitted height", m.LastSubmittedHeight.Load())
 	return nil
-}
-
-// UpdateSyncParams updates the sync target and state index if necessary
-func (m *Manager) UpdateSyncParams(endHeight uint64) {
-	types.RollappHubHeightGauge.Set(float64(endHeight))
-	m.logger.Info("Received new syncTarget", "syncTarget", endHeight)
-	m.SyncTarget.Store(endHeight)
 }

@@ -15,17 +15,16 @@ import (
 // fetching batches from the settlement layer and then fetching the actual blocks
 // from the DA.
 func (m *Manager) RetrieveLoop(ctx context.Context) {
-	m.logger.Info("started retrieve loop")
-	syncTargetPoller := diodes.NewPoller(m.SyncTargetDiode, diodes.WithPollingContext(ctx))
+	m.logger.Info("Started retrieve loop.")
+	p := diodes.NewPoller(m.targetSyncHeight, diodes.WithPollingContext(ctx))
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		default:
-			// Get only the latest sync target
-			targetHeight := syncTargetPoller.Next()
-			err := m.syncUntilTarget(*(*uint64)(targetHeight))
+			targetHeight := p.Next() // We only care about the latest one
+			err := m.syncToTargetHeight(*(*uint64)(targetHeight))
 			if err != nil {
 				panic(fmt.Errorf("sync until target: %w", err))
 			}
@@ -33,10 +32,10 @@ func (m *Manager) RetrieveLoop(ctx context.Context) {
 	}
 }
 
-// syncUntilTarget syncs blocks until the target height is reached.
+// syncToTargetHeight syncs blocks until the target height is reached.
 // It fetches the batches from the settlement, gets the DA height and gets
 // the actual blocks from the DA.
-func (m *Manager) syncUntilTarget(targetHeight uint64) error {
+func (m *Manager) syncToTargetHeight(targetHeight uint64) error {
 	for currH := m.State.Height(); currH < targetHeight; currH = m.State.Height() {
 
 		// It's important that we query the state index before fetching the batch, rather
@@ -101,8 +100,8 @@ func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
 
 	m.logger.Debug("retrieved batches", "n", len(batchResp.Batches), "daHeight", daMetaData.Height)
 
-	m.retrieverMutex.Lock()
-	defer m.retrieverMutex.Unlock()
+	m.retrieverMu.Lock()
+	defer m.retrieverMu.Unlock()
 
 	for _, batch := range batchResp.Batches {
 		for i, block := range batch.Blocks {

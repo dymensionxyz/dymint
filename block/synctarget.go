@@ -3,14 +3,15 @@ package block
 import (
 	"context"
 
+	"github.com/dymensionxyz/dymint/types"
+
 	"code.cloudfoundry.org/go-diodes"
 	"github.com/dymensionxyz/dymint/settlement"
 )
 
-// SyncTargetLoop is responsible for getting real time updates about settlement batch submissions.
-// For non sequencer: updating the sync target which will be used by retrieveLoop to sync until this target.
-// It publishes new sync height targets which will then be synced by another process.
-func (m *Manager) SyncTargetLoop(ctx context.Context) {
+// SyncToTargetHeightLoop gets real time updates about settlement batch submissions and sends the latest height downstream
+// to be retrieved by another process which will pull the data.
+func (m *Manager) SyncToTargetHeightLoop(ctx context.Context) {
 	m.logger.Info("Started sync target loop")
 	subscription, err := m.Pubsub.Subscribe(ctx, "syncTargetLoop", settlement.EventQueryNewSettlementBatchAccepted)
 	if err != nil {
@@ -24,19 +25,21 @@ func (m *Manager) SyncTargetLoop(ctx context.Context) {
 			return
 		case event := <-subscription.Out():
 			eventData, _ := event.Data().(*settlement.EventDataNewBatchAccepted)
+			h := eventData.EndHeight
 
-			if eventData.EndHeight <= m.State.Height() {
+			if h <= m.State.Height() {
 				m.logger.Debug(
 					"syncTargetLoop: received new settlement batch accepted with batch end height <= current store height, skipping.",
-					"height",
-					eventData.EndHeight,
-					"currentHeight",
+					"target sync height (batch end height)",
+					h,
+					"current store height",
 					m.State.Height(),
 				)
 				continue
 			}
-			m.UpdateSyncParams(eventData.EndHeight)
-			m.SyncTargetDiode.Set(diodes.GenericDataType(&eventData.EndHeight))
+			types.RollappHubHeightGauge.Set(float64(h))
+			m.targetSyncHeight.Set(diodes.GenericDataType(&h))
+			m.logger.Info("Set new target sync height", "height", h)
 		case <-subscription.Cancelled():
 			m.logger.Error("syncTargetLoop subscription canceled")
 			return

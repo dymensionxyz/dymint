@@ -47,6 +47,11 @@ func TestStorePruning(t *testing.T) {
 			testutil.GetRandomBlock(2, 0),
 			testutil.GetRandomBlock(3, 0),
 		}, 3, 3, true},
+		{"to height exceeds actual block cnt", []*types.Block{
+			testutil.GetRandomBlock(1, 0),
+			testutil.GetRandomBlock(2, 0),
+			testutil.GetRandomBlock(3, 0),
+		}, 2, 5, false}, // it shouldn't error it should just no-op
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
