@@ -25,7 +25,6 @@ type NodeConfig struct {
 	// parameters below are translated from existing config
 	RootDir       string
 	DBPath        string
-	P2P           P2PConfig
 	RPC           RPCConfig
 	MempoolConfig tmcfg.MempoolConfig
 
@@ -37,8 +36,9 @@ type NodeConfig struct {
 	SettlementConfig   settlement.Config      `mapstructure:",squash"`
 	Instrumentation    *InstrumentationConfig `mapstructure:"instrumentation"`
 	// Config params for mock grpc da
-	DAGrpc        grpc.Config   `mapstructure:",squash"`
-	BootstrapTime time.Duration `mapstructure:"bootstrap_time"`
+	DAGrpc grpc.Config `mapstructure:",squash"`
+	// P2P Options
+	P2PConfig `mapstructure:",squash"`
 }
 
 // BlockManagerConfig consists of all parameters required by BlockManagerConfig
@@ -55,9 +55,8 @@ type BlockManagerConfig struct {
 	MaxSupportedBatchSkew uint64 `mapstructure:"max_supported_batch_skew"`
 	// The size of the batch in Bytes. Every batch we'll write to the DA and the settlement layer.
 	BlockBatchMaxSizeBytes uint64 `mapstructure:"block_batch_max_size_bytes"`
-	// The number of messages cached by gossipsub protocol
-	GossipedBlocksCacheSize int    `mapstructure:"gossiped_blocks_cache_size"`
-	NamespaceID             string `mapstructure:"namespace_id"`
+	// Namespaceid included in the header (not used)
+	NamespaceID string `mapstructure:"namespace_id"`
 }
 
 // GetViperConfig reads configuration parameters from Viper instance.
@@ -98,6 +97,10 @@ func (nc *NodeConfig) GetViperConfig(cmd *cobra.Command, homeDir string) error {
 func (nc NodeConfig) Validate() error {
 	if err := nc.BlockManagerConfig.Validate(); err != nil {
 		return fmt.Errorf("BlockManagerConfig: %w", err)
+	}
+
+	if err := nc.P2PConfig.Validate(); err != nil {
+		return fmt.Errorf("p2p config: %w", err)
 	}
 
 	if err := nc.validateSettlementLayer(); err != nil {
@@ -148,10 +151,6 @@ func (c BlockManagerConfig) Validate() error {
 
 	if c.BlockBatchMaxSizeBytes <= 0 {
 		return fmt.Errorf("block_batch_size_bytes must be positive")
-	}
-
-	if c.GossipedBlocksCacheSize <= 0 {
-		return fmt.Errorf("gossiped_blocks_cache_size must be positive")
 	}
 
 	if c.MaxSupportedBatchSkew <= 0 {

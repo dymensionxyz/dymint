@@ -18,10 +18,7 @@ func GetNodeConfig(nodeConf *config.NodeConfig, tmConf *tmcfg.Config) error {
 	}
 	nodeConf.RootDir = tmConf.RootDir
 	nodeConf.DBPath = tmConf.DBPath
-	if tmConf.P2P != nil {
-		nodeConf.P2P.ListenAddress = tmConf.P2P.ListenAddress
-		nodeConf.P2P.Seeds = tmConf.P2P.Seeds
-	}
+
 	if tmConf.RPC != nil {
 		nodeConf.RPC.ListenAddress = tmConf.RPC.ListenAddress
 		nodeConf.RPC.CORSAllowedOrigins = tmConf.RPC.CORSAllowedOrigins
@@ -41,11 +38,6 @@ func GetNodeConfig(nodeConf *config.NodeConfig, tmConf *tmcfg.Config) error {
 		For the mempool we simply copy the object. If we want to be more selective, we can adjust later.
 	*/
 	nodeConf.MempoolConfig = *tmConf.Mempool
-
-	err := TranslateAddresses(nodeConf)
-	if err != nil {
-		return err
-	}
 
 	return nil
 }
