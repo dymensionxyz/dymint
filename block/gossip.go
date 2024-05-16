@@ -22,7 +22,7 @@ func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
 		return
 	}
 
-	m.logger.Info("Received new block via gossip.", "block height", block.Header.Height, "store height", m.State.Height(), "n cachedBlocks", len(m.blockCache))
+	m.logger.Debug("Received new block via gossip.", "block height", block.Header.Height, "store height", m.State.Height(), "n cachedBlocks", len(m.blockCache))
 
 	nextHeight := m.State.NextHeight()
 	if block.Header.Height >= nextHeight {
