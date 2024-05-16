@@ -104,13 +104,6 @@ func (e *Executor) UpdateMempoolAfterInitChain(s *types.State) {
 	e.mempool.SetPostCheckFn(mempool.PostCheckMaxGas(s.ConsensusParams.Block.MaxGas))
 }
 
-// NextValSetFromResponses updates state based on the ABCIResponses.
-func (e *Executor) NextValSetFromResponses(state *types.State, resp *tmstate.ABCIResponses, block *types.Block) (*tmtypes.ValidatorSet, error) {
-	// Dymint ignores any setValidator responses from the app, as it is manages the validator set based on the settlement consensus
-	// TODO: this will be changed when supporting multiple sequencers from the hub
-	return state.NextValidators.Copy(), nil
-}
-
 // Update state from Commit response
 func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResponses, appHash []byte, height uint64, valSet *tmtypes.ValidatorSet) {
 	copy(s.AppHash[:], appHash[:])
