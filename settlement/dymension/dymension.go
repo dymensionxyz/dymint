@@ -216,7 +216,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 
 	// TODO: probably should be changed to be a channel, as the eventHandler is also in the HubClient in he produces the event
 	postBatchSubscriberClient := fmt.Sprintf("%s-%d-%s", postBatchSubscriberPrefix, batch.StartHeight, uuid.New().String())
-	subscription, err := d.pubsub.Subscribe(d.ctx, postBatchSubscriberClient, settlement.EventQueryNewSettlementBatchAccepted, 100)
+	subscription, err := d.pubsub.Subscribe(d.ctx, postBatchSubscriberClient, settlement.EventQueryNewSettlementBatchAccepted, 1000)
 	if err != nil {
 		return fmt.Errorf("pub sub subscribe to settlement state updates: %w", err)
 	}
@@ -225,38 +225,32 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 	defer d.pubsub.Unsubscribe(d.ctx, postBatchSubscriberClient, settlement.EventQueryNewSettlementBatchAccepted)
 
 	// Try submitting the batch to the settlement layer:
-	// 1.broadcasting the transaction to the blockchain (with retries).
-	// 2.waiting for the batch to be accepted by the settlement layer.
+	// 1. broadcast the transaction to the blockchain (with retries).
+	// 2. wait for the batch to be accepted by the settlement layer.
 	for {
-		for {
-			select {
-			case <-d.ctx.Done():
-				return d.ctx.Err()
-			default:
-				err := d.broadcastBatch(msgUpdateState)
-				if err != nil {
-					d.logger.Error(
-						"Submit batch",
-						"startHeight",
-						batch.StartHeight,
-						"endHeight",
-						batch.EndHeight,
-						"error",
-						err,
-					)
-					// If submission (i.e. only submission, not acceptance) fails we try submitting again.
-					// Sleep to allow context cancellation to take effect before retrying
-					time.Sleep(100 * time.Millisecond)
-					continue
-				}
+		err := d.RunWithRetryInfinitely(func() error {
+			err := d.broadcastBatch(msgUpdateState)
+			if err != nil {
+				d.logger.Error(
+					"Submit batch",
+					"startHeight",
+					batch.StartHeight,
+					"endHeight",
+					batch.EndHeight,
+					"error",
+					err,
+				)
 			}
-			break
+			return err
+		})
+		if err != nil {
+			return fmt.Errorf("broadcast batch: %w", err)
 		}
 
 		// Batch was submitted successfully. Wait for it to be accepted by the settlement layer.
 		timer := time.NewTimer(d.batchAcceptanceTimeout)
 		defer timer.Stop()
-		batchAcceptanceAttempts := d.batchAcceptanceAttempts
+		attempt := uint64(0)
 
 		for {
 			select {
@@ -269,43 +263,38 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 			case event := <-subscription.Out():
 				eventData, _ := event.Data().(*settlement.EventDataNewBatchAccepted)
 				if eventData.EndHeight != batch.EndHeight {
-					d.logger.Info("Received event for a different batch, ignoring.", "event", eventData)
+					d.logger.Debug("Received event for a different batch, ignoring.", "event", eventData)
 					continue
 				}
-				d.logger.Info("Batch accepted.", "startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
+				d.logger.Info("Batch accepted.", "startHeight", batch.StartHeight, "endHeight", batch.EndHeight, "stateIndex", eventData.StateIndex)
 				return nil
 
 			case <-timer.C:
 				// Check if the batch was accepted by the settlement layer, and we've just missed the event.
-				includedBatch, err := d.pollForBatchInclusion(batch.EndHeight)
+				attempt++
+				includedBatch, err := d.pollForBatchInclusion(batch.EndHeight, attempt)
 				if err == nil && !includedBatch {
 					// no error, but still not included
-					batchAcceptanceAttempts--
-					if batchAcceptanceAttempts > 0 {
-						timer.Reset(d.batchAcceptanceTimeout)
-						continue
-					}
-					err = fmt.Errorf("timed out waiting for batch inclusion on settlement layer")
+					timer.Reset(d.batchAcceptanceTimeout)
+					continue
 				}
-
-				if err != nil {
-					d.logger.Error(
-						"Wait for batch inclusion",
-						"startHeight",
-						batch.StartHeight,
-						"endHeight",
-						batch.EndHeight,
-						"error",
-						err,
-					)
-					// If errored polling, start again the submission loop.
-					break
-				}
-
 				// all good
-				d.logger.Info("Batch accepted", "startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
-				return nil
+				if err == nil {
+					d.logger.Info("Batch accepted", "startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
+					return nil
+				}
 			}
+			// If errored polling, start again the submission loop.
+			d.logger.Error(
+				"Wait for batch inclusion",
+				"startHeight",
+				batch.StartHeight,
+				"endHeight",
+				batch.EndHeight,
+				"error",
+				err,
+			)
+			break
 		}
 	}
 }
@@ -409,20 +398,17 @@ func (d *HubClient) GetSequencers(rollappID string) ([]*types.Sequencer, error) 
 }
 
 func (d *HubClient) broadcastBatch(msgUpdateState *rollapptypes.MsgUpdateState) error {
-	err := d.RunWithRetry(func() error {
-		txResp, err := d.client.BroadcastTx(d.config.DymAccountName, msgUpdateState)
-		if err != nil || txResp.Code != 0 {
-			return fmt.Errorf("broadcast tx: %w", err)
-		}
-		return nil
-	})
-	return err
+	txResp, err := d.client.BroadcastTx(d.config.DymAccountName, msgUpdateState)
+	if err != nil || txResp.Code != 0 {
+		return fmt.Errorf("broadcast tx: %w", err)
+	}
+	return nil
 }
 
 func (d *HubClient) eventHandler() {
 	// TODO(omritoptix): eventsChannel should be a generic channel which is later filtered by the event type.
 	subscriber := fmt.Sprintf("dymension-client-%s", uuid.New().String())
-	eventsChannel, err := d.client.SubscribeToEvents(d.ctx, subscriber, fmt.Sprintf(eventStateUpdate, d.config.RollappID), 100)
+	eventsChannel, err := d.client.SubscribeToEvents(d.ctx, subscriber, fmt.Sprintf(eventStateUpdate, d.config.RollappID), 1000)
 	if err != nil {
 		panic("Error subscribing to events")
 	}
@@ -558,11 +544,17 @@ func (d *HubClient) convertStateInfoToResultRetrieveBatch(stateInfo *rollapptype
 }
 
 // pollForBatchInclusion polls the hub for the inclusion of a batch with the given end height.
-func (d *HubClient) pollForBatchInclusion(batchEndHeight uint64) (bool, error) {
+func (d *HubClient) pollForBatchInclusion(batchEndHeight, attempt uint64) (bool, error) {
 	latestBatch, err := d.GetLatestBatch(d.config.RollappID)
 	if err != nil {
 		return false, fmt.Errorf("get latest batch: %w", err)
 	}
+
+	// no error, but still not included
+	if attempt >= uint64(d.batchAcceptanceAttempts) {
+		return false, fmt.Errorf("timed out waiting for batch inclusion on settlement layer")
+	}
+
 	return latestBatch.Batch.EndHeight == batchEndHeight, nil
 }
 
@@ -574,6 +566,18 @@ func (d *HubClient) RunWithRetry(operation func() error) error {
 		retry.LastErrorOnly(true),
 		retry.Delay(d.retryMinDelay),
 		retry.Attempts(d.retryAttempts),
+		retry.MaxDelay(d.retryMaxDelay),
+	)
+}
+
+// RunWithRetry runs the given operation with retry, doing a number of attempts, and taking the last
+// error only. It uses the context of the HubClient.
+func (d *HubClient) RunWithRetryInfinitely(operation func() error) error {
+	return retry.Do(operation,
+		retry.Context(d.ctx),
+		retry.LastErrorOnly(true),
+		retry.Delay(d.retryMinDelay),
+		retry.Attempts(0),
 		retry.MaxDelay(d.retryMaxDelay),
 	)
 }
