@@ -148,10 +148,7 @@ func (m *Manager) Start(ctx context.Context) error {
 		}
 	}
 
-	if isSequencer {
-		// Sequencer must wait till DA is synced
-		<-m.DAClient.Synced()
-	} else {
+	if !isSequencer {
 		// Fullnode loop can start before syncing from DA
 		go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewNewGossipedBlock, m.onNewGossipedBlock, m.logger)
 	}
@@ -166,17 +163,11 @@ func (m *Manager) Start(ctx context.Context) error {
 
 	// Sequencer producer loop and full-node retrieve loop is started only when finished syncing from DA
 	if isSequencer {
-		// TODO: populate the accumulatedSize on startup
-		//Wait till DA is up and running
-		<-m.DAClient.Started()
-		err = m.syncBlockManager()
-		if err != nil {
-			return fmt.Errorf("sync block manager: %w", err)
-		}
+		// Sequencer must wait till DA is synced to start submitting blobs
+		<-m.DAClient.Synced()
 		go m.ProduceBlockLoop(ctx)
 		go m.SubmitLoop(ctx)
 	} else {
-		go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewNewGossipedBlock, m.onNewGossipedBlock, m.logger)
 		go m.RetrieveLoop(ctx)
 		go m.SyncToTargetHeightLoop(ctx)
 	}
