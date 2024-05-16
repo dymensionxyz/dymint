@@ -16,7 +16,6 @@ func (s *DefaultStore) PruneBlocks(from, to uint64) (uint64, error) {
 		return 0, fmt.Errorf("to height must be greater than from height: to: %d: from: %d: %w", to, from, gerr.ErrInvalidArgument)
 	}
 
-
 	pruned := uint64(0)
 	batch := s.db.NewBatch()
 	defer batch.Discard()

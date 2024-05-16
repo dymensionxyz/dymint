@@ -5,7 +5,6 @@ import (
 )
 
 func (m *Manager) pruneBlocks(retainHeight uint64) (uint64, error) {
-
 	pruned, err := m.Store.PruneBlocks(m.State.BaseHeight, retainHeight)
 	if err != nil {
 		return 0, fmt.Errorf("prune block store: %w", err)

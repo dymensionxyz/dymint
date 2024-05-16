@@ -106,21 +106,21 @@ func NewManager(
 	}
 
 	agg := &Manager{
-		Pubsub:          pubsub,
-		p2pClient:       p2pClient,
-		ProposerKey:     proposerKey,
-		Conf:            conf,
-		Genesis:         genesis,
-		State:           s,
-		Store:           store,
-		Executor:        exec,
-		DAClient:        dalc,
-		SLClient:        settlementClient,
-		Retriever:       dalc.(da.BatchRetriever),
+		Pubsub:           pubsub,
+		p2pClient:        p2pClient,
+		ProposerKey:      proposerKey,
+		Conf:             conf,
+		Genesis:          genesis,
+		State:            s,
+		Store:            store,
+		Executor:         exec,
+		DAClient:         dalc,
+		SLClient:         settlementClient,
+		Retriever:        dalc.(da.BatchRetriever),
 		targetSyncHeight: diodes.NewOneToOne(1, nil),
-		producedSizeCh:  make(chan uint64),
-		logger:          logger,
-		blockCache:      make(map[uint64]CachedBlock),
+		producedSizeCh:   make(chan uint64),
+		logger:           logger,
+		blockCache:       make(map[uint64]CachedBlock),
 	}
 
 	return agg, nil
@@ -197,5 +197,3 @@ func (m *Manager) syncBlockManager() error {
 	m.logger.Info("Synced.", "current height", m.State.Height(), "syncTarget", m.SyncTarget.Load())
 	return nil
 }
-
-
