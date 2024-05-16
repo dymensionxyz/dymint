@@ -155,7 +155,6 @@ func (m *Manager) Start(ctx context.Context) error {
 
 	// TODO: populate the accumulatedSize on startup
 
-	// Start syncing from DA
 	err = m.syncBlockManager()
 	if err != nil {
 		return fmt.Errorf("sync block manager: %w", err)
