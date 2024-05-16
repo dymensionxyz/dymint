@@ -113,10 +113,10 @@ settlement_layer = "{{ .SettlementLayer }}" # mock, dymension
 
 # dymension config
 rollapp_id = "{{ .SettlementConfig.RollappID }}"
-node_address = "{{ .SettlementConfig.NodeAddress }}"
-gas_limit = {{ .SettlementConfig.GasLimit }}
-gas_prices = "{{ .SettlementConfig.GasPrices }}"
-gas_fees = "{{ .SettlementConfig.GasFees }}"
+settlement_node_address = "{{ .SettlementConfig.NodeAddress }}"
+settlement_gas_limit = {{ .SettlementConfig.GasLimit }}
+settlement_gas_prices = "{{ .SettlementConfig.GasPrices }}"
+settlement_gas_fees = "{{ .SettlementConfig.GasFees }}"
 retry_max_delay = "{{ .SettlementConfig.RetryMaxDelay }}"
 retry_min_delay = "{{ .SettlementConfig.RetryMinDelay }}"
 retry_attempts = "{{ .SettlementConfig.RetryAttempts }}"

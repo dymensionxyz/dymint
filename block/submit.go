@@ -124,7 +124,7 @@ func (m *Manager) HandleSubmissionTrigger() error {
 	}
 
 	resultSubmitToDA := m.DAClient.SubmitBatch(nextBatch)
-
+	m.logger.Info("Submitted batch to DA", "start height", nextBatch.StartHeight, "end height", nextBatch.EndHeight)
 	if resultSubmitToDA.Code != da.StatusSuccess {
 		return fmt.Errorf("submit next batch to da: %s", resultSubmitToDA.Message)
 	}
@@ -135,6 +135,7 @@ func (m *Manager) HandleSubmissionTrigger() error {
 	if err != nil {
 		return fmt.Errorf("sl client submit batch: start height: %d: inclusive end height: %d: %w", startHeight, actualEndHeight, err)
 	}
+	m.logger.Info("Submitted batch to SL.", "start height", resultSubmitToDA, "end height", nextBatch.EndHeight)
 
 	m.UpdateSyncParams(actualEndHeight)
 	return nil

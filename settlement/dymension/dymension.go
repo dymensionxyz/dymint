@@ -272,7 +272,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 					d.logger.Info("Received event for a different batch, ignoring.", "event", eventData)
 					continue
 				}
-				d.logger.Debug("Batch accepted.", "startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
+				d.logger.Info("Batch accepted.", "startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
 				return nil
 
 			case <-timer.C:

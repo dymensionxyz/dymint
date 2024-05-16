@@ -17,7 +17,7 @@ import (
 
 // ProduceBlockLoop is calling publishBlock in a loop as long as we're synced.
 func (m *Manager) ProduceBlockLoop(ctx context.Context) {
-	m.logger.Debug("Started produce loop")
+	m.logger.Info("Started block producer loop.")
 
 	ticker := time.NewTicker(m.Conf.BlockTime)
 	defer ticker.Stop()
@@ -37,18 +37,18 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 
 			block, commit, err := m.ProduceAndGossipBlock(ctx, produceEmptyBlock)
 			if errors.Is(err, context.Canceled) {
-				m.logger.Error("produce and gossip: context canceled", "error", err)
+				m.logger.Error("Produce and gossip: context canceled.", "error", err)
 				return
 			}
 			if errors.Is(err, types.ErrSkippedEmptyBlock) {
 				continue
 			}
 			if errors.Is(err, ErrNonRecoverable) {
-				m.logger.Error("produce and gossip: non-recoverable", "error", err) // TODO: flush? or don't log at all?
+				m.logger.Error("Produce and gossip: non-recoverable.", "error", err) // TODO: flush? or don't log at all?
 				panic(fmt.Errorf("produce and gossip block: %w", err))
 			}
 			if err != nil {
-				m.logger.Error("produce and gossip: uncategorized, assuming recoverable", "error", err)
+				m.logger.Error("Produce and gossip: uncategorized, assuming recoverable.", "error", err)
 				continue
 			}
 
@@ -59,7 +59,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 			if 0 < len(block.Data.Txs) {
 				nextEmptyBlock = time.Now().Add(m.Conf.MaxProofTime)
 			} else {
-				m.logger.Info("produced empty block")
+				m.logger.Info("Produced empty block.")
 			}
 
 			// Send the size to the accumulated size channel
@@ -122,7 +122,7 @@ func (m *Manager) produceBlock(allowEmpty bool) (*types.Block, *types.Commit, er
 		if err != nil {
 			return nil, nil, fmt.Errorf("load commit after load block: height: %d: %w: %w", newHeight, err, ErrNonRecoverable)
 		}
-		m.logger.Info("using pending block", "height", newHeight)
+		m.logger.Info("Using pending block.", "height", newHeight)
 	} else if !errors.Is(err, store.ErrKeyNotFound) {
 		return nil, nil, fmt.Errorf("load block: height: %d: %w: %w", newHeight, err, ErrNonRecoverable)
 	} else {
@@ -163,7 +163,7 @@ func (m *Manager) produceBlock(allowEmpty bool) (*types.Block, *types.Commit, er
 		return nil, nil, fmt.Errorf("apply block: %w: %w", err, ErrNonRecoverable)
 	}
 
-	m.logger.Info("block created", "height", newHeight, "num_tx", len(block.Data.Txs))
+	m.logger.Info("Block created.", "height", newHeight, "num_tx", len(block.Data.Txs))
 	types.RollappBlockSizeBytesGauge.Set(float64(len(block.Data.Txs)))
 	types.RollappBlockSizeTxsGauge.Set(float64(len(block.Data.Txs)))
 	types.RollappHeightGauge.Set(float64(newHeight))
