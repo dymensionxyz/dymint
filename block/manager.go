@@ -193,7 +193,6 @@ func (m *Manager) syncBlockManager() error {
 		return err
 	}
 
-	m.logger.Info("Synced.", "current height", m.Store.Height(), "last submitted height", m.LastSubmittedHeight)
-	m.logger.Info("Synced.", "current height", m.State.Height(), "syncTarget", m.SyncTarget.Load())
+	m.logger.Info("Synced.", "current height", m.State.Height(), "last submitted height", m.LastSubmittedHeight)
 	return nil
 }
