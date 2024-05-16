@@ -257,19 +257,6 @@ func (d *LayerClient) getStateInfo(index, height *uint64) (res *rollapptypes.Que
 	return
 }
 
-// RetrieveBatch implements settlement.LayerI.
-func (dlc *LayerClient) RetrieveBatch(stateIndex ...uint64) (*settlement.ResultRetrieveBatch, error) {
-	if len(stateIndex) == 0 {
-		dlc.logger.Debug("Getting latest batch from settlement layer")
-		return dlc.GetLatestBatch()
-	}
-	if len(stateIndex) == 1 {
-		dlc.logger.Debug("Getting batch from settlement layer", "state index", stateIndex)
-		return dlc.GetBatchAtIndex(stateIndex[0])
-	}
-	return nil, fmt.Errorf("expected 0 or 1 index: got %d: %w", len(stateIndex), gerr.ErrInvalidArgument)
-}
-
 // GetLatestBatch returns the latest batch from the Dymension Hub.
 func (d *LayerClient) GetLatestBatch() (*settlement.ResultRetrieveBatch, error) {
 	res, err := d.getStateInfo(nil, nil)
