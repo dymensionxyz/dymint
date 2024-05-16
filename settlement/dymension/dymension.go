@@ -260,7 +260,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 			return fmt.Errorf("subscription cancelled")
 
 		case <-subscription.Out():
-			d.logger.Debug("Batch accepted", "startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
+			d.logger.Info("batch accepted", "startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
 			return nil
 
 		case <-timer.C:
@@ -282,7 +282,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 			}
 
 			// all good
-			d.logger.Info("Batch accepted", "startHeight", includedBatch.StartHeight, "endHeight", includedBatch.EndHeight)
+			d.logger.Info("batch accepted", "startHeight", includedBatch.StartHeight, "endHeight", includedBatch.EndHeight, "index", includedBatch.StateIndex)
 			return nil
 		}
 	}
