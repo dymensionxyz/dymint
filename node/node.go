@@ -164,9 +164,7 @@ func NewNode(
 	// Set p2p client and it's validators
 	p2pValidator := p2p.NewValidator(logger.With("module", "p2p_validator"), settlementlc)
 
-	conf.P2P.GossipCacheSize = conf.BlockManagerConfig.GossipedBlocksCacheSize
-	conf.P2P.BoostrapTime = conf.BootstrapTime
-	p2pClient, err := p2p.NewClient(conf.P2P, p2pKey, genesis.ChainID, pubsubServer, logger.With("module", "p2p"))
+	p2pClient, err := p2p.NewClient(conf.P2PConfig, p2pKey, genesis.ChainID, pubsubServer, logger.With("module", "p2p"))
 	if err != nil {
 		return nil, err
 	}
