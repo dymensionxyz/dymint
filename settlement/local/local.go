@@ -51,7 +51,7 @@ type LocalClient struct {
 var _ settlement.LayerI = (*LocalClient)(nil)
 
 // Init initializes the mock layer client.
-func (m *LocalClient) Init(config settlement.Config, pubsub *pubsub.Server, logger types.Logger) error {
+func (m *LocalClient) Init(config settlement.Config, pubsub *pubsub.Server, logger types.Logger, options ...settlement.Option) error {
 	slstore, proposer, err := initConfig(config)
 	if err != nil {
 		return err

@@ -73,7 +73,7 @@ type LayerClient struct {
 var _ settlement.LayerI = &LayerClient{}
 
 // Init is called once. it initializes the struct members.
-func (dlc *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, logger types.Logger) error {
+func (dlc *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, logger types.Logger, options ...settlement.Option) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	eventMap := map[string]string{
 		fmt.Sprintf(eventStateUpdate, config.RollappID):          settlement.EventNewBatchAccepted,
@@ -96,6 +96,11 @@ func (dlc *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, lo
 	dlc.batchAcceptanceAttempts = config.BatchAcceptanceAttempts
 	dlc.retryMinDelay = config.RetryMinDelay
 	dlc.retryMaxDelay = config.RetryMaxDelay
+
+	// Apply options
+	for _, apply := range options {
+		apply(dlc)
+	}
 
 	if dlc.cosmosClient == nil {
 		client, err := cosmosclient.New(

@@ -303,17 +303,24 @@ func (_c *MockLayerI_GetSequencers_Call) RunAndReturn(run func() ([]*types.Seque
 	return _c
 }
 
-// Init provides a mock function with given fields: config, _a1, logger
-func (_m *MockLayerI) Init(config settlement.Config, _a1 *pubsub.Server, logger types.Logger) error {
-	ret := _m.Called(config, _a1, logger)
+// Init provides a mock function with given fields: config, _a1, logger, options
+func (_m *MockLayerI) Init(config settlement.Config, _a1 *pubsub.Server, logger types.Logger, options ...settlement.Option) error {
+	_va := make([]interface{}, len(options))
+	for _i := range options {
+		_va[_i] = options[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, config, _a1, logger)
+	_ca = append(_ca, _va...)
+	ret := _m.Called(_ca...)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Init")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(settlement.Config, *pubsub.Server, types.Logger) error); ok {
-		r0 = rf(config, _a1, logger)
+	if rf, ok := ret.Get(0).(func(settlement.Config, *pubsub.Server, types.Logger, ...settlement.Option) error); ok {
+		r0 = rf(config, _a1, logger, options...)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -330,13 +337,21 @@ type MockLayerI_Init_Call struct {
 //   - config settlement.Config
 //   - _a1 *pubsub.Server
 //   - logger types.Logger
-func (_e *MockLayerI_Expecter) Init(config interface{}, _a1 interface{}, logger interface{}) *MockLayerI_Init_Call {
-	return &MockLayerI_Init_Call{Call: _e.mock.On("Init", config, _a1, logger)}
+//   - options ...settlement.Option
+func (_e *MockLayerI_Expecter) Init(config interface{}, _a1 interface{}, logger interface{}, options ...interface{}) *MockLayerI_Init_Call {
+	return &MockLayerI_Init_Call{Call: _e.mock.On("Init",
+		append([]interface{}{config, _a1, logger}, options...)...)}
 }
 
-func (_c *MockLayerI_Init_Call) Run(run func(config settlement.Config, _a1 *pubsub.Server, logger types.Logger)) *MockLayerI_Init_Call {
+func (_c *MockLayerI_Init_Call) Run(run func(config settlement.Config, _a1 *pubsub.Server, logger types.Logger, options ...settlement.Option)) *MockLayerI_Init_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(settlement.Config), args[1].(*pubsub.Server), args[2].(types.Logger))
+		variadicArgs := make([]settlement.Option, len(args)-3)
+		for i, a := range args[3:] {
+			if a != nil {
+				variadicArgs[i] = a.(settlement.Option)
+			}
+		}
+		run(args[0].(settlement.Config), args[1].(*pubsub.Server), args[2].(types.Logger), variadicArgs...)
 	})
 	return _c
 }
@@ -346,7 +361,7 @@ func (_c *MockLayerI_Init_Call) Return(_a0 error) *MockLayerI_Init_Call {
 	return _c
 }
 
-func (_c *MockLayerI_Init_Call) RunAndReturn(run func(settlement.Config, *pubsub.Server, types.Logger) error) *MockLayerI_Init_Call {
+func (_c *MockLayerI_Init_Call) RunAndReturn(run func(settlement.Config, *pubsub.Server, types.Logger, ...settlement.Option) error) *MockLayerI_Init_Call {
 	_c.Call.Return(run)
 	return _c
 }

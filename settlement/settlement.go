@@ -56,11 +56,10 @@ type ResultGetHeightState struct {
 // Option is a function that sets a parameter on the settlement layer.
 type Option func(LayerI)
 
-// FIXME: fix retrieveBatch, fix getSeq to retuern err
 // LayerI defines generic interface for Settlement layer interaction.
 type LayerI interface {
 	// Init is called once for the client initialization
-	Init(config Config, pubsub *pubsub.Server, logger types.Logger) error
+	Init(config Config, pubsub *pubsub.Server, logger types.Logger, options ...Option) error
 	// Start is called once, after Init. It's implementation should start the client service.
 	Start() error
 	// Stop is called once, after Start. It should stop the client service.
@@ -68,7 +67,9 @@ type LayerI interface {
 	// SubmitBatch tries submitting the batch in an async way to the settlement layer. This should create a transaction which (potentially)
 	// triggers a state transition in the settlement layer. Events are emitted on success or failure.
 	SubmitBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) error
+	// GetLatestBatch returns the latest batch from the settlement layer.
 	GetLatestBatch() (*ResultRetrieveBatch, error)
+	// GetBatchAtIndex returns the batch at the given index.
 	GetBatchAtIndex(index uint64) (*ResultRetrieveBatch, error)
 
 	// GetSequencersList returns the list of the sequencers for this chain.

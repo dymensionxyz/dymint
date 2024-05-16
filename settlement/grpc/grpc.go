@@ -49,7 +49,7 @@ type LayerClient struct {
 var _ settlement.LayerI = (*LayerClient)(nil)
 
 // Init initializes the mock layer client.
-func (m *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, logger types.Logger) error {
+func (m *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, logger types.Logger, options ...settlement.Option) error {
 	ctx := context.Background()
 
 	latestHeight := uint64(0)

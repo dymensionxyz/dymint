@@ -51,7 +51,7 @@ func TestGetSequencers(t *testing.T) {
 	cosmosClientMock.On("GetRollappClient").Return(rollapptypesmock.NewMockQueryClient(t))
 	cosmosClientMock.On("GetSequencerClient").Return(sequencerQueryClientMock)
 
-	options := []dymension.Option{
+	options := []settlement.Option{
 		dymension.WithCosmosClient(cosmosClientMock),
 	}
 
@@ -59,7 +59,8 @@ func TestGetSequencers(t *testing.T) {
 	err = pubsubServer.Start()
 	require.NoError(err)
 
-	hubClient, err := dymension.LayerClient(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
+	hubClient := dymension.LayerClient{}
+	err = hubClient.Init(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
 	require.NoError(err)
 
 	sequencers, err := hubClient.GetSequencers()
@@ -97,7 +98,7 @@ func TestPostBatch(t *testing.T) {
 	require.NoError(err)
 	cosmosClientMock.On("SubscribeToEvents", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return((<-chan coretypes.ResultEvent)(batchAcceptedCh), nil)
 
-	options := []dymension.Option{
+	options := []settlement.Option{
 		dymension.WithCosmosClient(cosmosClientMock),
 		dymension.WithBatchAcceptanceTimeout(time.Millisecond * 300),
 		dymension.WithRetryAttempts(2),
@@ -173,7 +174,8 @@ func TestPostBatch(t *testing.T) {
 					rollappQueryClientMock.On("StateInfo", mock.Anything, mock.Anything).Return(nil, status.New(codes.NotFound, "not found").Err())
 				}
 			}
-			hubClient, err := dymension.NewDymensionHubClient(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
+			hubClient := dymension.LayerClient{}
+			err := hubClient.Init(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
 			require.NoError(err)
 			err = hubClient.Start()
 			require.NoError(err)
