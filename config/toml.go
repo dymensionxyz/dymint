@@ -100,6 +100,9 @@ p2p_gossiped_blocks_cache_size = {{ .P2PConfig.GossipedBlocksCacheSize }}
 # time interval to check if no p2p nodes are connected to bootstrap again
 p2p_bootstrap_retry_time = "{{ .P2PConfig.BootstrapRetryTime }}"
 
+# set to false to disable advertising the node to the P2P network
+p2p_advertising_enabled= "{{ .P2PConfig.AdvertisingEnabled }}"
+
 #celestia config example:
 # da_config = "{\"base_url\":\"http:\/\/127.0.0.1:26658\",\"timeout\":5000000000,\"gas_prices\":0.1,\"auth_token\":\"TOKEN\",\"backoff\":{\"initial_delay\":6000000000,\"max_delay\":6000000000,\"growth_factor\":2},\"retry_attempts\":4,\"retry_delay\":3000000000}"
 # Avail config example:
