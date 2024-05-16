@@ -90,8 +90,8 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	}
 
 	// Prune old heights, if requested by ABCI app.
-	if retainHeight > 0 {
-		_, err := m.pruneBlocks(uint64(retainHeight))
+	if 0 < retainHeight {
+		err = m.pruneBlocks(uint64(retainHeight))
 		if err != nil {
 			m.logger.Error("prune blocks", "retain_height", retainHeight, "err", err)
 		}
@@ -114,8 +114,8 @@ func (m *Manager) isHeightAlreadyApplied(blockHeight uint64) (bool, error) {
 }
 
 func (m *Manager) attemptApplyCachedBlocks() error {
-	m.retrieverMutex.Lock()
-	defer m.retrieverMutex.Unlock()
+	m.retrieverMu.Lock()
+	defer m.retrieverMu.Unlock()
 
 	for {
 		expectedHeight := m.State.NextHeight()
