@@ -117,8 +117,8 @@ func (m *Manager) isHeightAlreadyApplied(blockHeight uint64) (bool, error) {
 }
 
 func (m *Manager) attemptApplyCachedBlocks() error {
-	m.retrieverMutex.Lock()
-	defer m.retrieverMutex.Unlock()
+	m.retrieverMu.Lock()
+	defer m.retrieverMu.Unlock()
 
 	for {
 		expectedHeight := m.State.NextHeight()

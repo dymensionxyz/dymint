@@ -65,12 +65,12 @@ type Manager struct {
 	/*
 		Retrieval
 	*/
-	Retriever da.BatchRetriever
-	// get the next target height to sync local state to
-	targetSyncHeight diodes.Diode
 	// Protect against processing two blocks at once when there are two routines handling incoming gossiped blocks,
 	// and incoming DA blocks, respectively.
-	retrieverMutex sync.Mutex
+	retrieverMu sync.Mutex
+	Retriever   da.BatchRetriever
+	// get the next target height to sync local state to
+	targetSyncHeight diodes.Diode
 	// Cached blocks and commits for applying at future heights. The blocks may not be valid, because
 	// we can only do full validation in sequential order.
 	blockCache map[uint64]CachedBlock

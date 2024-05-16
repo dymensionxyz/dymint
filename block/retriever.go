@@ -100,8 +100,8 @@ func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
 
 	m.logger.Debug("retrieved batches", "n", len(batchResp.Batches), "daHeight", daMetaData.Height)
 
-	m.retrieverMutex.Lock()
-	defer m.retrieverMutex.Unlock()
+	m.retrieverMu.Lock()
+	defer m.retrieverMu.Unlock()
 
 	for _, batch := range batchResp.Batches {
 		for i, block := range batch.Blocks {
