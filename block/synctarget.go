@@ -10,7 +10,7 @@ import (
 )
 
 // SyncToTargetHeightLoop gets real time updates about settlement batch submissions and sends the latest height downstream
-// to be retrieved by another process.
+// to be retrieved by another process which will pull the data.
 func (m *Manager) SyncToTargetHeightLoop(ctx context.Context) {
 	m.logger.Info("Started sync target loop")
 	subscription, err := m.Pubsub.Subscribe(ctx, "syncTargetLoop", settlement.EventQueryNewSettlementBatchAccepted)

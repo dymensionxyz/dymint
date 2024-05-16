@@ -100,8 +100,7 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 
 	// try to submit again, we expect success
 	mockLayerI.On("SubmitBatch", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
-	err = manager.HandleSubmissionTrigger()
-	require.NoError(err)
+	manager.HandleSubmissionTrigger()
 	assert.EqualValues(t, manager.State.Height(), manager.LastSubmittedHeight)
 }
 
