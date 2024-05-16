@@ -1,18 +1,24 @@
 package settlement
 
-import "errors"
+import (
+	"errors"
+	"time"
+)
 
 // Config for the DymensionLayerClient
 type Config struct {
-	KeyringBackend string `mapstructure:"keyring_backend"`
-	NodeAddress    string `mapstructure:"node_address"`
-	KeyringHomeDir string `mapstructure:"keyring_home_dir"`
-	DymAccountName string `mapstructure:"dym_account_name"`
-	RollappID      string `mapstructure:"rollapp_id"`
-	GasLimit       uint64 `mapstructure:"gas_limit"`
-	GasPrices      string `mapstructure:"gas_prices"`
-	GasFees        string `mapstructure:"gas_fees"`
-
+	KeyringBackend         string        `mapstructure:"keyring_backend"`
+	NodeAddress            string        `mapstructure:"node_address"`
+	KeyringHomeDir         string        `mapstructure:"keyring_home_dir"`
+	DymAccountName         string        `mapstructure:"dym_account_name"`
+	RollappID              string        `mapstructure:"rollapp_id"`
+	GasLimit               uint64        `mapstructure:"gas_limit"`
+	GasPrices              string        `mapstructure:"gas_prices"`
+	GasFees                string        `mapstructure:"gas_fees"`
+	RetryAttempts          uint          `mapstructure:"retry_attempts"`
+	RetryMaxDelay          time.Duration `mapstructure:"retry_max_delay"`
+	RetryMinDelay          time.Duration `mapstructure:"retry_min_delay"`
+	BatchAcceptanceTimeout time.Duration `mapstructure:"batch_acceptance_timeout"`
 	// For testing only. probably should be refactored
 	ProposerPubKey string `json:"proposer_pub_key"`
 	// Config used for sl shared grpc mock

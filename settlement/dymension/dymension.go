@@ -45,13 +45,6 @@ const (
 )
 
 const (
-	batchRetryDelay        = 10 * time.Second
-	batchRetryMaxDelay     = 1 * time.Minute
-	batchAcceptanceTimeout = 120 * time.Second
-	batchRetryAttempts     = 10
-)
-
-const (
 	postBatchSubscriberPrefix = "postBatchSubscriber"
 )
 
@@ -64,6 +57,7 @@ var _ settlement.LayerI = &LayerClient{}
 
 // Init is called once. it initializes the struct members.
 func (dlc *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, logger types.Logger, options ...settlement.Option) error {
+
 	DymensionCosmosClient, err := NewDymensionHubClient(config, pubsub, logger)
 	if err != nil {
 		return err
@@ -99,8 +93,9 @@ type HubClient struct {
 	// channel for getting notified when a batch is accepted by the settlement layer.
 	// only one batch of a specific height can get accepted and we can are currently sending only one batch at a time.
 	// for that reason it's safe to assume that if a batch is accepted, it refers to the last batch we've sent.
-	batchRetryAttempts     uint
-	batchRetryDelay        time.Duration
+	retryAttempts          uint
+	retryMinDelay          time.Duration
+	retryMaxDelay          time.Duration
 	batchAcceptanceTimeout time.Duration
 }
 
@@ -116,10 +111,10 @@ func WithCosmosClient(cosmosClient CosmosClient) Option {
 	}
 }
 
-// WithBatchRetryAttempts is an option that sets the number of attempts to retry sending a batch to the settlement layer.
-func WithBatchRetryAttempts(batchRetryAttempts uint) Option {
+// WithRetryAttempts is an option that sets the number of attempts to retry when interacting with the settlement layer.
+func WithRetryAttempts(batchRetryAttempts uint) Option {
 	return func(d *HubClient) {
-		d.batchRetryAttempts = batchRetryAttempts
+		d.retryAttempts = batchRetryAttempts
 	}
 }
 
@@ -130,10 +125,17 @@ func WithBatchAcceptanceTimeout(batchAcceptanceTimeout time.Duration) Option {
 	}
 }
 
-// WithBatchRetryDelay is an option that sets the delay between batch retry attempts.
-func WithBatchRetryDelay(batchRetryDelay time.Duration) Option {
+// WithRetryMinDelay is an option that sets the retry function mindelay between hub retry attempts.
+func WithRetryMinDelay(retryMinDelay time.Duration) Option {
 	return func(d *HubClient) {
-		d.batchRetryDelay = batchRetryDelay
+		d.retryMinDelay = retryMinDelay
+	}
+}
+
+// WithRetryMaxDelay is an option that sets the retry function max delay between hub retry attempts.
+func WithRetryMaxDelay(retryMaxDelay time.Duration) Option {
+	return func(d *HubClient) {
+		d.retryMaxDelay = retryMaxDelay
 	}
 }
 
@@ -156,9 +158,10 @@ func NewDymensionHubClient(config settlement.Config, pubsub *pubsub.Server, logg
 		cancel:                 cancel,
 		eventMap:               eventMap,
 		protoCodec:             protoCodec,
-		batchRetryAttempts:     batchRetryAttempts,
-		batchAcceptanceTimeout: batchAcceptanceTimeout,
-		batchRetryDelay:        batchRetryDelay,
+		retryAttempts:          config.RetryAttempts,
+		batchAcceptanceTimeout: config.BatchAcceptanceTimeout,
+		retryMinDelay:          config.RetryMinDelay,
+		retryMaxDelay:          config.RetryMaxDelay,
 	}
 
 	for _, option := range options {
@@ -557,8 +560,8 @@ func (d *HubClient) RunWithRetry(operation func() error) error {
 	return retry.Do(operation,
 		retry.Context(d.ctx),
 		retry.LastErrorOnly(true),
-		retry.Delay(d.batchRetryDelay),
-		retry.Attempts(d.batchRetryAttempts),
-		retry.MaxDelay(batchRetryMaxDelay),
+		retry.Delay(d.retryMinDelay),
+		retry.Attempts(d.retryAttempts),
+		retry.MaxDelay(d.retryMaxDelay),
 	)
 }
