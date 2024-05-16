@@ -37,7 +37,6 @@ func (m *Manager) RetrieveLoop(ctx context.Context) {
 // the actual blocks from the DA.
 func (m *Manager) syncToTargetHeight(targetHeight uint64) error {
 	for currH := m.State.Height(); currH < targetHeight; currH = m.State.Height() {
-		m.logger.Info("Syncing from DA", "store height", currH, "target height", targetHeight)
 
 		// It's important that we query the state index before fetching the batch, rather
 		// than e.g. keep it and increment it, because we might be concurrently applying blocks
@@ -58,6 +57,7 @@ func (m *Manager) syncToTargetHeight(targetHeight uint64) error {
 		if err != nil {
 			return fmt.Errorf("process next DA batch: %w", err)
 		}
+		m.logger.Info("Synced from DA", "store height", currH, "target height", targetHeight)
 
 	}
 
