@@ -102,16 +102,19 @@ func TestGenesisChunked(t *testing.T) {
 	config := config.NodeConfig{
 		RootDir: "",
 		DBPath:  "",
-		P2P:     config.P2PConfig{},
-		RPC:     config.RPCConfig{},
-		BlockManagerConfig: config.BlockManagerConfig{
-			BlockTime:               100 * time.Millisecond,
-			BatchSubmitMaxTime:      60 * time.Second,
-			BlockBatchMaxSizeBytes:  1000,
+		P2PConfig: config.P2PConfig{
+			ListenAddress:           config.DefaultListenAddress,
+			BootstrapNodes:          "",
 			GossipedBlocksCacheSize: 50,
-			MaxSupportedBatchSkew:   10,
+			BootstrapRetryTime:      30 * time.Second,
 		},
-		BootstrapTime:   30 * time.Second,
+		RPC: config.RPCConfig{},
+		BlockManagerConfig: config.BlockManagerConfig{
+			BlockTime:              100 * time.Millisecond,
+			BatchSubmitMaxTime:     60 * time.Second,
+			BlockBatchMaxSizeBytes: 1000,
+			MaxSupportedBatchSkew:  10,
+		},
 		DALayer:         "mock",
 		DAConfig:        "",
 		SettlementLayer: "mock",
@@ -700,14 +703,18 @@ func TestValidatorSetHandling(t *testing.T) {
 	nodeConfig := config.NodeConfig{
 		DALayer:         "mock",
 		SettlementLayer: "mock",
-		BlockManagerConfig: config.BlockManagerConfig{
-			BlockTime:               10 * time.Millisecond,
-			BatchSubmitMaxTime:      60 * time.Second,
-			BlockBatchMaxSizeBytes:  1000,
+		P2PConfig: config.P2PConfig{
+			ListenAddress:           config.DefaultListenAddress,
+			BootstrapNodes:          "",
 			GossipedBlocksCacheSize: 50,
-			MaxSupportedBatchSkew:   10,
+			BootstrapRetryTime:      30 * time.Second,
 		},
-		BootstrapTime: 30 * time.Second,
+		BlockManagerConfig: config.BlockManagerConfig{
+			BlockTime:              10 * time.Millisecond,
+			BatchSubmitMaxTime:     60 * time.Second,
+			BlockBatchMaxSizeBytes: 1000,
+			MaxSupportedBatchSkew:  10,
+		},
 		SettlementConfig: settlement.Config{
 			ProposerPubKey: hex.EncodeToString(proposerPubKeyBytes),
 			RollappID:      rollappID,
@@ -851,19 +858,22 @@ func getRPCInternal(t *testing.T, sequencer bool) (*tmmocks.MockApplication, *cl
 	rollappID := "rollapp_1234-1"
 
 	config := config.NodeConfig{
-		RootDir:       "",
-		DBPath:        "",
-		P2P:           config.P2PConfig{},
+		RootDir: "",
+		DBPath:  "",
+		P2PConfig: config.P2PConfig{
+			ListenAddress:           config.DefaultListenAddress,
+			BootstrapNodes:          "",
+			GossipedBlocksCacheSize: 50,
+			BootstrapRetryTime:      30 * time.Second,
+		},
 		RPC:           config.RPCConfig{},
 		MempoolConfig: *tmcfg.DefaultMempoolConfig(),
 		BlockManagerConfig: config.BlockManagerConfig{
-			BlockTime:               100 * time.Millisecond,
-			BatchSubmitMaxTime:      60 * time.Second,
-			BlockBatchMaxSizeBytes:  1000,
-			GossipedBlocksCacheSize: 50,
-			MaxSupportedBatchSkew:   10,
+			BlockTime:              100 * time.Millisecond,
+			BatchSubmitMaxTime:     60 * time.Second,
+			BlockBatchMaxSizeBytes: 1000,
+			MaxSupportedBatchSkew:  10,
 		},
-		BootstrapTime:   30 * time.Second,
 		DALayer:         "mock",
 		DAConfig:        "",
 		SettlementLayer: "mock",
@@ -961,16 +971,17 @@ func TestMempool2Nodes(t *testing.T) {
 			ProposerPubKey: hex.EncodeToString(proposerPK),
 			RollappID:      rollappID,
 		},
-		BlockManagerConfig: config.BlockManagerConfig{
-			BlockTime:               100 * time.Millisecond,
-			BatchSubmitMaxTime:      60 * time.Second,
-			BlockBatchMaxSizeBytes:  1000,
+		P2PConfig: config.P2PConfig{
+			ListenAddress:           "/ip4/127.0.0.1/tcp/9001",
+			BootstrapNodes:          "",
 			GossipedBlocksCacheSize: 50,
-			MaxSupportedBatchSkew:   10,
+			BootstrapRetryTime:      30 * time.Second,
 		},
-		BootstrapTime: 30 * time.Second,
-		P2P: config.P2PConfig{
-			ListenAddress: "/ip4/127.0.0.1/tcp/9001",
+		BlockManagerConfig: config.BlockManagerConfig{
+			BlockTime:              100 * time.Millisecond,
+			BatchSubmitMaxTime:     60 * time.Second,
+			BlockBatchMaxSizeBytes: 1000,
+			MaxSupportedBatchSkew:  10,
 		},
 		MempoolConfig: *tmcfg.DefaultMempoolConfig(),
 	}, key1, signingKey1, proxy.NewLocalClientCreator(app), &tmtypes.GenesisDoc{ChainID: rollappID}, log.TestingLogger(), mempool.NopMetrics())
@@ -985,16 +996,16 @@ func TestMempool2Nodes(t *testing.T) {
 			RollappID:      rollappID,
 		},
 		BlockManagerConfig: config.BlockManagerConfig{
-			BlockTime:               100 * time.Millisecond,
-			BatchSubmitMaxTime:      60 * time.Second,
-			BlockBatchMaxSizeBytes:  1000,
-			GossipedBlocksCacheSize: 50,
-			MaxSupportedBatchSkew:   10,
+			BlockTime:              100 * time.Millisecond,
+			BatchSubmitMaxTime:     60 * time.Second,
+			BlockBatchMaxSizeBytes: 1000,
+			MaxSupportedBatchSkew:  10,
 		},
-		BootstrapTime: 30 * time.Second,
-		P2P: config.P2PConfig{
-			ListenAddress: "/ip4/127.0.0.1/tcp/9002",
-			Seeds:         "/ip4/127.0.0.1/tcp/9001/p2p/" + id1.String(),
+		P2PConfig: config.P2PConfig{
+			ListenAddress:           "/ip4/127.0.0.1/tcp/9002",
+			BootstrapNodes:          "/ip4/127.0.0.1/tcp/9001/p2p/" + id1.String(),
+			BootstrapRetryTime:      30 * time.Second,
+			GossipedBlocksCacheSize: 50,
 		},
 		MempoolConfig: *tmcfg.DefaultMempoolConfig(),
 	}, key2, signingKey2, proxy.NewLocalClientCreator(app), &tmtypes.GenesisDoc{ChainID: rollappID}, log.TestingLogger(), mempool.NopMetrics())
