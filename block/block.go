@@ -59,10 +59,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	}
 
 	// Get the validator changes from the app
-	validators, err := m.Executor.NextValSetFromResponses(m.State, responses, block)
-	if err != nil {
-		return fmt.Errorf("update state from responses: %w", err)
-	}
+	validators := m.State.NextValidators.Copy() // TODO: this will be changed when supporting multiple sequencers from the hub
 
 	dbBatch, err = m.Store.SaveValidators(block.Header.Height, validators, dbBatch)
 	if err != nil {
