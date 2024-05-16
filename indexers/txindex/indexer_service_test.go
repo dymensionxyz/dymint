@@ -9,9 +9,9 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/types"
 
-	blockidxkv "github.com/dymensionxyz/dymint/state/indexer/block/kv"
-	"github.com/dymensionxyz/dymint/state/txindex"
-	"github.com/dymensionxyz/dymint/state/txindex/kv"
+	blockidxkv "github.com/dymensionxyz/dymint/indexers/blockindexer/kv"
+	"github.com/dymensionxyz/dymint/indexers/txindex"
+	"github.com/dymensionxyz/dymint/indexers/txindex/kv"
 	"github.com/dymensionxyz/dymint/store"
 )
 

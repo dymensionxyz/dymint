@@ -36,9 +36,10 @@ func (m *Manager) RetrieveLoop(ctx context.Context) {
 // It fetches the batches from the settlement, gets the DA height and gets
 // the actual blocks from the DA.
 func (m *Manager) syncToTargetHeight(targetHeight uint64) error {
-	for currH := m.Store.Height(); currH < targetHeight; currH = m.Store.Height() {
+	for currH := m.State.Height(); currH < targetHeight; currH = m.State.Height() {
 
-		// It's important that we query the state index before fetching the batch, rather
+
+			// It's important that we query the state index before fetching the batch, rather
 		// than e.g. keep it and increment it, because we might be concurrently applying blocks
 		// and may require a higher index than expected.
 		stateIndex, err := m.queryStateIndex()
@@ -60,7 +61,7 @@ func (m *Manager) syncToTargetHeight(targetHeight uint64) error {
 
 	}
 
-	m.logger.Info("Synced", "store height", m.Store.Height(), "target height", targetHeight)
+	m.logger.Info("Synced", "store height", m.State.Height(), "target height", targetHeight)
 
 	err := m.attemptApplyCachedBlocks()
 	if err != nil {
@@ -75,7 +76,7 @@ func (m *Manager) queryStateIndex() (uint64, error) {
 	var stateIndex uint64
 	return stateIndex, retry.Do(
 		func() error {
-			res, err := m.SLClient.GetHeightState(m.Store.Height() + 1)
+			res, err := m.SLClient.GetHeightState(m.State.NextHeight())
 			if err != nil {
 				m.logger.Debug("sl client get height state", "error", err)
 				return err
@@ -105,7 +106,7 @@ func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
 
 	for _, batch := range batchResp.Batches {
 		for i, block := range batch.Blocks {
-			if block.Header.Height != m.Store.NextHeight() {
+			if block.Header.Height != m.State.NextHeight() {
 				continue
 			}
 			if err := m.validateBlock(block, batch.Commits[i]); err != nil {

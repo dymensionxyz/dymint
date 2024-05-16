@@ -8,52 +8,12 @@ import (
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 
 	"github.com/dymensionxyz/dymint/store"
+
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func TestStoreHeight(t *testing.T) {
-	t.Parallel()
-	cases := []struct {
-		name     string
-		blocks   []*types.Block
-		expected uint64
-	}{
-		{"single block", []*types.Block{testutil.GetRandomBlock(1, 0)}, 1},
-		{"two consecutive blocks", []*types.Block{
-			testutil.GetRandomBlock(1, 0),
-			testutil.GetRandomBlock(2, 0),
-		}, 2},
-		{"blocks out of order", []*types.Block{
-			testutil.GetRandomBlock(2, 0),
-			testutil.GetRandomBlock(3, 0),
-			testutil.GetRandomBlock(1, 0),
-		}, 3},
-		{"with a gap", []*types.Block{
-			testutil.GetRandomBlock(1, 0),
-			testutil.GetRandomBlock(9, 0),
-			testutil.GetRandomBlock(10, 0),
-		}, 10},
-	}
-
-	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			assert := assert.New(t)
-			bstore := store.New(store.NewDefaultInMemoryKVStore())
-			assert.Equal(uint64(0), bstore.Height())
-
-			for _, block := range c.blocks {
-				_, err := bstore.SaveBlock(block, &types.Commit{}, nil)
-				_ = bstore.SetHeight(block.Header.Height)
-				assert.NoError(err)
-			}
-
-			assert.Equal(c.expected, bstore.Height())
-		})
-	}
-}
 
 func TestStoreLoad(t *testing.T) {
 	t.Parallel()
@@ -123,7 +83,7 @@ func TestStoreLoad(t *testing.T) {
 	}
 }
 
-func TestRestart(t *testing.T) {
+func TestLoadState(t *testing.T) {
 	t.Parallel()
 
 	assert := assert.New(t)
@@ -133,20 +93,19 @@ func TestRestart(t *testing.T) {
 	kv := store.NewDefaultInMemoryKVStore()
 	s1 := store.New(kv)
 	expectedHeight := uint64(10)
-	_, err := s1.UpdateState(types.State{
-		LastBlockHeight: int64(expectedHeight),
-		LastStoreHeight: uint64(expectedHeight),
-		NextValidators:  validatorSet,
-		Validators:      validatorSet,
-		LastValidators:  validatorSet,
-	}, nil)
+	s := &types.State{
+		NextValidators: validatorSet,
+		Validators:     validatorSet,
+	}
+	s.LastBlockHeight.Store(expectedHeight)
+	_, err := s1.SaveState(s, nil)
 	assert.NoError(err)
 
 	s2 := store.New(kv)
-	_, err = s2.LoadState()
+	state, err := s2.LoadState()
 	assert.NoError(err)
 
-	assert.Equal(expectedHeight, s2.Height())
+	assert.Equal(expectedHeight, state.LastBlockHeight.Load())
 }
 
 func TestBlockResponses(t *testing.T) {

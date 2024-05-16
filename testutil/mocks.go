@@ -90,8 +90,7 @@ func CountMockCalls(totalCalls []mock.Call, methodName string) int {
 
 // MockStore is a mock store for testing
 type MockStore struct {
-	ShouldFailSetHeight            bool
-	ShoudFailUpdateState           bool
+	ShoudFailSaveState             bool
 	ShouldFailUpdateStateWithBatch bool
 	*store.DefaultStore
 	height uint64
@@ -99,12 +98,8 @@ type MockStore struct {
 
 // SetHeight sets the height of the mock store
 // Don't set the height to mock failure in setting the height
-func (m *MockStore) SetHeight(height uint64) bool {
-	if m.ShouldFailSetHeight {
-		return false
-	}
+func (m *MockStore) SetHeight(height uint64) {
 	m.height = height
-	return true
 }
 
 func (m *MockStore) Height() uint64 {
@@ -116,21 +111,20 @@ func (m *MockStore) NextHeight() uint64 {
 }
 
 // UpdateState updates the state of the mock store
-func (m *MockStore) UpdateState(state types.State, batch store.Batch) (store.Batch, error) {
-	if batch != nil && m.ShouldFailUpdateStateWithBatch || m.ShoudFailUpdateState && batch == nil {
+func (m *MockStore) SaveState(state *types.State, batch store.Batch) (store.Batch, error) {
+	if batch != nil && m.ShouldFailUpdateStateWithBatch || m.ShoudFailSaveState && batch == nil {
 		return nil, errors.New("failed to update state")
 	}
-	return m.DefaultStore.UpdateState(state, batch)
+	return m.DefaultStore.SaveState(state, batch)
 }
 
 // NewMockStore returns a new mock store
 func NewMockStore() *MockStore {
 	defaultStore := store.New(store.NewDefaultInMemoryKVStore())
 	return &MockStore{
-		DefaultStore:         defaultStore.(*store.DefaultStore),
-		height:               0,
-		ShouldFailSetHeight:  false,
-		ShoudFailUpdateState: false,
+		DefaultStore:       defaultStore.(*store.DefaultStore),
+		height:             0,
+		ShoudFailSaveState: false,
 	}
 }
 

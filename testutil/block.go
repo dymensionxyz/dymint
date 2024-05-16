@@ -32,7 +32,7 @@ const (
 /* -------------------------------------------------------------------------- */
 /*                                    utils                                   */
 /* -------------------------------------------------------------------------- */
-func GetManagerWithProposerKey(conf config.BlockManagerConfig, proposerKey crypto.PrivKey, settlementlc settlement.LayerI, dalc da.DataAvailabilityLayerClient, genesisHeight int64, storeInitialHeight int64, storeLastBlockHeight int64, proxyAppConns proxy.AppConns, mockStore store.Store) (*block.Manager, error) {
+func GetManagerWithProposerKey(conf config.BlockManagerConfig, proposerKey crypto.PrivKey, settlementlc settlement.LayerI, dalc da.DataAvailabilityLayerClient, genesisHeight, storeInitialHeight, storeLastBlockHeight int64, proxyAppConns proxy.AppConns, mockStore store.Store) (*block.Manager, error) {
 	genesis := GenerateGenesis(genesisHeight)
 	// Change the LastBlockHeight to avoid calling InitChainSync within the manager
 	// And updating the state according to the genesis.
@@ -43,7 +43,7 @@ func GetManagerWithProposerKey(conf config.BlockManagerConfig, proposerKey crypt
 	} else {
 		managerStore = mockStore
 	}
-	if _, err := managerStore.UpdateState(state, nil); err != nil {
+	if _, err := managerStore.SaveState(state, nil); err != nil {
 		return nil, err
 	}
 
@@ -91,8 +91,8 @@ func GetManagerWithProposerKey(conf config.BlockManagerConfig, proposerKey crypt
 	// Init p2p client and validator
 	p2pKey, _, _ := crypto.GenerateEd25519Key(rand.Reader)
 	p2pClient, err := p2p.NewClient(config.P2PConfig{
-		GossipCacheSize: 50,
-		BoostrapTime:    30 * time.Second,
+		GossipedBlocksCacheSize: 50,
+		BootstrapRetryTime:      30 * time.Second,
 	}, p2pKey, "TestChain", pubsubServer, logger)
 	if err != nil {
 		return nil, err
@@ -113,7 +113,7 @@ func GetManagerWithProposerKey(conf config.BlockManagerConfig, proposerKey crypt
 	return manager, nil
 }
 
-func GetManager(conf config.BlockManagerConfig, settlementlc settlement.LayerI, dalc da.DataAvailabilityLayerClient, genesisHeight int64, storeInitialHeight int64, storeLastBlockHeight int64, proxyAppConns proxy.AppConns, mockStore store.Store) (*block.Manager, error) {
+func GetManager(conf config.BlockManagerConfig, settlementlc settlement.LayerI, dalc da.DataAvailabilityLayerClient, genesisHeight, storeInitialHeight, storeLastBlockHeight int64, proxyAppConns proxy.AppConns, mockStore store.Store) (*block.Manager, error) {
 	proposerKey, _, err := crypto.GenerateEd25519Key(rand.Reader)
 	if err != nil {
 		return nil, err
@@ -146,11 +146,10 @@ func initSettlementLayerMock(settlementlc settlement.LayerI, proposer string, pu
 
 func GetManagerConfig() config.BlockManagerConfig {
 	return config.BlockManagerConfig{
-		BlockTime:               100 * time.Millisecond,
-		BlockBatchMaxSizeBytes:  1000000,
-		BatchSubmitMaxTime:      30 * time.Minute,
-		MaxSupportedBatchSkew:   10,
-		NamespaceID:             "0102030405060708",
-		GossipedBlocksCacheSize: 50,
+		BlockTime:              100 * time.Millisecond,
+		BlockBatchMaxSizeBytes: 1000000,
+		BatchSubmitMaxTime:     30 * time.Minute,
+		MaxSupportedBatchSkew:  10,
+		NamespaceID:            "0102030405060708",
 	}
 }

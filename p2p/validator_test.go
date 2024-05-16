@@ -95,10 +95,9 @@ func TestValidator_TxValidator(t *testing.T) {
 }
 
 func TestValidator_BlockValidator(t *testing.T) {
-
-	//Create proposer for the block
+	// Create proposer for the block
 	proposerKey := ed25519.GenPrivKey()
-	//Create another key
+	// Create another key
 	attackerKey := ed25519.GenPrivKey()
 
 	tests := []struct {
@@ -120,7 +119,7 @@ func TestValidator_BlockValidator(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			logger := log.TestingLogger()
 
-			//Create Block executor
+			// Create Block executor
 			app := &tmmocks.MockApplication{}
 
 			clientCreator := proxy.NewLocalClientCreator(app)
@@ -133,17 +132,17 @@ func TestValidator_BlockValidator(t *testing.T) {
 			executor, err := block.NewExecutor([]byte("test address"), namespaceId, "test", mpool, proxy.NewAppConns(clientCreator), nil, logger)
 			assert.NoError(t, err)
 
-			//Create state
+			// Create state
 			maxBytes := uint64(100)
 			state := types.State{}
 			state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
 			state.ConsensusParams.Block.MaxGas = 100000
 			state.Validators = tmtypes.NewValidatorSet(nil)
 
-			//Create empty block
-			block := executor.CreateBlock(1, &types.Commit{}, [32]byte{}, state, maxBytes)
+			// Create empty block
+			block := executor.CreateBlock(1, &types.Commit{}, [32]byte{}, &state, maxBytes)
 
-			//Create slclient
+			// Create slclient
 			client := registry.GetClient(registry.Local)
 			pubsubServer := pubsub.NewServer()
 			err = pubsubServer.Start()
@@ -169,16 +168,16 @@ func TestValidator_BlockValidator(t *testing.T) {
 				Signatures: []types.Signature{signature},
 			}
 
-			//Create gossiped block
+			// Create gossiped block
 			gossipedBlock := p2p.GossipedBlock{Block: *block, Commit: *commit}
 			gossipedBlockBytes, err := gossipedBlock.MarshalBinary()
 			require.NoError(t, err)
-			var blockMsg = &p2p.GossipMessage{
+			blockMsg := &p2p.GossipMessage{
 				Data: gossipedBlockBytes,
 				From: peer.ID("from"),
 			}
 
-			//Check block validity
+			// Check block validity
 			validateBlock := p2p.NewValidator(logger, client).BlockValidator()
 			valid := validateBlock(blockMsg)
 			require.Equal(t, tt.valid, valid)

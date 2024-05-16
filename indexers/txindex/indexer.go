@@ -8,8 +8,6 @@ import (
 	"github.com/tendermint/tendermint/libs/pubsub/query"
 )
 
-// XXX/TODO: These types should be moved to the indexer package.
-
 // TxIndexer interface defines methods to index and search transactions.
 type TxIndexer interface {
 	// AddBatch analyzes, indexes and stores a batch of transactions.

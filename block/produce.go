@@ -87,33 +87,27 @@ func (m *Manager) ProduceAndGossipBlock(ctx context.Context, allowEmpty bool) (*
 	return block, commit, nil
 }
 
-func (m *Manager) produceBlock(allowEmpty bool) (*types.Block, *types.Commit, error) {
-	var (
-		lastCommit     *types.Commit
-		lastHeaderHash [32]byte
-		newHeight      uint64
-		err            error
-	)
+func loadPrevBlock(store store.Store, height uint64) ([32]byte, *types.Commit, error) {
+	lastCommit, err := store.LoadCommit(height)
+	if err != nil {
+		return [32]byte{}, nil, fmt.Errorf("load commit: height: %d: %w", height, err)
+	}
+	lastBlock, err := store.LoadBlock(height)
+	if err != nil {
+		return [32]byte{}, nil, fmt.Errorf("load block after load commit: height: %d: %w", height, err)
+	}
+	return lastBlock.Header.Hash(), lastCommit, nil
+}
 
-	if m.LastState.IsGenesis() {
-		newHeight = uint64(m.LastState.InitialHeight)
+func (m *Manager) produceBlock(allowEmpty bool) (*types.Block, *types.Commit, error) {
+	newHeight := m.State.NextHeight()
+	lastHeaderHash, lastCommit, err := loadPrevBlock(m.Store, newHeight-1)
+	if err != nil {
+		if !m.State.IsGenesis() { // allow prevBlock not to be found only on genesis
+			return nil, nil, fmt.Errorf("load prev block: %w: %w", err, ErrNonRecoverable)
+		}
+		lastHeaderHash = [32]byte{}
 		lastCommit = &types.Commit{}
-		m.LastState.BaseHeight = newHeight
-		if ok := m.Store.SetBase(newHeight); !ok {
-			return nil, nil, fmt.Errorf("store set base: %d", newHeight)
-		}
-	} else {
-		height := m.Store.Height()
-		newHeight = height + 1
-		lastCommit, err = m.Store.LoadCommit(height)
-		if err != nil {
-			return nil, nil, fmt.Errorf("load commit: height: %d: %w: %w", height, err, ErrNonRecoverable)
-		}
-		lastBlock, err := m.Store.LoadBlock(height)
-		if err != nil {
-			return nil, nil, fmt.Errorf("load block after load commit: height: %d: %w: %w", height, err, ErrNonRecoverable)
-		}
-		lastHeaderHash = lastBlock.Header.Hash()
 	}
 
 	var block *types.Block
@@ -132,7 +126,7 @@ func (m *Manager) produceBlock(allowEmpty bool) (*types.Block, *types.Commit, er
 	} else if !errors.Is(err, store.ErrKeyNotFound) {
 		return nil, nil, fmt.Errorf("load block: height: %d: %w: %w", newHeight, err, ErrNonRecoverable)
 	} else {
-		block = m.Executor.CreateBlock(newHeight, lastCommit, lastHeaderHash, m.LastState, m.Conf.BlockBatchMaxSizeBytes)
+		block = m.Executor.CreateBlock(newHeight, lastCommit, lastHeaderHash, m.State, m.Conf.BlockBatchMaxSizeBytes)
 		if !allowEmpty && len(block.Data.Txs) == 0 {
 			return nil, nil, fmt.Errorf("%w: %w", types.ErrSkippedEmptyBlock, ErrRecoverable)
 		}
@@ -192,19 +186,20 @@ func (m *Manager) createTMSignature(block *types.Block, proposerAddress []byte, 
 	}
 	v := vote.ToProto()
 	// convert libp2p key to tm key
+	// TODO: move to types
 	raw_key, _ := m.ProposerKey.Raw()
 	tmprivkey := tmed25519.PrivKey(raw_key)
 	tmprivkey.PubKey().Bytes()
 	// Create a mock validator to sign the vote
 	tmvalidator := tmtypes.NewMockPVWithParams(tmprivkey, false, false)
-	err := tmvalidator.SignVote(m.LastState.ChainID, v)
+	err := tmvalidator.SignVote(m.State.ChainID, v)
 	if err != nil {
 		return nil, err
 	}
 	// Update the vote with the signature
 	vote.Signature = v.Signature
 	pubKey := tmprivkey.PubKey()
-	voteSignBytes := tmtypes.VoteSignBytes(m.LastState.ChainID, v)
+	voteSignBytes := tmtypes.VoteSignBytes(m.State.ChainID, v)
 	if !pubKey.VerifySignature(voteSignBytes, vote.Signature) {
 		return nil, fmt.Errorf("wrong signature")
 	}

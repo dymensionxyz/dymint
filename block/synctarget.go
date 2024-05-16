@@ -24,16 +24,16 @@ func (m *Manager) SyncToTargetHeightLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case event := <-subscription.Out():
-			eventData := event.Data().(*settlement.EventDataNewBatchAccepted)
+			eventData, _ := event.Data().(*settlement.EventDataNewBatchAccepted)
 			h := eventData.EndHeight
 
-			if h <= m.Store.Height() {
+			if h <= m.State.Height() {
 				m.logger.Debug(
 					"syncTargetLoop: received new settlement batch accepted with batch end height <= current store height, skipping.",
 					"target sync height (batch end height)",
 					h,
 					"current store height",
-					m.Store.Height(),
+					m.State.Height(),
 				)
 				continue
 			}

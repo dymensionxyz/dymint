@@ -82,6 +82,7 @@ func NewClient(conf config.P2PConfig, privKey crypto.PrivKey, chainID string, lo
 	if conf.ListenAddress == "" {
 		conf.ListenAddress = config.DefaultListenAddress
 	}
+
 	return &Client{
 		conf:              conf,
 		privKey:           privKey,
@@ -101,7 +102,6 @@ func NewClient(conf config.P2PConfig, privKey crypto.PrivKey, chainID string, lo
 func (c *Client) Start(ctx context.Context) error {
 	// create new, cancelable context
 	ctx, c.cancel = context.WithCancel(ctx)
-	c.logger.Debug("starting P2P client")
 	host, err := c.listen(ctx)
 	if err != nil {
 		return err
@@ -229,7 +229,7 @@ func (c *Client) listen(ctx context.Context) (host.Host, error) {
 }
 
 func (c *Client) setupDHT(ctx context.Context) error {
-	seedNodes := c.GetSeedAddrInfo(c.conf.Seeds)
+	seedNodes := c.GetSeedAddrInfo(c.conf.BootstrapNodes)
 	if len(seedNodes) == 0 {
 		c.logger.Info("no seed nodes - only listening for connections")
 	}
@@ -264,9 +264,11 @@ func (c *Client) peerDiscovery(ctx context.Context) error {
 		return err
 	}
 
-	err = c.advertise(ctx)
-	if err != nil {
-		return err
+	if c.conf.AdvertisingEnabled {
+		err = c.advertise(ctx)
+		if err != nil {
+			return err
+		}
 	}
 
 	err = c.findPeers(ctx)
@@ -318,16 +320,16 @@ func (c *Client) tryConnect(ctx context.Context, peer peer.AddrInfo) {
 }
 
 func (c *Client) setupGossiping(ctx context.Context) error {
-	pubsub.GossipSubHistoryGossip = c.conf.GossipCacheSize
-	pubsub.GossipSubHistoryLength = c.conf.GossipCacheSize
+	pubsub.GossipSubHistoryGossip = c.conf.GossipedBlocksCacheSize
+	pubsub.GossipSubHistoryLength = c.conf.GossipedBlocksCacheSize
 
-	//We add WithSeenMessagesTTL (with 1 year time) option to avoid ever requesting already seen blocks
+	// We add WithSeenMessagesTTL (with 1 year time) option to avoid ever requesting already seen blocks
 	ps, err := pubsub.NewGossipSub(ctx, c.Host)
 	if err != nil {
 		return err
 	}
 
-	//tx gossiper receives the tx to add to the mempool through validation process, since it is a joint process
+	// tx gossiper receives the tx to add to the mempool through validation process, since it is a joint process
 	c.txGossiper, err = NewGossiper(c.Host, ps, c.getTxTopic(), nil, c.logger, WithValidator(c.txValidator))
 	if err != nil {
 		return err
@@ -402,7 +404,7 @@ func (c *Client) gossipedBlockReceived(msg *GossipMessage) {
 }
 
 func (c *Client) bootstrapLoop(ctx context.Context) {
-	ticker := time.NewTicker(c.conf.BoostrapTime)
+	ticker := time.NewTicker(c.conf.BootstrapRetryTime)
 	defer ticker.Stop()
 	for {
 		select {

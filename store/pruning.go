@@ -7,37 +7,29 @@ import (
 )
 
 // PruneBlocks removes block up to (but not including) a height. It returns number of blocks pruned.
-func (s *DefaultStore) PruneBlocks(heightInt int64) (uint64, error) {
-	if heightInt <= 0 {
-		return 0, fmt.Errorf("height must be greater than 0")
+func (s *DefaultStore) PruneBlocks(from, to uint64) (uint64, error) {
+	if from <= 0 {
+		return 0, fmt.Errorf("from height must be greater than 0: %w", gerr.ErrInvalidArgument)
 	}
 
-	height := uint64(heightInt)
-	if height > s.Height() {
-		return 0, fmt.Errorf("cannot prune beyond the latest height %v: %w", s.height, gerr.ErrInvalidArgument)
+	if to <= from {
+		return 0, fmt.Errorf("to height must be greater than from height: to: %d: from: %d: %w", to, from, gerr.ErrInvalidArgument)
 	}
-	base := s.Base()
-	if height < base {
-		return 0, fmt.Errorf("cannot prune to height %v, it is lower than base height %v",
-			height, base)
-	}
+
 
 	pruned := uint64(0)
 	batch := s.db.NewBatch()
 	defer batch.Discard()
 
-	flush := func(batch Batch, base uint64) error {
+	flush := func(batch Batch, height uint64) error {
 		err := batch.Commit()
 		if err != nil {
-			return fmt.Errorf("prune up to height %v: %w", base, err)
-		}
-		if ok := s.SetBase(base); !ok {
-			return fmt.Errorf("set base height: %v", base)
+			return fmt.Errorf("flush batch to disk: height %d: %w", height, err)
 		}
 		return nil
 	}
 
-	for h := base; h < height; h++ {
+	for h := from; h < to; h++ {
 		hash, err := s.loadHashFromIndex(h)
 		if err != nil {
 			continue
@@ -71,7 +63,7 @@ func (s *DefaultStore) PruneBlocks(heightInt int64) (uint64, error) {
 		}
 	}
 
-	err := flush(batch, height)
+	err := flush(batch, to)
 	if err != nil {
 		return 0, err
 	}

@@ -100,8 +100,9 @@ func TestPostBatch(t *testing.T) {
 	options := []dymension.Option{
 		dymension.WithCosmosClient(cosmosClientMock),
 		dymension.WithBatchAcceptanceTimeout(time.Millisecond * 300),
-		dymension.WithBatchRetryAttempts(2),
-		dymension.WithBatchRetryDelay(time.Millisecond * 200),
+		dymension.WithRetryAttempts(2),
+		dymension.WithRetryMinDelay(time.Millisecond * 200),
+		dymension.WithRetryMaxDelay(time.Second * 2),
 	}
 
 	// Create a batch which will be submitted
