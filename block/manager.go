@@ -192,6 +192,6 @@ func (m *Manager) syncBlockManager() error {
 // UpdateSyncParams updates the sync target and state index if necessary
 func (m *Manager) UpdateSyncParams(endHeight uint64) {
 	types.RollappHubHeightGauge.Set(float64(endHeight))
-	m.logger.Info("Received new syncTarget", "syncTarget", endHeight)
+	m.logger.Info("SyncTarget updated", "syncTarget", endHeight)
 	m.SyncTarget.Store(endHeight)
 }
