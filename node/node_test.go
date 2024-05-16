@@ -62,17 +62,21 @@ func TestMempoolDirectly(t *testing.T) {
 	rollappID := "rollapp_1234-1"
 
 	nodeConfig := config.NodeConfig{
-		RootDir:       "",
-		DBPath:        "",
-		P2P:           config.P2PConfig{},
+		RootDir: "",
+		DBPath:  "",
+		P2PConfig: config.P2PConfig{
+			ListenAddress:           config.DefaultListenAddress,
+			GossipedBlocksCacheSize: 50,
+			BootstrapRetryTime:      30 * time.Second,
+			BootstrapNodes:          "",
+		},
 		RPC:           config.RPCConfig{},
 		MempoolConfig: *tmcfg.DefaultMempoolConfig(),
 		BlockManagerConfig: config.BlockManagerConfig{
-			BlockTime:               100 * time.Millisecond,
-			BatchSubmitMaxTime:      60 * time.Second,
-			BlockBatchMaxSizeBytes:  1000,
-			MaxSupportedBatchSkew:   10,
-			GossipedBlocksCacheSize: 50,
+			BlockTime:              100 * time.Millisecond,
+			BatchSubmitMaxTime:     60 * time.Second,
+			BlockBatchMaxSizeBytes: 1000,
+			MaxSupportedBatchSkew:  10,
 		},
 		DALayer:         "mock",
 		DAConfig:        "",

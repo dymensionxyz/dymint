@@ -13,9 +13,6 @@ import (
 func TestGetNodeConfig(t *testing.T) {
 	t.Parallel()
 
-	validCosmos := "127.0.0.1:1234"
-	validDymint := "/ip4/127.0.0.1/tcp/1234"
-
 	cases := []struct {
 		name        string
 		input       func(*tmcfg.Config)
@@ -29,23 +26,6 @@ func TestGetNodeConfig(t *testing.T) {
 			},
 			nil,
 			true,
-		},
-		{
-			"Seeds",
-			func(c *tmcfg.Config) {
-				c.P2P.Seeds = validCosmos + "," + validCosmos
-			},
-			func(nc *config.NodeConfig) bool { return nc.P2P.Seeds == validDymint+","+validDymint },
-			false,
-		},
-		// GetNodeConfig translates the listen address, so we expect the translated address
-		{
-			"ListenAddress",
-			func(c *tmcfg.Config) {
-				c.P2P.ListenAddress = validCosmos
-			},
-			func(nc *config.NodeConfig) bool { return nc.P2P.ListenAddress == validDymint },
-			false,
 		},
 		{
 			"RootDir",
