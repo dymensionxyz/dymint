@@ -570,7 +570,7 @@ func (d *HubClient) RunWithRetry(operation func() error) error {
 	)
 }
 
-// RunWithRetry runs the given operation with retry, doing a number of attempts, and taking the last
+// RunWithRetryInfinitely runs the given operation with retry, doing a number of attempts, and taking the last
 // error only. It uses the context of the HubClient.
 func (d *HubClient) RunWithRetryInfinitely(operation func() error) error {
 	return retry.Do(operation,
