@@ -62,7 +62,7 @@ type Manager struct {
 	// start at this height + 1. Note: only accessed by one thread at a time so doesn't need synchro.
 	// It is ALSO used by the producer, because the producer needs to check if it can prune blocks and it wont'
 	// prune anything that might be submitted in future.
-	LastSubmittedHeight uint64
+	LastSubmittedHeight atomic.Uint64
 
 	/*
 		Retrieval
@@ -173,7 +173,7 @@ func (m *Manager) Start(ctx context.Context) error {
 }
 
 func (m *Manager) NextHeightToSubmit() uint64 {
-	return m.LastSubmittedHeight + 1
+	return m.LastSubmittedHeight.Load() + 1
 }
 
 // syncBlockManager enforces the node to be synced on initial run.
@@ -182,19 +182,19 @@ func (m *Manager) syncBlockManager() error {
 	if errors.Is(err, gerr.ErrNotFound) {
 		// The SL hasn't got any batches for this chain yet.
 		m.logger.Info("No batches for chain found in SL.")
-		m.LastSubmittedHeight = uint64(m.Genesis.InitialHeight - 1)
+		m.LastSubmittedHeight.Store(uint64(m.Genesis.InitialHeight - 1))
 		return nil
 	}
 	if err != nil {
 		// TODO: separate between fresh rollapp and non-registered rollapp
 		return err
 	}
-	m.LastSubmittedHeight = res.EndHeight
+	m.LastSubmittedHeight.Store(res.EndHeight)
 	err = m.syncToTargetHeight(res.EndHeight)
 	if err != nil {
 		return err
 	}
 
-	m.logger.Info("Synced.", "current height", m.State.Height(), "last submitted height", m.LastSubmittedHeight)
+	m.logger.Info("Synced.", "current height", m.State.Height(), "last submitted height", m.LastSubmittedHeight.Load())
 	return nil
 }

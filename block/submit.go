@@ -137,7 +137,7 @@ func (m *Manager) HandleSubmissionTrigger() error {
 	}
 
 	types.RollappHubHeightGauge.Set(float64(actualEndHeight))
-	m.LastSubmittedHeight = actualEndHeight
+	m.LastSubmittedHeight.Store(actualEndHeight)
 	return nil
 }
 
