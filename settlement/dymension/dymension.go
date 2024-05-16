@@ -281,7 +281,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 						timer.Reset(d.batchAcceptanceTimeout)
 						continue
 					}
-					err = fmt.Errorf("batch not accepted by the settlement layer")
+					err = fmt.Errorf("timed out waiting for batch inclusion on settlement layer")
 				}
 
 				if err != nil {
