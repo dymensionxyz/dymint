@@ -60,6 +60,8 @@ type Manager struct {
 	AccumulatedBatchSize atomic.Uint64
 	// The last height which was submitted to both sublayers, that we know of. When we produce new batches, we will
 	// start at this height + 1. Note: only accessed by one thread at a time so doesn't need synchro.
+	// It is ALSO used by the producer, because the producer needs to check if it can prune blocks and it wont'
+	// prune anything that might be submitted in future.
 	LastSubmittedHeight uint64
 
 	/*
