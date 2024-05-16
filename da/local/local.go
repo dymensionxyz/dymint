@@ -20,7 +20,7 @@ type DataAvailabilityLayerClient struct {
 	dalcKV   store.KVStore
 	daHeight atomic.Uint64
 	config   config
-	started  chan struct{}
+	synced   chan struct{}
 }
 
 const defaultBlockTime = 3 * time.Second
@@ -48,14 +48,14 @@ func (m *DataAvailabilityLayerClient) Init(config []byte, _ *pubsub.Server, dalc
 	} else {
 		m.config.BlockTime = defaultBlockTime
 	}
-	m.started = make(chan struct{}, 1)
+	m.synced = make(chan struct{}, 1)
 	return nil
 }
 
 // Start implements DataAvailabilityLayerClient interface.
 func (m *DataAvailabilityLayerClient) Start() error {
 	m.logger.Debug("Mock Data Availability Layer Client starting")
-	m.started <- struct{}{}
+	m.synced <- struct{}{}
 	go func() {
 		for {
 			time.Sleep(m.config.BlockTime)
@@ -69,13 +69,13 @@ func (m *DataAvailabilityLayerClient) Start() error {
 // Stop implements DataAvailabilityLayerClient interface.
 func (m *DataAvailabilityLayerClient) Stop() error {
 	m.logger.Debug("Mock Data Availability Layer Client stopped")
-	close(m.started)
+	close(m.synced)
 	return nil
 }
 
-// Started returns channel for on start event
-func (m *DataAvailabilityLayerClient) Started() <-chan struct{} {
-	return m.started
+// Synced returns channel for on start event
+func (m *DataAvailabilityLayerClient) Synced() <-chan struct{} {
+	return m.synced
 }
 
 // GetClientType returns client type.

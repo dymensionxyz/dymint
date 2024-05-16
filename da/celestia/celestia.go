@@ -37,7 +37,7 @@ type DataAvailabilityLayerClient struct {
 	logger       types.Logger
 	ctx          context.Context
 	cancel       context.CancelFunc
-	started      chan struct{}
+	synced       chan struct{}
 }
 
 var (
@@ -76,7 +76,7 @@ func WithSubmitBackoff(c uretry.BackoffConfig) da.Option {
 // Init initializes DataAvailabilityLayerClient instance.
 func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.Server, kvStore store.KVStore, logger types.Logger, options ...da.Option) error {
 	c.logger = logger
-	c.started = make(chan struct{}, 1)
+	c.synced = make(chan struct{}, 1)
 	var err error
 	c.config, err = createConfig(config)
 	if err != nil {
@@ -168,7 +168,7 @@ func (c *DataAvailabilityLayerClient) Start() (err error) {
 		}
 
 		c.rpc = NewOpenRPC(rpc)
-		c.started <- struct{}{}
+		c.synced <- struct{}{}
 		c.logger.Info("celestia-node is synced")
 
 		err := retry.Do(sync,
@@ -192,13 +192,13 @@ func (c *DataAvailabilityLayerClient) Stop() error {
 		return err
 	}
 	c.cancel()
-	close(c.started)
+	close(c.synced)
 	return nil
 }
 
 // Started returns channel for on start event
-func (c *DataAvailabilityLayerClient) Started() <-chan struct{} {
-	return c.started
+func (c *DataAvailabilityLayerClient) Synced() <-chan struct{} {
+	return c.synced
 }
 
 // GetClientType returns client type.

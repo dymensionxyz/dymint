@@ -148,14 +148,16 @@ func (m *Manager) Start(ctx context.Context) error {
 		}
 	}
 
-	// Fullnode loop can start before syncing from DA
-	if !isSequencer {
+	if isSequencer {
+		// Sequencer must wait till DA is synced
+		<-m.DAClient.Synced()
+	} else {
+		// Fullnode loop can start before syncing from DA
 		go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewNewGossipedBlock, m.onNewGossipedBlock, m.logger)
 	}
 
 	// TODO: populate the accumulatedSize on startup
-	// Wait till DA is up and running
-	<-m.DAClient.Started()
+
 	// Start syncing from DA
 	err = m.syncBlockManager()
 	if err != nil {
