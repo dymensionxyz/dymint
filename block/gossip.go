@@ -22,7 +22,7 @@ func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
 		return
 	}
 
-	m.logger.Debug("Received new block via gossip", "block height", block.Header.Height, "store height", m.State.Height(), "n cachedBlocks", len(m.blockCache))
+	m.logger.Info("Received new block via gossip.", "block height", block.Header.Height, "store height", m.State.Height(), "n cachedBlocks", len(m.blockCache))
 
 	nextHeight := m.State.NextHeight()
 	if block.Header.Height >= nextHeight {
@@ -35,7 +35,7 @@ func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
 
 	err := m.attemptApplyCachedBlocks()
 	if err != nil {
-		m.logger.Error("applying cached blocks", "err", err)
+		m.logger.Error("Applying cached blocks.", "err", err)
 	}
 }
 

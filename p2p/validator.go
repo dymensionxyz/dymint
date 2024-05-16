@@ -42,7 +42,7 @@ func NewValidator(logger types.Logger, slClient settlement.LayerI) *Validator {
 // False means the TX is considered invalid and should not be gossiped.
 func (v *Validator) TxValidator(mp mempool.Mempool, mpoolIDS *nodemempool.MempoolIDs) GossipValidator {
 	return func(txMessage *GossipMessage) bool {
-		v.logger.Debug("transaction received", "bytes", len(txMessage.Data))
+		v.logger.Debug("Transaction received.", "bytes", len(txMessage.Data))
 		var res *abci.Response
 		err := mp.CheckTx(txMessage.Data, func(resp *abci.Response) {
 			res = resp
@@ -60,7 +60,7 @@ func (v *Validator) TxValidator(mp mempool.Mempool, mpoolIDS *nodemempool.Mempoo
 		case errors.Is(err, mempool.ErrPreCheck{}):
 			return false
 		case err != nil:
-			v.logger.Error("check tx", "error", err)
+			v.logger.Error("Check tx.", "error", err)
 			return false
 		}
 
@@ -71,14 +71,13 @@ func (v *Validator) TxValidator(mp mempool.Mempool, mpoolIDS *nodemempool.Mempoo
 // BlockValidator runs basic checks on the gossiped block
 func (v *Validator) BlockValidator() GossipValidator {
 	return func(blockMsg *GossipMessage) bool {
-		v.logger.Debug("block event received", "from", blockMsg.From, "bytes", len(blockMsg.Data))
 		var gossipedBlock GossipedBlock
 		if err := gossipedBlock.UnmarshalBinary(blockMsg.Data); err != nil {
-			v.logger.Error("deserialize gossiped block", "error", err)
+			v.logger.Error("Deserialize gossiped block.", "error", err)
 			return false
 		}
 		if err := gossipedBlock.Validate(v.slClient.GetProposer()); err != nil {
-			v.logger.Error("Invalid gossiped block.", "height", gossipedBlock.Block.Header.Height, "error", err)
+			v.logger.Error("Failed to validate gossiped block.", "height", gossipedBlock.Block.Header.Height, "error", err)
 			return false
 		}
 

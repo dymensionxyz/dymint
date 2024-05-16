@@ -102,7 +102,7 @@ func NewClient(conf config.P2PConfig, privKey crypto.PrivKey, chainID string, lo
 func (c *Client) Start(ctx context.Context) error {
 	// create new, cancelable context
 	ctx, c.cancel = context.WithCancel(ctx)
-	host, err := c.listen(ctx)
+	host, err := c.listen()
 	if err != nil {
 		return err
 	}
@@ -112,22 +112,22 @@ func (c *Client) Start(ctx context.Context) error {
 func (c *Client) StartWithHost(ctx context.Context, h host.Host) error {
 	c.Host = h
 	for _, a := range c.Host.Addrs() {
-		c.logger.Info("listening on", "address", fmt.Sprintf("%s/p2p/%s", a, c.Host.ID()))
+		c.logger.Info("Listening on:", "address", fmt.Sprintf("%s/p2p/%s", a, c.Host.ID()))
 	}
 
-	c.logger.Debug("setting up gossiping")
+	c.logger.Debug("Setting up gossiping.")
 	err := c.setupGossiping(ctx)
 	if err != nil {
 		return err
 	}
 
-	c.logger.Debug("setting up DHT")
+	c.logger.Debug("Setting up DHT.")
 	err = c.setupDHT(ctx)
 	if err != nil {
 		return err
 	}
 
-	c.logger.Debug("setting up active peer discovery")
+	c.logger.Debug("Setting up active peer discovery.")
 	err = c.peerDiscovery(ctx)
 	if err != nil {
 		return err
@@ -150,7 +150,7 @@ func (c *Client) Close() error {
 
 // GossipTx sends the transaction to the P2P network.
 func (c *Client) GossipTx(ctx context.Context, tx []byte) error {
-	c.logger.Debug("Gossiping TX", "len", len(tx))
+	c.logger.Debug("Gossiping transaction.", "len", len(tx))
 	return c.txGossiper.Publish(ctx, tx)
 }
 
@@ -161,7 +161,7 @@ func (c *Client) SetTxValidator(val GossipValidator) {
 
 // GossipBlock sends the block, and it's commit to the P2P network.
 func (c *Client) GossipBlock(ctx context.Context, blockBytes []byte) error {
-	c.logger.Debug("Gossiping block", "len", len(blockBytes))
+	c.logger.Debug("Gossiping block.", "len", len(blockBytes))
 	return c.blockGossiper.Publish(ctx, blockBytes)
 }
 
@@ -213,7 +213,7 @@ func (c *Client) Peers() []PeerConnection {
 	return res
 }
 
-func (c *Client) listen(ctx context.Context) (host.Host, error) {
+func (c *Client) listen() (host.Host, error) {
 	var err error
 	maddr, err := multiaddr.NewMultiaddr(c.conf.ListenAddress)
 	if err != nil {
@@ -229,17 +229,17 @@ func (c *Client) listen(ctx context.Context) (host.Host, error) {
 }
 
 func (c *Client) setupDHT(ctx context.Context) error {
-	seedNodes := c.GetSeedAddrInfo(c.conf.BootstrapNodes)
-	if len(seedNodes) == 0 {
-		c.logger.Info("no seed nodes - only listening for connections")
+	bootstrapNodes := c.GetSeedAddrInfo(c.conf.BootstrapNodes)
+	if len(bootstrapNodes) == 0 {
+		c.logger.Info("No bootstrap nodes configured - only listening for connections.")
 	}
 
-	for _, sa := range seedNodes {
-		c.logger.Debug("seed node", "addr", sa)
+	for _, sa := range bootstrapNodes {
+		c.logger.Debug("Bootstrap node.", "addr", sa)
 	}
 
 	var err error
-	c.DHT, err = dht.New(ctx, c.Host, dht.Mode(dht.ModeServer), dht.BootstrapPeers(seedNodes...))
+	c.DHT, err = dht.New(ctx, c.Host, dht.Mode(dht.ModeServer), dht.BootstrapPeers(bootstrapNodes...))
 	if err != nil {
 		return fmt.Errorf("create DHT: %w", err)
 	}
@@ -249,7 +249,7 @@ func (c *Client) setupDHT(ctx context.Context) error {
 		return fmt.Errorf("bootstrap DHT: %w", err)
 	}
 
-	if len(seedNodes) > 0 {
+	if len(bootstrapNodes) > 0 {
 		go c.bootstrapLoop(ctx)
 	}
 
@@ -310,13 +310,13 @@ func (c *Client) findPeers(ctx context.Context) error {
 
 // tryConnect attempts to connect to a peer and logs error if necessary
 func (c *Client) tryConnect(ctx context.Context, peer peer.AddrInfo) {
-	c.logger.Debug("trying to connect to peer", "peer", peer)
+	c.logger.Debug("Trying to connect to peer.", "peer", peer)
 	err := c.Host.Connect(ctx, peer)
 	if err != nil {
-		c.logger.Error("connect to peer", "peer", peer, "error", err)
+		c.logger.Error("Connecting to peer.", "peer", peer, "error", err)
 		return
 	}
-	c.logger.Debug("connected to peer", "peer", peer)
+	c.logger.Debug("Connected to peer successfully.", "peer", peer)
 }
 
 func (c *Client) setupGossiping(ctx context.Context) error {
@@ -355,12 +355,12 @@ func (c *Client) GetSeedAddrInfo(seedStr string) []peer.AddrInfo {
 	for _, s := range seeds {
 		maddr, err := multiaddr.NewMultiaddr(s)
 		if err != nil {
-			c.logger.Error("parse seed node", "address", s, "error", err)
+			c.logger.Error("Parse seed node.", "address", s, "error", err)
 			continue
 		}
 		addrInfo, err := peer.AddrInfoFromP2pAddr(maddr)
 		if err != nil {
-			c.logger.Error("create addr info for seed", "address", maddr, "error", err)
+			c.logger.Error("Create addr info for seed.", "address", maddr, "error", err)
 			continue
 		}
 		addrs = append(addrs, *addrInfo)
@@ -395,11 +395,11 @@ func (c *Client) NewTxValidator() GossipValidator {
 func (c *Client) gossipedBlockReceived(msg *GossipMessage) {
 	var gossipedBlock GossipedBlock
 	if err := gossipedBlock.UnmarshalBinary(msg.Data); err != nil {
-		c.logger.Error("deserialize gossiped block", "error", err)
+		c.logger.Error("Deserialize gossiped block", "error", err)
 	}
 	err := c.localPubsubServer.PublishWithEvents(context.Background(), gossipedBlock, map[string][]string{EventTypeKey: {EventNewGossipedBlock}})
 	if err != nil {
-		c.logger.Error("publishing event", "err", err)
+		c.logger.Error("Publishing event.", "err", err)
 	}
 }
 
@@ -414,7 +414,7 @@ func (c *Client) bootstrapLoop(ctx context.Context) {
 			if len(c.Peers()) == 0 {
 				err := c.DHT.Bootstrap(ctx)
 				if err != nil {
-					c.logger.Error("re-bootstrap DHT: %w", err)
+					c.logger.Error("Re-bootstrap DHT: %w", err)
 				}
 			}
 
