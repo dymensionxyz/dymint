@@ -168,16 +168,17 @@ func (c *DataAvailabilityLayerClient) Start() (err error) {
 			}
 		}
 
-		c.rpc = NewOpenRPC(rpc)
-		c.synced <- struct{}{}
-		c.logger.Info("celestia-node is synced")
-
 		err := retry.Do(sync,
 			retry.Attempts(0), // try forever
 			retry.Delay(10*time.Second),
 			retry.LastErrorOnly(true),
 			retry.DelayType(retry.FixedDelay),
 		)
+
+		c.logger.Info("celestia-node is synced")
+		c.rpc = NewOpenRPC(rpc)
+		c.synced <- struct{}{}
+
 		if err != nil {
 			c.logger.Error("Waiting for Celestia data availability client to sync", "err", err)
 		}
