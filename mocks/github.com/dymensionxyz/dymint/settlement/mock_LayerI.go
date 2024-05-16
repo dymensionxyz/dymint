@@ -26,6 +26,64 @@ func (_m *MockLayerI) EXPECT() *MockLayerI_Expecter {
 	return &MockLayerI_Expecter{mock: &_m.Mock}
 }
 
+// GetBatchAtIndex provides a mock function with given fields: index
+func (_m *MockLayerI) GetBatchAtIndex(index uint64) (*settlement.ResultRetrieveBatch, error) {
+	ret := _m.Called(index)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetBatchAtIndex")
+	}
+
+	var r0 *settlement.ResultRetrieveBatch
+	var r1 error
+	if rf, ok := ret.Get(0).(func(uint64) (*settlement.ResultRetrieveBatch, error)); ok {
+		return rf(index)
+	}
+	if rf, ok := ret.Get(0).(func(uint64) *settlement.ResultRetrieveBatch); ok {
+		r0 = rf(index)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*settlement.ResultRetrieveBatch)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(uint64) error); ok {
+		r1 = rf(index)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockLayerI_GetBatchAtIndex_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetBatchAtIndex'
+type MockLayerI_GetBatchAtIndex_Call struct {
+	*mock.Call
+}
+
+// GetBatchAtIndex is a helper method to define mock.On call
+//   - index uint64
+func (_e *MockLayerI_Expecter) GetBatchAtIndex(index interface{}) *MockLayerI_GetBatchAtIndex_Call {
+	return &MockLayerI_GetBatchAtIndex_Call{Call: _e.mock.On("GetBatchAtIndex", index)}
+}
+
+func (_c *MockLayerI_GetBatchAtIndex_Call) Run(run func(index uint64)) *MockLayerI_GetBatchAtIndex_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(uint64))
+	})
+	return _c
+}
+
+func (_c *MockLayerI_GetBatchAtIndex_Call) Return(_a0 *settlement.ResultRetrieveBatch, _a1 error) *MockLayerI_GetBatchAtIndex_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockLayerI_GetBatchAtIndex_Call) RunAndReturn(run func(uint64) (*settlement.ResultRetrieveBatch, error)) *MockLayerI_GetBatchAtIndex_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetHeightState provides a mock function with given fields: _a0
 func (_m *MockLayerI) GetHeightState(_a0 uint64) (*settlement.ResultGetHeightState, error) {
 	ret := _m.Called(_a0)
@@ -84,6 +142,63 @@ func (_c *MockLayerI_GetHeightState_Call) RunAndReturn(run func(uint64) (*settle
 	return _c
 }
 
+// GetLatestBatch provides a mock function with given fields:
+func (_m *MockLayerI) GetLatestBatch() (*settlement.ResultRetrieveBatch, error) {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetLatestBatch")
+	}
+
+	var r0 *settlement.ResultRetrieveBatch
+	var r1 error
+	if rf, ok := ret.Get(0).(func() (*settlement.ResultRetrieveBatch, error)); ok {
+		return rf()
+	}
+	if rf, ok := ret.Get(0).(func() *settlement.ResultRetrieveBatch); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*settlement.ResultRetrieveBatch)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockLayerI_GetLatestBatch_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetLatestBatch'
+type MockLayerI_GetLatestBatch_Call struct {
+	*mock.Call
+}
+
+// GetLatestBatch is a helper method to define mock.On call
+func (_e *MockLayerI_Expecter) GetLatestBatch() *MockLayerI_GetLatestBatch_Call {
+	return &MockLayerI_GetLatestBatch_Call{Call: _e.mock.On("GetLatestBatch")}
+}
+
+func (_c *MockLayerI_GetLatestBatch_Call) Run(run func()) *MockLayerI_GetLatestBatch_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockLayerI_GetLatestBatch_Call) Return(_a0 *settlement.ResultRetrieveBatch, _a1 error) *MockLayerI_GetLatestBatch_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockLayerI_GetLatestBatch_Call) RunAndReturn(run func() (*settlement.ResultRetrieveBatch, error)) *MockLayerI_GetLatestBatch_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetProposer provides a mock function with given fields:
 func (_m *MockLayerI) GetProposer() *types.Sequencer {
 	ret := _m.Called()
@@ -131,15 +246,19 @@ func (_c *MockLayerI_GetProposer_Call) RunAndReturn(run func() *types.Sequencer)
 	return _c
 }
 
-// GetSequencersList provides a mock function with given fields:
-func (_m *MockLayerI) GetSequencersList() []*types.Sequencer {
+// GetSequencers provides a mock function with given fields:
+func (_m *MockLayerI) GetSequencers() ([]*types.Sequencer, error) {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
-		panic("no return value specified for GetSequencersList")
+		panic("no return value specified for GetSequencers")
 	}
 
 	var r0 []*types.Sequencer
+	var r1 error
+	if rf, ok := ret.Get(0).(func() ([]*types.Sequencer, error)); ok {
+		return rf()
+	}
 	if rf, ok := ret.Get(0).(func() []*types.Sequencer); ok {
 		r0 = rf()
 	} else {
@@ -148,54 +267,53 @@ func (_m *MockLayerI) GetSequencersList() []*types.Sequencer {
 		}
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
-// MockLayerI_GetSequencersList_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetSequencersList'
-type MockLayerI_GetSequencersList_Call struct {
+// MockLayerI_GetSequencers_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetSequencers'
+type MockLayerI_GetSequencers_Call struct {
 	*mock.Call
 }
 
-// GetSequencersList is a helper method to define mock.On call
-func (_e *MockLayerI_Expecter) GetSequencersList() *MockLayerI_GetSequencersList_Call {
-	return &MockLayerI_GetSequencersList_Call{Call: _e.mock.On("GetSequencersList")}
+// GetSequencers is a helper method to define mock.On call
+func (_e *MockLayerI_Expecter) GetSequencers() *MockLayerI_GetSequencers_Call {
+	return &MockLayerI_GetSequencers_Call{Call: _e.mock.On("GetSequencers")}
 }
 
-func (_c *MockLayerI_GetSequencersList_Call) Run(run func()) *MockLayerI_GetSequencersList_Call {
+func (_c *MockLayerI_GetSequencers_Call) Run(run func()) *MockLayerI_GetSequencers_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run()
 	})
 	return _c
 }
 
-func (_c *MockLayerI_GetSequencersList_Call) Return(_a0 []*types.Sequencer) *MockLayerI_GetSequencersList_Call {
-	_c.Call.Return(_a0)
+func (_c *MockLayerI_GetSequencers_Call) Return(_a0 []*types.Sequencer, _a1 error) *MockLayerI_GetSequencers_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockLayerI_GetSequencersList_Call) RunAndReturn(run func() []*types.Sequencer) *MockLayerI_GetSequencersList_Call {
+func (_c *MockLayerI_GetSequencers_Call) RunAndReturn(run func() ([]*types.Sequencer, error)) *MockLayerI_GetSequencers_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
-// Init provides a mock function with given fields: config, _a1, logger, options
-func (_m *MockLayerI) Init(config settlement.Config, _a1 *pubsub.Server, logger types.Logger, options ...settlement.Option) error {
-	_va := make([]interface{}, len(options))
-	for _i := range options {
-		_va[_i] = options[_i]
-	}
-	var _ca []interface{}
-	_ca = append(_ca, config, _a1, logger)
-	_ca = append(_ca, _va...)
-	ret := _m.Called(_ca...)
+// Init provides a mock function with given fields: config, _a1, logger
+func (_m *MockLayerI) Init(config settlement.Config, _a1 *pubsub.Server, logger types.Logger) error {
+	ret := _m.Called(config, _a1, logger)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Init")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(settlement.Config, *pubsub.Server, types.Logger, ...settlement.Option) error); ok {
-		r0 = rf(config, _a1, logger, options...)
+	if rf, ok := ret.Get(0).(func(settlement.Config, *pubsub.Server, types.Logger) error); ok {
+		r0 = rf(config, _a1, logger)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -212,21 +330,13 @@ type MockLayerI_Init_Call struct {
 //   - config settlement.Config
 //   - _a1 *pubsub.Server
 //   - logger types.Logger
-//   - options ...settlement.Option
-func (_e *MockLayerI_Expecter) Init(config interface{}, _a1 interface{}, logger interface{}, options ...interface{}) *MockLayerI_Init_Call {
-	return &MockLayerI_Init_Call{Call: _e.mock.On("Init",
-		append([]interface{}{config, _a1, logger}, options...)...)}
+func (_e *MockLayerI_Expecter) Init(config interface{}, _a1 interface{}, logger interface{}) *MockLayerI_Init_Call {
+	return &MockLayerI_Init_Call{Call: _e.mock.On("Init", config, _a1, logger)}
 }
 
-func (_c *MockLayerI_Init_Call) Run(run func(config settlement.Config, _a1 *pubsub.Server, logger types.Logger, options ...settlement.Option)) *MockLayerI_Init_Call {
+func (_c *MockLayerI_Init_Call) Run(run func(config settlement.Config, _a1 *pubsub.Server, logger types.Logger)) *MockLayerI_Init_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		variadicArgs := make([]settlement.Option, len(args)-3)
-		for i, a := range args[3:] {
-			if a != nil {
-				variadicArgs[i] = a.(settlement.Option)
-			}
-		}
-		run(args[0].(settlement.Config), args[1].(*pubsub.Server), args[2].(types.Logger), variadicArgs...)
+		run(args[0].(settlement.Config), args[1].(*pubsub.Server), args[2].(types.Logger))
 	})
 	return _c
 }
@@ -236,78 +346,7 @@ func (_c *MockLayerI_Init_Call) Return(_a0 error) *MockLayerI_Init_Call {
 	return _c
 }
 
-func (_c *MockLayerI_Init_Call) RunAndReturn(run func(settlement.Config, *pubsub.Server, types.Logger, ...settlement.Option) error) *MockLayerI_Init_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// RetrieveBatch provides a mock function with given fields: stateIndex
-func (_m *MockLayerI) RetrieveBatch(stateIndex ...uint64) (*settlement.ResultRetrieveBatch, error) {
-	_va := make([]interface{}, len(stateIndex))
-	for _i := range stateIndex {
-		_va[_i] = stateIndex[_i]
-	}
-	var _ca []interface{}
-	_ca = append(_ca, _va...)
-	ret := _m.Called(_ca...)
-
-	if len(ret) == 0 {
-		panic("no return value specified for RetrieveBatch")
-	}
-
-	var r0 *settlement.ResultRetrieveBatch
-	var r1 error
-	if rf, ok := ret.Get(0).(func(...uint64) (*settlement.ResultRetrieveBatch, error)); ok {
-		return rf(stateIndex...)
-	}
-	if rf, ok := ret.Get(0).(func(...uint64) *settlement.ResultRetrieveBatch); ok {
-		r0 = rf(stateIndex...)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*settlement.ResultRetrieveBatch)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(...uint64) error); ok {
-		r1 = rf(stateIndex...)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockLayerI_RetrieveBatch_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'RetrieveBatch'
-type MockLayerI_RetrieveBatch_Call struct {
-	*mock.Call
-}
-
-// RetrieveBatch is a helper method to define mock.On call
-//   - stateIndex ...uint64
-func (_e *MockLayerI_Expecter) RetrieveBatch(stateIndex ...interface{}) *MockLayerI_RetrieveBatch_Call {
-	return &MockLayerI_RetrieveBatch_Call{Call: _e.mock.On("RetrieveBatch",
-		append([]interface{}{}, stateIndex...)...)}
-}
-
-func (_c *MockLayerI_RetrieveBatch_Call) Run(run func(stateIndex ...uint64)) *MockLayerI_RetrieveBatch_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		variadicArgs := make([]uint64, len(args)-0)
-		for i, a := range args[0:] {
-			if a != nil {
-				variadicArgs[i] = a.(uint64)
-			}
-		}
-		run(variadicArgs...)
-	})
-	return _c
-}
-
-func (_c *MockLayerI_RetrieveBatch_Call) Return(_a0 *settlement.ResultRetrieveBatch, _a1 error) *MockLayerI_RetrieveBatch_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockLayerI_RetrieveBatch_Call) RunAndReturn(run func(...uint64) (*settlement.ResultRetrieveBatch, error)) *MockLayerI_RetrieveBatch_Call {
+func (_c *MockLayerI_Init_Call) RunAndReturn(run func(settlement.Config, *pubsub.Server, types.Logger) error) *MockLayerI_Init_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -62,7 +62,7 @@ func TestGetSequencers(t *testing.T) {
 	hubClient, err := dymension.NewDymensionHubClient(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
 	require.NoError(err)
 
-	sequencers, err := hubClient.GetSequencers("mock-rollapp")
+	sequencers, err := hubClient.GetSequencers()
 	require.NoError(err)
 	require.Len(sequencers, count)
 }
@@ -183,7 +183,7 @@ func TestPostBatch(t *testing.T) {
 			errChan := make(chan error, 1) // Create a channel to receive an error from the goroutine
 			// Post the batch in a goroutine and capture any error.
 			go func() {
-				err := hubClient.PostBatch(batch, da.Mock, resultSubmitBatch)
+				err := hubClient.SubmitBatch(batch, da.Mock, resultSubmitBatch)
 				errChan <- err // Send any error to the errChan
 			}()
 
