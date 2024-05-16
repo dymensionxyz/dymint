@@ -93,10 +93,11 @@ type HubClient struct {
 	// channel for getting notified when a batch is accepted by the settlement layer.
 	// only one batch of a specific height can get accepted and we can are currently sending only one batch at a time.
 	// for that reason it's safe to assume that if a batch is accepted, it refers to the last batch we've sent.
-	retryAttempts          uint
-	retryMinDelay          time.Duration
-	retryMaxDelay          time.Duration
-	batchAcceptanceTimeout time.Duration
+	retryAttempts           uint
+	retryMinDelay           time.Duration
+	retryMaxDelay           time.Duration
+	batchAcceptanceTimeout  time.Duration
+	batchAcceptanceAttempts uint
 }
 
 var _ settlement.HubClient = &HubClient{}
@@ -150,25 +151,26 @@ func NewDymensionHubClient(config settlement.Config, pubsub *pubsub.Server, logg
 	cryptocodec.RegisterInterfaces(interfaceRegistry)
 	protoCodec := codec.NewProtoCodec(interfaceRegistry)
 
-	dymesionHubClient := &HubClient{
-		config:                 &config,
-		logger:                 logger,
-		pubsub:                 pubsub,
-		ctx:                    ctx,
-		cancel:                 cancel,
-		eventMap:               eventMap,
-		protoCodec:             protoCodec,
-		retryAttempts:          config.RetryAttempts,
-		batchAcceptanceTimeout: config.BatchAcceptanceTimeout,
-		retryMinDelay:          config.RetryMinDelay,
-		retryMaxDelay:          config.RetryMaxDelay,
+	dymensionHubClient := &HubClient{
+		config:                  &config,
+		logger:                  logger,
+		pubsub:                  pubsub,
+		ctx:                     ctx,
+		cancel:                  cancel,
+		eventMap:                eventMap,
+		protoCodec:              protoCodec,
+		retryAttempts:           config.RetryAttempts,
+		batchAcceptanceTimeout:  config.BatchAcceptanceTimeout,
+		batchAcceptanceAttempts: config.BatchAcceptanceAttempts,
+		retryMinDelay:           config.RetryMinDelay,
+		retryMaxDelay:           config.RetryMaxDelay,
 	}
 
 	for _, option := range options {
-		option(dymesionHubClient)
+		option(dymensionHubClient)
 	}
 
-	if dymesionHubClient.client == nil {
+	if dymensionHubClient.client == nil {
 		client, err := cosmosclient.New(
 			ctx,
 			getCosmosClientOptions(&config)...,
@@ -176,12 +178,12 @@ func NewDymensionHubClient(config settlement.Config, pubsub *pubsub.Server, logg
 		if err != nil {
 			return nil, err
 		}
-		dymesionHubClient.client = NewCosmosClient(client)
+		dymensionHubClient.client = NewCosmosClient(client)
 	}
-	dymesionHubClient.rollappQueryClient = dymesionHubClient.client.GetRollappClient()
-	dymesionHubClient.sequencerQueryClient = dymesionHubClient.client.GetSequencerClient()
+	dymensionHubClient.rollappQueryClient = dymensionHubClient.client.GetRollappClient()
+	dymensionHubClient.sequencerQueryClient = dymensionHubClient.client.GetSequencerClient()
 
-	return dymesionHubClient, nil
+	return dymensionHubClient, nil
 }
 
 // Start starts the HubClient.
@@ -255,7 +257,7 @@ func (d *HubClient) PostBatch(batch *types.Batch, daClient da.Client, daResult *
 		// Batch was submitted successfully. Wait for it to be accepted by the settlement layer.
 		timer := time.NewTimer(d.batchAcceptanceTimeout)
 		defer timer.Stop()
-		batchAcceptanceAttempts := 5
+		batchAcceptanceAttempts := d.batchAcceptanceAttempts
 
 		for {
 			select {
