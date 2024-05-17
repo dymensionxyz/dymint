@@ -7,14 +7,29 @@ if ! command -v golangci-lint >/dev/null 2>&1; then
   exit 1
 fi
 
+# Ensure markdownlint is installed
+if ! command -v markdownlint >/dev/null 2>&1; then
+  echo "markdownlint-cli is not installed. Please install it with 'npm install -g markdownlint-cli'"
+  exit 1
+fi
+
 # Run golangci-lint
 golangci-lint run
 
 # Capture the exit status of golangci-lint
 RESULT=$?
-
 if [ $RESULT -ne 0 ]; then
   echo "golangci-lint checks failed. Aborting push."
+  exit 1
+fi
+
+# Run markdownlint
+markdownlint . --config .markdownlint.yaml
+
+# Capture the exit status of markdownlint
+RESULT=$?
+if [ $RESULT -ne 0 ]; then
+  echo "markdownlint checks failed. Aborting push."
   exit 1
 fi
 
