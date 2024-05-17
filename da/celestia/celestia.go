@@ -139,50 +139,10 @@ func (c *DataAvailabilityLayerClient) Start() (err error) {
 	if err != nil {
 		return err
 	}
+	c.rpc = NewOpenRPC(rpc)
 
-	go func() {
-		sync := func() error {
-			done := make(chan error, 1)
-			go func() {
-				done <- rpc.Header.SyncWait(c.ctx)
-			}()
-			ticker := time.NewTicker(1 * time.Minute)
-			defer ticker.Stop()
-			for {
-				select {
-				case err := <-done:
-					if err != nil {
-						c.logger.Error("Failed to sync Celestia DA.", "Error", err)
-					}
-					return err
-				case <-ticker.C:
-					state, err := rpc.Header.SyncState(c.ctx)
-					if err != nil {
-						c.logger.Error("Failed to sync Celestia DA.", "Error", err)
-						return err
-					}
-					if !state.Finished() {
-						c.logger.Info("celestia-node still syncing", "height", state.Height, "target", state.ToHeight)
-					}
-				}
-			}
-		}
+	go c.syncCelestia(rpc)
 
-		err := retry.Do(sync,
-			retry.Attempts(0), // try forever
-			retry.Delay(10*time.Second),
-			retry.LastErrorOnly(true),
-			retry.DelayType(retry.FixedDelay),
-		)
-
-		c.logger.Info("celestia-node is synced")
-		c.rpc = NewOpenRPC(rpc)
-		c.synced <- struct{}{}
-
-		if err != nil {
-			c.logger.Error("Waiting for Celestia data availability client to sync", "err", err)
-		}
-	}()
 	return
 }
 
@@ -643,4 +603,47 @@ func (c *DataAvailabilityLayerClient) getDataAvailabilityHeaders(height uint64) 
 	}
 
 	return headers.DAH, nil
+}
+
+// Celestia syncing in background
+func (c *DataAvailabilityLayerClient) syncCelestia(rpc *openrpc.Client) {
+	sync := func() error {
+		done := make(chan error, 1)
+		go func() {
+			done <- rpc.Header.SyncWait(c.ctx)
+		}()
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case err := <-done:
+				if err != nil {
+					c.logger.Error("Failed to sync Celestia DA.", "Error", err)
+				}
+				return err
+			case <-ticker.C:
+				state, err := rpc.Header.SyncState(c.ctx)
+				if err != nil {
+					c.logger.Error("Failed to sync Celestia DA.", "Error", err)
+					return err
+				}
+				c.logger.Info("Celestia-node syncing", "height", state.Height, "target", state.ToHeight)
+
+			}
+		}
+	}
+
+	err := retry.Do(sync,
+		retry.Attempts(0), // try forever
+		retry.Delay(10*time.Second),
+		retry.LastErrorOnly(true),
+		retry.DelayType(retry.FixedDelay),
+	)
+
+	c.logger.Info("Celestia-node is synced.")
+	c.synced <- struct{}{}
+
+	if err != nil {
+		c.logger.Error("Waiting for Celestia data availability client to sync", "err", err)
+	}
 }
