@@ -141,7 +141,7 @@ func (c *DataAvailabilityLayerClient) Start() (err error) {
 	}
 	c.rpc = NewOpenRPC(rpc)
 
-	go c.syncCelestia(rpc)
+	go c.sync(rpc)
 
 	return
 }
@@ -606,7 +606,7 @@ func (c *DataAvailabilityLayerClient) getDataAvailabilityHeaders(height uint64) 
 }
 
 // Celestia syncing in background
-func (c *DataAvailabilityLayerClient) syncCelestia(rpc *openrpc.Client) {
+func (c *DataAvailabilityLayerClient) sync(rpc *openrpc.Client) {
 	sync := func() error {
 		done := make(chan error, 1)
 		go func() {
@@ -617,14 +617,10 @@ func (c *DataAvailabilityLayerClient) syncCelestia(rpc *openrpc.Client) {
 		for {
 			select {
 			case err := <-done:
-				if err != nil {
-					c.logger.Error("Failed to sync Celestia DA.", "Error", err)
-				}
 				return err
 			case <-ticker.C:
 				state, err := rpc.Header.SyncState(c.ctx)
 				if err != nil {
-					c.logger.Error("Failed to sync Celestia DA.", "Error", err)
 					return err
 				}
 				c.logger.Info("Celestia-node syncing", "height", state.Height, "target", state.ToHeight)
@@ -638,6 +634,9 @@ func (c *DataAvailabilityLayerClient) syncCelestia(rpc *openrpc.Client) {
 		retry.Delay(10*time.Second),
 		retry.LastErrorOnly(true),
 		retry.DelayType(retry.FixedDelay),
+		retry.OnRetry(func(n uint, err error) {
+			c.logger.Error("Failed to sync Celestia DA", "attempt", n, "error", err)
+		}),
 	)
 
 	c.logger.Info("Celestia-node is synced.")

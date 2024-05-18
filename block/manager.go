@@ -160,7 +160,6 @@ func (m *Manager) Start(ctx context.Context) error {
 		return fmt.Errorf("sync block manager: %w", err)
 	}
 
-	// Sequencer producer loop and full-node retrieve loop is started only when finished syncing from DA
 	if isSequencer {
 		// Sequencer must wait till DA is synced to start submitting blobs
 		<-m.DAClient.Synced()
