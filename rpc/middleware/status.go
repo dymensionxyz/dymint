@@ -24,7 +24,7 @@ func (s Status) Handler(logger log.Logger) HandlerFunc {
 				if err != nil {
 					errS = err.Error()
 				}
-				json := `{"jsonrpc":"2.0","result":{"isHealthy":` + strconv.FormatBool(isHealthy) + `,:"error":"` + errS + `"},"id":-1}`
+				json := `{"jsonrpc":"2.0","result":{"isHealthy":` + strconv.FormatBool(isHealthy) + `,"error":"` + errS + `"},"id":-1}`
 				_, err = w.Write([]byte(json))
 				if err != nil {
 					return
