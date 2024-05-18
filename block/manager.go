@@ -11,9 +11,8 @@ import (
 	"github.com/dymensionxyz/dymint/gerr"
 	"github.com/dymensionxyz/dymint/store"
 
-	uevent "github.com/dymensionxyz/dymint/utils/event"
-
 	"code.cloudfoundry.org/go-diodes"
+	uevent "github.com/dymensionxyz/dymint/utils/event"
 
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/libp2p/go-libp2p/core/crypto"
@@ -150,8 +149,11 @@ func (m *Manager) Start(ctx context.Context) error {
 	}
 
 	if !isSequencer {
+		// Fullnode loop can start before syncing from DA
 		go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewNewGossipedBlock, m.onNewGossipedBlock, m.logger)
 	}
+
+	// TODO: populate the accumulatedSize on startup
 
 	err = m.syncBlockManager()
 	if err != nil {
@@ -159,14 +161,14 @@ func (m *Manager) Start(ctx context.Context) error {
 	}
 
 	if isSequencer {
-		// TODO: populate the accumulatedSize on startup
+		// Sequencer must wait till DA is synced to start submitting blobs
+		<-m.DAClient.Synced()
 		go m.ProduceBlockLoop(ctx)
 		go m.SubmitLoop(ctx)
 	} else {
 		go m.RetrieveLoop(ctx)
 		go m.SyncToTargetHeightLoop(ctx)
 	}
-
 	return nil
 }
 
