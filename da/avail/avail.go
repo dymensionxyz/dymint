@@ -64,6 +64,7 @@ type DataAvailabilityLayerClient struct {
 	txInclusionTimeout time.Duration
 	batchRetryDelay    time.Duration
 	batchRetryAttempts uint
+	synced             chan struct{}
 }
 
 var (
@@ -102,6 +103,7 @@ func WithBatchRetryAttempts(attempts uint) da.Option {
 // Init initializes DataAvailabilityLayerClient instance.
 func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.Server, kvStore store.KVStore, logger types.Logger, options ...da.Option) error {
 	c.logger = logger
+	c.synced = make(chan struct{}, 1)
 
 	if len(config) > 0 {
 		err := json.Unmarshal(config, &c.config)
@@ -135,19 +137,24 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 	}
 
 	c.ctx, c.cancel = context.WithCancel(context.Background())
-
 	return nil
 }
 
 // Start starts DataAvailabilityLayerClient instance.
 func (c *DataAvailabilityLayerClient) Start() error {
+	c.synced <- struct{}{}
 	return nil
 }
 
 // Stop stops DataAvailabilityLayerClient instance.
 func (c *DataAvailabilityLayerClient) Stop() error {
 	c.cancel()
+	close(c.synced)
 	return nil
+}
+
+func (c *DataAvailabilityLayerClient) Synced() <-chan struct{} {
+	return c.synced
 }
 
 // GetClientType returns client type.

@@ -57,10 +57,9 @@ func (m *Manager) syncToTargetHeight(targetHeight uint64) error {
 		if err != nil {
 			return fmt.Errorf("process next DA batch: %w", err)
 		}
+		m.logger.Info("Synced from DA", "store height", currH, "target height", targetHeight)
 
 	}
-
-	m.logger.Info("Synced", "store height", m.State.Height(), "target height", targetHeight)
 
 	err := m.attemptApplyCachedBlocks()
 	if err != nil {

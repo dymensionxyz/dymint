@@ -21,7 +21,7 @@ type DataAvailabilityLayerClient struct {
 
 	conn   *grpc.ClientConn
 	client dalc.DALCServiceClient
-
+	synced chan struct{}
 	logger types.Logger
 }
 
@@ -50,12 +50,15 @@ func (d *DataAvailabilityLayerClient) Init(config []byte, _ *pubsub.Server, _ st
 		d.config = DefaultConfig
 		return nil
 	}
+	d.synced = make(chan struct{}, 1)
 	return json.Unmarshal(config, &d.config)
 }
 
 // Start creates connection to gRPC server and instantiates gRPC client.
 func (d *DataAvailabilityLayerClient) Start() error {
 	d.logger.Info("starting GRPC DALC", "host", d.config.Host, "port", d.config.Port)
+	d.synced <- struct{}{}
+
 	var err error
 	var opts []grpc.DialOption
 	// TODO(tzdybal): add more options
@@ -66,7 +69,6 @@ func (d *DataAvailabilityLayerClient) Start() error {
 	}
 
 	d.client = dalc.NewDALCServiceClient(d.conn)
-
 	return nil
 }
 
@@ -74,6 +76,11 @@ func (d *DataAvailabilityLayerClient) Start() error {
 func (d *DataAvailabilityLayerClient) Stop() error {
 	d.logger.Info("stopoing GRPC DALC")
 	return d.conn.Close()
+}
+
+// Synced returns channel for on sync event
+func (m *DataAvailabilityLayerClient) Synced() <-chan struct{} {
+	return m.synced
 }
 
 // GetClientType returns client type.
