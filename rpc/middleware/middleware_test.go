@@ -76,12 +76,12 @@ func TestStatusMiddleware(t *testing.T) {
 		{
 			healthy:         nil,
 			expectedStatus:  http.StatusOK,
-			expectedMessage: "{\"jsonrpc\":\"2.0\",\"result\":{\"isHealthy\":true,:\"error\":\"\"},\"id\":-1}",
+			expectedMessage: "{\"jsonrpc\":\"2.0\",\"result\":{\"isHealthy\":true,\"error\":\"\"},\"id\":-1}",
 		},
 		{
 			healthy:         errors.New("node unhealthy"),
 			expectedStatus:  http.StatusOK,
-			expectedMessage: "{\"jsonrpc\":\"2.0\",\"result\":{\"isHealthy\":false,:\"error\":\"node unhealthy\"},\"id\":-1}",
+			expectedMessage: "{\"jsonrpc\":\"2.0\",\"result\":{\"isHealthy\":false,\"error\":\"node unhealthy\"},\"id\":-1}",
 		},
 	}
 
