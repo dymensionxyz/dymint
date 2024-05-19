@@ -33,11 +33,11 @@ func TestGetSequencers(t *testing.T) {
 	sequencers, err := sllayer.GetSequencers()
 	require.NoError(err)
 	assert.Equal(1, len(sequencers))
-	assert.Equal(hex.EncodeToString(pubKeybytes), sequencers[0].PublicKey.String())
+	assert.Equal(pubKeybytes, sequencers[0].PublicKey.Bytes())
 
 	proposer := sllayer.GetProposer()
 	require.NotNil(proposer)
-	assert.Equal(hex.EncodeToString(pubKeybytes), proposer.PublicKey.String())
+	assert.Equal(pubKeybytes, proposer.PublicKey.Bytes())
 }
 
 func TestSubmitBatch(t *testing.T) {
@@ -50,9 +50,10 @@ func TestSubmitBatch(t *testing.T) {
 	require.NoError(err)
 
 	sllayer := local.LocalClient{}
-	_ = sllayer.Init(settlement.Config{}, pubsubServer, logger)
-	require.Error(err) // no batch should be present
+	err = sllayer.Init(settlement.Config{}, pubsubServer, logger)
+	require.NoError(err)
 	_, err = sllayer.GetLatestBatch()
+	require.Error(err) // no batch should be present
 
 	// Create a batches which will be submitted
 	propserKey, _, err := crypto.GenerateEd25519Key(nil)
@@ -135,5 +136,15 @@ func TestPersistency(t *testing.T) {
 	assert.NoError(err)
 	assert.True(resultSubmitBatch.Code == 0) // success code
 
-	//FIXME:
+	queriedBatch, err := sllayer.GetLatestBatch()
+	require.NoError(err)
+	assert.Equal(batch1.EndHeight, queriedBatch.Batch.EndHeight)
+
+	// Restart the layer and check if the batch is still present
+	sllayer.Stop()
+	sllayer = local.LocalClient{}
+	_ = sllayer.Init(cfg, pubsubServer, logger)
+	queriedBatch, err = sllayer.GetLatestBatch()
+	require.NoError(err)
+	assert.Equal(batch1.EndHeight, queriedBatch.Batch.EndHeight)
 }
