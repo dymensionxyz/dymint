@@ -50,19 +50,17 @@ const (
 
 // LayerClient is the client for the Dymension Hub.
 type LayerClient struct {
-	config               *settlement.Config
-	logger               types.Logger
-	pubsub               *pubsub.Server
-	cosmosClient         CosmosClient
-	ctx                  context.Context
-	cancel               context.CancelFunc
-	rollappQueryClient   rollapptypes.QueryClient
-	sequencerQueryClient sequencertypes.QueryClient
-	protoCodec           *codec.ProtoCodec
-	eventMap             map[string]string
-	// channel for getting notified when a batch is accepted by the settlement layer.
-	// only one batch of a specific height can get accepted and we can are currently sending only one batch at a time.
-	// for that reason it's safe to assume that if a batch is accepted, it refers to the last batch we've sent.
+	config                  *settlement.Config
+	logger                  types.Logger
+	pubsub                  *pubsub.Server
+	cosmosClient            CosmosClient
+	ctx                     context.Context
+	cancel                  context.CancelFunc
+	rollappQueryClient      rollapptypes.QueryClient
+	sequencerQueryClient    sequencertypes.QueryClient
+	protoCodec              *codec.ProtoCodec
+	eventMap                map[string]string
+	sequencerList           []*types.Sequencer
 	retryAttempts           uint
 	retryMinDelay           time.Duration
 	retryMaxDelay           time.Duration
@@ -304,8 +302,11 @@ func (dlc *LayerClient) GetProposer() *types.Sequencer {
 }
 
 // GetSequencers returns the bonded sequencers of the given rollapp.
-// FIXME: add caching
 func (d *LayerClient) GetSequencers() ([]*types.Sequencer, error) {
+	if d.sequencerList != nil {
+		return d.sequencerList, nil
+	}
+
 	var res *sequencertypes.QueryGetSequencersByRollappByStatusResponse
 	req := &sequencertypes.QueryGetSequencersByRollappByStatusRequest{
 		RollappId: d.config.RollappID,
@@ -343,6 +344,7 @@ func (d *LayerClient) GetSequencers() ([]*types.Sequencer, error) {
 			Status:    status,
 		})
 	}
+	d.sequencerList = sequencersList
 	return sequencersList, nil
 }
 

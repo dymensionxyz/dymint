@@ -102,7 +102,7 @@ func TestSubmitBatch(t *testing.T) {
 	require.NoError(err)
 	assert.Equal(batch2.EndHeight, queriedBatch.Batch.EndHeight)
 
-	//TODO: test event emitted
+	// TODO: test event emitted
 }
 
 func TestPersistency(t *testing.T) {
