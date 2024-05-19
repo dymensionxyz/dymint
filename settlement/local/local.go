@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"path/filepath"
 	"sync"
 	"time"
@@ -23,6 +24,7 @@ import (
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
+	uevent "github.com/dymensionxyz/dymint/utils/event"
 
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
@@ -106,12 +108,16 @@ func initConfig(conf settlement.Config) (slstore store.KVStore, proposer string,
 		}
 	} else {
 		slstore = store.NewDefaultKVStore(conf.KeyringHomeDir, "data", kvStoreDBName)
-		proposerKeyPath := filepath.Join(conf.KeyringHomeDir, "config/priv_validator_key.json")
-		key, err := tmp2p.LoadOrGenNodeKey(proposerKeyPath)
-		if err != nil {
-			return nil, "", err
+		if conf.ProposerPubKey != "" {
+			proposer = conf.ProposerPubKey
+		} else {
+			proposerKeyPath := filepath.Join(conf.KeyringHomeDir, "config/priv_validator_key.json")
+			key, err := tmp2p.LoadOrGenNodeKey(proposerKeyPath)
+			if err != nil {
+				return nil, "", fmt.Errorf("loading sequencer pubkey: %w", err)
+			}
+			proposer = hex.EncodeToString(key.PubKey().Bytes())
 		}
-		proposer = hex.EncodeToString(key.PubKey().Bytes())
 	}
 
 	return
@@ -131,13 +137,11 @@ func (c *LocalClient) Stop() error {
 func (c *LocalClient) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) error {
 	settlementBatch := convertBatchToSettlementBatch(batch, daResult)
 	c.saveBatch(settlementBatch)
-	go func() {
-		time.Sleep(10 * time.Millisecond) // mimic a delay in batch acceptance
-		err := c.pubsub.PublishWithEvents(context.Background(), &settlement.EventDataNewBatchAccepted{EndHeight: settlementBatch.EndHeight}, settlement.EventNewBatchAcceptedList)
-		if err != nil {
-			panic(err)
-		}
-	}()
+
+	time.Sleep(100 * time.Millisecond) // mimic a delay in batch acceptance
+	ctx := context.Background()
+	uevent.MustPublish(ctx, c.pubsub, settlement.EventDataNewBatchAccepted{EndHeight: settlementBatch.EndHeight}, settlement.EventNewBatchAcceptedList)
+
 	return nil
 }
 
