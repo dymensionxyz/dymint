@@ -130,7 +130,7 @@ func (c *LocalClient) Start() error {
 
 // Stop stops the mock client
 func (c *LocalClient) Stop() error {
-	return nil
+	return c.settlementKV.Close()
 }
 
 // PostBatch saves the batch to the kv store

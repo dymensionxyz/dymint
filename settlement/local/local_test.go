@@ -2,6 +2,7 @@ package local_test
 
 import (
 	"encoding/hex"
+	"os"
 	"testing"
 
 	"github.com/dymensionxyz/dymint/da"
@@ -120,8 +121,14 @@ func TestPersistency(t *testing.T) {
 	require.NoError(err)
 
 	sllayer := local.LocalClient{}
-	cfg := settlement.Config{KeyringHomeDir: "/tmp", ProposerPubKey: hex.EncodeToString(pubKeybytes)}
-	_ = sllayer.Init(cfg, pubsubServer, logger)
+	tmpdir, err := os.MkdirTemp("/tmp", "")
+	defer os.RemoveAll(tmpdir) // Clean up after the test
+	require.NoError(err)
+
+	cfg := settlement.Config{KeyringHomeDir: tmpdir, ProposerPubKey: hex.EncodeToString(pubKeybytes)}
+	err = sllayer.Init(cfg, pubsubServer, logger)
+	require.NoError(err)
+
 	_, err = sllayer.GetLatestBatch()
 	assert.Error(err) // no batch should be present
 
@@ -141,7 +148,8 @@ func TestPersistency(t *testing.T) {
 	assert.Equal(batch1.EndHeight, queriedBatch.Batch.EndHeight)
 
 	// Restart the layer and check if the batch is still present
-	sllayer.Stop()
+	err = sllayer.Stop()
+	require.NoError(err)
 	sllayer = local.LocalClient{}
 	_ = sllayer.Init(cfg, pubsubServer, logger)
 	queriedBatch, err = sllayer.GetLatestBatch()
