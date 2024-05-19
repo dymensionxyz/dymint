@@ -175,7 +175,7 @@ func (c *LocalClient) GetHeightState(h uint64) (*settlement.ResultGetHeightState
 	for i := c.slStateIndex; i > 0; i-- {
 		b, err := c.GetBatchAtIndex(i)
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 		if b.StartHeight <= h && b.EndHeight >= h {
 			return &settlement.ResultGetHeightState{
@@ -207,13 +207,13 @@ func (m *LocalClient) GetSequencers() ([]*types.Sequencer, error) {
 	return []*types.Sequencer{m.GetProposer()}, nil
 }
 
-func (c *LocalClient) saveBatch(batch *settlement.Batch) {
+func (c *LocalClient) saveBatch(batch *settlement.Batch) error {
 	c.logger.Debug("Saving batch to settlement layer.", "start height",
 		batch.StartHeight, "end height", batch.EndHeight)
 
 	b, err := json.Marshal(batch)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	c.mu.Lock()
@@ -222,15 +222,16 @@ func (c *LocalClient) saveBatch(batch *settlement.Batch) {
 	c.slStateIndex++
 	err = c.settlementKV.Set(keyFromIndex(c.slStateIndex), b)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	b = make([]byte, 8)
 	binary.BigEndian.PutUint64(b, c.slStateIndex)
 	err = c.settlementKV.Set(slStateIndexKey, b)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	c.latestHeight = batch.EndHeight
+	return nil
 }
 
 func (c *LocalClient) retrieveBatchAtStateIndex(slStateIndex uint64) (*settlement.ResultRetrieveBatch, error) {

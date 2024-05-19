@@ -230,32 +230,33 @@ func (m *LayerClient) GetSequencers() ([]*types.Sequencer, error) {
 	return []*types.Sequencer{m.GetProposer()}, nil
 }
 
-func (c *LayerClient) saveBatch(batch *settlement.Batch) {
+func (c *LayerClient) saveBatch(batch *settlement.Batch) error {
 	c.logger.Debug("Saving batch to grpc settlement layer", "start height",
 		batch.StartHeight, "end height", batch.EndHeight)
 	b, err := json.Marshal(batch)
 	if err != nil {
-		panic(err)
+		return err
 	}
 	// Save the batch to the next state index
 	c.logger.Debug("Saving batch to grpc settlement layer", "index", c.slStateIndex+1)
 	setBatchReply, err := c.sl.SetBatch(c.ctx, &slmock.SLSetBatchRequest{Index: c.slStateIndex + 1, Batch: b})
 	if err != nil {
-		panic(err)
+		return err
 	}
 	if setBatchReply.GetResult() != c.slStateIndex+1 {
-		panic(err)
+		return err
 	}
 
 	c.slStateIndex = setBatchReply.GetResult()
 
 	setIndexReply, err := c.sl.SetIndex(c.ctx, &slmock.SLSetIndexRequest{Index: c.slStateIndex})
 	if err != nil || setIndexReply.GetIndex() != c.slStateIndex {
-		panic(err)
+		return err
 	}
 	c.logger.Debug("Setting grpc SL Index to ", "index", setIndexReply.GetIndex())
 	// Save latest height in memory and in store
 	c.latestHeight.Store(batch.EndHeight)
+	return nil
 }
 
 func (c *LayerClient) convertBatchtoSettlementBatch(batch *types.Batch, daResult *da.ResultSubmitBatch) *settlement.Batch {
