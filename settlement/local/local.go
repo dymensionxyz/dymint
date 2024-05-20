@@ -136,7 +136,10 @@ func (c *LocalClient) Stop() error {
 // PostBatch saves the batch to the kv store
 func (c *LocalClient) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) error {
 	settlementBatch := convertBatchToSettlementBatch(batch, daResult)
-	c.saveBatch(settlementBatch)
+	err := c.saveBatch(settlementBatch)
+	if err != nil {
+		return err
+	}
 
 	time.Sleep(100 * time.Millisecond) // mimic a delay in batch acceptance
 	ctx := context.Background()

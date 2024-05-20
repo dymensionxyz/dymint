@@ -177,10 +177,13 @@ func (c *LayerClient) Stop() error {
 // PostBatch saves the batch to the kv store
 func (c *LayerClient) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) error {
 	settlementBatch := c.convertBatchtoSettlementBatch(batch, daResult)
-	c.saveBatch(settlementBatch)
+	err := c.saveBatch(settlementBatch)
+	if err != nil {
+		return err
+	}
 
 	time.Sleep(10 * time.Millisecond) // mimic a delay in batch acceptance
-	err := c.pubsub.PublishWithEvents(context.Background(), &settlement.EventDataNewBatchAccepted{EndHeight: settlementBatch.EndHeight}, settlement.EventNewBatchAcceptedList)
+	err = c.pubsub.PublishWithEvents(context.Background(), &settlement.EventDataNewBatchAccepted{EndHeight: settlementBatch.EndHeight}, settlement.EventNewBatchAcceptedList)
 	if err != nil {
 		return err
 	}
