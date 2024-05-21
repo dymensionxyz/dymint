@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/dymensionxyz/dymint/gerr"
+
 	"github.com/dymensionxyz/dymint/store"
 
 	"github.com/dymensionxyz/dymint/types"
@@ -123,7 +125,7 @@ func (m *Manager) produceBlock(allowEmpty bool) (*types.Block, *types.Commit, er
 			return nil, nil, fmt.Errorf("load commit after load block: height: %d: %w: %w", newHeight, err, ErrNonRecoverable)
 		}
 		m.logger.Info("Using pending block.", "height", newHeight)
-	} else if !errors.Is(err, store.ErrKeyNotFound) {
+	} else if !errors.Is(err, gerr.ErrNotFound) {
 		return nil, nil, fmt.Errorf("load block: height: %d: %w: %w", newHeight, err, ErrNonRecoverable)
 	} else {
 		block = m.Executor.CreateBlock(newHeight, lastCommit, lastHeaderHash, m.State, m.Conf.BlockBatchMaxSizeBytes)
