@@ -18,7 +18,7 @@ import (
 )
 
 // GetServer creates and returns gRPC server instance.
-func GetServer(kv store.KVStore, conf grpcda.Config, mockConfig []byte) *grpc.Server {
+func GetServer(kv store.KV, conf grpcda.Config, mockConfig []byte) *grpc.Server {
 	logger := tmlog.NewTMLogger(os.Stdout)
 
 	srv := grpc.NewServer()

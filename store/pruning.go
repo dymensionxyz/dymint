@@ -20,7 +20,7 @@ func (s *DefaultStore) PruneBlocks(from, to uint64) (uint64, error) {
 	batch := s.db.NewBatch()
 	defer batch.Discard()
 
-	flush := func(batch Batch, height uint64) error {
+	flush := func(batch KVBatch, height uint64) error {
 		err := batch.Commit()
 		if err != nil {
 			return fmt.Errorf("flush batch to disk: height %d: %w", height, err)

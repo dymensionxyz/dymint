@@ -7,7 +7,7 @@ import (
 )
 
 // NewDefaultInMemoryKVStore builds KVStore that works in-memory (without accessing disk).
-func NewDefaultInMemoryKVStore() KVStore {
+func NewDefaultInMemoryKVStore() KV {
 	db, err := badger.Open(badger.DefaultOptions("").WithInMemory(true))
 	if err != nil {
 		panic(err)
@@ -18,7 +18,7 @@ func NewDefaultInMemoryKVStore() KVStore {
 }
 
 // NewDefaultKVStore creates instance of default key-value store.
-func NewDefaultKVStore(rootDir, dbPath, dbName string) KVStore {
+func NewDefaultKVStore(rootDir, dbPath, dbName string) KV {
 	path := filepath.Join(rootify(rootDir, dbPath), dbName)
 	db, err := badger.Open(badger.DefaultOptions(path))
 	if err != nil {
