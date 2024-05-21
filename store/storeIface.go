@@ -37,7 +37,7 @@ type KVIterator interface {
 
 // Store is minimal interface for storing and retrieving blocks, commits and state.
 type Store interface {
-	// NewStoreBatch creates a new db batch.
+	// NewBatch creates a new db batch.
 	NewBatch() KVBatch
 
 	// SaveBlock saves block along with its seen commit (which will be included in the next block).
@@ -59,7 +59,7 @@ type Store interface {
 	// LoadCommitByHash returns commit for a block with given block header hash, or error if it's not found in Store.
 	LoadCommitByHash(hash [32]byte) (*types.Commit, error)
 
-	// UpdateState updates state saved in Store. Only one State is stored.
+	// SaveState updates state saved in Store. Only one State is stored.
 	// If there is no State in Store, state will be saved.
 	SaveState(state *types.State, batch KVBatch) (KVBatch, error)
 
