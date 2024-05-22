@@ -18,7 +18,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/crypto"
 
 	"github.com/dymensionxyz/dymint/config"
-	mocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/settlement"
+	slmocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
 )
@@ -74,13 +74,13 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 		PublicKey: cosmosPrivKey.PubKey(),
 	}
 
-	// Create a new mock LayerI
-	mockLayerI := &mocks.MockLayerI{}
-	mockLayerI.On("Init", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
-	mockLayerI.On("Start").Return(nil)
-	mockLayerI.On("GetProposer").Return(proposer)
+	// Create a new mock ClientI
+	slmock := &slmocks.MockClientI{}
+	slmock.On("Init", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	slmock.On("Start").Return(nil)
+	slmock.On("GetProposer").Return(proposer)
 
-	manager, err := testutil.GetManagerWithProposerKey(testutil.GetManagerConfig(), lib2pPrivKey, mockLayerI, nil, 1, 1, 0, proxyApp, nil)
+	manager, err := testutil.GetManagerWithProposerKey(testutil.GetManagerConfig(), lib2pPrivKey, slmock, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
 	// Check initial assertions
@@ -95,11 +95,11 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 	assert.Zero(t, manager.LastSubmittedHeight.Load())
 
 	// try to submit, we expect failure
-	mockLayerI.On("SubmitBatch", mock.Anything, mock.Anything, mock.Anything).Return(fmt.Errorf("submit batch")).Once()
+	slmock.On("SubmitBatch", mock.Anything, mock.Anything, mock.Anything).Return(fmt.Errorf("submit batch")).Once()
 	assert.Error(t, manager.HandleSubmissionTrigger())
 
 	// try to submit again, we expect success
-	mockLayerI.On("SubmitBatch", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
+	slmock.On("SubmitBatch", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 	manager.HandleSubmissionTrigger()
 	assert.EqualValues(t, manager.State.Height(), manager.LastSubmittedHeight.Load())
 }
