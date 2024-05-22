@@ -124,4 +124,7 @@ func TestMempoolDirectly(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	assert.Equal(int64(4*len("tx*")), node.Mempool.SizeBytes())
+
+	err = node.Stop()
+	require.NoError(err)
 }

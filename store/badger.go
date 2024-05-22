@@ -18,6 +18,11 @@ type BadgerKV struct {
 	db *badger.DB
 }
 
+// Close implements KVStore.
+func (b *BadgerKV) Close() error {
+	return b.db.Close()
+}
+
 // Get returns value for given key, or error.
 func (b *BadgerKV) Get(key []byte) ([]byte, error) {
 	txn := b.db.NewTransaction(false)

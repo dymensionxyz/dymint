@@ -24,13 +24,13 @@ type IValidator interface {
 // Validator is a validator for messages gossiped in the p2p network.
 type Validator struct {
 	logger   types.Logger
-	slClient settlement.LayerI
+	slClient settlement.ClientI
 }
 
 var _ IValidator = (*Validator)(nil)
 
 // NewValidator creates a new Validator.
-func NewValidator(logger types.Logger, slClient settlement.LayerI) *Validator {
+func NewValidator(logger types.Logger, slClient settlement.ClientI) *Validator {
 	return &Validator{
 		logger:   logger,
 		slClient: slClient,

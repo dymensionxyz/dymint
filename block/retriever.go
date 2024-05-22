@@ -46,7 +46,7 @@ func (m *Manager) syncToTargetHeight(targetHeight uint64) error {
 			return fmt.Errorf("query state index: %w", err)
 		}
 
-		settlementBatch, err := m.SLClient.RetrieveBatch(stateIndex)
+		settlementBatch, err := m.SLClient.GetBatchAtIndex(stateIndex)
 		if err != nil {
 			return fmt.Errorf("retrieve batch: %w", err)
 		}

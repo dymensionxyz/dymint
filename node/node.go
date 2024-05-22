@@ -71,7 +71,7 @@ type Node struct {
 	Store        store.Store
 	BlockManager *block.Manager
 	dalc         da.DataAvailabilityLayerClient
-	settlementlc settlement.LayerI
+	settlementlc settlement.ClientI
 
 	TxIndexer      txindex.TxIndexer
 	BlockIndexer   indexer.BlockIndexer

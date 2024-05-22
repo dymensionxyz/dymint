@@ -11,6 +11,11 @@ type PrefixKV struct {
 	prefix []byte
 }
 
+// Close implements KVStore.
+func (p *PrefixKV) Close() error {
+	return p.kv.Close()
+}
+
 // NewPrefixKV creates new PrefixKV on top of other KVStore.
 func NewPrefixKV(kv KV, prefix []byte) *PrefixKV {
 	return &PrefixKV{
