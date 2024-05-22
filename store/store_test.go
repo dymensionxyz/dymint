@@ -4,6 +4,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/dymensionxyz/dymint/gerr"
+
 	abcitypes "github.com/tendermint/tendermint/abci/types"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 
@@ -45,7 +47,7 @@ func TestStoreLoad(t *testing.T) {
 		}
 	}()
 
-	for _, kv := range []store.KVStore{store.NewDefaultInMemoryKVStore(), store.NewDefaultKVStore(tmpDir, "db", "test")} {
+	for _, kv := range []store.KV{store.NewDefaultInMemoryKVStore(), store.NewDefaultKVStore(tmpDir, "db", "test")} {
 		for _, c := range cases {
 			t.Run(c.name, func(t *testing.T) {
 				assert := assert.New(t)
@@ -186,7 +188,7 @@ func TestBatch(t *testing.T) {
 	assert.NoError(err)
 
 	resp, err := s.LoadBlockResponses(1)
-	assert.EqualError(err, "retrieve block results from height 1: key not found") // TODO: use errors.Is
+	assert.Error(err, gerr.ErrNotFound)
 	assert.Nil(resp)
 
 	err = batch.Commit()

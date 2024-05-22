@@ -197,7 +197,7 @@ type ResultRetrieveBatch struct {
 // It also contains life-cycle methods.
 type DataAvailabilityLayerClient interface {
 	// Init is called once to allow DA client to read configuration and initialize resources.
-	Init(config []byte, pubsubServer *pubsub.Server, kvStore store.KVStore, logger types.Logger, options ...Option) error
+	Init(config []byte, pubsubServer *pubsub.Server, kvStore store.KV, logger types.Logger, options ...Option) error
 
 	// Start is called once, after Init. It's implementation should start operation of DataAvailabilityLayerClient.
 	Start() error
@@ -214,6 +214,8 @@ type DataAvailabilityLayerClient interface {
 
 	// CheckBatchAvailability checks the availability of the blob submitted getting proofs and validating them
 	CheckBatchAvailability(daMetaData *DASubmitMetaData) ResultCheckBatch
+
+	Synced() <-chan struct{}
 }
 
 // BatchRetriever is additional interface that can be implemented by Data Availability Layer Client that is able to retrieve
