@@ -74,7 +74,7 @@ func WithSubmitBackoff(c uretry.BackoffConfig) da.Option {
 }
 
 // Init initializes DataAvailabilityLayerClient instance.
-func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.Server, kvStore store.KVStore, logger types.Logger, options ...da.Option) error {
+func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.Server, kvStore store.KV, logger types.Logger, options ...da.Option) error {
 	c.logger = logger
 	c.synced = make(chan struct{}, 1)
 	var err error

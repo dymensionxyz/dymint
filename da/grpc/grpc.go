@@ -44,7 +44,7 @@ var (
 )
 
 // Init sets the configuration options.
-func (d *DataAvailabilityLayerClient) Init(config []byte, _ *pubsub.Server, _ store.KVStore, logger types.Logger, options ...da.Option) error {
+func (d *DataAvailabilityLayerClient) Init(config []byte, _ *pubsub.Server, _ store.KV, logger types.Logger, options ...da.Option) error {
 	d.logger = logger
 	if len(config) == 0 {
 		d.config = DefaultConfig

@@ -73,7 +73,7 @@ type HubClient struct {
 	mu           sync.Mutex // keep the following in sync with *each other*
 	slStateIndex uint64
 	latestHeight uint64
-	settlementKV store.KVStore
+	settlementKV store.KV
 }
 
 var _ settlement.HubClient = &HubClient{}
@@ -112,7 +112,7 @@ func newHubClient(config settlement.Config, pubsub *pubsub.Server, logger types.
 	}, nil
 }
 
-func initConfig(conf settlement.Config) (slstore store.KVStore, proposer string, err error) {
+func initConfig(conf settlement.Config) (slstore store.KV, proposer string, err error) {
 	if conf.KeyringHomeDir == "" {
 		// init store
 		slstore = store.NewDefaultInMemoryKVStore()

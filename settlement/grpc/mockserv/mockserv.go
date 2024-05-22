@@ -18,7 +18,7 @@ var (
 
 type server struct {
 	slmock.UnimplementedMockSLServer
-	kv store.KVStore
+	kv store.KV
 }
 
 func getKey(key uint64) []byte {
