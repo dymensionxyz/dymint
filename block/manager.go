@@ -46,7 +46,7 @@ type Manager struct {
 	Pubsub    *pubsub.Server
 	p2pClient *p2p.Client
 	DAClient  da.DataAvailabilityLayerClient
-	SLClient  settlement.LayerI
+	SLClient  settlement.ClientI
 
 	/*
 		Production
@@ -86,7 +86,7 @@ func NewManager(
 	mempool mempool.Mempool,
 	proxyApp proxy.AppConns,
 	dalc da.DataAvailabilityLayerClient,
-	settlementClient settlement.LayerI,
+	settlementClient settlement.ClientI,
 	eventBus *tmtypes.EventBus,
 	pubsub *pubsub.Server,
 	p2pClient *p2p.Client,

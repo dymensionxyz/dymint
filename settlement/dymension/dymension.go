@@ -68,7 +68,7 @@ type LayerClient struct {
 	batchAcceptanceAttempts uint
 }
 
-var _ settlement.LayerI = &LayerClient{}
+var _ settlement.ClientI = &LayerClient{}
 
 // Init is called once. it initializes the struct members.
 func (dlc *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, logger types.Logger, options ...settlement.Option) error {
@@ -286,7 +286,7 @@ func (d *LayerClient) GetHeightState(h uint64) (*settlement.ResultGetHeightState
 	}, nil
 }
 
-// GetProposer implements settlement.LayerI.
+// GetProposer implements settlement.ClientI.
 func (dlc *LayerClient) GetProposer() *types.Sequencer {
 	seqs, err := dlc.GetSequencers()
 	if err != nil {

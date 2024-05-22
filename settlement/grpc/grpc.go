@@ -46,7 +46,7 @@ type LayerClient struct {
 	refreshTime    int
 }
 
-var _ settlement.LayerI = (*LayerClient)(nil)
+var _ settlement.ClientI = (*LayerClient)(nil)
 
 // Init initializes the mock layer client.
 func (m *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, logger types.Logger, options ...settlement.Option) error {
@@ -215,7 +215,7 @@ func (c *LayerClient) GetHeightState(index uint64) (*settlement.ResultGetHeightS
 	panic("hub grpc client get height state is not implemented: implement me") // TODO: impl
 }
 
-// GetProposer implements settlement.LayerI.
+// GetProposer implements settlement.ClientI.
 func (c *LayerClient) GetProposer() *types.Sequencer {
 	pubKeyBytes, err := hex.DecodeString(c.ProposerPubKey)
 	if err != nil {
@@ -228,7 +228,7 @@ func (c *LayerClient) GetProposer() *types.Sequencer {
 	}
 }
 
-// GetSequencersList implements settlement.LayerI.
+// GetSequencersList implements settlement.ClientI.
 func (m *LayerClient) GetSequencers() ([]*types.Sequencer, error) {
 	return []*types.Sequencer{m.GetProposer()}, nil
 }

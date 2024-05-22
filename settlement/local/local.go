@@ -50,7 +50,7 @@ type LocalClient struct {
 	settlementKV store.KV
 }
 
-var _ settlement.LayerI = (*LocalClient)(nil)
+var _ settlement.ClientI = (*LocalClient)(nil)
 
 // Init initializes the mock layer client.
 func (m *LocalClient) Init(config settlement.Config, pubsub *pubsub.Server, logger types.Logger, options ...settlement.Option) error {
@@ -192,7 +192,7 @@ func (c *LocalClient) GetHeightState(h uint64) (*settlement.ResultGetHeightState
 	return nil, gerr.ErrNotFound // TODO: need to return a cosmos specific error?
 }
 
-// GetProposer implements settlement.LayerI.
+// GetProposer implements settlement.ClientI.
 func (c *LocalClient) GetProposer() *types.Sequencer {
 	pubKeyBytes, err := hex.DecodeString(c.ProposerPubKey)
 	if err != nil {
@@ -205,7 +205,7 @@ func (c *LocalClient) GetProposer() *types.Sequencer {
 	}
 }
 
-// GetSequencersList implements settlement.LayerI.
+// GetSequencersList implements settlement.ClientI.
 func (m *LocalClient) GetSequencers() ([]*types.Sequencer, error) {
 	return []*types.Sequencer{m.GetProposer()}, nil
 }

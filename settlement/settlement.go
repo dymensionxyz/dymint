@@ -54,10 +54,10 @@ type ResultGetHeightState struct {
 }
 
 // Option is a function that sets a parameter on the settlement layer.
-type Option func(LayerI)
+type Option func(ClientI)
 
-// LayerI defines generic interface for Settlement layer interaction.
-type LayerI interface {
+// ClientI defines generic interface for Settlement layer interaction.
+type ClientI interface {
 	// Init is called once for the client initialization
 	Init(config Config, pubsub *pubsub.Server, logger types.Logger, options ...Option) error
 	// Start is called once, after Init. It's implementation should start the client service.
