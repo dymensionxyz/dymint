@@ -25,27 +25,27 @@ var (
 
 // DefaultStore is a default store implementation.
 type DefaultStore struct {
-	db KVStore
+	db KV
 }
 
 var _ Store = &DefaultStore{}
 
 // New returns new, default store.
-func New(kv KVStore) Store {
+func New(kv KV) Store {
 	return &DefaultStore{
 		db: kv,
 	}
 }
 
 // NewBatch creates a new db batch.
-func (s *DefaultStore) NewBatch() Batch {
+func (s *DefaultStore) NewBatch() KVBatch {
 	return s.db.NewBatch()
 }
 
 // SaveBlock adds block to the store along with corresponding commit.
 // Stored height is updated if block height is greater than stored value.
 // In case a batch is provided, the block and commit are added to the batch and not saved.
-func (s *DefaultStore) SaveBlock(block *types.Block, commit *types.Commit, batch Batch) (Batch, error) {
+func (s *DefaultStore) SaveBlock(block *types.Block, commit *types.Commit, batch KVBatch) (KVBatch, error) {
 	hash := block.Header.Hash()
 	blockBlob, err := block.MarshalBinary()
 	if err != nil {
@@ -110,7 +110,7 @@ func (s *DefaultStore) LoadBlockByHash(hash [32]byte) (*types.Block, error) {
 }
 
 // SaveBlockResponses saves block responses (events, tx responses, validator set updates, etc) in Store.
-func (s *DefaultStore) SaveBlockResponses(height uint64, responses *tmstate.ABCIResponses, batch Batch) (Batch, error) {
+func (s *DefaultStore) SaveBlockResponses(height uint64, responses *tmstate.ABCIResponses, batch KVBatch) (KVBatch, error) {
 	data, err := responses.Marshal()
 	if err != nil {
 		return batch, fmt.Errorf("marshal response: %w", err)
@@ -161,7 +161,7 @@ func (s *DefaultStore) LoadCommitByHash(hash [32]byte) (*types.Commit, error) {
 
 // UpdateState updates state saved in Store. Only one State is stored.
 // If there is no State in Store, state will be saved.
-func (s *DefaultStore) SaveState(state *types.State, batch Batch) (Batch, error) {
+func (s *DefaultStore) SaveState(state *types.State, batch KVBatch) (KVBatch, error) {
 	pbState, err := state.ToProto()
 	if err != nil {
 		return batch, fmt.Errorf("marshal state to JSON: %w", err)
@@ -200,7 +200,7 @@ func (s *DefaultStore) LoadState() (*types.State, error) {
 }
 
 // SaveValidators stores validator set for given block height in store.
-func (s *DefaultStore) SaveValidators(height uint64, validatorSet *tmtypes.ValidatorSet, batch Batch) (Batch, error) {
+func (s *DefaultStore) SaveValidators(height uint64, validatorSet *tmtypes.ValidatorSet, batch KVBatch) (KVBatch, error) {
 	pbValSet, err := validatorSet.ToProto()
 	if err != nil {
 		return batch, fmt.Errorf("marshal ValidatorSet to protobuf: %w", err)

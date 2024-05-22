@@ -17,7 +17,7 @@ import (
 // It does actually ensures DA - it stores data in-memory.
 type DataAvailabilityLayerClient struct {
 	logger   types.Logger
-	dalcKV   store.KVStore
+	dalcKV   store.KV
 	daHeight atomic.Uint64
 	config   config
 	synced   chan struct{}
@@ -35,7 +35,7 @@ var (
 )
 
 // Init is called once to allow DA client to read configuration and initialize resources.
-func (m *DataAvailabilityLayerClient) Init(config []byte, _ *pubsub.Server, dalcKV store.KVStore, logger types.Logger, options ...da.Option) error {
+func (m *DataAvailabilityLayerClient) Init(config []byte, _ *pubsub.Server, dalcKV store.KV, logger types.Logger, options ...da.Option) error {
 	m.logger = logger
 	m.dalcKV = dalcKV
 	m.daHeight.Store(1)
