@@ -28,11 +28,11 @@ var _ txindex.TxIndexer = (*TxIndex)(nil)
 
 // TxIndex is the simplest possible indexer, backed by key-value storage (levelDB).
 type TxIndex struct {
-	store store.KVStore
+	store store.KV
 }
 
 // NewTxIndex creates new KV indexer.
-func NewTxIndex(store store.KVStore) *TxIndex {
+func NewTxIndex(store store.KV) *TxIndex {
 	return &TxIndex{
 		store: store,
 	}
@@ -134,7 +134,7 @@ func (txi *TxIndex) Index(result *abci.TxResult) error {
 	return b.Commit()
 }
 
-func (txi *TxIndex) indexEvents(result *abci.TxResult, hash []byte, store store.Batch) error {
+func (txi *TxIndex) indexEvents(result *abci.TxResult, hash []byte, store store.KVBatch) error {
 	for _, event := range result.Result.Events {
 		// only index events with a non-empty type
 		if len(event.Type) == 0 {
