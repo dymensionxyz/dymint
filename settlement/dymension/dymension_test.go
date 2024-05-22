@@ -59,7 +59,7 @@ func TestGetSequencers(t *testing.T) {
 	err = pubsubServer.Start()
 	require.NoError(err)
 
-	hubClient := dymension.LayerClient{}
+	hubClient := dymension.Client{}
 	err = hubClient.Init(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
 	require.NoError(err)
 
@@ -174,7 +174,7 @@ func TestPostBatch(t *testing.T) {
 					rollappQueryClientMock.On("StateInfo", mock.Anything, mock.Anything).Return(nil, status.New(codes.NotFound, "not found").Err())
 				}
 			}
-			hubClient := dymension.LayerClient{}
+			hubClient := dymension.Client{}
 			err := hubClient.Init(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
 			require.NoError(err)
 			err = hubClient.Start()

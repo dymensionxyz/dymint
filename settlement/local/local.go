@@ -36,9 +36,9 @@ var (
 	slStateIndexKey    = []byte("slStateIndex") // used to recover after reboot
 )
 
-// LocalClient is an extension of the base settlement layer client
+// Client is an extension of the base settlement layer client
 // for usage in tests and local development.
-type LocalClient struct {
+type Client struct {
 	rollappID      string
 	ProposerPubKey string
 	logger         types.Logger
@@ -50,10 +50,10 @@ type LocalClient struct {
 	settlementKV store.KV
 }
 
-var _ settlement.ClientI = (*LocalClient)(nil)
+var _ settlement.ClientI = (*Client)(nil)
 
 // Init initializes the mock layer client.
-func (m *LocalClient) Init(config settlement.Config, pubsub *pubsub.Server, logger types.Logger, options ...settlement.Option) error {
+func (c *Client) Init(config settlement.Config, pubsub *pubsub.Server, logger types.Logger, options ...settlement.Option) error {
 	slstore, proposer, err := initConfig(config)
 	if err != nil {
 		return err
@@ -77,13 +77,13 @@ func (m *LocalClient) Init(config settlement.Config, pubsub *pubsub.Server, logg
 		}
 		latestHeight = settlementBatch.StartHeight + settlementBatch.NumBlocks - 1
 	}
-	m.rollappID = config.RollappID
-	m.ProposerPubKey = proposer
-	m.logger = logger
-	m.pubsub = pubsub
-	m.latestHeight = latestHeight
-	m.slStateIndex = slStateIndex
-	m.settlementKV = settlementKV
+	c.rollappID = config.RollappID
+	c.ProposerPubKey = proposer
+	c.logger = logger
+	c.pubsub = pubsub
+	c.latestHeight = latestHeight
+	c.slStateIndex = slStateIndex
+	c.settlementKV = settlementKV
 	return nil
 }
 
@@ -124,17 +124,17 @@ func initConfig(conf settlement.Config) (slstore store.KV, proposer string, err 
 }
 
 // Start starts the mock client
-func (c *LocalClient) Start() error {
+func (c *Client) Start() error {
 	return nil
 }
 
 // Stop stops the mock client
-func (c *LocalClient) Stop() error {
+func (c *Client) Stop() error {
 	return c.settlementKV.Close()
 }
 
 // PostBatch saves the batch to the kv store
-func (c *LocalClient) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) error {
+func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) error {
 	settlementBatch := convertBatchToSettlementBatch(batch, daResult)
 	err := c.saveBatch(settlementBatch)
 	if err != nil {
@@ -149,7 +149,7 @@ func (c *LocalClient) SubmitBatch(batch *types.Batch, daClient da.Client, daResu
 }
 
 // GetLatestBatch returns the latest batch from the kv store
-func (c *LocalClient) GetLatestBatch() (*settlement.ResultRetrieveBatch, error) {
+func (c *Client) GetLatestBatch() (*settlement.ResultRetrieveBatch, error) {
 	c.mu.Lock()
 	ix := c.slStateIndex
 	c.mu.Unlock()
@@ -161,7 +161,7 @@ func (c *LocalClient) GetLatestBatch() (*settlement.ResultRetrieveBatch, error) 
 }
 
 // GetBatchAtIndex returns the batch at the given index
-func (c *LocalClient) GetBatchAtIndex(index uint64) (*settlement.ResultRetrieveBatch, error) {
+func (c *Client) GetBatchAtIndex(index uint64) (*settlement.ResultRetrieveBatch, error) {
 	batchResult, err := c.retrieveBatchAtStateIndex(index)
 	if err != nil {
 		return &settlement.ResultRetrieveBatch{
@@ -171,7 +171,7 @@ func (c *LocalClient) GetBatchAtIndex(index uint64) (*settlement.ResultRetrieveB
 	return batchResult, nil
 }
 
-func (c *LocalClient) GetHeightState(h uint64) (*settlement.ResultGetHeightState, error) {
+func (c *Client) GetHeightState(h uint64) (*settlement.ResultGetHeightState, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	// TODO: optimize (binary search, or just make another index)
@@ -193,7 +193,7 @@ func (c *LocalClient) GetHeightState(h uint64) (*settlement.ResultGetHeightState
 }
 
 // GetProposer implements settlement.ClientI.
-func (c *LocalClient) GetProposer() *types.Sequencer {
+func (c *Client) GetProposer() *types.Sequencer {
 	pubKeyBytes, err := hex.DecodeString(c.ProposerPubKey)
 	if err != nil {
 		return nil
@@ -206,11 +206,11 @@ func (c *LocalClient) GetProposer() *types.Sequencer {
 }
 
 // GetSequencersList implements settlement.ClientI.
-func (m *LocalClient) GetSequencers() ([]*types.Sequencer, error) {
-	return []*types.Sequencer{m.GetProposer()}, nil
+func (c *Client) GetSequencers() ([]*types.Sequencer, error) {
+	return []*types.Sequencer{c.GetProposer()}, nil
 }
 
-func (c *LocalClient) saveBatch(batch *settlement.Batch) error {
+func (c *Client) saveBatch(batch *settlement.Batch) error {
 	c.logger.Debug("Saving batch to settlement layer.", "start height",
 		batch.StartHeight, "end height", batch.EndHeight)
 
@@ -237,7 +237,7 @@ func (c *LocalClient) saveBatch(batch *settlement.Batch) error {
 	return nil
 }
 
-func (c *LocalClient) retrieveBatchAtStateIndex(slStateIndex uint64) (*settlement.ResultRetrieveBatch, error) {
+func (c *Client) retrieveBatchAtStateIndex(slStateIndex uint64) (*settlement.ResultRetrieveBatch, error) {
 	b, err := c.settlementKV.Get(keyFromIndex(slStateIndex))
 	c.logger.Debug("Retrieving batch from settlement layer.", "SL state index", slStateIndex)
 	if err != nil {

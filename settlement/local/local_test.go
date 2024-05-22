@@ -26,7 +26,7 @@ func TestGetSequencers(t *testing.T) {
 	pubKeybytes, err := proposerPubKey.Raw()
 	require.NoError(err)
 
-	sllayer := local.LocalClient{}
+	sllayer := local.Client{}
 	cfg := settlement.Config{ProposerPubKey: hex.EncodeToString(pubKeybytes)}
 	err = sllayer.Init(cfg, nil, log.TestingLogger())
 	require.NoError(err)
@@ -50,7 +50,7 @@ func TestSubmitBatch(t *testing.T) {
 	err := pubsubServer.Start()
 	require.NoError(err)
 
-	sllayer := local.LocalClient{}
+	sllayer := local.Client{}
 	err = sllayer.Init(settlement.Config{}, pubsubServer, logger)
 	require.NoError(err)
 	_, err = sllayer.GetLatestBatch()
@@ -120,7 +120,7 @@ func TestPersistency(t *testing.T) {
 	pubKeybytes, err := proposerPubKey.Raw()
 	require.NoError(err)
 
-	sllayer := local.LocalClient{}
+	sllayer := local.Client{}
 	tmpdir, err := os.MkdirTemp("/tmp", "")
 	defer os.RemoveAll(tmpdir) // Clean up after the test
 	require.NoError(err)
@@ -150,7 +150,7 @@ func TestPersistency(t *testing.T) {
 	// Restart the layer and check if the batch is still present
 	err = sllayer.Stop()
 	require.NoError(err)
-	sllayer = local.LocalClient{}
+	sllayer = local.Client{}
 	_ = sllayer.Init(cfg, pubsubServer, logger)
 	queriedBatch, err = sllayer.GetLatestBatch()
 	require.NoError(err)

@@ -30,9 +30,9 @@ import (
 	slmock "github.com/dymensionxyz/dymint/settlement/grpc/mockserv/proto"
 )
 
-// LayerClient is an extension of the base settlement layer client
+// Client is an extension of the base settlement layer client
 // for usage in tests and local development.
-type LayerClient struct {
+type Client struct {
 	ctx            context.Context
 	rollappID      string
 	ProposerPubKey string
@@ -46,10 +46,10 @@ type LayerClient struct {
 	refreshTime    int
 }
 
-var _ settlement.ClientI = (*LayerClient)(nil)
+var _ settlement.ClientI = (*Client)(nil)
 
 // Init initializes the mock layer client.
-func (m *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, logger types.Logger, options ...settlement.Option) error {
+func (c *Client) Init(config settlement.Config, pubsub *pubsub.Server, logger types.Logger, options ...settlement.Option) error {
 	ctx := context.Background()
 
 	latestHeight := uint64(0)
@@ -88,17 +88,17 @@ func (m *LayerClient) Init(config settlement.Config, pubsub *pubsub.Server, logg
 	}
 	logger.Debug("Starting grpc SL ", "index", slStateIndex)
 
-	m.rollappID = config.RollappID
-	m.ProposerPubKey = proposer
-	m.logger = logger
-	m.ctx = ctx
-	m.pubsub = pubsub
-	m.slStateIndex = slStateIndex
-	m.conn = conn
-	m.sl = client
-	m.stopchan = stopchan
-	m.refreshTime = config.SLGrpc.RefreshTime
-	m.latestHeight.Store(latestHeight)
+	c.rollappID = config.RollappID
+	c.ProposerPubKey = proposer
+	c.logger = logger
+	c.ctx = ctx
+	c.pubsub = pubsub
+	c.slStateIndex = slStateIndex
+	c.conn = conn
+	c.sl = client
+	c.stopchan = stopchan
+	c.refreshTime = config.SLGrpc.RefreshTime
+	c.latestHeight.Store(latestHeight)
 
 	return nil
 }
@@ -132,7 +132,7 @@ func initConfig(conf settlement.Config) (proposer string, err error) {
 }
 
 // Start starts the mock client
-func (c *LayerClient) Start() error {
+func (c *Client) Start() error {
 	c.logger.Info("Starting grpc mock settlement")
 
 	go func() {
@@ -168,14 +168,14 @@ func (c *LayerClient) Start() error {
 }
 
 // Stop stops the mock client
-func (c *LayerClient) Stop() error {
+func (c *Client) Stop() error {
 	c.logger.Info("Stopping grpc mock settlement")
 	close(c.stopchan)
 	return nil
 }
 
 // PostBatch saves the batch to the kv store
-func (c *LayerClient) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) error {
+func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) error {
 	settlementBatch := c.convertBatchtoSettlementBatch(batch, daResult)
 	err := c.saveBatch(settlementBatch)
 	if err != nil {
@@ -191,7 +191,7 @@ func (c *LayerClient) SubmitBatch(batch *types.Batch, daClient da.Client, daResu
 }
 
 // GetLatestBatch returns the latest batch from the kv store
-func (c *LayerClient) GetLatestBatch() (*settlement.ResultRetrieveBatch, error) {
+func (c *Client) GetLatestBatch() (*settlement.ResultRetrieveBatch, error) {
 	c.logger.Info("GetLatestBatch grpc", "index", c.slStateIndex)
 	batchResult, err := c.GetBatchAtIndex(atomic.LoadUint64(&c.slStateIndex))
 	if err != nil {
@@ -201,7 +201,7 @@ func (c *LayerClient) GetLatestBatch() (*settlement.ResultRetrieveBatch, error) 
 }
 
 // GetBatchAtIndex returns the batch at the given index
-func (c *LayerClient) GetBatchAtIndex(index uint64) (*settlement.ResultRetrieveBatch, error) {
+func (c *Client) GetBatchAtIndex(index uint64) (*settlement.ResultRetrieveBatch, error) {
 	batchResult, err := c.retrieveBatchAtStateIndex(index)
 	if err != nil {
 		return &settlement.ResultRetrieveBatch{
@@ -211,12 +211,12 @@ func (c *LayerClient) GetBatchAtIndex(index uint64) (*settlement.ResultRetrieveB
 	return batchResult, nil
 }
 
-func (c *LayerClient) GetHeightState(index uint64) (*settlement.ResultGetHeightState, error) {
+func (c *Client) GetHeightState(index uint64) (*settlement.ResultGetHeightState, error) {
 	panic("hub grpc client get height state is not implemented: implement me") // TODO: impl
 }
 
 // GetProposer implements settlement.ClientI.
-func (c *LayerClient) GetProposer() *types.Sequencer {
+func (c *Client) GetProposer() *types.Sequencer {
 	pubKeyBytes, err := hex.DecodeString(c.ProposerPubKey)
 	if err != nil {
 		return nil
@@ -229,11 +229,11 @@ func (c *LayerClient) GetProposer() *types.Sequencer {
 }
 
 // GetSequencersList implements settlement.ClientI.
-func (m *LayerClient) GetSequencers() ([]*types.Sequencer, error) {
-	return []*types.Sequencer{m.GetProposer()}, nil
+func (c *Client) GetSequencers() ([]*types.Sequencer, error) {
+	return []*types.Sequencer{c.GetProposer()}, nil
 }
 
-func (c *LayerClient) saveBatch(batch *settlement.Batch) error {
+func (c *Client) saveBatch(batch *settlement.Batch) error {
 	c.logger.Debug("Saving batch to grpc settlement layer", "start height",
 		batch.StartHeight, "end height", batch.EndHeight)
 	b, err := json.Marshal(batch)
@@ -262,7 +262,7 @@ func (c *LayerClient) saveBatch(batch *settlement.Batch) error {
 	return nil
 }
 
-func (c *LayerClient) convertBatchtoSettlementBatch(batch *types.Batch, daResult *da.ResultSubmitBatch) *settlement.Batch {
+func (c *Client) convertBatchtoSettlementBatch(batch *types.Batch, daResult *da.ResultSubmitBatch) *settlement.Batch {
 	settlementBatch := &settlement.Batch{
 		StartHeight: batch.StartHeight,
 		EndHeight:   batch.EndHeight,
@@ -279,7 +279,7 @@ func (c *LayerClient) convertBatchtoSettlementBatch(batch *types.Batch, daResult
 	return settlementBatch
 }
 
-func (c *LayerClient) retrieveBatchAtStateIndex(slStateIndex uint64) (*settlement.ResultRetrieveBatch, error) {
+func (c *Client) retrieveBatchAtStateIndex(slStateIndex uint64) (*settlement.ResultRetrieveBatch, error) {
 	c.logger.Debug("Retrieving batch from grpc settlement layer", "SL state index", slStateIndex)
 
 	getBatchReply, err := c.sl.GetBatch(c.ctx, &slmock.SLGetBatchRequest{Index: slStateIndex})

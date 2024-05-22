@@ -21,9 +21,9 @@ const (
 
 // A central registry for all Settlement Layer Clients
 var clients = map[Client]func() settlement.ClientI{
-	Local:     func() settlement.ClientI { return &local.LocalClient{} },
-	Dymension: func() settlement.ClientI { return &dymension.LayerClient{} },
-	Grpc:      func() settlement.ClientI { return &grpc.LayerClient{} },
+	Local:     func() settlement.ClientI { return &local.Client{} },
+	Dymension: func() settlement.ClientI { return &dymension.Client{} },
+	Grpc:      func() settlement.ClientI { return &grpc.Client{} },
 }
 
 // GetClient returns client identified by name.
