@@ -51,7 +51,7 @@ func TestGetSequencers(t *testing.T) {
 	cosmosClientMock.On("GetRollappClient").Return(rollapptypesmock.NewMockQueryClient(t))
 	cosmosClientMock.On("GetSequencerClient").Return(sequencerQueryClientMock)
 
-	options := []dymension.Option{
+	options := []settlement.Option{
 		dymension.WithCosmosClient(cosmosClientMock),
 	}
 
@@ -59,10 +59,11 @@ func TestGetSequencers(t *testing.T) {
 	err = pubsubServer.Start()
 	require.NoError(err)
 
-	hubClient, err := dymension.NewDymensionHubClient(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
+	hubClient := dymension.Client{}
+	err = hubClient.Init(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
 	require.NoError(err)
 
-	sequencers, err := hubClient.GetSequencers("mock-rollapp")
+	sequencers, err := hubClient.GetSequencers()
 	require.NoError(err)
 	require.Len(sequencers, count)
 }
@@ -97,7 +98,7 @@ func TestPostBatch(t *testing.T) {
 	require.NoError(err)
 	cosmosClientMock.On("SubscribeToEvents", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return((<-chan coretypes.ResultEvent)(batchAcceptedCh), nil)
 
-	options := []dymension.Option{
+	options := []settlement.Option{
 		dymension.WithCosmosClient(cosmosClientMock),
 		dymension.WithBatchAcceptanceTimeout(time.Millisecond * 300),
 		dymension.WithRetryAttempts(2),
@@ -173,7 +174,8 @@ func TestPostBatch(t *testing.T) {
 					rollappQueryClientMock.On("StateInfo", mock.Anything, mock.Anything).Return(nil, status.New(codes.NotFound, "not found").Err())
 				}
 			}
-			hubClient, err := dymension.NewDymensionHubClient(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
+			hubClient := dymension.Client{}
+			err := hubClient.Init(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
 			require.NoError(err)
 			err = hubClient.Start()
 			require.NoError(err)
@@ -183,7 +185,7 @@ func TestPostBatch(t *testing.T) {
 			errChan := make(chan error, 1) // Create a channel to receive an error from the goroutine
 			// Post the batch in a goroutine and capture any error.
 			go func() {
-				err := hubClient.PostBatch(batch, da.Mock, resultSubmitBatch)
+				err := hubClient.SubmitBatch(batch, da.Mock, resultSubmitBatch)
 				errChan <- err // Send any error to the errChan
 			}()
 

@@ -46,7 +46,7 @@ type Manager struct {
 	Pubsub    *pubsub.Server
 	p2pClient *p2p.Client
 	DAClient  da.DataAvailabilityLayerClient
-	SLClient  settlement.LayerI
+	SLClient  settlement.ClientI
 
 	/*
 		Production
@@ -86,7 +86,7 @@ func NewManager(
 	mempool mempool.Mempool,
 	proxyApp proxy.AppConns,
 	dalc da.DataAvailabilityLayerClient,
-	settlementClient settlement.LayerI,
+	settlementClient settlement.ClientI,
 	eventBus *tmtypes.EventBus,
 	pubsub *pubsub.Server,
 	p2pClient *p2p.Client,
@@ -192,7 +192,7 @@ func (m *Manager) NextHeightToSubmit() uint64 {
 
 // syncBlockManager enforces the node to be synced on initial run.
 func (m *Manager) syncBlockManager() error {
-	res, err := m.SLClient.RetrieveBatch()
+	res, err := m.SLClient.GetLatestBatch()
 	if errors.Is(err, gerr.ErrNotFound) {
 		// The SL hasn't got any batches for this chain yet.
 		m.logger.Info("No batches for chain found in SL.")

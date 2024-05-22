@@ -15,6 +15,7 @@ type KV interface {
 	Delete(key []byte) error                 // Delete deletes a key.
 	NewBatch() KVBatch                       // NewBatch creates a new batch.
 	PrefixIterator(prefix []byte) KVIterator // PrefixIterator creates iterator to traverse given prefix.
+	Close() error                            // Close closes the store.
 }
 
 // KVBatch enables batching of transactions.
