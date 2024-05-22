@@ -109,7 +109,7 @@ func NewNode(
 
 	pubsubServer := pubsub.NewServer()
 
-	var baseKV store.KVStore
+	var baseKV store.KV
 	if conf.RootDir == "" && conf.DBPath == "" { // this is used for testing
 		logger.Info("WARNING: working in in-memory mode")
 		baseKV = store.NewDefaultInMemoryKVStore()
@@ -341,7 +341,7 @@ func (n *Node) ProxyApp() proxy.AppConns {
 
 func createAndStartIndexerService(
 	conf config.NodeConfig,
-	kvStore store.KVStore,
+	kvStore store.KV,
 	eventBus *tmtypes.EventBus,
 	logger log.Logger,
 ) (*txindex.IndexerService, txindex.TxIndexer, indexer.BlockIndexer, error) {

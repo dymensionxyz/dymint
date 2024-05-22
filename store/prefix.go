@@ -1,18 +1,18 @@
 package store
 
 var (
-	_ KVStore = &PrefixKV{}
-	_ Batch   = &PrefixKVBatch{}
+	_ KV      = &PrefixKV{}
+	_ KVBatch = &PrefixKVBatch{}
 )
 
 // PrefixKV is a key-value store that prepends all keys with given prefix.
 type PrefixKV struct {
-	kv     KVStore
+	kv     KV
 	prefix []byte
 }
 
 // NewPrefixKV creates new PrefixKV on top of other KVStore.
-func NewPrefixKV(kv KVStore, prefix []byte) *PrefixKV {
+func NewPrefixKV(kv KV, prefix []byte) *PrefixKV {
 	return &PrefixKV{
 		kv:     kv,
 		prefix: prefix,
@@ -35,7 +35,7 @@ func (p *PrefixKV) Delete(key []byte) error {
 }
 
 // NewBatch creates a new batch.
-func (p *PrefixKV) NewBatch() Batch {
+func (p *PrefixKV) NewBatch() KVBatch {
 	return &PrefixKVBatch{
 		b:      p.kv.NewBatch(),
 		prefix: p.prefix,
@@ -43,13 +43,13 @@ func (p *PrefixKV) NewBatch() Batch {
 }
 
 // PrefixIterator creates iterator to traverse given prefix.
-func (p *PrefixKV) PrefixIterator(prefix []byte) Iterator {
+func (p *PrefixKV) PrefixIterator(prefix []byte) KVIterator {
 	return p.kv.PrefixIterator(append(p.prefix, prefix...))
 }
 
 // PrefixKVBatch enables batching of operations on PrefixKV.
 type PrefixKVBatch struct {
-	b      Batch
+	b      KVBatch
 	prefix []byte
 }
 

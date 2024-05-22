@@ -7,8 +7,8 @@ import (
 )
 
 var (
-	_ KVStore = &BadgerKV{}
-	_ Batch   = &BadgerBatch{}
+	_ KV      = &BadgerKV{}
+	_ KVBatch = &BadgerBatch{}
 )
 
 // ErrKeyNotFound is returned if key is not found in KVStore.
@@ -57,7 +57,7 @@ func (b *BadgerKV) Delete(key []byte) error {
 
 // NewBatch creates new batch.
 // Note: badger batches should be short lived as they use extra resources.
-func (b *BadgerKV) NewBatch() Batch {
+func (b *BadgerKV) NewBatch() KVBatch {
 	return &BadgerBatch{
 		txn: b.db.NewTransaction(true),
 	}
@@ -92,10 +92,10 @@ func (bb *BadgerBatch) Discard() {
 	bb.txn.Discard()
 }
 
-var _ Iterator = &BadgerIterator{}
+var _ KVIterator = &BadgerIterator{}
 
 // PrefixIterator returns instance of prefix Iterator for BadgerKV.
-func (b *BadgerKV) PrefixIterator(prefix []byte) Iterator {
+func (b *BadgerKV) PrefixIterator(prefix []byte) KVIterator {
 	txn := b.db.NewTransaction(false)
 	iter := txn.NewIterator(badger.DefaultIteratorOptions)
 	iter.Seek(prefix)
