@@ -1,4 +1,4 @@
-# [](https://github.com/dymensionxyz/dymint/compare/v1.1.0-rc02...v) (2024-05-07)
+# [](https://github.com/dymensionxyz/dymint/compare/v1.1.0-rc02...v) (2024-05-23)
 
 
 ### Bug Fixes
@@ -7,17 +7,37 @@
 * **celestia test:** fix race in test ([#755](https://github.com/dymensionxyz/dymint/issues/755)) ([0b36781](https://github.com/dymensionxyz/dymint/commit/0b367818bf6aa8da4a4fd8e4e5c78223b60b44e0))
 * **celestia:** impl retry on submit ([#748](https://github.com/dymensionxyz/dymint/issues/748)) ([61630eb](https://github.com/dymensionxyz/dymint/commit/61630eb458197abe2440a81426210000dff25d40))
 * **celestia:** use fixed delay in repeat attempts ([#753](https://github.com/dymensionxyz/dymint/issues/753)) ([53002b0](https://github.com/dymensionxyz/dymint/commit/53002b0a070743811295a98580ba038cac40cc7d))
+* **code standards:** bring over more linters and the github integration from hub repo ([#865](https://github.com/dymensionxyz/dymint/issues/865)) ([8c94983](https://github.com/dymensionxyz/dymint/commit/8c9498377948184be6651f012c171947eecdfc30))
+* **code standards:** inline NextValSetFromResponses ([#870](https://github.com/dymensionxyz/dymint/issues/870)) ([5a491ac](https://github.com/dymensionxyz/dymint/commit/5a491ac9436fcc7dd0da92fdb7ceb03bbdacaeab))
+* **code standards:** remove a few lines in manager start ([#866](https://github.com/dymensionxyz/dymint/issues/866)) ([c66afbb](https://github.com/dymensionxyz/dymint/commit/c66afbbeb3222ed92c965099f264fa70910e351e))
 * **code standards:** renames error -> err in celestia ([#768](https://github.com/dymensionxyz/dymint/issues/768)) ([1189384](https://github.com/dymensionxyz/dymint/commit/1189384d1225b3dd65481c9dedbae423e4f8ac04))
+* **code standards:** renames sync target file to sync file ([#877](https://github.com/dymensionxyz/dymint/issues/877)) ([6d2ecff](https://github.com/dymensionxyz/dymint/commit/6d2ecff2f202f61fec913c98800197cddaf60324))
+* **code standards:** use 'sequencer' instead of 'aggregator' ([#849](https://github.com/dymensionxyz/dymint/issues/849)) ([bd3c97d](https://github.com/dymensionxyz/dymint/commit/bd3c97d074c695876016834d64b4729bbdc46bbd))
+* **code standards:** use gerr err not found ([#878](https://github.com/dymensionxyz/dymint/issues/878)) ([60e221f](https://github.com/dymensionxyz/dymint/commit/60e221f372497906ca22b80b30389fb159bb859c))
+* **code standards:** use kv naming in store where appropriate ([#879](https://github.com/dymensionxyz/dymint/issues/879)) ([a10ad36](https://github.com/dymensionxyz/dymint/commit/a10ad365bda7b8483c2fa09cf3ae0cc02465331b))
+* **config:** pass through mempool config ([#820](https://github.com/dymensionxyz/dymint/issues/820)) ([ca012e9](https://github.com/dymensionxyz/dymint/commit/ca012e941ce267c7e7a03c9c698297d6dbdd6c02))
+* **da:** celestia height not updated when syncing ([#851](https://github.com/dymensionxyz/dymint/issues/851)) ([491f16d](https://github.com/dymensionxyz/dymint/commit/491f16d4bdf193d1f5e9c3a719eac7b9a46cde49))
 * **da:** fixed da path seperator and encoding issue ([#731](https://github.com/dymensionxyz/dymint/issues/731)) ([3a3b219](https://github.com/dymensionxyz/dymint/commit/3a3b21932750fee7eaaa9c186f78e36e3e597746))
+* **da:** full-nodes can sync from p2p while DA light client is down or out of sync ([#857](https://github.com/dymensionxyz/dymint/issues/857)) ([2b5eb07](https://github.com/dymensionxyz/dymint/commit/2b5eb07147142b91e13c2c483238e356e6c5871c))
 * **DA:** use expo backoff in retries ([#739](https://github.com/dymensionxyz/dymint/issues/739)) ([848085f](https://github.com/dymensionxyz/dymint/commit/848085f70bcaae81fb80da3ab78c4d8b399e13b1))
+* **dead code:** removes last submission time from manager ([#825](https://github.com/dymensionxyz/dymint/issues/825)) ([80b0324](https://github.com/dymensionxyz/dymint/commit/80b03241e2f2b46010dadca7cf3fa0b12486ea68))
 * **doc:** manager cache comment ([#767](https://github.com/dymensionxyz/dymint/issues/767)) ([b88bf6e](https://github.com/dymensionxyz/dymint/commit/b88bf6e72820c944b290147724255cc8466ada50))
+* **docs:** make submit loop comment more accurate re batch size ([#852](https://github.com/dymensionxyz/dymint/issues/852)) ([4f94340](https://github.com/dymensionxyz/dymint/commit/4f94340a857cf3485d800848d6371ed47f6ea732))
+* **linter:** gofumpt and fix golangcilint config ([#867](https://github.com/dymensionxyz/dymint/issues/867)) ([8777520](https://github.com/dymensionxyz/dymint/commit/8777520d8a4faaf6bad169aebded539c7e8123d3))
+* **local pub sub:** use error for subscription cancelled (instead of info) ([#853](https://github.com/dymensionxyz/dymint/issues/853)) ([1886e18](https://github.com/dymensionxyz/dymint/commit/1886e18d788b9b2745b1989a472084985578a147))
 * **logging:** added reason for websocket closed debug msg ([#746](https://github.com/dymensionxyz/dymint/issues/746)) ([3aa7d80](https://github.com/dymensionxyz/dymint/commit/3aa7d80ace92b3b0f79e4f338f10bb94c96ab6dd))
 * **logs:** make logs more readable in a couple places, fix race cond ([#749](https://github.com/dymensionxyz/dymint/issues/749)) ([f05ef39](https://github.com/dymensionxyz/dymint/commit/f05ef3957b754c05fbc90aa39eabce80bbe65933))
 * **manager:** get fresh height in loop ([#781](https://github.com/dymensionxyz/dymint/issues/781)) ([e4df480](https://github.com/dymensionxyz/dymint/commit/e4df48037a78965dbac9e747dd296f39360e396c))
+* **manager:** removes outdated syncTarget field ([#854](https://github.com/dymensionxyz/dymint/issues/854)) ([04b13a0](https://github.com/dymensionxyz/dymint/commit/04b13a0b78feda56a2ac16f8fdc49f1e0d5f1560))
+* **metrics:** pass metrics to mempool init ([#846](https://github.com/dymensionxyz/dymint/issues/846)) ([94267ae](https://github.com/dymensionxyz/dymint/commit/94267ae551de46bda60898c23f5092125e60aca6))
+* **p2p:** avoid receiving duplicated blocks ([#818](https://github.com/dymensionxyz/dymint/issues/818)) ([feb40f2](https://github.com/dymensionxyz/dymint/commit/feb40f2ca9eead8ecd9a8da2c5772c29a13ac5e5))
 * **p2p:** validate block before applying and not before caching in p2p gossiping ([#723](https://github.com/dymensionxyz/dymint/issues/723)) ([98371b5](https://github.com/dymensionxyz/dymint/commit/98371b5220613e70f3274fab5593e02ba532f7db))
 * **p2p:** validating gossiped block is created by the proposer ([#737](https://github.com/dymensionxyz/dymint/issues/737)) ([851b312](https://github.com/dymensionxyz/dymint/commit/851b312620233a9fb1abe55214a678322e7b0c68))
 * **produce loop:** handle unauthenticated error in settlement layer ([#726](https://github.com/dymensionxyz/dymint/issues/726)) ([33e78d1](https://github.com/dymensionxyz/dymint/commit/33e78d116b5f14b91b8b3bda2b6cbfee9040e2d3))
 * **rpc:** nil panic in rpc/json/handler.go WriteError ([#750](https://github.com/dymensionxyz/dymint/issues/750)) ([e09709b](https://github.com/dymensionxyz/dymint/commit/e09709b428a33da002defb9f13178fa19b81a69b))
+* **rpc:** remove unnecessary `:` in the json health response ([#876](https://github.com/dymensionxyz/dymint/issues/876)) ([55dd894](https://github.com/dymensionxyz/dymint/commit/55dd894e07aacd5983a055ec2a25676804c278ca))
+* **settlement:** filter by pending status in batch event ([#845](https://github.com/dymensionxyz/dymint/issues/845)) ([841056d](https://github.com/dymensionxyz/dymint/commit/841056d52d4b9bda2e2e806ec5a9c8559a43eeaf))
+* **settlement:** fixed submission bug where multiple events would cancel subscription  ([#842](https://github.com/dymensionxyz/dymint/issues/842)) ([f7b9383](https://github.com/dymensionxyz/dymint/commit/f7b9383cf55976f3f55780055df7a6517e189034))
 * **settlement:** remove state index from proto ([#777](https://github.com/dymensionxyz/dymint/issues/777)) ([767b8fd](https://github.com/dymensionxyz/dymint/commit/767b8fdb490c37deee43ac023688410bbb98ccb0))
 * **sync:** make sure we use a latest state index as a start point ([#760](https://github.com/dymensionxyz/dymint/issues/760)) ([43e2d96](https://github.com/dymensionxyz/dymint/commit/43e2d965f2b505751f8e5260549e909c976141ee))
 * **sync:** removing height condition for applying cached blocks from p2p ([#787](https://github.com/dymensionxyz/dymint/issues/787)) ([b97299c](https://github.com/dymensionxyz/dymint/commit/b97299ce7f78168863c5e1c2d7fc479aed2ae6da))
@@ -26,13 +46,23 @@
 
 ### Features
 
+* **blockManager:** refactor and use state as single source of truth for height ([#847](https://github.com/dymensionxyz/dymint/issues/847)) ([73aae62](https://github.com/dymensionxyz/dymint/commit/73aae62f30acdc56816ad65550438d8830ac83db))
+* **ci:** new changelog workflow ([#858](https://github.com/dymensionxyz/dymint/issues/858)) ([5a562ad](https://github.com/dymensionxyz/dymint/commit/5a562ad818469495daeca4d403fb007a7f1e5b2d))
+* **DA:** expose configuration options for retry loop backoff ([#757](https://github.com/dymensionxyz/dymint/issues/757)) ([0cd09f3](https://github.com/dymensionxyz/dymint/commit/0cd09f3d0a8430c1e9f34814930c168553c143bc))
+* **da:** improve logging ([#871](https://github.com/dymensionxyz/dymint/issues/871)) ([7bcc837](https://github.com/dymensionxyz/dymint/commit/7bcc837e78ce41645a09dc773a419d8a1aa153f5))
+* **da:** remove availability checks from retriever ([#835](https://github.com/dymensionxyz/dymint/issues/835)) ([b16cfb6](https://github.com/dymensionxyz/dymint/commit/b16cfb61f64507deb51f740284b3d24d6e3d4b32))
+* **p2p:** add p2p advertising option ([#862](https://github.com/dymensionxyz/dymint/issues/862)) ([977019f](https://github.com/dymensionxyz/dymint/commit/977019f7c87a0d81e432a88bd4fa19e17bee5a06))
 * **p2p:** header gossiper removed ([#813](https://github.com/dymensionxyz/dymint/issues/813)) ([737b412](https://github.com/dymensionxyz/dymint/commit/737b4126c59846a2be57049a249843de5648dde8))
+* **p2p:** improving logs ([#872](https://github.com/dymensionxyz/dymint/issues/872)) ([c8d116e](https://github.com/dymensionxyz/dymint/commit/c8d116e36bce4811fb26ecbeac78cfcc8470579f))
+* **p2p:** moving gossiped blocks reception from validator to p2p client ([#811](https://github.com/dymensionxyz/dymint/issues/811)) ([0215717](https://github.com/dymensionxyz/dymint/commit/0215717e8baca6072ad28d067286d0b963d43015))
+* **p2p:** refactor p2p config options ([#861](https://github.com/dymensionxyz/dymint/issues/861)) ([70d9460](https://github.com/dymensionxyz/dymint/commit/70d946045d94bac9cff5e31d68e3dae14c1f82c1))
 * **produce:** limiting block size by maxBatchSize ([#784](https://github.com/dymensionxyz/dymint/issues/784)) ([f90042c](https://github.com/dymensionxyz/dymint/commit/f90042cd61fc6b60093478cd65491f8aa1106457))
+* set sequencer mode by hub and not by a flag ([#821](https://github.com/dymensionxyz/dymint/issues/821)) ([5848812](https://github.com/dymensionxyz/dymint/commit/58488123a6969b2977f541279e12f3a50341ea6e))
+* **settlement:** expose hub retry params to config  ([#863](https://github.com/dymensionxyz/dymint/issues/863)) ([10c6ee9](https://github.com/dymensionxyz/dymint/commit/10c6ee99189afb1206e5cfeb606874f28aa4eeff))
 
 
 
-# [](https://github.com/dymensionxyz/dymint/compare/v1.1.0-rc02...v) (2024-05-05)
-
+# [](https://github.com/dymensionxyz/dymint/compare/v1.1.0-rc02...v) (2024-05-23)
 
 
 ### Bug Fixes
@@ -41,17 +71,37 @@
 * **celestia test:** fix race in test ([#755](https://github.com/dymensionxyz/dymint/issues/755)) ([0b36781](https://github.com/dymensionxyz/dymint/commit/0b367818bf6aa8da4a4fd8e4e5c78223b60b44e0))
 * **celestia:** impl retry on submit ([#748](https://github.com/dymensionxyz/dymint/issues/748)) ([61630eb](https://github.com/dymensionxyz/dymint/commit/61630eb458197abe2440a81426210000dff25d40))
 * **celestia:** use fixed delay in repeat attempts ([#753](https://github.com/dymensionxyz/dymint/issues/753)) ([53002b0](https://github.com/dymensionxyz/dymint/commit/53002b0a070743811295a98580ba038cac40cc7d))
+* **code standards:** bring over more linters and the github integration from hub repo ([#865](https://github.com/dymensionxyz/dymint/issues/865)) ([8c94983](https://github.com/dymensionxyz/dymint/commit/8c9498377948184be6651f012c171947eecdfc30))
+* **code standards:** inline NextValSetFromResponses ([#870](https://github.com/dymensionxyz/dymint/issues/870)) ([5a491ac](https://github.com/dymensionxyz/dymint/commit/5a491ac9436fcc7dd0da92fdb7ceb03bbdacaeab))
+* **code standards:** remove a few lines in manager start ([#866](https://github.com/dymensionxyz/dymint/issues/866)) ([c66afbb](https://github.com/dymensionxyz/dymint/commit/c66afbbeb3222ed92c965099f264fa70910e351e))
 * **code standards:** renames error -> err in celestia ([#768](https://github.com/dymensionxyz/dymint/issues/768)) ([1189384](https://github.com/dymensionxyz/dymint/commit/1189384d1225b3dd65481c9dedbae423e4f8ac04))
+* **code standards:** renames sync target file to sync file ([#877](https://github.com/dymensionxyz/dymint/issues/877)) ([6d2ecff](https://github.com/dymensionxyz/dymint/commit/6d2ecff2f202f61fec913c98800197cddaf60324))
+* **code standards:** use 'sequencer' instead of 'aggregator' ([#849](https://github.com/dymensionxyz/dymint/issues/849)) ([bd3c97d](https://github.com/dymensionxyz/dymint/commit/bd3c97d074c695876016834d64b4729bbdc46bbd))
+* **code standards:** use gerr err not found ([#878](https://github.com/dymensionxyz/dymint/issues/878)) ([60e221f](https://github.com/dymensionxyz/dymint/commit/60e221f372497906ca22b80b30389fb159bb859c))
+* **code standards:** use kv naming in store where appropriate ([#879](https://github.com/dymensionxyz/dymint/issues/879)) ([a10ad36](https://github.com/dymensionxyz/dymint/commit/a10ad365bda7b8483c2fa09cf3ae0cc02465331b))
+* **config:** pass through mempool config ([#820](https://github.com/dymensionxyz/dymint/issues/820)) ([ca012e9](https://github.com/dymensionxyz/dymint/commit/ca012e941ce267c7e7a03c9c698297d6dbdd6c02))
+* **da:** celestia height not updated when syncing ([#851](https://github.com/dymensionxyz/dymint/issues/851)) ([491f16d](https://github.com/dymensionxyz/dymint/commit/491f16d4bdf193d1f5e9c3a719eac7b9a46cde49))
 * **da:** fixed da path seperator and encoding issue ([#731](https://github.com/dymensionxyz/dymint/issues/731)) ([3a3b219](https://github.com/dymensionxyz/dymint/commit/3a3b21932750fee7eaaa9c186f78e36e3e597746))
+* **da:** full-nodes can sync from p2p while DA light client is down or out of sync ([#857](https://github.com/dymensionxyz/dymint/issues/857)) ([2b5eb07](https://github.com/dymensionxyz/dymint/commit/2b5eb07147142b91e13c2c483238e356e6c5871c))
 * **DA:** use expo backoff in retries ([#739](https://github.com/dymensionxyz/dymint/issues/739)) ([848085f](https://github.com/dymensionxyz/dymint/commit/848085f70bcaae81fb80da3ab78c4d8b399e13b1))
+* **dead code:** removes last submission time from manager ([#825](https://github.com/dymensionxyz/dymint/issues/825)) ([80b0324](https://github.com/dymensionxyz/dymint/commit/80b03241e2f2b46010dadca7cf3fa0b12486ea68))
 * **doc:** manager cache comment ([#767](https://github.com/dymensionxyz/dymint/issues/767)) ([b88bf6e](https://github.com/dymensionxyz/dymint/commit/b88bf6e72820c944b290147724255cc8466ada50))
+* **docs:** make submit loop comment more accurate re batch size ([#852](https://github.com/dymensionxyz/dymint/issues/852)) ([4f94340](https://github.com/dymensionxyz/dymint/commit/4f94340a857cf3485d800848d6371ed47f6ea732))
+* **linter:** gofumpt and fix golangcilint config ([#867](https://github.com/dymensionxyz/dymint/issues/867)) ([8777520](https://github.com/dymensionxyz/dymint/commit/8777520d8a4faaf6bad169aebded539c7e8123d3))
+* **local pub sub:** use error for subscription cancelled (instead of info) ([#853](https://github.com/dymensionxyz/dymint/issues/853)) ([1886e18](https://github.com/dymensionxyz/dymint/commit/1886e18d788b9b2745b1989a472084985578a147))
 * **logging:** added reason for websocket closed debug msg ([#746](https://github.com/dymensionxyz/dymint/issues/746)) ([3aa7d80](https://github.com/dymensionxyz/dymint/commit/3aa7d80ace92b3b0f79e4f338f10bb94c96ab6dd))
 * **logs:** make logs more readable in a couple places, fix race cond ([#749](https://github.com/dymensionxyz/dymint/issues/749)) ([f05ef39](https://github.com/dymensionxyz/dymint/commit/f05ef3957b754c05fbc90aa39eabce80bbe65933))
 * **manager:** get fresh height in loop ([#781](https://github.com/dymensionxyz/dymint/issues/781)) ([e4df480](https://github.com/dymensionxyz/dymint/commit/e4df48037a78965dbac9e747dd296f39360e396c))
+* **manager:** removes outdated syncTarget field ([#854](https://github.com/dymensionxyz/dymint/issues/854)) ([04b13a0](https://github.com/dymensionxyz/dymint/commit/04b13a0b78feda56a2ac16f8fdc49f1e0d5f1560))
+* **metrics:** pass metrics to mempool init ([#846](https://github.com/dymensionxyz/dymint/issues/846)) ([94267ae](https://github.com/dymensionxyz/dymint/commit/94267ae551de46bda60898c23f5092125e60aca6))
+* **p2p:** avoid receiving duplicated blocks ([#818](https://github.com/dymensionxyz/dymint/issues/818)) ([feb40f2](https://github.com/dymensionxyz/dymint/commit/feb40f2ca9eead8ecd9a8da2c5772c29a13ac5e5))
 * **p2p:** validate block before applying and not before caching in p2p gossiping ([#723](https://github.com/dymensionxyz/dymint/issues/723)) ([98371b5](https://github.com/dymensionxyz/dymint/commit/98371b5220613e70f3274fab5593e02ba532f7db))
 * **p2p:** validating gossiped block is created by the proposer ([#737](https://github.com/dymensionxyz/dymint/issues/737)) ([851b312](https://github.com/dymensionxyz/dymint/commit/851b312620233a9fb1abe55214a678322e7b0c68))
 * **produce loop:** handle unauthenticated error in settlement layer ([#726](https://github.com/dymensionxyz/dymint/issues/726)) ([33e78d1](https://github.com/dymensionxyz/dymint/commit/33e78d116b5f14b91b8b3bda2b6cbfee9040e2d3))
 * **rpc:** nil panic in rpc/json/handler.go WriteError ([#750](https://github.com/dymensionxyz/dymint/issues/750)) ([e09709b](https://github.com/dymensionxyz/dymint/commit/e09709b428a33da002defb9f13178fa19b81a69b))
+* **rpc:** remove unnecessary `:` in the json health response ([#876](https://github.com/dymensionxyz/dymint/issues/876)) ([55dd894](https://github.com/dymensionxyz/dymint/commit/55dd894e07aacd5983a055ec2a25676804c278ca))
+* **settlement:** filter by pending status in batch event ([#845](https://github.com/dymensionxyz/dymint/issues/845)) ([841056d](https://github.com/dymensionxyz/dymint/commit/841056d52d4b9bda2e2e806ec5a9c8559a43eeaf))
+* **settlement:** fixed submission bug where multiple events would cancel subscription  ([#842](https://github.com/dymensionxyz/dymint/issues/842)) ([f7b9383](https://github.com/dymensionxyz/dymint/commit/f7b9383cf55976f3f55780055df7a6517e189034))
 * **settlement:** remove state index from proto ([#777](https://github.com/dymensionxyz/dymint/issues/777)) ([767b8fd](https://github.com/dymensionxyz/dymint/commit/767b8fdb490c37deee43ac023688410bbb98ccb0))
 * **sync:** make sure we use a latest state index as a start point ([#760](https://github.com/dymensionxyz/dymint/issues/760)) ([43e2d96](https://github.com/dymensionxyz/dymint/commit/43e2d965f2b505751f8e5260549e909c976141ee))
 * **sync:** removing height condition for applying cached blocks from p2p ([#787](https://github.com/dymensionxyz/dymint/issues/787)) ([b97299c](https://github.com/dymensionxyz/dymint/commit/b97299ce7f78168863c5e1c2d7fc479aed2ae6da))
@@ -60,12 +110,19 @@
 
 ### Features
 
+* **blockManager:** refactor and use state as single source of truth for height ([#847](https://github.com/dymensionxyz/dymint/issues/847)) ([73aae62](https://github.com/dymensionxyz/dymint/commit/73aae62f30acdc56816ad65550438d8830ac83db))
+* **ci:** new changelog workflow ([#858](https://github.com/dymensionxyz/dymint/issues/858)) ([5a562ad](https://github.com/dymensionxyz/dymint/commit/5a562ad818469495daeca4d403fb007a7f1e5b2d))
+* **DA:** expose configuration options for retry loop backoff ([#757](https://github.com/dymensionxyz/dymint/issues/757)) ([0cd09f3](https://github.com/dymensionxyz/dymint/commit/0cd09f3d0a8430c1e9f34814930c168553c143bc))
+* **da:** improve logging ([#871](https://github.com/dymensionxyz/dymint/issues/871)) ([7bcc837](https://github.com/dymensionxyz/dymint/commit/7bcc837e78ce41645a09dc773a419d8a1aa153f5))
+* **da:** remove availability checks from retriever ([#835](https://github.com/dymensionxyz/dymint/issues/835)) ([b16cfb6](https://github.com/dymensionxyz/dymint/commit/b16cfb61f64507deb51f740284b3d24d6e3d4b32))
+* **p2p:** add p2p advertising option ([#862](https://github.com/dymensionxyz/dymint/issues/862)) ([977019f](https://github.com/dymensionxyz/dymint/commit/977019f7c87a0d81e432a88bd4fa19e17bee5a06))
+* **p2p:** header gossiper removed ([#813](https://github.com/dymensionxyz/dymint/issues/813)) ([737b412](https://github.com/dymensionxyz/dymint/commit/737b4126c59846a2be57049a249843de5648dde8))
+* **p2p:** improving logs ([#872](https://github.com/dymensionxyz/dymint/issues/872)) ([c8d116e](https://github.com/dymensionxyz/dymint/commit/c8d116e36bce4811fb26ecbeac78cfcc8470579f))
+* **p2p:** moving gossiped blocks reception from validator to p2p client ([#811](https://github.com/dymensionxyz/dymint/issues/811)) ([0215717](https://github.com/dymensionxyz/dymint/commit/0215717e8baca6072ad28d067286d0b963d43015))
+* **p2p:** refactor p2p config options ([#861](https://github.com/dymensionxyz/dymint/issues/861)) ([70d9460](https://github.com/dymensionxyz/dymint/commit/70d946045d94bac9cff5e31d68e3dae14c1f82c1))
 * **produce:** limiting block size by maxBatchSize ([#784](https://github.com/dymensionxyz/dymint/issues/784)) ([f90042c](https://github.com/dymensionxyz/dymint/commit/f90042cd61fc6b60093478cd65491f8aa1106457))
-
-
-### Features
-
-* **ci:** changelog workflow ([c096f2f](https://github.com/dymensionxyz/dymint/commit/c096f2f5196e5cbcba8ff81097d8bad7534c46ae))
+* set sequencer mode by hub and not by a flag ([#821](https://github.com/dymensionxyz/dymint/issues/821)) ([5848812](https://github.com/dymensionxyz/dymint/commit/58488123a6969b2977f541279e12f3a50341ea6e))
+* **settlement:** expose hub retry params to config  ([#863](https://github.com/dymensionxyz/dymint/issues/863)) ([10c6ee9](https://github.com/dymensionxyz/dymint/commit/10c6ee99189afb1206e5cfeb606874f28aa4eeff))
 
 
 
