@@ -2,6 +2,10 @@
 
 ## Opening a pull request should be able to meet the following requirements
 
+--
+
+PR naming convention: https://hackmd.io/@nZpxHZ0CT7O5ngTp0TP9mg/HJP_jrm7A
+
 ---
 
 Close #XXX
