@@ -8,6 +8,11 @@ import (
 )
 
 // TODO: move to types package
+
+const (
+	BatchOverhead = 700 // 500 block overhead + 117 for commit + 10 for batch overhead + safety margin
+)
+
 type blockSource string
 
 const (

@@ -38,11 +38,11 @@ func createRandomHashes() [][32]byte {
 
 func GetRandomTx() types.Tx {
 	n, _ := rand.Int(rand.Reader, big.NewInt(100))
-	size := int(n.Int64()) + 100
+	size := uint64(n.Int64()) + 100
 	return types.Tx(GetRandomBytes(size))
 }
 
-func GetRandomBytes(n int) []byte {
+func GetRandomBytes(n uint64) []byte {
 	data := make([]byte, n)
 	_, _ = rand.Read(data)
 	return data
