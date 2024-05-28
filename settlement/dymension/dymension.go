@@ -2,6 +2,7 @@ package dymension
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -160,6 +161,10 @@ func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *d
 		err := c.RunWithRetryInfinitely(func() error {
 			err := c.broadcastBatch(msgUpdateState)
 			if err != nil {
+				if errors.Is(err, ErrBatchAlreadySubmitted) {
+					return retry.Unrecoverable(err)
+				}
+
 				c.logger.Error(
 					"Submit batch",
 					"startHeight",
@@ -173,13 +178,23 @@ func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *d
 			return err
 		})
 		if err != nil {
+			// this could happen if we timed-out waiting for acceptance, but the batch was indeed submitted
+			if errors.Is(err, ErrBatchAlreadySubmitted) {
+				includedBatch, _ := c.pollForBatchInclusion(batch.EndHeight) // double check
+				if !includedBatch {
+					return fmt.Errorf("failed to validate batch inclusion")
+				}
+
+				c.logger.Debug("Batch already accepted", "startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
+				return nil
+			}
 			return fmt.Errorf("broadcast batch: %w", err)
 		}
 
 		// Batch was submitted successfully. Wait for it to be accepted by the settlement layer.
 		timer := time.NewTimer(c.batchAcceptanceTimeout)
 		defer timer.Stop()
-		attempt := uint64(0)
+		attempt := uint64(1)
 
 		for {
 			select {
@@ -200,30 +215,40 @@ func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *d
 
 			case <-timer.C:
 				// Check if the batch was accepted by the settlement layer, and we've just missed the event.
-				attempt++
-				includedBatch, err := c.pollForBatchInclusion(batch.EndHeight, attempt)
+				includedBatch, err := c.pollForBatchInclusion(batch.EndHeight)
+				timer.Reset(c.batchAcceptanceTimeout)
 				if err == nil && !includedBatch {
 					// no error, but still not included
-					timer.Reset(c.batchAcceptanceTimeout)
+					attempt++
+					if attempt > uint64(c.batchAcceptanceAttempts) {
+						c.logger.Error(
+							"Timed out waiting for batch inclusion on settlement layer",
+							"startHeight",
+							batch.StartHeight,
+							"endHeight",
+							batch.EndHeight,
+						)
+						break //breaks the select
+					}
+					continue
+				}
+				if err != nil {
+					c.logger.Error(
+						"Wait for batch inclusion",
+						"startHeight",
+						batch.StartHeight,
+						"endHeight",
+						batch.EndHeight,
+						"error",
+						err,
+					)
 					continue
 				}
 				// all good
-				if err == nil {
-					c.logger.Info("Batch accepted", "startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
-					return nil
-				}
+				c.logger.Info("Batch accepted", "startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
+				return nil
 			}
-			// If errored polling, start again the submission loop.
-			c.logger.Error(
-				"Wait for batch inclusion",
-				"startHeight",
-				batch.StartHeight,
-				"endHeight",
-				batch.EndHeight,
-				"error",
-				err,
-			)
-			break
+			break // breaks the acceptance loop back to the submission loop
 		}
 	}
 }
@@ -448,15 +473,10 @@ func (c *Client) getEventData(eventType string, rawEventData ctypes.ResultEvent)
 }
 
 // pollForBatchInclusion polls the hub for the inclusion of a batch with the given end height.
-func (c *Client) pollForBatchInclusion(batchEndHeight, attempt uint64) (bool, error) {
+func (c *Client) pollForBatchInclusion(batchEndHeight uint64) (bool, error) {
 	latestBatch, err := c.GetLatestBatch()
 	if err != nil {
 		return false, fmt.Errorf("get latest batch: %w", err)
-	}
-
-	// no error, but still not included
-	if attempt >= uint64(c.batchAcceptanceAttempts) {
-		return false, fmt.Errorf("timed out waiting for batch inclusion on settlement layer")
 	}
 
 	return latestBatch.Batch.EndHeight == batchEndHeight, nil
