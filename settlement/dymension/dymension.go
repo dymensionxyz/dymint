@@ -2,8 +2,8 @@ package dymension
 
 import (
 	"context"
-	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/dymensionxyz/dymint/gerr"
@@ -161,7 +161,7 @@ func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *d
 		err := c.RunWithRetryInfinitely(func() error {
 			err := c.broadcastBatch(msgUpdateState)
 			if err != nil {
-				if errors.Is(err, ErrBatchAlreadySubmitted) {
+				if strings.Contains(err.Error(), ErrBatchAlreadySubmitted) {
 					return retry.Unrecoverable(err)
 				}
 
@@ -179,7 +179,7 @@ func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *d
 		})
 		if err != nil {
 			// this could happen if we timed-out waiting for acceptance, but the batch was indeed submitted
-			if errors.Is(err, ErrBatchAlreadySubmitted) {
+			if strings.Contains(err.Error(), ErrBatchAlreadySubmitted) {
 				includedBatch, _ := c.pollForBatchInclusion(batch.EndHeight) // double check
 				if !includedBatch {
 					return fmt.Errorf("failed to validate batch inclusion")

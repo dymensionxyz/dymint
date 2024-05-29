@@ -68,6 +68,81 @@ func TestGetSequencers(t *testing.T) {
 	require.Len(sequencers, count)
 }
 
+func TestPostBatchRPCError(t *testing.T) {
+	require := require.New(t)
+	pubsubServer := pubsub.NewServer()
+	err := pubsubServer.Start()
+	require.NoError(err)
+
+	// Create a mock cosmos client
+	cosmosClientMock := dymensionmock.NewMockCosmosClient(t)
+	sequencerQueryClientMock := sequencertypesmock.NewMockQueryClient(t)
+	rollappQueryClientMock := rollapptypesmock.NewMockQueryClient(t)
+	cosmosClientMock.On("GetRollappClient").Return(rollappQueryClientMock)
+	cosmosClientMock.On("GetSequencerClient").Return(sequencerQueryClientMock)
+	accountPubkey, err := sdkcodectypes.NewAnyWithValue(secp256k1.GenPrivKey().PubKey())
+	require.NoError(err)
+	cosmosClientMock.On("GetAccount", mock.Anything).Return(cosmosaccount.Account{Record: &keyring.Record{PubKey: accountPubkey}}, nil)
+
+	options := []settlement.Option{
+		dymension.WithCosmosClient(cosmosClientMock),
+		dymension.WithBatchAcceptanceTimeout(time.Millisecond * 300),
+		dymension.WithBatchAcceptanceAttempts(2),
+	}
+
+	// Create a batch which will be submitted
+	propserKey, _, err := crypto.GenerateEd25519Key(nil)
+	require.NoError(err)
+	batch, err := testutil.GenerateBatch(2, 2, propserKey)
+	require.NoError(err)
+
+	hubClient := dymension.Client{}
+	err = hubClient.Init(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
+	require.NoError(err)
+
+	// prepare mocks
+	// submit passes
+	// polling return nothing
+	// submit returns already exists error
+	cosmosClientMock.On("BroadcastTx", mock.Anything, mock.Anything).Return(cosmosclient.Response{TxResponse: &types.TxResponse{Code: 0}}, nil).Once()
+	submitBatchError := errors.New("rpc error: code = Unknown desc = rpc error: code = Unknown desc = failed to execute message; message index: 0: expected height (5), but received (4): start-height does not match rollapps state")
+	cosmosClientMock.On("BroadcastTx", mock.Anything, mock.Anything).Return(cosmosclient.Response{TxResponse: &types.TxResponse{Code: 1}}, submitBatchError).Once()
+
+	daMetaData := &da.DASubmitMetaData{
+		Height: 1,
+		Client: da.Mock,
+	}
+	rollappQueryClientMock.On("StateInfo", mock.Anything, mock.Anything).Return(
+		&rollapptypes.QueryGetStateInfoResponse{StateInfo: rollapptypes.StateInfo{
+			StartHeight: 1, StateInfoIndex: rollapptypes.StateInfoIndex{Index: 1}, DAPath: daMetaData.ToPath(), NumBlocks: 1,
+		}},
+		nil).Times(2)
+
+	daMetaData.Height = 2
+	rollappQueryClientMock.On("StateInfo", mock.Anything, mock.Anything).Return(
+		&rollapptypes.QueryGetStateInfoResponse{StateInfo: rollapptypes.StateInfo{
+			StartHeight: 2, StateInfoIndex: rollapptypes.StateInfoIndex{Index: 2}, DAPath: daMetaData.ToPath(), NumBlocks: 1,
+		}},
+		nil).Once()
+
+	resultSubmitBatch := &da.ResultSubmitBatch{}
+	resultSubmitBatch.SubmitMetaData = &da.DASubmitMetaData{}
+	errChan := make(chan error, 1) // Create a channel to receive an error from the goroutine
+	// Post the batch in a goroutine and capture any error.
+	go func() {
+		err := hubClient.SubmitBatch(batch, da.Mock, resultSubmitBatch)
+		errChan <- err // Send any error to the errChan
+	}()
+
+	// Use a select statement to wait for a potential error or a timeout.
+	select {
+	case err = <-errChan:
+	case <-time.After(3 * time.Second):
+		err = errors.New("timeout")
+	}
+	assert.NoError(t, err, "PostBatch should not produce an error")
+}
+
 // TestPostBatch should test the following:
 // 1. Batch fails to submit emits unhealthy event
 // 2. Batch is submitted successfully but not accepted which emits unhealthy event
@@ -95,7 +170,6 @@ func TestPostBatch(t *testing.T) {
 	cosmosClientMock.On("StartEventListener").Return(nil)
 	cosmosClientMock.On("EventListenerQuit").Return(make(<-chan struct{}))
 	batchAcceptedCh := make(chan coretypes.ResultEvent, 1)
-	require.NoError(err)
 	cosmosClientMock.On("SubscribeToEvents", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return((<-chan coretypes.ResultEvent)(batchAcceptedCh), nil)
 
 	options := []settlement.Option{
