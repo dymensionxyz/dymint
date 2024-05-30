@@ -228,7 +228,7 @@ func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *d
 							"endHeight",
 							batch.EndHeight,
 						)
-						break //breaks the select
+						break // breaks the select
 					}
 					continue
 				}
