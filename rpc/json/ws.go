@@ -55,22 +55,24 @@ func (h *handler) wsHandler(w http.ResponseWriter, r *http.Request) {
 		h.logger.Error("update to WebSocket connection", "error", err)
 		return
 	}
-	remoteAddr := wsc.RemoteAddr().String()
-	defer func() {
-		err := wsc.Close()
-		if err != nil {
-			h.logger.Error("close WebSocket connection", "err")
-		}
-	}()
 
 	ws := &wsConn{
 		conn:   wsc,
 		queue:  make(chan []byte),
 		logger: h.logger,
 	}
-	defer close(ws.queue)
+
+	defer func() {
+		close(ws.queue)
+
+		if err := ws.conn.Close(); err != nil {
+			h.logger.Error("close WebSocket connection", "err")
+		}
+	}()
 
 	go ws.sendLoop()
+
+	remoteAddr := ws.conn.RemoteAddr().String()
 
 	for {
 		mt, rdr, err := wsc.NextReader()
