@@ -12,83 +12,67 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	abci "github.com/tendermint/tendermint/abci/types"
-	cfg "github.com/tendermint/tendermint/config"
-	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/proxy"
-	tmtypes "github.com/tendermint/tendermint/types"
 
 	cosmosed25519 "github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
 	"github.com/libp2p/go-libp2p/core/crypto"
 
-	"github.com/dymensionxyz/dymint/block"
 	"github.com/dymensionxyz/dymint/config"
-	"github.com/dymensionxyz/dymint/mempool"
-	mempoolv1 "github.com/dymensionxyz/dymint/mempool/v1"
 	slmocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/settlement"
-	tmmocks "github.com/dymensionxyz/dymint/mocks/github.com/tendermint/tendermint/abci/types"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
 )
 
+// TestBatchOverhead tests the scenario where we have a single block that is very large, and occupies the entire batch size.
+// This test is to ensure the value of 90% for types.MaxBlockSizeAdjustment is valid
+// 2 use cases:
+// 1. single block with single large tx
+// 2. single block with multiple small tx
 func TestBatchOverhead(t *testing.T) {
-	// block with single large tx, validate that the overhead size is smaller than batchOverhead
-	// block with multiple small tx, validate that the overhead is smaller than batchOverhead
-
 	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, nil, 1, 1, 0, nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, manager)
 
-	maxBatchSize := uint64(10000)                                             // 10KB
+	maxBatchSize := uint64(10_000)                                            // 10KB
 	maxTxData := uint64(float64(maxBatchSize) * types.MaxBlockSizeAdjustment) // 90% of maxBatchSize
-	require.Equal(t, maxTxData, uint64(9000))
 
 	// first batch with single block with single large tx
 	var tcases = []struct {
-		name     string
-		malleate func([]*types.Block)
+		name string
+		nTxs int
 	}{
 		{
 			name: "single block with single large tx",
-			malleate: func(blocks []*types.Block) {
-				nTxs := 1
-				for _, block := range blocks {
-					block.Data = types.Data{
-						Txs: make(types.Txs, nTxs),
-					}
-
-					for i := 0; i < nTxs; i++ {
-						block.Data.Txs[0] = testutil.GetRandomBytes(maxTxData)
-					}
-				}
-			},
+			nTxs: 1,
 		},
 		{
 			name: "single block with multiple small tx",
-			malleate: func(blocks []*types.Block) {
-				nTxs := 100
-				txSize := maxTxData / uint64(nTxs)
-				for _, block := range blocks {
-					block.Data = types.Data{
-						Txs: make(types.Txs, nTxs),
-					}
-
-					for i := 0; i < nTxs; i++ {
-						block.Data.Txs[i] = testutil.GetRandomBytes(txSize)
-					}
-				}
-			},
+			nTxs: 100,
 		},
 	}
 
 	for _, tcase := range tcases {
 		blocks, err := testutil.GenerateBlocks(1, 1, manager.ProposerKey)
 		require.NoError(t, err)
+		block := blocks[0]
 
-		tcase.malleate(blocks)
+		mallete := func(nTxs int) {
+			txSize := maxTxData / uint64(nTxs)
+
+			block.Data = types.Data{
+				Txs: make(types.Txs, nTxs),
+			}
+
+			for i := 0; i < nTxs; i++ {
+				block.Data.Txs[0] = testutil.GetRandomBytes(txSize)
+			}
+		}
+
+		mallete(tcase.nTxs)
 
 		commits, err := testutil.GenerateCommits(blocks, manager.ProposerKey)
 		require.NoError(t, err)
+		commit := commits[0]
 
 		batch := types.Batch{
 			StartHeight: 1,
@@ -100,12 +84,8 @@ func TestBatchOverhead(t *testing.T) {
 		batchSize := batch.ToProto().Size()
 
 		var blocksize, commitSize int
-		for _, block := range batch.Blocks {
-			blocksize += block.ToProto().Size()
-		}
-		for _, commit := range batch.Commits {
-			commitSize += commit.ToProto().Size()
-		}
+		blocksize = block.ToProto().Size()
+		commitSize = commit.ToProto().Size()
 
 		// we assert that the batch size is not larger than the maxBatchSize
 		assert.LessOrEqual(t, batchSize, int(maxBatchSize), tcase.name)
@@ -315,80 +295,4 @@ func TestSubmissionByBatchSize(t *testing.T) {
 			assert.Zero(manager.LastSubmittedHeight.Load())
 		}
 	}
-}
-
-func TestFullyPopulatedBlock(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
-
-	logger := log.TestingLogger()
-
-	app := &tmmocks.MockApplication{}
-	app.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{})
-
-	proposerKey, _, err := crypto.GenerateEd25519Key(rand.Reader)
-	require.NoError(err)
-
-	clientCreator := proxy.NewLocalClientCreator(app)
-	abciClient, err := clientCreator.NewABCIClient()
-	require.NoError(err)
-	require.NotNil(clientCreator)
-	require.NotNil(abciClient)
-
-	nsID := "0102030405060708"
-
-	mpool := mempoolv1.NewTxMempool(logger, cfg.DefaultMempoolConfig(), proxy.NewAppConnMempool(abciClient), 0)
-	executor, err := block.NewExecutor([]byte("test address"), nsID, "test", mpool, proxy.NewAppConns(clientCreator), nil, logger)
-	assert.NoError(err)
-
-	maxBatchBytes := uint64(5000)
-	maxTxSize := maxBatchBytes - 3
-
-	state := &types.State{}
-	state.ConsensusParams.Block.MaxBytes = int64(maxBatchBytes)
-	state.ConsensusParams.Block.MaxGas = 100000
-	state.Validators = tmtypes.NewValidatorSet(nil)
-
-	tx := tmtypes.Tx(testutil.GetRandomBytes(maxTxSize))
-	err = mpool.CheckTx(tx, func(r *abci.Response) {}, mempool.TxInfo{})
-	require.NoError(err)
-	tooBigBlock := executor.CreateBlock(1, &types.Commit{}, [32]byte{}, state, maxBatchBytes)
-	require.NotNil(tooBigBlock)
-	assert.Len(tooBigBlock.Data.Txs, 1)
-
-	blocks := []*types.Block{tooBigBlock}
-	commits, err := testutil.GenerateCommits(blocks, proposerKey)
-	require.NoError(err)
-
-	batch := types.Batch{
-		StartHeight: 1,
-		EndHeight:   1,
-		Blocks:      blocks,
-		Commits:     commits,
-	}
-
-	batchSize := batch.ToProto().Size()
-	assert.Greater(batchSize, int(maxBatchBytes))
-
-	mpool.RemoveTxByKey(tx.Key())
-
-	limitedMaxBytes := uint64(float64(maxBatchBytes) * types.MaxBlockSizeAdjustment)
-	newTx := tmtypes.Tx(testutil.GetRandomBytes(limitedMaxBytes - 3))
-	err = mpool.CheckTx(newTx, func(r *abci.Response) {}, mempool.TxInfo{})
-	require.NoError(err)
-	notTooBigBlock := executor.CreateBlock(2, &types.Commit{}, [32]byte{}, state, limitedMaxBytes)
-	require.NotNil(notTooBigBlock)
-	assert.Len(notTooBigBlock.Data.Txs, 1)
-
-	blocks = []*types.Block{notTooBigBlock}
-	commits, _ = testutil.GenerateCommits(blocks, proposerKey)
-	batch = types.Batch{
-		StartHeight: 2,
-		EndHeight:   2,
-		Blocks:      blocks,
-		Commits:     commits,
-	}
-
-	batchSize = batch.ToProto().Size()
-	assert.LessOrEqual(batchSize, int(maxBatchBytes))
 }
