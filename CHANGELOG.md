@@ -1,7 +1,3 @@
-#  (2024-05-23)
-
-
-
 # [](https://github.com/dymensionxyz/dymint/compare/v1.1.0-rc02...v) (2024-05-23)
 
 

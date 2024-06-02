@@ -9,7 +9,7 @@ import (
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
-// onNewGossippedBlock will take a block and apply it
+// onNewGossipedBlock will take a block and apply it
 func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
 	eventData, _ := event.Data().(p2p.GossipedBlock)
 	block := eventData.Block
