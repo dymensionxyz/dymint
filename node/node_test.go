@@ -73,7 +73,7 @@ func TestMempoolDirectly(t *testing.T) {
 		RPC:           config.RPCConfig{},
 		MempoolConfig: *tmcfg.DefaultMempoolConfig(),
 		BlockManagerConfig: config.BlockManagerConfig{
-			BlockTime:              100 * time.Millisecond,
+			BlockTime:              1 * time.Second,
 			BatchSubmitMaxTime:     60 * time.Second,
 			BlockBatchMaxSizeBytes: 100000,
 			MaxSupportedBatchSkew:  10,
