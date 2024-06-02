@@ -228,7 +228,7 @@ func (c *Client) GetProposer() *types.Sequencer {
 	}
 }
 
-// GetSequencersList implements settlement.ClientI.
+// GetSequencers implements settlement.ClientI.
 func (c *Client) GetSequencers() ([]*types.Sequencer, error) {
 	return []*types.Sequencer{c.GetProposer()}, nil
 }
