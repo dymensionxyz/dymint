@@ -102,14 +102,10 @@ func TestPostBatchRPCError(t *testing.T) {
 	err = hubClient.Init(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
 	require.NoError(err)
 
-	// prepare mocks
 	// submit passes
-	// polling return nothing
-	// submit returns already exists error
 	cosmosClientMock.On("BroadcastTx", mock.Anything, mock.Anything).Return(cosmosclient.Response{TxResponse: &types.TxResponse{Code: 0}}, nil).Once()
-	submitBatchError := errors.New("rpc error: code = Unknown desc = rpc error: code = Unknown desc = failed to execute message; message index: 0: expected height (5), but received (4): start-height does not match rollapps state")
-	cosmosClientMock.On("BroadcastTx", mock.Anything, mock.Anything).Return(cosmosclient.Response{TxResponse: &types.TxResponse{Code: 1}}, submitBatchError).Once()
 
+	// return old batch for inclusion check
 	daMetaData := &da.DASubmitMetaData{
 		Height: 1,
 		Client: da.Mock,
@@ -120,12 +116,9 @@ func TestPostBatchRPCError(t *testing.T) {
 		}},
 		nil).Times(2)
 
-	daMetaData.Height = 2
-	rollappQueryClientMock.On("StateInfo", mock.Anything, mock.Anything).Return(
-		&rollapptypes.QueryGetStateInfoResponse{StateInfo: rollapptypes.StateInfo{
-			StartHeight: 2, StateInfoIndex: rollapptypes.StateInfoIndex{Index: 2}, DAPath: daMetaData.ToPath(), NumBlocks: 1,
-		}},
-		nil).Once()
+	// submit returns already exists error
+	submitBatchError := errors.New("rpc error: code = Unknown desc = rpc error: code = Unknown desc = failed to execute message; message index: 0: expected height (5), but received (4): start-height does not match rollapps state")
+	cosmosClientMock.On("BroadcastTx", mock.Anything, mock.Anything).Return(cosmosclient.Response{TxResponse: &types.TxResponse{Code: 1}}, submitBatchError).Once()
 
 	resultSubmitBatch := &da.ResultSubmitBatch{}
 	resultSubmitBatch.SubmitMetaData = &da.DASubmitMetaData{}
