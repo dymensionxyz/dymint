@@ -68,6 +68,8 @@ func TestGetSequencers(t *testing.T) {
 	require.Len(sequencers, count)
 }
 
+// TestPostBatchRPCError should tests the scenario where batch submitted but the acceptance signal failed.
+// we expect an attempt to broadcast the batch again, and receive "already submitted" error response.
 func TestPostBatchRPCError(t *testing.T) {
 	require := require.New(t)
 	pubsubServer := pubsub.NewServer()
@@ -91,9 +93,9 @@ func TestPostBatchRPCError(t *testing.T) {
 	}
 
 	// Create a batch which will be submitted
-	propserKey, _, err := crypto.GenerateEd25519Key(nil)
+	proposerKey, _, err := crypto.GenerateEd25519Key(nil)
 	require.NoError(err)
-	batch, err := testutil.GenerateBatch(2, 2, propserKey)
+	batch, err := testutil.GenerateBatch(2, 2, proposerKey)
 	require.NoError(err)
 
 	hubClient := dymension.Client{}
@@ -140,7 +142,7 @@ func TestPostBatchRPCError(t *testing.T) {
 	case <-time.After(3 * time.Second):
 		err = errors.New("timeout")
 	}
-	assert.NoError(t, err, "PostBatch should not produce an error")
+	assert.NoError(t, err)
 }
 
 // TestPostBatch should test the following:
