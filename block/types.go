@@ -8,6 +8,7 @@ import (
 )
 
 // TODO: move to types package
+
 type blockSource string
 
 const (
