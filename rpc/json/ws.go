@@ -95,11 +95,12 @@ func (h *handler) wsHandler(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		req, err := http.NewRequest(http.MethodGet, "", rdr)
-		req.RemoteAddr = remoteAddr
 		if err != nil {
 			h.logger.Error("create request", "error", err)
 			continue
 		}
+
+		req.RemoteAddr = remoteAddr
 
 		writer := new(bytes.Buffer)
 		h.serveJSONRPCforWS(newResponseWriter(writer), req, ws)
