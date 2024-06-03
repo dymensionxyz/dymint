@@ -96,11 +96,11 @@ func (e *Executor) InitChain(genesis *tmtypes.GenesisDoc, validators []*tmtypes.
 }
 
 // CreateBlock reaps transactions from mempool and builds a block.
-func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHeaderHash [32]byte, state *types.State, maxBytes uint64) *types.Block {
+func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHeaderHash [32]byte, state *types.State, maxBlockDataSizeBytes uint64) *types.Block {
 	if state.ConsensusParams.Block.MaxBytes > 0 {
-		maxBytes = min(maxBytes, uint64(state.ConsensusParams.Block.MaxBytes))
+		maxBlockDataSizeBytes = min(maxBlockDataSizeBytes, uint64(state.ConsensusParams.Block.MaxBytes))
 	}
-	mempoolTxs := e.mempool.ReapMaxBytesMaxGas(int64(maxBytes), state.ConsensusParams.Block.MaxGas)
+	mempoolTxs := e.mempool.ReapMaxBytesMaxGas(int64(maxBlockDataSizeBytes), state.ConsensusParams.Block.MaxGas)
 
 	block := &types.Block{
 		Header: types.Header{
