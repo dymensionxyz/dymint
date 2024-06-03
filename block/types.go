@@ -15,6 +15,7 @@ const (
 	producedBlock blockSource = "produced"
 	gossipedBlock blockSource = "gossip"
 	daBlock       blockSource = "da"
+	localDbBlock  blockSource = "local_db"
 )
 
 type blockMetaData struct {
