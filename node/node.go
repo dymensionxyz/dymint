@@ -214,6 +214,73 @@ func NewNode(
 	return node, nil
 }
 
+func NewLightNode(
+	ctx context.Context,
+	conf config.NodeConfig,
+	signingKey crypto.PrivKey,
+	clientCreator proxy.ClientCreator,
+	genesis *tmtypes.GenesisDoc,
+	logger log.Logger,
+	metrics *mempool.Metrics,
+) (*Node, error) {
+	if conf.SettlementConfig.RollappID != genesis.ChainID {
+		return nil, fmt.Errorf("rollapp ID in settlement config doesn't match chain ID in genesis")
+	}
+	proxyApp := proxy.NewAppConns(clientCreator)
+	proxyApp.SetLogger(logger.With("module", "proxy"))
+	if err := proxyApp.Start(); err != nil {
+		return nil, fmt.Errorf("starting proxy app connections: %w", err)
+	}
+
+	var baseKV store.KV
+	if conf.RootDir == "" && conf.DBPath == "" { // this is used for testing
+		logger.Info("WARNING: working in in-memory mode")
+		baseKV = store.NewDefaultInMemoryKVStore()
+	} else {
+		// TODO(omritoptx): Move dymint to const
+		baseKV = store.NewDefaultKVStore(conf.RootDir, conf.DBPath, "dymint")
+	}
+	mainKV := store.NewPrefixKV(baseKV, mainPrefix)
+	s := store.New(mainKV)
+
+	info, err := proxyApp.Query().InfoSync(proxy.RequestInfo)
+	if err != nil {
+		return nil, fmt.Errorf("querying info: %w", err)
+	}
+	height := max(genesis.InitialHeight, info.LastBlockHeight)
+
+	mp := mempoolv1.NewTxMempool(logger, &conf.MempoolConfig, proxyApp.Mempool(), height, mempoolv1.WithMetrics(metrics))
+
+	dalc := daregistry.GetClient(conf.DALayer)
+	if dalc == nil {
+		return nil, fmt.Errorf("get data availability client named '%s'", conf.DALayer)
+	}
+
+	blockManager, err := block.NewManager(
+		signingKey,
+		conf.BlockManagerConfig,
+		genesis,
+		s,
+		mp,
+		proxyApp,
+		dalc,
+		nil,
+		nil,
+		nil,
+		nil,
+		logger.With("module", "BlockManager"),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("BlockManager initialization error: %w", err)
+	}
+
+	node := &Node{
+		BlockManager: blockManager,
+	}
+	return node, nil
+
+}
+
 // initGenesisChunks creates a chunked format of the genesis document to make it easier to
 // iterate through larger genesis structures.
 func (n *Node) initGenesisChunks() error {
