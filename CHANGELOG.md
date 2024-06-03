@@ -3,6 +3,7 @@
 
 ### Bug Fixes
 
+* **bug:** memory leak in websocket handler ([#892](https://github.com/dymensionxyz/dymint/issues/892)) ([02fcbde](https://github.com/dymensionxyz/dymint/commit/48c263fbde71594ec34e0f731d9febc0702fcbde))
 * **bug:** sync from da and p2p when starting a node ([#763](https://github.com/dymensionxyz/dymint/issues/763)) ([68ffd05](https://github.com/dymensionxyz/dymint/commit/68ffd05794949ddc42df1c132d1fde5f21b505f4))
 * **celestia test:** fix race in test ([#755](https://github.com/dymensionxyz/dymint/issues/755)) ([0b36781](https://github.com/dymensionxyz/dymint/commit/0b367818bf6aa8da4a4fd8e4e5c78223b60b44e0))
 * **celestia:** impl retry on submit ([#748](https://github.com/dymensionxyz/dymint/issues/748)) ([61630eb](https://github.com/dymensionxyz/dymint/commit/61630eb458197abe2440a81426210000dff25d40))
