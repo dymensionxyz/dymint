@@ -30,6 +30,14 @@ func WithBatchAcceptanceTimeout(batchAcceptanceTimeout time.Duration) settlement
 	}
 }
 
+// WithBatchAcceptanceAttempts is an option that sets the number of attempts to check if a batch has been accepted by the settlement layer.
+func WithBatchAcceptanceAttempts(batchAcceptanceAttempts uint) settlement.Option {
+	return func(c settlement.ClientI) {
+		dlc, _ := c.(*Client)
+		dlc.batchAcceptanceAttempts = batchAcceptanceAttempts
+	}
+}
+
 // WithRetryMinDelay is an option that sets the retry function mindelay between hub retry attempts.
 func WithRetryMinDelay(retryMinDelay time.Duration) settlement.Option {
 	return func(c settlement.ClientI) {
