@@ -2,6 +2,7 @@ package dymension
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 	"time"
@@ -159,7 +160,7 @@ func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *d
 		err := c.RunWithRetryInfinitely(func() error {
 			err := c.broadcastBatch(msgUpdateState)
 			if err != nil {
-				if strings.Contains(err.Error(), ErrBatchAlreadySubmitted) {
+				if errors.Is(err, gerr.ErrAlreadyExist) {
 					return retry.Unrecoverable(err)
 				}
 
@@ -177,7 +178,7 @@ func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *d
 		})
 		if err != nil {
 			// this could happen if we timed-out waiting for acceptance in the previous iteration, but the batch was indeed submitted
-			if strings.Contains(err.Error(), ErrBatchAlreadySubmitted) {
+			if errors.Is(err, gerr.ErrAlreadyExist) {
 				c.logger.Debug("Batch already accepted", "startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
 				return nil
 			}
@@ -366,8 +367,14 @@ func (c *Client) GetSequencers() ([]*types.Sequencer, error) {
 
 func (c *Client) broadcastBatch(msgUpdateState *rollapptypes.MsgUpdateState) error {
 	txResp, err := c.cosmosClient.BroadcastTx(c.config.DymAccountName, msgUpdateState)
-	if err != nil || txResp.Code != 0 {
+	if err != nil {
+		if strings.Contains(err.Error(), "start-height does not match rollapps state") {
+			err = fmt.Errorf("%w: %w", err, gerr.ErrAlreadyExist)
+		}
 		return fmt.Errorf("broadcast tx: %w", err)
+	}
+	if txResp.Code != 0 {
+		return fmt.Errorf("broadcast tx status code is not 0: %w", gerr.ErrUnknown)
 	}
 	return nil
 }
