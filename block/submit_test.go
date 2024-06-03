@@ -23,6 +23,81 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
+// TestBatchOverhead tests the scenario where we have a single block that is very large, and occupies the entire batch size.
+// This test is to ensure the value of 90% for types.MaxBlockSizeAdjustment is valid
+// 2 use cases:
+// 1. single block with single large tx
+// 2. single block with multiple small tx
+func TestBatchOverhead(t *testing.T) {
+	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, nil, 1, 1, 0, nil, nil)
+	require.NoError(t, err)
+	require.NotNil(t, manager)
+
+	maxBatchSize := uint64(10_000)                                            // 10KB
+	maxTxData := uint64(float64(maxBatchSize) * types.MaxBlockSizeAdjustment) // 90% of maxBatchSize
+
+	// first batch with single block with single large tx
+	var tcases = []struct {
+		name string
+		nTxs int
+	}{
+		{
+			name: "single block with single large tx",
+			nTxs: 1,
+		},
+		{
+			name: "single block with multiple small tx",
+			nTxs: 100,
+		},
+	}
+
+	for _, tcase := range tcases {
+		blocks, err := testutil.GenerateBlocks(1, 1, manager.ProposerKey)
+		require.NoError(t, err)
+		block := blocks[0]
+
+		mallete := func(nTxs int) {
+			txSize := maxTxData / uint64(nTxs)
+
+			block.Data = types.Data{
+				Txs: make(types.Txs, nTxs),
+			}
+
+			for i := 0; i < nTxs; i++ {
+				block.Data.Txs[0] = testutil.GetRandomBytes(txSize)
+			}
+		}
+
+		mallete(tcase.nTxs)
+
+		commits, err := testutil.GenerateCommits(blocks, manager.ProposerKey)
+		require.NoError(t, err)
+		commit := commits[0]
+
+		batch := types.Batch{
+			StartHeight: 1,
+			EndHeight:   1,
+			Blocks:      blocks,
+			Commits:     commits,
+		}
+
+		batchSize := batch.ToProto().Size()
+
+		var blocksize, commitSize int
+		blocksize = block.ToProto().Size()
+		commitSize = commit.ToProto().Size()
+
+		// we assert that the batch size is not larger than the maxBatchSize
+		assert.LessOrEqual(t, batchSize, int(maxBatchSize), tcase.name)
+
+		t.Log("Batch size:", batchSize, "Max batch size:", maxBatchSize, tcase.name)
+		t.Log("Commit size:", commitSize, tcase.name)
+		t.Log("Block size:", blocksize, tcase.name)
+		t.Log("Tx size:", maxTxData, "num of txs:", len(blocks[0].Data.Txs), tcase.name)
+		t.Log("Overhead:", batchSize-int(maxTxData), tcase.name)
+	}
+}
+
 func TestBatchSubmissionHappyFlow(t *testing.T) {
 	require := require.New(t)
 	app := testutil.GetAppMock()

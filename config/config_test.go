@@ -193,7 +193,7 @@ func fullNodeConfig() config.NodeConfig {
 			BatchSubmitMaxTime:     20 * time.Second,
 			MaxSupportedBatchSkew:  10,
 			NamespaceID:            "test",
-			BlockBatchMaxSizeBytes: 1,
+			BlockBatchMaxSizeBytes: 10000,
 		},
 		DALayer:         "celestia",
 		DAConfig:        "da-config",
