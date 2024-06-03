@@ -368,7 +368,7 @@ func (c *Client) GetSequencers() ([]*types.Sequencer, error) {
 func (c *Client) broadcastBatch(msgUpdateState *rollapptypes.MsgUpdateState) error {
 	txResp, err := c.cosmosClient.BroadcastTx(c.config.DymAccountName, msgUpdateState)
 	if err != nil {
-		if strings.Contains(err.Error(), "start-height does not match rollapps state") {
+		if strings.Contains(err.Error(), rollapptypes.ErrWrongBlockHeight.Error()) {
 			err = fmt.Errorf("%w: %w", err, gerr.ErrAlreadyExist)
 		}
 		return fmt.Errorf("broadcast tx: %w", err)
