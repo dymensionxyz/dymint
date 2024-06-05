@@ -69,6 +69,8 @@ type Client struct {
 	localPubsubServer *tmpubsub.Server
 
 	logger types.Logger
+
+	blocksync *BlockSync
 }
 
 // NewClient creates new Client object.
@@ -133,6 +135,11 @@ func (c *Client) StartWithHost(ctx context.Context, h host.Host) error {
 		return err
 	}
 
+	c.logger.Debug("Setting up block sync protocol")
+	err = c.setupBlockSync(ctx)
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -163,6 +170,11 @@ func (c *Client) SetTxValidator(val GossipValidator) {
 func (c *Client) GossipBlock(ctx context.Context, blockBytes []byte) error {
 	c.logger.Debug("Gossiping block.", "len", len(blockBytes))
 	return c.blockGossiper.Publish(ctx, blockBytes)
+}
+
+// GossipBlock sends the block, and it's commit to the P2P network.
+func (c *Client) AddBlock(ctx context.Context, blockBytes []byte) error {
+	return c.blocksync.AddBlock(ctx, blockBytes)
 }
 
 // SetBlockValidator sets the callback function, that will be invoked after block is received from P2P network.
@@ -289,6 +301,16 @@ func (c *Client) setupPeerDiscovery(ctx context.Context) error {
 	case <-c.DHT.RefreshRoutingTable():
 	}
 	c.disc = discovery.NewRoutingDiscovery(c.DHT)
+	return nil
+}
+
+func (c *Client) setupBlockSync(ctx context.Context) error {
+	// wait for DHT
+	blocksync, err := StartBlockSync(ctx, c.Host)
+	if err != nil {
+		return fmt.Errorf("StartBlockSync: %w", err)
+	}
+	c.blocksync = blocksync
 	return nil
 }
 
