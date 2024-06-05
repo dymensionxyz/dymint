@@ -71,6 +71,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int)
 			}
 
 			bytesProducedN := block.SizeBytes() + commit.SizeBytes()
+			m.logger.Info("New block.", "size", uint64(block.ToProto().Size()))
 			select {
 			case <-ctx.Done():
 				return nil

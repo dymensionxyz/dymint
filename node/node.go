@@ -237,6 +237,24 @@ func (n *Node) OnStart() error {
 		return fmt.Errorf("while starting block manager: %w", err)
 	}
 
+	state, err := n.BlockManager.Store.LoadState()
+	if err != nil {
+		return fmt.Errorf("getting block store height: %w", err)
+	}
+	for h := uint64(1); h < state.NextHeight(); h++ {
+		block, err := n.Store.LoadBlock(h)
+		if err != nil {
+			n.Logger.Debug("Block not found %d: err:%w\n", h, err)
+			continue
+		}
+		blockBytes, err := block.MarshalBinary()
+		if err != nil {
+			n.Logger.Debug("block marshal %d\n", h)
+			continue
+		}
+		n.Logger.Debug("Adding block to blockstore.", "len", len(blockBytes), "height", h)
+		n.P2P.AddBlock(n.ctx, blockBytes)
+	}
 	return nil
 }
 
