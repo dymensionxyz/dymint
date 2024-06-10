@@ -26,7 +26,6 @@ require (
 	github.com/ignite/cli v0.26.1
 	github.com/informalsystems/tm-load-test v1.3.0
 	github.com/ipfs/boxo v0.18.0
-	github.com/ipfs/go-block-format v0.2.0
 	github.com/libp2p/go-libp2p v0.33.1
 	github.com/libp2p/go-libp2p-kad-dht v0.25.2
 	github.com/libp2p/go-libp2p-pubsub v0.9.3
@@ -44,6 +43,8 @@ require (
 	google.golang.org/grpc v1.64.0
 	google.golang.org/protobuf v1.33.0
 )
+
+require github.com/ipfs/go-block-format v0.2.0 // indirect
 
 require (
 	filippo.io/edwards25519 v1.0.0-rc.1 // indirect
@@ -201,8 +202,8 @@ require (
 	github.com/multiformats/go-multiaddr-dns v0.3.1 // indirect
 	github.com/multiformats/go-multiaddr-fmt v0.1.0 // indirect
 	github.com/multiformats/go-multibase v0.2.0 // indirect
-	github.com/multiformats/go-multicodec v0.9.0
-	github.com/multiformats/go-multihash v0.2.3 // indirect
+	github.com/multiformats/go-multicodec v0.9.0 // indirect
+	github.com/multiformats/go-multihash v0.2.3
 	github.com/multiformats/go-multistream v0.5.0 // indirect
 	github.com/multiformats/go-varint v0.0.7 // indirect
 	github.com/opencontainers/runtime-spec v1.2.0 // indirect
@@ -250,7 +251,6 @@ require (
 	github.com/DataDog/zstd v1.5.2 // indirect
 	github.com/Jorropo/jsync v1.0.1 // indirect
 	github.com/agl/ed25519 v0.0.0-20170116200512-5312a6153412 // indirect
-	github.com/alecthomas/units v0.0.0-20231202071711-9a357b53e9c9 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/btcsuite/btcd/btcutil v1.1.3 // indirect
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
@@ -267,11 +267,11 @@ require (
 	github.com/gopherjs/gopherjs v0.0.0-20190812055157-5d271430af9f // indirect
 	github.com/holiman/uint256 v1.2.2 // indirect
 	github.com/ipfs/bbloom v0.0.4 // indirect
-	github.com/ipfs/go-bitfield v1.1.0 // indirect
+	github.com/ipfs/go-ds-leveldb v0.5.0
 	github.com/ipfs/go-ipfs-delay v0.0.1 // indirect
 	github.com/ipfs/go-ipfs-pq v0.0.3 // indirect
 	github.com/ipfs/go-ipfs-util v0.0.3 // indirect
-	github.com/ipfs/go-ipld-format v0.6.0 // indirect
+	github.com/ipfs/go-ipld-format v0.6.0
 	github.com/ipfs/go-ipld-legacy v0.2.1 // indirect
 	github.com/ipfs/go-metrics-interface v0.0.1 // indirect
 	github.com/ipfs/go-peertaskqueue v0.8.1 // indirect
@@ -293,7 +293,7 @@ replace (
 	github.com/evmos/evmos/v12 => github.com/dymensionxyz/evmos/v12 v12.1.6-dymension-v0.3
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.2-alpha.regen.4
 	github.com/gorilla/rpc => github.com/dymensionxyz/rpc v1.3.1
-	github.com/ipfs/boxo => ../../boxo
+	//github.com/ipfs/boxo => ../../boxo
 	github.com/libp2p/go-libp2p-pubsub => github.com/dymensionxyz/go-libp2p-pubsub v0.0.0-20240513081713-3ecd83c19ea2
 	github.com/tendermint/tendermint => github.com/cometbft/cometbft v0.34.28
 )

@@ -51,5 +51,11 @@ func (m *Manager) gossipBlock(ctx context.Context, block types.Block, commit typ
 		// could cause that to fail, so we assume recoverable.
 		return fmt.Errorf("p2p gossip block: %w: %w", err, ErrRecoverable)
 	}
+
+	_, err = m.p2pClient.AddBlock(ctx, block.Header.Height, gossipedBlockBytes)
+	if err != nil {
+		return fmt.Errorf("adding block to p2p store: %w", err)
+	}
+
 	return nil
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/dymensionxyz/dymint/block"
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/settlement"
+	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p/core/crypto"
 
 	"github.com/tendermint/tendermint/libs/log"
@@ -94,7 +95,7 @@ func GetManagerWithProposerKey(conf config.BlockManagerConfig, proposerKey crypt
 	p2pClient, err := p2p.NewClient(config.P2PConfig{
 		GossipSubCacheSize: 50,
 		BootstrapRetryTime: 30 * time.Second,
-	}, p2pKey, "TestChain", pubsubServer, logger)
+	}, p2pKey, "TestChain", pubsubServer, datastore.NewMapDatastore(), logger)
 	if err != nil {
 		return nil, err
 	}

@@ -4,10 +4,12 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
+	leveldb "github.com/ipfs/go-ds-leveldb"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
@@ -155,8 +157,12 @@ func NewNode(
 
 	// Set p2p client and it's validators
 	p2pValidator := p2p.NewValidator(logger.With("module", "p2p_validator"), settlementlc)
-
-	p2pClient, err := p2p.NewClient(conf.P2PConfig, p2pKey, genesis.ChainID, pubsubServer, logger.With("module", "p2p"))
+	path := filepath.Join(store.Rootify(conf.RootDir, conf.DBPath), "p2p")
+	dstore, err := leveldb.NewDatastore(path, &leveldb.Options{})
+	if err != nil {
+		return nil, err
+	}
+	p2pClient, err := p2p.NewClient(conf.P2PConfig, p2pKey, genesis.ChainID, pubsubServer, dstore, logger.With("module", "p2p"))
 	if err != nil {
 		return nil, err
 	}
@@ -239,61 +245,6 @@ func (n *Node) OnStart() error {
 		return fmt.Errorf("while starting block manager: %w", err)
 	}
 
-	state, err := n.BlockManager.Store.LoadState()
-	if err != nil {
-		return fmt.Errorf("getting block store height: %w", err)
-	}
-	if n.BlockManager.IsSequencer() {
-		for h := uint64(1); h < state.NextHeight(); h++ {
-			block, err := n.Store.LoadBlock(h)
-			if err != nil {
-				n.Logger.Debug("Block not found %d: err:%w\n", h, err)
-				continue
-			}
-			blockBytes, err := block.MarshalBinary()
-			if err != nil {
-				n.Logger.Error("DHT marshal error", "err", err)
-				continue
-			}
-			cid, err := n.P2P.AddBlock(n.ctx, h, blockBytes)
-			if err != nil {
-				n.Logger.Error("DHT add block error", "err", err)
-				continue
-			}
-			time.Sleep(1 * time.Second)
-
-			/*blockBytes, _ = createFile0to100k()
-			fmt.Println("Sent", string(blockBytes))
-			cid, err := n.P2P.AddBlock(n.ctx, blockBytes)
-			if err != nil {
-				n.Logger.Debug("add block error %d\n", err)
-				continue
-			}*/
-			n.Logger.Info("Adding block to blockstore.", "len", len(blockBytes), "height", h, "cid", cid, "len", len(blockBytes))
-			err = n.P2P.DHT.PutValue(n.ctx, "/block/"+strconv.FormatUint(h, 10), []byte(cid.String()))
-			fmt.Println("Cid bytes", []byte(cid.String()))
-			if err != nil {
-				n.Logger.Error("DHT put error", "err", err)
-				continue
-			}
-		}
-	} else {
-		for {
-			cidBytes, err := n.P2P.DHT.GetValue(n.ctx, "/block/"+strconv.FormatUint(10, 10))
-			if err != nil {
-				n.Logger.Error("getvalue error", "err", err)
-				continue
-			}
-			fmt.Println("DHT cid bytes", string(cidBytes))
-			file, err := n.P2P.GetBlock(n.ctx, string(cidBytes))
-			if err != nil {
-				n.Logger.Error("getblock error", "err", err)
-			}
-			n.Logger.Info("Block received", "len", len(file))
-			fmt.Println("received", string(file))
-			time.Sleep(time.Second * 1)
-		}
-	}
 	return nil
 }
 

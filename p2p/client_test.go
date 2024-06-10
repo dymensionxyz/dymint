@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multiaddr"
@@ -30,7 +31,7 @@ func TestClientStartup(t *testing.T) {
 		ListenAddress:      config.DefaultListenAddress,
 		GossipSubCacheSize: 50,
 		BootstrapRetryTime: 30 * time.Second,
-	}, privKey, "TestChain", pubsubServer, log.TestingLogger())
+	}, privKey, "TestChain", pubsubServer, datastore.NewMapDatastore(), log.TestingLogger())
 	assert := assert.New(t)
 	assert.NoError(err)
 	assert.NotNil(client)
@@ -181,7 +182,7 @@ func TestSeedStringParsing(t *testing.T) {
 			client, err := p2p.NewClient(config.P2PConfig{
 				GossipSubCacheSize: 50,
 				BootstrapRetryTime: 30 * time.Second,
-			}, privKey, "TestNetwork", pubsubServer, logger)
+			}, privKey, "TestNetwork", pubsubServer, datastore.NewMapDatastore(), logger)
 			require.NoError(err)
 			require.NotNil(client)
 			actual := client.GetSeedAddrInfo(c.input)
