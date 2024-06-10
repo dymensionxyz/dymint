@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ipfs/go-cid"
 	"github.com/libp2p/go-libp2p"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -173,8 +174,29 @@ func (c *Client) GossipBlock(ctx context.Context, blockBytes []byte) error {
 }
 
 // GossipBlock sends the block, and it's commit to the P2P network.
-func (c *Client) AddBlock(ctx context.Context, blockBytes []byte) error {
-	return c.blocksync.AddBlock(ctx, blockBytes)
+func (c *Client) AddBlock(ctx context.Context, height uint64, blockBytes []byte) (cid.Cid, error) {
+	return c.blocksync.AddBlock(ctx, height, blockBytes)
+}
+
+func (c *Client) GetBlock(ctx context.Context, blockId string) ([]byte, error) {
+	return c.blocksync.GetBlock(ctx, blockId)
+	/*b, err := c.blocksync.GetBlock(ctx, cid)
+	if err != nil {
+		return nil, err
+	}
+
+	return b.RawData(), nil*/
+}
+
+// GossipBlock sends the block, and it's commit to the P2P network.
+func (c *Client) GetFile(ctx context.Context, cid cid.Cid) ([]byte, error) {
+	return c.blocksync.GetFile(ctx, cid)
+	/*b, err := c.blocksync.GetBlock(ctx, cid)
+	if err != nil {
+		return nil, err
+	}
+
+	return b.RawData(), nil*/
 }
 
 // SetBlockValidator sets the callback function, that will be invoked after block is received from P2P network.
@@ -255,7 +277,10 @@ func (c *Client) setupDHT(ctx context.Context) error {
 	}
 
 	var err error
-	c.DHT, err = dht.New(ctx, c.Host, dht.Mode(dht.ModeServer), dht.BootstrapPeers(bootstrapNodes...))
+
+	val := dht.NamespacedValidator("block", blankValidator{})
+
+	c.DHT, err = dht.New(ctx, c.Host, dht.Mode(dht.ModeServer), dht.ProtocolPrefix("block"), val, dht.BootstrapPeers(bootstrapNodes...))
 	if err != nil {
 		return fmt.Errorf("create DHT: %w", err)
 	}
@@ -460,3 +485,8 @@ func (c *Client) findConnection(peer peer.AddrInfo) bool {
 	}
 	return false
 }
+
+type blankValidator struct{}
+
+func (blankValidator) Validate(_ string, _ []byte) error        { return nil }
+func (blankValidator) Select(_ string, _ [][]byte) (int, error) { return 0, nil }

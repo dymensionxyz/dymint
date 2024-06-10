@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -241,19 +243,56 @@ func (n *Node) OnStart() error {
 	if err != nil {
 		return fmt.Errorf("getting block store height: %w", err)
 	}
-	for h := uint64(1); h < state.NextHeight(); h++ {
-		block, err := n.Store.LoadBlock(h)
-		if err != nil {
-			n.Logger.Debug("Block not found %d: err:%w\n", h, err)
-			continue
+	if n.BlockManager.IsSequencer() {
+		for h := uint64(1); h < state.NextHeight(); h++ {
+			block, err := n.Store.LoadBlock(h)
+			if err != nil {
+				n.Logger.Debug("Block not found %d: err:%w\n", h, err)
+				continue
+			}
+			blockBytes, err := block.MarshalBinary()
+			if err != nil {
+				n.Logger.Error("DHT marshal error", "err", err)
+				continue
+			}
+			cid, err := n.P2P.AddBlock(n.ctx, h, blockBytes)
+			if err != nil {
+				n.Logger.Error("DHT add block error", "err", err)
+				continue
+			}
+			time.Sleep(1 * time.Second)
+
+			/*blockBytes, _ = createFile0to100k()
+			fmt.Println("Sent", string(blockBytes))
+			cid, err := n.P2P.AddBlock(n.ctx, blockBytes)
+			if err != nil {
+				n.Logger.Debug("add block error %d\n", err)
+				continue
+			}*/
+			n.Logger.Info("Adding block to blockstore.", "len", len(blockBytes), "height", h, "cid", cid, "len", len(blockBytes))
+			err = n.P2P.DHT.PutValue(n.ctx, "/block/"+strconv.FormatUint(h, 10), []byte(cid.String()))
+			fmt.Println("Cid bytes", []byte(cid.String()))
+			if err != nil {
+				n.Logger.Error("DHT put error", "err", err)
+				continue
+			}
 		}
-		blockBytes, err := block.MarshalBinary()
-		if err != nil {
-			n.Logger.Debug("block marshal %d\n", h)
-			continue
+	} else {
+		for {
+			cidBytes, err := n.P2P.DHT.GetValue(n.ctx, "/block/"+strconv.FormatUint(10, 10))
+			if err != nil {
+				n.Logger.Error("getvalue error", "err", err)
+				continue
+			}
+			fmt.Println("DHT cid bytes", string(cidBytes))
+			file, err := n.P2P.GetBlock(n.ctx, string(cidBytes))
+			if err != nil {
+				n.Logger.Error("getblock error", "err", err)
+			}
+			n.Logger.Info("Block received", "len", len(file))
+			fmt.Println("received", string(file))
+			time.Sleep(time.Second * 1)
 		}
-		n.Logger.Debug("Adding block to blockstore.", "len", len(blockBytes), "height", h)
-		n.P2P.AddBlock(n.ctx, blockBytes)
 	}
 	return nil
 }
@@ -366,4 +405,17 @@ func (n *Node) startPrometheusServer() error {
 
 func (n *Node) GetBlockManagerHeight() uint64 {
 	return n.BlockManager.State.Height()
+}
+
+// createFile0to100k creates a file with the number 0 to 100k
+func createFile0to100k() ([]byte, error) {
+	b := strings.Builder{}
+	for i := 0; i <= 10000; i++ {
+		s := strconv.Itoa(i)
+		_, err := b.WriteString(s)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return []byte(b.String()), nil
 }
