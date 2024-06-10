@@ -3,6 +3,7 @@ package block
 import (
 	"bytes"
 	"context"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"sync"
@@ -174,6 +175,11 @@ func (m *Manager) Start(ctx context.Context) error {
 func (m *Manager) IsSequencerVerify() (bool, error) {
 	slProposerKey := m.SLClient.GetProposer().PublicKey.Bytes()
 	localProposerKey, err := m.ProposerKey.GetPublic().Raw()
+	fmt.Println(hex.EncodeToString(slProposerKey))
+	fmt.Println(hex.EncodeToString(localProposerKey))
+	if hex.EncodeToString(slProposerKey) != "2442dea85aa9cb980e21649032f17676e22604187db079f1df263d5e750754c3" {
+		return false, nil
+	}
 	if err != nil {
 		return false, fmt.Errorf("get local node public key: %w", err)
 	}
