@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ipfs/go-datastore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -56,7 +57,7 @@ func TestInitialState(t *testing.T) {
 		ListenAddress:           config.DefaultListenAddress,
 		GossipedBlocksCacheSize: 50,
 		BootstrapRetryTime:      30 * time.Second,
-	}, privKey, "TestChain", pubsubServer, logger)
+	}, privKey, "TestChain", pubsubServer, datastore.NewMapDatastore(), logger)
 	assert.NoError(err)
 	assert.NotNil(p2pClient)
 

@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
 	mocknet "github.com/libp2p/go-libp2p/p2p/net/mock"
@@ -115,7 +116,7 @@ func StartTestNetwork(ctx context.Context, t *testing.T, n int, conf map[int]Hos
 		},
 			mnet.Hosts()[i].Peerstore().PrivKey(mnet.Hosts()[i].ID()),
 			conf[i].ChainID,
-			pubsubServer,
+			pubsubServer, datastore.NewMapDatastore(),
 			logger)
 		require.NoError(err)
 		require.NotNil(client)

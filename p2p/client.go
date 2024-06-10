@@ -4,10 +4,12 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -72,13 +74,15 @@ type Client struct {
 	logger types.Logger
 
 	blocksync *BlockSync
+
+	store datastore.Datastore
 }
 
 // NewClient creates new Client object.
 //
 // Basic checks on parameters are done, and default parameters are provided for unset-configuration
 // TODO(tzdybal): consider passing entire config, not just P2P config, to reduce number of arguments
-func NewClient(conf config.P2PConfig, privKey crypto.PrivKey, chainID string, localPubsubServer *tmpubsub.Server, logger types.Logger) (*Client, error) {
+func NewClient(conf config.P2PConfig, privKey crypto.PrivKey, chainID string, localPubsubServer *tmpubsub.Server, store datastore.Datastore, logger types.Logger) (*Client, error) {
 	if privKey == nil {
 		return nil, errNoPrivKey
 	}
@@ -92,6 +96,7 @@ func NewClient(conf config.P2PConfig, privKey crypto.PrivKey, chainID string, lo
 		chainID:           chainID,
 		logger:            logger,
 		localPubsubServer: localPubsubServer,
+		store:             store,
 	}, nil
 }
 
@@ -175,28 +180,18 @@ func (c *Client) GossipBlock(ctx context.Context, blockBytes []byte) error {
 
 // GossipBlock sends the block, and it's commit to the P2P network.
 func (c *Client) AddBlock(ctx context.Context, height uint64, blockBytes []byte) (cid.Cid, error) {
-	return c.blocksync.AddBlock(ctx, height, blockBytes)
+	cid, err := c.blocksync.AddBlock(ctx, height, blockBytes)
+	if err == nil {
+		putError := c.DHT.PutValue(ctx, "/block/"+strconv.FormatUint(height, 10), []byte(cid.String()))
+		if putError != nil {
+			c.logger.Error("DHT put error", "err", putError)
+		}
+	}
+	return cid, err
 }
 
 func (c *Client) GetBlock(ctx context.Context, blockId string) ([]byte, error) {
 	return c.blocksync.GetBlock(ctx, blockId)
-	/*b, err := c.blocksync.GetBlock(ctx, cid)
-	if err != nil {
-		return nil, err
-	}
-
-	return b.RawData(), nil*/
-}
-
-// GossipBlock sends the block, and it's commit to the P2P network.
-func (c *Client) GetFile(ctx context.Context, cid cid.Cid) ([]byte, error) {
-	return c.blocksync.GetFile(ctx, cid)
-	/*b, err := c.blocksync.GetBlock(ctx, cid)
-	if err != nil {
-		return nil, err
-	}
-
-	return b.RawData(), nil*/
 }
 
 // SetBlockValidator sets the callback function, that will be invoked after block is received from P2P network.
@@ -331,7 +326,7 @@ func (c *Client) setupPeerDiscovery(ctx context.Context) error {
 
 func (c *Client) setupBlockSync(ctx context.Context) error {
 	// wait for DHT
-	blocksync, err := StartBlockSync(ctx, c.Host)
+	blocksync, err := StartBlockSync(ctx, c.Host, c.store, c.logger)
 	if err != nil {
 		return fmt.Errorf("StartBlockSync: %w", err)
 	}
