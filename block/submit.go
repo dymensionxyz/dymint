@@ -24,16 +24,10 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 	maxSizeC := make(chan struct{}, m.Conf.MaxSupportedBatchSkew)
 	go m.AccumulatedDataLoop(ctx, maxSizeC)
 
-	// defer func to clear the channels to release blocked goroutines on shutdown
+	// defer func to close the channels to release blocked goroutines on shutdown
 	defer func() {
-		for {
-			select {
-			case <-m.producedSizeCh:
-			case <-maxSizeC:
-			default:
-				return
-			}
-		}
+		close(m.producedSizeCh)
+		close(maxSizeC)
 	}()
 
 	for {
@@ -45,7 +39,7 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 		}
 
 		/*
-			Note: since we dont explicitly coordinate changes to the accumulated size with actual batch creation
+			Note: since we don't explicitly coordinate changes to the accumulated size with actual batch creation
 			we don't have a guarantee that the accumulated size is the same as the actual batch size that will be made.
 			But the batch creation step will also check the size is OK, so it's not a problem.
 		*/
@@ -53,9 +47,9 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 
 		// modular submission methods have own retries mechanism.
 		// if error returned, we assume it's unrecoverable.
-		err := m.HandleSubmissionTrigger()
+		err := m.HandleSubmissionTrigger(ctx)
 		if err != nil {
-			panic(fmt.Errorf("handle submission trigger: %w", err))
+			m.logger.Error(fmt.Errorf("handle submission trigger: %w", err).Error())
 		}
 		maxTime.Reset(m.Conf.BatchSubmitMaxTime)
 	}
@@ -108,9 +102,16 @@ func (m *Manager) AccumulatedDataLoop(ctx context.Context, toSubmit chan struct{
 // If there are, it attempts to submit a batch of blocks. It then attempts to produce an empty block to ensure IBC messages
 // pass through during the batch submission process due to proofs requires for ibc messages only exist on the next block.
 // Finally, it submits the next batch of blocks and updates the sync target to the height of the last block in the submitted batch.
-func (m *Manager) HandleSubmissionTrigger() error {
+func (m *Manager) HandleSubmissionTrigger(ctx context.Context) (err error) {
+	defer func() {
+		// recover from panic, emit health status event and return the error
+		if r := recover(); r != nil {
+			m.logger.Error(fmt.Errorf("handle submission trigger: %v", r).Error())
+			err, _ = r.(error)
+		}
+		uevent.MustPublish(ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
+	}()
 	// Load current sync target and height to determine if new blocks are available for submission.
-
 	startHeight := m.NextHeightToSubmit()
 	endHeightInclusive := m.State.Height()
 
@@ -120,7 +121,8 @@ func (m *Manager) HandleSubmissionTrigger() error {
 
 	nextBatch, err := m.CreateNextBatchToSubmit(startHeight, endHeightInclusive)
 	if err != nil {
-		return fmt.Errorf("create next batch to submit: %w", err)
+		// if next batch creation fails, we should panic as it's probably unrecoverable.
+		panic(fmt.Errorf("create next batch to submit: %w", err))
 	}
 
 	resultSubmitToDA := m.DAClient.SubmitBatch(nextBatch)

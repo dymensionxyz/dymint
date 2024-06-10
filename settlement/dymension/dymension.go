@@ -26,11 +26,12 @@ import (
 
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	sequencertypes "github.com/dymensionxyz/dymension/v3/x/sequencer/types"
+	"github.com/tendermint/tendermint/libs/pubsub"
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
-	"github.com/tendermint/tendermint/libs/pubsub"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 )
 
 const (
@@ -397,16 +398,16 @@ func (c *Client) eventHandler() {
 			panic("Settlement WS disconnected")
 		case event := <-eventsChannel:
 			// Assert value is in map and publish it to the event bus
-			_, ok := c.eventMap[event.Query]
+			data, ok := c.eventMap[event.Query]
 			if !ok {
 				c.logger.Debug("Ignoring event. Type not supported", "event", event)
 				continue
 			}
-			eventData, err := c.getEventData(c.eventMap[event.Query], event)
+			eventData, err := c.getEventData(data, event)
 			if err != nil {
 				panic(err)
 			}
-			uevent.MustPublish(c.ctx, c.pubsub, eventData, map[string][]string{settlement.EventTypeKey: {c.eventMap[event.Query]}})
+			uevent.MustPublish(c.ctx, c.pubsub, eventData, map[string][]string{settlement.EventTypeKey: {data}})
 		}
 	}
 }
