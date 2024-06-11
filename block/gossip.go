@@ -28,6 +28,8 @@ func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
 
 	m.logger.Debug("Received new block via gossip.", "block height", height, "store height", m.State.Height(), "n cachedBlocks", m.blockCache.Size())
 
+	m.p2pClient.SetLatestHeight(block.Header.Height)
+
 	nextHeight := m.State.NextHeight()
 	if height >= nextHeight {
 		m.blockCache.AddBlockToCache(height, &block, &commit)

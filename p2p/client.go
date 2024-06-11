@@ -87,6 +87,8 @@ type Client struct {
 	store datastore.Datastore
 
 	status StatusCode
+
+	latestKnownHeight uint64
 }
 
 // NewClient creates new Client object.
@@ -109,6 +111,7 @@ func NewClient(conf config.P2PConfig, privKey crypto.PrivKey, chainID string, lo
 		localPubsubServer: localPubsubServer,
 		store:             store,
 		status:            StatusBootstrapping,
+		latestKnownHeight: uint64(0),
 	}, nil
 }
 
@@ -132,6 +135,7 @@ func (c *Client) Start(ctx context.Context) error {
 
 func (c *Client) StartWithHost(ctx context.Context, h host.Host) error {
 	c.Host = h
+	c.UpdateStatus(StatusBootstrapping)
 	for _, a := range c.Host.Addrs() {
 		c.logger.Info("Listening on:", "address", fmt.Sprintf("%s/p2p/%s", a, c.Host.ID()))
 	}
@@ -472,6 +476,10 @@ func (c *Client) bootstrapLoop(ctx context.Context) {
 				if err != nil {
 					c.logger.Error("Re-bootstrap DHT: %w", err)
 				}
+			} else {
+				if c.GetStatus() == StatusBootstrapping {
+					c.UpdateStatus(StatusNotSynced)
+				}
 			}
 			persistentNodes := c.GetSeedAddrInfo(c.conf.PersistentNodes)
 			for _, peer := range persistentNodes {
@@ -498,12 +506,27 @@ func (c *Client) GetStatus() StatusCode {
 
 func (c *Client) UpdateStatus(status StatusCode) {
 
+	if c.status == status {
+		return
+	}
 	c.status = status
-	switch status {
+
+	switch c.status {
 	case StatusBootstrapping:
+		c.logger.Debug("Node bootstrapping.", "nodes", c.GetSeedAddrInfo(c.conf.BootstrapNodes))
 	case StatusNotSynced:
+		c.logger.Debug("Node syncing ", "height", c.latestKnownHeight)
 	case StatusSynced:
+		c.logger.Debug("Node synced ", "height", c.latestKnownHeight)
 	default:
+		c.logger.Error("Syncing status not known.")
+	}
+
+}
+
+func (c *Client) SetLatestHeight(height uint64) {
+	if height > c.latestKnownHeight {
+		c.latestKnownHeight = height
 	}
 }
 
