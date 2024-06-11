@@ -24,10 +24,16 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 	maxSizeC := make(chan struct{}, m.Conf.MaxSupportedBatchSkew)
 	go m.AccumulatedDataLoop(ctx, maxSizeC)
 
-	// defer func to close the channels to release blocked goroutines on shutdown
+	// defer func to clear the channels to release blocked goroutines on shutdown
 	defer func() {
-		close(m.producedSizeCh)
-		close(maxSizeC)
+		for {
+			select {
+			case <-m.producedSizeCh:
+			case <-maxSizeC:
+			default:
+				return
+			}
+		}
 		// recover from panic, emit health status event and return the error
 		var err error
 		if r := recover(); r != nil {
