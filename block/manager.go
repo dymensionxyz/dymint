@@ -210,6 +210,7 @@ func (m *Manager) syncBlockManager() error {
 	}
 	m.LastSubmittedHeight.Store(res.EndHeight)
 	err = m.syncToTargetHeight(res.EndHeight)
+	m.p2pClient.SetLatestHeight(res.EndHeight)
 	if err != nil {
 		return err
 	}
