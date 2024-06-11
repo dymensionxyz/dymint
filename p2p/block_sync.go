@@ -18,9 +18,7 @@ import (
 	"github.com/ipfs/boxo/bitswap/server"
 	"github.com/ipfs/boxo/blockservice"
 	"github.com/ipfs/boxo/blockstore"
-	"github.com/ipfs/boxo/ipld/merkledag"
 	"github.com/ipfs/go-cid"
-	ipld "github.com/ipfs/go-ipld-format"
 	routinghelpers "github.com/libp2p/go-libp2p-routing-helpers"
 	"github.com/libp2p/go-libp2p/core/host"
 )
@@ -30,7 +28,7 @@ type BlockSync struct {
 	bstore     blockstore.Blockstore
 	net        network.BitSwapNetwork
 	session    blockservice.Session
-	dsrv       ipld.DAGService
+	dsrv       BlockSyncDagService
 	cidBuilder cid.Builder
 	logger     types.Logger
 }
@@ -79,7 +77,7 @@ func StartBlockSync(ctx context.Context, h host.Host, store datastore.Datastore,
 		bsrv:   bsrv,
 		net:    net,
 		bstore: bs,
-		dsrv:   merkledag.NewDAGService(bsrv),
+		dsrv:   NewDAGService(bsrv),
 
 		cidBuilder: &cid.Prefix{
 			Codec:    cid.DagProtobuf,
@@ -138,23 +136,16 @@ func (blocksync *BlockSync) AddBlock(ctx context.Context, height uint64, block [
 
 }
 
-func (blocksync *BlockSync) GetBlock(ctx context.Context, blockId string) ([]byte, error) {
-
-	cid := cid.MustParse(blockId)
-	nd, err := blocksync.dsrv.Get(ctx, cid)
-	//nd, err := dserv.Get(ctx, cid)
-	if err != nil {
-		return nil, err
-	}
-
-	read, err := dagReader(nd, blocksync.dsrv)
-	if err != nil {
-		return nil, err
-	}
-	datagot, err := io.ReadAll(read)
-	if err != nil {
-		return nil, err
-	}
-	return datagot, nil
-	//return blocksync.bstore.Get(ctx, block)
+func (blocksync *BlockSync) GetBlock(ctx context.Context, blockId string, response chan GossipedBlock) {
+	go func() {
+		blockBytes, err := blocksync.dsrv.GetBlock(ctx, blockId)
+		if err != nil {
+			blocksync.logger.Error("GetBlock", "err", err)
+		}
+		var gossipedBlock GossipedBlock
+		if err := gossipedBlock.UnmarshalBinary(blockBytes); err != nil {
+			blocksync.logger.Error("Deserialize gossiped block", "error", err)
+		}
+		response <- gossipedBlock
+	}()
 }

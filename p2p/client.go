@@ -207,10 +207,6 @@ func (c *Client) AddBlock(ctx context.Context, height uint64, blockBytes []byte)
 	return cid, err
 }
 
-func (c *Client) GetBlock(ctx context.Context, blockId string) ([]byte, error) {
-	return c.blocksync.GetBlock(ctx, blockId)
-}
-
 // SetBlockValidator sets the callback function, that will be invoked after block is received from P2P network.
 func (c *Client) SetBlockValidator(validator GossipValidator) {
 	c.blockValidator = validator
