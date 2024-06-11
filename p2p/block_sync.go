@@ -3,7 +3,6 @@ package p2p
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"io"
 
 	"github.com/dymensionxyz/dymint/types"
@@ -158,30 +157,4 @@ func (blocksync *BlockSync) GetBlock(ctx context.Context, blockId string) ([]byt
 	}
 	return datagot, nil
 	//return blocksync.bstore.Get(ctx, block)
-}
-
-// makeTestDAGReader takes the root node as returned by makeTestDAG and
-// provides a reader that reads all the RawData from that node and its children.
-func dagReader(root ipld.Node, ds ipld.DAGService) (io.Reader, error) {
-	ctx := context.Background()
-	buf := new(bytes.Buffer)
-	fmt.Println("Reading ", string(root.RawData()))
-	//buf.Write(root.RawData())
-	for _, l := range root.Links() {
-		n, err := ds.Get(ctx, l.Cid)
-		if err != nil {
-			return nil, err
-		}
-		rawdata, ok := n.(*dag.ProtoNode)
-		if !ok {
-			return nil, err
-		}
-		fmt.Println("Reading ", string(rawdata.Data()))
-
-		_, err = buf.Write(rawdata.Data())
-		if err != nil {
-			return nil, err
-		}
-	}
-	return buf, nil
 }
