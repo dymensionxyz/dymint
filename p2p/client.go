@@ -30,6 +30,8 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
+type StatusCode uint64
+
 // TODO(tzdybal): refactor to configuration parameters
 const (
 	// reAdvertisePeriod defines a period after which P2P client re-attempt advertising namespace in DHT.
@@ -43,6 +45,13 @@ const (
 
 	// blockTopicSuffix is added after namespace to create pubsub topic for block gossiping.
 	blockTopicSuffix = "-block"
+)
+
+// Data Availability return codes.
+const (
+	StatusBootstrapping StatusCode = iota
+	StatusNotSynced
+	StatusSynced
 )
 
 // Client is a P2P client, implemented with libp2p.
@@ -76,6 +85,8 @@ type Client struct {
 	blocksync *BlockSync
 
 	store datastore.Datastore
+
+	status StatusCode
 }
 
 // NewClient creates new Client object.
@@ -97,6 +108,7 @@ func NewClient(conf config.P2PConfig, privKey crypto.PrivKey, chainID string, lo
 		logger:            logger,
 		localPubsubServer: localPubsubServer,
 		store:             store,
+		status:            StatusBootstrapping,
 	}, nil
 }
 
@@ -111,6 +123,7 @@ func (c *Client) Start(ctx context.Context) error {
 	// create new, cancelable context
 	ctx, c.cancel = context.WithCancel(ctx)
 	host, err := c.listen()
+	host.ConnManager().Notifee()
 	if err != nil {
 		return err
 	}
@@ -479,6 +492,19 @@ func (c *Client) findConnection(peer peer.AddrInfo) bool {
 		}
 	}
 	return false
+func (c *Client) GetStatus() StatusCode {
+	return c.status
+}
+
+func (c *Client) UpdateStatus(status StatusCode) {
+
+	c.status = status
+	switch status {
+	case StatusBootstrapping:
+	case StatusNotSynced:
+	case StatusSynced:
+	default:
+	}
 }
 
 type blankValidator struct{}

@@ -121,8 +121,6 @@ func (blocksync *BlockSync) AddBlock(ctx context.Context, height uint64, block [
 	root.SetCidBuilder(blocksync.cidBuilder)
 	for _, n := range nodes {
 
-		//fmt.Println("LINK", n.Cid())
-
 		err := root.AddNodeLink(n.Cid().String(), n)
 		if err != nil {
 			return cid.Undef, err
