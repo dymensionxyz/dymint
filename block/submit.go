@@ -28,6 +28,13 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 	defer func() {
 		close(m.producedSizeCh)
 		close(maxSizeC)
+		// recover from panic, emit health status event and return the error
+		var err error
+		if r := recover(); r != nil {
+			m.logger.Error(fmt.Errorf("handle submission trigger: %v", r).Error())
+			err, _ = r.(error)
+		}
+		uevent.MustPublish(ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
 	}()
 
 	for {
@@ -47,9 +54,9 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 
 		// modular submission methods have own retries mechanism.
 		// if error returned, we assume it's unrecoverable.
-		err := m.HandleSubmissionTrigger(ctx)
+		err := m.HandleSubmissionTrigger()
 		if err != nil {
-			m.logger.Error(fmt.Errorf("handle submission trigger: %w", err).Error())
+			panic(fmt.Errorf("handle submission trigger: %w", err))
 		}
 		maxTime.Reset(m.Conf.BatchSubmitMaxTime)
 	}
@@ -102,16 +109,9 @@ func (m *Manager) AccumulatedDataLoop(ctx context.Context, toSubmit chan struct{
 // If there are, it attempts to submit a batch of blocks. It then attempts to produce an empty block to ensure IBC messages
 // pass through during the batch submission process due to proofs requires for ibc messages only exist on the next block.
 // Finally, it submits the next batch of blocks and updates the sync target to the height of the last block in the submitted batch.
-func (m *Manager) HandleSubmissionTrigger(ctx context.Context) (err error) {
-	defer func() {
-		// recover from panic, emit health status event and return the error
-		if r := recover(); r != nil {
-			m.logger.Error(fmt.Errorf("handle submission trigger: %v", r).Error())
-			err, _ = r.(error)
-		}
-		uevent.MustPublish(ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
-	}()
+func (m *Manager) HandleSubmissionTrigger() error {
 	// Load current sync target and height to determine if new blocks are available for submission.
+
 	startHeight := m.NextHeightToSubmit()
 	endHeightInclusive := m.State.Height()
 
@@ -121,8 +121,7 @@ func (m *Manager) HandleSubmissionTrigger(ctx context.Context) (err error) {
 
 	nextBatch, err := m.CreateNextBatchToSubmit(startHeight, endHeightInclusive)
 	if err != nil {
-		// if next batch creation fails, we should panic as it's probably unrecoverable.
-		panic(fmt.Errorf("create next batch to submit: %w", err))
+		return fmt.Errorf("create next batch to submit: %w", err)
 	}
 
 	resultSubmitToDA := m.DAClient.SubmitBatch(nextBatch)
