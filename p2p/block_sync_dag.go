@@ -112,7 +112,7 @@ func dagReader(root ipld.Node, ds ipld.DAGService) (io.Reader, error) {
 		if !ok {
 			return nil, err
 		}
-		fmt.Println("Reading ", string(rawdata.Data()))
+		//fmt.Println("Reading ", string(rawdata.Data()))
 
 		_, err = buf.Write(rawdata.Data())
 		if err != nil {

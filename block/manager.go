@@ -3,7 +3,6 @@ package block
 import (
 	"bytes"
 	"context"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"sync"
@@ -175,11 +174,7 @@ func (m *Manager) Start(ctx context.Context) error {
 func (m *Manager) IsSequencerVerify() (bool, error) {
 	slProposerKey := m.SLClient.GetProposer().PublicKey.Bytes()
 	localProposerKey, err := m.ProposerKey.GetPublic().Raw()
-	fmt.Println(hex.EncodeToString(slProposerKey))
-	fmt.Println(hex.EncodeToString(localProposerKey))
-	if hex.EncodeToString(slProposerKey) != "2442dea85aa9cb980e21649032f17676e22604187db079f1df263d5e750754c3" {
-		return false, nil
-	}
+
 	if err != nil {
 		return false, fmt.Errorf("get local node public key: %w", err)
 	}
@@ -210,7 +205,7 @@ func (m *Manager) syncBlockManager() error {
 	}
 	m.LastSubmittedHeight.Store(res.EndHeight)
 	err = m.syncToTargetHeight(res.EndHeight)
-	m.p2pClient.SetLatestHeight(res.EndHeight)
+	m.p2pClient.SetLatestSeenHeight(res.EndHeight)
 	if err != nil {
 		return err
 	}
@@ -218,3 +213,31 @@ func (m *Manager) syncBlockManager() error {
 	m.logger.Info("Synced.", "current height", m.State.Height(), "last submitted height", m.LastSubmittedHeight.Load())
 	return nil
 }
+
+func (m *Manager) addBlock(ctx context.Context, height uint64, gossipedBlockBytes []byte) error {
+
+	cid, err := m.p2pClient.AddBlock(ctx, height, gossipedBlockBytes)
+	if err != nil {
+		m.logger.Error("Blocksync add block", "err", err)
+	}
+	advErr := m.p2pClient.AdvertiseBlock(ctx, height, cid)
+	if advErr != nil {
+		m.logger.Error("Blocksync advertise block", "err", advErr)
+	}
+	//m.Store.SaveBlock()
+	return err
+}
+
+/*func (m *Manager) refreshBlockSyncWithBlocks() error {
+
+	for h := uint64(0); h <= m.State.Height(); h++ {
+		lastCommit, err := m.Store.LoadCommit(h)
+		if err != nil {
+			m.logger.Error("load commit: height: %d: %w", h, err)
+		}
+		lastBlock, err := m.Store.LoadBlock(h)
+		if err != nil {
+			m.logger.Error("load block: height: %d: %w", h, err)
+		}
+	}
+}*/
