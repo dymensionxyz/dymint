@@ -4,14 +4,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"testing"
 	"time"
 
-	"github.com/dymensionxyz/dymint/node/events"
-	testutil "github.com/dymensionxyz/dymint/testutil"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/dymensionxyz/dymint/node/events"
+	"github.com/dymensionxyz/dymint/testutil"
 )
 
 func TestNodeHealthRPCPropagation(t *testing.T) {
@@ -30,24 +32,28 @@ func TestNodeHealthRPCPropagation(t *testing.T) {
 		endpoint           string
 		health             error
 		expectedStatusCode int
+		expectedMessage    string
 	}{
 		{
 			name:               "statusNodeHealthy",
-			endpoint:           "/status",
+			endpoint:           "/health",
 			health:             nil,
 			expectedStatusCode: http.StatusOK,
+			expectedMessage:    "{\"jsonrpc\":\"2.0\",\"result\":{\"isHealthy\":true,\"error\":\"\"},\"id\":-1}",
 		},
 		{
 			name:               "statusNodeUnhealthy",
-			endpoint:           "/status",
+			endpoint:           "/health",
 			health:             errors.New("unhealthy"),
 			expectedStatusCode: http.StatusOK,
+			expectedMessage:    "{\"jsonrpc\":\"2.0\",\"result\":{\"isHealthy\":false,\"error\":\"unhealthy\"},\"id\":-1}",
 		},
 		{
 			name:               "statusNodeHealthyAgain",
-			endpoint:           "/status",
+			endpoint:           "/health",
 			health:             nil,
 			expectedStatusCode: http.StatusOK,
+			expectedMessage:    "{\"jsonrpc\":\"2.0\",\"result\":{\"isHealthy\":true,\"error\":\"\"},\"id\":-1}",
 		},
 	}
 	{
@@ -68,6 +74,8 @@ func TestNodeHealthRPCPropagation(t *testing.T) {
 				}()
 				// Check the response
 				assert.Equal(t, tc.expectedStatusCode, res.StatusCode)
+				body, _ := io.ReadAll(res.Body)
+				assert.Equal(t, tc.expectedMessage, string(body))
 			})
 		}
 	}
