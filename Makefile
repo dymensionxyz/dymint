@@ -1,17 +1,11 @@
-PACKAGES=$(shell go list ./...)
 BUILDDIR?=$(CURDIR)/build
 OUTPUT?=$(BUILDDIR)/dymint
 
 BUILD_TAGS?=dymint
-
-COMMIT_HASH := $(shell git rev-parse --short HEAD)
-LD_FLAGS = -X github.com/dymensionxyz/dymint/version.DymintGitCommitHash=$(COMMIT_HASH)
-BUILD_FLAGS = -mod=readonly -ldflags "$(LD_FLAGS)"
 CGO_ENABLED ?= 0
 VERSION ?= $(shell git describe --tags --always)
-
 LD_FLAGS = -X github.com/dymensionxyz/dymint/version.BuildVersion=$(VERSION)
-
+BUILD_FLAGS = -mod=readonly -ldflags "$(LD_FLAGS)"
 
 # Process Docker environment varible TARGETPLATFORM 
 # in order to build binary with correspondent ARCH
