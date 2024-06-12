@@ -38,6 +38,7 @@ type Client string
 // Data availability clients
 const (
 	Mock     Client = "mock"
+	Grpc     Client = "grpc"
 	Celestia Client = "celestia"
 	Avail    Client = "avail"
 )

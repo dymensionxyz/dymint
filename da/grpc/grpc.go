@@ -85,7 +85,7 @@ func (m *DataAvailabilityLayerClient) Synced() <-chan struct{} {
 
 // GetClientType returns client type.
 func (d *DataAvailabilityLayerClient) GetClientType() da.Client {
-	return da.Celestia
+	return da.Grpc
 }
 
 // SubmitBatch proxies SubmitBatch request to gRPC server.
@@ -102,7 +102,7 @@ func (d *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			Message: resp.Result.Message,
 		},
 		SubmitMetaData: &da.DASubmitMetaData{
-			Client: da.Mock,
+			Client: da.Grpc,
 			Height: resp.Result.DataLayerHeight,
 		},
 	}
