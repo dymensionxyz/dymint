@@ -91,6 +91,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		return fmt.Errorf("update state: %w", err)
 	}
 
+	m.p2pClient.SetAppliedHeight(m.State.Height())
 	// Prune old heights, if requested by ABCI app.
 	if 0 < retainHeight {
 		err = m.pruneBlocks(uint64(retainHeight))

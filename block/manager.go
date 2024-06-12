@@ -223,7 +223,7 @@ func (m *Manager) syncBlockManager() error {
 	}
 	m.LastSubmittedHeight.Store(res.EndHeight)
 	err = m.syncToTargetHeight(res.EndHeight)
-	m.p2pClient.SetLatestHeight(res.EndHeight)
+	m.p2pClient.SetLatestSeenHeight(res.EndHeight)
 	if err != nil {
 		return err
 	}
@@ -232,11 +232,30 @@ func (m *Manager) syncBlockManager() error {
 	return nil
 }
 
-func (m *Manager) UpdateTargetHeight(h uint64) {
-	for {
-		currentHeight := m.TargetHeight.Load()
-		if m.TargetHeight.CompareAndSwap(currentHeight, max(currentHeight, h)) {
-			break
+func (m *Manager) addBlock(ctx context.Context, height uint64, gossipedBlockBytes []byte) error {
+
+	cid, err := m.p2pClient.AddBlock(ctx, height, gossipedBlockBytes)
+	if err != nil {
+		m.logger.Error("Blocksync add block", "err", err)
+	}
+	advErr := m.p2pClient.AdvertiseBlock(ctx, height, cid)
+	if advErr != nil {
+		m.logger.Error("Blocksync advertise block", "err", advErr)
+	}
+	//m.Store.SaveBlock()
+	return err
+}
+
+/*func (m *Manager) refreshBlockSyncWithBlocks() error {
+
+	for h := uint64(0); h <= m.State.Height(); h++ {
+		lastCommit, err := m.Store.LoadCommit(h)
+		if err != nil {
+			m.logger.Error("load commit: height: %d: %w", h, err)
+		}
+		lastBlock, err := m.Store.LoadBlock(h)
+		if err != nil {
+			m.logger.Error("load block: height: %d: %w", h, err)
 		}
 	}
-}
+}*/

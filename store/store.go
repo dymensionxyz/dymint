@@ -21,6 +21,7 @@ var (
 	statePrefix      = [1]byte{4}
 	responsesPrefix  = [1]byte{5}
 	validatorsPrefix = [1]byte{6}
+	cidPrefix        = [1]byte{7}
 )
 
 // DefaultStore is a default store implementation.
@@ -279,4 +280,10 @@ func getValidatorsKey(height uint64) []byte {
 	buf := make([]byte, 8)
 	binary.BigEndian.PutUint64(buf, height)
 	return append(validatorsPrefix[:], buf[:]...)
+}
+
+func getCidKey(height uint64) []byte {
+	buf := make([]byte, 8)
+	binary.BigEndian.PutUint64(buf, height)
+	return append(cidPrefix[:], buf[:]...)
 }

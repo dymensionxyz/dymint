@@ -28,7 +28,7 @@ func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
 
 	m.logger.Debug("Received new block via gossip.", "block height", height, "store height", m.State.Height(), "n cachedBlocks", m.blockCache.Size())
 
-	m.p2pClient.SetLatestHeight(block.Header.Height)
+	m.p2pClient.SetLatestSeenHeight(block.Header.Height)
 
 	nextHeight := m.State.NextHeight()
 	if height >= nextHeight {
@@ -43,6 +43,7 @@ func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
 }
 
 func (m *Manager) gossipBlock(ctx context.Context, block types.Block, commit types.Commit) error {
+	m.logger.Info("Gossipping block", "height", block.Header.Height)
 	gossipedBlock := p2p.GossipedBlock{Block: block, Commit: commit}
 	gossipedBlockBytes, err := gossipedBlock.MarshalBinary()
 	if err != nil {
@@ -53,8 +54,7 @@ func (m *Manager) gossipBlock(ctx context.Context, block types.Block, commit typ
 		// could cause that to fail, so we assume recoverable.
 		return fmt.Errorf("p2p gossip block: %w: %w", err, ErrRecoverable)
 	}
-
-	_, err = m.p2pClient.AddBlock(ctx, block.Header.Height, gossipedBlockBytes)
+	err = m.addBlock(ctx, block.Header.Height, gossipedBlockBytes)
 	if err != nil {
 		return fmt.Errorf("adding block to p2p store: %w", err)
 	}

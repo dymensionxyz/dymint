@@ -1,16 +1,12 @@
 package p2p
 
 import (
-	"bytes"
 	"context"
-	"io"
 
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/ipfs/go-datastore"
 	dsync "github.com/ipfs/go-datastore/sync"
 
-	chunker "github.com/ipfs/boxo/chunker"
-	dag "github.com/ipfs/boxo/ipld/merkledag"
 	mh "github.com/multiformats/go-multihash"
 
 	"github.com/ipfs/boxo/bitswap/client"
@@ -31,9 +27,13 @@ type BlockSync struct {
 	dsrv       BlockSyncDagService
 	cidBuilder cid.Builder
 	logger     types.Logger
+	msgHandler BlockSyncMessageHandler
+	response   chan GossipedBlock
 }
 
-func StartBlockSync(ctx context.Context, h host.Host, store datastore.Datastore, logger types.Logger) (*BlockSync, error) {
+type BlockSyncMessageHandler func(block *GossipedBlock)
+
+func StartBlockSync(ctx context.Context, h host.Host, store datastore.Datastore, msgHandler BlockSyncMessageHandler, logger types.Logger) (*BlockSync, error) {
 
 	//bs := blockstore.NewBlockstore(p.Store)
 	//db, err := badger.Open(badger.DefaultOptions("/"))
@@ -74,78 +74,52 @@ func StartBlockSync(ctx context.Context, h host.Host, store datastore.Datastore,
 	net.Start(server, bsclient)
 	bsrv := blockservice.New(bs, bsclient)
 	blockSync := &BlockSync{
-		bsrv:   bsrv,
-		net:    net,
-		bstore: bs,
-		dsrv:   NewDAGService(bsrv),
-
+		bsrv:       bsrv,
+		net:        net,
+		bstore:     bs,
+		dsrv:       NewDAGService(bsrv),
+		msgHandler: msgHandler,
 		cidBuilder: &cid.Prefix{
 			Codec:    cid.DagProtobuf,
 			MhLength: -1,
 			MhType:   mh.SHA2_256,
 			Version:  1,
 		},
-		logger: logger,
+		response: make(chan GossipedBlock),
+		logger:   logger,
 	}
 
 	blockSync.session = *blockservice.NewSession(ctx, bsrv)
 	return blockSync, nil
 }
 
-func (blocksync *BlockSync) AddBlock(ctx context.Context, height uint64, block []byte) (cid.Cid, error) {
-
-	blockReader := bytes.NewReader(block)
-
-	splitter := chunker.NewSizeSplitter(blockReader, int64(chunker.DefaultBlockSize))
-	nodes := []*dag.ProtoNode{}
-
-	for {
-		nextData, err := splitter.NextBytes()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return cid.Undef, err
-		}
-		protoNode := dag.NodeWithData(nextData)
-		protoNode.SetCidBuilder(blocksync.cidBuilder)
-
-		nodes = append(nodes, protoNode)
-
-	}
-
-	root := dag.NodeWithData(nil)
-	root.SetCidBuilder(blocksync.cidBuilder)
-	for _, n := range nodes {
-
-		err := root.AddNodeLink(n.Cid().String(), n)
-		if err != nil {
-			return cid.Undef, err
-		}
-		err = blocksync.dsrv.Add(ctx, n)
-		if err != nil {
-			return cid.Undef, err
-		}
-	}
-	err := blocksync.dsrv.Add(ctx, root)
-	if err != nil {
-		return cid.Undef, err
-	}
-
-	return root.Cid(), nil
-
+func (blocksync *BlockSync) AddBlock(ctx context.Context, block []byte) (cid.Cid, error) {
+	return blocksync.dsrv.AddBlock(ctx, block)
 }
 
-func (blocksync *BlockSync) GetBlock(ctx context.Context, blockId string, response chan GossipedBlock) {
-	go func() {
-		blockBytes, err := blocksync.dsrv.GetBlock(ctx, blockId)
-		if err != nil {
-			blocksync.logger.Error("GetBlock", "err", err)
+func (blocksync *BlockSync) GetBlock(ctx context.Context, blockId string) {
+
+	blockBytes, err := blocksync.dsrv.GetBlock(ctx, blockId)
+	if err != nil {
+		blocksync.logger.Error("GetBlock", "err", err)
+	}
+	var gossipedBlock GossipedBlock
+	if err := gossipedBlock.UnmarshalBinary(blockBytes); err != nil {
+		blocksync.logger.Error("Deserialize gossiped block", "error", err)
+	}
+	blocksync.logger.Debug("Blocksync block received ", "id", blockId)
+	blocksync.response <- gossipedBlock
+}
+
+func (blocksync *BlockSync) ProcessBlocks(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case block := <-blocksync.response:
+			if blocksync.msgHandler != nil {
+				blocksync.msgHandler(&block)
+			}
 		}
-		var gossipedBlock GossipedBlock
-		if err := gossipedBlock.UnmarshalBinary(blockBytes); err != nil {
-			blocksync.logger.Error("Deserialize gossiped block", "error", err)
-		}
-		response <- gossipedBlock
-	}()
+	}
 }
