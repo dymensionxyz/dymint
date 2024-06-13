@@ -485,6 +485,50 @@ func (c *Client) bootstrapLoop(ctx context.Context) {
 	}
 }
 
+func (c *Client) SetLatestSeenHeight(height uint64) {
+	if height > c.latestSeenHeight {
+		c.latestSeenHeight = height
+	}
+}
+
+func (c *Client) SetAppliedHeight(height uint64) {
+	if height > c.appliedHeight {
+		c.appliedHeight = height
+	}
+}
+
+func (c *Client) BlockSyncLoop(ctx context.Context) {
+	c.logger.Info("Started block sync loop.")
+
+	ticker := time.NewTicker(c.conf.BootstrapRetryTime)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			for h := c.appliedHeight + 1; h <= c.latestSeenHeight; h++ {
+				bid, err := c.GetBlockId(ctx, h)
+				if err != nil || bid == cid.Undef {
+					//c.logger.Error("Get block id", "err", err)
+					continue
+				}
+				c.logger.Debug("Getting block", "height", h, "cid", bid)
+				block, err := c.blocksync.GetBlock(ctx, bid)
+				if err != nil {
+					//c.logger.Error("Get block", "err", err)
+					continue
+				}
+				if c.blocksync.msgHandler != nil {
+					c.blocksync.msgHandler(&block)
+				}
+			}
+
+		}
+	}
+}
+
 func (c *Client) findConnection(peer peer.AddrInfo) bool {
 	for _, con := range c.Host.Network().Conns() {
 		if peer.ID == con.RemotePeer() {
