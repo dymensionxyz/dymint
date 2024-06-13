@@ -47,13 +47,6 @@ const (
 	blockTopicSuffix = "-block"
 )
 
-// Data Availability return codes.
-const (
-	StatusBootstrapping StatusCode = iota
-	StatusNotSynced
-	StatusSynced
-)
-
 // Client is a P2P client, implemented with libp2p.
 //
 // Initially, client connects to predefined seed nodes (aka bootnodes, bootstrap nodes).
