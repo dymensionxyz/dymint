@@ -157,18 +157,19 @@ func (m *Manager) Start(ctx context.Context) error {
 
 	go m.refreshBlockSyncAdvertiseBlocks(ctx)
 
-	err = m.syncBlockManager()
-	if err != nil {
-		return fmt.Errorf("sync block manager: %w", err)
-	}
 	if isSequencer {
 		// Sequencer must wait till DA is synced to start submitting blobs
 		<-m.DAClient.Synced()
+		err = m.syncBlockManager()
+		if err != nil {
+			return fmt.Errorf("sync block manager: %w", err)
+		}
 		go m.ProduceBlockLoop(ctx)
 		go m.SubmitLoop(ctx)
 	} else {
 		go m.RetrieveLoop(ctx)
 		go m.SyncToTargetHeightLoop(ctx)
+		go m.syncBlockManager()
 	}
 
 	return nil
