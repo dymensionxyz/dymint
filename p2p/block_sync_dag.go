@@ -3,7 +3,6 @@ package p2p
 import (
 	"bytes"
 	"context"
-	"fmt"
 	"io"
 
 	chunker "github.com/ipfs/boxo/chunker"
@@ -79,9 +78,8 @@ func (bsDagService *BlockSyncDagService) AddBlock(ctx context.Context, block []b
 	return root.Cid(), nil
 }
 
-func (bsDagService *BlockSyncDagService) GetBlock(ctx context.Context, blockId string) ([]byte, error) {
+func (bsDagService *BlockSyncDagService) GetBlock(ctx context.Context, cid cid.Cid) ([]byte, error) {
 
-	cid := cid.MustParse(blockId)
 	nd, err := bsDagService.Get(ctx, cid)
 	if err != nil {
 		return nil, err
@@ -101,7 +99,7 @@ func (bsDagService *BlockSyncDagService) GetBlock(ctx context.Context, blockId s
 func dagReader(root ipld.Node, ds ipld.DAGService) (io.Reader, error) {
 	ctx := context.Background()
 	buf := new(bytes.Buffer)
-	fmt.Println("Reading ", string(root.RawData()))
+	//fmt.Println("Reading ", string(root.RawData()))
 	//buf.Write(root.RawData())
 	for _, l := range root.Links() {
 		n, err := ds.Get(ctx, l.Cid)

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/ipfs/go-cid"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	tmtypes "github.com/tendermint/tendermint/types"
@@ -250,6 +251,24 @@ func (s *DefaultStore) loadHashFromIndex(height uint64) ([32]byte, error) {
 	}
 	copy(hash[:], blob)
 	return hash, nil
+}
+
+func (s *DefaultStore) SaveBlockID(height uint64, cid cid.Cid, batch KVBatch) (KVBatch, error) {
+	if batch == nil {
+		return nil, s.db.Set(getCidKey(height), []byte(cid.String()))
+	}
+	err := batch.Set(getCidKey(height), []byte(cid.String()))
+	return batch, err
+}
+
+func (s *DefaultStore) LoadBlockID(height uint64) (cid.Cid, error) {
+
+	cidBytes, err := s.db.Get(getCidKey(height))
+	if err != nil {
+		return cid.Undef, fmt.Errorf("load cid for height %v: %w", height, err)
+
+	}
+	return cid.MustParse(string(cidBytes)), nil
 }
 
 func getBlockKey(hash [32]byte) []byte {

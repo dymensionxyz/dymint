@@ -2,6 +2,7 @@ package store
 
 import (
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/ipfs/go-cid"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmtypes "github.com/tendermint/tendermint/types"
 )
@@ -74,4 +75,8 @@ type Store interface {
 	PruneBlocks(from, to uint64) (uint64, error)
 
 	Close() error
+
+	SaveBlockID(height uint64, cid cid.Cid, batch KVBatch) (KVBatch, error)
+
+	LoadBlockID(height uint64) (cid.Cid, error)
 }

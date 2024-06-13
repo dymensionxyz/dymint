@@ -12,10 +12,11 @@ import (
 type blockSource string
 
 const (
-	producedBlock blockSource = "produced"
-	gossipedBlock blockSource = "gossip"
-	daBlock       blockSource = "da"
-	localDbBlock  blockSource = "local_db"
+	producedBlock  blockSource = "produced"
+	gossipedBlock  blockSource = "gossip"
+	daBlock        blockSource = "da"
+	blocksyncBlock blockSource = "blocksync"
+	localDbBlock   blockSource = "local_db"
 )
 
 type blockMetaData struct {
@@ -26,6 +27,7 @@ type blockMetaData struct {
 type CachedBlock struct {
 	Block  *types.Block
 	Commit *types.Commit
+	Source blockSource
 }
 
 func getAddress(key crypto.PrivKey) ([]byte, error) {
