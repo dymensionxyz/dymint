@@ -157,7 +157,7 @@ func NewNode(
 
 	// Set p2p client and it's validators
 	p2pValidator := p2p.NewValidator(logger.With("module", "p2p_validator"), settlementlc)
-	path := filepath.Join(store.Rootify(conf.RootDir, conf.DBPath), "p2p")
+	path := filepath.Join(store.Rootify(conf.RootDir, conf.DBPath), "blocksync")
 	dstore, err := leveldb.NewDatastore(path, &leveldb.Options{})
 	if err != nil {
 		return nil, err

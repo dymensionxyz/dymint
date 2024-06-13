@@ -28,31 +28,18 @@ type BlockSync struct {
 	cidBuilder cid.Builder
 	logger     types.Logger
 	msgHandler BlockSyncMessageHandler
-	response   chan GossipedBlock
+	response   chan P2PBlock
 }
 
-type BlockSyncMessageHandler func(block *GossipedBlock)
+type BlockSyncMessageHandler func(block *P2PBlock)
 
 func StartBlockSync(ctx context.Context, h host.Host, store datastore.Datastore, msgHandler BlockSyncMessageHandler, logger types.Logger) (*BlockSync, error) {
 
-	//bs := blockstore.NewBlockstore(p.Store)
-	//db, err := badger.Open(badger.DefaultOptions("/"))
-
-	//d, err := leveldb.NewDatastore(path, &leveldb.Options{})
-	/*if err != nil {
-		return err
-	}
-	//ds := dsync.MutexWrap(db)
-	d, err := leveldb.NewDatastore(path+"/data/p2p", &leveldb.Options{})
-	if err != nil {
-		return nil, err
-	}*/
 	ds := dsync.MutexWrap(store)
-	//r.ds = syncds.MutexWrap(d)
-	//ds := dsync.MutexWrap(datastore.NewMapDatastore())
+
 	bs := blockstore.NewBlockstore(ds)
 
-	bs = blockstore.NewIdStore(bs) // handle identity multihashes, these don't require doing any actual lookups
+	//bs = blockstore.NewIdStore(bs) // handle identity multihashes, these don't require doing any actual lookups
 
 	net := network.NewFromIpfsHost(h, &routinghelpers.Null{}, network.Prefix("/dymension/block-sync/"))
 	server := server.New(
@@ -85,7 +72,7 @@ func StartBlockSync(ctx context.Context, h host.Host, store datastore.Datastore,
 			MhType:   mh.SHA2_256,
 			Version:  1,
 		},
-		response: make(chan GossipedBlock),
+		response: make(chan P2PBlock),
 		logger:   logger,
 	}
 
@@ -97,18 +84,20 @@ func (blocksync *BlockSync) AddBlock(ctx context.Context, block []byte) (cid.Cid
 	return blocksync.dsrv.AddBlock(ctx, block)
 }
 
-func (blocksync *BlockSync) GetBlock(ctx context.Context, blockId string) {
+func (blocksync *BlockSync) GetBlock(ctx context.Context, cid cid.Cid) (P2PBlock, error) {
 
-	blockBytes, err := blocksync.dsrv.GetBlock(ctx, blockId)
+	blockBytes, err := blocksync.dsrv.GetBlock(ctx, cid)
 	if err != nil {
 		blocksync.logger.Error("GetBlock", "err", err)
 	}
-	var gossipedBlock GossipedBlock
-	if err := gossipedBlock.UnmarshalBinary(blockBytes); err != nil {
+	var block P2PBlock
+	if err := block.UnmarshalBinary(blockBytes); err != nil {
 		blocksync.logger.Error("Deserialize gossiped block", "error", err)
 	}
-	blocksync.logger.Debug("Blocksync block received ", "id", blockId)
-	blocksync.response <- gossipedBlock
+	blocksync.logger.Debug("Blocksync block received ", "cid", cid)
+	return block, nil
+	//blocksync.response <- block
+	//return blocksync.response
 }
 
 func (blocksync *BlockSync) ProcessBlocks(ctx context.Context) {

@@ -149,8 +149,13 @@ func (m *Manager) Start(ctx context.Context) error {
 
 	if !isSequencer {
 		// Fullnode loop can start before syncing from DA
-		go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewNewGossipedBlock, m.onNewGossipedBlock, m.logger)
+		go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewGossipedBlock, m.onNewGossipedBlock, m.logger)
+		go uevent.MustSubscribe(ctx, m.Pubsub, "applyBlockSyncBlocksLoop", p2p.EventQueryNewBlockSyncBlock, m.onNewBlockSyncBlock, m.logger)
 	}
+
+	// TODO: populate the accumulatedSize on startup
+
+	go m.refreshBlockSyncAdvertiseBlocks(ctx)
 
 	err = m.syncBlockManager()
 	if err != nil {
@@ -182,11 +187,6 @@ func (m *Manager) Start(ctx context.Context) error {
 		})
 	}
 
-	go func() {
-		err := eg.Wait()
-		m.logger.Info("Block manager err group finished.", "err", err)
-	}()
-
 	return nil
 }
 
@@ -217,13 +217,14 @@ func (m *Manager) syncBlockManager() error {
 		m.LastSubmittedHeight.Store(uint64(m.Genesis.InitialHeight - 1))
 		return nil
 	}
+	m.p2pClient.SetLatestSeenHeight(res.EndHeight)
+
 	if err != nil {
 		// TODO: separate between fresh rollapp and non-registered rollapp
 		return err
 	}
 	m.LastSubmittedHeight.Store(res.EndHeight)
 	err = m.syncToTargetHeight(res.EndHeight)
-	m.p2pClient.SetLatestSeenHeight(res.EndHeight)
 	if err != nil {
 		return err
 	}
@@ -231,31 +232,3 @@ func (m *Manager) syncBlockManager() error {
 	m.logger.Info("Synced.", "current height", m.State.Height(), "last submitted height", m.LastSubmittedHeight.Load())
 	return nil
 }
-
-func (m *Manager) addBlock(ctx context.Context, height uint64, gossipedBlockBytes []byte) error {
-
-	cid, err := m.p2pClient.AddBlock(ctx, height, gossipedBlockBytes)
-	if err != nil {
-		m.logger.Error("Blocksync add block", "err", err)
-	}
-	advErr := m.p2pClient.AdvertiseBlock(ctx, height, cid)
-	if advErr != nil {
-		m.logger.Error("Blocksync advertise block", "err", advErr)
-	}
-	//m.Store.SaveBlock()
-	return err
-}
-
-/*func (m *Manager) refreshBlockSyncWithBlocks() error {
-
-	for h := uint64(0); h <= m.State.Height(); h++ {
-		lastCommit, err := m.Store.LoadCommit(h)
-		if err != nil {
-			m.logger.Error("load commit: height: %d: %w", h, err)
-		}
-		lastBlock, err := m.Store.LoadBlock(h)
-		if err != nil {
-			m.logger.Error("load block: height: %d: %w", h, err)
-		}
-	}
-}*/

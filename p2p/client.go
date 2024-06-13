@@ -87,10 +87,6 @@ type Client struct {
 	store datastore.Datastore
 
 	status StatusCode
-
-	latestSeenHeight uint64
-
-	appliedHeight uint64
 }
 
 // NewClient creates new Client object.
@@ -113,8 +109,6 @@ func NewClient(conf config.P2PConfig, privKey crypto.PrivKey, chainID string, lo
 		localPubsubServer: localPubsubServer,
 		store:             store,
 		status:            StatusBootstrapping,
-		latestSeenHeight:  uint64(0),
-		appliedHeight:     uint64(0),
 	}, nil
 }
 
@@ -138,7 +132,6 @@ func (c *Client) Start(ctx context.Context) error {
 
 func (c *Client) StartWithHost(ctx context.Context, h host.Host) error {
 	c.Host = h
-	c.UpdateStatus(StatusBootstrapping)
 	for _, a := range c.Host.Addrs() {
 		c.logger.Info("Listening on:", "address", fmt.Sprintf("%s/p2p/%s", a, c.Host.ID()))
 	}
@@ -200,20 +193,18 @@ func (c *Client) GossipBlock(ctx context.Context, blockBytes []byte) error {
 
 // GossipBlock sends the block, and it's commit to the P2P network.
 func (c *Client) AddBlock(ctx context.Context, height uint64, blockBytes []byte) (cid.Cid, error) {
-	cid, err := c.blocksync.AddBlock(ctx, blockBytes)
-	if err != nil {
-		c.logger.Error("Blocksync add block", "err", err)
-	}
-	advErr := c.AdvertiseBlock(ctx, height, cid)
-	if advErr != nil {
-		c.logger.Error("Blocksync advertise block", "err", advErr)
+	cid, err := c.blocksync.AddBlock(ctx, height, blockBytes)
+	if err == nil {
+		putError := c.DHT.PutValue(ctx, "/block/"+strconv.FormatUint(height, 10), []byte(cid.String()))
+		if putError != nil {
+			c.logger.Error("DHT put error", "err", putError)
+		}
 	}
 	return cid, err
 }
 
-func (c *Client) AdvertiseBlock(ctx context.Context, height uint64, cid cid.Cid) error {
-	err := c.DHT.PutValue(ctx, "/block/"+strconv.FormatUint(height, 10), []byte(cid.String()))
-	return err
+func (c *Client) GetBlock(ctx context.Context, blockId string) ([]byte, error) {
+	return c.blocksync.GetBlock(ctx, blockId)
 }
 
 // SetBlockValidator sets the callback function, that will be invoked after block is received from P2P network.
@@ -347,14 +338,12 @@ func (c *Client) setupPeerDiscovery(ctx context.Context) error {
 }
 
 func (c *Client) setupBlockSync(ctx context.Context) error {
-
-	blocksync, err := StartBlockSync(ctx, c.Host, c.store, c.blockReceived, c.logger)
+	// wait for DHT
+	blocksync, err := StartBlockSync(ctx, c.Host, c.store, c.logger)
 	if err != nil {
 		return fmt.Errorf("StartBlockSync: %w", err)
 	}
 	c.blocksync = blocksync
-	go c.BlockSyncLoop(ctx)
-	go c.blocksync.ProcessBlocks(ctx)
 	return nil
 }
 
@@ -403,7 +392,7 @@ func (c *Client) setupGossiping(ctx context.Context) error {
 	}
 	go c.txGossiper.ProcessMessages(ctx)
 
-	c.blockGossiper, err = NewGossiper(c.Host, ps, c.getBlockTopic(), c.blockReceived, c.logger,
+	c.blockGossiper, err = NewGossiper(c.Host, ps, c.getBlockTopic(), c.gossipedBlockReceived, c.logger,
 		WithValidator(c.blockValidator))
 	if err != nil {
 		return err
@@ -459,9 +448,12 @@ func (c *Client) NewTxValidator() GossipValidator {
 	}
 }
 
-func (c *Client) blockReceived(gossipedBlock *GossipedBlock) {
-
-	err := c.localPubsubServer.PublishWithEvents(context.Background(), *gossipedBlock, map[string][]string{EventTypeKey: {EventNewGossipedBlock}})
+func (c *Client) gossipedBlockReceived(msg *GossipMessage) {
+	var gossipedBlock GossipedBlock
+	if err := gossipedBlock.UnmarshalBinary(msg.Data); err != nil {
+		c.logger.Error("Deserialize gossiped block", "error", err)
+	}
+	err := c.localPubsubServer.PublishWithEvents(context.Background(), gossipedBlock, map[string][]string{EventTypeKey: {EventNewGossipedBlock}})
 	if err != nil {
 		c.logger.Error("Publishing event.", "err", err)
 	}
@@ -476,14 +468,9 @@ func (c *Client) bootstrapLoop(ctx context.Context) {
 			return
 		case <-ticker.C:
 			if len(c.Peers()) == 0 {
-				c.logger.Debug("No peers connected. Re-bootstrapping.")
 				err := c.DHT.Bootstrap(ctx)
 				if err != nil {
 					c.logger.Error("Re-bootstrap DHT: %w", err)
-				}
-			} else {
-				if c.GetStatus() == StatusBootstrapping {
-					c.UpdateStatus(StatusNotSynced)
 				}
 			}
 			persistentNodes := c.GetSeedAddrInfo(c.conf.PersistentNodes)
@@ -505,66 +492,6 @@ func (c *Client) findConnection(peer peer.AddrInfo) bool {
 		}
 	}
 	return false
-func (c *Client) GetStatus() StatusCode {
-	return c.status
-}
-
-func (c *Client) UpdateStatus(status StatusCode) {
-
-	if c.status == status {
-		return
-	}
-	c.status = status
-
-	switch c.status {
-	case StatusBootstrapping:
-		c.logger.Debug("Node bootstrapping.", "nodes", c.GetSeedAddrInfo(c.conf.BootstrapNodes))
-	case StatusNotSynced:
-		c.logger.Debug("Node syncing ", "height", c.latestSeenHeight)
-	case StatusSynced:
-		c.logger.Debug("Node synced ", "height", c.latestSeenHeight)
-	default:
-		c.logger.Error("Syncing status not known.")
-	}
-
-}
-
-func (c *Client) SetLatestSeenHeight(height uint64) {
-	if height > c.latestSeenHeight {
-		c.latestSeenHeight = height
-	}
-}
-
-func (c *Client) SetAppliedHeight(height uint64) {
-	if height > c.appliedHeight {
-		c.appliedHeight = height
-	}
-}
-
-func (c *Client) BlockSyncLoop(ctx context.Context) {
-	c.logger.Info("Started block sync loop.")
-
-	ticker := time.NewTicker(c.conf.BootstrapRetryTime)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			if c.GetStatus() == StatusNotSynced {
-				for h := c.appliedHeight + 1; h <= c.latestSeenHeight; h++ {
-					cidBytes, err := c.DHT.GetValue(ctx, "/block/"+strconv.FormatUint(h, 10))
-					if err != nil {
-						c.logger.Error("getvalue error", "err", err)
-						continue
-					}
-					c.logger.Debug("Getting block", "height", h, "cid", string(cidBytes))
-					c.blocksync.GetBlock(ctx, string(cidBytes))
-				}
-			}
-		}
-	}
 }
 
 type blankValidator struct{}
