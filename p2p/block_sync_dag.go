@@ -21,7 +21,6 @@ type BlockSyncDagService struct {
 }
 
 func NewDAGService(bsrv blockservice.BlockService) BlockSyncDagService {
-
 	bsDagService := &BlockSyncDagService{
 		cidBuilder: &cid.Prefix{
 			Codec:    cid.DagProtobuf,
@@ -36,10 +35,9 @@ func NewDAGService(bsrv blockservice.BlockService) BlockSyncDagService {
 }
 
 func (bsDagService *BlockSyncDagService) AddBlock(ctx context.Context, block []byte) (cid.Cid, error) {
-
 	blockReader := bytes.NewReader(block)
 
-	splitter := chunker.NewSizeSplitter(blockReader, int64(chunker.DefaultBlockSize))
+	splitter := chunker.NewSizeSplitter(blockReader, chunker.DefaultBlockSize)
 	nodes := []*dag.ProtoNode{}
 
 	for {
@@ -51,14 +49,19 @@ func (bsDagService *BlockSyncDagService) AddBlock(ctx context.Context, block []b
 			return cid.Undef, err
 		}
 		protoNode := dag.NodeWithData(nextData)
-		protoNode.SetCidBuilder(bsDagService.cidBuilder)
-
+		err = protoNode.SetCidBuilder(bsDagService.cidBuilder)
+		if err != nil {
+			return cid.Undef, err
+		}
 		nodes = append(nodes, protoNode)
 
 	}
 
 	root := dag.NodeWithData(nil)
-	root.SetCidBuilder(bsDagService.cidBuilder)
+	err := root.SetCidBuilder(bsDagService.cidBuilder)
+	if err != nil {
+		return cid.Undef, err
+	}
 	for _, n := range nodes {
 
 		err := root.AddNodeLink(n.Cid().String(), n)
@@ -70,7 +73,7 @@ func (bsDagService *BlockSyncDagService) AddBlock(ctx context.Context, block []b
 			return cid.Undef, err
 		}
 	}
-	err := bsDagService.Add(ctx, root)
+	err = bsDagService.Add(ctx, root)
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -79,7 +82,6 @@ func (bsDagService *BlockSyncDagService) AddBlock(ctx context.Context, block []b
 }
 
 func (bsDagService *BlockSyncDagService) GetBlock(ctx context.Context, cid cid.Cid) ([]byte, error) {
-
 	nd, err := bsDagService.Get(ctx, cid)
 	if err != nil {
 		return nil, err
@@ -99,8 +101,8 @@ func (bsDagService *BlockSyncDagService) GetBlock(ctx context.Context, cid cid.C
 func dagReader(root ipld.Node, ds ipld.DAGService) (io.Reader, error) {
 	ctx := context.Background()
 	buf := new(bytes.Buffer)
-	//fmt.Println("Reading ", string(root.RawData()))
-	//buf.Write(root.RawData())
+	// fmt.Println("Reading ", string(root.RawData()))
+	// buf.Write(root.RawData())
 	for _, l := range root.Links() {
 		n, err := ds.Get(ctx, l.Cid)
 		if err != nil {
@@ -110,7 +112,7 @@ func dagReader(root ipld.Node, ds ipld.DAGService) (io.Reader, error) {
 		if !ok {
 			return nil, err
 		}
-		//fmt.Println("Reading ", string(rawdata.Data()))
+		// fmt.Println("Reading ", string(rawdata.Data()))
 
 		_, err = buf.Write(rawdata.Data())
 		if err != nil {

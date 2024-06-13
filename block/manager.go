@@ -179,12 +179,14 @@ func (m *Manager) Start(ctx context.Context) error {
 			return m.ProduceBlockLoop(ctx, bytesProducedC)
 		})
 	} else {
-		eg.Go(func() error {
-			return m.RetrieveLoop(ctx)
-		})
-		eg.Go(func() error {
-			return m.SyncToTargetHeightLoop(ctx)
-		})
+		go m.RetrieveLoop(ctx)
+		go m.SyncToTargetHeightLoop(ctx)
+		go func() {
+			err := m.syncBlockManager()
+			if err != nil {
+				m.logger.Error("sync block manager", "err", err)
+			}
+		}()
 	}
 
 	return nil

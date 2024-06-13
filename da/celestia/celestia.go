@@ -249,7 +249,6 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 }
 
 func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
-
 	var resultRetrieveBatch da.ResultRetrieveBatch
 	err := retry.Do(
 		func() error {

@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"path/filepath"
-	"strconv"
-	"strings"
 	"time"
 
 	leveldb "github.com/ipfs/go-ds-leveldb"
@@ -356,17 +354,4 @@ func (n *Node) startPrometheusServer() error {
 
 func (n *Node) GetBlockManagerHeight() uint64 {
 	return n.BlockManager.State.Height()
-}
-
-// createFile0to100k creates a file with the number 0 to 100k
-func createFile0to100k() ([]byte, error) {
-	b := strings.Builder{}
-	for i := 0; i <= 10000; i++ {
-		s := strconv.Itoa(i)
-		_, err := b.WriteString(s)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return []byte(b.String()), nil
 }

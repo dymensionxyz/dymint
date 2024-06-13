@@ -337,8 +337,7 @@ func (c *Client) setupPeerDiscovery(ctx context.Context) error {
 }
 
 func (c *Client) setupBlockSync(ctx context.Context) error {
-	// wait for DHT
-	blocksync, err := StartBlockSync(ctx, c.Host, c.store, c.logger)
+	blocksync, err := StartBlockSync(ctx, c.Host, c.store, c.blockSyncReceived, c.logger)
 	if err != nil {
 		return fmt.Errorf("StartBlockSync: %w", err)
 	}
@@ -448,12 +447,15 @@ func (c *Client) NewTxValidator() GossipValidator {
 	}
 }
 
-func (c *Client) gossipedBlockReceived(msg *GossipMessage) {
-	var gossipedBlock GossipedBlock
-	if err := gossipedBlock.UnmarshalBinary(msg.Data); err != nil {
-		c.logger.Error("Deserialize gossiped block", "error", err)
+func (c *Client) blockSyncReceived(block *P2PBlock) {
+	err := c.localPubsubServer.PublishWithEvents(context.Background(), *block, map[string][]string{EventTypeKey: {EventNewBlockSyncBlock}})
+	if err != nil {
+		c.logger.Error("Publishing event.", "err", err)
 	}
-	err := c.localPubsubServer.PublishWithEvents(context.Background(), gossipedBlock, map[string][]string{EventTypeKey: {EventNewGossipedBlock}})
+}
+
+func (c *Client) blockGossipReceived(block *P2PBlock) {
+	err := c.localPubsubServer.PublishWithEvents(context.Background(), *block, map[string][]string{EventTypeKey: {EventNewGossipedBlock}})
 	if err != nil {
 		c.logger.Error("Publishing event.", "err", err)
 	}
