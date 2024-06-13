@@ -93,40 +93,17 @@ func (m *Manager) refreshBlockSyncAdvertiseBlocks(ctx context.Context) {
 
 		id, err := m.p2pClient.GetBlockId(ctx, h)
 		if err == nil && id != cid.Undef {
-			m.logger.Debug("Block id found", "height", h)
 			continue
 		}
 		id, err = m.Store.LoadBlockID(h)
 		if err != nil || id == cid.Undef {
-			m.logger.Error("Load block id", "err", err, "height", h)
 			continue
 		}
-		m.logger.Debug("Advertising id", "height", h, "cid", id)
 
 		err = m.p2pClient.AdvertiseBlock(ctx, h, id)
 		if err == nil {
 			continue
 		}
-		/*lastBlock, err := m.Store.LoadBlock(h)
-		if err != nil {
-			m.logger.Error("load block: height: %d: %w", h, err)
-			continue
-		}
-		lastCommit, err := m.Store.LoadCommit(h)
-		if err != nil {
-			m.logger.Error("load block: height: %d: %w", h, err)
-			continue
-		}
-		gossipedBlock := p2p.P2PBlock{Block: *lastBlock, Commit: *lastCommit}
-		gossipedBlockBytes, err := gossipedBlock.MarshalBinary()
-		if err != nil {
-			m.logger.Error("block marshal: height: %d: %w", h, err)
-			continue
-		}
-		err = m.addBlock(ctx, h, gossipedBlockBytes)
-		if err != nil {
-			m.logger.Error("add block: height: %d: %w", h, err)
-			continue
-		}*/
+
 	}
 }

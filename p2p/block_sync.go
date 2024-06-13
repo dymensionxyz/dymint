@@ -28,7 +28,6 @@ type BlockSync struct {
 	cidBuilder cid.Builder
 	logger     types.Logger
 	msgHandler BlockSyncMessageHandler
-	response   chan P2PBlock
 }
 
 type BlockSyncMessageHandler func(block *P2PBlock)
@@ -38,8 +37,6 @@ func StartBlockSync(ctx context.Context, h host.Host, store datastore.Datastore,
 	ds := dsync.MutexWrap(store)
 
 	bs := blockstore.NewBlockstore(ds)
-
-	//bs = blockstore.NewIdStore(bs) // handle identity multihashes, these don't require doing any actual lookups
 
 	net := network.NewFromIpfsHost(h, &routinghelpers.Null{}, network.Prefix("/dymension/block-sync/"))
 	server := server.New(
@@ -72,8 +69,7 @@ func StartBlockSync(ctx context.Context, h host.Host, store datastore.Datastore,
 			MhType:   mh.SHA2_256,
 			Version:  1,
 		},
-		response: make(chan P2PBlock),
-		logger:   logger,
+		logger: logger,
 	}
 
 	blockSync.session = *blockservice.NewSession(ctx, bsrv)
@@ -96,19 +92,5 @@ func (blocksync *BlockSync) GetBlock(ctx context.Context, cid cid.Cid) (P2PBlock
 	}
 	blocksync.logger.Debug("Blocksync block received ", "cid", cid)
 	return block, nil
-	//blocksync.response <- block
-	//return blocksync.response
-}
 
-func (blocksync *BlockSync) ProcessBlocks(ctx context.Context) {
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case block := <-blocksync.response:
-			if blocksync.msgHandler != nil {
-				blocksync.msgHandler(&block)
-			}
-		}
-	}
 }

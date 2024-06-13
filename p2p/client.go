@@ -86,7 +86,11 @@ type Client struct {
 
 	store datastore.Datastore
 
-	status StatusCode
+	latestSeenHeight uint64
+
+	appliedHeight uint64
+
+	heightToSkip map[uint64]struct{}
 }
 
 // NewClient creates new Client object.
@@ -108,7 +112,9 @@ func NewClient(conf config.P2PConfig, privKey crypto.PrivKey, chainID string, lo
 		logger:            logger,
 		localPubsubServer: localPubsubServer,
 		store:             store,
-		status:            StatusBootstrapping,
+		latestSeenHeight:  uint64(0),
+		appliedHeight:     uint64(0),
+		heightToSkip:      make(map[uint64]struct{}),
 	}, nil
 }
 
@@ -344,6 +350,7 @@ func (c *Client) setupBlockSync(ctx context.Context) error {
 		return fmt.Errorf("StartBlockSync: %w", err)
 	}
 	c.blocksync = blocksync
+	go c.BlockSyncLoop(ctx)
 	return nil
 }
 
@@ -457,6 +464,7 @@ func (c *Client) gossipedBlockReceived(msg *GossipMessage) {
 	if err != nil {
 		c.logger.Error("Publishing event.", "err", err)
 	}
+	c.heightToSkip[block.Block.Header.Height] = struct{}{}
 }
 
 func (c *Client) bootstrapLoop(ctx context.Context) {
@@ -493,6 +501,9 @@ func (c *Client) SetLatestSeenHeight(height uint64) {
 
 func (c *Client) SetAppliedHeight(height uint64) {
 	if height > c.appliedHeight {
+		for h := height; h <= c.appliedHeight; h++ {
+			delete(c.heightToSkip, h)
+		}
 		c.appliedHeight = height
 	}
 }
@@ -509,15 +520,17 @@ func (c *Client) BlockSyncLoop(ctx context.Context) {
 			return
 		case <-ticker.C:
 			for h := c.appliedHeight + 1; h <= c.latestSeenHeight; h++ {
+				_, found := c.heightToSkip[h]
+				if found {
+					continue
+				}
 				bid, err := c.GetBlockId(ctx, h)
 				if err != nil || bid == cid.Undef {
-					//c.logger.Error("Get block id", "err", err)
 					continue
 				}
 				c.logger.Debug("Getting block", "height", h, "cid", bid)
 				block, err := c.blocksync.GetBlock(ctx, bid)
 				if err != nil {
-					//c.logger.Error("Get block", "err", err)
 					continue
 				}
 				if c.blocksync.msgHandler != nil {
