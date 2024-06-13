@@ -169,7 +169,12 @@ func (m *Manager) Start(ctx context.Context) error {
 	} else {
 		go m.RetrieveLoop(ctx)
 		go m.SyncToTargetHeightLoop(ctx)
-		go m.syncBlockManager()
+		go func() {
+			err := m.syncBlockManager()
+			if err != nil {
+				m.logger.Error("sync block manager", "err", err)
+			}
+		}()
 	}
 
 	return nil
@@ -178,7 +183,6 @@ func (m *Manager) Start(ctx context.Context) error {
 func (m *Manager) IsSequencerVerify() (bool, error) {
 	slProposerKey := m.SLClient.GetProposer().PublicKey.Bytes()
 	localProposerKey, err := m.ProposerKey.GetPublic().Raw()
-
 	if err != nil {
 		return false, fmt.Errorf("get local node public key: %w", err)
 	}

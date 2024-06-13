@@ -71,7 +71,6 @@ func (m *Manager) gossipBlock(ctx context.Context, block types.Block, commit typ
 }
 
 func (m *Manager) addBlock(ctx context.Context, height uint64, gossipedBlockBytes []byte) error {
-
 	cid, err := m.p2pClient.AddBlock(ctx, height, gossipedBlockBytes)
 	if err != nil {
 		m.logger.Error("Blocksync add block", "err", err)
@@ -88,7 +87,6 @@ func (m *Manager) addBlock(ctx context.Context, height uint64, gossipedBlockByte
 }
 
 func (m *Manager) refreshBlockSyncAdvertiseBlocks(ctx context.Context) {
-
 	for h := uint64(1); h <= m.State.Height(); h++ {
 
 		id, err := m.p2pClient.GetBlockId(ctx, h)
