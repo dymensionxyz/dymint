@@ -62,6 +62,8 @@ func (m *Manager) gossipBlock(ctx context.Context, block types.Block, commit typ
 		// could cause that to fail, so we assume recoverable.
 		return fmt.Errorf("p2p gossip block: %w: %w", err, ErrRecoverable)
 	}
+
+	//adds the block to be used by block-sync protocol
 	err = m.addBlock(ctx, block.Header.Height, gossipedBlockBytes)
 	if err != nil {
 		return fmt.Errorf("adding block to p2p store: %w", err)
@@ -70,6 +72,7 @@ func (m *Manager) gossipBlock(ctx context.Context, block types.Block, commit typ
 	return nil
 }
 
+// addBlock store the blocks to be used by block-sync protocol and stores the content identifier created to advertise it in the P2P network
 func (m *Manager) addBlock(ctx context.Context, height uint64, gossipedBlockBytes []byte) error {
 	cid, err := m.p2pClient.AddBlock(ctx, height, gossipedBlockBytes)
 	if err != nil {
@@ -86,6 +89,7 @@ func (m *Manager) addBlock(ctx context.Context, height uint64, gossipedBlockByte
 	return err
 }
 
+// content identifiers are re-advertised on node startup to make sure ids are always found in the network
 func (m *Manager) refreshBlockSyncAdvertiseBlocks(ctx context.Context) {
 	for h := uint64(1); h <= m.State.Height(); h++ {
 

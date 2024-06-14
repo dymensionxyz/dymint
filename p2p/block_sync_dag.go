@@ -20,6 +20,7 @@ type BlockSyncDagService struct {
 	cidBuilder cid.Builder
 }
 
+// Block-sync data is organized in a merkle DAG using IPLD (https://ipld.io/docs/)
 func NewDAGService(bsrv blockservice.BlockService) BlockSyncDagService {
 	bsDagService := &BlockSyncDagService{
 		cidBuilder: &cid.Prefix{
@@ -34,6 +35,7 @@ func NewDAGService(bsrv blockservice.BlockService) BlockSyncDagService {
 	return *bsDagService
 }
 
+// AddBlock creates a new merkle DAG with the block data and returns the content identifier (cid) of the root
 func (bsDagService *BlockSyncDagService) AddBlock(ctx context.Context, block []byte) (cid.Cid, error) {
 	blockReader := bytes.NewReader(block)
 
@@ -81,6 +83,7 @@ func (bsDagService *BlockSyncDagService) AddBlock(ctx context.Context, block []b
 	return root.Cid(), nil
 }
 
+// GetBlock returns the block data, getting it from the root cid, either from the network or the local blockstore
 func (bsDagService *BlockSyncDagService) GetBlock(ctx context.Context, cid cid.Cid) ([]byte, error) {
 	nd, err := bsDagService.Get(ctx, cid)
 	if err != nil {
@@ -98,11 +101,11 @@ func (bsDagService *BlockSyncDagService) GetBlock(ctx context.Context, cid cid.C
 	return data, nil
 }
 
+// dagReader is used to read the whole DAG from an IPLD node
 func dagReader(root ipld.Node, ds ipld.DAGService) (io.Reader, error) {
 	ctx := context.Background()
 	buf := new(bytes.Buffer)
-	// fmt.Println("Reading ", string(root.RawData()))
-	// buf.Write(root.RawData())
+
 	for _, l := range root.Links() {
 		n, err := ds.Get(ctx, l.Cid)
 		if err != nil {
@@ -112,7 +115,6 @@ func dagReader(root ipld.Node, ds ipld.DAGService) (io.Reader, error) {
 		if !ok {
 			return nil, err
 		}
-		// fmt.Println("Reading ", string(rawdata.Data()))
 
 		_, err = buf.Write(rawdata.Data())
 		if err != nil {

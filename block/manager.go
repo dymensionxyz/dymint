@@ -181,6 +181,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	} else {
 		go m.RetrieveLoop(ctx)
 		go m.SyncToTargetHeightLoop(ctx)
+		// Full-nodes can sync from DA but it is not necessary to wait for it, since it can sync from P2P as well in parallel.
 		go func() {
 			err := m.syncBlockManager()
 			if err != nil {

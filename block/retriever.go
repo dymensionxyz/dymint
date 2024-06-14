@@ -49,8 +49,9 @@ func (m *Manager) syncToTargetHeight(targetHeight uint64) error {
 
 		err = m.syncFromDABatch()
 		if err != nil {
-			m.logger.Error("DA syncing", "height", currH, "err", err)
-			continue
+			//m.logger.Error("DA syncing", "height", currH, "err", err)
+			//continue
+			return fmt.Errorf("process next DA batch: %w", err)
 		}
 		m.logger.Info("Synced from DA", "store height", m.State.Height(), "target height", targetHeight)
 	}

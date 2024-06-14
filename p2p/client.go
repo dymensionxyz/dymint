@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/ipfs/go-cid"
@@ -84,6 +85,9 @@ type Client struct {
 	appliedHeight uint64
 
 	heightToSkip map[uint64]struct{}
+
+	// Prevents starting a sync loop while still syncing from a previous execution
+	blocksyncMu sync.Mutex
 }
 
 // NewClient creates new Client object.
@@ -452,6 +456,9 @@ func (c *Client) blockSyncReceived(block *P2PBlock) {
 	if err != nil {
 		c.logger.Error("Publishing event.", "err", err)
 	}
+	// Received block is cached and  no longer needed to request using block-sync
+	c.heightToSkip[block.Block.Header.Height] = struct{}{}
+
 }
 
 func (c *Client) blockGossipReceived(block *P2PBlock) {
@@ -459,6 +466,7 @@ func (c *Client) blockGossipReceived(block *P2PBlock) {
 	if err != nil {
 		c.logger.Error("Publishing event.", "err", err)
 	}
+	// Received block is cached and  no longer needed to request using block-sync
 	c.heightToSkip[block.Block.Header.Height] = struct{}{}
 }
 
@@ -514,6 +522,7 @@ func (c *Client) BlockSyncLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
+			c.blocksyncMu.Lock()
 			for h := c.appliedHeight + 1; h <= c.latestSeenHeight; h++ {
 				_, found := c.heightToSkip[h]
 				if found {
@@ -532,7 +541,7 @@ func (c *Client) BlockSyncLoop(ctx context.Context) {
 					c.blocksync.msgHandler(&block)
 				}
 			}
-
+			c.blocksyncMu.Unlock()
 		}
 	}
 }

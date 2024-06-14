@@ -42,6 +42,7 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 			ListenAddress:      DefaultListenAddress,
 			BootstrapNodes:     "",
 			AdvertisingEnabled: true,
+			BlockSyncRetryTime: 30 * time.Second,
 		},
 		DBConfig: DBConfig{
 			SyncWrites: true,
