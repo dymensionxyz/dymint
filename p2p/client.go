@@ -3,6 +3,7 @@ package p2p
 import (
 	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -12,6 +13,7 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p"
+	"github.com/libp2p/go-libp2p-core/protocol"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/crypto"
@@ -46,6 +48,9 @@ const (
 
 	// blockTopicSuffix is added after namespace to create pubsub topic for block gossiping.
 	blockTopicSuffix = "-block"
+
+	// blockSyncProtocolSuffix is added after namespace to create block-sync protocol prefix.
+	blockSyncProtocolSuffix = "/block-sync"
 )
 
 // Client is a P2P client, implemented with libp2p.
@@ -126,7 +131,6 @@ func (c *Client) Start(ctx context.Context) error {
 	// create new, cancelable context
 	ctx, c.cancel = context.WithCancel(ctx)
 	host, err := c.listen()
-	host.ConnManager().Notifee()
 	if err != nil {
 		return err
 	}
@@ -196,12 +200,18 @@ func (c *Client) GossipBlock(ctx context.Context, blockBytes []byte) error {
 
 // GossipBlock sends the block, and it's commit to the P2P network.
 func (c *Client) AddBlock(ctx context.Context, height uint64, blockBytes []byte) (cid.Cid, error) {
-	cid, err := c.blocksync.AddBlock(ctx, height, blockBytes)
-	if err == nil {
-		putError := c.DHT.PutValue(ctx, "/block/"+strconv.FormatUint(height, 10), []byte(cid.String()))
-		if putError != nil {
-			c.logger.Error("DHT put error", "err", putError)
-		}
+	return c.blocksync.AddBlock(ctx, blockBytes)
+}
+
+func (c *Client) AdvertiseBlock(ctx context.Context, height uint64, cid cid.Cid) error {
+	err := c.DHT.PutValue(ctx, "/"+c.getNamespace()+blockTopicSuffix+"/"+strconv.FormatUint(height, 10), []byte(cid.String()))
+	return err
+}
+
+func (c *Client) GetBlockId(ctx context.Context, height uint64) (cid.Cid, error) {
+	cidBytes, err := c.DHT.GetValue(ctx, "/"+c.getNamespace()+blockTopicSuffix+"/"+strconv.FormatUint(height, 10))
+	if err != nil {
+		return cid.Undef, err
 	}
 	return cid, err
 }
@@ -289,9 +299,9 @@ func (c *Client) setupDHT(ctx context.Context) error {
 
 	var err error
 
-	val := dht.NamespacedValidator("block", blankValidator{})
+	val := dht.NamespacedValidator(c.getNamespace()+blockTopicSuffix, blockIdValidator{})
 
-	c.DHT, err = dht.New(ctx, c.Host, dht.Mode(dht.ModeServer), dht.ProtocolPrefix("block"), val, dht.BootstrapPeers(bootstrapNodes...))
+	c.DHT, err = dht.New(ctx, c.Host, dht.Mode(dht.ModeServer), dht.ProtocolPrefix(protocol.ID(c.getNamespace()+blockSyncProtocolSuffix)), val, dht.BootstrapPeers(bootstrapNodes...))
 	if err != nil {
 		return fmt.Errorf("create DHT: %w", err)
 	}
@@ -341,7 +351,7 @@ func (c *Client) setupPeerDiscovery(ctx context.Context) error {
 }
 
 func (c *Client) setupBlockSync(ctx context.Context) error {
-	blocksync, err := StartBlockSync(ctx, c.Host, c.store, c.blockSyncReceived, c.logger)
+	blocksync, err := StartBlockSync(ctx, c.Host, c.store, c.blockSyncReceived, "/"+c.getNamespace()+blockSyncProtocolSuffix+"/", c.logger)
 	if err != nil {
 		return fmt.Errorf("StartBlockSync: %w", err)
 	}
@@ -451,6 +461,7 @@ func (c *Client) NewTxValidator() GossipValidator {
 	}
 }
 
+// blockSyncReceived is called on reception of new block via block-sync protocol
 func (c *Client) blockSyncReceived(block *P2PBlock) {
 	err := c.localPubsubServer.PublishWithEvents(context.Background(), *block, map[string][]string{EventTypeKey: {EventNewBlockSyncBlock}})
 	if err != nil {
@@ -460,6 +471,7 @@ func (c *Client) blockSyncReceived(block *P2PBlock) {
 	c.heightToSkip[block.Block.Header.Height] = struct{}{}
 }
 
+// blockSyncReceived is called on reception of new block via gossip protocol
 func (c *Client) blockGossipReceived(block *P2PBlock) {
 	err := c.localPubsubServer.PublishWithEvents(context.Background(), *block, map[string][]string{EventTypeKey: {EventNewGossipedBlock}})
 	if err != nil {
@@ -495,12 +507,14 @@ func (c *Client) bootstrapLoop(ctx context.Context) {
 	}
 }
 
+// latest seen height to be retrieved using block-sync
 func (c *Client) SetLatestSeenHeight(height uint64) {
 	if height > c.latestSeenHeight {
 		c.latestSeenHeight = height
 	}
 }
 
+// already applied height set as a min height to retrieved using block-sync
 func (c *Client) SetAppliedHeight(height uint64) {
 	if height > c.appliedHeight {
 		for h := height; h <= c.appliedHeight; h++ {
@@ -510,6 +524,7 @@ func (c *Client) SetAppliedHeight(height uint64) {
 	}
 }
 
+// Loop used to request missing blocks via block-sync
 func (c *Client) BlockSyncLoop(ctx context.Context) {
 	c.logger.Info("Started block sync loop.")
 
@@ -554,7 +569,18 @@ func (c *Client) findConnection(peer peer.AddrInfo) bool {
 	return false
 }
 
-type blankValidator struct{}
+// validates the content identifiers advertised in the DHT are valid
+type blockIdValidator struct{}
 
-func (blankValidator) Validate(_ string, _ []byte) error        { return nil }
-func (blankValidator) Select(_ string, _ [][]byte) (int, error) { return 0, nil }
+func (blockIdValidator) Validate(_ string, id []byte) error {
+	var err error
+	defer func() {
+		cid.MustParse(string(id))
+		// recover from panic if one occurred. Set err to nil otherwise.
+		if recover() != nil {
+			err = errors.New("invalid cid")
+		}
+	}()
+	return err
+}
+func (blockIdValidator) Select(_ string, _ [][]byte) (int, error) { return 0, nil }
