@@ -10,7 +10,7 @@ import (
 /*                                 Event Data                                 */
 /* -------------------------------------------------------------------------- */
 
-// ReceivedBlock defines the struct of the event data for the GossipedBlock
+// P2PBlock defines the struct of the event data for the Block sent via P2P
 type P2PBlock struct {
 	// Block is the block that was gossiped
 	Block types.Block
@@ -42,7 +42,7 @@ func (e *P2PBlock) ToProto() *pb.GossipedBlock {
 	}
 }
 
-// FromProto fills GossipedBlock with data from its protobuf representation.
+// FromProto fills P2PBlock with data from its protobuf representation.
 func (e *P2PBlock) FromProto(other *pb.GossipedBlock) error {
 	if err := e.Block.FromProto(other.Block); err != nil {
 		return err
@@ -53,7 +53,7 @@ func (e *P2PBlock) FromProto(other *pb.GossipedBlock) error {
 	return nil
 }
 
-// Validate run basic validation on the gossiped block
+// Validate run basic validation on the p2p block
 func (e *P2PBlock) Validate(proposer *types.Sequencer) error {
 	if err := e.Block.ValidateBasic(); err != nil {
 		return err
