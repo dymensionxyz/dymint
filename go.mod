@@ -27,6 +27,7 @@ require (
 	github.com/informalsystems/tm-load-test v1.3.0
 	github.com/ipfs/boxo v0.18.0
 	github.com/libp2p/go-libp2p v0.33.1
+	github.com/libp2p/go-libp2p-core v0.20.1
 	github.com/libp2p/go-libp2p-kad-dht v0.25.2
 	github.com/libp2p/go-libp2p-pubsub v0.9.3
 	github.com/libp2p/go-libp2p-routing-helpers v0.7.3
