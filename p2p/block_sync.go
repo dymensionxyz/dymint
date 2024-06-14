@@ -20,13 +20,19 @@ import (
 )
 
 type BlockSync struct {
-	bsrv       blockservice.BlockService
-	bstore     blockstore.Blockstore
-	net        network.BitSwapNetwork
-	session    blockservice.Session
-	dsrv       BlockSyncDagService
+	//service that reads/writes blocks either from local datastore or the network
+	bsrv blockservice.BlockService
+	//local datastore for IPFS blocks
+	bstore blockstore.Blockstore
+	//protocol used to obtain blocks from the P2P network
+	net network.BitSwapNetwork
+	//used to retrieve/create merkle DAGs using block data
+	dsrv BlockSyncDagService
+	//used to define content identifiers
 	cidBuilder cid.Builder
 	logger     types.Logger
+
+	//receives blocks obtained from the network
 	msgHandler BlockSyncMessageHandler
 }
 
@@ -71,7 +77,6 @@ func StartBlockSync(ctx context.Context, h host.Host, store datastore.Datastore,
 		logger: logger,
 	}
 
-	blockSync.session = *blockservice.NewSession(ctx, bsrv)
 	return blockSync, nil
 }
 

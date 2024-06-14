@@ -40,6 +40,7 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 		P2PConfig: P2PConfig{
 			GossipedBlocksCacheSize: 50,
 			BootstrapRetryTime:      30 * time.Second,
+			BlockSyncRetryTime:      30 * time.Second,
 			ListenAddress:           DefaultListenAddress,
 			BootstrapNodes:          "",
 			AdvertisingEnabled:      true,

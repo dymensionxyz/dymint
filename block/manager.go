@@ -160,6 +160,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	if isSequencer {
 		// Sequencer must wait till DA is synced to start submitting blobs
 		<-m.DAClient.Synced()
+		// Only sequencer must wait to be synced from DA.
 		err = m.syncBlockManager()
 		if err != nil {
 			return fmt.Errorf("sync block manager: %w", err)
@@ -169,6 +170,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	} else {
 		go m.RetrieveLoop(ctx)
 		go m.SyncToTargetHeightLoop(ctx)
+		// Full-nodes can sync from DA but it is not necessary to wait for it, since it can sync from P2P as well in parallel.
 		go func() {
 			err := m.syncBlockManager()
 			if err != nil {
