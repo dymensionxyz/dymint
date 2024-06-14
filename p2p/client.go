@@ -3,7 +3,6 @@ package p2p
 import (
 	"context"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -300,8 +299,9 @@ func (c *Client) setupDHT(ctx context.Context) error {
 	var err error
 
 	val := dht.NamespacedValidator(c.getNamespace()+blockTopicSuffix, blockIdValidator{})
-
 	c.DHT, err = dht.New(ctx, c.Host, dht.Mode(dht.ModeServer), dht.ProtocolPrefix(protocol.ID(c.getNamespace()+blockSyncProtocolSuffix)), val, dht.BootstrapPeers(bootstrapNodes...))
+	//c.DHT, err = dht.New(ctx, c.Host, dht.Mode(dht.ModeServer), dht.BootstrapPeers(bootstrapNodes...))
+
 	if err != nil {
 		return fmt.Errorf("create DHT: %w", err)
 	}
@@ -573,7 +573,7 @@ func (c *Client) findConnection(peer peer.AddrInfo) bool {
 type blockIdValidator struct{}
 
 func (blockIdValidator) Validate(_ string, id []byte) error {
-	var err error
+	/*var err error
 	defer func() {
 		cid.MustParse(string(id))
 		// recover from panic if one occurred. Set err to nil otherwise.
@@ -581,6 +581,7 @@ func (blockIdValidator) Validate(_ string, id []byte) error {
 			err = errors.New("invalid cid")
 		}
 	}()
-	return err
+	return err*/
+	return nil
 }
 func (blockIdValidator) Select(_ string, _ [][]byte) (int, error) { return 0, nil }
