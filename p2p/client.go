@@ -458,7 +458,6 @@ func (c *Client) blockSyncReceived(block *P2PBlock) {
 	}
 	// Received block is cached and  no longer needed to request using block-sync
 	c.heightToSkip[block.Block.Header.Height] = struct{}{}
-
 }
 
 func (c *Client) blockGossipReceived(block *P2PBlock) {

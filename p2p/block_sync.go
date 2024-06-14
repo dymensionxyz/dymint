@@ -20,19 +20,19 @@ import (
 )
 
 type BlockSync struct {
-	//service that reads/writes blocks either from local datastore or the network
+	// service that reads/writes blocks either from local datastore or the network
 	bsrv blockservice.BlockService
-	//local datastore for IPFS blocks
+	// local datastore for IPFS blocks
 	bstore blockstore.Blockstore
-	//protocol used to obtain blocks from the P2P network
+	// protocol used to obtain blocks from the P2P network
 	net network.BitSwapNetwork
-	//used to retrieve/create merkle DAGs using block data
+	// used to retrieve/create merkle DAGs using block data
 	dsrv BlockSyncDagService
-	//used to define content identifiers
+	// used to define content identifiers
 	cidBuilder cid.Builder
 	logger     types.Logger
 
-	//receives blocks obtained from the network
+	// receives blocks obtained from the network
 	msgHandler BlockSyncMessageHandler
 }
 
