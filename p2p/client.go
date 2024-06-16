@@ -300,7 +300,6 @@ func (c *Client) setupDHT(ctx context.Context) error {
 
 	val := dht.NamespacedValidator(blockSyncProtocolPrefix, blockIdValidator{})
 	c.DHT, err = dht.New(ctx, c.Host, dht.Mode(dht.ModeServer), dht.ProtocolPrefix(blockSyncProtocolPrefix), val, dht.BootstrapPeers(bootstrapNodes...))
-	//c.DHT, err = dht.New(ctx, c.Host, dht.Mode(dht.ModeServer), dht.BootstrapPeers(bootstrapNodes...))
 
 	if err != nil {
 		return fmt.Errorf("create DHT: %w", err)
