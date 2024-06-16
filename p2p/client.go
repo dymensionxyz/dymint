@@ -3,6 +3,7 @@ package p2p
 import (
 	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -12,7 +13,6 @@ import (
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p"
-	"github.com/libp2p/go-libp2p-core/protocol"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/crypto"
@@ -49,7 +49,7 @@ const (
 	blockTopicSuffix = "-block"
 
 	// blockSyncProtocolSuffix is added after namespace to create block-sync protocol prefix.
-	blockSyncProtocolSuffix = "/block-sync"
+	blockSyncProtocolPrefix = "block-sync"
 )
 
 // Client is a P2P client, implemented with libp2p.
@@ -203,12 +203,12 @@ func (c *Client) AddBlock(ctx context.Context, height uint64, blockBytes []byte)
 }
 
 func (c *Client) AdvertiseBlock(ctx context.Context, height uint64, cid cid.Cid) error {
-	err := c.DHT.PutValue(ctx, "/"+c.getNamespace()+blockTopicSuffix+"/"+strconv.FormatUint(height, 10), []byte(cid.String()))
+	err := c.DHT.PutValue(ctx, "/"+blockSyncProtocolPrefix+"/"+strconv.FormatUint(height, 10), []byte(cid.String()))
 	return err
 }
 
 func (c *Client) GetBlockId(ctx context.Context, height uint64) (cid.Cid, error) {
-	cidBytes, err := c.DHT.GetValue(ctx, "/"+c.getNamespace()+blockTopicSuffix+"/"+strconv.FormatUint(height, 10))
+	cidBytes, err := c.DHT.GetValue(ctx, "/"+blockSyncProtocolPrefix+"/"+strconv.FormatUint(height, 10))
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -298,8 +298,8 @@ func (c *Client) setupDHT(ctx context.Context) error {
 
 	var err error
 
-	val := dht.NamespacedValidator(c.getNamespace()+blockTopicSuffix, blockIdValidator{})
-	c.DHT, err = dht.New(ctx, c.Host, dht.Mode(dht.ModeServer), dht.ProtocolPrefix(protocol.ID(c.getNamespace()+blockSyncProtocolSuffix)), val, dht.BootstrapPeers(bootstrapNodes...))
+	val := dht.NamespacedValidator(blockSyncProtocolPrefix, blockIdValidator{})
+	c.DHT, err = dht.New(ctx, c.Host, dht.Mode(dht.ModeServer), dht.ProtocolPrefix(blockSyncProtocolPrefix), val, dht.BootstrapPeers(bootstrapNodes...))
 	//c.DHT, err = dht.New(ctx, c.Host, dht.Mode(dht.ModeServer), dht.BootstrapPeers(bootstrapNodes...))
 
 	if err != nil {
@@ -351,7 +351,7 @@ func (c *Client) setupPeerDiscovery(ctx context.Context) error {
 }
 
 func (c *Client) setupBlockSync(ctx context.Context) error {
-	blocksync, err := StartBlockSync(ctx, c.Host, c.store, c.blockSyncReceived, "/"+c.getNamespace()+blockSyncProtocolSuffix+"/", c.logger)
+	blocksync, err := StartBlockSync(ctx, c.Host, c.store, c.blockSyncReceived, c.logger)
 	if err != nil {
 		return fmt.Errorf("StartBlockSync: %w", err)
 	}
@@ -573,7 +573,7 @@ func (c *Client) findConnection(peer peer.AddrInfo) bool {
 type blockIdValidator struct{}
 
 func (blockIdValidator) Validate(_ string, id []byte) error {
-	/*var err error
+	var err error
 	defer func() {
 		cid.MustParse(string(id))
 		// recover from panic if one occurred. Set err to nil otherwise.
@@ -581,7 +581,6 @@ func (blockIdValidator) Validate(_ string, id []byte) error {
 			err = errors.New("invalid cid")
 		}
 	}()
-	return err*/
-	return nil
+	return err
 }
 func (blockIdValidator) Select(_ string, _ [][]byte) (int, error) { return 0, nil }
