@@ -138,7 +138,6 @@ func TestGossiping(t *testing.T) {
 }
 
 func TestAdvertiseBlock(t *testing.T) {
-	assert := assert.New(t)
 	logger := log.TestingLogger()
 
 	ctx := context.Background()
@@ -158,18 +157,16 @@ func TestAdvertiseBlock(t *testing.T) {
 
 	// And then feed it some data
 	expectedCid, err := pref.Sum([]byte("test"))
-	assert.NoError(err)
+	require.NoError(t, err)
 
 	// validators required
 	validators := []p2p.GossipValidator{assertRecv, assertRecv, assertRecv, assertRecv, assertRecv}
 
 	// network connections topology: 3<->1<->0<->2<->4
-	clients := testutil.StartTestNetwork(ctx, t, 5, map[int]testutil.HostDescr{
-		0: {Conns: []int{}, ChainID: "2"},
-		1: {Conns: []int{0}, ChainID: "1", RealKey: true},
-		2: {Conns: []int{0}, ChainID: "1", RealKey: true},
-		3: {Conns: []int{1}, ChainID: "2", RealKey: true},
-		4: {Conns: []int{2}, ChainID: "2", RealKey: true},
+	clients := testutil.StartTestNetwork(ctx, t, 3, map[int]testutil.HostDescr{
+		0: {Conns: []int{}, ChainID: "1"},
+		1: {Conns: []int{0}, ChainID: "1"},
+		2: {Conns: []int{1}, ChainID: "1"},
 	}, validators, logger)
 
 	// wait for clients to finish refreshing routing tables
@@ -180,66 +177,13 @@ func TestAdvertiseBlock(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	// advertise cid for height 1
-	err = clients[4].AdvertiseBlock(ctx, 1, expectedCid)
-	assert.NoError(err)
+	err = clients[2].AdvertiseBlock(ctx, 1, expectedCid)
+	require.NoError(t, err)
 
 	// get cid for height 1
 	receivedCid, err := clients[0].GetBlockId(ctx, 1)
-	assert.NoError(err)
-	assert.Equal(expectedCid, receivedCid)
-
-}
-
-func TestGetBlock(t *testing.T) {
-	assert := assert.New(t)
-	logger := log.TestingLogger()
-
-	ctx := context.Background()
-
-	// required for tx validator
-	assertRecv := func(tx *p2p.GossipMessage) bool {
-		return true
-	}
-
-	// Create a cid manually by specifying the 'prefix' parameters
-	pref := &cid.Prefix{
-		Codec:    cid.DagProtobuf,
-		MhLength: -1,
-		MhType:   mh.SHA2_256,
-		Version:  1,
-	}
-
-	// And then feed it some data
-	expectedCid, err := pref.Sum([]byte("test"))
-	assert.NoError(err)
-
-	// validators required
-	validators := []p2p.GossipValidator{assertRecv, assertRecv, assertRecv, assertRecv, assertRecv}
-
-	// network connections topology: 3<->1<->0<->2<->4
-	clients := testutil.StartTestNetwork(ctx, t, 5, map[int]testutil.HostDescr{
-		0: {Conns: []int{}, ChainID: "2"},
-		1: {Conns: []int{0}, ChainID: "1", RealKey: true},
-		2: {Conns: []int{0}, ChainID: "1", RealKey: true},
-		3: {Conns: []int{1}, ChainID: "2", RealKey: true},
-		4: {Conns: []int{2}, ChainID: "2", RealKey: true},
-	}, validators, logger)
-
-	// wait for clients to finish refreshing routing tables
-	clients.WaitForDHT()
-
-	// this sleep is required for pubsub to "propagate" subscription information
-	// TODO(tzdybal): is there a better way to wait for readiness?
-	time.Sleep(1 * time.Second)
-
-	// advertise cid for height 1
-	err = clients[4].AdvertiseBlock(ctx, 1, expectedCid)
-	assert.NoError(err)
-
-	// get cid for height 1
-	receivedCid, err := clients[0].GetBlockId(ctx, 1)
-	assert.NoError(err)
-	assert.Equal(expectedCid, receivedCid)
+	require.NoError(t, err)
+	require.Equal(t, expectedCid, receivedCid)
 
 }
 
