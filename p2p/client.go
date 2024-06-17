@@ -470,13 +470,21 @@ func (c *Client) blockSyncReceived(block *P2PBlock) {
 }
 
 // blockSyncReceived is called on reception of new block via gossip protocol
-func (c *Client) blockGossipReceived(block *P2PBlock) {
-	err := c.localPubsubServer.PublishWithEvents(context.Background(), *block, map[string][]string{EventTypeKey: {EventNewGossipedBlock}})
+func (c *Client) blockGossipReceived(ctx context.Context, block []byte) {
+	var gossipedBlock P2PBlock
+	if err := gossipedBlock.UnmarshalBinary(block); err != nil {
+		c.logger.Error("Deserialize gossiped block", "error", err)
+	}
+	err := c.localPubsubServer.PublishWithEvents(context.Background(), gossipedBlock, map[string][]string{EventTypeKey: {EventNewGossipedBlock}})
 	if err != nil {
 		c.logger.Error("Publishing event.", "err", err)
 	}
+	id, err := c.AddBlock(ctx, gossipedBlock.Block.Header.Height, block)
+	if err != nil {
+		c.logger.Error("Adding gossiped block to blockstore.", "err", err, "cid", id)
+	}
 	// Received block is cached and  no longer needed to request using block-sync
-	c.heightToSkip[block.Block.Header.Height] = struct{}{}
+	c.heightToSkip[gossipedBlock.Block.Header.Height] = struct{}{}
 }
 
 func (c *Client) bootstrapLoop(ctx context.Context) {
