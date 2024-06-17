@@ -233,18 +233,18 @@ func TestBlockId(t *testing.T) {
 	//repeat test using batch
 	batch := s.NewBatch()
 
-	// store cid for height 2
+	//store cid for height 2
 	batch, err = s.SaveBlockID(2, expectedCid, batch)
 	require.NoError(err)
 
-	// retrieve cid for height 2
+	//retrieve cid for height 2
 	_, err = s.LoadBlockID(2)
 	require.Error(err, gerr.ErrNotFound)
 
 	//commit
 	batch.Commit()
 
-	// retrieve cid for height 2
+	//retrieve cid for height 2
 	resultCid, err = s.LoadBlockID(2)
 	require.NoError(err)
 	require.Equal(expectedCid, resultCid)
