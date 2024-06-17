@@ -156,6 +156,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	// TODO: populate the accumulatedSize on startup
 
 	go m.refreshBlockSyncAdvertiseBlocks(ctx)
+	m.p2pClient.SetAppliedHeight(m.State.Height())
 
 	err = m.syncBlockManager()
 	if err != nil {
