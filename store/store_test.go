@@ -5,6 +5,9 @@ import (
 	"testing"
 
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
+	"github.com/ipfs/go-cid"
+	mh "github.com/multiformats/go-multihash"
+
 	abcitypes "github.com/tendermint/tendermint/abci/types"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 
@@ -197,4 +200,52 @@ func TestBatch(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(resp)
 	assert.Equal(expected, resp)
+}
+
+func TestBlockId(t *testing.T) {
+	require := require.New(t)
+
+	kv := store.NewDefaultInMemoryKVStore()
+	s := store.New(kv)
+
+	// Create a cid manually by specifying the 'prefix' parameters
+	pref := &cid.Prefix{
+		Codec:    cid.DagProtobuf,
+		MhLength: -1,
+		MhType:   mh.SHA2_256,
+		Version:  1,
+	}
+
+	// And then feed it some data
+	expectedCid, err := pref.Sum([]byte("test"))
+	require.NoError(err)
+
+	// store cid for height 1
+	_, err = s.SaveBlockID(1, expectedCid, nil)
+	require.NoError(err)
+
+	// retrieve cid for height 1
+	resultCid, err := s.LoadBlockID(1)
+	require.NoError(err)
+
+	require.Equal(expectedCid, resultCid)
+
+	//repeat test using batch
+	batch := s.NewBatch()
+
+	// store cid for height 2
+	batch, err = s.SaveBlockID(2, expectedCid, batch)
+	require.NoError(err)
+
+	// retrieve cid for height 2
+	_, err = s.LoadBlockID(2)
+	require.Error(err, gerr.ErrNotFound)
+
+	//commit
+	batch.Commit()
+
+	// retrieve cid for height 2
+	resultCid, err = s.LoadBlockID(2)
+	require.NoError(err)
+	require.Equal(expectedCid, resultCid)
 }
