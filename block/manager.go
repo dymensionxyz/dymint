@@ -156,6 +156,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	// TODO: populate the accumulatedSize on startup
 
 	go m.refreshBlockSyncAdvertiseBlocks(ctx)
+	m.p2pClient.SetAppliedHeight(m.State.Height())
 
 	if isSequencer {
 		// Sequencer must wait till DA is synced to start submitting blobs
