@@ -24,15 +24,22 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 	maxSizeC := make(chan struct{}, m.Conf.MaxSupportedBatchSkew)
 	go m.AccumulatedDataLoop(ctx, maxSizeC)
 
-	// defer func to clear the channels to release blocked goroutines on shutdown
-	defer func() {
+	handleSubmitLoopPanic := func() {
 		// recover from panic, emit health status event and return the error
 		var err error
 		if r := recover(); r != nil {
 			m.logger.Error(fmt.Errorf("handle submission trigger: %v", r).Error())
 			err, _ = r.(error)
 		}
+		// new context because previous one is canceled
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
 		uevent.MustPublish(ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
+	}
+
+	// defer func to clear the channels to release blocked goroutines on shutdown
+	defer func() {
+		handleSubmitLoopPanic()
 
 		for {
 			select {
