@@ -527,24 +527,7 @@ func (c *DataAvailabilityLayerClient) submit(daBlob da.Blob) (uint64, da.Commitm
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
-	/*
-		TODO: dry out all retries
-	*/
-
-	var height uint64
-
-	err = retry.Do(
-		func() error {
-			var err error
-			height, err = c.rpc.Submit(ctx, blobs, openrpc.GasPrice(c.config.GasPrices))
-			return err
-		},
-		retry.Context(c.ctx),
-		retry.LastErrorOnly(true),
-		retry.Delay(c.config.RetryDelay),
-		retry.Attempts(uint(c.config.RetryAttempts)),
-		retry.DelayType(retry.FixedDelay),
-	)
+	height, err := c.rpc.Submit(ctx, blobs, openrpc.GasPrice(c.config.GasPrices))
 	if err != nil {
 		return 0, nil, fmt.Errorf("do rpc submit: %w", err)
 	}
