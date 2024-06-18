@@ -134,7 +134,7 @@ func (m *Manager) attemptApplyCachedBlocks() error {
 		if err != nil {
 			return fmt.Errorf("apply cached block: expected height: %d: %w", expectedHeight, err)
 		}
-		m.logger.Debug("applied cached block", "height", expectedHeight)
+		m.logger.Info("Block applied", "height", expectedHeight)
 
 		delete(m.blockCache, cachedBlock.Block.Header.Height)
 	}
