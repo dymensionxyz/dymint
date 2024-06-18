@@ -99,17 +99,17 @@ func NewClient(conf config.P2PConfig, privKey crypto.PrivKey, chainID string, lo
 // 2. Setup gossibsub.
 // 3. Setup DHT, establish connection to seed nodes and initialize peer discovery.
 // 4. Use active peer discovery to look for peers from same ORU network.
-func (c *Client) Start(ctx context.Context) error {
+func (c *Client) Start(ctx context.Context, isSequencer bool) error {
 	// create new, cancelable context
 	ctx, c.cancel = context.WithCancel(ctx)
 	host, err := c.listen()
 	if err != nil {
 		return err
 	}
-	return c.StartWithHost(ctx, host)
+	return c.StartWithHost(ctx, host, isSequencer)
 }
 
-func (c *Client) StartWithHost(ctx context.Context, h host.Host) error {
+func (c *Client) StartWithHost(ctx context.Context, h host.Host, isSequencer bool) error {
 	c.Host = h
 	for _, a := range c.Host.Addrs() {
 		c.logger.Info("Listening on:", "address", fmt.Sprintf("%s/p2p/%s", a, c.Host.ID()))
@@ -127,12 +127,13 @@ func (c *Client) StartWithHost(ctx context.Context, h host.Host) error {
 		return err
 	}
 
-	c.logger.Debug("Setting up active peer discovery.")
-	err = c.peerDiscovery(ctx)
-	if err != nil {
-		return err
+	if !isSequencer {
+		c.logger.Debug("Setting up active peer discovery.")
+		err = c.peerDiscovery(ctx)
+		if err != nil {
+			return err
+		}
 	}
-
 	return nil
 }
 
@@ -264,11 +265,9 @@ func (c *Client) peerDiscovery(ctx context.Context) error {
 		return err
 	}
 
-	if c.conf.AdvertisingEnabled {
-		err = c.advertise(ctx)
-		if err != nil {
-			return err
-		}
+	err = c.advertise(ctx)
+	if err != nil {
+		return err
 	}
 
 	err = c.findPeers(ctx)

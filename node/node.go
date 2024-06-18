@@ -246,7 +246,7 @@ func (n *Node) initGenesisChunks() error {
 // OnStart is a part of Service interface.
 func (n *Node) OnStart() error {
 	n.Logger.Info("starting P2P client")
-	err := n.P2P.Start(n.ctx)
+	err := n.P2P.Start(n.ctx, n.BlockManager.IsSequencer())
 	if err != nil {
 		return fmt.Errorf("start P2P client: %w", err)
 	}

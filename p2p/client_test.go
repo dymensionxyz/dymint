@@ -35,7 +35,7 @@ func TestClientStartup(t *testing.T) {
 	assert.NoError(err)
 	assert.NotNil(client)
 
-	err = client.Start(context.Background())
+	err = client.Start(context.Background(), false)
 	defer func() {
 		_ = client.Close()
 	}()
