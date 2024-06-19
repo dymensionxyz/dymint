@@ -92,6 +92,8 @@ type Client struct {
 
 	// Prevents starting a sync loop while still syncing from a previous execution
 	blocksyncMu sync.Mutex
+
+	blockAppliedHeightMu sync.Mutex
 }
 
 // NewClient creates new Client object.
@@ -522,6 +524,10 @@ func (c *Client) SetLatestSeenHeight(height uint64) {
 
 // already applied height set as a min height to retrieved using block-sync
 func (c *Client) SetAppliedHeight(height uint64) {
+
+	defer c.blockAppliedHeightMu.Unlock()
+	c.blockAppliedHeightMu.Lock()
+
 	if height > c.appliedHeight {
 		for h := height; h <= c.appliedHeight; h++ {
 			delete(c.heightToSkip, h)
