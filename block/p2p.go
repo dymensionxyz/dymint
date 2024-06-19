@@ -12,14 +12,17 @@ import (
 
 // onNewGossipedBlock will take a block and apply it
 func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
-	eventData, _ := event.Data().(p2p.P2PBlock)
+	eventData, ok := event.Data().(p2p.P2PBlock)
+	if !ok {
+		m.logger.Error("onNewGossipedBlock", "err", "wrong event data received")
+	}
 	block := eventData.Block
 	commit := eventData.Commit
 	source := gossipedBlock
 
 	m.logger.Debug("Received new block via gossip.", "block height", block.Header.Height, "store height", m.State.Height(), "n cachedBlocks", len(m.blockCache))
 
-	ok := m.attemptCacheBlock(&block, &commit, source)
+	ok = m.attemptCacheBlock(&block, &commit, source)
 	if !ok {
 		return
 	}
@@ -32,14 +35,17 @@ func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
 
 // onNewGossipedBlock will take a block and apply it
 func (m *Manager) onNewBlockSyncBlock(event pubsub.Message) {
-	eventData, _ := event.Data().(p2p.P2PBlock)
+	eventData, ok := event.Data().(p2p.P2PBlock)
+	if !ok {
+		m.logger.Error("onNewBlockSyncBlock", "err", "wrong event data received")
+	}
 	block := eventData.Block
 	commit := eventData.Commit
 	source := blocksyncBlock
 
 	m.logger.Debug("Received new block via blocksync.", "block height", block.Header.Height, "store height", m.State.Height(), "n cachedBlocks", len(m.blockCache))
 
-	ok := m.attemptCacheBlock(&block, &commit, source)
+	ok = m.attemptCacheBlock(&block, &commit, source)
 	if !ok {
 		return
 	}
