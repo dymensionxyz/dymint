@@ -525,7 +525,6 @@ func (c *Client) SetLatestSeenHeight(height uint64) {
 
 // already applied height set as a min height to retrieved using block-sync
 func (c *Client) SetAppliedHeight(height uint64) {
-
 	defer c.blockAppliedHeightMu.Unlock()
 	c.blockAppliedHeightMu.Lock()
 
