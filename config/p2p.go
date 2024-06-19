@@ -17,7 +17,7 @@ type P2PConfig struct {
 	GossipSubCacheSize int `mapstructure:"p2p_gossip_cache_size"`
 	// Time interval a node tries to bootstrap again, in case no nodes connected
 	BootstrapRetryTime time.Duration `mapstructure:"p2p_bootstrap_retry_time"`
-	// Time interval a node checks for misising blocks and tries to retrieve them from other peers using block-sync
+	// Time interval a node checks for missing blocks and tries to retrieve them from other peers using block-sync
 	BlockSyncRetryTime time.Duration `mapstructure:"p2p_blocksync_retry_time"`
 	// Param used to enable the advertisement of the node to be part of the P2P network in the DHT
 	AdvertisingEnabled bool `mapstructure:"p2p_advertising_enabled"`
