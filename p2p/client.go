@@ -232,7 +232,7 @@ func (c *Client) setupDHT(ctx context.Context) error {
 	bootstrapNodes := c.GetSeedAddrInfo(c.conf.BootstrapNodes)
 	if len(bootstrapNodes) == 0 {
 		c.logger.Info("No bootstrap nodes configured.")
-		bootstrapNodes := c.GetSeedAddrInfo(c.conf.PersistentNodes)
+		bootstrapNodes = c.GetSeedAddrInfo(c.conf.PersistentNodes)
 		if len(bootstrapNodes) != 0 {
 			c.logger.Info("Using persistent nodes as bootstrap nodes.")
 		}
