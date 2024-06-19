@@ -11,6 +11,8 @@ type P2PConfig struct {
 	ListenAddress string `mapstructure:"p2p_listen_address"`
 	// List of nodes used for P2P bootstrapping
 	BootstrapNodes string `mapstructure:"p2p_bootstrap_nodes"`
+	// List of nodes persistent P2P nodes
+	PersistentNodes string `mapstructure:"p2p_persistent_nodes"`
 	// Size of the Gossipsub router cache
 	GossipedBlocksCacheSize int `mapstructure:"p2p_gossiped_blocks_cache_size"`
 	// Time interval a node tries to bootstrap again, in case no nodes connected

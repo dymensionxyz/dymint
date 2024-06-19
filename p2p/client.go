@@ -231,7 +231,11 @@ func (c *Client) listen() (host.Host, error) {
 func (c *Client) setupDHT(ctx context.Context) error {
 	bootstrapNodes := c.GetSeedAddrInfo(c.conf.BootstrapNodes)
 	if len(bootstrapNodes) == 0 {
-		c.logger.Info("No bootstrap nodes configured - only listening for connections.")
+		c.logger.Info("No bootstrap nodes configured.")
+		bootstrapNodes = c.GetSeedAddrInfo(c.conf.PersistentNodes)
+		if len(bootstrapNodes) != 0 {
+			c.logger.Info("Using persistent nodes as bootstrap nodes.")
+		}
 	}
 
 	for _, sa := range bootstrapNodes {
@@ -249,9 +253,7 @@ func (c *Client) setupDHT(ctx context.Context) error {
 		return fmt.Errorf("bootstrap DHT: %w", err)
 	}
 
-	if len(bootstrapNodes) > 0 {
-		go c.bootstrapLoop(ctx)
-	}
+	go c.bootstrapLoop(ctx)
 
 	c.Host = routedhost.Wrap(c.Host, c.DHT)
 
@@ -417,7 +419,23 @@ func (c *Client) bootstrapLoop(ctx context.Context) {
 					c.logger.Error("Re-bootstrap DHT: %w", err)
 				}
 			}
+			persistentNodes := c.GetSeedAddrInfo(c.conf.PersistentNodes)
+			for _, peer := range persistentNodes {
+				found := c.findConnection(peer)
+				if !found {
+					c.tryConnect(ctx, peer)
+				}
+			}
 
 		}
 	}
+}
+
+func (c *Client) findConnection(peer peer.AddrInfo) bool {
+	for _, con := range c.Host.Network().Conns() {
+		if peer.ID == con.RemotePeer() {
+			return true
+		}
+	}
+	return false
 }
