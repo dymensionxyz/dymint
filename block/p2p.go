@@ -72,7 +72,7 @@ func (m *Manager) gossipBlock(ctx context.Context, block types.Block, commit typ
 	// adds the block to be used by block-sync protocol
 	err = m.addBlock(ctx, block.Header.Height, gossipedBlockBytes)
 	if err != nil {
-		return fmt.Errorf("adding block to p2p store: %w", err)
+		m.logger.Error("adding block to p2p store: %w", err)
 	}
 
 	return nil
@@ -82,7 +82,7 @@ func (m *Manager) gossipBlock(ctx context.Context, block types.Block, commit typ
 func (m *Manager) addBlock(ctx context.Context, height uint64, gossipedBlockBytes []byte) error {
 	cid, err := m.p2pClient.AddBlock(ctx, height, gossipedBlockBytes)
 	if err != nil {
-		m.logger.Error("Blocksync add block", "err", err)
+		return err
 	}
 	_, err = m.Store.SaveBlockID(height, cid, nil)
 	if err != nil {
