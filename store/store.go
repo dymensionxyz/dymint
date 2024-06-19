@@ -253,7 +253,7 @@ func (s *DefaultStore) loadHashFromIndex(height uint64) ([32]byte, error) {
 	return hash, nil
 }
 
-func (s *DefaultStore) SaveBlockCID(height uint64, cid cid.Cid, batch KVBatch) (KVBatch, error) {
+func (s *DefaultStore) SaveBlockCid(height uint64, cid cid.Cid, batch KVBatch) (KVBatch, error) {
 	if batch == nil {
 		return nil, s.db.Set(getCidKey(height), []byte(cid.String()))
 	}
@@ -261,7 +261,7 @@ func (s *DefaultStore) SaveBlockCID(height uint64, cid cid.Cid, batch KVBatch) (
 	return batch, err
 }
 
-func (s *DefaultStore) LoadBlockID(height uint64) (cid.Cid, error) {
+func (s *DefaultStore) LoadBlockCid(height uint64) (cid.Cid, error) {
 	cidBytes, err := s.db.Get(getCidKey(height))
 	if err != nil {
 		return cid.Undef, fmt.Errorf("load cid for height %v: %w", height, err)

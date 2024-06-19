@@ -76,7 +76,7 @@ type Store interface {
 
 	Close() error
 
-	SaveBlockID(height uint64, cid cid.Cid, batch KVBatch) (KVBatch, error)
+	SaveBlockCid(height uint64, cid cid.Cid, batch KVBatch) (KVBatch, error)
 
-	LoadBlockID(height uint64) (cid.Cid, error)
+	LoadBlockCid(height uint64) (cid.Cid, error)
 }
