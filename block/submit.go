@@ -6,10 +6,10 @@ import (
 	"time"
 
 	"github.com/dymensionxyz/dymint/da"
-	"github.com/dymensionxyz/dymint/gerr"
 	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/types"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 )
 
 // SubmitLoop is the main loop for submitting blocks to the DA and SL layers.
@@ -85,7 +85,7 @@ func (m *Manager) AccumulatedDataLoop(ctx context.Context, toSubmit chan struct{
 		default:
 			m.logger.Error("New batch accumulated, but channel is full, stopping block production until the signal is consumed.")
 
-			evt := &events.DataHealthStatus{Error: fmt.Errorf("submission channel is full: %w", gerr.ErrResourceExhausted)}
+			evt := &events.DataHealthStatus{Error: fmt.Errorf("submission channel is full: %w", gerrc.ErrResourceExhausted)}
 			uevent.MustPublish(ctx, m.Pubsub, evt, events.HealthStatusList)
 
 			/*

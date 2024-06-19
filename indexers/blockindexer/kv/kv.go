@@ -8,8 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/dymensionxyz/dymint/gerr"
-
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/google/orderedcode"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -45,7 +44,7 @@ func (idx *BlockerIndexer) Has(height int64) (bool, error) {
 	}
 
 	_, err = idx.store.Get(key)
-	if errors.Is(err, gerr.ErrNotFound) {
+	if errors.Is(err, gerrc.ErrNotFound) {
 		return false, nil
 	}
 	return err == nil, err
