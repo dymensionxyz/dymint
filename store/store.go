@@ -266,7 +266,11 @@ func (s *DefaultStore) LoadBlockID(height uint64) (cid.Cid, error) {
 	if err != nil {
 		return cid.Undef, fmt.Errorf("load cid for height %v: %w", height, err)
 	}
-	return cid.MustParse(string(cidBytes)), nil
+	parsedCid, err := cid.Parse(string(cidBytes))
+	if err != nil {
+		return cid.Undef, fmt.Errorf("parse cid: %w", err)
+	}
+	return parsedCid, nil
 }
 
 func getBlockKey(hash [32]byte) []byte {
