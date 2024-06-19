@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"time"
 
 	"github.com/ipfs/go-datastore"
+	leveldb "github.com/ipfs/go-ds-leveldb"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
@@ -111,6 +113,12 @@ func NewNode(
 	} else {
 		// TODO(omritoptx): Move dymint to const
 		baseKV = store.NewKVStore(conf.RootDir, conf.DBPath, "dymint", conf.DBConfig.SyncWrites)
+		path := filepath.Join(store.Rootify(conf.RootDir, conf.DBPath), "blocksync")
+		var err error
+		dstore, err = leveldb.NewDatastore(path, &leveldb.Options{})
+		if err != nil {
+			return nil, fmt.Errorf("initialize datastore at %s: %w", path, err)
+		}
 	}
 
 	s := store.New(store.NewPrefixKV(baseKV, mainPrefix))
