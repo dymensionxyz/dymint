@@ -249,32 +249,42 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 }
 
 func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
-	var resultRetrieveBatch da.ResultRetrieveBatch
-	err := retry.Do(
-		func() error {
-			var result da.ResultRetrieveBatch
-			if daMetaData.Commitment == nil {
-				result = c.retrieveBatchesNoCommitment(daMetaData.Height)
-			} else {
-				result = c.retrieveBatches(daMetaData)
-			}
-			resultRetrieveBatch = result
+	for {
+		select {
+		case <-c.ctx.Done():
+			c.logger.Debug("Context cancelled.")
+			return da.ResultRetrieveBatch{}
+		default:
+			// Just for backward compatibility, in case no commitments are sent from the Hub, batch can be retrieved using previous implementation.
+			var resultRetrieveBatch da.ResultRetrieveBatch
+			err := retry.Do(
+				func() error {
+					var result da.ResultRetrieveBatch
+					if daMetaData.Commitment == nil {
+						result = c.retrieveBatchesNoCommitment(daMetaData.Height)
+					} else {
+						result = c.retrieveBatches(daMetaData)
+					}
+					resultRetrieveBatch = result
 
-			if errors.Is(result.Error, da.ErrRetrieval) {
-				c.logger.Error("Retrieve batch.", "error", result.Error)
-				return result.Error
-			}
+					if errors.Is(result.Error, da.ErrRetrieval) {
+						c.logger.Error("Retrieve batch.", "error", result.Error)
+						return result.Error
+					}
 
-			return nil
-		},
-		retry.Attempts(uint(c.config.RetryAttempts)),
-		retry.DelayType(retry.FixedDelay),
-		retry.Delay(c.config.RetryDelay),
-	)
-	if err != nil {
-		c.logger.Error("RetrieveBatches process failed.", "error", err)
+					return nil
+				},
+				retry.Attempts(uint(c.config.RetryAttempts)),
+				retry.DelayType(retry.FixedDelay),
+				retry.Delay(c.config.RetryDelay),
+			)
+			if err != nil {
+				c.logger.Error("RetrieveBatches process failed.", "error", err)
+			}
+			return resultRetrieveBatch
+
+		}
 	}
-	return resultRetrieveBatch
 }
 
 func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
