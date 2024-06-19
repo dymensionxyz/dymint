@@ -84,7 +84,7 @@ func (m *Manager) addBlock(ctx context.Context, height uint64, gossipedBlockByte
 	if err != nil {
 		return err
 	}
-	_, err = m.Store.SaveBlockID(height, cid, nil)
+	_, err = m.Store.SaveBlockCid(height, cid, nil)
 	if err != nil {
 		m.logger.Error("Blocksync store block id", "err", err)
 	}
@@ -103,7 +103,7 @@ func (m *Manager) refreshBlockSyncAdvertiseBlocks(ctx context.Context) {
 		if err == nil && id != cid.Undef {
 			continue
 		}
-		id, err = m.Store.LoadBlockID(h)
+		id, err = m.Store.LoadBlockCid(h)
 		if err != nil || id == cid.Undef {
 			continue
 		}
