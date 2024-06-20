@@ -20,6 +20,7 @@ import (
 
 	"github.com/dymensionxyz/dymint/config"
 	"github.com/dymensionxyz/dymint/p2p"
+	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
 )
 
@@ -107,6 +108,7 @@ func StartTestNetwork(ctx context.Context, t *testing.T, n int, conf map[int]Hos
 	require.NoError(err)
 
 	clients := make([]*p2p.Client, n)
+	store := store.New(store.NewDefaultInMemoryKVStore())
 	for i := 0; i < n; i++ {
 		client, err := p2p.NewClient(config.P2PConfig{
 			BootstrapNodes:     seeds[i],
@@ -116,6 +118,7 @@ func StartTestNetwork(ctx context.Context, t *testing.T, n int, conf map[int]Hos
 		},
 			mnet.Hosts()[i].Peerstore().PrivKey(mnet.Hosts()[i].ID()),
 			conf[i].ChainID,
+			store,
 			pubsubServer, datastore.NewMapDatastore(),
 			logger)
 		require.NoError(err)

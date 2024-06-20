@@ -16,6 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/dymensionxyz/dymint/store"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/pubsub"
 
@@ -29,11 +30,12 @@ func TestClientStartup(t *testing.T) {
 	pubsubServer := pubsub.NewServer()
 	err := pubsubServer.Start()
 	require.NoError(t, err)
+	store := store.New(store.NewDefaultInMemoryKVStore())
 	client, err := p2p.NewClient(config.P2PConfig{
 		ListenAddress:      config.DefaultListenAddress,
 		GossipSubCacheSize: 50,
 		BootstrapRetryTime: 30 * time.Second,
-	}, privKey, "TestChain", pubsubServer, datastore.NewMapDatastore(), log.TestingLogger())
+	}, privKey, "TestChain", store, pubsubServer, datastore.NewMapDatastore(), log.TestingLogger())
 	assert := assert.New(t)
 	assert.NoError(err)
 	assert.NotNil(client)
@@ -231,10 +233,11 @@ func TestSeedStringParsing(t *testing.T) {
 			assert := assert.New(t)
 			require := require.New(t)
 			logger := &testutil.MockLogger{}
+			store := store.New(store.NewDefaultInMemoryKVStore())
 			client, err := p2p.NewClient(config.P2PConfig{
 				GossipSubCacheSize: 50,
 				BootstrapRetryTime: 30 * time.Second,
-			}, privKey, "TestNetwork", pubsubServer, datastore.NewMapDatastore(), logger)
+			}, privKey, "TestNetwork", store, pubsubServer, datastore.NewMapDatastore(), logger)
 			require.NoError(err)
 			require.NotNil(client)
 			actual := client.GetSeedAddrInfo(c.input)

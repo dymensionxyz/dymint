@@ -59,7 +59,7 @@ func TestInitialState(t *testing.T) {
 		ListenAddress:           config.DefaultListenAddress,
 		GossipedBlocksCacheSize: 50,
 		BootstrapRetryTime:      30 * time.Second,
-	}, privKey, "TestChain", pubsubServer, datastore.NewMapDatastore(), logger)
+	}, privKey, "TestChain", emptyStore, pubsubServer, datastore.NewMapDatastore(), logger)
 	assert.NoError(err)
 	assert.NotNil(p2pClient)
 
