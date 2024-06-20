@@ -89,7 +89,6 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		return fmt.Errorf("update state: %w", err)
 	}
 
-	m.p2pClient.SetAppliedHeight(m.State.Height())
 	// Prune old heights, if requested by ABCI app.
 	if 0 < retainHeight {
 		err = m.pruneBlocks(uint64(retainHeight))
@@ -127,8 +126,6 @@ func (m *Manager) attemptCacheBlock(block *types.Block, commit *types.Commit, so
 		m.retrieverMu.Unlock()
 		return false
 	}
-
-	m.p2pClient.SetLatestSeenHeight(block.Header.Height)
 
 	m.blockCache[block.Header.Height] = CachedBlock{
 		Block:  block,
