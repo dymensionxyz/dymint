@@ -4,8 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/dymensionxyz/dymint/gerr"
-
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	abcitypes "github.com/tendermint/tendermint/abci/types"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 
@@ -188,7 +187,7 @@ func TestBatch(t *testing.T) {
 	assert.NoError(err)
 
 	resp, err := s.LoadBlockResponses(1)
-	assert.Error(err, gerr.ErrNotFound)
+	assert.Error(err, gerrc.ErrNotFound)
 	assert.Nil(resp)
 
 	err = batch.Commit()

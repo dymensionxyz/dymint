@@ -6,9 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/dymensionxyz/dymint/gerr"
-
 	"github.com/dymensionxyz/dymint/store"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 
 	"github.com/dymensionxyz/dymint/types"
 	tmed25519 "github.com/tendermint/tendermint/crypto/ed25519"
@@ -125,7 +124,7 @@ func (m *Manager) produceBlock(allowEmpty bool) (*types.Block, *types.Commit, er
 			return nil, nil, fmt.Errorf("load commit after load block: height: %d: %w: %w", newHeight, err, ErrNonRecoverable)
 		}
 		m.logger.Info("Using pending block.", "height", newHeight)
-	} else if !errors.Is(err, gerr.ErrNotFound) {
+	} else if !errors.Is(err, gerrc.ErrNotFound) {
 		return nil, nil, fmt.Errorf("load block: height: %d: %w: %w", newHeight, err, ErrNonRecoverable)
 	} else {
 		// limit to the max block data, so we don't create a block that is too big to fit in a batch

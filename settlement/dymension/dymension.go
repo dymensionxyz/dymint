@@ -7,9 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dymensionxyz/dymint/gerr"
-
 	uevent "github.com/dymensionxyz/dymint/utils/event"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -160,7 +159,7 @@ func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *d
 		err := c.RunWithRetryInfinitely(func() error {
 			err := c.broadcastBatch(msgUpdateState)
 			if err != nil {
-				if errors.Is(err, gerr.ErrAlreadyExist) {
+				if errors.Is(err, gerrc.ErrAlreadyExist) {
 					return retry.Unrecoverable(err)
 				}
 
@@ -178,7 +177,7 @@ func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *d
 		})
 		if err != nil {
 			// this could happen if we timed-out waiting for acceptance in the previous iteration, but the batch was indeed submitted
-			if errors.Is(err, gerr.ErrAlreadyExist) {
+			if errors.Is(err, gerrc.ErrAlreadyExist) {
 				c.logger.Debug("Batch already accepted", "startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
 				return nil
 			}
@@ -259,15 +258,15 @@ func (c *Client) getStateInfo(index, height *uint64) (res *rollapptypes.QueryGet
 		res, err = c.rollappQueryClient.StateInfo(c.ctx, req)
 
 		if status.Code(err) == codes.NotFound {
-			return retry.Unrecoverable(gerr.ErrNotFound)
+			return retry.Unrecoverable(gerrc.ErrNotFound)
 		}
 		return err
 	})
 	if err != nil {
-		return nil, fmt.Errorf("query state info: %w: %w", gerr.ErrUnknown, err)
+		return nil, fmt.Errorf("query state info: %w: %w", gerrc.ErrUnknown, err)
 	}
 	if res == nil { // not supposed to happen
-		return nil, fmt.Errorf("empty response with nil err: %w", gerr.ErrUnknown)
+		return nil, fmt.Errorf("empty response with nil err: %w", gerrc.ErrUnknown)
 	}
 	return
 }
@@ -340,7 +339,7 @@ func (c *Client) GetSequencers() ([]*types.Sequencer, error) {
 
 	// not supposed to happen, but just in case
 	if res == nil {
-		return nil, fmt.Errorf("empty response: %w", gerr.ErrUnknown)
+		return nil, fmt.Errorf("empty response: %w", gerrc.ErrUnknown)
 	}
 
 	sequencersList := make([]*types.Sequencer, 0, len(res.Sequencers))
@@ -369,12 +368,12 @@ func (c *Client) broadcastBatch(msgUpdateState *rollapptypes.MsgUpdateState) err
 	txResp, err := c.cosmosClient.BroadcastTx(c.config.DymAccountName, msgUpdateState)
 	if err != nil {
 		if strings.Contains(err.Error(), rollapptypes.ErrWrongBlockHeight.Error()) {
-			err = fmt.Errorf("%w: %w", err, gerr.ErrAlreadyExist)
+			err = fmt.Errorf("%w: %w", err, gerrc.ErrAlreadyExist)
 		}
 		return fmt.Errorf("broadcast tx: %w", err)
 	}
 	if txResp.Code != 0 {
-		return fmt.Errorf("broadcast tx status code is not 0: %w", gerr.ErrUnknown)
+		return fmt.Errorf("broadcast tx status code is not 0: %w", gerrc.ErrUnknown)
 	}
 	return nil
 }
