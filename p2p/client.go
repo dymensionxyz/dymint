@@ -200,7 +200,6 @@ func (c *Client) GossipBlock(ctx context.Context, blockBytes []byte) error {
 
 // GossipBlock sends the block, and it's commit to the P2P network.
 func (c *Client) AddBlock(ctx context.Context, height uint64, blockBytes []byte) error {
-
 	cid, err := c.blocksync.AddBlock(ctx, blockBytes)
 	if err != nil {
 		return fmt.Errorf("blocksync add block: %w", err)
