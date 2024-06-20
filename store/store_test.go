@@ -239,7 +239,7 @@ func TestBlockId(t *testing.T) {
 
 	//retrieve cid for height 2
 	_, err = s.LoadBlockCid(2)
-	require.Error(err, gerr.ErrNotFound)
+	require.Error(err, gerrc.ErrNotFound)
 
 	//commit
 	batch.Commit()

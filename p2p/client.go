@@ -214,11 +214,7 @@ func (c *Client) GetBlockId(ctx context.Context, height uint64) (cid.Cid, error)
 	if err != nil {
 		return cid.Undef, err
 	}
-	return cid, err
-}
-
-func (c *Client) GetBlock(ctx context.Context, blockId string) ([]byte, error) {
-	return c.blocksync.GetBlock(ctx, blockId)
+	return cid.MustParse(string(cidBytes)), nil
 }
 
 // SetBlockValidator sets the callback function, that will be invoked after block is received from P2P network.
@@ -405,7 +401,7 @@ func (c *Client) setupGossiping(ctx context.Context) error {
 	}
 	go c.txGossiper.ProcessMessages(ctx)
 
-	c.blockGossiper, err = NewGossiper(c.Host, ps, c.getBlockTopic(), c.gossipedBlockReceived, c.logger,
+	c.blockGossiper, err = NewGossiper(c.Host, ps, c.getBlockTopic(), c.blockGossipReceived, c.logger,
 		WithValidator(c.blockValidator))
 	if err != nil {
 		return err
