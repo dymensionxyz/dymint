@@ -3,7 +3,7 @@ package store
 import (
 	"errors"
 
-	"github.com/dymensionxyz/dymint/gerr"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 
 	"github.com/dgraph-io/badger/v3"
 )
@@ -29,7 +29,7 @@ func (b *BadgerKV) Get(key []byte) ([]byte, error) {
 	defer txn.Discard()
 	item, err := txn.Get(key)
 	if errors.Is(err, badger.ErrKeyNotFound) {
-		return nil, gerr.ErrNotFound
+		return nil, gerrc.ErrNotFound
 	}
 	if err != nil {
 		return nil, err

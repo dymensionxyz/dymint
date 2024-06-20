@@ -8,11 +8,10 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/dymensionxyz/dymint/gerr"
-	"github.com/dymensionxyz/dymint/store"
-
 	"code.cloudfoundry.org/go-diodes"
+	"github.com/dymensionxyz/dymint/store"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/libp2p/go-libp2p/core/crypto"
@@ -193,7 +192,7 @@ func (m *Manager) NextHeightToSubmit() uint64 {
 // syncBlockManager enforces the node to be synced on initial run.
 func (m *Manager) syncBlockManager() error {
 	res, err := m.SLClient.GetLatestBatch()
-	if errors.Is(err, gerr.ErrNotFound) {
+	if errors.Is(err, gerrc.ErrNotFound) {
 		// The SL hasn't got any batches for this chain yet.
 		m.logger.Info("No batches for chain found in SL.")
 		m.LastSubmittedHeight.Store(uint64(m.Genesis.InitialHeight - 1))
