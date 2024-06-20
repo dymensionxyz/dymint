@@ -10,40 +10,28 @@ import (
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
-// onNewGossipedBlock will take a block and apply it
-func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
+// onReceivedBlock will take a block and apply it
+func (m *Manager) onReceivedBlock(event pubsub.Message) {
 	eventData, ok := event.Data().(p2p.P2PBlock)
 	if !ok {
-		m.logger.Error("onNewGossipedBlock", "err", "wrong event data received")
+		m.logger.Error("onReceivedBlock", "err", "wrong event data received")
+		return
 	}
-	block := eventData.Block
-	commit := eventData.Commit
-	source := gossipedBlock
-
-	m.logger.Debug("Received new block via gossip.", "block height", block.Header.Height, "store height", m.State.Height(), "n cachedBlocks", len(m.blockCache))
-
-	ok = m.attemptCacheBlock(&block, &commit, source)
-	if !ok {
+	var source blockSource
+	switch event.Events()[p2p.EventTypeKey][0] {
+	case p2p.EventNewBlockSyncBlock:
+		source = blocksyncBlock
+	case p2p.EventNewGossipedBlock:
+		source = gossipedBlock
+	default:
+		m.logger.Error("onReceivedBlock", "err", "wrong event type received")
 		return
 	}
 
-	err := m.attemptApplyCachedBlocks()
-	if err != nil {
-		m.logger.Error("Applying cached blocks.", "err", err)
-	}
-}
-
-// onNewGossipedBlock will take a block and apply it
-func (m *Manager) onNewBlockSyncBlock(event pubsub.Message) {
-	eventData, ok := event.Data().(p2p.P2PBlock)
-	if !ok {
-		m.logger.Error("onNewBlockSyncBlock", "err", "wrong event data received")
-	}
 	block := eventData.Block
 	commit := eventData.Commit
-	source := blocksyncBlock
 
-	m.logger.Debug("Received new block via blocksync.", "block height", block.Header.Height, "store height", m.State.Height(), "n cachedBlocks", len(m.blockCache))
+	m.logger.Debug("Received new block.", "via", source, "block height", block.Header.Height, "store height", m.State.Height(), "n cachedBlocks", len(m.blockCache))
 
 	ok = m.attemptCacheBlock(&block, &commit, source)
 	if !ok {
@@ -70,29 +58,12 @@ func (m *Manager) gossipBlock(ctx context.Context, block types.Block, commit typ
 	}
 
 	// adds the block to be used by block-sync protocol
-	err = m.addBlock(ctx, block.Header.Height, gossipedBlockBytes)
+	err = m.p2pClient.AddBlock(ctx, block.Header.Height, gossipedBlockBytes)
 	if err != nil {
 		m.logger.Error("adding block to p2p store: %w", err)
 	}
 
 	return nil
-}
-
-// addBlock store the blocks to be used by block-sync protocol and stores the content identifier created to advertise it in the P2P network
-func (m *Manager) addBlock(ctx context.Context, height uint64, gossipedBlockBytes []byte) error {
-	cid, err := m.p2pClient.AddBlock(ctx, height, gossipedBlockBytes)
-	if err != nil {
-		return err
-	}
-	_, err = m.Store.SaveBlockCid(height, cid, nil)
-	if err != nil {
-		m.logger.Error("Blocksync store block id", "err", err)
-	}
-	advErr := m.p2pClient.AdvertiseBlock(ctx, height, cid)
-	if advErr != nil {
-		m.logger.Error("Blocksync advertise block", "err", advErr)
-	}
-	return err
 }
 
 // content identifiers are re-advertised on node startup to make sure ids are always found in the network

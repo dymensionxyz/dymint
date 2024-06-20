@@ -147,16 +147,9 @@ func (m *Manager) Start(ctx context.Context) error {
 		}
 	}
 
-	if !isSequencer {
-		// Fullnode loop can start before syncing from DA
-		go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewGossipedBlock, m.onNewGossipedBlock, m.logger)
-		go uevent.MustSubscribe(ctx, m.Pubsub, "applyBlockSyncBlocksLoop", p2p.EventQueryNewBlockSyncBlock, m.onNewBlockSyncBlock, m.logger)
-	}
-
 	// TODO: populate the accumulatedSize on startup
 
 	go m.refreshBlockSyncAdvertiseBlocks(ctx)
-	m.p2pClient.SetAppliedHeight(m.State.Height())
 
 	err = m.syncBlockManager()
 	if err != nil {
@@ -180,15 +173,20 @@ func (m *Manager) Start(ctx context.Context) error {
 			return m.ProduceBlockLoop(ctx, bytesProducedC)
 		})
 	} else {
-		go m.RetrieveLoop(ctx)
-		go m.SyncToTargetHeightLoop(ctx)
 		// Full-nodes can sync from DA but it is not necessary to wait for it, since it can sync from P2P as well in parallel.
 		go func() {
 			err := m.syncBlockManager()
 			if err != nil {
 				m.logger.Error("sync block manager", "err", err)
 			}
+			go m.RetrieveLoop(ctx)
+			go m.SyncToTargetHeightLoop(ctx)
 		}()
+
+		// Subscribe to P2P received blocks events
+		go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewGossipedBlock, m.onReceivedBlock, m.logger)
+		go uevent.MustSubscribe(ctx, m.Pubsub, "applyBlockSyncBlocksLoop", p2p.EventQueryNewBlockSyncBlock, m.onReceivedBlock, m.logger)
+
 	}
 
 	return nil
@@ -221,7 +219,6 @@ func (m *Manager) syncBlockManager() error {
 		m.LastSubmittedHeight.Store(uint64(m.Genesis.InitialHeight - 1))
 		return nil
 	}
-	m.p2pClient.SetLatestSeenHeight(res.EndHeight)
 
 	if err != nil {
 		// TODO: separate between fresh rollapp and non-registered rollapp

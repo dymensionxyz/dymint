@@ -10,6 +10,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/dymensionxyz/dymint/store"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p"
@@ -82,25 +83,23 @@ type Client struct {
 
 	blocksync *BlockSync
 
-	store datastore.Datastore
+	blockstore datastore.Datastore
 
 	latestSeenHeight uint64
-
-	appliedHeight uint64
 
 	heightToSkip map[uint64]struct{}
 
 	// Prevents starting a sync loop while still syncing from a previous execution
 	blocksyncMu sync.Mutex
 
-	blockAppliedHeightMu sync.Mutex
+	store store.Store
 }
 
 // NewClient creates new Client object.
 //
 // Basic checks on parameters are done, and default parameters are provided for unset-configuration
 // TODO(tzdybal): consider passing entire config, not just P2P config, to reduce number of arguments
-func NewClient(conf config.P2PConfig, privKey crypto.PrivKey, chainID string, localPubsubServer *tmpubsub.Server, store datastore.Datastore, logger types.Logger) (*Client, error) {
+func NewClient(conf config.P2PConfig, privKey crypto.PrivKey, chainID string, store store.Store, localPubsubServer *tmpubsub.Server, blockstore datastore.Datastore, logger types.Logger) (*Client, error) {
 	if privKey == nil {
 		return nil, errNoPrivKey
 	}
@@ -114,9 +113,9 @@ func NewClient(conf config.P2PConfig, privKey crypto.PrivKey, chainID string, lo
 		chainID:           chainID,
 		logger:            logger,
 		localPubsubServer: localPubsubServer,
-		store:             store,
+		blockstore:        blockstore,
 		latestSeenHeight:  uint64(0),
-		appliedHeight:     uint64(0),
+		store:             store,
 		heightToSkip:      make(map[uint64]struct{}),
 	}, nil
 }
@@ -200,8 +199,21 @@ func (c *Client) GossipBlock(ctx context.Context, blockBytes []byte) error {
 }
 
 // GossipBlock sends the block, and it's commit to the P2P network.
-func (c *Client) AddBlock(ctx context.Context, height uint64, blockBytes []byte) (cid.Cid, error) {
-	return c.blocksync.AddBlock(ctx, blockBytes)
+func (c *Client) AddBlock(ctx context.Context, height uint64, blockBytes []byte) error {
+
+	cid, err := c.blocksync.AddBlock(ctx, blockBytes)
+	if err != nil {
+		return fmt.Errorf("blocksync add block: %w", err)
+	}
+	_, err = c.store.SaveBlockCid(height, cid, nil)
+	if err != nil {
+		return fmt.Errorf("blocksync store block id: %w", err)
+	}
+	advErr := c.AdvertiseBlock(ctx, height, cid)
+	if advErr != nil {
+		return fmt.Errorf("blocksync advertise block %w", advErr)
+	}
+	return nil
 }
 
 func (c *Client) AdvertiseBlock(ctx context.Context, height uint64, cid cid.Cid) error {
@@ -347,7 +359,7 @@ func (c *Client) setupPeerDiscovery(ctx context.Context) error {
 }
 
 func (c *Client) setupBlockSync(ctx context.Context) error {
-	blocksync, err := StartBlockSync(ctx, c.Host, c.store, c.blockSyncReceived, c.logger)
+	blocksync, err := StartBlockSync(ctx, c.Host, c.blockstore, c.blockSyncReceived, c.logger)
 	if err != nil {
 		return fmt.Errorf("StartBlockSync: %w", err)
 	}
@@ -477,10 +489,13 @@ func (c *Client) blockGossipReceived(ctx context.Context, block []byte) {
 	if err != nil {
 		c.logger.Error("Publishing event.", "err", err)
 	}
-	id, err := c.AddBlock(ctx, gossipedBlock.Block.Header.Height, block)
+	cid, err := c.blocksync.AddBlock(ctx, block)
 	if err != nil {
-		c.logger.Error("Adding gossiped block to blockstore.", "err", err, "cid", id)
+		c.logger.Error("Adding gossiped block to blockstore.", "err", err, "height", gossipedBlock.Block.Header.Height, "cid", cid)
 	}
+
+	c.setLatestSeenHeight(gossipedBlock.Block.Header.Height)
+
 	// Received block is cached and  no longer needed to request using block-sync
 	c.heightToSkip[gossipedBlock.Block.Header.Height] = struct{}{}
 }
@@ -512,22 +527,9 @@ func (c *Client) bootstrapLoop(ctx context.Context) {
 }
 
 // latest seen height to be retrieved using block-sync
-func (c *Client) SetLatestSeenHeight(height uint64) {
+func (c *Client) setLatestSeenHeight(height uint64) {
 	if height > c.latestSeenHeight {
 		c.latestSeenHeight = height
-	}
-}
-
-// already applied height set as a min height to retrieved using block-sync
-func (c *Client) SetAppliedHeight(height uint64) {
-	defer c.blockAppliedHeightMu.Unlock()
-	c.blockAppliedHeightMu.Lock()
-
-	if height > c.appliedHeight {
-		for h := height; h <= c.appliedHeight; h++ {
-			delete(c.heightToSkip, h)
-		}
-		c.appliedHeight = height
 	}
 }
 
@@ -544,7 +546,11 @@ func (c *Client) BlockSyncLoop(ctx context.Context) {
 			return
 		case <-ticker.C:
 			c.blocksyncMu.Lock()
-			for h := c.appliedHeight + 1; h <= c.latestSeenHeight; h++ {
+			state, err := c.store.LoadState()
+			if err != nil {
+				continue
+			}
+			for h := state.NextHeight(); h <= c.latestSeenHeight; h++ {
 				_, found := c.heightToSkip[h]
 				if found {
 					continue
