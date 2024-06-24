@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"code.cloudfoundry.org/go-diodes"
+
 	"github.com/dymensionxyz/dymint/da"
 )
 
@@ -122,7 +123,7 @@ func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
 				continue
 			}
 			if err := m.validateBlock(block, batch.Commits[i]); err != nil {
-				m.logger.Error("validate block from DA - someone is behaving badly", "height", block.Header.Height, "err", err)
+				m.logger.Error("validate block from DA", "height", block.Header.Height, "err", err)
 				continue
 			}
 			err := m.applyBlock(block, batch.Commits[i], blockMetaData{source: daBlock, daHeight: daMetaData.Height})
