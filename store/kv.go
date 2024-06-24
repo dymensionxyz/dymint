@@ -17,16 +17,20 @@ func NewDefaultInMemoryKVStore() KV {
 	}
 }
 
-// NewDefaultKVStore creates instance of default key-value store.
-func NewDefaultKVStore(rootDir, dbPath, dbName string) KV {
+func NewKVStore(rootDir, dbPath, dbName string, syncWrites bool) KV {
 	path := filepath.Join(rootify(rootDir, dbPath), dbName)
-	db, err := badger.Open(badger.DefaultOptions(path).WithSyncWrites(true))
+	db, err := badger.Open(badger.DefaultOptions(path).WithSyncWrites(syncWrites))
 	if err != nil {
 		panic(err)
 	}
 	return &BadgerKV{
 		db: db,
 	}
+}
+
+// NewDefaultKVStore creates instance of default key-value store.
+func NewDefaultKVStore(rootDir, dbPath, dbName string) KV {
+	return NewKVStore(rootDir, dbPath, dbName, false)
 }
 
 // rootify works just like in cosmos-sdk

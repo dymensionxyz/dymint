@@ -110,12 +110,12 @@ func NewNode(
 	pubsubServer := pubsub.NewServer()
 
 	var baseKV store.KV
-	if conf.RootDir == "" && conf.DBPath == "" { // this is used for testing
+	if conf.DBConfig.InMemory || (conf.RootDir == "" && conf.DBPath == "") { // this is used for testing
 		logger.Info("WARNING: working in in-memory mode")
 		baseKV = store.NewDefaultInMemoryKVStore()
 	} else {
 		// TODO(omritoptx): Move dymint to const
-		baseKV = store.NewDefaultKVStore(conf.RootDir, conf.DBPath, "dymint")
+		baseKV = store.NewKVStore(conf.RootDir, conf.DBPath, "dymint", conf.DBConfig.SyncWrites)
 	}
 	mainKV := store.NewPrefixKV(baseKV, mainPrefix)
 	// TODO: dalcKV is needed for mock only. Initilize only if mock used

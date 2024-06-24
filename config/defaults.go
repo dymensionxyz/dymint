@@ -44,6 +44,10 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 			BootstrapNodes:          "",
 			AdvertisingEnabled:      true,
 		},
+		DBConfig: DBConfig{
+			SyncWrites: false,
+			InMemory:   false,
+		},
 	}
 
 	if home == "" {
