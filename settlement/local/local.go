@@ -12,8 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dymensionxyz/dymint/gerr"
-
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	tmp2p "github.com/tendermint/tendermint/p2p"
 
@@ -189,7 +188,7 @@ func (c *Client) GetHeightState(h uint64) (*settlement.ResultGetHeightState, err
 			}, nil
 		}
 	}
-	return nil, gerr.ErrNotFound // TODO: need to return a cosmos specific error?
+	return nil, gerrc.ErrNotFound // TODO: need to return a cosmos specific error?
 }
 
 // GetProposer implements settlement.ClientI.
@@ -241,7 +240,7 @@ func (c *Client) retrieveBatchAtStateIndex(slStateIndex uint64) (*settlement.Res
 	b, err := c.settlementKV.Get(keyFromIndex(slStateIndex))
 	c.logger.Debug("Retrieving batch from settlement layer.", "SL state index", slStateIndex)
 	if err != nil {
-		return nil, gerr.ErrNotFound
+		return nil, gerrc.ErrNotFound
 	}
 	var settlementBatch settlement.Batch
 	err = json.Unmarshal(b, &settlementBatch)

@@ -3,12 +3,12 @@ package block
 import (
 	"fmt"
 
-	"github.com/dymensionxyz/dymint/gerr"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 )
 
 func (m *Manager) pruneBlocks(retainHeight uint64) error {
 	if m.IsSequencer() && retainHeight <= m.NextHeightToSubmit() { // do not delete anything that we might submit in future
-		return fmt.Errorf("cannot prune blocks before they have been submitted: %d: %w", retainHeight, gerr.ErrInvalidArgument)
+		return fmt.Errorf("cannot prune blocks before they have been submitted: %d: %w", retainHeight, gerrc.ErrInvalidArgument)
 	}
 
 	pruned, err := m.Store.PruneBlocks(m.State.BaseHeight, retainHeight)

@@ -8,12 +8,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/dymensionxyz/dymint/gerr"
-
 	"github.com/avast/retry-go/v4"
 	"github.com/celestiaorg/celestia-openrpc/types/blob"
 	"github.com/celestiaorg/celestia-openrpc/types/header"
 	"github.com/celestiaorg/nmt"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/gogo/protobuf/proto"
 	"github.com/tendermint/tendermint/libs/pubsub"
 
@@ -80,7 +79,7 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 	var err error
 	c.config, err = createConfig(config)
 	if err != nil {
-		return fmt.Errorf("create config: %w: %w", err, gerr.ErrInvalidArgument)
+		return fmt.Errorf("create config: %w: %w", err, gerrc.ErrInvalidArgument)
 	}
 
 	c.ctx, c.cancel = context.WithCancel(context.Background())
@@ -517,7 +516,7 @@ func (c *DataAvailabilityLayerClient) submit(daBlob da.Blob) (uint64, da.Commitm
 	}
 
 	if len(commitments) == 0 {
-		return 0, nil, fmt.Errorf("zero commitments: %w", gerr.ErrNotFound)
+		return 0, nil, fmt.Errorf("zero commitments: %w", gerrc.ErrNotFound)
 	}
 
 	blobSizes := make([]uint32, len(blobs))
@@ -528,24 +527,7 @@ func (c *DataAvailabilityLayerClient) submit(daBlob da.Blob) (uint64, da.Commitm
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
-	/*
-		TODO: dry out all retries
-	*/
-
-	var height uint64
-
-	err = retry.Do(
-		func() error {
-			var err error
-			height, err = c.rpc.Submit(ctx, blobs, openrpc.GasPrice(c.config.GasPrices))
-			return err
-		},
-		retry.Context(c.ctx),
-		retry.LastErrorOnly(true),
-		retry.Delay(c.config.RetryDelay),
-		retry.Attempts(uint(c.config.RetryAttempts)),
-		retry.DelayType(retry.FixedDelay),
-	)
+	height, err := c.rpc.Submit(ctx, blobs, openrpc.GasPrice(c.config.GasPrices))
 	if err != nil {
 		return 0, nil, fmt.Errorf("do rpc submit: %w", err)
 	}

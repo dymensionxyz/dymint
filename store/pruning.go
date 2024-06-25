@@ -3,17 +3,17 @@ package store
 import (
 	"fmt"
 
-	"github.com/dymensionxyz/dymint/gerr"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 )
 
 // PruneBlocks removes block up to (but not including) a height. It returns number of blocks pruned.
 func (s *DefaultStore) PruneBlocks(from, to uint64) (uint64, error) {
 	if from <= 0 {
-		return 0, fmt.Errorf("from height must be greater than 0: %w", gerr.ErrInvalidArgument)
+		return 0, fmt.Errorf("from height must be greater than 0: %w", gerrc.ErrInvalidArgument)
 	}
 
 	if to <= from {
-		return 0, fmt.Errorf("to height must be greater than from height: to: %d: from: %d: %w", to, from, gerr.ErrInvalidArgument)
+		return 0, fmt.Errorf("to height must be greater than from height: to: %d: from: %d: %w", to, from, gerrc.ErrInvalidArgument)
 	}
 
 	pruned := uint64(0)

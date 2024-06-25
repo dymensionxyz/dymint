@@ -85,6 +85,11 @@ namespace_id = "{{ .BlockManagerConfig.NamespaceID }}"
 # this should be json matching the celestia.Config type
 da_config = "{{ .DAConfig }}"
 
+# Celestia config example:
+# da_config = "{\"base_url\":\"http:\/\/127.0.0.1:26658\",\"timeout\":30000000000,\"gas_prices\":0.1,\"auth_token\":\"TOKEN\",\"backoff\":{\"initial_delay\":6000000000,\"max_delay\":6000000000,\"growth_factor\":2},\"retry_attempts\":4,\"retry_delay\":3000000000}"
+# Avail config example:
+# da_config = "{\"seed\": \"MNEMONIC\", \"api_url\": \"wss://kate.avail.tools/ws\", \"app_id\": 0, \"tip\":10}"
+
 
 ### p2p config ###
 
@@ -94,6 +99,9 @@ p2p_listen_address = "{{ .P2PConfig.ListenAddress }}"
 # list of nodes used for P2P bootstrapping in the format of /ip4/ip_address/tcp/port/p2p/ID
 p2p_bootstrap_nodes = "{{ .P2PConfig.BootstrapNodes }}"
 
+# list of persistent peers in the format of /ip4/ip_address/tcp/port/p2p/ID
+p2p_persistent_nodes = "{{ .P2PConfig.PersistentNodes }}"
+
 # max number of cached messages by gossipsub protocol
 p2p_gossiped_blocks_cache_size = {{ .P2PConfig.GossipedBlocksCacheSize }}
 
@@ -102,11 +110,6 @@ p2p_bootstrap_retry_time = "{{ .P2PConfig.BootstrapRetryTime }}"
 
 # set to false to disable advertising the node to the P2P network
 p2p_advertising_enabled= "{{ .P2PConfig.AdvertisingEnabled }}"
-
-#celestia config example:
-# da_config = "{\"base_url\":\"http:\/\/127.0.0.1:26658\",\"timeout\":5000000000,\"gas_prices\":0.1,\"auth_token\":\"TOKEN\",\"backoff\":{\"initial_delay\":6000000000,\"max_delay\":6000000000,\"growth_factor\":2},\"retry_attempts\":4,\"retry_delay\":3000000000}"
-# Avail config example:
-# da_config = "{\"seed\": \"MNEMONIC\", \"api_url\": \"wss://kate.avail.tools/ws\", \"app_id\": 0, \"tip\":10}"
 
 ### settlement config ###
 settlement_layer = "{{ .SettlementLayer }}" # mock, dymension

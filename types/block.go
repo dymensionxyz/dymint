@@ -25,7 +25,7 @@ type Header struct {
 	LastCommitHash [32]byte // commit from sequencer(s) from the last block
 	DataHash       [32]byte // Block.Data root aka Transactions
 	ConsensusHash  [32]byte // consensus params for current block
-	AppHash        [32]byte // state after applying txs from the current block
+	AppHash        [32]byte // state after applying txs from height-1
 
 	// Root hash of all results from the txs from the previous block.
 	// This is ABCI specific but smart-contract chains require some way of committing
