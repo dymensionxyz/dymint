@@ -43,7 +43,7 @@ func NewKVStore(rootDir, dbPath, dbName string, syncWrites bool) KV {
 
 // NewDefaultKVStore creates instance of default key-value store.
 func NewDefaultKVStore(rootDir, dbPath, dbName string) KV {
-	return NewKVStore(rootDir, dbPath, dbName, false)
+	return NewKVStore(rootDir, dbPath, dbName, true)
 }
 
 // rootify works just like in cosmos-sdk
