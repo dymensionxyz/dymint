@@ -60,7 +60,7 @@ func (m *Manager) gossipBlock(ctx context.Context, block types.Block, commit typ
 	// adds the block to be used by block-sync protocol
 	err = m.p2pClient.AddBlock(ctx, block.Header.Height, gossipedBlockBytes)
 	if err != nil {
-		m.logger.Error("adding block to p2p store: %w", err)
+		m.logger.Error("adding block to p2p store", "err", err)
 	}
 
 	return nil
