@@ -38,8 +38,8 @@ func New(kv KV) Store {
 }
 
 // Close implements Store.
-func (s *DefaultStore) Close() {
-	s.db.Close()
+func (s *DefaultStore) Close() error {
+	return s.db.Close()
 }
 
 // NewBatch creates a new db batch.

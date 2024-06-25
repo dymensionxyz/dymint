@@ -295,6 +295,8 @@ func (n *Node) GetGenesisChunks() ([]string, error) {
 
 // OnStop is a part of Service interface.
 func (n *Node) OnStop() {
+	n.cancel()
+
 	err := n.dalc.Stop()
 	if err != nil {
 		n.Logger.Error("stop data availability layer client", "error", err)
@@ -310,9 +312,10 @@ func (n *Node) OnStop() {
 		n.Logger.Error("stop P2P client", "error", err)
 	}
 
-	n.cancel()
-
-	n.Store.Close()
+	err = n.Store.Close()
+	if err != nil {
+		n.Logger.Error("close store", "error", err)
+	}
 }
 
 // OnReset is a part of Service interface.

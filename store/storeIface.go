@@ -73,5 +73,5 @@ type Store interface {
 
 	PruneBlocks(from, to uint64) (uint64, error)
 
-	Close()
+	Close() error
 }
