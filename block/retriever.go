@@ -16,15 +16,13 @@ func (m *Manager) RetrieveLoop(ctx context.Context) {
 	p := diodes.NewPoller(m.targetSyncHeight, diodes.WithPollingContext(ctx))
 
 	for {
-		select {
-		case <-ctx.Done():
+		targetHeight := p.Next() // We only care about the latest one
+		if targetHeight == nil {
 			return
-		default:
-			targetHeight := p.Next() // We only care about the latest one
-			err := m.syncToTargetHeight(*(*uint64)(targetHeight))
-			if err != nil {
-				panic(fmt.Errorf("sync until target: %w", err))
-			}
+		}
+		err := m.syncToTargetHeight(*(*uint64)(targetHeight))
+		if err != nil {
+			panic(fmt.Errorf("sync until target: %w", err))
 		}
 	}
 }

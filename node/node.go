@@ -78,7 +78,8 @@ type Node struct {
 	IndexerService *txindex.IndexerService
 
 	// shared context for all dymint components
-	ctx context.Context
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 // NewNode creates new Dymint node.
@@ -117,12 +118,11 @@ func NewNode(
 		// TODO(omritoptx): Move dymint to const
 		baseKV = store.NewKVStore(conf.RootDir, conf.DBPath, "dymint", conf.DBConfig.SyncWrites)
 	}
-	mainKV := store.NewPrefixKV(baseKV, mainPrefix)
-	// TODO: dalcKV is needed for mock only. Initilize only if mock used
+
+	s := store.New(store.NewPrefixKV(baseKV, mainPrefix))
+	// TODO: dalcKV is needed for mock only. Initialize only if mock used
 	dalcKV := store.NewPrefixKV(baseKV, dalcPrefix)
 	indexerKV := store.NewPrefixKV(baseKV, indexerPrefix)
-
-	s := store.New(mainKV)
 
 	dalc := daregistry.GetClient(conf.DALayer)
 	if dalc == nil {
@@ -189,6 +189,7 @@ func NewNode(
 		return nil, fmt.Errorf("BlockManager initialization error: %w", err)
 	}
 
+	ctx, cancel := context.WithCancel(ctx)
 	node := &Node{
 		proxyApp:       proxyApp,
 		eventBus:       eventBus,
@@ -207,6 +208,7 @@ func NewNode(
 		IndexerService: indexerService,
 		BlockIndexer:   blockIndexer,
 		ctx:            ctx,
+		cancel:         cancel,
 	}
 
 	node.BaseService = *service.NewBaseService(logger, "Node", node)
@@ -307,6 +309,10 @@ func (n *Node) OnStop() {
 	if err != nil {
 		n.Logger.Error("stop P2P client", "error", err)
 	}
+
+	n.cancel()
+
+	n.Store.Close()
 }
 
 // OnReset is a part of Service interface.
