@@ -86,7 +86,7 @@ func (m *Manager) UpdateStateFromApp() error {
 	}
 	vals, err := m.Store.LoadValidators(appHeight)
 	if err != nil {
-		return errorsmod.Wrap(err, "load block responses")
+		return errorsmod.Wrap(err, "load validators")
 	}
 
 	// update the state with the hash, last store height and last validators.
