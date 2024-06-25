@@ -381,9 +381,15 @@ func (n *Node) startPrometheusServer() error {
 			WriteTimeout: 10 * time.Second,
 			Handler:      http.DefaultServeMux,
 		}
-		if err := srv.ListenAndServe(); err != nil {
-			return err
-		}
+		go func() {
+			if err := srv.ListenAndServe(); err != nil {
+				n.Logger.Error("serving prometheus server", "error", err)
+			}
+		}()
+		n.Logger.Info("Prometheus server started", "address", n.conf.Instrumentation.PrometheusListenAddr)
+
+		<-n.ctx.Done()
+		return srv.Close()
 	}
 	return nil
 }
