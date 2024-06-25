@@ -8,9 +8,10 @@ import (
 
 	"github.com/celestiaorg/celestia-openrpc/types/blob"
 	"github.com/cometbft/cometbft/crypto/merkle"
+	"github.com/tendermint/tendermint/libs/pubsub"
+
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
-	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
 // StatusCode is a type for DA layer return status.
@@ -37,10 +38,11 @@ type Client string
 
 // Data availability clients
 const (
-	Mock     Client = "mock"
-	Grpc     Client = "grpc"
-	Celestia Client = "celestia"
-	Avail    Client = "avail"
+	Mock       Client = "mock"
+	Grpc       Client = "grpc"
+	Celestia   Client = "celestia"
+	Avail      Client = "avail"
+	Interchain Client = "interchain"
 )
 
 // Option is a function that sets a parameter on the da layer.
