@@ -45,7 +45,7 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 			AdvertisingEnabled:      true,
 		},
 		DBConfig: DBConfig{
-			SyncWrites: false,
+			SyncWrites: true,
 			InMemory:   false,
 		},
 	}
