@@ -100,7 +100,7 @@ type Client struct {
 // TODO(tzdybal): consider passing entire config, not just P2P config, to reduce number of arguments
 func NewClient(conf config.P2PConfig, privKey crypto.PrivKey, chainID string, store store.Store, localPubsubServer *tmpubsub.Server, blockstore datastore.Datastore, logger types.Logger) (*Client, error) {
 	if privKey == nil {
-		return nil, errNoPrivKey
+		return nil, ErrNoPrivKey
 	}
 	if conf.ListenAddress == "" {
 		conf.ListenAddress = config.DefaultListenAddress
