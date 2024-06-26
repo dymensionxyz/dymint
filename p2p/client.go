@@ -358,10 +358,7 @@ func (c *Client) setupPeerDiscovery(ctx context.Context) error {
 }
 
 func (c *Client) setupBlockSync(ctx context.Context) error {
-	blocksync, err := StartBlockSync(ctx, c.Host, c.blockstore, c.blockSyncReceived, c.logger)
-	if err != nil {
-		return fmt.Errorf("StartBlockSync: %w", err)
-	}
+	blocksync := SetupBlockSync(ctx, c.Host, c.blockstore, c.blockSyncReceived, c.logger)
 	c.blocksync = blocksync
 	go c.BlockSyncLoop(ctx)
 	return nil

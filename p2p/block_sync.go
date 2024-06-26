@@ -38,7 +38,7 @@ type BlockSync struct {
 
 type BlockSyncMessageHandler func(block *P2PBlock)
 
-func StartBlockSync(ctx context.Context, h host.Host, store datastore.Datastore, msgHandler BlockSyncMessageHandler, logger types.Logger) (*BlockSync, error) {
+func SetupBlockSync(ctx context.Context, h host.Host, store datastore.Datastore, msgHandler BlockSyncMessageHandler, logger types.Logger) *BlockSync {
 	ds := dsync.MutexWrap(store)
 
 	bs := blockstore.NewBlockstore(ds)
@@ -77,7 +77,7 @@ func StartBlockSync(ctx context.Context, h host.Host, store datastore.Datastore,
 		logger: logger,
 	}
 
-	return blockSync, nil
+	return blockSync
 }
 
 func (blocksync *BlockSync) AddBlock(ctx context.Context, block []byte) (cid.Cid, error) {
