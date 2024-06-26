@@ -138,7 +138,7 @@ dym_account_name = "{{ .SettlementConfig.DymAccountName }}"
 [db]
 
 # When true, the database will write synchronously.
-# should be set to true for seqeuncer node
+# should be set to true for sequencer node
 sync_writes = {{ .DBConfig.SyncWrites }}
 
 # When true, the database will run in-memory only (FOR EXPERIMENTAL USE ONLY)
