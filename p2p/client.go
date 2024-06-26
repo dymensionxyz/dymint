@@ -524,9 +524,7 @@ func (c *Client) bootstrapLoop(ctx context.Context) {
 
 // latest seen height to be retrieved using block-sync
 func (c *Client) setLatestSeenHeight(height uint64) {
-	if height > c.latestSeenHeight {
-		c.latestSeenHeight = height
-	}
+	c.latestSeenHeight = max(height, c.latestSeenHeight)
 }
 
 // Loop used to request missing blocks via block-sync
