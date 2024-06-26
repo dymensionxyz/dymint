@@ -545,8 +545,8 @@ func (c *Client) BlockSyncLoop(ctx context.Context) {
 				continue
 			}
 
-			//this loop iterates and retrieves all the blocks between the last block applied and the greatest height received,
-			//skipping any block cached, which are the blocks missing to be in sync.
+			// this loop iterates and retrieves all the blocks between the last block applied and the greatest height received,
+			// skipping any block cached, which are the blocks missing to be in sync.
 			for h := state.NextHeight(); h <= c.latestSeenHeight; h++ {
 				_, found := c.heightToSkip[h]
 				if found {
