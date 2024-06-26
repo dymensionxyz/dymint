@@ -3,7 +3,6 @@ package p2p
 import (
 	"context"
 	"encoding/hex"
-	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -582,15 +581,14 @@ func (c *Client) findConnection(peer peer.AddrInfo) bool {
 // validates the content identifiers advertised in the DHT are valid
 type blockIdValidator struct{}
 
-func (blockIdValidator) Validate(_ string, id []byte) error {
-	var err error
+func (blockIdValidator) Validate(_ string, id []byte) (err error) {
 	defer func() {
-		cid.MustParse(string(id))
 		// recover from panic if one occurred. Set err to nil otherwise.
 		if recover() != nil {
-			err = errors.New("invalid cid")
+			err = ErrorInvalidCid
 		}
 	}()
+	cid.MustParse(string(id))
 	return err
 }
 func (blockIdValidator) Select(_ string, _ [][]byte) (int, error) { return 0, nil }
