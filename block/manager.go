@@ -161,6 +161,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	if isSequencer {
 		// Sequencer must wait till DA is synced to start submitting blobs
 		<-m.DAClient.Synced()
+<<<<<<< HEAD
 		nBytes := m.GetUnsubmittedBytes()
 		bytesProducedC := make(chan int)
 		go func() {
@@ -172,6 +173,14 @@ func (m *Manager) Start(ctx context.Context) error {
 		eg.Go(func() error {
 			return m.ProduceBlockLoop(ctx, bytesProducedC)
 		})
+=======
+		err = m.syncBlockManager()
+		if err != nil {
+			return fmt.Errorf("sync block manager: %w", err)
+		}
+		go m.ProduceBlockLoop(ctx)
+		go m.SubmitLoop(ctx)
+>>>>>>> c011804 (addressing comments)
 	} else {
 		// Full-nodes can sync from DA but it is not necessary to wait for it, since it can sync from P2P as well in parallel.
 		go func() {
