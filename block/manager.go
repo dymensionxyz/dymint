@@ -149,7 +149,7 @@ func (m *Manager) Start(ctx context.Context) error {
 
 	// TODO: populate the accumulatedSize on startup
 
-	go m.refreshBlockSyncAdvertiseBlocks(ctx)
+	go m.advertiseBlocksCIDtoDHT(ctx)
 
 	err = m.syncBlockManager()
 	if err != nil {
