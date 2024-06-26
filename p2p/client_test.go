@@ -3,6 +3,7 @@ package p2p_test
 import (
 	"context"
 	"crypto/rand"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -139,6 +140,7 @@ func TestGossiping(t *testing.T) {
 	wg.Wait()
 }
 
+// Test that advertises and retrieves a CID for a block height in the DHT
 func TestAdvertiseBlock(t *testing.T) {
 	logger := log.TestingLogger()
 
@@ -186,6 +188,40 @@ func TestAdvertiseBlock(t *testing.T) {
 	receivedCid, err := clients[0].GetBlockId(ctx, 1)
 	require.NoError(t, err)
 	require.Equal(t, expectedCid, receivedCid)
+
+}
+
+// Test that advertises an invalid CID in the DHT
+func TestAdvertiseWrongCid(t *testing.T) {
+	logger := log.TestingLogger()
+
+	ctx := context.Background()
+
+	// required for tx validator
+	assertRecv := func(tx *p2p.GossipMessage) bool {
+		return true
+	}
+
+	validators := []p2p.GossipValidator{assertRecv, assertRecv, assertRecv, assertRecv, assertRecv}
+
+	// network connections topology: 3<->1<->0<->2<->4
+	clients := testutil.StartTestNetwork(ctx, t, 3, map[int]testutil.HostDescr{
+		0: {Conns: []int{}, ChainID: "1"},
+		1: {Conns: []int{0}, ChainID: "1"},
+		2: {Conns: []int{1}, ChainID: "1"},
+	}, validators, logger)
+
+	// wait for clients to finish refreshing routing tables
+	clients.WaitForDHT()
+
+	// this sleep is required for pubsub to "propagate" subscription information
+	// TODO(tzdybal): is there a better way to wait for readiness?
+	time.Sleep(1 * time.Second)
+
+	// advertise cid for height 1
+	receivedError := clients[2].DHT.PutValue(ctx, "/block-sync/"+strconv.FormatUint(1, 10), []byte("test"))
+
+	require.Error(t, p2p.ErrorInvalidCid, receivedError)
 
 }
 
