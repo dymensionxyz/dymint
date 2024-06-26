@@ -527,7 +527,7 @@ func (c *Client) setLatestSeenHeight(height uint64) {
 	c.latestSeenHeight = max(height, c.latestSeenHeight)
 }
 
-// Loop used to request missing blocks via block-sync
+// BlockSyncLoop checks if there is any missing block to be retrieved and requests it on demand
 func (c *Client) BlockSyncLoop(ctx context.Context) {
 	c.logger.Info("Started block sync loop.")
 
@@ -544,6 +544,9 @@ func (c *Client) BlockSyncLoop(ctx context.Context) {
 			if err != nil {
 				continue
 			}
+
+			//this loop iterates and retrieves all the blocks between the last block applied and the greatest height received,
+			//skipping any block cached, which are the blocks missing to be in sync.
 			for h := state.NextHeight(); h <= c.latestSeenHeight; h++ {
 				_, found := c.heightToSkip[h]
 				if found {
