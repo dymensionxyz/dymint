@@ -202,6 +202,7 @@ func TestBatch(t *testing.T) {
 	assert.Equal(expected, resp)
 }
 
+// test for saving and loading cids for specific block heights in the store with and w/out batches
 func TestBlockId(t *testing.T) {
 	require := require.New(t)
 
@@ -230,18 +231,18 @@ func TestBlockId(t *testing.T) {
 
 	require.Equal(expectedCid, resultCid)
 
-	//repeat test using batch
+	// repeat test using batch
 	batch := s.NewBatch()
 
-	//store cid for height 2
+	// store cid for height 2
 	batch, err = s.SaveBlockCid(2, expectedCid, batch)
 	require.NoError(err)
 
-	//retrieve cid for height 2
+	// retrieve cid for height 2
 	_, err = s.LoadBlockCid(2)
 	require.Error(err, gerrc.ErrNotFound)
 
-	//commit
+	// commit
 	batch.Commit()
 
 	//retrieve cid for height 2
