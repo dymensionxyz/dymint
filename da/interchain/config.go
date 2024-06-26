@@ -1,20 +1,26 @@
 package interchain
 
-import "github.com/celestiaorg/celestia-openrpc/types/sdk"
+import (
+	"github.com/cosmos/cosmos-sdk/client"
+	"github.com/cosmos/cosmos-sdk/codec"
+	interchaindatypes "github.com/dymensionxyz/interchain-da/x/interchain_da/types"
+)
 
-type ChainConfig struct {
-	ChainID     string      // The chain ID of the DA chain
-	ClientID    string      // This is the IBC client ID on Dymension hub for the DA chain
-	ChainParams ChainParams // The params of the DA chain
+type DAConfig struct {
+	ChainID        string                   `mapstructure:"chain_id"`  // The chain ID of the DA chain
+	ClientID       string                   `mapstructure:"client_id"` // This is the IBC client ID on Dymension hub for the DA chain
+	KeyringBackend string                   `mapstructure:"keyring_backend"`
+	KeyringHomeDir string                   `mapstructure:"keyring_home_dir"`
+	AddressPrefix  string                   `mapstructure:"da_address_prefix"`
+	AccountName    string                   `mapstructure:"da_account_name"`
+	NodeAddress    string                   `mapstructure:"da_node_address"`
+	GasLimit       uint64                   `mapstructure:"da_gas_limit"`
+	GasPrices      string                   `mapstructure:"da_gas_prices"`
+	GasFees        string                   `mapstructure:"da_gas_fees"`
+	ChainParams    interchaindatypes.Params `mapstructure:"chain_params"` // The params of the DA chain
 }
 
-type ChainParams struct {
-	CostPerByte sdk.Coin // Calculate the fees needed to pay to submit the blob
-	MaxBlobSize uint32   // Max size of blobs accepted by the chain
-}
-
-// DefaultChainConfig returns the default config of the test chain implemented in the interchain-da repo:
-// https://github.com/dymensionxyz/interchain-da
-func DefaultChainConfig() ChainConfig {
-	return ChainConfig{}
+type EncodingConfig interface {
+	TxConfig() client.TxConfig
+	Codec() codec.Codec
 }
