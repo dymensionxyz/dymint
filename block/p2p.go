@@ -66,8 +66,10 @@ func (m *Manager) gossipBlock(ctx context.Context, block types.Block, commit typ
 	return nil
 }
 
-// content identifiers are re-advertised on node startup to make sure ids are always found in the network
-func (m *Manager) refreshBlockSyncAdvertiseBlocks(ctx context.Context) {
+// Blocks content identifiers (CID) are advertised to the DHT, so a node can find a CID corresponding to a specific height.
+// advertiseBlocksCIDtoDHT re-advertises the CIDs in the DHT on node startup to make sure they can be discovered in the DHT.
+// This prevents CIDs are lost in case of nodes disconnections.
+func (m *Manager) advertiseBlocksCIDtoDHT(ctx context.Context) {
 	for h := uint64(1); h <= m.State.Height(); h++ {
 
 		id, err := m.p2pClient.GetBlockId(ctx, h)
