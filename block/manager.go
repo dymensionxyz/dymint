@@ -154,7 +154,6 @@ func (m *Manager) Start(ctx context.Context) error {
 	if isSequencer {
 		// Sequencer must wait till DA is synced to start submitting blobs
 		<-m.DAClient.Synced()
-		// Only sequencer must wait to be synced from DA.
 		err = m.syncBlockManager()
 		if err != nil {
 			return fmt.Errorf("sync block manager: %w", err)
