@@ -99,18 +99,13 @@ func NewManager(
 	if err != nil {
 		return nil, fmt.Errorf("create block executor: %w", err)
 	}
-	s, err := getInitialState(store, genesis, logger)
-	if err != nil {
-		return nil, fmt.Errorf("get initial state: %w", err)
-	}
 
-	agg := &Manager{
+	m := &Manager{
 		Pubsub:           pubsub,
 		p2pClient:        p2pClient,
 		LocalKey:         localKey,
 		Conf:             conf,
 		Genesis:          genesis,
-		State:            s,
 		Store:            store,
 		Executor:         exec,
 		DAClient:         dalc,
@@ -122,7 +117,12 @@ func NewManager(
 		blockCache:       make(map[uint64]CachedBlock),
 	}
 
-	return agg, nil
+	err = m.LoadStateOnInit(store, genesis, logger)
+	if err != nil {
+		return nil, fmt.Errorf("get initial state: %w", err)
+	}
+
+	return m, nil
 }
 
 // Start starts the block manager.

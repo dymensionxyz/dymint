@@ -1,15 +1,12 @@
 package types
 
 import (
-	"fmt"
 	"sync/atomic"
 
 	// TODO(tzdybal): copy to local project?
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tendermint/version"
 )
 
 // State contains information about current state of the blockchain.
@@ -40,45 +37,6 @@ type State struct {
 
 	// the latest AppHash we've received from calling abci.Commit()
 	AppHash [32]byte
-}
-
-// NewStateFromGenesis reads blockchain State from genesis.
-func NewStateFromGenesis(genDoc *types.GenesisDoc) (*State, error) {
-	err := genDoc.ValidateAndComplete()
-	if err != nil {
-		return nil, fmt.Errorf("in genesis doc: %w", err)
-	}
-
-	// InitStateVersion sets the Consensus.Block and Software versions,
-	// but leaves the Consensus.App version blank.
-	// The Consensus.App version will be set during the Handshake, once
-	// we hear from the app what protocol version it is running.
-	InitStateVersion := tmstate.Version{
-		Consensus: tmversion.Consensus{
-			Block: version.BlockProtocol,
-			App:   0,
-		},
-		Software: version.TMCoreSemVer,
-	}
-
-	s := State{
-		Version:       InitStateVersion,
-		ChainID:       genDoc.ChainID,
-		InitialHeight: uint64(genDoc.InitialHeight),
-
-		BaseHeight: uint64(genDoc.InitialHeight),
-
-		NextValidators:              types.NewValidatorSet(nil),
-		Validators:                  types.NewValidatorSet(nil),
-		LastHeightValidatorsChanged: genDoc.InitialHeight,
-
-		ConsensusParams:                  *genDoc.ConsensusParams,
-		LastHeightConsensusParamsChanged: genDoc.InitialHeight,
-	}
-	s.LastBlockHeight.Store(0)
-	copy(s.AppHash[:], genDoc.AppHash)
-
-	return &s, nil
 }
 
 func (s *State) IsGenesis() bool {

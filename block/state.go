@@ -9,26 +9,67 @@ import (
 	"github.com/cometbft/cometbft/crypto/merkle"
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
+	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 	tmtypes "github.com/tendermint/tendermint/types"
+	"github.com/tendermint/tendermint/version"
 
 	"github.com/dymensionxyz/dymint/mempool"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
 )
 
-// getInitialState tries to load lastState from Store, and if it's not available it reads GenesisDoc.
-func getInitialState(store store.Store, genesis *tmtypes.GenesisDoc, logger types.Logger) (*types.State, error) {
+// LoadStateOnInit tries to load lastState from Store, and if it's not available it reads GenesisDoc.
+func (m *Manager) LoadStateOnInit(store store.Store, genesis *tmtypes.GenesisDoc, logger types.Logger) error {
 	s, err := store.LoadState()
 	if errors.Is(err, types.ErrNoStateFound) {
 		logger.Info("failed to find state in the store, creating new state from genesis")
-		s, err = types.NewStateFromGenesis(genesis)
+		s, err = NewStateFromGenesis(genesis)
 	}
 
 	if err != nil {
-		return nil, fmt.Errorf("get initial state: %w", err)
+		return fmt.Errorf("get initial state: %w", err)
 	}
 
-	return s, nil
+	m.State = s
+	return nil
+}
+
+// NewStateFromGenesis reads blockchain State from genesis.
+// The active sequencer list will be set on InitChain
+func NewStateFromGenesis(genDoc *tmtypes.GenesisDoc) (*types.State, error) {
+	err := genDoc.ValidateAndComplete()
+	if err != nil {
+		return nil, fmt.Errorf("in genesis doc: %w", err)
+	}
+
+	// InitStateVersion sets the Consensus.Block and Software versions,
+	// but leaves the Consensus.App version blank.
+	// The Consensus.App version will be set during the Handshake, once
+	// we hear from the app what protocol version it is running.
+	InitStateVersion := tmstate.Version{
+		Consensus: tmversion.Consensus{
+			Block: version.BlockProtocol,
+			App:   0,
+		},
+		Software: version.TMCoreSemVer,
+	}
+
+	s := types.State{
+		Version:       InitStateVersion,
+		ChainID:       genDoc.ChainID,
+		InitialHeight: uint64(genDoc.InitialHeight),
+
+		BaseHeight: uint64(genDoc.InitialHeight),
+
+		LastHeightValidatorsChanged: genDoc.InitialHeight,
+
+		ConsensusParams:                  *genDoc.ConsensusParams,
+		LastHeightConsensusParamsChanged: genDoc.InitialHeight,
+	}
+	s.LastBlockHeight.Store(0)
+	copy(s.AppHash[:], genDoc.AppHash)
+
+	return &s, nil
 }
 
 // UpdateStateFromApp is responsible for aligning the state of the store from the abci app
