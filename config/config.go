@@ -118,7 +118,7 @@ func (nc NodeConfig) Validate() error {
 	}
 
 	if err := nc.DBConfig.Validate(); err != nil {
-		return fmt.Errorf("DBConfig: %w", err)
+		return fmt.Errorf("db config: %w", err)
 	}
 
 	return nil
