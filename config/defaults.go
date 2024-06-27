@@ -28,7 +28,6 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 			MaxProofTime:           100 * time.Second,
 			BatchSubmitMaxTime:     3600 * time.Second,
 			MaxSupportedBatchSkew:  20,
-			NamespaceID:            "0000000000000000ffff",
 			BlockBatchMaxSizeBytes: 500000,
 		},
 		DALayer:         "mock",

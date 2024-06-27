@@ -55,8 +55,6 @@ type BlockManagerConfig struct {
 	MaxSupportedBatchSkew uint64 `mapstructure:"max_supported_batch_skew"`
 	// The size of the batch in Bytes. Every batch we'll write to the DA and the settlement layer.
 	BlockBatchMaxSizeBytes uint64 `mapstructure:"block_batch_max_size_bytes"`
-	// Namespaceid included in the header (not used)
-	NamespaceID string `mapstructure:"namespace_id"`
 }
 
 // GetViperConfig reads configuration parameters from Viper instance.

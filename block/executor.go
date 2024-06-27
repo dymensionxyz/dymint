@@ -1,7 +1,6 @@
 package block
 
 import (
-	"encoding/hex"
 	"errors"
 	"time"
 
@@ -20,7 +19,6 @@ import (
 // Executor creates and applies blocks and maintains state.
 type Executor struct {
 	localAddress          []byte
-	namespaceID           [8]byte
 	chainID               string
 	proxyAppConsensusConn proxy.AppConnConsensus
 	proxyAppQueryConn     proxy.AppConnQuery
@@ -32,13 +30,8 @@ type Executor struct {
 }
 
 // NewExecutor creates new instance of BlockExecutor.
-// Proposer address and namespace ID will be used in all newly created blocks.
-func NewExecutor(localAddress []byte, namespaceID string, chainID string, mempool mempool.Mempool, proxyApp proxy.AppConns, eventBus *tmtypes.EventBus, logger types.Logger) (*Executor, error) {
-	bytes, err := hex.DecodeString(namespaceID)
-	if err != nil {
-		return nil, err
-	}
-
+// localAddress will be used in sequencer mode only.
+func NewExecutor(localAddress []byte, chainID string, mempool mempool.Mempool, proxyApp proxy.AppConns, eventBus *tmtypes.EventBus, logger types.Logger) (*Executor, error) {
 	be := Executor{
 		localAddress:          localAddress,
 		chainID:               chainID,
@@ -48,7 +41,6 @@ func NewExecutor(localAddress []byte, namespaceID string, chainID string, mempoo
 		eventBus:              eventBus,
 		logger:                logger,
 	}
-	copy(be.namespaceID[:], bytes)
 	return &be, nil
 }
 
@@ -109,7 +101,6 @@ func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHead
 				App:   state.Version.Consensus.App,
 			},
 			ChainID:         e.chainID,
-			NamespaceID:     e.namespaceID, // TODO: used?????
 			Height:          height,
 			Time:            uint64(time.Now().UTC().UnixNano()),
 			LastHeaderHash:  lastHeaderHash,

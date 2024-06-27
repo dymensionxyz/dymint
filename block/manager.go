@@ -95,7 +95,7 @@ func NewManager(
 	if err != nil {
 		return nil, err
 	}
-	exec, err := NewExecutor(localAddress, conf.NamespaceID, genesis.ChainID, mempool, proxyApp, eventBus, logger)
+	exec, err := NewExecutor(localAddress, genesis.ChainID, mempool, proxyApp, eventBus, logger)
 	if err != nil {
 		return nil, fmt.Errorf("create block executor: %w", err)
 	}
@@ -147,7 +147,7 @@ func (m *Manager) Start(ctx context.Context) error {
 
 	// TODO: populate the accumulatedSize on startup
 
-	err = m.syncBlockManager()
+	err := m.syncBlockManager()
 	if err != nil {
 		return fmt.Errorf("sync block manager: %w", err)
 	}
