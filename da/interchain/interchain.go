@@ -5,11 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 
+	sdkclient "github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/codec"
 	cdctypes "github.com/cosmos/cosmos-sdk/codec/types"
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
-	"github.com/cosmos/cosmos-sdk/types/tx"
 	"github.com/dymensionxyz/cosmosclient/cosmosclient"
 	"github.com/tendermint/tendermint/libs/pubsub"
 
@@ -17,12 +17,19 @@ import (
 	"github.com/dymensionxyz/dymint/settlement/dymension"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
+	interchainda "github.com/dymensionxyz/dymint/types/pb/interchain_da"
 )
 
 var (
 	_ da.DataAvailabilityLayerClient = &DataAvailabilityLayerClient{}
 	_ da.BatchRetriever              = &DataAvailabilityLayerClient{}
 )
+
+type DAClient interface {
+	Context() sdkclient.Context
+	BroadcastTx(accountName string, msgs ...sdk.Msg) (cosmosclient.Response, error)
+	Params(ctx context.Context) (interchainda.Params, error)
+}
 
 // DataAvailabilityLayerClient is a client for DA-provider blockchains supporting the interchain-da module.
 type DataAvailabilityLayerClient struct {
@@ -32,42 +39,56 @@ type DataAvailabilityLayerClient struct {
 	cdc    codec.Codec
 	synced chan struct{}
 
-	pubsubServer    *pubsub.Server
+	pubsubServer *pubsub.Server
 
-	daClient       DAClient
-	daConfig       DAConfig
-	encodingConfig EncodingConfig // The DA chain's encoding config
+	daClient DAClient
+	daConfig DAConfig
 }
 
 // Init is called once. It reads the DA client configuration and initializes resources for the interchain DA provider.
 func (c *DataAvailabilityLayerClient) Init(rawConfig []byte, server *pubsub.Server, _ store.KV, logger types.Logger, options ...da.Option) error {
+	ctx := context.Background()
+
+	// Read DA layer config
 	var config DAConfig
 	err := json.Unmarshal(rawConfig, &config)
 	if err != nil {
 		return fmt.Errorf("invalid config: %w", err)
 	}
 
+	// Create cosmos client with DA layer
+	client, err := newDAClient(ctx, config)
+	if err != nil {
+		return fmt.Errorf("can't create DA layer client: %w", err)
+	}
+
+	// Query DA layer interchain-da module params
+	daParams, err := client.Params(ctx)
+	if err != nil {
+		return fmt.Errorf("can't query DA layer interchain-da module params: %w", err)
+	}
+	config.DAParams = daParams
+
+	// Create cancellable context
+	ctx, cancel := context.WithCancel(ctx)
+
+	// Create codec
 	interfaceRegistry := cdctypes.NewInterfaceRegistry()
 	cryptocodec.RegisterInterfaces(interfaceRegistry)
-	interchaindatypes.RegisterInterfaces(interfaceRegistry)
+	interfaceRegistry.RegisterImplementations(&interchainda.MsgSubmitBlob{})
 	cdc := codec.NewProtoCodec(interfaceRegistry)
 
-	ctx, cancel := context.WithCancel(context.Background())
-
+	// Fill client fields
 	c.logger = logger
 	c.ctx = ctx
 	c.cancel = cancel
 	c.cdc = cdc
 	c.synced = make(chan struct{})
 	c.pubsubServer = server
+	c.daClient = client
 	c.daConfig = config
 
-	client, err := cosmosclient.New(ctx, getCosmosClientOptions(config)..., )
-	if err != nil {
-		return fmt.Errorf("can't create DA layer client: %w", err)
-	}
-	c.daClient = client
-
+	// Apply client options
 	for _, apply := range options {
 		apply(c)
 	}
@@ -79,9 +100,6 @@ func (c *DataAvailabilityLayerClient) Init(rawConfig []byte, server *pubsub.Serv
 // It fetches the latest interchain module parameters and sets up a subscription to receive updates when the provider updates these parameters.
 // This ensures that the client is always up-to-date.
 func (c *DataAvailabilityLayerClient) Start() error {
-	// Get the module parameters from the chain
-	c.daConfig.ChainParams = c.grpc.GetModuleParams()
-
 	// Get the connectionID from the dymension hub for the da chain
 	c.daConfig.ClientID = dymension.(c.chainConfig.ChainID)
 
@@ -97,9 +115,9 @@ func (c *DataAvailabilityLayerClient) Start() error {
 
 // Stop is called once, when DataAvailabilityLayerClient is no longer needed.
 func (c *DataAvailabilityLayerClient) Stop() error {
-	c.daClient.Close()
 	c.pubsubServer.Stop()
 	c.cancel()
+	return nil
 }
 
 // Synced returns channel for on sync event
@@ -112,81 +130,80 @@ func (c *DataAvailabilityLayerClient) GetClientType() da.Client {
 }
 
 func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultSubmitBatch {
-	blob, err := batch.MarshalBinary()
+	result, err := c.submitBatch(batch)
 	if err != nil {
 		return da.ResultSubmitBatch{
-			BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error(), Error: err},
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: err.Error(),
+				Error:   err,
+			},
+			SubmitMetaData: nil,
 		}
 	}
+	return da.ResultSubmitBatch{
+		BaseResult: da.BaseResult{
+			Code:    da.StatusSuccess,
+			Message: "Submission successful",
+		},
+		SubmitMetaData: &da.DASubmitMetaData{
+			Height:     height,
+			Namespace:  c.config.NamespaceID.Bytes(),
+			Client:     da.Celestia,
+			Commitment: commitment,
+			Index:      0,
+			Length:     0,
+			Root:       nil,
+		},
+	}
+}
 
-	if len(blob) > int(c.daConfig.ChainParams.MaxBlobSize) {
-		return da.ResultSubmitBatch{
-			BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error(), Error: err},
-		}
+type submitBatchResult struct {
+	BlobID   uint64
+	BlobHash string
+}
+
+func (c *DataAvailabilityLayerClient) submitBatch(batch *types.Batch) (submitBatchResult, error) {
+	blob, err := batch.MarshalBinary()
+	if err != nil {
+		return submitBatchResult{}, fmt.Errorf("can't marshal batch: %w", err)
 	}
 
-	// submit the blob to da chain
+	if len(blob) > int(c.daConfig.DAParams.MaxBlobSize) {
+		return submitBatchResult{}, fmt.Errorf("blob size %d exceeds the maximum allowed size %d", len(blob), c.daConfig.DAParams.MaxBlobSize)
+	}
 
-	// calculate the da fees to pay
-	// feesToPay = params.CostPerByte * len(blob)
-	feesToPay := sdk.NewCoin(c.daConfig.ChainParams.CostPerByte.Denom, c.daConfig.ChainParams.CostPerByte.Amount.MulRaw(int64(len(blob))))
+	feesToPay := sdk.NewCoin(c.daConfig.DAParams.CostPerByte.Denom, c.daConfig.DAParams.CostPerByte.Amount.MulRaw(int64(len(blob))))
 
-	// generate the submit blob msg
-
-	msg := interchaindatypes.MsgSubmitBlob{
-		Creator: "",
+	msg := interchainda.MsgSubmitBlob{
+		Creator: c.daConfig.AccountName,
 		Blob:    blob,
 		Fees:    feesToPay,
 	}
-	// use msg placeholder for now not to import the interchain-da module directly
-	msgP := new(sdk.Msg)
-	msg := *msgP
 
-	// wrap the msg into a tx
-	txBuilder := c.encodingConfig.NewTxBuilder()
-	err := txBuilder.SetMsgs(msg)
+	txResp, err := c.daClient.BroadcastTx(c.daConfig.AccountName, &msg)
 	if err != nil {
-		return da.ResultSubmitBatch{
-			BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error(), Error: err},
-		}
+		return submitBatchResult{}, fmt.Errorf("can't broadcast MsgSubmitBlob to the DA layer: %w", err)
+	}
+	if txResp.Code != 0 {
+		return submitBatchResult{}, fmt.Errorf("MsgSubmitBlob broadcast tx status code is not 0: code %d", txResp.Code)
 	}
 
-	ctx := context.Background()
-	// sign and broadcast the tx
-	txBytes, err := c.encodingConfig.TxEncoder()(txBuilder.GetTx())
+	var resp interchainda.MsgSubmitBlobResponse
+	err = txResp.Decode(&resp)
 	if err != nil {
-		return da.ResultSubmitBatch{
-			BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error(), Error: err},
-		}
+		return submitBatchResult{}, fmt.Errorf("can't decode MsgSubmitBlob response: %w", err)
 	}
-
-	txHash, err := c.txClient.BroadcastTx(ctx, &tx.BroadcastTxRequest{
-		TxBytes: txBytes,
-		Mode:    tx.BroadcastMode_BROADCAST_MODE_SYNC,
-	})
-	if err != nil {
-		return da.ResultSubmitBatch{
-			BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error(), Error: err},
-		}
-	}
-
-	c.txClient.GetTx(ctx, &tx.GetTxRequest{
-		Hash: txHash,
-	})
-
-	// get the tx details
-	txRes, err = c.grpc.GetTxResponse(txhash)
-	blobId, blobHash, height = parse(txRes)
 
 	// trigger ibc stateupdate - optional (?)
 	// other ibc interactions would trigger this anyway. But until then, inclusion cannot be verified.
 	// better to trigger a stateupdate now imo
 	dymension.tx.ibc.client.updatestate(c.daConfig.clientID) // could import the go relayer and execute their funcs
 
-	return ResultSubmitBatch{
-		BaseResult:     BaseResult("success"),
-		SubmitMetaData: ("interchain", height, blobId, blobHash, c.daConfig.clientID, )
-	}
+	return submitBatchResult{
+		BlobID:   resp.BlobId,
+		BlobHash: resp.BlobHash,
+	}, nil
 }
 
 func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
