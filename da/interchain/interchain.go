@@ -11,7 +11,6 @@ import (
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/tx"
 	"github.com/dymensionxyz/cosmosclient/cosmosclient"
-	interchaindatypes "github.com/dymensionxyz/interchain-da/x/interchain_da/types"
 	"github.com/tendermint/tendermint/libs/pubsub"
 
 	"github.com/dymensionxyz/dymint/da"
