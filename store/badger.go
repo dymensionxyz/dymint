@@ -2,6 +2,7 @@ package store
 
 import (
 	"errors"
+	"path/filepath"
 
 	"github.com/dymensionxyz/dymint/gerr"
 
@@ -16,6 +17,41 @@ var (
 // BadgerKV is a implementation of KVStore using Badger v3.
 type BadgerKV struct {
 	db *badger.DB
+}
+
+// NewDefaultInMemoryKVStore builds KVStore that works in-memory (without accessing disk).
+func NewDefaultInMemoryKVStore() KV {
+	db, err := badger.Open(badger.DefaultOptions("").WithInMemory(true))
+	if err != nil {
+		panic(err)
+	}
+	return &BadgerKV{
+		db: db,
+	}
+}
+
+func NewKVStore(rootDir, dbPath, dbName string, syncWrites bool) KV {
+	path := filepath.Join(rootify(rootDir, dbPath), dbName)
+	db, err := badger.Open(badger.DefaultOptions(path).WithSyncWrites(syncWrites))
+	if err != nil {
+		panic(err)
+	}
+	return &BadgerKV{
+		db: db,
+	}
+}
+
+// NewDefaultKVStore creates instance of default key-value store.
+func NewDefaultKVStore(rootDir, dbPath, dbName string) KV {
+	return NewKVStore(rootDir, dbPath, dbName, true)
+}
+
+// rootify works just like in cosmos-sdk
+func rootify(rootDir, dbPath string) string {
+	if filepath.IsAbs(dbPath) {
+		return dbPath
+	}
+	return filepath.Join(rootDir, dbPath)
 }
 
 // Close implements KVStore.
@@ -40,9 +76,9 @@ func (b *BadgerKV) Get(key []byte) ([]byte, error) {
 // Set saves key-value mapping in store.
 func (b *BadgerKV) Set(key []byte, value []byte) error {
 	txn := b.db.NewTransaction(true)
+	defer txn.Discard()
 	err := txn.Set(key, value)
 	if err != nil {
-		txn.Discard()
 		return err
 	}
 	return txn.Commit()
@@ -51,9 +87,9 @@ func (b *BadgerKV) Set(key []byte, value []byte) error {
 // Delete removes key and corresponding value from store.
 func (b *BadgerKV) Delete(key []byte) error {
 	txn := b.db.NewTransaction(true)
+	defer txn.Discard()
 	err := txn.Delete(key)
 	if err != nil {
-		txn.Discard()
 		return err
 	}
 	return txn.Commit()

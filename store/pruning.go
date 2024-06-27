@@ -57,8 +57,8 @@ func (s *DefaultStore) PruneBlocks(from, to uint64) (uint64, error) {
 			if err != nil {
 				return 0, err
 			}
+			batch.Discard()
 			batch = s.db.NewBatch()
-			defer batch.Discard()
 		}
 	}
 

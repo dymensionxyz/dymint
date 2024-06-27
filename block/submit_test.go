@@ -37,7 +37,7 @@ func TestBatchOverhead(t *testing.T) {
 	maxTxData := uint64(float64(maxBatchSize) * types.MaxBlockSizeAdjustment) // 90% of maxBatchSize
 
 	// first batch with single block with single large tx
-	var tcases = []struct {
+	tcases := []struct {
 		name string
 		nTxs int
 	}{
