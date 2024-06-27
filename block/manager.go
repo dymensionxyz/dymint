@@ -32,9 +32,9 @@ type Manager struct {
 	logger types.Logger
 
 	// Configuration
-	Conf        config.BlockManagerConfig
-	Genesis     *tmtypes.GenesisDoc
-	ProposerKey crypto.PrivKey
+	Conf     config.BlockManagerConfig
+	Genesis  *tmtypes.GenesisDoc
+	LocalKey crypto.PrivKey
 
 	// Store and execution
 	Store    store.Store
@@ -78,7 +78,7 @@ type Manager struct {
 
 // NewManager creates new block Manager.
 func NewManager(
-	proposerKey crypto.PrivKey,
+	localKey crypto.PrivKey,
 	conf config.BlockManagerConfig,
 	genesis *tmtypes.GenesisDoc,
 	store store.Store,
@@ -91,12 +91,11 @@ func NewManager(
 	p2pClient *p2p.Client,
 	logger types.Logger,
 ) (*Manager, error) {
-	proposerAddress, err := getAddress(proposerKey)
+	localAddress, err := getAddress(localKey)
 	if err != nil {
 		return nil, err
 	}
-
-	exec, err := NewExecutor(proposerAddress, conf.NamespaceID, genesis.ChainID, mempool, proxyApp, eventBus, logger)
+	exec, err := NewExecutor(localAddress, conf.NamespaceID, genesis.ChainID, mempool, proxyApp, eventBus, logger)
 	if err != nil {
 		return nil, fmt.Errorf("create block executor: %w", err)
 	}
@@ -108,7 +107,7 @@ func NewManager(
 	agg := &Manager{
 		Pubsub:           pubsub,
 		p2pClient:        p2pClient,
-		ProposerKey:      proposerKey,
+		LocalKey:         localKey,
 		Conf:             conf,
 		Genesis:          genesis,
 		State:            s,
@@ -173,7 +172,7 @@ func (m *Manager) Start(ctx context.Context) error {
 
 func (m *Manager) IsSequencerVerify() (bool, error) {
 	slProposerKey := m.SLClient.GetProposer().PublicKey.Bytes()
-	localProposerKey, err := m.ProposerKey.GetPublic().Raw()
+	localProposerKey, err := m.LocalKey.GetPublic().Raw()
 	if err != nil {
 		return false, fmt.Errorf("get local node public key: %w", err)
 	}

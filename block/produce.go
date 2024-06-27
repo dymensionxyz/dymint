@@ -140,7 +140,7 @@ func (m *Manager) produceBlock(allowEmpty bool) (*types.Block, *types.Commit, er
 			return nil, nil, fmt.Errorf("marshal abci header: %w: %w", err, ErrNonRecoverable)
 		}
 		proposerAddress := block.Header.ProposerAddress
-		sign, err := m.ProposerKey.Sign(abciHeaderBytes)
+		sign, err := m.LocalKey.Sign(abciHeaderBytes)
 		if err != nil {
 			return nil, nil, fmt.Errorf("sign abci header: %w: %w", err, ErrNonRecoverable)
 		}
@@ -190,7 +190,7 @@ func (m *Manager) createTMSignature(block *types.Block, proposerAddress []byte, 
 	v := vote.ToProto()
 	// convert libp2p key to tm key
 	// TODO: move to types
-	raw_key, _ := m.ProposerKey.Raw()
+	raw_key, _ := m.LocalKey.Raw()
 	tmprivkey := tmed25519.PrivKey(raw_key)
 	tmprivkey.PubKey().Bytes()
 	// Create a mock validator to sign the vote

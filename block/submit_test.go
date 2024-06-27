@@ -52,7 +52,7 @@ func TestBatchOverhead(t *testing.T) {
 	}
 
 	for _, tcase := range tcases {
-		blocks, err := testutil.GenerateBlocks(1, 1, manager.ProposerKey)
+		blocks, err := testutil.GenerateBlocks(1, 1, manager.LocalKey)
 		require.NoError(t, err)
 		block := blocks[0]
 
@@ -70,7 +70,7 @@ func TestBatchOverhead(t *testing.T) {
 
 		mallete(tcase.nTxs)
 
-		commits, err := testutil.GenerateCommits(blocks, manager.ProposerKey)
+		commits, err := testutil.GenerateCommits(blocks, manager.LocalKey)
 		require.NoError(t, err)
 		commit := commits[0]
 
