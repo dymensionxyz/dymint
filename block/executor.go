@@ -19,7 +19,7 @@ import (
 
 // Executor creates and applies blocks and maintains state.
 type Executor struct {
-	proposerAddress       []byte
+	localAddress          []byte
 	namespaceID           [8]byte
 	chainID               string
 	proxyAppConsensusConn proxy.AppConnConsensus
@@ -33,14 +33,14 @@ type Executor struct {
 
 // NewExecutor creates new instance of BlockExecutor.
 // Proposer address and namespace ID will be used in all newly created blocks.
-func NewExecutor(proposerAddress []byte, namespaceID string, chainID string, mempool mempool.Mempool, proxyApp proxy.AppConns, eventBus *tmtypes.EventBus, logger types.Logger) (*Executor, error) {
+func NewExecutor(localAddress []byte, namespaceID string, chainID string, mempool mempool.Mempool, proxyApp proxy.AppConns, eventBus *tmtypes.EventBus, logger types.Logger) (*Executor, error) {
 	bytes, err := hex.DecodeString(namespaceID)
 	if err != nil {
 		return nil, err
 	}
 
 	be := Executor{
-		proposerAddress:       proposerAddress,
+		localAddress:          localAddress,
 		chainID:               chainID,
 		proxyAppConsensusConn: proxyApp.Consensus(),
 		proxyAppQueryConn:     proxyApp.Query(),
@@ -117,7 +117,7 @@ func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHead
 			ConsensusHash:   [32]byte{},
 			AppHash:         state.AppHash,
 			LastResultsHash: state.LastResultsHash,
-			ProposerAddress: e.proposerAddress,
+			ProposerAddress: e.localAddress,
 		},
 		Data: types.Data{
 			Txs:                    toDymintTxs(mempoolTxs),

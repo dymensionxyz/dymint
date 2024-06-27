@@ -127,13 +127,7 @@ func NewManager(
 
 // Start starts the block manager.
 func (m *Manager) Start(ctx context.Context) error {
-	m.logger.Info("Starting the block manager")
-
-	isSequencer, err := m.IsSequencerVerify()
-	if err != nil {
-		return err
-	}
-
+	isSequencer := m.IsSequencer()
 	m.logger.Info("Starting block manager", "isSequencer", isSequencer)
 
 	// Check if InitChain flow is needed
@@ -170,18 +164,10 @@ func (m *Manager) Start(ctx context.Context) error {
 	return nil
 }
 
-func (m *Manager) IsSequencerVerify() (bool, error) {
-	slProposerKey := m.SLClient.GetProposer().PublicKey.Bytes()
-	localProposerKey, err := m.LocalKey.GetPublic().Raw()
-	if err != nil {
-		return false, fmt.Errorf("get local node public key: %w", err)
-	}
-	return bytes.Equal(slProposerKey, localProposerKey), nil
-}
-
 func (m *Manager) IsSequencer() bool {
-	ret, _ := m.IsSequencerVerify()
-	return ret
+	slProposerKey := m.SLClient.GetProposer().PublicKey.Bytes()
+	localProposerKey, _ := m.LocalKey.GetPublic().Raw() //already validated on manager creation
+	return bytes.Equal(slProposerKey, localProposerKey)
 }
 
 func (m *Manager) NextHeightToSubmit() uint64 {
