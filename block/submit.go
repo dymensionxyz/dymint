@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
+
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/types"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
-	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 )
 
 // SubmitLoop is the main loop for submitting blocks to the DA and SL layers.
@@ -26,6 +27,17 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 
 	// defer func to clear the channels to release blocked goroutines on shutdown
 	defer func() {
+		// recover from panic, emit health status event and return the error
+		var err error
+		if r := recover(); r != nil {
+			m.logger.Error(fmt.Errorf("handle submission trigger: %v", r).Error())
+			err, _ = r.(error)
+		}
+		// new context because previous one is canceled
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		uevent.MustPublish(ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
+
 		for {
 			select {
 			case <-m.producedSizeCh:
@@ -45,7 +57,7 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 		}
 
 		/*
-			Note: since we dont explicitly coordinate changes to the accumulated size with actual batch creation
+			Note: since we don't explicitly coordinate changes to the accumulated size with actual batch creation
 			we don't have a guarantee that the accumulated size is the same as the actual batch size that will be made.
 			But the batch creation step will also check the size is OK, so it's not a problem.
 		*/
