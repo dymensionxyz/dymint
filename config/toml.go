@@ -132,6 +132,19 @@ keyring_home_dir = "{{ .SettlementConfig.KeyringHomeDir }}"
 dym_account_name = "{{ .SettlementConfig.DymAccountName }}"
 
 
+############################
+###       DB options     ###
+############################
+[db]
+
+# When true, the database will write synchronously.
+# should be set to true for sequencer node
+sync_writes = {{ .DBConfig.SyncWrites }}
+
+# When true, the database will run in-memory only (FOR EXPERIMENTAL USE ONLY)
+in_memory = {{ .DBConfig.InMemory }}
+
+
 #######################################################
 ###       Instrumentation Configuration Options     ###
 #######################################################

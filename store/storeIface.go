@@ -72,4 +72,6 @@ type Store interface {
 	LoadValidators(height uint64) (*tmtypes.ValidatorSet, error)
 
 	PruneBlocks(from, to uint64) (uint64, error)
+
+	Close() error
 }
