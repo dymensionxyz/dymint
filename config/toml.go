@@ -81,7 +81,6 @@ block_batch_max_size_bytes = {{ .BlockManagerConfig.BlockBatchMaxSizeBytes }}
 
 ### da config ###
 da_layer = "{{ .DALayer }}" # mock, celestia, avail
-namespace_id = "{{ .BlockManagerConfig.NamespaceID }}"
 # this should be json matching the celestia.Config type
 da_config = "{{ .DAConfig }}"
 

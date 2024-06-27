@@ -60,9 +60,10 @@ func (e *GossipedBlock) Validate(proposer *types.Sequencer) error {
 	if err := e.Commit.ValidateBasic(); err != nil {
 		return err
 	}
-	if err := e.Commit.ValidateWithHeader(proposer, &e.Block.Header); err != nil {
-		return err
-	}
+
+	//FIXME: do we want stateful validation here? (validating against expected proposer)
+	// probably yes, to avoid DoS attacks
+	// but it will require careful thought regarding expected sequencer as gossiped blocks can arrive out of order
 
 	return nil
 }

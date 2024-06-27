@@ -159,7 +159,7 @@ func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *d
 		err := c.RunWithRetryInfinitely(func() error {
 			err := c.broadcastBatch(msgUpdateState)
 			if err != nil {
-				if errors.Is(err, gerrc.ErrAlreadyExist) {
+				if errors.Is(err, gerrc.ErrAlreadyExists) {
 					return retry.Unrecoverable(err)
 				}
 
@@ -177,7 +177,7 @@ func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *d
 		})
 		if err != nil {
 			// this could happen if we timed-out waiting for acceptance in the previous iteration, but the batch was indeed submitted
-			if errors.Is(err, gerrc.ErrAlreadyExist) {
+			if errors.Is(err, gerrc.ErrAlreadyExists) {
 				c.logger.Debug("Batch already accepted", "startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
 				return nil
 			}
@@ -368,7 +368,7 @@ func (c *Client) broadcastBatch(msgUpdateState *rollapptypes.MsgUpdateState) err
 	txResp, err := c.cosmosClient.BroadcastTx(c.config.DymAccountName, msgUpdateState)
 	if err != nil {
 		if strings.Contains(err.Error(), rollapptypes.ErrWrongBlockHeight.Error()) {
-			err = fmt.Errorf("%w: %w", err, gerrc.ErrAlreadyExist)
+			err = fmt.Errorf("%w: %w", err, gerrc.ErrAlreadyExists)
 		}
 		return fmt.Errorf("broadcast tx: %w", err)
 	}

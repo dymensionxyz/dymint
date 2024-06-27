@@ -3,6 +3,7 @@ package types
 import (
 	"errors"
 
+	tmcrypto "github.com/tendermint/tendermint/crypto"
 	tmtypes "github.com/tendermint/tendermint/types"
 )
 
@@ -51,24 +52,12 @@ func (c *Commit) ValidateBasic() error {
 }
 
 // Validate performs full validation of a commit.
-func (c *Commit) Validate(proposer *Sequencer, abciHeaderBytes []byte) error {
+func (c *Commit) Validate(proposerPubKey tmcrypto.PubKey, abciHeaderBytes []byte) error {
 	if err := c.ValidateBasic(); err != nil {
 		return err
 	}
-	if !proposer.PublicKey.VerifySignature(abciHeaderBytes, c.Signatures[0]) {
+	if !proposerPubKey.VerifySignature(abciHeaderBytes, c.Signatures[0]) {
 		return ErrInvalidSignature
-	}
-	return nil
-}
-
-func (c *Commit) ValidateWithHeader(proposer *Sequencer, header *Header) error {
-	abciHeaderPb := ToABCIHeaderPB(header)
-	abciHeaderBytes, err := abciHeaderPb.Marshal()
-	if err != nil {
-		return err
-	}
-	if err = c.Validate(proposer, abciHeaderBytes); err != nil {
-		return err
 	}
 	return nil
 }

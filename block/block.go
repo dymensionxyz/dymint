@@ -53,16 +53,9 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		return fmt.Errorf("execute block: %w", err)
 	}
 
-	dbBatch := m.Store.NewBatch()
-	dbBatch, err = m.Store.SaveBlockResponses(block.Header.Height, responses, dbBatch)
+	_, err = m.Store.SaveBlockResponses(block.Header.Height, responses, nil)
 	if err != nil {
-		dbBatch.Discard()
 		return fmt.Errorf("save block responses: %w", err)
-	}
-
-	err = dbBatch.Commit()
-	if err != nil {
-		return fmt.Errorf("commit batch to disk: %w", err)
 	}
 
 	// Commit block to app
@@ -76,7 +69,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 
 	// Update the state with the new app hash, last validators and store height from the commit.
 	// Every one of those, if happens before commit, prevents us from re-executing the block in case failed during commit.
-	m.Executor.UpdateStateAfterCommit(m.State, responses, appHash, block.Header.Height, validators)
+	m.Executor.UpdateStateAfterCommit(m.State, responses, appHash, block.Header.Height)
 	_, err = m.Store.SaveState(m.State, nil)
 	if err != nil {
 		return fmt.Errorf("update state: %w", err)
@@ -141,7 +134,7 @@ func (m *Manager) validateBlockBeforeApply(block *types.Block, commit *types.Com
 		return fmt.Errorf("block: %w", err)
 	}
 
-	if err := commit.ValidateWithHeader(proposer, &block.Header); err != nil {
+	if err := m.ValidateCommit(block, commit); err != nil {
 		return fmt.Errorf("commit: %w", err)
 	}
 	return nil
@@ -185,8 +178,8 @@ func (m *Manager) ValidateCommit(b *types.Block, c *types.Commit) error {
 		return err
 	}
 
-	proposer := m.State.NextValidators.GetProposer().PubKey
-	if err = c.Validate(proposer, abciHeaderBytes); err != nil {
+	proposerKey := m.State.NextValidators.GetProposer().PubKey
+	if err = c.Validate(proposerKey, abciHeaderBytes); err != nil {
 		return err
 	}
 
