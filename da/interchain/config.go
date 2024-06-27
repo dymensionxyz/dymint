@@ -3,7 +3,6 @@ package interchain
 import (
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/codec"
-	interchaindatypes "github.com/dymensionxyz/interchain-da/x/interchain_da/types"
 )
 
 type DAConfig struct {
