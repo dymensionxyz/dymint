@@ -53,7 +53,7 @@ func (e *GossipedBlock) FromProto(other *pb.GossipedBlock) error {
 }
 
 // Validate run basic validation on the gossiped block
-func (e *GossipedBlock) Validate(proposer *types.Sequencer) error {
+func (e *GossipedBlock) Validate() error {
 	if err := e.Block.ValidateBasic(); err != nil {
 		return err
 	}

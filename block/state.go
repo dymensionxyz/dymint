@@ -8,6 +8,7 @@ import (
 
 	"github.com/cometbft/cometbft/crypto/merkle"
 	abci "github.com/tendermint/tendermint/abci/types"
+	tmcrypto "github.com/tendermint/tendermint/crypto"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 	tmtypes "github.com/tendermint/tendermint/types"
@@ -149,4 +150,8 @@ func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResp
 	// TODO: load consensus params from endblock?
 
 	s.SetHeight(height)
+}
+
+func (m *Manager) GetExpectedProposerPubKey() (tmcrypto.PubKey, error) {
+	return m.State.NextValidators.GetProposer().PubKey, nil
 }

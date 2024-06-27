@@ -43,7 +43,7 @@ type Manager struct {
 
 	// Clients and servers
 	Pubsub    *pubsub.Server
-	p2pClient *p2p.Client
+	P2PClient *p2p.Client
 	DAClient  da.DataAvailabilityLayerClient
 	SLClient  settlement.ClientI
 
@@ -102,7 +102,7 @@ func NewManager(
 
 	m := &Manager{
 		Pubsub:           pubsub,
-		p2pClient:        p2pClient,
+		P2PClient:        p2pClient,
 		LocalKey:         localKey,
 		Conf:             conf,
 		Genesis:          genesis,
