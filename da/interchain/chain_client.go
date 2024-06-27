@@ -1,20 +1,23 @@
 package interchain
 
 import (
-	sdkclient "github.com/cosmos/cosmos-sdk/client"
+	"context"
+	"fmt"
+
 	"github.com/cosmos/cosmos-sdk/client/flags"
-	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	"github.com/dymensionxyz/cosmosclient/cosmosclient"
 	"github.com/ignite/cli/ignite/pkg/cosmosaccount"
+
+	interchainda "github.com/dymensionxyz/dymint/types/pb/interchain_da"
 )
 
-type DAClient interface {
-	Context() sdkclient.Context
-	BroadcastTx(accountName string, msgs ...sdktypes.Msg) (cosmosclient.Response, error)
+type daClient struct {
+	cosmosclient.Client
+	queryClient interchainda.QueryClient
 }
 
-func getCosmosClientOptions(config DAConfig) []cosmosclient.Option {
-	options := []cosmosclient.Option{
+func newDAClient(ctx context.Context, config DAConfig) (*daClient, error) {
+	c, err := cosmosclient.New(ctx, []cosmosclient.Option{
 		cosmosclient.WithAddressPrefix(config.AddressPrefix),
 		cosmosclient.WithBroadcastMode(flags.BroadcastSync),
 		cosmosclient.WithNodeAddress(config.NodeAddress),
@@ -23,6 +26,20 @@ func getCosmosClientOptions(config DAConfig) []cosmosclient.Option {
 		cosmosclient.WithGasPrices(config.GasPrices),
 		cosmosclient.WithKeyringBackend(cosmosaccount.KeyringBackend(config.KeyringBackend)),
 		cosmosclient.WithHome(config.KeyringHomeDir),
+	}...)
+	if err != nil {
+		return nil, fmt.Errorf("can't create DA layer cosmos client: %w", err)
 	}
-	return options
+	return &daClient{
+		Client:      c,
+		queryClient: interchainda.NewQueryClient(c.Context().GRPCClient),
+	}, nil
+}
+
+func (c *daClient) Params(ctx context.Context) (interchainda.Params, error) {
+	resp, err := c.queryClient.Params(ctx, &interchainda.QueryParamsRequest{})
+	if err != nil {
+		return interchainda.Params{}, fmt.Errorf("can't query DA layer params: %w", err)
+	}
+	return resp.GetParams(), nil
 }
