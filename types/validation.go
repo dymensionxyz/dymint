@@ -1,23 +1,10 @@
 package types
 
 import (
-	"bytes"
 	"errors"
-	"fmt"
 
 	tmtypes "github.com/tendermint/tendermint/types"
 )
-
-func ValidateProposedTransition(state *State, block *Block, commit *Commit, proposer *Sequencer) error {
-	if err := block.ValidateWithState(state); err != nil {
-		return fmt.Errorf("block: %w", err)
-	}
-
-	if err := commit.ValidateWithHeader(proposer, &block.Header); err != nil {
-		return fmt.Errorf("commit: %w", err)
-	}
-	return nil
-}
 
 // ValidateBasic performs basic validation of a block.
 func (b *Block) ValidateBasic() error {
@@ -36,30 +23,6 @@ func (b *Block) ValidateBasic() error {
 	err = b.LastCommit.ValidateBasic()
 	if err != nil {
 		return err
-	}
-
-	return nil
-}
-
-func (b *Block) ValidateWithState(state *State) error {
-	err := b.ValidateBasic()
-	if err != nil {
-		return err
-	}
-	if b.Header.Version.App != state.Version.Consensus.App ||
-		b.Header.Version.Block != state.Version.Consensus.Block {
-		return errors.New("b version mismatch")
-	}
-
-	if b.Header.Height != state.NextHeight() {
-		return errors.New("height mismatch")
-	}
-
-	if !bytes.Equal(b.Header.AppHash[:], state.AppHash[:]) {
-		return errors.New("AppHash mismatch")
-	}
-	if !bytes.Equal(b.Header.LastResultsHash[:], state.LastResultsHash[:]) {
-		return errors.New("LastResultsHash mismatch")
 	}
 
 	return nil

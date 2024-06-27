@@ -90,7 +90,7 @@ func (m *Manager) processLocalBlock(height uint64) error {
 	if err != nil {
 		return err
 	}
-	if err := m.validateBlock(block, commit); err != nil {
+	if err := m.validateBlockBeforeApply(block, commit); err != nil {
 		return fmt.Errorf("validate block from local store: height: %d: %w", height, err)
 	}
 
@@ -122,7 +122,7 @@ func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
 			if block.Header.Height != m.State.NextHeight() {
 				continue
 			}
-			if err := m.validateBlock(block, batch.Commits[i]); err != nil {
+			if err := m.validateBlockBeforeApply(block, batch.Commits[i]); err != nil {
 				m.logger.Error("validate block from DA", "height", block.Header.Height, "err", err)
 				continue
 			}

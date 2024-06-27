@@ -1,6 +1,8 @@
 package block
 
 import (
+	"bytes"
+	"errors"
 	"fmt"
 
 	errorsmod "cosmossdk.io/errors"
@@ -56,15 +58,6 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	if err != nil {
 		dbBatch.Discard()
 		return fmt.Errorf("save block responses: %w", err)
-	}
-
-	// Get the validator changes from the app
-	validators := m.State.NextValidators.Copy() // TODO: this will be changed when supporting multiple sequencers from the hub
-
-	dbBatch, err = m.Store.SaveValidators(block.Header.Height, validators, dbBatch)
-	if err != nil {
-		dbBatch.Discard()
-		return fmt.Errorf("save validators: %w", err)
 	}
 
 	err = dbBatch.Commit()
@@ -124,7 +117,7 @@ func (m *Manager) attemptApplyCachedBlocks() error {
 		if !blockExists {
 			break
 		}
-		if err := m.validateBlock(cachedBlock.Block, cachedBlock.Commit); err != nil {
+		if err := m.validateBlockBeforeApply(cachedBlock.Block, cachedBlock.Commit); err != nil {
 			delete(m.blockCache, cachedBlock.Block.Header.Height)
 			/// TODO: can we take an action here such as dropping the peer / reducing their reputation?
 			return fmt.Errorf("block not valid at height %d, dropping it: err:%w", cachedBlock.Block.Header.Height, err)
@@ -142,10 +135,60 @@ func (m *Manager) attemptApplyCachedBlocks() error {
 	return nil
 }
 
-func (m *Manager) validateBlock(block *types.Block, commit *types.Commit) error {
-	// Currently we're assuming proposer is never nil as it's a pre-condition for
-	// dymint to start
-	proposer := m.SLClient.GetProposer()
+// This function validates the block and commit against the state before applying it.
+func (m *Manager) validateBlockBeforeApply(block *types.Block, commit *types.Commit) error {
+	if err := m.ValidateBlock(block); err != nil {
+		return fmt.Errorf("block: %w", err)
+	}
 
-	return types.ValidateProposedTransition(m.State, block, commit, proposer)
+	if err := commit.ValidateWithHeader(proposer, &block.Header); err != nil {
+		return fmt.Errorf("commit: %w", err)
+	}
+	return nil
+}
+
+func (m *Manager) ValidateBlock(b *types.Block) error {
+	err := b.ValidateBasic()
+	if err != nil {
+		return err
+	}
+
+	if b.Header.Version.App != m.State.Version.Consensus.App ||
+		b.Header.Version.Block != m.State.Version.Consensus.Block {
+		return errors.New("b version mismatch")
+	}
+
+	if b.Header.Height != m.State.NextHeight() {
+		return errors.New("height mismatch")
+	}
+
+	if !bytes.Equal(
+		b.Header.AppHash[:], m.State.AppHash[:]) {
+		return errors.New("AppHash mismatch")
+	}
+	if !bytes.Equal(b.Header.LastResultsHash[:], m.State.LastResultsHash[:]) {
+		return errors.New("LastResultsHash mismatch")
+	}
+
+	return nil
+}
+
+func (m *Manager) ValidateCommit(b *types.Block, c *types.Commit) error {
+	err := c.ValidateBasic()
+	if err != nil {
+		return err
+	}
+
+	abciHeaderPb := types.ToABCIHeaderPB(&b.Header)
+	abciHeaderBytes, err := abciHeaderPb.Marshal()
+	if err != nil {
+		return err
+	}
+
+	proposer := m.State.NextValidators.GetProposer().PubKey
+	if err = c.Validate(proposer, abciHeaderBytes); err != nil {
+		return err
+	}
+
+	return nil
 }

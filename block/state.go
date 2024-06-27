@@ -84,13 +84,9 @@ func (m *Manager) UpdateStateFromApp() error {
 	if err != nil {
 		return errorsmod.Wrap(err, "load block responses")
 	}
-	vals, err := m.Store.LoadValidators(appHeight)
-	if err != nil {
-		return errorsmod.Wrap(err, "load block responses")
-	}
 
 	// update the state with the hash, last store height and last validators.
-	m.Executor.UpdateStateAfterCommit(m.State, resp, proxyAppInfo.LastBlockAppHash, appHeight, vals)
+	m.Executor.UpdateStateAfterCommit(m.State, resp, proxyAppInfo.LastBlockAppHash, appHeight)
 	_, err = m.Store.SaveState(m.State, nil)
 	if err != nil {
 		return errorsmod.Wrap(err, "update state")
@@ -146,14 +142,11 @@ func (e *Executor) UpdateMempoolAfterInitChain(s *types.State) {
 }
 
 // Update state from Commit response
-func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResponses, appHash []byte, height uint64, valSet *tmtypes.ValidatorSet) {
+func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResponses, appHash []byte, height uint64) {
 	copy(s.AppHash[:], appHash[:])
 	copy(s.LastResultsHash[:], tmtypes.NewResults(resp.DeliverTxs).Hash())
 
 	// TODO: load consensus params from endblock?
-
-	s.Validators = s.NextValidators.Copy()
-	s.NextValidators = valSet.Copy()
 
 	s.SetHeight(height)
 }

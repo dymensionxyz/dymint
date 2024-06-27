@@ -165,9 +165,9 @@ func (m *Manager) Start(ctx context.Context) error {
 }
 
 func (m *Manager) IsSequencer() bool {
-	slProposerKey := m.SLClient.GetProposer().PublicKey.Bytes()
+	expectedProposer := m.State.NextValidators.Proposer.PubKey.Bytes()
 	localProposerKey, _ := m.LocalKey.GetPublic().Raw() //already validated on manager creation
-	return bytes.Equal(slProposerKey, localProposerKey)
+	return bytes.Equal(expectedProposer, localProposerKey)
 }
 
 func (m *Manager) NextHeightToSubmit() uint64 {
