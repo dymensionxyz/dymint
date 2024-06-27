@@ -26,9 +26,11 @@ func (b *Block) ValidateBasic() error {
 		return err
 	}
 
-	err = b.Data.ValidateBasic()
-	if err != nil {
-		return err
+	abciData := tmtypes.Data{
+		Txs: ToABCIBlockDataTxs(&b.Data),
+	}
+	if b.Header.DataHash != [32]byte(abciData.Hash()) {
+		return ErrInvalidHeaderDataHash
 	}
 
 	err = b.LastCommit.ValidateBasic()
@@ -69,12 +71,6 @@ func (h *Header) ValidateBasic() error {
 		return errors.New("no proposer address")
 	}
 
-	return nil
-}
-
-// ValidateBasic performs basic validation of block data.
-// Actually it's a placeholder, because nothing is checked.
-func (d *Data) ValidateBasic() error {
 	return nil
 }
 

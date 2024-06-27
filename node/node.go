@@ -2,8 +2,6 @@ package node
 
 import (
 	"context"
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
@@ -42,12 +40,6 @@ var (
 	indexerPrefix = []byte{2}
 )
 
-const (
-	// genesisChunkSize is the maximum size, in bytes, of each
-	// chunk in the genesis structure for the chunked API
-	genesisChunkSize = 16 * 1024 * 1024 // 16 MiB
-)
-
 // Node represents a client node in Dymint network.
 // It connects all the components and orchestrates their work.
 type Node struct {
@@ -57,8 +49,6 @@ type Node struct {
 	proxyApp     proxy.AppConns
 
 	genesis *tmtypes.GenesisDoc
-	// cache of chunked genesis data.
-	genChunks []string
 
 	conf config.NodeConfig
 	P2P  *p2p.Client
@@ -214,35 +204,6 @@ func NewNode(
 	return node, nil
 }
 
-// initGenesisChunks creates a chunked format of the genesis document to make it easier to
-// iterate through larger genesis structures.
-func (n *Node) initGenesisChunks() error {
-	if n.genChunks != nil {
-		return nil
-	}
-
-	if n.genesis == nil {
-		return nil
-	}
-
-	data, err := json.Marshal(n.genesis)
-	if err != nil {
-		return err
-	}
-
-	for i := 0; i < len(data); i += genesisChunkSize {
-		end := i + genesisChunkSize
-
-		if end > len(data) {
-			end = len(data)
-		}
-
-		n.genChunks = append(n.genChunks, base64.StdEncoding.EncodeToString(data[i:end]))
-	}
-
-	return nil
-}
-
 // OnStart is a part of Service interface.
 func (n *Node) OnStart() error {
 	n.Logger.Info("starting P2P client")
@@ -280,15 +241,6 @@ func (n *Node) OnStart() error {
 // GetGenesis returns entire genesis doc.
 func (n *Node) GetGenesis() *tmtypes.GenesisDoc {
 	return n.genesis
-}
-
-// GetGenesisChunks returns chunked version of genesis.
-func (n *Node) GetGenesisChunks() ([]string, error) {
-	err := n.initGenesisChunks()
-	if err != nil {
-		return nil, err
-	}
-	return n.genChunks, err
 }
 
 // OnStop is a part of Service interface.

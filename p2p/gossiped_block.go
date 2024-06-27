@@ -3,7 +3,6 @@ package p2p
 import (
 	"github.com/dymensionxyz/dymint/p2p/pb"
 	"github.com/dymensionxyz/dymint/types"
-	tmtypes "github.com/tendermint/tendermint/types"
 )
 
 /* -------------------------------------------------------------------------- */
@@ -64,11 +63,6 @@ func (e *GossipedBlock) Validate(proposer *types.Sequencer) error {
 	if err := e.Commit.ValidateWithHeader(proposer, &e.Block.Header); err != nil {
 		return err
 	}
-	abciData := tmtypes.Data{
-		Txs: types.ToABCIBlockDataTxs(&e.Block.Data),
-	}
-	if e.Block.Header.DataHash != [32]byte(abciData.Hash()) {
-		return types.ErrInvalidHeaderDataHash
-	}
+
 	return nil
 }
