@@ -1,0 +1,24 @@
+syntax = "proto3";
+package dymension.interchain_da;
+
+import "gogoproto/gogo.proto";
+import "types/cosmos/base/v1beta1/coin.proto";
+
+option go_package = "github.com/dymensionxyz/dymint/types/pb/interchain_da";
+
+message Params {
+  // CostPerByte defines the coin cost to store each byte of the blob. This
+  // allows for multidimensional gas pricing on different resources of the
+  // network.
+  cosmos.base.v1beta1.Coin cost_per_byte = 1 [ (gogoproto.nullable) = false ];
+  // MaxBlobSize is the hard cap of how many bytes a blob can be.
+  uint32 max_blob_size = 2;
+  // DisputePeriod is the number of blocks the blob is stored for.
+  uint64 dispute_period = 3;
+}
+
+// BlobMetadata holds blob metadata, which is stored in the state.
+message BlobMetadata {
+  // BlobHash is the hash of the submitted blob.
+  string blob_hash = 1;
+}
