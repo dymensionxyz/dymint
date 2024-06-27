@@ -1,3 +1,7 @@
+// This file is a modified copy of the interchain-da module proto contract. Source:
+// https://github.com/dymensionxyz/interchain-da/blob/main/proto/dymension/interchain_da/tx.proto.
+// It contains only message definitions but without the Msg service.
+
 syntax = "proto3";
 package dymension.interchain_da;
 
