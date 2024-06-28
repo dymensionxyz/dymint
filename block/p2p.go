@@ -6,7 +6,6 @@ import (
 
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/types"
-	"github.com/ipfs/go-cid"
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
@@ -57,34 +56,5 @@ func (m *Manager) gossipBlock(ctx context.Context, block types.Block, commit typ
 		return fmt.Errorf("p2p gossip block: %w: %w", err, ErrRecoverable)
 	}
 
-	// adds the block to be used by block-sync protocol
-	err = m.p2pClient.AddBlock(ctx, block.Header.Height, gossipedBlockBytes)
-	if err != nil {
-		m.logger.Error("adding block to p2p store", "err", err)
-	}
-
 	return nil
-}
-
-// Blocks content identifiers (CID) are advertised to the DHT, so a node can find a CID corresponding to a specific height.
-// advertiseBlocksCIDtoDHT re-advertises the CIDs in the DHT on node startup to make sure they can be discovered in the DHT.
-// This prevents CIDs are lost in case of nodes disconnections.
-func (m *Manager) advertiseBlocksCIDtoDHT(ctx context.Context) {
-	for h := uint64(1); h <= m.State.Height(); h++ {
-
-		id, err := m.p2pClient.GetBlockId(ctx, h)
-		if err == nil && id != cid.Undef {
-			continue
-		}
-		id, err = m.Store.LoadBlockCid(h)
-		if err != nil || id == cid.Undef {
-			continue
-		}
-
-		err = m.p2pClient.AdvertiseBlock(ctx, h, id)
-		if err == nil {
-			continue
-		}
-
-	}
 }
