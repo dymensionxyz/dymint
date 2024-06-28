@@ -66,11 +66,6 @@ type Manager struct {
 	// and incoming DA blocks, respectively.
 	retrieverMu sync.Mutex
 	Retriever   da.BatchRetriever
-	// get the next target height to sync local state to
-	targetSyncHeight diodes.Diode
-	// TargetHeight holds the value of the current highest block seen from either p2p (probably higher) or the DA
-	TargetHeight atomic.Uint64
-
 	// Cached blocks and commits for applying at future heights. The blocks may not be valid, because
 	// we can only do full validation in sequential order.
 	blockCache *Cache
@@ -100,19 +95,20 @@ func NewManager(
 		return nil, fmt.Errorf("create block executor: %w", err)
 	}
 
-	m := &Manager{
-		Pubsub:           pubsub,
-		p2pClient:        p2pClient,
-		LocalKey:         localKey,
-		Conf:             conf,
-		Genesis:          genesis,
-		Store:            store,
-		Executor:         exec,
-		DAClient:         dalc,
-		SLClient:         settlementClient,
-		Retriever:        dalc.(da.BatchRetriever),
-		targetSyncHeight: diodes.NewOneToOne(1, nil),
-		logger:           logger,
+	agg := &Manager{
+		Pubsub:         pubsub,
+		p2pClient:      p2pClient,
+		ProposerKey:    proposerKey,
+		Conf:           conf,
+		Genesis:        genesis,
+		State:          s,
+		Store:          store,
+		Executor:       exec,
+		DAClient:       dalc,
+		SLClient:       settlementClient,
+		Retriever:      dalc.(da.BatchRetriever),
+		producedSizeCh: make(chan uint64),
+		logger:         logger,
 		blockCache: &Cache{
 			cache: make(map[uint64]types.CachedBlock),
 		},
@@ -181,7 +177,6 @@ func (m *Manager) Start(ctx context.Context) error {
 				m.logger.Error("sync block manager from settlement", "err", err)
 			}
 			go m.RetrieveFromDALoop(ctx)
-			//go m.SyncToTargetHeightLoop(ctx)
 		}()
 
 		// Subscribe to P2P received blocks events

@@ -36,19 +36,7 @@ func (m *Manager) RetrieveFromDALoop(ctx context.Context) {
 			}
 		}
 	}
-	/*p := diodes.NewPoller(m.targetSyncHeight, diodes.WithPollingContext(ctx))
 
-	for {
-		targetHeight := p.Next() // We only care about the latest one
-		if targetHeight == nil {
-			return
-		}
-
-		if err = m.syncToTargetHeight(*(*uint64)(targetHeight)); err != nil {
-			err = fmt.Errorf("sync until target: %w", err)
-			return
-		}
-	}*/
 }
 
 // syncToTargetHeight syncs blocks until the target height is reached.
