@@ -1,6 +1,7 @@
 package block
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
@@ -11,12 +12,12 @@ func (m *Manager) pruneBlocks(retainHeight uint64) error {
 		return fmt.Errorf("cannot prune blocks before they have been submitted: %d: %w", retainHeight, gerrc.ErrInvalidArgument)
 	}
 
-	/*for h := m.State.BaseHeight; h < retainHeight; h++ {
+	for h := m.State.BaseHeight; h < retainHeight; h++ {
 		err := m.p2pClient.RemoveBlock(context.Background(), h)
 		if err != nil {
-			m.logger.Debug("prunning block sync", "height", h)
+			m.logger.Debug("pruning block sync", "height", h)
 		}
-	}*/
+	}
 
 	pruned, err := m.Store.PruneBlocks(m.State.BaseHeight, retainHeight)
 	if err != nil {
