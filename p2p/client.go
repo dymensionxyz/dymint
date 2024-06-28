@@ -82,7 +82,7 @@ type Client struct {
 
 	blocksync *BlockSync
 
-	blockstore datastore.Datastore
+	blockSyncStore datastore.Datastore
 
 	latestSeenHeight uint64
 
@@ -98,7 +98,7 @@ type Client struct {
 //
 // Basic checks on parameters are done, and default parameters are provided for unset-configuration
 // TODO(tzdybal): consider passing entire config, not just P2P config, to reduce number of arguments
-func NewClient(conf config.P2PConfig, privKey crypto.PrivKey, chainID string, store store.Store, localPubsubServer *tmpubsub.Server, blockstore datastore.Datastore, logger types.Logger) (*Client, error) {
+func NewClient(conf config.P2PConfig, privKey crypto.PrivKey, chainID string, store store.Store, localPubsubServer *tmpubsub.Server, blockSyncStore datastore.Datastore, logger types.Logger) (*Client, error) {
 	if privKey == nil {
 		return nil, ErrNoPrivKey
 	}
@@ -112,7 +112,7 @@ func NewClient(conf config.P2PConfig, privKey crypto.PrivKey, chainID string, st
 		chainID:           chainID,
 		logger:            logger,
 		localPubsubServer: localPubsubServer,
-		blockstore:        blockstore,
+		blockSyncStore:    blockSyncStore,
 		latestSeenHeight:  uint64(0),
 		store:             store,
 		heightToSkip:      make(map[uint64]struct{}),
@@ -357,9 +357,10 @@ func (c *Client) setupPeerDiscovery(ctx context.Context) error {
 }
 
 func (c *Client) setupBlockSync(ctx context.Context) error {
-	blocksync := SetupBlockSync(ctx, c.Host, c.blockstore, c.blockSyncReceived, c.logger)
+	blocksync := SetupBlockSync(ctx, c.Host, c.blockSyncStore, c.blockSyncReceived, c.logger)
 	c.blocksync = blocksync
-	go c.BlockSyncLoop(ctx)
+	go c.retrieveBlockSyncLoop(ctx)
+	go c.advertiseBlockSyncLoop(ctx)
 	return nil
 }
 
@@ -484,9 +485,9 @@ func (c *Client) blockGossipReceived(ctx context.Context, block []byte) {
 	if err != nil {
 		c.logger.Error("Publishing event.", "err", err)
 	}
-	cid, err := c.blocksync.AddBlock(ctx, block)
+	err = c.AddBlock(ctx, gossipedBlock.Block.Header.Height, block)
 	if err != nil {
-		c.logger.Error("Adding gossiped block to blockstore.", "err", err, "height", gossipedBlock.Block.Header.Height, "cid", cid)
+		c.logger.Error("Adding gossiped block to blockstore.", "err", err, "height", gossipedBlock.Block.Header.Height)
 	}
 
 	c.setLatestSeenHeight(gossipedBlock.Block.Header.Height)
@@ -526,11 +527,10 @@ func (c *Client) setLatestSeenHeight(height uint64) {
 	c.latestSeenHeight = max(height, c.latestSeenHeight)
 }
 
-// BlockSyncLoop checks if there is any missing block to be retrieved and requests it on demand
-func (c *Client) BlockSyncLoop(ctx context.Context) {
-	c.logger.Info("Started block sync loop.")
+// retrieveBlockSyncLoop checks if there is any missing block to be retrieved and requests it on demand
+func (c *Client) retrieveBlockSyncLoop(ctx context.Context) {
 
-	ticker := time.NewTicker(c.conf.BootstrapRetryTime)
+	ticker := time.NewTicker(c.conf.BlockSyncRetrieveRetryTime)
 	defer ticker.Stop()
 
 	for {
@@ -551,8 +551,15 @@ func (c *Client) BlockSyncLoop(ctx context.Context) {
 				if found {
 					continue
 				}
+				c.logger.Debug("Getting block", "height", h)
 				bid, err := c.GetBlockId(ctx, h)
 				if err != nil || bid == cid.Undef {
+					c.logger.Error("unable to find cid", "height", h)
+					continue
+				}
+				_, err = c.store.SaveBlockCid(h, bid, nil)
+				if err != nil {
+					c.logger.Error("unable to store block cid", "height", h, "cid", bid)
 					continue
 				}
 				c.logger.Debug("Getting block", "height", h, "cid", bid)
@@ -565,6 +572,44 @@ func (c *Client) BlockSyncLoop(ctx context.Context) {
 				}
 			}
 			c.blocksyncMu.Unlock()
+		}
+	}
+}
+
+// Blocks content identifiers (CID) are advertised to the DHT by the sequencer before gossiping the block, so a node can find a CID corresponding to a specific height.
+// advertiseBlockSyncLoop re-advertises known CIDs in the DHT. This prevents CIDs are lost in case of nodes disconnections to make sure they can be discovered in the DHT.
+func (c *Client) advertiseBlockSyncLoop(ctx context.Context) {
+	state, err := c.store.LoadState()
+	if err != nil {
+		c.logger.Error("loading state", "err", err)
+		return
+	}
+
+	ticker := time.NewTicker(reAdvertisePeriod)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			for h := state.BaseHeight; h <= state.Height(); h++ {
+				id, err := c.GetBlockId(ctx, h)
+				if err == nil && id != cid.Undef {
+					continue
+				}
+
+				id, err = c.store.LoadBlockCid(h)
+				if err != nil || id == cid.Undef {
+					continue
+				}
+
+				err = c.AdvertiseBlock(ctx, h, id)
+				if err != nil {
+					continue
+				}
+
+			}
 		}
 	}
 }

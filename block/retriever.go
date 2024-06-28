@@ -5,19 +5,38 @@ import (
 	"errors"
 	"fmt"
 
-	"code.cloudfoundry.org/go-diodes"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 
 	"github.com/dymensionxyz/dymint/da"
+	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
 )
 
 // RetrieveLoop listens for new target sync heights and then syncs the chain by
 // fetching batches from the settlement layer and then fetching the actual blocks
 // from the DA.
-func (m *Manager) RetrieveLoop(ctx context.Context) (err error) {
+func (m *Manager) RetrieveFromDALoop(ctx context.Context) {
 	m.logger.Info("Started retrieve loop.")
-	p := diodes.NewPoller(m.targetSyncHeight, diodes.WithPollingContext(ctx))
+	subscription, err := m.Pubsub.Subscribe(ctx, "syncTargetLoop", settlement.EventQueryNewSettlementBatchAccepted)
+	if err != nil {
+		m.logger.Error("subscribe to state update events", "error", err)
+		panic(err)
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case event := <-subscription.Out():
+			eventData, _ := event.Data().(*settlement.EventDataNewBatchAccepted)
+			h := eventData.EndHeight
+			err := m.syncToTargetHeight(h)
+			if err != nil {
+				m.logger.Error("sync until target", "err", err)
+			}
+		}
+	}
+	/*p := diodes.NewPoller(m.targetSyncHeight, diodes.WithPollingContext(ctx))
 
 	for {
 		targetHeight := p.Next() // We only care about the latest one
@@ -29,7 +48,7 @@ func (m *Manager) RetrieveLoop(ctx context.Context) (err error) {
 			err = fmt.Errorf("sync until target: %w", err)
 			return
 		}
-	}
+	}*/
 }
 
 // syncToTargetHeight syncs blocks until the target height is reached.
@@ -131,7 +150,8 @@ func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
 				m.logger.Error("validate block from DA", "height", block.Header.Height, "err", err)
 				continue
 			}
-			err := m.applyBlock(block, batch.Commits[i], types.BlockMetaData{Source: types.DABlock, DAHeight: daMetaData.Height})
+
+			err := m.applyBlock(block, batch.Commits[i], blockMetaData{source: daBlock, daHeight: daMetaData.Height})
 			if err != nil {
 				return fmt.Errorf("apply block: height: %d: %w", block.Header.Height, err)
 			}

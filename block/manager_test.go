@@ -56,9 +56,10 @@ func TestInitialState(t *testing.T) {
 	// Init p2p client
 	privKey, _, _ := crypto.GenerateEd25519Key(rand.Reader)
 	p2pClient, err := p2p.NewClient(config.P2PConfig{
-		ListenAddress:           config.DefaultListenAddress,
-		GossipedBlocksCacheSize: 50,
-		BootstrapRetryTime:      30 * time.Second,
+		ListenAddress:              config.DefaultListenAddress,
+		GossipedBlocksCacheSize:    50,
+		BootstrapRetryTime:         30 * time.Second,
+		BlockSyncRetrieveRetryTime: 30 * time.Second,
 	}, privKey, "TestChain", emptyStore, pubsubServer, datastore.NewMapDatastore(), logger)
 	assert.NoError(err)
 	assert.NotNil(p2pClient)

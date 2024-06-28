@@ -161,7 +161,6 @@ func (m *Manager) Start(ctx context.Context) error {
 	if isSequencer {
 		// Sequencer must wait till DA is synced to start submitting blobs
 		<-m.DAClient.Synced()
-<<<<<<< HEAD
 		nBytes := m.GetUnsubmittedBytes()
 		bytesProducedC := make(chan int)
 		go func() {
@@ -173,23 +172,16 @@ func (m *Manager) Start(ctx context.Context) error {
 		eg.Go(func() error {
 			return m.ProduceBlockLoop(ctx, bytesProducedC)
 		})
-=======
-		err = m.syncBlockManager()
-		if err != nil {
-			return fmt.Errorf("sync block manager: %w", err)
-		}
-		go m.ProduceBlockLoop(ctx)
-		go m.SubmitLoop(ctx)
->>>>>>> c011804 (addressing comments)
+
 	} else {
 		// Full-nodes can sync from DA but it is not necessary to wait for it, since it can sync from P2P as well in parallel.
 		go func() {
-			err := m.syncBlockManager()
+			err := m.syncFromSettlement()
 			if err != nil {
-				m.logger.Error("sync block manager", "err", err)
+				m.logger.Error("sync block manager from settlement", "err", err)
 			}
-			go m.RetrieveLoop(ctx)
-			go m.SyncToTargetHeightLoop(ctx)
+			go m.RetrieveFromDALoop(ctx)
+			//go m.SyncToTargetHeightLoop(ctx)
 		}()
 
 		// Subscribe to P2P received blocks events
@@ -219,8 +211,8 @@ func (m *Manager) NextHeightToSubmit() uint64 {
 	return m.LastSubmittedHeight.Load() + 1
 }
 
-// syncBlockManager enforces the node to be synced on initial run.
-func (m *Manager) syncBlockManager() error {
+// syncFromSettlement enforces the node to be synced on initial run.
+func (m *Manager) syncFromSettlement() error {
 	res, err := m.SLClient.GetLatestBatch()
 	if errors.Is(err, gerrc.ErrNotFound) {
 		// The SL hasn't got any batches for this chain yet.

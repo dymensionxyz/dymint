@@ -33,9 +33,10 @@ func TestClientStartup(t *testing.T) {
 	require.NoError(t, err)
 	store := store.New(store.NewDefaultInMemoryKVStore())
 	client, err := p2p.NewClient(config.P2PConfig{
-		ListenAddress:      config.DefaultListenAddress,
-		GossipSubCacheSize: 50,
-		BootstrapRetryTime: 30 * time.Second,
+		ListenAddress:              config.DefaultListenAddress,
+		GossipSubCacheSize:         50,
+		BootstrapRetryTime:         30 * time.Second,
+		BlockSyncRetrieveRetryTime: 30 * time.Second,
 	}, privKey, "TestChain", store, pubsubServer, datastore.NewMapDatastore(), log.TestingLogger())
 	assert := assert.New(t)
 	assert.NoError(err)
