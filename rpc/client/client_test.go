@@ -108,6 +108,7 @@ func TestGenesisChunked(t *testing.T) {
 			GossipSubCacheSize:         50,
 			BootstrapRetryTime:         30 * time.Second,
 			BlockSyncRetrieveRetryTime: 30 * time.Second,
+			BlockSyncAdvRetryTime:      1 * time.Hour,
 		},
 		RPC: config.RPCConfig{},
 		BlockManagerConfig: config.BlockManagerConfig{
@@ -710,6 +711,7 @@ func TestValidatorSetHandling(t *testing.T) {
 			GossipSubCacheSize:         50,
 			BootstrapRetryTime:         30 * time.Second,
 			BlockSyncRetrieveRetryTime: 30 * time.Second,
+			BlockSyncAdvRetryTime:      1 * time.Hour,
 		},
 		BlockManagerConfig: config.BlockManagerConfig{
 			BlockTime:          10 * time.Millisecond,
@@ -868,6 +870,7 @@ func getRPCInternal(t *testing.T, sequencer bool) (*tmmocks.MockApplication, *cl
 			GossipSubCacheSize:         50,
 			BootstrapRetryTime:         30 * time.Second,
 			BlockSyncRetrieveRetryTime: 30 * time.Second,
+			BlockSyncAdvRetryTime:      1 * time.Hour,
 		},
 		RPC:           config.RPCConfig{},
 		MempoolConfig: *tmcfg.DefaultMempoolConfig(),
@@ -980,6 +983,7 @@ func TestMempool2Nodes(t *testing.T) {
 			GossipSubCacheSize:         50,
 			BootstrapRetryTime:         30 * time.Second,
 			BlockSyncRetrieveRetryTime: 30 * time.Second,
+			BlockSyncAdvRetryTime:      1 * time.Hour,
 		},
 		BlockManagerConfig: config.BlockManagerConfig{
 			BlockTime:          100 * time.Millisecond,
@@ -1011,6 +1015,7 @@ func TestMempool2Nodes(t *testing.T) {
 			BootstrapRetryTime:         30 * time.Second,
 			GossipSubCacheSize:         50,
 			BlockSyncRetrieveRetryTime: 30 * time.Second,
+			BlockSyncAdvRetryTime:      1 * time.Hour,
 		},
 		MempoolConfig: *tmcfg.DefaultMempoolConfig(),
 	}, key2, signingKey2, proxy.NewLocalClientCreator(app), &tmtypes.GenesisDoc{ChainID: rollappID}, log.TestingLogger(), mempool.NopMetrics())

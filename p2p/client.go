@@ -499,9 +499,8 @@ func (c *Client) blockGossipReceived(ctx context.Context, block []byte) {
 	}
 	err = c.AddBlock(ctx, gossipedBlock.Block.Header.Height, block)
 	if err != nil {
-		c.logger.Error("Adding gossiped block to blockstore.", "err", err, "height", gossipedBlock.Block.Header.Height)
+		c.logger.Error("Adding  block to blocksync store.", "err", err, "height", gossipedBlock.Block.Header.Height)
 	}
-
 	c.setLatestSeenHeight(gossipedBlock.Block.Header.Height)
 
 	// Received block is cached and  no longer needed to request using block-sync
@@ -573,7 +572,6 @@ func (c *Client) retrieveBlockSyncLoop(ctx context.Context) {
 					c.logger.Error("unable to store block cid", "height", h, "cid", bid)
 					continue
 				}
-				c.logger.Debug("Getting block", "height", h, "cid", bid)
 				block, err := c.blocksync.GetBlock(ctx, bid)
 				if err != nil {
 					continue
@@ -595,8 +593,7 @@ func (c *Client) advertiseBlockSyncLoop(ctx context.Context) {
 		c.logger.Error("loading state", "err", err)
 		return
 	}
-
-	ticker := time.NewTicker(reAdvertisePeriod)
+	ticker := time.NewTicker(c.conf.BlockSyncAdvRetryTime)
 	defer ticker.Stop()
 
 	for {
@@ -604,6 +601,7 @@ func (c *Client) advertiseBlockSyncLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
+
 			for h := state.BaseHeight; h <= state.Height(); h++ {
 				id, err := c.GetBlockId(ctx, h)
 				if err == nil && id != cid.Undef {

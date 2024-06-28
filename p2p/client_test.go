@@ -37,6 +37,7 @@ func TestClientStartup(t *testing.T) {
 		GossipSubCacheSize:         50,
 		BootstrapRetryTime:         30 * time.Second,
 		BlockSyncRetrieveRetryTime: 30 * time.Second,
+		BlockSyncAdvRetryTime:      1 * time.Hour,
 	}, privKey, "TestChain", store, pubsubServer, datastore.NewMapDatastore(), log.TestingLogger())
 	assert := assert.New(t)
 	assert.NoError(err)

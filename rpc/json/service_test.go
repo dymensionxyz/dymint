@@ -317,6 +317,7 @@ func getRPC(t *testing.T) (*tmmocks.MockApplication, *client.Client) {
 			GossipSubCacheSize:         50,
 			BootstrapRetryTime:         30 * time.Second,
 			BlockSyncRetrieveRetryTime: 30 * time.Second,
+			BlockSyncAdvRetryTime:      1 * time.Hour,
 		},
 	}
 	node, err := node.NewNode(

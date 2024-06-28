@@ -70,6 +70,7 @@ func TestMempoolDirectly(t *testing.T) {
 			BootstrapRetryTime:         30 * time.Second,
 			BootstrapNodes:             "",
 			BlockSyncRetrieveRetryTime: 30 * time.Second,
+			BlockSyncAdvRetryTime:      1 * time.Hour,
 		},
 		RPC:           config.RPCConfig{},
 		MempoolConfig: *tmcfg.DefaultMempoolConfig(),
