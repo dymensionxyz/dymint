@@ -8,7 +8,6 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"code.cloudfoundry.org/go-diodes"
 	"github.com/dymensionxyz/dymint/store"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
@@ -69,8 +68,6 @@ type Manager struct {
 	// and incoming DA blocks, respectively.
 	retrieverMu sync.Mutex
 	Retriever   da.BatchRetriever
-	// get the next target height to sync local state to
-	targetSyncHeight diodes.Diode
 	// Cached blocks and commits for applying at future heights. The blocks may not be valid, because
 	// we can only do full validation in sequential order.
 	blockCache map[uint64]CachedBlock
@@ -106,21 +103,20 @@ func NewManager(
 	}
 
 	agg := &Manager{
-		Pubsub:           pubsub,
-		p2pClient:        p2pClient,
-		ProposerKey:      proposerKey,
-		Conf:             conf,
-		Genesis:          genesis,
-		State:            s,
-		Store:            store,
-		Executor:         exec,
-		DAClient:         dalc,
-		SLClient:         settlementClient,
-		Retriever:        dalc.(da.BatchRetriever),
-		targetSyncHeight: diodes.NewOneToOne(1, nil),
-		producedSizeCh:   make(chan uint64),
-		logger:           logger,
-		blockCache:       make(map[uint64]CachedBlock),
+		Pubsub:         pubsub,
+		p2pClient:      p2pClient,
+		ProposerKey:    proposerKey,
+		Conf:           conf,
+		Genesis:        genesis,
+		State:          s,
+		Store:          store,
+		Executor:       exec,
+		DAClient:       dalc,
+		SLClient:       settlementClient,
+		Retriever:      dalc.(da.BatchRetriever),
+		producedSizeCh: make(chan uint64),
+		logger:         logger,
+		blockCache:     make(map[uint64]CachedBlock),
 	}
 
 	return agg, nil
@@ -166,7 +162,6 @@ func (m *Manager) Start(ctx context.Context) error {
 				m.logger.Error("sync block manager from settlement", "err", err)
 			}
 			go m.RetrieveFromDALoop(ctx)
-			//go m.SyncToTargetHeightLoop(ctx)
 		}()
 
 		// Subscribe to P2P received blocks events
