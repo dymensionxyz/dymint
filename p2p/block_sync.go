@@ -96,3 +96,7 @@ func (blocksync *BlockSync) GetBlock(ctx context.Context, cid cid.Cid) (P2PBlock
 	blocksync.logger.Debug("Blocksync block received ", "cid", cid)
 	return block, nil
 }
+
+func (blocksync *BlockSync) RemoveBlock(ctx context.Context, cid cid.Cid) error {
+	return blocksync.dsrv.Remove(ctx, cid)
+}

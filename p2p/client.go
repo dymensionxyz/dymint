@@ -214,6 +214,18 @@ func (c *Client) AddBlock(ctx context.Context, height uint64, blockBytes []byte)
 	return nil
 }
 
+func (c *Client) RemoveBlock(ctx context.Context, height uint64) error {
+	cid, err := c.store.LoadBlockCid(height)
+	if err != nil {
+		return fmt.Errorf("load block id from store %d: %w", height, err)
+	}
+	err = c.blocksync.RemoveBlock(ctx, cid)
+	if err != nil {
+		return fmt.Errorf("remove block height %d: %w", height, err)
+	}
+	return nil
+}
+
 func (c *Client) AdvertiseBlock(ctx context.Context, height uint64, cid cid.Cid) error {
 	err := c.DHT.PutValue(ctx, "/"+blockSyncProtocolPrefix+"/"+strconv.FormatUint(height, 10), []byte(cid.String()))
 	return err

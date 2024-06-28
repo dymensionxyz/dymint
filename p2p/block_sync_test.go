@@ -51,8 +51,13 @@ func TestBlockSync(t *testing.T) {
 	cid, err := blocksync.AddBlock(ctx, gossipedBlockbytes)
 	require.NoError(t, err)
 
-	//add block to blocksync protocol client 0
+	//get block
 	block, err := blocksync.GetBlock(ctx, cid)
 	require.NoError(t, err)
 	require.Equal(t, gossipedBlock, block)
+
+	//remove block
+	err = blocksync.RemoveBlock(ctx, cid)
+	require.NoError(t, err)
+
 }

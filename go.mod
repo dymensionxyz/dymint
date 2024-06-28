@@ -3,7 +3,6 @@ module github.com/dymensionxyz/dymint
 go 1.22.4
 
 require (
-	code.cloudfoundry.org/go-diodes v0.0.0-20220725190411-383eb6634c40
 	cosmossdk.io/errors v1.0.1
 	github.com/avast/retry-go/v4 v4.5.0
 	github.com/celestiaorg/celestia-openrpc v0.4.0-rc.1
