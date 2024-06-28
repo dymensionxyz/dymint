@@ -41,6 +41,7 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 			GossipedBlocksCacheSize:    50,
 			BootstrapRetryTime:         30 * time.Second,
 			BlockSyncRetrieveRetryTime: 30 * time.Second,
+			BlockSyncAdvRetryTime:      1 * time.Hour,
 			ListenAddress:              DefaultListenAddress,
 			BootstrapNodes:             "",
 			AdvertisingEnabled:         true,

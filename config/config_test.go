@@ -225,6 +225,7 @@ func fullNodeConfig() config.NodeConfig {
 		P2PConfig: config.P2PConfig{
 			GossipedBlocksCacheSize: 50,
 			BootstrapRetryTime:      30 * time.Second,
+			BlockSyncAdvRetryTime:   1 * time.Hour,
 			ListenAddress:           config.DefaultListenAddress,
 			BootstrapNodes:          "",
 		},
