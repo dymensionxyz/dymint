@@ -64,8 +64,10 @@ type Manager struct {
 	*/
 	// Protect against processing two blocks at once when there are two routines handling incoming gossiped blocks,
 	// and incoming DA blocks, respectively.
-	retrieverMu sync.Mutex
-	Retriever   da.BatchRetriever
+	applyBlockMu sync.Mutex
+	// Protect against syncing twice from DA in case new batch is posted but it did not finish to sync yet.
+	syncFromDaMu sync.Mutex
+	Retriever    da.BatchRetriever
 	// Cached blocks and commits for applying at future heights. The blocks may not be valid, because
 	// we can only do full validation in sequential order.
 	blockCache *Cache
@@ -222,6 +224,7 @@ func (m *Manager) syncFromSettlement() error {
 	}
 	m.LastSubmittedHeight.Store(res.EndHeight)
 	err = m.syncToTargetHeight(res.EndHeight)
+
 	if err != nil {
 		return err
 	}

@@ -121,11 +121,11 @@ func (m *Manager) attemptCacheBlock(block *types.Block, commit *types.Commit, so
 	if block.Header.Height < nextHeight {
 		return false
 	}
-	m.retrieverMu.Lock() // needed to protect blockCache access
+	m.applyBlockMu.Lock() // needed to protect blockCache access
 	_, found := m.blockCache[block.Header.Height]
 	// It is not strictly necessary to return early, for correctness, but doing so helps us avoid mutex pressure and unnecessary repeated attempts to apply cached blocks
 	if found {
-		m.retrieverMu.Unlock()
+		m.applyBlockMu.Unlock()
 		return false
 	}
 
@@ -135,13 +135,13 @@ func (m *Manager) attemptCacheBlock(block *types.Block, commit *types.Commit, so
 		Source: source,
 	}
 
-	m.retrieverMu.Unlock() // have to give this up as it's locked again in attempt apply, and we're not re-entrant
+	m.applyBlockMu.Unlock() // have to give this up as it's locked again in attempt apply, and we're not re-entrant
 	return true
 }
 
 func (m *Manager) attemptApplyCachedBlocks() error {
-	m.retrieverMu.Lock()
-	defer m.retrieverMu.Unlock()
+	m.applyBlockMu.Lock()
+	defer m.applyBlockMu.Unlock()
 
 	for {
 		expectedHeight := m.State.NextHeight()

@@ -42,6 +42,8 @@ func (m *Manager) RetrieveFromDALoop(ctx context.Context) {
 // It fetches the batches from the settlement, gets the DA height and gets
 // the actual blocks from the DA.
 func (m *Manager) syncToTargetHeight(targetHeight uint64) error {
+	defer m.syncFromDaMu.Unlock()
+	m.syncFromDaMu.Lock()
 	for currH := m.State.NextHeight(); currH <= targetHeight; currH = m.State.NextHeight() {
 		// if we have the block locally, we don't need to fetch it from the DA
 		err := m.applyLocalBlock(currH)
@@ -106,7 +108,7 @@ func (m *Manager) applyLocalBlock(height uint64) error {
 	}
 
 	m.retrieverMu.Lock()
-	err = m.applyBlock(block, commit, types.BlockMetaData{Source: types.LocalDbBlock})
+	err = m.applyBlock(block, commit, blockMetaData{source: localDbBlock})
 	if err != nil {
 		return fmt.Errorf("apply block from local store: height: %d: %w", height, err)
 	}
@@ -124,8 +126,8 @@ func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
 
 	m.logger.Debug("retrieved batches", "n", len(batchResp.Batches), "daHeight", daMetaData.Height)
 
-	m.retrieverMu.Lock()
-	defer m.retrieverMu.Unlock()
+	m.applyBlockMu.Lock()
+	defer m.applyBlockMu.Unlock()
 
 	var lastAppliedHeight float64
 	for _, batch := range batchResp.Batches {
