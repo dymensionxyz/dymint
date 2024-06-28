@@ -36,7 +36,6 @@ func (m *Manager) RetrieveFromDALoop(ctx context.Context) {
 			}
 		}
 	}
-
 }
 
 // syncToTargetHeight syncs blocks until the target height is reached.

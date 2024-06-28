@@ -529,7 +529,6 @@ func (c *Client) setLatestSeenHeight(height uint64) {
 
 // retrieveBlockSyncLoop checks if there is any missing block to be retrieved and requests it on demand
 func (c *Client) retrieveBlockSyncLoop(ctx context.Context) {
-
 	ticker := time.NewTicker(c.conf.BlockSyncRetrieveRetryTime)
 	defer ticker.Stop()
 
