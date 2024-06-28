@@ -224,7 +224,6 @@ func (m *Manager) syncFromSettlement() error {
 	}
 	m.LastSubmittedHeight.Store(res.EndHeight)
 	err = m.syncToTargetHeight(res.EndHeight)
-
 	if err != nil {
 		return err
 	}
