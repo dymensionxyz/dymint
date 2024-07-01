@@ -635,14 +635,9 @@ func (c *Client) findConnection(peer peer.AddrInfo) bool {
 // validates the content identifiers advertised in the DHT are valid
 type blockIdValidator struct{}
 
-func (blockIdValidator) Validate(_ string, id []byte) (err error) {
-	defer func() {
-		// recover from panic if one occurred. Set err to nil otherwise.
-		if recover() != nil {
-			err = ErrorInvalidCid
-		}
-	}()
-	cid.MustParse(string(id))
+func (blockIdValidator) Validate(_ string, id []byte) error {
+	_, err := cid.Parse(string(id))
 	return err
 }
+
 func (blockIdValidator) Select(_ string, _ [][]byte) (int, error) { return 0, nil }
