@@ -100,12 +100,12 @@ func (m *Manager) processLocalBlock(height uint64) error {
 		return fmt.Errorf("validate block from local store: height: %d: %w", height, err)
 	}
 
-	m.applyBlockMu.Lock()
+	m.blockCacheMu.Lock()
 	err = m.applyBlock(block, commit, blockMetaData{source: localDbBlock})
 	if err != nil {
 		return fmt.Errorf("apply block from local store: height: %d: %w", height, err)
 	}
-	m.applyBlockMu.Unlock()
+	m.blockCacheMu.Unlock()
 
 	return nil
 }
@@ -119,8 +119,8 @@ func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
 
 	m.logger.Debug("retrieved batches", "n", len(batchResp.Batches), "daHeight", daMetaData.Height)
 
-	m.applyBlockMu.Lock()
-	defer m.applyBlockMu.Unlock()
+	m.blockCacheMu.Lock()
+	defer m.blockCacheMu.Unlock()
 
 	for _, batch := range batchResp.Batches {
 		for i, block := range batch.Blocks {
