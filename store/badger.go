@@ -46,7 +46,7 @@ func NewDefaultKVStore(rootDir, dbPath, dbName string) KV {
 	return NewKVStore(rootDir, dbPath, dbName, true)
 }
 
-// Rootify works just like in cosmos-sdk
+// Rootify is helper function to make config creation independent of root dir
 func Rootify(rootDir, dbPath string) string {
 	if filepath.IsAbs(dbPath) {
 		return dbPath
