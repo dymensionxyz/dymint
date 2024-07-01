@@ -314,11 +314,10 @@ func getRPC(t *testing.T) (*tmmocks.MockApplication, *client.Client) {
 			RollappID:      rollappID,
 		},
 		P2PConfig: config.P2PConfig{
-			ListenAddress:               config.DefaultListenAddress,
-			GossipedBlocksCacheSize:     50,
-			BootstrapRetryTime:          30 * time.Second,
-			BlockSyncRetrieveRetryTime:  30 * time.Second,
-			BlockSyncAdvertiseRetryTime: 1 * time.Hour,
+			ListenAddress:              config.DefaultListenAddress,
+			GossipedBlocksCacheSize:    50,
+			BootstrapRetryTime:         30 * time.Second,
+			BlockSyncRetrieveRetryTime: 30 * time.Second,
 		},
 	}
 	node, err := node.NewNode(

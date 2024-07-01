@@ -19,6 +19,11 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 )
 
+// Blocksync is a protocol used to retrieve blocks on demand from the P2P network.
+// Nodes store received blocks from gossip in an IPFS blockstore and nodes are able to request them on demand using bitswap protocol.
+// In order to discover the identifier (CID) of each block a DHT request needs to be made for the specific block height.
+// Nodes need to advertise CIDs/height map to the DHT periodically.
+// https://www.notion.so/dymension/ADR-x-Rollapp-block-sync-protocol-6ee48b232a6a45e09989d67f1a6c0297?pvs=4
 type BlockSync struct {
 	// service that reads/writes blocks either from local datastore or the network
 	bsrv blockservice.BlockService
