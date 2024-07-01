@@ -7,6 +7,9 @@ import (
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/dymensionxyz/cosmosclient/cosmosclient"
 	"github.com/ignite/cli/ignite/pkg/cosmosaccount"
+	"github.com/tendermint/tendermint/libs/bytes"
+	rpcclient "github.com/tendermint/tendermint/rpc/client"
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 
 	interchainda "github.com/dymensionxyz/dymint/types/pb/interchain_da"
 )
@@ -42,4 +45,21 @@ func (c *daClient) Params(ctx context.Context) (interchainda.Params, error) {
 		return interchainda.Params{}, fmt.Errorf("can't query DA layer params: %w", err)
 	}
 	return resp.GetParams(), nil
+}
+
+func (c *daClient) Tx(ctx context.Context, txHash []byte) (*ctypes.ResultTx, error) {
+	return c.RPC.Tx(ctx, txHash, false)
+}
+
+func (c *daClient) ABCIQueryWithProof(
+	ctx context.Context,
+	path string,
+	data bytes.HexBytes,
+	height int64,
+) (*ctypes.ResultABCIQuery, error) {
+	opts := rpcclient.ABCIQueryOptions{
+		Height: height,
+		Prove:  true,
+	}
+	return c.RPC.ABCIQueryWithOptions(ctx, path, data, opts)
 }

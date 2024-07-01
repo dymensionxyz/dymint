@@ -8,6 +8,7 @@ import (
 
 	"github.com/celestiaorg/celestia-openrpc/types/blob"
 	"github.com/cometbft/cometbft/crypto/merkle"
+	cdctypes "github.com/cosmos/cosmos-sdk/codec/types"
 	"github.com/tendermint/tendermint/libs/pubsub"
 
 	"github.com/dymensionxyz/dymint/store"
@@ -179,6 +180,13 @@ type ResultSubmitBatch struct {
 	SubmitMetaData *DASubmitMetaData
 }
 
+// ResultSubmitBatchV2 contains information returned from DA layer after block submission.
+type ResultSubmitBatchV2 struct {
+	BaseResult
+	// DAPath instructs how to retrieve the submitted batch from the DA layer.
+	DAPath Path
+}
+
 // ResultCheckBatch contains information about block availability, returned from DA layer client.
 type ResultCheckBatch struct {
 	BaseResult
@@ -194,6 +202,22 @@ type ResultRetrieveBatch struct {
 	Batches []*types.Batch
 	// DAHeight informs about a height on Data Availability Layer for given result.
 	CheckMetaData *DACheckMetaData
+}
+
+// ResultRetrieveBatchV2 contains a batch of blocks returned from the DA layer client.
+type ResultRetrieveBatchV2 struct {
+	BaseResult
+	// Batches is the full block retrieved from the DA layer.
+	// If BaseResult.Code is not StatusSuccess, this field is nil.
+	Batches []*types.Batch
+}
+
+// Path TODO: move to the Dymension proto file
+type Path struct {
+	// DAType identifies the DA type being used by the sequencer to post the blob.
+	DaType string
+	// Commitment is a generic commitment interpreted by the DA Layer.
+	Commitment *cdctypes.Any
 }
 
 // DataAvailabilityLayerClient defines generic interface for DA layer block submission.
@@ -213,6 +237,9 @@ type DataAvailabilityLayerClient interface {
 	// triggers a state transition in the DA layer.
 	SubmitBatch(batch *types.Batch) ResultSubmitBatch
 
+	// SubmitBatchV2 is a method that supports MsgUpdateStateV2.
+	SubmitBatchV2(*types.Batch) ResultSubmitBatchV2
+
 	GetClientType() Client
 
 	// CheckBatchAvailability checks the availability of the blob submitted getting proofs and validating them
@@ -226,6 +253,8 @@ type DataAvailabilityLayerClient interface {
 type BatchRetriever interface {
 	// RetrieveBatches returns blocks at given data layer height from data availability layer.
 	RetrieveBatches(daMetaData *DASubmitMetaData) ResultRetrieveBatch
+	// RetrieveBatchesV2 is a method that supports MsgUpdateStateV2.
+	RetrieveBatchesV2(ResultSubmitBatchV2) ResultRetrieveBatchV2
 	// CheckBatchAvailability checks the availability of the blob received getting proofs and validating them
 	CheckBatchAvailability(daMetaData *DASubmitMetaData) ResultCheckBatch
 }
