@@ -172,7 +172,6 @@ func (m *Manager) Start(ctx context.Context) error {
 		go uevent.MustSubscribe(ctx, m.Pubsub, "applyBlockSyncBlocksLoop", p2p.EventQueryNewBlockSyncBlock, m.onReceivedBlock, m.logger)
 
 	}
-	fmt.Println("Block manager done")
 	return nil
 }
 
