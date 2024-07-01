@@ -116,18 +116,18 @@ func (m *Manager) isHeightAlreadyApplied(blockHeight uint64) (bool, error) {
 }
 
 func (m *Manager) attemptCacheBlock(block *types.Block, commit *types.Commit, source blockSource) bool {
-	defer m.blockCacheMu.Unlock()
 
 	nextHeight := m.State.NextHeight()
 
 	if block.Header.Height < nextHeight {
 		return false
 	}
-	m.blockCacheMu.Lock() // needed to protect blockCache access
+	defer m.blockCacheMu.Unlock() // have to give this up as it's locked again in attempt apply, and we're not re-entrant
+	m.blockCacheMu.Lock()         // needed to protect blockCache access
+
 	_, found := m.blockCache[block.Header.Height]
 	// It is not strictly necessary to return early, for correctness, but doing so helps us avoid mutex pressure and unnecessary repeated attempts to apply cached blocks
 	if found {
-		m.blockCacheMu.Unlock()
 		return false
 	}
 

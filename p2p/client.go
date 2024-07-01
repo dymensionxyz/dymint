@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/dymensionxyz/dymint/store"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/ipfs/go-cid"
 	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p"
@@ -37,7 +37,7 @@ type StatusCode uint64
 // TODO(tzdybal): refactor to configuration parameters
 const (
 	// reAdvertisePeriod defines a period after which P2P client re-attempt advertising namespace in DHT.
-	reAdvertisePeriod = 1 * time.Hour
+	reAdvertisePeriod = 6 * time.Hour
 
 	// peerLimit defines limit of number of peers returned during active peer discovery.
 	peerLimit = 60
@@ -88,9 +88,6 @@ type Client struct {
 
 	heightToSkip map[uint64]struct{}
 
-	// Prevents starting a sync loop while still syncing from a previous execution
-	blocksyncMu sync.Mutex
-
 	store store.Store
 }
 
@@ -100,7 +97,7 @@ type Client struct {
 // TODO(tzdybal): consider passing entire config, not just P2P config, to reduce number of arguments
 func NewClient(conf config.P2PConfig, privKey crypto.PrivKey, chainID string, store store.Store, localPubsubServer *tmpubsub.Server, blockSyncStore datastore.Datastore, logger types.Logger) (*Client, error) {
 	if privKey == nil {
-		return nil, ErrNoPrivKey
+		return nil, fmt.Errorf("private key: %w", gerrc.ErrNotFound)
 	}
 	if conf.ListenAddress == "" {
 		conf.ListenAddress = config.DefaultListenAddress
@@ -161,7 +158,7 @@ func (c *Client) StartWithHost(ctx context.Context, h host.Host) error {
 	}
 
 	c.logger.Debug("Setting up block sync protocol")
-	err = c.setupBlockSync(ctx)
+	err = c.startBlockSync(ctx)
 	if err != nil {
 		return err
 	}
@@ -368,7 +365,7 @@ func (c *Client) setupPeerDiscovery(ctx context.Context) error {
 	return nil
 }
 
-func (c *Client) setupBlockSync(ctx context.Context) error {
+func (c *Client) startBlockSync(ctx context.Context) error {
 	blocksync := SetupBlockSync(ctx, c.Host, c.blockSyncStore, c.blockSyncReceived, c.logger)
 	c.blocksync = blocksync
 	go c.retrieveBlockSyncLoop(ctx)
@@ -503,8 +500,9 @@ func (c *Client) blockGossipReceived(ctx context.Context, block []byte) {
 	}
 	c.setLatestSeenHeight(gossipedBlock.Block.Header.Height)
 
-	// Received block is cached and  no longer needed to request using block-sync
-	c.heightToSkip[gossipedBlock.Block.Header.Height] = struct{}{}
+	// Received block is cached and no longer needed to request using block-sync
+	delete(c.heightToSkip, gossipedBlock.Block.Header.Height)
+
 }
 
 func (c *Client) bootstrapLoop(ctx context.Context) {
@@ -548,17 +546,17 @@ func (c *Client) retrieveBlockSyncLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			c.blocksyncMu.Lock()
 			state, err := c.store.LoadState()
 			if err != nil {
+				c.logger.Error("loading state", "err", err)
 				continue
 			}
 
 			// this loop iterates and retrieves all the blocks between the last block applied and the greatest height received,
-			// skipping any block cached, which are the blocks missing to be in sync.
+			// skipping any block cached, since are already received.
 			for h := state.NextHeight(); h <= c.latestSeenHeight; h++ {
-				_, found := c.heightToSkip[h]
-				if found {
+				_, ok := c.heightToSkip[h]
+				if ok {
 					continue
 				}
 				c.logger.Debug("Getting block", "height", h)
@@ -569,7 +567,7 @@ func (c *Client) retrieveBlockSyncLoop(ctx context.Context) {
 				}
 				_, err = c.store.SaveBlockCid(h, bid, nil)
 				if err != nil {
-					c.logger.Error("unable to store block cid", "height", h, "cid", bid)
+					c.logger.Error("storing block cid", "height", h, "cid", bid)
 					continue
 				}
 				block, err := c.blocksync.GetBlock(ctx, bid)
@@ -580,7 +578,6 @@ func (c *Client) retrieveBlockSyncLoop(ctx context.Context) {
 					c.blocksync.msgHandler(&block)
 				}
 			}
-			c.blocksyncMu.Unlock()
 		}
 	}
 }
@@ -593,7 +590,9 @@ func (c *Client) advertiseBlockSyncLoop(ctx context.Context) {
 		c.logger.Error("loading state", "err", err)
 		return
 	}
-	ticker := time.NewTicker(c.conf.BlockSyncAdvertiseRetryTime)
+	c.advertiseBlockSyncCids(ctx, state)
+
+	ticker := time.NewTicker(reAdvertisePeriod)
 	defer ticker.Stop()
 
 	for {
@@ -601,25 +600,28 @@ func (c *Client) advertiseBlockSyncLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-
-			for h := state.BaseHeight; h <= state.Height(); h++ {
-				id, err := c.GetBlockId(ctx, h)
-				if err == nil && id != cid.Undef {
-					continue
-				}
-
-				id, err = c.store.LoadBlockCid(h)
-				if err != nil || id == cid.Undef {
-					continue
-				}
-
-				err = c.AdvertiseBlock(ctx, h, id)
-				if err != nil {
-					continue
-				}
-
-			}
+			c.advertiseBlockSyncCids(ctx, state)
 		}
+	}
+}
+
+func (c *Client) advertiseBlockSyncCids(ctx context.Context, state *types.State) {
+	for h := state.BaseHeight; h <= state.Height(); h++ {
+		id, err := c.GetBlockId(ctx, h)
+		if err == nil && id != cid.Undef {
+			continue
+		}
+
+		id, err = c.store.LoadBlockCid(h)
+		if err != nil || id == cid.Undef {
+			continue
+		}
+
+		err = c.AdvertiseBlock(ctx, h, id)
+		if err != nil {
+			continue
+		}
+
 	}
 }
 

@@ -33,11 +33,10 @@ func TestClientStartup(t *testing.T) {
 	require.NoError(t, err)
 	store := store.New(store.NewDefaultInMemoryKVStore())
 	client, err := p2p.NewClient(config.P2PConfig{
-		ListenAddress:               config.DefaultListenAddress,
-		GossipSubCacheSize:          50,
-		BootstrapRetryTime:          30 * time.Second,
-		BlockSyncRetrieveRetryTime:  30 * time.Second,
-		BlockSyncAdvertiseRetryTime: 1 * time.Hour,
+		ListenAddress:              config.DefaultListenAddress,
+		GossipSubCacheSize:         50,
+		BootstrapRetryTime:         30 * time.Second,
+		BlockSyncRetrieveRetryTime: 30 * time.Second,
 	}, privKey, "TestChain", store, pubsubServer, datastore.NewMapDatastore(), log.TestingLogger())
 	assert := assert.New(t)
 	assert.NoError(err)
@@ -223,7 +222,7 @@ func TestAdvertiseWrongCid(t *testing.T) {
 	// advertise cid for height 1
 	receivedError := clients[2].DHT.PutValue(ctx, "/block-sync/"+strconv.FormatUint(1, 10), []byte("test"))
 
-	require.Error(t, p2p.ErrorInvalidCid, receivedError)
+	require.Error(t, cid.ErrInvalidCid{}, receivedError)
 
 }
 

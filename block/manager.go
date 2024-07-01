@@ -178,15 +178,16 @@ func (m *Manager) Start(ctx context.Context) error {
 			if err != nil {
 				m.logger.Error("sync block manager from settlement", "err", err)
 			}
-			go m.RetrieveFromDALoop(ctx)
+			// DA Sync. Subscribe to SL nex batch events
+			go uevent.MustSubscribe(ctx, m.Pubsub, "syncTargetLoop", settlement.EventQueryNewSettlementBatchAccepted, m.onReceivedBatch, m.logger)
 		}()
 
-		// Subscribe to P2P received blocks events
+		// P2P Sync. Subscribe to P2P received blocks events
 		go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewGossipedBlock, m.onReceivedBlock, m.logger)
 		go uevent.MustSubscribe(ctx, m.Pubsub, "applyBlockSyncBlocksLoop", p2p.EventQueryNewBlockSyncBlock, m.onReceivedBlock, m.logger)
 
 	}
-
+	fmt.Println("Block manager done")
 	return nil
 }
 

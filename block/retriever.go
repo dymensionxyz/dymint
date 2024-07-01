@@ -1,7 +1,6 @@
 package block
 
 import (
-	"context"
 	"errors"
 	"fmt"
 
@@ -10,31 +9,16 @@ import (
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
-// RetrieveLoop listens for new target sync heights and then syncs the chain by
-// fetching batches from the settlement layer and then fetching the actual blocks
-// from the DA.
-func (m *Manager) RetrieveFromDALoop(ctx context.Context) {
-	m.logger.Info("Started retrieve loop.")
-	subscription, err := m.Pubsub.Subscribe(ctx, "syncTargetLoop", settlement.EventQueryNewSettlementBatchAccepted)
+// onReceivedNewBatch will take a block and apply it
+func (m *Manager) onReceivedBatch(event pubsub.Message) {
+	eventData, _ := event.Data().(*settlement.EventDataNewBatchAccepted)
+	h := eventData.EndHeight
+	err := m.syncToTargetHeight(h)
 	if err != nil {
-		m.logger.Error("subscribe to state update events", "error", err)
-		panic(err)
-	}
-
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case event := <-subscription.Out():
-			eventData, _ := event.Data().(*settlement.EventDataNewBatchAccepted)
-			h := eventData.EndHeight
-			err := m.syncToTargetHeight(h)
-			if err != nil {
-				m.logger.Error("sync until target", "err", err)
-			}
-		}
+		m.logger.Error("sync until target", "err", err)
 	}
 }
 

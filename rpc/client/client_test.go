@@ -104,6 +104,7 @@ func TestGenesisChunked(t *testing.T) {
 		DBPath:  "",
 		P2PConfig: config.P2PConfig{
 <<<<<<< HEAD
+<<<<<<< HEAD
 			ListenAddress:              config.DefaultListenAddress,
 			BootstrapNodes:             "",
 			GossipSubCacheSize:         50,
@@ -118,6 +119,13 @@ func TestGenesisChunked(t *testing.T) {
 			BlockSyncRetrieveRetryTime:  30 * time.Second,
 			BlockSyncAdvertiseRetryTime: 1 * time.Hour,
 >>>>>>> 1fee8e9 (minor edit)
+=======
+			ListenAddress:              config.DefaultListenAddress,
+			BootstrapNodes:             "",
+			GossipedBlocksCacheSize:    50,
+			BootstrapRetryTime:         30 * time.Second,
+			BlockSyncRetrieveRetryTime: 30 * time.Second,
+>>>>>>> a57b824 (addressing comments)
 		},
 		RPC: config.RPCConfig{},
 		BlockManagerConfig: config.BlockManagerConfig{
@@ -715,12 +723,11 @@ func TestValidatorSetHandling(t *testing.T) {
 		DALayer:         "mock",
 		SettlementLayer: "mock",
 		P2PConfig: config.P2PConfig{
-			ListenAddress:               config.DefaultListenAddress,
-			BootstrapNodes:              "",
-			GossipSubCacheSize:     50,
-			BootstrapRetryTime:          30 * time.Second,
-			BlockSyncRetrieveRetryTime:  30 * time.Second,
-			BlockSyncAdvertiseRetryTime: 1 * time.Hour,
+			ListenAddress:              config.DefaultListenAddress,
+			BootstrapNodes:             "",
+			GossipSubCacheSize:    50,
+			BootstrapRetryTime:         30 * time.Second,
+			BlockSyncRetrieveRetryTime: 30 * time.Second,
 		},
 		BlockManagerConfig: config.BlockManagerConfig{
 			BlockTime:          10 * time.Millisecond,
@@ -874,12 +881,20 @@ func getRPCInternal(t *testing.T, sequencer bool) (*tmmocks.MockApplication, *cl
 		RootDir: "",
 		DBPath:  "",
 		P2PConfig: config.P2PConfig{
+<<<<<<< HEAD
 			ListenAddress:               config.DefaultListenAddress,
 			BootstrapNodes:              "",
 			GossipSubCacheSize:     50,
 			BootstrapRetryTime:          30 * time.Second,
 			BlockSyncRetrieveRetryTime:  30 * time.Second,
 			BlockSyncAdvertiseRetryTime: 1 * time.Hour,
+=======
+			ListenAddress:              config.DefaultListenAddress,
+			BootstrapNodes:             "",
+			GossipedBlocksCacheSize:    50,
+			BootstrapRetryTime:         30 * time.Second,
+			BlockSyncRetrieveRetryTime: 30 * time.Second,
+>>>>>>> a57b824 (addressing comments)
 		},
 		RPC:           config.RPCConfig{},
 		MempoolConfig: *tmcfg.DefaultMempoolConfig(),
@@ -987,12 +1002,20 @@ func TestMempool2Nodes(t *testing.T) {
 			RollappID:      rollappID,
 		},
 		P2PConfig: config.P2PConfig{
+<<<<<<< HEAD
 			ListenAddress:               "/ip4/127.0.0.1/tcp/9001",
 			BootstrapNodes:              "",
 			GossipSubCacheSize:     50,
 			BootstrapRetryTime:          30 * time.Second,
 			BlockSyncRetrieveRetryTime:  30 * time.Second,
 			BlockSyncAdvertiseRetryTime: 1 * time.Hour,
+=======
+			ListenAddress:              "/ip4/127.0.0.1/tcp/9001",
+			BootstrapNodes:             "",
+			GossipedBlocksCacheSize:    50,
+			BootstrapRetryTime:         30 * time.Second,
+			BlockSyncRetrieveRetryTime: 30 * time.Second,
+>>>>>>> a57b824 (addressing comments)
 		},
 		BlockManagerConfig: config.BlockManagerConfig{
 			BlockTime:          100 * time.Millisecond,
@@ -1019,12 +1042,20 @@ func TestMempool2Nodes(t *testing.T) {
 			MaxBatchSkew:       10,
 		},
 		P2PConfig: config.P2PConfig{
+<<<<<<< HEAD
 			ListenAddress:               "/ip4/127.0.0.1/tcp/9002",
 			BootstrapNodes:              "/ip4/127.0.0.1/tcp/9001/p2p/" + id1.String(),
 			BootstrapRetryTime:          30 * time.Second,
 			GossipSubCacheSize:     50,
 			BlockSyncRetrieveRetryTime:  30 * time.Second,
 			BlockSyncAdvertiseRetryTime: 1 * time.Hour,
+=======
+			ListenAddress:              "/ip4/127.0.0.1/tcp/9002",
+			BootstrapNodes:             "/ip4/127.0.0.1/tcp/9001/p2p/" + id1.String(),
+			BootstrapRetryTime:         30 * time.Second,
+			GossipedBlocksCacheSize:    50,
+			BlockSyncRetrieveRetryTime: 30 * time.Second,
+>>>>>>> a57b824 (addressing comments)
 		},
 		MempoolConfig: *tmcfg.DefaultMempoolConfig(),
 	}, key2, signingKey2, proxy.NewLocalClientCreator(app), &tmtypes.GenesisDoc{ChainID: rollappID}, log.TestingLogger(), mempool.NopMetrics())
