@@ -6,6 +6,8 @@ import (
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/ipfs/go-cid"
+	mh "github.com/multiformats/go-multihash"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -63,10 +65,25 @@ func TestStorePruning(t *testing.T) {
 				_, err := bstore.SaveBlock(block, &types.Commit{}, nil)
 				assert.NoError(err)
 				savedHeights[block.Header.Height] = true
+				blockBytes, err := block.MarshalBinary()
+				assert.NoError(err)
+				// Create a cid manually by specifying the 'prefix' parameters
+				pref := &cid.Prefix{
+					Codec:    cid.DagProtobuf,
+					MhLength: -1,
+					MhType:   mh.SHA2_256,
+					Version:  1,
+				}
+				cid, err := pref.Sum(blockBytes)
+				assert.NoError(err)
+				_, err = bstore.SaveBlockCid(block.Header.Height, cid, nil)
+				assert.NoError(err)
 
 				// TODO: add block responses and commits
 			}
 
+			// And then feed it some data
+			//expectedCid, err := pref.Sum(block)
 			// Validate all blocks are saved
 			for k := range savedHeights {
 				_, err := bstore.LoadBlock(k)
@@ -92,9 +109,17 @@ func TestStorePruning(t *testing.T) {
 
 					_, err = bstore.LoadCommit(k)
 					assert.Error(err, "Commit at height %d should be pruned", k)
+
+					_, err = bstore.LoadBlockCid(k)
+					assert.Error(err, "Cid at height %d should be pruned", k)
+
 				} else {
 					_, err := bstore.LoadBlock(k)
 					assert.NoError(err)
+
+					_, err = bstore.LoadBlockCid(k)
+					assert.NoError(err)
+
 				}
 			}
 		})

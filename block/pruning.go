@@ -21,7 +21,6 @@ func (m *Manager) pruneBlocks(retainHeight uint64) error {
 			m.logger.Debug("pruning block sync", "height", h)
 		}
 	}
-
 	pruned, err := m.Store.PruneBlocks(m.State.BaseHeight, retainHeight)
 	if err != nil {
 		return fmt.Errorf("prune block store: %w", err)
