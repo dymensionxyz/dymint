@@ -369,7 +369,7 @@ func (c *Client) startBlockSync(ctx context.Context) error {
 	blocksync := SetupBlockSync(ctx, c.Host, c.blockSyncStore, c.blockSyncReceived, c.logger)
 	c.blocksync = blocksync
 	go c.retrieveBlockSyncLoop(ctx)
-	go c.advertiseBlockSyncLoop(ctx)
+	go c.advertiseBlockSyncCids(ctx)
 	return nil
 }
 
@@ -581,30 +581,12 @@ func (c *Client) retrieveBlockSyncLoop(ctx context.Context) {
 	}
 }
 
-// Blocks content identifiers (CID) are advertised to the DHT by the sequencer before gossiping the block, so a node can find a CID corresponding to a specific height.
-// advertiseBlockSyncLoop re-advertises known CIDs in the DHT. This prevents CIDs are lost in case of nodes disconnections to make sure they can be discovered in the DHT.
-func (c *Client) advertiseBlockSyncLoop(ctx context.Context) {
+func (c *Client) advertiseBlockSyncCids(ctx context.Context) {
 	state, err := c.store.LoadState()
 	if err != nil {
 		c.logger.Error("loading state", "err", err)
 		return
 	}
-	c.advertiseBlockSyncCids(ctx, state)
-
-	ticker := time.NewTicker(reAdvertisePeriod)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			c.advertiseBlockSyncCids(ctx, state)
-		}
-	}
-}
-
-func (c *Client) advertiseBlockSyncCids(ctx context.Context, state *types.State) {
 	for h := state.BaseHeight; h <= state.Height(); h++ {
 		id, err := c.GetBlockId(ctx, h)
 		if err == nil && id != cid.Undef {
