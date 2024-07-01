@@ -126,8 +126,8 @@ func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
 
 	m.logger.Debug("retrieved batches", "n", len(batchResp.Batches), "daHeight", daMetaData.Height)
 
-	m.applyBlockMu.Lock()
-	defer m.applyBlockMu.Unlock()
+	m.blockCacheMu.Lock()
+	defer m.blockCacheMu.Unlock()
 
 	var lastAppliedHeight float64
 	for _, batch := range batchResp.Batches {

@@ -64,7 +64,7 @@ type Manager struct {
 	*/
 	// Protect against processing two blocks at once when there are two routines handling incoming gossiped blocks,
 	// and incoming DA blocks, respectively.
-	applyBlockMu sync.Mutex
+	blockCacheMu sync.Mutex
 	// Protect against syncing twice from DA in case new batch is posted but it did not finish to sync yet.
 	syncFromDaMu sync.Mutex
 	Retriever    da.BatchRetriever
