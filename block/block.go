@@ -116,7 +116,7 @@ func (m *Manager) isHeightAlreadyApplied(blockHeight uint64) (bool, error) {
 }
 
 func (m *Manager) attemptCacheBlock(block *types.Block, commit *types.Commit, source blockSource) bool {
-	m.blockCacheMu.Unlock()
+	defer m.blockCacheMu.Unlock()
 
 	nextHeight := m.State.NextHeight()
 

@@ -593,7 +593,7 @@ func (c *Client) advertiseBlockSyncLoop(ctx context.Context) {
 		c.logger.Error("loading state", "err", err)
 		return
 	}
-	ticker := time.NewTicker(c.conf.BlockSyncAdvRetryTime)
+	ticker := time.NewTicker(c.conf.BlockSyncAdvertiseRetryTime)
 	defer ticker.Stop()
 
 	for {

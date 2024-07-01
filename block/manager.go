@@ -208,7 +208,7 @@ func (m *Manager) NextHeightToSubmit() uint64 {
 	return m.LastSubmittedHeight.Load() + 1
 }
 
-// syncFromSettlement enforces the node to be synced on initial run.
+// syncFromSettlement enforces the node to be synced on initial run from SL and DA.
 func (m *Manager) syncFromSettlement() error {
 	res, err := m.SLClient.GetLatestBatch()
 	if errors.Is(err, gerrc.ErrNotFound) {
