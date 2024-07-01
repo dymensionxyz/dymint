@@ -37,7 +37,7 @@ type StatusCode uint64
 // TODO(tzdybal): refactor to configuration parameters
 const (
 	// reAdvertisePeriod defines a period after which P2P client re-attempt advertising namespace in DHT.
-	reAdvertisePeriod = 6 * time.Hour
+	reAdvertisePeriod = 1 * time.Hour
 
 	// peerLimit defines limit of number of peers returned during active peer discovery.
 	peerLimit = 60
@@ -502,7 +502,6 @@ func (c *Client) blockGossipReceived(ctx context.Context, block []byte) {
 
 	// Received block is cached and no longer needed to request using block-sync
 	delete(c.heightToSkip, gossipedBlock.Block.Header.Height)
-
 }
 
 func (c *Client) bootstrapLoop(ctx context.Context) {
