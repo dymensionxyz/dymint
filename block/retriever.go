@@ -83,13 +83,12 @@ func (m *Manager) processLocalBlock(height uint64) error {
 	if err := m.validateBlock(block, commit); err != nil {
 		return fmt.Errorf("validate block from local store: height: %d: %w", height, err)
 	}
-
+	defer m.blockCacheMu.Unlock()
 	m.blockCacheMu.Lock()
 	err = m.applyBlock(block, commit, blockMetaData{source: localDbBlock})
 	if err != nil {
 		return fmt.Errorf("apply block from local store: height: %d: %w", height, err)
 	}
-	m.blockCacheMu.Unlock()
 
 	return nil
 }
