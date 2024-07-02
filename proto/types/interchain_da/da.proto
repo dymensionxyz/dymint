@@ -6,6 +6,7 @@ package dymension.interchain_da;
 
 import "gogoproto/gogo.proto";
 import "types/cosmos/base/v1beta1/coin.proto";
+import "types/tendermint/crypto/proof.proto";
 
 option go_package = "github.com/dymensionxyz/dymint/types/pb/interchain_da";
 
@@ -24,4 +25,18 @@ message Params {
 message BlobMetadata {
   // BlobHash is the hash of the submitted blob.
   string blob_hash = 1;
+}
+
+// Commitment defines the commitment type used by the InterchainDALayer.
+message Commitment {
+  // ClientID identifies the client_id of the DA chain where the blob was posted.
+  string client_id = 1;
+  // BlobHeight identifies the height at which the blob was posted.
+  uint64 blob_height = 2;
+  // BlobHash is the hash of the submitted blob.
+  string blob_hash = 3;
+  // BlobID is the unique ID of the blob.
+  uint64 blob_id = 4;
+  // MerkleProof is a merkle inclusion proof of the blob.
+  tendermint.crypto.ProofOps merkle_proof = 5;
 }
