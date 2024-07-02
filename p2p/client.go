@@ -86,7 +86,7 @@ type Client struct {
 
 	latestSeenHeight uint64
 
-	heightToSkip map[uint64]struct{}
+	blockAlreadyReceived map[uint64]struct{}
 
 	store store.Store
 }
@@ -104,15 +104,15 @@ func NewClient(conf config.P2PConfig, privKey crypto.PrivKey, chainID string, st
 	}
 
 	return &Client{
-		conf:              conf,
-		privKey:           privKey,
-		chainID:           chainID,
-		logger:            logger,
-		localPubsubServer: localPubsubServer,
-		blockSyncStore:    blockSyncStore,
-		latestSeenHeight:  uint64(0),
-		store:             store,
-		heightToSkip:      make(map[uint64]struct{}),
+		conf:                 conf,
+		privKey:              privKey,
+		chainID:              chainID,
+		logger:               logger,
+		localPubsubServer:    localPubsubServer,
+		blockSyncStore:       blockSyncStore,
+		latestSeenHeight:     uint64(0),
+		store:                store,
+		blockAlreadyReceived: make(map[uint64]struct{}),
 	}, nil
 }
 
@@ -481,7 +481,7 @@ func (c *Client) blockSyncReceived(block *P2PBlock) {
 		c.logger.Error("Publishing event.", "err", err)
 	}
 	// Received block is cached and  no longer needed to request using block-sync
-	c.heightToSkip[block.Block.Header.Height] = struct{}{}
+	c.blockAlreadyReceived[block.Block.Header.Height] = struct{}{}
 }
 
 // blockSyncReceived is called on reception of new block via gossip protocol
@@ -501,7 +501,7 @@ func (c *Client) blockGossipReceived(ctx context.Context, block []byte) {
 	c.setLatestSeenHeight(gossipedBlock.Block.Header.Height)
 
 	// Received block is cached and no longer needed to request using block-sync
-	delete(c.heightToSkip, gossipedBlock.Block.Header.Height)
+	c.blockAlreadyReceived[gossipedBlock.Block.Header.Height] = struct{}{}
 }
 
 func (c *Client) bootstrapLoop(ctx context.Context) {
@@ -554,7 +554,7 @@ func (c *Client) retrieveBlockSyncLoop(ctx context.Context) {
 			// this loop iterates and retrieves all the blocks between the last block applied and the greatest height received,
 			// skipping any block cached, since are already received.
 			for h := state.NextHeight(); h <= c.latestSeenHeight; h++ {
-				_, ok := c.heightToSkip[h]
+				_, ok := c.blockAlreadyReceived[h]
 				if ok {
 					continue
 				}
@@ -575,6 +575,11 @@ func (c *Client) retrieveBlockSyncLoop(ctx context.Context) {
 				}
 				if c.blocksync.msgHandler != nil {
 					c.blocksync.msgHandler(&block)
+				}
+			}
+			for h := range c.blockAlreadyReceived {
+				if h < state.NextHeight() {
+					delete(c.blockAlreadyReceived, h)
 				}
 			}
 		}
