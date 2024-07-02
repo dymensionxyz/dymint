@@ -86,7 +86,7 @@ type Client struct {
 
 	latestSeenHeight uint64
 
-	//block already received and not necessary to request using block-sync
+	// block already received and not necessary to request using block-sync
 	blockAlreadyReceived map[uint64]struct{}
 
 	store store.Store
