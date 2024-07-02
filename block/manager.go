@@ -8,7 +8,6 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"code.cloudfoundry.org/go-diodes"
 	"github.com/dymensionxyz/dymint/store"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
@@ -67,10 +66,10 @@ type Manager struct {
 	*/
 	// Protect against processing two blocks at once when there are two routines handling incoming gossiped blocks,
 	// and incoming DA blocks, respectively.
-	retrieverMu sync.Mutex
-	Retriever   da.BatchRetriever
-	// get the next target height to sync local state to
-	targetSyncHeight diodes.Diode
+	blockCacheMu sync.Mutex
+	// Protect against syncing twice from DA in case new batch is posted but it did not finish to sync yet.
+	syncFromDaMu sync.Mutex
+	Retriever    da.BatchRetriever
 	// Cached blocks and commits for applying at future heights. The blocks may not be valid, because
 	// we can only do full validation in sequential order.
 	blockCache map[uint64]CachedBlock
@@ -106,21 +105,20 @@ func NewManager(
 	}
 
 	agg := &Manager{
-		Pubsub:           pubsub,
-		p2pClient:        p2pClient,
-		ProposerKey:      proposerKey,
-		Conf:             conf,
-		Genesis:          genesis,
-		State:            s,
-		Store:            store,
-		Executor:         exec,
-		DAClient:         dalc,
-		SLClient:         settlementClient,
-		Retriever:        dalc.(da.BatchRetriever),
-		targetSyncHeight: diodes.NewOneToOne(1, nil),
-		producedSizeCh:   make(chan uint64),
-		logger:           logger,
-		blockCache:       make(map[uint64]CachedBlock),
+		Pubsub:         pubsub,
+		p2pClient:      p2pClient,
+		ProposerKey:    proposerKey,
+		Conf:           conf,
+		Genesis:        genesis,
+		State:          s,
+		Store:          store,
+		Executor:       exec,
+		DAClient:       dalc,
+		SLClient:       settlementClient,
+		Retriever:      dalc.(da.BatchRetriever),
+		producedSizeCh: make(chan uint64),
+		logger:         logger,
+		blockCache:     make(map[uint64]CachedBlock),
 	}
 
 	return agg, nil
@@ -147,26 +145,32 @@ func (m *Manager) Start(ctx context.Context) error {
 		}
 	}
 
-	if !isSequencer {
-		// Fullnode loop can start before syncing from DA
-		go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewNewGossipedBlock, m.onNewGossipedBlock, m.logger)
-	}
-
 	// TODO: populate the accumulatedSize on startup
-
-	err = m.syncBlockManager()
-	if err != nil {
-		return fmt.Errorf("sync block manager: %w", err)
-	}
 
 	if isSequencer {
 		// Sequencer must wait till DA is synced to start submitting blobs
 		<-m.DAClient.Synced()
+		err = m.syncFromSettlement()
+		if err != nil {
+			return fmt.Errorf("sync block manager from settlement: %w", err)
+		}
 		go m.ProduceBlockLoop(ctx)
 		go m.SubmitLoop(ctx)
 	} else {
-		go m.RetrieveLoop(ctx)
-		go m.SyncToTargetHeightLoop(ctx)
+		// Full-nodes can sync from DA but it is not necessary to wait for it, since it can sync from P2P as well in parallel.
+		go func() {
+			err := m.syncFromSettlement()
+			if err != nil {
+				m.logger.Error("sync block manager from settlement", "err", err)
+			}
+			// DA Sync. Subscribe to SL next batch events
+			go uevent.MustSubscribe(ctx, m.Pubsub, "syncTargetLoop", settlement.EventQueryNewSettlementBatchAccepted, m.onReceivedBatch, m.logger)
+		}()
+
+		// P2P Sync. Subscribe to P2P received blocks events
+		go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewGossipedBlock, m.onReceivedBlock, m.logger)
+		go uevent.MustSubscribe(ctx, m.Pubsub, "applyBlockSyncBlocksLoop", p2p.EventQueryNewBlockSyncBlock, m.onReceivedBlock, m.logger)
+
 	}
 	return nil
 }
@@ -189,8 +193,8 @@ func (m *Manager) NextHeightToSubmit() uint64 {
 	return m.LastSubmittedHeight.Load() + 1
 }
 
-// syncBlockManager enforces the node to be synced on initial run.
-func (m *Manager) syncBlockManager() error {
+// syncFromSettlement enforces the node to be synced on initial run from SL and DA.
+func (m *Manager) syncFromSettlement() error {
 	res, err := m.SLClient.GetLatestBatch()
 	if errors.Is(err, gerrc.ErrNotFound) {
 		// The SL hasn't got any batches for this chain yet.
@@ -198,6 +202,7 @@ func (m *Manager) syncBlockManager() error {
 		m.LastSubmittedHeight.Store(uint64(m.Genesis.InitialHeight - 1))
 		return nil
 	}
+
 	if err != nil {
 		// TODO: separate between fresh rollapp and non-registered rollapp
 		return err

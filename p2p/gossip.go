@@ -22,7 +22,7 @@ type GossipMessage struct {
 // GossiperOption sets optional parameters of Gossiper.
 type GossiperOption func(*Gossiper) error
 
-type GossipMessageHandler func(msg *GossipMessage)
+type GossipMessageHandler func(ctx context.Context, gossipedBlock []byte)
 
 // WithValidator options registers topic validator for Gossiper.
 func WithValidator(validator GossipValidator) GossiperOption {
@@ -101,10 +101,7 @@ func (g *Gossiper) ProcessMessages(ctx context.Context) {
 			return
 		}
 		if g.msgHandler != nil {
-			g.msgHandler(&GossipMessage{
-				Data: msg.Data,
-				From: msg.GetFrom(),
-			})
+			g.msgHandler(ctx, msg.Data)
 		}
 	}
 }

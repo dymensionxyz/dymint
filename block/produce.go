@@ -66,6 +66,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 			// Send the size to the accumulated size channel
 			// This will block in case the submitter is too slow and it's buffer is full
 			size := uint64(block.ToProto().Size()) + uint64(commit.ToProto().Size())
+			m.logger.Debug("New block.", "size", uint64(block.ToProto().Size()))
 			select {
 			case <-ctx.Done():
 				return

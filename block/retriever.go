@@ -1,30 +1,20 @@
 package block
 
 import (
-	"context"
 	"fmt"
 
-	"code.cloudfoundry.org/go-diodes"
-
 	"github.com/dymensionxyz/dymint/da"
+	"github.com/dymensionxyz/dymint/settlement"
+	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
-// RetrieveLoop listens for new target sync heights and then syncs the chain by
-// fetching batches from the settlement layer and then fetching the actual blocks
-// from the DA.
-func (m *Manager) RetrieveLoop(ctx context.Context) {
-	m.logger.Info("Started retrieve loop.")
-	p := diodes.NewPoller(m.targetSyncHeight, diodes.WithPollingContext(ctx))
-
-	for {
-		targetHeight := p.Next() // We only care about the latest one
-		if targetHeight == nil {
-			return
-		}
-		err := m.syncToTargetHeight(*(*uint64)(targetHeight))
-		if err != nil {
-			panic(fmt.Errorf("sync until target: %w", err))
-		}
+// onReceivedNewBatch will take a block and apply it
+func (m *Manager) onReceivedBatch(event pubsub.Message) {
+	eventData, _ := event.Data().(*settlement.EventDataNewBatchAccepted)
+	h := eventData.EndHeight
+	err := m.syncToTargetHeight(h)
+	if err != nil {
+		m.logger.Error("sync until target", "err", err)
 	}
 }
 
@@ -32,6 +22,8 @@ func (m *Manager) RetrieveLoop(ctx context.Context) {
 // It fetches the batches from the settlement, gets the DA height and gets
 // the actual blocks from the DA.
 func (m *Manager) syncToTargetHeight(targetHeight uint64) error {
+	defer m.syncFromDaMu.Unlock()
+	m.syncFromDaMu.Lock()
 	for currH := m.State.NextHeight(); currH <= targetHeight; currH = m.State.NextHeight() {
 		// if we have the block locally, we don't need to fetch it from the DA
 		err := m.processLocalBlock(currH)
@@ -91,13 +83,12 @@ func (m *Manager) processLocalBlock(height uint64) error {
 	if err := m.validateBlock(block, commit); err != nil {
 		return fmt.Errorf("validate block from local store: height: %d: %w", height, err)
 	}
-
-	m.retrieverMu.Lock()
+	defer m.blockCacheMu.Unlock()
+	m.blockCacheMu.Lock()
 	err = m.applyBlock(block, commit, blockMetaData{source: localDbBlock})
 	if err != nil {
 		return fmt.Errorf("apply block from local store: height: %d: %w", height, err)
 	}
-	m.retrieverMu.Unlock()
 
 	return nil
 }
@@ -106,14 +97,13 @@ func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
 	m.logger.Debug("trying to retrieve batch from DA", "daHeight", daMetaData.Height)
 	batchResp := m.fetchBatch(daMetaData)
 	if batchResp.Code != da.StatusSuccess {
-		m.logger.Error("fetching batch from DA", batchResp.Message)
 		return batchResp.Error
 	}
 
 	m.logger.Debug("retrieved batches", "n", len(batchResp.Batches), "daHeight", daMetaData.Height)
 
-	m.retrieverMu.Lock()
-	defer m.retrieverMu.Unlock()
+	m.blockCacheMu.Lock()
+	defer m.blockCacheMu.Unlock()
 
 	for _, batch := range batchResp.Batches {
 		for i, block := range batch.Blocks {
@@ -124,6 +114,7 @@ func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
 				m.logger.Error("validate block from DA", "height", block.Header.Height, "err", err)
 				continue
 			}
+
 			err := m.applyBlock(block, batch.Commits[i], blockMetaData{source: daBlock, daHeight: daMetaData.Height})
 			if err != nil {
 				return fmt.Errorf("apply block: height: %d: %w", block.Header.Height, err)

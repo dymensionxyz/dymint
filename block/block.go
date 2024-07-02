@@ -88,7 +88,6 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	if err != nil {
 		return fmt.Errorf("update state: %w", err)
 	}
-
 	// Prune old heights, if requested by ABCI app.
 	if 0 < retainHeight {
 		err = m.pruneBlocks(uint64(retainHeight))
@@ -113,9 +112,33 @@ func (m *Manager) isHeightAlreadyApplied(blockHeight uint64) (bool, error) {
 	return isBlockAlreadyApplied, nil
 }
 
+func (m *Manager) attemptCacheBlock(block *types.Block, commit *types.Commit, source blockSource) bool {
+	nextHeight := m.State.NextHeight()
+
+	if block.Header.Height < nextHeight {
+		return false
+	}
+	defer m.blockCacheMu.Unlock() // have to give this up as it's locked again in attempt apply, and we're not re-entrant
+	m.blockCacheMu.Lock()         // needed to protect blockCache access
+
+	_, found := m.blockCache[block.Header.Height]
+	// It is not strictly necessary to return early, for correctness, but doing so helps us avoid mutex pressure and unnecessary repeated attempts to apply cached blocks
+	if found {
+		return false
+	}
+
+	m.blockCache[block.Header.Height] = CachedBlock{
+		Block:  block,
+		Commit: commit,
+		Source: source,
+	}
+
+	return true
+}
+
 func (m *Manager) attemptApplyCachedBlocks() error {
-	m.retrieverMu.Lock()
-	defer m.retrieverMu.Unlock()
+	m.blockCacheMu.Lock()
+	defer m.blockCacheMu.Unlock()
 
 	for {
 		expectedHeight := m.State.NextHeight()
@@ -130,7 +153,7 @@ func (m *Manager) attemptApplyCachedBlocks() error {
 			return fmt.Errorf("block not valid at height %d, dropping it: err:%w", cachedBlock.Block.Header.Height, err)
 		}
 
-		err := m.applyBlock(cachedBlock.Block, cachedBlock.Commit, blockMetaData{source: gossipedBlock})
+		err := m.applyBlock(cachedBlock.Block, cachedBlock.Commit, blockMetaData{source: cachedBlock.Source})
 		if err != nil {
 			return fmt.Errorf("apply cached block: expected height: %d: %w", expectedHeight, err)
 		}

@@ -38,9 +38,9 @@ type Client string
 // Data availability clients
 const (
 	Mock     Client = "mock"
-	Grpc     Client = "grpc"
 	Celestia Client = "celestia"
 	Avail    Client = "avail"
+	Grpc     Client = "grpc"
 )
 
 // Option is a function that sets a parameter on the da layer.

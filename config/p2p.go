@@ -17,17 +17,23 @@ type P2PConfig struct {
 	GossipedBlocksCacheSize int `mapstructure:"p2p_gossiped_blocks_cache_size"`
 	// Time interval a node tries to bootstrap again, in case no nodes connected
 	BootstrapRetryTime time.Duration `mapstructure:"p2p_bootstrap_retry_time"`
+	// Time interval used by a node to request missing blocks (gap between cached blocks and local height) on demand from other peers using block-sync
+	BlockSyncRetrieveRetryTime time.Duration `mapstructure:"p2p_blocksync_rtrv_retry_time"`
 	// Param used to enable the advertisement of the node to be part of the P2P network in the DHT
 	AdvertisingEnabled bool `mapstructure:"p2p_advertising_enabled"`
 }
 
 // Validate P2PConfig
 func (c P2PConfig) Validate() error {
-	if c.GossipedBlocksCacheSize < 0 {
-		return fmt.Errorf("gossipsub cache size cannot be negative")
+	if c.GossipedBlocksCacheSize <= 0 {
+		return fmt.Errorf("gossipsub cache size must be positive")
 	}
 	if c.BootstrapRetryTime <= 0 {
 		return fmt.Errorf("bootstrap time must be positive")
 	}
+	if c.BlockSyncRetrieveRetryTime <= 0 {
+		return fmt.Errorf("blocksync retrieve time must be positive")
+	}
+
 	return nil
 }
