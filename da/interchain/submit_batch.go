@@ -59,34 +59,36 @@ func (c *DALayerClient) SubmitBatchV2(batch *types.Batch) da.ResultSubmitBatchV2
 	}
 }
 
-type submitBatchResult struct {
-	BlobID   uint64
-	BlobHash string
-}
-
+// submitBatch is used to process and transmit batches to the interchain DA.
 func (c *DALayerClient) submitBatch(batch *types.Batch) (*interchainda.Commitment, error) {
+	// Prepare the blob data
 	blob, err := batch.MarshalBinary()
 	if err != nil {
 		return nil, fmt.Errorf("can't marshal batch: %w", err)
 	}
 
+	// Gzip the blob
 	gzipped, err := ioutils.Gzip(blob)
 	if err != nil {
 		return nil, fmt.Errorf("can't gzip batch: %w", err)
 	}
 
+	// Verify the size of the blob is within the limit
 	if len(blob) > int(c.daConfig.DAParams.MaxBlobSize) {
 		return nil, fmt.Errorf("blob size %d exceeds the maximum allowed size %d", len(blob), c.daConfig.DAParams.MaxBlobSize)
 	}
 
+	// Calculate the fees of submitting this blob
 	feesToPay := sdk.NewCoin(c.daConfig.DAParams.CostPerByte.Denom, c.daConfig.DAParams.CostPerByte.Amount.MulRaw(int64(len(blob))))
 
+	// Prepare the message to be sent to the DA layer
 	msg := interchainda.MsgSubmitBlob{
 		Creator: c.daConfig.AccountName,
 		Blob:    gzipped,
 		Fees:    feesToPay,
 	}
 
+	// Broadcast the message to the DA layer applying retries in case of failure
 	var txResp cosmosclient.Response
 	err = c.runWithRetry(func() error {
 		txResp, err = c.broadcastTx(&msg)
@@ -96,12 +98,14 @@ func (c *DALayerClient) submitBatch(batch *types.Batch) (*interchainda.Commitmen
 		return nil, fmt.Errorf("can't broadcast MsgSubmitBlob to DA layer: %w", err)
 	}
 
+	// Decode the response
 	var resp interchainda.MsgSubmitBlobResponse
 	err = txResp.Decode(&resp)
 	if err != nil {
 		return nil, fmt.Errorf("can't decode MsgSubmitBlob response: %w", err)
 	}
 
+	// Get Merkle proof of the blob ID inclusion
 	key, err := collections.EncodeKeyWithPrefix(
 		interchainda.BlobMetadataPrefix(),
 		collcodec.NewUint64Key[interchainda.BlobID](),
