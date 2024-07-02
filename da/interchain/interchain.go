@@ -22,8 +22,8 @@ import (
 )
 
 var (
-	_ da.DataAvailabilityLayerClient = &DALayerClient{}
-	_ da.BatchRetriever              = &DALayerClient{}
+	_ da.ClientV2         = &DALayerClient{}
+	_ da.BatchRetrieverV2 = &DALayerClient{}
 )
 
 type DAClient interface {
@@ -42,8 +42,6 @@ type DALayerClient struct {
 	cdc    codec.Codec
 	synced chan struct{}
 
-	pubsubServer *pubsub.Server
-
 	daClient DAClient
 	daConfig DAConfig
 }
@@ -57,6 +55,11 @@ func (c *DALayerClient) Init(rawConfig []byte, _ *pubsub.Server, _ store.KV, log
 	err := json.Unmarshal(rawConfig, &config)
 	if err != nil {
 		return fmt.Errorf("invalid config: %w", err)
+	}
+
+	err = config.Verify()
+	if err != nil {
+		return fmt.Errorf("intechain DA config verification failed: %w", err)
 	}
 
 	// Create cosmos client with DA layer
@@ -108,7 +111,6 @@ func (c *DALayerClient) Start() error {
 
 // Stop is called once, when DALayerClient is no longer needed.
 func (c *DALayerClient) Stop() error {
-	c.pubsubServer.Stop()
 	c.cancel()
 	return nil
 }
@@ -123,5 +125,5 @@ func (c *DALayerClient) GetClientType() da.Client {
 }
 
 func (c *DALayerClient) CheckBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
-	panic("implement me")
+	panic("CheckBatchAvailability method is not supported by the interchain DA clint")
 }

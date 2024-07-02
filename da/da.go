@@ -237,13 +237,32 @@ type DataAvailabilityLayerClient interface {
 	// triggers a state transition in the DA layer.
 	SubmitBatch(batch *types.Batch) ResultSubmitBatch
 
-	// SubmitBatchV2 is a method that supports MsgUpdateStateV2.
-	SubmitBatchV2(*types.Batch) ResultSubmitBatchV2
-
 	GetClientType() Client
 
 	// CheckBatchAvailability checks the availability of the blob submitted getting proofs and validating them
 	CheckBatchAvailability(daMetaData *DASubmitMetaData) ResultCheckBatch
+
+	Synced() <-chan struct{}
+}
+
+// ClientV2 defines generic interface for DA layer block submission.
+type ClientV2 interface {
+	// DataAvailabilityLayerClient closure for backward compatibility
+	DataAvailabilityLayerClient
+
+	// Init is called once to allow DA client to read configuration and initialize resources.
+	Init([]byte, *pubsub.Server, store.KV, types.Logger, ...Option) error
+
+	// Start is called once, after Init. It starts the operation of ClientV2.
+	Start() error
+
+	// Stop is called once, when DAClientV2 is no longer needed.
+	Stop() error
+
+	// SubmitBatchV2 submits the passed in block to the DA layer.
+	SubmitBatchV2(*types.Batch) ResultSubmitBatchV2
+
+	GetClientType() Client
 
 	Synced() <-chan struct{}
 }
@@ -253,8 +272,16 @@ type DataAvailabilityLayerClient interface {
 type BatchRetriever interface {
 	// RetrieveBatches returns blocks at given data layer height from data availability layer.
 	RetrieveBatches(daMetaData *DASubmitMetaData) ResultRetrieveBatch
-	// RetrieveBatchesV2 is a method that supports MsgUpdateStateV2.
-	RetrieveBatchesV2(ResultSubmitBatchV2) ResultRetrieveBatchV2
 	// CheckBatchAvailability checks the availability of the blob received getting proofs and validating them
 	CheckBatchAvailability(daMetaData *DASubmitMetaData) ResultCheckBatch
+}
+
+// BatchRetrieverV2 is an additional interface implemented by the DA layer client. It allows to retrieve
+// block data from the DA layer and use this interface for block synchronization.
+type BatchRetrieverV2 interface {
+	// BatchRetriever closure for backward compatibility
+	BatchRetriever
+
+	// RetrieveBatchesV2 returns blocks by the given da.Path.
+	RetrieveBatchesV2(ResultSubmitBatchV2) ResultRetrieveBatchV2
 }
