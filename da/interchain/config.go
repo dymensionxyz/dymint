@@ -23,8 +23,12 @@ type DAConfig struct {
 	NodeAddress    string              `mapstructure:"node_address" json:"node_address,omitempty"`
 	GasLimit       uint64              `mapstructure:"gas_limit" json:"gas_limit,omitempty"`
 	GasPrices      string              `mapstructure:"gas_prices" json:"gas_prices,omitempty"`
+	GasAdjustment  float64             `mapstructure:"gas_adjustment" json:"gas_adjustment,omitempty"`
 	GasFees        string              `mapstructure:"gas_fees" json:"gas_fees,omitempty"`
 	DAParams       interchainda.Params `mapstructure:"da_params" json:"da_params"`
+
+	BatchAcceptanceTimeout  time.Duration `mapstructure:"batch_acceptance_timeout" json:"batch_acceptance_timeout"`
+	BatchAcceptanceAttempts uint          `mapstructure:"batch_acceptance_attempts" json:"batch_acceptance_attempts"`
 
 	RetryMinDelay time.Duration `mapstructure:"retry_min_delay" json:"retry_min_delay,omitempty"`
 	RetryMaxDelay time.Duration `mapstructure:"retry_min_delay" json:"retry_max_delay,omitempty"`
@@ -91,19 +95,22 @@ func DefaultDAConfig() DAConfig {
 	home, _ := os.UserHomeDir()
 	keyringHomeDir := filepath.Join(home, ".simapp")
 	return DAConfig{
-		ClientID:       "dym-interchain",
-		ChainID:        "interchain-da-test",
-		KeyringBackend: keyring.BackendTest,
-		KeyringHomeDir: keyringHomeDir,
-		AddressPrefix:  sdk.Bech32MainPrefix,
-		AccountName:    "sequencer",
-		NodeAddress:    "http://127.0.0.1:36657",
-		GasLimit:       0,
-		GasPrices:      "10stake",
-		GasFees:        "",
-		DAParams:       interchainda.Params{},
-		RetryMinDelay:  100 * time.Millisecond,
-		RetryMaxDelay:  2 * time.Second,
-		RetryAttempts:  10,
+		ClientID:                "dym-interchain",
+		ChainID:                 "my-test-chain",
+		KeyringBackend:          keyring.BackendTest,
+		KeyringHomeDir:          keyringHomeDir,
+		AddressPrefix:           sdk.Bech32MainPrefix,
+		AccountName:             "sequencer",
+		NodeAddress:             "http://127.0.0.1:26657",
+		GasLimit:                0,
+		GasPrices:               "10stake",
+		GasAdjustment:           1.1,
+		GasFees:                 "",
+		DAParams:                interchainda.Params{},
+		BatchAcceptanceTimeout:  5 * time.Second,
+		BatchAcceptanceAttempts: 10,
+		RetryMinDelay:           100 * time.Millisecond,
+		RetryMaxDelay:           2 * time.Second,
+		RetryAttempts:           10,
 	}
 }

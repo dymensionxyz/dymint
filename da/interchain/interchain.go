@@ -10,6 +10,7 @@ import (
 	cdctypes "github.com/cosmos/cosmos-sdk/codec/types"
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/cosmos/cosmos-sdk/types/tx"
 	"github.com/dymensionxyz/cosmosclient/cosmosclient"
 	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/pubsub"
@@ -28,9 +29,9 @@ var (
 
 type DAClient interface {
 	Context() sdkclient.Context
-	BroadcastTx(accountName string, msgs ...sdk.Msg) (cosmosclient.Response, error)
-	Params(ctx context.Context) (interchainda.Params, error)
-	Tx(ctx context.Context, txHash []byte) (*ctypes.ResultTx, error)
+	BroadcastTx(string, ...sdk.Msg) (cosmosclient.Response, error)
+	Params(context.Context) (interchainda.Params, error)
+	GetTx(context.Context, string) (*tx.GetTxResponse, error)
 	ABCIQueryWithProof(ctx context.Context, path string, data bytes.HexBytes, height int64) (*ctypes.ResultABCIQuery, error)
 }
 
@@ -42,8 +43,9 @@ type DALayerClient struct {
 	cdc    codec.Codec
 	synced chan struct{}
 
-	daClient DAClient
-	daConfig DAConfig
+	accountAddress string // address of the sequencer in the DA layer
+	daClient       DAClient
+	daConfig       DAConfig
 }
 
 // Init is called once. It reads the DA client configuration and initializes resources for the interchain DA provider.
@@ -75,14 +77,19 @@ func (c *DALayerClient) Init(rawConfig []byte, _ *pubsub.Server, _ store.KV, log
 	}
 	config.DAParams = daParams
 
-	// Create cancellable context
-	ctx, cancel := context.WithCancel(ctx)
-
 	// Create codec
 	interfaceRegistry := cdctypes.NewInterfaceRegistry()
 	cryptocodec.RegisterInterfaces(interfaceRegistry)
 	interfaceRegistry.RegisterImplementations(&interchainda.MsgSubmitBlob{})
 	cdc := codec.NewProtoCodec(interfaceRegistry)
+
+	addr, err := client.Address(config.AccountName)
+	if err != nil {
+		return fmt.Errorf("cannot get '%s' account address from the provided keyring: %w", config.AccountName, err)
+	}
+
+	// Create cancellable context
+	ctx, cancel := context.WithCancel(ctx)
 
 	// Fill client fields
 	c.logger = logger
@@ -90,6 +97,7 @@ func (c *DALayerClient) Init(rawConfig []byte, _ *pubsub.Server, _ store.KV, log
 	c.cancel = cancel
 	c.cdc = cdc
 	c.synced = make(chan struct{})
+	c.accountAddress = addr.String()
 	c.daClient = client
 	c.daConfig = config
 

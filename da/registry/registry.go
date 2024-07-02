@@ -5,6 +5,7 @@ import (
 	"github.com/dymensionxyz/dymint/da/avail"
 	"github.com/dymensionxyz/dymint/da/celestia"
 	"github.com/dymensionxyz/dymint/da/grpc"
+	"github.com/dymensionxyz/dymint/da/interchain"
 	"github.com/dymensionxyz/dymint/da/local"
 )
 
@@ -14,7 +15,7 @@ var clients = map[string]func() da.DataAvailabilityLayerClient{
 	"grpc":       func() da.DataAvailabilityLayerClient { return &grpc.DataAvailabilityLayerClient{} },
 	"celestia":   func() da.DataAvailabilityLayerClient { return &celestia.DataAvailabilityLayerClient{} },
 	"avail":      func() da.DataAvailabilityLayerClient { return &avail.DataAvailabilityLayerClient{} },
-	"interchain": func() da.DataAvailabilityLayerClient { return &avail.DataAvailabilityLayerClient{} },
+	"interchain": func() da.DataAvailabilityLayerClient { return &interchain.DALayerClient{} },
 }
 
 // GetClient returns client identified by name.
