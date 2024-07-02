@@ -2,12 +2,14 @@ package interchain
 
 import (
 	"fmt"
+	"time"
 
 	"cosmossdk.io/collections"
 	collcodec "cosmossdk.io/collections/codec"
 	"github.com/avast/retry-go/v4"
 	cdctypes "github.com/cosmos/cosmos-sdk/codec/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
+	"github.com/cosmos/cosmos-sdk/types/tx"
 	"github.com/dymensionxyz/cosmosclient/cosmosclient"
 
 	"github.com/dymensionxyz/dymint/da"
@@ -83,7 +85,7 @@ func (c *DALayerClient) submitBatch(batch *types.Batch) (*interchainda.Commitmen
 
 	// Prepare the message to be sent to the DA layer
 	msg := interchainda.MsgSubmitBlob{
-		Creator: c.daConfig.AccountName,
+		Creator: c.accountAddress,
 		Blob:    gzipped,
 		Fees:    feesToPay,
 	}
@@ -98,8 +100,18 @@ func (c *DALayerClient) submitBatch(batch *types.Batch) (*interchainda.Commitmen
 		return nil, fmt.Errorf("can't broadcast MsgSubmitBlob to DA layer: %w", err)
 	}
 
-	// Decode the response
+	// Wait until the tx in included into the DA layer
+	rawResp, err := c.waitResponse(txResp.TxHash)
+	if err != nil {
+		return nil, fmt.Errorf("can't check acceptance of the blob to DA layer: %w", err)
+	}
+	if rawResp.TxResponse.Code != 0 {
+		return nil, fmt.Errorf("MsgSubmitBlob is not executed in DA layer (code %d): %s", rawResp.TxResponse.Code, rawResp.TxResponse.RawLog)
+	}
+
+	// cosmosclient.Response has convenient Decode method, so we reuse txResp to reuse it
 	var resp interchainda.MsgSubmitBlobResponse
+	txResp.TxResponse = rawResp.TxResponse
 	err = txResp.Decode(&resp)
 	if err != nil {
 		return nil, fmt.Errorf("can't decode MsgSubmitBlob response: %w", err)
@@ -114,10 +126,17 @@ func (c *DALayerClient) submitBatch(batch *types.Batch) (*interchainda.Commitmen
 	if err != nil {
 		return nil, fmt.Errorf("can't encode DA lakey store key: %w", err)
 	}
-	const keyPath = "/key"
-	abciResp, err := c.daClient.ABCIQueryWithProof(c.ctx, keyPath, key, txResp.Height)
+	abciPath := fmt.Sprintf("/store/%s/key", interchainda.StoreKey)
+	abciResp, err := c.daClient.ABCIQueryWithProof(c.ctx, abciPath, key, txResp.Height)
 	if err != nil {
 		return nil, fmt.Errorf("can't call ABCI query with proof for the BlobID %d: %w", resp.BlobId, err)
+	}
+	if abciResp.Response.IsErr() {
+		return nil, fmt.Errorf("can't call ABCI query with proof for blob ID %d (code %d): %s",
+			resp.BlobId, abciResp.Response.Code, abciResp.Response.Log)
+	}
+	if abciResp.Response.Value == nil {
+		return nil, fmt.Errorf("ABCI query with proof for blob ID %d returned nil value", resp.BlobId)
 	}
 
 	return &interchainda.Commitment{
@@ -135,7 +154,7 @@ func (c *DALayerClient) broadcastTx(msgs ...sdk.Msg) (cosmosclient.Response, err
 		return cosmosclient.Response{}, fmt.Errorf("can't broadcast MsgSubmitBlob to the DA layer: %w", err)
 	}
 	if txResp.Code != 0 {
-		return cosmosclient.Response{}, fmt.Errorf("MsgSubmitBlob broadcast tx status code is not 0: code %d", txResp.Code)
+		return cosmosclient.Response{}, fmt.Errorf("MsgSubmitBlob broadcast tx status code is not 0 (code %d): %s", txResp.Code, txResp.RawLog)
 	}
 	return txResp, nil
 }
@@ -151,4 +170,41 @@ func (c *DALayerClient) runWithRetry(operation func() error) error {
 		retry.MaxDelay(c.daConfig.RetryMaxDelay),
 		retry.DelayType(retry.BackOffDelay),
 	)
+}
+
+func (c *DALayerClient) waitResponse(txHash string) (*tx.GetTxResponse, error) {
+	timer := time.NewTicker(c.daConfig.BatchAcceptanceTimeout)
+	defer timer.Stop()
+
+	var txResp *tx.GetTxResponse
+	attempt := uint(0)
+
+	// First try then wait for the BatchAcceptanceTimeout
+	for {
+		err := c.runWithRetry(func() error {
+			var errX error
+			txResp, errX = c.daClient.GetTx(c.ctx, txHash)
+			return errX
+		})
+		if err == nil {
+			return txResp, nil
+		}
+
+		c.logger.Error("Can't check batch acceptance",
+			"attempt", attempt, "max_attempts", c.daConfig.BatchAcceptanceAttempts, "error", err)
+
+		attempt++
+		if attempt > c.daConfig.BatchAcceptanceAttempts {
+			return nil, fmt.Errorf("can't check batch acceptance after all attempts")
+		}
+
+		// Wait for the timeout
+		select {
+		case <-c.ctx.Done():
+			return nil, c.ctx.Err()
+
+		case <-timer.C:
+			continue
+		}
+	}
 }
