@@ -51,6 +51,16 @@ func (c *daClient) Params(ctx context.Context) (interchainda.Params, error) {
 	return resp.GetParams(), nil
 }
 
+func (c *daClient) Blob(ctx context.Context, id interchainda.BlobID) (*interchainda.QueryBlobResponse, error) {
+	resp, err := c.queryClient.Blob(ctx, &interchainda.QueryBlobRequest{
+		BlobId: uint64(id),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("can't query DA layer params: %w", err)
+	}
+	return resp, nil
+}
+
 func (c *daClient) GetTx(ctx context.Context, txHash string) (*tx.GetTxResponse, error) {
 	return c.txService.GetTx(ctx, &tx.GetTxRequest{Hash: txHash})
 }
