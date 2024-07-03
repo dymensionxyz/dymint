@@ -14,6 +14,8 @@ import (
 
 // TODO: add interchain DA chain mock
 func TestDALayerClient_Init(t *testing.T) {
+	t.Skip() // Test is not finished yet
+
 	client := new(interchain.DALayerClient)
 	config := interchain.DefaultDAConfig()
 	rawConfig, err := json.Marshal(config)

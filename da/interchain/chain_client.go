@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/cosmos/cosmos-sdk/client/flags"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/tx"
 	"github.com/dymensionxyz/cosmosclient/cosmosclient"
 	"github.com/ignite/cli/ignite/pkg/cosmosaccount"
@@ -39,19 +38,12 @@ func newDAClient(ctx context.Context, config DAConfig) (*daClient, error) {
 	}
 	return &daClient{
 		Client:      c,
-		queryClient: interchainda.NewQueryClient(c.Context().GRPCClient),
+		queryClient: interchainda.NewQueryClient(c.Context()),
 		txService:   tx.NewServiceClient(c.Context()),
 	}, nil
 }
 
 func (c *daClient) Params(ctx context.Context) (interchainda.Params, error) {
-	return interchainda.Params{
-		CostPerByte:   sdk.NewInt64Coin(sdk.DefaultBondDenom, 1),
-		MaxBlobSize:   999999999,
-		DisputePeriod: 200,
-	}, nil
-
-	// TODO: uncomment when we find a workaround on how to initialize the interchain da query client
 	resp, err := c.queryClient.Params(ctx, &interchainda.QueryParamsRequest{})
 	if err != nil {
 		return interchainda.Params{}, fmt.Errorf("can't query DA layer params: %w", err)
