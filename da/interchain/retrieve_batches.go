@@ -35,7 +35,7 @@ func (c *DALayerClient) RetrieveBatchesV2(b da.ResultSubmitBatchV2) da.ResultRet
 }
 
 func (c *DALayerClient) retrieveBatches(b da.ResultSubmitBatchV2) (types.Batch, error) {
-	var commitment interchainda.Commitment
+	var commitment *interchainda.Commitment
 	err := c.cdc.UnpackAny(b.DAPath.Commitment, &commitment)
 	if err != nil {
 		return types.Batch{}, fmt.Errorf("can't unpack commitment: %w", err)
@@ -54,9 +54,6 @@ func (c *DALayerClient) retrieveBatches(b da.ResultSubmitBatchV2) (types.Batch, 
 	if err != nil {
 		return types.Batch{}, fmt.Errorf("can't decode batch from interchain DA layer: %w", err)
 	}
-	if batch == nil {
-		return types.Batch{}, fmt.Errorf("empty batch retrieved")
-	}
 
-	return *batch, nil
+	return batch, nil
 }

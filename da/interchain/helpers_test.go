@@ -15,7 +15,7 @@ func FuzzEncodeDecodeBatch1(f *testing.F) {
 
 	f.Fuzz(func(t *testing.T, h1, h2 uint64) {
 		// Generate batches with random headers
-		expected := &types.Batch{
+		expected := types.Batch{
 			StartHeight: h1,
 			EndHeight:   h2,
 			Blocks:      []*types.Block{},
@@ -33,7 +33,7 @@ func FuzzEncodeDecodeBatch1(f *testing.F) {
 }
 
 func TestEncodeDecodeBatch(t *testing.T) {
-	expected := &types.Batch{
+	expected := types.Batch{
 		StartHeight: 1,
 		EndHeight:   123,
 		Blocks: []*types.Block{

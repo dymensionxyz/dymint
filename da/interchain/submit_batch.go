@@ -21,7 +21,7 @@ func (c *DALayerClient) SubmitBatch(*types.Batch) da.ResultSubmitBatch {
 	panic("SubmitBatch method is not supported by the interchain DA clint")
 }
 
-func (c *DALayerClient) SubmitBatchV2(batch *types.Batch) da.ResultSubmitBatchV2 {
+func (c *DALayerClient) SubmitBatchV2(batch types.Batch) da.ResultSubmitBatchV2 {
 	commitment, err := c.submitBatch(batch)
 	if err != nil {
 		return da.ResultSubmitBatchV2{
@@ -61,7 +61,7 @@ func (c *DALayerClient) SubmitBatchV2(batch *types.Batch) da.ResultSubmitBatchV2
 }
 
 // submitBatch is used to process and transmit batches to the interchain DA.
-func (c *DALayerClient) submitBatch(batch *types.Batch) (*interchainda.Commitment, error) {
+func (c *DALayerClient) submitBatch(batch types.Batch) (*interchainda.Commitment, error) {
 	blob, err := EncodeBatch(batch)
 	if err != nil {
 		return nil, fmt.Errorf("can't encode batch to interchain DA format: %w", err)

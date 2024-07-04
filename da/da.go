@@ -259,7 +259,7 @@ type ClientV2 interface {
 	Stop() error
 
 	// SubmitBatchV2 submits the passed in block to the DA layer.
-	SubmitBatchV2(*types.Batch) ResultSubmitBatchV2
+	SubmitBatchV2(types.Batch) ResultSubmitBatchV2
 
 	GetClientType() Client
 
