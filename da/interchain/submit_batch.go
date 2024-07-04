@@ -13,7 +13,6 @@ import (
 	"github.com/dymensionxyz/cosmosclient/cosmosclient"
 
 	"github.com/dymensionxyz/dymint/da"
-	"github.com/dymensionxyz/dymint/da/interchain/ioutils"
 	"github.com/dymensionxyz/dymint/types"
 	interchainda "github.com/dymensionxyz/dymint/types/pb/interchain_da"
 )
@@ -22,7 +21,7 @@ func (c *DALayerClient) SubmitBatch(*types.Batch) da.ResultSubmitBatch {
 	panic("SubmitBatch method is not supported by the interchain DA clint")
 }
 
-func (c *DALayerClient) SubmitBatchV2(batch *types.Batch) da.ResultSubmitBatchV2 {
+func (c *DALayerClient) SubmitBatchV2(batch types.Batch) da.ResultSubmitBatchV2 {
 	commitment, err := c.submitBatch(batch)
 	if err != nil {
 		return da.ResultSubmitBatchV2{
@@ -62,17 +61,10 @@ func (c *DALayerClient) SubmitBatchV2(batch *types.Batch) da.ResultSubmitBatchV2
 }
 
 // submitBatch is used to process and transmit batches to the interchain DA.
-func (c *DALayerClient) submitBatch(batch *types.Batch) (*interchainda.Commitment, error) {
-	// Prepare the blob data
-	blob, err := batch.MarshalBinary()
+func (c *DALayerClient) submitBatch(batch types.Batch) (*interchainda.Commitment, error) {
+	blob, err := EncodeBatch(batch)
 	if err != nil {
-		return nil, fmt.Errorf("can't marshal batch: %w", err)
-	}
-
-	// Gzip the blob
-	gzipped, err := ioutils.Gzip(blob)
-	if err != nil {
-		return nil, fmt.Errorf("can't gzip batch: %w", err)
+		return nil, fmt.Errorf("can't encode batch to interchain DA format: %w", err)
 	}
 
 	// Verify the size of the blob is within the limit
@@ -86,7 +78,7 @@ func (c *DALayerClient) submitBatch(batch *types.Batch) (*interchainda.Commitmen
 	// Prepare the message to be sent to the DA layer
 	msg := interchainda.MsgSubmitBlob{
 		Creator: c.accountAddress,
-		Blob:    gzipped,
+		Blob:    blob,
 		Fees:    feesToPay,
 	}
 

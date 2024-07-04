@@ -13,7 +13,7 @@ import (
 )
 
 // TODO: add interchain DA chain mock
-func TestDALayerClient_Init(t *testing.T) {
+func TestDALayerClient(t *testing.T) {
 	t.Skip() // Test is not finished yet
 
 	client := new(interchain.DALayerClient)
@@ -25,12 +25,18 @@ func TestDALayerClient_Init(t *testing.T) {
 	err = client.Init(rawConfig, nil, nil, logger)
 	require.NoError(t, err)
 
-	result := client.SubmitBatchV2(&types.Batch{
+	batch := types.Batch{
 		StartHeight: 1,
 		EndHeight:   3,
 		Blocks:      []*types.Block{{Header: types.Header{Height: 1}}},
 		Commits:     []*types.Commit{{Height: 1}},
-	})
-	require.NoError(t, result.Error)
-	t.Logf("result: %#v", result)
+	}
+
+	submitResult := client.SubmitBatchV2(batch)
+	require.NoError(t, submitResult.Error)
+
+	retrieveResult := client.RetrieveBatchesV2(submitResult)
+	require.NoError(t, retrieveResult.Error)
+
+	require.Equal(t, batch, retrieveResult.Batch)
 }

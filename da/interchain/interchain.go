@@ -31,6 +31,7 @@ type DAClient interface {
 	Context() sdkclient.Context
 	BroadcastTx(string, ...sdk.Msg) (cosmosclient.Response, error)
 	Params(context.Context) (interchainda.Params, error)
+	Blob(ctx context.Context, id interchainda.BlobID) (*interchainda.QueryBlobResponse, error)
 	GetTx(context.Context, string) (*tx.GetTxResponse, error)
 	ABCIQueryWithProof(ctx context.Context, path string, data bytes.HexBytes, height int64) (*ctypes.ResultABCIQuery, error)
 }

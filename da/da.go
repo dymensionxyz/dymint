@@ -207,9 +207,8 @@ type ResultRetrieveBatch struct {
 // ResultRetrieveBatchV2 contains a batch of blocks returned from the DA layer client.
 type ResultRetrieveBatchV2 struct {
 	BaseResult
-	// Batches is the full block retrieved from the DA layer.
-	// If BaseResult.Code is not StatusSuccess, this field is nil.
-	Batches []*types.Batch
+	// Batch is the full block retrieved from the DA layer.
+	Batch types.Batch
 }
 
 // Path TODO: move to the Dymension proto file
@@ -260,7 +259,7 @@ type ClientV2 interface {
 	Stop() error
 
 	// SubmitBatchV2 submits the passed in block to the DA layer.
-	SubmitBatchV2(*types.Batch) ResultSubmitBatchV2
+	SubmitBatchV2(types.Batch) ResultSubmitBatchV2
 
 	GetClientType() Client
 
