@@ -1,0 +1,42 @@
+// This file is a modified copy of the interchain-da module proto contract. Source:
+// https://github.com/dymensionxyz/interchain-da/blob/main/proto/dymension/interchain_da/query.proto.
+
+syntax = "proto3";
+package dymension.interchain_da;
+
+import "gogoproto/gogo.proto";
+import "cosmos_proto/cosmos.proto";
+import "types/interchain_da/da.proto";
+
+option go_package = "github.com/dymensionxyz/dymint/types/pb/interchain_da";
+
+// Query defines the gRPC querier service.
+service Query {
+  // Param queries the parameters of the module.
+  rpc Params(QueryParamsRequest) returns (QueryParamsResponse) {}
+
+  // Blob queries the blob by the provided BlobID.
+  rpc Blob(QueryBlobRequest) returns (QueryBlobResponse) {}
+}
+
+// QueryParamsRequest is the request type for the Query/Params RPC method.
+message QueryParamsRequest {}
+
+// QueryParamsResponse is the response type for the Query/Params RPC method.
+message QueryParamsResponse {
+  Params params = 1 [ (gogoproto.nullable) = false ];
+}
+
+// QueryBlobRequest is the request type for the Query/Blob RPC method.
+message QueryBlobRequest {
+  // BlobID is a unique sequential ID of the blob.
+  uint64 blob_id = 1;
+}
+
+// QueryBlobResponse is the response type for the Query/Blob RPC method.
+message QueryBlobResponse {
+  // BlobMetadata stores stateful blob metadata.
+  BlobMetadata blob_metadata = 1 [ (gogoproto.nullable) = false ];
+  // Blob is the actual blob. May be empty if the dispute period is over.
+  bytes blob = 2;
+}
