@@ -3,20 +3,24 @@ package block
 import (
 	"context"
 
+	"github.com/tendermint/tendermint/libs/pubsub"
+
 	"github.com/dymensionxyz/dymint/types"
 
 	"code.cloudfoundry.org/go-diodes"
+
 	"github.com/dymensionxyz/dymint/settlement"
 )
 
 // SyncToTargetHeightLoop gets real time updates about settlement batch submissions and sends the latest height downstream
 // to be retrieved by another process which will pull the data.
-func (m *Manager) SyncToTargetHeightLoop(ctx context.Context) {
+func (m *Manager) SyncToTargetHeightLoop(ctx context.Context) (err error) {
 	m.logger.Info("Started sync target loop")
-	subscription, err := m.Pubsub.Subscribe(ctx, "syncTargetLoop", settlement.EventQueryNewSettlementBatchAccepted)
+	var subscription *pubsub.Subscription
+	subscription, err = m.Pubsub.Subscribe(ctx, "syncTargetLoop", settlement.EventQueryNewSettlementBatchAccepted)
 	if err != nil {
 		m.logger.Error("subscribe to state update events", "error", err)
-		panic(err)
+		return
 	}
 
 	for {

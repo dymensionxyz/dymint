@@ -6,22 +6,29 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 
-	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/dymint/node/events"
+	"github.com/dymensionxyz/dymint/store"
+	uevent "github.com/dymensionxyz/dymint/utils/event"
+
 	tmed25519 "github.com/tendermint/tendermint/crypto/ed25519"
 	cmtproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	tmtypes "github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
+
+	"github.com/dymensionxyz/dymint/types"
 )
 
 // ProduceBlockLoop is calling publishBlock in a loop as long as we're synced.
-func (m *Manager) ProduceBlockLoop(ctx context.Context) {
+func (m *Manager) ProduceBlockLoop(ctx context.Context) (err error) {
 	m.logger.Info("Started block producer loop.")
 
 	ticker := time.NewTicker(m.Conf.BlockTime)
-	defer ticker.Stop()
+	defer func() {
+		ticker.Stop()
+		m.logger.Info("Stopped block producer loop.")
+	}()
 
 	var nextEmptyBlock time.Time
 	firstBlock := true
@@ -31,12 +38,15 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-
 			// if empty blocks are configured to be enabled, and one is scheduled...
 			produceEmptyBlock := firstBlock || 0 == m.Conf.MaxIdleTime || nextEmptyBlock.Before(time.Now())
 			firstBlock = false
 
-			block, commit, err := m.ProduceAndGossipBlock(ctx, produceEmptyBlock)
+			var (
+				block  *types.Block
+				commit *types.Commit
+			)
+			block, commit, err = m.ProduceAndGossipBlock(ctx, produceEmptyBlock)
 			if errors.Is(err, context.Canceled) {
 				m.logger.Error("Produce and gossip: context canceled.", "error", err)
 				return
@@ -46,7 +56,8 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 			}
 			if errors.Is(err, ErrNonRecoverable) {
 				m.logger.Error("Produce and gossip: non-recoverable.", "error", err) // TODO: flush? or don't log at all?
-				panic(fmt.Errorf("produce and gossip block: %w", err))
+				uevent.MustPublish(ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
+				return
 			}
 			if err != nil {
 				m.logger.Error("Produce and gossip: uncategorized, assuming recoverable.", "error", err)

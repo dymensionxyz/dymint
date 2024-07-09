@@ -5,18 +5,19 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
+
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/types"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
-	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 )
 
 // SubmitLoop is the main loop for submitting blocks to the DA and SL layers.
 // It submits a batch when either
 // 1) It accumulates enough block data, so it's necessary to submit a batch to avoid exceeding the max size
 // 2) Enough time passed since the last submitted batch, so it's necessary to submit a batch to avoid exceeding the max time
-func (m *Manager) SubmitLoop(ctx context.Context) {
+func (m *Manager) SubmitLoop(ctx context.Context) (err error) {
 	maxTime := time.NewTicker(m.Conf.BatchSubmitMaxTime)
 	defer maxTime.Stop()
 
@@ -26,6 +27,8 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 
 	// defer func to clear the channels to release blocked goroutines on shutdown
 	defer func() {
+		m.logger.Info("Stopped submit loop.")
+
 		for {
 			select {
 			case <-m.producedSizeCh:
@@ -45,7 +48,7 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 		}
 
 		/*
-			Note: since we dont explicitly coordinate changes to the accumulated size with actual batch creation
+			Note: since we don't explicitly coordinate changes to the accumulated size with actual batch creation
 			we don't have a guarantee that the accumulated size is the same as the actual batch size that will be made.
 			But the batch creation step will also check the size is OK, so it's not a problem.
 		*/
@@ -53,9 +56,11 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 
 		// modular submission methods have own retries mechanism.
 		// if error returned, we assume it's unrecoverable.
-		err := m.HandleSubmissionTrigger()
+		err = m.HandleSubmissionTrigger()
 		if err != nil {
-			panic(fmt.Errorf("handle submission trigger: %w", err))
+			m.logger.Error("Error submitting batch", "error", err)
+			uevent.MustPublish(ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
+			return
 		}
 		maxTime.Reset(m.Conf.BatchSubmitMaxTime)
 	}
