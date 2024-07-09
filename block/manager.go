@@ -10,6 +10,7 @@ import (
 
 	"code.cloudfoundry.org/go-diodes"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/dymensionxyz/dymint/store"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
@@ -161,22 +162,24 @@ func (m *Manager) Start(ctx context.Context) error {
 		return fmt.Errorf("sync block manager: %w", err)
 	}
 
-	ctx, cancel := context.WithCancel(ctx)
-	withCancel := func(f func(ctx context.Context)) {
-		go func() {
-			defer cancel()
-			f(ctx)
-		}()
-	}
+	eg, ctx := errgroup.WithContext(ctx)
 
 	if isSequencer {
 		// Sequencer must wait till DA is synced to start submitting blobs
 		<-m.DAClient.Synced()
-		withCancel(m.ProduceBlockLoop)
-		withCancel(m.SubmitLoop)
+		eg.Go(func() error {
+			return m.SubmitLoop(ctx)
+		})
+		eg.Go(func() error {
+			return m.ProduceBlockLoop(ctx)
+		})
 	} else {
-		withCancel(m.RetrieveLoop)
-		withCancel(m.SyncToTargetHeightLoop)
+		eg.Go(func() error {
+			return m.RetrieveLoop(ctx)
+		})
+		eg.Go(func() error {
+			return m.SyncToTargetHeightLoop(ctx)
+		})
 	}
 	return nil
 }

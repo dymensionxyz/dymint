@@ -12,7 +12,7 @@ import (
 // RetrieveLoop listens for new target sync heights and then syncs the chain by
 // fetching batches from the settlement layer and then fetching the actual blocks
 // from the DA.
-func (m *Manager) RetrieveLoop(ctx context.Context) {
+func (m *Manager) RetrieveLoop(ctx context.Context) (err error) {
 	m.logger.Info("Started retrieve loop.")
 	p := diodes.NewPoller(m.targetSyncHeight, diodes.WithPollingContext(ctx))
 
@@ -21,9 +21,10 @@ func (m *Manager) RetrieveLoop(ctx context.Context) {
 		if targetHeight == nil {
 			return
 		}
-		err := m.syncToTargetHeight(*(*uint64)(targetHeight))
-		if err != nil {
-			panic(fmt.Errorf("sync until target: %w", err))
+
+		if err = m.syncToTargetHeight(*(*uint64)(targetHeight)); err != nil {
+			err = fmt.Errorf("sync until target: %w", err)
+			return
 		}
 	}
 }

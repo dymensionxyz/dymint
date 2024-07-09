@@ -21,7 +21,7 @@ import (
 )
 
 // ProduceBlockLoop is calling publishBlock in a loop as long as we're synced.
-func (m *Manager) ProduceBlockLoop(ctx context.Context) {
+func (m *Manager) ProduceBlockLoop(ctx context.Context) (err error) {
 	m.logger.Info("Started block producer loop.")
 
 	ticker := time.NewTicker(m.Conf.BlockTime)
@@ -42,7 +42,11 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 			produceEmptyBlock := firstBlock || 0 == m.Conf.MaxIdleTime || nextEmptyBlock.Before(time.Now())
 			firstBlock = false
 
-			block, commit, err := m.ProduceAndGossipBlock(ctx, produceEmptyBlock)
+			var (
+				block  *types.Block
+				commit *types.Commit
+			)
+			block, commit, err = m.ProduceAndGossipBlock(ctx, produceEmptyBlock)
 			if errors.Is(err, context.Canceled) {
 				m.logger.Error("Produce and gossip: context canceled.", "error", err)
 				return

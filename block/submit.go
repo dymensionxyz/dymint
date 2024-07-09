@@ -17,7 +17,7 @@ import (
 // It submits a batch when either
 // 1) It accumulates enough block data, so it's necessary to submit a batch to avoid exceeding the max size
 // 2) Enough time passed since the last submitted batch, so it's necessary to submit a batch to avoid exceeding the max time
-func (m *Manager) SubmitLoop(ctx context.Context) {
+func (m *Manager) SubmitLoop(ctx context.Context) (err error) {
 	maxTime := time.NewTicker(m.Conf.BatchSubmitMaxTime)
 	defer maxTime.Stop()
 
@@ -56,7 +56,7 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 
 		// modular submission methods have own retries mechanism.
 		// if error returned, we assume it's unrecoverable.
-		err := m.HandleSubmissionTrigger()
+		err = m.HandleSubmissionTrigger()
 		if err != nil {
 			m.logger.Error("Error submitting batch", "error", err)
 			uevent.MustPublish(ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
