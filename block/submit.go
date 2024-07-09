@@ -27,6 +27,8 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 
 	// defer func to clear the channels to release blocked goroutines on shutdown
 	defer func() {
+		m.logger.Info("Stopped submit loop.")
+
 		for {
 			select {
 			case <-m.producedSizeCh:
@@ -58,6 +60,7 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 		if err != nil {
 			m.logger.Error("Error submitting batch", "error", err)
 			uevent.MustPublish(ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
+			m.cancelCtx()
 			return
 		}
 		maxTime.Reset(m.Conf.BatchSubmitMaxTime)

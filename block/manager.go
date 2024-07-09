@@ -9,14 +9,16 @@ import (
 	"sync/atomic"
 
 	"code.cloudfoundry.org/go-diodes"
-	"github.com/dymensionxyz/dymint/store"
-	uevent "github.com/dymensionxyz/dymint/utils/event"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 
-	"github.com/dymensionxyz/dymint/p2p"
+	"github.com/dymensionxyz/dymint/store"
+	uevent "github.com/dymensionxyz/dymint/utils/event"
+
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	tmtypes "github.com/tendermint/tendermint/types"
+
+	"github.com/dymensionxyz/dymint/p2p"
 
 	"github.com/tendermint/tendermint/proxy"
 
@@ -40,6 +42,9 @@ type Manager struct {
 	Store    store.Store
 	State    *types.State
 	Executor *Executor
+
+	// Context
+	cancelCtx context.CancelFunc
 
 	// Clients and servers
 	Pubsub    *pubsub.Server
@@ -129,6 +134,8 @@ func NewManager(
 // Start starts the block manager.
 func (m *Manager) Start(ctx context.Context) error {
 	m.logger.Info("Starting the block manager")
+
+	ctx, m.cancelCtx = context.WithCancel(ctx)
 
 	isSequencer, err := m.IsSequencerVerify()
 	if err != nil {
