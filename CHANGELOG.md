@@ -1,19 +1,4 @@
-# [](https://github.com/dymensionxyz/dymint/compare/v1.1.0-rc02...v) (2024-04-28)
-
-
-### Bug Fixes
-
-* **da:** fixed da path seperator and encoding issue ([#731](https://github.com/dymensionxyz/dymint/issues/731)) ([3a3b219](https://github.com/dymensionxyz/dymint/commit/3a3b21932750fee7eaaa9c186f78e36e3e597746))
-* **p2p:** validate block before applying and not before caching in p2p gossiping ([#723](https://github.com/dymensionxyz/dymint/issues/723)) ([98371b5](https://github.com/dymensionxyz/dymint/commit/98371b5220613e70f3274fab5593e02ba532f7db))
-* **produce loop:** handle unauthenticated error in settlement layer ([#726](https://github.com/dymensionxyz/dymint/issues/726)) ([33e78d1](https://github.com/dymensionxyz/dymint/commit/33e78d116b5f14b91b8b3bda2b6cbfee9040e2d3))
-
-
-
-# [1.1.0-rc02](https://github.com/dymensionxyz/dymint/compare/v1.1.0-rc01...v1.1.0-rc02) (2024-04-26)
-
-
-
-# [1.1.0-rc01](https://github.com/dymensionxyz/dymint/compare/v1.0.1-alpha...v1.1.0-rc01) (2024-04-25)
+# [](https://github.com/dymensionxyz/dymint/compare/v1.0.1-alpha...v) (2024-04-25)
 
 
 ### Bug Fixes
@@ -32,7 +17,6 @@
 * **concurrency:** use atomic specific types instead of atomic helpers ([#682](https://github.com/dymensionxyz/dymint/issues/682)) ([1628a5c](https://github.com/dymensionxyz/dymint/commit/1628a5c23569b24b2ac11494eb90e79b4e2797cd))
 * **config:** Add missing config validation ([#679](https://github.com/dymensionxyz/dymint/issues/679)) ([cfaa8ce](https://github.com/dymensionxyz/dymint/commit/cfaa8cefdf6d8f9ede7ac92c9a37d450c483e156))
 * **da:** check DA client type before trying to fetch batch ([#714](https://github.com/dymensionxyz/dymint/issues/714)) ([7180587](https://github.com/dymensionxyz/dymint/commit/718058755a394bf6652b248f792013c11e751d64))
-* **da:** full-node get the da fetch configuration from hub and not config ([#719](https://github.com/dymensionxyz/dymint/issues/719)) ([6bc6c97](https://github.com/dymensionxyz/dymint/commit/6bc6c97cb7f9b5d2cf9587f0148261fa3ef7446f))
 * full-node panics with app hash mismatch error when syncing ([#647](https://github.com/dymensionxyz/dymint/issues/647)) ([0073faf](https://github.com/dymensionxyz/dymint/commit/0073faf8608af7d1c74985c188b0ca540488ab9d))
 * **gossip:** validate blocks when receiving them over gossip ([#699](https://github.com/dymensionxyz/dymint/issues/699)) ([18f98d2](https://github.com/dymensionxyz/dymint/commit/18f98d23ba9eb33dc7092fff446d4a733a2d36a2))
 * **manager:** more robust error handling and health status ([#696](https://github.com/dymensionxyz/dymint/issues/696)) ([ab41f13](https://github.com/dymensionxyz/dymint/commit/ab41f137ec25139470f333f3446c4ba46919309f))
@@ -56,7 +40,7 @@
 
 ### Features
 
-* **ci:** Add changelog workflow ([#720](https://github.com/dymensionxyz/dymint/issues/720)) ([6361f97](https://github.com/dymensionxyz/dymint/commit/6361f974c5b51f4d6339737812c30b3adc8be980))
+* **ci:** changelog workflow ([c096f2f](https://github.com/dymensionxyz/dymint/commit/c096f2f5196e5cbcba8ff81097d8bad7534c46ae))
 * Enforce config rollapp id to be same as genesis chain id ([#697](https://github.com/dymensionxyz/dymint/issues/697)) ([84e8853](https://github.com/dymensionxyz/dymint/commit/84e885371418fb16ca9f89ebd2be613e68588d7e))
 * **mempool:** add a sanity check ([#690](https://github.com/dymensionxyz/dymint/issues/690)) ([c4379ff](https://github.com/dymensionxyz/dymint/commit/c4379ff97d0e2d2bab5726194528af602904b819))
 * **perf:** removed unneeded state-index query ([#650](https://github.com/dymensionxyz/dymint/issues/650)) ([25afe20](https://github.com/dymensionxyz/dymint/commit/25afe20fea420b930a8a221cc4c78620b0a7b510))

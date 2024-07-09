@@ -62,7 +62,7 @@ type LayerI interface {
 	// Stop is called once, after Start. It should stop the client service.
 	Stop() error
 
-	// SubmitBatch tries submitting the batch in an async way to the settlement layer. This should create a transaction which (potentially)
+	// SubmitBatch tries submiting the batch in an async way to the settlement layer. This should create a transaction which (potentially)
 	// triggers a state transition in the settlement layer. Events are emitted on success or failure.
 	SubmitBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) error
 
@@ -76,7 +76,7 @@ type LayerI interface {
 	GetProposer() *types.Sequencer
 }
 
-// HubClient is a helper interface for a more granular interaction with the hub.
+// HubClient is an helper interface for a more granualr interaction with the hub.
 // Implementing a new settlement layer client basically requires embedding the base client
 // and implementing the helper interfaces.
 type HubClient interface {

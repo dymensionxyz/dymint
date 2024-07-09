@@ -73,36 +73,23 @@ type DASubmitMetaData struct {
 	Root []byte
 }
 
-const PathSeparator = "|"
-
 // ToPath converts a DAMetaData to a path.
 func (d *DASubmitMetaData) ToPath() string {
 	// convert uint64 to string
 	if d.Commitment != nil {
 		commitment := hex.EncodeToString(d.Commitment)
 		dataroot := hex.EncodeToString(d.Root)
-		path := []string{
-			string((d.Client)),
-			strconv.FormatUint(d.Height, 10),
-			strconv.Itoa(d.Index),
-			strconv.Itoa(d.Length),
-			commitment,
-			hex.EncodeToString(d.Namespace),
-			dataroot,
-		}
-		for i, part := range path {
-			path[i] = strings.Trim(part, PathSeparator)
-		}
-		return strings.Join(path, PathSeparator)
+		path := []string{string(d.Client), ".", strconv.FormatUint(d.Height, 10), ".", strconv.Itoa(d.Index), ".", strconv.Itoa(d.Length), ".", commitment, ".", string(d.Namespace), ".", dataroot}
+		return strings.Join(path, "")
 	} else {
-		path := []string{string(d.Client), PathSeparator, strconv.FormatUint(d.Height, 10)}
-		return strings.Join(path, PathSeparator)
+		path := []string{string(d.Client), ".", strconv.FormatUint(d.Height, 10)}
+		return strings.Join(path, "")
 	}
 }
 
 // FromPath parses a path to a DAMetaData.
 func (d *DASubmitMetaData) FromPath(path string) (*DASubmitMetaData, error) {
-	pathParts := strings.FieldsFunc(path, func(r rune) bool { return r == rune(PathSeparator[0]) })
+	pathParts := strings.FieldsFunc(path, func(r rune) bool { return r == '.' })
 	if len(pathParts) < 2 {
 		return nil, fmt.Errorf("invalid DA path")
 	}
@@ -116,7 +103,7 @@ func (d *DASubmitMetaData) FromPath(path string) (*DASubmitMetaData, error) {
 		Height: height,
 		Client: Client(pathParts[0]),
 	}
-	// TODO: check per DA and panic if not enough parts
+
 	if len(pathParts) == 7 {
 		submitData.Index, err = strconv.Atoi(pathParts[2])
 		if err != nil {
@@ -130,10 +117,7 @@ func (d *DASubmitMetaData) FromPath(path string) (*DASubmitMetaData, error) {
 		if err != nil {
 			return nil, err
 		}
-		submitData.Namespace, err = hex.DecodeString(pathParts[5])
-		if err != nil {
-			return nil, err
-		}
+		submitData.Namespace = []byte(pathParts[5])
 		submitData.Root, err = hex.DecodeString(pathParts[6])
 		if err != nil {
 			return nil, err
