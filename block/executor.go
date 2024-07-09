@@ -3,10 +3,7 @@ package block
 import (
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"time"
-
-	"github.com/dymensionxyz/dymint/fraudproof"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmcrypto "github.com/tendermint/tendermint/crypto/encoding"
@@ -32,13 +29,6 @@ type Executor struct {
 	eventBus *tmtypes.EventBus
 
 	logger types.Logger
-
-	simulateFraud      bool
-	fraudProofsEnabled bool
-}
-
-func (e *Executor) isAggregator() bool {
-	return e.proposerAddress != nil
 }
 
 // NewExecutor creates new instance of BlockExecutor.
@@ -203,26 +193,6 @@ func (e *Executor) ExecuteBlock(state types.State, block *types.Block) (*tmstate
 
 	var err error
 
-	isrCollector := fraudproof.ISRCollector{
-		ProxyAppConsensusConn: e.proxyAppConsensusConn,
-		Logger:                e.logger,
-		Isrs:                  make([]fraudproof.ISR, 0), // TODO: could supply 3 + len(block.Data.Txs) as capacity
-		SimulateFraud:         e.simulateFraud,
-	}
-	// TODO: need to do validation that the block has 3 + len(block.Data.Txs) ISRs. Probably better on receipt via gossip
-	isrVerifier := fraudproof.ISRVerifier{
-		ProxyAppConsensusConn: e.proxyAppConsensusConn,
-		Logger:                e.logger,
-		Isrs:                  block.Data.IntermediateStateRoots.RawRootsList,
-		FraudProofsEnabled:    e.fraudProofsEnabled,
-	}
-
-	if e.isAggregator() {
-		isrCollector.CollectNext(fraudproof.PhaseInit)
-	} else if !isrVerifier.VerifyNext() {
-		fraudproof.Generate(e.proxyAppConsensusConn, nil, nil, nil) // TODO: return early? Handle error?
-	}
-
 	e.proxyAppConsensusConn.SetResponseCallback(func(req *abci.Request, res *abci.Response) {
 		if r, ok := res.Value.(*abci.Response_DeliverTx); ok {
 			txRes := r.DeliverTx
@@ -241,59 +211,30 @@ func (e *Executor) ExecuteBlock(state types.State, block *types.Block) (*tmstate
 	abciHeader := types.ToABCIHeaderPB(&block.Header)
 	abciHeader.ChainID = e.chainID
 	abciHeader.ValidatorsHash = state.Validators.Hash()
-	reqBeginBlock := abci.RequestBeginBlock{
-		Hash:   hash[:],
-		Header: abciHeader,
-		LastCommitInfo: abci.LastCommitInfo{
-			Round: 0,
-			Votes: nil,
-		},
-		ByzantineValidators: nil,
-	}
-	abciResponses.BeginBlock, err = e.proxyAppConsensusConn.BeginBlockSync(reqBeginBlock)
+	abciResponses.BeginBlock, err = e.proxyAppConsensusConn.BeginBlockSync(
+		abci.RequestBeginBlock{
+			Hash:   hash[:],
+			Header: abciHeader,
+			LastCommitInfo: abci.LastCommitInfo{
+				Round: 0,
+				Votes: nil,
+			},
+			ByzantineValidators: nil,
+		})
 	if err != nil {
 		return nil, err
 	}
 
-	if e.isAggregator() {
-		isrCollector.CollectNext(fraudproof.PhaseBeginBlock)
-	} else if !isrVerifier.VerifyNext() {
-		fraudproof.Generate(e.proxyAppConsensusConn, &reqBeginBlock, nil, nil) // TODO: return early? Handle error?
-	}
-
-	txReqs := make([]*abci.RequestDeliverTx, 0, len(block.Data.Txs))
 	for _, tx := range block.Data.Txs {
-		tx := abci.RequestDeliverTx{Tx: tx}
-		txReqs = append(txReqs, &tx)
-		res := e.proxyAppConsensusConn.DeliverTxAsync(tx)
+		res := e.proxyAppConsensusConn.DeliverTxAsync(abci.RequestDeliverTx{Tx: tx})
 		if res.GetException() != nil {
 			return nil, errors.New(res.GetException().GetError())
 		}
-		if e.isAggregator() {
-			isrCollector.CollectNext(fraudproof.PhaseDeliverTx)
-		} else if !isrVerifier.VerifyNext() {
-			fraudproof.Generate(e.proxyAppConsensusConn, &reqBeginBlock, txReqs, nil) // TODO: return early? Handle error?
-		}
 	}
 
-	reqEndBlock := abci.RequestEndBlock{Height: int64(block.Header.Height)}
-	abciResponses.EndBlock, err = e.proxyAppConsensusConn.EndBlockSync(reqEndBlock)
+	abciResponses.EndBlock, err = e.proxyAppConsensusConn.EndBlockSync(abci.RequestEndBlock{Height: int64(block.Header.Height)})
 	if err != nil {
 		return nil, err
-	}
-
-	if e.isAggregator() {
-		isrCollector.CollectNext(fraudproof.PhaseEndBlock)
-		block.Data.IntermediateStateRoots.RawRootsList = isrCollector.Isrs
-	} else if !isrVerifier.VerifyNext() {
-		fraudproof.Generate(e.proxyAppConsensusConn, &reqBeginBlock, txReqs, &reqEndBlock) // TODO: return early? Handle error?
-	}
-
-	if err := isrCollector.Err(); err != nil {
-		return nil, fmt.Errorf("ISR collector: %w", err)
-	}
-	if err := isrVerifier.Err(); err != nil {
-		return nil, fmt.Errorf("ISR verifier: %w", err)
 	}
 
 	return abciResponses, nil

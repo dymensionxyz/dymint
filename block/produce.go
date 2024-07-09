@@ -82,7 +82,6 @@ func (m *Manager) ProduceAndGossipBlock(ctx context.Context, allowEmpty bool) er
 		return fmt.Errorf("produce block: %w", err)
 	}
 
-	// TODO: in Michael's work, it was critical to have gossip after, so that the isrs are available, check
 	if err := m.gossipBlock(ctx, *block, *commit); err != nil {
 		return fmt.Errorf("gossip block: %w", err)
 	}

@@ -48,30 +48,9 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		return fmt.Errorf("save block: %w", err)
 	}
 
-	// if we are the sequencer, we need to make sure the ISRs stored
-	saveWithISRs := false
-	if m.isSequencer() && block.Data.IntermediateStateRoots.RawRootsList == nil { // TODO: why would this be non-nil at this point?
-		saveWithISRs = true
-	}
-
 	responses, err := m.Executor.ExecuteBlock(m.LastState, block)
 	if err != nil {
 		return fmt.Errorf("execute block: %w", err)
-	}
-
-	if block.Data.IntermediateStateRoots.RawRootsList == nil {
-		/*
-			TODO: why is this check here? It should be assumed in the sequencer case and already checked before in the non-sequencer case
-		*/
-		return fmt.Errorf("intermediate state roots raw roots list is nil")
-	}
-
-	if saveWithISRs {
-		// overwrite the block, now with ISRs
-		_, err = m.Store.SaveBlock(block, commit, nil)
-		if err != nil {
-			return fmt.Errorf("store save block: %w", err)
-		}
 	}
 
 	newState, err := m.Executor.UpdateStateFromResponses(responses, m.LastState, block)
