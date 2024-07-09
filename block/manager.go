@@ -9,14 +9,17 @@ import (
 	"sync/atomic"
 
 	"code.cloudfoundry.org/go-diodes"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
+	"golang.org/x/sync/errgroup"
+
 	"github.com/dymensionxyz/dymint/store"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
-	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 
-	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	tmtypes "github.com/tendermint/tendermint/types"
+
+	"github.com/dymensionxyz/dymint/p2p"
 
 	"github.com/tendermint/tendermint/proxy"
 
@@ -159,14 +162,24 @@ func (m *Manager) Start(ctx context.Context) error {
 		return fmt.Errorf("sync block manager: %w", err)
 	}
 
+	eg, ctx := errgroup.WithContext(ctx)
+
 	if isSequencer {
 		// Sequencer must wait till DA is synced to start submitting blobs
 		<-m.DAClient.Synced()
-		go m.ProduceBlockLoop(ctx)
-		go m.SubmitLoop(ctx)
+		eg.Go(func() error {
+			return m.SubmitLoop(ctx)
+		})
+		eg.Go(func() error {
+			return m.ProduceBlockLoop(ctx)
+		})
 	} else {
-		go m.RetrieveLoop(ctx)
-		go m.SyncToTargetHeightLoop(ctx)
+		eg.Go(func() error {
+			return m.RetrieveLoop(ctx)
+		})
+		eg.Go(func() error {
+			return m.SyncToTargetHeightLoop(ctx)
+		})
 	}
 	return nil
 }
