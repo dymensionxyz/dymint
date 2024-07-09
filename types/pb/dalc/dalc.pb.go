@@ -7,6 +7,7 @@ import (
 	context "context"
 	fmt "fmt"
 	dymint "github.com/dymensionxyz/dymint/types/pb/dymint"
+	grpc1 "github.com/gogo/protobuf/grpc"
 	proto "github.com/gogo/protobuf/proto"
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
@@ -466,10 +467,10 @@ type DALCServiceClient interface {
 }
 
 type dALCServiceClient struct {
-	cc *grpc.ClientConn
+	cc grpc1.ClientConn
 }
 
-func NewDALCServiceClient(cc *grpc.ClientConn) DALCServiceClient {
+func NewDALCServiceClient(cc grpc1.ClientConn) DALCServiceClient {
 	return &dALCServiceClient{cc}
 }
 
@@ -521,7 +522,7 @@ func (*UnimplementedDALCServiceServer) RetrieveBatches(ctx context.Context, req 
 	return nil, status.Errorf(codes.Unimplemented, "method RetrieveBatches not implemented")
 }
 
-func RegisterDALCServiceServer(s *grpc.Server, srv DALCServiceServer) {
+func RegisterDALCServiceServer(s grpc1.Server, srv DALCServiceServer) {
 	s.RegisterService(&_DALCService_serviceDesc, srv)
 }
 

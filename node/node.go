@@ -78,7 +78,8 @@ type Node struct {
 	IndexerService *txindex.IndexerService
 
 	// shared context for all dymint components
-	ctx context.Context
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 // NewNode creates new Dymint node.
@@ -110,19 +111,18 @@ func NewNode(
 	pubsubServer := pubsub.NewServer()
 
 	var baseKV store.KV
-	if conf.RootDir == "" && conf.DBPath == "" { // this is used for testing
+	if conf.DBConfig.InMemory || (conf.RootDir == "" && conf.DBPath == "") { // this is used for testing
 		logger.Info("WARNING: working in in-memory mode")
 		baseKV = store.NewDefaultInMemoryKVStore()
 	} else {
 		// TODO(omritoptx): Move dymint to const
-		baseKV = store.NewDefaultKVStore(conf.RootDir, conf.DBPath, "dymint")
+		baseKV = store.NewKVStore(conf.RootDir, conf.DBPath, "dymint", conf.DBConfig.SyncWrites)
 	}
-	mainKV := store.NewPrefixKV(baseKV, mainPrefix)
-	// TODO: dalcKV is needed for mock only. Initilize only if mock used
+
+	s := store.New(store.NewPrefixKV(baseKV, mainPrefix))
+	// TODO: dalcKV is needed for mock only. Initialize only if mock used
 	dalcKV := store.NewPrefixKV(baseKV, dalcPrefix)
 	indexerKV := store.NewPrefixKV(baseKV, indexerPrefix)
-
-	s := store.New(mainKV)
 
 	dalc := daregistry.GetClient(conf.DALayer)
 	if dalc == nil {
@@ -189,6 +189,7 @@ func NewNode(
 		return nil, fmt.Errorf("BlockManager initialization error: %w", err)
 	}
 
+	ctx, cancel := context.WithCancel(ctx)
 	node := &Node{
 		proxyApp:       proxyApp,
 		eventBus:       eventBus,
@@ -207,6 +208,7 @@ func NewNode(
 		IndexerService: indexerService,
 		BlockIndexer:   blockIndexer,
 		ctx:            ctx,
+		cancel:         cancel,
 	}
 
 	node.BaseService = *service.NewBaseService(logger, "Node", node)
@@ -293,6 +295,8 @@ func (n *Node) GetGenesisChunks() ([]string, error) {
 
 // OnStop is a part of Service interface.
 func (n *Node) OnStop() {
+	n.cancel()
+
 	err := n.dalc.Stop()
 	if err != nil {
 		n.Logger.Error("stop data availability layer client", "error", err)
@@ -306,6 +310,11 @@ func (n *Node) OnStop() {
 	err = n.P2P.Close()
 	if err != nil {
 		n.Logger.Error("stop P2P client", "error", err)
+	}
+
+	err = n.Store.Close()
+	if err != nil {
+		n.Logger.Error("close store", "error", err)
 	}
 }
 
@@ -372,9 +381,15 @@ func (n *Node) startPrometheusServer() error {
 			WriteTimeout: 10 * time.Second,
 			Handler:      http.DefaultServeMux,
 		}
-		if err := srv.ListenAndServe(); err != nil {
-			return err
-		}
+		go func() {
+			if err := srv.ListenAndServe(); err != nil {
+				n.Logger.Error("Serving prometheus server.", "error", err)
+			}
+		}()
+		n.Logger.Info("Prometheus server started", "address", n.conf.Instrumentation.PrometheusListenAddr)
+
+		<-n.ctx.Done()
+		return srv.Close()
 	}
 	return nil
 }

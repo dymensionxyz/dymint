@@ -29,7 +29,11 @@ done
 cd $SCRIPT_DIR
 mkdir -p ./proto/pb
 rm -rf $TARGET_DIR/*
-docker run -v $PWD:/workspace --workdir /workspace tendermintdev/docker-build-proto sh ./proto/protoc.sh
+
+protoVer=v0.7
+protoImageName=tendermintdev/sdk-proto-gen:$protoVer
+
+docker run -v $PWD:/workspace --workdir /workspace $protoImageName sh ./proto/protoc.sh
 
 # Copy the generated files to the target directories 
 for TARGET_DIR in $TARGETS; do

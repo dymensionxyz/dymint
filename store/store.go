@@ -37,6 +37,11 @@ func New(kv KV) Store {
 	}
 }
 
+// Close implements Store.
+func (s *DefaultStore) Close() error {
+	return s.db.Close()
+}
+
 // NewBatch creates a new db batch.
 func (s *DefaultStore) NewBatch() KVBatch {
 	return s.db.NewBatch()

@@ -1,13 +1,15 @@
 with-expecter: true
 recursive: true
 packages:
+  github.com/dymensionxyz/dymint/store:
+    interfaces:
+      Store:
+  github.com/dymensionxyz/dymint/settlement:
+    interfaces:
+      ClientI:
   github.com/dymensionxyz/dymint/settlement/dymension:
     interfaces:
       CosmosClient:
-  github.com/dymensionxyz/dymint/settlement:
-    interfaces:
-      LayerI:
-      HubClient:
   github.com/dymensionxyz/dymension/v3/x/sequencer/types:
     interfaces:
       QueryClient:
@@ -27,5 +29,8 @@ packages:
   github.com/dymensionxyz/dymint/da/avail:
     interfaces:
      SubstrateApiI:
+  github.com/dymensionxyz/dymint/da:
+    interfaces:
+     DataAvailabilityLayerClient:
 
 
