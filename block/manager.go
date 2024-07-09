@@ -92,6 +92,10 @@ type Manager struct {
 	blockCache map[uint64]CachedBlock
 }
 
+func (m *Manager) isSequencer() bool { // TODO: move the code
+	return m.ProposerKey != nil
+}
+
 // NewManager creates new block Manager.
 func NewManager(
 	proposerKey crypto.PrivKey,

@@ -450,8 +450,9 @@ func (d *HubClient) convertBatchToMsgUpdateState(batch *types.Batch, daResult *d
 	blockDescriptors := make([]rollapptypes.BlockDescriptor, len(batch.Blocks))
 	for index, block := range batch.Blocks {
 		blockDescriptor := rollapptypes.BlockDescriptor{
-			Height:    block.Header.Height,
-			StateRoot: block.Header.AppHash[:],
+			Height:                  block.Header.Height,
+			StateRoot:               block.Header.AppHash[:],
+			IntermediateStatesRoots: block.Data.IntermediateStateRoots.RawRootsList, // TODO: check
 		}
 		blockDescriptors[index] = blockDescriptor
 	}

@@ -158,6 +158,8 @@ github.com/celestiaorg/go-fraud v0.2.0 h1:aaq2JiW0gTnhEdac3l51UCqSyJ4+VjFGTTpN83
 github.com/celestiaorg/go-fraud v0.2.0/go.mod h1:lNY1i4K6kUeeE60Z2VK8WXd+qXb8KRzfBhvwPkK6aUc=
 github.com/celestiaorg/go-header v0.4.0 h1:Ine/xpvFx8o9p6fXW+h2RSPp68rn7VUxTkW1okJxcEY=
 github.com/celestiaorg/go-header v0.4.0/go.mod h1:H8xhnDLDLbkpwmWPhCaZyTnIV3dlVxBHPnxNXS2Qu6c=
+github.com/celestiaorg/iavl v0.0.0-20230105192234-715b65a7ecf1 h1:icHV8vuWg79BnMbpnF/1x9CKZKwU9xZo71lAGlV04zE=
+github.com/celestiaorg/iavl v0.0.0-20230105192234-715b65a7ecf1/go.mod h1:cLAvvJG18rcTlwmETgTXUhlwuXt6C0WV+LmsaLo2Na0=
 github.com/celestiaorg/merkletree v0.0.0-20210714075610-a84dc3ddbbe4 h1:CJdIpo8n5MFP2MwK0gSRcOVlDlFdQJO1p+FqdxYzmvc=
 github.com/celestiaorg/merkletree v0.0.0-20210714075610-a84dc3ddbbe4/go.mod h1:fzuHnhzj1pUygGz+1ZkB3uQbEUL4htqCGJ4Qs2LwMZA=
 github.com/celestiaorg/nmt v0.20.0 h1:9i7ultZ8Wv5ytt8ZRaxKQ5KOOMo4A2K2T/aPGjIlSas=
@@ -174,6 +176,8 @@ github.com/cespare/xxhash v1.1.0/go.mod h1:XrSqR1VqqWfGrhpAt58auRo0WTKS1nRRg3ghf
 github.com/cespare/xxhash/v2 v2.1.1/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
 github.com/cespare/xxhash/v2 v2.2.0 h1:DC2CZ1Ep5Y4k3ZQ899DldepgrayRUGE6BBZ/cd9Cj44=
 github.com/cespare/xxhash/v2 v2.2.0/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
+github.com/chrispappas/golang-generics-set v1.0.1 h1:91l8cInAWTxCPwZ8UNg7qkkPsdFdkYS9hytsd8UJsIU=
+github.com/chrispappas/golang-generics-set v1.0.1/go.mod h1:cp8j73+rlDyFF9PrjUkrRvi8L4jSRIsRK6Q1nPPIoqo=
 github.com/chzyer/logex v1.1.10/go.mod h1:+Ywpsq7O8HXn0nuIou7OrIPyXbp3wmkHB+jjWRnGsAI=
 github.com/chzyer/readline v0.0.0-20180603132655-2972be24d48e/go.mod h1:nSuG5e5PlCu98SY8svDHJxuZscDgtXS6KTTbou5AhLI=
 github.com/chzyer/readline v1.5.1 h1:upd/6fQk4src78LMRzh5vItIt361/o4uq553V8B5sGI=

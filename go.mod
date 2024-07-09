@@ -283,8 +283,7 @@ replace (
 	github.com/libp2p/go-libp2p-pubsub => github.com/dymensionxyz/go-libp2p-pubsub v0.0.0-20231220125656-9e904c648367
 
 	github.com/rollkit/celestia-openrpc => github.com/celestiaorg/celestia-openrpc v0.3.0
-	github.com/tendermint/tendermint => github.com/cometbft/cometbft v0.34.28
-
+	github.com/tendermint/tendermint => github.com/dymensionxyz/cometbft v0.34.29-fraudproof-0.0.1
 )
 
 replace github.com/osmosis-labs/osmosis/v15 => github.com/dymensionxyz/osmosis/v15 v15.2.0-dymension-v1.1.2
