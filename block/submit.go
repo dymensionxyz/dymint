@@ -60,7 +60,6 @@ func (m *Manager) SubmitLoop(ctx context.Context) {
 		if err != nil {
 			m.logger.Error("Error submitting batch", "error", err)
 			uevent.MustPublish(ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
-			m.cancelCtx()
 			return
 		}
 		maxTime.Reset(m.Conf.BatchSubmitMaxTime)

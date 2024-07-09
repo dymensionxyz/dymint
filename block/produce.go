@@ -53,7 +53,6 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) {
 			if errors.Is(err, ErrNonRecoverable) {
 				m.logger.Error("Produce and gossip: non-recoverable.", "error", err) // TODO: flush? or don't log at all?
 				uevent.MustPublish(ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
-				m.cancelCtx()
 				return
 			}
 			if err != nil {

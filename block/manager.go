@@ -43,9 +43,6 @@ type Manager struct {
 	State    *types.State
 	Executor *Executor
 
-	// Context
-	cancelCtx context.CancelFunc
-
 	// Clients and servers
 	Pubsub    *pubsub.Server
 	p2pClient *p2p.Client
@@ -135,8 +132,6 @@ func NewManager(
 func (m *Manager) Start(ctx context.Context) error {
 	m.logger.Info("Starting the block manager")
 
-	ctx, m.cancelCtx = context.WithCancel(ctx)
-
 	isSequencer, err := m.IsSequencerVerify()
 	if err != nil {
 		return err
@@ -166,14 +161,22 @@ func (m *Manager) Start(ctx context.Context) error {
 		return fmt.Errorf("sync block manager: %w", err)
 	}
 
+	ctx, cancel := context.WithCancel(ctx)
+	withCancel := func(f func(ctx context.Context)) {
+		go func() {
+			defer cancel()
+			f(ctx)
+		}()
+	}
+
 	if isSequencer {
 		// Sequencer must wait till DA is synced to start submitting blobs
 		<-m.DAClient.Synced()
-		go m.ProduceBlockLoop(ctx)
-		go m.SubmitLoop(ctx)
+		withCancel(m.ProduceBlockLoop)
+		withCancel(m.SubmitLoop)
 	} else {
-		go m.RetrieveLoop(ctx)
-		go m.SyncToTargetHeightLoop(ctx)
+		withCancel(m.RetrieveLoop)
+		withCancel(m.SyncToTargetHeightLoop)
 	}
 	return nil
 }
