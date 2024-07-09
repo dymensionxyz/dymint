@@ -1,4 +1,4 @@
-# [](https://github.com/dymensionxyz/dymint/compare/v1.1.0-rc02...v) (2024-04-30)
+# [](https://github.com/dymensionxyz/dymint/compare/v1.1.0-rc02...v) (2024-04-28)
 
 
 ### Bug Fixes
@@ -6,10 +6,6 @@
 * **da:** fixed da path seperator and encoding issue ([#731](https://github.com/dymensionxyz/dymint/issues/731)) ([3a3b219](https://github.com/dymensionxyz/dymint/commit/3a3b21932750fee7eaaa9c186f78e36e3e597746))
 * **p2p:** validate block before applying and not before caching in p2p gossiping ([#723](https://github.com/dymensionxyz/dymint/issues/723)) ([98371b5](https://github.com/dymensionxyz/dymint/commit/98371b5220613e70f3274fab5593e02ba532f7db))
 * **produce loop:** handle unauthenticated error in settlement layer ([#726](https://github.com/dymensionxyz/dymint/issues/726)) ([33e78d1](https://github.com/dymensionxyz/dymint/commit/33e78d116b5f14b91b8b3bda2b6cbfee9040e2d3))
-
-
-
-## [0.6.1-beta-fraudproofs-0.0.1](https://github.com/dymensionxyz/dymint/compare/v0.6.1-beta...v0.6.1-beta-fraudproofs-0.0.1) (2024-01-21)
 
 
 
@@ -71,7 +67,7 @@
 
 
 
-# [1.0.0-alpha](https://github.com/dymensionxyz/dymint/compare/v0.6.1-beta-fraudproofs-0.0.1...v1.0.0-alpha) (2024-03-21)
+# [1.0.0-alpha](https://github.com/dymensionxyz/dymint/compare/v0.6.1-beta...v1.0.0-alpha) (2024-03-21)
 
 
 ### Bug Fixes
@@ -87,10 +83,6 @@
 * Add data availability validation for Celestia DA [#422](https://github.com/dymensionxyz/dymint/issues/422) ([#575](https://github.com/dymensionxyz/dymint/issues/575)) ([f7254f4](https://github.com/dymensionxyz/dymint/commit/f7254f488f4bc99aecf84a4d7dfefccbf2a88dd0))
 * Enable shared mock settlement ([#549](https://github.com/dymensionxyz/dymint/issues/549)) ([996e681](https://github.com/dymensionxyz/dymint/commit/996e681cb937b22b4fba9d159539ccee66de4b7e))
 * reconnect full node to sequencer with configurable time check ([#556](https://github.com/dymensionxyz/dymint/issues/556)) ([9129983](https://github.com/dymensionxyz/dymint/commit/912998300733bae1f60ae42a63b07ea65cfc17bc))
-
-
-
-## [0.6.1-beta-fraudproofs-0.0.1](https://github.com/dymensionxyz/dymint/compare/v0.6.1-beta...v0.6.1-beta-fraudproofs-0.0.1) (2024-01-21)
 
 
 
