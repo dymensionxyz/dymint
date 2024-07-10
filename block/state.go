@@ -150,8 +150,11 @@ func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResp
 	// TODO: load consensus params from endblock?
 
 	s.SetHeight(height)
+
+	//set activeSequencer!!!!
 }
 
+// review usage
 func (m *Manager) GetExpectedProposerPubKey() (tmcrypto.PubKey, error) {
 	return m.State.NextValidators.GetProposer().PubKey, nil
 }

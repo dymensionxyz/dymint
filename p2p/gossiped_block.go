@@ -65,5 +65,14 @@ func (e *GossipedBlock) Validate() error {
 	// probably yes, to avoid DoS attacks
 	// but it will require careful thought regarding expected sequencer as gossiped blocks can arrive out of order
 
+	// if err := e.Commit.ValidateWithHeader(proposer, &e.Block.Header); err != nil {
+	// 	return err
+	// }
+	// abciData := tmtypes.Data{
+	// 	Txs: types.ToABCIBlockDataTxs(&e.Block.Data),
+	// }
+	// if e.Block.Header.DataHash != [32]byte(abciData.Hash()) {
+	// 	return types.ErrInvalidHeaderDataHash
+	// }
 	return nil
 }

@@ -151,6 +151,16 @@ func NewNode(
 	mp := mempoolv1.NewTxMempool(logger, &conf.MempoolConfig, proxyApp.Mempool(), height, mempoolv1.WithMetrics(metrics))
 	mpIDs := nodemempool.NewMempoolIDs()
 
+	// Set p2p client and it's validators
+	p2pValidator := p2p.NewValidator(logger.With("module", "p2p_validator"), settlementlc)
+
+	p2pClient, err := p2p.NewClient(conf.P2PConfig, p2pKey, genesis.ChainID, pubsubServer, logger.With("module", "p2p"))
+	if err != nil {
+		return nil, err
+	}
+	p2pClient.SetTxValidator(p2pValidator.TxValidator(mp, mpIDs))
+	p2pClient.SetBlockValidator(p2pValidator.BlockValidator())
+
 	blockManager, err := block.NewManager(
 		signingKey,
 		conf.BlockManagerConfig,
@@ -162,23 +172,12 @@ func NewNode(
 		settlementlc,
 		eventBus,
 		pubsubServer,
-		nil,
+		p2pClient,
 		logger.With("module", "BlockManager"),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("BlockManager initialization error: %w", err)
 	}
-
-	// Set p2p client and it's validators
-	p2pValidator := p2p.NewValidator(logger.With("module", "p2p_validator"), blockManager)
-	p2pClient, err := p2p.NewClient(conf.P2PConfig, p2pKey, genesis.ChainID, pubsubServer, logger.With("module", "p2p"))
-	if err != nil {
-		return nil, err
-	}
-	p2pClient.SetTxValidator(p2pValidator.TxValidator(mp, mpIDs))
-	p2pClient.SetBlockValidator(p2pValidator.BlockValidator())
-
-	blockManager.P2PClient = p2pClient
 
 	ctx, cancel := context.WithCancel(ctx)
 	node := &Node{
