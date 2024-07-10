@@ -125,13 +125,6 @@ func NewManager(
 		return nil, fmt.Errorf("get initial state: %w", err)
 	}
 
-	if m.State.IsGenesis() {
-		// We need to set the initial proposer
-		slProposerKey := m.SLClient.GetProposer().PublicKey.Bytes()
-
-		// m.State.NextValidators.Proposer.
-	}
-
 	return m, nil
 }
 
