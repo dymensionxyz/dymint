@@ -17,6 +17,7 @@ import (
 	cosmosed25519 "github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
 	"github.com/libp2p/go-libp2p/core/crypto"
 
+	"github.com/dymensionxyz/dymint/block"
 	"github.com/dymensionxyz/dymint/config"
 	slmocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/testutil"
@@ -37,7 +38,7 @@ func TestBatchOverhead(t *testing.T) {
 	maxTxData := uint64(float64(maxBatchSize) * types.MaxBlockSizeAdjustment) // 90% of maxBatchSize
 
 	// first batch with single block with single large tx
-	var tcases = []struct {
+	tcases := []struct {
 		name string
 		nTxs int
 	}{
@@ -264,35 +265,39 @@ func TestSubmissionByBatchSize(t *testing.T) {
 		require.Equal(manager.AccumulatedBatchSize.Load(), uint64(0))
 		assert.Equal(manager.State.Height(), uint64(0))
 
-		var wg sync.WaitGroup
-		wg.Add(2) // Add 2 because we have 2 goroutines
+		submissionByBatchSize(manager, assert, c.expectedSubmission)
+	}
+}
 
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-		defer cancel()
+func submissionByBatchSize(manager *block.Manager, assert *assert.Assertions, expectedSubmission bool) {
+	var wg sync.WaitGroup
+	wg.Add(2) // Add 2 because we have 2 goroutines
 
-		go func() {
-			manager.ProduceBlockLoop(ctx)
-			wg.Done() // Decrease counter when this goroutine finishes
-		}()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
 
-		go func() {
-			assert.Zero(manager.LastSubmittedHeight.Load())
-			manager.SubmitLoop(ctx)
-			wg.Done() // Decrease counter when this goroutine finishes
-		}()
+	go func() {
+		manager.ProduceBlockLoop(ctx)
+		wg.Done() // Decrease counter when this goroutine finishes
+	}()
 
-		// wait for block to be produced but not for submission threshold
-		time.Sleep(200 * time.Millisecond)
-		// assert block produced but nothing submitted yet
-		assert.Greater(manager.State.Height(), uint64(0))
-		assert.Greater(manager.AccumulatedBatchSize.Load(), uint64(0))
+	go func() {
+		assert.Zero(manager.LastSubmittedHeight.Load())
+		manager.SubmitLoop(ctx)
+		wg.Done() // Decrease counter when this goroutine finishes
+	}()
 
-		wg.Wait() // Wait for all goroutines to finish
+	// wait for block to be produced but not for submission threshold
+	time.Sleep(200 * time.Millisecond)
+	// assert block produced but nothing submitted yet
+	assert.Greater(manager.State.Height(), uint64(0))
+	assert.Greater(manager.AccumulatedBatchSize.Load(), uint64(0))
 
-		if c.expectedSubmission {
-			assert.Positive(manager.LastSubmittedHeight.Load())
-		} else {
-			assert.Zero(manager.LastSubmittedHeight.Load())
-		}
+	wg.Wait() // Wait for all goroutines to finish
+
+	if expectedSubmission {
+		assert.Positive(manager.LastSubmittedHeight.Load())
+	} else {
+		assert.Zero(manager.LastSubmittedHeight.Load())
 	}
 }

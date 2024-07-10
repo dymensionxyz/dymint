@@ -39,6 +39,8 @@ type NodeConfig struct {
 	DAGrpc grpc.Config `mapstructure:",squash"`
 	// P2P Options
 	P2PConfig `mapstructure:",squash"`
+	// DB Options
+	DBConfig `mapstructure:"db"`
 }
 
 // BlockManagerConfig consists of all parameters required by BlockManagerConfig
@@ -111,6 +113,10 @@ func (nc NodeConfig) Validate() error {
 
 	if err := nc.validateInstrumentation(); err != nil {
 		return fmt.Errorf("Instrumentation: %w", err)
+	}
+
+	if err := nc.DBConfig.Validate(); err != nil {
+		return fmt.Errorf("db config: %w", err)
 	}
 
 	return nil
@@ -216,5 +222,17 @@ func (ic InstrumentationConfig) Validate() error {
 		return fmt.Errorf("PrometheusListenAddr cannot be empty")
 	}
 
+	return nil
+}
+
+// DBConfig holds configuration for the database.
+type DBConfig struct {
+	// SyncWrite makes sure that data is written to disk before returning from a write operation.
+	SyncWrites bool `mapstructure:"sync_writes"`
+	// InMemory sets the database to run in-memory, without touching the disk.
+	InMemory bool `mapstructure:"in_memory"`
+}
+
+func (dbc DBConfig) Validate() error {
 	return nil
 }

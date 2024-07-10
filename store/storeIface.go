@@ -67,4 +67,6 @@ type Store interface {
 	LoadState() (*types.State, error)
 
 	PruneBlocks(from, to uint64) (uint64, error)
+
+	Close() error
 }
