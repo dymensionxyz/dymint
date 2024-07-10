@@ -122,7 +122,7 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 	nextBatchStartHeight := manager.NextHeightToSubmit()
 	var batch *types.Batch
 	for i := 0; i < numBatchesToAdd; i++ {
-		batch, err = testutil.GenerateBatch(nextBatchStartHeight, nextBatchStartHeight+uint64(testutil.DefaultTestBatchSize-1), manager.ProposerKey)
+		batch, err = testutil.GenerateBatch(nextBatchStartHeight, nextBatchStartHeight+uint64(testutil.DefaultTestBatchSize-1), manager.LocalKey)
 		assert.NoError(t, err)
 		daResultSubmitBatch := manager.DAClient.SubmitBatch(batch)
 		assert.Equal(t, daResultSubmitBatch.Code, da.StatusSuccess)
@@ -397,7 +397,7 @@ func TestDAFetch(t *testing.T) {
 	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{Data: commitHash[:]})
 
 	nextBatchStartHeight := manager.NextHeightToSubmit()
-	batch, err := testutil.GenerateBatch(nextBatchStartHeight, nextBatchStartHeight+uint64(testutil.DefaultTestBatchSize-1), manager.ProposerKey)
+	batch, err := testutil.GenerateBatch(nextBatchStartHeight, nextBatchStartHeight+uint64(testutil.DefaultTestBatchSize-1), manager.LocalKey)
 	require.NoError(err)
 	daResultSubmitBatch := manager.DAClient.SubmitBatch(batch)
 	require.Equal(daResultSubmitBatch.Code, da.StatusSuccess)

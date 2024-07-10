@@ -1,7 +1,6 @@
 package block
 
 import (
-	"encoding/hex"
 	"errors"
 	"time"
 
@@ -19,8 +18,7 @@ import (
 
 // Executor creates and applies blocks and maintains state.
 type Executor struct {
-	proposerAddress       []byte
-	namespaceID           [8]byte
+	localAddress          []byte
 	chainID               string
 	proxyAppConsensusConn proxy.AppConnConsensus
 	proxyAppQueryConn     proxy.AppConnQuery
@@ -32,15 +30,10 @@ type Executor struct {
 }
 
 // NewExecutor creates new instance of BlockExecutor.
-// Proposer address and namespace ID will be used in all newly created blocks.
-func NewExecutor(proposerAddress []byte, namespaceID string, chainID string, mempool mempool.Mempool, proxyApp proxy.AppConns, eventBus *tmtypes.EventBus, logger types.Logger) (*Executor, error) {
-	bytes, err := hex.DecodeString(namespaceID)
-	if err != nil {
-		return nil, err
-	}
-
+// localAddress will be used in sequencer mode only.
+func NewExecutor(localAddress []byte, chainID string, mempool mempool.Mempool, proxyApp proxy.AppConns, eventBus *tmtypes.EventBus, logger types.Logger) (*Executor, error) {
 	be := Executor{
-		proposerAddress:       proposerAddress,
+		localAddress:          localAddress,
 		chainID:               chainID,
 		proxyAppConsensusConn: proxyApp.Consensus(),
 		proxyAppQueryConn:     proxyApp.Query(),
@@ -48,7 +41,6 @@ func NewExecutor(proposerAddress []byte, namespaceID string, chainID string, mem
 		eventBus:              eventBus,
 		logger:                logger,
 	}
-	copy(be.namespaceID[:], bytes)
 	return &be, nil
 }
 
@@ -109,7 +101,6 @@ func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHead
 				App:   state.Version.Consensus.App,
 			},
 			ChainID:         e.chainID,
-			NamespaceID:     e.namespaceID, // TODO: used?????
 			Height:          height,
 			Time:            uint64(time.Now().UTC().UnixNano()),
 			LastHeaderHash:  lastHeaderHash,
@@ -117,7 +108,7 @@ func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHead
 			ConsensusHash:   [32]byte{},
 			AppHash:         state.AppHash,
 			LastResultsHash: state.LastResultsHash,
-			ProposerAddress: e.proposerAddress,
+			ProposerAddress: e.localAddress,
 		},
 		Data: types.Data{
 			Txs:                    toDymintTxs(mempoolTxs),
