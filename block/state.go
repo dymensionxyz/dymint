@@ -129,7 +129,8 @@ func (e *Executor) UpdateStateAfterInitChain(s *types.State, res *abci.ResponseI
 	copy(s.LastResultsHash[:], merkle.HashFromByteSlices(nil))
 
 	// Set the genesis sequencers in the state
-	s.ActiveSequencer.SetBondedSet(tmtypes.NewValidatorSet(validators))
+	seqSet := tmtypes.NewValidatorSet(validators).CopyIncrementProposerPriority(1)
+	s.ActiveSequencer.SetBondedSet(seqSet)
 }
 
 func (e *Executor) UpdateMempoolAfterInitChain(s *types.State) {

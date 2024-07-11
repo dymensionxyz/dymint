@@ -80,8 +80,7 @@ func (v *Validator) BlockValidator() GossipValidator {
 			v.logger.Error("Deserialize gossiped block.", "error", err)
 			return false
 		}
-
-		if err := gossipedBlock.Validate(); err != nil {
+		if err := gossipedBlock.Validate(v.expectedPubKey.GetProposerPubKey()); err != nil {
 			v.logger.Error("Failed to validate gossiped block.", "height", gossipedBlock.Block.Header.Height, "error", err)
 			return false
 		}

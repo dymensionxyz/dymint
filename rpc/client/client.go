@@ -511,9 +511,10 @@ func (c *Client) Commit(ctx context.Context, height *int64) (*ctypes.ResultCommi
 // Validators returns paginated list of validators at given height.
 func (c *Client) Validators(ctx context.Context, heightPtr *int64, pagePtr, perPagePtr *int) (*ctypes.ResultValidators, error) {
 	height := c.normalizeHeight(heightPtr)
-
-	//FIXME: get from state
-	validators := tmtypes.NewValidatorSet(nil)
+	validators, err := c.node.Store.LoadValidators(height)
+	if err != nil {
+		return nil, fmt.Errorf("load validators for height %d: %w", height, err)
+	}
 
 	totalCount := len(validators.Validators)
 	perPage := validatePerPage(perPagePtr)
@@ -709,9 +710,14 @@ func (c *Client) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
 	latestHeight := latest.Header.Height
 	latestBlockTimeNano := latest.Header.Time
 
-	// FIXME: get from state
-	// validator := tmtypes.NewValidatorSet(nil)
-	valInfo := ctypes.ValidatorInfo{}
+	validators, err := c.node.Store.LoadValidators(latest.Header.Height)
+	if err != nil {
+		return nil, fmt.Errorf("fetch the validator info at latest block: %w", err)
+	}
+	_, validator := validators.GetByAddress(latest.Header.ProposerAddress)
+	if validator == nil {
+		return nil, fmt.Errorf("find proposer %s in the valSet", string(latest.Header.ProposerAddress))
+	}
 
 	state, err := c.node.Store.LoadState()
 	if err != nil {
@@ -754,7 +760,11 @@ func (c *Client) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
 			// CatchingUp:          env.ConsensusReactor.WaitSync(),
 		},
 		// TODO(ItzhakBokris): update ValidatorInfo fields
-		ValidatorInfo: valInfo,
+		ValidatorInfo: ctypes.ValidatorInfo{
+			Address:     validator.Address,
+			PubKey:      validator.PubKey,
+			VotingPower: validator.VotingPower,
+		},
 	}
 	return result, nil
 }

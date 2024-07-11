@@ -131,6 +131,8 @@ func NewManager(
 
 // Start starts the block manager.
 func (m *Manager) Start(ctx context.Context) error {
+	m.logger.Info("Starting block manager")
+
 	// Check if InitChain flow is needed
 	if m.State.IsGenesis() {
 		m.logger.Info("Running InitChain")
@@ -142,7 +144,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	}
 
 	isSequencer := m.IsSequencer()
-	m.logger.Info("Starting block manager", "isSequencer", isSequencer)
+	m.logger.Info("sequencer mode", "isSequencer", isSequencer)
 
 	if !isSequencer {
 		// Fullnode loop can start before syncing from DA

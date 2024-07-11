@@ -3,6 +3,7 @@ package p2p
 import (
 	"github.com/dymensionxyz/dymint/p2p/pb"
 	"github.com/dymensionxyz/dymint/types"
+	tmcrypto "github.com/tendermint/tendermint/crypto"
 )
 
 /* -------------------------------------------------------------------------- */
@@ -53,26 +54,15 @@ func (e *GossipedBlock) FromProto(other *pb.GossipedBlock) error {
 }
 
 // Validate run basic validation on the gossiped block
-func (e *GossipedBlock) Validate() error {
+func (e *GossipedBlock) Validate(proposerPubKey tmcrypto.PubKey) error {
 	if err := e.Block.ValidateBasic(); err != nil {
 		return err
 	}
 	if err := e.Commit.ValidateBasic(); err != nil {
 		return err
 	}
-
-	//FIXME: do we want stateful validation here? (validating against expected proposer)
-	// probably yes, to avoid DoS attacks
-	// but it will require careful thought regarding expected sequencer as gossiped blocks can arrive out of order
-
-	// if err := e.Commit.ValidateWithHeader(proposer, &e.Block.Header); err != nil {
-	// 	return err
-	// }
-	// abciData := tmtypes.Data{
-	// 	Txs: types.ToABCIBlockDataTxs(&e.Block.Data),
-	// }
-	// if e.Block.Header.DataHash != [32]byte(abciData.Hash()) {
-	// 	return types.ErrInvalidHeaderDataHash
-	// }
+	if err := e.Commit.ValidateWithHeader(proposerPubKey, &e.Block.Header); err != nil {
+		return err
+	}
 	return nil
 }

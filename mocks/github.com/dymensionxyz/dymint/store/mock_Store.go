@@ -26,8 +26,21 @@ func (_m *MockStore) EXPECT() *MockStore_Expecter {
 }
 
 // Close provides a mock function with given fields:
-func (_m *MockStore) Close() {
-	_m.Called()
+func (_m *MockStore) Close() error {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for Close")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func() error); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 // MockStore_Close_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Close'
@@ -47,12 +60,12 @@ func (_c *MockStore_Close_Call) Run(run func()) *MockStore_Close_Call {
 	return _c
 }
 
-func (_c *MockStore_Close_Call) Return() *MockStore_Close_Call {
-	_c.Call.Return()
+func (_c *MockStore_Close_Call) Return(_a0 error) *MockStore_Close_Call {
+	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockStore_Close_Call) RunAndReturn(run func()) *MockStore_Close_Call {
+func (_c *MockStore_Close_Call) RunAndReturn(run func() error) *MockStore_Close_Call {
 	_c.Call.Return(run)
 	return _c
 }
