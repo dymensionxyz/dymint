@@ -115,9 +115,17 @@ func GenerateBlocksWithTxs(startHeight uint64, num uint64, proposerKey crypto.Pr
 
 // GenerateBlocks generates random blocks.
 func GenerateBlocks(startHeight uint64, num uint64, proposerKey crypto.PrivKey) ([]*types.Block, error) {
+	r, _ := proposerKey.Raw()
+	proposerHash := types.GetHash(tmtypes.NewValidator(ed25519.PrivKey(r).PubKey(), 1))
+
 	blocks := make([]*types.Block, num)
 	for i := uint64(0); i < num; i++ {
 		block := generateBlock(i + startHeight)
+		copy(block.Header.NextSequencersHash[:], proposerHash[:])
+		copy(block.Header.DataHash[:], types.GetDataHash(block))
+		if i > 0 {
+			copy(block.Header.LastCommitHash[:], types.GetLastCommitHash(&blocks[i-1].LastCommit, &block.Header))
+		}
 
 		signature, err := generateSignature(proposerKey, &block.Header)
 		if err != nil {

@@ -64,9 +64,9 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		}
 
 		// If failed here, after the app committed, but before the state is updated, we'll update the state on
-		// UpdateStateFromApp using the saved responses and validators.
+		// UpdateStateFromApp using the saved responses
 
-		// Update the state with the new app hash, last validators and store height from the commit.
+		// Update the state with the new app hash, and store height from the commit.
 		// Every one of those, if happens before commit, prevents us from re-executing the block in case failed during commit.
 		m.Executor.UpdateStateAfterCommit(m.State, responses, appHash, block.Header.Height)
 	}
@@ -74,7 +74,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	// update validators to state from block
 	m.Executor.UpdateValidatorsAfterCommit(m.State, block)
 
-	// FIXME: save validators to store to be queried over RPC
+	// save validators to store to be queried over RPC
 	batch := m.Store.NewBatch()
 	batch, err = m.Store.SaveValidators(block.Header.Height, m.State.ActiveSequencer.BondedSet, batch)
 	if err != nil {

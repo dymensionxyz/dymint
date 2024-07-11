@@ -100,3 +100,15 @@ type Signature []byte
 type IntermediateStateRoots struct {
 	RawRootsList [][]byte
 }
+
+func GetLastCommitHash(lastCommit *Commit, header *Header) []byte {
+	lastABCICommit := ToABCICommit(lastCommit, header)
+	return lastABCICommit.Hash()
+}
+
+func GetDataHash(block *Block) []byte {
+	abciData := tmtypes.Data{
+		Txs: ToABCIBlockDataTxs(&block.Data),
+	}
+	return abciData.Hash()
+}

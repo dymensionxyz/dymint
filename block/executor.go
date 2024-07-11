@@ -117,8 +117,10 @@ func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHead
 		},
 		LastCommit: *lastCommit,
 	}
-	copy(block.Header.LastCommitHash[:], e.getLastCommitHash(lastCommit, &block.Header))
-	copy(block.Header.DataHash[:], e.getDataHash(block))
+	copy(block.Header.LastCommitHash[:], types.GetLastCommitHash(lastCommit, &block.Header))
+	copy(block.Header.DataHash[:], types.GetDataHash(block))
+
+	//TODO: should be set to the next proposer
 	copy(block.Header.NextSequencersHash[:], state.ActiveSequencer.ProposerHash)
 
 	return block
@@ -226,18 +228,6 @@ func (e *Executor) ExecuteBlock(state *types.State, block *types.Block) (*tmstat
 	}
 
 	return abciResponses, nil
-}
-
-func (e *Executor) getLastCommitHash(lastCommit *types.Commit, header *types.Header) []byte {
-	lastABCICommit := types.ToABCICommit(lastCommit, header)
-	return lastABCICommit.Hash()
-}
-
-func (e *Executor) getDataHash(block *types.Block) []byte {
-	abciData := tmtypes.Data{
-		Txs: types.ToABCIBlockDataTxs(&block.Data),
-	}
-	return abciData.Hash()
 }
 
 func (e *Executor) publishEvents(resp *tmstate.ABCIResponses, block *types.Block) error {

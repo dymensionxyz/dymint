@@ -217,6 +217,7 @@ func (m *Manager) UpdateBondedSequencerSet() error {
 
 		newSet.Validators = append(newSet.Validators, val)
 	}
+	//FIXME: do only on changes
 	m.State.ActiveSequencer.SetBondedSet(newSet)
 	return nil
 }

@@ -203,14 +203,15 @@ func TestProducePendingBlock(t *testing.T) {
 	require.NoError(t, err)
 	// Generate block and commit and save it to the store
 	block := testutil.GetRandomBlock(1, 3)
+	copy(block.Header.NextSequencersHash[:], manager.State.ActiveSequencer.ProposerHash)
+
 	_, err = manager.Store.SaveBlock(block, &block.LastCommit, nil)
 	require.NoError(t, err)
 	// Produce block
 	_, _, err = manager.ProduceAndGossipBlock(context.Background(), true)
 	require.NoError(t, err)
-	// Validate state is updated with the block that was saved in the store
 
-	// TODO: fix this test
+	// Validate state is updated with the block that was saved in the store
 	// hacky way to validate the block was indeed contain txs
 	assert.NotEqual(t, manager.State.LastResultsHash, testutil.GetEmptyLastResultsHash())
 }
@@ -292,13 +293,13 @@ func TestProduceBlockFailAfterCommit(t *testing.T) {
 				LastBlockHeight:  tc.LastAppBlockHeight,
 				LastBlockAppHash: tc.LastAppCommitHash[:],
 			})
-			mockStore.ShoudFailSaveState = tc.shoudFailOnSaveState
+			mockStore.ShouldFailUpdateStateWithBatch = tc.shoudFailOnSaveState
 			_, _, _ = manager.ProduceAndGossipBlock(context.Background(), true)
 			storeState, err := manager.Store.LoadState()
 			assert.NoError(err)
 			manager.State = storeState
-			assert.Equal(tc.expectedStoreHeight, storeState.Height(), tc.name)
-			assert.Equal(tc.expectedStateAppHash, storeState.AppHash, tc.name)
+			require.Equal(tc.expectedStoreHeight, storeState.Height(), tc.name)
+			require.Equal(tc.expectedStateAppHash, storeState.AppHash, tc.name)
 
 			app.On("Commit", mock.Anything).Unset()
 			app.On("Info", mock.Anything).Unset()
