@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 
 	"code.cloudfoundry.org/go-diodes"
+	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"golang.org/x/sync/errgroup"
 
@@ -143,6 +144,11 @@ func (m *Manager) Start(ctx context.Context) error {
 		}
 	}
 
+	err := m.UpdateBondedSequencerSet()
+	if err != nil {
+		return fmt.Errorf("update bonded sequencer set: %w", err)
+	}
+
 	isSequencer := m.IsSequencer()
 	m.logger.Info("sequencer mode", "isSequencer", isSequencer)
 
@@ -153,7 +159,7 @@ func (m *Manager) Start(ctx context.Context) error {
 
 	// TODO: populate the accumulatedSize on startup
 
-	err := m.syncBlockManager()
+	err = m.syncBlockManager()
 	if err != nil {
 		return fmt.Errorf("sync block manager: %w", err)
 	}
@@ -188,6 +194,31 @@ func (m *Manager) IsSequencer() bool {
 
 func (m *Manager) NextHeightToSubmit() uint64 {
 	return m.LastSubmittedHeight.Load() + 1
+}
+
+// add bonded sequencers to the seqSet without changing the proposer
+func (m *Manager) UpdateBondedSequencerSet() error {
+	seqs, err := m.SLClient.GetSequencers()
+	if err != nil {
+		return err
+	}
+	newSet := m.State.ActiveSequencer.BondedSet
+	for _, seq := range seqs {
+		tmPubKey, err := cryptocodec.ToTmPubKeyInterface(seq.PublicKey)
+		if err != nil {
+			return err
+		}
+
+		val := tmtypes.NewValidator(tmPubKey, 1)
+		// check if not exists already
+		if newSet.HasAddress(val.Address) {
+			continue
+		}
+
+		newSet.Validators = append(newSet.Validators, val)
+	}
+	m.State.ActiveSequencer.SetBondedSet(newSet)
+	return nil
 }
 
 // syncBlockManager enforces the node to be synced on initial run.
