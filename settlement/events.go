@@ -3,7 +3,6 @@ package settlement
 import (
 	"fmt"
 
-	"github.com/dymensionxyz/dymint/types"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
 )
 
@@ -41,7 +40,7 @@ func (e EventDataNewBatchAccepted) String() string {
 
 type EventDataSequencersListUpdated struct {
 	// Sequencers is the list of new sequencers
-	Sequencers []types.Sequencer
+	Sequencers []Sequencer
 }
 
 // Queries

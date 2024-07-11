@@ -1,6 +1,7 @@
 package settlement
 
 import (
+	crypto "github.com/cosmos/cosmos-sdk/crypto/types"
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/tendermint/tendermint/libs/pubsub"
@@ -73,9 +74,29 @@ type ClientI interface {
 	GetBatchAtIndex(index uint64) (*ResultRetrieveBatch, error)
 
 	// GetSequencersList returns the list of the sequencers for this chain.
-	GetSequencers() ([]*types.Sequencer, error)
+	GetSequencers() ([]*Sequencer, error)
 	// GetProposer returns the current proposer for this chain.
-	GetProposer() *types.Sequencer
+	GetProposer() *Sequencer
 
 	GetHeightState(uint64) (*ResultGetHeightState, error)
+}
+
+// TODO: remove this, as we can use the sequencers objects directly
+
+// SequencerStatus defines the operating status of a sequencer
+type SequencerStatus int32
+
+const (
+	// Proposer defines a sequencer that is currently the proposer
+	Proposer SequencerStatus = iota
+	// Inactive defines a sequencer that is currently inactive
+	Inactive
+)
+
+// Sequencer represents a sequencer of the rollapp
+type Sequencer struct {
+	// PublicKey is the public key of the sequencer
+	PublicKey crypto.PubKey
+	// Status is status of the sequencer
+	Status SequencerStatus
 }

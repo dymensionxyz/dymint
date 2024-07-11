@@ -12,7 +12,7 @@ import (
 )
 
 type GetProposerI interface {
-	GetExpectedProposerPubKey() (tmcrypto.PubKey, error)
+	GetProposerPubKey() tmcrypto.PubKey
 }
 
 // GossipValidator is a callback function type.

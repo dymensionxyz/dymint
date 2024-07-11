@@ -16,6 +16,7 @@ import (
 	uevent "github.com/dymensionxyz/dymint/utils/event"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
+	tmcrypto "github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	tmtypes "github.com/tendermint/tendermint/types"
 
@@ -178,7 +179,7 @@ func (m *Manager) Start(ctx context.Context) error {
 }
 
 func (m *Manager) IsSequencer() bool {
-	expectedProposer := m.State.NextValidators.Proposer.PubKey.Bytes()
+	expectedProposer := m.GetProposerPubKey().Bytes()
 	localProposerKey, _ := m.LocalKey.GetPublic().Raw() //already validated on manager creation
 	return bytes.Equal(expectedProposer, localProposerKey)
 }
@@ -208,4 +209,9 @@ func (m *Manager) syncBlockManager() error {
 
 	m.logger.Info("Synced.", "current height", m.State.Height(), "last submitted height", m.LastSubmittedHeight.Load())
 	return nil
+}
+
+// get proposer pubkey
+func (m *Manager) GetProposerPubKey() tmcrypto.PubKey {
+	return m.State.ActiveSequencer.GetProposerPubKey()
 }

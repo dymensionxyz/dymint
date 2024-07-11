@@ -96,7 +96,7 @@ func (h *Header) ToProto() *pb.Header {
 		AppHash:         h.AppHash[:],
 		LastResultsHash: h.LastResultsHash[:],
 		ProposerAddress: h.ProposerAddress[:],
-		SequencersHash:  h.SequencersHash[:],
+		SequencersHash:  h.NextSequencersHash[:],
 	}
 }
 
@@ -125,7 +125,7 @@ func (h *Header) FromProto(other *pb.Header) error {
 	if !safeCopy(h.LastResultsHash[:], other.LastResultsHash) {
 		return errors.New("invalid length of 'LastResultsHash'")
 	}
-	if !safeCopy(h.SequencersHash[:], other.SequencersHash) {
+	if !safeCopy(h.NextSequencersHash[:], other.SequencersHash) {
 		return errors.New("invalid length of 'SequencersHash'")
 	}
 	if len(other.ProposerAddress) > 0 {
@@ -239,22 +239,20 @@ func (c *Commit) FromProto(other *pb.Commit) error {
 
 // ToProto converts State into protobuf representation and returns it.
 func (s *State) ToProto() (*pb.State, error) {
-	nextValidators, err := s.NextValidators.ToProto()
-	if err != nil {
-		return nil, err
-	}
-	validators, err := s.Validators.ToProto()
+	seqsProto, err := s.ActiveSequencer.BondedSet.ToProto()
 	if err != nil {
 		return nil, err
 	}
 
+	// FIXME: the proposerHash not written to the state file
+
 	return &pb.State{
-		Version:                          &s.Version,
-		ChainId:                          s.ChainID,
-		InitialHeight:                    int64(s.InitialHeight),
-		LastBlockHeight:                  int64(s.LastBlockHeight.Load()),
-		NextValidators:                   nextValidators,
-		Validators:                       validators,
+		Version:         &s.Version,
+		ChainId:         s.ChainID,
+		InitialHeight:   int64(s.InitialHeight),
+		LastBlockHeight: int64(s.LastBlockHeight.Load()),
+		// NextValidators:                   nextValidators,
+		Validators:                       seqsProto,
 		BaseHeight:                       s.BaseHeight,
 		LastHeightValidatorsChanged:      s.LastHeightValidatorsChanged,
 		ConsensusParams:                  s.ConsensusParams,
@@ -273,14 +271,13 @@ func (s *State) FromProto(other *pb.State) error {
 	s.LastBlockHeight.Store(uint64(other.LastBlockHeight))
 	s.BaseHeight = other.BaseHeight
 
-	s.NextValidators, err = types.ValidatorSetFromProto(other.NextValidators)
+	tmpSet, err := types.ValidatorSetFromProto(other.Validators)
 	if err != nil {
 		return err
 	}
-	s.Validators, err = types.ValidatorSetFromProto(other.Validators)
-	if err != nil {
-		return err
-	}
+
+	s.ActiveSequencer.SetBondedSet(tmpSet)
+
 	s.LastHeightValidatorsChanged = other.LastHeightValidatorsChanged
 	s.ConsensusParams = other.ConsensusParams
 	s.LastHeightConsensusParamsChanged = other.LastHeightConsensusParamsChanged

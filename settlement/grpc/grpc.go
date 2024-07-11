@@ -215,21 +215,21 @@ func (c *Client) GetHeightState(index uint64) (*settlement.ResultGetHeightState,
 }
 
 // GetProposer implements settlement.ClientI.
-func (c *Client) GetProposer() *types.Sequencer {
+func (c *Client) GetProposer() *settlement.Sequencer {
 	pubKeyBytes, err := hex.DecodeString(c.ProposerPubKey)
 	if err != nil {
 		return nil
 	}
 	var pubKey cryptotypes.PubKey = &ed25519.PubKey{Key: pubKeyBytes}
-	return &types.Sequencer{
+	return &settlement.Sequencer{
 		PublicKey: pubKey,
-		Status:    types.Proposer,
+		Status:    settlement.Proposer,
 	}
 }
 
 // GetSequencers implements settlement.ClientI.
-func (c *Client) GetSequencers() ([]*types.Sequencer, error) {
-	return []*types.Sequencer{c.GetProposer()}, nil
+func (c *Client) GetSequencers() ([]*settlement.Sequencer, error) {
+	return []*settlement.Sequencer{c.GetProposer()}, nil
 }
 
 func (c *Client) saveBatch(batch *settlement.Batch) error {

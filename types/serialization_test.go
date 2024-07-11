@@ -43,17 +43,17 @@ func TestBlockSerializationRoundTrip(t *testing.T) {
 					Block: 1,
 					App:   2,
 				},
-				NamespaceID:     [8]byte{},
-				Height:          3,
-				Time:            4567,
-				LastHeaderHash:  h[0],
-				LastCommitHash:  h[1],
-				DataHash:        h[2],
-				ConsensusHash:   h[3],
-				AppHash:         h[4],
-				LastResultsHash: h[5],
-				ProposerAddress: []byte{4, 3, 2, 1},
-				SequencersHash:  h[6],
+				NamespaceID:        [8]byte{},
+				Height:             3,
+				Time:               4567,
+				LastHeaderHash:     h[0],
+				LastCommitHash:     h[1],
+				DataHash:           h[2],
+				ConsensusHash:      h[3],
+				AppHash:            h[4],
+				LastResultsHash:    h[5],
+				ProposerAddress:    []byte{4, 3, 2, 1},
+				NextSequencersHash: h[6],
 			},
 			Data: types.Data{
 				Txs:                    nil,
@@ -97,8 +97,8 @@ func TestStateRoundTrip(t *testing.T) {
 		{
 			"with max bytes",
 			types.State{
-				Validators:     valSet,
-				NextValidators: valSet,
+				ActiveSequencer: valSet,
+				SequencersSet:   valSet,
 				ConsensusParams: tmproto.ConsensusParams{
 					Block: tmproto.BlockParams{
 						MaxBytes:   123,
@@ -120,8 +120,8 @@ func TestStateRoundTrip(t *testing.T) {
 				},
 				ChainID:                     "testchain",
 				InitialHeight:               987,
-				NextValidators:              valSet,
-				Validators:                  valSet,
+				SequencersSet:               valSet,
+				ActiveSequencer:             valSet,
 				LastHeightValidatorsChanged: 8272,
 				ConsensusParams: tmproto.ConsensusParams{
 					Block: tmproto.BlockParams{

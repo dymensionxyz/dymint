@@ -4,9 +4,9 @@ import (
 	"sync/atomic"
 
 	// TODO(tzdybal): copy to local project?
+
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	"github.com/tendermint/tendermint/types"
 )
 
 // State contains information about current state of the blockchain.
@@ -23,8 +23,7 @@ type State struct {
 	// BaseHeight is the height of the first block we have in store after pruning.
 	BaseHeight uint64
 
-	NextValidators              *types.ValidatorSet
-	Validators                  *types.ValidatorSet
+	ActiveSequencer             *SequencerSet
 	LastHeightValidatorsChanged int64
 
 	// Consensus parameters used for validating blocks.
@@ -61,3 +60,8 @@ func (s *State) NextHeight() uint64 {
 	}
 	return s.Height() + 1
 }
+
+// // get proposer pubkey
+// func (s *State) GetProposerPubKey() []byte {
+// 	return s.ActiveSequencer.GetProposerPubKey().Bytes()
+// }

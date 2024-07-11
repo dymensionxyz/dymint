@@ -57,7 +57,7 @@ type Client struct {
 	sequencerQueryClient    sequencertypes.QueryClient
 	protoCodec              *codec.ProtoCodec
 	eventMap                map[string]string
-	sequencerList           []*types.Sequencer
+	sequencerList           []*settlement.Sequencer
 	retryAttempts           uint
 	retryMinDelay           time.Duration
 	retryMaxDelay           time.Duration
@@ -301,14 +301,14 @@ func (c *Client) GetHeightState(h uint64) (*settlement.ResultGetHeightState, err
 }
 
 // GetProposer implements settlement.ClientI.
-func (c *Client) GetProposer() *types.Sequencer {
+func (c *Client) GetProposer() *settlement.Sequencer {
 	seqs, err := c.GetSequencers()
 	if err != nil {
 		c.logger.Error("Get sequencers", "error", err)
 		return nil
 	}
 	for _, sequencer := range seqs {
-		if sequencer.Status == types.Proposer {
+		if sequencer.Status == settlement.Proposer {
 			return sequencer
 		}
 	}
@@ -316,7 +316,7 @@ func (c *Client) GetProposer() *types.Sequencer {
 }
 
 // GetSequencers returns the bonded sequencers of the given rollapp.
-func (c *Client) GetSequencers() ([]*types.Sequencer, error) {
+func (c *Client) GetSequencers() ([]*settlement.Sequencer, error) {
 	if c.sequencerList != nil {
 		return c.sequencerList, nil
 	}
@@ -340,7 +340,7 @@ func (c *Client) GetSequencers() ([]*types.Sequencer, error) {
 		return nil, fmt.Errorf("empty response: %w", gerrc.ErrUnknown)
 	}
 
-	sequencersList := make([]*types.Sequencer, 0, len(res.Sequencers))
+	sequencersList := make([]*settlement.Sequencer, 0, len(res.Sequencers))
 	for _, sequencer := range res.Sequencers {
 		var pubKey cryptotypes.PubKey
 		err := c.protoCodec.UnpackAny(sequencer.DymintPubKey, &pubKey)
@@ -348,12 +348,12 @@ func (c *Client) GetSequencers() ([]*types.Sequencer, error) {
 			return nil, err
 		}
 
-		status := types.Inactive
+		status := settlement.Inactive
 		if sequencer.Proposer {
-			status = types.Proposer
+			status = settlement.Proposer
 		}
 
-		sequencersList = append(sequencersList, &types.Sequencer{
+		sequencersList = append(sequencersList, &settlement.Sequencer{
 			PublicKey: pubKey,
 			Status:    status,
 		})

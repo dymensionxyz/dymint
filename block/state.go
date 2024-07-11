@@ -1,6 +1,7 @@
 package block
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 
@@ -8,7 +9,6 @@ import (
 
 	"github.com/cometbft/cometbft/crypto/merkle"
 	abci "github.com/tendermint/tendermint/abci/types"
-	tmcrypto "github.com/tendermint/tendermint/crypto"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 	tmtypes "github.com/tendermint/tendermint/types"
@@ -56,13 +56,13 @@ func NewStateFromGenesis(genDoc *tmtypes.GenesisDoc) (*types.State, error) {
 	}
 
 	s := types.State{
-		Version:       InitStateVersion,
-		ChainID:       genDoc.ChainID,
+		Version: InitStateVersion,
+		ChainID: genDoc.ChainID,
+
 		InitialHeight: uint64(genDoc.InitialHeight),
+		BaseHeight:    uint64(genDoc.InitialHeight),
 
-		BaseHeight: uint64(genDoc.InitialHeight),
-
-		LastHeightValidatorsChanged: genDoc.InitialHeight,
+		ActiveSequencer: &types.SequencerSet{BondedSet: tmtypes.NewValidatorSet(nil)}, // genesis sequencer will be set on InitChain
 
 		ConsensusParams:                  *genDoc.ConsensusParams,
 		LastHeightConsensusParamsChanged: genDoc.InitialHeight,
@@ -88,10 +88,6 @@ func (m *Manager) UpdateStateFromApp() error {
 
 	// update the state with the hash, last store height and last validators.
 	m.Executor.UpdateStateAfterCommit(m.State, resp, proxyAppInfo.LastBlockAppHash, appHeight)
-	_, err = m.Store.SaveState(m.State, nil)
-	if err != nil {
-		return errorsmod.Wrap(err, "update state")
-	}
 	return nil
 }
 
@@ -132,9 +128,8 @@ func (e *Executor) UpdateStateAfterInitChain(s *types.State, res *abci.ResponseI
 	// We update the last results hash with the empty hash, to conform with RFC-6962.
 	copy(s.LastResultsHash[:], merkle.HashFromByteSlices(nil))
 
-	// Set the validators in the state
-	s.Validators = tmtypes.NewValidatorSet(validators).CopyIncrementProposerPriority(1)
-	s.NextValidators = s.Validators.Copy()
+	// Set the genesis sequencers in the state
+	s.ActiveSequencer.SetBondedSet(tmtypes.NewValidatorSet(validators))
 }
 
 func (e *Executor) UpdateMempoolAfterInitChain(s *types.State) {
@@ -150,11 +145,18 @@ func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResp
 	// TODO: load consensus params from endblock?
 
 	s.SetHeight(height)
-
-	//set activeSequencer!!!!
 }
 
-// review usage
-func (m *Manager) GetExpectedProposerPubKey() (tmcrypto.PubKey, error) {
-	return m.State.NextValidators.GetProposer().PubKey, nil
+// Update validators post commit
+func (e *Executor) UpdateValidatorsAfterCommit(s *types.State, block *types.Block) {
+	// no sequencer change
+	if bytes.Equal(s.ActiveSequencer.ProposerHash[:], block.Header.NextSequencersHash[:]) {
+		return
+	}
+
+	// if hash changed, update the active sequencer
+	err := s.ActiveSequencer.SetProposerByHash(block.Header.NextSequencersHash[:])
+	if err != nil {
+		panic(err)
+	}
 }

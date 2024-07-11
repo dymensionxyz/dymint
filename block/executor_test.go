@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/dymensionxyz/dymint/block"
+	"github.com/dymensionxyz/dymint/settlement"
 
 	"github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
 	"github.com/stretchr/testify/assert"
@@ -52,7 +53,7 @@ func TestCreateBlock(t *testing.T) {
 	state := &types.State{}
 	state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
 	state.ConsensusParams.Block.MaxGas = 100000
-	state.Validators = tmtypes.NewValidatorSet(nil)
+	state.ActiveSequencer = tmtypes.NewValidatorSet(nil)
 
 	// empty block
 	block := executor.CreateBlock(1, &types.Commit{}, [32]byte{}, state, maxBytes)
@@ -138,8 +139,7 @@ func TestApplyBlock(t *testing.T) {
 
 	// Init state
 	state := &types.State{
-		NextValidators: tmtypes.NewValidatorSet(nil),
-		Validators:     tmtypes.NewValidatorSet(nil),
+		ActiveSequencer: tmtypes.NewValidatorSet(nil),
 	}
 	state.InitialHeight = 1
 	state.LastBlockHeight.Store(0)
@@ -157,7 +157,7 @@ func TestApplyBlock(t *testing.T) {
 
 	// Create proposer for the block
 	proposerKey := ed25519.GenPrivKey()
-	proposer := &types.Sequencer{
+	proposer := &settlement.Sequencer{
 		PublicKey: proposerKey.PubKey(),
 	}
 	// Create commit for the block
@@ -180,7 +180,7 @@ func TestApplyBlock(t *testing.T) {
 	require.NotNil(resp)
 	appHash, _, err := executor.Commit(state, block, resp)
 	require.NoError(err)
-	executor.UpdateStateAfterCommit(state, resp, appHash, block.Header.Height, state.Validators)
+	executor.UpdateStateAfterCommit(state, resp, appHash, block.Header.Height, state.ActiveSequencer)
 	assert.Equal(uint64(1), state.Height())
 	assert.Equal(mockAppHash, state.AppHash)
 
@@ -229,7 +229,7 @@ func TestApplyBlock(t *testing.T) {
 	resp, err = executor.ExecuteBlock(state, block)
 	require.NoError(err)
 	require.NotNil(resp)
-	vals := state.NextValidators.Copy() // TODO: this will be changed when supporting multiple sequencers from the hub
+	vals := state.SequencersSet.Copy() // TODO: this will be changed when supporting multiple sequencers from the hub
 	_, _, err = executor.Commit(state, block, resp)
 	require.NoError(err)
 	executor.UpdateStateAfterCommit(state, resp, appHash, block.Header.Height, vals)

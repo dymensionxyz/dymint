@@ -65,10 +65,10 @@ func generateBlock(height uint64) *types.Block {
 			DataHash:       h[2],
 			ConsensusHash:  h[3],
 			// AppHash:         h[4],
-			AppHash:         [32]byte{},
-			LastResultsHash: GetEmptyLastResultsHash(),
-			ProposerAddress: []byte{4, 3, 2, 1},
-			SequencersHash:  h[6],
+			AppHash:            [32]byte{},
+			LastResultsHash:    GetEmptyLastResultsHash(),
+			ProposerAddress:    []byte{4, 3, 2, 1},
+			NextSequencersHash: h[6],
 		},
 		Data: types.Data{
 			Txs:                    nil,
@@ -205,8 +205,8 @@ func GenerateState(initialHeight int64, lastBlockHeight int64) *types.State {
 				App:   AppVersion,
 			},
 		},
-		Validators:     GenerateRandomValidatorSet(),
-		NextValidators: GenerateRandomValidatorSet(),
+		ActiveSequencer: GenerateRandomValidatorSet(),
+		SequencersSet:   GenerateRandomValidatorSet(),
 	}
 	s.LastBlockHeight.Store(uint64(lastBlockHeight))
 	return s

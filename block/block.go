@@ -17,6 +17,7 @@ import (
 // - block height is the expected block height on the store (height + 1).
 // - block height is the expected block height on the app (last block height + 1).
 func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMetaData blockMetaData) error {
+	var retainHeight int64
 	// TODO: add switch case to have defined behavior for each case.
 	// validate block height
 	if block.Header.Height != m.State.NextHeight() {
@@ -39,37 +40,44 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		if err != nil {
 			return fmt.Errorf("update state from app: %w", err)
 		}
-		m.logger.Debug("Aligned with app state required. Skipping to next block", "height", block.Header.Height)
-		return nil
-	}
-	// Start applying the block assuming no inconsistency was found.
-	_, err = m.Store.SaveBlock(block, commit, nil)
-	if err != nil {
-		return fmt.Errorf("save block: %w", err)
+		m.logger.Debug("updated state from app commit", "height", block.Header.Height)
+	} else {
+		// Start applying the block assuming no inconsistency was found.
+		_, err = m.Store.SaveBlock(block, commit, nil)
+		if err != nil {
+			return fmt.Errorf("save block: %w", err)
+		}
+
+		responses, err := m.Executor.ExecuteBlock(m.State, block)
+		if err != nil {
+			return fmt.Errorf("execute block: %w", err)
+		}
+
+		_, err = m.Store.SaveBlockResponses(block.Header.Height, responses, nil)
+		if err != nil {
+			return fmt.Errorf("save block responses: %w", err)
+		}
+
+		// Commit block to app
+		var appHash []byte
+		appHash, retainHeight, err = m.Executor.Commit(m.State, block, responses)
+		if err != nil {
+			return fmt.Errorf("commit block: %w", err)
+		}
+
+		// If failed here, after the app committed, but before the state is updated, we'll update the state on
+		// UpdateStateFromApp using the saved responses and validators.
+
+		// Update the state with the new app hash, last validators and store height from the commit.
+		// Every one of those, if happens before commit, prevents us from re-executing the block in case failed during commit.
+		m.Executor.UpdateStateAfterCommit(m.State, responses, appHash, block.Header.Height)
 	}
 
-	responses, err := m.Executor.ExecuteBlock(m.State, block)
-	if err != nil {
-		return fmt.Errorf("execute block: %w", err)
-	}
+	// update validators to state from block
+	m.Executor.UpdateValidatorsAfterCommit(m.State, block)
 
-	_, err = m.Store.SaveBlockResponses(block.Header.Height, responses, nil)
-	if err != nil {
-		return fmt.Errorf("save block responses: %w", err)
-	}
+	// FIXME: save validators to store to be queried over RPC
 
-	// Commit block to app
-	appHash, retainHeight, err := m.Executor.Commit(m.State, block, responses)
-	if err != nil {
-		return fmt.Errorf("commit block: %w", err)
-	}
-
-	// If failed here, after the app committed, but before the state is updated, we'll update the state on
-	// UpdateStateFromApp using the saved responses and validators.
-
-	// Update the state with the new app hash, last validators and store height from the commit.
-	// Every one of those, if happens before commit, prevents us from re-executing the block in case failed during commit.
-	m.Executor.UpdateStateAfterCommit(m.State, responses, appHash, block.Header.Height)
 	_, err = m.Store.SaveState(m.State, nil)
 	if err != nil {
 		return fmt.Errorf("update state: %w", err)
@@ -178,7 +186,7 @@ func (m *Manager) ValidateCommit(b *types.Block, c *types.Commit) error {
 		return err
 	}
 
-	proposerKey := m.State.NextValidators.GetProposer().PubKey
+	proposerKey := m.State.ActiveSequencer.GetProposerPubKey()
 	if err = c.Validate(proposerKey, abciHeaderBytes); err != nil {
 		return err
 	}

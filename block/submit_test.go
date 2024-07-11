@@ -20,6 +20,7 @@ import (
 	"github.com/dymensionxyz/dymint/block"
 	"github.com/dymensionxyz/dymint/config"
 	slmocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/settlement"
+	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
 )
@@ -146,7 +147,7 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 	require.NoError(err)
 
 	cosmosPrivKey := cosmosed25519.PrivKey{Key: priv}
-	proposer := &types.Sequencer{
+	proposer := &settlement.Sequencer{
 		PublicKey: cosmosPrivKey.PubKey(),
 	}
 
