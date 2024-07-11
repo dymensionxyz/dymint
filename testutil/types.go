@@ -183,13 +183,9 @@ func GenerateBatch(startHeight uint64, endHeight uint64, proposerKey crypto.Priv
 
 // GenerateRandomValidatorSet generates random validator sets
 func GenerateRandomValidatorSet() *tmtypes.ValidatorSet {
-	pubKey := ed25519.GenPrivKey().PubKey()
-	return &tmtypes.ValidatorSet{
-		Proposer: &tmtypes.Validator{PubKey: pubKey, Address: pubKey.Address()},
-		Validators: []*tmtypes.Validator{
-			{PubKey: pubKey, Address: pubKey.Address()},
-		},
-	}
+	return tmtypes.NewValidatorSet([]*tmtypes.Validator{
+		tmtypes.NewValidator(ed25519.GenPrivKey().PubKey(), 1),
+	})
 }
 
 // GenerateState generates an initial state for testing.
@@ -205,9 +201,8 @@ func GenerateState(initialHeight int64, lastBlockHeight int64) *types.State {
 				App:   AppVersion,
 			},
 		},
-		ActiveSequencer: GenerateRandomValidatorSet(),
-		SequencersSet:   GenerateRandomValidatorSet(),
 	}
+	s.ActiveSequencer.SetBondedSet(GenerateRandomValidatorSet())
 	s.LastBlockHeight.Store(uint64(lastBlockHeight))
 	return s
 }
@@ -261,14 +256,4 @@ func GetRandomBlock(height uint64, nTxs int) *types.Block {
 	}
 
 	return block
-}
-
-func GetRandomValidatorSet() *tmtypes.ValidatorSet {
-	pubKey := ed25519.GenPrivKey().PubKey()
-	return &tmtypes.ValidatorSet{
-		Proposer: &tmtypes.Validator{PubKey: pubKey, Address: pubKey.Address()},
-		Validators: []*tmtypes.Validator{
-			{PubKey: pubKey, Address: pubKey.Address()},
-		},
-	}
 }

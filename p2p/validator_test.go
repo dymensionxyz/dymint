@@ -1,10 +1,8 @@
 package p2p_test
 
 import (
-	"encoding/hex"
 	"testing"
 
-	"github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
 	mempoolv1 "github.com/dymensionxyz/dymint/mempool/v1"
 	"github.com/dymensionxyz/dymint/types"
 
@@ -12,8 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	abci "github.com/tendermint/tendermint/abci/types"
+	tmed25519 "github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/proxy"
 
 	cfg "github.com/tendermint/tendermint/config"
@@ -22,12 +20,11 @@ import (
 	"github.com/dymensionxyz/dymint/block"
 	"github.com/dymensionxyz/dymint/mempool"
 
+	p2pmock "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/p2p"
 	tmmocks "github.com/dymensionxyz/dymint/mocks/github.com/tendermint/tendermint/abci/types"
 
 	nodemempool "github.com/dymensionxyz/dymint/node/mempool"
 	"github.com/dymensionxyz/dymint/p2p"
-	"github.com/dymensionxyz/dymint/settlement"
-	"github.com/dymensionxyz/dymint/settlement/registry"
 )
 
 func TestValidator_TxValidator(t *testing.T) {
@@ -96,13 +93,13 @@ func TestValidator_TxValidator(t *testing.T) {
 
 func TestValidator_BlockValidator(t *testing.T) {
 	// Create proposer for the block
-	proposerKey := ed25519.GenPrivKey()
+	proposerKey := tmed25519.GenPrivKey()
 	// Create another key
-	attackerKey := ed25519.GenPrivKey()
+	attackerKey := tmed25519.GenPrivKey()
 
 	tests := []struct {
 		name        string
-		proposerKey *ed25519.PrivKey
+		proposerKey tmed25519.PrivKey
 		valid       bool
 	}{
 		{
@@ -134,20 +131,15 @@ func TestValidator_BlockValidator(t *testing.T) {
 			// Create state
 			maxBytes := uint64(100)
 			state := types.State{}
+			//TODO: set proposer
 			state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
 			state.ConsensusParams.Block.MaxGas = 100000
-			state.ActiveSequencer = tmtypes.NewValidatorSet(nil)
 
 			// Create empty block
 			block := executor.CreateBlock(1, &types.Commit{}, [32]byte{}, &state, maxBytes)
 
-			// Create slclient
-			client := registry.GetClient(registry.Local)
-			pubsubServer := pubsub.NewServer()
-			err = pubsubServer.Start()
-			require.NoError(t, err)
-			err = client.Init(settlement.Config{ProposerPubKey: hex.EncodeToString(proposerKey.PubKey().Bytes())}, pubsubServer, log.TestingLogger())
-			require.NoError(t, err)
+			getProposer := &p2pmock.MockGetProposerI{}
+			getProposer.On("GetProposerPubKey").Return(proposerKey.PubKey())
 
 			// Create commit for the block
 			abciHeaderPb := types.ToABCIHeaderPB(&block.Header)
@@ -177,7 +169,7 @@ func TestValidator_BlockValidator(t *testing.T) {
 			}
 
 			// Check block validity
-			validateBlock := p2p.NewValidator(logger, client).BlockValidator()
+			validateBlock := p2p.NewValidator(logger, getProposer).BlockValidator()
 			valid := validateBlock(blockMsg)
 			require.Equal(t, tt.valid, valid)
 		})

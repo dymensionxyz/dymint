@@ -275,7 +275,6 @@ func (s *State) FromProto(other *pb.State) error {
 	if err != nil {
 		return err
 	}
-
 	s.ActiveSequencer.SetBondedSet(tmpSet)
 
 	s.LastHeightValidatorsChanged = other.LastHeightValidatorsChanged

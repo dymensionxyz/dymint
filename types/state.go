@@ -23,7 +23,7 @@ type State struct {
 	// BaseHeight is the height of the first block we have in store after pruning.
 	BaseHeight uint64
 
-	ActiveSequencer             *SequencerSet
+	ActiveSequencer             SequencerSet
 	LastHeightValidatorsChanged int64
 
 	// Consensus parameters used for validating blocks.

@@ -97,17 +97,20 @@ func GetManagerWithProposerKey(conf config.BlockManagerConfig, proposerKey crypt
 	if err != nil {
 		return nil, err
 	}
-	p2pValidator := p2p.NewValidator(logger, settlementlc)
-	p2pClient.SetTxValidator(p2pValidator.TxValidator(mp, mpIDs))
-	p2pClient.SetBlockValidator(p2pValidator.BlockValidator())
-
-	if err = p2pClient.Start(context.Background()); err != nil {
-		return nil, err
-	}
 
 	manager, err := block.NewManager(proposerKey, conf, genesis, managerStore, mp, proxyApp, dalc, settlementlc, nil,
 		pubsubServer, p2pClient, logger)
 	if err != nil {
+		return nil, err
+	}
+
+	p2pValidator := p2p.NewValidator(logger, manager)
+	p2pClient.SetTxValidator(p2pValidator.TxValidator(mp, mpIDs))
+	p2pClient.SetBlockValidator(p2pValidator.BlockValidator())
+
+	manager.P2PClient = p2pClient
+
+	if err = p2pClient.Start(context.Background()); err != nil {
 		return nil, err
 	}
 	return manager, nil

@@ -75,10 +75,20 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	m.Executor.UpdateValidatorsAfterCommit(m.State, block)
 
 	// FIXME: save validators to store to be queried over RPC
+	batch := m.Store.NewBatch()
+	batch, err = m.Store.SaveValidators(block.Header.Height, m.State.ActiveSequencer.BondedSet, batch)
+	if err != nil {
+		return fmt.Errorf("save validators: %w", err)
+	}
 
-	_, err = m.Store.SaveState(m.State, nil)
+	batch, err = m.Store.SaveState(m.State, batch)
 	if err != nil {
 		return fmt.Errorf("update state: %w", err)
+	}
+
+	err = batch.Commit()
+	if err != nil {
+		return fmt.Errorf("commit state: %w", err)
 	}
 
 	// Prune old heights, if requested by ABCI app.

@@ -62,7 +62,7 @@ func NewStateFromGenesis(genDoc *tmtypes.GenesisDoc) (*types.State, error) {
 		InitialHeight: uint64(genDoc.InitialHeight),
 		BaseHeight:    uint64(genDoc.InitialHeight),
 
-		ActiveSequencer: &types.SequencerSet{BondedSet: tmtypes.NewValidatorSet(nil)}, // genesis sequencer will be set on InitChain
+		ActiveSequencer: types.SequencerSet{BondedSet: tmtypes.NewValidatorSet(nil)}, // genesis sequencer will be set on InitChain
 
 		ConsensusParams:                  *genDoc.ConsensusParams,
 		LastHeightConsensusParamsChanged: genDoc.InitialHeight,

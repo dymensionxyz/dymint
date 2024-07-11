@@ -7,12 +7,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/crypto/ed25519"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
-	tmtypes "github.com/tendermint/tendermint/types"
 
+	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
 	pb "github.com/dymensionxyz/dymint/types/pb/dymint"
 )
@@ -88,7 +87,7 @@ func TestBlockSerializationRoundTrip(t *testing.T) {
 func TestStateRoundTrip(t *testing.T) {
 	t.Parallel()
 
-	valSet := getRandomValidatorSet()
+	valSet := testutil.GenerateRandomValidatorSet()
 
 	cases := []struct {
 		name  string
@@ -97,8 +96,6 @@ func TestStateRoundTrip(t *testing.T) {
 		{
 			"with max bytes",
 			types.State{
-				ActiveSequencer: valSet,
-				SequencersSet:   valSet,
 				ConsensusParams: tmproto.ConsensusParams{
 					Block: tmproto.BlockParams{
 						MaxBytes:   123,
@@ -120,8 +117,6 @@ func TestStateRoundTrip(t *testing.T) {
 				},
 				ChainID:                     "testchain",
 				InitialHeight:               987,
-				SequencersSet:               valSet,
-				ActiveSequencer:             valSet,
 				LastHeightValidatorsChanged: 8272,
 				ConsensusParams: tmproto.ConsensusParams{
 					Block: tmproto.BlockParams{
@@ -153,6 +148,8 @@ func TestStateRoundTrip(t *testing.T) {
 			require := require.New(t)
 			assert := assert.New(t)
 
+			c.state.ActiveSequencer.SetBondedSet(valSet)
+
 			if c.state.InitialHeight != 0 {
 				c.state.LastBlockHeight.Store(986321)
 			}
@@ -175,16 +172,5 @@ func TestStateRoundTrip(t *testing.T) {
 
 			assert.Equal(c.state, newState)
 		})
-	}
-}
-
-// copied from store_test.go
-func getRandomValidatorSet() *tmtypes.ValidatorSet {
-	pubKey := ed25519.GenPrivKey().PubKey()
-	return &tmtypes.ValidatorSet{
-		Proposer: &tmtypes.Validator{PubKey: pubKey, Address: pubKey.Address()},
-		Validators: []*tmtypes.Validator{
-			{PubKey: pubKey, Address: pubKey.Address()},
-		},
 	}
 }

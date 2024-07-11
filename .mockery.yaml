@@ -32,5 +32,10 @@ packages:
   github.com/dymensionxyz/dymint/da:
     interfaces:
      DataAvailabilityLayerClient:
+  github.com/dymensionxyz/dymint/p2p:
+    interfaces:
+     GetProposerI:
+  
+  
 
 

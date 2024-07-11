@@ -89,15 +89,13 @@ func TestLoadState(t *testing.T) {
 
 	assert := assert.New(t)
 
-	validatorSet := testutil.GetRandomValidatorSet()
+	validatorSet := testutil.GenerateRandomValidatorSet()
 
 	kv := store.NewDefaultInMemoryKVStore()
 	s1 := store.New(kv)
 	expectedHeight := uint64(10)
-	s := &types.State{
-		SequencersSet:   validatorSet,
-		ActiveSequencer: validatorSet,
-	}
+	s := &types.State{}
+	s.ActiveSequencer.SetBondedSet(validatorSet)
 	s.LastBlockHeight.Store(expectedHeight)
 	_, err := s1.SaveState(s, nil)
 	assert.NoError(err)
