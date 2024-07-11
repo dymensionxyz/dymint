@@ -144,7 +144,7 @@ func (m *Manager) Start(ctx context.Context) error {
 		}
 	}
 
-	err := m.UpdateBondedSequencerSet()
+	err := m.UpdateBondedSequencerSetFromSL()
 	if err != nil {
 		return fmt.Errorf("update bonded sequencer set: %w", err)
 	}
@@ -197,19 +197,19 @@ func (m *Manager) NextHeightToSubmit() uint64 {
 }
 
 // add bonded sequencers to the seqSet without changing the proposer
-func (m *Manager) UpdateBondedSequencerSet() error {
+func (m *Manager) UpdateBondedSequencerSetFromSL() error {
 	seqs, err := m.SLClient.GetSequencers()
 	if err != nil {
 		return err
 	}
-	newSet := m.State.ActiveSequencer.BondedSet
+	newSet := m.State.ActiveSequencer.BondedSet.Copy()
 	for _, seq := range seqs {
 		tmPubKey, err := cryptocodec.ToTmPubKeyInterface(seq.PublicKey)
 		if err != nil {
 			return err
 		}
-
 		val := tmtypes.NewValidator(tmPubKey, 1)
+
 		// check if not exists already
 		if newSet.HasAddress(val.Address) {
 			continue
@@ -217,8 +217,10 @@ func (m *Manager) UpdateBondedSequencerSet() error {
 
 		newSet.Validators = append(newSet.Validators, val)
 	}
-	//FIXME: do only on changes
-	m.State.ActiveSequencer.SetBondedSet(newSet)
+	// update state on changes
+	if len(newSet.Validators) != len(m.State.ActiveSequencer.BondedSet.Validators) {
+		m.State.ActiveSequencer.SetBondedSet(newSet)
+	}
 	return nil
 }
 

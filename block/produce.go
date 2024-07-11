@@ -39,7 +39,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) (err error) {
 			return
 		case <-ticker.C:
 			// if empty blocks are configured to be enabled, and one is scheduled...
-			produceEmptyBlock := firstBlock || 0 == m.Conf.MaxIdleTime || nextEmptyBlock.Before(time.Now())
+			produceEmptyBlock := firstBlock || m.Conf.MaxIdleTime == 0 || nextEmptyBlock.Before(time.Now())
 			firstBlock = false
 
 			var (

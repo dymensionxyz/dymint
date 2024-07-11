@@ -24,9 +24,9 @@ message State {
 
   reserved 7;
 
-  tendermint.types.ValidatorSet next_validators = 8;
+  tendermint.types.ValidatorSet next_validators = 8 [deprecated = true];
   tendermint.types.ValidatorSet validators = 9;
-  tendermint.types.ValidatorSet last_validators = 10;
+  tendermint.types.ValidatorSet last_validators = 10 [deprecated = true];
   int64 last_height_validators_changed = 11;
 
   tendermint.types.ConsensusParams consensus_params = 12 [(gogoproto.nullable) = false];

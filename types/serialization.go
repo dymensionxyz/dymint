@@ -86,17 +86,17 @@ func (h *Header) ToProto() *pb.Header {
 			Block: h.Version.Block,
 			App:   h.Version.App,
 		},
-		Height:          h.Height,
-		Time:            h.Time,
-		ChainId:         h.ChainID,
-		LastHeaderHash:  h.LastHeaderHash[:],
-		LastCommitHash:  h.LastCommitHash[:],
-		DataHash:        h.DataHash[:],
-		ConsensusHash:   h.ConsensusHash[:],
-		AppHash:         h.AppHash[:],
-		LastResultsHash: h.LastResultsHash[:],
-		ProposerAddress: h.ProposerAddress[:],
-		SequencersHash:  h.NextSequencersHash[:],
+		Height:            h.Height,
+		Time:              h.Time,
+		ChainId:           h.ChainID,
+		LastHeaderHash:    h.LastHeaderHash[:],
+		LastCommitHash:    h.LastCommitHash[:],
+		DataHash:          h.DataHash[:],
+		ConsensusHash:     h.ConsensusHash[:],
+		AppHash:           h.AppHash[:],
+		LastResultsHash:   h.LastResultsHash[:],
+		ProposerAddress:   h.ProposerAddress[:],
+		NextSequencerHash: h.NextSequencersHash[:],
 	}
 }
 
@@ -125,7 +125,7 @@ func (h *Header) FromProto(other *pb.Header) error {
 	if !safeCopy(h.LastResultsHash[:], other.LastResultsHash) {
 		return errors.New("invalid length of 'LastResultsHash'")
 	}
-	if !safeCopy(h.NextSequencersHash[:], other.SequencersHash) {
+	if !safeCopy(h.NextSequencersHash[:], other.NextSequencerHash) {
 		return errors.New("invalid length of 'SequencersHash'")
 	}
 	if len(other.ProposerAddress) > 0 {
@@ -244,14 +244,11 @@ func (s *State) ToProto() (*pb.State, error) {
 		return nil, err
 	}
 
-	// FIXME: the proposerHash not written to the state file
-
 	return &pb.State{
-		Version:         &s.Version,
-		ChainId:         s.ChainID,
-		InitialHeight:   int64(s.InitialHeight),
-		LastBlockHeight: int64(s.LastBlockHeight.Load()),
-		// NextValidators:                   nextValidators,
+		Version:                          &s.Version,
+		ChainId:                          s.ChainID,
+		InitialHeight:                    int64(s.InitialHeight),
+		LastBlockHeight:                  int64(s.LastBlockHeight.Load()),
 		Validators:                       seqsProto,
 		BaseHeight:                       s.BaseHeight,
 		LastHeightValidatorsChanged:      s.LastHeightValidatorsChanged,
