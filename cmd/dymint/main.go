@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	_ "net/http/pprof"
+	_ "net/http/pprof" // #nosec G108
 
 	"github.com/dymensionxyz/dymint/cmd/dymint/commands"
 	"github.com/dymensionxyz/dymint/config"
@@ -19,7 +19,8 @@ func main() {
 			// start a server on default serve mux
 			// pprof will use default serve mux to serve profiles
 			// profile can be e.g. "localhost:6060"
-			http.ListenAndServe(profile, nil)
+			//nolint:G114
+			_ = http.ListenAndServe(profile, nil) // #nosec G114
 		}()
 	}
 
