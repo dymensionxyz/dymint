@@ -14,11 +14,14 @@ import (
 )
 
 func main() {
-	go func() {
-		// start a server on default serve mux
-		// pprof will use default serve mux to serve profiles
-		http.ListenAndServe("localhost:6060", nil)
-	}()
+	if profile := os.Getenv("PROFILE_HOST_PORT"); profile != "" {
+		go func() {
+			// start a server on default serve mux
+			// pprof will use default serve mux to serve profiles
+			// profile can be e.g. "localhost:6060"
+			http.ListenAndServe(profile, nil)
+		}()
+	}
 
 	rootCmd := commands.RootCmd
 	rootCmd.AddCommand(
