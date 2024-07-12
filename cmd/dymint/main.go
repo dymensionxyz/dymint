@@ -1,8 +1,11 @@
 package main
 
 import (
+	"net/http"
 	"os"
 	"path/filepath"
+
+	_ "net/http/pprof"
 
 	"github.com/dymensionxyz/dymint/cmd/dymint/commands"
 	"github.com/dymensionxyz/dymint/config"
@@ -11,6 +14,12 @@ import (
 )
 
 func main() {
+	go func() {
+		// start a server on default serve mux
+		// pprof will use default serve mux to serve profiles
+		http.ListenAndServe("localhost:6060", nil)
+	}()
+
 	rootCmd := commands.RootCmd
 	rootCmd.AddCommand(
 		commands.InitFilesCmd,
