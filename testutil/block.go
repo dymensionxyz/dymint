@@ -150,6 +150,5 @@ func GetManagerConfig() config.BlockManagerConfig {
 		BlockBatchMaxSizeBytes: 1000000,
 		BatchSubmitMaxTime:     30 * time.Minute,
 		MaxSupportedBatchSkew:  10,
-		NamespaceID:            "0102030405060708",
 	}
 }

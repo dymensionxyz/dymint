@@ -12,7 +12,6 @@ const (
 	FlagBlockTime              = "dymint.block_time"
 	FlagMaxIdleTime            = "dymint.max_idle_time"
 	FlagBatchSubmitMaxTime     = "dymint.batch_submit_max_time"
-	FlagNamespaceID            = "dymint.namespace_id"
 	FlagBlockBatchMaxSizeBytes = "dymint.block_batch_max_size_bytes"
 )
 
@@ -49,9 +48,7 @@ func AddNodeFlags(cmd *cobra.Command) {
 	cmd.Flags().Duration(FlagBlockTime, def.BlockTime, "block time (for sequencer mode)")
 	cmd.Flags().Duration(FlagMaxIdleTime, def.MaxIdleTime, "max time for empty blocks (for sequencer mode)")
 	cmd.Flags().Duration(FlagBatchSubmitMaxTime, def.BatchSubmitMaxTime, "max time for batch submit (for sequencer mode)")
-	cmd.Flags().String(FlagNamespaceID, def.NamespaceID, "namespace identifies (8 bytes in hex)")
 	cmd.Flags().Uint64(FlagBlockBatchMaxSizeBytes, def.BlockBatchMaxSizeBytes, "block batch size in bytes")
-
 	cmd.Flags().String(FlagSettlementLayer, def.SettlementLayer, "Settlement Layer Client name")
 	cmd.Flags().String(FlagSLNodeAddress, def.SettlementConfig.NodeAddress, "Settlement Layer RPC node address")
 	cmd.Flags().String(FlagSLKeyringBackend, def.SettlementConfig.KeyringBackend, "Sequencer keyring backend")
@@ -82,9 +79,6 @@ func BindDymintFlags(cmd *cobra.Command, v *viper.Viper) error {
 		return err
 	}
 	if err := v.BindPFlag("batch_submit_max_time", cmd.Flags().Lookup(FlagBatchSubmitMaxTime)); err != nil {
-		return err
-	}
-	if err := v.BindPFlag("namespace_id", cmd.Flags().Lookup(FlagNamespaceID)); err != nil {
 		return err
 	}
 	if err := v.BindPFlag("block_batch_max_size_bytes", cmd.Flags().Lookup(FlagBlockBatchMaxSizeBytes)); err != nil {

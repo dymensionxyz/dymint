@@ -50,8 +50,10 @@ var _ rpcclient.Client = &Client{}
 type Client struct {
 	*tmtypes.EventBus
 	config *config.RPCConfig
+	node   *node.Node
 
-	node *node.Node
+	// cache of chunked genesis data.
+	genChunks []string
 }
 
 // NewClient returns Client working with given node.
@@ -285,7 +287,7 @@ func (c *Client) Genesis(_ context.Context) (*ctypes.ResultGenesis, error) {
 
 // GenesisChunked returns given chunk of genesis.
 func (c *Client) GenesisChunked(context context.Context, id uint) (*ctypes.ResultGenesisChunk, error) {
-	genChunks, err := c.node.GetGenesisChunks()
+	genChunks, err := c.GetGenesisChunks()
 	if err != nil {
 		return nil, fmt.Errorf("while creating chunks of the genesis document: %w", err)
 	}
