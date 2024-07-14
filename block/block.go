@@ -40,6 +40,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		}
 		m.logger.Debug("updated state from app commit", "height", block.Header.Height)
 	} else {
+		var appHash []byte
 		// Start applying the block assuming no inconsistency was found.
 		_, err = m.Store.SaveBlock(block, commit, nil)
 		if err != nil {
@@ -57,7 +58,6 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		}
 
 		// Commit block to app
-		var appHash []byte
 		appHash, retainHeight, err = m.Executor.Commit(m.State, block, responses)
 		if err != nil {
 			return fmt.Errorf("commit block: %w", err)
@@ -90,6 +90,8 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	if err != nil {
 		return fmt.Errorf("commit state: %w", err)
 	}
+
+	types.RollappHeightGauge.Set(float64(block.Header.Height))
 
 	// Prune old heights, if requested by ABCI app.
 	if 0 < retainHeight {

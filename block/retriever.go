@@ -83,7 +83,7 @@ func (m *Manager) syncFromDABatch() error {
 		return fmt.Errorf("process next DA batch: %w", err)
 	}
 
-	// FIXME: if height is not incremented, we should return error
+	// FIXME: out-of-scope if height is not incremented, we should return error
 	return nil
 }
 

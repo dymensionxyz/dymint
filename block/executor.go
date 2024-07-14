@@ -119,8 +119,6 @@ func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHead
 	}
 	copy(block.Header.LastCommitHash[:], types.GetLastCommitHash(lastCommit, &block.Header))
 	copy(block.Header.DataHash[:], types.GetDataHash(block))
-
-	//TODO: should be set to the next proposer
 	copy(block.Header.NextSequencersHash[:], state.ActiveSequencer.ProposerHash)
 
 	return block

@@ -155,7 +155,7 @@ func (e *Executor) UpdateValidatorsAfterCommit(s *types.State, block *types.Bloc
 		return
 	}
 
-	//TODO: if empty, halt the node
+	//FIXME: if empty, halt the node
 
 	// if hash changed, update the active sequencer
 	err := s.ActiveSequencer.SetProposerByHash(block.Header.NextSequencersHash[:])

@@ -145,6 +145,8 @@ func (m *Manager) Start(ctx context.Context) error {
 	isSequencer := m.IsSequencer()
 	m.logger.Info("sequencer mode", "isSequencer", isSequencer)
 
+	// FIXME: check if we in the middle of rotation
+
 	if !isSequencer {
 		// Fullnode loop can start before syncing from DA
 		go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewNewGossipedBlock, m.onNewGossipedBlock, m.logger)
@@ -155,22 +157,48 @@ func (m *Manager) Start(ctx context.Context) error {
 		return fmt.Errorf("sync block manager: %w", err)
 	}
 
+	rotateSequencerC := make(chan []byte)
 	eg, ctx := errgroup.WithContext(ctx)
-
 	if isSequencer {
+		bytesProducedC := make(chan int)
 		// Sequencer must wait till DA is synced to start submitting blobs
 		<-m.DAClient.Synced()
 		nBytes := m.GetUnsubmittedBytes()
-		bytesProducedC := make(chan int)
 		go func() {
 			bytesProducedC <- nBytes
 		}()
+
 		eg.Go(func() error {
 			return m.SubmitLoop(ctx, bytesProducedC)
 		})
 		eg.Go(func() error {
 			return m.ProduceBlockLoop(ctx, bytesProducedC)
 		})
+		eg.Go(func() error {
+			rotateSequencerC <- m.MonitorSequencerRotation(ctx)
+			return fmt.Errorf("sequencer rotation started")
+		})
+
+		go func() {
+			err := eg.Wait()
+			var nextSeqAddr []byte
+			select {
+			case nextSeqAddr = <-rotateSequencerC:
+			default:
+			}
+			// Check if sequencer needs to complete rotation
+			if len(nextSeqAddr) > 0 {
+				m.logger.Info("Sequencer rotation started. Production stopped on this sequencer", "nextSeqAddr", nextSeqAddr)
+				err := m.CreateAndPostLastBatch(ctx, nextSeqAddr)
+				if err != nil {
+					m.logger.Error("Create and post last batch failed.", "error", err)
+				}
+				// FIXME: fallback to full node
+				return
+			}
+			m.logger.Info("Block manager err group finished.", "err", err)
+			return
+		}()
 	} else {
 		eg.Go(func() error {
 			return m.RetrieveLoop(ctx)
@@ -178,12 +206,11 @@ func (m *Manager) Start(ctx context.Context) error {
 		eg.Go(func() error {
 			return m.SyncToTargetHeightLoop(ctx)
 		})
+		go func() {
+			err := eg.Wait()
+			m.logger.Info("Block manager err group finished.", "err", err)
+		}()
 	}
-
-	go func() {
-		err := eg.Wait()
-		m.logger.Info("Block manager err group finished.", "err", err)
-	}()
 
 	return nil
 }
