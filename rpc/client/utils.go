@@ -40,11 +40,7 @@ func (c *Client) initGenesisChunks(genesis *tmtypes.GenesisDoc) error {
 
 	for i := 0; i < len(data); i += genesisChunkSize {
 		end := i + genesisChunkSize
-
-		if end > len(data) {
-			end = len(data)
-		}
-
+		end = min(end, len(data))
 		c.genChunks = append(c.genChunks, base64.StdEncoding.EncodeToString(data[i:end]))
 	}
 
