@@ -127,9 +127,8 @@ func TestValidator_BlockValidator(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, clientCreator)
 			require.NotNil(t, abciClient)
-			namespaceId := "0102030405060708"
 			mpool := mempoolv1.NewTxMempool(logger, cfg.DefaultMempoolConfig(), proxy.NewAppConnMempool(abciClient), 0)
-			executor, err := block.NewExecutor([]byte("test address"), namespaceId, "test", mpool, proxy.NewAppConns(clientCreator), nil, logger)
+			executor, err := block.NewExecutor([]byte("test address"), "test", mpool, proxy.NewAppConns(clientCreator), nil, logger)
 			assert.NoError(t, err)
 
 			// Create state

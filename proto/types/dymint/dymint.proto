@@ -17,8 +17,8 @@ message Header {
 	// Block and App version
 	Version version = 1;
 	// NamespaceID identifies this chain e.g. when connected to other rollups via IBC.
-	bytes namespace_id = 2;
-
+    bytes namespace_id = 2 [deprecated=true];
+	
 	// Block height
 	uint64 height = 3;
 

@@ -28,7 +28,6 @@ func TestViperAndCobra(t *testing.T) {
 	assert.NoError(cmd.Flags().Set(config.FlagBlockTime, "1234s"))
 	assert.NoError(cmd.Flags().Set(config.FlagMaxIdleTime, "2000s"))
 	assert.NoError(cmd.Flags().Set(config.FlagBatchSubmitMaxTime, "3000s"))
-	assert.NoError(cmd.Flags().Set(config.FlagNamespaceID, "0102030405060708"))
 	assert.NoError(cmd.Flags().Set(config.FlagBlockBatchMaxSizeBytes, "1000"))
 
 	assert.NoError(nc.GetViperConfig(cmd, dir))
@@ -36,7 +35,6 @@ func TestViperAndCobra(t *testing.T) {
 	assert.Equal("foobar", nc.DALayer)
 	assert.Equal(`{"json":true}`, nc.DAConfig)
 	assert.Equal(1234*time.Second, nc.BlockTime)
-	assert.Equal("0102030405060708", nc.NamespaceID)
 	assert.Equal(uint64(1000), nc.BlockManagerConfig.BlockBatchMaxSizeBytes)
 }
 
@@ -192,7 +190,6 @@ func fullNodeConfig() config.NodeConfig {
 			MaxProofTime:           20 * time.Second,
 			BatchSubmitMaxTime:     20 * time.Second,
 			MaxSupportedBatchSkew:  10,
-			NamespaceID:            "test",
 			BlockBatchMaxSizeBytes: 10000,
 		},
 		DALayer:         "celestia",
