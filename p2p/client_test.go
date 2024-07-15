@@ -186,7 +186,7 @@ func TestAdvertiseBlock(t *testing.T) {
 	require.NoError(t, err)
 
 	// get cid for height 1
-	receivedCid, err := clients[0].GetBlockId(ctx, 1)
+	receivedCid, err := clients[0].GetBlockIdFromDHT(ctx, 1)
 	require.NoError(t, err)
 	require.Equal(t, expectedCid, receivedCid)
 

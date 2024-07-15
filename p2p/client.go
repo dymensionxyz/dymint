@@ -32,8 +32,6 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
-type StatusCode uint64
-
 // TODO(tzdybal): refactor to configuration parameters
 const (
 	// reAdvertisePeriod defines a period after which P2P client re-attempt advertising namespace in DHT.
@@ -229,7 +227,7 @@ func (c *Client) AdvertiseBlock(ctx context.Context, height uint64, cid cid.Cid)
 	return err
 }
 
-func (c *Client) GetBlockId(ctx context.Context, height uint64) (cid.Cid, error) {
+func (c *Client) GetBlockIdFromDHT(ctx context.Context, height uint64) (cid.Cid, error) {
 	cidBytes, err := c.DHT.GetValue(ctx, "/"+blockSyncProtocolPrefix+"/"+strconv.FormatUint(height, 10))
 	if err != nil {
 		return cid.Undef, err
@@ -560,20 +558,23 @@ func (c *Client) retrieveBlockSyncLoop(ctx context.Context) {
 					continue
 				}
 				c.logger.Debug("Getting block", "height", h)
-				bid, err := c.GetBlockId(ctx, h)
-				if err != nil || bid == cid.Undef {
+				id, err := c.GetBlockIdFromDHT(ctx, h)
+				if err != nil || id == cid.Undef {
 					c.logger.Error("unable to find cid", "height", h)
 					continue
 				}
-				_, err = c.store.SaveBlockCid(h, bid, nil)
+				_, err = c.store.SaveBlockCid(h, id, nil)
 				if err != nil {
-					c.logger.Error("storing block cid", "height", h, "cid", bid)
+					c.logger.Error("storing block cid", "height", h, "cid", id)
 					continue
 				}
-				block, err := c.blocksync.GetBlock(ctx, bid)
+				block, err := c.blocksync.GetBlock(ctx, id)
 				if err != nil {
+					c.logger.Error("Blocksync GetBlock", "err", err)
 					continue
 				}
+				c.logger.Debug("Blocksync block received ", "cid", id)
+
 				if c.blocksync.msgHandler != nil {
 					c.blocksync.msgHandler(&block)
 				}
@@ -594,7 +595,7 @@ func (c *Client) advertiseBlockSyncCids(ctx context.Context) {
 		return
 	}
 	for h := state.BaseHeight; h <= state.Height(); h++ {
-		id, err := c.GetBlockId(ctx, h)
+		id, err := c.GetBlockIdFromDHT(ctx, h)
 		if err == nil && id != cid.Undef {
 			continue
 		}

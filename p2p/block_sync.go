@@ -2,6 +2,7 @@ package p2p
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/ipfs/go-datastore"
@@ -92,13 +93,12 @@ func (blocksync *BlockSync) AddBlock(ctx context.Context, block []byte) (cid.Cid
 func (blocksync *BlockSync) GetBlock(ctx context.Context, cid cid.Cid) (P2PBlock, error) {
 	blockBytes, err := blocksync.dsrv.GetBlock(ctx, cid)
 	if err != nil {
-		blocksync.logger.Error("GetBlock", "err", err)
+		return P2PBlock{}, err
 	}
 	var block P2PBlock
 	if err := block.UnmarshalBinary(blockBytes); err != nil {
-		blocksync.logger.Error("Deserialize gossiped block", "error", err)
+		return P2PBlock{}, fmt.Errorf("deserialize blocksync block %w", err)
 	}
-	blocksync.logger.Debug("Blocksync block received ", "cid", cid)
 	return block, nil
 }
 

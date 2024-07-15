@@ -3,6 +3,7 @@ package p2p
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 
 	chunker "github.com/ipfs/boxo/chunker"
@@ -14,6 +15,8 @@ import (
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
 )
+
+var ErrUnableToReadDag = errors.New("unable to read block DAG")
 
 type BlockSyncDagService struct {
 	ipld.DAGService
@@ -113,7 +116,7 @@ func dagReader(root ipld.Node, ds ipld.DAGService) (io.Reader, error) {
 		}
 		rawdata, ok := n.(*dag.ProtoNode)
 		if !ok {
-			return nil, err
+			return nil, ErrUnableToReadDag
 		}
 
 		_, err = buf.Write(rawdata.Data())
