@@ -1,7 +1,6 @@
 package main
 
 import (
-	"net/http"
 	"os"
 	"path/filepath"
 
@@ -14,16 +13,6 @@ import (
 )
 
 func main() {
-	if profile := os.Getenv("PROFILE_HOST_PORT"); profile != "" {
-		go func() {
-			// start a server on default serve mux
-			// pprof will use default serve mux to serve profiles
-			// profile can be e.g. "localhost:6060"
-			//nolint:G114
-			_ = http.ListenAndServe(profile, nil) // #nosec G114
-		}()
-	}
-
 	rootCmd := commands.RootCmd
 	rootCmd.AddCommand(
 		commands.InitFilesCmd,

@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -60,6 +61,17 @@ func NewRunNodeCmd() *cobra.Command {
 }
 
 func startInProcess(config *cfg.NodeConfig, tmConfig *tmcfg.Config, logger log.Logger) error {
+	if profile := os.Getenv("PROFILE_HOST_PORT"); profile != "" {
+		go func() {
+			logger.Debug("Starting profile server.", "host-port", profile)
+			// start a server on default serve mux
+			// pprof will use default serve mux to serve profiles
+			// profile can be e.g. "localhost:6060"
+			//nolint:G114
+			_ = http.ListenAndServe(profile, nil) // #nosec G114
+		}()
+	}
+
 	nodeKey, err := tmp2p.LoadOrGenNodeKey(tmConfig.NodeKeyFile())
 	if err != nil {
 		return fmt.Errorf("load or gen node key %s: %w", tmConfig.NodeKeyFile(), err)
