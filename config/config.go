@@ -41,6 +41,9 @@ type NodeConfig struct {
 	P2PConfig `mapstructure:",squash"`
 	// DB Options
 	DBConfig `mapstructure:"db"`
+
+	ProfileHost string `mapstructure:"profile_host"`
+	ProfilePort uint64 `mapstructure:"profile_port"`
 }
 
 // BlockManagerConfig consists of all parameters required by BlockManagerConfig
