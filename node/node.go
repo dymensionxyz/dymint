@@ -208,7 +208,7 @@ func NewNode(
 
 // OnStart is a part of Service interface.
 func (n *Node) OnStart() error {
-	if profileUrl := fmt.Sprintf("%s:%d", n.conf.ProfileHost, n.conf.ProfilePort); profileUrl != "" {
+	if profileUrl := fmt.Sprintf("%s:%d", n.conf.ProfileHost, n.conf.ProfilePort); profileUrl != ":" {
 		go func() {
 			n.Logger.Debug("Starting profile server.", "host:port", profileUrl)
 			// start a server on default serve mux
