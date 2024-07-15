@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -248,14 +247,14 @@ func (n *Node) initGenesisChunks() error {
 
 // OnStart is a part of Service interface.
 func (n *Node) OnStart() error {
-	if profile := os.Getenv("PROFILE_HOST_PORT"); profile != "" {
+	if profileUrl := fmt.Sprintf("%s:%d", n.conf.ProfileHost, n.conf.ProfilePort); profileUrl != "" {
 		go func() {
-			n.Logger.Debug("Starting profile server.", "host-port", profile)
+			n.Logger.Debug("Starting profile server.", "host:port", profileUrl)
 			// start a server on default serve mux
 			// pprof will use default serve mux to serve profiles
 			// profile can be e.g. "localhost:6060"
 			//nolint:G114
-			_ = http.ListenAndServe(profile, nil) // #nosec G114
+			_ = http.ListenAndServe(profileUrl, nil) // #nosec G114
 		}()
 	}
 	n.Logger.Info("starting P2P client")

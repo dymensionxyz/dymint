@@ -48,6 +48,8 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 			SyncWrites: true,
 			InMemory:   false,
 		},
+		ProfileHost: "localhost",
+		ProfilePort: 6061, // typically 6060 is used but the hub already uses it
 	}
 
 	if home == "" {
