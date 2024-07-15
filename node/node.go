@@ -214,7 +214,6 @@ func (n *Node) OnStart() error {
 			// start a server on default serve mux
 			// pprof will use default serve mux to serve profiles
 			// profile can be e.g. "localhost:6060"
-			//nolint:G114
 			_ = http.ListenAndServe(profileUrl, nil) // #nosec G114
 		}()
 	}
