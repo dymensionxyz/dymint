@@ -14,7 +14,11 @@ import (
 
 // onReceivedNewBatch will take a block and apply it
 func (m *Manager) onReceivedBatch(event pubsub.Message) {
-	eventData, _ := event.Data().(*settlement.EventDataNewBatchAccepted)
+	eventData, ok := event.Data().(*settlement.EventDataNewBatchAccepted)
+	if !ok {
+		m.logger.Error("onReceivedBatch", "err", "wrong event data received")
+		return
+	}
 	h := eventData.EndHeight
 	err := m.syncToTargetHeight(h)
 	if err != nil {

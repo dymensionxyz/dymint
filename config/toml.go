@@ -110,6 +110,9 @@ p2p_bootstrap_retry_time = "{{ .P2PConfig.BootstrapRetryTime }}"
 # set to false to disable advertising the node to the P2P network
 p2p_advertising_enabled= "{{ .P2PConfig.AdvertisingEnabled }}"
 
+# time interval used to periodically check for missing blocks and retrieve it from other peers on demand using P2P
+p2p_blocksync_retrieve_retry_time= "{{ .P2PConfig.BlockSyncRetrieveRetryTime }}"
+
 ### settlement config ###
 settlement_layer = "{{ .SettlementLayer }}" # mock, dymension
 

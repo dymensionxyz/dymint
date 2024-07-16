@@ -18,7 +18,7 @@ type P2PConfig struct {
 	// Time interval a node tries to bootstrap again, in case no nodes connected
 	BootstrapRetryTime time.Duration `mapstructure:"p2p_bootstrap_retry_time"`
 	// Time interval used by a node to request missing blocks (gap between cached blocks and local height) on demand from other peers using block-sync
-	BlockSyncRetrieveRetryTime time.Duration `mapstructure:"p2p_blocksync_rtrv_retry_time"`
+	BlockSyncRetrieveRetryTime time.Duration `mapstructure:"p2p_blocksync_retrieve_retry_time"`
 	// Param used to enable the advertisement of the node to be part of the P2P network in the DHT
 	AdvertisingEnabled bool `mapstructure:"p2p_advertising_enabled"`
 }
