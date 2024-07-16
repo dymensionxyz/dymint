@@ -56,7 +56,6 @@ func generateBlock(height uint64) *types.Block {
 				Block: BlockVersion,
 				App:   AppVersion,
 			},
-			NamespaceID:    [8]byte{0, 1, 2, 3, 4, 5, 6, 7},
 			Height:         height,
 			Time:           4567,
 			LastHeaderHash: h[0],
