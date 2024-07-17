@@ -47,13 +47,6 @@ func (m *Manager) SubmitLoop(ctx context.Context) (err error) {
 		case <-maxTime.C:
 		}
 
-		/*
-			Note: since we don't explicitly coordinate changes to the accumulated size with actual batch creation
-			we don't have a guarantee that the accumulated size is the same as the actual batch size that will be made.
-			But the batch creation step will also check the size is OK, so it's not a problem.
-		*/
-		m.AccumulatedBatchSize.Store(0)
-
 		// modular submission methods have own retries mechanism.
 		// if error returned, we assume it's unrecoverable.
 		err = m.HandleSubmissionTrigger()
@@ -71,16 +64,21 @@ func (m *Manager) SubmitLoop(ctx context.Context) (err error) {
 // It accumulates the size of the produced data and triggers the submission of the batch when the accumulated size is greater than the max size.
 // It also emits a health status event when the submission channel is full.
 func (m *Manager) AccumulatedDataLoop(ctx context.Context, toSubmit chan struct{}) {
+	total := uint64(0)
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case size := <-m.producedSizeCh:
-			total := m.AccumulatedBatchSize.Add(size)
+			total += size
+
+			// skip while the accumulated size is less than the max size
 			if total < m.Conf.BlockBatchMaxSizeBytes { // TODO: allow some tolerance for block size (e.g support for BlockBatchMaxSize +- 10%)
 				continue
 			}
 		}
+
+		total = 0
 
 		select {
 		case <-ctx.Done():
