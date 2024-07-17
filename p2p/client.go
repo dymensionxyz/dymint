@@ -210,7 +210,7 @@ func (c *Client) AddBlock(ctx context.Context, height uint64, blockBytes []byte)
 	return nil
 }
 
-func (c *Client) RemoveBlock(ctx context.Context, from, to uint64) error {
+func (c *Client) RemoveBlocks(ctx context.Context, from, to uint64) error {
 	if from <= 0 {
 		return fmt.Errorf("from height must be greater than 0: %w", gerrc.ErrInvalidArgument)
 	}

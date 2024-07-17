@@ -15,9 +15,9 @@ func (m *Manager) pruneBlocks(retainHeight uint64) error {
 			gerrc.ErrInvalidArgument)
 	}
 
-	err := m.p2pClient.RemoveBlock(context.Background(), m.State.BaseHeight, retainHeight)
+	err := m.p2pClient.RemoveBlocks(context.Background(), m.State.BaseHeight, retainHeight)
 	if err != nil {
-		m.logger.Debug("pruning block sync", "err", err)
+		return fmt.Errorf("pruning blocksync store: %w", err)
 	}
 	pruned, err := m.Store.PruneBlocks(m.State.BaseHeight, retainHeight)
 	if err != nil {
