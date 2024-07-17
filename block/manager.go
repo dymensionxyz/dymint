@@ -153,8 +153,6 @@ func (m *Manager) Start(ctx context.Context) error {
 		go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewNewGossipedBlock, m.onNewGossipedBlock, m.logger)
 	}
 
-	// TODO: populate the accumulatedSize on startup
-
 	err = m.syncBlockManager()
 	if err != nil {
 		return fmt.Errorf("sync block manager: %w", err)

@@ -65,6 +65,21 @@ func (m *Manager) SubmitLoop(ctx context.Context) (err error) {
 // It also emits a health status event when the submission channel is full.
 func (m *Manager) AccumulatedDataLoop(ctx context.Context, toSubmit chan struct{}) {
 	total := uint64(0)
+	// Get size unsubmitted blocks and commits
+	currH := m.State.Height()
+	for h := m.LastSubmittedHeight.Load(); h < currH; h++ {
+		block, err := m.Store.LoadBlock(h)
+		if err != nil {
+			panic(fmt.Errorf("load block: height: %d: %w", h, err))
+		}
+		commit, err := m.Store.LoadCommit(h)
+		if err != nil {
+			panic(fmt.Errorf("load commit: height: %d: %w", h, err))
+		}
+
+		total += uint64(block.ToProto().Size()) + uint64(commit.ToProto().Size())
+	}
+
 	for {
 		select {
 		case <-ctx.Done():
