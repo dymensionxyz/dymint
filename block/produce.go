@@ -21,7 +21,9 @@ import (
 )
 
 // ProduceBlockLoop is calling publishBlock in a loop as long as we're synced.
-func (m *Manager) ProduceBlockLoop(ctx context.Context) error {
+// A signal will be sent to the wait channel for each block produced
+// In this way it's possible to pause block production by not consuming the channel
+func (m *Manager) ProduceBlockLoop(ctx context.Context, wait chan struct{}) error {
 	m.logger.Info("Started block producer loop.")
 
 	ticker := time.NewTicker(m.Conf.BlockTime)
@@ -42,7 +44,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) error {
 			produceEmptyBlock := firstBlock || 0 == m.Conf.MaxIdleTime || nextEmptyBlock.Before(time.Now())
 			firstBlock = false
 
-			block, commit, err := m.ProduceAndGossipBlock(ctx, produceEmptyBlock)
+			block, err := m.ProduceAndGossipBlock(ctx, produceEmptyBlock)
 			if errors.Is(err, context.Canceled) {
 				m.logger.Error("Produce and gossip: context canceled.", "error", err)
 				return nil
@@ -68,29 +70,26 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) error {
 				m.logger.Info("Produced empty block.")
 			}
 
-			// Send the size to the accumulated size channel
-			// This will block in case the submitter is too slow and it's buffer is full
-			size := uint64(block.ToProto().Size()) + uint64(commit.ToProto().Size())
 			select {
 			case <-ctx.Done():
 				return nil
-			case m.producedSizeC <- size:
+			case wait <- struct{}{}:
 			}
 		}
 	}
 }
 
-func (m *Manager) ProduceAndGossipBlock(ctx context.Context, allowEmpty bool) (*types.Block, *types.Commit, error) {
+func (m *Manager) ProduceAndGossipBlock(ctx context.Context, allowEmpty bool) (*types.Block, error) {
 	block, commit, err := m.produceBlock(allowEmpty)
 	if err != nil {
-		return nil, nil, fmt.Errorf("produce block: %w", err)
+		return nil, fmt.Errorf("produce block: %w", err)
 	}
 
 	if err := m.gossipBlock(ctx, *block, *commit); err != nil {
-		return nil, nil, fmt.Errorf("gossip block: %w", err)
+		return nil, fmt.Errorf("gossip block: %w", err)
 	}
 
-	return block, commit, nil
+	return block, nil
 }
 
 func loadPrevBlock(store store.Store, height uint64) ([32]byte, *types.Commit, error) {

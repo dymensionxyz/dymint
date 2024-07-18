@@ -22,7 +22,7 @@ import (
 // There is one thread which takes a channel from block production, as well as any unsubmitted blocks
 // It will produce batches according to (1,2) above and send those batches to another thread which submits them.
 // This way the submitter can block the batch creation and the batch creation can block the block production, to avoid backpressure.
-func (m *Manager) SubmitLoop(ctx context.Context) (err error) {
+func (m *Manager) SubmitLoop(ctx context.Context, allowProduction chan struct{}) (err error) {
 	maxTime := time.NewTicker(m.Conf.BatchSubmitMaxTime)
 	defer maxTime.Stop()
 

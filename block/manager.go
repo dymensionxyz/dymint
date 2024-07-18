@@ -51,11 +51,6 @@ type Manager struct {
 	SLClient  settlement.ClientI
 
 	/*
-		Production
-	*/
-	producedSizeC chan uint64 // for the producer to report the size of the block+commit it produced
-
-	/*
 		Submission
 	*/
 	// The last height which was submitted to both sublayers, that we know of. When we produce new batches, we will
@@ -114,7 +109,6 @@ func NewManager(
 		SLClient:         settlementClient,
 		Retriever:        dalc.(da.BatchRetriever),
 		targetSyncHeight: diodes.NewOneToOne(1, nil),
-		producedSizeC:    make(chan uint64),
 		logger:           logger,
 		blockCache:       make(map[uint64]CachedBlock),
 	}
@@ -158,16 +152,18 @@ func (m *Manager) Start(ctx context.Context) error {
 		return fmt.Errorf("sync block manager: %w", err)
 	}
 
+	productionC := make(chan struct{})
+
 	eg, ctx := errgroup.WithContext(ctx)
 
 	if isSequencer {
 		// Sequencer must wait till DA is synced to start submitting blobs
 		<-m.DAClient.Synced()
 		eg.Go(func() error {
-			return m.SubmitLoop(ctx)
+			return m.SubmitLoop(ctx, productionC)
 		})
 		eg.Go(func() error {
-			return m.ProduceBlockLoop(ctx)
+			return m.ProduceBlockLoop(ctx, productionC)
 		})
 	} else {
 		eg.Go(func() error {
