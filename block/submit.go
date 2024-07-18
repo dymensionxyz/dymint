@@ -26,7 +26,7 @@ func (m *Manager) SubmitLoop(ctx context.Context, bytesProduced chan int) (err e
 	eg, ctx := errgroup.WithContext(ctx)
 
 	eg.Go(func() error {
-		// this thread submits batches (consumes bytes)
+		// this thread submits batches and consumes bytes
 		for {
 			select {
 			case <-ctx.Done():
@@ -47,6 +47,9 @@ func (m *Manager) SubmitLoop(ctx context.Context, bytesProduced chan int) (err e
 	})
 
 	eg.Go(func() error {
+		// this thread adds up the number of produced bytes, and signals to submit a batch
+		// when the count is high enough, or on a timer
+
 		ticker := time.NewTicker(m.Conf.BatchSubmitMaxTime)
 		defer ticker.Stop()
 		for {
@@ -55,8 +58,8 @@ func (m *Manager) SubmitLoop(ctx context.Context, bytesProduced chan int) (err e
 			case <-ctx.Done():
 				return ctx.Err()
 			case n := <-bytesProduced:
-				unsubmittedBytes.Add(int64(n))
-				mustSubmitBatch = m.Conf.BatchMaxSizeBytes < uint64(unsubmittedBytes.Load())
+				cnt := unsubmittedBytes.Add(int64(n))
+				mustSubmitBatch = m.Conf.BatchMaxSizeBytes < uint64(cnt)
 			case <-ticker.C:
 				mustSubmitBatch = true
 			}

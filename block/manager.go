@@ -159,8 +159,8 @@ func (m *Manager) Start(ctx context.Context) error {
 		<-m.DAClient.Synced()
 
 		bytesProducedC := make(chan int, 1)
+		bytesProducedC <- m.GetUnsubmittedBytes()
 		eg.Go(func() error {
-			bytesProducedC <- m.GetUnsubmittedBytes()
 			return m.SubmitLoop(ctx, bytesProducedC)
 		})
 		eg.Go(func() error {
