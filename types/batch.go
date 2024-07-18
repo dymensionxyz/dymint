@@ -12,7 +12,7 @@ type Batch struct {
 }
 
 // StartHeight is the height of the first block in the batch.
-func (b Batch) StartHeight() uint64 {
+func (b Batch) StartHeight() uint64 { // TODO: check log calls end in ()
 	if len(b.Blocks) == 0 {
 		return 0
 	}
@@ -20,7 +20,7 @@ func (b Batch) StartHeight() uint64 {
 }
 
 // EndHeight is the height of the last block in the batch
-func (b Batch) EndHeight() uint64 {
+func (b Batch) EndHeight() uint64 { // TODO: check log calls end in ()
 	if len(b.Blocks) == 0 {
 		return 0
 	}
