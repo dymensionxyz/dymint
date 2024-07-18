@@ -142,7 +142,9 @@ func TestCreateEmptyBlocksNew(t *testing.T) {
 
 	mCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	go manager.ProduceBlockLoop(mCtx)
+	bytesProduced := make(chan int64)
+	go manager.ProduceBlockLoop(mCtx, bytesProduced)
+	uchannel.DrainForever(bytesProduced)
 
 	<-time.Tick(1 * time.Second)
 	err = mpool.CheckTx([]byte{1, 2, 3, 4}, nil, mempool.TxInfo{})
