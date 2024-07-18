@@ -200,14 +200,10 @@ func TestStopBlockProduction(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	go func() {
-		manager.ProduceBlockLoop(ctx)
-		wg.Done() // Decrease counter when this goroutine finishes
-	}()
+	bytesProducedC := make(chan int64)
 
-	toSubmit := make(chan struct{})
 	go func() {
-		manager.AccumulatedDataLoop(ctx, toSubmit)
+		manager.ProduceBlockLoop(ctx, bytesProducedC)
 		wg.Done() // Decrease counter when this goroutine finishes
 	}()
 
@@ -231,7 +227,7 @@ func TestStopBlockProduction(t *testing.T) {
 	assert.Equal(stoppedHeight, manager.State.Height())
 
 	// consume the signal
-	<-toSubmit
+	<-bytesProducedC
 
 	// check for health status event and block production to continue
 	select {

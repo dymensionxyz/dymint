@@ -6,9 +6,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/store"
-	uevent "github.com/dymensionxyz/dymint/utils/event"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"golang.org/x/sync/errgroup"
 
@@ -77,23 +75,10 @@ func (m *Manager) SubmitLoop(ctx context.Context, bytesProduced chan int64) (err
 			case <-ticker.C:
 				mustSubmitBatch = true
 			}
-			if !mustSubmitBatch {
-				continue
+			if mustSubmitBatch {
+				submitC <- struct{}{}
+				ticker.Reset(m.Conf.BatchSubmitMaxTime)
 			}
-			pauseBlockProduction := len(submitC) == cap(submitC)
-			if pauseBlockProduction {
-				evt := &events.DataHealthStatus{Error: fmt.Errorf("submission channel is full: %w", gerrc.ErrResourceExhausted)}
-				uevent.MustPublish(ctx, m.Pubsub, evt, events.HealthStatusList)
-				m.logger.Error("Enough bytes to build a batch have been accumulated, but too many batches are pending submission.	 " +
-					"Pausing block production until a batch submission signal is consumed.")
-			}
-			submitC <- struct{}{}
-			if pauseBlockProduction {
-				evt := &events.DataHealthStatus{Error: nil}
-				uevent.MustPublish(ctx, m.Pubsub, evt, events.HealthStatusList)
-				m.logger.Info("Resumed block production.")
-			}
-			ticker.Reset(m.Conf.BatchSubmitMaxTime)
 		}
 	})
 
