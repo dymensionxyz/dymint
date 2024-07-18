@@ -170,7 +170,8 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 
 	// try to submit, we expect failure
 	slmock.On("SubmitBatch", mock.Anything, mock.Anything, mock.Anything).Return(fmt.Errorf("submit batch")).Once()
-	assert.Error(t, manager.CreateAndSubmitBatch())
+	_, err = manager.CreateAndSubmitBatch()
+	assert.Error(t, err)
 
 	// try to submit again, we expect success
 	slmock.On("SubmitBatch", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
@@ -217,13 +218,14 @@ func TestSubmissionByTime(t *testing.T) {
 
 	wg.Add(2) // Add 2 because we have 2 goroutines
 
+	bytesProducedC := make(chan int64)
 	go func() {
-		manager.ProduceBlockLoop(mCtx)
+		manager.ProduceBlockLoop(mCtx, bytesProducedC)
 		wg.Done() // Decrease counter when this goroutine finishes
 	}()
 
 	go func() {
-		manager.SubmitLoop(mCtx)
+		manager.SubmitLoop(mCtx, bytesProducedC)
 		wg.Done() // Decrease counter when this goroutine finishes
 	}()
 
@@ -272,14 +274,16 @@ func submissionByBatchSize(manager *block.Manager, assert *assert.Assertions, ex
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
+	bytesProducedC := make(chan int64)
+
 	go func() {
-		manager.ProduceBlockLoop(ctx)
+		manager.ProduceBlockLoop(ctx, bytesProducedC)
 		wg.Done() // Decrease counter when this goroutine finishes
 	}()
 
 	go func() {
 		assert.Zero(manager.LastSubmittedHeight.Load())
-		manager.SubmitLoop(ctx)
+		manager.SubmitLoop(ctx, bytesProducedC)
 		wg.Done() // Decrease counter when this goroutine finishes
 	}()
 
