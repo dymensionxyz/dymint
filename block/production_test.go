@@ -186,8 +186,6 @@ func TestStopBlockProduction(t *testing.T) {
 	manager, err := testutil.GetManager(managerConfig, nil, nil, 1, 1, 0, nil, nil)
 	require.NoError(err)
 
-	// validate initial accumulated is zero
-	require.Equal(manager.AccumulatedBatchSize.Load(), uint64(0))
 	assert.Equal(manager.State.Height(), uint64(0))
 
 	// subscribe to health status event
@@ -217,7 +215,6 @@ func TestStopBlockProduction(t *testing.T) {
 	// validate block production works
 	time.Sleep(400 * time.Millisecond)
 	assert.Greater(manager.State.Height(), uint64(0))
-	assert.Greater(manager.AccumulatedBatchSize.Load(), uint64(0))
 
 	// we don't read from the submit channel, so we assume it get full
 	// we expect the block production to stop and unhealthy event to be emitted

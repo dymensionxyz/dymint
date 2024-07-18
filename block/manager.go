@@ -53,12 +53,11 @@ type Manager struct {
 	/*
 		Production
 	*/
-	producedSizeCh chan uint64 // for the producer to report the size of the block it produced
+	producedSizeC chan uint64 // for the producer to report the size of the block+commit it produced
 
 	/*
 		Submission
 	*/
-	AccumulatedBatchSize atomic.Uint64
 	// The last height which was submitted to both sublayers, that we know of. When we produce new batches, we will
 	// start at this height + 1. Note: only accessed by one thread at a time so doesn't need synchro.
 	// It is ALSO used by the producer, because the producer needs to check if it can prune blocks and it wont'
@@ -115,7 +114,7 @@ func NewManager(
 		SLClient:         settlementClient,
 		Retriever:        dalc.(da.BatchRetriever),
 		targetSyncHeight: diodes.NewOneToOne(1, nil),
-		producedSizeCh:   make(chan uint64),
+		producedSizeC:    make(chan uint64),
 		logger:           logger,
 		blockCache:       make(map[uint64]CachedBlock),
 	}
@@ -153,8 +152,6 @@ func (m *Manager) Start(ctx context.Context) error {
 		// Fullnode loop can start before syncing from DA
 		go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewNewGossipedBlock, m.onNewGossipedBlock, m.logger)
 	}
-
-	// TODO: populate the accumulatedSize on startup
 
 	err = m.syncBlockManager()
 	if err != nil {
@@ -222,4 +219,20 @@ func (m *Manager) syncBlockManager() error {
 
 	m.logger.Info("Synced.", "current height", m.State.Height(), "last submitted height", m.LastSubmittedHeight.Load())
 	return nil
+}
+
+func (m *Manager) MustLoadBlock(h uint64) *types.Block {
+	ret, err := m.Store.LoadBlock(h)
+	if err != nil {
+		panic(fmt.Errorf("store load block: height: %d: %w", h, err))
+	}
+	return ret
+}
+
+func (m *Manager) MustLoadCommit(h uint64) *types.Commit {
+	ret, err := m.Store.LoadCommit(h)
+	if err != nil {
+		panic(fmt.Errorf("store load commit: height: %d: %w", h, err))
+	}
+	return ret
 }

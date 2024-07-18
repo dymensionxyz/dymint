@@ -80,7 +80,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) (err error) {
 			select {
 			case <-ctx.Done():
 				return
-			case m.producedSizeCh <- size:
+			case m.producedSizeC <- size:
 			}
 		}
 	}
