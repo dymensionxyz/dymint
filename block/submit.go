@@ -55,7 +55,7 @@ func (m *Manager) SubmitLoop(ctx context.Context, allowProduction chan struct{})
 
 		// modular submission methods have own retries mechanism.
 		// if error returned, we assume it's unrecoverable.
-		err = m.HandleSubmissionTrigger()
+		err = m.CreateAndSubmitBatch()
 		if err != nil {
 			m.logger.Error("Error submitting batch", "error", err)
 			uevent.MustPublish(ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
@@ -76,7 +76,7 @@ func (m *Manager) AccumulatedDataLoop(ctx context.Context, toSubmit chan struct{
 		On node start we want to include the count of any blocks which were produced and not submitted in a previous instance
 	*/
 	currH := m.State.Height()
-	for h := m.LastSubmittedHeight.Load() + 1; h <= currH; h++ {
+	for h := m.NextHeightToSubmit(); h <= currH; h++ {
 		block := m.MustLoadBlock(h)
 		commit := m.MustLoadCommit(h)
 		total += uint64(block.ToProto().Size()) + uint64(commit.ToProto().Size())
@@ -123,38 +123,23 @@ func (m *Manager) AccumulatedDataLoop(ctx context.Context, toSubmit chan struct{
 	}
 }
 
-// HandleSubmissionTrigger processes the sublayer submission trigger event. It checks if there are new blocks produced since the last submission.
-// If there are, it attempts to submit a batch of blocks. It then attempts to produce an empty block to ensure IBC messages
-// pass through during the batch submission process due to proofs requires for ibc messages only exist on the next block.
-// Finally, it submits the next batch of blocks and updates the sync target to the height of the last block in the submitted batch.
-func (m *Manager) HandleSubmissionTrigger() error {
-	batch, err := CreateNextBatchToSubmit(m.Store, m.Conf.BatchMaxSizeBytes, m.NextHeightToSubmit(), m.State.Height())
+func (m *Manager) CreateAndSubmitBatch() (uint64, error) {
+	batch, err := CreateBatch(m.Store, m.Conf.BatchMaxSizeBytes, m.NextHeightToSubmit(), m.State.Height())
 	if err != nil {
-		return fmt.Errorf("create next batch to submit: %w", err)
+		return 0, fmt.Errorf("create batch: %w", err)
 	}
 
 	if 0 == batch.NumBlocks() {
-		return nil
+		return 0, nil
 	}
 
-	resultSubmitToDA := m.DAClient.SubmitBatch(batch)
-	if resultSubmitToDA.Code != da.StatusSuccess {
-		return fmt.Errorf("submit next batch to da: %s", resultSubmitToDA.Message)
+	if err := m.SubmitBatch(batch); err != nil {
+		return 0, fmt.Errorf("submit batch: %w", err)
 	}
-	m.logger.Info("Submitted batch to DA.", "start height", batch.StartHeight(), "end height", batch.EndHeight())
-
-	err = m.SLClient.SubmitBatch(batch, m.DAClient.GetClientType(), &resultSubmitToDA)
-	if err != nil {
-		return fmt.Errorf("sl client submit batch: start height: %d: inclusive end height: %d: %w", batch.StartHeight(), batch.EndHeight(), err)
-	}
-	m.logger.Info("Submitted batch to SL.", "start height", batch.StartHeight(), "end height", batch.EndHeight())
-
-	types.RollappHubHeightGauge.Set(float64(batch.EndHeight()))
-	m.LastSubmittedHeight.Store(batch.EndHeight())
-	return nil
+	return batch.SizeBytes(), nil
 }
 
-func CreateNextBatchToSubmit(store store.Store, maxBatchSize uint64, startHeight uint64, endHeightInclusive uint64) (*types.Batch, error) {
+func CreateBatch(store store.Store, maxBatchSize uint64, startHeight uint64, endHeightInclusive uint64) (*types.Batch, error) {
 	batchSize := endHeightInclusive - startHeight + 1
 	batch := &types.Batch{
 		Blocks:  make([]*types.Block, 0, batchSize),
@@ -191,4 +176,22 @@ func CreateNextBatchToSubmit(store store.Store, maxBatchSize uint64, startHeight
 	}
 
 	return batch, nil
+}
+
+func (m *Manager) SubmitBatch(batch *types.Batch) error {
+	resultSubmitToDA := m.DAClient.SubmitBatch(batch)
+	if resultSubmitToDA.Code != da.StatusSuccess {
+		return fmt.Errorf("submit next batch to da: %s", resultSubmitToDA.Message)
+	}
+	m.logger.Info("Submitted batch to DA.", "start height", batch.StartHeight(), "end height", batch.EndHeight())
+
+	err := m.SLClient.SubmitBatch(batch, m.DAClient.GetClientType(), &resultSubmitToDA)
+	if err != nil {
+		return fmt.Errorf("sl client submit batch: start height: %d: inclusive end height: %d: %w", batch.StartHeight(), batch.EndHeight(), err)
+	}
+	m.logger.Info("Submitted batch to SL.", "start height", batch.StartHeight(), "end height", batch.EndHeight())
+
+	types.RollappHubHeightGauge.Set(float64(batch.EndHeight()))
+	m.LastSubmittedHeight.Store(batch.EndHeight())
+	return nil
 }
