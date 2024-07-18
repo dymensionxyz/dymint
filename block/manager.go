@@ -152,18 +152,19 @@ func (m *Manager) Start(ctx context.Context) error {
 		return fmt.Errorf("sync block manager: %w", err)
 	}
 
-	productionC := make(chan struct{})
-
 	eg, ctx := errgroup.WithContext(ctx)
 
 	if isSequencer {
 		// Sequencer must wait till DA is synced to start submitting blobs
 		<-m.DAClient.Synced()
+
+		bytesProducedC := make(chan int64)
 		eg.Go(func() error {
-			return m.SubmitLoop(ctx, productionC)
+			bytesProducedC <- m.GetUnsubmittedBytes()
+			return m.SubmitLoop(ctx, bytesProducedC)
 		})
 		eg.Go(func() error {
-			return m.ProduceBlockLoop(ctx, productionC)
+			return m.ProduceBlockLoop(ctx, bytesProducedC)
 		})
 	} else {
 		eg.Go(func() error {

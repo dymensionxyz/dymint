@@ -21,9 +21,9 @@ import (
 )
 
 // ProduceBlockLoop is calling publishBlock in a loop as long as we're synced.
-// A signal will be sent to the wait channel for each block produced
+// A signal will be sent to the bytesProduced channel for each block produced
 // In this way it's possible to pause block production by not consuming the channel
-func (m *Manager) ProduceBlockLoop(ctx context.Context, wait chan struct{}) error {
+func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProduced chan int64) error {
 	m.logger.Info("Started block producer loop.")
 
 	ticker := time.NewTicker(m.Conf.BlockTime)
@@ -44,7 +44,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, wait chan struct{}) erro
 			produceEmptyBlock := firstBlock || 0 == m.Conf.MaxIdleTime || nextEmptyBlock.Before(time.Now())
 			firstBlock = false
 
-			block, err := m.ProduceAndGossipBlock(ctx, produceEmptyBlock)
+			block, commit, err := m.ProduceAndGossipBlock(ctx, produceEmptyBlock)
 			if errors.Is(err, context.Canceled) {
 				m.logger.Error("Produce and gossip: context canceled.", "error", err)
 				return nil
@@ -73,23 +73,23 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, wait chan struct{}) erro
 			select {
 			case <-ctx.Done():
 				return nil
-			case wait <- struct{}{}:
+			case bytesProduced <- int64(block.SizeBytes()) + int64(commit.SizeBytes()):
 			}
 		}
 	}
 }
 
-func (m *Manager) ProduceAndGossipBlock(ctx context.Context, allowEmpty bool) (*types.Block, error) {
+func (m *Manager) ProduceAndGossipBlock(ctx context.Context, allowEmpty bool) (*types.Block, *types.Commit, error) {
 	block, commit, err := m.produceBlock(allowEmpty)
 	if err != nil {
-		return nil, fmt.Errorf("produce block: %w", err)
+		return nil, nil, fmt.Errorf("produce block: %w", err)
 	}
 
 	if err := m.gossipBlock(ctx, *block, *commit); err != nil {
-		return nil, fmt.Errorf("gossip block: %w", err)
+		return nil, nil, fmt.Errorf("gossip block: %w", err)
 	}
 
-	return block, nil
+	return block, commit, nil
 }
 
 func loadPrevBlock(store store.Store, height uint64) ([32]byte, *types.Commit, error) {

@@ -3,74 +3,21 @@ package block
 import (
 	"context"
 	"fmt"
+	"sync/atomic"
 	"time"
 
+	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/store"
+	uevent "github.com/dymensionxyz/dymint/utils/event"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
+	"golang.org/x/sync/errgroup"
 
 	"github.com/dymensionxyz/dymint/da"
-	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/types"
-	uevent "github.com/dymensionxyz/dymint/utils/event"
 )
 
-// SubmitLoop is the main loop for submitting blocks to the DA and SL layers.
-// It submits a batch when either
-// 1) It accumulates enough block data, so it's necessary to submit a batch to avoid exceeding the max size
-// 2) Enough time passed since the last submitted batch, so it's necessary to submit a batch to avoid exceeding the max time
-//
-// How does it work?
-// There is one thread which takes a channel from block production, as well as any unsubmitted blocks
-// It will produce batches according to (1,2) above and send those batches to another thread which submits them.
-// This way the submitter can block the batch creation and the batch creation can block the block production, to avoid backpressure.
-func (m *Manager) SubmitLoop(ctx context.Context, allowProduction chan struct{}) (err error) {
-	maxTime := time.NewTicker(m.Conf.BatchSubmitMaxTime)
-	defer maxTime.Stop()
-
-	// get produced size from the block production loop and signal to submit the batch when batch size reached
-	maxSizeC := make(chan struct{}, m.Conf.MaxBatchSkew)
-	go m.AccumulatedDataLoop(ctx, maxSizeC)
-
-	// defer func to clear the channels to release blocked goroutines on shutdown
-	defer func() {
-		m.logger.Info("Stopped submit loop.")
-
-		for {
-			select {
-			case <-m.producedSizeC:
-			case <-maxSizeC:
-			default:
-				return
-			}
-		}
-	}()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-maxSizeC:
-		case <-maxTime.C:
-		}
-
-		// modular submission methods have own retries mechanism.
-		// if error returned, we assume it's unrecoverable.
-		err = m.CreateAndSubmitBatch()
-		if err != nil {
-			m.logger.Error("Error submitting batch", "error", err)
-			uevent.MustPublish(ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
-			return
-		}
-		maxTime.Reset(m.Conf.BatchSubmitMaxTime)
-	}
-}
-
-// AccumulatedDataLoop is the main loop for accumulating the produced data size.
-// It is triggered by the ProducedSizeCh channel, which is populated by the block production loop when a new block is produced.
-// It accumulates the size of the produced data and triggers the submission of the batch when the accumulated size is greater than the max size.
-// It also emits a health status event when the submission channel is full.
-func (m *Manager) AccumulatedDataLoop(ctx context.Context, toSubmit chan struct{}) {
-	total := uint64(0)
+func (m *Manager) GetUnsubmittedBytes() int64 {
+	total := int64(0)
 
 	/*
 		On node start we want to include the count of any blocks which were produced and not submitted in a previous instance
@@ -79,48 +26,79 @@ func (m *Manager) AccumulatedDataLoop(ctx context.Context, toSubmit chan struct{
 	for h := m.NextHeightToSubmit(); h <= currH; h++ {
 		block := m.MustLoadBlock(h)
 		commit := m.MustLoadCommit(h)
-		total += uint64(block.ToProto().Size()) + uint64(commit.ToProto().Size())
+		total += int64(block.ToProto().Size()) + int64(commit.ToProto().Size())
 	}
+	return total
+}
 
-	for {
-		for m.Conf.BatchMaxSizeBytes <= total { // TODO: allow some tolerance for block size (e.g support for BlockBatchMaxSize +- 10%)
-			total -= m.Conf.BatchMaxSizeBytes
+// SubmitLoop is the main loop for submitting blocks to the DA and SL layers.
+// It submits a batch when either
+// 1) It accumulates enough block data, so it's necessary to submit a batch to avoid exceeding the max size
+// 2) Enough time passed since the last submitted batch, so it's necessary to submit a batch to avoid exceeding the max time
+// It will back pressure (pause) block production if it falls too far behind.
+func (m *Manager) SubmitLoop(ctx context.Context, bytesProduced chan int64) (err error) {
+	unsubmittedBytes := atomic.Int64{}
+	submitC := make(chan struct{}, m.Conf.MaxBatchSkew)
 
+	eg, ctx := errgroup.WithContext(ctx)
+
+	eg.Go(func() error {
+		// this thread submits batches (consumes bytes)
+		for {
 			select {
 			case <-ctx.Done():
-				return
-			case toSubmit <- struct{}{}:
-				m.logger.Info("Enough bytes to build a batch have been accumulated. Sent signal to submit the batch.")
-			default:
-				m.logger.Error("Enough bytes to build a batch have been accumulated, but too many batches are pending submission.	 " +
-					"Pausing block production until a batch submission signal is consumed.")
-
-				evt := &events.DataHealthStatus{Error: fmt.Errorf("submission channel is full: %w", gerrc.ErrResourceExhausted)}
-				uevent.MustPublish(ctx, m.Pubsub, evt, events.HealthStatusList)
-
-				/*
-					Now we block until earlier batches have been submitted. This has the effect of not consuming the producedSizeC,
-					which will stop new block production.
-				*/
-				select {
-				case <-ctx.Done():
-					return
-				case toSubmit <- struct{}{}:
+				return ctx.Err()
+			case <-submitC:
+				nConsumed, err := m.CreateAndSubmitBatch()
+				if err != nil {
+					return fmt.Errorf("create and submit batch: %w", err)
 				}
-
-				evt = &events.DataHealthStatus{Error: nil}
-				uevent.MustPublish(ctx, m.Pubsub, evt, events.HealthStatusList)
-
-				m.logger.Info("Resumed block production.")
+				n := unsubmittedBytes.Load()
+				nConsumedS := int64(nConsumed)
+				nConsumedS = min(n, nConsumedS)
+				// The consumption loop may count more than the production loop, because it includes
+				// the entire batch data structure, not just the individual blocks and commits.
+				// So we must be sure not to underflow.
+				unsubmittedBytes.Add(-nConsumedS)
 			}
 		}
-		select {
-		case <-ctx.Done():
-			return
-		case size := <-m.producedSizeC:
-			total += size
+	})
+
+	eg.Go(func() error {
+		ticker := time.NewTicker(m.Conf.BatchSubmitMaxTime)
+		defer ticker.Stop()
+		for {
+			mustSubmitBatch := false
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case n := <-bytesProduced:
+				unsubmittedBytes.Add(n)
+				mustSubmitBatch = m.Conf.BatchMaxSizeBytes < uint64(unsubmittedBytes.Load())
+			case <-ticker.C:
+				mustSubmitBatch = true
+			}
+			if !mustSubmitBatch {
+				continue
+			}
+			pauseBlockProduction := len(submitC) == cap(submitC)
+			if pauseBlockProduction {
+				evt := &events.DataHealthStatus{Error: fmt.Errorf("submission channel is full: %w", gerrc.ErrResourceExhausted)}
+				uevent.MustPublish(ctx, m.Pubsub, evt, events.HealthStatusList)
+				m.logger.Error("Enough bytes to build a batch have been accumulated, but too many batches are pending submission.	 " +
+					"Pausing block production until a batch submission signal is consumed.")
+			}
+			submitC <- struct{}{}
+			if pauseBlockProduction {
+				evt := &events.DataHealthStatus{Error: nil}
+				uevent.MustPublish(ctx, m.Pubsub, evt, events.HealthStatusList)
+				m.logger.Info("Resumed block production.")
+			}
+			ticker.Reset(m.Conf.BatchSubmitMaxTime)
 		}
-	}
+	})
+
+	return eg.Wait()
 }
 
 func (m *Manager) CreateAndSubmitBatch() (uint64, error) {
@@ -146,7 +124,6 @@ func CreateBatch(store store.Store, maxBatchSize uint64, startHeight uint64, end
 		Commits: make([]*types.Commit, 0, batchSize),
 	}
 
-	// Populate the batch
 	for height := startHeight; height <= endHeightInclusive; height++ {
 		block, err := store.LoadBlock(height)
 		if err != nil {
@@ -160,7 +137,6 @@ func CreateBatch(store store.Store, maxBatchSize uint64, startHeight uint64, end
 		batch.Blocks = append(batch.Blocks, block)
 		batch.Commits = append(batch.Commits, commit)
 
-		// Check if the batch size is too big
 		totalSize := batch.SizeBytes()
 		if maxBatchSize < totalSize {
 
