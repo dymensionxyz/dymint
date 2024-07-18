@@ -158,7 +158,7 @@ func (m *Manager) Start(ctx context.Context) error {
 		// Sequencer must wait till DA is synced to start submitting blobs
 		<-m.DAClient.Synced()
 
-		bytesProducedC := make(chan int64, 1)
+		bytesProducedC := make(chan int, 1)
 		eg.Go(func() error {
 			bytesProducedC <- m.GetUnsubmittedBytes()
 			return m.SubmitLoop(ctx, bytesProducedC)

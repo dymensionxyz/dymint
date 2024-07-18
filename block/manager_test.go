@@ -358,7 +358,7 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 			assert.NoError(err)
 
 			assert.Equal(batch.StartHeight(), startHeight)
-			assert.LessOrEqual(batch.SizeBytes(), int(managerConfig.BatchMaxSizeBytes))
+			assert.LessOrEqual(batch.SizeBytesEstimate(), int(managerConfig.BatchMaxSizeBytes))
 
 			if !tc.expectedToBeTruncated {
 				assert.Equal(batch.EndHeight(), endHeight)
@@ -370,7 +370,7 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 				// First relax the byte limit so we could proudce larger batch
 				manager.Conf.BatchMaxSizeBytes = 10 * manager.Conf.BatchMaxSizeBytes
 				newBatch, err := block.CreateBatch(manager.Store, manager.Conf.BatchMaxSizeBytes, startHeight, batch.EndHeight()+1)
-				assert.Greater(newBatch.SizeBytes(), batchLimitBytes)
+				assert.Greater(newBatch.SizeBytesEstimate(), batchLimitBytes)
 
 				assert.NoError(err)
 			}

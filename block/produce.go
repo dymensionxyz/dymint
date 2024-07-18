@@ -23,7 +23,7 @@ import (
 // ProduceBlockLoop is calling publishBlock in a loop as long as we're synced.
 // A signal will be sent to the bytesProduced channel for each block produced
 // In this way it's possible to pause block production by not consuming the channel
-func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int64) error {
+func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int) error {
 	m.logger.Info("Started block producer loop.")
 
 	ticker := time.NewTicker(m.Conf.BlockTime)
@@ -70,7 +70,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int6
 				m.logger.Info("Produced empty block.")
 			}
 
-			pause := len(bytesProducedC) == cap(bytesProducedC)
+			pause := len(bytesProducedC) == cap(bytesProducedC) // here we assume cap is at least 1
 			if pause {
 				evt := &events.DataHealthStatus{Error: fmt.Errorf("bytes produced channel is full: %w", gerrc.ErrResourceExhausted)}
 				uevent.MustPublish(ctx, m.Pubsub, evt, events.HealthStatusList)
@@ -81,7 +81,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int6
 			select {
 			case <-ctx.Done():
 				return nil
-			case bytesProducedC <- int64(block.SizeBytes()) + int64(commit.SizeBytes()): // TODO: add an adjustment
+			case bytesProducedC <- block.SizeBytes() + commit.SizeBytes():
 			}
 
 			if pause {

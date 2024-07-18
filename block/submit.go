@@ -14,27 +14,12 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
-func (m *Manager) GetUnsubmittedBytes() int64 {
-	total := int64(0)
-
-	/*
-		On node start we want to include the count of any blocks which were produced and not submitted in a previous instance
-	*/
-	currH := m.State.Height()
-	for h := m.NextHeightToSubmit(); h <= currH; h++ {
-		block := m.MustLoadBlock(h)
-		commit := m.MustLoadCommit(h)
-		total += int64(block.ToProto().Size()) + int64(commit.ToProto().Size())
-	}
-	return total
-}
-
 // SubmitLoop is the main loop for submitting blocks to the DA and SL layers.
 // It submits a batch when either
 // 1) It accumulates enough block data, so it's necessary to submit a batch to avoid exceeding the max size
 // 2) Enough time passed since the last submitted batch, so it's necessary to submit a batch to avoid exceeding the max time
 // It will back pressure (pause) block production if it falls too far behind.
-func (m *Manager) SubmitLoop(ctx context.Context, bytesProduced chan int64) (err error) {
+func (m *Manager) SubmitLoop(ctx context.Context, bytesProduced chan int) (err error) {
 	unsubmittedBytes := atomic.Int64{}
 	submitC := make(chan struct{}, m.Conf.MaxBatchSkew)
 
@@ -47,15 +32,15 @@ func (m *Manager) SubmitLoop(ctx context.Context, bytesProduced chan int64) (err
 			case <-ctx.Done():
 				return ctx.Err()
 			case <-submitC:
-				nConsumed, err := m.CreateAndSubmitBatch()
+				b, err := m.CreateAndSubmitBatch()
 				if err != nil {
 					return fmt.Errorf("create and submit batch: %w", err)
 				}
 				n := unsubmittedBytes.Load()
-				// The consumption loop may count more than the production loop, because it includes
-				// the entire batch data structure, not just the individual blocks and commits.
-				// So we must be sure not to underflow.
-				nConsumed = min(n, nConsumed)
+				nConsumed := int64(b.SizeBytesEstimate()) // here we use an estimate, not the actual size, because bytesProduced is only an estimate
+				if n < nConsumed {
+					panic("expected number of unsubmitted byte is less than the number of bytes sent in a batch") // sanity check
+				}
 				unsubmittedBytes.Add(-nConsumed)
 			}
 		}
@@ -70,7 +55,7 @@ func (m *Manager) SubmitLoop(ctx context.Context, bytesProduced chan int64) (err
 			case <-ctx.Done():
 				return ctx.Err()
 			case n := <-bytesProduced:
-				unsubmittedBytes.Add(n)
+				unsubmittedBytes.Add(int64(n))
 				mustSubmitBatch = m.Conf.BatchMaxSizeBytes < uint64(unsubmittedBytes.Load())
 			case <-ticker.C:
 				mustSubmitBatch = true
@@ -85,20 +70,22 @@ func (m *Manager) SubmitLoop(ctx context.Context, bytesProduced chan int64) (err
 	return eg.Wait()
 }
 
-func (m *Manager) CreateAndSubmitBatch() (int64, error) {
-	batch, err := CreateBatch(m.Store, m.Conf.BatchMaxSizeBytes, m.NextHeightToSubmit(), m.State.Height())
+// CreateAndSubmitBatch creates and submits a batch to the DA and SL.
+// It returns the
+func (m *Manager) CreateAndSubmitBatch() (*types.Batch, error) {
+	b, err := CreateBatch(m.Store, m.Conf.BatchMaxSizeBytes, m.NextHeightToSubmit(), m.State.Height())
 	if err != nil {
-		return 0, fmt.Errorf("create batch: %w", err)
+		return nil, fmt.Errorf("create batch: %w", err)
 	}
 
-	if 0 == batch.NumBlocks() {
-		return 0, nil
+	if 0 == b.NumBlocks() {
+		return nil, nil
 	}
 
-	if err := m.SubmitBatch(batch); err != nil {
-		return 0, fmt.Errorf("submit batch: %w", err)
+	if err := m.SubmitBatch(b); err != nil {
+		return nil, fmt.Errorf("submit batch: %w", err)
 	}
-	return int64(batch.SizeBytes()), nil
+	return b, nil
 }
 
 func CreateBatch(store store.Store, maxBatchSize uint64, startHeight uint64, endHeightInclusive uint64) (*types.Batch, error) {
@@ -154,4 +141,20 @@ func (m *Manager) SubmitBatch(batch *types.Batch) error {
 	types.RollappHubHeightGauge.Set(float64(batch.EndHeight()))
 	m.LastSubmittedHeight.Store(batch.EndHeight())
 	return nil
+}
+
+// GetUnsubmittedBytes returns the total number of unsubmitted bytes produced
+// Intended only to be used at startup, before block production and submission loops start
+func (m *Manager) GetUnsubmittedBytes() int {
+	total := 0
+	/*
+		On node start we want to include the count of any blocks which were produced and not submitted in a previous instance
+	*/
+	currH := m.State.Height()
+	for h := m.NextHeightToSubmit(); h <= currH; h++ {
+		block := m.MustLoadBlock(h)
+		commit := m.MustLoadCommit(h)
+		total += block.SizeBytes() + commit.SizeBytes()
+	}
+	return total
 }

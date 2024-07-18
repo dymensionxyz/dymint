@@ -58,8 +58,8 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 
 	mCtx, cancel := context.WithTimeout(context.Background(), runTime)
 	defer cancel()
-	bytesProduced1 := make(chan int64)
-	bytesProduced2 := make(chan int64)
+	bytesProduced1 := make(chan int)
+	bytesProduced2 := make(chan int)
 	go manager.ProduceBlockLoop(mCtx, bytesProduced1)
 	go managerWithEmptyBlocks.ProduceBlockLoop(mCtx, bytesProduced2)
 	uchannel.DrainForever(bytesProduced1, bytesProduced2)
@@ -142,7 +142,7 @@ func TestCreateEmptyBlocksNew(t *testing.T) {
 
 	mCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	bytesProduced := make(chan int64)
+	bytesProduced := make(chan int)
 	go manager.ProduceBlockLoop(mCtx, bytesProduced)
 	uchannel.DrainForever(bytesProduced)
 
@@ -202,7 +202,7 @@ func TestStopBlockProduction(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	bytesProducedC := make(chan int64)
+	bytesProducedC := make(chan int)
 
 	go func() {
 		manager.ProduceBlockLoop(ctx, bytesProducedC)

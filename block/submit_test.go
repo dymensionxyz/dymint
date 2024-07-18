@@ -218,7 +218,7 @@ func TestSubmissionByTime(t *testing.T) {
 
 	wg.Add(2) // Add 2 because we have 2 goroutines
 
-	bytesProducedC := make(chan int64)
+	bytesProducedC := make(chan int)
 	go func() {
 		manager.ProduceBlockLoop(mCtx, bytesProducedC)
 		wg.Done() // Decrease counter when this goroutine finishes
@@ -274,7 +274,7 @@ func submissionByBatchSize(manager *block.Manager, assert *assert.Assertions, ex
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	bytesProducedC := make(chan int64)
+	bytesProducedC := make(chan int)
 
 	go func() {
 		manager.ProduceBlockLoop(ctx, bytesProducedC)
