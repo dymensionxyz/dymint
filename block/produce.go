@@ -42,16 +42,12 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) (err error) {
 			produceEmptyBlock := firstBlock || 0 == m.Conf.MaxIdleTime || nextEmptyBlock.Before(time.Now())
 			firstBlock = false
 
-			var (
-				block  *types.Block
-				commit *types.Commit
-			)
-			block, commit, err = m.ProduceAndGossipBlock(ctx, produceEmptyBlock)
+			block, commit, err := m.ProduceAndGossipBlock(ctx, produceEmptyBlock)
 			if errors.Is(err, context.Canceled) {
 				m.logger.Error("Produce and gossip: context canceled.", "error", err)
 				return
 			}
-			if errors.Is(err, types.ErrSkippedEmptyBlock) {
+			if errors.Is(err, types.ErrEmptyBlock) {
 				continue
 			}
 			if errors.Is(err, ErrNonRecoverable) {
@@ -142,7 +138,7 @@ func (m *Manager) produceBlock(allowEmpty bool) (*types.Block, *types.Commit, er
 		maxBlockDataSize := uint64(float64(m.Conf.BlockBatchMaxSizeBytes) * types.MaxBlockSizeAdjustment)
 		block = m.Executor.CreateBlock(newHeight, lastCommit, lastHeaderHash, m.State, maxBlockDataSize)
 		if !allowEmpty && len(block.Data.Txs) == 0 {
-			return nil, nil, fmt.Errorf("%w: %w", types.ErrSkippedEmptyBlock, ErrRecoverable)
+			return nil, nil, fmt.Errorf("%w: %w", types.ErrEmptyBlock, ErrRecoverable)
 		}
 
 		abciHeaderPb := types.ToABCIHeaderPB(&block.Header)
