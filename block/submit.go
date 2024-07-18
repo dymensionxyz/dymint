@@ -95,23 +95,25 @@ func (m *Manager) AccumulatedDataLoop(ctx context.Context, toSubmit chan struct{
 			m.logger.Info("Enough bytes to build a batch have been accumulated. Sent signal to submit the batch.")
 		default:
 			m.logger.Error("Enough bytes to build a batch have been accumulated. Sent signal to submit the batch. " +
-				"Pausing block production until the signal is consumed")
+				"Pausing block production until the signal is consumed.")
 
 			evt := &events.DataHealthStatus{Error: fmt.Errorf("submission channel is full: %w", gerrc.ErrResourceExhausted)}
 			uevent.MustPublish(ctx, m.Pubsub, evt, events.HealthStatusList)
 
 			/*
-				Now we stop consuming the produced size channel, so the block production loop will stop producing new blocks.
+				Now we block until earlier batches have been submitted. This has the effect of not consuming the producedSizeCh,
+				which will stop new block production.
 			*/
 			select {
 			case <-ctx.Done():
 				return
 			case toSubmit <- struct{}{}:
 			}
-			m.logger.Info("Resumed block production.")
 
 			evt = &events.DataHealthStatus{Error: nil}
 			uevent.MustPublish(ctx, m.Pubsub, evt, events.HealthStatusList)
+
+			m.logger.Info("Resumed block production.")
 		}
 	}
 }
