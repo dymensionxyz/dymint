@@ -31,7 +31,7 @@ func (m *Manager) SubmitLoop(ctx context.Context) (err error) {
 
 		for {
 			select {
-			case <-m.producedSizeCh:
+			case <-m.producedSizeC:
 			case <-maxSizeC:
 			default:
 				return
@@ -77,7 +77,7 @@ func (m *Manager) AccumulatedDataLoop(ctx context.Context, toSubmit chan struct{
 		select {
 		case <-ctx.Done():
 			return
-		case size := <-m.producedSizeCh:
+		case size := <-m.producedSizeC:
 			total += size
 			if total < m.Conf.BlockBatchMaxSizeBytes { // TODO: allow some tolerance for block size (e.g support for BlockBatchMaxSize +- 10%)
 				// batch size limit not yet reached so we don't want to submit a batch yet
@@ -86,7 +86,7 @@ func (m *Manager) AccumulatedDataLoop(ctx context.Context, toSubmit chan struct{
 			}
 		}
 
-		total = 0
+		total -= m.Conf.BlockBatchMaxSizeBytes
 
 		select {
 		case <-ctx.Done():
@@ -101,7 +101,7 @@ func (m *Manager) AccumulatedDataLoop(ctx context.Context, toSubmit chan struct{
 			uevent.MustPublish(ctx, m.Pubsub, evt, events.HealthStatusList)
 
 			/*
-				Now we block until earlier batches have been submitted. This has the effect of not consuming the producedSizeCh,
+				Now we block until earlier batches have been submitted. This has the effect of not consuming the producedSizeC,
 				which will stop new block production.
 			*/
 			select {

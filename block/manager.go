@@ -53,7 +53,7 @@ type Manager struct {
 	/*
 		Production
 	*/
-	producedSizeCh chan uint64 // for the producer to report the size of the block it produced
+	producedSizeC chan uint64 // for the producer to report the size of the block+commit it produced
 
 	/*
 		Submission
@@ -114,7 +114,7 @@ func NewManager(
 		SLClient:         settlementClient,
 		Retriever:        dalc.(da.BatchRetriever),
 		targetSyncHeight: diodes.NewOneToOne(1, nil),
-		producedSizeCh:   make(chan uint64),
+		producedSizeC:    make(chan uint64),
 		logger:           logger,
 		blockCache:       make(map[uint64]CachedBlock),
 	}
