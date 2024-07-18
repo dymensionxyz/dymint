@@ -354,7 +354,7 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 			// Call createNextDABatch function
 			startHeight := manager.NextHeightToSubmit()
 			endHeight := startHeight + uint64(tc.blocksToProduce) - 1
-			batch, err := manager.CreateNextBatchToSubmit(startHeight, endHeight)
+			batch, err := block.CreateBatch(manager.Store, manager.Conf.BatchMaxSizeBytes, startHeight, endHeight)
 			assert.NoError(err)
 
 			assert.Equal(batch.StartHeight(), startHeight)
@@ -369,8 +369,8 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 				// validate next added block to batch would have been actually too big
 				// First relax the byte limit so we could proudce larger batch
 				manager.Conf.BatchMaxSizeBytes = 10 * manager.Conf.BatchMaxSizeBytes
-				newBatch, err := manager.CreateNextBatchToSubmit(startHeight, batch.EndHeight()+1)
-				assert.Greater(newBatch.ToProto().Size(), batchLimitBytes)
+				newBatch, err := block.CreateBatch(manager.Store, manager.Conf.BatchMaxSizeBytes, startHeight, batch.EndHeight()+1)
+				assert.Greater(newBatch.SizeBytes(), batchLimitBytes)
 
 				assert.NoError(err)
 			}

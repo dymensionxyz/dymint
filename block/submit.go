@@ -101,7 +101,7 @@ func (m *Manager) SubmitLoop(ctx context.Context, bytesProduced chan int64) (err
 }
 
 func (m *Manager) CreateAndSubmitBatch() (int64, error) {
-	batch, err := CreateBatch(m.Store, int(m.Conf.BatchMaxSizeBytes), m.NextHeightToSubmit(), m.State.Height())
+	batch, err := CreateBatch(m.Store, m.Conf.BatchMaxSizeBytes, m.NextHeightToSubmit(), m.State.Height())
 	if err != nil {
 		return 0, fmt.Errorf("create batch: %w", err)
 	}
@@ -116,7 +116,7 @@ func (m *Manager) CreateAndSubmitBatch() (int64, error) {
 	return int64(batch.SizeBytes()), nil
 }
 
-func CreateBatch(store store.Store, maxBatchSize int, startHeight uint64, endHeightInclusive uint64) (*types.Batch, error) {
+func CreateBatch(store store.Store, maxBatchSize uint64, startHeight uint64, endHeightInclusive uint64) (*types.Batch, error) {
 	batchSize := endHeightInclusive - startHeight + 1
 	batch := &types.Batch{
 		Blocks:  make([]*types.Block, 0, batchSize),
@@ -137,7 +137,7 @@ func CreateBatch(store store.Store, maxBatchSize int, startHeight uint64, endHei
 		batch.Commits = append(batch.Commits, commit)
 
 		totalSize := batch.SizeBytes()
-		if maxBatchSize < totalSize {
+		if int(maxBatchSize) < totalSize {
 
 			// Remove the last block and commit from the batch
 			batch.Blocks = batch.Blocks[:len(batch.Blocks)-1]
