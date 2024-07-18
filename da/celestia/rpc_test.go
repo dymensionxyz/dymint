@@ -53,10 +53,7 @@ func TestSubmitBatch(t *testing.T) {
 	require := require.New(t)
 	configBytes, err := json.Marshal(celestia.TestConfig)
 	require.NoError(err)
-	batch := &types.Batch{
-		StartHeight: 0,
-		EndHeight:   1,
-	}
+	batch := &types.Batch{} // TODO: start height 0, end height 1
 	nIDSize := 1
 
 	tree := exampleNMT(nIDSize, true, 1, 2, 3, 4)

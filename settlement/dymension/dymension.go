@@ -143,7 +143,7 @@ func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *d
 	}
 
 	// TODO: probably should be changed to be a channel, as the eventHandler is also in the HubClient in he produces the event
-	postBatchSubscriberClient := fmt.Sprintf("%s-%d-%s", postBatchSubscriberPrefix, batch.StartHeight, uuid.New().String())
+	postBatchSubscriberClient := fmt.Sprintf("%s-%d-%s", postBatchSubscriberPrefix, batch.StartHeight(), uuid.New().String())
 	subscription, err := c.pubsub.Subscribe(c.ctx, postBatchSubscriberClient, settlement.EventQueryNewSettlementBatchAccepted, 1000)
 	if err != nil {
 		return fmt.Errorf("pub sub subscribe to settlement state updates: %w", err)
@@ -197,7 +197,7 @@ func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *d
 
 			case event := <-subscription.Out():
 				eventData, _ := event.Data().(*settlement.EventDataNewBatchAccepted)
-				if eventData.EndHeight != batch.EndHeight {
+				if eventData.EndHeight != batch.EndHeight() {
 					c.logger.Debug("Received event for a different batch, ignoring.", "event", eventData)
 					continue // continue waiting for acceptance of the current batch
 				}
@@ -206,7 +206,7 @@ func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *d
 
 			case <-timer.C:
 				// Check if the batch was accepted by the settlement layer, and we've just missed the event.
-				includedBatch, err := c.pollForBatchInclusion(batch.EndHeight)
+				includedBatch, err := c.pollForBatchInclusion(batch.EndHeight())
 				timer.Reset(c.batchAcceptanceTimeout)
 				// no error, but still not included
 				if err == nil && !includedBatch {
@@ -431,8 +431,8 @@ func (c *Client) convertBatchToMsgUpdateState(batch *types.Batch, daResult *da.R
 	settlementBatch := &rollapptypes.MsgUpdateState{
 		Creator:     addr,
 		RollappId:   c.config.RollappID,
-		StartHeight: batch.StartHeight,
-		NumBlocks:   batch.EndHeight - batch.StartHeight + 1,
+		StartHeight: batch.StartHeight(),
+		NumBlocks:   batch.NumBlocks(),
 		DAPath:      daResult.SubmitMetaData.ToPath(),
 		Version:     dymRollappVersion,
 		BDs:         rollapptypes.BlockDescriptors{BD: blockDescriptors},

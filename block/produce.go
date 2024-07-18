@@ -21,7 +21,7 @@ import (
 )
 
 // ProduceBlockLoop is calling publishBlock in a loop as long as we're synced.
-func (m *Manager) ProduceBlockLoop(ctx context.Context) (err error) {
+func (m *Manager) ProduceBlockLoop(ctx context.Context) error {
 	m.logger.Info("Started block producer loop.")
 
 	ticker := time.NewTicker(m.Conf.BlockTime)
@@ -36,7 +36,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) (err error) {
 	for {
 		select {
 		case <-ctx.Done():
-			return
+			return nil
 		case <-ticker.C:
 			// if empty blocks are configured to be enabled, and one is scheduled...
 			produceEmptyBlock := firstBlock || 0 == m.Conf.MaxIdleTime || nextEmptyBlock.Before(time.Now())
@@ -45,15 +45,14 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) (err error) {
 			block, commit, err := m.ProduceAndGossipBlock(ctx, produceEmptyBlock)
 			if errors.Is(err, context.Canceled) {
 				m.logger.Error("Produce and gossip: context canceled.", "error", err)
-				return
+				return nil
 			}
 			if errors.Is(err, types.ErrEmptyBlock) { // occurs if the block was empty but we don't want to produce one
 				continue
 			}
 			if errors.Is(err, ErrNonRecoverable) {
-				m.logger.Error("Produce and gossip: non-recoverable.", "error", err) // TODO: flush? or don't log at all?
 				uevent.MustPublish(ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
-				return
+				return err
 			}
 			if err != nil {
 				m.logger.Error("Produce and gossip: uncategorized, assuming recoverable.", "error", err)
@@ -74,7 +73,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) (err error) {
 			size := uint64(block.ToProto().Size()) + uint64(commit.ToProto().Size())
 			select {
 			case <-ctx.Done():
-				return
+				return nil
 			case m.producedSizeC <- size:
 			}
 		}
@@ -196,8 +195,8 @@ func (m *Manager) createTMSignature(block *types.Block, proposerAddress []byte, 
 	v := vote.ToProto()
 	// convert libp2p key to tm key
 	// TODO: move to types
-	raw_key, _ := m.LocalKey.Raw()
-	tmprivkey := tmed25519.PrivKey(raw_key)
+	rawKey, _ := m.LocalKey.Raw()
+	tmprivkey := tmed25519.PrivKey(rawKey)
 	tmprivkey.PubKey().Bytes()
 	// Create a mock validator to sign the vote
 	tmvalidator := tmtypes.NewMockPVWithParams(tmprivkey, false, false)

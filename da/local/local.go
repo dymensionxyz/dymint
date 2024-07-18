@@ -95,8 +95,8 @@ func (m *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 	if err != nil {
 		return da.ResultSubmitBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error(), Error: err}}
 	}
-	hash := sha1.Sum(uint64ToBinary(batch.EndHeight)) //#nosec
-	err = m.dalcKV.Set(getKey(daHeight, batch.StartHeight), hash[:])
+	hash := sha1.Sum(uint64ToBinary(batch.EndHeight())) //#nosec
+	err = m.dalcKV.Set(getKey(daHeight, batch.StartHeight()), hash[:])
 	if err != nil {
 		return da.ResultSubmitBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error(), Error: err}}
 	}

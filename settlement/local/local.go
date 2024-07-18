@@ -256,8 +256,8 @@ func (c *Client) retrieveBatchAtStateIndex(slStateIndex uint64) (*settlement.Res
 
 func convertBatchToSettlementBatch(batch *types.Batch, daResult *da.ResultSubmitBatch) *settlement.Batch {
 	settlementBatch := &settlement.Batch{
-		StartHeight: batch.StartHeight,
-		EndHeight:   batch.EndHeight,
+		StartHeight: batch.StartHeight(),
+		EndHeight:   batch.EndHeight(),
 		MetaData: &settlement.BatchMetaData{
 			DA: &da.DASubmitMetaData{
 				Height: daResult.SubmitMetaData.Height,

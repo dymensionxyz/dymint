@@ -76,10 +76,8 @@ func TestBatchOverhead(t *testing.T) {
 		commit := commits[0]
 
 		batch := types.Batch{
-			StartHeight: 1,
-			EndHeight:   1,
-			Blocks:      blocks,
-			Commits:     commits,
+			Blocks:  blocks,
+			Commits: commits,
 		}
 
 		batchSize := batch.ToProto().Size()

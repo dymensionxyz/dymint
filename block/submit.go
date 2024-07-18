@@ -142,7 +142,7 @@ func (m *Manager) HandleSubmissionTrigger() error {
 	}
 	m.logger.Info("Submitted batch to DA.", "start height", nextBatch.StartHeight, "end height", nextBatch.EndHeight)
 
-	actualEndHeight := nextBatch.EndHeight
+	actualEndHeight := nextBatch.EndHeight()
 
 	err = m.SLClient.SubmitBatch(nextBatch, m.DAClient.GetClientType(), &resultSubmitToDA)
 	if err != nil {
@@ -158,9 +158,8 @@ func (m *Manager) HandleSubmissionTrigger() error {
 func (m *Manager) CreateNextBatchToSubmit(startHeight uint64, endHeightInclusive uint64) (*types.Batch, error) {
 	batchSize := endHeightInclusive - startHeight + 1
 	batch := &types.Batch{
-		StartHeight: startHeight,
-		Blocks:      make([]*types.Block, 0, batchSize),
-		Commits:     make([]*types.Commit, 0, batchSize),
+		Blocks:  make([]*types.Block, 0, batchSize),
+		Commits: make([]*types.Commit, 0, batchSize),
 	}
 
 	// Populate the batch
@@ -194,7 +193,6 @@ func (m *Manager) CreateNextBatchToSubmit(startHeight uint64, endHeightInclusive
 			break
 		}
 
-		batch.EndHeight = height
 	}
 
 	return batch, nil

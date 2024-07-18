@@ -173,10 +173,8 @@ func GenerateBatch(startHeight uint64, endHeight uint64, proposerKey crypto.Priv
 		return nil, err
 	}
 	batch := &types.Batch{
-		StartHeight: startHeight,
-		EndHeight:   endHeight,
-		Blocks:      blocks,
-		Commits:     commits,
+		Blocks:  blocks,
+		Commits: commits,
 	}
 	return batch, nil
 }

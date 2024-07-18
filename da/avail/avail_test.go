@@ -112,7 +112,7 @@ const (
 // TestRetriveBatches tests the RetrieveBatches function manages
 // to decode the batches from the block extrinsics and only returns
 // the batches relevant for our app id and method index.
-func TestRetriveBatches(t *testing.T) {
+func TestRetrieveBatches(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	const appId = 123
@@ -140,8 +140,8 @@ func TestRetriveBatches(t *testing.T) {
 	// Set the mock functions
 	mockSubstrateApiClient.On("GetBlockHash", mock.Anything).Return(availtypes.NewHash([]byte("123")), nil)
 	// Build batches for the block extrinsics
-	batch1 := types.Batch{StartHeight: 0, EndHeight: 1}
-	batch2 := types.Batch{StartHeight: 2, EndHeight: 3}
+	batch1 := types.Batch{} // TODO: StartHeight: 0, EndHeight: 1
+	batch2 := types.Batch{} // TODO: StartHeight: 2, EndHeight: 3
 	batch1bytes, err := batch1.MarshalBinary()
 	require.NoError(err)
 	batch2bytes, err := batch2.MarshalBinary()
