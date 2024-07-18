@@ -67,16 +67,9 @@ func (m *Manager) AccumulatedDataLoop(ctx context.Context, toSubmit chan struct{
 	total := uint64(0)
 	// Get size unsubmitted blocks and commits
 	currH := m.State.Height()
-	for h := m.LastSubmittedHeight.Load(); h < currH; h++ {
-		block, err := m.Store.LoadBlock(h)
-		if err != nil {
-			panic(fmt.Errorf("load block: height: %d: %w", h, err))
-		}
-		commit, err := m.Store.LoadCommit(h)
-		if err != nil {
-			panic(fmt.Errorf("load commit: height: %d: %w", h, err))
-		}
-
+	for h := m.LastSubmittedHeight.Load() + 1; h <= currH; h++ {
+		block := m.MustLoadBlock(h)
+		commit := m.MustLoadCommit(h)
 		total += uint64(block.ToProto().Size()) + uint64(commit.ToProto().Size())
 	}
 
@@ -86,9 +79,9 @@ func (m *Manager) AccumulatedDataLoop(ctx context.Context, toSubmit chan struct{
 			return
 		case size := <-m.producedSizeCh:
 			total += size
-
-			// skip while the accumulated size is less than the max size
 			if total < m.Conf.BlockBatchMaxSizeBytes { // TODO: allow some tolerance for block size (e.g support for BlockBatchMaxSize +- 10%)
+				// batch size limit not yet reached so we don't want to submit a batch yet
+				// note: the actual batch size is slightly more than the sum of block sizes, but this is a rough estimate
 				continue
 			}
 		}
@@ -99,9 +92,10 @@ func (m *Manager) AccumulatedDataLoop(ctx context.Context, toSubmit chan struct{
 		case <-ctx.Done():
 			return
 		case toSubmit <- struct{}{}:
-			m.logger.Info("New batch accumulated, sent signal to submit the batch.")
+			m.logger.Info("Enough bytes to build a batch have been accumulated. Sent signal to submit the batch.")
 		default:
-			m.logger.Error("New batch accumulated, but channel is full, stopping block production until the signal is consumed.")
+			m.logger.Error("Enough bytes to build a batch have been accumulated. Sent signal to submit the batch. " +
+				"Pausing block production until the signal is consumed")
 
 			evt := &events.DataHealthStatus{Error: fmt.Errorf("submission channel is full: %w", gerrc.ErrResourceExhausted)}
 			uevent.MustPublish(ctx, m.Pubsub, evt, events.HealthStatusList)
