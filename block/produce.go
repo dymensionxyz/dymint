@@ -47,7 +47,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) (err error) {
 				m.logger.Error("Produce and gossip: context canceled.", "error", err)
 				return
 			}
-			if errors.Is(err, types.ErrEmptyBlock) {
+			if errors.Is(err, types.ErrEmptyBlock) { // occurs if the block was empty but we don't want to produce one
 				continue
 			}
 			if errors.Is(err, ErrNonRecoverable) {
@@ -60,11 +60,10 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) (err error) {
 				continue
 			}
 
-			// If IBC transactions are present, set proof required to true
-			// This will set a shorter timer for the next block
-			// currently we set it for all txs as we don't have a way to determine if an IBC tx is present (https://github.com/dymensionxyz/dymint/issues/709)
 			nextEmptyBlock = time.Now().Add(m.Conf.MaxIdleTime)
 			if 0 < len(block.Data.Txs) {
+				// the block wasn't empty so we want to make sure we don't wait too long before producing another one, in order to facilitate proofs for ibc
+				// TODO: optimize to only do this if IBC transactions are present (https://github.com/dymensionxyz/dymint/issues/709)
 				nextEmptyBlock = time.Now().Add(m.Conf.MaxProofTime)
 			} else {
 				m.logger.Info("Produced empty block.")
