@@ -188,11 +188,10 @@ func (m *Manager) CreateNextBatchToSubmit(startHeight uint64, endHeightInclusive
 			batch.Commits = batch.Commits[:len(batch.Commits)-1]
 
 			if height == startHeight {
-				return nil, fmt.Errorf("block size exceeds max batch size: height %d: size: %d", height, totalSize)
+				return nil, fmt.Errorf("block size exceeds max batch size: height %d: size: %d: %w", height, totalSize, gerrc.ErrOutOfRange)
 			}
 			break
 		}
-
 	}
 
 	return batch, nil
