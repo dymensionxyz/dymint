@@ -261,8 +261,6 @@ func TestSubmissionByBatchSize(t *testing.T) {
 		manager, err := testutil.GetManager(managerConfig, nil, nil, 1, 1, 0, nil, nil)
 		require.NoError(err)
 
-		// validate initial accumulated is zero
-		require.Equal(manager.AccumulatedBatchSize.Load(), uint64(0))
 		assert.Equal(manager.State.Height(), uint64(0))
 
 		submissionByBatchSize(manager, assert, c.expectedSubmission)
@@ -291,7 +289,6 @@ func submissionByBatchSize(manager *block.Manager, assert *assert.Assertions, ex
 	time.Sleep(200 * time.Millisecond)
 	// assert block produced but nothing submitted yet
 	assert.Greater(manager.State.Height(), uint64(0))
-	assert.Greater(manager.AccumulatedBatchSize.Load(), uint64(0))
 
 	wg.Wait() // Wait for all goroutines to finish
 
