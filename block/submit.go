@@ -54,12 +54,11 @@ func (m *Manager) SubmitLoop(ctx context.Context, bytesProduced chan int64) (err
 					return fmt.Errorf("create and submit batch: %w", err)
 				}
 				n := unsubmittedBytes.Load()
-				nConsumedS := int64(nConsumed)
-				nConsumedS = min(n, nConsumedS)
 				// The consumption loop may count more than the production loop, because it includes
 				// the entire batch data structure, not just the individual blocks and commits.
 				// So we must be sure not to underflow.
-				unsubmittedBytes.Add(-nConsumedS)
+				nConsumed = min(n, nConsumed)
+				unsubmittedBytes.Add(-nConsumed)
 			}
 		}
 	})
@@ -101,7 +100,7 @@ func (m *Manager) SubmitLoop(ctx context.Context, bytesProduced chan int64) (err
 	return eg.Wait()
 }
 
-func (m *Manager) CreateAndSubmitBatch() (uint64, error) {
+func (m *Manager) CreateAndSubmitBatch() (int64, error) {
 	batch, err := CreateBatch(m.Store, m.Conf.BatchMaxSizeBytes, m.NextHeightToSubmit(), m.State.Height())
 	if err != nil {
 		return 0, fmt.Errorf("create batch: %w", err)
@@ -114,7 +113,7 @@ func (m *Manager) CreateAndSubmitBatch() (uint64, error) {
 	if err := m.SubmitBatch(batch); err != nil {
 		return 0, fmt.Errorf("submit batch: %w", err)
 	}
-	return batch.SizeBytes(), nil
+	return int64(batch.SizeBytes()), nil
 }
 
 func CreateBatch(store store.Store, maxBatchSize uint64, startHeight uint64, endHeightInclusive uint64) (*types.Batch, error) {
