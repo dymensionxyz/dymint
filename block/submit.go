@@ -122,36 +122,29 @@ func (m *Manager) AccumulatedDataLoop(ctx context.Context, toSubmit chan struct{
 // pass through during the batch submission process due to proofs requires for ibc messages only exist on the next block.
 // Finally, it submits the next batch of blocks and updates the sync target to the height of the last block in the submitted batch.
 func (m *Manager) HandleSubmissionTrigger() error {
-	// Load current sync target and height to determine if new blocks are available for submission.
-
-	startHeight := m.NextHeightToSubmit()
-	endHeightInclusive := m.State.Height()
-
-	if endHeightInclusive < startHeight {
-		return nil // No new blocks have been produced
-	}
-
-	nextBatch, err := m.CreateNextBatchToSubmit(startHeight, endHeightInclusive)
+	batch, err := m.CreateNextBatchToSubmit(m.NextHeightToSubmit(), m.State.Height())
 	if err != nil {
 		return fmt.Errorf("create next batch to submit: %w", err)
 	}
 
-	resultSubmitToDA := m.DAClient.SubmitBatch(nextBatch)
+	if 0 == batch.NumBlocks() {
+		return nil
+	}
+
+	resultSubmitToDA := m.DAClient.SubmitBatch(batch)
 	if resultSubmitToDA.Code != da.StatusSuccess {
 		return fmt.Errorf("submit next batch to da: %s", resultSubmitToDA.Message)
 	}
-	m.logger.Info("Submitted batch to DA.", "start height", nextBatch.StartHeight, "end height", nextBatch.EndHeight)
+	m.logger.Info("Submitted batch to DA.", "start height", batch.StartHeight(), "end height", batch.EndHeight())
 
-	actualEndHeight := nextBatch.EndHeight()
-
-	err = m.SLClient.SubmitBatch(nextBatch, m.DAClient.GetClientType(), &resultSubmitToDA)
+	err = m.SLClient.SubmitBatch(batch, m.DAClient.GetClientType(), &resultSubmitToDA)
 	if err != nil {
-		return fmt.Errorf("sl client submit batch: start height: %d: inclusive end height: %d: %w", startHeight, actualEndHeight, err)
+		return fmt.Errorf("sl client submit batch: start height: %d: inclusive end height: %d: %w", batch.StartHeight(), batch.EndHeight(), err)
 	}
-	m.logger.Info("Submitted batch to SL.", "start height", resultSubmitToDA, "end height", nextBatch.EndHeight)
+	m.logger.Info("Submitted batch to SL.", "start height", batch.StartHeight(), "end height", batch.EndHeight())
 
-	types.RollappHubHeightGauge.Set(float64(actualEndHeight))
-	m.LastSubmittedHeight.Store(actualEndHeight)
+	types.RollappHubHeightGauge.Set(float64(batch.EndHeight()))
+	m.LastSubmittedHeight.Store(batch.EndHeight())
 	return nil
 }
 
@@ -179,9 +172,6 @@ func (m *Manager) CreateNextBatchToSubmit(startHeight uint64, endHeightInclusive
 		// Check if the batch size is too big
 		totalSize := batch.ToProto().Size()
 		if totalSize > int(m.Conf.BatchMaxSizeBytes) {
-			// Nil out the last block and commit
-			batch.Blocks[len(batch.Blocks)-1] = nil
-			batch.Commits[len(batch.Commits)-1] = nil
 
 			// Remove the last block and commit from the batch
 			batch.Blocks = batch.Blocks[:len(batch.Blocks)-1]
