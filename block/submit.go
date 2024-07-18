@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 
 	"github.com/dymensionxyz/dymint/da"
@@ -127,7 +128,7 @@ func (m *Manager) AccumulatedDataLoop(ctx context.Context, toSubmit chan struct{
 // pass through during the batch submission process due to proofs requires for ibc messages only exist on the next block.
 // Finally, it submits the next batch of blocks and updates the sync target to the height of the last block in the submitted batch.
 func (m *Manager) HandleSubmissionTrigger() error {
-	batch, err := m.CreateNextBatchToSubmit(m.NextHeightToSubmit(), m.State.Height())
+	batch, err := CreateNextBatchToSubmit(m.Store, m.Conf.BatchMaxSizeBytes, m.NextHeightToSubmit(), m.State.Height())
 	if err != nil {
 		return fmt.Errorf("create next batch to submit: %w", err)
 	}
@@ -153,7 +154,7 @@ func (m *Manager) HandleSubmissionTrigger() error {
 	return nil
 }
 
-func (m *Manager) CreateNextBatchToSubmit(startHeight uint64, endHeightInclusive uint64) (*types.Batch, error) {
+func CreateNextBatchToSubmit(store store.Store, maxBatchSize uint64, startHeight uint64, endHeightInclusive uint64) (*types.Batch, error) {
 	batchSize := endHeightInclusive - startHeight + 1
 	batch := &types.Batch{
 		Blocks:  make([]*types.Block, 0, batchSize),
@@ -162,11 +163,11 @@ func (m *Manager) CreateNextBatchToSubmit(startHeight uint64, endHeightInclusive
 
 	// Populate the batch
 	for height := startHeight; height <= endHeightInclusive; height++ {
-		block, err := m.Store.LoadBlock(height)
+		block, err := store.LoadBlock(height)
 		if err != nil {
 			return nil, fmt.Errorf("load block: height: %d: %w", height, err)
 		}
-		commit, err := m.Store.LoadCommit(height)
+		commit, err := store.LoadCommit(height)
 		if err != nil {
 			return nil, fmt.Errorf("load commit: height: %d: %w", height, err)
 		}
@@ -175,8 +176,8 @@ func (m *Manager) CreateNextBatchToSubmit(startHeight uint64, endHeightInclusive
 		batch.Commits = append(batch.Commits, commit)
 
 		// Check if the batch size is too big
-		totalSize := batch.ToProto().Size()
-		if totalSize > int(m.Conf.BatchMaxSizeBytes) {
+		totalSize := batch.SizeBytes()
+		if maxBatchSize < totalSize {
 
 			// Remove the last block and commit from the batch
 			batch.Blocks = batch.Blocks[:len(batch.Blocks)-1]
