@@ -32,6 +32,6 @@ func (b Batch) NumBlocks() uint64 {
 	return uint64(len(b.Blocks))
 }
 
-func (b Batch) SizeBytes() uint64 {
-	return uint64(b.ToProto().Size())
+func (b Batch) SizeBytes() int {
+	return b.ToProto().Size()
 }

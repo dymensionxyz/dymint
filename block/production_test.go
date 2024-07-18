@@ -13,6 +13,7 @@ import (
 	"github.com/dymensionxyz/dymint/mempool"
 	mempoolv1 "github.com/dymensionxyz/dymint/mempool/v1"
 	"github.com/dymensionxyz/dymint/node/events"
+	uchannel "github.com/dymensionxyz/dymint/utils/channel"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
 	tmcfg "github.com/tendermint/tendermint/config"
 
@@ -57,13 +58,11 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 
 	mCtx, cancel := context.WithTimeout(context.Background(), runTime)
 	defer cancel()
-	go manager.ProduceBlockLoop(mCtx)
-	go managerWithEmptyBlocks.ProduceBlockLoop(mCtx)
-
-	buf1 := make(chan struct{}, 100) // dummy to avoid unhealthy event
-	buf2 := make(chan struct{}, 100) // dummy to avoid unhealthy event
-	go manager.AccumulatedDataLoop(mCtx, buf1)
-	go managerWithEmptyBlocks.AccumulatedDataLoop(mCtx, buf2)
+	bytesProduced1 := make(chan int64)
+	bytesProduced2 := make(chan int64)
+	go manager.ProduceBlockLoop(mCtx, bytesProduced1)
+	go managerWithEmptyBlocks.ProduceBlockLoop(mCtx, bytesProduced2)
+	uchannel.DrainForever(bytesProduced1, bytesProduced2)
 	<-mCtx.Done()
 
 	require.Greater(manager.State.Height(), initialHeight)

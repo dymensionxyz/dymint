@@ -66,8 +66,8 @@ type Block struct {
 	LastCommit Commit
 }
 
-func (b Block) SizeBytes() uint64 {
-	return uint64(b.ToProto().Size())
+func (b Block) SizeBytes() int {
+	return b.ToProto().Size()
 }
 
 var (
@@ -96,8 +96,8 @@ type Commit struct {
 	TMSignature tmtypes.CommitSig
 }
 
-func (c Commit) SizeBytes() uint64 {
-	return uint64(c.ToProto().Size())
+func (c Commit) SizeBytes() int {
+	return c.ToProto().Size()
 }
 
 // Signature represents signature of block creator.
