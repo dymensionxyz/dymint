@@ -32,6 +32,7 @@ const (
 /* -------------------------------------------------------------------------- */
 /*                                    utils                                   */
 /* -------------------------------------------------------------------------- */
+
 func GetManagerWithProposerKey(conf config.BlockManagerConfig, proposerKey crypto.PrivKey, settlementlc settlement.ClientI, dalc da.DataAvailabilityLayerClient, genesisHeight, storeInitialHeight, storeLastBlockHeight int64, proxyAppConns proxy.AppConns, mockStore store.Store) (*block.Manager, error) {
 	genesis := GenerateGenesis(genesisHeight)
 	// Change the LastBlockHeight to avoid calling InitChainSync within the manager

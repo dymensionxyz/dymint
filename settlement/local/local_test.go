@@ -57,11 +57,11 @@ func TestSubmitBatch(t *testing.T) {
 	require.Error(err) // no batch should be present
 
 	// Create a batches which will be submitted
-	propserKey, _, err := crypto.GenerateEd25519Key(nil)
+	proposerKey, _, err := crypto.GenerateEd25519Key(nil)
 	require.NoError(err)
-	batch1, err := testutil.GenerateBatch(1, 1, propserKey)
+	batch1, err := testutil.GenerateBatch(1, 1, proposerKey)
 	require.NoError(err)
-	batch2, err := testutil.GenerateBatch(2, 2, propserKey)
+	batch2, err := testutil.GenerateBatch(2, 2, proposerKey)
 	require.NoError(err)
 	resultSubmitBatch := &da.ResultSubmitBatch{}
 	resultSubmitBatch.SubmitMetaData = &da.DASubmitMetaData{}

@@ -9,7 +9,6 @@ import (
 	"github.com/dymensionxyz/dymint/da/avail"
 	mocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/da/avail"
 	"github.com/dymensionxyz/dymint/testutil"
-	"github.com/dymensionxyz/dymint/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -29,7 +28,7 @@ func TestRetrieveBatches(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	const appId = 123
-	// Setup the config
+	// Set up the config
 	configBytes, err := json.Marshal(avail.Config{
 		Seed:  seed,
 		AppID: int64(appId),
@@ -53,8 +52,8 @@ func TestRetrieveBatches(t *testing.T) {
 	// Set the mock functions
 	mockSubstrateApiClient.On("GetBlockHash", mock.Anything).Return(availtypes.NewHash([]byte("123")), nil)
 	// Build batches for the block extrinsics
-	batch1 := types.Batch{} // TODO: StartHeight: 0, EndHeight: 1
-	batch2 := types.Batch{} // TODO: StartHeight: 2, EndHeight: 3
+	batch1 := testutil.MustGenerateBatchAndKey(0, 1)
+	batch2 := testutil.MustGenerateBatchAndKey(2, 3)
 	batch1bytes, err := batch1.MarshalBinary()
 	require.NoError(err)
 	batch2bytes, err := batch2.MarshalBinary()
@@ -94,5 +93,5 @@ func TestRetrieveBatches(t *testing.T) {
 	}
 	batchResult := dalc.RetrieveBatches(daMetaData)
 	assert.Equal(1, len(batchResult.Batches))
-	assert.Equal(batch1.StartHeight, batchResult.Batches[0].StartHeight)
+	assert.Equal(batch1.StartHeight(), batchResult.Batches[0].StartHeight())
 }
