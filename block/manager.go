@@ -177,6 +177,12 @@ func (m *Manager) Start(ctx context.Context) error {
 			return m.SyncToTargetHeightLoop(ctx)
 		})
 	}
+
+	go func() {
+		err := eg.Wait()
+		m.logger.Info("Block manager err group finished.", "err", err)
+	}()
+
 	return nil
 }
 
