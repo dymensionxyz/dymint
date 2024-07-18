@@ -31,7 +31,7 @@ func (m *Manager) SubmitLoop(ctx context.Context) (err error) {
 
 		for {
 			select {
-			case <-m.producedSizeCh:
+			case <-m.producedSizeC:
 			case <-maxSizeC:
 			default:
 				return
@@ -65,59 +65,54 @@ func (m *Manager) SubmitLoop(ctx context.Context) (err error) {
 // It also emits a health status event when the submission channel is full.
 func (m *Manager) AccumulatedDataLoop(ctx context.Context, toSubmit chan struct{}) {
 	total := uint64(0)
-	// Get size unsubmitted blocks and commits
-	currH := m.State.Height()
-	for h := m.LastSubmittedHeight.Load(); h < currH; h++ {
-		block, err := m.Store.LoadBlock(h)
-		if err != nil {
-			panic(fmt.Errorf("load block: height: %d: %w", h, err))
-		}
-		commit, err := m.Store.LoadCommit(h)
-		if err != nil {
-			panic(fmt.Errorf("load commit: height: %d: %w", h, err))
-		}
 
+	/*
+		On node start we want to include the count of any blocks which were produced and not submitted in a previous instance
+	*/
+	currH := m.State.Height()
+	for h := m.LastSubmittedHeight.Load() + 1; h <= currH; h++ {
+		block := m.MustLoadBlock(h)
+		commit := m.MustLoadCommit(h)
 		total += uint64(block.ToProto().Size()) + uint64(commit.ToProto().Size())
 	}
 
 	for {
-		select {
-		case <-ctx.Done():
-			return
-		case size := <-m.producedSizeCh:
-			total += size
+		for m.Conf.BlockBatchMaxSizeBytes <= total { // TODO: allow some tolerance for block size (e.g support for BlockBatchMaxSize +- 10%)
+			total -= m.Conf.BlockBatchMaxSizeBytes
 
-			// skip while the accumulated size is less than the max size
-			if total < m.Conf.BlockBatchMaxSizeBytes { // TODO: allow some tolerance for block size (e.g support for BlockBatchMaxSize +- 10%)
-				continue
-			}
-		}
-
-		total = 0
-
-		select {
-		case <-ctx.Done():
-			return
-		case toSubmit <- struct{}{}:
-			m.logger.Info("New batch accumulated, sent signal to submit the batch.")
-		default:
-			m.logger.Error("New batch accumulated, but channel is full, stopping block production until the signal is consumed.")
-
-			evt := &events.DataHealthStatus{Error: fmt.Errorf("submission channel is full: %w", gerrc.ErrResourceExhausted)}
-			uevent.MustPublish(ctx, m.Pubsub, evt, events.HealthStatusList)
-
-			/*
-				Now we stop consuming the produced size channel, so the block production loop will stop producing new blocks.
-			*/
 			select {
 			case <-ctx.Done():
 				return
 			case toSubmit <- struct{}{}:
-			}
-			m.logger.Info("Resumed block production.")
+				m.logger.Info("Enough bytes to build a batch have been accumulated. Sent signal to submit the batch.")
+			default:
+				m.logger.Error("Enough bytes to build a batch have been accumulated, but too many batches are pending submission.	 " +
+					"Pausing block production until a batch submission signal is consumed.")
 
-			evt = &events.DataHealthStatus{Error: nil}
-			uevent.MustPublish(ctx, m.Pubsub, evt, events.HealthStatusList)
+				evt := &events.DataHealthStatus{Error: fmt.Errorf("submission channel is full: %w", gerrc.ErrResourceExhausted)}
+				uevent.MustPublish(ctx, m.Pubsub, evt, events.HealthStatusList)
+
+				/*
+					Now we block until earlier batches have been submitted. This has the effect of not consuming the producedSizeC,
+					which will stop new block production.
+				*/
+				select {
+				case <-ctx.Done():
+					return
+				case toSubmit <- struct{}{}:
+				}
+
+				evt = &events.DataHealthStatus{Error: nil}
+				uevent.MustPublish(ctx, m.Pubsub, evt, events.HealthStatusList)
+
+				m.logger.Info("Resumed block production.")
+			}
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case size := <-m.producedSizeC:
+			total += size
 		}
 	}
 }
