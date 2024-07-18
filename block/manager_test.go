@@ -319,7 +319,7 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 	require.NoError(err)
 	// Init manager
 	managerConfig := testutil.GetManagerConfig()
-	managerConfig.BlockBatchMaxSizeBytes = batchLimitBytes // enough for 2 block, not enough for 10 blocks
+	managerConfig.BatchMaxSizeBytes = batchLimitBytes // enough for 2 block, not enough for 10 blocks
 	manager, err := testutil.GetManager(managerConfig, nil, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
@@ -358,7 +358,7 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 			assert.NoError(err)
 
 			assert.Equal(batch.StartHeight, startHeight)
-			assert.LessOrEqual(batch.ToProto().Size(), int(managerConfig.BlockBatchMaxSizeBytes))
+			assert.LessOrEqual(batch.ToProto().Size(), int(managerConfig.BatchMaxSizeBytes))
 
 			if !tc.expectedToBeTruncated {
 				assert.Equal(batch.EndHeight, endHeight)
@@ -368,7 +368,7 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 
 				// validate next added block to batch would have been actually too big
 				// First relax the byte limit so we could proudce larger batch
-				manager.Conf.BlockBatchMaxSizeBytes = 10 * manager.Conf.BlockBatchMaxSizeBytes
+				manager.Conf.BatchMaxSizeBytes = 10 * manager.Conf.BatchMaxSizeBytes
 				newBatch, err := manager.CreateNextBatchToSubmit(startHeight, batch.EndHeight+1)
 				assert.Greater(newBatch.ToProto().Size(), batchLimitBytes)
 

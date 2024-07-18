@@ -22,7 +22,7 @@ func (m *Manager) SubmitLoop(ctx context.Context) (err error) {
 	defer maxTime.Stop()
 
 	// get produced size from the block production loop and signal to submit the batch when batch size reached
-	maxSizeC := make(chan struct{}, m.Conf.MaxSupportedBatchSkew)
+	maxSizeC := make(chan struct{}, m.Conf.MaxBatchSkew)
 	go m.AccumulatedDataLoop(ctx, maxSizeC)
 
 	// defer func to clear the channels to release blocked goroutines on shutdown
@@ -77,8 +77,8 @@ func (m *Manager) AccumulatedDataLoop(ctx context.Context, toSubmit chan struct{
 	}
 
 	for {
-		for m.Conf.BlockBatchMaxSizeBytes <= total { // TODO: allow some tolerance for block size (e.g support for BlockBatchMaxSize +- 10%)
-			total -= m.Conf.BlockBatchMaxSizeBytes
+		for m.Conf.BatchMaxSizeBytes <= total { // TODO: allow some tolerance for block size (e.g support for BlockBatchMaxSize +- 10%)
+			total -= m.Conf.BatchMaxSizeBytes
 
 			select {
 			case <-ctx.Done():
@@ -179,7 +179,7 @@ func (m *Manager) CreateNextBatchToSubmit(startHeight uint64, endHeightInclusive
 
 		// Check if the batch size is too big
 		totalSize := batch.ToProto().Size()
-		if totalSize > int(m.Conf.BlockBatchMaxSizeBytes) {
+		if totalSize > int(m.Conf.BatchMaxSizeBytes) {
 			// Nil out the last block and commit
 			batch.Blocks[len(batch.Blocks)-1] = nil
 			batch.Commits[len(batch.Commits)-1] = nil

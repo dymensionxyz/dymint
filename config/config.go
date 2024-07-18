@@ -51,12 +51,12 @@ type BlockManagerConfig struct {
 	MaxIdleTime time.Duration `mapstructure:"max_idle_time"`
 	// MaxProofTime defines the max time to be idle, if txs that requires proof were included in last block
 	MaxProofTime time.Duration `mapstructure:"max_proof_time"`
-	// BatchSubmitMaxTime defines how long should block manager wait for before submitting batch
+	// BatchSubmitMaxTime is how long should block manager wait for before submitting batch
 	BatchSubmitMaxTime time.Duration `mapstructure:"batch_submit_max_time"`
-	// Max amount of pending batches to be submitted. block production will be paused if this limit is reached.
-	MaxSupportedBatchSkew uint64 `mapstructure:"max_supported_batch_skew"`
-	// The size of the batch in Bytes. Every batch we'll write to the DA and the settlement layer.
-	BlockBatchMaxSizeBytes uint64 `mapstructure:"block_batch_max_size_bytes"`
+	// MaxBatchSkew is the number of batches which are waiting to be submitted. Block production will be paused if this limit is reached.
+	MaxBatchSkew uint64 `mapstructure:"max_supported_batch_skew"`
+	// The size of the batch of blocks and commits in Bytes. We'll write every batch to the DA and the settlement layer.
+	BatchMaxSizeBytes uint64 `mapstructure:"block_batch_max_size_bytes"`
 }
 
 // GetViperConfig reads configuration parameters from Viper instance.
@@ -153,11 +153,11 @@ func (c BlockManagerConfig) Validate() error {
 		return fmt.Errorf("batch_submit_max_time must be greater than max_idle_time")
 	}
 
-	if c.BlockBatchMaxSizeBytes <= 0 {
+	if c.BatchMaxSizeBytes <= 0 {
 		return fmt.Errorf("block_batch_size_bytes must be positive")
 	}
 
-	if c.MaxSupportedBatchSkew <= 0 {
+	if c.MaxBatchSkew <= 0 {
 		return fmt.Errorf("max_supported_batch_skew must be positive")
 	}
 

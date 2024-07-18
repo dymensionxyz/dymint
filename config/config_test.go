@@ -35,7 +35,7 @@ func TestViperAndCobra(t *testing.T) {
 	assert.Equal("foobar", nc.DALayer)
 	assert.Equal(`{"json":true}`, nc.DAConfig)
 	assert.Equal(1234*time.Second, nc.BlockTime)
-	assert.Equal(uint64(1000), nc.BlockManagerConfig.BlockBatchMaxSizeBytes)
+	assert.Equal(uint64(1000), nc.BlockManagerConfig.BatchMaxSizeBytes)
 }
 
 func TestNodeConfig_Validate(t *testing.T) {
@@ -84,7 +84,7 @@ func TestNodeConfig_Validate(t *testing.T) {
 		}, {
 			name: "missing block batch max size bytes",
 			malleate: func(nc *config.NodeConfig) {
-				nc.BlockManagerConfig.BlockBatchMaxSizeBytes = 0
+				nc.BlockManagerConfig.BatchMaxSizeBytes = 0
 			},
 			wantErr: assert.Error,
 		}, {
@@ -185,12 +185,12 @@ func TestNodeConfig_Validate(t *testing.T) {
 func fullNodeConfig() config.NodeConfig {
 	return config.NodeConfig{
 		BlockManagerConfig: config.BlockManagerConfig{
-			BlockTime:              1 * time.Second,
-			MaxIdleTime:            20 * time.Second,
-			MaxProofTime:           20 * time.Second,
-			BatchSubmitMaxTime:     20 * time.Second,
-			MaxSupportedBatchSkew:  10,
-			BlockBatchMaxSizeBytes: 10000,
+			BlockTime:          1 * time.Second,
+			MaxIdleTime:        20 * time.Second,
+			MaxProofTime:       20 * time.Second,
+			BatchSubmitMaxTime: 20 * time.Second,
+			MaxBatchSkew:       10,
+			BatchMaxSizeBytes:  10000,
 		},
 		DALayer:         "celestia",
 		DAConfig:        "da-config",

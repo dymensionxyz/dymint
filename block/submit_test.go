@@ -198,11 +198,11 @@ func TestSubmissionByTime(t *testing.T) {
 
 	// Init manager with empty blocks feature enabled
 	managerConfig := config.BlockManagerConfig{
-		BlockTime:              blockTime,
-		MaxIdleTime:            0,
-		MaxSupportedBatchSkew:  10,
-		BatchSubmitMaxTime:     submitTimeout,
-		BlockBatchMaxSizeBytes: 1000,
+		BlockTime:          blockTime,
+		MaxIdleTime:        0,
+		MaxBatchSkew:       10,
+		BatchSubmitMaxTime: submitTimeout,
+		BatchMaxSizeBytes:  1000,
 	}
 
 	manager, err := testutil.GetManager(managerConfig, nil, nil, 1, 1, 0, proxyApp, nil)
@@ -257,7 +257,7 @@ func TestSubmissionByBatchSize(t *testing.T) {
 
 	for _, c := range cases {
 		managerConfig := testutil.GetManagerConfig()
-		managerConfig.BlockBatchMaxSizeBytes = c.blockBatchMaxSizeBytes
+		managerConfig.BatchMaxSizeBytes = c.blockBatchMaxSizeBytes
 		manager, err := testutil.GetManager(managerConfig, nil, nil, 1, 1, 0, nil, nil)
 		require.NoError(err)
 
