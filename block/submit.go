@@ -140,7 +140,7 @@ func (m *Manager) HandleSubmissionTrigger() error {
 	if err != nil {
 		return fmt.Errorf("sl client submit batch: start height: %d: inclusive end height: %d: %w", startHeight, actualEndHeight, err)
 	}
-	m.logger.Info("Submitted batch to SL.", "start height", resultSubmitToDA, "end height", nextBatch.EndHeight)
+	m.logger.Info("Submitted batch to SL.", "start height", nextBatch.StartHeight, "end height", actualEndHeight)
 
 	types.RollappHubHeightGauge.Set(float64(actualEndHeight))
 	m.LastSubmittedHeight.Store(actualEndHeight)
