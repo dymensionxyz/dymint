@@ -3,6 +3,7 @@
 
 ### Bug Fixes
 
+* **manager:** add start height to manager submit log ([#781](https://github.com/dymensionxyz/dymint/issues/957)) ([41671bd](https://github.com/dymensionxyz/dymint/commit/41671bd75d5ec6956553a92e3bc4666595f742ec))
 * **code standards:** remove `someone is behaving badly` part of the log message upon app hash mismatch [#917](https://github.com/dymensionxyz/dymint/issues/917) ([d5eece4](https://github.com/dymensionxyz/dymint/commit/d5eece4d1e161829dfc8e63a4b6313cc30dd2ed2))
 * **bug:** memory leak in websocket handler ([#892](https://github.com/dymensionxyz/dymint/issues/892)) ([02fcbde](https://github.com/dymensionxyz/dymint/commit/48c263fbde71594ec34e0f731d9febc0702fcbde))
 * **bug:** sync from da and p2p when starting a node ([#763](https://github.com/dymensionxyz/dymint/issues/763)) ([68ffd05](https://github.com/dymensionxyz/dymint/commit/68ffd05794949ddc42df1c132d1fde5f21b505f4))
