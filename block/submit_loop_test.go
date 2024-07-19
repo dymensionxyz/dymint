@@ -63,7 +63,10 @@ func testSubmitLoopInner(
 				default:
 				}
 				// producer shall not get too far ahead
-				require.True(t, nProducedBytes.Load() < (args.batchSkew+1)*args.batchBytes)
+				require.True(t, nProducedBytes.Load() < (args.batchSkew+1)*args.batchBytes,
+					"n bytes", nProducedBytes.Load(),
+					"limit", (args.batchSkew+1)*args.batchBytes,
+				)
 			}
 		}()
 		for {
@@ -86,7 +89,8 @@ func testSubmitLoopInner(
 		consumed := rand.Intn(int(maxSize))
 		nProducedBytes.Add(^uint64(consumed - 1)) // subtract
 
-		require.True(t, lastSubmitTime == time.Time{} || float64(time.Since(lastSubmitTime)) < 1.5*float64(args.maxTime))
+		require.True(t, lastSubmitTime == time.Time{} || float64(time.Since(lastSubmitTime)) < 1.5*float64(args.maxTime),
+			"since last submit time", time.Since(lastSubmitTime), "max time", args.maxTime)
 		lastSubmitTime = time.Now()
 
 		return uint64(consumed), nil

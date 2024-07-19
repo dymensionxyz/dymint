@@ -83,7 +83,7 @@ func SubmitLoopInner(ctx context.Context,
 			case <-submitter.C:
 			}
 			pending := pendingBytes.Load()
-			for ctx.Err() == nil && (0 < pending && maxBatchTime < time.Since(timeLastSubmission) || maxBatchBytes < pending) {
+			for ctx.Err() == nil && (maxBatchTime < time.Since(timeLastSubmission) || maxBatchBytes < pending) {
 				nConsumed, err := createAndSubmitBatchGetSizeEstimate(min(pending, maxBatchBytes))
 				if err != nil {
 					return fmt.Errorf("create and submit batch: %w", err)
