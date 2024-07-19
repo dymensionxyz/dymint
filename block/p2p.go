@@ -30,7 +30,7 @@ func (m *Manager) onReceivedBlock(event pubsub.Message) {
 	block := eventData.Block
 	commit := eventData.Commit
 
-	m.logger.Debug("Received new block.", "via", source, "block height", block.Header.Height, "store height", m.State.Height(), "n cachedBlocks", len(m.blockCache))
+	m.logger.Debug("Received new block.", "source", source, "block height", block.Header.Height, "store height", m.State.Height(), "n cachedBlocks", len(m.blockCache))
 
 	ok = m.attemptCacheBlock(&block, &commit, source)
 	if !ok {
