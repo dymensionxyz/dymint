@@ -6,7 +6,6 @@ import (
 	"crypto/rand"
 	"fmt"
 	"sync"
-	"sync/atomic"
 	"testing"
 	"time"
 
@@ -24,56 +23,6 @@ import (
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
 )
-
-func TestSubmitLoopInner(t *testing.T) {
-	/*
-		producer will not stop if skew is not exceeded
-		producer will stop if skew is exceeded
-		submitter will submit when time elapses no matter what
-		submitter will submit when enough bytes to submit a batch
-	*/
-	t.Run("", func(t *testing.T) {
-		ctx, cancel := context.WithCancel(context.Background())
-
-		c := make(chan int)
-		batchSkew := uint64(10)
-		batchBytes := uint64(100)
-		batchTime := time.Second
-		submitTime := time.Second
-		produceTime := time.Second
-		bz := atomic.Uint64{}
-
-		// TODO: can pick random params, but need to be careful
-
-		produce := func() {
-			_ = bz.Load()
-			for {
-				bz.Add(50)
-				time.Sleep(produceTime)
-				c <- 50
-			}
-		}
-
-		submit := func() (uint64, error) {
-			time.Sleep(submitTime)
-			return random, nil
-		}
-
-		go produce()
-
-		block.SubmitLoopInner(
-			ctx,
-			c,
-			batchSkew,
-			batchTime,
-			batchBytes,
-			submit,
-		)
-
-		time.Sleep(time.Second * 10)
-		cancel()
-	})
-}
 
 // TestBatchOverhead tests the scenario where we have a single block that is very large, and occupies the entire batch size.
 // This test is to ensure the value of 90% for types.MaxBlockSizeAdjustment is valid

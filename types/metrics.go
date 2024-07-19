@@ -24,8 +24,3 @@ var RollappBlockSizeTxsGauge = promauto.NewGauge(prometheus.GaugeOpts{
 	Name: "rollapp_block_size_txs",
 	Help: "Rollapp ",
 })
-
-var RollappSequencerBatchSubmissionSkew = promauto.NewGauge(prometheus.GaugeOpts{
-	Name: "rollapp_block_size_txs",
-	Help: "Rollapp ",
-})
