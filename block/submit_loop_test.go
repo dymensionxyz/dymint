@@ -137,8 +137,6 @@ func TestSubmitLoopFastProducerHaltingSubmitter(t *testing.T) {
 
 // Make sure the timer works even if the producer is slow
 func TestSubmitLoopTimer(t *testing.T) {
-	// TODO: should add a check to make sure that gap between submissions doesn't exceed max time
-	// 	(taking into account when the producer might not produce anything, or there is a simulated halt)
 	testSubmitLoop(
 		t,
 		testArgs{
