@@ -1,7 +1,5 @@
 package channel
 
-import "context"
-
 func DrainForever[T any](chs ...<-chan T) {
 	for _, ch := range chs {
 		go func() {
@@ -20,15 +18,6 @@ type Waker struct {
 
 func NewWaker() *Waker {
 	return &Waker{make(chan struct{})}
-}
-
-// Wait until context is done, or awoken.
-func (w Waker) Wait(ctx context.Context) {
-	select {
-	case <-ctx.Done():
-	case <-w.C:
-	default:
-	}
 }
 
 // Wake up the waiting thread if any. Non blocking.

@@ -53,7 +53,13 @@ func SubmitLoopInner(ctx context.Context,
 		for {
 			if maxBatchSkew*maxBatchBytes < pendingBytes.Load() {
 				// too much stuff is pending submission, wait for progress signal
-				counter.Wait(ctx)
+				fmt.Println("production paused")
+				select {
+				case <-ctx.Done():
+					return ctx.Err()
+				case <-counter.C:
+				}
+				fmt.Println("production resumed ")
 			} else {
 				select {
 				case <-ctx.Done():
@@ -71,10 +77,20 @@ func SubmitLoopInner(ctx context.Context,
 		// 'submitter': this thread actually creates and submits batches
 		timeLastSubmission := time.Now()
 		for {
-			submitter.Wait(ctx)
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-submitter.C:
+			}
 			pending := pendingBytes.Load()
 			for (0 < pending && maxBatchTime < time.Since(timeLastSubmission)) || maxBatchBytes < pending {
-				nConsumed, err := createAndSubmitBatchGetSizeEstimate(pending)
+				if ctx.Err() != nil {
+					return ctx.Err()
+				}
+				if maxBatchTime < time.Since(timeLastSubmission) {
+					fmt.Println("submitter timer")
+				}
+				nConsumed, err := createAndSubmitBatchGetSizeEstimate(min(pending, maxBatchBytes))
 				if err != nil {
 					return fmt.Errorf("create and submit batch: %w", err)
 				}
@@ -83,7 +99,7 @@ func SubmitLoopInner(ctx context.Context,
 				}
 				timeLastSubmission = time.Now()
 				subtract := ^(nConsumed - 1)
-				fmt.Println(fmt.Sprintf("before subtract :%d, after subtract: %d: consumed: %d: ", pending, pending+subtract, nConsumed))
+				fmt.Println(fmt.Sprintf("submitter before subtract :%d, after subtract: %d: consumed: %d: ", pending, pending+subtract, nConsumed))
 				pending = pendingBytes.Add(subtract) // subtract
 			}
 			counter.Wake()

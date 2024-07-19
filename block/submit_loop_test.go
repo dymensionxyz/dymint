@@ -19,7 +19,7 @@ func TestSubmitLoopInner(t *testing.T) {
 		submitter will submit when enough bytes to submit a batch
 	*/
 	t.Run("", func(t *testing.T) {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*60)
 		defer cancel()
 
 		c := make(chan int)
@@ -28,7 +28,7 @@ func TestSubmitLoopInner(t *testing.T) {
 		maxTime := time.Millisecond * 500
 		submitTime := time.Millisecond * 100
 		produceTime := time.Millisecond * 100
-		submissionHaltTime := time.Millisecond * 1000
+		submissionHaltTime := time.Millisecond * 10000
 		bz := atomic.Uint64{}
 
 		approx := func(d time.Duration) time.Duration {
@@ -44,7 +44,7 @@ func TestSubmitLoopInner(t *testing.T) {
 				time.Sleep(approx(produceTime))
 				x := 10 + rand.Intn(10)
 				after := bz.Add(uint64(x))
-				t.Log(fmt.Sprintf("actually have: %d", after))
+				t.Log(fmt.Sprintf("producer actual bytes: %d", after))
 				c <- x
 			}
 		}
@@ -56,7 +56,7 @@ func TestSubmitLoopInner(t *testing.T) {
 			}
 			y := rand.Intn(int(maxSize))
 			bz.Add(^uint64(y - 1))
-			t.Log(fmt.Sprintf("limit: %d: consume: %d", maxSize, y))
+			t.Log(fmt.Sprintf("submitter: limit: %d: consumed: %d", maxSize, y))
 			return uint64(y), nil
 		}
 
