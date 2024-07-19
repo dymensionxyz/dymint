@@ -227,7 +227,7 @@ func (ic InstrumentationConfig) Validate() error {
 
 // DBConfig holds configuration for the database.
 type DBConfig struct {
-	// SyncWrite makes sure that data is written to disk before returning from a write operation.
+	// SyncWrites makes sure that data is written to disk before returning from a write operation.
 	SyncWrites bool `mapstructure:"sync_writes"`
 	// InMemory sets the database to run in-memory, without touching the disk.
 	InMemory bool `mapstructure:"in_memory"`
