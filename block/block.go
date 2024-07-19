@@ -21,7 +21,9 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		return types.ErrInvalidBlockHeight
 	}
 
-	m.logger.Debug("Applying block", "height", block.Header.Height, "source", blockMetaData.source)
+	m.LastAppliedBlockSource.Store(uint64(blockMetaData.source))
+
+	m.logger.Debug("Applying block", "height", block.Header.Height, "source", blockMetaData.source.String())
 
 	// Check if the app's last block height is the same as the currently produced block height
 	isBlockAlreadyApplied, err := m.isHeightAlreadyApplied(block.Header.Height)
@@ -114,19 +116,16 @@ func (m *Manager) isHeightAlreadyApplied(blockHeight uint64) (bool, error) {
 }
 
 func (m *Manager) attemptApplyCachedBlocks() error {
-	m.retrieverMu.Lock()
-	defer m.retrieverMu.Unlock()
-
 	for {
 		expectedHeight := m.State.NextHeight()
 
-		cachedBlock, blockExists := m.blockCache[expectedHeight]
+		cachedBlock, blockExists := m.GetBlockFromCache(expectedHeight)
 		if !blockExists {
 			break
 		}
 		if err := m.validateBlock(cachedBlock.Block, cachedBlock.Commit); err != nil {
-			delete(m.blockCache, cachedBlock.Block.Header.Height)
-			/// TODO: can we take an action here such as dropping the peer / reducing their reputation?
+			m.DeleteBlockFromCache(cachedBlock.Block.Header.Height)
+			// TODO: can we take an action here such as dropping the peer / reducing their reputation?
 			return fmt.Errorf("block not valid at height %d, dropping it: err:%w", cachedBlock.Block.Header.Height, err)
 		}
 
@@ -136,7 +135,7 @@ func (m *Manager) attemptApplyCachedBlocks() error {
 		}
 		m.logger.Info("Block applied", "height", expectedHeight)
 
-		delete(m.blockCache, cachedBlock.Block.Header.Height)
+		m.DeleteBlockFromCache(cachedBlock.Block.Header.Height)
 	}
 
 	return nil

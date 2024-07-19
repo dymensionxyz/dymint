@@ -88,6 +88,7 @@ func TestREST(t *testing.T) {
 		},
 		{"valid/hex param", "/check_tx?tx=DEADBEEF", http.StatusOK, -1, `"gas_used":"1000"`},
 		{"invalid/hex param", "/check_tx?tx=QWERTY", http.StatusOK, int(json2.E_PARSE), "parse param 'tx'"}, // TODO: use errors.Is instead of strcmp
+		{"sync_info", "/sync_info", http.StatusOK, -1, "last_block_received_from_p2p_height"},
 	}
 
 	_, local := getRPC(t)
@@ -139,7 +140,7 @@ func TestStringyRequest(t *testing.T) {
 	handler, err := GetHTTPHandler(local, log.TestingLogger())
 	require.NoError(err)
 
-	// `starport chain faucet ...` generates broken JSON (ints are "quoted" as strings)
+	// "starport chain faucet ...` generates broken JSON (ints are "quoted" as strings)
 	brokenJSON := `{"jsonrpc":"2.0","id":0,"method":"tx_search","params":{"order_by":"","page":"1","per_page":"1000","prove":true,"query":"message.sender='cosmos1njr26e02fjcq3schxstv458a3w5szp678h23dh' AND transfer.recipient='cosmos1e0ajth0s847kqcu2ssnhut32fsrptf94fqnfzx'"}}`
 
 	respJSON := `{"jsonrpc":"2.0","result":{"txs":[],"total_count":"0"},"id":0}` + "\n"

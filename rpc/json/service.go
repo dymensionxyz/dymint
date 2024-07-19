@@ -85,6 +85,7 @@ func newService(c *client.Client, l types.Logger, opts ...option) *service {
 		"unsubscribe_all":      newMethod(s.UnsubscribeAll),
 		"health":               newMethod(s.Health),
 		"status":               newMethod(s.Status),
+		"sync_info":            newMethod(s.SyncInfo),
 		"net_info":             newMethod(s.NetInfo),
 		"blockchain":           newMethod(s.BlockchainInfo),
 		"genesis":              newMethod(s.Genesis),
@@ -186,6 +187,10 @@ func (s *service) Health(req *http.Request, args *healthArgs) (*ctypes.ResultHea
 
 func (s *service) Status(req *http.Request, args *statusArgs) (*ctypes.ResultStatus, error) {
 	return s.client.Status(req.Context())
+}
+
+func (s *service) SyncInfo(*http.Request, *statusArgs) (*client.ResultSyncInfo, error) {
+	return s.client.SyncInfo(), nil
 }
 
 func (s *service) NetInfo(req *http.Request, args *netInfoArgs) (*ctypes.ResultNetInfo, error) {

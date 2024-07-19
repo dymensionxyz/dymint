@@ -9,17 +9,21 @@ import (
 
 // TODO: move to types package
 
-type blockSource string
+type BlockSource uint64
 
 const (
-	producedBlock blockSource = "produced"
-	gossipedBlock blockSource = "gossip"
-	daBlock       blockSource = "da"
-	localDbBlock  blockSource = "local_db"
+	producedBlock BlockSource = iota
+	gossipedBlock
+	daBlock
+	localDbBlock
 )
 
+func (s BlockSource) String() string {
+	return []string{"produced", "gossip", "da", "local_db"}[s]
+}
+
 type blockMetaData struct {
-	source   blockSource
+	source   BlockSource
 	daHeight uint64
 }
 

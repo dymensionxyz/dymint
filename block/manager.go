@@ -62,7 +62,13 @@ type Manager struct {
 	// start at this height + 1.
 	// It is ALSO used by the producer, because the producer needs to check if it can prune blocks and it wont'
 	// prune anything that might be submitted in the future. Therefore, it must be atomic.
-	LastSubmittedHeight atomic.Uint64
+	LastSubmittedHeight      atomic.Uint64
+	LastReceivedP2PHeight    atomic.Uint64
+	LastReceivedDAHeight     atomic.Uint64
+	LastAppliedBlockSource   atomic.Uint64
+	LowestCachedBlockHeight  atomic.Uint64
+	HighestCachedBlockHeight atomic.Uint64
+	BlockCacheSize           atomic.Int32
 
 	/*
 		Retrieval
@@ -235,4 +241,44 @@ func (m *Manager) MustLoadCommit(h uint64) *types.Commit {
 		panic(fmt.Errorf("store load commit: height: %d: %w", h, err))
 	}
 	return ret
+}
+
+func (m *Manager) AddBlockToCache(h uint64, b *types.Block, c *types.Commit) {
+	m.retrieverMu.Lock()
+	defer m.retrieverMu.Unlock()
+	m.blockCache[h] = CachedBlock{Block: b, Commit: c}
+
+	m.BlockCacheSize.Store(int32(len(m.blockCache)))
+	if h < m.LowestCachedBlockHeight.Load() {
+		m.LowestCachedBlockHeight.Store(h)
+	}
+	if h > m.HighestCachedBlockHeight.Load() {
+		m.HighestCachedBlockHeight.Store(h)
+	}
+}
+
+func (m *Manager) DeleteBlockFromCache(h uint64) {
+	m.retrieverMu.Lock()
+	defer m.retrieverMu.Unlock()
+	delete(m.blockCache, h)
+
+	m.BlockCacheSize.Store(int32(len(m.blockCache)))
+	if h == m.LowestCachedBlockHeight.Load() {
+		m.LowestCachedBlockHeight.Store(h + 1)
+	}
+	if h == m.HighestCachedBlockHeight.Load() {
+		m.HighestCachedBlockHeight.Store(h - 1)
+	}
+}
+
+func (m *Manager) GetBlockFromCache(h uint64) (CachedBlock, bool) {
+	m.retrieverMu.Lock()
+	defer m.retrieverMu.Unlock()
+	ret, found := m.blockCache[h]
+	return ret, found
+}
+
+func (m *Manager) HasBlockInCache(h uint64) bool {
+	_, found := m.GetBlockFromCache(h)
+	return found
 }
