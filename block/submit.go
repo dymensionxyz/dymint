@@ -20,9 +20,28 @@ import (
 // 1) It accumulates enough block data, so it's necessary to submit a batch to avoid exceeding the max size
 // 2) Enough time passed since the last submitted batch, so it's necessary to submit a batch to avoid exceeding the max time
 // It will back pressure (pause) block production if it falls too far behind.
-func (m *Manager) SubmitLoop(ctx context.Context, bytesProduced chan int) (err error) {
+func (m *Manager) SubmitLoop(ctx context.Context,
+	bytesProduced chan int,
+) (err error) {
+	return SubmitLoopInner(ctx,
+		bytesProduced,
+		int(m.Conf.MaxBatchSkew),
+		m.Conf.BatchSubmitMaxTime,
+		int(m.Conf.BatchMaxSizeBytes),
+		m.CreateAndSubmitBatchGetSizeEstimate,
+	)
+}
+
+// SubmitLoopInner is a unit testable impl of SubmitLoop
+func SubmitLoopInner(ctx context.Context,
+	bytesProduced chan int, // a channel of block and commit bytes produced
+	maxBatchSkew int, // max number of batches that submitter is allowed to have pending
+	maxBatchTime time.Duration, // max time to allow between batches
+	maxBatchBytes int, // max size of serialised batch in bytes
+	createAndSubmitBatchGetSizeEstimate func() (int64, error),
+) error {
 	unsubmittedBytes := atomic.Int64{}
-	submitC := make(chan struct{}, m.Conf.MaxBatchSkew)
+	submitC := make(chan struct{}, maxBatchSkew)
 
 	eg, ctx := errgroup.WithContext(ctx)
 
@@ -30,7 +49,7 @@ func (m *Manager) SubmitLoop(ctx context.Context, bytesProduced chan int) (err e
 		// this thread adds up the number of produced bytes, and signals to submit a batch
 		// when the count is high enough, or on a timer
 
-		ticker := time.NewTicker(m.Conf.BatchSubmitMaxTime)
+		ticker := time.NewTicker(maxBatchTime)
 		defer ticker.Stop()
 		for {
 			mustSubmitBatch := false
@@ -39,13 +58,13 @@ func (m *Manager) SubmitLoop(ctx context.Context, bytesProduced chan int) (err e
 				return ctx.Err()
 			case n := <-bytesProduced:
 				cnt := unsubmittedBytes.Add(int64(n))
-				mustSubmitBatch = m.Conf.BatchMaxSizeBytes < uint64(cnt)
+				mustSubmitBatch = int64(maxBatchBytes) < cnt
 			case <-ticker.C:
 				mustSubmitBatch = true
 			}
 			if mustSubmitBatch {
 				submitC <- struct{}{}
-				ticker.Reset(m.Conf.BatchSubmitMaxTime)
+				ticker.Reset(maxBatchTime)
 			}
 		}
 	})
@@ -57,7 +76,7 @@ func (m *Manager) SubmitLoop(ctx context.Context, bytesProduced chan int) (err e
 			case <-ctx.Done():
 				return ctx.Err()
 			case <-submitC:
-				nConsumed, err := m.CreateAndSubmitBatchGetSizeEstimate()
+				nConsumed, err := createAndSubmitBatchGetSizeEstimate()
 				if err != nil {
 					return fmt.Errorf("create and submit batch: %w", err)
 				}

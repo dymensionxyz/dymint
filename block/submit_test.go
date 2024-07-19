@@ -300,3 +300,6 @@ func submissionByBatchSize(manager *block.Manager, assert *assert.Assertions, ex
 		assert.Zero(manager.LastSubmittedHeight.Load())
 	}
 }
+
+func TestSubmitLoopInner(t *testing.T) {
+}
