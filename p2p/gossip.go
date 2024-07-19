@@ -52,7 +52,6 @@ func NewGossiper(host host.Host, ps *pubsub.PubSub, topicStr string, msgHandler 
 	}
 
 	subscription, err := topic.Subscribe(pubsub.WithBufferSize(pubsubBufferSize))
-
 	if err != nil {
 		return nil, err
 	}
