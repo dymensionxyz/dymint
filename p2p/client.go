@@ -343,7 +343,6 @@ func (c *Client) setupGossiping(ctx context.Context) error {
 
 	c.blockGossiper, err = NewGossiper(c.Host, ps, c.getBlockTopic(), c.gossipedBlockReceived, max(c.conf.GossipedBlocksCacheSize, pubsubBufferSize), c.logger,
 		WithValidator(c.blockValidator))
-
 	if err != nil {
 		return err
 	}
