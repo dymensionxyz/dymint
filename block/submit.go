@@ -39,6 +39,7 @@ func SubmitLoopInner(ctx context.Context,
 ) error {
 	pendingBytes := int64(0)
 	timeLastSubmission := time.Now()
+	ticker := time.NewTicker(maxBatchTime)
 	for {
 		if pendingBytes < maxBatchSkew*maxBatchBytes {
 			select {
@@ -46,9 +47,11 @@ func SubmitLoopInner(ctx context.Context,
 				return ctx.Err()
 			case n := <-bytesProduced:
 				pendingBytes += int64(n)
+			case <-ticker.C:
+				ticker.Reset(maxBatchTime)
 			}
 		}
-		if maxBatchBytes < pendingBytes || maxBatchTime < time.Since(timeLastSubmission) {
+		if maxBatchTime < time.Since(timeLastSubmission) || maxBatchBytes < pendingBytes {
 			nConsumed, err := createAndSubmitBatchGetSizeEstimate()
 			if err != nil {
 				return fmt.Errorf("create and submit batch: %w", err)
