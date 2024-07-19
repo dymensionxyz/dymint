@@ -44,15 +44,15 @@ func TestSubmitLoopInner(t *testing.T) {
 				time.Sleep(approx(produceTime))
 				x := 10 + rand.Intn(10)
 				after := bz.Add(uint64(x))
-				t.Log(fmt.Sprintf("producer actual bytes: %d", after))
+				t.Log(fmt.Sprintf("actual pending bytes: %d", after))
 				c <- x
 			}
 		}
 
 		submit := func(maxSize uint64) (uint64, error) {
 			time.Sleep(approx(submitTime))
-			if rand.Intn(100) < 3 {
-				fmt.Println("submitter is going to halt")
+			if rand.Intn(100) < 2 {
+				fmt.Println("submitter transient halt")
 				time.Sleep(submissionHaltTime)
 			}
 			y := rand.Intn(int(maxSize))

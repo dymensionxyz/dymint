@@ -10,18 +10,18 @@ func DrainForever[T any](chs ...<-chan T) {
 	}
 }
 
-// Waker can be used to make a goroutine ('A') sleep, and have another goroutine ('B') wake him up
+// Nudger can be used to make a goroutine ('A') sleep, and have another goroutine ('B') wake him up
 // A will not block if B is not asleep.
-type Waker struct {
+type Nudger struct {
 	C chan struct{} // Receive on C to sleep
 }
 
-func NewWaker() *Waker {
-	return &Waker{make(chan struct{})}
+func NewNudger() *Nudger {
+	return &Nudger{make(chan struct{})}
 }
 
-// Wake up the waiting thread if any. Non blocking.
-func (w Waker) Wake() {
+// Nudge wakes up the waiting thread if any. Non blocking.
+func (w Nudger) Nudge() {
 	select {
 	case w.C <- struct{}{}:
 	default:

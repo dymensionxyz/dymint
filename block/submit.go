@@ -43,8 +43,8 @@ func SubmitLoopInner(ctx context.Context,
 	eg, ctx := errgroup.WithContext(ctx)
 
 	pendingBytes := atomic.Uint64{}
-	counter := uchannel.NewWaker()   // used to wake up counter thread
-	submitter := uchannel.NewWaker() // used to wake up submitter thread
+	counter := uchannel.NewNudger()   // used to wake up counter thread
+	submitter := uchannel.NewNudger() // used to wake up submitter thread
 
 	eg.Go(func() error {
 		// 'counter': we need one thread to continuously consume the bytes produced channel, and to monitor timer
@@ -53,13 +53,11 @@ func SubmitLoopInner(ctx context.Context,
 		for {
 			if maxBatchSkew*maxBatchBytes < pendingBytes.Load() {
 				// too much stuff is pending submission, wait for progress signal
-				fmt.Println("production paused")
 				select {
 				case <-ctx.Done():
 					return ctx.Err()
 				case <-counter.C:
 				}
-				fmt.Println("production resumed ")
 			} else {
 				select {
 				case <-ctx.Done():
@@ -68,8 +66,8 @@ func SubmitLoopInner(ctx context.Context,
 					pendingBytes.Add(uint64(n))
 				case <-ticker.C:
 				}
-				submitter.Wake()
 			}
+			submitter.Nudge()
 		}
 	})
 
@@ -83,10 +81,7 @@ func SubmitLoopInner(ctx context.Context,
 			case <-submitter.C:
 			}
 			pending := pendingBytes.Load()
-			for (0 < pending && maxBatchTime < time.Since(timeLastSubmission)) || maxBatchBytes < pending {
-				if ctx.Err() != nil {
-					return ctx.Err()
-				}
+			for ctx.Err() == nil && (0 < pending && maxBatchTime < time.Since(timeLastSubmission) || maxBatchBytes < pending) {
 				if maxBatchTime < time.Since(timeLastSubmission) {
 					fmt.Println("submitter timer")
 				}
@@ -94,15 +89,11 @@ func SubmitLoopInner(ctx context.Context,
 				if err != nil {
 					return fmt.Errorf("create and submit batch: %w", err)
 				}
-				if pending < nConsumed {
-					// not possible because we give pending as a maximum argument in batch creation
-					panic(fmt.Sprintf("consumed more bytes than were actually pending: pending: %d: consumed: %d", pending, nConsumed))
-				}
 				timeLastSubmission = time.Now()
-				fmt.Println(fmt.Sprintf("submitter  consumed: %d: ", nConsumed))
+				fmt.Println(fmt.Sprintf("pending: %d: consumed: %d: ", pending, nConsumed))
 				pending = pendingBytes.Add(^(nConsumed - 1)) // subtract
 			}
-			counter.Wake()
+			counter.Nudge()
 		}
 	})
 
