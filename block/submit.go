@@ -51,6 +51,9 @@ func SubmitLoopInner(ctx context.Context,
 			case <-ticker.C:
 			}
 		}
+		// TODO: this doesn't handle the case when there are enough pending bytes to make a batch
+		//  but not enough to exceed the skew
+
 		if maxBatchTime < time.Since(timeLastSubmission) || maxBatchBytes < pendingBytes {
 			nConsumed, err := createAndSubmitBatchGetSizeEstimate()
 			if err != nil {
