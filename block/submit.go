@@ -43,8 +43,8 @@ func SubmitLoopInner(ctx context.Context,
 	eg, ctx := errgroup.WithContext(ctx)
 
 	pendingBytes := atomic.Uint64{}
-	counter := uchannel.NewNudger()   // used to wake up counter thread
-	submitter := uchannel.NewNudger() // used to wake up submitter thread
+	counter := uchannel.NewNudger()   // used to avoid busy waiting on counter thread
+	submitter := uchannel.NewNudger() // used to avoid busy waiting on submitter thread
 
 	eg.Go(func() error {
 		// 'counter': we need one thread to continuously consume the bytes produced channel, and to monitor timer
@@ -57,7 +57,6 @@ func SubmitLoopInner(ctx context.Context,
 				case <-ctx.Done():
 					return ctx.Err()
 				case <-counter.C: // await a nudge from the submitter to know he has made progress
-				case <-ticker.C: // timer
 				}
 			} else {
 				select {
