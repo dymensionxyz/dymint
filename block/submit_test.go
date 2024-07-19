@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -33,18 +34,31 @@ func TestSubmitLoopInner(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 
 		_ = cancel
+		c := make(chan int)
+		batchSkew := uint64(100)
+		batchBytes := uint64(100)
+		batchTime := time.Second
+		submitTime := time.Second
+		bz := atomic.Uint64{}
+
+		// TODO: can pick random params, but need to be careful
+
+		produce := func() {
+			_ = bz.Load()
+		}
 		submit := func() (uint64, error) {
+			_ = submitTime
 			return 0, nil
 		}
 
-		c := make(chan int)
+		go produce()
 
 		block.SubmitLoopInner(
 			ctx,
 			c,
-			100,
-			time.Second,
-			100,
+			batchSkew,
+			batchTime,
+			batchBytes,
 			submit,
 		)
 	})

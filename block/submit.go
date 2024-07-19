@@ -39,7 +39,8 @@ func SubmitLoopInner(ctx context.Context,
 ) error {
 	pendingBytes := uint64(0)
 	ticker := time.NewTicker(maxBatchTime) // used to make sure we wake up when the time passes
-	timeLastSubmission := time.Now()       // the actual source of truth of when to submit based on time (ticker is just a wake up)
+	defer ticker.Stop()
+	timeLastSubmission := time.Now() // the actual source of truth of when to submit based on time (ticker is just a wake up)
 	for {
 		if pendingBytes < maxBatchSkew*maxBatchBytes {
 			select {
@@ -48,7 +49,6 @@ func SubmitLoopInner(ctx context.Context,
 			case n := <-bytesProduced:
 				pendingBytes += uint64(n)
 			case <-ticker.C:
-				ticker.Reset(maxBatchTime)
 			}
 		}
 		if maxBatchTime < time.Since(timeLastSubmission) || maxBatchBytes < pendingBytes {
@@ -58,6 +58,7 @@ func SubmitLoopInner(ctx context.Context,
 			}
 			pendingBytes -= nConsumed
 			timeLastSubmission = time.Now()
+			ticker.Reset(maxBatchTime)
 		}
 	}
 }
