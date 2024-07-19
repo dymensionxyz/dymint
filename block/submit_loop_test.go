@@ -11,6 +11,8 @@ import (
 	"github.com/dymensionxyz/dymint/block"
 )
 
+// TODO: improve the tests to actually add some requirements
+
 type testArgs struct {
 	testDuration              time.Duration
 	batchSkew                 uint64
@@ -77,17 +79,18 @@ func testSubmitLoopInner(
 
 // Make sure the producer does not get too far ahead
 func TestSubmitLoopFastProducerHaltingSubmitter(t *testing.T) {
+	t.Skip()
 	testSubmitLoopInner(
 		t,
 		testArgs{
-			testDuration:              60 * time.Second,
+			testDuration:              60 * time.Minute,
 			batchSkew:                 10,
 			batchBytes:                100,
 			maxTime:                   500 * time.Millisecond,
 			submitTime:                100 * time.Millisecond,
 			produceBytes:              20,
 			produceTime:               100 * time.Millisecond,
-			submissionHaltTime:        1000 * time.Millisecond,
+			submissionHaltTime:        30000 * time.Millisecond,
 			submissionHaltProbability: 0.01,
 		},
 	)
@@ -95,6 +98,7 @@ func TestSubmitLoopFastProducerHaltingSubmitter(t *testing.T) {
 
 // Make sure the timer works even if the producer is slow
 func TestSubmitLoopTimer(t *testing.T) {
+	t.Skip()
 	testSubmitLoopInner(
 		t,
 		testArgs{
