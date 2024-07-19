@@ -57,12 +57,11 @@ func (m *Manager) SubmitLoop(ctx context.Context, bytesProduced chan int) (err e
 			case <-ctx.Done():
 				return ctx.Err()
 			case <-submitC:
-				b, err := m.CreateAndSubmitBatch()
+				nConsumed, err := m.CreateAndSubmitBatchGetSizeEstimate()
 				if err != nil {
 					return fmt.Errorf("create and submit batch: %w", err)
 				}
 				n := unsubmittedBytes.Load()
-				nConsumed := int64(b.SizeBytesEstimate()) // here we use an estimate, not the actual size, because bytesProduced is only an estimate
 				if n < nConsumed {
 					panic("expected number of unsubmitted byte is less than the number of bytes sent in a batch") // sanity check
 				}
@@ -74,8 +73,15 @@ func (m *Manager) SubmitLoop(ctx context.Context, bytesProduced chan int) (err e
 	return eg.Wait()
 }
 
+func (m *Manager) CreateAndSubmitBatchGetSizeEstimate() (int64, error) {
+	b, err := m.CreateAndSubmitBatch()
+	if b == nil {
+		return 0, err
+	}
+	return int64(b.SizeBytesEstimate()), err
+}
+
 // CreateAndSubmitBatch creates and submits a batch to the DA and SL.
-// It returns the
 func (m *Manager) CreateAndSubmitBatch() (*types.Batch, error) {
 	b, err := CreateBatch(m.Store, m.Conf.BatchMaxSizeBytes, m.NextHeightToSubmit(), m.State.Height())
 	if err != nil {
