@@ -64,10 +64,8 @@ func testSubmitLoopInner(
 				default:
 				}
 				// producer shall not get too far ahead
-				require.True(t, nProducedBytes.Load() < (args.batchSkew+1)*args.batchBytes,
-					"n bytes", nProducedBytes.Load(),
-					"limit", (args.batchSkew+1)*args.batchBytes,
-				)
+				absoluteMax := (args.batchSkew + 1) * args.batchBytes // +1 is because the producer is always blocked after the fact
+				require.True(t, nProducedBytes.Load() < absoluteMax)
 			}
 		}()
 		for {
