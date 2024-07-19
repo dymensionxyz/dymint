@@ -95,12 +95,12 @@ func SubmitLoopInner(ctx context.Context,
 					return fmt.Errorf("create and submit batch: %w", err)
 				}
 				if pending < nConsumed {
+					// not possible because we give pending as a maximum argument in batch creation
 					panic(fmt.Sprintf("consumed more bytes than were actually pending: pending: %d: consumed: %d", pending, nConsumed))
 				}
 				timeLastSubmission = time.Now()
-				subtract := ^(nConsumed - 1)
-				fmt.Println(fmt.Sprintf("submitter before subtract :%d, after subtract: %d: consumed: %d: ", pending, pending+subtract, nConsumed))
-				pending = pendingBytes.Add(subtract) // subtract
+				fmt.Println(fmt.Sprintf("submitter  consumed: %d: ", nConsumed))
+				pending = pendingBytes.Add(^(nConsumed - 1)) // subtract
 			}
 			counter.Wake()
 		}

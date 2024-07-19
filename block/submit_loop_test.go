@@ -51,12 +51,12 @@ func TestSubmitLoopInner(t *testing.T) {
 
 		submit := func(maxSize uint64) (uint64, error) {
 			time.Sleep(approx(submitTime))
-			if rand.Intn(100) < 10 {
+			if rand.Intn(100) < 3 {
+				fmt.Println("submitter is going to halt")
 				time.Sleep(submissionHaltTime)
 			}
 			y := rand.Intn(int(maxSize))
 			bz.Add(^uint64(y - 1))
-			t.Log(fmt.Sprintf("submitter: limit: %d: consumed: %d", maxSize, y))
 			return uint64(y), nil
 		}
 
