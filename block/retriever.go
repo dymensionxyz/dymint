@@ -43,7 +43,7 @@ func (m *Manager) syncToTargetHeight(targetHeight uint64) error {
 			continue
 		}
 		if !errors.Is(err, gerrc.ErrNotFound) {
-			m.logger.Error("Process local block", "err", err)
+			m.logger.Error("Apply local block", "err", err)
 		}
 
 		err = m.syncFromDABatch()
