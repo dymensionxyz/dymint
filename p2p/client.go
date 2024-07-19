@@ -40,6 +40,9 @@ const (
 
 	// blockTopicSuffix is added after namespace to create pubsub topic for block gossiping.
 	blockTopicSuffix = "-block"
+
+	// buffer size used when consuming packets received from gossipSub. at a min 100ms blockrate it can buffer up to  5 min block
+	pubsubBufferSize = 3000
 )
 
 // Client is a P2P client, implemented with libp2p.
@@ -322,7 +325,6 @@ func (c *Client) tryConnect(ctx context.Context, peer peer.AddrInfo) {
 func (c *Client) setupGossiping(ctx context.Context) error {
 	pubsub.GossipSubHistoryGossip = c.conf.GossipedBlocksCacheSize
 	pubsub.GossipSubHistoryLength = c.conf.GossipedBlocksCacheSize
-
 	// We add WithSeenMessagesTTL (with 1 year time) option to avoid ever requesting already seen blocks
 	ps, err := pubsub.NewGossipSub(ctx, c.Host)
 	if err != nil {
@@ -330,13 +332,13 @@ func (c *Client) setupGossiping(ctx context.Context) error {
 	}
 
 	// tx gossiper receives the tx to add to the mempool through validation process, since it is a joint process
-	c.txGossiper, err = NewGossiper(c.Host, ps, c.getTxTopic(), nil, c.logger, WithValidator(c.txValidator))
+	c.txGossiper, err = NewGossiper(c.Host, ps, c.getTxTopic(), nil, max(c.conf.GossipedBlocksCacheSize, pubsubBufferSize), c.logger, WithValidator(c.txValidator))
 	if err != nil {
 		return err
 	}
 	go c.txGossiper.ProcessMessages(ctx)
 
-	c.blockGossiper, err = NewGossiper(c.Host, ps, c.getBlockTopic(), c.gossipedBlockReceived, c.logger,
+	c.blockGossiper, err = NewGossiper(c.Host, ps, c.getBlockTopic(), c.gossipedBlockReceived, max(c.conf.GossipedBlocksCacheSize, pubsubBufferSize), c.logger,
 		WithValidator(c.blockValidator))
 	if err != nil {
 		return err
