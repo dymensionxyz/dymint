@@ -27,9 +27,6 @@ import (
 
 func TestSubmitLoopInner(t *testing.T) {
 	/*
-		TODO: what am I trying to test?
-		producer cannot get too far ahead
-
 		producer will not stop if skew is not exceeded
 		producer will stop if skew is exceeded
 		submitter will submit when time elapses no matter what
@@ -38,22 +35,28 @@ func TestSubmitLoopInner(t *testing.T) {
 	t.Run("", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 
-		_ = cancel
 		c := make(chan int)
-		batchSkew := uint64(100)
+		batchSkew := uint64(10)
 		batchBytes := uint64(100)
 		batchTime := time.Second
 		submitTime := time.Second
+		produceTime := time.Second
 		bz := atomic.Uint64{}
 
 		// TODO: can pick random params, but need to be careful
 
 		produce := func() {
 			_ = bz.Load()
+			for {
+				bz.Add(50)
+				time.Sleep(produceTime)
+				c <- 50
+			}
 		}
+
 		submit := func() (uint64, error) {
-			_ = submitTime
-			return 0, nil
+			time.Sleep(submitTime)
+			return random, nil
 		}
 
 		go produce()
@@ -66,6 +69,9 @@ func TestSubmitLoopInner(t *testing.T) {
 			batchBytes,
 			submit,
 		)
+
+		time.Sleep(time.Second * 10)
+		cancel()
 	})
 }
 
