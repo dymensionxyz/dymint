@@ -4,12 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"sync/atomic"
 	"time"
 
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
+	"golang.org/x/sync/errgroup"
 )
 
 // SubmitLoop is the main loop for submitting blocks to the DA and SL layers.
@@ -37,33 +39,54 @@ func SubmitLoopInner(ctx context.Context,
 	maxBatchBytes uint64, // max size of serialised batch in bytes
 	createAndSubmitBatchGetSizeEstimate func() (uint64, error),
 ) error {
-	pendingBytes := uint64(0)
-	ticker := time.NewTicker(maxBatchTime) // used to make sure we wake up when the time passes
-	defer ticker.Stop()
-	timeLastSubmission := time.Now() // the actual source of truth of when to submit based on time (ticker is just a wake up)
-	for {
-		if pendingBytes < maxBatchSkew*maxBatchBytes {
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case n := <-bytesProduced:
-				pendingBytes += uint64(n)
-			case <-ticker.C:
-			}
-		}
-		// TODO: this doesn't handle the case when there are enough pending bytes to make a batch
-		//  but not enough to exceed the skew
+	eg, ctx := errgroup.WithContext(ctx)
 
-		if maxBatchTime < time.Since(timeLastSubmission) || maxBatchBytes < pendingBytes {
-			nConsumed, err := createAndSubmitBatchGetSizeEstimate()
-			if err != nil {
-				return fmt.Errorf("create and submit batch: %w", err)
+	pendingBytes := atomic.Uint64{}
+	wakeUpSubmitter := make(chan struct{})
+
+	eg.Go(func() error {
+		// we need one thread to continuously consume the bytes produced channel, and to monitor timer
+		ticker := time.NewTicker(maxBatchTime)
+		defer ticker.Stop()
+		for {
+			if pendingBytes.Load() < maxBatchSkew*maxBatchBytes {
+				select {
+				case <-ctx.Done():
+					return ctx.Err()
+				case n := <-bytesProduced:
+					pendingBytes.Add(uint64(n))
+				case <-ticker.C:
+				}
 			}
-			pendingBytes -= nConsumed
-			timeLastSubmission = time.Now()
-			ticker.Reset(maxBatchTime)
+			select {
+			case <-wakeUpSubmitter: // if the submitter is waiting around doing nothing, wake him up! otherwise he's busy submitting.
+			default:
+			}
 		}
-	}
+	})
+
+	eg.Go(func() error {
+		timeLastSubmission := time.Now()
+		for {
+			<-wakeUpSubmitter // avoid busy waiting
+			for {
+				pending := pendingBytes.Load()
+				if maxBatchTime < time.Since(timeLastSubmission) || maxBatchBytes < pending {
+					nConsumed, err := createAndSubmitBatchGetSizeEstimate()
+					if err != nil {
+						return fmt.Errorf("create and submit batch: %w", err)
+					}
+					if pending < nConsumed {
+						panic("consumed more bytes than were actually pending")
+					}
+					pendingBytes.Add(^(nConsumed - 1)) // subtract
+					timeLastSubmission = time.Now()
+				}
+			}
+		}
+	})
+
+	return eg.Wait()
 }
 
 func (m *Manager) CreateAndSubmitBatchGetSizeEstimate() (uint64, error) {
