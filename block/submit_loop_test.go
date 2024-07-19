@@ -2,6 +2,7 @@ package block_test
 
 import (
 	"context"
+	"fmt"
 	"math/rand"
 	"sync/atomic"
 	"testing"
@@ -23,28 +24,40 @@ func TestSubmitLoopInner(t *testing.T) {
 		c := make(chan int)
 		batchSkew := uint64(10)
 		batchBytes := uint64(100)
-		batchTime := time.Second
-		submitTime := time.Second
-		produceTime := time.Second
+		maxTime := time.Millisecond * 500
+		submitTime := time.Millisecond * 100
+		produceTime := time.Millisecond * 100
+		submissionHaltTime := time.Millisecond * 1000
 		bz := atomic.Uint64{}
+
+		approx := func(d time.Duration) time.Duration {
+			base := int(float64(d) * 0.8)
+			factor := int(float64(d) * 0.4)
+			return time.Duration(base + rand.Intn(factor))
+		}
 
 		// TODO: can pick random params, but need to be careful
 
 		produce := func() {
 			_ = bz.Load()
 			for {
-				after := bz.Add(50)
-				t.Log(after)
-				time.Sleep(produceTime)
-				c <- 50
+				time.Sleep(approx(produceTime))
+				x := 10 + rand.Intn(10)
+				after := bz.Add(uint64(x))
+				t.Log(fmt.Sprintf("actually have: %d", after))
+				c <- x
 			}
 		}
 
 		submit := func() (uint64, error) {
-			time.Sleep(submitTime)
+			time.Sleep(approx(submitTime))
+			if rand.Intn(100) < 10 {
+				time.Sleep(submissionHaltTime)
+			}
 			x := bz.Load()
 			y := rand.Intn(int(x))
 			bz.Add(^uint64(y - 1))
+			t.Log(fmt.Sprintf("have: %d: consume: %d", x, y))
 			return uint64(y), nil
 		}
 
@@ -54,12 +67,12 @@ func TestSubmitLoopInner(t *testing.T) {
 			ctx,
 			c,
 			batchSkew,
-			batchTime,
+			maxTime,
 			batchBytes,
 			submit,
 		)
 
-		time.Sleep(time.Second * 5)
+		time.Sleep(time.Second * 3)
 		cancel()
 	})
 }

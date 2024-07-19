@@ -73,16 +73,18 @@ func SubmitLoopInner(ctx context.Context,
 		for {
 			submitter.Wait(ctx)
 			pending := pendingBytes.Load()
-			for maxBatchTime < time.Since(timeLastSubmission) || maxBatchBytes < pending {
+			for (0 < pending && maxBatchTime < time.Since(timeLastSubmission)) || maxBatchBytes < pending {
 				nConsumed, err := createAndSubmitBatchGetSizeEstimate()
 				if err != nil {
 					return fmt.Errorf("create and submit batch: %w", err)
 				}
 				if pending < nConsumed {
-					panic("consumed more bytes than were actually pending")
+					panic(fmt.Sprintf("consumed more bytes than were actually pending: pending: %d: consumed: %d", pending, nConsumed))
 				}
 				timeLastSubmission = time.Now()
-				pending = pendingBytes.Add(^(nConsumed - 1)) // subtract
+				subtract := ^(nConsumed - 1)
+				fmt.Println(fmt.Sprintf("consumed: %d: before subtract :%d, after subtract: %d", nConsumed, pending, pending+subtract))
+				pending = pendingBytes.Add(subtract) // subtract
 			}
 			counter.Wake()
 		}
