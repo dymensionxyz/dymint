@@ -10,6 +10,7 @@ import (
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
+	uchannel "github.com/dymensionxyz/dymint/utils/channel"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"golang.org/x/sync/errgroup"
 )
@@ -42,14 +43,18 @@ func SubmitLoopInner(ctx context.Context,
 	eg, ctx := errgroup.WithContext(ctx)
 
 	pendingBytes := atomic.Uint64{}
-	wakeUpSubmitter := make(chan struct{})
+	counter := uchannel.NewWaker()   // used to wake up counter thread
+	submitter := uchannel.NewWaker() // used to wake up submitter thread
 
 	eg.Go(func() error {
-		// we need one thread to continuously consume the bytes produced channel, and to monitor timer
+		// 'counter': we need one thread to continuously consume the bytes produced channel, and to monitor timer
 		ticker := time.NewTicker(maxBatchTime)
 		defer ticker.Stop()
 		for {
-			if pendingBytes.Load() < maxBatchSkew*maxBatchBytes {
+			if maxBatchSkew*maxBatchBytes < pendingBytes.Load() {
+				// too much stuff is pending submission, wait for progress signal
+				counter.Wait(ctx)
+			} else {
 				select {
 				case <-ctx.Done():
 					return ctx.Err()
@@ -57,32 +62,29 @@ func SubmitLoopInner(ctx context.Context,
 					pendingBytes.Add(uint64(n))
 				case <-ticker.C:
 				}
-			}
-			select {
-			case <-wakeUpSubmitter: // if the submitter is waiting around doing nothing, wake him up! otherwise he's busy submitting.
-			default:
+				submitter.Wake()
 			}
 		}
 	})
 
 	eg.Go(func() error {
+		// 'submitter': this thread actually creates and submits batches
 		timeLastSubmission := time.Now()
 		for {
-			<-wakeUpSubmitter // avoid busy waiting
-			for {
-				pending := pendingBytes.Load()
-				if maxBatchTime < time.Since(timeLastSubmission) || maxBatchBytes < pending {
-					nConsumed, err := createAndSubmitBatchGetSizeEstimate()
-					if err != nil {
-						return fmt.Errorf("create and submit batch: %w", err)
-					}
-					if pending < nConsumed {
-						panic("consumed more bytes than were actually pending")
-					}
-					pendingBytes.Add(^(nConsumed - 1)) // subtract
-					timeLastSubmission = time.Now()
+			submitter.Wait(ctx)
+			pending := pendingBytes.Load()
+			for maxBatchTime < time.Since(timeLastSubmission) || maxBatchBytes < pending {
+				nConsumed, err := createAndSubmitBatchGetSizeEstimate()
+				if err != nil {
+					return fmt.Errorf("create and submit batch: %w", err)
 				}
+				if pending < nConsumed {
+					panic("consumed more bytes than were actually pending")
+				}
+				timeLastSubmission = time.Now()
+				pending = pendingBytes.Add(^(nConsumed - 1)) // subtract
 			}
+			counter.Wake()
 		}
 	})
 
