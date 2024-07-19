@@ -147,7 +147,9 @@ func TestSubmitLoopTimer(t *testing.T) {
 			maxTime:      10 * time.Millisecond,
 			submitTime:   2 * time.Millisecond,
 			produceBytes: 20,
-			produceTime:  50 * time.Millisecond,
+			// a relatively long production time ensures we test the
+			// case where the producer is slow but we want to submit anyway due to time
+			produceTime: 50 * time.Millisecond,
 		},
 	)
 }

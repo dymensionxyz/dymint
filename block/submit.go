@@ -83,6 +83,7 @@ func SubmitLoopInner(ctx context.Context,
 			case <-submitter.C:
 			}
 			pending := pendingBytes.Load()
+			// while there are accumulated blocks, create and submit batches!!
 			for ctx.Err() == nil && (0 < pending && (maxBatchTime < time.Since(timeLastSubmission)) || maxBatchBytes < pending) {
 				nConsumed, err := createAndSubmitBatchGetSizeEstimate(min(pending, maxBatchBytes))
 				if err != nil {
