@@ -32,14 +32,20 @@ func TestSubmitLoopInner(t *testing.T) {
 	t.Run("", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 
-		submit := func() {
+		_ = cancel
+		submit := func() (uint64, error) {
+			return 0, nil
 		}
+
+		c := make(chan int)
 
 		block.SubmitLoopInner(
 			ctx,
-			10,
+			c,
+			100,
 			time.Second,
 			100,
+			submit,
 		)
 	})
 }

@@ -22,9 +22,9 @@ func (m *Manager) SubmitLoop(ctx context.Context,
 ) (err error) {
 	return SubmitLoopInner(ctx,
 		bytesProduced,
-		int64(m.Conf.MaxBatchSkew),
+		m.Conf.MaxBatchSkew,
 		m.Conf.BatchSubmitMaxTime,
-		int64(m.Conf.BatchMaxSizeBytes),
+		m.Conf.BatchMaxSizeBytes,
 		m.CreateAndSubmitBatchGetSizeEstimate,
 	)
 }
@@ -32,21 +32,21 @@ func (m *Manager) SubmitLoop(ctx context.Context,
 // SubmitLoopInner is a unit testable impl of SubmitLoop
 func SubmitLoopInner(ctx context.Context,
 	bytesProduced chan int, // a channel of block and commit bytes produced
-	maxBatchSkew int64, // max number of batches that submitter is allowed to have pending
+	maxBatchSkew uint64, // max number of batches that submitter is allowed to have pending
 	maxBatchTime time.Duration, // max time to allow between batches
-	maxBatchBytes int64, // max size of serialised batch in bytes
-	createAndSubmitBatchGetSizeEstimate func() (int64, error),
+	maxBatchBytes uint64, // max size of serialised batch in bytes
+	createAndSubmitBatchGetSizeEstimate func() (uint64, error),
 ) error {
-	pendingBytes := int64(0)
-	timeLastSubmission := time.Now()
-	ticker := time.NewTicker(maxBatchTime)
+	pendingBytes := uint64(0)
+	ticker := time.NewTicker(maxBatchTime) // used to make sure we wake up when the time passes
+	timeLastSubmission := time.Now()       // the actual source of truth of when to submit based on time (ticker is just a wake up)
 	for {
 		if pendingBytes < maxBatchSkew*maxBatchBytes {
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
 			case n := <-bytesProduced:
-				pendingBytes += int64(n)
+				pendingBytes += uint64(n)
 			case <-ticker.C:
 				ticker.Reset(maxBatchTime)
 			}
@@ -62,12 +62,12 @@ func SubmitLoopInner(ctx context.Context,
 	}
 }
 
-func (m *Manager) CreateAndSubmitBatchGetSizeEstimate() (int64, error) {
+func (m *Manager) CreateAndSubmitBatchGetSizeEstimate() (uint64, error) {
 	b, err := m.CreateAndSubmitBatch()
 	if b == nil {
 		return 0, err
 	}
-	return int64(b.SizeBytesEstimate()), err
+	return uint64(b.SizeBytesEstimate()), err
 }
 
 // CreateAndSubmitBatch creates and submits a batch to the DA and SL.
