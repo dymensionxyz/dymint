@@ -2,6 +2,7 @@ package block
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync/atomic"
 	"time"
@@ -155,8 +156,20 @@ func (m *Manager) GetUnsubmittedBytes() int {
 	*/
 	currH := m.State.Height()
 	for h := m.NextHeightToSubmit(); h <= currH; h++ {
-		block := m.MustLoadBlock(h)
-		commit := m.MustLoadCommit(h)
+		block, err := m.Store.LoadBlock(h)
+		if err != nil {
+			if !errors.Is(err, gerrc.ErrNotFound) {
+				m.logger.Error("Get unsubmitted bytes load block.", "err", err)
+			}
+			break
+		}
+		commit, err := m.Store.LoadBlock(h)
+		if err != nil {
+			if !errors.Is(err, gerrc.ErrNotFound) {
+				m.logger.Error("Get unsubmitted bytes load commit.", "err", err)
+			}
+			break
+		}
 		total += block.SizeBytes() + commit.SizeBytes()
 	}
 	return total
