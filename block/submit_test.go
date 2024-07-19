@@ -24,6 +24,26 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
+func TestSubmitLoopInner(t *testing.T) {
+	/*
+		TODO: what am I trying to test?
+		producer cannot get too far ahead
+	*/
+	t.Run("", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+
+		submit := func() {
+		}
+
+		block.SubmitLoopInner(
+			ctx,
+			10,
+			time.Second,
+			100,
+		)
+	})
+}
+
 // TestBatchOverhead tests the scenario where we have a single block that is very large, and occupies the entire batch size.
 // This test is to ensure the value of 90% for types.MaxBlockSizeAdjustment is valid
 // 2 use cases:
@@ -299,7 +319,4 @@ func submissionByBatchSize(manager *block.Manager, assert *assert.Assertions, ex
 	} else {
 		assert.Zero(manager.LastSubmittedHeight.Load())
 	}
-}
-
-func TestSubmitLoopInner(t *testing.T) {
 }
