@@ -41,7 +41,7 @@ const (
 	// blockTopicSuffix is added after namespace to create pubsub topic for block gossiping.
 	blockTopicSuffix = "-block"
 
-	// buffer size used when consuming packets received from gossipSub. at a min 100ms blockrate it can buffer up to  5 min block
+	// buffer size used when in gossipSub to consume receive packets. packets are dropped in case buffer overflows. at a block rate of 100ms (the min accepted) it can buffer up to  5 min of blocks.
 	pubsubBufferSize = 3000
 )
 
