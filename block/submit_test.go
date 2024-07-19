@@ -122,7 +122,7 @@ func TestBatchSubmissionHappyFlow(t *testing.T) {
 	assert.Zero(t, manager.LastSubmittedHeight.Load())
 
 	// submit and validate sync target
-	manager.CreateAndSubmitBatch()
+	manager.CreateAndSubmitBatch(manager.Conf.BatchMaxSizeBytes)
 	assert.EqualValues(t, manager.State.Height(), manager.LastSubmittedHeight.Load())
 }
 
@@ -170,12 +170,12 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 
 	// try to submit, we expect failure
 	slmock.On("SubmitBatch", mock.Anything, mock.Anything, mock.Anything).Return(fmt.Errorf("submit batch")).Once()
-	_, err = manager.CreateAndSubmitBatch()
+	_, err = manager.CreateAndSubmitBatch(manager.Conf.BatchMaxSizeBytes)
 	assert.Error(t, err)
 
 	// try to submit again, we expect success
 	slmock.On("SubmitBatch", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
-	manager.CreateAndSubmitBatch()
+	manager.CreateAndSubmitBatch(manager.Conf.BatchMaxSizeBytes)
 	assert.EqualValues(t, manager.State.Height(), manager.LastSubmittedHeight.Load())
 }
 

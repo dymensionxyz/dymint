@@ -38,7 +38,7 @@ func SubmitLoopInner(ctx context.Context,
 	maxBatchSkew uint64, // max number of batches that submitter is allowed to have pending
 	maxBatchTime time.Duration, // max time to allow between batches
 	maxBatchBytes uint64, // max size of serialised batch in bytes
-	createAndSubmitBatchGetSizeEstimate func() (uint64, error),
+	createAndSubmitBatchGetSizeEstimate func(maxSize uint64) (uint64, error),
 ) error {
 	eg, ctx := errgroup.WithContext(ctx)
 
@@ -74,7 +74,7 @@ func SubmitLoopInner(ctx context.Context,
 			submitter.Wait(ctx)
 			pending := pendingBytes.Load()
 			for (0 < pending && maxBatchTime < time.Since(timeLastSubmission)) || maxBatchBytes < pending {
-				nConsumed, err := createAndSubmitBatchGetSizeEstimate()
+				nConsumed, err := createAndSubmitBatchGetSizeEstimate(pending)
 				if err != nil {
 					return fmt.Errorf("create and submit batch: %w", err)
 				}
@@ -83,7 +83,7 @@ func SubmitLoopInner(ctx context.Context,
 				}
 				timeLastSubmission = time.Now()
 				subtract := ^(nConsumed - 1)
-				fmt.Println(fmt.Sprintf("consumed: %d: before subtract :%d, after subtract: %d", nConsumed, pending, pending+subtract))
+				fmt.Println(fmt.Sprintf("before subtract :%d, after subtract: %d: consumed: %d: ", pending, pending+subtract, nConsumed))
 				pending = pendingBytes.Add(subtract) // subtract
 			}
 			counter.Wake()
@@ -93,8 +93,8 @@ func SubmitLoopInner(ctx context.Context,
 	return eg.Wait()
 }
 
-func (m *Manager) CreateAndSubmitBatchGetSizeEstimate() (uint64, error) {
-	b, err := m.CreateAndSubmitBatch()
+func (m *Manager) CreateAndSubmitBatchGetSizeEstimate(maxSize uint64) (uint64, error) {
+	b, err := m.CreateAndSubmitBatch(maxSize)
 	if b == nil {
 		return 0, err
 	}
@@ -102,8 +102,8 @@ func (m *Manager) CreateAndSubmitBatchGetSizeEstimate() (uint64, error) {
 }
 
 // CreateAndSubmitBatch creates and submits a batch to the DA and SL.
-func (m *Manager) CreateAndSubmitBatch() (*types.Batch, error) {
-	b, err := CreateBatch(m.Store, m.Conf.BatchMaxSizeBytes, m.NextHeightToSubmit(), m.State.Height())
+func (m *Manager) CreateAndSubmitBatch(maxSize uint64) (*types.Batch, error) {
+	b, err := CreateBatch(m.Store, maxSize, m.NextHeightToSubmit(), m.State.Height())
 	if err != nil {
 		return nil, fmt.Errorf("create batch: %w", err)
 	}
