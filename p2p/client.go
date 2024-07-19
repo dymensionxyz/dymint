@@ -41,7 +41,7 @@ const (
 	// blockTopicSuffix is added after namespace to create pubsub topic for block gossiping.
 	blockTopicSuffix = "-block"
 
-	// buffer size used when in gossipSub to consume receive packets. packets are dropped in case buffer overflows. at a block rate of 200ms (the min accepted) it can buffer up to 10 min of blocks.
+	// buffer size used by gossipSub router to consume received packets (blocks or txs). packets are dropped in case buffer overflows. in case of blocks, it can buffer up to 5 minutes (assuming 200ms block rate)
 	pubsubBufferSize = 3000
 )
 
@@ -325,23 +325,22 @@ func (c *Client) tryConnect(ctx context.Context, peer peer.AddrInfo) {
 }
 
 func (c *Client) setupGossiping(ctx context.Context) error {
-	pubsub.GossipSubHistoryGossip = c.conf.GossipedBlocksCacheSize
-	pubsub.GossipSubHistoryLength = c.conf.GossipedBlocksCacheSize
+	pubsub.GossipSubHistoryGossip = c.conf.GossipSubCacheSize
+	pubsub.GossipSubHistoryLength = c.conf.GossipSubCacheSize
 
-	// We add WithSeenMessagesTTL (with 1 year time) option to avoid ever requesting already seen blocks
 	ps, err := pubsub.NewGossipSub(ctx, c.Host)
 	if err != nil {
 		return err
 	}
 
 	// tx gossiper receives the tx to add to the mempool through validation process, since it is a joint process
-	c.txGossiper, err = NewGossiper(c.Host, ps, c.getTxTopic(), nil, max(c.conf.GossipedBlocksCacheSize, pubsubBufferSize), c.logger, WithValidator(c.txValidator))
+	c.txGossiper, err = NewGossiper(c.Host, ps, c.getTxTopic(), nil, max(c.conf.GossipSubCacheSize, pubsubBufferSize), c.logger, WithValidator(c.txValidator))
 	if err != nil {
 		return err
 	}
 	go c.txGossiper.ProcessMessages(ctx)
 
-	c.blockGossiper, err = NewGossiper(c.Host, ps, c.getBlockTopic(), c.gossipedBlockReceived, max(c.conf.GossipedBlocksCacheSize, pubsubBufferSize), c.logger,
+	c.blockGossiper, err = NewGossiper(c.Host, ps, c.getBlockTopic(), c.gossipedBlockReceived, max(c.conf.GossipSubCacheSize, pubsubBufferSize), c.logger,
 		WithValidator(c.blockValidator))
 	if err != nil {
 		return err
