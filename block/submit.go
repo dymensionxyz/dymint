@@ -4,15 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync/atomic"
 	"time"
 
-	"github.com/dymensionxyz/dymint/store"
-	"github.com/dymensionxyz/gerr-cosmos/gerrc"
-	"golang.org/x/sync/errgroup"
-
 	"github.com/dymensionxyz/dymint/da"
+	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 )
 
 // SubmitLoop is the main loop for submitting blocks to the DA and SL layers.
@@ -25,9 +22,9 @@ func (m *Manager) SubmitLoop(ctx context.Context,
 ) (err error) {
 	return SubmitLoopInner(ctx,
 		bytesProduced,
-		int(m.Conf.MaxBatchSkew),
+		int64(m.Conf.MaxBatchSkew),
 		m.Conf.BatchSubmitMaxTime,
-		int(m.Conf.BatchMaxSizeBytes),
+		int64(m.Conf.BatchMaxSizeBytes),
 		m.CreateAndSubmitBatchGetSizeEstimate,
 	)
 }
@@ -35,61 +32,31 @@ func (m *Manager) SubmitLoop(ctx context.Context,
 // SubmitLoopInner is a unit testable impl of SubmitLoop
 func SubmitLoopInner(ctx context.Context,
 	bytesProduced chan int, // a channel of block and commit bytes produced
-	maxBatchSkew int, // max number of batches that submitter is allowed to have pending
+	maxBatchSkew int64, // max number of batches that submitter is allowed to have pending
 	maxBatchTime time.Duration, // max time to allow between batches
-	maxBatchBytes int, // max size of serialised batch in bytes
+	maxBatchBytes int64, // max size of serialised batch in bytes
 	createAndSubmitBatchGetSizeEstimate func() (int64, error),
 ) error {
-	unsubmittedBytes := atomic.Int64{}
-	submitC := make(chan struct{}, maxBatchSkew)
-
-	eg, ctx := errgroup.WithContext(ctx)
-
-	eg.Go(func() error {
-		// this thread adds up the number of produced bytes, and signals to submit a batch
-		// when the count is high enough, or on a timer
-
-		ticker := time.NewTicker(maxBatchTime)
-		defer ticker.Stop()
-		for {
-			mustSubmitBatch := false
+	pendingBytes := int64(0)
+	timeLastSubmission := time.Now()
+	for {
+		if pendingBytes < maxBatchSkew*maxBatchBytes {
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
 			case n := <-bytesProduced:
-				cnt := unsubmittedBytes.Add(int64(n))
-				mustSubmitBatch = int64(maxBatchBytes) < cnt
-			case <-ticker.C:
-				mustSubmitBatch = true
-			}
-			if mustSubmitBatch {
-				submitC <- struct{}{}
-				ticker.Reset(maxBatchTime)
+				pendingBytes += int64(n)
 			}
 		}
-	})
-
-	eg.Go(func() error {
-		// this thread submits batches and consumes bytes
-		for {
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case <-submitC:
-				nConsumed, err := createAndSubmitBatchGetSizeEstimate()
-				if err != nil {
-					return fmt.Errorf("create and submit batch: %w", err)
-				}
-				n := unsubmittedBytes.Load()
-				if n < nConsumed {
-					panic("expected number of unsubmitted byte is less than the number of bytes sent in a batch") // sanity check
-				}
-				unsubmittedBytes.Add(-nConsumed)
+		if maxBatchBytes < pendingBytes || maxBatchTime < time.Since(timeLastSubmission) {
+			nConsumed, err := createAndSubmitBatchGetSizeEstimate()
+			if err != nil {
+				return fmt.Errorf("create and submit batch: %w", err)
 			}
+			pendingBytes -= nConsumed
+			timeLastSubmission = time.Now()
 		}
-	})
-
-	return eg.Wait()
+	}
 }
 
 func (m *Manager) CreateAndSubmitBatchGetSizeEstimate() (int64, error) {
