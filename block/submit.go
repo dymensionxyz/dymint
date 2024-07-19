@@ -52,12 +52,12 @@ func SubmitLoopInner(ctx context.Context,
 		defer ticker.Stop()
 		for {
 			if maxBatchSkew*maxBatchBytes < pendingBytes.Load() {
-				// too much stuff is pending submission, wait for progress signal
+				// too much stuff is pending submission
 				select {
 				case <-ctx.Done():
 					return ctx.Err()
-				case <-counter.C:
-				case <-ticker.C:
+				case <-counter.C: // await a nudge from the submitter to know he has made progress
+				case <-ticker.C: // timer
 				}
 			} else {
 				select {
