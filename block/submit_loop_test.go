@@ -55,8 +55,7 @@ func testSubmitLoopInner(
 
 	nProducedBytes := atomic.Uint64{} // tracking how many actual bytes have been produced but not submitted so far
 	producedBytesC := make(chan int)  // producer sends on here, and can be blocked by not consuming from here
-	lastSubmitOrProduce := atomic.Int64{}
-	go func() { // simulate block production
+	go func() {                       // simulate block production
 		go func() { // another thread to check system properties
 			for {
 				select {
@@ -65,10 +64,10 @@ func testSubmitLoopInner(
 				default:
 				}
 				// producer shall not get too far ahead
-				//require.True(t, nProducedBytes.Load() < (args.batchSkew+1)*args.batchBytes,
-				//	"n bytes", nProducedBytes.Load(),
-				//	"limit", (args.batchSkew+1)*args.batchBytes,
-				//)
+				require.True(t, nProducedBytes.Load() < (args.batchSkew+1)*args.batchBytes,
+					"n bytes", nProducedBytes.Load(),
+					"limit", (args.batchSkew+1)*args.batchBytes,
+				)
 			}
 		}()
 		for {
@@ -78,8 +77,9 @@ func testSubmitLoopInner(
 			default:
 			}
 			time.Sleep(approx(args.produceTime))
-			producedBytesC <- rand.Intn(args.produceBytes)
-			lastSubmitOrProduce.Store(time.Now().Unix())
+			nBytes := rand.Intn(args.produceBytes) // simulate block production
+			nProducedBytes.Add(uint64(nBytes))
+			producedBytesC <- nBytes
 		}
 	}()
 
@@ -87,16 +87,9 @@ func testSubmitLoopInner(
 		time.Sleep(approx(args.submitTime))
 		if rand.Float64() < args.submissionHaltProbability {
 			time.Sleep(args.submissionHaltTime)
-			lastSubmitOrProduce.Store(time.Now().Unix())
 		}
 		consumed := rand.Intn(int(maxSize))
 		nProducedBytes.Add(^uint64(consumed - 1)) // subtract
-
-		last := time.Unix(lastSubmitOrProduce.Load(), 0)
-		limit := 1.5 * float64(args.maxTime)
-		require.True(t, last == time.Time{} || float64(time.Since(last)) < limit,
-			"since last submit time", time.Since(last), "max time", args.maxTime)
-		lastSubmitOrProduce.Store(time.Now().Unix())
 
 		return uint64(consumed), nil
 	}
@@ -116,14 +109,16 @@ func TestSubmitLoopFastProducerHaltingSubmitter(t *testing.T) {
 	testSubmitLoop(
 		t,
 		testArgs{
-			nParallel:                 1,
-			testDuration:              20 * time.Second,
-			batchSkew:                 10,
-			batchBytes:                100,
-			maxTime:                   50 * time.Millisecond,
-			submitTime:                2 * time.Millisecond,
-			produceBytes:              20,
-			produceTime:               2 * time.Millisecond,
+			nParallel:    50,
+			testDuration: 2 * time.Second,
+			batchSkew:    10,
+			batchBytes:   100,
+			maxTime:      10 * time.Millisecond,
+			submitTime:   2 * time.Millisecond,
+			produceBytes: 20,
+			produceTime:  2 * time.Millisecond,
+			// a relatively long possibility of the submitter halting
+			// tests the case where we need to stop the producer getting too far ahead
 			submissionHaltTime:        50 * time.Millisecond,
 			submissionHaltProbability: 0.01,
 		},
@@ -132,11 +127,13 @@ func TestSubmitLoopFastProducerHaltingSubmitter(t *testing.T) {
 
 // Make sure the timer works even if the producer is slow
 func TestSubmitLoopTimer(t *testing.T) {
-	t.Skip()
+	// TODO: should add a check to make sure that gap between submissions doesn't exceed max time
+	// 	(taking into account when the producer might not produce anything, or there is a simulated halt)
 	testSubmitLoop(
 		t,
 		testArgs{
-			testDuration: 60 * time.Second,
+			nParallel:    50,
+			testDuration: 2 * time.Second,
 			batchSkew:    10,
 			batchBytes:   100,
 			maxTime:      1000 * time.Millisecond,
