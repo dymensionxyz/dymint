@@ -13,7 +13,7 @@ func DrainForever[T any](chs ...<-chan T) {
 // Waker can be used to make a goroutine ('A') sleep, and have another goroutine ('B') wake him up
 // A will not block if B is not asleep.
 type Waker struct {
-	C chan struct{}
+	C chan struct{} // Receive on C to sleep
 }
 
 func NewWaker() *Waker {
