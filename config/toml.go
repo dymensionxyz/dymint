@@ -102,7 +102,7 @@ p2p_bootstrap_nodes = "{{ .P2PConfig.BootstrapNodes }}"
 p2p_persistent_nodes = "{{ .P2PConfig.PersistentNodes }}"
 
 # max number of cached messages by gossipsub protocol
-p2p_gossiped_blocks_cache_size = {{ .P2PConfig.GossipedBlocksCacheSize }}
+p2p_gossip_cache_size = {{ .P2PConfig.GossipSubCacheSize }}
 
 # time interval to check if no p2p nodes are connected to bootstrap again
 p2p_bootstrap_retry_time = "{{ .P2PConfig.BootstrapRetryTime }}"

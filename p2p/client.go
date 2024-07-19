@@ -40,9 +40,6 @@ const (
 
 	// blockTopicSuffix is added after namespace to create pubsub topic for block gossiping.
 	blockTopicSuffix = "-block"
-
-	// buffer size used by gossipSub router to consume received packets (blocks or txs). packets are dropped in case buffer overflows. in case of blocks, it can buffer up to 5 minutes (assuming 200ms block rate)
-	pubsubBufferSize = 3000
 )
 
 // Client is a P2P client, implemented with libp2p.
@@ -334,13 +331,13 @@ func (c *Client) setupGossiping(ctx context.Context) error {
 	}
 
 	// tx gossiper receives the tx to add to the mempool through validation process, since it is a joint process
-	c.txGossiper, err = NewGossiper(c.Host, ps, c.getTxTopic(), nil, max(c.conf.GossipSubCacheSize, pubsubBufferSize), c.logger, WithValidator(c.txValidator))
+	c.txGossiper, err = NewGossiper(c.Host, ps, c.getTxTopic(), nil, c.logger, WithValidator(c.txValidator))
 	if err != nil {
 		return err
 	}
 	go c.txGossiper.ProcessMessages(ctx)
 
-	c.blockGossiper, err = NewGossiper(c.Host, ps, c.getBlockTopic(), c.gossipedBlockReceived, max(c.conf.GossipSubCacheSize, pubsubBufferSize), c.logger,
+	c.blockGossiper, err = NewGossiper(c.Host, ps, c.getBlockTopic(), c.gossipedBlockReceived, c.logger,
 		WithValidator(c.blockValidator))
 	if err != nil {
 		return err
