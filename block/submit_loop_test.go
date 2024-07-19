@@ -11,8 +11,6 @@ import (
 	"github.com/dymensionxyz/dymint/block"
 )
 
-// TODO: improve the tests to actually add some requirements
-
 type testArgs struct {
 	testDuration              time.Duration
 	batchSkew                 uint64

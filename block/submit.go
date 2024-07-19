@@ -53,10 +53,11 @@ func SubmitLoopInner(ctx context.Context,
 		for {
 			if maxBatchSkew*maxBatchBytes < pendingBytes.Load() {
 				// too much stuff is pending submission
+				// we block here until we get a progress nudge from the submitter thread
 				select {
 				case <-ctx.Done():
 					return ctx.Err()
-				case <-counter.C: // await a nudge from the submitter to know he has made progress
+				case <-counter.C:
 				case <-ticker.C:
 				}
 			} else {
@@ -88,7 +89,6 @@ func SubmitLoopInner(ctx context.Context,
 					return fmt.Errorf("create and submit batch: %w", err)
 				}
 				timeLastSubmission = time.Now()
-				fmt.Println(fmt.Sprintf("pending: %d: consumed: %d: ", pending, nConsumed))
 				pending = pendingBytes.Add(^(nConsumed - 1)) // subtract
 			}
 			counter.Nudge()
