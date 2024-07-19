@@ -69,6 +69,9 @@ func SubmitLoopInner(ctx context.Context,
 				case <-ticker.C:
 				}
 			}
+
+			types.RollappPendingSubmissionsSkewNumBytes.Set(float64(pendingBytes.Load()))
+			types.RollappPendingSubmissionsSkewNumBatches.Set(float64(pendingBytes.Load() / maxBatchBytes))
 			submitter.Nudge()
 		}
 	})
