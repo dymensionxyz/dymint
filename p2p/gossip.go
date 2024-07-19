@@ -45,13 +45,13 @@ type Gossiper struct {
 // NewGossiper creates new, ready to use instance of Gossiper.
 //
 // Returned Gossiper object can be used for sending (Publishing) and receiving messages in topic identified by topicStr.
-func NewGossiper(host host.Host, ps *pubsub.PubSub, topicStr string, msgHandler GossipMessageHandler, logger types.Logger, options ...GossiperOption) (*Gossiper, error) {
+func NewGossiper(host host.Host, ps *pubsub.PubSub, topicStr string, msgHandler GossipMessageHandler, pubsubBufferSize int, logger types.Logger, options ...GossiperOption) (*Gossiper, error) {
 	topic, err := ps.Join(topicStr)
 	if err != nil {
 		return nil, err
 	}
 
-	subscription, err := topic.Subscribe()
+	subscription, err := topic.Subscribe(pubsub.WithBufferSize(pubsubBufferSize))
 	if err != nil {
 		return nil, err
 	}
