@@ -55,7 +55,11 @@ func testSubmitLoopInner(
 
 	nProducedBytes := atomic.Uint64{} // tracking how many actual bytes have been produced but not submitted so far
 	producedBytesC := make(chan int)  // producer sends on here, and can be blocked by not consuming from here
-	go func() {                       // simulate block production
+
+	// the time of the last block produced or the last batch submitted or the last starting of the node
+	timeLastProgress := atomic.Int64{}
+
+	go func() { // simulate block production
 		go func() { // another thread to check system properties
 			for {
 				select {
@@ -78,6 +82,8 @@ func testSubmitLoopInner(
 			nBytes := rand.Intn(args.produceBytes) // simulate block production
 			nProducedBytes.Add(uint64(nBytes))
 			producedBytesC <- nBytes
+
+			timeLastProgress.Store(time.Now().Unix())
 		}
 	}()
 
@@ -85,10 +91,16 @@ func testSubmitLoopInner(
 		time.Sleep(approx(args.submitTime))
 		if rand.Float64() < args.submissionHaltProbability {
 			time.Sleep(args.submissionHaltTime)
+			timeLastProgress.Store(time.Now().Unix()) // we have now recovered
 		}
 		consumed := rand.Intn(int(maxSize))
 		nProducedBytes.Add(^uint64(consumed - 1)) // subtract
 
+		timeLastProgressT := time.Unix(timeLastProgress.Load(), 0)
+		absoluteMax := int64(1.5 * float64(args.maxTime)) // allow some leeway for code execution
+		require.True(t, time.Since(timeLastProgressT).Milliseconds() < absoluteMax)
+
+		timeLastProgress.Store(time.Now().Unix()) // we have submitted  batch
 		return uint64(consumed), nil
 	}
 
@@ -107,7 +119,7 @@ func TestSubmitLoopFastProducerHaltingSubmitter(t *testing.T) {
 	testSubmitLoop(
 		t,
 		testArgs{
-			nParallel:    50,
+			nParallel:    100,
 			testDuration: 2 * time.Second,
 			batchSkew:    10,
 			batchBytes:   100,
@@ -130,14 +142,14 @@ func TestSubmitLoopTimer(t *testing.T) {
 	testSubmitLoop(
 		t,
 		testArgs{
-			nParallel:    50,
+			nParallel:    100,
 			testDuration: 2 * time.Second,
 			batchSkew:    10,
 			batchBytes:   100,
-			maxTime:      1000 * time.Millisecond,
-			submitTime:   20 * time.Millisecond,
-			produceBytes: 500,
-			produceTime:  5000 * time.Millisecond,
+			maxTime:      10 * time.Millisecond,
+			submitTime:   2 * time.Millisecond,
+			produceBytes: 20,
+			produceTime:  50 * time.Millisecond,
 		},
 	)
 }
