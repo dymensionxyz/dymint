@@ -40,7 +40,6 @@ type Gossiper struct {
 	sub        *pubsub.Subscription
 	msgHandler GossipMessageHandler
 	logger     types.Logger
-	bufferSize int
 }
 
 // NewGossiper creates new, ready to use instance of Gossiper.
