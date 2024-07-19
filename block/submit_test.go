@@ -29,6 +29,11 @@ func TestSubmitLoopInner(t *testing.T) {
 	/*
 		TODO: what am I trying to test?
 		producer cannot get too far ahead
+
+		producer will not stop if skew is not exceeded
+		producer will stop if skew is exceeded
+		submitter will submit when time elapses no matter what
+		submitter will submit when enough bytes to submit a batch
 	*/
 	t.Run("", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
