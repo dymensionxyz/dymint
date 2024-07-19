@@ -75,43 +75,36 @@ func testSubmitLoopInner(
 	)
 }
 
-func TestSubmitLoopInner(t *testing.T) {
-	/*
-		producer will not stop if skew is not exceeded
-		producer will stop if skew is exceeded
-		submitter will submit when time elapses no matter what
-		submitter will submit when enough bytes to submit a batch
-	*/
-	t.Run("fast producer, halting submitter", func(t *testing.T) { // make sure the producer cannot get too far ahead
-		testSubmitLoopInner(
-			t,
-			testArgs{
-				testDuration:              60 * time.Second,
-				batchSkew:                 10,
-				batchBytes:                100,
-				maxTime:                   500 * time.Millisecond,
-				submitTime:                100 * time.Millisecond,
-				produceBytes:              20,
-				produceTime:               100 * time.Millisecond,
-				submissionHaltTime:        1000 * time.Millisecond,
-				submissionHaltProbability: 0.01,
-			},
-		)
-	})
-	t.Run("slow producer", func(t *testing.T) { // make sure the timer works
-		testSubmitLoopInner(
-			t,
-			testArgs{
-				testDuration:              60 * time.Second,
-				batchSkew:                 10,
-				batchBytes:                100,
-				maxTime:                   100 * time.Millisecond,
-				submitTime:                20 * time.Millisecond,
-				produceBytes:              100,
-				produceTime:               500 * time.Millisecond,
-				submissionHaltTime:        1000 * time.Millisecond,
-				submissionHaltProbability: 0,
-			},
-		)
-	})
+// Make sure the producer does not get too far ahead
+func TestSubmitLoopFastProducerHaltingSubmitter(t *testing.T) {
+	testSubmitLoopInner(
+		t,
+		testArgs{
+			testDuration:              60 * time.Second,
+			batchSkew:                 10,
+			batchBytes:                100,
+			maxTime:                   500 * time.Millisecond,
+			submitTime:                100 * time.Millisecond,
+			produceBytes:              20,
+			produceTime:               100 * time.Millisecond,
+			submissionHaltTime:        1000 * time.Millisecond,
+			submissionHaltProbability: 0.01,
+		},
+	)
+}
+
+// Make sure the timer works even if the producer is slow
+func TestSubmitLoopTimer(t *testing.T) {
+	testSubmitLoopInner(
+		t,
+		testArgs{
+			testDuration: 60 * time.Second,
+			batchSkew:    10,
+			batchBytes:   100,
+			maxTime:      1000 * time.Millisecond,
+			submitTime:   20 * time.Millisecond,
+			produceBytes: 500,
+			produceTime:  5000 * time.Millisecond,
+		},
+	)
 }
