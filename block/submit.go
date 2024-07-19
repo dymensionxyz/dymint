@@ -27,27 +27,6 @@ func (m *Manager) SubmitLoop(ctx context.Context, bytesProduced chan int) (err e
 	eg, ctx := errgroup.WithContext(ctx)
 
 	eg.Go(func() error {
-		// this thread submits batches and consumes bytes
-		for {
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case <-submitC:
-				b, err := m.CreateAndSubmitBatch()
-				if err != nil {
-					return fmt.Errorf("create and submit batch: %w", err)
-				}
-				n := unsubmittedBytes.Load()
-				nConsumed := int64(b.SizeBytesEstimate()) // here we use an estimate, not the actual size, because bytesProduced is only an estimate
-				if n < nConsumed {
-					panic("expected number of unsubmitted byte is less than the number of bytes sent in a batch") // sanity check
-				}
-				unsubmittedBytes.Add(-nConsumed)
-			}
-		}
-	})
-
-	eg.Go(func() error {
 		// this thread adds up the number of produced bytes, and signals to submit a batch
 		// when the count is high enough, or on a timer
 
@@ -67,6 +46,27 @@ func (m *Manager) SubmitLoop(ctx context.Context, bytesProduced chan int) (err e
 			if mustSubmitBatch {
 				submitC <- struct{}{}
 				ticker.Reset(m.Conf.BatchSubmitMaxTime)
+			}
+		}
+	})
+
+	eg.Go(func() error {
+		// this thread submits batches and consumes bytes
+		for {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-submitC:
+				b, err := m.CreateAndSubmitBatch()
+				if err != nil {
+					return fmt.Errorf("create and submit batch: %w", err)
+				}
+				n := unsubmittedBytes.Load()
+				nConsumed := int64(b.SizeBytesEstimate()) // here we use an estimate, not the actual size, because bytesProduced is only an estimate
+				if n < nConsumed {
+					panic("expected number of unsubmitted byte is less than the number of bytes sent in a batch") // sanity check
+				}
+				unsubmittedBytes.Add(-nConsumed)
 			}
 		}
 	})
@@ -132,13 +132,13 @@ func CreateBatch(store store.Store, maxBatchSize uint64, startHeight uint64, end
 func (m *Manager) SubmitBatch(batch *types.Batch) error {
 	resultSubmitToDA := m.DAClient.SubmitBatch(batch)
 	if resultSubmitToDA.Code != da.StatusSuccess {
-		return fmt.Errorf("submit next batch to da: %s", resultSubmitToDA.Message)
+		return fmt.Errorf("da client submit batch: %s", resultSubmitToDA.Message)
 	}
 	m.logger.Info("Submitted batch to DA.", "start height", batch.StartHeight(), "end height", batch.EndHeight())
 
 	err := m.SLClient.SubmitBatch(batch, m.DAClient.GetClientType(), &resultSubmitToDA)
 	if err != nil {
-		return fmt.Errorf("sl client submit batch: start height: %d: inclusive end height: %d: %w", batch.StartHeight(), batch.EndHeight(), err)
+		return fmt.Errorf("sl client submit batch: start height: %d: end height: %d: %w", batch.StartHeight(), batch.EndHeight(), err)
 	}
 	m.logger.Info("Submitted batch to SL.", "start height", batch.StartHeight(), "end height", batch.EndHeight())
 
