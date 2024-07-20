@@ -26,54 +26,63 @@ import (
 // Nodes need to advertise CIDs/height map to the DHT periodically.
 // https://www.notion.so/dymension/ADR-x-Rollapp-block-sync-protocol-6ee48b232a6a45e09989d67f1a6c0297?pvs=4
 type BlockSync struct {
-	// service that reads/writes blocks either from local datastore or the network
+	// service that reads/writes blocks either from local datastore or the P2P network
 	bsrv blockservice.BlockService
 	// local datastore for IPFS blocks
 	bstore blockstore.Blockstore
 	// protocol used to obtain blocks from the P2P network
 	net network.BitSwapNetwork
-	// used to retrieve/create merkle DAGs using block data
+	// used to find all data chunks that are part oth e same block
 	dsrv BlockSyncDagService
-	// used to define content identifiers
+	// used to define the content identifiers of each data chunk
 	cidBuilder cid.Builder
 	logger     types.Logger
-
-	// receives blocks obtained from the network
-	msgHandler BlockSyncMessageHandler
 }
 
 type BlockSyncMessageHandler func(block *P2PBlockEvent)
 
-func SetupBlockSync(ctx context.Context, h host.Host, store datastore.Datastore, msgHandler BlockSyncMessageHandler, logger types.Logger) *BlockSync {
+// SetupBlockSync initializes all services required to provide and retrieve block data in the P2P network.
+func SetupBlockSync(ctx context.Context, h host.Host, store datastore.Datastore, logger types.Logger) *BlockSync {
+
+	//It constructs a datastore.
 	ds := dsync.MutexWrap(store)
 
+	//It sets a blockstore (to store IPFS data chunks) with the previous datastore.
 	bs := blockstore.NewBlockstore(ds)
 
-	net := network.NewFromIpfsHost(h, &routinghelpers.Null{}, network.Prefix("/dymension/block-sync/"))
-	server := server.New(
+	//It initialized bitswap network used to retrieve data chunks from other peers in the P2P network https://docs.ipfs.tech/concepts/bitswap/
+	bsnet := network.NewFromIpfsHost(h, &routinghelpers.Null{}, network.Prefix("/dymension/block-sync/"))
+
+	//Bitswap server that provides data to the network.
+	bsserver := server.New(
 		ctx,
-		net,
+		bsnet,
 		bs,
 		server.ProvideEnabled(false), // we don't provide blocks over DHT
 		server.SetSendDontHaves(false),
 	)
 
+	//Bitswap client that retrieves data from the network.
 	bsclient := client.New(
 		ctx,
-		net,
+		bsnet,
 		bs,
 		client.SetSimulateDontHavesOnTimeout(false),
-		client.WithBlockReceivedNotifier(server),
+		client.WithBlockReceivedNotifier(bsserver),
 		client.WithoutDuplicatedBlockStats(),
 	)
-	net.Start(server, bsclient)
+
+	//Bitswap network start.
+	bsnet.Start(bsserver, bsclient)
+
+	//BlockService with given datastore instance.
 	bsrv := blockservice.New(bs, bsclient)
+
 	blockSync := &BlockSync{
-		bsrv:       bsrv,
-		net:        net,
-		bstore:     bs,
-		dsrv:       NewDAGService(bsrv),
-		msgHandler: msgHandler,
+		bsrv:   bsrv,
+		net:    bsnet,
+		bstore: bs,
+		dsrv:   NewDAGService(bsrv),
 		cidBuilder: &cid.Prefix{
 			Codec:    cid.DagProtobuf,
 			MhLength: -1,
@@ -86,10 +95,12 @@ func SetupBlockSync(ctx context.Context, h host.Host, store datastore.Datastore,
 	return blockSync
 }
 
+// AddBlock stores the blocks produced in the DAG services to be retrievable from the P2P network.
 func (blocksync *BlockSync) AddBlock(ctx context.Context, block []byte) (cid.Cid, error) {
 	return blocksync.dsrv.AddBlock(ctx, block)
 }
 
+// GetBlock retrieves the blocks (from the local blockstore or the network) using the DAGService to discover all data chunks that are part of the same block.
 func (blocksync *BlockSync) GetBlock(ctx context.Context, cid cid.Cid) (P2PBlockEvent, error) {
 	blockBytes, err := blocksync.dsrv.GetBlock(ctx, cid)
 	if err != nil {
@@ -102,6 +113,7 @@ func (blocksync *BlockSync) GetBlock(ctx context.Context, cid cid.Cid) (P2PBlock
 	return block, nil
 }
 
+// RemoveBlock removes the block from the DAGservice.
 func (blocksync *BlockSync) RemoveBlock(ctx context.Context, cid cid.Cid) error {
 	return blocksync.dsrv.Remove(ctx, cid)
 }

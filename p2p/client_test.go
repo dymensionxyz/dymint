@@ -182,7 +182,7 @@ func TestAdvertiseBlock(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	// advertise cid for height 1
-	err = clients[2].AdvertiseBlock(ctx, 1, expectedCid)
+	err = clients[2].AdvertiseBlockIdToDHT(ctx, 1, expectedCid)
 	require.NoError(t, err)
 
 	// get cid for height 1

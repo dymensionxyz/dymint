@@ -196,26 +196,27 @@ func (c *Client) GossipBlock(ctx context.Context, blockBytes []byte) error {
 	return c.blockGossiper.Publish(ctx, blockBytes)
 }
 
-// GossipBlock sends the block, and it's commit to the P2P network.
+// AddBlock stores the block in the block-sync datastore, stores locally the returned identifier and advertises the identifier to the DHT, so other nodes can know the identifier for the block height.
 func (c *Client) AddBlock(ctx context.Context, height uint64, blockBytes []byte) error {
 	if !c.conf.BlockSyncEnabled {
 		return nil
 	}
 	cid, err := c.blocksync.AddBlock(ctx, blockBytes)
 	if err != nil {
-		return fmt.Errorf("blocksync add block: %w", err)
+		return fmt.Errorf("block-sync add block: %w", err)
 	}
 	_, err = c.store.SaveBlockCid(height, cid, nil)
 	if err != nil {
-		return fmt.Errorf("blocksync store block id: %w", err)
+		return fmt.Errorf("block-sync store block id: %w", err)
 	}
-	advErr := c.AdvertiseBlock(ctx, height, cid)
+	advErr := c.AdvertiseBlockIdToDHT(ctx, height, cid)
 	if advErr != nil {
-		return fmt.Errorf("blocksync advertise block %w", advErr)
+		return fmt.Errorf("block-sync advertise block %w", advErr)
 	}
 	return nil
 }
 
+// RemoveBlocks is used to prune blocks from the block sync datastore, and its identifier.
 func (c *Client) RemoveBlocks(ctx context.Context, from, to uint64) error {
 	if from <= 0 {
 		return fmt.Errorf("from height must be greater than 0: %w", gerrc.ErrInvalidArgument)
@@ -239,11 +240,13 @@ func (c *Client) RemoveBlocks(ctx context.Context, from, to uint64) error {
 	return nil
 }
 
-func (c *Client) AdvertiseBlock(ctx context.Context, height uint64, cid cid.Cid) error {
+// AdvertiseBlockIdToDHT is used to advertise the identifier (cid) for a specific block height to the DHT, using a PutValue operation
+func (c *Client) AdvertiseBlockIdToDHT(ctx context.Context, height uint64, cid cid.Cid) error {
 	err := c.DHT.PutValue(ctx, "/"+blockSyncProtocolPrefix+"/"+strconv.FormatUint(height, 10), []byte(cid.String()))
 	return err
 }
 
+// GetBlockIdFromDHT is used to retrieve the identifier (cid) for a specific block height from the DHT, using a GetValue operation
 func (c *Client) GetBlockIdFromDHT(ctx context.Context, height uint64) (cid.Cid, error) {
 	cidBytes, err := c.DHT.GetValue(ctx, "/"+blockSyncProtocolPrefix+"/"+strconv.FormatUint(height, 10))
 	if err != nil {
@@ -382,9 +385,9 @@ func (c *Client) setupPeerDiscovery(ctx context.Context) error {
 }
 
 func (c *Client) startBlockSync(ctx context.Context) error {
-	blocksync := SetupBlockSync(ctx, c.Host, c.blockSyncStore, c.blockSyncReceived, c.logger)
+	blocksync := SetupBlockSync(ctx, c.Host, c.blockSyncStore, c.logger)
 	c.blocksync = blocksync
-	go c.retrieveBlockSyncLoop(ctx)
+	go c.retrieveBlockSyncLoop(ctx, c.blockSyncReceived)
 	go c.advertiseBlockSyncCids(ctx)
 	return nil
 }
@@ -474,10 +477,12 @@ func (c *Client) getNamespace() string {
 	return c.chainID
 }
 
+// topic used to transmit transactions in gossipsub
 func (c *Client) getTxTopic() string {
 	return c.getNamespace() + txTopicSuffix
 }
 
+// topic used to transmit blocks in gossipsub
 func (c *Client) getBlockTopic() string {
 	return c.getNamespace() + blockTopicSuffix
 }
@@ -522,6 +527,8 @@ func (c *Client) blockGossipReceived(ctx context.Context, block []byte) {
 	}
 }
 
+// bootstrapLoop is used to periodically check if the node is connected to other nodes in the P2P network, re-bootstrapping the DHT in case it is necessary,
+// or to try to connect to the persistent peers
 func (c *Client) bootstrapLoop(ctx context.Context) {
 	ticker := time.NewTicker(c.conf.BootstrapRetryTime)
 	defer ticker.Stop()
@@ -548,13 +555,13 @@ func (c *Client) bootstrapLoop(ctx context.Context) {
 	}
 }
 
-// latest seen height to be retrieved using block-sync
+// setLatestSeenHeight sets the latest seen height to be retrieved using block-sync
 func (c *Client) setLatestSeenHeight(height uint64) {
 	c.latestSeenHeight = max(height, c.latestSeenHeight)
 }
 
 // retrieveBlockSyncLoop checks if there is any missing block to be retrieved and requests it on demand
-func (c *Client) retrieveBlockSyncLoop(ctx context.Context) {
+func (c *Client) retrieveBlockSyncLoop(ctx context.Context, msgHandler BlockSyncMessageHandler) {
 	ticker := time.NewTicker(c.conf.BlockSyncRetrieveRetryTime)
 	defer ticker.Stop()
 
@@ -592,11 +599,9 @@ func (c *Client) retrieveBlockSyncLoop(ctx context.Context) {
 					c.logger.Error("Blocksync GetBlock", "err", err)
 					continue
 				}
-				c.logger.Debug("Blocksync block received ", "cid", id)
 
-				if c.blocksync.msgHandler != nil {
-					c.blocksync.msgHandler(&block)
-				}
+				c.logger.Debug("Blocksync block received ", "cid", id)
+				msgHandler(&block)
 			}
 			for h := range c.blockAlreadyReceived {
 				if h < state.NextHeight() {
@@ -607,6 +612,7 @@ func (c *Client) retrieveBlockSyncLoop(ctx context.Context) {
 	}
 }
 
+// advertiseBlockSyncCids its used to advertise all the block identifiers (cid), stored in the local store, to the DHT on startup
 func (c *Client) advertiseBlockSyncCids(ctx context.Context) {
 	state, err := c.store.LoadState()
 	if err != nil {
@@ -614,17 +620,13 @@ func (c *Client) advertiseBlockSyncCids(ctx context.Context) {
 		return
 	}
 	for h := state.BaseHeight; h <= state.Height(); h++ {
-		id, err := c.GetBlockIdFromDHT(ctx, h)
-		if err == nil && id != cid.Undef {
-			continue
-		}
 
-		id, err = c.store.LoadBlockCid(h)
+		id, err := c.store.LoadBlockCid(h)
 		if err != nil || id == cid.Undef {
 			continue
 		}
 
-		err = c.AdvertiseBlock(ctx, h, id)
+		err = c.AdvertiseBlockIdToDHT(ctx, h, id)
 		if err != nil {
 			continue
 		}
@@ -632,6 +634,7 @@ func (c *Client) advertiseBlockSyncCids(ctx context.Context) {
 	}
 }
 
+// findConnection returns true in case the node is already connected to the peer specified.
 func (c *Client) findConnection(peer peer.AddrInfo) bool {
 	for _, con := range c.Host.Network().Conns() {
 		if peer.ID == con.RemotePeer() {
@@ -641,7 +644,7 @@ func (c *Client) findConnection(peer peer.AddrInfo) bool {
 	return false
 }
 
-// validates the content identifiers advertised in the DHT are valid
+// validates that the content identifiers advertised in the DHT are valid.
 type blockIdValidator struct{}
 
 func (blockIdValidator) Validate(_ string, id []byte) error {

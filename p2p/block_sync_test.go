@@ -44,7 +44,7 @@ func TestBlockSync(t *testing.T) {
 		0: {Conns: []int{}, ChainID: "1"},
 	}, validators, logger)
 
-	blocksync := p2p.SetupBlockSync(ctx, clients[0].Host, datastore.NewMapDatastore(), nil, logger)
+	blocksync := p2p.SetupBlockSync(ctx, clients[0].Host, datastore.NewMapDatastore(), logger)
 	require.NoError(t, err)
 
 	//add block to blocksync protocol client 0
