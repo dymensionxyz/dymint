@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/dymensionxyz/dymint/store"
@@ -78,14 +79,20 @@ type Client struct {
 
 	logger types.Logger
 
+	// block-sync instance used to save and retrieve blocks from the P2P network on demand
 	blocksync *BlockSync
 
+	// store used to store retrievable blocks using block-sync
 	blockSyncStore datastore.Datastore
 
+	// latest height received from P2P
 	latestSeenHeight uint64
 
-	// block already received and not necessary to request using block-sync
-	blockAlreadyReceived map[uint64]struct{}
+	// blockReceivedP2P tracks blocks received from P2P to not request using block-sync
+	blockReceivedP2P map[uint64]struct{}
+
+	// mutex to protect blockReceivedP2P map access
+	blockReceivedP2PMu sync.Mutex
 
 	store store.Store
 }
@@ -103,15 +110,15 @@ func NewClient(conf config.P2PConfig, privKey crypto.PrivKey, chainID string, st
 	}
 
 	return &Client{
-		conf:                 conf,
-		privKey:              privKey,
-		chainID:              chainID,
-		logger:               logger,
-		localPubsubServer:    localPubsubServer,
-		blockSyncStore:       blockSyncStore,
-		latestSeenHeight:     uint64(0),
-		store:                store,
-		blockAlreadyReceived: make(map[uint64]struct{}),
+		conf:              conf,
+		privKey:           privKey,
+		chainID:           chainID,
+		logger:            logger,
+		localPubsubServer: localPubsubServer,
+		blockSyncStore:    blockSyncStore,
+		latestSeenHeight:  uint64(0),
+		store:             store,
+		blockReceivedP2P:  make(map[uint64]struct{}),
 	}, nil
 }
 
@@ -502,7 +509,9 @@ func (c *Client) blockSyncReceived(block *P2PBlockEvent) {
 		c.logger.Error("Publishing event.", "err", err)
 	}
 	// Received block is cached and  no longer needed to request using block-sync
-	c.blockAlreadyReceived[block.Block.Header.Height] = struct{}{}
+	if c.conf.BlockSyncEnabled {
+		c.addBlockReceived(block.Block.Header.Height)
+	}
 }
 
 // blockSyncReceived is called on reception of new block via gossip protocol
@@ -523,7 +532,8 @@ func (c *Client) blockGossipReceived(ctx context.Context, block []byte) {
 		c.setLatestSeenHeight(gossipedBlock.Block.Header.Height)
 
 		// Received block is cached and no longer needed to request using block-sync
-		c.blockAlreadyReceived[gossipedBlock.Block.Header.Height] = struct{}{}
+		c.addBlockReceived(gossipedBlock.Block.Header.Height)
+
 	}
 }
 
@@ -560,7 +570,7 @@ func (c *Client) setLatestSeenHeight(height uint64) {
 	c.latestSeenHeight = max(height, c.latestSeenHeight)
 }
 
-// retrieveBlockSyncLoop checks if there is any missing block to be retrieved and requests it on demand
+// retrieveBlockSyncLoop checks if there is any block not received, previous to the latest block height received, to request it on demand
 func (c *Client) retrieveBlockSyncLoop(ctx context.Context, msgHandler BlockSyncMessageHandler) {
 	ticker := time.NewTicker(c.conf.BlockSyncRetrieveRetryTime)
 	defer ticker.Stop()
@@ -579,7 +589,7 @@ func (c *Client) retrieveBlockSyncLoop(ctx context.Context, msgHandler BlockSync
 			// this loop iterates and retrieves all the blocks between the last block applied and the greatest height received,
 			// skipping any block cached, since are already received.
 			for h := state.NextHeight(); h <= c.latestSeenHeight; h++ {
-				_, ok := c.blockAlreadyReceived[h]
+				ok := c.isBlockReceived(h)
 				if ok {
 					continue
 				}
@@ -603,11 +613,7 @@ func (c *Client) retrieveBlockSyncLoop(ctx context.Context, msgHandler BlockSync
 				c.logger.Debug("Blocksync block received ", "cid", id)
 				msgHandler(&block)
 			}
-			for h := range c.blockAlreadyReceived {
-				if h < state.NextHeight() {
-					delete(c.blockAlreadyReceived, h)
-				}
-			}
+			c.updateBlocksReceived(state.NextHeight())
 		}
 	}
 }
@@ -642,6 +648,32 @@ func (c *Client) findConnection(peer peer.AddrInfo) bool {
 		}
 	}
 	return false
+}
+
+// addBlockReceived adds the block height to a map to avoid requesting it again
+func (c *Client) addBlockReceived(height uint64) {
+	c.blockReceivedP2PMu.Lock()
+	defer c.blockReceivedP2PMu.Unlock()
+	c.blockReceivedP2P[height] = struct{}{}
+}
+
+// isBlockReceived checks if a block height is already received from P2P
+func (c *Client) isBlockReceived(height uint64) bool {
+	c.blockReceivedP2PMu.Lock()
+	defer c.blockReceivedP2PMu.Unlock()
+	_, ok := c.blockReceivedP2P[height]
+	return ok
+}
+
+// updateBlocksReceived clears previous received block heights
+func (c *Client) updateBlocksReceived(appliedHeight uint64) {
+	c.blockReceivedP2PMu.Lock()
+	defer c.blockReceivedP2PMu.Unlock()
+	for h := range c.blockReceivedP2P {
+		if h < appliedHeight {
+			delete(c.blockReceivedP2P, h)
+		}
+	}
 }
 
 // validates that the content identifiers advertised in the DHT are valid.
