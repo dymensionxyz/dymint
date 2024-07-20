@@ -201,7 +201,7 @@ func (c *Client) AddBlock(ctx context.Context, height uint64, blockBytes []byte)
 	if !c.conf.BlockSyncEnabled {
 		return nil
 	}
-	cid, err := c.blocksync.AddBlock(ctx, blockBytes)
+	cid, err := c.blocksync.SaveBlock(ctx, blockBytes)
 	if err != nil {
 		return fmt.Errorf("block-sync add block: %w", err)
 	}

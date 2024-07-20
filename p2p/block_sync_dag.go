@@ -39,9 +39,9 @@ func NewDAGService(bsrv blockservice.BlockService) BlockSyncDagService {
 	return *bsDagService
 }
 
-// AddBlock splits the block in chunks of 256KB and it creates a new merkle DAG with them. it returns the content identifier (cid) of the root node of the DAG.
+// SaveBlock splits the block in chunks of 256KB and it creates a new merkle DAG with them. it returns the content identifier (cid) of the root node of the DAG.
 // Using the root CID the whole block can be retrieved using the DAG service
-func (bsDagService *BlockSyncDagService) AddBlock(ctx context.Context, block []byte) (cid.Cid, error) {
+func (bsDagService *BlockSyncDagService) SaveBlock(ctx context.Context, block []byte) (cid.Cid, error) {
 	blockReader := bytes.NewReader(block)
 
 	splitter := chunker.NewSizeSplitter(blockReader, chunker.DefaultBlockSize)

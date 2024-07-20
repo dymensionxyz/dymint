@@ -48,7 +48,7 @@ func TestBlockSync(t *testing.T) {
 	require.NoError(t, err)
 
 	//add block to blocksync protocol client 0
-	cid, err := blocksync.AddBlock(ctx, gossipedBlockbytes)
+	cid, err := blocksync.SaveBlock(ctx, gossipedBlockbytes)
 	require.NoError(t, err)
 
 	//get block

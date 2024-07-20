@@ -94,9 +94,9 @@ func SetupBlockSync(ctx context.Context, h host.Host, store datastore.Datastore,
 	return blockSync
 }
 
-// AddBlock stores the blocks produced in the DAG services to be retrievable from the P2P network.
-func (blocksync *BlockSync) AddBlock(ctx context.Context, block []byte) (cid.Cid, error) {
-	return blocksync.dsrv.AddBlock(ctx, block)
+// SaveBlock stores the blocks produced in the DAG services to be retrievable from the P2P network.
+func (blocksync *BlockSync) SaveBlock(ctx context.Context, block []byte) (cid.Cid, error) {
+	return blocksync.dsrv.SaveBlock(ctx, block)
 }
 
 // GetBlock retrieves the blocks (from the local blockstore or the network) using the DAGService to discover all data chunks that are part of the same block.
