@@ -9,9 +9,9 @@ import (
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
-// onReceivedBlock will take a block and apply it
+// onReceivedBlock receives a block received event from P2P, saves the block to a cache and tries to apply the blocks from the cache.
 func (m *Manager) onReceivedBlock(event pubsub.Message) {
-	eventData, ok := event.Data().(p2p.P2PBlock)
+	eventData, ok := event.Data().(p2p.P2PBlockEvent)
 	if !ok {
 		m.logger.Error("onReceivedBlock", "err", "wrong event data received")
 		return
@@ -43,9 +43,10 @@ func (m *Manager) onReceivedBlock(event pubsub.Message) {
 	}
 }
 
+// gossipBlock sends created blocks by the sequencer to full-nodes using P2P gossipSub
 func (m *Manager) gossipBlock(ctx context.Context, block types.Block, commit types.Commit) error {
 	m.logger.Info("Gossipping block", "height", block.Header.Height)
-	gossipedBlock := p2p.P2PBlock{Block: block, Commit: commit}
+	gossipedBlock := p2p.P2PBlockEvent{Block: block, Commit: commit}
 	gossipedBlockBytes, err := gossipedBlock.MarshalBinary()
 	if err != nil {
 		return fmt.Errorf("marshal binary: %w: %w", err, ErrNonRecoverable)

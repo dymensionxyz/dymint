@@ -42,7 +42,7 @@ type BlockSync struct {
 	msgHandler BlockSyncMessageHandler
 }
 
-type BlockSyncMessageHandler func(block *P2PBlock)
+type BlockSyncMessageHandler func(block *P2PBlockEvent)
 
 func SetupBlockSync(ctx context.Context, h host.Host, store datastore.Datastore, msgHandler BlockSyncMessageHandler, logger types.Logger) *BlockSync {
 	ds := dsync.MutexWrap(store)
@@ -90,14 +90,14 @@ func (blocksync *BlockSync) AddBlock(ctx context.Context, block []byte) (cid.Cid
 	return blocksync.dsrv.AddBlock(ctx, block)
 }
 
-func (blocksync *BlockSync) GetBlock(ctx context.Context, cid cid.Cid) (P2PBlock, error) {
+func (blocksync *BlockSync) GetBlock(ctx context.Context, cid cid.Cid) (P2PBlockEvent, error) {
 	blockBytes, err := blocksync.dsrv.GetBlock(ctx, cid)
 	if err != nil {
-		return P2PBlock{}, err
+		return P2PBlockEvent{}, err
 	}
-	var block P2PBlock
+	var block P2PBlockEvent
 	if err := block.UnmarshalBinary(blockBytes); err != nil {
-		return P2PBlock{}, fmt.Errorf("deserialize blocksync block %w", err)
+		return P2PBlockEvent{}, fmt.Errorf("deserialize blocksync block %w", err)
 	}
 	return block, nil
 }

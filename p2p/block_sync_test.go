@@ -33,7 +33,7 @@ func TestBlockSync(t *testing.T) {
 	commits, err := testutil.GenerateCommits(blocks, manager.ProposerKey)
 	require.NoError(t, err)
 
-	gossipedBlock := p2p.P2PBlock{Block: *blocks[0], Commit: *commits[0]}
+	gossipedBlock := p2p.P2PBlockEvent{Block: *blocks[0], Commit: *commits[0]}
 	gossipedBlockbytes, err := gossipedBlock.MarshalBinary()
 	require.NoError(t, err)
 

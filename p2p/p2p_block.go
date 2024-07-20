@@ -10,8 +10,8 @@ import (
 /*                                 Event Data                                 */
 /* -------------------------------------------------------------------------- */
 
-// P2PBlock defines the struct of the event data for the Block sent via P2P
-type P2PBlock struct {
+// P2PBlockEvent defines the struct of the event data for the Block sent via P2P
+type P2PBlockEvent struct {
 	// Block is the block that was gossiped
 	Block types.Block
 	// Commit is the commit that was gossiped
@@ -19,12 +19,12 @@ type P2PBlock struct {
 }
 
 // MarshalBinary encodes GossipedBlock into binary form and returns it.
-func (e *P2PBlock) MarshalBinary() ([]byte, error) {
+func (e *P2PBlockEvent) MarshalBinary() ([]byte, error) {
 	return e.ToProto().Marshal()
 }
 
 // UnmarshalBinary decodes binary form of GossipedBlock into object.
-func (e *P2PBlock) UnmarshalBinary(data []byte) error {
+func (e *P2PBlockEvent) UnmarshalBinary(data []byte) error {
 	var pbGossipedBlock pb.GossipedBlock
 	err := pbGossipedBlock.Unmarshal(data)
 	if err != nil {
@@ -35,7 +35,7 @@ func (e *P2PBlock) UnmarshalBinary(data []byte) error {
 }
 
 // ToProto converts Data into protobuf representation and returns it.
-func (e *P2PBlock) ToProto() *pb.GossipedBlock {
+func (e *P2PBlockEvent) ToProto() *pb.GossipedBlock {
 	return &pb.GossipedBlock{
 		Block:  e.Block.ToProto(),
 		Commit: e.Commit.ToProto(),
@@ -43,7 +43,7 @@ func (e *P2PBlock) ToProto() *pb.GossipedBlock {
 }
 
 // FromProto fills P2PBlock with data from its protobuf representation.
-func (e *P2PBlock) FromProto(other *pb.GossipedBlock) error {
+func (e *P2PBlockEvent) FromProto(other *pb.GossipedBlock) error {
 	if err := e.Block.FromProto(other.Block); err != nil {
 		return err
 	}
@@ -54,7 +54,7 @@ func (e *P2PBlock) FromProto(other *pb.GossipedBlock) error {
 }
 
 // Validate run basic validation on the p2p block
-func (e *P2PBlock) Validate(proposer *types.Sequencer) error {
+func (e *P2PBlockEvent) Validate(proposer *types.Sequencer) error {
 	if err := e.Block.ValidateBasic(); err != nil {
 		return err
 	}
