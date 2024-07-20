@@ -43,17 +43,16 @@ type BlockSyncMessageHandler func(block *P2PBlockEvent)
 
 // SetupBlockSync initializes all services required to provide and retrieve block data in the P2P network.
 func SetupBlockSync(ctx context.Context, h host.Host, store datastore.Datastore, logger types.Logger) *BlockSync {
-
-	//It constructs a datastore.
+	// It constructs a datastore.
 	ds := dsync.MutexWrap(store)
 
-	//It sets a blockstore (to store IPFS data chunks) with the previous datastore.
+	// It sets a blockstore (to store IPFS data chunks) with the previous datastore.
 	bs := blockstore.NewBlockstore(ds)
 
-	//It initialized bitswap network used to retrieve data chunks from other peers in the P2P network https://docs.ipfs.tech/concepts/bitswap/
+	// It initialized bitswap network used to retrieve data chunks from other peers in the P2P network https://docs.ipfs.tech/concepts/bitswap/
 	bsnet := network.NewFromIpfsHost(h, &routinghelpers.Null{}, network.Prefix("/dymension/block-sync/"))
 
-	//Bitswap server that provides data to the network.
+	// Bitswap server that provides data to the network.
 	bsserver := server.New(
 		ctx,
 		bsnet,
@@ -62,7 +61,7 @@ func SetupBlockSync(ctx context.Context, h host.Host, store datastore.Datastore,
 		server.SetSendDontHaves(false),
 	)
 
-	//Bitswap client that retrieves data from the network.
+	// Bitswap client that retrieves data from the network.
 	bsclient := client.New(
 		ctx,
 		bsnet,
@@ -72,10 +71,10 @@ func SetupBlockSync(ctx context.Context, h host.Host, store datastore.Datastore,
 		client.WithoutDuplicatedBlockStats(),
 	)
 
-	//Bitswap network start.
+	// Bitswap network start.
 	bsnet.Start(bsserver, bsclient)
 
-	//BlockService with given datastore instance.
+	// BlockService with given datastore instance.
 	bsrv := blockservice.New(bs, bsclient)
 
 	blockSync := &BlockSync{

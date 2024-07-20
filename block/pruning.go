@@ -17,7 +17,7 @@ func (m *Manager) pruneBlocks(retainHeight uint64) error {
 
 	err := m.p2pClient.RemoveBlocks(context.Background(), m.State.BaseHeight, retainHeight)
 	if err != nil {
-		return fmt.Errorf("pruning blocksync store: %w", err)
+		m.logger.Error("pruning block-sync store", "retain_height", retainHeight, "err", err)
 	}
 	pruned, err := m.Store.PruneBlocks(m.State.BaseHeight, retainHeight)
 	if err != nil {

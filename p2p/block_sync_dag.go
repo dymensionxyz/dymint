@@ -47,7 +47,7 @@ func (bsDagService *BlockSyncDagService) AddBlock(ctx context.Context, block []b
 	splitter := chunker.NewSizeSplitter(blockReader, chunker.DefaultBlockSize)
 	nodes := []*dag.ProtoNode{}
 
-	//the loop creates nodes for each block chunk and sets each cid
+	// the loop creates nodes for each block chunk and sets each cid
 	for {
 		nextData, err := splitter.NextBytes()
 		if err == io.EOF {
@@ -65,14 +65,14 @@ func (bsDagService *BlockSyncDagService) AddBlock(ctx context.Context, block []b
 
 	}
 
-	//an empty root node is created
+	// an empty root node is created
 	root := dag.NodeWithData(nil)
 	err := root.SetCidBuilder(bsDagService.cidBuilder)
 	if err != nil {
 		return cid.Undef, err
 	}
 
-	//and linked to all chunks that are added to the DAGservice
+	// and linked to all chunks that are added to the DAGservice
 	for _, n := range nodes {
 
 		err := root.AddNodeLink(n.Cid().String(), n)
@@ -94,20 +94,19 @@ func (bsDagService *BlockSyncDagService) AddBlock(ctx context.Context, block []b
 
 // GetBlock returns the block data obtained from the DAGService, using the root cid, either from the network or the local blockstore
 func (bsDagService *BlockSyncDagService) GetBlock(ctx context.Context, cid cid.Cid) ([]byte, error) {
-
-	//first it gets the root node
+	// first it gets the root node
 	nd, err := bsDagService.Get(ctx, cid)
 	if err != nil {
 		return nil, err
 	}
 
-	//then it gets all the data from the root node
+	// then it gets all the data from the root node
 	read, err := dagReader(nd, bsDagService)
 	if err != nil {
 		return nil, err
 	}
 
-	//the data is read to bytes array
+	// the data is read to bytes array
 	data, err := io.ReadAll(read)
 	if err != nil {
 		return nil, err
@@ -120,7 +119,7 @@ func dagReader(root ipld.Node, ds ipld.DAGService) (io.Reader, error) {
 	ctx := context.Background()
 	buf := new(bytes.Buffer)
 
-	//the loop retrieves all the nodes (block chunks) either from the local store or the network, in case it is not there.
+	// the loop retrieves all the nodes (block chunks) either from the local store or the network, in case it is not there.
 	for _, l := range root.Links() {
 		n, err := ds.Get(ctx, l.Cid)
 		if err != nil {

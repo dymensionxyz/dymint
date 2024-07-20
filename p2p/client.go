@@ -216,7 +216,7 @@ func (c *Client) AddBlock(ctx context.Context, height uint64, blockBytes []byte)
 	return nil
 }
 
-// RemoveBlocks is used to prune blocks from the block sync datastore, and its identifier.
+// RemoveBlocks is used to prune blocks from the block sync datastore.
 func (c *Client) RemoveBlocks(ctx context.Context, from, to uint64) error {
 	if from <= 0 {
 		return fmt.Errorf("from height must be greater than 0: %w", gerrc.ErrInvalidArgument)
