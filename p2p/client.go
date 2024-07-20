@@ -156,11 +156,14 @@ func (c *Client) StartWithHost(ctx context.Context, h host.Host) error {
 		return err
 	}
 
-	c.logger.Debug("Setting up block sync protocol")
-	err = c.startBlockSync(ctx)
-	if err != nil {
-		return err
+	if c.conf.BlockSyncEnabled {
+		c.logger.Debug("Setting up block sync protocol")
+		err = c.startBlockSync(ctx)
+		if err != nil {
+			return err
+		}
 	}
+
 	return nil
 }
 
@@ -195,6 +198,9 @@ func (c *Client) GossipBlock(ctx context.Context, blockBytes []byte) error {
 
 // GossipBlock sends the block, and it's commit to the P2P network.
 func (c *Client) AddBlock(ctx context.Context, height uint64, blockBytes []byte) error {
+	if !c.conf.BlockSyncEnabled {
+		return nil
+	}
 	cid, err := c.blocksync.AddBlock(ctx, blockBytes)
 	if err != nil {
 		return fmt.Errorf("blocksync add block: %w", err)
@@ -504,14 +510,16 @@ func (c *Client) blockGossipReceived(ctx context.Context, block []byte) {
 	if err != nil {
 		c.logger.Error("Publishing event.", "err", err)
 	}
-	err = c.AddBlock(ctx, gossipedBlock.Block.Header.Height, block)
-	if err != nil {
-		c.logger.Error("Adding  block to blocksync store.", "err", err, "height", gossipedBlock.Block.Header.Height)
-	}
-	c.setLatestSeenHeight(gossipedBlock.Block.Header.Height)
+	if c.conf.BlockSyncEnabled {
+		err = c.AddBlock(ctx, gossipedBlock.Block.Header.Height, block)
+		if err != nil {
+			c.logger.Error("Adding  block to blocksync store.", "err", err, "height", gossipedBlock.Block.Header.Height)
+		}
+		c.setLatestSeenHeight(gossipedBlock.Block.Header.Height)
 
-	// Received block is cached and no longer needed to request using block-sync
-	c.blockAlreadyReceived[gossipedBlock.Block.Header.Height] = struct{}{}
+		// Received block is cached and no longer needed to request using block-sync
+		c.blockAlreadyReceived[gossipedBlock.Block.Header.Height] = struct{}{}
+	}
 }
 
 func (c *Client) bootstrapLoop(ctx context.Context) {

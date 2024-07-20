@@ -116,6 +116,7 @@ func StartTestNetwork(ctx context.Context, t *testing.T, n int, conf map[int]Hos
 			BootstrapRetryTime:         30 * time.Second,
 			BlockSyncRetrieveRetryTime: 30 * time.Second,
 			ListenAddress:              config.DefaultListenAddress,
+			BlockSyncEnabled:           true,
 		},
 			mnet.Hosts()[i].Peerstore().PrivKey(mnet.Hosts()[i].ID()),
 			conf[i].ChainID,
