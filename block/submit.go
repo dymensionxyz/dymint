@@ -87,7 +87,14 @@ func SubmitLoopInner(ctx context.Context,
 			}
 			pending := pendingBytes.Load()
 			// while there are accumulated blocks, create and submit batches!!
-			for ctx.Err() == nil && (0 < pending && (maxBatchTime < time.Since(timeLastSubmission)) || maxBatchBytes < pending) {
+			for {
+				done := ctx.Err() != nil
+				nothingToSubmit := pending == 0
+				lastSubmissionIsRecent := time.Since(timeLastSubmission) < maxBatchTime
+				maxDataNotExceeded := pending <= maxBatchBytes
+				if done || nothingToSubmit || (lastSubmissionIsRecent && maxDataNotExceeded) {
+					break
+				}
 				nConsumed, err := createAndSubmitBatchGetSizeEstimate(min(pending, maxBatchBytes))
 				if err != nil {
 					return fmt.Errorf("create and submit batch: %w", err)
@@ -119,10 +126,6 @@ func (m *Manager) CreateAndSubmitBatch(maxSizeBytes uint64) (*types.Batch, error
 	b, err := CreateBatch(m.Store, maxSizeBytes, m.NextHeightToSubmit(), m.State.Height())
 	if err != nil {
 		return nil, fmt.Errorf("create batch: %w", err)
-	}
-
-	if 0 == b.NumBlocks() {
-		return nil, nil
 	}
 
 	if err := m.SubmitBatch(b); err != nil {
