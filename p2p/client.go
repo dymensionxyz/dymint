@@ -618,7 +618,7 @@ func (c *Client) retrieveBlockSyncLoop(ctx context.Context, msgHandler BlockSync
 	}
 }
 
-// advertiseBlockSyncCids its used to advertise all the block identifiers (cid), stored in the local store, to the DHT on startup
+// advertiseBlockSyncCids is used to advertise all the block identifiers (cids) stored in the local store to the DHT on startup
 func (c *Client) advertiseBlockSyncCids(ctx context.Context) {
 	state, err := c.store.LoadState()
 	if err != nil {
