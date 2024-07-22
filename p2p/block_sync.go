@@ -71,7 +71,7 @@ func SetupBlockSync(ctx context.Context, h host.Host, store datastore.Datastore,
 		client.WithoutDuplicatedBlockStats(),
 	)
 
-	// Bitswap network start.
+	// start the network 
 	bsnet.Start(bsserver, bsclient)
 
 	// BlockService with given datastore instance.
