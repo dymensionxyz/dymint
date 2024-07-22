@@ -43,7 +43,7 @@ type BlockSyncMessageHandler func(block *P2PBlockEvent)
 
 // SetupBlockSync initializes all services required to provide and retrieve block data in the P2P network.
 func SetupBlockSync(ctx context.Context, h host.Host, store datastore.Datastore, logger types.Logger) *BlockSync {
-	// It constructs a datastore.
+	// construct a datastore
 	ds := dsync.MutexWrap(store)
 
 	// It sets a blockstore (to store IPFS data chunks) with the previous datastore.
