@@ -32,10 +32,10 @@ func (b Batch) NumBlocks() uint64 {
 	return uint64(len(b.Blocks))
 }
 
-// SizeBytesEstimate returns the sum of the size of bytes of the blocks and commits
+// SizeBlockAndCommitBytes returns the sum of the size of bytes of the blocks and commits
 // The actual size of the batch may be different due to additional metadata and protobuf
 // optimizations.
-func (b Batch) SizeBytesEstimate() int {
+func (b Batch) SizeBlockAndCommitBytes() int {
 	cnt := 0
 	for _, block := range b.Blocks {
 		cnt += block.SizeBytes()

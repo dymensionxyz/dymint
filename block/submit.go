@@ -107,7 +107,7 @@ func (m *Manager) CreateAndSubmitBatchGetSizeEstimate(maxSize uint64) (uint64, e
 	if b == nil {
 		return 0, err
 	}
-	return uint64(b.SizeBytesEstimate()), err
+	return uint64(b.SizeBlockAndCommitBytes()), err
 }
 
 // CreateAndSubmitBatch creates and submits a batch to the DA and SL.
