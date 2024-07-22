@@ -52,12 +52,12 @@ func TestBlockSync(t *testing.T) {
 	require.NoError(t, err)
 
 	//get block
-	block, err := blocksync.GetBlock(ctx, cid)
+	block, err := blocksync.LoadBlock(ctx, cid)
 	require.NoError(t, err)
 	require.Equal(t, gossipedBlock, block)
 
 	//remove block
-	err = blocksync.RemoveBlock(ctx, cid)
+	err = blocksync.DeleteBlock(ctx, cid)
 	require.NoError(t, err)
 
 }

@@ -92,8 +92,8 @@ func (bsDagService *BlockSyncDagService) SaveBlock(ctx context.Context, block []
 	return root.Cid(), nil
 }
 
-// GetBlock returns the block data obtained from the DAGService, using the root cid, either from the network or the local blockstore
-func (bsDagService *BlockSyncDagService) GetBlock(ctx context.Context, cid cid.Cid) ([]byte, error) {
+// LoadBlock returns the block data obtained from the DAGService, using the root cid, either from the network or the local blockstore
+func (bsDagService *BlockSyncDagService) LoadBlock(ctx context.Context, cid cid.Cid) ([]byte, error) {
 	// first it gets the root node
 	nd, err := bsDagService.Get(ctx, cid)
 	if err != nil {

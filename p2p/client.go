@@ -163,12 +163,14 @@ func (c *Client) StartWithHost(ctx context.Context, h host.Host) error {
 		return err
 	}
 
-	if c.conf.BlockSyncEnabled {
-		c.logger.Debug("Setting up block sync protocol")
-		err = c.startBlockSync(ctx)
-		if err != nil {
-			return err
-		}
+	if !c.conf.BlockSyncEnabled {
+		return nil
+	}
+
+	c.logger.Debug("Setting up block sync protocol")
+	err = c.startBlockSync(ctx)
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -203,8 +205,8 @@ func (c *Client) GossipBlock(ctx context.Context, blockBytes []byte) error {
 	return c.blockGossiper.Publish(ctx, blockBytes)
 }
 
-// AddBlock stores the block in the block-sync datastore, stores locally the returned identifier and advertises the identifier to the DHT, so other nodes can know the identifier for the block height.
-func (c *Client) AddBlock(ctx context.Context, height uint64, blockBytes []byte) error {
+// SaveBlock stores the block in the block-sync datastore, stores locally the returned identifier and advertises the identifier to the DHT, so other nodes can know the identifier for the block height.
+func (c *Client) SaveBlock(ctx context.Context, height uint64, blockBytes []byte) error {
 	if !c.conf.BlockSyncEnabled {
 		return nil
 	}
@@ -239,7 +241,7 @@ func (c *Client) RemoveBlocks(ctx context.Context, from, to uint64) error {
 		if err != nil {
 			return fmt.Errorf("load block id from store %d: %w", h, err)
 		}
-		err = c.blocksync.RemoveBlock(ctx, cid)
+		err = c.blocksync.DeleteBlock(ctx, cid)
 		if err != nil {
 			return fmt.Errorf("remove block height %d: %w", h, err)
 		}
@@ -509,9 +511,7 @@ func (c *Client) blockSyncReceived(block *P2PBlockEvent) {
 		c.logger.Error("Publishing event.", "err", err)
 	}
 	// Received block is cached and  no longer needed to request using block-sync
-	if c.conf.BlockSyncEnabled {
-		c.addBlockReceived(block.Block.Header.Height)
-	}
+	c.addBlockReceived(block.Block.Header.Height)
 }
 
 // blockSyncReceived is called on reception of new block via gossip protocol
@@ -525,7 +525,7 @@ func (c *Client) blockGossipReceived(ctx context.Context, block []byte) {
 		c.logger.Error("Publishing event.", "err", err)
 	}
 	if c.conf.BlockSyncEnabled {
-		err = c.AddBlock(ctx, gossipedBlock.Block.Header.Height, block)
+		err = c.SaveBlock(ctx, gossipedBlock.Block.Header.Height, block)
 		if err != nil {
 			c.logger.Error("Adding  block to blocksync store.", "err", err, "height", gossipedBlock.Block.Header.Height)
 		}
@@ -604,7 +604,7 @@ func (c *Client) retrieveBlockSyncLoop(ctx context.Context, msgHandler BlockSync
 					c.logger.Error("storing block cid", "height", h, "cid", id)
 					continue
 				}
-				block, err := c.blocksync.GetBlock(ctx, id)
+				block, err := c.blocksync.LoadBlock(ctx, id)
 				if err != nil {
 					c.logger.Error("Blocksync GetBlock", "err", err)
 					continue

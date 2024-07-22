@@ -99,9 +99,9 @@ func (blocksync *BlockSync) SaveBlock(ctx context.Context, block []byte) (cid.Ci
 	return blocksync.dsrv.SaveBlock(ctx, block)
 }
 
-// GetBlock retrieves the blocks (from the local blockstore or the network) using the DAGService to discover all data chunks that are part of the same block.
-func (blocksync *BlockSync) GetBlock(ctx context.Context, cid cid.Cid) (P2PBlockEvent, error) {
-	blockBytes, err := blocksync.dsrv.GetBlock(ctx, cid)
+// LoadBlock retrieves the blocks (from the local blockstore or the network) using the DAGService to discover all data chunks that are part of the same block.
+func (blocksync *BlockSync) LoadBlock(ctx context.Context, cid cid.Cid) (P2PBlockEvent, error) {
+	blockBytes, err := blocksync.dsrv.LoadBlock(ctx, cid)
 	if err != nil {
 		return P2PBlockEvent{}, err
 	}
@@ -113,6 +113,6 @@ func (blocksync *BlockSync) GetBlock(ctx context.Context, cid cid.Cid) (P2PBlock
 }
 
 // RemoveBlock removes the block from the DAGservice.
-func (blocksync *BlockSync) RemoveBlock(ctx context.Context, cid cid.Cid) error {
+func (blocksync *BlockSync) DeleteBlock(ctx context.Context, cid cid.Cid) error {
 	return blocksync.dsrv.Remove(ctx, cid)
 }
