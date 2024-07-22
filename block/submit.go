@@ -102,7 +102,10 @@ func SubmitLoopInner(ctx context.Context,
 	return eg.Wait()
 }
 
-func (m *Manager) CreateAndSubmitBatchGetSizeEstimate(maxSize uint64) (uint64, error) {
+// CreateAndSubmitBatchGetSizeBlocksCommits creates and submits a batch to the DA and SL.
+// Returns size of block and commit bytes
+// max size bytes is the maximum size of the serialized batch type
+func (m *Manager) CreateAndSubmitBatchGetSizeBlocksCommits(maxSize uint64) (uint64, error) {
 	b, err := m.CreateAndSubmitBatch(maxSize)
 	if b == nil {
 		return 0, err
@@ -111,8 +114,9 @@ func (m *Manager) CreateAndSubmitBatchGetSizeEstimate(maxSize uint64) (uint64, e
 }
 
 // CreateAndSubmitBatch creates and submits a batch to the DA and SL.
-func (m *Manager) CreateAndSubmitBatch(maxSize uint64) (*types.Batch, error) {
-	b, err := CreateBatch(m.Store, maxSize, m.NextHeightToSubmit(), m.State.Height())
+// max size bytes is the maximum size of the serialized batch type
+func (m *Manager) CreateAndSubmitBatch(maxSizeBytes uint64) (*types.Batch, error) {
+	b, err := CreateBatch(m.Store, maxSizeBytes, m.NextHeightToSubmit(), m.State.Height())
 	if err != nil {
 		return nil, fmt.Errorf("create batch: %w", err)
 	}
@@ -127,6 +131,8 @@ func (m *Manager) CreateAndSubmitBatch(maxSize uint64) (*types.Batch, error) {
 	return b, nil
 }
 
+// CreateBatch looks through the store for any unsubmitted blocks and commits and bundles them into a batch
+// max size bytes is the maximum size of the serialized batch type
 func CreateBatch(store store.Store, maxBatchSize uint64, startHeight uint64, endHeightInclusive uint64) (*types.Batch, error) {
 	batchSize := endHeightInclusive - startHeight + 1
 	batch := &types.Batch{
