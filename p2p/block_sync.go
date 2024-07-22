@@ -32,7 +32,7 @@ type BlockSync struct {
 	bstore blockstore.Blockstore
 	// protocol used to obtain blocks from the P2P network
 	net network.BitSwapNetwork
-	// used to find all data chunks that are part oth e same block
+	// used to find all data chunks that are part of the same block
 	dsrv BlockSyncDagService
 	// used to define the content identifiers of each data chunk
 	cidBuilder cid.Builder
