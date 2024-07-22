@@ -28,7 +28,7 @@ func (m *Manager) SubmitLoop(ctx context.Context,
 		m.Conf.MaxBatchSkew,
 		m.Conf.BatchSubmitMaxTime,
 		m.Conf.BatchMaxSizeBytes,
-		m.CreateAndSubmitBatchGetSizeEstimate,
+		m.CreateAndSubmitBatchGetSizeBlocksCommits,
 	)
 }
 
@@ -38,16 +38,16 @@ func SubmitLoopInner(ctx context.Context,
 	maxBatchSkew uint64, // max number of batches that submitter is allowed to have pending
 	maxBatchTime time.Duration, // max time to allow between batches
 	maxBatchBytes uint64, // max size of serialised batch in bytes
-	createAndSubmitBatchGetSizeEstimate func(maxSize uint64) (uint64, error),
+	createAndSubmitBatch func(maxSizeBytes uint64) (sizeBlocksCommits uint64, err error),
 ) error {
 	eg, ctx := errgroup.WithContext(ctx)
 
 	pendingBytes := atomic.Uint64{}
-	counter := uchannel.NewNudger()   // used to avoid busy waiting (using cpu) on counter thread
+	trigger := uchannel.NewNudger()   // used to avoid busy waiting (using cpu) on trigger thread
 	submitter := uchannel.NewNudger() // used to avoid busy waiting (using cpu) on submitter thread
 
 	eg.Go(func() error {
-		// 'counter': we need one thread to continuously consume the bytes produced channel, and to monitor timer
+		// 'trigger': we need one thread to continuously consume the bytes produced channel, and to monitor timer
 		ticker := time.NewTicker(maxBatchTime)
 		defer ticker.Stop()
 		for {
@@ -57,7 +57,7 @@ func SubmitLoopInner(ctx context.Context,
 				select {
 				case <-ctx.Done():
 					return ctx.Err()
-				case <-counter.C:
+				case <-trigger.C:
 				case <-ticker.C:
 				}
 			} else {
@@ -95,14 +95,14 @@ func SubmitLoopInner(ctx context.Context,
 				if done || nothingToSubmit || (lastSubmissionIsRecent && maxDataNotExceeded) {
 					break
 				}
-				nConsumed, err := createAndSubmitBatchGetSizeEstimate(min(pending, maxBatchBytes))
+				nConsumed, err := createAndSubmitBatch(min(pending, maxBatchBytes))
 				if err != nil {
 					return fmt.Errorf("create and submit batch: %w", err)
 				}
 				timeLastSubmission = time.Now()
 				pending = pendingBytes.Add(^(nConsumed - 1)) // subtract
 			}
-			counter.Nudge()
+			trigger.Nudge()
 		}
 	})
 

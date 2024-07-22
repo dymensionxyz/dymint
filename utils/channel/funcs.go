@@ -1,5 +1,7 @@
 package channel
 
+// DrainForever will drain the channels in separate go routines in a loop forever
+// Intended for tests only
 func DrainForever[T any](chs ...<-chan T) {
 	for _, ch := range chs {
 		go func() {
