@@ -74,7 +74,6 @@ func SetupBlockSync(ctx context.Context, h host.Host, store datastore.Datastore,
 	// start the network 
 	bsnet.Start(bsserver, bsclient)
 
-	// BlockService with given datastore instance.
 	bsrv := blockservice.New(bs, bsclient)
 
 	blockSync := &BlockSync{
