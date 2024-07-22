@@ -32,6 +32,7 @@ const (
 /* -------------------------------------------------------------------------- */
 /*                                    utils                                   */
 /* -------------------------------------------------------------------------- */
+
 func GetManagerWithProposerKey(conf config.BlockManagerConfig, proposerKey crypto.PrivKey, settlementlc settlement.ClientI, dalc da.DataAvailabilityLayerClient, genesisHeight, storeInitialHeight, storeLastBlockHeight int64, proxyAppConns proxy.AppConns, mockStore store.Store) (*block.Manager, error) {
 	genesis := GenerateGenesis(genesisHeight)
 	// Change the LastBlockHeight to avoid calling InitChainSync within the manager
@@ -146,9 +147,9 @@ func initSettlementLayerMock(settlementlc settlement.ClientI, proposer string, p
 
 func GetManagerConfig() config.BlockManagerConfig {
 	return config.BlockManagerConfig{
-		BlockTime:              100 * time.Millisecond,
-		BlockBatchMaxSizeBytes: 1000000,
-		BatchSubmitMaxTime:     30 * time.Minute,
-		MaxSupportedBatchSkew:  10,
+		BlockTime:          100 * time.Millisecond,
+		BatchMaxSizeBytes:  1000000,
+		BatchSubmitMaxTime: 30 * time.Minute,
+		MaxBatchSkew:       10,
 	}
 }

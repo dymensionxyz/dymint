@@ -51,11 +51,6 @@ type Manager struct {
 	SLClient  settlement.ClientI
 
 	/*
-		Production
-	*/
-	producedSizeC chan uint64 // for the producer to report the size of the block+commit it produced
-
-	/*
 		Submission
 	*/
 	// The last height which was submitted to both sublayers, that we know of. When we produce new batches, we will
@@ -114,7 +109,6 @@ func NewManager(
 		SLClient:         settlementClient,
 		Retriever:        dalc.(da.BatchRetriever),
 		targetSyncHeight: diodes.NewOneToOne(1, nil),
-		producedSizeC:    make(chan uint64),
 		logger:           logger,
 		blockCache:       make(map[uint64]CachedBlock),
 	}
@@ -163,11 +157,16 @@ func (m *Manager) Start(ctx context.Context) error {
 	if isSequencer {
 		// Sequencer must wait till DA is synced to start submitting blobs
 		<-m.DAClient.Synced()
+		nBytes := m.GetUnsubmittedBytes()
+		bytesProducedC := make(chan int)
+		go func() {
+			bytesProducedC <- nBytes
+		}()
 		eg.Go(func() error {
-			return m.SubmitLoop(ctx)
+			return m.SubmitLoop(ctx, bytesProducedC)
 		})
 		eg.Go(func() error {
-			return m.ProduceBlockLoop(ctx)
+			return m.ProduceBlockLoop(ctx, bytesProducedC)
 		})
 	} else {
 		eg.Go(func() error {
@@ -177,6 +176,12 @@ func (m *Manager) Start(ctx context.Context) error {
 			return m.SyncToTargetHeightLoop(ctx)
 		})
 	}
+
+	go func() {
+		err := eg.Wait()
+		m.logger.Info("Block manager err group finished.", "err", err)
+	}()
+
 	return nil
 }
 
@@ -219,20 +224,4 @@ func (m *Manager) syncBlockManager() error {
 
 	m.logger.Info("Synced.", "current height", m.State.Height(), "last submitted height", m.LastSubmittedHeight.Load())
 	return nil
-}
-
-func (m *Manager) MustLoadBlock(h uint64) *types.Block {
-	ret, err := m.Store.LoadBlock(h)
-	if err != nil {
-		panic(fmt.Errorf("store load block: height: %d: %w", h, err))
-	}
-	return ret
-}
-
-func (m *Manager) MustLoadCommit(h uint64) *types.Commit {
-	ret, err := m.Store.LoadCommit(h)
-	if err != nil {
-		panic(fmt.Errorf("store load commit: height: %d: %w", h, err))
-	}
-	return ret
 }
