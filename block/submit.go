@@ -122,7 +122,7 @@ func (m *Manager) CreateAndSubmitBatchGetSizeBlocksCommits(maxSize uint64) (uint
 // CreateAndSubmitBatch creates and submits a batch to the DA and SL.
 // max size bytes is the maximum size of the serialized batch type
 func (m *Manager) CreateAndSubmitBatch(maxSizeBytes uint64) (*types.Batch, error) {
-	b, err := CreateBatch(m.Store, maxSizeBytes, m.NextHeightToSubmit(), m.State.Height())
+	b, err := m.CreateBatch(maxSizeBytes, m.NextHeightToSubmit(), m.State.Height())
 	if err != nil {
 		return nil, fmt.Errorf("create batch: %w", err)
 	}
