@@ -17,13 +17,19 @@ func (m *Manager) onReceivedBlock(event pubsub.Message) {
 		return
 	}
 	var source blockSource
+
+	if len(event.Events()[p2p.EventTypeKey]) != 1 {
+		m.logger.Error("onReceivedBlock", "err", "wrong number of event types received with the event", "received", len(event.Events()[p2p.EventTypeKey]))
+		return
+	}
+
 	switch event.Events()[p2p.EventTypeKey][0] {
 	case p2p.EventNewBlockSyncBlock:
 		source = blocksyncBlock
 	case p2p.EventNewGossipedBlock:
 		source = gossipedBlock
 	default:
-		m.logger.Error("onReceivedBlock", "err", "wrong event type received")
+		m.logger.Error("onReceivedBlock", "err", "wrong event type received", "type", event.Events()[p2p.EventTypeKey][0])
 		return
 	}
 
