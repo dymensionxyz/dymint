@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/dymensionxyz/dymint/da"
-	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
 	uchannel "github.com/dymensionxyz/dymint/utils/channel"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
@@ -136,7 +135,7 @@ func (m *Manager) CreateAndSubmitBatch(maxSizeBytes uint64) (*types.Batch, error
 
 // CreateBatch looks through the store for any unsubmitted blocks and commits and bundles them into a batch
 // max size bytes is the maximum size of the serialized batch type
-func CreateBatch(store store.Store, maxBatchSize uint64, startHeight uint64, endHeightInclusive uint64) (*types.Batch, error) {
+func (m *Manager) CreateBatch(maxBatchSize uint64, startHeight uint64, endHeightInclusive uint64) (*types.Batch, error) {
 	batchSize := endHeightInclusive - startHeight + 1
 	batch := &types.Batch{
 		Blocks:  make([]*types.Block, 0, batchSize),
@@ -144,11 +143,11 @@ func CreateBatch(store store.Store, maxBatchSize uint64, startHeight uint64, end
 	}
 
 	for height := startHeight; height <= endHeightInclusive; height++ {
-		block, err := store.LoadBlock(height)
+		block, err := m.Store.LoadBlock(height)
 		if err != nil {
 			return nil, fmt.Errorf("load block: height: %d: %w", height, err)
 		}
-		commit, err := store.LoadCommit(height)
+		commit, err := m.Store.LoadCommit(height)
 		if err != nil {
 			return nil, fmt.Errorf("load commit: height: %d: %w", height, err)
 		}
