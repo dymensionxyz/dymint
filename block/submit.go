@@ -196,7 +196,7 @@ func (m *Manager) SubmitBatch(batch *types.Batch) error {
 	return nil
 }
 
-// GetUnsubmittedBytes returns the total number of unsubmitted bytes produced
+// GetUnsubmittedBytes returns the total number of unsubmitted bytes produced an element on a channel
 // Intended only to be used at startup, before block production and submission loops start
 func (m *Manager) GetUnsubmittedBytes() int {
 	total := 0

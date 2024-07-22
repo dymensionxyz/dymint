@@ -70,25 +70,26 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int)
 				m.logger.Info("Produced empty block.")
 			}
 
-			pause := len(bytesProducedC) == cap(bytesProducedC) // here we assume cap is at least 1
-			if pause {
+			bytesProducedN := block.SizeBytes() + commit.SizeBytes()
+			select {
+			case <-ctx.Done():
+				return nil
+			case bytesProducedC <- bytesProducedN:
+			default:
 				evt := &events.DataHealthStatus{Error: fmt.Errorf("bytes produced channel is full: %w", gerrc.ErrResourceExhausted)}
 				uevent.MustPublish(ctx, m.Pubsub, evt, events.HealthStatusList)
 				m.logger.Error("Enough bytes to build a batch have been accumulated, but too many batches are pending submission." +
 					"Pausing block production until a signal is consumed.")
+				select {
+				case <-ctx.Done():
+					return nil
+				case bytesProducedC <- bytesProducedN:
+					evt := &events.DataHealthStatus{Error: nil}
+					uevent.MustPublish(ctx, m.Pubsub, evt, events.HealthStatusList)
+					m.logger.Info("Resumed block production.")
+				}
 			}
 
-			select {
-			case <-ctx.Done():
-				return nil
-			case bytesProducedC <- block.SizeBytes() + commit.SizeBytes():
-			}
-
-			if pause {
-				evt := &events.DataHealthStatus{Error: nil}
-				uevent.MustPublish(ctx, m.Pubsub, evt, events.HealthStatusList)
-				m.logger.Info("Resumed block production.")
-			}
 		}
 	}
 }
