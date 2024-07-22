@@ -24,7 +24,7 @@ func MustSubscribe(
 	logger types.Logger,
 ) {
 	subscription, err := pubsubServer.SubscribeUnbuffered(ctx, clientID, eventQuery)
-	if err != nil && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
+	if err != nil && !errors.Is(err, context.Canceled) {
 		logger.Error("subscribe to events")
 		panic(err)
 	}
@@ -45,7 +45,7 @@ func MustSubscribe(
 // MustPublish submits an event or panics - will not panic on context cancel or deadline exceeded
 func MustPublish(ctx context.Context, pubsubServer *pubsub.Server, msg interface{}, events map[string][]string) {
 	err := pubsubServer.PublishWithEvents(ctx, msg, events)
-	if err != nil && !errors.Is(err, context.Canceled) && !errors.Is(err, context.DeadlineExceeded) {
+	if err != nil && !errors.Is(err, context.Canceled) {
 		panic(err)
 	}
 }
