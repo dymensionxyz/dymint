@@ -20,7 +20,7 @@ type P2PConfig struct {
 	// Param used to enable block sync from p2p
 	BlockSyncEnabled bool `mapstructure:"p2p_blocksync_enabled"`
 	// Time interval used by a node to request missing blocks (gap between cached blocks and local height) on demand from other peers using block-sync
-	BlockSyncRetrieveRetryTime time.Duration `mapstructure:"p2p_blocksync_retrieve_retry_time"`
+	BlockSyncRequestIntervalTime time.Duration `mapstructure:"p2p_blocksync_block_request_interval"`
 	// Param used to enable the advertisement of the node to be part of the P2P network in the DHT
 	AdvertisingEnabled bool `mapstructure:"p2p_advertising_enabled"`
 }
@@ -33,7 +33,7 @@ func (c P2PConfig) Validate() error {
 	if c.BootstrapRetryTime <= 0 {
 		return fmt.Errorf("bootstrap time must be positive")
 	}
-	if c.BlockSyncRetrieveRetryTime <= 0 {
+	if c.BlockSyncRequestIntervalTime <= 0 {
 		return fmt.Errorf("blocksync retrieve time must be positive")
 	}
 

@@ -164,6 +164,7 @@ func (c *Client) StartWithHost(ctx context.Context, h host.Host) error {
 	}
 
 	if !c.conf.BlockSyncEnabled {
+		c.logger.Info("Block sync protocol disabled")
 		return nil
 	}
 
@@ -572,7 +573,7 @@ func (c *Client) setLatestSeenHeight(height uint64) {
 
 // retrieveBlockSyncLoop checks if there is any block not received, previous to the latest block height received, to request it on demand
 func (c *Client) retrieveBlockSyncLoop(ctx context.Context, msgHandler BlockSyncMessageHandler) {
-	ticker := time.NewTicker(c.conf.BlockSyncRetrieveRetryTime)
+	ticker := time.NewTicker(c.conf.BlockSyncRequestIntervalTime)
 	defer ticker.Stop()
 
 	for {

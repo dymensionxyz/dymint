@@ -111,12 +111,12 @@ func StartTestNetwork(ctx context.Context, t *testing.T, n int, conf map[int]Hos
 	store := store.New(store.NewDefaultInMemoryKVStore())
 	for i := 0; i < n; i++ {
 		client, err := p2p.NewClient(config.P2PConfig{
-			BootstrapNodes:             seeds[i],
-			GossipSubCacheSize:         50,
-			BootstrapRetryTime:         30 * time.Second,
-			BlockSyncRetrieveRetryTime: 30 * time.Second,
-			ListenAddress:              config.DefaultListenAddress,
-			BlockSyncEnabled:           true,
+			BootstrapNodes:               seeds[i],
+			GossipSubCacheSize:           50,
+			BootstrapRetryTime:           30 * time.Second,
+			BlockSyncRequestIntervalTime: 30 * time.Second,
+			ListenAddress:                config.DefaultListenAddress,
+			BlockSyncEnabled:             true,
 		},
 			mnet.Hosts()[i].Peerstore().PrivKey(mnet.Hosts()[i].ID()),
 			conf[i].ChainID,
