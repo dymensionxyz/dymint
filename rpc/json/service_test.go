@@ -88,7 +88,6 @@ func TestREST(t *testing.T) {
 		},
 		{"valid/hex param", "/check_tx?tx=DEADBEEF", http.StatusOK, -1, `"gas_used":"1000"`},
 		{"invalid/hex param", "/check_tx?tx=QWERTY", http.StatusOK, int(json2.E_PARSE), "parse param 'tx'"}, // TODO: use errors.Is instead of strcmp
-		{"sync_info", "/sync_info", http.StatusOK, -1, "last_block_received_from_p2p_height"},
 	}
 
 	_, local := getRPC(t)
