@@ -49,7 +49,7 @@ func SetupBlockSync(ctx context.Context, h host.Host, store datastore.Datastore,
 	// set a blockstore (to store IPFS data chunks) with the previous datastore
 	bs := blockstore.NewBlockstore(ds)
 
-	// It initialized bitswap network used to retrieve data chunks from other peers in the P2P network https://docs.ipfs.tech/concepts/bitswap/
+	// initialize bitswap network used to retrieve data chunks from other peers in the P2P network
 	bsnet := network.NewFromIpfsHost(h, &routinghelpers.Null{}, network.Prefix("/dymension/block-sync/"))
 
 	// Bitswap server that provides data to the network.
