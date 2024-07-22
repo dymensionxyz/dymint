@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	errorsmod "cosmossdk.io/errors"
+	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/dymensionxyz/dymint/types"
 )
@@ -21,7 +22,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		return types.ErrInvalidBlockHeight
 	}
 
-	m.LastAppliedBlockSource.Store(uint64(blockMetaData.source))
+	types.LastAppliedBlockSource.With(prometheus.Labels{"source": blockMetaData.source.String()}).Set(0)
 
 	m.logger.Debug("Applying block", "height", block.Header.Height, "source", blockMetaData.source.String())
 
@@ -116,15 +117,18 @@ func (m *Manager) isHeightAlreadyApplied(blockHeight uint64) (bool, error) {
 }
 
 func (m *Manager) attemptApplyCachedBlocks() error {
+	m.retrieverMu.Lock()
+	defer m.retrieverMu.Unlock()
+
 	for {
 		expectedHeight := m.State.NextHeight()
 
-		cachedBlock, blockExists := m.GetBlockFromCache(expectedHeight)
+		cachedBlock, blockExists := m.blockCache.GetBlockFromCache(expectedHeight)
 		if !blockExists {
 			break
 		}
 		if err := m.validateBlock(cachedBlock.Block, cachedBlock.Commit); err != nil {
-			m.DeleteBlockFromCache(cachedBlock.Block.Header.Height)
+			m.blockCache.DeleteBlockFromCache(cachedBlock.Block.Header.Height)
 			// TODO: can we take an action here such as dropping the peer / reducing their reputation?
 			return fmt.Errorf("block not valid at height %d, dropping it: err:%w", cachedBlock.Block.Header.Height, err)
 		}
@@ -135,7 +139,7 @@ func (m *Manager) attemptApplyCachedBlocks() error {
 		}
 		m.logger.Info("Block applied", "height", expectedHeight)
 
-		m.DeleteBlockFromCache(cachedBlock.Block.Header.Height)
+		m.blockCache.DeleteBlockFromCache(cachedBlock.Block.Header.Height)
 	}
 
 	return nil

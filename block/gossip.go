@@ -17,17 +17,17 @@ func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
 	commit := eventData.Commit
 	height := block.Header.Height
 
-	m.LastReceivedP2PHeight.Store(height)
+	types.LastReceivedP2PHeightGauge.Set(float64(height))
 
-	if m.HasBlockInCache(height) {
+	if m.blockCache.HasBlockInCache(height) {
 		return
 	}
 
-	m.logger.Debug("Received new block via gossip.", "block height", height, "store height", m.State.Height(), "n cachedBlocks", m.BlockCacheSize.Load())
+	m.logger.Debug("Received new block via gossip.", "block height", height, "store height", m.State.Height(), "n cachedBlocks", m.blockCache.Size())
 
 	nextHeight := m.State.NextHeight()
 	if height >= nextHeight {
-		m.AddBlockToCache(height, &block, &commit)
+		m.blockCache.AddBlockToCache(height, &block, &commit)
 	}
 
 	err := m.attemptApplyCachedBlocks()

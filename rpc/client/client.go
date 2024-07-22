@@ -7,7 +7,6 @@ import (
 	"sort"
 	"time"
 
-	"github.com/dymensionxyz/dymint/block"
 	"github.com/dymensionxyz/dymint/types"
 
 	"github.com/dymensionxyz/dymint/version"
@@ -768,28 +767,6 @@ func (c *Client) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
 		},
 	}
 	return result, nil
-}
-
-// SyncInfo returns detailed information about current sync status.
-func (c *Client) SyncInfo() *ResultSyncInfo {
-	manager := c.node.BlockManager
-	return &ResultSyncInfo{
-		LastBlockReceivedFromP2PHeight: manager.LastReceivedP2PHeight.Load(),
-		LastBlockReceivedFromDAHeight:  manager.LastReceivedDAHeight.Load(),
-		LastBlockAppliedSource:         block.BlockSource(manager.LastAppliedBlockSource.Load()).String(),
-		NumberOfAccumulatedBlocks:      manager.BlockCacheSize.Load(),
-		LowestPendingBlockHeight:       manager.LowestCachedBlockHeight.Load(),
-		HighestReceivedBlockHeight:     manager.HighestCachedBlockHeight.Load(),
-	}
-}
-
-type ResultSyncInfo struct {
-	LastBlockReceivedFromP2PHeight uint64 `json:"last_block_received_from_p2p_height"`
-	LastBlockReceivedFromDAHeight  uint64 `json:"last_block_received_from_da_height"`
-	LastBlockAppliedSource         string `json:"last_block_applied_source"`
-	NumberOfAccumulatedBlocks      int32  `json:"number_of_accumulated_blocks"`
-	LowestPendingBlockHeight       uint64 `json:"lowest_pending_block_height"`
-	HighestReceivedBlockHeight     uint64 `json:"highest_received_block_height"`
 }
 
 // BroadcastEvidence is not yet implemented.

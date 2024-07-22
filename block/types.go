@@ -12,14 +12,15 @@ import (
 type BlockSource uint64
 
 const (
-	producedBlock BlockSource = iota
+	_ BlockSource = iota
+	producedBlock
 	gossipedBlock
 	daBlock
 	localDbBlock
 )
 
 func (s BlockSource) String() string {
-	return []string{"produced", "gossip", "da", "local_db"}[s]
+	return []string{"", "produced", "gossip", "da", "local_db"}[s]
 }
 
 type blockMetaData struct {

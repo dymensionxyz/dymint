@@ -9,6 +9,7 @@ import (
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 
 	"github.com/dymensionxyz/dymint/da"
+	"github.com/dymensionxyz/dymint/types"
 )
 
 // RetrieveLoop listens for new target sync heights and then syncs the chain by
@@ -98,10 +99,12 @@ func (m *Manager) applyLocalBlock(height uint64) error {
 		return fmt.Errorf("validate block from local store: height: %d: %w", height, err)
 	}
 
+	m.retrieverMu.Lock()
 	err = m.applyBlock(block, commit, blockMetaData{source: localDbBlock})
 	if err != nil {
 		return fmt.Errorf("apply block from local store: height: %d: %w", height, err)
 	}
+	m.retrieverMu.Unlock()
 
 	return nil
 }
@@ -114,9 +117,25 @@ func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
 		return batchResp.Error
 	}
 
-	m.LastReceivedDAHeight.Store(daMetaData.Height)
+	if len(batchResp.Batches) == 0 {
+		m.logger.Info("no blocks in batch from DA", "daHeight", daMetaData.Height)
+		return fmt.Errorf("no blocks in batch from DA: %d", daMetaData.Height)
+	}
+
+	lastBatch := batchResp.Batches[len(batchResp.Batches)-1]
+
+	if len(lastBatch.Blocks) == 0 {
+		m.logger.Info("no blocks in last batch from DA", "daHeight", daMetaData.Height)
+		return fmt.Errorf("no blocks in last batch from DA: %d", daMetaData.Height)
+	}
+
+	lastReceivedHeight := lastBatch.Blocks[len(lastBatch.Blocks)-1].Header.Height
+	types.LastReceivedDAHeight.Set(float64(lastReceivedHeight))
 
 	m.logger.Debug("retrieved batches", "n", len(batchResp.Batches), "daHeight", daMetaData.Height)
+
+	m.retrieverMu.Lock()
+	defer m.retrieverMu.Unlock()
 
 	for _, batch := range batchResp.Batches {
 		for i, block := range batch.Blocks {
@@ -132,7 +151,7 @@ func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
 				return fmt.Errorf("apply block: height: %d: %w", block.Header.Height, err)
 			}
 
-			m.DeleteBlockFromCache(block.Header.Height)
+			m.blockCache.DeleteBlockFromCache(block.Header.Height)
 		}
 	}
 	return nil
