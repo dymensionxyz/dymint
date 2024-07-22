@@ -718,7 +718,6 @@ func (c *Client) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
 	if validator == nil {
 		return nil, fmt.Errorf("find proposer %s in the valSet", string(latest.Header.ProposerAddress))
 	}
-
 	state, err := c.node.Store.LoadState()
 	if err != nil {
 		return nil, fmt.Errorf("load the last saved state: %w", err)
