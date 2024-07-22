@@ -64,7 +64,6 @@ type Manager struct {
 	// It is ALSO used by the producer, because the producer needs to check if it can prune blocks and it wont'
 	// prune anything that might be submitted in the future. Therefore, it must be atomic.
 	LastSubmittedHeight atomic.Uint64
-	TargetHeight        atomic.Uint64
 
 	/*
 		Retrieval
