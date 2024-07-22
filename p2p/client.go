@@ -85,7 +85,7 @@ type Client struct {
 	// store used to store retrievable blocks using block-sync
 	blockSyncStore datastore.Datastore
 
-	// latest height received from P2P
+	// latest height received from P2P. This height is not necessarily applied locally but just seen. Will be used to compare with local store height and see if we need to request new blocks from the p2p. 
 	latestSeenHeight uint64
 
 	// blockReceivedP2P tracks blocks received from P2P to not request using block-sync
