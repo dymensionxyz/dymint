@@ -57,13 +57,13 @@ func SubmitLoopInner(ctx context.Context,
 				case <-ctx.Done():
 					return ctx.Err()
 				case <-trigger.C:
+				case <-ticker.C:
 					// It's theoretically possible for the thread scheduler to pause this thread after entering this if statement
 					// for enough time for the submitter thread to submit all the pending bytes and do the nudge, and then for the
 					// thread scheduler to wake up this thread after the nudge has been missed, which would be a deadlock.
 					// Although this is only a theoretical possibility which should never happen in practice, it may be possible, e.g.
 					// in adverse CPU conditions or tests using compressed timeframes. To be sound, we also nudge with the ticker, which
 					// has no downside.
-				case <-ticker.C:
 				}
 			} else {
 				select {
