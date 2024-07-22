@@ -33,6 +33,7 @@ func (m *Manager) RetrieveLoop(ctx context.Context) (err error) {
 // It fetches the batches from the settlement, gets the DA height and gets
 // the actual blocks from the DA.
 func (m *Manager) syncToTargetHeight(targetHeight uint64) error {
+	m.TargetHeight.Store(targetHeight)
 	for currH := m.State.NextHeight(); currH <= targetHeight; currH = m.State.NextHeight() {
 		// if we have the block locally, we don't need to fetch it from the DA
 		err := m.processLocalBlock(currH)
