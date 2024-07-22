@@ -71,7 +71,7 @@ func SetupBlockSync(ctx context.Context, h host.Host, store datastore.Datastore,
 		client.WithoutDuplicatedBlockStats(),
 	)
 
-	// start the network 
+	// start the network
 	bsnet.Start(bsserver, bsclient)
 
 	bsrv := blockservice.New(bs, bsclient)
