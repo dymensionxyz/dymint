@@ -130,7 +130,7 @@ func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
 	}
 
 	lastReceivedHeight := lastBatch.Blocks[len(lastBatch.Blocks)-1].Header.Height
-	types.LastReceivedDAHeight.Set(float64(lastReceivedHeight))
+	types.LastReceivedDAHeightGauge.Set(float64(lastReceivedHeight))
 
 	m.logger.Debug("retrieved batches", "n", len(batchResp.Batches), "daHeight", daMetaData.Height)
 

@@ -40,7 +40,7 @@ var LastReceivedP2PHeightGauge = promauto.NewGauge(prometheus.GaugeOpts{
 	Help: "The height of the last block received from P2P.",
 })
 
-var LastReceivedDAHeight = promauto.NewGauge(prometheus.GaugeOpts{
+var LastReceivedDAHeightGauge = promauto.NewGauge(prometheus.GaugeOpts{
 	Name: "last_received_da_height",
 	Help: "The height of the last block received from DA.",
 })
@@ -53,17 +53,7 @@ var LastAppliedBlockSource = promauto.NewGaugeVec(
 	[]string{"source"},
 )
 
-var LowestPendingBlockHeight = promauto.NewGauge(prometheus.GaugeOpts{
-	Name: "lowest_pending_block_height",
-	Help: "The lowest height of the pending blocks.",
-})
-
-var HighestReceivedBlockHeight = promauto.NewGauge(prometheus.GaugeOpts{
-	Name: "highest_received_block_height",
-	Help: "The highest height of the received blocks.",
-})
-
-var BlockCacheSize = promauto.NewGauge(prometheus.GaugeOpts{
+var BlockCacheSizeGauge = promauto.NewGauge(prometheus.GaugeOpts{
 	Name: "block_cache_size",
 	Help: "The number of blocks in the cache.",
 })
