@@ -55,9 +55,9 @@ type Manager struct {
 	*/
 	// The last height which was submitted to both sublayers, that we know of. When we produce new batches, we will
 	// start at this height + 1.
-	// It is ALSO used by the producer, because the producer needs to check if it can prune blocks and it wont'
+	// It is ALSO used by the producer, because the producer needs to check if it can prune blocks and it won't
 	// prune anything that might be submitted in the future. Therefore, it must be atomic.
-	LastSubmittedHeight atomic.Uint64
+	LastSeenHeight atomic.Uint64
 
 	/*
 		Retrieval
@@ -200,7 +200,7 @@ func (m *Manager) IsSequencer() bool {
 }
 
 func (m *Manager) NextHeightToSubmit() uint64 {
-	return m.LastSubmittedHeight.Load() + 1
+	return m.LastSeenHeight.Load() + 1
 }
 
 // syncBlockManager enforces the node to be synced on initial run.
@@ -209,19 +209,19 @@ func (m *Manager) syncBlockManager() error {
 	if errors.Is(err, gerrc.ErrNotFound) {
 		// The SL hasn't got any batches for this chain yet.
 		m.logger.Info("No batches for chain found in SL.")
-		m.LastSubmittedHeight.Store(uint64(m.Genesis.InitialHeight - 1))
+		m.LastSeenHeight.Store(uint64(m.Genesis.InitialHeight - 1))
 		return nil
 	}
 	if err != nil {
 		// TODO: separate between fresh rollapp and non-registered rollapp
 		return err
 	}
-	m.LastSubmittedHeight.Store(res.EndHeight)
+	m.LastSeenHeight.Store(res.EndHeight)
 	err = m.syncToTargetHeight(res.EndHeight)
 	if err != nil {
 		return err
 	}
 
-	m.logger.Info("Synced.", "current height", m.State.Height(), "last submitted height", m.LastSubmittedHeight.Load())
+	m.logger.Info("Synced.", "current height", m.State.Height(), "last submitted height", m.LastSeenHeight.Load())
 	return nil
 }

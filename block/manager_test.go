@@ -10,12 +10,13 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/libp2p/go-libp2p/core/crypto"
+
 	"github.com/dymensionxyz/dymint/block"
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
-	"github.com/libp2p/go-libp2p/core/crypto"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
@@ -134,7 +135,7 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 	}
 
 	// Initially sync target is 0
-	assert.Zero(t, manager.LastSubmittedHeight.Load())
+	assert.Zero(t, manager.LastSeenHeight.Load())
 	assert.True(t, manager.State.Height() == 0)
 
 	// enough time to sync and produce blocks
@@ -148,7 +149,7 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 	<-ctx.Done()
-	assert.Equal(t, batch.EndHeight(), manager.LastSubmittedHeight.Load())
+	assert.Equal(t, batch.EndHeight(), manager.LastSeenHeight.Load())
 	// validate that we produced blocks
 	assert.Greater(t, manager.State.Height(), batch.EndHeight())
 }

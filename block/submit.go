@@ -7,11 +7,12 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
+	"golang.org/x/sync/errgroup"
+
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/types"
 	uchannel "github.com/dymensionxyz/dymint/utils/channel"
-	"github.com/dymensionxyz/gerr-cosmos/gerrc"
-	"golang.org/x/sync/errgroup"
 )
 
 // SubmitLoop is the main loop for submitting blocks to the DA and SL layers.
@@ -192,7 +193,7 @@ func (m *Manager) SubmitBatch(batch *types.Batch) error {
 	m.logger.Info("Submitted batch to SL.", "start height", batch.StartHeight(), "end height", batch.EndHeight())
 
 	types.RollappHubHeightGauge.Set(float64(batch.EndHeight()))
-	m.LastSubmittedHeight.Store(batch.EndHeight())
+	m.LastSeenHeight.Store(batch.EndHeight())
 	return nil
 }
 
