@@ -63,7 +63,7 @@ var HighestReceivedBlockHeight = promauto.NewGauge(prometheus.GaugeOpts{
 	Help: "The highest height of the received blocks.",
 })
 
-var NumberOfAccumulatedBlocks = promauto.NewGauge(prometheus.GaugeOpts{
-	Name: "number_of_accumulated_blocks",
-	Help: "The number of accumulated blocks.",
+var BlockCacheSize = promauto.NewGauge(prometheus.GaugeOpts{
+	Name: "block_cache_size",
+	Help: "The number of blocks in the cache.",
 })

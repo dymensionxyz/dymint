@@ -9,8 +9,6 @@ import (
 type Cache struct {
 	cache map[uint64]CachedBlock
 	sync.Mutex
-	lowestCachedBlockHeight  uint64
-	highestCachedBlockHeight uint64
 }
 
 func (m *Cache) AddBlockToCache(h uint64, b *types.Block, c *types.Commit) {
@@ -18,15 +16,9 @@ func (m *Cache) AddBlockToCache(h uint64, b *types.Block, c *types.Commit) {
 	defer m.Unlock()
 	m.cache[h] = CachedBlock{Block: b, Commit: c}
 
-	types.NumberOfAccumulatedBlocks.Set(float64(len(m.cache)))
-	if m.lowestCachedBlockHeight == 0 || h < m.lowestCachedBlockHeight {
-		m.lowestCachedBlockHeight = h
-		types.LowestPendingBlockHeight.Set(float64(h))
-	}
-	if h > m.highestCachedBlockHeight {
-		m.highestCachedBlockHeight = h
-		types.HighestReceivedBlockHeight.Set(float64(h))
-	}
+	types.BlockCacheSize.Set(float64(len(m.cache)))
+	types.LowestPendingBlockHeight.Set(m.GetLowestCachedBlockHeight())
+	types.HighestReceivedBlockHeight.Set(m.GetHighestCachedBlockHeight())
 }
 
 func (m *Cache) DeleteBlockFromCache(h uint64) {
@@ -34,15 +26,33 @@ func (m *Cache) DeleteBlockFromCache(h uint64) {
 	defer m.Unlock()
 	delete(m.cache, h)
 
-	types.NumberOfAccumulatedBlocks.Set(float64(len(m.cache)))
-	if h == m.lowestCachedBlockHeight {
-		m.lowestCachedBlockHeight = h + 1
-		types.LowestPendingBlockHeight.Set(float64(m.lowestCachedBlockHeight))
+	types.BlockCacheSize.Set(float64(len(m.cache)))
+	types.LowestPendingBlockHeight.Set(float64(m.GetLowestCachedBlockHeight()))
+	types.HighestReceivedBlockHeight.Set(float64(m.GetHighestCachedBlockHeight()))
+}
+
+func (m *Cache) GetLowestCachedBlockHeight() float64 {
+	m.Lock()
+	defer m.Unlock()
+	var lowest uint64
+	for h := range m.cache {
+		if lowest == 0 || h < lowest {
+			lowest = h
+		}
 	}
-	if h == m.highestCachedBlockHeight {
-		m.highestCachedBlockHeight = h - 1
-		types.HighestReceivedBlockHeight.Set(float64(m.highestCachedBlockHeight))
+	return float64(lowest)
+}
+
+func (m *Cache) GetHighestCachedBlockHeight() float64 {
+	m.Lock()
+	defer m.Unlock()
+	var highest uint64
+	for h := range m.cache {
+		if h > highest {
+			highest = h
+		}
 	}
+	return float64(highest)
 }
 
 func (m *Cache) GetBlockFromCache(h uint64) (CachedBlock, bool) {
