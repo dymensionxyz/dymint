@@ -13,6 +13,9 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
+// buffer size used by gossipSub router to consume received packets (blocks or txs). packets are dropped in case buffer overflows. in case of blocks, it can buffer up to 5 minutes (assuming 200ms block rate)
+const pubsubBufferSize = 3000
+
 // GossipMessage represents message gossiped via P2P network (e.g. transaction, Block etc).
 type GossipMessage struct {
 	Data []byte
@@ -50,8 +53,7 @@ func NewGossiper(host host.Host, ps *pubsub.PubSub, topicStr string, msgHandler 
 	if err != nil {
 		return nil, err
 	}
-
-	subscription, err := topic.Subscribe()
+	subscription, err := topic.Subscribe(pubsub.WithBufferSize(max(pubsub.GossipSubHistoryGossip, pubsubBufferSize)))
 	if err != nil {
 		return nil, err
 	}

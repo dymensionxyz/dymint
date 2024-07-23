@@ -57,11 +57,11 @@ func TestSubmitBatch(t *testing.T) {
 	require.Error(err) // no batch should be present
 
 	// Create a batches which will be submitted
-	propserKey, _, err := crypto.GenerateEd25519Key(nil)
+	proposerKey, _, err := crypto.GenerateEd25519Key(nil)
 	require.NoError(err)
-	batch1, err := testutil.GenerateBatch(1, 1, propserKey)
+	batch1, err := testutil.GenerateBatch(1, 1, proposerKey)
 	require.NoError(err)
-	batch2, err := testutil.GenerateBatch(2, 2, propserKey)
+	batch2, err := testutil.GenerateBatch(2, 2, proposerKey)
 	require.NoError(err)
 	resultSubmitBatch := &da.ResultSubmitBatch{}
 	resultSubmitBatch.SubmitMetaData = &da.DASubmitMetaData{}
@@ -74,7 +74,7 @@ func TestSubmitBatch(t *testing.T) {
 	// Check if the batch was submitted
 	queriedBatch, err := sllayer.GetLatestBatch()
 	require.NoError(err)
-	assert.Equal(batch1.EndHeight, queriedBatch.Batch.EndHeight)
+	assert.Equal(batch1.EndHeight(), queriedBatch.Batch.EndHeight)
 
 	state, err := sllayer.GetHeightState(1)
 	require.NoError(err)
@@ -82,7 +82,7 @@ func TestSubmitBatch(t *testing.T) {
 
 	queriedBatch, err = sllayer.GetBatchAtIndex(state.State.StateIndex)
 	require.NoError(err)
-	assert.Equal(batch1.EndHeight, queriedBatch.Batch.EndHeight)
+	assert.Equal(batch1.EndHeight(), queriedBatch.Batch.EndHeight)
 
 	// Submit the 2nd batch and check if it was successful
 	err = sllayer.SubmitBatch(batch2, da.Mock, resultSubmitBatch)
@@ -92,7 +92,7 @@ func TestSubmitBatch(t *testing.T) {
 	// Check if the batch was submitted
 	queriedBatch, err = sllayer.GetLatestBatch()
 	require.NoError(err)
-	assert.Equal(batch2.EndHeight, queriedBatch.Batch.EndHeight)
+	assert.Equal(batch2.EndHeight(), queriedBatch.Batch.EndHeight)
 
 	state, err = sllayer.GetHeightState(2)
 	require.NoError(err)
@@ -100,7 +100,7 @@ func TestSubmitBatch(t *testing.T) {
 
 	queriedBatch, err = sllayer.GetBatchAtIndex(state.State.StateIndex)
 	require.NoError(err)
-	assert.Equal(batch2.EndHeight, queriedBatch.Batch.EndHeight)
+	assert.Equal(batch2.EndHeight(), queriedBatch.Batch.EndHeight)
 
 	// TODO: test event emitted
 }
@@ -145,7 +145,7 @@ func TestPersistency(t *testing.T) {
 
 	queriedBatch, err := sllayer.GetLatestBatch()
 	require.NoError(err)
-	assert.Equal(batch1.EndHeight, queriedBatch.Batch.EndHeight)
+	assert.Equal(batch1.EndHeight(), queriedBatch.Batch.EndHeight)
 
 	// Restart the layer and check if the batch is still present
 	err = sllayer.Stop()
@@ -154,5 +154,5 @@ func TestPersistency(t *testing.T) {
 	_ = sllayer.Init(cfg, pubsubServer, logger)
 	queriedBatch, err = sllayer.GetLatestBatch()
 	require.NoError(err)
-	assert.Equal(batch1.EndHeight, queriedBatch.Batch.EndHeight)
+	assert.Equal(batch1.EndHeight(), queriedBatch.Batch.EndHeight)
 }

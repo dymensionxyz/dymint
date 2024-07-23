@@ -25,6 +25,16 @@ var RollappBlockSizeTxsGauge = promauto.NewGauge(prometheus.GaugeOpts{
 	Help: "Rollapp ",
 })
 
+var RollappPendingSubmissionsSkewNumBatches = promauto.NewGauge(prometheus.GaugeOpts{
+	Name: "rollapp_pending_submissions_skew_num_batches",
+	Help: "The number of batches which have been accumulated but not yet submitted.",
+})
+
+var RollappPendingSubmissionsSkewNumBytes = promauto.NewGauge(prometheus.GaugeOpts{
+	Name: "rollapp_pending_submissions_skew_num_bytes",
+	Help: "The number of bytes (of blocks and commits) which have been accumulated but not yet submitted.",
+})
+
 var LastReceivedP2PHeightGauge = promauto.NewGauge(prometheus.GaugeOpts{
 	Name: "last_received_p2p_height",
 	Help: "The height of the last block received from P2P.",

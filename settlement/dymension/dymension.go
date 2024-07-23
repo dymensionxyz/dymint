@@ -143,7 +143,7 @@ func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *d
 	}
 
 	// TODO: probably should be changed to be a channel, as the eventHandler is also in the HubClient in he produces the event
-	postBatchSubscriberClient := fmt.Sprintf("%s-%d-%s", postBatchSubscriberPrefix, batch.StartHeight, uuid.New().String())
+	postBatchSubscriberClient := fmt.Sprintf("%s-%d-%s", postBatchSubscriberPrefix, batch.StartHeight(), uuid.New().String())
 	subscription, err := c.pubsub.Subscribe(c.ctx, postBatchSubscriberClient, settlement.EventQueryNewSettlementBatchAccepted, 1000)
 	if err != nil {
 		return fmt.Errorf("pub sub subscribe to settlement state updates: %w", err)
@@ -164,7 +164,7 @@ func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *d
 				c.logger.Error(
 					"Submit batch",
 					"startHeight",
-					batch.StartHeight,
+					batch.StartHeight(),
 					"endHeight",
 					batch.EndHeight,
 					"error",
@@ -176,7 +176,7 @@ func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *d
 		if err != nil {
 			// this could happen if we timed-out waiting for acceptance in the previous iteration, but the batch was indeed submitted
 			if errors.Is(err, gerrc.ErrAlreadyExists) {
-				c.logger.Debug("Batch already accepted", "startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
+				c.logger.Debug("Batch already accepted", "startHeight", batch.StartHeight(), "endHeight", batch.EndHeight())
 				return nil
 			}
 			return fmt.Errorf("broadcast batch: %w", err)
@@ -197,16 +197,16 @@ func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *d
 
 			case event := <-subscription.Out():
 				eventData, _ := event.Data().(*settlement.EventDataNewBatchAccepted)
-				if eventData.EndHeight != batch.EndHeight {
+				if eventData.EndHeight != batch.EndHeight() {
 					c.logger.Debug("Received event for a different batch, ignoring.", "event", eventData)
 					continue // continue waiting for acceptance of the current batch
 				}
-				c.logger.Info("Batch accepted.", "startHeight", batch.StartHeight, "endHeight", batch.EndHeight, "stateIndex", eventData.StateIndex)
+				c.logger.Info("Batch accepted.", "startHeight", batch.StartHeight(), "endHeight", batch.EndHeight(), "stateIndex", eventData.StateIndex)
 				return nil
 
 			case <-timer.C:
 				// Check if the batch was accepted by the settlement layer, and we've just missed the event.
-				includedBatch, err := c.pollForBatchInclusion(batch.EndHeight)
+				includedBatch, err := c.pollForBatchInclusion(batch.EndHeight())
 				timer.Reset(c.batchAcceptanceTimeout)
 				// no error, but still not included
 				if err == nil && !includedBatch {
@@ -217,9 +217,9 @@ func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *d
 					c.logger.Error(
 						"Timed out waiting for batch inclusion on settlement layer",
 						"startHeight",
-						batch.StartHeight,
+						batch.StartHeight(),
 						"endHeight",
-						batch.EndHeight,
+						batch.EndHeight(),
 					)
 					break // breaks the switch case, and goes back to the broadcast loop
 				}
@@ -227,16 +227,16 @@ func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *d
 					c.logger.Error(
 						"Wait for batch inclusion",
 						"startHeight",
-						batch.StartHeight,
+						batch.StartHeight(),
 						"endHeight",
-						batch.EndHeight,
+						batch.EndHeight(),
 						"error",
 						err,
 					)
 					continue // continue waiting for acceptance of the current batch
 				}
 				// all good
-				c.logger.Info("Batch accepted", "startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
+				c.logger.Info("Batch accepted", "startHeight", batch.StartHeight(), "endHeight", batch.EndHeight())
 				return nil
 			}
 			break // failed waiting for acceptance. broadcast the batch again
@@ -431,8 +431,8 @@ func (c *Client) convertBatchToMsgUpdateState(batch *types.Batch, daResult *da.R
 	settlementBatch := &rollapptypes.MsgUpdateState{
 		Creator:     addr,
 		RollappId:   c.config.RollappID,
-		StartHeight: batch.StartHeight,
-		NumBlocks:   batch.EndHeight - batch.StartHeight + 1,
+		StartHeight: batch.StartHeight(),
+		NumBlocks:   batch.NumBlocks(),
 		DAPath:      daResult.SubmitMetaData.ToPath(),
 		Version:     dymRollappVersion,
 		BDs:         rollapptypes.BlockDescriptors{BD: blockDescriptors},
