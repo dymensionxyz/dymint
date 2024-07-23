@@ -82,14 +82,10 @@ func doTestDALC(t *testing.T, mockDalc da.DataAvailabilityLayerClient) {
 	block1 := getRandomBlock(1, 10)
 	block2 := getRandomBlock(2, 10)
 	batch1 := &types.Batch{
-		StartHeight: block1.Header.Height,
-		EndHeight:   block1.Header.Height,
-		Blocks:      []*types.Block{block1},
+		Blocks: []*types.Block{block1},
 	}
 	batch2 := &types.Batch{
-		StartHeight: block2.Header.Height,
-		EndHeight:   block2.Header.Height,
-		Blocks:      []*types.Block{block2},
+		Blocks: []*types.Block{block2},
 	}
 
 	resp := dalc.SubmitBatch(batch1)
@@ -166,9 +162,7 @@ func doTestRetrieve(t *testing.T, dalc da.DataAvailabilityLayerClient) {
 	for i := uint64(0); i < 100; i++ {
 		b := getRandomBlock(i, rand.Int()%20)
 		batch := &types.Batch{
-			StartHeight: i,
-			EndHeight:   i,
-			Blocks:      []*types.Block{b},
+			Blocks: []*types.Block{b},
 			Commits: []*types.Commit{
 				{
 					Height:     b.Header.Height,

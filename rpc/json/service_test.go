@@ -302,20 +302,20 @@ func getRPC(t *testing.T) (*tmmocks.MockApplication, *client.Client) {
 	config := config.NodeConfig{
 		DALayer: "mock", SettlementLayer: "mock",
 		BlockManagerConfig: config.BlockManagerConfig{
-			BlockTime:              1 * time.Second,
-			MaxIdleTime:            0,
-			MaxSupportedBatchSkew:  10,
-			BatchSubmitMaxTime:     30 * time.Minute,
-			BlockBatchMaxSizeBytes: 1000,
+			BlockTime:          1 * time.Second,
+			MaxIdleTime:        0,
+			MaxBatchSkew:       10,
+			BatchSubmitMaxTime: 30 * time.Minute,
+			BatchMaxSizeBytes:  1000,
 		},
 		SettlementConfig: settlement.Config{
 			ProposerPubKey: hex.EncodeToString(proposerPubKeyBytes),
 			RollappID:      rollappID,
 		},
 		P2PConfig: config.P2PConfig{
-			ListenAddress:           config.DefaultListenAddress,
-			GossipedBlocksCacheSize: 50,
-			BootstrapRetryTime:      30 * time.Second,
+			ListenAddress:      config.DefaultListenAddress,
+			GossipSubCacheSize: 50,
+			BootstrapRetryTime: 30 * time.Second,
 		},
 	}
 	node, err := node.NewNode(
