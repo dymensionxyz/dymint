@@ -9,8 +9,8 @@ import (
 
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/types"
-	uchannel "github.com/dymensionxyz/dymint/utils/channel"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
+	"github.com/dymensionxyz/sdk-utils/utils/uchan"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -42,8 +42,8 @@ func SubmitLoopInner(ctx context.Context,
 	eg, ctx := errgroup.WithContext(ctx)
 
 	pendingBytes := atomic.Uint64{}
-	trigger := uchannel.NewNudger()   // used to avoid busy waiting (using cpu) on trigger thread
-	submitter := uchannel.NewNudger() // used to avoid busy waiting (using cpu) on submitter thread
+	trigger := uchan.NewNudger()   // used to avoid busy waiting (using cpu) on trigger thread
+	submitter := uchan.NewNudger() // used to avoid busy waiting (using cpu) on submitter thread
 
 	eg.Go(func() error {
 		// 'trigger': we need one thread to continuously consume the bytes produced channel, and to monitor timer

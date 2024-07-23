@@ -7,13 +7,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/dymensionxyz/sdk-utils/utils/uchan"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dymensionxyz/dymint/mempool"
 	mempoolv1 "github.com/dymensionxyz/dymint/mempool/v1"
 	"github.com/dymensionxyz/dymint/node/events"
-	uchannel "github.com/dymensionxyz/dymint/utils/channel"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
 	tmcfg "github.com/tendermint/tendermint/config"
 
@@ -62,7 +62,7 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 	bytesProduced2 := make(chan int)
 	go manager.ProduceBlockLoop(mCtx, bytesProduced1)
 	go managerWithEmptyBlocks.ProduceBlockLoop(mCtx, bytesProduced2)
-	uchannel.DrainForever(bytesProduced1, bytesProduced2)
+	uchan.DrainForever(bytesProduced1, bytesProduced2)
 	<-mCtx.Done()
 
 	require.Greater(manager.State.Height(), initialHeight)
@@ -144,7 +144,7 @@ func TestCreateEmptyBlocksNew(t *testing.T) {
 	defer cancel()
 	bytesProduced := make(chan int)
 	go manager.ProduceBlockLoop(mCtx, bytesProduced)
-	uchannel.DrainForever(bytesProduced)
+	uchan.DrainForever(bytesProduced)
 
 	<-time.Tick(1 * time.Second)
 	err = mpool.CheckTx([]byte{1, 2, 3, 4}, nil, mempool.TxInfo{})
