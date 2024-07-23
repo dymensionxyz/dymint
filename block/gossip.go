@@ -4,9 +4,10 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/tendermint/tendermint/libs/pubsub"
+
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/types"
-	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
 // onNewGossipedBlock will take a block and apply it
@@ -20,6 +21,10 @@ func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
 	if found {
 		m.retrieverMu.Unlock()
 		return
+	}
+
+	if block.Header.Height > m.TargetHeight.Load() {
+		m.TargetHeight.Store(block.Header.Height)
 	}
 
 	m.logger.Debug("Received new block via gossip.", "block height", block.Header.Height, "store height", m.State.Height(), "n cachedBlocks", len(m.blockCache))

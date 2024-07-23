@@ -747,7 +747,7 @@ func (c *Client) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
 			LatestAppHash:     latestAppHash[:],
 			LatestBlockHeight: int64(latestHeight),
 			LatestBlockTime:   time.Unix(0, int64(latestBlockTimeNano)),
-			CatchingUp:        c.node.BlockManager.LastSeenHeight.Load() > latestHeight,
+			CatchingUp:        c.node.BlockManager.TargetHeight.Load() > latestHeight,
 			// TODO(tzdybal): add missing fields
 			// EarliestBlockHash:   earliestBlockHash,
 			// EarliestAppHash:     earliestAppHash,

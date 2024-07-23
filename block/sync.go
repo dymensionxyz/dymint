@@ -42,7 +42,7 @@ func (m *Manager) SyncToTargetHeightLoop(ctx context.Context) (err error) {
 				continue
 			}
 			types.RollappHubHeightGauge.Set(float64(h))
-			m.LastSeenHeight.Store(h)
+			m.TargetHeight.Store(h)
 			m.targetSyncHeight.Set(diodes.GenericDataType(&h))
 			m.logger.Info("Set new target sync height", "height", h)
 		case <-subscription.Cancelled():

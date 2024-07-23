@@ -193,7 +193,7 @@ func (m *Manager) SubmitBatch(batch *types.Batch) error {
 	m.logger.Info("Submitted batch to SL.", "start height", batch.StartHeight(), "end height", batch.EndHeight())
 
 	types.RollappHubHeightGauge.Set(float64(batch.EndHeight()))
-	m.LastSeenHeight.Store(batch.EndHeight())
+	m.LastSubmittedHeight.Store(batch.EndHeight())
 	return nil
 }
 
