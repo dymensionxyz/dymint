@@ -66,6 +66,10 @@ type Block struct {
 	LastCommit Commit
 }
 
+func (b Block) SizeBytes() int {
+	return b.ToProto().Size()
+}
+
 var (
 	_ encoding.BinaryMarshaler   = &Block{}
 	_ encoding.BinaryUnmarshaler = &Block{}
@@ -90,6 +94,10 @@ type Commit struct {
 	// TODO(omritoptix): Change from []Signature to Signature as it should be one signature per block
 	Signatures  []Signature
 	TMSignature tmtypes.CommitSig
+}
+
+func (c Commit) SizeBytes() int {
+	return c.ToProto().Size()
 }
 
 // Signature represents signature of block creator.

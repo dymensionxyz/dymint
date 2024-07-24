@@ -322,10 +322,9 @@ func (c *Client) tryConnect(ctx context.Context, peer peer.AddrInfo) {
 }
 
 func (c *Client) setupGossiping(ctx context.Context) error {
-	pubsub.GossipSubHistoryGossip = c.conf.GossipedBlocksCacheSize
-	pubsub.GossipSubHistoryLength = c.conf.GossipedBlocksCacheSize
+	pubsub.GossipSubHistoryGossip = c.conf.GossipSubCacheSize
+	pubsub.GossipSubHistoryLength = c.conf.GossipSubCacheSize
 
-	// We add WithSeenMessagesTTL (with 1 year time) option to avoid ever requesting already seen blocks
 	ps, err := pubsub.NewGossipSub(ctx, c.Host)
 	if err != nil {
 		return err

@@ -7,8 +7,11 @@ import (
 )
 
 func (m *Manager) pruneBlocks(retainHeight uint64) error {
-	if m.IsSequencer() && retainHeight <= m.NextHeightToSubmit() { // do not delete anything that we might submit in future
-		return fmt.Errorf("cannot prune blocks before they have been submitted: %d: %w", retainHeight, gerrc.ErrInvalidArgument)
+	if m.IsSequencer() && m.NextHeightToSubmit() < retainHeight { // do not delete anything that we might submit in future
+		return fmt.Errorf("cannot prune blocks before they have been submitted: retain height %d: next height to submit: %d: %w",
+			retainHeight,
+			m.NextHeightToSubmit(),
+			gerrc.ErrInvalidArgument)
 	}
 
 	pruned, err := m.Store.PruneBlocks(m.State.BaseHeight, retainHeight)

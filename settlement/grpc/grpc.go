@@ -173,7 +173,7 @@ func (c *Client) Stop() error {
 	return nil
 }
 
-// PostBatch saves the batch to the kv store
+// SubmitBatch saves the batch to the kv store
 func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) error {
 	settlementBatch := c.convertBatchtoSettlementBatch(batch, daResult)
 	err := c.saveBatch(settlementBatch)
@@ -263,8 +263,8 @@ func (c *Client) saveBatch(batch *settlement.Batch) error {
 
 func (c *Client) convertBatchtoSettlementBatch(batch *types.Batch, daResult *da.ResultSubmitBatch) *settlement.Batch {
 	settlementBatch := &settlement.Batch{
-		StartHeight: batch.StartHeight,
-		EndHeight:   batch.EndHeight,
+		StartHeight: batch.StartHeight(),
+		EndHeight:   batch.EndHeight(),
 		MetaData: &settlement.BatchMetaData{
 			DA: &da.DASubmitMetaData{
 				Height: daResult.SubmitMetaData.Height,

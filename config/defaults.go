@@ -23,12 +23,12 @@ var DefaultNodeConfig = *DefaultConfig("", "")
 func DefaultConfig(home, chainId string) *NodeConfig {
 	cfg := &NodeConfig{
 		BlockManagerConfig: BlockManagerConfig{
-			BlockTime:              200 * time.Millisecond,
-			MaxIdleTime:            3600 * time.Second,
-			MaxProofTime:           100 * time.Second,
-			BatchSubmitMaxTime:     3600 * time.Second,
-			MaxSupportedBatchSkew:  20,
-			BlockBatchMaxSizeBytes: 500000,
+			BlockTime:          200 * time.Millisecond,
+			MaxIdleTime:        3600 * time.Second,
+			MaxProofTime:       100 * time.Second,
+			BatchSubmitMaxTime: 3600 * time.Second,
+			MaxBatchSkew:       20,
+			BatchMaxSizeBytes:  500000,
 		},
 		DALayer:         "mock",
 		SettlementLayer: "mock",
@@ -37,11 +37,11 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 			PrometheusListenAddr: ":2112",
 		},
 		P2PConfig: P2PConfig{
-			GossipedBlocksCacheSize: 50,
-			BootstrapRetryTime:      30 * time.Second,
-			ListenAddress:           DefaultListenAddress,
-			BootstrapNodes:          "",
-			AdvertisingEnabled:      true,
+			GossipSubCacheSize: 50,
+			BootstrapRetryTime: 30 * time.Second,
+			ListenAddress:      DefaultListenAddress,
+			BootstrapNodes:     "",
+			AdvertisingEnabled: true,
 		},
 		DBConfig: DBConfig{
 			SyncWrites: true,

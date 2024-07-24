@@ -40,14 +40,10 @@ func TestDALC(t *testing.T) {
 	block1 := getRandomBlock(1, 10)
 	block2 := getRandomBlock(2, 10)
 	batch1 := &types.Batch{
-		StartHeight: block1.Header.Height,
-		EndHeight:   block1.Header.Height,
-		Blocks:      []*types.Block{block1},
+		Blocks: []*types.Block{block1},
 	}
 	batch2 := &types.Batch{
-		StartHeight: block2.Header.Height,
-		EndHeight:   block2.Header.Height,
-		Blocks:      []*types.Block{block2},
+		Blocks: []*types.Block{block2},
 	}
 
 	nIDSize := 1
@@ -102,9 +98,7 @@ func TestRetrievalNotFound(t *testing.T) {
 	// only blocks b1 and b2 will be submitted to DA
 	block1 := getRandomBlock(1, 10)
 	batch1 := &types.Batch{
-		StartHeight: block1.Header.Height,
-		EndHeight:   block1.Header.Height,
-		Blocks:      []*types.Block{block1},
+		Blocks: []*types.Block{block1},
 	}
 
 	nIDSize := 1
@@ -146,9 +140,7 @@ func TestRetrievalNoCommitment(t *testing.T) {
 	mockRPCClient, dalc, nID, _ := setDAandMock(t)
 	block1 := getRandomBlock(1, 10)
 	batch1 := &types.Batch{
-		StartHeight: block1.Header.Height,
-		EndHeight:   block1.Header.Height,
-		Blocks:      []*types.Block{block1},
+		Blocks: []*types.Block{block1},
 	}
 	// only blocks b1 and b2 will be submitted to DA
 	data1, _ := batch1.MarshalBinary()
@@ -175,9 +167,7 @@ func TestAvalabilityOK(t *testing.T) {
 	// only blocks b1 and b2 will be submitted to DA
 	block1 := getRandomBlock(1, 10)
 	batch1 := &types.Batch{
-		StartHeight: block1.Header.Height,
-		EndHeight:   block1.Header.Height,
-		Blocks:      []*types.Block{block1},
+		Blocks: []*types.Block{block1},
 	}
 
 	nIDSize := 1
@@ -219,9 +209,7 @@ func TestAvalabilityWrongProof(t *testing.T) {
 	// only blocks b1 and b2 will be submitted to DA
 	block1 := getRandomBlock(1, 10)
 	batch1 := &types.Batch{
-		StartHeight: block1.Header.Height,
-		EndHeight:   block1.Header.Height,
-		Blocks:      []*types.Block{block1},
+		Blocks: []*types.Block{block1},
 	}
 
 	nIDSize := 1
@@ -345,8 +333,8 @@ func compareBlocks(t *testing.T, b1, b2 *types.Block) {
 
 func compareBatches(t *testing.T, b1, b2 *types.Batch) {
 	t.Helper()
-	assert.Equal(t, b1.StartHeight, b2.StartHeight)
-	assert.Equal(t, b1.EndHeight, b2.EndHeight)
+	assert.Equal(t, b1.StartHeight(), b2.StartHeight())
+	assert.Equal(t, b1.EndHeight(), b2.EndHeight())
 	assert.Equal(t, len(b1.Blocks), len(b2.Blocks))
 	for i := range b1.Blocks {
 		compareBlocks(t, b1.Blocks[i], b2.Blocks[i])

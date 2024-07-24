@@ -77,10 +77,8 @@ func TestBatchOverhead(t *testing.T) {
 		commit := commits[0]
 
 		batch := types.Batch{
-			StartHeight: 1,
-			EndHeight:   1,
-			Blocks:      blocks,
-			Commits:     commits,
+			Blocks:  blocks,
+			Commits: commits,
 		}
 
 		batchSize := batch.ToProto().Size()
@@ -125,7 +123,7 @@ func TestBatchSubmissionHappyFlow(t *testing.T) {
 	assert.Zero(t, manager.LastSubmittedHeight.Load())
 
 	// submit and validate sync target
-	manager.HandleSubmissionTrigger()
+	manager.CreateAndSubmitBatch(manager.Conf.BatchMaxSizeBytes)
 	assert.EqualValues(t, manager.State.Height(), manager.LastSubmittedHeight.Load())
 }
 
@@ -173,11 +171,12 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 
 	// try to submit, we expect failure
 	slmock.On("SubmitBatch", mock.Anything, mock.Anything, mock.Anything).Return(fmt.Errorf("submit batch")).Once()
-	assert.Error(t, manager.HandleSubmissionTrigger())
+	_, err = manager.CreateAndSubmitBatch(manager.Conf.BatchMaxSizeBytes)
+	assert.Error(t, err)
 
 	// try to submit again, we expect success
 	slmock.On("SubmitBatch", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
-	manager.HandleSubmissionTrigger()
+	manager.CreateAndSubmitBatch(manager.Conf.BatchMaxSizeBytes)
 	assert.EqualValues(t, manager.State.Height(), manager.LastSubmittedHeight.Load())
 }
 
@@ -199,11 +198,11 @@ func TestSubmissionByTime(t *testing.T) {
 
 	// Init manager with empty blocks feature enabled
 	managerConfig := config.BlockManagerConfig{
-		BlockTime:              blockTime,
-		MaxIdleTime:            0,
-		MaxSupportedBatchSkew:  10,
-		BatchSubmitMaxTime:     submitTimeout,
-		BlockBatchMaxSizeBytes: 1000,
+		BlockTime:          blockTime,
+		MaxIdleTime:        0,
+		MaxBatchSkew:       10,
+		BatchSubmitMaxTime: submitTimeout,
+		BatchMaxSizeBytes:  1000,
 	}
 
 	manager, err := testutil.GetManager(managerConfig, nil, nil, 1, 1, 0, proxyApp, nil)
@@ -220,13 +219,14 @@ func TestSubmissionByTime(t *testing.T) {
 
 	wg.Add(2) // Add 2 because we have 2 goroutines
 
+	bytesProducedC := make(chan int)
 	go func() {
-		manager.ProduceBlockLoop(mCtx)
+		manager.ProduceBlockLoop(mCtx, bytesProducedC)
 		wg.Done() // Decrease counter when this goroutine finishes
 	}()
 
 	go func() {
-		manager.SubmitLoop(mCtx)
+		manager.SubmitLoop(mCtx, bytesProducedC)
 		wg.Done() // Decrease counter when this goroutine finishes
 	}()
 
@@ -258,12 +258,10 @@ func TestSubmissionByBatchSize(t *testing.T) {
 
 	for _, c := range cases {
 		managerConfig := testutil.GetManagerConfig()
-		managerConfig.BlockBatchMaxSizeBytes = c.blockBatchMaxSizeBytes
+		managerConfig.BatchMaxSizeBytes = c.blockBatchMaxSizeBytes
 		manager, err := testutil.GetManager(managerConfig, nil, nil, 1, 1, 0, nil, nil)
 		require.NoError(err)
 
-		// validate initial accumulated is zero
-		require.Equal(manager.AccumulatedBatchSize.Load(), uint64(0))
 		assert.Equal(manager.State.Height(), uint64(0))
 
 		submissionByBatchSize(manager, assert, c.expectedSubmission)
@@ -277,14 +275,16 @@ func submissionByBatchSize(manager *block.Manager, assert *assert.Assertions, ex
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
+	bytesProducedC := make(chan int)
+
 	go func() {
-		manager.ProduceBlockLoop(ctx)
+		manager.ProduceBlockLoop(ctx, bytesProducedC)
 		wg.Done() // Decrease counter when this goroutine finishes
 	}()
 
 	go func() {
 		assert.Zero(manager.LastSubmittedHeight.Load())
-		manager.SubmitLoop(ctx)
+		manager.SubmitLoop(ctx, bytesProducedC)
 		wg.Done() // Decrease counter when this goroutine finishes
 	}()
 
@@ -292,7 +292,6 @@ func submissionByBatchSize(manager *block.Manager, assert *assert.Assertions, ex
 	time.Sleep(200 * time.Millisecond)
 	// assert block produced but nothing submitted yet
 	assert.Greater(manager.State.Height(), uint64(0))
-	assert.Greater(manager.AccumulatedBatchSize.Load(), uint64(0))
 
 	wg.Wait() // Wait for all goroutines to finish
 

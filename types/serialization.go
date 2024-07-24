@@ -2,7 +2,9 @@ package types
 
 import (
 	"errors"
+	"fmt"
 
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	abci "github.com/tendermint/tendermint/abci/types"
 	prototypes "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
@@ -158,8 +160,8 @@ func (b *Block) ToProto() *pb.Block {
 // ToProto converts Batch into protobuf representation and returns it.
 func (b *Batch) ToProto() *pb.Batch {
 	return &pb.Batch{
-		StartHeight: b.StartHeight,
-		EndHeight:   b.EndHeight,
+		StartHeight: b.StartHeight(),
+		EndHeight:   b.EndHeight(),
 		Blocks:      blocksToProto(b.Blocks),
 		Commits:     commitsToProto(b.Commits),
 	}
@@ -195,8 +197,15 @@ func (b *Block) FromProto(other *pb.Block) error {
 
 // FromProto fills Batch with data from its protobuf representation.
 func (b *Batch) FromProto(other *pb.Batch) error {
-	b.StartHeight = other.StartHeight
-	b.EndHeight = other.EndHeight
+	n := len(other.Blocks)
+	start := other.StartHeight
+	end := other.EndHeight
+	if 0 < n && start != other.Blocks[0].Header.GetHeight() {
+		return fmt.Errorf("start height does not match first block height: %w", gerrc.ErrInvalidArgument)
+	}
+	if 0 < n && end != other.Blocks[n-1].Header.GetHeight() {
+		return fmt.Errorf("end height does not match last block height: %w", gerrc.ErrInvalidArgument)
+	}
 	b.Blocks = protoToBlocks(other.Blocks)
 	b.Commits = protoToCommits(other.Commits)
 	return nil

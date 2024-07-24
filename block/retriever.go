@@ -2,9 +2,11 @@ package block
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"code.cloudfoundry.org/go-diodes"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 
 	"github.com/dymensionxyz/dymint/da"
 )
@@ -35,10 +37,13 @@ func (m *Manager) RetrieveLoop(ctx context.Context) (err error) {
 func (m *Manager) syncToTargetHeight(targetHeight uint64) error {
 	for currH := m.State.NextHeight(); currH <= targetHeight; currH = m.State.NextHeight() {
 		// if we have the block locally, we don't need to fetch it from the DA
-		err := m.processLocalBlock(currH)
+		err := m.applyLocalBlock(currH)
 		if err == nil {
 			m.logger.Info("Synced from local", "store height", currH, "target height", targetHeight)
 			continue
+		}
+		if !errors.Is(err, gerrc.ErrNotFound) {
+			m.logger.Error("Apply local block", "err", err)
 		}
 
 		err = m.syncFromDABatch()
@@ -82,14 +87,14 @@ func (m *Manager) syncFromDABatch() error {
 	return nil
 }
 
-func (m *Manager) processLocalBlock(height uint64) error {
+func (m *Manager) applyLocalBlock(height uint64) error {
 	block, err := m.Store.LoadBlock(height)
 	if err != nil {
-		return err
+		return fmt.Errorf("load block: %w", gerrc.ErrNotFound)
 	}
 	commit, err := m.Store.LoadCommit(height)
 	if err != nil {
-		return err
+		return fmt.Errorf("load commit: %w", gerrc.ErrNotFound)
 	}
 	if err := m.validateBlockBeforeApply(block, commit); err != nil {
 		return fmt.Errorf("validate block from local store: height: %d: %w", height, err)
