@@ -60,7 +60,7 @@ var LastAppliedBlockSource = promauto.NewGaugeVec(
 )
 
 func SetLastAppliedBlockSource(source string) {
-	LastAppliedBlockSource.DeleteLabelValues(AllSources...)
+	LastAppliedBlockSource.Reset()
 	LastAppliedBlockSource.With(prometheus.Labels{SourceLabel: source}).Set(0)
 }
 
