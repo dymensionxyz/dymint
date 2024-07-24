@@ -45,13 +45,24 @@ var LastReceivedDAHeightGauge = promauto.NewGauge(prometheus.GaugeOpts{
 	Help: "The height of the last block received from DA.",
 })
 
+const SourceLabel = "source"
+
+func init() {
+	LastAppliedBlockSource.With(prometheus.Labels{SourceLabel: "none"}).Set(0)
+}
+
 var LastAppliedBlockSource = promauto.NewGaugeVec(
 	prometheus.GaugeOpts{
 		Name: "last_applied_block_source",
 		Help: "The source of the last applied block",
 	},
-	[]string{"source"},
+	[]string{SourceLabel},
 )
+
+func SetLastAppliedBlockSource(source string) {
+	LastAppliedBlockSource.DeleteLabelValues("none", "p2p", "da")
+	LastAppliedBlockSource.With(prometheus.Labels{SourceLabel: source}).Set(0)
+}
 
 var BlockCacheSizeGauge = promauto.NewGauge(prometheus.GaugeOpts{
 	Name: "block_cache_size",

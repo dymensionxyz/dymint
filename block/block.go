@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	errorsmod "cosmossdk.io/errors"
-	"github.com/prometheus/client_golang/prometheus"
 
 	"github.com/dymensionxyz/dymint/types"
 )
@@ -22,7 +21,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		return types.ErrInvalidBlockHeight
 	}
 
-	types.LastAppliedBlockSource.With(prometheus.Labels{"source": blockMetaData.source.String()}).Set(0)
+	types.SetLastAppliedBlockSource(blockMetaData.source.String())
 
 	m.logger.Debug("Applying block", "height", block.Header.Height, "source", blockMetaData.source.String())
 
