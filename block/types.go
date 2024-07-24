@@ -20,7 +20,7 @@ const (
 )
 
 func (s BlockSource) String() string {
-	return []string{"", "produced", "gossip", "da", "local_db"}[s]
+	return []string{"none", "produced", "gossip", "da", "local_db"}[s]
 }
 
 type blockMetaData struct {
