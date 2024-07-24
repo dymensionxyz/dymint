@@ -8,9 +8,11 @@ import (
 
 	"github.com/celestiaorg/celestia-openrpc/types/blob"
 	"github.com/cometbft/cometbft/crypto/merkle"
+	cdctypes "github.com/cosmos/cosmos-sdk/codec/types"
+	"github.com/tendermint/tendermint/libs/pubsub"
+
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
-	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
 // StatusCode is a type for DA layer return status.
@@ -37,10 +39,11 @@ type Client string
 
 // Data availability clients
 const (
-	Mock     Client = "mock"
-	Grpc     Client = "grpc"
-	Celestia Client = "celestia"
-	Avail    Client = "avail"
+	Mock       Client = "mock"
+	Grpc       Client = "grpc"
+	Celestia   Client = "celestia"
+	Avail      Client = "avail"
+	Interchain Client = "interchain"
 )
 
 // Option is a function that sets a parameter on the da layer.
@@ -177,6 +180,13 @@ type ResultSubmitBatch struct {
 	SubmitMetaData *DASubmitMetaData
 }
 
+// ResultSubmitBatchV2 contains information returned from DA layer after block submission.
+type ResultSubmitBatchV2 struct {
+	BaseResult
+	// DAPath instructs how to retrieve the submitted batch from the DA layer.
+	DAPath Path
+}
+
 // ResultCheckBatch contains information about block availability, returned from DA layer client.
 type ResultCheckBatch struct {
 	BaseResult
@@ -192,6 +202,22 @@ type ResultRetrieveBatch struct {
 	Batches []*types.Batch
 	// DAHeight informs about a height on Data Availability Layer for given result.
 	CheckMetaData *DACheckMetaData
+}
+
+// ResultRetrieveBatchV2 contains a batch of blocks returned from the DA layer client.
+type ResultRetrieveBatchV2 struct {
+	BaseResult
+	// Batches is the full block retrieved from the DA layer.
+	// If BaseResult.Code is not StatusSuccess, this field is nil.
+	Batches []*types.Batch
+}
+
+// Path TODO: move to the Dymension proto file
+type Path struct {
+	// DAType identifies the DA type being used by the sequencer to post the blob.
+	DaType string
+	// Commitment is a generic commitment interpreted by the DA Layer.
+	Commitment *cdctypes.Any
 }
 
 // DataAvailabilityLayerClient defines generic interface for DA layer block submission.
@@ -219,6 +245,28 @@ type DataAvailabilityLayerClient interface {
 	Synced() <-chan struct{}
 }
 
+// ClientV2 defines generic interface for DA layer block submission.
+type ClientV2 interface {
+	// DataAvailabilityLayerClient closure for backward compatibility
+	DataAvailabilityLayerClient
+
+	// Init is called once to allow DA client to read configuration and initialize resources.
+	Init([]byte, *pubsub.Server, store.KV, types.Logger, ...Option) error
+
+	// Start is called once, after Init. It starts the operation of ClientV2.
+	Start() error
+
+	// Stop is called once, when DAClientV2 is no longer needed.
+	Stop() error
+
+	// SubmitBatchV2 submits the passed in block to the DA layer.
+	SubmitBatchV2(*types.Batch) ResultSubmitBatchV2
+
+	GetClientType() Client
+
+	Synced() <-chan struct{}
+}
+
 // BatchRetriever is additional interface that can be implemented by Data Availability Layer Client that is able to retrieve
 // block data from DA layer. This gives the ability to use it for block synchronization.
 type BatchRetriever interface {
@@ -226,4 +274,14 @@ type BatchRetriever interface {
 	RetrieveBatches(daMetaData *DASubmitMetaData) ResultRetrieveBatch
 	// CheckBatchAvailability checks the availability of the blob received getting proofs and validating them
 	CheckBatchAvailability(daMetaData *DASubmitMetaData) ResultCheckBatch
+}
+
+// BatchRetrieverV2 is an additional interface implemented by the DA layer client. It allows to retrieve
+// block data from the DA layer and use this interface for block synchronization.
+type BatchRetrieverV2 interface {
+	// BatchRetriever closure for backward compatibility
+	BatchRetriever
+
+	// RetrieveBatchesV2 returns blocks by the given da.Path.
+	RetrieveBatchesV2(ResultSubmitBatchV2) ResultRetrieveBatchV2
 }
