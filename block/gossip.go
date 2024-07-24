@@ -17,11 +17,11 @@ func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
 	commit := eventData.Commit
 	height := block.Header.Height
 
-	types.LastReceivedP2PHeightGauge.Set(float64(height))
-
 	if m.blockCache.HasBlockInCache(height) {
 		return
 	}
+
+	types.LastReceivedP2PHeightGauge.Set(float64(height))
 
 	m.logger.Debug("Received new block via gossip.", "block height", height, "store height", m.State.Height(), "n cachedBlocks", m.blockCache.Size())
 
