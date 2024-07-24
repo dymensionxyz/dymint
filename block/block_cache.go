@@ -7,14 +7,14 @@ import (
 )
 
 type Cache struct {
-	cache map[uint64]CachedBlock
+	cache map[uint64]types.CachedBlock
 	sync.Mutex
 }
 
 func (m *Cache) AddBlockToCache(h uint64, b *types.Block, c *types.Commit) {
 	m.Lock()
 	defer m.Unlock()
-	m.cache[h] = CachedBlock{Block: b, Commit: c}
+	m.cache[h] = types.CachedBlock{Block: b, Commit: c}
 	types.BlockCacheSizeGauge.Set(float64(len(m.cache)))
 }
 
@@ -26,7 +26,7 @@ func (m *Cache) DeleteBlockFromCache(h uint64) {
 	types.BlockCacheSizeGauge.Set(float64(size))
 }
 
-func (m *Cache) GetBlockFromCache(h uint64) (CachedBlock, bool) {
+func (m *Cache) GetBlockFromCache(h uint64) (types.CachedBlock, bool) {
 	m.Lock()
 	defer m.Unlock()
 	ret, found := m.cache[h]

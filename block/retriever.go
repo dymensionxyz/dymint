@@ -100,7 +100,7 @@ func (m *Manager) applyLocalBlock(height uint64) error {
 	}
 
 	m.retrieverMu.Lock()
-	err = m.applyBlock(block, commit, blockMetaData{source: localDbBlock})
+	err = m.applyBlock(block, commit, types.BlockMetaData{Source: types.LocalDbBlock})
 	if err != nil {
 		return fmt.Errorf("apply block from local store: height: %d: %w", height, err)
 	}
@@ -132,7 +132,7 @@ func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
 				m.logger.Error("validate block from DA", "height", block.Header.Height, "err", err)
 				continue
 			}
-			err := m.applyBlock(block, batch.Commits[i], blockMetaData{source: daBlock, daHeight: daMetaData.Height})
+			err := m.applyBlock(block, batch.Commits[i], types.BlockMetaData{Source: types.DABlock, DAHeight: daMetaData.Height})
 			if err != nil {
 				return fmt.Errorf("apply block: height: %d: %w", block.Header.Height, err)
 			}

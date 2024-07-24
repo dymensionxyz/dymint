@@ -14,16 +14,16 @@ import (
 // As the entire process can't be atomic we need to make sure the following condition apply before
 // - block height is the expected block height on the store (height + 1).
 // - block height is the expected block height on the app (last block height + 1).
-func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMetaData blockMetaData) error {
+func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMetaData types.BlockMetaData) error {
 	// TODO: add switch case to have defined behavior for each case.
 	// validate block height
 	if block.Header.Height != m.State.NextHeight() {
 		return types.ErrInvalidBlockHeight
 	}
 
-	types.SetLastAppliedBlockSource(blockMetaData.source.String())
+	types.SetLastAppliedBlockSource(blockMetaData.Source.String())
 
-	m.logger.Debug("Applying block", "height", block.Header.Height, "source", blockMetaData.source.String())
+	m.logger.Debug("Applying block", "height", block.Header.Height, "source", blockMetaData.Source.String())
 
 	// Check if the app's last block height is the same as the currently produced block height
 	isBlockAlreadyApplied, err := m.isHeightAlreadyApplied(block.Header.Height)
@@ -132,7 +132,7 @@ func (m *Manager) attemptApplyCachedBlocks() error {
 			return fmt.Errorf("block not valid at height %d, dropping it: err:%w", cachedBlock.Block.Header.Height, err)
 		}
 
-		err := m.applyBlock(cachedBlock.Block, cachedBlock.Commit, blockMetaData{source: gossipedBlock})
+		err := m.applyBlock(cachedBlock.Block, cachedBlock.Commit, types.BlockMetaData{Source: types.GossipedBlock})
 		if err != nil {
 			return fmt.Errorf("apply cached block: expected height: %d: %w", expectedHeight, err)
 		}

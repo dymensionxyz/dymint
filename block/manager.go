@@ -88,7 +88,7 @@ func NewManager(
 	p2pClient *p2p.Client,
 	logger types.Logger,
 ) (*Manager, error) {
-	localAddress, err := getAddress(localKey)
+	localAddress, err := types.GetAddress(localKey)
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +111,7 @@ func NewManager(
 		targetSyncHeight: diodes.NewOneToOne(1, nil),
 		logger:           logger,
 		blockCache: &Cache{
-			cache: make(map[uint64]CachedBlock),
+			cache: make(map[uint64]types.CachedBlock),
 		},
 	}
 
