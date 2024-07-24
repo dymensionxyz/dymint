@@ -117,21 +117,6 @@ func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
 		return batchResp.Error
 	}
 
-	if len(batchResp.Batches) == 0 {
-		m.logger.Info("no blocks in batch from DA", "daHeight", daMetaData.Height)
-		return fmt.Errorf("no blocks in batch from DA: %d", daMetaData.Height)
-	}
-
-	lastBatch := batchResp.Batches[len(batchResp.Batches)-1]
-
-	if len(lastBatch.Blocks) == 0 {
-		m.logger.Info("no blocks in last batch from DA", "daHeight", daMetaData.Height)
-		return fmt.Errorf("no blocks in last batch from DA: %d", daMetaData.Height)
-	}
-
-	lastReceivedHeight := lastBatch.Blocks[len(lastBatch.Blocks)-1].Header.Height
-	types.LastReceivedDAHeightGauge.Set(float64(lastReceivedHeight))
-
 	m.logger.Debug("retrieved batches", "n", len(batchResp.Batches), "daHeight", daMetaData.Height)
 
 	m.retrieverMu.Lock()
@@ -150,6 +135,8 @@ func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
 			if err != nil {
 				return fmt.Errorf("apply block: height: %d: %w", block.Header.Height, err)
 			}
+
+			types.LastReceivedDAHeightGauge.Set(float64(block.Header.Height))
 
 			m.blockCache.DeleteBlockFromCache(block.Header.Height)
 		}
