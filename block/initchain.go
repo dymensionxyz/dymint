@@ -2,6 +2,7 @@ package block
 
 import (
 	"context"
+	"errors"
 
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	tmtypes "github.com/tendermint/tendermint/types"
@@ -10,6 +11,9 @@ import (
 func (m *Manager) RunInitChain(ctx context.Context) error {
 	// get the proposer's consensus pubkey
 	proposer := m.SLClient.GetProposer()
+	if proposer == nil {
+		return errors.New("failed to get sequencer from SL")
+	}
 	tmPubKey, err := cryptocodec.ToTmPubKeyInterface(proposer.PublicKey)
 	if err != nil {
 		return err

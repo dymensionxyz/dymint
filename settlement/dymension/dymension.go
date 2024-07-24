@@ -58,6 +58,7 @@ type Client struct {
 	protoCodec              *codec.ProtoCodec
 	eventMap                map[string]string
 	sequencerList           []*settlement.Sequencer
+	proposer                *settlement.Sequencer
 	retryAttempts           uint
 	retryMinDelay           time.Duration
 	retryMaxDelay           time.Duration
@@ -302,6 +303,10 @@ func (c *Client) GetHeightState(h uint64) (*settlement.ResultGetHeightState, err
 
 // GetProposer implements settlement.ClientI.
 func (c *Client) GetProposer() *settlement.Sequencer {
+	if c.proposer != nil {
+		return c.proposer
+	}
+
 	seqs, err := c.GetSequencers()
 	if err != nil {
 		c.logger.Error("Get sequencers", "error", err)
