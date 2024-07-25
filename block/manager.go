@@ -58,7 +58,6 @@ type Manager struct {
 	// It is ALSO used by the producer, because the producer needs to check if it can prune blocks and it won't
 	// prune anything that might be submitted in the future. Therefore, it must be atomic.
 	LastSubmittedHeight atomic.Uint64
-	TargetHeight        atomic.Uint64
 
 	/*
 		Retrieval
@@ -69,6 +68,9 @@ type Manager struct {
 	Retriever   da.BatchRetriever
 	// get the next target height to sync local state to
 	targetSyncHeight diodes.Diode
+	// TargetHeight holds the value of the current highest block seen from either p2p (probably higher) or the DA
+	TargetHeight atomic.Uint64
+
 	// Cached blocks and commits for applying at future heights. The blocks may not be valid, because
 	// we can only do full validation in sequential order.
 	blockCache map[uint64]CachedBlock
@@ -225,4 +227,13 @@ func (m *Manager) syncBlockManager() error {
 
 	m.logger.Info("Synced.", "current height", m.State.Height(), "last submitted height", m.LastSubmittedHeight.Load())
 	return nil
+}
+
+func (m *Manager) updateTargetHeight(h uint64) {
+	for {
+		currentHeight := m.TargetHeight.Load()
+		if m.TargetHeight.CompareAndSwap(currentHeight, max(currentHeight, h)) {
+			break
+		}
+	}
 }
