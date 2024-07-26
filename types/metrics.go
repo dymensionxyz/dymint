@@ -34,3 +34,8 @@ var RollappPendingSubmissionsSkewNumBytes = promauto.NewGauge(prometheus.GaugeOp
 	Name: "rollapp_pending_submissions_skew_num_bytes",
 	Help: "The number of bytes (of blocks and commits) which have been accumulated but not yet submitted.",
 })
+
+var RollappConsecutiveFailedDASubmission = promauto.NewGauge(prometheus.GaugeOpts{
+	Name: "rollapp_consecutive_failed_da_submissions",
+	Help: "The number of consecutive times the da fails to submit.",
+})
