@@ -141,9 +141,9 @@ func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
 
 			m.blockCache.DeleteBlockFromCache(block.Header.Height)
 		}
-
-		types.LastReceivedDAHeightGauge.Set(lastAppliedHeight)
 	}
+	types.LastReceivedDAHeightGauge.Set(lastAppliedHeight)
+
 	return nil
 }
 
