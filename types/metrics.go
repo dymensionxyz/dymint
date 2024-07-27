@@ -68,3 +68,8 @@ var BlockCacheSizeGauge = promauto.NewGauge(prometheus.GaugeOpts{
 	Name: "block_cache_size",
 	Help: "The number of blocks in the cache.",
 })
+
+var RollappConsecutiveFailedDASubmission = promauto.NewGauge(prometheus.GaugeOpts{
+	Name: "rollapp_consecutive_failed_da_submissions",
+	Help: "The number of consecutive times the da fails to submit.",
+})
