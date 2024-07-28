@@ -26,6 +26,7 @@ type CosmosClient interface {
 	StopEventListener() error
 	EventListenerQuit() <-chan struct{}
 	SubscribeToEvents(ctx context.Context, subscriber string, query string, outCapacity ...int) (out <-chan ctypes.ResultEvent, err error)
+	UnsubscribeAll(ctx context.Context, subscriber string) error
 	BroadcastTx(accountName string, msgs ...sdktypes.Msg) (cosmosclient.Response, error)
 	GetRollappClient() rollapptypes.QueryClient
 	GetSequencerClient() sequencertypes.QueryClient
@@ -57,6 +58,10 @@ func (c *cosmosClient) EventListenerQuit() <-chan struct{} {
 
 func (c *cosmosClient) SubscribeToEvents(ctx context.Context, subscriber string, query string, outCapacity ...int) (out <-chan ctypes.ResultEvent, err error) {
 	return c.Client.RPC.WSEvents.Subscribe(ctx, subscriber, query, outCapacity...)
+}
+
+func (c *cosmosClient) UnsubscribeAll(ctx context.Context, subscriber string) error {
+	return c.Client.RPC.WSEvents.UnsubscribeAll(ctx, subscriber)
 }
 
 func (c *cosmosClient) GetRollappClient() rollapptypes.QueryClient {

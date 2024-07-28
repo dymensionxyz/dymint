@@ -161,6 +161,7 @@ func (m *Manager) Start(ctx context.Context) error {
 			bytesProducedC <- nBytes
 		}()
 
+		// check if sequencer in the middle of rotation
 		proposer := m.SLClient.GetProposer()
 		next := m.SLClient.IsRotating()
 		// if next defined and it's not the same as the current proposer, start rotation
@@ -196,6 +197,8 @@ func (m *Manager) Start(ctx context.Context) error {
 
 		go func() {
 			err := eg.Wait()
+
+			// Check if sequencer needs to complete rotation
 			var nextSeqAddr []byte
 			select {
 			case nextSeqAddr = <-rotateSequencerC:

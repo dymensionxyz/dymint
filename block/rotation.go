@@ -5,45 +5,31 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
+	"github.com/google/uuid"
 )
 
 func (m *Manager) MonitorSequencerRotation(ctx context.Context) []byte {
-	// var subscription *pubsub.Subscription
-	// subscription, err := m.Pubsub.Subscribe(ctx, "syncTargetLoop", settlement.EventQueryNewSettlementBatchAccepted)
-	// if err != nil {
-	// m.logger.Error("subscribe to state update events", "error", err)
-	// return err
-	// }
+	sequencerRotationEventClient := fmt.Sprintf("%s-%s", "sequencer_rotation", uuid.New().String())
+	subscription, err := m.Pubsub.Subscribe(ctx, sequencerRotationEventClient, settlement.EventQueryRotationStarted)
+	if err != nil {
+		panic("Error subscribing to events")
+	}
+	defer m.Pubsub.UnsubscribeAll(ctx, sequencerRotationEventClient)
 
-	// for {
-	// 	select {
-	// 	//FIXME: listen to channel coming from state update response
-	// 	case <-ctx.Done():
-	// 		return nil
-	// 	case event := <-subscription.Out():
-	// 		eventData, _ := event.Data().(*settlement.EventDataNewBatchAccepted)
-	// 		h := eventData.EndHeight
-
-	// 		if h <= m.State.Height() {
-	// 			m.logger.Debug(
-	// 				"syncTargetLoop: received new settlement batch accepted with batch end height <= current store height, skipping.",
-	// 				"target sync height (batch end height)",
-	// 				h,
-	// 				"current store height",
-	// 				m.State.Height(),
-	// 			)
-	// 			continue
-	// 		}
-	// 		types.RollappHubHeightGauge.Set(float64(h))
-	// 		m.targetSyncHeight.Set(diodes.GenericDataType(&h))
-	// 		m.logger.Info("Set new target sync height", "height", h)
-	// 	case <-subscription.Cancelled():
-	// 		return fmt.Errorf("syncTargetLoop subscription canceled")
-	// 	}
-	// }
-	return []byte{}
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case event := <-subscription.Out():
+			eventData, _ := event.Data().(*settlement.EventDataRotationStarted)
+			nextSeq := eventData.NextSeqAddr
+			m.logger.Info("Sequencer rotation started.", "next_seq", nextSeq)
+			return []byte(nextSeq)
+		}
+	}
 }
 
 func (m *Manager) GetPreviousBlockHashes(forHeight uint64) (lastHeaderHash [32]byte, lastCommit *types.Commit, err error) {

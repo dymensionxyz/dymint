@@ -20,25 +20,18 @@ import (
 	"github.com/google/uuid"
 	"github.com/ignite/cli/ignite/pkg/cosmosaccount"
 	"github.com/tendermint/tendermint/libs/pubsub"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
-	uevent "github.com/dymensionxyz/dymint/utils/event"
 )
 
 const (
 	addressPrefix     = "dym"
 	dymRollappVersion = 0
 	defaultGasLimit   = 300000
-)
-
-const (
-	eventStateUpdate          = "state_update.rollapp_id='%s' AND state_update.status='PENDING'"
-	eventSequencersListUpdate = "sequencers_list_update.rollapp_id='%s'"
 )
 
 const (
@@ -56,7 +49,6 @@ type Client struct {
 	rollappQueryClient      rollapptypes.QueryClient
 	sequencerQueryClient    sequencertypes.QueryClient
 	protoCodec              *codec.ProtoCodec
-	eventMap                map[string]string
 	sequencerList           []settlement.Sequencer
 	proposer                settlement.Sequencer
 	retryAttempts           uint
@@ -71,10 +63,6 @@ var _ settlement.ClientI = &Client{}
 // Init is called once. it initializes the struct members.
 func (c *Client) Init(config settlement.Config, pubsub *pubsub.Server, logger types.Logger, options ...settlement.Option) error {
 	ctx, cancel := context.WithCancel(context.Background())
-	eventMap := map[string]string{
-		fmt.Sprintf(eventStateUpdate, config.RollappID):          settlement.EventNewBatchAccepted,
-		fmt.Sprintf(eventSequencersListUpdate, config.RollappID): settlement.EventSequencersListUpdated,
-	}
 
 	interfaceRegistry := cdctypes.NewInterfaceRegistry()
 	cryptocodec.RegisterInterfaces(interfaceRegistry)
@@ -85,7 +73,6 @@ func (c *Client) Init(config settlement.Config, pubsub *pubsub.Server, logger ty
 	c.pubsub = pubsub
 	c.ctx = ctx
 	c.cancel = cancel
-	c.eventMap = eventMap
 	c.protoCodec = protoCodec
 	c.retryAttempts = config.RetryAttempts
 	c.batchAcceptanceTimeout = config.BatchAcceptanceTimeout
@@ -151,7 +138,7 @@ func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *d
 	}
 
 	//nolint:errcheck
-	defer c.pubsub.Unsubscribe(c.ctx, postBatchSubscriberClient, settlement.EventQueryNewSettlementBatchAccepted)
+	defer c.pubsub.UnsubscribeAll(c.ctx, postBatchSubscriberClient)
 
 	for {
 		// broadcast loop: broadcast the transaction to the blockchain (with infinite retries).
@@ -438,38 +425,6 @@ func (c *Client) broadcastBatch(msgUpdateState *rollapptypes.MsgUpdateState) err
 	return nil
 }
 
-func (c *Client) eventHandler() {
-	// TODO(omritoptix): eventsChannel should be a generic channel which is later filtered by the event type.
-	subscriber := fmt.Sprintf("dymension-client-%s", uuid.New().String())
-	eventsChannel, err := c.cosmosClient.SubscribeToEvents(c.ctx, subscriber, fmt.Sprintf(eventStateUpdate, c.config.RollappID), 1000)
-	if err != nil {
-		panic("Error subscribing to events")
-	}
-	// TODO: add defer unsubscribeAll
-
-	for {
-		select {
-		case <-c.ctx.Done():
-			return
-		case <-c.cosmosClient.EventListenerQuit():
-			// TODO(omritoptix): Fallback to polling
-			panic("Settlement WS disconnected")
-		case event := <-eventsChannel:
-			// Assert value is in map and publish it to the event bus
-			data, ok := c.eventMap[event.Query]
-			if !ok {
-				c.logger.Debug("Ignoring event. Type not supported", "event", event)
-				continue
-			}
-			eventData, err := c.getEventData(data, event)
-			if err != nil {
-				panic(err)
-			}
-			uevent.MustPublish(c.ctx, c.pubsub, eventData, map[string][]string{settlement.EventTypeKey: {data}})
-		}
-	}
-}
-
 func (c *Client) convertBatchToMsgUpdateState(batch *types.Batch, daResult *da.ResultSubmitBatch) (*rollapptypes.MsgUpdateState, error) {
 	account, err := c.cosmosClient.GetAccount(c.config.DymAccountName)
 	if err != nil {
@@ -521,14 +476,6 @@ func getCosmosClientOptions(config *settlement.Config) []cosmosclient.Option {
 		)
 	}
 	return options
-}
-
-func (c *Client) getEventData(eventType string, rawEventData ctypes.ResultEvent) (interface{}, error) {
-	switch eventType {
-	case settlement.EventNewBatchAccepted:
-		return convertToNewBatchEvent(rawEventData)
-	}
-	return nil, fmt.Errorf("event type %s not recognized", eventType)
 }
 
 // pollForBatchInclusion polls the hub for the inclusion of a batch with the given end height.
