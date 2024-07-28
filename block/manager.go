@@ -70,7 +70,7 @@ type Manager struct {
 	targetSyncHeight diodes.Diode
 	// Cached blocks and commits for applying at future heights. The blocks may not be valid, because
 	// we can only do full validation in sequential order.
-	blockCache map[uint64]CachedBlock
+	blockCache *Cache
 }
 
 // NewManager creates new block Manager.
@@ -88,7 +88,7 @@ func NewManager(
 	p2pClient *p2p.Client,
 	logger types.Logger,
 ) (*Manager, error) {
-	localAddress, err := getAddress(localKey)
+	localAddress, err := types.GetAddress(localKey)
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +110,9 @@ func NewManager(
 		Retriever:        dalc.(da.BatchRetriever),
 		targetSyncHeight: diodes.NewOneToOne(1, nil),
 		logger:           logger,
-		blockCache:       make(map[uint64]CachedBlock),
+		blockCache: &Cache{
+			cache: make(map[uint64]types.CachedBlock),
+		},
 	}
 
 	err = m.LoadStateOnInit(store, genesis, logger)
