@@ -5,6 +5,9 @@ import (
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/tendermint/tendermint/libs/pubsub"
+
+	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
+	tmtypes "github.com/tendermint/tendermint/types"
 )
 
 // StatusCode is a type for settlement layer return status.
@@ -74,29 +77,30 @@ type ClientI interface {
 	GetBatchAtIndex(index uint64) (*ResultRetrieveBatch, error)
 
 	// GetSequencersList returns the list of the bonded sequencers for this rollapp.
-	GetSequencers() ([]*Sequencer, error)
+	GetSequencers() ([]Sequencer, error)
 	// GetProposer returns the current proposer for this chain.
 	GetProposer() *Sequencer
+	// GetNextProposer returns the current proposer for this chain.
+	IsRotating() *Sequencer
 
 	GetHeightState(uint64) (*ResultGetHeightState, error)
 }
 
-// TODO: remove this, as we can use the sequencers objects directly
-
-// SequencerStatus defines the operating status of a sequencer
-type SequencerStatus int32
-
-const (
-	// Proposer defines a sequencer that is currently the proposer
-	Proposer SequencerStatus = iota
-	// Inactive defines a sequencer that is currently inactive
-	Inactive
-)
-
 // Sequencer represents a sequencer of the rollapp
 type Sequencer struct {
+	// SequencerAddress is the address of the sequencer
+	SequencerAddress string
 	// PublicKey is the public key of the sequencer
 	PublicKey crypto.PubKey
-	// Status is status of the sequencer
-	Status SequencerStatus
+	// RotationInProgress is true if the sequencer is in the process of rotation
+	RotationInProgress bool
+}
+
+func (s Sequencer) TMValidator() (*tmtypes.Validator, error) {
+	tmPubKey, err := cryptocodec.ToTmPubKeyInterface(s.PublicKey)
+	if err != nil {
+		return nil, err
+	}
+	val := tmtypes.NewValidator(tmPubKey, 1)
+	return val, nil
 }

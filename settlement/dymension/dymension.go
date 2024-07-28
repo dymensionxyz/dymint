@@ -15,7 +15,7 @@ import (
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	"github.com/dymensionxyz/cosmosclient/cosmosclient"
 	rollapptypes "github.com/dymensionxyz/dymension/v3/x/rollapp/types"
-	sequencertypes "github.com/dymensionxyz/dymension/v3/x/sequencer/types"
+	sequencertypes "github.com/dymensionxyz/dymint/third_party/dymension/sequencer/types"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/google/uuid"
 	"github.com/ignite/cli/ignite/pkg/cosmosaccount"
@@ -57,8 +57,8 @@ type Client struct {
 	sequencerQueryClient    sequencertypes.QueryClient
 	protoCodec              *codec.ProtoCodec
 	eventMap                map[string]string
-	sequencerList           []*settlement.Sequencer
-	proposer                *settlement.Sequencer
+	sequencerList           []settlement.Sequencer
+	proposer                settlement.Sequencer
 	retryAttempts           uint
 	retryMinDelay           time.Duration
 	retryMaxDelay           time.Duration
@@ -303,26 +303,51 @@ func (c *Client) GetHeightState(h uint64) (*settlement.ResultGetHeightState, err
 
 // GetProposer implements settlement.ClientI.
 func (c *Client) GetProposer() *settlement.Sequencer {
-	if c.proposer != nil {
-		return c.proposer
+	// return cached proposer
+	if c.proposer.SequencerAddress != "" {
+		return &c.proposer
 	}
 
-	seqs, err := c.GetSequencers()
-	if err != nil {
-		c.logger.Error("Get sequencers", "error", err)
-		return nil
-	}
-	for _, sequencer := range seqs {
-		if sequencer.Status == settlement.Proposer {
-			return sequencer
+	if len(c.sequencerList) == 0 {
+		_, err := c.GetSequencers()
+		if err != nil {
+			c.logger.Error("GetSequencers failed", "error", err)
+			return nil
 		}
 	}
+
+	var proposerAddr string
+	err := c.RunWithRetry(func() error {
+		reqProposer := &sequencertypes.QueryGetProposerByRollappRequest{
+			RollappId: c.config.RollappID,
+		}
+		res, err := c.sequencerQueryClient.GetProposerByRollapp(c.ctx, reqProposer)
+		// FIXME: handle notFound errors
+		if err != nil {
+			return err
+		}
+		proposerAddr = res.Proposer
+		return err
+	})
+	if err != nil {
+		c.logger.Error("GetProposer failed", "error", err)
+		return nil
+	}
+
+	for _, sequencer := range c.sequencerList {
+		if sequencer.SequencerAddress == proposerAddr {
+			c.proposer = sequencer
+			return &sequencer
+		}
+	}
+
 	return nil
 }
 
 // GetSequencers returns the bonded sequencers of the given rollapp.
-func (c *Client) GetSequencers() ([]*settlement.Sequencer, error) {
-	if c.sequencerList != nil {
+func (c *Client) GetSequencers() ([]settlement.Sequencer, error) {
+	// return cached sequencers
+	if len(c.sequencerList) > 0 {
 		return c.sequencerList, nil
 	}
 
@@ -331,6 +356,7 @@ func (c *Client) GetSequencers() ([]*settlement.Sequencer, error) {
 		RollappId: c.config.RollappID,
 		Status:    sequencertypes.Bonded,
 	}
+
 	err := c.RunWithRetry(func() error {
 		var err error
 		res, err = c.sequencerQueryClient.SequencersByRollappByStatus(c.ctx, req)
@@ -345,7 +371,6 @@ func (c *Client) GetSequencers() ([]*settlement.Sequencer, error) {
 		return nil, fmt.Errorf("empty response: %w", gerrc.ErrUnknown)
 	}
 
-	sequencersList := make([]*settlement.Sequencer, 0, len(res.Sequencers))
 	for _, sequencer := range res.Sequencers {
 		var pubKey cryptotypes.PubKey
 		err := c.protoCodec.UnpackAny(sequencer.DymintPubKey, &pubKey)
@@ -353,18 +378,50 @@ func (c *Client) GetSequencers() ([]*settlement.Sequencer, error) {
 			return nil, err
 		}
 
-		status := settlement.Inactive
-		if sequencer.Proposer {
-			status = settlement.Proposer
-		}
-
-		sequencersList = append(sequencersList, &settlement.Sequencer{
-			PublicKey: pubKey,
-			Status:    status,
+		c.sequencerList = append(c.sequencerList, settlement.Sequencer{
+			SequencerAddress: sequencer.SequencerAddress,
+			PublicKey:        pubKey,
 		})
 	}
-	c.sequencerList = sequencersList
-	return sequencersList, nil
+
+	return c.sequencerList, nil
+}
+
+// IsRotating implements settlement.ClientI.
+func (c *Client) IsRotating() *settlement.Sequencer {
+	var nextAddr string
+	err := c.RunWithRetry(func() error {
+		req := &sequencertypes.QueryGetNextProposerByRollappRequest{
+			RollappId: c.config.RollappID,
+		}
+		res, err := c.sequencerQueryClient.GetNextProposerByRollapp(c.ctx, req)
+		if err == nil {
+			nextAddr = res.NextProposer
+			return nil
+		}
+		// FIXME: change to type assertion
+		if strings.Contains(err.Error(), "not found") {
+			return nil
+		}
+
+		return err
+	})
+	if err != nil {
+		c.logger.Error("GetProposer failed", "error", err)
+		return nil
+	}
+
+	if nextAddr == "" {
+		return nil
+	}
+
+	for _, sequencer := range c.sequencerList {
+		if sequencer.SequencerAddress == nextAddr {
+			c.proposer = sequencer
+			return &sequencer
+		}
+	}
+	return nil
 }
 
 func (c *Client) broadcastBatch(msgUpdateState *rollapptypes.MsgUpdateState) error {

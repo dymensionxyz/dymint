@@ -162,4 +162,6 @@ func (e *Executor) UpdateValidatorsAfterCommit(s *types.State, block *types.Bloc
 	if err != nil {
 		panic(fmt.Sprintf("failed to update active sequencer: %v", err))
 	}
+
+	// FIXME: full node should change role to sequencer
 }

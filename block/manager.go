@@ -9,13 +9,13 @@ import (
 	"sync/atomic"
 
 	"code.cloudfoundry.org/go-diodes"
-	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/dymensionxyz/dymint/store"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
 
+	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	tmcrypto "github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/pubsub"
@@ -137,29 +137,22 @@ func (m *Manager) Start(ctx context.Context) error {
 		}
 	}
 
-	err := m.UpdateBondedSequencerSetFromSL()
-	if err != nil {
-		return fmt.Errorf("update bonded sequencer set: %w", err)
-	}
-
 	isSequencer := m.IsSequencer()
 	m.logger.Info("sequencer mode", "isSequencer", isSequencer)
-
-	// FIXME: check if we in the middle of rotation
 
 	if !isSequencer {
 		// Fullnode loop can start before syncing from DA
 		go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewNewGossipedBlock, m.onNewGossipedBlock, m.logger)
 	}
 
-	err = m.syncBlockManager()
+	err := m.syncBlockManager()
 	if err != nil {
 		return fmt.Errorf("sync block manager: %w", err)
 	}
 
-	rotateSequencerC := make(chan []byte)
 	eg, ctx := errgroup.WithContext(ctx)
 	if isSequencer {
+		rotateSequencerC := make(chan []byte, 1)
 		bytesProducedC := make(chan int)
 		// Sequencer must wait till DA is synced to start submitting blobs
 		<-m.DAClient.Synced()
@@ -167,6 +160,28 @@ func (m *Manager) Start(ctx context.Context) error {
 		go func() {
 			bytesProducedC <- nBytes
 		}()
+
+		proposer := m.SLClient.GetProposer()
+		next := m.SLClient.IsRotating()
+		// if next defined and it's not the same as the current proposer, start rotation
+		if next != nil && proposer.SequencerAddress != next.SequencerAddress {
+			val, err := next.TMValidator()
+			if err != nil {
+				return err
+			}
+
+			go func() {
+				err = m.CreateAndPostLastBatch(ctx, val.Address)
+				if err != nil {
+					m.logger.Error("Create and post last batch failed.", "error", err)
+				}
+
+				// FIXME: fallback to full node
+			}()
+
+			return nil
+
+		}
 
 		eg.Go(func() error {
 			return m.SubmitLoop(ctx, bytesProducedC)
@@ -197,7 +212,6 @@ func (m *Manager) Start(ctx context.Context) error {
 				return
 			}
 			m.logger.Info("Block manager err group finished.", "err", err)
-			return
 		}()
 	} else {
 		eg.Go(func() error {
@@ -250,11 +264,18 @@ func (m *Manager) UpdateBondedSequencerSetFromSL() error {
 	if len(newSet.Validators) != len(m.State.ActiveSequencer.BondedSet.Validators) {
 		m.State.ActiveSequencer.SetBondedSet(newSet)
 	}
+
+	m.logger.Debug("Updated bonded sequencer set", "newSet", newSet)
 	return nil
 }
 
 // syncBlockManager enforces the node to be synced on initial run.
 func (m *Manager) syncBlockManager() error {
+	err := m.UpdateBondedSequencerSetFromSL()
+	if err != nil {
+		return fmt.Errorf("update bonded sequencer set: %w", err)
+	}
+
 	res, err := m.SLClient.GetLatestBatch()
 	if errors.Is(err, gerrc.ErrNotFound) {
 		// The SL hasn't got any batches for this chain yet.

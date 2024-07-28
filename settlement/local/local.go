@@ -200,13 +200,17 @@ func (c *Client) GetProposer() *settlement.Sequencer {
 	var pubKey cryptotypes.PubKey = &ed25519.PubKey{Key: pubKeyBytes}
 	return &settlement.Sequencer{
 		PublicKey: pubKey,
-		Status:    settlement.Proposer,
 	}
 }
 
 // GetSequencers implements settlement.ClientI.
-func (c *Client) GetSequencers() ([]*settlement.Sequencer, error) {
-	return []*settlement.Sequencer{c.GetProposer()}, nil
+func (c *Client) GetSequencers() ([]settlement.Sequencer, error) {
+	return []settlement.Sequencer{*c.GetProposer()}, nil
+}
+
+// IsRotating implements settlement.ClientI.
+func (c *Client) IsRotating() *settlement.Sequencer {
+	return nil
 }
 
 func (c *Client) saveBatch(batch *settlement.Batch) error {
