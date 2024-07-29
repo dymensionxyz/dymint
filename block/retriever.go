@@ -162,7 +162,7 @@ func (m *Manager) fetchBatch(daMetaData *da.DASubmitMetaData) da.ResultRetrieveB
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
 				Message: fmt.Sprintf("DA client for the batch does not match node config: DA client batch: %s: DA client config: %s", daMetaData.Client, m.DAClient.GetClientType()),
-				Error:   ErrWrongDA,
+				Error:   da.ErrDANotMatching,
 			},
 		}
 	}

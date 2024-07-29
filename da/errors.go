@@ -21,4 +21,8 @@ var (
 	ErrProofNotMatching = errors.New("proof not matching")
 	// ErrNameSpace is returned when wrong namespace used
 	ErrNameSpace = errors.New("namespace not matching")
+
+	ErrDANotMatching = errors.New("DA in config not matching DA path")
+
+	ErrNonexistentDA = errors.New("nonexistent DA")
 )

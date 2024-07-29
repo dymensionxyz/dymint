@@ -47,7 +47,7 @@ func NewExecutor(localAddress []byte, chainID string, mempool mempool.Mempool, p
 // InitChain calls InitChainSync using consensus connection to app.
 func (e *Executor) InitChain(genesis *tmtypes.GenesisDoc, valset []*tmtypes.Validator) (*abci.ResponseInitChain, error) {
 	params := genesis.ConsensusParams
-	valUpates := abci.ValidatorUpdates{}
+	valUpdates := abci.ValidatorUpdates{}
 
 	// prepare the validator updates as expected by the ABCI app
 	for _, validator := range valset {
@@ -56,7 +56,7 @@ func (e *Executor) InitChain(genesis *tmtypes.GenesisDoc, valset []*tmtypes.Vali
 			return nil, err
 		}
 
-		valUpates = append(valUpates, abci.ValidatorUpdate{
+		valUpdates = append(valUpdates, abci.ValidatorUpdate{
 			PubKey: tmkey,
 			Power:  validator.VotingPower,
 		})
@@ -82,7 +82,7 @@ func (e *Executor) InitChain(genesis *tmtypes.GenesisDoc, valset []*tmtypes.Vali
 				AppVersion: params.Version.AppVersion,
 			},
 		},
-		Validators:    valUpates,
+		Validators:    valUpdates,
 		AppStateBytes: genesis.AppState,
 		InitialHeight: genesis.InitialHeight,
 	})

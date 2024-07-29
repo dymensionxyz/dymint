@@ -176,7 +176,7 @@ func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *d
 					c.logger.Debug("Received event for a different batch, ignoring.", "event", eventData)
 					continue // continue waiting for acceptance of the current batch
 				}
-				c.logger.Info("Batch accepted.", "startHeight", batch.StartHeight(), "endHeight", batch.EndHeight(), "stateIndex", eventData.StateIndex)
+				c.logger.Info("Batch accepted.", "startHeight", batch.StartHeight(), "endHeight", batch.EndHeight(), "stateIndex", eventData.StateIndex, "dapath", msgUpdateState.DAPath)
 				return nil
 
 			case <-timer.C:
