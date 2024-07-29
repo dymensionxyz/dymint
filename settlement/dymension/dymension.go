@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/avast/retry-go/v4"
-	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/codec"
 	cdctypes "github.com/cosmos/cosmos-sdk/codec/types"
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
@@ -20,14 +20,12 @@ import (
 	"github.com/google/uuid"
 	"github.com/ignite/cli/ignite/pkg/cosmosaccount"
 	"github.com/tendermint/tendermint/libs/pubsub"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
-	uevent "github.com/dymensionxyz/dymint/utils/event"
 )
 
 const (
@@ -36,10 +34,10 @@ const (
 	defaultGasLimit   = 300000
 )
 
-const (
-	eventStateUpdate          = "state_update.rollapp_id='%s' AND state_update.status='PENDING'"
-	eventSequencersListUpdate = "sequencers_list_update.rollapp_id='%s'"
-)
+// const (
+// 	eventStateUpdate          = "state_update.rollapp_id='%s' AND state_update.status='PENDING'"
+// 	eventSequencersListUpdate = "sequencers_list_update.rollapp_id='%s'"
+// )
 
 const (
 	postBatchSubscriberPrefix = "postBatchSubscriber"
@@ -52,7 +50,6 @@ type Client struct {
 	pubsub                  *pubsub.Server
 	cosmosClient            CosmosClient
 	ctx                     context.Context
-	cancel                  context.CancelFunc
 	rollappQueryClient      rollapptypes.QueryClient
 	sequencerQueryClient    sequencertypes.QueryClient
 	protoCodec              *codec.ProtoCodec
@@ -69,12 +66,6 @@ var _ settlement.ClientI = &Client{}
 
 // Init is called once. it initializes the struct members.
 func (c *Client) Init(config settlement.Config, pubsub *pubsub.Server, logger types.Logger, options ...settlement.Option) error {
-	ctx, cancel := context.WithCancel(context.Background())
-	eventMap := map[string]string{
-		fmt.Sprintf(eventStateUpdate, config.RollappID):          settlement.EventNewBatchAccepted,
-		fmt.Sprintf(eventSequencersListUpdate, config.RollappID): settlement.EventSequencersListUpdated,
-	}
-
 	interfaceRegistry := cdctypes.NewInterfaceRegistry()
 	cryptocodec.RegisterInterfaces(interfaceRegistry)
 	protoCodec := codec.NewProtoCodec(interfaceRegistry)
@@ -82,9 +73,7 @@ func (c *Client) Init(config settlement.Config, pubsub *pubsub.Server, logger ty
 	c.config = &config
 	c.logger = logger
 	c.pubsub = pubsub
-	c.ctx = ctx
-	c.cancel = cancel
-	c.eventMap = eventMap
+	c.ctx = context.Background()
 	c.protoCodec = protoCodec
 	c.retryAttempts = config.RetryAttempts
 	c.batchAcceptanceTimeout = config.BatchAcceptanceTimeout
@@ -99,7 +88,6 @@ func (c *Client) Init(config settlement.Config, pubsub *pubsub.Server, logger ty
 
 	if c.cosmosClient == nil {
 		client, err := cosmosclient.New(
-			ctx,
 			getCosmosClientOptions(&config)...,
 		)
 		if err != nil {
@@ -125,12 +113,7 @@ func (c *Client) Start() error {
 
 // Stop stops the HubClient.
 func (c *Client) Stop() error {
-	c.cancel()
-	err := c.cosmosClient.StopEventListener()
-	if err != nil {
-		return err
-	}
-
+	c.cosmosClient.StopEventListener()
 	return nil
 }
 
@@ -373,39 +356,10 @@ func (c *Client) broadcastBatch(msgUpdateState *rollapptypes.MsgUpdateState) err
 	if txResp.Code != 0 {
 		return fmt.Errorf("broadcast tx status code is not 0: %w", gerrc.ErrUnknown)
 	}
+
+	c.logger.Info("Broadcasted batch", "txHash", txResp.TxHash)
+
 	return nil
-}
-
-func (c *Client) eventHandler() {
-	// TODO(omritoptix): eventsChannel should be a generic channel which is later filtered by the event type.
-	subscriber := fmt.Sprintf("dymension-client-%s", uuid.New().String())
-	eventsChannel, err := c.cosmosClient.SubscribeToEvents(c.ctx, subscriber, fmt.Sprintf(eventStateUpdate, c.config.RollappID), 1000)
-	if err != nil {
-		panic("Error subscribing to events")
-	}
-	// TODO: add defer unsubscribeAll
-
-	for {
-		select {
-		case <-c.ctx.Done():
-			return
-		case <-c.cosmosClient.EventListenerQuit():
-			// TODO(omritoptix): Fallback to polling
-			panic("Settlement WS disconnected")
-		case event := <-eventsChannel:
-			// Assert value is in map and publish it to the event bus
-			data, ok := c.eventMap[event.Query]
-			if !ok {
-				c.logger.Debug("Ignoring event. Type not supported", "event", event)
-				continue
-			}
-			eventData, err := c.getEventData(data, event)
-			if err != nil {
-				panic(err)
-			}
-			uevent.MustPublish(c.ctx, c.pubsub, eventData, map[string][]string{settlement.EventTypeKey: {data}})
-		}
-	}
 }
 
 func (c *Client) convertBatchToMsgUpdateState(batch *types.Batch, daResult *da.ResultSubmitBatch) (*rollapptypes.MsgUpdateState, error) {
@@ -446,10 +400,9 @@ func getCosmosClientOptions(config *settlement.Config) []cosmosclient.Option {
 	}
 	options := []cosmosclient.Option{
 		cosmosclient.WithAddressPrefix(addressPrefix),
-		cosmosclient.WithBroadcastMode(flags.BroadcastSync),
 		cosmosclient.WithNodeAddress(config.NodeAddress),
 		cosmosclient.WithFees(config.GasFees),
-		cosmosclient.WithGasLimit(config.GasLimit),
+		cosmosclient.WithGas(strconv.FormatUint(config.GasLimit, 10)),
 		cosmosclient.WithGasPrices(config.GasPrices),
 	}
 	if config.KeyringHomeDir != "" {
@@ -459,14 +412,6 @@ func getCosmosClientOptions(config *settlement.Config) []cosmosclient.Option {
 		)
 	}
 	return options
-}
-
-func (c *Client) getEventData(eventType string, rawEventData ctypes.ResultEvent) (interface{}, error) {
-	switch eventType {
-	case settlement.EventNewBatchAccepted:
-		return convertToNewBatchEvent(rawEventData)
-	}
-	return nil, fmt.Errorf("event type %s not recognized", eventType)
 }
 
 // pollForBatchInclusion polls the hub for the inclusion of a batch with the given end height.

@@ -11,7 +11,7 @@ require (
 	github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.12
 	github.com/cosmos/cosmos-sdk v0.46.16
 	github.com/dgraph-io/badger/v3 v3.2103.3
-	github.com/dymensionxyz/cosmosclient v0.4.2-beta
+	github.com/dymensionxyz/cosmosclient v0.4.2-beta.0.20240729145920-be78afb42276
 	github.com/dymensionxyz/dymension/v3 v3.1.0-rc03.0.20240411195658-f7cd96f53b56
 	github.com/dymensionxyz/gerr-cosmos v1.0.0
 	github.com/go-kit/kit v0.12.0

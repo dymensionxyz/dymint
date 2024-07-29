@@ -1,15 +1,10 @@
 package dymension
 
 import (
-	"fmt"
-	"strconv"
-
 	"github.com/avast/retry-go/v4"
 	rollapptypes "github.com/dymensionxyz/dymension/v3/x/rollapp/types"
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/settlement"
-	"github.com/hashicorp/go-multierror"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 )
 
 // RunWithRetry runs the given operation with retry, doing a number of attempts, and taking the last
@@ -53,30 +48,4 @@ func convertStateInfoToResultRetrieveBatch(stateInfo *rollapptypes.StateInfo) (*
 		ResultBase: settlement.ResultBase{Code: settlement.StatusSuccess, StateIndex: stateInfo.StateInfoIndex.Index},
 		Batch:      batchResult,
 	}, nil
-}
-
-func convertToNewBatchEvent(rawEventData ctypes.ResultEvent) (*settlement.EventDataNewBatchAccepted, error) {
-	// check all expected attributes  exists
-	events := rawEventData.Events
-	if events["state_update.num_blocks"] == nil || events["state_update.start_height"] == nil || events["state_update.state_info_index"] == nil {
-		return nil, fmt.Errorf("missing expected attributes in event")
-	}
-
-	var multiErr *multierror.Error
-	numBlocks, err := strconv.ParseInt(rawEventData.Events["state_update.num_blocks"][0], 10, 64)
-	multiErr = multierror.Append(multiErr, err)
-	startHeight, err := strconv.ParseInt(rawEventData.Events["state_update.start_height"][0], 10, 64)
-	multiErr = multierror.Append(multiErr, err)
-	stateIndex, err := strconv.ParseInt(rawEventData.Events["state_update.state_info_index"][0], 10, 64)
-	multiErr = multierror.Append(multiErr, err)
-	err = multiErr.ErrorOrNil()
-	if err != nil {
-		return nil, multiErr
-	}
-	endHeight := uint64(startHeight + numBlocks - 1)
-	NewBatchEvent := &settlement.EventDataNewBatchAccepted{
-		EndHeight:  endHeight,
-		StateIndex: uint64(stateIndex),
-	}
-	return NewBatchEvent, nil
 }
