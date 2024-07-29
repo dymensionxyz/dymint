@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/avast/retry-go/v4"
-	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/codec"
 	cdctypes "github.com/cosmos/cosmos-sdk/codec/types"
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
@@ -45,7 +45,6 @@ type Client struct {
 	pubsub                  *pubsub.Server
 	cosmosClient            CosmosClient
 	ctx                     context.Context
-	cancel                  context.CancelFunc
 	rollappQueryClient      rollapptypes.QueryClient
 	sequencerQueryClient    sequencertypes.QueryClient
 	protoCodec              *codec.ProtoCodec
@@ -62,8 +61,6 @@ var _ settlement.ClientI = &Client{}
 
 // Init is called once. it initializes the struct members.
 func (c *Client) Init(config settlement.Config, pubsub *pubsub.Server, logger types.Logger, options ...settlement.Option) error {
-	ctx, cancel := context.WithCancel(context.Background())
-
 	interfaceRegistry := cdctypes.NewInterfaceRegistry()
 	cryptocodec.RegisterInterfaces(interfaceRegistry)
 	protoCodec := codec.NewProtoCodec(interfaceRegistry)
@@ -71,8 +68,7 @@ func (c *Client) Init(config settlement.Config, pubsub *pubsub.Server, logger ty
 	c.config = &config
 	c.logger = logger
 	c.pubsub = pubsub
-	c.ctx = ctx
-	c.cancel = cancel
+	c.ctx = context.Background()
 	c.protoCodec = protoCodec
 	c.retryAttempts = config.RetryAttempts
 	c.batchAcceptanceTimeout = config.BatchAcceptanceTimeout
@@ -87,7 +83,7 @@ func (c *Client) Init(config settlement.Config, pubsub *pubsub.Server, logger ty
 
 	if c.cosmosClient == nil {
 		client, err := cosmosclient.New(
-			ctx,
+			c.ctx,
 			getCosmosClientOptions(&config)...,
 		)
 		if err != nil {
@@ -113,12 +109,7 @@ func (c *Client) Start() error {
 
 // Stop stops the HubClient.
 func (c *Client) Stop() error {
-	c.cancel()
-	err := c.cosmosClient.StopEventListener()
-	if err != nil {
-		return err
-	}
-
+	c.cosmosClient.StopEventListener()
 	return nil
 }
 
@@ -422,6 +413,9 @@ func (c *Client) broadcastBatch(msgUpdateState *rollapptypes.MsgUpdateState) err
 	if txResp.Code != 0 {
 		return fmt.Errorf("broadcast tx status code is not 0: %w", gerrc.ErrUnknown)
 	}
+
+	c.logger.Info("Broadcasted batch", "txHash", txResp.TxHash)
+
 	return nil
 }
 
@@ -463,10 +457,9 @@ func getCosmosClientOptions(config *settlement.Config) []cosmosclient.Option {
 	}
 	options := []cosmosclient.Option{
 		cosmosclient.WithAddressPrefix(addressPrefix),
-		cosmosclient.WithBroadcastMode(flags.BroadcastSync),
 		cosmosclient.WithNodeAddress(config.NodeAddress),
 		cosmosclient.WithFees(config.GasFees),
-		cosmosclient.WithGasLimit(config.GasLimit),
+		cosmosclient.WithGas(strconv.FormatUint(config.GasLimit, 10)),
 		cosmosclient.WithGasPrices(config.GasPrices),
 	}
 	if config.KeyringHomeDir != "" {
