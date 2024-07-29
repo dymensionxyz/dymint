@@ -47,7 +47,7 @@ func NewExecutor(localAddress []byte, chainID string, mempool mempool.Mempool, p
 // InitChain calls InitChainSync using consensus connection to app.
 func (e *Executor) InitChain(genesis *tmtypes.GenesisDoc, validators []*tmtypes.Validator) (*abci.ResponseInitChain, error) {
 	params := genesis.ConsensusParams
-	valUpates := abci.ValidatorUpdates{}
+	valUpdates := abci.ValidatorUpdates{}
 
 	for _, validator := range validators {
 		tmkey, err := tmcrypto.PubKeyToProto(validator.PubKey)
@@ -55,7 +55,7 @@ func (e *Executor) InitChain(genesis *tmtypes.GenesisDoc, validators []*tmtypes.
 			return nil, err
 		}
 
-		valUpates = append(valUpates, abci.ValidatorUpdate{
+		valUpdates = append(valUpdates, abci.ValidatorUpdate{
 			PubKey: tmkey,
 			Power:  validator.VotingPower,
 		})
@@ -81,7 +81,7 @@ func (e *Executor) InitChain(genesis *tmtypes.GenesisDoc, validators []*tmtypes.
 				AppVersion: params.Version.AppVersion,
 			},
 		},
-		Validators:    valUpates,
+		Validators:    valUpdates,
 		AppStateBytes: genesis.AppState,
 		InitialHeight: genesis.InitialHeight,
 	})
