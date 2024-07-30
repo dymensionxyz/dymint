@@ -247,23 +247,23 @@ func (_c *MockClientI_GetProposer_Call) RunAndReturn(run func() *settlement.Sequ
 }
 
 // GetSequencers provides a mock function with given fields:
-func (_m *MockClientI) GetSequencers() ([]*settlement.Sequencer, error) {
+func (_m *MockClientI) GetSequencers() ([]settlement.Sequencer, error) {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetSequencers")
 	}
 
-	var r0 []*settlement.Sequencer
+	var r0 []settlement.Sequencer
 	var r1 error
-	if rf, ok := ret.Get(0).(func() ([]*settlement.Sequencer, error)); ok {
+	if rf, ok := ret.Get(0).(func() ([]settlement.Sequencer, error)); ok {
 		return rf()
 	}
-	if rf, ok := ret.Get(0).(func() []*settlement.Sequencer); ok {
+	if rf, ok := ret.Get(0).(func() []settlement.Sequencer); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*settlement.Sequencer)
+			r0 = ret.Get(0).([]settlement.Sequencer)
 		}
 	}
 
@@ -293,12 +293,12 @@ func (_c *MockClientI_GetSequencers_Call) Run(run func()) *MockClientI_GetSequen
 	return _c
 }
 
-func (_c *MockClientI_GetSequencers_Call) Return(_a0 []*settlement.Sequencer, _a1 error) *MockClientI_GetSequencers_Call {
+func (_c *MockClientI_GetSequencers_Call) Return(_a0 []settlement.Sequencer, _a1 error) *MockClientI_GetSequencers_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockClientI_GetSequencers_Call) RunAndReturn(run func() ([]*settlement.Sequencer, error)) *MockClientI_GetSequencers_Call {
+func (_c *MockClientI_GetSequencers_Call) RunAndReturn(run func() ([]settlement.Sequencer, error)) *MockClientI_GetSequencers_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -362,6 +362,53 @@ func (_c *MockClientI_Init_Call) Return(_a0 error) *MockClientI_Init_Call {
 }
 
 func (_c *MockClientI_Init_Call) RunAndReturn(run func(settlement.Config, *pubsub.Server, types.Logger, ...settlement.Option) error) *MockClientI_Init_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// IsRotating provides a mock function with given fields:
+func (_m *MockClientI) IsRotating() *settlement.Sequencer {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for IsRotating")
+	}
+
+	var r0 *settlement.Sequencer
+	if rf, ok := ret.Get(0).(func() *settlement.Sequencer); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*settlement.Sequencer)
+		}
+	}
+
+	return r0
+}
+
+// MockClientI_IsRotating_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IsRotating'
+type MockClientI_IsRotating_Call struct {
+	*mock.Call
+}
+
+// IsRotating is a helper method to define mock.On call
+func (_e *MockClientI_Expecter) IsRotating() *MockClientI_IsRotating_Call {
+	return &MockClientI_IsRotating_Call{Call: _e.mock.On("IsRotating")}
+}
+
+func (_c *MockClientI_IsRotating_Call) Run(run func()) *MockClientI_IsRotating_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockClientI_IsRotating_Call) Return(_a0 *settlement.Sequencer) *MockClientI_IsRotating_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClientI_IsRotating_Call) RunAndReturn(run func() *settlement.Sequencer) *MockClientI_IsRotating_Call {
 	_c.Call.Return(run)
 	return _c
 }

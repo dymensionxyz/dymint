@@ -17,7 +17,7 @@ import (
 
 	rollapptypes "github.com/dymensionxyz/dymension/v3/x/rollapp/types"
 
-	sequencertypes "github.com/dymensionxyz/dymension/v3/x/sequencer/types"
+	sequencertypes "github.com/dymensionxyz/dymint/third_party/dymension/sequencer/types"
 
 	types "github.com/cosmos/cosmos-sdk/types"
 )
@@ -509,6 +509,53 @@ func (_c *MockCosmosClient_SubscribeToEvents_Call) Return(out <-chan coretypes.R
 }
 
 func (_c *MockCosmosClient_SubscribeToEvents_Call) RunAndReturn(run func(context.Context, string, string, ...int) (<-chan coretypes.ResultEvent, error)) *MockCosmosClient_SubscribeToEvents_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// UnsubscribeAll provides a mock function with given fields: ctx, subscriber
+func (_m *MockCosmosClient) UnsubscribeAll(ctx context.Context, subscriber string) error {
+	ret := _m.Called(ctx, subscriber)
+
+	if len(ret) == 0 {
+		panic("no return value specified for UnsubscribeAll")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(context.Context, string) error); ok {
+		r0 = rf(ctx, subscriber)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockCosmosClient_UnsubscribeAll_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UnsubscribeAll'
+type MockCosmosClient_UnsubscribeAll_Call struct {
+	*mock.Call
+}
+
+// UnsubscribeAll is a helper method to define mock.On call
+//   - ctx context.Context
+//   - subscriber string
+func (_e *MockCosmosClient_Expecter) UnsubscribeAll(ctx interface{}, subscriber interface{}) *MockCosmosClient_UnsubscribeAll_Call {
+	return &MockCosmosClient_UnsubscribeAll_Call{Call: _e.mock.On("UnsubscribeAll", ctx, subscriber)}
+}
+
+func (_c *MockCosmosClient_UnsubscribeAll_Call) Run(run func(ctx context.Context, subscriber string)) *MockCosmosClient_UnsubscribeAll_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string))
+	})
+	return _c
+}
+
+func (_c *MockCosmosClient_UnsubscribeAll_Call) Return(_a0 error) *MockCosmosClient_UnsubscribeAll_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockCosmosClient_UnsubscribeAll_Call) RunAndReturn(run func(context.Context, string) error) *MockCosmosClient_UnsubscribeAll_Call {
 	_c.Call.Return(run)
 	return _c
 }
