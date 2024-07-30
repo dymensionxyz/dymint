@@ -469,7 +469,7 @@ func TestDAFetch(t *testing.T) {
 			manager:    manager,
 			daMetaData: &da.DASubmitMetaData{Client: da.Celestia, Height: daResultSubmitBatch.SubmitMetaData.Height},
 			batch:      batch,
-			err:        block.ErrWrongDA,
+			err:        da.ErrDANotMatching,
 		},
 	}
 
