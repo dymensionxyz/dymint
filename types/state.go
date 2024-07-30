@@ -60,8 +60,3 @@ func (s *State) NextHeight() uint64 {
 	}
 	return s.Height() + 1
 }
-
-// // get proposer pubkey
-// func (s *State) GetProposerPubKey() []byte {
-// 	return s.ActiveSequencer.GetProposerPubKey().Bytes()
-// }

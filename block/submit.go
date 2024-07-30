@@ -82,7 +82,6 @@ func SubmitLoopInner(ctx context.Context,
 	})
 
 	eg.Go(func() error {
-		// FIXME: add case for lastBlock
 		// 'submitter': this thread actually creates and submits batches
 		timeLastSubmission := time.Now()
 		for {

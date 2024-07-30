@@ -109,8 +109,7 @@ func (c *Client) Start() error {
 
 // Stop stops the HubClient.
 func (c *Client) Stop() error {
-	c.cosmosClient.StopEventListener()
-	return nil
+	return c.cosmosClient.StopEventListener()
 }
 
 // SubmitBatch posts a batch to the Dymension Hub. it tries to post the batch until it is accepted by the settlement layer.
@@ -365,8 +364,8 @@ func (c *Client) GetSequencers() ([]settlement.Sequencer, error) {
 	return c.sequencerList, nil
 }
 
-// IsRotating implements settlement.ClientI.
-func (c *Client) IsRotating() *settlement.Sequencer {
+// GetNextProposer implements settlement.ClientI.
+func (c *Client) GetNextProposer() *settlement.Sequencer {
 	var nextAddr string
 	err := c.RunWithRetry(func() error {
 		req := &sequencertypes.QueryGetNextProposerByRollappRequest{

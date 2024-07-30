@@ -208,8 +208,8 @@ func (c *Client) GetSequencers() ([]settlement.Sequencer, error) {
 	return []settlement.Sequencer{*c.GetProposer()}, nil
 }
 
-// IsRotating implements settlement.ClientI.
-func (c *Client) IsRotating() *settlement.Sequencer {
+// GetNextProposer implements settlement.ClientI.
+func (c *Client) GetNextProposer() *settlement.Sequencer {
 	return nil
 }
 

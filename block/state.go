@@ -149,7 +149,7 @@ func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResp
 }
 
 // Update validators post commit
-func (e *Executor) UpdateValidatorsAfterCommit(s *types.State, block *types.Block) {
+func (e *Executor) UpdateStateWithValidatorsSet(s *types.State, block *types.Block) {
 	// no sequencer change
 	if bytes.Equal(s.ActiveSequencer.ProposerHash[:], block.Header.NextSequencersHash[:]) {
 		return

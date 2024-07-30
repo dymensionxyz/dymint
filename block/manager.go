@@ -1,7 +1,6 @@
 package block
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -15,7 +14,6 @@ import (
 	"github.com/dymensionxyz/dymint/store"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
 
-	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	tmcrypto "github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/pubsub"
@@ -127,7 +125,7 @@ func NewManager(
 
 // Start starts the block manager.
 func (m *Manager) Start(ctx context.Context) error {
-	m.logger.Info("Starting block manager")
+	m.logger.Debug("Starting block manager")
 
 	// Check if InitChain flow is needed
 	if m.State.IsGenesis() {
@@ -142,83 +140,16 @@ func (m *Manager) Start(ctx context.Context) error {
 	isSequencer := m.IsSequencer()
 	m.logger.Info("sequencer mode", "isSequencer", isSequencer)
 
+	eg, ctx := errgroup.WithContext(ctx)
 	if !isSequencer {
 		// Fullnode loop can start before syncing from DA
 		go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewNewGossipedBlock, m.onNewGossipedBlock, m.logger)
-	}
 
-	err := m.syncBlockManager()
-	if err != nil {
-		return fmt.Errorf("sync block manager: %w", err)
-	}
-
-	eg, ctx := errgroup.WithContext(ctx)
-	if isSequencer {
-		rotateSequencerC := make(chan []byte, 1)
-		bytesProducedC := make(chan int)
-		// Sequencer must wait till DA is synced to start submitting blobs
-		<-m.DAClient.Synced()
-		nBytes := m.GetUnsubmittedBytes()
-		go func() {
-			bytesProducedC <- nBytes
-		}()
-
-		// check if sequencer in the middle of rotation
-		proposer := m.SLClient.GetProposer()
-		next := m.SLClient.IsRotating()
-		// if next defined and it's not the same as the current proposer, start rotation
-		if next != nil && proposer.SequencerAddress != next.SequencerAddress {
-			val, err := next.TMValidator()
-			if err != nil {
-				return err
-			}
-
-			go func() {
-				err = m.CreateAndPostLastBatch(ctx, val.Address)
-				if err != nil {
-					m.logger.Error("Create and post last batch failed.", "error", err)
-				}
-
-				// FIXME: fallback to full node
-			}()
-
-			return nil
-
+		err := m.syncBlockManager()
+		if err != nil {
+			return fmt.Errorf("sync block manager: %w", err)
 		}
 
-		eg.Go(func() error {
-			return m.SubmitLoop(ctx, bytesProducedC)
-		})
-		eg.Go(func() error {
-			return m.ProduceBlockLoop(ctx, bytesProducedC)
-		})
-		eg.Go(func() error {
-			rotateSequencerC <- m.MonitorSequencerRotation(ctx)
-			return fmt.Errorf("sequencer rotation started")
-		})
-
-		go func() {
-			err := eg.Wait()
-
-			// Check if sequencer needs to complete rotation
-			var nextSeqAddr []byte
-			select {
-			case nextSeqAddr = <-rotateSequencerC:
-			default:
-			}
-			// Check if sequencer needs to complete rotation
-			if len(nextSeqAddr) > 0 {
-				m.logger.Info("Sequencer rotation started. Production stopped on this sequencer", "nextSeqAddr", nextSeqAddr)
-				err := m.CreateAndPostLastBatch(ctx, nextSeqAddr)
-				if err != nil {
-					m.logger.Error("Create and post last batch failed.", "error", err)
-				}
-				// FIXME: fallback to full node
-				return
-			}
-			m.logger.Info("Block manager err group finished.", "err", err)
-		}()
-	} else {
 		eg.Go(func() error {
 			return m.RetrieveLoop(ctx)
 		})
@@ -229,49 +160,82 @@ func (m *Manager) Start(ctx context.Context) error {
 			err := eg.Wait()
 			m.logger.Info("Block manager err group finished.", "err", err)
 		}()
+		return nil
 	}
 
-	return nil
-}
-
-func (m *Manager) IsSequencer() bool {
-	expectedProposer := m.GetProposerPubKey().Bytes()
-	localProposerKey, _ := m.LocalKey.GetPublic().Raw() //already validated on manager creation
-	return bytes.Equal(expectedProposer, localProposerKey)
-}
-
-func (m *Manager) NextHeightToSubmit() uint64 {
-	return m.LastSubmittedHeight.Load() + 1
-}
-
-// add bonded sequencers to the seqSet without changing the proposer
-func (m *Manager) UpdateBondedSequencerSetFromSL() error {
-	seqs, err := m.SLClient.GetSequencers()
+	/* ----------------------------- sequencer mode ----------------------------- */
+	err := m.syncBlockManager()
 	if err != nil {
-		return err
+		return fmt.Errorf("sync block manager: %w", err)
 	}
-	newSet := m.State.ActiveSequencer.BondedSet.Copy()
-	for _, seq := range seqs {
-		tmPubKey, err := cryptocodec.ToTmPubKeyInterface(seq.PublicKey)
+
+	// Sequencer must wait till DA is synced to start submitting blobs
+	<-m.DAClient.Synced()
+
+	// check if sequencer in the middle of rotation
+	if m.MissingLastBatch() {
+		next := m.SLClient.GetNextProposer()
+		val, err := next.TMValidator()
 		if err != nil {
 			return err
 		}
-		val := tmtypes.NewValidator(tmPubKey, 1)
 
-		// check if not exists already
-		if newSet.HasAddress(val.Address) {
-			continue
+		go func() {
+			err = m.CompleteRotation(ctx, val.Address)
+			if err != nil {
+				panic(err)
+			}
+			// TODO: graceful fallback to full node
+			panic("sequencer is no longer the proposer")
+		}()
+		return nil
+	}
+
+	// populate the bytes produced channel
+	bytesProducedC := make(chan int)
+	nBytes := m.GetUnsubmittedBytes()
+	go func() {
+		bytesProducedC <- nBytes
+	}()
+
+	rotateSequencerC := make(chan []byte, 1)
+
+	eg.Go(func() error {
+		return m.SubmitLoop(ctx, bytesProducedC)
+	})
+	eg.Go(func() error {
+		return m.ProduceBlockLoop(ctx, bytesProducedC)
+	})
+	eg.Go(func() error {
+		rotateSequencerC <- m.MonitorSequencerRotation(ctx)
+		return fmt.Errorf("sequencer rotation started. signal to stop production")
+	})
+
+	go func() {
+		err := eg.Wait()
+
+		// Check if exited due to sequencer rotation signal
+		select {
+		case nextSeqAddr := <-rotateSequencerC:
+			m.logger.Info("Sequencer rotation started. Production stopped on this sequencer", "nextSeqAddr", nextSeqAddr)
+			err := m.CompleteRotation(ctx, nextSeqAddr)
+			if err != nil {
+				panic(err)
+			}
+			// TODO: graceful fallback to full node
+			panic("sequencer is no longer the proposer")
+		default:
+			m.logger.Info("Block manager err group finished.", "err", err)
 		}
+	}()
 
-		newSet.Validators = append(newSet.Validators, val)
-	}
-	// update state on changes
-	if len(newSet.Validators) != len(m.State.ActiveSequencer.BondedSet.Validators) {
-		m.State.ActiveSequencer.SetBondedSet(newSet)
-	}
-
-	m.logger.Debug("Updated bonded sequencer set", "newSet", newSet)
 	return nil
+}
+
+// check if last batch needed
+
+func (m *Manager) NextHeightToSubmit() uint64 {
+	return m.LastSubmittedHeight.Load() + 1
 }
 
 // syncBlockManager enforces the node to be synced on initial run.

@@ -41,7 +41,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		if err != nil {
 			return fmt.Errorf("update state from app: %w", err)
 		}
-		m.logger.Debug("updated state from app commit", "height", block.Header.Height)
+		m.logger.Info("updated state from app commit", "height", block.Header.Height)
 	} else {
 		var appHash []byte
 		// Start applying the block assuming no inconsistency was found.
@@ -75,7 +75,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	}
 
 	// update validators to state from block
-	m.Executor.UpdateValidatorsAfterCommit(m.State, block)
+	m.Executor.UpdateStateWithValidatorsSet(m.State, block)
 
 	// save validators to store to be queried over RPC
 	batch := m.Store.NewBatch()

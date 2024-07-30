@@ -47,8 +47,6 @@ func (c *Client) eventHandler() {
 		fmt.Sprintf(eventSequencersListUpdate, c.config.RollappID),
 		fmt.Sprintf(eventRotationStarted, c.config.RollappID))
 
-	combinedEventQuery = fmt.Sprintf(eventStateUpdate, c.config.RollappID)
-
 	eventsChannel, err := c.cosmosClient.SubscribeToEvents(c.ctx, subscriber, combinedEventQuery, 1000)
 	if err != nil {
 		panic("Error subscribing to events")
@@ -61,7 +59,7 @@ func (c *Client) eventHandler() {
 			return
 		case <-c.cosmosClient.EventListenerQuit():
 			// TODO(omritoptix): Fallback to polling
-			panic("Settlement WS disconnected")
+			return
 		case event := <-eventsChannel:
 			// Assert value is in map and publish it to the event bus
 			data, ok := eventMap[event.Query]

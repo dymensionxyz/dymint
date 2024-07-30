@@ -1,14 +1,17 @@
 package block
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 
+	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/google/uuid"
+	tmtypes "github.com/tendermint/tendermint/types"
 )
 
 func (m *Manager) MonitorSequencerRotation(ctx context.Context) []byte {
@@ -30,6 +33,22 @@ func (m *Manager) MonitorSequencerRotation(ctx context.Context) []byte {
 			return []byte(nextSeq)
 		}
 	}
+}
+
+// In case of sequencer rotation, there's a phase where proposer rotated on L2 but hasn't yet rotated on hub.
+// for this case, the old proposer counted as "sequencer" as well, so he'll be able to submit blocks.
+func (m *Manager) IsSequencer() bool {
+	localProposerKey, _ := m.LocalKey.GetPublic().Raw()
+	l2Proposer := m.GetProposerPubKey().Bytes()
+	expectedHubProposer := m.SLClient.GetProposer().PublicKey.Bytes()
+	return bytes.Equal(l2Proposer, localProposerKey) || bytes.Equal(expectedHubProposer, localProposerKey)
+}
+
+// check rotation in progress (I'm the proposer, but needs to complete rotation)
+func (m *Manager) MissingLastBatch() bool {
+	localProposerKey, _ := m.LocalKey.GetPublic().Raw()
+	expectedHubProposer := m.SLClient.GetProposer().PublicKey.Bytes()
+	return m.SLClient.GetNextProposer() != nil && bytes.Equal(expectedHubProposer, localProposerKey)
 }
 
 func (m *Manager) GetPreviousBlockHashes(forHeight uint64) (lastHeaderHash [32]byte, lastCommit *types.Commit, err error) {
@@ -80,6 +99,17 @@ func (m *Manager) produceLastBlock(nextSeqAddrHash []byte) (*types.Block, *types
 	return block, commit, nil
 }
 
+// complete rotation
+func (m *Manager) CompleteRotation(ctx context.Context, nextSeqAddr []byte) error {
+	err := m.CreateAndPostLastBatch(ctx, nextSeqAddr)
+	if err != nil {
+		return fmt.Errorf("create and post last batch: %w", err)
+	}
+
+	m.logger.Info("Sequencer rotation completed. sequencer is no longer the proposer", "nextSeqAddr", nextSeqAddr)
+	return nil
+}
+
 func (m *Manager) CreateAndPostLastBatch(ctx context.Context, nextSeq []byte) error {
 	// validate nextSeq is in the bonded set
 	_, val := m.State.ActiveSequencer.BondedSet.GetByAddress(nextSeq)
@@ -88,14 +118,62 @@ func (m *Manager) CreateAndPostLastBatch(ctx context.Context, nextSeq []byte) er
 	}
 	nextSeqHash := types.GetHash(val)
 
-	//FIXME: submit all data accumulated thus far
-
-	_, _, err := m.ProduceApplyGossipLastBlock(ctx, nextSeqHash)
-	if errors.Is(err, context.Canceled) {
-		m.logger.Error("Produce and gossip: context canceled.", "error", err)
-		return nil
+	//check if the last block is already produced
+	// if so, the active validator set is already updated
+	if bytes.Equal(m.State.ActiveSequencer.ProposerHash, nextSeqHash) {
+		m.logger.Debug("Last block already produced. Skipping.")
+	} else {
+		_, _, err := m.ProduceApplyGossipLastBlock(ctx, nextSeqHash)
+		if err != nil {
+			return fmt.Errorf("produce apply gossip last block: %w", err)
+		}
 	}
 
-	// FIXME: submit batch
-	return err
+	// Submit all data accumulated thus far
+	for {
+		b, err := m.CreateBatch(m.Conf.BatchMaxSizeBytes, m.NextHeightToSubmit(), m.State.Height())
+		if err != nil {
+			return fmt.Errorf("create batch: %w", err)
+		}
+
+		if err := m.SubmitBatch(b); err != nil {
+			return fmt.Errorf("submit batch: %w", err)
+		}
+
+		if m.State.Height() == b.EndHeight() {
+			break
+		}
+	}
+
+	return nil
+}
+
+// add bonded sequencers to the seqSet without changing the proposer
+func (m *Manager) UpdateBondedSequencerSetFromSL() error {
+	seqs, err := m.SLClient.GetSequencers()
+	if err != nil {
+		return err
+	}
+	newSet := m.State.ActiveSequencer.BondedSet.Copy()
+	for _, seq := range seqs {
+		tmPubKey, err := cryptocodec.ToTmPubKeyInterface(seq.PublicKey)
+		if err != nil {
+			return err
+		}
+		val := tmtypes.NewValidator(tmPubKey, 1)
+
+		// check if not exists already
+		if newSet.HasAddress(val.Address) {
+			continue
+		}
+
+		newSet.Validators = append(newSet.Validators, val)
+	}
+	// update state on changes
+	if len(newSet.Validators) != len(m.State.ActiveSequencer.BondedSet.Validators) {
+		m.State.ActiveSequencer.SetBondedSet(newSet)
+	}
+
+	m.logger.Debug("Updated bonded sequencer set", "newSet", newSet)
+	return nil
 }

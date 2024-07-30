@@ -119,6 +119,8 @@ func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHead
 	}
 	copy(block.Header.LastCommitHash[:], types.GetLastCommitHash(lastCommit, &block.Header))
 	copy(block.Header.DataHash[:], types.GetDataHash(block))
+	// we set the proposer hash in the block by default
+	// when rotating, this will be overwritten
 	copy(block.Header.NextSequencersHash[:], state.ActiveSequencer.ProposerHash)
 
 	return block

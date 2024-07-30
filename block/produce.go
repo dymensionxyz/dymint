@@ -37,7 +37,6 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int)
 
 	for {
 		select {
-		// FIXME: ADD channel for last block
 		case <-ctx.Done():
 			return nil
 		case <-ticker.C:

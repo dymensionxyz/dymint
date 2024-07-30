@@ -81,7 +81,7 @@ type ClientI interface {
 	// GetProposer returns the current proposer for this chain.
 	GetProposer() *Sequencer
 	// GetNextProposer returns the current proposer for this chain.
-	IsRotating() *Sequencer
+	GetNextProposer() *Sequencer
 
 	GetHeightState(uint64) (*ResultGetHeightState, error)
 }
