@@ -101,7 +101,7 @@ func (m *Manager) ProduceApplyGossipLastBlock(ctx context.Context, nextSeqAddr [
 		return nil, nil, fmt.Errorf("produce block: %w", err)
 	}
 
-	if err := m.applyBlock(block, commit, blockMetaData{source: producedBlock}); err != nil {
+	if err := m.applyBlock(block, commit, types.BlockMetaData{Source: types.ProducedBlock}); err != nil {
 		return nil, nil, fmt.Errorf("apply block: %w: %w", err, ErrNonRecoverable)
 	}
 
@@ -118,7 +118,7 @@ func (m *Manager) ProduceApplyGossipBlock(ctx context.Context, allowEmpty bool) 
 		return nil, nil, fmt.Errorf("produce block: %w", err)
 	}
 
-	if err := m.applyBlock(block, commit, blockMetaData{source: producedBlock}); err != nil {
+	if err := m.applyBlock(block, commit, types.BlockMetaData{Source: types.ProducedBlock}); err != nil {
 		return nil, nil, fmt.Errorf("apply block: %w: %w", err, ErrNonRecoverable)
 	}
 
