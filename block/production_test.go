@@ -8,13 +8,17 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dymensionxyz/dymint/mempool"
+	"github.com/dymensionxyz/dymint/version"
+
 	mempoolv1 "github.com/dymensionxyz/dymint/mempool/v1"
 	"github.com/dymensionxyz/dymint/node/events"
 	uchannel "github.com/dymensionxyz/dymint/utils/channel"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
+	abci "github.com/tendermint/tendermint/abci/types"
 	tmcfg "github.com/tendermint/tendermint/config"
 
 	"github.com/dymensionxyz/dymint/testutil"
@@ -32,7 +36,11 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 
 	assert := assert.New(t)
 	require := require.New(t)
-	app := testutil.GetAppMock()
+	app := testutil.GetAppMock(testutil.EndBlock)
+	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
+		Da:      "",
+		Version: version.Commit,
+	}})
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(clientCreator)
@@ -184,9 +192,20 @@ func TestStopBlockProduction(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
+	app := testutil.GetAppMock(testutil.EndBlock)
+	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
+		Da:      "",
+		Version: version.Commit,
+	}})
+	// Create proxy app
+	clientCreator := proxy.NewLocalClientCreator(app)
+	proxyApp := proxy.NewAppConns(clientCreator)
+	err := proxyApp.Start()
+	require.NoError(err)
+
 	managerConfig := testutil.GetManagerConfig()
 	managerConfig.BatchMaxSizeBytes = 1000 // small batch size to fill up quickly
-	manager, err := testutil.GetManager(managerConfig, nil, nil, 1, 1, 0, nil, nil)
+	manager, err := testutil.GetManager(managerConfig, nil, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
 	assert.Equal(manager.State.Height(), uint64(0))

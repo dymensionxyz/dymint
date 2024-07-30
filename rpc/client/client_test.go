@@ -35,6 +35,7 @@ import (
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/dymint/version"
 )
 
 var expectedInfo = abci.ResponseInfo{
@@ -453,7 +454,10 @@ func TestTx(t *testing.T) {
 
 	require.NotNil(rpc)
 	mockApp.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
-	mockApp.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{})
+	mockApp.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
+		Da:      "",
+		Version: version.Commit,
+	}})
 	mockApp.On("Commit", mock.Anything).Return(abci.ResponseCommit{})
 	mockApp.On("DeliverTx", mock.Anything).Return(abci.ResponseDeliverTx{})
 	mockApp.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{})

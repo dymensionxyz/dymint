@@ -32,6 +32,7 @@ import (
 	"github.com/dymensionxyz/dymint/node"
 	"github.com/dymensionxyz/dymint/rpc/client"
 	"github.com/dymensionxyz/dymint/settlement"
+	"github.com/dymensionxyz/dymint/version"
 )
 
 func TestHandlerMapping(t *testing.T) {
@@ -279,7 +280,10 @@ func getRPC(t *testing.T) (*tmmocks.MockApplication, *client.Client) {
 	app := &tmmocks.MockApplication{}
 	app.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 	app.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
-	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{})
+	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
+		Da:      "",
+		Version: version.Commit,
+	}})
 	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{})
 	app.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{
 		GasWanted: 1000,

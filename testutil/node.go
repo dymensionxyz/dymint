@@ -11,6 +11,10 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 
+	"github.com/dymensionxyz/dymint/version"
+	"github.com/stretchr/testify/mock"
+	abci "github.com/tendermint/tendermint/abci/types"
+
 	"github.com/dymensionxyz/dymint/config"
 	"github.com/dymensionxyz/dymint/mempool"
 	"github.com/dymensionxyz/dymint/node"
@@ -18,7 +22,19 @@ import (
 )
 
 func CreateNode(isSequencer bool, blockManagerConfig *config.BlockManagerConfig) (*node.Node, error) {
-	app := GetAppMock()
+	app := GetAppMock(EndBlock)
+	// Create proxy app
+	clientCreator := proxy.NewLocalClientCreator(app)
+	proxyApp := proxy.NewAppConns(clientCreator)
+	err := proxyApp.Start()
+	if err != nil {
+		return nil, err
+	}
+	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
+		Da:      "",
+		Version: version.Commit,
+	}})
+
 	key, _, _ := crypto.GenerateEd25519Key(rand.Reader)
 	signingKey, pubkey, _ := crypto.GenerateEd25519Key(rand.Reader)
 	pubkeyBytes, _ := pubkey.Raw()
