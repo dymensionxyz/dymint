@@ -38,4 +38,6 @@ message State {
 
   uint64 last_store_height = 16 [(gogoproto.customname) = "LastStoreHeight"];
   uint64 base_height = 17;
+  tendermint.types.RollappConsensusParams rollapp_consensus_params = 18 [(gogoproto.nullable) = false];
+
 }

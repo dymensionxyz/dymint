@@ -232,6 +232,7 @@ message ResponseEndBlock {
   ConsensusParams consensus_param_updates = 2;
   repeated Event  events                  = 3
       [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
+  RollappConsensusParams rollapp_consensus_params_updates = 4;
 }
 
 message ResponseCommit {
@@ -372,6 +373,11 @@ message Evidence {
   // not store historical validators.
   // https://github.com/tendermint/tendermint/issues/4581
   int64 total_voting_power = 5;
+}
+
+message RollappConsensusParams {
+  string da = 1 ;
+  string version = 2 ;
 }
 
 //----------------------------------------
