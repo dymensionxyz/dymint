@@ -45,7 +45,9 @@ func TestInitialState(t *testing.T) {
 	pubkey := ed25519.PubKey(raw)
 	sampleState := testutil.GenerateStateWithSequencer(1, 128, pubkey)
 
-	conf := testutil.GetManagerConfig()
+	conf := config.NodeConfig{
+		BlockManagerConfig: testutil.GetManagerConfig(),
+	}
 	logger := log.TestingLogger()
 	pubsubServer := pubsub.NewServer()
 	err = pubsubServer.Start()
@@ -105,8 +107,8 @@ func TestInitialState(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			dalc := testutil.GetMockDALC(logger)
-			agg, err := block.NewManager(key, conf, c.genesis, c.store, nil, proxyApp, dalc, settlementlc,
+			//dalc := testutil.GetMockDALC(logger)
+			agg, err := block.NewManager(key, conf, c.genesis, c.store, nil, proxyApp, store.NewDefaultInMemoryKVStore(), settlementlc,
 				nil, pubsubServer, p2pClient, logger)
 			assert.NoError(err)
 			assert.NotNil(agg)
