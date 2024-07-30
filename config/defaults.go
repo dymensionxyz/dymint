@@ -13,14 +13,13 @@ const (
 	DefaultListenAddress = "/ip4/0.0.0.0/tcp/26656"
 
 	DefaultHomeDir = "sequencer_keys"
-	DefaultChainID = "dymint-testnet"
 )
 
 // DefaultNodeConfig keeps default values of NodeConfig
-var DefaultNodeConfig = *DefaultConfig("", "")
+var DefaultNodeConfig = *DefaultConfig("")
 
 // DefaultConfig returns a default configuration for dymint node.
-func DefaultConfig(home, chainId string) *NodeConfig {
+func DefaultConfig(home string) *NodeConfig {
 	cfg := &NodeConfig{
 		BlockManagerConfig: BlockManagerConfig{
 			BlockTime:          200 * time.Millisecond,
@@ -55,9 +54,6 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 		home = "/tmp"
 	}
 	keyringDir := filepath.Join(home, DefaultHomeDir)
-	if chainId == "" {
-		chainId = DefaultChainID
-	}
 
 	// Setting default params for sl grpc mock
 	defaultSlGrpcConfig := settlement.GrpcConfig{

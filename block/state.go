@@ -68,16 +68,21 @@ func NewStateFromGenesis(genDoc *tmtypes.GenesisDoc) (*types.State, error) {
 	}
 	s.SetHeight(0)
 
-	//load rollapp_params from genesis doc app_state to the dymint state
+	// load rollapp_params from genesis doc app_state to the dymint state
 	var objmap map[string]json.RawMessage
 	err = json.Unmarshal(genDoc.AppState, &objmap)
 	if err != nil {
 		return nil, fmt.Errorf("in genesis doc: %w", err)
 	}
 	params, ok := objmap["rollapp_params"]
-	if ok {
-		json.Unmarshal(params, &s.RollappConsensusParams)
+	if !ok {
+		return nil, fmt.Errorf("rollapp params not found in genesis doc")
 	}
+	err = json.Unmarshal(params, &s.RollappConsensusParams)
+	if err != nil {
+		return nil, fmt.Errorf("in genesis doc: %w", err)
+	}
+
 	s.LastBlockHeight.Store(0)
 	copy(s.AppHash[:], genDoc.AppHash)
 

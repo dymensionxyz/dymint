@@ -20,7 +20,7 @@ func TestViperAndCobra(t *testing.T) {
 	config.AddNodeFlags(cmd)
 
 	dir := t.TempDir()
-	nc := config.DefaultConfig("", "")
+	nc := config.DefaultConfig("")
 	config.EnsureRoot(dir, nc)
 
 	assert.NoError(cmd.Flags().Set(config.FlagDALayer, "foobar"))

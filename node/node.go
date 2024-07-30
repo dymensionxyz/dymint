@@ -85,7 +85,6 @@ func NewNode(
 	logger log.Logger,
 	metrics *mempool.Metrics,
 ) (*Node, error) {
-
 	proxyApp := proxy.NewAppConns(clientCreator)
 	proxyApp.SetLogger(logger.With("module", "proxy"))
 	if err := proxyApp.Start(); err != nil {
