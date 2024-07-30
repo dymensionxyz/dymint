@@ -18,6 +18,8 @@ const (
 	DefaultDymintDir      = ".dymint"
 	DefaultConfigDirName  = "config"
 	DefaultConfigFileName = "dymint.toml"
+	MinBlockTime          = 200 * time.Millisecond
+	MaxBlockTime          = 6 * time.Second
 )
 
 // NodeConfig stores Dymint node configuration.
@@ -124,8 +126,12 @@ func (nc NodeConfig) Validate() error {
 
 // Validate BlockManagerConfig
 func (c BlockManagerConfig) Validate() error {
-	if c.BlockTime <= 0 {
-		return fmt.Errorf("block_time must be positive")
+	if c.BlockTime < MinBlockTime {
+		return fmt.Errorf("block_time cannot be less than %s", MinBlockTime)
+	}
+
+	if c.BlockTime > MaxBlockTime {
+		return fmt.Errorf("block_time cannot be greater than %s", MaxBlockTime)
 	}
 
 	if c.MaxIdleTime < 0 {
