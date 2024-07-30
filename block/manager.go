@@ -194,6 +194,7 @@ func (m *Manager) Start(ctx context.Context) error {
 		bytesProducedC <- nBytes
 	}()
 
+	// channel to signal sequencer rotation started
 	rotateSequencerC := make(chan string, 1)
 
 	eg.Go(func() error {
@@ -203,8 +204,7 @@ func (m *Manager) Start(ctx context.Context) error {
 		return m.ProduceBlockLoop(ctx, bytesProducedC)
 	})
 	eg.Go(func() error {
-		rotateSequencerC <- m.MonitorSequencerRotation(ctx)
-		return fmt.Errorf("sequencer rotation started. signal to stop production")
+		return m.MonitorSequencerRotation(ctx, rotateSequencerC)
 	})
 
 	go func() {

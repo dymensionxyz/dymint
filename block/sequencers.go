@@ -14,7 +14,7 @@ import (
 	tmtypes "github.com/tendermint/tendermint/types"
 )
 
-func (m *Manager) MonitorSequencerRotation(ctx context.Context) string {
+func (m *Manager) MonitorSequencerRotation(ctx context.Context, rotateC chan string) error {
 	sequencerRotationEventClient := fmt.Sprintf("%s-%s", "sequencer_rotation", uuid.New().String())
 	subscription, err := m.Pubsub.Subscribe(ctx, sequencerRotationEventClient, settlement.EventQueryRotationStarted)
 	if err != nil {
@@ -25,12 +25,15 @@ func (m *Manager) MonitorSequencerRotation(ctx context.Context) string {
 	for {
 		select {
 		case <-ctx.Done():
-			return ""
+			return nil
 		case event := <-subscription.Out():
 			eventData, _ := event.Data().(*settlement.EventDataRotationStarted)
 			nextSeqAddr := eventData.NextSeqAddr
 			m.logger.Info("Sequencer rotation started.", "next_seq", nextSeqAddr)
-			return nextSeqAddr
+			go func() {
+				rotateC <- nextSeqAddr
+			}()
+			return fmt.Errorf("sequencer rotation started. signal to stop production")
 		}
 	}
 }
