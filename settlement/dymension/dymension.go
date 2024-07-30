@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/avast/retry-go/v4"
+	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/codec"
 	cdctypes "github.com/cosmos/cosmos-sdk/codec/types"
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
@@ -365,8 +366,11 @@ func (c *Client) GetSequencers() ([]settlement.Sequencer, error) {
 }
 
 // GetNextProposer implements settlement.ClientI.
-func (c *Client) GetNextProposer() *settlement.Sequencer {
-	var nextAddr string
+func (c *Client) GetNextProposer() (*settlement.Sequencer, error) {
+	var (
+		nextAddr string
+		found    bool
+	)
 	err := c.RunWithRetry(func() error {
 		req := &sequencertypes.QueryGetNextProposerByRollappRequest{
 			RollappId: c.config.RollappID,
@@ -374,31 +378,32 @@ func (c *Client) GetNextProposer() *settlement.Sequencer {
 		res, err := c.sequencerQueryClient.GetNextProposerByRollapp(c.ctx, req)
 		if err == nil {
 			nextAddr = res.NextProposer
+			found = true
 			return nil
 		}
 		// FIXME: change to type assertion
 		if strings.Contains(err.Error(), "not found") {
 			return nil
 		}
-
 		return err
 	})
 	if err != nil {
-		c.logger.Error("GetProposer failed", "error", err)
-		return nil
+		return nil, err
 	}
-
+	if !found {
+		return nil, nil
+	}
 	if nextAddr == "" {
-		return nil
+		return &settlement.Sequencer{}, nil
 	}
 
 	for _, sequencer := range c.sequencerList {
 		if sequencer.SequencerAddress == nextAddr {
 			c.proposer = sequencer
-			return &sequencer
+			return &sequencer, nil
 		}
 	}
-	return nil
+	return nil, fmt.Errorf("next proposer not found in bonded set: %w", gerrc.ErrNotFound)
 }
 
 func (c *Client) broadcastBatch(msgUpdateState *rollapptypes.MsgUpdateState) error {
@@ -456,6 +461,7 @@ func getCosmosClientOptions(config *settlement.Config) []cosmosclient.Option {
 	}
 	options := []cosmosclient.Option{
 		cosmosclient.WithAddressPrefix(addressPrefix),
+		cosmosclient.WithBroadcastMode(flags.BroadcastSync),
 		cosmosclient.WithNodeAddress(config.NodeAddress),
 		cosmosclient.WithFees(config.GasFees),
 		cosmosclient.WithGas(strconv.FormatUint(config.GasLimit, 10)),

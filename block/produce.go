@@ -94,8 +94,8 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int)
 	}
 }
 
-func (m *Manager) ProduceApplyGossipLastBlock(ctx context.Context, nextSeqAddr []byte) (block *types.Block, commit *types.Commit, err error) {
-	block, commit, err = m.produceLastBlock(nextSeqAddr)
+func (m *Manager) ProduceApplyGossipLastBlock(ctx context.Context, nextProposerHash [32]byte) (block *types.Block, commit *types.Commit, err error) {
+	block, commit, err = m.produceLastBlock(nextProposerHash)
 	if err != nil {
 		return nil, nil, fmt.Errorf("produce block: %w", err)
 	}
@@ -175,7 +175,7 @@ func (m *Manager) produceBlock(allowEmpty bool) (*types.Block, *types.Commit, er
 	return block, commit, nil
 }
 
-func (m *Manager) createLastBlock(newHeight uint64, lastCommit *types.Commit, lastHeaderHash [32]byte, nextSeqHash []byte) (*types.Block, *types.Commit, error) {
+func (m *Manager) createLastBlock(newHeight uint64, lastCommit *types.Commit, lastHeaderHash [32]byte, nextSeqHash [32]byte) (*types.Block, *types.Commit, error) {
 	// create empty block
 	block := m.Executor.CreateBlock(newHeight, lastCommit, lastHeaderHash, m.State, 0)
 

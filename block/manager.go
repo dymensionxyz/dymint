@@ -174,19 +174,15 @@ func (m *Manager) Start(ctx context.Context) error {
 
 	// check if sequencer in the middle of rotation
 	if m.MissingLastBatch() {
-		next := m.SLClient.GetNextProposer()
-		val, err := next.TMValidator()
-		if err != nil {
-			return err
-		}
-
+		next, _ := m.SLClient.GetNextProposer()
 		go func() {
-			err = m.CompleteRotation(ctx, val.Address)
+			err = m.CompleteRotation(ctx, next.SequencerAddress)
 			if err != nil {
 				panic(err)
 			}
 			// TODO: graceful fallback to full node
-			panic("sequencer is no longer the proposer")
+			// panic("sequencer is no longer the proposer")
+			m.logger.Info("sequencer is no longer the proposer")
 		}()
 		return nil
 	}
@@ -198,7 +194,7 @@ func (m *Manager) Start(ctx context.Context) error {
 		bytesProducedC <- nBytes
 	}()
 
-	rotateSequencerC := make(chan []byte, 1)
+	rotateSequencerC := make(chan string, 1)
 
 	eg.Go(func() error {
 		return m.SubmitLoop(ctx, bytesProducedC)
@@ -223,7 +219,8 @@ func (m *Manager) Start(ctx context.Context) error {
 				panic(err)
 			}
 			// TODO: graceful fallback to full node
-			panic("sequencer is no longer the proposer")
+			m.logger.Info("sequencer is no longer the proposer")
+			// panic("sequencer is no longer the proposer")
 		default:
 			m.logger.Info("Block manager err group finished.", "err", err)
 		}

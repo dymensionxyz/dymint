@@ -56,7 +56,11 @@ func TestCreateBlock(t *testing.T) {
 	state := &types.State{}
 	state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
 	state.ConsensusParams.Block.MaxGas = 100000
-	state.ActiveSequencer = types.SequencerSet{BondedSet: tmtypes.NewValidatorSet(nil)}
+	state.ActiveSequencer = types.SequencerSet{
+		Validators:   tmtypes.NewValidatorSet(nil).Validators,
+		Proposer:     tmtypes.NewValidatorSet(nil).Proposer,
+		ProposerHash: []byte{},
+	}
 
 	// empty block
 	block := executor.CreateBlock(1, &types.Commit{}, [32]byte{}, state, maxBytes)

@@ -62,8 +62,6 @@ func NewStateFromGenesis(genDoc *tmtypes.GenesisDoc) (*types.State, error) {
 		InitialHeight: uint64(genDoc.InitialHeight),
 		BaseHeight:    uint64(genDoc.InitialHeight),
 
-		ActiveSequencer: types.SequencerSet{BondedSet: tmtypes.NewValidatorSet(nil)}, // genesis sequencer will be set on InitChain
-
 		ConsensusParams:                  *genDoc.ConsensusParams,
 		LastHeightConsensusParamsChanged: genDoc.InitialHeight,
 	}
@@ -156,6 +154,10 @@ func (e *Executor) UpdateStateWithValidatorsSet(s *types.State, block *types.Blo
 	}
 
 	//FIXME: if empty, halt the node
+	if block.Header.NextSequencersHash == [32]byte{} {
+		s.ActiveSequencer.SetProposer(nil)
+		return
+	}
 
 	// if hash changed, update the active sequencer
 	err := s.ActiveSequencer.SetProposerByHash(block.Header.NextSequencersHash[:])

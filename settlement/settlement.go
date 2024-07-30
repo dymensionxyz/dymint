@@ -81,7 +81,7 @@ type ClientI interface {
 	// GetProposer returns the current proposer for this chain.
 	GetProposer() *Sequencer
 	// GetNextProposer returns the current proposer for this chain.
-	GetNextProposer() *Sequencer
+	GetNextProposer() (*Sequencer, error)
 
 	GetHeightState(uint64) (*ResultGetHeightState, error)
 }
@@ -94,6 +94,7 @@ type Sequencer struct {
 	PublicKey crypto.PubKey
 	// RotationInProgress is true if the sequencer is in the process of rotation
 	RotationInProgress bool
+	// FIXME: remove?
 }
 
 func (s Sequencer) TMValidator() (*tmtypes.Validator, error) {

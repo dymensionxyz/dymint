@@ -248,7 +248,7 @@ func (c *Commit) FromProto(other *pb.Commit) error {
 
 // ToProto converts State into protobuf representation and returns it.
 func (s *State) ToProto() (*pb.State, error) {
-	seqsProto, err := s.ActiveSequencer.BondedSet.ToProto()
+	seqsProto, err := s.ActiveSequencer.ToValSet().ToProto()
 	if err != nil {
 		return nil, err
 	}

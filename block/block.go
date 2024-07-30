@@ -79,7 +79,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 
 	// save validators to store to be queried over RPC
 	batch := m.Store.NewBatch()
-	batch, err = m.Store.SaveValidators(block.Header.Height, m.State.ActiveSequencer.BondedSet, batch)
+	batch, err = m.Store.SaveValidators(block.Header.Height, m.State.ActiveSequencer.ToValSet(), batch)
 	if err != nil {
 		return fmt.Errorf("save validators: %w", err)
 	}

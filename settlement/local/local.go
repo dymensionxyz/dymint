@@ -209,8 +209,8 @@ func (c *Client) GetSequencers() ([]settlement.Sequencer, error) {
 }
 
 // GetNextProposer implements settlement.ClientI.
-func (c *Client) GetNextProposer() *settlement.Sequencer {
-	return nil
+func (c *Client) GetNextProposer() (*settlement.Sequencer, error) {
+	return nil, nil
 }
 
 func (c *Client) saveBatch(batch *settlement.Batch) error {

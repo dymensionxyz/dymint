@@ -14,7 +14,7 @@ import (
 	tmtypes "github.com/tendermint/tendermint/types"
 )
 
-func (m *Manager) MonitorSequencerRotation(ctx context.Context) []byte {
+func (m *Manager) MonitorSequencerRotation(ctx context.Context) string {
 	sequencerRotationEventClient := fmt.Sprintf("%s-%s", "sequencer_rotation", uuid.New().String())
 	subscription, err := m.Pubsub.Subscribe(ctx, sequencerRotationEventClient, settlement.EventQueryRotationStarted)
 	if err != nil {
@@ -25,12 +25,12 @@ func (m *Manager) MonitorSequencerRotation(ctx context.Context) []byte {
 	for {
 		select {
 		case <-ctx.Done():
-			return nil
+			return ""
 		case event := <-subscription.Out():
 			eventData, _ := event.Data().(*settlement.EventDataRotationStarted)
-			nextSeq := eventData.NextSeqAddr
-			m.logger.Info("Sequencer rotation started.", "next_seq", nextSeq)
-			return []byte(nextSeq)
+			nextSeqAddr := eventData.NextSeqAddr
+			m.logger.Info("Sequencer rotation started.", "next_seq", nextSeqAddr)
+			return nextSeqAddr
 		}
 	}
 }
@@ -48,7 +48,11 @@ func (m *Manager) IsSequencer() bool {
 func (m *Manager) MissingLastBatch() bool {
 	localProposerKey, _ := m.LocalKey.GetPublic().Raw()
 	expectedHubProposer := m.SLClient.GetProposer().PublicKey.Bytes()
-	return m.SLClient.GetNextProposer() != nil && bytes.Equal(expectedHubProposer, localProposerKey)
+	next, err := m.SLClient.GetNextProposer()
+	if err != nil {
+		panic(fmt.Errorf("get next proposer: %w", err))
+	}
+	return next != nil && bytes.Equal(expectedHubProposer, localProposerKey)
 }
 
 func (m *Manager) GetPreviousBlockHashes(forHeight uint64) (lastHeaderHash [32]byte, lastCommit *types.Commit, err error) {
@@ -63,7 +67,7 @@ func (m *Manager) GetPreviousBlockHashes(forHeight uint64) (lastHeaderHash [32]b
 	return lastHeaderHash, lastCommit, nil
 }
 
-func (m *Manager) produceLastBlock(nextSeqAddrHash []byte) (*types.Block, *types.Commit, error) {
+func (m *Manager) produceLastBlock(nextProposerHash [32]byte) (*types.Block, *types.Commit, error) {
 	newHeight := m.State.NextHeight()
 	lastHeaderHash, lastCommit, err := m.GetPreviousBlockHashes(newHeight)
 	if err != nil {
@@ -87,21 +91,31 @@ func (m *Manager) produceLastBlock(nextSeqAddrHash []byte) (*types.Block, *types
 		return nil, nil, fmt.Errorf("load block: height: %d: %w: %w", newHeight, err, ErrNonRecoverable)
 	} else {
 		// Create a new block
-		block, commit, err = m.createLastBlock(newHeight, lastCommit, lastHeaderHash, nextSeqAddrHash)
+		block, commit, err = m.createLastBlock(newHeight, lastCommit, lastHeaderHash, nextProposerHash)
 		if err != nil {
 			return nil, nil, fmt.Errorf("create new block: %w", err)
 		}
 	}
 
-	m.logger.Info("Last block created.", "height", newHeight, "next_seq_hash", nextSeqAddrHash)
+	m.logger.Info("Last block created.", "height", newHeight, "next_seq_hash", nextProposerHash)
 	types.RollappBlockSizeBytesGauge.Set(float64(len(block.Data.Txs)))
 	types.RollappBlockSizeTxsGauge.Set(float64(len(block.Data.Txs)))
 	return block, commit, nil
 }
 
 // complete rotation
-func (m *Manager) CompleteRotation(ctx context.Context, nextSeqAddr []byte) error {
-	err := m.CreateAndPostLastBatch(ctx, nextSeqAddr)
+func (m *Manager) CompleteRotation(ctx context.Context, nextSeqAddr string) error {
+	// validate nextSeq is in the bonded set
+	var nextSeqHash [32]byte
+	if nextSeqAddr != "" {
+		val := m.State.ActiveSequencer.GetByAddress([]byte(nextSeqAddr))
+		if val == nil {
+			return fmt.Errorf("next sequencer not found in bonded set")
+		}
+		copy(nextSeqHash[:], val.PubKey.Address().Bytes())
+	}
+
+	err := m.CreateAndPostLastBatch(ctx, nextSeqHash)
 	if err != nil {
 		return fmt.Errorf("create and post last batch: %w", err)
 	}
@@ -110,17 +124,10 @@ func (m *Manager) CompleteRotation(ctx context.Context, nextSeqAddr []byte) erro
 	return nil
 }
 
-func (m *Manager) CreateAndPostLastBatch(ctx context.Context, nextSeq []byte) error {
-	// validate nextSeq is in the bonded set
-	_, val := m.State.ActiveSequencer.BondedSet.GetByAddress(nextSeq)
-	if val == nil {
-		return fmt.Errorf("next sequencer not found in bonded set")
-	}
-	nextSeqHash := types.GetHash(val)
-
+func (m *Manager) CreateAndPostLastBatch(ctx context.Context, nextSeqHash [32]byte) error {
 	//check if the last block is already produced
 	// if so, the active validator set is already updated
-	if bytes.Equal(m.State.ActiveSequencer.ProposerHash, nextSeqHash) {
+	if bytes.Equal(m.State.ActiveSequencer.ProposerHash, nextSeqHash[:]) {
 		m.logger.Debug("Last block already produced. Skipping.")
 	} else {
 		_, _, err := m.ProduceApplyGossipLastBlock(ctx, nextSeqHash)
@@ -136,6 +143,7 @@ func (m *Manager) CreateAndPostLastBatch(ctx context.Context, nextSeq []byte) er
 			return fmt.Errorf("create batch: %w", err)
 		}
 
+		//FIXME: syb
 		if err := m.SubmitBatch(b); err != nil {
 			return fmt.Errorf("submit batch: %w", err)
 		}
@@ -154,7 +162,7 @@ func (m *Manager) UpdateBondedSequencerSetFromSL() error {
 	if err != nil {
 		return err
 	}
-	newSet := m.State.ActiveSequencer.BondedSet.Copy()
+	newVals := make([]*tmtypes.Validator, 0, len(seqs))
 	for _, seq := range seqs {
 		tmPubKey, err := cryptocodec.ToTmPubKeyInterface(seq.PublicKey)
 		if err != nil {
@@ -163,17 +171,18 @@ func (m *Manager) UpdateBondedSequencerSetFromSL() error {
 		val := tmtypes.NewValidator(tmPubKey, 1)
 
 		// check if not exists already
-		if newSet.HasAddress(val.Address) {
+		if m.State.ActiveSequencer.HasAddress(val.Address) {
 			continue
 		}
 
-		newSet.Validators = append(newSet.Validators, val)
+		newVals = append(newVals, val)
 	}
 	// update state on changes
-	if len(newSet.Validators) != len(m.State.ActiveSequencer.BondedSet.Validators) {
-		m.State.ActiveSequencer.SetBondedSet(newSet)
+	if len(newVals) > 0 {
+		newVals = append(newVals, m.State.ActiveSequencer.Validators...)
+		m.State.ActiveSequencer.SetBondedValidators(newVals)
 	}
 
-	m.logger.Debug("Updated bonded sequencer set", "newSet", newSet)
+	m.logger.Debug("Updated bonded sequencer set", "newSet", m.State.ActiveSequencer.String())
 	return nil
 }
