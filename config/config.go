@@ -20,6 +20,7 @@ const (
 	DefaultConfigFileName = "dymint.toml"
 	MinBlockTime          = 200 * time.Millisecond
 	MaxBlockTime          = 6 * time.Second
+	MaxBatchSubmitMaxTime = 1 * time.Hour
 )
 
 // NodeConfig stores Dymint node configuration.
@@ -157,6 +158,10 @@ func (c BlockManagerConfig) Validate() error {
 
 	if c.BatchSubmitMaxTime < c.MaxIdleTime {
 		return fmt.Errorf("batch_submit_max_time must be greater than max_idle_time")
+	}
+
+	if c.BatchSubmitMaxTime > MaxBatchSubmitMaxTime {
+		return fmt.Errorf("batch_submit_max_time cannot be greater than %s", MaxBatchSubmitMaxTime)
 	}
 
 	if c.BatchMaxSizeBytes <= 0 {
