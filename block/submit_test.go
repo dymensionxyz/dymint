@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/proxy"
 
 	cosmosed25519 "github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
@@ -22,6 +23,7 @@ import (
 	slmocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/dymint/version"
 )
 
 // TestBatchOverhead tests the scenario where we have a single block that is very large, and occupies the entire batch size.
@@ -99,14 +101,17 @@ func TestBatchOverhead(t *testing.T) {
 
 func TestBatchSubmissionHappyFlow(t *testing.T) {
 	require := require.New(t)
-	app := testutil.GetAppMock()
+	app := testutil.GetAppMock(testutil.EndBlock)
 	ctx := context.Background()
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(clientCreator)
 	err := proxyApp.Start()
 	require.NoError(err)
-
+	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
+		Da:      "",
+		Version: version.Commit,
+	}})
 	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
@@ -128,9 +133,12 @@ func TestBatchSubmissionHappyFlow(t *testing.T) {
 
 func TestBatchSubmissionFailedSubmission(t *testing.T) {
 	require := require.New(t)
-	app := testutil.GetAppMock()
+	app := testutil.GetAppMock(testutil.EndBlock)
 	ctx := context.Background()
-
+	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
+		Da:      "",
+		Version: version.Commit,
+	}})
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(clientCreator)
@@ -188,7 +196,11 @@ func TestSubmissionByTime(t *testing.T) {
 	)
 
 	require := require.New(t)
-	app := testutil.GetAppMock()
+	app := testutil.GetAppMock(testutil.EndBlock)
+	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
+		Da:      "",
+		Version: version.Commit,
+	}})
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(clientCreator)
@@ -256,9 +268,20 @@ func TestSubmissionByBatchSize(t *testing.T) {
 	}
 
 	for _, c := range cases {
+		app := testutil.GetAppMock(testutil.EndBlock)
+		app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
+			Da:      "",
+			Version: version.Commit,
+		}})
+		// Create proxy app
+		clientCreator := proxy.NewLocalClientCreator(app)
+		proxyApp := proxy.NewAppConns(clientCreator)
+		err := proxyApp.Start()
+		require.NoError(err)
+
 		managerConfig := testutil.GetManagerConfig()
 		managerConfig.BatchMaxSizeBytes = c.blockBatchMaxSizeBytes
-		manager, err := testutil.GetManager(managerConfig, nil, nil, 1, 1, 0, nil, nil)
+		manager, err := testutil.GetManager(managerConfig, nil, nil, 1, 1, 0, proxyApp, nil)
 		require.NoError(err)
 
 		assert.Equal(manager.State.Height(), uint64(0))
