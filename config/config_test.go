@@ -25,7 +25,7 @@ func TestViperAndCobra(t *testing.T) {
 
 	assert.NoError(cmd.Flags().Set(config.FlagDALayer, "foobar"))
 	assert.NoError(cmd.Flags().Set(config.FlagDAConfig, `{"json":true}`))
-	assert.NoError(cmd.Flags().Set(config.FlagBlockTime, "1234s"))
+	assert.NoError(cmd.Flags().Set(config.FlagBlockTime, "4s"))
 	assert.NoError(cmd.Flags().Set(config.FlagMaxIdleTime, "2000s"))
 	assert.NoError(cmd.Flags().Set(config.FlagBatchSubmitMaxTime, "3000s"))
 	assert.NoError(cmd.Flags().Set(config.FlagBlockBatchMaxSizeBytes, "1000"))
@@ -34,7 +34,7 @@ func TestViperAndCobra(t *testing.T) {
 
 	assert.Equal("foobar", nc.DALayer)
 	assert.Equal(`{"json":true}`, nc.DAConfig)
-	assert.Equal(1234*time.Second, nc.BlockTime)
+	assert.Equal(4*time.Second, nc.BlockTime)
 	assert.Equal(uint64(1000), nc.BlockManagerConfig.BatchMaxSizeBytes)
 }
 
@@ -105,12 +105,6 @@ func TestNodeConfig_Validate(t *testing.T) {
 			malleate: func(nc *config.NodeConfig) {
 				nc.SettlementConfig.GasPrices = ""
 				nc.SettlementConfig.GasFees = ""
-			},
-			wantErr: assert.Error,
-		}, {
-			name: "settlement: missing rollapp id",
-			malleate: func(nc *config.NodeConfig) {
-				nc.SettlementConfig.RollappID = ""
 			},
 			wantErr: assert.Error,
 		}, {
@@ -200,7 +194,6 @@ func fullNodeConfig() config.NodeConfig {
 			NodeAddress:    "http://localhost:26657",
 			KeyringHomeDir: "/tmp/keyring-test",
 			DymAccountName: "test",
-			RollappID:      "test_123-1",
 			GasLimit:       120,
 			GasPrices:      "0.025stake",
 			GasFees:        "",

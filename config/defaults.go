@@ -69,7 +69,6 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 	defaultSLconfig := settlement.Config{
 		KeyringBackend:          "test",
 		NodeAddress:             "http://127.0.0.1:36657",
-		RollappID:               chainId,
 		KeyringHomeDir:          keyringDir,
 		DymAccountName:          "sequencer",
 		GasPrices:               "1000000000adym",

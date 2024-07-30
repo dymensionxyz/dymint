@@ -49,7 +49,7 @@ type Client struct {
 var _ settlement.ClientI = (*Client)(nil)
 
 // Init initializes the mock layer client.
-func (c *Client) Init(config settlement.Config, pubsub *pubsub.Server, logger types.Logger, options ...settlement.Option) error {
+func (c *Client) Init(config settlement.Config, rollappId string, pubsub *pubsub.Server, logger types.Logger, options ...settlement.Option) error {
 	ctx := context.Background()
 
 	latestHeight := uint64(0)
@@ -88,7 +88,7 @@ func (c *Client) Init(config settlement.Config, pubsub *pubsub.Server, logger ty
 	}
 	logger.Debug("Starting grpc SL ", "index", slStateIndex)
 
-	c.rollappID = config.RollappID
+	c.rollappID = rollappId
 	c.ProposerPubKey = proposer
 	c.logger = logger
 	c.ctx = ctx

@@ -85,9 +85,7 @@ func NewNode(
 	logger log.Logger,
 	metrics *mempool.Metrics,
 ) (*Node, error) {
-	if conf.SettlementConfig.RollappID != genesis.ChainID {
-		return nil, fmt.Errorf("rollapp ID in settlement config doesn't match chain ID in genesis")
-	}
+
 	proxyApp := proxy.NewAppConns(clientCreator)
 	proxyApp.SetLogger(logger.With("module", "proxy"))
 	if err := proxyApp.Start(); err != nil {
@@ -142,7 +140,7 @@ func NewNode(
 	if conf.SettlementLayer == "mock" {
 		conf.SettlementConfig.KeyringHomeDir = conf.RootDir
 	}
-	err = settlementlc.Init(conf.SettlementConfig, pubsubServer, logger.With("module", "settlement_client"))
+	err = settlementlc.Init(conf.SettlementConfig, genesis.ChainID, pubsubServer, logger.With("module", "settlement_client"))
 	if err != nil {
 		return nil, fmt.Errorf("settlement layer client initialization: %w", err)
 	}

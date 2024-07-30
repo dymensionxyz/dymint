@@ -59,7 +59,7 @@ func TestGetSequencers(t *testing.T) {
 	require.NoError(err)
 
 	hubClient := dymension.Client{}
-	err = hubClient.Init(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
+	err = hubClient.Init(settlement.Config{}, "rollappTest", pubsubServer, log.TestingLogger(), options...)
 	require.NoError(err)
 
 	sequencers, err := hubClient.GetBondedSequencers()
@@ -98,7 +98,7 @@ func TestPostBatchRPCError(t *testing.T) {
 	require.NoError(err)
 
 	hubClient := dymension.Client{}
-	err = hubClient.Init(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
+	err = hubClient.Init(settlement.Config{}, "rollappTest", pubsubServer, log.TestingLogger(), options...)
 	require.NoError(err)
 
 	// submit passes
@@ -243,7 +243,7 @@ func TestPostBatch(t *testing.T) {
 				}
 			}
 			hubClient := dymension.Client{}
-			err := hubClient.Init(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
+			err := hubClient.Init(settlement.Config{}, "rollappTest", pubsubServer, log.TestingLogger(), options...)
 			require.NoError(err)
 			err = hubClient.Start()
 			require.NoError(err)

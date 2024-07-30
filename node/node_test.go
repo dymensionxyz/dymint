@@ -79,12 +79,10 @@ func TestMempoolDirectly(t *testing.T) {
 			BatchMaxSizeBytes:  100000,
 			MaxBatchSkew:       10,
 		},
-		DALayer:         "mock",
-		DAConfig:        "",
-		SettlementLayer: "mock",
-		SettlementConfig: settlement.Config{
-			RollappID: rollappID,
-		},
+		DALayer:          "mock",
+		DAConfig:         "",
+		SettlementLayer:  "mock",
+		SettlementConfig: settlement.Config{},
 	}
 	node, err := node.NewNode(
 		context.Background(),
@@ -92,7 +90,7 @@ func TestMempoolDirectly(t *testing.T) {
 		key,
 		signingKey,
 		proxy.NewLocalClientCreator(app),
-		&types.GenesisDoc{ChainID: rollappID},
+		&types.GenesisDoc{ChainID: rollappID, AppState: []byte("{\"app_state\": {\"rollapp_params\": {\"params\": {\"da\": \"celestia\",\"version\": \"646983ec41942854aa8b2fc2b755106307e50170\"}}}}")},
 		log.TestingLogger(),
 		mempool.NopMetrics(),
 	)

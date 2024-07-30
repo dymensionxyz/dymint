@@ -314,7 +314,6 @@ func getRPC(t *testing.T) (*tmmocks.MockApplication, *client.Client) {
 		},
 		SettlementConfig: settlement.Config{
 			ProposerPubKey: hex.EncodeToString(proposerPubKeyBytes),
-			RollappID:      rollappID,
 		},
 		P2PConfig: config.P2PConfig{
 			ListenAddress:                config.DefaultListenAddress,
@@ -329,7 +328,7 @@ func getRPC(t *testing.T) (*tmmocks.MockApplication, *client.Client) {
 		key,
 		signingKey,
 		proxy.NewLocalClientCreator(app),
-		&types.GenesisDoc{ChainID: rollappID},
+		&types.GenesisDoc{ChainID: rollappID, AppState: []byte("{\"app_state\": {\"rollapp_params\": {\"params\": {\"da\": \"celestia\",\"version\": \"646983ec41942854aa8b2fc2b755106307e50170\"}}}}")},
 		log.TestingLogger(),
 		mempool.NopMetrics(),
 	)

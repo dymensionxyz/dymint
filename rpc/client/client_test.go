@@ -83,16 +83,8 @@ func TestCheckTx(t *testing.T) {
 
 func TestGenesisChunked(t *testing.T) {
 	assert := assert.New(t)
-	rollappID := "rollapp_1234-1"
 
-	genDoc := &tmtypes.GenesisDoc{
-		ChainID:       rollappID,
-		InitialHeight: int64(1),
-		AppHash:       []byte("test hash"),
-		Validators: []tmtypes.GenesisValidator{
-			{Address: bytes.HexBytes{}, Name: "test", Power: 1, PubKey: ed25519.GenPrivKey().PubKey()},
-		},
-	}
+	genDoc := testutil.GenerateGenesis(1)
 
 	mockApp := &tmmocks.MockApplication{}
 	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
@@ -117,12 +109,10 @@ func TestGenesisChunked(t *testing.T) {
 			BatchMaxSizeBytes:  1000,
 			MaxBatchSkew:       10,
 		},
-		DALayer:         "mock",
-		DAConfig:        "",
-		SettlementLayer: "mock",
-		SettlementConfig: settlement.Config{
-			RollappID: rollappID,
-		},
+		DALayer:          "mock",
+		DAConfig:         "",
+		SettlementLayer:  "mock",
+		SettlementConfig: settlement.Config{},
 	}
 	n, err := node.NewNode(
 		context.Background(),
@@ -702,7 +692,6 @@ func TestValidatorSetHandling(t *testing.T) {
 	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{}).Run(func(args mock.Arguments) {
 		waitCh <- nil
 	})
-	rollappID := "rollapp_1234-1"
 
 	nodeConfig := config.NodeConfig{
 		DALayer:         "mock",
@@ -722,7 +711,6 @@ func TestValidatorSetHandling(t *testing.T) {
 		},
 		SettlementConfig: settlement.Config{
 			ProposerPubKey: hex.EncodeToString(proposerPubKeyBytes),
-			RollappID:      rollappID,
 		},
 	}
 
@@ -732,7 +720,7 @@ func TestValidatorSetHandling(t *testing.T) {
 		key,
 		signingKey,
 		proxy.NewLocalClientCreator(app),
-		&tmtypes.GenesisDoc{ChainID: rollappID},
+		testutil.GenerateGenesis(0),
 		log.TestingLogger(),
 		mempool.NopMetrics(),
 	)
@@ -863,8 +851,6 @@ func getRPCInternal(t *testing.T, sequencer bool) (*tmmocks.MockApplication, *cl
 		localKey = slSeqKey
 	}
 
-	rollappID := "rollapp_1234-1"
-
 	config := config.NodeConfig{
 		RootDir: "",
 		DBPath:  "",
@@ -888,7 +874,6 @@ func getRPCInternal(t *testing.T, sequencer bool) (*tmmocks.MockApplication, *cl
 		SettlementLayer: "mock",
 		SettlementConfig: settlement.Config{
 			ProposerPubKey: proposerKey,
-			RollappID:      rollappID,
 		},
 	}
 	node, err := node.NewNode(
@@ -897,7 +882,7 @@ func getRPCInternal(t *testing.T, sequencer bool) (*tmmocks.MockApplication, *cl
 		key,
 		localKey, // this is where sequencer mode is set. if same key as in settlement.Config, it's sequencer
 		proxy.NewLocalClientCreator(app),
-		&tmtypes.GenesisDoc{ChainID: rollappID},
+		testutil.GenerateGenesis(0),
 		log.TestingLogger(),
 		mempool.NopMetrics(),
 	)
@@ -971,14 +956,12 @@ func TestMempool2Nodes(t *testing.T) {
 	id1, err := peer.IDFromPrivateKey(key1)
 	require.NoError(err)
 
-	rollappID := "rollapp_1234-1"
-
+	genesis := testutil.GenerateGenesis(0)
 	node1, err := node.NewNode(context.Background(), config.NodeConfig{
 		DALayer:         "mock",
 		SettlementLayer: "mock",
 		SettlementConfig: settlement.Config{
 			ProposerPubKey: hex.EncodeToString(proposerPK),
-			RollappID:      rollappID,
 		},
 		P2PConfig: config.P2PConfig{
 			ListenAddress:                "/ip4/127.0.0.1/tcp/9001",
@@ -994,7 +977,7 @@ func TestMempool2Nodes(t *testing.T) {
 			MaxBatchSkew:       10,
 		},
 		MempoolConfig: *tmcfg.DefaultMempoolConfig(),
-	}, key1, signingKey1, proxy.NewLocalClientCreator(app), &tmtypes.GenesisDoc{ChainID: rollappID}, log.TestingLogger(), mempool.NopMetrics())
+	}, key1, signingKey1, proxy.NewLocalClientCreator(app), genesis, log.TestingLogger(), mempool.NopMetrics())
 	require.NoError(err)
 	require.NotNil(node1)
 
@@ -1003,7 +986,6 @@ func TestMempool2Nodes(t *testing.T) {
 		SettlementLayer: "mock",
 		SettlementConfig: settlement.Config{
 			ProposerPubKey: hex.EncodeToString(proposerPK),
-			RollappID:      rollappID,
 		},
 		BlockManagerConfig: config.BlockManagerConfig{
 			BlockTime:          100 * time.Millisecond,
@@ -1019,7 +1001,7 @@ func TestMempool2Nodes(t *testing.T) {
 			BlockSyncRequestIntervalTime: 30 * time.Second,
 		},
 		MempoolConfig: *tmcfg.DefaultMempoolConfig(),
-	}, key2, signingKey2, proxy.NewLocalClientCreator(app), &tmtypes.GenesisDoc{ChainID: rollappID}, log.TestingLogger(), mempool.NopMetrics())
+	}, key2, signingKey2, proxy.NewLocalClientCreator(app), genesis, log.TestingLogger(), mempool.NopMetrics())
 	require.NoError(err)
 	require.NotNil(node1)
 

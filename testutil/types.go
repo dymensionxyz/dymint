@@ -262,6 +262,7 @@ func GenerateGenesis(initialHeight int64) *tmtypes.GenesisDoc {
 				AppVersion: AppVersion,
 			},
 		},
+		AppState: []byte("{\"app_state\": {\"rollapp_params\": {\"params\": {\"da\": \"celestia\",\"version\": \"646983ec41942854aa8b2fc2b755106307e50170\"}}}}"),
 	}
 }
 

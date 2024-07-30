@@ -52,7 +52,7 @@ func TestInitialState(t *testing.T) {
 	require.NoError(t, err)
 	proxyApp := testutil.GetABCIProxyAppMock(logger.With("module", "proxy"))
 	settlementlc := slregistry.GetClient(slregistry.Local)
-	_ = settlementlc.Init(settlement.Config{}, pubsubServer, logger)
+	_ = settlementlc.Init(settlement.Config{}, genesis.ChainID, pubsubServer, logger)
 
 	// Init empty store and full store
 	emptyStore := store.New(store.NewDefaultInMemoryKVStore())

@@ -71,7 +71,7 @@ func GetManagerWithProposerKey(conf config.BlockManagerConfig, proposerKey crypt
 		return nil, err
 	}
 
-	err = initSettlementLayerMock(settlementlc, hex.EncodeToString(pubKeybytes), pubsubServer, logger)
+	err = initSettlementLayerMock(genesis.ChainID, settlementlc, hex.EncodeToString(pubKeybytes), pubsubServer, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -142,8 +142,8 @@ func initDALCMock(dalc da.DataAvailabilityLayerClient, pubsubServer *pubsub.Serv
 	_ = dalc.Start()
 }
 
-func initSettlementLayerMock(settlementlc settlement.ClientI, proposer string, pubsubServer *pubsub.Server, logger log.Logger) error {
-	err := settlementlc.Init(settlement.Config{ProposerPubKey: proposer}, pubsubServer, logger)
+func initSettlementLayerMock(rollappId string, settlementlc settlement.ClientI, proposer string, pubsubServer *pubsub.Server, logger log.Logger) error {
+	err := settlementlc.Init(settlement.Config{ProposerPubKey: proposer}, rollappId, pubsubServer, logger)
 	if err != nil {
 		return err
 	}

@@ -120,7 +120,6 @@ p2p_blocksync_block_request_interval= "{{ .P2PConfig.BlockSyncRequestIntervalTim
 settlement_layer = "{{ .SettlementLayer }}" # mock, dymension
 
 # dymension config
-rollapp_id = "{{ .SettlementConfig.RollappID }}"
 settlement_node_address = "{{ .SettlementConfig.NodeAddress }}"
 settlement_gas_limit = {{ .SettlementConfig.GasLimit }}
 settlement_gas_prices = "{{ .SettlementConfig.GasPrices }}"
