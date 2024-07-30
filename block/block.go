@@ -53,7 +53,6 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		return fmt.Errorf("execute block: %w", err)
 	}
 
-	m.logger.Info("Param update", "da", responses.EndBlock.RollappConsensusParamUpdates.Da, "version", responses.EndBlock.RollappConsensusParamUpdates.Version)
 	dbBatch := m.Store.NewBatch()
 	dbBatch, err = m.Store.SaveBlockResponses(block.Header.Height, responses, dbBatch)
 	if err != nil {

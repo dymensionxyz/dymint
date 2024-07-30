@@ -146,7 +146,7 @@ func TestValidator_BlockValidator(t *testing.T) {
 			pubsubServer := pubsub.NewServer()
 			err = pubsubServer.Start()
 			require.NoError(t, err)
-			err = client.Init(settlement.Config{ProposerPubKey: hex.EncodeToString(proposerKey.PubKey().Bytes())}, pubsubServer, log.TestingLogger())
+			err = client.Init(settlement.Config{ProposerPubKey: hex.EncodeToString(proposerKey.PubKey().Bytes())}, "rollappTest", pubsubServer, log.TestingLogger())
 			require.NoError(t, err)
 
 			// Create commit for the block

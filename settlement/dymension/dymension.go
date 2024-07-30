@@ -48,6 +48,7 @@ const (
 // Client is the client for the Dymension Hub.
 type Client struct {
 	config                  *settlement.Config
+	rollappId               string
 	logger                  types.Logger
 	pubsub                  *pubsub.Server
 	cosmosClient            CosmosClient
@@ -68,17 +69,18 @@ type Client struct {
 var _ settlement.ClientI = &Client{}
 
 // Init is called once. it initializes the struct members.
-func (c *Client) Init(config settlement.Config, pubsub *pubsub.Server, logger types.Logger, options ...settlement.Option) error {
+func (c *Client) Init(config settlement.Config, rollappId string, pubsub *pubsub.Server, logger types.Logger, options ...settlement.Option) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	eventMap := map[string]string{
-		fmt.Sprintf(eventStateUpdate, config.RollappID):          settlement.EventNewBatchAccepted,
-		fmt.Sprintf(eventSequencersListUpdate, config.RollappID): settlement.EventSequencersListUpdated,
+		fmt.Sprintf(eventStateUpdate, rollappId):          settlement.EventNewBatchAccepted,
+		fmt.Sprintf(eventSequencersListUpdate, rollappId): settlement.EventSequencersListUpdated,
 	}
 
 	interfaceRegistry := cdctypes.NewInterfaceRegistry()
 	cryptocodec.RegisterInterfaces(interfaceRegistry)
 	protoCodec := codec.NewProtoCodec(interfaceRegistry)
 
+	c.rollappId = rollappId
 	c.config = &config
 	c.logger = logger
 	c.pubsub = pubsub
@@ -245,7 +247,7 @@ func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *d
 }
 
 func (c *Client) getStateInfo(index, height *uint64) (res *rollapptypes.QueryGetStateInfoResponse, err error) {
-	req := &rollapptypes.QueryGetStateInfoRequest{RollappId: c.config.RollappID}
+	req := &rollapptypes.QueryGetStateInfoRequest{RollappId: c.rollappId}
 	if index != nil {
 		req.Index = *index
 	}
@@ -323,7 +325,7 @@ func (c *Client) GetSequencers() ([]*types.Sequencer, error) {
 
 	var res *sequencertypes.QueryGetSequencersByRollappByStatusResponse
 	req := &sequencertypes.QueryGetSequencersByRollappByStatusRequest{
-		RollappId: c.config.RollappID,
+		RollappId: c.rollappId,
 		Status:    sequencertypes.Bonded,
 	}
 	err := c.RunWithRetry(func() error {
@@ -379,7 +381,7 @@ func (c *Client) broadcastBatch(msgUpdateState *rollapptypes.MsgUpdateState) err
 func (c *Client) eventHandler() {
 	// TODO(omritoptix): eventsChannel should be a generic channel which is later filtered by the event type.
 	subscriber := fmt.Sprintf("dymension-client-%s", uuid.New().String())
-	eventsChannel, err := c.cosmosClient.SubscribeToEvents(c.ctx, subscriber, fmt.Sprintf(eventStateUpdate, c.config.RollappID), 1000)
+	eventsChannel, err := c.cosmosClient.SubscribeToEvents(c.ctx, subscriber, fmt.Sprintf(eventStateUpdate, c.rollappId), 1000)
 	if err != nil {
 		panic("Error subscribing to events")
 	}
@@ -430,7 +432,7 @@ func (c *Client) convertBatchToMsgUpdateState(batch *types.Batch, daResult *da.R
 
 	settlementBatch := &rollapptypes.MsgUpdateState{
 		Creator:     addr,
-		RollappId:   c.config.RollappID,
+		RollappId:   c.rollappId,
 		StartHeight: batch.StartHeight(),
 		NumBlocks:   batch.NumBlocks(),
 		DAPath:      daResult.SubmitMetaData.ToPath(),
