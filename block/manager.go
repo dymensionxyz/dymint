@@ -16,6 +16,7 @@ import (
 	uevent "github.com/dymensionxyz/dymint/utils/event"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	tmtypes "github.com/tendermint/tendermint/types"
 
@@ -25,6 +26,7 @@ import (
 
 	"github.com/dymensionxyz/dymint/config"
 	"github.com/dymensionxyz/dymint/da"
+	"github.com/dymensionxyz/dymint/da/registry"
 	"github.com/dymensionxyz/dymint/mempool"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
@@ -76,17 +78,17 @@ type Manager struct {
 // NewManager creates new block Manager.
 func NewManager(
 	localKey crypto.PrivKey,
-	conf config.BlockManagerConfig,
+	conf config.NodeConfig,
 	genesis *tmtypes.GenesisDoc,
 	store store.Store,
 	mempool mempool.Mempool,
 	proxyApp proxy.AppConns,
-	dalc da.DataAvailabilityLayerClient,
+	dalcKV store.KV,
 	settlementClient settlement.ClientI,
 	eventBus *tmtypes.EventBus,
 	pubsub *pubsub.Server,
 	p2pClient *p2p.Client,
-	logger types.Logger,
+	logger log.Logger,
 ) (*Manager, error) {
 	localAddress, err := types.GetAddress(localKey)
 	if err != nil {
@@ -101,15 +103,13 @@ func NewManager(
 		Pubsub:           pubsub,
 		p2pClient:        p2pClient,
 		LocalKey:         localKey,
-		Conf:             conf,
+		Conf:             conf.BlockManagerConfig,
 		Genesis:          genesis,
 		Store:            store,
 		Executor:         exec,
-		DAClient:         dalc,
 		SLClient:         settlementClient,
-		Retriever:        dalc.(da.BatchRetriever),
 		targetSyncHeight: diodes.NewOneToOne(1, nil),
-		logger:           logger,
+		logger:           logger.With("module", "BlockManager"),
 		blockCache: &Cache{
 			cache: make(map[uint64]types.CachedBlock),
 		},
@@ -120,6 +120,18 @@ func NewManager(
 		return nil, fmt.Errorf("get initial state: %w", err)
 	}
 
+	da_layer := m.State.RollappConsensusParams.Params.Da
+	dalc := registry.GetClient(da_layer)
+	if dalc == nil {
+		return nil, fmt.Errorf("get data availability client named '%s'", da_layer)
+	}
+
+	err = dalc.Init([]byte(conf.DAConfig), pubsub, dalcKV, logger.With("module", string(dalc.GetClientType())))
+	if err != nil {
+		return nil, fmt.Errorf("data availability layer client initialization  %w", err)
+	}
+	m.DAClient = dalc
+	m.Retriever = dalc.(da.BatchRetriever)
 	return m, nil
 }
 
@@ -127,6 +139,10 @@ func NewManager(
 func (m *Manager) Start(ctx context.Context) error {
 	m.logger.Info("Starting the block manager")
 
+	err := m.DAClient.Start()
+	if err != nil {
+		return fmt.Errorf("start data availability layer client: %w", err)
+	}
 	isSequencer, err := m.IsSequencerVerify()
 	if err != nil {
 		return err

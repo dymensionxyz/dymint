@@ -18,8 +18,6 @@ import (
 
 	"github.com/dymensionxyz/dymint/block"
 	"github.com/dymensionxyz/dymint/config"
-	"github.com/dymensionxyz/dymint/da"
-	daregistry "github.com/dymensionxyz/dymint/da/registry"
 	indexer "github.com/dymensionxyz/dymint/indexers/blockindexer"
 	blockidxkv "github.com/dymensionxyz/dymint/indexers/blockindexer/kv"
 	"github.com/dymensionxyz/dymint/indexers/txindex"
@@ -60,7 +58,7 @@ type Node struct {
 
 	Store        store.Store
 	BlockManager *block.Manager
-	dalc         da.DataAvailabilityLayerClient
+	//dalc         da.DataAvailabilityLayerClient
 	settlementlc settlement.ClientI
 
 	TxIndexer      txindex.TxIndexer
@@ -107,19 +105,9 @@ func NewNode(
 	}
 
 	s := store.New(store.NewPrefixKV(baseKV, mainPrefix))
+	indexerKV := store.NewPrefixKV(baseKV, indexerPrefix)
 	// TODO: dalcKV is needed for mock only. Initialize only if mock used
 	dalcKV := store.NewPrefixKV(baseKV, dalcPrefix)
-	indexerKV := store.NewPrefixKV(baseKV, indexerPrefix)
-
-	dalc := daregistry.GetClient(conf.DALayer)
-	if dalc == nil {
-		return nil, fmt.Errorf("get data availability client named '%s'", conf.DALayer)
-	}
-	err := dalc.Init([]byte(conf.DAConfig), pubsubServer, dalcKV, logger.With("module", string(dalc.GetClientType())))
-	if err != nil {
-		return nil, fmt.Errorf("data availability layer client initialization  %w", err)
-	}
-
 	// Init the settlement layer client
 	settlementlc := slregistry.GetClient(slregistry.Client(conf.SettlementLayer))
 	if settlementlc == nil {
@@ -128,7 +116,7 @@ func NewNode(
 	if conf.SettlementLayer == "mock" {
 		conf.SettlementConfig.KeyringHomeDir = conf.RootDir
 	}
-	err = settlementlc.Init(conf.SettlementConfig, genesis.ChainID, pubsubServer, logger.With("module", "settlement_client"))
+	err := settlementlc.Init(conf.SettlementConfig, genesis.ChainID, pubsubServer, logger.With("module", "settlement_client"))
 	if err != nil {
 		return nil, fmt.Errorf("settlement layer client initialization: %w", err)
 	}
@@ -160,17 +148,17 @@ func NewNode(
 
 	blockManager, err := block.NewManager(
 		signingKey,
-		conf.BlockManagerConfig,
+		conf,
 		genesis,
 		s,
 		mp,
 		proxyApp,
-		dalc,
+		dalcKV,
 		settlementlc,
 		eventBus,
 		pubsubServer,
 		p2pClient,
-		logger.With("module", "BlockManager"),
+		logger,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("BlockManager initialization error: %w", err)
@@ -185,7 +173,6 @@ func NewNode(
 		conf:           conf,
 		P2P:            p2pClient,
 		BlockManager:   blockManager,
-		dalc:           dalc,
 		settlementlc:   settlementlc,
 		Mempool:        mp,
 		MempoolIDs:     mpIDs,
@@ -214,7 +201,7 @@ func (n *Node) OnStart() error {
 	if err != nil {
 		return fmt.Errorf("start pubsub server: %w", err)
 	}
-	err = n.dalc.Start()
+	err = n.BlockManager.DAClient.Start()
 	if err != nil {
 		return fmt.Errorf("start data availability layer client: %w", err)
 	}
@@ -246,7 +233,7 @@ func (n *Node) GetGenesis() *tmtypes.GenesisDoc {
 func (n *Node) OnStop() {
 	n.cancel()
 
-	err := n.dalc.Stop()
+	err := n.BlockManager.DAClient.Stop()
 	if err != nil {
 		n.Logger.Error("stop data availability layer client", "error", err)
 	}

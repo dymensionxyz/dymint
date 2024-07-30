@@ -35,7 +35,9 @@ func TestInitialState(t *testing.T) {
 	genesis := testutil.GenerateGenesis(123)
 	sampleState := testutil.GenerateState(1, 128)
 	key, _, _ := crypto.GenerateEd25519Key(rand.Reader)
-	conf := testutil.GetManagerConfig()
+	conf := config.NodeConfig{
+		BlockManagerConfig: testutil.GetManagerConfig(),
+	}
 	logger := log.TestingLogger()
 	pubsubServer := pubsub.NewServer()
 	err = pubsubServer.Start()
@@ -94,8 +96,8 @@ func TestInitialState(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			dalc := testutil.GetMockDALC(logger)
-			agg, err := block.NewManager(key, conf, c.genesis, c.store, nil, proxyApp, dalc, settlementlc,
+			//dalc := testutil.GetMockDALC(logger)
+			agg, err := block.NewManager(key, conf, c.genesis, c.store, nil, proxyApp, store.NewDefaultInMemoryKVStore(), settlementlc,
 				nil, pubsubServer, p2pClient, logger)
 			assert.NoError(err)
 			assert.NotNil(agg)
