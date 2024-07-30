@@ -36,6 +36,8 @@ type State struct {
 
 	// the latest AppHash we've received from calling abci.Commit()
 	AppHash [32]byte
+
+	RollappConsensusParams tmproto.RollappConsensusParams
 }
 
 func (s *State) IsGenesis() bool {

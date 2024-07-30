@@ -78,3 +78,9 @@ message HashedParams {
   int64 block_max_bytes = 1;
   int64 block_max_gas   = 2;
 }
+
+
+message RollappConsensusParams {
+  string da = 1 ;
+  string version = 2 ;
+}

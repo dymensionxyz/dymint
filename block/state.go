@@ -2,6 +2,7 @@ package block
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -66,6 +67,18 @@ func NewStateFromGenesis(genDoc *tmtypes.GenesisDoc) (*types.State, error) {
 		LastHeightConsensusParamsChanged: genDoc.InitialHeight,
 	}
 	s.SetHeight(0)
+
+	//load rollapp_params from genesis doc app_state to the dymint state
+	var objmap map[string]json.RawMessage
+	err = json.Unmarshal(genDoc.AppState, &objmap)
+	if err != nil {
+		return nil, fmt.Errorf("in genesis doc: %w", err)
+	}
+	params, ok := objmap["rollapp_params"]
+	if ok {
+		json.Unmarshal(params, &s.RollappConsensusParams)
+	}
+	s.LastBlockHeight.Store(0)
 	copy(s.AppHash[:], genDoc.AppHash)
 
 	return &s, nil

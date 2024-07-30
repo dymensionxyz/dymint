@@ -266,6 +266,7 @@ func (s *State) ToProto() (*pb.State, error) {
 		LastHeightConsensusParamsChanged: s.LastHeightConsensusParamsChanged,
 		LastResultsHash:                  s.LastResultsHash[:],
 		AppHash:                          s.AppHash[:],
+		RollappConsensusParams:           s.RollappConsensusParams,
 	}, nil
 }
 
@@ -287,7 +288,7 @@ func (s *State) FromProto(other *pb.State) error {
 	s.LastHeightConsensusParamsChanged = other.LastHeightConsensusParamsChanged
 	copy(s.LastResultsHash[:], other.LastResultsHash)
 	copy(s.AppHash[:], other.AppHash)
-
+	s.RollappConsensusParams = other.RollappConsensusParams
 	return nil
 }
 
