@@ -158,7 +158,8 @@ func TestApplyBlock(t *testing.T) {
 	maxBytes := uint64(100)
 	state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
 	state.ConsensusParams.Block.MaxGas = 100000
-
+	state.RollappConsensusParams.Params.Da = "mock"
+	state.RollappConsensusParams.Params.Version = ""
 	// Create first block with one Tx from mempool
 	_ = mpool.CheckTx([]byte{1, 2, 3, 4}, func(r *abci.Response) {}, mempool.TxInfo{})
 	require.NoError(err)

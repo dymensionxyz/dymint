@@ -76,11 +76,6 @@ func GetManagerWithProposerKey(conf config.BlockManagerConfig, proposerKey crypt
 		return nil, err
 	}
 
-	/*if dalc == nil {
-		dalc = &localda.DataAvailabilityLayerClient{}
-	}*/
-	//initDALCMock(dalc, pubsubServer, logger)
-
 	var proxyApp proxy.AppConns
 	if proxyAppConns == nil {
 		proxyApp = GetABCIProxyAppMock(logger.With("module", "proxy"))
@@ -109,7 +104,7 @@ func GetManagerWithProposerKey(conf config.BlockManagerConfig, proposerKey crypt
 		BlockManagerConfig: conf,
 		DAConfig:           "",
 	}
-	manager, err := block.NewManager(proposerKey, config, genesis, managerStore, mp, proxyApp, store.NewDefaultInMemoryKVStore(), settlementlc, nil,
+	manager, err := block.NewManager(proposerKey, config, genesis, managerStore, mp, proxyApp, settlementlc, nil,
 		pubsubServer, p2pClient, logger)
 	if err != nil {
 		return nil, err

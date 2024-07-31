@@ -3,8 +3,10 @@ package block_test
 import (
 	"context"
 	"crypto/rand"
-	"fmt"
 	"sync/atomic"
+
+	"sync/atomic"
+
 	"testing"
 	"time"
 
@@ -110,8 +112,7 @@ func TestInitialState(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			//dalc := testutil.GetMockDALC(logger)
-			agg, err := block.NewManager(key, conf, c.genesis, c.store, nil, proxyApp, store.NewDefaultInMemoryKVStore(), settlementlc,
+			agg, err := block.NewManager(key, conf, c.genesis, c.store, nil, proxyApp, settlementlc,
 				nil, pubsubServer, p2pClient, logger)
 			assert.NoError(err)
 			assert.NotNil(agg)
@@ -144,6 +145,8 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 	require.NotNil(t, manager)
 
 	t.Log("Taking the manager out of sync by submitting a batch")
+	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
+	manager.Retriever = manager.DAClient.(da.BatchRetriever)
 
 	numBatchesToAdd := 2
 	nextBatchStartHeight := manager.NextHeightToSubmit()
@@ -164,19 +167,13 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 	assert.Zero(t, manager.LastSubmittedHeight.Load())
 	assert.True(t, manager.State.Height() == 0)
 
-	fmt.Println(nextBatchStartHeight)
-	fmt.Println(manager.State.Height())
-	fmt.Println(batch.EndHeight())
-
 	// enough time to sync and produce blocks
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*4)
 	defer cancel()
 	// Capture the error returned by manager.Start.
-	manager.DAClient.Start()
 
 	errChan := make(chan error, 1)
 	go func() {
-		fmt.Println("start manager")
 		errChan <- manager.Start(ctx)
 		err := <-errChan
 		require.NoError(t, err)
@@ -192,6 +189,8 @@ func TestRetrieveDaBatchesFailed(t *testing.T) {
 	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, manager)
+	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
+	manager.Retriever = manager.DAClient.(da.BatchRetriever)
 
 	daMetaData := &da.DASubmitMetaData{
 		Client: da.Mock,
@@ -451,6 +450,9 @@ func TestDAFetch(t *testing.T) {
 	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, mockStore)
 	require.NoError(err)
 	commitHash := [32]byte{1}
+
+	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
+	manager.Retriever = manager.DAClient.(da.BatchRetriever)
 
 	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{Data: commitHash[:]})
 

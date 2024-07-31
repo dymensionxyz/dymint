@@ -26,7 +26,6 @@ import (
 
 	"github.com/dymensionxyz/dymint/config"
 	"github.com/dymensionxyz/dymint/da"
-	"github.com/dymensionxyz/dymint/da/registry"
 	"github.com/dymensionxyz/dymint/mempool"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
@@ -86,7 +85,6 @@ func NewManager(
 	store store.Store,
 	mempool mempool.Mempool,
 	proxyApp proxy.AppConns,
-	dalcKV store.KV,
 	settlementClient settlement.ClientI,
 	eventBus *tmtypes.EventBus,
 	pubsub *pubsub.Server,
@@ -122,22 +120,6 @@ func NewManager(
 		return nil, fmt.Errorf("get initial state: %w", err)
 	}
 
-	da_layer := m.State.RollappConsensusParams.Params.Da
-	dalc := registry.GetClient(da_layer)
-	if dalc == nil {
-		return nil, fmt.Errorf("get data availability client named '%s'", da_layer)
-	}
-
-	err = dalc.Init([]byte(conf.DAConfig), pubsub, dalcKV, logger.With("module", string(dalc.GetClientType())))
-	if err != nil {
-		return nil, fmt.Errorf("data availability layer client initialization  %w", err)
-	}
-	m.DAClient = dalc
-	retriever, ok := dalc.(da.BatchRetriever)
-	if !ok {
-		return nil, fmt.Errorf("data availability layer client is not of type BatchRetriever")
-	}
-	m.Retriever = retriever
 	return m, nil
 }
 
