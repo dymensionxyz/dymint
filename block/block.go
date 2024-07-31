@@ -14,14 +14,16 @@ import (
 // As the entire process can't be atomic we need to make sure the following condition apply before
 // - block height is the expected block height on the store (height + 1).
 // - block height is the expected block height on the app (last block height + 1).
-func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMetaData blockMetaData) error {
+func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMetaData types.BlockMetaData) error {
 	// TODO: add switch case to have defined behavior for each case.
 	// validate block height
 	if block.Header.Height != m.State.NextHeight() {
 		return types.ErrInvalidBlockHeight
 	}
 
-	m.logger.Debug("Applying block", "height", block.Header.Height, "source", blockMetaData.source)
+	types.SetLastAppliedBlockSource(blockMetaData.Source.String())
+
+	m.logger.Debug("Applying block", "height", block.Header.Height, "source", blockMetaData.Source.String())
 
 	// Check if the app's last block height is the same as the currently produced block height
 	isBlockAlreadyApplied, err := m.isHeightAlreadyApplied(block.Header.Height)
@@ -120,23 +122,23 @@ func (m *Manager) attemptApplyCachedBlocks() error {
 	for {
 		expectedHeight := m.State.NextHeight()
 
-		cachedBlock, blockExists := m.blockCache[expectedHeight]
+		cachedBlock, blockExists := m.blockCache.GetBlockFromCache(expectedHeight)
 		if !blockExists {
 			break
 		}
 		if err := m.validateBlock(cachedBlock.Block, cachedBlock.Commit); err != nil {
-			delete(m.blockCache, cachedBlock.Block.Header.Height)
-			/// TODO: can we take an action here such as dropping the peer / reducing their reputation?
+			m.blockCache.DeleteBlockFromCache(cachedBlock.Block.Header.Height)
+			// TODO: can we take an action here such as dropping the peer / reducing their reputation?
 			return fmt.Errorf("block not valid at height %d, dropping it: err:%w", cachedBlock.Block.Header.Height, err)
 		}
 
-		err := m.applyBlock(cachedBlock.Block, cachedBlock.Commit, blockMetaData{source: gossipedBlock})
+		err := m.applyBlock(cachedBlock.Block, cachedBlock.Commit, types.BlockMetaData{Source: types.GossipedBlock})
 		if err != nil {
 			return fmt.Errorf("apply cached block: expected height: %d: %w", expectedHeight, err)
 		}
 		m.logger.Info("Block applied", "height", expectedHeight)
 
-		delete(m.blockCache, cachedBlock.Block.Header.Height)
+		m.blockCache.DeleteBlockFromCache(cachedBlock.Block.Header.Height)
 	}
 
 	return nil
