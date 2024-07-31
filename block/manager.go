@@ -229,7 +229,7 @@ func (m *Manager) syncBlockManager() error {
 	return nil
 }
 
-func (m *Manager) updateTargetHeight(h uint64) {
+func (m *Manager) UpdateTargetHeight(h uint64) {
 	for {
 		currentHeight := m.TargetHeight.Load()
 		if m.TargetHeight.CompareAndSwap(currentHeight, max(currentHeight, h)) {

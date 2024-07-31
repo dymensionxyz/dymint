@@ -23,7 +23,7 @@ func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
 		return
 	}
 
-	m.updateTargetHeight(block.Header.Height)
+	m.UpdateTargetHeight(block.Header.Height)
 
 	m.logger.Debug("Received new block via gossip.", "block height", block.Header.Height, "store height", m.State.Height(), "n cachedBlocks", len(m.blockCache))
 
