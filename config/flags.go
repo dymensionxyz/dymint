@@ -62,7 +62,6 @@ func AddNodeFlags(cmd *cobra.Command) {
 }
 
 func BindDymintFlags(cmd *cobra.Command, v *viper.Viper) error {
-
 	if err := v.BindPFlag("da_config", cmd.Flags().Lookup(FlagDAConfig)); err != nil {
 		return err
 	}

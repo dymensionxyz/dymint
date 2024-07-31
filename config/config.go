@@ -187,7 +187,6 @@ func (nc NodeConfig) validateSettlementLayer() error {
 }
 
 func (nc NodeConfig) validateDALayer() error {
-
 	if nc.DAGrpc.Host == "" {
 		return fmt.Errorf("DAGrpc.Host cannot be empty")
 	}

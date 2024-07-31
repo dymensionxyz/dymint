@@ -133,7 +133,11 @@ func NewManager(
 		return nil, fmt.Errorf("data availability layer client initialization  %w", err)
 	}
 	m.DAClient = dalc
-	m.Retriever = dalc.(da.BatchRetriever)
+	retriever, ok := dalc.(da.BatchRetriever)
+	if !ok {
+		return nil, fmt.Errorf("data availability layer client is not of type BatchRetriever")
+	}
+	m.Retriever = retriever
 	return m, nil
 }
 
