@@ -33,7 +33,7 @@ import (
 // 1. single block with single large tx
 // 2. single block with multiple small tx
 func TestBatchOverhead(t *testing.T) {
-	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, nil, 1, 1, 0, nil, nil)
+	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, manager)
 
@@ -113,7 +113,7 @@ func TestBatchSubmissionHappyFlow(t *testing.T) {
 		Da:      "",
 		Version: version.Commit,
 	}})
-	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, nil, 1, 1, 0, proxyApp, nil)
+	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
 	// Check initial assertions
@@ -161,7 +161,7 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 	slmock.On("Start").Return(nil)
 	slmock.On("GetProposer").Return(proposer)
 
-	manager, err := testutil.GetManagerWithProposerKey(testutil.GetManagerConfig(), lib2pPrivKey, slmock, nil, 1, 1, 0, proxyApp, nil)
+	manager, err := testutil.GetManagerWithProposerKey(testutil.GetManagerConfig(), lib2pPrivKey, slmock, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
 	// Check initial assertions
@@ -215,7 +215,7 @@ func TestSubmissionByTime(t *testing.T) {
 		BatchMaxSizeBytes:  1000,
 	}
 
-	manager, err := testutil.GetManager(managerConfig, nil, nil, 1, 1, 0, proxyApp, nil)
+	manager, err := testutil.GetManager(managerConfig, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
 	// Check initial height
@@ -280,7 +280,7 @@ func TestSubmissionByBatchSize(t *testing.T) {
 
 		managerConfig := testutil.GetManagerConfig()
 		managerConfig.BatchMaxSizeBytes = c.blockBatchMaxSizeBytes
-		manager, err := testutil.GetManager(managerConfig, nil, nil, 1, 1, 0, proxyApp, nil)
+		manager, err := testutil.GetManager(managerConfig, nil, 1, 1, 0, proxyApp, nil)
 		require.NoError(err)
 
 		assert.Equal(manager.State.Height(), uint64(0))

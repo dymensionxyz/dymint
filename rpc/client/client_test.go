@@ -109,7 +109,6 @@ func TestGenesisChunked(t *testing.T) {
 			BatchMaxSizeBytes:  1000,
 			MaxBatchSkew:       10,
 		},
-		DALayer:          "mock",
 		DAConfig:         "",
 		SettlementLayer:  "mock",
 		SettlementConfig: settlement.Config{},
@@ -694,7 +693,6 @@ func TestValidatorSetHandling(t *testing.T) {
 	})
 
 	nodeConfig := config.NodeConfig{
-		DALayer:         "mock",
 		SettlementLayer: "mock",
 		P2PConfig: config.P2PConfig{
 			ListenAddress:                config.DefaultListenAddress,
@@ -869,7 +867,6 @@ func getRPCInternal(t *testing.T, sequencer bool) (*tmmocks.MockApplication, *cl
 			BatchMaxSizeBytes:  1000,
 			MaxBatchSkew:       10,
 		},
-		DALayer:         "mock",
 		DAConfig:        "",
 		SettlementLayer: "mock",
 		SettlementConfig: settlement.Config{
@@ -958,7 +955,6 @@ func TestMempool2Nodes(t *testing.T) {
 
 	genesis := testutil.GenerateGenesis(0)
 	node1, err := node.NewNode(context.Background(), config.NodeConfig{
-		DALayer:         "mock",
 		SettlementLayer: "mock",
 		SettlementConfig: settlement.Config{
 			ProposerPubKey: hex.EncodeToString(proposerPK),
@@ -982,7 +978,6 @@ func TestMempool2Nodes(t *testing.T) {
 	require.NotNil(node1)
 
 	node2, err := node.NewNode(context.Background(), config.NodeConfig{
-		DALayer:         "mock",
 		SettlementLayer: "mock",
 		SettlementConfig: settlement.Config{
 			ProposerPubKey: hex.EncodeToString(proposerPK),

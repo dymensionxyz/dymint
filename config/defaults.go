@@ -29,7 +29,6 @@ func DefaultConfig(home string) *NodeConfig {
 			MaxBatchSkew:       20,
 			BatchMaxSizeBytes:  500000,
 		},
-		DALayer:         "mock",
 		SettlementLayer: "mock",
 		Instrumentation: &InstrumentationConfig{
 			Prometheus:           false,

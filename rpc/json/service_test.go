@@ -281,7 +281,7 @@ func getRPC(t *testing.T) (*tmmocks.MockApplication, *client.Client) {
 	app.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 	app.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
-		Da:      "",
+		Da:      "mock",
 		Version: version.Commit,
 	}})
 	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{})
@@ -304,7 +304,7 @@ func getRPC(t *testing.T) (*tmmocks.MockApplication, *client.Client) {
 	rollappID := "rollapp_1234-1"
 
 	config := config.NodeConfig{
-		DALayer: "mock", SettlementLayer: "mock",
+		SettlementLayer: "mock",
 		BlockManagerConfig: config.BlockManagerConfig{
 			BlockTime:          1 * time.Second,
 			MaxIdleTime:        0,
@@ -328,7 +328,7 @@ func getRPC(t *testing.T) (*tmmocks.MockApplication, *client.Client) {
 		key,
 		signingKey,
 		proxy.NewLocalClientCreator(app),
-		&types.GenesisDoc{ChainID: rollappID, AppState: []byte("{\"app_state\": {\"rollapp_params\": {\"params\": {\"da\": \"celestia\",\"version\": \"646983ec41942854aa8b2fc2b755106307e50170\"}}}}")},
+		&types.GenesisDoc{ChainID: rollappID, AppState: []byte("{\"rollapp_params\": {\"params\": {\"da\": \"mock\",\"version\": \"646983ec41942854aa8b2fc2b755106307e50170\"}}}")},
 		log.TestingLogger(),
 		mempool.NopMetrics(),
 	)

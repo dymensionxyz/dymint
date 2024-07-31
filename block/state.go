@@ -75,14 +75,9 @@ func NewStateFromGenesis(genDoc *tmtypes.GenesisDoc) (*types.State, error) {
 		return nil, fmt.Errorf("in genesis doc: %w", err)
 	}
 	params, ok := objmap["rollapp_params"]
-	if !ok {
-		return nil, fmt.Errorf("rollapp params not found in genesis doc")
+	if ok {
+		json.Unmarshal(params, &s.RollappConsensusParams)
 	}
-	json.Unmarshal(params, &s.RollappConsensusParams)
-	/*err = json.Unmarshal(params, &s.RollappConsensusParams)
-	if err != nil {
-		return nil, fmt.Errorf("in genesis doc: %w", err)
-	}*/
 
 	s.LastBlockHeight.Store(0)
 	copy(s.AppHash[:], genDoc.AppHash)

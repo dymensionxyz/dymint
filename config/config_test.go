@@ -23,7 +23,6 @@ func TestViperAndCobra(t *testing.T) {
 	nc := config.DefaultConfig("")
 	config.EnsureRoot(dir, nc)
 
-	assert.NoError(cmd.Flags().Set(config.FlagDALayer, "foobar"))
 	assert.NoError(cmd.Flags().Set(config.FlagDAConfig, `{"json":true}`))
 	assert.NoError(cmd.Flags().Set(config.FlagBlockTime, "4s"))
 	assert.NoError(cmd.Flags().Set(config.FlagMaxIdleTime, "2000s"))
@@ -32,7 +31,6 @@ func TestViperAndCobra(t *testing.T) {
 
 	assert.NoError(nc.GetViperConfig(cmd, dir))
 
-	assert.Equal("foobar", nc.DALayer)
 	assert.Equal(`{"json":true}`, nc.DAConfig)
 	assert.Equal(4*time.Second, nc.BlockTime)
 	assert.Equal(uint64(1000), nc.BlockManagerConfig.BatchMaxSizeBytes)
@@ -114,24 +112,6 @@ func TestNodeConfig_Validate(t *testing.T) {
 			},
 			wantErr: assert.NoError,
 		}, {
-			name: "DALayer: empty",
-			malleate: func(nc *config.NodeConfig) {
-				nc.DALayer = ""
-			},
-			wantErr: assert.Error,
-		}, {
-			name: "DALayer: mock",
-			malleate: func(nc *config.NodeConfig) {
-				nc.DALayer = "mock"
-			},
-			wantErr: assert.NoError,
-		}, {
-			name: "DAConfig: empty",
-			malleate: func(nc *config.NodeConfig) {
-				nc.DAConfig = ""
-			},
-			wantErr: assert.Error,
-		}, {
 			name: "DAGrpc.Host empty",
 			malleate: func(nc *config.NodeConfig) {
 				nc.DAGrpc.Host = ""
@@ -186,7 +166,6 @@ func fullNodeConfig() config.NodeConfig {
 			MaxBatchSkew:       10,
 			BatchMaxSizeBytes:  10000,
 		},
-		DALayer:         "celestia",
 		DAConfig:        "da-config",
 		SettlementLayer: "dymension",
 		SettlementConfig: settlement.Config{
