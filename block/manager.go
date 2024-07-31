@@ -139,10 +139,6 @@ func NewManager(
 func (m *Manager) Start(ctx context.Context) error {
 	m.logger.Info("Starting the block manager")
 
-	err := m.DAClient.Start()
-	if err != nil {
-		return fmt.Errorf("start data availability layer client: %w", err)
-	}
 	isSequencer, err := m.IsSequencerVerify()
 	if err != nil {
 		return err

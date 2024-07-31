@@ -80,7 +80,6 @@ batch_submit_max_time = "{{ .BlockManagerConfig.BatchSubmitMaxTime }}"
 block_batch_max_size_bytes = {{ .BlockManagerConfig.BatchMaxSizeBytes }}
 
 ### da config ###
-da_layer = "{{ .DALayer }}" # mock, celestia, avail
 # this should be json matching the celestia.Config type
 da_config = "{{ .DAConfig }}"
 

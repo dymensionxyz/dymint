@@ -33,7 +33,6 @@ type NodeConfig struct {
 
 	// parameters below are dymint specific and read from config
 	BlockManagerConfig `mapstructure:",squash"`
-	DALayer            string                 `mapstructure:"da_layer"`
 	DAConfig           string                 `mapstructure:"da_config"`
 	SettlementLayer    string                 `mapstructure:"settlement_layer"`
 	SettlementConfig   settlement.Config      `mapstructure:",squash"`
@@ -188,17 +187,7 @@ func (nc NodeConfig) validateSettlementLayer() error {
 }
 
 func (nc NodeConfig) validateDALayer() error {
-	if nc.DALayer == "" {
-		return fmt.Errorf("DALayer cannot be empty")
-	}
 
-	if nc.DALayer == "mock" {
-		return nil
-	}
-
-	if nc.DAConfig == "" {
-		return fmt.Errorf("DAConfig cannot be empty")
-	}
 	if nc.DAGrpc.Host == "" {
 		return fmt.Errorf("DAGrpc.Host cannot be empty")
 	}

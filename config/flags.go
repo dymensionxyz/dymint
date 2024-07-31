@@ -7,7 +7,6 @@ import (
 )
 
 const (
-	FlagDALayer                = "dymint.da_layer"
 	FlagDAConfig               = "dymint.da_config"
 	FlagBlockTime              = "dymint.block_time"
 	FlagMaxIdleTime            = "dymint.max_idle_time"
@@ -42,7 +41,6 @@ func AddNodeFlags(cmd *cobra.Command) {
 
 	def := DefaultNodeConfig
 
-	cmd.Flags().String(FlagDALayer, def.DALayer, "Data Availability Layer Client name (mock or grpc")
 	cmd.Flags().String(FlagDAConfig, def.DAConfig, "Data Availability Layer Client config")
 	cmd.Flags().Duration(FlagBlockTime, def.BlockTime, "block time (for sequencer mode)")
 	cmd.Flags().Duration(FlagMaxIdleTime, def.MaxIdleTime, "max time for empty blocks (for sequencer mode)")
@@ -64,9 +62,7 @@ func AddNodeFlags(cmd *cobra.Command) {
 }
 
 func BindDymintFlags(cmd *cobra.Command, v *viper.Viper) error {
-	if err := v.BindPFlag("da_layer", cmd.Flags().Lookup(FlagDALayer)); err != nil {
-		return err
-	}
+
 	if err := v.BindPFlag("da_config", cmd.Flags().Lookup(FlagDAConfig)); err != nil {
 		return err
 	}
