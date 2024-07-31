@@ -9,7 +9,7 @@ import (
 	sdkclient "github.com/cosmos/cosmos-sdk/client"
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	"github.com/dymensionxyz/cosmosclient/cosmosclient"
-	rollapptypes "github.com/dymensionxyz/dymension/v3/x/rollapp/types"
+	rollapptypes "github.com/dymensionxyz/dymint/third_party/dymension/rollapp/types"
 	sequencertypes "github.com/dymensionxyz/dymint/third_party/dymension/sequencer/types"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/ignite/cli/ignite/pkg/cosmosaccount"

@@ -15,7 +15,7 @@ import (
 
 	mock "github.com/stretchr/testify/mock"
 
-	rollapptypes "github.com/dymensionxyz/dymension/v3/x/rollapp/types"
+	rollapptypes "github.com/dymensionxyz/dymint/third_party/dymension/rollapp/types"
 
 	sequencertypes "github.com/dymensionxyz/dymint/third_party/dymension/sequencer/types"
 

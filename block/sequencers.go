@@ -138,13 +138,15 @@ func (m *Manager) CreateAndPostLastBatch(ctx context.Context, nextSeqHash [32]by
 		if err != nil {
 			return fmt.Errorf("create batch: %w", err)
 		}
+		if m.State.Height() == b.EndHeight() {
+			b.LastBatch = true
+		}
 
-		//FIXME: mark the batch as the last one
 		if err := m.SubmitBatch(b); err != nil {
 			return fmt.Errorf("submit batch: %w", err)
 		}
 
-		if m.State.Height() == b.EndHeight() {
+		if b.LastBatch {
 			break
 		}
 	}

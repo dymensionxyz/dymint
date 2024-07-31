@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	errorsmod "cosmossdk.io/errors"
+
 	"github.com/avast/retry-go/v4"
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/codec"
@@ -15,7 +17,7 @@ import (
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	"github.com/dymensionxyz/cosmosclient/cosmosclient"
-	rollapptypes "github.com/dymensionxyz/dymension/v3/x/rollapp/types"
+	rollapptypes "github.com/dymensionxyz/dymint/third_party/dymension/rollapp/types"
 	sequencertypes "github.com/dymensionxyz/dymint/third_party/dymension/sequencer/types"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/google/uuid"
@@ -235,7 +237,7 @@ func (c *Client) getStateInfo(index, height *uint64) (res *rollapptypes.QueryGet
 		res, err = c.rollappQueryClient.StateInfo(c.ctx, req)
 
 		if status.Code(err) == codes.NotFound {
-			return retry.Unrecoverable(err)
+			return retry.Unrecoverable(errorsmod.Wrap(gerrc.ErrNotFound, err.Error()))
 		}
 		return err
 	})
@@ -345,7 +347,7 @@ func (c *Client) GetSequencers() ([]settlement.Sequencer, error) {
 		}
 
 		if status.Code(err) == codes.NotFound {
-			return retry.Unrecoverable(err)
+			return retry.Unrecoverable(errorsmod.Wrap(gerrc.ErrNotFound, err.Error()))
 		}
 		return err
 	})
@@ -459,6 +461,7 @@ func (c *Client) convertBatchToMsgUpdateState(batch *types.Batch, daResult *da.R
 		DAPath:      daResult.SubmitMetaData.ToPath(),
 		Version:     dymRollappVersion,
 		BDs:         rollapptypes.BlockDescriptors{BD: blockDescriptors},
+		Last:        batch.LastBatch,
 	}
 	return settlementBatch, nil
 }
