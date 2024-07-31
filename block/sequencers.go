@@ -189,3 +189,19 @@ func (m *Manager) UpdateBondedSequencerSetFromSL() error {
 	m.logger.Debug("Updated bonded sequencer set", "newSet", m.State.ActiveSequencer.String())
 	return nil
 }
+
+// updateProposer updates the proposer in the state
+func (m *Manager) UpdateProposer() error {
+	proposer := m.SLClient.GetProposer()
+	if proposer == nil {
+		m.State.ActiveSequencer.SetProposer(nil)
+		return nil
+	}
+	tmPubKey, err := cryptocodec.ToTmPubKeyInterface(proposer.PublicKey)
+	if err != nil {
+		return err
+	}
+	val := tmtypes.NewValidator(tmPubKey, 1)
+	m.State.ActiveSequencer.SetProposer(val)
+	return nil
+}

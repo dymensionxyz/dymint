@@ -137,6 +137,17 @@ func (m *Manager) Start(ctx context.Context) error {
 		}
 	}
 
+	// Check if the chain is halted
+	if m.GetProposerPubKey() == nil {
+		err := m.UpdateProposer()
+		if err != nil {
+			return fmt.Errorf("update proposer: %w", err)
+		}
+		if m.GetProposerPubKey() == nil {
+			return fmt.Errorf("no proposer pubkey found. chain is halted")
+		}
+	}
+
 	isSequencer := m.IsSequencer()
 	m.logger.Info("sequencer mode", "isSequencer", isSequencer)
 

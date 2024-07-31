@@ -235,12 +235,12 @@ func (c *Client) getStateInfo(index, height *uint64) (res *rollapptypes.QueryGet
 		res, err = c.rollappQueryClient.StateInfo(c.ctx, req)
 
 		if status.Code(err) == codes.NotFound {
-			return retry.Unrecoverable(gerrc.ErrNotFound)
+			return retry.Unrecoverable(err)
 		}
 		return err
 	})
 	if err != nil {
-		return nil, fmt.Errorf("query state info: %w: %w", gerrc.ErrUnknown, err)
+		return nil, fmt.Errorf("query state info: %w", err)
 	}
 	if res == nil { // not supposed to happen
 		return nil, fmt.Errorf("empty response with nil err: %w", gerrc.ErrUnknown)
@@ -300,11 +300,13 @@ func (c *Client) GetProposer() *settlement.Sequencer {
 			RollappId: c.config.RollappID,
 		}
 		res, err := c.sequencerQueryClient.GetProposerByRollapp(c.ctx, reqProposer)
-		// FIXME: handle notFound errors
-		if err != nil {
-			return err
+		if err == nil {
+			proposerAddr = res.Proposer
+			return nil
 		}
-		proposerAddr = res.Proposer
+		if status.Code(err) == codes.NotFound {
+			return nil
+		}
 		return err
 	})
 	if err != nil {
@@ -338,6 +340,13 @@ func (c *Client) GetSequencers() ([]settlement.Sequencer, error) {
 	err := c.RunWithRetry(func() error {
 		var err error
 		res, err = c.sequencerQueryClient.SequencersByRollappByStatus(c.ctx, req)
+		if err == nil {
+			return nil
+		}
+
+		if status.Code(err) == codes.NotFound {
+			return retry.Unrecoverable(err)
+		}
 		return err
 	})
 	if err != nil {
@@ -381,8 +390,7 @@ func (c *Client) GetNextProposer() (*settlement.Sequencer, error) {
 			found = true
 			return nil
 		}
-		// FIXME: change to type assertion
-		if strings.Contains(err.Error(), "not found") {
+		if status.Code(err) == codes.NotFound {
 			return nil
 		}
 		return err
