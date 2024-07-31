@@ -18,6 +18,8 @@ import (
 
 	"github.com/dymensionxyz/dymint/block"
 	"github.com/dymensionxyz/dymint/config"
+	"github.com/dymensionxyz/dymint/da"
+	"github.com/dymensionxyz/dymint/da/registry"
 	indexer "github.com/dymensionxyz/dymint/indexers/blockindexer"
 	blockidxkv "github.com/dymensionxyz/dymint/indexers/blockindexer/kv"
 	"github.com/dymensionxyz/dymint/indexers/txindex"
@@ -58,7 +60,6 @@ type Node struct {
 
 	Store        store.Store
 	BlockManager *block.Manager
-	// dalc         da.DataAvailabilityLayerClient
 	settlementlc settlement.ClientI
 
 	TxIndexer      txindex.TxIndexer
@@ -153,7 +154,6 @@ func NewNode(
 		s,
 		mp,
 		proxyApp,
-		dalcKV,
 		settlementlc,
 		eventBus,
 		pubsubServer,
@@ -162,6 +162,11 @@ func NewNode(
 	)
 	if err != nil {
 		return nil, fmt.Errorf("BlockManager initialization error: %w", err)
+	}
+
+	err = setDA(blockManager, dalcKV, conf.DAConfig, pubsubServer, logger)
+	if err != nil {
+		return nil, err
 	}
 
 	ctx, cancel := context.WithCancel(ctx)
@@ -188,6 +193,25 @@ func NewNode(
 	node.BaseService = *service.NewBaseService(logger, "Node", node)
 
 	return node, nil
+}
+func setDA(blockManager *block.Manager, dalcKV store.KV, daConfig string, pubsubServer *pubsub.Server, logger log.Logger) error {
+	da_layer := blockManager.State.RollappConsensusParams.Params.Da
+	dalc := registry.GetClient(da_layer)
+	if dalc == nil {
+		return fmt.Errorf("get data availability client named '%s'", da_layer)
+	}
+
+	err := dalc.Init([]byte(daConfig), pubsubServer, dalcKV, logger.With("module", string(dalc.GetClientType())))
+	if err != nil {
+		return fmt.Errorf("data availability layer client initialization  %w", err)
+	}
+	blockManager.DAClient = dalc
+	retriever, ok := dalc.(da.BatchRetriever)
+	if !ok {
+		return fmt.Errorf("data availability layer client is not of type BatchRetriever")
+	}
+	blockManager.Retriever = retriever
+	return nil
 }
 
 // OnStart is a part of Service interface.

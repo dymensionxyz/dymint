@@ -13,6 +13,7 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/proxy"
 
 	cosmosed25519 "github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
@@ -20,6 +21,7 @@ import (
 
 	"github.com/dymensionxyz/dymint/block"
 	"github.com/dymensionxyz/dymint/config"
+	"github.com/dymensionxyz/dymint/da"
 	slmocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
@@ -109,11 +111,14 @@ func TestBatchSubmissionHappyFlow(t *testing.T) {
 	err := proxyApp.Start()
 	require.NoError(err)
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
-		Da:      "",
+		Da:      "mock",
 		Version: version.Commit,
 	}})
 	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
+
+	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
+	manager.Retriever = manager.DAClient.(da.BatchRetriever)
 
 	// Check initial assertions
 	initialHeight := uint64(0)
@@ -136,7 +141,7 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 	app := testutil.GetAppMock(testutil.EndBlock)
 	ctx := context.Background()
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
-		Da:      "",
+		Da:      "mock",
 		Version: version.Commit,
 	}})
 	// Create proxy app
@@ -164,6 +169,9 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 
 	manager, err := testutil.GetManagerWithProposerKey(testutil.GetManagerConfig(), lib2pPrivKey, slmock, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
+
+	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
+	manager.Retriever = manager.DAClient.(da.BatchRetriever)
 
 	// Check initial assertions
 	initialHeight := uint64(0)
@@ -218,6 +226,9 @@ func TestSubmissionByTime(t *testing.T) {
 
 	manager, err := testutil.GetManager(managerConfig, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
+
+	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
+	manager.Retriever = manager.DAClient.(da.BatchRetriever)
 
 	// Check initial height
 	initialHeight := uint64(0)
@@ -283,6 +294,9 @@ func TestSubmissionByBatchSize(t *testing.T) {
 		managerConfig.BatchMaxSizeBytes = c.blockBatchMaxSizeBytes
 		manager, err := testutil.GetManager(managerConfig, nil, 1, 1, 0, proxyApp, nil)
 		require.NoError(err)
+
+		manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
+		manager.Retriever = manager.DAClient.(da.BatchRetriever)
 
 		assert.Equal(manager.State.Height(), uint64(0))
 
