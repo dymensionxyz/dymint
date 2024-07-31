@@ -714,7 +714,7 @@ func (c *Client) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
 	if err != nil {
 		return nil, fmt.Errorf("fetch the validator info at latest block: %w", err)
 	}
-	_, validator := validators.GetByAddress(latest.Header.ProposerAddress)
+	validator := validators.Proposer
 	if validator == nil {
 		return nil, fmt.Errorf("find proposer %s in the valSet", string(latest.Header.ProposerAddress))
 	}

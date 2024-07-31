@@ -248,7 +248,7 @@ func (c *Commit) FromProto(other *pb.Commit) error {
 
 // ToProto converts State into protobuf representation and returns it.
 func (s *State) ToProto() (*pb.State, error) {
-	seqsProto, err := s.ActiveSequencer.ToValSet().ToProto()
+	seqsProto, err := s.ActiveSequencer.ToProto()
 	if err != nil {
 		return nil, err
 	}
@@ -258,7 +258,7 @@ func (s *State) ToProto() (*pb.State, error) {
 		ChainId:                          s.ChainID,
 		InitialHeight:                    int64(s.InitialHeight),
 		LastBlockHeight:                  int64(s.LastBlockHeight.Load()),
-		Validators:                       seqsProto,
+		SequencersSet:                    *seqsProto,
 		BaseHeight:                       s.BaseHeight,
 		LastHeightValidatorsChanged:      s.LastHeightValidatorsChanged,
 		ConsensusParams:                  s.ConsensusParams,
@@ -270,6 +270,8 @@ func (s *State) ToProto() (*pb.State, error) {
 
 // FromProto fills State with data from its protobuf representation.
 func (s *State) FromProto(other *pb.State) error {
+	//FIXME: TEST migration
+
 	var err error
 	s.Version = *other.Version
 	s.ChainID = other.ChainId
@@ -277,11 +279,11 @@ func (s *State) FromProto(other *pb.State) error {
 	s.LastBlockHeight.Store(uint64(other.LastBlockHeight))
 	s.BaseHeight = other.BaseHeight
 
-	tmpSet, err := types.ValidatorSetFromProto(other.Validators)
+	sSet, err := NewSequencerSetFromProto(other.SequencersSet)
 	if err != nil {
 		return err
 	}
-	s.ActiveSequencer.SetBondedSet(tmpSet)
+	s.ActiveSequencer = *sSet
 
 	s.LastHeightValidatorsChanged = other.LastHeightValidatorsChanged
 	s.ConsensusParams = other.ConsensusParams

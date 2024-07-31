@@ -6,8 +6,6 @@ import (
 	"fmt"
 
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
-	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	tmtypes "github.com/tendermint/tendermint/types"
 	"go.uber.org/multierr"
 
 	"github.com/dymensionxyz/dymint/types"
@@ -205,7 +203,7 @@ func (s *DefaultStore) LoadState() (*types.State, error) {
 }
 
 // SaveValidators stores validator set for given block height in store.
-func (s *DefaultStore) SaveValidators(height uint64, validatorSet *tmtypes.ValidatorSet, batch KVBatch) (KVBatch, error) {
+func (s *DefaultStore) SaveValidators(height uint64, validatorSet *types.SequencerSet, batch KVBatch) (KVBatch, error) {
 	pbValSet, err := validatorSet.ToProto()
 	if err != nil {
 		return batch, fmt.Errorf("marshal ValidatorSet to protobuf: %w", err)
@@ -223,18 +221,23 @@ func (s *DefaultStore) SaveValidators(height uint64, validatorSet *tmtypes.Valid
 }
 
 // LoadValidators loads validator set at given block height from store.
-func (s *DefaultStore) LoadValidators(height uint64) (*tmtypes.ValidatorSet, error) {
+func (s *DefaultStore) LoadValidators(height uint64) (*types.SequencerSet, error) {
 	blob, err := s.db.Get(getValidatorsKey(height))
 	if err != nil {
 		return nil, fmt.Errorf("load Validators for height %v: %w", height, err)
 	}
-	var pbValSet tmproto.ValidatorSet
+	var pbValSet pb.SequencerSet
 	err = pbValSet.Unmarshal(blob)
 	if err != nil {
 		return nil, fmt.Errorf("unmarshal to protobuf: %w", err)
 	}
 
-	return tmtypes.ValidatorSetFromProto(&pbValSet)
+	ss, err := types.NewSequencerSetFromProto(pbValSet)
+	if err != nil {
+		return nil, fmt.Errorf("unmarshal to ValidatorSet: %w", err)
+	}
+
+	return ss, nil
 }
 
 func (s *DefaultStore) loadHashFromIndex(height uint64) ([32]byte, error) {

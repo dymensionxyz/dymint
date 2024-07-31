@@ -3,6 +3,7 @@ package dymint;
 option go_package = "github.com/dymensionxyz/dymint/types/pb/dymint";
 import "types/tendermint/abci/types.proto";
 import "types/tendermint/types/types.proto";
+import "types/tendermint/types/validator.proto";
 
 // Version captures the consensus rules for processing a block in the blockchain,
 // including all blockchain data structures and the rules of the application's
@@ -85,4 +86,9 @@ message Batch {
 	repeated Block blocks = 3;
 	repeated Commit commits = 4;
 
+}
+
+message SequencerSet {
+	repeated tendermint.types.Validator sequencers         = 1;
+	tendermint.types.Validator          proposer           = 2;
 }

@@ -6,9 +6,9 @@ import "gogoproto/gogo.proto";
 import "google/protobuf/timestamp.proto";
 import "types/tendermint/abci/types.proto";
 import "types/tendermint/types/types.proto";
-import "types/tendermint/types/validator.proto";
 import "types/tendermint/types/params.proto";
 import "types/tendermint/state/types.proto";
+import "types/dymint/dymint.proto";
 
 
 message State {
@@ -23,11 +23,15 @@ message State {
   google.protobuf.Timestamp last_block_time = 6 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
 
   reserved 7;
+  reserved 8;
+  reserved 9;
+  reserved 10;
 
-  tendermint.types.ValidatorSet next_validators = 8 [deprecated = true];
-  tendermint.types.ValidatorSet validators = 9;
-  tendermint.types.ValidatorSet last_validators = 10 [deprecated = true];
+  // tendermint.types.ValidatorSet next_validators = 8 [deprecated = true];
+  // tendermint.types.ValidatorSet validators = 9 [deprecated = true];
+  // tendermint.types.ValidatorSet last_validators = 10 [deprecated = true];
   int64 last_height_validators_changed = 11;
+  
 
   tendermint.types.ConsensusParams consensus_params = 12 [(gogoproto.nullable) = false];
   int64 last_height_consensus_params_changed = 13;
@@ -38,4 +42,6 @@ message State {
 
   uint64 last_store_height = 16 [(gogoproto.customname) = "LastStoreHeight"];
   uint64 base_height = 17;
+
+  SequencerSet sequencersSet         = 18 [(gogoproto.nullable) = false];
 }

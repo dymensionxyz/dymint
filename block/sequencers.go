@@ -146,7 +146,7 @@ func (m *Manager) CreateAndPostLastBatch(ctx context.Context, nextSeqHash [32]by
 			return fmt.Errorf("create batch: %w", err)
 		}
 
-		//FIXME: syb
+		//FIXME: mark the batch as the last one
 		if err := m.SubmitBatch(b); err != nil {
 			return fmt.Errorf("submit batch: %w", err)
 		}
