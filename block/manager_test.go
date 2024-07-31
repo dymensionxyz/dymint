@@ -3,6 +3,7 @@ package block_test
 import (
 	"context"
 	"crypto/rand"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -10,12 +11,13 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/libp2p/go-libp2p/core/crypto"
+
 	"github.com/dymensionxyz/dymint/block"
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
-	"github.com/libp2p/go-libp2p/core/crypto"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
@@ -436,6 +438,37 @@ func TestDAFetch(t *testing.T) {
 			})
 			err := manager.ProcessNextDABatch(c.daMetaData)
 			require.Equal(c.err, err)
+		})
+	}
+}
+
+func TestManager_updateTargetHeight(t *testing.T) {
+	tests := []struct {
+		name            string
+		TargetHeight    uint64
+		h               uint64
+		expTargetHeight uint64
+	}{
+		{
+			name:            "no update target height",
+			TargetHeight:    100,
+			h:               99,
+			expTargetHeight: 100,
+		}, {
+			name:            "update target height",
+			TargetHeight:    100,
+			h:               101,
+			expTargetHeight: 101,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := &block.Manager{
+				TargetHeight: atomic.Uint64{},
+			}
+			m.TargetHeight.Store(tt.TargetHeight)
+			m.UpdateTargetHeight(tt.h)
+			assert.Equal(t, tt.expTargetHeight, m.TargetHeight.Load())
 		})
 	}
 }
