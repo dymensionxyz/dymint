@@ -80,6 +80,8 @@ type ClientI interface {
 	GetSequencers() ([]Sequencer, error)
 	// GetProposer returns the current proposer for this chain.
 	GetProposer() *Sequencer
+
+	//FIXME: rename to RotationInProgress
 	// GetNextProposer returns the current proposer for this chain.
 	GetNextProposer() (*Sequencer, error)
 

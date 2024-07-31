@@ -1,6 +1,7 @@
 package block
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -95,6 +96,22 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int)
 }
 
 func (m *Manager) ProduceApplyGossipLastBlock(ctx context.Context, nextProposerHash [32]byte) (block *types.Block, commit *types.Commit, err error) {
+	//check if the last block is already produced and applied
+	// if so, the active validator set is already updated
+	h := m.State.Height()
+	block, err = m.Store.LoadBlock(h)
+	if err != nil {
+		return nil, nil, fmt.Errorf("load block: height: %d: %w", h, err)
+	}
+	if bytes.Equal(block.Header.NextSequencersHash[:], nextProposerHash[:]) {
+		m.logger.Debug("Last block already produced and applied")
+		commit, err = m.Store.LoadCommit(h)
+		if err != nil {
+			return nil, nil, fmt.Errorf("load commit after load block: height: %d: %w", h, err)
+		}
+		return block, commit, nil
+	}
+
 	block, commit, err = m.produceLastBlock(nextProposerHash)
 	if err != nil {
 		return nil, nil, fmt.Errorf("produce block: %w", err)

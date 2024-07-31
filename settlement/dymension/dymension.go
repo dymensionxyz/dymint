@@ -301,7 +301,7 @@ func (c *Client) GetProposer() *settlement.Sequencer {
 		}
 		res, err := c.sequencerQueryClient.GetProposerByRollapp(c.ctx, reqProposer)
 		if err == nil {
-			proposerAddr = res.Proposer
+			proposerAddr = res.ProposerAddr
 			return nil
 		}
 		if status.Code(err) == codes.NotFound {
@@ -385,8 +385,8 @@ func (c *Client) GetNextProposer() (*settlement.Sequencer, error) {
 			RollappId: c.config.RollappID,
 		}
 		res, err := c.sequencerQueryClient.GetNextProposerByRollapp(c.ctx, req)
-		if err == nil {
-			nextAddr = res.NextProposer
+		if err == nil && res.RotationInProgress {
+			nextAddr = res.NextProposerAddr
 			found = true
 			return nil
 		}

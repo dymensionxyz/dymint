@@ -152,6 +152,8 @@ func (m *Manager) Start(ctx context.Context) error {
 	m.logger.Info("sequencer mode", "isSequencer", isSequencer)
 
 	eg, ctx := errgroup.WithContext(ctx)
+
+	/* ----------------------------- full node mode ----------------------------- */
 	if !isSequencer {
 		// Fullnode loop can start before syncing from DA
 		go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewNewGossipedBlock, m.onNewGossipedBlock, m.logger)

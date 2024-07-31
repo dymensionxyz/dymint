@@ -128,17 +128,10 @@ func (m *Manager) CompleteRotation(ctx context.Context, nextSeqAddr string) erro
 }
 
 func (m *Manager) CreateAndPostLastBatch(ctx context.Context, nextSeqHash [32]byte) error {
-	//check if the last block is already produced
-	// if so, the active validator set is already updated
-	if bytes.Equal(m.State.ActiveSequencer.ProposerHash, nextSeqHash[:]) {
-		m.logger.Debug("Last block already produced. Skipping.")
-	} else {
-		_, _, err := m.ProduceApplyGossipLastBlock(ctx, nextSeqHash)
-		if err != nil {
-			return fmt.Errorf("produce apply gossip last block: %w", err)
-		}
+	_, _, err := m.ProduceApplyGossipLastBlock(ctx, nextSeqHash)
+	if err != nil {
+		return fmt.Errorf("produce apply gossip last block: %w", err)
 	}
-
 	// Submit all data accumulated thus far
 	for {
 		b, err := m.CreateBatch(m.Conf.BatchMaxSizeBytes, m.NextHeightToSubmit(), m.State.Height())
@@ -161,6 +154,7 @@ func (m *Manager) CreateAndPostLastBatch(ctx context.Context, nextSeqHash [32]by
 
 // add bonded sequencers to the seqSet without changing the proposer
 func (m *Manager) UpdateBondedSequencerSetFromSL() error {
+	// FIXME: needs to load historical unbonded sequencers's pubkeys as well
 	seqs, err := m.SLClient.GetSequencers()
 	if err != nil {
 		return err
