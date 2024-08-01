@@ -163,7 +163,7 @@ func fullNodeConfig() config.NodeConfig {
 			MaxIdleTime:        20 * time.Second,
 			MaxProofTime:       20 * time.Second,
 			BatchSubmitMaxTime: 20 * time.Second,
-			MaxBatchSkew:       10,
+			MaxBlockSkew:       10,
 			BatchMaxSizeBytes:  10000,
 		},
 		DAConfig:        "da-config",

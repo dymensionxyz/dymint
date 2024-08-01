@@ -104,10 +104,15 @@ func testSubmitLoopInner(
 		return uint64(consumed), nil
 	}
 
+	accumulatedBlocks := func() uint64 {
+		return 0
+	}
+
 	block.SubmitLoopInner(
 		ctx,
 		producedBytesC,
 		args.batchSkew,
+		accumulatedBlocks,
 		args.maxTime,
 		args.batchBytes,
 		submitBatch,
