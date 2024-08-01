@@ -191,5 +191,4 @@ func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResp
 
 	}
 	return err
-
 }
