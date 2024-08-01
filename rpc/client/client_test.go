@@ -443,8 +443,8 @@ func TestTx(t *testing.T) {
 	require.NotNil(rpc)
 	mockApp.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
 	mockApp.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
-		Da:      "",
-		Version: version.Commit,
+		Da:     "",
+		Commit: version.Commit,
 	}})
 	mockApp.On("Commit", mock.Anything).Return(abci.ResponseCommit{})
 	mockApp.On("DeliverTx", mock.Anything).Return(abci.ResponseDeliverTx{})
@@ -685,24 +685,24 @@ func TestValidatorSetHandling(t *testing.T) {
 	waitCh := make(chan interface{})
 
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
-		Da:      "",
-		Version: version.Commit,
+		Da:     "",
+		Commit: version.Commit,
 	}}).Times(2)
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
-		Da:      "",
-		Version: version.Commit,
+		Da:     "",
+		Commit: version.Commit,
 	}, ValidatorUpdates: []abci.ValidatorUpdate{{PubKey: pbValKey, Power: 0}}}).Once()
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
-		Da:      "",
-		Version: version.Commit,
+		Da:     "",
+		Commit: version.Commit,
 	}}).Once()
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
-		Da:      "",
-		Version: version.Commit,
+		Da:     "",
+		Commit: version.Commit,
 	}, ValidatorUpdates: []abci.ValidatorUpdate{{PubKey: pbValKey, Power: 100}}}).Once()
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
-		Da:      "",
-		Version: version.Commit,
+		Da:     "",
+		Commit: version.Commit,
 	}}).Run(func(args mock.Arguments) {
 		waitCh <- nil
 	})

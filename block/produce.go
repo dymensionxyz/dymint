@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	tmos "github.com/tendermint/tendermint/libs/os"
+
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 
 	"github.com/dymensionxyz/dymint/node/events"
@@ -56,11 +58,15 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int)
 				uevent.MustPublish(ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
 				return err
 			}
+
+			if errors.Is(err, ErrDAUpgrade) || errors.Is(err, ErrVersionUpgrade) {
+				tmos.Exit(err.Error())
+			}
+
 			if err != nil {
 				m.logger.Error("Produce and gossip: uncategorized, assuming recoverable.", "error", err)
 				continue
 			}
-
 			nextEmptyBlock = time.Now().Add(m.Conf.MaxIdleTime)
 			if 0 < len(block.Data.Txs) {
 				// the block wasn't empty so we want to make sure we don't wait too long before producing another one, in order to facilitate proofs for ibc
@@ -95,16 +101,16 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int)
 }
 
 func (m *Manager) ProduceAndGossipBlock(ctx context.Context, allowEmpty bool) (*types.Block, *types.Commit, error) {
-	block, commit, err := m.produceBlock(allowEmpty)
-	if err != nil {
-		return nil, nil, fmt.Errorf("produce block: %w", err)
+	block, commit, produceBlockErr := m.produceBlock(allowEmpty)
+	if produceBlockErr != nil && !errors.Is(produceBlockErr, ErrDAUpgrade) && !errors.Is(produceBlockErr, ErrVersionUpgrade) {
+		return nil, nil, fmt.Errorf("produce block: %w", produceBlockErr)
 	}
 
 	if err := m.gossipBlock(ctx, *block, *commit); err != nil {
 		return nil, nil, fmt.Errorf("gossip block: %w", err)
 	}
 
-	return block, commit, nil
+	return block, commit, produceBlockErr
 }
 
 func loadPrevBlock(store store.Store, height uint64) ([32]byte, *types.Commit, error) {
@@ -181,7 +187,8 @@ func (m *Manager) produceBlock(allowEmpty bool) (*types.Block, *types.Commit, er
 		}
 	}
 
-	if err := m.applyBlock(block, commit, types.BlockMetaData{Source: types.ProducedBlock}); err != nil {
+	err = m.applyBlock(block, commit, types.BlockMetaData{Source: types.ProducedBlock})
+	if err != nil && !errors.Is(err, ErrDAUpgrade) && !errors.Is(err, ErrVersionUpgrade) {
 		return nil, nil, fmt.Errorf("apply block: %w: %w", err, ErrNonRecoverable)
 	}
 
@@ -189,7 +196,8 @@ func (m *Manager) produceBlock(allowEmpty bool) (*types.Block, *types.Commit, er
 	types.RollappBlockSizeBytesGauge.Set(float64(len(block.Data.Txs)))
 	types.RollappBlockSizeTxsGauge.Set(float64(len(block.Data.Txs)))
 	types.RollappHeightGauge.Set(float64(newHeight))
-	return block, commit, nil
+
+	return block, commit, err
 }
 
 func (m *Manager) createTMSignature(block *types.Block, proposerAddress []byte, voteTimestamp time.Time) ([]byte, error) {

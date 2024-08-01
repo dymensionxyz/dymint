@@ -230,8 +230,8 @@ func GenerateState(initialHeight int64, lastBlockHeight int64) *types.State {
 		NextValidators: GenerateRandomValidatorSet(),
 		RollappConsensusParams: tmproto.RollappConsensusParams{
 			Params: tmproto.Params{
-				Da:      "mock",
-				Version: dymintversion.Commit,
+				Da:     "mock",
+				Commit: dymintversion.Commit,
 			},
 		},
 	}

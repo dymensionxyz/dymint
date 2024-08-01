@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/dymensionxyz/dymint/version"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
@@ -164,11 +165,17 @@ func NewNode(
 		return nil, fmt.Errorf("BlockManager initialization error: %w", err)
 	}
 
+	if version.Commit != blockManager.State.RollappConsensusParams.Params.Commit {
+		return nil, fmt.Errorf("binary version used different from rollapp params: %s: %s", version.Commit, blockManager.State.RollappConsensusParams.Params.Commit)
+	}
 	err = setDA(blockManager, dalcKV, conf.DAConfig, pubsubServer, logger)
 	if err != nil {
 		return nil, err
 	}
 
+	if blockManager.DAClient.GetMaxBlobSize() != 0 && blockManager.DAClient.GetMaxBlobSize() < uint32(conf.BatchMaxSizeBytes) {
+		return nil, fmt.Errorf("batch size cannot be greater than %d for %s DA", blockManager.DAClient.GetMaxBlobSize(), blockManager.DAClient.GetClientType())
+	}
 	ctx, cancel := context.WithCancel(ctx)
 	node := &Node{
 		proxyApp:       proxyApp,
@@ -194,8 +201,11 @@ func NewNode(
 
 	return node, nil
 }
+
+// setDA initializes DA client in blockmanager according to DA type set in genesis or stored in state
 func setDA(blockManager *block.Manager, dalcKV store.KV, daConfig string, pubsubServer *pubsub.Server, logger log.Logger) error {
 	da_layer := blockManager.State.RollappConsensusParams.Params.Da
+
 	dalc := registry.GetClient(da_layer)
 	if dalc == nil {
 		return fmt.Errorf("get data availability client named '%s'", da_layer)
