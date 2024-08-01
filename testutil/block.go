@@ -158,6 +158,6 @@ func GetManagerConfig() config.BlockManagerConfig {
 		BlockTime:          100 * time.Millisecond,
 		BatchMaxSizeBytes:  1000000,
 		BatchSubmitMaxTime: 30 * time.Minute,
-		MaxBatchSkew:       10,
+		MaxBlockSkew:       10,
 	}
 }

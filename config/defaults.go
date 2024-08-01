@@ -26,7 +26,7 @@ func DefaultConfig(home string) *NodeConfig {
 			MaxIdleTime:        3600 * time.Second,
 			MaxProofTime:       100 * time.Second,
 			BatchSubmitMaxTime: 3600 * time.Second,
-			MaxBatchSkew:       20,
+			MaxBlockSkew:       90000,
 			BatchMaxSizeBytes:  500000,
 		},
 		SettlementLayer: "mock",

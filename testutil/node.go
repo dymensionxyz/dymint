@@ -46,7 +46,7 @@ func CreateNode(isSequencer bool, blockManagerConfig *config.BlockManagerConfig)
 			BlockTime:          100 * time.Millisecond,
 			BatchSubmitMaxTime: 60 * time.Second,
 			BatchMaxSizeBytes:  1000,
-			MaxBatchSkew:       10,
+			MaxBlockSkew:       10,
 		}
 	}
 	nodeConfig.BlockManagerConfig = *blockManagerConfig
