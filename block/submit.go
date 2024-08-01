@@ -7,11 +7,12 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
+	"golang.org/x/sync/errgroup"
+
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/types"
 	uchannel "github.com/dymensionxyz/dymint/utils/channel"
-	"github.com/dymensionxyz/gerr-cosmos/gerrc"
-	"golang.org/x/sync/errgroup"
 )
 
 // SubmitLoop is the main loop for submitting blocks to the DA and SL layers.

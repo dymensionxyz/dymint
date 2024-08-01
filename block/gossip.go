@@ -23,6 +23,7 @@ func (m *Manager) onNewGossipedBlock(event pubsub.Message) {
 		return
 	}
 
+	m.UpdateTargetHeight(height)
 	types.LastReceivedP2PHeightGauge.Set(float64(height))
 
 	m.logger.Debug("Received new block via gossip.", "block height", height, "store height", m.State.Height(), "n cachedBlocks", m.blockCache.Size())
