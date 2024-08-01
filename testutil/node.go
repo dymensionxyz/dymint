@@ -30,7 +30,7 @@ func CreateNode(isSequencer bool, blockManagerConfig *config.BlockManagerConfig)
 		return nil, err
 	}
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
-		Da:     "",
+		Da:     "mock",
 		Commit: version.Commit,
 	}})
 

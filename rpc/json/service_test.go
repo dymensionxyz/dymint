@@ -328,7 +328,7 @@ func getRPC(t *testing.T) (*tmmocks.MockApplication, *client.Client) {
 		key,
 		signingKey,
 		proxy.NewLocalClientCreator(app),
-		&types.GenesisDoc{ChainID: rollappID, AppState: []byte("{\"rollapp_params\": {\"params\": {\"da\": \"mock\",\"version\": \"646983ec41942854aa8b2fc2b755106307e50170\"}}}")},
+		&types.GenesisDoc{ChainID: rollappID, AppState: []byte("{\"rollapp_params\": {\"params\": {\"da\": \"mock\",\"commit\": \"" + version.Commit + "\"}}}")},
 		log.TestingLogger(),
 		mempool.NopMetrics(),
 	)

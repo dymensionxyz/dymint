@@ -38,7 +38,7 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 	require := require.New(t)
 	app := testutil.GetAppMock(testutil.EndBlock)
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
-		Da:     "",
+		Da:     "mock",
 		Commit: version.Commit,
 	}})
 	// Create proxy app
@@ -194,7 +194,7 @@ func TestStopBlockProduction(t *testing.T) {
 
 	app := testutil.GetAppMock(testutil.EndBlock)
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
-		Da:     "",
+		Da:     "mock",
 		Commit: version.Commit,
 	}})
 	// Create proxy app
