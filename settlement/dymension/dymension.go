@@ -288,7 +288,7 @@ func (c *Client) GetProposer() *settlement.Sequencer {
 		return &c.proposer
 	}
 
-	seqs, err := c.GetSequencers()
+	seqs, err := c.GetBondedSequencers()
 	if err != nil {
 		c.logger.Error("GetSequencers failed", "error", err)
 		return nil
@@ -324,22 +324,58 @@ func (c *Client) GetProposer() *settlement.Sequencer {
 	return nil
 }
 
-// GetSequencers returns the bonded sequencers of the given rollapp.
-// if no status is provided, it returns the bonded sequencers.
-func (c *Client) GetSequencers(queryStatus ...int) ([]settlement.Sequencer, error) {
-	var seqStatus sequencertypes.OperatingStatus
-	if len(queryStatus) == 0 {
-		seqStatus = sequencertypes.Bonded
-	} else if len(queryStatus) == 1 {
-		seqStatus = sequencertypes.OperatingStatus(queryStatus[0])
-	} else {
-		return nil, fmt.Errorf("invalid number of arguments: %w", gerrc.ErrInvalidArgument)
+// GetAllSequencers returns all sequencers of the given rollapp.
+func (c *Client) GetAllSequencers() ([]settlement.Sequencer, error) {
+	var res *sequencertypes.QueryGetSequencersByRollappResponse
+	req := &sequencertypes.QueryGetSequencersByRollappRequest{
+		RollappId: c.config.RollappID,
 	}
 
+	err := c.RunWithRetry(func() error {
+		var err error
+		res, err = c.sequencerQueryClient.SequencersByRollapp(c.ctx, req)
+		if err == nil {
+			return nil
+		}
+
+		if status.Code(err) == codes.NotFound {
+			return retry.Unrecoverable(errorsmod.Wrap(gerrc.ErrNotFound, err.Error()))
+		}
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// not supposed to happen, but just in case
+	if res == nil {
+		return nil, fmt.Errorf("empty response: %w", gerrc.ErrUnknown)
+	}
+
+	var sequencerList []settlement.Sequencer
+	for _, sequencer := range res.Sequencers {
+		var pubKey cryptotypes.PubKey
+		err := c.protoCodec.UnpackAny(sequencer.DymintPubKey, &pubKey)
+		if err != nil {
+			return nil, err
+		}
+
+		sequencerList = append(sequencerList, settlement.Sequencer{
+			SequencerAddress: sequencer.SequencerAddress,
+			PublicKey:        pubKey,
+		})
+	}
+
+	return sequencerList, nil
+}
+
+// GetBondedSequencers returns the bonded sequencers of the given rollapp.
+// if no status is provided, it returns the bonded sequencers.
+func (c *Client) GetBondedSequencers() ([]settlement.Sequencer, error) {
 	var res *sequencertypes.QueryGetSequencersByRollappByStatusResponse
 	req := &sequencertypes.QueryGetSequencersByRollappByStatusRequest{
 		RollappId: c.config.RollappID,
-		Status:    seqStatus,
+		Status:    sequencertypes.Bonded,
 	}
 
 	err := c.RunWithRetry(func() error {
@@ -411,7 +447,7 @@ func (c *Client) IsRotationInProgress() (*settlement.Sequencer, error) {
 		return &settlement.Sequencer{}, nil
 	}
 
-	seqs, err := c.GetSequencers()
+	seqs, err := c.GetBondedSequencers()
 	if err != nil {
 		return nil, fmt.Errorf("get sequencers: %w", err)
 	}

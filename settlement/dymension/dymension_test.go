@@ -62,7 +62,7 @@ func TestGetSequencers(t *testing.T) {
 	err = hubClient.Init(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
 	require.NoError(err)
 
-	sequencers, err := hubClient.GetSequencers()
+	sequencers, err := hubClient.GetBondedSequencers()
 	require.NoError(err)
 	require.Len(sequencers, count)
 }

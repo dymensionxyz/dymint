@@ -226,8 +226,13 @@ func (c *Client) GetProposer() *settlement.Sequencer {
 	}
 }
 
-// GetSequencers implements settlement.ClientI.
-func (c *Client) GetSequencers(_ ...int) ([]settlement.Sequencer, error) {
+// GetAllSequencers implements settlement.ClientI.
+func (c *Client) GetAllSequencers() ([]settlement.Sequencer, error) {
+	return c.GetBondedSequencers()
+}
+
+// GetBondedSequencers implements settlement.ClientI.
+func (c *Client) GetBondedSequencers() ([]settlement.Sequencer, error) {
 	return []settlement.Sequencer{*c.GetProposer()}, nil
 }
 

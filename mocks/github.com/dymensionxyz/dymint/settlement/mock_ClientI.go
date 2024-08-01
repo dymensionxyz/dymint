@@ -26,6 +26,63 @@ func (_m *MockClientI) EXPECT() *MockClientI_Expecter {
 	return &MockClientI_Expecter{mock: &_m.Mock}
 }
 
+// GetAllSequencers provides a mock function with given fields:
+func (_m *MockClientI) GetAllSequencers() ([]settlement.Sequencer, error) {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetAllSequencers")
+	}
+
+	var r0 []settlement.Sequencer
+	var r1 error
+	if rf, ok := ret.Get(0).(func() ([]settlement.Sequencer, error)); ok {
+		return rf()
+	}
+	if rf, ok := ret.Get(0).(func() []settlement.Sequencer); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]settlement.Sequencer)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockClientI_GetAllSequencers_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetAllSequencers'
+type MockClientI_GetAllSequencers_Call struct {
+	*mock.Call
+}
+
+// GetAllSequencers is a helper method to define mock.On call
+func (_e *MockClientI_Expecter) GetAllSequencers() *MockClientI_GetAllSequencers_Call {
+	return &MockClientI_GetAllSequencers_Call{Call: _e.mock.On("GetAllSequencers")}
+}
+
+func (_c *MockClientI_GetAllSequencers_Call) Run(run func()) *MockClientI_GetAllSequencers_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockClientI_GetAllSequencers_Call) Return(_a0 []settlement.Sequencer, _a1 error) *MockClientI_GetAllSequencers_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockClientI_GetAllSequencers_Call) RunAndReturn(run func() ([]settlement.Sequencer, error)) *MockClientI_GetAllSequencers_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetBatchAtIndex provides a mock function with given fields: index
 func (_m *MockClientI) GetBatchAtIndex(index uint64) (*settlement.ResultRetrieveBatch, error) {
 	ret := _m.Called(index)
@@ -80,6 +137,63 @@ func (_c *MockClientI_GetBatchAtIndex_Call) Return(_a0 *settlement.ResultRetriev
 }
 
 func (_c *MockClientI_GetBatchAtIndex_Call) RunAndReturn(run func(uint64) (*settlement.ResultRetrieveBatch, error)) *MockClientI_GetBatchAtIndex_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetBondedSequencers provides a mock function with given fields:
+func (_m *MockClientI) GetBondedSequencers() ([]settlement.Sequencer, error) {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetBondedSequencers")
+	}
+
+	var r0 []settlement.Sequencer
+	var r1 error
+	if rf, ok := ret.Get(0).(func() ([]settlement.Sequencer, error)); ok {
+		return rf()
+	}
+	if rf, ok := ret.Get(0).(func() []settlement.Sequencer); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]settlement.Sequencer)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockClientI_GetBondedSequencers_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetBondedSequencers'
+type MockClientI_GetBondedSequencers_Call struct {
+	*mock.Call
+}
+
+// GetBondedSequencers is a helper method to define mock.On call
+func (_e *MockClientI_Expecter) GetBondedSequencers() *MockClientI_GetBondedSequencers_Call {
+	return &MockClientI_GetBondedSequencers_Call{Call: _e.mock.On("GetBondedSequencers")}
+}
+
+func (_c *MockClientI_GetBondedSequencers_Call) Run(run func()) *MockClientI_GetBondedSequencers_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockClientI_GetBondedSequencers_Call) Return(_a0 []settlement.Sequencer, _a1 error) *MockClientI_GetBondedSequencers_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockClientI_GetBondedSequencers_Call) RunAndReturn(run func() ([]settlement.Sequencer, error)) *MockClientI_GetBondedSequencers_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -242,77 +356,6 @@ func (_c *MockClientI_GetProposer_Call) Return(_a0 *settlement.Sequencer) *MockC
 }
 
 func (_c *MockClientI_GetProposer_Call) RunAndReturn(run func() *settlement.Sequencer) *MockClientI_GetProposer_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// GetSequencers provides a mock function with given fields: status
-func (_m *MockClientI) GetSequencers(status ...int) ([]settlement.Sequencer, error) {
-	_va := make([]interface{}, len(status))
-	for _i := range status {
-		_va[_i] = status[_i]
-	}
-	var _ca []interface{}
-	_ca = append(_ca, _va...)
-	ret := _m.Called(_ca...)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetSequencers")
-	}
-
-	var r0 []settlement.Sequencer
-	var r1 error
-	if rf, ok := ret.Get(0).(func(...int) ([]settlement.Sequencer, error)); ok {
-		return rf(status...)
-	}
-	if rf, ok := ret.Get(0).(func(...int) []settlement.Sequencer); ok {
-		r0 = rf(status...)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]settlement.Sequencer)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(...int) error); ok {
-		r1 = rf(status...)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockClientI_GetSequencers_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetSequencers'
-type MockClientI_GetSequencers_Call struct {
-	*mock.Call
-}
-
-// GetSequencers is a helper method to define mock.On call
-//   - status ...int
-func (_e *MockClientI_Expecter) GetSequencers(status ...interface{}) *MockClientI_GetSequencers_Call {
-	return &MockClientI_GetSequencers_Call{Call: _e.mock.On("GetSequencers",
-		append([]interface{}{}, status...)...)}
-}
-
-func (_c *MockClientI_GetSequencers_Call) Run(run func(status ...int)) *MockClientI_GetSequencers_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		variadicArgs := make([]int, len(args)-0)
-		for i, a := range args[0:] {
-			if a != nil {
-				variadicArgs[i] = a.(int)
-			}
-		}
-		run(variadicArgs...)
-	})
-	return _c
-}
-
-func (_c *MockClientI_GetSequencers_Call) Return(_a0 []settlement.Sequencer, _a1 error) *MockClientI_GetSequencers_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockClientI_GetSequencers_Call) RunAndReturn(run func(...int) ([]settlement.Sequencer, error)) *MockClientI_GetSequencers_Call {
 	_c.Call.Return(run)
 	return _c
 }

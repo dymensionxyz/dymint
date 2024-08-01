@@ -156,7 +156,7 @@ func (m *Manager) CreateAndPostLastBatch(ctx context.Context, nextSeqHash [32]by
 
 // add bonded sequencers to the seqSet without changing the proposer
 func (m *Manager) UpdateBondedSequencerSetFromSL() error {
-	seqs, err := m.SLClient.GetSequencers()
+	seqs, err := m.SLClient.GetAllSequencers()
 	if err != nil {
 		return err
 	}

@@ -76,8 +76,10 @@ type ClientI interface {
 	// GetBatchAtIndex returns the batch at the given index.
 	GetBatchAtIndex(index uint64) (*ResultRetrieveBatch, error)
 
-	// GetSequencersList returns the list of the bonded sequencers for this rollapp.
-	GetSequencers(status ...int) ([]Sequencer, error)
+	// GetAllSequencers returns all sequencers for this rollapp (bonded and not bonded).
+	GetAllSequencers() ([]Sequencer, error)
+	// GetBondedSequencers returns the list of the bonded sequencers for this rollapp.
+	GetBondedSequencers() ([]Sequencer, error)
 	// GetProposer returns the current proposer for this chain.
 	GetProposer() *Sequencer
 
