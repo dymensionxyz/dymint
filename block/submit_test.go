@@ -112,8 +112,8 @@ func TestBatchSubmissionHappyFlow(t *testing.T) {
 	err := proxyApp.Start()
 	require.NoError(err)
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
-		Da:      "mock",
-		Version: version.Commit,
+		Da:     "mock",
+		Commit: version.Commit,
 	}})
 	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
@@ -142,8 +142,8 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 	app := testutil.GetAppMock(testutil.EndBlock)
 	ctx := context.Background()
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
-		Da:      "mock",
-		Version: version.Commit,
+		Da:     "mock",
+		Commit: version.Commit,
 	}})
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)
@@ -205,8 +205,8 @@ func TestSubmissionByTime(t *testing.T) {
 	require := require.New(t)
 	app := testutil.GetAppMock(testutil.EndBlock)
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
-		Da:      "",
-		Version: version.Commit,
+		Da:     "",
+		Commit: version.Commit,
 	}})
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)
@@ -280,8 +280,8 @@ func TestSubmissionByBatchSize(t *testing.T) {
 	for _, c := range cases {
 		app := testutil.GetAppMock(testutil.EndBlock)
 		app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
-			Da:      "",
-			Version: version.Commit,
+			Da:     "",
+			Commit: version.Commit,
 		}})
 		// Create proxy app
 		clientCreator := proxy.NewLocalClientCreator(app)

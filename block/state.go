@@ -101,9 +101,19 @@ func (m *Manager) UpdateStateFromApp() error {
 		return errorsmod.Wrap(err, "load block responses")
 	}
 
+<<<<<<< HEAD
 	// update the state with the app hashes created on the app commit
 	m.Executor.UpdateStateAfterCommit(m.State, resp, proxyAppInfo.LastBlockAppHash, appHeight)
 	return nil
+=======
+	// update the state with the hash, last store height and last validators.
+	stateUpdateErr := m.Executor.UpdateStateAfterCommit(m.State, resp, proxyAppInfo.LastBlockAppHash, appHeight, vals)
+	_, err = m.Store.SaveState(m.State, nil)
+	if err != nil {
+		return errorsmod.Wrap(err, "update state")
+	}
+	return stateUpdateErr
+>>>>>>> 1e690cc (version checks)
 }
 
 func (e *Executor) UpdateStateAfterInitChain(s *types.State, res *abci.ResponseInitChain) {
@@ -159,6 +169,24 @@ func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResp
 	}
 
 	s.SetHeight(height)
+
+	if resp.EndBlock.RollappConsensusParamUpdates == nil {
+		return nil
+	}
+	var err error
+	if s.RollappConsensusParams.Params.Da != resp.EndBlock.RollappConsensusParamUpdates.Da {
+		e.logger.Debug("Updating DA", "da", s.RollappConsensusParams.Params.Da, "newda", resp.EndBlock.RollappConsensusParamUpdates.Da)
+		s.RollappConsensusParams.Params.Da = resp.EndBlock.RollappConsensusParamUpdates.Da
+		err = fmt.Errorf("%w, please update da config for %s", ErrDAUpgrade, s.RollappConsensusParams.Params.Da)
+	}
+	if s.RollappConsensusParams.Params.Commit != resp.EndBlock.RollappConsensusParamUpdates.Commit {
+		e.logger.Debug("Updating version", "version", s.RollappConsensusParams.Params.Commit, "version", resp.EndBlock.RollappConsensusParamUpdates.Commit)
+		s.RollappConsensusParams.Params.Commit = resp.EndBlock.RollappConsensusParamUpdates.Commit
+		err = fmt.Errorf("%w, please upgrade binary to commit %s", ErrVersionUpgrade, s.RollappConsensusParams.Params.Commit)
+
+	}
+	return err
+
 }
 
 // UpdateProposerFromBlock updates the proposer from the block

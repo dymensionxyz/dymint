@@ -237,8 +237,8 @@ func GenerateStateWithSequencer(initialHeight int64, lastBlockHeight int64, pubk
 		},
 		RollappConsensusParams: tmproto.RollappConsensusParams{
 			Params: tmproto.Params{
-				Da:      "mock",
-				Version: dymintversion.Commit,
+				Da:     "mock",
+				Commit: dymintversion.Commit,
 			},
 		},
 	}

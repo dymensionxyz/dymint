@@ -132,8 +132,8 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 	// Init app
 	app := testutil.GetAppMock(testutil.EndBlock)
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
-		Da:      "mock",
-		Version: version.Commit,
+		Da:     "mock",
+		Commit: version.Commit,
 	}})
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)
@@ -207,8 +207,8 @@ func TestProduceNewBlock(t *testing.T) {
 	commitHash := [32]byte{1}
 	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{Data: commitHash[:]})
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
-		Da:      "mock",
-		Version: version.Commit,
+		Da:     "mock",
+		Commit: version.Commit,
 	}})
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)
@@ -232,8 +232,8 @@ func TestProducePendingBlock(t *testing.T) {
 	commitHash := [32]byte{1}
 	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{Data: commitHash[:]})
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
-		Da:      "mock",
-		Version: version.Commit,
+		Da:     "mock",
+		Commit: version.Commit,
 	}})
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)
@@ -338,8 +338,8 @@ func TestProduceBlockFailAfterCommit(t *testing.T) {
 				LastBlockAppHash: tc.LastAppCommitHash[:],
 			})
 			app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
-				Da:      "mock",
-				Version: version.Commit,
+				Da:     "mock",
+				Commit: version.Commit,
 			}})
 			mockStore.ShouldFailUpdateStateWithBatch = tc.shoudFailOnSaveState
 			_, _, _ = manager.ProduceApplyGossipBlock(context.Background(), true)
@@ -362,8 +362,8 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 	require := require.New(t)
 	app := testutil.GetAppMock(testutil.EndBlock)
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
-		Da:      "mock",
-		Version: version.Commit,
+		Da:     "mock",
+		Commit: version.Commit,
 	}})
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)
@@ -436,8 +436,8 @@ func TestDAFetch(t *testing.T) {
 	// Setup app
 	app := testutil.GetAppMock(testutil.Info, testutil.Commit, testutil.EndBlock)
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
-		Da:      "mock",
-		Version: version.Commit,
+		Da:     "mock",
+		Commit: version.Commit,
 	}})
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)

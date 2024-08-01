@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	tmos "github.com/tendermint/tendermint/libs/os"
+
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 
 	"github.com/dymensionxyz/dymint/node/events"
@@ -56,11 +58,15 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int)
 				uevent.MustPublish(ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
 				return err
 			}
+
+			if errors.Is(err, ErrDAUpgrade) || errors.Is(err, ErrVersionUpgrade) {
+				tmos.Exit(err.Error())
+			}
+
 			if err != nil {
 				m.logger.Error("Produce and gossip: uncategorized, assuming recoverable.", "error", err)
 				continue
 			}
-
 			nextEmptyBlock = time.Now().Add(m.Conf.MaxIdleTime)
 			if 0 < len(block.Data.Txs) {
 				// the block wasn't empty so we want to make sure we don't wait too long before producing another one, in order to facilitate proofs for ibc
@@ -119,7 +125,7 @@ func (m *Manager) produceApplyGossip(ctx context.Context, allowEmpty bool, nextP
 		return nil, nil, fmt.Errorf("gossip block: %w", err)
 	}
 
-	return block, commit, nil
+	return block, commit, produceBlockErr
 }
 
 func (m *Manager) produceBlock(allowEmpty bool, nextProposerHash *[32]byte) (*types.Block, *types.Commit, error) {
@@ -167,7 +173,13 @@ func (m *Manager) produceBlock(allowEmpty bool, nextProposerHash *[32]byte) (*ty
 	m.logger.Info("Block created.", "height", newHeight, "num_tx", len(block.Data.Txs))
 	types.RollappBlockSizeBytesGauge.Set(float64(len(block.Data.Txs)))
 	types.RollappBlockSizeTxsGauge.Set(float64(len(block.Data.Txs)))
+<<<<<<< HEAD
 	return block, commit, nil
+=======
+	types.RollappHeightGauge.Set(float64(newHeight))
+
+	return block, commit, err
+>>>>>>> 1e690cc (version checks)
 }
 
 // create commit for block

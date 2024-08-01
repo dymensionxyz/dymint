@@ -173,3 +173,8 @@ func (m *DataAvailabilityLayerClient) updateDAHeight() {
 	blockStep := rand.Uint64()%10 + 1 //#nosec
 	m.daHeight.Add(blockStep)
 }
+
+// GetMaxBlobSize returns the maximum allowed blob size in the DA, used to check the max batch size configured
+func (d *DataAvailabilityLayerClient) GetMaxBlobSize() uint32 {
+	return 0
+}

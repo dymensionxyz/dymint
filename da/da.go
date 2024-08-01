@@ -216,7 +216,11 @@ type DataAvailabilityLayerClient interface {
 	// CheckBatchAvailability checks the availability of the blob submitted getting proofs and validating them
 	CheckBatchAvailability(daMetaData *DASubmitMetaData) ResultCheckBatch
 
+	// Channel used to check when the DA light client finished syncing
 	Synced() <-chan struct{}
+
+	// Returns the maximum allowed blob size in the DA, used to check the max batch size configured
+	GetMaxBlobSize() uint32
 }
 
 // BatchRetriever is additional interface that can be implemented by Data Availability Layer Client that is able to retrieve

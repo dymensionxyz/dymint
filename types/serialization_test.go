@@ -140,8 +140,8 @@ func TestStateRoundTrip(t *testing.T) {
 				AppHash:                          [32]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1},
 				RollappConsensusParams: tmproto.RollappConsensusParams{
 					Params: tmproto.Params{
-						Da:      "mock",
-						Version: version.Commit,
+						Da:     "mock",
+						Commit: version.Commit,
 					}},
 			},
 		},
