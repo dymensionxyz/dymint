@@ -13,7 +13,7 @@ packages:
   github.com/dymensionxyz/dymint/third_party/dymension/sequencer/types:
     interfaces:
       QueryClient:
-  github.com/dymensionxyz/dymension/v3/x/rollapp/types:
+  github.com/dymensionxyz/dymint/third_party/dymension/rollapp/types:
     interfaces:
       QueryClient:
   github.com/tendermint/tendermint/abci/types:

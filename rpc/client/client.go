@@ -7,12 +7,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/dymensionxyz/dymint/types"
-
-	"github.com/dymensionxyz/dymint/version"
-
 	sdkerrors "cosmossdk.io/errors"
-
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
@@ -29,6 +24,8 @@ import (
 
 	"github.com/dymensionxyz/dymint/mempool"
 	"github.com/dymensionxyz/dymint/node"
+	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/dymint/version"
 )
 
 const (
@@ -750,13 +747,14 @@ func (c *Client) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
 			LatestAppHash:     latestAppHash[:],
 			LatestBlockHeight: int64(latestHeight),
 			LatestBlockTime:   time.Unix(0, int64(latestBlockTimeNano)),
+			// CatchingUp is true if the node is not at the latest height received from p2p or da.
+			CatchingUp: c.node.BlockManager.TargetHeight.Load() > latestHeight,
 			// TODO(tzdybal): add missing fields
 			// EarliestBlockHash:   earliestBlockHash,
 			// EarliestAppHash:     earliestAppHash,
 			// EarliestBlockHeight: earliestBloc
 			// kHeight,
 			// EarliestBlockTime:   time.Unix(0, earliestBlockTimeNano),
-			// CatchingUp:          env.ConsensusReactor.WaitSync(),
 		},
 		// TODO(ItzhakBokris): update ValidatorInfo fields
 		ValidatorInfo: ctypes.ValidatorInfo{
