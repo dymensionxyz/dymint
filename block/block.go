@@ -75,7 +75,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	}
 
 	// update validators to state from block
-	m.Executor.UpdateStateWithValidatorsSet(m.State, block)
+	m.Executor.UpdateProposerFromBlock(m.State, block)
 
 	// save validators to store to be queried over RPC
 	batch := m.Store.NewBatch()

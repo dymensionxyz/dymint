@@ -288,16 +288,14 @@ func (c *Client) GetProposer() *settlement.Sequencer {
 		return &c.proposer
 	}
 
-	if len(c.sequencerList) == 0 {
-		_, err := c.GetSequencers()
-		if err != nil {
-			c.logger.Error("GetSequencers failed", "error", err)
-			return nil
-		}
+	seqs, err := c.GetSequencers()
+	if err != nil {
+		c.logger.Error("GetSequencers failed", "error", err)
+		return nil
 	}
 
 	var proposerAddr string
-	err := c.RunWithRetry(func() error {
+	err = c.RunWithRetry(func() error {
 		reqProposer := &sequencertypes.QueryGetProposerByRollappRequest{
 			RollappId: c.config.RollappID,
 		}
@@ -316,7 +314,7 @@ func (c *Client) GetProposer() *settlement.Sequencer {
 		return nil
 	}
 
-	for _, sequencer := range c.sequencerList {
+	for _, sequencer := range seqs {
 		if sequencer.SequencerAddress == proposerAddr {
 			c.proposer = sequencer
 			return &sequencer
@@ -327,16 +325,21 @@ func (c *Client) GetProposer() *settlement.Sequencer {
 }
 
 // GetSequencers returns the bonded sequencers of the given rollapp.
-func (c *Client) GetSequencers() ([]settlement.Sequencer, error) {
-	// return cached sequencers
-	if len(c.sequencerList) > 0 {
-		return c.sequencerList, nil
+// if no status is provided, it returns the bonded sequencers.
+func (c *Client) GetSequencers(queryStatus ...int) ([]settlement.Sequencer, error) {
+	var seqStatus sequencertypes.OperatingStatus
+	if len(queryStatus) == 0 {
+		seqStatus = sequencertypes.Bonded
+	} else if len(queryStatus) == 1 {
+		seqStatus = sequencertypes.OperatingStatus(queryStatus[0])
+	} else {
+		return nil, fmt.Errorf("invalid number of arguments: %w", gerrc.ErrInvalidArgument)
 	}
 
 	var res *sequencertypes.QueryGetSequencersByRollappByStatusResponse
 	req := &sequencertypes.QueryGetSequencersByRollappByStatusRequest{
 		RollappId: c.config.RollappID,
-		Status:    sequencertypes.Bonded,
+		Status:    seqStatus,
 	}
 
 	err := c.RunWithRetry(func() error {
@@ -360,6 +363,7 @@ func (c *Client) GetSequencers() ([]settlement.Sequencer, error) {
 		return nil, fmt.Errorf("empty response: %w", gerrc.ErrUnknown)
 	}
 
+	var sequencerList []settlement.Sequencer
 	for _, sequencer := range res.Sequencers {
 		var pubKey cryptotypes.PubKey
 		err := c.protoCodec.UnpackAny(sequencer.DymintPubKey, &pubKey)
@@ -367,17 +371,17 @@ func (c *Client) GetSequencers() ([]settlement.Sequencer, error) {
 			return nil, err
 		}
 
-		c.sequencerList = append(c.sequencerList, settlement.Sequencer{
+		sequencerList = append(sequencerList, settlement.Sequencer{
 			SequencerAddress: sequencer.SequencerAddress,
 			PublicKey:        pubKey,
 		})
 	}
 
-	return c.sequencerList, nil
+	return sequencerList, nil
 }
 
-// GetNextProposer implements settlement.ClientI.
-func (c *Client) GetNextProposer() (*settlement.Sequencer, error) {
+// IsRotationInProgress implements settlement.ClientI.
+func (c *Client) IsRotationInProgress() (*settlement.Sequencer, error) {
 	var (
 		nextAddr string
 		found    bool
@@ -407,12 +411,17 @@ func (c *Client) GetNextProposer() (*settlement.Sequencer, error) {
 		return &settlement.Sequencer{}, nil
 	}
 
-	for _, sequencer := range c.sequencerList {
+	seqs, err := c.GetSequencers()
+	if err != nil {
+		return nil, fmt.Errorf("get sequencers: %w", err)
+	}
+
+	for _, sequencer := range seqs {
 		if sequencer.SequencerAddress == nextAddr {
-			c.proposer = sequencer
 			return &sequencer, nil
 		}
 	}
+
 	return nil, fmt.Errorf("next proposer not found in bonded set: %w", gerrc.ErrNotFound)
 }
 

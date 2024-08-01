@@ -51,7 +51,7 @@ func (m *Manager) IsSequencer() bool {
 func (m *Manager) MissingLastBatch() bool {
 	localProposerKey, _ := m.LocalKey.GetPublic().Raw()
 	expectedHubProposer := m.SLClient.GetProposer().PublicKey.Bytes()
-	next, err := m.SLClient.GetNextProposer()
+	next, err := m.SLClient.IsRotationInProgress()
 	if err != nil {
 		panic(fmt.Errorf("get next proposer: %w", err))
 	}
@@ -156,7 +156,6 @@ func (m *Manager) CreateAndPostLastBatch(ctx context.Context, nextSeqHash [32]by
 
 // add bonded sequencers to the seqSet without changing the proposer
 func (m *Manager) UpdateBondedSequencerSetFromSL() error {
-	// FIXME: needs to load historical unbonded sequencers's pubkeys as well
 	seqs, err := m.SLClient.GetSequencers()
 	if err != nil {
 		return err

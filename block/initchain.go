@@ -12,7 +12,7 @@ func (m *Manager) RunInitChain(ctx context.Context) error {
 	// get the proposer's consensus pubkey
 	proposer := m.SLClient.GetProposer()
 	if proposer == nil {
-		return errors.New("failed to get sequencer from SL")
+		return errors.New("failed to get proposer")
 	}
 	tmPubKey, err := cryptocodec.ToTmPubKeyInterface(proposer.PublicKey)
 	if err != nil {

@@ -77,13 +77,13 @@ type ClientI interface {
 	GetBatchAtIndex(index uint64) (*ResultRetrieveBatch, error)
 
 	// GetSequencersList returns the list of the bonded sequencers for this rollapp.
-	GetSequencers() ([]Sequencer, error)
+	GetSequencers(status ...int) ([]Sequencer, error)
 	// GetProposer returns the current proposer for this chain.
 	GetProposer() *Sequencer
 
-	//FIXME: rename to RotationInProgress
-	// GetNextProposer returns the current proposer for this chain.
-	GetNextProposer() (*Sequencer, error)
+	// IsRotationInProgress returns the next proposer for this chain in case of a rotation.
+	// If no rotation is in progress, it should return nil.
+	IsRotationInProgress() (*Sequencer, error)
 
 	GetHeightState(uint64) (*ResultGetHeightState, error)
 }
@@ -94,9 +94,6 @@ type Sequencer struct {
 	SequencerAddress string
 	// PublicKey is the public key of the sequencer
 	PublicKey crypto.PubKey
-	// RotationInProgress is true if the sequencer is in the process of rotation
-	RotationInProgress bool
-	// FIXME: remove?
 }
 
 func (s Sequencer) TMValidator() (*tmtypes.Validator, error) {

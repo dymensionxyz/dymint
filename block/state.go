@@ -147,14 +147,14 @@ func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResp
 }
 
 // Update validators post commit
-func (e *Executor) UpdateStateWithValidatorsSet(s *types.State, block *types.Block) {
+func (e *Executor) UpdateProposerFromBlock(s *types.State, block *types.Block) {
 	// no sequencer change
 	if bytes.Equal(s.ActiveSequencer.ProposerHash[:], block.Header.NextSequencersHash[:]) {
 		return
 	}
 
-	//FIXME: if empty, halt the node
 	if block.Header.NextSequencersHash == [32]byte{} {
+		// the chain will be halted until proposer is set
 		s.ActiveSequencer.SetProposer(nil)
 		return
 	}
@@ -164,6 +164,4 @@ func (e *Executor) UpdateStateWithValidatorsSet(s *types.State, block *types.Blo
 	if err != nil {
 		panic(fmt.Sprintf("failed to update active sequencer: %v", err))
 	}
-
-	// FIXME: full node should change role to sequencer
 }

@@ -204,12 +204,12 @@ func (c *Client) GetProposer() *settlement.Sequencer {
 }
 
 // GetSequencers implements settlement.ClientI.
-func (c *Client) GetSequencers() ([]settlement.Sequencer, error) {
+func (c *Client) GetSequencers(_ ...int) ([]settlement.Sequencer, error) {
 	return []settlement.Sequencer{*c.GetProposer()}, nil
 }
 
-// GetNextProposer implements settlement.ClientI.
-func (c *Client) GetNextProposer() (*settlement.Sequencer, error) {
+// IsRotationInProgress implements settlement.ClientI.
+func (c *Client) IsRotationInProgress() (*settlement.Sequencer, error) {
 	return nil, nil
 }
 

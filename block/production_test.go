@@ -101,7 +101,7 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 
 func TestCreateEmptyBlocksNew(t *testing.T) {
 	// TODO(https://github.com/dymensionxyz/dymint/issues/352)
-	t.Skip("FIXME: fails to submit tx to test the empty blocks feature")
+	t.Skip("TODO: fails to submit tx to test the empty blocks feature")
 	assert := assert.New(t)
 	require := require.New(t)
 	app := testutil.GetAppMock()

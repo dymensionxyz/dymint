@@ -189,8 +189,11 @@ func (m *Manager) Start(ctx context.Context) error {
 	<-m.DAClient.Synced()
 
 	// check if sequencer in the middle of rotation
-	if m.MissingLastBatch() {
-		next, _ := m.SLClient.GetNextProposer()
+	next, err := m.SLClient.IsRotationInProgress()
+	if err != nil {
+		return fmt.Errorf("check rotation in progress: %w", err)
+	}
+	if next != nil {
 		go func() {
 			err = m.CompleteRotation(ctx, next.SequencerAddress)
 			if err != nil {
@@ -244,8 +247,6 @@ func (m *Manager) Start(ctx context.Context) error {
 
 	return nil
 }
-
-// check if last batch needed
 
 func (m *Manager) NextHeightToSubmit() uint64 {
 	return m.LastSubmittedHeight.Load() + 1
