@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	tmos "github.com/tendermint/tendermint/libs/os"
-
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 
 	"github.com/dymensionxyz/dymint/node/events"
@@ -60,7 +58,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int)
 			}
 
 			if errors.Is(err, ErrDAUpgrade) || errors.Is(err, ErrVersionUpgrade) {
-				tmos.Exit(err.Error())
+				panic(err.Error())
 			}
 
 			if err != nil {

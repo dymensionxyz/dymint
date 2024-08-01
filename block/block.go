@@ -1,6 +1,7 @@
 package block
 
 import (
+	"errors"
 	"fmt"
 
 	errorsmod "cosmossdk.io/errors"
@@ -137,6 +138,10 @@ func (m *Manager) attemptApplyCachedBlocks() error {
 			return fmt.Errorf("apply cached block: expected height: %d: %w", expectedHeight, err)
 		}
 		m.logger.Info("Block applied", "height", expectedHeight)
+
+		if errors.Is(err, ErrDAUpgrade) || errors.Is(err, ErrVersionUpgrade) {
+			panic(err.Error())
+		}
 
 		m.blockCache.DeleteBlockFromCache(cachedBlock.Block.Header.Height)
 	}
