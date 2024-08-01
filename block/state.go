@@ -186,7 +186,6 @@ func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResp
 
 	}
 	return err
-
 }
 
 // UpdateProposerFromBlock updates the proposer from the block
