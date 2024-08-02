@@ -57,6 +57,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int)
 				return err
 			}
 
+			//if block application returns ErrDAUpgrade or ErrDAUpgrade, it means the node requires to be restarted with new config/version.
 			if errors.Is(err, ErrDAUpgrade) || errors.Is(err, ErrVersionUpgrade) {
 				panic(err.Error())
 			}
