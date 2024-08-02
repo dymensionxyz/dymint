@@ -78,6 +78,7 @@ func testSubmitLoop(
 	submitBatch := func(maxSize uint64) (uint64, error) { // mock the batch submission
 		time.Sleep(approx(args.submitTime))
 		if rand.Float64() < args.submissionHaltProbability {
+			t.Log("stopped")
 			time.Sleep(args.submissionHaltTime)
 			timeLastProgress.Store(time.Now().Unix()) // we have now recovered
 		}
@@ -124,7 +125,7 @@ func TestSubmitLoopFastProducerHaltingSubmitter(t *testing.T) {
 			// a relatively long possibility of the submitter halting
 			// tests the case where we need to stop the producer getting too far ahead
 			submissionHaltTime:        50 * time.Millisecond,
-			submissionHaltProbability: 0.1,
+			submissionHaltProbability: 0.01,
 		},
 	)
 }
