@@ -98,6 +98,18 @@ func TestNodeConfig_Validate(t *testing.T) {
 			},
 			wantErr: assert.Error,
 		}, {
+			name: "max_block_skew 0",
+			malleate: func(nc *config.NodeConfig) {
+				nc.BlockManagerConfig.MaxBlockSkew = 0
+			},
+			wantErr: assert.Error,
+		}, {
+			name: "max_block_skew greater than 432k",
+			malleate: func(nc *config.NodeConfig) {
+				nc.BlockManagerConfig.MaxBlockSkew = 500000
+			},
+			wantErr: assert.Error,
+		}, {
 			name: "missing block batch max size bytes",
 			malleate: func(nc *config.NodeConfig) {
 				nc.BlockManagerConfig.BatchMaxSizeBytes = 0
