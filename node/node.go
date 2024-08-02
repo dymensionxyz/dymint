@@ -184,7 +184,10 @@ func NewNode(
 		return nil, err
 	}
 
-	blockManager.ValidateRollappParams()
+	err = blockManager.ValidateRollappParams()
+	if err != nil {
+		return nil, err
+	}
 
 	ctx, cancel := context.WithCancel(ctx)
 	node := &Node{
