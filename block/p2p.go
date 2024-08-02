@@ -16,7 +16,7 @@ func (m *Manager) onReceivedBlock(event pubsub.Message) {
 		m.logger.Error("onReceivedBlock", "err", "wrong event data received")
 		return
 	}
-	var source blockSource
+	var source types.BlockSource
 
 	if len(event.Events()[p2p.EventTypeKey]) != 1 {
 		m.logger.Error("onReceivedBlock", "err", "wrong number of event types received with the event", "received", len(event.Events()[p2p.EventTypeKey]))
@@ -25,9 +25,9 @@ func (m *Manager) onReceivedBlock(event pubsub.Message) {
 
 	switch event.Events()[p2p.EventTypeKey][0] {
 	case p2p.EventNewBlockSyncBlock:
-		source = blocksyncBlock
+		source = types.BlockSync
 	case p2p.EventNewGossipedBlock:
-		source = gossipedBlock
+		source = types.Gossiped
 	default:
 		m.logger.Error("onReceivedBlock", "err", "wrong event type received", "type", event.Events()[p2p.EventTypeKey][0])
 		return
@@ -35,13 +35,25 @@ func (m *Manager) onReceivedBlock(event pubsub.Message) {
 
 	block := eventData.Block
 	commit := eventData.Commit
+	height := block.Header.Height
+	m.retrieverMu.Lock() // needed to protect blockCache access
 
-	m.logger.Debug("Received new block.", "source", source, "block height", block.Header.Height, "store height", m.State.Height(), "n cachedBlocks", len(m.blockCache))
-
-	ok = m.attemptCacheBlock(&block, &commit, source)
-	if !ok {
+	// It is not strictly necessary to return early, for correctness, but doing so helps us avoid mutex pressure and unnecessary repeated attempts to apply cached blocks
+	if m.blockCache.HasBlockInCache(height) {
+		m.retrieverMu.Unlock()
 		return
 	}
+
+	m.UpdateTargetHeight(height)
+	types.LastReceivedP2PHeightGauge.Set(float64(height))
+
+	m.logger.Debug("Received new block via gossip.", "block height", height, "store height", m.State.Height(), "n cachedBlocks", m.blockCache.Size())
+
+	nextHeight := m.State.NextHeight()
+	if height >= nextHeight {
+		m.blockCache.AddBlockToCache(height, &block, &commit, source)
+	}
+	m.retrieverMu.Unlock() // have to give this up as it's locked again in attempt apply, and we're not re-entrant
 
 	err := m.attemptApplyCachedBlocks()
 	if err != nil {

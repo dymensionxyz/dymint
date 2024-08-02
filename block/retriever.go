@@ -20,6 +20,7 @@ func (m *Manager) onReceivedBatch(event pubsub.Message) {
 		return
 	}
 	h := eventData.EndHeight
+	m.UpdateTargetHeight(h)
 	err := m.syncToTargetHeight(h)
 	if err != nil {
 		m.logger.Error("sync until target", "err", err)
@@ -96,7 +97,7 @@ func (m *Manager) applyLocalBlock(height uint64) error {
 	}
 
 	m.retrieverMu.Lock()
-	err = m.applyBlock(block, commit, blockMetaData{source: localDbBlock})
+	err = m.applyBlock(block, commit, types.BlockMetaData{Source: types.LocalDb})
 	if err != nil {
 		return fmt.Errorf("apply block from local store: height: %d: %w", height, err)
 	}
@@ -114,8 +115,8 @@ func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
 
 	m.logger.Debug("retrieved batches", "n", len(batchResp.Batches), "daHeight", daMetaData.Height)
 
-	m.blockCacheMu.Lock()
-	defer m.blockCacheMu.Unlock()
+	m.retrieverMu.Lock()
+	defer m.retrieverMu.Unlock()
 
 	var lastAppliedHeight float64
 	for _, batch := range batchResp.Batches {
@@ -128,7 +129,7 @@ func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
 				continue
 			}
 
-			err := m.applyBlock(block, batch.Commits[i], blockMetaData{source: daBlock, daHeight: daMetaData.Height})
+			err := m.applyBlock(block, batch.Commits[i], types.BlockMetaData{Source: types.DA, DAHeight: daMetaData.Height})
 			if err != nil {
 				return fmt.Errorf("apply block: height: %d: %w", block.Header.Height, err)
 			}

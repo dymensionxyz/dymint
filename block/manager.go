@@ -8,7 +8,6 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"code.cloudfoundry.org/go-diodes"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"golang.org/x/sync/errgroup"
 
@@ -64,13 +63,16 @@ type Manager struct {
 	*/
 	// Protect against processing two blocks at once when there are two routines handling incoming gossiped blocks,
 	// and incoming DA blocks, respectively.
-	blockCacheMu sync.Mutex
+	retrieverMu sync.Mutex
 	// Protect against syncing twice from DA in case new batch is posted but it did not finish to sync yet.
 	syncFromDaMu sync.Mutex
 	Retriever    da.BatchRetriever
 	// Cached blocks and commits for applying at future heights. The blocks may not be valid, because
 	// we can only do full validation in sequential order.
 	blockCache *Cache
+
+	// TargetHeight holds the value of the current highest block seen from either p2p (probably higher) or the DA
+	TargetHeight atomic.Uint64
 }
 
 // NewManager creates new block Manager.
@@ -97,20 +99,18 @@ func NewManager(
 		return nil, fmt.Errorf("create block executor: %w", err)
 	}
 
-	agg := &Manager{
-		Pubsub:         pubsub,
-		p2pClient:      p2pClient,
-		ProposerKey:    proposerKey,
-		Conf:           conf,
-		Genesis:        genesis,
-		State:          s,
-		Store:          store,
-		Executor:       exec,
-		DAClient:       dalc,
-		SLClient:       settlementClient,
-		Retriever:      dalc.(da.BatchRetriever),
-		producedSizeCh: make(chan uint64),
-		logger:         logger,
+	m := &Manager{
+		Pubsub:    pubsub,
+		p2pClient: p2pClient,
+		LocalKey:  localKey,
+		Conf:      conf,
+		Genesis:   genesis,
+		Store:     store,
+		Executor:  exec,
+		DAClient:  dalc,
+		SLClient:  settlementClient,
+		Retriever: dalc.(da.BatchRetriever),
+		logger:    logger,
 		blockCache: &Cache{
 			cache: make(map[uint64]types.CachedBlock),
 		},
@@ -145,15 +145,6 @@ func (m *Manager) Start(ctx context.Context) error {
 		}
 	}
 
-	// TODO: populate the accumulatedSize on startup
-
-	go m.advertiseBlocksCIDtoDHT(ctx)
-
-	err = m.syncBlockManager()
-	if err != nil {
-		return fmt.Errorf("sync block manager: %w", err)
-	}
-
 	eg, ctx := errgroup.WithContext(ctx)
 
 	if isSequencer {
@@ -164,6 +155,10 @@ func (m *Manager) Start(ctx context.Context) error {
 		go func() {
 			bytesProducedC <- nBytes
 		}()
+		err = m.syncFromSettlement()
+		if err != nil {
+			return fmt.Errorf("sync block manager from settlement: %w", err)
+		}
 		eg.Go(func() error {
 			return m.SubmitLoop(ctx, bytesProducedC)
 		})
@@ -224,10 +219,20 @@ func (m *Manager) syncFromSettlement() error {
 	}
 	m.LastSubmittedHeight.Store(res.EndHeight)
 	err = m.syncToTargetHeight(res.EndHeight)
+	m.UpdateTargetHeight(res.EndHeight)
 	if err != nil {
 		return err
 	}
 
 	m.logger.Info("Synced.", "current height", m.State.Height(), "last submitted height", m.LastSubmittedHeight.Load())
 	return nil
+}
+
+func (m *Manager) UpdateTargetHeight(h uint64) {
+	for {
+		currentHeight := m.TargetHeight.Load()
+		if m.TargetHeight.CompareAndSwap(currentHeight, max(currentHeight, h)) {
+			break
+		}
+	}
 }

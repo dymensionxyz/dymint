@@ -26,11 +26,11 @@ func TestBlockSync(t *testing.T) {
 	}
 
 	// Create a block for height 1
-	blocks, err := testutil.GenerateBlocksWithTxs(1, 1, manager.ProposerKey, 1)
+	blocks, err := testutil.GenerateBlocksWithTxs(1, 1, manager.LocalKey, 1)
 	require.NoError(t, err)
 
 	// Create commit
-	commits, err := testutil.GenerateCommits(blocks, manager.ProposerKey)
+	commits, err := testutil.GenerateCommits(blocks, manager.LocalKey)
 	require.NoError(t, err)
 
 	gossipedBlock := p2p.P2PBlockEvent{Block: *blocks[0], Commit: *commits[0]}
