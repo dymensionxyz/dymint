@@ -70,7 +70,7 @@ block_time = "{{ .BlockManagerConfig.BlockTime }}"
 # block production interval in case of no transactions ("0s" produces empty blocks)
 max_idle_time = "{{ .BlockManagerConfig.MaxIdleTime }}"
 max_proof_time = "{{ .BlockManagerConfig.MaxProofTime }}"
-max_supported_batch_skew = {{ .BlockManagerConfig.MaxBlockSkew }}
+max_supported_block_skew = {{ .BlockManagerConfig.MaxBlockSkew }}
 
 
 # triggers to submit batch to DA and settlement (both required)

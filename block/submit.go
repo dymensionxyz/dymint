@@ -41,7 +41,7 @@ func SubmitLoopInner(
 	ctx context.Context,
 	logger types.Logger,
 	bytesProduced chan int, // a channel of block and commit bytes produced
-	maxBlockSkew uint64, // max number of batches that submitter is allowed to have pending
+	maxBlockSkew uint64, // max number of blocks that submitter is allowed to have pending
 	pendingSubmittedBlocks func() uint64,
 	maxBatchTime time.Duration, // max time to allow between batches
 	maxBatchBytes uint64, // max size of serialised batch in bytes
@@ -50,8 +50,8 @@ func SubmitLoopInner(
 	eg, ctx := errgroup.WithContext(ctx)
 
 	pendingBytes := atomic.Uint64{}
-	pendingBlocks := atomic.Uint64{}
 
+	pendingBlocks := atomic.Uint64{}
 	pendingBlocks.Store(pendingSubmittedBlocks())
 	trigger := uchannel.NewNudger()   // used to avoid busy waiting (using cpu) on trigger thread
 	submitter := uchannel.NewNudger() // used to avoid busy waiting (using cpu) on submitter thread
