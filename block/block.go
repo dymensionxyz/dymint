@@ -140,7 +140,7 @@ func (m *Manager) attemptApplyCachedBlocks() error {
 		}
 		m.logger.Info("Block applied", "height", expectedHeight)
 
-		//DA or commit has been modified so it is required to restart the node to update DA config for new DA provider, or to use new binary version.
+		// DA or commit has been modified so it is required to restart the node to update DA config for new DA provider, or to use new binary version.
 		if errors.Is(err, ErrDAUpgrade) || errors.Is(err, ErrVersionUpgrade) {
 			panic(err.Error())
 		}
