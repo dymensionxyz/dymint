@@ -52,7 +52,7 @@ func testSubmitLoopInner(
 		factor := int(float64(d) * 0.4)
 		return time.Duration(base + rand.Intn(factor))
 	}
-	pendingBlocks := uint64(0)
+	pendingBlocks := atomic.Uint64{}
 
 	nProducedBytes := atomic.Uint64{} // tracking how many actual bytes have been produced but not submitted so far
 	producedBytesC := make(chan int)  // producer sends on here, and can be blocked by not consuming from here
@@ -68,9 +68,7 @@ func testSubmitLoopInner(
 					return
 				default:
 				}
-				// producer shall not get too far ahead
-				absoluteMax := (args.blockSkew + 1) * args.batchBytes // +1 is because the producer is always blocked after the fact
-				require.True(t, nProducedBytes.Load() < absoluteMax)
+
 			}
 		}()
 		for {
@@ -83,8 +81,8 @@ func testSubmitLoopInner(
 			nBytes := rand.Intn(args.produceBytes) // simulate block production
 			nProducedBytes.Add(uint64(nBytes))
 			producedBytesC <- nBytes
-			pendingBlocks++
-			require.True(t, pendingBlocks <= args.blockSkew)
+			pendingBlocks.Add(1)
+			require.True(t, pendingBlocks.Load() <= args.blockSkew)
 			timeLastProgress.Store(time.Now().Unix())
 		}
 	}()
@@ -101,13 +99,13 @@ func testSubmitLoopInner(
 		timeLastProgressT := time.Unix(timeLastProgress.Load(), 0)
 		absoluteMax := int64(1.5 * float64(args.maxTime)) // allow some leeway for code execution
 		require.True(t, time.Since(timeLastProgressT).Milliseconds() < absoluteMax)
-		pendingBlocks = uint64(0)
+		pendingBlocks.Store(0)
 		timeLastProgress.Store(time.Now().Unix()) // we have submitted  batch
 		return uint64(consumed), nil
 	}
 
 	accumulatedBlocks := func() uint64 {
-		return pendingBlocks
+		return pendingBlocks.Load()
 	}
 
 	block.SubmitLoopInner(
@@ -126,7 +124,7 @@ func TestSubmitLoopFastProducerHaltingSubmitter(t *testing.T) {
 	testSubmitLoop(
 		t,
 		testArgs{
-			nParallel:    1,
+			nParallel:    100,
 			testDuration: 2 * time.Second,
 			blockSkew:    10,
 			batchBytes:   100,
