@@ -9,6 +9,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/proxy"
+	"github.com/tendermint/tendermint/types"
 
 	"github.com/dymensionxyz/dymint/version"
 	"github.com/stretchr/testify/mock"
@@ -20,7 +21,7 @@ import (
 	"github.com/dymensionxyz/dymint/settlement"
 )
 
-func CreateNode(isSequencer bool, blockManagerConfig *config.BlockManagerConfig) (*node.Node, error) {
+func CreateNode(isSequencer bool, blockManagerConfig *config.BlockManagerConfig, genesis *types.GenesisDoc) (*node.Node, error) {
 	app := GetAppMock(EndBlock)
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)
@@ -60,7 +61,7 @@ func CreateNode(isSequencer bool, blockManagerConfig *config.BlockManagerConfig)
 		key,
 		signingKey,
 		proxy.NewLocalClientCreator(app),
-		GenerateGenesis(0),
+		genesis,
 		log.TestingLogger(),
 		mempool.NopMetrics(),
 	)

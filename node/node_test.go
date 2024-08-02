@@ -32,7 +32,7 @@ func TestStartup(t *testing.T) {
 	require := require.New(t)
 
 	// TODO(omritoptix): Test with and without sequencer mode.
-	node, err := testutil.CreateNode(false, nil)
+	node, err := testutil.CreateNode(false, nil, testutil.GenerateGenesis(0))
 	require.NoError(err)
 	require.NotNil(node)
 
