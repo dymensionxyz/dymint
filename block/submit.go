@@ -36,7 +36,7 @@ func (m *Manager) SubmitLoop(ctx context.Context,
 // SubmitLoopInner is a unit testable impl of SubmitLoop
 func SubmitLoopInner(ctx context.Context,
 	bytesProduced chan int, // a channel of block and commit bytes produced
-	maxBlockSkew uint64, // max number of batches that submitter is allowed to have pending
+	maxBlockSkew uint64, // max number of blocks that submitter is allowed to have pending
 	pendingSubmittedBlocks func() uint64,
 	maxBatchTime time.Duration, // max time to allow between batches
 	maxBatchBytes uint64, // max size of serialised batch in bytes
@@ -45,8 +45,8 @@ func SubmitLoopInner(ctx context.Context,
 	eg, ctx := errgroup.WithContext(ctx)
 
 	pendingBytes := atomic.Uint64{}
-	pendingBlocks := atomic.Uint64{}
 
+	pendingBlocks := atomic.Uint64{}
 	pendingBlocks.Store(pendingSubmittedBlocks())
 	trigger := uchannel.NewNudger()   // used to avoid busy waiting (using cpu) on trigger thread
 	submitter := uchannel.NewNudger() // used to avoid busy waiting (using cpu) on submitter thread

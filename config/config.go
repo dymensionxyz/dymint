@@ -56,8 +56,8 @@ type BlockManagerConfig struct {
 	MaxProofTime time.Duration `mapstructure:"max_proof_time"`
 	// BatchSubmitMaxTime is how long should block manager wait for before submitting batch
 	BatchSubmitMaxTime time.Duration `mapstructure:"batch_submit_max_time"`
-	// MaxBlockSkew is the number of batches which are waiting to be submitted. Block production will be paused if this limit is reached.
-	MaxBlockSkew uint64 `mapstructure:"max_supported_batch_skew"`
+	// MaxBlockSkew is the number of blocks which are waiting to be submitted. Block production will be paused if this limit is reached.
+	MaxBlockSkew uint64 `mapstructure:"max_supported_block_skew"`
 	// The size of the batch of blocks and commits in Bytes. We'll write every batch to the DA and the settlement layer.
 	BatchMaxSizeBytes uint64 `mapstructure:"block_batch_max_size_bytes"`
 }
@@ -169,11 +169,11 @@ func (c BlockManagerConfig) Validate() error {
 	}
 
 	if c.MaxBlockSkew <= 0 {
-		return fmt.Errorf("max_supported_batch_skew must be positive")
+		return fmt.Errorf("max_supported_block_skew must be positive")
 	}
 
 	if c.MaxBlockSkew > MaxBlockSkewSupported {
-		return fmt.Errorf("max_supported_batch_skew cannot be greater than %d", MaxBlockSkewSupported)
+		return fmt.Errorf("max_supported_block_skew cannot be greater than %d", MaxBlockSkewSupported)
 	}
 
 	return nil

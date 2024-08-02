@@ -15,7 +15,7 @@ import (
 type testArgs struct {
 	nParallel                 int           // number of instances to run in parallel
 	testDuration              time.Duration // how long to run one instance of the test (should be short)
-	blockSkew                 uint64        // max number of batches to get ahead
+	blockSkew                 uint64        // max number of blocks to get ahead
 	batchBytes                uint64        // max number of bytes in a batch
 	maxTime                   time.Duration // maximum time to wait before submitting submissions
 	submitTime                time.Duration // how long it takes to submit a batch
