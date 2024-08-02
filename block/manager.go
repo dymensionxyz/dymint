@@ -81,7 +81,7 @@ type Manager struct {
 // NewManager creates new block Manager.
 func NewManager(
 	localKey crypto.PrivKey,
-	conf config.NodeConfig,
+	conf config.BlockManagerConfig,
 	genesis *tmtypes.GenesisDoc,
 	store store.Store,
 	mempool mempool.Mempool,
@@ -110,7 +110,7 @@ func NewManager(
 		Store:     store,
 		Executor:  exec,
 		SLClient:  settlementClient,
-		logger:    logger,
+		logger:    logger.With("module", "block_manager"),
 		blockCache: &Cache{
 			cache: make(map[uint64]types.CachedBlock),
 		},

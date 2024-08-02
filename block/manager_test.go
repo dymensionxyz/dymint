@@ -112,7 +112,7 @@ func TestInitialState(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			agg, err := block.NewManager(key, conf, c.genesis, c.store, nil, proxyApp, settlementlc,
+			agg, err := block.NewManager(key, conf.BlockManagerConfig, c.genesis, c.store, nil, proxyApp, settlementlc,
 				nil, pubsubServer, p2pClient, logger)
 			assert.NoError(err)
 			assert.NotNil(agg)
