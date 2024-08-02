@@ -13,6 +13,7 @@ import (
 	"github.com/dymensionxyz/dymint/store"
 	uerrors "github.com/dymensionxyz/dymint/utils/errors"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
+	"github.com/dymensionxyz/dymint/version"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
 	tmcrypto "github.com/tendermint/tendermint/crypto"
@@ -271,4 +272,19 @@ func (m *Manager) UpdateTargetHeight(h uint64) {
 			break
 		}
 	}
+}
+
+func (m *Manager) ValidateRollappParams() error {
+	if m.DAClient.GetMaxBlobSize() != 0 && m.DAClient.GetMaxBlobSize() < uint32(m.Conf.BatchMaxSizeBytes) {
+		return fmt.Errorf("batch size cannot be greater than %d for %s DA", m.DAClient.GetMaxBlobSize(), m.DAClient.GetClientType())
+	}
+
+	if m.State.ConsensusParams.Block.MaxBytes > int64(float64(m.DAClient.GetMaxBlobSize())*types.MaxBlockSizeAdjustment) {
+		return fmt.Errorf("max block size cannot be greater than %d for %s DA", int64(float64(m.DAClient.GetMaxBlobSize())*types.MaxBlockSizeAdjustment), m.DAClient.GetClientType())
+	}
+
+	if version.Commit != m.State.RollappConsensusParams.Params.Commit {
+		return fmt.Errorf("binary version used different from rollapp params: %s: %s", version.Commit, m.State.RollappConsensusParams.Params.Commit)
+	}
+	return nil
 }

@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/dymensionxyz/dymint/version"
 	"github.com/ipfs/go-datastore"
 	leveldb "github.com/ipfs/go-ds-leveldb"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -185,9 +184,8 @@ func NewNode(
 		return nil, err
 	}
 
-	if blockManager.DAClient.GetMaxBlobSize() != 0 && blockManager.DAClient.GetMaxBlobSize() < uint32(conf.BatchMaxSizeBytes) {
-		return nil, fmt.Errorf("batch size cannot be greater than %d for %s DA", blockManager.DAClient.GetMaxBlobSize(), blockManager.DAClient.GetClientType())
-	}
+	blockManager.ValidateRollappParams()
+
 	ctx, cancel := context.WithCancel(ctx)
 	node := &Node{
 		proxyApp:       proxyApp,
