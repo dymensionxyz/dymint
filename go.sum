@@ -300,10 +300,17 @@ github.com/dustin/go-humanize v1.0.1 h1:GzkhY7T5VNhEkwH0PVJgjz+fX1rhBrR7pRT3mDkp
 github.com/dustin/go-humanize v1.0.1/go.mod h1:Mu1zIs6XwVuF/gI1OepvI0qD18qycQx+mFykh5fBlto=
 github.com/dvsekhvalnov/jose2go v1.5.0 h1:3j8ya4Z4kMCwT5nXIKFSV84YS+HdqSSO0VsTQxaLAeM=
 github.com/dvsekhvalnov/jose2go v1.5.0/go.mod h1:QsHjhyTlD/lAVqn/NSbVZmSCGeDehTB/mPZadG+mhXU=
+<<<<<<< HEAD
 github.com/dymensionxyz/cometbft v0.34.29-0.20240807121422-5299b866061c h1:urXou6bq/jDqW+g4ZaW63VHjD46OIJDuiRemrtJpnVs=
 github.com/dymensionxyz/cometbft v0.34.29-0.20240807121422-5299b866061c/go.mod h1:L9shMfbkZ8B+7JlwANEr+NZbBcn+hBpwdbeYvA5rLCw=
 github.com/dymensionxyz/cosmosclient v0.4.2-beta.0.20240821081230-b4018b2bac13 h1:u5yeve5jZR6TdRjjR+vYT/8PWKbhwCZxUmAu+/Tnxyg=
 github.com/dymensionxyz/cosmosclient v0.4.2-beta.0.20240821081230-b4018b2bac13/go.mod h1:jabDQYXrccscSE0fXkh7eQFYPWJCRiuWKonFGObVq6s=
+=======
+github.com/dymensionxyz/cometbft v0.34.28-dym h1:UKTVSecZdb/mVmMQuGKbhn2zSBlD+nIdW8QRBPCSX18=
+github.com/dymensionxyz/cometbft v0.34.28-dym/go.mod h1:L9shMfbkZ8B+7JlwANEr+NZbBcn+hBpwdbeYvA5rLCw=
+github.com/dymensionxyz/cosmosclient v0.4.2-beta h1:sokBefcN1tIOlUKmB8Q2E9XMJ93LueqtFThiM/kA4DI=
+github.com/dymensionxyz/cosmosclient v0.4.2-beta/go.mod h1:GQQu3ITEjWfi5ULR2B6X2i2YZNennY1yzcT5qdL4MGI=
+>>>>>>> 9c8bdb9 (go mod fix)
 github.com/dymensionxyz/dymension/v3 v3.1.0-rc03.0.20240411195658-f7cd96f53b56 h1:cmpJYdRviuUfmlJdHrcAND8Jd6JIY4rp63bWAQzPr54=
 github.com/dymensionxyz/dymension/v3 v3.1.0-rc03.0.20240411195658-f7cd96f53b56/go.mod h1:3Pfrr8j/BR9ztNKztGfC5PqDiO6CcrzMLCJtFtPEVW4=
 github.com/dymensionxyz/evmos/v12 v12.1.6-dymension-v0.3 h1:vmAdUGUc4rTIiO3Phezr7vGq+0uPDVKSA4WAe8+yl6w=
