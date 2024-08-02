@@ -65,6 +65,18 @@ func TestNodeConfig_Validate(t *testing.T) {
 			},
 			wantErr: assert.Error,
 		}, {
+			name: "block_time too small",
+			malleate: func(nc *config.NodeConfig) {
+				nc.BlockManagerConfig.BlockTime = 10 * time.Millisecond
+			},
+			wantErr: assert.Error,
+		}, {
+			name: "block_time greater than limit",
+			malleate: func(nc *config.NodeConfig) {
+				nc.BlockManagerConfig.BlockTime = 10 * time.Second
+			},
+			wantErr: assert.Error,
+		}, {
 			name: "max_idle_time not greater than block_time",
 			malleate: func(nc *config.NodeConfig) {
 				nc.BlockManagerConfig.MaxIdleTime = 1
@@ -77,6 +89,12 @@ func TestNodeConfig_Validate(t *testing.T) {
 			malleate: func(nc *config.NodeConfig) {
 				nc.BlockManagerConfig.BatchSubmitMaxTime = 1
 				nc.BlockManagerConfig.BlockTime = 2
+			},
+			wantErr: assert.Error,
+		}, {
+			name: "batch_submit_max_time greater than 1 hour",
+			malleate: func(nc *config.NodeConfig) {
+				nc.BlockManagerConfig.BatchSubmitMaxTime = 2 * time.Hour
 			},
 			wantErr: assert.Error,
 		}, {
