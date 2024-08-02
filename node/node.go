@@ -149,7 +149,7 @@ func NewNode(
 
 	blockManager, err := block.NewManager(
 		signingKey,
-		conf,
+		conf.BlockManagerConfig,
 		genesis,
 		s,
 		mp,

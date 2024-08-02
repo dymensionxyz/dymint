@@ -81,7 +81,7 @@ type Manager struct {
 // NewManager creates new block Manager.
 func NewManager(
 	localKey crypto.PrivKey,
-	conf config.NodeConfig,
+	conf config.BlockManagerConfig,
 	genesis *tmtypes.GenesisDoc,
 	store store.Store,
 	mempool mempool.Mempool,
@@ -105,7 +105,7 @@ func NewManager(
 		Pubsub:           pubsub,
 		p2pClient:        p2pClient,
 		LocalKey:         localKey,
-		Conf:             conf.BlockManagerConfig,
+		Conf:             conf,
 		Genesis:          genesis,
 		Store:            store,
 		Executor:         exec,
