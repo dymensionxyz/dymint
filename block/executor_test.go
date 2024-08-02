@@ -98,7 +98,18 @@ func TestApplyBlock(t *testing.T) {
 	app.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{})
 	app.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
 	app.On("DeliverTx", mock.Anything).Return(abci.ResponseDeliverTx{})
-	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{})
+	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
+		RollappConsensusParamUpdates: &abci.RollappConsensusParams{
+			Da:     "celestia",
+			Commit: "abcde",
+		},
+		ConsensusParamUpdates: &abci.ConsensusParams{
+			Block: &abci.BlockParams{
+				MaxBytes: 100,
+				MaxGas:   100,
+			},
+		},
+	})
 	var mockAppHash [32]byte
 	_, err := rand.Read(mockAppHash[:])
 	require.NoError(err)
@@ -241,6 +252,12 @@ func TestApplyBlock(t *testing.T) {
 	require.NoError(err)
 	executor.UpdateStateAfterCommit(state, resp, appHash, block.Header.Height)
 	assert.Equal(uint64(2), state.Height())
+
+	// check rollapp params update
+	assert.Equal(state.RollappConsensusParams.Params.Da, "celestia")
+	assert.Equal(state.RollappConsensusParams.Params.Commit, "abcde")
+	assert.Equal(state.ConsensusParams.Block.MaxBytes, int64(100))
+	assert.Equal(state.ConsensusParams.Block.MaxGas, int64(100))
 
 	// wait for at least 4 Tx events, for up to 3 second.
 	// 3 seconds is a fail-scenario only
