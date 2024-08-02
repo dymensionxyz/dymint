@@ -3,7 +3,6 @@ package block_test
 import (
 	"context"
 	"math/rand"
-	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -13,7 +12,6 @@ import (
 )
 
 type testArgs struct {
-	nParallel                 int           // number of instances to run in parallel
 	testDuration              time.Duration // how long to run one instance of the test (should be short)
 	blockSkew                 uint64        // max number of blocks to get ahead
 	batchBytes                uint64        // max number of bytes in a batch
@@ -25,21 +23,7 @@ type testArgs struct {
 	submissionHaltProbability float64       // probability of submission failing and causing a temporary halt
 }
 
-func testSubmitLoop(t *testing.T,
-	args testArgs,
-) {
-	var wg sync.WaitGroup
-	for range args.nParallel {
-		wg.Add(1)
-		go func() {
-			testSubmitLoopInner(t, args)
-			wg.Done()
-		}()
-	}
-	wg.Wait()
-}
-
-func testSubmitLoopInner(
+func testSubmitLoop(
 	t *testing.T,
 	args testArgs,
 ) {
@@ -130,7 +114,6 @@ func TestSubmitLoopFastProducerHaltingSubmitter(t *testing.T) {
 	testSubmitLoop(
 		t,
 		testArgs{
-			nParallel:    100,
 			testDuration: 2 * time.Second,
 			blockSkew:    10,
 			batchBytes:   100,
@@ -141,7 +124,7 @@ func TestSubmitLoopFastProducerHaltingSubmitter(t *testing.T) {
 			// a relatively long possibility of the submitter halting
 			// tests the case where we need to stop the producer getting too far ahead
 			submissionHaltTime:        50 * time.Millisecond,
-			submissionHaltProbability: 0.01,
+			submissionHaltProbability: 0.1,
 		},
 	)
 }
@@ -151,7 +134,10 @@ func TestSubmitLoopTimer(t *testing.T) {
 	testSubmitLoop(
 		t,
 		testArgs{
+<<<<<<< HEAD
 			nParallel:    50,
+=======
+>>>>>>> eb50f3f (removed parallel tests for submission loop)
 			testDuration: 2 * time.Second,
 			blockSkew:    10,
 			batchBytes:   100,
