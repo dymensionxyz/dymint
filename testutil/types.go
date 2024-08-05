@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/dymint/types/pb/dymint"
 	dymintversion "github.com/dymensionxyz/dymint/version"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -228,8 +229,8 @@ func GenerateState(initialHeight int64, lastBlockHeight int64) *types.State {
 		},
 		Validators:     GenerateRandomValidatorSet(),
 		NextValidators: GenerateRandomValidatorSet(),
-		RollappConsensusParams: tmproto.RollappConsensusParams{
-			Params: tmproto.Params{
+		ConsensusParams: dymint.RollappConsensusParams{
+			Params: &dymint.Params{
 				Da:     "mock",
 				Commit: dymintversion.Commit,
 			},

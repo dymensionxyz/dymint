@@ -50,8 +50,8 @@ func TestCreateBlock(t *testing.T) {
 	maxBytes := uint64(100)
 
 	state := &types.State{}
-	state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
-	state.ConsensusParams.Block.MaxGas = 100000
+	state.ConsensusParams.Params.BlockMaxSize = int64(maxBytes)
+	state.ConsensusParams.Params.BlockMaxGas = 100000
 	state.Validators = tmtypes.NewValidatorSet(nil)
 
 	// empty block
@@ -155,10 +155,10 @@ func TestApplyBlock(t *testing.T) {
 	state.InitialHeight = 1
 	state.LastBlockHeight.Store(0)
 	maxBytes := uint64(1000)
-	state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
-	state.ConsensusParams.Block.MaxGas = 100000
-	state.RollappConsensusParams.Params.Da = "mock"
-	state.RollappConsensusParams.Params.Commit = ""
+	state.ConsensusParams.Params.BlockMaxSize = int64(maxBytes)
+	state.ConsensusParams.Params.BlockMaxGas = 100000
+	state.ConsensusParams.Params.Da = "mock"
+	state.ConsensusParams.Params.Commit = ""
 	// Create first block with one Tx from mempool
 	_ = mpool.CheckTx([]byte{1, 2, 3, 4}, func(r *abci.Response) {}, mempool.TxInfo{})
 	require.NoError(err)
@@ -248,10 +248,10 @@ func TestApplyBlock(t *testing.T) {
 	assert.Equal(uint64(2), state.Height())
 
 	// check rollapp params update
-	assert.Equal(state.RollappConsensusParams.Params.Da, "celestia")
-	assert.Equal(state.RollappConsensusParams.Params.Commit, "abcde")
-	assert.Equal(state.ConsensusParams.Block.MaxBytes, int64(100))
-	assert.Equal(state.ConsensusParams.Block.MaxGas, int64(100))
+	assert.Equal(state.ConsensusParams.Params.Da, "celestia")
+	assert.Equal(state.ConsensusParams.Params.Commit, "abcde")
+	assert.Equal(state.ConsensusParams.Params.BlockMaxSize, int64(100))
+	assert.Equal(state.ConsensusParams.Params.BlockMaxGas, int64(100))
 
 	// wait for at least 4 Tx events, for up to 3 second.
 	// 3 seconds is a fail-scenario only

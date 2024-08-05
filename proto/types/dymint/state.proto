@@ -29,7 +29,7 @@ message State {
   tendermint.types.ValidatorSet last_validators = 10;
   int64 last_height_validators_changed = 11;
 
-  tendermint.types.ConsensusParams consensus_params = 12 [(gogoproto.nullable) = false];
+  reserved 12;
   int64 last_height_consensus_params_changed = 13;
 
   bytes last_results_hash = 14;
@@ -38,6 +38,17 @@ message State {
 
   uint64 last_store_height = 16 [(gogoproto.customname) = "LastStoreHeight"];
   uint64 base_height = 17;
-  tendermint.types.RollappConsensusParams rollapp_consensus_params = 18 [(gogoproto.nullable) = false];
+  RollappConsensusParams consensus_params = 18 [(gogoproto.nullable) = false];
 
+}
+
+message RollappConsensusParams {
+  Params params = 1;
+}
+
+message Params {
+  int64 block_max_gas = 1;
+  int64 block_max_size = 2;
+  string da = 3 ;
+  string commit = 4 ;
 }

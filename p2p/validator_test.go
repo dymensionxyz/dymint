@@ -134,8 +134,8 @@ func TestValidator_BlockValidator(t *testing.T) {
 			// Create state
 			maxBytes := uint64(100)
 			state := types.State{}
-			state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
-			state.ConsensusParams.Block.MaxGas = 100000
+			state.ConsensusParams.Params.BlockMaxSize = int64(maxBytes)
+			state.ConsensusParams.Params.BlockMaxGas = 100000
 			state.Validators = tmtypes.NewValidatorSet(nil)
 
 			// Create empty block
