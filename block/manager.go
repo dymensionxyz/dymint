@@ -279,12 +279,12 @@ func (m *Manager) ValidateRollappParams() error {
 		return fmt.Errorf("batch size cannot be greater than %d for %s DA", m.DAClient.GetMaxBlobSize(), m.DAClient.GetClientType())
 	}
 
-	if m.DAClient.GetMaxBlobSize() != 0 && m.State.ConsensusParams.Block.MaxBytes > int64(float64(m.DAClient.GetMaxBlobSize())*types.MaxBlockSizeAdjustment) {
+	if m.DAClient.GetMaxBlobSize() != 0 && m.State.ConsensusParams.Params.BlockMaxSize > int64(float64(m.DAClient.GetMaxBlobSize())*types.MaxBlockSizeAdjustment) {
 		return fmt.Errorf("max block size cannot be greater than %d for %s DA", int64(float64(m.DAClient.GetMaxBlobSize())*types.MaxBlockSizeAdjustment), m.DAClient.GetClientType())
 	}
 
-	if version.Commit != m.State.RollappConsensusParams.Params.Commit {
-		return fmt.Errorf("binary version used different from rollapp params: %s: %s", version.Commit, m.State.RollappConsensusParams.Params.Commit)
+	if version.Commit != m.State.ConsensusParams.Params.Commit {
+		return fmt.Errorf("binary version used different from rollapp params: %s: %s", version.Commit, m.State.ConsensusParams.Params.Commit)
 	}
 	return nil
 }

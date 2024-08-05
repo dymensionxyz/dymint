@@ -1,8 +1,11 @@
 package block
 
 import (
+<<<<<<< HEAD
 	"bytes"
 	"encoding/json"
+=======
+>>>>>>> c8f53bb (new params proto)
 	"errors"
 	"fmt"
 
@@ -63,25 +66,10 @@ func NewStateFromGenesis(genDoc *tmtypes.GenesisDoc) (*types.State, error) {
 		InitialHeight: uint64(genDoc.InitialHeight),
 		BaseHeight:    uint64(genDoc.InitialHeight),
 
-		ConsensusParams:                  *genDoc.ConsensusParams,
 		LastHeightConsensusParamsChanged: genDoc.InitialHeight,
 	}
 	s.SetHeight(0)
-
-	// load rollapp_params from genesis doc app_state to the dymint state
-	var objmap map[string]json.RawMessage
-	err = json.Unmarshal(genDoc.AppState, &objmap)
-	if err != nil {
-		return nil, fmt.Errorf("in genesis doc: %w", err)
-	}
-	params, ok := objmap["rollapp_params"]
-	if !ok {
-		return nil, fmt.Errorf("rollapp_params not defined in genesis")
-	}
-	err = json.Unmarshal(params, &s.RollappConsensusParams)
-	if err != nil {
-		return nil, fmt.Errorf("in genesis doc: %w", err)
-	}
+	s.SetConsensusParamsFromAppState(genDoc.AppState)
 	s.LastBlockHeight.Store(0)
 	copy(s.AppHash[:], genDoc.AppHash)
 
@@ -124,34 +112,13 @@ func (e *Executor) UpdateStateAfterInitChain(s *types.State, res *abci.ResponseI
 		copy(s.AppHash[:], res.AppHash)
 	}
 
-	if res.ConsensusParams != nil {
-		params := res.ConsensusParams
-		if params.Block != nil {
-			s.ConsensusParams.Block.MaxBytes = params.Block.MaxBytes
-			s.ConsensusParams.Block.MaxGas = params.Block.MaxGas
-		}
-		if params.Evidence != nil {
-			s.ConsensusParams.Evidence.MaxAgeNumBlocks = params.Evidence.MaxAgeNumBlocks
-			s.ConsensusParams.Evidence.MaxAgeDuration = params.Evidence.MaxAgeDuration
-			s.ConsensusParams.Evidence.MaxBytes = params.Evidence.MaxBytes
-		}
-		if params.Validator != nil {
-			// Copy params.Validator.PubkeyTypes, and set result's value to the copy.
-			// This avoids having to initialize the slice to 0 values, and then write to it again.
-			s.ConsensusParams.Validator.PubKeyTypes = append([]string{}, params.Validator.PubKeyTypes...)
-		}
-		if params.Version != nil {
-			s.ConsensusParams.Version.AppVersion = params.Version.AppVersion
-		}
-		s.Version.Consensus.App = s.ConsensusParams.Version.AppVersion
-	}
 	// We update the last results hash with the empty hash, to conform with RFC-6962.
 	copy(s.LastResultsHash[:], merkle.HashFromByteSlices(nil))
 }
 
 func (e *Executor) UpdateMempoolAfterInitChain(s *types.State) {
-	e.mempool.SetPreCheckFn(mempool.PreCheckMaxBytes(s.ConsensusParams.Block.MaxBytes))
-	e.mempool.SetPostCheckFn(mempool.PostCheckMaxGas(s.ConsensusParams.Block.MaxGas))
+	e.mempool.SetPreCheckFn(mempool.PreCheckMaxBytes(s.ConsensusParams.Params.BlockMaxSize))
+	e.mempool.SetPostCheckFn(mempool.PostCheckMaxGas(s.ConsensusParams.Params.BlockMaxGas))
 }
 
 // UpdateStateAfterCommit updates the state with the app hash and last results hash
@@ -160,8 +127,8 @@ func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResp
 	copy(s.LastResultsHash[:], tmtypes.NewResults(resp.DeliverTxs).Hash())
 
 	if resp.EndBlock.ConsensusParamUpdates != nil {
-		s.ConsensusParams.Block.MaxBytes = resp.EndBlock.ConsensusParamUpdates.Block.MaxBytes
-		s.ConsensusParams.Block.MaxGas = resp.EndBlock.ConsensusParamUpdates.Block.MaxGas
+		s.ConsensusParams.Params.BlockMaxSize = resp.EndBlock.ConsensusParamUpdates.Block.MaxBytes
+		s.ConsensusParams.Params.BlockMaxGas = resp.EndBlock.ConsensusParamUpdates.Block.MaxGas
 	}
 	if resp.EndBlock.RollappConsensusParamUpdates != nil {
 		s.RollappConsensusParams.Params.Da = resp.EndBlock.RollappConsensusParamUpdates.Da
@@ -174,15 +141,15 @@ func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResp
 		return nil
 	}
 	var err error
-	if s.RollappConsensusParams.Params.Da != resp.EndBlock.RollappConsensusParamUpdates.Da {
-		e.logger.Debug("Updating DA", "da", s.RollappConsensusParams.Params.Da, "newda", resp.EndBlock.RollappConsensusParamUpdates.Da)
-		s.RollappConsensusParams.Params.Da = resp.EndBlock.RollappConsensusParamUpdates.Da
-		err = fmt.Errorf("%w, please update da config for %s", ErrDAUpgrade, s.RollappConsensusParams.Params.Da)
+	if s.ConsensusParams.Params.Da != resp.EndBlock.RollappConsensusParamUpdates.Da {
+		e.logger.Debug("Updating DA", "da", s.ConsensusParams.Params.Da, "newda", resp.EndBlock.RollappConsensusParamUpdates.Da)
+		s.ConsensusParams.Params.Da = resp.EndBlock.RollappConsensusParamUpdates.Da
+		err = fmt.Errorf("%w, please update da config for %s", ErrDAUpgrade, s.ConsensusParams.Params.Da)
 	}
-	if s.RollappConsensusParams.Params.Commit != resp.EndBlock.RollappConsensusParamUpdates.Commit {
-		e.logger.Debug("Updating version", "version", s.RollappConsensusParams.Params.Commit, "version", resp.EndBlock.RollappConsensusParamUpdates.Commit)
-		s.RollappConsensusParams.Params.Commit = resp.EndBlock.RollappConsensusParamUpdates.Commit
-		err = fmt.Errorf("%w, please upgrade binary to commit %s", ErrVersionUpgrade, s.RollappConsensusParams.Params.Commit)
+	if s.ConsensusParams.Params.Commit != resp.EndBlock.RollappConsensusParamUpdates.Commit {
+		e.logger.Debug("Updating version", "version", s.ConsensusParams.Params.Commit, "version", resp.EndBlock.RollappConsensusParamUpdates.Commit)
+		s.ConsensusParams.Params.Commit = resp.EndBlock.RollappConsensusParamUpdates.Commit
+		err = fmt.Errorf("%w, please upgrade binary to commit %s", ErrVersionUpgrade, s.ConsensusParams.Params.Commit)
 
 	}
 	return err

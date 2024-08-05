@@ -217,7 +217,7 @@ func NewNode(
 
 // setDA initializes DA client in blockmanager according to DA type set in genesis or stored in state
 func setDA(blockManager *block.Manager, dalcKV store.KV, daConfig string, pubsubServer *pubsub.Server, logger log.Logger) error {
-	da_layer := blockManager.State.RollappConsensusParams.Params.Da
+	da_layer := blockManager.State.ConsensusParams.Params.Da
 
 	dalc := registry.GetClient(da_layer)
 	if dalc == nil {

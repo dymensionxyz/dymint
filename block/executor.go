@@ -90,10 +90,10 @@ func (e *Executor) InitChain(genesis *tmtypes.GenesisDoc, valset []*tmtypes.Vali
 
 // CreateBlock reaps transactions from mempool and builds a block.
 func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHeaderHash, nextSeqHash [32]byte, state *types.State, maxBlockDataSizeBytes uint64) *types.Block {
-	if state.ConsensusParams.Block.MaxBytes > 0 {
-		maxBlockDataSizeBytes = min(maxBlockDataSizeBytes, uint64(state.ConsensusParams.Block.MaxBytes))
+	if state.ConsensusParams.Params.BlockMaxSize > 0 {
+		maxBlockDataSizeBytes = min(maxBlockDataSizeBytes, uint64(state.ConsensusParams.Params.BlockMaxSize))
 	}
-	mempoolTxs := e.mempool.ReapMaxBytesMaxGas(int64(maxBlockDataSizeBytes), state.ConsensusParams.Block.MaxGas)
+	mempoolTxs := e.mempool.ReapMaxBytesMaxGas(int64(maxBlockDataSizeBytes), state.ConsensusParams.Params.BlockMaxGas)
 
 	block := &types.Block{
 		Header: types.Header{
@@ -160,8 +160,8 @@ func (e *Executor) commit(state *types.State, block *types.Block, deliverTxs []*
 		return nil, 0, err
 	}
 
-	maxBytes := state.ConsensusParams.Block.MaxBytes
-	maxGas := state.ConsensusParams.Block.MaxGas
+	maxBytes := state.ConsensusParams.Params.BlockMaxSize
+	maxGas := state.ConsensusParams.Params.BlockMaxGas
 	err = e.mempool.Update(int64(block.Header.Height), fromDymintTxs(block.Data.Txs), deliverTxs)
 	if err != nil {
 		return nil, 0, err

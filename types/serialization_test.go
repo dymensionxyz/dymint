@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
-	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 
 	"github.com/dymensionxyz/dymint/testutil"
@@ -96,11 +95,10 @@ func TestStateRoundTrip(t *testing.T) {
 		{
 			"with max bytes",
 			types.State{
-				ConsensusParams: tmproto.ConsensusParams{
-					Block: tmproto.BlockParams{
-						MaxBytes:   123,
-						MaxGas:     456,
-						TimeIotaMs: 789,
+				ConsensusParams: pb.RollappConsensusParams{
+					Params: &pb.Params{
+						BlockMaxGas:  123,
+						BlockMaxSize: 456,
 					},
 				},
 			},
@@ -117,32 +115,16 @@ func TestStateRoundTrip(t *testing.T) {
 				},
 				ChainID:       "testchain",
 				InitialHeight: 987,
-				ConsensusParams: tmproto.ConsensusParams{
-					Block: tmproto.BlockParams{
-						MaxBytes:   12345,
-						MaxGas:     6543234,
-						TimeIotaMs: 235,
-					},
-					Evidence: tmproto.EvidenceParams{
-						MaxAgeNumBlocks: 100,
-						MaxAgeDuration:  200,
-						MaxBytes:        300,
-					},
-					Validator: tmproto.ValidatorParams{
-						PubKeyTypes: []string{"secure", "more secure"},
-					},
-					Version: tmproto.VersionParams{
-						AppVersion: 42,
-					},
+				ConsensusParams: pb.RollappConsensusParams{
+					Params: &pb.Params{
+						BlockMaxGas:  123,
+						BlockMaxSize: 456,
+						Da:           "mock",
+						Commit:       version.Commit,
 				},
 				LastHeightConsensusParamsChanged: 12345,
 				LastResultsHash:                  [32]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2},
 				AppHash:                          [32]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1},
-				RollappConsensusParams: tmproto.RollappConsensusParams{
-					Params: tmproto.Params{
-						Da:     "mock",
-						Commit: version.Commit,
-					}},
 			},
 		},
 	}

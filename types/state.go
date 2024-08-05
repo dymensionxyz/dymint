@@ -1,12 +1,14 @@
 package types
 
 import (
+	"encoding/json"
+	"fmt"
 	"sync/atomic"
 
 	// TODO(tzdybal): copy to local project?
 
+	"github.com/dymensionxyz/dymint/types/pb/dymint"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
-	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
 // State contains information about current state of the blockchain.
@@ -28,7 +30,7 @@ type State struct {
 
 	// Consensus parameters used for validating blocks.
 	// Changes returned by EndBlock and updated after Commit.
-	ConsensusParams                  tmproto.ConsensusParams
+	ConsensusParams                  dymint.RollappConsensusParams
 	LastHeightConsensusParamsChanged int64
 
 	// Merkle root of the results from executing prev block
@@ -36,8 +38,6 @@ type State struct {
 
 	// the latest AppHash we've received from calling abci.Commit()
 	AppHash [32]byte
-
-	RollappConsensusParams tmproto.RollappConsensusParams
 }
 
 func (s *State) IsGenesis() bool {
@@ -61,4 +61,38 @@ func (s *State) NextHeight() uint64 {
 		return s.InitialHeight
 	}
 	return s.Height() + 1
+}
+
+func (s *State) SetConsensusParamsFromAppState(appState json.RawMessage) error {
+	type Params struct {
+		Da             string
+		Commit         string
+		Block_max_gas  int64
+		Block_max_size int64
+	}
+	p := &Params{}
+	// load rollapp_params from genesis doc app_state to the dymint state
+	var objmap map[string]json.RawMessage
+	err := json.Unmarshal(appState, &objmap)
+	if err != nil {
+		return fmt.Errorf("in genesis doc: %w", err)
+	}
+	params, ok := objmap["rollapp_params"]
+	if !ok {
+		return fmt.Errorf("rollapp_params not defined in genesis")
+	}
+	var objmap2 map[string]json.RawMessage
+	err = json.Unmarshal(params, &objmap2)
+	if err != nil {
+		return fmt.Errorf("in genesis doc: %w", err)
+	}
+	params2, ok := objmap2["params"]
+	if !ok {
+		return fmt.Errorf("rollapp_params not defined in genesis")
+	}
+	err = json.Unmarshal(params2, &p)
+	if err != nil {
+		return fmt.Errorf("in genesis doc: %w", err)
+	}
+	return nil
 }

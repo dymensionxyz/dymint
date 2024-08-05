@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/dymint/types/pb/dymint"
 	dymintversion "github.com/dymensionxyz/dymint/version"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -236,7 +237,7 @@ func GenerateStateWithSequencer(initialHeight int64, lastBlockHeight int64, pubk
 			},
 		},
 		RollappConsensusParams: tmproto.RollappConsensusParams{
-			Params: tmproto.Params{
+			Params: &dymint.Params{
 				Da:     "mock",
 				Commit: dymintversion.Commit,
 			},

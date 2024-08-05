@@ -376,8 +376,9 @@ message Evidence {
 }
 
 message RollappConsensusParams {
-  string da = 1 ;
-  string version = 2 ;
+  BlockParams block = 1;
+  string da = 2 ;
+  string version = 3 ;
 }
 
 //----------------------------------------
