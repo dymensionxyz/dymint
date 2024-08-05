@@ -583,7 +583,6 @@ func (c *Client) retrieveBlockSyncLoop(ctx context.Context, msgHandler BlockSync
 		case <-ticker.C:
 			state, err := c.store.LoadState()
 			if err != nil {
-				c.logger.Error("loading state", "err", err)
 				continue
 			}
 
@@ -623,7 +622,6 @@ func (c *Client) retrieveBlockSyncLoop(ctx context.Context, msgHandler BlockSync
 func (c *Client) advertiseBlockSyncCids(ctx context.Context) {
 	state, err := c.store.LoadState()
 	if err != nil {
-		c.logger.Error("loading state", "err", err)
 		return
 	}
 	for h := state.BaseHeight; h <= state.Height(); h++ {
