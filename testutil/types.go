@@ -5,9 +5,8 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/libp2p/go-libp2p/core/crypto"
-
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/libp2p/go-libp2p/core/crypto"
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
@@ -173,12 +172,33 @@ func GenerateBatch(startHeight uint64, endHeight uint64, proposerKey crypto.Priv
 		return nil, err
 	}
 	batch := &types.Batch{
-		StartHeight: startHeight,
-		EndHeight:   endHeight,
-		Blocks:      blocks,
-		Commits:     commits,
+		Blocks:  blocks,
+		Commits: commits,
 	}
 	return batch, nil
+}
+
+func MustGenerateBatch(startHeight uint64, endHeight uint64, proposerKey crypto.PrivKey) *types.Batch {
+	blocks, err := GenerateBlocks(startHeight, endHeight-startHeight+1, proposerKey)
+	if err != nil {
+		panic(err)
+	}
+	commits, err := GenerateCommits(blocks, proposerKey)
+	if err != nil {
+		panic(err)
+	}
+	return &types.Batch{
+		Blocks:  blocks,
+		Commits: commits,
+	}
+}
+
+func MustGenerateBatchAndKey(startHeight uint64, endHeight uint64) *types.Batch {
+	proposerKey, _, err := crypto.GenerateEd25519Key(nil)
+	if err != nil {
+		panic(err)
+	}
+	return MustGenerateBatch(startHeight, endHeight, proposerKey)
 }
 
 // GenerateRandomValidatorSet generates random validator sets

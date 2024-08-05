@@ -17,7 +17,6 @@ import (
 	"github.com/dymensionxyz/dymint/da/celestia"
 	mocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/da/celestia/types"
 	"github.com/dymensionxyz/dymint/testutil"
-	"github.com/dymensionxyz/dymint/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -53,10 +52,7 @@ func TestSubmitBatch(t *testing.T) {
 	require := require.New(t)
 	configBytes, err := json.Marshal(celestia.TestConfig)
 	require.NoError(err)
-	batch := &types.Batch{
-		StartHeight: 0,
-		EndHeight:   1,
-	}
+	batch := testutil.MustGenerateBatchAndKey(0, 1)
 	nIDSize := 1
 
 	tree := exampleNMT(nIDSize, true, 1, 2, 3, 4)
@@ -71,7 +67,7 @@ func TestSubmitBatch(t *testing.T) {
 	cases := []struct {
 		name                    string
 		submitPFBReturn         []interface{}
-		sumbitPFDRun            func(args mock.Arguments)
+		submitPFBRun            func(args mock.Arguments)
 		expectedInclusionHeight uint64
 		getProofReturn          []interface{}
 		getProofDRun            func(args mock.Arguments)
@@ -83,7 +79,7 @@ func TestSubmitBatch(t *testing.T) {
 			submitPFBReturn:         []interface{}{uint64(1234), nil},
 			getProofReturn:          []interface{}{&blobProof, nil},
 			includedReturn:          []interface{}{true, nil},
-			sumbitPFDRun:            func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) },
+			submitPFBRun:            func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) },
 			getProofDRun:            func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) },
 			includedRun:             func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) },
 			expectedInclusionHeight: uint64(1234),
@@ -93,7 +89,7 @@ func TestSubmitBatch(t *testing.T) {
 			submitPFBReturn: []interface{}{uint64(0), timeOutErr},
 			getProofReturn:  []interface{}{&blobProof, nil},
 			includedReturn:  []interface{}{true, nil},
-			sumbitPFDRun:    func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) },
+			submitPFBRun:    func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) },
 			getProofDRun:    func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) },
 			includedRun:     func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) },
 		},
@@ -128,7 +124,7 @@ func TestSubmitBatch(t *testing.T) {
 			DAH: dah,
 		}
 
-		mockRPCClient.On(submitPFBFuncName, mock.Anything, mock.Anything, mock.Anything).Return(tc.submitPFBReturn...).Run(tc.sumbitPFDRun)
+		mockRPCClient.On(submitPFBFuncName, mock.Anything, mock.Anything, mock.Anything).Return(tc.submitPFBReturn...).Run(tc.submitPFBRun)
 		if tc.name == "TestSubmitPFBResponseCodeSuccess" {
 			mockRPCClient.On(getProofFuncName, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(tc.getProofReturn...).Run(tc.getProofDRun)
 			mockRPCClient.On(includedFuncName, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(tc.includedReturn...).Run(tc.includedRun)

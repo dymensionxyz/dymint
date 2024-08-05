@@ -21,7 +21,9 @@ import (
 )
 
 // ProduceBlockLoop is calling publishBlock in a loop as long as we're synced.
-func (m *Manager) ProduceBlockLoop(ctx context.Context) (err error) {
+// A signal will be sent to the bytesProduced channel for each block produced
+// In this way it's possible to pause block production by not consuming the channel
+func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int) error {
 	m.logger.Info("Started block producer loop.")
 
 	ticker := time.NewTicker(m.Conf.BlockTime)
@@ -36,52 +38,58 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context) (err error) {
 	for {
 		select {
 		case <-ctx.Done():
-			return
+			return nil
 		case <-ticker.C:
 			// if empty blocks are configured to be enabled, and one is scheduled...
 			produceEmptyBlock := firstBlock || 0 == m.Conf.MaxIdleTime || nextEmptyBlock.Before(time.Now())
 			firstBlock = false
 
-			var (
-				block  *types.Block
-				commit *types.Commit
-			)
-			block, commit, err = m.ProduceAndGossipBlock(ctx, produceEmptyBlock)
+			block, commit, err := m.ProduceAndGossipBlock(ctx, produceEmptyBlock)
 			if errors.Is(err, context.Canceled) {
 				m.logger.Error("Produce and gossip: context canceled.", "error", err)
-				return
+				return nil
 			}
-			if errors.Is(err, types.ErrSkippedEmptyBlock) {
+			if errors.Is(err, types.ErrEmptyBlock) { // occurs if the block was empty but we don't want to produce one
 				continue
 			}
 			if errors.Is(err, ErrNonRecoverable) {
-				m.logger.Error("Produce and gossip: non-recoverable.", "error", err) // TODO: flush? or don't log at all?
 				uevent.MustPublish(ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
-				return
+				return err
 			}
 			if err != nil {
 				m.logger.Error("Produce and gossip: uncategorized, assuming recoverable.", "error", err)
 				continue
 			}
 
-			// If IBC transactions are present, set proof required to true
-			// This will set a shorter timer for the next block
-			// currently we set it for all txs as we don't have a way to determine if an IBC tx is present (https://github.com/dymensionxyz/dymint/issues/709)
 			nextEmptyBlock = time.Now().Add(m.Conf.MaxIdleTime)
 			if 0 < len(block.Data.Txs) {
+				// the block wasn't empty so we want to make sure we don't wait too long before producing another one, in order to facilitate proofs for ibc
+				// TODO: optimize to only do this if IBC transactions are present (https://github.com/dymensionxyz/dymint/issues/709)
 				nextEmptyBlock = time.Now().Add(m.Conf.MaxProofTime)
 			} else {
 				m.logger.Info("Produced empty block.")
 			}
 
-			// Send the size to the accumulated size channel
-			// This will block in case the submitter is too slow and it's buffer is full
-			size := uint64(block.ToProto().Size()) + uint64(commit.ToProto().Size())
+			bytesProducedN := block.SizeBytes() + commit.SizeBytes()
 			select {
 			case <-ctx.Done():
-				return
-			case m.producedSizeCh <- size:
+				return nil
+			case bytesProducedC <- bytesProducedN:
+			default:
+				evt := &events.DataHealthStatus{Error: fmt.Errorf("bytes produced channel is full: %w", gerrc.ErrResourceExhausted)}
+				uevent.MustPublish(ctx, m.Pubsub, evt, events.HealthStatusList)
+				m.logger.Error("Enough bytes to build a batch have been accumulated, but too many batches are pending submission." +
+					"Pausing block production until a signal is consumed.")
+				select {
+				case <-ctx.Done():
+					return nil
+				case bytesProducedC <- bytesProducedN:
+					evt := &events.DataHealthStatus{Error: nil}
+					uevent.MustPublish(ctx, m.Pubsub, evt, events.HealthStatusList)
+					m.logger.Info("Resumed block production.")
+				}
 			}
+
 		}
 	}
 }
@@ -139,10 +147,10 @@ func (m *Manager) produceBlock(allowEmpty bool) (*types.Block, *types.Commit, er
 		return nil, nil, fmt.Errorf("load block: height: %d: %w: %w", newHeight, err, ErrNonRecoverable)
 	} else {
 		// limit to the max block data, so we don't create a block that is too big to fit in a batch
-		maxBlockDataSize := uint64(float64(m.Conf.BlockBatchMaxSizeBytes) * types.MaxBlockSizeAdjustment)
+		maxBlockDataSize := uint64(float64(m.Conf.BatchMaxSizeBytes) * types.MaxBlockSizeAdjustment)
 		block = m.Executor.CreateBlock(newHeight, lastCommit, lastHeaderHash, m.State, maxBlockDataSize)
 		if !allowEmpty && len(block.Data.Txs) == 0 {
-			return nil, nil, fmt.Errorf("%w: %w", types.ErrSkippedEmptyBlock, ErrRecoverable)
+			return nil, nil, fmt.Errorf("%w: %w", types.ErrEmptyBlock, ErrRecoverable)
 		}
 
 		abciHeaderPb := types.ToABCIHeaderPB(&block.Header)
@@ -173,7 +181,7 @@ func (m *Manager) produceBlock(allowEmpty bool) (*types.Block, *types.Commit, er
 		}
 	}
 
-	if err := m.applyBlock(block, commit, blockMetaData{source: producedBlock}); err != nil {
+	if err := m.applyBlock(block, commit, types.BlockMetaData{Source: types.ProducedBlock}); err != nil {
 		return nil, nil, fmt.Errorf("apply block: %w: %w", err, ErrNonRecoverable)
 	}
 
@@ -201,8 +209,8 @@ func (m *Manager) createTMSignature(block *types.Block, proposerAddress []byte, 
 	v := vote.ToProto()
 	// convert libp2p key to tm key
 	// TODO: move to types
-	raw_key, _ := m.LocalKey.Raw()
-	tmprivkey := tmed25519.PrivKey(raw_key)
+	rawKey, _ := m.LocalKey.Raw()
+	tmprivkey := tmed25519.PrivKey(rawKey)
 	tmprivkey.PubKey().Bytes()
 	// Create a mock validator to sign the vote
 	tmvalidator := tmtypes.NewMockPVWithParams(tmprivkey, false, false)

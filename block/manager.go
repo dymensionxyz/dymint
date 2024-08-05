@@ -51,17 +51,11 @@ type Manager struct {
 	SLClient  settlement.ClientI
 
 	/*
-		Production
-	*/
-	producedSizeCh chan uint64 // for the producer to report the size of the block it produced
-
-	/*
 		Submission
 	*/
-	AccumulatedBatchSize atomic.Uint64
 	// The last height which was submitted to both sublayers, that we know of. When we produce new batches, we will
-	// start at this height + 1. Note: only accessed by one thread at a time so doesn't need synchro.
-	// It is ALSO used by the producer, because the producer needs to check if it can prune blocks and it wont'
+	// start at this height + 1.
+	// It is ALSO used by the producer, because the producer needs to check if it can prune blocks and it won't
 	// prune anything that might be submitted in the future. Therefore, it must be atomic.
 	LastSubmittedHeight atomic.Uint64
 
@@ -74,9 +68,12 @@ type Manager struct {
 	Retriever   da.BatchRetriever
 	// get the next target height to sync local state to
 	targetSyncHeight diodes.Diode
+	// TargetHeight holds the value of the current highest block seen from either p2p (probably higher) or the DA
+	TargetHeight atomic.Uint64
+
 	// Cached blocks and commits for applying at future heights. The blocks may not be valid, because
 	// we can only do full validation in sequential order.
-	blockCache map[uint64]CachedBlock
+	blockCache *Cache
 }
 
 // NewManager creates new block Manager.
@@ -94,7 +91,7 @@ func NewManager(
 	p2pClient *p2p.Client,
 	logger types.Logger,
 ) (*Manager, error) {
-	localAddress, err := getAddress(localKey)
+	localAddress, err := types.GetAddress(localKey)
 	if err != nil {
 		return nil, err
 	}
@@ -115,9 +112,10 @@ func NewManager(
 		SLClient:         settlementClient,
 		Retriever:        dalc.(da.BatchRetriever),
 		targetSyncHeight: diodes.NewOneToOne(1, nil),
-		producedSizeCh:   make(chan uint64),
 		logger:           logger,
-		blockCache:       make(map[uint64]CachedBlock),
+		blockCache: &Cache{
+			cache: make(map[uint64]types.CachedBlock),
+		},
 	}
 
 	err = m.LoadStateOnInit(store, genesis, logger)
@@ -154,8 +152,6 @@ func (m *Manager) Start(ctx context.Context) error {
 		go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewNewGossipedBlock, m.onNewGossipedBlock, m.logger)
 	}
 
-	// TODO: populate the accumulatedSize on startup
-
 	err = m.syncBlockManager()
 	if err != nil {
 		return fmt.Errorf("sync block manager: %w", err)
@@ -166,11 +162,16 @@ func (m *Manager) Start(ctx context.Context) error {
 	if isSequencer {
 		// Sequencer must wait till DA is synced to start submitting blobs
 		<-m.DAClient.Synced()
+		nBytes := m.GetUnsubmittedBytes()
+		bytesProducedC := make(chan int)
+		go func() {
+			bytesProducedC <- nBytes
+		}()
 		eg.Go(func() error {
-			return m.SubmitLoop(ctx)
+			return m.SubmitLoop(ctx, bytesProducedC)
 		})
 		eg.Go(func() error {
-			return m.ProduceBlockLoop(ctx)
+			return m.ProduceBlockLoop(ctx, bytesProducedC)
 		})
 	} else {
 		eg.Go(func() error {
@@ -180,6 +181,12 @@ func (m *Manager) Start(ctx context.Context) error {
 			return m.SyncToTargetHeightLoop(ctx)
 		})
 	}
+
+	go func() {
+		err := eg.Wait()
+		m.logger.Info("Block manager err group finished.", "err", err)
+	}()
+
 	return nil
 }
 
@@ -222,4 +229,13 @@ func (m *Manager) syncBlockManager() error {
 
 	m.logger.Info("Synced.", "current height", m.State.Height(), "last submitted height", m.LastSubmittedHeight.Load())
 	return nil
+}
+
+func (m *Manager) UpdateTargetHeight(h uint64) {
+	for {
+		currentHeight := m.TargetHeight.Load()
+		if m.TargetHeight.CompareAndSwap(currentHeight, max(currentHeight, h)) {
+			break
+		}
+	}
 }

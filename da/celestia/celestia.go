@@ -61,7 +61,7 @@ func WithRPCRetryDelay(delay time.Duration) da.Option {
 // WithRPCAttempts sets failed rpc calls retry attempts.
 func WithRPCAttempts(attempts int) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
-		daLayerClient.(*DataAvailabilityLayerClient).config.RetryAttempts = attempts
+		daLayerClient.(*DataAvailabilityLayerClient).config.RetryAttempts = &attempts
 	}
 }
 
@@ -91,6 +91,8 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 		apply(c)
 	}
 
+	types.RollappConsecutiveFailedDASubmission.Set(0)
+
 	return nil
 }
 
@@ -119,6 +121,10 @@ func createConfig(bz []byte) (c Config, err error) {
 	}
 	if c.Backoff == (uretry.BackoffConfig{}) {
 		c.Backoff = defaultSubmitBackoff
+	}
+	if c.RetryAttempts == nil {
+		attempts := defaultRpcRetryAttempts
+		c.RetryAttempts = &attempts
 	}
 	return c, nil
 }
@@ -203,6 +209,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			height, commitment, err := c.submit(data)
 			if err != nil {
 				c.logger.Error("Submit blob.", "error", err)
+				types.RollappConsecutiveFailedDASubmission.Inc()
 				backoff.Sleep()
 				continue
 			}
@@ -219,6 +226,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			result := c.CheckBatchAvailability(daMetaData)
 			if result.Code != da.StatusSuccess {
 				c.logger.Error("Check batch availability: submitted batch but did not get availability success status.", "error", err)
+				types.RollappConsecutiveFailedDASubmission.Inc()
 				backoff.Sleep()
 				continue
 			}
@@ -228,6 +236,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 
 			c.logger.Debug("Blob availability check passed successfully.")
 
+			types.RollappConsecutiveFailedDASubmission.Set(0)
 			return da.ResultSubmitBatch{
 				BaseResult: da.BaseResult{
 					Code:    da.StatusSuccess,
@@ -265,7 +274,7 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 
 					return nil
 				},
-				retry.Attempts(uint(c.config.RetryAttempts)),
+				retry.Attempts(uint(*c.config.RetryAttempts)),
 				retry.DelayType(retry.FixedDelay),
 				retry.Delay(c.config.RetryDelay),
 			)
@@ -394,7 +403,7 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 				}
 
 				return nil
-			}, retry.Attempts(uint(c.config.RetryAttempts)), retry.DelayType(retry.FixedDelay), retry.Delay(c.config.RetryDelay))
+			}, retry.Attempts(uint(*c.config.RetryAttempts)), retry.DelayType(retry.FixedDelay), retry.Delay(c.config.RetryDelay))
 			if err != nil {
 				c.logger.Error("CheckAvailability process failed.", "error", err)
 			}

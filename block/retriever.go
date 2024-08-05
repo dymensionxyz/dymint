@@ -2,11 +2,14 @@ package block
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"code.cloudfoundry.org/go-diodes"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 
 	"github.com/dymensionxyz/dymint/da"
+	"github.com/dymensionxyz/dymint/types"
 )
 
 // RetrieveLoop listens for new target sync heights and then syncs the chain by
@@ -35,10 +38,13 @@ func (m *Manager) RetrieveLoop(ctx context.Context) (err error) {
 func (m *Manager) syncToTargetHeight(targetHeight uint64) error {
 	for currH := m.State.NextHeight(); currH <= targetHeight; currH = m.State.NextHeight() {
 		// if we have the block locally, we don't need to fetch it from the DA
-		err := m.processLocalBlock(currH)
+		err := m.applyLocalBlock(currH)
 		if err == nil {
 			m.logger.Info("Synced from local", "store height", currH, "target height", targetHeight)
 			continue
+		}
+		if !errors.Is(err, gerrc.ErrNotFound) {
+			m.logger.Error("Apply local block", "err", err)
 		}
 
 		err = m.syncFromDABatch()
@@ -80,21 +86,21 @@ func (m *Manager) syncFromDABatch() error {
 	return nil
 }
 
-func (m *Manager) processLocalBlock(height uint64) error {
+func (m *Manager) applyLocalBlock(height uint64) error {
 	block, err := m.Store.LoadBlock(height)
 	if err != nil {
-		return err
+		return fmt.Errorf("load block: %w", gerrc.ErrNotFound)
 	}
 	commit, err := m.Store.LoadCommit(height)
 	if err != nil {
-		return err
+		return fmt.Errorf("load commit: %w", gerrc.ErrNotFound)
 	}
 	if err := m.validateBlock(block, commit); err != nil {
 		return fmt.Errorf("validate block from local store: height: %d: %w", height, err)
 	}
 
 	m.retrieverMu.Lock()
-	err = m.applyBlock(block, commit, blockMetaData{source: localDbBlock})
+	err = m.applyBlock(block, commit, types.BlockMetaData{Source: types.LocalDbBlock})
 	if err != nil {
 		return fmt.Errorf("apply block from local store: height: %d: %w", height, err)
 	}
@@ -116,6 +122,7 @@ func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
 	m.retrieverMu.Lock()
 	defer m.retrieverMu.Unlock()
 
+	var lastAppliedHeight float64
 	for _, batch := range batchResp.Batches {
 		for i, block := range batch.Blocks {
 			if block.Header.Height != m.State.NextHeight() {
@@ -125,14 +132,18 @@ func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
 				m.logger.Error("validate block from DA", "height", block.Header.Height, "err", err)
 				continue
 			}
-			err := m.applyBlock(block, batch.Commits[i], blockMetaData{source: daBlock, daHeight: daMetaData.Height})
+			err := m.applyBlock(block, batch.Commits[i], types.BlockMetaData{Source: types.DABlock, DAHeight: daMetaData.Height})
 			if err != nil {
 				return fmt.Errorf("apply block: height: %d: %w", block.Header.Height, err)
 			}
 
-			delete(m.blockCache, block.Header.Height)
+			lastAppliedHeight = float64(block.Header.Height)
+
+			m.blockCache.DeleteBlockFromCache(block.Header.Height)
 		}
 	}
+	types.LastReceivedDAHeightGauge.Set(lastAppliedHeight)
+
 	return nil
 }
 

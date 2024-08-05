@@ -14,7 +14,7 @@ type P2PConfig struct {
 	// List of nodes persistent P2P nodes
 	PersistentNodes string `mapstructure:"p2p_persistent_nodes"`
 	// Size of the Gossipsub router cache
-	GossipedBlocksCacheSize int `mapstructure:"p2p_gossiped_blocks_cache_size"`
+	GossipSubCacheSize int `mapstructure:"p2p_gossip_cache_size"`
 	// Time interval a node tries to bootstrap again, in case no nodes connected
 	BootstrapRetryTime time.Duration `mapstructure:"p2p_bootstrap_retry_time"`
 	// Param used to enable the advertisement of the node to be part of the P2P network in the DHT
@@ -23,7 +23,7 @@ type P2PConfig struct {
 
 // Validate P2PConfig
 func (c P2PConfig) Validate() error {
-	if c.GossipedBlocksCacheSize < 0 {
+	if c.GossipSubCacheSize < 0 {
 		return fmt.Errorf("gossipsub cache size cannot be negative")
 	}
 	if c.BootstrapRetryTime <= 0 {

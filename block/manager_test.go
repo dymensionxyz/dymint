@@ -3,6 +3,7 @@ package block_test
 import (
 	"context"
 	"crypto/rand"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -10,12 +11,13 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
+	"github.com/libp2p/go-libp2p/core/crypto"
+
 	"github.com/dymensionxyz/dymint/block"
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
-	"github.com/libp2p/go-libp2p/core/crypto"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
@@ -53,9 +55,9 @@ func TestInitialState(t *testing.T) {
 	// Init p2p client
 	privKey, _, _ := crypto.GenerateEd25519Key(rand.Reader)
 	p2pClient, err := p2p.NewClient(config.P2PConfig{
-		ListenAddress:           config.DefaultListenAddress,
-		GossipedBlocksCacheSize: 50,
-		BootstrapRetryTime:      30 * time.Second,
+		ListenAddress:      config.DefaultListenAddress,
+		GossipSubCacheSize: 50,
+		BootstrapRetryTime: 30 * time.Second,
 	}, privKey, "TestChain", pubsubServer, logger)
 	assert.NoError(err)
 	assert.NotNil(p2pClient)
@@ -128,7 +130,7 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 		assert.Equal(t, daResultSubmitBatch.Code, da.StatusSuccess)
 		err = manager.SLClient.SubmitBatch(batch, manager.DAClient.GetClientType(), &daResultSubmitBatch)
 		require.NoError(t, err)
-		nextBatchStartHeight = batch.EndHeight + 1
+		nextBatchStartHeight = batch.EndHeight() + 1
 		// Wait until daHeight is updated
 		time.Sleep(time.Millisecond * 500)
 	}
@@ -148,9 +150,9 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 		assert.NoError(t, err)
 	}()
 	<-ctx.Done()
-	assert.Equal(t, batch.EndHeight, manager.LastSubmittedHeight.Load())
+	assert.Equal(t, batch.EndHeight(), manager.LastSubmittedHeight.Load())
 	// validate that we produced blocks
-	assert.Greater(t, manager.State.Height(), batch.EndHeight)
+	assert.Greater(t, manager.State.Height(), batch.EndHeight())
 }
 
 func TestRetrieveDaBatchesFailed(t *testing.T) {
@@ -319,7 +321,7 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 	require.NoError(err)
 	// Init manager
 	managerConfig := testutil.GetManagerConfig()
-	managerConfig.BlockBatchMaxSizeBytes = batchLimitBytes // enough for 2 block, not enough for 10 blocks
+	managerConfig.BatchMaxSizeBytes = batchLimitBytes // enough for 2 block, not enough for 10 blocks
 	manager, err := testutil.GetManager(managerConfig, nil, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
@@ -354,23 +356,23 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 			// Call createNextDABatch function
 			startHeight := manager.NextHeightToSubmit()
 			endHeight := startHeight + uint64(tc.blocksToProduce) - 1
-			batch, err := manager.CreateNextBatchToSubmit(startHeight, endHeight)
+			batch, err := manager.CreateBatch(manager.Conf.BatchMaxSizeBytes, startHeight, endHeight)
 			assert.NoError(err)
 
-			assert.Equal(batch.StartHeight, startHeight)
-			assert.LessOrEqual(batch.ToProto().Size(), int(managerConfig.BlockBatchMaxSizeBytes))
+			assert.Equal(batch.StartHeight(), startHeight)
+			assert.LessOrEqual(batch.SizeBytes(), int(managerConfig.BatchMaxSizeBytes))
 
 			if !tc.expectedToBeTruncated {
-				assert.Equal(batch.EndHeight, endHeight)
+				assert.Equal(batch.EndHeight(), endHeight)
 			} else {
-				assert.Equal(batch.EndHeight, batch.StartHeight+uint64(len(batch.Blocks))-1)
-				assert.Less(batch.EndHeight, endHeight)
+				assert.Equal(batch.EndHeight(), batch.StartHeight()+batch.NumBlocks()-1)
+				assert.Less(batch.EndHeight(), endHeight)
 
 				// validate next added block to batch would have been actually too big
-				// First relax the byte limit so we could proudce larger batch
-				manager.Conf.BlockBatchMaxSizeBytes = 10 * manager.Conf.BlockBatchMaxSizeBytes
-				newBatch, err := manager.CreateNextBatchToSubmit(startHeight, batch.EndHeight+1)
-				assert.Greater(newBatch.ToProto().Size(), batchLimitBytes)
+				// First relax the byte limit so we could produce larger batch
+				manager.Conf.BatchMaxSizeBytes = 10 * manager.Conf.BatchMaxSizeBytes
+				newBatch, err := manager.CreateBatch(manager.Conf.BatchMaxSizeBytes, startHeight, batch.EndHeight()+1)
+				assert.Greater(newBatch.SizeBytes(), batchLimitBytes)
 
 				assert.NoError(err)
 			}
@@ -431,11 +433,42 @@ func TestDAFetch(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			app.On("Commit", mock.Anything).Return(abci.ResponseCommit{Data: commitHash[:]}).Once()
 			app.On("Info", mock.Anything).Return(abci.ResponseInfo{
-				LastBlockHeight:  int64(batch.EndHeight),
+				LastBlockHeight:  int64(batch.EndHeight()),
 				LastBlockAppHash: commitHash[:],
 			})
 			err := manager.ProcessNextDABatch(c.daMetaData)
 			require.Equal(c.err, err)
+		})
+	}
+}
+
+func TestManager_updateTargetHeight(t *testing.T) {
+	tests := []struct {
+		name            string
+		TargetHeight    uint64
+		h               uint64
+		expTargetHeight uint64
+	}{
+		{
+			name:            "no update target height",
+			TargetHeight:    100,
+			h:               99,
+			expTargetHeight: 100,
+		}, {
+			name:            "update target height",
+			TargetHeight:    100,
+			h:               101,
+			expTargetHeight: 101,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := &block.Manager{
+				TargetHeight: atomic.Uint64{},
+			}
+			m.TargetHeight.Store(tt.TargetHeight)
+			m.UpdateTargetHeight(tt.h)
+			assert.Equal(t, tt.expTargetHeight, m.TargetHeight.Load())
 		})
 	}
 }

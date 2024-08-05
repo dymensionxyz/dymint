@@ -13,6 +13,7 @@ import (
 	"github.com/dymensionxyz/dymint/mempool"
 	mempoolv1 "github.com/dymensionxyz/dymint/mempool/v1"
 	"github.com/dymensionxyz/dymint/node/events"
+	uchannel "github.com/dymensionxyz/dymint/utils/channel"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
 	tmcfg "github.com/tendermint/tendermint/config"
 
@@ -57,13 +58,11 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 
 	mCtx, cancel := context.WithTimeout(context.Background(), runTime)
 	defer cancel()
-	go manager.ProduceBlockLoop(mCtx)
-	go managerWithEmptyBlocks.ProduceBlockLoop(mCtx)
-
-	buf1 := make(chan struct{}, 100) // dummy to avoid unhealthy event
-	buf2 := make(chan struct{}, 100) // dummy to avoid unhealthy event
-	go manager.AccumulatedDataLoop(mCtx, buf1)
-	go managerWithEmptyBlocks.AccumulatedDataLoop(mCtx, buf2)
+	bytesProduced1 := make(chan int)
+	bytesProduced2 := make(chan int)
+	go manager.ProduceBlockLoop(mCtx, bytesProduced1)
+	go managerWithEmptyBlocks.ProduceBlockLoop(mCtx, bytesProduced2)
+	uchannel.DrainForever(bytesProduced1, bytesProduced2)
 	<-mCtx.Done()
 
 	require.Greater(manager.State.Height(), initialHeight)
@@ -143,7 +142,9 @@ func TestCreateEmptyBlocksNew(t *testing.T) {
 
 	mCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	go manager.ProduceBlockLoop(mCtx)
+	bytesProduced := make(chan int)
+	go manager.ProduceBlockLoop(mCtx, bytesProduced)
+	uchannel.DrainForever(bytesProduced)
 
 	<-time.Tick(1 * time.Second)
 	err = mpool.CheckTx([]byte{1, 2, 3, 4}, nil, mempool.TxInfo{})
@@ -182,12 +183,10 @@ func TestStopBlockProduction(t *testing.T) {
 	require := require.New(t)
 
 	managerConfig := testutil.GetManagerConfig()
-	managerConfig.BlockBatchMaxSizeBytes = 1000 // small batch size to fill up quickly
+	managerConfig.BatchMaxSizeBytes = 1000 // small batch size to fill up quickly
 	manager, err := testutil.GetManager(managerConfig, nil, nil, 1, 1, 0, nil, nil)
 	require.NoError(err)
 
-	// validate initial accumulated is zero
-	require.Equal(manager.AccumulatedBatchSize.Load(), uint64(0))
 	assert.Equal(manager.State.Height(), uint64(0))
 
 	// subscribe to health status event
@@ -203,21 +202,16 @@ func TestStopBlockProduction(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	go func() {
-		manager.ProduceBlockLoop(ctx)
-		wg.Done() // Decrease counter when this goroutine finishes
-	}()
+	bytesProducedC := make(chan int)
 
-	toSubmit := make(chan struct{})
 	go func() {
-		manager.AccumulatedDataLoop(ctx, toSubmit)
+		manager.ProduceBlockLoop(ctx, bytesProducedC)
 		wg.Done() // Decrease counter when this goroutine finishes
 	}()
 
 	// validate block production works
 	time.Sleep(400 * time.Millisecond)
 	assert.Greater(manager.State.Height(), uint64(0))
-	assert.Greater(manager.AccumulatedBatchSize.Load(), uint64(0))
 
 	// we don't read from the submit channel, so we assume it get full
 	// we expect the block production to stop and unhealthy event to be emitted
@@ -235,7 +229,7 @@ func TestStopBlockProduction(t *testing.T) {
 	assert.Equal(stoppedHeight, manager.State.Height())
 
 	// consume the signal
-	<-toSubmit
+	<-bytesProducedC
 
 	// check for health status event and block production to continue
 	select {
