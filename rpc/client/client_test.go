@@ -445,6 +445,10 @@ func TestTx(t *testing.T) {
 	mockApp.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
 		Da:     "mock",
 		Commit: version.Commit,
+		Block: &abci.BlockParams{
+			MaxBytes: 100,
+			MaxGas:   100,
+		},
 	}})
 	mockApp.On("Commit", mock.Anything).Return(abci.ResponseCommit{})
 	mockApp.On("DeliverTx", mock.Anything).Return(abci.ResponseDeliverTx{})
@@ -687,22 +691,42 @@ func TestValidatorSetHandling(t *testing.T) {
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
 		Da:     "mock",
 		Commit: version.Commit,
+		Block: &abci.BlockParams{
+			MaxBytes: 100,
+			MaxGas:   100,
+		},
 	}}).Times(2)
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
 		Da:     "mock",
 		Commit: version.Commit,
+		Block: &abci.BlockParams{
+			MaxBytes: 100,
+			MaxGas:   100,
+		},
 	}, ValidatorUpdates: []abci.ValidatorUpdate{{PubKey: pbValKey, Power: 0}}}).Once()
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
 		Da:     "mock",
 		Commit: version.Commit,
+		Block: &abci.BlockParams{
+			MaxBytes: 100,
+			MaxGas:   100,
+		},
 	}}).Once()
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
 		Da:     "mock",
 		Commit: version.Commit,
+		Block: &abci.BlockParams{
+			MaxBytes: 100,
+			MaxGas:   100,
+		},
 	}, ValidatorUpdates: []abci.ValidatorUpdate{{PubKey: pbValKey, Power: 100}}}).Once()
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
 		Da:     "mock",
 		Commit: version.Commit,
+		Block: &abci.BlockParams{
+			MaxBytes: 100,
+			MaxGas:   100,
+		},
 	}}).Run(func(args mock.Arguments) {
 		waitCh <- nil
 	})
