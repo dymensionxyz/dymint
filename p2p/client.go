@@ -664,7 +664,7 @@ func (c *Client) isBlockReceived(height uint64) bool {
 	return ok
 }
 
-// updateBlocksReceived clears previous received block heights
+// updateBlocksReceived clears previous received block heights, used by blocksync to not request blocks already received
 func (c *Client) updateBlocksReceived(appliedHeight uint64) {
 	c.blockReceivedP2PMu.Lock()
 	defer c.blockReceivedP2PMu.Unlock()
