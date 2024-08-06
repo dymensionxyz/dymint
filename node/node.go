@@ -188,7 +188,7 @@ func NewNode(
 		cancel:         cancel,
 	}
 
-	err = node.setDA(dalcKV)
+	err = node.setDA(dalcKV, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -215,7 +215,10 @@ func (n *Node) OnStart() error {
 	if err != nil {
 		return fmt.Errorf("start pubsub server: %w", err)
 	}
-
+	err = n.BlockManager.DAClient.Start()
+	if err != nil {
+		return fmt.Errorf("start data availability layer client: %w", err)
+	}
 	err = n.settlementlc.Start()
 	if err != nil {
 		return fmt.Errorf("start settlement layer client: %w", err)
@@ -346,14 +349,14 @@ func (n *Node) GetBlockManagerHeight() uint64 {
 }
 
 // setDA initializes DA client in blockmanager according to DA type set in genesis or stored in state
-func (n *Node) setDA(dalcKV store.KV) error {
+func (n *Node) setDA(dalcKV store.KV, logger log.Logger) error {
 	da_layer := n.BlockManager.State.ConsensusParams.Params.Da
 	dalc := registry.GetClient(da_layer)
 	if dalc == nil {
 		return fmt.Errorf("get data availability client named '%s'", da_layer)
 	}
 
-	err := dalc.Init([]byte(n.conf.DAConfig), n.PubsubServer, dalcKV, n.Logger.With("module", string(dalc.GetClientType())))
+	err := dalc.Init([]byte(n.conf.DAConfig), n.PubsubServer, dalcKV, logger.With("module", string(dalc.GetClientType())))
 	if err != nil {
 		return fmt.Errorf("data availability layer client initialization  %w", err)
 	}
