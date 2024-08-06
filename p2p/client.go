@@ -252,13 +252,13 @@ func (c *Client) RemoveBlocks(ctx context.Context, from, to uint64) error {
 
 // AdvertiseBlockIdToDHT is used to advertise the identifier (cid) for a specific block height to the DHT, using a PutValue operation
 func (c *Client) AdvertiseBlockIdToDHT(ctx context.Context, height uint64, cid cid.Cid) error {
-	err := c.DHT.PutValue(ctx, "/"+blockSyncProtocolPrefix+"/"+strconv.FormatUint(height, 10), []byte(cid.String()))
+	err := c.DHT.PutValue(ctx, getBlockSyncKeyByHeight(height), []byte(cid.String()))
 	return err
 }
 
 // GetBlockIdFromDHT is used to retrieve the identifier (cid) for a specific block height from the DHT, using a GetValue operation
 func (c *Client) GetBlockIdFromDHT(ctx context.Context, height uint64) (cid.Cid, error) {
-	cidBytes, err := c.DHT.GetValue(ctx, "/"+blockSyncProtocolPrefix+"/"+strconv.FormatUint(height, 10))
+	cidBytes, err := c.DHT.GetValue(ctx, getBlockSyncKeyByHeight(height))
 	if err != nil {
 		return cid.Undef, err
 	}
@@ -673,6 +673,10 @@ func (c *Client) updateBlocksReceived(appliedHeight uint64) {
 			delete(c.blockReceivedP2P, h)
 		}
 	}
+}
+
+func getBlockSyncKeyByHeight(height uint64) string {
+	return "/" + blockSyncProtocolPrefix + "/" + strconv.FormatUint(height, 10)
 }
 
 // validates that the content identifiers advertised in the DHT are valid.

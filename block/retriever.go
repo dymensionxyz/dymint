@@ -12,8 +12,8 @@ import (
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
-// onReceivedNewBatch will take a block and apply it
-func (m *Manager) onReceivedBatch(event pubsub.Message) {
+// onNewStateUpdate will try to sync to new height, if not already synced
+func (m *Manager) onNewStateUpdate(event pubsub.Message) {
 	eventData, ok := event.Data().(*settlement.EventDataNewBatchAccepted)
 	if !ok {
 		m.logger.Error("onReceivedBatch", "err", "wrong event data received")

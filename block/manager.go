@@ -174,7 +174,7 @@ func (m *Manager) Start(ctx context.Context) error {
 				m.logger.Error("sync block manager from settlement", "err", err)
 			}
 			// DA Sync. Subscribe to SL next batch events
-			go uevent.MustSubscribe(ctx, m.Pubsub, "syncTargetLoop", settlement.EventQueryNewSettlementBatchAccepted, m.onReceivedBatch, m.logger)
+			go uevent.MustSubscribe(ctx, m.Pubsub, "syncTargetLoop", settlement.EventQueryNewSettlementBatchAccepted, m.onNewStateUpdate, m.logger)
 		}()
 
 		// P2P Sync. Subscribe to P2P received blocks events
