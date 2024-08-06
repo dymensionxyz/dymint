@@ -68,7 +68,7 @@ func (s *State) LoadConsensusFromAppState(appState json.RawMessage) error {
 	var objmap map[string]json.RawMessage
 	err := json.Unmarshal(appState, &objmap)
 	if err != nil {
-		return fmt.Errorf("in genesis doc: %w", err)
+		return err
 	}
 	params, ok := objmap["rollapp_params"]
 	if !ok {
@@ -76,7 +76,7 @@ func (s *State) LoadConsensusFromAppState(appState json.RawMessage) error {
 	}
 	err = json.Unmarshal(params, &s.ConsensusParams)
 	if err != nil {
-		return fmt.Errorf("in genesis doc: %w", err)
+		return err
 	}
 	return nil
 }
