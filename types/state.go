@@ -63,15 +63,8 @@ func (s *State) NextHeight() uint64 {
 	return s.Height() + 1
 }
 
-func (s *State) SetConsensusParamsFromAppState(appState json.RawMessage) error {
-	type Params struct {
-		Da             string
-		Commit         string
-		Block_max_gas  int64
-		Block_max_size int64
-	}
-	p := &Params{}
-	// load rollapp_params from genesis doc app_state to the dymint state
+// LoadConsensusFromAppState load rollapp_params from genesis doc app_state to the dymint state
+func (s *State) LoadConsensusFromAppState(appState json.RawMessage) error {
 	var objmap map[string]json.RawMessage
 	err := json.Unmarshal(appState, &objmap)
 	if err != nil {
@@ -81,16 +74,7 @@ func (s *State) SetConsensusParamsFromAppState(appState json.RawMessage) error {
 	if !ok {
 		return fmt.Errorf("rollapp_params not defined in genesis")
 	}
-	var objmap2 map[string]json.RawMessage
-	err = json.Unmarshal(params, &objmap2)
-	if err != nil {
-		return fmt.Errorf("in genesis doc: %w", err)
-	}
-	params2, ok := objmap2["params"]
-	if !ok {
-		return fmt.Errorf("rollapp_params not defined in genesis")
-	}
-	err = json.Unmarshal(params2, &p)
+	err = json.Unmarshal(params, &s.ConsensusParams)
 	if err != nil {
 		return fmt.Errorf("in genesis doc: %w", err)
 	}

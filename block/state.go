@@ -69,10 +69,9 @@ func NewStateFromGenesis(genDoc *tmtypes.GenesisDoc) (*types.State, error) {
 		LastHeightConsensusParamsChanged: genDoc.InitialHeight,
 	}
 	s.SetHeight(0)
-	s.SetConsensusParamsFromAppState(genDoc.AppState)
-	s.LastBlockHeight.Store(0)
 	copy(s.AppHash[:], genDoc.AppHash)
 
+	s.LoadConsensusFromAppState(genDoc.AppState)
 	return &s, nil
 }
 
@@ -126,20 +125,14 @@ func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResp
 	copy(s.AppHash[:], appHash[:])
 	copy(s.LastResultsHash[:], tmtypes.NewResults(resp.DeliverTxs).Hash())
 
-	if resp.EndBlock.ConsensusParamUpdates != nil {
-		s.ConsensusParams.Params.BlockMaxSize = resp.EndBlock.ConsensusParamUpdates.Block.MaxBytes
-		s.ConsensusParams.Params.BlockMaxGas = resp.EndBlock.ConsensusParamUpdates.Block.MaxGas
-	}
-	if resp.EndBlock.RollappConsensusParamUpdates != nil {
-		s.RollappConsensusParams.Params.Da = resp.EndBlock.RollappConsensusParamUpdates.Da
-		s.RollappConsensusParams.Params.Version = resp.EndBlock.RollappConsensusParamUpdates.Version
-	}
-
 	s.SetHeight(height)
 
 	if resp.EndBlock.RollappConsensusParamUpdates == nil {
 		return nil
 	}
+	s.ConsensusParams.Params.BlockMaxSize = resp.EndBlock.RollappConsensusParamUpdates.Block.MaxBytes
+	s.ConsensusParams.Params.BlockMaxGas = resp.EndBlock.RollappConsensusParamUpdates.Block.MaxGas
+
 	var err error
 	if s.ConsensusParams.Params.Da != resp.EndBlock.RollappConsensusParamUpdates.Da {
 		e.logger.Debug("Updating DA", "da", s.ConsensusParams.Params.Da, "newda", resp.EndBlock.RollappConsensusParamUpdates.Da)

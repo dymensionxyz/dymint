@@ -60,6 +60,7 @@ type Node struct {
 	MempoolIDs   *nodemempool.MempoolIDs
 	incomingTxCh chan *p2p.GossipMessage
 
+	baseKV       store.KV
 	Store        store.Store
 	BlockManager *block.Manager
 	settlementlc settlement.ClientI
@@ -118,6 +119,7 @@ func NewNode(
 
 	s := store.New(store.NewPrefixKV(baseKV, mainPrefix))
 	indexerKV := store.NewPrefixKV(baseKV, indexerPrefix)
+
 	// TODO: dalcKV is needed for mock only. Initialize only if mock used
 	dalcKV := store.NewPrefixKV(baseKV, dalcPrefix)
 	// Init the settlement layer client
@@ -176,18 +178,6 @@ func NewNode(
 
 	// Set p2p client in block manager
 	blockManager.P2PClient = p2pClient
-	if version.Commit != blockManager.State.RollappConsensusParams.Params.Commit {
-		return nil, fmt.Errorf("binary version used different from rollapp params: %s: %s", version.Commit, blockManager.State.RollappConsensusParams.Params.Commit)
-	}
-	err = setDA(blockManager, dalcKV, conf.DAConfig, pubsubServer, logger)
-	if err != nil {
-		return nil, err
-	}
-
-	err = blockManager.ValidateRollappParams()
-	if err != nil {
-		return nil, err
-	}
 
 	ctx, cancel := context.WithCancel(ctx)
 	node := &Node{
@@ -202,6 +192,7 @@ func NewNode(
 		Mempool:        mp,
 		MempoolIDs:     mpIDs,
 		incomingTxCh:   make(chan *p2p.GossipMessage),
+		baseKV:         baseKV,
 		Store:          s,
 		TxIndexer:      txIndexer,
 		IndexerService: indexerService,
@@ -215,30 +206,9 @@ func NewNode(
 	return node, nil
 }
 
-// setDA initializes DA client in blockmanager according to DA type set in genesis or stored in state
-func setDA(blockManager *block.Manager, dalcKV store.KV, daConfig string, pubsubServer *pubsub.Server, logger log.Logger) error {
-	da_layer := blockManager.State.ConsensusParams.Params.Da
-
-	dalc := registry.GetClient(da_layer)
-	if dalc == nil {
-		return fmt.Errorf("get data availability client named '%s'", da_layer)
-	}
-
-	err := dalc.Init([]byte(daConfig), pubsubServer, dalcKV, logger.With("module", string(dalc.GetClientType())))
-	if err != nil {
-		return fmt.Errorf("data availability layer client initialization  %w", err)
-	}
-	blockManager.DAClient = dalc
-	retriever, ok := dalc.(da.BatchRetriever)
-	if !ok {
-		return fmt.Errorf("data availability layer client is not of type BatchRetriever")
-	}
-	blockManager.Retriever = retriever
-	return nil
-}
-
 // OnStart is a part of Service interface.
 func (n *Node) OnStart() error {
+
 	n.Logger.Info("starting P2P client")
 	err := n.P2P.Start(n.ctx)
 	if err != nil {
@@ -248,10 +218,7 @@ func (n *Node) OnStart() error {
 	if err != nil {
 		return fmt.Errorf("start pubsub server: %w", err)
 	}
-	err = n.BlockManager.DAClient.Start()
-	if err != nil {
-		return fmt.Errorf("start data availability layer client: %w", err)
-	}
+
 	err = n.settlementlc.Start()
 	if err != nil {
 		return fmt.Errorf("start settlement layer client: %w", err)
@@ -379,4 +346,25 @@ func (n *Node) startPrometheusServer() error {
 
 func (n *Node) GetBlockManagerHeight() uint64 {
 	return n.BlockManager.State.Height()
+}
+
+// setDA initializes DA client in blockmanager according to DA type set in genesis or stored in state
+func (n *Node) setDA(dalcKV store.KV) error {
+	da_layer := n.BlockManager.State.ConsensusParams.Params.Da
+	dalc := registry.GetClient(da_layer)
+	if dalc == nil {
+		return fmt.Errorf("get data availability client named '%s'", da_layer)
+	}
+
+	err := dalc.Init([]byte(n.conf.DAConfig), n.PubsubServer, dalcKV, n.Logger.With("module", string(dalc.GetClientType())))
+	if err != nil {
+		return fmt.Errorf("data availability layer client initialization  %w", err)
+	}
+	n.BlockManager.DAClient = dalc
+	retriever, ok := dalc.(da.BatchRetriever)
+	if !ok {
+		return fmt.Errorf("data availability layer client is not of type BatchRetriever")
+	}
+	n.BlockManager.Retriever = retriever
+	return nil
 }

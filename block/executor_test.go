@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/dymensionxyz/dymint/block"
+	"github.com/dymensionxyz/dymint/types/pb/dymint"
 
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
@@ -60,8 +61,12 @@ func TestCreateBlock(t *testing.T) {
 	// Init state
 	state := &types.State{}
 	state.Sequencers.SetProposer(types.NewSequencerFromValidator(*tmtypes.NewValidator(tmPubKey, 1)))
-	state.ConsensusParams.Params.BlockMaxSize = int64(maxBytes)
-	state.ConsensusParams.Params.BlockMaxGas = 100000
+	state.ConsensusParams = dymint.RollappConsensusParams{
+		Params: &dymint.Params{
+			BlockMaxSize: int64(maxBytes),
+			BlockMaxGas:  100000,
+		},
+	}
 
 	// empty block
 	block := executor.CreateBlock(1, &types.Commit{}, [32]byte{}, [32]byte(state.Sequencers.ProposerHash()[:]), state, maxBytes)
