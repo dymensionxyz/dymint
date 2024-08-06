@@ -147,6 +147,7 @@ func (m *Manager) CreateAndSubmitBatch(maxSizeBytes uint64) (*types.Batch, error
 // CreateBatch looks through the store for any unsubmitted blocks and commits and bundles them into a batch
 // max size bytes is the maximum size of the serialized batch type
 func (m *Manager) CreateBatch(maxBatchSize uint64, startHeight uint64, endHeightInclusive uint64) (*types.Batch, error) {
+	m.logger.Info("Creating batch", "start height", startHeight, "end height", endHeightInclusive)
 	batchSize := endHeightInclusive - startHeight + 1
 	batch := &types.Batch{
 		Blocks:  make([]*types.Block, 0, batchSize),
