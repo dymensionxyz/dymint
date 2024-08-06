@@ -16,8 +16,6 @@ import (
 	ipld "github.com/ipfs/go-ipld-format"
 )
 
-var ErrUnableToReadDag = errors.New("unable to read block DAG")
-
 type BlockSyncDagService struct {
 	ipld.DAGService
 	cidBuilder cid.Builder
@@ -127,7 +125,7 @@ func dagReader(root ipld.Node, ds ipld.DAGService) (io.Reader, error) {
 		}
 		rawdata, ok := n.(*dag.ProtoNode)
 		if !ok {
-			return nil, ErrUnableToReadDag
+			return nil, errors.New("read block DAG")
 		}
 
 		_, err = buf.Write(rawdata.Data())
