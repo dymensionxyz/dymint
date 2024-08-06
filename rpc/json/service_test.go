@@ -283,6 +283,10 @@ func getRPC(t *testing.T) (*tmmocks.MockApplication, *client.Client) {
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
 		Da:     "mock",
 		Commit: version.Commit,
+		Block: &abci.BlockParams{
+			MaxBytes: 100,
+			MaxGas:   100,
+		},
 	}})
 	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{})
 	app.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{

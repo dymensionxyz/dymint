@@ -40,6 +40,10 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
 		Da:     "mock",
 		Commit: version.Commit,
+		Block: &abci.BlockParams{
+			MaxBytes: 500000,
+			MaxGas:   0,
+		},
 	}})
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)
@@ -196,6 +200,10 @@ func TestStopBlockProduction(t *testing.T) {
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
 		Da:     "mock",
 		Commit: version.Commit,
+		Block: &abci.BlockParams{
+			MaxBytes: 500000,
+			MaxGas:   0,
+		},
 	}})
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)

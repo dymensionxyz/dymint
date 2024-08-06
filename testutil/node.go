@@ -33,6 +33,10 @@ func CreateNode(isSequencer bool, blockManagerConfig *config.BlockManagerConfig,
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
 		Da:     "mock",
 		Commit: version.Commit,
+		Block: &abci.BlockParams{
+			MaxBytes: 100,
+			MaxGas:   100,
+		},
 	}})
 
 	key, _, _ := crypto.GenerateEd25519Key(rand.Reader)

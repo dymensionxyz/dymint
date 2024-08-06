@@ -107,8 +107,6 @@ func TestApplyBlock(t *testing.T) {
 		RollappConsensusParamUpdates: &abci.RollappConsensusParams{
 			Da:     "celestia",
 			Commit: "abcde",
-		},
-		ConsensusParamUpdates: &abci.ConsensusParams{
 			Block: &abci.BlockParams{
 				MaxBytes: 100,
 				MaxGas:   100,
@@ -172,10 +170,15 @@ func TestApplyBlock(t *testing.T) {
 	state.InitialHeight = 1
 	state.SetHeight(0)
 	maxBytes := uint64(1000)
-	state.ConsensusParams.Params.BlockMaxSize = int64(maxBytes)
-	state.ConsensusParams.Params.BlockMaxGas = 100000
-	state.ConsensusParams.Params.Da = "mock"
-	state.ConsensusParams.Params.Commit = ""
+	state.ConsensusParams = dymint.RollappConsensusParams{
+		Params: &dymint.Params{
+			BlockMaxGas:  100000,
+			BlockMaxSize: int64(maxBytes),
+			Da:           "mock",
+			Commit:       "",
+		},
+	}
+
 	// Create first block with one Tx from mempool
 	_ = mpool.CheckTx([]byte{1, 2, 3, 4}, func(r *abci.Response) {}, mempool.TxInfo{})
 	require.NoError(err)
