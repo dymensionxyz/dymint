@@ -92,9 +92,9 @@ func SubmitLoopInner(ctx context.Context,
 				return ctx.Err()
 			case <-submitter.C:
 			}
-			pending := pendingBytes.Load()
-			// while there are accumulated blocks, create and submit batches!!
 			for {
+				pending := pendingBytes.Load()
+				// while there are accumulated blocks, create and submit batches!!
 				done := ctx.Err() != nil
 				nothingToSubmit := pending == 0
 				lastSubmissionIsRecent := time.Since(timeLastSubmission) < maxBatchTime
@@ -104,8 +104,7 @@ func SubmitLoopInner(ctx context.Context,
 				}
 				nConsumed, err := createAndSubmitBatch(min(pending, maxBatchBytes))
 				if errors.Is(err, gerrc.ErrInternal) {
-					logger.Error("Create and submit batch.", "err", err)
-					continue
+					panic(fmt.Sprintf("create and submit batch: %v", err))
 				}
 				if err != nil {
 					return fmt.Errorf("create and submit batch: %w", err)
