@@ -40,7 +40,7 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 		Commit: version.Commit,
 		Block: &abci.BlockParams{
 			MaxBytes: 500000,
-			MaxGas:   0,
+			MaxGas:   40000000,
 		},
 	}})
 	// Create proxy app
@@ -200,7 +200,7 @@ func TestStopBlockProduction(t *testing.T) {
 		Commit: version.Commit,
 		Block: &abci.BlockParams{
 			MaxBytes: 500000,
-			MaxGas:   0,
+			MaxGas:   40000000,
 		},
 	}})
 	// Create proxy app

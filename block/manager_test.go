@@ -123,7 +123,7 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 		Commit: version.Commit,
 		Block: &abci.BlockParams{
 			MaxBytes: 500000,
-			MaxGas:   0,
+			MaxGas:   40000000,
 		},
 	}})
 	// Create proxy app
@@ -202,7 +202,7 @@ func TestProduceNewBlock(t *testing.T) {
 		Commit: version.Commit,
 		Block: &abci.BlockParams{
 			MaxBytes: 500000,
-			MaxGas:   0,
+			MaxGas:   40000000,
 		},
 	}})
 	// Create proxy app
@@ -231,7 +231,7 @@ func TestProducePendingBlock(t *testing.T) {
 		Commit: version.Commit,
 		Block: &abci.BlockParams{
 			MaxBytes: 500000,
-			MaxGas:   0,
+			MaxGas:   40000000,
 		},
 	}})
 	// Create proxy app
@@ -339,7 +339,7 @@ func TestProduceBlockFailAfterCommit(t *testing.T) {
 				Commit: version.Commit,
 				Block: &abci.BlockParams{
 					MaxBytes: 500000,
-					MaxGas:   0,
+					MaxGas:   40000000,
 				},
 			}})
 			mockStore.ShoudFailSaveState = tc.shoudFailOnSaveState
@@ -367,7 +367,7 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 		Commit: version.Commit,
 		Block: &abci.BlockParams{
 			MaxBytes: 500000,
-			MaxGas:   0,
+			MaxGas:   40000000,
 		},
 	}})
 	// Create proxy app
@@ -445,7 +445,7 @@ func TestDAFetch(t *testing.T) {
 		Commit: version.Commit,
 		Block: &abci.BlockParams{
 			MaxBytes: 500000,
-			MaxGas:   0,
+			MaxGas:   40000000,
 		},
 	}})
 	// Create proxy app
