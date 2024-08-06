@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/dymensionxyz/dymint/block"
+	"github.com/dymensionxyz/dymint/types/pb/dymint"
 
 	"github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
 	"github.com/stretchr/testify/assert"
@@ -50,8 +51,13 @@ func TestCreateBlock(t *testing.T) {
 	maxBytes := uint64(100)
 
 	state := &types.State{}
-	state.ConsensusParams.Params.BlockMaxSize = int64(maxBytes)
-	state.ConsensusParams.Params.BlockMaxGas = 100000
+	state.ConsensusParams = dymint.RollappConsensusParams{
+		Params: &dymint.Params{
+			BlockMaxSize: int64(maxBytes),
+			BlockMaxGas:  100000,
+		},
+	}
+
 	state.Validators = tmtypes.NewValidatorSet(nil)
 
 	// empty block
