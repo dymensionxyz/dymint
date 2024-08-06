@@ -116,7 +116,7 @@ func TestBatchSubmissionHappyFlow(t *testing.T) {
 		Commit: version.Commit,
 		Block: &abci.BlockParams{
 			MaxBytes: 500000,
-			MaxGas:   0,
+			MaxGas:   40000000,
 		},
 	}})
 	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, nil)
@@ -150,7 +150,7 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 		Commit: version.Commit,
 		Block: &abci.BlockParams{
 			MaxBytes: 500000,
-			MaxGas:   0,
+			MaxGas:   40000000,
 		},
 	}})
 	// Create proxy app
@@ -217,7 +217,7 @@ func TestSubmissionByTime(t *testing.T) {
 		Commit: version.Commit,
 		Block: &abci.BlockParams{
 			MaxBytes: 500000,
-			MaxGas:   0,
+			MaxGas:   40000000,
 		},
 	}})
 	// Create proxy app
@@ -296,7 +296,7 @@ func TestSubmissionByBatchSize(t *testing.T) {
 			Commit: version.Commit,
 			Block: &abci.BlockParams{
 				MaxBytes: 500000,
-				MaxGas:   0,
+				MaxGas:   40000000,
 			},
 		}})
 		// Create proxy app
