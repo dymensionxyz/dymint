@@ -593,7 +593,7 @@ func (c *Client) retrieveBlockSyncLoop(ctx context.Context, msgHandler BlockSync
 				if ok {
 					continue
 				}
-				c.logger.Debug("Getting block", "height", h)
+				c.logger.Debug("Getting block.", "height", h)
 				id, err := c.GetBlockIdFromDHT(ctx, h)
 				if err != nil || id == cid.Undef {
 					c.logger.Error("unable to find cid", "height", h)
