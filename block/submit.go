@@ -92,9 +92,9 @@ func SubmitLoopInner(ctx context.Context,
 				return ctx.Err()
 			case <-submitter.C:
 			}
+			pending := pendingBytes.Load()
+			// while there are accumulated blocks, create and submit batches!!
 			for {
-				pending := pendingBytes.Load()
-				// while there are accumulated blocks, create and submit batches!!
 				done := ctx.Err() != nil
 				nothingToSubmit := pending == 0
 				lastSubmissionIsRecent := time.Since(timeLastSubmission) < maxBatchTime
