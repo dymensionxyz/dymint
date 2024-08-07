@@ -45,23 +45,23 @@ func NewCosmosClient(client cosmosclient.Client) CosmosClient {
 }
 
 func (c *cosmosClient) StartEventListener() error {
-	return c.Client.RPC.WSEvents.Start()
+	return c.Client.RPC.Start()
 }
 
 func (c *cosmosClient) StopEventListener() error {
-	return c.Client.RPC.WSEvents.Stop()
+	return c.Client.RPC.Stop()
 }
 
 func (c *cosmosClient) EventListenerQuit() <-chan struct{} {
-	return c.Client.RPC.GetWSClient().Quit()
+	return c.Client.RPC.Quit()
 }
 
 func (c *cosmosClient) SubscribeToEvents(ctx context.Context, subscriber string, query string, outCapacity ...int) (out <-chan ctypes.ResultEvent, err error) {
-	return c.Client.RPC.WSEvents.Subscribe(ctx, subscriber, query, outCapacity...)
+	return c.Client.WSEvents.Subscribe(ctx, subscriber, query, outCapacity...)
 }
 
 func (c *cosmosClient) UnsubscribeAll(ctx context.Context, subscriber string) error {
-	return c.Client.RPC.WSEvents.UnsubscribeAll(ctx, subscriber)
+	return c.Client.WSEvents.UnsubscribeAll(ctx, subscriber)
 }
 
 func (c *cosmosClient) GetRollappClient() rollapptypes.QueryClient {

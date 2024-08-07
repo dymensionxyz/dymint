@@ -13,11 +13,10 @@ import (
 )
 
 // TODO: use types and attributes from dymension proto
-
 const (
-	eventStateUpdate          = "state_update.rollapp_id='%s' AND state_update.status='PENDING'"
-	eventSequencersListUpdate = "create_sequencer.rollapp_id='%s'"
-	eventRotationStarted      = "rotation_started.rollapp_id='%s'"
+	eventStateUpdateFmt          = "state_update.rollapp_id='%s' AND state_update.status='PENDING'"
+	eventSequencersListUpdateFmt = "create_sequencer.rollapp_id='%s'"
+	eventRotationStartedFmt      = "rotation_started.rollapp_id='%s'"
 )
 
 func (c *Client) getEventData(eventType string, rawEventData ctypes.ResultEvent) (interface{}, error) {
@@ -35,46 +34,62 @@ func (c *Client) getEventData(eventType string, rawEventData ctypes.ResultEvent)
 func (c *Client) eventHandler() {
 	subscriber := fmt.Sprintf("dymension-client-%s", uuid.New().String())
 
+	eventStateUpdateQ := fmt.Sprintf(eventStateUpdateFmt, c.config.RollappID)
+	eventSequencersListQ := fmt.Sprintf(eventSequencersListUpdateFmt, c.config.RollappID)
+	eventRotationStartedQ := fmt.Sprintf(eventRotationStartedFmt, c.config.RollappID)
+
 	// TODO: add validation callback for the event data
 	eventMap := map[string]string{
-		fmt.Sprintf(eventStateUpdate, c.config.RollappID):          settlement.EventNewBatchAccepted,
-		fmt.Sprintf(eventSequencersListUpdate, c.config.RollappID): settlement.EventNewBondedSequencer,
-		fmt.Sprintf(eventRotationStarted, c.config.RollappID):      settlement.EventRotationStarted,
+		eventStateUpdateQ:     settlement.EventNewBatchAccepted,
+		eventSequencersListQ:  settlement.EventNewBondedSequencer,
+		eventRotationStartedQ: settlement.EventRotationStarted,
 	}
 
-	combinedEventQuery := fmt.Sprintf("(%s) OR (%s) OR (%s)",
-		fmt.Sprintf(eventStateUpdate, c.config.RollappID),
-		fmt.Sprintf(eventSequencersListUpdate, c.config.RollappID),
-		fmt.Sprintf(eventRotationStarted, c.config.RollappID))
-
-	eventsChannel, err := c.cosmosClient.SubscribeToEvents(c.ctx, subscriber, combinedEventQuery, 1000)
+	stateUpdatesC, err := c.cosmosClient.SubscribeToEvents(c.ctx, subscriber, eventStateUpdateQ, 1000)
 	if err != nil {
-		panic("Error subscribing to events")
+		panic(fmt.Errorf("subscribe to events (%s): %w", eventStateUpdateQ, err))
 	}
+	sequencersListC, err := c.cosmosClient.SubscribeToEvents(c.ctx, subscriber, eventSequencersListQ, 1000)
+	if err != nil {
+		panic(fmt.Errorf("subscribe to events (%s): %w", eventSequencersListQ, err))
+	}
+	rotationStartedC, err := c.cosmosClient.SubscribeToEvents(c.ctx, subscriber, eventRotationStartedQ, 1000)
+	if err != nil {
+		panic(fmt.Errorf("subscribe to events (%s): %w", eventRotationStartedQ, err))
+	}
+
 	defer c.cosmosClient.UnsubscribeAll(c.ctx, subscriber)
 
 	for {
+		var e ctypes.ResultEvent
 		select {
 		case <-c.ctx.Done():
 			return
 		case <-c.cosmosClient.EventListenerQuit():
 			// TODO(omritoptix): Fallback to polling
 			return
-		case event := <-eventsChannel:
-			// Assert value is in map and publish it to the event bus
-			data, ok := eventMap[event.Query]
-			if !ok {
-				c.logger.Debug("Ignoring event. Type not supported", "event", event)
-				continue
-			}
-			c.logger.Info("!!!!!!!!!!Received event from SL!!!!!!!!!!!!!!!!", "event", event)
-			eventData, err := c.getEventData(data, event)
-			if err != nil {
-				panic(err)
-			}
-			uevent.MustPublish(c.ctx, c.pubsub, eventData, map[string][]string{settlement.EventTypeKey: {data}})
+		case e = <-stateUpdatesC:
+		case e = <-sequencersListC:
+		case e = <-rotationStartedC:
 		}
+		c.handleReceivedEvent(e, eventMap)
 	}
+}
+
+func (c *Client) handleReceivedEvent(event ctypes.ResultEvent, eventMap map[string]string) {
+	// Assert value is in map and publish it to the event bus
+	internalType, ok := eventMap[event.Query]
+	if !ok {
+		c.logger.Error("Ignoring event. Type not supported", "event", event)
+		return
+	}
+	c.logger.Info("!!!!!!!!!!Received event from SL!!!!!!!!!!!!!!!!", "event", event)
+	eventData, err := c.getEventData(internalType, event)
+	if err != nil {
+		c.logger.Error("Error converting event data", "event", event, "error", err)
+		return
+	}
+	uevent.MustPublish(c.ctx, c.pubsub, eventData, map[string][]string{settlement.EventTypeKey: {internalType}})
 }
 
 func convertToNewBatchEvent(rawEventData ctypes.ResultEvent) (*settlement.EventDataNewBatchAccepted, error) {

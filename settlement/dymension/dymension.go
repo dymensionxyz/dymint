@@ -11,7 +11,6 @@ import (
 	errorsmod "cosmossdk.io/errors"
 
 	"github.com/avast/retry-go/v4"
-	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/codec"
 	cdctypes "github.com/cosmos/cosmos-sdk/codec/types"
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
@@ -86,7 +85,6 @@ func (c *Client) Init(config settlement.Config, pubsub *pubsub.Server, logger ty
 
 	if c.cosmosClient == nil {
 		client, err := cosmosclient.New(
-			c.ctx,
 			getCosmosClientOptions(&config)...,
 		)
 		if err != nil {
@@ -517,7 +515,6 @@ func getCosmosClientOptions(config *settlement.Config) []cosmosclient.Option {
 	}
 	options := []cosmosclient.Option{
 		cosmosclient.WithAddressPrefix(addressPrefix),
-		cosmosclient.WithBroadcastMode(flags.BroadcastSync),
 		cosmosclient.WithNodeAddress(config.NodeAddress),
 		cosmosclient.WithFees(config.GasFees),
 		cosmosclient.WithGas(strconv.FormatUint(config.GasLimit, 10)),

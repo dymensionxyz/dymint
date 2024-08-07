@@ -11,7 +11,7 @@ require (
 	github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.12
 	github.com/cosmos/cosmos-sdk v0.46.16
 	github.com/dgraph-io/badger/v3 v3.2103.3
-	github.com/dymensionxyz/cosmosclient v0.4.2-beta
+	github.com/dymensionxyz/cosmosclient v0.4.2-beta.0.20240807064229-8eda5df4d270
 	github.com/dymensionxyz/dymension/v3 v3.1.0-rc03.0.20240411195658-f7cd96f53b56
 	github.com/dymensionxyz/gerr-cosmos v1.0.0
 	github.com/go-kit/kit v0.12.0
@@ -63,7 +63,7 @@ require (
 	github.com/cometbft/cometbft v0.37.2
 	github.com/cometbft/cometbft-db v0.11.0 // indirect
 	github.com/cosmos/cosmos-proto v1.0.0-beta.3
-	github.com/cosmos/gogoproto v1.4.11 // indirect
+	github.com/cosmos/gogoproto v1.5.0
 	github.com/creachadair/taskgroup v0.3.2 // indirect
 	github.com/deckarep/golang-set v1.8.0 // indirect
 	github.com/decred/base58 v1.0.4 // indirect
@@ -106,7 +106,7 @@ require (
 	go.uber.org/fx v1.20.1 // indirect
 	golang.org/x/exp v0.0.0-20240213143201-ec583247a57a // indirect
 	golang.org/x/xerrors v0.0.0-20220907171357-04be3eba64a2 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20240318140521-94a12d6c2237 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20240318140521-94a12d6c2237
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240318140521-94a12d6c2237 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
@@ -144,13 +144,13 @@ require (
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/golang/glog v1.2.0 // indirect
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
-	github.com/golang/protobuf v1.5.4 // indirect
+	github.com/golang/protobuf v1.5.4
 	github.com/golang/snappy v0.0.5-0.20220116011046-fa5810519dcb // indirect
 	github.com/google/btree v1.1.2 // indirect
 	github.com/google/flatbuffers v2.0.8+incompatible // indirect
 	github.com/google/gopacket v1.1.19 // indirect
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0 // indirect
-	github.com/grpc-ecosystem/grpc-gateway v1.16.0 // indirect
+	github.com/grpc-ecosystem/grpc-gateway v1.16.0
 	github.com/gsterjov/go-libsecret v0.0.0-20161001094733-a6f4afe4910c // indirect
 	github.com/gtank/merlin v0.1.1 // indirect
 	github.com/gtank/ristretto255 v0.1.2 // indirect
@@ -235,9 +235,9 @@ require (
 	golang.org/x/sys v0.19.0 // indirect
 	golang.org/x/term v0.19.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
-	google.golang.org/genproto v0.0.0-20240116215550-a9fa1716bcac // indirect
+	google.golang.org/genproto v0.0.0-20240123012728-ef4313101c80 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
-	gopkg.in/yaml.v2 v2.4.0 // indirect
+	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	lukechampine.com/blake3 v1.2.1 // indirect
 )
@@ -245,7 +245,6 @@ require (
 require (
 	cosmossdk.io/math v1.3.0 // indirect
 	github.com/DataDog/zstd v1.5.2 // indirect
-	github.com/agl/ed25519 v0.0.0-20170116200512-5312a6153412 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/btcsuite/btcd/btcutil v1.1.3 // indirect
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
@@ -256,7 +255,6 @@ require (
 	github.com/cockroachdb/tokenbucket v0.0.0-20230807174530-cc333fc44b06 // indirect
 	github.com/cosmos/ibc-go/v6 v6.2.1 // indirect
 	github.com/danwt/gerr v1.0.0 // indirect
-	github.com/decred/dcrd/dcrec/edwards v1.0.0 // indirect
 	github.com/evmos/evmos/v12 v12.1.6 // indirect
 	github.com/getsentry/sentry-go v0.18.0 // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20190812055157-5d271430af9f // indirect
@@ -280,7 +278,9 @@ replace (
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.2-alpha.regen.4
 	github.com/gorilla/rpc => github.com/dymensionxyz/rpc v1.3.1
 	github.com/libp2p/go-libp2p-pubsub => github.com/dymensionxyz/go-libp2p-pubsub v0.0.0-20240513081713-3ecd83c19ea2
-	github.com/tendermint/tendermint => github.com/cometbft/cometbft v0.34.28
+	// github.com/tendermint/tendermint => github.com/cometbft/cometbft v0.34.28
+	github.com/tendermint/tendermint => github.com/dymensionxyz/cometbft v0.34.29-0.20240807063724-0f6e36089879
+
 )
 
 replace github.com/osmosis-labs/osmosis/v15 => github.com/dymensionxyz/osmosis/v15 v15.2.0-dymension-v1.1.2
