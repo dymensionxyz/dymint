@@ -83,7 +83,6 @@ func (c *Client) handleReceivedEvent(event ctypes.ResultEvent, eventMap map[stri
 		c.logger.Error("Ignoring event. Type not supported", "event", event)
 		return
 	}
-	c.logger.Info("!!!!!!!!!!Received event from SL!!!!!!!!!!!!!!!!", "event", event)
 	eventData, err := c.getEventData(internalType, event)
 	if err != nil {
 		c.logger.Error("Error converting event data", "event", event, "error", err)

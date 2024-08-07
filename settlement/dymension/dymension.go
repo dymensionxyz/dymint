@@ -31,9 +31,7 @@ import (
 )
 
 const (
-	addressPrefix     = "dym"
-	dymRollappVersion = 0
-	defaultGasLimit   = 300000
+	addressPrefix = "dym"
 )
 
 const (
@@ -502,7 +500,6 @@ func (c *Client) convertBatchToMsgUpdateState(batch *types.Batch, daResult *da.R
 		StartHeight: batch.StartHeight(),
 		NumBlocks:   batch.NumBlocks(),
 		DAPath:      daResult.SubmitMetaData.ToPath(),
-		Version:     dymRollappVersion,
 		BDs:         rollapptypes.BlockDescriptors{BD: blockDescriptors},
 		Last:        batch.LastBatch,
 	}
@@ -510,14 +507,22 @@ func (c *Client) convertBatchToMsgUpdateState(batch *types.Batch, daResult *da.R
 }
 
 func getCosmosClientOptions(config *settlement.Config) []cosmosclient.Option {
+	var (
+		gas           string
+		gasAdjustment float64 = 1.0
+	)
 	if config.GasLimit == 0 {
-		config.GasLimit = defaultGasLimit
+		gas = "auto"
+		gasAdjustment = 1.1
+	} else {
+		gas = strconv.FormatUint(config.GasLimit, 10)
 	}
 	options := []cosmosclient.Option{
 		cosmosclient.WithAddressPrefix(addressPrefix),
 		cosmosclient.WithNodeAddress(config.NodeAddress),
 		cosmosclient.WithFees(config.GasFees),
-		cosmosclient.WithGas(strconv.FormatUint(config.GasLimit, 10)),
+		cosmosclient.WithGas(gas),
+		cosmosclient.WithGasAdjustment(gasAdjustment),
 		cosmosclient.WithGasPrices(config.GasPrices),
 	}
 	if config.KeyringHomeDir != "" {
