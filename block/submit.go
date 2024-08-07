@@ -117,7 +117,7 @@ func SubmitLoopInner(
 				}
 				timeLastSubmission = time.Now()
 				pending = uatomic.Uint64Sub(&pendingBytes, nConsumed)
-				logger.Info("Submitted a batch to both sublayers", "n bytes consumed from pending", nConsumed, "pending after", pending)
+				logger.Info("Submitted a batch to both sub-layers.", "n bytes consumed from pending", nConsumed, "pending after", pending)
 			}
 			trigger.Nudge()
 		}
