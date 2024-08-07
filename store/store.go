@@ -232,12 +232,7 @@ func (s *DefaultStore) LoadValidators(height uint64) (*types.SequencerSet, error
 		return nil, fmt.Errorf("unmarshal to protobuf: %w", err)
 	}
 
-	ss, err := types.NewSequencerSetFromProto(pbValSet)
-	if err != nil {
-		return nil, fmt.Errorf("unmarshal to ValidatorSet: %w", err)
-	}
-
-	return ss, nil
+	return types.NewSequencerSetFromProto(pbValSet)
 }
 
 func (s *DefaultStore) loadHashFromIndex(height uint64) ([32]byte, error) {

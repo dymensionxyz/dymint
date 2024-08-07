@@ -115,9 +115,8 @@ func TestStateRoundTrip(t *testing.T) {
 					},
 					Software: "dymint",
 				},
-				ChainID:                     "testchain",
-				InitialHeight:               987,
-				LastHeightValidatorsChanged: 8272,
+				ChainID:       "testchain",
+				InitialHeight: 987,
 				ConsensusParams: tmproto.ConsensusParams{
 					Block: tmproto.BlockParams{
 						MaxBytes:   12345,
@@ -148,7 +147,7 @@ func TestStateRoundTrip(t *testing.T) {
 			require := require.New(t)
 			assert := assert.New(t)
 
-			c.state.ActiveSequencer.SetBondedSet(valSet)
+			c.state.Sequencers.SetBondedSet(valSet)
 
 			if c.state.InitialHeight != 0 {
 				c.state.LastBlockHeight.Store(986321)

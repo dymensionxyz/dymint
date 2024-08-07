@@ -248,7 +248,7 @@ func (c *Commit) FromProto(other *pb.Commit) error {
 
 // ToProto converts State into protobuf representation and returns it.
 func (s *State) ToProto() (*pb.State, error) {
-	seqsProto, err := s.ActiveSequencer.ToProto()
+	seqsProto, err := s.Sequencers.ToProto()
 	if err != nil {
 		return nil, err
 	}
@@ -260,7 +260,6 @@ func (s *State) ToProto() (*pb.State, error) {
 		LastBlockHeight:                  int64(s.LastBlockHeight.Load()),
 		SequencersSet:                    *seqsProto,
 		BaseHeight:                       s.BaseHeight,
-		LastHeightValidatorsChanged:      s.LastHeightValidatorsChanged,
 		ConsensusParams:                  s.ConsensusParams,
 		LastHeightConsensusParamsChanged: s.LastHeightConsensusParamsChanged,
 		LastResultsHash:                  s.LastResultsHash[:],
@@ -283,9 +282,8 @@ func (s *State) FromProto(other *pb.State) error {
 	if err != nil {
 		return err
 	}
-	s.ActiveSequencer = *sSet
+	s.Sequencers = *sSet
 
-	s.LastHeightValidatorsChanged = other.LastHeightValidatorsChanged
 	s.ConsensusParams = other.ConsensusParams
 	s.LastHeightConsensusParamsChanged = other.LastHeightConsensusParamsChanged
 	copy(s.LastResultsHash[:], other.LastResultsHash)
@@ -323,7 +321,7 @@ func evidenceToProto(evidence EvidenceData) []*abci.Evidence {
 	return ret
 }
 
-func evidenceFromProto(evidence []*abci.Evidence) EvidenceData {
+func evidenceFromProto([]*abci.Evidence) EvidenceData {
 	var ret EvidenceData
 	// TODO(tzdybal): right now Evidence is just an interface without implementations
 	return ret

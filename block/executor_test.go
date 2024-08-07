@@ -32,6 +32,7 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
+// TODO: test UpdateProposerFromBlock
 func TestCreateBlock(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
@@ -56,7 +57,7 @@ func TestCreateBlock(t *testing.T) {
 	state := &types.State{}
 	state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
 	state.ConsensusParams.Block.MaxGas = 100000
-	state.ActiveSequencer = types.SequencerSet{
+	state.Sequencers = types.SequencerSet{
 		Validators:   tmtypes.NewValidatorSet(nil).Validators,
 		Proposer:     tmtypes.NewValidatorSet(nil).Proposer,
 		ProposerHash: []byte{},
@@ -152,7 +153,7 @@ func TestApplyBlock(t *testing.T) {
 
 	// Init state
 	state := &types.State{}
-	state.ActiveSequencer.SetBondedSet(tmtypes.NewValidatorSet(seq))
+	state.Sequencers.SetBondedSet(tmtypes.NewValidatorSet(seq))
 	state.InitialHeight = 1
 	state.LastBlockHeight.Store(0)
 	maxBytes := uint64(100)
@@ -180,7 +181,7 @@ func TestApplyBlock(t *testing.T) {
 	}
 
 	// Apply the block
-	err = ValidateProposedTransition(state, block, commit, state.ActiveSequencer.GetProposerPubKey())
+	err = validateProposedTransition(state, block, commit, state.Sequencers.GetProposerPubKey())
 	require.NoError(err)
 
 	resp, err := executor.ExecuteBlock(state, block)
@@ -218,7 +219,7 @@ func TestApplyBlock(t *testing.T) {
 	}
 
 	// Apply the block with an invalid commit
-	err = ValidateProposedTransition(state, block, invalidCommit, state.ActiveSequencer.GetProposerPubKey())
+	err = validateProposedTransition(state, block, invalidCommit, state.Sequencers.GetProposerPubKey())
 	require.ErrorIs(err, types.ErrInvalidSignature)
 
 	// Create a valid commit for the block
@@ -231,7 +232,7 @@ func TestApplyBlock(t *testing.T) {
 	}
 
 	// Apply the block
-	err = ValidateProposedTransition(state, block, commit, state.ActiveSequencer.GetProposerPubKey())
+	err = validateProposedTransition(state, block, commit, state.Sequencers.GetProposerPubKey())
 	require.NoError(err)
 	resp, err = executor.ExecuteBlock(state, block)
 	require.NoError(err)
@@ -273,7 +274,7 @@ func TestApplyBlock(t *testing.T) {
 	}
 }
 
-func ValidateProposedTransition(state *types.State, block *types.Block, commit *types.Commit, proposerPubKey tmcrypto.PubKey) error {
+func validateProposedTransition(state *types.State, block *types.Block, commit *types.Commit, proposerPubKey tmcrypto.PubKey) error {
 	if err := block.ValidateWithState(state); err != nil {
 		return fmt.Errorf("block: %w", err)
 	}

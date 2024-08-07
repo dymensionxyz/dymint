@@ -31,6 +31,10 @@ import (
 	"github.com/dymensionxyz/dymint/store"
 )
 
+//TODO: test loading sequencer while rotation in progress
+//TODO: test sequencer after L2 handover but before last state update submitted
+//TODO: test halt scenario
+
 func TestInitialState(t *testing.T) {
 	var err error
 	assert := assert.New(t)
@@ -205,7 +209,7 @@ func TestProducePendingBlock(t *testing.T) {
 	require.NoError(t, err)
 	// Generate block and commit and save it to the store
 	block := testutil.GetRandomBlock(1, 3)
-	copy(block.Header.NextSequencersHash[:], manager.State.ActiveSequencer.ProposerHash)
+	copy(block.Header.NextSequencersHash[:], manager.State.Sequencers.ProposerHash)
 
 	_, err = manager.Store.SaveBlock(block, &block.LastCommit, nil)
 	require.NoError(t, err)

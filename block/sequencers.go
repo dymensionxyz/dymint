@@ -39,7 +39,7 @@ func (m *Manager) MonitorSequencerRotation(ctx context.Context, rotateC chan str
 }
 
 // In case of sequencer rotation, there's a phase where proposer rotated on L2 but hasn't yet rotated on hub.
-// for this case, the old proposer counted as "sequencer" as well, so he'll be able to submit blocks.
+// for this case, the old proposer counts as "sequencer" as well, so he'll be able to submit the last state update.
 func (m *Manager) IsSequencer() bool {
 	localProposerKey, _ := m.LocalKey.GetPublic().Raw()
 	l2Proposer := m.GetProposerPubKey().Bytes()
@@ -106,12 +106,24 @@ func (m *Manager) produceLastBlock(nextProposerHash [32]byte) (*types.Block, *ty
 	return block, commit, nil
 }
 
+func (m *Manager) handleRotationReq(ctx context.Context, nextSeqAddr string) {
+	m.logger.Info("Sequencer rotation started. Production stopped on this sequencer", "nextSeqAddr", nextSeqAddr)
+	err := m.CompleteRotation(ctx, nextSeqAddr)
+	if err != nil {
+		panic(err)
+	}
+
+	// TODO: graceful fallback to full node
+	m.logger.Info("sequencer is no longer the proposer")
+	// panic("sequencer is no longer the proposer")
+}
+
 // complete rotation
 func (m *Manager) CompleteRotation(ctx context.Context, nextSeqAddr string) error {
 	// validate nextSeq is in the bonded set
 	var nextSeqHash [32]byte
 	if nextSeqAddr != "" {
-		val := m.State.ActiveSequencer.GetByAddress([]byte(nextSeqAddr))
+		val := m.State.Sequencers.GetByAddress([]byte(nextSeqAddr))
 		if val == nil {
 			return fmt.Errorf("next sequencer not found in bonded set")
 		}
@@ -169,7 +181,7 @@ func (m *Manager) UpdateBondedSequencerSetFromSL() error {
 		val := tmtypes.NewValidator(tmPubKey, 1)
 
 		// check if not exists already
-		if m.State.ActiveSequencer.HasAddress(val.Address) {
+		if m.State.Sequencers.HasAddress(val.Address) {
 			continue
 		}
 
@@ -177,11 +189,11 @@ func (m *Manager) UpdateBondedSequencerSetFromSL() error {
 	}
 	// update state on changes
 	if len(newVals) > 0 {
-		newVals = append(newVals, m.State.ActiveSequencer.Validators...)
-		m.State.ActiveSequencer.SetBondedValidators(newVals)
+		newVals = append(newVals, m.State.Sequencers.Validators...)
+		m.State.Sequencers.SetBondedValidators(newVals)
 	}
 
-	m.logger.Debug("Updated bonded sequencer set", "newSet", m.State.ActiveSequencer.String())
+	m.logger.Debug("Updated bonded sequencer set", "newSet", m.State.Sequencers.String())
 	return nil
 }
 
@@ -189,7 +201,7 @@ func (m *Manager) UpdateBondedSequencerSetFromSL() error {
 func (m *Manager) UpdateProposer() error {
 	proposer := m.SLClient.GetProposer()
 	if proposer == nil {
-		m.State.ActiveSequencer.SetProposer(nil)
+		m.State.Sequencers.SetProposer(nil)
 		return nil
 	}
 	tmPubKey, err := cryptocodec.ToTmPubKeyInterface(proposer.PublicKey)
@@ -197,6 +209,6 @@ func (m *Manager) UpdateProposer() error {
 		return err
 	}
 	val := tmtypes.NewValidator(tmPubKey, 1)
-	m.State.ActiveSequencer.SetProposer(val)
+	m.State.Sequencers.SetProposer(val)
 	return nil
 }

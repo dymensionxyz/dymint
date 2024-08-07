@@ -79,7 +79,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 
 	// save validators to store to be queried over RPC
 	batch := m.Store.NewBatch()
-	batch, err = m.Store.SaveValidators(block.Header.Height, &m.State.ActiveSequencer, batch)
+	batch, err = m.Store.SaveValidators(block.Header.Height, &m.State.Sequencers, batch)
 	if err != nil {
 		return fmt.Errorf("save validators: %w", err)
 	}
@@ -133,7 +133,7 @@ func (m *Manager) attemptApplyCachedBlocks() error {
 		}
 		if err := m.validateBlockBeforeApply(cachedBlock.Block, cachedBlock.Commit); err != nil {
 			m.blockCache.DeleteBlockFromCache(cachedBlock.Block.Header.Height)
-			/// TODO: can we take an action here such as dropping the peer / reducing their reputation?
+			// TODO: can we take an action here such as dropping the peer / reducing their reputation?
 			return fmt.Errorf("block not valid at height %d, dropping it: err:%w", cachedBlock.Block.Header.Height, err)
 		}
 

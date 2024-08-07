@@ -366,7 +366,6 @@ func (c *Client) GetAllSequencers() ([]settlement.Sequencer, error) {
 }
 
 // GetBondedSequencers returns the bonded sequencers of the given rollapp.
-// if no status is provided, it returns the bonded sequencers.
 func (c *Client) GetBondedSequencers() ([]settlement.Sequencer, error) {
 	var res *sequencertypes.QueryGetSequencersByRollappByStatusResponse
 	req := &sequencertypes.QueryGetSequencersByRollappByStatusRequest{

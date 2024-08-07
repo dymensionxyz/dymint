@@ -128,7 +128,7 @@ func (e *Executor) UpdateStateAfterInitChain(s *types.State, res *abci.ResponseI
 
 	// Set the genesis sequencers in the state
 	seqSet := tmtypes.NewValidatorSet(validators).CopyIncrementProposerPriority(1)
-	s.ActiveSequencer.SetBondedSet(seqSet)
+	s.Sequencers.SetBondedSet(seqSet)
 }
 
 func (e *Executor) UpdateMempoolAfterInitChain(s *types.State) {
@@ -149,18 +149,18 @@ func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResp
 // Update validators post commit
 func (e *Executor) UpdateProposerFromBlock(s *types.State, block *types.Block) {
 	// no sequencer change
-	if bytes.Equal(s.ActiveSequencer.ProposerHash[:], block.Header.NextSequencersHash[:]) {
+	if bytes.Equal(s.Sequencers.ProposerHash[:], block.Header.NextSequencersHash[:]) {
 		return
 	}
 
 	if block.Header.NextSequencersHash == [32]byte{} {
 		// the chain will be halted until proposer is set
-		s.ActiveSequencer.SetProposer(nil)
+		s.Sequencers.SetProposer(nil)
 		return
 	}
 
 	// if hash changed, update the active sequencer
-	err := s.ActiveSequencer.SetProposerByHash(block.Header.NextSequencersHash[:])
+	err := s.Sequencers.SetProposerByHash(block.Header.NextSequencersHash[:])
 	if err != nil {
 		panic(fmt.Sprintf("failed to update active sequencer: %v", err))
 	}

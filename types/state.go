@@ -23,8 +23,8 @@ type State struct {
 	// BaseHeight is the height of the first block we have in store after pruning.
 	BaseHeight uint64
 
-	ActiveSequencer             SequencerSet
-	LastHeightValidatorsChanged int64
+	// Sequencers is the set of sequencers that are currently active on the rollapp.
+	Sequencers SequencerSet
 
 	// Consensus parameters used for validating blocks.
 	// Changes returned by EndBlock and updated after Commit.

@@ -119,7 +119,7 @@ func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHead
 	}
 	copy(block.Header.LastCommitHash[:], types.GetLastCommitHash(lastCommit, &block.Header))
 	copy(block.Header.DataHash[:], types.GetDataHash(block))
-	copy(block.Header.NextSequencersHash[:], state.ActiveSequencer.ProposerHash)
+	copy(block.Header.NextSequencersHash[:], state.Sequencers.ProposerHash)
 
 	return block
 }
@@ -198,7 +198,7 @@ func (e *Executor) ExecuteBlock(state *types.State, block *types.Block) (*tmstat
 	hash := block.Hash()
 	abciHeader := types.ToABCIHeaderPB(&block.Header)
 	abciHeader.ChainID = e.chainID
-	abciHeader.ValidatorsHash = state.ActiveSequencer.ProposerHash
+	abciHeader.ValidatorsHash = state.Sequencers.ProposerHash
 	abciResponses.BeginBlock, err = e.proxyAppConsensusConn.BeginBlockSync(
 		abci.RequestBeginBlock{
 			Hash:   hash[:],

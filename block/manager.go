@@ -281,7 +281,7 @@ func (m *Manager) syncBlockManager() error {
 }
 
 func (m *Manager) GetProposerPubKey() tmcrypto.PubKey {
-	return m.State.ActiveSequencer.GetProposerPubKey()
+	return m.State.Sequencers.GetProposerPubKey()
 }
 
 func (m *Manager) UpdateTargetHeight(h uint64) {

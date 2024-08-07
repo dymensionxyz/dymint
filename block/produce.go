@@ -96,8 +96,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int)
 }
 
 func (m *Manager) ProduceApplyGossipLastBlock(ctx context.Context, nextProposerHash [32]byte) (block *types.Block, commit *types.Commit, err error) {
-	// check if the last block is already produced and applied
-	// if so, the active validator set is already updated
+	// check if block with nextProposerHash already produced and applied
 	h := m.State.Height()
 	block, err = m.Store.LoadBlock(h)
 	if err != nil {

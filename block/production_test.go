@@ -23,6 +23,9 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 )
 
+//TODO: test producing lastBlock
+//TODO: test using already produced lastBlock
+
 func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 	const blockTime = 200 * time.Millisecond
 	const MaxIdleTime = blockTime * 10
