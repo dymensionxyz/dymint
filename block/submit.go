@@ -77,6 +77,7 @@ func SubmitLoopInner(
 					return ctx.Err()
 				case n := <-bytesProduced:
 					pendingBytes.Add(uint64(n))
+					logger.Info("Added bytes produced to bytes pending submission counter.", "n", n)
 				case <-ticker.C:
 				}
 			}
@@ -117,7 +118,7 @@ func SubmitLoopInner(
 				}
 				timeLastSubmission = time.Now()
 				pending = uatomic.Uint64Sub(&pendingBytes, nConsumed)
-				logger.Info("Submitted a batch to both sub-layers.", "n bytes consumed from pending", nConsumed, "pending after", pending)
+				logger.Info("Submitted a batch to both sub-layers.", "n bytes consumed from pending", nConsumed, "pending after", pending) // TODO: debug level
 			}
 			trigger.Nudge()
 		}

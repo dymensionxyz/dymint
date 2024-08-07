@@ -165,13 +165,11 @@ func (m *Manager) Start(ctx context.Context) error {
 		<-m.DAClient.Synced()
 		nBytes := m.GetUnsubmittedBytes()
 		bytesProducedC := make(chan int)
-		go func() {
-			bytesProducedC <- nBytes
-		}()
 		uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 			return m.SubmitLoop(ctx, bytesProducedC)
 		})
 		uerrors.ErrGroupGoLog(eg, m.logger, func() error {
+			bytesProducedC <- nBytes
 			return m.ProduceBlockLoop(ctx, bytesProducedC)
 		})
 	} else {
