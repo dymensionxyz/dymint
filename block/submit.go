@@ -131,16 +131,17 @@ func (m *Manager) CreateAndSubmitBatch(maxSizeBytes uint64) (*types.Batch, error
 	startHeight := m.NextHeightToSubmit()
 	endHeightInclusive := m.State.Height()
 
-	if m.State.Height() < m.NextHeightToSubmit() {
+	if endHeightInclusive < startHeight {
+		// TODO: https://github.com/dymensionxyz/dymint/issues/999
 		return nil, fmt.Errorf("next height to submit is greater than last block height, create and submit batch should not have been called: %w", gerrc.ErrInternal)
-	} else {
-		m.logger.Info("Creating batch.", "start height", startHeight, "end height", endHeightInclusive) // TODO: change to debug level
 	}
 
-	b, err := m.CreateBatch(maxSizeBytes, m.NextHeightToSubmit(), m.State.Height())
+	b, err := m.CreateBatch(maxSizeBytes, startHeight, endHeightInclusive)
 	if err != nil {
 		return nil, fmt.Errorf("create batch: %w", err)
 	}
+
+	m.logger.Info("Created batch.", "start height", startHeight, "end height", endHeightInclusive)
 
 	if err := m.SubmitBatch(b); err != nil {
 		return nil, fmt.Errorf("submit batch: %w", err)
