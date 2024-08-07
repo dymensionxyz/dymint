@@ -66,7 +66,7 @@ func NewStateFromGenesis(genDoc *tmtypes.GenesisDoc) (*types.State, error) {
 		ConsensusParams:                  *genDoc.ConsensusParams,
 		LastHeightConsensusParamsChanged: genDoc.InitialHeight,
 	}
-	s.LastBlockHeight.Store(0)
+	s.SetHeight(0)
 	copy(s.AppHash[:], genDoc.AppHash)
 
 	return &s, nil

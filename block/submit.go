@@ -104,11 +104,12 @@ func SubmitLoopInner(ctx context.Context,
 					break
 				}
 				nConsumed, err := createAndSubmitBatch(min(pending, maxBatchBytes))
-				if errors.Is(err, gerrc.ErrInternal) {
-					panic(fmt.Sprintf("create and submit batch: %v", err))
-				}
 				if err != nil {
-					return fmt.Errorf("create and submit batch: %w", err)
+					err = fmt.Errorf("create and submit batch: %w", err)
+					if errors.Is(err, gerrc.ErrInternal) {
+						panic(err)
+					}
+					return err
 				}
 				timeLastSubmission = time.Now()
 				pending = pendingBytes.Add(^(nConsumed - 1)) // subtract
@@ -134,6 +135,15 @@ func (m *Manager) CreateAndSubmitBatchGetSizeBlocksCommits(maxSize uint64) (uint
 // CreateAndSubmitBatch creates and submits a batch to the DA and SL.
 // max size bytes is the maximum size of the serialized batch type
 func (m *Manager) CreateAndSubmitBatch(maxSizeBytes uint64) (*types.Batch, error) {
+	startHeight := m.NextHeightToSubmit()
+	endHeightInclusive := m.State.Height()
+
+	if m.State.Height() < m.NextHeightToSubmit() {
+		return nil, fmt.Errorf("next height to submit is greater than last block height, create and submit batch should not have been called: %w", gerrc.ErrInternal)
+	} else {
+		m.logger.Info("Creating batch.", "start height", startHeight, "end height", endHeightInclusive) // TODO: change to debug level
+	}
+
 	b, err := m.CreateBatch(maxSizeBytes, m.NextHeightToSubmit(), m.State.Height())
 	if err != nil {
 		return nil, fmt.Errorf("create batch: %w", err)
@@ -148,7 +158,6 @@ func (m *Manager) CreateAndSubmitBatch(maxSizeBytes uint64) (*types.Batch, error
 // CreateBatch looks through the store for any unsubmitted blocks and commits and bundles them into a batch
 // max size bytes is the maximum size of the serialized batch type
 func (m *Manager) CreateBatch(maxBatchSize uint64, startHeight uint64, endHeightInclusive uint64) (*types.Batch, error) {
-	m.logger.Info("Creating batch", "start height", startHeight, "end height", endHeightInclusive)
 	batchSize := endHeightInclusive - startHeight + 1
 	batch := &types.Batch{
 		Blocks:  make([]*types.Block, 0, batchSize),
@@ -180,10 +189,6 @@ func (m *Manager) CreateBatch(maxBatchSize uint64, startHeight uint64, endHeight
 			}
 			break
 		}
-	}
-
-	if batch.NumBlocks() == 0 {
-		return nil, fmt.Errorf("empty batch: %w", gerrc.ErrInternal)
 	}
 
 	return batch, nil
