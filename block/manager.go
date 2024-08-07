@@ -168,17 +168,17 @@ func (m *Manager) Start(ctx context.Context) error {
 		go func() {
 			bytesProducedC <- nBytes
 		}()
-		uerrors.ErrGroupGoAndLogImmediate(m.logger, eg, func() error {
+		uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 			return m.SubmitLoop(ctx, bytesProducedC)
 		})
-		uerrors.ErrGroupGoAndLogImmediate(m.logger, eg, func() error {
+		uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 			return m.ProduceBlockLoop(ctx, bytesProducedC)
 		})
 	} else {
-		uerrors.ErrGroupGoAndLogImmediate(m.logger, eg, func() error {
+		uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 			return m.RetrieveLoop(ctx)
 		})
-		uerrors.ErrGroupGoAndLogImmediate(m.logger, eg, func() error {
+		uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 			return m.SyncToTargetHeightLoop(ctx)
 		})
 	}
