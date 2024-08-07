@@ -270,7 +270,7 @@ func (s *State) ToProto() (*pb.State, error) {
 
 // FromProto fills State with data from its protobuf representation.
 func (s *State) FromProto(other *pb.State) error {
-	//FIXME: TEST migration
+	// FIXME: TEST migration
 
 	var err error
 	s.Version = *other.Version
