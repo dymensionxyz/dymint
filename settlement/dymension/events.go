@@ -16,7 +16,7 @@ import (
 const (
 	eventStateUpdateFmt          = "state_update.rollapp_id='%s' AND state_update.status='PENDING'"
 	eventSequencersListUpdateFmt = "create_sequencer.rollapp_id='%s'"
-	eventRotationStartedFmt      = "rotation_started.rollapp_id='%s'"
+	eventRotationStartedFmt      = "proposer_rotation_started.rollapp_id='%s'"
 )
 
 func (c *Client) getEventData(eventType string, rawEventData ctypes.ResultEvent) (interface{}, error) {
@@ -88,6 +88,9 @@ func (c *Client) handleReceivedEvent(event ctypes.ResultEvent, eventMap map[stri
 		c.logger.Error("Error converting event data", "event", event, "error", err)
 		return
 	}
+
+	c.logger.Debug("Publishing internal event", "event", internalType, "data", eventData)
+
 	uevent.MustPublish(c.ctx, c.pubsub, eventData, map[string][]string{settlement.EventTypeKey: {internalType}})
 }
 
@@ -137,16 +140,16 @@ func convertToNewSequencerEvent(rawEventData ctypes.ResultEvent) (*settlement.Ev
 func convertToRotationStartedEvent(rawEventData ctypes.ResultEvent) (*settlement.EventDataRotationStarted, error) {
 	// check all expected attributes  exists
 	events := rawEventData.Events
-	if events["rotation_started.rollapp_id"] == nil {
+	if events["proposer_rotation_started.rollapp_id"] == nil {
 		return nil, fmt.Errorf("missing expected attributes in event")
 	}
 
 	// TODO: validate rollappID
 
-	if events["rotation_started.next_proposer"] == nil {
+	if events["proposer_rotation_started.next_proposer"] == nil {
 		return nil, fmt.Errorf("missing expected attributes in event")
 	}
-	nextProposer := events["rotation_started.next_proposer"][0]
+	nextProposer := events["proposer_rotation_started.next_proposer"][0]
 	rotationStartedEvent := &settlement.EventDataRotationStarted{
 		NextSeqAddr: nextProposer,
 	}
