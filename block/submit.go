@@ -39,10 +39,10 @@ func (m *Manager) SubmitLoop(ctx context.Context,
 func SubmitLoopInner(
 	ctx context.Context,
 	logger types.Logger,
-	bytesProduced chan int,
-	maxBatchSkew uint64,
-	maxBatchTime time.Duration,
-	maxBatchBytes uint64,
+	bytesProduced chan int, // a channel of block and commit bytes produced
+	maxBatchSkew uint64, // max number of batches that submitter is allowed to have pending
+	maxBatchTime time.Duration, // max time to allow between batches
+	maxBatchBytes uint64, // max size of serialised batch in bytes
 	createAndSubmitBatch func(maxSizeBytes uint64) (sizeBlocksCommits uint64, err error),
 ) error {
 	eg, ctx := errgroup.WithContext(ctx)
