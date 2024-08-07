@@ -141,14 +141,9 @@ func (m *Manager) Start(ctx context.Context) error {
 	}
 
 	// Check if the chain is halted
-	if m.GetProposerPubKey() == nil {
-		err := m.UpdateProposer()
-		if err != nil {
-			return fmt.Errorf("update proposer: %w", err)
-		}
-		if m.GetProposerPubKey() == nil {
-			return fmt.Errorf("no proposer pubkey found. chain is halted")
-		}
+	err := m.isChainHalted()
+	if err != nil {
+		return err
 	}
 
 	isSequencer := m.IsSequencer()
@@ -180,7 +175,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	}
 
 	/* ----------------------------- sequencer mode ----------------------------- */
-	err := m.syncBlockManager()
+	err = m.syncBlockManager()
 	if err != nil {
 		return fmt.Errorf("sync block manager: %w", err)
 	}
@@ -195,13 +190,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	}
 	if next != nil {
 		go func() {
-			err = m.CompleteRotation(ctx, next.SequencerAddress)
-			if err != nil {
-				panic(err)
-			}
-			// TODO: graceful fallback to full node
-			// panic("sequencer is no longer the proposer")
-			m.logger.Info("sequencer is no longer the proposer")
+			m.handleRotationReq(ctx, next.SequencerAddress)
 		}()
 		return nil
 	}
@@ -232,19 +221,26 @@ func (m *Manager) Start(ctx context.Context) error {
 		// Check if exited due to sequencer rotation signal
 		select {
 		case nextSeqAddr := <-rotateSequencerC:
-			m.logger.Info("Sequencer rotation started. Production stopped on this sequencer", "nextSeqAddr", nextSeqAddr)
-			err := m.CompleteRotation(ctx, nextSeqAddr)
-			if err != nil {
-				panic(err)
-			}
-			// TODO: graceful fallback to full node
-			m.logger.Info("sequencer is no longer the proposer")
-			// panic("sequencer is no longer the proposer")
+			m.handleRotationReq(ctx, nextSeqAddr)
 		default:
 			m.logger.Info("Block manager err group finished.", "err", err)
 		}
 	}()
 
+	return nil
+}
+
+func (m *Manager) isChainHalted() error {
+	if m.GetProposerPubKey() == nil {
+		// if no proposer set in state, try to update it from the hub
+		err := m.UpdateProposer()
+		if err != nil {
+			return fmt.Errorf("update proposer: %w", err)
+		}
+		if m.GetProposerPubKey() == nil {
+			return fmt.Errorf("no proposer pubkey found. chain is halted")
+		}
+	}
 	return nil
 }
 

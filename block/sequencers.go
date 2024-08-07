@@ -42,8 +42,13 @@ func (m *Manager) MonitorSequencerRotation(ctx context.Context, rotateC chan str
 // for this case, the old proposer counts as "sequencer" as well, so he'll be able to submit the last state update.
 func (m *Manager) IsSequencer() bool {
 	localProposerKey, _ := m.LocalKey.GetPublic().Raw()
+
 	l2Proposer := m.GetProposerPubKey().Bytes()
-	expectedHubProposer := m.SLClient.GetProposer().PublicKey.Bytes()
+
+	var expectedHubProposer []byte
+	if m.SLClient.GetProposer() != nil {
+		expectedHubProposer = m.SLClient.GetProposer().PublicKey.Bytes()
+	}
 	return bytes.Equal(l2Proposer, localProposerKey) || bytes.Equal(expectedHubProposer, localProposerKey)
 }
 
