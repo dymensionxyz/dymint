@@ -23,7 +23,14 @@ import (
 func (m *Manager) SubmitLoop(ctx context.Context,
 	bytesProduced chan int,
 ) (err error) {
-	return SubmitLoopInner(ctx, bytesProduced, m.Conf.MaxBatchSkew, m.Conf.BatchSubmitMaxTime, m.Conf.BatchMaxSizeBytes, m.CreateAndSubmitBatchGetSizeBlocksCommits)
+	return SubmitLoopInner(
+		ctx,
+		bytesProduced,
+		m.Conf.MaxBatchSkew,
+		m.Conf.BatchSubmitMaxTime,
+		m.Conf.BatchMaxSizeBytes,
+		m.CreateAndSubmitBatchGetSizeBlocksCommits,
+	)
 }
 
 // SubmitLoopInner is a unit testable impl of SubmitLoop
@@ -133,7 +140,12 @@ func (m *Manager) CreateAndSubmitBatch(maxSizeBytes uint64) (*types.Batch, error
 
 	if endHeightInclusive < startHeight {
 		// TODO: https://github.com/dymensionxyz/dymint/issues/999
-		return nil, fmt.Errorf("next height to submit is greater than last block height, create and submit batch should not have been called: %w", gerrc.ErrInternal)
+		return nil, fmt.Errorf(
+			"next height to submit is greater than last block height, create and submit batch should not have been called: start height: %d: end height inclusive: %d: %w",
+			startHeight,
+			endHeightInclusive,
+			gerrc.ErrInternal,
+		)
 	}
 
 	b, err := m.CreateBatch(maxSizeBytes, startHeight, endHeightInclusive)
