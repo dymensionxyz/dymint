@@ -31,10 +31,9 @@ import (
 	"github.com/dymensionxyz/dymint/store"
 )
 
-//TODO: test loading sequencer while rotation in progress
-//TODO: test sequencer after L2 handover but before last state update submitted
-//TODO: test halt scenario
-
+// TODO: test loading sequencer while rotation in progress
+// TODO: test sequencer after L2 handover but before last state update submitted
+// TODO: test halt scenario
 func TestInitialState(t *testing.T) {
 	var err error
 	assert := assert.New(t)
