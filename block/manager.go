@@ -13,6 +13,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/dymensionxyz/dymint/store"
+	uerrors "github.com/dymensionxyz/dymint/utils/errors"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
@@ -167,24 +168,24 @@ func (m *Manager) Start(ctx context.Context) error {
 		go func() {
 			bytesProducedC <- nBytes
 		}()
-		eg.Go(func() error {
+		uerrors.ErrGroupGoAndLogImmediate(m.logger, eg, func() error {
 			return m.SubmitLoop(ctx, bytesProducedC)
 		})
-		eg.Go(func() error {
+		uerrors.ErrGroupGoAndLogImmediate(m.logger, eg, func() error {
 			return m.ProduceBlockLoop(ctx, bytesProducedC)
 		})
 	} else {
-		eg.Go(func() error {
+		uerrors.ErrGroupGoAndLogImmediate(m.logger, eg, func() error {
 			return m.RetrieveLoop(ctx)
 		})
-		eg.Go(func() error {
+		uerrors.ErrGroupGoAndLogImmediate(m.logger, eg, func() error {
 			return m.SyncToTargetHeightLoop(ctx)
 		})
 	}
 
 	go func() {
-		err := eg.Wait()
-		m.logger.Info("Block manager err group finished.", "err", err)
+		_ = eg.Wait() // errors are already logged
+		m.logger.Info("Block manager err group finished.")
 	}()
 
 	return nil
