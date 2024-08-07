@@ -662,6 +662,7 @@ func TestBlockchainInfo(t *testing.T) {
 	}
 }
 
+// TestValidatorSetHandling tests that EndBlock updates are ignored and the validator set is fetched from the state
 func TestValidatorSetHandling(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
@@ -669,7 +670,6 @@ func TestValidatorSetHandling(t *testing.T) {
 	app.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 	app.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{})
 	app.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
-	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{})
 	app.On("Info", mock.Anything).Return(abci.ResponseInfo{LastBlockHeight: 0, LastBlockAppHash: []byte{0}})
 
 	key, _, _ := crypto.GenerateEd25519Key(crand.Reader)
@@ -686,16 +686,15 @@ func TestValidatorSetHandling(t *testing.T) {
 		genesisValidators[i] = tmtypes.GenesisValidator{Address: vKeys[i].PubKey().Address(), PubKey: vKeys[i].PubKey(), Power: int64(i + 100), Name: "one"}
 	}
 
+	// dummy pubkey, we don't care about the actual key
 	pbValKey, err := encoding.PubKeyToProto(vKeys[0].PubKey())
 	require.NoError(err)
+	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{ValidatorUpdates: []abci.ValidatorUpdate{{PubKey: pbValKey, Power: 100}}})
 
 	waitCh := make(chan interface{})
 
-	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{}).Times(2)
-	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{ValidatorUpdates: []abci.ValidatorUpdate{{PubKey: pbValKey, Power: 0}}}).Once()
-	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{}).Once()
-	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{ValidatorUpdates: []abci.ValidatorUpdate{{PubKey: pbValKey, Power: 100}}}).Once()
-	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{}).Run(func(args mock.Arguments) {
+	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{}).Times(5)
+	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{}).Run(func(args mock.Arguments) {
 		waitCh <- nil
 	})
 	rollappID := "rollapp_1234-1"

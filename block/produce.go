@@ -45,7 +45,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int)
 			produceEmptyBlock := firstBlock || m.Conf.MaxIdleTime == 0 || nextEmptyBlock.Before(time.Now())
 			firstBlock = false
 
-			block, commit, err := m.ProduceApplyGossipBlock(ctx, produceEmptyBlock, false, [32]byte{})
+			block, commit, err := m.ProduceApplyGossipBlock(ctx, produceEmptyBlock, nil)
 			if errors.Is(err, context.Canceled) {
 				m.logger.Error("Produce and gossip: context canceled.", "error", err)
 				return nil
@@ -111,11 +111,11 @@ func (m *Manager) ProduceApplyGossipLastBlock(ctx context.Context, nextProposerH
 		return block, commit, nil
 	}
 
-	return m.ProduceApplyGossipBlock(ctx, true, true, nextProposerHash)
+	return m.ProduceApplyGossipBlock(ctx, true, &nextProposerHash)
 }
 
-func (m *Manager) ProduceApplyGossipBlock(ctx context.Context, allowEmpty, isLastBlock bool, nextProposerHash [32]byte) (block *types.Block, commit *types.Commit, err error) {
-	block, commit, err = m.produceBlock(allowEmpty, isLastBlock, nextProposerHash)
+func (m *Manager) ProduceApplyGossipBlock(ctx context.Context, allowEmpty bool, nextProposerHash *[32]byte) (block *types.Block, commit *types.Commit, err error) {
+	block, commit, err = m.produceBlock(allowEmpty, nextProposerHash)
 	if err != nil {
 		return nil, nil, fmt.Errorf("produce block: %w", err)
 	}
@@ -131,7 +131,7 @@ func (m *Manager) ProduceApplyGossipBlock(ctx context.Context, allowEmpty, isLas
 	return block, commit, nil
 }
 
-func (m *Manager) produceBlock(allowEmpty, isLastBlock bool, nextProposerHash [32]byte) (*types.Block, *types.Commit, error) {
+func (m *Manager) produceBlock(allowEmpty bool, nextProposerHash *[32]byte) (*types.Block, *types.Commit, error) {
 	newHeight := m.State.NextHeight()
 	lastHeaderHash, lastCommit, err := m.GetPreviousBlockHashes(newHeight)
 	if err != nil {
@@ -156,8 +156,9 @@ func (m *Manager) produceBlock(allowEmpty, isLastBlock bool, nextProposerHash [3
 		return nil, nil, fmt.Errorf("load block: height: %d: %w: %w", newHeight, err, ErrNonRecoverable)
 	}
 
-	if isLastBlock {
-		block = m.Executor.CreateLastBlock(newHeight, lastCommit, lastHeaderHash, m.State, nextProposerHash)
+	// if nextProposerHash is set, create a last block
+	if nextProposerHash != nil {
+		block = m.Executor.CreateLastBlock(newHeight, lastCommit, lastHeaderHash, m.State, *nextProposerHash)
 	} else {
 		maxBlockDataSize := uint64(float64(m.Conf.BatchMaxSizeBytes) * types.MaxBlockSizeAdjustment)
 		block = m.Executor.CreateBlock(newHeight, lastCommit, lastHeaderHash, m.State, maxBlockDataSize)
