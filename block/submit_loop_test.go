@@ -104,7 +104,7 @@ func testSubmitLoopInner(
 		return uint64(consumed), nil
 	}
 
-	block.SubmitLoopInner(ctx, producedBytesC, args.batchSkew, args.maxTime, args.batchBytes, submitBatch)
+	block.SubmitLoopInner(ctx, nil, producedBytesC, args.batchSkew, args.maxTime, args.batchBytes, submitBatch)
 }
 
 // Make sure the producer does not get too far ahead

@@ -12,6 +12,7 @@ import (
 
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/types"
+	uatomic "github.com/dymensionxyz/dymint/utils/atomic"
 	uchannel "github.com/dymensionxyz/dymint/utils/channel"
 )
 
@@ -25,6 +26,7 @@ func (m *Manager) SubmitLoop(ctx context.Context,
 ) (err error) {
 	return SubmitLoopInner(
 		ctx,
+		m.logger,
 		bytesProduced,
 		m.Conf.MaxBatchSkew,
 		m.Conf.BatchSubmitMaxTime,
@@ -36,6 +38,7 @@ func (m *Manager) SubmitLoop(ctx context.Context,
 // SubmitLoopInner is a unit testable impl of SubmitLoop
 func SubmitLoopInner(
 	ctx context.Context,
+	logger types.Logger,
 	bytesProduced chan int,
 	maxBatchSkew uint64,
 	maxBatchTime time.Duration,
@@ -107,12 +110,14 @@ func SubmitLoopInner(
 				if err != nil {
 					err = fmt.Errorf("create and submit batch: %w", err)
 					if errors.Is(err, gerrc.ErrInternal) {
+						logger.Error("Create and submit batch", "err", err, "pending", pending)
 						panic(err)
 					}
 					return err
 				}
 				timeLastSubmission = time.Now()
-				pending = pendingBytes.Add(^(nConsumed - 1)) // subtract
+				pending = uatomic.Uint64Sub(&pendingBytes, nConsumed)
+				logger.Info("Submitted a batch to both sublayers", "n bytes consumed from pending", nConsumed, "pending after", pending)
 			}
 			trigger.Nudge()
 		}
