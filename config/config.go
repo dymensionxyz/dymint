@@ -18,6 +18,10 @@ const (
 	DefaultDymintDir      = ".dymint"
 	DefaultConfigDirName  = "config"
 	DefaultConfigFileName = "dymint.toml"
+	MinBlockTime          = 200 * time.Millisecond
+	MaxBlockTime          = 6 * time.Second
+	MaxBatchSubmitMaxTime = 1 * time.Hour
+	MaxBlockSkewSupported = 432000 // equivalent to 24h blocks at max block rate
 )
 
 // NodeConfig stores Dymint node configuration.
@@ -30,7 +34,6 @@ type NodeConfig struct {
 
 	// parameters below are dymint specific and read from config
 	BlockManagerConfig `mapstructure:",squash"`
-	DALayer            string                 `mapstructure:"da_layer"`
 	DAConfig           string                 `mapstructure:"da_config"`
 	SettlementLayer    string                 `mapstructure:"settlement_layer"`
 	SettlementConfig   settlement.Config      `mapstructure:",squash"`
@@ -53,8 +56,8 @@ type BlockManagerConfig struct {
 	MaxProofTime time.Duration `mapstructure:"max_proof_time"`
 	// BatchSubmitMaxTime is how long should block manager wait for before submitting batch
 	BatchSubmitMaxTime time.Duration `mapstructure:"batch_submit_max_time"`
-	// MaxBatchSkew is the number of batches which are waiting to be submitted. Block production will be paused if this limit is reached.
-	MaxBatchSkew uint64 `mapstructure:"max_supported_batch_skew"`
+	// MaxBlockSkew is the number of blocks which are waiting to be submitted. Block production will be paused if this limit is reached.
+	MaxBlockSkew uint64 `mapstructure:"max_supported_block_skew"`
 	// The size of the batch of blocks and commits in Bytes. We'll write every batch to the DA and the settlement layer.
 	BatchMaxSizeBytes uint64 `mapstructure:"block_batch_max_size_bytes"`
 }
@@ -124,8 +127,12 @@ func (nc NodeConfig) Validate() error {
 
 // Validate BlockManagerConfig
 func (c BlockManagerConfig) Validate() error {
-	if c.BlockTime <= 0 {
-		return fmt.Errorf("block_time must be positive")
+	if c.BlockTime < MinBlockTime {
+		return fmt.Errorf("block_time cannot be less than %s", MinBlockTime)
+	}
+
+	if c.BlockTime > MaxBlockTime {
+		return fmt.Errorf("block_time cannot be greater than %s", MaxBlockTime)
 	}
 
 	if c.MaxIdleTime < 0 {
@@ -153,12 +160,20 @@ func (c BlockManagerConfig) Validate() error {
 		return fmt.Errorf("batch_submit_max_time must be greater than max_idle_time")
 	}
 
+	if c.BatchSubmitMaxTime > MaxBatchSubmitMaxTime {
+		return fmt.Errorf("batch_submit_max_time cannot be greater than %s", MaxBatchSubmitMaxTime)
+	}
+
 	if c.BatchMaxSizeBytes <= 0 {
 		return fmt.Errorf("block_batch_size_bytes must be positive")
 	}
 
-	if c.MaxBatchSkew <= 0 {
-		return fmt.Errorf("max_supported_batch_skew must be positive")
+	if c.MaxBlockSkew <= 0 {
+		return fmt.Errorf("max_supported_block_skew must be positive")
+	}
+
+	if c.MaxBlockSkew > MaxBlockSkewSupported {
+		return fmt.Errorf("max_supported_block_skew cannot be greater than %d", MaxBlockSkewSupported)
 	}
 
 	return nil
@@ -177,17 +192,6 @@ func (nc NodeConfig) validateSettlementLayer() error {
 }
 
 func (nc NodeConfig) validateDALayer() error {
-	if nc.DALayer == "" {
-		return fmt.Errorf("DALayer cannot be empty")
-	}
-
-	if nc.DALayer == "mock" {
-		return nil
-	}
-
-	if nc.DAConfig == "" {
-		return fmt.Errorf("DAConfig cannot be empty")
-	}
 	if nc.DAGrpc.Host == "" {
 		return fmt.Errorf("DAGrpc.Host cannot be empty")
 	}

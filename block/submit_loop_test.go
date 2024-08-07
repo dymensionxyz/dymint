@@ -3,7 +3,6 @@ package block_test
 import (
 	"context"
 	"math/rand"
-	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -13,9 +12,8 @@ import (
 )
 
 type testArgs struct {
-	nParallel                 int           // number of instances to run in parallel
 	testDuration              time.Duration // how long to run one instance of the test (should be short)
-	batchSkew                 uint64        // max number of batches to get ahead
+	blockSkew                 uint64        // max number of blocks to get ahead
 	batchBytes                uint64        // max number of bytes in a batch
 	maxTime                   time.Duration // maximum time to wait before submitting submissions
 	submitTime                time.Duration // how long it takes to submit a batch
@@ -25,21 +23,7 @@ type testArgs struct {
 	submissionHaltProbability float64       // probability of submission failing and causing a temporary halt
 }
 
-func testSubmitLoop(t *testing.T,
-	args testArgs,
-) {
-	var wg sync.WaitGroup
-	for range args.nParallel {
-		wg.Add(1)
-		go func() {
-			testSubmitLoopInner(t, args)
-			wg.Done()
-		}()
-	}
-	wg.Wait()
-}
-
-func testSubmitLoopInner(
+func testSubmitLoop(
 	t *testing.T,
 	args testArgs,
 ) {
@@ -52,6 +36,7 @@ func testSubmitLoopInner(
 		factor := int(float64(d) * 0.4)
 		return time.Duration(base + rand.Intn(factor))
 	}
+	pendingBlocks := atomic.Uint64{}
 
 	nProducedBytes := atomic.Uint64{} // tracking how many actual bytes have been produced but not submitted so far
 	producedBytesC := make(chan int)  // producer sends on here, and can be blocked by not consuming from here
@@ -67,9 +52,7 @@ func testSubmitLoopInner(
 					return
 				default:
 				}
-				// producer shall not get too far ahead
-				absoluteMax := (args.batchSkew + 1) * args.batchBytes // +1 is because the producer is always blocked after the fact
-				require.True(t, nProducedBytes.Load() < absoluteMax)
+
 			}
 		}()
 		for {
@@ -82,7 +65,8 @@ func testSubmitLoopInner(
 			nBytes := rand.Intn(args.produceBytes) // simulate block production
 			nProducedBytes.Add(uint64(nBytes))
 			producedBytesC <- nBytes
-
+			pendingBlocks.Add(1)
+			require.True(t, pendingBlocks.Load() <= args.blockSkew)
 			timeLastProgress.Store(time.Now().Unix())
 		}
 	}()
@@ -90,6 +74,7 @@ func testSubmitLoopInner(
 	submitBatch := func(maxSize uint64) (uint64, error) { // mock the batch submission
 		time.Sleep(approx(args.submitTime))
 		if rand.Float64() < args.submissionHaltProbability {
+			t.Log("stopped")
 			time.Sleep(args.submissionHaltTime)
 			timeLastProgress.Store(time.Now().Unix()) // we have now recovered
 		}
@@ -97,18 +82,24 @@ func testSubmitLoopInner(
 		nProducedBytes.Add(^uint64(consumed - 1)) // subtract
 
 		timeLastProgressT := time.Unix(timeLastProgress.Load(), 0)
-		absoluteMax := int64(1.5 * float64(args.maxTime)) // allow some leeway for code execution
+		absoluteMax := int64(1 * float64(args.maxTime)) // allow some leeway for code execution
+		t.Log(time.Since(timeLastProgressT).Milliseconds(), absoluteMax)
 		require.True(t, time.Since(timeLastProgressT).Milliseconds() < absoluteMax)
-
+		pendingBlocks.Store(0)
 		timeLastProgress.Store(time.Now().Unix()) // we have submitted  batch
 		return uint64(consumed), nil
+	}
+
+	accumulatedBlocks := func() uint64 {
+		return pendingBlocks.Load()
 	}
 
 	block.SubmitLoopInner(
 		ctx,
 		nil,
 		producedBytesC,
-		args.batchSkew,
+		args.blockSkew,
+		accumulatedBlocks,
 		args.maxTime,
 		args.batchBytes,
 		submitBatch,
@@ -120,9 +111,8 @@ func TestSubmitLoopFastProducerHaltingSubmitter(t *testing.T) {
 	testSubmitLoop(
 		t,
 		testArgs{
-			nParallel:    100,
 			testDuration: 2 * time.Second,
-			batchSkew:    10,
+			blockSkew:    10,
 			batchBytes:   100,
 			maxTime:      10 * time.Millisecond,
 			submitTime:   2 * time.Millisecond,
@@ -141,9 +131,8 @@ func TestSubmitLoopTimer(t *testing.T) {
 	testSubmitLoop(
 		t,
 		testArgs{
-			nParallel:    100,
 			testDuration: 2 * time.Second,
-			batchSkew:    10,
+			blockSkew:    10,
 			batchBytes:   100,
 			maxTime:      10 * time.Millisecond,
 			submitTime:   2 * time.Millisecond,

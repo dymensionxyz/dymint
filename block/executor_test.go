@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/dymensionxyz/dymint/block"
+	"github.com/dymensionxyz/dymint/types/pb/dymint"
 
 	"github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
 	"github.com/stretchr/testify/assert"
@@ -50,8 +51,13 @@ func TestCreateBlock(t *testing.T) {
 	maxBytes := uint64(100)
 
 	state := &types.State{}
-	state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
-	state.ConsensusParams.Block.MaxGas = 100000
+	state.ConsensusParams = dymint.RollappConsensusParams{
+		Params: &dymint.Params{
+			BlockMaxSize: int64(maxBytes),
+			BlockMaxGas:  100000,
+		},
+	}
+
 	state.Validators = tmtypes.NewValidatorSet(nil)
 
 	// empty block
@@ -89,7 +95,16 @@ func TestApplyBlock(t *testing.T) {
 	app.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{})
 	app.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
 	app.On("DeliverTx", mock.Anything).Return(abci.ResponseDeliverTx{})
-	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{})
+	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
+		RollappConsensusParamUpdates: &abci.RollappConsensusParams{
+			Da:     "celestia",
+			Commit: "abcde",
+			Block: &abci.BlockParams{
+				MaxBytes: 100,
+				MaxGas:   100,
+			},
+		},
+	})
 	var mockAppHash [32]byte
 	_, err := rand.Read(mockAppHash[:])
 	require.NoError(err)
@@ -143,9 +158,15 @@ func TestApplyBlock(t *testing.T) {
 	}
 	state.InitialHeight = 1
 	state.LastBlockHeight.Store(0)
-	maxBytes := uint64(100)
-	state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
-	state.ConsensusParams.Block.MaxGas = 100000
+	maxBytes := uint64(1000)
+	state.ConsensusParams = dymint.RollappConsensusParams{
+		Params: &dymint.Params{
+			BlockMaxGas:  100000,
+			BlockMaxSize: int64(maxBytes),
+			Da:           "mock",
+			Commit:       "",
+		},
+	}
 
 	// Create first block with one Tx from mempool
 	_ = mpool.CheckTx([]byte{1, 2, 3, 4}, func(r *abci.Response) {}, mempool.TxInfo{})
@@ -234,6 +255,12 @@ func TestApplyBlock(t *testing.T) {
 	require.NoError(err)
 	executor.UpdateStateAfterCommit(state, resp, appHash, block.Header.Height, vals)
 	assert.Equal(uint64(2), state.Height())
+
+	// check rollapp params update
+	assert.Equal(state.ConsensusParams.Params.Da, "celestia")
+	assert.Equal(state.ConsensusParams.Params.Commit, "abcde")
+	assert.Equal(state.ConsensusParams.Params.BlockMaxSize, int64(100))
+	assert.Equal(state.ConsensusParams.Params.BlockMaxGas, int64(100))
 
 	// wait for at least 4 Tx events, for up to 3 second.
 	// 3 seconds is a fail-scenario only

@@ -11,7 +11,6 @@ type Config struct {
 	NodeAddress             string        `mapstructure:"settlement_node_address"`
 	KeyringHomeDir          string        `mapstructure:"keyring_home_dir"`
 	DymAccountName          string        `mapstructure:"dym_account_name"`
-	RollappID               string        `mapstructure:"rollapp_id"`
 	GasLimit                uint64        `mapstructure:"settlement_gas_limit"`
 	GasPrices               string        `mapstructure:"settlement_gas_prices"`
 	GasFees                 string        `mapstructure:"settlement_gas_fees"`
@@ -39,10 +38,6 @@ func (c Config) Validate() error {
 
 	if c.GasPrices == "" && c.GasFees == "" {
 		return errors.New("must provide either fees or gas prices")
-	}
-
-	if c.RollappID == "" {
-		return errors.New("must provide rollapp id")
 	}
 
 	return nil

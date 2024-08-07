@@ -12,6 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/proxy"
 
 	cosmosed25519 "github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
@@ -19,9 +21,11 @@ import (
 
 	"github.com/dymensionxyz/dymint/block"
 	"github.com/dymensionxyz/dymint/config"
+	"github.com/dymensionxyz/dymint/da"
 	slmocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/dymint/version"
 )
 
 // TestBatchOverhead tests the scenario where we have a single block that is very large, and occupies the entire batch size.
@@ -30,7 +34,7 @@ import (
 // 1. single block with single large tx
 // 2. single block with multiple small tx
 func TestBatchOverhead(t *testing.T) {
-	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, nil, 1, 1, 0, nil, nil)
+	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, manager)
 
@@ -99,16 +103,26 @@ func TestBatchOverhead(t *testing.T) {
 
 func TestBatchSubmissionHappyFlow(t *testing.T) {
 	require := require.New(t)
-	app := testutil.GetAppMock()
+	app := testutil.GetAppMock(testutil.EndBlock)
 	ctx := context.Background()
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(clientCreator)
 	err := proxyApp.Start()
 	require.NoError(err)
-
-	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, nil, 1, 1, 0, proxyApp, nil)
+	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
+		Da:     "mock",
+		Commit: version.Commit,
+		Block: &abci.BlockParams{
+			MaxBytes: 500000,
+			MaxGas:   40000000,
+		},
+	}})
+	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
+
+	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
+	manager.Retriever = manager.DAClient.(da.BatchRetriever)
 
 	// Check initial assertions
 	initialHeight := uint64(0)
@@ -128,9 +142,16 @@ func TestBatchSubmissionHappyFlow(t *testing.T) {
 
 func TestBatchSubmissionFailedSubmission(t *testing.T) {
 	require := require.New(t)
-	app := testutil.GetAppMock()
+	app := testutil.GetAppMock(testutil.EndBlock)
 	ctx := context.Background()
-
+	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
+		Da:     "mock",
+		Commit: version.Commit,
+		Block: &abci.BlockParams{
+			MaxBytes: 500000,
+			MaxGas:   40000000,
+		},
+	}})
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(clientCreator)
@@ -154,8 +175,11 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 	slmock.On("Start").Return(nil)
 	slmock.On("GetProposer").Return(proposer)
 
-	manager, err := testutil.GetManagerWithProposerKey(testutil.GetManagerConfig(), lib2pPrivKey, slmock, nil, 1, 1, 0, proxyApp, nil)
+	manager, err := testutil.GetManagerWithProposerKey(testutil.GetManagerConfig(), lib2pPrivKey, slmock, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
+
+	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
+	manager.Retriever = manager.DAClient.(da.BatchRetriever)
 
 	// Check initial assertions
 	initialHeight := uint64(0)
@@ -188,7 +212,15 @@ func TestSubmissionByTime(t *testing.T) {
 	)
 
 	require := require.New(t)
-	app := testutil.GetAppMock()
+	app := testutil.GetAppMock(testutil.EndBlock)
+	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
+		Da:     "mock",
+		Commit: version.Commit,
+		Block: &abci.BlockParams{
+			MaxBytes: 500000,
+			MaxGas:   40000000,
+		},
+	}})
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(clientCreator)
@@ -199,13 +231,16 @@ func TestSubmissionByTime(t *testing.T) {
 	managerConfig := config.BlockManagerConfig{
 		BlockTime:          blockTime,
 		MaxIdleTime:        0,
-		MaxBatchSkew:       10,
+		MaxBlockSkew:       10,
 		BatchSubmitMaxTime: submitTimeout,
 		BatchMaxSizeBytes:  1000,
 	}
 
-	manager, err := testutil.GetManager(managerConfig, nil, nil, 1, 1, 0, proxyApp, nil)
+	manager, err := testutil.GetManager(managerConfig, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
+
+	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
+	manager.Retriever = manager.DAClient.(da.BatchRetriever)
 
 	// Check initial height
 	initialHeight := uint64(0)
@@ -256,10 +291,28 @@ func TestSubmissionByBatchSize(t *testing.T) {
 	}
 
 	for _, c := range cases {
+		app := testutil.GetAppMock(testutil.EndBlock)
+		app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
+			Da:     "mock",
+			Commit: version.Commit,
+			Block: &abci.BlockParams{
+				MaxBytes: 500000,
+				MaxGas:   40000000,
+			},
+		}})
+		// Create proxy app
+		clientCreator := proxy.NewLocalClientCreator(app)
+		proxyApp := proxy.NewAppConns(clientCreator)
+		err := proxyApp.Start()
+		require.NoError(err)
+
 		managerConfig := testutil.GetManagerConfig()
 		managerConfig.BatchMaxSizeBytes = c.blockBatchMaxSizeBytes
-		manager, err := testutil.GetManager(managerConfig, nil, nil, 1, 1, 0, nil, nil)
+		manager, err := testutil.GetManager(managerConfig, nil, 1, 1, 0, proxyApp, nil)
 		require.NoError(err)
+
+		manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
+		manager.Retriever = manager.DAClient.(da.BatchRetriever)
 
 		assert.Equal(manager.State.Height(), uint64(0))
 

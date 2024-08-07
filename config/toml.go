@@ -70,7 +70,7 @@ block_time = "{{ .BlockManagerConfig.BlockTime }}"
 # block production interval in case of no transactions ("0s" produces empty blocks)
 max_idle_time = "{{ .BlockManagerConfig.MaxIdleTime }}"
 max_proof_time = "{{ .BlockManagerConfig.MaxProofTime }}"
-max_supported_batch_skew = {{ .BlockManagerConfig.MaxBatchSkew }}
+max_supported_block_skew = {{ .BlockManagerConfig.MaxBlockSkew }}
 
 
 # triggers to submit batch to DA and settlement (both required)
@@ -80,7 +80,6 @@ batch_submit_max_time = "{{ .BlockManagerConfig.BatchSubmitMaxTime }}"
 block_batch_max_size_bytes = {{ .BlockManagerConfig.BatchMaxSizeBytes }}
 
 ### da config ###
-da_layer = "{{ .DALayer }}" # mock, celestia, avail
 # this should be json matching the celestia.Config type
 da_config = "{{ .DAConfig }}"
 
@@ -114,7 +113,6 @@ p2p_advertising_enabled= "{{ .P2PConfig.AdvertisingEnabled }}"
 settlement_layer = "{{ .SettlementLayer }}" # mock, dymension
 
 # dymension config
-rollapp_id = "{{ .SettlementConfig.RollappID }}"
 settlement_node_address = "{{ .SettlementConfig.NodeAddress }}"
 settlement_gas_limit = {{ .SettlementConfig.GasLimit }}
 settlement_gas_prices = "{{ .SettlementConfig.GasPrices }}"

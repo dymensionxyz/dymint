@@ -31,22 +31,22 @@ var _ = time.Kitchen
 const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
 type State struct {
-	Version                          *state.Version        `protobuf:"bytes,1,opt,name=version,proto3" json:"version,omitempty"`
-	ChainId                          string                `protobuf:"bytes,2,opt,name=chain_id,json=chainId,proto3" json:"chain_id,omitempty"`
-	InitialHeight                    int64                 `protobuf:"varint,3,opt,name=initial_height,json=initialHeight,proto3" json:"initial_height,omitempty"`
-	LastBlockHeight                  int64                 `protobuf:"varint,4,opt,name=last_block_height,json=lastBlockHeight,proto3" json:"last_block_height,omitempty"`
-	LastBlockID                      types.BlockID         `protobuf:"bytes,5,opt,name=last_block_id,json=lastBlockId,proto3" json:"last_block_id"`
-	LastBlockTime                    time.Time             `protobuf:"bytes,6,opt,name=last_block_time,json=lastBlockTime,proto3,stdtime" json:"last_block_time"`
-	NextValidators                   *types.ValidatorSet   `protobuf:"bytes,8,opt,name=next_validators,json=nextValidators,proto3" json:"next_validators,omitempty"`
-	Validators                       *types.ValidatorSet   `protobuf:"bytes,9,opt,name=validators,proto3" json:"validators,omitempty"`
-	LastValidators                   *types.ValidatorSet   `protobuf:"bytes,10,opt,name=last_validators,json=lastValidators,proto3" json:"last_validators,omitempty"`
-	LastHeightValidatorsChanged      int64                 `protobuf:"varint,11,opt,name=last_height_validators_changed,json=lastHeightValidatorsChanged,proto3" json:"last_height_validators_changed,omitempty"`
-	ConsensusParams                  types.ConsensusParams `protobuf:"bytes,12,opt,name=consensus_params,json=consensusParams,proto3" json:"consensus_params"`
-	LastHeightConsensusParamsChanged int64                 `protobuf:"varint,13,opt,name=last_height_consensus_params_changed,json=lastHeightConsensusParamsChanged,proto3" json:"last_height_consensus_params_changed,omitempty"`
-	LastResultsHash                  []byte                `protobuf:"bytes,14,opt,name=last_results_hash,json=lastResultsHash,proto3" json:"last_results_hash,omitempty"`
-	AppHash                          []byte                `protobuf:"bytes,15,opt,name=app_hash,json=appHash,proto3" json:"app_hash,omitempty"`
-	LastStoreHeight                  uint64                `protobuf:"varint,16,opt,name=last_store_height,json=lastStoreHeight,proto3" json:"last_store_height,omitempty"`
-	BaseHeight                       uint64                `protobuf:"varint,17,opt,name=base_height,json=baseHeight,proto3" json:"base_height,omitempty"`
+	Version                          *state.Version         `protobuf:"bytes,1,opt,name=version,proto3" json:"version,omitempty"`
+	ChainId                          string                 `protobuf:"bytes,2,opt,name=chain_id,json=chainId,proto3" json:"chain_id,omitempty"`
+	InitialHeight                    int64                  `protobuf:"varint,3,opt,name=initial_height,json=initialHeight,proto3" json:"initial_height,omitempty"`
+	LastBlockHeight                  int64                  `protobuf:"varint,4,opt,name=last_block_height,json=lastBlockHeight,proto3" json:"last_block_height,omitempty"`
+	LastBlockID                      types.BlockID          `protobuf:"bytes,5,opt,name=last_block_id,json=lastBlockId,proto3" json:"last_block_id"`
+	LastBlockTime                    time.Time              `protobuf:"bytes,6,opt,name=last_block_time,json=lastBlockTime,proto3,stdtime" json:"last_block_time"`
+	NextValidators                   *types.ValidatorSet    `protobuf:"bytes,8,opt,name=next_validators,json=nextValidators,proto3" json:"next_validators,omitempty"`
+	Validators                       *types.ValidatorSet    `protobuf:"bytes,9,opt,name=validators,proto3" json:"validators,omitempty"`
+	LastValidators                   *types.ValidatorSet    `protobuf:"bytes,10,opt,name=last_validators,json=lastValidators,proto3" json:"last_validators,omitempty"`
+	LastHeightValidatorsChanged      int64                  `protobuf:"varint,11,opt,name=last_height_validators_changed,json=lastHeightValidatorsChanged,proto3" json:"last_height_validators_changed,omitempty"`
+	LastHeightConsensusParamsChanged int64                  `protobuf:"varint,13,opt,name=last_height_consensus_params_changed,json=lastHeightConsensusParamsChanged,proto3" json:"last_height_consensus_params_changed,omitempty"`
+	LastResultsHash                  []byte                 `protobuf:"bytes,14,opt,name=last_results_hash,json=lastResultsHash,proto3" json:"last_results_hash,omitempty"`
+	AppHash                          []byte                 `protobuf:"bytes,15,opt,name=app_hash,json=appHash,proto3" json:"app_hash,omitempty"`
+	LastStoreHeight                  uint64                 `protobuf:"varint,16,opt,name=last_store_height,json=lastStoreHeight,proto3" json:"last_store_height,omitempty"`
+	BaseHeight                       uint64                 `protobuf:"varint,17,opt,name=base_height,json=baseHeight,proto3" json:"base_height,omitempty"`
+	ConsensusParams                  RollappConsensusParams `protobuf:"bytes,18,opt,name=consensus_params,json=consensusParams,proto3" json:"consensus_params"`
 }
 
 func (m *State) Reset()         { *m = State{} }
@@ -152,13 +152,6 @@ func (m *State) GetLastHeightValidatorsChanged() int64 {
 	return 0
 }
 
-func (m *State) GetConsensusParams() types.ConsensusParams {
-	if m != nil {
-		return m.ConsensusParams
-	}
-	return types.ConsensusParams{}
-}
-
 func (m *State) GetLastHeightConsensusParamsChanged() int64 {
 	if m != nil {
 		return m.LastHeightConsensusParamsChanged
@@ -194,53 +187,180 @@ func (m *State) GetBaseHeight() uint64 {
 	return 0
 }
 
+func (m *State) GetConsensusParams() RollappConsensusParams {
+	if m != nil {
+		return m.ConsensusParams
+	}
+	return RollappConsensusParams{}
+}
+
+type RollappConsensusParams struct {
+	Params *Params `protobuf:"bytes,1,opt,name=params,proto3" json:"params,omitempty"`
+}
+
+func (m *RollappConsensusParams) Reset()         { *m = RollappConsensusParams{} }
+func (m *RollappConsensusParams) String() string { return proto.CompactTextString(m) }
+func (*RollappConsensusParams) ProtoMessage()    {}
+func (*RollappConsensusParams) Descriptor() ([]byte, []int) {
+	return fileDescriptor_4b679420add07272, []int{1}
+}
+func (m *RollappConsensusParams) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *RollappConsensusParams) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_RollappConsensusParams.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *RollappConsensusParams) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RollappConsensusParams.Merge(m, src)
+}
+func (m *RollappConsensusParams) XXX_Size() int {
+	return m.Size()
+}
+func (m *RollappConsensusParams) XXX_DiscardUnknown() {
+	xxx_messageInfo_RollappConsensusParams.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RollappConsensusParams proto.InternalMessageInfo
+
+func (m *RollappConsensusParams) GetParams() *Params {
+	if m != nil {
+		return m.Params
+	}
+	return nil
+}
+
+type Params struct {
+	BlockMaxGas  int64  `protobuf:"varint,1,opt,name=block_max_gas,json=blockMaxGas,proto3" json:"block_max_gas,omitempty"`
+	BlockMaxSize int64  `protobuf:"varint,2,opt,name=block_max_size,json=blockMaxSize,proto3" json:"block_max_size,omitempty"`
+	Da           string `protobuf:"bytes,3,opt,name=da,proto3" json:"da,omitempty"`
+	Commit       string `protobuf:"bytes,4,opt,name=commit,proto3" json:"commit,omitempty"`
+}
+
+func (m *Params) Reset()         { *m = Params{} }
+func (m *Params) String() string { return proto.CompactTextString(m) }
+func (*Params) ProtoMessage()    {}
+func (*Params) Descriptor() ([]byte, []int) {
+	return fileDescriptor_4b679420add07272, []int{2}
+}
+func (m *Params) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *Params) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_Params.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *Params) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_Params.Merge(m, src)
+}
+func (m *Params) XXX_Size() int {
+	return m.Size()
+}
+func (m *Params) XXX_DiscardUnknown() {
+	xxx_messageInfo_Params.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_Params proto.InternalMessageInfo
+
+func (m *Params) GetBlockMaxGas() int64 {
+	if m != nil {
+		return m.BlockMaxGas
+	}
+	return 0
+}
+
+func (m *Params) GetBlockMaxSize() int64 {
+	if m != nil {
+		return m.BlockMaxSize
+	}
+	return 0
+}
+
+func (m *Params) GetDa() string {
+	if m != nil {
+		return m.Da
+	}
+	return ""
+}
+
+func (m *Params) GetCommit() string {
+	if m != nil {
+		return m.Commit
+	}
+	return ""
+}
+
 func init() {
 	proto.RegisterType((*State)(nil), "dymint.State")
+	proto.RegisterType((*RollappConsensusParams)(nil), "dymint.RollappConsensusParams")
+	proto.RegisterType((*Params)(nil), "dymint.Params")
 }
 
 func init() { proto.RegisterFile("types/dymint/state.proto", fileDescriptor_4b679420add07272) }
 
 var fileDescriptor_4b679420add07272 = []byte{
-	// 617 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x94, 0xcd, 0x6e, 0x9b, 0x40,
-	0x14, 0x85, 0x4d, 0xe3, 0xc4, 0xce, 0x38, 0x0e, 0x09, 0xe9, 0x82, 0xa4, 0x12, 0x90, 0xf4, 0x47,
-	0x56, 0x17, 0x20, 0x35, 0xfb, 0x56, 0x22, 0x91, 0x6a, 0x57, 0x51, 0x55, 0xe1, 0x2a, 0x8b, 0x6e,
-	0xd0, 0x00, 0x53, 0x18, 0x15, 0x33, 0x88, 0x19, 0x47, 0x71, 0x9f, 0x22, 0x4f, 0xd3, 0x67, 0xc8,
-	0x32, 0xcb, 0xae, 0xdc, 0xca, 0x7e, 0x91, 0x6a, 0x66, 0x00, 0xd3, 0x58, 0x96, 0xb2, 0x33, 0xe7,
-	0x7e, 0xf7, 0x70, 0x86, 0x7b, 0x3d, 0x40, 0x67, 0xb3, 0x1c, 0x51, 0x27, 0x9a, 0x4d, 0x70, 0xc6,
-	0x1c, 0xca, 0x20, 0x43, 0x76, 0x5e, 0x10, 0x46, 0xb4, 0x1d, 0xa9, 0x9d, 0x3c, 0x8f, 0x49, 0x4c,
-	0x84, 0xe4, 0xf0, 0x5f, 0xb2, 0x7a, 0x62, 0xc6, 0x84, 0xc4, 0x29, 0x72, 0xc4, 0x53, 0x30, 0xfd,
-	0xee, 0x30, 0x3c, 0x41, 0x94, 0xc1, 0x49, 0x5e, 0x02, 0xa7, 0xd2, 0x98, 0xa1, 0x2c, 0x42, 0x85,
-	0x30, 0x87, 0x41, 0x88, 0x1d, 0xa1, 0x96, 0xc8, 0xd9, 0x1a, 0x52, 0x0a, 0x0d, 0xe6, 0xcd, 0x06,
-	0xe6, 0x06, 0xa6, 0x38, 0x82, 0x8c, 0x14, 0x25, 0xf7, 0x72, 0x03, 0x97, 0xc3, 0x02, 0x4e, 0x36,
-	0xbf, 0x50, 0x1c, 0xb8, 0xf9, 0xc2, 0xb3, 0x5f, 0x1d, 0xb0, 0x3d, 0xe6, 0xaa, 0x76, 0x0e, 0x3a,
-	0x37, 0xa8, 0xa0, 0x98, 0x64, 0xba, 0x62, 0x29, 0x83, 0xde, 0xbb, 0x63, 0x7b, 0xd5, 0x69, 0xcb,
-	0x4f, 0x75, 0x2d, 0x01, 0xaf, 0x22, 0xb5, 0x63, 0xd0, 0x0d, 0x13, 0x88, 0x33, 0x1f, 0x47, 0xfa,
-	0x33, 0x4b, 0x19, 0xec, 0x7a, 0x1d, 0xf1, 0x3c, 0x8a, 0xb4, 0xd7, 0x60, 0x1f, 0x67, 0x98, 0x61,
-	0x98, 0xfa, 0x09, 0xc2, 0x71, 0xc2, 0xf4, 0x2d, 0x4b, 0x19, 0x6c, 0x79, 0xfd, 0x52, 0x1d, 0x0a,
-	0x51, 0x7b, 0x0b, 0x0e, 0x53, 0x48, 0x99, 0x1f, 0xa4, 0x24, 0xfc, 0x51, 0x91, 0x6d, 0x41, 0xaa,
-	0xbc, 0xe0, 0x72, 0xbd, 0x64, 0x3d, 0xd0, 0x6f, 0xb0, 0x38, 0xd2, 0xb7, 0xd7, 0x83, 0xca, 0xc3,
-	0x89, 0xae, 0xd1, 0xa5, 0x7b, 0x74, 0x3f, 0x37, 0x5b, 0x8b, 0xb9, 0xd9, 0xbb, 0xaa, 0xac, 0x46,
-	0x97, 0x5e, 0xaf, 0xf6, 0x1d, 0x45, 0xda, 0x15, 0x50, 0x1b, 0x9e, 0x7c, 0xac, 0xfa, 0x8e, 0x70,
-	0x3d, 0xb1, 0xe5, 0xcc, 0xed, 0x6a, 0xe6, 0xf6, 0xd7, 0x6a, 0xe6, 0x6e, 0x97, 0xdb, 0xde, 0xfd,
-	0x31, 0x15, 0xaf, 0x5f, 0x7b, 0xf1, 0xaa, 0xf6, 0x11, 0xa8, 0x19, 0xba, 0x65, 0x7e, 0x3d, 0x2f,
-	0xaa, 0x77, 0x85, 0x9b, 0xb1, 0x9e, 0xf1, 0xba, 0x62, 0xc6, 0x88, 0x79, 0xfb, 0xbc, 0xad, 0x56,
-	0xa8, 0xf6, 0x1e, 0x80, 0x86, 0xc7, 0xee, 0x93, 0x3c, 0x1a, 0x1d, 0x3c, 0x88, 0x38, 0x56, 0xc3,
-	0x04, 0x3c, 0x2d, 0x08, 0x6f, 0x6b, 0x04, 0xb9, 0x00, 0x86, 0x30, 0x92, 0x93, 0x69, 0xf8, 0xf9,
-	0x61, 0x02, 0xb3, 0x18, 0x45, 0x7a, 0x4f, 0x0c, 0xeb, 0x05, 0xa7, 0xe4, 0x9c, 0x56, 0xdd, 0x17,
-	0x12, 0xd1, 0x3c, 0x70, 0x10, 0x92, 0x8c, 0xa2, 0x8c, 0x4e, 0xa9, 0x2f, 0x77, 0x54, 0xdf, 0x13,
-	0x71, 0x4e, 0xd7, 0xe3, 0x5c, 0x54, 0xe4, 0x17, 0x01, 0xba, 0x6d, 0xfe, 0xb1, 0x3d, 0x35, 0xfc,
-	0x5f, 0xd6, 0x3e, 0x83, 0x57, 0xcd, 0x60, 0x8f, 0xfd, 0xeb, 0x78, 0x7d, 0x11, 0xcf, 0x5a, 0xc5,
-	0x7b, 0xe4, 0x5f, 0x65, 0xac, 0x16, 0xb1, 0x40, 0x74, 0x9a, 0x32, 0xea, 0x27, 0x90, 0x26, 0xfa,
-	0xbe, 0xa5, 0x0c, 0xf6, 0xe4, 0x22, 0x7a, 0x52, 0x1f, 0x42, 0x9a, 0xf0, 0xb5, 0x87, 0x79, 0x2e,
-	0x11, 0x55, 0x20, 0x1d, 0x98, 0xe7, 0xa2, 0xf4, 0xa1, 0xb4, 0xa1, 0x8c, 0x14, 0xa8, 0xda, 0xe7,
-	0x03, 0x4b, 0x19, 0xb4, 0xdd, 0xa3, 0xc5, 0xdc, 0x54, 0xf9, 0x22, 0x8e, 0x79, 0x4d, 0x86, 0x91,
-	0xde, 0x0d, 0x41, 0x33, 0x41, 0x2f, 0x80, 0xb4, 0x6e, 0x3d, 0xe4, 0xad, 0x1e, 0xe0, 0x92, 0x04,
-	0x3e, 0xb5, 0xbb, 0x9d, 0x83, 0xae, 0x3b, 0xbc, 0x5f, 0x18, 0xca, 0xc3, 0xc2, 0x50, 0xfe, 0x2e,
-	0x0c, 0xe5, 0x6e, 0x69, 0xb4, 0x1e, 0x96, 0x46, 0xeb, 0xf7, 0xd2, 0x68, 0x7d, 0xb3, 0x63, 0xcc,
-	0x92, 0x69, 0x60, 0x87, 0x64, 0xc2, 0x2f, 0x3a, 0x94, 0xf1, 0x7f, 0xea, 0xed, 0xec, 0x67, 0x75,
-	0xeb, 0x95, 0x37, 0x45, 0x50, 0x3e, 0x07, 0x3b, 0x62, 0xc1, 0xcf, 0xff, 0x05, 0x00, 0x00, 0xff,
-	0xff, 0xaf, 0x47, 0xf8, 0xdf, 0x1c, 0x05, 0x00, 0x00,
+	// 715 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x94, 0x4b, 0x4f, 0xdb, 0x4a,
+	0x14, 0xc7, 0x63, 0x12, 0xf2, 0x98, 0x90, 0x07, 0xc3, 0x15, 0x32, 0x5c, 0xc9, 0xc9, 0xcd, 0xe5,
+	0xa2, 0xe8, 0x2e, 0x1c, 0xa9, 0xec, 0xdb, 0x2a, 0x20, 0x41, 0x10, 0x7d, 0x68, 0x52, 0xb1, 0xe8,
+	0xc6, 0x9a, 0xd8, 0x53, 0x7b, 0x54, 0xbf, 0x94, 0x99, 0xa0, 0x90, 0x4f, 0xc1, 0xd7, 0xe9, 0x37,
+	0x60, 0xc9, 0xb2, 0x2b, 0x5a, 0x85, 0x2f, 0x52, 0xcd, 0xc3, 0x89, 0x0b, 0x45, 0x62, 0x17, 0xff,
+	0xcf, 0xef, 0xfc, 0xe7, 0x4c, 0xce, 0x39, 0x03, 0x4c, 0x7e, 0x9d, 0x12, 0x36, 0xf0, 0xae, 0x23,
+	0x1a, 0xf3, 0x01, 0xe3, 0x98, 0x13, 0x3b, 0x9d, 0x26, 0x3c, 0x81, 0x65, 0xa5, 0xed, 0xff, 0xe5,
+	0x27, 0x7e, 0x22, 0xa5, 0x81, 0xf8, 0xa5, 0xa2, 0xfb, 0x1d, 0x3f, 0x49, 0xfc, 0x90, 0x0c, 0xe4,
+	0xd7, 0x64, 0xf6, 0x65, 0xc0, 0x69, 0x44, 0x18, 0xc7, 0x51, 0xaa, 0x81, 0x7f, 0x94, 0x31, 0x27,
+	0xb1, 0x47, 0xa6, 0xd2, 0x1c, 0x4f, 0x5c, 0x3a, 0x90, 0xaa, 0x46, 0x7a, 0x4f, 0x10, 0x2d, 0xe4,
+	0x98, 0xc3, 0x67, 0x98, 0x2b, 0x1c, 0x52, 0x0f, 0xf3, 0x64, 0xaa, 0xb9, 0x7f, 0x9f, 0xe1, 0x52,
+	0x3c, 0xc5, 0xd1, 0xf3, 0x07, 0xca, 0x0b, 0xe7, 0x0f, 0xec, 0x7d, 0xab, 0x80, 0xcd, 0xb1, 0x50,
+	0xe1, 0x11, 0xa8, 0x5c, 0x91, 0x29, 0xa3, 0x49, 0x6c, 0x1a, 0x5d, 0xa3, 0x5f, 0x7f, 0xb5, 0x67,
+	0xaf, 0x33, 0x6d, 0xf5, 0x57, 0x5d, 0x2a, 0x00, 0x65, 0x24, 0xdc, 0x03, 0x55, 0x37, 0xc0, 0x34,
+	0x76, 0xa8, 0x67, 0x6e, 0x74, 0x8d, 0x7e, 0x0d, 0x55, 0xe4, 0xf7, 0xc8, 0x83, 0xff, 0x81, 0x26,
+	0x8d, 0x29, 0xa7, 0x38, 0x74, 0x02, 0x42, 0xfd, 0x80, 0x9b, 0xc5, 0xae, 0xd1, 0x2f, 0xa2, 0x86,
+	0x56, 0xcf, 0xa4, 0x08, 0xff, 0x07, 0xdb, 0x21, 0x66, 0xdc, 0x99, 0x84, 0x89, 0xfb, 0x35, 0x23,
+	0x4b, 0x92, 0x6c, 0x89, 0xc0, 0x50, 0xe8, 0x9a, 0x45, 0xa0, 0x91, 0x63, 0xa9, 0x67, 0x6e, 0x3e,
+	0x2d, 0x54, 0x5d, 0x4e, 0x66, 0x8d, 0x4e, 0x86, 0x3b, 0xb7, 0xf7, 0x9d, 0xc2, 0xf2, 0xbe, 0x53,
+	0xbf, 0xc8, 0xac, 0x46, 0x27, 0xa8, 0xbe, 0xf2, 0x1d, 0x79, 0xf0, 0x02, 0xb4, 0x72, 0x9e, 0xa2,
+	0xad, 0x66, 0x59, 0xba, 0xee, 0xdb, 0xaa, 0xe7, 0x76, 0xd6, 0x73, 0xfb, 0x53, 0xd6, 0xf3, 0x61,
+	0x55, 0xd8, 0xde, 0xfc, 0xe8, 0x18, 0xa8, 0xb1, 0xf2, 0x12, 0x51, 0x78, 0x0a, 0x5a, 0x31, 0x99,
+	0x73, 0x67, 0xd5, 0x2f, 0x66, 0x56, 0xa5, 0x9b, 0xf5, 0xb4, 0xc6, 0xcb, 0x8c, 0x19, 0x13, 0x8e,
+	0x9a, 0x22, 0x6d, 0xa5, 0x30, 0xf8, 0x1a, 0x80, 0x9c, 0x47, 0xed, 0x45, 0x1e, 0xb9, 0x0c, 0x51,
+	0x88, 0xbc, 0x56, 0xce, 0x04, 0xbc, 0xac, 0x10, 0x91, 0x96, 0x2b, 0xe4, 0x18, 0x58, 0xd2, 0x48,
+	0x75, 0x26, 0xe7, 0xe7, 0xb8, 0x01, 0x8e, 0x7d, 0xe2, 0x99, 0x75, 0xd9, 0xac, 0xbf, 0x05, 0xa5,
+	0xfa, 0xb4, 0xce, 0x3e, 0x56, 0x08, 0x7c, 0x0f, 0x0e, 0xf2, 0x26, 0x6e, 0x12, 0x33, 0x12, 0xb3,
+	0x19, 0x73, 0xd4, 0xbc, 0xae, 0xac, 0x1a, 0xd2, 0xaa, 0xbb, 0xb6, 0x3a, 0xce, 0xc8, 0x8f, 0x12,
+	0xcc, 0xfc, 0xb2, 0xa1, 0x99, 0x12, 0x36, 0x0b, 0x39, 0x73, 0x02, 0xcc, 0x02, 0xb3, 0xd9, 0x35,
+	0xfa, 0x5b, 0x6a, 0x68, 0x90, 0xd2, 0xcf, 0x30, 0x0b, 0xc4, 0x88, 0xe2, 0x34, 0x55, 0x48, 0x4b,
+	0x22, 0x15, 0x9c, 0xa6, 0x32, 0xf4, 0x46, 0xdb, 0x30, 0x9e, 0x4c, 0x49, 0x36, 0x7b, 0xed, 0xae,
+	0xd1, 0x2f, 0x0d, 0x77, 0x96, 0xf7, 0x9d, 0x96, 0x18, 0x9a, 0xb1, 0x88, 0xa9, 0x62, 0x94, 0x77,
+	0x4e, 0x80, 0x1d, 0x50, 0x9f, 0x60, 0xb6, 0x4a, 0xdd, 0x16, 0xa9, 0x08, 0x08, 0x49, 0x03, 0x1f,
+	0x40, 0xfb, 0xf1, 0x65, 0x4d, 0xa8, 0xfb, 0xa0, 0x1e, 0x1c, 0x1b, 0x25, 0x61, 0x88, 0xd3, 0xf4,
+	0xd1, 0x4d, 0x87, 0x25, 0x31, 0x62, 0xa8, 0xe5, 0xfe, 0x2e, 0x9f, 0x97, 0xaa, 0x95, 0x76, 0xf5,
+	0xbc, 0x54, 0xdd, 0x6a, 0x37, 0x7a, 0x6f, 0xc1, 0xee, 0x9f, 0x93, 0xe1, 0x21, 0x28, 0xeb, 0xc3,
+	0xd4, 0x2a, 0x37, 0xb3, 0xc3, 0x54, 0x1c, 0xe9, 0x68, 0x6f, 0x01, 0xca, 0x3a, 0xa3, 0x07, 0x1a,
+	0x6a, 0x03, 0x22, 0x3c, 0x77, 0x7c, 0xac, 0x12, 0x8b, 0xa8, 0x2e, 0xc5, 0x77, 0x78, 0x7e, 0x8a,
+	0x19, 0x3c, 0x00, 0xcd, 0x35, 0xc3, 0xe8, 0x82, 0xc8, 0x95, 0x2f, 0xa2, 0xad, 0x0c, 0x1a, 0xd3,
+	0x05, 0x81, 0x4d, 0xb0, 0xe1, 0x61, 0xb9, 0xeb, 0x35, 0xb4, 0xe1, 0x61, 0xb8, 0x0b, 0xca, 0x6e,
+	0x12, 0x45, 0x54, 0x6d, 0x75, 0x0d, 0xe9, 0xaf, 0xe1, 0xd9, 0xed, 0xd2, 0x32, 0xee, 0x96, 0x96,
+	0xf1, 0x73, 0x69, 0x19, 0x37, 0x0f, 0x56, 0xe1, 0xee, 0xc1, 0x2a, 0x7c, 0x7f, 0xb0, 0x0a, 0x9f,
+	0x6d, 0x9f, 0xf2, 0x60, 0x36, 0xb1, 0xdd, 0x24, 0x12, 0x2f, 0x35, 0x89, 0xc5, 0x53, 0x33, 0xbf,
+	0x5e, 0x64, 0xcf, 0xb6, 0x7e, 0xea, 0x26, 0xfa, 0x7b, 0x52, 0x96, 0x1b, 0x7a, 0xf4, 0x2b, 0x00,
+	0x00, 0xff, 0xff, 0xe2, 0x41, 0xa3, 0x09, 0xdd, 0x05, 0x00, 0x00,
 }
 
 func (m *State) Marshal() (dAtA []byte, err error) {
@@ -263,6 +383,18 @@ func (m *State) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	{
+		size, err := m.ConsensusParams.MarshalToSizedBuffer(dAtA[:i])
+		if err != nil {
+			return 0, err
+		}
+		i -= size
+		i = encodeVarintState(dAtA, i, uint64(size))
+	}
+	i--
+	dAtA[i] = 0x1
+	i--
+	dAtA[i] = 0x92
 	if m.BaseHeight != 0 {
 		i = encodeVarintState(dAtA, i, uint64(m.BaseHeight))
 		i--
@@ -296,16 +428,6 @@ func (m *State) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		i--
 		dAtA[i] = 0x68
 	}
-	{
-		size, err := m.ConsensusParams.MarshalToSizedBuffer(dAtA[:i])
-		if err != nil {
-			return 0, err
-		}
-		i -= size
-		i = encodeVarintState(dAtA, i, uint64(size))
-	}
-	i--
-	dAtA[i] = 0x62
 	if m.LastHeightValidatorsChanged != 0 {
 		i = encodeVarintState(dAtA, i, uint64(m.LastHeightValidatorsChanged))
 		i--
@@ -397,6 +519,88 @@ func (m *State) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
+func (m *RollappConsensusParams) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *RollappConsensusParams) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *RollappConsensusParams) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.Params != nil {
+		{
+			size, err := m.Params.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintState(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *Params) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *Params) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *Params) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Commit) > 0 {
+		i -= len(m.Commit)
+		copy(dAtA[i:], m.Commit)
+		i = encodeVarintState(dAtA, i, uint64(len(m.Commit)))
+		i--
+		dAtA[i] = 0x22
+	}
+	if len(m.Da) > 0 {
+		i -= len(m.Da)
+		copy(dAtA[i:], m.Da)
+		i = encodeVarintState(dAtA, i, uint64(len(m.Da)))
+		i--
+		dAtA[i] = 0x1a
+	}
+	if m.BlockMaxSize != 0 {
+		i = encodeVarintState(dAtA, i, uint64(m.BlockMaxSize))
+		i--
+		dAtA[i] = 0x10
+	}
+	if m.BlockMaxGas != 0 {
+		i = encodeVarintState(dAtA, i, uint64(m.BlockMaxGas))
+		i--
+		dAtA[i] = 0x8
+	}
+	return len(dAtA) - i, nil
+}
+
 func encodeVarintState(dAtA []byte, offset int, v uint64) int {
 	offset -= sovState(v)
 	base := offset
@@ -447,8 +651,6 @@ func (m *State) Size() (n int) {
 	if m.LastHeightValidatorsChanged != 0 {
 		n += 1 + sovState(uint64(m.LastHeightValidatorsChanged))
 	}
-	l = m.ConsensusParams.Size()
-	n += 1 + l + sovState(uint64(l))
 	if m.LastHeightConsensusParamsChanged != 0 {
 		n += 1 + sovState(uint64(m.LastHeightConsensusParamsChanged))
 	}
@@ -465,6 +667,44 @@ func (m *State) Size() (n int) {
 	}
 	if m.BaseHeight != 0 {
 		n += 2 + sovState(uint64(m.BaseHeight))
+	}
+	l = m.ConsensusParams.Size()
+	n += 2 + l + sovState(uint64(l))
+	return n
+}
+
+func (m *RollappConsensusParams) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Params != nil {
+		l = m.Params.Size()
+		n += 1 + l + sovState(uint64(l))
+	}
+	return n
+}
+
+func (m *Params) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.BlockMaxGas != 0 {
+		n += 1 + sovState(uint64(m.BlockMaxGas))
+	}
+	if m.BlockMaxSize != 0 {
+		n += 1 + sovState(uint64(m.BlockMaxSize))
+	}
+	l = len(m.Da)
+	if l > 0 {
+		n += 1 + l + sovState(uint64(l))
+	}
+	l = len(m.Commit)
+	if l > 0 {
+		n += 1 + l + sovState(uint64(l))
 	}
 	return n
 }
@@ -803,39 +1043,6 @@ func (m *State) Unmarshal(dAtA []byte) error {
 					break
 				}
 			}
-		case 12:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field ConsensusParams", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowState
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthState
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthState
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if err := m.ConsensusParams.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
 		case 13:
 			if wireType != 0 {
 				return fmt.Errorf("proto: wrong wireType = %d for field LastHeightConsensusParamsChanged", wireType)
@@ -961,6 +1168,277 @@ func (m *State) Unmarshal(dAtA []byte) error {
 					break
 				}
 			}
+		case 18:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ConsensusParams", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowState
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthState
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthState
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if err := m.ConsensusParams.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipState(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthState
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *RollappConsensusParams) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowState
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: RollappConsensusParams: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: RollappConsensusParams: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Params", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowState
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthState
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthState
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Params == nil {
+				m.Params = &Params{}
+			}
+			if err := m.Params.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipState(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthState
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *Params) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowState
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Params: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Params: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockMaxGas", wireType)
+			}
+			m.BlockMaxGas = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowState
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.BlockMaxGas |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BlockMaxSize", wireType)
+			}
+			m.BlockMaxSize = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowState
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.BlockMaxSize |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Da", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowState
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthState
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthState
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Da = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Commit", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowState
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthState
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthState
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Commit = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipState(dAtA[iNdEx:])

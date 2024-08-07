@@ -20,21 +20,19 @@ func TestViperAndCobra(t *testing.T) {
 	config.AddNodeFlags(cmd)
 
 	dir := t.TempDir()
-	nc := config.DefaultConfig("", "")
+	nc := config.DefaultConfig("")
 	config.EnsureRoot(dir, nc)
 
-	assert.NoError(cmd.Flags().Set(config.FlagDALayer, "foobar"))
 	assert.NoError(cmd.Flags().Set(config.FlagDAConfig, `{"json":true}`))
-	assert.NoError(cmd.Flags().Set(config.FlagBlockTime, "1234s"))
+	assert.NoError(cmd.Flags().Set(config.FlagBlockTime, "4s"))
 	assert.NoError(cmd.Flags().Set(config.FlagMaxIdleTime, "2000s"))
 	assert.NoError(cmd.Flags().Set(config.FlagBatchSubmitMaxTime, "3000s"))
 	assert.NoError(cmd.Flags().Set(config.FlagBlockBatchMaxSizeBytes, "1000"))
 
 	assert.NoError(nc.GetViperConfig(cmd, dir))
 
-	assert.Equal("foobar", nc.DALayer)
 	assert.Equal(`{"json":true}`, nc.DAConfig)
-	assert.Equal(1234*time.Second, nc.BlockTime)
+	assert.Equal(4*time.Second, nc.BlockTime)
 	assert.Equal(uint64(1000), nc.BlockManagerConfig.BatchMaxSizeBytes)
 }
 
@@ -67,6 +65,18 @@ func TestNodeConfig_Validate(t *testing.T) {
 			},
 			wantErr: assert.Error,
 		}, {
+			name: "block_time too small",
+			malleate: func(nc *config.NodeConfig) {
+				nc.BlockManagerConfig.BlockTime = 10 * time.Millisecond
+			},
+			wantErr: assert.Error,
+		}, {
+			name: "block_time greater than limit",
+			malleate: func(nc *config.NodeConfig) {
+				nc.BlockManagerConfig.BlockTime = 10 * time.Second
+			},
+			wantErr: assert.Error,
+		}, {
 			name: "max_idle_time not greater than block_time",
 			malleate: func(nc *config.NodeConfig) {
 				nc.BlockManagerConfig.MaxIdleTime = 1
@@ -79,6 +89,24 @@ func TestNodeConfig_Validate(t *testing.T) {
 			malleate: func(nc *config.NodeConfig) {
 				nc.BlockManagerConfig.BatchSubmitMaxTime = 1
 				nc.BlockManagerConfig.BlockTime = 2
+			},
+			wantErr: assert.Error,
+		}, {
+			name: "batch_submit_max_time greater than 1 hour",
+			malleate: func(nc *config.NodeConfig) {
+				nc.BlockManagerConfig.BatchSubmitMaxTime = 2 * time.Hour
+			},
+			wantErr: assert.Error,
+		}, {
+			name: "max_block_skew 0",
+			malleate: func(nc *config.NodeConfig) {
+				nc.BlockManagerConfig.MaxBlockSkew = 0
+			},
+			wantErr: assert.Error,
+		}, {
+			name: "max_block_skew greater than 432k",
+			malleate: func(nc *config.NodeConfig) {
+				nc.BlockManagerConfig.MaxBlockSkew = 500000
 			},
 			wantErr: assert.Error,
 		}, {
@@ -108,35 +136,11 @@ func TestNodeConfig_Validate(t *testing.T) {
 			},
 			wantErr: assert.Error,
 		}, {
-			name: "settlement: missing rollapp id",
-			malleate: func(nc *config.NodeConfig) {
-				nc.SettlementConfig.RollappID = ""
-			},
-			wantErr: assert.Error,
-		}, {
 			name: "settlement: mock",
 			malleate: func(nc *config.NodeConfig) {
 				nc.SettlementLayer = "mock"
 			},
 			wantErr: assert.NoError,
-		}, {
-			name: "DALayer: empty",
-			malleate: func(nc *config.NodeConfig) {
-				nc.DALayer = ""
-			},
-			wantErr: assert.Error,
-		}, {
-			name: "DALayer: mock",
-			malleate: func(nc *config.NodeConfig) {
-				nc.DALayer = "mock"
-			},
-			wantErr: assert.NoError,
-		}, {
-			name: "DAConfig: empty",
-			malleate: func(nc *config.NodeConfig) {
-				nc.DAConfig = ""
-			},
-			wantErr: assert.Error,
 		}, {
 			name: "DAGrpc.Host empty",
 			malleate: func(nc *config.NodeConfig) {
@@ -189,10 +193,9 @@ func fullNodeConfig() config.NodeConfig {
 			MaxIdleTime:        20 * time.Second,
 			MaxProofTime:       20 * time.Second,
 			BatchSubmitMaxTime: 20 * time.Second,
-			MaxBatchSkew:       10,
+			MaxBlockSkew:       10,
 			BatchMaxSizeBytes:  10000,
 		},
-		DALayer:         "celestia",
 		DAConfig:        "da-config",
 		SettlementLayer: "dymension",
 		SettlementConfig: settlement.Config{
@@ -200,7 +203,6 @@ func fullNodeConfig() config.NodeConfig {
 			NodeAddress:    "http://localhost:26657",
 			KeyringHomeDir: "/tmp/keyring-test",
 			DymAccountName: "test",
-			RollappID:      "test_123-1",
 			GasLimit:       120,
 			GasPrices:      "0.025stake",
 			GasFees:        "",

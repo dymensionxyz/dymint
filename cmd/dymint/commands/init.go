@@ -61,6 +61,7 @@ func InitFilesWithConfig(config *cfg.Config) error {
 			ChainID:         fmt.Sprintf("test-chain-%v", tmrand.Str(6)),
 			GenesisTime:     tmtime.Now(),
 			ConsensusParams: types.DefaultConsensusParams(),
+			AppState:        []byte("{\"app_state\": {\"rollapp_params\": {\"params\": {\"da\": \"mock\",\"version\": \"646983ec41942854aa8b2fc2b755106307e50170\"}}}}"),
 		}
 		pubKey, err := pv.GetPubKey()
 		if err != nil {

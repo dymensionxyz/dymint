@@ -1,11 +1,13 @@
 package types
 
 import (
+	"encoding/json"
+	"fmt"
 	"sync/atomic"
 
 	// TODO(tzdybal): copy to local project?
+	"github.com/dymensionxyz/dymint/types/pb/dymint"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
-	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 )
 
@@ -29,7 +31,7 @@ type State struct {
 
 	// Consensus parameters used for validating blocks.
 	// Changes returned by EndBlock and updated after Commit.
-	ConsensusParams                  tmproto.ConsensusParams
+	ConsensusParams                  dymint.RollappConsensusParams
 	LastHeightConsensusParamsChanged int64
 
 	// Merkle root of the results from executing prev block
@@ -60,4 +62,22 @@ func (s *State) NextHeight() uint64 {
 		return s.InitialHeight
 	}
 	return s.Height() + 1
+}
+
+// LoadConsensusFromAppState load rollapp_params from genesis doc app_state to the dymint state
+func (s *State) LoadConsensusFromAppState(appState json.RawMessage) error {
+	var objmap map[string]json.RawMessage
+	err := json.Unmarshal(appState, &objmap)
+	if err != nil {
+		return err
+	}
+	params, ok := objmap["rollapp_params"]
+	if !ok {
+		return fmt.Errorf("rollapp_params not defined in genesis")
+	}
+	err = json.Unmarshal(params, &s.ConsensusParams)
+	if err != nil {
+		return err
+	}
+	return nil
 }

@@ -7,7 +7,6 @@ import (
 )
 
 const (
-	FlagDALayer                = "dymint.da_layer"
 	FlagDAConfig               = "dymint.da_config"
 	FlagBlockTime              = "dymint.block_time"
 	FlagMaxIdleTime            = "dymint.max_idle_time"
@@ -24,7 +23,6 @@ const (
 	FlagSLGasLimit       = "dymint.settlement_config.gas_limit"
 	FlagSLGasPrices      = "dymint.settlement_config.gas_prices"
 	FlagSLGasFees        = "dymint.settlement_config.gas_fees"
-	FlagRollappID        = "dymint.settlement_config.rollapp_id"
 )
 
 const (
@@ -43,7 +41,6 @@ func AddNodeFlags(cmd *cobra.Command) {
 
 	def := DefaultNodeConfig
 
-	cmd.Flags().String(FlagDALayer, def.DALayer, "Data Availability Layer Client name (mock or grpc")
 	cmd.Flags().String(FlagDAConfig, def.DAConfig, "Data Availability Layer Client config")
 	cmd.Flags().Duration(FlagBlockTime, def.BlockTime, "block time (for sequencer mode)")
 	cmd.Flags().Duration(FlagMaxIdleTime, def.MaxIdleTime, "max time for empty blocks (for sequencer mode)")
@@ -57,7 +54,6 @@ func AddNodeFlags(cmd *cobra.Command) {
 	cmd.Flags().String(FlagSLGasFees, def.SettlementConfig.GasFees, "Settlement Layer gas fees")
 	cmd.Flags().String(FlagSLGasPrices, def.SettlementConfig.GasPrices, "Settlement Layer gas prices")
 	cmd.Flags().Uint64(FlagSLGasLimit, def.SettlementConfig.GasLimit, "Settlement Layer batch submit gas limit")
-	cmd.Flags().String(FlagRollappID, def.SettlementConfig.RollappID, "The chainID of the rollapp")
 
 	cmd.Flags().String(FlagP2PListenAddress, def.P2PConfig.ListenAddress, "P2P listen address")
 	cmd.Flags().String(FlagP2PBootstrapNodes, def.P2PConfig.BootstrapNodes, "P2P bootstrap nodes")
@@ -66,9 +62,6 @@ func AddNodeFlags(cmd *cobra.Command) {
 }
 
 func BindDymintFlags(cmd *cobra.Command, v *viper.Viper) error {
-	if err := v.BindPFlag("da_layer", cmd.Flags().Lookup(FlagDALayer)); err != nil {
-		return err
-	}
 	if err := v.BindPFlag("da_config", cmd.Flags().Lookup(FlagDAConfig)); err != nil {
 		return err
 	}
@@ -106,9 +99,6 @@ func BindDymintFlags(cmd *cobra.Command, v *viper.Viper) error {
 		return err
 	}
 	if err := v.BindPFlag("gas_limit", cmd.Flags().Lookup(FlagSLGasLimit)); err != nil {
-		return err
-	}
-	if err := v.BindPFlag("rollapp_id", cmd.Flags().Lookup(FlagRollappID)); err != nil {
 		return err
 	}
 	if err := v.BindPFlag("p2p_listen_address", cmd.Flags().Lookup(FlagP2PListenAddress)); err != nil {

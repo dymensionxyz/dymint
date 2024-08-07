@@ -1,6 +1,7 @@
 package block
 
 import (
+	"errors"
 	"fmt"
 
 	errorsmod "cosmossdk.io/errors"
@@ -83,9 +84,10 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	// If failed here, after the app committed, but before the state is updated, we'll update the state on
 	// UpdateStateFromApp using the saved responses and validators.
 
-	// Update the state with the new app hash, last validators and store height from the commit.
+	// Update the state with the new app hash, last validators, store height from the commit and rollapp params.
 	// Every one of those, if happens before commit, prevents us from re-executing the block in case failed during commit.
-	m.Executor.UpdateStateAfterCommit(m.State, responses, appHash, block.Header.Height, validators)
+	// If a rollapp param update requires halt, it returns an error, that will be used to stop the node afterwards.
+	stateUpdateErr := m.Executor.UpdateStateAfterCommit(m.State, responses, appHash, block.Header.Height, validators)
 	_, err = m.Store.SaveState(m.State, nil)
 	if err != nil {
 		return fmt.Errorf("update state: %w", err)
@@ -98,7 +100,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 			m.logger.Error("prune blocks", "retain_height", retainHeight, "err", err)
 		}
 	}
-	return nil
+	return stateUpdateErr
 }
 
 // isHeightAlreadyApplied checks if the block height is already applied to the app.
@@ -137,6 +139,11 @@ func (m *Manager) attemptApplyCachedBlocks() error {
 			return fmt.Errorf("apply cached block: expected height: %d: %w", expectedHeight, err)
 		}
 		m.logger.Info("Block applied", "height", expectedHeight)
+
+		// DA or commit has been modified so it is required to restart the node to update DA config for new DA provider, or to use new binary version.
+		if errors.Is(err, ErrDAUpgrade) || errors.Is(err, ErrVersionUpgrade) {
+			panic(err.Error())
+		}
 
 		m.blockCache.DeleteBlockFromCache(cachedBlock.Block.Header.Height)
 	}

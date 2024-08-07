@@ -14,8 +14,10 @@ import (
 
 	"github.com/dymensionxyz/dymint/store"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
+	"github.com/dymensionxyz/dymint/version"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	tmtypes "github.com/tendermint/tendermint/types"
 
@@ -84,12 +86,11 @@ func NewManager(
 	store store.Store,
 	mempool mempool.Mempool,
 	proxyApp proxy.AppConns,
-	dalc da.DataAvailabilityLayerClient,
 	settlementClient settlement.ClientI,
 	eventBus *tmtypes.EventBus,
 	pubsub *pubsub.Server,
 	p2pClient *p2p.Client,
-	logger types.Logger,
+	logger log.Logger,
 ) (*Manager, error) {
 	localAddress, err := types.GetAddress(localKey)
 	if err != nil {
@@ -108,11 +109,9 @@ func NewManager(
 		Genesis:          genesis,
 		Store:            store,
 		Executor:         exec,
-		DAClient:         dalc,
 		SLClient:         settlementClient,
-		Retriever:        dalc.(da.BatchRetriever),
 		targetSyncHeight: diodes.NewOneToOne(1, nil),
-		logger:           logger,
+		logger:           logger.With("module", "BlockManager"),
 		blockCache: &Cache{
 			cache: make(map[uint64]types.CachedBlock),
 		},
@@ -238,4 +237,19 @@ func (m *Manager) UpdateTargetHeight(h uint64) {
 			break
 		}
 	}
+}
+
+func (m *Manager) ValidateRollappParams() error {
+	if m.DAClient.GetMaxBlobSize() != 0 && m.DAClient.GetMaxBlobSize() < uint32(m.Conf.BatchMaxSizeBytes) {
+		return fmt.Errorf("batch size cannot be greater than %d for %s DA", m.DAClient.GetMaxBlobSize(), m.DAClient.GetClientType())
+	}
+
+	if m.DAClient.GetMaxBlobSize() != 0 && m.State.ConsensusParams.Params.BlockMaxSize > int64(m.DAClient.GetMaxBlobSize()) {
+		return fmt.Errorf("max block size cannot be greater than %d for %s DA", int64(m.DAClient.GetMaxBlobSize()), m.DAClient.GetClientType())
+	}
+
+	if version.Commit != m.State.ConsensusParams.Params.Commit {
+		return fmt.Errorf("binary version used different from rollapp params: %s: %s", version.Commit, m.State.ConsensusParams.Params.Commit)
+	}
+	return nil
 }

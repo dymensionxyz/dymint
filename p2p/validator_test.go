@@ -7,6 +7,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
 	mempoolv1 "github.com/dymensionxyz/dymint/mempool/v1"
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/dymint/types/pb/dymint"
 
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/assert"
@@ -134,8 +135,12 @@ func TestValidator_BlockValidator(t *testing.T) {
 			// Create state
 			maxBytes := uint64(100)
 			state := types.State{}
-			state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
-			state.ConsensusParams.Block.MaxGas = 100000
+			state.ConsensusParams = dymint.RollappConsensusParams{
+				Params: &dymint.Params{
+					BlockMaxGas:  100000,
+					BlockMaxSize: int64(maxBytes),
+				},
+			}
 			state.Validators = tmtypes.NewValidatorSet(nil)
 
 			// Create empty block
@@ -146,7 +151,7 @@ func TestValidator_BlockValidator(t *testing.T) {
 			pubsubServer := pubsub.NewServer()
 			err = pubsubServer.Start()
 			require.NoError(t, err)
-			err = client.Init(settlement.Config{ProposerPubKey: hex.EncodeToString(proposerKey.PubKey().Bytes())}, pubsubServer, log.TestingLogger())
+			err = client.Init(settlement.Config{ProposerPubKey: hex.EncodeToString(proposerKey.PubKey().Bytes())}, "rollappTest", pubsubServer, log.TestingLogger())
 			require.NoError(t, err)
 
 			// Create commit for the block

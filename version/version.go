@@ -1,3 +1,6 @@
 package version
 
-var BuildVersion = "<version>"
+var (
+	BuildVersion = "<version>"
+	Commit       = "<commit>"
+)

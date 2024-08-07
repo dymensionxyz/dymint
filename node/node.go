@@ -19,7 +19,7 @@ import (
 	"github.com/dymensionxyz/dymint/block"
 	"github.com/dymensionxyz/dymint/config"
 	"github.com/dymensionxyz/dymint/da"
-	daregistry "github.com/dymensionxyz/dymint/da/registry"
+	"github.com/dymensionxyz/dymint/da/registry"
 	indexer "github.com/dymensionxyz/dymint/indexers/blockindexer"
 	blockidxkv "github.com/dymensionxyz/dymint/indexers/blockindexer/kv"
 	"github.com/dymensionxyz/dymint/indexers/txindex"
@@ -58,9 +58,9 @@ type Node struct {
 	MempoolIDs   *nodemempool.MempoolIDs
 	incomingTxCh chan *p2p.GossipMessage
 
+	baseKV       store.KV
 	Store        store.Store
 	BlockManager *block.Manager
-	dalc         da.DataAvailabilityLayerClient
 	settlementlc settlement.ClientI
 
 	TxIndexer      txindex.TxIndexer
@@ -83,9 +83,6 @@ func NewNode(
 	logger log.Logger,
 	metrics *mempool.Metrics,
 ) (*Node, error) {
-	if conf.SettlementConfig.RollappID != genesis.ChainID {
-		return nil, fmt.Errorf("rollapp ID in settlement config doesn't match chain ID in genesis")
-	}
 	proxyApp := proxy.NewAppConns(clientCreator)
 	proxyApp.SetLogger(logger.With("module", "proxy"))
 	if err := proxyApp.Start(); err != nil {
@@ -110,19 +107,10 @@ func NewNode(
 	}
 
 	s := store.New(store.NewPrefixKV(baseKV, mainPrefix))
-	// TODO: dalcKV is needed for mock only. Initialize only if mock used
-	dalcKV := store.NewPrefixKV(baseKV, dalcPrefix)
 	indexerKV := store.NewPrefixKV(baseKV, indexerPrefix)
 
-	dalc := daregistry.GetClient(conf.DALayer)
-	if dalc == nil {
-		return nil, fmt.Errorf("get data availability client named '%s'", conf.DALayer)
-	}
-	err := dalc.Init([]byte(conf.DAConfig), pubsubServer, dalcKV, logger.With("module", string(dalc.GetClientType())))
-	if err != nil {
-		return nil, fmt.Errorf("data availability layer client initialization  %w", err)
-	}
-
+	// TODO: dalcKV is needed for mock only. Initialize only if mock used
+	dalcKV := store.NewPrefixKV(baseKV, dalcPrefix)
 	// Init the settlement layer client
 	settlementlc := slregistry.GetClient(slregistry.Client(conf.SettlementLayer))
 	if settlementlc == nil {
@@ -131,7 +119,7 @@ func NewNode(
 	if conf.SettlementLayer == "mock" {
 		conf.SettlementConfig.KeyringHomeDir = conf.RootDir
 	}
-	err = settlementlc.Init(conf.SettlementConfig, pubsubServer, logger.With("module", "settlement_client"))
+	err := settlementlc.Init(conf.SettlementConfig, genesis.ChainID, pubsubServer, logger.With("module", "settlement_client"))
 	if err != nil {
 		return nil, fmt.Errorf("settlement layer client initialization: %w", err)
 	}
@@ -168,12 +156,11 @@ func NewNode(
 		s,
 		mp,
 		proxyApp,
-		dalc,
 		settlementlc,
 		eventBus,
 		pubsubServer,
 		p2pClient,
-		logger.With("module", "BlockManager"),
+		logger,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("BlockManager initialization error: %w", err)
@@ -188,17 +175,27 @@ func NewNode(
 		conf:           conf,
 		P2P:            p2pClient,
 		BlockManager:   blockManager,
-		dalc:           dalc,
 		settlementlc:   settlementlc,
 		Mempool:        mp,
 		MempoolIDs:     mpIDs,
 		incomingTxCh:   make(chan *p2p.GossipMessage),
+		baseKV:         baseKV,
 		Store:          s,
 		TxIndexer:      txIndexer,
 		IndexerService: indexerService,
 		BlockIndexer:   blockIndexer,
 		ctx:            ctx,
 		cancel:         cancel,
+	}
+
+	err = node.setDA(dalcKV, logger)
+	if err != nil {
+		return nil, err
+	}
+
+	err = blockManager.ValidateRollappParams()
+	if err != nil {
+		return nil, err
 	}
 
 	node.BaseService = *service.NewBaseService(logger, "Node", node)
@@ -217,7 +214,7 @@ func (n *Node) OnStart() error {
 	if err != nil {
 		return fmt.Errorf("start pubsub server: %w", err)
 	}
-	err = n.dalc.Start()
+	err = n.BlockManager.DAClient.Start()
 	if err != nil {
 		return fmt.Errorf("start data availability layer client: %w", err)
 	}
@@ -249,7 +246,7 @@ func (n *Node) GetGenesis() *tmtypes.GenesisDoc {
 func (n *Node) OnStop() {
 	n.cancel()
 
-	err := n.dalc.Stop()
+	err := n.BlockManager.DAClient.Stop()
 	if err != nil {
 		n.Logger.Error("stop data availability layer client", "error", err)
 	}
@@ -348,4 +345,25 @@ func (n *Node) startPrometheusServer() error {
 
 func (n *Node) GetBlockManagerHeight() uint64 {
 	return n.BlockManager.State.Height()
+}
+
+// setDA initializes DA client in blockmanager according to DA type set in genesis or stored in state
+func (n *Node) setDA(dalcKV store.KV, logger log.Logger) error {
+	da_layer := n.BlockManager.State.ConsensusParams.Params.Da
+	dalc := registry.GetClient(da_layer)
+	if dalc == nil {
+		return fmt.Errorf("get data availability client named '%s'", da_layer)
+	}
+
+	err := dalc.Init([]byte(n.conf.DAConfig), n.PubsubServer, dalcKV, logger.With("module", string(dalc.GetClientType())))
+	if err != nil {
+		return fmt.Errorf("data availability layer client initialization  %w", err)
+	}
+	n.BlockManager.DAClient = dalc
+	retriever, ok := dalc.(da.BatchRetriever)
+	if !ok {
+		return fmt.Errorf("data availability layer client is not of type BatchRetriever")
+	}
+	n.BlockManager.Retriever = retriever
+	return nil
 }
