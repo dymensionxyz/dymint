@@ -278,9 +278,7 @@ replace (
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.2-alpha.regen.4
 	github.com/gorilla/rpc => github.com/dymensionxyz/rpc v1.3.1
 	github.com/libp2p/go-libp2p-pubsub => github.com/dymensionxyz/go-libp2p-pubsub v0.0.0-20240513081713-3ecd83c19ea2
-	// github.com/tendermint/tendermint => github.com/cometbft/cometbft v0.34.28
-	github.com/tendermint/tendermint => github.com/dymensionxyz/cometbft v0.34.29-0.20240807063724-0f6e36089879
-
+	github.com/tendermint/tendermint => github.com/dymensionxyz/cometbft v0.34.29-0.20240807121422-5299b866061c
 )
 
 replace github.com/osmosis-labs/osmosis/v15 => github.com/dymensionxyz/osmosis/v15 v15.2.0-dymension-v1.1.2
