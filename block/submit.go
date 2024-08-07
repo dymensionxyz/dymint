@@ -24,6 +24,7 @@ func (m *Manager) SubmitLoop(ctx context.Context,
 	bytesProduced chan int,
 ) (err error) {
 	return SubmitLoopInner(ctx,
+		m.logger,
 		bytesProduced,
 		m.Conf.MaxBatchSkew,
 		m.Conf.BatchSubmitMaxTime,
@@ -34,6 +35,7 @@ func (m *Manager) SubmitLoop(ctx context.Context,
 
 // SubmitLoopInner is a unit testable impl of SubmitLoop
 func SubmitLoopInner(ctx context.Context,
+	logger types.Logger,
 	bytesProduced chan int, // a channel of block and commit bytes produced
 	maxBatchSkew uint64, // max number of batches that submitter is allowed to have pending
 	maxBatchTime time.Duration, // max time to allow between batches
@@ -102,6 +104,9 @@ func SubmitLoopInner(ctx context.Context,
 					break
 				}
 				nConsumed, err := createAndSubmitBatch(min(pending, maxBatchBytes))
+				if errors.Is(err, gerrc.ErrInternal) {
+					panic(fmt.Sprintf("create and submit batch: %v", err))
+				}
 				if err != nil {
 					return fmt.Errorf("create and submit batch: %w", err)
 				}
@@ -143,6 +148,7 @@ func (m *Manager) CreateAndSubmitBatch(maxSizeBytes uint64) (*types.Batch, error
 // CreateBatch looks through the store for any unsubmitted blocks and commits and bundles them into a batch
 // max size bytes is the maximum size of the serialized batch type
 func (m *Manager) CreateBatch(maxBatchSize uint64, startHeight uint64, endHeightInclusive uint64) (*types.Batch, error) {
+	m.logger.Info("Creating batch", "start height", startHeight, "end height", endHeightInclusive)
 	batchSize := endHeightInclusive - startHeight + 1
 	batch := &types.Batch{
 		Blocks:  make([]*types.Block, 0, batchSize),
@@ -176,13 +182,17 @@ func (m *Manager) CreateBatch(maxBatchSize uint64, startHeight uint64, endHeight
 		}
 	}
 
+	if batch.NumBlocks() == 0 {
+		return nil, fmt.Errorf("empty batch: %w", gerrc.ErrInternal)
+	}
+
 	return batch, nil
 }
 
 func (m *Manager) SubmitBatch(batch *types.Batch) error {
 	resultSubmitToDA := m.DAClient.SubmitBatch(batch)
 	if resultSubmitToDA.Code != da.StatusSuccess {
-		return fmt.Errorf("da client submit batch: %s", resultSubmitToDA.Message)
+		return fmt.Errorf("da client submit batch: %s: %w", resultSubmitToDA.Message, resultSubmitToDA.Error)
 	}
 	m.logger.Info("Submitted batch to DA.", "start height", batch.StartHeight(), "end height", batch.EndHeight())
 
