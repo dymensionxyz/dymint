@@ -106,6 +106,7 @@ func testSubmitLoopInner(
 
 	block.SubmitLoopInner(
 		ctx,
+		nil,
 		producedBytesC,
 		args.batchSkew,
 		args.maxTime,
