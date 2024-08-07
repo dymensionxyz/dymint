@@ -4,15 +4,28 @@ import (
 	"context"
 	"testing"
 
+	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/testutil"
+	"github.com/dymensionxyz/dymint/version"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/proxy"
 )
 
 func TestPruningRetainHeight(t *testing.T) {
 	require := require.New(t)
 	app := testutil.GetAppMock()
+	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
+		Da:     "mock",
+		Commit: version.Commit,
+		Block: &abci.BlockParams{
+			MaxBytes: 500000,
+			MaxGas:   40000000,
+		},
+	}})
 	ctx := context.Background()
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)
@@ -20,8 +33,10 @@ func TestPruningRetainHeight(t *testing.T) {
 	err := proxyApp.Start()
 	require.NoError(err)
 
-	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, nil, 1, 1, 0, proxyApp, nil)
+	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
+	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
+	manager.Retriever = manager.DAClient.(da.BatchRetriever)
 
 	// Check initial assertions
 	require.Zero(manager.State.Height())
