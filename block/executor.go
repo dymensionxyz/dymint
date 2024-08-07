@@ -87,6 +87,12 @@ func (e *Executor) InitChain(genesis *tmtypes.GenesisDoc, validators []*tmtypes.
 	})
 }
 
+func (e *Executor) CreateLastBlock(height uint64, lastCommit *types.Commit, lastHeaderHash [32]byte, state *types.State, nextSeqHash [32]byte) *types.Block {
+	block := e.CreateBlock(height, lastCommit, lastHeaderHash, state, 0)
+	copy(block.Header.NextSequencersHash[:], nextSeqHash[:])
+	return block
+}
+
 // CreateBlock reaps transactions from mempool and builds a block.
 func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHeaderHash [32]byte, state *types.State, maxBlockDataSizeBytes uint64) *types.Block {
 	if state.ConsensusParams.Block.MaxBytes > 0 {
