@@ -24,9 +24,13 @@ func MustSubscribe(
 	logger types.Logger,
 ) {
 	subscription, err := pubsubServer.SubscribeUnbuffered(ctx, clientID, eventQuery)
-	if err != nil && !errors.Is(err, context.Canceled) {
-		logger.Error("subscribe to events")
-		panic(err)
+	if err != nil {
+		err = fmt.Errorf("subscribe unbuffered: %w", err)
+		if !errors.Is(err, context.Canceled) {
+			logger.Error("Must subscribe.", "err", err)
+			panic(err)
+		}
+		return
 	}
 
 	for {
