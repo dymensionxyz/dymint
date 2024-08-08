@@ -1,6 +1,7 @@
 package block
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
@@ -14,6 +15,10 @@ func (m *Manager) PruneBlocks(retainHeight uint64) error {
 			gerrc.ErrInvalidArgument)
 	}
 
+	err := m.p2pClient.RemoveBlocks(context.TODO(), m.State.BaseHeight, retainHeight)
+	if err != nil {
+		m.logger.Error("pruning block-sync store", "retain_height", retainHeight, "err", err)
+	}
 	pruned, err := m.Store.PruneBlocks(m.State.BaseHeight, retainHeight)
 	if err != nil {
 		return fmt.Errorf("prune block store: %w", err)

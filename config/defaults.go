@@ -37,11 +37,13 @@ func DefaultConfig(home, chainId string) *NodeConfig {
 			PrometheusListenAddr: ":2112",
 		},
 		P2PConfig: P2PConfig{
-			GossipSubCacheSize: 50,
-			BootstrapRetryTime: 30 * time.Second,
-			ListenAddress:      DefaultListenAddress,
-			BootstrapNodes:     "",
-			AdvertisingEnabled: true,
+			GossipSubCacheSize:           50,
+			BootstrapRetryTime:           30 * time.Second,
+			BlockSyncRequestIntervalTime: 30 * time.Second,
+			ListenAddress:                DefaultListenAddress,
+			BootstrapNodes:               "",
+			AdvertisingEnabled:           true,
+			BlockSyncEnabled:             true,
 		},
 		DBConfig: DBConfig{
 			SyncWrites: true,
