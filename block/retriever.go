@@ -136,7 +136,7 @@ func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
 
 			lastAppliedHeight = float64(block.Header.Height)
 
-			m.blockCache.DeleteBlockFromCache(block.Header.Height)
+			m.blockCache.Delete(block.Header.Height)
 		}
 	}
 	types.LastReceivedDAHeightGauge.Set(lastAppliedHeight)
