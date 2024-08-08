@@ -22,14 +22,13 @@ func TestUint64Sub(t *testing.T) {
 			},
 			"add": func(r *rapid.T) {
 				d := rapid.Uint64().Draw(r, "d")
-				sub := rapid.Bool().Draw(r, "sub")
-				if sub {
-					exp -= d
-					Uint64Sub(&got, d)
-				} else {
-					exp += d
-					got.Add(d)
-				}
+				exp += d
+				got.Add(d)
+			},
+			"sub": func(r *rapid.T) {
+				d := rapid.Uint64().Draw(r, "d")
+				exp -= d
+				Uint64Sub(&got, d)
 			},
 		})
 	})
