@@ -270,6 +270,7 @@ require (
 	github.com/rogpeppe/go-internal v1.11.0 // indirect
 	go.uber.org/mock v0.4.0 // indirect
 	golang.org/x/tools v0.18.0 // indirect
+	pgregory.net/rapid v1.1.0 // indirect
 )
 
 replace (

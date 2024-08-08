@@ -92,7 +92,7 @@ func TestInitialState(t *testing.T) {
 			store:                   fullStore,
 			genesis:                 genesis,
 			expectedInitialHeight:   sampleState.InitialHeight,
-			expectedLastBlockHeight: sampleState.LastBlockHeight.Load(),
+			expectedLastBlockHeight: sampleState.Height(),
 			expectedChainID:         sampleState.ChainID,
 		},
 	}
@@ -106,7 +106,7 @@ func TestInitialState(t *testing.T) {
 			assert.NotNil(agg)
 			assert.Equal(c.expectedChainID, agg.State.ChainID)
 			assert.Equal(c.expectedInitialHeight, agg.State.InitialHeight)
-			assert.Equal(c.expectedLastBlockHeight, agg.State.LastBlockHeight.Load())
+			assert.Equal(c.expectedLastBlockHeight, agg.State.Height())
 		})
 	}
 }

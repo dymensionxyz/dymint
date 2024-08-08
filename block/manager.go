@@ -12,6 +12,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/dymensionxyz/dymint/store"
+	uerrors "github.com/dymensionxyz/dymint/utils/errors"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
@@ -161,15 +162,15 @@ func (m *Manager) Start(ctx context.Context) error {
 			return fmt.Errorf("sync block manager: %w", err)
 		}
 
-		eg.Go(func() error {
+		uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 			return m.RetrieveLoop(ctx)
 		})
-		eg.Go(func() error {
+		uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 			return m.SyncToTargetHeightLoop(ctx)
 		})
 		go func() {
-			err := eg.Wait()
-			m.logger.Info("Block manager err group finished.", "err", err)
+			_ = eg.Wait()
+			m.logger.Info("Block manager err group finished.")
 		}()
 		return nil
 	}
@@ -205,10 +206,10 @@ func (m *Manager) Start(ctx context.Context) error {
 	// channel to signal sequencer rotation started
 	rotateSequencerC := make(chan string, 1)
 
-	eg.Go(func() error {
+	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		return m.SubmitLoop(ctx, bytesProducedC)
 	})
-	eg.Go(func() error {
+	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		return m.ProduceBlockLoop(ctx, bytesProducedC)
 	})
 	eg.Go(func() error {
@@ -216,14 +217,13 @@ func (m *Manager) Start(ctx context.Context) error {
 	})
 
 	go func() {
-		err := eg.Wait()
-
+		_ = eg.Wait()
 		// Check if exited due to sequencer rotation signal
 		select {
 		case nextSeqAddr := <-rotateSequencerC:
 			m.handleRotationReq(ctx, nextSeqAddr)
 		default:
-			m.logger.Info("Block manager err group finished.", "err", err)
+			m.logger.Info("Block manager err group finished.")
 		}
 	}()
 

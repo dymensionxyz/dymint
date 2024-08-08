@@ -232,7 +232,7 @@ func GenerateState(initialHeight int64, lastBlockHeight int64) *types.State {
 		},
 	}
 	s.Sequencers.SetBondedSet(GenerateRandomValidatorSet())
-	s.LastBlockHeight.Store(uint64(lastBlockHeight))
+	s.SetHeight(uint64(lastBlockHeight))
 	return s
 }
 

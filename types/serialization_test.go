@@ -150,7 +150,7 @@ func TestStateRoundTrip(t *testing.T) {
 			c.state.Sequencers.SetBondedSet(valSet)
 
 			if c.state.InitialHeight != 0 {
-				c.state.LastBlockHeight.Store(986321)
+				c.state.SetHeight(986321)
 			}
 
 			pState, err := c.state.ToProto()
