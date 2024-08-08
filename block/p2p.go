@@ -39,7 +39,7 @@ func (m *Manager) onReceivedBlock(event pubsub.Message) {
 	m.retrieverMu.Lock() // needed to protect blockCache access
 
 	// It is not strictly necessary to return early, for correctness, but doing so helps us avoid mutex pressure and unnecessary repeated attempts to apply cached blocks
-	if m.blockCache.HasBlockInCache(height) {
+	if m.blockCache.Has(height) {
 		m.retrieverMu.Unlock()
 		return
 	}
@@ -51,7 +51,7 @@ func (m *Manager) onReceivedBlock(event pubsub.Message) {
 
 	nextHeight := m.State.NextHeight()
 	if height >= nextHeight {
-		m.blockCache.AddBlockToCache(height, &block, &commit, source)
+		m.blockCache.Add(height, &block, &commit, source)
 	}
 	m.retrieverMu.Unlock() // have to give this up as it's locked again in attempt apply, and we're not re-entrant
 
