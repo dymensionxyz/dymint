@@ -48,6 +48,9 @@ func (s *DefaultStore) PruneBlocks(from, to uint64) (uint64, error) {
 		if err := batch.Delete(getValidatorsKey(h)); err != nil {
 			return 0, err
 		}
+		if err := batch.Delete(getCidKey(h)); err != nil {
+			return 0, err
+		}
 
 		pruned++
 

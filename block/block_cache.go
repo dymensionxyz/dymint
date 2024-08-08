@@ -9,8 +9,8 @@ type Cache struct {
 	cache map[uint64]types.CachedBlock
 }
 
-func (m *Cache) AddBlockToCache(h uint64, b *types.Block, c *types.Commit) {
-	m.cache[h] = types.CachedBlock{Block: b, Commit: c}
+func (m *Cache) AddBlockToCache(h uint64, b *types.Block, c *types.Commit, source types.BlockSource) {
+	m.cache[h] = types.CachedBlock{Block: b, Commit: c, Source: source}
 	types.BlockCacheSizeGauge.Set(float64(m.Size()))
 }
 

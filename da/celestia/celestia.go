@@ -267,11 +267,11 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 			c.logger.Debug("Context cancelled.")
 			return da.ResultRetrieveBatch{}
 		default:
-			// Just for backward compatibility, in case no commitments are sent from the Hub, batch can be retrieved using previous implementation.
 			var resultRetrieveBatch da.ResultRetrieveBatch
 			err := retry.Do(
 				func() error {
 					var result da.ResultRetrieveBatch
+					// Just for backward compatibility, in case no commitments are sent from the Hub, batch can be retrieved using previous implementation.
 					if daMetaData.Commitment == nil {
 						result = c.retrieveBatchesNoCommitment(daMetaData.Height)
 					} else {
