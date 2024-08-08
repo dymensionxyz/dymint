@@ -9,17 +9,18 @@ type BlockSource uint64
 
 const (
 	_ BlockSource = iota
-	ProducedBlock
-	GossipedBlock
-	DABlock
-	LocalDbBlock
+	Produced
+	Gossiped
+	BlockSync
+	DA
+	LocalDb
 )
 
 func (s BlockSource) String() string {
 	return AllSources[s]
 }
 
-var AllSources = []string{"none", "produced", "gossip", "da", "local_db"}
+var AllSources = []string{"none", "produced", "gossip", "blocksync", "da", "local_db"}
 
 type BlockMetaData struct {
 	Source   BlockSource
@@ -29,6 +30,7 @@ type BlockMetaData struct {
 type CachedBlock struct {
 	Block  *Block
 	Commit *Commit
+	Source BlockSource
 }
 
 func GetAddress(key crypto.PrivKey) ([]byte, error) {

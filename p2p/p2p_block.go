@@ -10,8 +10,8 @@ import (
 /*                                 Event Data                                 */
 /* -------------------------------------------------------------------------- */
 
-// GossipedBlock defines the struct of the event data for the GossipedBlock
-type GossipedBlock struct {
+// P2PBlockEvent defines the struct of the event data for the Block sent via P2P
+type P2PBlockEvent struct {
 	// Block is the block that was gossiped
 	Block types.Block
 	// Commit is the commit that was gossiped
@@ -19,12 +19,12 @@ type GossipedBlock struct {
 }
 
 // MarshalBinary encodes GossipedBlock into binary form and returns it.
-func (e *GossipedBlock) MarshalBinary() ([]byte, error) {
+func (e *P2PBlockEvent) MarshalBinary() ([]byte, error) {
 	return e.ToProto().Marshal()
 }
 
 // UnmarshalBinary decodes binary form of GossipedBlock into object.
-func (e *GossipedBlock) UnmarshalBinary(data []byte) error {
+func (e *P2PBlockEvent) UnmarshalBinary(data []byte) error {
 	var pbGossipedBlock pb.GossipedBlock
 	err := pbGossipedBlock.Unmarshal(data)
 	if err != nil {
@@ -35,15 +35,15 @@ func (e *GossipedBlock) UnmarshalBinary(data []byte) error {
 }
 
 // ToProto converts Data into protobuf representation and returns it.
-func (e *GossipedBlock) ToProto() *pb.GossipedBlock {
+func (e *P2PBlockEvent) ToProto() *pb.GossipedBlock {
 	return &pb.GossipedBlock{
 		Block:  e.Block.ToProto(),
 		Commit: e.Commit.ToProto(),
 	}
 }
 
-// FromProto fills GossipedBlock with data from its protobuf representation.
-func (e *GossipedBlock) FromProto(other *pb.GossipedBlock) error {
+// FromProto fills P2PBlock with data from its protobuf representation.
+func (e *P2PBlockEvent) FromProto(other *pb.GossipedBlock) error {
 	if err := e.Block.FromProto(other.Block); err != nil {
 		return err
 	}
@@ -54,7 +54,7 @@ func (e *GossipedBlock) FromProto(other *pb.GossipedBlock) error {
 }
 
 // Validate run basic validation on the gossiped block
-func (e *GossipedBlock) Validate(proposerPubKey tmcrypto.PubKey) error {
+func (e *P2PBlockEvent) Validate(proposerPubKey tmcrypto.PubKey) error {
 	if err := e.Block.ValidateBasic(); err != nil {
 		return err
 	}

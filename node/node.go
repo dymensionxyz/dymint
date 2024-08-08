@@ -4,17 +4,14 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"time"
 
+	"github.com/ipfs/go-datastore"
+	leveldb "github.com/ipfs/go-ds-leveldb"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
-
-	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/libs/pubsub"
-	"github.com/tendermint/tendermint/libs/service"
-	"github.com/tendermint/tendermint/proxy"
-	tmtypes "github.com/tendermint/tendermint/types"
 
 	"github.com/dymensionxyz/dymint/block"
 	"github.com/dymensionxyz/dymint/config"
@@ -31,6 +28,11 @@ import (
 	"github.com/dymensionxyz/dymint/settlement"
 	slregistry "github.com/dymensionxyz/dymint/settlement/registry"
 	"github.com/dymensionxyz/dymint/store"
+	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/libs/pubsub"
+	"github.com/tendermint/tendermint/libs/service"
+	"github.com/tendermint/tendermint/proxy"
+	tmtypes "github.com/tendermint/tendermint/types"
 )
 
 // prefixes used in KV store to separate main node data from DALC data
@@ -101,12 +103,21 @@ func NewNode(
 	pubsubServer := pubsub.NewServer()
 
 	var baseKV store.KV
+	var dstore datastore.Datastore
+
 	if conf.DBConfig.InMemory || (conf.RootDir == "" && conf.DBPath == "") { // this is used for testing
 		logger.Info("WARNING: working in in-memory mode")
 		baseKV = store.NewDefaultInMemoryKVStore()
+		dstore = datastore.NewMapDatastore()
 	} else {
 		// TODO(omritoptx): Move dymint to const
 		baseKV = store.NewKVStore(conf.RootDir, conf.DBPath, "dymint", conf.DBConfig.SyncWrites)
+		path := filepath.Join(store.Rootify(conf.RootDir, conf.DBPath), "blocksync")
+		var err error
+		dstore, err = leveldb.NewDatastore(path, &leveldb.Options{})
+		if err != nil {
+			return nil, fmt.Errorf("initialize datastore at %s: %w", path, err)
+		}
 	}
 
 	s := store.New(store.NewPrefixKV(baseKV, mainPrefix))
@@ -171,7 +182,7 @@ func NewNode(
 
 	// Set p2p client and it's validators
 	p2pValidator := p2p.NewValidator(logger.With("module", "p2p_validator"), blockManager)
-	p2pClient, err := p2p.NewClient(conf.P2PConfig, p2pKey, genesis.ChainID, pubsubServer, logger.With("module", "p2p"))
+	p2pClient, err := p2p.NewClient(conf.P2PConfig, p2pKey, genesis.ChainID, s, pubsubServer, dstore, logger.With("module", "p2p"))
 	if err != nil {
 		return nil, err
 	}

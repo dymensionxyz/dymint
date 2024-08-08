@@ -14,12 +14,16 @@ const (
 )
 
 const (
-	EventNewGossipedBlock = "NewGossipedBlock"
+	EventNewGossipedBlock  = "NewGossipedBlock"
+	EventNewBlockSyncBlock = "NewBlockSyncBlock"
 )
 
 /* -------------------------------------------------------------------------- */
 /*                                   Queries                                  */
 /* -------------------------------------------------------------------------- */
 
-// EventQueryNewNewGossipedBlock is the query used for getting EventNewGossipedBlock
-var EventQueryNewNewGossipedBlock = uevent.QueryFor(EventTypeKey, EventNewGossipedBlock)
+// EventQueryNewGossipedBlock is the query used for getting EventNewGossipedBlock
+var EventQueryNewGossipedBlock = uevent.QueryFor(EventTypeKey, EventNewGossipedBlock)
+
+// EventQueryNewBlockSyncBlock is the query used for getting EventNewBlockSyncBlock
+var EventQueryNewBlockSyncBlock = uevent.QueryFor(EventTypeKey, EventNewBlockSyncBlock)

@@ -74,7 +74,7 @@ func (d *DataAvailabilityLayerClient) Start() error {
 
 // Stop closes connection to gRPC server.
 func (d *DataAvailabilityLayerClient) Stop() error {
-	d.logger.Info("stopoing GRPC DALC")
+	d.logger.Info("stopping GRPC DALC")
 	return d.conn.Close()
 }
 

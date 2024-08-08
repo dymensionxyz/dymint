@@ -127,23 +127,23 @@ func (m *Manager) attemptApplyCachedBlocks() error {
 	for {
 		expectedHeight := m.State.NextHeight()
 
-		cachedBlock, blockExists := m.blockCache.GetBlockFromCache(expectedHeight)
+		cachedBlock, blockExists := m.blockCache.Get(expectedHeight)
 		if !blockExists {
 			break
 		}
 		if err := m.validateBlockBeforeApply(cachedBlock.Block, cachedBlock.Commit); err != nil {
-			m.blockCache.DeleteBlockFromCache(cachedBlock.Block.Header.Height)
+			m.blockCache.Delete(cachedBlock.Block.Header.Height)
 			// TODO: can we take an action here such as dropping the peer / reducing their reputation?
 			return fmt.Errorf("block not valid at height %d, dropping it: err:%w", cachedBlock.Block.Header.Height, err)
 		}
 
-		err := m.applyBlock(cachedBlock.Block, cachedBlock.Commit, types.BlockMetaData{Source: types.GossipedBlock})
+		err := m.applyBlock(cachedBlock.Block, cachedBlock.Commit, types.BlockMetaData{Source: cachedBlock.Source})
 		if err != nil {
 			return fmt.Errorf("apply cached block: expected height: %d: %w", expectedHeight, err)
 		}
 		m.logger.Info("Block applied", "height", expectedHeight)
 
-		m.blockCache.DeleteBlockFromCache(cachedBlock.Block.Header.Height)
+		m.blockCache.Delete(cachedBlock.Block.Header.Height)
 	}
 
 	return nil

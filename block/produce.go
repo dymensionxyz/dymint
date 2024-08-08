@@ -72,6 +72,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int)
 			}
 
 			bytesProducedN := block.SizeBytes() + commit.SizeBytes()
+			m.logger.Info("New block.", "size", uint64(block.ToProto().Size()))
 			select {
 			case <-ctx.Done():
 				return nil
@@ -120,7 +121,7 @@ func (m *Manager) ProduceApplyGossipBlock(ctx context.Context, allowEmpty bool, 
 		return nil, nil, fmt.Errorf("produce block: %w", err)
 	}
 
-	if err := m.applyBlock(block, commit, types.BlockMetaData{Source: types.ProducedBlock}); err != nil {
+	if err := m.applyBlock(block, commit, types.BlockMetaData{Source: types.Produced}); err != nil {
 		return nil, nil, fmt.Errorf("apply block: %w: %w", err, ErrNonRecoverable)
 	}
 

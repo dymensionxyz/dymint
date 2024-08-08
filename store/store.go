@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/ipfs/go-cid"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	"go.uber.org/multierr"
 
@@ -19,6 +20,7 @@ var (
 	statePrefix      = [1]byte{4}
 	responsesPrefix  = [1]byte{5}
 	validatorsPrefix = [1]byte{6}
+	cidPrefix        = [1]byte{7}
 )
 
 // DefaultStore is a default store implementation.
@@ -249,6 +251,26 @@ func (s *DefaultStore) loadHashFromIndex(height uint64) ([32]byte, error) {
 	return hash, nil
 }
 
+func (s *DefaultStore) SaveBlockCid(height uint64, cid cid.Cid, batch KVBatch) (KVBatch, error) {
+	if batch == nil {
+		return nil, s.db.Set(getCidKey(height), []byte(cid.String()))
+	}
+	err := batch.Set(getCidKey(height), []byte(cid.String()))
+	return batch, err
+}
+
+func (s *DefaultStore) LoadBlockCid(height uint64) (cid.Cid, error) {
+	cidBytes, err := s.db.Get(getCidKey(height))
+	if err != nil {
+		return cid.Undef, fmt.Errorf("load cid for height %v: %w", height, err)
+	}
+	parsedCid, err := cid.Parse(string(cidBytes))
+	if err != nil {
+		return cid.Undef, fmt.Errorf("parse cid: %w", err)
+	}
+	return parsedCid, nil
+}
+
 func getBlockKey(hash [32]byte) []byte {
 	return append(blockPrefix[:], hash[:]...)
 }
@@ -277,4 +299,10 @@ func getValidatorsKey(height uint64) []byte {
 	buf := make([]byte, 8)
 	binary.BigEndian.PutUint64(buf, height)
 	return append(validatorsPrefix[:], buf[:]...)
+}
+
+func getCidKey(height uint64) []byte {
+	buf := make([]byte, 8)
+	binary.BigEndian.PutUint64(buf, height)
+	return append(cidPrefix[:], buf[:]...)
 }
