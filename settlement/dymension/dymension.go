@@ -48,7 +48,6 @@ type Client struct {
 	rollappQueryClient      rollapptypes.QueryClient
 	sequencerQueryClient    sequencertypes.QueryClient
 	protoCodec              *codec.ProtoCodec
-	sequencerList           []settlement.Sequencer
 	proposer                settlement.Sequencer
 	retryAttempts           uint
 	retryMinDelay           time.Duration

@@ -58,7 +58,7 @@ func (c *Client) eventHandler() {
 		panic(fmt.Errorf("subscribe to events (%s): %w", eventRotationStartedQ, err))
 	}
 
-	defer c.cosmosClient.UnsubscribeAll(c.ctx, subscriber)
+	defer c.cosmosClient.UnsubscribeAll(c.ctx, subscriber) //nolint:errcheck
 
 	for {
 		var e ctypes.ResultEvent

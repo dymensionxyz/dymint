@@ -17,7 +17,7 @@ func (m *Manager) MonitorSequencerRotation(ctx context.Context, rotateC chan str
 	if err != nil {
 		panic("Error subscribing to events")
 	}
-	defer m.Pubsub.UnsubscribeAll(ctx, sequencerRotationEventClient)
+	defer m.Pubsub.UnsubscribeAll(ctx, sequencerRotationEventClient) //nolint:errcheck
 
 	for {
 		select {
