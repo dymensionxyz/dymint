@@ -176,14 +176,14 @@ func (m *Manager) CreateBatch(maxBatchSize uint64, startHeight uint64, endHeight
 		Commits: make([]*types.Commit, 0, batchSize),
 	}
 
-	for height := startHeight; height <= endHeightInclusive; height++ {
-		block, err := m.Store.LoadBlock(height)
+	for h := startHeight; h <= endHeightInclusive; h++ {
+		block, err := m.Store.LoadBlock(h)
 		if err != nil {
-			return nil, fmt.Errorf("load block: height: %d: %w", height, err)
+			return nil, fmt.Errorf("load block: h: %d: %w", h, err)
 		}
-		commit, err := m.Store.LoadCommit(height)
+		commit, err := m.Store.LoadCommit(h)
 		if err != nil {
-			return nil, fmt.Errorf("load commit: height: %d: %w", height, err)
+			return nil, fmt.Errorf("load commit: h: %d: %w", h, err)
 		}
 
 		batch.Blocks = append(batch.Blocks, block)
@@ -196,8 +196,8 @@ func (m *Manager) CreateBatch(maxBatchSize uint64, startHeight uint64, endHeight
 			batch.Blocks = batch.Blocks[:len(batch.Blocks)-1]
 			batch.Commits = batch.Commits[:len(batch.Commits)-1]
 
-			if height == startHeight {
-				return nil, fmt.Errorf("block size exceeds max batch size: height %d: size: %d: %w", height, totalSize, gerrc.ErrOutOfRange)
+			if h == startHeight {
+				return nil, fmt.Errorf("block size exceeds max batch size: h %d: size: %d: %w", h, totalSize, gerrc.ErrOutOfRange)
 			}
 			break
 		}
