@@ -10,6 +10,7 @@ import (
 
 	"github.com/dymensionxyz/dymint/block"
 	"github.com/stretchr/testify/require"
+	"github.com/tendermint/tendermint/libs/log"
 )
 
 type testArgs struct {
@@ -104,14 +105,7 @@ func testSubmitLoopInner(
 		return uint64(consumed), nil
 	}
 
-	block.SubmitLoopInner(
-		ctx,
-		producedBytesC,
-		args.batchSkew,
-		args.maxTime,
-		args.batchBytes,
-		submitBatch,
-	)
+	block.SubmitLoopInner(ctx, log.TestingLogger(), producedBytesC, args.batchSkew, args.maxTime, args.batchBytes, submitBatch)
 }
 
 // Make sure the producer does not get too far ahead
