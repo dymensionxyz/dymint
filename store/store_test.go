@@ -101,7 +101,7 @@ func TestLoadState(t *testing.T) {
 		NextValidators: validatorSet,
 		Validators:     validatorSet,
 	}
-	s.LastBlockHeight.Store(expectedHeight)
+	s.SetHeight(expectedHeight)
 	_, err := s1.SaveState(s, nil)
 	assert.NoError(err)
 
@@ -109,7 +109,7 @@ func TestLoadState(t *testing.T) {
 	state, err := s2.LoadState()
 	assert.NoError(err)
 
-	assert.Equal(expectedHeight, state.LastBlockHeight.Load())
+	assert.Equal(expectedHeight, state.Height())
 }
 
 func TestBlockResponses(t *testing.T) {

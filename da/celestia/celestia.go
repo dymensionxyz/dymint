@@ -207,6 +207,18 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 
 			// TODO(srene):  Split batch in multiple blobs if necessary if supported
 			height, commitment, err := c.submit(data)
+			if errors.Is(err, gerrc.ErrInternal) {
+				// no point retrying if it's because of our code being wrong
+				err = fmt.Errorf("submit: %w", err)
+				return da.ResultSubmitBatch{
+					BaseResult: da.BaseResult{
+						Code:    da.StatusError,
+						Message: err.Error(),
+						Error:   err,
+					},
+				}
+			}
+
 			if err != nil {
 				c.logger.Error("Submit blob.", "error", err)
 				types.RollappConsecutiveFailedDASubmission.Inc()
@@ -521,11 +533,11 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 func (c *DataAvailabilityLayerClient) submit(daBlob da.Blob) (uint64, da.Commitment, error) {
 	blobs, commitments, err := c.blobsAndCommitments(daBlob)
 	if err != nil {
-		return 0, nil, fmt.Errorf("blobs and commitments: %w", err)
+		return 0, nil, fmt.Errorf("blobs and commitments: %w: %w", err, gerrc.ErrInternal)
 	}
 
 	if len(commitments) == 0 {
-		return 0, nil, fmt.Errorf("zero commitments: %w", gerrc.ErrNotFound)
+		return 0, nil, fmt.Errorf("zero commitments: %w: %w", gerrc.ErrNotFound, gerrc.ErrInternal)
 	}
 
 	blobSizes := make([]uint32, len(blobs))

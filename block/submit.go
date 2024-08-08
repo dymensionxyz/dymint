@@ -12,6 +12,7 @@ import (
 
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/types"
+	uatomic "github.com/dymensionxyz/dymint/utils/atomic"
 	uchannel "github.com/dymensionxyz/dymint/utils/channel"
 )
 
@@ -23,7 +24,9 @@ import (
 func (m *Manager) SubmitLoop(ctx context.Context,
 	bytesProduced chan int,
 ) (err error) {
-	return SubmitLoopInner(ctx,
+	return SubmitLoopInner(
+		ctx,
+		m.logger,
 		bytesProduced,
 		m.Conf.MaxBatchSkew,
 		m.Conf.BatchSubmitMaxTime,
@@ -33,7 +36,9 @@ func (m *Manager) SubmitLoop(ctx context.Context,
 }
 
 // SubmitLoopInner is a unit testable impl of SubmitLoop
-func SubmitLoopInner(ctx context.Context,
+func SubmitLoopInner(
+	ctx context.Context,
+	logger types.Logger,
 	bytesProduced chan int, // a channel of block and commit bytes produced
 	maxBatchSkew uint64, // max number of batches that submitter is allowed to have pending
 	maxBatchTime time.Duration, // max time to allow between batches
@@ -72,6 +77,7 @@ func SubmitLoopInner(ctx context.Context,
 					return ctx.Err()
 				case n := <-bytesProduced:
 					pendingBytes.Add(uint64(n))
+					logger.Info("Added bytes produced to bytes pending submission counter.", "n", n)
 				case <-ticker.C:
 				}
 			}
@@ -103,10 +109,16 @@ func SubmitLoopInner(ctx context.Context,
 				}
 				nConsumed, err := createAndSubmitBatch(min(pending, maxBatchBytes))
 				if err != nil {
-					return fmt.Errorf("create and submit batch: %w", err)
+					err = fmt.Errorf("create and submit batch: %w", err)
+					if errors.Is(err, gerrc.ErrInternal) {
+						logger.Error("Create and submit batch", "err", err, "pending", pending)
+						panic(err)
+					}
+					return err
 				}
 				timeLastSubmission = time.Now()
-				pending = pendingBytes.Add(^(nConsumed - 1)) // subtract
+				pending = uatomic.Uint64Sub(&pendingBytes, nConsumed)
+				logger.Info("Submitted a batch to both sub-layers.", "n bytes consumed from pending", nConsumed, "pending after", pending) // TODO: debug level
 			}
 			trigger.Nudge()
 		}
@@ -129,10 +141,25 @@ func (m *Manager) CreateAndSubmitBatchGetSizeBlocksCommits(maxSize uint64) (uint
 // CreateAndSubmitBatch creates and submits a batch to the DA and SL.
 // max size bytes is the maximum size of the serialized batch type
 func (m *Manager) CreateAndSubmitBatch(maxSizeBytes uint64) (*types.Batch, error) {
-	b, err := m.CreateBatch(maxSizeBytes, m.NextHeightToSubmit(), m.State.Height())
+	startHeight := m.NextHeightToSubmit()
+	endHeightInclusive := m.State.Height()
+
+	if endHeightInclusive < startHeight {
+		// TODO: https://github.com/dymensionxyz/dymint/issues/999
+		return nil, fmt.Errorf(
+			"next height to submit is greater than last block height, create and submit batch should not have been called: start height: %d: end height inclusive: %d: %w",
+			startHeight,
+			endHeightInclusive,
+			gerrc.ErrInternal,
+		)
+	}
+
+	b, err := m.CreateBatch(maxSizeBytes, startHeight, endHeightInclusive)
 	if err != nil {
 		return nil, fmt.Errorf("create batch: %w", err)
 	}
+
+	m.logger.Info("Created batch.", "start height", startHeight, "end height", endHeightInclusive)
 
 	if err := m.SubmitBatch(b); err != nil {
 		return nil, fmt.Errorf("submit batch: %w", err)
@@ -182,7 +209,7 @@ func (m *Manager) CreateBatch(maxBatchSize uint64, startHeight uint64, endHeight
 func (m *Manager) SubmitBatch(batch *types.Batch) error {
 	resultSubmitToDA := m.DAClient.SubmitBatch(batch)
 	if resultSubmitToDA.Code != da.StatusSuccess {
-		return fmt.Errorf("da client submit batch: %s", resultSubmitToDA.Message)
+		return fmt.Errorf("da client submit batch: %s: %w", resultSubmitToDA.Message, resultSubmitToDA.Error)
 	}
 	m.logger.Info("Submitted batch to DA.", "start height", batch.StartHeight(), "end height", batch.EndHeight())
 

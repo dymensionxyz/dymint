@@ -12,6 +12,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/dymensionxyz/dymint/store"
+	uerrors "github.com/dymensionxyz/dymint/utils/errors"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
@@ -152,17 +153,15 @@ func (m *Manager) Start(ctx context.Context) error {
 		<-m.DAClient.Synced()
 		nBytes := m.GetUnsubmittedBytes()
 		bytesProducedC := make(chan int)
-		go func() {
-			bytesProducedC <- nBytes
-		}()
 		err = m.syncFromSettlement()
 		if err != nil {
 			return fmt.Errorf("sync block manager from settlement: %w", err)
 		}
-		eg.Go(func() error {
+		uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 			return m.SubmitLoop(ctx, bytesProducedC)
 		})
-		eg.Go(func() error {
+		uerrors.ErrGroupGoLog(eg, m.logger, func() error {
+			bytesProducedC <- nBytes
 			return m.ProduceBlockLoop(ctx, bytesProducedC)
 		})
 
@@ -180,8 +179,13 @@ func (m *Manager) Start(ctx context.Context) error {
 		// P2P Sync. Subscribe to P2P received blocks events
 		go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewGossipedBlock, m.onReceivedBlock, m.logger)
 		go uevent.MustSubscribe(ctx, m.Pubsub, "applyBlockSyncBlocksLoop", p2p.EventQueryNewBlockSyncBlock, m.onReceivedBlock, m.logger)
-
 	}
+
+	go func() {
+		_ = eg.Wait() // errors are already logged
+		m.logger.Info("Block manager err group finished.")
+	}()
+
 	return nil
 }
 

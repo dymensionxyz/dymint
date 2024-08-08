@@ -53,7 +53,7 @@ func newBlockStore(kvstore store.KV, baseHeight uint64) *BlockStore {
 	return &BlockStore{
 		DefaultStore: store,
 		base:         state.BaseHeight,
-		height:       state.LastBlockHeight.Load(),
+		height:       state.Height(),
 	}
 }
 
