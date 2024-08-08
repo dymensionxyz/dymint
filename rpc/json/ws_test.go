@@ -111,6 +111,7 @@ func TestWebsocketCloseUnsubscribe(t *testing.T) {
 	_, local := getRPC(t)
 	handler, err := GetHTTPHandler(local, log.TestingLogger())
 	require.NoError(err)
+	defer local.Stop()
 
 	srv := httptest.NewServer(handler)
 
