@@ -71,7 +71,7 @@ func (v *Validator) TxValidator(mp mempool.Mempool, mpoolIDS *nodemempool.Mempoo
 // BlockValidator runs basic checks on the gossiped block
 func (v *Validator) BlockValidator() GossipValidator {
 	return func(blockMsg *GossipMessage) bool {
-		var gossipedBlock GossipedBlock
+		var gossipedBlock P2PBlockEvent
 		if err := gossipedBlock.UnmarshalBinary(blockMsg.Data); err != nil {
 			v.logger.Error("Deserialize gossiped block.", "error", err)
 			return false

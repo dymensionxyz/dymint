@@ -220,10 +220,11 @@ func fullNodeConfig() config.NodeConfig {
 			Port: 9090,
 		},
 		P2PConfig: config.P2PConfig{
-			GossipSubCacheSize: 50,
-			BootstrapRetryTime: 30 * time.Second,
-			ListenAddress:      config.DefaultListenAddress,
-			BootstrapNodes:     "",
+			GossipSubCacheSize:           50,
+			BootstrapRetryTime:           30 * time.Second,
+			BlockSyncRequestIntervalTime: 30 * time.Second,
+			ListenAddress:                config.DefaultListenAddress,
+			BootstrapNodes:               "",
 		},
 	}
 }

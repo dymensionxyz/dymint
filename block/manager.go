@@ -8,7 +8,6 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"code.cloudfoundry.org/go-diodes"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"golang.org/x/sync/errgroup"
 
@@ -66,15 +65,15 @@ type Manager struct {
 	// Protect against processing two blocks at once when there are two routines handling incoming gossiped blocks,
 	// and incoming DA blocks, respectively.
 	retrieverMu sync.Mutex
-	Retriever   da.BatchRetriever
-	// get the next target height to sync local state to
-	targetSyncHeight diodes.Diode
-	// TargetHeight holds the value of the current highest block seen from either p2p (probably higher) or the DA
-	TargetHeight atomic.Uint64
-
+	// Protect against syncing twice from DA in case new batch is posted but it did not finish to sync yet.
+	syncFromDaMu sync.Mutex
+	Retriever    da.BatchRetriever
 	// Cached blocks and commits for applying at future heights. The blocks may not be valid, because
 	// we can only do full validation in sequential order.
 	blockCache *Cache
+
+	// TargetHeight holds the value of the current highest block seen from either p2p (probably higher) or the DA
+	TargetHeight atomic.Uint64
 }
 
 // NewManager creates new block Manager.
@@ -102,18 +101,17 @@ func NewManager(
 	}
 
 	m := &Manager{
-		Pubsub:           pubsub,
-		p2pClient:        p2pClient,
-		LocalKey:         localKey,
-		Conf:             conf,
-		Genesis:          genesis,
-		Store:            store,
-		Executor:         exec,
-		DAClient:         dalc,
-		SLClient:         settlementClient,
-		Retriever:        dalc.(da.BatchRetriever),
-		targetSyncHeight: diodes.NewOneToOne(1, nil),
-		logger:           logger,
+		Pubsub:    pubsub,
+		p2pClient: p2pClient,
+		LocalKey:  localKey,
+		Conf:      conf,
+		Genesis:   genesis,
+		Store:     store,
+		Executor:  exec,
+		DAClient:  dalc,
+		SLClient:  settlementClient,
+		Retriever: dalc.(da.BatchRetriever),
+		logger:    logger,
 		blockCache: &Cache{
 			cache: make(map[uint64]types.CachedBlock),
 		},
@@ -148,16 +146,6 @@ func (m *Manager) Start(ctx context.Context) error {
 		}
 	}
 
-	if !isSequencer {
-		// Fullnode loop can start before syncing from DA
-		go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewNewGossipedBlock, m.onNewGossipedBlock, m.logger)
-	}
-
-	err = m.syncBlockManager()
-	if err != nil {
-		return fmt.Errorf("sync block manager: %w", err)
-	}
-
 	eg, ctx := errgroup.WithContext(ctx)
 
 	if isSequencer {
@@ -165,6 +153,10 @@ func (m *Manager) Start(ctx context.Context) error {
 		<-m.DAClient.Synced()
 		nBytes := m.GetUnsubmittedBytes()
 		bytesProducedC := make(chan int)
+		err = m.syncFromSettlement()
+		if err != nil {
+			return fmt.Errorf("sync block manager from settlement: %w", err)
+		}
 		uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 			return m.SubmitLoop(ctx, bytesProducedC)
 		})
@@ -172,13 +164,21 @@ func (m *Manager) Start(ctx context.Context) error {
 			bytesProducedC <- nBytes
 			return m.ProduceBlockLoop(ctx, bytesProducedC)
 		})
+
 	} else {
-		uerrors.ErrGroupGoLog(eg, m.logger, func() error {
-			return m.RetrieveLoop(ctx)
-		})
-		uerrors.ErrGroupGoLog(eg, m.logger, func() error {
-			return m.SyncToTargetHeightLoop(ctx)
-		})
+		// Full-nodes can sync from DA but it is not necessary to wait for it, since it can sync from P2P as well in parallel.
+		go func() {
+			err := m.syncFromSettlement()
+			if err != nil {
+				m.logger.Error("sync block manager from settlement", "err", err)
+			}
+			// DA Sync. Subscribe to SL next batch events
+			go uevent.MustSubscribe(ctx, m.Pubsub, "syncTargetLoop", settlement.EventQueryNewSettlementBatchAccepted, m.onNewStateUpdate, m.logger)
+		}()
+
+		// P2P Sync. Subscribe to P2P received blocks events
+		go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewGossipedBlock, m.onReceivedBlock, m.logger)
+		go uevent.MustSubscribe(ctx, m.Pubsub, "applyBlockSyncBlocksLoop", p2p.EventQueryNewBlockSyncBlock, m.onReceivedBlock, m.logger)
 	}
 
 	go func() {
@@ -207,8 +207,8 @@ func (m *Manager) NextHeightToSubmit() uint64 {
 	return m.LastSubmittedHeight.Load() + 1
 }
 
-// syncBlockManager enforces the node to be synced on initial run.
-func (m *Manager) syncBlockManager() error {
+// syncFromSettlement enforces the node to be synced on initial run from SL and DA.
+func (m *Manager) syncFromSettlement() error {
 	res, err := m.SLClient.GetLatestBatch()
 	if errors.Is(err, gerrc.ErrNotFound) {
 		// The SL hasn't got any batches for this chain yet.
@@ -216,12 +216,14 @@ func (m *Manager) syncBlockManager() error {
 		m.LastSubmittedHeight.Store(uint64(m.Genesis.InitialHeight - 1))
 		return nil
 	}
+
 	if err != nil {
 		// TODO: separate between fresh rollapp and non-registered rollapp
 		return err
 	}
 	m.LastSubmittedHeight.Store(res.EndHeight)
 	err = m.syncToTargetHeight(res.EndHeight)
+	m.UpdateTargetHeight(res.EndHeight)
 	if err != nil {
 		return err
 	}

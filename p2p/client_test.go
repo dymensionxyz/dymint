@@ -3,16 +3,21 @@ package p2p_test
 import (
 	"context"
 	"crypto/rand"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/multiformats/go-multiaddr"
+	mh "github.com/multiformats/go-multihash"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/dymensionxyz/dymint/store"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/pubsub"
 
@@ -26,11 +31,13 @@ func TestClientStartup(t *testing.T) {
 	pubsubServer := pubsub.NewServer()
 	err := pubsubServer.Start()
 	require.NoError(t, err)
+	store := store.New(store.NewDefaultInMemoryKVStore())
 	client, err := p2p.NewClient(config.P2PConfig{
-		ListenAddress:      config.DefaultListenAddress,
-		GossipSubCacheSize: 50,
-		BootstrapRetryTime: 30 * time.Second,
-	}, privKey, "TestChain", pubsubServer, log.TestingLogger())
+		ListenAddress:                config.DefaultListenAddress,
+		GossipSubCacheSize:           50,
+		BootstrapRetryTime:           30 * time.Second,
+		BlockSyncRequestIntervalTime: 30 * time.Second,
+	}, privKey, "TestChain", store, pubsubServer, datastore.NewMapDatastore(), log.TestingLogger())
 	assert := assert.New(t)
 	assert.NoError(err)
 	assert.NotNil(client)
@@ -134,6 +141,91 @@ func TestGossiping(t *testing.T) {
 	wg.Wait()
 }
 
+// Test that advertises and retrieves a CID for a block height in the DHT
+func TestAdvertiseBlock(t *testing.T) {
+	logger := log.TestingLogger()
+
+	ctx := context.Background()
+
+	// required for tx validator
+	assertRecv := func(tx *p2p.GossipMessage) bool {
+		return true
+	}
+
+	// Create a cid manually by specifying the 'prefix' parameters
+	pref := &cid.Prefix{
+		Codec:    cid.DagProtobuf,
+		MhLength: -1,
+		MhType:   mh.SHA2_256,
+		Version:  1,
+	}
+
+	// And then feed it some data
+	expectedCid, err := pref.Sum([]byte("test"))
+	require.NoError(t, err)
+
+	// validators required
+	validators := []p2p.GossipValidator{assertRecv, assertRecv, assertRecv, assertRecv, assertRecv}
+
+	// network connections topology: 3<->1<->0<->2<->4
+	clients := testutil.StartTestNetwork(ctx, t, 3, map[int]testutil.HostDescr{
+		0: {Conns: []int{}, ChainID: "1"},
+		1: {Conns: []int{0}, ChainID: "1"},
+		2: {Conns: []int{1}, ChainID: "1"},
+	}, validators, logger)
+
+	// wait for clients to finish refreshing routing tables
+	clients.WaitForDHT()
+
+	// this sleep is required for pubsub to "propagate" subscription information
+	// TODO(tzdybal): is there a better way to wait for readiness?
+	time.Sleep(1 * time.Second)
+
+	// advertise cid for height 1
+	err = clients[2].AdvertiseBlockIdToDHT(ctx, 1, expectedCid)
+	require.NoError(t, err)
+
+	// get cid for height 1
+	receivedCid, err := clients[0].GetBlockIdFromDHT(ctx, 1)
+	require.NoError(t, err)
+	require.Equal(t, expectedCid, receivedCid)
+
+}
+
+// Test that advertises an invalid CID in the DHT
+func TestAdvertiseWrongCid(t *testing.T) {
+	logger := log.TestingLogger()
+
+	ctx := context.Background()
+
+	// required for tx validator
+	assertRecv := func(tx *p2p.GossipMessage) bool {
+		return true
+	}
+
+	validators := []p2p.GossipValidator{assertRecv, assertRecv, assertRecv, assertRecv, assertRecv}
+
+	// network connections topology: 3<->1<->0<->2<->4
+	clients := testutil.StartTestNetwork(ctx, t, 3, map[int]testutil.HostDescr{
+		0: {Conns: []int{}, ChainID: "1"},
+		1: {Conns: []int{0}, ChainID: "1"},
+		2: {Conns: []int{1}, ChainID: "1"},
+	}, validators, logger)
+
+	// wait for clients to finish refreshing routing tables
+	clients.WaitForDHT()
+
+	// this sleep is required for pubsub to "propagate" subscription information
+	// TODO(tzdybal): is there a better way to wait for readiness?
+	time.Sleep(1 * time.Second)
+
+	// advertise cid for height 1
+	receivedError := clients[2].DHT.PutValue(ctx, "/block-sync/"+strconv.FormatUint(1, 10), []byte("test"))
+
+	require.Error(t, cid.ErrInvalidCid{}, receivedError)
+
+}
+
 func TestSeedStringParsing(t *testing.T) {
 	t.Parallel()
 
@@ -178,10 +270,11 @@ func TestSeedStringParsing(t *testing.T) {
 			assert := assert.New(t)
 			require := require.New(t)
 			logger := &testutil.MockLogger{}
+			store := store.New(store.NewDefaultInMemoryKVStore())
 			client, err := p2p.NewClient(config.P2PConfig{
 				GossipSubCacheSize: 50,
 				BootstrapRetryTime: 30 * time.Second,
-			}, privKey, "TestNetwork", pubsubServer, logger)
+			}, privKey, "TestNetwork", store, pubsubServer, datastore.NewMapDatastore(), logger)
 			require.NoError(err)
 			require.NotNil(client)
 			actual := client.GetSeedAddrInfo(c.input)

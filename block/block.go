@@ -90,7 +90,6 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	if err != nil {
 		return fmt.Errorf("update state: %w", err)
 	}
-
 	// Prune old heights, if requested by ABCI app.
 	if 0 < retainHeight {
 		err = m.PruneBlocks(uint64(retainHeight))
@@ -132,7 +131,7 @@ func (m *Manager) attemptApplyCachedBlocks() error {
 			return fmt.Errorf("block not valid at height %d, dropping it: err:%w", cachedBlock.Block.Header.Height, err)
 		}
 
-		err := m.applyBlock(cachedBlock.Block, cachedBlock.Commit, types.BlockMetaData{Source: types.GossipedBlock})
+		err := m.applyBlock(cachedBlock.Block, cachedBlock.Commit, types.BlockMetaData{Source: cachedBlock.Source})
 		if err != nil {
 			return fmt.Errorf("apply cached block: expected height: %d: %w", expectedHeight, err)
 		}
