@@ -31,7 +31,7 @@ func TestPruningRetainHeight(t *testing.T) {
 
 	// Produce blocks
 	for i := 0; i < batchSize; i++ {
-		_, _, err = manager.ProduceAndGossipBlock(ctx, true)
+		_, _, err = manager.ProduceApplyGossipBlock(ctx, true, nil)
 		require.NoError(err)
 	}
 	// submit and validate sync target
@@ -42,7 +42,7 @@ func TestPruningRetainHeight(t *testing.T) {
 
 	// Produce new blocks
 	for i := 0; i < batchSize; i++ {
-		_, _, err = manager.ProduceAndGossipBlock(ctx, true)
+		_, _, err = manager.ProduceApplyGossipBlock(ctx, true, nil)
 		require.NoError(err)
 	}
 
