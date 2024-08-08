@@ -739,7 +739,10 @@ func TestValidatorSetHandling(t *testing.T) {
 	err = node.Start()
 	require.NoError(err)
 
-	<-waitCh
+	defer node.Stop()
+
+	<-waitCh                           //triggered on the 6th commit
+	time.Sleep(300 * time.Millisecond) // give time for the sequencers commit to db
 
 	// validator set isn't updated through ABCI anymore
 	for h := int64(1); h <= 5; h++ {
