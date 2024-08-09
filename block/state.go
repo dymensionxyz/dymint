@@ -128,7 +128,7 @@ func (e *Executor) UpdateStateAfterInitChain(s *types.State, res *abci.ResponseI
 
 	// Set the genesis sequencers in the state
 	seqSet := tmtypes.NewValidatorSet(validators).CopyIncrementProposerPriority(1)
-	s.Sequencers.SetBondedSet(seqSet)
+	s.Sequencers.LoadSet(seqSet)
 }
 
 func (e *Executor) UpdateMempoolAfterInitChain(s *types.State) {

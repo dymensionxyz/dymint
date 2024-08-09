@@ -143,8 +143,8 @@ func (m *Manager) UpdateBondedSequencerSetFromSL() error {
 	}
 	// update state on changes
 	if len(newVals) > 0 {
-		newVals = append(newVals, m.State.Sequencers.Validators...)
-		m.State.Sequencers.SetBondedValidators(newVals)
+		newVals = append(newVals, m.State.Sequencers.Sequencers...)
+		m.State.Sequencers.SetSequencers(newVals)
 	}
 
 	m.logger.Debug("Updated bonded sequencer set", "newSet", m.State.Sequencers.String())

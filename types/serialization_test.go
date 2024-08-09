@@ -147,7 +147,7 @@ func TestStateRoundTrip(t *testing.T) {
 			require := require.New(t)
 			assert := assert.New(t)
 
-			c.state.Sequencers.SetBondedSet(valSet)
+			c.state.Sequencers.LoadSet(valSet)
 
 			if c.state.InitialHeight != 0 {
 				c.state.SetHeight(986321)

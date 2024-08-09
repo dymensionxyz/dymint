@@ -58,7 +58,7 @@ func TestCreateBlock(t *testing.T) {
 	state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
 	state.ConsensusParams.Block.MaxGas = 100000
 	state.Sequencers = types.SequencerSet{
-		Validators:   tmtypes.NewValidatorSet(nil).Validators,
+		Sequencers:   tmtypes.NewValidatorSet(nil).Validators,
 		Proposer:     tmtypes.NewValidatorSet(nil).Proposer,
 		ProposerHash: []byte{},
 	}
@@ -153,7 +153,7 @@ func TestApplyBlock(t *testing.T) {
 
 	// Init state
 	state := &types.State{}
-	state.Sequencers.SetBondedSet(tmtypes.NewValidatorSet(seq))
+	state.Sequencers.LoadSet(tmtypes.NewValidatorSet(seq))
 	state.InitialHeight = 1
 	state.SetHeight(0)
 	maxBytes := uint64(100)

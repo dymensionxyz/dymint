@@ -98,7 +98,7 @@ func TestLoadState(t *testing.T) {
 	s1 := store.New(kv)
 	expectedHeight := uint64(10)
 	s := &types.State{}
-	s.Sequencers.SetBondedSet(validatorSet)
+	s.Sequencers.LoadSet(validatorSet)
 	s.SetHeight(expectedHeight)
 	_, err := s1.SaveState(s, nil)
 	assert.NoError(err)

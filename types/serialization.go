@@ -278,11 +278,10 @@ func (s *State) FromProto(other *pb.State) error {
 	s.SetHeight(uint64(other.LastBlockHeight))
 	s.BaseHeight = other.BaseHeight
 
-	sSet, err := NewSequencerSetFromProto(other.SequencersSet)
+	err = s.Sequencers.FromProto(other.SequencersSet)
 	if err != nil {
 		return err
 	}
-	s.Sequencers = *sSet
 
 	s.ConsensusParams = other.ConsensusParams
 	s.LastHeightConsensusParamsChanged = other.LastHeightConsensusParamsChanged
