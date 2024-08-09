@@ -19,9 +19,9 @@ import (
 
 	"github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
-	rollapptypes "github.com/dymensionxyz/dymension/v3/x/rollapp/types"
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/settlement"
+	rollapptypes "github.com/dymensionxyz/dymint/third_party/dymension/rollapp/types"
 	"github.com/dymensionxyz/dymint/types"
 
 	"github.com/tendermint/tendermint/libs/pubsub"
@@ -215,21 +215,30 @@ func (c *Client) GetHeightState(index uint64) (*settlement.ResultGetHeightState,
 }
 
 // GetProposer implements settlement.ClientI.
-func (c *Client) GetProposer() *types.Sequencer {
+func (c *Client) GetProposer() *settlement.Sequencer {
 	pubKeyBytes, err := hex.DecodeString(c.ProposerPubKey)
 	if err != nil {
 		return nil
 	}
 	var pubKey cryptotypes.PubKey = &ed25519.PubKey{Key: pubKeyBytes}
-	return &types.Sequencer{
+	return &settlement.Sequencer{
 		PublicKey: pubKey,
-		Status:    types.Proposer,
 	}
 }
 
-// GetSequencers implements settlement.ClientI.
-func (c *Client) GetSequencers() ([]*types.Sequencer, error) {
-	return []*types.Sequencer{c.GetProposer()}, nil
+// GetAllSequencers implements settlement.ClientI.
+func (c *Client) GetAllSequencers() ([]settlement.Sequencer, error) {
+	return c.GetBondedSequencers()
+}
+
+// GetBondedSequencers implements settlement.ClientI.
+func (c *Client) GetBondedSequencers() ([]settlement.Sequencer, error) {
+	return []settlement.Sequencer{*c.GetProposer()}, nil
+}
+
+// IsRotationInProgress implements settlement.ClientI.
+func (c *Client) IsRotationInProgress() (*settlement.Sequencer, error) {
+	return nil, nil
 }
 
 func (c *Client) saveBatch(batch *settlement.Batch) error {

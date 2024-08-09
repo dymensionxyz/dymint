@@ -31,7 +31,7 @@ func TestGetSequencers(t *testing.T) {
 	err = sllayer.Init(cfg, nil, log.TestingLogger())
 	require.NoError(err)
 
-	sequencers, err := sllayer.GetSequencers()
+	sequencers, err := sllayer.GetBondedSequencers()
 	require.NoError(err)
 	assert.Equal(1, len(sequencers))
 	assert.Equal(pubKeybytes, sequencers[0].PublicKey.Bytes())

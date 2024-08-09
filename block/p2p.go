@@ -69,7 +69,7 @@ func (m *Manager) gossipBlock(ctx context.Context, block types.Block, commit typ
 	if err != nil {
 		return fmt.Errorf("marshal binary: %w: %w", err, ErrNonRecoverable)
 	}
-	if err := m.p2pClient.GossipBlock(ctx, gossipedBlockBytes); err != nil {
+	if err := m.P2PClient.GossipBlock(ctx, gossipedBlockBytes); err != nil {
 		// Although this boils down to publishing on a topic, we don't want to speculate too much on what
 		// could cause that to fail, so we assume recoverable.
 		return fmt.Errorf("p2p gossip block: %w: %w", err, ErrRecoverable)

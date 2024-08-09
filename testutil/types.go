@@ -63,10 +63,10 @@ func generateBlock(height uint64) *types.Block {
 			DataHash:       h[2],
 			ConsensusHash:  h[3],
 			// AppHash:         h[4],
-			AppHash:         [32]byte{},
-			LastResultsHash: GetEmptyLastResultsHash(),
-			ProposerAddress: []byte{4, 3, 2, 1},
-			SequencersHash:  h[6],
+			AppHash:            [32]byte{},
+			LastResultsHash:    GetEmptyLastResultsHash(),
+			ProposerAddress:    []byte{4, 3, 2, 1},
+			NextSequencersHash: h[6],
 		},
 		Data: types.Data{
 			Txs:                    nil,
@@ -113,9 +113,17 @@ func GenerateBlocksWithTxs(startHeight uint64, num uint64, proposerKey crypto.Pr
 
 // GenerateBlocks generates random blocks.
 func GenerateBlocks(startHeight uint64, num uint64, proposerKey crypto.PrivKey) ([]*types.Block, error) {
+	r, _ := proposerKey.Raw()
+	proposerHash := types.GetHash(tmtypes.NewValidator(ed25519.PrivKey(r).PubKey(), 1))
+
 	blocks := make([]*types.Block, num)
 	for i := uint64(0); i < num; i++ {
 		block := generateBlock(i + startHeight)
+		copy(block.Header.NextSequencersHash[:], proposerHash[:])
+		copy(block.Header.DataHash[:], types.GetDataHash(block))
+		if i > 0 {
+			copy(block.Header.LastCommitHash[:], types.GetLastCommitHash(&blocks[i-1].LastCommit, &block.Header))
+		}
 
 		signature, err := generateSignature(proposerKey, &block.Header)
 		if err != nil {
@@ -202,13 +210,9 @@ func MustGenerateBatchAndKey(startHeight uint64, endHeight uint64) *types.Batch 
 
 // GenerateRandomValidatorSet generates random validator sets
 func GenerateRandomValidatorSet() *tmtypes.ValidatorSet {
-	pubKey := ed25519.GenPrivKey().PubKey()
-	return &tmtypes.ValidatorSet{
-		Proposer: &tmtypes.Validator{PubKey: pubKey, Address: pubKey.Address()},
-		Validators: []*tmtypes.Validator{
-			{PubKey: pubKey, Address: pubKey.Address()},
-		},
-	}
+	return tmtypes.NewValidatorSet([]*tmtypes.Validator{
+		tmtypes.NewValidator(ed25519.GenPrivKey().PubKey(), 1),
+	})
 }
 
 // GenerateState generates an initial state for testing.
@@ -225,9 +229,8 @@ func GenerateState(initialHeight int64, lastBlockHeight int64) *types.State {
 				App:   AppVersion,
 			},
 		},
-		Validators:     GenerateRandomValidatorSet(),
-		NextValidators: GenerateRandomValidatorSet(),
 	}
+	s.Sequencers.LoadSet(GenerateRandomValidatorSet())
 	s.SetHeight(uint64(lastBlockHeight))
 	return s
 }
@@ -281,14 +284,4 @@ func GetRandomBlock(height uint64, nTxs int) *types.Block {
 	}
 
 	return block
-}
-
-func GetRandomValidatorSet() *tmtypes.ValidatorSet {
-	pubKey := ed25519.GenPrivKey().PubKey()
-	return &tmtypes.ValidatorSet{
-		Proposer: &tmtypes.Validator{PubKey: pubKey, Address: pubKey.Address()},
-		Validators: []*tmtypes.Validator{
-			{PubKey: pubKey, Address: pubKey.Address()},
-		},
-	}
 }

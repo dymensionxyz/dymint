@@ -87,6 +87,12 @@ func (e *Executor) InitChain(genesis *tmtypes.GenesisDoc, validators []*tmtypes.
 	})
 }
 
+func (e *Executor) CreateLastBlock(height uint64, lastCommit *types.Commit, lastHeaderHash [32]byte, state *types.State, nextSeqHash [32]byte) *types.Block {
+	block := e.CreateBlock(height, lastCommit, lastHeaderHash, state, 0)
+	copy(block.Header.NextSequencersHash[:], nextSeqHash[:])
+	return block
+}
+
 // CreateBlock reaps transactions from mempool and builds a block.
 func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHeaderHash [32]byte, state *types.State, maxBlockDataSizeBytes uint64) *types.Block {
 	if state.ConsensusParams.Block.MaxBytes > 0 {
@@ -117,9 +123,9 @@ func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHead
 		},
 		LastCommit: *lastCommit,
 	}
-	copy(block.Header.LastCommitHash[:], e.getLastCommitHash(lastCommit, &block.Header))
-	copy(block.Header.DataHash[:], e.getDataHash(block))
-	copy(block.Header.SequencersHash[:], state.Validators.Hash())
+	copy(block.Header.LastCommitHash[:], types.GetLastCommitHash(lastCommit, &block.Header))
+	copy(block.Header.DataHash[:], types.GetDataHash(block))
+	copy(block.Header.NextSequencersHash[:], state.Sequencers.ProposerHash)
 
 	return block
 }
@@ -198,7 +204,7 @@ func (e *Executor) ExecuteBlock(state *types.State, block *types.Block) (*tmstat
 	hash := block.Hash()
 	abciHeader := types.ToABCIHeaderPB(&block.Header)
 	abciHeader.ChainID = e.chainID
-	abciHeader.ValidatorsHash = state.Validators.Hash()
+	abciHeader.ValidatorsHash = state.Sequencers.ProposerHash
 	abciResponses.BeginBlock, err = e.proxyAppConsensusConn.BeginBlockSync(
 		abci.RequestBeginBlock{
 			Hash:   hash[:],
@@ -226,18 +232,6 @@ func (e *Executor) ExecuteBlock(state *types.State, block *types.Block) (*tmstat
 	}
 
 	return abciResponses, nil
-}
-
-func (e *Executor) getLastCommitHash(lastCommit *types.Commit, header *types.Header) []byte {
-	lastABCICommit := types.ToABCICommit(lastCommit, header)
-	return lastABCICommit.Hash()
-}
-
-func (e *Executor) getDataHash(block *types.Block) []byte {
-	abciData := tmtypes.Data{
-		Txs: types.ToABCIBlockDataTxs(&block.Data),
-	}
-	return abciData.Hash()
 }
 
 func (e *Executor) publishEvents(resp *tmstate.ABCIResponses, block *types.Block) error {

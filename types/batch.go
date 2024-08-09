@@ -7,8 +7,9 @@ const (
 // Batch defines a struct for block aggregation for support of batching.
 // TODO: maybe change to BlockBatch
 type Batch struct {
-	Blocks  []*Block
-	Commits []*Commit
+	Blocks    []*Block
+	Commits   []*Commit
+	LastBatch bool
 }
 
 // StartHeight is the height of the first block in the batch.

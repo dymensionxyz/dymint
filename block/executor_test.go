@@ -3,18 +3,22 @@ package block_test
 import (
 	"context"
 	"crypto/rand"
+	"fmt"
 	"testing"
 	"time"
 
 	"github.com/dymensionxyz/dymint/block"
 
+	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
+	tmcrypto "github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
 	"github.com/tendermint/tendermint/proxy"
@@ -28,6 +32,7 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
+// TODO: test UpdateProposerFromBlock
 func TestCreateBlock(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
@@ -52,7 +57,11 @@ func TestCreateBlock(t *testing.T) {
 	state := &types.State{}
 	state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
 	state.ConsensusParams.Block.MaxGas = 100000
-	state.Validators = tmtypes.NewValidatorSet(nil)
+	state.Sequencers = types.SequencerSet{
+		Sequencers:   tmtypes.NewValidatorSet(nil).Validators,
+		Proposer:     tmtypes.NewValidatorSet(nil).Proposer,
+		ProposerHash: []byte{},
+	}
 
 	// empty block
 	block := executor.CreateBlock(1, &types.Commit{}, [32]byte{}, state, maxBytes)
@@ -136,11 +145,15 @@ func TestApplyBlock(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(headerSub)
 
+	// Create a valid proposer for the block
+	proposerKey := ed25519.GenPrivKey()
+	tmPubKey, err := cryptocodec.ToTmPubKeyInterface(proposerKey.PubKey())
+	require.NoError(err)
+	seq := []*tmtypes.Validator{tmtypes.NewValidator(tmPubKey, 1)}
+
 	// Init state
-	state := &types.State{
-		NextValidators: tmtypes.NewValidatorSet(nil),
-		Validators:     tmtypes.NewValidatorSet(nil),
-	}
+	state := &types.State{}
+	state.Sequencers.LoadSet(tmtypes.NewValidatorSet(seq))
 	state.InitialHeight = 1
 	state.SetHeight(0)
 	maxBytes := uint64(100)
@@ -155,11 +168,6 @@ func TestApplyBlock(t *testing.T) {
 	assert.Equal(uint64(1), block.Header.Height)
 	assert.Len(block.Data.Txs, 1)
 
-	// Create proposer for the block
-	proposerKey := ed25519.GenPrivKey()
-	proposer := &types.Sequencer{
-		PublicKey: proposerKey.PubKey(),
-	}
 	// Create commit for the block
 	abciHeaderPb := types.ToABCIHeaderPB(&block.Header)
 	abciHeaderBytes, err := abciHeaderPb.Marshal()
@@ -173,14 +181,15 @@ func TestApplyBlock(t *testing.T) {
 	}
 
 	// Apply the block
-	err = types.ValidateProposedTransition(state, block, commit, proposer)
+	err = validateProposedTransition(state, block, commit, state.Sequencers.GetProposerPubKey())
 	require.NoError(err)
+
 	resp, err := executor.ExecuteBlock(state, block)
 	require.NoError(err)
 	require.NotNil(resp)
 	appHash, _, err := executor.Commit(state, block, resp)
 	require.NoError(err)
-	executor.UpdateStateAfterCommit(state, resp, appHash, block.Header.Height, state.Validators)
+	executor.UpdateStateAfterCommit(state, resp, appHash, block.Header.Height)
 	assert.Equal(uint64(1), state.Height())
 	assert.Equal(mockAppHash, state.AppHash)
 
@@ -210,8 +219,7 @@ func TestApplyBlock(t *testing.T) {
 	}
 
 	// Apply the block with an invalid commit
-	err = types.ValidateProposedTransition(state, block, invalidCommit, proposer)
-
+	err = validateProposedTransition(state, block, invalidCommit, state.Sequencers.GetProposerPubKey())
 	require.ErrorIs(err, types.ErrInvalidSignature)
 
 	// Create a valid commit for the block
@@ -224,15 +232,14 @@ func TestApplyBlock(t *testing.T) {
 	}
 
 	// Apply the block
-	err = types.ValidateProposedTransition(state, block, commit, proposer)
+	err = validateProposedTransition(state, block, commit, state.Sequencers.GetProposerPubKey())
 	require.NoError(err)
 	resp, err = executor.ExecuteBlock(state, block)
 	require.NoError(err)
 	require.NotNil(resp)
-	vals := state.NextValidators.Copy() // TODO: this will be changed when supporting multiple sequencers from the hub
 	_, _, err = executor.Commit(state, block, resp)
 	require.NoError(err)
-	executor.UpdateStateAfterCommit(state, resp, appHash, block.Header.Height, vals)
+	executor.UpdateStateAfterCommit(state, resp, appHash, block.Header.Height)
 	assert.Equal(uint64(2), state.Height())
 
 	// wait for at least 4 Tx events, for up to 3 second.
@@ -265,4 +272,15 @@ func TestApplyBlock(t *testing.T) {
 			assert.EqualValues(3, data.NumTxs)
 		}
 	}
+}
+
+func validateProposedTransition(state *types.State, block *types.Block, commit *types.Commit, proposerPubKey tmcrypto.PubKey) error {
+	if err := block.ValidateWithState(state); err != nil {
+		return fmt.Errorf("block: %w", err)
+	}
+
+	if err := commit.ValidateWithHeader(proposerPubKey, &block.Header); err != nil {
+		return fmt.Errorf("commit: %w", err)
+	}
+	return nil
 }

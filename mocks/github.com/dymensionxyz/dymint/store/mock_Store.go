@@ -7,8 +7,6 @@ import (
 	mock "github.com/stretchr/testify/mock"
 	state "github.com/tendermint/tendermint/proto/tendermint/state"
 
-	tenderminttypes "github.com/tendermint/tendermint/types"
-
 	types "github.com/dymensionxyz/dymint/types"
 )
 
@@ -26,8 +24,21 @@ func (_m *MockStore) EXPECT() *MockStore_Expecter {
 }
 
 // Close provides a mock function with given fields:
-func (_m *MockStore) Close() {
-	_m.Called()
+func (_m *MockStore) Close() error {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for Close")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func() error); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
 }
 
 // MockStore_Close_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'Close'
@@ -47,12 +58,12 @@ func (_c *MockStore_Close_Call) Run(run func()) *MockStore_Close_Call {
 	return _c
 }
 
-func (_c *MockStore_Close_Call) Return() *MockStore_Close_Call {
-	_c.Call.Return()
+func (_c *MockStore_Close_Call) Return(_a0 error) *MockStore_Close_Call {
+	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockStore_Close_Call) RunAndReturn(run func()) *MockStore_Close_Call {
+func (_c *MockStore_Close_Call) RunAndReturn(run func() error) *MockStore_Close_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -405,23 +416,23 @@ func (_c *MockStore_LoadState_Call) RunAndReturn(run func() (*types.State, error
 }
 
 // LoadValidators provides a mock function with given fields: height
-func (_m *MockStore) LoadValidators(height uint64) (*tenderminttypes.ValidatorSet, error) {
+func (_m *MockStore) LoadValidators(height uint64) (*types.SequencerSet, error) {
 	ret := _m.Called(height)
 
 	if len(ret) == 0 {
 		panic("no return value specified for LoadValidators")
 	}
 
-	var r0 *tenderminttypes.ValidatorSet
+	var r0 *types.SequencerSet
 	var r1 error
-	if rf, ok := ret.Get(0).(func(uint64) (*tenderminttypes.ValidatorSet, error)); ok {
+	if rf, ok := ret.Get(0).(func(uint64) (*types.SequencerSet, error)); ok {
 		return rf(height)
 	}
-	if rf, ok := ret.Get(0).(func(uint64) *tenderminttypes.ValidatorSet); ok {
+	if rf, ok := ret.Get(0).(func(uint64) *types.SequencerSet); ok {
 		r0 = rf(height)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*tenderminttypes.ValidatorSet)
+			r0 = ret.Get(0).(*types.SequencerSet)
 		}
 	}
 
@@ -452,12 +463,12 @@ func (_c *MockStore_LoadValidators_Call) Run(run func(height uint64)) *MockStore
 	return _c
 }
 
-func (_c *MockStore_LoadValidators_Call) Return(_a0 *tenderminttypes.ValidatorSet, _a1 error) *MockStore_LoadValidators_Call {
+func (_c *MockStore_LoadValidators_Call) Return(_a0 *types.SequencerSet, _a1 error) *MockStore_LoadValidators_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockStore_LoadValidators_Call) RunAndReturn(run func(uint64) (*tenderminttypes.ValidatorSet, error)) *MockStore_LoadValidators_Call {
+func (_c *MockStore_LoadValidators_Call) RunAndReturn(run func(uint64) (*types.SequencerSet, error)) *MockStore_LoadValidators_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -745,9 +756,9 @@ func (_c *MockStore_SaveState_Call) RunAndReturn(run func(*types.State, store.KV
 	return _c
 }
 
-// SaveValidators provides a mock function with given fields: height, validatorSet, batch
-func (_m *MockStore) SaveValidators(height uint64, validatorSet *tenderminttypes.ValidatorSet, batch store.KVBatch) (store.KVBatch, error) {
-	ret := _m.Called(height, validatorSet, batch)
+// SaveValidators provides a mock function with given fields: height, seqSet, batch
+func (_m *MockStore) SaveValidators(height uint64, seqSet *types.SequencerSet, batch store.KVBatch) (store.KVBatch, error) {
+	ret := _m.Called(height, seqSet, batch)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SaveValidators")
@@ -755,19 +766,19 @@ func (_m *MockStore) SaveValidators(height uint64, validatorSet *tenderminttypes
 
 	var r0 store.KVBatch
 	var r1 error
-	if rf, ok := ret.Get(0).(func(uint64, *tenderminttypes.ValidatorSet, store.KVBatch) (store.KVBatch, error)); ok {
-		return rf(height, validatorSet, batch)
+	if rf, ok := ret.Get(0).(func(uint64, *types.SequencerSet, store.KVBatch) (store.KVBatch, error)); ok {
+		return rf(height, seqSet, batch)
 	}
-	if rf, ok := ret.Get(0).(func(uint64, *tenderminttypes.ValidatorSet, store.KVBatch) store.KVBatch); ok {
-		r0 = rf(height, validatorSet, batch)
+	if rf, ok := ret.Get(0).(func(uint64, *types.SequencerSet, store.KVBatch) store.KVBatch); ok {
+		r0 = rf(height, seqSet, batch)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(store.KVBatch)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(uint64, *tenderminttypes.ValidatorSet, store.KVBatch) error); ok {
-		r1 = rf(height, validatorSet, batch)
+	if rf, ok := ret.Get(1).(func(uint64, *types.SequencerSet, store.KVBatch) error); ok {
+		r1 = rf(height, seqSet, batch)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -782,15 +793,15 @@ type MockStore_SaveValidators_Call struct {
 
 // SaveValidators is a helper method to define mock.On call
 //   - height uint64
-//   - validatorSet *tenderminttypes.ValidatorSet
+//   - seqSet *types.SequencerSet
 //   - batch store.KVBatch
-func (_e *MockStore_Expecter) SaveValidators(height interface{}, validatorSet interface{}, batch interface{}) *MockStore_SaveValidators_Call {
-	return &MockStore_SaveValidators_Call{Call: _e.mock.On("SaveValidators", height, validatorSet, batch)}
+func (_e *MockStore_Expecter) SaveValidators(height interface{}, seqSet interface{}, batch interface{}) *MockStore_SaveValidators_Call {
+	return &MockStore_SaveValidators_Call{Call: _e.mock.On("SaveValidators", height, seqSet, batch)}
 }
 
-func (_c *MockStore_SaveValidators_Call) Run(run func(height uint64, validatorSet *tenderminttypes.ValidatorSet, batch store.KVBatch)) *MockStore_SaveValidators_Call {
+func (_c *MockStore_SaveValidators_Call) Run(run func(height uint64, seqSet *types.SequencerSet, batch store.KVBatch)) *MockStore_SaveValidators_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(uint64), args[1].(*tenderminttypes.ValidatorSet), args[2].(store.KVBatch))
+		run(args[0].(uint64), args[1].(*types.SequencerSet), args[2].(store.KVBatch))
 	})
 	return _c
 }
@@ -800,7 +811,7 @@ func (_c *MockStore_SaveValidators_Call) Return(_a0 store.KVBatch, _a1 error) *M
 	return _c
 }
 
-func (_c *MockStore_SaveValidators_Call) RunAndReturn(run func(uint64, *tenderminttypes.ValidatorSet, store.KVBatch) (store.KVBatch, error)) *MockStore_SaveValidators_Call {
+func (_c *MockStore_SaveValidators_Call) RunAndReturn(run func(uint64, *types.SequencerSet, store.KVBatch) (store.KVBatch, error)) *MockStore_SaveValidators_Call {
 	_c.Call.Return(run)
 	return _c
 }

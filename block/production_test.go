@@ -23,6 +23,8 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 )
 
+// TODO: test producing lastBlock
+// TODO: test using already produced lastBlock
 func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 	const blockTime = 200 * time.Millisecond
 	const MaxIdleTime = blockTime * 10
@@ -101,7 +103,7 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 
 func TestCreateEmptyBlocksNew(t *testing.T) {
 	// TODO(https://github.com/dymensionxyz/dymint/issues/352)
-	t.Skip("FIXME: fails to submit tx to test the empty blocks feature")
+	t.Skip("TODO: fails to submit tx to test the empty blocks feature")
 	assert := assert.New(t)
 	require := require.New(t)
 	app := testutil.GetAppMock()

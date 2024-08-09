@@ -3,28 +3,32 @@ package settlement
 import (
 	"fmt"
 
-	"github.com/dymensionxyz/dymint/types"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
 )
-
-// Type keys
 
 const (
 	// EventTypeKey is a reserved composite key for event name.
 	EventTypeKey = "settlement.event"
-)
 
-// Types
-
-const (
-	// EventNewBatchAccepted should be emitted internally in order to communicate between the settlement layer and the hub client
-	EventNewBatchAccepted      = "EventNewBatchAccepted"
-	EventSequencersListUpdated = "SequencersListUpdated"
+	// Event types
+	EventNewBatchAccepted   = "NewBatchAccepted"
+	EventNewBondedSequencer = "NewBondedSequencer"
+	EventRotationStarted    = "RotationStarted"
 )
 
 // Convenience objects
+var (
+	EventNewBatchAcceptedList   = map[string][]string{EventTypeKey: {EventNewBatchAccepted}}
+	EventNewBondedSequencerList = map[string][]string{EventTypeKey: {EventNewBondedSequencer}}
+	EventRotationStartedList    = map[string][]string{EventTypeKey: {EventRotationStarted}}
+)
 
-var EventNewBatchAcceptedList = map[string][]string{EventTypeKey: {EventNewBatchAccepted}}
+// Queries
+var (
+	EventQueryNewSettlementBatchAccepted = uevent.QueryFor(EventTypeKey, EventNewBatchAccepted)
+	EventQueryNewBondedSequencer         = uevent.QueryFor(EventTypeKey, EventNewBondedSequencer)
+	EventQueryRotationStarted            = uevent.QueryFor(EventTypeKey, EventRotationStarted)
+)
 
 // Data
 
@@ -39,12 +43,18 @@ func (e EventDataNewBatchAccepted) String() string {
 	return fmt.Sprintf("EndHeight: %d, StateIndex: %d", e.EndHeight, e.StateIndex)
 }
 
-type EventDataSequencersListUpdated struct {
-	// Sequencers is the list of new sequencers
-	Sequencers []types.Sequencer
+type EventDataNewBondedSequencer struct {
+	SeqAddr string
 }
 
-// Queries
-var (
-	EventQueryNewSettlementBatchAccepted = uevent.QueryFor(EventTypeKey, EventNewBatchAccepted)
-)
+func (e EventDataNewBondedSequencer) String() string {
+	return fmt.Sprintf("SeqAddr: %s", e.SeqAddr)
+}
+
+type EventDataRotationStarted struct {
+	NextSeqAddr string
+}
+
+func (e EventDataRotationStarted) String() string {
+	return fmt.Sprintf("NextSeqAddr: %s", e.NextSeqAddr)
+}

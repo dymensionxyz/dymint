@@ -37,14 +37,15 @@ func TestWebSockets(t *testing.T) {
 
 	conn, resp, err := websocket.DefaultDialer.Dial(strings.Replace(srv.URL, "http://", "ws://", 1)+"/websocket", nil)
 	require.NoError(err)
-	require.NotNil(resp)
-	require.NotNil(conn)
 	defer func() {
 		_ = conn.Close()
 	}()
 
-	assert.Equal(http.StatusSwitchingProtocols, resp.StatusCode)
-
+	require.NotNil(resp)
+	require.NotNil(conn)
+	require.Equal(http.StatusSwitchingProtocols, resp.StatusCode)
+	err = conn.SetReadDeadline(time.Now().Add(300 * time.Second))
+	require.NoError(err)
 	err = conn.WriteMessage(websocket.TextMessage, []byte(`
 {
     "jsonrpc": "2.0",
@@ -55,26 +56,23 @@ func TestWebSockets(t *testing.T) {
     }
 }
 `))
-	assert.NoError(err)
+	require.NoError(err)
 
-	err = conn.SetReadDeadline(time.Now().Add(3 * time.Second))
-	assert.NoError(err)
 	typ, msg, err := conn.ReadMessage()
-	assert.NoError(err)
-	assert.Equal(websocket.TextMessage, typ)
-	assert.NotEmpty(msg)
+	require.NoError(err)
+	require.Equal(websocket.TextMessage, typ)
+	require.NotEmpty(msg)
 
 	// wait for new block event
-	err = conn.SetReadDeadline(time.Now().Add(3 * time.Second))
-	assert.NoError(err)
+	time.Sleep(5 * time.Second)
 	typ, msg, err = conn.ReadMessage()
-	assert.NoError(err)
-	assert.Equal(websocket.TextMessage, typ)
-	assert.NotEmpty(msg)
+	require.NoError(err)
+	require.Equal(websocket.TextMessage, typ)
+	require.NotEmpty(msg)
 	var responsePayload rpctypes.RPCResponse
 	err = json.Unmarshal(msg, &responsePayload)
-	assert.NoError(err)
-	assert.Equal(rpctypes.JSONRPCIntID(7), responsePayload.ID)
+	require.NoError(err)
+	require.Equal(rpctypes.JSONRPCIntID(7), responsePayload.ID)
 	var m map[string]interface{}
 	err = json.Unmarshal([]byte(responsePayload.Result), &m)
 	require.NoError(err)
@@ -113,6 +111,7 @@ func TestWebsocketCloseUnsubscribe(t *testing.T) {
 	_, local := getRPC(t)
 	handler, err := GetHTTPHandler(local, log.TestingLogger())
 	require.NoError(err)
+	defer local.Stop()
 
 	srv := httptest.NewServer(handler)
 

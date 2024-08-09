@@ -10,10 +10,10 @@ packages:
   github.com/dymensionxyz/dymint/settlement/dymension:
     interfaces:
       CosmosClient:
-  github.com/dymensionxyz/dymension/v3/x/sequencer/types:
+  github.com/dymensionxyz/dymint/third_party/dymension/sequencer/types:
     interfaces:
       QueryClient:
-  github.com/dymensionxyz/dymension/v3/x/rollapp/types:
+  github.com/dymensionxyz/dymint/third_party/dymension/rollapp/types:
     interfaces:
       QueryClient:
   github.com/tendermint/tendermint/abci/types:
@@ -32,5 +32,10 @@ packages:
   github.com/dymensionxyz/dymint/da:
     interfaces:
      DataAvailabilityLayerClient:
+  github.com/dymensionxyz/dymint/p2p:
+    interfaces:
+     GetProposerI:
+  
+  
 
 

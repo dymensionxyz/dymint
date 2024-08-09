@@ -20,6 +20,7 @@ import (
 	"github.com/dymensionxyz/dymint/block"
 	"github.com/dymensionxyz/dymint/config"
 	slmocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/settlement"
+	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
 )
@@ -116,7 +117,7 @@ func TestBatchSubmissionHappyFlow(t *testing.T) {
 	require.Zero(manager.LastSubmittedHeight.Load())
 
 	// Produce block and validate that we produced blocks
-	_, _, err = manager.ProduceAndGossipBlock(ctx, true)
+	_, _, err = manager.ProduceApplyGossipBlock(ctx, true, nil)
 	require.NoError(err)
 	assert.Greater(t, manager.State.Height(), initialHeight)
 	assert.Zero(t, manager.LastSubmittedHeight.Load())
@@ -144,7 +145,7 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 	require.NoError(err)
 
 	cosmosPrivKey := cosmosed25519.PrivKey{Key: priv}
-	proposer := &types.Sequencer{
+	proposer := &settlement.Sequencer{
 		PublicKey: cosmosPrivKey.PubKey(),
 	}
 
@@ -163,7 +164,7 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 	require.Zero(manager.LastSubmittedHeight.Load())
 
 	// Produce block and validate that we produced blocks
-	_, _, err = manager.ProduceAndGossipBlock(ctx, true)
+	_, _, err = manager.ProduceApplyGossipBlock(ctx, true, nil)
 	require.NoError(err)
 	assert.Greater(t, manager.State.Height(), initialHeight)
 	assert.Zero(t, manager.LastSubmittedHeight.Load())

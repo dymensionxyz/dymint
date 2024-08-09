@@ -88,17 +88,17 @@ func (h *Header) ToProto() *pb.Header {
 			Block: h.Version.Block,
 			App:   h.Version.App,
 		},
-		Height:          h.Height,
-		Time:            h.Time,
-		ChainId:         h.ChainID,
-		LastHeaderHash:  h.LastHeaderHash[:],
-		LastCommitHash:  h.LastCommitHash[:],
-		DataHash:        h.DataHash[:],
-		ConsensusHash:   h.ConsensusHash[:],
-		AppHash:         h.AppHash[:],
-		LastResultsHash: h.LastResultsHash[:],
-		ProposerAddress: h.ProposerAddress[:],
-		SequencersHash:  h.SequencersHash[:],
+		Height:            h.Height,
+		Time:              h.Time,
+		ChainId:           h.ChainID,
+		LastHeaderHash:    h.LastHeaderHash[:],
+		LastCommitHash:    h.LastCommitHash[:],
+		DataHash:          h.DataHash[:],
+		ConsensusHash:     h.ConsensusHash[:],
+		AppHash:           h.AppHash[:],
+		LastResultsHash:   h.LastResultsHash[:],
+		ProposerAddress:   h.ProposerAddress[:],
+		NextSequencerHash: h.NextSequencersHash[:],
 	}
 }
 
@@ -127,7 +127,7 @@ func (h *Header) FromProto(other *pb.Header) error {
 	if !safeCopy(h.LastResultsHash[:], other.LastResultsHash) {
 		return errors.New("invalid length of 'LastResultsHash'")
 	}
-	if !safeCopy(h.SequencersHash[:], other.SequencersHash) {
+	if !safeCopy(h.NextSequencersHash[:], other.NextSequencerHash) {
 		return errors.New("invalid length of 'SequencersHash'")
 	}
 	if len(other.ProposerAddress) > 0 {
@@ -248,11 +248,7 @@ func (c *Commit) FromProto(other *pb.Commit) error {
 
 // ToProto converts State into protobuf representation and returns it.
 func (s *State) ToProto() (*pb.State, error) {
-	nextValidators, err := s.NextValidators.ToProto()
-	if err != nil {
-		return nil, err
-	}
-	validators, err := s.Validators.ToProto()
+	seqsProto, err := s.Sequencers.ToProto()
 	if err != nil {
 		return nil, err
 	}
@@ -262,10 +258,8 @@ func (s *State) ToProto() (*pb.State, error) {
 		ChainId:                          s.ChainID,
 		InitialHeight:                    int64(s.InitialHeight),
 		LastBlockHeight:                  int64(s.Height()),
-		NextValidators:                   nextValidators,
-		Validators:                       validators,
+		SequencersSet:                    *seqsProto,
 		BaseHeight:                       s.BaseHeight,
-		LastHeightValidatorsChanged:      s.LastHeightValidatorsChanged,
 		ConsensusParams:                  s.ConsensusParams,
 		LastHeightConsensusParamsChanged: s.LastHeightConsensusParamsChanged,
 		LastResultsHash:                  s.LastResultsHash[:],
@@ -275,6 +269,8 @@ func (s *State) ToProto() (*pb.State, error) {
 
 // FromProto fills State with data from its protobuf representation.
 func (s *State) FromProto(other *pb.State) error {
+	// FIXME: TEST migration
+
 	var err error
 	s.Version = *other.Version
 	s.ChainID = other.ChainId
@@ -282,15 +278,11 @@ func (s *State) FromProto(other *pb.State) error {
 	s.SetHeight(uint64(other.LastBlockHeight))
 	s.BaseHeight = other.BaseHeight
 
-	s.NextValidators, err = types.ValidatorSetFromProto(other.NextValidators)
+	err = s.Sequencers.FromProto(other.SequencersSet)
 	if err != nil {
 		return err
 	}
-	s.Validators, err = types.ValidatorSetFromProto(other.Validators)
-	if err != nil {
-		return err
-	}
-	s.LastHeightValidatorsChanged = other.LastHeightValidatorsChanged
+
 	s.ConsensusParams = other.ConsensusParams
 	s.LastHeightConsensusParamsChanged = other.LastHeightConsensusParamsChanged
 	copy(s.LastResultsHash[:], other.LastResultsHash)
@@ -328,7 +320,7 @@ func evidenceToProto(evidence EvidenceData) []*abci.Evidence {
 	return ret
 }
 
-func evidenceFromProto(evidence []*abci.Evidence) EvidenceData {
+func evidenceFromProto([]*abci.Evidence) EvidenceData {
 	var ret EvidenceData
 	// TODO(tzdybal): right now Evidence is just an interface without implementations
 	return ret

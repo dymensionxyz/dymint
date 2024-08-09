@@ -3,7 +3,7 @@ package p2p
 import (
 	"github.com/dymensionxyz/dymint/p2p/pb"
 	"github.com/dymensionxyz/dymint/types"
-	tmtypes "github.com/tendermint/tendermint/types"
+	tmcrypto "github.com/tendermint/tendermint/crypto"
 )
 
 /* -------------------------------------------------------------------------- */
@@ -53,22 +53,16 @@ func (e *P2PBlockEvent) FromProto(other *pb.GossipedBlock) error {
 	return nil
 }
 
-// Validate run basic validation on the p2p block
-func (e *P2PBlockEvent) Validate(proposer *types.Sequencer) error {
+// Validate run basic validation on the gossiped block
+func (e *P2PBlockEvent) Validate(proposerPubKey tmcrypto.PubKey) error {
 	if err := e.Block.ValidateBasic(); err != nil {
 		return err
 	}
 	if err := e.Commit.ValidateBasic(); err != nil {
 		return err
 	}
-	if err := e.Commit.ValidateWithHeader(proposer, &e.Block.Header); err != nil {
+	if err := e.Commit.ValidateWithHeader(proposerPubKey, &e.Block.Header); err != nil {
 		return err
-	}
-	abciData := tmtypes.Data{
-		Txs: types.ToABCIBlockDataTxs(&e.Block.Data),
-	}
-	if e.Block.Header.DataHash != [32]byte(abciData.Hash()) {
-		return types.ErrInvalidHeaderDataHash
 	}
 	return nil
 }

@@ -39,7 +39,7 @@ type Header struct {
 	ProposerAddress []byte // original proposer of the block
 
 	// Hash of block sequencer set, at a time of block creation
-	SequencersHash [32]byte
+	NextSequencersHash [32]byte
 
 	// The Chain ID
 	ChainID string
@@ -107,4 +107,16 @@ type Signature []byte
 // They are required for fraud proofs.
 type IntermediateStateRoots struct {
 	RawRootsList [][]byte
+}
+
+func GetLastCommitHash(lastCommit *Commit, header *Header) []byte {
+	lastABCICommit := ToABCICommit(lastCommit, header)
+	return lastABCICommit.Hash()
+}
+
+func GetDataHash(block *Block) []byte {
+	abciData := tmtypes.Data{
+		Txs: ToABCIBlockDataTxs(&block.Data),
+	}
+	return abciData.Hash()
 }
