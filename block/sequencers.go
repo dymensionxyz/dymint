@@ -51,14 +51,22 @@ func (m *Manager) IsProposer() bool {
 }
 
 // check rotation in progress (I'm the proposer, but needs to complete rotation)
-func (m *Manager) MissingLastBatch() bool {
+func (m *Manager) MissingLastBatch() (string, error) {
 	localProposerKey, _ := m.LocalKey.GetPublic().Raw()
-	expectedHubProposer := m.SLClient.GetProposer().PublicKey.Bytes()
-	next, err := m.SLClient.IsRotationInProgress()
+	next, err := m.SLClient.CheckRotationInProgress()
 	if err != nil {
-		panic(fmt.Errorf("get next proposer: %w", err))
+		return "", err
 	}
-	return next != nil && bytes.Equal(expectedHubProposer, localProposerKey)
+	if next == nil {
+		return "", nil
+	}
+	// rotation in progress,
+	// check if we're the old proposer and needs to complete rotation
+	if !bytes.Equal(next.PublicKey.Bytes(), localProposerKey) {
+		return next.Address, nil
+	}
+
+	return "", nil
 }
 
 // handleRotationReq completes the rotation flow once a signal is received from the SL
