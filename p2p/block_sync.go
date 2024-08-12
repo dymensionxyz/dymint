@@ -39,7 +39,7 @@ type BlockSync struct {
 	logger     types.Logger
 }
 
-type BlockSyncMessageHandler func(block *P2PBlockEvent)
+type BlockSyncMessageHandler func(block *BlockData)
 
 // SetupBlockSync initializes all services required to provide and retrieve block data in the P2P network.
 func SetupBlockSync(ctx context.Context, h host.Host, store datastore.Datastore, logger types.Logger) *BlockSync {
@@ -99,14 +99,14 @@ func (blocksync *BlockSync) SaveBlock(ctx context.Context, block []byte) (cid.Ci
 }
 
 // LoadBlock retrieves the blocks (from the local blockstore or the network) using the DAGService to discover all data chunks that are part of the same block.
-func (blocksync *BlockSync) LoadBlock(ctx context.Context, cid cid.Cid) (P2PBlockEvent, error) {
+func (blocksync *BlockSync) LoadBlock(ctx context.Context, cid cid.Cid) (BlockData, error) {
 	blockBytes, err := blocksync.dsrv.LoadBlock(ctx, cid)
 	if err != nil {
-		return P2PBlockEvent{}, err
+		return BlockData{}, err
 	}
-	var block P2PBlockEvent
+	var block BlockData
 	if err := block.UnmarshalBinary(blockBytes); err != nil {
-		return P2PBlockEvent{}, fmt.Errorf("deserialize blocksync block %w", err)
+		return BlockData{}, fmt.Errorf("deserialize blocksync block %w", err)
 	}
 	return block, nil
 }
