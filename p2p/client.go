@@ -499,7 +499,7 @@ func (c *Client) NewTxValidator() GossipValidator {
 }
 
 // blockSyncReceived is called on reception of new block via block-sync protocol
-func (c *Client) blockSyncReceived(block *P2PBlockEvent) {
+func (c *Client) blockSyncReceived(block *BlockData) {
 	err := c.localPubsubServer.PublishWithEvents(context.Background(), *block, map[string][]string{EventTypeKey: {EventNewBlockSyncBlock}})
 	if err != nil {
 		c.logger.Error("Publishing event.", "err", err)
@@ -510,7 +510,7 @@ func (c *Client) blockSyncReceived(block *P2PBlockEvent) {
 
 // blockSyncReceived is called on reception of new block via gossip protocol
 func (c *Client) blockGossipReceived(ctx context.Context, block []byte) {
-	var gossipedBlock P2PBlockEvent
+	var gossipedBlock BlockData
 	if err := gossipedBlock.UnmarshalBinary(block); err != nil {
 		c.logger.Error("Deserialize gossiped block", "error", err)
 	}
