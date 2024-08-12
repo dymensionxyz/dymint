@@ -151,18 +151,16 @@ func (m *Manager) Start(ctx context.Context) error {
 	if isSequencer {
 		// Sequencer must wait till DA is synced to start submitting blobs
 		<-m.DAClient.Synced()
-		nBytes := m.GetUnsubmittedBytes()
-		bytesProducedC := make(chan int)
+		blockProducedC := make(chan struct{})
 		err = m.syncFromSettlement()
 		if err != nil {
 			return fmt.Errorf("sync block manager from settlement: %w", err)
 		}
 		uerrors.ErrGroupGoLog(eg, m.logger, func() error {
-			return m.SubmitLoop(ctx, bytesProducedC)
+			return m.SubmitLoop(ctx, blockProducedC)
 		})
 		uerrors.ErrGroupGoLog(eg, m.logger, func() error {
-			bytesProducedC <- nBytes
-			return m.ProduceBlockLoop(ctx, bytesProducedC)
+			return m.ProduceBlockLoop(ctx, blockProducedC)
 		})
 
 	} else {

@@ -22,12 +22,12 @@ import (
 // 2) Enough time passed since the last submitted batch, so it's necessary to submit a batch to avoid exceeding the max time
 // It will back pressure (pause) block production if it falls too far behind.
 func (m *Manager) SubmitLoop(ctx context.Context,
-	bytesProduced chan int,
+	blockProduced chan struct{},
 ) (err error) {
 	return SubmitLoopInner(
 		ctx,
 		m.logger,
-		bytesProduced,
+		blockProduced,
 		m.Conf.MaxBatchSkew,
 		m.Conf.BatchSubmitMaxTime,
 		m.Conf.BatchMaxSizeBytes,
@@ -39,7 +39,7 @@ func (m *Manager) SubmitLoop(ctx context.Context,
 func SubmitLoopInner(
 	ctx context.Context,
 	logger types.Logger,
-	bytesProduced chan int, // a channel of block and commit bytes produced
+	blockProduced chan struct{}, // a channel indicating a block and commit have been produced
 	maxBatchSkew uint64, // max number of batches that submitter is allowed to have pending
 	maxBatchTime time.Duration, // max time to allow between batches
 	maxBatchBytes uint64, // max size of serialised batch in bytes
@@ -52,7 +52,8 @@ func SubmitLoopInner(
 	submitter := uchannel.NewNudger() // used to avoid busy waiting (using cpu) on submitter thread
 
 	eg.Go(func() error {
-		// 'trigger': we need one thread to continuously consume the bytes produced channel, and to monitor timer
+		// 'trigger': the job of this thread is to (un)block the block the producer by (not) consuming from the channel, and to nudge
+		// the submission thread whenever something is produced.
 
 		// We use a regular interval to wake up the submitter thread in case he is dormant. Note, this can be any value
 		// as long as it less than the maxBatchTime, because the submitter thread takes care of making sure it does
@@ -80,9 +81,7 @@ func SubmitLoopInner(
 				select {
 				case <-ctx.Done():
 					return ctx.Err()
-				case n := <-bytesProduced:
-					pendingBytes.Add(uint64(n))
-					logger.Info("Added bytes produced to bytes pending submission counter.", "n", n)
+				case <-blockProduced: // unblock block production
 				case <-ticker.C:
 				}
 			}
