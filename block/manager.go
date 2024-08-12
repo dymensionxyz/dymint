@@ -146,9 +146,10 @@ func (m *Manager) Start(ctx context.Context) error {
 		}
 	}
 
-	eg, ctx := errgroup.WithContext(ctx)
-
 	if isSequencer {
+
+		eg, ctx := errgroup.WithContext(ctx)
+
 		// Sequencer must wait till DA is synced to start submitting blobs
 		<-m.DAClient.Synced()
 		nBytes := m.GetUnsubmittedBytes()
@@ -164,6 +165,10 @@ func (m *Manager) Start(ctx context.Context) error {
 			bytesProducedC <- nBytes
 			return m.ProduceBlockLoop(ctx, bytesProducedC)
 		})
+		go func() {
+			_ = eg.Wait() // errors are already logged
+			m.logger.Info("Block manager err group finished.")
+		}()
 
 	} else {
 		// Full-nodes can sync from DA but it is not necessary to wait for it, since it can sync from P2P as well in parallel.
@@ -180,11 +185,6 @@ func (m *Manager) Start(ctx context.Context) error {
 		go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewGossipedBlock, m.onReceivedBlock, m.logger)
 		go uevent.MustSubscribe(ctx, m.Pubsub, "applyBlockSyncBlocksLoop", p2p.EventQueryNewBlockSyncBlock, m.onReceivedBlock, m.logger)
 	}
-
-	go func() {
-		_ = eg.Wait() // errors are already logged
-		m.logger.Info("Block manager err group finished.")
-	}()
 
 	return nil
 }
