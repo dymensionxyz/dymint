@@ -220,7 +220,7 @@ type DataAvailabilityLayerClient interface {
 	Synced() <-chan struct{}
 
 	// Returns the maximum allowed blob size in the DA, used to check the max batch size configured
-	GetMaxBlobSize() uint32
+	GetMaxBlobSizeBytes() uint32
 }
 
 // BatchRetriever is additional interface that can be implemented by Data Availability Layer Client that is able to retrieve

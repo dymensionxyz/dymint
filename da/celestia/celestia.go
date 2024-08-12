@@ -650,7 +650,7 @@ func (c *DataAvailabilityLayerClient) sync(rpc *openrpc.Client) {
 	}
 }
 
-// GetMaxBlobSize returns the maximum allowed blob size in the DA, used to check the max batch size configured
-func (d *DataAvailabilityLayerClient) GetMaxBlobSize() uint32 {
-	return maxBlobSize
+// GetMaxBlobSizeBytes returns the maximum allowed blob size in the DA, used to check the max batch size configured
+func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint32 {
+	return maxBlobSizeBytes
 }

@@ -232,7 +232,6 @@ message ResponseEndBlock {
   ConsensusParams consensus_param_updates = 2;
   repeated Event  events                  = 3
       [(gogoproto.nullable) = false, (gogoproto.jsontag) = "events,omitempty"];
-  RollappConsensusParams rollapp_consensus_params_updates = 4;
 }
 
 message ResponseCommit {
@@ -375,11 +374,6 @@ message Evidence {
   int64 total_voting_power = 5;
 }
 
-message RollappConsensusParams {
-  BlockParams block = 1;
-  string da = 2 ;
-  string version = 3 ;
-}
 
 //----------------------------------------
 // State Sync Types

@@ -119,8 +119,8 @@ func (d *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 	}
 }
 
-// GetMaxBlobSize returns the maximum allowed blob size in the DA, used to check the max batch size configured
-func (d *DataAvailabilityLayerClient) GetMaxBlobSize() uint32 {
+// GetMaxBlobSizeBytes returns the maximum allowed blob size in the DA, used to check the max batch size configured
+func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint32 {
 	return 0
 }
 

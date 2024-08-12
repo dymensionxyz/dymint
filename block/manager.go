@@ -274,13 +274,14 @@ func (m *Manager) UpdateTargetHeight(h uint64) {
 	}
 }
 
-func (m *Manager) ValidateRollappParams() error {
-	if m.DAClient.GetMaxBlobSize() != 0 && m.DAClient.GetMaxBlobSize() < uint32(m.Conf.BatchMaxSizeBytes) {
-		return fmt.Errorf("batch size cannot be greater than %d for %s DA", m.DAClient.GetMaxBlobSize(), m.DAClient.GetClientType())
+// ValidateConfigWithRollappParams checks the configuration params are consistent with the params in the dymint state (e.g. DA and version)
+func (m *Manager) ValidateConfigWithRollappParams() error {
+	if m.DAClient.GetMaxBlobSizeBytes() != 0 && m.DAClient.GetMaxBlobSizeBytes() < uint32(m.Conf.BatchMaxSizeBytes) {
+		return fmt.Errorf("batch size cannot be greater than %d for %s DA", m.DAClient.GetMaxBlobSizeBytes(), m.DAClient.GetClientType())
 	}
 
-	if m.DAClient.GetMaxBlobSize() != 0 && m.State.ConsensusParams.Params.BlockMaxSize > int64(m.DAClient.GetMaxBlobSize()) {
-		return fmt.Errorf("max block size cannot be greater than %d for %s DA", int64(m.DAClient.GetMaxBlobSize()), m.DAClient.GetClientType())
+	if m.DAClient.GetMaxBlobSizeBytes() != 0 && m.State.ConsensusParams.Params.BlockMaxSize > int64(m.DAClient.GetMaxBlobSizeBytes()) {
+		return fmt.Errorf("max block size cannot be greater than %d for %s DA", int64(m.DAClient.GetMaxBlobSizeBytes()), m.DAClient.GetClientType())
 	}
 
 	if version.Commit != m.State.ConsensusParams.Params.Commit {

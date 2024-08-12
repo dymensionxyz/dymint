@@ -139,12 +139,10 @@ func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResp
 
 	var err error
 	if s.ConsensusParams.Params.Da != resp.EndBlock.RollappConsensusParamUpdates.Da {
-		e.logger.Debug("Updating DA", "da", s.ConsensusParams.Params.Da, "newda", resp.EndBlock.RollappConsensusParamUpdates.Da)
 		s.ConsensusParams.Params.Da = resp.EndBlock.RollappConsensusParamUpdates.Da
-		err = fmt.Errorf("%w, please update da config for %s", ErrDAUpgrade, s.ConsensusParams.Params.Da)
+		err = fmt.Errorf("DA mismatch, expected %s, actual %s: %w", s.ConsensusParams.Params.Da, resp.EndBlock.RollappConsensusParamUpdates.Da, ErrDAUpgrade)
 	}
 	if s.ConsensusParams.Params.Commit != resp.EndBlock.RollappConsensusParamUpdates.Commit {
-		e.logger.Debug("Updating version", "version", s.ConsensusParams.Params.Commit, "version", resp.EndBlock.RollappConsensusParamUpdates.Commit)
 		s.ConsensusParams.Params.Commit = resp.EndBlock.RollappConsensusParamUpdates.Commit
 		err = fmt.Errorf("%w, please upgrade binary to commit %s", ErrVersionUpgrade, s.ConsensusParams.Params.Commit)
 

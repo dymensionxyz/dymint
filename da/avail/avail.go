@@ -436,7 +436,7 @@ func (c *DataAvailabilityLayerClient) getHeightFromHash(hash availtypes.Hash) (u
 	return uint64(header.Number), nil
 }
 
-// GetMaxBlobSize returns the maximum allowed blob size in the DA, used to check the max batch size configured
-func (d *DataAvailabilityLayerClient) GetMaxBlobSize() uint32 {
+// GetMaxBlobSizeBytes returns the maximum allowed blob size in the DA, used to check the max batch size configured
+func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint32 {
 	return 0
 }

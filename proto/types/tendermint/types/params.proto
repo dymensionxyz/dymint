@@ -80,7 +80,3 @@ message HashedParams {
 }
 
 
-message RollappConsensusParams {
-  string da = 1 ;
-  string version = 2 ;
-}
