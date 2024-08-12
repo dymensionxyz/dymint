@@ -168,7 +168,7 @@ func TestValidator_BlockValidator(t *testing.T) {
 			}
 
 			// Create gossiped block
-			gossipedBlock := p2p.P2PBlockEvent{Block: *block, Commit: *commit}
+			gossipedBlock := p2p.BlockData{Block: *block, Commit: *commit}
 			gossipedBlockBytes, err := gossipedBlock.MarshalBinary()
 			require.NoError(t, err)
 			blockMsg := &p2p.GossipMessage{
