@@ -25,10 +25,7 @@ func (b *Block) ValidateBasic() error {
 		return err
 	}
 
-	abciData := tmtypes.Data{
-		Txs: ToABCIBlockDataTxs(&b.Data),
-	}
-	if b.Header.DataHash != [32]byte(abciData.Hash()) {
+	if b.Header.DataHash != [32]byte(GetDataHash(b)) {
 		return ErrInvalidHeaderDataHash
 	}
 	return nil

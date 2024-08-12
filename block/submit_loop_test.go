@@ -70,7 +70,8 @@ func testSubmitLoopInner(
 				}
 				// producer shall not get too far ahead
 				absoluteMax := (args.batchSkew + 1) * args.batchBytes // +1 is because the producer is always blocked after the fact
-				require.True(t, nProducedBytes.Load() < absoluteMax)
+				nProduced := nProducedBytes.Load()
+				require.True(t, nProduced < absoluteMax, "produced bytes not less than maximum", "nProduced", nProduced, "max", absoluteMax)
 			}
 		}()
 		for {
@@ -99,13 +100,14 @@ func testSubmitLoopInner(
 
 		timeLastProgressT := time.Unix(timeLastProgress.Load(), 0)
 		absoluteMax := int64(1.5 * float64(args.maxTime)) // allow some leeway for code execution
-		require.True(t, time.Since(timeLastProgressT).Milliseconds() < absoluteMax)
+		timeSinceLast := time.Since(timeLastProgressT).Milliseconds()
+		require.True(t, timeSinceLast < absoluteMax, "too long since last update", "timeSinceLast", timeSinceLast, "max", absoluteMax)
 
 		timeLastProgress.Store(time.Now().Unix()) // we have submitted  batch
 		return uint64(consumed), nil
 	}
 
-	block.SubmitLoopInner(ctx, log.TestingLogger(), producedBytesC, args.batchSkew, args.maxTime, args.batchBytes, submitBatch)
+	block.SubmitLoopInner(ctx, log.NewNopLogger(), producedBytesC, args.batchSkew, args.maxTime, args.batchBytes, submitBatch)
 }
 
 // Make sure the producer does not get too far ahead
