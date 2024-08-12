@@ -288,7 +288,7 @@ require (
 	github.com/whyrusleeping/chunker v0.0.0-20181014151217-fe64bd25879f // indirect
 	go.uber.org/mock v0.4.0 // indirect
 	golang.org/x/tools v0.18.0 // indirect
-	pgregory.net/rapid v1.1.0 // indirect
+	pgregory.net/rapid v1.1.0
 )
 
 replace (
