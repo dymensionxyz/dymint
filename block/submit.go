@@ -106,26 +106,31 @@ func SubmitLoopInner(
 			// while there are accumulated blocks, create and submit batches!!
 			for {
 				done := ctx.Err() != nil
-				nothingToSubmit := pending == 0
-				lastSubmissionIsRecent := time.Since(timeLastSubmission) < maxBatchTime
+				somethingToSubmit := 0 < pending
+				timeExceeded := maxBatchTime <= time.Since(timeLastSubmission)
 				maxDataExceeded := maxBatchBytes < pending
-				if done || nothingToSubmit || (lastSubmissionIsRecent && !maxDataExceeded) {
+				if !done && somethingToSubmit && (timeExceeded || maxDataExceeded) {
+
+					logger.Info("Creating and submitting batch.", "pending", pending, "time exceeded", timeExceeded, "maxDataExceeded", maxDataExceeded) // TODO: debug level
+
+					// Note that actually submitting the batch can take a while (10 seconds plus), so the actual gap between submission times
+					// could exceed the maxBatchTime by this amount. To mitigate, reduce max batch time in config. TODO: handle in code automatically
+					nConsumed, err := createAndSubmitBatch(min(pending, maxBatchBytes))
+					if err != nil {
+						err = fmt.Errorf("create and submit batch: %w", err)
+						if errors.Is(err, gerrc.ErrInternal) {
+							logger.Error("Create and submit batch", "err", err, "pending", pending)
+							panic(err)
+						}
+						return err
+					}
+					timeLastSubmission = time.Now()
+					pending = uatomic.Uint64Sub(&pendingBytes, nConsumed)
+					logger.Info("Submitted a batch to both sub-layers.", "n bytes consumed from pending", nConsumed, "pending after", pending) // TODO: debug level
+				} else {
+					// done for now, wait for another nudge from trigger thread
 					break
 				}
-				// Note that actually submitting the batch can take a while (10 seconds plus), so the actual gap between submission times
-				// could exceed the maxBatchTime by this amount. To mitigate, reduce max batch time in config. TODO: handle in code automatically
-				nConsumed, err := createAndSubmitBatch(min(pending, maxBatchBytes))
-				if err != nil {
-					err = fmt.Errorf("create and submit batch: %w", err)
-					if errors.Is(err, gerrc.ErrInternal) {
-						logger.Error("Create and submit batch", "err", err, "pending", pending)
-						panic(err)
-					}
-					return err
-				}
-				timeLastSubmission = time.Now()
-				pending = uatomic.Uint64Sub(&pendingBytes, nConsumed)
-				logger.Info("Submitted a batch to both sub-layers.", "n bytes consumed from pending", nConsumed, "pending after", pending) // TODO: debug level
 			}
 			trigger.Nudge()
 		}
