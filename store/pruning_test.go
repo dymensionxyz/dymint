@@ -83,7 +83,7 @@ func TestStorePruning(t *testing.T) {
 			}
 
 			// And then feed it some data
-			//expectedCid, err := pref.Sum(block)
+			// expectedCid, err := pref.Sum(block)
 			// Validate all blocks are saved
 			for k := range savedHeights {
 				_, err := bstore.LoadBlock(k)

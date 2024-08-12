@@ -60,7 +60,7 @@ func TestCreateBlock(t *testing.T) {
 	state.Sequencers = *types.NewSequencerSet()
 
 	// empty block
-	block := executor.CreateBlock(1, &types.Commit{}, [32]byte{}, state, maxBytes)
+	block := executor.CreateBlock(1, &types.Commit{}, [32]byte{}, [32]byte(state.Sequencers.ProposerHash), state, maxBytes)
 	require.NotNil(block)
 	assert.Empty(block.Data.Txs)
 	assert.Equal(uint64(1), block.Header.Height)
@@ -68,7 +68,7 @@ func TestCreateBlock(t *testing.T) {
 	// one small Tx
 	err = mpool.CheckTx([]byte{1, 2, 3, 4}, func(r *abci.Response) {}, mempool.TxInfo{})
 	require.NoError(err)
-	block = executor.CreateBlock(2, &types.Commit{}, [32]byte{}, state, maxBytes)
+	block = executor.CreateBlock(2, &types.Commit{}, [32]byte{}, [32]byte(state.Sequencers.ProposerHash), state, maxBytes)
 	require.NotNil(block)
 	assert.Equal(uint64(2), block.Header.Height)
 	assert.Len(block.Data.Txs, 1)
@@ -78,7 +78,7 @@ func TestCreateBlock(t *testing.T) {
 	require.NoError(err)
 	err = mpool.CheckTx(make([]byte, 100), func(r *abci.Response) {}, mempool.TxInfo{})
 	require.NoError(err)
-	block = executor.CreateBlock(3, &types.Commit{}, [32]byte{}, state, maxBytes)
+	block = executor.CreateBlock(3, &types.Commit{}, [32]byte{}, [32]byte(state.Sequencers.ProposerHash), state, maxBytes)
 	require.NotNil(block)
 	assert.Len(block.Data.Txs, 2)
 }
@@ -158,7 +158,7 @@ func TestApplyBlock(t *testing.T) {
 	// Create first block with one Tx from mempool
 	_ = mpool.CheckTx([]byte{1, 2, 3, 4}, func(r *abci.Response) {}, mempool.TxInfo{})
 	require.NoError(err)
-	block := executor.CreateBlock(1, &types.Commit{Height: 0}, [32]byte{}, state, maxBytes)
+	block := executor.CreateBlock(1, &types.Commit{Height: 0}, [32]byte{}, [32]byte(state.Sequencers.ProposerHash), state, maxBytes)
 	require.NotNil(block)
 	assert.Equal(uint64(1), block.Header.Height)
 	assert.Len(block.Data.Txs, 1)
@@ -193,7 +193,7 @@ func TestApplyBlock(t *testing.T) {
 	require.NoError(mpool.CheckTx([]byte{5, 6, 7, 8, 9}, func(r *abci.Response) {}, mempool.TxInfo{}))
 	require.NoError(mpool.CheckTx([]byte{1, 2, 3, 4, 5}, func(r *abci.Response) {}, mempool.TxInfo{}))
 	require.NoError(mpool.CheckTx(make([]byte, 90), func(r *abci.Response) {}, mempool.TxInfo{}))
-	block = executor.CreateBlock(2, commit, [32]byte{}, state, maxBytes)
+	block = executor.CreateBlock(2, commit, [32]byte{}, [32]byte(state.Sequencers.ProposerHash), state, maxBytes)
 	require.NotNil(block)
 	assert.Equal(uint64(2), block.Header.Height)
 	assert.Len(block.Data.Txs, 3)

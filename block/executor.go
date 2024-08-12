@@ -88,14 +88,8 @@ func (e *Executor) InitChain(genesis *tmtypes.GenesisDoc, valset []*tmtypes.Vali
 	})
 }
 
-func (e *Executor) CreateLastBlock(height uint64, lastCommit *types.Commit, lastHeaderHash [32]byte, state *types.State, nextSeqHash [32]byte) *types.Block {
-	block := e.CreateBlock(height, lastCommit, lastHeaderHash, state, 0)
-	copy(block.Header.NextSequencersHash[:], nextSeqHash[:])
-	return block
-}
-
 // CreateBlock reaps transactions from mempool and builds a block.
-func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHeaderHash [32]byte, state *types.State, maxBlockDataSizeBytes uint64) *types.Block {
+func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHeaderHash, nextSeqHash [32]byte, state *types.State, maxBlockDataSizeBytes uint64) *types.Block {
 	if state.ConsensusParams.Block.MaxBytes > 0 {
 		maxBlockDataSizeBytes = min(maxBlockDataSizeBytes, uint64(state.ConsensusParams.Block.MaxBytes))
 	}
@@ -126,7 +120,7 @@ func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHead
 	}
 	copy(block.Header.LastCommitHash[:], types.GetLastCommitHash(lastCommit, &block.Header))
 	copy(block.Header.DataHash[:], types.GetDataHash(block))
-	copy(block.Header.NextSequencersHash[:], state.Sequencers.ProposerHash)
+	copy(block.Header.NextSequencersHash[:], nextSeqHash[:])
 
 	return block
 }

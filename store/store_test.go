@@ -245,7 +245,7 @@ func TestBlockId(t *testing.T) {
 	// commit
 	batch.Commit()
 
-	//retrieve cid for height 2
+	// retrieve cid for height 2
 	resultCid, err = s.LoadBlockCid(2)
 	require.NoError(err)
 	require.Equal(expectedCid, resultCid)

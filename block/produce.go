@@ -147,13 +147,17 @@ func (m *Manager) produceBlock(allowEmpty bool, nextProposerHash *[32]byte) (*ty
 		return nil, nil, fmt.Errorf("load block: height: %d: %w: %w", newHeight, err, ErrNonRecoverable)
 	}
 
-	// if nextProposerHash is set, create a last block
+	var maxBlockDataSize uint64
+	var proposerHashForBlock [32]byte
+	// if nextProposerHash is set, we need to create a last block
 	if nextProposerHash != nil {
-		block = m.Executor.CreateLastBlock(newHeight, lastCommit, lastHeaderHash, m.State, *nextProposerHash)
+		maxBlockDataSize = 0
+		proposerHashForBlock = *nextProposerHash
 	} else {
-		maxBlockDataSize := uint64(float64(m.Conf.BatchMaxSizeBytes) * types.MaxBlockSizeAdjustment)
-		block = m.Executor.CreateBlock(newHeight, lastCommit, lastHeaderHash, m.State, maxBlockDataSize)
+		maxBlockDataSize = uint64(float64(m.Conf.BatchMaxSizeBytes) * types.MaxBlockSizeAdjustment)
+		proposerHashForBlock = [32]byte(m.State.Sequencers.ProposerHash)
 	}
+	block = m.Executor.CreateBlock(newHeight, lastCommit, lastHeaderHash, proposerHashForBlock, m.State, maxBlockDataSize)
 	if !allowEmpty && len(block.Data.Txs) == 0 {
 		return nil, nil, fmt.Errorf("%w: %w", types.ErrEmptyBlock, ErrRecoverable)
 	}

@@ -8,8 +8,6 @@ import (
 	"strings"
 	"time"
 
-	errorsmod "cosmossdk.io/errors"
-
 	"github.com/avast/retry-go/v4"
 	"github.com/cosmos/cosmos-sdk/codec"
 	cdctypes "github.com/cosmos/cosmos-sdk/codec/types"
@@ -232,7 +230,7 @@ func (c *Client) getStateInfo(index, height *uint64) (res *rollapptypes.QueryGet
 		res, err = c.rollappQueryClient.StateInfo(c.ctx, req)
 
 		if status.Code(err) == codes.NotFound {
-			return retry.Unrecoverable(errorsmod.Wrap(gerrc.ErrNotFound, err.Error()))
+			return retry.Unrecoverable(errors.Join(gerrc.ErrNotFound, err))
 		}
 		return err
 	})
@@ -285,7 +283,7 @@ func (c *Client) GetProposer() *settlement.Sequencer {
 
 	seqs, err := c.GetBondedSequencers()
 	if err != nil {
-		c.logger.Error("GetSequencers failed", "error", err)
+		c.logger.Error("GetBondedSequencers", "error", err)
 		return nil
 	}
 
@@ -334,7 +332,7 @@ func (c *Client) GetAllSequencers() ([]settlement.Sequencer, error) {
 		}
 
 		if status.Code(err) == codes.NotFound {
-			return retry.Unrecoverable(errorsmod.Wrap(gerrc.ErrNotFound, err.Error()))
+			return retry.Unrecoverable(errors.Join(gerrc.ErrNotFound, err))
 		}
 		return err
 	})
@@ -380,7 +378,7 @@ func (c *Client) GetBondedSequencers() ([]settlement.Sequencer, error) {
 		}
 
 		if status.Code(err) == codes.NotFound {
-			return retry.Unrecoverable(errorsmod.Wrap(gerrc.ErrNotFound, err.Error()))
+			return retry.Unrecoverable(errors.Join(gerrc.ErrNotFound, err))
 		}
 		return err
 	})

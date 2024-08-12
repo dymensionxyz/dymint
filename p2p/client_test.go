@@ -189,7 +189,6 @@ func TestAdvertiseBlock(t *testing.T) {
 	receivedCid, err := clients[0].GetBlockIdFromDHT(ctx, 1)
 	require.NoError(t, err)
 	require.Equal(t, expectedCid, receivedCid)
-
 }
 
 // Test that advertises an invalid CID in the DHT
@@ -223,7 +222,6 @@ func TestAdvertiseWrongCid(t *testing.T) {
 	receivedError := clients[2].DHT.PutValue(ctx, "/block-sync/"+strconv.FormatUint(1, 10), []byte("test"))
 
 	require.Error(t, cid.ErrInvalidCid{}, receivedError)
-
 }
 
 func TestSeedStringParsing(t *testing.T) {

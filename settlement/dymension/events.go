@@ -28,7 +28,7 @@ func (c *Client) getEventData(eventType string, rawEventData ctypes.ResultEvent)
 	case settlement.EventRotationStarted:
 		return convertToRotationStartedEvent(rawEventData)
 	}
-	return nil, fmt.Errorf("event type %s not recognized", eventType)
+	return nil, fmt.Errorf("unrecognized event type: %s", eventType)
 }
 
 func (c *Client) eventHandler() {
@@ -80,16 +80,16 @@ func (c *Client) handleReceivedEvent(event ctypes.ResultEvent, eventMap map[stri
 	// Assert value is in map and publish it to the event bus
 	internalType, ok := eventMap[event.Query]
 	if !ok {
-		c.logger.Error("Ignoring event. Type not supported", "event", event)
+		c.logger.Error("Ignoring event. Type not supported.", "event", event)
 		return
 	}
 	eventData, err := c.getEventData(internalType, event)
 	if err != nil {
-		c.logger.Error("Error converting event data", "event", event, "error", err)
+		c.logger.Error("Converting event data.", "event", event, "error", err)
 		return
 	}
 
-	c.logger.Debug("Publishing internal event", "event", internalType, "data", eventData)
+	c.logger.Debug("Publishing internal event.", "event", internalType, "data", eventData)
 
 	uevent.MustPublish(c.ctx, c.pubsub, eventData, map[string][]string{settlement.EventTypeKey: {internalType}})
 }

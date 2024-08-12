@@ -131,12 +131,13 @@ func TestValidator_BlockValidator(t *testing.T) {
 			// Create state
 			maxBytes := uint64(100)
 			state := types.State{}
+			state.Sequencers = *types.NewSequencerSet()
 			// TODO: set proposer
 			state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
 			state.ConsensusParams.Block.MaxGas = 100000
 
 			// Create empty block
-			block := executor.CreateBlock(1, &types.Commit{}, [32]byte{}, &state, maxBytes)
+			block := executor.CreateBlock(1, &types.Commit{}, [32]byte{}, [32]byte(state.Sequencers.ProposerHash), &state, maxBytes)
 
 			getProposer := &p2pmock.MockGetProposerI{}
 			getProposer.On("GetProposerPubKey").Return(proposerKey.PubKey())

@@ -10,21 +10,12 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// similar to tendermint/types/validator_set.go
-// but doesn't enforces proposer to be set, and keeps proposer hash
+// SequencerSet is a set of rollapp sequencers and a proposer.
+// we use tendermint's Validator struct to represent sequencers and proposer
 type SequencerSet struct {
 	Sequencers   []*types.Validator `json:"sequencers"`
 	Proposer     *types.Validator   `json:"proposer"`
 	ProposerHash []byte
-}
-
-// NewSequencerSet creates a new sequencer set.
-func NewSequencerSet() *SequencerSet {
-	return &SequencerSet{
-		Sequencers:   types.NewValidatorSet(nil).Validators,
-		Proposer:     types.NewValidatorSet(nil).Proposer,
-		ProposerHash: []byte{},
-	}
 }
 
 func (s *SequencerSet) GetProposerPubKey() tmcrypto.PubKey {
@@ -82,10 +73,9 @@ func (s *SequencerSet) HasAddress(address []byte) bool {
 func (s *SequencerSet) ToValSet() *types.ValidatorSet {
 	set := types.NewValidatorSet(s.Sequencers)
 	set.Proposer = s.Proposer
-	return set.CopyIncrementProposerPriority(1) //needed to set proposer on the valSet
+	return set.CopyIncrementProposerPriority(1) // needed to set proposer on the valSet
 }
 
-// ToProto
 func (s *SequencerSet) ToProto() (*pb.SequencerSet, error) {
 	protoSet := new(pb.SequencerSet)
 	seqsProto := make([]*cmtproto.Validator, len(s.Sequencers))
@@ -146,4 +136,14 @@ func GetHash(seq *types.Validator) []byte {
 	// we take a set with only the proposer and hash it
 	tempProposerSet := types.NewValidatorSet([]*types.Validator{seq})
 	return tempProposerSet.Hash()
+}
+
+// NewSequencerSet creates a new empty sequencer set.
+// used for testing
+func NewSequencerSet() *SequencerSet {
+	return &SequencerSet{
+		Sequencers:   types.NewValidatorSet(nil).Validators,
+		Proposer:     types.NewValidatorSet(nil).Proposer,
+		ProposerHash: make([]byte, 32), // Initialize as a slice of 32 bytes
+	}
 }

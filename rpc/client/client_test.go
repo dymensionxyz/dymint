@@ -743,7 +743,7 @@ func TestValidatorSetHandling(t *testing.T) {
 
 	defer node.Stop()
 
-	<-waitCh                           //triggered on the 6th commit
+	<-waitCh                           // triggered on the 6th commit
 	time.Sleep(300 * time.Millisecond) // give time for the sequencers commit to db
 
 	// validator set isn't updated through ABCI anymore
