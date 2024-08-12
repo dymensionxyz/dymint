@@ -114,7 +114,7 @@ func (s *DefaultStore) LoadBlockByHash(hash [32]byte) (*types.Block, error) {
 	return block, nil
 }
 
-// SaveBlockResponses saves block responses (events, tx responses, validator set updates, etc) in Store.
+// SaveBlockResponses saves block responses (events, tx responses, etc) in Store.
 func (s *DefaultStore) SaveBlockResponses(height uint64, responses *tmstate.ABCIResponses, batch KVBatch) (KVBatch, error) {
 	data, err := responses.Marshal()
 	if err != nil {
@@ -204,15 +204,15 @@ func (s *DefaultStore) LoadState() (*types.State, error) {
 	return &state, nil
 }
 
-// SaveSequencers stores validator set for given block height in store.
+// SaveSequencers stores sequencerSet for given block height in store.
 func (s *DefaultStore) SaveSequencers(height uint64, sequencerSet *types.SequencerSet, batch KVBatch) (KVBatch, error) {
 	pbValSet, err := sequencerSet.ToProto()
 	if err != nil {
-		return batch, fmt.Errorf("marshal ValidatorSet to protobuf: %w", err)
+		return batch, fmt.Errorf("marshal sequencerSet to protobuf: %w", err)
 	}
 	blob, err := pbValSet.Marshal()
 	if err != nil {
-		return batch, fmt.Errorf("marshal ValidatorSet: %w", err)
+		return batch, fmt.Errorf("marshal sequencerSet: %w", err)
 	}
 
 	if batch == nil {

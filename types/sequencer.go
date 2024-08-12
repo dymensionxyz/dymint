@@ -18,6 +18,15 @@ type SequencerSet struct {
 	ProposerHash []byte
 }
 
+// NewSequencerSet creates a new sequencer set.
+func NewSequencerSet() *SequencerSet {
+	return &SequencerSet{
+		Sequencers:   types.NewValidatorSet(nil).Validators,
+		Proposer:     types.NewValidatorSet(nil).Proposer,
+		ProposerHash: []byte{},
+	}
+}
+
 func (s *SequencerSet) GetProposerPubKey() tmcrypto.PubKey {
 	if s.Proposer == nil {
 		return nil
@@ -49,11 +58,10 @@ func (s *SequencerSet) SetProposer(proposer *types.Validator) {
 	}
 }
 
-func (s *SequencerSet) SetSequencers(bondedSet []*types.Validator) {
-	s.Sequencers = bondedSet
+func (s *SequencerSet) SetSequencers(sequencers []*types.Validator) {
+	s.Sequencers = sequencers
 }
 
-// GetByAddress
 func (s *SequencerSet) GetByAddress(addr []byte) *types.Validator {
 	for _, val := range s.Sequencers {
 		if bytes.Equal(val.Address, addr) {
@@ -74,7 +82,7 @@ func (s *SequencerSet) HasAddress(address []byte) bool {
 func (s *SequencerSet) ToValSet() *types.ValidatorSet {
 	set := types.NewValidatorSet(s.Sequencers)
 	set.Proposer = s.Proposer
-	return set.CopyIncrementProposerPriority(1)
+	return set.CopyIncrementProposerPriority(1) //needed to set proposer on the valSet
 }
 
 // ToProto
@@ -128,7 +136,7 @@ func (s *SequencerSet) FromProto(protoSet pb.SequencerSet) error {
 }
 
 func (s *SequencerSet) String() string {
-	return fmt.Sprintf("SequencerSet{Validators: %v, Proposer: %v, ProposerHash: %v}", s.Sequencers, s.Proposer, s.ProposerHash)
+	return fmt.Sprintf("SequencerSet: %v", s.Sequencers)
 }
 
 func GetHash(seq *types.Validator) []byte {
@@ -138,25 +146,4 @@ func GetHash(seq *types.Validator) []byte {
 	// we take a set with only the proposer and hash it
 	tempProposerSet := types.NewValidatorSet([]*types.Validator{seq})
 	return tempProposerSet.Hash()
-}
-
-// Makes a copy of the validator list.
-func (s *SequencerSet) Copy() *SequencerSet {
-	// copy the validators
-	valsCopy := make([]*types.Validator, len(s.Sequencers))
-	for i, val := range s.Sequencers {
-		valsCopy[i] = val.Copy()
-	}
-
-	return &SequencerSet{
-		Sequencers:   valsCopy,
-		Proposer:     s.Proposer,
-		ProposerHash: s.ProposerHash,
-	}
-}
-
-// LoadSet loads the sequencer set from a ValidatorSet.
-func (s *SequencerSet) LoadSet(bondedSet *types.ValidatorSet) {
-	s.SetSequencers(bondedSet.Copy().Validators)
-	s.SetProposer(bondedSet.Proposer)
 }

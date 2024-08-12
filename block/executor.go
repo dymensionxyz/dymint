@@ -45,11 +45,12 @@ func NewExecutor(localAddress []byte, chainID string, mempool mempool.Mempool, p
 }
 
 // InitChain calls InitChainSync using consensus connection to app.
-func (e *Executor) InitChain(genesis *tmtypes.GenesisDoc, validators []*tmtypes.Validator) (*abci.ResponseInitChain, error) {
+func (e *Executor) InitChain(genesis *tmtypes.GenesisDoc, valset []*tmtypes.Validator) (*abci.ResponseInitChain, error) {
 	params := genesis.ConsensusParams
 	valUpates := abci.ValidatorUpdates{}
 
-	for _, validator := range validators {
+	// prepare the validator updates as expected by the ABCI app
+	for _, validator := range valset {
 		tmkey, err := tmcrypto.PubKeyToProto(validator.PubKey)
 		if err != nil {
 			return nil, err

@@ -84,12 +84,12 @@ func (m *Manager) UpdateStateFromApp() error {
 		return errorsmod.Wrap(err, "load block responses")
 	}
 
-	// update the state with the hash, last store height and last validators.
+	// update the state with the app hashes created on the app commit
 	m.Executor.UpdateStateAfterCommit(m.State, resp, proxyAppInfo.LastBlockAppHash, appHeight)
 	return nil
 }
 
-func (e *Executor) UpdateStateAfterInitChain(s *types.State, res *abci.ResponseInitChain, validators []*tmtypes.Validator) {
+func (e *Executor) UpdateStateAfterInitChain(s *types.State, res *abci.ResponseInitChain, proposer *tmtypes.Validator) {
 	// If the app did not return an app hash, we keep the one set from the genesis doc in
 	// the state. We don't set appHash since we don't want the genesis doc app hash
 	// recorded in the genesis block. We should probably just remove GenesisDoc.AppHash.
@@ -97,9 +97,8 @@ func (e *Executor) UpdateStateAfterInitChain(s *types.State, res *abci.ResponseI
 		copy(s.AppHash[:], res.AppHash)
 	}
 
-	// The validators after initChain must be greater than zero, otherwise this state is not loadable
-	if len(validators) <= 0 {
-		panic("Validators must be greater than zero")
+	if proposer == nil {
+		panic("proposer must be greater than zero on initChain")
 	}
 
 	if res.ConsensusParams != nil {
@@ -127,8 +126,7 @@ func (e *Executor) UpdateStateAfterInitChain(s *types.State, res *abci.ResponseI
 	copy(s.LastResultsHash[:], merkle.HashFromByteSlices(nil))
 
 	// Set the genesis sequencers in the state
-	seqSet := tmtypes.NewValidatorSet(validators).CopyIncrementProposerPriority(1)
-	s.Sequencers.LoadSet(seqSet)
+	s.Sequencers.SetProposer(proposer)
 }
 
 func (e *Executor) UpdateMempoolAfterInitChain(s *types.State) {
@@ -146,7 +144,6 @@ func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResp
 	s.SetHeight(height)
 }
 
-// Update validators post commit
 func (e *Executor) UpdateProposerFromBlock(s *types.State, block *types.Block) {
 	// no sequencer change
 	if bytes.Equal(s.Sequencers.ProposerHash[:], block.Header.NextSequencersHash[:]) {

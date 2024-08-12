@@ -32,11 +32,9 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	if err != nil {
 		return fmt.Errorf("check if block is already applied: %w", err)
 	}
-	// In case the following true, it means we crashed after the commit and before updating the store height.
-	// In that case we'll want to align the store with the app state and continue to the next block.
+	// In case the following true, it means we crashed after the app commit but before updating the state
+	// In that case we'll want to align the state with the app commit result, as if the block was applied.
 	if isBlockAlreadyApplied {
-		// In this case, where the app was committed, but the state wasn't updated
-		// it will update the state from appInfo, saved responses and validators.
 		err := m.UpdateStateFromApp()
 		if err != nil {
 			return fmt.Errorf("update state from app: %w", err)
@@ -66,22 +64,19 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 			return fmt.Errorf("commit block: %w", err)
 		}
 
-		// If failed here, after the app committed, but before the state is updated, we'll update the state on
-		// UpdateStateFromApp using the saved responses
-
 		// Update the state with the new app hash, and store height from the commit.
 		// Every one of those, if happens before commit, prevents us from re-executing the block in case failed during commit.
 		m.Executor.UpdateStateAfterCommit(m.State, responses, appHash, block.Header.Height)
 	}
 
-	// update validators to state from block
+	// check if the proposer needs to be changed
 	m.Executor.UpdateProposerFromBlock(m.State, block)
 
-	// save validators to store to be queried over RPC
+	// save sequencers to store to be queried over RPC
 	batch := m.Store.NewBatch()
 	batch, err = m.Store.SaveSequencers(block.Header.Height, &m.State.Sequencers, batch)
 	if err != nil {
-		return fmt.Errorf("save validators: %w", err)
+		return fmt.Errorf("save sequencers: %w", err)
 	}
 
 	batch, err = m.Store.SaveState(m.State, batch)

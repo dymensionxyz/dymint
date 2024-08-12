@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 
-	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	tmtypes "github.com/tendermint/tendermint/types"
 )
 
@@ -14,20 +13,16 @@ func (m *Manager) RunInitChain(ctx context.Context) error {
 	if proposer == nil {
 		return errors.New("failed to get proposer")
 	}
-	tmPubKey, err := cryptocodec.ToTmPubKeyInterface(proposer.PublicKey)
+	tmProposer, err := proposer.TMValidator()
 	if err != nil {
 		return err
 	}
-	gensisValSet := []*tmtypes.Validator{tmtypes.NewValidator(tmPubKey, 1)}
-
-	// call initChain with both addresses
-	res, err := m.Executor.InitChain(m.Genesis, gensisValSet)
+	res, err := m.Executor.InitChain(m.Genesis, []*tmtypes.Validator{tmProposer})
 	if err != nil {
 		return err
 	}
-
 	// update the state with only the consensus pubkey
-	m.Executor.UpdateStateAfterInitChain(m.State, res, gensisValSet)
+	m.Executor.UpdateStateAfterInitChain(m.State, res, tmProposer)
 	m.Executor.UpdateMempoolAfterInitChain(m.State)
 	if _, err := m.Store.SaveState(m.State, nil); err != nil {
 		return err

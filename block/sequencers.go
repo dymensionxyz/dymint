@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 
-	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/google/uuid"
 	tmtypes "github.com/tendermint/tendermint/types"
@@ -128,30 +127,31 @@ func (m *Manager) UpdateSequencerSetFromSL() error {
 	if err != nil {
 		return err
 	}
-	newVals := make([]*tmtypes.Validator, 0, len(seqs))
+	newSeqList := make([]*tmtypes.Validator, 0, len(seqs))
 	for _, seq := range seqs {
-		tmPubKey, err := cryptocodec.ToTmPubKeyInterface(seq.PublicKey)
+		tmSeq, err := seq.TMValidator()
 		if err != nil {
 			return err
 		}
-		val := tmtypes.NewValidator(tmPubKey, 1)
-		newVals = append(newVals, val)
+		newSeqList = append(newSeqList, tmSeq)
 	}
-	m.State.Sequencers.SetSequencers(newVals)
+	m.State.Sequencers.SetSequencers(newSeqList)
 	m.logger.Debug("Updated bonded sequencer set.", "newSet", m.State.Sequencers.String())
 	return nil
 }
 
 // updateProposer updates the proposer in the state
 func (m *Manager) UpdateProposer() error {
-	var p *tmtypes.Validator
+	var (
+		err error
+		p   *tmtypes.Validator
+	)
 	proposer := m.SLClient.GetProposer()
 	if proposer != nil {
-		tmPubKey, err := cryptocodec.ToTmPubKeyInterface(proposer.PublicKey)
+		p, err = proposer.TMValidator()
 		if err != nil {
 			return err
 		}
-		p = tmtypes.NewValidator(tmPubKey, 1)
 	}
 	m.State.Sequencers.SetProposer(p)
 	return nil
