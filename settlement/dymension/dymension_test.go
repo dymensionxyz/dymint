@@ -290,7 +290,7 @@ func TestPostBatch(t *testing.T) {
 /* -------------------------------------------------------------------------- */
 
 func generateSequencerByRollappResponse(t *testing.T, count int) *sequencertypes.QueryGetSequencersByRollappByStatusResponse {
-	squencerInfoList := []sequencertypes.Sequencer{}
+	sequencerInfoList := []sequencertypes.Sequencer{}
 	for i := 0; i < count; i++ {
 		pk, err := sdkcodectypes.NewAnyWithValue(secp256k1.GenPrivKey().PubKey())
 		require.NoError(t, err)
@@ -299,10 +299,10 @@ func generateSequencerByRollappResponse(t *testing.T, count int) *sequencertypes
 			DymintPubKey: pk,
 			Status:       sequencertypes.Bonded,
 		}
-		squencerInfoList = append(squencerInfoList, seq)
+		sequencerInfoList = append(sequencerInfoList, seq)
 	}
 	response := &sequencertypes.QueryGetSequencersByRollappByStatusResponse{
-		Sequencers: squencerInfoList,
+		Sequencers: sequencerInfoList,
 	}
 	return response
 }

@@ -19,7 +19,7 @@ var (
 	commitPrefix     = [1]byte{3}
 	statePrefix      = [1]byte{4}
 	responsesPrefix  = [1]byte{5}
-	validatorsPrefix = [1]byte{6}
+	sequencersPrefix = [1]byte{6}
 	cidPrefix        = [1]byte{7}
 )
 
@@ -205,8 +205,8 @@ func (s *DefaultStore) LoadState() (*types.State, error) {
 }
 
 // SaveSequencers stores validator set for given block height in store.
-func (s *DefaultStore) SaveSequencers(height uint64, validatorSet *types.SequencerSet, batch KVBatch) (KVBatch, error) {
-	pbValSet, err := validatorSet.ToProto()
+func (s *DefaultStore) SaveSequencers(height uint64, sequencerSet *types.SequencerSet, batch KVBatch) (KVBatch, error) {
+	pbValSet, err := sequencerSet.ToProto()
 	if err != nil {
 		return batch, fmt.Errorf("marshal ValidatorSet to protobuf: %w", err)
 	}
@@ -216,17 +216,17 @@ func (s *DefaultStore) SaveSequencers(height uint64, validatorSet *types.Sequenc
 	}
 
 	if batch == nil {
-		return nil, s.db.Set(getValidatorsKey(height), blob)
+		return nil, s.db.Set(getSequencersKey(height), blob)
 	}
-	err = batch.Set(getValidatorsKey(height), blob)
+	err = batch.Set(getSequencersKey(height), blob)
 	return batch, err
 }
 
-// LoadSequencers loads validator set at given block height from store.
+// LoadSequencers loads sequencer set at given block height from store.
 func (s *DefaultStore) LoadSequencers(height uint64) (*types.SequencerSet, error) {
-	blob, err := s.db.Get(getValidatorsKey(height))
+	blob, err := s.db.Get(getSequencersKey(height))
 	if err != nil {
-		return nil, fmt.Errorf("load Validators for height %v: %w", height, err)
+		return nil, fmt.Errorf("load sequencers for height %v: %w", height, err)
 	}
 	var pbValSet pb.SequencerSet
 	err = pbValSet.Unmarshal(blob)
@@ -301,10 +301,10 @@ func getResponsesKey(height uint64) []byte {
 	return append(responsesPrefix[:], buf[:]...)
 }
 
-func getValidatorsKey(height uint64) []byte {
+func getSequencersKey(height uint64) []byte {
 	buf := make([]byte, 8)
 	binary.BigEndian.PutUint64(buf, height)
-	return append(validatorsPrefix[:], buf[:]...)
+	return append(sequencersPrefix[:], buf[:]...)
 }
 
 func getCidKey(height uint64) []byte {

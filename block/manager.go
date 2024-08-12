@@ -127,8 +127,6 @@ func NewManager(
 
 // Start starts the block manager.
 func (m *Manager) Start(ctx context.Context) error {
-	m.logger.Debug("Starting block manager")
-
 	// Check if InitChain flow is needed
 	if m.State.IsGenesis() {
 		m.logger.Info("Running InitChain")
@@ -145,11 +143,11 @@ func (m *Manager) Start(ctx context.Context) error {
 		return err
 	}
 
-	isSequencer := m.IsSequencer()
-	m.logger.Info("sequencer mode", "isSequencer", isSequencer)
+	isProposer := m.IsProposer()
+	m.logger.Info("starting block manager", "proposer", isProposer)
 
 	/* ----------------------------- full node mode ----------------------------- */
-	if !isSequencer {
+	if !isProposer {
 		// Full-nodes can sync from DA but it is not necessary to wait for it, since it can sync from P2P as well in parallel.
 		go func() {
 			err := m.syncFromSettlement()
@@ -167,7 +165,6 @@ func (m *Manager) Start(ctx context.Context) error {
 	}
 
 	/* ----------------------------- sequencer mode ----------------------------- */
-	eg, ctx := errgroup.WithContext(ctx)
 	// Sequencer must wait till DA is synced to start submitting blobs
 	<-m.DAClient.Synced()
 	err = m.syncFromSettlement()
@@ -179,30 +176,27 @@ func (m *Manager) Start(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("check rotation in progress: %w", err)
 	}
+	// if sequencer is in the middle of rotation, complete rotation instead of running the main loop
 	if next != nil {
-		go func() {
-			m.handleRotationReq(ctx, next.SequencerAddress)
-		}()
+		m.handleRotationReq(ctx, next.Address)
 		return nil
 	}
 
 	// populate the bytes produced channel
 	bytesProducedC := make(chan int)
-	nBytes := m.GetUnsubmittedBytes()
-	go func() {
-		bytesProducedC <- nBytes
-	}()
 
 	// channel to signal sequencer rotation started
 	rotateSequencerC := make(chan string, 1)
 
+	eg, ctx := errgroup.WithContext(ctx)
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		return m.SubmitLoop(ctx, bytesProducedC)
 	})
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
+		bytesProducedC <- m.GetUnsubmittedBytes() // load unsubmitted bytes from previous run
 		return m.ProduceBlockLoop(ctx, bytesProducedC)
 	})
-	eg.Go(func() error {
+	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		return m.MonitorSequencerRotation(ctx, rotateSequencerC)
 	})
 
@@ -240,7 +234,7 @@ func (m *Manager) NextHeightToSubmit() uint64 {
 
 // syncFromSettlement enforces the node to be synced on initial run from SL and DA.
 func (m *Manager) syncFromSettlement() error {
-	err := m.UpdateBondedSequencerSetFromSL()
+	err := m.UpdateSequencerSetFromSL()
 	if err != nil {
 		return fmt.Errorf("update bonded sequencer set: %w", err)
 	}

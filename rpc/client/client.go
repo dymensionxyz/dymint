@@ -707,12 +707,12 @@ func (c *Client) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
 	latestHeight := latest.Header.Height
 	latestBlockTimeNano := latest.Header.Time
 
-	validators, err := c.node.Store.LoadSequencers(latest.Header.Height)
+	sequencers, err := c.node.Store.LoadSequencers(latest.Header.Height)
 	if err != nil {
 		return nil, fmt.Errorf("fetch the validator info at latest block: %w", err)
 	}
-	validator := validators.Proposer
-	if validator == nil {
+	proposer := sequencers.Proposer
+	if proposer == nil {
 		return nil, fmt.Errorf("find proposer %s in the valSet", string(latest.Header.ProposerAddress))
 	}
 	state, err := c.node.Store.LoadState()
@@ -758,9 +758,9 @@ func (c *Client) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
 		},
 		// TODO(ItzhakBokris): update ValidatorInfo fields
 		ValidatorInfo: ctypes.ValidatorInfo{
-			Address:     validator.Address,
-			PubKey:      validator.PubKey,
-			VotingPower: validator.VotingPower,
+			Address:     proposer.Address,
+			PubKey:      proposer.PubKey,
+			VotingPower: proposer.VotingPower,
 		},
 	}
 	return result, nil

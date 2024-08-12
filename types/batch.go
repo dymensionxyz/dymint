@@ -7,8 +7,9 @@ const (
 // Batch defines a struct for block aggregation for support of batching.
 // TODO: maybe change to BlockBatch
 type Batch struct {
-	Blocks    []*Block
-	Commits   []*Commit
+	Blocks  []*Block
+	Commits []*Commit
+	// LastBatch is true if this is the last batch of the sequencer (i.e completes it's rotation flow).
 	LastBatch bool
 }
 

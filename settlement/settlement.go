@@ -90,11 +90,8 @@ type ClientI interface {
 	GetHeightState(uint64) (*ResultGetHeightState, error)
 }
 
-// Sequencer represents a sequencer of the rollapp
 type Sequencer struct {
-	// SequencerAddress is the address of the sequencer
-	SequencerAddress string
-	// PublicKey is the public key of the sequencer
+	Address   string
 	PublicKey crypto.PubKey
 }
 

@@ -104,7 +104,7 @@ func (m *Manager) ProduceApplyGossipLastBlock(ctx context.Context, nextProposerH
 		return nil, nil, fmt.Errorf("load block: height: %d: %w", h, err)
 	}
 	if bytes.Equal(block.Header.NextSequencersHash[:], nextProposerHash[:]) {
-		m.logger.Debug("Last block already produced and applied")
+		m.logger.Debug("Last block already produced and applied.")
 		commit, err = m.Store.LoadCommit(h)
 		if err != nil {
 			return nil, nil, fmt.Errorf("load commit after load block: height: %d: %w", h, err)

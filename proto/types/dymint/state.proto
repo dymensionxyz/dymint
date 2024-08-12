@@ -27,9 +27,7 @@ message State {
   reserved 9;
   reserved 10;
 
-  // tendermint.types.ValidatorSet next_validators = 8 [deprecated = true];
-  // tendermint.types.ValidatorSet validators = 9 [deprecated = true];
-  // tendermint.types.ValidatorSet last_validators = 10 [deprecated = true];
+
   int64 last_height_validators_changed = 11;
   
 

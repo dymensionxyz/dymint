@@ -35,9 +35,10 @@ func (m *Manager) MonitorSequencerRotation(ctx context.Context, rotateC chan str
 	}
 }
 
+// IsProposer checks if the local node is the proposer
 // In case of sequencer rotation, there's a phase where proposer rotated on L2 but hasn't yet rotated on hub.
 // for this case, the old proposer counts as "sequencer" as well, so he'll be able to submit the last state update.
-func (m *Manager) IsSequencer() bool {
+func (m *Manager) IsProposer() bool {
 	localProposerKey, _ := m.LocalKey.GetPublic().Raw()
 
 	l2Proposer := m.GetProposerPubKey().Bytes()
@@ -68,7 +69,7 @@ func (m *Manager) handleRotationReq(ctx context.Context, nextSeqAddr string) {
 	}
 
 	// TODO: graceful fallback to full node
-	m.logger.Info("sequencer is no longer the proposer")
+	m.logger.Info("Sequencer is no longer the proposer")
 	// panic("sequencer is no longer the proposer")
 }
 
@@ -120,8 +121,9 @@ func (m *Manager) CreateAndPostLastBatch(ctx context.Context, nextSeqHash [32]by
 	return nil
 }
 
-// add bonded sequencers to the seqSet without changing the proposer
-func (m *Manager) UpdateBondedSequencerSetFromSL() error {
+// UpdateSequencerSetFromSL updates the sequencer set from the SL
+// proposer is not changed here
+func (m *Manager) UpdateSequencerSetFromSL() error {
 	seqs, err := m.SLClient.GetAllSequencers()
 	if err != nil {
 		return err
@@ -133,36 +135,24 @@ func (m *Manager) UpdateBondedSequencerSetFromSL() error {
 			return err
 		}
 		val := tmtypes.NewValidator(tmPubKey, 1)
-
-		// check if not exists already
-		if m.State.Sequencers.HasAddress(val.Address) {
-			continue
-		}
-
 		newVals = append(newVals, val)
 	}
-	// update state on changes
-	if len(newVals) > 0 {
-		newVals = append(newVals, m.State.Sequencers.Sequencers...)
-		m.State.Sequencers.SetSequencers(newVals)
-	}
-
-	m.logger.Debug("Updated bonded sequencer set", "newSet", m.State.Sequencers.String())
+	m.State.Sequencers.SetSequencers(newVals)
+	m.logger.Debug("Updated bonded sequencer set.", "newSet", m.State.Sequencers.String())
 	return nil
 }
 
 // updateProposer updates the proposer in the state
 func (m *Manager) UpdateProposer() error {
+	var p *tmtypes.Validator
 	proposer := m.SLClient.GetProposer()
-	if proposer == nil {
-		m.State.Sequencers.SetProposer(nil)
-		return nil
+	if proposer != nil {
+		tmPubKey, err := cryptocodec.ToTmPubKeyInterface(proposer.PublicKey)
+		if err != nil {
+			return err
+		}
+		p = tmtypes.NewValidator(tmPubKey, 1)
 	}
-	tmPubKey, err := cryptocodec.ToTmPubKeyInterface(proposer.PublicKey)
-	if err != nil {
-		return err
-	}
-	val := tmtypes.NewValidator(tmPubKey, 1)
-	m.State.Sequencers.SetProposer(val)
+	m.State.Sequencers.SetProposer(p)
 	return nil
 }

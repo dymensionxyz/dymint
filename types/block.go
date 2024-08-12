@@ -114,6 +114,7 @@ func GetLastCommitHash(lastCommit *Commit, header *Header) []byte {
 	return lastABCICommit.Hash()
 }
 
+// GetDataHash returns the hash of the block data to be set in the block header.
 func GetDataHash(block *Block) []byte {
 	abciData := tmtypes.Data{
 		Txs: ToABCIBlockDataTxs(&block.Data),

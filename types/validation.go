@@ -95,6 +95,7 @@ func (c *Commit) ValidateWithHeader(proposerPubKey tmcrypto.PubKey, header *Head
 	if err != nil {
 		return err
 	}
+	// commit is validated to have single signature
 	if !proposerPubKey.VerifySignature(abciHeaderBytes, c.Signatures[0]) {
 		return ErrInvalidSignature
 	}

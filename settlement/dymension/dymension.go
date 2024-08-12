@@ -279,7 +279,7 @@ func (c *Client) GetHeightState(h uint64) (*settlement.ResultGetHeightState, err
 // GetProposer implements settlement.ClientI.
 func (c *Client) GetProposer() *settlement.Sequencer {
 	// return cached proposer
-	if c.proposer.SequencerAddress != "" {
+	if c.proposer.Address != "" {
 		return &c.proposer
 	}
 
@@ -310,7 +310,7 @@ func (c *Client) GetProposer() *settlement.Sequencer {
 	}
 
 	for _, sequencer := range seqs {
-		if sequencer.SequencerAddress == proposerAddr {
+		if sequencer.Address == proposerAddr {
 			c.proposer = sequencer
 			return &sequencer
 		}
@@ -356,8 +356,8 @@ func (c *Client) GetAllSequencers() ([]settlement.Sequencer, error) {
 		}
 
 		sequencerList = append(sequencerList, settlement.Sequencer{
-			SequencerAddress: sequencer.SequencerAddress,
-			PublicKey:        pubKey,
+			Address:   sequencer.SequencerAddress,
+			PublicKey: pubKey,
 		})
 	}
 
@@ -402,8 +402,8 @@ func (c *Client) GetBondedSequencers() ([]settlement.Sequencer, error) {
 		}
 
 		sequencerList = append(sequencerList, settlement.Sequencer{
-			SequencerAddress: sequencer.SequencerAddress,
-			PublicKey:        pubKey,
+			Address:   sequencer.SequencerAddress,
+			PublicKey: pubKey,
 		})
 	}
 
@@ -447,7 +447,7 @@ func (c *Client) IsRotationInProgress() (*settlement.Sequencer, error) {
 	}
 
 	for _, sequencer := range seqs {
-		if sequencer.SequencerAddress == nextAddr {
+		if sequencer.Address == nextAddr {
 			return &sequencer, nil
 		}
 	}

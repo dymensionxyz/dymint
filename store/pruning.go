@@ -45,7 +45,7 @@ func (s *DefaultStore) PruneBlocks(from, to uint64) (uint64, error) {
 		if err := batch.Delete(getResponsesKey(h)); err != nil {
 			return 0, err
 		}
-		if err := batch.Delete(getValidatorsKey(h)); err != nil {
+		if err := batch.Delete(getSequencersKey(h)); err != nil {
 			return 0, err
 		}
 		if err := batch.Delete(getCidKey(h)); err != nil {
