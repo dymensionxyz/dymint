@@ -72,9 +72,6 @@ func SubmitLoopInner(
 					logger.Info("Added bytes produced to bytes pending submission counter.", "n", n)
 				}
 			}
-
-			types.RollappPendingSubmissionsSkewNumBytes.Set(float64(pendingBytes.Load()))
-			types.RollappPendingSubmissionsSkewNumBatches.Set(float64(pendingBytes.Load() / maxBatchBytes))
 			submitter.Nudge()
 		}
 	})
@@ -82,7 +79,7 @@ func SubmitLoopInner(
 	eg.Go(func() error {
 		// 'submitter': this thread actually creates and submits batches, and will do it on a timer if he isn't nudged by block production
 		timeLastSubmission := time.Now()
-		ticker := time.NewTicker(maxBatchTime)
+		ticker := time.NewTicker(maxBatchTime / 10) // interval does not need to match max batch time since we keep track anyway, it's just to wakeup
 		for {
 			select {
 			case <-ctx.Done():
@@ -91,6 +88,9 @@ func SubmitLoopInner(
 			case <-submitter.C:
 			}
 			pending := pendingBytes.Load()
+			types.RollappPendingSubmissionsSkewNumBytes.Set(float64(pendingBytes.Load()))
+			types.RollappPendingSubmissionsSkewNumBatches.Set(float64(pendingBytes.Load() / maxBatchBytes))
+
 			// while there are accumulated blocks, create and submit batches!!
 			for {
 				done := ctx.Err() != nil

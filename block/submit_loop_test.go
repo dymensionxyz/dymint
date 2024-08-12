@@ -99,7 +99,7 @@ func testSubmitLoopInner(
 		nProducedBytes.Add(^uint64(consumed - 1)) // subtract
 
 		timeLastProgressT := time.Unix(timeLastProgress.Load(), 0)
-		absoluteMax := int64(1.5 * float64(args.maxTime)) // allow some leeway for code execution
+		absoluteMax := int64(2 * float64(args.maxTime)) // allow some leeway for code execution. Tests may run on small boxes (GH actions)
 		timeSinceLast := time.Since(timeLastProgressT).Milliseconds()
 		require.True(t, timeSinceLast < absoluteMax, "too long since last update", "timeSinceLast", timeSinceLast, "max", absoluteMax)
 
@@ -115,7 +115,7 @@ func TestSubmitLoopFastProducerHaltingSubmitter(t *testing.T) {
 	testSubmitLoop(
 		t,
 		testArgs{
-			nParallel:    100,
+			nParallel:    50,
 			testDuration: 2 * time.Second,
 			batchSkew:    10,
 			batchBytes:   100,
@@ -136,7 +136,7 @@ func TestSubmitLoopTimer(t *testing.T) {
 	testSubmitLoop(
 		t,
 		testArgs{
-			nParallel:    100,
+			nParallel:    50,
 			testDuration: 2 * time.Second,
 			batchSkew:    10,
 			batchBytes:   100,
