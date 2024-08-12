@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -140,7 +141,7 @@ func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *d
 					"startHeight",
 					batch.StartHeight(),
 					"endHeight",
-					batch.EndHeight,
+					batch.EndHeight(),
 					"error",
 					err,
 				)
@@ -303,18 +304,20 @@ func (c *Client) GetProposer() *settlement.Sequencer {
 		return err
 	})
 	if err != nil {
-		c.logger.Error("GetProposer failed", "error", err)
+		c.logger.Error("GetProposer", "error", err)
 		return nil
 	}
 
-	for _, sequencer := range seqs {
-		if sequencer.Address == proposerAddr {
-			c.proposer = sequencer
-			return &sequencer
-		}
+	// find the sequencer with the proposer address
+	index := slices.IndexFunc(seqs, func(seq settlement.Sequencer) bool {
+		return seq.Address == proposerAddr
+	})
+	// will return nil if the proposer is not set
+	if index == -1 {
+		return nil
 	}
-
-	return nil
+	c.proposer = seqs[index]
+	return &seqs[index]
 }
 
 // GetAllSequencers returns all sequencers of the given rollapp.
@@ -408,8 +411,8 @@ func (c *Client) GetBondedSequencers() ([]settlement.Sequencer, error) {
 	return sequencerList, nil
 }
 
-// IsRotationInProgress implements settlement.ClientI.
-func (c *Client) IsRotationInProgress() (*settlement.Sequencer, error) {
+// CheckRotationInProgress implements settlement.ClientI.
+func (c *Client) CheckRotationInProgress() (*settlement.Sequencer, error) {
 	var (
 		nextAddr string
 		found    bool
@@ -450,7 +453,7 @@ func (c *Client) IsRotationInProgress() (*settlement.Sequencer, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("next proposer not found in bonded set: %w", gerrc.ErrNotFound)
+	return nil, fmt.Errorf("next proposer not found in bonded set: %w", gerrc.ErrInternal)
 }
 
 func (c *Client) broadcastBatch(msgUpdateState *rollapptypes.MsgUpdateState) error {

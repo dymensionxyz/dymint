@@ -3,9 +3,12 @@
 package store
 
 import (
-	store "github.com/dymensionxyz/dymint/store"
+	cid "github.com/ipfs/go-cid"
 	mock "github.com/stretchr/testify/mock"
+
 	state "github.com/tendermint/tendermint/proto/tendermint/state"
+
+	store "github.com/dymensionxyz/dymint/store"
 
 	types "github.com/dymensionxyz/dymint/types"
 )
@@ -184,6 +187,62 @@ func (_c *MockStore_LoadBlockByHash_Call) RunAndReturn(run func([32]byte) (*type
 	return _c
 }
 
+// LoadBlockCid provides a mock function with given fields: height
+func (_m *MockStore) LoadBlockCid(height uint64) (cid.Cid, error) {
+	ret := _m.Called(height)
+
+	if len(ret) == 0 {
+		panic("no return value specified for LoadBlockCid")
+	}
+
+	var r0 cid.Cid
+	var r1 error
+	if rf, ok := ret.Get(0).(func(uint64) (cid.Cid, error)); ok {
+		return rf(height)
+	}
+	if rf, ok := ret.Get(0).(func(uint64) cid.Cid); ok {
+		r0 = rf(height)
+	} else {
+		r0 = ret.Get(0).(cid.Cid)
+	}
+
+	if rf, ok := ret.Get(1).(func(uint64) error); ok {
+		r1 = rf(height)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockStore_LoadBlockCid_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'LoadBlockCid'
+type MockStore_LoadBlockCid_Call struct {
+	*mock.Call
+}
+
+// LoadBlockCid is a helper method to define mock.On call
+//   - height uint64
+func (_e *MockStore_Expecter) LoadBlockCid(height interface{}) *MockStore_LoadBlockCid_Call {
+	return &MockStore_LoadBlockCid_Call{Call: _e.mock.On("LoadBlockCid", height)}
+}
+
+func (_c *MockStore_LoadBlockCid_Call) Run(run func(height uint64)) *MockStore_LoadBlockCid_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(uint64))
+	})
+	return _c
+}
+
+func (_c *MockStore_LoadBlockCid_Call) Return(_a0 cid.Cid, _a1 error) *MockStore_LoadBlockCid_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockStore_LoadBlockCid_Call) RunAndReturn(run func(uint64) (cid.Cid, error)) *MockStore_LoadBlockCid_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // LoadBlockResponses provides a mock function with given fields: height
 func (_m *MockStore) LoadBlockResponses(height uint64) (*state.ABCIResponses, error) {
 	ret := _m.Called(height)
@@ -358,6 +417,64 @@ func (_c *MockStore_LoadCommitByHash_Call) RunAndReturn(run func([32]byte) (*typ
 	return _c
 }
 
+// LoadSequencers provides a mock function with given fields: height
+func (_m *MockStore) LoadSequencers(height uint64) (*types.SequencerSet, error) {
+	ret := _m.Called(height)
+
+	if len(ret) == 0 {
+		panic("no return value specified for LoadSequencers")
+	}
+
+	var r0 *types.SequencerSet
+	var r1 error
+	if rf, ok := ret.Get(0).(func(uint64) (*types.SequencerSet, error)); ok {
+		return rf(height)
+	}
+	if rf, ok := ret.Get(0).(func(uint64) *types.SequencerSet); ok {
+		r0 = rf(height)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*types.SequencerSet)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(uint64) error); ok {
+		r1 = rf(height)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockStore_LoadSequencers_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'LoadSequencers'
+type MockStore_LoadSequencers_Call struct {
+	*mock.Call
+}
+
+// LoadSequencers is a helper method to define mock.On call
+//   - height uint64
+func (_e *MockStore_Expecter) LoadSequencers(height interface{}) *MockStore_LoadSequencers_Call {
+	return &MockStore_LoadSequencers_Call{Call: _e.mock.On("LoadSequencers", height)}
+}
+
+func (_c *MockStore_LoadSequencers_Call) Run(run func(height uint64)) *MockStore_LoadSequencers_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(uint64))
+	})
+	return _c
+}
+
+func (_c *MockStore_LoadSequencers_Call) Return(_a0 *types.SequencerSet, _a1 error) *MockStore_LoadSequencers_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockStore_LoadSequencers_Call) RunAndReturn(run func(uint64) (*types.SequencerSet, error)) *MockStore_LoadSequencers_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // LoadState provides a mock function with given fields:
 func (_m *MockStore) LoadState() (*types.State, error) {
 	ret := _m.Called()
@@ -411,64 +528,6 @@ func (_c *MockStore_LoadState_Call) Return(_a0 *types.State, _a1 error) *MockSto
 }
 
 func (_c *MockStore_LoadState_Call) RunAndReturn(run func() (*types.State, error)) *MockStore_LoadState_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// LoadValidators provides a mock function with given fields: height
-func (_m *MockStore) LoadValidators(height uint64) (*types.SequencerSet, error) {
-	ret := _m.Called(height)
-
-	if len(ret) == 0 {
-		panic("no return value specified for LoadValidators")
-	}
-
-	var r0 *types.SequencerSet
-	var r1 error
-	if rf, ok := ret.Get(0).(func(uint64) (*types.SequencerSet, error)); ok {
-		return rf(height)
-	}
-	if rf, ok := ret.Get(0).(func(uint64) *types.SequencerSet); ok {
-		r0 = rf(height)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*types.SequencerSet)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(uint64) error); ok {
-		r1 = rf(height)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockStore_LoadValidators_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'LoadValidators'
-type MockStore_LoadValidators_Call struct {
-	*mock.Call
-}
-
-// LoadValidators is a helper method to define mock.On call
-//   - height uint64
-func (_e *MockStore_Expecter) LoadValidators(height interface{}) *MockStore_LoadValidators_Call {
-	return &MockStore_LoadValidators_Call{Call: _e.mock.On("LoadValidators", height)}
-}
-
-func (_c *MockStore_LoadValidators_Call) Run(run func(height uint64)) *MockStore_LoadValidators_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(uint64))
-	})
-	return _c
-}
-
-func (_c *MockStore_LoadValidators_Call) Return(_a0 *types.SequencerSet, _a1 error) *MockStore_LoadValidators_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockStore_LoadValidators_Call) RunAndReturn(run func(uint64) (*types.SequencerSet, error)) *MockStore_LoadValidators_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -637,6 +696,66 @@ func (_c *MockStore_SaveBlock_Call) RunAndReturn(run func(*types.Block, *types.C
 	return _c
 }
 
+// SaveBlockCid provides a mock function with given fields: height, _a1, batch
+func (_m *MockStore) SaveBlockCid(height uint64, _a1 cid.Cid, batch store.KVBatch) (store.KVBatch, error) {
+	ret := _m.Called(height, _a1, batch)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SaveBlockCid")
+	}
+
+	var r0 store.KVBatch
+	var r1 error
+	if rf, ok := ret.Get(0).(func(uint64, cid.Cid, store.KVBatch) (store.KVBatch, error)); ok {
+		return rf(height, _a1, batch)
+	}
+	if rf, ok := ret.Get(0).(func(uint64, cid.Cid, store.KVBatch) store.KVBatch); ok {
+		r0 = rf(height, _a1, batch)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(store.KVBatch)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(uint64, cid.Cid, store.KVBatch) error); ok {
+		r1 = rf(height, _a1, batch)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockStore_SaveBlockCid_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SaveBlockCid'
+type MockStore_SaveBlockCid_Call struct {
+	*mock.Call
+}
+
+// SaveBlockCid is a helper method to define mock.On call
+//   - height uint64
+//   - _a1 cid.Cid
+//   - batch store.KVBatch
+func (_e *MockStore_Expecter) SaveBlockCid(height interface{}, _a1 interface{}, batch interface{}) *MockStore_SaveBlockCid_Call {
+	return &MockStore_SaveBlockCid_Call{Call: _e.mock.On("SaveBlockCid", height, _a1, batch)}
+}
+
+func (_c *MockStore_SaveBlockCid_Call) Run(run func(height uint64, _a1 cid.Cid, batch store.KVBatch)) *MockStore_SaveBlockCid_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(uint64), args[1].(cid.Cid), args[2].(store.KVBatch))
+	})
+	return _c
+}
+
+func (_c *MockStore_SaveBlockCid_Call) Return(_a0 store.KVBatch, _a1 error) *MockStore_SaveBlockCid_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockStore_SaveBlockCid_Call) RunAndReturn(run func(uint64, cid.Cid, store.KVBatch) (store.KVBatch, error)) *MockStore_SaveBlockCid_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SaveBlockResponses provides a mock function with given fields: height, responses, batch
 func (_m *MockStore) SaveBlockResponses(height uint64, responses *state.ABCIResponses, batch store.KVBatch) (store.KVBatch, error) {
 	ret := _m.Called(height, responses, batch)
@@ -697,6 +816,66 @@ func (_c *MockStore_SaveBlockResponses_Call) RunAndReturn(run func(uint64, *stat
 	return _c
 }
 
+// SaveSequencers provides a mock function with given fields: height, seqSet, batch
+func (_m *MockStore) SaveSequencers(height uint64, seqSet *types.SequencerSet, batch store.KVBatch) (store.KVBatch, error) {
+	ret := _m.Called(height, seqSet, batch)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SaveSequencers")
+	}
+
+	var r0 store.KVBatch
+	var r1 error
+	if rf, ok := ret.Get(0).(func(uint64, *types.SequencerSet, store.KVBatch) (store.KVBatch, error)); ok {
+		return rf(height, seqSet, batch)
+	}
+	if rf, ok := ret.Get(0).(func(uint64, *types.SequencerSet, store.KVBatch) store.KVBatch); ok {
+		r0 = rf(height, seqSet, batch)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(store.KVBatch)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(uint64, *types.SequencerSet, store.KVBatch) error); ok {
+		r1 = rf(height, seqSet, batch)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockStore_SaveSequencers_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SaveSequencers'
+type MockStore_SaveSequencers_Call struct {
+	*mock.Call
+}
+
+// SaveSequencers is a helper method to define mock.On call
+//   - height uint64
+//   - seqSet *types.SequencerSet
+//   - batch store.KVBatch
+func (_e *MockStore_Expecter) SaveSequencers(height interface{}, seqSet interface{}, batch interface{}) *MockStore_SaveSequencers_Call {
+	return &MockStore_SaveSequencers_Call{Call: _e.mock.On("SaveSequencers", height, seqSet, batch)}
+}
+
+func (_c *MockStore_SaveSequencers_Call) Run(run func(height uint64, seqSet *types.SequencerSet, batch store.KVBatch)) *MockStore_SaveSequencers_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(uint64), args[1].(*types.SequencerSet), args[2].(store.KVBatch))
+	})
+	return _c
+}
+
+func (_c *MockStore_SaveSequencers_Call) Return(_a0 store.KVBatch, _a1 error) *MockStore_SaveSequencers_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockStore_SaveSequencers_Call) RunAndReturn(run func(uint64, *types.SequencerSet, store.KVBatch) (store.KVBatch, error)) *MockStore_SaveSequencers_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // SaveState provides a mock function with given fields: _a0, batch
 func (_m *MockStore) SaveState(_a0 *types.State, batch store.KVBatch) (store.KVBatch, error) {
 	ret := _m.Called(_a0, batch)
@@ -752,66 +931,6 @@ func (_c *MockStore_SaveState_Call) Return(_a0 store.KVBatch, _a1 error) *MockSt
 }
 
 func (_c *MockStore_SaveState_Call) RunAndReturn(run func(*types.State, store.KVBatch) (store.KVBatch, error)) *MockStore_SaveState_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// SaveValidators provides a mock function with given fields: height, seqSet, batch
-func (_m *MockStore) SaveValidators(height uint64, seqSet *types.SequencerSet, batch store.KVBatch) (store.KVBatch, error) {
-	ret := _m.Called(height, seqSet, batch)
-
-	if len(ret) == 0 {
-		panic("no return value specified for SaveValidators")
-	}
-
-	var r0 store.KVBatch
-	var r1 error
-	if rf, ok := ret.Get(0).(func(uint64, *types.SequencerSet, store.KVBatch) (store.KVBatch, error)); ok {
-		return rf(height, seqSet, batch)
-	}
-	if rf, ok := ret.Get(0).(func(uint64, *types.SequencerSet, store.KVBatch) store.KVBatch); ok {
-		r0 = rf(height, seqSet, batch)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(store.KVBatch)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(uint64, *types.SequencerSet, store.KVBatch) error); ok {
-		r1 = rf(height, seqSet, batch)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockStore_SaveValidators_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SaveValidators'
-type MockStore_SaveValidators_Call struct {
-	*mock.Call
-}
-
-// SaveValidators is a helper method to define mock.On call
-//   - height uint64
-//   - seqSet *types.SequencerSet
-//   - batch store.KVBatch
-func (_e *MockStore_Expecter) SaveValidators(height interface{}, seqSet interface{}, batch interface{}) *MockStore_SaveValidators_Call {
-	return &MockStore_SaveValidators_Call{Call: _e.mock.On("SaveValidators", height, seqSet, batch)}
-}
-
-func (_c *MockStore_SaveValidators_Call) Run(run func(height uint64, seqSet *types.SequencerSet, batch store.KVBatch)) *MockStore_SaveValidators_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(uint64), args[1].(*types.SequencerSet), args[2].(store.KVBatch))
-	})
-	return _c
-}
-
-func (_c *MockStore_SaveValidators_Call) Return(_a0 store.KVBatch, _a1 error) *MockStore_SaveValidators_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockStore_SaveValidators_Call) RunAndReturn(run func(uint64, *types.SequencerSet, store.KVBatch) (store.KVBatch, error)) *MockStore_SaveValidators_Call {
 	_c.Call.Return(run)
 	return _c
 }

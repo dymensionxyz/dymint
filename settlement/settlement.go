@@ -83,9 +83,9 @@ type ClientI interface {
 	// GetProposer returns the current proposer for this chain.
 	GetProposer() *Sequencer
 
-	// IsRotationInProgress returns the next proposer for this chain in case of a rotation.
+	// CheckRotationInProgress returns the next proposer for this chain in case of a rotation.
 	// If no rotation is in progress, it should return nil.
-	IsRotationInProgress() (*Sequencer, error)
+	CheckRotationInProgress() (*Sequencer, error)
 
 	GetHeightState(uint64) (*ResultGetHeightState, error)
 }

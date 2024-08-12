@@ -3,7 +3,6 @@ package block_test
 import (
 	"context"
 	"crypto/rand"
-	"fmt"
 	"testing"
 	"time"
 
@@ -18,7 +17,6 @@ import (
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	cfg "github.com/tendermint/tendermint/config"
-	tmcrypto "github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
 	"github.com/tendermint/tendermint/proxy"
@@ -176,7 +174,7 @@ func TestApplyBlock(t *testing.T) {
 	}
 
 	// Apply the block
-	err = validateProposedTransition(state, block, commit, state.Sequencers.GetProposerPubKey())
+	err = types.ValidateProposedTransition(state, block, commit, state.Sequencers.GetProposerPubKey())
 	require.NoError(err)
 
 	resp, err := executor.ExecuteBlock(state, block)
@@ -214,7 +212,7 @@ func TestApplyBlock(t *testing.T) {
 	}
 
 	// Apply the block with an invalid commit
-	err = validateProposedTransition(state, block, invalidCommit, state.Sequencers.GetProposerPubKey())
+	err = types.ValidateProposedTransition(state, block, invalidCommit, state.Sequencers.GetProposerPubKey())
 	require.ErrorIs(err, types.ErrInvalidSignature)
 
 	// Create a valid commit for the block
@@ -227,7 +225,7 @@ func TestApplyBlock(t *testing.T) {
 	}
 
 	// Apply the block
-	err = validateProposedTransition(state, block, commit, state.Sequencers.GetProposerPubKey())
+	err = types.ValidateProposedTransition(state, block, commit, state.Sequencers.GetProposerPubKey())
 	require.NoError(err)
 	resp, err = executor.ExecuteBlock(state, block)
 	require.NoError(err)
@@ -267,15 +265,4 @@ func TestApplyBlock(t *testing.T) {
 			assert.EqualValues(3, data.NumTxs)
 		}
 	}
-}
-
-func validateProposedTransition(state *types.State, block *types.Block, commit *types.Commit, proposerPubKey tmcrypto.PubKey) error {
-	if err := block.ValidateWithState(state); err != nil {
-		return fmt.Errorf("block: %w", err)
-	}
-
-	if err := commit.ValidateWithHeader(proposerPubKey, &block.Header); err != nil {
-		return fmt.Errorf("commit: %w", err)
-	}
-	return nil
 }

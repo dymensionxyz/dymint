@@ -78,6 +78,7 @@ func (m *Manager) handleRotationReq(ctx context.Context, nextSeqAddr string) {
 // CompleteRotation completes the sequencer rotation flow
 // the sequencer will create his last block, with the next sequencer's hash, to handover the proposer role
 // then it will submit all the data accumulated thus far and mark the last state update
+// if nextSeqAddr is empty, the nodes will halt after applying the block produced
 func (m *Manager) CompleteRotation(ctx context.Context, nextSeqAddr string) error {
 	// validate nextSeq is in the bonded set
 	var nextSeqHash [32]byte

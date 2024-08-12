@@ -3,10 +3,22 @@ package types
 import (
 	"bytes"
 	"errors"
+	"fmt"
 
 	tmcrypto "github.com/tendermint/tendermint/crypto"
 	tmtypes "github.com/tendermint/tendermint/types"
 )
+
+func ValidateProposedTransition(state *State, block *Block, commit *Commit, proposerPubKey tmcrypto.PubKey) error {
+	if err := block.ValidateWithState(state); err != nil {
+		return fmt.Errorf("block: %w", err)
+	}
+
+	if err := commit.ValidateWithHeader(proposerPubKey, &block.Header); err != nil {
+		return fmt.Errorf("commit: %w", err)
+	}
+	return nil
+}
 
 // ValidateBasic performs basic validation of a block.
 func (b *Block) ValidateBasic() error {

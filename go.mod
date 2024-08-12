@@ -21,7 +21,6 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/gorilla/rpc v1.2.0
 	github.com/gorilla/websocket v1.5.1
-	github.com/hashicorp/go-multierror v1.1.1
 	github.com/ignite/cli v0.26.1
 	github.com/informalsystems/tm-load-test v1.3.0
 	github.com/ipfs/boxo v0.18.0
@@ -45,6 +44,7 @@ require (
 
 require (
 	github.com/cskr/pubsub v1.0.2 // indirect
+	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/ipfs/go-block-format v0.2.0 // indirect
 )
 

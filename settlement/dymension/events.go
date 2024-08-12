@@ -1,12 +1,12 @@
 package dymension
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 
 	"github.com/dymensionxyz/dymint/settlement"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
-	"github.com/hashicorp/go-multierror"
 
 	"github.com/google/uuid"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
@@ -95,22 +95,27 @@ func (c *Client) handleReceivedEvent(event ctypes.ResultEvent, eventMap map[stri
 }
 
 func convertToNewBatchEvent(rawEventData ctypes.ResultEvent) (*settlement.EventDataNewBatchAccepted, error) {
-	// check all expected attributes  exists
+	var errs []error
+	// check all expected attributes exists
 	events := rawEventData.Events
 	if events["state_update.num_blocks"] == nil || events["state_update.start_height"] == nil || events["state_update.state_info_index"] == nil {
 		return nil, fmt.Errorf("missing expected attributes in event")
 	}
 
-	var multiErr *multierror.Error
 	numBlocks, err := strconv.ParseInt(rawEventData.Events["state_update.num_blocks"][0], 10, 64)
-	multiErr = multierror.Append(multiErr, err)
-	startHeight, err := strconv.ParseInt(rawEventData.Events["state_update.start_height"][0], 10, 64)
-	multiErr = multierror.Append(multiErr, err)
-	stateIndex, err := strconv.ParseInt(rawEventData.Events["state_update.state_info_index"][0], 10, 64)
-	multiErr = multierror.Append(multiErr, err)
-	err = multiErr.ErrorOrNil()
 	if err != nil {
-		return nil, multiErr
+		errs = append(errs, err)
+	}
+	startHeight, err := strconv.ParseInt(rawEventData.Events["state_update.start_height"][0], 10, 64)
+	if err != nil {
+		errs = append(errs, err)
+	}
+	stateIndex, err := strconv.ParseInt(rawEventData.Events["state_update.state_info_index"][0], 10, 64)
+	if err != nil {
+		errs = append(errs, err)
+	}
+	if len(errs) > 0 {
+		return nil, errors.Join(errs...)
 	}
 	endHeight := uint64(startHeight + numBlocks - 1)
 	NewBatchEvent := &settlement.EventDataNewBatchAccepted{

@@ -134,7 +134,7 @@ func (e *Executor) UpdateMempoolAfterInitChain(s *types.State) {
 	e.mempool.SetPostCheckFn(mempool.PostCheckMaxGas(s.ConsensusParams.Block.MaxGas))
 }
 
-// Update state from Commit response
+// UpdateStateAfterCommit updates the state with the app hash and last results hash
 func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResponses, appHash []byte, height uint64) {
 	copy(s.AppHash[:], appHash[:])
 	copy(s.LastResultsHash[:], tmtypes.NewResults(resp.DeliverTxs).Hash())
