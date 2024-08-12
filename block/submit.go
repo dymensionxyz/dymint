@@ -53,7 +53,7 @@ func SubmitLoopInner(
 
 	eg.Go(func() error {
 		// 'trigger': we need one thread to continuously consume the bytes produced channel, and to monitor timer
-		ticker := time.NewTicker(maxBatchTime)
+		ticker := time.NewTicker(maxBatchTime / 10) // interval does not need to match max batch time since the other thread keeps track of the actual time
 		defer ticker.Stop()
 		for {
 			if maxBatchSkew*maxBatchBytes < pendingBytes.Load() {
