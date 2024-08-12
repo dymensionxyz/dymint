@@ -204,8 +204,6 @@ func (e *Executor) ExecuteBlock(state *types.State, block *types.Block) (*tmstat
 
 	hash := block.Hash()
 	abciHeader := types.ToABCIHeaderPB(&block.Header)
-	abciHeader.ChainID = e.chainID
-	abciHeader.ValidatorsHash = state.Sequencers.ProposerHash
 	abciResponses.BeginBlock, err = e.proxyAppConsensusConn.BeginBlockSync(
 		abci.RequestBeginBlock{
 			Hash:   hash[:],
