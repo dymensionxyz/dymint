@@ -44,7 +44,7 @@ func (s *SequencerSet) SetProposerByHash(hash []byte) error {
 			return nil
 		}
 	}
-	return fmt.Errorf("next sequencer not found in bonded set")
+	return ErrMissingProposerPubKey
 }
 
 // SetProposer sets the proposer and adds it to the sequencer set.

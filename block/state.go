@@ -144,6 +144,8 @@ func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResp
 	s.SetHeight(height)
 }
 
+// UpdateProposerFromBlock updates the proposer from the block
+// in case of proposer change, the existing proposer sets the nextProposerHash in the block header
 func (e *Executor) UpdateProposerFromBlock(s *types.State, block *types.Block) {
 	// no sequencer change
 	if bytes.Equal(s.Sequencers.ProposerHash[:], block.Header.NextSequencersHash[:]) {

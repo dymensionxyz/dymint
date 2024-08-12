@@ -1,7 +1,6 @@
 package block
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -45,7 +44,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int)
 			produceEmptyBlock := firstBlock || m.Conf.MaxIdleTime == 0 || nextEmptyBlock.Before(time.Now())
 			firstBlock = false
 
-			block, commit, err := m.ProduceApplyGossipBlock(ctx, produceEmptyBlock, nil)
+			block, commit, err := m.ProduceApplyGossipBlock(ctx, produceEmptyBlock)
 			if errors.Is(err, context.Canceled) {
 				m.logger.Error("Produce and gossip: context canceled.", "error", err)
 				return nil
@@ -96,26 +95,17 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int)
 	}
 }
 
-func (m *Manager) ProduceApplyGossipLastBlock(ctx context.Context, nextProposerHash [32]byte) (block *types.Block, commit *types.Commit, err error) {
-	// check if block with nextProposerHash already produced and applied
-	h := m.State.Height()
-	block, err = m.Store.LoadBlock(h)
-	if err != nil {
-		return nil, nil, fmt.Errorf("load block: height: %d: %w", h, err)
-	}
-	if bytes.Equal(block.Header.NextSequencersHash[:], nextProposerHash[:]) {
-		m.logger.Debug("Last block already produced and applied.")
-		commit, err = m.Store.LoadCommit(h)
-		if err != nil {
-			return nil, nil, fmt.Errorf("load commit after load block: height: %d: %w", h, err)
-		}
-		return block, commit, nil
-	}
-
-	return m.ProduceApplyGossipBlock(ctx, true, &nextProposerHash)
+// ProduceApplyGossipLastBlock produces and applies a block with the given nextProposerHash.
+func (m *Manager) ProduceApplyGossipLastBlock(ctx context.Context, nextProposerHash [32]byte) (err error) {
+	_, _, err = m.produceApplyGossip(ctx, true, &nextProposerHash)
+	return err
 }
 
-func (m *Manager) ProduceApplyGossipBlock(ctx context.Context, allowEmpty bool, nextProposerHash *[32]byte) (block *types.Block, commit *types.Commit, err error) {
+func (m *Manager) ProduceApplyGossipBlock(ctx context.Context, allowEmpty bool) (block *types.Block, commit *types.Commit, err error) {
+	return m.produceApplyGossip(ctx, allowEmpty, nil)
+}
+
+func (m *Manager) produceApplyGossip(ctx context.Context, allowEmpty bool, nextProposerHash *[32]byte) (block *types.Block, commit *types.Commit, err error) {
 	block, commit, err = m.produceBlock(allowEmpty, nextProposerHash)
 	if err != nil {
 		return nil, nil, fmt.Errorf("produce block: %w", err)

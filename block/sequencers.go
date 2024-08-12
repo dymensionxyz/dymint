@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/dymensionxyz/dymint/settlement"
+	"github.com/dymensionxyz/dymint/types"
 	"github.com/google/uuid"
 	tmtypes "github.com/tendermint/tendermint/types"
 )
@@ -60,6 +61,8 @@ func (m *Manager) MissingLastBatch() bool {
 	return next != nil && bytes.Equal(expectedHubProposer, localProposerKey)
 }
 
+// handleRotationReq completes the rotation flow once a signal is received from the SL
+// this called after manager shuts down the block producer and submitter
 func (m *Manager) handleRotationReq(ctx context.Context, nextSeqAddr string) {
 	m.logger.Info("Sequencer rotation started. Production stopped on this sequencer", "nextSeqAddr", nextSeqAddr)
 	err := m.CompleteRotation(ctx, nextSeqAddr)
@@ -72,14 +75,16 @@ func (m *Manager) handleRotationReq(ctx context.Context, nextSeqAddr string) {
 	// panic("sequencer is no longer the proposer")
 }
 
-// complete rotation
+// CompleteRotation completes the sequencer rotation flow
+// the sequencer will create his last block, with the next sequencer's hash, to handover the proposer role
+// then it will submit all the data accumulated thus far and mark the last state update
 func (m *Manager) CompleteRotation(ctx context.Context, nextSeqAddr string) error {
 	// validate nextSeq is in the bonded set
 	var nextSeqHash [32]byte
 	if nextSeqAddr != "" {
 		val := m.State.Sequencers.GetByAddress([]byte(nextSeqAddr))
 		if val == nil {
-			return fmt.Errorf("next sequencer not found in bonded set")
+			return types.ErrMissingProposerPubKey
 		}
 		copy(nextSeqHash[:], val.PubKey.Address().Bytes())
 	}
@@ -93,11 +98,25 @@ func (m *Manager) CompleteRotation(ctx context.Context, nextSeqAddr string) erro
 	return nil
 }
 
+// CreateAndPostLastBatch creates and posts the last batch to the hub
+// this called after manager shuts down the block producer and submitter
 func (m *Manager) CreateAndPostLastBatch(ctx context.Context, nextSeqHash [32]byte) error {
-	_, _, err := m.ProduceApplyGossipLastBlock(ctx, nextSeqHash)
+	h := m.State.Height()
+	block, err := m.Store.LoadBlock(h)
 	if err != nil {
-		return fmt.Errorf("produce apply gossip last block: %w", err)
+		return fmt.Errorf("load block: height: %d: %w", h, err)
 	}
+
+	// check if the last block already produced with nextProposerHash set
+	if bytes.Equal(block.Header.NextSequencersHash[:], nextSeqHash[:]) {
+		m.logger.Debug("Last block already produced and applied.")
+	} else {
+		err := m.ProduceApplyGossipLastBlock(ctx, nextSeqHash)
+		if err != nil {
+			return fmt.Errorf("produce apply gossip last block: %w", err)
+		}
+	}
+
 	// Submit all data accumulated thus far
 	for {
 		b, err := m.CreateBatch(m.Conf.BatchMaxSizeBytes, m.NextHeightToSubmit(), m.State.Height())
