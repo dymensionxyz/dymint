@@ -92,13 +92,11 @@ func testSubmitLoopInner(
 	submitBatch := func(maxSize uint64) (uint64, error) { // mock the batch submission
 		time.Sleep(approx(args.submitTime))
 		if rand.Float64() < args.submissionHaltProbability {
-			t.Log("Submitter halt.")
 			time.Sleep(args.submissionHaltTime)
 			timeLastProgress.Store(time.Now().Unix()) // we have now recovered
 		}
 		// take between 90% and 100% of pending bytes
 		consumed := (int(maxSize) * (90 + rand.Intn(11))) / 100
-		t.Log(nProducedBytes.Load(), consumed)
 		nProducedBytes.Add(^uint64(consumed - 1)) // subtract
 
 		timeLastProgressT := time.Unix(timeLastProgress.Load(), 0)
@@ -118,8 +116,8 @@ func TestSubmitLoopFastProducerHaltingSubmitter(t *testing.T) {
 	testSubmitLoop(
 		t,
 		testArgs{
-			nParallel:    1,
-			testDuration: 10 * time.Second,
+			nParallel:    100,
+			testDuration: 2 * time.Second,
 			batchSkew:    10,
 			batchBytes:   100,
 			maxTime:      10 * time.Millisecond,

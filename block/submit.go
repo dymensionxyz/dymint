@@ -53,9 +53,13 @@ func SubmitLoopInner(
 
 	eg.Go(func() error {
 		// 'trigger': we need one thread to continuously consume the bytes produced channel, and to monitor timer
-		wakeUpTime := maxBatchTime / 10
-		ticker := time.NewTicker(wakeUpTime)
+
+		// We use a regular interval to wake up the submitter thread in case he is dormant. Note, this can be any value
+		// as long as it less than the maxBatchTime, because the submitter thread takes care of making sure it does
+		// not submit too frequently.
+		ticker := time.NewTicker(maxBatchTime / 10)
 		defer ticker.Stop()
+
 		for {
 			if maxBatchSkew*maxBatchBytes < pendingBytes.Load() {
 				// too much stuff is pending submission
@@ -104,10 +108,12 @@ func SubmitLoopInner(
 				done := ctx.Err() != nil
 				nothingToSubmit := pending == 0
 				lastSubmissionIsRecent := time.Since(timeLastSubmission) < maxBatchTime
-				maxDataNotExceeded := pending <= maxBatchBytes
-				if done || nothingToSubmit || (lastSubmissionIsRecent && maxDataNotExceeded) {
+				maxDataExceeded := maxBatchBytes < pending
+				if done || nothingToSubmit || (lastSubmissionIsRecent && !maxDataExceeded) {
 					break
 				}
+				// Note that actually submitting the batch can take a while (10 seconds plus), so the actual gap between submission times
+				// could exceed the maxBatchTime by this amount. To mitigate, reduce max batch time in config. TODO: handle in code automatically
 				nConsumed, err := createAndSubmitBatch(min(pending, maxBatchBytes))
 				if err != nil {
 					err = fmt.Errorf("create and submit batch: %w", err)
