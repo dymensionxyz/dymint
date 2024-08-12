@@ -52,42 +52,20 @@ func SubmitLoopInner(
 	submitter := uchannel.NewNudger() // used to avoid busy waiting (using cpu) on submitter thread
 
 	eg.Go(func() error {
-		// 'trigger': the job of this thread is to (un)block the block the producer by (not) consuming from the channel, and to nudge
+		// 'trigger': the job of this thread is to (un)block the block producer by (not)consuming from the channel, and to nudge
 		// the submission thread whenever something is produced.
 
-		// We use a regular interval to wake up the submitter thread in case he is dormant. Note, this can be any value
-		// as long as it less than the maxBatchTime, because the submitter thread takes care of making sure it does
-		// not submit too frequently.
-		ticker := time.NewTicker(maxBatchTime / 2)
-		defer ticker.Stop()
-
 		for {
+			chanToWait := blockProduced
 			if maxBatchSkew*maxBatchBytes < pendingBytes.Load() {
-				// too much stuff is pending submission
-				// we block here until we get a progress nudge from the submitter thread
-				select {
-				case <-ctx.Done():
-					return ctx.Err()
-				case <-trigger.C:
-				case <-ticker.C:
-					// It's theoretically possible for the thread scheduler to pause this thread after entering this if statement
-					// for enough time for the submitter thread to submit all the pending bytes and do the nudge, and then for the
-					// thread scheduler to wake up this thread after the nudge has been missed, which would be a deadlock.
-					// Although this is only a theoretical possibility which should never happen in practice, it may be possible, e.g.
-					// in adverse CPU conditions or tests using compressed timeframes. To be sound, we also nudge with the ticker, which
-					// has no downside.
-				}
-			} else {
-				select {
-				case <-ctx.Done():
-					return ctx.Err()
-				case <-blockProduced: // unblock block production
-				case <-ticker.C:
-				}
+				// too much stuff has accumulated, wait for submission thread to wake us up after it has made progress
+				chanToWait = trigger.C
 			}
-
-			types.RollappPendingSubmissionsSkewNumBytes.Set(float64(pendingBytes.Load()))
-			types.RollappPendingSubmissionsSkewNumBatches.Set(float64(pendingBytes.Load() / maxBatchBytes))
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case <-chanToWait:
+			}
 			submitter.Nudge()
 		}
 	})
@@ -104,6 +82,9 @@ func SubmitLoopInner(
 			pending := pendingBytes.Load()
 			// while there are accumulated blocks, create and submit batches!!
 			for {
+				// TODO: do something with these lines
+				types.RollappPendingSubmissionsSkewNumBytes.Set(float64(pendingBytes.Load()))
+				types.RollappPendingSubmissionsSkewNumBatches.Set(float64(pendingBytes.Load() / maxBatchBytes))
 				done := ctx.Err() != nil
 				somethingToSubmit := 0 < pending
 				timeExceeded := maxBatchTime <= time.Since(timeLastSubmission)
