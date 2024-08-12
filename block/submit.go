@@ -57,7 +57,7 @@ func SubmitLoopInner(
 		// We use a regular interval to wake up the submitter thread in case he is dormant. Note, this can be any value
 		// as long as it less than the maxBatchTime, because the submitter thread takes care of making sure it does
 		// not submit too frequently.
-		ticker := time.NewTicker(maxBatchTime / 10)
+		ticker := time.NewTicker(maxBatchTime / 2)
 		defer ticker.Stop()
 
 		for {

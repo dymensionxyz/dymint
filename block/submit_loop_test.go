@@ -100,7 +100,11 @@ func testSubmitLoopInner(
 		nProducedBytes.Add(^uint64(consumed - 1)) // subtract
 
 		timeLastProgressT := time.Unix(timeLastProgress.Load(), 0)
-		absoluteMax := int64(1.5 * float64(args.maxTime)) // allow some leeway for code execution
+
+		// allow some leeway for code execution, note: test should not be too intense (parallel),
+		// because otherwise threads won't get any cpu time and this will be exceeded.
+		absoluteMax := int64(2 * float64(args.maxTime))
+
 		timeSinceLast := time.Since(timeLastProgressT).Milliseconds()
 		require.True(t, timeSinceLast < absoluteMax, "too long since last update", "timeSinceLast", timeSinceLast, "max", absoluteMax)
 
