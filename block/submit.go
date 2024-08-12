@@ -240,7 +240,7 @@ func (m *Manager) GetUnsubmittedBytes() int {
 			}
 			break
 		}
-		commit, err := m.Store.LoadBlock(h)
+		commit, err := m.Store.LoadCommit(h)
 		if err != nil {
 			if !errors.Is(err, gerrc.ErrNotFound) {
 				m.logger.Error("Get unsubmitted bytes load commit.", "err", err)
