@@ -78,9 +78,9 @@ func (m *Manager) handleRotationReq(ctx context.Context, nextSeqAddr string) {
 		panic(err)
 	}
 
-	// TODO: graceful fallback to full node
+	// TODO: graceful fallback to full node (https://github.com/dymensionxyz/dymint/issues/1008)
 	m.logger.Info("Sequencer is no longer the proposer")
-	// panic("sequencer is no longer the proposer")
+	panic("sequencer is no longer the proposer")
 }
 
 // CompleteRotation completes the sequencer rotation flow

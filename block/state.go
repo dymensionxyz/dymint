@@ -161,6 +161,19 @@ func (e *Executor) UpdateProposerFromBlock(s *types.State, block *types.Block) {
 	// if hash changed, update the active sequencer
 	err := s.Sequencers.SetProposerByHash(block.Header.NextSequencersHash[:])
 	if err != nil {
-		panic(fmt.Sprintf("failed to update active sequencer: %v", err))
+		e.logger.Error("update new proposer", "err", err)
+		panic(fmt.Sprintf("failed to update new proposer: %v", err))
+	}
+
+	val := s.Sequencers.GetByAddress(e.localAddress)
+	if val == nil {
+		e.logger.Error("local key not found in sequencer set")
+		panic("local key not found in sequencer set")
+	}
+
+	// TODO: graceful fallback to full node (https://github.com/dymensionxyz/dymint/issues/1008)
+	if bytes.Equal(types.GetHash(val), block.Header.NextSequencersHash[:]) {
+		e.logger.Error("node changing to proposer role")
+		panic("node changing to proposer role")
 	}
 }
