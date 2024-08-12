@@ -41,5 +41,5 @@ message State {
   uint64 last_store_height = 16 [(gogoproto.customname) = "LastStoreHeight"];
   uint64 base_height = 17;
 
-  SequencerSet sequencersSet         = 18 [(gogoproto.nullable) = false];
+  SequencerSet sequencerSet         = 18 [(gogoproto.nullable) = false];
 }

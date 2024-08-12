@@ -258,7 +258,7 @@ func (s *State) ToProto() (*pb.State, error) {
 		ChainId:                          s.ChainID,
 		InitialHeight:                    int64(s.InitialHeight),
 		LastBlockHeight:                  int64(s.Height()),
-		SequencersSet:                    *seqsProto,
+		SequencerSet:                     *seqsProto,
 		BaseHeight:                       s.BaseHeight,
 		ConsensusParams:                  s.ConsensusParams,
 		LastHeightConsensusParamsChanged: s.LastHeightConsensusParamsChanged,
@@ -278,7 +278,7 @@ func (s *State) FromProto(other *pb.State) error {
 	s.SetHeight(uint64(other.LastBlockHeight))
 	s.BaseHeight = other.BaseHeight
 
-	err = s.Sequencers.FromProto(other.SequencersSet)
+	err = s.Sequencers.FromProto(other.SequencerSet)
 	if err != nil {
 		return err
 	}

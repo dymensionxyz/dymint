@@ -88,7 +88,8 @@ message Batch {
 
 }
 
+
 message SequencerSet {
-	repeated tendermint.types.Validator sequencers         = 1;
-	tendermint.types.Validator          proposer           = 2;
+	repeated tendermint.types.Validator sequencers = 1;
+	tendermint.types.Validator proposer = 2;
 }

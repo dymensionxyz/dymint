@@ -243,7 +243,7 @@ func (m *Manager) createTMSignature(block *types.Block, proposerAddress []byte, 
 // GetPreviousBlockHashes returns the hash of the last block and the commit for the last block
 // to be used as the previous block hash and commit for the next block
 func (m *Manager) GetPreviousBlockHashes(forHeight uint64) (lastHeaderHash [32]byte, lastCommit *types.Commit, err error) {
-	lastHeaderHash, lastCommit, err = loadPrevBlock(m.Store, forHeight-1) //prev height = forHeight - 1
+	lastHeaderHash, lastCommit, err = loadPrevBlock(m.Store, forHeight-1) // prev height = forHeight - 1
 	if err != nil {
 		if !m.State.IsGenesis() { // allow prevBlock not to be found only on genesis
 			return [32]byte{}, nil, fmt.Errorf("load prev block: %w: %w", err, ErrNonRecoverable)
