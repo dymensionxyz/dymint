@@ -10,6 +10,7 @@ import (
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/dymensionxyz/dymint/da/registry"
 	"github.com/dymensionxyz/dymint/store"
 	uerrors "github.com/dymensionxyz/dymint/utils/errors"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
@@ -81,7 +82,7 @@ type Manager struct {
 // NewManager creates new block Manager.
 func NewManager(
 	localKey crypto.PrivKey,
-	conf config.BlockManagerConfig,
+	conf config.NodeConfig,
 	genesis *tmtypes.GenesisDoc,
 	store store.Store,
 	mempool mempool.Mempool,
@@ -90,6 +91,7 @@ func NewManager(
 	eventBus *tmtypes.EventBus,
 	pubsub *pubsub.Server,
 	p2pClient *p2p.Client,
+	dalcKV *store.PrefixKV,
 	logger log.Logger,
 ) (*Manager, error) {
 	localAddress, err := types.GetAddress(localKey)
@@ -121,6 +123,10 @@ func NewManager(
 		return nil, fmt.Errorf("get initial state: %w", err)
 	}
 
+	err = m.setDA(conf.DAConfig, dalcKV, logger)
+	if err != nil {
+		return nil, err
+	}
 	return m, nil
 }
 
@@ -297,5 +303,26 @@ func (m *Manager) ValidateConfigWithRollappParams() error {
 		return fmt.Errorf("da client mismatch. rollapp param: %s da configured: %s", m.DAClient.GetClientType(), m.State.ConsensusParams.Params.Da)
 	}
 
+	return nil
+}
+
+// setDA initializes DA client in blockmanager according to DA type set in genesis or stored in state
+func (m *Manager) setDA(daconfig string, dalcKV store.KV, logger log.Logger) error {
+	da_layer := m.State.ConsensusParams.Params.Da
+	dalc := registry.GetClient(da_layer)
+	if dalc == nil {
+		return fmt.Errorf("get data availability client named '%s'", da_layer)
+	}
+
+	err := dalc.Init([]byte(daconfig), m.Pubsub, dalcKV, logger.With("module", string(dalc.GetClientType())))
+	if err != nil {
+		return fmt.Errorf("data availability layer client initialization  %w", err)
+	}
+	m.DAClient = dalc
+	retriever, ok := dalc.(da.BatchRetriever)
+	if !ok {
+		return fmt.Errorf("data availability layer client is not of type BatchRetriever")
+	}
+	m.Retriever = retriever
 	return nil
 }

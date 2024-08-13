@@ -15,8 +15,6 @@ import (
 
 	"github.com/dymensionxyz/dymint/block"
 	"github.com/dymensionxyz/dymint/config"
-	"github.com/dymensionxyz/dymint/da"
-	"github.com/dymensionxyz/dymint/da/registry"
 	indexer "github.com/dymensionxyz/dymint/indexers/blockindexer"
 	blockidxkv "github.com/dymensionxyz/dymint/indexers/blockindexer/kv"
 	"github.com/dymensionxyz/dymint/indexers/txindex"
@@ -152,7 +150,7 @@ func NewNode(
 
 	blockManager, err := block.NewManager(
 		signingKey,
-		conf.BlockManagerConfig,
+		conf,
 		genesis,
 		s,
 		mp,
@@ -161,6 +159,7 @@ func NewNode(
 		eventBus,
 		pubsubServer,
 		nil, // p2p client is set later
+		dalcKV,
 		logger,
 	)
 	if err != nil {
@@ -348,25 +347,4 @@ func (n *Node) startPrometheusServer() error {
 
 func (n *Node) GetBlockManagerHeight() uint64 {
 	return n.BlockManager.State.Height()
-}
-
-// setDA initializes DA client in blockmanager according to DA type set in genesis or stored in state
-func (n *Node) setDA(dalcKV store.KV, logger log.Logger) error {
-	da_layer := n.BlockManager.State.ConsensusParams.Params.Da
-	dalc := registry.GetClient(da_layer)
-	if dalc == nil {
-		return fmt.Errorf("get data availability client named '%s'", da_layer)
-	}
-
-	err := dalc.Init([]byte(n.conf.DAConfig), n.PubsubServer, dalcKV, logger.With("module", string(dalc.GetClientType())))
-	if err != nil {
-		return fmt.Errorf("data availability layer client initialization  %w", err)
-	}
-	n.BlockManager.DAClient = dalc
-	retriever, ok := dalc.(da.BatchRetriever)
-	if !ok {
-		return fmt.Errorf("data availability layer client is not of type BatchRetriever")
-	}
-	n.BlockManager.Retriever = retriever
-	return nil
 }
