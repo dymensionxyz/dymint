@@ -8,7 +8,6 @@ import (
 	"time"
 
 	uatomic "github.com/dymensionxyz/dymint/utils/atomic"
-	uchannel "github.com/dymensionxyz/dymint/utils/channel"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"golang.org/x/sync/errgroup"
 
@@ -47,46 +46,36 @@ func SubmitLoopInner(
 ) error {
 	pendingBytes := atomic.Uint64{}
 
-	wake := uchannel.NewNudger()
-
 	submitterG := errgroup.Group{}
 	submitterG.SetLimit(1)
-	submitterG.Wait()
 
 	ticker := time.NewTicker(maxBatchTime)
 	for {
-		if maxBatchSkew*maxBatchBytes < pendingBytes.Load() {
-			// too much stuff is pending submission
-			// we block here until we get a progress nudge from the submitter thread
-			select {
-			case <-ctx.Done():
-				return ctx.Err()
-			case <-wake.C:
-			}
-			continue
-		}
-		timerPopped := false
+		tickerPopped := false
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-ticker.C:
-			timerPopped = true
+			tickerPopped = true
 		case n := <-bytesProduced:
 			pendingBytes.Add(uint64(n))
 			logger.Info("Added bytes produced to bytes pending submission counter.", "n", n)
 			types.RollappPendingSubmissionsSkewNumBytes.Set(float64(pendingBytes.Load()))
 			types.RollappPendingSubmissionsSkewNumBatches.Set(float64(pendingBytes.Load() / maxBatchBytes))
 		}
-		pending := pendingBytes.Load()
-		if (0 < pending && timerPopped) || maxBatchBytes < pending {
+		for {
+			pending := pendingBytes.Load()
+			if 0 == pending || (!tickerPopped && pending <= maxBatchBytes) {
+				break
+			}
 			ticker.Reset(maxBatchTime)
-			submitterG.TryGo(
+			if submitterG.TryGo(
 				func() error {
 					nConsumed, err := createAndSubmitBatch(min(pending, maxBatchBytes))
 					if err != nil {
 						err = fmt.Errorf("create and submit batch: %w", err)
 						if errors.Is(err, gerrc.ErrInternal) {
-							logger.Error("Create and submit batch", "err", err, "pending", pending)
+							logger.Error("Submit loop.", "err", err, "pending", pending)
 							panic(err)
 						}
 						return err
@@ -94,7 +83,11 @@ func SubmitLoopInner(
 					after := uatomic.Uint64Sub(&pendingBytes, nConsumed)
 					logger.Info("Submitted a batch to both sub-layers.", "n bytes consumed from pending", nConsumed, "pending after", after) // TODO: debug level
 					return nil
-				})
+				}) && maxBatchSkew*maxBatchBytes < pending {
+				if err := submitterG.Wait(); err != nil {
+					return err
+				}
+			}
 		}
 	}
 }
