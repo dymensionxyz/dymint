@@ -100,13 +100,13 @@ func TestNodeConfig_Validate(t *testing.T) {
 		}, {
 			name: "max_block_skew 0",
 			malleate: func(nc *config.NodeConfig) {
-				nc.BlockManagerConfig.MaxBlockSkew = 0
+				nc.BlockManagerConfig.BatchSkewBlocks = 0
 			},
 			wantErr: assert.Error,
 		}, {
 			name: "max_block_skew greater than 432k",
 			malleate: func(nc *config.NodeConfig) {
-				nc.BlockManagerConfig.MaxBlockSkew = 500000
+				nc.BlockManagerConfig.BatchSkewBlocks = 500000
 			},
 			wantErr: assert.Error,
 		}, {
@@ -193,7 +193,7 @@ func fullNodeConfig() config.NodeConfig {
 			MaxIdleTime:      20 * time.Second,
 			MaxProofTime:     20 * time.Second,
 			BatchSubmitTime:  20 * time.Second,
-			MaxBlockSkew:     10,
+			BatchSkewBlocks:  10,
 			BatchSubmitBytes: 10000,
 		},
 		DAConfig:        "da-config",
