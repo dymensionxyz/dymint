@@ -21,7 +21,7 @@ const (
 	MinBlockTime          = 200 * time.Millisecond
 	MaxBlockTime          = 6 * time.Second
 	MaxBatchSubmitTime    = 1 * time.Hour
-	MaxBlockSkewSupported = 432000 // equivalent to 24h blocks at max block rate
+	MaxBatchSkewBlocks    = 432000 // equivalent to 24h blocks at max block rate
 )
 
 // NodeConfig stores Dymint node configuration.
@@ -56,8 +56,8 @@ type BlockManagerConfig struct {
 	MaxProofTime time.Duration `mapstructure:"max_proof_time"`
 	// BatchSubmitMaxTime is how long should block manager wait for before submitting batch
 	BatchSubmitTime time.Duration `mapstructure:"batch_submit_max_time"`
-	// MaxBlockSkew is the number of blocks which are waiting to be submitted. Block production will be paused if this limit is reached.
-	MaxBlockSkew uint64 `mapstructure:"max_supported_block_skew"`
+	// BatchSkewBlocks is the number of blocks which are waiting to be submitted. Block production will be paused if this limit is reached.
+	BatchSkewBlocks uint64 `mapstructure:"batch_skew_blocks"`
 	// The size of the batch of blocks and commits in Bytes. We'll write every batch to the DA and the settlement layer.
 	BatchSubmitBytes uint64 `mapstructure:"batch_submit_max_bytes"`
 }
@@ -168,12 +168,12 @@ func (c BlockManagerConfig) Validate() error {
 		return fmt.Errorf("block_batch_size_bytes must be positive")
 	}
 
-	if c.MaxBlockSkew <= 0 {
+	if c.BatchSkewBlocks <= 0 {
 		return fmt.Errorf("max_supported_block_skew must be positive")
 	}
 
-	if c.MaxBlockSkew > MaxBlockSkewSupported {
-		return fmt.Errorf("max_supported_block_skew cannot be greater than %d", MaxBlockSkewSupported)
+	if c.BatchSkewBlocks > MaxBatchSkewBlocks {
+		return fmt.Errorf("max_supported_block_skew cannot be greater than %d", MaxBatchSkewBlocks)
 	}
 
 	return nil
