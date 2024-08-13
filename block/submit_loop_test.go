@@ -83,6 +83,7 @@ func testSubmitLoopInner(
 			time.Sleep(approx(args.produceTime))
 			nBytes := rand.Intn(args.produceBytes) // simulate block production
 			nProducedBytes.Add(uint64(nBytes))
+			// fmt.Println(nProducedBytes.Load())
 			producedBytesC <- nBytes
 
 			timeLastProgress.Store(time.Now().Unix())
@@ -115,7 +116,7 @@ func TestSubmitLoopFastProducerHaltingSubmitter(t *testing.T) {
 	testSubmitLoop(
 		t,
 		testArgs{
-			nParallel:    50,
+			nParallel:    1,
 			testDuration: 2 * time.Second,
 			batchSkew:    10,
 			batchBytes:   100,

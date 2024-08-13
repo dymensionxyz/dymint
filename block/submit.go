@@ -71,6 +71,7 @@ func SubmitLoopInner(
 			ticker.Reset(maxBatchTime)
 			if submitterG.TryGo(
 				func() error {
+					// fmt.Println("pending", pending)
 					nConsumed, err := createAndSubmitBatch(min(pending, maxBatchBytes))
 					if err != nil {
 						err = fmt.Errorf("create and submit batch: %w", err)
@@ -84,6 +85,7 @@ func SubmitLoopInner(
 					logger.Info("Submitted a batch to both sub-layers.", "n bytes consumed from pending", nConsumed, "pending after", after) // TODO: debug level
 					return nil
 				}) && maxBatchSkew*maxBatchBytes < pending {
+				fmt.Println("waiting")
 				if err := submitterG.Wait(); err != nil {
 					return err
 				}
