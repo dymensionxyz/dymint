@@ -357,7 +357,7 @@ func (c *Client) GetAllSequencers() ([]settlement.Sequencer, error) {
 		}
 
 		sequencerList = append(sequencerList, settlement.Sequencer{
-			Address:   sequencer.SequencerAddress,
+			Address:   sequencer.Address,
 			PublicKey: pubKey,
 		})
 	}
@@ -403,7 +403,7 @@ func (c *Client) GetBondedSequencers() ([]settlement.Sequencer, error) {
 		}
 
 		sequencerList = append(sequencerList, settlement.Sequencer{
-			Address:   sequencer.SequencerAddress,
+			Address:   sequencer.Address,
 			PublicKey: pubKey,
 		})
 	}

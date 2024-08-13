@@ -1,7 +1,11 @@
 package types
 
-import proto "github.com/cosmos/gogoproto/proto"
+import (
+	"gopkg.in/yaml.v2"
+)
 
-func (m *Params) String() string {
-	return proto.CompactTextString(m)
+// String implements the Stringer interface.
+func (p Params) String() string {
+	out, _ := yaml.Marshal(p)
+	return string(out)
 }

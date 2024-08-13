@@ -6,6 +6,7 @@ package types
 import (
 	fmt "fmt"
 	_ "github.com/cosmos/cosmos-sdk/types"
+	_ "github.com/cosmos/cosmos-sdk/types/msgservice"
 	_ "github.com/gogo/protobuf/gogoproto"
 	proto "github.com/gogo/protobuf/proto"
 	io "io"
@@ -23,6 +24,34 @@ var _ = math.Inf
 // A compilation error at this line likely means your copy of the
 // proto package needs to be updated.
 const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
+
+type Rollapp_VMType int32
+
+const (
+	Rollapp_Unspecified Rollapp_VMType = 0
+	Rollapp_EVM         Rollapp_VMType = 1
+	Rollapp_WASM        Rollapp_VMType = 2
+)
+
+var Rollapp_VMType_name = map[int32]string{
+	0: "Unspecified",
+	1: "EVM",
+	2: "WASM",
+}
+
+var Rollapp_VMType_value = map[string]int32{
+	"Unspecified": 0,
+	"EVM":         1,
+	"WASM":        2,
+}
+
+func (x Rollapp_VMType) String() string {
+	return proto.EnumName(Rollapp_VMType_name, int32(x))
+}
+
+func (Rollapp_VMType) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_2c072320fdc0abd9, []int{1, 0}
+}
 
 // RollappGenesisState is a partial repr of the state the hub can expect the rollapp to be in upon genesis
 type RollappGenesisState struct {
@@ -74,22 +103,14 @@ func (m *RollappGenesisState) GetTransfersEnabled() bool {
 	return false
 }
 
-// Rollapp defines a rollapp object. First the RollApp is created and then
+// Rollapp defines a rollapp object. First, the RollApp is created and then
 // sequencers can be created and attached. The RollApp is identified by rollappId
 type Rollapp struct {
 	// The unique identifier of the rollapp chain.
-	// The rollappId follows the same standard as cosmos chain_id.
-	RollappId string `protobuf:"bytes,1,opt,name=rollappId,proto3" json:"rollappId,omitempty"`
-	// creator is the bech32-encoded address of the rollapp creator.
-	Creator string `protobuf:"bytes,2,opt,name=creator,proto3" json:"creator,omitempty"`
-	// version is the software and configuration version.
-	// starts from 1 and increases by one on every MsgUpdateState
-	Version uint64 `protobuf:"varint,3,opt,name=version,proto3" json:"version,omitempty"`
-	// maxSequencers is the maximum number of sequencers.
-	MaxSequencers uint64 `protobuf:"varint,4,opt,name=maxSequencers,proto3" json:"maxSequencers,omitempty"`
-	// permissionedAddresses is a bech32-encoded address list of the sequencers that are allowed to serve this rollappId.
-	// In the case of an empty list, the rollapp is considered permissionless.
-	PermissionedAddresses []string `protobuf:"bytes,5,rep,name=permissionedAddresses,proto3" json:"permissionedAddresses,omitempty"`
+	// The rollapp_id follows the same standard as cosmos chain_id.
+	RollappId string `protobuf:"bytes,1,opt,name=rollapp_id,json=rollappId,proto3" json:"rollapp_id,omitempty"`
+	// owner is the bech32-encoded address of the rollapp owner.
+	Owner string `protobuf:"bytes,2,opt,name=owner,proto3" json:"owner,omitempty"`
 	// genesis_state is a partial repr of the state the hub can expect the rollapp to be in upon genesis
 	GenesisState RollappGenesisState `protobuf:"bytes,7,opt,name=genesis_state,json=genesisState,proto3" json:"genesis_state"`
 	// channel_id will be set to the canonical IBC channel of the rollapp.
@@ -98,6 +119,26 @@ type Rollapp struct {
 	Frozen bool `protobuf:"varint,9,opt,name=frozen,proto3" json:"frozen,omitempty"`
 	// registeredDenoms is a list of registered denom bases on this rollapp
 	RegisteredDenoms []string `protobuf:"bytes,10,rep,name=registeredDenoms,proto3" json:"registeredDenoms,omitempty"`
+	// unique bech32 prefix
+	Bech32Prefix string `protobuf:"bytes,11,opt,name=bech32_prefix,json=bech32Prefix,proto3" json:"bech32_prefix,omitempty"`
+	// checksum used to verify integrity of the genesis file
+	GenesisChecksum string `protobuf:"bytes,12,opt,name=genesis_checksum,json=genesisChecksum,proto3" json:"genesis_checksum,omitempty"`
+	// metadata is the rollapp metadata
+	Metadata *RollappMetadata `protobuf:"bytes,14,opt,name=metadata,proto3" json:"metadata,omitempty"`
+	// initial_sequencer is an option to preset one or more coma-separated bech32-encoded addresses of the
+	// sequencer(s) that are allowed to initially register and serve for this rollapp.
+	// if left empty, no sequencer is allowed to register.
+	// if set to "*" any sequencer can register.
+	InitialSequencer string `protobuf:"bytes,15,opt,name=initial_sequencer,json=initialSequencer,proto3" json:"initial_sequencer,omitempty"`
+	// vm_type is the type of rollapp machine: EVM or WASM
+	VmType Rollapp_VMType `protobuf:"varint,16,opt,name=vm_type,json=vmType,proto3,enum=dymensionxyz.dymension.rollapp.Rollapp_VMType" json:"vm_type,omitempty"`
+	// sealed is a boolean that indicates if the immutable fields are no longer updatable.
+	Sealed bool `protobuf:"varint,17,opt,name=sealed,proto3" json:"sealed,omitempty"`
+	// LivenessEventHeight is the height of an upcoming liveness event (slash or jail)
+	// 0 means not set
+	LivenessEventHeight int64 `protobuf:"varint,18,opt,name=liveness_event_height,json=livenessEventHeight,proto3" json:"liveness_event_height,omitempty"`
+	// The LastStateUpdateHeight HUB height when the last state update was received
+	LastStateUpdateHeight int64 `protobuf:"varint,19,opt,name=last_state_update_height,json=lastStateUpdateHeight,proto3" json:"last_state_update_height,omitempty"`
 }
 
 func (m *Rollapp) Reset()         { *m = Rollapp{} }
@@ -140,32 +181,11 @@ func (m *Rollapp) GetRollappId() string {
 	return ""
 }
 
-func (m *Rollapp) GetCreator() string {
+func (m *Rollapp) GetOwner() string {
 	if m != nil {
-		return m.Creator
+		return m.Owner
 	}
 	return ""
-}
-
-func (m *Rollapp) GetVersion() uint64 {
-	if m != nil {
-		return m.Version
-	}
-	return 0
-}
-
-func (m *Rollapp) GetMaxSequencers() uint64 {
-	if m != nil {
-		return m.MaxSequencers
-	}
-	return 0
-}
-
-func (m *Rollapp) GetPermissionedAddresses() []string {
-	if m != nil {
-		return m.PermissionedAddresses
-	}
-	return nil
 }
 
 func (m *Rollapp) GetGenesisState() RollappGenesisState {
@@ -194,6 +214,62 @@ func (m *Rollapp) GetRegisteredDenoms() []string {
 		return m.RegisteredDenoms
 	}
 	return nil
+}
+
+func (m *Rollapp) GetBech32Prefix() string {
+	if m != nil {
+		return m.Bech32Prefix
+	}
+	return ""
+}
+
+func (m *Rollapp) GetGenesisChecksum() string {
+	if m != nil {
+		return m.GenesisChecksum
+	}
+	return ""
+}
+
+func (m *Rollapp) GetMetadata() *RollappMetadata {
+	if m != nil {
+		return m.Metadata
+	}
+	return nil
+}
+
+func (m *Rollapp) GetInitialSequencer() string {
+	if m != nil {
+		return m.InitialSequencer
+	}
+	return ""
+}
+
+func (m *Rollapp) GetVmType() Rollapp_VMType {
+	if m != nil {
+		return m.VmType
+	}
+	return Rollapp_Unspecified
+}
+
+func (m *Rollapp) GetSealed() bool {
+	if m != nil {
+		return m.Sealed
+	}
+	return false
+}
+
+func (m *Rollapp) GetLivenessEventHeight() int64 {
+	if m != nil {
+		return m.LivenessEventHeight
+	}
+	return 0
+}
+
+func (m *Rollapp) GetLastStateUpdateHeight() int64 {
+	if m != nil {
+		return m.LastStateUpdateHeight
+	}
+	return 0
 }
 
 // Rollapp summary is a compact representation of Rollapp
@@ -262,6 +338,7 @@ func (m *RollappSummary) GetLatestFinalizedStateIndex() *StateInfoIndex {
 }
 
 func init() {
+	proto.RegisterEnum("dymensionxyz.dymension.rollapp.Rollapp_VMType", Rollapp_VMType_name, Rollapp_VMType_value)
 	proto.RegisterType((*RollappGenesisState)(nil), "dymensionxyz.dymension.rollapp.RollappGenesisState")
 	proto.RegisterType((*Rollapp)(nil), "dymensionxyz.dymension.rollapp.Rollapp")
 	proto.RegisterType((*RollappSummary)(nil), "dymensionxyz.dymension.rollapp.RollappSummary")
@@ -270,39 +347,50 @@ func init() {
 func init() { proto.RegisterFile("dymension/rollapp/rollapp.proto", fileDescriptor_2c072320fdc0abd9) }
 
 var fileDescriptor_2c072320fdc0abd9 = []byte{
-	// 498 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x9c, 0x53, 0xcd, 0x6e, 0x13, 0x31,
-	0x10, 0x8e, 0x9b, 0x90, 0x1f, 0x97, 0xa2, 0x60, 0x7e, 0x64, 0x2a, 0xd8, 0x46, 0x11, 0x87, 0x08,
-	0xa4, 0x5d, 0xb5, 0xe9, 0x0b, 0x50, 0xf1, 0x97, 0x1e, 0x38, 0x6c, 0x6e, 0x3d, 0x10, 0x39, 0xeb,
-	0xc9, 0xd6, 0xd2, 0xae, 0x1d, 0x6c, 0x27, 0x4a, 0x72, 0xe2, 0x11, 0x78, 0xac, 0x1e, 0x7b, 0xe4,
-	0x84, 0x50, 0xf2, 0x12, 0x1c, 0xd1, 0x7a, 0x37, 0x69, 0x50, 0x0a, 0x95, 0x38, 0xed, 0xce, 0x37,
-	0xf3, 0x7d, 0x33, 0xf3, 0x8d, 0x8c, 0x8f, 0xf8, 0x3c, 0x05, 0x69, 0x84, 0x92, 0x81, 0x56, 0x49,
-	0xc2, 0xc6, 0xe3, 0xf5, 0xd7, 0x1f, 0x6b, 0x65, 0x15, 0xf1, 0x36, 0x05, 0xb3, 0xf9, 0xc2, 0xdf,
-	0x04, 0x7e, 0x51, 0x75, 0xf8, 0x38, 0x56, 0xb1, 0x72, 0xa5, 0x41, 0xf6, 0x97, 0xb3, 0x0e, 0xdb,
-	0xbb, 0xb2, 0xc6, 0x32, 0x0b, 0x03, 0x21, 0x47, 0xeb, 0x1a, 0x2f, 0x52, 0x26, 0x55, 0x26, 0x18,
-	0x32, 0x03, 0xc1, 0xf4, 0x78, 0x08, 0x96, 0x1d, 0x07, 0x91, 0x12, 0x32, 0xcf, 0xb7, 0x3f, 0xe2,
-	0x47, 0x61, 0xce, 0xfd, 0x00, 0x12, 0x8c, 0x30, 0xfd, 0x4c, 0x81, 0xbc, 0xc6, 0x0f, 0xad, 0x66,
-	0xd2, 0x8c, 0x40, 0x9b, 0x01, 0x48, 0x36, 0x4c, 0x80, 0xd3, 0xbd, 0x16, 0xea, 0xd4, 0xc3, 0xe6,
-	0x26, 0xf1, 0x2e, 0xc7, 0xcf, 0x2b, 0x75, 0xd4, 0xdc, 0x6b, 0x7f, 0x2d, 0xe3, 0x5a, 0x21, 0x45,
-	0x9e, 0xe3, 0x46, 0x31, 0x51, 0x8f, 0x53, 0xd4, 0x42, 0x9d, 0x46, 0x78, 0x03, 0x10, 0x8a, 0x6b,
-	0x91, 0x06, 0x66, 0x95, 0x76, 0x92, 0x8d, 0x70, 0x1d, 0x66, 0x99, 0x29, 0xe8, 0x6c, 0x23, 0x5a,
-	0x6e, 0xa1, 0x4e, 0x25, 0x5c, 0x87, 0xe4, 0x25, 0x3e, 0x48, 0xd9, 0xac, 0x0f, 0x5f, 0x26, 0x20,
-	0x23, 0xd0, 0x86, 0x56, 0x5c, 0xfe, 0x4f, 0x90, 0x9c, 0xe2, 0x27, 0x63, 0xd0, 0xa9, 0x30, 0x19,
-	0x07, 0xf8, 0x1b, 0xce, 0x35, 0x18, 0x03, 0x86, 0xde, 0x6b, 0x95, 0x3b, 0x8d, 0xf0, 0xf6, 0x24,
-	0xf9, 0x8c, 0x0f, 0xe2, 0x7c, 0xf9, 0x81, 0xf3, 0x8f, 0xd6, 0x5a, 0xa8, 0xb3, 0x7f, 0xd2, 0xf5,
-	0xff, 0x7d, 0x15, 0xff, 0x16, 0xe3, 0xce, 0x2a, 0x57, 0x3f, 0x8e, 0x4a, 0xe1, 0xfd, 0x78, 0xdb,
-	0xcc, 0x17, 0x18, 0x47, 0x97, 0x4c, 0x4a, 0x48, 0x06, 0x82, 0xd3, 0x7a, 0x6e, 0x47, 0x81, 0xf4,
-	0x38, 0x79, 0x8a, 0xab, 0x23, 0xad, 0x16, 0x20, 0x69, 0xc3, 0x19, 0x5c, 0x44, 0xe4, 0x15, 0x6e,
-	0x6a, 0x88, 0x85, 0xb1, 0xa0, 0x81, 0xbf, 0x05, 0xa9, 0x52, 0x43, 0xb1, 0xdb, 0x63, 0x07, 0x3f,
-	0xaf, 0xd4, 0xab, 0xcd, 0x5a, 0xfb, 0x17, 0xc2, 0x0f, 0x8a, 0xa1, 0xfa, 0x93, 0x34, 0x65, 0x7a,
-	0x7e, 0xc7, 0x25, 0x2e, 0x70, 0x33, 0x61, 0x16, 0x8c, 0x75, 0x83, 0xf6, 0x24, 0x87, 0x99, 0x3b,
-	0xc9, 0xfe, 0x89, 0x7f, 0xd7, 0xf2, 0x05, 0x63, 0xa4, 0x1c, 0x2b, 0xdc, 0xd1, 0x21, 0x09, 0x7e,
-	0x96, 0x63, 0xef, 0x85, 0x64, 0x89, 0x58, 0x00, 0xdf, 0x6a, 0x52, 0xfe, 0xaf, 0x26, 0x7f, 0x17,
-	0x3c, 0xfb, 0x74, 0xb5, 0xf4, 0xd0, 0xf5, 0xd2, 0x43, 0x3f, 0x97, 0x1e, 0xfa, 0xb6, 0xf2, 0x4a,
-	0xd7, 0x2b, 0xaf, 0xf4, 0x7d, 0xe5, 0x95, 0x2e, 0x4e, 0x63, 0x61, 0x2f, 0x27, 0x43, 0x3f, 0x52,
-	0x69, 0xb0, 0xdd, 0xee, 0x26, 0x08, 0xa6, 0xdd, 0x60, 0xb6, 0x79, 0x42, 0x76, 0x3e, 0x06, 0x33,
-	0xac, 0xba, 0xe7, 0xd1, 0xfd, 0x1d, 0x00, 0x00, 0xff, 0xff, 0xcf, 0x3e, 0x28, 0x34, 0xbb, 0x03,
-	0x00, 0x00,
+	// 688 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x9c, 0x54, 0xc9, 0x6e, 0xdb, 0x48,
+	0x10, 0x15, 0x2d, 0x59, 0x4b, 0xcb, 0x0b, 0xdd, 0xb6, 0x67, 0x38, 0xc6, 0x98, 0x16, 0x34, 0x17,
+	0xcd, 0x02, 0x12, 0x96, 0x06, 0x98, 0xf3, 0x38, 0x71, 0xbc, 0x04, 0x0a, 0x02, 0x2a, 0x76, 0x00,
+	0x1f, 0x42, 0xb4, 0xc8, 0x12, 0xd5, 0x08, 0xd9, 0x64, 0xd8, 0x2d, 0x45, 0xf2, 0x57, 0xe4, 0xb3,
+	0x7c, 0x09, 0xe0, 0x63, 0x4e, 0x41, 0x60, 0xff, 0x44, 0x8e, 0x01, 0x9b, 0x2d, 0xd9, 0x80, 0xb2,
+	0x18, 0x39, 0x15, 0xeb, 0xbd, 0xaa, 0x7a, 0x55, 0xd5, 0x05, 0xa2, 0x3d, 0x7f, 0x1a, 0x01, 0xe3,
+	0x34, 0x66, 0x76, 0x1a, 0x87, 0x21, 0x49, 0x92, 0x99, 0xb5, 0x92, 0x34, 0x16, 0x31, 0x36, 0xe7,
+	0x01, 0x93, 0xe9, 0xa5, 0x35, 0x77, 0x2c, 0x15, 0xb5, 0xb3, 0x15, 0xc4, 0x41, 0x2c, 0x43, 0xed,
+	0xec, 0x2b, 0xcf, 0xda, 0x31, 0xbd, 0x98, 0x47, 0x31, 0xb7, 0xfb, 0x84, 0x83, 0x3d, 0xde, 0xef,
+	0x83, 0x20, 0xfb, 0xb6, 0x17, 0x53, 0xa6, 0xf8, 0x5f, 0x15, 0x1f, 0xf1, 0xc0, 0x1e, 0xef, 0x67,
+	0x46, 0x11, 0xcd, 0xc5, 0x7e, 0xb8, 0x20, 0x02, 0x5c, 0xca, 0x06, 0xb3, 0xe2, 0x8d, 0xc5, 0x98,
+	0x08, 0x04, 0xf1, 0x89, 0x20, 0x79, 0x44, 0xf3, 0x18, 0x6d, 0x3a, 0x39, 0x73, 0x04, 0x0c, 0x38,
+	0xe5, 0xbd, 0xac, 0x06, 0xfe, 0x1b, 0x6d, 0x88, 0x94, 0x30, 0x3e, 0x80, 0x94, 0xbb, 0xc0, 0x48,
+	0x3f, 0x04, 0xdf, 0x58, 0x6a, 0x68, 0xad, 0xaa, 0xa3, 0xcf, 0x89, 0xc3, 0x1c, 0x3f, 0x2d, 0x55,
+	0x35, 0x7d, 0xa9, 0xf9, 0x7e, 0x19, 0x55, 0x54, 0x29, 0xbc, 0x8b, 0x90, 0xd2, 0x73, 0xa9, 0x6f,
+	0x68, 0x0d, 0xad, 0x55, 0x73, 0x6a, 0x0a, 0x39, 0xf1, 0xf1, 0x16, 0x5a, 0x8e, 0xdf, 0x32, 0x48,
+	0x65, 0xc5, 0x9a, 0x93, 0x3b, 0xf8, 0x15, 0x5a, 0x0d, 0xf2, 0x1e, 0x5c, 0x39, 0x88, 0x51, 0x69,
+	0x68, 0xad, 0x7a, 0xbb, 0x63, 0x7d, 0x7f, 0xaf, 0xd6, 0x57, 0xfa, 0x3f, 0x28, 0x5d, 0x7d, 0xdc,
+	0x2b, 0x38, 0x2b, 0xc1, 0xfd, 0x99, 0x76, 0x11, 0xf2, 0x86, 0x84, 0x31, 0x08, 0xb3, 0xa6, 0xaa,
+	0x79, 0x53, 0x0a, 0x39, 0xf1, 0xf1, 0x2f, 0xa8, 0x3c, 0x48, 0xe3, 0x4b, 0x60, 0x46, 0x4d, 0xce,
+	0xa9, 0x3c, 0xfc, 0x17, 0xd2, 0x53, 0x08, 0x28, 0x17, 0x90, 0x82, 0xff, 0x18, 0x58, 0x1c, 0x71,
+	0x03, 0x35, 0x8a, 0xad, 0x9a, 0xb3, 0x80, 0xe3, 0x3f, 0xd0, 0x6a, 0x1f, 0xbc, 0x61, 0xa7, 0xed,
+	0x26, 0x29, 0x0c, 0xe8, 0xc4, 0xa8, 0x4b, 0x95, 0x95, 0x1c, 0x7c, 0x2e, 0x31, 0xfc, 0x27, 0xd2,
+	0x67, 0x73, 0x7a, 0x43, 0xf0, 0x5e, 0xf3, 0x51, 0x64, 0xac, 0xc8, 0xb8, 0x75, 0x85, 0x3f, 0x52,
+	0x30, 0x7e, 0x8a, 0xaa, 0xb3, 0xf7, 0x32, 0xd6, 0xe4, 0x36, 0xec, 0x07, 0x6e, 0xa3, 0xab, 0xd2,
+	0x9c, 0x79, 0x81, 0xec, 0x4d, 0x29, 0xa3, 0x82, 0x92, 0xd0, 0xe5, 0xf0, 0x66, 0x04, 0xcc, 0x83,
+	0xd4, 0x58, 0x97, 0xc2, 0xba, 0x22, 0x7a, 0x33, 0x1c, 0x1f, 0xa1, 0xca, 0x38, 0x72, 0xc5, 0x34,
+	0x01, 0x43, 0x6f, 0x68, 0xad, 0xb5, 0xb6, 0xf5, 0x40, 0x61, 0xeb, 0xbc, 0xfb, 0x62, 0x9a, 0x80,
+	0x53, 0x1e, 0x47, 0x99, 0xcd, 0xd6, 0xca, 0x81, 0x64, 0xe7, 0xb3, 0x91, 0xaf, 0x35, 0xf7, 0x70,
+	0x1b, 0x6d, 0x87, 0x74, 0x9c, 0xcd, 0xcb, 0x5d, 0x18, 0x03, 0x13, 0xee, 0x10, 0x68, 0x30, 0x14,
+	0x06, 0x6e, 0x68, 0xad, 0xa2, 0xb3, 0x39, 0x23, 0x0f, 0x33, 0xee, 0x58, 0x52, 0xf8, 0x3f, 0x64,
+	0x84, 0x84, 0x8b, 0xfc, 0x3c, 0xdc, 0x51, 0xe2, 0x67, 0x46, 0xa5, 0x6d, 0xca, 0xb4, 0xed, 0x8c,
+	0x97, 0xcf, 0x7d, 0x26, 0xd9, 0x3c, 0xb1, 0xf9, 0x0f, 0x2a, 0xe7, 0x6d, 0xe1, 0x75, 0x54, 0x3f,
+	0x63, 0x3c, 0x01, 0x8f, 0x0e, 0x28, 0xf8, 0x7a, 0x01, 0x57, 0x50, 0xf1, 0xf0, 0xbc, 0xab, 0x6b,
+	0xb8, 0x8a, 0x4a, 0x2f, 0xff, 0xef, 0x75, 0xf5, 0xa5, 0xd3, 0x52, 0xb5, 0xa8, 0x57, 0x9a, 0x9f,
+	0x35, 0xb4, 0xa6, 0x66, 0xea, 0x8d, 0xa2, 0x88, 0xa4, 0x53, 0xfc, 0x3b, 0xba, 0x3b, 0xe2, 0xc5,
+	0xab, 0xbe, 0x40, 0x7a, 0x48, 0x04, 0x28, 0xfd, 0x13, 0xe6, 0xc3, 0x44, 0x1e, 0x78, 0xfd, 0xc7,
+	0xbb, 0x53, 0x19, 0x83, 0x58, 0x66, 0x39, 0x0b, 0x75, 0x70, 0x88, 0x7e, 0xcb, 0xb1, 0x27, 0x94,
+	0x91, 0x90, 0x5e, 0x82, 0x7f, 0x4f, 0xa4, 0xf8, 0x53, 0x22, 0xdf, 0x2e, 0x78, 0xf0, 0xec, 0xea,
+	0xc6, 0xd4, 0xae, 0x6f, 0x4c, 0xed, 0xd3, 0x8d, 0xa9, 0xbd, 0xbb, 0x35, 0x0b, 0xd7, 0xb7, 0x66,
+	0xe1, 0xc3, 0xad, 0x59, 0xb8, 0xf8, 0x37, 0xa0, 0x62, 0x38, 0xea, 0x5b, 0x5e, 0x1c, 0xd9, 0xf7,
+	0xe5, 0xee, 0x1c, 0x7b, 0xdc, 0xb1, 0x27, 0xf3, 0xbf, 0x4d, 0x76, 0x40, 0xbc, 0x5f, 0x96, 0xff,
+	0x9a, 0xce, 0x97, 0x00, 0x00, 0x00, 0xff, 0xff, 0xb4, 0x5c, 0xa0, 0xd1, 0x43, 0x05, 0x00, 0x00,
 }
 
 func (m *RollappGenesisState) Marshal() (dAtA []byte, err error) {
@@ -358,6 +446,72 @@ func (m *Rollapp) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	_ = i
 	var l int
 	_ = l
+	if m.LastStateUpdateHeight != 0 {
+		i = encodeVarintRollapp(dAtA, i, uint64(m.LastStateUpdateHeight))
+		i--
+		dAtA[i] = 0x1
+		i--
+		dAtA[i] = 0x98
+	}
+	if m.LivenessEventHeight != 0 {
+		i = encodeVarintRollapp(dAtA, i, uint64(m.LivenessEventHeight))
+		i--
+		dAtA[i] = 0x1
+		i--
+		dAtA[i] = 0x90
+	}
+	if m.Sealed {
+		i--
+		if m.Sealed {
+			dAtA[i] = 1
+		} else {
+			dAtA[i] = 0
+		}
+		i--
+		dAtA[i] = 0x1
+		i--
+		dAtA[i] = 0x88
+	}
+	if m.VmType != 0 {
+		i = encodeVarintRollapp(dAtA, i, uint64(m.VmType))
+		i--
+		dAtA[i] = 0x1
+		i--
+		dAtA[i] = 0x80
+	}
+	if len(m.InitialSequencer) > 0 {
+		i -= len(m.InitialSequencer)
+		copy(dAtA[i:], m.InitialSequencer)
+		i = encodeVarintRollapp(dAtA, i, uint64(len(m.InitialSequencer)))
+		i--
+		dAtA[i] = 0x7a
+	}
+	if m.Metadata != nil {
+		{
+			size, err := m.Metadata.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintRollapp(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x72
+	}
+	if len(m.GenesisChecksum) > 0 {
+		i -= len(m.GenesisChecksum)
+		copy(dAtA[i:], m.GenesisChecksum)
+		i = encodeVarintRollapp(dAtA, i, uint64(len(m.GenesisChecksum)))
+		i--
+		dAtA[i] = 0x62
+	}
+	if len(m.Bech32Prefix) > 0 {
+		i -= len(m.Bech32Prefix)
+		copy(dAtA[i:], m.Bech32Prefix)
+		i = encodeVarintRollapp(dAtA, i, uint64(len(m.Bech32Prefix)))
+		i--
+		dAtA[i] = 0x5a
+	}
 	if len(m.RegisteredDenoms) > 0 {
 		for iNdEx := len(m.RegisteredDenoms) - 1; iNdEx >= 0; iNdEx-- {
 			i -= len(m.RegisteredDenoms[iNdEx])
@@ -394,29 +548,10 @@ func (m *Rollapp) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	}
 	i--
 	dAtA[i] = 0x3a
-	if len(m.PermissionedAddresses) > 0 {
-		for iNdEx := len(m.PermissionedAddresses) - 1; iNdEx >= 0; iNdEx-- {
-			i -= len(m.PermissionedAddresses[iNdEx])
-			copy(dAtA[i:], m.PermissionedAddresses[iNdEx])
-			i = encodeVarintRollapp(dAtA, i, uint64(len(m.PermissionedAddresses[iNdEx])))
-			i--
-			dAtA[i] = 0x2a
-		}
-	}
-	if m.MaxSequencers != 0 {
-		i = encodeVarintRollapp(dAtA, i, uint64(m.MaxSequencers))
-		i--
-		dAtA[i] = 0x20
-	}
-	if m.Version != 0 {
-		i = encodeVarintRollapp(dAtA, i, uint64(m.Version))
-		i--
-		dAtA[i] = 0x18
-	}
-	if len(m.Creator) > 0 {
-		i -= len(m.Creator)
-		copy(dAtA[i:], m.Creator)
-		i = encodeVarintRollapp(dAtA, i, uint64(len(m.Creator)))
+	if len(m.Owner) > 0 {
+		i -= len(m.Owner)
+		copy(dAtA[i:], m.Owner)
+		i = encodeVarintRollapp(dAtA, i, uint64(len(m.Owner)))
 		i--
 		dAtA[i] = 0x12
 	}
@@ -517,21 +652,9 @@ func (m *Rollapp) Size() (n int) {
 	if l > 0 {
 		n += 1 + l + sovRollapp(uint64(l))
 	}
-	l = len(m.Creator)
+	l = len(m.Owner)
 	if l > 0 {
 		n += 1 + l + sovRollapp(uint64(l))
-	}
-	if m.Version != 0 {
-		n += 1 + sovRollapp(uint64(m.Version))
-	}
-	if m.MaxSequencers != 0 {
-		n += 1 + sovRollapp(uint64(m.MaxSequencers))
-	}
-	if len(m.PermissionedAddresses) > 0 {
-		for _, s := range m.PermissionedAddresses {
-			l = len(s)
-			n += 1 + l + sovRollapp(uint64(l))
-		}
 	}
 	l = m.GenesisState.Size()
 	n += 1 + l + sovRollapp(uint64(l))
@@ -547,6 +670,34 @@ func (m *Rollapp) Size() (n int) {
 			l = len(s)
 			n += 1 + l + sovRollapp(uint64(l))
 		}
+	}
+	l = len(m.Bech32Prefix)
+	if l > 0 {
+		n += 1 + l + sovRollapp(uint64(l))
+	}
+	l = len(m.GenesisChecksum)
+	if l > 0 {
+		n += 1 + l + sovRollapp(uint64(l))
+	}
+	if m.Metadata != nil {
+		l = m.Metadata.Size()
+		n += 1 + l + sovRollapp(uint64(l))
+	}
+	l = len(m.InitialSequencer)
+	if l > 0 {
+		n += 1 + l + sovRollapp(uint64(l))
+	}
+	if m.VmType != 0 {
+		n += 2 + sovRollapp(uint64(m.VmType))
+	}
+	if m.Sealed {
+		n += 3
+	}
+	if m.LivenessEventHeight != 0 {
+		n += 2 + sovRollapp(uint64(m.LivenessEventHeight))
+	}
+	if m.LastStateUpdateHeight != 0 {
+		n += 2 + sovRollapp(uint64(m.LastStateUpdateHeight))
 	}
 	return n
 }
@@ -711,7 +862,7 @@ func (m *Rollapp) Unmarshal(dAtA []byte) error {
 			iNdEx = postIndex
 		case 2:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Creator", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Owner", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -739,77 +890,7 @@ func (m *Rollapp) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.Creator = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 3:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Version", wireType)
-			}
-			m.Version = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowRollapp
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.Version |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 4:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field MaxSequencers", wireType)
-			}
-			m.MaxSequencers = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowRollapp
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.MaxSequencers |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-		case 5:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field PermissionedAddresses", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowRollapp
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthRollapp
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthRollapp
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.PermissionedAddresses = append(m.PermissionedAddresses, string(dAtA[iNdEx:postIndex]))
+			m.Owner = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		case 7:
 			if wireType != 2 {
@@ -928,6 +1009,215 @@ func (m *Rollapp) Unmarshal(dAtA []byte) error {
 			}
 			m.RegisteredDenoms = append(m.RegisteredDenoms, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
+		case 11:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Bech32Prefix", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRollapp
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthRollapp
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthRollapp
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Bech32Prefix = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 12:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field GenesisChecksum", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRollapp
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthRollapp
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthRollapp
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.GenesisChecksum = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 14:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Metadata", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRollapp
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthRollapp
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthRollapp
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Metadata == nil {
+				m.Metadata = &RollappMetadata{}
+			}
+			if err := m.Metadata.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		case 15:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field InitialSequencer", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRollapp
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthRollapp
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthRollapp
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.InitialSequencer = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 16:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field VmType", wireType)
+			}
+			m.VmType = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRollapp
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.VmType |= Rollapp_VMType(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 17:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Sealed", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRollapp
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.Sealed = bool(v != 0)
+		case 18:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field LivenessEventHeight", wireType)
+			}
+			m.LivenessEventHeight = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRollapp
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.LivenessEventHeight |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 19:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field LastStateUpdateHeight", wireType)
+			}
+			m.LastStateUpdateHeight = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowRollapp
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.LastStateUpdateHeight |= int64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := skipRollapp(dAtA[iNdEx:])
