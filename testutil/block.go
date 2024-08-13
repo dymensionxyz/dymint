@@ -105,7 +105,7 @@ func GetManagerWithProposerKey(conf config.BlockManagerConfig, proposerKey crypt
 		DAConfig:           "",
 	}
 	manager, err := block.NewManager(proposerKey, config, genesis, managerStore, mp, proxyApp, settlementlc, nil,
-		pubsubServer, p2pClient, store.NewPrefixKV(store.NewDefaultInMemoryKVStore(), []byte{1}), logger)
+		pubsubServer, p2pClient, nil, logger)
 	if err != nil {
 		return nil, err
 	}
