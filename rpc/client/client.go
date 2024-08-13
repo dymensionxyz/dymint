@@ -508,12 +508,12 @@ func (c *Client) Commit(ctx context.Context, height *int64) (*ctypes.ResultCommi
 // Validators returns paginated list of validators at given height.
 func (c *Client) Validators(ctx context.Context, heightPtr *int64, pagePtr, perPagePtr *int) (*ctypes.ResultValidators, error) {
 	height := c.normalizeHeight(heightPtr)
-	validators, err := c.node.Store.LoadSequencers(height)
+	sequencers, err := c.node.Store.LoadSequencers(height)
 	if err != nil {
 		return nil, fmt.Errorf("load validators for height %d: %w", height, err)
 	}
 
-	totalCount := len(validators.Sequencers)
+	totalCount := len(sequencers.Sequencers)
 	perPage := validatePerPage(perPagePtr)
 	page, err := validatePage(pagePtr, perPage, totalCount)
 	if err != nil {
@@ -521,7 +521,7 @@ func (c *Client) Validators(ctx context.Context, heightPtr *int64, pagePtr, perP
 	}
 
 	skipCount := validateSkipCount(page, perPage)
-	v := validators.Sequencers[skipCount : skipCount+tmmath.MinInt(perPage, totalCount-skipCount)]
+	v := sequencers.Sequencers[skipCount : skipCount+tmmath.MinInt(perPage, totalCount-skipCount)]
 	return &ctypes.ResultValidators{
 		BlockHeight: int64(height),
 		Validators:  v,

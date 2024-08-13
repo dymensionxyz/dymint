@@ -7,6 +7,8 @@ import (
 
 	"github.com/ipfs/go-cid"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
+	tmtypes "github.com/tendermint/tendermint/types"
 	"go.uber.org/multierr"
 
 	"github.com/dymensionxyz/dymint/types"
@@ -231,7 +233,8 @@ func (s *DefaultStore) LoadSequencers(height uint64) (*types.SequencerSet, error
 	var pbValSet pb.SequencerSet
 	err = pbValSet.Unmarshal(blob)
 	if err != nil {
-		return nil, fmt.Errorf("unmarshal to protobuf: %w", err)
+		// migration support: try to unmarshal as old ValidatorSet
+		return parseAsValidatorSet(blob)
 	}
 
 	var ss types.SequencerSet
@@ -240,6 +243,24 @@ func (s *DefaultStore) LoadSequencers(height uint64) (*types.SequencerSet, error
 		return nil, fmt.Errorf("unmarshal from proto: %w", err)
 	}
 
+	return &ss, nil
+}
+
+func parseAsValidatorSet(blob []byte) (*types.SequencerSet, error) {
+	var (
+		ss          types.SequencerSet
+		pbValSetOld tmproto.ValidatorSet
+	)
+	err := pbValSetOld.Unmarshal(blob)
+	if err != nil {
+		return nil, fmt.Errorf("unmarshal protobuf: %w", err)
+	}
+	pbValSet, err := tmtypes.ValidatorSetFromProto(&pbValSetOld)
+	if err != nil {
+		return nil, fmt.Errorf("unmarshal to ValidatorSet: %w", err)
+	}
+	ss.SetSequencers(pbValSet.Validators)
+	ss.SetProposer(pbValSet.Proposer)
 	return &ss, nil
 }
 

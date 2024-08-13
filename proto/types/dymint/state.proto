@@ -6,6 +6,7 @@ import "gogoproto/gogo.proto";
 import "google/protobuf/timestamp.proto";
 import "types/tendermint/abci/types.proto";
 import "types/tendermint/types/types.proto";
+import "types/tendermint/types/validator.proto";
 import "types/tendermint/types/params.proto";
 import "types/tendermint/state/types.proto";
 import "types/dymint/dymint.proto";
@@ -24,7 +25,7 @@ message State {
 
   reserved 7;
   reserved 8;
-  reserved 9;
+  tendermint.types.ValidatorSet validators = 9 [deprecated = true]; 
   reserved 10;
 
 

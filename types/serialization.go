@@ -269,8 +269,6 @@ func (s *State) ToProto() (*pb.State, error) {
 
 // FromProto fills State with data from its protobuf representation.
 func (s *State) FromProto(other *pb.State) error {
-	// FIXME: TEST migration
-
 	var err error
 	s.Version = *other.Version
 	s.ChainID = other.ChainId
@@ -280,7 +278,13 @@ func (s *State) FromProto(other *pb.State) error {
 
 	err = s.Sequencers.FromProto(other.SequencerSet)
 	if err != nil {
-		return err
+		// maybe migration required
+		oldVals, err := types.ValidatorSetFromProto(other.Validators)
+		if err != nil {
+			return err
+		}
+		s.Sequencers.SetSequencers(oldVals.Validators)
+		s.Sequencers.SetProposer(oldVals.Proposer)
 	}
 
 	s.ConsensusParams = other.ConsensusParams
