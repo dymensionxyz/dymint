@@ -11,31 +11,8 @@ import (
 // ToABCIHeaderPB converts Dymint header to Header format defined in ABCI.
 // Caller should fill all the fields that are not available in Dymint header (like ChainID).
 func ToABCIHeaderPB(header *Header) types.Header {
-	return types.Header{
-		Version: version.Consensus{
-			Block: header.Version.Block,
-			App:   header.Version.App,
-		},
-		Height: int64(header.Height),
-		Time:   time.Unix(0, int64(header.Time)),
-		LastBlockId: types.BlockID{
-			Hash: header.LastHeaderHash[:],
-			PartSetHeader: types.PartSetHeader{
-				Total: 1,
-				Hash:  header.LastHeaderHash[:],
-			},
-		},
-		LastCommitHash:     header.LastCommitHash[:],
-		DataHash:           header.DataHash[:],
-		ValidatorsHash:     header.NextSequencersHash[:],
-		NextValidatorsHash: header.NextSequencersHash[:],
-		ConsensusHash:      header.ConsensusHash[:],
-		AppHash:            header.AppHash[:],
-		LastResultsHash:    header.LastResultsHash[:],
-		EvidenceHash:       new(tmtypes.EvidenceData).Hash(),
-		ProposerAddress:    header.ProposerAddress,
-		ChainID:            header.ChainID,
-	}
+	tmheader := ToABCIHeader(header)
+	return *tmheader.ToProto()
 }
 
 // ToABCIHeader converts Dymint header to Header format defined in ABCI.
@@ -57,7 +34,7 @@ func ToABCIHeader(header *Header) tmtypes.Header {
 		},
 		LastCommitHash:     header.LastCommitHash[:],
 		DataHash:           header.DataHash[:],
-		ValidatorsHash:     header.NextSequencersHash[:],
+		ValidatorsHash:     header.SequencerHash[:],
 		NextValidatorsHash: header.NextSequencersHash[:],
 		ConsensusHash:      header.ConsensusHash[:],
 		AppHash:            header.AppHash[:],

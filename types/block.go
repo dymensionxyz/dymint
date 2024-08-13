@@ -34,7 +34,9 @@ type Header struct {
 	// pubkey can't be recovered by the signature (e.g. ed25519).
 	ProposerAddress []byte // original proposer of the block
 
-	// Hash of block sequencer set, at a time of block creation
+	// Hash of proposer validatorSet (compatible with tendermint)
+	SequencerHash [32]byte
+	// Hash of the next proposer validatorSet (compatible with tendermint)
 	NextSequencersHash [32]byte
 
 	// The Chain ID
