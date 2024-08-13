@@ -75,7 +75,6 @@ func SubmitLoopInner(
 				case n := <-bytesProduced:
 					pendingBytes.Add(uint64(n))
 					pendingBlocks.Add(uint64(1))
-				case <-ticker.C:
 				}
 			}
 
@@ -98,7 +97,7 @@ func SubmitLoopInner(
 			}
 			pending := pendingBytes.Load()
 			types.RollappPendingSubmissionsSkewNumBytes.Set(float64(pendingBytes.Load()))
-			types.RollappPendingSubmissionsSkewNumBatches.Set(float64(pendingBytes.Load() / maxBatchBytes))
+			types.RollappPendingSubmissionsSkewNumBlocks.Set(float64(pendingBlocks.Load()))
 
 			// while there are accumulated blocks, create and submit batches!!
 			for {

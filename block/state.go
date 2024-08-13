@@ -139,12 +139,12 @@ func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResp
 	if resp.EndBlock.RollappConsensusParamUpdates == nil {
 		return
 	}
+
 	s.ConsensusParams.Params.BlockMaxSize = resp.EndBlock.RollappConsensusParamUpdates.Block.MaxBytes
 	s.ConsensusParams.Params.BlockMaxGas = resp.EndBlock.RollappConsensusParamUpdates.Block.MaxGas
 	s.ConsensusParams.Params.Da = resp.EndBlock.RollappConsensusParamUpdates.Da
 	s.ConsensusParams.Params.Commit = resp.EndBlock.RollappConsensusParamUpdates.Commit
 
-	return
 }
 
 // UpdateProposerFromBlock updates the proposer from the block

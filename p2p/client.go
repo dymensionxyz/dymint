@@ -212,9 +212,9 @@ func (c *Client) SaveBlock(ctx context.Context, height uint64, blockBytes []byte
 	if err != nil {
 		return fmt.Errorf("blocksync store block id: %w", err)
 	}
-	advErr := c.AdvertiseBlockIdToDHT(ctx, height, cid)
-	if advErr != nil {
-		return fmt.Errorf("blocksync advertise block %w", advErr)
+	err = c.AdvertiseBlockIdToDHT(ctx, height, cid)
+	if err != nil {
+		c.logger.Debug("block-sync advertise block", "error", err)
 	}
 	return nil
 }

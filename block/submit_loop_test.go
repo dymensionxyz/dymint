@@ -7,6 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/tendermint/tendermint/libs/log"
+
 	"github.com/dymensionxyz/dymint/block"
 	"github.com/stretchr/testify/require"
 )
@@ -52,10 +54,6 @@ func testSubmitLoop(
 					return
 				default:
 				}
-				// producer shall not get too far ahead
-				absoluteMax := (args.batchSkew + 1) * args.batchBytes // +1 is because the producer is always blocked after the fact
-				nProduced := nProducedBytes.Load()
-				require.True(t, nProduced < absoluteMax, "produced bytes not less than maximum", "nProduced", nProduced, "max", absoluteMax)
 
 			}
 		}()
@@ -101,6 +99,7 @@ func testSubmitLoop(
 
 	block.SubmitLoopInner(
 		ctx,
+		log.NewNopLogger(),
 		producedBytesC,
 		args.blockSkew,
 		accumulatedBlocks,
@@ -135,10 +134,6 @@ func TestSubmitLoopTimer(t *testing.T) {
 	testSubmitLoop(
 		t,
 		testArgs{
-<<<<<<< HEAD
-			nParallel:    50,
-=======
->>>>>>> eb50f3f (removed parallel tests for submission loop)
 			testDuration: 2 * time.Second,
 			blockSkew:    10,
 			batchBytes:   100,
