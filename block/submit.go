@@ -7,13 +7,13 @@ import (
 	"sync/atomic"
 	"time"
 
+	uatomic "github.com/dymensionxyz/dymint/utils/atomic"
+	uchannel "github.com/dymensionxyz/dymint/utils/channel"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/types"
-	uatomic "github.com/dymensionxyz/dymint/utils/atomic"
-	uchannel "github.com/dymensionxyz/dymint/utils/channel"
 )
 
 // SubmitLoop is the main loop for submitting blocks to the DA and SL layers.
@@ -45,80 +45,58 @@ func SubmitLoopInner(
 	maxBatchBytes uint64, // max size of serialised batch in bytes
 	createAndSubmitBatch func(maxSizeBytes uint64) (sizeBlocksCommits uint64, err error),
 ) error {
-	eg, ctx := errgroup.WithContext(ctx)
-
 	pendingBytes := atomic.Uint64{}
-	trigger := uchannel.NewNudger()   // used to avoid busy waiting (using cpu) on trigger thread
-	submitter := uchannel.NewNudger() // used to avoid busy waiting (using cpu) on submitter thread
 
-	eg.Go(func() error {
-		// 'trigger': this thread is responsible for waking up the submitter when a new block arrives, and back-pressures the block production loop
-		// if it gets too far ahead.
-		for {
-			if maxBatchSkew*maxBatchBytes < pendingBytes.Load() {
-				// too much stuff is pending submission
-				// we block here until we get a progress nudge from the submitter thread
-				select {
-				case <-ctx.Done():
-					return ctx.Err()
-				case <-trigger.C:
-				}
-			} else {
-				select {
-				case <-ctx.Done():
-					return ctx.Err()
-				case n := <-bytesProduced:
-					pendingBytes.Add(uint64(n))
-					logger.Info("Added bytes produced to bytes pending submission counter.", "n", n)
-				}
-			}
-			submitter.Nudge()
-		}
-	})
+	wake := uchannel.NewNudger()
 
-	eg.Go(func() error {
-		// 'submitter': this thread actually creates and submits batches, and will do it on a timer if he isn't nudged by block production
-		timeLastSubmission := time.Now()
-		ticker := time.NewTicker(maxBatchTime / 10) // interval does not need to match max batch time since we keep track anyway, it's just to wakeup
-		for {
+	submitterG := errgroup.Group{}
+	submitterG.SetLimit(1)
+	submitterG.Wait()
+
+	ticker := time.NewTicker(maxBatchTime)
+	for {
+		if maxBatchSkew*maxBatchBytes < pendingBytes.Load() {
+			// too much stuff is pending submission
+			// we block here until we get a progress nudge from the submitter thread
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
-			case <-ticker.C:
-			case <-submitter.C:
+			case <-wake.C:
 			}
-			pending := pendingBytes.Load()
+			continue
+		}
+		timerPopped := false
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-ticker.C:
+			timerPopped = true
+		case n := <-bytesProduced:
+			pendingBytes.Add(uint64(n))
+			logger.Info("Added bytes produced to bytes pending submission counter.", "n", n)
 			types.RollappPendingSubmissionsSkewNumBytes.Set(float64(pendingBytes.Load()))
 			types.RollappPendingSubmissionsSkewNumBatches.Set(float64(pendingBytes.Load() / maxBatchBytes))
-
-			// while there are accumulated blocks, create and submit batches!!
-			for {
-				done := ctx.Err() != nil
-				nothingToSubmit := pending == 0
-				lastSubmissionIsRecent := time.Since(timeLastSubmission) < maxBatchTime
-				maxDataNotExceeded := pending <= maxBatchBytes
-				if done || nothingToSubmit || (lastSubmissionIsRecent && maxDataNotExceeded) {
-					break
-				}
-				nConsumed, err := createAndSubmitBatch(min(pending, maxBatchBytes))
-				if err != nil {
-					err = fmt.Errorf("create and submit batch: %w", err)
-					if errors.Is(err, gerrc.ErrInternal) {
-						logger.Error("Create and submit batch", "err", err, "pending", pending)
-						panic(err)
-					}
-					return err
-				}
-				timeLastSubmission = time.Now()
-				ticker.Reset(maxBatchTime)
-				pending = uatomic.Uint64Sub(&pendingBytes, nConsumed)
-				logger.Info("Submitted a batch to both sub-layers.", "n bytes consumed from pending", nConsumed, "pending after", pending) // TODO: debug level
-			}
-			trigger.Nudge()
 		}
-	})
-
-	return eg.Wait()
+		pending := pendingBytes.Load()
+		if (0 < pending && timerPopped) || maxBatchBytes < pending {
+			ticker.Reset(maxBatchTime)
+			submitterG.TryGo(
+				func() error {
+					nConsumed, err := createAndSubmitBatch(min(pending, maxBatchBytes))
+					if err != nil {
+						err = fmt.Errorf("create and submit batch: %w", err)
+						if errors.Is(err, gerrc.ErrInternal) {
+							logger.Error("Create and submit batch", "err", err, "pending", pending)
+							panic(err)
+						}
+						return err
+					}
+					after := uatomic.Uint64Sub(&pendingBytes, nConsumed)
+					logger.Info("Submitted a batch to both sub-layers.", "n bytes consumed from pending", nConsumed, "pending after", after) // TODO: debug level
+					return nil
+				})
+		}
+	}
 }
 
 // CreateAndSubmitBatchGetSizeBlocksCommits creates and submits a batch to the DA and SL.
