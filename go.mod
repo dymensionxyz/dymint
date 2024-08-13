@@ -40,6 +40,7 @@ require (
 	gonum.org/v1/gonum v0.13.0
 	google.golang.org/grpc v1.64.0
 	google.golang.org/protobuf v1.33.0
+	pgregory.net/rapid v1.1.0
 )
 
 require (
@@ -272,7 +273,6 @@ require (
 	github.com/rogpeppe/go-internal v1.11.0 // indirect
 	go.uber.org/mock v0.4.0 // indirect
 	golang.org/x/tools v0.18.0 // indirect
-	pgregory.net/rapid v1.1.0 // indirect
 )
 
 replace (
