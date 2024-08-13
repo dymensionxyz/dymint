@@ -276,7 +276,7 @@ func (m *Manager) UpdateTargetHeight(h uint64) {
 
 // ValidateConfigWithRollappParams checks the configuration params are consistent with the params in the dymint state (e.g. DA and version)
 func (m *Manager) ValidateConfigWithRollappParams() error {
-	if m.DAClient.GetMaxBlobSizeBytes() != 0 && m.DAClient.GetMaxBlobSizeBytes() < uint32(m.Conf.BatchMaxSizeBytes) {
+	if m.DAClient.GetMaxBlobSizeBytes() != 0 && m.DAClient.GetMaxBlobSizeBytes() < uint32(m.Conf.BatchSubmitBytes) {
 		return fmt.Errorf("batch size cannot be greater than %d for %s DA", m.DAClient.GetMaxBlobSizeBytes(), m.DAClient.GetClientType())
 	}
 

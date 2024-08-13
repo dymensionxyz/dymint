@@ -22,12 +22,12 @@ var DefaultNodeConfig = *DefaultConfig("")
 func DefaultConfig(home string) *NodeConfig {
 	cfg := &NodeConfig{
 		BlockManagerConfig: BlockManagerConfig{
-			BlockTime:          200 * time.Millisecond,
-			MaxIdleTime:        3600 * time.Second,
-			MaxProofTime:       100 * time.Second,
-			BatchSubmitMaxTime: 3600 * time.Second,
-			MaxBlockSkew:       90000,
-			BatchMaxSizeBytes:  500000,
+			BlockTime:        200 * time.Millisecond,
+			MaxIdleTime:      3600 * time.Second,
+			MaxProofTime:     100 * time.Second,
+			BatchSubmitTime:  3600 * time.Second,
+			MaxBlockSkew:     90000,
+			BatchSubmitBytes: 500000,
 		},
 		SettlementLayer: "mock",
 		Instrumentation: &InstrumentationConfig{

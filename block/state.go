@@ -98,13 +98,17 @@ func (m *Manager) UpdateStateFromApp() error {
 	return nil
 =======
 	// update the state with the hash, last store height and last validators.
-	stateUpdateErr := m.Executor.UpdateStateAfterCommit(m.State, resp, proxyAppInfo.LastBlockAppHash, appHeight, vals)
+	m.Executor.UpdateStateAfterCommit(m.State, resp, proxyAppInfo.LastBlockAppHash, appHeight, vals)
 	_, err = m.Store.SaveState(m.State, nil)
 	if err != nil {
 		return errorsmod.Wrap(err, "update state")
 	}
+<<<<<<< HEAD
 	return stateUpdateErr
 >>>>>>> 1e690cc (version checks)
+=======
+	return nil
+>>>>>>> d4a0646 (renaming + fix)
 }
 
 func (e *Executor) UpdateStateAfterInitChain(s *types.State, res *abci.ResponseInitChain) {
@@ -126,28 +130,21 @@ func (e *Executor) UpdateMempoolAfterInitChain(s *types.State) {
 
 // UpdateStateAfterCommit updates the state with the app hash and last results hash
 func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResponses, appHash []byte, height uint64) {
+
 	copy(s.AppHash[:], appHash[:])
 	copy(s.LastResultsHash[:], tmtypes.NewResults(resp.DeliverTxs).Hash())
 
 	s.SetHeight(height)
 
 	if resp.EndBlock.RollappConsensusParamUpdates == nil {
-		return nil
+		return
 	}
 	s.ConsensusParams.Params.BlockMaxSize = resp.EndBlock.RollappConsensusParamUpdates.Block.MaxBytes
 	s.ConsensusParams.Params.BlockMaxGas = resp.EndBlock.RollappConsensusParamUpdates.Block.MaxGas
+	s.ConsensusParams.Params.Da = resp.EndBlock.RollappConsensusParamUpdates.Da
+	s.ConsensusParams.Params.Commit = resp.EndBlock.RollappConsensusParamUpdates.Commit
 
-	var err error
-	if s.ConsensusParams.Params.Da != resp.EndBlock.RollappConsensusParamUpdates.Da {
-		s.ConsensusParams.Params.Da = resp.EndBlock.RollappConsensusParamUpdates.Da
-		err = fmt.Errorf("DA mismatch, expected %s, actual %s: %w", s.ConsensusParams.Params.Da, resp.EndBlock.RollappConsensusParamUpdates.Da, ErrDAUpgrade)
-	}
-	if s.ConsensusParams.Params.Commit != resp.EndBlock.RollappConsensusParamUpdates.Commit {
-		s.ConsensusParams.Params.Commit = resp.EndBlock.RollappConsensusParamUpdates.Commit
-		err = fmt.Errorf("%w, please upgrade binary to commit %s", ErrVersionUpgrade, s.ConsensusParams.Params.Commit)
-
-	}
-	return err
+	return
 }
 
 // UpdateProposerFromBlock updates the proposer from the block

@@ -212,7 +212,7 @@ func TestStopBlockProduction(t *testing.T) {
 	require.NoError(err)
 
 	managerConfig := testutil.GetManagerConfig()
-	managerConfig.BatchMaxSizeBytes = 1000 // small batch size to fill up quickly
+	managerConfig.BatchSubmitBytes = 1000 // small batch size to fill up quickly
 	manager, err := testutil.GetManager(managerConfig, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 

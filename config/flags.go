@@ -7,11 +7,11 @@ import (
 )
 
 const (
-	FlagDAConfig               = "dymint.da_config"
-	FlagBlockTime              = "dymint.block_time"
-	FlagMaxIdleTime            = "dymint.max_idle_time"
-	FlagBatchSubmitMaxTime     = "dymint.batch_submit_max_time"
-	FlagBlockBatchMaxSizeBytes = "dymint.block_batch_max_size_bytes"
+	FlagDAConfig         = "dymint.da_config"
+	FlagBlockTime        = "dymint.block_time"
+	FlagMaxIdleTime      = "dymint.max_idle_time"
+	FlagBatchSubmitTime  = "dymint.batch_submit_max_time"
+	FlagBatchSubmitBytes = "dymint.batch_submit_max_bytes"
 )
 
 const (
@@ -44,8 +44,8 @@ func AddNodeFlags(cmd *cobra.Command) {
 	cmd.Flags().String(FlagDAConfig, def.DAConfig, "Data Availability Layer Client config")
 	cmd.Flags().Duration(FlagBlockTime, def.BlockTime, "block time (for sequencer mode)")
 	cmd.Flags().Duration(FlagMaxIdleTime, def.MaxIdleTime, "max time for empty blocks (for sequencer mode)")
-	cmd.Flags().Duration(FlagBatchSubmitMaxTime, def.BatchSubmitMaxTime, "max time for batch submit (for sequencer mode)")
-	cmd.Flags().Uint64(FlagBlockBatchMaxSizeBytes, def.BatchMaxSizeBytes, "block batch size in bytes")
+	cmd.Flags().Duration(FlagBatchSubmitTime, def.BatchSubmitTime, "max time for batch submit (for sequencer mode)")
+	cmd.Flags().Uint64(FlagBatchSubmitBytes, def.BatchSubmitBytes, "block batch size in bytes")
 	cmd.Flags().String(FlagSettlementLayer, def.SettlementLayer, "Settlement Layer Client name")
 	cmd.Flags().String(FlagSLNodeAddress, def.SettlementConfig.NodeAddress, "Settlement Layer RPC node address")
 	cmd.Flags().String(FlagSLKeyringBackend, def.SettlementConfig.KeyringBackend, "Sequencer keyring backend")
@@ -71,10 +71,10 @@ func BindDymintFlags(cmd *cobra.Command, v *viper.Viper) error {
 	if err := v.BindPFlag("max_idle_time", cmd.Flags().Lookup(FlagMaxIdleTime)); err != nil {
 		return err
 	}
-	if err := v.BindPFlag("batch_submit_max_time", cmd.Flags().Lookup(FlagBatchSubmitMaxTime)); err != nil {
+	if err := v.BindPFlag("batch_submit_max_time", cmd.Flags().Lookup(FlagBatchSubmitTime)); err != nil {
 		return err
 	}
-	if err := v.BindPFlag("block_batch_max_size_bytes", cmd.Flags().Lookup(FlagBlockBatchMaxSizeBytes)); err != nil {
+	if err := v.BindPFlag("batch_submit_max_bytes", cmd.Flags().Lookup(FlagBatchSubmitBytes)); err != nil {
 		return err
 	}
 	if err := v.BindPFlag("settlement_layer", cmd.Flags().Lookup(FlagSettlementLayer)); err != nil {

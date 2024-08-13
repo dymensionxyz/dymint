@@ -74,10 +74,11 @@ max_supported_block_skew = {{ .BlockManagerConfig.MaxBlockSkew }}
 
 
 # triggers to submit batch to DA and settlement (both required)
-batch_submit_max_time = "{{ .BlockManagerConfig.BatchSubmitMaxTime }}"
+# max time between two batch submissions. submission will be triggered if there is no previous submission in batch_submit_max_time
+batch_submit_max_time = "{{ .BlockManagerConfig.BatchSubmitTime }}"
 
-# max size of batch in bytes that can be accepted by DA
-block_batch_max_size_bytes = {{ .BlockManagerConfig.BatchMaxSizeBytes }}
+# max size of batch in bytes. submission will be triggered after accumulating blocks for batch_submit_max_bytes
+batch_submit_max_bytes = {{ .BlockManagerConfig.BatchSubmitBytes }}
 
 ### da config ###
 # this should be json matching the celestia.Config type

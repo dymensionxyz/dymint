@@ -26,14 +26,14 @@ func TestViperAndCobra(t *testing.T) {
 	assert.NoError(cmd.Flags().Set(config.FlagDAConfig, `{"json":true}`))
 	assert.NoError(cmd.Flags().Set(config.FlagBlockTime, "4s"))
 	assert.NoError(cmd.Flags().Set(config.FlagMaxIdleTime, "2000s"))
-	assert.NoError(cmd.Flags().Set(config.FlagBatchSubmitMaxTime, "3000s"))
-	assert.NoError(cmd.Flags().Set(config.FlagBlockBatchMaxSizeBytes, "1000"))
+	assert.NoError(cmd.Flags().Set(config.FlagBatchSubmitTime, "3000s"))
+	assert.NoError(cmd.Flags().Set(config.FlagBatchSubmitBytes, "1000"))
 
 	assert.NoError(nc.GetViperConfig(cmd, dir))
 
 	assert.Equal(`{"json":true}`, nc.DAConfig)
 	assert.Equal(4*time.Second, nc.BlockTime)
-	assert.Equal(uint64(1000), nc.BlockManagerConfig.BatchMaxSizeBytes)
+	assert.Equal(uint64(1000), nc.BlockManagerConfig.BatchSubmitBytes)
 }
 
 func TestNodeConfig_Validate(t *testing.T) {
@@ -61,7 +61,7 @@ func TestNodeConfig_Validate(t *testing.T) {
 		}, {
 			name: "missing batch submit max time",
 			malleate: func(nc *config.NodeConfig) {
-				nc.BlockManagerConfig.BatchSubmitMaxTime = 0
+				nc.BlockManagerConfig.BatchSubmitTime = 0
 			},
 			wantErr: assert.Error,
 		}, {
@@ -87,14 +87,14 @@ func TestNodeConfig_Validate(t *testing.T) {
 		}, {
 			name: "batch_submit_max_time not greater than block_time",
 			malleate: func(nc *config.NodeConfig) {
-				nc.BlockManagerConfig.BatchSubmitMaxTime = 1
+				nc.BlockManagerConfig.BatchSubmitTime = 1
 				nc.BlockManagerConfig.BlockTime = 2
 			},
 			wantErr: assert.Error,
 		}, {
 			name: "batch_submit_max_time greater than 1 hour",
 			malleate: func(nc *config.NodeConfig) {
-				nc.BlockManagerConfig.BatchSubmitMaxTime = 2 * time.Hour
+				nc.BlockManagerConfig.BatchSubmitTime = 2 * time.Hour
 			},
 			wantErr: assert.Error,
 		}, {
@@ -112,7 +112,7 @@ func TestNodeConfig_Validate(t *testing.T) {
 		}, {
 			name: "missing block batch max size bytes",
 			malleate: func(nc *config.NodeConfig) {
-				nc.BlockManagerConfig.BatchMaxSizeBytes = 0
+				nc.BlockManagerConfig.BatchSubmitBytes = 0
 			},
 			wantErr: assert.Error,
 		}, {
@@ -189,12 +189,12 @@ func TestNodeConfig_Validate(t *testing.T) {
 func fullNodeConfig() config.NodeConfig {
 	return config.NodeConfig{
 		BlockManagerConfig: config.BlockManagerConfig{
-			BlockTime:          1 * time.Second,
-			MaxIdleTime:        20 * time.Second,
-			MaxProofTime:       20 * time.Second,
-			BatchSubmitMaxTime: 20 * time.Second,
-			MaxBlockSkew:       10,
-			BatchMaxSizeBytes:  10000,
+			BlockTime:        1 * time.Second,
+			MaxIdleTime:      20 * time.Second,
+			MaxProofTime:     20 * time.Second,
+			BatchSubmitTime:  20 * time.Second,
+			MaxBlockSkew:     10,
+			BatchSubmitBytes: 10000,
 		},
 		DAConfig:        "da-config",
 		SettlementLayer: "dymension",

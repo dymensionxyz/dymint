@@ -137,7 +137,7 @@ func TestBatchSubmissionHappyFlow(t *testing.T) {
 	assert.Zero(t, manager.LastSubmittedHeight.Load())
 
 	// submit and validate sync target
-	manager.CreateAndSubmitBatch(manager.Conf.BatchMaxSizeBytes, false)
+	manager.CreateAndSubmitBatch(manager.Conf.BatchSubmitBytes, false)
 	assert.EqualValues(t, manager.State.Height(), manager.LastSubmittedHeight.Load())
 }
 
@@ -193,12 +193,12 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 
 	// try to submit, we expect failure
 	slmock.On("SubmitBatch", mock.Anything, mock.Anything, mock.Anything).Return(fmt.Errorf("submit batch")).Once()
-	_, err = manager.CreateAndSubmitBatch(manager.Conf.BatchMaxSizeBytes, false)
+	_, err = manager.CreateAndSubmitBatch(manager.Conf.BatchSubmitBytes, false)
 	assert.Error(t, err)
 
 	// try to submit again, we expect success
 	slmock.On("SubmitBatch", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
-	manager.CreateAndSubmitBatch(manager.Conf.BatchMaxSizeBytes, false)
+	manager.CreateAndSubmitBatch(manager.Conf.BatchSubmitBytes, false)
 	assert.EqualValues(t, manager.State.Height(), manager.LastSubmittedHeight.Load())
 }
 
@@ -228,11 +228,11 @@ func TestSubmissionByTime(t *testing.T) {
 
 	// Init manager with empty blocks feature enabled
 	managerConfig := config.BlockManagerConfig{
-		BlockTime:          blockTime,
-		MaxIdleTime:        0,
-		MaxBlockSkew:       10,
-		BatchSubmitMaxTime: submitTimeout,
-		BatchMaxSizeBytes:  1000,
+		BlockTime:        blockTime,
+		MaxIdleTime:      0,
+		MaxBlockSkew:     10,
+		BatchSubmitTime:  submitTimeout,
+		BatchSubmitBytes: 1000,
 	}
 
 	manager, err := testutil.GetManager(managerConfig, nil, 1, 1, 0, proxyApp, nil)
@@ -306,7 +306,7 @@ func TestSubmissionByBatchSize(t *testing.T) {
 		require.NoError(err)
 
 		managerConfig := testutil.GetManagerConfig()
-		managerConfig.BatchMaxSizeBytes = c.blockBatchMaxSizeBytes
+		managerConfig.BatchSubmitBytes = c.blockBatchMaxSizeBytes
 		manager, err := testutil.GetManager(managerConfig, nil, 1, 1, 0, proxyApp, nil)
 		require.NoError(err)
 

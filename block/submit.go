@@ -30,8 +30,8 @@ func (m *Manager) SubmitLoop(ctx context.Context,
 		bytesProduced,
 		m.Conf.MaxBlockSkew,
 		m.GetUnsubmittedBlocks,
-		m.Conf.BatchSubmitMaxTime,
-		m.Conf.BatchMaxSizeBytes,
+		m.Conf.BatchSubmitTime,
+		m.Conf.BatchSubmitBytes,
 		m.CreateAndSubmitBatchGetSizeBlocksCommits,
 	)
 }

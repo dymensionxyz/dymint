@@ -20,7 +20,7 @@ const (
 	DefaultConfigFileName = "dymint.toml"
 	MinBlockTime          = 200 * time.Millisecond
 	MaxBlockTime          = 6 * time.Second
-	MaxBatchSubmitMaxTime = 1 * time.Hour
+	MaxBatchSubmitTime    = 1 * time.Hour
 	MaxBlockSkewSupported = 432000 // equivalent to 24h blocks at max block rate
 )
 
@@ -55,11 +55,11 @@ type BlockManagerConfig struct {
 	// MaxProofTime defines the max time to be idle, if txs that requires proof were included in last block
 	MaxProofTime time.Duration `mapstructure:"max_proof_time"`
 	// BatchSubmitMaxTime is how long should block manager wait for before submitting batch
-	BatchSubmitMaxTime time.Duration `mapstructure:"batch_submit_max_time"`
+	BatchSubmitTime time.Duration `mapstructure:"batch_submit_max_time"`
 	// MaxBlockSkew is the number of blocks which are waiting to be submitted. Block production will be paused if this limit is reached.
 	MaxBlockSkew uint64 `mapstructure:"max_supported_block_skew"`
 	// The size of the batch of blocks and commits in Bytes. We'll write every batch to the DA and the settlement layer.
-	BatchMaxSizeBytes uint64 `mapstructure:"block_batch_max_size_bytes"`
+	BatchSubmitBytes uint64 `mapstructure:"batch_submit_max_bytes"`
 }
 
 // GetViperConfig reads configuration parameters from Viper instance.
@@ -148,23 +148,23 @@ func (c BlockManagerConfig) Validate() error {
 		}
 	}
 
-	if c.BatchSubmitMaxTime <= 0 {
+	if c.BatchSubmitTime <= 0 {
 		return fmt.Errorf("batch_submit_max_time must be positive")
 	}
 
-	if c.BatchSubmitMaxTime < c.BlockTime {
+	if c.BatchSubmitTime < c.BlockTime {
 		return fmt.Errorf("batch_submit_max_time must be greater than block_time")
 	}
 
-	if c.BatchSubmitMaxTime < c.MaxIdleTime {
+	if c.BatchSubmitTime < c.MaxIdleTime {
 		return fmt.Errorf("batch_submit_max_time must be greater than max_idle_time")
 	}
 
-	if c.BatchSubmitMaxTime > MaxBatchSubmitMaxTime {
-		return fmt.Errorf("batch_submit_max_time cannot be greater than %s", MaxBatchSubmitMaxTime)
+	if c.BatchSubmitTime > MaxBatchSubmitTime {
+		return fmt.Errorf("batch_submit_max_time cannot be greater than %s", MaxBatchSubmitTime)
 	}
 
-	if c.BatchMaxSizeBytes <= 0 {
+	if c.BatchSubmitBytes <= 0 {
 		return fmt.Errorf("block_batch_size_bytes must be positive")
 	}
 

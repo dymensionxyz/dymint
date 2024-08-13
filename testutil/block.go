@@ -155,9 +155,9 @@ func initSettlementLayerMock(rollappId string, settlementlc settlement.ClientI, 
 
 func GetManagerConfig() config.BlockManagerConfig {
 	return config.BlockManagerConfig{
-		BlockTime:          100 * time.Millisecond,
-		BatchMaxSizeBytes:  1000000,
-		BatchSubmitMaxTime: 30 * time.Minute,
-		MaxBlockSkew:       10,
+		BlockTime:        100 * time.Millisecond,
+		BatchSubmitBytes: 1000000,
+		BatchSubmitTime:  30 * time.Minute,
+		MaxBlockSkew:     10,
 	}
 }

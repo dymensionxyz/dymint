@@ -57,11 +57,6 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int)
 				return err
 			}
 
-			// if block application returns ErrDAUpgrade or ErrDAUpgrade, it means the node requires to be restarted with new config/version.
-			if errors.Is(err, ErrDAUpgrade) || errors.Is(err, ErrVersionUpgrade) {
-				panic(err.Error())
-			}
-
 			if err != nil {
 				m.logger.Error("Produce and gossip: uncategorized, assuming recoverable.", "error", err)
 				continue
@@ -123,7 +118,7 @@ func (m *Manager) produceApplyGossip(ctx context.Context, allowEmpty bool, nextP
 		return nil, nil, fmt.Errorf("gossip block: %w", err)
 	}
 
-	return block, commit, produceBlockErr
+	return block, commit, nil
 }
 
 func (m *Manager) produceBlock(allowEmpty bool, nextProposerHash *[32]byte) (*types.Block, *types.Commit, error) {
@@ -149,6 +144,43 @@ func (m *Manager) produceBlock(allowEmpty bool, nextProposerHash *[32]byte) (*ty
 		return block, commit, nil
 	} else if !errors.Is(err, gerrc.ErrNotFound) {
 		return nil, nil, fmt.Errorf("load block: height: %d: %w: %w", newHeight, err, ErrNonRecoverable)
+<<<<<<< HEAD
+=======
+	} else {
+		// limit to the max block data, so we don't create a block that is too big to fit in a batch
+		maxBlockDataSize := uint64(float64(m.Conf.BatchSubmitBytes) * types.MaxBlockSizeAdjustment)
+		block = m.Executor.CreateBlock(newHeight, lastCommit, lastHeaderHash, m.State, maxBlockDataSize)
+		if !allowEmpty && len(block.Data.Txs) == 0 {
+			return nil, nil, fmt.Errorf("%w: %w", types.ErrEmptyBlock, ErrRecoverable)
+		}
+
+		abciHeaderPb := types.ToABCIHeaderPB(&block.Header)
+		abciHeaderBytes, err := abciHeaderPb.Marshal()
+		if err != nil {
+			return nil, nil, fmt.Errorf("marshal abci header: %w: %w", err, ErrNonRecoverable)
+		}
+		proposerAddress := block.Header.ProposerAddress
+		sign, err := m.LocalKey.Sign(abciHeaderBytes)
+		if err != nil {
+			return nil, nil, fmt.Errorf("sign abci header: %w: %w", err, ErrNonRecoverable)
+		}
+		voteTimestamp := tmtime.Now()
+		tmSignature, err := m.createTMSignature(block, proposerAddress, voteTimestamp)
+		if err != nil {
+			return nil, nil, fmt.Errorf("create tm signature: %w: %w", err, ErrNonRecoverable)
+		}
+		commit = &types.Commit{
+			Height:     block.Header.Height,
+			HeaderHash: block.Header.Hash(),
+			Signatures: []types.Signature{sign},
+			TMSignature: tmtypes.CommitSig{
+				BlockIDFlag:      2,
+				ValidatorAddress: proposerAddress,
+				Timestamp:        voteTimestamp,
+				Signature:        tmSignature,
+			},
+		}
+>>>>>>> d4a0646 (renaming + fix)
 	}
 
 	maxBlockDataSize := uint64(float64(m.Conf.BatchMaxSizeBytes) * types.MaxBlockSizeAdjustment)
@@ -176,6 +208,7 @@ func (m *Manager) produceBlock(allowEmpty bool, nextProposerHash *[32]byte) (*ty
 =======
 	types.RollappHeightGauge.Set(float64(newHeight))
 
+<<<<<<< HEAD
 	return block, commit, err
 >>>>>>> 1e690cc (version checks)
 }
@@ -209,6 +242,9 @@ func (m *Manager) createCommit(block *types.Block) (*types.Commit, error) {
 		},
 	}
 	return commit, nil
+=======
+	return block, commit, nil
+>>>>>>> d4a0646 (renaming + fix)
 }
 
 func (m *Manager) createTMSignature(block *types.Block, proposerAddress []byte, voteTimestamp time.Time) ([]byte, error) {
