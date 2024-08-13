@@ -76,7 +76,6 @@ func testSubmitLoop(
 	submitBatch := func(maxSize uint64) (uint64, error) { // mock the batch submission
 		time.Sleep(approx(args.submitTime))
 		if rand.Float64() < args.submissionHaltProbability {
-			t.Log("stopped")
 			time.Sleep(args.submissionHaltTime)
 			timeLastProgress.Store(time.Now().Unix()) // we have now recovered
 		}

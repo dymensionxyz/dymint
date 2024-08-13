@@ -168,7 +168,7 @@ func (c BlockManagerConfig) Validate() error {
 		return fmt.Errorf("block_batch_size_bytes must be positive")
 	}
 
-	// 345 is the min block+commit size. therefore block skew should not be smaller than max num blocks in a batch, otherwise block production will be stopped before
+	// 345 is the min block+commit size. therefore block skew should not be smaller than max num blocks in a batch, otherwise block production will be stopped before having the chance to submit
 	if c.BatchSkewBlocks <= c.BatchSubmitBytes/345 {
 		return fmt.Errorf("batch_skew_blocks must greater than %d", c.BatchSubmitBytes/345)
 	}
