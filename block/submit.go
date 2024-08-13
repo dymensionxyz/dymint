@@ -68,6 +68,7 @@ func SubmitLoopInner(
 			if 0 == pending || (!tickerPopped && pending <= maxBatchBytes) {
 				break
 			}
+			tickerPopped = false
 			ticker.Reset(maxBatchTime)
 			submitterG.TryGo(
 				func() error {
@@ -86,7 +87,6 @@ func SubmitLoopInner(
 					return nil
 				})
 			if maxBatchSkew*maxBatchBytes < pending {
-				fmt.Println("waiting")
 				if err := submitterG.Wait(); err != nil {
 					return err
 				}

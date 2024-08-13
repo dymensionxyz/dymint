@@ -2,6 +2,7 @@ package block_test
 
 import (
 	"context"
+	"fmt"
 	"math/rand"
 	"sync"
 	"sync/atomic"
@@ -82,8 +83,9 @@ func testSubmitLoopInner(
 			}
 			time.Sleep(approx(args.produceTime))
 			nBytes := rand.Intn(args.produceBytes) // simulate block production
+
+			fmt.Println("add", "amt", nBytes, "nProduced", nProducedBytes.Load())
 			nProducedBytes.Add(uint64(nBytes))
-			// fmt.Println(nProducedBytes.Load())
 			producedBytesC <- nBytes
 
 			timeLastProgress.Store(time.Now().Unix())
@@ -97,6 +99,7 @@ func testSubmitLoopInner(
 			timeLastProgress.Store(time.Now().Unix()) // we have now recovered
 		}
 		consumed := rand.Intn(int(maxSize))
+		fmt.Println("sub", "max", maxSize, "consumed", consumed, "nProduced", nProducedBytes.Load())
 		nProducedBytes.Add(^uint64(consumed - 1)) // subtract
 
 		timeLastProgressT := time.Unix(timeLastProgress.Load(), 0)
@@ -117,7 +120,7 @@ func TestSubmitLoopFastProducerHaltingSubmitter(t *testing.T) {
 		t,
 		testArgs{
 			nParallel:    1,
-			testDuration: 2 * time.Second,
+			testDuration: 2000 * time.Millisecond,
 			batchSkew:    10,
 			batchBytes:   100,
 			maxTime:      10 * time.Millisecond,
