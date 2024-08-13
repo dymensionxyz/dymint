@@ -74,6 +74,7 @@ func (s *State) LoadConsensusFromAppState(appState json.RawMessage) error {
 	if !ok {
 		return fmt.Errorf("rollapp_params not defined in genesis")
 	}
+
 	err = json.Unmarshal(params, &s.ConsensusParams)
 	if err != nil {
 		return err

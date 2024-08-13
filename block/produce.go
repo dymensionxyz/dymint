@@ -40,6 +40,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int)
 		case <-ctx.Done():
 			return nil
 		case <-ticker.C:
+
 			// if empty blocks are configured to be enabled, and one is scheduled...
 			produceEmptyBlock := firstBlock || m.Conf.MaxIdleTime == 0 || nextEmptyBlock.Before(time.Now())
 			firstBlock = false
@@ -198,6 +199,12 @@ func (m *Manager) produceBlock(allowEmpty bool, nextProposerHash *[32]byte) (*ty
 	commit, err = m.createCommit(block)
 	if err != nil {
 		return nil, nil, fmt.Errorf("create commit: %w: %w", err, ErrNonRecoverable)
+	}
+
+	//validate configuration params and rollapp consensus params keep in line
+	err = m.ValidateConfigWithRollappParams()
+	if err != nil {
+		panic(err)
 	}
 
 	m.logger.Info("Block created.", "height", newHeight, "num_tx", len(block.Data.Txs))
