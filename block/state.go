@@ -144,7 +144,6 @@ func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResp
 	s.ConsensusParams.Params.BlockMaxGas = resp.EndBlock.RollappConsensusParamUpdates.Block.MaxGas
 	s.ConsensusParams.Params.Da = resp.EndBlock.RollappConsensusParamUpdates.Da
 	s.ConsensusParams.Params.Commit = resp.EndBlock.RollappConsensusParamUpdates.Commit
-
 }
 
 // UpdateProposerFromBlock updates the proposer from the block

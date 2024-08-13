@@ -114,7 +114,7 @@ func (m *Manager) applyLocalBlock(height uint64) error {
 	}
 	m.retrieverMu.Unlock()
 
-	//validate configuration params and rollapp consensus params keep in line
+	// validate configuration params and rollapp consensus params keep in line
 	err = m.ValidateConfigWithRollappParams()
 	if err != nil {
 		panic(err)

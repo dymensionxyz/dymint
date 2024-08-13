@@ -201,7 +201,7 @@ func (m *Manager) produceBlock(allowEmpty bool, nextProposerHash *[32]byte) (*ty
 		return nil, nil, fmt.Errorf("create commit: %w: %w", err, ErrNonRecoverable)
 	}
 
-	//validate configuration params and rollapp consensus params keep in line
+	// validate configuration params and rollapp consensus params keep in line
 	err = m.ValidateConfigWithRollappParams()
 	if err != nil {
 		panic(err)
