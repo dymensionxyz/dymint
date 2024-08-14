@@ -110,7 +110,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	// validate configuration params and rollapp consensus params keep in line
 	err = m.ValidateConfigWithRollappParams()
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	return nil

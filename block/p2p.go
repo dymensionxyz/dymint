@@ -57,7 +57,7 @@ func (m *Manager) onReceivedBlock(event pubsub.Message) {
 
 	err := m.attemptApplyCachedBlocks()
 	if err != nil {
-		m.logger.Error("Applying cached blocks.", "err", err)
+		panic(err)
 	}
 }
 
