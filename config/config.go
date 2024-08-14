@@ -139,35 +139,22 @@ func (c BlockManagerConfig) Validate() error {
 	}
 	// MaxIdleTime zero disables adaptive block production.
 	if c.MaxIdleTime != 0 {
-		if c.MaxIdleTime <= c.BlockTime {
-			return fmt.Errorf("max_idle_time must be greater than block_time")
+		if c.MaxIdleTime <= c.BlockTime || c.MaxIdleTime > MaxBatchSubmitTime {
+			return fmt.Errorf("max_idle_time must be greater than block_time and not greater than %s", MaxBatchSubmitTime)
 		}
 		if c.MaxProofTime <= 0 || c.MaxProofTime > c.MaxIdleTime {
 			return fmt.Errorf("max_proof_time must be positive and not greater than max_idle_time")
 		}
 	}
 
-	if c.BatchSubmitTime <= 0 {
-		return fmt.Errorf("batch_submit_time must be positive")
-	}
-
-	if c.BatchSubmitTime < c.BlockTime {
-		return fmt.Errorf("batch_submit_time must be greater than block_time")
-	}
-
-	if c.BatchSubmitTime < c.MaxIdleTime {
-		return fmt.Errorf("batch_submit_time must be greater than max_idle_time")
-	}
-
-	if c.BatchSubmitTime > MaxBatchSubmitTime {
-		return fmt.Errorf("batch_submit_time cannot be greater than %s", MaxBatchSubmitTime)
+	if c.BatchSubmitTime < c.MaxIdleTime || c.BatchSubmitTime > MaxBatchSubmitTime {
+		return fmt.Errorf("batch_submit_time must be greater than max_idle_time and not greater than %s", MaxBatchSubmitTime)
 	}
 
 	if c.BatchSubmitBytes <= 0 {
 		return fmt.Errorf("block_batch_max_bytes must be positive")
 	}
 
-	// 345 is the min block+commit size. therefore block skew should not be smaller than max num blocks in a batch, otherwise block production will be stopped before having the chance to submit
 	if c.BatchSkew <= 0 {
 		return fmt.Errorf("batch_skew must be positive")
 	}

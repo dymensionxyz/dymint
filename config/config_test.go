@@ -98,13 +98,13 @@ func TestNodeConfig_Validate(t *testing.T) {
 			},
 			wantErr: assert.Error,
 		}, {
-			name: "max_block_skew 0",
+			name: "max_batch_skew 0",
 			malleate: func(nc *config.NodeConfig) {
 				nc.BlockManagerConfig.BatchSkew = 0
 			},
 			wantErr: assert.Error,
 		}, {
-			name: "max_block_skew greater than 432k",
+			name: "max_batch_skew greater than 432k",
 			malleate: func(nc *config.NodeConfig) {
 				nc.BlockManagerConfig.BatchSkew = 500000
 			},
