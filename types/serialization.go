@@ -84,13 +84,10 @@ func (c *Commit) UnmarshalBinary(data []byte) error {
 // ToProto converts Header into protobuf representation and returns it.
 func (h *Header) ToProto() *pb.Header {
 	return &pb.Header{
-		Version: &pb.Version{
-			Block: h.Version.Block,
-			App:   h.Version.App,
-		},
+		Version:           &pb.Version{Block: h.Version.Block, App: h.Version.App},
+		NamespaceId:       []byte{},
 		Height:            h.Height,
 		Time:              h.Time,
-		ChainId:           h.ChainID,
 		LastHeaderHash:    h.LastHeaderHash[:],
 		LastCommitHash:    h.LastCommitHash[:],
 		DataHash:          h.DataHash[:],
@@ -98,7 +95,9 @@ func (h *Header) ToProto() *pb.Header {
 		AppHash:           h.AppHash[:],
 		LastResultsHash:   h.LastResultsHash[:],
 		ProposerAddress:   h.ProposerAddress[:],
+		SequencerHash:     h.SequencerHash[:],
 		NextSequencerHash: h.NextSequencersHash[:],
+		ChainId:           h.ChainID,
 	}
 }
 
@@ -126,6 +125,9 @@ func (h *Header) FromProto(other *pb.Header) error {
 	}
 	if !safeCopy(h.LastResultsHash[:], other.LastResultsHash) {
 		return errors.New("invalid length of 'LastResultsHash'")
+	}
+	if !safeCopy(h.SequencerHash[:], other.SequencerHash) {
+		return errors.New("invalid length of 'SequencerHash'")
 	}
 	if !safeCopy(h.NextSequencersHash[:], other.NextSequencerHash) {
 		return errors.New("invalid length of 'SequencersHash'")
@@ -278,7 +280,7 @@ func (s *State) FromProto(other *pb.State) error {
 
 	err = s.Sequencers.FromProto(other.SequencerSet)
 	if err != nil {
-		// maybe migration required
+		// check if migration required
 		oldVals, err := types.ValidatorSetFromProto(other.Validators)
 		if err != nil {
 			return err

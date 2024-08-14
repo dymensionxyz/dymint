@@ -53,8 +53,10 @@ message Header {
 	// pubkey can't be recovered by the signature (e.g. ed25519).
 	bytes proposer_address = 11;
 
-	// Hash of next sequencer set, at a time of block creation
-	bytes next_sequencer_hash = 12;
+	// Hash of proposer validatorSet (compatible with tendermint)
+	bytes sequencer_hash = 12;
+	// Hash of the next proposer validatorSet (compatible with tendermint)
+	bytes next_sequencer_hash = 14;
 
 	// Chain ID the block belongs to
 	string chain_id = 13;

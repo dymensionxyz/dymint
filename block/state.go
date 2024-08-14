@@ -89,16 +89,12 @@ func (m *Manager) UpdateStateFromApp() error {
 	return nil
 }
 
-func (e *Executor) UpdateStateAfterInitChain(s *types.State, res *abci.ResponseInitChain, proposer *tmtypes.Validator) {
+func (e *Executor) UpdateStateAfterInitChain(s *types.State, res *abci.ResponseInitChain) {
 	// If the app did not return an app hash, we keep the one set from the genesis doc in
 	// the state. We don't set appHash since we don't want the genesis doc app hash
 	// recorded in the genesis block. We should probably just remove GenesisDoc.AppHash.
 	if len(res.AppHash) > 0 {
 		copy(s.AppHash[:], res.AppHash)
-	}
-
-	if proposer == nil {
-		panic("proposer must be greater than zero on initChain")
 	}
 
 	if res.ConsensusParams != nil {
@@ -124,9 +120,6 @@ func (e *Executor) UpdateStateAfterInitChain(s *types.State, res *abci.ResponseI
 	}
 	// We update the last results hash with the empty hash, to conform with RFC-6962.
 	copy(s.LastResultsHash[:], merkle.HashFromByteSlices(nil))
-
-	// Set the genesis sequencers in the state
-	s.Sequencers.SetProposer(proposer)
 }
 
 func (e *Executor) UpdateMempoolAfterInitChain(s *types.State) {
@@ -154,6 +147,7 @@ func (e *Executor) UpdateProposerFromBlock(s *types.State, block *types.Block) {
 
 	if block.Header.NextSequencersHash == [32]byte{} {
 		// the chain will be halted until proposer is set
+		e.logger.Info("rollapp left with no proposer. chain is halted")
 		s.Sequencers.SetProposer(nil)
 		return
 	}
