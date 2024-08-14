@@ -21,7 +21,6 @@ const (
 	MinBlockTime          = 200 * time.Millisecond
 	MaxBlockTime          = 6 * time.Second
 	MaxBatchSubmitTime    = 1 * time.Hour
-	MaxBatchSkewBlocks    = 432000 // equivalent to 24h blocks at max block rate
 )
 
 // NodeConfig stores Dymint node configuration.
@@ -55,11 +54,11 @@ type BlockManagerConfig struct {
 	// MaxProofTime defines the max time to be idle, if txs that requires proof were included in last block
 	MaxProofTime time.Duration `mapstructure:"max_proof_time"`
 	// BatchSubmitMaxTime is how long should block manager wait for before submitting batch
-	BatchSubmitTime time.Duration `mapstructure:"batch_submit_max_time"`
-	// BatchSkewBlocks is the number of blocks which are waiting to be submitted. Block production will be paused if this limit is reached.
-	BatchSkewBlocks uint64 `mapstructure:"batch_skew_blocks"`
+	BatchSubmitTime time.Duration `mapstructure:"batch_submit_time"`
+	// BatchSkew is the number of batches waiting to be submitted. Block production will be paused if this limit is reached.
+	BatchSkew uint64 `mapstructure:"max_batch_skew"`
 	// The size of the batch of blocks and commits in Bytes. We'll write every batch to the DA and the settlement layer.
-	BatchSubmitBytes uint64 `mapstructure:"batch_submit_max_bytes"`
+	BatchSubmitBytes uint64 `mapstructure:"batch_submit_bytes"`
 }
 
 // GetViperConfig reads configuration parameters from Viper instance.
@@ -149,32 +148,28 @@ func (c BlockManagerConfig) Validate() error {
 	}
 
 	if c.BatchSubmitTime <= 0 {
-		return fmt.Errorf("batch_submit_max_time must be positive")
+		return fmt.Errorf("batch_submit_time must be positive")
 	}
 
 	if c.BatchSubmitTime < c.BlockTime {
-		return fmt.Errorf("batch_submit_max_time must be greater than block_time")
+		return fmt.Errorf("batch_submit_time must be greater than block_time")
 	}
 
 	if c.BatchSubmitTime < c.MaxIdleTime {
-		return fmt.Errorf("batch_submit_max_time must be greater than max_idle_time")
+		return fmt.Errorf("batch_submit_time must be greater than max_idle_time")
 	}
 
 	if c.BatchSubmitTime > MaxBatchSubmitTime {
-		return fmt.Errorf("batch_submit_max_time cannot be greater than %s", MaxBatchSubmitTime)
+		return fmt.Errorf("batch_submit_time cannot be greater than %s", MaxBatchSubmitTime)
 	}
 
 	if c.BatchSubmitBytes <= 0 {
-		return fmt.Errorf("block_batch_size_bytes must be positive")
+		return fmt.Errorf("block_batch_max_bytes must be positive")
 	}
 
 	// 345 is the min block+commit size. therefore block skew should not be smaller than max num blocks in a batch, otherwise block production will be stopped before having the chance to submit
-	if c.BatchSkewBlocks <= c.BatchSubmitBytes/345 {
-		return fmt.Errorf("batch_skew_blocks must greater than %d", c.BatchSubmitBytes/345)
-	}
-
-	if c.BatchSkewBlocks > MaxBatchSkewBlocks {
-		return fmt.Errorf("batch_skew_blocks cannot be greater than %d", MaxBatchSkewBlocks)
+	if c.BatchSkew <= 0 {
+		return fmt.Errorf("batch_skew must be positive")
 	}
 
 	return nil

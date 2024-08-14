@@ -28,7 +28,7 @@ func (m *Manager) SubmitLoop(ctx context.Context,
 		ctx,
 		m.logger,
 		bytesProduced,
-		m.Conf.BatchSkewBlocks,
+		m.Conf.BatchSkew,
 		m.GetUnsubmittedBlocks,
 		m.Conf.BatchSubmitTime,
 		m.Conf.BatchSubmitBytes,
@@ -41,7 +41,7 @@ func SubmitLoopInner(
 	ctx context.Context,
 	logger types.Logger,
 	bytesProduced chan int, // a channel of block and commit bytes produced
-	maxBlockSkew uint64, // max number of blocks that submitter is allowed to have pending
+	maxBatchSkew uint64, // max number of blocks that submitter is allowed to have pending
 	pendingSubmittedBlocks func() uint64,
 	maxBatchTime time.Duration, // max time to allow between batches
 	maxBatchBytes uint64, // max size of serialised batch in bytes
@@ -58,7 +58,7 @@ func SubmitLoopInner(
 		// 'trigger': this thread is responsible for waking up the submitter when a new block arrives, and back-pressures the block production loop
 		// if it gets too far ahead.
 		for {
-			if maxBlockSkew <= pendingSubmittedBlocks() {
+			if maxBatchSkew*maxBatchBytes < pendingBytes.Load() {
 				// too much stuff is pending submission
 				// we block here until we get a progress nudge from the submitter thread
 				select {
@@ -76,8 +76,8 @@ func SubmitLoopInner(
 				}
 			}
 
-			types.RollappPendingSubmissionsSkewNumBytes.Set(float64(pendingBytes.Load()))
-			types.RollappPendingSubmissionsSkewNumBlocks.Set(float64(pendingSubmittedBlocks()))
+			types.RollappPendingSubmissionsSkewBytes.Set(float64(pendingBytes.Load()))
+			types.RollappPendingSubmissionsSkewBlocks.Set(float64(pendingSubmittedBlocks()))
 			submitter.Nudge()
 		}
 	})
@@ -94,8 +94,9 @@ func SubmitLoopInner(
 			case <-submitter.C:
 			}
 			pending := pendingBytes.Load()
-			types.RollappPendingSubmissionsSkewNumBytes.Set(float64(pendingBytes.Load()))
-			types.RollappPendingSubmissionsSkewNumBlocks.Set(float64(pendingSubmittedBlocks()))
+			types.RollappPendingSubmissionsSkewBytes.Set(float64(pendingBytes.Load()))
+			types.RollappPendingSubmissionsSkewBlocks.Set(float64(pendingSubmittedBlocks()))
+			types.RollappPendingSubmissionsSkewBatches.Set(float64(pendingBytes.Load() / maxBatchBytes))
 
 			// while there are accumulated blocks, create and submit batches!!
 			for {

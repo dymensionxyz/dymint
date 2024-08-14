@@ -286,10 +286,6 @@ func (m *Manager) ValidateConfigWithRollappParams() error {
 		return fmt.Errorf("binary version mismatch. rollapp param: %s binary used:%s", version.Commit, m.State.ConsensusParams.Params.Commit)
 	}
 
-	if m.DAClient == nil {
-		return nil
-	}
-
 	if m.DAClient.GetMaxBlobSizeBytes() != 0 && m.DAClient.GetMaxBlobSizeBytes() < uint32(m.Conf.BatchSubmitBytes) {
 		return fmt.Errorf("batch size cannot be greater than %d for %s DA", m.DAClient.GetMaxBlobSizeBytes(), m.DAClient.GetClientType())
 	}
@@ -307,10 +303,10 @@ func (m *Manager) ValidateConfigWithRollappParams() error {
 
 // setDA initializes DA client in blockmanager according to DA type set in genesis or stored in state
 func (m *Manager) setDA(daconfig string, dalcKV store.KV, logger log.Logger) error {
-	da_layer := m.State.ConsensusParams.Params.Da
-	dalc := registry.GetClient(da_layer)
+	daLayer := m.State.ConsensusParams.Params.Da
+	dalc := registry.GetClient(daLayer)
 	if dalc == nil {
-		return fmt.Errorf("get data availability client named '%s'", da_layer)
+		return fmt.Errorf("get data availability client named '%s'", daLayer)
 	}
 
 	err := dalc.Init([]byte(daconfig), m.Pubsub, dalcKV, logger.With("module", string(dalc.GetClientType())))

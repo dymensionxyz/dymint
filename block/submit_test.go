@@ -230,7 +230,7 @@ func TestSubmissionByTime(t *testing.T) {
 	managerConfig := config.BlockManagerConfig{
 		BlockTime:        blockTime,
 		MaxIdleTime:      0,
-		BatchSkewBlocks:  10,
+		BatchSkew:        10,
 		BatchSubmitTime:  submitTimeout,
 		BatchSubmitBytes: 1000,
 	}
