@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
@@ -19,20 +20,38 @@ func (m *Manager) MonitorSequencerRotation(ctx context.Context, rotateC chan str
 	}
 	defer m.Pubsub.UnsubscribeAll(ctx, sequencerRotationEventClient) //nolint:errcheck
 
+	ticker := time.NewTicker(3 * time.Minute) // TODO: make this configurable
+	defer ticker.Stop()
+
+	var nextSeqAddr string
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
+		case <-ticker.C:
+			next, err := m.SLClient.CheckRotationInProgress()
+			if err != nil {
+				m.logger.Error("Check rotation in progress", "err", err)
+				continue
+			}
+			if next == nil {
+				continue
+			}
+			nextSeqAddr = next.Address
+			// for loop will break afterwards
 		case event := <-subscription.Out():
 			eventData, _ := event.Data().(*settlement.EventDataRotationStarted)
-			nextSeqAddr := eventData.NextSeqAddr
-			m.logger.Info("Sequencer rotation started.", "next_seq", nextSeqAddr)
-			go func() {
-				rotateC <- nextSeqAddr
-			}()
-			return fmt.Errorf("sequencer rotation started. signal to stop production")
+			nextSeqAddr = eventData.NextSeqAddr
+			// for loop will break afterwards
 		}
+		break
 	}
+	// we get here once a sequencer rotation signal is received
+	m.logger.Info("Sequencer rotation started.", "next_seq", nextSeqAddr)
+	go func() {
+		rotateC <- nextSeqAddr
+	}()
+	return fmt.Errorf("sequencer rotation started. signal to stop production")
 }
 
 // IsProposer checks if the local node is the proposer
