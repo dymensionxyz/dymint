@@ -54,6 +54,7 @@ func (m *Manager) syncToTargetHeight(targetHeight uint64) error {
 			return fmt.Errorf("stuck at height %d", currH)
 		}
 		m.logger.Info("Synced from DA", "store height", m.State.Height(), "target height", targetHeight)
+
 	}
 
 	err := m.attemptApplyCachedBlocks()
@@ -114,12 +115,6 @@ func (m *Manager) applyLocalBlock(height uint64) error {
 	}
 	m.retrieverMu.Unlock()
 
-	// validate configuration params and rollapp consensus params keep in line
-	err = m.ValidateConfigWithRollappParams()
-	if err != nil {
-		panic(err)
-	}
-
 	return nil
 }
 
@@ -154,6 +149,7 @@ func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
 			lastAppliedHeight = float64(block.Header.Height)
 
 			m.blockCache.Delete(block.Header.Height)
+
 		}
 	}
 	types.LastReceivedDAHeightGauge.Set(lastAppliedHeight)

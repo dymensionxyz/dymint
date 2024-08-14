@@ -201,12 +201,6 @@ func (m *Manager) produceBlock(allowEmpty bool, nextProposerHash *[32]byte) (*ty
 		return nil, nil, fmt.Errorf("create commit: %w: %w", err, ErrNonRecoverable)
 	}
 
-	// validate configuration params and rollapp consensus params keep in line
-	err = m.ValidateConfigWithRollappParams()
-	if err != nil {
-		panic(err)
-	}
-
 	m.logger.Info("Block created.", "height", newHeight, "num_tx", len(block.Data.Txs))
 	types.RollappBlockSizeBytesGauge.Set(float64(len(block.Data.Txs)))
 	types.RollappBlockSizeTxsGauge.Set(float64(len(block.Data.Txs)))

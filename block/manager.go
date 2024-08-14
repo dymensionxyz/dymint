@@ -286,16 +286,16 @@ func (m *Manager) ValidateConfigWithRollappParams() error {
 		return fmt.Errorf("binary version mismatch. rollapp param: %s binary used:%s", version.Commit, m.State.ConsensusParams.Params.Commit)
 	}
 
+	if da.Client(m.State.ConsensusParams.Params.Da) != m.DAClient.GetClientType() {
+		return fmt.Errorf("da client mismatch. rollapp param: %s da configured: %s", m.DAClient.GetClientType(), m.State.ConsensusParams.Params.Da)
+	}
+
 	if m.DAClient.GetMaxBlobSizeBytes() != 0 && m.DAClient.GetMaxBlobSizeBytes() < uint32(m.Conf.BatchSubmitBytes) {
 		return fmt.Errorf("batch size cannot be greater than %d for %s DA", m.DAClient.GetMaxBlobSizeBytes(), m.DAClient.GetClientType())
 	}
 
 	if m.DAClient.GetMaxBlobSizeBytes() != 0 && m.State.ConsensusParams.Params.BlockMaxSize > int64(m.DAClient.GetMaxBlobSizeBytes()) {
 		return fmt.Errorf("max block size cannot be greater than %d for %s DA", int64(m.DAClient.GetMaxBlobSizeBytes()), m.DAClient.GetClientType())
-	}
-
-	if da.Client(m.State.ConsensusParams.Params.Da) != m.DAClient.GetClientType() {
-		return fmt.Errorf("da client mismatch. rollapp param: %s da configured: %s", m.DAClient.GetClientType(), m.State.ConsensusParams.Params.Da)
 	}
 
 	return nil

@@ -15,7 +15,7 @@ import (
 
 type testArgs struct {
 	testDuration              time.Duration // how long to run one instance of the test (should be short)
-	blockSkew                 uint64        // max number of blocks to get ahead
+	batchSkew                 uint64        // max number of batches to get ahead
 	batchBytes                uint64        // max number of bytes in a batch
 	maxTime                   time.Duration // maximum time to wait before submitting submissions
 	submitTime                time.Duration // how long it takes to submit a batch
@@ -68,7 +68,6 @@ func testSubmitLoop(
 			nProducedBytes.Add(uint64(nBytes))
 			producedBytesC <- nBytes
 			pendingBlocks.Add(1)
-			require.True(t, pendingBlocks.Load() <= args.blockSkew)
 			timeLastProgress.Store(time.Now().Unix())
 		}
 	}()
@@ -100,7 +99,7 @@ func testSubmitLoop(
 		ctx,
 		log.NewNopLogger(),
 		producedBytesC,
-		args.blockSkew,
+		args.batchSkew,
 		accumulatedBlocks,
 		args.maxTime,
 		args.batchBytes,
@@ -114,7 +113,7 @@ func TestSubmitLoopFastProducerHaltingSubmitter(t *testing.T) {
 		t,
 		testArgs{
 			testDuration: 2 * time.Second,
-			blockSkew:    10,
+			batchSkew:    10,
 			batchBytes:   100,
 			maxTime:      10 * time.Millisecond,
 			submitTime:   2 * time.Millisecond,
@@ -134,7 +133,7 @@ func TestSubmitLoopTimer(t *testing.T) {
 		t,
 		testArgs{
 			testDuration: 2 * time.Second,
-			blockSkew:    10,
+			batchSkew:    10,
 			batchBytes:   100,
 			maxTime:      10 * time.Millisecond,
 			submitTime:   2 * time.Millisecond,

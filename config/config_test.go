@@ -104,12 +104,6 @@ func TestNodeConfig_Validate(t *testing.T) {
 			},
 			wantErr: assert.Error,
 		}, {
-			name: "max_batch_skew greater than 432k",
-			malleate: func(nc *config.NodeConfig) {
-				nc.BlockManagerConfig.BatchSkew = 500000
-			},
-			wantErr: assert.Error,
-		}, {
 			name: "missing block batch max size bytes",
 			malleate: func(nc *config.NodeConfig) {
 				nc.BlockManagerConfig.BatchSubmitBytes = 0

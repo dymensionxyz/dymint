@@ -10,8 +10,8 @@ const (
 	FlagDAConfig         = "dymint.da_config"
 	FlagBlockTime        = "dymint.block_time"
 	FlagMaxIdleTime      = "dymint.max_idle_time"
-	FlagBatchSubmitTime  = "dymint.batch_submit_max_time"
-	FlagBatchSubmitBytes = "dymint.batch_submit_max_bytes"
+	FlagBatchSubmitTime  = "dymint.batch_submit_time"
+	FlagBatchSubmitBytes = "dymint.batch_submit_bytes"
 )
 
 const (
@@ -71,10 +71,10 @@ func BindDymintFlags(cmd *cobra.Command, v *viper.Viper) error {
 	if err := v.BindPFlag("max_idle_time", cmd.Flags().Lookup(FlagMaxIdleTime)); err != nil {
 		return err
 	}
-	if err := v.BindPFlag("batch_submit_max_time", cmd.Flags().Lookup(FlagBatchSubmitTime)); err != nil {
+	if err := v.BindPFlag("batch_submit_time", cmd.Flags().Lookup(FlagBatchSubmitTime)); err != nil {
 		return err
 	}
-	if err := v.BindPFlag("batch_submit_max_bytes", cmd.Flags().Lookup(FlagBatchSubmitBytes)); err != nil {
+	if err := v.BindPFlag("batch_submit_bytes", cmd.Flags().Lookup(FlagBatchSubmitBytes)); err != nil {
 		return err
 	}
 	if err := v.BindPFlag("settlement_layer", cmd.Flags().Lookup(FlagSettlementLayer)); err != nil {

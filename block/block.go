@@ -99,11 +99,20 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		}
 	}
 
+	m.blockCache.Delete(block.Header.Height)
+
 	if switchRole {
 		// TODO: graceful role change (https://github.com/dymensionxyz/dymint/issues/1008)
 		m.logger.Info("Node changing to proposer role")
 		panic("sequencer is no longer the proposer")
 	}
+
+	// validate configuration params and rollapp consensus params keep in line
+	err = m.ValidateConfigWithRollappParams()
+	if err != nil {
+		panic(err)
+	}
+
 	return nil
 }
 
@@ -144,7 +153,6 @@ func (m *Manager) attemptApplyCachedBlocks() error {
 		}
 		m.logger.Info("Block applied", "height", expectedHeight)
 
-		m.blockCache.Delete(cachedBlock.Block.Header.Height)
 	}
 
 	return nil
