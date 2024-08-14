@@ -285,8 +285,7 @@ func (s *State) FromProto(other *pb.State) error {
 		if err != nil {
 			return err
 		}
-		s.Sequencers.SetSequencers(oldVals.Validators)
-		s.Sequencers.SetProposer(oldVals.Proposer)
+		s.Sequencers.SetProposer(NewSequencerFromValidator(*oldVals.Proposer))
 	}
 
 	s.ConsensusParams = other.ConsensusParams

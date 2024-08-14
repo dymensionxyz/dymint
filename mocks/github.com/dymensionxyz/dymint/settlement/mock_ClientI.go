@@ -27,23 +27,23 @@ func (_m *MockClientI) EXPECT() *MockClientI_Expecter {
 }
 
 // CheckRotationInProgress provides a mock function with given fields:
-func (_m *MockClientI) CheckRotationInProgress() (*settlement.Sequencer, error) {
+func (_m *MockClientI) CheckRotationInProgress() (*types.Sequencer, error) {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for CheckRotationInProgress")
 	}
 
-	var r0 *settlement.Sequencer
+	var r0 *types.Sequencer
 	var r1 error
-	if rf, ok := ret.Get(0).(func() (*settlement.Sequencer, error)); ok {
+	if rf, ok := ret.Get(0).(func() (*types.Sequencer, error)); ok {
 		return rf()
 	}
-	if rf, ok := ret.Get(0).(func() *settlement.Sequencer); ok {
+	if rf, ok := ret.Get(0).(func() *types.Sequencer); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*settlement.Sequencer)
+			r0 = ret.Get(0).(*types.Sequencer)
 		}
 	}
 
@@ -73,34 +73,34 @@ func (_c *MockClientI_CheckRotationInProgress_Call) Run(run func()) *MockClientI
 	return _c
 }
 
-func (_c *MockClientI_CheckRotationInProgress_Call) Return(_a0 *settlement.Sequencer, _a1 error) *MockClientI_CheckRotationInProgress_Call {
+func (_c *MockClientI_CheckRotationInProgress_Call) Return(_a0 *types.Sequencer, _a1 error) *MockClientI_CheckRotationInProgress_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockClientI_CheckRotationInProgress_Call) RunAndReturn(run func() (*settlement.Sequencer, error)) *MockClientI_CheckRotationInProgress_Call {
+func (_c *MockClientI_CheckRotationInProgress_Call) RunAndReturn(run func() (*types.Sequencer, error)) *MockClientI_CheckRotationInProgress_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // GetAllSequencers provides a mock function with given fields:
-func (_m *MockClientI) GetAllSequencers() ([]settlement.Sequencer, error) {
+func (_m *MockClientI) GetAllSequencers() ([]types.Sequencer, error) {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetAllSequencers")
 	}
 
-	var r0 []settlement.Sequencer
+	var r0 []types.Sequencer
 	var r1 error
-	if rf, ok := ret.Get(0).(func() ([]settlement.Sequencer, error)); ok {
+	if rf, ok := ret.Get(0).(func() ([]types.Sequencer, error)); ok {
 		return rf()
 	}
-	if rf, ok := ret.Get(0).(func() []settlement.Sequencer); ok {
+	if rf, ok := ret.Get(0).(func() []types.Sequencer); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]settlement.Sequencer)
+			r0 = ret.Get(0).([]types.Sequencer)
 		}
 	}
 
@@ -130,12 +130,12 @@ func (_c *MockClientI_GetAllSequencers_Call) Run(run func()) *MockClientI_GetAll
 	return _c
 }
 
-func (_c *MockClientI_GetAllSequencers_Call) Return(_a0 []settlement.Sequencer, _a1 error) *MockClientI_GetAllSequencers_Call {
+func (_c *MockClientI_GetAllSequencers_Call) Return(_a0 []types.Sequencer, _a1 error) *MockClientI_GetAllSequencers_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockClientI_GetAllSequencers_Call) RunAndReturn(run func() ([]settlement.Sequencer, error)) *MockClientI_GetAllSequencers_Call {
+func (_c *MockClientI_GetAllSequencers_Call) RunAndReturn(run func() ([]types.Sequencer, error)) *MockClientI_GetAllSequencers_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -199,23 +199,23 @@ func (_c *MockClientI_GetBatchAtIndex_Call) RunAndReturn(run func(uint64) (*sett
 }
 
 // GetBondedSequencers provides a mock function with given fields:
-func (_m *MockClientI) GetBondedSequencers() ([]settlement.Sequencer, error) {
+func (_m *MockClientI) GetBondedSequencers() ([]types.Sequencer, error) {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetBondedSequencers")
 	}
 
-	var r0 []settlement.Sequencer
+	var r0 []types.Sequencer
 	var r1 error
-	if rf, ok := ret.Get(0).(func() ([]settlement.Sequencer, error)); ok {
+	if rf, ok := ret.Get(0).(func() ([]types.Sequencer, error)); ok {
 		return rf()
 	}
-	if rf, ok := ret.Get(0).(func() []settlement.Sequencer); ok {
+	if rf, ok := ret.Get(0).(func() []types.Sequencer); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]settlement.Sequencer)
+			r0 = ret.Get(0).([]types.Sequencer)
 		}
 	}
 
@@ -245,12 +245,12 @@ func (_c *MockClientI_GetBondedSequencers_Call) Run(run func()) *MockClientI_Get
 	return _c
 }
 
-func (_c *MockClientI_GetBondedSequencers_Call) Return(_a0 []settlement.Sequencer, _a1 error) *MockClientI_GetBondedSequencers_Call {
+func (_c *MockClientI_GetBondedSequencers_Call) Return(_a0 []types.Sequencer, _a1 error) *MockClientI_GetBondedSequencers_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockClientI_GetBondedSequencers_Call) RunAndReturn(run func() ([]settlement.Sequencer, error)) *MockClientI_GetBondedSequencers_Call {
+func (_c *MockClientI_GetBondedSequencers_Call) RunAndReturn(run func() ([]types.Sequencer, error)) *MockClientI_GetBondedSequencers_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -371,19 +371,19 @@ func (_c *MockClientI_GetLatestBatch_Call) RunAndReturn(run func() (*settlement.
 }
 
 // GetProposer provides a mock function with given fields:
-func (_m *MockClientI) GetProposer() *settlement.Sequencer {
+func (_m *MockClientI) GetProposer() *types.Sequencer {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetProposer")
 	}
 
-	var r0 *settlement.Sequencer
-	if rf, ok := ret.Get(0).(func() *settlement.Sequencer); ok {
+	var r0 *types.Sequencer
+	if rf, ok := ret.Get(0).(func() *types.Sequencer); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*settlement.Sequencer)
+			r0 = ret.Get(0).(*types.Sequencer)
 		}
 	}
 
@@ -407,12 +407,12 @@ func (_c *MockClientI_GetProposer_Call) Run(run func()) *MockClientI_GetProposer
 	return _c
 }
 
-func (_c *MockClientI_GetProposer_Call) Return(_a0 *settlement.Sequencer) *MockClientI_GetProposer_Call {
+func (_c *MockClientI_GetProposer_Call) Return(_a0 *types.Sequencer) *MockClientI_GetProposer_Call {
 	_c.Call.Return(_a0)
 	return _c
 }
 
-func (_c *MockClientI_GetProposer_Call) RunAndReturn(run func() *settlement.Sequencer) *MockClientI_GetProposer_Call {
+func (_c *MockClientI_GetProposer_Call) RunAndReturn(run func() *types.Sequencer) *MockClientI_GetProposer_Call {
 	_c.Call.Return(run)
 	return _c
 }

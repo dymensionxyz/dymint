@@ -139,17 +139,17 @@ func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResp
 
 // UpdateProposerFromBlock updates the proposer from the block
 // in case of proposer change, the existing proposer sets the nextProposerHash in the block header
-func (e *Executor) UpdateProposerFromBlock(s *types.State, block *types.Block) {
+func (e *Executor) UpdateProposerFromBlock(s *types.State, block *types.Block) bool {
 	// no sequencer change
-	if bytes.Equal(s.Sequencers.ProposerHash[:], block.Header.NextSequencersHash[:]) {
-		return
+	if bytes.Equal(block.Header.SequencerHash[:], block.Header.NextSequencersHash[:]) {
+		return false
 	}
 
 	if block.Header.NextSequencersHash == [32]byte{} {
 		// the chain will be halted until proposer is set
 		e.logger.Info("rollapp left with no proposer. chain is halted")
 		s.Sequencers.SetProposer(nil)
-		return
+		return true
 	}
 
 	// if hash changed, update the active sequencer
@@ -159,15 +159,16 @@ func (e *Executor) UpdateProposerFromBlock(s *types.State, block *types.Block) {
 		panic(fmt.Sprintf("failed to update new proposer: %v", err))
 	}
 
-	val := s.Sequencers.GetByAddress(e.localAddress)
+	val := s.Sequencers.GetByConsAddress(e.localAddress)
 	if val == nil {
 		e.logger.Error("local key not found in sequencer set")
 		panic("local key not found in sequencer set")
 	}
 
-	// TODO: graceful fallback to full node (https://github.com/dymensionxyz/dymint/issues/1008)
 	if bytes.Equal(types.GetHash(val), block.Header.NextSequencersHash[:]) {
-		e.logger.Error("node changing to proposer role")
-		panic("node changing to proposer role")
+		e.logger.Info("node changing to proposer role")
+		return true
 	}
+
+	return false
 }

@@ -70,7 +70,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	}
 
 	// check if the proposer needs to be changed
-	m.Executor.UpdateProposerFromBlock(m.State, block)
+	switchRole := m.Executor.UpdateProposerFromBlock(m.State, block)
 
 	// save sequencers to store to be queried over RPC
 	batch := m.Store.NewBatch()
@@ -97,6 +97,11 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		if err != nil {
 			m.logger.Error("prune blocks", "retain_height", retainHeight, "err", err)
 		}
+	}
+	if switchRole {
+		// TODO: graceful fallback to full node (https://github.com/dymensionxyz/dymint/issues/1008)
+		m.logger.Info("Node changing to proposer role")
+		panic("sequencer is no longer the proposer")
 	}
 	return nil
 }

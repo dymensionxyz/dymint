@@ -91,7 +91,12 @@ message Batch {
 }
 
 
+message Sequencer {
+	string settlement_address = 1;
+	tendermint.types.Validator validator = 2;
+}
+
 message SequencerSet {
-	repeated tendermint.types.Validator sequencers = 1;
-	tendermint.types.Validator proposer = 2;
+	repeated Sequencer sequencers = 1;
+	Sequencer proposer = 2;
 }

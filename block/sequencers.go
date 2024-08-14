@@ -9,7 +9,6 @@ import (
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/google/uuid"
-	tmtypes "github.com/tendermint/tendermint/types"
 )
 
 func (m *Manager) MonitorSequencerRotation(ctx context.Context, rotateC chan string) error {
@@ -37,14 +36,12 @@ func (m *Manager) MonitorSequencerRotation(ctx context.Context, rotateC chan str
 			if next == nil {
 				continue
 			}
-			nextSeqAddr = next.Address
-			// for loop will break afterwards
+			nextSeqAddr = next.SettlementAddress
 		case event := <-subscription.Out():
 			eventData, _ := event.Data().(*settlement.EventDataRotationStarted)
 			nextSeqAddr = eventData.NextSeqAddr
-			// for loop will break afterwards
 		}
-		break
+		break // break out of the loop after getting the next sequencer address
 	}
 	// we get here once a sequencer rotation signal is received
 	m.logger.Info("Sequencer rotation started.", "next_seq", nextSeqAddr)
@@ -63,7 +60,7 @@ func (m *Manager) IsProposer() bool {
 
 	var expectedHubProposer []byte
 	if m.SLClient.GetProposer() != nil {
-		expectedHubProposer = m.SLClient.GetProposer().PublicKey.Bytes()
+		expectedHubProposer = m.SLClient.GetProposer().PubKey.Bytes()
 	}
 	return bytes.Equal(l2Proposer, localProposerKey) || bytes.Equal(expectedHubProposer, localProposerKey)
 }
@@ -81,8 +78,8 @@ func (m *Manager) MissingLastBatch() (string, bool, error) {
 	// rotation in progress,
 	// check if we're the old proposer and needs to complete rotation
 	curr := m.SLClient.GetProposer()
-	isProposer := bytes.Equal(curr.PublicKey.Bytes(), localProposerKey)
-	return next.Address, isProposer, nil
+	isProposer := bytes.Equal(curr.PubKey.Bytes(), localProposerKey)
+	return next.SettlementAddress, isProposer, nil
 }
 
 // handleRotationReq completes the rotation flow once a signal is received from the SL
@@ -107,11 +104,11 @@ func (m *Manager) CompleteRotation(ctx context.Context, nextSeqAddr string) erro
 	// validate nextSeq is in the bonded set
 	var nextSeqHash [32]byte
 	if nextSeqAddr != "" {
-		val := m.State.Sequencers.GetByAddress([]byte(nextSeqAddr))
-		if val == nil {
+		seq := m.State.Sequencers.GetByAddress(nextSeqAddr)
+		if seq == nil {
 			return types.ErrMissingProposerPubKey
 		}
-		copy(nextSeqHash[:], val.PubKey.Address().Bytes())
+		copy(nextSeqHash[:], types.GetHash(seq))
 	}
 
 	err := m.CreateAndPostLastBatch(ctx, nextSeqHash)
@@ -164,32 +161,13 @@ func (m *Manager) UpdateSequencerSetFromSL() error {
 	if err != nil {
 		return err
 	}
-	newSeqList := make([]*tmtypes.Validator, 0, len(seqs))
-	for _, seq := range seqs {
-		tmSeq, err := seq.TMValidator()
-		if err != nil {
-			return err
-		}
-		newSeqList = append(newSeqList, tmSeq)
-	}
-	m.State.Sequencers.SetSequencers(newSeqList)
+	m.State.Sequencers.SetSequencers(seqs)
 	m.logger.Debug("Updated bonded sequencer set.", "newSet", m.State.Sequencers.String())
 	return nil
 }
 
 // updateProposer updates the proposer in the state
 func (m *Manager) UpdateProposer() error {
-	var (
-		err error
-		p   *tmtypes.Validator
-	)
-	proposer := m.SLClient.GetProposer()
-	if proposer != nil {
-		p, err = proposer.TMValidator()
-		if err != nil {
-			return err
-		}
-	}
-	m.State.Sequencers.SetProposer(p)
+	m.State.Sequencers.SetProposer(m.SLClient.GetProposer())
 	return nil
 }
