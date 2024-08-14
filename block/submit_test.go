@@ -9,18 +9,18 @@ import (
 	"testing"
 	"time"
 
+	tmed25519 "github.com/tendermint/tendermint/crypto/ed25519"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/proxy"
 
-	cosmosed25519 "github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
 	"github.com/libp2p/go-libp2p/core/crypto"
 
 	"github.com/dymensionxyz/dymint/block"
 	"github.com/dymensionxyz/dymint/config"
 	slmocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/settlement"
-	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
 )
@@ -144,10 +144,8 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 	lib2pPrivKey, err := crypto.UnmarshalEd25519PrivateKey(priv)
 	require.NoError(err)
 
-	cosmosPrivKey := cosmosed25519.PrivKey{Key: priv}
-	proposer := &settlement.Sequencer{
-		PublicKey: cosmosPrivKey.PubKey(),
-	}
+	proposerKey := tmed25519.PrivKey(priv)
+	proposer := *types.NewSequencer(proposerKey.PubKey(), "")
 
 	// Create a new mock ClientI
 	slmock := &slmocks.MockClientI{}

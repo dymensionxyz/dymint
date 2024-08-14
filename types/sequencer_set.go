@@ -190,8 +190,8 @@ func (s *SequencerSet) SetSequencersFromValSet(valSet *types.ValidatorSet) {
 	for i, val := range valSet.Validators {
 		sequencers[i] = *NewSequencerFromValidator(*val)
 	}
-	s.Sequencers = sequencers
-	s.Proposer = NewSequencerFromValidator(*valSet.Proposer)
+	s.SetSequencers(sequencers)
+	s.SetProposer(NewSequencerFromValidator(*valSet.Proposer))
 }
 
 // FIXME: change to be sequencer method

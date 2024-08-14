@@ -146,7 +146,7 @@ func TestApplyBlock(t *testing.T) {
 
 	// Init state
 	state := &types.State{}
-	state.Sequencers.SetProposer(tmtypes.NewValidator(tmPubKey, 1))
+	state.Sequencers.SetProposer(types.NewSequencerFromValidator(*tmtypes.NewValidator(tmPubKey, 1)))
 	state.InitialHeight = 1
 	state.SetHeight(0)
 	maxBytes := uint64(100)
