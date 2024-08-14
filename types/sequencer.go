@@ -44,7 +44,7 @@ func (s *SequencerSet) SetProposer(proposer *types.Validator) {
 	s.ProposerHash = GetHash(proposer)
 
 	// Add proposer to bonded set if not already present
-	if !s.HasAddress(proposer.Address) {
+	if proposer != nil && !s.HasAddress(proposer.Address) {
 		s.Sequencers = append(s.Sequencers, proposer)
 	}
 }

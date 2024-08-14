@@ -172,12 +172,12 @@ func (m *Manager) Start(ctx context.Context) error {
 		return fmt.Errorf("sync block manager from settlement: %w", err)
 	}
 	// check if sequencer in the middle of rotation
-	nextSeqAddr, err := m.MissingLastBatch()
+	nextSeqAddr, missing, err := m.MissingLastBatch()
 	if err != nil {
-		return fmt.Errorf("missing last batch: %w", err)
+		return fmt.Errorf("checking if missing last batch: %w", err)
 	}
 	// if sequencer is in the middle of rotation, complete rotation instead of running the main loop
-	if nextSeqAddr != "" {
+	if missing {
 		m.handleRotationReq(ctx, nextSeqAddr)
 		return nil
 	}

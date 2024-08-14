@@ -59,7 +59,6 @@ func (m *Manager) MonitorSequencerRotation(ctx context.Context, rotateC chan str
 // for this case, the old proposer counts as "sequencer" as well, so he'll be able to submit the last state update.
 func (m *Manager) IsProposer() bool {
 	localProposerKey, _ := m.LocalKey.GetPublic().Raw()
-
 	l2Proposer := m.GetProposerPubKey().Bytes()
 
 	var expectedHubProposer []byte
@@ -70,22 +69,20 @@ func (m *Manager) IsProposer() bool {
 }
 
 // check rotation in progress (I'm the proposer, but needs to complete rotation)
-func (m *Manager) MissingLastBatch() (string, error) {
+func (m *Manager) MissingLastBatch() (string, bool, error) {
 	localProposerKey, _ := m.LocalKey.GetPublic().Raw()
 	next, err := m.SLClient.CheckRotationInProgress()
 	if err != nil {
-		return "", err
+		return "", false, err
 	}
 	if next == nil {
-		return "", nil
+		return "", false, nil
 	}
 	// rotation in progress,
 	// check if we're the old proposer and needs to complete rotation
-	if !bytes.Equal(next.PublicKey.Bytes(), localProposerKey) {
-		return next.Address, nil
-	}
-
-	return "", nil
+	curr := m.SLClient.GetProposer()
+	isProposer := bytes.Equal(curr.PublicKey.Bytes(), localProposerKey)
+	return next.Address, isProposer, nil
 }
 
 // handleRotationReq completes the rotation flow once a signal is received from the SL
