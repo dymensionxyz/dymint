@@ -35,6 +35,11 @@ var RollappPendingSubmissionsSkewNumBytes = promauto.NewGauge(prometheus.GaugeOp
 	Help: "The number of bytes (of blocks and commits) which have been accumulated but not yet submitted.",
 })
 
+var LastBatchSubmittedBytes = promauto.NewGauge(prometheus.GaugeOpts{
+	Name: "last_batch_submitted_bytes",
+	Help: "The size in bytes of the last batch submitted to DA.",
+})
+
 var LastReceivedP2PHeightGauge = promauto.NewGauge(prometheus.GaugeOpts{
 	Name: "last_received_p2p_height",
 	Help: "The height of the last block received from P2P.",
