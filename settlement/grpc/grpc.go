@@ -276,6 +276,7 @@ func (c *Client) saveBatch(batch *settlement.Batch) error {
 
 func (c *Client) convertBatchtoSettlementBatch(batch *types.Batch, daResult *da.ResultSubmitBatch) *settlement.Batch {
 	settlementBatch := &settlement.Batch{
+		Sequencer:   c.GetProposer().SettlementAddress,
 		StartHeight: batch.StartHeight(),
 		EndHeight:   batch.EndHeight(),
 		MetaData: &settlement.BatchMetaData{

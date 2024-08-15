@@ -32,6 +32,8 @@ type BatchMetaData struct {
 }
 
 type Batch struct {
+	// sequencer is the bech32-encoded address of the sequencer sent the update
+	Sequencer   string
 	StartHeight uint64
 	EndHeight   uint64
 	AppHashes   [][32]byte

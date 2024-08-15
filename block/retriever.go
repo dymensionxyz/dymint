@@ -78,10 +78,14 @@ func (m *Manager) syncFromDABatch() error {
 	if err != nil {
 		return fmt.Errorf("retrieve batch: %w", err)
 	}
-
-	// FIXME: set correct proposer
-
 	m.logger.Info("Retrieved batch.", "state_index", stateIndex)
+
+	// update the proposer when syncing from the settlement layer
+	proposer := m.State.Sequencers.GetByAddress(settlementBatch.Batch.Sequencer)
+	if proposer == nil {
+		return fmt.Errorf("proposer not found: batch: %d: %s", stateIndex, settlementBatch.Batch.Sequencer)
+	}
+	m.State.Sequencers.SetProposer(proposer)
 
 	err = m.ProcessNextDABatch(settlementBatch.MetaData.DA)
 	if err != nil {

@@ -136,7 +136,7 @@ func (c *Client) Stop() error {
 
 // PostBatch saves the batch to the kv store
 func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) error {
-	settlementBatch := convertBatchToSettlementBatch(batch, daResult)
+	settlementBatch := c.convertBatchToSettlementBatch(batch, daResult)
 	err := c.saveBatch(settlementBatch)
 	if err != nil {
 		return err
@@ -268,8 +268,9 @@ func (c *Client) retrieveBatchAtStateIndex(slStateIndex uint64) (*settlement.Res
 	return &batchResult, nil
 }
 
-func convertBatchToSettlementBatch(batch *types.Batch, daResult *da.ResultSubmitBatch) *settlement.Batch {
+func (c *Client) convertBatchToSettlementBatch(batch *types.Batch, daResult *da.ResultSubmitBatch) *settlement.Batch {
 	settlementBatch := &settlement.Batch{
+		Sequencer:   c.GetProposer().SettlementAddress,
 		StartHeight: batch.StartHeight(),
 		EndHeight:   batch.EndHeight(),
 		MetaData: &settlement.BatchMetaData{
