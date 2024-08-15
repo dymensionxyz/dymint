@@ -129,17 +129,6 @@ func (s *SequencerSet) String() string {
 	return fmt.Sprintf("SequencerSet: %v", s.Sequencers)
 }
 
-// FIXME: remove this method once tests compiles
-// NewSequencerSet creates a new empty sequencer set.
-// used for testing
-func NewSequencerSet() *SequencerSet {
-	return &SequencerSet{
-		Sequencers:   nil,
-		Proposer:     nil,
-		ProposerHash: make([]byte, 32), // Initialize as a slice of 32 bytes
-	}
-}
-
 /* -------------------------- backward compatibility ------------------------- */
 // old dymint version used tendermint.ValidatorSet for sequencers
 // these methods are used for backward compatibility
@@ -154,7 +143,6 @@ func NewSequencerFromValidator(val types.Validator) *Sequencer {
 // used for backward compatibility. should be used only for queries (used by rpc/client)
 func (s *SequencerSet) LoadFromValSet(valSet *types.ValidatorSet) {
 	if valSet == nil {
-		*s = *NewSequencerSet()
 		return
 	}
 
