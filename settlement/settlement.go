@@ -85,24 +85,3 @@ type ClientI interface {
 
 	GetHeightState(uint64) (*ResultGetHeightState, error)
 }
-
-// type Sequencer struct {
-// 	Address   string
-// 	PublicKey crypto.PubKey
-// }
-
-// func (s Sequencer) TMValidator() (*tmtypes.Validator, error) {
-// 	tmPubKey, err := cryptocodec.ToTmPubKeyInterface(s.PublicKey)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	val := tmtypes.NewValidator(tmPubKey, 1)
-// 	return val, nil
-// }
-
-// func (s Sequencer) ConsAddress() string {
-// 	if s.PublicKey == nil {
-// 		return ""
-// 	}
-// 	return s.PublicKey.Address().String()
-// }
