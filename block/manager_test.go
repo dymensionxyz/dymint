@@ -21,6 +21,7 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/proxy"
@@ -39,8 +40,11 @@ func TestInitialState(t *testing.T) {
 	var err error
 	assert := assert.New(t)
 	genesis := testutil.GenerateGenesis(123)
-	sampleState := testutil.GenerateState(1, 128)
 	key, _, _ := crypto.GenerateEd25519Key(rand.Reader)
+	raw, _ := key.GetPublic().Raw()
+	pubkey := ed25519.PubKey(raw)
+	sampleState := testutil.GenerateStateWithSequencer(1, 128, pubkey)
+
 	conf := testutil.GetManagerConfig()
 	logger := log.TestingLogger()
 	pubsubServer := pubsub.NewServer()
@@ -152,7 +156,7 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 	go func() {
 		errChan <- manager.Start(ctx)
 		err := <-errChan
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}()
 	<-ctx.Done()
 	assert.Equal(t, batch.EndHeight(), manager.LastSubmittedHeight.Load())

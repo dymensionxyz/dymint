@@ -8,6 +8,7 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	abci "github.com/tendermint/tendermint/abci/types"
+	tmcrypto "github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -119,6 +120,7 @@ func GenerateBlocks(startHeight uint64, num uint64, proposerKey crypto.PrivKey) 
 	blocks := make([]*types.Block, num)
 	for i := uint64(0); i < num; i++ {
 		block := generateBlock(i + startHeight)
+		copy(block.Header.SequencerHash[:], proposerHash[:])
 		copy(block.Header.NextSequencersHash[:], proposerHash[:])
 		copy(block.Header.DataHash[:], types.GetDataHash(block))
 		if i > 0 {
@@ -215,8 +217,8 @@ func GenerateRandomValidatorSet() *tmtypes.ValidatorSet {
 	})
 }
 
-// GenerateState generates an initial state for testing.
-func GenerateState(initialHeight int64, lastBlockHeight int64) *types.State {
+// GenerateStateWithSequencer generates an initial state for testing.
+func GenerateStateWithSequencer(initialHeight int64, lastBlockHeight int64, pubkey tmcrypto.PubKey) *types.State {
 	s := &types.State{
 		ChainID:         "test-chain",
 		InitialHeight:   uint64(initialHeight),
@@ -230,8 +232,7 @@ func GenerateState(initialHeight int64, lastBlockHeight int64) *types.State {
 			},
 		},
 	}
-	valSet := GenerateRandomValidatorSet()
-	s.Sequencers.LoadFromValSet(valSet)
+	s.Sequencers.SetProposer(types.NewSequencer(pubkey, ""))
 	s.SetHeight(uint64(lastBlockHeight))
 	return s
 }
