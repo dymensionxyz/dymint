@@ -89,12 +89,17 @@ func (s *SequencerSet) SetProposerByHash(hash []byte) error {
 
 // SetProposer sets the proposer and adds it to the sequencer set if not already present.
 func (s *SequencerSet) SetProposer(proposer *Sequencer) {
+	if proposer == nil {
+		s.Proposer = nil
+		s.ProposerHash = nil
+		return
+	}
 	s.Proposer = proposer
 	s.ProposerHash = proposer.Hash()
 
 	// Add proposer to bonded set if not already present
 	// can happen in cases where the node is not synced with the SL and the sequencer array in the set is not updated
-	if proposer != nil && s.GetByConsAddress(proposer.val.Address) == nil {
+	if s.GetByConsAddress(proposer.val.Address) == nil {
 		s.Sequencers = append(s.Sequencers, *proposer)
 	}
 }

@@ -59,9 +59,17 @@ func (m *Manager) IsProposer() bool {
 	l2Proposer := m.GetProposerPubKey().Bytes()
 
 	var expectedHubProposer []byte
-	if m.SLClient.GetProposer() != nil {
-		expectedHubProposer = m.SLClient.GetProposer().PubKey().Bytes()
+	hubProposer := m.SLClient.GetProposer()
+	if hubProposer != nil {
+		expectedHubProposer = hubProposer.PubKey().Bytes()
 	}
+
+	// check if recovering from halt
+	if l2Proposer == nil && hubProposer != nil {
+		m.State.Sequencers.SetProposer(hubProposer)
+	}
+
+	// we run sequencer flow if we're proposer on L2 or hub (can be different during rotation phase)
 	return bytes.Equal(l2Proposer, localProposerKey) || bytes.Equal(expectedHubProposer, localProposerKey)
 }
 
