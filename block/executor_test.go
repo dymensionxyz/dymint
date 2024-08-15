@@ -52,13 +52,19 @@ func TestCreateBlock(t *testing.T) {
 
 	maxBytes := uint64(100)
 
+	// Create a valid proposer for the block
+	proposerKey := ed25519.GenPrivKey()
+	tmPubKey, err := cryptocodec.ToTmPubKeyInterface(proposerKey.PubKey())
+	require.NoError(err)
+
+	// Init state
 	state := &types.State{}
+	state.Sequencers.SetProposer(types.NewSequencerFromValidator(*tmtypes.NewValidator(tmPubKey, 1)))
 	state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
 	state.ConsensusParams.Block.MaxGas = 100000
-	state.Sequencers = *types.NewSequencerSet()
 
 	// empty block
-	block := executor.CreateBlock(1, &types.Commit{}, [32]byte{}, [32]byte(state.Sequencers.ProposerHash), state, maxBytes)
+	block := executor.CreateBlock(1, &types.Commit{}, [32]byte{}, [32]byte(state.Sequencers.ProposerHash[:]), state, maxBytes)
 	require.NotNil(block)
 	assert.Empty(block.Data.Txs)
 	assert.Equal(uint64(1), block.Header.Height)
@@ -146,7 +152,7 @@ func TestApplyBlock(t *testing.T) {
 
 	// Init state
 	state := &types.State{}
-	state.Sequencers.SetProposer(tmtypes.NewValidator(tmPubKey, 1))
+	state.Sequencers.SetProposer(types.NewSequencerFromValidator(*tmtypes.NewValidator(tmPubKey, 1)))
 	state.InitialHeight = 1
 	state.SetHeight(0)
 	maxBytes := uint64(100)

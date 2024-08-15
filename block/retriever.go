@@ -48,6 +48,11 @@ func (m *Manager) syncToTargetHeight(targetHeight uint64) error {
 		if err != nil {
 			return fmt.Errorf("process next DA batch: %w", err)
 		}
+
+		// if height havent been updated, we are stuck
+		if m.State.NextHeight() == currH {
+			return fmt.Errorf("stuck at height %d", currH)
+		}
 		m.logger.Info("Synced from DA", "store height", m.State.Height(), "target height", targetHeight)
 	}
 
@@ -73,6 +78,8 @@ func (m *Manager) syncFromDABatch() error {
 	if err != nil {
 		return fmt.Errorf("retrieve batch: %w", err)
 	}
+
+	// FIXME: set correct proposer
 
 	m.logger.Info("Retrieved batch.", "state_index", stateIndex)
 

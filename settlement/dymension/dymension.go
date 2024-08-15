@@ -47,7 +47,7 @@ type Client struct {
 	rollappQueryClient      rollapptypes.QueryClient
 	sequencerQueryClient    sequencertypes.QueryClient
 	protoCodec              *codec.ProtoCodec
-	proposer                settlement.Sequencer
+	proposer                types.Sequencer
 	retryAttempts           uint
 	retryMinDelay           time.Duration
 	retryMaxDelay           time.Duration
@@ -276,9 +276,9 @@ func (c *Client) GetHeightState(h uint64) (*settlement.ResultGetHeightState, err
 }
 
 // GetProposer implements settlement.ClientI.
-func (c *Client) GetProposer() *settlement.Sequencer {
+func (c *Client) GetProposer() *types.Sequencer {
 	// return cached proposer
-	if c.proposer.Address != "" {
+	if !c.proposer.IsEmpty() {
 		return &c.proposer
 	}
 
@@ -309,8 +309,8 @@ func (c *Client) GetProposer() *settlement.Sequencer {
 	}
 
 	// find the sequencer with the proposer address
-	index := slices.IndexFunc(seqs, func(seq settlement.Sequencer) bool {
-		return seq.Address == proposerAddr
+	index := slices.IndexFunc(seqs, func(seq types.Sequencer) bool {
+		return seq.SettlementAddress == proposerAddr
 	})
 	// will return nil if the proposer is not set
 	if index == -1 {
@@ -321,7 +321,7 @@ func (c *Client) GetProposer() *settlement.Sequencer {
 }
 
 // GetAllSequencers returns all sequencers of the given rollapp.
-func (c *Client) GetAllSequencers() ([]settlement.Sequencer, error) {
+func (c *Client) GetAllSequencers() ([]types.Sequencer, error) {
 	var res *sequencertypes.QueryGetSequencersByRollappResponse
 	req := &sequencertypes.QueryGetSequencersByRollappRequest{
 		RollappId: c.config.RollappID,
@@ -348,7 +348,7 @@ func (c *Client) GetAllSequencers() ([]settlement.Sequencer, error) {
 		return nil, fmt.Errorf("empty response: %w", gerrc.ErrUnknown)
 	}
 
-	var sequencerList []settlement.Sequencer
+	var sequencerList []types.Sequencer
 	for _, sequencer := range res.Sequencers {
 		var pubKey cryptotypes.PubKey
 		err := c.protoCodec.UnpackAny(sequencer.DymintPubKey, &pubKey)
@@ -356,17 +356,19 @@ func (c *Client) GetAllSequencers() ([]settlement.Sequencer, error) {
 			return nil, err
 		}
 
-		sequencerList = append(sequencerList, settlement.Sequencer{
-			Address:   sequencer.Address,
-			PublicKey: pubKey,
-		})
+		tmPubKey, err := cryptocodec.ToTmPubKeyInterface(pubKey)
+		if err != nil {
+			return nil, err
+		}
+
+		sequencerList = append(sequencerList, *types.NewSequencer(tmPubKey, sequencer.Address))
 	}
 
 	return sequencerList, nil
 }
 
 // GetBondedSequencers returns the bonded sequencers of the given rollapp.
-func (c *Client) GetBondedSequencers() ([]settlement.Sequencer, error) {
+func (c *Client) GetBondedSequencers() ([]types.Sequencer, error) {
 	var res *sequencertypes.QueryGetSequencersByRollappByStatusResponse
 	req := &sequencertypes.QueryGetSequencersByRollappByStatusRequest{
 		RollappId: c.config.RollappID,
@@ -394,7 +396,7 @@ func (c *Client) GetBondedSequencers() ([]settlement.Sequencer, error) {
 		return nil, fmt.Errorf("empty response: %w", gerrc.ErrUnknown)
 	}
 
-	var sequencerList []settlement.Sequencer
+	var sequencerList []types.Sequencer
 	for _, sequencer := range res.Sequencers {
 		var pubKey cryptotypes.PubKey
 		err := c.protoCodec.UnpackAny(sequencer.DymintPubKey, &pubKey)
@@ -402,17 +404,18 @@ func (c *Client) GetBondedSequencers() ([]settlement.Sequencer, error) {
 			return nil, err
 		}
 
-		sequencerList = append(sequencerList, settlement.Sequencer{
-			Address:   sequencer.Address,
-			PublicKey: pubKey,
-		})
+		tmPubKey, err := cryptocodec.ToTmPubKeyInterface(pubKey)
+		if err != nil {
+			return nil, err
+		}
+		sequencerList = append(sequencerList, *types.NewSequencer(tmPubKey, sequencer.Address))
 	}
 
 	return sequencerList, nil
 }
 
 // CheckRotationInProgress implements settlement.ClientI.
-func (c *Client) CheckRotationInProgress() (*settlement.Sequencer, error) {
+func (c *Client) CheckRotationInProgress() (*types.Sequencer, error) {
 	var (
 		nextAddr string
 		found    bool
@@ -439,7 +442,7 @@ func (c *Client) CheckRotationInProgress() (*settlement.Sequencer, error) {
 		return nil, nil
 	}
 	if nextAddr == "" {
-		return &settlement.Sequencer{}, nil
+		return &types.Sequencer{}, nil
 	}
 
 	seqs, err := c.GetBondedSequencers()
@@ -448,7 +451,7 @@ func (c *Client) CheckRotationInProgress() (*settlement.Sequencer, error) {
 	}
 
 	for _, sequencer := range seqs {
-		if sequencer.Address == nextAddr {
+		if sequencer.SettlementAddress == nextAddr {
 			return &sequencer, nil
 		}
 	}

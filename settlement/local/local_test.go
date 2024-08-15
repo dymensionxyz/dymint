@@ -34,11 +34,11 @@ func TestGetSequencers(t *testing.T) {
 	sequencers, err := sllayer.GetBondedSequencers()
 	require.NoError(err)
 	assert.Equal(1, len(sequencers))
-	assert.Equal(pubKeybytes, sequencers[0].PublicKey.Bytes())
+	assert.Equal(pubKeybytes, sequencers[0].PubKey().Bytes())
 
 	proposer := sllayer.GetProposer()
 	require.NotNil(proposer)
-	assert.Equal(pubKeybytes, proposer.PublicKey.Bytes())
+	assert.Equal(pubKeybytes, proposer.PubKey().Bytes())
 }
 
 func TestSubmitBatch(t *testing.T) {

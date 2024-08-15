@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	abci "github.com/tendermint/tendermint/abci/types"
-	tmed25519 "github.com/tendermint/tendermint/crypto/ed25519"
+	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/proxy"
 
@@ -93,13 +93,13 @@ func TestValidator_TxValidator(t *testing.T) {
 
 func TestValidator_BlockValidator(t *testing.T) {
 	// Create proposer for the block
-	proposerKey := tmed25519.GenPrivKey()
+	proposerKey := ed25519.GenPrivKey()
 	// Create another key
-	attackerKey := tmed25519.GenPrivKey()
+	attackerKey := ed25519.GenPrivKey()
 
 	tests := []struct {
 		name        string
-		proposerKey tmed25519.PrivKey
+		proposerKey ed25519.PrivKey
 		valid       bool
 	}{
 		{
@@ -130,14 +130,13 @@ func TestValidator_BlockValidator(t *testing.T) {
 
 			// Create state
 			maxBytes := uint64(100)
-			state := types.State{}
-			state.Sequencers = *types.NewSequencerSet()
-			// TODO: set proposer
+			state := &types.State{}
+			state.Sequencers.SetProposer(types.NewSequencerFromValidator(*tmtypes.NewValidator(proposerKey.PubKey(), 1)))
 			state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
 			state.ConsensusParams.Block.MaxGas = 100000
 
 			// Create empty block
-			block := executor.CreateBlock(1, &types.Commit{}, [32]byte{}, [32]byte(state.Sequencers.ProposerHash), &state, maxBytes)
+			block := executor.CreateBlock(1, &types.Commit{}, [32]byte{}, [32]byte(state.Sequencers.ProposerHash), state, maxBytes)
 
 			getProposer := &p2pmock.MockGetProposerI{}
 			getProposer.On("GetProposerPubKey").Return(proposerKey.PubKey())

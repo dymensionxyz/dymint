@@ -1,13 +1,9 @@
 package settlement
 
 import (
-	crypto "github.com/cosmos/cosmos-sdk/crypto/types"
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/tendermint/tendermint/libs/pubsub"
-
-	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
-	tmtypes "github.com/tendermint/tendermint/types"
 )
 
 // StatusCode is a type for settlement layer return status.
@@ -77,29 +73,15 @@ type ClientI interface {
 	GetBatchAtIndex(index uint64) (*ResultRetrieveBatch, error)
 
 	// GetAllSequencers returns all sequencers for this rollapp (bonded and not bonded).
-	GetAllSequencers() ([]Sequencer, error)
+	GetAllSequencers() ([]types.Sequencer, error)
 	// GetBondedSequencers returns the list of the bonded sequencers for this rollapp.
-	GetBondedSequencers() ([]Sequencer, error)
+	GetBondedSequencers() ([]types.Sequencer, error)
 	// GetProposer returns the current proposer for this chain.
-	GetProposer() *Sequencer
+	GetProposer() *types.Sequencer
 
 	// CheckRotationInProgress returns the next proposer for this chain in case of a rotation.
 	// If no rotation is in progress, it should return nil.
-	CheckRotationInProgress() (*Sequencer, error)
+	CheckRotationInProgress() (*types.Sequencer, error)
 
 	GetHeightState(uint64) (*ResultGetHeightState, error)
-}
-
-type Sequencer struct {
-	Address   string
-	PublicKey crypto.PubKey
-}
-
-func (s Sequencer) TMValidator() (*tmtypes.Validator, error) {
-	tmPubKey, err := cryptocodec.ToTmPubKeyInterface(s.PublicKey)
-	if err != nil {
-		return nil, err
-	}
-	val := tmtypes.NewValidator(tmPubKey, 1)
-	return val, nil
 }
