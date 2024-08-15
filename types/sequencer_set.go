@@ -61,8 +61,6 @@ type SequencerSet struct {
 	// can be nil if no proposer is set
 	// proposer is also included in the sequencers set
 	Proposer *Sequencer `json:"proposer"`
-	// tendemint comptabile hash of the proposer
-	ProposerHash []byte
 }
 
 func (s *SequencerSet) GetProposerPubKey() tmcrypto.PubKey {
@@ -70,6 +68,14 @@ func (s *SequencerSet) GetProposerPubKey() tmcrypto.PubKey {
 		return nil
 	}
 	return s.Proposer.PubKey()
+}
+
+// ProposerHash returns the hash of the proposer
+func (s *SequencerSet) ProposerHash() []byte {
+	if s.Proposer == nil {
+		return make([]byte, 0, 32)
+	}
+	return s.Proposer.Hash()
 }
 
 // SetProposerByHash sets the proposer by hash.
@@ -91,11 +97,9 @@ func (s *SequencerSet) SetProposerByHash(hash []byte) error {
 func (s *SequencerSet) SetProposer(proposer *Sequencer) {
 	if proposer == nil {
 		s.Proposer = nil
-		s.ProposerHash = nil
 		return
 	}
 	s.Proposer = proposer
-	s.ProposerHash = proposer.Hash()
 
 	// Add proposer to bonded set if not already present
 	// can happen in cases where the node is not synced with the SL and the sequencer array in the set is not updated

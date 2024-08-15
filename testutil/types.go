@@ -49,7 +49,7 @@ func GetRandomBytes(n uint64) []byte {
 }
 
 // generateBlock generates random blocks.
-func generateBlock(height uint64) *types.Block {
+func generateBlock(height uint64, proposerHash []byte) *types.Block {
 	h := createRandomHashes()
 	block := &types.Block{
 		Header: types.Header{
@@ -66,7 +66,8 @@ func generateBlock(height uint64) *types.Block {
 			AppHash:            [32]byte{},
 			LastResultsHash:    GetEmptyLastResultsHash(),
 			ProposerAddress:    []byte{4, 3, 2, 1},
-			NextSequencersHash: h[6],
+			SequencerHash:      [32]byte(proposerHash),
+			NextSequencersHash: [32]byte(proposerHash),
 		},
 		Data: types.Data{
 			Txs:                    nil,
@@ -84,10 +85,14 @@ func generateBlock(height uint64) *types.Block {
 }
 
 func GenerateBlocksWithTxs(startHeight uint64, num uint64, proposerKey crypto.PrivKey, nTxs int) ([]*types.Block, error) {
+	r, _ := proposerKey.Raw()
+	seq := types.NewSequencerFromValidator(*tmtypes.NewValidator(ed25519.PrivKey(r).PubKey(), 1))
+	proposerHash := seq.Hash()
+
 	blocks := make([]*types.Block, num)
 	for i := uint64(0); i < num; i++ {
 
-		block := generateBlock(i + startHeight)
+		block := generateBlock(i+startHeight, proposerHash)
 
 		block.Data = types.Data{
 			Txs: make(types.Txs, nTxs),
@@ -119,9 +124,7 @@ func GenerateBlocks(startHeight uint64, num uint64, proposerKey crypto.PrivKey) 
 
 	blocks := make([]*types.Block, num)
 	for i := uint64(0); i < num; i++ {
-		block := generateBlock(i + startHeight)
-		copy(block.Header.SequencerHash[:], proposerHash[:])
-		copy(block.Header.NextSequencersHash[:], proposerHash[:])
+		block := generateBlock(i+startHeight, proposerHash)
 		copy(block.Header.DataHash[:], types.GetDataHash(block))
 		if i > 0 {
 			copy(block.Header.LastCommitHash[:], types.GetLastCommitHash(&blocks[i-1].LastCommit, &block.Header))

@@ -90,7 +90,6 @@ message Batch {
 
 }
 
-
 message Sequencer {
 	string settlement_address = 1;
 	tendermint.types.Validator validator = 2;

@@ -214,8 +214,8 @@ func TestProducePendingBlock(t *testing.T) {
 	require.NoError(t, err)
 	// Generate block and commit and save it to the store
 	block := testutil.GetRandomBlock(1, 3)
-	copy(block.Header.SequencerHash[:], manager.State.Sequencers.ProposerHash)
-	copy(block.Header.NextSequencersHash[:], manager.State.Sequencers.ProposerHash)
+	copy(block.Header.SequencerHash[:], manager.State.Sequencers.ProposerHash())
+	copy(block.Header.NextSequencersHash[:], manager.State.Sequencers.ProposerHash())
 
 	_, err = manager.Store.SaveBlock(block, &block.LastCommit, nil)
 	require.NoError(t, err)

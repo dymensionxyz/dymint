@@ -299,7 +299,7 @@ func (s *SequencerSet) ToProto() (*pb.SequencerSet, error) {
 	for i := 0; i < len(s.Sequencers); i++ {
 		valp, err := s.Sequencers[i].val.ToProto()
 		if err != nil {
-			return nil, fmt.Errorf("toProto: validatorSet error: %w", err)
+			return nil, fmt.Errorf("ToProto: SequencerSet: %w", err)
 		}
 		seq := new(pb.Sequencer)
 		seq.SettlementAddress = s.Sequencers[i].SettlementAddress
@@ -311,7 +311,7 @@ func (s *SequencerSet) ToProto() (*pb.SequencerSet, error) {
 	if s.Proposer != nil {
 		valp, err := s.Proposer.val.ToProto()
 		if err != nil {
-			return nil, fmt.Errorf("toProto: validatorSet proposer error: %w", err)
+			return nil, fmt.Errorf("ToProto: SequencerSet: %w", err)
 		}
 		seq := new(pb.Sequencer)
 		seq.Validator = valp
@@ -328,7 +328,7 @@ func (s *SequencerSet) FromProto(protoSet pb.SequencerSet) error {
 	for i, seqProto := range protoSet.Sequencers {
 		val, err := types.ValidatorFromProto(seqProto.Validator)
 		if err != nil {
-			return fmt.Errorf("fromProto: validatorSet error: %w", err)
+			return fmt.Errorf("fromProto: SequencerSet: %w", err)
 		}
 		seqs[i].val = *val
 		seqs[i].SettlementAddress = seqProto.SettlementAddress
@@ -338,13 +338,12 @@ func (s *SequencerSet) FromProto(protoSet pb.SequencerSet) error {
 	if protoSet.Proposer != nil {
 		valProposer, err := types.ValidatorFromProto(protoSet.Proposer.Validator)
 		if err != nil {
-			return fmt.Errorf("fromProto: validatorSet proposer error: %w", err)
+			return fmt.Errorf("fromProto: SequencerSet proposer: %w", err)
 		}
 		proposer := new(Sequencer)
 		proposer.val = *valProposer
 		proposer.SettlementAddress = protoSet.Proposer.SettlementAddress
 		s.Proposer = proposer
-		s.ProposerHash = proposer.Hash()
 	}
 	return nil
 }

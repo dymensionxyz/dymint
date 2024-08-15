@@ -177,7 +177,7 @@ func NewNode(
 		logger.With("module", "BlockManager"),
 	)
 	if err != nil {
-		return nil, fmt.Errorf("BlockManager initialization error: %w", err)
+		return nil, fmt.Errorf("BlockManager initialization: %w", err)
 	}
 
 	// Set p2p client and it's validators

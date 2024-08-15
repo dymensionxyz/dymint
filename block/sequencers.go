@@ -8,11 +8,10 @@ import (
 
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
-	"github.com/google/uuid"
 )
 
 func (m *Manager) MonitorSequencerRotation(ctx context.Context, rotateC chan string) error {
-	sequencerRotationEventClient := fmt.Sprintf("%s-%s", "sequencer_rotation", uuid.New().String())
+	sequencerRotationEventClient := "sequencer_rotation"
 	subscription, err := m.Pubsub.Subscribe(ctx, sequencerRotationEventClient, settlement.EventQueryRotationStarted)
 	if err != nil {
 		panic("Error subscribing to events")
@@ -69,11 +68,12 @@ func (m *Manager) IsProposer() bool {
 		m.State.Sequencers.SetProposer(hubProposer)
 	}
 
-	// we run sequencer flow if we're proposer on L2 or hub (can be different during rotation phase)
+	// we run sequencer flow if we're proposer on L2 or hub (can be different during rotation phase, before hub receives the last state update)
 	return bytes.Equal(l2Proposer, localProposerKey) || bytes.Equal(expectedHubProposer, localProposerKey)
 }
 
-// check rotation in progress (I'm the proposer, but needs to complete rotation)
+// MissingLastBatch checks if the sequencer is in the middle of rotation (I'm the proposer, but needs to complete rotation)
+// returns the next sequencer address and a flag if the sequencer is the old proposer and the hub waits for the last batch
 func (m *Manager) MissingLastBatch() (string, bool, error) {
 	localProposerKey, _ := m.LocalKey.GetPublic().Raw()
 	next, err := m.SLClient.CheckRotationInProgress()
@@ -174,7 +174,7 @@ func (m *Manager) UpdateSequencerSetFromSL() error {
 	return nil
 }
 
-// updateProposer updates the proposer in the state
+// UpdateProposer updates the proposer from the hub
 func (m *Manager) UpdateProposer() error {
 	m.State.Sequencers.SetProposer(m.SLClient.GetProposer())
 	return nil

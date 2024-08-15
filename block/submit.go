@@ -161,10 +161,9 @@ func (m *Manager) CreateAndSubmitBatch(maxSizeBytes uint64, lastBatch bool) (*ty
 	// This is the last batch, so we need to mark it as such
 	if lastBatch && b.EndHeight() == endHeightInclusive {
 		b.LastBatch = true
-		m.logger.Debug("Last batch created.", "start height", startHeight, "end height", endHeightInclusive)
 	}
 
-	m.logger.Info("Created batch.", "start height", startHeight, "end height", endHeightInclusive)
+	m.logger.Info("Created batch.", "start height", startHeight, "end height", endHeightInclusive, "last", b.LastBatch)
 
 	if err := m.SubmitBatch(b); err != nil {
 		return nil, fmt.Errorf("submit batch: %w", err)

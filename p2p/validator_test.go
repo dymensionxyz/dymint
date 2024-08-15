@@ -136,7 +136,7 @@ func TestValidator_BlockValidator(t *testing.T) {
 			state.ConsensusParams.Block.MaxGas = 100000
 
 			// Create empty block
-			block := executor.CreateBlock(1, &types.Commit{}, [32]byte{}, [32]byte(state.Sequencers.ProposerHash), state, maxBytes)
+			block := executor.CreateBlock(1, &types.Commit{}, [32]byte{}, [32]byte(state.Sequencers.ProposerHash()), state, maxBytes)
 
 			getProposer := &p2pmock.MockGetProposerI{}
 			getProposer.On("GetProposerPubKey").Return(proposerKey.PubKey())
