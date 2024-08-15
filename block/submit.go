@@ -153,7 +153,8 @@ func (m *Manager) CreateAndSubmitBatch(maxSizeBytes uint64) (*types.Batch, error
 		return nil, fmt.Errorf("create batch: %w", err)
 	}
 
-	m.logger.Info("Created batch.", "start height", startHeight, "end height", endHeightInclusive)
+	m.logger.Info("Created batch.", "start height", startHeight, "end height", endHeightInclusive, "size", b.SizeBytes())
+	types.LastBatchSubmittedBytes.Set(float64(b.SizeBytes()))
 
 	if err := m.SubmitBatch(b); err != nil {
 		return nil, fmt.Errorf("submit batch: %w", err)
