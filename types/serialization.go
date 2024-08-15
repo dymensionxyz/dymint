@@ -280,12 +280,7 @@ func (s *State) FromProto(other *pb.State) error {
 
 	err = s.Sequencers.FromProto(other.SequencerSet)
 	if err != nil {
-		// check if migration required
-		oldVals, err := types.ValidatorSetFromProto(other.Validators)
-		if err != nil {
-			return err
-		}
-		s.Sequencers.SetProposer(NewSequencerFromValidator(*oldVals.Proposer))
+		return err
 	}
 
 	s.ConsensusParams = other.ConsensusParams
@@ -293,6 +288,64 @@ func (s *State) FromProto(other *pb.State) error {
 	copy(s.LastResultsHash[:], other.LastResultsHash)
 	copy(s.AppHash[:], other.AppHash)
 
+	return nil
+}
+
+// ToProto converts SequencerSet into protobuf representation and returns it.
+func (s *SequencerSet) ToProto() (*pb.SequencerSet, error) {
+	protoSet := new(pb.SequencerSet)
+
+	seqsProto := make([]*pb.Sequencer, len(s.Sequencers))
+	for i := 0; i < len(s.Sequencers); i++ {
+		valp, err := s.Sequencers[i].val.ToProto()
+		if err != nil {
+			return nil, fmt.Errorf("toProto: validatorSet error: %w", err)
+		}
+		seq := new(pb.Sequencer)
+		seq.SettlementAddress = s.Sequencers[i].SettlementAddress
+		seq.Validator = valp
+		seqsProto[i] = seq
+	}
+	protoSet.Sequencers = seqsProto
+
+	if s.Proposer != nil {
+		valp, err := s.Proposer.val.ToProto()
+		if err != nil {
+			return nil, fmt.Errorf("toProto: validatorSet proposer error: %w", err)
+		}
+		seq := new(pb.Sequencer)
+		seq.Validator = valp
+		seq.SettlementAddress = s.Proposer.SettlementAddress
+		protoSet.Proposer = seq
+	}
+
+	return protoSet, nil
+}
+
+// FromProto fills SequencerSet with data from its protobuf representation.
+func (s *SequencerSet) FromProto(protoSet pb.SequencerSet) error {
+	seqs := make([]Sequencer, len(protoSet.Sequencers))
+	for i, seqProto := range protoSet.Sequencers {
+		val, err := types.ValidatorFromProto(seqProto.Validator)
+		if err != nil {
+			return fmt.Errorf("fromProto: validatorSet error: %w", err)
+		}
+		seqs[i].val = *val
+		seqs[i].SettlementAddress = seqProto.SettlementAddress
+	}
+	s.Sequencers = seqs
+
+	if protoSet.Proposer != nil {
+		valProposer, err := types.ValidatorFromProto(protoSet.Proposer.Validator)
+		if err != nil {
+			return fmt.Errorf("fromProto: validatorSet proposer error: %w", err)
+		}
+		proposer := new(Sequencer)
+		proposer.val = *valProposer
+		proposer.SettlementAddress = protoSet.Proposer.SettlementAddress
+		s.Proposer = proposer
+		s.ProposerHash = proposer.Hash()
+	}
 	return nil
 }
 

@@ -259,7 +259,7 @@ func parseAsValidatorSet(blob []byte) (*types.SequencerSet, error) {
 	if err != nil {
 		return nil, fmt.Errorf("unmarshal to ValidatorSet: %w", err)
 	}
-	ss.SetSequencersFromValSet(pbValSet)
+	ss.LoadFromValSet(pbValSet)
 	return &ss, nil
 }
 

@@ -526,7 +526,7 @@ func (c *Client) Validators(ctx context.Context, heightPtr *int64, pagePtr, perP
 	for _, s := range sequencers.Sequencers {
 		val, err := s.TMValidator()
 		if err != nil {
-			return nil, fmt.Errorf("convert sequencer to validator: %s :%w", s.Address, err)
+			return nil, fmt.Errorf("convert sequencer to validator: %s :%w", s.SettlementAddress, err)
 		}
 		vals = append(vals, val)
 	}
@@ -768,9 +768,9 @@ func (c *Client) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
 		},
 		// TODO(ItzhakBokris): update ValidatorInfo fields
 		ValidatorInfo: ctypes.ValidatorInfo{
-			Address:     proposer.Address,
-			PubKey:      proposer.PubKey,
-			VotingPower: proposer.VotingPower,
+			Address:     tmbytes.HexBytes(proposer.ConsAddress()),
+			PubKey:      proposer.PubKey(),
+			VotingPower: 1,
 		},
 	}
 	return result, nil

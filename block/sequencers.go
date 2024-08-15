@@ -60,7 +60,7 @@ func (m *Manager) IsProposer() bool {
 
 	var expectedHubProposer []byte
 	if m.SLClient.GetProposer() != nil {
-		expectedHubProposer = m.SLClient.GetProposer().PubKey.Bytes()
+		expectedHubProposer = m.SLClient.GetProposer().PubKey().Bytes()
 	}
 	return bytes.Equal(l2Proposer, localProposerKey) || bytes.Equal(expectedHubProposer, localProposerKey)
 }
@@ -78,7 +78,7 @@ func (m *Manager) MissingLastBatch() (string, bool, error) {
 	// rotation in progress,
 	// check if we're the old proposer and needs to complete rotation
 	curr := m.SLClient.GetProposer()
-	isProposer := bytes.Equal(curr.PubKey.Bytes(), localProposerKey)
+	isProposer := bytes.Equal(curr.PubKey().Bytes(), localProposerKey)
 	return next.SettlementAddress, isProposer, nil
 }
 
@@ -108,7 +108,7 @@ func (m *Manager) CompleteRotation(ctx context.Context, nextSeqAddr string) erro
 		if seq == nil {
 			return types.ErrMissingProposerPubKey
 		}
-		copy(nextSeqHash[:], types.GetHash(seq))
+		copy(nextSeqHash[:], seq.Hash())
 	}
 
 	err := m.CreateAndPostLastBatch(ctx, nextSeqHash)

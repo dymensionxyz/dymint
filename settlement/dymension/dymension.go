@@ -21,7 +21,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/ignite/cli/ignite/pkg/cosmosaccount"
 	"github.com/tendermint/tendermint/libs/pubsub"
-	tmtypes "github.com/tendermint/tendermint/types"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
@@ -362,10 +361,7 @@ func (c *Client) GetAllSequencers() ([]types.Sequencer, error) {
 			return nil, err
 		}
 
-		sequencerList = append(sequencerList, types.Sequencer{
-			SettlementAddress: sequencer.Address,
-			Validator:         *tmtypes.NewValidator(tmPubKey, 1),
-		})
+		sequencerList = append(sequencerList, *types.NewSequencer(tmPubKey, sequencer.Address))
 	}
 
 	return sequencerList, nil
@@ -412,11 +408,7 @@ func (c *Client) GetBondedSequencers() ([]types.Sequencer, error) {
 		if err != nil {
 			return nil, err
 		}
-
-		sequencerList = append(sequencerList, types.Sequencer{
-			SettlementAddress: sequencer.Address,
-			Validator:         *tmtypes.NewValidator(tmPubKey, 1),
-		})
+		sequencerList = append(sequencerList, *types.NewSequencer(tmPubKey, sequencer.Address))
 	}
 
 	return sequencerList, nil

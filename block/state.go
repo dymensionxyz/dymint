@@ -138,7 +138,8 @@ func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResp
 }
 
 // UpdateProposerFromBlock updates the proposer from the block
-// in case of proposer change, the existing proposer sets the nextProposerHash in the block header
+// The next proposer is defined in the block header (NextSequencersHash)
+// returns true if the update requires role change for this node (proposer -> non-proposer or vice versa)
 func (e *Executor) UpdateProposerFromBlock(s *types.State, block *types.Block) bool {
 	// no sequencer change
 	if bytes.Equal(block.Header.SequencerHash[:], block.Header.NextSequencersHash[:]) {
@@ -165,7 +166,7 @@ func (e *Executor) UpdateProposerFromBlock(s *types.State, block *types.Block) b
 		panic("local key not found in sequencer set")
 	}
 
-	if bytes.Equal(types.GetHash(val), block.Header.NextSequencersHash[:]) {
+	if bytes.Equal(val.Hash(), block.Header.NextSequencersHash[:]) {
 		e.logger.Info("node changing to proposer role")
 		return true
 	}

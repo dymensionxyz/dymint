@@ -98,6 +98,8 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 			m.logger.Error("prune blocks", "retain_height", retainHeight, "err", err)
 		}
 	}
+
+	//FIXME: sequencer should not panic
 	if switchRole {
 		// TODO: graceful fallback to full node (https://github.com/dymensionxyz/dymint/issues/1008)
 		m.logger.Info("Node changing to proposer role")
