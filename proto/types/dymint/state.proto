@@ -47,10 +47,6 @@ message State {
 
 }
 
-/*message RollappConsensusParams {
-  Params params = 1;
-}*/
-
 //rollapp params defined in genesis and updated via gov proposal
 message RollappConsensusParams {
   //maximum amount of gas that all transactions included in a block can use
