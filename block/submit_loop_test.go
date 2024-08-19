@@ -3,17 +3,18 @@ package block_test
 import (
 	"context"
 	"math/rand"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
-	"github.com/tendermint/tendermint/libs/log"
-
 	"github.com/dymensionxyz/dymint/block"
 	"github.com/stretchr/testify/require"
+	"github.com/tendermint/tendermint/libs/log"
 )
 
 type testArgs struct {
+	nParallel                 int           // number of instances to run in parallel
 	testDuration              time.Duration // how long to run one instance of the test (should be short)
 	batchSkew                 uint64        // max number of batches to get ahead
 	batchBytes                uint64        // max number of bytes in a batch
@@ -25,7 +26,21 @@ type testArgs struct {
 	submissionHaltProbability float64       // probability of submission failing and causing a temporary halt
 }
 
-func testSubmitLoop(
+func testSubmitLoop(t *testing.T,
+	args testArgs,
+) {
+	var wg sync.WaitGroup
+	for range args.nParallel {
+		wg.Add(1)
+		go func() {
+			testSubmitLoopInner(t, args)
+			wg.Done()
+		}()
+	}
+	wg.Wait()
+}
+
+func testSubmitLoopInner(
 	t *testing.T,
 	args testArgs,
 ) {
@@ -38,7 +53,8 @@ func testSubmitLoop(
 		factor := int(float64(d) * 0.4)
 		return time.Duration(base + rand.Intn(factor))
 	}
-	pendingBlocks := atomic.Uint64{}
+
+	pendingBlocks := atomic.Uint64{} // pending blocks to be submitted. gap between produced and submitted.
 
 	nProducedBytes := atomic.Uint64{} // tracking how many actual bytes have been produced but not submitted so far
 	producedBytesC := make(chan int)  // producer sends on here, and can be blocked by not consuming from here
@@ -54,7 +70,10 @@ func testSubmitLoop(
 					return
 				default:
 				}
-
+				// producer shall not get too far ahead
+				absoluteMax := (args.batchSkew + 1) * args.batchBytes // +1 is because the producer is always blocked after the fact
+				nProduced := nProducedBytes.Load()
+				require.True(t, nProduced < absoluteMax, "produced bytes not less than maximum", "nProduced", nProduced, "max", absoluteMax)
 			}
 		}()
 		for {
@@ -67,7 +86,8 @@ func testSubmitLoop(
 			nBytes := rand.Intn(args.produceBytes) // simulate block production
 			nProducedBytes.Add(uint64(nBytes))
 			producedBytesC <- nBytes
-			pendingBlocks.Add(1)
+			pendingBlocks.Add(1) // increase pending blocks to be submitted counter
+
 			timeLastProgress.Store(time.Now().Unix())
 		}
 	}()
@@ -86,25 +106,15 @@ func testSubmitLoop(
 		timeSinceLast := time.Since(timeLastProgressT).Milliseconds()
 		require.True(t, timeSinceLast < absoluteMax, "too long since last update", "timeSinceLast", timeSinceLast, "max", absoluteMax)
 
-		pendingBlocks.Store(0)
+		pendingBlocks.Store(0)                    // no pending blocks to be submitted
 		timeLastProgress.Store(time.Now().Unix()) // we have submitted  batch
 		return uint64(consumed), nil
 	}
-
 	accumulatedBlocks := func() uint64 {
 		return pendingBlocks.Load()
 	}
 
-	block.SubmitLoopInner(
-		ctx,
-		log.NewNopLogger(),
-		producedBytesC,
-		args.batchSkew,
-		accumulatedBlocks,
-		args.maxTime,
-		args.batchBytes,
-		submitBatch,
-	)
+	block.SubmitLoopInner(ctx, log.NewNopLogger(), producedBytesC, args.batchSkew, accumulatedBlocks, args.maxTime, args.batchBytes, submitBatch)
 }
 
 // Make sure the producer does not get too far ahead
@@ -112,6 +122,7 @@ func TestSubmitLoopFastProducerHaltingSubmitter(t *testing.T) {
 	testSubmitLoop(
 		t,
 		testArgs{
+			nParallel:    50,
 			testDuration: 2 * time.Second,
 			batchSkew:    10,
 			batchBytes:   100,
@@ -132,6 +143,7 @@ func TestSubmitLoopTimer(t *testing.T) {
 	testSubmitLoop(
 		t,
 		testArgs{
+			nParallel:    50,
 			testDuration: 2 * time.Second,
 			batchSkew:    10,
 			batchBytes:   100,
