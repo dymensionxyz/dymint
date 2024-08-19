@@ -127,6 +127,13 @@ func NewManager(
 	if err != nil {
 		return nil, err
 	}
+
+	// validate configuration params and rollapp consensus params are in line
+	err = m.ValidateConfigWithRollappParams()
+	if err != nil {
+		return nil, err
+	}
+
 	return m, nil
 }
 

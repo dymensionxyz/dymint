@@ -107,7 +107,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		panic("sequencer is no longer the proposer")
 	}
 
-	// validate configuration params and rollapp consensus params keep in line
+	// validate whether configuration params and rollapp consensus params keep in line, after rollapp params are updated from the responses received in the block execution
 	err = m.ValidateConfigWithRollappParams()
 	if err != nil {
 		return err
