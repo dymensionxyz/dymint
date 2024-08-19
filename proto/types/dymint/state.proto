@@ -47,16 +47,16 @@ message State {
 
 }
 
-message RollappConsensusParams {
+/*message RollappConsensusParams {
   Params params = 1;
-}
+}*/
 
 //rollapp params defined in genesis and updated via gov proposal
-message Params {
+message RollappConsensusParams {
   //maximum amount of gas that all transactions included in a block can use
-  int64 block_max_gas = 1;
+  int64 blockmaxgas = 1;
   //maximum allowed block size
-  int64 block_max_size = 2;
+  int64 blockmaxsize = 2;
   //data availability type (e.g. celestia) used in the rollapp
   string da = 3 ;
   //commit used for the rollapp executable

@@ -44,6 +44,10 @@ func (s *State) IsGenesis() bool {
 	return s.Height() == 0
 }
 
+type RollappParams struct {
+	Params *dymint.RollappConsensusParams
+}
+
 // SetHeight sets the height saved in the Store if it is higher than the existing height
 // returns OK if the value was updated successfully or did not need to be updated
 func (s *State) SetHeight(height uint64) {
@@ -75,9 +79,11 @@ func (s *State) LoadConsensusFromAppState(appState json.RawMessage) error {
 		return fmt.Errorf("rollapp_params not defined in genesis")
 	}
 
-	err = json.Unmarshal(params, &s.ConsensusParams)
+	var rollappParams RollappParams
+	err = json.Unmarshal(params, &rollappParams)
 	if err != nil {
 		return err
 	}
+	s.ConsensusParams = *rollappParams.Params
 	return nil
 }

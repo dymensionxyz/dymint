@@ -124,8 +124,8 @@ func (e *Executor) UpdateStateAfterInitChain(s *types.State, res *abci.ResponseI
 }
 
 func (e *Executor) UpdateMempoolAfterInitChain(s *types.State) {
-	e.mempool.SetPreCheckFn(mempool.PreCheckMaxBytes(s.ConsensusParams.Params.BlockMaxSize))
-	e.mempool.SetPostCheckFn(mempool.PostCheckMaxGas(s.ConsensusParams.Params.BlockMaxGas))
+	e.mempool.SetPreCheckFn(mempool.PreCheckMaxBytes(s.ConsensusParams.Blockmaxsize))
+	e.mempool.SetPostCheckFn(mempool.PostCheckMaxGas(s.ConsensusParams.Blockmaxgas))
 }
 
 // UpdateStateAfterCommit updates the state with the app hash and last results hash
@@ -140,10 +140,10 @@ func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResp
 		return
 	}
 
-	s.ConsensusParams.Params.BlockMaxSize = resp.EndBlock.RollappConsensusParamUpdates.Block.MaxBytes
-	s.ConsensusParams.Params.BlockMaxGas = resp.EndBlock.RollappConsensusParamUpdates.Block.MaxGas
-	s.ConsensusParams.Params.Da = resp.EndBlock.RollappConsensusParamUpdates.Da
-	s.ConsensusParams.Params.Commit = resp.EndBlock.RollappConsensusParamUpdates.Commit
+	s.ConsensusParams.Blockmaxsize = resp.EndBlock.RollappConsensusParamUpdates.Block.MaxBytes
+	s.ConsensusParams.Blockmaxgas = resp.EndBlock.RollappConsensusParamUpdates.Block.MaxGas
+	s.ConsensusParams.Da = resp.EndBlock.RollappConsensusParamUpdates.Da
+	s.ConsensusParams.Commit = resp.EndBlock.RollappConsensusParamUpdates.Commit
 }
 
 // UpdateProposerFromBlock updates the proposer from the block

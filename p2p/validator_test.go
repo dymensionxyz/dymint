@@ -134,10 +134,8 @@ func TestValidator_BlockValidator(t *testing.T) {
 			state := &types.State{}
 			state.Sequencers.SetProposer(types.NewSequencerFromValidator(*tmtypes.NewValidator(proposerKey.PubKey(), 1)))
 			state.ConsensusParams = dymint.RollappConsensusParams{
-				Params: &dymint.Params{
-					BlockMaxGas:  100000,
-					BlockMaxSize: int64(maxBytes),
-				},
+				Blockmaxgas:  100000,
+				Blockmaxsize: int64(maxBytes),
 			}
 			// Create empty block
 			block := executor.CreateBlock(1, &types.Commit{}, [32]byte{}, [32]byte(state.Sequencers.ProposerHash()), state, maxBytes)

@@ -62,10 +62,8 @@ func TestCreateBlock(t *testing.T) {
 	state := &types.State{}
 	state.Sequencers.SetProposer(types.NewSequencerFromValidator(*tmtypes.NewValidator(tmPubKey, 1)))
 	state.ConsensusParams = dymint.RollappConsensusParams{
-		Params: &dymint.Params{
-			BlockMaxSize: int64(maxBytes),
-			BlockMaxGas:  100000,
-		},
+		Blockmaxsize: int64(maxBytes),
+		Blockmaxgas:  100000,
 	}
 
 	// empty block
@@ -171,12 +169,10 @@ func TestApplyBlock(t *testing.T) {
 	state.SetHeight(0)
 	maxBytes := uint64(1000)
 	state.ConsensusParams = dymint.RollappConsensusParams{
-		Params: &dymint.Params{
-			BlockMaxGas:  100000,
-			BlockMaxSize: int64(maxBytes),
-			Da:           "mock",
-			Commit:       "",
-		},
+		Blockmaxgas:  100000,
+		Blockmaxsize: int64(maxBytes),
+		Da:           "mock",
+		Commit:       "",
 	}
 
 	// Create first block with one Tx from mempool
@@ -262,10 +258,10 @@ func TestApplyBlock(t *testing.T) {
 	assert.Equal(uint64(2), state.Height())
 
 	// check rollapp params update
-	assert.Equal(state.ConsensusParams.Params.Da, "celestia")
-	assert.Equal(state.ConsensusParams.Params.Commit, "abcde")
-	assert.Equal(state.ConsensusParams.Params.BlockMaxSize, int64(100))
-	assert.Equal(state.ConsensusParams.Params.BlockMaxGas, int64(100))
+	assert.Equal(state.ConsensusParams.Da, "celestia")
+	assert.Equal(state.ConsensusParams.Commit, "abcde")
+	assert.Equal(state.ConsensusParams.Blockmaxsize, int64(100))
+	assert.Equal(state.ConsensusParams.Blockmaxgas, int64(100))
 
 	// wait for at least 4 Tx events, for up to 3 second.
 	// 3 seconds is a fail-scenario only

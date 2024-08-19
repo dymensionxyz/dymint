@@ -289,19 +289,19 @@ func (m *Manager) UpdateTargetHeight(h uint64) {
 
 // ValidateConfigWithRollappParams checks the configuration params are consistent with the params in the dymint state (e.g. DA and version)
 func (m *Manager) ValidateConfigWithRollappParams() error {
-	if version.Commit != m.State.ConsensusParams.Params.Commit {
-		return fmt.Errorf("binary version mismatch. rollapp param: %s binary used:%s", version.Commit, m.State.ConsensusParams.Params.Commit)
+	if version.Commit != m.State.ConsensusParams.Commit {
+		return fmt.Errorf("binary version mismatch. rollapp param: %s binary used:%s", version.Commit, m.State.ConsensusParams.Commit)
 	}
 
-	if da.Client(m.State.ConsensusParams.Params.Da) != m.DAClient.GetClientType() {
-		return fmt.Errorf("da client mismatch. rollapp param: %s da configured: %s", m.DAClient.GetClientType(), m.State.ConsensusParams.Params.Da)
+	if da.Client(m.State.ConsensusParams.Da) != m.DAClient.GetClientType() {
+		return fmt.Errorf("da client mismatch. rollapp param: %s da configured: %s", m.DAClient.GetClientType(), m.State.ConsensusParams.Da)
 	}
 
 	if m.DAClient.GetMaxBlobSizeBytes() != 0 && m.DAClient.GetMaxBlobSizeBytes() < uint32(m.Conf.BatchSubmitBytes) {
 		return fmt.Errorf("batch size cannot be greater than %d for %s DA", m.DAClient.GetMaxBlobSizeBytes(), m.DAClient.GetClientType())
 	}
 
-	if m.DAClient.GetMaxBlobSizeBytes() != 0 && m.State.ConsensusParams.Params.BlockMaxSize > int64(m.DAClient.GetMaxBlobSizeBytes()) {
+	if m.DAClient.GetMaxBlobSizeBytes() != 0 && m.State.ConsensusParams.Blockmaxsize > int64(m.DAClient.GetMaxBlobSizeBytes()) {
 		return fmt.Errorf("max block size cannot be greater than %d for %s DA", int64(m.DAClient.GetMaxBlobSizeBytes()), m.DAClient.GetClientType())
 	}
 
@@ -310,7 +310,7 @@ func (m *Manager) ValidateConfigWithRollappParams() error {
 
 // setDA initializes DA client in blockmanager according to DA type set in genesis or stored in state
 func (m *Manager) setDA(daconfig string, dalcKV store.KV, logger log.Logger) error {
-	daLayer := m.State.ConsensusParams.Params.Da
+	daLayer := m.State.ConsensusParams.Da
 	dalc := registry.GetClient(daLayer)
 	if dalc == nil {
 		return fmt.Errorf("get data availability client named '%s'", daLayer)
