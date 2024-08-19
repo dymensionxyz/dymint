@@ -147,8 +147,12 @@ func (c BlockManagerConfig) Validate() error {
 		}
 	}
 
-	if c.BatchSubmitTime < c.MaxIdleTime || c.BatchSubmitTime > MaxBatchSubmitTime {
-		return fmt.Errorf("batch_submit_time must be greater than max_idle_time and not greater than %s", MaxBatchSubmitTime)
+	if c.BatchSubmitTime < c.MaxIdleTime {
+		return fmt.Errorf("batch_submit_time must be greater than max_idle_time")
+	}
+
+	if c.BatchSubmitTime > MaxBatchSubmitTime {
+		return fmt.Errorf("batch_submit_time must be not greater than %s", MaxBatchSubmitTime)
 	}
 
 	if c.BatchSubmitBytes <= 0 {
