@@ -25,7 +25,7 @@ type DataAvailabilityLayerClient struct {
 
 const (
 	defaultBlockTime = 3 * time.Second
-	maxBlobSize      = 2097152 //2MB (equivalent to avail or celestia)
+	maxBlobSize      = 2097152 // 2MB (equivalent to avail or celestia)
 )
 
 type config struct {

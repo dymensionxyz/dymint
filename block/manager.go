@@ -297,12 +297,12 @@ func (m *Manager) ValidateConfigWithRollappParams() error {
 		return fmt.Errorf("da client mismatch. rollapp param: %s da configured: %s", m.DAClient.GetClientType(), m.State.ConsensusParams.Da)
 	}
 
-	if m.DAClient.GetMaxBlobSizeBytes() < uint32(m.Conf.BatchSubmitBytes) {
-		return fmt.Errorf("batch size cannot be greater than %d for %s DA", m.DAClient.GetMaxBlobSizeBytes(), m.DAClient.GetClientType())
+	if m.Conf.BatchSubmitBytes > uint64(m.DAClient.GetMaxBlobSizeBytes()) {
+		return fmt.Errorf("batch size above limit %d: DA %s", m.DAClient.GetMaxBlobSizeBytes(), m.DAClient.GetClientType())
 	}
 
 	if m.State.ConsensusParams.Blockmaxsize > int64(m.DAClient.GetMaxBlobSizeBytes()) {
-		return fmt.Errorf("max block size cannot be greater than %d for %s DA", int64(m.DAClient.GetMaxBlobSizeBytes()), m.DAClient.GetClientType())
+		return fmt.Errorf("max block size above limit: %d: DA: %s", int64(m.DAClient.GetMaxBlobSizeBytes()), m.DAClient.GetClientType())
 	}
 
 	return nil

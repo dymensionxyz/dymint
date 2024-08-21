@@ -33,7 +33,7 @@ const (
 	DataCallMethod                  = "submit_data"
 	DataCallSectionIndex            = 29
 	DataCallMethodIndex             = 1
-	maxBlobSize                     = 2097152 //2MB according to Avail docs https://docs.availproject.org/docs/build-with-avail/overview#expandable-blockspace
+	maxBlobSize                     = 2097152 // 2MB according to Avail docs https://docs.availproject.org/docs/build-with-avail/overview#expandable-blockspace
 )
 
 type SubstrateApiI interface {
