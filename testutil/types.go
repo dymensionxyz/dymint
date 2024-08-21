@@ -268,7 +268,7 @@ func GenerateGenesis(initialHeight int64) *tmtypes.GenesisDoc {
 				AppVersion: AppVersion,
 			},
 		},
-		AppState: []byte("{\"rollapp_params\": {\"params\": {\"da\": \"mock\",\"commit\": \"" + dymintversion.Commit + "\",\"blockmaxgas\":400000000,\"blockmaxsize\":5000000}}}"),
+		AppState: []byte("{\"rollapp_params\": {\"params\": {\"da\": \"mock\",\"commit\": \"" + dymintversion.Commit + "\",\"blockmaxgas\":400000000,\"blockmaxsize\":500000}}}"),
 	}
 }
 
