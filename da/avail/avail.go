@@ -33,6 +33,7 @@ const (
 	DataCallMethod                  = "submit_data"
 	DataCallSectionIndex            = 29
 	DataCallMethodIndex             = 1
+	maxBlobSize                     = 2097152 //2MB according to Avail docs https://docs.availproject.org/docs/build-with-avail/overview#expandable-blockspace
 )
 
 type SubstrateApiI interface {
@@ -438,5 +439,5 @@ func (c *DataAvailabilityLayerClient) getHeightFromHash(hash availtypes.Hash) (u
 
 // GetMaxBlobSizeBytes returns the maximum allowed blob size in the DA, used to check the max batch size configured
 func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint32 {
-	return 0
+	return maxBlobSize
 }

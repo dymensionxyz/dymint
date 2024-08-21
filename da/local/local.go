@@ -23,7 +23,10 @@ type DataAvailabilityLayerClient struct {
 	synced   chan struct{}
 }
 
-const defaultBlockTime = 3 * time.Second
+const (
+	defaultBlockTime = 3 * time.Second
+	maxBlobSize      = 2097152 //2MB (equivalent to avail or celestia)
+)
 
 type config struct {
 	BlockTime time.Duration
@@ -176,5 +179,5 @@ func (m *DataAvailabilityLayerClient) updateDAHeight() {
 
 // GetMaxBlobSizeBytes returns the maximum allowed blob size in the DA, used to check the max batch size configured
 func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint32 {
-	return 0
+	return maxBlobSize
 }
