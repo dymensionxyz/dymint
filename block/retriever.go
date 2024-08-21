@@ -1,14 +1,17 @@
 package block
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 
 	"github.com/dymensionxyz/dymint/da"
+	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
+	uevent "github.com/dymensionxyz/dymint/utils/event"
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
@@ -59,6 +62,7 @@ func (m *Manager) syncToTargetHeight(targetHeight uint64) error {
 
 	err := m.attemptApplyCachedBlocks()
 	if err != nil {
+		uevent.MustPublish(context.TODO(), m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
 		m.logger.Error("Attempt apply cached blocks.", "err", err)
 	}
 
