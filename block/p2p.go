@@ -47,7 +47,7 @@ func (m *Manager) onReceivedBlock(event pubsub.Message) {
 	m.UpdateTargetHeight(height)
 	types.LastReceivedP2PHeightGauge.Set(float64(height))
 
-	m.logger.Debug("Received new block via gossip.", "block height", height, "store height", m.State.Height(), "n cachedBlocks", m.blockCache.Size())
+	m.logger.Debug("Received new block from p2p.", "block height", height, "source", source.String(), "store height", m.State.Height(), "n cachedBlocks", m.blockCache.Size())
 
 	nextHeight := m.State.NextHeight()
 	if height >= nextHeight {

@@ -19,7 +19,7 @@ type P2PConfig struct {
 	BootstrapRetryTime time.Duration `mapstructure:"p2p_bootstrap_retry_time"`
 	// Param used to enable block sync from p2p
 	BlockSyncEnabled bool `mapstructure:"p2p_blocksync_enabled"`
-	// Time interval used by a node to request missing blocks (gap between cached blocks and local height) on demand from other peers using block-sync
+	// Time interval used by a node to request missing blocks (gap between cached blocks and local height) on demand from other peers using blocksync
 	BlockSyncRequestIntervalTime time.Duration `mapstructure:"p2p_blocksync_block_request_interval"`
 	// Param used to enable the advertisement of the node to be part of the P2P network in the DHT
 	AdvertisingEnabled bool `mapstructure:"p2p_advertising_enabled"`
