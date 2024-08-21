@@ -71,7 +71,7 @@ func NewStateFromGenesis(genDoc *tmtypes.GenesisDoc) (*types.State, error) {
 	s.SetHeight(0)
 	copy(s.AppHash[:], genDoc.AppHash)
 
-	err = s.LoadConsensusFromAppState(genDoc.AppState)
+	err = s.SetConsensusParamsFromGenesis(genDoc.AppState)
 	if err != nil {
 		return nil, fmt.Errorf("in genesis doc: %w", err)
 	}

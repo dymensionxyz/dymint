@@ -85,14 +85,14 @@ func TestNodeConfig_Validate(t *testing.T) {
 			},
 			wantErr: assert.Error,
 		}, {
-			name: "batch_submit_max_time not greater than block_time",
+			name: "batch_submit_time not greater than block_time",
 			malleate: func(nc *config.NodeConfig) {
 				nc.BlockManagerConfig.BatchSubmitTime = 1
 				nc.BlockManagerConfig.BlockTime = 2
 			},
 			wantErr: assert.Error,
 		}, {
-			name: "batch_submit_max_time greater than 1 hour",
+			name: "batch_submit_time greater than 1 hour",
 			malleate: func(nc *config.NodeConfig) {
 				nc.BlockManagerConfig.BatchSubmitTime = 2 * time.Hour
 			},

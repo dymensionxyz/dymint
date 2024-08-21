@@ -67,7 +67,7 @@ func (s *State) NextHeight() uint64 {
 	return s.Height() + 1
 }
 
-// SetConsensusParamsFromGenesis load rollapp_params from genesis doc app_state to the dymint state
+// SetConsensusParamsFromGenesis sets the rollapp consensus params from genesis
 func (s *State) SetConsensusParamsFromGenesis(appState json.RawMessage) error {
 	var objmap map[string]json.RawMessage
 	err := json.Unmarshal(appState, &objmap)
