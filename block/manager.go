@@ -318,7 +318,7 @@ func (m *Manager) setDA(daconfig string, dalcKV store.KV, logger log.Logger) err
 
 	err := dalc.Init([]byte(daconfig), m.Pubsub, dalcKV, logger.With("module", string(dalc.GetClientType())))
 	if err != nil {
-		return fmt.Errorf("data availability layer client initialization  %w", err)
+		return fmt.Errorf("data availability layer client initialization:  %w", err)
 	}
 	m.DAClient = dalc
 	retriever, ok := dalc.(da.BatchRetriever)
