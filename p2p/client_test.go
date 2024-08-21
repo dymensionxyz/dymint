@@ -220,7 +220,7 @@ func TestAdvertiseWrongCid(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	// advertise cid for height 1
-	receivedError := clients[2].DHT.PutValue(ctx, "/block-sync/"+strconv.FormatUint(1, 10), []byte("test"))
+	receivedError := clients[2].DHT.PutValue(ctx, "/blocksync/"+strconv.FormatUint(1, 10), []byte("test"))
 
 	require.Error(t, cid.ErrInvalidCid{}, receivedError)
 
