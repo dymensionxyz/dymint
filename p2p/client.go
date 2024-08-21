@@ -47,7 +47,7 @@ const (
 	blockTopicSuffix = "-block"
 
 	// blockSyncProtocolSuffix is added after namespace to create blocksync protocol prefix.
-	blockSyncProtocolPrefix = "blocksync"
+	blockSyncProtocolPrefix = "block-sync"
 )
 
 // Client is a P2P client, implemented with libp2p.

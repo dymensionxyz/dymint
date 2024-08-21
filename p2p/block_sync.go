@@ -50,7 +50,7 @@ func SetupBlockSync(ctx context.Context, h host.Host, store datastore.Datastore,
 	bs := blockstore.NewBlockstore(ds)
 
 	// initialize bitswap network used to retrieve data chunks from other peers in the P2P network
-	bsnet := network.NewFromIpfsHost(h, &routinghelpers.Null{}, network.Prefix("/dymension/blocksync/"))
+	bsnet := network.NewFromIpfsHost(h, &routinghelpers.Null{}, network.Prefix("/dymension/block-sync/"))
 
 	// Bitswap server that provides data to the network.
 	bsserver := server.New(
