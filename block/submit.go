@@ -42,7 +42,7 @@ func SubmitLoopInner(
 	logger types.Logger,
 	bytesProduced chan int, // a channel of block and commit bytes produced
 	maxBatchSkew uint64, // max number of blocks that submitter is allowed to have pending
-	pendingSubmittedBlocks func() uint64,
+	unsubmittedBlocks func() uint64,
 	maxBatchTime time.Duration, // max time to allow between batches
 	maxBatchBytes uint64, // max size of serialised batch in bytes
 	createAndSubmitBatch func(maxSizeBytes uint64) (sizeBlocksCommits uint64, err error),
@@ -77,7 +77,7 @@ func SubmitLoopInner(
 			}
 
 			types.RollappPendingSubmissionsSkewBytes.Set(float64(pendingBytes.Load()))
-			types.RollappPendingSubmissionsSkewBlocks.Set(float64(pendingSubmittedBlocks()))
+			types.RollappPendingSubmissionsSkewBlocks.Set(float64(unsubmittedBlocks()))
 			submitter.Nudge()
 		}
 	})
@@ -95,7 +95,7 @@ func SubmitLoopInner(
 			}
 			pending := pendingBytes.Load()
 			types.RollappPendingSubmissionsSkewBytes.Set(float64(pendingBytes.Load()))
-			types.RollappPendingSubmissionsSkewBlocks.Set(float64(pendingSubmittedBlocks()))
+			types.RollappPendingSubmissionsSkewBlocks.Set(float64(unsubmittedBlocks()))
 			types.RollappPendingSubmissionsSkewBatches.Set(float64(pendingBytes.Load() / maxBatchBytes))
 
 			// while there are accumulated blocks, create and submit batches!!
