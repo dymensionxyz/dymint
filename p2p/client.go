@@ -46,7 +46,7 @@ const (
 	// blockTopicSuffix is added after namespace to create pubsub topic for block gossiping.
 	blockTopicSuffix = "-block"
 
-	// blockSyncProtocolSuffix is added after namespace to create block-sync protocol prefix.
+	// blockSyncProtocolSuffix is added after namespace to create blocksync protocol prefix.
 	blockSyncProtocolPrefix = "block-sync"
 )
 
@@ -78,10 +78,10 @@ type Client struct {
 
 	logger types.Logger
 
-	// block-sync instance used to save and retrieve blocks from the P2P network on demand
+	// blocksync instance used to save and retrieve blocks from the P2P network on demand
 	blocksync *BlockSync
 
-	// store used to store retrievable blocks using block-sync
+	// store used to store retrievable blocks using blocksync
 	blockSyncStore datastore.Datastore
 
 	store store.Store
@@ -199,22 +199,22 @@ func (c *Client) GossipBlock(ctx context.Context, blockBytes []byte) error {
 	return c.blockGossiper.Publish(ctx, blockBytes)
 }
 
-// SaveBlock stores the block in the block-sync datastore, stores locally the returned identifier and advertises the identifier to the DHT, so other nodes can know the identifier for the block height.
+// SaveBlock stores the block in the blocksync datastore, stores locally the returned identifier and advertises the identifier to the DHT, so other nodes can know the identifier for the block height.
 func (c *Client) SaveBlock(ctx context.Context, height uint64, blockBytes []byte) error {
 	if !c.conf.BlockSyncEnabled {
 		return nil
 	}
 	cid, err := c.blocksync.SaveBlock(ctx, blockBytes)
 	if err != nil {
-		return fmt.Errorf("block-sync add block: %w", err)
+		return fmt.Errorf("blocksync add block: %w", err)
 	}
 	_, err = c.store.SaveBlockCid(height, cid, nil)
 	if err != nil {
-		return fmt.Errorf("block-sync store block id: %w", err)
+		return fmt.Errorf("blocksync store block id: %w", err)
 	}
 	advErr := c.AdvertiseBlockIdToDHT(ctx, height, cid)
 	if advErr != nil {
-		return fmt.Errorf("block-sync advertise block %w", advErr)
+		return fmt.Errorf("blocksync advertise block %w", advErr)
 	}
 	return nil
 }
@@ -498,13 +498,13 @@ func (c *Client) NewTxValidator() GossipValidator {
 	}
 }
 
-// blockSyncReceived is called on reception of new block via block-sync protocol
+// blockSyncReceived is called on reception of new block via blocksync protocol
 func (c *Client) blockSyncReceived(block *BlockData) {
 	err := c.localPubsubServer.PublishWithEvents(context.Background(), *block, map[string][]string{EventTypeKey: {EventNewBlockSyncBlock}})
 	if err != nil {
 		c.logger.Error("Publishing event.", "err", err)
 	}
-	// Received block is cached and  no longer needed to request using block-sync
+	// Received block is cached and  no longer needed to request using blocksync
 	c.blocksReceived.AddBlockReceived(block.Block.Header.Height)
 }
 
@@ -523,7 +523,7 @@ func (c *Client) blockGossipReceived(ctx context.Context, block []byte) {
 		if err != nil {
 			c.logger.Error("Adding  block to blocksync store.", "err", err, "height", gossipedBlock.Block.Header.Height)
 		}
-		// Received block is cached and no longer needed to request using block-sync
+		// Received block is cached and no longer needed to request using blocksync
 		c.blocksReceived.AddBlockReceived(gossipedBlock.Block.Header.Height)
 	}
 }
@@ -578,24 +578,24 @@ func (c *Client) retrieveBlockSyncLoop(ctx context.Context, msgHandler BlockSync
 				if ok {
 					continue
 				}
-				c.logger.Debug("Getting block.", "height", h)
+				c.logger.Debug("Blocksync getting block.", "height", h)
 				id, err := c.GetBlockIdFromDHT(ctx, h)
 				if err != nil || id == cid.Undef {
-					c.logger.Error("unable to find cid", "height", h)
+					c.logger.Error("Blocksync unable to find cid", "height", h)
 					continue
 				}
 				_, err = c.store.SaveBlockCid(h, id, nil)
 				if err != nil {
-					c.logger.Error("storing block cid", "height", h, "cid", id)
+					c.logger.Error("Blocksync storing block cid", "height", h, "cid", id)
 					continue
 				}
 				block, err := c.blocksync.LoadBlock(ctx, id)
 				if err != nil {
-					c.logger.Error("Blocksync GetBlock", "err", err)
+					c.logger.Error("Blocksync LoadBlock", "err", err)
 					continue
 				}
 
-				c.logger.Debug("Blocksync block received ", "cid", id)
+				c.logger.Debug("Blocksync block received ", "height", h)
 				msgHandler(&block)
 			}
 			c.blocksReceived.RemoveBlocksReceivedUpToHeight(state.NextHeight())
