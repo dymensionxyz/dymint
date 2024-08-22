@@ -12,7 +12,6 @@ import (
 )
 
 func TestBlockSync(t *testing.T) {
-
 	logger := log.TestingLogger()
 	ctx := context.Background()
 
@@ -47,17 +46,16 @@ func TestBlockSync(t *testing.T) {
 	blocksync := p2p.SetupBlockSync(ctx, clients[0].Host, datastore.NewMapDatastore(), logger)
 	require.NoError(t, err)
 
-	//add block to blocksync protocol client 0
+	// add block to blocksync protocol client 0
 	cid, err := blocksync.SaveBlock(ctx, gossipedBlockbytes)
 	require.NoError(t, err)
 
-	//get block
+	// get block
 	block, err := blocksync.LoadBlock(ctx, cid)
 	require.NoError(t, err)
 	require.Equal(t, gossipedBlock, block)
 
-	//remove block
+	// remove block
 	err = blocksync.DeleteBlock(ctx, cid)
 	require.NoError(t, err)
-
 }

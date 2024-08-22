@@ -12,6 +12,7 @@ import (
 	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p/core/crypto"
 
+	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/proxy"
@@ -38,7 +39,10 @@ func GetManagerWithProposerKey(conf config.BlockManagerConfig, proposerKey crypt
 	genesis := GenerateGenesis(genesisHeight)
 	// Change the LastBlockHeight to avoid calling InitChainSync within the manager
 	// And updating the state according to the genesis.
-	state := GenerateState(storeInitialHeight, storeLastBlockHeight)
+	raw, _ := proposerKey.GetPublic().Raw()
+	pubkey := ed25519.PubKey(raw)
+
+	state := GenerateStateWithSequencer(storeInitialHeight, storeLastBlockHeight, pubkey)
 	var managerStore store.Store
 	if mockStore == nil {
 		managerStore = store.New(store.NewDefaultInMemoryKVStore())
@@ -100,17 +104,20 @@ func GetManagerWithProposerKey(conf config.BlockManagerConfig, proposerKey crypt
 	if err != nil {
 		return nil, err
 	}
-	p2pValidator := p2p.NewValidator(logger, settlementlc)
-	p2pClient.SetTxValidator(p2pValidator.TxValidator(mp, mpIDs))
-	p2pClient.SetBlockValidator(p2pValidator.BlockValidator())
-
-	if err = p2pClient.Start(context.Background()); err != nil {
-		return nil, err
-	}
 
 	manager, err := block.NewManager(proposerKey, conf, genesis, managerStore, mp, proxyApp, dalc, settlementlc, nil,
 		pubsubServer, p2pClient, logger)
 	if err != nil {
+		return nil, err
+	}
+
+	p2pValidator := p2p.NewValidator(logger, manager)
+	p2pClient.SetTxValidator(p2pValidator.TxValidator(mp, mpIDs))
+	p2pClient.SetBlockValidator(p2pValidator.BlockValidator())
+
+	manager.P2PClient = p2pClient
+
+	if err = p2pClient.Start(context.Background()); err != nil {
 		return nil, err
 	}
 	return manager, nil

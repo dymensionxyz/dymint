@@ -1,7 +1,6 @@
 package block
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -16,6 +15,7 @@ import (
 	uevent "github.com/dymensionxyz/dymint/utils/event"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
+	tmcrypto "github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	tmtypes "github.com/tendermint/tendermint/types"
 
@@ -46,7 +46,7 @@ type Manager struct {
 
 	// Clients and servers
 	Pubsub    *pubsub.Server
-	p2pClient *p2p.Client
+	P2PClient *p2p.Client
 	DAClient  da.DataAvailabilityLayerClient
 	SLClient  settlement.ClientI
 
@@ -102,7 +102,7 @@ func NewManager(
 
 	m := &Manager{
 		Pubsub:    pubsub,
-		p2pClient: p2pClient,
+		P2PClient: p2pClient,
 		LocalKey:  localKey,
 		Conf:      conf,
 		Genesis:   genesis,
@@ -127,15 +127,6 @@ func NewManager(
 
 // Start starts the block manager.
 func (m *Manager) Start(ctx context.Context) error {
-	m.logger.Info("Starting the block manager")
-
-	isSequencer, err := m.IsSequencerVerify()
-	if err != nil {
-		return err
-	}
-
-	m.logger.Info("Starting block manager", "isSequencer", isSequencer)
-
 	// Check if InitChain flow is needed
 	if m.State.IsGenesis() {
 		m.logger.Info("Running InitChain")
@@ -146,34 +137,17 @@ func (m *Manager) Start(ctx context.Context) error {
 		}
 	}
 
-	if isSequencer {
+	// Check if the chain is halted
+	err := m.isChainHalted()
+	if err != nil {
+		return err
+	}
 
-		eg, ctx := errgroup.WithContext(ctx)
+	isProposer := m.IsProposer()
+	m.logger.Info("starting block manager", "proposer", isProposer)
 
-		// Sequencer must wait till DA is synced to start submitting blobs
-		<-m.DAClient.Synced()
-
-		err = m.syncFromSettlement()
-		if err != nil {
-			return fmt.Errorf("sync block manager from settlement: %w", err)
-		}
-
-		nBytes := m.GetUnsubmittedBytes()
-		bytesProducedC := make(chan int)
-
-		uerrors.ErrGroupGoLog(eg, m.logger, func() error {
-			return m.SubmitLoop(ctx, bytesProducedC)
-		})
-		uerrors.ErrGroupGoLog(eg, m.logger, func() error {
-			bytesProducedC <- nBytes
-			return m.ProduceBlockLoop(ctx, bytesProducedC)
-		})
-		go func() {
-			_ = eg.Wait() // errors are already logged
-			m.logger.Info("Block manager err group finished.")
-		}()
-
-	} else {
+	/* ----------------------------- full node mode ----------------------------- */
+	if !isProposer {
 		// Full-nodes can sync from DA but it is not necessary to wait for it, since it can sync from P2P as well in parallel.
 		go func() {
 			err := m.syncFromSettlement()
@@ -187,23 +161,71 @@ func (m *Manager) Start(ctx context.Context) error {
 		// P2P Sync. Subscribe to P2P received blocks events
 		go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewGossipedBlock, m.onReceivedBlock, m.logger)
 		go uevent.MustSubscribe(ctx, m.Pubsub, "applyBlockSyncBlocksLoop", p2p.EventQueryNewBlockSyncBlock, m.onReceivedBlock, m.logger)
+		return nil
 	}
+
+	/* ----------------------------- sequencer mode ----------------------------- */
+	// Sequencer must wait till DA is synced to start submitting blobs
+	<-m.DAClient.Synced()
+	err = m.syncFromSettlement()
+	if err != nil {
+		return fmt.Errorf("sync block manager from settlement: %w", err)
+	}
+	// check if sequencer in the middle of rotation
+	nextSeqAddr, missing, err := m.MissingLastBatch()
+	if err != nil {
+		return fmt.Errorf("checking if missing last batch: %w", err)
+	}
+	// if sequencer is in the middle of rotation, complete rotation instead of running the main loop
+	if missing {
+		m.handleRotationReq(ctx, nextSeqAddr)
+		return nil
+	}
+
+	// populate the bytes produced channel
+	bytesProducedC := make(chan int)
+
+	// channel to signal sequencer rotation started
+	rotateSequencerC := make(chan string, 1)
+
+	eg, ctx := errgroup.WithContext(ctx)
+	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
+		return m.SubmitLoop(ctx, bytesProducedC)
+	})
+	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
+		bytesProducedC <- m.GetUnsubmittedBytes() // load unsubmitted bytes from previous run
+		return m.ProduceBlockLoop(ctx, bytesProducedC)
+	})
+	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
+		return m.MonitorSequencerRotation(ctx, rotateSequencerC)
+	})
+
+	go func() {
+		_ = eg.Wait()
+		// Check if exited due to sequencer rotation signal
+		select {
+		case nextSeqAddr := <-rotateSequencerC:
+			m.handleRotationReq(ctx, nextSeqAddr)
+		default:
+			m.logger.Info("Block manager err group finished.")
+		}
+	}()
 
 	return nil
 }
 
-func (m *Manager) IsSequencerVerify() (bool, error) {
-	slProposerKey := m.SLClient.GetProposer().PublicKey.Bytes()
-	localProposerKey, err := m.LocalKey.GetPublic().Raw()
-	if err != nil {
-		return false, fmt.Errorf("get local node public key: %w", err)
+func (m *Manager) isChainHalted() error {
+	if m.GetProposerPubKey() == nil {
+		// if no proposer set in state, try to update it from the hub
+		err := m.UpdateProposer()
+		if err != nil {
+			return fmt.Errorf("update proposer: %w", err)
+		}
+		if m.GetProposerPubKey() == nil {
+			return fmt.Errorf("no proposer pubkey found. chain is halted")
+		}
 	}
-	return bytes.Equal(slProposerKey, localProposerKey), nil
-}
-
-func (m *Manager) IsSequencer() bool {
-	ret, _ := m.IsSequencerVerify()
-	return ret
+	return nil
 }
 
 func (m *Manager) NextHeightToSubmit() uint64 {
@@ -212,6 +234,11 @@ func (m *Manager) NextHeightToSubmit() uint64 {
 
 // syncFromSettlement enforces the node to be synced on initial run from SL and DA.
 func (m *Manager) syncFromSettlement() error {
+	err := m.UpdateSequencerSetFromSL()
+	if err != nil {
+		return fmt.Errorf("update bonded sequencer set: %w", err)
+	}
+
 	res, err := m.SLClient.GetLatestBatch()
 	if errors.Is(err, gerrc.ErrNotFound) {
 		// The SL hasn't got any batches for this chain yet.
@@ -233,6 +260,10 @@ func (m *Manager) syncFromSettlement() error {
 
 	m.logger.Info("Synced.", "current height", m.State.Height(), "last submitted height", m.LastSubmittedHeight.Load())
 	return nil
+}
+
+func (m *Manager) GetProposerPubKey() tmcrypto.PubKey {
+	return m.State.Sequencers.GetProposerPubKey()
 }
 
 func (m *Manager) UpdateTargetHeight(h uint64) {

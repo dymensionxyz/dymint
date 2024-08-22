@@ -21,7 +21,7 @@ var (
 	commitPrefix     = [1]byte{3}
 	statePrefix      = [1]byte{4}
 	responsesPrefix  = [1]byte{5}
-	validatorsPrefix = [1]byte{6}
+	sequencersPrefix = [1]byte{6}
 	cidPrefix        = [1]byte{7}
 )
 
@@ -116,7 +116,7 @@ func (s *DefaultStore) LoadBlockByHash(hash [32]byte) (*types.Block, error) {
 	return block, nil
 }
 
-// SaveBlockResponses saves block responses (events, tx responses, validator set updates, etc) in Store.
+// SaveBlockResponses saves block responses (events, tx responses, etc) in Store.
 func (s *DefaultStore) SaveBlockResponses(height uint64, responses *tmstate.ABCIResponses, batch KVBatch) (KVBatch, error) {
 	data, err := responses.Marshal()
 	if err != nil {
@@ -206,37 +206,61 @@ func (s *DefaultStore) LoadState() (*types.State, error) {
 	return &state, nil
 }
 
-// SaveValidators stores validator set for given block height in store.
-func (s *DefaultStore) SaveValidators(height uint64, validatorSet *tmtypes.ValidatorSet, batch KVBatch) (KVBatch, error) {
-	pbValSet, err := validatorSet.ToProto()
+// SaveSequencers stores sequencerSet for given block height in store.
+func (s *DefaultStore) SaveSequencers(height uint64, sequencerSet *types.SequencerSet, batch KVBatch) (KVBatch, error) {
+	pbValSet, err := sequencerSet.ToProto()
 	if err != nil {
-		return batch, fmt.Errorf("marshal ValidatorSet to protobuf: %w", err)
+		return batch, fmt.Errorf("marshal sequencerSet to protobuf: %w", err)
 	}
 	blob, err := pbValSet.Marshal()
 	if err != nil {
-		return batch, fmt.Errorf("marshal ValidatorSet: %w", err)
+		return batch, fmt.Errorf("marshal sequencerSet: %w", err)
 	}
 
 	if batch == nil {
-		return nil, s.db.Set(getValidatorsKey(height), blob)
+		return nil, s.db.Set(getSequencersKey(height), blob)
 	}
-	err = batch.Set(getValidatorsKey(height), blob)
+	err = batch.Set(getSequencersKey(height), blob)
 	return batch, err
 }
 
-// LoadValidators loads validator set at given block height from store.
-func (s *DefaultStore) LoadValidators(height uint64) (*tmtypes.ValidatorSet, error) {
-	blob, err := s.db.Get(getValidatorsKey(height))
+// LoadSequencers loads sequencer set at given block height from store.
+func (s *DefaultStore) LoadSequencers(height uint64) (*types.SequencerSet, error) {
+	blob, err := s.db.Get(getSequencersKey(height))
 	if err != nil {
-		return nil, fmt.Errorf("load Validators for height %v: %w", height, err)
+		return nil, fmt.Errorf("load sequencers for height %v: %w", height, err)
 	}
-	var pbValSet tmproto.ValidatorSet
+	var pbValSet pb.SequencerSet
 	err = pbValSet.Unmarshal(blob)
 	if err != nil {
-		return nil, fmt.Errorf("unmarshal to protobuf: %w", err)
+		// migration support: try to unmarshal as old ValidatorSet
+		return parseAsValidatorSet(blob)
 	}
 
-	return tmtypes.ValidatorSetFromProto(&pbValSet)
+	var ss types.SequencerSet
+	err = ss.FromProto(pbValSet)
+	if err != nil {
+		return nil, fmt.Errorf("unmarshal from proto: %w", err)
+	}
+
+	return &ss, nil
+}
+
+func parseAsValidatorSet(blob []byte) (*types.SequencerSet, error) {
+	var (
+		ss          types.SequencerSet
+		pbValSetOld tmproto.ValidatorSet
+	)
+	err := pbValSetOld.Unmarshal(blob)
+	if err != nil {
+		return nil, fmt.Errorf("unmarshal protobuf: %w", err)
+	}
+	pbValSet, err := tmtypes.ValidatorSetFromProto(&pbValSetOld)
+	if err != nil {
+		return nil, fmt.Errorf("unmarshal to ValidatorSet: %w", err)
+	}
+	ss.LoadFromValSet(pbValSet)
+	return &ss, nil
 }
 
 func (s *DefaultStore) loadHashFromIndex(height uint64) ([32]byte, error) {
@@ -297,10 +321,10 @@ func getResponsesKey(height uint64) []byte {
 	return append(responsesPrefix[:], buf[:]...)
 }
 
-func getValidatorsKey(height uint64) []byte {
+func getSequencersKey(height uint64) []byte {
 	buf := make([]byte, 8)
 	binary.BigEndian.PutUint64(buf, height)
-	return append(validatorsPrefix[:], buf[:]...)
+	return append(sequencersPrefix[:], buf[:]...)
 }
 
 func getCidKey(height uint64) []byte {

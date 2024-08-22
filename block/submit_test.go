@@ -9,12 +9,13 @@ import (
 	"testing"
 	"time"
 
+	tmed25519 "github.com/tendermint/tendermint/crypto/ed25519"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/proxy"
 
-	cosmosed25519 "github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
 	"github.com/libp2p/go-libp2p/core/crypto"
 
 	"github.com/dymensionxyz/dymint/block"
@@ -116,13 +117,13 @@ func TestBatchSubmissionHappyFlow(t *testing.T) {
 	require.Zero(manager.LastSubmittedHeight.Load())
 
 	// Produce block and validate that we produced blocks
-	_, _, err = manager.ProduceAndGossipBlock(ctx, true)
+	_, _, err = manager.ProduceApplyGossipBlock(ctx, true)
 	require.NoError(err)
 	assert.Greater(t, manager.State.Height(), initialHeight)
 	assert.Zero(t, manager.LastSubmittedHeight.Load())
 
 	// submit and validate sync target
-	manager.CreateAndSubmitBatch(manager.Conf.BatchMaxSizeBytes)
+	manager.CreateAndSubmitBatch(manager.Conf.BatchMaxSizeBytes, false)
 	assert.EqualValues(t, manager.State.Height(), manager.LastSubmittedHeight.Load())
 }
 
@@ -143,10 +144,8 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 	lib2pPrivKey, err := crypto.UnmarshalEd25519PrivateKey(priv)
 	require.NoError(err)
 
-	cosmosPrivKey := cosmosed25519.PrivKey{Key: priv}
-	proposer := &types.Sequencer{
-		PublicKey: cosmosPrivKey.PubKey(),
-	}
+	proposerKey := tmed25519.PrivKey(priv)
+	proposer := *types.NewSequencer(proposerKey.PubKey(), "")
 
 	// Create a new mock ClientI
 	slmock := &slmocks.MockClientI{}
@@ -163,19 +162,19 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 	require.Zero(manager.LastSubmittedHeight.Load())
 
 	// Produce block and validate that we produced blocks
-	_, _, err = manager.ProduceAndGossipBlock(ctx, true)
+	_, _, err = manager.ProduceApplyGossipBlock(ctx, true)
 	require.NoError(err)
 	assert.Greater(t, manager.State.Height(), initialHeight)
 	assert.Zero(t, manager.LastSubmittedHeight.Load())
 
 	// try to submit, we expect failure
 	slmock.On("SubmitBatch", mock.Anything, mock.Anything, mock.Anything).Return(fmt.Errorf("submit batch")).Once()
-	_, err = manager.CreateAndSubmitBatch(manager.Conf.BatchMaxSizeBytes)
+	_, err = manager.CreateAndSubmitBatch(manager.Conf.BatchMaxSizeBytes, false)
 	assert.Error(t, err)
 
 	// try to submit again, we expect success
 	slmock.On("SubmitBatch", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
-	manager.CreateAndSubmitBatch(manager.Conf.BatchMaxSizeBytes)
+	manager.CreateAndSubmitBatch(manager.Conf.BatchMaxSizeBytes, false)
 	assert.EqualValues(t, manager.State.Height(), manager.LastSubmittedHeight.Load())
 }
 

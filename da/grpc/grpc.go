@@ -46,11 +46,11 @@ var (
 // Init sets the configuration options.
 func (d *DataAvailabilityLayerClient) Init(config []byte, _ *pubsub.Server, _ store.KV, logger types.Logger, options ...da.Option) error {
 	d.logger = logger
+	d.synced = make(chan struct{}, 1)
 	if len(config) == 0 {
 		d.config = DefaultConfig
 		return nil
 	}
-	d.synced = make(chan struct{}, 1)
 	return json.Unmarshal(config, &d.config)
 }
 

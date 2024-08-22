@@ -9,8 +9,8 @@ import (
 	sdkclient "github.com/cosmos/cosmos-sdk/client"
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	"github.com/dymensionxyz/cosmosclient/cosmosclient"
-	rollapptypes "github.com/dymensionxyz/dymension/v3/x/rollapp/types"
-	sequencertypes "github.com/dymensionxyz/dymension/v3/x/sequencer/types"
+	rollapptypes "github.com/dymensionxyz/dymint/third_party/dymension/rollapp/types"
+	sequencertypes "github.com/dymensionxyz/dymint/third_party/dymension/sequencer/types"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/ignite/cli/ignite/pkg/cosmosaccount"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
@@ -26,6 +26,7 @@ type CosmosClient interface {
 	StopEventListener() error
 	EventListenerQuit() <-chan struct{}
 	SubscribeToEvents(ctx context.Context, subscriber string, query string, outCapacity ...int) (out <-chan ctypes.ResultEvent, err error)
+	UnsubscribeAll(ctx context.Context, subscriber string) error
 	BroadcastTx(accountName string, msgs ...sdktypes.Msg) (cosmosclient.Response, error)
 	GetRollappClient() rollapptypes.QueryClient
 	GetSequencerClient() sequencertypes.QueryClient
@@ -44,19 +45,23 @@ func NewCosmosClient(client cosmosclient.Client) CosmosClient {
 }
 
 func (c *cosmosClient) StartEventListener() error {
-	return c.Client.RPC.WSEvents.Start()
+	return c.Client.RPC.Start()
 }
 
 func (c *cosmosClient) StopEventListener() error {
-	return c.Client.RPC.WSEvents.Stop()
+	return c.Client.RPC.Stop()
 }
 
 func (c *cosmosClient) EventListenerQuit() <-chan struct{} {
-	return c.Client.RPC.GetWSClient().Quit()
+	return c.Client.RPC.Quit()
 }
 
 func (c *cosmosClient) SubscribeToEvents(ctx context.Context, subscriber string, query string, outCapacity ...int) (out <-chan ctypes.ResultEvent, err error) {
-	return c.Client.RPC.WSEvents.Subscribe(ctx, subscriber, query, outCapacity...)
+	return c.Client.WSEvents.Subscribe(ctx, subscriber, query, outCapacity...)
+}
+
+func (c *cosmosClient) UnsubscribeAll(ctx context.Context, subscriber string) error {
+	return c.Client.WSEvents.UnsubscribeAll(ctx, subscriber)
 }
 
 func (c *cosmosClient) GetRollappClient() rollapptypes.QueryClient {
