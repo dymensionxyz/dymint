@@ -1,6 +1,7 @@
 package block
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 
@@ -55,13 +56,11 @@ func NewStateFromGenesis(genDoc *tmtypes.GenesisDoc) (*types.State, error) {
 	}
 
 	s := types.State{
-		Version:       InitStateVersion,
-		ChainID:       genDoc.ChainID,
+		Version: InitStateVersion,
+		ChainID: genDoc.ChainID,
+
 		InitialHeight: uint64(genDoc.InitialHeight),
-
-		BaseHeight: uint64(genDoc.InitialHeight),
-
-		LastHeightValidatorsChanged: genDoc.InitialHeight,
+		BaseHeight:    uint64(genDoc.InitialHeight),
 
 		ConsensusParams:                  *genDoc.ConsensusParams,
 		LastHeightConsensusParamsChanged: genDoc.InitialHeight,
@@ -84,31 +83,18 @@ func (m *Manager) UpdateStateFromApp() error {
 	if err != nil {
 		return errorsmod.Wrap(err, "load block responses")
 	}
-	vals, err := m.Store.LoadValidators(appHeight)
-	if err != nil {
-		return errorsmod.Wrap(err, "load validators")
-	}
 
-	// update the state with the hash, last store height and last validators.
-	m.Executor.UpdateStateAfterCommit(m.State, resp, proxyAppInfo.LastBlockAppHash, appHeight, vals)
-	_, err = m.Store.SaveState(m.State, nil)
-	if err != nil {
-		return errorsmod.Wrap(err, "update state")
-	}
+	// update the state with the app hashes created on the app commit
+	m.Executor.UpdateStateAfterCommit(m.State, resp, proxyAppInfo.LastBlockAppHash, appHeight)
 	return nil
 }
 
-func (e *Executor) UpdateStateAfterInitChain(s *types.State, res *abci.ResponseInitChain, validators []*tmtypes.Validator) {
+func (e *Executor) UpdateStateAfterInitChain(s *types.State, res *abci.ResponseInitChain) {
 	// If the app did not return an app hash, we keep the one set from the genesis doc in
 	// the state. We don't set appHash since we don't want the genesis doc app hash
 	// recorded in the genesis block. We should probably just remove GenesisDoc.AppHash.
 	if len(res.AppHash) > 0 {
 		copy(s.AppHash[:], res.AppHash)
-	}
-
-	// The validators after initChain must be greater than zero, otherwise this state is not loadable
-	if len(validators) <= 0 {
-		panic("Validators must be greater than zero")
 	}
 
 	if res.ConsensusParams != nil {
@@ -134,10 +120,6 @@ func (e *Executor) UpdateStateAfterInitChain(s *types.State, res *abci.ResponseI
 	}
 	// We update the last results hash with the empty hash, to conform with RFC-6962.
 	copy(s.LastResultsHash[:], merkle.HashFromByteSlices(nil))
-
-	// Set the validators in the state
-	s.Validators = tmtypes.NewValidatorSet(validators).CopyIncrementProposerPriority(1)
-	s.NextValidators = s.Validators.Copy()
 }
 
 func (e *Executor) UpdateMempoolAfterInitChain(s *types.State) {
@@ -145,15 +127,46 @@ func (e *Executor) UpdateMempoolAfterInitChain(s *types.State) {
 	e.mempool.SetPostCheckFn(mempool.PostCheckMaxGas(s.ConsensusParams.Block.MaxGas))
 }
 
-// UpdateStateAfterCommit using commit response
-func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResponses, appHash []byte, height uint64, valSet *tmtypes.ValidatorSet) {
+// UpdateStateAfterCommit updates the state with the app hash and last results hash
+func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResponses, appHash []byte, height uint64) {
 	copy(s.AppHash[:], appHash[:])
 	copy(s.LastResultsHash[:], tmtypes.NewResults(resp.DeliverTxs).Hash())
 
 	// TODO: load consensus params from endblock?
 
-	s.Validators = s.NextValidators.Copy()
-	s.NextValidators = valSet.Copy()
-
 	s.SetHeight(height)
+}
+
+// UpdateProposerFromBlock updates the proposer from the block
+// The next proposer is defined in the block header (NextSequencersHash)
+// In case of a node that a becomes the proposer, we return true to mark the role change
+// currently the node will rebooted to apply the new role
+// TODO: (https://github.com/dymensionxyz/dymint/issues/1008)
+func (e *Executor) UpdateProposerFromBlock(s *types.State, block *types.Block) bool {
+	// no sequencer change
+	if bytes.Equal(block.Header.SequencerHash[:], block.Header.NextSequencersHash[:]) {
+		return false
+	}
+
+	if block.Header.NextSequencersHash == [32]byte{} {
+		// the chain will be halted until proposer is set
+		// TODO: recover from halt (https://github.com/dymensionxyz/dymint/issues/1021)
+		e.logger.Info("rollapp left with no proposer. chain is halted")
+		s.Sequencers.SetProposer(nil)
+		return false
+	}
+
+	// if hash changed, update the active sequencer
+	err := s.Sequencers.SetProposerByHash(block.Header.NextSequencersHash[:])
+	if err != nil {
+		e.logger.Error("update new proposer", "err", err)
+		panic(fmt.Sprintf("failed to update new proposer: %v", err))
+	}
+
+	localSeq := s.Sequencers.GetByConsAddress(e.localAddress)
+	if localSeq != nil && bytes.Equal(localSeq.Hash(), block.Header.NextSequencersHash[:]) {
+		return true
+	}
+
+	return false
 }
