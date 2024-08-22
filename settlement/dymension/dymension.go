@@ -293,7 +293,7 @@ func (c *Client) GetProposer() *types.Sequencer {
 	var proposerAddr string
 	err = c.RunWithRetry(func() error {
 		reqProposer := &sequencertypes.QueryGetProposerByRollappRequest{
-			RollappId: c.config.RollappID,
+			RollappId: c.rollappId,
 		}
 		res, err := c.sequencerQueryClient.GetProposerByRollapp(c.ctx, reqProposer)
 		if err == nil {
@@ -326,7 +326,7 @@ func (c *Client) GetProposer() *types.Sequencer {
 func (c *Client) GetAllSequencers() ([]types.Sequencer, error) {
 	var res *sequencertypes.QueryGetSequencersByRollappResponse
 	req := &sequencertypes.QueryGetSequencersByRollappRequest{
-		RollappId: c.config.RollappID,
+		RollappId: c.rollappId,
 	}
 
 	err := c.RunWithRetry(func() error {
@@ -373,7 +373,7 @@ func (c *Client) GetAllSequencers() ([]types.Sequencer, error) {
 func (c *Client) GetBondedSequencers() ([]types.Sequencer, error) {
 	var res *sequencertypes.QueryGetSequencersByRollappByStatusResponse
 	req := &sequencertypes.QueryGetSequencersByRollappByStatusRequest{
-		RollappId: c.config.RollappID,
+		RollappId: c.rollappId,
 		Status:    sequencertypes.Bonded,
 	}
 
@@ -424,7 +424,7 @@ func (c *Client) CheckRotationInProgress() (*types.Sequencer, error) {
 	)
 	err := c.RunWithRetry(func() error {
 		req := &sequencertypes.QueryGetNextProposerByRollappRequest{
-			RollappId: c.config.RollappID,
+			RollappId: c.rollappId,
 		}
 		res, err := c.sequencerQueryClient.GetNextProposerByRollapp(c.ctx, req)
 		if err == nil && res.RotationInProgress {

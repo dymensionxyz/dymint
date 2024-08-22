@@ -220,7 +220,6 @@ func TestPostBatch(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			// Reset the mock functions
 			testutil.UnsetMockFn(cosmosClientMock.On("BroadcastTx"))
-			testutil.UnsetMockFn(rollappQueryClientMock.On("StateInfo"))
 			// Set the mock logic based on the test case
 			if !c.isBatchSubmitSuccess {
 				cosmosClientMock.On("BroadcastTx", mock.Anything, mock.Anything).Return(cosmosclient.Response{TxResponse: &types.TxResponse{Code: 1}}, submitBatchError)

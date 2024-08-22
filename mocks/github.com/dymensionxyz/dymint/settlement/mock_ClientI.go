@@ -417,7 +417,7 @@ func (_c *MockClientI_GetProposer_Call) RunAndReturn(run func() *types.Sequencer
 	return _c
 }
 
-// Init provides a mock function with given fields: config, _a1, logger, options
+// Init provides a mock function with given fields: config, rollappId, _a2, logger, options
 func (_m *MockClientI) Init(config settlement.Config, rollappId string, _a2 *pubsub.Server, logger types.Logger, options ...settlement.Option) error {
 	_va := make([]interface{}, len(options))
 	for _i := range options {

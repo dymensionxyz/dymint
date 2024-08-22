@@ -1,11 +1,7 @@
 package block
 
 import (
-<<<<<<< HEAD
 	"bytes"
-	"encoding/json"
-=======
->>>>>>> c8f53bb (new params proto)
 	"errors"
 	"fmt"
 
@@ -92,23 +88,9 @@ func (m *Manager) UpdateStateFromApp() error {
 		return errorsmod.Wrap(err, "load block responses")
 	}
 
-<<<<<<< HEAD
 	// update the state with the app hashes created on the app commit
 	m.Executor.UpdateStateAfterCommit(m.State, resp, proxyAppInfo.LastBlockAppHash, appHeight)
 	return nil
-=======
-	// update the state with the hash, last store height and last validators.
-	m.Executor.UpdateStateAfterCommit(m.State, resp, proxyAppInfo.LastBlockAppHash, appHeight, vals)
-	_, err = m.Store.SaveState(m.State, nil)
-	if err != nil {
-		return errorsmod.Wrap(err, "update state")
-	}
-<<<<<<< HEAD
-	return stateUpdateErr
->>>>>>> 1e690cc (version checks)
-=======
-	return nil
->>>>>>> d4a0646 (renaming + fix)
 }
 
 func (e *Executor) UpdateStateAfterInitChain(s *types.State, res *abci.ResponseInitChain) {

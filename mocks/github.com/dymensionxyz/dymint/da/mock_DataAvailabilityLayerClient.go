@@ -117,6 +117,51 @@ func (_c *MockDataAvailabilityLayerClient_GetClientType_Call) RunAndReturn(run f
 	return _c
 }
 
+// GetMaxBlobSizeBytes provides a mock function with given fields:
+func (_m *MockDataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint32 {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetMaxBlobSizeBytes")
+	}
+
+	var r0 uint32
+	if rf, ok := ret.Get(0).(func() uint32); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(uint32)
+	}
+
+	return r0
+}
+
+// MockDataAvailabilityLayerClient_GetMaxBlobSizeBytes_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetMaxBlobSizeBytes'
+type MockDataAvailabilityLayerClient_GetMaxBlobSizeBytes_Call struct {
+	*mock.Call
+}
+
+// GetMaxBlobSizeBytes is a helper method to define mock.On call
+func (_e *MockDataAvailabilityLayerClient_Expecter) GetMaxBlobSizeBytes() *MockDataAvailabilityLayerClient_GetMaxBlobSizeBytes_Call {
+	return &MockDataAvailabilityLayerClient_GetMaxBlobSizeBytes_Call{Call: _e.mock.On("GetMaxBlobSizeBytes")}
+}
+
+func (_c *MockDataAvailabilityLayerClient_GetMaxBlobSizeBytes_Call) Run(run func()) *MockDataAvailabilityLayerClient_GetMaxBlobSizeBytes_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockDataAvailabilityLayerClient_GetMaxBlobSizeBytes_Call) Return(_a0 uint32) *MockDataAvailabilityLayerClient_GetMaxBlobSizeBytes_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockDataAvailabilityLayerClient_GetMaxBlobSizeBytes_Call) RunAndReturn(run func() uint32) *MockDataAvailabilityLayerClient_GetMaxBlobSizeBytes_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Init provides a mock function with given fields: config, pubsubServer, kvStore, logger, options
 func (_m *MockDataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.Server, kvStore store.KV, logger types.Logger, options ...da.Option) error {
 	_va := make([]interface{}, len(options))

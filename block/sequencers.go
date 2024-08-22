@@ -149,7 +149,7 @@ func (m *Manager) CreateAndPostLastBatch(ctx context.Context, nextSeqHash [32]by
 
 	// Submit all data accumulated thus far and the last state update
 	for {
-		b, err := m.CreateAndSubmitBatch(m.Conf.BatchMaxSizeBytes, true)
+		b, err := m.CreateAndSubmitBatch(m.Conf.BatchSubmitBytes, true)
 		if err != nil {
 			return fmt.Errorf("CreateAndSubmitBatch last batch: %w", err)
 		}

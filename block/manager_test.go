@@ -5,8 +5,6 @@ import (
 	"crypto/rand"
 	"sync/atomic"
 
-	"sync/atomic"
-
 	"testing"
 	"time"
 
