@@ -109,8 +109,6 @@ func SubmitLoopInner(
 				}
 
 				nConsumed, err := createAndSubmitBatch(min(pending, maxBatchBytes))
-				logger.Debug("Create and submit batch", "consumed", nConsumed)
-
 				if err != nil {
 					err = fmt.Errorf("create and submit batch: %w", err)
 					if errors.Is(err, gerrc.ErrInternal) {
