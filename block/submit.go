@@ -125,7 +125,7 @@ func SubmitLoopInner(
 // Returns size of block and commit bytes
 // max size bytes is the maximum size of the serialized batch type
 func (m *Manager) CreateAndSubmitBatchGetSizeBlocksCommits(maxSize uint64) (uint64, error) {
-	b, err := m.CreateAndSubmitBatch(maxSize)
+	b, err := m.CreateAndSubmitBatch(maxSize, false)
 	if b == nil {
 		return 0, err
 	}
@@ -134,7 +134,7 @@ func (m *Manager) CreateAndSubmitBatchGetSizeBlocksCommits(maxSize uint64) (uint
 
 // CreateAndSubmitBatch creates and submits a batch to the DA and SL.
 // max size bytes is the maximum size of the serialized batch type
-func (m *Manager) CreateAndSubmitBatch(maxSizeBytes uint64) (*types.Batch, error) {
+func (m *Manager) CreateAndSubmitBatch(maxSizeBytes uint64, lastBatch bool) (*types.Batch, error) {
 	startHeight := m.NextHeightToSubmit()
 	endHeightInclusive := m.State.Height()
 
@@ -152,8 +152,12 @@ func (m *Manager) CreateAndSubmitBatch(maxSizeBytes uint64) (*types.Batch, error
 	if err != nil {
 		return nil, fmt.Errorf("create batch: %w", err)
 	}
+	// This is the last batch, so we need to mark it as such
+	if lastBatch && b.EndHeight() == endHeightInclusive {
+		b.LastBatch = true
+	}
 
-	m.logger.Info("Created batch.", "start height", startHeight, "end height", endHeightInclusive, "size", b.SizeBytes())
+	m.logger.Info("Created batch.", "start height", startHeight, "end height", endHeightInclusive, "size", b.SizeBytes(), "last batch", b.LastBatch)
 	types.LastBatchSubmittedBytes.Set(float64(b.SizeBytes()))
 
 	if err := m.SubmitBatch(b); err != nil {

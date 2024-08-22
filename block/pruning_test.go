@@ -31,18 +31,18 @@ func TestPruningRetainHeight(t *testing.T) {
 
 	// Produce blocks
 	for i := 0; i < batchSize; i++ {
-		_, _, err = manager.ProduceAndGossipBlock(ctx, true)
+		_, _, err = manager.ProduceApplyGossipBlock(ctx, true)
 		require.NoError(err)
 	}
 	// submit and validate sync target
-	manager.CreateAndSubmitBatch(100000000)
+	manager.CreateAndSubmitBatch(100000000, false)
 	lastSubmitted := manager.LastSubmittedHeight.Load()
 	assert.EqualValues(t, manager.State.Height(), lastSubmitted)
 	assert.Equal(t, lastSubmitted, uint64(batchSize))
 
 	// Produce new blocks
 	for i := 0; i < batchSize; i++ {
-		_, _, err = manager.ProduceAndGossipBlock(ctx, true)
+		_, _, err = manager.ProduceApplyGossipBlock(ctx, true)
 		require.NoError(err)
 	}
 

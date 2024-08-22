@@ -4,9 +4,9 @@ import (
 	"sync/atomic"
 
 	// TODO(tzdybal): copy to local project?
+
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	"github.com/tendermint/tendermint/types"
 )
 
 // State contains information about current state of the blockchain.
@@ -23,9 +23,8 @@ type State struct {
 	// BaseHeight is the height of the first block we have in store after pruning.
 	BaseHeight uint64
 
-	NextValidators              *types.ValidatorSet
-	Validators                  *types.ValidatorSet
-	LastHeightValidatorsChanged int64
+	// Sequencers is the set of sequencers that are currently active on the rollapp.
+	Sequencers SequencerSet
 
 	// Consensus parameters used for validating blocks.
 	// Changes returned by EndBlock and updated after Commit.

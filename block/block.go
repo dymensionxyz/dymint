@@ -15,6 +15,8 @@ import (
 // - block height is the expected block height on the store (height + 1).
 // - block height is the expected block height on the app (last block height + 1).
 func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMetaData types.BlockMetaData) error {
+	var retainHeight int64
+
 	// TODO: add switch case to have defined behavior for each case.
 	// validate block height
 	if block.Header.Height != m.State.NextHeight() {
@@ -30,72 +32,77 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	if err != nil {
 		return fmt.Errorf("check if block is already applied: %w", err)
 	}
-	// In case the following true, it means we crashed after the commit and before updating the store height.
-	// In that case we'll want to align the store with the app state and continue to the next block.
+	// In case the following true, it means we crashed after the app commit but before updating the state
+	// In that case we'll want to align the state with the app commit result, as if the block was applied.
 	if isBlockAlreadyApplied {
-		// In this case, where the app was committed, but the state wasn't updated
-		// it will update the state from appInfo, saved responses and validators.
 		err := m.UpdateStateFromApp()
 		if err != nil {
 			return fmt.Errorf("update state from app: %w", err)
 		}
-		m.logger.Debug("Aligned with app state required. Skipping to next block", "height", block.Header.Height)
-		return nil
+		m.logger.Info("updated state from app commit", "height", block.Header.Height)
+	} else {
+		var appHash []byte
+		// Start applying the block assuming no inconsistency was found.
+		_, err = m.Store.SaveBlock(block, commit, nil)
+		if err != nil {
+			return fmt.Errorf("save block: %w", err)
+		}
+
+		responses, err := m.Executor.ExecuteBlock(m.State, block)
+		if err != nil {
+			return fmt.Errorf("execute block: %w", err)
+		}
+
+		_, err = m.Store.SaveBlockResponses(block.Header.Height, responses, nil)
+		if err != nil {
+			return fmt.Errorf("save block responses: %w", err)
+		}
+
+		// Commit block to app
+		appHash, retainHeight, err = m.Executor.Commit(m.State, block, responses)
+		if err != nil {
+			return fmt.Errorf("commit block: %w", err)
+		}
+
+		// Update the state with the new app hash, and store height from the commit.
+		// Every one of those, if happens before commit, prevents us from re-executing the block in case failed during commit.
+		m.Executor.UpdateStateAfterCommit(m.State, responses, appHash, block.Header.Height)
 	}
-	// Start applying the block assuming no inconsistency was found.
-	_, err = m.Store.SaveBlock(block, commit, nil)
+
+	// check if the proposer needs to be changed
+	switchRole := m.Executor.UpdateProposerFromBlock(m.State, block)
+
+	// save sequencers to store to be queried over RPC
+	batch := m.Store.NewBatch()
+	batch, err = m.Store.SaveSequencers(block.Header.Height, &m.State.Sequencers, batch)
 	if err != nil {
-		return fmt.Errorf("save block: %w", err)
+		return fmt.Errorf("save sequencers: %w", err)
 	}
 
-	responses, err := m.Executor.ExecuteBlock(m.State, block)
-	if err != nil {
-		return fmt.Errorf("execute block: %w", err)
-	}
-
-	dbBatch := m.Store.NewBatch()
-	dbBatch, err = m.Store.SaveBlockResponses(block.Header.Height, responses, dbBatch)
-	if err != nil {
-		dbBatch.Discard()
-		return fmt.Errorf("save block responses: %w", err)
-	}
-
-	// Get the validator changes from the app
-	validators := m.State.NextValidators.Copy() // TODO: this will be changed when supporting multiple sequencers from the hub
-
-	dbBatch, err = m.Store.SaveValidators(block.Header.Height, validators, dbBatch)
-	if err != nil {
-		dbBatch.Discard()
-		return fmt.Errorf("save validators: %w", err)
-	}
-
-	err = dbBatch.Commit()
-	if err != nil {
-		return fmt.Errorf("commit batch to disk: %w", err)
-	}
-
-	// Commit block to app
-	appHash, retainHeight, err := m.Executor.Commit(m.State, block, responses)
-	if err != nil {
-		return fmt.Errorf("commit block: %w", err)
-	}
-
-	// If failed here, after the app committed, but before the state is updated, we'll update the state on
-	// UpdateStateFromApp using the saved responses and validators.
-
-	// Update the state with the new app hash, last validators and store height from the commit.
-	// Every one of those, if happens before commit, prevents us from re-executing the block in case failed during commit.
-	m.Executor.UpdateStateAfterCommit(m.State, responses, appHash, block.Header.Height, validators)
-	_, err = m.Store.SaveState(m.State, nil)
+	batch, err = m.Store.SaveState(m.State, batch)
 	if err != nil {
 		return fmt.Errorf("update state: %w", err)
 	}
+
+	err = batch.Commit()
+	if err != nil {
+		return fmt.Errorf("commit state: %w", err)
+	}
+
+	types.RollappHeightGauge.Set(float64(block.Header.Height))
+
 	// Prune old heights, if requested by ABCI app.
 	if 0 < retainHeight {
 		err = m.PruneBlocks(uint64(retainHeight))
 		if err != nil {
 			m.logger.Error("prune blocks", "retain_height", retainHeight, "err", err)
 		}
+	}
+
+	if switchRole {
+		// TODO: graceful role change (https://github.com/dymensionxyz/dymint/issues/1008)
+		m.logger.Info("Node changing to proposer role")
+		panic("sequencer is no longer the proposer")
 	}
 	return nil
 }
@@ -125,7 +132,7 @@ func (m *Manager) attemptApplyCachedBlocks() error {
 		if !blockExists {
 			break
 		}
-		if err := m.validateBlock(cachedBlock.Block, cachedBlock.Commit); err != nil {
+		if err := m.validateBlockBeforeApply(cachedBlock.Block, cachedBlock.Commit); err != nil {
 			m.blockCache.Delete(cachedBlock.Block.Header.Height)
 			// TODO: can we take an action here such as dropping the peer / reducing their reputation?
 			return fmt.Errorf("block not valid at height %d, dropping it: err:%w", cachedBlock.Block.Header.Height, err)
@@ -143,10 +150,7 @@ func (m *Manager) attemptApplyCachedBlocks() error {
 	return nil
 }
 
-func (m *Manager) validateBlock(block *types.Block, commit *types.Commit) error {
-	// Currently we're assuming proposer is never nil as it's a pre-condition for
-	// dymint to start
-	proposer := m.SLClient.GetProposer()
-
-	return types.ValidateProposedTransition(m.State, block, commit, proposer)
+// This function validates the block and commit against the state before applying it.
+func (m *Manager) validateBlockBeforeApply(block *types.Block, commit *types.Commit) error {
+	return types.ValidateProposedTransition(m.State, block, commit, m.GetProposerPubKey())
 }

@@ -7,12 +7,11 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/tendermint/tendermint/crypto/ed25519"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
-	tmtypes "github.com/tendermint/tendermint/types"
 
+	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
 	pb "github.com/dymensionxyz/dymint/types/pb/dymint"
 )
@@ -43,17 +42,16 @@ func TestBlockSerializationRoundTrip(t *testing.T) {
 					Block: 1,
 					App:   2,
 				},
-				NamespaceID:     [8]byte{},
-				Height:          3,
-				Time:            4567,
-				LastHeaderHash:  h[0],
-				LastCommitHash:  h[1],
-				DataHash:        h[2],
-				ConsensusHash:   h[3],
-				AppHash:         h[4],
-				LastResultsHash: h[5],
-				ProposerAddress: []byte{4, 3, 2, 1},
-				SequencersHash:  h[6],
+				Height:             3,
+				Time:               4567,
+				LastHeaderHash:     h[0],
+				LastCommitHash:     h[1],
+				DataHash:           h[2],
+				ConsensusHash:      h[3],
+				AppHash:            h[4],
+				LastResultsHash:    h[5],
+				ProposerAddress:    []byte{4, 3, 2, 1},
+				NextSequencersHash: h[6],
 			},
 			Data: types.Data{
 				Txs:                    nil,
@@ -88,7 +86,7 @@ func TestBlockSerializationRoundTrip(t *testing.T) {
 func TestStateRoundTrip(t *testing.T) {
 	t.Parallel()
 
-	valSet := getRandomValidatorSet()
+	valSet := testutil.GenerateRandomValidatorSet()
 
 	cases := []struct {
 		name  string
@@ -97,8 +95,6 @@ func TestStateRoundTrip(t *testing.T) {
 		{
 			"with max bytes",
 			types.State{
-				Validators:     valSet,
-				NextValidators: valSet,
 				ConsensusParams: tmproto.ConsensusParams{
 					Block: tmproto.BlockParams{
 						MaxBytes:   123,
@@ -118,11 +114,8 @@ func TestStateRoundTrip(t *testing.T) {
 					},
 					Software: "dymint",
 				},
-				ChainID:                     "testchain",
-				InitialHeight:               987,
-				NextValidators:              valSet,
-				Validators:                  valSet,
-				LastHeightValidatorsChanged: 8272,
+				ChainID:       "testchain",
+				InitialHeight: 987,
 				ConsensusParams: tmproto.ConsensusParams{
 					Block: tmproto.BlockParams{
 						MaxBytes:   12345,
@@ -153,6 +146,8 @@ func TestStateRoundTrip(t *testing.T) {
 			require := require.New(t)
 			assert := assert.New(t)
 
+			c.state.Sequencers.LoadFromValSet(valSet)
+
 			if c.state.InitialHeight != 0 {
 				c.state.SetHeight(986321)
 			}
@@ -175,16 +170,5 @@ func TestStateRoundTrip(t *testing.T) {
 
 			assert.Equal(c.state, newState)
 		})
-	}
-}
-
-// copied from store_test.go
-func getRandomValidatorSet() *tmtypes.ValidatorSet {
-	pubKey := ed25519.GenPrivKey().PubKey()
-	return &tmtypes.ValidatorSet{
-		Proposer: &tmtypes.Validator{PubKey: pubKey, Address: pubKey.Address()},
-		Validators: []*tmtypes.Validator{
-			{PubKey: pubKey, Address: pubKey.Address()},
-		},
 	}
 }

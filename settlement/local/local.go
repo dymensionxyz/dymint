@@ -12,16 +12,18 @@ import (
 	"sync"
 	"time"
 
+	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
+
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	tmp2p "github.com/tendermint/tendermint/p2p"
 
 	"github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
-	rollapptypes "github.com/dymensionxyz/dymension/v3/x/rollapp/types"
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/store"
+	rollapptypes "github.com/dymensionxyz/dymint/third_party/dymension/rollapp/types"
 	"github.com/dymensionxyz/dymint/types"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
 
@@ -134,7 +136,7 @@ func (c *Client) Stop() error {
 
 // PostBatch saves the batch to the kv store
 func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) error {
-	settlementBatch := convertBatchToSettlementBatch(batch, daResult)
+	settlementBatch := c.convertBatchToSettlementBatch(batch, daResult)
 	err := c.saveBatch(settlementBatch)
 	if err != nil {
 		return err
@@ -198,15 +200,27 @@ func (c *Client) GetProposer() *types.Sequencer {
 		return nil
 	}
 	var pubKey cryptotypes.PubKey = &ed25519.PubKey{Key: pubKeyBytes}
-	return &types.Sequencer{
-		PublicKey: pubKey,
-		Status:    types.Proposer,
+	tmPubKey, err := cryptocodec.ToTmPubKeyInterface(pubKey)
+	if err != nil {
+		c.logger.Error("Error converting to tendermint pubkey", "err", err)
+		return nil
 	}
+	return types.NewSequencer(tmPubKey, pubKey.Address().String())
 }
 
-// GetSequencers implements settlement.ClientI.
-func (c *Client) GetSequencers() ([]*types.Sequencer, error) {
-	return []*types.Sequencer{c.GetProposer()}, nil
+// GetAllSequencers implements settlement.ClientI.
+func (c *Client) GetAllSequencers() ([]types.Sequencer, error) {
+	return c.GetBondedSequencers()
+}
+
+// GetBondedSequencers implements settlement.ClientI.
+func (c *Client) GetBondedSequencers() ([]types.Sequencer, error) {
+	return []types.Sequencer{*c.GetProposer()}, nil
+}
+
+// CheckRotationInProgress implements settlement.ClientI.
+func (c *Client) CheckRotationInProgress() (*types.Sequencer, error) {
+	return nil, nil
 }
 
 func (c *Client) saveBatch(batch *settlement.Batch) error {
@@ -254,8 +268,9 @@ func (c *Client) retrieveBatchAtStateIndex(slStateIndex uint64) (*settlement.Res
 	return &batchResult, nil
 }
 
-func convertBatchToSettlementBatch(batch *types.Batch, daResult *da.ResultSubmitBatch) *settlement.Batch {
+func (c *Client) convertBatchToSettlementBatch(batch *types.Batch, daResult *da.ResultSubmitBatch) *settlement.Batch {
 	settlementBatch := &settlement.Batch{
+		Sequencer:   c.GetProposer().SettlementAddress,
 		StartHeight: batch.StartHeight(),
 		EndHeight:   batch.EndHeight(),
 		MetaData: &settlement.BatchMetaData{

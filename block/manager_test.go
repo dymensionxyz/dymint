@@ -21,6 +21,7 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/proxy"
@@ -32,12 +33,18 @@ import (
 	"github.com/dymensionxyz/dymint/store"
 )
 
+// TODO: test loading sequencer while rotation in progress
+// TODO: test sequencer after L2 handover but before last state update submitted
+// TODO: test halt scenario
 func TestInitialState(t *testing.T) {
 	var err error
 	assert := assert.New(t)
 	genesis := testutil.GenerateGenesis(123)
-	sampleState := testutil.GenerateState(1, 128)
 	key, _, _ := crypto.GenerateEd25519Key(rand.Reader)
+	raw, _ := key.GetPublic().Raw()
+	pubkey := ed25519.PubKey(raw)
+	sampleState := testutil.GenerateStateWithSequencer(1, 128, pubkey)
+
 	conf := testutil.GetManagerConfig()
 	logger := log.TestingLogger()
 	pubsubServer := pubsub.NewServer()
@@ -149,7 +156,7 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 	go func() {
 		errChan <- manager.Start(ctx)
 		err := <-errChan
-		assert.NoError(t, err)
+		require.NoError(t, err)
 	}()
 	<-ctx.Done()
 	assert.Equal(t, batch.EndHeight(), manager.LastSubmittedHeight.Load())
@@ -185,7 +192,7 @@ func TestProduceNewBlock(t *testing.T) {
 	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(t, err)
 	// Produce block
-	_, _, err = manager.ProduceAndGossipBlock(context.Background(), true)
+	_, _, err = manager.ProduceApplyGossipBlock(context.Background(), true)
 	require.NoError(t, err)
 	// Validate state is updated with the commit hash
 	assert.Equal(t, uint64(1), manager.State.Height())
@@ -207,14 +214,16 @@ func TestProducePendingBlock(t *testing.T) {
 	require.NoError(t, err)
 	// Generate block and commit and save it to the store
 	block := testutil.GetRandomBlock(1, 3)
+	copy(block.Header.SequencerHash[:], manager.State.Sequencers.ProposerHash())
+	copy(block.Header.NextSequencersHash[:], manager.State.Sequencers.ProposerHash())
+
 	_, err = manager.Store.SaveBlock(block, &block.LastCommit, nil)
 	require.NoError(t, err)
 	// Produce block
-	_, _, err = manager.ProduceAndGossipBlock(context.Background(), true)
+	_, _, err = manager.ProduceApplyGossipBlock(context.Background(), true)
 	require.NoError(t, err)
-	// Validate state is updated with the block that was saved in the store
 
-	// TODO: fix this test
+	// Validate state is updated with the block that was saved in the store
 	// hacky way to validate the block was indeed contain txs
 	assert.NotEqual(t, manager.State.LastResultsHash, testutil.GetEmptyLastResultsHash())
 }
@@ -296,13 +305,13 @@ func TestProduceBlockFailAfterCommit(t *testing.T) {
 				LastBlockHeight:  tc.LastAppBlockHeight,
 				LastBlockAppHash: tc.LastAppCommitHash[:],
 			})
-			mockStore.ShoudFailSaveState = tc.shoudFailOnSaveState
-			_, _, _ = manager.ProduceAndGossipBlock(context.Background(), true)
+			mockStore.ShouldFailUpdateStateWithBatch = tc.shoudFailOnSaveState
+			_, _, _ = manager.ProduceApplyGossipBlock(context.Background(), true)
 			storeState, err := manager.Store.LoadState()
 			assert.NoError(err)
 			manager.State = storeState
-			assert.Equal(tc.expectedStoreHeight, storeState.Height(), tc.name)
-			assert.Equal(tc.expectedStateAppHash, storeState.AppHash, tc.name)
+			require.Equal(tc.expectedStoreHeight, storeState.Height(), tc.name)
+			require.Equal(tc.expectedStateAppHash, storeState.AppHash, tc.name)
 
 			app.On("Commit", mock.Anything).Unset()
 			app.On("Info", mock.Anything).Unset()
@@ -351,7 +360,7 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Produce blocks
 			for i := 0; i < tc.blocksToProduce; i++ {
-				_, _, err := manager.ProduceAndGossipBlock(ctx, true)
+				_, _, err := manager.ProduceApplyGossipBlock(ctx, true)
 				assert.NoError(err)
 			}
 

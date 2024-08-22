@@ -8,14 +8,14 @@ import (
 )
 
 func (m *Manager) PruneBlocks(retainHeight uint64) error {
-	if m.IsSequencer() && m.NextHeightToSubmit() < retainHeight { // do not delete anything that we might submit in future
+	if m.IsProposer() && m.NextHeightToSubmit() < retainHeight { // do not delete anything that we might submit in future
 		return fmt.Errorf("cannot prune blocks before they have been submitted: retain height %d: next height to submit: %d: %w",
 			retainHeight,
 			m.NextHeightToSubmit(),
 			gerrc.ErrInvalidArgument)
 	}
 
-	err := m.p2pClient.RemoveBlocks(context.TODO(), m.State.BaseHeight, retainHeight)
+	err := m.P2PClient.RemoveBlocks(context.Background(), m.State.BaseHeight, retainHeight)
 	if err != nil {
 		m.logger.Error("pruning blocksync store", "retain_height", retainHeight, "err", err)
 	}

@@ -45,11 +45,12 @@ func NewExecutor(localAddress []byte, chainID string, mempool mempool.Mempool, p
 }
 
 // InitChain calls InitChainSync using consensus connection to app.
-func (e *Executor) InitChain(genesis *tmtypes.GenesisDoc, validators []*tmtypes.Validator) (*abci.ResponseInitChain, error) {
+func (e *Executor) InitChain(genesis *tmtypes.GenesisDoc, valset []*tmtypes.Validator) (*abci.ResponseInitChain, error) {
 	params := genesis.ConsensusParams
 	valUpates := abci.ValidatorUpdates{}
 
-	for _, validator := range validators {
+	// prepare the validator updates as expected by the ABCI app
+	for _, validator := range valset {
 		tmkey, err := tmcrypto.PubKeyToProto(validator.PubKey)
 		if err != nil {
 			return nil, err
@@ -88,7 +89,7 @@ func (e *Executor) InitChain(genesis *tmtypes.GenesisDoc, validators []*tmtypes.
 }
 
 // CreateBlock reaps transactions from mempool and builds a block.
-func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHeaderHash [32]byte, state *types.State, maxBlockDataSizeBytes uint64) *types.Block {
+func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHeaderHash, nextSeqHash [32]byte, state *types.State, maxBlockDataSizeBytes uint64) *types.Block {
 	if state.ConsensusParams.Block.MaxBytes > 0 {
 		maxBlockDataSizeBytes = min(maxBlockDataSizeBytes, uint64(state.ConsensusParams.Block.MaxBytes))
 	}
@@ -117,9 +118,10 @@ func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHead
 		},
 		LastCommit: *lastCommit,
 	}
-	copy(block.Header.LastCommitHash[:], e.getLastCommitHash(lastCommit, &block.Header))
-	copy(block.Header.DataHash[:], e.getDataHash(block))
-	copy(block.Header.SequencersHash[:], state.Validators.Hash())
+	copy(block.Header.LastCommitHash[:], types.GetLastCommitHash(lastCommit, &block.Header))
+	copy(block.Header.DataHash[:], types.GetDataHash(block))
+	copy(block.Header.SequencerHash[:], state.Sequencers.ProposerHash())
+	copy(block.Header.NextSequencersHash[:], nextSeqHash[:])
 
 	return block
 }
@@ -197,8 +199,6 @@ func (e *Executor) ExecuteBlock(state *types.State, block *types.Block) (*tmstat
 
 	hash := block.Hash()
 	abciHeader := types.ToABCIHeaderPB(&block.Header)
-	abciHeader.ChainID = e.chainID
-	abciHeader.ValidatorsHash = state.Validators.Hash()
 	abciResponses.BeginBlock, err = e.proxyAppConsensusConn.BeginBlockSync(
 		abci.RequestBeginBlock{
 			Hash:   hash[:],
@@ -226,18 +226,6 @@ func (e *Executor) ExecuteBlock(state *types.State, block *types.Block) (*tmstat
 	}
 
 	return abciResponses, nil
-}
-
-func (e *Executor) getLastCommitHash(lastCommit *types.Commit, header *types.Header) []byte {
-	lastABCICommit := types.ToABCICommit(lastCommit, header)
-	return lastABCICommit.Hash()
-}
-
-func (e *Executor) getDataHash(block *types.Block) []byte {
-	abciData := tmtypes.Data{
-		Txs: types.ToABCIBlockDataTxs(&block.Data),
-	}
-	return abciData.Hash()
 }
 
 func (e *Executor) publishEvents(resp *tmstate.ABCIResponses, block *types.Block) error {

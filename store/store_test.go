@@ -92,15 +92,14 @@ func TestLoadState(t *testing.T) {
 
 	assert := assert.New(t)
 
-	validatorSet := testutil.GetRandomValidatorSet()
+	validatorSet := testutil.GenerateRandomValidatorSet()
 
 	kv := store.NewDefaultInMemoryKVStore()
 	s1 := store.New(kv)
 	expectedHeight := uint64(10)
-	s := &types.State{
-		NextValidators: validatorSet,
-		Validators:     validatorSet,
-	}
+	s := &types.State{}
+	s.Sequencers.LoadFromValSet(validatorSet)
+
 	s.SetHeight(expectedHeight)
 	_, err := s1.SaveState(s, nil)
 	assert.NoError(err)
@@ -245,7 +244,7 @@ func TestBlockId(t *testing.T) {
 	// commit
 	batch.Commit()
 
-	//retrieve cid for height 2
+	// retrieve cid for height 2
 	resultCid, err = s.LoadBlockCid(2)
 	require.NoError(err)
 	require.Equal(expectedCid, resultCid)

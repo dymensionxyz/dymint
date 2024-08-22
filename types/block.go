@@ -11,10 +11,6 @@ import (
 type Header struct {
 	// Block and App version
 	Version Version
-	// NamespaceID identifies this chain e.g. when connected to other rollups via IBC.
-	// TODO(ismail): figure out if we want to use namespace.ID here instead (downside is that it isn't fixed size)
-	// at least extract the used constants (32, 8) as package variables though.
-	NamespaceID [8]byte
 
 	Height uint64
 	Time   uint64 // time in tai64 format
@@ -39,8 +35,10 @@ type Header struct {
 	// pubkey can't be recovered by the signature (e.g. ed25519).
 	ProposerAddress []byte // original proposer of the block
 
-	// Hash of block sequencer set, at a time of block creation
-	SequencersHash [32]byte
+	// Hash of proposer validatorSet (compatible with tendermint)
+	SequencerHash [32]byte
+	// Hash of the next proposer validatorSet (compatible with tendermint)
+	NextSequencersHash [32]byte
 
 	// The Chain ID
 	ChainID string
@@ -112,4 +110,17 @@ type Signature []byte
 // They are required for fraud proofs.
 type IntermediateStateRoots struct {
 	RawRootsList [][]byte
+}
+
+func GetLastCommitHash(lastCommit *Commit, header *Header) []byte {
+	lastABCICommit := ToABCICommit(lastCommit, header)
+	return lastABCICommit.Hash()
+}
+
+// GetDataHash returns the hash of the block data to be set in the block header.
+func GetDataHash(block *Block) []byte {
+	abciData := tmtypes.Data{
+		Txs: ToABCIBlockDataTxs(&block.Data),
+	}
+	return abciData.Hash()
 }
