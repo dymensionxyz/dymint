@@ -597,6 +597,11 @@ func (c *Client) retrieveBlockSyncLoop(ctx context.Context, msgHandler BlockSync
 
 				c.logger.Debug("Blocksync block received ", "height", h)
 				msgHandler(&block)
+				state, err := c.store.LoadState()
+				if err != nil {
+					return
+				}
+				h = max(h, state.NextHeight()-1)
 			}
 			c.blocksReceived.RemoveBlocksReceivedUpToHeight(state.NextHeight())
 		}
