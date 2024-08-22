@@ -2,6 +2,7 @@ package types
 
 import (
 	"encoding"
+	"time"
 
 	tmtypes "github.com/tendermint/tendermint/types"
 )
@@ -43,6 +44,10 @@ type Header struct {
 
 	// The Chain ID
 	ChainID string
+}
+
+func (h Header) GetTimestamp() time.Time {
+	return time.Unix(int64(h.Time), 0)
 }
 
 var (
