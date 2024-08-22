@@ -156,11 +156,11 @@ func (c BlockManagerConfig) Validate() error {
 	}
 
 	if c.BatchSubmitBytes <= 0 {
-		return fmt.Errorf("block_batch_max_bytes must be positive")
+		return fmt.Errorf("batch_submit_bytes must be positive")
 	}
 
 	if c.BatchSkew <= 0 {
-		return fmt.Errorf("batch_skew must be positive")
+		return fmt.Errorf("max_batch_skew must be positive")
 	}
 
 	return nil
