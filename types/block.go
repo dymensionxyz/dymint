@@ -47,7 +47,7 @@ type Header struct {
 }
 
 func (h Header) GetTimestamp() time.Time {
-	return time.Unix(int64(h.Time), 0)
+	return time.Unix(0, int64(h.Time))
 }
 
 var (
