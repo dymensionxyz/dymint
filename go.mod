@@ -5,7 +5,7 @@ go 1.22.4
 require (
 	cosmossdk.io/errors v1.0.1
 	github.com/avast/retry-go/v4 v4.5.0
-	github.com/celestiaorg/celestia-openrpc v0.4.0-rc.1
+	github.com/celestiaorg/celestia-openrpc v0.4.0
 	github.com/celestiaorg/go-cnc v0.4.2
 	github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.12
 	github.com/cosmos/cosmos-sdk v0.46.16
@@ -30,6 +30,7 @@ require (
 	github.com/libp2p/go-libp2p-routing-helpers v0.7.3
 	github.com/multiformats/go-multiaddr v0.12.2
 	github.com/prometheus/client_golang v1.18.0
+	github.com/rollkit/celestia-openrpc v0.0.0-00010101000000-000000000000
 	github.com/rs/cors v1.9.0
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.15.0
@@ -43,8 +44,6 @@ require (
 )
 
 require (
-	github.com/celestiaorg/go-square v1.0.1 // indirect
-	github.com/celestiaorg/go-square/merkle v0.0.0-20240429192549-dea967e1533b // indirect
 	github.com/cskr/pubsub v1.0.2 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/ipfs/go-block-format v0.2.0 // indirect
@@ -292,12 +291,13 @@ require (
 )
 
 replace (
-	github.com/celestiaorg/celestia-openrpc => ../../celestia/celestia-openrpc
 	github.com/centrifuge/go-substrate-rpc-client/v4 => github.com/availproject/go-substrate-rpc-client/v4 v4.0.12-avail-1.4.0-rc1-5e286e3
 	github.com/evmos/evmos/v12 => github.com/dymensionxyz/evmos/v12 v12.1.6-dymension-v0.3
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.2-alpha.regen.4
 	github.com/gorilla/rpc => github.com/dymensionxyz/rpc v1.3.1
+	github.com/rollkit/celestia-openrpc => github.com/celestiaorg/celestia-openrpc v0.3.0
 	github.com/tendermint/tendermint => github.com/dymensionxyz/cometbft v0.34.29-0.20240807121422-5299b866061c
+
 )
 
 replace github.com/osmosis-labs/osmosis/v15 => github.com/dymensionxyz/osmosis/v15 v15.2.0-dymension-v1.1.2

@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/celestiaorg/celestia-openrpc/types/blob"
-	"github.com/celestiaorg/celestia-openrpc/types/header"
 	uretry "github.com/dymensionxyz/dymint/utils/retry"
+	"github.com/rollkit/celestia-openrpc/types/blob"
+	"github.com/rollkit/celestia-openrpc/types/header"
 
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/da/celestia"

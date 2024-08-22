@@ -9,15 +9,15 @@ import (
 	"time"
 
 	"github.com/avast/retry-go/v4"
-	"github.com/celestiaorg/celestia-openrpc/types/blob"
-	"github.com/celestiaorg/celestia-openrpc/types/header"
 	"github.com/celestiaorg/nmt"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/gogo/protobuf/proto"
+	"github.com/rollkit/celestia-openrpc/types/blob"
+	"github.com/rollkit/celestia-openrpc/types/header"
 	"github.com/tendermint/tendermint/libs/pubsub"
 
-	openrpc "github.com/celestiaorg/celestia-openrpc"
-	"github.com/celestiaorg/celestia-openrpc/types/share"
+	openrpc "github.com/rollkit/celestia-openrpc"
+	"github.com/rollkit/celestia-openrpc/types/share"
 
 	"github.com/dymensionxyz/dymint/da"
 	celtypes "github.com/dymensionxyz/dymint/da/celestia/types"
@@ -110,9 +110,9 @@ func createConfig(bz []byte) (c Config, err error) {
 		return c, fmt.Errorf("init namespace id: %w", err)
 	}
 
-	if c.GasPrices == 0 {
+	/*if c.GasPrices == 0 {
 		return c, errors.New("gas prices must be set")
-	}
+	}*/
 
 	// NOTE: 0 is valid value for RetryAttempts
 
@@ -548,7 +548,7 @@ func (c *DataAvailabilityLayerClient) submit(daBlob da.Blob) (uint64, da.Commitm
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
-	height, err := c.rpc.Submit(ctx, blobs, blob.NewSubmitOptions())
+	height, err := c.rpc.Submit(ctx, blobs, openrpc.DefaultSubmitOptions())
 	if err != nil {
 		return 0, nil, fmt.Errorf("do rpc submit: %w", err)
 	}
@@ -577,8 +577,11 @@ func (c *DataAvailabilityLayerClient) blobsAndCommitments(daBlob da.Blob) ([]*bl
 		return nil, nil, err
 	}
 	blobs = append(blobs, b)
-
-	commitments = append(commitments, b.Commitment)
+	commitment, err := blob.CreateCommitment(b)
+	if err != nil {
+		return nil, nil, fmt.Errorf("create commitment: %w", err)
+	}
+	commitments = append(commitments, commitment)
 	return blobs, commitments, nil
 }
 
