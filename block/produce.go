@@ -80,7 +80,8 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int)
 			default:
 				evt := &events.DataHealthStatus{Error: fmt.Errorf("bytes produced channel is full: %w", gerrc.ErrResourceExhausted)}
 				uevent.MustPublish(ctx, m.Pubsub, evt, events.HealthStatusList)
-				m.logger.Error("Too many blocks are pending submission. Pausing block production until a signal is consumed.")
+				m.logger.Error("Enough bytes to build a batch have been accumulated, but too many batches are pending submission. " +
+					"Pausing block production until a signal is consumed.")
 				select {
 				case <-ctx.Done():
 					return nil
@@ -168,7 +169,6 @@ func (m *Manager) produceBlock(allowEmpty bool, nextProposerHash *[32]byte) (*ty
 	types.RollappBlockSizeBytesGauge.Set(float64(len(block.Data.Txs)))
 	types.RollappBlockSizeTxsGauge.Set(float64(len(block.Data.Txs)))
 	return block, commit, nil
-
 }
 
 // create commit for block
