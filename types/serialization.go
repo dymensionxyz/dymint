@@ -287,7 +287,6 @@ func (s *State) FromProto(other *pb.State) error {
 	s.LastHeightConsensusParamsChanged = other.LastHeightConsensusParamsChanged
 	copy(s.LastResultsHash[:], other.LastResultsHash)
 	copy(s.AppHash[:], other.AppHash)
-
 	return nil
 }
 

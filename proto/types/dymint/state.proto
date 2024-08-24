@@ -32,7 +32,7 @@ message State {
   int64 last_height_validators_changed = 11;
   
 
-  tendermint.types.ConsensusParams consensus_params = 12 [(gogoproto.nullable) = false];
+  reserved 12;
   int64 last_height_consensus_params_changed = 13;
 
   bytes last_results_hash = 14;
@@ -43,4 +43,18 @@ message State {
   uint64 base_height = 17;
 
   SequencerSet sequencerSet         = 18 [(gogoproto.nullable) = false];
+  RollappConsensusParams consensus_params = 19 [(gogoproto.nullable) = false];
+
+}
+
+//rollapp params defined in genesis and updated via gov proposal
+message RollappConsensusParams {
+  //maximum amount of gas that all transactions included in a block can use
+  int64 blockmaxgas = 1;
+  //maximum allowed block size
+  int64 blockmaxsize = 2;
+  //data availability type (e.g. celestia) used in the rollapp
+  string da = 3 ;
+  //commit used for the rollapp executable
+  string commit = 4 ;
 }

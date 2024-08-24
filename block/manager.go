@@ -10,12 +10,15 @@ import (
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/dymensionxyz/dymint/da/registry"
 	"github.com/dymensionxyz/dymint/store"
 	uerrors "github.com/dymensionxyz/dymint/utils/errors"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
+	"github.com/dymensionxyz/dymint/version"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
 	tmcrypto "github.com/tendermint/tendermint/crypto"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	tmtypes "github.com/tendermint/tendermint/types"
 
@@ -79,17 +82,17 @@ type Manager struct {
 // NewManager creates new block Manager.
 func NewManager(
 	localKey crypto.PrivKey,
-	conf config.BlockManagerConfig,
+	conf config.NodeConfig,
 	genesis *tmtypes.GenesisDoc,
 	store store.Store,
 	mempool mempool.Mempool,
 	proxyApp proxy.AppConns,
-	dalc da.DataAvailabilityLayerClient,
 	settlementClient settlement.ClientI,
 	eventBus *tmtypes.EventBus,
 	pubsub *pubsub.Server,
 	p2pClient *p2p.Client,
-	logger types.Logger,
+	dalcKV *store.PrefixKV,
+	logger log.Logger,
 ) (*Manager, error) {
 	localAddress, err := types.GetAddress(localKey)
 	if err != nil {
@@ -104,14 +107,12 @@ func NewManager(
 		Pubsub:    pubsub,
 		P2PClient: p2pClient,
 		LocalKey:  localKey,
-		Conf:      conf,
+		Conf:      conf.BlockManagerConfig,
 		Genesis:   genesis,
 		Store:     store,
 		Executor:  exec,
-		DAClient:  dalc,
 		SLClient:  settlementClient,
-		Retriever: dalc.(da.BatchRetriever),
-		logger:    logger,
+		logger:    logger.With("module", "block_manager"),
 		blockCache: &Cache{
 			cache: make(map[uint64]types.CachedBlock),
 		},
@@ -120,6 +121,17 @@ func NewManager(
 	err = m.LoadStateOnInit(store, genesis, logger)
 	if err != nil {
 		return nil, fmt.Errorf("get initial state: %w", err)
+	}
+
+	err = m.setDA(conf.DAConfig, dalcKV, logger)
+	if err != nil {
+		return nil, err
+	}
+
+	// validate configuration params and rollapp consensus params are in line
+	err = m.ValidateConfigWithRollappParams()
+	if err != nil {
+		return nil, err
 	}
 
 	return m, nil
@@ -273,4 +285,46 @@ func (m *Manager) UpdateTargetHeight(h uint64) {
 			break
 		}
 	}
+}
+
+// ValidateConfigWithRollappParams checks the configuration params are consistent with the params in the dymint state (e.g. DA and version)
+func (m *Manager) ValidateConfigWithRollappParams() error {
+	if version.Commit != m.State.ConsensusParams.Commit {
+		return fmt.Errorf("binary version mismatch. rollapp param: %s binary used:%s", version.Commit, m.State.ConsensusParams.Commit)
+	}
+
+	if da.Client(m.State.ConsensusParams.Da) != m.DAClient.GetClientType() {
+		return fmt.Errorf("da client mismatch. rollapp param: %s da configured: %s", m.DAClient.GetClientType(), m.State.ConsensusParams.Da)
+	}
+
+	if m.Conf.BatchSubmitBytes > uint64(m.DAClient.GetMaxBlobSizeBytes()) {
+		return fmt.Errorf("batch size above limit %d: DA %s", m.DAClient.GetMaxBlobSizeBytes(), m.DAClient.GetClientType())
+	}
+
+	if m.State.ConsensusParams.Blockmaxsize > int64(m.DAClient.GetMaxBlobSizeBytes()) {
+		return fmt.Errorf("max block size above limit: %d: DA: %s", int64(m.DAClient.GetMaxBlobSizeBytes()), m.DAClient.GetClientType())
+	}
+
+	return nil
+}
+
+// setDA initializes DA client in blockmanager according to DA type set in genesis or stored in state
+func (m *Manager) setDA(daconfig string, dalcKV store.KV, logger log.Logger) error {
+	daLayer := m.State.ConsensusParams.Da
+	dalc := registry.GetClient(daLayer)
+	if dalc == nil {
+		return fmt.Errorf("get data availability client named '%s'", daLayer)
+	}
+
+	err := dalc.Init([]byte(daconfig), m.Pubsub, dalcKV, logger.With("module", string(dalc.GetClientType())))
+	if err != nil {
+		return fmt.Errorf("data availability layer client initialization:  %w", err)
+	}
+	m.DAClient = dalc
+	retriever, ok := dalc.(da.BatchRetriever)
+	if !ok {
+		return fmt.Errorf("data availability layer client is not of type BatchRetriever")
+	}
+	m.Retriever = retriever
+	return nil
 }

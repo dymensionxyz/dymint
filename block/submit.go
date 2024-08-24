@@ -28,9 +28,10 @@ func (m *Manager) SubmitLoop(ctx context.Context,
 		ctx,
 		m.logger,
 		bytesProduced,
-		m.Conf.MaxBatchSkew,
-		m.Conf.BatchSubmitMaxTime,
-		m.Conf.BatchMaxSizeBytes,
+		m.Conf.BatchSkew,
+		m.GetUnsubmittedBlocks,
+		m.Conf.BatchSubmitTime,
+		m.Conf.BatchSubmitBytes,
 		m.CreateAndSubmitBatchGetSizeBlocksCommits,
 	)
 }
@@ -40,7 +41,8 @@ func SubmitLoopInner(
 	ctx context.Context,
 	logger types.Logger,
 	bytesProduced chan int, // a channel of block and commit bytes produced
-	maxBatchSkew uint64, // max number of batches that submitter is allowed to have pending
+	maxBatchSkew uint64, // max number of blocks that submitter is allowed to have pending
+	unsubmittedBlocks func() uint64,
 	maxBatchTime time.Duration, // max time to allow between batches
 	maxBatchBytes uint64, // max size of serialised batch in bytes
 	createAndSubmitBatch func(maxSizeBytes uint64) (sizeBlocksCommits uint64, err error),
@@ -48,6 +50,7 @@ func SubmitLoopInner(
 	eg, ctx := errgroup.WithContext(ctx)
 
 	pendingBytes := atomic.Uint64{}
+
 	trigger := uchannel.NewNudger()   // used to avoid busy waiting (using cpu) on trigger thread
 	submitter := uchannel.NewNudger() // used to avoid busy waiting (using cpu) on submitter thread
 
@@ -69,9 +72,12 @@ func SubmitLoopInner(
 					return ctx.Err()
 				case n := <-bytesProduced:
 					pendingBytes.Add(uint64(n))
-					logger.Info("Added bytes produced to bytes pending submission counter.", "n", n)
+					logger.Debug("Added bytes produced to bytes pending submission counter.", "bytes added", n, "pending", pendingBytes.Load())
 				}
 			}
+
+			types.RollappPendingSubmissionsSkewBytes.Set(float64(pendingBytes.Load()))
+			types.RollappPendingSubmissionsSkewBlocks.Set(float64(unsubmittedBlocks()))
 			submitter.Nudge()
 		}
 	})
@@ -88,8 +94,9 @@ func SubmitLoopInner(
 			case <-submitter.C:
 			}
 			pending := pendingBytes.Load()
-			types.RollappPendingSubmissionsSkewNumBytes.Set(float64(pendingBytes.Load()))
-			types.RollappPendingSubmissionsSkewNumBatches.Set(float64(pendingBytes.Load() / maxBatchBytes))
+			types.RollappPendingSubmissionsSkewBytes.Set(float64(pendingBytes.Load()))
+			types.RollappPendingSubmissionsSkewBlocks.Set(float64(unsubmittedBlocks()))
+			types.RollappPendingSubmissionsSkewBatches.Set(float64(pendingBytes.Load() / maxBatchBytes))
 
 			// while there are accumulated blocks, create and submit batches!!
 			for {
@@ -100,6 +107,7 @@ func SubmitLoopInner(
 				if done || nothingToSubmit || (lastSubmissionIsRecent && maxDataNotExceeded) {
 					break
 				}
+
 				nConsumed, err := createAndSubmitBatch(min(pending, maxBatchBytes))
 				if err != nil {
 					err = fmt.Errorf("create and submit batch: %w", err)
@@ -231,6 +239,7 @@ func (m *Manager) GetUnsubmittedBytes() int {
 		On node start we want to include the count of any blocks which were produced and not submitted in a previous instance
 	*/
 	currH := m.State.Height()
+
 	for h := m.NextHeightToSubmit(); h <= currH; h++ {
 		block, err := m.Store.LoadBlock(h)
 		if err != nil {
@@ -249,4 +258,8 @@ func (m *Manager) GetUnsubmittedBytes() int {
 		total += block.SizeBytes() + commit.SizeBytes()
 	}
 	return total
+}
+
+func (m *Manager) GetUnsubmittedBlocks() uint64 {
+	return m.State.Height() - m.LastSubmittedHeight.Load()
 }

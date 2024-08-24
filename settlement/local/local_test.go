@@ -28,7 +28,7 @@ func TestGetSequencers(t *testing.T) {
 
 	sllayer := local.Client{}
 	cfg := settlement.Config{ProposerPubKey: hex.EncodeToString(pubKeybytes)}
-	err = sllayer.Init(cfg, nil, log.TestingLogger())
+	err = sllayer.Init(cfg, "rollappTest", nil, log.TestingLogger())
 	require.NoError(err)
 
 	sequencers, err := sllayer.GetBondedSequencers()
@@ -51,7 +51,7 @@ func TestSubmitBatch(t *testing.T) {
 	require.NoError(err)
 
 	sllayer := local.Client{}
-	err = sllayer.Init(settlement.Config{}, pubsubServer, logger)
+	err = sllayer.Init(settlement.Config{}, "rollappTest", pubsubServer, logger)
 	require.NoError(err)
 	_, err = sllayer.GetLatestBatch()
 	require.Error(err) // no batch should be present
@@ -126,7 +126,7 @@ func TestPersistency(t *testing.T) {
 	require.NoError(err)
 
 	cfg := settlement.Config{KeyringHomeDir: tmpdir, ProposerPubKey: hex.EncodeToString(pubKeybytes)}
-	err = sllayer.Init(cfg, pubsubServer, logger)
+	err = sllayer.Init(cfg, "rollappTest", pubsubServer, logger)
 	require.NoError(err)
 
 	_, err = sllayer.GetLatestBatch()
@@ -151,7 +151,7 @@ func TestPersistency(t *testing.T) {
 	err = sllayer.Stop()
 	require.NoError(err)
 	sllayer = local.Client{}
-	_ = sllayer.Init(cfg, pubsubServer, logger)
+	_ = sllayer.Init(cfg, "rollappTest", pubsubServer, logger)
 	queriedBatch, err = sllayer.GetLatestBatch()
 	require.NoError(err)
 	assert.Equal(batch1.EndHeight(), queriedBatch.Batch.EndHeight)

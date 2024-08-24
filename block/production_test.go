@@ -8,13 +8,17 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dymensionxyz/dymint/mempool"
+	"github.com/dymensionxyz/dymint/version"
+
 	mempoolv1 "github.com/dymensionxyz/dymint/mempool/v1"
 	"github.com/dymensionxyz/dymint/node/events"
 	uchannel "github.com/dymensionxyz/dymint/utils/channel"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
+	abci "github.com/tendermint/tendermint/abci/types"
 	tmcfg "github.com/tendermint/tendermint/config"
 
 	"github.com/dymensionxyz/dymint/testutil"
@@ -32,7 +36,15 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 
 	assert := assert.New(t)
 	require := require.New(t)
-	app := testutil.GetAppMock()
+	app := testutil.GetAppMock(testutil.EndBlock)
+	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
+		Da:     "mock",
+		Commit: version.Commit,
+		Block: &abci.BlockParams{
+			MaxBytes: 500000,
+			MaxGas:   40000000,
+		},
+	}})
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(clientCreator)
@@ -43,7 +55,7 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 	managerConfigCreatesEmptyBlocks := testutil.GetManagerConfig()
 	managerConfigCreatesEmptyBlocks.BlockTime = blockTime
 	managerConfigCreatesEmptyBlocks.MaxIdleTime = 0 * time.Second
-	managerWithEmptyBlocks, err := testutil.GetManager(managerConfigCreatesEmptyBlocks, nil, nil, 1, 1, 0, proxyApp, nil)
+	managerWithEmptyBlocks, err := testutil.GetManager(managerConfigCreatesEmptyBlocks, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
 	// Init manager with empty blocks feature enabled
@@ -51,7 +63,7 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 	managerConfig.BlockTime = blockTime
 	managerConfig.MaxIdleTime = MaxIdleTime
 	managerConfig.MaxProofTime = MaxIdleTime
-	manager, err := testutil.GetManager(managerConfig, nil, nil, 1, 1, 0, proxyApp, nil)
+	manager, err := testutil.GetManager(managerConfig, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
 	// Check initial height
@@ -116,7 +128,7 @@ func TestCreateEmptyBlocksNew(t *testing.T) {
 	managerConfig := testutil.GetManagerConfig()
 	managerConfig.BlockTime = 200 * time.Millisecond
 	managerConfig.MaxIdleTime = 1 * time.Second
-	manager, err := testutil.GetManager(managerConfig, nil, nil, 1, 1, 0, proxyApp, nil)
+	manager, err := testutil.GetManager(managerConfig, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
 	abciClient, err := clientCreator.NewABCIClient()
@@ -184,9 +196,24 @@ func TestStopBlockProduction(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
+	app := testutil.GetAppMock(testutil.EndBlock)
+	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
+		Da:     "mock",
+		Commit: version.Commit,
+		Block: &abci.BlockParams{
+			MaxBytes: 500000,
+			MaxGas:   40000000,
+		},
+	}})
+	// Create proxy app
+	clientCreator := proxy.NewLocalClientCreator(app)
+	proxyApp := proxy.NewAppConns(clientCreator)
+	err := proxyApp.Start()
+	require.NoError(err)
+
 	managerConfig := testutil.GetManagerConfig()
-	managerConfig.BatchMaxSizeBytes = 1000 // small batch size to fill up quickly
-	manager, err := testutil.GetManager(managerConfig, nil, nil, 1, 1, 0, nil, nil)
+	managerConfig.BatchSubmitBytes = 1000 // small batch size to fill up quickly
+	manager, err := testutil.GetManager(managerConfig, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
 	assert.Equal(manager.State.Height(), uint64(0))

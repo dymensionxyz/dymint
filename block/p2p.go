@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/types"
+	uevent "github.com/dymensionxyz/dymint/utils/event"
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
@@ -57,7 +59,8 @@ func (m *Manager) onReceivedBlock(event pubsub.Message) {
 
 	err := m.attemptApplyCachedBlocks()
 	if err != nil {
-		m.logger.Error("Applying cached blocks.", "err", err)
+		uevent.MustPublish(context.TODO(), m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
+		m.logger.Error("Attempt apply cached blocks.", "err", err)
 	}
 }
 

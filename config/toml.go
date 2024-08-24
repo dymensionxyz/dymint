@@ -70,17 +70,17 @@ block_time = "{{ .BlockManagerConfig.BlockTime }}"
 # block production interval in case of no transactions ("0s" produces empty blocks)
 max_idle_time = "{{ .BlockManagerConfig.MaxIdleTime }}"
 max_proof_time = "{{ .BlockManagerConfig.MaxProofTime }}"
-max_supported_batch_skew = {{ .BlockManagerConfig.MaxBatchSkew }}
+max_batch_skew = {{ .BlockManagerConfig.BatchSkew }}
 
 
 # triggers to submit batch to DA and settlement (both required)
-batch_submit_max_time = "{{ .BlockManagerConfig.BatchSubmitMaxTime }}"
+# max time between two batch submissions. submission will be triggered if there is no previous submission in batch_submit_time
+batch_submit_time = "{{ .BlockManagerConfig.BatchSubmitTime }}"
 
-# max size of batch in bytes that can be accepted by DA
-block_batch_max_size_bytes = {{ .BlockManagerConfig.BatchMaxSizeBytes }}
+# max size of batch in bytes. submission will be triggered after accumulating blocks for batch_submit_bytes
+batch_submit_bytes = {{ .BlockManagerConfig.BatchSubmitBytes }}
 
 ### da config ###
-da_layer = "{{ .DALayer }}" # mock, celestia, avail
 # this should be json matching the celestia.Config type
 da_config = "{{ .DAConfig }}"
 
@@ -120,7 +120,6 @@ p2p_blocksync_block_request_interval= "{{ .P2PConfig.BlockSyncRequestIntervalTim
 settlement_layer = "{{ .SettlementLayer }}" # mock, dymension
 
 # dymension config
-rollapp_id = "{{ .SettlementConfig.RollappID }}"
 settlement_node_address = "{{ .SettlementConfig.NodeAddress }}"
 settlement_gas_limit = {{ .SettlementConfig.GasLimit }}
 settlement_gas_prices = "{{ .SettlementConfig.GasPrices }}"

@@ -59,7 +59,7 @@ func TestGetSequencers(t *testing.T) {
 	require.NoError(err)
 
 	hubClient := dymension.Client{}
-	err = hubClient.Init(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
+	err = hubClient.Init(settlement.Config{}, "rollappTest", pubsubServer, log.TestingLogger(), options...)
 	require.NoError(err)
 
 	sequencers, err := hubClient.GetBondedSequencers()
@@ -98,7 +98,7 @@ func TestPostBatchRPCError(t *testing.T) {
 	require.NoError(err)
 
 	hubClient := dymension.Client{}
-	err = hubClient.Init(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
+	err = hubClient.Init(settlement.Config{}, "rollappTest", pubsubServer, log.TestingLogger(), options...)
 	require.NoError(err)
 
 	// submit passes
@@ -220,7 +220,6 @@ func TestPostBatch(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			// Reset the mock functions
 			testutil.UnsetMockFn(cosmosClientMock.On("BroadcastTx"))
-			testutil.UnsetMockFn(rollappQueryClientMock.On("StateInfo"))
 			// Set the mock logic based on the test case
 			if !c.isBatchSubmitSuccess {
 				cosmosClientMock.On("BroadcastTx", mock.Anything, mock.Anything).Return(cosmosclient.Response{TxResponse: &types.TxResponse{Code: 1}}, submitBatchError)
@@ -243,7 +242,7 @@ func TestPostBatch(t *testing.T) {
 				}
 			}
 			hubClient := dymension.Client{}
-			err := hubClient.Init(settlement.Config{}, pubsubServer, log.TestingLogger(), options...)
+			err := hubClient.Init(settlement.Config{}, "rollappTest", pubsubServer, log.TestingLogger(), options...)
 			require.NoError(err)
 			err = hubClient.Start()
 			require.NoError(err)
