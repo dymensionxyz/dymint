@@ -34,9 +34,9 @@ func (c *Client) getEventData(eventType string, rawEventData ctypes.ResultEvent)
 func (c *Client) eventHandler() {
 	subscriber := fmt.Sprintf("dymension-client-%s", uuid.New().String())
 
-	eventStateUpdateQ := fmt.Sprintf(eventStateUpdateFmt, c.config.RollappID)
-	eventSequencersListQ := fmt.Sprintf(eventSequencersListUpdateFmt, c.config.RollappID)
-	eventRotationStartedQ := fmt.Sprintf(eventRotationStartedFmt, c.config.RollappID)
+	eventStateUpdateQ := fmt.Sprintf(eventStateUpdateFmt, c.rollappId)
+	eventSequencersListQ := fmt.Sprintf(eventSequencersListUpdateFmt, c.rollappId)
+	eventRotationStartedQ := fmt.Sprintf(eventRotationStartedFmt, c.rollappId)
 
 	// TODO: add validation callback for the event data
 	eventMap := map[string]string{

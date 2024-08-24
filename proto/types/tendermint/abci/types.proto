@@ -374,6 +374,7 @@ message Evidence {
   int64 total_voting_power = 5;
 }
 
+
 //----------------------------------------
 // State Sync Types
 

@@ -18,6 +18,9 @@ const (
 	DefaultDymintDir      = ".dymint"
 	DefaultConfigDirName  = "config"
 	DefaultConfigFileName = "dymint.toml"
+	MinBlockTime          = 200 * time.Millisecond
+	MaxBlockTime          = 6 * time.Second
+	MaxBatchSubmitTime    = 1 * time.Hour
 )
 
 // NodeConfig stores Dymint node configuration.
@@ -30,7 +33,6 @@ type NodeConfig struct {
 
 	// parameters below are dymint specific and read from config
 	BlockManagerConfig `mapstructure:",squash"`
-	DALayer            string                 `mapstructure:"da_layer"`
 	DAConfig           string                 `mapstructure:"da_config"`
 	SettlementLayer    string                 `mapstructure:"settlement_layer"`
 	SettlementConfig   settlement.Config      `mapstructure:",squash"`
@@ -52,11 +54,11 @@ type BlockManagerConfig struct {
 	// MaxProofTime defines the max time to be idle, if txs that requires proof were included in last block
 	MaxProofTime time.Duration `mapstructure:"max_proof_time"`
 	// BatchSubmitMaxTime is how long should block manager wait for before submitting batch
-	BatchSubmitMaxTime time.Duration `mapstructure:"batch_submit_max_time"`
-	// MaxBatchSkew is the number of batches which are waiting to be submitted. Block production will be paused if this limit is reached.
-	MaxBatchSkew uint64 `mapstructure:"max_supported_batch_skew"`
+	BatchSubmitTime time.Duration `mapstructure:"batch_submit_time"`
+	// BatchSkew is the number of batches waiting to be submitted. Block production will be paused if this limit is reached.
+	BatchSkew uint64 `mapstructure:"max_batch_skew"`
 	// The size of the batch of blocks and commits in Bytes. We'll write every batch to the DA and the settlement layer.
-	BatchMaxSizeBytes uint64 `mapstructure:"block_batch_max_size_bytes"`
+	BatchSubmitBytes uint64 `mapstructure:"batch_submit_bytes"`
 }
 
 // GetViperConfig reads configuration parameters from Viper instance.
@@ -124,8 +126,12 @@ func (nc NodeConfig) Validate() error {
 
 // Validate BlockManagerConfig
 func (c BlockManagerConfig) Validate() error {
-	if c.BlockTime <= 0 {
-		return fmt.Errorf("block_time must be positive")
+	if c.BlockTime < MinBlockTime {
+		return fmt.Errorf("block_time cannot be less than %s", MinBlockTime)
+	}
+
+	if c.BlockTime > MaxBlockTime {
+		return fmt.Errorf("block_time cannot be greater than %s", MaxBlockTime)
 	}
 
 	if c.MaxIdleTime < 0 {
@@ -133,32 +139,28 @@ func (c BlockManagerConfig) Validate() error {
 	}
 	// MaxIdleTime zero disables adaptive block production.
 	if c.MaxIdleTime != 0 {
-		if c.MaxIdleTime <= c.BlockTime {
-			return fmt.Errorf("max_idle_time must be greater than block_time")
+		if c.MaxIdleTime <= c.BlockTime || c.MaxIdleTime > MaxBatchSubmitTime {
+			return fmt.Errorf("max_idle_time must be greater than block_time and not greater than %s", MaxBatchSubmitTime)
 		}
 		if c.MaxProofTime <= 0 || c.MaxProofTime > c.MaxIdleTime {
 			return fmt.Errorf("max_proof_time must be positive and not greater than max_idle_time")
 		}
 	}
 
-	if c.BatchSubmitMaxTime <= 0 {
-		return fmt.Errorf("batch_submit_max_time must be positive")
+	if c.BatchSubmitTime < c.MaxIdleTime {
+		return fmt.Errorf("batch_submit_time must be greater than max_idle_time")
 	}
 
-	if c.BatchSubmitMaxTime < c.BlockTime {
-		return fmt.Errorf("batch_submit_max_time must be greater than block_time")
+	if c.BatchSubmitTime > MaxBatchSubmitTime {
+		return fmt.Errorf("batch_submit_time must be not greater than %s", MaxBatchSubmitTime)
 	}
 
-	if c.BatchSubmitMaxTime < c.MaxIdleTime {
-		return fmt.Errorf("batch_submit_max_time must be greater than max_idle_time")
+	if c.BatchSubmitBytes <= 0 {
+		return fmt.Errorf("batch_submit_bytes must be positive")
 	}
 
-	if c.BatchMaxSizeBytes <= 0 {
-		return fmt.Errorf("block_batch_size_bytes must be positive")
-	}
-
-	if c.MaxBatchSkew <= 0 {
-		return fmt.Errorf("max_supported_batch_skew must be positive")
+	if c.BatchSkew <= 0 {
+		return fmt.Errorf("max_batch_skew must be positive")
 	}
 
 	return nil
@@ -177,17 +179,6 @@ func (nc NodeConfig) validateSettlementLayer() error {
 }
 
 func (nc NodeConfig) validateDALayer() error {
-	if nc.DALayer == "" {
-		return fmt.Errorf("DALayer cannot be empty")
-	}
-
-	if nc.DALayer == "mock" {
-		return nil
-	}
-
-	if nc.DAConfig == "" {
-		return fmt.Errorf("DAConfig cannot be empty")
-	}
 	if nc.DAGrpc.Host == "" {
 		return fmt.Errorf("DAGrpc.Host cannot be empty")
 	}

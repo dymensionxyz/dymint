@@ -40,6 +40,7 @@ const (
 // Client is the client for the Dymension Hub.
 type Client struct {
 	config                  *settlement.Config
+	rollappId               string
 	logger                  types.Logger
 	pubsub                  *pubsub.Server
 	cosmosClient            CosmosClient
@@ -58,11 +59,12 @@ type Client struct {
 var _ settlement.ClientI = &Client{}
 
 // Init is called once. it initializes the struct members.
-func (c *Client) Init(config settlement.Config, pubsub *pubsub.Server, logger types.Logger, options ...settlement.Option) error {
+func (c *Client) Init(config settlement.Config, rollappId string, pubsub *pubsub.Server, logger types.Logger, options ...settlement.Option) error {
 	interfaceRegistry := cdctypes.NewInterfaceRegistry()
 	cryptocodec.RegisterInterfaces(interfaceRegistry)
 	protoCodec := codec.NewProtoCodec(interfaceRegistry)
 
+	c.rollappId = rollappId
 	c.config = &config
 	c.logger = logger
 	c.pubsub = pubsub
@@ -176,7 +178,7 @@ func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *d
 					c.logger.Debug("Received event for a different batch, ignoring.", "event", eventData)
 					continue // continue waiting for acceptance of the current batch
 				}
-				c.logger.Info("Batch accepted.", "startHeight", batch.StartHeight(), "endHeight", batch.EndHeight(), "stateIndex", eventData.StateIndex)
+				c.logger.Info("Batch accepted.", "startHeight", batch.StartHeight(), "endHeight", batch.EndHeight(), "stateIndex", eventData.StateIndex, "dapath", msgUpdateState.DAPath)
 				return nil
 
 			case <-timer.C:
@@ -220,7 +222,7 @@ func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *d
 }
 
 func (c *Client) getStateInfo(index, height *uint64) (res *rollapptypes.QueryGetStateInfoResponse, err error) {
-	req := &rollapptypes.QueryGetStateInfoRequest{RollappId: c.config.RollappID}
+	req := &rollapptypes.QueryGetStateInfoRequest{RollappId: c.rollappId}
 	if index != nil {
 		req.Index = *index
 	}
@@ -291,7 +293,7 @@ func (c *Client) GetProposer() *types.Sequencer {
 	var proposerAddr string
 	err = c.RunWithRetry(func() error {
 		reqProposer := &sequencertypes.QueryGetProposerByRollappRequest{
-			RollappId: c.config.RollappID,
+			RollappId: c.rollappId,
 		}
 		res, err := c.sequencerQueryClient.GetProposerByRollapp(c.ctx, reqProposer)
 		if err == nil {
@@ -324,7 +326,7 @@ func (c *Client) GetProposer() *types.Sequencer {
 func (c *Client) GetAllSequencers() ([]types.Sequencer, error) {
 	var res *sequencertypes.QueryGetSequencersByRollappResponse
 	req := &sequencertypes.QueryGetSequencersByRollappRequest{
-		RollappId: c.config.RollappID,
+		RollappId: c.rollappId,
 	}
 
 	err := c.RunWithRetry(func() error {
@@ -371,7 +373,7 @@ func (c *Client) GetAllSequencers() ([]types.Sequencer, error) {
 func (c *Client) GetBondedSequencers() ([]types.Sequencer, error) {
 	var res *sequencertypes.QueryGetSequencersByRollappByStatusResponse
 	req := &sequencertypes.QueryGetSequencersByRollappByStatusRequest{
-		RollappId: c.config.RollappID,
+		RollappId: c.rollappId,
 		Status:    sequencertypes.Bonded,
 	}
 
@@ -422,7 +424,7 @@ func (c *Client) CheckRotationInProgress() (*types.Sequencer, error) {
 	)
 	err := c.RunWithRetry(func() error {
 		req := &sequencertypes.QueryGetNextProposerByRollappRequest{
-			RollappId: c.config.RollappID,
+			RollappId: c.rollappId,
 		}
 		res, err := c.sequencerQueryClient.GetNextProposerByRollapp(c.ctx, req)
 		if err == nil && res.RotationInProgress {
@@ -498,7 +500,7 @@ func (c *Client) convertBatchToMsgUpdateState(batch *types.Batch, daResult *da.R
 
 	settlementBatch := &rollapptypes.MsgUpdateState{
 		Creator:     addr,
-		RollappId:   c.config.RollappID,
+		RollappId:   c.rollappId,
 		StartHeight: batch.StartHeight(),
 		NumBlocks:   batch.NumBlocks(),
 		DAPath:      daResult.SubmitMetaData.ToPath(),

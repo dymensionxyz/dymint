@@ -32,6 +32,7 @@ import (
 	"github.com/dymensionxyz/dymint/node"
 	"github.com/dymensionxyz/dymint/rpc/client"
 	"github.com/dymensionxyz/dymint/settlement"
+	"github.com/dymensionxyz/dymint/version"
 )
 
 func TestHandlerMapping(t *testing.T) {
@@ -279,7 +280,14 @@ func getRPC(t *testing.T) (*tmmocks.MockApplication, *client.Client) {
 	app := &tmmocks.MockApplication{}
 	app.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 	app.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
-	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{})
+	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
+		Da:     "mock",
+		Commit: version.Commit,
+		Block: &abci.BlockParams{
+			MaxBytes: 100,
+			MaxGas:   100,
+		},
+	}})
 	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{})
 	app.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{
 		GasWanted: 1000,
@@ -300,17 +308,16 @@ func getRPC(t *testing.T) (*tmmocks.MockApplication, *client.Client) {
 	rollappID := "rollapp_1234-1"
 
 	config := config.NodeConfig{
-		DALayer: "mock", SettlementLayer: "mock",
+		SettlementLayer: "mock",
 		BlockManagerConfig: config.BlockManagerConfig{
-			BlockTime:          1 * time.Second,
-			MaxIdleTime:        0,
-			MaxBatchSkew:       10,
-			BatchSubmitMaxTime: 30 * time.Minute,
-			BatchMaxSizeBytes:  1000,
+			BlockTime:        1 * time.Second,
+			MaxIdleTime:      0,
+			BatchSkew:        10,
+			BatchSubmitTime:  30 * time.Minute,
+			BatchSubmitBytes: 1000,
 		},
 		SettlementConfig: settlement.Config{
 			ProposerPubKey: hex.EncodeToString(proposerPubKeyBytes),
-			RollappID:      rollappID,
 		},
 		P2PConfig: config.P2PConfig{
 			ListenAddress:                config.DefaultListenAddress,
@@ -325,7 +332,7 @@ func getRPC(t *testing.T) (*tmmocks.MockApplication, *client.Client) {
 		key,
 		signingKey,
 		proxy.NewLocalClientCreator(app),
-		&types.GenesisDoc{ChainID: rollappID},
+		&types.GenesisDoc{ChainID: rollappID, AppState: []byte("{\"rollapp_params\": {\"params\": {\"da\": \"mock\",\"commit\": \"" + version.Commit + "\"}}}")},
 		log.TestingLogger(),
 		mempool.NopMetrics(),
 	)

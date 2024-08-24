@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/dymint/types/pb/dymint"
+	dymintversion "github.com/dymensionxyz/dymint/version"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmcrypto "github.com/tendermint/tendermint/crypto"
@@ -234,6 +236,10 @@ func GenerateStateWithSequencer(initialHeight int64, lastBlockHeight int64, pubk
 				App:   AppVersion,
 			},
 		},
+		ConsensusParams: dymint.RollappConsensusParams{
+			Da:     "mock",
+			Commit: dymintversion.Commit,
+		},
 	}
 	s.Sequencers.SetProposer(types.NewSequencer(pubkey, ""))
 	s.SetHeight(uint64(lastBlockHeight))
@@ -262,6 +268,7 @@ func GenerateGenesis(initialHeight int64) *tmtypes.GenesisDoc {
 				AppVersion: AppVersion,
 			},
 		},
+		AppState: []byte("{\"rollapp_params\": {\"params\": {\"da\": \"mock\",\"commit\": \"" + dymintversion.Commit + "\",\"blockmaxgas\":400000000,\"blockmaxsize\":500000}}}"),
 	}
 }
 

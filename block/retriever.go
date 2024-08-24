@@ -1,14 +1,17 @@
 package block
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 
 	"github.com/dymensionxyz/dymint/da"
+	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
+	uevent "github.com/dymensionxyz/dymint/utils/event"
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
@@ -54,10 +57,12 @@ func (m *Manager) syncToTargetHeight(targetHeight uint64) error {
 			return fmt.Errorf("stuck at height %d", currH)
 		}
 		m.logger.Info("Synced from DA", "store height", m.State.Height(), "target height", targetHeight)
+
 	}
 
 	err := m.attemptApplyCachedBlocks()
 	if err != nil {
+		uevent.MustPublish(context.TODO(), m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
 		m.logger.Error("Attempt apply cached blocks.", "err", err)
 	}
 
@@ -148,6 +153,7 @@ func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
 			lastAppliedHeight = float64(block.Header.Height)
 
 			m.blockCache.Delete(block.Header.Height)
+
 		}
 	}
 	types.LastReceivedDAHeightGauge.Set(lastAppliedHeight)
@@ -162,7 +168,7 @@ func (m *Manager) fetchBatch(daMetaData *da.DASubmitMetaData) da.ResultRetrieveB
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
 				Message: fmt.Sprintf("DA client for the batch does not match node config: DA client batch: %s: DA client config: %s", daMetaData.Client, m.DAClient.GetClientType()),
-				Error:   ErrWrongDA,
+				Error:   da.ErrDAMismatch,
 			},
 		}
 	}

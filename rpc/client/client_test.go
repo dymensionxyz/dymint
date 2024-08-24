@@ -35,6 +35,7 @@ import (
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/dymint/version"
 )
 
 var expectedInfo = abci.ResponseInfo{
@@ -82,16 +83,8 @@ func TestCheckTx(t *testing.T) {
 
 func TestGenesisChunked(t *testing.T) {
 	assert := assert.New(t)
-	rollappID := "rollapp_1234-1"
 
-	genDoc := &tmtypes.GenesisDoc{
-		ChainID:       rollappID,
-		InitialHeight: int64(1),
-		AppHash:       []byte("test hash"),
-		Validators: []tmtypes.GenesisValidator{
-			{Address: bytes.HexBytes{}, Name: "test", Power: 1, PubKey: ed25519.GenPrivKey().PubKey()},
-		},
-	}
+	genDoc := testutil.GenerateGenesis(1)
 
 	mockApp := &tmmocks.MockApplication{}
 	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
@@ -111,17 +104,14 @@ func TestGenesisChunked(t *testing.T) {
 		},
 		RPC: config.RPCConfig{},
 		BlockManagerConfig: config.BlockManagerConfig{
-			BlockTime:          100 * time.Millisecond,
-			BatchSubmitMaxTime: 60 * time.Second,
-			BatchMaxSizeBytes:  1000,
-			MaxBatchSkew:       10,
+			BlockTime:        100 * time.Millisecond,
+			BatchSubmitTime:  60 * time.Second,
+			BatchSubmitBytes: 1000,
+			BatchSkew:        10,
 		},
-		DALayer:         "mock",
-		DAConfig:        "",
-		SettlementLayer: "mock",
-		SettlementConfig: settlement.Config{
-			RollappID: rollappID,
-		},
+		DAConfig:         "",
+		SettlementLayer:  "mock",
+		SettlementConfig: settlement.Config{},
 	}
 	n, err := node.NewNode(
 		context.Background(),
@@ -453,7 +443,14 @@ func TestTx(t *testing.T) {
 
 	require.NotNil(rpc)
 	mockApp.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
-	mockApp.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{})
+	mockApp.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
+		Da:     "mock",
+		Commit: version.Commit,
+		Block: &abci.BlockParams{
+			MaxBytes: 100,
+			MaxGas:   100,
+		},
+	}})
 	mockApp.On("Commit", mock.Anything).Return(abci.ResponseCommit{})
 	mockApp.On("DeliverTx", mock.Anything).Return(abci.ResponseDeliverTx{})
 	mockApp.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{})
@@ -698,10 +695,8 @@ func TestValidatorSetHandling(t *testing.T) {
 	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{}).Run(func(args mock.Arguments) {
 		waitCh <- nil
 	})
-	rollappID := "rollapp_1234-1"
 
 	nodeConfig := config.NodeConfig{
-		DALayer:         "mock",
 		SettlementLayer: "mock",
 		P2PConfig: config.P2PConfig{
 			ListenAddress:                config.DefaultListenAddress,
@@ -711,14 +706,13 @@ func TestValidatorSetHandling(t *testing.T) {
 			BlockSyncRequestIntervalTime: 30 * time.Second,
 		},
 		BlockManagerConfig: config.BlockManagerConfig{
-			BlockTime:          10 * time.Millisecond,
-			BatchSubmitMaxTime: 60 * time.Second,
-			BatchMaxSizeBytes:  1000,
-			MaxBatchSkew:       10,
+			BlockTime:        10 * time.Millisecond,
+			BatchSubmitTime:  60 * time.Second,
+			BatchSubmitBytes: 1000,
+			BatchSkew:        10,
 		},
 		SettlementConfig: settlement.Config{
 			ProposerPubKey: hex.EncodeToString(proposerPubKeyBytes),
-			RollappID:      rollappID,
 		},
 	}
 
@@ -728,7 +722,7 @@ func TestValidatorSetHandling(t *testing.T) {
 		key,
 		signingKey,
 		proxy.NewLocalClientCreator(app),
-		&tmtypes.GenesisDoc{ChainID: rollappID},
+		testutil.GenerateGenesis(0),
 		log.TestingLogger(),
 		mempool.NopMetrics(),
 	)
@@ -859,8 +853,6 @@ func getRPCInternal(t *testing.T, sequencer bool) (*tmmocks.MockApplication, *cl
 		localKey = slSeqKey
 	}
 
-	rollappID := "rollapp_1234-1"
-
 	config := config.NodeConfig{
 		RootDir: "",
 		DBPath:  "",
@@ -874,17 +866,15 @@ func getRPCInternal(t *testing.T, sequencer bool) (*tmmocks.MockApplication, *cl
 		RPC:           config.RPCConfig{},
 		MempoolConfig: *tmcfg.DefaultMempoolConfig(),
 		BlockManagerConfig: config.BlockManagerConfig{
-			BlockTime:          100 * time.Millisecond,
-			BatchSubmitMaxTime: 60 * time.Second,
-			BatchMaxSizeBytes:  1000,
-			MaxBatchSkew:       10,
+			BlockTime:        100 * time.Millisecond,
+			BatchSubmitTime:  60 * time.Second,
+			BatchSubmitBytes: 1000,
+			BatchSkew:        10,
 		},
-		DALayer:         "mock",
 		DAConfig:        "",
 		SettlementLayer: "mock",
 		SettlementConfig: settlement.Config{
 			ProposerPubKey: proposerKey,
-			RollappID:      rollappID,
 		},
 	}
 	node, err := node.NewNode(
@@ -893,7 +883,7 @@ func getRPCInternal(t *testing.T, sequencer bool) (*tmmocks.MockApplication, *cl
 		key,
 		localKey, // this is where sequencer mode is set. if same key as in settlement.Config, it's sequencer
 		proxy.NewLocalClientCreator(app),
-		&tmtypes.GenesisDoc{ChainID: rollappID},
+		testutil.GenerateGenesis(0),
 		log.TestingLogger(),
 		mempool.NopMetrics(),
 	)
@@ -967,14 +957,11 @@ func TestMempool2Nodes(t *testing.T) {
 	id1, err := peer.IDFromPrivateKey(key1)
 	require.NoError(err)
 
-	rollappID := "rollapp_1234-1"
-
+	genesis := testutil.GenerateGenesis(0)
 	node1, err := node.NewNode(context.Background(), config.NodeConfig{
-		DALayer:         "mock",
 		SettlementLayer: "mock",
 		SettlementConfig: settlement.Config{
 			ProposerPubKey: hex.EncodeToString(proposerPK),
-			RollappID:      rollappID,
 		},
 		P2PConfig: config.P2PConfig{
 			ListenAddress:                "/ip4/127.0.0.1/tcp/9001",
@@ -984,28 +971,26 @@ func TestMempool2Nodes(t *testing.T) {
 			BlockSyncRequestIntervalTime: 30 * time.Second,
 		},
 		BlockManagerConfig: config.BlockManagerConfig{
-			BlockTime:          100 * time.Millisecond,
-			BatchSubmitMaxTime: 60 * time.Second,
-			BatchMaxSizeBytes:  1000,
-			MaxBatchSkew:       10,
+			BlockTime:        100 * time.Millisecond,
+			BatchSubmitTime:  60 * time.Second,
+			BatchSubmitBytes: 1000,
+			BatchSkew:        10,
 		},
 		MempoolConfig: *tmcfg.DefaultMempoolConfig(),
-	}, key1, signingKey1, proxy.NewLocalClientCreator(app), &tmtypes.GenesisDoc{ChainID: rollappID}, log.TestingLogger(), mempool.NopMetrics())
+	}, key1, signingKey1, proxy.NewLocalClientCreator(app), genesis, log.TestingLogger(), mempool.NopMetrics())
 	require.NoError(err)
 	require.NotNil(node1)
 
 	node2, err := node.NewNode(context.Background(), config.NodeConfig{
-		DALayer:         "mock",
 		SettlementLayer: "mock",
 		SettlementConfig: settlement.Config{
 			ProposerPubKey: hex.EncodeToString(proposerPK),
-			RollappID:      rollappID,
 		},
 		BlockManagerConfig: config.BlockManagerConfig{
-			BlockTime:          100 * time.Millisecond,
-			BatchSubmitMaxTime: 60 * time.Second,
-			BatchMaxSizeBytes:  1000,
-			MaxBatchSkew:       10,
+			BlockTime:        100 * time.Millisecond,
+			BatchSubmitTime:  60 * time.Second,
+			BatchSubmitBytes: 1000,
+			BatchSkew:        10,
 		},
 		P2PConfig: config.P2PConfig{
 			ListenAddress:                "/ip4/127.0.0.1/tcp/9002",
@@ -1015,7 +1000,7 @@ func TestMempool2Nodes(t *testing.T) {
 			BlockSyncRequestIntervalTime: 30 * time.Second,
 		},
 		MempoolConfig: *tmcfg.DefaultMempoolConfig(),
-	}, key2, signingKey2, proxy.NewLocalClientCreator(app), &tmtypes.GenesisDoc{ChainID: rollappID}, log.TestingLogger(), mempool.NopMetrics())
+	}, key2, signingKey2, proxy.NewLocalClientCreator(app), genesis, log.TestingLogger(), mempool.NopMetrics())
 	require.NoError(err)
 	require.NotNil(node1)
 

@@ -61,7 +61,7 @@ type Option func(ClientI)
 // ClientI defines generic interface for Settlement layer interaction.
 type ClientI interface {
 	// Init is called once for the client initialization
-	Init(config Config, pubsub *pubsub.Server, logger types.Logger, options ...Option) error
+	Init(config Config, rollappId string, pubsub *pubsub.Server, logger types.Logger, options ...Option) error
 	// Start is called once, after Init. It's implementation should start the client service.
 	Start() error
 	// Stop is called once, after Start. It should stop the client service.

@@ -20,7 +20,6 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/proxy"
-	"github.com/tendermint/tendermint/types"
 
 	"github.com/dymensionxyz/dymint/config"
 	tmmocks "github.com/dymensionxyz/dymint/mocks/github.com/tendermint/tendermint/abci/types"
@@ -33,7 +32,7 @@ func TestStartup(t *testing.T) {
 	require := require.New(t)
 
 	// TODO(omritoptix): Test with and without sequencer mode.
-	node, err := testutil.CreateNode(false, nil)
+	node, err := testutil.CreateNode(false, nil, testutil.GenerateGenesis(0))
 	require.NoError(err)
 	require.NotNil(node)
 
@@ -59,7 +58,6 @@ func TestMempoolDirectly(t *testing.T) {
 	key, _, _ := crypto.GenerateEd25519Key(rand.Reader)
 	signingKey, _, _ := crypto.GenerateEd25519Key(rand.Reader)
 	anotherKey, _, _ := crypto.GenerateEd25519Key(rand.Reader)
-	rollappID := "rollapp_1234-1"
 
 	nodeConfig := config.NodeConfig{
 		RootDir: "",
@@ -74,17 +72,14 @@ func TestMempoolDirectly(t *testing.T) {
 		RPC:           config.RPCConfig{},
 		MempoolConfig: *tmcfg.DefaultMempoolConfig(),
 		BlockManagerConfig: config.BlockManagerConfig{
-			BlockTime:          1 * time.Second,
-			BatchSubmitMaxTime: 60 * time.Second,
-			BatchMaxSizeBytes:  100000,
-			MaxBatchSkew:       10,
+			BlockTime:        1 * time.Second,
+			BatchSubmitTime:  60 * time.Second,
+			BatchSubmitBytes: 100000,
+			BatchSkew:        10,
 		},
-		DALayer:         "mock",
-		DAConfig:        "",
-		SettlementLayer: "mock",
-		SettlementConfig: settlement.Config{
-			RollappID: rollappID,
-		},
+		DAConfig:         "",
+		SettlementLayer:  "mock",
+		SettlementConfig: settlement.Config{},
 	}
 	node, err := node.NewNode(
 		context.Background(),
@@ -92,7 +87,7 @@ func TestMempoolDirectly(t *testing.T) {
 		key,
 		signingKey,
 		proxy.NewLocalClientCreator(app),
-		&types.GenesisDoc{ChainID: rollappID},
+		testutil.GenerateGenesis(0),
 		log.TestingLogger(),
 		mempool.NopMetrics(),
 	)

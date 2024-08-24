@@ -1,12 +1,14 @@
 package types
 
 import (
+	"encoding/json"
+	"fmt"
 	"sync/atomic"
 
 	// TODO(tzdybal): copy to local project?
 
+	"github.com/dymensionxyz/dymint/types/pb/dymint"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
-	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
 
 // State contains information about current state of the blockchain.
@@ -28,7 +30,7 @@ type State struct {
 
 	// Consensus parameters used for validating blocks.
 	// Changes returned by EndBlock and updated after Commit.
-	ConsensusParams                  tmproto.ConsensusParams
+	ConsensusParams                  dymint.RollappConsensusParams
 	LastHeightConsensusParamsChanged int64
 
 	// Merkle root of the results from executing prev block
@@ -40,6 +42,10 @@ type State struct {
 
 func (s *State) IsGenesis() bool {
 	return s.Height() == 0
+}
+
+type RollappParams struct {
+	Params *dymint.RollappConsensusParams
 }
 
 // SetHeight sets the height saved in the Store if it is higher than the existing height
@@ -59,4 +65,25 @@ func (s *State) NextHeight() uint64 {
 		return s.InitialHeight
 	}
 	return s.Height() + 1
+}
+
+// SetConsensusParamsFromGenesis sets the rollapp consensus params from genesis
+func (s *State) SetConsensusParamsFromGenesis(appState json.RawMessage) error {
+	var objmap map[string]json.RawMessage
+	err := json.Unmarshal(appState, &objmap)
+	if err != nil {
+		return err
+	}
+	params, ok := objmap["rollapp_params"]
+	if !ok {
+		return fmt.Errorf("rollapp_params not defined in genesis")
+	}
+
+	var rollappParams RollappParams
+	err = json.Unmarshal(params, &rollappParams)
+	if err != nil {
+		return err
+	}
+	s.ConsensusParams = *rollappParams.Params
+	return nil
 }

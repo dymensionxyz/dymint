@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/dymensionxyz/dymint/block"
+	"github.com/dymensionxyz/dymint/types/pb/dymint"
 
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
@@ -60,8 +61,10 @@ func TestCreateBlock(t *testing.T) {
 	// Init state
 	state := &types.State{}
 	state.Sequencers.SetProposer(types.NewSequencerFromValidator(*tmtypes.NewValidator(tmPubKey, 1)))
-	state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
-	state.ConsensusParams.Block.MaxGas = 100000
+	state.ConsensusParams = dymint.RollappConsensusParams{
+		Blockmaxsize: int64(maxBytes),
+		Blockmaxgas:  100000,
+	}
 
 	// empty block
 	block := executor.CreateBlock(1, &types.Commit{}, [32]byte{}, [32]byte(state.Sequencers.ProposerHash()[:]), state, maxBytes)
@@ -98,7 +101,16 @@ func TestApplyBlock(t *testing.T) {
 	app.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{})
 	app.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
 	app.On("DeliverTx", mock.Anything).Return(abci.ResponseDeliverTx{})
-	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{})
+	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
+		RollappConsensusParamUpdates: &abci.RollappConsensusParams{
+			Da:     "celestia",
+			Commit: "abcde",
+			Block: &abci.BlockParams{
+				MaxBytes: 100,
+				MaxGas:   100,
+			},
+		},
+	})
 	var mockAppHash [32]byte
 	_, err := rand.Read(mockAppHash[:])
 	require.NoError(err)
@@ -155,9 +167,13 @@ func TestApplyBlock(t *testing.T) {
 	state.Sequencers.SetProposer(types.NewSequencerFromValidator(*tmtypes.NewValidator(tmPubKey, 1)))
 	state.InitialHeight = 1
 	state.SetHeight(0)
-	maxBytes := uint64(100)
-	state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
-	state.ConsensusParams.Block.MaxGas = 100000
+	maxBytes := uint64(1000)
+	state.ConsensusParams = dymint.RollappConsensusParams{
+		Blockmaxgas:  100000,
+		Blockmaxsize: int64(maxBytes),
+		Da:           "mock",
+		Commit:       "",
+	}
 
 	// Create first block with one Tx from mempool
 	_ = mpool.CheckTx([]byte{1, 2, 3, 4}, func(r *abci.Response) {}, mempool.TxInfo{})
@@ -240,6 +256,12 @@ func TestApplyBlock(t *testing.T) {
 	require.NoError(err)
 	executor.UpdateStateAfterCommit(state, resp, appHash, block.Header.Height)
 	assert.Equal(uint64(2), state.Height())
+
+	// check rollapp params update
+	assert.Equal(state.ConsensusParams.Da, "celestia")
+	assert.Equal(state.ConsensusParams.Commit, "abcde")
+	assert.Equal(state.ConsensusParams.Blockmaxsize, int64(100))
+	assert.Equal(state.ConsensusParams.Blockmaxgas, int64(100))
 
 	// wait for at least 4 Tx events, for up to 3 second.
 	// 3 seconds is a fail-scenario only

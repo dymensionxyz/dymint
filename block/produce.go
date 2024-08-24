@@ -40,6 +40,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int)
 		case <-ctx.Done():
 			return nil
 		case <-ticker.C:
+
 			// if empty blocks are configured to be enabled, and one is scheduled...
 			produceEmptyBlock := firstBlock || m.Conf.MaxIdleTime == 0 || nextEmptyBlock.Before(time.Now())
 			firstBlock = false
@@ -56,11 +57,11 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int)
 				uevent.MustPublish(ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
 				return err
 			}
+
 			if err != nil {
 				m.logger.Error("Produce and gossip: uncategorized, assuming recoverable.", "error", err)
 				continue
 			}
-
 			nextEmptyBlock = time.Now().Add(m.Conf.MaxIdleTime)
 			if 0 < len(block.Data.Txs) {
 				// the block wasn't empty so we want to make sure we don't wait too long before producing another one, in order to facilitate proofs for ibc
@@ -147,7 +148,7 @@ func (m *Manager) produceBlock(allowEmpty bool, nextProposerHash *[32]byte) (*ty
 		return nil, nil, fmt.Errorf("load block: height: %d: %w: %w", newHeight, err, ErrNonRecoverable)
 	}
 
-	maxBlockDataSize := uint64(float64(m.Conf.BatchMaxSizeBytes) * types.MaxBlockSizeAdjustment)
+	maxBlockDataSize := uint64(float64(m.Conf.BatchSubmitBytes) * types.MaxBlockSizeAdjustment)
 	proposerHashForBlock := [32]byte(m.State.Sequencers.ProposerHash())
 	// if nextProposerHash is set, we create a last block
 	if nextProposerHash != nil {

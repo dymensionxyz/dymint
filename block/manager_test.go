@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"sync/atomic"
+
 	"testing"
 	"time"
 
@@ -19,6 +20,7 @@ import (
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/dymint/version"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/ed25519"
@@ -45,14 +47,16 @@ func TestInitialState(t *testing.T) {
 	pubkey := ed25519.PubKey(raw)
 	sampleState := testutil.GenerateStateWithSequencer(1, 128, pubkey)
 
-	conf := testutil.GetManagerConfig()
+	conf := config.NodeConfig{
+		BlockManagerConfig: testutil.GetManagerConfig(),
+	}
 	logger := log.TestingLogger()
 	pubsubServer := pubsub.NewServer()
 	err = pubsubServer.Start()
 	require.NoError(t, err)
 	proxyApp := testutil.GetABCIProxyAppMock(logger.With("module", "proxy"))
 	settlementlc := slregistry.GetClient(slregistry.Local)
-	_ = settlementlc.Init(settlement.Config{}, pubsubServer, logger)
+	_ = settlementlc.Init(settlement.Config{}, genesis.ChainID, pubsubServer, logger)
 
 	// Init empty store and full store
 	emptyStore := store.New(store.NewDefaultInMemoryKVStore())
@@ -105,9 +109,8 @@ func TestInitialState(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			dalc := testutil.GetMockDALC(logger)
-			agg, err := block.NewManager(key, conf, c.genesis, c.store, nil, proxyApp, dalc, settlementlc,
-				nil, pubsubServer, p2pClient, logger)
+			agg, err := block.NewManager(key, conf, c.genesis, c.store, nil, proxyApp, settlementlc,
+				nil, pubsubServer, p2pClient, nil, logger)
 			assert.NoError(err)
 			assert.NotNil(agg)
 			assert.Equal(c.expectedChainID, agg.State.ChainID)
@@ -123,11 +126,28 @@ func TestInitialState(t *testing.T) {
 // 2. Sync the manager
 // 3. Succeed to produce blocks
 func TestProduceOnlyAfterSynced(t *testing.T) {
-	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, nil, 1, 1, 0, nil, nil)
+	// Init app
+	app := testutil.GetAppMock(testutil.EndBlock)
+	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
+		Da:     "mock",
+		Commit: version.Commit,
+		Block: &abci.BlockParams{
+			MaxBytes: 500000,
+			MaxGas:   40000000,
+		},
+	}})
+	// Create proxy app
+	clientCreator := proxy.NewLocalClientCreator(app)
+	proxyApp := proxy.NewAppConns(clientCreator)
+	err := proxyApp.Start()
+	require.NoError(t, err)
+	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(t, err)
 	require.NotNil(t, manager)
 
 	t.Log("Taking the manager out of sync by submitting a batch")
+	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
+	manager.Retriever = manager.DAClient.(da.BatchRetriever)
 
 	numBatchesToAdd := 2
 	nextBatchStartHeight := manager.NextHeightToSubmit()
@@ -152,6 +172,7 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*4)
 	defer cancel()
 	// Capture the error returned by manager.Start.
+
 	errChan := make(chan error, 1)
 	go func() {
 		errChan <- manager.Start(ctx)
@@ -165,9 +186,12 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 }
 
 func TestRetrieveDaBatchesFailed(t *testing.T) {
-	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, &testutil.DALayerClientRetrieveBatchesError{}, 1, 1, 0, nil, nil)
+
+	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, manager)
+	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
+	manager.Retriever = manager.DAClient.(da.BatchRetriever)
 
 	daMetaData := &da.DASubmitMetaData{
 		Client: da.Mock,
@@ -180,16 +204,24 @@ func TestRetrieveDaBatchesFailed(t *testing.T) {
 
 func TestProduceNewBlock(t *testing.T) {
 	// Init app
-	app := testutil.GetAppMock(testutil.Commit)
+	app := testutil.GetAppMock(testutil.Commit, testutil.EndBlock)
 	commitHash := [32]byte{1}
 	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{Data: commitHash[:]})
+	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
+		Da:     "mock",
+		Commit: version.Commit,
+		Block: &abci.BlockParams{
+			MaxBytes: 500000,
+			MaxGas:   40000000,
+		},
+	}})
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(clientCreator)
 	err := proxyApp.Start()
 	require.NoError(t, err)
 	// Init manager
-	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, nil, 1, 1, 0, proxyApp, nil)
+	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(t, err)
 	// Produce block
 	_, _, err = manager.ProduceApplyGossipBlock(context.Background(), true)
@@ -201,16 +233,25 @@ func TestProduceNewBlock(t *testing.T) {
 
 func TestProducePendingBlock(t *testing.T) {
 	// Init app
-	app := testutil.GetAppMock(testutil.Commit)
+	app := testutil.GetAppMock(testutil.Commit, testutil.EndBlock)
 	commitHash := [32]byte{1}
 	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{Data: commitHash[:]})
+	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
+		Da:     "mock",
+		Commit: version.Commit,
+		Block: &abci.BlockParams{
+			MaxBytes: 500000,
+			MaxGas:   40000000,
+		},
+	}})
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(clientCreator)
 	err := proxyApp.Start()
 	require.NoError(t, err)
 	// Init manager
-	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, nil, 1, 1, 0, proxyApp, nil)
+
+	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(t, err)
 	// Generate block and commit and save it to the store
 	block := testutil.GetRandomBlock(1, 3)
@@ -239,7 +280,7 @@ func TestProduceBlockFailAfterCommit(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
 	// Setup app
-	app := testutil.GetAppMock(testutil.Info, testutil.Commit)
+	app := testutil.GetAppMock(testutil.Info, testutil.Commit, testutil.EndBlock)
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(clientCreator)
@@ -248,7 +289,7 @@ func TestProduceBlockFailAfterCommit(t *testing.T) {
 	// Create a new mock store which should succeed to save the first block
 	mockStore := testutil.NewMockStore()
 	// Init manager
-	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, nil, 1, 1, 0, proxyApp, mockStore)
+	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, mockStore)
 	require.NoError(err)
 
 	cases := []struct {
@@ -305,6 +346,14 @@ func TestProduceBlockFailAfterCommit(t *testing.T) {
 				LastBlockHeight:  tc.LastAppBlockHeight,
 				LastBlockAppHash: tc.LastAppCommitHash[:],
 			})
+			app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
+				Da:     "mock",
+				Commit: version.Commit,
+				Block: &abci.BlockParams{
+					MaxBytes: 500000,
+					MaxGas:   40000000,
+				},
+			}})
 			mockStore.ShouldFailUpdateStateWithBatch = tc.shoudFailOnSaveState
 			_, _, _ = manager.ProduceApplyGossipBlock(context.Background(), true)
 			storeState, err := manager.Store.LoadState()
@@ -324,7 +373,15 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 
 	assert := assert.New(t)
 	require := require.New(t)
-	app := testutil.GetAppMock()
+	app := testutil.GetAppMock(testutil.EndBlock)
+	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
+		Da:     "mock",
+		Commit: version.Commit,
+		Block: &abci.BlockParams{
+			MaxBytes: 500000,
+			MaxGas:   40000000,
+		},
+	}})
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(clientCreator)
@@ -332,8 +389,8 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 	require.NoError(err)
 	// Init manager
 	managerConfig := testutil.GetManagerConfig()
-	managerConfig.BatchMaxSizeBytes = batchLimitBytes // enough for 2 block, not enough for 10 blocks
-	manager, err := testutil.GetManager(managerConfig, nil, nil, 1, 1, 0, proxyApp, nil)
+	managerConfig.BatchSubmitBytes = batchLimitBytes // enough for 2 block, not enough for 10 blocks
+	manager, err := testutil.GetManager(managerConfig, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -367,11 +424,11 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 			// Call createNextDABatch function
 			startHeight := manager.NextHeightToSubmit()
 			endHeight := startHeight + uint64(tc.blocksToProduce) - 1
-			batch, err := manager.CreateBatch(manager.Conf.BatchMaxSizeBytes, startHeight, endHeight)
+			batch, err := manager.CreateBatch(manager.Conf.BatchSubmitBytes, startHeight, endHeight)
 			assert.NoError(err)
 
 			assert.Equal(batch.StartHeight(), startHeight)
-			assert.LessOrEqual(batch.SizeBytes(), int(managerConfig.BatchMaxSizeBytes))
+			assert.LessOrEqual(batch.SizeBytes(), int(managerConfig.BatchSubmitBytes))
 
 			if !tc.expectedToBeTruncated {
 				assert.Equal(batch.EndHeight(), endHeight)
@@ -381,8 +438,8 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 
 				// validate next added block to batch would have been actually too big
 				// First relax the byte limit so we could produce larger batch
-				manager.Conf.BatchMaxSizeBytes = 10 * manager.Conf.BatchMaxSizeBytes
-				newBatch, err := manager.CreateBatch(manager.Conf.BatchMaxSizeBytes, startHeight, batch.EndHeight()+1)
+				manager.Conf.BatchSubmitBytes = 10 * manager.Conf.BatchSubmitBytes
+				newBatch, err := manager.CreateBatch(manager.Conf.BatchSubmitBytes, startHeight, batch.EndHeight()+1)
 				assert.Greater(newBatch.SizeBytes(), batchLimitBytes)
 
 				assert.NoError(err)
@@ -394,7 +451,15 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 func TestDAFetch(t *testing.T) {
 	require := require.New(t)
 	// Setup app
-	app := testutil.GetAppMock(testutil.Info, testutil.Commit)
+	app := testutil.GetAppMock(testutil.Info, testutil.Commit, testutil.EndBlock)
+	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
+		Da:     "mock",
+		Commit: version.Commit,
+		Block: &abci.BlockParams{
+			MaxBytes: 500000,
+			MaxGas:   40000000,
+		},
+	}})
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(clientCreator)
@@ -403,9 +468,12 @@ func TestDAFetch(t *testing.T) {
 	// Create a new mock store which should succeed to save the first block
 	mockStore := testutil.NewMockStore()
 	// Init manager
-	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, nil, 1, 1, 0, proxyApp, mockStore)
+	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, mockStore)
 	require.NoError(err)
 	commitHash := [32]byte{1}
+
+	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
+	manager.Retriever = manager.DAClient.(da.BatchRetriever)
 
 	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{Data: commitHash[:]})
 
@@ -436,7 +504,7 @@ func TestDAFetch(t *testing.T) {
 			manager:    manager,
 			daMetaData: &da.DASubmitMetaData{Client: da.Celestia, Height: daResultSubmitBatch.SubmitMetaData.Height},
 			batch:      batch,
-			err:        block.ErrWrongDA,
+			err:        da.ErrDAMismatch,
 		},
 	}
 

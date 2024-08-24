@@ -62,11 +62,15 @@ func NewStateFromGenesis(genDoc *tmtypes.GenesisDoc) (*types.State, error) {
 		InitialHeight: uint64(genDoc.InitialHeight),
 		BaseHeight:    uint64(genDoc.InitialHeight),
 
-		ConsensusParams:                  *genDoc.ConsensusParams,
 		LastHeightConsensusParamsChanged: genDoc.InitialHeight,
 	}
 	s.SetHeight(0)
 	copy(s.AppHash[:], genDoc.AppHash)
+
+	err = s.SetConsensusParamsFromGenesis(genDoc.AppState)
+	if err != nil {
+		return nil, fmt.Errorf("in genesis doc: %w", err)
+	}
 
 	return &s, nil
 }
@@ -97,34 +101,13 @@ func (e *Executor) UpdateStateAfterInitChain(s *types.State, res *abci.ResponseI
 		copy(s.AppHash[:], res.AppHash)
 	}
 
-	if res.ConsensusParams != nil {
-		params := res.ConsensusParams
-		if params.Block != nil {
-			s.ConsensusParams.Block.MaxBytes = params.Block.MaxBytes
-			s.ConsensusParams.Block.MaxGas = params.Block.MaxGas
-		}
-		if params.Evidence != nil {
-			s.ConsensusParams.Evidence.MaxAgeNumBlocks = params.Evidence.MaxAgeNumBlocks
-			s.ConsensusParams.Evidence.MaxAgeDuration = params.Evidence.MaxAgeDuration
-			s.ConsensusParams.Evidence.MaxBytes = params.Evidence.MaxBytes
-		}
-		if params.Validator != nil {
-			// Copy params.Validator.PubkeyTypes, and set result's value to the copy.
-			// This avoids having to initialize the slice to 0 values, and then write to it again.
-			s.ConsensusParams.Validator.PubKeyTypes = append([]string{}, params.Validator.PubKeyTypes...)
-		}
-		if params.Version != nil {
-			s.ConsensusParams.Version.AppVersion = params.Version.AppVersion
-		}
-		s.Version.Consensus.App = s.ConsensusParams.Version.AppVersion
-	}
 	// We update the last results hash with the empty hash, to conform with RFC-6962.
 	copy(s.LastResultsHash[:], merkle.HashFromByteSlices(nil))
 }
 
 func (e *Executor) UpdateMempoolAfterInitChain(s *types.State) {
-	e.mempool.SetPreCheckFn(mempool.PreCheckMaxBytes(s.ConsensusParams.Block.MaxBytes))
-	e.mempool.SetPostCheckFn(mempool.PostCheckMaxGas(s.ConsensusParams.Block.MaxGas))
+	e.mempool.SetPreCheckFn(mempool.PreCheckMaxBytes(s.ConsensusParams.Blockmaxsize))
+	e.mempool.SetPostCheckFn(mempool.PostCheckMaxGas(s.ConsensusParams.Blockmaxgas))
 }
 
 // UpdateStateAfterCommit updates the state with the app hash and last results hash
@@ -132,9 +115,16 @@ func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResp
 	copy(s.AppHash[:], appHash[:])
 	copy(s.LastResultsHash[:], tmtypes.NewResults(resp.DeliverTxs).Hash())
 
-	// TODO: load consensus params from endblock?
-
 	s.SetHeight(height)
+
+	if resp.EndBlock.RollappConsensusParamUpdates == nil {
+		return
+	}
+
+	s.ConsensusParams.Blockmaxsize = resp.EndBlock.RollappConsensusParamUpdates.Block.MaxBytes
+	s.ConsensusParams.Blockmaxgas = resp.EndBlock.RollappConsensusParamUpdates.Block.MaxGas
+	s.ConsensusParams.Da = resp.EndBlock.RollappConsensusParamUpdates.Da
+	s.ConsensusParams.Commit = resp.EndBlock.RollappConsensusParamUpdates.Commit
 }
 
 // UpdateProposerFromBlock updates the proposer from the block
