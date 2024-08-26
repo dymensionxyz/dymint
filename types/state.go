@@ -17,7 +17,7 @@ type Param struct {
 }
 
 type ConsensusParams struct {
-	//maximum amount of gas that all transactions included in a block can use
+	// maximum amount of gas that all transactions included in a block can use
 	Da           string
 	Version      string
 	Blockmaxgas  string
