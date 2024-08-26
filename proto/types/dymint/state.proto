@@ -56,5 +56,5 @@ message RollappConsensusParams {
   //data availability type (e.g. celestia) used in the rollapp
   string da = 3 ;
   //commit used for the rollapp executable
-  string commit = 4 ;
+  string version = 4 ;
 }

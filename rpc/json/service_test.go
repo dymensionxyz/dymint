@@ -281,8 +281,8 @@ func getRPC(t *testing.T) (*tmmocks.MockApplication, *client.Client) {
 	app.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 	app.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
-		Da:     "mock",
-		Commit: version.Commit,
+		Da:      "mock",
+		Version: version.Commit,
 		Block: &abci.BlockParams{
 			MaxBytes: 100,
 			MaxGas:   100,
@@ -332,7 +332,7 @@ func getRPC(t *testing.T) (*tmmocks.MockApplication, *client.Client) {
 		key,
 		signingKey,
 		proxy.NewLocalClientCreator(app),
-		&types.GenesisDoc{ChainID: rollappID, AppState: []byte("{\"rollapp_params\": {\"params\": {\"da\": \"mock\",\"commit\": \"" + version.Commit + "\"}}}")},
+		&types.GenesisDoc{ChainID: rollappID, AppState: []byte("{\"rollappparams\": {\"params\": {\"da\": \"mock\",\"commit\": \"" + version.Commit + "\"}}}")},
 		log.TestingLogger(),
 		mempool.NopMetrics(),
 	)

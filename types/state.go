@@ -3,6 +3,7 @@ package types
 import (
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"sync/atomic"
 
 	// TODO(tzdybal): copy to local project?
@@ -10,6 +11,18 @@ import (
 	"github.com/dymensionxyz/dymint/types/pb/dymint"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 )
+
+type Param struct {
+	Params json.RawMessage `json:"params"`
+}
+
+type ConsensusParams struct {
+	//maximum amount of gas that all transactions included in a block can use
+	Da           string
+	Version      string
+	Blockmaxgas  string
+	Blockmaxsize uint32
+}
 
 // State contains information about current state of the blockchain.
 type State struct {
@@ -74,16 +87,30 @@ func (s *State) SetConsensusParamsFromGenesis(appState json.RawMessage) error {
 	if err != nil {
 		return err
 	}
-	params, ok := objmap["rollapp_params"]
+	params, ok := objmap["rollappparams"]
 	if !ok {
-		return fmt.Errorf("rollapp_params not defined in genesis")
+		return fmt.Errorf("rollappparams not defined in genesis")
 	}
 
-	var rollappParams RollappParams
-	err = json.Unmarshal(params, &rollappParams)
+	var param Param
+	err = json.Unmarshal(params, &param)
 	if err != nil {
 		return err
 	}
-	s.ConsensusParams = *rollappParams.Params
+
+	var consensusParams ConsensusParams
+	err = json.Unmarshal(param.Params, &consensusParams)
+	if err != nil {
+		return err
+	}
+
+	s.ConsensusParams.Blockmaxgas, err = strconv.ParseInt(consensusParams.Blockmaxgas, 10, 64)
+	if err != nil {
+		return fmt.Errorf("unable to parse block max gas from genesis")
+	}
+	s.ConsensusParams.Blockmaxsize = int64(consensusParams.Blockmaxsize)
+	s.ConsensusParams.Version = consensusParams.Version
+	s.ConsensusParams.Da = consensusParams.Da
+
 	return nil
 }

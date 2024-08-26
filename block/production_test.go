@@ -38,8 +38,8 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 	require := require.New(t)
 	app := testutil.GetAppMock(testutil.EndBlock)
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
-		Da:     "mock",
-		Commit: version.Commit,
+		Da:      "mock",
+		Version: version.Commit,
 		Block: &abci.BlockParams{
 			MaxBytes: 500000,
 			MaxGas:   40000000,
@@ -198,8 +198,8 @@ func TestStopBlockProduction(t *testing.T) {
 
 	app := testutil.GetAppMock(testutil.EndBlock)
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
-		Da:     "mock",
-		Commit: version.Commit,
+		Da:      "mock",
+		Version: version.Commit,
 		Block: &abci.BlockParams{
 			MaxBytes: 500000,
 			MaxGas:   40000000,

@@ -117,7 +117,7 @@ func TestStateRoundTrip(t *testing.T) {
 					Blockmaxgas:  123,
 					Blockmaxsize: 456,
 					Da:           "mock",
-					Commit:       version.Commit,
+					Version:      version.Commit,
 				},
 				LastHeightConsensusParamsChanged: 12345,
 				LastResultsHash:                  [32]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2},

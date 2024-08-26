@@ -129,8 +129,8 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 	// Init app
 	app := testutil.GetAppMock(testutil.EndBlock)
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
-		Da:     "mock",
-		Commit: version.Commit,
+		Da:      "mock",
+		Version: version.Commit,
 		Block: &abci.BlockParams{
 			MaxBytes: 500000,
 			MaxGas:   40000000,
@@ -208,8 +208,8 @@ func TestProduceNewBlock(t *testing.T) {
 	commitHash := [32]byte{1}
 	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{Data: commitHash[:]})
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
-		Da:     "mock",
-		Commit: version.Commit,
+		Da:      "mock",
+		Version: version.Commit,
 		Block: &abci.BlockParams{
 			MaxBytes: 500000,
 			MaxGas:   40000000,
@@ -237,8 +237,8 @@ func TestProducePendingBlock(t *testing.T) {
 	commitHash := [32]byte{1}
 	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{Data: commitHash[:]})
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
-		Da:     "mock",
-		Commit: version.Commit,
+		Da:      "mock",
+		Version: version.Commit,
 		Block: &abci.BlockParams{
 			MaxBytes: 500000,
 			MaxGas:   40000000,
@@ -347,8 +347,8 @@ func TestProduceBlockFailAfterCommit(t *testing.T) {
 				LastBlockAppHash: tc.LastAppCommitHash[:],
 			})
 			app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
-				Da:     "mock",
-				Commit: version.Commit,
+				Da:      "mock",
+				Version: version.Commit,
 				Block: &abci.BlockParams{
 					MaxBytes: 500000,
 					MaxGas:   40000000,
@@ -375,8 +375,8 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 	require := require.New(t)
 	app := testutil.GetAppMock(testutil.EndBlock)
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
-		Da:     "mock",
-		Commit: version.Commit,
+		Da:      "mock",
+		Version: version.Commit,
 		Block: &abci.BlockParams{
 			MaxBytes: 500000,
 			MaxGas:   40000000,
@@ -453,8 +453,8 @@ func TestDAFetch(t *testing.T) {
 	// Setup app
 	app := testutil.GetAppMock(testutil.Info, testutil.Commit, testutil.EndBlock)
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
-		Da:     "mock",
-		Commit: version.Commit,
+		Da:      "mock",
+		Version: version.Commit,
 		Block: &abci.BlockParams{
 			MaxBytes: 500000,
 			MaxGas:   40000000,

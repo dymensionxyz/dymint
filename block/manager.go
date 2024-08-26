@@ -289,8 +289,8 @@ func (m *Manager) UpdateTargetHeight(h uint64) {
 
 // ValidateConfigWithRollappParams checks the configuration params are consistent with the params in the dymint state (e.g. DA and version)
 func (m *Manager) ValidateConfigWithRollappParams() error {
-	if version.Commit != m.State.ConsensusParams.Commit {
-		return fmt.Errorf("binary version mismatch. rollapp param: %s binary used:%s", version.Commit, m.State.ConsensusParams.Commit)
+	if version.Commit != m.State.ConsensusParams.Version {
+		return fmt.Errorf("binary version mismatch. rollapp param: %s binary used:%s", version.Commit, m.State.ConsensusParams.Version)
 	}
 
 	if da.Client(m.State.ConsensusParams.Da) != m.DAClient.GetClientType() {

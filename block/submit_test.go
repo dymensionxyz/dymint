@@ -112,8 +112,8 @@ func TestBatchSubmissionHappyFlow(t *testing.T) {
 	err := proxyApp.Start()
 	require.NoError(err)
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
-		Da:     "mock",
-		Commit: version.Commit,
+		Da:      "mock",
+		Version: version.Commit,
 		Block: &abci.BlockParams{
 			MaxBytes: 500000,
 			MaxGas:   40000000,
@@ -146,8 +146,8 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 	app := testutil.GetAppMock(testutil.EndBlock)
 	ctx := context.Background()
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
-		Da:     "mock",
-		Commit: version.Commit,
+		Da:      "mock",
+		Version: version.Commit,
 		Block: &abci.BlockParams{
 			MaxBytes: 500000,
 			MaxGas:   40000000,
@@ -213,8 +213,8 @@ func TestSubmissionByTime(t *testing.T) {
 	require := require.New(t)
 	app := testutil.GetAppMock(testutil.EndBlock)
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
-		Da:     "mock",
-		Commit: version.Commit,
+		Da:      "mock",
+		Version: version.Commit,
 		Block: &abci.BlockParams{
 			MaxBytes: 500000,
 			MaxGas:   40000000,
@@ -292,8 +292,8 @@ func TestSubmissionByBatchSize(t *testing.T) {
 	for _, c := range cases {
 		app := testutil.GetAppMock(testutil.EndBlock)
 		app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
-			Da:     "mock",
-			Commit: version.Commit,
+			Da:      "mock",
+			Version: version.Commit,
 			Block: &abci.BlockParams{
 				MaxBytes: 500000,
 				MaxGas:   40000000,

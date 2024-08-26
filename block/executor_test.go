@@ -103,8 +103,8 @@ func TestApplyBlock(t *testing.T) {
 	app.On("DeliverTx", mock.Anything).Return(abci.ResponseDeliverTx{})
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
 		RollappConsensusParamUpdates: &abci.RollappConsensusParams{
-			Da:     "celestia",
-			Commit: "abcde",
+			Da:      "celestia",
+			Version: "abcde",
 			Block: &abci.BlockParams{
 				MaxBytes: 100,
 				MaxGas:   100,
@@ -172,7 +172,7 @@ func TestApplyBlock(t *testing.T) {
 		Blockmaxgas:  100000,
 		Blockmaxsize: int64(maxBytes),
 		Da:           "mock",
-		Commit:       "",
+		Version:      "",
 	}
 
 	// Create first block with one Tx from mempool
@@ -259,7 +259,7 @@ func TestApplyBlock(t *testing.T) {
 
 	// check rollapp params update
 	assert.Equal(state.ConsensusParams.Da, "celestia")
-	assert.Equal(state.ConsensusParams.Commit, "abcde")
+	assert.Equal(state.ConsensusParams.Version, "abcde")
 	assert.Equal(state.ConsensusParams.Blockmaxsize, int64(100))
 	assert.Equal(state.ConsensusParams.Blockmaxgas, int64(100))
 
