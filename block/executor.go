@@ -7,7 +7,6 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmcrypto "github.com/tendermint/tendermint/crypto/encoding"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
-	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/proxy"
 	tmtypes "github.com/tendermint/tendermint/types"
 	"go.uber.org/multierr"
@@ -60,28 +59,11 @@ func (e *Executor) InitChain(genesis *tmtypes.GenesisDoc, valset []*tmtypes.Vali
 			Power:  validator.VotingPower,
 		})
 	}
-	params := genesis.ConsensusParams
 
 	return e.proxyAppConsensusConn.InitChainSync(abci.RequestInitChain{
 		Time:    genesis.GenesisTime,
 		ChainId: genesis.ChainID,
-		ConsensusParams: &abci.ConsensusParams{
-			Block: &abci.BlockParams{
-				MaxBytes: params.Block.MaxBytes,
-				MaxGas:   params.Block.MaxGas,
-			},
-			Evidence: &tmproto.EvidenceParams{
-				MaxAgeNumBlocks: params.Evidence.MaxAgeNumBlocks,
-				MaxAgeDuration:  params.Evidence.MaxAgeDuration,
-				MaxBytes:        params.Evidence.MaxBytes,
-			},
-			Validator: &tmproto.ValidatorParams{
-				PubKeyTypes: params.Validator.PubKeyTypes,
-			},
-			Version: &tmproto.VersionParams{
-				AppVersion: params.Version.AppVersion,
-			},
-		},
+
 		Validators:    valUpdates,
 		AppStateBytes: genesis.AppState,
 		InitialHeight: genesis.InitialHeight,
