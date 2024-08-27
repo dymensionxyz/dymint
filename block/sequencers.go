@@ -70,6 +70,7 @@ func (m *Manager) IsProposer() bool {
 
 	// we run sequencer flow if we're proposer on L2 or hub (can be different during rotation phase, before hub receives the last state update)
 	return bytes.Equal(l2Proposer, localProposerKey) || bytes.Equal(expectedHubProposer, localProposerKey)
+
 }
 
 // MissingLastBatch checks if the sequencer is in the middle of rotation (I'm the proposer, but needs to complete rotation)
