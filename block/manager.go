@@ -193,7 +193,7 @@ func (m *Manager) Start(ctx context.Context) error {
 		m.handleRotationReq(ctx, nextSeqAddr)
 		return nil
 	}
-	// gossip any pending blocks that could not be gossiped after produced before node was stopped or crashing
+	// gossip any blocks that weren't gossiped before restart
 	m.gossipPendingBlocks(ctx)
 
 	// populate the bytes produced channel
