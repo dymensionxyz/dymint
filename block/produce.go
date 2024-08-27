@@ -120,6 +120,12 @@ func (m *Manager) produceApplyGossip(ctx context.Context, allowEmpty bool, nextP
 		return nil, nil, fmt.Errorf("gossip block: %w", err)
 	}
 
+	m.State.LastGossipedHeight = block.Header.Height
+	_, err = m.Store.SaveState(m.State, nil)
+	if err != nil {
+		m.logger.Error("Gossip: saving state.", "error", err)
+	}
+
 	return block, commit, nil
 }
 

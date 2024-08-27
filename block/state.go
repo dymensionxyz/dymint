@@ -32,6 +32,10 @@ func (m *Manager) LoadStateOnInit(store store.Store, genesis *tmtypes.GenesisDoc
 	}
 
 	m.State = s
+
+	if m.State.LastGossipedHeight == 0 {
+		m.State.LastGossipedHeight = m.State.Height()
+	}
 	return nil
 }
 
