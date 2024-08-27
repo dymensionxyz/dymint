@@ -100,6 +100,9 @@ func (m *Manager) syncFromDABatch() error {
 }
 
 func (m *Manager) applyLocalBlock(height uint64) error {
+	defer m.retrieverMu.Unlock()
+	m.retrieverMu.Lock()
+
 	block, err := m.Store.LoadBlock(height)
 	if err != nil {
 		return fmt.Errorf("load block: %w", gerrc.ErrNotFound)
@@ -112,12 +115,10 @@ func (m *Manager) applyLocalBlock(height uint64) error {
 		return fmt.Errorf("validate block from local store: height: %d: %w", height, err)
 	}
 
-	m.retrieverMu.Lock()
 	err = m.applyBlock(block, commit, types.BlockMetaData{Source: types.LocalDb})
 	if err != nil {
 		return fmt.Errorf("apply block from local store: height: %d: %w", height, err)
 	}
-	m.retrieverMu.Unlock()
 
 	return nil
 }
