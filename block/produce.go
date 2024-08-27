@@ -116,8 +116,26 @@ func (m *Manager) produceApplyGossip(ctx context.Context, allowEmpty bool, nextP
 		return nil, nil, fmt.Errorf("apply block: %w: %w", err, ErrNonRecoverable)
 	}
 
-	if err := m.gossipBlock(ctx, *block, *commit); err != nil {
-		return nil, nil, fmt.Errorf("gossip block: %w", err)
+	for h := m.State.LastGossipedHeight + 1; h <= block.Header.Height; h++ {
+		block, err := m.Store.LoadBlock(h)
+		if err != nil {
+			m.logger.Error("gossip block unable to load block", "height", h, "err", err)
+			continue
+		}
+		commit, err = m.Store.LoadCommit(h)
+		if err != nil {
+			m.logger.Error("gossip block unable to load commit", "height", h, "err", err)
+			continue
+		}
+		if err := m.gossipBlock(ctx, *block, *commit); err != nil {
+			m.logger.Error("gossip block", "height", h, "err", err)
+			continue
+		}
+	}
+	m.State.LastGossipedHeight = block.Header.Height
+	_, err = m.Store.SaveState(m.State, nil)
+	if err != nil {
+		m.logger.Error("Gossip: saving state.", "error", err)
 	}
 
 	return block, commit, nil
