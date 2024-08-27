@@ -236,7 +236,7 @@ func GenerateStateWithSequencer(initialHeight int64, lastBlockHeight int64, pubk
 				App:   AppVersion,
 			},
 		},
-		ConsensusParams: dymint.RollappConsensusParams{
+		RollappParams: dymint.RollappConsensusParams{
 			Da:      "mock",
 			Version: dymintversion.Commit,
 		},
@@ -268,7 +268,7 @@ func GenerateGenesis(initialHeight int64) *tmtypes.GenesisDoc {
 				AppVersion: AppVersion,
 			},
 		},
-		AppState: []byte("{\"rollappparams\": {\"params\": {\"da\": \"mock\",\"version\": \"" + dymintversion.Commit + "\",\"blockmaxgas\":\"400000000\",\"blockmaxsize\":500000}}}"),
+		AppState: []byte("{\"rollappparams\": {\"params\": {\"da\": \"mock\",\"version\": \"" + dymintversion.Commit + "\"}}}"),
 	}
 }
 

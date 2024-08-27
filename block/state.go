@@ -67,7 +67,7 @@ func NewStateFromGenesis(genDoc *tmtypes.GenesisDoc) (*types.State, error) {
 	s.SetHeight(0)
 	copy(s.AppHash[:], genDoc.AppHash)
 
-	err = s.SetConsensusParamsFromGenesis(genDoc.AppState)
+	err = s.SetRollappParamsFromGenesis(genDoc.AppState)
 	if err != nil {
 		return nil, fmt.Errorf("in genesis doc: %w", err)
 	}
@@ -106,8 +106,8 @@ func (e *Executor) UpdateStateAfterInitChain(s *types.State, res *abci.ResponseI
 }
 
 func (e *Executor) UpdateMempoolAfterInitChain(s *types.State) {
-	e.mempool.SetPreCheckFn(mempool.PreCheckMaxBytes(s.ConsensusParams.Blockmaxsize))
-	e.mempool.SetPostCheckFn(mempool.PostCheckMaxGas(s.ConsensusParams.Blockmaxgas))
+	e.mempool.SetPreCheckFn(mempool.PreCheckMaxBytes(s.ConsensusParams.Block.MaxBytes))
+	e.mempool.SetPostCheckFn(mempool.PostCheckMaxGas(s.ConsensusParams.Block.MaxGas))
 }
 
 // UpdateStateAfterCommit updates the state with the app hash and last results hash
@@ -121,10 +121,10 @@ func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResp
 		return
 	}
 
-	s.ConsensusParams.Blockmaxsize = resp.EndBlock.RollappConsensusParamUpdates.Block.MaxBytes
-	s.ConsensusParams.Blockmaxgas = resp.EndBlock.RollappConsensusParamUpdates.Block.MaxGas
-	s.ConsensusParams.Da = resp.EndBlock.RollappConsensusParamUpdates.Da
-	s.ConsensusParams.Version = resp.EndBlock.RollappConsensusParamUpdates.Version
+	s.ConsensusParams.Block.MaxBytes = resp.EndBlock.ConsensusParamUpdates.Block.MaxBytes
+	s.ConsensusParams.Block.MaxGas = resp.EndBlock.ConsensusParamUpdates.Block.MaxGas
+	s.RollappParams.Da = resp.EndBlock.RollappConsensusParamUpdates.Da
+	s.RollappParams.Version = resp.EndBlock.RollappConsensusParamUpdates.Version
 }
 
 // UpdateProposerFromBlock updates the proposer from the block

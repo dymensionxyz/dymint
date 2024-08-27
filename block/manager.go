@@ -289,20 +289,20 @@ func (m *Manager) UpdateTargetHeight(h uint64) {
 
 // ValidateConfigWithRollappParams checks the configuration params are consistent with the params in the dymint state (e.g. DA and version)
 func (m *Manager) ValidateConfigWithRollappParams() error {
-	if version.Commit != m.State.ConsensusParams.Version {
-		return fmt.Errorf("binary version mismatch. rollapp param: %s binary used:%s", m.State.ConsensusParams.Version, version.Commit)
+	if version.Commit != m.State.RollappParams.Version {
+		return fmt.Errorf("binary version mismatch. rollapp param: %s binary used:%s", m.State.RollappParams.Version, version.Commit)
 	}
 
-	if da.Client(m.State.ConsensusParams.Da) != m.DAClient.GetClientType() {
-		return fmt.Errorf("da client mismatch. rollapp param: %s da configured: %s", m.State.ConsensusParams.Da, m.DAClient.GetClientType())
+	if da.Client(m.State.RollappParams.Da) != m.DAClient.GetClientType() {
+		return fmt.Errorf("da client mismatch. rollapp param: %s da configured: %s", m.State.RollappParams.Da, m.DAClient.GetClientType())
 	}
 
 	if m.Conf.BatchSubmitBytes > uint64(m.DAClient.GetMaxBlobSizeBytes()) {
 		return fmt.Errorf("batch size above limit: batch size: %d limit: %d: DA %s", m.Conf.BatchSubmitBytes, m.DAClient.GetMaxBlobSizeBytes(), m.DAClient.GetClientType())
 	}
 
-	if m.State.ConsensusParams.Blockmaxsize > int64(m.DAClient.GetMaxBlobSizeBytes()) {
-		return fmt.Errorf("max block size above limit: block size: %d limit: %d: DA: %s", m.State.ConsensusParams.Blockmaxsize, int64(m.DAClient.GetMaxBlobSizeBytes()), m.DAClient.GetClientType())
+	if m.State.ConsensusParams.Block.MaxBytes > int64(m.DAClient.GetMaxBlobSizeBytes()) {
+		return fmt.Errorf("max block size above limit: block size: %d limit: %d: DA: %s", m.State.ConsensusParams.Block.MaxBytes, int64(m.DAClient.GetMaxBlobSizeBytes()), m.DAClient.GetClientType())
 	}
 
 	return nil
@@ -310,7 +310,7 @@ func (m *Manager) ValidateConfigWithRollappParams() error {
 
 // setDA initializes DA client in blockmanager according to DA type set in genesis or stored in state
 func (m *Manager) setDA(daconfig string, dalcKV store.KV, logger log.Logger) error {
-	daLayer := m.State.ConsensusParams.Da
+	daLayer := m.State.RollappParams.Da
 	dalc := registry.GetClient(daLayer)
 	if dalc == nil {
 		return fmt.Errorf("get data availability client named '%s'", daLayer)

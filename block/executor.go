@@ -7,6 +7,7 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmcrypto "github.com/tendermint/tendermint/crypto/encoding"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
+	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/proxy"
 	tmtypes "github.com/tendermint/tendermint/types"
 	"go.uber.org/multierr"
@@ -59,11 +60,28 @@ func (e *Executor) InitChain(genesis *tmtypes.GenesisDoc, valset []*tmtypes.Vali
 			Power:  validator.VotingPower,
 		})
 	}
+	params := genesis.ConsensusParams
 
 	return e.proxyAppConsensusConn.InitChainSync(abci.RequestInitChain{
 		Time:    genesis.GenesisTime,
 		ChainId: genesis.ChainID,
-
+		ConsensusParams: &abci.ConsensusParams{
+			Block: &abci.BlockParams{
+				MaxBytes: params.Block.MaxBytes,
+				MaxGas:   params.Block.MaxGas,
+			},
+			Evidence: &tmproto.EvidenceParams{
+				MaxAgeNumBlocks: params.Evidence.MaxAgeNumBlocks,
+				MaxAgeDuration:  params.Evidence.MaxAgeDuration,
+				MaxBytes:        params.Evidence.MaxBytes,
+			},
+			Validator: &tmproto.ValidatorParams{
+				PubKeyTypes: params.Validator.PubKeyTypes,
+			},
+			Version: &tmproto.VersionParams{
+				AppVersion: params.Version.AppVersion,
+			},
+		},
 		Validators:    valUpdates,
 		AppStateBytes: genesis.AppState,
 		InitialHeight: genesis.InitialHeight,
@@ -72,10 +90,10 @@ func (e *Executor) InitChain(genesis *tmtypes.GenesisDoc, valset []*tmtypes.Vali
 
 // CreateBlock reaps transactions from mempool and builds a block.
 func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHeaderHash, nextSeqHash [32]byte, state *types.State, maxBlockDataSizeBytes uint64) *types.Block {
-	if state.ConsensusParams.Blockmaxsize > 0 {
-		maxBlockDataSizeBytes = min(maxBlockDataSizeBytes, uint64(state.ConsensusParams.Blockmaxsize))
+	if state.ConsensusParams.Block.MaxBytes > 0 {
+		maxBlockDataSizeBytes = min(maxBlockDataSizeBytes, uint64(state.ConsensusParams.Block.MaxBytes))
 	}
-	mempoolTxs := e.mempool.ReapMaxBytesMaxGas(int64(maxBlockDataSizeBytes), state.ConsensusParams.Blockmaxgas)
+	mempoolTxs := e.mempool.ReapMaxBytesMaxGas(int64(maxBlockDataSizeBytes), state.ConsensusParams.Block.MaxGas)
 
 	block := &types.Block{
 		Header: types.Header{
@@ -142,8 +160,8 @@ func (e *Executor) commit(state *types.State, block *types.Block, deliverTxs []*
 		return nil, 0, err
 	}
 
-	maxBytes := state.ConsensusParams.Blockmaxsize
-	maxGas := state.ConsensusParams.Blockmaxgas
+	maxBytes := state.ConsensusParams.Block.MaxBytes
+	maxGas := state.ConsensusParams.Block.MaxGas
 	err = e.mempool.Update(int64(block.Header.Height), fromDymintTxs(block.Data.Txs), deliverTxs)
 	if err != nil {
 		return nil, 0, err

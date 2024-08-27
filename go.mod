@@ -293,11 +293,11 @@ require (
 
 replace (
 	github.com/centrifuge/go-substrate-rpc-client/v4 => github.com/availproject/go-substrate-rpc-client/v4 v4.0.12-avail-1.4.0-rc1-5e286e3
-	github.com/dymensionxyz/dymension-rdk => github.com/dymensionxyz/dymension-rdk v1.6.1-0.20240826142931-65043da2cae9
+	github.com/dymensionxyz/dymension-rdk => github.com/dymensionxyz/dymension-rdk v1.6.1-0.20240827102903-08636e7ab3f8
 	github.com/evmos/evmos/v12 => github.com/dymensionxyz/evmos/v12 v12.1.7-0.20240826143159-0ea2ad7d5dab
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.2-alpha.regen.4
 	github.com/gorilla/rpc => github.com/dymensionxyz/rpc v1.3.1
-	github.com/tendermint/tendermint => github.com/dymensionxyz/cometbft v0.34.29-0.20240826103935-3b56e9ae1680
+	github.com/tendermint/tendermint => github.com/dymensionxyz/cometbft v0.34.29-0.20240827102743-fafae27f8527
 )
 
 replace github.com/osmosis-labs/osmosis/v15 => github.com/dymensionxyz/osmosis/v15 v15.2.0-dymension-v1.1.2
