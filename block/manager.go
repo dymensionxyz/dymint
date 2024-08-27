@@ -287,6 +287,15 @@ func (m *Manager) UpdateTargetHeight(h uint64) {
 			break
 		}
 	}
+
+	// updating LastGossipedHeight to avoid gossiping long queue of blocks when sequencer rotation
+	if m.State.LastGossipedHeight < h {
+		m.State.LastGossipedHeight = h
+		_, err := m.Store.SaveState(m.State, nil)
+		if err != nil {
+			m.logger.Error("saving state.", "error", err)
+		}
+	}
 }
 
 // ValidateConfigWithRollappParams checks the configuration params are consistent with the params in the dymint state (e.g. DA and version)

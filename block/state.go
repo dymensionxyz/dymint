@@ -33,6 +33,8 @@ func (m *Manager) LoadStateOnInit(store store.Store, genesis *tmtypes.GenesisDoc
 
 	m.State = s
 
+	// When LastGossipedHeight is 0, it may be because genesis or upgrade.
+	// In this case we set it to node height, to avoid re-gossiping blocks when upgrading.
 	if m.State.LastGossipedHeight == 0 {
 		m.State.LastGossipedHeight = m.State.Height()
 	}
