@@ -193,6 +193,8 @@ func (m *Manager) Start(ctx context.Context) error {
 		m.handleRotationReq(ctx, nextSeqAddr)
 		return nil
 	}
+	//gossip any pending blocks that could not be gossiped after produced
+	m.gossipPendingBlocks(ctx)
 
 	// populate the bytes produced channel
 	bytesProducedC := make(chan int)
@@ -327,4 +329,24 @@ func (m *Manager) setDA(daconfig string, dalcKV store.KV, logger log.Logger) err
 	}
 	m.Retriever = retriever
 	return nil
+}
+
+func (m *Manager) gossipPendingBlocks(ctx context.Context) {
+
+	for h := m.State.LastGossipedHeight + 1; h <= m.State.Height(); h++ {
+		block, err := m.Store.LoadBlock(h)
+		if err != nil {
+			m.logger.Error("gossip block unable to load block", "height", h, "err", err)
+			continue
+		}
+		commit, err := m.Store.LoadCommit(h)
+		if err != nil {
+			m.logger.Error("gossip block unable to load commit", "height", h, "err", err)
+			continue
+		}
+		if err := m.gossipBlock(ctx, *block, *commit); err != nil {
+			m.logger.Error("gossip block", "height", h, "err", err)
+			continue
+		}
+	}
 }
