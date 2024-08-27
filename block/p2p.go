@@ -77,6 +77,10 @@ func (m *Manager) gossipBlock(ctx context.Context, block types.Block, commit typ
 		// could cause that to fail, so we assume recoverable.
 		return fmt.Errorf("p2p gossip block: %w: %w", err, ErrRecoverable)
 	}
-
+	m.State.LastGossipedHeight = block.Header.Height
+	_, err = m.Store.SaveState(m.State, nil)
+	if err != nil {
+		m.logger.Error("Gossip: saving state.", "error", err)
+	}
 	return nil
 }
