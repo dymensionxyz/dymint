@@ -193,7 +193,7 @@ func (m *Manager) Start(ctx context.Context) error {
 		m.handleRotationReq(ctx, nextSeqAddr)
 		return nil
 	}
-	//gossip any pending blocks that could not be gossiped after produced
+	// gossip any pending blocks that could not be gossiped after produced before node was stopped or crashing
 	m.gossipPendingBlocks(ctx)
 
 	// populate the bytes produced channel
@@ -332,7 +332,6 @@ func (m *Manager) setDA(daconfig string, dalcKV store.KV, logger log.Logger) err
 }
 
 func (m *Manager) gossipPendingBlocks(ctx context.Context) {
-
 	for h := m.State.LastGossipedHeight + 1; h <= m.State.Height(); h++ {
 		block, err := m.Store.LoadBlock(h)
 		if err != nil {
