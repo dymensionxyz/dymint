@@ -3,7 +3,6 @@ package block_test
 import (
 	"context"
 	"crypto/rand"
-	"sync/atomic"
 
 	"testing"
 	"time"
@@ -542,9 +541,9 @@ func TestManager_updateTargetHeight(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			m := &block.Manager{
-				TargetHeight: atomic.Uint64{},
-			}
+			m, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, nil, nil)
+			require.NoError(t, err)
+
 			m.TargetHeight.Store(tt.TargetHeight)
 			m.UpdateTargetHeight(tt.h)
 			assert.Equal(t, tt.expTargetHeight, m.TargetHeight.Load())
