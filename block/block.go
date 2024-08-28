@@ -1,12 +1,10 @@
 package block
 
 import (
-	"context"
 	"fmt"
 
 	errorsmod "cosmossdk.io/errors"
 
-	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/types"
 )
 
@@ -168,18 +166,4 @@ func (m *Manager) attemptApplyCachedBlocks() error {
 // This function validates the block and commit against the state before applying it.
 func (m *Manager) validateBlockBeforeApply(block *types.Block, commit *types.Commit) error {
 	return types.ValidateProposedTransition(m.State, block, commit, m.GetProposerPubKey())
-}
-
-// This function adds the block to blocksync store to enable P2P retrievability
-func (m *Manager) saveP2PBlockToBlockSync(block *types.Block, commit *types.Commit) error {
-	gossipedBlock := p2p.BlockData{Block: *block, Commit: *commit}
-	gossipedBlockBytes, err := gossipedBlock.MarshalBinary()
-	if err != nil {
-		return fmt.Errorf("marshal binary: %w: %w", err, ErrNonRecoverable)
-	}
-	err = m.P2PClient.SaveBlock(context.Background(), block.Header.Height, gossipedBlockBytes)
-	if err != nil {
-		m.logger.Error("Adding  block to blocksync store.", "err", err, "height", gossipedBlock.Block.Header.Height)
-	}
-	return nil
 }
