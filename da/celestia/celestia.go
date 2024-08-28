@@ -548,7 +548,7 @@ func (c *DataAvailabilityLayerClient) submit(daBlob da.Blob) (uint64, da.Commitm
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
-	height, err := c.rpc.Submit(ctx, blobs, openrpc.GasPrice(c.config.GasPrices))
+	height, err := c.rpc.Submit(ctx, blobs, &blob.SubmitOptions{})
 	if err != nil {
 		return 0, nil, fmt.Errorf("do rpc submit: %w", err)
 	}
@@ -578,12 +578,7 @@ func (c *DataAvailabilityLayerClient) blobsAndCommitments(daBlob da.Blob) ([]*bl
 	}
 	blobs = append(blobs, b)
 
-	commitment, err := blob.CreateCommitment(b)
-	if err != nil {
-		return nil, nil, fmt.Errorf("create commitment: %w", err)
-	}
-
-	commitments = append(commitments, commitment)
+	commitments = append(commitments, b.Commitment)
 	return blobs, commitments, nil
 }
 

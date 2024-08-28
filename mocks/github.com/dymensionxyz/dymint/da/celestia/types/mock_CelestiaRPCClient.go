@@ -3,10 +3,9 @@
 package types
 
 import (
-	client "github.com/celestiaorg/celestia-openrpc"
-	blob "github.com/celestiaorg/celestia-openrpc/types/blob"
-
 	context "context"
+
+	blob "github.com/celestiaorg/celestia-openrpc/types/blob"
 
 	header "github.com/celestiaorg/celestia-openrpc/types/header"
 
@@ -329,9 +328,9 @@ func (_c *MockCelestiaRPCClient_Included_Call) RunAndReturn(run func(context.Con
 	return _c
 }
 
-// Submit provides a mock function with given fields: ctx, blobs, gasPrice
-func (_m *MockCelestiaRPCClient) Submit(ctx context.Context, blobs []*blob.Blob, gasPrice client.GasPrice) (uint64, error) {
-	ret := _m.Called(ctx, blobs, gasPrice)
+// Submit provides a mock function with given fields: ctx, blobs, option
+func (_m *MockCelestiaRPCClient) Submit(ctx context.Context, blobs []*blob.Blob, option *blob.SubmitOptions) (uint64, error) {
+	ret := _m.Called(ctx, blobs, option)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Submit")
@@ -339,17 +338,17 @@ func (_m *MockCelestiaRPCClient) Submit(ctx context.Context, blobs []*blob.Blob,
 
 	var r0 uint64
 	var r1 error
-	if rf, ok := ret.Get(0).(func(context.Context, []*blob.Blob, client.GasPrice) (uint64, error)); ok {
-		return rf(ctx, blobs, gasPrice)
+	if rf, ok := ret.Get(0).(func(context.Context, []*blob.Blob, *blob.SubmitOptions) (uint64, error)); ok {
+		return rf(ctx, blobs, option)
 	}
-	if rf, ok := ret.Get(0).(func(context.Context, []*blob.Blob, client.GasPrice) uint64); ok {
-		r0 = rf(ctx, blobs, gasPrice)
+	if rf, ok := ret.Get(0).(func(context.Context, []*blob.Blob, *blob.SubmitOptions) uint64); ok {
+		r0 = rf(ctx, blobs, option)
 	} else {
 		r0 = ret.Get(0).(uint64)
 	}
 
-	if rf, ok := ret.Get(1).(func(context.Context, []*blob.Blob, client.GasPrice) error); ok {
-		r1 = rf(ctx, blobs, gasPrice)
+	if rf, ok := ret.Get(1).(func(context.Context, []*blob.Blob, *blob.SubmitOptions) error); ok {
+		r1 = rf(ctx, blobs, option)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -365,14 +364,14 @@ type MockCelestiaRPCClient_Submit_Call struct {
 // Submit is a helper method to define mock.On call
 //   - ctx context.Context
 //   - blobs []*blob.Blob
-//   - gasPrice client.GasPrice
-func (_e *MockCelestiaRPCClient_Expecter) Submit(ctx interface{}, blobs interface{}, gasPrice interface{}) *MockCelestiaRPCClient_Submit_Call {
-	return &MockCelestiaRPCClient_Submit_Call{Call: _e.mock.On("Submit", ctx, blobs, gasPrice)}
+//   - option *blob.SubmitOptions
+func (_e *MockCelestiaRPCClient_Expecter) Submit(ctx interface{}, blobs interface{}, option interface{}) *MockCelestiaRPCClient_Submit_Call {
+	return &MockCelestiaRPCClient_Submit_Call{Call: _e.mock.On("Submit", ctx, blobs, option)}
 }
 
-func (_c *MockCelestiaRPCClient_Submit_Call) Run(run func(ctx context.Context, blobs []*blob.Blob, gasPrice client.GasPrice)) *MockCelestiaRPCClient_Submit_Call {
+func (_c *MockCelestiaRPCClient_Submit_Call) Run(run func(ctx context.Context, blobs []*blob.Blob, option *blob.SubmitOptions)) *MockCelestiaRPCClient_Submit_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(context.Context), args[1].([]*blob.Blob), args[2].(client.GasPrice))
+		run(args[0].(context.Context), args[1].([]*blob.Blob), args[2].(*blob.SubmitOptions))
 	})
 	return _c
 }
@@ -382,7 +381,7 @@ func (_c *MockCelestiaRPCClient_Submit_Call) Return(_a0 uint64, _a1 error) *Mock
 	return _c
 }
 
-func (_c *MockCelestiaRPCClient_Submit_Call) RunAndReturn(run func(context.Context, []*blob.Blob, client.GasPrice) (uint64, error)) *MockCelestiaRPCClient_Submit_Call {
+func (_c *MockCelestiaRPCClient_Submit_Call) RunAndReturn(run func(context.Context, []*blob.Blob, *blob.SubmitOptions) (uint64, error)) *MockCelestiaRPCClient_Submit_Call {
 	_c.Call.Return(run)
 	return _c
 }
