@@ -48,7 +48,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		return fmt.Errorf("save block: %w", err)
 	}
 
-	err := m.saveP2PBlockToBlockSync(block, commit)
+	err = m.saveP2PBlockToBlockSync(block, commit)
 	if err != nil {
 		m.logger.Error("save block blocksync", "err", err)
 	}
