@@ -545,7 +545,6 @@ func TestManager_updateTargetHeight(t *testing.T) {
 			m := &block.Manager{
 				TargetHeight: atomic.Uint64{},
 			}
-
 			m.TargetHeight.Store(tt.TargetHeight)
 			m.UpdateTargetHeight(tt.h)
 			assert.Equal(t, tt.expTargetHeight, m.TargetHeight.Load())

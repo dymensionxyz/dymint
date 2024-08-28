@@ -44,6 +44,7 @@ message State {
 
   SequencerSet sequencerSet         = 18 [(gogoproto.nullable) = false];
   RollappConsensusParams consensus_params = 19 [(gogoproto.nullable) = false];
+  
 }
 
 //rollapp params defined in genesis and updated via gov proposal
