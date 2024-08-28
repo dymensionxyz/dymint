@@ -31,8 +31,8 @@ func (c *OpenRPC) GetAll(ctx context.Context, height uint64, namespaces []share.
 }
 
 // Submit blobs.
-func (c *OpenRPC) Submit(ctx context.Context, blobs []*blob.Blob, gasPrice openrpc.GasPrice) (uint64, error) {
-	return c.rpc.Blob.Submit(ctx, blobs, gasPrice)
+func (c *OpenRPC) Submit(ctx context.Context, blobs []*blob.Blob, options *blob.SubmitOptions) (uint64, error) {
+	return c.rpc.Blob.Submit(ctx, blobs, options)
 }
 
 // Getting proof for submitted blob
