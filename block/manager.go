@@ -285,7 +285,6 @@ func (m *Manager) UpdateTargetHeight(h uint64) {
 			break
 		}
 	}
-
 }
 
 // ValidateConfigWithRollappParams checks the configuration params are consistent with the params in the dymint state (e.g. DA and version)
