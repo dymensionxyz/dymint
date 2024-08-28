@@ -50,7 +50,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 			return fmt.Errorf("save block: %w", err)
 		}
 
-		err := m.saveP2PBlock(block, commit)
+		err := m.saveP2PBlockToBlockSync(block, commit)
 		if err != nil {
 			m.logger.Error("save block blocksync", "err", err)
 		}
@@ -170,7 +170,8 @@ func (m *Manager) validateBlockBeforeApply(block *types.Block, commit *types.Com
 	return types.ValidateProposedTransition(m.State, block, commit, m.GetProposerPubKey())
 }
 
-func (m *Manager) saveP2PBlock(block *types.Block, commit *types.Commit) error {
+// This function adds the block to blocksync store to enable P2P retrievability
+func (m *Manager) saveP2PBlockToBlockSync(block *types.Block, commit *types.Commit) error {
 	gossipedBlock := p2p.BlockData{Block: *block, Commit: *commit}
 	gossipedBlockBytes, err := gossipedBlock.MarshalBinary()
 	if err != nil {
