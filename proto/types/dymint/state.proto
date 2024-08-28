@@ -54,4 +54,7 @@ message RollappConsensusParams {
   string da = 1 ;
   //commit used for the rollapp executable
   string version = 2 ;
+  //maximum allowed block size
+  uint32 blockmaxsize = 3;
+  
 }

@@ -78,9 +78,9 @@ func (s *State) SetRollappParamsFromGenesis(appState json.RawMessage) error {
 	if err != nil {
 		return err
 	}
-	params, ok := objmap["rollapp_params"]
+	params, ok := objmap["rollappparams"]
 	if !ok {
-		return fmt.Errorf("rollapp_params not defined in genesis")
+		return fmt.Errorf("rollappparams not defined in genesis")
 	}
 
 	var rollappParams RollappParams

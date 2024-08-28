@@ -60,7 +60,7 @@ func TestCreateBlock(t *testing.T) {
 	// Init state
 	state := &types.State{}
 	state.Sequencers.SetProposer(types.NewSequencerFromValidator(*tmtypes.NewValidator(tmPubKey, 1)))
-	state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
+	state.RollappParams.Blockmaxsize = uint32(maxBytes)
 	state.ConsensusParams.Block.MaxGas = 100000
 	// empty block
 	block := executor.CreateBlock(1, &types.Commit{}, [32]byte{}, [32]byte(state.Sequencers.ProposerHash()[:]), state, maxBytes)
@@ -164,7 +164,7 @@ func TestApplyBlock(t *testing.T) {
 	state.InitialHeight = 1
 	state.SetHeight(0)
 	maxBytes := uint64(1000)
-	state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
+	state.RollappParams.Blockmaxsize = uint32(maxBytes)
 	state.ConsensusParams.Block.MaxGas = 100000
 	state.RollappParams.Da = "mock"
 
