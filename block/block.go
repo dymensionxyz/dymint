@@ -59,6 +59,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		if err != nil {
 			m.logger.Error("Adding  block to blocksync store.", "err", err, "height", gossipedBlock.Block.Header.Height)
 		}
+
 		responses, err := m.Executor.ExecuteBlock(m.State, block)
 		if err != nil {
 			return fmt.Errorf("execute block: %w", err)

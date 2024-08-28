@@ -38,9 +38,6 @@ type State struct {
 
 	// the latest AppHash we've received from calling abci.Commit()
 	AppHash [32]byte
-
-	// last gossiped height. used on restart to make sure all blocks are gossiped.
-	LastGossipedHeight uint64
 }
 
 func (s *State) IsGenesis() bool {

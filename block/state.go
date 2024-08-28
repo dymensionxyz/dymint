@@ -33,11 +33,6 @@ func (m *Manager) LoadStateOnInit(store store.Store, genesis *tmtypes.GenesisDoc
 
 	m.State = s
 
-	// When LastGossipedHeight is 0, it may be because genesis or upgrade.
-	// In this case we set it to node height, to avoid re-gossiping blocks when upgrading.
-	if m.State.LastGossipedHeight == 0 {
-		m.State.LastGossipedHeight = m.State.Height()
-	}
 	return nil
 }
 
@@ -72,7 +67,6 @@ func NewStateFromGenesis(genDoc *tmtypes.GenesisDoc) (*types.State, error) {
 	}
 	s.SetHeight(0)
 	copy(s.AppHash[:], genDoc.AppHash)
-	s.LastGossipedHeight = 0
 	err = s.SetConsensusParamsFromGenesis(genDoc.AppState)
 	if err != nil {
 		return nil, fmt.Errorf("in genesis doc: %w", err)
