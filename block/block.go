@@ -48,6 +48,11 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		return fmt.Errorf("save block: %w", err)
 	}
 
+	err = m.saveP2PBlockToBlockSync(block, commit)
+	if err != nil {
+		m.logger.Error("save block blocksync", "err", err)
+	}
+
 	responses, err := m.Executor.ExecuteBlock(m.State, block)
 	if err != nil {
 		return fmt.Errorf("execute block: %w", err)
