@@ -1,10 +1,12 @@
 package block
 
 import (
+	"context"
 	"fmt"
 
 	errorsmod "cosmossdk.io/errors"
 
+	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/types"
 )
 
@@ -48,6 +50,15 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 			return fmt.Errorf("save block: %w", err)
 		}
 
+		gossipedBlock := p2p.BlockData{Block: *block, Commit: *commit}
+		gossipedBlockBytes, err := gossipedBlock.MarshalBinary()
+		if err != nil {
+			return fmt.Errorf("marshal binary: %w: %w", err, ErrNonRecoverable)
+		}
+		err = m.P2PClient.SaveBlock(context.TODO(), block.Header.Height, gossipedBlockBytes)
+		if err != nil {
+			m.logger.Error("Adding  block to blocksync store.", "err", err, "height", gossipedBlock.Block.Header.Height)
+		}
 		responses, err := m.Executor.ExecuteBlock(m.State, block)
 		if err != nil {
 			return fmt.Errorf("execute block: %w", err)

@@ -519,6 +519,11 @@ func (c *Client) blockGossipReceived(ctx context.Context, block []byte) {
 		c.logger.Error("Publishing event.", "err", err)
 	}
 	if c.conf.BlockSyncEnabled {
+		_, err := c.store.LoadBlockCid(gossipedBlock.Block.Header.Height)
+		// skip block already added to blocksync
+		if err == nil {
+			return
+		}
 		err = c.SaveBlock(ctx, gossipedBlock.Block.Header.Height, block)
 		if err != nil {
 			c.logger.Error("Adding  block to blocksync store.", "err", err, "height", gossipedBlock.Block.Header.Height)
