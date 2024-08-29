@@ -55,6 +55,6 @@ message RollappConsensusParams {
   //commit used for the rollapp executable
   string version = 2 ;
   //maximum allowed block size
-  uint32 blockmaxsize = 3;
+  uint32 blockmaxbytes = 3;
   
 }

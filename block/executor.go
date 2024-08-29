@@ -89,9 +89,9 @@ func (e *Executor) InitChain(genesis *tmtypes.GenesisDoc, valset []*tmtypes.Vali
 }
 
 // CreateBlock reaps transactions from mempool and builds a block.
-func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHeaderHash, nextSeqHash [32]byte, state *types.State, maxBlockDataSizeBytes uint64) *types.Block {
-	if state.ConsensusParams.Block.MaxBytes > 0 {
-		maxBlockDataSizeBytes = min(maxBlockDataSizeBytes, uint64(state.ConsensusParams.Block.MaxBytes))
+func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHeaderHash, nextSeqHash [32]byte, state *types.State, maxBlockDataSizeBytes uint32) *types.Block {
+	if state.RollappParams.Blockmaxbytes > 0 {
+		maxBlockDataSizeBytes = min(maxBlockDataSizeBytes, state.RollappParams.Blockmaxbytes)
 	}
 	mempoolTxs := e.mempool.ReapMaxBytesMaxGas(int64(maxBlockDataSizeBytes), state.ConsensusParams.Block.MaxGas)
 
@@ -160,13 +160,13 @@ func (e *Executor) commit(state *types.State, block *types.Block, deliverTxs []*
 		return nil, 0, err
 	}
 
-	maxBytes := state.ConsensusParams.Block.MaxBytes
+	maxBytes := state.RollappParams.Blockmaxbytes
 	maxGas := state.ConsensusParams.Block.MaxGas
 	err = e.mempool.Update(int64(block.Header.Height), fromDymintTxs(block.Data.Txs), deliverTxs)
 	if err != nil {
 		return nil, 0, err
 	}
-	e.mempool.SetPreCheckFn(mempool.PreCheckMaxBytes(maxBytes))
+	e.mempool.SetPreCheckFn(mempool.PreCheckMaxBytes(int64(maxBytes)))
 	e.mempool.SetPostCheckFn(mempool.PostCheckMaxGas(maxGas))
 
 	return resp.Data, resp.RetainHeight, err

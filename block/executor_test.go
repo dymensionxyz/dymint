@@ -50,7 +50,7 @@ func TestCreateBlock(t *testing.T) {
 	executor, err := block.NewExecutor([]byte("test address"), "test", mpool, proxy.NewAppConns(clientCreator), nil, logger)
 	assert.NoError(err)
 
-	maxBytes := uint64(100)
+	maxBytes := uint32(100)
 
 	// Create a valid proposer for the block
 	proposerKey := ed25519.GenPrivKey()
@@ -60,7 +60,7 @@ func TestCreateBlock(t *testing.T) {
 	// Init state
 	state := &types.State{}
 	state.Sequencers.SetProposer(types.NewSequencerFromValidator(*tmtypes.NewValidator(tmPubKey, 1)))
-	state.RollappParams.Blockmaxsize = uint32(maxBytes)
+	state.RollappParams.Blockmaxbytes = maxBytes
 	state.ConsensusParams.Block.MaxGas = 100000
 	// empty block
 	block := executor.CreateBlock(1, &types.Commit{}, [32]byte{}, [32]byte(state.Sequencers.ProposerHash()[:]), state, maxBytes)
@@ -163,8 +163,8 @@ func TestApplyBlock(t *testing.T) {
 	state.Sequencers.SetProposer(types.NewSequencerFromValidator(*tmtypes.NewValidator(tmPubKey, 1)))
 	state.InitialHeight = 1
 	state.SetHeight(0)
-	maxBytes := uint64(1000)
-	state.RollappParams.Blockmaxsize = uint32(maxBytes)
+	maxBytes := uint32(1000)
+	state.RollappParams.Blockmaxbytes = maxBytes
 	state.ConsensusParams.Block.MaxGas = 100000
 	state.RollappParams.Da = "mock"
 
@@ -253,7 +253,7 @@ func TestApplyBlock(t *testing.T) {
 	// check rollapp params update
 	assert.Equal(state.RollappParams.Da, "celestia")
 	assert.Equal(state.RollappParams.Version, "abcde")
-	assert.Equal(state.ConsensusParams.Block.MaxBytes, int64(100))
+	assert.Equal(state.RollappParams.Blockmaxbytes, int64(100))
 	assert.Equal(state.ConsensusParams.Block.MaxGas, int64(100))
 
 	// wait for at least 4 Tx events, for up to 3 second.
