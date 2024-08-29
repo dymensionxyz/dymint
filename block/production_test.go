@@ -37,14 +37,20 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	app := testutil.GetAppMock(testutil.EndBlock)
-	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
-		Da:      "mock",
-		Version: version.Commit,
-		Block: &abci.BlockParams{
-			MaxBytes: 500000,
-			MaxGas:   40000000,
+	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
+		RollappConsensusParamUpdates: &abci.RollappConsensusParams{
+			Da:      "mock",
+			Version: version.Commit,
+			Block: &abci.BlockParams{
+				MaxBytes: 500000,
+			},
 		},
-	}})
+		ConsensusParamUpdates: &abci.ConsensusParams{
+			Block: &abci.BlockParams{
+				MaxGas: 40000000,
+			},
+		},
+	})
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(clientCreator)
@@ -197,14 +203,20 @@ func TestStopBlockProduction(t *testing.T) {
 	require := require.New(t)
 
 	app := testutil.GetAppMock(testutil.EndBlock)
-	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
-		Da:      "mock",
-		Version: version.Commit,
-		Block: &abci.BlockParams{
-			MaxBytes: 500000,
-			MaxGas:   40000000,
+	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
+		RollappConsensusParamUpdates: &abci.RollappConsensusParams{
+			Da:      "mock",
+			Version: version.Commit,
+			Block: &abci.BlockParams{
+				MaxBytes: 500000,
+			},
 		},
-	}})
+		ConsensusParamUpdates: &abci.ConsensusParams{
+			Block: &abci.BlockParams{
+				MaxGas: 40000000,
+			},
+		},
+	})
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(clientCreator)

@@ -128,14 +128,20 @@ func TestInitialState(t *testing.T) {
 func TestProduceOnlyAfterSynced(t *testing.T) {
 	// Init app
 	app := testutil.GetAppMock(testutil.EndBlock)
-	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
-		Da:      "mock",
-		Version: version.Commit,
-		Block: &abci.BlockParams{
-			MaxBytes: 500000,
-			MaxGas:   40000000,
+	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
+		RollappConsensusParamUpdates: &abci.RollappConsensusParams{
+			Da:      "mock",
+			Version: version.Commit,
+			Block: &abci.BlockParams{
+				MaxBytes: 500000,
+			},
 		},
-	}})
+		ConsensusParamUpdates: &abci.ConsensusParams{
+			Block: &abci.BlockParams{
+				MaxGas: 40000000,
+			},
+		},
+	})
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(clientCreator)
@@ -207,14 +213,20 @@ func TestProduceNewBlock(t *testing.T) {
 	app := testutil.GetAppMock(testutil.Commit, testutil.EndBlock)
 	commitHash := [32]byte{1}
 	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{Data: commitHash[:]})
-	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
-		Da:      "mock",
-		Version: version.Commit,
-		Block: &abci.BlockParams{
-			MaxBytes: 500000,
-			MaxGas:   40000000,
+	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
+		RollappConsensusParamUpdates: &abci.RollappConsensusParams{
+			Da:      "mock",
+			Version: version.Commit,
+			Block: &abci.BlockParams{
+				MaxBytes: 500000,
+			},
 		},
-	}})
+		ConsensusParamUpdates: &abci.ConsensusParams{
+			Block: &abci.BlockParams{
+				MaxGas: 40000000,
+			},
+		},
+	})
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(clientCreator)
@@ -236,14 +248,20 @@ func TestProducePendingBlock(t *testing.T) {
 	app := testutil.GetAppMock(testutil.Commit, testutil.EndBlock)
 	commitHash := [32]byte{1}
 	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{Data: commitHash[:]})
-	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
-		Da:      "mock",
-		Version: version.Commit,
-		Block: &abci.BlockParams{
-			MaxBytes: 500000,
-			MaxGas:   40000000,
+	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
+		RollappConsensusParamUpdates: &abci.RollappConsensusParams{
+			Da:      "mock",
+			Version: version.Commit,
+			Block: &abci.BlockParams{
+				MaxBytes: 500000,
+			},
 		},
-	}})
+		ConsensusParamUpdates: &abci.ConsensusParams{
+			Block: &abci.BlockParams{
+				MaxGas: 40000000,
+			},
+		},
+	})
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(clientCreator)
@@ -346,14 +364,20 @@ func TestProduceBlockFailAfterCommit(t *testing.T) {
 				LastBlockHeight:  tc.LastAppBlockHeight,
 				LastBlockAppHash: tc.LastAppCommitHash[:],
 			})
-			app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
-				Da:      "mock",
-				Version: version.Commit,
-				Block: &abci.BlockParams{
-					MaxBytes: 500000,
-					MaxGas:   40000000,
+			app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
+				RollappConsensusParamUpdates: &abci.RollappConsensusParams{
+					Da:      "mock",
+					Version: version.Commit,
+					Block: &abci.BlockParams{
+						MaxBytes: 500000,
+					},
 				},
-			}})
+				ConsensusParamUpdates: &abci.ConsensusParams{
+					Block: &abci.BlockParams{
+						MaxGas: 40000000,
+					},
+				},
+			})
 			mockStore.ShouldFailUpdateStateWithBatch = tc.shoudFailOnSaveState
 			_, _, _ = manager.ProduceApplyGossipBlock(context.Background(), true)
 			storeState, err := manager.Store.LoadState()
@@ -374,14 +398,20 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	app := testutil.GetAppMock(testutil.EndBlock)
-	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
-		Da:      "mock",
-		Version: version.Commit,
-		Block: &abci.BlockParams{
-			MaxBytes: 500000,
-			MaxGas:   40000000,
+	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
+		RollappConsensusParamUpdates: &abci.RollappConsensusParams{
+			Da:      "mock",
+			Version: version.Commit,
+			Block: &abci.BlockParams{
+				MaxBytes: 500000,
+			},
 		},
-	}})
+		ConsensusParamUpdates: &abci.ConsensusParams{
+			Block: &abci.BlockParams{
+				MaxGas: 40000000,
+			},
+		},
+	})
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(clientCreator)
@@ -452,14 +482,20 @@ func TestDAFetch(t *testing.T) {
 	require := require.New(t)
 	// Setup app
 	app := testutil.GetAppMock(testutil.Info, testutil.Commit, testutil.EndBlock)
-	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
-		Da:      "mock",
-		Version: version.Commit,
-		Block: &abci.BlockParams{
-			MaxBytes: 500000,
-			MaxGas:   40000000,
+	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
+		RollappConsensusParamUpdates: &abci.RollappConsensusParams{
+			Da:      "mock",
+			Version: version.Commit,
+			Block: &abci.BlockParams{
+				MaxBytes: 500000,
+			},
 		},
-	}})
+		ConsensusParamUpdates: &abci.ConsensusParams{
+			Block: &abci.BlockParams{
+				MaxGas: 40000000,
+			},
+		},
+	})
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(clientCreator)

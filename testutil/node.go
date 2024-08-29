@@ -11,7 +11,6 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 
-	"github.com/dymensionxyz/dymint/version"
 	"github.com/stretchr/testify/mock"
 	abci "github.com/tendermint/tendermint/abci/types"
 
@@ -30,14 +29,20 @@ func CreateNode(isSequencer bool, blockManagerConfig *config.BlockManagerConfig,
 	if err != nil {
 		return nil, err
 	}
-	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
-		Da:      "mock",
-		Version: version.Commit,
-		Block: &abci.BlockParams{
-			MaxBytes: 100,
-			MaxGas:   100,
+	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
+		RollappConsensusParamUpdates: &abci.RollappConsensusParams{
+			Da:      "celestia",
+			Version: "abcde",
+			Block: &abci.BlockParams{
+				MaxBytes: 100,
+			},
 		},
-	}})
+		ConsensusParamUpdates: &abci.ConsensusParams{
+			Block: &abci.BlockParams{
+				MaxGas: 100,
+			},
+		},
+	})
 
 	key, _, _ := crypto.GenerateEd25519Key(rand.Reader)
 	signingKey, pubkey, _ := crypto.GenerateEd25519Key(rand.Reader)

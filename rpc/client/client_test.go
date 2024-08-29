@@ -443,14 +443,20 @@ func TestTx(t *testing.T) {
 
 	require.NotNil(rpc)
 	mockApp.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
-	mockApp.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
-		Da:      "mock",
-		Version: version.Commit,
-		Block: &abci.BlockParams{
-			MaxBytes: 100,
-			MaxGas:   100,
+	mockApp.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
+		RollappConsensusParamUpdates: &abci.RollappConsensusParams{
+			Da:      "mock",
+			Version: version.Commit,
+			Block: &abci.BlockParams{
+				MaxBytes: 100,
+			},
 		},
-	}})
+		ConsensusParamUpdates: &abci.ConsensusParams{
+			Block: &abci.BlockParams{
+				MaxGas: 100,
+			},
+		},
+	})
 	mockApp.On("Commit", mock.Anything).Return(abci.ResponseCommit{})
 	mockApp.On("DeliverTx", mock.Anything).Return(abci.ResponseDeliverTx{})
 	mockApp.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{})

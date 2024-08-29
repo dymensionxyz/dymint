@@ -280,14 +280,20 @@ func getRPC(t *testing.T) (*tmmocks.MockApplication, *client.Client) {
 	app := &tmmocks.MockApplication{}
 	app.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 	app.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
-	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
-		Da:      "mock",
-		Version: version.Commit,
-		Block: &abci.BlockParams{
-			MaxBytes: 100,
-			MaxGas:   100,
+	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
+		RollappConsensusParamUpdates: &abci.RollappConsensusParams{
+			Da:      "mock",
+			Version: version.Commit,
+			Block: &abci.BlockParams{
+				MaxBytes: 100,
+			},
 		},
-	}})
+		ConsensusParamUpdates: &abci.ConsensusParams{
+			Block: &abci.BlockParams{
+				MaxGas: 100,
+			},
+		},
+	})
 	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{})
 	app.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{
 		GasWanted: 1000,
@@ -332,7 +338,7 @@ func getRPC(t *testing.T) (*tmmocks.MockApplication, *client.Client) {
 		key,
 		signingKey,
 		proxy.NewLocalClientCreator(app),
-		&types.GenesisDoc{ChainID: rollappID, AppState: []byte("{\"rollappparams\": {\"params\": {\"da\": \"mock\",\"version\": \"" + version.Commit + "\",\"blockmaxgas\":\"400000000\",\"blockmaxsize\":500000}}}")},
+		&types.GenesisDoc{ChainID: rollappID, AppState: []byte("{\"rollappparams\": {\"params\": {\"da\": \"mock\",\"version\": \"" + version.Commit + "\",\"blockmaxbytes\":500000}}}")},
 		log.TestingLogger(),
 		mempool.NopMetrics(),
 	)

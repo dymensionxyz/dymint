@@ -103,7 +103,11 @@ func TestApplyBlock(t *testing.T) {
 			Version: "abcde",
 			Block: &abci.BlockParams{
 				MaxBytes: 100,
-				MaxGas:   100,
+			},
+		},
+		ConsensusParamUpdates: &abci.ConsensusParams{
+			Block: &abci.BlockParams{
+				MaxGas: 100,
 			},
 		},
 	})
@@ -253,7 +257,7 @@ func TestApplyBlock(t *testing.T) {
 	// check rollapp params update
 	assert.Equal(state.RollappParams.Da, "celestia")
 	assert.Equal(state.RollappParams.Version, "abcde")
-	assert.Equal(state.RollappParams.Blockmaxbytes, int64(100))
+	assert.Equal(state.RollappParams.Blockmaxbytes, uint32(100))
 	assert.Equal(state.ConsensusParams.Block.MaxGas, int64(100))
 
 	// wait for at least 4 Tx events, for up to 3 second.

@@ -106,7 +106,7 @@ func (e *Executor) UpdateStateAfterInitChain(s *types.State, res *abci.ResponseI
 }
 
 func (e *Executor) UpdateMempoolAfterInitChain(s *types.State) {
-	e.mempool.SetPreCheckFn(mempool.PreCheckMaxBytes(s.ConsensusParams.Block.MaxBytes))
+	e.mempool.SetPreCheckFn(mempool.PreCheckMaxBytes(int64(s.RollappParams.Blockmaxbytes)))
 	e.mempool.SetPostCheckFn(mempool.PostCheckMaxGas(s.ConsensusParams.Block.MaxGas))
 }
 
