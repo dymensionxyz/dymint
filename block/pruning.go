@@ -48,6 +48,7 @@ func (m *Manager) PruningLoop(ctx context.Context) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		}
+		case retainHeight <- 
 	}
 	return nil
 }
