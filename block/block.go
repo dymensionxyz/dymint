@@ -101,7 +101,11 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	// Unless max_age_num_blocks in consensus params is higher than min-retain-block, then max_age_num_blocks will be used instead of min-retain-blocks.
 
 	if 0 < retainHeight {
-		m.pruningC <- retainHeight
+		select {
+		case m.pruningC <- retainHeight:
+		default:
+			m.logger.Error("pruning channel full. skipping pruning", "retainHeight", retainHeight)
+		}
 	}
 
 	m.blockCache.Delete(block.Header.Height)
