@@ -119,7 +119,7 @@ func NewManager(
 		blockCache: &Cache{
 			cache: make(map[uint64]types.CachedBlock),
 		},
-		pruningC: make(chan int64),
+		pruningC: make(chan int64, 10), // use of buffered channel to avoid blocking applyBlock thread. In case channel is full, pruning will be skipped, but the retain height can be pruned in the next iteration.
 	}
 
 	err = m.LoadStateOnInit(store, genesis, logger)
