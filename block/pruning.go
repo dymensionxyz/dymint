@@ -3,23 +3,19 @@ package block
 import (
 	"context"
 	"fmt"
-
-	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 )
 
 func (m *Manager) PruneBlocks(retainHeight uint64) error {
 	if m.IsProposer() && m.NextHeightToSubmit() < retainHeight { // do not delete anything that we might submit in future
-		return fmt.Errorf("cannot prune blocks before they have been submitted: retain height %d: next height to submit: %d: %w",
-			retainHeight,
-			m.NextHeightToSubmit(),
-			gerrc.ErrInvalidArgument)
+		m.logger.Debug("cannot prune blocks before they have been submitted. using height last submitted height for pruning", "retain_height", retainHeight, "height_to_submit", m.NextHeightToSubmit())
+		retainHeight = m.NextHeightToSubmit() - 1
 	}
 
 	err := m.P2PClient.RemoveBlocks(context.Background(), m.State.BaseHeight, retainHeight)
 	if err != nil {
 		m.logger.Error("pruning blocksync store", "retain_height", retainHeight, "err", err)
 	}
-	pruned, err := m.Store.PruneBlocks(m.State.BaseHeight, retainHeight)
+	pruned, err := m.Store.PruneBlocks(m.State.BaseHeight, retainHeight, m.logger)
 	if err != nil {
 		return fmt.Errorf("prune block store: %w", err)
 	}
