@@ -72,7 +72,7 @@ type Store interface {
 
 	LoadValidators(height uint64) (*tmtypes.ValidatorSet, error)
 
-	PruneBlocks(from, to uint64) (uint64, error)
+	PruneBlocks(from, to uint64, logger types.Logger) (uint64, error)
 
 	Close() error
 

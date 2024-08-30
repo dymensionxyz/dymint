@@ -138,7 +138,6 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	if err != nil {
 		return fmt.Errorf("update state: %w", err)
 	}
-<<<<<<< HEAD
 	// Prune old heights, if requested by ABCI app.
 	// retainHeight is determined by currentHeight - min-retain-blocks (app.toml config).
 	// Unless max_age_num_blocks in consensus params is higher than min-retain-block, then max_age_num_blocks will be used instead of min-retain-blocks.
@@ -150,30 +149,6 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 			m.logger.Error("pruning channel full. skipping pruning", "retainHeight", retainHeight)
 		}
 	}
-=======
-
-	err = batch.Commit()
-	if err != nil {
-		return fmt.Errorf("commit state: %w", err)
-	}
-
-	types.RollappHeightGauge.Set(float64(block.Header.Height))
-
-	m.blockCache.Delete(block.Header.Height)
-
-	if switchRole {
-		// TODO: graceful role change (https://github.com/dymensionxyz/dymint/issues/1008)
-		m.logger.Info("Node changing to proposer role")
-		panic("sequencer is no longer the proposer")
-	}
-
-	// validate whether configuration params and rollapp consensus params keep in line, after rollapp params are updated from the responses received in the block execution
-	err = m.ValidateConfigWithRollappParams()
-	if err != nil {
-		return err
-	}
-
->>>>>>> 1475fbd (moved pruning right after commit)
 	return nil
 }
 

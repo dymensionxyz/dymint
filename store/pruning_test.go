@@ -9,6 +9,7 @@ import (
 	"github.com/ipfs/go-cid"
 	mh "github.com/multiformats/go-multihash"
 	"github.com/stretchr/testify/assert"
+	"github.com/tendermint/tendermint/libs/log"
 )
 
 func TestStorePruning(t *testing.T) {
@@ -90,7 +91,7 @@ func TestStorePruning(t *testing.T) {
 				assert.NoError(err)
 			}
 
-			_, err := bstore.PruneBlocks(c.from, c.to)
+			_, err := bstore.PruneBlocks(c.from, c.to, log.NewNopLogger())
 			if c.shouldError {
 				assert.Error(err)
 				return
