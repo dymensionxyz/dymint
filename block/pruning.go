@@ -7,7 +7,7 @@ import (
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 )
 
-func (m *Manager) pruneBlocks(retainHeight uint64) error {
+func (m *Manager) PruneBlocks(retainHeight uint64) error {
 	if m.IsProposer() && m.NextHeightToSubmit() < retainHeight { // do not delete anything that we might submit in future
 		m.logger.Error("skipping block pruning. next height to submit is previous to retain_height.", "retain_height", retainHeight, "next_submit_height", m.NextHeightToSubmit())
 		return fmt.Errorf("skipping block pruning. next height to submit is previous to retain_height.t %d: next height to submit: %d: %w",
@@ -47,8 +47,11 @@ func (m *Manager) PruningLoop(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
+		case retainHeight := <-m.pruningC:
+			err := m.PruneBlocks(uint64(retainHeight))
+			if err != nil {
+				m.logger.Error("pruning blocks", "retainHeight", retainHeight, "err", err)
+			}
 		}
-		case retainHeight <- 
 	}
-	return nil
 }
