@@ -162,6 +162,11 @@ func (m *Manager) Start(ctx context.Context) error {
 	isProposer := m.IsProposer()
 	m.logger.Info("starting block manager", "proposer", isProposer)
 
+	eg, ctx := errgroup.WithContext(ctx)
+	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
+		return m.PruningLoop(ctx)
+	})
+
 	/* ----------------------------- full node mode ----------------------------- */
 	if !isProposer {
 		// Full-nodes can sync from DA but it is not necessary to wait for it, since it can sync from P2P as well in parallel.
@@ -207,7 +212,6 @@ func (m *Manager) Start(ctx context.Context) error {
 	// channel to signal sequencer rotation started
 	rotateSequencerC := make(chan string, 1)
 
-	eg, ctx := errgroup.WithContext(ctx)
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		return m.SubmitLoop(ctx, bytesProducedC)
 	})
