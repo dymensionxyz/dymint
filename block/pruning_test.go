@@ -52,6 +52,6 @@ func TestPruningRetainHeight(t *testing.T) {
 		require.Error(err) // cannot prune blocks before they have been submitted
 	}
 
-	err = manager.pruneBlocks(validRetainHeight)
+	err = manager.PruneBlocks(validRetainHeight)
 	require.NoError(err)
 }
