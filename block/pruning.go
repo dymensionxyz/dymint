@@ -13,6 +13,7 @@ func (m *Manager) PruneBlocks(retainHeight uint64) (uint64, error) {
 		retainHeight = nextSubmissionHeight
 	}
 
+	//
 	err := m.P2PClient.RemoveBlocks(context.Background(), m.State.BaseHeight, retainHeight)
 	if err != nil {
 		m.logger.Error("pruning blocksync store", "retain_height", retainHeight, "err", err)
@@ -33,4 +34,15 @@ func (m *Manager) PruneBlocks(retainHeight uint64) (uint64, error) {
 	m.logger.Info("pruned blocks", "pruned", pruned, "retain_height", retainHeight)
 
 	return pruned, nil
+}
+
+func (m *Manager) PruningLoop(ctx context.Context) error {
+
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+	return nil
 }

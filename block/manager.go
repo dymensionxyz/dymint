@@ -77,6 +77,9 @@ type Manager struct {
 
 	// TargetHeight holds the value of the current highest block seen from either p2p (probably higher) or the DA
 	TargetHeight atomic.Uint64
+
+	// channel used to send the retain height to the pruning background loop
+	pruningC chan int64
 }
 
 // NewManager creates new block Manager.
@@ -116,6 +119,7 @@ func NewManager(
 		blockCache: &Cache{
 			cache: make(map[uint64]types.CachedBlock),
 		},
+		pruningC: make(chan int64),
 	}
 
 	err = m.LoadStateOnInit(store, genesis, logger)
