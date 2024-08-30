@@ -97,11 +97,11 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	types.RollappHeightGauge.Set(float64(block.Header.Height))
 
 	// Prune old heights, if requested by ABCI app.
+	// retainHeight is determined by currentHeight - min-retain-blocks (app.toml config).
+	// Unless max_age_num_blocks in consensus params is higher than min-retain-block, then max_age_num_blocks will be used instead of min-retain-blocks.
+
 	if 0 < retainHeight {
-		err = m.PruneBlocks(uint64(retainHeight))
-		if err != nil {
-			m.logger.Error("prune blocks", "retain_height", retainHeight, "err", err)
-		}
+		m.pruningC <- retainHeight
 	}
 
 	m.blockCache.Delete(block.Header.Height)
