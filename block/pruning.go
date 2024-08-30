@@ -37,7 +37,6 @@ func (m *Manager) PruneBlocks(retainHeight uint64) (uint64, error) {
 }
 
 func (m *Manager) PruningLoop(ctx context.Context) error {
-
 	for {
 		select {
 		case <-ctx.Done():
