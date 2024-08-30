@@ -154,30 +154,13 @@ func (m *Manager) Start(ctx context.Context) error {
 
 		eg, ctx := errgroup.WithContext(ctx)
 
-		// Sequencer must wait till DA is synced to start submitting blobs
-		<-m.DAClient.Synced()
+	eg, ctx := errgroup.WithContext(ctx)
+	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
+		return m.PruningLoop(ctx)
+	})
 
-		err = m.syncFromSettlement()
-		if err != nil {
-			return fmt.Errorf("sync block manager from settlement: %w", err)
-		}
-
-		nBytes := m.GetUnsubmittedBytes()
-		bytesProducedC := make(chan int)
-
-		uerrors.ErrGroupGoLog(eg, m.logger, func() error {
-			return m.SubmitLoop(ctx, bytesProducedC)
-		})
-		uerrors.ErrGroupGoLog(eg, m.logger, func() error {
-			bytesProducedC <- nBytes
-			return m.ProduceBlockLoop(ctx, bytesProducedC)
-		})
-		go func() {
-			_ = eg.Wait() // errors are already logged
-			m.logger.Info("Block manager err group finished.")
-		}()
-
-	} else {
+	/* ----------------------------- full node mode ----------------------------- */
+	if !isProposer {
 		// Full-nodes can sync from DA but it is not necessary to wait for it, since it can sync from P2P as well in parallel.
 		go func() {
 			err := m.syncFromSettlement()
@@ -192,6 +175,52 @@ func (m *Manager) Start(ctx context.Context) error {
 		go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewGossipedBlock, m.onReceivedBlock, m.logger)
 		go uevent.MustSubscribe(ctx, m.Pubsub, "applyBlockSyncBlocksLoop", p2p.EventQueryNewBlockSyncBlock, m.onReceivedBlock, m.logger)
 	}
+
+	/* ----------------------------- sequencer mode ----------------------------- */
+	// Sequencer must wait till DA is synced to start submitting blobs
+	<-m.DAClient.Synced()
+	err = m.syncFromSettlement()
+	if err != nil {
+		return fmt.Errorf("sync block manager from settlement: %w", err)
+	}
+	// check if sequencer in the middle of rotation
+	nextSeqAddr, missing, err := m.MissingLastBatch()
+	if err != nil {
+		return fmt.Errorf("checking if missing last batch: %w", err)
+	}
+	// if sequencer is in the middle of rotation, complete rotation instead of running the main loop
+	if missing {
+		m.handleRotationReq(ctx, nextSeqAddr)
+		return nil
+	}
+
+	// populate the bytes produced channel
+	bytesProducedC := make(chan int)
+
+	// channel to signal sequencer rotation started
+	rotateSequencerC := make(chan string, 1)
+
+	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
+		return m.SubmitLoop(ctx, bytesProducedC)
+	})
+	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
+		bytesProducedC <- m.GetUnsubmittedBytes() // load unsubmitted bytes from previous run
+		return m.ProduceBlockLoop(ctx, bytesProducedC)
+	})
+	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
+		return m.MonitorSequencerRotation(ctx, rotateSequencerC)
+	})
+
+	go func() {
+		_ = eg.Wait()
+		// Check if exited due to sequencer rotation signal
+		select {
+		case nextSeqAddr := <-rotateSequencerC:
+			m.handleRotationReq(ctx, nextSeqAddr)
+		default:
+			m.logger.Info("Block manager err group finished.")
+		}
+	}()
 
 	return nil
 }
