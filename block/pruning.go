@@ -32,6 +32,8 @@ func (m *Manager) PruneBlocks(retainHeight uint64) (uint64, error) {
 		return 0, fmt.Errorf("save state: %w", err)
 	}
 
+	m.logger.Info("pruned blocks", "pruned", pruned, "retain_height", retainHeight)
+
 	return pruned, nil
 }
 
