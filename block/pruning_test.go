@@ -48,10 +48,16 @@ func TestPruningRetainHeight(t *testing.T) {
 
 	validRetainHeight := lastSubmitted + 1 // the max possible valid retain height
 	for i := validRetainHeight + 1; i < manager.State.Height(); i++ {
-		err = manager.PruneBlocks(i)
-		require.Error(err) // cannot prune blocks before they have been submitted
+		expectedPruned := uint64(0)
+		if lastSubmitted >= manager.State.BaseHeight {
+			expectedPruned = lastSubmitted - manager.State.BaseHeight
+		}
+		pruned, err := manager.PruneBlocks(i)
+		require.NoError(err)
+		assert.Equal(t, expectedPruned, pruned)
+
 	}
 
-	err = manager.PruneBlocks(validRetainHeight)
+	_, err = manager.PruneBlocks(validRetainHeight)
 	require.NoError(err)
 }

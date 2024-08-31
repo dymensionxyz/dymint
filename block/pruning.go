@@ -5,10 +5,13 @@ import (
 	"fmt"
 )
 
-func (m *Manager) PruneBlocks(retainHeight uint64) error {
+func (m *Manager) PruneBlocks(retainHeight uint64) (uint64, error) {
 	if m.IsProposer() && m.NextHeightToSubmit() < retainHeight { // do not delete anything that we might submit in future
 		m.logger.Debug("cannot prune blocks before they have been submitted. using height last submitted height for pruning", "retain_height", retainHeight, "height_to_submit", m.NextHeightToSubmit())
 		retainHeight = m.NextHeightToSubmit() - 1
+		if retainHeight <= m.State.BaseHeight {
+			return 0, nil
+		}
 	}
 
 	//
@@ -18,7 +21,7 @@ func (m *Manager) PruneBlocks(retainHeight uint64) error {
 	}
 	pruned, err := m.Store.PruneBlocks(m.State.BaseHeight, retainHeight, m.logger)
 	if err != nil {
-		return fmt.Errorf("pruning dymint store: %w", err)
+		return 0, fmt.Errorf("prune block store: %w", err)
 	}
 
 	// TODO: prune state/indexer and state/txindexer??
@@ -26,11 +29,10 @@ func (m *Manager) PruneBlocks(retainHeight uint64) error {
 	m.State.BaseHeight = retainHeight
 	_, err = m.Store.SaveState(m.State, nil)
 	if err != nil {
-		return fmt.Errorf("saving state: %w", err)
+		return 0, fmt.Errorf("save state: %w", err)
 	}
 
-	m.logger.Info("pruned blocks", "pruned", pruned, "retain_height", retainHeight)
-	return nil
+	return pruned, nil
 }
 
 func (m *Manager) PruningLoop(ctx context.Context) error {
