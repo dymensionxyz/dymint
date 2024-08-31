@@ -75,11 +75,9 @@ func (s *DefaultStore) PruneBlocks(from, to uint64, logger types.Logger) (uint64
 		logger.Error("pruning cids", "from", from, "to", to, "err", err)
 	}
 	return prunedBlocks, nil
-
 }
 
 func (s *DefaultStore) pruneIteration(from, to uint64, prune func(batch KVBatch, height uint64) error) (uint64, error) {
-
 	pruned := uint64(0)
 
 	batch := s.db.NewBatch()
@@ -117,5 +115,4 @@ func (s *DefaultStore) pruneIteration(from, to uint64, prune func(batch KVBatch,
 	}
 
 	return pruned, nil
-
 }
