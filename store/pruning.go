@@ -94,7 +94,10 @@ func (s *DefaultStore) pruneIteration(from, to uint64, prune func(batch KVBatch,
 	}
 
 	for h := from; h < to; h++ {
-		prune(batch, h)
+		err := prune(batch, h)
+		if err != nil {
+			continue
+		}
 		pruned++
 
 		// flush every 1000 blocks to avoid batches becoming too large
