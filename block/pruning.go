@@ -19,7 +19,7 @@ func (m *Manager) PruneBlocks(retainHeight uint64) (uint64, error) {
 	if err != nil {
 		m.logger.Error("pruning blocksync store", "retain_height", retainHeight, "err", err)
 	}
-	pruned, err := m.Store.PruneBlocks(m.State.BaseHeight, retainHeight, m.logger)
+	pruned, err := m.Store.PruneStore(m.State.BaseHeight, retainHeight, m.logger)
 	if err != nil {
 		return 0, fmt.Errorf("prune block store: %w", err)
 	}

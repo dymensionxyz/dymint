@@ -130,7 +130,7 @@ func TestStorePruning(t *testing.T) {
 				assert.NoError(err)
 			}
 
-			_, err := bstore.PruneBlocks(c.from, c.to, log.NewNopLogger())
+			_, err := bstore.PruneStore(c.from, c.to, log.NewNopLogger())
 			if c.shouldError {
 				assert.Error(err)
 				return
