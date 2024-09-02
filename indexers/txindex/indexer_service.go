@@ -97,3 +97,10 @@ func (is *IndexerService) OnStop() {
 		_ = is.eventBus.UnsubscribeAll(context.Background(), subscriber)
 	}
 }
+
+// Prune removes tx and blocks indexed up to (but not including) a height.
+func (is *IndexerService) Prune(from uint64, to uint64) error {
+	is.blockIdxr.Prune(from, to)
+	is.txIdxr.Prune(from, to)
+	return nil
+}
