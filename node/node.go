@@ -184,6 +184,7 @@ func NewNode(
 		eventBus,
 		pubsubServer,
 		p2pClient,
+		indexerService,
 		logger.With("module", "BlockManager"),
 	)
 	if err != nil {

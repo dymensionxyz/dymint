@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/dymensionxyz/dymint/block"
+	"github.com/dymensionxyz/dymint/indexers/txindex"
+	"github.com/dymensionxyz/dymint/indexers/txindex/kv"
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/ipfs/go-datastore"
@@ -108,8 +110,13 @@ func GetManagerWithProposerKey(conf config.BlockManagerConfig, proposerKey crypt
 		return nil, err
 	}
 
+	indexer, err := createIndexerService()
+	if err != nil {
+		return nil, err
+	}
+
 	manager, err := block.NewManager(proposerKey, conf, genesis, managerStore, mp, proxyApp, dalc, settlementlc, nil,
-		pubsubServer, p2pClient, logger)
+		pubsubServer, p2pClient, indexer, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -154,4 +161,14 @@ func GetManagerConfig() config.BlockManagerConfig {
 		BatchSubmitMaxTime: 30 * time.Minute,
 		MaxBatchSkew:       10,
 	}
+}
+
+func createIndexerService() (*txindex.IndexerService, error) {
+	kvStore := store.NewDefaultInMemoryKVStore()
+	txIndexer := kv.NewTxIndex(kvStore)
+	blockIndexer := blockidxkv.New(store.NewPrefixKV(kvStore, []byte("block_events")))
+
+	indexerService := txindex.NewIndexerService(txIndexer, blockIndexer, nil)
+
+	return indexerService, nil
 }

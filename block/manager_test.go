@@ -100,7 +100,7 @@ func TestInitialState(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			dalc := testutil.GetMockDALC(logger)
 			agg, err := block.NewManager(key, conf, c.genesis, c.store, nil, proxyApp, dalc, settlementlc,
-				nil, pubsubServer, p2pClient, logger)
+				nil, pubsubServer, p2pClient, nil, logger)
 			assert.NoError(err)
 			assert.NotNil(agg)
 			assert.Equal(c.expectedChainID, agg.State.ChainID)

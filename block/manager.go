@@ -11,6 +11,7 @@ import (
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/dymensionxyz/dymint/indexers/txindex"
 	"github.com/dymensionxyz/dymint/store"
 	uerrors "github.com/dymensionxyz/dymint/utils/errors"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
@@ -77,6 +78,9 @@ type Manager struct {
 
 	// channel used to send the retain height to the pruning background loop
 	pruningC chan int64
+
+	// indexer
+	indexerService *txindex.IndexerService
 }
 
 // NewManager creates new block Manager.
@@ -92,6 +96,7 @@ func NewManager(
 	eventBus *tmtypes.EventBus,
 	pubsub *pubsub.Server,
 	p2pClient *p2p.Client,
+	indexerService *txindex.IndexerService,
 	logger types.Logger,
 ) (*Manager, error) {
 	localAddress, err := types.GetAddress(localKey)
