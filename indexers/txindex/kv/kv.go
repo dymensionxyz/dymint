@@ -553,6 +553,10 @@ LOOP:
 	return filteredHashes
 }
 
+func (txi *TxIndex) Prune(from, to uint64) (uint64, error) {
+	return 0, nil
+}
+
 // Keys
 
 func isTagKey(key []byte) bool {

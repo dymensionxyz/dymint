@@ -24,7 +24,10 @@ func (m *Manager) PruneBlocks(retainHeight uint64) (uint64, error) {
 		return 0, fmt.Errorf("prune block store: %w", err)
 	}
 
-	// TODO: prune state/indexer and state/txindexer??
+	err = m.indexerService.Prune(m.State.BaseHeight, retainHeight)
+	if err != nil {
+		return fmt.Errorf("pruning indexer: %w", err)
+	}
 
 	m.State.BaseHeight = retainHeight
 	_, err = m.Store.SaveState(m.State, nil)

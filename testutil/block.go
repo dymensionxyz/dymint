@@ -21,6 +21,7 @@ import (
 	"github.com/dymensionxyz/dymint/config"
 	"github.com/dymensionxyz/dymint/da"
 	localda "github.com/dymensionxyz/dymint/da/local"
+	blockidxkv "github.com/dymensionxyz/dymint/indexers/blockindexer/kv"
 	mempoolv1 "github.com/dymensionxyz/dymint/mempool/v1"
 	nodemempool "github.com/dymensionxyz/dymint/node/mempool"
 	slregistry "github.com/dymensionxyz/dymint/settlement/registry"

@@ -516,3 +516,7 @@ func (idx *BlockerIndexer) indexEvents(batch store.KVBatch, events []abci.Event,
 
 	return nil
 }
+
+func (idx *BlockerIndexer) Prune(from, to uint64) (uint64, error) {
+	return 0, nil
+}
