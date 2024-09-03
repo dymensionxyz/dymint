@@ -172,7 +172,6 @@ func GetManagerConfig() config.BlockManagerConfig {
 }
 
 func createIndexerService() (*txindex.IndexerService, error) {
-
 	kvStore := store.NewDefaultInMemoryKVStore()
 	txIndexer := kv.NewTxIndex(kvStore)
 	blockIndexer := blockidxkv.New(store.NewPrefixKV(kvStore, []byte("block_events")))
