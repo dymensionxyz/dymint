@@ -78,4 +78,15 @@ func TestIndexerServiceIndexesBlocks(t *testing.T) {
 	res, err = txIndexer.Get(types.Tx("bar").Hash())
 	require.NoError(t, err)
 	require.Equal(t, txResult2, res)
+
+	blocksPruned, err := blockIndexer.Prune(1, 2)
+	require.NoError(t, err)
+	expectedBlocksPruned := uint64(1)
+	require.Equal(t, expectedBlocksPruned, blocksPruned)
+
+	txPruned, err := txIndexer.Prune(1, 2)
+	require.NoError(t, err)
+	expectedTxPruned := uint64(2)
+	require.Equal(t, expectedTxPruned, txPruned)
+
 }
