@@ -148,7 +148,6 @@ func (txi *TxIndex) Index(result *abci.TxResult) error {
 }
 
 func (txi *TxIndex) indexEvents(result *abci.TxResult, hash []byte, store store.KVBatch) (dmtypes.EventKeys, error) {
-
 	eventKeys := dmtypes.EventKeys{}
 	for _, event := range result.Result.Events {
 		// only index events with a non-empty type
@@ -602,6 +601,9 @@ func (txi *TxIndex) pruneTxs(from, to int64) (uint64, error) {
 			if err := batch.Delete(it.Value()); err != nil {
 				continue
 			}
+			if err := txi.pruneEvents(h, batch); err != nil {
+				continue
+			}
 			pruned++
 			// flush every 1000 txs to avoid batches becoming too large
 			if pruned%1000 == 0 && pruned > 0 {
@@ -624,7 +626,6 @@ func (txi *TxIndex) pruneTxs(from, to int64) (uint64, error) {
 }
 
 func (txi *TxIndex) pruneEvents(height int64, batch store.KVBatch) error {
-
 	eventKey, err := eventHeightKey(height)
 	if err != nil {
 		return err

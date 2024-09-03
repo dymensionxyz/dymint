@@ -112,7 +112,7 @@ func (idx *BlockerIndexer) Search(ctx context.Context, q *query.Query) ([]int64,
 
 	// If there is an exact height query, return the result immediately
 	// (if it exists).
-	/*height, ok := lookForHeight(conditions)
+	height, ok := lookForHeight(conditions)
 	if ok {
 		ok, err := idx.Has(height)
 		if err != nil {
@@ -124,7 +124,7 @@ func (idx *BlockerIndexer) Search(ctx context.Context, q *query.Query) ([]int64,
 		}
 
 		return results, nil
-	}*/
+	}
 
 	var heightsInitialized bool
 	filteredHeights := make(map[string][]byte)
@@ -538,7 +538,6 @@ func (idx *BlockerIndexer) Prune(from, to int64) (uint64, error) {
 }
 
 func (idx *BlockerIndexer) pruneBlocks(from, to int64) (uint64, error) {
-
 	pruned := uint64(0)
 	batch := idx.store.NewBatch()
 	defer batch.Discard()
@@ -563,8 +562,7 @@ func (idx *BlockerIndexer) pruneBlocks(from, to int64) (uint64, error) {
 		if err := batch.Delete(key); err != nil {
 			continue
 		}
-		err = idx.pruneEvents(h, batch)
-		if err != nil {
+		if err := idx.pruneEvents(h, batch); err != nil {
 			continue
 		}
 		pruned++
@@ -589,7 +587,6 @@ func (idx *BlockerIndexer) pruneBlocks(from, to int64) (uint64, error) {
 }
 
 func (idx *BlockerIndexer) pruneEvents(height int64, batch store.KVBatch) error {
-
 	eventKey, err := eventHeightKey(height)
 	if err != nil {
 		return err
@@ -627,5 +624,4 @@ func (idx *BlockerIndexer) addEventKeys(height int64, beginKeys *dymint.EventKey
 		return err
 	}
 	return nil
-
 }
