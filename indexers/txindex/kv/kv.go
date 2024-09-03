@@ -18,6 +18,8 @@ import (
 	"github.com/dymensionxyz/dymint/indexers/txindex"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/dymint/types/pb/dymint"
+	dmtypes "github.com/dymensionxyz/dymint/types/pb/dymint"
 )
 
 const (
@@ -74,7 +76,12 @@ func (txi *TxIndex) AddBatch(b *txindex.Batch) error {
 		hash := types.Tx(result.Tx).Hash()
 
 		// index tx by events
-		err := txi.indexEvents(result, hash, storeBatch)
+		eventKeys, err := txi.indexEvents(result, hash, storeBatch)
+		if err != nil {
+			return err
+		}
+
+		err = txi.addEventKeys(result.Height, &eventKeys, storeBatch)
 		if err != nil {
 			return err
 		}
@@ -110,9 +117,15 @@ func (txi *TxIndex) Index(result *abci.TxResult) error {
 	hash := types.Tx(result.Tx).Hash()
 
 	// index tx by events
-	err := txi.indexEvents(result, hash, b)
+	eventKeys, err := txi.indexEvents(result, hash, b)
 	if err != nil {
 		return err
+	}
+
+	// add event keys height index
+	err = txi.addEventKeys(result.Height, &eventKeys, b)
+	if err != nil {
+		return nil
 	}
 
 	// index by height (always)
@@ -134,7 +147,9 @@ func (txi *TxIndex) Index(result *abci.TxResult) error {
 	return b.Commit()
 }
 
-func (txi *TxIndex) indexEvents(result *abci.TxResult, hash []byte, store store.KVBatch) error {
+func (txi *TxIndex) indexEvents(result *abci.TxResult, hash []byte, store store.KVBatch) (dmtypes.EventKeys, error) {
+
+	eventKeys := dmtypes.EventKeys{}
 	for _, event := range result.Result.Events {
 		// only index events with a non-empty type
 		if len(event.Type) == 0 {
@@ -151,13 +166,14 @@ func (txi *TxIndex) indexEvents(result *abci.TxResult, hash []byte, store store.
 			if attr.GetIndex() {
 				err := store.Set(keyForEvent(compositeTag, attr.Value, result), hash)
 				if err != nil {
-					return err
+					return dmtypes.EventKeys{}, err
 				}
+				eventKeys.Keys = append(eventKeys.Keys, keyForEvent(compositeTag, attr.Value, result))
 			}
 		}
 	}
 
-	return nil
+	return dmtypes.EventKeys{}, nil
 }
 
 // Search performs a search using the given query.
@@ -554,15 +570,19 @@ LOOP:
 }
 
 func (txi *TxIndex) Prune(from, to int64) (uint64, error) {
-	return 0, nil
+	pruned, err := txi.pruneTxs(from, to)
+	if err != nil {
+		return 0, err
+	}
+	return pruned, nil
 }
 
-/*func (txi *TxIndex) pruneTxs(from, to int64) (uint64, error) {
+func (txi *TxIndex) pruneTxs(from, to int64) (uint64, error) {
 	pruned := uint64(0)
 	batch := txi.store.NewBatch()
 	defer batch.Discard()
 
-	flush := func(batch store.KVBatch, height uint64) error {
+	flush := func(batch store.KVBatch, height int64) error {
 		err := batch.Commit()
 		if err != nil {
 			return fmt.Errorf("flush batch to disk: height %d: %w", height, err)
@@ -572,21 +592,26 @@ func (txi *TxIndex) Prune(from, to int64) (uint64, error) {
 
 	for h := from; h < to; h++ {
 
-		key := keyForHeight(h)
+		it := txi.store.PrefixIterator(prefixForHeight(h))
+		defer it.Discard()
 
-		if err := batch.Delete(key); err != nil {
-			return 0, err
-		}
-		pruned++
-
-		// flush every 1000 blocks to avoid batches becoming too large
-		if pruned%1000 == 0 && pruned > 0 {
-			err := flush(batch, h)
-			if err != nil {
-				return 0, err
+		for ; it.Valid(); it.Next() {
+			if err := batch.Delete(it.Key()); err != nil {
+				continue
 			}
-			batch.Discard()
-			batch = idx.store.NewBatch()
+			if err := batch.Delete(it.Value()); err != nil {
+				continue
+			}
+			pruned++
+			// flush every 1000 txs to avoid batches becoming too large
+			if pruned%1000 == 0 && pruned > 0 {
+				err := flush(batch, h)
+				if err != nil {
+					return 0, err
+				}
+				batch.Discard()
+				batch = txi.store.NewBatch()
+			}
 		}
 	}
 
@@ -596,7 +621,47 @@ func (txi *TxIndex) Prune(from, to int64) (uint64, error) {
 	}
 
 	return pruned, nil
-}*/
+}
+
+func (txi *TxIndex) pruneEvents(height int64, batch store.KVBatch) error {
+
+	eventKey, err := eventHeightKey(height)
+	if err != nil {
+		return err
+	}
+	keysList, err := txi.store.Get(eventKey)
+	if err != nil {
+		return err
+	}
+	eventKeys := &dymint.EventKeys{}
+	err = eventKeys.Unmarshal(keysList)
+	if err != nil {
+		return err
+	}
+	for _, key := range eventKeys.Keys {
+		err := batch.Delete(key)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (txi *TxIndex) addEventKeys(height int64, eventKeys *dymint.EventKeys, batch store.KVBatch) error {
+	// index event keys by height
+	eventKeyHeight, err := eventHeightKey(height)
+	if err != nil {
+		return err
+	}
+	eventKeysBytes, err := eventKeys.Marshal()
+	if err != nil {
+		return err
+	}
+	if err := batch.Set(eventKeyHeight, eventKeysBytes); err != nil {
+		return err
+	}
+	return nil
+}
 
 // Keys
 
@@ -640,4 +705,11 @@ func startKey(fields ...interface{}) []byte {
 		b.Write([]byte(fmt.Sprintf("%v", f) + tagKeySeparator))
 	}
 	return b.Bytes()
+}
+
+func prefixForHeight(height int64) []byte {
+	return []byte(fmt.Sprintf("%s/%d",
+		tmtypes.TxHeightKey,
+		height,
+	))
 }
