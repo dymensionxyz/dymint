@@ -17,6 +17,7 @@ import (
 	indexer "github.com/dymensionxyz/dymint/indexers/blockindexer"
 	"github.com/dymensionxyz/dymint/store"
 
+	"github.com/dymensionxyz/dymint/types/pb/dymint"
 	dmtypes "github.com/dymensionxyz/dymint/types/pb/dymint"
 	tmtypes "github.com/tendermint/tendermint/types"
 )
@@ -62,7 +63,6 @@ func (idx *BlockerIndexer) Index(bh tmtypes.EventDataNewBlockHeader) error {
 	defer batch.Discard()
 
 	height := bh.Header.Height
-	var eventKeys dmtypes.EventKeys
 	// 1. index by height
 	key, err := heightKey(height)
 	if err != nil {
@@ -77,7 +77,6 @@ func (idx *BlockerIndexer) Index(bh tmtypes.EventDataNewBlockHeader) error {
 	if err != nil {
 		return fmt.Errorf("index BeginBlock events: %w", err)
 	}
-	eventKeys.Keys = append(eventKeys.Keys, beginKeys...)
 	// 3. index EndBlock events
 	endKeys, err := idx.indexEvents(batch, bh.ResultEndBlock.Events, "end_block", height)
 	if err != nil {
@@ -85,16 +84,8 @@ func (idx *BlockerIndexer) Index(bh tmtypes.EventDataNewBlockHeader) error {
 	}
 
 	// 4. index all eventkeys by height key for easy pruning
-	eventKeys.Keys = append(eventKeys.Keys, endKeys...)
-	eventKeyHeight, err := eventHeightKey(height)
+	err = idx.addEventKeys(height, &beginKeys, &endKeys, batch)
 	if err != nil {
-		return err
-	}
-	eventKeysBytes, err := eventKeys.Marshal()
-	if err != nil {
-		return err
-	}
-	if err := batch.Set(eventKeyHeight, eventKeysBytes); err != nil {
 		return err
 	}
 	return batch.Commit()
@@ -497,9 +488,9 @@ func (idx *BlockerIndexer) match(
 	return filteredHeights, nil
 }
 
-func (idx *BlockerIndexer) indexEvents(batch store.KVBatch, events []abci.Event, typ string, height int64) ([][]byte, error) {
+func (idx *BlockerIndexer) indexEvents(batch store.KVBatch, events []abci.Event, typ string, height int64) (dmtypes.EventKeys, error) {
 	heightBz := int64ToBytes(height)
-	var keys [][]byte
+	keys := dmtypes.EventKeys{}
 	for _, event := range events {
 		// only index events with a non-empty type
 		if len(event.Type) == 0 {
@@ -514,19 +505,19 @@ func (idx *BlockerIndexer) indexEvents(batch store.KVBatch, events []abci.Event,
 			// index iff the event specified index:true and it's not a reserved event
 			compositeKey := fmt.Sprintf("%s.%s", event.Type, string(attr.Key))
 			if compositeKey == tmtypes.BlockHeightKey {
-				return nil, fmt.Errorf("event type and attribute key \"%s\" is reserved; please use a different key", compositeKey)
+				return dmtypes.EventKeys{}, fmt.Errorf("event type and attribute key \"%s\" is reserved; please use a different key", compositeKey)
 			}
 
 			if attr.GetIndex() {
 				key, err := eventKey(compositeKey, typ, string(attr.Value), height)
 				if err != nil {
-					return nil, fmt.Errorf("create block index key: %w", err)
+					return dmtypes.EventKeys{}, fmt.Errorf("create block index key: %w", err)
 				}
 
 				if err := batch.Set(key, heightBz); err != nil {
-					return nil, err
+					return dmtypes.EventKeys{}, err
 				}
-				keys = append(keys, key)
+				keys.Keys = append(keys.Keys, key)
 			}
 		}
 	}
@@ -572,6 +563,10 @@ func (idx *BlockerIndexer) pruneBlocks(from, to int64) (uint64, error) {
 		if err := batch.Delete(key); err != nil {
 			continue
 		}
+		err = idx.pruneEvents(h, batch)
+		if err != nil {
+			continue
+		}
 		pruned++
 
 		// flush every 1000 blocks to avoid batches becoming too large
@@ -593,11 +588,44 @@ func (idx *BlockerIndexer) pruneBlocks(from, to int64) (uint64, error) {
 	return pruned, nil
 }
 
-func (idx *BlockerIndexer) pruneEvents(from, to uint64) error {
+func (idx *BlockerIndexer) pruneEvents(height int64, batch store.KVBatch) error {
 
-	/*for h := from; h < to; h++ {
-		heightBz := int64ToBytes(height)
-
-	}*/
+	eventKey, err := eventHeightKey(height)
+	if err != nil {
+		return err
+	}
+	keysList, err := idx.store.Get(eventKey)
+	if err != nil {
+		return err
+	}
+	eventKeys := &dymint.EventKeys{}
+	err = eventKeys.Unmarshal(keysList)
+	if err != nil {
+		return err
+	}
+	for _, key := range eventKeys.Keys {
+		err := batch.Delete(key)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
+}
+
+func (idx *BlockerIndexer) addEventKeys(height int64, beginKeys *dymint.EventKeys, endKeys *dymint.EventKeys, batch store.KVBatch) error {
+	eventKeys := beginKeys
+	eventKeys.Keys = append(eventKeys.Keys, endKeys.Keys...)
+	eventKeyHeight, err := eventHeightKey(height)
+	if err != nil {
+		return err
+	}
+	eventKeysBytes, err := eventKeys.Marshal()
+	if err != nil {
+		return err
+	}
+	if err := batch.Set(eventKeyHeight, eventKeysBytes); err != nil {
+		return err
+	}
+	return nil
+
 }
