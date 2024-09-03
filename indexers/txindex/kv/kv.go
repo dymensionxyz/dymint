@@ -709,7 +709,7 @@ func startKey(fields ...interface{}) []byte {
 }
 
 func prefixForHeight(height int64) []byte {
-	return []byte(fmt.Sprintf("%s/%d",
+	return []byte(fmt.Sprintf("%s/%d/",
 		tmtypes.TxHeightKey,
 		height,
 	))
