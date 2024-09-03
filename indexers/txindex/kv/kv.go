@@ -553,9 +553,50 @@ LOOP:
 	return filteredHashes
 }
 
-func (txi *TxIndex) Prune(from, to uint64) (uint64, error) {
+func (txi *TxIndex) Prune(from, to int64) (uint64, error) {
 	return 0, nil
 }
+
+/*func (txi *TxIndex) pruneTxs(from, to int64) (uint64, error) {
+	pruned := uint64(0)
+	batch := txi.store.NewBatch()
+	defer batch.Discard()
+
+	flush := func(batch store.KVBatch, height uint64) error {
+		err := batch.Commit()
+		if err != nil {
+			return fmt.Errorf("flush batch to disk: height %d: %w", height, err)
+		}
+		return nil
+	}
+
+	for h := from; h < to; h++ {
+
+		key := keyForHeight(h)
+
+		if err := batch.Delete(key); err != nil {
+			return 0, err
+		}
+		pruned++
+
+		// flush every 1000 blocks to avoid batches becoming too large
+		if pruned%1000 == 0 && pruned > 0 {
+			err := flush(batch, h)
+			if err != nil {
+				return 0, err
+			}
+			batch.Discard()
+			batch = idx.store.NewBatch()
+		}
+	}
+
+	err := flush(batch, to)
+	if err != nil {
+		return 0, err
+	}
+
+	return pruned, nil
+}*/
 
 // Keys
 

@@ -10,6 +10,8 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
+const BlockEventHeightKey = "blockevent.height"
+
 func intInSlice(a int, list []int) bool {
 	for _, b := range list {
 		if b == a {
@@ -35,6 +37,14 @@ func heightKey(height int64) ([]byte, error) {
 	return orderedcode.Append(
 		nil,
 		types.BlockHeightKey,
+		height,
+	)
+}
+
+func eventHeightKey(height int64) ([]byte, error) {
+	return orderedcode.Append(
+		nil,
+		BlockEventHeightKey,
 		height,
 	)
 }

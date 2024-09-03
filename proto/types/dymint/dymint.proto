@@ -86,3 +86,7 @@ message Batch {
 	repeated Commit commits = 4;
 
 }
+
+message EventKeys {
+	repeated bytes keys = 1;
+}
