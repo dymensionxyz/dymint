@@ -518,7 +518,6 @@ func (idx *BlockerIndexer) indexEvents(batch store.KVBatch, events []abci.Event,
 }
 
 func (idx *BlockerIndexer) Prune(to int64) (uint64, error) {
-
 	eventsPruned := uint64(0)
 	for h := int64(1); h < to; h++ {
 		key, err := heightKey(h)

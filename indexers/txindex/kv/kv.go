@@ -554,7 +554,6 @@ LOOP:
 }
 
 func (txi *TxIndex) Prune(to int64) (uint64, error) {
-
 	eventsPruned := uint64(0)
 
 	for h := int64(1); h < to; h++ {
