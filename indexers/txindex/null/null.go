@@ -32,3 +32,7 @@ func (txi *TxIndex) Index(result *abci.TxResult) error {
 func (txi *TxIndex) Search(ctx context.Context, q *query.Query) ([]*abci.TxResult, error) {
 	return []*abci.TxResult{}, nil
 }
+
+func (txi *TxIndex) Prune(to int64) (uint64, error) {
+	return 0, nil
+}

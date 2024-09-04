@@ -105,7 +105,7 @@ func (idx *BlockerIndexer) Search(ctx context.Context, q *query.Query) ([]int64,
 
 	// If there is an exact height query, return the result immediately
 	// (if it exists).
-	height, ok := lookForHeight(conditions)
+	/*height, ok := lookForHeight(conditions)
 	if ok {
 		ok, err := idx.Has(height)
 		if err != nil {
@@ -117,7 +117,7 @@ func (idx *BlockerIndexer) Search(ctx context.Context, q *query.Query) ([]int64,
 		}
 
 		return results, nil
-	}
+	}*/
 
 	var heightsInitialized bool
 	filteredHeights := make(map[string][]byte)
@@ -519,12 +519,11 @@ func (idx *BlockerIndexer) indexEvents(batch store.KVBatch, events []abci.Event,
 
 func (idx *BlockerIndexer) Prune(to int64) (uint64, error) {
 
-	blocksPruned := uint64(0)
+	eventsPruned := uint64(0)
 	for h := int64(1); h < to; h++ {
-
 		key, err := heightKey(h)
 		if err != nil {
-			return blocksPruned, fmt.Errorf("create block height index key: %w", err)
+			return eventsPruned, fmt.Errorf("create block height index key: %w", err)
 		}
 		_, err = idx.store.Get(key)
 		if err != nil {
@@ -533,7 +532,25 @@ func (idx *BlockerIndexer) Prune(to int64) (uint64, error) {
 		if err := idx.store.Delete(key); err != nil {
 			continue
 		}
+
 	}
 
-	return blocksPruned, nil
+	it := idx.store.PrefixIterator([]byte{})
+	defer it.Discard()
+
+	for ; it.Valid(); it.Next() {
+		key := it.Key()[13:]
+		height, err := parseHeightFromEventKey(key)
+		if err != nil || height >= to {
+			continue
+		}
+		err = idx.store.Delete(key)
+		if err != nil {
+			continue
+		}
+
+		eventsPruned++
+	}
+
+	return eventsPruned, nil
 }

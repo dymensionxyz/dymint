@@ -22,6 +22,9 @@ type TxIndexer interface {
 
 	// Search allows you to query for transactions.
 	Search(ctx context.Context, q *query.Query) ([]*abci.TxResult, error)
+
+	// Prune function used by indexer pruning command
+	Prune(to int64) (uint64, error)
 }
 
 // Batch groups together multiple Index operations to be performed at the same time.

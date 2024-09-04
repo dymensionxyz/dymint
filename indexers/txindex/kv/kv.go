@@ -553,6 +553,46 @@ LOOP:
 	return filteredHashes
 }
 
+func (txi *TxIndex) Prune(to int64) (uint64, error) {
+
+	eventsPruned := uint64(0)
+
+	for h := int64(1); h < to; h++ {
+		prefix := []byte(fmt.Sprintf("%s/%d/", tmtypes.TxHeightKey, h))
+
+		it := txi.store.PrefixIterator(prefix)
+		defer it.Discard()
+		for ; it.Valid(); it.Next() {
+			err := txi.store.Delete(it.Key())
+			if err != nil {
+				continue
+			}
+			err = txi.store.Delete(it.Value())
+			if err != nil {
+				continue
+			}
+		}
+	}
+	it := txi.store.PrefixIterator([]byte{})
+	defer it.Discard()
+
+	for ; it.Valid(); it.Next() {
+		key := it.Key()[13:]
+		height, err := extractHeightFromKey(key)
+		if err != nil || height >= to {
+			continue
+		}
+		err = txi.store.Delete(key)
+		if err != nil {
+			continue
+		}
+
+		eventsPruned++
+	}
+
+	return eventsPruned, nil
+}
+
 // Keys
 
 func isTagKey(key []byte) bool {
@@ -562,6 +602,15 @@ func isTagKey(key []byte) bool {
 func extractValueFromKey(key []byte) string {
 	parts := strings.SplitN(string(key), tagKeySeparator, 3)
 	return parts[1]
+}
+
+func extractHeightFromKey(key []byte) (int64, error) {
+	parts := strings.SplitN(string(key), tagKeySeparator, 3)
+	height, err := strconv.ParseInt(parts[2], 10, 64)
+	if err != nil {
+		return 0, err
+	}
+	return height, nil
 }
 
 func keyForEvent(key string, value []byte, result *abci.TxResult) []byte {
