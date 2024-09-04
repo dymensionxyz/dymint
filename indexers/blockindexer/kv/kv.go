@@ -105,7 +105,7 @@ func (idx *BlockerIndexer) Search(ctx context.Context, q *query.Query) ([]int64,
 
 	// If there is an exact height query, return the result immediately
 	// (if it exists).
-	/*height, ok := lookForHeight(conditions)
+	height, ok := lookForHeight(conditions)
 	if ok {
 		ok, err := idx.Has(height)
 		if err != nil {
@@ -117,7 +117,7 @@ func (idx *BlockerIndexer) Search(ctx context.Context, q *query.Query) ([]int64,
 		}
 
 		return results, nil
-	}*/
+	}
 
 	var heightsInitialized bool
 	filteredHeights := make(map[string][]byte)
