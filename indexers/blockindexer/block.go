@@ -19,4 +19,7 @@ type BlockIndexer interface {
 	// Search performs a query for block heights that match a given BeginBlock
 	// and Endblock event search criteria.
 	Search(ctx context.Context, q *query.Query) ([]int64, error)
+
+	// Prune function used by indexer pruning command
+	Prune(to int64) (uint64, error)
 }

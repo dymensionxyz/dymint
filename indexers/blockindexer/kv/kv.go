@@ -516,3 +516,24 @@ func (idx *BlockerIndexer) indexEvents(batch store.KVBatch, events []abci.Event,
 
 	return nil
 }
+
+func (idx *BlockerIndexer) Prune(to int64) (uint64, error) {
+
+	blocksPruned := uint64(0)
+	for h := int64(1); h < to; h++ {
+
+		key, err := heightKey(h)
+		if err != nil {
+			return blocksPruned, fmt.Errorf("create block height index key: %w", err)
+		}
+		_, err = idx.store.Get(key)
+		if err != nil {
+			continue
+		}
+		if err := idx.store.Delete(key); err != nil {
+			continue
+		}
+	}
+
+	return blocksPruned, nil
+}

@@ -25,3 +25,7 @@ func (idx *BlockerIndexer) Index(types.EventDataNewBlockHeader) error {
 func (idx *BlockerIndexer) Search(ctx context.Context, q *query.Query) ([]int64, error) {
 	return []int64{}, nil
 }
+
+func (idx *BlockerIndexer) Prune(to int64) (uint64, error) {
+	return 0, nil
+}
