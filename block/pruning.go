@@ -14,19 +14,22 @@ func (m *Manager) PruneBlocks(retainHeight uint64) (uint64, error) {
 		}
 	}
 
-	//
+	// prune blocks from blocksync store
 	err := m.p2pClient.RemoveBlocks(context.Background(), m.State.BaseHeight, retainHeight)
 	if err != nil {
 		m.logger.Error("pruning blocksync store", "retain_height", retainHeight, "err", err)
 	}
+
+	// prune blocks from indexer store
+	err = m.indexerService.Prune(m.State.BaseHeight, retainHeight)
+	if err != nil {
+		m.logger.Error("pruning indexer", "retain_height", retainHeight, "err", err)
+	}
+
+	// prune blocks from dymint store
 	pruned, err := m.Store.PruneStore(m.State.BaseHeight, retainHeight, m.logger)
 	if err != nil {
 		return 0, fmt.Errorf("prune block store: %w", err)
-	}
-
-	err = m.indexerService.Prune(int64(m.State.BaseHeight), int64(retainHeight))
-	if err != nil {
-		return fmt.Errorf("pruning indexer: %w", err)
 	}
 
 	m.State.BaseHeight = retainHeight

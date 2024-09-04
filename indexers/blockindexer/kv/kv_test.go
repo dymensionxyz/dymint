@@ -153,7 +153,7 @@ func TestBlockIndexerPruning(t *testing.T) {
 	indexer := blockidxkv.New(prefixStore)
 	numBlocks := uint64(100)
 
-	// index block event data
+	// index block data
 	for i := uint64(1); i <= numBlocks; i++ {
 		indexer.Index(types.EventDataNewBlockHeader{
 			Header:           types.Header{Height: int64(i)},
@@ -167,7 +167,7 @@ func TestBlockIndexerPruning(t *testing.T) {
 	q := query.MustParse(queryString)
 	results, err := indexer.Search(context.Background(), q)
 	require.NoError(t, err)
-	require.Equal(t, numBlocks, len(results))
+	require.Equal(t, numBlocks, uint64(len(results)))
 
 	// prune indexer for all heights
 	pruned, err := indexer.Prune(1, numBlocks+1)
