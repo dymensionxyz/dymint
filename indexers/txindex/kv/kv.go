@@ -568,7 +568,7 @@ LOOP:
 	return filteredHashes
 }
 
-func (txi *TxIndex) Prune(from, to int64) (uint64, error) {
+func (txi *TxIndex) Prune(from, to uint64) (uint64, error) {
 	pruned, err := txi.pruneTxs(from, to)
 	if err != nil {
 		return 0, err
@@ -576,7 +576,7 @@ func (txi *TxIndex) Prune(from, to int64) (uint64, error) {
 	return pruned, nil
 }
 
-func (txi *TxIndex) pruneTxs(from, to int64) (uint64, error) {
+func (txi *TxIndex) pruneTxs(from, to uint64) (uint64, error) {
 	pruned := uint64(0)
 	batch := txi.store.NewBatch()
 	defer batch.Discard()
@@ -591,7 +591,7 @@ func (txi *TxIndex) pruneTxs(from, to int64) (uint64, error) {
 
 	for h := from; h < to; h++ {
 
-		it := txi.store.PrefixIterator(prefixForHeight(h))
+		it := txi.store.PrefixIterator(prefixForHeight(int64(h)))
 		defer it.Discard()
 
 		for ; it.Valid(); it.Next() {
@@ -607,7 +607,7 @@ func (txi *TxIndex) pruneTxs(from, to int64) (uint64, error) {
 			pruned++
 			// flush every 1000 txs to avoid batches becoming too large
 			if pruned%1000 == 0 && pruned > 0 {
-				err := flush(batch, h)
+				err := flush(batch, int64(h))
 				if err != nil {
 					return 0, err
 				}
@@ -617,7 +617,7 @@ func (txi *TxIndex) pruneTxs(from, to int64) (uint64, error) {
 		}
 	}
 
-	err := flush(batch, to)
+	err := flush(batch, int64(to))
 	if err != nil {
 		return 0, err
 	}
@@ -625,8 +625,8 @@ func (txi *TxIndex) pruneTxs(from, to int64) (uint64, error) {
 	return pruned, nil
 }
 
-func (txi *TxIndex) pruneEvents(height int64, batch store.KVBatch) error {
-	eventKey, err := eventHeightKey(height)
+func (txi *TxIndex) pruneEvents(height uint64, batch store.KVBatch) error {
+	eventKey, err := eventHeightKey(int64(height))
 	if err != nil {
 		return err
 	}

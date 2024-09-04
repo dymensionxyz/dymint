@@ -99,7 +99,7 @@ func (is *IndexerService) OnStop() {
 }
 
 // Prune removes tx and blocks indexed up to (but not including) a height.
-func (is *IndexerService) Prune(from, to int64) error {
+func (is *IndexerService) Prune(from, to uint64) error {
 	_, err := is.blockIdxr.Prune(from, to)
 	if err != nil {
 		return err

@@ -525,7 +525,7 @@ func (idx *BlockerIndexer) indexEvents(batch store.KVBatch, events []abci.Event,
 	return keys, nil
 }
 
-func (idx *BlockerIndexer) Prune(from, to int64) (uint64, error) {
+func (idx *BlockerIndexer) Prune(from, to uint64) (uint64, error) {
 	if from <= 0 {
 		return 0, fmt.Errorf("from height must be greater than 0: %w", gerrc.ErrInvalidArgument)
 	}
@@ -537,7 +537,7 @@ func (idx *BlockerIndexer) Prune(from, to int64) (uint64, error) {
 	return blocksPruned, err
 }
 
-func (idx *BlockerIndexer) pruneBlocks(from, to int64) (uint64, error) {
+func (idx *BlockerIndexer) pruneBlocks(from, to uint64) (uint64, error) {
 	pruned := uint64(0)
 	batch := idx.store.NewBatch()
 	defer batch.Discard()
@@ -550,7 +550,7 @@ func (idx *BlockerIndexer) pruneBlocks(from, to int64) (uint64, error) {
 		return nil
 	}
 
-	for h := from; h < to; h++ {
+	for h := int64(from); h < int64(to); h++ {
 		ok, err := idx.Has(h)
 		if err != nil || !ok {
 			continue
@@ -578,7 +578,7 @@ func (idx *BlockerIndexer) pruneBlocks(from, to int64) (uint64, error) {
 		}
 	}
 
-	err := flush(batch, to)
+	err := flush(batch, int64(to))
 	if err != nil {
 		return 0, err
 	}
