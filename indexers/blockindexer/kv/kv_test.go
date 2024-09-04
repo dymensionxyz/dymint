@@ -151,10 +151,10 @@ func TestBlockIndexerPruning(t *testing.T) {
 	// init the block indexer
 	prefixStore := store.NewPrefixKV(store.NewDefaultInMemoryKVStore(), []byte("block_events"))
 	indexer := blockidxkv.New(prefixStore)
-	numBlocks := 100
+	numBlocks := uint64(100)
 
 	// index block event data
-	for i := 1; i <= numBlocks; i++ {
+	for i := uint64(1); i <= numBlocks; i++ {
 		indexer.Index(types.EventDataNewBlockHeader{
 			Header:           types.Header{Height: int64(i)},
 			ResultBeginBlock: getBeginBlock(),
@@ -170,9 +170,9 @@ func TestBlockIndexerPruning(t *testing.T) {
 	require.Equal(t, numBlocks, len(results))
 
 	// prune indexer for all heights
-	pruned, err := indexer.Prune(1, int64(numBlocks+1))
+	pruned, err := indexer.Prune(1, numBlocks+1)
 	require.NoError(t, err)
-	require.Equal(t, uint64(numBlocks), pruned)
+	require.Equal(t, numBlocks, pruned)
 
 	// check the query returns empty
 	results, err = indexer.Search(context.Background(), q)

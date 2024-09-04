@@ -33,6 +33,6 @@ func (txi *TxIndex) Search(ctx context.Context, q *query.Query) ([]*abci.TxResul
 	return []*abci.TxResult{}, nil
 }
 
-func (txi *TxIndex) Prune(from, to int64) (uint64, error) {
+func (txi *TxIndex) Prune(from, to uint64) (uint64, error) {
 	return 0, nil
 }

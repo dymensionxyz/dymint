@@ -20,8 +20,6 @@ import (
 	"github.com/dymensionxyz/dymint/store"
 )
 
-const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-
 func TestTxIndex(t *testing.T) {
 	indexer := NewTxIndex(store.NewDefaultInMemoryKVStore())
 
@@ -319,20 +317,19 @@ func TestTxIndexerPruning(t *testing.T) {
 
 	// init the block indexer
 	indexer := NewTxIndex(store.NewDefaultInMemoryKVStore())
-	numBlocks := 100
+	numBlocks := uint64(100)
 
 	txsWithEvents := 0
-	eventCounter := 0
+
 	// index tx event data
-	for i := 1; i <= numBlocks; i++ {
-		events := getRandomEvent(rand.Intn(10))
+	for i := uint64(1); i <= numBlocks; i++ {
+		events := getNEvents(rand.Intn(10))
 		txResult := getRandomTxResult(int64(i), events)
 		err := indexer.Index(txResult)
 		require.NoError(t, err)
 		if len(events) > 0 {
 			txsWithEvents++
 		}
-		eventCounter += len(events)
 	}
 
 	// query all blocks and receive events for all txs
@@ -341,7 +338,7 @@ func TestTxIndexerPruning(t *testing.T) {
 	require.Equal(t, txsWithEvents, len(results))
 
 	// prune indexer for all heights
-	pruned, err := indexer.Prune(1, int64(numBlocks+1))
+	pruned, err := indexer.Prune(1, numBlocks+1)
 	require.NoError(t, err)
 	require.Equal(t, uint64(numBlocks), pruned)
 
@@ -367,7 +364,7 @@ func txResultWithEvents(events []abci.Event) *abci.TxResult {
 	}
 }
 func getRandomTxResult(height int64, events []abci.Event) *abci.TxResult {
-	tx := types.Tx(randStringBytesRmndr(60))
+	tx := types.Tx(randomTxHash())
 	fmt.Println(tx.Hash())
 	return &abci.TxResult{
 		Height: height,
@@ -382,7 +379,7 @@ func getRandomTxResult(height int64, events []abci.Event) *abci.TxResult {
 	}
 }
 
-func getRandomEvent(n int) []abci.Event {
+func getNEvents(n int) []abci.Event {
 	events := []abci.Event{}
 	for i := 0; i < n; i++ {
 		event := abci.Event{
@@ -400,10 +397,12 @@ func getRandomEvent(n int) []abci.Event {
 	return events
 }
 
-func randStringBytesRmndr(n int) string {
-	b := make([]byte, n)
+func randomTxHash() string {
+	symbols := "1234567890ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+
+	b := make([]byte, 64)
 	for i := range b {
-		b[i] = letterBytes[rand.Int63()%int64(len(letterBytes))]
+		b[i] = symbols[rand.Int63()%int64(len(symbols))]
 	}
 	return string(b)
 }

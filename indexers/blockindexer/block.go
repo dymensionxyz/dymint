@@ -21,5 +21,5 @@ type BlockIndexer interface {
 	Search(ctx context.Context, q *query.Query) ([]int64, error)
 
 	// Delete indexed block entries  up to (but not including) a height. It returns number of entries pruned.
-	Prune(from, to int64) (uint64, error)
+	Prune(from, to uint64) (uint64, error)
 }
