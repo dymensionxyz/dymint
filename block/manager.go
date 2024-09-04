@@ -256,6 +256,11 @@ func (m *Manager) syncFromSettlement() error {
 		// The SL hasn't got any batches for this chain yet.
 		m.logger.Info("No batches for chain found in SL.")
 		m.LastSubmittedHeight.Store(uint64(m.Genesis.InitialHeight - 1))
+		m.State.LastSubmittedHeight = uint64(m.Genesis.InitialHeight - 1)
+		_, err = m.Store.SaveState(m.State, nil)
+		if err != nil {
+			return fmt.Errorf("save state: %w", err)
+		}
 		return nil
 	}
 
@@ -264,6 +269,11 @@ func (m *Manager) syncFromSettlement() error {
 		return err
 	}
 	m.LastSubmittedHeight.Store(res.EndHeight)
+	m.State.LastSubmittedHeight = res.EndHeight
+	_, err = m.Store.SaveState(m.State, nil)
+	if err != nil {
+		return fmt.Errorf("save state: %w", err)
+	}
 	err = m.syncToTargetHeight(res.EndHeight)
 	m.UpdateTargetHeight(res.EndHeight)
 	if err != nil {

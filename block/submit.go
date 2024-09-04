@@ -228,6 +228,11 @@ func (m *Manager) SubmitBatch(batch *types.Batch) error {
 
 	types.RollappHubHeightGauge.Set(float64(batch.EndHeight()))
 	m.LastSubmittedHeight.Store(batch.EndHeight())
+	m.State.LastSubmittedHeight = batch.EndHeight()
+	_, err = m.Store.SaveState(m.State, nil)
+	if err != nil {
+		return fmt.Errorf("save state: %w", err)
+	}
 	return nil
 }
 

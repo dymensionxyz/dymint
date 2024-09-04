@@ -38,6 +38,9 @@ type State struct {
 
 	// the latest AppHash we've received from calling abci.Commit()
 	AppHash [32]byte
+
+	// LastSubmittedHeight to DA
+	LastSubmittedHeight uint64
 }
 
 func (s *State) IsGenesis() bool {
