@@ -519,6 +519,17 @@ func (idx *BlockerIndexer) indexEvents(batch store.KVBatch, events []abci.Event,
 
 func (idx *BlockerIndexer) Prune(to int64) (uint64, error) {
 	eventsPruned := uint64(0)
+
+	batch := idx.store.NewBatch()
+
+	flush := func(batch store.KVBatch, height int64) error {
+		err := batch.Commit()
+		if err != nil {
+			return fmt.Errorf("flush batch to disk: height %d: %w", height, err)
+		}
+		return nil
+	}
+
 	for h := int64(1); h < to; h++ {
 		key, err := heightKey(h)
 		if err != nil {
@@ -531,7 +542,15 @@ func (idx *BlockerIndexer) Prune(to int64) (uint64, error) {
 		if err := idx.store.Delete(key); err != nil {
 			continue
 		}
-
+		eventsPruned++
+		if eventsPruned%1000 == 0 && eventsPruned > 0 {
+			err := flush(batch, h)
+			if err != nil {
+				return 0, err
+			}
+			batch.Discard()
+			batch = idx.store.NewBatch()
+		}
 	}
 
 	it := idx.store.PrefixIterator([]byte{})
@@ -543,12 +562,24 @@ func (idx *BlockerIndexer) Prune(to int64) (uint64, error) {
 		if err != nil || height >= to {
 			continue
 		}
-		err = idx.store.Delete(key)
+		err = batch.Delete(key)
 		if err != nil {
 			continue
 		}
 
 		eventsPruned++
+		if eventsPruned%1000 == 0 && eventsPruned > 0 {
+			err := flush(batch, to)
+			if err != nil {
+				return 0, err
+			}
+			batch.Discard()
+			batch = idx.store.NewBatch()
+		}
+	}
+	err := flush(batch, to)
+	if err != nil {
+		return 0, err
 	}
 
 	return eventsPruned, nil
