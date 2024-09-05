@@ -132,13 +132,11 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 		RollappConsensusParamUpdates: &abci.RollappConsensusParams{
 			Da:      "mock",
 			Version: version.Commit,
-			Block: &abci.BlockParams{
-				MaxBytes: 500000,
-			},
 		},
 		ConsensusParamUpdates: &abci.ConsensusParams{
 			Block: &abci.BlockParams{
-				MaxGas: 40000000,
+				MaxGas:   40000000,
+				MaxBytes: 500000,
 			},
 		},
 	})
@@ -217,13 +215,11 @@ func TestProduceNewBlock(t *testing.T) {
 		RollappConsensusParamUpdates: &abci.RollappConsensusParams{
 			Da:      "mock",
 			Version: version.Commit,
-			Block: &abci.BlockParams{
-				MaxBytes: 500000,
-			},
 		},
 		ConsensusParamUpdates: &abci.ConsensusParams{
 			Block: &abci.BlockParams{
-				MaxGas: 40000000,
+				MaxGas:   40000000,
+				MaxBytes: 500000,
 			},
 		},
 	})
@@ -252,13 +248,11 @@ func TestProducePendingBlock(t *testing.T) {
 		RollappConsensusParamUpdates: &abci.RollappConsensusParams{
 			Da:      "mock",
 			Version: version.Commit,
-			Block: &abci.BlockParams{
-				MaxBytes: 500000,
-			},
 		},
 		ConsensusParamUpdates: &abci.ConsensusParams{
 			Block: &abci.BlockParams{
-				MaxGas: 40000000,
+				MaxGas:   40000000,
+				MaxBytes: 500000,
 			},
 		},
 	})
@@ -368,13 +362,11 @@ func TestProduceBlockFailAfterCommit(t *testing.T) {
 				RollappConsensusParamUpdates: &abci.RollappConsensusParams{
 					Da:      "mock",
 					Version: version.Commit,
-					Block: &abci.BlockParams{
-						MaxBytes: 500000,
-					},
 				},
 				ConsensusParamUpdates: &abci.ConsensusParams{
 					Block: &abci.BlockParams{
-						MaxGas: 40000000,
+						MaxGas:   40000000,
+						MaxBytes: 500000,
 					},
 				},
 			})
@@ -402,13 +394,11 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 		RollappConsensusParamUpdates: &abci.RollappConsensusParams{
 			Da:      "mock",
 			Version: version.Commit,
-			Block: &abci.BlockParams{
-				MaxBytes: 500000,
-			},
 		},
 		ConsensusParamUpdates: &abci.ConsensusParams{
 			Block: &abci.BlockParams{
-				MaxGas: 40000000,
+				MaxGas:   40000000,
+				MaxBytes: 500000,
 			},
 		},
 	})
@@ -486,13 +476,11 @@ func TestDAFetch(t *testing.T) {
 		RollappConsensusParamUpdates: &abci.RollappConsensusParams{
 			Da:      "mock",
 			Version: version.Commit,
-			Block: &abci.BlockParams{
-				MaxBytes: 500000,
-			},
 		},
 		ConsensusParamUpdates: &abci.ConsensusParams{
 			Block: &abci.BlockParams{
-				MaxGas: 40000000,
+				MaxGas:   40000000,
+				MaxBytes: 500000,
 			},
 		},
 	})

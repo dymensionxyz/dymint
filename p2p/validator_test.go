@@ -133,7 +133,7 @@ func TestValidator_BlockValidator(t *testing.T) {
 			state := &types.State{}
 			state.Sequencers.SetProposer(types.NewSequencerFromValidator(*tmtypes.NewValidator(proposerKey.PubKey(), 1)))
 			state.ConsensusParams.Block.MaxGas = 100000
-			state.RollappParams.Blockmaxbytes = maxBytes
+			state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
 
 			// Create empty block
 			block := executor.CreateBlock(1, &types.Commit{}, [32]byte{}, [32]byte(state.Sequencers.ProposerHash()), state, maxBytes)

@@ -33,13 +33,11 @@ func CreateNode(isSequencer bool, blockManagerConfig *config.BlockManagerConfig,
 		RollappConsensusParamUpdates: &abci.RollappConsensusParams{
 			Da:      "celestia",
 			Version: "abcde",
-			Block: &abci.BlockParams{
-				MaxBytes: 100,
-			},
 		},
 		ConsensusParamUpdates: &abci.ConsensusParams{
 			Block: &abci.BlockParams{
-				MaxGas: 100,
+				MaxGas:   100,
+				MaxBytes: 100,
 			},
 		},
 	})

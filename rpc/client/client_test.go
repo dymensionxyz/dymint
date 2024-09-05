@@ -447,13 +447,11 @@ func TestTx(t *testing.T) {
 		RollappConsensusParamUpdates: &abci.RollappConsensusParams{
 			Da:      "mock",
 			Version: version.Commit,
-			Block: &abci.BlockParams{
-				MaxBytes: 100,
-			},
 		},
 		ConsensusParamUpdates: &abci.ConsensusParams{
 			Block: &abci.BlockParams{
-				MaxGas: 100,
+				MaxGas:   100,
+				MaxBytes: 100,
 			},
 		},
 	})

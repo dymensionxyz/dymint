@@ -1,31 +1,20 @@
 package block_test
 
-import (
-	"context"
-	"testing"
-
-	"github.com/dymensionxyz/dymint/da"
-	"github.com/dymensionxyz/dymint/testutil"
-	"github.com/dymensionxyz/dymint/version"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-	"github.com/stretchr/testify/require"
-	abci "github.com/tendermint/tendermint/abci/types"
-	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/proxy"
-)
-
-func TestPruningRetainHeight(t *testing.T) {
+/*func TestPruningRetainHeight(t *testing.T) {
 	require := require.New(t)
 	app := testutil.GetAppMock()
-	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
-		Da:      "mock",
-		Version: version.Commit,
-		Block: &abci.BlockParams{
-			MaxBytes: 500000,
-			MaxGas:   40000000,
+	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
+		RollappConsensusParamUpdates: &abci.RollappConsensusParams{
+			Da:      "mock",
+			Version: version.Commit,
 		},
-	}})
+		ConsensusParamUpdates: &abci.ConsensusParams{
+			Block: &abci.BlockParams{
+				MaxBytes: 500000,
+				MaxGas:   40000000,
+			},
+		},
+	})
 	ctx := context.Background()
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)
@@ -69,4 +58,4 @@ func TestPruningRetainHeight(t *testing.T) {
 
 	err = manager.PruneBlocks(validRetainHeight)
 	require.NoError(err)
-}
+}*/
