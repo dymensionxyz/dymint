@@ -332,8 +332,9 @@ func TestTxIndexerPruning(t *testing.T) {
 		}
 	}
 
+	q := query.MustParse("account.number = 1")
 	// query all blocks and receive events for all txs
-	results, err := indexer.Search(context.Background(), query.MustParse("account.number = 1"))
+	results, err := indexer.Search(context.Background(), q)
 	require.NoError(t, err)
 	require.Equal(t, txsWithEvents, len(results))
 
@@ -343,9 +344,17 @@ func TestTxIndexerPruning(t *testing.T) {
 	require.Equal(t, uint64(numBlocks), pruned)
 
 	// check the query returns empty
-	results, err = indexer.Search(context.Background(), query.MustParse("account.number = 1"))
+	results, err = indexer.Search(context.Background(), q)
 	require.NoError(t, err)
 	require.Equal(t, 0, len(results))
+
+	conditions, err := q.Conditions()
+	require.NoError(t, err)
+	// check there are no unlinked events matching the query that are not found with Search
+	for _, c := range conditions {
+		results := indexer.match(context.Background(), c, startKeyForCondition(c, 0), nil, true)
+		require.Equal(t, 0, len(results))
+	}
 
 }
 

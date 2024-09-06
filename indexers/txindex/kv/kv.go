@@ -172,7 +172,7 @@ func (txi *TxIndex) indexEvents(result *abci.TxResult, hash []byte, store store.
 		}
 	}
 
-	return dmtypes.EventKeys{}, nil
+	return eventKeys, nil
 }
 
 // Search performs a search using the given query.
