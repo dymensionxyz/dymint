@@ -129,7 +129,7 @@ func TestValidator_BlockValidator(t *testing.T) {
 			assert.NoError(t, err)
 
 			// Create state
-			maxBytes := uint32(100)
+			maxBytes := uint64(100)
 			state := &types.State{}
 			state.Sequencers.SetProposer(types.NewSequencerFromValidator(*tmtypes.NewValidator(proposerKey.PubKey(), 1)))
 			state.ConsensusParams.Block.MaxGas = 100000

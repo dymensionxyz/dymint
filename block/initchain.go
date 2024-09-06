@@ -23,7 +23,6 @@ func (m *Manager) RunInitChain(ctx context.Context) error {
 	}
 	// update the state with only the consensus pubkey
 	m.Executor.UpdateStateAfterInitChain(m.State, res)
-	m.ValidateConsensusBlockParams()
 	m.Executor.UpdateMempoolAfterInitChain(m.State)
 	if _, err := m.Store.SaveState(m.State, nil); err != nil {
 		return err

@@ -33,9 +33,6 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
-// default minimum block max size allowed. not specific reason to set it to 10K, but we need to avoid no transactions can be included in a block.
-const minBlockMaxBytes = 10000
-
 // Manager is responsible for aggregating transactions into blocks.
 type Manager struct {
 	logger types.Logger
@@ -326,15 +323,4 @@ func (m *Manager) setDA(daconfig string, dalcKV store.KV, logger log.Logger) err
 	}
 	m.Retriever = retriever
 	return nil
-}
-
-func (m *Manager) ValidateConsensusBlockParams() {
-	if m.State.ConsensusParams.Block.MaxBytes < minBlockMaxBytes {
-		m.logger.Info("Block max bytes in consensus params lower than minimum accepted in consensus params. Using minimum accepted as max block bytes.", "block_max_bytes", m.State.ConsensusParams.Block.MaxBytes, "min_max_bytes", minBlockMaxBytes)
-		m.State.ConsensusParams.Block.MaxBytes = minBlockMaxBytes
-	}
-	if m.State.ConsensusParams.Block.MaxBytes > int64(m.Conf.BatchSubmitBytes) {
-		m.logger.Info("Block max bytes in consensus params higher than DA batch size. Using DA batch size as max block bytes.", "block_max_bytes", m.State.ConsensusParams.Block.MaxBytes, "DA_batch_size", m.Conf.BatchSubmitBytes)
-		m.State.ConsensusParams.Block.MaxBytes = minBlockMaxBytes
-	}
 }

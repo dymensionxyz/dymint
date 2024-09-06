@@ -7,7 +7,6 @@ import (
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmcrypto "github.com/tendermint/tendermint/crypto/encoding"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
-	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/proxy"
 	tmtypes "github.com/tendermint/tendermint/types"
 	"go.uber.org/multierr"
@@ -15,6 +14,9 @@ import (
 	"github.com/dymensionxyz/dymint/mempool"
 	"github.com/dymensionxyz/dymint/types"
 )
+
+// default minimum block max size allowed. not specific reason to set it to 10K, but we need to avoid no transactions can be included in a block.
+const minBlockMaxBytes = 10000
 
 // Executor creates and applies blocks and maintains state.
 type Executor struct {
@@ -60,37 +62,20 @@ func (e *Executor) InitChain(genesis *tmtypes.GenesisDoc, valset []*tmtypes.Vali
 			Power:  validator.VotingPower,
 		})
 	}
-	params := genesis.ConsensusParams
 
 	return e.proxyAppConsensusConn.InitChainSync(abci.RequestInitChain{
-		Time:    genesis.GenesisTime,
-		ChainId: genesis.ChainID,
-		ConsensusParams: &abci.ConsensusParams{
-			Block: &abci.BlockParams{
-				MaxBytes: params.Block.MaxBytes,
-				MaxGas:   params.Block.MaxGas,
-			},
-			Evidence: &tmproto.EvidenceParams{
-				MaxAgeNumBlocks: params.Evidence.MaxAgeNumBlocks,
-				MaxAgeDuration:  params.Evidence.MaxAgeDuration,
-				MaxBytes:        params.Evidence.MaxBytes,
-			},
-			Validator: &tmproto.ValidatorParams{
-				PubKeyTypes: params.Validator.PubKeyTypes,
-			},
-			Version: &tmproto.VersionParams{
-				AppVersion: params.Version.AppVersion,
-			},
-		},
-		Validators:    valUpdates,
-		AppStateBytes: genesis.AppState,
-		InitialHeight: genesis.InitialHeight,
+		Time:            genesis.GenesisTime,
+		ChainId:         genesis.ChainID,
+		ConsensusParams: &abci.ConsensusParams{},
+		Validators:      valUpdates,
+		AppStateBytes:   genesis.AppState,
+		InitialHeight:   genesis.InitialHeight,
 	})
 }
 
 // CreateBlock reaps transactions from mempool and builds a block.
-func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHeaderHash, nextSeqHash [32]byte, state *types.State, maxBlockDataSizeBytes uint32) *types.Block {
-	maxBlockDataSizeBytes = min(maxBlockDataSizeBytes, uint32(state.ConsensusParams.Block.MaxBytes))
+func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHeaderHash, nextSeqHash [32]byte, state *types.State, maxBlockDataSizeBytes uint64) *types.Block {
+	maxBlockDataSizeBytes = min(maxBlockDataSizeBytes, uint64(max(minBlockMaxBytes, state.ConsensusParams.Block.MaxBytes)))
 	mempoolTxs := e.mempool.ReapMaxBytesMaxGas(int64(maxBlockDataSizeBytes), state.ConsensusParams.Block.MaxGas)
 
 	block := &types.Block{

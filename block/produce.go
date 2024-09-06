@@ -148,7 +148,7 @@ func (m *Manager) produceBlock(allowEmpty bool, nextProposerHash *[32]byte) (*ty
 		return nil, nil, fmt.Errorf("load block: height: %d: %w: %w", newHeight, err, ErrNonRecoverable)
 	}
 
-	maxBlockDataSize := uint32(float64(m.Conf.BatchSubmitBytes) * types.MaxBlockSizeAdjustment)
+	maxBlockDataSize := uint64(float64(m.Conf.BatchSubmitBytes) * types.MaxBlockSizeAdjustment)
 	proposerHashForBlock := [32]byte(m.State.Sequencers.ProposerHash())
 	// if nextProposerHash is set, we create a last block
 	if nextProposerHash != nil {
