@@ -43,11 +43,15 @@ require (
 )
 
 require (
+	cloud.google.com/go v0.112.1 // indirect
+	cloud.google.com/go/storage v1.38.0 // indirect
 	github.com/celestiaorg/go-square v1.0.1 // indirect
 	github.com/celestiaorg/go-square/merkle v0.0.0-20240429192549-dea967e1533b // indirect
 	github.com/cskr/pubsub v1.0.2 // indirect
+	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/ipfs/go-block-format v0.2.0 // indirect
+	google.golang.org/api v0.169.0 // indirect
 )
 
 require (
@@ -243,7 +247,7 @@ require (
 	golang.org/x/sys v0.19.0 // indirect
 	golang.org/x/term v0.19.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
-	google.golang.org/genproto v0.0.0-20240123012728-ef4313101c80 // indirect
+	google.golang.org/genproto v0.0.0-20240213162025-012b6fc9bca9 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1 // indirect
@@ -293,10 +297,11 @@ require (
 
 replace (
 	github.com/centrifuge/go-substrate-rpc-client/v4 => github.com/availproject/go-substrate-rpc-client/v4 v4.0.12-avail-1.4.0-rc1-5e286e3
+	github.com/dymensionxyz/dymension-rdk => github.com/dymensionxyz/dymension-rdk v1.6.1-0.20240827102903-08636e7ab3f8
 	github.com/evmos/evmos/v12 => github.com/dymensionxyz/evmos/v12 v12.1.6-dymension-v0.3
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.2-alpha.regen.4
 	github.com/gorilla/rpc => github.com/dymensionxyz/rpc v1.3.1
-	github.com/tendermint/tendermint => github.com/dymensionxyz/cometbft v0.34.29-0.20240822095912-8f031e6a53af
+	github.com/tendermint/tendermint => github.com/dymensionxyz/cometbft v0.34.29-0.20240906093934-57cd50faef13
 )
 
 replace github.com/osmosis-labs/osmosis/v15 => github.com/dymensionxyz/osmosis/v15 v15.2.0-dymension-v1.1.2

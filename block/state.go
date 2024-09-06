@@ -59,15 +59,15 @@ func NewStateFromGenesis(genDoc *tmtypes.GenesisDoc) (*types.State, error) {
 		Version: InitStateVersion,
 		ChainID: genDoc.ChainID,
 
-		InitialHeight: uint64(genDoc.InitialHeight),
-		BaseHeight:    uint64(genDoc.InitialHeight),
-
+		InitialHeight:                    uint64(genDoc.InitialHeight),
+		BaseHeight:                       uint64(genDoc.InitialHeight),
+		ConsensusParams:                  *genDoc.ConsensusParams,
 		LastHeightConsensusParamsChanged: genDoc.InitialHeight,
 	}
 	s.SetHeight(0)
 	copy(s.AppHash[:], genDoc.AppHash)
 
-	err = s.SetConsensusParamsFromGenesis(genDoc.AppState)
+	err = s.SetRollappParamsFromGenesis(genDoc.AppState)
 	if err != nil {
 		return nil, fmt.Errorf("in genesis doc: %w", err)
 	}
@@ -90,6 +90,7 @@ func (m *Manager) UpdateStateFromApp() error {
 
 	// update the state with the app hashes created on the app commit
 	m.Executor.UpdateStateAfterCommit(m.State, resp, proxyAppInfo.LastBlockAppHash, appHeight)
+
 	return nil
 }
 
@@ -100,14 +101,20 @@ func (e *Executor) UpdateStateAfterInitChain(s *types.State, res *abci.ResponseI
 	if len(res.AppHash) > 0 {
 		copy(s.AppHash[:], res.AppHash)
 	}
-
+	if res.ConsensusParams != nil {
+		params := res.ConsensusParams
+		if params.Block != nil {
+			s.ConsensusParams.Block.MaxBytes = params.Block.MaxBytes
+			s.ConsensusParams.Block.MaxGas = params.Block.MaxGas
+		}
+	}
 	// We update the last results hash with the empty hash, to conform with RFC-6962.
 	copy(s.LastResultsHash[:], merkle.HashFromByteSlices(nil))
 }
 
 func (e *Executor) UpdateMempoolAfterInitChain(s *types.State) {
-	e.mempool.SetPreCheckFn(mempool.PreCheckMaxBytes(s.ConsensusParams.Blockmaxsize))
-	e.mempool.SetPostCheckFn(mempool.PostCheckMaxGas(s.ConsensusParams.Blockmaxgas))
+	e.mempool.SetPreCheckFn(mempool.PreCheckMaxBytes(s.ConsensusParams.Block.MaxBytes))
+	e.mempool.SetPostCheckFn(mempool.PostCheckMaxGas(s.ConsensusParams.Block.MaxGas))
 }
 
 // UpdateStateAfterCommit updates the state with the app hash and last results hash
@@ -117,14 +124,14 @@ func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResp
 
 	s.SetHeight(height)
 
-	if resp.EndBlock.RollappConsensusParamUpdates == nil {
-		return
+	if resp.EndBlock.ConsensusParamUpdates != nil {
+		s.ConsensusParams.Block.MaxGas = resp.EndBlock.ConsensusParamUpdates.Block.MaxGas
+		s.ConsensusParams.Block.MaxBytes = resp.EndBlock.ConsensusParamUpdates.Block.MaxBytes
 	}
-
-	s.ConsensusParams.Blockmaxsize = resp.EndBlock.RollappConsensusParamUpdates.Block.MaxBytes
-	s.ConsensusParams.Blockmaxgas = resp.EndBlock.RollappConsensusParamUpdates.Block.MaxGas
-	s.ConsensusParams.Da = resp.EndBlock.RollappConsensusParamUpdates.Da
-	s.ConsensusParams.Commit = resp.EndBlock.RollappConsensusParamUpdates.Commit
+	if resp.EndBlock.RollappConsensusParamUpdates != nil {
+		s.RollappParams.Da = resp.EndBlock.RollappConsensusParamUpdates.Da
+		s.RollappParams.Version = resp.EndBlock.RollappConsensusParamUpdates.Version
+	}
 }
 
 // UpdateProposerFromBlock updates the proposer from the block

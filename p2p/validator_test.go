@@ -5,7 +5,6 @@ import (
 
 	mempoolv1 "github.com/dymensionxyz/dymint/mempool/v1"
 	"github.com/dymensionxyz/dymint/types"
-	"github.com/dymensionxyz/dymint/types/pb/dymint"
 
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/assert"
@@ -133,10 +132,9 @@ func TestValidator_BlockValidator(t *testing.T) {
 			maxBytes := uint64(100)
 			state := &types.State{}
 			state.Sequencers.SetProposer(types.NewSequencerFromValidator(*tmtypes.NewValidator(proposerKey.PubKey(), 1)))
-			state.ConsensusParams = dymint.RollappConsensusParams{
-				Blockmaxgas:  100000,
-				Blockmaxsize: int64(maxBytes),
-			}
+			state.ConsensusParams.Block.MaxGas = 100000
+			state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
+
 			// Create empty block
 			block := executor.CreateBlock(1, &types.Commit{}, [32]byte{}, [32]byte(state.Sequencers.ProposerHash()), state, maxBytes)
 
