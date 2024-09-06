@@ -135,7 +135,7 @@ func TestStateRoundTrip(t *testing.T) {
 						AppVersion: 42,
 					},
 				},
-				RollappParams: pb.RollappConsensusParams{
+				RollappParams: pb.RollappParams{
 					Da:      "mock",
 					Version: version.Commit,
 				},

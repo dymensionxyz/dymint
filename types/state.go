@@ -41,7 +41,7 @@ type State struct {
 	AppHash [32]byte
 
 	// New rollapp parameters .
-	RollappParams dymint.RollappConsensusParams
+	RollappParams dymint.RollappParams
 }
 
 func (s *State) IsGenesis() bool {
@@ -49,7 +49,7 @@ func (s *State) IsGenesis() bool {
 }
 
 type RollappParams struct {
-	Params *dymint.RollappConsensusParams
+	Params *dymint.RollappParams
 }
 
 // SetHeight sets the height saved in the Store if it is higher than the existing height
