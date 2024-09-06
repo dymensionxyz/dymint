@@ -90,6 +90,8 @@ func (m *Manager) UpdateStateFromApp() error {
 
 	// update the state with the app hashes created on the app commit
 	m.Executor.UpdateStateAfterCommit(m.State, resp, proxyAppInfo.LastBlockAppHash, appHeight)
+	m.ValidateConsensusBlockParams()
+
 	return nil
 }
 
