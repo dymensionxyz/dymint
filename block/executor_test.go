@@ -98,7 +98,7 @@ func TestApplyBlock(t *testing.T) {
 	app.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
 	app.On("DeliverTx", mock.Anything).Return(abci.ResponseDeliverTx{})
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
-		RollappConsensusParamUpdates: &abci.RollappConsensusParams{
+		RollappParamUpdates: &abci.RollappParams{
 			Da:      "celestia",
 			Version: "abcde",
 		},
