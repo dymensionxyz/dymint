@@ -128,9 +128,9 @@ func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResp
 		s.ConsensusParams.Block.MaxGas = resp.EndBlock.ConsensusParamUpdates.Block.MaxGas
 		s.ConsensusParams.Block.MaxBytes = resp.EndBlock.ConsensusParamUpdates.Block.MaxBytes
 	}
-	if resp.EndBlock.RollappConsensusParamUpdates != nil {
-		s.RollappParams.Da = resp.EndBlock.RollappConsensusParamUpdates.Da
-		s.RollappParams.Version = resp.EndBlock.RollappConsensusParamUpdates.Version
+	if resp.EndBlock.RollappParamUpdates != nil {
+		s.RollappParams.Da = resp.EndBlock.RollappParamUpdates.Da
+		s.RollappParams.Version = resp.EndBlock.RollappParamUpdates.Version
 	}
 }
 

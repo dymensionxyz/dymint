@@ -236,7 +236,7 @@ func GenerateStateWithSequencer(initialHeight int64, lastBlockHeight int64, pubk
 				App:   AppVersion,
 			},
 		},
-		RollappParams: dymint.RollappConsensusParams{
+		RollappParams: dymint.RollappParams{
 			Da:      "mock",
 			Version: dymintversion.Commit,
 		},

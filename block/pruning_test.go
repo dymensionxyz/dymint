@@ -1,10 +1,25 @@
 package block_test
 
-/*func TestPruningRetainHeight(t *testing.T) {
+import (
+	"context"
+	"testing"
+
+	"github.com/dymensionxyz/dymint/da"
+	"github.com/dymensionxyz/dymint/testutil"
+	"github.com/dymensionxyz/dymint/version"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/proxy"
+)
+
+func TestPruningRetainHeight(t *testing.T) {
 	require := require.New(t)
 	app := testutil.GetAppMock()
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
-		RollappConsensusParamUpdates: &abci.RollappConsensusParams{
+		RollappParamUpdates: &abci.RollappParams{
 			Da:      "mock",
 			Version: version.Commit,
 		},
@@ -58,4 +73,4 @@ package block_test
 
 	err = manager.PruneBlocks(validRetainHeight)
 	require.NoError(err)
-}*/
+}
