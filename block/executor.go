@@ -90,7 +90,6 @@ func (e *Executor) InitChain(genesis *tmtypes.GenesisDoc, valset []*tmtypes.Vali
 
 // CreateBlock reaps transactions from mempool and builds a block.
 func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHeaderHash, nextSeqHash [32]byte, state *types.State, maxBlockDataSizeBytes uint32) *types.Block {
-
 	maxBlockDataSizeBytes = min(maxBlockDataSizeBytes, uint32(state.ConsensusParams.Block.MaxBytes))
 	mempoolTxs := e.mempool.ReapMaxBytesMaxGas(int64(maxBlockDataSizeBytes), state.ConsensusParams.Block.MaxGas)
 

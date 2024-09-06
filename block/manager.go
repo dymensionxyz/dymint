@@ -337,5 +337,4 @@ func (m *Manager) ValidateConsensusBlockParams() {
 		m.logger.Info("Block max bytes in consensus params higher than DA batch size. Using DA batch size as max block bytes.", "block_max_bytes", m.State.ConsensusParams.Block.MaxBytes, "DA_batch_size", m.Conf.BatchSubmitBytes)
 		m.State.ConsensusParams.Block.MaxBytes = minBlockMaxBytes
 	}
-
 }
