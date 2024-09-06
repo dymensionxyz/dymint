@@ -16,6 +16,8 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
+const minBlockMaxBytes = 10000
+
 // Executor creates and applies blocks and maintains state.
 type Executor struct {
 	localAddress          []byte
@@ -90,7 +92,13 @@ func (e *Executor) InitChain(genesis *tmtypes.GenesisDoc, valset []*tmtypes.Vali
 
 // CreateBlock reaps transactions from mempool and builds a block.
 func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHeaderHash, nextSeqHash [32]byte, state *types.State, maxBlockDataSizeBytes uint32) *types.Block {
-	if uint32(state.ConsensusParams.Block.MaxBytes) > 0 {
+	if uint32(state.ConsensusParams.Block.MaxBytes) < minBlockMaxBytes {
+		e.logger.Error("Block max bytes defined in consensus params too small. using minimum value: consensus param: %d min allowed: %d", state.ConsensusParams.Block.MaxBytes, minBlockMaxBytes)
+	}
+	if uint32(state.ConsensusParams.Block.MaxBytes) > maxBlockDataSizeBytes {
+		e.logger.Error("Block max bytes defined in consensus params bigger than max blob bytes allowed in DA. using max value. consensus param: %d max allowed: %d", state.ConsensusParams.Block.MaxBytes, maxBlockDataSizeBytes)
+	}
+	if uint32(state.ConsensusParams.Block.MaxBytes) >= minBlockMaxBytes {
 		maxBlockDataSizeBytes = min(maxBlockDataSizeBytes, uint32(state.ConsensusParams.Block.MaxBytes))
 	}
 	mempoolTxs := e.mempool.ReapMaxBytesMaxGas(int64(maxBlockDataSizeBytes), state.ConsensusParams.Block.MaxGas)
