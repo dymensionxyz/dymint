@@ -178,6 +178,7 @@ func TestBlockIndexerPruning(t *testing.T) {
 	results, err = indexer.Search(context.Background(), q)
 	require.NoError(t, err)
 	require.Equal(t, 0, len(results))
+
 }
 
 func getBeginBlock() abci.ResponseBeginBlock {
