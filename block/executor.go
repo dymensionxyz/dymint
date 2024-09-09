@@ -127,7 +127,11 @@ func addSequencerToGenesis(genesis *tmtypes.GenesisDoc, val *types.Sequencer) (*
 	}
 
 	var genSequencersState seqtypes.GenesisState
-	protoCodec.MustUnmarshalJSON(genesisState[sequencersModuleName], &genSequencersState)
+	sequencersBytes, ok := genesisState[sequencersModuleName]
+	if !ok {
+		return validator, nil
+	}
+	protoCodec.MustUnmarshalJSON(sequencersBytes, &genSequencersState)
 
 	pk, err := cryptocodec.FromTmPubKeyInterface(validator.PubKey)
 	if err != nil {
