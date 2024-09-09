@@ -1,11 +1,19 @@
 package block
 
 import (
+	"encoding/json"
 	"errors"
 	"time"
 
+	"github.com/cosmos/cosmos-sdk/codec"
+	ctypes "github.com/cosmos/cosmos-sdk/codec/types"
+	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
+	"github.com/cosmos/cosmos-sdk/std"
+	sdk "github.com/cosmos/cosmos-sdk/types"
+	hubparams "github.com/dymensionxyz/dymension/v3/app/params"
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmcrypto "github.com/tendermint/tendermint/crypto/encoding"
+	tmjson "github.com/tendermint/tendermint/libs/json"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/proxy"
@@ -13,6 +21,7 @@ import (
 	"go.uber.org/multierr"
 
 	"github.com/dymensionxyz/dymint/mempool"
+	seqtypes "github.com/dymensionxyz/dymint/third_party/rdk/sequencers"
 	"github.com/dymensionxyz/dymint/types"
 )
 
@@ -48,11 +57,16 @@ func NewExecutor(localAddress []byte, chainID string, mempool mempool.Mempool, p
 }
 
 // InitChain calls InitChainSync using consensus connection to app.
-func (e *Executor) InitChain(genesis *tmtypes.GenesisDoc, valset []*tmtypes.Validator) (*abci.ResponseInitChain, error) {
+func (e *Executor) InitChain(genesis *tmtypes.GenesisDoc, valset ...*types.Sequencer) (*abci.ResponseInitChain, error) {
 	valUpdates := abci.ValidatorUpdates{}
 
 	// prepare the validator updates as expected by the ABCI app
 	for _, validator := range valset {
+		validator, err := addSequencerToGenesis(genesis, validator)
+		if err != nil {
+			return nil, err
+		}
+
 		tmkey, err := tmcrypto.PubKeyToProto(validator.PubKey)
 		if err != nil {
 			return nil, err
@@ -89,6 +103,58 @@ func (e *Executor) InitChain(genesis *tmtypes.GenesisDoc, valset []*tmtypes.Vali
 		AppStateBytes: genesis.AppState,
 		InitialHeight: genesis.InitialHeight,
 	})
+}
+
+const sequencersModuleName = "sequencers"
+
+func addSequencerToGenesis(genesis *tmtypes.GenesisDoc, val *types.Sequencer) (*tmtypes.Validator, error) {
+	validator, err := val.TMValidator()
+	if err != nil {
+		return nil, err
+	}
+
+	if genesis == nil || genesis.AppState == nil {
+		return validator, nil
+	}
+
+	registry := ctypes.NewInterfaceRegistry()
+	protoCodec := codec.NewProtoCodec(registry)
+	std.RegisterInterfaces(registry)
+
+	var genesisState map[string]json.RawMessage
+	if err = tmjson.Unmarshal(genesis.AppState, &genesisState); err != nil {
+		return nil, err
+	}
+
+	var genSequencersState seqtypes.GenesisState
+	protoCodec.MustUnmarshalJSON(genesisState[sequencersModuleName], &genSequencersState)
+
+	pk, err := cryptocodec.FromTmPubKeyInterface(validator.PubKey)
+	if err != nil {
+		return nil, err
+	}
+
+	sequencer, err := seqtypes.NewSequencer(validator.Address.Bytes(), pk, validator.VotingPower)
+	if err != nil {
+		return nil, err
+	}
+
+	rewardsAddr, err := sdk.GetFromBech32(val.SettlementAddress, hubparams.AccountAddressPrefix)
+	if err != nil {
+		return nil, err
+	}
+
+	genSequencersState.Sequencers = append(genSequencersState.Sequencers, seqtypes.Sequencer{
+		Validator:  &sequencer,
+		RewardAddr: string(rewardsAddr),
+	})
+
+	genesisState[sequencersModuleName] = protoCodec.MustMarshalJSON(&genSequencersState)
+	genesis.AppState, err = tmjson.Marshal(genesisState)
+	if err != nil {
+		return nil, err
+	}
+	return validator, nil
 }
 
 // CreateBlock reaps transactions from mempool and builds a block.
