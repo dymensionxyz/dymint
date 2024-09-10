@@ -3,10 +3,13 @@ package store
 import (
 	"errors"
 	"path/filepath"
+	"runtime"
 
+	"github.com/celestiaorg/celestia-openrpc/types/share"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 
-	"github.com/dgraph-io/badger/v3"
+	"github.com/dgraph-io/badger/v4"
+	"github.com/dgraph-io/badger/v4/options"
 )
 
 var (
@@ -188,4 +191,54 @@ func (i *BadgerIterator) Error() error {
 func (i *BadgerIterator) Discard() {
 	i.iter.Close()
 	i.txn.Discard()
+}
+
+func constraintBadgerConfig(path string) *badger.Options {
+	opts := badger.DefaultOptions(path) // this must be copied
+	// ValueLog:
+	// 2mib default => share.Size - makes sure headers and samples are stored in value log
+	// This *tremendously* reduces the amount of memory used by the node, up to 10 times less during
+	// compaction
+	opts.ValueThreshold = share.Size
+	// make sure we don't have any limits for stored headers
+	opts.ValueLogMaxEntries = 100000000
+	// run value log GC more often to spread the work over time
+	//opts.GcInterval = time.Minute * 1
+	// default 0.5 => 0.125 - makes sure value log GC is more aggressive on reclaiming disk space
+	//opts.GcDiscardRatio = 0.125
+
+	// badger stores checksum for every value, but doesn't verify it by default
+	// enabling this option may allow us to see detect corrupted data
+	opts.ChecksumVerificationMode = options.OnBlockRead
+	opts.VerifyValueChecksum = true
+	// default 64mib => 0 - disable block cache
+	// most of our component maintain their own caches, so this is not needed
+	opts.BlockCacheSize = 0
+	// not much gain as it compresses the LSM only as well compression requires block cache
+	opts.Compression = options.None
+
+	// MemTables:
+	// default 64mib => 16mib - decreases memory usage and makes compaction more often
+	opts.MemTableSize = 16 << 20
+	// default 5 => 3
+	opts.NumMemtables = 3
+	// default 5 => 3
+	opts.NumLevelZeroTables = 3
+	// default 15 => 5 - this prevents memory growth on CPU constraint systems by blocking all writers
+	opts.NumLevelZeroTablesStall = 5
+
+	// Compaction:
+	// Dynamic compactor allocation
+	compactors := runtime.NumCPU() / 2
+	if compactors < 2 {
+		compactors = 2 // can't be less than 2
+	}
+	if compactors > opts.MaxLevels { // ensure there is no more compactors than db table levels
+		compactors = opts.MaxLevels
+	}
+	opts.NumCompactors = compactors
+	// makes sure badger is always compacted on shutdown
+	opts.CompactL0OnClose = true
+
+	return &opts
 }
