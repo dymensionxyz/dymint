@@ -1,14 +1,21 @@
 package store
 
 import (
+	"context"
 	"errors"
 	"path/filepath"
+	"time"
 
 	"github.com/celestiaorg/celestia-openrpc/types/share"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 
 	"github.com/dgraph-io/badger/v4"
 	"github.com/dgraph-io/badger/v4/options"
+)
+
+const (
+	gcTimeout    = 1 * time.Minute
+	discardRatio = 0.125
 )
 
 var (
@@ -34,13 +41,17 @@ func NewDefaultInMemoryKVStore() KV {
 
 func NewKVStore(rootDir, dbPath, dbName string, syncWrites bool) KV {
 	path := filepath.Join(Rootify(rootDir, dbPath), dbName)
-	db, err := badger.Open(constraintBadgerConfig(path).WithSyncWrites(syncWrites))
+	opts := constraintBadgerConfig(path)
+	db, err := badger.Open(opts.WithSyncWrites(syncWrites))
 	if err != nil {
 		panic(err)
 	}
-	return &BadgerKV{
+	b := &BadgerKV{
 		db: db,
 	}
+	go b.gc(gcTimeout, discardRatio)
+
+	return b
 }
 
 // NewDefaultKVStore creates instance of default key-value store.
@@ -59,6 +70,25 @@ func Rootify(rootDir, dbPath string) string {
 // Close implements KVStore.
 func (b *BadgerKV) Close() error {
 	return b.db.Close()
+}
+
+func (b *BadgerKV) gc(period time.Duration, discardRatio float64) error {
+
+	gcTimeout := time.NewTimer(period)
+	defer gcTimeout.Stop()
+
+	ctx := context.Background()
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-gcTimeout.C:
+			err := b.db.RunValueLogGC(discardRatio)
+			if err != nil {
+				return err
+			}
+		}
+	}
 }
 
 // Get returns value for given key, or error.
@@ -201,10 +231,6 @@ func constraintBadgerConfig(path string) *badger.Options {
 	opts.ValueThreshold = share.Size
 	// make sure we don't have any limits for stored headers
 	opts.ValueLogMaxEntries = 100000000
-	// run value log GC more often to spread the work over time
-	//opts.GcInterval = time.Minute * 1
-	// default 0.5 => 0.125 - makes sure value log GC is more aggressive on reclaiming disk space
-	//opts.GcDiscardRatio = 0.125
 
 	// badger stores checksum for every value, but doesn't verify it by default
 	// enabling this option may allow us to see detect corrupted data
