@@ -3,7 +3,6 @@ package store
 import (
 	"errors"
 	"path/filepath"
-	"runtime"
 
 	"github.com/celestiaorg/celestia-openrpc/types/share"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
@@ -35,7 +34,7 @@ func NewDefaultInMemoryKVStore() KV {
 
 func NewKVStore(rootDir, dbPath, dbName string, syncWrites bool) KV {
 	path := filepath.Join(Rootify(rootDir, dbPath), dbName)
-	db, err := badger.Open(badger.DefaultOptions(path).WithSyncWrites(syncWrites))
+	db, err := badger.Open(constraintBadgerConfig(path).WithSyncWrites(syncWrites))
 	if err != nil {
 		panic(err)
 	}
@@ -227,16 +226,7 @@ func constraintBadgerConfig(path string) *badger.Options {
 	// default 15 => 5 - this prevents memory growth on CPU constraint systems by blocking all writers
 	opts.NumLevelZeroTablesStall = 5
 
-	// Compaction:
-	// Dynamic compactor allocation
-	compactors := runtime.NumCPU() / 2
-	if compactors < 2 {
-		compactors = 2 // can't be less than 2
-	}
-	if compactors > opts.MaxLevels { // ensure there is no more compactors than db table levels
-		compactors = opts.MaxLevels
-	}
-	opts.NumCompactors = compactors
+	opts.NumCompactors = 2
 	// makes sure badger is always compacted on shutdown
 	opts.CompactL0OnClose = true
 
