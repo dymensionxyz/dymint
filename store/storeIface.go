@@ -17,6 +17,7 @@ type KV interface {
 	NewBatch() KVBatch                       // NewBatch creates a new batch.
 	PrefixIterator(prefix []byte) KVIterator // PrefixIterator creates iterator to traverse given prefix.
 	Close() error                            // Close closes the store.
+	RunValueLogGC(float64) error             // run garbage collector
 }
 
 // KVBatch enables batching of transactions.
