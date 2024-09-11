@@ -6,7 +6,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/celestiaorg/celestia-openrpc/types/share"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 
 	"github.com/dgraph-io/badger/v4"
@@ -15,7 +14,7 @@ import (
 
 const (
 	gcTimeout    = 1 * time.Minute
-	discardRatio = 0.125
+	discardRatio = 0.5
 )
 
 var (
@@ -72,6 +71,10 @@ func (b *BadgerKV) Close() error {
 	return b.db.Close()
 }
 
+func (b *BadgerKV) RunValueLogGC(discardRatio float64) error {
+	return b.db.RunValueLogGC(discardRatio)
+}
+
 func (b *BadgerKV) gc(period time.Duration, discardRatio float64) error {
 
 	gcTimeout := time.NewTimer(period)
@@ -85,7 +88,7 @@ func (b *BadgerKV) gc(period time.Duration, discardRatio float64) error {
 		case <-gcTimeout.C:
 			err := b.db.RunValueLogGC(discardRatio)
 			if err != nil {
-				return err
+				continue
 			}
 		}
 	}
@@ -228,7 +231,7 @@ func constraintBadgerConfig(path string) *badger.Options {
 	// 2mib default => share.Size - makes sure headers and samples are stored in value log
 	// This *tremendously* reduces the amount of memory used by the node, up to 10 times less during
 	// compaction
-	opts.ValueThreshold = share.Size
+	//opts.ValueThreshold = share.Size
 	// make sure we don't have any limits for stored headers
 	opts.ValueLogMaxEntries = 100000000
 

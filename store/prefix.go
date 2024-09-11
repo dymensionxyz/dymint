@@ -47,6 +47,10 @@ func (p *PrefixKV) NewBatch() KVBatch {
 	}
 }
 
+func (b *PrefixKV) RunValueLogGC(discardRatio float64) error {
+	return b.kv.RunValueLogGC(discardRatio)
+}
+
 // PrefixIterator creates iterator to traverse given prefix.
 func (p *PrefixKV) PrefixIterator(prefix []byte) KVIterator {
 	return p.kv.PrefixIterator(append(p.prefix, prefix...))
