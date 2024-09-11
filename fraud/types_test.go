@@ -58,7 +58,7 @@ func TestNewFault(t *testing.T) {
 	block := &types.Block{}
 	fault := fraud.NewFault(underlyingErr, block)
 
-	if fault.Underlying != underlyingErr {
+	if !errors.Is(underlyingErr, fault.Underlying) {
 		t.Error("Expected Underlying error to match")
 	}
 
