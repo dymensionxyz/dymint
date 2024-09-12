@@ -35,6 +35,13 @@ packages:
   github.com/dymensionxyz/dymint/p2p:
     interfaces:
      GetProposerI:
+  github.com/dymensionxyz/dymint/block:
+    interfaces:
+      ExecutorI:
+  github.com/dymensionxyz/dymint/fraud:
+    interfaces:
+      Handler:
+
   
   
 

@@ -1,12 +1,28 @@
 package block
 
 import (
+	"context"
+	"errors"
 	"fmt"
+	"github.com/dymensionxyz/dymint/fraud"
 
 	errorsmod "cosmossdk.io/errors"
 
 	"github.com/dymensionxyz/dymint/types"
 )
+
+// applyBlockWithFraudHandling calls applyBlock and handles fraud errors.
+// Contract: block and commit must be validated before calling this function!
+func (m *Manager) applyBlockWithFraudHandling(block *types.Block, commit *types.Commit, blockMetaData types.BlockMetaData) error {
+	err := m.applyBlock(block, commit, blockMetaData)
+	if errors.Is(err, fraud.ErrFraud) {
+		m.FraudHandler.HandleFault(context.Background(), err)
+	} else if err != nil {
+		return fmt.Errorf("apply block: %w", err)
+	}
+
+	return nil
+}
 
 // applyBlock applies the block to the store and the abci app.
 // Contract: block and commit must be validated before calling this function!
@@ -152,7 +168,7 @@ func (m *Manager) attemptApplyCachedBlocks() error {
 			return fmt.Errorf("block not valid at height %d, dropping it: err:%w", cachedBlock.Block.Header.Height, err)
 		}
 
-		err := m.applyBlock(cachedBlock.Block, cachedBlock.Commit, types.BlockMetaData{Source: cachedBlock.Source})
+		err := m.applyBlockWithFraudHandling(cachedBlock.Block, cachedBlock.Commit, types.BlockMetaData{Source: cachedBlock.Source})
 		if err != nil {
 			return fmt.Errorf("apply cached block: expected height: %d: %w", expectedHeight, err)
 		}

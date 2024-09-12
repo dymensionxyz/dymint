@@ -19,6 +19,18 @@ import (
 // default minimum block max size allowed. not specific reason to set it to 10K, but we need to avoid no transactions can be included in a block.
 const minBlockMaxBytes = 10000
 
+type ExecutorI interface {
+	InitChain(genesis *tmtypes.GenesisDoc, valset []*tmtypes.Validator) (*abci.ResponseInitChain, error)
+	CreateBlock(height uint64, lastCommit *types.Commit, lastHeaderHash, nextSeqHash [32]byte, state *types.State, maxBlockDataSizeBytes uint64) *types.Block
+	Commit(state *types.State, block *types.Block, resp *tmstate.ABCIResponses) ([]byte, int64, error)
+	GetAppInfo() (*abci.ResponseInfo, error)
+	ExecuteBlock(state *types.State, block *types.Block) (*tmstate.ABCIResponses, error)
+	UpdateStateAfterInitChain(s *types.State, res *abci.ResponseInitChain)
+	UpdateMempoolAfterInitChain(s *types.State)
+	UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResponses, appHash []byte, height uint64)
+	UpdateProposerFromBlock(s *types.State, block *types.Block) bool
+}
+
 // Executor creates and applies blocks and maintains state.
 type Executor struct {
 	localAddress          []byte
@@ -34,7 +46,7 @@ type Executor struct {
 
 // NewExecutor creates new instance of BlockExecutor.
 // localAddress will be used in sequencer mode only.
-func NewExecutor(localAddress []byte, chainID string, mempool mempool.Mempool, proxyApp proxy.AppConns, eventBus *tmtypes.EventBus, logger types.Logger) (*Executor, error) {
+func NewExecutor(localAddress []byte, chainID string, mempool mempool.Mempool, proxyApp proxy.AppConns, eventBus *tmtypes.EventBus, logger types.Logger) (ExecutorI, error) {
 	be := Executor{
 		localAddress:          localAddress,
 		chainID:               chainID,

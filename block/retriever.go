@@ -115,7 +115,7 @@ func (m *Manager) applyLocalBlock(height uint64) error {
 		return fmt.Errorf("validate block from local store: height: %d: %w", height, err)
 	}
 
-	err = m.applyBlock(block, commit, types.BlockMetaData{Source: types.LocalDb})
+	err = m.applyBlockWithFraudHandling(block, commit, types.BlockMetaData{Source: types.LocalDb})
 	if err != nil {
 		return fmt.Errorf("apply block from local store: height: %d: %w", height, err)
 	}
@@ -146,7 +146,7 @@ func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
 				continue
 			}
 
-			err := m.applyBlock(block, batch.Commits[i], types.BlockMetaData{Source: types.DA, DAHeight: daMetaData.Height})
+			err := m.applyBlockWithFraudHandling(block, batch.Commits[i], types.BlockMetaData{Source: types.DA, DAHeight: daMetaData.Height})
 			if err != nil {
 				return fmt.Errorf("apply block: height: %d: %w", block.Header.Height, err)
 			}

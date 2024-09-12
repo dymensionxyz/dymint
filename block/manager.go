@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/dymensionxyz/dymint/fraud"
 	"sync"
 	"sync/atomic"
 
@@ -45,7 +46,7 @@ type Manager struct {
 	// Store and execution
 	Store    store.Store
 	State    *types.State
-	Executor *Executor
+	Executor ExecutorI
 
 	// Clients and servers
 	Pubsub    *pubsub.Server
@@ -77,6 +78,9 @@ type Manager struct {
 
 	// TargetHeight holds the value of the current highest block seen from either p2p (probably higher) or the DA
 	TargetHeight atomic.Uint64
+
+	// Fraud handler
+	FraudHandler fraud.Handler
 }
 
 // NewManager creates new block Manager.
@@ -116,6 +120,7 @@ func NewManager(
 		blockCache: &Cache{
 			cache: make(map[uint64]types.CachedBlock),
 		},
+		FraudHandler: nil, // TODO: create a default handler
 	}
 
 	err = m.LoadStateOnInit(store, genesis, logger)
@@ -135,6 +140,10 @@ func NewManager(
 	}
 
 	return m, nil
+}
+
+func (m *Manager) SetFraudHandler(handler fraud.Handler) {
+	m.FraudHandler = handler
 }
 
 // Start starts the block manager.
