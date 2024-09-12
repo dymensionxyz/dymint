@@ -4,10 +4,11 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
-	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 
 	"github.com/ipfs/go-datastore"
 	"github.com/stretchr/testify/assert"

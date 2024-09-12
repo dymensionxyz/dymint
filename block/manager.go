@@ -7,6 +7,8 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/dymensionxyz/dymint/fraud"
+
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"golang.org/x/sync/errgroup"
 
@@ -155,6 +157,10 @@ func NewManager(
 	}
 
 	return m, nil
+}
+
+func (m *Manager) SetFraudHandler(handler fraud.Handler) {
+	m.FraudHandler = handler
 }
 
 // Start starts the block manager.
