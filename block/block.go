@@ -39,66 +39,10 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		if err != nil {
 			return fmt.Errorf("update state from app: %w", err)
 		}
-		m.logger.Info("updated state from app commit", "height", block.Header.Height)
-	} else {
-		var appHash []byte
-		// Start applying the block assuming no inconsistency was found.
-		_, err = m.Store.SaveBlock(block, commit, nil)
-		if err != nil {
-			return fmt.Errorf("save block: %w", err)
-		}
-
-		err := m.saveP2PBlockToBlockSync(block, commit)
-		if err != nil {
-			m.logger.Error("save block blocksync", "err", err)
-		}
-
-		responses, err := m.Executor.ExecuteBlock(m.State, block)
-		if err != nil {
-			return fmt.Errorf("execute block: %w", err)
-		}
-
-		dbBatch := m.Store.NewBatch()
-		dbBatch, err = m.Store.SaveBlockResponses(block.Header.Height, responses, dbBatch)
-		if err != nil {
-			dbBatch.Discard()
-			return fmt.Errorf("save block responses: %w", err)
-		}
-
-		// Get the validator changes from the app
-		validators := m.State.NextValidators.Copy() // TODO: this will be changed when supporting multiple sequencers from the hub
-
-		dbBatch, err = m.Store.SaveValidators(block.Header.Height, validators, dbBatch)
-		if err != nil {
-			dbBatch.Discard()
-			return fmt.Errorf("save validators: %w", err)
-		}
-
-		err = dbBatch.Commit()
-		if err != nil {
-			return fmt.Errorf("commit batch to disk: %w", err)
-		}
-		// Commit block to app
-		appHash, retainHeight, err := m.Executor.Commit(m.State, block, responses)
-		if err != nil {
-			return fmt.Errorf("commit block: %w", err)
-		}
-
-		// Prune old heights, if requested by ABCI app.
-		// retainHeight is determined by currentHeight - min-retain-blocks (app.toml config).
-		// Unless max_age_num_blocks in consensus params is higher than min-retain-block, then max_age_num_blocks will be used instead of min-retain-blocks.
-
-		if 0 < retainHeight {
-			select {
-			case m.pruningC <- retainHeight:
-			default:
-				m.logger.Error("pruning channel full. skipping pruning", "retainHeight", retainHeight)
-			}
-		}
-
-		// Every one of those, if happens before commit, prevents us from re-executing the block in case failed during commit.
-		m.Executor.UpdateStateAfterCommit(m.State, responses, appHash, block.Header.Height, validators)
+		m.logger.Debug("Aligned with app state required. Skipping to next block", "height", block.Header.Height)
+		return nil
 	}
+	var appHash []byte
 	// Start applying the block assuming no inconsistency was found.
 	_, err = m.Store.SaveBlock(block, commit, nil)
 	if err != nil {
@@ -135,15 +79,11 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	if err != nil {
 		return fmt.Errorf("commit batch to disk: %w", err)
 	}
-
 	// Commit block to app
 	appHash, retainHeight, err := m.Executor.Commit(m.State, block, responses)
 	if err != nil {
 		return fmt.Errorf("commit block: %w", err)
 	}
-
-	// If failed here, after the app committed, but before the state is updated, we'll update the state on
-	// UpdateStateFromApp using the saved responses and validators.
 
 	// Update the state with the new app hash, last validators and store height from the commit.
 	// Every one of those, if happens before commit, prevents us from re-executing the block in case failed during commit.
@@ -152,6 +92,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	if err != nil {
 		return fmt.Errorf("update state: %w", err)
 	}
+
 	// Prune old heights, if requested by ABCI app.
 	// retainHeight is determined by currentHeight - min-retain-blocks (app.toml config).
 	// Unless max_age_num_blocks in consensus params is higher than min-retain-block, then max_age_num_blocks will be used instead of min-retain-blocks.
@@ -163,6 +104,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 			m.logger.Error("pruning channel full. skipping pruning", "retainHeight", retainHeight)
 		}
 	}
+
 	return nil
 }
 
