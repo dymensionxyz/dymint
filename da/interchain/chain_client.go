@@ -9,16 +9,20 @@ import (
 	"github.com/dymensionxyz/cosmosclient/cosmosclient"
 	"github.com/ignite/cli/ignite/pkg/cosmosaccount"
 	"github.com/tendermint/tendermint/libs/bytes"
+	"github.com/tendermint/tendermint/light/provider"
+	"github.com/tendermint/tendermint/light/provider/http"
 	rpcclient "github.com/tendermint/tendermint/rpc/client"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	rpctypes "github.com/tendermint/tendermint/rpc/core/types"
+	tmtypes "github.com/tendermint/tendermint/types"
 
 	interchainda "github.com/dymensionxyz/dymint/types/pb/interchain_da"
 )
 
 type daClient struct {
 	cosmosclient.Client
-	queryClient interchainda.QueryClient
-	txService   tx.ServiceClient
+	queryClient   interchainda.QueryClient
+	txService     tx.ServiceClient
+	lightProvider provider.Provider
 }
 
 func newDAClient(ctx context.Context, config DAConfig) (*daClient, error) {
@@ -36,10 +40,17 @@ func newDAClient(ctx context.Context, config DAConfig) (*daClient, error) {
 	if err != nil {
 		return nil, fmt.Errorf("can't create DA layer cosmos client: %w", err)
 	}
+
+	lightProvider, err := http.New(config.ChainID, config.NodeAddress)
+	if err != nil {
+		return nil, fmt.Errorf("can't create DA layer IBC light provider: %w", err)
+	}
+
 	return &daClient{
-		Client:      c,
-		queryClient: interchainda.NewQueryClient(c.Context()),
-		txService:   tx.NewServiceClient(c.Context()),
+		Client:        c,
+		queryClient:   interchainda.NewQueryClient(c.Context()),
+		txService:     tx.NewServiceClient(c.Context()),
+		lightProvider: lightProvider,
 	}, nil
 }
 
@@ -70,10 +81,14 @@ func (c *daClient) ABCIQueryWithProof(
 	path string,
 	data bytes.HexBytes,
 	height int64,
-) (*ctypes.ResultABCIQuery, error) {
+) (*rpctypes.ResultABCIQuery, error) {
 	opts := rpcclient.ABCIQueryOptions{
 		Height: height,
 		Prove:  true,
 	}
 	return c.RPC.ABCIQueryWithOptions(ctx, path, data, opts)
+}
+
+func (c *daClient) LightBlock(ctx context.Context, height uint64) (*tmtypes.LightBlock, error) {
+	return c.lightProvider.LightBlock(ctx, int64(height))
 }

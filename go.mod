@@ -259,7 +259,7 @@ require (
 	github.com/cockroachdb/redact v1.1.5 // indirect
 	github.com/cockroachdb/tokenbucket v0.0.0-20230807174530-cc333fc44b06 // indirect
 	github.com/cosmos/cosmos-db v1.0.0 // indirect
-	github.com/cosmos/ibc-go/v6 v6.2.1 // indirect
+	github.com/cosmos/ibc-go/v6 v6.3.1 // indirect
 	github.com/danwt/gerr v0.1.5 // indirect
 	github.com/decred/dcrd/dcrec/edwards v1.0.0 // indirect
 	github.com/evmos/evmos/v12 v12.1.6 // indirect

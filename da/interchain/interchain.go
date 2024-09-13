@@ -15,6 +15,7 @@ import (
 	"github.com/tendermint/tendermint/libs/bytes"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	tmtypes "github.com/tendermint/tendermint/types"
 
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/store"
@@ -34,6 +35,7 @@ type DAClient interface {
 	Blob(ctx context.Context, id interchainda.BlobID) (*interchainda.QueryBlobResponse, error)
 	GetTx(context.Context, string) (*tx.GetTxResponse, error)
 	ABCIQueryWithProof(ctx context.Context, path string, data bytes.HexBytes, height int64) (*ctypes.ResultABCIQuery, error)
+	LightBlock(ctx context.Context, height uint64) (*tmtypes.LightBlock, error)
 }
 
 // DALayerClient is a client for DA-provider blockchains supporting the interchain-da module.

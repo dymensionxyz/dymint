@@ -1,6 +1,7 @@
 package interchain
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -10,6 +11,8 @@ import (
 	cdctypes "github.com/cosmos/cosmos-sdk/codec/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/tx"
+	clienttypes "github.com/cosmos/ibc-go/v6/modules/core/02-client/types"
+	tmclienttypes "github.com/cosmos/ibc-go/v6/modules/light-clients/07-tendermint/types"
 	"github.com/dymensionxyz/cosmosclient/cosmosclient"
 
 	"github.com/dymensionxyz/dymint/da"
@@ -149,6 +152,22 @@ func (c *DALayerClient) broadcastTx(msgs ...sdk.Msg) (cosmosclient.Response, err
 		return cosmosclient.Response{}, fmt.Errorf("MsgSubmitBlob broadcast tx status code is not 0 (code %d): %s", txResp.Code, txResp.RawLog)
 	}
 	return txResp, nil
+}
+
+func (c *DALayerClient) updateHubState(ctx context.Context, blobHeight uint64) error {
+	daBlock, err := c.daClient.LightBlock(ctx, blobHeight)
+	if err != nil {
+		return fmt.Errorf("can't get light block %d from DA layer: %w", blobHeight, err)
+	}
+
+	tmclienttypes.Header{
+		SignedHeader:      nil,
+		ValidatorSet:      daBlock.ValidatorSet,
+		TrustedHeight:     clienttypes.Height{},
+		TrustedValidators: nil,
+	}
+
+	clienttypes.NewMsgUpdateClient(c.daConfig.ClientID, daBlock.Header, c.accountAddress)
 }
 
 // runWithRetry runs the given operation with retry, doing a number of attempts, and taking the last error only.
