@@ -76,7 +76,6 @@ func (b *BadgerKV) RunValueLogGC(discardRatio float64) error {
 }
 
 func (b *BadgerKV) gc(period time.Duration, discardRatio float64) {
-
 	gcTimeout := time.NewTimer(period)
 	defer gcTimeout.Stop()
 
