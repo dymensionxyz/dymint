@@ -1,7 +1,6 @@
 package block
 
 import (
-	"encoding/hex"
 	"errors"
 	"time"
 
@@ -17,10 +16,12 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
+// default minimum block max size allowed. not specific reason to set it to 10K, but we need to avoid no transactions can be included in a block.
+const minBlockMaxBytes = 10000
+
 // Executor creates and applies blocks and maintains state.
 type Executor struct {
-	proposerAddress       []byte
-	namespaceID           [8]byte
+	localAddress          []byte
 	chainID               string
 	proxyAppConsensusConn proxy.AppConnConsensus
 	proxyAppQueryConn     proxy.AppConnQuery
@@ -32,15 +33,10 @@ type Executor struct {
 }
 
 // NewExecutor creates new instance of BlockExecutor.
-// Proposer address and namespace ID will be used in all newly created blocks.
-func NewExecutor(proposerAddress []byte, namespaceID string, chainID string, mempool mempool.Mempool, proxyApp proxy.AppConns, eventBus *tmtypes.EventBus, logger types.Logger) (*Executor, error) {
-	bytes, err := hex.DecodeString(namespaceID)
-	if err != nil {
-		return nil, err
-	}
-
+// localAddress will be used in sequencer mode only.
+func NewExecutor(localAddress []byte, chainID string, mempool mempool.Mempool, proxyApp proxy.AppConns, eventBus *tmtypes.EventBus, logger types.Logger) (*Executor, error) {
 	be := Executor{
-		proposerAddress:       proposerAddress,
+		localAddress:          localAddress,
 		chainID:               chainID,
 		proxyAppConsensusConn: proxyApp.Consensus(),
 		proxyAppQueryConn:     proxyApp.Query(),
@@ -48,26 +44,27 @@ func NewExecutor(proposerAddress []byte, namespaceID string, chainID string, mem
 		eventBus:              eventBus,
 		logger:                logger,
 	}
-	copy(be.namespaceID[:], bytes)
 	return &be, nil
 }
 
 // InitChain calls InitChainSync using consensus connection to app.
-func (e *Executor) InitChain(genesis *tmtypes.GenesisDoc, validators []*tmtypes.Validator) (*abci.ResponseInitChain, error) {
-	params := genesis.ConsensusParams
-	valUpates := abci.ValidatorUpdates{}
+func (e *Executor) InitChain(genesis *tmtypes.GenesisDoc, valset []*tmtypes.Validator) (*abci.ResponseInitChain, error) {
+	valUpdates := abci.ValidatorUpdates{}
 
-	for _, validator := range validators {
+	// prepare the validator updates as expected by the ABCI app
+	for _, validator := range valset {
 		tmkey, err := tmcrypto.PubKeyToProto(validator.PubKey)
 		if err != nil {
 			return nil, err
 		}
 
-		valUpates = append(valUpates, abci.ValidatorUpdate{
+		valUpdates = append(valUpdates, abci.ValidatorUpdate{
 			PubKey: tmkey,
 			Power:  validator.VotingPower,
 		})
 	}
+
+	params := genesis.ConsensusParams
 
 	return e.proxyAppConsensusConn.InitChainSync(abci.RequestInitChain{
 		Time:    genesis.GenesisTime,
@@ -88,18 +85,15 @@ func (e *Executor) InitChain(genesis *tmtypes.GenesisDoc, validators []*tmtypes.
 			Version: &tmproto.VersionParams{
 				AppVersion: params.Version.AppVersion,
 			},
-		},
-		Validators:    valUpates,
+		}, Validators: valUpdates,
 		AppStateBytes: genesis.AppState,
 		InitialHeight: genesis.InitialHeight,
 	})
 }
 
 // CreateBlock reaps transactions from mempool and builds a block.
-func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHeaderHash [32]byte, state *types.State, maxBlockDataSizeBytes uint64) *types.Block {
-	if state.ConsensusParams.Block.MaxBytes > 0 {
-		maxBlockDataSizeBytes = min(maxBlockDataSizeBytes, uint64(state.ConsensusParams.Block.MaxBytes))
-	}
+func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHeaderHash, nextSeqHash [32]byte, state *types.State, maxBlockDataSizeBytes uint64) *types.Block {
+	maxBlockDataSizeBytes = min(maxBlockDataSizeBytes, uint64(max(minBlockMaxBytes, state.ConsensusParams.Block.MaxBytes)))
 	mempoolTxs := e.mempool.ReapMaxBytesMaxGas(int64(maxBlockDataSizeBytes), state.ConsensusParams.Block.MaxGas)
 
 	block := &types.Block{
@@ -109,7 +103,6 @@ func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHead
 				App:   state.Version.Consensus.App,
 			},
 			ChainID:         e.chainID,
-			NamespaceID:     e.namespaceID, // TODO: used?????
 			Height:          height,
 			Time:            uint64(time.Now().UTC().UnixNano()),
 			LastHeaderHash:  lastHeaderHash,
@@ -117,7 +110,7 @@ func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHead
 			ConsensusHash:   [32]byte{},
 			AppHash:         state.AppHash,
 			LastResultsHash: state.LastResultsHash,
-			ProposerAddress: e.proposerAddress,
+			ProposerAddress: e.localAddress,
 		},
 		Data: types.Data{
 			Txs:                    toDymintTxs(mempoolTxs),
@@ -126,9 +119,10 @@ func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHead
 		},
 		LastCommit: *lastCommit,
 	}
-	copy(block.Header.LastCommitHash[:], e.getLastCommitHash(lastCommit, &block.Header))
-	copy(block.Header.DataHash[:], e.getDataHash(block))
-	copy(block.Header.SequencersHash[:], state.Validators.Hash())
+	copy(block.Header.LastCommitHash[:], types.GetLastCommitHash(lastCommit, &block.Header))
+	copy(block.Header.DataHash[:], types.GetDataHash(block))
+	copy(block.Header.SequencerHash[:], state.Sequencers.ProposerHash())
+	copy(block.Header.NextSequencersHash[:], nextSeqHash[:])
 
 	return block
 }
@@ -206,8 +200,6 @@ func (e *Executor) ExecuteBlock(state *types.State, block *types.Block) (*tmstat
 
 	hash := block.Hash()
 	abciHeader := types.ToABCIHeaderPB(&block.Header)
-	abciHeader.ChainID = e.chainID
-	abciHeader.ValidatorsHash = state.Validators.Hash()
 	abciResponses.BeginBlock, err = e.proxyAppConsensusConn.BeginBlockSync(
 		abci.RequestBeginBlock{
 			Hash:   hash[:],
@@ -235,18 +227,6 @@ func (e *Executor) ExecuteBlock(state *types.State, block *types.Block) (*tmstat
 	}
 
 	return abciResponses, nil
-}
-
-func (e *Executor) getLastCommitHash(lastCommit *types.Commit, header *types.Header) []byte {
-	lastABCICommit := types.ToABCICommit(lastCommit, header)
-	return lastABCICommit.Hash()
-}
-
-func (e *Executor) getDataHash(block *types.Block) []byte {
-	abciData := tmtypes.Data{
-		Txs: types.ToABCIBlockDataTxs(&block.Data),
-	}
-	return abciData.Hash()
 }
 
 func (e *Executor) publishEvents(resp *tmstate.ABCIResponses, block *types.Block) error {

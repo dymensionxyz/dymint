@@ -11,14 +11,37 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 
+	"github.com/stretchr/testify/mock"
+	abci "github.com/tendermint/tendermint/abci/types"
+
 	"github.com/dymensionxyz/dymint/config"
 	"github.com/dymensionxyz/dymint/mempool"
 	"github.com/dymensionxyz/dymint/node"
 	"github.com/dymensionxyz/dymint/settlement"
 )
 
-func CreateNode(isSequencer bool, blockManagerConfig *config.BlockManagerConfig) (*node.Node, error) {
-	app := GetAppMock()
+func CreateNode(isSequencer bool, blockManagerConfig *config.BlockManagerConfig, genesis *types.GenesisDoc) (*node.Node, error) {
+	app := GetAppMock(EndBlock)
+	// Create proxy app
+	clientCreator := proxy.NewLocalClientCreator(app)
+	proxyApp := proxy.NewAppConns(clientCreator)
+	err := proxyApp.Start()
+	if err != nil {
+		return nil, err
+	}
+	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
+		RollappParamUpdates: &abci.RollappParams{
+			Da:      "celestia",
+			Version: "abcde",
+		},
+		ConsensusParamUpdates: &abci.ConsensusParams{
+			Block: &abci.BlockParams{
+				MaxGas:   100,
+				MaxBytes: 100,
+			},
+		},
+	})
+
 	key, _, _ := crypto.GenerateEd25519Key(rand.Reader)
 	signingKey, pubkey, _ := crypto.GenerateEd25519Key(rand.Reader)
 	pubkeyBytes, _ := pubkey.Raw()
@@ -28,18 +51,16 @@ func CreateNode(isSequencer bool, blockManagerConfig *config.BlockManagerConfig)
 
 	if blockManagerConfig == nil {
 		blockManagerConfig = &config.BlockManagerConfig{
-			BlockTime:              100 * time.Millisecond,
-			BatchSubmitMaxTime:     60 * time.Second,
-			BlockBatchMaxSizeBytes: 1000,
-			MaxSupportedBatchSkew:  10,
+			BlockTime:        100 * time.Millisecond,
+			BatchSubmitTime:  60 * time.Second,
+			BatchSubmitBytes: 1000,
+			BatchSkew:        10,
 		}
 	}
 	nodeConfig.BlockManagerConfig = *blockManagerConfig
 
-	rollappID := "rollapp_1234-1"
-
 	// SL config
-	nodeConfig.SettlementConfig = settlement.Config{ProposerPubKey: hex.EncodeToString(pubkeyBytes), RollappID: rollappID}
+	nodeConfig.SettlementConfig = settlement.Config{ProposerPubKey: hex.EncodeToString(pubkeyBytes)}
 
 	node, err := node.NewNode(
 		context.Background(),
@@ -47,7 +68,7 @@ func CreateNode(isSequencer bool, blockManagerConfig *config.BlockManagerConfig)
 		key,
 		signingKey,
 		proxy.NewLocalClientCreator(app),
-		&types.GenesisDoc{ChainID: rollappID},
+		genesis,
 		log.TestingLogger(),
 		mempool.NopMetrics(),
 	)

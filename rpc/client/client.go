@@ -7,12 +7,7 @@ import (
 	"sort"
 	"time"
 
-	"github.com/dymensionxyz/dymint/types"
-
-	"github.com/dymensionxyz/dymint/version"
-
 	sdkerrors "cosmossdk.io/errors"
-
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/config"
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
@@ -29,6 +24,8 @@ import (
 
 	"github.com/dymensionxyz/dymint/mempool"
 	"github.com/dymensionxyz/dymint/node"
+	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/dymint/version"
 )
 
 const (
@@ -50,8 +47,10 @@ var _ rpcclient.Client = &Client{}
 type Client struct {
 	*tmtypes.EventBus
 	config *config.RPCConfig
+	node   *node.Node
 
-	node *node.Node
+	// cache of chunked genesis data.
+	genChunks []string
 }
 
 // NewClient returns Client working with given node.
@@ -285,7 +284,7 @@ func (c *Client) Genesis(_ context.Context) (*ctypes.ResultGenesis, error) {
 
 // GenesisChunked returns given chunk of genesis.
 func (c *Client) GenesisChunked(context context.Context, id uint) (*ctypes.ResultGenesisChunk, error) {
-	genChunks, err := c.node.GetGenesisChunks()
+	genChunks, err := c.GetGenesisChunks()
 	if err != nil {
 		return nil, fmt.Errorf("while creating chunks of the genesis document: %w", err)
 	}
@@ -314,7 +313,7 @@ func (c *Client) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64)
 	const limit int64 = 20
 
 	minHeight, maxHeight, err := filterMinMax(
-		0, // FIXME: we might be pruned
+		int64(c.node.BlockManager.State.BaseHeight),
 		int64(c.node.GetBlockManagerHeight()),
 		minHeight,
 		maxHeight,
@@ -509,12 +508,12 @@ func (c *Client) Commit(ctx context.Context, height *int64) (*ctypes.ResultCommi
 // Validators returns paginated list of validators at given height.
 func (c *Client) Validators(ctx context.Context, heightPtr *int64, pagePtr, perPagePtr *int) (*ctypes.ResultValidators, error) {
 	height := c.normalizeHeight(heightPtr)
-	validators, err := c.node.Store.LoadValidators(height)
+	sequencers, err := c.node.Store.LoadSequencers(height)
 	if err != nil {
 		return nil, fmt.Errorf("load validators for height %d: %w", height, err)
 	}
 
-	totalCount := len(validators.Validators)
+	totalCount := len(sequencers.Sequencers)
 	perPage := validatePerPage(perPagePtr)
 	page, err := validatePage(pagePtr, perPage, totalCount)
 	if err != nil {
@@ -522,7 +521,17 @@ func (c *Client) Validators(ctx context.Context, heightPtr *int64, pagePtr, perP
 	}
 
 	skipCount := validateSkipCount(page, perPage)
-	v := validators.Validators[skipCount : skipCount+tmmath.MinInt(perPage, totalCount-skipCount)]
+
+	var vals []*tmtypes.Validator
+	for _, s := range sequencers.Sequencers {
+		val, err := s.TMValidator()
+		if err != nil {
+			return nil, fmt.Errorf("convert sequencer to validator: %s :%w", s.SettlementAddress, err)
+		}
+		vals = append(vals, val)
+	}
+
+	v := vals[skipCount : skipCount+tmmath.MinInt(perPage, totalCount-skipCount)]
 	return &ctypes.ResultValidators{
 		BlockHeight: int64(height),
 		Validators:  v,
@@ -708,15 +717,14 @@ func (c *Client) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
 	latestHeight := latest.Header.Height
 	latestBlockTimeNano := latest.Header.Time
 
-	validators, err := c.node.Store.LoadValidators(latest.Header.Height)
+	sequencers, err := c.node.Store.LoadSequencers(latest.Header.Height)
 	if err != nil {
 		return nil, fmt.Errorf("fetch the validator info at latest block: %w", err)
 	}
-	_, validator := validators.GetByAddress(latest.Header.ProposerAddress)
-	if validator == nil {
+	proposer := sequencers.Proposer
+	if proposer == nil {
 		return nil, fmt.Errorf("find proposer %s in the valSet", string(latest.Header.ProposerAddress))
 	}
-
 	state, err := c.node.Store.LoadState()
 	if err != nil {
 		return nil, fmt.Errorf("load the last saved state: %w", err)
@@ -749,19 +757,20 @@ func (c *Client) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
 			LatestAppHash:     latestAppHash[:],
 			LatestBlockHeight: int64(latestHeight),
 			LatestBlockTime:   time.Unix(0, int64(latestBlockTimeNano)),
+			// CatchingUp is true if the node is not at the latest height received from p2p or da.
+			CatchingUp: c.node.BlockManager.TargetHeight.Load() > latestHeight,
 			// TODO(tzdybal): add missing fields
 			// EarliestBlockHash:   earliestBlockHash,
 			// EarliestAppHash:     earliestAppHash,
 			// EarliestBlockHeight: earliestBloc
 			// kHeight,
 			// EarliestBlockTime:   time.Unix(0, earliestBlockTimeNano),
-			// CatchingUp:          env.ConsensusReactor.WaitSync(),
 		},
 		// TODO(ItzhakBokris): update ValidatorInfo fields
 		ValidatorInfo: ctypes.ValidatorInfo{
-			Address:     validator.Address,
-			PubKey:      validator.PubKey,
-			VotingPower: validator.VotingPower,
+			Address:     tmbytes.HexBytes(proposer.ConsAddress()),
+			PubKey:      proposer.PubKey(),
+			VotingPower: 1,
 		},
 	}
 	return result, nil

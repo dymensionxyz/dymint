@@ -32,6 +32,8 @@ type BatchMetaData struct {
 }
 
 type Batch struct {
+	// sequencer is the bech32-encoded address of the sequencer sent the update
+	Sequencer   string
 	StartHeight uint64
 	EndHeight   uint64
 	AppHashes   [][32]byte
@@ -59,7 +61,7 @@ type Option func(ClientI)
 // ClientI defines generic interface for Settlement layer interaction.
 type ClientI interface {
 	// Init is called once for the client initialization
-	Init(config Config, pubsub *pubsub.Server, logger types.Logger, options ...Option) error
+	Init(config Config, rollappId string, pubsub *pubsub.Server, logger types.Logger, options ...Option) error
 	// Start is called once, after Init. It's implementation should start the client service.
 	Start() error
 	// Stop is called once, after Start. It should stop the client service.
@@ -72,10 +74,16 @@ type ClientI interface {
 	// GetBatchAtIndex returns the batch at the given index.
 	GetBatchAtIndex(index uint64) (*ResultRetrieveBatch, error)
 
-	// GetSequencersList returns the list of the sequencers for this chain.
-	GetSequencers() ([]*types.Sequencer, error)
+	// GetAllSequencers returns all sequencers for this rollapp (bonded and not bonded).
+	GetAllSequencers() ([]types.Sequencer, error)
+	// GetBondedSequencers returns the list of the bonded sequencers for this rollapp.
+	GetBondedSequencers() ([]types.Sequencer, error)
 	// GetProposer returns the current proposer for this chain.
 	GetProposer() *types.Sequencer
+
+	// CheckRotationInProgress returns the next proposer for this chain in case of a rotation.
+	// If no rotation is in progress, it should return nil.
+	CheckRotationInProgress() (*types.Sequencer, error)
 
 	GetHeightState(uint64) (*ResultGetHeightState, error)
 }

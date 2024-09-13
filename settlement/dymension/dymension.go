@@ -4,43 +4,33 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
+	"strconv"
 	"strings"
 	"time"
 
-	uevent "github.com/dymensionxyz/dymint/utils/event"
-	"github.com/dymensionxyz/gerr-cosmos/gerrc"
-
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
-
 	"github.com/avast/retry-go/v4"
-	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/codec"
 	cdctypes "github.com/cosmos/cosmos-sdk/codec/types"
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
+	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	"github.com/dymensionxyz/cosmosclient/cosmosclient"
-	rollapptypes "github.com/dymensionxyz/dymension/v3/x/rollapp/types"
+	rollapptypes "github.com/dymensionxyz/dymint/third_party/dymension/rollapp/types"
+	sequencertypes "github.com/dymensionxyz/dymint/third_party/dymension/sequencer/types"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/google/uuid"
 	"github.com/ignite/cli/ignite/pkg/cosmosaccount"
+	"github.com/tendermint/tendermint/libs/pubsub"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
-	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
-	sequencertypes "github.com/dymensionxyz/dymension/v3/x/sequencer/types"
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
-	"github.com/tendermint/tendermint/libs/pubsub"
-	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 )
 
 const (
-	addressPrefix     = "dym"
-	dymRollappVersion = 0
-	defaultGasLimit   = 300000
-)
-
-const (
-	eventStateUpdate          = "state_update.rollapp_id='%s' AND state_update.status='PENDING'"
-	eventSequencersListUpdate = "sequencers_list_update.rollapp_id='%s'"
+	addressPrefix = "dym"
 )
 
 const (
@@ -50,16 +40,15 @@ const (
 // Client is the client for the Dymension Hub.
 type Client struct {
 	config                  *settlement.Config
+	rollappId               string
 	logger                  types.Logger
 	pubsub                  *pubsub.Server
 	cosmosClient            CosmosClient
 	ctx                     context.Context
-	cancel                  context.CancelFunc
 	rollappQueryClient      rollapptypes.QueryClient
 	sequencerQueryClient    sequencertypes.QueryClient
 	protoCodec              *codec.ProtoCodec
-	eventMap                map[string]string
-	sequencerList           []*types.Sequencer
+	proposer                types.Sequencer
 	retryAttempts           uint
 	retryMinDelay           time.Duration
 	retryMaxDelay           time.Duration
@@ -70,23 +59,16 @@ type Client struct {
 var _ settlement.ClientI = &Client{}
 
 // Init is called once. it initializes the struct members.
-func (c *Client) Init(config settlement.Config, pubsub *pubsub.Server, logger types.Logger, options ...settlement.Option) error {
-	ctx, cancel := context.WithCancel(context.Background())
-	eventMap := map[string]string{
-		fmt.Sprintf(eventStateUpdate, config.RollappID):          settlement.EventNewBatchAccepted,
-		fmt.Sprintf(eventSequencersListUpdate, config.RollappID): settlement.EventSequencersListUpdated,
-	}
-
+func (c *Client) Init(config settlement.Config, rollappId string, pubsub *pubsub.Server, logger types.Logger, options ...settlement.Option) error {
 	interfaceRegistry := cdctypes.NewInterfaceRegistry()
 	cryptocodec.RegisterInterfaces(interfaceRegistry)
 	protoCodec := codec.NewProtoCodec(interfaceRegistry)
 
+	c.rollappId = rollappId
 	c.config = &config
 	c.logger = logger
 	c.pubsub = pubsub
-	c.ctx = ctx
-	c.cancel = cancel
-	c.eventMap = eventMap
+	c.ctx = context.Background()
 	c.protoCodec = protoCodec
 	c.retryAttempts = config.RetryAttempts
 	c.batchAcceptanceTimeout = config.BatchAcceptanceTimeout
@@ -101,7 +83,6 @@ func (c *Client) Init(config settlement.Config, pubsub *pubsub.Server, logger ty
 
 	if c.cosmosClient == nil {
 		client, err := cosmosclient.New(
-			ctx,
 			getCosmosClientOptions(&config)...,
 		)
 		if err != nil {
@@ -127,13 +108,7 @@ func (c *Client) Start() error {
 
 // Stop stops the HubClient.
 func (c *Client) Stop() error {
-	c.cancel()
-	err := c.cosmosClient.StopEventListener()
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return c.cosmosClient.StopEventListener()
 }
 
 // SubmitBatch posts a batch to the Dymension Hub. it tries to post the batch until it is accepted by the settlement layer.
@@ -145,30 +120,30 @@ func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *d
 	}
 
 	// TODO: probably should be changed to be a channel, as the eventHandler is also in the HubClient in he produces the event
-	postBatchSubscriberClient := fmt.Sprintf("%s-%d-%s", postBatchSubscriberPrefix, batch.StartHeight, uuid.New().String())
+	postBatchSubscriberClient := fmt.Sprintf("%s-%d-%s", postBatchSubscriberPrefix, batch.StartHeight(), uuid.New().String())
 	subscription, err := c.pubsub.Subscribe(c.ctx, postBatchSubscriberClient, settlement.EventQueryNewSettlementBatchAccepted, 1000)
 	if err != nil {
 		return fmt.Errorf("pub sub subscribe to settlement state updates: %w", err)
 	}
 
 	//nolint:errcheck
-	defer c.pubsub.Unsubscribe(c.ctx, postBatchSubscriberClient, settlement.EventQueryNewSettlementBatchAccepted)
+	defer c.pubsub.UnsubscribeAll(c.ctx, postBatchSubscriberClient)
 
 	for {
 		// broadcast loop: broadcast the transaction to the blockchain (with infinite retries).
 		err := c.RunWithRetryInfinitely(func() error {
 			err := c.broadcastBatch(msgUpdateState)
 			if err != nil {
-				if errors.Is(err, gerrc.ErrAlreadyExist) {
+				if errors.Is(err, gerrc.ErrAlreadyExists) {
 					return retry.Unrecoverable(err)
 				}
 
 				c.logger.Error(
 					"Submit batch",
 					"startHeight",
-					batch.StartHeight,
+					batch.StartHeight(),
 					"endHeight",
-					batch.EndHeight,
+					batch.EndHeight(),
 					"error",
 					err,
 				)
@@ -177,8 +152,8 @@ func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *d
 		})
 		if err != nil {
 			// this could happen if we timed-out waiting for acceptance in the previous iteration, but the batch was indeed submitted
-			if errors.Is(err, gerrc.ErrAlreadyExist) {
-				c.logger.Debug("Batch already accepted", "startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
+			if errors.Is(err, gerrc.ErrAlreadyExists) {
+				c.logger.Debug("Batch already accepted", "startHeight", batch.StartHeight(), "endHeight", batch.EndHeight())
 				return nil
 			}
 			return fmt.Errorf("broadcast batch: %w", err)
@@ -199,16 +174,16 @@ func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *d
 
 			case event := <-subscription.Out():
 				eventData, _ := event.Data().(*settlement.EventDataNewBatchAccepted)
-				if eventData.EndHeight != batch.EndHeight {
+				if eventData.EndHeight != batch.EndHeight() {
 					c.logger.Debug("Received event for a different batch, ignoring.", "event", eventData)
 					continue // continue waiting for acceptance of the current batch
 				}
-				c.logger.Info("Batch accepted.", "startHeight", batch.StartHeight, "endHeight", batch.EndHeight, "stateIndex", eventData.StateIndex)
+				c.logger.Info("Batch accepted.", "startHeight", batch.StartHeight(), "endHeight", batch.EndHeight(), "stateIndex", eventData.StateIndex, "dapath", msgUpdateState.DAPath)
 				return nil
 
 			case <-timer.C:
 				// Check if the batch was accepted by the settlement layer, and we've just missed the event.
-				includedBatch, err := c.pollForBatchInclusion(batch.EndHeight)
+				includedBatch, err := c.pollForBatchInclusion(batch.EndHeight())
 				timer.Reset(c.batchAcceptanceTimeout)
 				// no error, but still not included
 				if err == nil && !includedBatch {
@@ -219,9 +194,9 @@ func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *d
 					c.logger.Error(
 						"Timed out waiting for batch inclusion on settlement layer",
 						"startHeight",
-						batch.StartHeight,
+						batch.StartHeight(),
 						"endHeight",
-						batch.EndHeight,
+						batch.EndHeight(),
 					)
 					break // breaks the switch case, and goes back to the broadcast loop
 				}
@@ -229,16 +204,16 @@ func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *d
 					c.logger.Error(
 						"Wait for batch inclusion",
 						"startHeight",
-						batch.StartHeight,
+						batch.StartHeight(),
 						"endHeight",
-						batch.EndHeight,
+						batch.EndHeight(),
 						"error",
 						err,
 					)
 					continue // continue waiting for acceptance of the current batch
 				}
 				// all good
-				c.logger.Info("Batch accepted", "startHeight", batch.StartHeight, "endHeight", batch.EndHeight)
+				c.logger.Info("Batch accepted", "startHeight", batch.StartHeight(), "endHeight", batch.EndHeight())
 				return nil
 			}
 			break // failed waiting for acceptance. broadcast the batch again
@@ -247,7 +222,7 @@ func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *d
 }
 
 func (c *Client) getStateInfo(index, height *uint64) (res *rollapptypes.QueryGetStateInfoResponse, err error) {
-	req := &rollapptypes.QueryGetStateInfoRequest{RollappId: c.config.RollappID}
+	req := &rollapptypes.QueryGetStateInfoRequest{RollappId: c.rollappId}
 	if index != nil {
 		req.Index = *index
 	}
@@ -258,12 +233,12 @@ func (c *Client) getStateInfo(index, height *uint64) (res *rollapptypes.QueryGet
 		res, err = c.rollappQueryClient.StateInfo(c.ctx, req)
 
 		if status.Code(err) == codes.NotFound {
-			return retry.Unrecoverable(gerrc.ErrNotFound)
+			return retry.Unrecoverable(errors.Join(gerrc.ErrNotFound, err))
 		}
 		return err
 	})
 	if err != nil {
-		return nil, fmt.Errorf("query state info: %w: %w", gerrc.ErrUnknown, err)
+		return nil, fmt.Errorf("query state info: %w", err)
 	}
 	if res == nil { // not supposed to happen
 		return nil, fmt.Errorf("empty response with nil err: %w", gerrc.ErrUnknown)
@@ -304,33 +279,66 @@ func (c *Client) GetHeightState(h uint64) (*settlement.ResultGetHeightState, err
 
 // GetProposer implements settlement.ClientI.
 func (c *Client) GetProposer() *types.Sequencer {
-	seqs, err := c.GetSequencers()
+	// return cached proposer
+	if !c.proposer.IsEmpty() {
+		return &c.proposer
+	}
+
+	seqs, err := c.GetBondedSequencers()
 	if err != nil {
-		c.logger.Error("Get sequencers", "error", err)
+		c.logger.Error("GetBondedSequencers", "error", err)
 		return nil
 	}
-	for _, sequencer := range seqs {
-		if sequencer.Status == types.Proposer {
-			return sequencer
+
+	var proposerAddr string
+	err = c.RunWithRetry(func() error {
+		reqProposer := &sequencertypes.QueryGetProposerByRollappRequest{
+			RollappId: c.rollappId,
 		}
+		res, err := c.sequencerQueryClient.GetProposerByRollapp(c.ctx, reqProposer)
+		if err == nil {
+			proposerAddr = res.ProposerAddr
+			return nil
+		}
+		if status.Code(err) == codes.NotFound {
+			return nil
+		}
+		return err
+	})
+	if err != nil {
+		c.logger.Error("GetProposer", "error", err)
+		return nil
 	}
-	return nil
+
+	// find the sequencer with the proposer address
+	index := slices.IndexFunc(seqs, func(seq types.Sequencer) bool {
+		return seq.SettlementAddress == proposerAddr
+	})
+	// will return nil if the proposer is not set
+	if index == -1 {
+		return nil
+	}
+	c.proposer = seqs[index]
+	return &seqs[index]
 }
 
-// GetSequencers returns the bonded sequencers of the given rollapp.
-func (c *Client) GetSequencers() ([]*types.Sequencer, error) {
-	if c.sequencerList != nil {
-		return c.sequencerList, nil
+// GetAllSequencers returns all sequencers of the given rollapp.
+func (c *Client) GetAllSequencers() ([]types.Sequencer, error) {
+	var res *sequencertypes.QueryGetSequencersByRollappResponse
+	req := &sequencertypes.QueryGetSequencersByRollappRequest{
+		RollappId: c.rollappId,
 	}
 
-	var res *sequencertypes.QueryGetSequencersByRollappByStatusResponse
-	req := &sequencertypes.QueryGetSequencersByRollappByStatusRequest{
-		RollappId: c.config.RollappID,
-		Status:    sequencertypes.Bonded,
-	}
 	err := c.RunWithRetry(func() error {
 		var err error
-		res, err = c.sequencerQueryClient.SequencersByRollappByStatus(c.ctx, req)
+		res, err = c.sequencerQueryClient.SequencersByRollapp(c.ctx, req)
+		if err == nil {
+			return nil
+		}
+
+		if status.Code(err) == codes.NotFound {
+			return retry.Unrecoverable(errors.Join(gerrc.ErrNotFound, err))
+		}
 		return err
 	})
 	if err != nil {
@@ -342,7 +350,7 @@ func (c *Client) GetSequencers() ([]*types.Sequencer, error) {
 		return nil, fmt.Errorf("empty response: %w", gerrc.ErrUnknown)
 	}
 
-	sequencersList := make([]*types.Sequencer, 0, len(res.Sequencers))
+	var sequencerList []types.Sequencer
 	for _, sequencer := range res.Sequencers {
 		var pubKey cryptotypes.PubKey
 		err := c.protoCodec.UnpackAny(sequencer.DymintPubKey, &pubKey)
@@ -350,64 +358,124 @@ func (c *Client) GetSequencers() ([]*types.Sequencer, error) {
 			return nil, err
 		}
 
-		status := types.Inactive
-		if sequencer.Proposer {
-			status = types.Proposer
+		tmPubKey, err := cryptocodec.ToTmPubKeyInterface(pubKey)
+		if err != nil {
+			return nil, err
 		}
 
-		sequencersList = append(sequencersList, &types.Sequencer{
-			PublicKey: pubKey,
-			Status:    status,
-		})
+		sequencerList = append(sequencerList, *types.NewSequencer(tmPubKey, sequencer.Address))
 	}
-	c.sequencerList = sequencersList
-	return sequencersList, nil
+
+	return sequencerList, nil
+}
+
+// GetBondedSequencers returns the bonded sequencers of the given rollapp.
+func (c *Client) GetBondedSequencers() ([]types.Sequencer, error) {
+	var res *sequencertypes.QueryGetSequencersByRollappByStatusResponse
+	req := &sequencertypes.QueryGetSequencersByRollappByStatusRequest{
+		RollappId: c.rollappId,
+		Status:    sequencertypes.Bonded,
+	}
+
+	err := c.RunWithRetry(func() error {
+		var err error
+		res, err = c.sequencerQueryClient.SequencersByRollappByStatus(c.ctx, req)
+		if err == nil {
+			return nil
+		}
+
+		if status.Code(err) == codes.NotFound {
+			return retry.Unrecoverable(errors.Join(gerrc.ErrNotFound, err))
+		}
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	// not supposed to happen, but just in case
+	if res == nil {
+		return nil, fmt.Errorf("empty response: %w", gerrc.ErrUnknown)
+	}
+
+	var sequencerList []types.Sequencer
+	for _, sequencer := range res.Sequencers {
+		var pubKey cryptotypes.PubKey
+		err := c.protoCodec.UnpackAny(sequencer.DymintPubKey, &pubKey)
+		if err != nil {
+			return nil, err
+		}
+
+		tmPubKey, err := cryptocodec.ToTmPubKeyInterface(pubKey)
+		if err != nil {
+			return nil, err
+		}
+		sequencerList = append(sequencerList, *types.NewSequencer(tmPubKey, sequencer.Address))
+	}
+
+	return sequencerList, nil
+}
+
+// CheckRotationInProgress implements settlement.ClientI.
+func (c *Client) CheckRotationInProgress() (*types.Sequencer, error) {
+	var (
+		nextAddr string
+		found    bool
+	)
+	err := c.RunWithRetry(func() error {
+		req := &sequencertypes.QueryGetNextProposerByRollappRequest{
+			RollappId: c.rollappId,
+		}
+		res, err := c.sequencerQueryClient.GetNextProposerByRollapp(c.ctx, req)
+		if err == nil && res.RotationInProgress {
+			nextAddr = res.NextProposerAddr
+			found = true
+			return nil
+		}
+		if status.Code(err) == codes.NotFound {
+			return nil
+		}
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+	if !found {
+		return nil, nil
+	}
+	if nextAddr == "" {
+		return &types.Sequencer{}, nil
+	}
+
+	seqs, err := c.GetBondedSequencers()
+	if err != nil {
+		return nil, fmt.Errorf("get sequencers: %w", err)
+	}
+
+	for _, sequencer := range seqs {
+		if sequencer.SettlementAddress == nextAddr {
+			return &sequencer, nil
+		}
+	}
+
+	return nil, fmt.Errorf("next proposer not found in bonded set: %w", gerrc.ErrInternal)
 }
 
 func (c *Client) broadcastBatch(msgUpdateState *rollapptypes.MsgUpdateState) error {
 	txResp, err := c.cosmosClient.BroadcastTx(c.config.DymAccountName, msgUpdateState)
 	if err != nil {
 		if strings.Contains(err.Error(), rollapptypes.ErrWrongBlockHeight.Error()) {
-			err = fmt.Errorf("%w: %w", err, gerrc.ErrAlreadyExist)
+			err = fmt.Errorf("%w: %w", err, gerrc.ErrAlreadyExists)
 		}
 		return fmt.Errorf("broadcast tx: %w", err)
 	}
 	if txResp.Code != 0 {
 		return fmt.Errorf("broadcast tx status code is not 0: %w", gerrc.ErrUnknown)
 	}
+
+	c.logger.Info("Broadcasted batch", "txHash", txResp.TxHash)
+
 	return nil
-}
-
-func (c *Client) eventHandler() {
-	// TODO(omritoptix): eventsChannel should be a generic channel which is later filtered by the event type.
-	subscriber := fmt.Sprintf("dymension-client-%s", uuid.New().String())
-	eventsChannel, err := c.cosmosClient.SubscribeToEvents(c.ctx, subscriber, fmt.Sprintf(eventStateUpdate, c.config.RollappID), 1000)
-	if err != nil {
-		panic("Error subscribing to events")
-	}
-	// TODO: add defer unsubscribeAll
-
-	for {
-		select {
-		case <-c.ctx.Done():
-			return
-		case <-c.cosmosClient.EventListenerQuit():
-			// TODO(omritoptix): Fallback to polling
-			panic("Settlement WS disconnected")
-		case event := <-eventsChannel:
-			// Assert value is in map and publish it to the event bus
-			_, ok := c.eventMap[event.Query]
-			if !ok {
-				c.logger.Debug("Ignoring event. Type not supported", "event", event)
-				continue
-			}
-			eventData, err := c.getEventData(c.eventMap[event.Query], event)
-			if err != nil {
-				panic(err)
-			}
-			uevent.MustPublish(c.ctx, c.pubsub, eventData, map[string][]string{settlement.EventTypeKey: {c.eventMap[event.Query]}})
-		}
-	}
 }
 
 func (c *Client) convertBatchToMsgUpdateState(batch *types.Batch, daResult *da.ResultSubmitBatch) (*rollapptypes.MsgUpdateState, error) {
@@ -426,32 +494,40 @@ func (c *Client) convertBatchToMsgUpdateState(batch *types.Batch, daResult *da.R
 		blockDescriptor := rollapptypes.BlockDescriptor{
 			Height:    block.Header.Height,
 			StateRoot: block.Header.AppHash[:],
+			Timestamp: block.Header.GetTimestamp(),
 		}
 		blockDescriptors[index] = blockDescriptor
 	}
 
 	settlementBatch := &rollapptypes.MsgUpdateState{
 		Creator:     addr,
-		RollappId:   c.config.RollappID,
-		StartHeight: batch.StartHeight,
-		NumBlocks:   batch.EndHeight - batch.StartHeight + 1,
+		RollappId:   c.rollappId,
+		StartHeight: batch.StartHeight(),
+		NumBlocks:   batch.NumBlocks(),
 		DAPath:      daResult.SubmitMetaData.ToPath(),
-		Version:     dymRollappVersion,
 		BDs:         rollapptypes.BlockDescriptors{BD: blockDescriptors},
+		Last:        batch.LastBatch,
 	}
 	return settlementBatch, nil
 }
 
 func getCosmosClientOptions(config *settlement.Config) []cosmosclient.Option {
+	var (
+		gas           string
+		gasAdjustment float64 = 1.0
+	)
 	if config.GasLimit == 0 {
-		config.GasLimit = defaultGasLimit
+		gas = "auto"
+		gasAdjustment = 1.1
+	} else {
+		gas = strconv.FormatUint(config.GasLimit, 10)
 	}
 	options := []cosmosclient.Option{
 		cosmosclient.WithAddressPrefix(addressPrefix),
-		cosmosclient.WithBroadcastMode(flags.BroadcastSync),
 		cosmosclient.WithNodeAddress(config.NodeAddress),
 		cosmosclient.WithFees(config.GasFees),
-		cosmosclient.WithGasLimit(config.GasLimit),
+		cosmosclient.WithGas(gas),
+		cosmosclient.WithGasAdjustment(gasAdjustment),
 		cosmosclient.WithGasPrices(config.GasPrices),
 	}
 	if config.KeyringHomeDir != "" {
@@ -461,14 +537,6 @@ func getCosmosClientOptions(config *settlement.Config) []cosmosclient.Option {
 		)
 	}
 	return options
-}
-
-func (c *Client) getEventData(eventType string, rawEventData ctypes.ResultEvent) (interface{}, error) {
-	switch eventType {
-	case settlement.EventNewBatchAccepted:
-		return convertToNewBatchEvent(rawEventData)
-	}
-	return nil, fmt.Errorf("event type %s not recognized", eventType)
 }
 
 // pollForBatchInclusion polls the hub for the inclusion of a batch with the given end height.

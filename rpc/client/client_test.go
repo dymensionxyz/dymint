@@ -35,6 +35,7 @@ import (
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/dymint/version"
 )
 
 var expectedInfo = abci.ResponseInfo{
@@ -82,16 +83,8 @@ func TestCheckTx(t *testing.T) {
 
 func TestGenesisChunked(t *testing.T) {
 	assert := assert.New(t)
-	rollappID := "rollapp_1234-1"
 
-	genDoc := &tmtypes.GenesisDoc{
-		ChainID:       rollappID,
-		InitialHeight: int64(1),
-		AppHash:       []byte("test hash"),
-		Validators: []tmtypes.GenesisValidator{
-			{Address: bytes.HexBytes{}, Name: "test", Power: 1, PubKey: ed25519.GenPrivKey().PubKey()},
-		},
-	}
+	genDoc := testutil.GenerateGenesis(1)
 
 	mockApp := &tmmocks.MockApplication{}
 	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
@@ -103,24 +96,22 @@ func TestGenesisChunked(t *testing.T) {
 		RootDir: "",
 		DBPath:  "",
 		P2PConfig: config.P2PConfig{
-			ListenAddress:           config.DefaultListenAddress,
-			BootstrapNodes:          "",
-			GossipedBlocksCacheSize: 50,
-			BootstrapRetryTime:      30 * time.Second,
+			ListenAddress:                config.DefaultListenAddress,
+			BootstrapNodes:               "",
+			GossipSubCacheSize:           50,
+			BootstrapRetryTime:           30 * time.Second,
+			BlockSyncRequestIntervalTime: 30 * time.Second,
 		},
 		RPC: config.RPCConfig{},
 		BlockManagerConfig: config.BlockManagerConfig{
-			BlockTime:              100 * time.Millisecond,
-			BatchSubmitMaxTime:     60 * time.Second,
-			BlockBatchMaxSizeBytes: 1000,
-			MaxSupportedBatchSkew:  10,
+			BlockTime:        100 * time.Millisecond,
+			BatchSubmitTime:  60 * time.Second,
+			BatchSubmitBytes: 1000,
+			BatchSkew:        10,
 		},
-		DALayer:         "mock",
-		DAConfig:        "",
-		SettlementLayer: "mock",
-		SettlementConfig: settlement.Config{
-			RollappID: rollappID,
-		},
+		DAConfig:         "",
+		SettlementLayer:  "mock",
+		SettlementConfig: settlement.Config{},
 	}
 	n, err := node.NewNode(
 		context.Background(),
@@ -452,7 +443,18 @@ func TestTx(t *testing.T) {
 
 	require.NotNil(rpc)
 	mockApp.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
-	mockApp.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{})
+	mockApp.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
+		RollappParamUpdates: &abci.RollappParams{
+			Da:      "mock",
+			Version: version.Commit,
+		},
+		ConsensusParamUpdates: &abci.ConsensusParams{
+			Block: &abci.BlockParams{
+				MaxGas:   100,
+				MaxBytes: 100,
+			},
+		},
+	})
 	mockApp.On("Commit", mock.Anything).Return(abci.ResponseCommit{})
 	mockApp.On("DeliverTx", mock.Anything).Return(abci.ResponseDeliverTx{})
 	mockApp.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{})
@@ -662,6 +664,7 @@ func TestBlockchainInfo(t *testing.T) {
 	}
 }
 
+// TestValidatorSetHandling tests that EndBlock updates are ignored and the validator set is fetched from the state
 func TestValidatorSetHandling(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
@@ -669,7 +672,6 @@ func TestValidatorSetHandling(t *testing.T) {
 	app.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 	app.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{})
 	app.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
-	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{})
 	app.On("Info", mock.Anything).Return(abci.ResponseInfo{LastBlockHeight: 0, LastBlockAppHash: []byte{0}})
 
 	key, _, _ := crypto.GenerateEd25519Key(crand.Reader)
@@ -686,38 +688,35 @@ func TestValidatorSetHandling(t *testing.T) {
 		genesisValidators[i] = tmtypes.GenesisValidator{Address: vKeys[i].PubKey().Address(), PubKey: vKeys[i].PubKey(), Power: int64(i + 100), Name: "one"}
 	}
 
+	// dummy pubkey, we don't care about the actual key
 	pbValKey, err := encoding.PubKeyToProto(vKeys[0].PubKey())
 	require.NoError(err)
+	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{ValidatorUpdates: []abci.ValidatorUpdate{{PubKey: pbValKey, Power: 100}}})
 
 	waitCh := make(chan interface{})
 
-	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{}).Times(2)
-	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{ValidatorUpdates: []abci.ValidatorUpdate{{PubKey: pbValKey, Power: 0}}}).Once()
-	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{}).Once()
-	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{ValidatorUpdates: []abci.ValidatorUpdate{{PubKey: pbValKey, Power: 100}}}).Once()
-	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{}).Run(func(args mock.Arguments) {
+	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{}).Times(5)
+	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{}).Run(func(args mock.Arguments) {
 		waitCh <- nil
 	})
-	rollappID := "rollapp_1234-1"
 
 	nodeConfig := config.NodeConfig{
-		DALayer:         "mock",
 		SettlementLayer: "mock",
 		P2PConfig: config.P2PConfig{
-			ListenAddress:           config.DefaultListenAddress,
-			BootstrapNodes:          "",
-			GossipedBlocksCacheSize: 50,
-			BootstrapRetryTime:      30 * time.Second,
+			ListenAddress:                config.DefaultListenAddress,
+			BootstrapNodes:               "",
+			GossipSubCacheSize:           50,
+			BootstrapRetryTime:           30 * time.Second,
+			BlockSyncRequestIntervalTime: 30 * time.Second,
 		},
 		BlockManagerConfig: config.BlockManagerConfig{
-			BlockTime:              10 * time.Millisecond,
-			BatchSubmitMaxTime:     60 * time.Second,
-			BlockBatchMaxSizeBytes: 1000,
-			MaxSupportedBatchSkew:  10,
+			BlockTime:        10 * time.Millisecond,
+			BatchSubmitTime:  60 * time.Second,
+			BatchSubmitBytes: 1000,
+			BatchSkew:        10,
 		},
 		SettlementConfig: settlement.Config{
 			ProposerPubKey: hex.EncodeToString(proposerPubKeyBytes),
-			RollappID:      rollappID,
 		},
 	}
 
@@ -727,7 +726,7 @@ func TestValidatorSetHandling(t *testing.T) {
 		key,
 		signingKey,
 		proxy.NewLocalClientCreator(app),
-		&tmtypes.GenesisDoc{ChainID: rollappID},
+		testutil.GenerateGenesis(0),
 		log.TestingLogger(),
 		mempool.NopMetrics(),
 	)
@@ -740,7 +739,10 @@ func TestValidatorSetHandling(t *testing.T) {
 	err = node.Start()
 	require.NoError(err)
 
-	<-waitCh
+	defer node.Stop()
+
+	<-waitCh                           // triggered on the 6th commit
+	time.Sleep(300 * time.Millisecond) // give time for the sequencers commit to db
 
 	// validator set isn't updated through ABCI anymore
 	for h := int64(1); h <= 5; h++ {
@@ -855,31 +857,28 @@ func getRPCInternal(t *testing.T, sequencer bool) (*tmmocks.MockApplication, *cl
 		localKey = slSeqKey
 	}
 
-	rollappID := "rollapp_1234-1"
-
 	config := config.NodeConfig{
 		RootDir: "",
 		DBPath:  "",
 		P2PConfig: config.P2PConfig{
-			ListenAddress:           config.DefaultListenAddress,
-			BootstrapNodes:          "",
-			GossipedBlocksCacheSize: 50,
-			BootstrapRetryTime:      30 * time.Second,
+			ListenAddress:                config.DefaultListenAddress,
+			BootstrapNodes:               "",
+			GossipSubCacheSize:           50,
+			BootstrapRetryTime:           30 * time.Second,
+			BlockSyncRequestIntervalTime: 30 * time.Second,
 		},
 		RPC:           config.RPCConfig{},
 		MempoolConfig: *tmcfg.DefaultMempoolConfig(),
 		BlockManagerConfig: config.BlockManagerConfig{
-			BlockTime:              100 * time.Millisecond,
-			BatchSubmitMaxTime:     60 * time.Second,
-			BlockBatchMaxSizeBytes: 1000,
-			MaxSupportedBatchSkew:  10,
+			BlockTime:        100 * time.Millisecond,
+			BatchSubmitTime:  60 * time.Second,
+			BatchSubmitBytes: 1000,
+			BatchSkew:        10,
 		},
-		DALayer:         "mock",
 		DAConfig:        "",
 		SettlementLayer: "mock",
 		SettlementConfig: settlement.Config{
 			ProposerPubKey: proposerKey,
-			RollappID:      rollappID,
 		},
 	}
 	node, err := node.NewNode(
@@ -888,7 +887,7 @@ func getRPCInternal(t *testing.T, sequencer bool) (*tmmocks.MockApplication, *cl
 		key,
 		localKey, // this is where sequencer mode is set. if same key as in settlement.Config, it's sequencer
 		proxy.NewLocalClientCreator(app),
-		&tmtypes.GenesisDoc{ChainID: rollappID},
+		testutil.GenerateGenesis(0),
 		log.TestingLogger(),
 		mempool.NopMetrics(),
 	)
@@ -962,53 +961,50 @@ func TestMempool2Nodes(t *testing.T) {
 	id1, err := peer.IDFromPrivateKey(key1)
 	require.NoError(err)
 
-	rollappID := "rollapp_1234-1"
-
+	genesis := testutil.GenerateGenesis(0)
 	node1, err := node.NewNode(context.Background(), config.NodeConfig{
-		DALayer:         "mock",
 		SettlementLayer: "mock",
 		SettlementConfig: settlement.Config{
 			ProposerPubKey: hex.EncodeToString(proposerPK),
-			RollappID:      rollappID,
 		},
 		P2PConfig: config.P2PConfig{
-			ListenAddress:           "/ip4/127.0.0.1/tcp/9001",
-			BootstrapNodes:          "",
-			GossipedBlocksCacheSize: 50,
-			BootstrapRetryTime:      30 * time.Second,
+			ListenAddress:                "/ip4/127.0.0.1/tcp/9001",
+			BootstrapNodes:               "",
+			GossipSubCacheSize:           50,
+			BootstrapRetryTime:           30 * time.Second,
+			BlockSyncRequestIntervalTime: 30 * time.Second,
 		},
 		BlockManagerConfig: config.BlockManagerConfig{
-			BlockTime:              100 * time.Millisecond,
-			BatchSubmitMaxTime:     60 * time.Second,
-			BlockBatchMaxSizeBytes: 1000,
-			MaxSupportedBatchSkew:  10,
+			BlockTime:        100 * time.Millisecond,
+			BatchSubmitTime:  60 * time.Second,
+			BatchSubmitBytes: 1000,
+			BatchSkew:        10,
 		},
 		MempoolConfig: *tmcfg.DefaultMempoolConfig(),
-	}, key1, signingKey1, proxy.NewLocalClientCreator(app), &tmtypes.GenesisDoc{ChainID: rollappID}, log.TestingLogger(), mempool.NopMetrics())
+	}, key1, signingKey1, proxy.NewLocalClientCreator(app), genesis, log.TestingLogger(), mempool.NopMetrics())
 	require.NoError(err)
 	require.NotNil(node1)
 
 	node2, err := node.NewNode(context.Background(), config.NodeConfig{
-		DALayer:         "mock",
 		SettlementLayer: "mock",
 		SettlementConfig: settlement.Config{
 			ProposerPubKey: hex.EncodeToString(proposerPK),
-			RollappID:      rollappID,
 		},
 		BlockManagerConfig: config.BlockManagerConfig{
-			BlockTime:              100 * time.Millisecond,
-			BatchSubmitMaxTime:     60 * time.Second,
-			BlockBatchMaxSizeBytes: 1000,
-			MaxSupportedBatchSkew:  10,
+			BlockTime:        100 * time.Millisecond,
+			BatchSubmitTime:  60 * time.Second,
+			BatchSubmitBytes: 1000,
+			BatchSkew:        10,
 		},
 		P2PConfig: config.P2PConfig{
-			ListenAddress:           "/ip4/127.0.0.1/tcp/9002",
-			BootstrapNodes:          "/ip4/127.0.0.1/tcp/9001/p2p/" + id1.String(),
-			BootstrapRetryTime:      30 * time.Second,
-			GossipedBlocksCacheSize: 50,
+			ListenAddress:                "/ip4/127.0.0.1/tcp/9002",
+			BootstrapNodes:               "/ip4/127.0.0.1/tcp/9001/p2p/" + id1.String(),
+			BootstrapRetryTime:           30 * time.Second,
+			GossipSubCacheSize:           50,
+			BlockSyncRequestIntervalTime: 30 * time.Second,
 		},
 		MempoolConfig: *tmcfg.DefaultMempoolConfig(),
-	}, key2, signingKey2, proxy.NewLocalClientCreator(app), &tmtypes.GenesisDoc{ChainID: rollappID}, log.TestingLogger(), mempool.NopMetrics())
+	}, key2, signingKey2, proxy.NewLocalClientCreator(app), genesis, log.TestingLogger(), mempool.NopMetrics())
 	require.NoError(err)
 	require.NotNil(node1)
 

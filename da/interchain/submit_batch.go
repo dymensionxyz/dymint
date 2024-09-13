@@ -1,6 +1,7 @@
 package interchain
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -10,10 +11,11 @@ import (
 	cdctypes "github.com/cosmos/cosmos-sdk/codec/types"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	"github.com/cosmos/cosmos-sdk/types/tx"
+	clienttypes "github.com/cosmos/ibc-go/v6/modules/core/02-client/types"
+	tmclienttypes "github.com/cosmos/ibc-go/v6/modules/light-clients/07-tendermint/types"
 	"github.com/dymensionxyz/cosmosclient/cosmosclient"
 
 	"github.com/dymensionxyz/dymint/da"
-	"github.com/dymensionxyz/dymint/da/interchain/ioutils"
 	"github.com/dymensionxyz/dymint/types"
 	interchainda "github.com/dymensionxyz/dymint/types/pb/interchain_da"
 )
@@ -22,7 +24,7 @@ func (c *DALayerClient) SubmitBatch(*types.Batch) da.ResultSubmitBatch {
 	panic("SubmitBatch method is not supported by the interchain DA clint")
 }
 
-func (c *DALayerClient) SubmitBatchV2(batch *types.Batch) da.ResultSubmitBatchV2 {
+func (c *DALayerClient) SubmitBatchV2(batch types.Batch) da.ResultSubmitBatchV2 {
 	commitment, err := c.submitBatch(batch)
 	if err != nil {
 		return da.ResultSubmitBatchV2{
@@ -62,17 +64,10 @@ func (c *DALayerClient) SubmitBatchV2(batch *types.Batch) da.ResultSubmitBatchV2
 }
 
 // submitBatch is used to process and transmit batches to the interchain DA.
-func (c *DALayerClient) submitBatch(batch *types.Batch) (*interchainda.Commitment, error) {
-	// Prepare the blob data
-	blob, err := batch.MarshalBinary()
+func (c *DALayerClient) submitBatch(batch types.Batch) (*interchainda.Commitment, error) {
+	blob, err := EncodeBatch(batch)
 	if err != nil {
-		return nil, fmt.Errorf("can't marshal batch: %w", err)
-	}
-
-	// Gzip the blob
-	gzipped, err := ioutils.Gzip(blob)
-	if err != nil {
-		return nil, fmt.Errorf("can't gzip batch: %w", err)
+		return nil, fmt.Errorf("can't encode batch to interchain DA format: %w", err)
 	}
 
 	// Verify the size of the blob is within the limit
@@ -86,7 +81,7 @@ func (c *DALayerClient) submitBatch(batch *types.Batch) (*interchainda.Commitmen
 	// Prepare the message to be sent to the DA layer
 	msg := interchainda.MsgSubmitBlob{
 		Creator: c.accountAddress,
-		Blob:    gzipped,
+		Blob:    blob,
 		Fees:    feesToPay,
 	}
 
@@ -157,6 +152,22 @@ func (c *DALayerClient) broadcastTx(msgs ...sdk.Msg) (cosmosclient.Response, err
 		return cosmosclient.Response{}, fmt.Errorf("MsgSubmitBlob broadcast tx status code is not 0 (code %d): %s", txResp.Code, txResp.RawLog)
 	}
 	return txResp, nil
+}
+
+func (c *DALayerClient) updateHubState(ctx context.Context, blobHeight uint64) error {
+	daBlock, err := c.daClient.LightBlock(ctx, blobHeight)
+	if err != nil {
+		return fmt.Errorf("can't get light block %d from DA layer: %w", blobHeight, err)
+	}
+
+	tmclienttypes.Header{
+		SignedHeader:      nil,
+		ValidatorSet:      daBlock.ValidatorSet,
+		TrustedHeight:     clienttypes.Height{},
+		TrustedValidators: nil,
+	}
+
+	clienttypes.NewMsgUpdateClient(c.daConfig.ClientID, daBlock.Header, c.accountAddress)
 }
 
 // runWithRetry runs the given operation with retry, doing a number of attempts, and taking the last error only.

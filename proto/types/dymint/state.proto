@@ -9,6 +9,7 @@ import "types/tendermint/types/types.proto";
 import "types/tendermint/types/validator.proto";
 import "types/tendermint/types/params.proto";
 import "types/tendermint/state/types.proto";
+import "types/dymint/dymint.proto";
 
 
 message State {
@@ -23,11 +24,13 @@ message State {
   google.protobuf.Timestamp last_block_time = 6 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
 
   reserved 7;
+  reserved 8;
+  tendermint.types.ValidatorSet validators = 9 [deprecated = true]; 
+  reserved 10;
 
-  tendermint.types.ValidatorSet next_validators = 8;
-  tendermint.types.ValidatorSet validators = 9;
-  tendermint.types.ValidatorSet last_validators = 10;
+
   int64 last_height_validators_changed = 11;
+  
 
   tendermint.types.ConsensusParams consensus_params = 12 [(gogoproto.nullable) = false];
   int64 last_height_consensus_params_changed = 13;
@@ -38,4 +41,17 @@ message State {
 
   uint64 last_store_height = 16 [(gogoproto.customname) = "LastStoreHeight"];
   uint64 base_height = 17;
+
+  SequencerSet sequencerSet         = 18 [(gogoproto.nullable) = false];
+  RollappParams rollapp_params = 19 [(gogoproto.nullable) = false];
+
+}
+
+//rollapp params defined in genesis and updated via gov proposal
+message RollappParams {
+  //data availability type (e.g. celestia) used in the rollapp
+  string da = 1 ;
+  //commit used for the rollapp executable
+  string version = 2 ;
+  
 }

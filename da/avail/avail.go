@@ -33,6 +33,7 @@ const (
 	DataCallMethod                  = "submit_data"
 	DataCallSectionIndex            = 29
 	DataCallMethodIndex             = 1
+	maxBlobSize                     = 2097152 // 2MB according to Avail docs https://docs.availproject.org/docs/build-with-avail/overview#expandable-blockspace
 )
 
 type SubstrateApiI interface {
@@ -135,6 +136,8 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 			Author: substrateApiClient.RPC.Author,
 		}
 	}
+
+	types.RollappConsecutiveFailedDASubmission.Set(0)
 
 	c.ctx, c.cancel = context.WithCancel(context.Background())
 	return nil
@@ -265,6 +268,7 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 					var err error
 					daBlockHeight, err = c.broadcastTx(dataBlob)
 					if err != nil {
+						types.RollappConsecutiveFailedDASubmission.Inc()
 						c.logger.Error("broadcasting batch", "error", err)
 						if errors.Is(err, da.ErrTxBroadcastConfigError) {
 							err = retry.Unrecoverable(err)
@@ -295,6 +299,7 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 				c.logger.Error(err.Error())
 				continue
 			}
+			types.RollappConsecutiveFailedDASubmission.Set(0)
 
 			c.logger.Debug("Successfully submitted batch.")
 			return da.ResultSubmitBatch{
@@ -430,4 +435,9 @@ func (c *DataAvailabilityLayerClient) getHeightFromHash(hash availtypes.Hash) (u
 		return 0, fmt.Errorf("cannot get block by hash:%w", err)
 	}
 	return uint64(header.Number), nil
+}
+
+// GetMaxBlobSizeBytes returns the maximum allowed blob size in the DA, used to check the max batch size configured
+func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint32 {
+	return maxBlobSize
 }

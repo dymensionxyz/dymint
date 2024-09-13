@@ -1,6 +1,10 @@
 package da
 
-import "errors"
+import (
+	"errors"
+
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
+)
 
 var (
 	// ErrFailedTxBuild is returned when transaction build fails.
@@ -21,4 +25,6 @@ var (
 	ErrProofNotMatching = errors.New("proof not matching")
 	// ErrNameSpace is returned when wrong namespace used
 	ErrNameSpace = errors.New("namespace not matching")
+	// ErrDAMismatch is returned when the DA client used does not match the da client specified in the da path of the state update
+	ErrDAMismatch = gerrc.ErrInvalidArgument.Wrap("DA in config not matching DA path")
 )

@@ -46,11 +46,11 @@ var (
 // Init sets the configuration options.
 func (d *DataAvailabilityLayerClient) Init(config []byte, _ *pubsub.Server, _ store.KV, logger types.Logger, options ...da.Option) error {
 	d.logger = logger
+	d.synced = make(chan struct{}, 1)
 	if len(config) == 0 {
 		d.config = DefaultConfig
 		return nil
 	}
-	d.synced = make(chan struct{}, 1)
 	return json.Unmarshal(config, &d.config)
 }
 
@@ -74,7 +74,7 @@ func (d *DataAvailabilityLayerClient) Start() error {
 
 // Stop closes connection to gRPC server.
 func (d *DataAvailabilityLayerClient) Stop() error {
-	d.logger.Info("stopoing GRPC DALC")
+	d.logger.Info("stopping GRPC DALC")
 	return d.conn.Close()
 }
 
@@ -117,6 +117,11 @@ func (d *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 	return da.ResultCheckBatch{
 		BaseResult: da.BaseResult{Code: da.StatusCode(resp.Result.Code), Message: resp.Result.Message},
 	}
+}
+
+// GetMaxBlobSizeBytes returns the maximum allowed blob size in the DA, used to check the max batch size configured
+func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint32 {
+	return 0
 }
 
 // RetrieveBatches proxies RetrieveBlocks request to gRPC server.

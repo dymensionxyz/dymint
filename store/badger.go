@@ -31,7 +31,7 @@ func NewDefaultInMemoryKVStore() KV {
 }
 
 func NewKVStore(rootDir, dbPath, dbName string, syncWrites bool) KV {
-	path := filepath.Join(rootify(rootDir, dbPath), dbName)
+	path := filepath.Join(Rootify(rootDir, dbPath), dbName)
 	db, err := badger.Open(badger.DefaultOptions(path).WithSyncWrites(syncWrites))
 	if err != nil {
 		panic(err)
@@ -46,8 +46,8 @@ func NewDefaultKVStore(rootDir, dbPath, dbName string) KV {
 	return NewKVStore(rootDir, dbPath, dbName, true)
 }
 
-// rootify works just like in cosmos-sdk
-func rootify(rootDir, dbPath string) string {
+// Rootify is helper function to make config creation independent of root dir
+func Rootify(rootDir, dbPath string) string {
 	if filepath.IsAbs(dbPath) {
 		return dbPath
 	}

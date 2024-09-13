@@ -12,9 +12,11 @@ import (
 )
 
 const (
-	defaultRpcRetryDelay = 3 * time.Second
-	namespaceVersion     = 0
-	DefaultGasPrices     = 0.1
+	defaultRpcRetryDelay    = 3 * time.Second
+	namespaceVersion        = 0
+	DefaultGasPrices        = 0.1
+	defaultRpcRetryAttempts = 5
+	maxBlobSizeBytes        = 500000
 )
 
 var defaultSubmitBackoff = uretry.NewBackoffConfig(
@@ -31,7 +33,7 @@ type Config struct {
 	NamespaceIDStr string               `json:"namespace_id,omitempty"`
 	AuthToken      string               `json:"auth_token,omitempty"`
 	Backoff        uretry.BackoffConfig `json:"backoff,omitempty"`
-	RetryAttempts  int                  `json:"retry_attempts,omitempty"`
+	RetryAttempts  *int                 `json:"retry_attempts,omitempty"`
 	RetryDelay     time.Duration        `json:"retry_delay,omitempty"`
 	NamespaceID    openrpcns.Namespace  `json:"-"`
 }

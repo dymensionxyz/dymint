@@ -5,15 +5,16 @@ import (
 	"errors"
 	"fmt"
 
+	tmcrypto "github.com/tendermint/tendermint/crypto"
 	tmtypes "github.com/tendermint/tendermint/types"
 )
 
-func ValidateProposedTransition(state *State, block *Block, commit *Commit, proposer *Sequencer) error {
+func ValidateProposedTransition(state *State, block *Block, commit *Commit, proposerPubKey tmcrypto.PubKey) error {
 	if err := block.ValidateWithState(state); err != nil {
 		return fmt.Errorf("block: %w", err)
 	}
 
-	if err := commit.ValidateWithHeader(proposer, &block.Header); err != nil {
+	if err := commit.ValidateWithHeader(proposerPubKey, &block.Header); err != nil {
 		return fmt.Errorf("commit: %w", err)
 	}
 	return nil
@@ -36,6 +37,9 @@ func (b *Block) ValidateBasic() error {
 		return err
 	}
 
+	if b.Header.DataHash != [32]byte(GetDataHash(b)) {
+		return ErrInvalidHeaderDataHash
+	}
 	return nil
 }
 
@@ -91,25 +95,18 @@ func (c *Commit) ValidateBasic() error {
 	return nil
 }
 
-// Validate performs full validation of a commit.
-func (c *Commit) Validate(proposer *Sequencer, abciHeaderBytes []byte) error {
+func (c *Commit) ValidateWithHeader(proposerPubKey tmcrypto.PubKey, header *Header) error {
 	if err := c.ValidateBasic(); err != nil {
 		return err
 	}
-	if !proposer.PublicKey.VerifySignature(abciHeaderBytes, c.Signatures[0]) {
-		return ErrInvalidSignature
-	}
-	return nil
-}
-
-func (c *Commit) ValidateWithHeader(proposer *Sequencer, header *Header) error {
 	abciHeaderPb := ToABCIHeaderPB(header)
 	abciHeaderBytes, err := abciHeaderPb.Marshal()
 	if err != nil {
 		return err
 	}
-	if err = c.Validate(proposer, abciHeaderBytes); err != nil {
-		return err
+	// commit is validated to have single signature
+	if !proposerPubKey.VerifySignature(abciHeaderBytes, c.Signatures[0]) {
+		return ErrInvalidSignature
 	}
 	return nil
 }

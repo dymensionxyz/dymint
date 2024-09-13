@@ -5,7 +5,7 @@ option go_package = "github.com/dymensionxyz/dymint/p2p/pb";
 
 import "types/dymint/dymint.proto";
 
-message GossipedBlock {
+message BlockData {
 	dymint.Block block = 1;
 	dymint.Commit commit = 2;
 }

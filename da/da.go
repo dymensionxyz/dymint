@@ -40,9 +40,9 @@ type Client string
 // Data availability clients
 const (
 	Mock       Client = "mock"
-	Grpc       Client = "grpc"
 	Celestia   Client = "celestia"
 	Avail      Client = "avail"
+	Grpc       Client = "grpc"
 	Interchain Client = "interchain"
 )
 
@@ -207,9 +207,8 @@ type ResultRetrieveBatch struct {
 // ResultRetrieveBatchV2 contains a batch of blocks returned from the DA layer client.
 type ResultRetrieveBatchV2 struct {
 	BaseResult
-	// Batches is the full block retrieved from the DA layer.
-	// If BaseResult.Code is not StatusSuccess, this field is nil.
-	Batches []*types.Batch
+	// Batch is the full block retrieved from the DA layer.
+	Batch types.Batch
 }
 
 // Path TODO: move to the Dymension proto file
@@ -242,7 +241,11 @@ type DataAvailabilityLayerClient interface {
 	// CheckBatchAvailability checks the availability of the blob submitted getting proofs and validating them
 	CheckBatchAvailability(daMetaData *DASubmitMetaData) ResultCheckBatch
 
+	// Channel used to check when the DA light client finished syncing
 	Synced() <-chan struct{}
+
+	// Returns the maximum allowed blob size in the DA, used to check the max batch size configured
+	GetMaxBlobSizeBytes() uint32
 }
 
 // ClientV2 defines generic interface for DA layer block submission.
@@ -260,7 +263,7 @@ type ClientV2 interface {
 	Stop() error
 
 	// SubmitBatchV2 submits the passed in block to the DA layer.
-	SubmitBatchV2(*types.Batch) ResultSubmitBatchV2
+	SubmitBatchV2(types.Batch) ResultSubmitBatchV2
 
 	GetClientType() Client
 
