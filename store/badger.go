@@ -40,8 +40,8 @@ func NewDefaultInMemoryKVStore() KV {
 
 func NewKVStore(rootDir, dbPath, dbName string, syncWrites bool) KV {
 	path := filepath.Join(Rootify(rootDir, dbPath), dbName)
-	opts := constraintBadgerConfig(path)
-	db, err := badger.Open(opts.WithSyncWrites(syncWrites))
+	opts := memoryEfficientBadgerConfig(path, syncWrites)
+	db, err := badger.Open(*opts)
 	if err != nil {
 		panic(err)
 	}
@@ -225,36 +225,32 @@ func (i *BadgerIterator) Discard() {
 	i.txn.Discard()
 }
 
-func constraintBadgerConfig(path string) *badger.Options {
+// memoryEfficientBadgerConfig sets badger configuration parameters to reduce memory usage, specially during compactions to avoid memory spikes that causes OOM.
+// based on https://github.com/celestiaorg/celestia-node/issues/2905
+func memoryEfficientBadgerConfig(path string, syncWrites bool) *badger.Options {
 	opts := badger.DefaultOptions(path) // this must be copied
-	// ValueLog:
-	// 2mib default => share.Size - makes sure headers and samples are stored in value log
-	// This *tremendously* reduces the amount of memory used by the node, up to 10 times less during
-	// compaction
-	//opts.ValueThreshold = share.Size
-	// make sure we don't have any limits for stored headers
-	opts.ValueLogMaxEntries = 100000000
-
-	// badger stores checksum for every value, but doesn't verify it by default
-	// enabling this option may allow us to see detect corrupted data
-	opts.ChecksumVerificationMode = options.OnBlockRead
-	opts.VerifyValueChecksum = true
+	// SyncWrites is a configuration option in Badger that determines whether writes are immediately synced to disk or no.
+	// If set to true it writes to the write-ahead log (value log) are synced to disk before being applied to the LSM tree.
+	opts.SyncWrites = syncWrites
 	// default 64mib => 0 - disable block cache
-	// most of our component maintain their own caches, so this is not needed
+	// BlockCacheSize specifies how much data cache should hold in memory.
+	// It improves lookup performance but increases memory consumption.
+	// Not really necessary if disabling compression
 	opts.BlockCacheSize = 0
-	// not much gain as it compresses the LSM only as well compression requires block cache
+	// compressions reduces storage usage but increases memory consumption, specially during compaction
 	opts.Compression = options.None
-
-	// MemTables:
+	// MemTables: maximum size of in-memory data structures  before they are flushed to disk
 	// default 64mib => 16mib - decreases memory usage and makes compaction more often
 	opts.MemTableSize = 16 << 20
+	// NumMemtables is a configuration option in Badger that sets the maximum number of memtables to keep in memory before stalling
 	// default 5 => 3
 	opts.NumMemtables = 3
+	// NumLevelZeroTables sets the maximum number of Level 0 tables before compaction starts
 	// default 5 => 3
 	opts.NumLevelZeroTables = 3
 	// default 15 => 5 - this prevents memory growth on CPU constraint systems by blocking all writers
 	opts.NumLevelZeroTablesStall = 5
-
+	// reducing number compactors, makes it slower but reduces memory usage during compaction
 	opts.NumCompactors = 2
 	// makes sure badger is always compacted on shutdown
 	opts.CompactL0OnClose = true
