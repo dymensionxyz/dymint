@@ -9,18 +9,24 @@ import (
 	"testing"
 	"time"
 
+	tmed25519 "github.com/tendermint/tendermint/crypto/ed25519"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/proxy"
 
-	cosmosed25519 "github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
 	"github.com/libp2p/go-libp2p/core/crypto"
 
+	"github.com/dymensionxyz/dymint/block"
 	"github.com/dymensionxyz/dymint/config"
+	"github.com/dymensionxyz/dymint/da"
 	slmocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/dymint/version"
 )
 
 // TestBatchOverhead tests the scenario where we have a single block that is very large, and occupies the entire batch size.
@@ -29,7 +35,7 @@ import (
 // 1. single block with single large tx
 // 2. single block with multiple small tx
 func TestBatchOverhead(t *testing.T) {
-	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, nil, 1, 1, 0, nil, nil)
+	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, manager)
 
@@ -52,7 +58,7 @@ func TestBatchOverhead(t *testing.T) {
 	}
 
 	for _, tcase := range tcases {
-		blocks, err := testutil.GenerateBlocks(1, 1, manager.ProposerKey)
+		blocks, err := testutil.GenerateBlocks(1, 1, manager.LocalKey)
 		require.NoError(t, err)
 		block := blocks[0]
 
@@ -70,15 +76,13 @@ func TestBatchOverhead(t *testing.T) {
 
 		mallete(tcase.nTxs)
 
-		commits, err := testutil.GenerateCommits(blocks, manager.ProposerKey)
+		commits, err := testutil.GenerateCommits(blocks, manager.LocalKey)
 		require.NoError(t, err)
 		commit := commits[0]
 
 		batch := types.Batch{
-			StartHeight: 1,
-			EndHeight:   1,
-			Blocks:      blocks,
-			Commits:     commits,
+			Blocks:  blocks,
+			Commits: commits,
 		}
 
 		batchSize := batch.ToProto().Size()
@@ -100,16 +104,30 @@ func TestBatchOverhead(t *testing.T) {
 
 func TestBatchSubmissionHappyFlow(t *testing.T) {
 	require := require.New(t)
-	app := testutil.GetAppMock()
+	app := testutil.GetAppMock(testutil.EndBlock)
 	ctx := context.Background()
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(clientCreator)
 	err := proxyApp.Start()
 	require.NoError(err)
-
-	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, nil, 1, 1, 0, proxyApp, nil)
+	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
+		RollappParamUpdates: &abci.RollappParams{
+			Da:      "mock",
+			Version: version.Commit,
+		},
+		ConsensusParamUpdates: &abci.ConsensusParams{
+			Block: &abci.BlockParams{
+				MaxGas:   40000000,
+				MaxBytes: 500000,
+			},
+		},
+	})
+	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
+
+	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
+	manager.Retriever = manager.DAClient.(da.BatchRetriever)
 
 	// Check initial assertions
 	initialHeight := uint64(0)
@@ -117,21 +135,32 @@ func TestBatchSubmissionHappyFlow(t *testing.T) {
 	require.Zero(manager.LastSubmittedHeight.Load())
 
 	// Produce block and validate that we produced blocks
-	_, _, err = manager.ProduceAndGossipBlock(ctx, true)
+	_, _, err = manager.ProduceApplyGossipBlock(ctx, true)
 	require.NoError(err)
 	assert.Greater(t, manager.State.Height(), initialHeight)
 	assert.Zero(t, manager.LastSubmittedHeight.Load())
 
 	// submit and validate sync target
-	manager.HandleSubmissionTrigger()
+	manager.CreateAndSubmitBatch(manager.Conf.BatchSubmitBytes, false)
 	assert.EqualValues(t, manager.State.Height(), manager.LastSubmittedHeight.Load())
 }
 
 func TestBatchSubmissionFailedSubmission(t *testing.T) {
 	require := require.New(t)
-	app := testutil.GetAppMock()
+	app := testutil.GetAppMock(testutil.EndBlock)
 	ctx := context.Background()
-
+	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
+		RollappParamUpdates: &abci.RollappParams{
+			Da:      "mock",
+			Version: version.Commit,
+		},
+		ConsensusParamUpdates: &abci.ConsensusParams{
+			Block: &abci.BlockParams{
+				MaxGas:   40000000,
+				MaxBytes: 500000,
+			},
+		},
+	})
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(clientCreator)
@@ -144,10 +173,8 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 	lib2pPrivKey, err := crypto.UnmarshalEd25519PrivateKey(priv)
 	require.NoError(err)
 
-	cosmosPrivKey := cosmosed25519.PrivKey{Key: priv}
-	proposer := &types.Sequencer{
-		PublicKey: cosmosPrivKey.PubKey(),
-	}
+	proposerKey := tmed25519.PrivKey(priv)
+	proposer := *types.NewSequencer(proposerKey.PubKey(), "")
 
 	// Create a new mock ClientI
 	slmock := &slmocks.MockClientI{}
@@ -155,8 +182,11 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 	slmock.On("Start").Return(nil)
 	slmock.On("GetProposer").Return(proposer)
 
-	manager, err := testutil.GetManagerWithProposerKey(testutil.GetManagerConfig(), lib2pPrivKey, slmock, nil, 1, 1, 0, proxyApp, nil)
+	manager, err := testutil.GetManagerWithProposerKey(testutil.GetManagerConfig(), lib2pPrivKey, slmock, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
+
+	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
+	manager.Retriever = manager.DAClient.(da.BatchRetriever)
 
 	// Check initial assertions
 	initialHeight := uint64(0)
@@ -164,18 +194,19 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 	require.Zero(manager.LastSubmittedHeight.Load())
 
 	// Produce block and validate that we produced blocks
-	_, _, err = manager.ProduceAndGossipBlock(ctx, true)
+	_, _, err = manager.ProduceApplyGossipBlock(ctx, true)
 	require.NoError(err)
 	assert.Greater(t, manager.State.Height(), initialHeight)
 	assert.Zero(t, manager.LastSubmittedHeight.Load())
 
 	// try to submit, we expect failure
 	slmock.On("SubmitBatch", mock.Anything, mock.Anything, mock.Anything).Return(fmt.Errorf("submit batch")).Once()
-	assert.Error(t, manager.HandleSubmissionTrigger())
+	_, err = manager.CreateAndSubmitBatch(manager.Conf.BatchSubmitBytes, false)
+	assert.Error(t, err)
 
 	// try to submit again, we expect success
 	slmock.On("SubmitBatch", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
-	manager.HandleSubmissionTrigger()
+	manager.CreateAndSubmitBatch(manager.Conf.BatchSubmitBytes, false)
 	assert.EqualValues(t, manager.State.Height(), manager.LastSubmittedHeight.Load())
 }
 
@@ -188,7 +219,19 @@ func TestSubmissionByTime(t *testing.T) {
 	)
 
 	require := require.New(t)
-	app := testutil.GetAppMock()
+	app := testutil.GetAppMock(testutil.EndBlock)
+	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
+		RollappParamUpdates: &abci.RollappParams{
+			Da:      "mock",
+			Version: version.Commit,
+		},
+		ConsensusParamUpdates: &abci.ConsensusParams{
+			Block: &abci.BlockParams{
+				MaxGas:   40000000,
+				MaxBytes: 500000,
+			},
+		},
+	})
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(clientCreator)
@@ -197,15 +240,18 @@ func TestSubmissionByTime(t *testing.T) {
 
 	// Init manager with empty blocks feature enabled
 	managerConfig := config.BlockManagerConfig{
-		BlockTime:              blockTime,
-		MaxIdleTime:            0,
-		MaxSupportedBatchSkew:  10,
-		BatchSubmitMaxTime:     submitTimeout,
-		BlockBatchMaxSizeBytes: 1000,
+		BlockTime:        blockTime,
+		MaxIdleTime:      0,
+		BatchSkew:        10,
+		BatchSubmitTime:  submitTimeout,
+		BatchSubmitBytes: 1000,
 	}
 
-	manager, err := testutil.GetManager(managerConfig, nil, nil, 1, 1, 0, proxyApp, nil)
+	manager, err := testutil.GetManager(managerConfig, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
+
+	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
+	manager.Retriever = manager.DAClient.(da.BatchRetriever)
 
 	// Check initial height
 	initialHeight := uint64(0)
@@ -218,13 +264,14 @@ func TestSubmissionByTime(t *testing.T) {
 
 	wg.Add(2) // Add 2 because we have 2 goroutines
 
+	bytesProducedC := make(chan int)
 	go func() {
-		manager.ProduceBlockLoop(mCtx)
+		manager.ProduceBlockLoop(mCtx, bytesProducedC)
 		wg.Done() // Decrease counter when this goroutine finishes
 	}()
 
 	go func() {
-		manager.SubmitLoop(mCtx)
+		manager.SubmitLoop(mCtx, bytesProducedC)
 		wg.Done() // Decrease counter when this goroutine finishes
 	}()
 
@@ -255,44 +302,69 @@ func TestSubmissionByBatchSize(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		managerConfig := testutil.GetManagerConfig()
-		managerConfig.BlockBatchMaxSizeBytes = c.blockBatchMaxSizeBytes
-		manager, err := testutil.GetManager(managerConfig, nil, nil, 1, 1, 0, nil, nil)
+		app := testutil.GetAppMock(testutil.EndBlock)
+		app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
+			RollappParamUpdates: &abci.RollappParams{
+				Da:      "mock",
+				Version: version.Commit,
+			},
+			ConsensusParamUpdates: &abci.ConsensusParams{
+				Block: &abci.BlockParams{
+					MaxGas:   40000000,
+					MaxBytes: 500000,
+				},
+			},
+		})
+		// Create proxy app
+		clientCreator := proxy.NewLocalClientCreator(app)
+		proxyApp := proxy.NewAppConns(clientCreator)
+		err := proxyApp.Start()
 		require.NoError(err)
 
-		// validate initial accumulated is zero
-		require.Equal(manager.AccumulatedBatchSize.Load(), uint64(0))
+		managerConfig := testutil.GetManagerConfig()
+		managerConfig.BatchSubmitBytes = c.blockBatchMaxSizeBytes
+		manager, err := testutil.GetManager(managerConfig, nil, 1, 1, 0, proxyApp, nil)
+		require.NoError(err)
+
+		manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
+		manager.Retriever = manager.DAClient.(da.BatchRetriever)
+
 		assert.Equal(manager.State.Height(), uint64(0))
 
-		var wg sync.WaitGroup
-		wg.Add(2) // Add 2 because we have 2 goroutines
+		submissionByBatchSize(manager, assert, c.expectedSubmission)
+	}
+}
 
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-		defer cancel()
+func submissionByBatchSize(manager *block.Manager, assert *assert.Assertions, expectedSubmission bool) {
+	var wg sync.WaitGroup
+	wg.Add(2) // Add 2 because we have 2 goroutines
 
-		go func() {
-			manager.ProduceBlockLoop(ctx)
-			wg.Done() // Decrease counter when this goroutine finishes
-		}()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
 
-		go func() {
-			assert.Zero(manager.LastSubmittedHeight.Load())
-			manager.SubmitLoop(ctx)
-			wg.Done() // Decrease counter when this goroutine finishes
-		}()
+	bytesProducedC := make(chan int)
 
-		// wait for block to be produced but not for submission threshold
-		time.Sleep(200 * time.Millisecond)
-		// assert block produced but nothing submitted yet
-		assert.Greater(manager.State.Height(), uint64(0))
-		assert.Greater(manager.AccumulatedBatchSize.Load(), uint64(0))
+	go func() {
+		manager.ProduceBlockLoop(ctx, bytesProducedC)
+		wg.Done() // Decrease counter when this goroutine finishes
+	}()
 
-		wg.Wait() // Wait for all goroutines to finish
+	go func() {
+		assert.Zero(manager.LastSubmittedHeight.Load())
+		manager.SubmitLoop(ctx, bytesProducedC)
+		wg.Done() // Decrease counter when this goroutine finishes
+	}()
 
-		if c.expectedSubmission {
-			assert.Positive(manager.LastSubmittedHeight.Load())
-		} else {
-			assert.Zero(manager.LastSubmittedHeight.Load())
-		}
+	// wait for block to be produced but not for submission threshold
+	time.Sleep(200 * time.Millisecond)
+	// assert block produced but nothing submitted yet
+	assert.Greater(manager.State.Height(), uint64(0))
+
+	wg.Wait() // Wait for all goroutines to finish
+
+	if expectedSubmission {
+		assert.Positive(manager.LastSubmittedHeight.Load())
+	} else {
+		assert.Zero(manager.LastSubmittedHeight.Load())
 	}
 }

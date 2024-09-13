@@ -1,15 +1,15 @@
 package types
 
 import (
+	"encoding/json"
 	"fmt"
 	"sync/atomic"
 
 	// TODO(tzdybal): copy to local project?
+
+	"github.com/dymensionxyz/dymint/types/pb/dymint"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
-	"github.com/tendermint/tendermint/types"
-	"github.com/tendermint/tendermint/version"
 )
 
 // State contains information about current state of the blockchain.
@@ -26,9 +26,8 @@ type State struct {
 	// BaseHeight is the height of the first block we have in store after pruning.
 	BaseHeight uint64
 
-	NextValidators              *types.ValidatorSet
-	Validators                  *types.ValidatorSet
-	LastHeightValidatorsChanged int64
+	// Sequencers is the set of sequencers that are currently active on the rollapp.
+	Sequencers SequencerSet
 
 	// Consensus parameters used for validating blocks.
 	// Changes returned by EndBlock and updated after Commit.
@@ -40,49 +39,17 @@ type State struct {
 
 	// the latest AppHash we've received from calling abci.Commit()
 	AppHash [32]byte
-}
 
-// NewStateFromGenesis reads blockchain State from genesis.
-func NewStateFromGenesis(genDoc *types.GenesisDoc) (*State, error) {
-	err := genDoc.ValidateAndComplete()
-	if err != nil {
-		return nil, fmt.Errorf("in genesis doc: %w", err)
-	}
-
-	// InitStateVersion sets the Consensus.Block and Software versions,
-	// but leaves the Consensus.App version blank.
-	// The Consensus.App version will be set during the Handshake, once
-	// we hear from the app what protocol version it is running.
-	InitStateVersion := tmstate.Version{
-		Consensus: tmversion.Consensus{
-			Block: version.BlockProtocol,
-			App:   0,
-		},
-		Software: version.TMCoreSemVer,
-	}
-
-	s := State{
-		Version:       InitStateVersion,
-		ChainID:       genDoc.ChainID,
-		InitialHeight: uint64(genDoc.InitialHeight),
-
-		BaseHeight: uint64(genDoc.InitialHeight),
-
-		NextValidators:              types.NewValidatorSet(nil),
-		Validators:                  types.NewValidatorSet(nil),
-		LastHeightValidatorsChanged: genDoc.InitialHeight,
-
-		ConsensusParams:                  *genDoc.ConsensusParams,
-		LastHeightConsensusParamsChanged: genDoc.InitialHeight,
-	}
-	s.LastBlockHeight.Store(0)
-	copy(s.AppHash[:], genDoc.AppHash)
-
-	return &s, nil
+	// New rollapp parameters .
+	RollappParams dymint.RollappParams
 }
 
 func (s *State) IsGenesis() bool {
 	return s.Height() == 0
+}
+
+type RollappParams struct {
+	Params *dymint.RollappParams
 }
 
 // SetHeight sets the height saved in the Store if it is higher than the existing height
@@ -102,4 +69,25 @@ func (s *State) NextHeight() uint64 {
 		return s.InitialHeight
 	}
 	return s.Height() + 1
+}
+
+// SetRollappParamsFromGenesis sets the rollapp consensus params from genesis
+func (s *State) SetRollappParamsFromGenesis(appState json.RawMessage) error {
+	var objmap map[string]json.RawMessage
+	err := json.Unmarshal(appState, &objmap)
+	if err != nil {
+		return err
+	}
+	params, ok := objmap["rollappparams"]
+	if !ok {
+		return fmt.Errorf("rollappparams not defined in genesis")
+	}
+
+	var rollappParams RollappParams
+	err = json.Unmarshal(params, &rollappParams)
+	if err != nil {
+		return err
+	}
+	s.RollappParams = *rollappParams.Params
+	return nil
 }

@@ -4,9 +4,14 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/dymensionxyz/dymint/store"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
+	"github.com/ipfs/go-cid"
+	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -40,6 +45,9 @@ const (
 
 	// blockTopicSuffix is added after namespace to create pubsub topic for block gossiping.
 	blockTopicSuffix = "-block"
+
+	// blockSyncProtocolSuffix is added after namespace to create blocksync protocol prefix.
+	blockSyncProtocolPrefix = "block-sync"
 )
 
 // Client is a P2P client, implemented with libp2p.
@@ -69,15 +77,25 @@ type Client struct {
 	localPubsubServer *tmpubsub.Server
 
 	logger types.Logger
+
+	// blocksync instance used to save and retrieve blocks from the P2P network on demand
+	blocksync *BlockSync
+
+	// store used to store retrievable blocks using blocksync
+	blockSyncStore datastore.Datastore
+
+	store store.Store
+
+	blocksReceived *BlocksReceived
 }
 
 // NewClient creates new Client object.
 //
 // Basic checks on parameters are done, and default parameters are provided for unset-configuration
 // TODO(tzdybal): consider passing entire config, not just P2P config, to reduce number of arguments
-func NewClient(conf config.P2PConfig, privKey crypto.PrivKey, chainID string, localPubsubServer *tmpubsub.Server, logger types.Logger) (*Client, error) {
+func NewClient(conf config.P2PConfig, privKey crypto.PrivKey, chainID string, store store.Store, localPubsubServer *tmpubsub.Server, blockSyncStore datastore.Datastore, logger types.Logger) (*Client, error) {
 	if privKey == nil {
-		return nil, errNoPrivKey
+		return nil, fmt.Errorf("private key: %w", gerrc.ErrNotFound)
 	}
 	if conf.ListenAddress == "" {
 		conf.ListenAddress = config.DefaultListenAddress
@@ -89,6 +107,11 @@ func NewClient(conf config.P2PConfig, privKey crypto.PrivKey, chainID string, lo
 		chainID:           chainID,
 		logger:            logger,
 		localPubsubServer: localPubsubServer,
+		blockSyncStore:    blockSyncStore,
+		store:             store,
+		blocksReceived: &BlocksReceived{
+			blocksReceived: make(map[uint64]struct{}),
+		},
 	}, nil
 }
 
@@ -133,6 +156,17 @@ func (c *Client) StartWithHost(ctx context.Context, h host.Host) error {
 		return err
 	}
 
+	if !c.conf.BlockSyncEnabled {
+		c.logger.Info("Block sync protocol disabled")
+		return nil
+	}
+
+	c.logger.Debug("Setting up block sync protocol")
+	err = c.startBlockSync(ctx)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -163,6 +197,65 @@ func (c *Client) SetTxValidator(val GossipValidator) {
 func (c *Client) GossipBlock(ctx context.Context, blockBytes []byte) error {
 	c.logger.Debug("Gossiping block.", "len", len(blockBytes))
 	return c.blockGossiper.Publish(ctx, blockBytes)
+}
+
+// SaveBlock stores the block in the blocksync datastore, stores locally the returned identifier and advertises the identifier to the DHT, so other nodes can know the identifier for the block height.
+func (c *Client) SaveBlock(ctx context.Context, height uint64, blockBytes []byte) error {
+	if !c.conf.BlockSyncEnabled {
+		return nil
+	}
+	cid, err := c.blocksync.SaveBlock(ctx, blockBytes)
+	if err != nil {
+		return fmt.Errorf("blocksync add block: %w", err)
+	}
+	_, err = c.store.SaveBlockCid(height, cid, nil)
+	if err != nil {
+		return fmt.Errorf("blocksync store block id: %w", err)
+	}
+	err = c.AdvertiseBlockIdToDHT(ctx, height, cid)
+	if err != nil {
+		c.logger.Debug("block-sync advertise block", "error", err)
+	}
+	return nil
+}
+
+// RemoveBlocks is used to prune blocks from the block sync datastore.
+func (c *Client) RemoveBlocks(ctx context.Context, from, to uint64) error {
+	if from <= 0 {
+		return fmt.Errorf("from height must be greater than 0: %w", gerrc.ErrInvalidArgument)
+	}
+
+	if to <= from {
+		return fmt.Errorf("to height must be greater than from height: to: %d: from: %d: %w", to, from, gerrc.ErrInvalidArgument)
+	}
+
+	for h := from; h < to; h++ {
+
+		cid, err := c.store.LoadBlockCid(h)
+		if err != nil {
+			return fmt.Errorf("load block id from store %d: %w", h, err)
+		}
+		err = c.blocksync.DeleteBlock(ctx, cid)
+		if err != nil {
+			return fmt.Errorf("remove block height %d: %w", h, err)
+		}
+	}
+	return nil
+}
+
+// AdvertiseBlockIdToDHT is used to advertise the identifier (cid) for a specific block height to the DHT, using a PutValue operation
+func (c *Client) AdvertiseBlockIdToDHT(ctx context.Context, height uint64, cid cid.Cid) error {
+	err := c.DHT.PutValue(ctx, getBlockSyncKeyByHeight(height), []byte(cid.String()))
+	return err
+}
+
+// GetBlockIdFromDHT is used to retrieve the identifier (cid) for a specific block height from the DHT, using a GetValue operation
+func (c *Client) GetBlockIdFromDHT(ctx context.Context, height uint64) (cid.Cid, error) {
+	cidBytes, err := c.DHT.GetValue(ctx, getBlockSyncKeyByHeight(height))
+	if err != nil {
+		return cid.Undef, err
+	}
+	return cid.MustParse(string(cidBytes)), nil
 }
 
 // SetBlockValidator sets the callback function, that will be invoked after block is received from P2P network.
@@ -243,7 +336,9 @@ func (c *Client) setupDHT(ctx context.Context) error {
 	}
 
 	var err error
-	c.DHT, err = dht.New(ctx, c.Host, dht.Mode(dht.ModeServer), dht.BootstrapPeers(bootstrapNodes...))
+
+	val := dht.NamespacedValidator(blockSyncProtocolPrefix, blockIdValidator{})
+	c.DHT, err = dht.New(ctx, c.Host, dht.Mode(dht.ModeServer), dht.ProtocolPrefix(blockSyncProtocolPrefix), val, dht.BootstrapPeers(bootstrapNodes...))
 	if err != nil {
 		return fmt.Errorf("create DHT: %w", err)
 	}
@@ -292,6 +387,14 @@ func (c *Client) setupPeerDiscovery(ctx context.Context) error {
 	return nil
 }
 
+func (c *Client) startBlockSync(ctx context.Context) error {
+	blocksync := SetupBlockSync(ctx, c.Host, c.blockSyncStore, c.logger)
+	c.blocksync = blocksync
+	go c.retrieveBlockSyncLoop(ctx, c.blockSyncReceived)
+	go c.advertiseBlockSyncCids(ctx)
+	return nil
+}
+
 func (c *Client) advertise(ctx context.Context) error {
 	discutil.Advertise(ctx, c.disc, c.getNamespace(), cdiscovery.TTL(reAdvertisePeriod))
 	return nil
@@ -322,10 +425,9 @@ func (c *Client) tryConnect(ctx context.Context, peer peer.AddrInfo) {
 }
 
 func (c *Client) setupGossiping(ctx context.Context) error {
-	pubsub.GossipSubHistoryGossip = c.conf.GossipedBlocksCacheSize
-	pubsub.GossipSubHistoryLength = c.conf.GossipedBlocksCacheSize
+	pubsub.GossipSubHistoryGossip = c.conf.GossipSubCacheSize
+	pubsub.GossipSubHistoryLength = c.conf.GossipSubCacheSize
 
-	// We add WithSeenMessagesTTL (with 1 year time) option to avoid ever requesting already seen blocks
 	ps, err := pubsub.NewGossipSub(ctx, c.Host)
 	if err != nil {
 		return err
@@ -338,7 +440,7 @@ func (c *Client) setupGossiping(ctx context.Context) error {
 	}
 	go c.txGossiper.ProcessMessages(ctx)
 
-	c.blockGossiper, err = NewGossiper(c.Host, ps, c.getBlockTopic(), c.gossipedBlockReceived, c.logger,
+	c.blockGossiper, err = NewGossiper(c.Host, ps, c.getBlockTopic(), c.blockGossipReceived, c.logger,
 		WithValidator(c.blockValidator))
 	if err != nil {
 		return err
@@ -378,10 +480,12 @@ func (c *Client) getNamespace() string {
 	return c.chainID
 }
 
+// topic used to transmit transactions in gossipsub
 func (c *Client) getTxTopic() string {
 	return c.getNamespace() + txTopicSuffix
 }
 
+// topic used to transmit blocks in gossipsub
 func (c *Client) getBlockTopic() string {
 	return c.getNamespace() + blockTopicSuffix
 }
@@ -394,17 +498,43 @@ func (c *Client) NewTxValidator() GossipValidator {
 	}
 }
 
-func (c *Client) gossipedBlockReceived(msg *GossipMessage) {
-	var gossipedBlock GossipedBlock
-	if err := gossipedBlock.UnmarshalBinary(msg.Data); err != nil {
+// blockSyncReceived is called on reception of new block via blocksync protocol
+func (c *Client) blockSyncReceived(block *BlockData) {
+	err := c.localPubsubServer.PublishWithEvents(context.Background(), *block, map[string][]string{EventTypeKey: {EventNewBlockSyncBlock}})
+	if err != nil {
+		c.logger.Error("Publishing event.", "err", err)
+	}
+	// Received block is cached and  no longer needed to request using blocksync
+	c.blocksReceived.AddBlockReceived(block.Block.Header.Height)
+}
+
+// blockSyncReceived is called on reception of new block via gossip protocol
+func (c *Client) blockGossipReceived(ctx context.Context, block []byte) {
+	var gossipedBlock BlockData
+	if err := gossipedBlock.UnmarshalBinary(block); err != nil {
 		c.logger.Error("Deserialize gossiped block", "error", err)
 	}
 	err := c.localPubsubServer.PublishWithEvents(context.Background(), gossipedBlock, map[string][]string{EventTypeKey: {EventNewGossipedBlock}})
 	if err != nil {
 		c.logger.Error("Publishing event.", "err", err)
 	}
+	if c.conf.BlockSyncEnabled {
+		_, err := c.store.LoadBlockCid(gossipedBlock.Block.Header.Height)
+		// skip block already added to blocksync
+		if err == nil {
+			return
+		}
+		err = c.SaveBlock(ctx, gossipedBlock.Block.Header.Height, block)
+		if err != nil {
+			c.logger.Error("Adding  block to blocksync store.", "err", err, "height", gossipedBlock.Block.Header.Height)
+		}
+		// Received block is cached and no longer needed to request using blocksync
+		c.blocksReceived.AddBlockReceived(gossipedBlock.Block.Header.Height)
+	}
 }
 
+// bootstrapLoop is used to periodically check if the node is connected to other nodes in the P2P network, re-bootstrapping the DHT in case it is necessary,
+// or to try to connect to the persistent peers
 func (c *Client) bootstrapLoop(ctx context.Context) {
 	ticker := time.NewTicker(c.conf.BootstrapRetryTime)
 	defer ticker.Stop()
@@ -431,6 +561,80 @@ func (c *Client) bootstrapLoop(ctx context.Context) {
 	}
 }
 
+// retrieveBlockSyncLoop checks if there is any block not received, previous to the latest block height received, to request it on demand
+func (c *Client) retrieveBlockSyncLoop(ctx context.Context, msgHandler BlockSyncMessageHandler) {
+	ticker := time.NewTicker(c.conf.BlockSyncRequestIntervalTime)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			state, err := c.store.LoadState()
+			if err != nil {
+				continue
+			}
+
+			// this loop iterates and retrieves all the blocks between the last block applied and the greatest height received,
+			// skipping any block cached, since are already received.
+			for h := state.NextHeight(); h <= c.blocksReceived.latestSeenHeight; h++ {
+				ok := c.blocksReceived.IsBlockReceived(h)
+				if ok {
+					continue
+				}
+				c.logger.Debug("Blocksync getting block.", "height", h)
+				id, err := c.GetBlockIdFromDHT(ctx, h)
+				if err != nil || id == cid.Undef {
+					c.logger.Error("Blocksync unable to find cid", "height", h)
+					continue
+				}
+				_, err = c.store.SaveBlockCid(h, id, nil)
+				if err != nil {
+					c.logger.Error("Blocksync storing block cid", "height", h, "cid", id)
+					continue
+				}
+				block, err := c.blocksync.LoadBlock(ctx, id)
+				if err != nil {
+					c.logger.Error("Blocksync LoadBlock", "err", err)
+					continue
+				}
+
+				c.logger.Debug("Blocksync block received ", "height", h)
+				msgHandler(&block)
+				state, err := c.store.LoadState()
+				if err != nil {
+					return
+				}
+				h = max(h, state.NextHeight()-1)
+			}
+			c.blocksReceived.RemoveBlocksReceivedUpToHeight(state.NextHeight())
+		}
+	}
+}
+
+// advertiseBlockSyncCids is used to advertise all the block identifiers (cids) stored in the local store to the DHT on startup
+func (c *Client) advertiseBlockSyncCids(ctx context.Context) {
+	state, err := c.store.LoadState()
+	if err != nil {
+		return
+	}
+	for h := state.BaseHeight; h <= state.Height(); h++ {
+
+		id, err := c.store.LoadBlockCid(h)
+		if err != nil || id == cid.Undef {
+			continue
+		}
+
+		err = c.AdvertiseBlockIdToDHT(ctx, h, id)
+		if err != nil {
+			continue
+		}
+
+	}
+}
+
+// findConnection returns true in case the node is already connected to the peer specified.
 func (c *Client) findConnection(peer peer.AddrInfo) bool {
 	for _, con := range c.Host.Network().Conns() {
 		if peer.ID == con.RemotePeer() {
@@ -439,3 +643,17 @@ func (c *Client) findConnection(peer peer.AddrInfo) bool {
 	}
 	return false
 }
+
+func getBlockSyncKeyByHeight(height uint64) string {
+	return "/" + blockSyncProtocolPrefix + "/" + strconv.FormatUint(height, 10)
+}
+
+// validates that the content identifiers advertised in the DHT are valid.
+type blockIdValidator struct{}
+
+func (blockIdValidator) Validate(_ string, id []byte) error {
+	_, err := cid.Parse(string(id))
+	return err
+}
+
+func (blockIdValidator) Select(_ string, _ [][]byte) (int, error) { return 0, nil }

@@ -8,12 +8,17 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dymensionxyz/dymint/mempool"
+	"github.com/dymensionxyz/dymint/version"
+
 	mempoolv1 "github.com/dymensionxyz/dymint/mempool/v1"
 	"github.com/dymensionxyz/dymint/node/events"
+	uchannel "github.com/dymensionxyz/dymint/utils/channel"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
+	abci "github.com/tendermint/tendermint/abci/types"
 	tmcfg "github.com/tendermint/tendermint/config"
 
 	"github.com/dymensionxyz/dymint/testutil"
@@ -22,6 +27,8 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 )
 
+// TODO: test producing lastBlock
+// TODO: test using already produced lastBlock
 func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 	const blockTime = 200 * time.Millisecond
 	const MaxIdleTime = blockTime * 10
@@ -29,7 +36,19 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 
 	assert := assert.New(t)
 	require := require.New(t)
-	app := testutil.GetAppMock()
+	app := testutil.GetAppMock(testutil.EndBlock)
+	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
+		RollappParamUpdates: &abci.RollappParams{
+			Da:      "mock",
+			Version: version.Commit,
+		},
+		ConsensusParamUpdates: &abci.ConsensusParams{
+			Block: &abci.BlockParams{
+				MaxGas:   40000000,
+				MaxBytes: 500000,
+			},
+		},
+	})
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(clientCreator)
@@ -40,7 +59,7 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 	managerConfigCreatesEmptyBlocks := testutil.GetManagerConfig()
 	managerConfigCreatesEmptyBlocks.BlockTime = blockTime
 	managerConfigCreatesEmptyBlocks.MaxIdleTime = 0 * time.Second
-	managerWithEmptyBlocks, err := testutil.GetManager(managerConfigCreatesEmptyBlocks, nil, nil, 1, 1, 0, proxyApp, nil)
+	managerWithEmptyBlocks, err := testutil.GetManager(managerConfigCreatesEmptyBlocks, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
 	// Init manager with empty blocks feature enabled
@@ -48,7 +67,7 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 	managerConfig.BlockTime = blockTime
 	managerConfig.MaxIdleTime = MaxIdleTime
 	managerConfig.MaxProofTime = MaxIdleTime
-	manager, err := testutil.GetManager(managerConfig, nil, nil, 1, 1, 0, proxyApp, nil)
+	manager, err := testutil.GetManager(managerConfig, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
 	// Check initial height
@@ -57,13 +76,11 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 
 	mCtx, cancel := context.WithTimeout(context.Background(), runTime)
 	defer cancel()
-	go manager.ProduceBlockLoop(mCtx)
-	go managerWithEmptyBlocks.ProduceBlockLoop(mCtx)
-
-	buf1 := make(chan struct{}, 100) // dummy to avoid unhealthy event
-	buf2 := make(chan struct{}, 100) // dummy to avoid unhealthy event
-	go manager.AccumulatedDataLoop(mCtx, buf1)
-	go managerWithEmptyBlocks.AccumulatedDataLoop(mCtx, buf2)
+	bytesProduced1 := make(chan int)
+	bytesProduced2 := make(chan int)
+	go manager.ProduceBlockLoop(mCtx, bytesProduced1)
+	go managerWithEmptyBlocks.ProduceBlockLoop(mCtx, bytesProduced2)
+	uchannel.DrainForever(bytesProduced1, bytesProduced2)
 	<-mCtx.Done()
 
 	require.Greater(manager.State.Height(), initialHeight)
@@ -102,7 +119,7 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 
 func TestCreateEmptyBlocksNew(t *testing.T) {
 	// TODO(https://github.com/dymensionxyz/dymint/issues/352)
-	t.Skip("FIXME: fails to submit tx to test the empty blocks feature")
+	t.Skip("TODO: fails to submit tx to test the empty blocks feature")
 	assert := assert.New(t)
 	require := require.New(t)
 	app := testutil.GetAppMock()
@@ -115,7 +132,7 @@ func TestCreateEmptyBlocksNew(t *testing.T) {
 	managerConfig := testutil.GetManagerConfig()
 	managerConfig.BlockTime = 200 * time.Millisecond
 	managerConfig.MaxIdleTime = 1 * time.Second
-	manager, err := testutil.GetManager(managerConfig, nil, nil, 1, 1, 0, proxyApp, nil)
+	manager, err := testutil.GetManager(managerConfig, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
 	abciClient, err := clientCreator.NewABCIClient()
@@ -143,7 +160,9 @@ func TestCreateEmptyBlocksNew(t *testing.T) {
 
 	mCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	go manager.ProduceBlockLoop(mCtx)
+	bytesProduced := make(chan int)
+	go manager.ProduceBlockLoop(mCtx, bytesProduced)
+	uchannel.DrainForever(bytesProduced)
 
 	<-time.Tick(1 * time.Second)
 	err = mpool.CheckTx([]byte{1, 2, 3, 4}, nil, mempool.TxInfo{})
@@ -181,13 +200,30 @@ func TestStopBlockProduction(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	managerConfig := testutil.GetManagerConfig()
-	managerConfig.BlockBatchMaxSizeBytes = 1000 // small batch size to fill up quickly
-	manager, err := testutil.GetManager(managerConfig, nil, nil, 1, 1, 0, nil, nil)
+	app := testutil.GetAppMock(testutil.EndBlock)
+	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
+		RollappParamUpdates: &abci.RollappParams{
+			Da:      "mock",
+			Version: version.Commit,
+		},
+		ConsensusParamUpdates: &abci.ConsensusParams{
+			Block: &abci.BlockParams{
+				MaxGas:   40000000,
+				MaxBytes: 500000,
+			},
+		},
+	})
+	// Create proxy app
+	clientCreator := proxy.NewLocalClientCreator(app)
+	proxyApp := proxy.NewAppConns(clientCreator)
+	err := proxyApp.Start()
 	require.NoError(err)
 
-	// validate initial accumulated is zero
-	require.Equal(manager.AccumulatedBatchSize.Load(), uint64(0))
+	managerConfig := testutil.GetManagerConfig()
+	managerConfig.BatchSubmitBytes = 1000 // small batch size to fill up quickly
+	manager, err := testutil.GetManager(managerConfig, nil, 1, 1, 0, proxyApp, nil)
+	require.NoError(err)
+
 	assert.Equal(manager.State.Height(), uint64(0))
 
 	// subscribe to health status event
@@ -203,21 +239,16 @@ func TestStopBlockProduction(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	go func() {
-		manager.ProduceBlockLoop(ctx)
-		wg.Done() // Decrease counter when this goroutine finishes
-	}()
+	bytesProducedC := make(chan int)
 
-	toSubmit := make(chan struct{})
 	go func() {
-		manager.AccumulatedDataLoop(ctx, toSubmit)
+		manager.ProduceBlockLoop(ctx, bytesProducedC)
 		wg.Done() // Decrease counter when this goroutine finishes
 	}()
 
 	// validate block production works
 	time.Sleep(400 * time.Millisecond)
 	assert.Greater(manager.State.Height(), uint64(0))
-	assert.Greater(manager.AccumulatedBatchSize.Load(), uint64(0))
 
 	// we don't read from the submit channel, so we assume it get full
 	// we expect the block production to stop and unhealthy event to be emitted
@@ -235,7 +266,7 @@ func TestStopBlockProduction(t *testing.T) {
 	assert.Equal(stoppedHeight, manager.State.Height())
 
 	// consume the signal
-	<-toSubmit
+	<-bytesProducedC
 
 	// check for health status event and block production to continue
 	select {

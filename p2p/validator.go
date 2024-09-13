@@ -5,11 +5,15 @@ import (
 
 	"github.com/dymensionxyz/dymint/mempool"
 	nodemempool "github.com/dymensionxyz/dymint/node/mempool"
-	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
 	abci "github.com/tendermint/tendermint/abci/types"
+	tmcrypto "github.com/tendermint/tendermint/crypto"
 	corep2p "github.com/tendermint/tendermint/p2p"
 )
+
+type ProposerGetter interface {
+	GetProposerPubKey() tmcrypto.PubKey
+}
 
 // GossipValidator is a callback function type.
 type GossipValidator func(*GossipMessage) bool
@@ -23,17 +27,17 @@ type IValidator interface {
 
 // Validator is a validator for messages gossiped in the p2p network.
 type Validator struct {
-	logger   types.Logger
-	slClient settlement.ClientI
+	logger         types.Logger
+	proposerGetter ProposerGetter
 }
 
 var _ IValidator = (*Validator)(nil)
 
 // NewValidator creates a new Validator.
-func NewValidator(logger types.Logger, slClient settlement.ClientI) *Validator {
+func NewValidator(logger types.Logger, blockmanager ProposerGetter) *Validator {
 	return &Validator{
-		logger:   logger,
-		slClient: slClient,
+		logger:         logger,
+		proposerGetter: blockmanager,
 	}
 }
 
@@ -71,12 +75,12 @@ func (v *Validator) TxValidator(mp mempool.Mempool, mpoolIDS *nodemempool.Mempoo
 // BlockValidator runs basic checks on the gossiped block
 func (v *Validator) BlockValidator() GossipValidator {
 	return func(blockMsg *GossipMessage) bool {
-		var gossipedBlock GossipedBlock
+		var gossipedBlock BlockData
 		if err := gossipedBlock.UnmarshalBinary(blockMsg.Data); err != nil {
 			v.logger.Error("Deserialize gossiped block.", "error", err)
 			return false
 		}
-		if err := gossipedBlock.Validate(v.slClient.GetProposer()); err != nil {
+		if err := gossipedBlock.Validate(v.proposerGetter.GetProposerPubKey()); err != nil {
 			v.logger.Error("Failed to validate gossiped block.", "height", gossipedBlock.Block.Header.Height, "error", err)
 			return false
 		}

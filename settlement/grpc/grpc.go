@@ -11,6 +11,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	tmp2p "github.com/tendermint/tendermint/p2p"
@@ -19,9 +20,9 @@ import (
 
 	"github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
-	rollapptypes "github.com/dymensionxyz/dymension/v3/x/rollapp/types"
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/settlement"
+	rollapptypes "github.com/dymensionxyz/dymint/third_party/dymension/rollapp/types"
 	"github.com/dymensionxyz/dymint/types"
 
 	"github.com/tendermint/tendermint/libs/pubsub"
@@ -48,7 +49,7 @@ type Client struct {
 var _ settlement.ClientI = (*Client)(nil)
 
 // Init initializes the mock layer client.
-func (c *Client) Init(config settlement.Config, pubsub *pubsub.Server, logger types.Logger, options ...settlement.Option) error {
+func (c *Client) Init(config settlement.Config, rollappId string, pubsub *pubsub.Server, logger types.Logger, options ...settlement.Option) error {
 	ctx := context.Background()
 
 	latestHeight := uint64(0)
@@ -87,7 +88,7 @@ func (c *Client) Init(config settlement.Config, pubsub *pubsub.Server, logger ty
 	}
 	logger.Debug("Starting grpc SL ", "index", slStateIndex)
 
-	c.rollappID = config.RollappID
+	c.rollappID = rollappId
 	c.ProposerPubKey = proposer
 	c.logger = logger
 	c.ctx = ctx
@@ -173,7 +174,7 @@ func (c *Client) Stop() error {
 	return nil
 }
 
-// PostBatch saves the batch to the kv store
+// SubmitBatch saves the batch to the kv store
 func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) error {
 	settlementBatch := c.convertBatchtoSettlementBatch(batch, daResult)
 	err := c.saveBatch(settlementBatch)
@@ -221,15 +222,27 @@ func (c *Client) GetProposer() *types.Sequencer {
 		return nil
 	}
 	var pubKey cryptotypes.PubKey = &ed25519.PubKey{Key: pubKeyBytes}
-	return &types.Sequencer{
-		PublicKey: pubKey,
-		Status:    types.Proposer,
+	tmPubKey, err := cryptocodec.ToTmPubKeyInterface(pubKey)
+	if err != nil {
+		c.logger.Error("Error converting to tendermint pubkey", "err", err)
+		return nil
 	}
+	return types.NewSequencer(tmPubKey, pubKey.Address().String())
 }
 
-// GetSequencers implements settlement.ClientI.
-func (c *Client) GetSequencers() ([]*types.Sequencer, error) {
-	return []*types.Sequencer{c.GetProposer()}, nil
+// GetAllSequencers implements settlement.ClientI.
+func (c *Client) GetAllSequencers() ([]types.Sequencer, error) {
+	return c.GetBondedSequencers()
+}
+
+// GetBondedSequencers implements settlement.ClientI.
+func (c *Client) GetBondedSequencers() ([]types.Sequencer, error) {
+	return []types.Sequencer{*c.GetProposer()}, nil
+}
+
+// CheckRotationInProgress implements settlement.ClientI.
+func (c *Client) CheckRotationInProgress() (*types.Sequencer, error) {
+	return nil, nil
 }
 
 func (c *Client) saveBatch(batch *settlement.Batch) error {
@@ -263,8 +276,9 @@ func (c *Client) saveBatch(batch *settlement.Batch) error {
 
 func (c *Client) convertBatchtoSettlementBatch(batch *types.Batch, daResult *da.ResultSubmitBatch) *settlement.Batch {
 	settlementBatch := &settlement.Batch{
-		StartHeight: batch.StartHeight,
-		EndHeight:   batch.EndHeight,
+		Sequencer:   c.GetProposer().SettlementAddress,
+		StartHeight: batch.StartHeight(),
+		EndHeight:   batch.EndHeight(),
 		MetaData: &settlement.BatchMetaData{
 			DA: &da.DASubmitMetaData{
 				Height: daResult.SubmitMetaData.Height,

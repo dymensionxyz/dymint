@@ -70,18 +70,17 @@ block_time = "{{ .BlockManagerConfig.BlockTime }}"
 # block production interval in case of no transactions ("0s" produces empty blocks)
 max_idle_time = "{{ .BlockManagerConfig.MaxIdleTime }}"
 max_proof_time = "{{ .BlockManagerConfig.MaxProofTime }}"
-max_supported_batch_skew = {{ .BlockManagerConfig.MaxSupportedBatchSkew }}
+max_batch_skew = {{ .BlockManagerConfig.BatchSkew }}
 
 
 # triggers to submit batch to DA and settlement (both required)
-batch_submit_max_time = "{{ .BlockManagerConfig.BatchSubmitMaxTime }}"
+# max time between two batch submissions. submission will be triggered if there is no previous submission in batch_submit_time
+batch_submit_time = "{{ .BlockManagerConfig.BatchSubmitTime }}"
 
-# max size of batch in bytes that can be accepted by DA
-block_batch_max_size_bytes = {{ .BlockManagerConfig.BlockBatchMaxSizeBytes }}
+# max size of batch in bytes. submission will be triggered after accumulating blocks for batch_submit_bytes
+batch_submit_bytes = {{ .BlockManagerConfig.BatchSubmitBytes }}
 
 ### da config ###
-da_layer = "{{ .DALayer }}" # mock, celestia, avail
-namespace_id = "{{ .BlockManagerConfig.NamespaceID }}"
 # this should be json matching the celestia.Config type
 da_config = "{{ .DAConfig }}"
 
@@ -105,7 +104,7 @@ p2p_bootstrap_nodes = "{{ .P2PConfig.BootstrapNodes }}"
 p2p_persistent_nodes = "{{ .P2PConfig.PersistentNodes }}"
 
 # max number of cached messages by gossipsub protocol
-p2p_gossiped_blocks_cache_size = {{ .P2PConfig.GossipedBlocksCacheSize }}
+p2p_gossip_cache_size = {{ .P2PConfig.GossipSubCacheSize }}
 
 # time interval to check if no p2p nodes are connected to bootstrap again
 p2p_bootstrap_retry_time = "{{ .P2PConfig.BootstrapRetryTime }}"
@@ -113,11 +112,16 @@ p2p_bootstrap_retry_time = "{{ .P2PConfig.BootstrapRetryTime }}"
 # set to false to disable advertising the node to the P2P network
 p2p_advertising_enabled= "{{ .P2PConfig.AdvertisingEnabled }}"
 
+# set to false to disable block syncing from p2p
+p2p_blocksync_enabled= "{{ .P2PConfig.BlockSyncEnabled }}"
+
+# time interval used to periodically check for missing blocks and retrieve it from other peers on demand using P2P
+p2p_blocksync_block_request_interval= "{{ .P2PConfig.BlockSyncRequestIntervalTime }}"
+
 ### settlement config ###
 settlement_layer = "{{ .SettlementLayer }}" # mock, dymension
 
 # dymension config
-rollapp_id = "{{ .SettlementConfig.RollappID }}"
 settlement_node_address = "{{ .SettlementConfig.NodeAddress }}"
 settlement_gas_limit = {{ .SettlementConfig.GasLimit }}
 settlement_gas_prices = "{{ .SettlementConfig.GasPrices }}"

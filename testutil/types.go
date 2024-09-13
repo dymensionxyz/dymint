@@ -5,10 +5,12 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/libp2p/go-libp2p/core/crypto"
-
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/dymint/types/pb/dymint"
+	dymintversion "github.com/dymensionxyz/dymint/version"
+	"github.com/libp2p/go-libp2p/core/crypto"
 	abci "github.com/tendermint/tendermint/abci/types"
+	tmcrypto "github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -49,7 +51,7 @@ func GetRandomBytes(n uint64) []byte {
 }
 
 // generateBlock generates random blocks.
-func generateBlock(height uint64) *types.Block {
+func generateBlock(height uint64, proposerHash []byte) *types.Block {
 	h := createRandomHashes()
 	block := &types.Block{
 		Header: types.Header{
@@ -57,18 +59,17 @@ func generateBlock(height uint64) *types.Block {
 				Block: BlockVersion,
 				App:   AppVersion,
 			},
-			NamespaceID:    [8]byte{0, 1, 2, 3, 4, 5, 6, 7},
-			Height:         height,
-			Time:           4567,
-			LastHeaderHash: h[0],
-			LastCommitHash: h[1],
-			DataHash:       h[2],
-			ConsensusHash:  h[3],
-			// AppHash:         h[4],
-			AppHash:         [32]byte{},
-			LastResultsHash: GetEmptyLastResultsHash(),
-			ProposerAddress: []byte{4, 3, 2, 1},
-			SequencersHash:  h[6],
+			Height:             height,
+			Time:               4567,
+			LastHeaderHash:     h[0],
+			LastCommitHash:     h[1],
+			DataHash:           h[2],
+			ConsensusHash:      h[3],
+			AppHash:            [32]byte{},
+			LastResultsHash:    GetEmptyLastResultsHash(),
+			ProposerAddress:    []byte{4, 3, 2, 1},
+			SequencerHash:      [32]byte(proposerHash),
+			NextSequencersHash: [32]byte(proposerHash),
 		},
 		Data: types.Data{
 			Txs:                    nil,
@@ -86,10 +87,14 @@ func generateBlock(height uint64) *types.Block {
 }
 
 func GenerateBlocksWithTxs(startHeight uint64, num uint64, proposerKey crypto.PrivKey, nTxs int) ([]*types.Block, error) {
+	r, _ := proposerKey.Raw()
+	seq := types.NewSequencerFromValidator(*tmtypes.NewValidator(ed25519.PrivKey(r).PubKey(), 1))
+	proposerHash := seq.Hash()
+
 	blocks := make([]*types.Block, num)
 	for i := uint64(0); i < num; i++ {
 
-		block := generateBlock(i + startHeight)
+		block := generateBlock(i+startHeight, proposerHash)
 
 		block.Data = types.Data{
 			Txs: make(types.Txs, nTxs),
@@ -115,9 +120,17 @@ func GenerateBlocksWithTxs(startHeight uint64, num uint64, proposerKey crypto.Pr
 
 // GenerateBlocks generates random blocks.
 func GenerateBlocks(startHeight uint64, num uint64, proposerKey crypto.PrivKey) ([]*types.Block, error) {
+	r, _ := proposerKey.Raw()
+	seq := types.NewSequencerFromValidator(*tmtypes.NewValidator(ed25519.PrivKey(r).PubKey(), 1))
+	proposerHash := seq.Hash()
+
 	blocks := make([]*types.Block, num)
 	for i := uint64(0); i < num; i++ {
-		block := generateBlock(i + startHeight)
+		block := generateBlock(i+startHeight, proposerHash)
+		copy(block.Header.DataHash[:], types.GetDataHash(block))
+		if i > 0 {
+			copy(block.Header.LastCommitHash[:], types.GetLastCommitHash(&blocks[i-1].LastCommit, &block.Header))
+		}
 
 		signature, err := generateSignature(proposerKey, &block.Header)
 		if err != nil {
@@ -173,30 +186,48 @@ func GenerateBatch(startHeight uint64, endHeight uint64, proposerKey crypto.Priv
 		return nil, err
 	}
 	batch := &types.Batch{
-		StartHeight: startHeight,
-		EndHeight:   endHeight,
-		Blocks:      blocks,
-		Commits:     commits,
+		Blocks:  blocks,
+		Commits: commits,
 	}
 	return batch, nil
 }
 
-// GenerateRandomValidatorSet generates random validator sets
-func GenerateRandomValidatorSet() *tmtypes.ValidatorSet {
-	pubKey := ed25519.GenPrivKey().PubKey()
-	return &tmtypes.ValidatorSet{
-		Proposer: &tmtypes.Validator{PubKey: pubKey, Address: pubKey.Address()},
-		Validators: []*tmtypes.Validator{
-			{PubKey: pubKey, Address: pubKey.Address()},
-		},
+func MustGenerateBatch(startHeight uint64, endHeight uint64, proposerKey crypto.PrivKey) *types.Batch {
+	blocks, err := GenerateBlocks(startHeight, endHeight-startHeight+1, proposerKey)
+	if err != nil {
+		panic(err)
+	}
+	commits, err := GenerateCommits(blocks, proposerKey)
+	if err != nil {
+		panic(err)
+	}
+	return &types.Batch{
+		Blocks:  blocks,
+		Commits: commits,
 	}
 }
 
-// GenerateState generates an initial state for testing.
-func GenerateState(initialHeight int64, lastBlockHeight int64) *types.State {
+func MustGenerateBatchAndKey(startHeight uint64, endHeight uint64) *types.Batch {
+	proposerKey, _, err := crypto.GenerateEd25519Key(nil)
+	if err != nil {
+		panic(err)
+	}
+	return MustGenerateBatch(startHeight, endHeight, proposerKey)
+}
+
+// GenerateRandomValidatorSet generates random validator sets
+func GenerateRandomValidatorSet() *tmtypes.ValidatorSet {
+	return tmtypes.NewValidatorSet([]*tmtypes.Validator{
+		tmtypes.NewValidator(ed25519.GenPrivKey().PubKey(), 1),
+	})
+}
+
+// GenerateStateWithSequencer generates an initial state for testing.
+func GenerateStateWithSequencer(initialHeight int64, lastBlockHeight int64, pubkey tmcrypto.PubKey) *types.State {
 	s := &types.State{
 		ChainID:         "test-chain",
 		InitialHeight:   uint64(initialHeight),
+		BaseHeight:      uint64(initialHeight),
 		AppHash:         [32]byte{},
 		LastResultsHash: GetEmptyLastResultsHash(),
 		Version: tmstate.Version{
@@ -205,10 +236,19 @@ func GenerateState(initialHeight int64, lastBlockHeight int64) *types.State {
 				App:   AppVersion,
 			},
 		},
-		Validators:     GenerateRandomValidatorSet(),
-		NextValidators: GenerateRandomValidatorSet(),
+		RollappParams: dymint.RollappParams{
+			Da:      "mock",
+			Version: dymintversion.Commit,
+		},
+		ConsensusParams: tmproto.ConsensusParams{
+			Block: tmproto.BlockParams{
+				MaxBytes: 100,
+				MaxGas:   100,
+			},
+		},
 	}
-	s.LastBlockHeight.Store(uint64(lastBlockHeight))
+	s.Sequencers.SetProposer(types.NewSequencer(pubkey, ""))
+	s.SetHeight(uint64(lastBlockHeight))
 	return s
 }
 
@@ -234,6 +274,7 @@ func GenerateGenesis(initialHeight int64) *tmtypes.GenesisDoc {
 				AppVersion: AppVersion,
 			},
 		},
+		AppState: []byte("{\"rollappparams\": {\"params\": {\"da\": \"mock\",\"version\": \"" + dymintversion.Commit + "\"}}}"),
 	}
 }
 
@@ -261,14 +302,4 @@ func GetRandomBlock(height uint64, nTxs int) *types.Block {
 	}
 
 	return block
-}
-
-func GetRandomValidatorSet() *tmtypes.ValidatorSet {
-	pubKey := ed25519.GenPrivKey().PubKey()
-	return &tmtypes.ValidatorSet{
-		Proposer: &tmtypes.Validator{PubKey: pubKey, Address: pubKey.Address()},
-		Validators: []*tmtypes.Validator{
-			{PubKey: pubKey, Address: pubKey.Address()},
-		},
-	}
 }

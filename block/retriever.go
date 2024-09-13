@@ -2,29 +2,31 @@ package block
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
-	"code.cloudfoundry.org/go-diodes"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 
 	"github.com/dymensionxyz/dymint/da"
+	"github.com/dymensionxyz/dymint/node/events"
+	"github.com/dymensionxyz/dymint/settlement"
+	"github.com/dymensionxyz/dymint/types"
+	uevent "github.com/dymensionxyz/dymint/utils/event"
+	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
-// RetrieveLoop listens for new target sync heights and then syncs the chain by
-// fetching batches from the settlement layer and then fetching the actual blocks
-// from the DA.
-func (m *Manager) RetrieveLoop(ctx context.Context) {
-	m.logger.Info("Started retrieve loop.")
-	p := diodes.NewPoller(m.targetSyncHeight, diodes.WithPollingContext(ctx))
-
-	for {
-		targetHeight := p.Next() // We only care about the latest one
-		if targetHeight == nil {
-			return
-		}
-		err := m.syncToTargetHeight(*(*uint64)(targetHeight))
-		if err != nil {
-			panic(fmt.Errorf("sync until target: %w", err))
-		}
+// onNewStateUpdate will try to sync to new height, if not already synced
+func (m *Manager) onNewStateUpdate(event pubsub.Message) {
+	eventData, ok := event.Data().(*settlement.EventDataNewBatchAccepted)
+	if !ok {
+		m.logger.Error("onReceivedBatch", "err", "wrong event data received")
+		return
+	}
+	h := eventData.EndHeight
+	m.UpdateTargetHeight(h)
+	err := m.syncToTargetHeight(h)
+	if err != nil {
+		m.logger.Error("sync until target", "err", err)
 	}
 }
 
@@ -32,23 +34,35 @@ func (m *Manager) RetrieveLoop(ctx context.Context) {
 // It fetches the batches from the settlement, gets the DA height and gets
 // the actual blocks from the DA.
 func (m *Manager) syncToTargetHeight(targetHeight uint64) error {
+	defer m.syncFromDaMu.Unlock()
+	m.syncFromDaMu.Lock()
 	for currH := m.State.NextHeight(); currH <= targetHeight; currH = m.State.NextHeight() {
 		// if we have the block locally, we don't need to fetch it from the DA
-		err := m.processLocalBlock(currH)
+		err := m.applyLocalBlock(currH)
 		if err == nil {
 			m.logger.Info("Synced from local", "store height", currH, "target height", targetHeight)
 			continue
+		}
+		if !errors.Is(err, gerrc.ErrNotFound) {
+			m.logger.Error("Apply local block", "err", err)
 		}
 
 		err = m.syncFromDABatch()
 		if err != nil {
 			return fmt.Errorf("process next DA batch: %w", err)
 		}
+
+		// if height havent been updated, we are stuck
+		if m.State.NextHeight() == currH {
+			return fmt.Errorf("stuck at height %d", currH)
+		}
 		m.logger.Info("Synced from DA", "store height", m.State.Height(), "target height", targetHeight)
+
 	}
 
 	err := m.attemptApplyCachedBlocks()
 	if err != nil {
+		uevent.MustPublish(context.TODO(), m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
 		m.logger.Error("Attempt apply cached blocks.", "err", err)
 	}
 
@@ -69,8 +83,14 @@ func (m *Manager) syncFromDABatch() error {
 	if err != nil {
 		return fmt.Errorf("retrieve batch: %w", err)
 	}
-
 	m.logger.Info("Retrieved batch.", "state_index", stateIndex)
+
+	// update the proposer when syncing from the settlement layer
+	proposer := m.State.Sequencers.GetByAddress(settlementBatch.Batch.Sequencer)
+	if proposer == nil {
+		return fmt.Errorf("proposer not found: batch: %d: %s", stateIndex, settlementBatch.Batch.Sequencer)
+	}
+	m.State.Sequencers.SetProposer(proposer)
 
 	err = m.ProcessNextDABatch(settlementBatch.MetaData.DA)
 	if err != nil {
@@ -79,25 +99,26 @@ func (m *Manager) syncFromDABatch() error {
 	return nil
 }
 
-func (m *Manager) processLocalBlock(height uint64) error {
+func (m *Manager) applyLocalBlock(height uint64) error {
+	defer m.retrieverMu.Unlock()
+	m.retrieverMu.Lock()
+
 	block, err := m.Store.LoadBlock(height)
 	if err != nil {
-		return err
+		return fmt.Errorf("load block: %w", gerrc.ErrNotFound)
 	}
 	commit, err := m.Store.LoadCommit(height)
 	if err != nil {
-		return err
+		return fmt.Errorf("load commit: %w", gerrc.ErrNotFound)
 	}
-	if err := m.validateBlock(block, commit); err != nil {
+	if err := m.validateBlockBeforeApply(block, commit); err != nil {
 		return fmt.Errorf("validate block from local store: height: %d: %w", height, err)
 	}
 
-	m.retrieverMu.Lock()
-	err = m.applyBlock(block, commit, blockMetaData{source: localDbBlock})
+	err = m.applyBlock(block, commit, types.BlockMetaData{Source: types.LocalDb})
 	if err != nil {
 		return fmt.Errorf("apply block from local store: height: %d: %w", height, err)
 	}
-	m.retrieverMu.Unlock()
 
 	return nil
 }
@@ -106,7 +127,6 @@ func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
 	m.logger.Debug("trying to retrieve batch from DA", "daHeight", daMetaData.Height)
 	batchResp := m.fetchBatch(daMetaData)
 	if batchResp.Code != da.StatusSuccess {
-		m.logger.Error("fetching batch from DA", batchResp.Message)
 		return batchResp.Error
 	}
 
@@ -115,23 +135,30 @@ func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
 	m.retrieverMu.Lock()
 	defer m.retrieverMu.Unlock()
 
+	var lastAppliedHeight float64
 	for _, batch := range batchResp.Batches {
 		for i, block := range batch.Blocks {
 			if block.Header.Height != m.State.NextHeight() {
 				continue
 			}
-			if err := m.validateBlock(block, batch.Commits[i]); err != nil {
+			if err := m.validateBlockBeforeApply(block, batch.Commits[i]); err != nil {
 				m.logger.Error("validate block from DA", "height", block.Header.Height, "err", err)
 				continue
 			}
-			err := m.applyBlock(block, batch.Commits[i], blockMetaData{source: daBlock, daHeight: daMetaData.Height})
+
+			err := m.applyBlock(block, batch.Commits[i], types.BlockMetaData{Source: types.DA, DAHeight: daMetaData.Height})
 			if err != nil {
 				return fmt.Errorf("apply block: height: %d: %w", block.Header.Height, err)
 			}
 
-			delete(m.blockCache, block.Header.Height)
+			lastAppliedHeight = float64(block.Header.Height)
+
+			m.blockCache.Delete(block.Header.Height)
+
 		}
 	}
+	types.LastReceivedDAHeightGauge.Set(lastAppliedHeight)
+
 	return nil
 }
 
@@ -142,7 +169,7 @@ func (m *Manager) fetchBatch(daMetaData *da.DASubmitMetaData) da.ResultRetrieveB
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
 				Message: fmt.Sprintf("DA client for the batch does not match node config: DA client batch: %s: DA client config: %s", daMetaData.Client, m.DAClient.GetClientType()),
-				Error:   ErrWrongDA,
+				Error:   da.ErrDAMismatch,
 			},
 		}
 	}

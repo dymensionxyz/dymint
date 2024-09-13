@@ -40,9 +40,9 @@ type Client string
 // Data availability clients
 const (
 	Mock       Client = "mock"
-	Grpc       Client = "grpc"
 	Celestia   Client = "celestia"
 	Avail      Client = "avail"
+	Grpc       Client = "grpc"
 	Interchain Client = "interchain"
 )
 
@@ -241,7 +241,11 @@ type DataAvailabilityLayerClient interface {
 	// CheckBatchAvailability checks the availability of the blob submitted getting proofs and validating them
 	CheckBatchAvailability(daMetaData *DASubmitMetaData) ResultCheckBatch
 
+	// Channel used to check when the DA light client finished syncing
 	Synced() <-chan struct{}
+
+	// Returns the maximum allowed blob size in the DA, used to check the max batch size configured
+	GetMaxBlobSizeBytes() uint32
 }
 
 // ClientV2 defines generic interface for DA layer block submission.
