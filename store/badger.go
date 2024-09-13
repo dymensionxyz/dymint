@@ -75,7 +75,7 @@ func (b *BadgerKV) RunValueLogGC(discardRatio float64) error {
 	return b.db.RunValueLogGC(discardRatio)
 }
 
-func (b *BadgerKV) gc(period time.Duration, discardRatio float64) error {
+func (b *BadgerKV) gc(period time.Duration, discardRatio float64) {
 
 	gcTimeout := time.NewTimer(period)
 	defer gcTimeout.Stop()
@@ -84,7 +84,7 @@ func (b *BadgerKV) gc(period time.Duration, discardRatio float64) error {
 	for {
 		select {
 		case <-ctx.Done():
-			return nil
+			return
 		case <-gcTimeout.C:
 			err := b.db.RunValueLogGC(discardRatio)
 			if err != nil {
