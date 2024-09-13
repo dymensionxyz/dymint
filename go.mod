@@ -5,7 +5,7 @@ go 1.22.4
 require (
 	cosmossdk.io/errors v1.0.1
 	github.com/avast/retry-go/v4 v4.5.0
-	github.com/celestiaorg/celestia-openrpc v0.4.1-0.20240828130104-089b92870cb6
+	github.com/celestiaorg/celestia-openrpc v0.5.0
 	github.com/celestiaorg/go-cnc v0.4.2
 	github.com/centrifuge/go-substrate-rpc-client/v4 v4.0.12
 	github.com/cosmos/cosmos-sdk v0.46.16
