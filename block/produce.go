@@ -116,6 +116,12 @@ func (m *Manager) produceApplyGossip(ctx context.Context, allowEmpty bool, nextP
 		return nil, nil, fmt.Errorf("apply block: %w: %w", err, ErrNonRecoverable)
 	}
 
+	if 5 < block.Header.Height && m.Executor.chainID == "rollappevm_1234-1" {
+		panic("pausing to change id")
+	} else {
+		m.logger.Info("produced and applied", "height", block.Header.Height, "chain ID", block.Header.ChainID)
+	}
+
 	if err := m.gossipBlock(ctx, *block, *commit); err != nil {
 		return nil, nil, fmt.Errorf("gossip block: %w", err)
 	}
