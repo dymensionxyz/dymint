@@ -3,6 +3,7 @@ module github.com/dymensionxyz/dymint
 go 1.22.4
 
 require (
+	cosmossdk.io/collections v0.4.0
 	cosmossdk.io/errors v1.0.1
 	github.com/avast/retry-go/v4 v4.5.0
 	github.com/celestiaorg/celestia-openrpc v0.4.1-0.20240828130104-089b92870cb6
@@ -45,8 +46,12 @@ require (
 require (
 	cloud.google.com/go v0.112.1 // indirect
 	cloud.google.com/go/storage v1.38.0 // indirect
+	cosmossdk.io/api v0.7.0 // indirect
+	cosmossdk.io/core v0.10.0 // indirect
+	cosmossdk.io/depinject v1.0.0-alpha.4 // indirect
 	github.com/celestiaorg/go-square v1.0.1 // indirect
 	github.com/celestiaorg/go-square/merkle v0.0.0-20240429192549-dea967e1533b // indirect
+	github.com/cosmos/cosmos-db v1.0.0 // indirect
 	github.com/cskr/pubsub v1.0.2 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
@@ -256,7 +261,7 @@ require (
 
 require (
 	cosmossdk.io/math v1.3.0 // indirect
-	github.com/DataDog/zstd v1.5.2 // indirect
+	github.com/DataDog/zstd v1.5.5 // indirect
 	github.com/Jorropo/jsync v1.0.1 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/btcsuite/btcd/btcutil v1.1.3 // indirect
@@ -266,10 +271,10 @@ require (
 	github.com/cockroachdb/pebble v1.1.0 // indirect
 	github.com/cockroachdb/redact v1.1.5 // indirect
 	github.com/cockroachdb/tokenbucket v0.0.0-20230807174530-cc333fc44b06 // indirect
-	github.com/cosmos/ibc-go/v6 v6.2.1 // indirect
+	github.com/cosmos/ibc-go/v6 v6.2.1
 	github.com/danwt/gerr v1.0.0 // indirect
 	github.com/evmos/evmos/v12 v12.1.6 // indirect
-	github.com/getsentry/sentry-go v0.18.0 // indirect
+	github.com/getsentry/sentry-go v0.23.0 // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20190812055157-5d271430af9f // indirect
 	github.com/holiman/uint256 v1.2.2 // indirect
 	github.com/ipfs/bbloom v0.0.4 // indirect
