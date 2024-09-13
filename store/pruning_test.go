@@ -65,7 +65,6 @@ func TestStorePruning(t *testing.T) {
 
 			savedBlockHeights := make(map[uint64]bool)
 			savedRespHeights := make(map[uint64]bool)
-			savedSeqHeights := make(map[uint64]bool)
 			savedCidHeights := make(map[uint64]bool)
 
 			for _, block := range c.blocks {
@@ -78,13 +77,6 @@ func TestStorePruning(t *testing.T) {
 				if randBool() {
 					_, err = bstore.SaveBlockResponses(block.Header.Height, &state.ABCIResponses{}, nil)
 					savedRespHeights[block.Header.Height] = true
-					assert.NoError(err)
-				}
-
-				// generate and store sequencers randomly for block heights
-				if randBool() {
-					_, err = bstore.SaveSequencers(block.Header.Height, &types.SequencerSet{}, nil)
-					savedSeqHeights[block.Header.Height] = true
 					assert.NoError(err)
 				}
 
@@ -117,11 +109,6 @@ func TestStorePruning(t *testing.T) {
 
 			for k := range savedRespHeights {
 				_, err := bstore.LoadBlockResponses(k)
-				assert.NoError(err)
-			}
-
-			for k := range savedSeqHeights {
-				_, err := bstore.LoadSequencers(k)
 				assert.NoError(err)
 			}
 
@@ -164,17 +151,6 @@ func TestStorePruning(t *testing.T) {
 					assert.Error(err, "Block response at height %d should be pruned", k)
 				} else {
 					_, err = bstore.LoadBlockResponses(k)
-					assert.NoError(err)
-				}
-			}
-
-			// Validate only sequencers in the range are pruned
-			for k := range savedSeqHeights {
-				if k >= c.from && k < c.to { // k < c.to is the exclusion test
-					_, err = bstore.LoadSequencers(k)
-					assert.Error(err, "Block cid at height %d should be pruned", k)
-				} else {
-					_, err = bstore.LoadSequencers(k)
 					assert.NoError(err)
 				}
 			}

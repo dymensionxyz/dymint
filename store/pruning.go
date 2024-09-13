@@ -27,11 +27,6 @@ func (s *DefaultStore) PruneStore(from, to uint64, logger types.Logger) (uint64,
 		logger.Error("pruning responses", "from", from, "to", to, "responses pruned", prunedResponses, "err", err)
 	}
 
-	prunedSequencers, err := s.pruneSequencers(from, to)
-	if err != nil {
-		logger.Error("pruning sequencers", "from", from, "to", to, "sequencers pruned", prunedSequencers, "err", err)
-	}
-
 	prunedCids, err := s.pruneCids(from, to)
 	if err != nil {
 		logger.Error("pruning block sync identifiers", "from", from, "to", to, "cids pruned", prunedCids, "err", err)
@@ -74,18 +69,6 @@ func (s *DefaultStore) pruneResponses(from, to uint64) (uint64, error) {
 
 	prunedResponses, err := s.pruneHeights(from, to, pruneResponses)
 	return prunedResponses, err
-}
-
-// pruneSequencers prunes sequencers from store
-func (s *DefaultStore) pruneSequencers(from, to uint64) (uint64, error) {
-	pruneSequencers := func(batch KVBatch, height uint64) error {
-		if err := batch.Delete(getSequencersKey(height)); err != nil {
-			return err
-		}
-		return nil
-	}
-	prunedSequencers, err := s.pruneHeights(from, to, pruneSequencers)
-	return prunedSequencers, err
 }
 
 // pruneCids prunes content identifiers from store

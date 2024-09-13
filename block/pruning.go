@@ -6,7 +6,7 @@ import (
 )
 
 func (m *Manager) PruneBlocks(retainHeight uint64) (uint64, error) {
-	if m.IsProposer() && m.NextHeightToSubmit() < retainHeight { // do not delete anything that we might submit in future
+	if m.IsSequencer() && m.NextHeightToSubmit() < retainHeight { // do not delete anything that we might submit in future
 		m.logger.Debug("cannot prune blocks before they have been submitted. using height last submitted height for pruning", "retain_height", retainHeight, "height_to_submit", m.NextHeightToSubmit())
 		retainHeight = m.NextHeightToSubmit() - 1
 		if retainHeight <= m.State.BaseHeight {
@@ -15,7 +15,7 @@ func (m *Manager) PruneBlocks(retainHeight uint64) (uint64, error) {
 	}
 
 	//
-	err := m.P2PClient.RemoveBlocks(context.Background(), m.State.BaseHeight, retainHeight)
+	err := m.p2pClient.RemoveBlocks(context.Background(), m.State.BaseHeight, retainHeight)
 	if err != nil {
 		m.logger.Error("pruning blocksync store", "retain_height", retainHeight, "err", err)
 	}
@@ -43,10 +43,11 @@ func (m *Manager) PruningLoop(ctx context.Context) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		case retainHeight := <-m.pruningC:
-			err := m.PruneBlocks(uint64(retainHeight))
+			pruned, err := m.PruneBlocks(uint64(retainHeight))
 			if err != nil {
 				m.logger.Error("pruning blocks", "retainHeight", retainHeight, "err", err)
 			}
+			m.logger.Debug("blocks pruned", "heights pruned", pruned)
 		}
 	}
 }

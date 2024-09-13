@@ -58,13 +58,28 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 			return fmt.Errorf("execute block: %w", err)
 		}
 
-		_, err = m.Store.SaveBlockResponses(block.Header.Height, responses, nil)
+		dbBatch := m.Store.NewBatch()
+		dbBatch, err = m.Store.SaveBlockResponses(block.Header.Height, responses, dbBatch)
 		if err != nil {
+			dbBatch.Discard()
 			return fmt.Errorf("save block responses: %w", err)
 		}
 
+		// Get the validator changes from the app
+		validators := m.State.NextValidators.Copy() // TODO: this will be changed when supporting multiple sequencers from the hub
+
+		dbBatch, err = m.Store.SaveValidators(block.Header.Height, validators, dbBatch)
+		if err != nil {
+			dbBatch.Discard()
+			return fmt.Errorf("save validators: %w", err)
+		}
+
+		err = dbBatch.Commit()
+		if err != nil {
+			return fmt.Errorf("commit batch to disk: %w", err)
+		}
 		// Commit block to app
-		appHash, retainHeight, err = m.Executor.Commit(m.State, block, responses)
+		appHash, retainHeight, err := m.Executor.Commit(m.State, block, responses)
 		if err != nil {
 			return fmt.Errorf("commit block: %w", err)
 		}
@@ -81,9 +96,8 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 			}
 		}
 
-		// Update the state with the new app hash, and store height from the commit.
 		// Every one of those, if happens before commit, prevents us from re-executing the block in case failed during commit.
-		m.Executor.UpdateStateAfterCommit(m.State, responses, appHash, block.Header.Height)
+		m.Executor.UpdateStateAfterCommit(m.State, responses, appHash, block.Header.Height, validators)
 	}
 	// Start applying the block assuming no inconsistency was found.
 	_, err = m.Store.SaveBlock(block, commit, nil)
@@ -143,16 +157,10 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	// Unless max_age_num_blocks in consensus params is higher than min-retain-block, then max_age_num_blocks will be used instead of min-retain-blocks.
 
 	if 0 < retainHeight {
-<<<<<<< HEAD
 		select {
 		case m.pruningC <- retainHeight:
 		default:
 			m.logger.Error("pruning channel full. skipping pruning", "retainHeight", retainHeight)
-=======
-		_, err := m.PruneBlocks(uint64(retainHeight))
-		if err != nil {
-			m.logger.Error("prune blocks", "retain_height", retainHeight, "err", err)
->>>>>>> 0adb6de (fix test)
 		}
 	}
 	return nil
