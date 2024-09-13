@@ -71,10 +71,6 @@ func (b *BadgerKV) Close() error {
 	return b.db.Close()
 }
 
-func (b *BadgerKV) RunValueLogGC(discardRatio float64) error {
-	return b.db.RunValueLogGC(discardRatio)
-}
-
 func (b *BadgerKV) gc(period time.Duration, discardRatio float64) {
 	gcTimeout := time.NewTimer(period)
 	defer gcTimeout.Stop()
