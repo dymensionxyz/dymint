@@ -230,14 +230,14 @@ func (c *Client) RemoveBlocks(ctx context.Context, from, to uint64) error {
 	}
 
 	for h := from; h < to; h++ {
-
 		cid, err := c.store.LoadBlockCid(h)
 		if err != nil {
-			return fmt.Errorf("load block id from store %d: %w", h, err)
+			c.logger.Error("load blocksync block id from store", "height", h, "error", err)
+			continue
 		}
 		err = c.blocksync.DeleteBlock(ctx, cid)
 		if err != nil {
-			return fmt.Errorf("remove block height %d: %w", h, err)
+			c.logger.Error("remove blocksync block", "height", h, "err", err)
 		}
 	}
 	return nil
