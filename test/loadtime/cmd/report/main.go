@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/csv"
 	"flag"
 	"fmt"
@@ -39,7 +40,7 @@ func (b *BlockStore) Base() uint64 {
 func getStore(directory string) *store.PrefixKV {
 	dataDirectory := directory[strings.LastIndex(directory, "/")+1:]
 	baseDirectory := directory[:len(directory)-len(dataDirectory)]
-	baseKV := store.NewDefaultKVStore(baseDirectory, dataDirectory, blockStoreDBName)
+	baseKV := store.NewDefaultKVStore(context.TODO(), baseDirectory, dataDirectory, blockStoreDBName)
 	mainKV := store.NewPrefixKV(baseKV, mainPrefix[:])
 	return mainKV
 }
