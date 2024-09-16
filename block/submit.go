@@ -117,7 +117,8 @@ func SubmitLoopInner(
 						logger.Error("Create and submit batch", "err", err, "pending", pending)
 						panic(err)
 					}
-					// this could happen if we timed-out waiting for acceptance in the previous iteration, but the batch was indeed submitted
+					// this could happen if we timed-out waiting for acceptance in the previous iteration, but the batch was indeed submitted. 
+                    // we panic here cause restarting may reset the last batch submitted counter and the sequencer can potentially resume submitting batches.
 					if errors.Is(err, gerrc.ErrAlreadyExists) {
 						logger.Debug("Batch already accepted", "err", err, "pending", pending)
 						panic(err)
