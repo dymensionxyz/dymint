@@ -5,6 +5,7 @@ import (
 	"fmt"
 )
 
+// PruneBlocks all block related data from dymint store up to retainHeight. It returns the number of blocks pruned, used for testing.
 func (m *Manager) PruneBlocks(retainHeight uint64) (uint64, error) {
 	nextSubmissionHeight := m.NextHeightToSubmit()
 	if m.IsProposer() && nextSubmissionHeight < retainHeight { // do not delete anything that we might submit in future
