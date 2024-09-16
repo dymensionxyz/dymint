@@ -6,6 +6,8 @@ import (
 	"errors"
 	"github.com/dymensionxyz/dymint/fraud"
 	fraudmocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/fraud"
+	"github.com/dymensionxyz/dymint/node/events"
+	"github.com/dymensionxyz/dymint/utils/event"
 	"sync/atomic"
 
 	"testing"
@@ -223,16 +225,34 @@ func TestApplyCachedBlocks_WithFraudCheck(t *testing.T) {
 
 	mockExecutor := &block2.MockExecutorI{}
 	manager.Executor = mockExecutor
-	//mockExecutor.On("InitChain", mock.Anything, mock.Anything).Return(&abci.ResponseInitChain{}, nil)
 	mockExecutor.On("GetAppInfo").Return(&abci.ResponseInfo{
 		LastBlockHeight: int64(0),
 	}, nil)
-	//mockExecutor.On("UpdateStateAfterInitChain", mock.Anything, mock.Anything).Return(nil)
-	//mockExecutor.On("UpdateMempoolAfterInitChain", mock.Anything).Return(nil)
 	mockExecutor.On("ExecuteBlock", mock.Anything, mock.Anything).Return(nil, fraud.ErrFraud)
 
 	// Check that handle fault is called
 	manager.FraudHandler = block.NewFreezeHandler(manager)
+
+	fraudEventReceived := make(chan *events.DataHealthStatus, 1)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go event.MustSubscribe(
+		ctx,
+		manager.Pubsub,
+		"testFraudClient",
+		events.QueryHealthStatus,
+		func(msg pubsub.Message) {
+			event, ok := msg.Data().(*events.DataHealthStatus)
+			if !ok {
+				t.Errorf("Unexpected event type received: %T", msg.Data())
+				return
+			}
+			fraudEventReceived <- event
+		},
+		log.NewNopLogger(),
+	)
 
 	numBatchesToAdd := 1
 	nextBatchStartHeight := manager.NextHeightToSubmit()
@@ -248,7 +268,16 @@ func TestApplyCachedBlocks_WithFraudCheck(t *testing.T) {
 		time.Sleep(time.Millisecond * 500)
 	}
 
-	// TODO assert subs
+	select {
+	case receivedEvent := <-fraudEventReceived:
+		if receivedEvent.Error == nil {
+			t.Error("there should be an error in the event")
+		} else if !errors.Is(receivedEvent.Error, fraud.ErrFraud) {
+			t.Errorf("Unexpected error received, expected: %v, got: %v", fraud.ErrFraud, receivedEvent.Error)
+		}
+	case <-time.After(5 * time.Second):
+		t.Error("timeout waiting for fraud event")
+	}
 
 	mockExecutor.AssertExpectations(t)
 }
