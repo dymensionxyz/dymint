@@ -3,6 +3,7 @@ package p2p
 import (
 	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -231,6 +232,9 @@ func (c *Client) RemoveBlocks(ctx context.Context, from, to uint64) error {
 
 	for h := from; h < to; h++ {
 		cid, err := c.store.LoadBlockCid(h)
+		if errors.Is(err, gerrc.ErrNotFound) {
+			continue
+		}
 		if err != nil {
 			c.logger.Error("load blocksync block id from store", "height", h, "error", err)
 			continue
