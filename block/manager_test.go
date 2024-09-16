@@ -193,6 +193,66 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 	assert.Greater(t, manager.State.Height(), batch.EndHeight())
 }
 
+func TestApplyCachedBlocks_WithFraudCheck(t *testing.T) {
+	// Init app
+	app := testutil.GetAppMock(testutil.EndBlock)
+	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
+		RollappParamUpdates: &abci.RollappParams{
+			Da:      "mock",
+			Version: version.Commit,
+		},
+		ConsensusParamUpdates: &abci.ConsensusParams{
+			Block: &abci.BlockParams{
+				MaxGas:   40000000,
+				MaxBytes: 500000,
+			},
+		},
+	})
+	// Create proxy app
+	clientCreator := proxy.NewLocalClientCreator(app)
+	proxyApp := proxy.NewAppConns(clientCreator)
+	err := proxyApp.Start()
+	require.NoError(t, err)
+	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, nil)
+	require.NoError(t, err)
+	require.NotNil(t, manager)
+
+	t.Log("Taking the manager out of sync by submitting a batch")
+	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
+	manager.Retriever = manager.DAClient.(da.BatchRetriever)
+
+	mockExecutor := &block2.MockExecutorI{}
+	manager.Executor = mockExecutor
+	//mockExecutor.On("InitChain", mock.Anything, mock.Anything).Return(&abci.ResponseInitChain{}, nil)
+	mockExecutor.On("GetAppInfo").Return(&abci.ResponseInfo{
+		LastBlockHeight: int64(0),
+	}, nil)
+	//mockExecutor.On("UpdateStateAfterInitChain", mock.Anything, mock.Anything).Return(nil)
+	//mockExecutor.On("UpdateMempoolAfterInitChain", mock.Anything).Return(nil)
+	mockExecutor.On("ExecuteBlock", mock.Anything, mock.Anything).Return(nil, fraud.ErrFraud)
+
+	// Check that handle fault is called
+	manager.FraudHandler = block.NewFreezeHandler(manager)
+
+	numBatchesToAdd := 1
+	nextBatchStartHeight := manager.NextHeightToSubmit()
+	var batch *types.Batch
+	for i := 0; i < numBatchesToAdd; i++ {
+		batch, err = testutil.GenerateBatch(nextBatchStartHeight, nextBatchStartHeight, manager.LocalKey)
+		assert.NoError(t, err)
+		blockData := p2p.BlockData{Block: *batch.Blocks[0], Commit: *batch.Commits[0]}
+		msg := pubsub.NewMessage(blockData, map[string][]string{p2p.EventTypeKey: {p2p.EventNewGossipedBlock}})
+		manager.OnReceivedBlock(msg)
+
+		// Wait until daHeight is updated
+		time.Sleep(time.Millisecond * 500)
+	}
+
+	// TODO assert subs
+
+	mockExecutor.AssertExpectations(t)
+}
+
 func TestApplyLocalBlock_WithFraudCheck(t *testing.T) {
 	// Init app
 	app := testutil.GetAppMock(testutil.EndBlock)

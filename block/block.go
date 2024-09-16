@@ -17,6 +17,7 @@ func (m *Manager) applyBlockWithFraudHandling(block *types.Block, commit *types.
 	err := m.applyBlock(block, commit, blockMetaData)
 	if errors.Is(err, fraud.ErrFraud) {
 		m.FraudHandler.HandleFault(context.Background(), err)
+		return fmt.Errorf("apply block: %w", err)
 	} else if err != nil {
 		return fmt.Errorf("apply block: %w", err)
 	}
@@ -173,7 +174,6 @@ func (m *Manager) attemptApplyCachedBlocks() error {
 			return fmt.Errorf("apply cached block: expected height: %d: %w", expectedHeight, err)
 		}
 		m.logger.Info("Block applied", "height", expectedHeight)
-
 	}
 
 	return nil
