@@ -117,6 +117,11 @@ func SubmitLoopInner(
 						logger.Error("Create and submit batch", "err", err, "pending", pending)
 						panic(err)
 					}
+					// this could happen if we timed-out waiting for acceptance in the previous iteration, but the batch was indeed submitted
+					if errors.Is(err, gerrc.ErrAlreadyExists) {
+						logger.Debug("Batch already accepted", "err", err, "pending", pending)
+						break
+					}
 					return err
 				}
 				timeLastSubmission = time.Now()
@@ -226,6 +231,7 @@ func (m *Manager) SubmitBatch(batch *types.Batch) error {
 	if err != nil {
 		return fmt.Errorf("sl client submit batch: start height: %d: end height: %d: %w", batch.StartHeight(), batch.EndHeight(), err)
 	}
+
 	m.logger.Info("Submitted batch to SL.", "start height", batch.StartHeight(), "end height", batch.EndHeight())
 
 	types.RollappHubHeightGauge.Set(float64(batch.EndHeight()))
