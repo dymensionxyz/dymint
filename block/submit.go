@@ -8,9 +8,11 @@ import (
 	"time"
 
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
+	"github.com/tendermint/tendermint/libs/pubsub"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/dymensionxyz/dymint/da"
+	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
 	uatomic "github.com/dymensionxyz/dymint/utils/atomic"
 	uchannel "github.com/dymensionxyz/dymint/utils/channel"
@@ -113,6 +115,12 @@ func SubmitLoopInner(
 					err = fmt.Errorf("create and submit batch: %w", err)
 					if errors.Is(err, gerrc.ErrInternal) {
 						logger.Error("Create and submit batch", "err", err, "pending", pending)
+						panic(err)
+					}
+					// this could happen if we timed-out waiting for acceptance in the previous iteration, but the batch was indeed submitted. 
+                    // we panic here cause restarting may reset the last batch submitted counter and the sequencer can potentially resume submitting batches.
+					if errors.Is(err, gerrc.ErrAlreadyExists) {
+						logger.Debug("Batch already accepted", "err", err, "pending", pending)
 						panic(err)
 					}
 					return err
@@ -224,6 +232,7 @@ func (m *Manager) SubmitBatch(batch *types.Batch) error {
 	if err != nil {
 		return fmt.Errorf("sl client submit batch: start height: %d: end height: %d: %w", batch.StartHeight(), batch.EndHeight(), err)
 	}
+
 	m.logger.Info("Submitted batch to SL.", "start height", batch.StartHeight(), "end height", batch.EndHeight())
 
 	types.RollappHubHeightGauge.Set(float64(batch.EndHeight()))
@@ -262,4 +271,18 @@ func (m *Manager) GetUnsubmittedBytes() int {
 
 func (m *Manager) GetUnsubmittedBlocks() uint64 {
 	return m.State.Height() - m.LastSubmittedHeight.Load()
+}
+
+// UpdateLastSubmittedHeight will update last height submitted height upon events. 
+// This may be necessary in case we crashed/restarted before getting response for our submission to the settlement layer.
+func (m *Manager) UpdateLastSubmittedHeight(event pubsub.Message) {
+	eventData, ok := event.Data().(*settlement.EventDataNewBatchAccepted)
+	if !ok {
+		m.logger.Error("onReceivedBatch", "err", "wrong event data received")
+		return
+	}
+	h := eventData.EndHeight
+	if m.LastSubmittedHeight.Load() < h {
+		m.LastSubmittedHeight.Store(h)
+	}
 }
