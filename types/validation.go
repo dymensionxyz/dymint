@@ -8,7 +8,45 @@ import (
 
 	tmcrypto "github.com/tendermint/tendermint/crypto"
 	tmtypes "github.com/tendermint/tendermint/types"
+
+	"github.com/dymensionxyz/dymint/fraud"
 )
+
+var MaxDrift = 10 * time.Minute
+
+type ErrTimeFraud struct {
+	drift           time.Duration
+	proposerAddress []byte
+	headerHash      [32]byte
+	headerHeight    uint64
+	headerTime      time.Time
+	currentTime     time.Time
+}
+
+func NewErrTimeFraud(block *Block, currentTime time.Time) error {
+	drift := time.Unix(int64(block.Header.Time), 0).Sub(currentTime)
+
+	return ErrTimeFraud{
+		drift:           drift,
+		proposerAddress: block.Header.ProposerAddress,
+		headerHash:      block.Header.Hash(),
+		headerHeight:    block.Header.Height,
+		headerTime:      time.Unix(int64(block.Header.Time), 0),
+		currentTime:     currentTime,
+	}
+}
+
+func (e ErrTimeFraud) Error() string {
+	return fmt.Sprintf(
+		`Sequencer %X posted a block with header hash %X, at height %dwith a time drift of %s, 
+when the maximum allowed limit is %s. Sequencer reported block time was %s while the node local time is %s`,
+		e.proposerAddress, e.headerHash, e.headerHeight, e.drift, MaxDrift, e.headerTime, e.currentTime,
+	)
+}
+
+func (e ErrTimeFraud) Unwrap() error {
+	return fraud.ErrFraud
+}
 
 func ValidateProposedTransition(state *State, block *Block, commit *Commit, proposerPubKey tmcrypto.PubKey) error {
 	if err := block.ValidateWithState(state); err != nil {
@@ -23,6 +61,11 @@ func ValidateProposedTransition(state *State, block *Block, commit *Commit, prop
 
 // ValidateBasic performs basic validation of a block.
 func (b *Block) ValidateBasic() error {
+	currentTime := time.Now().UTC()
+	if currentTime.Add(MaxDrift).Before(time.Unix(int64(b.Header.Time), 0)) {
+		return NewErrTimeFraud(b, currentTime)
+	}
+
 	err := b.Header.ValidateBasic()
 	if err != nil {
 		return err
