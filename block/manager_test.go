@@ -366,7 +366,7 @@ func TestApplyLocalBlock_WithFraudCheck(t *testing.T) {
 	go func() {
 		errChan <- manager.Start(ctx)
 		err := <-errChan
-		require.NoError(t, err)
+		require.True(t, errors.Is(err, fraud.ErrFraud))
 	}()
 	<-ctx.Done()
 	assert.Equal(t, batch.EndHeight(), manager.LastSubmittedHeight.Load())
@@ -795,7 +795,7 @@ func TestManager_ProcessNextDABatch_FraudHandling(t *testing.T) {
 	err = manager.ProcessNextDABatch(daResultSubmitBatch.SubmitMetaData)
 
 	// Verify
-	require.NoError(err)
+	require.True(errors.Is(err, fraud.ErrFraud))
 	mockExecutor.AssertExpectations(t)
 	mockFraudHandler.AssertExpectations(t)
 }
