@@ -66,10 +66,7 @@ func (s *DefaultStore) pruneBlocks(from, to uint64, logger types.Logger) (uint64
 // pruneResponses prunes block execution responses from store
 func (s *DefaultStore) pruneResponses(from, to uint64, logger types.Logger) (uint64, error) {
 	pruneResponses := func(batch KVBatch, height uint64) error {
-		if err := batch.Delete(getResponsesKey(height)); err != nil {
-			return err
-		}
-		return nil
+		return batch.Delete(getResponsesKey(height))
 	}
 
 	prunedResponses, err := s.pruneHeights(from, to, pruneResponses, logger)
@@ -79,10 +76,7 @@ func (s *DefaultStore) pruneResponses(from, to uint64, logger types.Logger) (uin
 // pruneSequencers prunes sequencers from store
 func (s *DefaultStore) pruneSequencers(from, to uint64, logger types.Logger) (uint64, error) {
 	pruneSequencers := func(batch KVBatch, height uint64) error {
-		if err := batch.Delete(getSequencersKey(height)); err != nil {
-			return err
-		}
-		return nil
+		return batch.Delete(getSequencersKey(height))
 	}
 	prunedSequencers, err := s.pruneHeights(from, to, pruneSequencers, logger)
 	return prunedSequencers, err
@@ -91,10 +85,7 @@ func (s *DefaultStore) pruneSequencers(from, to uint64, logger types.Logger) (ui
 // pruneCids prunes content identifiers from store
 func (s *DefaultStore) pruneCids(from, to uint64, logger types.Logger) (uint64, error) {
 	pruneCids := func(batch KVBatch, height uint64) error {
-		if err := batch.Delete(getCidKey(height)); err != nil {
-			return err
-		}
-		return nil
+		return batch.Delete(getCidKey(height))
 	}
 	prunedCids, err := s.pruneHeights(from, to, pruneCids, logger)
 	return prunedCids, err
