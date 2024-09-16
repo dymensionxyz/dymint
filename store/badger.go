@@ -14,7 +14,7 @@ import (
 
 const (
 	gcTimeout    = 1 * time.Minute
-	discardRatio = 0.5
+	discardRatio = 0.5 // Recommended by badger. Indicates that a file will be rewritten if half the space can be discarded.
 )
 
 var (
@@ -38,7 +38,7 @@ func NewDefaultInMemoryKVStore() KV {
 	}
 }
 
-func NewKVStore(rootDir, dbPath, dbName string, syncWrites bool) KV {
+func NewKVStore(ctx context.Context, rootDir, dbPath, dbName string, syncWrites bool) KV {
 	path := filepath.Join(Rootify(rootDir, dbPath), dbName)
 	opts := memoryEfficientBadgerConfig(path, syncWrites)
 	db, err := badger.Open(*opts)
@@ -48,14 +48,15 @@ func NewKVStore(rootDir, dbPath, dbName string, syncWrites bool) KV {
 	b := &BadgerKV{
 		db: db,
 	}
-	go b.gc(gcTimeout, discardRatio)
-
+	if ctx != context.TODO() {
+		go b.gc(ctx, gcTimeout, discardRatio)
+	}
 	return b
 }
 
 // NewDefaultKVStore creates instance of default key-value store.
-func NewDefaultKVStore(rootDir, dbPath, dbName string) KV {
-	return NewKVStore(rootDir, dbPath, dbName, true)
+func NewDefaultKVStore(ctx context.Context, rootDir, dbPath, dbName string) KV {
+	return NewKVStore(ctx, rootDir, dbPath, dbName, true)
 }
 
 // Rootify is helper function to make config creation independent of root dir
@@ -71,15 +72,10 @@ func (b *BadgerKV) Close() error {
 	return b.db.Close()
 }
 
-func (b *BadgerKV) RunValueLogGC(discardRatio float64) error {
-	return b.db.RunValueLogGC(discardRatio)
-}
-
-func (b *BadgerKV) gc(period time.Duration, discardRatio float64) {
+func (b *BadgerKV) gc(ctx context.Context, period time.Duration, discardRatio float64) {
 	gcTimeout := time.NewTimer(period)
 	defer gcTimeout.Stop()
 
-	ctx := context.Background()
 	for {
 		select {
 		case <-ctx.Done():

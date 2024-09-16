@@ -424,7 +424,7 @@ func benchmarkTxIndex(txsCount int64, b *testing.B) {
 		require.NoError(b, err)
 	}()
 
-	store := store.NewDefaultKVStore(dir, "db", "tx_index")
+	store := store.NewDefaultKVStore(context.TODO(), dir, "db", "tx_index")
 	require.NoError(b, err)
 	indexer := NewTxIndex(store)
 
