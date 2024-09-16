@@ -174,12 +174,12 @@ func (m *Manager) Start(ctx context.Context) error {
 		go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewGossipedBlock, m.onReceivedBlock, m.logger)
 		go uevent.MustSubscribe(ctx, m.Pubsub, "applyBlockSyncBlocksLoop", p2p.EventQueryNewBlockSyncBlock, m.onReceivedBlock, m.logger)
 		return nil
-	} else {
-		// Subscribe to batch events, to update last submitted height in case batch confirmation was lost (e.g. on restart)
-		go uevent.MustSubscribe(ctx, m.Pubsub, "updateSubmittedHeightLoop", settlement.EventQueryNewSettlementBatchAccepted, m.UpdateLastSubmittedHeight, m.logger)
 	}
 
 	/* ----------------------------- sequencer mode ----------------------------- */
+	// Subscribe to batch events, to update last submitted height in case batch confirmation was lost (e.g. on restart)
+	go uevent.MustSubscribe(ctx, m.Pubsub, "updateSubmittedHeightLoop", settlement.EventQueryNewSettlementBatchAccepted, m.UpdateLastSubmittedHeight, m.logger)
+
 	// Sequencer must wait till DA is synced to start submitting blobs
 	<-m.DAClient.Synced()
 	err = m.syncFromSettlement()

@@ -154,6 +154,7 @@ func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *d
 			// this could happen if we timed-out waiting for acceptance in the previous iteration, but the batch was indeed submitted
 			if errors.Is(err, gerrc.ErrAlreadyExists) {
 				c.logger.Debug("Batch already accepted", "startHeight", batch.StartHeight(), "endHeight", batch.EndHeight())
+				return nil
 			}
 			return fmt.Errorf("broadcast batch: %w", err)
 		}
