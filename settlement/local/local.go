@@ -108,7 +108,7 @@ func initConfig(conf settlement.Config) (slstore store.KV, proposer string, err 
 			proposer = hex.EncodeToString(pubKeybytes)
 		}
 	} else {
-		slstore = store.NewDefaultKVStore(conf.KeyringHomeDir, "data", kvStoreDBName)
+		slstore = store.NewDefaultKVStore(context.TODO(), conf.KeyringHomeDir, "data", kvStoreDBName)
 		if conf.ProposerPubKey != "" {
 			proposer = conf.ProposerPubKey
 		} else {
