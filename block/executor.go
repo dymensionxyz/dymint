@@ -16,6 +16,9 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
+// default minimum block max size allowed. not specific reason to set it to 10K, but we need to avoid no transactions can be included in a block.
+const minBlockMaxBytes = 10000
+
 // Executor creates and applies blocks and maintains state.
 type Executor struct {
 	localAddress          []byte
@@ -60,6 +63,7 @@ func (e *Executor) InitChain(genesis *tmtypes.GenesisDoc, valset []*tmtypes.Vali
 			Power:  validator.VotingPower,
 		})
 	}
+
 	params := genesis.ConsensusParams
 
 	return e.proxyAppConsensusConn.InitChainSync(abci.RequestInitChain{
@@ -81,8 +85,7 @@ func (e *Executor) InitChain(genesis *tmtypes.GenesisDoc, valset []*tmtypes.Vali
 			Version: &tmproto.VersionParams{
 				AppVersion: params.Version.AppVersion,
 			},
-		},
-		Validators:    valUpdates,
+		}, Validators: valUpdates,
 		AppStateBytes: genesis.AppState,
 		InitialHeight: genesis.InitialHeight,
 	})
@@ -90,10 +93,8 @@ func (e *Executor) InitChain(genesis *tmtypes.GenesisDoc, valset []*tmtypes.Vali
 
 // CreateBlock reaps transactions from mempool and builds a block.
 func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHeaderHash, nextSeqHash [32]byte, state *types.State, maxBlockDataSizeBytes uint64) *types.Block {
-	if state.ConsensusParams.Blockmaxsize > 0 {
-		maxBlockDataSizeBytes = min(maxBlockDataSizeBytes, uint64(state.ConsensusParams.Blockmaxsize))
-	}
-	mempoolTxs := e.mempool.ReapMaxBytesMaxGas(int64(maxBlockDataSizeBytes), state.ConsensusParams.Blockmaxgas)
+	maxBlockDataSizeBytes = min(maxBlockDataSizeBytes, uint64(max(minBlockMaxBytes, state.ConsensusParams.Block.MaxBytes)))
+	mempoolTxs := e.mempool.ReapMaxBytesMaxGas(int64(maxBlockDataSizeBytes), state.ConsensusParams.Block.MaxGas)
 
 	block := &types.Block{
 		Header: types.Header{
@@ -160,8 +161,8 @@ func (e *Executor) commit(state *types.State, block *types.Block, deliverTxs []*
 		return nil, 0, err
 	}
 
-	maxBytes := state.ConsensusParams.Blockmaxsize
-	maxGas := state.ConsensusParams.Blockmaxgas
+	maxBytes := state.ConsensusParams.Block.MaxBytes
+	maxGas := state.ConsensusParams.Block.MaxGas
 	err = e.mempool.Update(int64(block.Header.Height), fromDymintTxs(block.Data.Txs), deliverTxs)
 	if err != nil {
 		return nil, 0, err

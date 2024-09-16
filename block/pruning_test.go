@@ -18,14 +18,18 @@ import (
 func TestPruningRetainHeight(t *testing.T) {
 	require := require.New(t)
 	app := testutil.GetAppMock()
-	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{RollappConsensusParamUpdates: &abci.RollappConsensusParams{
-		Da:     "mock",
-		Commit: version.Commit,
-		Block: &abci.BlockParams{
-			MaxBytes: 500000,
-			MaxGas:   40000000,
+	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
+		RollappParamUpdates: &abci.RollappParams{
+			Da:      "mock",
+			Version: version.Commit,
 		},
-	}})
+		ConsensusParamUpdates: &abci.ConsensusParams{
+			Block: &abci.BlockParams{
+				MaxBytes: 500000,
+				MaxGas:   40000000,
+			},
+		},
+	})
 	ctx := context.Background()
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)

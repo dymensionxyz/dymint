@@ -27,6 +27,5 @@ func (m *Manager) RunInitChain(ctx context.Context) error {
 	if _, err := m.Store.SaveState(m.State, nil); err != nil {
 		return err
 	}
-
 	return nil
 }
