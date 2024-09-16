@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/gogo/protobuf/proto"
+	"github.com/tendermint/tendermint/libs/log"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
@@ -568,7 +569,7 @@ LOOP:
 	return filteredHashes
 }
 
-func (txi *TxIndex) Prune(from, to uint64) (uint64, error) {
+func (txi *TxIndex) Prune(from, to uint64, logger log.Logger) (uint64, error) {
 	pruned, err := txi.pruneTxs(from, to)
 	if err != nil {
 		return 0, err
