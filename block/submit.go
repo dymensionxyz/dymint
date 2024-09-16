@@ -283,5 +283,4 @@ func (m *Manager) UpdateLastSubmittedHeight(event pubsub.Message) {
 	if m.LastSubmittedHeight.Load() < h {
 		m.LastSubmittedHeight.Store(h)
 	}
-
 }
