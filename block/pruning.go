@@ -6,12 +6,10 @@ import (
 )
 
 func (m *Manager) PruneBlocks(retainHeight uint64) (uint64, error) {
-	if m.IsProposer() && m.NextHeightToSubmit() < retainHeight { // do not delete anything that we might submit in future
+	nextSubmissionHeight := m.NextHeightToSubmit()
+	if m.IsProposer() && nextSubmissionHeight < retainHeight { // do not delete anything that we might submit in future
 		m.logger.Debug("cannot prune blocks before they have been submitted. using height last submitted height for pruning", "retain_height", retainHeight, "height_to_submit", m.NextHeightToSubmit())
-		retainHeight = m.NextHeightToSubmit() - 1
-		if retainHeight <= m.State.BaseHeight {
-			return 0, nil
-		}
+		retainHeight = nextSubmissionHeight
 	}
 
 	err := m.P2PClient.RemoveBlocks(context.Background(), m.State.BaseHeight, retainHeight)
