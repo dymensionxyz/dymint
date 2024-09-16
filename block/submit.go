@@ -273,7 +273,8 @@ func (m *Manager) GetUnsubmittedBlocks() uint64 {
 	return m.State.Height() - m.LastSubmittedHeight.Load()
 }
 
-// UpdateLastSubmittedHeight will update last height submitted, in case necessary to avoid edge case issues
+// UpdateLastSubmittedHeight will update last height submitted height upon events. 
+// This may be necessary in case we crashed/restarted before getting response for our submission to the settlement layer.
 func (m *Manager) UpdateLastSubmittedHeight(event pubsub.Message) {
 	eventData, ok := event.Data().(*settlement.EventDataNewBatchAccepted)
 	if !ok {
