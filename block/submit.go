@@ -120,7 +120,7 @@ func SubmitLoopInner(
 					// this could happen if we timed-out waiting for acceptance in the previous iteration, but the batch was indeed submitted
 					if errors.Is(err, gerrc.ErrAlreadyExists) {
 						logger.Debug("Batch already accepted", "err", err, "pending", pending)
-						break
+						panic(err)
 					}
 					return err
 				}
