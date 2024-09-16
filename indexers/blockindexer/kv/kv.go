@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/tendermint/tendermint/libs/log"
+
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/google/orderedcode"
 
@@ -525,7 +527,7 @@ func (idx *BlockerIndexer) indexEvents(batch store.KVBatch, events []abci.Event,
 	return keys, nil
 }
 
-func (idx *BlockerIndexer) Prune(from, to uint64) (uint64, error) {
+func (idx *BlockerIndexer) Prune(from, to uint64, logger log.Logger) (uint64, error) {
 	if from <= 0 {
 		return 0, fmt.Errorf("from height must be greater than 0: %w", gerrc.ErrInvalidArgument)
 	}
@@ -533,11 +535,11 @@ func (idx *BlockerIndexer) Prune(from, to uint64) (uint64, error) {
 	if to <= from {
 		return 0, fmt.Errorf("to height must be greater than from height: to: %d: from: %d: %w", to, from, gerrc.ErrInvalidArgument)
 	}
-	blocksPruned, err := idx.pruneBlocks(from, to)
+	blocksPruned, err := idx.pruneBlocks(from, to, logger)
 	return blocksPruned, err
 }
 
-func (idx *BlockerIndexer) pruneBlocks(from, to uint64) (uint64, error) {
+func (idx *BlockerIndexer) pruneBlocks(from, to uint64, logger log.Logger) (uint64, error) {
 	pruned := uint64(0)
 	batch := idx.store.NewBatch()
 	defer batch.Discard()
@@ -552,17 +554,24 @@ func (idx *BlockerIndexer) pruneBlocks(from, to uint64) (uint64, error) {
 
 	for h := int64(from); h < int64(to); h++ {
 		ok, err := idx.Has(h)
-		if err != nil || !ok {
+		if err != nil {
+			logger.Debug("pruning block indexer checking height", "err", err)
+			continue
+		}
+		if !ok {
 			continue
 		}
 		key, err := heightKey(h)
 		if err != nil {
+			logger.Debug("pruning block indexer getting height key", "err", err)
 			continue
 		}
 		if err := batch.Delete(key); err != nil {
+			logger.Debug("pruning block indexer deleting height key", "err", err)
 			continue
 		}
 		if err := idx.pruneEvents(h, batch); err != nil {
+			logger.Debug("pruning block indexer events", "err", err)
 			continue
 		}
 		pruned++

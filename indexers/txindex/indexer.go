@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 
+	"github.com/tendermint/tendermint/libs/log"
+
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
 )
@@ -24,7 +26,7 @@ type TxIndexer interface {
 	Search(ctx context.Context, q *query.Query) ([]*abci.TxResult, error)
 
 	// Delete index entries for the heights between from (included) and to (not included). It returns heights pruned
-	Prune(from, to uint64) (uint64, error)
+	Prune(from, to uint64, logger log.Logger) (uint64, error)
 }
 
 // Batch groups together multiple Index operations to be performed at the same time.

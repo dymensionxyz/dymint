@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/pubsub/query"
 	"github.com/tendermint/tendermint/types"
 	"golang.org/x/exp/rand"
@@ -170,7 +171,7 @@ func TestBlockIndexerPruning(t *testing.T) {
 	require.Equal(t, numBlocks, uint64(len(results)))
 
 	// prune indexer for all heights
-	pruned, err := indexer.Prune(1, numBlocks+1)
+	pruned, err := indexer.Prune(1, numBlocks+1, log.NewNopLogger())
 	require.NoError(t, err)
 	require.Equal(t, numBlocks, pruned)
 
