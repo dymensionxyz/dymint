@@ -62,7 +62,7 @@ func ValidateProposedTransition(state *State, block *Block, commit *Commit, prop
 // ValidateBasic performs basic validation of a block.
 func (b *Block) ValidateBasic() error {
 	currentTime := time.Now().UTC()
-	if currentTime.Add(MaxDrift).Before(time.Unix(int64(b.Header.Time), 0)) {
+	if currentTime.Add(MaxDrift).Before(time.Unix(0, int64(b.Header.Time))) {
 		return NewErrTimeFraud(b, currentTime)
 	}
 

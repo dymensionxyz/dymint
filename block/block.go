@@ -11,14 +11,25 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
-// applyBlockWithFraudHandling calls applyBlock and handles fraud errors.
-// Contract: block and commit must be validated before calling this function!
-func (m *Manager) applyBlockWithFraudHandling(block *types.Block, commit *types.Commit, blockMetaData types.BlockMetaData) error {
-	err := m.applyBlock(block, commit, blockMetaData)
-	if errors.Is(err, fraud.ErrFraud) {
-		m.FraudHandler.HandleFault(context.Background(), err)
-		return fmt.Errorf("apply block: %w", err)
-	} else if err != nil {
+// applyBlockWithFraudHandling calls applyBlock and validateBlockBeforeApply with fraud handling.
+func (m *Manager) applyBlockWithFraudHandling(block *types.Block, commit *types.Commit, blockMetaData types.BlockMetaData, validate bool) error {
+	if validate {
+		if err := m.validateBlockBeforeApply(block, commit); err != nil {
+			if errors.Is(err, fraud.ErrFraud) {
+				m.FraudHandler.HandleFault(context.Background(), err)
+			} else if err != nil {
+				m.blockCache.Delete(block.Header.Height)
+				// TODO: can we take an action here such as dropping the peer / reducing their reputation?
+			}
+
+			return fmt.Errorf("block not valid at height %d, dropping it: err:%w", block.Header.Height, err)
+		}
+	}
+
+	if err := m.applyBlock(block, commit, blockMetaData); err != nil {
+		if errors.Is(err, fraud.ErrFraud) {
+			m.FraudHandler.HandleFault(context.Background(), err)
+		}
 		return fmt.Errorf("apply block: %w", err)
 	}
 
@@ -163,13 +174,8 @@ func (m *Manager) attemptApplyCachedBlocks() error {
 		if !blockExists {
 			break
 		}
-		if err := m.validateBlockBeforeApply(cachedBlock.Block, cachedBlock.Commit); err != nil {
-			m.blockCache.Delete(cachedBlock.Block.Header.Height)
-			// TODO: can we take an action here such as dropping the peer / reducing their reputation?
-			return fmt.Errorf("block not valid at height %d, dropping it: err:%w", cachedBlock.Block.Header.Height, err)
-		}
 
-		err := m.applyBlockWithFraudHandling(cachedBlock.Block, cachedBlock.Commit, types.BlockMetaData{Source: cachedBlock.Source})
+		err := m.applyBlockWithFraudHandling(cachedBlock.Block, cachedBlock.Commit, types.BlockMetaData{Source: cachedBlock.Source}, true)
 		if err != nil {
 			return fmt.Errorf("apply cached block: expected height: %d: %w", expectedHeight, err)
 		}
