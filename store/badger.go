@@ -72,7 +72,6 @@ func (b *BadgerKV) Close() error {
 }
 
 func (b *BadgerKV) gc(period time.Duration, discardRatio float64, logger types.Logger) {
-
 	ticker := time.NewTicker(period)
 	defer ticker.Stop()
 	for range ticker.C {
