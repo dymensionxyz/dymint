@@ -67,7 +67,7 @@ func (s *server) SetBatch(ctx context.Context, in *slmock.SLSetBatchRequest) (*s
 func GetServer(conf settlement.GrpcConfig) *grpc.Server {
 	srv := grpc.NewServer()
 
-	slstore := store.NewDefaultKVStore(context.TODO(), ".", "db", "settlement")
+	slstore := store.NewDefaultKVStore(".", "db", "settlement")
 	kv := store.NewPrefixKV(slstore, settlementKVPrefix)
 
 	mockImpl := &server{kv: kv}

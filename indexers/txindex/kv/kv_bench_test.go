@@ -20,7 +20,7 @@ func BenchmarkTxSearch(b *testing.B) {
 		b.Errorf("create temporary directory: %s", err)
 	}
 
-	db := store.NewDefaultKVStore(context.TODO(), dbDir, "db", "benchmark_tx_search_test")
+	db := store.NewDefaultKVStore(dbDir, "db", "benchmark_tx_search_test")
 	if err != nil {
 		b.Errorf("create database: %s", err)
 	}
