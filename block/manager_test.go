@@ -818,11 +818,7 @@ func TestManager_ProcessNextDABatch_FraudHandling(t *testing.T) {
 	err = manager.ProcessNextDABatch(daResultSubmitBatch.SubmitMetaData)
 
 	// Verify
-<<<<<<< HEAD
 	require.True(errors.Is(err, gerrc.ErrFault))
-=======
-	require.True(errors.Is(err, fraud.ErrFraud))
->>>>>>> 11c6703 (fix tests)
 	mockExecutor.AssertExpectations(t)
 	mockFraudHandler.AssertExpectations(t)
 }

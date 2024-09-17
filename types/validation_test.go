@@ -13,10 +13,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
-	"github.com/tendermint/tendermint/proto/tendermint/version"
 )
-
-func TestBlock_ValidateWithState(t *testing.T) {
 	proposer := NewSequencerFromValidator(*tmtypes.NewValidator(ed25519.GenPrivKey().PubKey(), 1))
 	proposerHash := proposer.MustHash()
 	currentTime := time.Now().UTC()
