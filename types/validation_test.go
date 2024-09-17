@@ -41,6 +41,7 @@ import (
 				Block: 1,
 				App:   1,
 			},
+<<<<<<< HEAD
 			Height:             10,
 			Time:               uint64(currentTime.UnixNano()),
 			AppHash:            [32]byte{1, 2, 3},
@@ -50,6 +51,14 @@ import (
 			LastHeaderHash:     [32]byte{7, 8, 9},
 			ChainID:            "chainID",
 			NextSequencersHash: [32]byte(proposerHash),
+=======
+			Height:          10,
+			Time:            uint64(currentTime.UnixNano()),
+			AppHash:         [32]byte{1, 2, 3},
+			LastResultsHash: [32]byte{4, 5, 6},
+			ProposerAddress: []byte("proposer"),
+			DataHash:        [32]byte{},
+>>>>>>> c58d16d (fix units)
 		},
 		Data:       Data{},
 		LastCommit: Commit{},
