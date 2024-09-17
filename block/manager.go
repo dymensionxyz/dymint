@@ -7,8 +7,6 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/dymensionxyz/dymint/fraud"
-
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"golang.org/x/sync/errgroup"
 
@@ -22,15 +20,14 @@ import (
 	tmcrypto "github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/pubsub"
-	tmtypes "github.com/tendermint/tendermint/types"
-
-	"github.com/dymensionxyz/dymint/p2p"
-
 	"github.com/tendermint/tendermint/proxy"
+	tmtypes "github.com/tendermint/tendermint/types"
 
 	"github.com/dymensionxyz/dymint/config"
 	"github.com/dymensionxyz/dymint/da"
+	"github.com/dymensionxyz/dymint/fraud"
 	"github.com/dymensionxyz/dymint/mempool"
+	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
 )
