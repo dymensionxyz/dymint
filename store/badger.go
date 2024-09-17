@@ -1,7 +1,6 @@
 package store
 
 import (
-	"context"
 	"errors"
 	"path/filepath"
 	"time"
@@ -40,7 +39,7 @@ func NewDefaultInMemoryKVStore() KV {
 	}
 }
 
-func NewKVStore(ctx context.Context, rootDir, dbPath, dbName string, syncWrites bool, logger types.Logger) KV {
+func NewKVStore(rootDir, dbPath, dbName string, syncWrites bool, logger types.Logger) KV {
 	path := filepath.Join(Rootify(rootDir, dbPath), dbName)
 	opts := memoryEfficientBadgerConfig(path, syncWrites)
 	db, err := badger.Open(*opts)
@@ -50,15 +49,13 @@ func NewKVStore(ctx context.Context, rootDir, dbPath, dbName string, syncWrites 
 	b := &BadgerKV{
 		db: db,
 	}
-	if ctx != context.TODO() {
-		go b.gc(ctx, gcTimeout, discardRatio, logger)
-	}
+	go b.gc(gcTimeout, discardRatio, logger)
 	return b
 }
 
 // NewDefaultKVStore creates instance of default key-value store.
-func NewDefaultKVStore(ctx context.Context, rootDir, dbPath, dbName string) KV {
-	return NewKVStore(ctx, rootDir, dbPath, dbName, true, log.NewNopLogger())
+func NewDefaultKVStore(rootDir, dbPath, dbName string) KV {
+	return NewKVStore(rootDir, dbPath, dbName, true, log.NewNopLogger())
 }
 
 // Rootify is helper function to make config creation independent of root dir
@@ -74,20 +71,15 @@ func (b *BadgerKV) Close() error {
 	return b.db.Close()
 }
 
-func (b *BadgerKV) gc(ctx context.Context, period time.Duration, discardRatio float64, logger types.Logger) {
-	gcTimeout := time.NewTimer(period)
-	defer gcTimeout.Stop()
+func (b *BadgerKV) gc(period time.Duration, discardRatio float64, logger types.Logger) {
 
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-gcTimeout.C:
-			err := b.db.RunValueLogGC(discardRatio)
-			if err != nil {
-				logger.Debug("Running db RunValueLogGC", "err", err)
-				continue
-			}
+	ticker := time.NewTicker(period)
+	defer ticker.Stop()
+	for range ticker.C {
+		err := b.db.RunValueLogGC(discardRatio)
+		if err != nil {
+			logger.Debug("Running db RunValueLogGC", "err", err)
+			continue
 		}
 	}
 }

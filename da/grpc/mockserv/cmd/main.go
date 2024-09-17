@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"log"
 	"net"
@@ -19,7 +18,7 @@ func main() {
 	flag.StringVar(&conf.Host, "host", "0.0.0.0", "listening address")
 	flag.Parse()
 
-	kv := store.NewDefaultKVStore(context.TODO(), ".", "db", "dymint")
+	kv := store.NewDefaultKVStore(".", "db", "dymint")
 	lis, err := net.Listen("tcp", conf.Host+":"+strconv.Itoa(conf.Port))
 	if err != nil {
 		log.Panic(err)
