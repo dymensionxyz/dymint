@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/dymensionxyz/dymint/fraud"
 	"sync"
 	"sync/atomic"
+
+	"github.com/dymensionxyz/dymint/fraud"
 
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"golang.org/x/sync/errgroup"

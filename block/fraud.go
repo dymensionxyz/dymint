@@ -2,6 +2,7 @@ package block
 
 import (
 	"context"
+
 	"github.com/dymensionxyz/dymint/node/events"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
 )

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+
 	"github.com/dymensionxyz/dymint/fraud"
 
 	errorsmod "cosmossdk.io/errors"

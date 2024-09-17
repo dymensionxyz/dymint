@@ -3,6 +3,7 @@ package types
 import (
 	"errors"
 	"fmt"
+
 	"github.com/dymensionxyz/dymint/fraud"
 
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
@@ -35,7 +36,7 @@ func NewErrFraudHeightMismatch(expected uint64, actual uint64, block *Block) err
 }
 
 func (e ErrFraudHeightMismatch) Error() string {
-	return fmt.Sprintf("possible fraud detected on height %d, with header hash %X, emited by sequencer %X:"+
+	return fmt.Sprintf("possible fraud detected on height %d, with header hash %X, emitted by sequencer %X:"+
 		" height mismatch: state expected %d, got %d", e.headerHeight, e.headerHash, e.proposer, e.expected, e.actual)
 }
 
@@ -60,7 +61,7 @@ func NewErrFraudAppHashMismatch(expected [32]byte, actual [32]byte, block *Block
 }
 
 func (e ErrFraudAppHashMismatch) Error() string {
-	return fmt.Sprintf("possible fraud detected on height %d, with header hash %X, emited by sequencer %X:"+
+	return fmt.Sprintf("possible fraud detected on height %d, with header hash %X, emitted by sequencer %X:"+
 		" AppHash mismatch: state expected %X, got %X", e.headerHeight, e.headerHash, e.proposer, e.expected, e.headerHash)
 }
 
@@ -87,7 +88,7 @@ func NewErrLastResultsHashMismatch(expected [32]byte, block *Block) error {
 }
 
 func (e ErrLastResultsHashMismatch) Error() string {
-	return fmt.Sprintf("possible fraud detected on height %d, with header hash %X, emited by sequencer %X:"+
+	return fmt.Sprintf("possible fraud detected on height %d, with header hash %X, emitted by sequencer %X:"+
 		" LastResultsHash mismatch: state expected %X, got %X", e.headerHeight, e.headerHash, e.proposer, e.expected, e.lastResultHash)
 }
 
