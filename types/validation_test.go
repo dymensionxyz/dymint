@@ -2,15 +2,16 @@ package types
 
 import (
 	"errors"
-	"github.com/dymensionxyz/dymint/fraud"
-	"github.com/stretchr/testify/require"
 	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	"github.com/tendermint/tendermint/proto/tendermint/version"
+
+	"github.com/dymensionxyz/dymint/fraud"
 )
 
 func TestBlock_ValidateWithState(t *testing.T) {
@@ -119,7 +120,7 @@ func TestBlock_ValidateWithState(t *testing.T) {
 			state:   validState,
 			wantErr: true,
 			errMsg:  "height mismatch",
-			isFraud: false,
+			isFraud: true,
 		},
 		{
 			name: "Invalid AppHash",
@@ -137,7 +138,7 @@ func TestBlock_ValidateWithState(t *testing.T) {
 			state:   validState,
 			wantErr: true,
 			errMsg:  "AppHash mismatch",
-			isFraud: false,
+			isFraud: true,
 		},
 		{
 			name: "Invalid LastResultsHash",
@@ -155,7 +156,7 @@ func TestBlock_ValidateWithState(t *testing.T) {
 			state:   validState,
 			wantErr: true,
 			errMsg:  "LastResultsHash mismatch",
-			isFraud: false,
+			isFraud: true,
 		},
 		{
 			name: "Future block time",

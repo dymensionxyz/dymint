@@ -98,14 +98,15 @@ func (b *Block) ValidateWithState(state *State) error {
 	}
 
 	if b.Header.Height != state.NextHeight() {
-		return errors.New("height mismatch")
+		return NewErrFraudHeightMismatch(state.NextHeight(), b.Header.Height, b)
 	}
 
 	if !bytes.Equal(b.Header.AppHash[:], state.AppHash[:]) {
-		return errors.New("AppHash mismatch")
+		return NewErrFraudAppHashMismatch(state.AppHash, b.Header.AppHash, b)
 	}
+
 	if !bytes.Equal(b.Header.LastResultsHash[:], state.LastResultsHash[:]) {
-		return errors.New("LastResultsHash mismatch")
+		return NewErrLastResultsHashMismatch(state.LastResultsHash, b)
 	}
 
 	return nil
