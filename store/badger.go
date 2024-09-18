@@ -25,7 +25,8 @@ var (
 
 // BadgerKV is a implementation of KVStore using Badger v3.
 type BadgerKV struct {
-	db *badger.DB
+	db      *badger.DB
+	closing chan struct{}
 }
 
 // NewDefaultInMemoryKVStore builds KVStore that works in-memory (without accessing disk).
@@ -35,7 +36,8 @@ func NewDefaultInMemoryKVStore() KV {
 		panic(err)
 	}
 	return &BadgerKV{
-		db: db,
+		db:      db,
+		closing: make(chan struct{}),
 	}
 }
 
@@ -68,17 +70,24 @@ func Rootify(rootDir, dbPath string) string {
 
 // Close implements KVStore.
 func (b *BadgerKV) Close() error {
+	close(b.closing)
 	return b.db.Close()
 }
 
 func (b *BadgerKV) gc(period time.Duration, discardRatio float64, logger types.Logger) {
 	ticker := time.NewTicker(period)
 	defer ticker.Stop()
-	for range ticker.C {
-		err := b.db.RunValueLogGC(discardRatio)
-		if err != nil {
-			logger.Debug("Running db RunValueLogGC", "err", err)
-			continue
+	for {
+		select {
+		case <-b.closing:
+			// Exit the periodic garbage collector function when store is closed
+			return
+		case <-ticker.C:
+			err := b.db.RunValueLogGC(discardRatio)
+			if err != nil {
+				logger.Debug("Running db RunValueLogGC", "err", err)
+				continue
+			}
 		}
 	}
 }
