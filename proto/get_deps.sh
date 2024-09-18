@@ -31,6 +31,7 @@ COSMOS_PROTO_URL=https://raw.githubusercontent.com/cosmos/cosmos-sdk/$COSMOS_VER
 
 COSMOS_PROTO_FILES=(
   base/v1beta1/coin.proto
+  base/query/v1beta1/pagination.proto
   msg/v1/msg.proto
 )
 
