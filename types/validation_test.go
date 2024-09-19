@@ -2,6 +2,7 @@ package types
 
 import (
 	"errors"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -10,8 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	"github.com/tendermint/tendermint/proto/tendermint/version"
-
-	"github.com/dymensionxyz/dymint/fraud"
 )
 
 func TestBlock_ValidateWithState(t *testing.T) {
@@ -201,13 +200,13 @@ func TestBlock_ValidateWithState(t *testing.T) {
 			if tt.wantErr {
 				assert.Error(t, err)
 				if tt.isFraud {
-					require.True(t, errors.Is(err, fraud.ErrFraud))
+					require.True(t, errors.Is(err, gerrc.ErrFault))
 					if tt.expectedErrType != nil {
 						assert.True(t, errors.As(err, &tt.expectedErrType),
 							"expected error of type %T, got %T", tt.expectedErrType, err)
 					}
 				} else {
-					require.False(t, errors.Is(err, fraud.ErrFraud))
+					require.False(t, errors.Is(err, gerrc.ErrFault))
 				}
 			} else {
 				assert.NoError(t, err)
