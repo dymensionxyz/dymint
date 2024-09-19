@@ -16,6 +16,8 @@ var (
 	ErrInvalidBlockHeight    = errors.New("invalid block height")
 	ErrInvalidHeaderDataHash = errors.New("header not matching block data")
 	ErrMissingProposerPubKey = fmt.Errorf("missing proposer public key: %w", gerrc.ErrNotFound)
+	ErrVersionMismatch       = errors.New("version mismatch")
+	ErrEmptyProposerAddress  = errors.New("no proposer address")
 )
 
 type ErrFraudHeightMismatch struct {

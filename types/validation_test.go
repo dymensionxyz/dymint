@@ -48,12 +48,13 @@ func TestBlock_ValidateWithState(t *testing.T) {
 	validBlock.Header.DataHash = [32]byte(GetDataHash(validBlock))
 
 	tests := []struct {
-		name    string
-		block   *Block
-		state   *State
-		wantErr bool
-		errMsg  string
-		isFraud bool
+		name            string
+		block           *Block
+		state           *State
+		wantErr         bool
+		theErr          error
+		expectedErrType interface{}
+		isFraud         bool
 	}{
 		{
 			name:    "Valid block",
@@ -79,8 +80,8 @@ func TestBlock_ValidateWithState(t *testing.T) {
 				},
 			},
 			state:   validState,
+			theErr:  ErrVersionMismatch,
 			wantErr: true,
-			errMsg:  "b version mismatch",
 			isFraud: false,
 		},
 		{
@@ -101,7 +102,7 @@ func TestBlock_ValidateWithState(t *testing.T) {
 			},
 			state:   validState,
 			wantErr: true,
-			errMsg:  "b version mismatch",
+			theErr:  ErrVersionMismatch,
 			isFraud: false,
 		},
 		{
@@ -117,10 +118,10 @@ func TestBlock_ValidateWithState(t *testing.T) {
 					DataHash:        [32]byte(GetDataHash(validBlock)),
 				},
 			},
-			state:   validState,
-			wantErr: true,
-			errMsg:  "height mismatch",
-			isFraud: true,
+			state:           validState,
+			wantErr:         true,
+			expectedErrType: &ErrFraudHeightMismatch{},
+			isFraud:         true,
 		},
 		{
 			name: "Invalid AppHash",
@@ -135,10 +136,10 @@ func TestBlock_ValidateWithState(t *testing.T) {
 					DataHash:        [32]byte(GetDataHash(validBlock)),
 				},
 			},
-			state:   validState,
-			wantErr: true,
-			errMsg:  "AppHash mismatch",
-			isFraud: true,
+			state:           validState,
+			expectedErrType: &ErrFraudAppHashMismatch{},
+			wantErr:         true,
+			isFraud:         true,
 		},
 		{
 			name: "Invalid LastResultsHash",
@@ -153,10 +154,10 @@ func TestBlock_ValidateWithState(t *testing.T) {
 					DataHash:        [32]byte(GetDataHash(validBlock)),
 				},
 			},
-			state:   validState,
-			wantErr: true,
-			errMsg:  "LastResultsHash mismatch",
-			isFraud: true,
+			state:           validState,
+			wantErr:         true,
+			expectedErrType: &ErrLastResultsHashMismatch{},
+			isFraud:         true,
 		},
 		{
 			name: "Future block time",
@@ -164,16 +165,16 @@ func TestBlock_ValidateWithState(t *testing.T) {
 				Header: Header{
 					Version:         validBlock.Header.Version,
 					Height:          10,
-					Time:            uint64(currentTime.Add(2 * MaxDrift).UnixNano()),
+					Time:            uint64(currentTime.Add(2 * TimeFraudMaxDrift).UnixNano()),
 					AppHash:         [32]byte{1, 2, 3},
 					LastResultsHash: [32]byte{4, 5, 6},
 					ProposerAddress: []byte("proposer"),
 				},
 			},
-			state:   validState,
-			wantErr: true,
-			errMsg:  "Sequencer",
-			isFraud: true,
+			state:           validState,
+			wantErr:         true,
+			expectedErrType: &ErrTimeFraud{},
+			isFraud:         true,
 		},
 		{
 			name: "Invalid proposer address",
@@ -187,10 +188,10 @@ func TestBlock_ValidateWithState(t *testing.T) {
 					ProposerAddress: []byte{},
 				},
 			},
-			state:   validState,
-			wantErr: true,
-			errMsg:  "no proposer address",
-			isFraud: false,
+			state:           validState,
+			wantErr:         true,
+			expectedErrType: ErrEmptyProposerAddress,
+			isFraud:         false,
 		},
 	}
 
@@ -199,9 +200,12 @@ func TestBlock_ValidateWithState(t *testing.T) {
 			err := tt.block.ValidateWithState(tt.state)
 			if tt.wantErr {
 				assert.Error(t, err)
-				assert.Contains(t, err.Error(), tt.errMsg)
 				if tt.isFraud {
 					require.True(t, errors.Is(err, fraud.ErrFraud))
+					if tt.expectedErrType != nil {
+						assert.True(t, errors.As(err, &tt.expectedErrType),
+							"expected error of type %T, got %T", tt.expectedErrType, err)
+					}
 				} else {
 					require.False(t, errors.Is(err, fraud.ErrFraud))
 				}
