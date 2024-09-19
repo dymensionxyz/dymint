@@ -6,10 +6,11 @@ import (
 	"fmt"
 	"time"
 
+
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
+
 	tmcrypto "github.com/tendermint/tendermint/crypto"
 	tmtypes "github.com/tendermint/tendermint/types"
-
-	"github.com/dymensionxyz/dymint/fraud"
 )
 
 // TimeFraudMaxDrift is the maximum allowed time drift between the block time and the local time.
@@ -47,7 +48,7 @@ func (e ErrTimeFraud) Error() string {
 }
 
 func (e ErrTimeFraud) Unwrap() error {
-	return fraud.ErrFraud
+	return gerrc.ErrFault
 }
 
 func ValidateProposedTransition(state *State, block *Block, commit *Commit, proposerPubKey tmcrypto.PubKey) error {

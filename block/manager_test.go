@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"sync/atomic"
 	"testing"
 	"time"
