@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"sync/atomic"
-
 	"testing"
 	"time"
 
@@ -190,7 +189,6 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 }
 
 func TestRetrieveDaBatchesFailed(t *testing.T) {
-
 	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, manager)
