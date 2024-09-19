@@ -158,10 +158,6 @@ func NewManager(
 	return m, nil
 }
 
-func (m *Manager) SetFraudHandler(handler fraud.Handler) {
-	m.FraudHandler = handler
-}
-
 // Start starts the block manager.
 func (m *Manager) Start(ctx context.Context) error {
 	// Check if InitChain flow is needed
