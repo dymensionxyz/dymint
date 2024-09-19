@@ -3,6 +3,7 @@ package store
 import (
 	"errors"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/dymensionxyz/dymint/types"
@@ -25,8 +26,9 @@ var (
 
 // BadgerKV is a implementation of KVStore using Badger v3.
 type BadgerKV struct {
-	db      *badger.DB
-	closing chan struct{}
+	db        *badger.DB
+	closing   chan struct{}
+	closeOnce sync.Once
 }
 
 // NewDefaultInMemoryKVStore builds KVStore that works in-memory (without accessing disk).
@@ -49,7 +51,8 @@ func NewKVStore(rootDir, dbPath, dbName string, syncWrites bool, logger types.Lo
 		panic(err)
 	}
 	b := &BadgerKV{
-		db: db,
+		db:      db,
+		closing: make(chan struct{}),
 	}
 	go b.gc(gcTimeout, discardRatio, logger)
 	return b
@@ -70,7 +73,9 @@ func Rootify(rootDir, dbPath string) string {
 
 // Close implements KVStore.
 func (b *BadgerKV) Close() error {
-	close(b.closing)
+	b.closeOnce.Do(func() {
+		close(b.closing)
+	})
 	return b.db.Close()
 }
 
