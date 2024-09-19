@@ -12,22 +12,20 @@ import (
 	"time"
 
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
+	"github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
+	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/tendermint/tendermint/libs/pubsub"
 	tmp2p "github.com/tendermint/tendermint/p2p"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	"github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
-	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/settlement"
-	rollapptypes "github.com/dymensionxyz/dymint/third_party/dymension/rollapp/types"
-	"github.com/dymensionxyz/dymint/types"
-
-	"github.com/tendermint/tendermint/libs/pubsub"
-
 	slmock "github.com/dymensionxyz/dymint/settlement/grpc/mockserv/proto"
+	"github.com/dymensionxyz/dymint/types"
+	rollapptypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
 )
 
 // Client is an extension of the base settlement layer client

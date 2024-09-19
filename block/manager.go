@@ -180,6 +180,9 @@ func (m *Manager) Start(ctx context.Context) error {
 	}
 
 	/* ----------------------------- sequencer mode ----------------------------- */
+	// Subscribe to batch events, to update last submitted height in case batch confirmation was lost. This could happen if the sequencer crash/restarted just after submitting a batch to the settlement and by the time we query the last batch, this batch wasn't accepted yet.
+	go uevent.MustSubscribe(ctx, m.Pubsub, "updateSubmittedHeightLoop", settlement.EventQueryNewSettlementBatchAccepted, m.UpdateLastSubmittedHeight, m.logger)
+
 	// Sequencer must wait till DA is synced to start submitting blobs
 	<-m.DAClient.Synced()
 	err = m.syncFromSettlement()
