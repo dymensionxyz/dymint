@@ -12,7 +12,8 @@ import (
 	"github.com/dymensionxyz/dymint/fraud"
 )
 
-var MaxDrift = 10 * time.Minute
+// TimeFraudMaxDrift is the maximum allowed time drift between the block time and the local time.
+var TimeFraudMaxDrift = 10 * time.Minute
 
 type ErrTimeFraud struct {
 	drift           time.Duration
@@ -38,9 +39,10 @@ func NewErrTimeFraud(block *Block, currentTime time.Time) error {
 
 func (e ErrTimeFraud) Error() string {
 	return fmt.Sprintf(
-		`Sequencer %X posted a block with header hash %X, at height %dwith a time drift of %s, 
-when the maximum allowed limit is %s. Sequencer reported block time was %s while the node local time is %s`,
-		e.proposerAddress, e.headerHash, e.headerHeight, e.drift, MaxDrift, e.headerTime, e.currentTime,
+		"Sequencer posted a block with invalid time. "+
+			"Max allowed drift exceeded. "+
+			"proposerAddress=%s headerHash=%s headerHeight=%d drift=%s MaxDrift=%s headerTime=%s currentTime=%s",
+		e.proposerAddress, e.headerHash, e.headerHeight, e.drift, TimeFraudMaxDrift, e.headerTime, e.currentTime,
 	)
 }
 
@@ -62,7 +64,7 @@ func ValidateProposedTransition(state *State, block *Block, commit *Commit, prop
 // ValidateBasic performs basic validation of a block.
 func (b *Block) ValidateBasic() error {
 	currentTime := time.Now().UTC()
-	if currentTime.Add(MaxDrift).Before(time.Unix(0, int64(b.Header.Time))) {
+	if currentTime.Add(TimeFraudMaxDrift).Before(time.Unix(0, int64(b.Header.Time))) {
 		return NewErrTimeFraud(b, currentTime)
 	}
 
