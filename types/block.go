@@ -2,6 +2,7 @@ package types
 
 import (
 	"encoding"
+	"github.com/gogo/protobuf/types"
 	"time"
 
 	tmtypes "github.com/tendermint/tendermint/types"
@@ -83,6 +84,7 @@ type Data struct {
 	Txs                    Txs
 	IntermediateStateRoots IntermediateStateRoots
 	Evidence               EvidenceData
+	ConsensusMessages      []*types.Any
 }
 
 // EvidenceData defines how evidence is stored in block.
