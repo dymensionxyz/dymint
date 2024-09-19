@@ -13,7 +13,6 @@ import (
 
 	"github.com/dymensionxyz/dymint/types"
 	pb "github.com/dymensionxyz/dymint/types/pb/dymint"
-	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 )
 
 var (
@@ -289,7 +288,7 @@ func (s *DefaultStore) SaveBlockCid(height uint64, cid cid.Cid, batch KVBatch) (
 func (s *DefaultStore) LoadBlockCid(height uint64) (cid.Cid, error) {
 	cidBytes, err := s.db.Get(getCidKey(height))
 	if err != nil {
-		return cid.Undef, fmt.Errorf("load cid for height %v: %w", height, gerrc.ErrNotFound)
+		return cid.Undef, fmt.Errorf("load cid for height %v: %w", height, err)
 	}
 	parsedCid, err := cid.Parse(string(cidBytes))
 	if err != nil {
