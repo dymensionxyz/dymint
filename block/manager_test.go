@@ -6,7 +6,6 @@ import (
 	"errors"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"sync/atomic"
-
 	"testing"
 	"time"
 
@@ -378,7 +377,6 @@ func TestApplyLocalBlock_WithFraudCheck(t *testing.T) {
 }
 
 func TestRetrieveDaBatchesFailed(t *testing.T) {
-
 	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, manager)

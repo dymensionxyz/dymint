@@ -2,9 +2,10 @@ package dymension
 
 import (
 	"github.com/avast/retry-go/v4"
+
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/settlement"
-	rollapptypes "github.com/dymensionxyz/dymint/third_party/dymension/rollapp/types"
+	rollapptypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
 )
 
 // RunWithRetry runs the given operation with retry, doing a number of attempts, and taking the last

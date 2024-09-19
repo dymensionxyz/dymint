@@ -15,6 +15,8 @@ import (
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
+const maxBlobSize = 2097152 // 2MB (equivalent to avail or celestia)
+
 // DataAvailabilityLayerClient is a generic client that proxies all DA requests via gRPC.
 type DataAvailabilityLayerClient struct {
 	config Config
@@ -121,7 +123,7 @@ func (d *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 
 // GetMaxBlobSizeBytes returns the maximum allowed blob size in the DA, used to check the max batch size configured
 func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint32 {
-	return 0
+	return maxBlobSize
 }
 
 // RetrieveBatches proxies RetrieveBlocks request to gRPC server.

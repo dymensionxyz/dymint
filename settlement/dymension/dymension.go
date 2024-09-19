@@ -15,8 +15,6 @@ import (
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	"github.com/dymensionxyz/cosmosclient/cosmosclient"
-	rollapptypes "github.com/dymensionxyz/dymint/third_party/dymension/rollapp/types"
-	sequencertypes "github.com/dymensionxyz/dymint/third_party/dymension/sequencer/types"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/google/uuid"
 	"github.com/ignite/cli/ignite/pkg/cosmosaccount"
@@ -26,7 +24,9 @@ import (
 
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/settlement"
+	sequencertypes "github.com/dymensionxyz/dymint/third_party/dymension/sequencer/types"
 	"github.com/dymensionxyz/dymint/types"
+	rollapptypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
 )
 
 const (
@@ -151,11 +151,6 @@ func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *d
 			return err
 		})
 		if err != nil {
-			// this could happen if we timed-out waiting for acceptance in the previous iteration, but the batch was indeed submitted
-			if errors.Is(err, gerrc.ErrAlreadyExists) {
-				c.logger.Debug("Batch already accepted", "startHeight", batch.StartHeight(), "endHeight", batch.EndHeight())
-				return nil
-			}
 			return fmt.Errorf("broadcast batch: %w", err)
 		}
 

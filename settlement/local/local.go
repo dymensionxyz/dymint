@@ -13,21 +13,19 @@ import (
 	"time"
 
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
-
-	"github.com/dymensionxyz/gerr-cosmos/gerrc"
-	"github.com/libp2p/go-libp2p/core/crypto"
-	tmp2p "github.com/tendermint/tendermint/p2p"
-
 	"github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
+	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/tendermint/tendermint/libs/pubsub"
+	tmp2p "github.com/tendermint/tendermint/p2p"
+
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/store"
-	rollapptypes "github.com/dymensionxyz/dymint/third_party/dymension/rollapp/types"
 	"github.com/dymensionxyz/dymint/types"
+	rollapptypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
-
-	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
 const kvStoreDBName = "settlement"
