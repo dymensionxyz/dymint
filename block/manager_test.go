@@ -4,10 +4,6 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
-	"github.com/dymensionxyz/dymint/fraud"
-	fraudmocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/fraud"
-	"github.com/dymensionxyz/dymint/node/events"
-	"github.com/dymensionxyz/dymint/utils/event"
 	"sync/atomic"
 
 	"testing"
@@ -36,9 +32,13 @@ import (
 
 	"github.com/dymensionxyz/dymint/config"
 	"github.com/dymensionxyz/dymint/da"
-	block2 "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/block"
+	"github.com/dymensionxyz/dymint/fraud"
+	blockmocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/block"
+	fraudmocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/fraud"
+	"github.com/dymensionxyz/dymint/node/events"
 	slregistry "github.com/dymensionxyz/dymint/settlement/registry"
 	"github.com/dymensionxyz/dymint/store"
+	"github.com/dymensionxyz/dymint/utils/event"
 )
 
 // TODO: test loading sequencer while rotation in progress
@@ -195,6 +195,8 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 	assert.Greater(t, manager.State.Height(), batch.EndHeight())
 }
 
+// TestApplyCachedBlocks checks the flow that happens when we are receiving blocks from p2p and some of the blocks
+// are already cached. This means blocks that were gossiped but are bigger than the expected next block height.
 func TestApplyCachedBlocks_WithFraudCheck(t *testing.T) {
 	// Init app
 	app := testutil.GetAppMock(testutil.EndBlock)
@@ -223,7 +225,7 @@ func TestApplyCachedBlocks_WithFraudCheck(t *testing.T) {
 	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
 	manager.Retriever = manager.DAClient.(da.BatchRetriever)
 
-	mockExecutor := &block2.MockExecutorI{}
+	mockExecutor := &blockmocks.MockExecutorI{}
 	manager.Executor = mockExecutor
 	mockExecutor.On("GetAppInfo").Return(&abci.ResponseInfo{
 		LastBlockHeight: int64(0),
@@ -335,7 +337,7 @@ func TestApplyLocalBlock_WithFraudCheck(t *testing.T) {
 		time.Sleep(time.Millisecond * 500)
 	}
 
-	mockExecutor := &block2.MockExecutorI{}
+	mockExecutor := &blockmocks.MockExecutorI{}
 	manager.Executor = mockExecutor
 	mockExecutor.On("InitChain", mock.Anything, mock.Anything).Return(&abci.ResponseInitChain{}, nil)
 	mockExecutor.On("GetAppInfo").Return(&abci.ResponseInfo{
@@ -770,7 +772,7 @@ func TestManager_ProcessNextDABatch_FraudHandling(t *testing.T) {
 	require.NoError(err)
 
 	//// Mock Executor to return ErrFraud
-	mockExecutor := &block2.MockExecutorI{}
+	mockExecutor := &blockmocks.MockExecutorI{}
 	manager.Executor = mockExecutor
 	mockExecutor.On("GetAppInfo").Return(&abci.ResponseInfo{
 		LastBlockHeight: int64(batch.EndHeight()),
