@@ -19,16 +19,9 @@ for d in ./proto/* ; do
 done
 
 
-# Iterate over the target dirs and delete the current contents
-for TARGET_DIR in $TARGETS; do
-    echo "Deleting contents of $TARGET_DIR"
-    rm -rf $TARGET_DIR/*
-done
-
 # Generate proto files to ./proto/pb
 cd $SCRIPT_DIR
 mkdir -p ./proto/pb
-rm -rf $TARGET_DIR/*
 
 protoVer=v0.7
 protoImageName=tendermintdev/sdk-proto-gen:$protoVer
@@ -39,7 +32,7 @@ docker run -v $PWD:/workspace --workdir /workspace $protoImageName sh ./proto/pr
 for TARGET_DIR in $TARGETS; do
     echo "Copying generated proto files to $TARGET_DIR"
     TARGET_DIR_BASE_DIR=$(echo "$TARGET_DIR" | cut -d "/" -f2)
-    cp -r ./proto/pb/$TARGET_DIR_BASE_DIR/* $TARGET_DIR
+    cp -rf ./proto/pb/$TARGET_DIR_BASE_DIR/* $TARGET_DIR
 done
 
 echo "Deleting proto pb dir"
