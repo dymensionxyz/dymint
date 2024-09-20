@@ -283,6 +283,7 @@ func TestApplyCachedBlocks_WithFraudCheck(t *testing.T) {
 	mockExecutor.AssertExpectations(t)
 }
 
+// TestApplyLocalBlock checks the flow that happens when there is a block saved on the Store and we apply it locally.
 func TestApplyLocalBlock_WithFraudCheck(t *testing.T) {
 	// Init app
 	app := testutil.GetAppMock(testutil.EndBlock)
@@ -731,6 +732,8 @@ func TestDAFetch(t *testing.T) {
 	}
 }
 
+// TestManager_ProcessNextDABatch_FraudHandling tests the case when the manager receives a fraud when the block is
+// part of the batch received from the DA.
 func TestManager_ProcessNextDABatch_FraudHandling(t *testing.T) {
 	require := require.New(t)
 	// Setup app
