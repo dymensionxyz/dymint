@@ -3,6 +3,7 @@ package types
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 )
@@ -18,26 +19,29 @@ var (
 	ErrEmptyProposerAddress  = errors.New("no proposer address")
 )
 
-type ErrFraudHeightMismatch struct {
-	expected uint64
-	actual   uint64
+// TimeFraudMaxDrift is the maximum allowed time drift between the block time and the local time.
+var TimeFraudMaxDrift = 10 * time.Minute
 
-	headerHeight uint64
-	headerHash   [32]byte
-	proposer     []byte
+type ErrFraudHeightMismatch struct {
+	Expected uint64
+	Actual   uint64
+
+	HeaderHeight uint64
+	HeaderHash   [32]byte
+	Proposer     []byte
 }
 
 // NewErrFraudHeightMismatch creates a new ErrFraudHeightMismatch error.
 func NewErrFraudHeightMismatch(expected uint64, actual uint64, block *Block) error {
 	return &ErrFraudHeightMismatch{
-		expected: expected, actual: actual,
-		headerHeight: block.Header.Height, headerHash: block.Header.Hash(), proposer: block.Header.ProposerAddress,
+		Expected: expected, Actual: actual,
+		HeaderHeight: block.Header.Height, HeaderHash: block.Header.Hash(), Proposer: block.Header.ProposerAddress,
 	}
 }
 
 func (e ErrFraudHeightMismatch) Error() string {
 	return fmt.Sprintf("possible fraud detected on height %d, with header hash %X, emitted by sequencer %X:"+
-		" height mismatch: state expected %d, got %d", e.headerHeight, e.headerHash, e.proposer, e.expected, e.actual)
+		" height mismatch: state expected %d, got %d", e.HeaderHeight, e.HeaderHash, e.Proposer, e.Expected, e.Actual)
 }
 
 func (e ErrFraudHeightMismatch) Unwrap() error {
@@ -45,24 +49,24 @@ func (e ErrFraudHeightMismatch) Unwrap() error {
 }
 
 type ErrFraudAppHashMismatch struct {
-	expected [32]byte
+	Expected [32]byte
 
-	headerHeight uint64
-	headerHash   [32]byte
-	proposer     []byte
+	HeaderHeight uint64
+	HeaderHash   [32]byte
+	Proposer     []byte
 }
 
 // NewErrFraudAppHashMismatch creates a new ErrFraudAppHashMismatch error.
 func NewErrFraudAppHashMismatch(expected [32]byte, actual [32]byte, block *Block) error {
 	return &ErrFraudAppHashMismatch{
-		expected:     expected,
-		headerHeight: block.Header.Height, headerHash: block.Header.Hash(), proposer: block.Header.ProposerAddress,
+		Expected:     expected,
+		HeaderHeight: block.Header.Height, HeaderHash: block.Header.Hash(), Proposer: block.Header.ProposerAddress,
 	}
 }
 
 func (e ErrFraudAppHashMismatch) Error() string {
 	return fmt.Sprintf("possible fraud detected on height %d, with header hash %X, emitted by sequencer %X:"+
-		" AppHash mismatch: state expected %X, got %X", e.headerHeight, e.headerHash, e.proposer, e.expected, e.headerHash)
+		" AppHash mismatch: state expected %X, got %X", e.HeaderHeight, e.HeaderHash, e.Proposer, e.Expected, e.HeaderHash)
 }
 
 func (e ErrFraudAppHashMismatch) Unwrap() error {
@@ -70,28 +74,63 @@ func (e ErrFraudAppHashMismatch) Unwrap() error {
 }
 
 type ErrLastResultsHashMismatch struct {
-	expected [32]byte
+	Expected [32]byte
 
-	headerHeight   uint64
-	headerHash     [32]byte
-	proposer       []byte
-	lastResultHash [32]byte
+	HeaderHeight   uint64
+	HeaderHash     [32]byte
+	Proposer       []byte
+	LastResultHash [32]byte
 }
 
 // NewErrLastResultsHashMismatch creates a new ErrLastResultsHashMismatch error.
 func NewErrLastResultsHashMismatch(expected [32]byte, block *Block) error {
 	return &ErrLastResultsHashMismatch{
-		expected:     expected,
-		headerHeight: block.Header.Height, headerHash: block.Header.Hash(), proposer: block.Header.ProposerAddress,
-		lastResultHash: block.Header.LastResultsHash,
+		Expected:     expected,
+		HeaderHeight: block.Header.Height, HeaderHash: block.Header.Hash(), Proposer: block.Header.ProposerAddress,
+		LastResultHash: block.Header.LastResultsHash,
 	}
 }
 
 func (e ErrLastResultsHashMismatch) Error() string {
 	return fmt.Sprintf("possible fraud detected on height %d, with header hash %X, emitted by sequencer %X:"+
-		" LastResultsHash mismatch: state expected %X, got %X", e.headerHeight, e.headerHash, e.proposer, e.expected, e.lastResultHash)
+		" LastResultsHash mismatch: state expected %X, got %X", e.HeaderHeight, e.HeaderHash, e.Proposer, e.Expected, e.LastResultHash)
 }
 
 func (e ErrLastResultsHashMismatch) Unwrap() error {
+	return gerrc.ErrFault
+}
+
+type ErrTimeFraud struct {
+	Drift           time.Duration
+	ProposerAddress []byte
+	HeaderHash      [32]byte
+	HeaderHeight    uint64
+	HeaderTime      time.Time
+	CurrentTime     time.Time
+}
+
+func NewErrTimeFraud(block *Block, currentTime time.Time) error {
+	drift := time.Unix(int64(block.Header.Time), 0).Sub(currentTime)
+
+	return ErrTimeFraud{
+		Drift:           drift,
+		ProposerAddress: block.Header.ProposerAddress,
+		HeaderHash:      block.Header.Hash(),
+		HeaderHeight:    block.Header.Height,
+		HeaderTime:      time.Unix(int64(block.Header.Time), 0),
+		CurrentTime:     currentTime,
+	}
+}
+
+func (e ErrTimeFraud) Error() string {
+	return fmt.Sprintf(
+		"Sequencer posted a block with invalid time. "+
+			"Max allowed drift exceeded. "+
+			"proposerAddress=%s headerHash=%s headerHeight=%d drift=%s MaxDrift=%s headerTime=%s currentTime=%s",
+		e.ProposerAddress, e.HeaderHash, e.HeaderHeight, e.Drift, TimeFraudMaxDrift, e.HeaderTime, e.CurrentTime,
+	)
+}
+
+func (e ErrTimeFraud) Unwrap() error {
 	return gerrc.ErrFault
 }

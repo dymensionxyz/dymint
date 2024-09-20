@@ -7,49 +7,9 @@ import (
 	"time"
 
 
-	"github.com/dymensionxyz/gerr-cosmos/gerrc"
-
 	tmcrypto "github.com/tendermint/tendermint/crypto"
 	tmtypes "github.com/tendermint/tendermint/types"
 )
-
-// TimeFraudMaxDrift is the maximum allowed time drift between the block time and the local time.
-var TimeFraudMaxDrift = 10 * time.Minute
-
-type ErrTimeFraud struct {
-	drift           time.Duration
-	proposerAddress []byte
-	headerHash      [32]byte
-	headerHeight    uint64
-	headerTime      time.Time
-	currentTime     time.Time
-}
-
-func NewErrTimeFraud(block *Block, currentTime time.Time) error {
-	drift := time.Unix(int64(block.Header.Time), 0).Sub(currentTime)
-
-	return ErrTimeFraud{
-		drift:           drift,
-		proposerAddress: block.Header.ProposerAddress,
-		headerHash:      block.Header.Hash(),
-		headerHeight:    block.Header.Height,
-		headerTime:      time.Unix(int64(block.Header.Time), 0),
-		currentTime:     currentTime,
-	}
-}
-
-func (e ErrTimeFraud) Error() string {
-	return fmt.Sprintf(
-		"Sequencer posted a block with invalid time. "+
-			"Max allowed drift exceeded. "+
-			"proposerAddress=%s headerHash=%s headerHeight=%d drift=%s MaxDrift=%s headerTime=%s currentTime=%s",
-		e.proposerAddress, e.headerHash, e.headerHeight, e.drift, TimeFraudMaxDrift, e.headerTime, e.currentTime,
-	)
-}
-
-func (e ErrTimeFraud) Unwrap() error {
-	return gerrc.ErrFault
-}
 
 func ValidateProposedTransition(state *State, block *Block, commit *Commit, proposerPubKey tmcrypto.PubKey) error {
 	if err := block.ValidateWithState(state); err != nil {
