@@ -7,6 +7,14 @@ import (
 	uevent "github.com/dymensionxyz/dymint/utils/event"
 )
 
+// FraudHandler is an interface that defines a method to handle faults.
+// Contract: should not be blocking.
+type FraudHandler interface {
+	// HandleFault handles a fault that occurred in the system.
+	// The fault is passed as an error type.
+	HandleFault(ctx context.Context, fault error)
+}
+
 // FreezeHandler is used to handle faults coming from executing and validating blocks.
 type FreezeHandler struct {
 	m *Manager

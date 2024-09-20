@@ -1,10 +1,10 @@
-package fraud_test
+package block_test
 
 import (
 	"errors"
 	"testing"
 
-	"github.com/dymensionxyz/dymint/fraud"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 )
 
 type mockError struct {
@@ -17,19 +17,19 @@ func (m mockError) Error() string {
 }
 
 func (mockError) Unwrap() error {
-	return fraud.ErrFraud
+	return gerrc.ErrFault
 }
 
 func TestErrorIsErrFault(t *testing.T) {
 	err := mockError{name: "test", data: "test"}
 
-	if !errors.Is(err, fraud.ErrFraud) {
+	if !errors.Is(err, gerrc.ErrFault) {
 		t.Error("Expected Is to return true")
 	}
 
 	anotherErr := errors.New("some error")
 
-	if errors.Is(anotherErr, fraud.ErrFraud) {
+	if errors.Is(anotherErr, gerrc.ErrFault) {
 		t.Error("Expected Is to return false")
 	}
 }

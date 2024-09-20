@@ -25,7 +25,6 @@ import (
 
 	"github.com/dymensionxyz/dymint/config"
 	"github.com/dymensionxyz/dymint/da"
-	"github.com/dymensionxyz/dymint/fraud"
 	"github.com/dymensionxyz/dymint/mempool"
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/settlement"
@@ -78,7 +77,7 @@ type Manager struct {
 	TargetHeight atomic.Uint64
 
 	// Fraud handler
-	FraudHandler fraud.Handler
+	FraudHandler FraudHandler
 }
 
 // NewManager creates new block Manager.

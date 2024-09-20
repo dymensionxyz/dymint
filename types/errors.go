@@ -4,8 +4,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/dymensionxyz/dymint/fraud"
-
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 )
 
@@ -43,7 +41,7 @@ func (e ErrFraudHeightMismatch) Error() string {
 }
 
 func (e ErrFraudHeightMismatch) Unwrap() error {
-	return fraud.ErrFraud
+	return gerrc.ErrFault
 }
 
 type ErrFraudAppHashMismatch struct {
@@ -68,7 +66,7 @@ func (e ErrFraudAppHashMismatch) Error() string {
 }
 
 func (e ErrFraudAppHashMismatch) Unwrap() error {
-	return fraud.ErrFraud
+	return gerrc.ErrFault
 }
 
 type ErrLastResultsHashMismatch struct {
@@ -95,5 +93,5 @@ func (e ErrLastResultsHashMismatch) Error() string {
 }
 
 func (e ErrLastResultsHashMismatch) Unwrap() error {
-	return fraud.ErrFraud
+	return gerrc.ErrFault
 }

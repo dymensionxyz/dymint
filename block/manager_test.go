@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"errors"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -31,7 +32,6 @@ import (
 
 	"github.com/dymensionxyz/dymint/config"
 	"github.com/dymensionxyz/dymint/da"
-	"github.com/dymensionxyz/dymint/fraud"
 	blockmocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/block"
 	fraudmocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/fraud"
 	"github.com/dymensionxyz/dymint/node/events"
@@ -229,7 +229,7 @@ func TestApplyCachedBlocks_WithFraudCheck(t *testing.T) {
 	mockExecutor.On("GetAppInfo").Return(&abci.ResponseInfo{
 		LastBlockHeight: int64(0),
 	}, nil)
-	mockExecutor.On("ExecuteBlock", mock.Anything, mock.Anything).Return(nil, fraud.ErrFraud)
+	mockExecutor.On("ExecuteBlock", mock.Anything, mock.Anything).Return(nil, gerrc.ErrFault)
 
 	// Check that handle fault is called
 	manager.FraudHandler = block.NewFreezeHandler(manager)
@@ -273,8 +273,8 @@ func TestApplyCachedBlocks_WithFraudCheck(t *testing.T) {
 	case receivedEvent := <-fraudEventReceived:
 		if receivedEvent.Error == nil {
 			t.Error("there should be an error in the event")
-		} else if !errors.Is(receivedEvent.Error, fraud.ErrFraud) {
-			t.Errorf("Unexpected error received, expected: %v, got: %v", fraud.ErrFraud, receivedEvent.Error)
+		} else if !errors.Is(receivedEvent.Error, gerrc.ErrFault) {
+			t.Errorf("Unexpected error received, expected: %v, got: %v", gerrc.ErrFault, receivedEvent.Error)
 		}
 	case <-time.After(5 * time.Second):
 		t.Error("timeout waiting for fraud event")
@@ -344,14 +344,14 @@ func TestApplyLocalBlock_WithFraudCheck(t *testing.T) {
 	}, nil)
 	mockExecutor.On("UpdateStateAfterInitChain", mock.Anything, mock.Anything).Return(nil)
 	mockExecutor.On("UpdateMempoolAfterInitChain", mock.Anything).Return(nil)
-	mockExecutor.On("ExecuteBlock", mock.Anything, mock.Anything).Return(nil, fraud.ErrFraud)
+	mockExecutor.On("ExecuteBlock", mock.Anything, mock.Anything).Return(nil, gerrc.ErrFault)
 
 	// Check that handle fault is called
 	mockFraudHandler := &fraudmocks.MockHandler{}
 	manager.FraudHandler = mockFraudHandler
 
 	mockFraudHandler.On("HandleFault", mock.Anything, mock.MatchedBy(func(err error) bool {
-		return errors.Is(err, fraud.ErrFraud)
+		return errors.Is(err, gerrc.ErrFault)
 	})).Return(nil)
 
 	// Initially sync target is 0
@@ -367,7 +367,7 @@ func TestApplyLocalBlock_WithFraudCheck(t *testing.T) {
 	go func() {
 		errChan <- manager.Start(ctx)
 		err := <-errChan
-		require.True(t, errors.Is(err, fraud.ErrFraud))
+		require.True(t, errors.Is(err, gerrc.ErrFault))
 	}()
 	<-ctx.Done()
 	assert.Equal(t, batch.EndHeight(), manager.LastSubmittedHeight.Load())
@@ -775,14 +775,14 @@ func TestManager_ProcessNextDABatch_FraudHandling(t *testing.T) {
 	mockExecutor.On("GetAppInfo").Return(&abci.ResponseInfo{
 		LastBlockHeight: int64(batch.EndHeight()),
 	}, nil)
-	mockExecutor.On("ExecuteBlock", mock.Anything, mock.Anything).Return(nil, fraud.ErrFraud)
+	mockExecutor.On("ExecuteBlock", mock.Anything, mock.Anything).Return(nil, gerrc.ErrFault)
 
 	// Check that handle fault is called
 	mockFraudHandler := &fraudmocks.MockHandler{}
 	manager.FraudHandler = mockFraudHandler
 
 	mockFraudHandler.On("HandleFault", mock.Anything, mock.MatchedBy(func(err error) bool {
-		return errors.Is(err, fraud.ErrFraud)
+		return errors.Is(err, gerrc.ErrFault)
 	})).Return(nil)
 
 	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{Data: commitHash[:]}).Once()
@@ -795,7 +795,7 @@ func TestManager_ProcessNextDABatch_FraudHandling(t *testing.T) {
 	err = manager.ProcessNextDABatch(daResultSubmitBatch.SubmitMetaData)
 
 	// Verify
-	require.True(errors.Is(err, fraud.ErrFraud))
+	require.True(errors.Is(err, gerrc.ErrFault))
 	mockExecutor.AssertExpectations(t)
 	mockFraudHandler.AssertExpectations(t)
 }

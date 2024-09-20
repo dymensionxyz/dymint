@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/dymensionxyz/dymint/fraud"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 
 	errorsmod "cosmossdk.io/errors"
 
@@ -16,7 +16,7 @@ import (
 func (m *Manager) applyBlockWithFraudHandling(block *types.Block, commit *types.Commit, blockMetaData types.BlockMetaData, validate bool) error {
 	if validate {
 		if err := m.validateBlockBeforeApply(block, commit); err != nil {
-			if errors.Is(err, fraud.ErrFraud) {
+			if errors.Is(err, gerrc.ErrFault) {
 				m.FraudHandler.HandleFault(context.Background(), err)
 			} else if err != nil {
 				m.blockCache.Delete(block.Header.Height)
@@ -28,7 +28,7 @@ func (m *Manager) applyBlockWithFraudHandling(block *types.Block, commit *types.
 	}
 
 	if err := m.applyBlock(block, commit, blockMetaData); err != nil {
-		if errors.Is(err, fraud.ErrFraud) {
+		if errors.Is(err, gerrc.ErrFault) {
 			m.FraudHandler.HandleFault(context.Background(), err)
 		}
 		return fmt.Errorf("apply block: %w", err)
