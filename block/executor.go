@@ -21,11 +21,12 @@ const minBlockMaxBytes = 10000
 
 // Executor creates and applies blocks and maintains state.
 type Executor struct {
-	localAddress          []byte
-	chainID               string
-	proxyAppConsensusConn proxy.AppConnConsensus
-	proxyAppQueryConn     proxy.AppConnQuery
-	mempool               mempool.Mempool
+	localAddress            []byte
+	chainID                 string
+	proxyAppConsensusConn   proxy.AppConnConsensus
+	proxyAppQueryConn       proxy.AppConnQuery
+	mempool                 mempool.Mempool
+	consensusMessagesStream ConsensusMessagesStream
 
 	eventBus *tmtypes.EventBus
 
@@ -102,6 +103,11 @@ func (e *Executor) CreateBlock(
 	maxBlockDataSizeBytes = min(maxBlockDataSizeBytes, uint64(max(minBlockMaxBytes, state.ConsensusParams.Block.MaxBytes)))
 	mempoolTxs := e.mempool.ReapMaxBytesMaxGas(int64(maxBlockDataSizeBytes), state.ConsensusParams.Block.MaxGas)
 
+	consensusMessages, err := e.consensusMessagesStream.GetConsensusMessages()
+	if err != nil {
+		e.logger.Error("Failed to get consensus messages", "error", err)
+	}
+
 	block := &types.Block{
 		Header: types.Header{
 			Version: types.Version{
@@ -122,6 +128,7 @@ func (e *Executor) CreateBlock(
 			Txs:                    toDymintTxs(mempoolTxs),
 			IntermediateStateRoots: types.IntermediateStateRoots{RawRootsList: nil},
 			Evidence:               types.EvidenceData{Evidence: nil},
+			ConsensusMessages:      consensusMessages,
 		},
 		LastCommit: *lastCommit,
 	}
