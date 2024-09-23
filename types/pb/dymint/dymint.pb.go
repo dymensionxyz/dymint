@@ -6,9 +6,9 @@ package dymint
 import (
 	fmt "fmt"
 	proto "github.com/gogo/protobuf/proto"
+	types2 "github.com/gogo/protobuf/types"
 	types1 "github.com/tendermint/tendermint/abci/types"
 	types "github.com/tendermint/tendermint/proto/tendermint/types"
-	anypb "google.golang.org/protobuf/types/known/anypb"
 	io "io"
 	math "math"
 	math_bits "math/bits"
@@ -323,7 +323,7 @@ type Data struct {
 	Txs                    [][]byte           `protobuf:"bytes,1,rep,name=txs,proto3" json:"txs,omitempty"`
 	IntermediateStateRoots [][]byte           `protobuf:"bytes,2,rep,name=intermediate_state_roots,json=intermediateStateRoots,proto3" json:"intermediate_state_roots,omitempty"`
 	Evidence               []*types1.Evidence `protobuf:"bytes,3,rep,name=evidence,proto3" json:"evidence,omitempty"`
-	ConsensusMessages      []*anypb.Any       `protobuf:"bytes,4,rep,name=consensus_messages,json=consensusMessages,proto3" json:"consensus_messages,omitempty"`
+	ConsensusMessages      []*types2.Any      `protobuf:"bytes,4,rep,name=consensus_messages,json=consensusMessages,proto3" json:"consensus_messages,omitempty"`
 }
 
 func (m *Data) Reset()         { *m = Data{} }
@@ -380,7 +380,7 @@ func (m *Data) GetEvidence() []*types1.Evidence {
 	return nil
 }
 
-func (m *Data) GetConsensusMessages() []*anypb.Any {
+func (m *Data) GetConsensusMessages() []*types2.Any {
 	if m != nil {
 		return m.ConsensusMessages
 	}
@@ -2329,7 +2329,7 @@ func (m *Data) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.ConsensusMessages = append(m.ConsensusMessages, &anypb.Any{})
+			m.ConsensusMessages = append(m.ConsensusMessages, &types2.Any{})
 			if err := m.ConsensusMessages[len(m.ConsensusMessages)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}

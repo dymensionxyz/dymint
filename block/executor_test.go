@@ -3,6 +3,9 @@ package block_test
 import (
 	"context"
 	"crypto/rand"
+	"github.com/golang/groupcache/testpb"
+	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
 	"testing"
 	"time"
 
@@ -84,6 +87,93 @@ func TestCreateBlock(t *testing.T) {
 	block = executor.CreateBlock(3, &types.Commit{}, [32]byte{}, [32]byte(state.Sequencers.ProposerHash()), state, maxBytes)
 	require.NotNil(block)
 	assert.Len(block.Data.Txs, 2)
+}
+
+func TestCreateBlockWithConsensusMessages(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+	logger := log.TestingLogger()
+	app := &tmmocks.MockApplication{}
+	app.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{})
+	clientCreator := proxy.NewLocalClientCreator(app)
+	abciClient, err := clientCreator.NewABCIClient()
+	require.NoError(err)
+	require.NotNil(clientCreator)
+	require.NotNil(abciClient)
+	mpool := mempoolv1.NewTxMempool(logger, cfg.DefaultMempoolConfig(), proxy.NewAppConnMempool(abciClient), 0)
+
+	name, city := "test1", ""
+	theMsg1 := &testpb.TestMessage{
+		Name: &name,
+		City: &city,
+	}
+
+	name, city = "test2", ""
+	theMsg2 := &testpb.TestMessage{
+		Name: &name,
+		City: &city,
+	}
+
+	// Create a mock ConsensusMessagesStream
+	mockStream := &MockConsensusMessagesStream{}
+	mockStream.On("GetConsensusMessages").Return([]proto.Message{
+		theMsg1,
+		theMsg2,
+	}, nil)
+
+	executor, err := block.NewExecutor([]byte("test address"), "test", mpool, proxy.NewAppConns(clientCreator), nil, logger)
+	assert.NoError(err)
+
+	maxBytes := uint64(1000)
+	proposerKey := ed25519.GenPrivKey()
+	tmPubKey, err := cryptocodec.ToTmPubKeyInterface(proposerKey.PubKey())
+	require.NoError(err)
+
+	state := &types.State{}
+	state.Sequencers.SetProposer(types.NewSequencerFromValidator(*tmtypes.NewValidator(tmPubKey, 1)))
+	state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
+	state.ConsensusParams.Block.MaxGas = 100000
+
+	block := executor.CreateBlock(1, &types.Commit{}, [32]byte{}, [32]byte(state.Sequencers.ProposerHash()[:]), state, maxBytes)
+
+	require.NotNil(block)
+	assert.Empty(block.Data.Txs)
+	assert.Equal(uint64(1), block.Header.Height)
+	assert.Len(block.Data.ConsensusMessages, 2)
+
+	// Verify the content of ConsensusMessages
+	theType, err := proto.Marshal(theMsg1)
+	require.NoError(err)
+
+	anyMsg1 := anypb.Any{
+		TypeUrl: proto.MessageName(theMsg1),
+		Value:   theType,
+	}
+	require.NoError(err)
+
+	theType, err = proto.Marshal(theMsg2)
+	require.NoError(err)
+
+	anyMsg2 := anypb.Any{
+		TypeUrl: proto.MessageName(theMsg2),
+		Value:   theType,
+	}
+	require.NoError(err)
+
+	assert.Equal(anyMsg1, block.Data.ConsensusMessages[0])
+	assert.Equal(anyMsg2, block.Data.ConsensusMessages[1])
+
+	mockStream.AssertExpectations(t)
+}
+
+// MockConsensusMessagesStream is a mock implementation of ConsensusMessagesStream
+type MockConsensusMessagesStream struct {
+	mock.Mock
+}
+
+func (m *MockConsensusMessagesStream) GetConsensusMessages() ([]proto.Message, error) {
+	args := m.Called()
+	return args.Get(0).([]proto.Message), args.Error(1)
 }
 
 func TestApplyBlock(t *testing.T) {
