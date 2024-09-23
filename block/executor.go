@@ -2,6 +2,8 @@ package block
 
 import (
 	"errors"
+	proto "google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/anypb"
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -108,6 +110,8 @@ func (e *Executor) CreateBlock(
 		e.logger.Error("Failed to get consensus messages", "error", err)
 	}
 
+	consensusAnyMessages := fromProtoMsgSliceToAnySlice(consensusMessages)
+
 	block := &types.Block{
 		Header: types.Header{
 			Version: types.Version{
@@ -128,7 +132,7 @@ func (e *Executor) CreateBlock(
 			Txs:                    toDymintTxs(mempoolTxs),
 			IntermediateStateRoots: types.IntermediateStateRoots{RawRootsList: nil},
 			Evidence:               types.EvidenceData{Evidence: nil},
-			ConsensusMessages:      consensusMessages,
+			ConsensusMessages:      consensusAnyMessages,
 		},
 		LastCommit: *lastCommit,
 	}
@@ -296,4 +300,21 @@ func fromDymintTxs(optiTxs types.Txs) tmtypes.Txs {
 		txs[i] = []byte(optiTxs[i])
 	}
 	return txs
+}
+
+func fromProtoMsgToAny(msg proto.Message) *anypb.Any {
+	anyType, err := anypb.New(msg)
+	if err != nil {
+		panic(err)
+	}
+
+	return anyType
+}
+
+func fromProtoMsgSliceToAnySlice(msgs []proto.Message) []*anypb.Any {
+	result := make([]*anypb.Any, len(msgs))
+	for i, msg := range msgs {
+		result[i] = fromProtoMsgToAny(msg)
+	}
+	return result
 }
