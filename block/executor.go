@@ -2,8 +2,8 @@ package block
 
 import (
 	"errors"
-	proto "google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/types/known/anypb"
+	proto2 "github.com/gogo/protobuf/proto"
+	proto "github.com/gogo/protobuf/types"
 	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -37,15 +37,24 @@ type Executor struct {
 
 // NewExecutor creates new instance of BlockExecutor.
 // localAddress will be used in sequencer mode only.
-func NewExecutor(localAddress []byte, chainID string, mempool mempool.Mempool, proxyApp proxy.AppConns, eventBus *tmtypes.EventBus, logger types.Logger) (*Executor, error) {
+func NewExecutor(
+	localAddress []byte,
+	chainID string,
+	mempool mempool.Mempool,
+	proxyApp proxy.AppConns,
+	eventBus *tmtypes.EventBus,
+	consensusMessagesStream ConsensusMessagesStream,
+	logger types.Logger,
+) (*Executor, error) {
 	be := Executor{
-		localAddress:          localAddress,
-		chainID:               chainID,
-		proxyAppConsensusConn: proxyApp.Consensus(),
-		proxyAppQueryConn:     proxyApp.Query(),
-		mempool:               mempool,
-		eventBus:              eventBus,
-		logger:                logger,
+		localAddress:            localAddress,
+		chainID:                 chainID,
+		proxyAppConsensusConn:   proxyApp.Consensus(),
+		proxyAppQueryConn:       proxyApp.Query(),
+		mempool:                 mempool,
+		eventBus:                eventBus,
+		consensusMessagesStream: consensusMessagesStream,
+		logger:                  logger,
 	}
 	return &be, nil
 }
@@ -105,12 +114,15 @@ func (e *Executor) CreateBlock(
 	maxBlockDataSizeBytes = min(maxBlockDataSizeBytes, uint64(max(minBlockMaxBytes, state.ConsensusParams.Block.MaxBytes)))
 	mempoolTxs := e.mempool.ReapMaxBytesMaxGas(int64(maxBlockDataSizeBytes), state.ConsensusParams.Block.MaxGas)
 
-	consensusMessages, err := e.consensusMessagesStream.GetConsensusMessages()
-	if err != nil {
-		e.logger.Error("Failed to get consensus messages", "error", err)
-	}
+	var consensusAnyMessages []*proto.Any
+	if e.consensusMessagesStream != nil {
+		consensusMessages, err := e.consensusMessagesStream.GetConsensusMessages()
+		if err != nil {
+			e.logger.Error("Failed to get consensus messages", "error", err)
+		}
 
-	consensusAnyMessages := fromProtoMsgSliceToAnySlice(consensusMessages)
+		consensusAnyMessages = fromProtoMsgSliceToAnySlice(consensusMessages)
+	}
 
 	block := &types.Block{
 		Header: types.Header{
@@ -303,17 +315,20 @@ func fromDymintTxs(optiTxs types.Txs) tmtypes.Txs {
 	return txs
 }
 
-func fromProtoMsgToAny(msg proto.Message) *anypb.Any {
-	anyType, err := anypb.New(msg)
+func fromProtoMsgToAny(msg proto2.Message) *proto.Any {
+	theType, err := proto2.Marshal(msg)
 	if err != nil {
-		panic(err)
+		return nil
 	}
 
-	return anyType
+	return &proto.Any{
+		TypeUrl: proto2.MessageName(msg),
+		Value:   theType,
+	}
 }
 
-func fromProtoMsgSliceToAnySlice(msgs []proto.Message) []*anypb.Any {
-	result := make([]*anypb.Any, len(msgs))
+func fromProtoMsgSliceToAnySlice(msgs []proto2.Message) []*proto.Any {
+	result := make([]*proto.Any, len(msgs))
 	for i, msg := range msgs {
 		result[i] = fromProtoMsgToAny(msg)
 	}

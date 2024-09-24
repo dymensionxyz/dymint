@@ -3,9 +3,9 @@ package block_test
 import (
 	"context"
 	"crypto/rand"
+	"github.com/gogo/protobuf/proto"
+	prototypes "github.com/gogo/protobuf/types"
 	"github.com/golang/groupcache/testpb"
-	"github.com/golang/protobuf/proto"
-	"google.golang.org/protobuf/types/known/anypb"
 	"testing"
 	"time"
 
@@ -50,7 +50,7 @@ func TestCreateBlock(t *testing.T) {
 	require.NotNil(abciClient)
 
 	mpool := mempoolv1.NewTxMempool(logger, cfg.DefaultMempoolConfig(), proxy.NewAppConnMempool(abciClient), 0)
-	executor, err := block.NewExecutor([]byte("test address"), "test", mpool, proxy.NewAppConns(clientCreator), nil, logger)
+	executor, err := block.NewExecutor([]byte("test address"), "test", mpool, proxy.NewAppConns(clientCreator), nil, nil, logger)
 	assert.NoError(err)
 
 	maxBytes := uint64(100)
@@ -121,7 +121,7 @@ func TestCreateBlockWithConsensusMessages(t *testing.T) {
 		theMsg2,
 	}, nil)
 
-	executor, err := block.NewExecutor([]byte("test address"), "test", mpool, proxy.NewAppConns(clientCreator), nil, logger)
+	executor, err := block.NewExecutor([]byte("test address"), "test", mpool, proxy.NewAppConns(clientCreator), nil, mockStream, logger)
 	assert.NoError(err)
 
 	maxBytes := uint64(1000)
@@ -145,7 +145,7 @@ func TestCreateBlockWithConsensusMessages(t *testing.T) {
 	theType, err := proto.Marshal(theMsg1)
 	require.NoError(err)
 
-	anyMsg1 := anypb.Any{
+	anyMsg1 := &prototypes.Any{
 		TypeUrl: proto.MessageName(theMsg1),
 		Value:   theType,
 	}
@@ -154,14 +154,14 @@ func TestCreateBlockWithConsensusMessages(t *testing.T) {
 	theType, err = proto.Marshal(theMsg2)
 	require.NoError(err)
 
-	anyMsg2 := anypb.Any{
+	anyMsg2 := &prototypes.Any{
 		TypeUrl: proto.MessageName(theMsg2),
 		Value:   theType,
 	}
 	require.NoError(err)
 
-	assert.Equal(anyMsg1, block.Data.ConsensusMessages[0])
-	assert.Equal(anyMsg2, block.Data.ConsensusMessages[1])
+	assert.True(proto.Equal(anyMsg1, block.Data.ConsensusMessages[0]))
+	assert.True(proto.Equal(anyMsg2, block.Data.ConsensusMessages[1]))
 
 	mockStream.AssertExpectations(t)
 }
@@ -228,7 +228,7 @@ func TestApplyBlock(t *testing.T) {
 	appConns := &tmmocksproxy.MockAppConns{}
 	appConns.On("Consensus").Return(abciClient)
 	appConns.On("Query").Return(abciClient)
-	executor, err := block.NewExecutor([]byte("test address"), chainID, mpool, appConns, eventBus, logger)
+	executor, err := block.NewExecutor([]byte("test address"), chainID, mpool, appConns, eventBus, nil, logger)
 	assert.NoError(err)
 
 	// Subscribe to tx events

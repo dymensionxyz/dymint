@@ -2,9 +2,9 @@ package types
 
 import (
 	"encoding"
-	"google.golang.org/protobuf/types/known/anypb"
 	"time"
 
+	proto "github.com/gogo/protobuf/types"
 	tmtypes "github.com/tendermint/tendermint/types"
 )
 
@@ -84,7 +84,7 @@ type Data struct {
 	Txs                    Txs
 	IntermediateStateRoots IntermediateStateRoots
 	Evidence               EvidenceData
-	ConsensusMessages      []*anypb.Any
+	ConsensusMessages      []*proto.Any
 }
 
 // EvidenceData defines how evidence is stored in block.
