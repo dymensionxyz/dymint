@@ -109,7 +109,7 @@ func TestInitialState(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			agg, err := block.NewManager(key, conf, c.genesis, c.store, nil, proxyApp, settlementlc,
-				nil, pubsubServer, p2pClient, nil, logger)
+				nil, pubsubServer, p2pClient, nil, nil, logger)
 			assert.NoError(err)
 			assert.NotNil(agg)
 			assert.Equal(c.expectedChainID, agg.State.ChainID)
