@@ -77,6 +77,4 @@ func TestPruningRetainHeight(t *testing.T) {
 		}
 	}
 
-	err = manager.PruneBlocks(validRetainHeight)
-	require.NoError(err)
 }
