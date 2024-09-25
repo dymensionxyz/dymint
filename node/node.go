@@ -160,6 +160,7 @@ func NewNode(
 		pubsubServer,
 		nil, // p2p client is set later
 		dalcKV,
+		indexerService,
 		logger,
 	)
 	if err != nil {

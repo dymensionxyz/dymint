@@ -76,4 +76,5 @@ func TestPruningRetainHeight(t *testing.T) {
 			require.Error(gerrc.ErrInvalidArgument)
 		}
 	}
+
 }
