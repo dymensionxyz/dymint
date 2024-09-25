@@ -11,11 +11,7 @@ import (
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"golang.org/x/sync/errgroup"
 
-<<<<<<< HEAD
-=======
-	"github.com/dymensionxyz/dymint/da/registry"
 	"github.com/dymensionxyz/dymint/indexers/txindex"
->>>>>>> 5055ae7 (feat(manager): run dymint store block pruning in background (#1053))
 	"github.com/dymensionxyz/dymint/store"
 	uerrors "github.com/dymensionxyz/dymint/utils/errors"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
@@ -115,17 +111,17 @@ func NewManager(
 
 	m := &Manager{
 		Pubsub:         pubsub,
-		P2PClient:      p2pClient,
+		p2pClient:      p2pClient,
 		LocalKey:       localKey,
-		Conf:           conf.BlockManagerConfig,
+		Conf:           conf,
 		Genesis:        genesis,
 		Store:          store,
 		Executor:       exec,
-		DAClient:  dalc,
+		DAClient:       dalc,
 		SLClient:       settlementClient,
 		indexerService: indexerService,
-		Retriever: dalc.(da.BatchRetriever),
-		logger:         logger.With("module", "block_manager"),
+		Retriever:      dalc.(da.BatchRetriever),
+		logger:         logger,
 		blockCache: &Cache{
 			cache: make(map[uint64]types.CachedBlock),
 		},
@@ -162,13 +158,11 @@ func (m *Manager) Start(ctx context.Context) error {
 	}
 
 	eg, ctx := errgroup.WithContext(ctx)
-	eg, ctx := errgroup.WithContext(ctx)
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		return m.PruningLoop(ctx)
 	})
 
 	if isSequencer {
-
 
 		// Sequencer must wait till DA is synced to start submitting blobs
 		<-m.DAClient.Synced()
