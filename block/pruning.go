@@ -15,16 +15,23 @@ func (m *Manager) PruneBlocks(retainHeight uint64) error {
 			gerrc.ErrInvalidArgument)
 	}
 
-	err := m.p2pClient.RemoveBlocks(context.TODO(), m.State.BaseHeight, retainHeight)
+	// prune blocks from blocksync store
+	err := m.p2pClient.RemoveBlocks(context.Background(), m.State.BaseHeight, retainHeight)
 	if err != nil {
 		m.logger.Error("pruning blocksync store", "retain_height", retainHeight, "err", err)
 	}
+
+	// prune blocks from indexer store
+	err = m.indexerService.Prune(m.State.BaseHeight, retainHeight)
+	if err != nil {
+		m.logger.Error("pruning indexer", "retain_height", retainHeight, "err", err)
+	}
+
+	// prune blocks from dymint store
 	pruned, err := m.Store.PruneBlocks(m.State.BaseHeight, retainHeight)
 	if err != nil {
 		return fmt.Errorf("prune block store: %w", err)
 	}
-
-	// TODO: prune state/indexer and state/txindexer??
 
 	m.State.BaseHeight = retainHeight
 	_, err = m.Store.SaveState(m.State, nil)
@@ -34,4 +41,19 @@ func (m *Manager) PruneBlocks(retainHeight uint64) error {
 
 	m.logger.Info("pruned blocks", "pruned", pruned, "retain_height", retainHeight)
 	return nil
+}
+
+func (m *Manager) PruningLoop(ctx context.Context) error {
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case retainHeight := <-m.pruningC:
+			err := m.PruneBlocks(uint64(retainHeight))
+			if err != nil {
+				m.logger.Error("pruning blocks", "retainHeight", retainHeight, "err", err)
+			}
+
+		}
+	}
 }
