@@ -27,6 +27,7 @@ import (
 	sequencertypes "github.com/dymensionxyz/dymint/third_party/dymension/sequencer/types"
 	"github.com/dymensionxyz/dymint/types"
 	rollapptypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
+	"github.com/dymensionxyz/dymint/version"
 )
 
 const (
@@ -502,6 +503,7 @@ func (c *Client) convertBatchToMsgUpdateState(batch *types.Batch, daResult *da.R
 		DAPath:      daResult.SubmitMetaData.ToPath(),
 		BDs:         rollapptypes.BlockDescriptors{BD: blockDescriptors},
 		Last:        batch.LastBatch,
+		DrsVersion:  version.Commit,
 	}
 	return settlementBatch, nil
 }
