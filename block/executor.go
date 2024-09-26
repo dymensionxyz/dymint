@@ -121,7 +121,9 @@ func (e *Executor) CreateBlock(
 			e.logger.Error("Failed to get consensus messages", "error", err)
 		}
 
-		consensusAnyMessages = fromProtoMsgSliceToAnySlice(consensusMessages)
+		if consensusMessages != nil {
+			consensusAnyMessages = fromProtoMsgSliceToAnySlice(consensusMessages)
+		}
 	}
 
 	block := &types.Block{
