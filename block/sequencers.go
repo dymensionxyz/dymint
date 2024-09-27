@@ -190,13 +190,17 @@ func (m *Manager) UpdateSequencerSet(event pubsub.Message) {
 		return
 	}
 
-	newSeqAddr := eventData.SeqAddr
-
-	sequencers := m.State.Sequencers.Sequencers
-	newSequencer, err := m.SLClient.GetSequencerByAddress(newSeqAddr)
-	if err != nil {
-		m.logger.Error("unable to add new sequencer from event. err:%w", err)
+	if m.State.Sequencers.GetByAddress(eventData.SeqAddr) != nil {
+		m.logger.Debug("Sequencer not added from new bonded sequencer event because already in the list.")
+		return
 	}
+
+	newSequencer, err := m.SLClient.GetSequencerByAddress(eventData.SeqAddr)
+	if err != nil {
+		m.logger.Error("Unable to add new sequencer from event. err:%w", err)
+		return
+	}
+	sequencers := m.State.Sequencers.Sequencers
 	sequencers = append(sequencers, newSequencer)
 	m.State.Sequencers.SetSequencers(sequencers)
 }
