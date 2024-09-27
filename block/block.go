@@ -98,6 +98,18 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 			return fmt.Errorf("commit block: %w", err)
 		}
 
+		// Prune old heights, if requested by ABCI app.
+		// retainHeight is determined by currentHeight - min-retain-blocks (app.toml config).
+		// Unless max_age_num_blocks in consensus params is higher than min-retain-block, then max_age_num_blocks will be used instead of min-retain-blocks.
+
+		if 0 < retainHeight {
+			select {
+			case m.pruningC <- retainHeight:
+			default:
+				m.logger.Error("pruning channel full. skipping pruning", "retainHeight", retainHeight)
+			}
+		}
+
 		// Update the state with the new app hash, and store height from the commit.
 		// Every one of those, if happens before commit, prevents us from re-executing the block in case failed during commit.
 		m.Executor.UpdateStateAfterCommit(m.State, responses, appHash, block.Header.Height)
@@ -124,14 +136,6 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	}
 
 	types.RollappHeightGauge.Set(float64(block.Header.Height))
-
-	// Prune old heights, if requested by ABCI app.
-	if 0 < retainHeight {
-		_, err := m.PruneBlocks(uint64(retainHeight))
-		if err != nil {
-			m.logger.Error("prune blocks", "retain_height", retainHeight, "err", err)
-		}
-	}
 
 	m.blockCache.Delete(block.Header.Height)
 

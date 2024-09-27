@@ -3,10 +3,20 @@ package store
 import (
 	"errors"
 	"path/filepath"
+	"sync"
+	"time"
 
+	"github.com/dymensionxyz/dymint/types"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
+	"github.com/tendermint/tendermint/libs/log"
 
-	"github.com/dgraph-io/badger/v3"
+	"github.com/dgraph-io/badger/v4"
+	"github.com/dgraph-io/badger/v4/options"
+)
+
+const (
+	gcTimeout    = 1 * time.Minute
+	discardRatio = 0.5 // Recommended by badger. Indicates that a file will be rewritten if half the space can be discarded.
 )
 
 var (
@@ -16,7 +26,9 @@ var (
 
 // BadgerKV is a implementation of KVStore using Badger v3.
 type BadgerKV struct {
-	db *badger.DB
+	db        *badger.DB
+	closing   chan struct{}
+	closeOnce sync.Once
 }
 
 // NewDefaultInMemoryKVStore builds KVStore that works in-memory (without accessing disk).
@@ -26,24 +38,29 @@ func NewDefaultInMemoryKVStore() KV {
 		panic(err)
 	}
 	return &BadgerKV{
-		db: db,
+		db:      db,
+		closing: make(chan struct{}),
 	}
 }
 
-func NewKVStore(rootDir, dbPath, dbName string, syncWrites bool) KV {
+func NewKVStore(rootDir, dbPath, dbName string, syncWrites bool, logger types.Logger) KV {
 	path := filepath.Join(Rootify(rootDir, dbPath), dbName)
-	db, err := badger.Open(badger.DefaultOptions(path).WithSyncWrites(syncWrites))
+	opts := memoryEfficientBadgerConfig(path, syncWrites)
+	db, err := badger.Open(*opts)
 	if err != nil {
 		panic(err)
 	}
-	return &BadgerKV{
-		db: db,
+	b := &BadgerKV{
+		db:      db,
+		closing: make(chan struct{}),
 	}
+	go b.gc(gcTimeout, discardRatio, logger)
+	return b
 }
 
 // NewDefaultKVStore creates instance of default key-value store.
 func NewDefaultKVStore(rootDir, dbPath, dbName string) KV {
-	return NewKVStore(rootDir, dbPath, dbName, true)
+	return NewKVStore(rootDir, dbPath, dbName, true, log.NewNopLogger())
 }
 
 // Rootify is helper function to make config creation independent of root dir
@@ -56,7 +73,28 @@ func Rootify(rootDir, dbPath string) string {
 
 // Close implements KVStore.
 func (b *BadgerKV) Close() error {
+	b.closeOnce.Do(func() {
+		close(b.closing)
+	})
 	return b.db.Close()
+}
+
+func (b *BadgerKV) gc(period time.Duration, discardRatio float64, logger types.Logger) {
+	ticker := time.NewTicker(period)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-b.closing:
+			// Exit the periodic garbage collector function when store is closed
+			return
+		case <-ticker.C:
+			err := b.db.RunValueLogGC(discardRatio)
+			if err != nil {
+				logger.Debug("Running db RunValueLogGC", "err", err)
+				continue
+			}
+		}
+	}
 }
 
 // Get returns value for given key, or error.
@@ -188,4 +226,37 @@ func (i *BadgerIterator) Error() error {
 func (i *BadgerIterator) Discard() {
 	i.iter.Close()
 	i.txn.Discard()
+}
+
+// memoryEfficientBadgerConfig sets badger configuration parameters to reduce memory usage, specially during compactions to avoid memory spikes that causes OOM.
+// based on https://github.com/celestiaorg/celestia-node/issues/2905
+func memoryEfficientBadgerConfig(path string, syncWrites bool) *badger.Options {
+	opts := badger.DefaultOptions(path) // this must be copied
+	// SyncWrites is a configuration option in Badger that determines whether writes are immediately synced to disk or no.
+	// If set to true it writes to the write-ahead log (value log) are synced to disk before being applied to the LSM tree.
+	opts.SyncWrites = syncWrites
+	// default 64mib => 0 - disable block cache
+	// BlockCacheSize specifies how much data cache should hold in memory.
+	// It improves lookup performance but increases memory consumption.
+	// Not really necessary if disabling compression
+	opts.BlockCacheSize = 0
+	// compressions reduces storage usage but increases memory consumption, specially during compaction
+	opts.Compression = options.None
+	// MemTables: maximum size of in-memory data structures  before they are flushed to disk
+	// default 64mib => 16mib - decreases memory usage and makes compaction more often
+	opts.MemTableSize = 16 << 20
+	// NumMemtables is a configuration option in Badger that sets the maximum number of memtables to keep in memory before stalling
+	// default 5 => 3
+	opts.NumMemtables = 3
+	// NumLevelZeroTables sets the maximum number of Level 0 tables before compaction starts
+	// default 5 => 3
+	opts.NumLevelZeroTables = 3
+	// default 15 => 5 - this prevents memory growth on CPU constraint systems by blocking all writers
+	opts.NumLevelZeroTablesStall = 5
+	// reducing number compactors, makes it slower but reduces memory usage during compaction
+	opts.NumCompactors = 2
+	// makes sure badger is always compacted on shutdown
+	opts.CompactL0OnClose = true
+
+	return &opts
 }
