@@ -189,8 +189,14 @@ func (m *Manager) UpdateSequencerSet(event pubsub.Message) {
 		m.logger.Error("onReceivedBatch", "err", "wrong event data received")
 		return
 	}
+
 	newSeqAddr := eventData.SeqAddr
 
-	sequencers := m.State.Sequencers
-	m.State.Sequencers.SetSequencers()
+	sequencers := m.State.Sequencers.Sequencers
+	newSequencer, err := m.SLClient.GetSequencerByAddress(newSeqAddr)
+	if err != nil {
+		m.logger.Error("unable to add new sequencer from event. err:%w", err)
+	}
+	sequencers = append(sequencers, newSequencer)
+	m.State.Sequencers.SetSequencers(sequencers)
 }
