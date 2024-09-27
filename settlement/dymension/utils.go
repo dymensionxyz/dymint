@@ -38,10 +38,16 @@ func convertStateInfoToResultRetrieveBatch(stateInfo *rollapptypes.StateInfo) (*
 	if err != nil {
 		return nil, err
 	}
+
+	endHeight := uint64(0)
+	if len(stateInfo.BDs.BD) > 0 {
+		endHeight = stateInfo.BDs.BD[len(stateInfo.BDs.BD)-1].Height
+	}
+
 	batchResult := &settlement.Batch{
 		Sequencer:   stateInfo.Sequencer,
 		StartHeight: stateInfo.StartHeight,
-		EndHeight:   stateInfo.BDs.BD[len(stateInfo.BDs.BD)-1].Height,
+		EndHeight:   endHeight,
 		MetaData: &settlement.BatchMetaData{
 			DA: daMetaData,
 		},
