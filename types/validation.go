@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-
 	tmcrypto "github.com/tendermint/tendermint/crypto"
 	tmtypes "github.com/tendermint/tendermint/types"
 )
@@ -24,11 +23,6 @@ func ValidateProposedTransition(state *State, block *Block, commit *Commit, prop
 
 // ValidateBasic performs basic validation of a block.
 func (b *Block) ValidateBasic() error {
-	currentTime := time.Now().UTC()
-	if currentTime.Add(TimeFraudMaxDrift).Before(time.Unix(0, int64(b.Header.Time))) {
-		return NewErrTimeFraud(b, currentTime)
-	}
-
 	err := b.Header.ValidateBasic()
 	if err != nil {
 		return err
@@ -55,6 +49,12 @@ func (b *Block) ValidateWithState(state *State) error {
 	if err != nil {
 		return err
 	}
+
+	currentTime := time.Now().UTC()
+	if currentTime.Add(TimeFraudMaxDrift).Before(time.Unix(0, int64(b.Header.Time))) {
+		return NewErrTimeFraud(b, currentTime)
+	}
+
 	if b.Header.Version.App != state.Version.Consensus.App ||
 		b.Header.Version.Block != state.Version.Consensus.Block {
 		return ErrVersionMismatch

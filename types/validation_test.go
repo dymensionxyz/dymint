@@ -168,6 +168,7 @@ func TestBlock_ValidateWithState(t *testing.T) {
 					AppHash:         [32]byte{1, 2, 3},
 					LastResultsHash: [32]byte{4, 5, 6},
 					ProposerAddress: []byte("proposer"),
+					DataHash:        [32]byte(GetDataHash(validBlock)),
 				},
 			},
 			state:           validState,
