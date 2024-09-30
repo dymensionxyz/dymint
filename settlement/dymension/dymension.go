@@ -337,7 +337,6 @@ func (c *Client) GetSequencerByAddress(address string) (types.Sequencer, error) 
 		}
 		return err
 	})
-
 	if err != nil {
 		return types.Sequencer{}, err
 	}
