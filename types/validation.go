@@ -50,7 +50,9 @@ func (b *Block) ValidateWithState(state *State) error {
 		return err
 	}
 
-	nextHeight := state.NextHeight()
+	if b.Header.LastHeaderHash != state.LastHeaderHash {
+		return NewErrLastHeaderHashMismatch(state.LastHeaderHash, b)
+	}
 
 	currentTime := time.Now().UTC()
 	if currentTime.Add(TimeFraudMaxDrift).Before(time.Unix(0, int64(b.Header.Time))) {
@@ -62,6 +64,7 @@ func (b *Block) ValidateWithState(state *State) error {
 		return ErrVersionMismatch
 	}
 
+	nextHeight := state.NextHeight()
 	if b.Header.Height != nextHeight {
 		return NewErrFraudHeightMismatch(state.NextHeight(), b.Header.Height, b)
 	}

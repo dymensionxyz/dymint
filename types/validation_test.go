@@ -25,6 +25,7 @@ func TestBlock_ValidateWithState(t *testing.T) {
 		LastBlockHeight: atomic.Uint64{},
 		AppHash:         [32]byte{1, 2, 3},
 		LastResultsHash: [32]byte{4, 5, 6},
+		LastHeaderHash:  [32]byte{7, 8, 9},
 	}
 	validState.LastBlockHeight.Store(9)
 
@@ -40,6 +41,7 @@ func TestBlock_ValidateWithState(t *testing.T) {
 			LastResultsHash: [32]byte{4, 5, 6},
 			ProposerAddress: []byte("proposer"),
 			DataHash:        [32]byte{},
+			LastHeaderHash:  [32]byte{7, 8, 9},
 		},
 		Data:       Data{},
 		LastCommit: Commit{},
@@ -76,6 +78,7 @@ func TestBlock_ValidateWithState(t *testing.T) {
 					LastResultsHash: [32]byte{4, 5, 6},
 					ProposerAddress: []byte("proposer"),
 					DataHash:        [32]byte(GetDataHash(validBlock)),
+					LastHeaderHash:  [32]byte{7, 8, 9},
 				},
 			},
 			state:   validState,
@@ -97,6 +100,7 @@ func TestBlock_ValidateWithState(t *testing.T) {
 					LastResultsHash: [32]byte{4, 5, 6},
 					ProposerAddress: []byte("proposer"),
 					DataHash:        [32]byte(GetDataHash(validBlock)),
+					LastHeaderHash:  [32]byte{7, 8, 9},
 				},
 			},
 			state:   validState,
@@ -192,6 +196,25 @@ func TestBlock_ValidateWithState(t *testing.T) {
 			wantErr:         true,
 			expectedErrType: ErrEmptyProposerAddress,
 			isFraud:         false,
+		},
+		{
+			name: "invalid last header hash",
+			block: &Block{
+				Header: Header{
+					Version:         validBlock.Header.Version,
+					Height:          10,
+					Time:            uint64(currentTime.UnixNano()),
+					AppHash:         [32]byte{1, 2, 3},
+					LastResultsHash: [32]byte{4, 5, 6},
+					ProposerAddress: []byte("proposer"),
+					DataHash:        [32]byte(GetDataHash(validBlock)),
+					LastHeaderHash:  [32]byte{1, 2, 3},
+				},
+			},
+			state:           validState,
+			wantErr:         true,
+			expectedErrType: &ErrLastHeaderHashMismatch{},
+			isFraud:         true,
 		},
 	}
 

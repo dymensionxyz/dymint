@@ -134,3 +134,23 @@ func (e ErrTimeFraud) Error() string {
 func (e ErrTimeFraud) Unwrap() error {
 	return gerrc.ErrFault
 }
+
+type ErrLastHeaderHashMismatch struct {
+	Expected       [32]byte
+	LastHeaderHash [32]byte
+}
+
+func NewErrLastHeaderHashMismatch(expected [32]byte, block *Block) error {
+	return &ErrLastHeaderHashMismatch{
+		Expected:       expected,
+		LastHeaderHash: block.Header.LastHeaderHash,
+	}
+}
+
+func (e ErrLastHeaderHashMismatch) Error() string {
+	return fmt.Sprintf("last header hash mismatch. expected=%X, got=%X", e.Expected, e.LastHeaderHash)
+}
+
+func (e ErrLastHeaderHashMismatch) Unwrap() error {
+	return gerrc.ErrFault
+}

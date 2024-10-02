@@ -94,7 +94,7 @@ func (m *Manager) UpdateStateFromApp() error {
 	}
 
 	// update the state with the app hashes created on the app commit
-	m.Executor.UpdateStateAfterCommit(m.State, resp, proxyAppInfo.LastBlockAppHash, appHeight, block.Header.LastHeaderHash)
+	m.Executor.UpdateStateAfterCommit(m.State, resp, proxyAppInfo.LastBlockAppHash, appHeight, block.Header.Hash())
 
 	return nil
 }
@@ -126,7 +126,7 @@ func (e *Executor) UpdateMempoolAfterInitChain(s *types.State) {
 func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResponses, appHash []byte, height uint64, lastHeaderHash [32]byte) {
 	copy(s.AppHash[:], appHash[:])
 	copy(s.LastResultsHash[:], tmtypes.NewResults(resp.DeliverTxs).Hash())
-	copy(s.LastBlockHeaderHash[:], lastHeaderHash[:])
+	copy(s.LastHeaderHash[:], lastHeaderHash[:])
 
 	s.SetHeight(height)
 
