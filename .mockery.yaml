@@ -38,11 +38,4 @@ packages:
   github.com/dymensionxyz/dymint/block:
     interfaces:
       ExecutorI:
-  github.com/dymensionxyz/dymint/fraud:
-    interfaces:
-      Handler:
-
-  
-  
-
-
+      FraudHandler:

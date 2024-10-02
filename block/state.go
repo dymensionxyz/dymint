@@ -88,8 +88,13 @@ func (m *Manager) UpdateStateFromApp() error {
 		return errorsmod.Wrap(err, "load block responses")
 	}
 
+	block, err := m.Store.LoadBlock(appHeight)
+	if err != nil {
+		return errorsmod.Wrap(err, "load block")
+	}
+
 	// update the state with the app hashes created on the app commit
-	m.Executor.UpdateStateAfterCommit(m.State, resp, proxyAppInfo.LastBlockAppHash, appHeight)
+	m.Executor.UpdateStateAfterCommit(m.State, resp, proxyAppInfo.LastBlockAppHash, appHeight, block.Header.LastHeaderHash)
 
 	return nil
 }
@@ -118,9 +123,10 @@ func (e *Executor) UpdateMempoolAfterInitChain(s *types.State) {
 }
 
 // UpdateStateAfterCommit updates the state with the app hash and last results hash
-func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResponses, appHash []byte, height uint64) {
+func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResponses, appHash []byte, height uint64, lastHeaderHash [32]byte) {
 	copy(s.AppHash[:], appHash[:])
 	copy(s.LastResultsHash[:], tmtypes.NewResults(resp.DeliverTxs).Hash())
+	copy(s.LastBlockHeaderHash[:], lastHeaderHash[:])
 
 	s.SetHeight(height)
 

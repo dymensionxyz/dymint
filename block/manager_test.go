@@ -33,7 +33,6 @@ import (
 	"github.com/dymensionxyz/dymint/config"
 	"github.com/dymensionxyz/dymint/da"
 	blockmocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/block"
-	fraudmocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/fraud"
 	"github.com/dymensionxyz/dymint/node/events"
 	slregistry "github.com/dymensionxyz/dymint/settlement/registry"
 	"github.com/dymensionxyz/dymint/store"
@@ -348,7 +347,7 @@ func TestApplyLocalBlock_WithFraudCheck(t *testing.T) {
 	mockExecutor.On("ExecuteBlock", mock.Anything, mock.Anything).Return(nil, gerrc.ErrFault)
 
 	// Check that handle fault is called
-	mockFraudHandler := &fraudmocks.MockHandler{}
+	mockFraudHandler := &blockmocks.MockFraudHandler{}
 	manager.FraudHandler = mockFraudHandler
 
 	mockFraudHandler.On("HandleFault", mock.Anything, mock.MatchedBy(func(err error) bool {
@@ -781,7 +780,7 @@ func TestManager_ProcessNextDABatch_FraudHandling(t *testing.T) {
 	mockExecutor.On("ExecuteBlock", mock.Anything, mock.Anything).Return(nil, gerrc.ErrFault)
 
 	// Check that handle fault is called
-	mockFraudHandler := &fraudmocks.MockHandler{}
+	mockFraudHandler := &blockmocks.MockFraudHandler{}
 	manager.FraudHandler = mockFraudHandler
 
 	mockFraudHandler.On("HandleFault", mock.Anything, mock.MatchedBy(func(err error) bool {

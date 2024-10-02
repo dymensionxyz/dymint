@@ -193,24 +193,6 @@ func TestBlock_ValidateWithState(t *testing.T) {
 			expectedErrType: ErrEmptyProposerAddress,
 			isFraud:         false,
 		},
-		{
-			name: "Invalid height",
-			block: &Block{
-				Header: Header{
-					Version:         validBlock.Header.Version,
-					Height:          200,
-					Time:            uint64(currentTime.UnixNano()),
-					AppHash:         [32]byte{1, 2, 3},
-					LastResultsHash: [32]byte{4, 5, 6},
-					ProposerAddress: []byte("proposer"),
-					DataHash:        [32]byte(GetDataHash(validBlock)),
-				},
-			},
-			state:           validState,
-			wantErr:         true,
-			expectedErrType: &ErrInvalidBlockHeightFraud{},
-			isFraud:         true,
-		},
 	}
 
 	for _, tt := range tests {

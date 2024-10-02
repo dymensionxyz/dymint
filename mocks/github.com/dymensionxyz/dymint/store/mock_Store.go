@@ -579,27 +579,27 @@ func (_c *MockStore_NewBatch_Call) RunAndReturn(run func() store.KVBatch) *MockS
 	return _c
 }
 
-// PruneBlocks provides a mock function with given fields: from, to
-func (_m *MockStore) PruneBlocks(from uint64, to uint64) (uint64, error) {
-	ret := _m.Called(from, to)
+// PruneStore provides a mock function with given fields: from, to, logger
+func (_m *MockStore) PruneStore(from uint64, to uint64, logger types.Logger) (uint64, error) {
+	ret := _m.Called(from, to, logger)
 
 	if len(ret) == 0 {
-		panic("no return value specified for PruneBlocks")
+		panic("no return value specified for PruneStore")
 	}
 
 	var r0 uint64
 	var r1 error
-	if rf, ok := ret.Get(0).(func(uint64, uint64) (uint64, error)); ok {
-		return rf(from, to)
+	if rf, ok := ret.Get(0).(func(uint64, uint64, types.Logger) (uint64, error)); ok {
+		return rf(from, to, logger)
 	}
-	if rf, ok := ret.Get(0).(func(uint64, uint64) uint64); ok {
-		r0 = rf(from, to)
+	if rf, ok := ret.Get(0).(func(uint64, uint64, types.Logger) uint64); ok {
+		r0 = rf(from, to, logger)
 	} else {
 		r0 = ret.Get(0).(uint64)
 	}
 
-	if rf, ok := ret.Get(1).(func(uint64, uint64) error); ok {
-		r1 = rf(from, to)
+	if rf, ok := ret.Get(1).(func(uint64, uint64, types.Logger) error); ok {
+		r1 = rf(from, to, logger)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -607,31 +607,32 @@ func (_m *MockStore) PruneBlocks(from uint64, to uint64) (uint64, error) {
 	return r0, r1
 }
 
-// MockStore_PruneBlocks_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PruneBlocks'
-type MockStore_PruneBlocks_Call struct {
+// MockStore_PruneStore_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PruneStore'
+type MockStore_PruneStore_Call struct {
 	*mock.Call
 }
 
-// PruneBlocks is a helper method to define mock.On call
+// PruneStore is a helper method to define mock.On call
 //   - from uint64
 //   - to uint64
-func (_e *MockStore_Expecter) PruneBlocks(from interface{}, to interface{}) *MockStore_PruneBlocks_Call {
-	return &MockStore_PruneBlocks_Call{Call: _e.mock.On("PruneBlocks", from, to)}
+//   - logger types.Logger
+func (_e *MockStore_Expecter) PruneStore(from interface{}, to interface{}, logger interface{}) *MockStore_PruneStore_Call {
+	return &MockStore_PruneStore_Call{Call: _e.mock.On("PruneStore", from, to, logger)}
 }
 
-func (_c *MockStore_PruneBlocks_Call) Run(run func(from uint64, to uint64)) *MockStore_PruneBlocks_Call {
+func (_c *MockStore_PruneStore_Call) Run(run func(from uint64, to uint64, logger types.Logger)) *MockStore_PruneStore_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(uint64), args[1].(uint64))
+		run(args[0].(uint64), args[1].(uint64), args[2].(types.Logger))
 	})
 	return _c
 }
 
-func (_c *MockStore_PruneBlocks_Call) Return(_a0 uint64, _a1 error) *MockStore_PruneBlocks_Call {
+func (_c *MockStore_PruneStore_Call) Return(_a0 uint64, _a1 error) *MockStore_PruneStore_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockStore_PruneBlocks_Call) RunAndReturn(run func(uint64, uint64) (uint64, error)) *MockStore_PruneBlocks_Call {
+func (_c *MockStore_PruneStore_Call) RunAndReturn(run func(uint64, uint64, types.Logger) (uint64, error)) *MockStore_PruneStore_Call {
 	_c.Call.Return(run)
 	return _c
 }

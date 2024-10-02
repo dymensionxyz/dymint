@@ -112,7 +112,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 
 		// Update the state with the new app hash, and store height from the commit.
 		// Every one of those, if happens before commit, prevents us from re-executing the block in case failed during commit.
-		m.Executor.UpdateStateAfterCommit(m.State, responses, appHash, block.Header.Height)
+		m.Executor.UpdateStateAfterCommit(m.State, responses, appHash, block.Header.Height, block.Header.LastHeaderHash)
 	}
 
 	// check if the proposer needs to be changed
