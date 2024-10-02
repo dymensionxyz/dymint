@@ -124,7 +124,7 @@ func NewErrTimeFraud(block *Block, currentTime time.Time) error {
 
 func (e ErrTimeFraud) Error() string {
 	return fmt.Sprintf(
-		"Sequencer posted a block with invalid time. "+
+		"sequencer posted a block with invalid time. "+
 			"Max allowed drift exceeded. "+
 			"proposerAddress=%s headerHash=%s headerHeight=%d drift=%s MaxDrift=%s headerTime=%s currentTime=%s",
 		e.ProposerAddress, e.HeaderHash, e.HeaderHeight, e.Drift, TimeFraudMaxDrift, e.HeaderTime, e.CurrentTime,
@@ -132,5 +132,27 @@ func (e ErrTimeFraud) Error() string {
 }
 
 func (e ErrTimeFraud) Unwrap() error {
+	return gerrc.ErrFault
+}
+
+type ErrInvalidBlockHeightFraud struct {
+	ProposerAddress []byte
+
+	Expected uint64
+	Actual   uint64
+}
+
+func NewErrInvalidBlockHeightFraud(expected uint64, actual uint64, block *Block) error {
+	return &ErrInvalidBlockHeightFraud{
+		Expected: expected, Actual: actual,
+		ProposerAddress: block.Header.ProposerAddress,
+	}
+}
+
+func (e ErrInvalidBlockHeightFraud) Error() string {
+	return fmt.Sprintf("block height mismatch. proposerAddress=%s expected=%d actual=%d", e.ProposerAddress, e.Expected, e.Actual)
+}
+
+func (e ErrInvalidBlockHeightFraud) Unwrap() error {
 	return gerrc.ErrFault
 }

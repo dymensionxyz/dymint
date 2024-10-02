@@ -50,6 +50,10 @@ func (b *Block) ValidateWithState(state *State) error {
 		return err
 	}
 
+	if b.Header.Height != state.NextHeight() {
+		return NewErrInvalidBlockHeightFraud(state.NextHeight(), b.Header.Height, b)
+	}
+
 	currentTime := time.Now().UTC()
 	if currentTime.Add(TimeFraudMaxDrift).Before(time.Unix(0, int64(b.Header.Time))) {
 		return NewErrTimeFraud(b, currentTime)
