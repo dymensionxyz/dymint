@@ -282,7 +282,14 @@ func (m *Manager) UpdateLastSubmittedHeight(event pubsub.Message) {
 		return
 	}
 	h := eventData.EndHeight
-	if m.LastSubmittedHeight.Load() < h {
-		m.LastSubmittedHeight.Store(h)
+
+	for {
+		curr := m.LastSubmittedHeight.Load()
+		if h <= curr {
+			break
+		}
+		if m.LastSubmittedHeight.CompareAndSwap(curr, h) {
+			break
+		}
 	}
 }
