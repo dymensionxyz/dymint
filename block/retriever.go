@@ -9,38 +9,20 @@ import (
 
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/node/events"
-	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
-	"github.com/tendermint/tendermint/libs/pubsub"
 )
-
-// onNewStateUpdate will try to sync to new height, if not already synced
-func (m *Manager) onNewStateUpdate(event pubsub.Message) {
-	eventData, ok := event.Data().(*settlement.EventDataNewBatchAccepted)
-	if !ok {
-		m.logger.Error("onReceivedBatch", "err", "wrong event data received")
-		return
-	}
-	h := eventData.EndHeight
-	m.UpdateTargetHeight(h)
-	err := m.syncToTargetHeight(h)
-	if err != nil {
-		m.logger.Error("sync until target", "err", err)
-	}
-}
 
 // syncToTargetHeight syncs blocks until the target height is reached.
 // It fetches the batches from the settlement, gets the DA height and gets
 // the actual blocks from the DA.
-func (m *Manager) syncToTargetHeight(targetHeight uint64) error {
-	defer m.syncFromDaMu.Unlock()
-	m.syncFromDaMu.Lock()
-	for currH := m.State.NextHeight(); currH <= targetHeight; currH = m.State.NextHeight() {
+func (m *Manager) syncToLastSubmittedHeight() error {
+
+	for currH := m.State.NextHeight(); currH <= m.LastSubmittedHeight.Load(); currH = m.State.NextHeight() {
 		// if we have the block locally, we don't need to fetch it from the DA
 		err := m.applyLocalBlock(currH)
 		if err == nil {
-			m.logger.Info("Synced from local", "store height", currH, "target height", targetHeight)
+			m.logger.Info("Synced from local", "store height", currH, "target height", m.LastSubmittedHeight.Load())
 			continue
 		}
 		if !errors.Is(err, gerrc.ErrNotFound) {
@@ -49,14 +31,14 @@ func (m *Manager) syncToTargetHeight(targetHeight uint64) error {
 
 		err = m.syncFromDABatch()
 		if err != nil {
-			return fmt.Errorf("process next DA batch: %w", err)
+			m.logger.Error("process next DA batch", "err", err)
 		}
 
 		// if height havent been updated, we are stuck
-		if m.State.NextHeight() == currH {
+		/*if m.State.NextHeight() == currH {
 			return fmt.Errorf("stuck at height %d", currH)
-		}
-		m.logger.Info("Synced from DA", "store height", m.State.Height(), "target height", targetHeight)
+		}*/
+		m.logger.Info("Synced from DA", "store height", m.State.Height(), "target height", m.LastSubmittedHeight.Load())
 
 	}
 
