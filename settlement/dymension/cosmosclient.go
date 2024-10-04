@@ -9,11 +9,12 @@ import (
 	sdkclient "github.com/cosmos/cosmos-sdk/client"
 	sdktypes "github.com/cosmos/cosmos-sdk/types"
 	"github.com/dymensionxyz/cosmosclient/cosmosclient"
-	rollapptypes "github.com/dymensionxyz/dymint/third_party/dymension/rollapp/types"
-	sequencertypes "github.com/dymensionxyz/dymint/third_party/dymension/sequencer/types"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/ignite/cli/ignite/pkg/cosmosaccount"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+
+	sequencertypes "github.com/dymensionxyz/dymint/third_party/dymension/sequencer/types"
+	rollapptypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
 )
 
 // CosmosClient is an interface for interacting with cosmos client chains.

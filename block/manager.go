@@ -11,6 +11,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/dymensionxyz/dymint/da/registry"
+	"github.com/dymensionxyz/dymint/indexers/txindex"
 	"github.com/dymensionxyz/dymint/store"
 	uerrors "github.com/dymensionxyz/dymint/utils/errors"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
@@ -77,6 +78,12 @@ type Manager struct {
 
 	// TargetHeight holds the value of the current highest block seen from either p2p (probably higher) or the DA
 	TargetHeight atomic.Uint64
+
+	// channel used to send the retain height to the pruning background loop
+	pruningC chan int64
+
+	// indexer
+	indexerService *txindex.IndexerService
 }
 
 // NewManager creates new block Manager.
@@ -92,6 +99,7 @@ func NewManager(
 	pubsub *pubsub.Server,
 	p2pClient *p2p.Client,
 	dalcKV *store.PrefixKV,
+	indexerService *txindex.IndexerService,
 	logger log.Logger,
 ) (*Manager, error) {
 	localAddress, err := types.GetAddress(localKey)
@@ -112,18 +120,20 @@ func NewManager(
 	}
 
 	m := &Manager{
-		Pubsub:    pubsub,
-		P2PClient: p2pClient,
-		LocalKey:  localKey,
-		Conf:      conf.BlockManagerConfig,
-		Genesis:   genesis,
-		Store:     store,
-		Executor:  exec,
-		SLClient:  settlementClient,
-		logger:    logger.With("module", "block_manager"),
+		Pubsub:         pubsub,
+		P2PClient:      p2pClient,
+		LocalKey:       localKey,
+		Conf:           conf.BlockManagerConfig,
+		Genesis:        genesis,
+		Store:          store,
+		Executor:       exec,
+		SLClient:       settlementClient,
+		indexerService: indexerService,
+		logger:         logger.With("module", "block_manager"),
 		blockCache: &Cache{
 			cache: make(map[uint64]types.CachedBlock),
 		},
+		pruningC: make(chan int64, 10), // use of buffered channel to avoid blocking applyBlock thread. In case channel is full, pruning will be skipped, but the retain height can be pruned in the next iteration.
 	}
 
 	err = m.LoadStateOnInit(store, genesis, logger)
@@ -166,6 +176,11 @@ func (m *Manager) Start(ctx context.Context) error {
 	isProposer := m.IsProposer()
 	m.logger.Info("starting block manager", "proposer", isProposer)
 
+	eg, ctx := errgroup.WithContext(ctx)
+	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
+		return m.PruningLoop(ctx)
+	})
+
 	/* ----------------------------- full node mode ----------------------------- */
 	if !isProposer {
 		// Full-nodes can sync from DA but it is not necessary to wait for it, since it can sync from P2P as well in parallel.
@@ -185,7 +200,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	}
 
 	/* ----------------------------- sequencer mode ----------------------------- */
-	// Subscribe to batch events, to update last submitted height in case batch confirmation was lost. This could happen if the sequencer crash/restarted just after submitting a batch to the settelement and by the time we query the last batch, this batch wasn't accepted yet.
+	// Subscribe to batch events, to update last submitted height in case batch confirmation was lost. This could happen if the sequencer crash/restarted just after submitting a batch to the settlement and by the time we query the last batch, this batch wasn't accepted yet.
 	go uevent.MustSubscribe(ctx, m.Pubsub, "updateSubmittedHeightLoop", settlement.EventQueryNewSettlementBatchAccepted, m.UpdateLastSubmittedHeight, m.logger)
 
 	// Sequencer must wait till DA is synced to start submitting blobs
@@ -211,7 +226,6 @@ func (m *Manager) Start(ctx context.Context) error {
 	// channel to signal sequencer rotation started
 	rotateSequencerC := make(chan string, 1)
 
-	eg, ctx := errgroup.WithContext(ctx)
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		return m.SubmitLoop(ctx, bytesProducedC)
 	})
