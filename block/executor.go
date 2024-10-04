@@ -2,9 +2,10 @@ package block
 
 import (
 	"errors"
+	"time"
+
 	proto2 "github.com/gogo/protobuf/proto"
 	proto "github.com/gogo/protobuf/types"
-	"time"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmcrypto "github.com/tendermint/tendermint/crypto/encoding"
