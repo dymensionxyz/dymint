@@ -3,11 +3,12 @@ package block_test
 import (
 	"context"
 	"crypto/rand"
+	"testing"
+	"time"
+
 	"github.com/gogo/protobuf/proto"
 	prototypes "github.com/gogo/protobuf/types"
 	"github.com/golang/groupcache/testpb"
-	"testing"
-	"time"
 
 	"github.com/dymensionxyz/dymint/block"
 
