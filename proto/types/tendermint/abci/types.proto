@@ -81,7 +81,6 @@ message RequestBeginBlock {
   LastCommitInfo          last_commit_info     = 3 [(gogoproto.nullable) = false];
   repeated Evidence       byzantine_validators = 4 [(gogoproto.nullable) = false];
 
-  // New addition: defines any wrapped consensus messages.
   google.protobuf.Any consensus_messages = 5;
 }
 
