@@ -156,8 +156,9 @@ func (c *DataAvailabilityLayerClient) Stop() error {
 	return nil
 }
 
-func (c *DataAvailabilityLayerClient) Synced() <-chan struct{} {
-	return c.synced
+// WaitForSyncing is used to check when the DA light client finished syncing
+func (m *DataAvailabilityLayerClient) WaitForSyncing() {
+	<-m.synced
 }
 
 // GetClientType returns client type.
