@@ -89,7 +89,6 @@ message Data {
   // This means that block.AppHash does not include these txs.
   repeated bytes txs = 1;
 
-  // NEW: Consensus messages are included as raw Protobuf Any types.
   repeated google.protobuf.Any consensus_messages = 2;
 }
 
