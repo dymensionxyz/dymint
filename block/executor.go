@@ -4,6 +4,8 @@ import (
 	"errors"
 	"time"
 
+	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
+	"github.com/cosmos/cosmos-sdk/types/bech32"
 	proto2 "github.com/gogo/protobuf/proto"
 	proto "github.com/gogo/protobuf/types"
 
@@ -17,6 +19,7 @@ import (
 
 	"github.com/dymensionxyz/dymint/mempool"
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/dymint/types/pb/rollapp/sequencers"
 )
 
 // default minimum block max size allowed. not specific reason to set it to 10K, but we need to avoid no transactions can be included in a block.
@@ -122,7 +125,29 @@ func (e *Executor) CreateBlock(
 			e.logger.Error("Failed to get consensus messages", "error", err)
 		}
 
-		consensusAnyMessages = fromProtoMsgSliceToAnySlice(consensusMessages)
+		consensusAnyMessages = fromProtoMsgSliceToAnySlice(consensusMessages...)
+	}
+	// Set the initial sequencer reward address on the very first block after the genesis
+	const rotationBlock = false
+	if state.LastBlockHeight.Load() == 1 {
+		val, _ := state.Sequencers.Proposer.TMValidator()
+		tmPubKey, err := tmcrypto.PubKeyToProto(val.PubKey)
+		if err != nil {
+			return nil
+		}
+		anyTmPubKey, err := codectypes.NewAnyWithValue(&tmPubKey)
+		if err != nil {
+			return nil
+		}
+		_, addrBytes, err := bech32.DecodeAndConvert(state.Sequencers.Proposer.SettlementAddress)
+		if err != nil {
+			return nil
+		}
+		consensusAnyMessages = append(consensusAnyMessages, fromProtoMsgSliceToAnySlice(&sequencers.MsgUpsertSequencer{
+			Operator:        val.Address.String(), // ??
+			ConsPubKey:      anyTmPubKey,
+			RewardAddrBytes: addrBytes,
+		})...)
 	}
 
 	block := &types.Block{
@@ -328,7 +353,7 @@ func fromProtoMsgToAny(msg proto2.Message) *proto.Any {
 	}
 }
 
-func fromProtoMsgSliceToAnySlice(msgs []proto2.Message) []*proto.Any {
+func fromProtoMsgSliceToAnySlice(msgs ...proto2.Message) []*proto.Any {
 	result := make([]*proto.Any, len(msgs))
 	for i, msg := range msgs {
 		result[i] = fromProtoMsgToAny(msg)

@@ -158,5 +158,7 @@ func convertToRotationStartedEvent(rawEventData ctypes.ResultEvent) (*settlement
 	rotationStartedEvent := &settlement.EventDataRotationStarted{
 		NextSeqAddr: nextProposer,
 	}
-	return rotationStartedEvent, nil
+	return &settlement.EventDataRotationStarted{
+		NextSeqAddr: nextProposer,
+	}, nil
 }
