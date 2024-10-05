@@ -1,6 +1,7 @@
 package store
 
 import (
+	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -23,6 +24,12 @@ var (
 	responsesPrefix  = [1]byte{5}
 	sequencersPrefix = [1]byte{6}
 	cidPrefix        = [1]byte{7}
+	validationPrefix = [1]byte{8}
+)
+
+var (
+	blockNonValidated = [1]byte{0}
+	blockValidated    = [1]byte{1}
 )
 
 // DefaultStore is a default store implementation.
@@ -114,6 +121,33 @@ func (s *DefaultStore) LoadBlockByHash(hash [32]byte) (*types.Block, error) {
 	}
 
 	return block, nil
+}
+
+// SaveBlockValidation saves block validation in Store.
+func (s *DefaultStore) SaveBlockValidation(height uint64, validation bool, batch KVBatch) (KVBatch, error) {
+
+	var data []byte
+	if validation {
+		data = blockValidated[:]
+	} else {
+		data = blockNonValidated[:]
+	}
+	err := batch.Set(getValidationKey(height), data)
+	return batch, err
+}
+
+// LoadBlockValidation returns block validation in Store.
+func (s *DefaultStore) LoadBlockValidation(height uint64) (bool, error) {
+
+	data, err := s.db.Get(getValidationKey(height))
+	if err != nil {
+		return false, fmt.Errorf("retrieve block results from height %v: %w", height, err)
+	}
+	if bytes.Equal(data[:], blockValidated[:]) {
+		return true, nil
+	}
+	return false, nil
+
 }
 
 // SaveBlockResponses saves block responses (events, tx responses, etc) in Store.
@@ -331,4 +365,10 @@ func getCidKey(height uint64) []byte {
 	buf := make([]byte, 8)
 	binary.BigEndian.PutUint64(buf, height)
 	return append(cidPrefix[:], buf[:]...)
+}
+
+func getValidationKey(height uint64) []byte {
+	buf := make([]byte, 8)
+	binary.BigEndian.PutUint64(buf, height)
+	return append(validationPrefix[:], buf[:]...)
 }

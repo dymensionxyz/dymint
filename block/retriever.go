@@ -9,6 +9,7 @@ import (
 
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/node/events"
+	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
 )
@@ -34,10 +35,6 @@ func (m *Manager) syncToLastSubmittedHeight() error {
 			m.logger.Error("process next DA batch", "err", err)
 		}
 
-		// if height havent been updated, we are stuck
-		/*if m.State.NextHeight() == currH {
-			return fmt.Errorf("stuck at height %d", currH)
-		}*/
 		m.logger.Info("Synced from DA", "store height", m.State.Height(), "target height", m.LastSubmittedHeight.Load())
 
 	}
@@ -74,7 +71,7 @@ func (m *Manager) syncFromDABatch() error {
 	}
 	m.State.Sequencers.SetProposer(proposer)
 
-	err = m.ProcessNextDABatch(settlementBatch.MetaData.DA)
+	err = m.ProcessNextDABatch(settlementBatch)
 	if err != nil {
 		return fmt.Errorf("process next DA batch: %w", err)
 	}
@@ -110,7 +107,9 @@ func (m *Manager) applyLocalBlock(height uint64) error {
 	return nil
 }
 
-func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
+func (m *Manager) ProcessNextDABatch(batch *settlement.ResultRetrieveBatch) error {
+
+	daMetaData := batch.MetaData.DA
 	m.logger.Debug("trying to retrieve batch from DA", "daHeight", daMetaData.Height)
 	batchResp := m.fetchBatch(daMetaData)
 	if batchResp.Code != da.StatusSuccess {
@@ -118,6 +117,13 @@ func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
 	}
 
 	m.logger.Debug("retrieved batches", "n", len(batchResp.Batches), "daHeight", daMetaData.Height)
+
+	if !m.isHeightFinalized(batchResp.Batches[len(batchResp.Batches)-1].EndHeight()) {
+		err := m.validateBatch(batch, batchResp.Batches)
+		if err != nil {
+			return err
+		}
+	}
 
 	m.retrieverMu.Lock()
 	defer m.retrieverMu.Unlock()
