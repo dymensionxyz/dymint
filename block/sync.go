@@ -8,7 +8,7 @@ import (
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
-// onNewStateUpdate will try to sync to new height, if not already synced
+// onNewStateUpdate will update the last submitted height and will
 func (m *Manager) onNewStateUpdate(event pubsub.Message) {
 	eventData, ok := event.Data().(*settlement.EventDataNewBatchAccepted)
 	if !ok {
@@ -20,13 +20,12 @@ func (m *Manager) onNewStateUpdate(event pubsub.Message) {
 	select {
 	case m.syncingC <- eventData.EndHeight:
 	default:
-		m.logger.Debug("disregarding new state update, since node is still syncing")
+		m.logger.Debug("disregarding new state update, node is still syncing")
 	}
 }
 
-// SyncTargetLoop is responsible for getting real time updates about settlement batch submissions.
-// For non aggregator: updating the sync target which will be used by retrieveLoop to sync until this target.
-// It publishes new sync height targets which will then be synced by another process.
+// SyncTargetLoop listens for syncing events (from new state update or from initial syncing) and syncs to the last submitted height.
+// In case the node is already synced, it validate
 func (m *Manager) SyncTargetLoop(ctx context.Context) error {
 
 	for {
@@ -36,19 +35,26 @@ func (m *Manager) SyncTargetLoop(ctx context.Context) error {
 		case targetHeight := <-m.syncingC:
 			err := m.UpdateSequencerSetFromSL()
 			if err != nil {
-				return fmt.Errorf("update bonded sequencer set: %w", err)
+				m.logger.Error("update bonded sequencer set", "error", err)
 			}
-
-			err = m.syncToLastSubmittedHeight()
-			if err != nil {
-				return fmt.Errorf("syncing to target height: %d err:%w", targetHeight, err)
+			if m.State.Height() < targetHeight {
+				err = m.syncToLastSubmittedHeight()
+				if err != nil {
+					m.logger.Error("syncing to target height", "targetHeight", targetHeight, "error", err)
+				}
+				m.synced.Nudge()
+				m.logger.Info("Synced.", "current height", m.State.Height(), "last submitted height", m.LastSubmittedHeight.Load())
+			} else {
+				err = m.validateToLastSubmittedHeight(targetHeight)
+				if err != nil {
+					return fmt.Errorf("syncing to target height: %d err:%w", targetHeight, err)
+				}
 			}
-			m.synced.Nudge()
-			m.logger.Info("Synced.", "current height", m.State.Height(), "last submitted height", m.LastSubmittedHeight.Load())
 		}
 	}
 }
 
+// waitForSyncing waits for synced nudge (in case it needs to because it was syncing)
 func (m *Manager) waitForSyncing() {
 	if m.State.Height() < m.LastSubmittedHeight.Load() {
 		<-m.synced.C

@@ -33,6 +33,7 @@ var (
 // Data
 
 type EventDataNewBatchAccepted struct {
+	StartHeight uint64
 	// EndHeight is the height of the last accepted batch
 	EndHeight uint64
 	// StateIndex is the rollapp-specific index the batch was saved in the SL

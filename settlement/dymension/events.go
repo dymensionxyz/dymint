@@ -119,8 +119,9 @@ func convertToNewBatchEvent(rawEventData ctypes.ResultEvent) (*settlement.EventD
 	}
 	endHeight := uint64(startHeight + numBlocks - 1)
 	NewBatchEvent := &settlement.EventDataNewBatchAccepted{
-		EndHeight:  endHeight,
-		StateIndex: uint64(stateIndex),
+		StartHeight: uint64(startHeight),
+		EndHeight:   endHeight,
+		StateIndex:  uint64(stateIndex),
 	}
 	return NewBatchEvent, nil
 }
