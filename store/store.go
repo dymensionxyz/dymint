@@ -132,6 +132,9 @@ func (s *DefaultStore) SaveBlockValidation(height uint64, validation bool, batch
 	} else {
 		data = blockNonValidated[:]
 	}
+	if batch == nil {
+		return nil, s.db.Set(getValidationKey(height), data)
+	}
 	err := batch.Set(getValidationKey(height), data)
 	return batch, err
 }
