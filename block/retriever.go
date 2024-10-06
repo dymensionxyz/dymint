@@ -87,6 +87,7 @@ func (m *Manager) syncFromDABatch() error {
 // ----
 // when this scenario encountered previously, we wanted to apply same block instead of producing new one
 func (m *Manager) applyLocalBlock(height uint64) error {
+
 	defer m.retrieverMu.Unlock()
 	m.retrieverMu.Lock()
 
@@ -107,24 +108,12 @@ func (m *Manager) applyLocalBlock(height uint64) error {
 	return nil
 }
 
-func (m *Manager) ProcessNextDABatch(batch *settlement.ResultRetrieveBatch) error {
+func (m *Manager) ProcessNextDABatch(slBatch *settlement.ResultRetrieveBatch) error {
 
-	daMetaData := batch.MetaData.DA
-	m.logger.Debug("trying to retrieve batch from DA", "daHeight", daMetaData.Height)
-	batchResp := m.fetchBatch(daMetaData)
-	if batchResp.Code != da.StatusSuccess {
-		return batchResp.Error
+	batchResp, err := m.validateStateUpdate(slBatch)
+	if err != nil {
+
 	}
-
-	m.logger.Debug("retrieved batches", "n", len(batchResp.Batches), "daHeight", daMetaData.Height)
-
-	if !m.isHeightFinalized(batchResp.Batches[len(batchResp.Batches)-1].EndHeight()) {
-		err := m.validateBatch(batch, batchResp.Batches)
-		if err != nil {
-			return err
-		}
-	}
-
 	m.retrieverMu.Lock()
 	defer m.retrieverMu.Unlock()
 
@@ -135,7 +124,7 @@ func (m *Manager) ProcessNextDABatch(batch *settlement.ResultRetrieveBatch) erro
 				continue
 			}
 
-			err := m.applyBlockWithFraudHandling(block, batch.Commits[i], types.BlockMetaData{Source: types.DA, DAHeight: daMetaData.Height})
+			err := m.applyBlockWithFraudHandling(block, batch.Commits[i], types.BlockMetaData{Source: types.DA, DAHeight: slBatch.Batch.MetaData.DA.Height})
 			if err != nil {
 				return fmt.Errorf("apply block: height: %d: %w", block.Header.Height, err)
 			}
