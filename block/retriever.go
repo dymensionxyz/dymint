@@ -112,7 +112,7 @@ func (m *Manager) ProcessNextDABatch(slBatch *settlement.ResultRetrieveBatch) er
 
 	batchResp, err := m.validateStateUpdate(slBatch)
 	if err != nil {
-
+		//TODO (srene): handle fraud
 	}
 	m.retrieverMu.Lock()
 	defer m.retrieverMu.Unlock()
