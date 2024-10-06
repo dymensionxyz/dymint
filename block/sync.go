@@ -30,7 +30,7 @@ func (m *Manager) onNewStateUpdate(event pubsub.Message) {
 		if err != nil {
 			m.logger.Error("state update retrieval", "error", err)
 		}
-		_, err = m.validateStateUpdate(batch)
+		_, err = m.validator.ValidateStateUpdate(batch)
 		if err != nil {
 			m.logger.Error("state update validation", "error", err)
 		}

@@ -90,6 +90,8 @@ type Manager struct {
 	syncingC chan uint64
 
 	synced *uchannel.Nudger
+
+	validator *StateUpdateValidator
 }
 
 // NewManager creates new block Manager.
@@ -152,6 +154,8 @@ func NewManager(
 	if err != nil {
 		return nil, err
 	}
+
+	m.validator = NewStateUpdateValidator(m.logger, m.Retriever)
 
 	return m, nil
 }
