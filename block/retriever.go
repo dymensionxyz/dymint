@@ -110,7 +110,7 @@ func (m *Manager) applyLocalBlock(height uint64) error {
 
 func (m *Manager) ProcessNextDABatch(slBatch *settlement.ResultRetrieveBatch) error {
 
-	batchResp, err := m.validateStateUpdate(slBatch)
+	batchResp, err := m.validator.ValidateStateUpdate(slBatch)
 	if err != nil {
 		//TODO (srene): handle fraud
 	}
