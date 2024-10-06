@@ -273,6 +273,17 @@ func (c *Client) saveBatch(batch *settlement.Batch) error {
 }
 
 func (c *Client) convertBatchtoSettlementBatch(batch *types.Batch, daResult *da.ResultSubmitBatch) *settlement.Batch {
+
+	bds := []settlement.BlockDescriptor{}
+	for _, block := range batch.Blocks {
+		bd := settlement.BlockDescriptor{
+			Height:    block.Header.Height,
+			StateRoot: block.Header.AppHash[:],
+			Timestamp: block.Header.GetTimestamp(),
+		}
+		bds = append(bds, bd)
+	}
+
 	settlementBatch := &settlement.Batch{
 		Sequencer:   c.GetProposer().SettlementAddress,
 		StartHeight: batch.StartHeight(),
@@ -283,10 +294,9 @@ func (c *Client) convertBatchtoSettlementBatch(batch *types.Batch, daResult *da.
 				Client: daResult.SubmitMetaData.Client,
 			},
 		},
+		BlockDescriptors: bds,
 	}
-	for _, block := range batch.Blocks {
-		settlementBatch.AppHashes = append(settlementBatch.AppHashes, block.Header.AppHash)
-	}
+
 	return settlementBatch
 }
 
