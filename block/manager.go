@@ -183,7 +183,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	})
 
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
-		return m.SyncTargetLoop(ctx)
+		return m.SyncLoop(ctx)
 	})
 
 	err = m.syncFromSettlement()
