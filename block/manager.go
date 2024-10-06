@@ -193,7 +193,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	// listen to new bonded sequencers events to add them in the sequencer set
 	go uevent.MustSubscribe(ctx, m.Pubsub, "newBondedSequencer", settlement.EventQueryNewBondedSequencer, m.UpdateSequencerSet, m.logger)
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
-		return m.SyncTargetLoop(ctx)
+		return m.SyncLoop(ctx)
 	})
 
 	err = m.syncFromSettlement()

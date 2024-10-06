@@ -2,7 +2,6 @@ package block
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/tendermint/tendermint/libs/pubsub"
@@ -18,10 +17,23 @@ func (m *Manager) onNewStateUpdate(event pubsub.Message) {
 
 	m.LastSubmittedHeight.Store(eventData.EndHeight)
 	m.UpdateTargetHeight(eventData.EndHeight)
-	select {
-	case m.syncingC <- eventData.EndHeight:
-	default:
-		m.logger.Debug("disregarding new state update, node is still syncing")
+
+	// If node is not synced trigger syncing from DA (includes validation). If it is already synced validate state update
+	if m.State.Height() < eventData.EndHeight {
+		select {
+		case m.syncingC <- eventData.EndHeight:
+		default:
+			m.logger.Debug("disregarding new state update, node is still syncing")
+		}
+	} else {
+		batch, err := m.SLClient.GetBatchAtIndex(eventData.StateIndex)
+		if err != nil {
+			m.logger.Error("state update retrieval", "error", err)
+		}
+		_, err = m.validateStateUpdate(batch)
+		if err != nil {
+			m.logger.Error("state update validation", "error", err)
+		}
 	}
 
 	err := m.UpdateSequencerSetFromSL()
@@ -33,7 +45,7 @@ func (m *Manager) onNewStateUpdate(event pubsub.Message) {
 
 // SyncTargetLoop listens for syncing events (from new state update or from initial syncing) and syncs to the last submitted height.
 // In case the node is already synced, it validate
-func (m *Manager) SyncTargetLoop(ctx context.Context) error {
+func (m *Manager) SyncLoop(ctx context.Context) error {
 
 	for {
 		select {
@@ -41,21 +53,13 @@ func (m *Manager) SyncTargetLoop(ctx context.Context) error {
 			return nil
 		case targetHeight := <-m.syncingC:
 
-			// if the node is still not at the state update end height, it will try to sync to it (validation is included in syncing from DA)
-			// if the node is already in the height, it will check if any pending validations heights (because blocks were applied from P2P) and validate them
-			if m.State.Height() < targetHeight {
-				err := m.syncToLastSubmittedHeight()
-				if err != nil {
-					m.logger.Error("syncing to target height", "targetHeight", targetHeight, "error", err)
-				}
-				m.synced.Nudge()
-				m.logger.Info("Synced.", "current height", m.State.Height(), "last submitted height", m.LastSubmittedHeight.Load())
-			} else {
-				err := m.validateToLastSubmittedHeight(targetHeight)
-				if err != nil {
-					return fmt.Errorf("syncing to target height: %d err:%w", targetHeight, err)
-				}
+			err := m.syncToLastSubmittedHeight()
+			if err != nil {
+				m.logger.Error("syncing to target height", "targetHeight", targetHeight, "error", err)
 			}
+			m.synced.Nudge()
+			m.logger.Info("Synced.", "current height", m.State.Height(), "last submitted height", m.LastSubmittedHeight.Load())
+
 		}
 	}
 }
