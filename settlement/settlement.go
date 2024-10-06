@@ -1,6 +1,8 @@
 package settlement
 
 import (
+	"time"
+
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
@@ -30,6 +32,15 @@ type ResultBase struct {
 
 type BatchMetaData struct {
 	DA *da.DASubmitMetaData
+}
+
+type BlockDescriptor struct {
+	// height is the height of the block
+	Height uint64
+	// stateRoot is a 32 byte array of the hash of the block (state root of the block)
+	StateRoot []byte
+	// timestamp is the time from the block header
+	Timestamp time.Time
 }
 
 type Batch struct {
