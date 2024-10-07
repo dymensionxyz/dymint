@@ -9,7 +9,6 @@ import (
 
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/node/events"
-	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
 )
@@ -71,7 +70,7 @@ func (m *Manager) syncFromDABatch() error {
 	}
 	m.State.Sequencers.SetProposer(proposer)
 
-	err = m.ProcessNextDABatch(settlementBatch)
+	err = m.ProcessNextDABatch(settlementBatch.MetaData.DA)
 	if err != nil {
 		return fmt.Errorf("process next DA batch: %w", err)
 	}
@@ -100,12 +99,16 @@ func (m *Manager) applyLocalBlock(height uint64) error {
 	return nil
 }
 
-func (m *Manager) ProcessNextDABatch(slBatch *settlement.ResultRetrieveBatch) error {
+func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
 
-	batchResp, err := m.validator.ValidateStateUpdate(slBatch)
-	if err != nil {
-		//TODO (srene): handle fraud
+	m.logger.Debug("trying to retrieve batch from DA", "daHeight", daMetaData.Height)
+	batchResp := m.fetchBatch(daMetaData)
+	if batchResp.Code != da.StatusSuccess {
+		return batchResp.Error
 	}
+
+	m.logger.Debug("retrieved batches", "n", len(batchResp.Batches), "daHeight", daMetaData.Height)
+
 	m.retrieverMu.Lock()
 	defer m.retrieverMu.Unlock()
 
@@ -121,7 +124,7 @@ func (m *Manager) ProcessNextDABatch(slBatch *settlement.ResultRetrieveBatch) er
 			}
 
 			// We dont validate because validateBlockBeforeApply already checks if the block is already applied, and we don't need to fail there.
-			err := m.applyBlockWithFraudHandling(block, batch.Commits[i], types.BlockMetaData{Source: types.DA, DAHeight: slBatch.Batch.MetaData.DA.Height}, false)
+			err := m.applyBlockWithFraudHandling(block, batch.Commits[i], types.BlockMetaData{Source: types.DA, DAHeight: daMetaData.Height}, false)
 			if err != nil {
 				return fmt.Errorf("apply block: height: %d: %w", block.Header.Height, err)
 			}
