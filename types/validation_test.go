@@ -5,6 +5,7 @@ import (
 	"github.com/cometbft/cometbft/libs/math"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	tmtypes "github.com/tendermint/tendermint/types"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -272,6 +273,9 @@ func TestCommit_ValidateWithHeader(t *testing.T) {
 
 	// Helper function to create a valid commit
 	createValidCommit := func() (*Commit, *Block, []byte, error) {
+		seq := NewSequencerFromValidator(*tmtypes.NewValidator(proposerKey.PubKey(), 1))
+		proposerHash := seq.Hash()
+
 		block := &Block{
 			Header: Header{
 				Version: Version{
@@ -287,7 +291,7 @@ func TestCommit_ValidateWithHeader(t *testing.T) {
 				AppHash:         [32]byte{},
 				LastResultsHash: [32]byte{},
 				ProposerAddress: proposerKey.PubKey().Address(),
-				SequencerHash:   [32]byte{},
+				SequencerHash:   [32]byte(proposerHash),
 			},
 		}
 
@@ -386,6 +390,39 @@ func TestCommit_ValidateWithHeader(t *testing.T) {
 		require.Error(t, err, "Validation should fail when the signature size exceeds the maximum allowed size")
 		assert.Equal(t, NewErrInvalidSignatureFraud(errors.New("signature is too big")), err)
 		assert.True(t, errors.Is(err, gerrc.ErrFault), "The error should be a fraud error")
+	})
+
+	t.Run("Fails when proposerPubKey.Address() does not match Header.ProposerAddress", func(t *testing.T) {
+		commit, block, _, err := createValidCommit()
+		require.NoError(t, err, "Creating the valid commit should not fail")
+
+		// Modify the block header's proposer address to simulate a mismatch
+		block.Header.ProposerAddress = anotherKey.PubKey().Address() // Set to a different proposer's address
+
+		// Ensure the proposer's address does not match the block header's proposer address
+		require.NotEqual(t, proposerKey.PubKey().Address(), block.Header.ProposerAddress, "The proposer's public key address should not match the block header proposer address")
+
+		// Validate and expect an error due to mismatching proposer addresses
+		err = commit.ValidateWithHeader(proposerKey.PubKey(), &block.Header)
+		require.Error(t, err, "Validation should fail when the proposer's address does not match the header's proposer address")
+		assert.Equal(t, NewErrInvalidProposerAddressFraud(block.Header.ProposerAddress, proposerKey.PubKey().Address()), err)
+		assert.True(t, errors.Is(err, gerrc.ErrFault), "The error should be a fraud error")
+	})
+
+	t.Run("Fails when SequencerHash does not match proposerHash", func(t *testing.T) {
+		commit, block, _, err := createValidCommit()
+		require.NoError(t, err, "Creating the valid commit should not fail")
+
+		// Modify the block header's SequencerHash to simulate a mismatch
+		block.Header.SequencerHash = [32]byte{1, 2, 3} // Set to an invalid hash
+
+		// Ensure the SequencerHash does not match the proposer's hash
+		require.NotEqual(t, block.Header.SequencerHash, NewSequencerFromValidator(*tmtypes.NewValidator(proposerKey.PubKey(), 1)).Hash(), "The SequencerHash should not match the proposer's hash")
+
+		// Validate and expect an error due to mismatching SequencerHash
+		err = commit.ValidateWithHeader(proposerKey.PubKey(), &block.Header)
+		require.Equal(t, &ErrInvalidSequencerHashFraud{[32]byte{1, 2, 3}, NewSequencerFromValidator(*tmtypes.NewValidator(proposerKey.PubKey(), 1)).Hash()}, err)
+		require.True(t, errors.Is(err, gerrc.ErrFault), "The error should be a fraud error")
 	})
 
 	t.Run("HeaderHash does not match Block Hash", func(t *testing.T) {

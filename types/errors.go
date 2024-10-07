@@ -3,6 +3,7 @@ package types
 import (
 	"errors"
 	"fmt"
+	tmcrypto "github.com/tendermint/tendermint/crypto"
 	"time"
 
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
@@ -230,5 +231,45 @@ func (e ErrInvalidSignatureFraud) Error() string {
 }
 
 func (e ErrInvalidSignatureFraud) Unwrap() error {
+	return gerrc.ErrFault
+}
+
+type ErrInvalidProposerAddressFraud struct {
+	ExpectedAddress []byte
+	ActualAddress   tmcrypto.Address
+}
+
+func NewErrInvalidProposerAddressFraud(address []byte, address2 tmcrypto.Address) error {
+	return &ErrInvalidProposerAddressFraud{
+		ExpectedAddress: address,
+		ActualAddress:   address2,
+	}
+}
+
+func (e ErrInvalidProposerAddressFraud) Error() string {
+	return fmt.Sprintf("invalid proposer address. expected=%X, got=%X", e.ExpectedAddress, e.ActualAddress)
+}
+
+func (e ErrInvalidProposerAddressFraud) Unwrap() error {
+	return gerrc.ErrFault
+}
+
+type ErrInvalidSequencerHashFraud struct {
+	ExpectedHash [32]byte
+	ActualHash   []byte
+}
+
+func NewErrInvalidSequencerHashFraud(expectedHash [32]byte, actualHash []byte) error {
+	return &ErrInvalidSequencerHashFraud{
+		ExpectedHash: expectedHash,
+		ActualHash:   actualHash,
+	}
+}
+
+func (e ErrInvalidSequencerHashFraud) Error() string {
+	return fmt.Sprintf("invalid sequencer hash. expected=%X, got=%X", e.ExpectedHash, e.ActualHash)
+}
+
+func (e ErrInvalidSequencerHashFraud) Unwrap() error {
 	return gerrc.ErrFault
 }
