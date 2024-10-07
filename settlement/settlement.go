@@ -85,7 +85,10 @@ type ClientI interface {
 	GetLatestBatch() (*ResultRetrieveBatch, error)
 	// GetBatchAtIndex returns the batch at the given index.
 	GetBatchAtIndex(index uint64) (*ResultRetrieveBatch, error)
-
+	// GetBatchAtHeight returns the batch at the given height.
+	GetBatchAtHeight(index uint64) (*ResultRetrieveBatch, error)
+	// GetLatestFinalizedBatch returns the latest finalized batch from the settlement layer.
+	GetLatestFinalizedBatch() (*ResultRetrieveBatch, error)
 	// GetAllSequencers returns all sequencers for this rollapp (bonded and not bonded).
 	GetAllSequencers() ([]types.Sequencer, error)
 	// GetBondedSequencers returns the list of the bonded sequencers for this rollapp.
@@ -96,6 +99,4 @@ type ClientI interface {
 	// CheckRotationInProgress returns the next proposer for this chain in case of a rotation.
 	// If no rotation is in progress, it should return nil.
 	CheckRotationInProgress() (*types.Sequencer, error)
-
-	GetHeightState(uint64) (*ResultGetHeightState, error)
 }

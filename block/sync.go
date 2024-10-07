@@ -2,8 +2,12 @@ package block
 
 import (
 	"context"
+	"errors"
 
+	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/settlement"
+	uevent "github.com/dymensionxyz/dymint/utils/event"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
@@ -27,16 +31,16 @@ func (m *Manager) onNewStateUpdate(event pubsub.Message) {
 
 	// Trigger syncing from DA.
 	select {
-	case m.syncingC <- eventData.EndHeight:
+	case m.syncingC <- struct{}{}:
 	default:
 		m.logger.Debug("disregarding new state update, node is still syncing")
 	}
 
 	// Trigger state update validation.
 	select {
-	case m.validateC <- eventData.StateIndex:
+	case m.validateC <- struct{}{}:
 	default:
-		m.logger.Debug("disregarding new state update, node is still syncing")
+		m.logger.Debug("disregarding new state update, node is still validating")
 	}
 
 }
@@ -49,14 +53,38 @@ func (m *Manager) SyncLoop(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			return nil
-		case targetHeight := <-m.syncingC:
+		case <-m.syncingC:
 
-			err := m.syncToLastSubmittedHeight()
-			if err != nil {
-				m.logger.Error("syncing to target height", "targetHeight", targetHeight, "error", err)
+			m.logger.Info("syncing to target height", "targetHeight", m.LastSubmittedHeight.Load())
+
+			for currH := m.State.NextHeight(); currH <= m.LastSubmittedHeight.Load(); currH = m.State.NextHeight() {
+				// if we have the block locally, we don't need to fetch it from the DA
+				err := m.applyLocalBlock(currH)
+				if err == nil {
+					m.logger.Info("Synced from local", "store height", currH, "target height", m.LastSubmittedHeight.Load())
+					continue
+				}
+				if !errors.Is(err, gerrc.ErrNotFound) {
+					m.logger.Error("Apply local block", "err", err)
+				}
+
+				err = m.syncFromDABatch()
+				if err != nil {
+					m.logger.Error("process next DA batch", "err", err)
+				}
+
+				m.logger.Info("Synced from DA", "store height", m.State.Height(), "target height", m.LastSubmittedHeight.Load())
+
+				err = m.attemptApplyCachedBlocks()
+				if err != nil {
+					uevent.MustPublish(context.TODO(), m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
+					m.logger.Error("Attempt apply cached blocks.", "err", err)
+				}
 			}
-			m.synced.Nudge()
+
 			m.logger.Info("Synced.", "current height", m.State.Height(), "last submitted height", m.LastSubmittedHeight.Load())
+
+			m.synced.Nudge()
 
 		}
 	}

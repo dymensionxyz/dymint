@@ -159,6 +159,11 @@ func (c *Client) GetLatestBatch() (*settlement.ResultRetrieveBatch, error) {
 	return batchResult, nil
 }
 
+// GetLatestFinalizedBatch returns the latest finalized batch from the kv store
+func (c *Client) GetLatestFinalizedBatch() (*settlement.ResultRetrieveBatch, error) {
+	return nil, gerrc.ErrNotFound // TODO: need to return a cosmos specific error?
+}
+
 // GetBatchAtIndex returns the batch at the given index
 func (c *Client) GetBatchAtIndex(index uint64) (*settlement.ResultRetrieveBatch, error) {
 	batchResult, err := c.retrieveBatchAtStateIndex(index)
@@ -170,22 +175,19 @@ func (c *Client) GetBatchAtIndex(index uint64) (*settlement.ResultRetrieveBatch,
 	return batchResult, nil
 }
 
-func (c *Client) GetHeightState(h uint64) (*settlement.ResultGetHeightState, error) {
+func (c *Client) GetBatchAtHeight(h uint64) (*settlement.ResultRetrieveBatch, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	// TODO: optimize (binary search, or just make another index)
 	for i := c.slStateIndex; i > 0; i-- {
 		b, err := c.GetBatchAtIndex(i)
 		if err != nil {
-			return nil, err
+			return &settlement.ResultRetrieveBatch{
+				ResultBase: settlement.ResultBase{Code: settlement.StatusError, Message: err.Error()},
+			}, err
 		}
 		if b.StartHeight <= h && b.EndHeight >= h {
-			return &settlement.ResultGetHeightState{
-				ResultBase: settlement.ResultBase{Code: settlement.StatusSuccess},
-				State: settlement.State{
-					StateIndex: i,
-				},
-			}, nil
+			return b, nil
 		}
 	}
 	return nil, gerrc.ErrNotFound // TODO: need to return a cosmos specific error?
