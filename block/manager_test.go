@@ -428,14 +428,8 @@ func TestRetrieveDaBatchesFailed(t *testing.T) {
 		Client: da.Mock,
 		Height: 1,
 	}
-	batch := &settlement.ResultRetrieveBatch{
-		Batch: &settlement.Batch{
-			MetaData: &settlement.BatchMetaData{
-				DA: daMetaData,
-			},
-		},
-	}
-	err = manager.ProcessNextDABatch(batch)
+
+	err = manager.ProcessNextDABatch(daMetaData)
 	t.Log(err)
 	assert.ErrorIs(t, err, da.ErrBlobNotFound)
 }
@@ -786,14 +780,8 @@ func TestDAFetch(t *testing.T) {
 				LastBlockHeight:  int64(batch.EndHeight()),
 				LastBlockAppHash: commitHash[:],
 			})
-			batch := &settlement.ResultRetrieveBatch{
-				Batch: &settlement.Batch{
-					MetaData: &settlement.BatchMetaData{
-						DA: c.daMetaData,
-					},
-				},
-			}
-			err := manager.ProcessNextDABatch(batch)
+
+			err := manager.ProcessNextDABatch(c.daMetaData)
 			require.Equal(c.err, err)
 		})
 	}
