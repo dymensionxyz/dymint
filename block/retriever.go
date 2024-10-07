@@ -61,6 +61,10 @@ func (m *Manager) applyLocalBlock(height uint64) error {
 }
 
 func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
+<<<<<<< HEAD
+=======
+
+>>>>>>> 3cd9f41 (remove validation from sync)
 	m.logger.Debug("trying to retrieve batch from DA", "daHeight", daMetaData.Height)
 	batchResp := m.fetchBatch(daMetaData)
 	if batchResp.Code != da.StatusSuccess {
