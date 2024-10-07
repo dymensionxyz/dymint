@@ -14,6 +14,7 @@ import (
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
+	"github.com/cosmos/cosmos-sdk/types/bech32"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/tendermint/tendermint/libs/pubsub"
@@ -26,6 +27,10 @@ import (
 	slmock "github.com/dymensionxyz/dymint/settlement/grpc/mockserv/proto"
 	"github.com/dymensionxyz/dymint/types"
 	rollapptypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
+)
+
+const (
+	addressPrefix = "dym"
 )
 
 // Client is an extension of the base settlement layer client
@@ -225,7 +230,12 @@ func (c *Client) GetProposer() *types.Sequencer {
 		c.logger.Error("Error converting to tendermint pubkey", "err", err)
 		return nil
 	}
-	return types.NewSequencer(tmPubKey, pubKey.Address().String())
+	settlementAddr, err := bech32.ConvertAndEncode(addressPrefix, pubKeyBytes)
+	if err != nil {
+		c.logger.Error("Error converting pubkey to settlement address", "err", err)
+		return nil
+	}
+	return types.NewSequencer(tmPubKey, settlementAddr)
 }
 
 // GetAllSequencers implements settlement.ClientI.

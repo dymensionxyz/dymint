@@ -52,6 +52,10 @@ func (s Sequencer) Hash() []byte {
 	return tempProposerSet.Hash()
 }
 
+func (s Sequencer) String() string {
+	return fmt.Sprintf("Sequencer{SettlementAddress: %s Validator: %s}", s.SettlementAddress, s.val.String())
+}
+
 // SequencerSet is a set of rollapp sequencers and a proposer.
 type SequencerSet struct {
 	// Sequencers is the set of sequencers registered in the settlement layer

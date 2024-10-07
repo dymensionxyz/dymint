@@ -174,7 +174,7 @@ func (m *Manager) produceBlock(allowEmpty bool, nextProposerInfo *nextProposerIn
 	}
 	consensusMsgs, err := m.consensusMsgsOnCreateBlock(nextProposerAddr, lastProposerBlock)
 	if err != nil {
-		return nil, nil, fmt.Errorf("create consensus msgs for create block: %w: %w", err, ErrNonRecoverable)
+		return nil, nil, fmt.Errorf("create consensus msgs for create block: last proposer block: %v, height: %d, next proposer addr: %s: %w: %w", lastProposerBlock, newHeight, nextProposerAddr, err, ErrNonRecoverable)
 	}
 	block = m.Executor.CreateBlock(newHeight, lastCommit, lastHeaderHash, proposerHashForBlock, m.State, maxBlockDataSize, consensusMsgs...)
 	if !allowEmpty && len(block.Data.Txs) == 0 {
@@ -204,7 +204,7 @@ func (m *Manager) consensusMsgsOnCreateBlock(
 		nextSeq := m.State.Sequencers.GetByAddress(nextProposerSettlementAddr)
 		// Sanity check. Must never happen in practice. The sequencer's existence is verified beforehand in Manager.CompleteRotation.
 		if nextSeq == nil {
-			panic(fmt.Errorf("no sequencer found for address while creating a new block %s", nextProposerSettlementAddr))
+			return nil, fmt.Errorf("no sequencer found for address while creating a new block: %s", nextProposerSettlementAddr)
 		}
 
 		// Get proposer's consensus public key and convert it to proto.Any
