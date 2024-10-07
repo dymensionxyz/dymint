@@ -24,8 +24,6 @@ func (m *Manager) onNewStateUpdate(event pubsub.Message) {
 	m.LastSubmittedHeight.Store(eventData.EndHeight)
 	m.UpdateTargetHeight(eventData.EndHeight)
 
-	m.logger.Error("syncing")
-
 	// Update sequencers list from SL
 	err := m.UpdateSequencerSetFromSL()
 	if err != nil {
