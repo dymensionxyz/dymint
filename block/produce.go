@@ -221,7 +221,7 @@ func (m *Manager) consensusMsgsOnCreateBlock(
 			return nil, fmt.Errorf("next squencer pubkey to proto any: %w", err)
 		}
 
-		// Get raw bytes of the proposer's settlement address. These bytes are to be converted to the rollapp format later.
+		// Get raw bytes of the proposer's settlement address. These bytes will to be converted to the rollapp format in the app.
 		_, addrBytes, err := bech32.DecodeAndConvert(nextProposerSettlementAddr)
 		if err != nil {
 			return nil, fmt.Errorf("next squencer settlement addr to bech32: %w", err)

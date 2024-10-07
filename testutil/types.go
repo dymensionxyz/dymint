@@ -5,9 +5,7 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/dymensionxyz/dymint/types"
-	"github.com/dymensionxyz/dymint/types/pb/dymint"
-	dymintversion "github.com/dymensionxyz/dymint/version"
+	"github.com/cosmos/cosmos-sdk/types/bech32"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmcrypto "github.com/tendermint/tendermint/crypto"
@@ -16,6 +14,10 @@ import (
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	version "github.com/tendermint/tendermint/proto/tendermint/version"
 	tmtypes "github.com/tendermint/tendermint/types"
+
+	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/dymint/types/pb/dymint"
+	dymintversion "github.com/dymensionxyz/dymint/version"
 )
 
 const (
@@ -23,6 +25,8 @@ const (
 	BlockVersion = 1
 	// AppVersion is the default app version for testing
 	AppVersion = 2
+
+	SettlementAccountPrefix = "dym"
 )
 
 func createRandomHashes() [][32]byte {
@@ -36,6 +40,15 @@ func createRandomHashes() [][32]byte {
 		h = append(h, h1)
 	}
 	return h
+}
+
+func GenerateSettlementAddress() string {
+	addrBytes := ed25519.GenPrivKey().PubKey().Address().Bytes()
+	addr, err := bech32.ConvertAndEncode(SettlementAccountPrefix, addrBytes)
+	if err != nil {
+		panic(err)
+	}
+	return addr
 }
 
 func GetRandomTx() types.Tx {
@@ -247,7 +260,7 @@ func GenerateStateWithSequencer(initialHeight int64, lastBlockHeight int64, pubk
 			},
 		},
 	}
-	s.Sequencers.SetProposer(types.NewSequencer(pubkey, ""))
+	s.Sequencers.SetProposer(types.NewSequencer(pubkey, GenerateSettlementAddress()))
 	s.SetHeight(uint64(lastBlockHeight))
 	return s
 }
