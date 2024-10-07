@@ -45,6 +45,8 @@ type State struct {
 
 	// LastHeaderHash is the hash of the last block header.
 	LastHeaderHash [32]byte
+	// The last height which the node validated from available state updates.
+	LastValidatedHeight atomic.Uint64
 }
 
 func (s *State) IsGenesis() bool {
@@ -64,6 +66,17 @@ func (s *State) SetHeight(height uint64) {
 // Height returns height of the highest block saved in the Store.
 func (s *State) Height() uint64 {
 	return s.LastBlockHeight.Load()
+}
+
+// SetHeight sets the height saved in the Store if it is higher than the existing height
+// returns OK if the value was updated successfully or did not need to be updated
+func (s *State) SetLastValidatedHeight(height uint64) {
+	s.LastValidatedHeight.Store(height)
+}
+
+// Height returns height of the highest block saved in the Store.
+func (s *State) GetLastValidatedHeight() uint64 {
+	return s.LastValidatedHeight.Load()
 }
 
 // NextHeight returns the next height that expected to be stored in store.

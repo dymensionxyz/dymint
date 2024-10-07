@@ -198,6 +198,11 @@ func (c *Client) GetLatestBatch() (*settlement.ResultRetrieveBatch, error) {
 	return batchResult, nil
 }
 
+// GetLatestFinalizedBatch returns the latest finalized batch from the kv store
+func (c *Client) GetLatestFinalizedBatch() (*settlement.ResultRetrieveBatch, error) {
+	return nil, gerrc.ErrNotFound
+}
+
 // GetBatchAtIndex returns the batch at the given index
 func (c *Client) GetBatchAtIndex(index uint64) (*settlement.ResultRetrieveBatch, error) {
 	batchResult, err := c.retrieveBatchAtStateIndex(index)
@@ -209,7 +214,7 @@ func (c *Client) GetBatchAtIndex(index uint64) (*settlement.ResultRetrieveBatch,
 	return batchResult, nil
 }
 
-func (c *Client) GetHeightState(index uint64) (*settlement.ResultGetHeightState, error) {
+func (c *Client) GetBatchAtHeight(height uint64) (*settlement.ResultRetrieveBatch, error) {
 	panic("hub grpc client get height state is not implemented: implement me") // TODO: impl
 }
 
