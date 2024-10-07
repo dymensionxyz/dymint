@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 
+	tmcrypto "github.com/tendermint/tendermint/crypto"
+
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	tmcrypto "github.com/tendermint/tendermint/crypto"
 )
