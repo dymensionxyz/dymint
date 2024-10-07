@@ -50,6 +50,10 @@ func (b *Block) ValidateWithState(state *State) error {
 		return err
 	}
 
+	if b.Header.ChainID != state.ChainID {
+		return NewErrInvalidChainID(state.ChainID, b)
+	}
+
 	if b.Header.LastHeaderHash != state.LastHeaderHash {
 		return NewErrLastHeaderHashMismatch(state.LastHeaderHash, b)
 	}
@@ -110,8 +114,17 @@ func (c *Commit) ValidateBasic() error {
 
 func (c *Commit) ValidateWithHeader(proposerPubKey tmcrypto.PubKey, header *Header) error {
 	if err := c.ValidateBasic(); err != nil {
-		return err
+		return NewErrInvalidSignatureFraud(err)
 	}
+
+	if c.Height != header.Height {
+		return NewErrInvalidBlockHeightFraud(c.Height, header.Height)
+	}
+
+	if c.HeaderHash != header.Hash() {
+		return NewErrInvalidHeaderHashFraud(c.HeaderHash, header.Hash())
+	}
+
 	abciHeaderPb := ToABCIHeaderPB(header)
 	abciHeaderBytes, err := abciHeaderPb.Marshal()
 	if err != nil {
@@ -119,7 +132,7 @@ func (c *Commit) ValidateWithHeader(proposerPubKey tmcrypto.PubKey, header *Head
 	}
 	// commit is validated to have single signature
 	if !proposerPubKey.VerifySignature(abciHeaderBytes, c.Signatures[0]) {
-		return ErrInvalidSignature
+		return NewErrInvalidSignatureFraud(ErrInvalidSignature)
 	}
 	return nil
 }

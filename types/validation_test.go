@@ -2,7 +2,9 @@ package types
 
 import (
 	"errors"
+	"github.com/cometbft/cometbft/libs/math"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
+	"github.com/tendermint/tendermint/crypto/ed25519"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -26,6 +28,7 @@ func TestBlock_ValidateWithState(t *testing.T) {
 		AppHash:         [32]byte{1, 2, 3},
 		LastResultsHash: [32]byte{4, 5, 6},
 		LastHeaderHash:  [32]byte{7, 8, 9},
+		ChainID:         "chainID",
 	}
 	validState.LastBlockHeight.Store(9)
 
@@ -42,6 +45,7 @@ func TestBlock_ValidateWithState(t *testing.T) {
 			ProposerAddress: []byte("proposer"),
 			DataHash:        [32]byte{},
 			LastHeaderHash:  [32]byte{7, 8, 9},
+			ChainID:         "chainID",
 		},
 		Data:       Data{},
 		LastCommit: Commit{},
@@ -79,6 +83,7 @@ func TestBlock_ValidateWithState(t *testing.T) {
 					ProposerAddress: []byte("proposer"),
 					DataHash:        [32]byte(GetDataHash(validBlock)),
 					LastHeaderHash:  [32]byte{7, 8, 9},
+					ChainID:         "chainID",
 				},
 			},
 			state:   validState,
@@ -101,6 +106,7 @@ func TestBlock_ValidateWithState(t *testing.T) {
 					ProposerAddress: []byte("proposer"),
 					DataHash:        [32]byte(GetDataHash(validBlock)),
 					LastHeaderHash:  [32]byte{7, 8, 9},
+					ChainID:         "chainID",
 				},
 			},
 			state:   validState,
@@ -216,6 +222,26 @@ func TestBlock_ValidateWithState(t *testing.T) {
 			expectedErrType: &ErrLastHeaderHashMismatch{},
 			isFraud:         true,
 		},
+		{
+			name: "invalid chain ID",
+			block: &Block{
+				Header: Header{
+					Version:         validBlock.Header.Version,
+					Height:          10,
+					Time:            uint64(currentTime.UnixNano()),
+					AppHash:         [32]byte{1, 2, 3},
+					LastResultsHash: [32]byte{4, 5, 6},
+					ProposerAddress: []byte("proposer"),
+					DataHash:        [32]byte(GetDataHash(validBlock)),
+					LastHeaderHash:  [32]byte{7, 8, 9},
+					ChainID:         "invalidChainID",
+				},
+			},
+			state:           validState,
+			wantErr:         true,
+			expectedErrType: &ErrInvalidChainID{},
+			isFraud:         true,
+		},
 	}
 
 	for _, tt := range tests {
@@ -237,4 +263,141 @@ func TestBlock_ValidateWithState(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestCommit_ValidateWithHeader(t *testing.T) {
+	// Generate keys for the proposer and another actor for invalid signatures
+	proposerKey := ed25519.GenPrivKey()
+	anotherKey := ed25519.GenPrivKey()
+
+	// Helper function to create a valid commit
+	createValidCommit := func() (*Commit, *Block, []byte, error) {
+		block := &Block{
+			Header: Header{
+				Version: Version{
+					Block: 1,
+					App:   1,
+				},
+				ChainID:         "test",
+				Height:          1,
+				Time:            uint64(time.Now().UTC().UnixNano()),
+				LastHeaderHash:  [32]byte{},
+				DataHash:        [32]byte{},
+				ConsensusHash:   [32]byte{},
+				AppHash:         [32]byte{},
+				LastResultsHash: [32]byte{},
+				ProposerAddress: proposerKey.PubKey().Address(),
+				SequencerHash:   [32]byte{},
+			},
+		}
+
+		abciHeaderPb := ToABCIHeaderPB(&block.Header)
+		abciHeaderBytes, err := abciHeaderPb.Marshal()
+		if err != nil {
+			return nil, nil, nil, err
+		}
+
+		signature, err := proposerKey.Sign(abciHeaderBytes)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+
+		commit := &Commit{
+			Height:     block.Header.Height,
+			HeaderHash: block.Hash(),
+			Signatures: []Signature{signature},
+		}
+
+		return commit, block, abciHeaderBytes, nil
+	}
+
+	t.Run("Valid commit", func(t *testing.T) {
+		commit, block, _, err := createValidCommit()
+		require.NoError(t, err, "Creating the valid commit should not fail")
+
+		err = commit.ValidateWithHeader(proposerKey.PubKey(), &block.Header)
+		assert.NoError(t, err, "Validation should pass without errors")
+	})
+
+	t.Run("ValidateBasic fails - invalid height", func(t *testing.T) {
+		commit, block, _, err := createValidCommit()
+		require.NoError(t, err, "Creating the valid commit should not fail")
+
+		commit.Height = 0 // Set an invalid height so ValidateBasic fails
+
+		err = commit.ValidateWithHeader(proposerKey.PubKey(), &block.Header)
+		require.Error(t, err, "Validation should fail due to an invalid height")
+		require.Equal(t, &ErrInvalidBlockHeightFraud{0, 1}, err)
+		require.True(t, errors.Is(err, gerrc.ErrFault), "The error should be a fraud error")
+	})
+
+	t.Run("Invalid signature", func(t *testing.T) {
+		commit, block, abciHeaderBytes, err := createValidCommit()
+		require.NoError(t, err, "Creating the valid commit should not fail")
+
+		// Generate an invalid signature using another key
+		invalidSignature, err := anotherKey.Sign(abciHeaderBytes)
+		require.NoError(t, err, "Generating the invalid signature should not fail")
+
+		commit.Signatures = []Signature{invalidSignature}
+
+		err = commit.ValidateWithHeader(proposerKey.PubKey(), &block.Header)
+		require.Error(t, err, "Validation should fail due to an invalid signature")
+		assert.Equal(t, NewErrInvalidSignatureFraud(ErrInvalidSignature), err)
+		assert.True(t, errors.Is(err, gerrc.ErrFault), "The error should be a fraud error")
+	})
+
+	t.Run("Fails with more than one signature", func(t *testing.T) {
+		commit, block, abciHeaderBytes, err := createValidCommit()
+		require.NoError(t, err, "Creating the valid commit should not fail")
+
+		// Generate another valid signature using a different key
+		anotherSignature, err := anotherKey.Sign(abciHeaderBytes)
+		require.NoError(t, err, "Generating an additional signature should not fail")
+
+		// Add the additional signature to the commit
+		commit.Signatures = append(commit.Signatures, anotherSignature)
+
+		// Ensure there are more than one signature
+		require.Greater(t, len(commit.Signatures), 1, "Commit should have more than one signature")
+
+		// Validate and expect an error due to multiple signatures
+		err = commit.ValidateWithHeader(proposerKey.PubKey(), &block.Header)
+		require.Error(t, err, "Validation should fail when there is more than one signature")
+		assert.Equal(t, NewErrInvalidSignatureFraud(errors.New("there should be 1 signature")), err)
+		assert.True(t, errors.Is(err, gerrc.ErrFault), "The error should be a fraud error")
+	})
+
+	t.Run("Fails when signature size exceeds MaxSignatureSize", func(t *testing.T) {
+		commit, block, _, err := createValidCommit()
+		require.NoError(t, err, "Creating the valid commit should not fail")
+
+		// Define a signature that exceeds MaxSignatureSize
+		invalidSignature := make([]byte, math.MaxInt(ed25519.SignatureSize, 64)+1)
+
+		// Replace the valid signature with the invalid oversized signature
+		commit.Signatures = []Signature{invalidSignature}
+
+		// Ensure the signature size exceeds the maximum allowed size
+		require.Greater(t, len(invalidSignature), math.MaxInt(ed25519.SignatureSize, 64), "Signature size should exceed MaxSignatureSize")
+
+		// Validate and expect an error due to oversized signature
+		err = commit.ValidateWithHeader(proposerKey.PubKey(), &block.Header)
+		require.Error(t, err, "Validation should fail when the signature size exceeds the maximum allowed size")
+		assert.Equal(t, NewErrInvalidSignatureFraud(errors.New("signature is too big")), err)
+		assert.True(t, errors.Is(err, gerrc.ErrFault), "The error should be a fraud error")
+	})
+
+	t.Run("HeaderHash does not match Block Hash", func(t *testing.T) {
+		commit, block, _, err := createValidCommit()
+		require.NoError(t, err, "Creating the valid commit should not fail")
+
+		commit.HeaderHash = [32]byte{1, 2, 3} // Introduce an invalid hash
+
+		assert.NotEqual(t, block.Hash(), commit.HeaderHash, "The commit header hash should not match the block header hash")
+
+		err = commit.ValidateWithHeader(proposerKey.PubKey(), &block.Header)
+		require.Equal(t, &ErrInvalidHeaderHashFraud{[32]byte{1, 2, 3}, block.Hash()}, err)
+		require.True(t, errors.Is(err, gerrc.ErrFault), "The error should be a fraud error")
+	})
 }

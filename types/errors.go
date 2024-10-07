@@ -154,3 +154,81 @@ func (e ErrLastHeaderHashMismatch) Error() string {
 func (e ErrLastHeaderHashMismatch) Unwrap() error {
 	return gerrc.ErrFault
 }
+
+type ErrInvalidChainID struct {
+	Expected string
+	Block    *Block
+}
+
+func NewErrInvalidChainID(expected string, block *Block) error {
+	return &ErrInvalidChainID{
+		Expected: expected,
+		Block:    block,
+	}
+}
+
+func (e ErrInvalidChainID) Error() string {
+	return fmt.Sprintf("invalid chain ID. expected=%s, got=%s", e.Expected, e.Block.Header.ChainID)
+}
+
+func (e ErrInvalidChainID) Unwrap() error {
+	return gerrc.ErrFault
+}
+
+type ErrInvalidBlockHeightFraud struct {
+	Expected     uint64
+	ActualHeight uint64
+}
+
+func NewErrInvalidBlockHeightFraud(expected uint64, actualHeight uint64) error {
+	return &ErrInvalidBlockHeightFraud{
+		Expected:     expected,
+		ActualHeight: actualHeight,
+	}
+}
+
+func (e ErrInvalidBlockHeightFraud) Error() string {
+	return fmt.Sprintf("invalid block height. expected=%d, got=%d", e.Expected, e.ActualHeight)
+}
+
+func (e ErrInvalidBlockHeightFraud) Unwrap() error {
+	return gerrc.ErrFault
+}
+
+type ErrInvalidHeaderHashFraud struct {
+	ExpectedHash [32]byte
+	ActualHash   [32]byte
+}
+
+func NewErrInvalidHeaderHashFraud(expectedHash [32]byte, actualHash [32]byte) error {
+	return &ErrInvalidHeaderHashFraud{
+		ExpectedHash: expectedHash,
+		ActualHash:   actualHash,
+	}
+}
+
+func (e ErrInvalidHeaderHashFraud) Error() string {
+	return fmt.Sprintf("invalid header hash. expected=%X, got=%X", e.ExpectedHash, e.ActualHash)
+}
+
+func (e ErrInvalidHeaderHashFraud) Unwrap() error {
+	return gerrc.ErrFault
+}
+
+type ErrInvalidSignatureFraud struct {
+	Err error
+}
+
+func NewErrInvalidSignatureFraud(err error) error {
+	return &ErrInvalidSignatureFraud{
+		Err: err,
+	}
+}
+
+func (e ErrInvalidSignatureFraud) Error() string {
+	return fmt.Sprintf("invalid signature: %s", e.Err)
+}
+
+func (e ErrInvalidSignatureFraud) Unwrap() error {
+	return gerrc.ErrFault
+}
