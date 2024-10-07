@@ -89,6 +89,8 @@ type Manager struct {
 
 	syncingC chan uint64
 
+	validateC chan uint64
+
 	synced *uchannel.Nudger
 
 	validator *StateUpdateValidator
@@ -136,6 +138,7 @@ func NewManager(
 		FraudHandler: nil,                  // TODO: create a default handler
 		pruningC:     make(chan int64, 10), // use of buffered channel to avoid blocking applyBlock thread. In case channel is full, pruning will be skipped, but the retain height can be pruned in the next iteration.
 		syncingC:     make(chan uint64, 1),
+		validateC:    make(chan uint64, 1),
 		synced:       uchannel.NewNudger(),
 	}
 
@@ -276,6 +279,12 @@ func (m *Manager) NextHeightToSubmit() uint64 {
 
 // syncFromSettlement enforces the node to be synced on initial run from SL and DA.
 func (m *Manager) syncFromSettlement() error {
+
+	// Update sequencers list from SL
+	err := m.UpdateSequencerSetFromSL()
+	if err != nil {
+		m.logger.Error("update bonded sequencer set", "error", err)
+	}
 
 	res, err := m.SLClient.GetLatestBatch()
 	if errors.Is(err, gerrc.ErrNotFound) {
