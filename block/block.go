@@ -100,11 +100,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 			return fmt.Errorf("save block responses: %w", err)
 		}
 
-		validated := false
-		if blockMetaData.Source == types.DA {
-			validated = true
-		}
-		_, err = m.Store.SaveBlockValidation(block.Header.Height, validated, nil)
+		_, err = m.Store.SaveBlockSource(block.Header.Height, blockMetaData.Source.String(), nil)
 		if err != nil {
 			return fmt.Errorf("save block responses: %w", err)
 		}

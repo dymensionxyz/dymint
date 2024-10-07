@@ -79,7 +79,7 @@ type Store interface {
 
 	LoadBlockCid(height uint64) (cid.Cid, error)
 
-	SaveBlockValidation(height uint64, validation bool, batch KVBatch) (KVBatch, error)
+	SaveBlockSource(height uint64, source string, batch KVBatch) (KVBatch, error)
 
-	LoadBlockValidation(height uint64) (bool, error)
+	LoadBlockSource(height uint64) (string, error)
 }

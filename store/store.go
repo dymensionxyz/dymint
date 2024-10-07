@@ -1,7 +1,6 @@
 package store
 
 import (
-	"bytes"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -24,12 +23,7 @@ var (
 	responsesPrefix  = [1]byte{5}
 	sequencersPrefix = [1]byte{6}
 	cidPrefix        = [1]byte{7}
-	validationPrefix = [1]byte{8}
-)
-
-var (
-	blockNonValidated = [1]byte{0}
-	blockValidated    = [1]byte{1}
+	sourcePrefix     = [1]byte{8}
 )
 
 // DefaultStore is a default store implementation.
@@ -124,32 +118,24 @@ func (s *DefaultStore) LoadBlockByHash(hash [32]byte) (*types.Block, error) {
 }
 
 // SaveBlockValidation saves block validation in Store.
-func (s *DefaultStore) SaveBlockValidation(height uint64, validation bool, batch KVBatch) (KVBatch, error) {
+func (s *DefaultStore) SaveBlockSource(height uint64, source string, batch KVBatch) (KVBatch, error) {
 
-	var data []byte
-	if validation {
-		data = blockValidated[:]
-	} else {
-		data = blockNonValidated[:]
-	}
 	if batch == nil {
-		return nil, s.db.Set(getValidationKey(height), data)
+		return nil, s.db.Set(getSourceKey(height), []byte(source))
 	}
-	err := batch.Set(getValidationKey(height), data)
+	err := batch.Set(getSourceKey(height), []byte(source))
 	return batch, err
 }
 
 // LoadBlockValidation returns block validation in Store.
-func (s *DefaultStore) LoadBlockValidation(height uint64) (bool, error) {
+func (s *DefaultStore) LoadBlockSource(height uint64) (string, error) {
 
-	data, err := s.db.Get(getValidationKey(height))
+	source, err := s.db.Get(getSourceKey(height))
 	if err != nil {
-		return false, fmt.Errorf("retrieve block results from height %v: %w", height, err)
+		return "", fmt.Errorf("retrieve block results from height %v: %w", height, err)
 	}
-	if bytes.Equal(data[:], blockValidated[:]) {
-		return true, nil
-	}
-	return false, nil
+
+	return string(source[:]), nil
 
 }
 
@@ -370,8 +356,8 @@ func getCidKey(height uint64) []byte {
 	return append(cidPrefix[:], buf[:]...)
 }
 
-func getValidationKey(height uint64) []byte {
+func getSourceKey(height uint64) []byte {
 	buf := make([]byte, 8)
 	binary.BigEndian.PutUint64(buf, height)
-	return append(validationPrefix[:], buf[:]...)
+	return append(sourcePrefix[:], buf[:]...)
 }
