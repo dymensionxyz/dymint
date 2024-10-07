@@ -15,28 +15,25 @@ func (m *Manager) onNewStateUpdate(event pubsub.Message) {
 		return
 	}
 
+	// Update heights based on state update end height
 	m.LastSubmittedHeight.Store(eventData.EndHeight)
 	m.UpdateTargetHeight(eventData.EndHeight)
 
-	// If node is not synced trigger syncing from DA (includes validation). If it is already synced validate state update
-	if m.State.Height() < eventData.EndHeight {
-		select {
-		case m.syncingC <- eventData.EndHeight:
-		default:
-			m.logger.Debug("disregarding new state update, node is still syncing")
-		}
-	} else {
-		batch, err := m.SLClient.GetBatchAtIndex(eventData.StateIndex)
-		if err != nil {
-			m.logger.Error("state update retrieval", "error", err)
-		}
-		_, err = m.validator.ValidateStateUpdate(batch)
-		if err != nil {
-			m.logger.Error("state update validation", "error", err)
-		}
+	// If node is not synced, trigger syncing from DA.
+	select {
+	case m.syncingC <- eventData.EndHeight:
+	default:
+		m.logger.Debug("disregarding new state update, node is still syncing")
 	}
 
-	err := m.UpdateSequencerSetFromSL()
+	// Validate new state update
+	err := m.validator.ValidateStateUpdate(eventData.StateIndex)
+	if err != nil {
+		m.logger.Error("state update validation", "error", err)
+	}
+
+	// Update sequencers list from SL
+	err = m.UpdateSequencerSetFromSL()
 	if err != nil {
 		m.logger.Error("update bonded sequencer set", "error", err)
 	}
