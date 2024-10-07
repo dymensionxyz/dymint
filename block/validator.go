@@ -15,64 +15,99 @@ type P2PBlockValidator interface {
 }
 
 type DABlocksValidator interface {
-	ValidateStateUpdate(batch *settlement.ResultRetrieveBatch) (da.ResultRetrieveBatch, error)
+	ValidateDaBlocks(slBatch *settlement.ResultRetrieveBatch, daBlocks []*types.Block) error
 }
 
 // StateUpdateValidator is a validator for messages gossiped in the p2p network.
 type StateUpdateValidator struct {
-	logger    types.Logger
-	retriever da.BatchRetriever
+	logger       types.Logger
+	blockManager *Manager
 }
 
 var _ DABlocksValidator = &StateUpdateValidator{}
 var _ P2PBlockValidator = &StateUpdateValidator{}
 
 // NewValidator creates a new Validator.
-func NewStateUpdateValidator(logger types.Logger, daClient da.BatchRetriever) *StateUpdateValidator {
+func NewStateUpdateValidator(logger types.Logger, blockManager *Manager) *StateUpdateValidator {
 	return &StateUpdateValidator{
-		logger:    logger,
-		retriever: daClient,
+		logger:       logger,
+		blockManager: blockManager,
 	}
 }
 
-func (v *StateUpdateValidator) ValidateStateUpdate(batch *settlement.ResultRetrieveBatch) (da.ResultRetrieveBatch, error) {
+func (v *StateUpdateValidator) ValidateStateUpdate(stateIndex uint64) error {
 
-	//TODO(srene): check if pending validations because applied blocks from cache.
-
-	err := v.validateDRS(batch.StartHeight, batch.EndHeight, batch.DRSVersion)
+	batch, err := v.blockManager.SLClient.GetBatchAtIndex(stateIndex)
 	if err != nil {
-		return da.ResultRetrieveBatch{}, err
+		return err
 	}
-	daBatch := v.retriever.RetrieveBatches(batch.MetaData.DA)
-	if daBatch.Code != da.StatusSuccess {
-		return da.ResultRetrieveBatch{}, daBatch.Error
+
+	err = v.validateDRS(batch.StartHeight, batch.EndHeight, batch.DRSVersion)
+	if err != nil {
+		return err
 	}
 
 	var daBlocks []*types.Block
-	for _, batch := range daBatch.Batches {
-		daBlocks = append(daBlocks, batch.Blocks...)
-	}
+	var p2pBlocks []*types.Block
 
-	err = v.validateDaBlocks(batch, daBlocks)
-	if err != nil {
-		return da.ResultRetrieveBatch{}, err
-	}
-
-	return daBatch, nil
-}
-
-func (v *StateUpdateValidator) ValidateP2PBlocks(daBlocks []*types.Block, p2pBlocks []*types.Block) error {
-	if len(daBlocks) != len(p2pBlocks) {
-		return fmt.Errorf("comparing different number of blocks between P2P blocks and DA blocks. Start height: %d End Height: %d", daBlocks[0].Header.Height, daBlocks[len(daBlocks)-1].Header.Height)
-	}
-
-	for i, p2pBlock := range daBlocks {
-
-		p2pBlockHash, err := blockHash(p2pBlock)
+	//load blocks for the batch height, either P2P or DA blocks
+	for height := batch.StartHeight; height <= batch.EndHeight; height++ {
+		source, err := v.blockManager.Store.LoadBlockSource(height)
 		if err != nil {
 			return err
 		}
-		daBlockHash, err := blockHash(daBlocks[i])
+		block, err := v.blockManager.Store.LoadBlock(height)
+		if err != nil {
+			return err
+		}
+		if source == types.DA.String() {
+			daBlocks = append(daBlocks, block)
+		} else {
+			p2pBlocks = append(p2pBlocks, block)
+		}
+	}
+
+	numBlocks := batch.EndHeight - batch.StartHeight + 1
+	if uint64(len(daBlocks)) != numBlocks {
+		daBatch := v.blockManager.Retriever.RetrieveBatches(batch.MetaData.DA)
+		if daBatch.Code != da.StatusSuccess {
+			return daBatch.Error
+		}
+
+		for _, batch := range daBatch.Batches {
+			daBlocks = append(daBlocks, batch.Blocks...)
+		}
+	}
+
+	err = v.ValidateDaBlocks(batch, daBlocks)
+	if err != nil {
+		return err
+	}
+
+	if len(p2pBlocks) > 0 {
+		err = v.ValidateP2PBlocks(daBlocks, p2pBlocks)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (v *StateUpdateValidator) ValidateP2PBlocks(daBlocks []*types.Block, p2pBlocks []*types.Block) error {
+
+	i := 0
+	for _, daBlock := range daBlocks {
+
+		if p2pBlocks[i].Header.Height != daBlocks[i].Header.Height {
+			break
+		}
+		p2pBlockHash, err := blockHash(p2pBlocks[i])
+		if err != nil {
+			return err
+		}
+		i++
+		daBlockHash, err := blockHash(daBlock)
 		if err != nil {
 			return err
 		}
@@ -88,7 +123,7 @@ func (v *StateUpdateValidator) isHeightFinalized(height uint64) bool {
 	return false
 }
 
-func (v *StateUpdateValidator) validateDaBlocks(slBatch *settlement.ResultRetrieveBatch, daBlocks []*types.Block) error {
+func (v *StateUpdateValidator) ValidateDaBlocks(slBatch *settlement.ResultRetrieveBatch, daBlocks []*types.Block) error {
 
 	// check numblocks
 	numSlBlocks := len(slBatch.BlockDescriptors)
@@ -127,7 +162,7 @@ func (v *StateUpdateValidator) validateDRS(startHeight, endHeight uint64, versio
 func blockHash(block *types.Block) ([]byte, error) {
 	blockBytes, err := block.MarshalBinary()
 	if err != nil {
-		return nil, fmt.Errorf("error marshal p2pblock. err: %w", err)
+		return nil, fmt.Errorf("error hashing block. err: %w", err)
 	}
 	h := sha256.New()
 	h.Write(blockBytes)

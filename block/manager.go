@@ -163,7 +163,7 @@ func NewManager(
 		return nil, err
 	}
 
-	m.validator = NewStateUpdateValidator(m.logger, m.Retriever)
+	m.validator = NewStateUpdateValidator(m.logger, m)
 
 	return m, nil
 }
