@@ -316,9 +316,9 @@ func (m *Manager) syncFromSettlement() error {
 	if errors.Is(err, gerrc.ErrNotFound) {
 		// The SL hasn't got any batches for this chain yet.
 		m.logger.Info("No finalized batches for chain found in SL.")
-		m.LastFinalizedHeight.Store(uint64(m.Genesis.InitialHeight - 1))
 		return nil
 	}
+	m.LastFinalizedHeight.Store(res.EndHeight)
 
 	return nil
 }
