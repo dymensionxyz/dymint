@@ -119,7 +119,10 @@ func (m *Manager) CompleteRotation(ctx context.Context, nextSeqAddr string) erro
 		copy(nextSeqHash[:], seq.Hash())
 	}
 
-	err := m.CreateAndPostLastBatch(ctx, nextSeqHash)
+	err := m.CreateAndPostLastBatch(ctx, nextProposerInfo{
+		nextProposerHash: nextSeqHash,
+		nextProposerAddr: nextSeqAddr,
+	})
 	if err != nil {
 		return fmt.Errorf("create and post last batch: %w", err)
 	}
@@ -130,7 +133,7 @@ func (m *Manager) CompleteRotation(ctx context.Context, nextSeqAddr string) erro
 
 // CreateAndPostLastBatch creates and posts the last batch to the hub
 // this called after manager shuts down the block producer and submitter
-func (m *Manager) CreateAndPostLastBatch(ctx context.Context, nextSeqHash [32]byte) error {
+func (m *Manager) CreateAndPostLastBatch(ctx context.Context, nextProposerInfo nextProposerInfo) error {
 	h := m.State.Height()
 	block, err := m.Store.LoadBlock(h)
 	if err != nil {
@@ -138,10 +141,10 @@ func (m *Manager) CreateAndPostLastBatch(ctx context.Context, nextSeqHash [32]by
 	}
 
 	// check if the last block already produced with nextProposerHash set
-	if bytes.Equal(block.Header.NextSequencersHash[:], nextSeqHash[:]) {
+	if bytes.Equal(block.Header.NextSequencersHash[:], nextProposerInfo.nextProposerHash[:]) {
 		m.logger.Debug("Last block already produced and applied.")
 	} else {
-		err := m.ProduceApplyGossipLastBlock(ctx, nextSeqHash)
+		err := m.ProduceApplyGossipLastBlock(ctx, nextProposerInfo)
 		if err != nil {
 			return fmt.Errorf("produce apply gossip last block: %w", err)
 		}

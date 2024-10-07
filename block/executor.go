@@ -4,11 +4,8 @@ import (
 	"errors"
 	"time"
 
-	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
-	"github.com/cosmos/cosmos-sdk/types/bech32"
 	proto2 "github.com/gogo/protobuf/proto"
 	proto "github.com/gogo/protobuf/types"
-
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmcrypto "github.com/tendermint/tendermint/crypto/encoding"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
@@ -19,7 +16,6 @@ import (
 
 	"github.com/dymensionxyz/dymint/mempool"
 	"github.com/dymensionxyz/dymint/types"
-	"github.com/dymensionxyz/dymint/types/pb/rollapp/sequencers"
 )
 
 // default minimum block max size allowed. not specific reason to set it to 10K, but we need to avoid no transactions can be included in a block.
@@ -107,47 +103,25 @@ func (e *Executor) InitChain(genesis *tmtypes.GenesisDoc, valset []*tmtypes.Vali
 	})
 }
 
-// CreateBlock reaps transactions from mempool and builds a block.
+// CreateBlock reaps transactions from mempool and builds a block. Optionally, executes consensus messages that
+// gets from the consensus messages stream or from the method args.
 func (e *Executor) CreateBlock(
 	height uint64,
 	lastCommit *types.Commit,
 	lastHeaderHash, nextSeqHash [32]byte,
 	state *types.State,
 	maxBlockDataSizeBytes uint64,
+	consensusMsgs ...proto2.Message,
 ) *types.Block {
 	maxBlockDataSizeBytes = min(maxBlockDataSizeBytes, uint64(max(minBlockMaxBytes, state.ConsensusParams.Block.MaxBytes)))
 	mempoolTxs := e.mempool.ReapMaxBytesMaxGas(int64(maxBlockDataSizeBytes), state.ConsensusParams.Block.MaxGas)
 
-	var consensusAnyMessages []*proto.Any
 	if e.consensusMessagesStream != nil {
 		consensusMessages, err := e.consensusMessagesStream.GetConsensusMessages()
 		if err != nil {
 			e.logger.Error("Failed to get consensus messages", "error", err)
 		}
-
-		consensusAnyMessages = fromProtoMsgSliceToAnySlice(consensusMessages...)
-	}
-	// Set the initial sequencer reward address on the very first block after the genesis
-	const rotationBlock = false
-	if state.LastBlockHeight.Load() == 1 {
-		val, _ := state.Sequencers.Proposer.TMValidator()
-		tmPubKey, err := tmcrypto.PubKeyToProto(val.PubKey)
-		if err != nil {
-			return nil
-		}
-		anyTmPubKey, err := codectypes.NewAnyWithValue(&tmPubKey)
-		if err != nil {
-			return nil
-		}
-		_, addrBytes, err := bech32.DecodeAndConvert(state.Sequencers.Proposer.SettlementAddress)
-		if err != nil {
-			return nil
-		}
-		consensusAnyMessages = append(consensusAnyMessages, fromProtoMsgSliceToAnySlice(&sequencers.MsgUpsertSequencer{
-			Operator:        val.Address.String(), // ??
-			ConsPubKey:      anyTmPubKey,
-			RewardAddrBytes: addrBytes,
-		})...)
+		consensusMsgs = append(consensusMsgs, consensusMessages...)
 	}
 
 	block := &types.Block{
@@ -170,7 +144,7 @@ func (e *Executor) CreateBlock(
 			Txs:                    toDymintTxs(mempoolTxs),
 			IntermediateStateRoots: types.IntermediateStateRoots{RawRootsList: nil},
 			Evidence:               types.EvidenceData{Evidence: nil},
-			ConsensusMessages:      consensusAnyMessages,
+			ConsensusMessages:      fromProtoMsgSliceToAnySlice(consensusMsgs...),
 		},
 		LastCommit: *lastCommit,
 	}

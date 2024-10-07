@@ -6,18 +6,21 @@ import (
 	"fmt"
 	"time"
 
+	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
+	"github.com/cosmos/cosmos-sdk/types/bech32"
+	sequencertypes "github.com/dymensionxyz/dymension-rdk/x/sequencers/types"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
-
-	"github.com/dymensionxyz/dymint/node/events"
-	"github.com/dymensionxyz/dymint/store"
-	uevent "github.com/dymensionxyz/dymint/utils/event"
-
+	"github.com/gogo/protobuf/proto"
 	tmed25519 "github.com/tendermint/tendermint/crypto/ed25519"
+	tmcrypto "github.com/tendermint/tendermint/crypto/encoding"
 	cmtproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	tmtypes "github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 
+	"github.com/dymensionxyz/dymint/node/events"
+	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
+	uevent "github.com/dymensionxyz/dymint/utils/event"
 )
 
 // ProduceBlockLoop is calling publishBlock in a loop as long as we're synced.
@@ -96,9 +99,17 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int)
 	}
 }
 
+// nextProposerInfo holds information about the next proposer.
+type nextProposerInfo struct {
+	// nextProposerHash is a tendermint-compatible hash of the sequencer.
+	nextProposerHash [32]byte
+	// nextProposerAddr is a sequencer's settlement address.
+	nextProposerAddr string
+}
+
 // ProduceApplyGossipLastBlock produces and applies a block with the given nextProposerHash.
-func (m *Manager) ProduceApplyGossipLastBlock(ctx context.Context, nextProposerHash [32]byte) (err error) {
-	_, _, err = m.produceApplyGossip(ctx, true, &nextProposerHash)
+func (m *Manager) ProduceApplyGossipLastBlock(ctx context.Context, nextProposerInfo nextProposerInfo) (err error) {
+	_, _, err = m.produceApplyGossip(ctx, true, &nextProposerInfo)
 	return err
 }
 
@@ -106,8 +117,8 @@ func (m *Manager) ProduceApplyGossipBlock(ctx context.Context, allowEmpty bool) 
 	return m.produceApplyGossip(ctx, allowEmpty, nil)
 }
 
-func (m *Manager) produceApplyGossip(ctx context.Context, allowEmpty bool, nextProposerHash *[32]byte) (block *types.Block, commit *types.Commit, err error) {
-	block, commit, err = m.produceBlock(allowEmpty, nextProposerHash)
+func (m *Manager) produceApplyGossip(ctx context.Context, allowEmpty bool, nextProposerInfo *nextProposerInfo) (block *types.Block, commit *types.Commit, err error) {
+	block, commit, err = m.produceBlock(allowEmpty, nextProposerInfo)
 	if err != nil {
 		return nil, nil, fmt.Errorf("produce block: %w", err)
 	}
@@ -123,7 +134,7 @@ func (m *Manager) produceApplyGossip(ctx context.Context, allowEmpty bool, nextP
 	return block, commit, nil
 }
 
-func (m *Manager) produceBlock(allowEmpty bool, nextProposerHash *[32]byte) (*types.Block, *types.Commit, error) {
+func (m *Manager) produceBlock(allowEmpty bool, nextProposerInfo *nextProposerInfo) (*types.Block, *types.Commit, error) {
 	newHeight := m.State.NextHeight()
 	lastHeaderHash, lastCommit, err := m.GetPreviousBlockHashes(newHeight)
 	if err != nil {
@@ -148,14 +159,24 @@ func (m *Manager) produceBlock(allowEmpty bool, nextProposerHash *[32]byte) (*ty
 		return nil, nil, fmt.Errorf("load block: height: %d: %w: %w", newHeight, err, ErrNonRecoverable)
 	}
 
-	maxBlockDataSize := uint64(float64(m.Conf.BatchSubmitBytes) * types.MaxBlockSizeAdjustment)
-	proposerHashForBlock := [32]byte(m.State.Sequencers.ProposerHash())
-	// if nextProposerHash is set, we create a last block
-	if nextProposerHash != nil {
+	var (
+		maxBlockDataSize     = uint64(float64(m.Conf.BatchSubmitBytes) * types.MaxBlockSizeAdjustment)
+		proposerHashForBlock = [32]byte(m.State.Sequencers.ProposerHash())
+		nextProposerAddr     = m.State.Sequencers.Proposer.SettlementAddress
+		lastProposerBlock    = false // Indicates that the block is the last for the current seq. True during the rotation.
+	)
+	// if nextProposerInfo is set, we create a last block
+	if nextProposerInfo != nil {
 		maxBlockDataSize = 0
-		proposerHashForBlock = *nextProposerHash
+		proposerHashForBlock = nextProposerInfo.nextProposerHash
+		nextProposerAddr = nextProposerInfo.nextProposerAddr
+		lastProposerBlock = true
 	}
-	block = m.Executor.CreateBlock(newHeight, lastCommit, lastHeaderHash, proposerHashForBlock, m.State, maxBlockDataSize)
+	consensusMsgs, err := m.consensusMsgsOnCreateBlock(nextProposerAddr, lastProposerBlock)
+	if err != nil {
+		return nil, nil, fmt.Errorf("create consensus msgs for create block: %w: %w", err, ErrNonRecoverable)
+	}
+	block = m.Executor.CreateBlock(newHeight, lastCommit, lastHeaderHash, proposerHashForBlock, m.State, maxBlockDataSize, consensusMsgs...)
 	if !allowEmpty && len(block.Data.Txs) == 0 {
 		return nil, nil, fmt.Errorf("%w: %w", types.ErrEmptyBlock, ErrRecoverable)
 	}
@@ -169,6 +190,50 @@ func (m *Manager) produceBlock(allowEmpty bool, nextProposerHash *[32]byte) (*ty
 	types.RollappBlockSizeBytesGauge.Set(float64(len(block.Data.Txs)))
 	types.RollappBlockSizeTxsGauge.Set(float64(len(block.Data.Txs)))
 	return block, commit, nil
+}
+
+// consensusMsgsOnCreateBlock forms a list of consensus messages that need execution on rollapp's BeginBlock.
+// Currently, we need to create a sequencer in the rollapp if it doesn't exist in the following cases:
+//   - On the very first block after the genesis or
+//   - On the last block of the current sequencer (eg, during the rotation).
+func (m *Manager) consensusMsgsOnCreateBlock(
+	nextProposerSettlementAddr string,
+	lastSeqBlock bool, // Indicates that the block is the last for the current seq. True during the rotation.
+) ([]proto.Message, error) {
+	if m.State.IsGenesis() || lastSeqBlock {
+		nextSeq := m.State.Sequencers.GetByAddress(nextProposerSettlementAddr)
+		// Sanity check. Must never happen in practice. The sequencer's existence is verified beforehand in Manager.CompleteRotation.
+		if nextSeq == nil {
+			panic(fmt.Errorf("no sequencer found for address while creating a new block %s", nextProposerSettlementAddr))
+		}
+
+		// Get proposer's consensus public key and convert it to proto.Any
+		val, err := nextSeq.TMValidator()
+		if err != nil {
+			return nil, fmt.Errorf("convert next squencer to tendermint validator: %w", err)
+		}
+		pubKey, err := tmcrypto.PubKeyToProto(val.PubKey)
+		if err != nil {
+			return nil, fmt.Errorf("next squencer pub key to proto: %w", err)
+		}
+		anyPubKey, err := codectypes.NewAnyWithValue(&pubKey)
+		if err != nil {
+			return nil, fmt.Errorf("next squencer pubkey to proto any: %w", err)
+		}
+
+		// Get raw bytes of the proposer's settlement address. These bytes are to be converted to the rollapp format later.
+		_, addrBytes, err := bech32.DecodeAndConvert(nextProposerSettlementAddr)
+		if err != nil {
+			return nil, fmt.Errorf("next squencer settlement addr to bech32: %w", err)
+		}
+
+		return []proto.Message{&sequencertypes.MsgUpsertSequencer{
+			Operator:        nextProposerSettlementAddr,
+			ConsPubKey:      anyPubKey,
+			RewardAddrBytes: addrBytes,
+		}}, nil
+	}
+	return nil, nil
 }
 
 // create commit for block
