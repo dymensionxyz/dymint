@@ -63,6 +63,9 @@ type Manager struct {
 	// prune anything that might be submitted in the future. Therefore, it must be atomic.
 	LastSubmittedHeight atomic.Uint64
 
+	// The last height which was finalized after dispute period, obtained from the Hub
+	LastFinalizedHeight atomic.Uint64
+
 	/*
 		Retrieval
 	*/
@@ -90,8 +93,6 @@ type Manager struct {
 	syncingC chan struct{}
 
 	validateC chan struct{}
-
-	validateC chan uint64
 
 	synced *uchannel.Nudger
 
