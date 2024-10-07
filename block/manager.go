@@ -94,8 +94,6 @@ type Manager struct {
 
 	validateC chan struct{}
 
-	validateC chan uint64
-
 	synced *uchannel.Nudger
 
 	validator *StateUpdateValidator
