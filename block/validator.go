@@ -2,6 +2,7 @@ package block
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"fmt"
 
@@ -9,6 +10,30 @@ import (
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
 )
+
+// SyncTargetLoop listens for syncing events (from new state update or from initial syncing) and syncs to the last submitted height.
+// In case the node is already synced, it validate
+func (m *Manager) ValidateLoop(ctx context.Context) error {
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case stateIndex := <-m.validateC:
+
+			// Validate new state update
+			batch, err := m.SLClient.GetBatchAtIndex(stateIndex)
+
+			if err != nil {
+				return err
+			}
+			err = m.validator.ValidateStateUpdate(batch)
+			if err != nil {
+				m.logger.Error("state update validation", "error", err)
+			}
+		}
+	}
+}
 
 type P2PBlockValidator interface {
 	ValidateP2PBlocks(daBlocks []*types.Block, p2pBlocks []*types.Block) error
@@ -35,14 +60,9 @@ func NewStateUpdateValidator(logger types.Logger, blockManager *Manager) *StateU
 	}
 }
 
-func (v *StateUpdateValidator) ValidateStateUpdate(stateIndex uint64) error {
+func (v *StateUpdateValidator) ValidateStateUpdate(batch *settlement.ResultRetrieveBatch) error {
 
-	batch, err := v.blockManager.SLClient.GetBatchAtIndex(stateIndex)
-	if err != nil {
-		return err
-	}
-
-	err = v.validateDRS(batch.StartHeight, batch.EndHeight, batch.DRSVersion)
+	err := v.validateDRS(batch.StartHeight, batch.EndHeight, batch.DRSVersion)
 	if err != nil {
 		return err
 	}
