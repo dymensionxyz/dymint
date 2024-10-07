@@ -218,8 +218,10 @@ func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *d
 	}
 }
 
-func (c *Client) getStateInfo(index, height *uint64) (res *rollapptypes.QueryGetStateInfoResponse, err error) {
-	req := &rollapptypes.QueryGetStateInfoRequest{RollappId: c.rollappId}
+func (c *Client) getStateInfo(index, height *uint64, finalized bool) (res *rollapptypes.QueryGetStateInfoResponse, err error) {
+	req := &rollapptypes.QueryGetStateInfoRequest{
+		RollappId: c.rollappId,
+		Finalized: finalized}
 	if index != nil {
 		req.Index = *index
 	}
@@ -245,7 +247,16 @@ func (c *Client) getStateInfo(index, height *uint64) (res *rollapptypes.QueryGet
 
 // GetLatestBatch returns the latest batch from the Dymension Hub.
 func (c *Client) GetLatestBatch() (*settlement.ResultRetrieveBatch, error) {
-	res, err := c.getStateInfo(nil, nil)
+	res, err := c.getStateInfo(nil, nil, false)
+	if err != nil {
+		return nil, fmt.Errorf("get state info: %w", err)
+	}
+	return convertStateInfoToResultRetrieveBatch(&res.StateInfo)
+}
+
+// GetLatestFinalizedBatch returns the latest finalized batch from the Dymension Hub.
+func (c *Client) GetLatestFinalizedBatch() (*settlement.ResultRetrieveBatch, error) {
+	res, err := c.getStateInfo(nil, nil, true)
 	if err != nil {
 		return nil, fmt.Errorf("get state info: %w", err)
 	}
@@ -254,24 +265,21 @@ func (c *Client) GetLatestBatch() (*settlement.ResultRetrieveBatch, error) {
 
 // GetBatchAtIndex returns the batch at the given index from the Dymension Hub.
 func (c *Client) GetBatchAtIndex(index uint64) (*settlement.ResultRetrieveBatch, error) {
-	res, err := c.getStateInfo(&index, nil)
+	res, err := c.getStateInfo(&index, nil, false)
 	if err != nil {
 		return nil, fmt.Errorf("get state info: %w", err)
 	}
 	return convertStateInfoToResultRetrieveBatch(&res.StateInfo)
 }
 
-func (c *Client) GetHeightState(h uint64) (*settlement.ResultGetHeightState, error) {
-	res, err := c.getStateInfo(nil, &h)
+// GetBatchAtHeight returns the batch at the given height from the Dymension Hub.
+func (c *Client) GetBatchAtHeight(height uint64) (*settlement.ResultRetrieveBatch, error) {
+
+	res, err := c.getStateInfo(nil, &height, false)
 	if err != nil {
 		return nil, fmt.Errorf("get state info: %w", err)
 	}
-	return &settlement.ResultGetHeightState{
-		ResultBase: settlement.ResultBase{Code: settlement.StatusSuccess},
-		State: settlement.State{
-			StateIndex: res.GetStateInfo().StateInfoIndex.Index,
-		},
-	}, nil
+	return convertStateInfoToResultRetrieveBatch(&res.StateInfo)
 }
 
 // GetProposer implements settlement.ClientI.

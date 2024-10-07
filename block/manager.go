@@ -63,6 +63,9 @@ type Manager struct {
 	// prune anything that might be submitted in the future. Therefore, it must be atomic.
 	LastSubmittedHeight atomic.Uint64
 
+	// The last height which was finalized after dispute period, obtained from the Hub
+	LastFinalizedHeight atomic.Uint64
+
 	/*
 		Retrieval
 	*/
@@ -87,9 +90,9 @@ type Manager struct {
 	// indexer
 	indexerService *txindex.IndexerService
 
-	syncingC chan uint64
+	syncingC chan struct{}
 
-	validateC chan uint64
+	validateC chan struct{}
 
 	synced *uchannel.Nudger
 
@@ -144,8 +147,8 @@ func NewManager(
 			cache: make(map[uint64]types.CachedBlock),
 		},
 		pruningC:  make(chan int64, 10), // use of buffered channel to avoid blocking applyBlock thread. In case channel is full, pruning will be skipped, but the retain height can be pruned in the next iteration.
-		syncingC:  make(chan uint64, 1),
-		validateC: make(chan uint64, 1),
+		syncingC:  make(chan struct{}, 1),
+		validateC: make(chan struct{}, 1),
 		synced:    uchannel.NewNudger(),
 	}
 	m.setFraudHandler(NewFreezeHandler(m))
@@ -210,6 +213,10 @@ func (m *Manager) Start(ctx context.Context) error {
 
 	/* ----------------------------- full node mode ----------------------------- */
 	if !isProposer {
+
+		uerrors.ErrGroupGoLog(eg, m.logger, func() error {
+			return m.ValidateLoop(ctx)
+		})
 		go uevent.MustSubscribe(ctx, m.Pubsub, "syncTargetLoop", settlement.EventQueryNewSettlementBatchAccepted, m.onNewStateUpdate, m.logger)
 		// P2P Sync. Subscribe to P2P received blocks events
 		go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewGossipedBlock, m.OnReceivedBlock, m.logger)
@@ -311,7 +318,18 @@ func (m *Manager) syncFromSettlement() error {
 
 	m.LastSubmittedHeight.Store(res.EndHeight)
 	m.UpdateTargetHeight(res.EndHeight)
-	m.syncingC <- res.EndHeight
+
+	m.syncingC <- struct{}{}
+	m.validateC <- struct{}{}
+
+	res, err = m.SLClient.GetLatestFinalizedBatch()
+	if errors.Is(err, gerrc.ErrNotFound) {
+		// The SL hasn't got any batches for this chain yet.
+		m.logger.Info("No finalized batches for chain found in SL.")
+		m.LastFinalizedHeight.Store(uint64(m.Genesis.InitialHeight - 1))
+		return nil
+	}
+
 	return nil
 }
 
