@@ -169,7 +169,7 @@ func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *d
 				return fmt.Errorf("subscription cancelled")
 
 			case event := <-subscription.Out():
-				eventData, _ := event.Data().(*settlement.EventDataNewBatchAccepted)
+				eventData, _ := event.Data().(*settlement.EventDataNewBatch)
 				if eventData.EndHeight != batch.EndHeight() {
 					c.logger.Debug("Received event for a different batch, ignoring.", "event", eventData)
 					continue // continue waiting for acceptance of the current batch
