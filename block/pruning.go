@@ -9,7 +9,7 @@ import (
 func (m *Manager) PruneBlocks(retainHeight uint64) (uint64, error) {
 	nextSubmissionHeight := m.NextHeightToSubmit()
 	if m.IsProposer() && nextSubmissionHeight < retainHeight { // do not delete anything that we might submit in future
-		m.logger.Debug("cannot prune blocks before they have been submitted. using height last submitted height for pruning", "retain_height", retainHeight, "height_to_submit", m.NextHeightToSubmit())
+		m.logger.Debug("cannot prune blocks before they have been submitted. using last submitted height for pruning", "retain_height", retainHeight, "height_to_submit", m.NextHeightToSubmit())
 		retainHeight = nextSubmissionHeight
 	}
 
