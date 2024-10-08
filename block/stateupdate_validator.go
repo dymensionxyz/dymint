@@ -51,11 +51,11 @@ func (v *StateUpdateValidator) ValidateStateUpdate(batch *settlement.ResultRetri
 	for height := batch.StartHeight; height <= batch.EndHeight; height++ {
 		source, err := v.blockManager.Store.LoadBlockSource(height)
 		if err != nil {
-			return err
+			continue
 		}
 		block, err := v.blockManager.Store.LoadBlock(height)
 		if err != nil {
-			return err
+			continue
 		}
 		if source == types.DA.String() {
 			daBlocks = append(daBlocks, block)
@@ -66,11 +66,11 @@ func (v *StateUpdateValidator) ValidateStateUpdate(batch *settlement.ResultRetri
 
 	numBlocks := batch.EndHeight - batch.StartHeight + 1
 	if uint64(len(daBlocks)) != numBlocks {
+		daBlocks = []*types.Block{}
 		daBatch := v.blockManager.Retriever.RetrieveBatches(batch.MetaData.DA)
 		if daBatch.Code != da.StatusSuccess {
 			return daBatch.Error
 		}
-
 		for _, batch := range daBatch.Batches {
 			daBlocks = append(daBlocks, batch.Blocks...)
 		}
@@ -104,13 +104,16 @@ func (v *StateUpdateValidator) ValidateP2PBlocks(daBlocks []*types.Block, p2pBlo
 		if err != nil {
 			return err
 		}
-		i++
 		daBlockHash, err := blockHash(daBlock)
 		if err != nil {
 			return err
 		}
 		if !bytes.Equal(p2pBlockHash, daBlockHash) {
 			return fmt.Errorf("failed comparing blocks")
+		}
+		i++
+		if i == len(p2pBlocks) {
+			break
 		}
 	}
 	return nil
@@ -137,8 +140,8 @@ func (v *StateUpdateValidator) ValidateDaBlocks(slBatch *settlement.ResultRetrie
 		}
 
 		// we compare the timestamp between SL state info and DA block
-		if bd.Timestamp != daBlocks[i].Header.GetTimestamp() {
-			return fmt.Errorf("timestamp mismatch between state update and DA batch. State index: %d: Height: %d Timestamp SL: %s Timestamp DA: %s", slBatch.StateIndex, bd.Height, bd.Timestamp, daBlocks[i].Header.GetTimestamp())
+		if !bd.Timestamp.Equal(daBlocks[i].Header.GetTimestamp()) {
+			return fmt.Errorf("timestamp mismatch between state update and DA batch. State index: %d: Height: %d Timestamp SL: %s Timestamp DA: %s", slBatch.StateIndex, bd.Height, bd.Timestamp.UTC(), daBlocks[i].Header.GetTimestamp().UTC())
 		}
 	}
 

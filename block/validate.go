@@ -14,19 +14,25 @@ func (m *Manager) ValidateLoop(ctx context.Context) error {
 
 			m.logger.Info("validating state updates to target height", "targetHeight", m.LastSubmittedHeight.Load())
 
-			validationStartHeight := max(m.LastSubmittedHeight.Load(), m.LastFinalizedHeight.Load()) + 1
-			for currH := validationStartHeight; currH <= m.State.Height(); currH = m.LastSubmittedHeight.Load() {
+			for currH := m.State.NextValidationHeight(); currH < m.NextHeightToSubmit(); currH = m.State.NextValidationHeight() {
 
-				// Validate new state update
-				batch, err := m.SLClient.GetBatchAtHeight(m.LastSubmittedHeight.Load())
-
+				// get next batch that needs to be validated from SL
+				batch, err := m.SLClient.GetBatchAtHeight(currH)
 				if err != nil {
-					return err
+					m.logger.Error("failed batch retrieval", "error", err)
+					break
 				}
+				// validate batch
 				err = m.validator.ValidateStateUpdate(batch)
 				if err != nil {
-					m.logger.Error("state update validation", "error", err)
+					panic(err)
 				}
+
+				// this should not happen. if validation is successful m.State.NextValidationHeight() should advance.
+				if currH == m.State.NextValidationHeight() {
+					panic("validation not progressing")
+				}
+				m.logger.Debug("state info validated", "batch end height", batch.EndHeight, "lastValidatedHeight", m.State.GetLastValidatedHeight())
 			}
 		}
 	}

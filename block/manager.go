@@ -319,8 +319,8 @@ func (m *Manager) syncFromSettlement() error {
 	m.LastSubmittedHeight.Store(res.EndHeight)
 	m.UpdateTargetHeight(res.EndHeight)
 
-	m.syncingC <- struct{}{}
-	m.validateC <- struct{}{}
+	m.triggerStateUpdateSyncing()
+	m.triggerStateUpdateValidation()
 
 	res, err = m.SLClient.GetLatestFinalizedBatch()
 	if errors.Is(err, gerrc.ErrNotFound) {
