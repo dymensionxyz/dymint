@@ -3,7 +3,21 @@ package block
 import (
 	"context"
 	"fmt"
+
+	"github.com/dymensionxyz/dymint/settlement"
+	"github.com/tendermint/tendermint/libs/pubsub"
 )
+
+// onNewStateUpdate will update the last submitted height and will update sequencers list from SL
+func (m *Manager) onNewStateUpdateFinalized(event pubsub.Message) {
+	eventData, ok := event.Data().(*settlement.EventDataNewBatch)
+	if !ok {
+		m.logger.Error("onReceivedBatch", "err", "wrong event data received")
+		return
+	}
+	m.State.SetLastValidatedHeight(eventData.EndHeight)
+
+}
 
 // SyncTargetLoop listens for syncing events (from new state update or from initial syncing) and syncs to the last submitted height.
 // In case the node is already synced, it validate

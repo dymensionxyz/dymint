@@ -13,7 +13,7 @@ import (
 
 // onNewStateUpdate will update the last submitted height and will update sequencers list from SL
 func (m *Manager) onNewStateUpdate(event pubsub.Message) {
-	eventData, ok := event.Data().(*settlement.EventDataNewBatchAccepted)
+	eventData, ok := event.Data().(*settlement.EventDataNewBatch)
 	if !ok {
 		m.logger.Error("onReceivedBatch", "err", "wrong event data received")
 		return
