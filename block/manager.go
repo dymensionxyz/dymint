@@ -135,7 +135,7 @@ func NewManager(
 		blockCache: &Cache{
 			cache: make(map[uint64]types.CachedBlock),
 		},
-		FraudHandler: NewTestHandler(),     // TODO: create a default handler
+		FraudHandler: nil,                  // TODO: create a default handler
 		pruningC:     make(chan int64, 10), // use of buffered channel to avoid blocking applyBlock thread. In case channel is full, pruning will be skipped, but the retain height can be pruned in the next iteration.
 		syncingC:     make(chan struct{}, 1),
 		validateC:    make(chan struct{}, 1),
