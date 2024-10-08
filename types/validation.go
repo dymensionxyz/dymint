@@ -125,27 +125,6 @@ func (c *Commit) ValidateWithHeader(proposerPubKey tmcrypto.PubKey, header *Head
 		return NewErrInvalidSignatureFraud(err)
 	}
 
-<<<<<<< HEAD
-=======
-	if c.Height != header.Height {
-		return NewErrInvalidBlockHeightFraud(c.Height, header.Height)
-	}
-
-	if !bytes.Equal(header.ProposerAddress, proposerPubKey.Address()) {
-		return NewErrInvalidProposerAddressFraud(header.ProposerAddress, proposerPubKey.Address())
-	}
-
-	seq := NewSequencerFromValidator(*tmtypes.NewValidator(proposerPubKey, 1))
-	proposerHash := seq.Hash()
-	if !bytes.Equal(header.SequencerHash[:], proposerHash) {
-		return NewErrInvalidSequencerHashFraud(header.SequencerHash, proposerHash)
-	}
-
-	if c.HeaderHash != header.Hash() {
-		return NewErrInvalidHeaderHashFraud(c.HeaderHash, header.Hash())
-	}
-
->>>>>>> c623b40 (add validations)
 	abciHeaderPb := ToABCIHeaderPB(header)
 	abciHeaderBytes, err := abciHeaderPb.Marshal()
 	if err != nil {
