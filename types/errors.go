@@ -273,3 +273,23 @@ func (e ErrInvalidSequencerHashFraud) Error() string {
 func (e ErrInvalidSequencerHashFraud) Unwrap() error {
 	return gerrc.ErrFault
 }
+
+type ErrInvalidNextSequencersHashFraud struct {
+	ExpectedHash [32]byte
+	ActualHash   [32]byte
+}
+
+func NewErrInvalidNextSequencersHashFraud(expectedHash [32]byte, actualHash [32]byte) error {
+	return &ErrInvalidNextSequencersHashFraud{
+		ExpectedHash: expectedHash,
+		ActualHash:   actualHash,
+	}
+}
+
+func (e ErrInvalidNextSequencersHashFraud) Error() string {
+	return fmt.Sprintf("invalid next sequencers hash. expected=%X, got=%X", e.ExpectedHash, e.ActualHash)
+}
+
+func (e ErrInvalidNextSequencersHashFraud) Unwrap() error {
+	return gerrc.ErrFault
+}
