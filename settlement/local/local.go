@@ -142,7 +142,7 @@ func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *d
 
 	time.Sleep(100 * time.Millisecond) // mimic a delay in batch acceptance
 	ctx := context.Background()
-	uevent.MustPublish(ctx, c.pubsub, settlement.EventDataNewBatchAccepted{EndHeight: settlementBatch.EndHeight}, settlement.EventNewBatchAcceptedList)
+	uevent.MustPublish(ctx, c.pubsub, settlement.EventDataNewBatch{EndHeight: settlementBatch.EndHeight}, settlement.EventNewBatchAcceptedList)
 
 	return nil
 }

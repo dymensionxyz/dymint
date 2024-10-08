@@ -38,6 +38,15 @@ func createRandomHashes() [][32]byte {
 	return h
 }
 
+func createRandomHash() [32]byte {
+	var h1 [32]byte
+	_, err := rand.Read(h1[:])
+	if err != nil {
+		panic(err)
+	}
+	return h1
+}
+
 func GetRandomTx() types.Tx {
 	n, _ := rand.Int(rand.Reader, big.NewInt(100))
 	size := uint64(n.Int64()) + 100
@@ -66,7 +75,7 @@ func generateBlock(height uint64, proposerHash []byte, lastHeaderHash [32]byte) 
 			LastCommitHash:     h[1],
 			DataHash:           h[2],
 			ConsensusHash:      h[3],
-			AppHash:            [32]byte{},
+			AppHash:            createRandomHash(),
 			LastResultsHash:    GetEmptyLastResultsHash(),
 			ProposerAddress:    proposerAddress,
 			SequencerHash:      [32]byte(proposerHash),

@@ -97,7 +97,7 @@ func (v *StateUpdateValidator) ValidateP2PBlocks(daBlocks []*types.Block, p2pBlo
 	i := 0
 	for _, daBlock := range daBlocks {
 
-		if p2pBlocks[i].Header.Height != daBlocks[i].Header.Height {
+		if p2pBlocks[i].Header.Height != daBlock.Header.Height {
 			break
 		}
 		p2pBlockHash, err := blockHash(p2pBlocks[i])
@@ -109,7 +109,7 @@ func (v *StateUpdateValidator) ValidateP2PBlocks(daBlocks []*types.Block, p2pBlo
 			return err
 		}
 		if !bytes.Equal(p2pBlockHash, daBlockHash) {
-			return fmt.Errorf("failed comparing blocks")
+			return fmt.Errorf("p2p block different from DA block. p2p height: %d, DA height: %d", p2pBlocks[i].Header.Height, daBlock.Header.Height)
 		}
 		i++
 		if i == len(p2pBlocks) {
@@ -149,9 +149,9 @@ func (v *StateUpdateValidator) ValidateDaBlocks(slBatch *settlement.ResultRetrie
 	return nil
 }
 
+// TODO(srene): implement DRS/height verification
 func (v *StateUpdateValidator) validateDRS(startHeight, endHeight uint64, version string) error {
 
-	//TODO(srene): implement DRS/height verification
 	return nil
 }
 
