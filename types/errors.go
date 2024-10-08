@@ -293,3 +293,21 @@ func (e ErrInvalidNextSequencersHashFraud) Error() string {
 func (e ErrInvalidNextSequencersHashFraud) Unwrap() error {
 	return gerrc.ErrFault
 }
+
+type ErrInvalidHeaderDataHashFraud struct {
+	Err error
+}
+
+func NewErrInvalidHeaderDataHashFraud(err error) error {
+	return &ErrInvalidHeaderDataHashFraud{
+		Err: err,
+	}
+}
+
+func (e ErrInvalidHeaderDataHashFraud) Error() string {
+	return fmt.Sprintf("invalid header data hash: %s", e.Err)
+}
+
+func (e ErrInvalidHeaderDataHashFraud) Unwrap() error {
+	return gerrc.ErrFault
+}

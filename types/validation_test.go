@@ -269,6 +269,26 @@ func TestBlock_ValidateWithState(t *testing.T) {
 			expectedErrType: &ErrInvalidNextSequencersHashFraud{},
 			isFraud:         true,
 		},
+		{
+			name: "invalid header data hash",
+			block: &Block{
+				Header: Header{
+					Version:         validBlock.Header.Version,
+					Height:          10,
+					Time:            uint64(currentTime.UnixNano()),
+					AppHash:         [32]byte{1, 2, 3},
+					LastResultsHash: [32]byte{4, 5, 6},
+					ProposerAddress: []byte("proposer"),
+					DataHash:        [32]byte{1, 2, 3},
+					LastHeaderHash:  [32]byte{7, 8, 9},
+					ChainID:         "chainID",
+				},
+			},
+			state:           validState,
+			wantErr:         true,
+			expectedErrType: ErrInvalidHeaderDataHashFraud{},
+			isFraud:         true,
+		},
 	}
 
 	for _, tt := range tests {
