@@ -23,19 +23,26 @@ func (m *Manager) onNewStateUpdate(event pubsub.Message) {
 	m.LastSubmittedHeight.Store(eventData.EndHeight)
 	m.UpdateTargetHeight(eventData.EndHeight)
 
+	m.logger.Error("syncing")
+
 	// Update sequencers list from SL
 	err := m.UpdateSequencerSetFromSL()
 	if err != nil {
 		m.logger.Error("update bonded sequencer set", "error", err)
 	}
 
-	// Trigger syncing from DA.
-	m.triggerStateUpdateSyncing()
+	if eventData.EndHeight > m.State.Height() {
+		// Trigger syncing from DA.
+		m.triggerStateUpdateSyncing()
+	} else {
+		// trigger state update validation (in case no state update is applied)
+		m.triggerStateUpdateValidation()
+	}
 
 }
 
-// SyncTargetLoop listens for syncing events (from new state update or from initial syncing) and syncs to the last submitted height.
-// In case the node is already synced, it validate
+// SyncLoop listens for syncing events (from new state update or from initial syncing) and syncs to the last submitted height.
+// After syncing it sends signal to validation loop
 func (m *Manager) SyncLoop(ctx context.Context) error {
 
 	for {
@@ -64,6 +71,7 @@ func (m *Manager) SyncLoop(ctx context.Context) error {
 
 				m.logger.Info("Synced from DA", "store height", m.State.Height(), "target height", m.LastSubmittedHeight.Load())
 
+				// trigger state update validation, after each state update is applied
 				m.triggerStateUpdateValidation()
 
 				err = m.attemptApplyCachedBlocks()
@@ -73,8 +81,6 @@ func (m *Manager) SyncLoop(ctx context.Context) error {
 				}
 
 			}
-
-			m.triggerStateUpdateValidation()
 
 			m.logger.Info("Synced.", "current height", m.State.Height(), "last submitted height", m.LastSubmittedHeight.Load())
 
@@ -91,8 +97,8 @@ func (m *Manager) waitForSyncing() {
 	}
 }
 
+// triggerStateUpdateSyncing sends signal to channel used by syncing loop
 func (m *Manager) triggerStateUpdateSyncing() {
-	// Trigger state update validation.
 	select {
 	case m.syncingC <- struct{}{}:
 	default:
@@ -100,8 +106,8 @@ func (m *Manager) triggerStateUpdateSyncing() {
 	}
 }
 
+// triggerStateUpdateValidation sends signal to channel used by validation loop
 func (m *Manager) triggerStateUpdateValidation() {
-	// Trigger state update validation.
 	select {
 	case m.validateC <- struct{}{}:
 	default:

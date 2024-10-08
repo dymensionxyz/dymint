@@ -316,14 +316,8 @@ func (m *Manager) syncFromSettlement() error {
 	m.LastSubmittedHeight.Store(res.EndHeight)
 	m.UpdateTargetHeight(res.EndHeight)
 
-	res, err = m.SLClient.GetLatestFinalizedBatch()
-	if errors.Is(err, gerrc.ErrNotFound) {
-		// The SL hasn't got any batches for this chain yet.
-		m.logger.Info("No finalized batches for chain found in SL.")
-		return nil
-	}
-	// update validation height with latest finalized height (it will be updated only of finalized height is higher)
-	m.State.SetLastValidatedHeight(res.EndHeight)
+	// get the latest finalized height to know from where to start validating
+	m.UpdateFinalizedHeight()
 
 	// try to sync to last state update submitted on startup
 	m.triggerStateUpdateSyncing()
@@ -344,6 +338,24 @@ func (m *Manager) UpdateTargetHeight(h uint64) {
 			break
 		}
 	}
+}
+
+// UpdateFinalizedHeight retrieves the latest finalized batch and updates validation height with it
+func (m *Manager) UpdateFinalizedHeight() error {
+	res, err := m.SLClient.GetLatestFinalizedBatch()
+	if err != nil && !errors.Is(err, gerrc.ErrNotFound) {
+		// The SL hasn't got any batches for this chain yet.
+		return fmt.Errorf("getting finalized height. err: %w", err)
+	}
+	if errors.Is(err, gerrc.ErrNotFound) {
+		// The SL hasn't got any batches for this chain yet.
+		m.logger.Info("No finalized batches for chain found in SL.")
+		m.State.SetLastValidatedHeight(0)
+	} else {
+		// update validation height with latest finalized height (it will be updated only of finalized height is higher)
+		m.State.SetLastValidatedHeight(res.EndHeight)
+	}
+	return nil
 }
 
 // ValidateConfigWithRollappParams checks the configuration params are consistent with the params in the dymint state (e.g. DA and version)
