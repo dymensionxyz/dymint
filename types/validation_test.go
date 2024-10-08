@@ -14,8 +14,14 @@ import (
 	"github.com/stretchr/testify/require"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 )
+<<<<<<< HEAD
 	proposer := NewSequencerFromValidator(*tmtypes.NewValidator(ed25519.GenPrivKey().PubKey(), 1))
 	proposerHash := proposer.MustHash()
+=======
+
+func TestBlock_ValidateWithState(t *testing.T) {
+	proposer := NewSequencerFromValidator(*tmtypes.NewValidator(ed25519.GenPrivKey().PubKey(), 1))
+>>>>>>> 99abc4e (include next sequencer hash)
 	currentTime := time.Now().UTC()
 	validState := &State{
 		Version: tmstate.Version{
@@ -49,7 +55,11 @@ import (
 			DataHash:           [32]byte{},
 			LastHeaderHash:     [32]byte{7, 8, 9},
 			ChainID:            "chainID",
+<<<<<<< HEAD
 			NextSequencersHash: [32]byte(proposerHash),
+=======
+			NextSequencersHash: [32]byte(proposer.Hash()),
+>>>>>>> 99abc4e (include next sequencer hash)
 		},
 		Data:       Data{},
 		LastCommit: Commit{},
