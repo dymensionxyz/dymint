@@ -79,6 +79,11 @@ func (s *State) GetLastValidatedHeight() uint64 {
 	return s.LastValidatedHeight.Load()
 }
 
+// Height returns height of the highest block saved in the Store.
+func (s *State) NextValidationHeight() uint64 {
+	return s.LastValidatedHeight.Load() + 1
+}
+
 // NextHeight returns the next height that expected to be stored in store.
 func (s *State) NextHeight() uint64 {
 	if s.IsGenesis() {

@@ -30,18 +30,7 @@ func (m *Manager) onNewStateUpdate(event pubsub.Message) {
 	}
 
 	// Trigger syncing from DA.
-	select {
-	case m.syncingC <- struct{}{}:
-	default:
-		m.logger.Debug("disregarding new state update, node is still syncing")
-	}
-
-	// Trigger state update validation.
-	select {
-	case m.validateC <- struct{}{}:
-	default:
-		m.logger.Debug("disregarding new state update, node is still validating")
-	}
+	m.triggerStateUpdateSyncing()
 
 }
 
@@ -75,11 +64,14 @@ func (m *Manager) SyncLoop(ctx context.Context) error {
 
 				m.logger.Info("Synced from DA", "store height", m.State.Height(), "target height", m.LastSubmittedHeight.Load())
 
+				m.triggerStateUpdateValidation()
+
 				err = m.attemptApplyCachedBlocks()
 				if err != nil {
 					uevent.MustPublish(context.TODO(), m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
 					m.logger.Error("Attempt apply cached blocks.", "err", err)
 				}
+
 			}
 
 			m.logger.Info("Synced.", "current height", m.State.Height(), "last submitted height", m.LastSubmittedHeight.Load())
@@ -94,5 +86,23 @@ func (m *Manager) SyncLoop(ctx context.Context) error {
 func (m *Manager) waitForSyncing() {
 	if m.State.Height() < m.LastSubmittedHeight.Load() {
 		<-m.synced.C
+	}
+}
+
+func (m *Manager) triggerStateUpdateValidation() {
+	// Trigger state update validation.
+	select {
+	case m.validateC <- struct{}{}:
+	default:
+		m.logger.Debug("disregarding new state update, node is still validating")
+	}
+}
+
+func (m *Manager) triggerStateUpdateSyncing() {
+	// Trigger state update validation.
+	select {
+	case m.syncingC <- struct{}{}:
+	default:
+		m.logger.Debug("disregarding new state update, node is still syncing")
 	}
 }
