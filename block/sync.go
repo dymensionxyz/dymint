@@ -74,6 +74,8 @@ func (m *Manager) SyncLoop(ctx context.Context) error {
 
 			}
 
+			m.triggerStateUpdateValidation()
+
 			m.logger.Info("Synced.", "current height", m.State.Height(), "last submitted height", m.LastSubmittedHeight.Load())
 
 			m.synced.Nudge()
@@ -89,20 +91,20 @@ func (m *Manager) waitForSyncing() {
 	}
 }
 
-func (m *Manager) triggerStateUpdateValidation() {
-	// Trigger state update validation.
-	select {
-	case m.validateC <- struct{}{}:
-	default:
-		m.logger.Debug("disregarding new state update, node is still validating")
-	}
-}
-
 func (m *Manager) triggerStateUpdateSyncing() {
 	// Trigger state update validation.
 	select {
 	case m.syncingC <- struct{}{}:
 	default:
 		m.logger.Debug("disregarding new state update, node is still syncing")
+	}
+}
+
+func (m *Manager) triggerStateUpdateValidation() {
+	// Trigger state update validation.
+	select {
+	case m.validateC <- struct{}{}:
+	default:
+		m.logger.Debug("disregarding new state update, node is still validating")
 	}
 }

@@ -63,9 +63,6 @@ type Manager struct {
 	// prune anything that might be submitted in the future. Therefore, it must be atomic.
 	LastSubmittedHeight atomic.Uint64
 
-	// The last height which was finalized after dispute period, obtained from the Hub
-	LastFinalizedHeight atomic.Uint64
-
 	/*
 		Retrieval
 	*/
@@ -319,16 +316,19 @@ func (m *Manager) syncFromSettlement() error {
 	m.LastSubmittedHeight.Store(res.EndHeight)
 	m.UpdateTargetHeight(res.EndHeight)
 
-	m.triggerStateUpdateSyncing()
-	m.triggerStateUpdateValidation()
-
 	res, err = m.SLClient.GetLatestFinalizedBatch()
 	if errors.Is(err, gerrc.ErrNotFound) {
 		// The SL hasn't got any batches for this chain yet.
 		m.logger.Info("No finalized batches for chain found in SL.")
 		return nil
 	}
-	m.LastFinalizedHeight.Store(res.EndHeight)
+	// update validation height with latest finalized height (it will be updated only of finalized height is higher)
+	m.State.SetLastValidatedHeight(res.EndHeight)
+
+	// try to sync to last state update submitted on startup
+	m.triggerStateUpdateSyncing()
+	// try to validate all pending state updates on startup
+	m.triggerStateUpdateValidation()
 
 	return nil
 }
