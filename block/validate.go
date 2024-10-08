@@ -28,7 +28,7 @@ func (m *Manager) ValidateLoop(ctx context.Context) error {
 				// validate batch
 				err = m.validator.ValidateStateUpdate(batch)
 				if err != nil {
-					panic(err)
+					m.FraudHandler.HandleFault(ctx, err)
 				}
 
 				// this should not happen. if validation is successful m.State.NextValidationHeight() should advance.

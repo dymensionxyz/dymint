@@ -30,14 +30,3 @@ func NewFreezeHandler(manager *Manager) *FreezeHandler {
 		m: manager,
 	}
 }
-
-// FreezeHandler is used to handle faults coming from executing and validating blocks.
-type TestHandler struct{}
-
-func NewTestHandler() *TestHandler {
-	return &TestHandler{}
-}
-
-func (f TestHandler) HandleFault(ctx context.Context, fault error) {
-	panic(fault)
-}
