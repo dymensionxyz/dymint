@@ -200,7 +200,6 @@ func (m *Manager) UpdateSequencerSet(event pubsub.Message) {
 		m.logger.Error("Unable to add new sequencer from event. err:%w", err)
 		return
 	}
-	sequencers := m.State.Sequencers.Sequencers
-	sequencers = append(sequencers, newSequencer)
+	sequencers := append(m.State.Sequencers.Sequencers, newSequencer)
 	m.State.Sequencers.SetSequencers(sequencers)
 }
