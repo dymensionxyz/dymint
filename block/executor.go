@@ -4,6 +4,9 @@ import (
 	"errors"
 	"time"
 
+	proto2 "github.com/gogo/protobuf/proto"
+	proto "github.com/gogo/protobuf/types"
+
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmcrypto "github.com/tendermint/tendermint/crypto/encoding"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
@@ -21,11 +24,12 @@ const minBlockMaxBytes = 10000
 
 // Executor creates and applies blocks and maintains state.
 type Executor struct {
-	localAddress          []byte
-	chainID               string
-	proxyAppConsensusConn proxy.AppConnConsensus
-	proxyAppQueryConn     proxy.AppConnQuery
-	mempool               mempool.Mempool
+	localAddress            []byte
+	chainID                 string
+	proxyAppConsensusConn   proxy.AppConnConsensus
+	proxyAppQueryConn       proxy.AppConnQuery
+	mempool                 mempool.Mempool
+	consensusMessagesStream ConsensusMessagesStream
 
 	eventBus *tmtypes.EventBus
 
@@ -34,15 +38,24 @@ type Executor struct {
 
 // NewExecutor creates new instance of BlockExecutor.
 // localAddress will be used in sequencer mode only.
-func NewExecutor(localAddress []byte, chainID string, mempool mempool.Mempool, proxyApp proxy.AppConns, eventBus *tmtypes.EventBus, logger types.Logger) (*Executor, error) {
+func NewExecutor(
+	localAddress []byte,
+	chainID string,
+	mempool mempool.Mempool,
+	proxyApp proxy.AppConns,
+	eventBus *tmtypes.EventBus,
+	consensusMessagesStream ConsensusMessagesStream,
+	logger types.Logger,
+) (*Executor, error) {
 	be := Executor{
-		localAddress:          localAddress,
-		chainID:               chainID,
-		proxyAppConsensusConn: proxyApp.Consensus(),
-		proxyAppQueryConn:     proxyApp.Query(),
-		mempool:               mempool,
-		eventBus:              eventBus,
-		logger:                logger,
+		localAddress:            localAddress,
+		chainID:                 chainID,
+		proxyAppConsensusConn:   proxyApp.Consensus(),
+		proxyAppQueryConn:       proxyApp.Query(),
+		mempool:                 mempool,
+		eventBus:                eventBus,
+		consensusMessagesStream: consensusMessagesStream,
+		logger:                  logger,
 	}
 	return &be, nil
 }
@@ -92,9 +105,25 @@ func (e *Executor) InitChain(genesis *tmtypes.GenesisDoc, valset []*tmtypes.Vali
 }
 
 // CreateBlock reaps transactions from mempool and builds a block.
-func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHeaderHash, nextSeqHash [32]byte, state *types.State, maxBlockDataSizeBytes uint64) *types.Block {
+func (e *Executor) CreateBlock(
+	height uint64,
+	lastCommit *types.Commit,
+	lastHeaderHash, nextSeqHash [32]byte,
+	state *types.State,
+	maxBlockDataSizeBytes uint64,
+) *types.Block {
 	maxBlockDataSizeBytes = min(maxBlockDataSizeBytes, uint64(max(minBlockMaxBytes, state.ConsensusParams.Block.MaxBytes)))
 	mempoolTxs := e.mempool.ReapMaxBytesMaxGas(int64(maxBlockDataSizeBytes), state.ConsensusParams.Block.MaxGas)
+
+	var consensusAnyMessages []*proto.Any
+	if e.consensusMessagesStream != nil {
+		consensusMessages, err := e.consensusMessagesStream.GetConsensusMessages()
+		if err != nil {
+			e.logger.Error("Failed to get consensus messages", "error", err)
+		}
+
+		consensusAnyMessages = fromProtoMsgSliceToAnySlice(consensusMessages)
+	}
 
 	block := &types.Block{
 		Header: types.Header{
@@ -116,6 +145,7 @@ func (e *Executor) CreateBlock(height uint64, lastCommit *types.Commit, lastHead
 			Txs:                    toDymintTxs(mempoolTxs),
 			IntermediateStateRoots: types.IntermediateStateRoots{RawRootsList: nil},
 			Evidence:               types.EvidenceData{Evidence: nil},
+			ConsensusMessages:      consensusAnyMessages,
 		},
 		LastCommit: *lastCommit,
 	}
@@ -209,6 +239,7 @@ func (e *Executor) ExecuteBlock(state *types.State, block *types.Block) (*tmstat
 				Votes: nil,
 			},
 			ByzantineValidators: nil,
+			ConsensusMessages:   block.Data.ConsensusMessages,
 		})
 	if err != nil {
 		return nil, err
@@ -283,4 +314,24 @@ func fromDymintTxs(optiTxs types.Txs) tmtypes.Txs {
 		txs[i] = []byte(optiTxs[i])
 	}
 	return txs
+}
+
+func fromProtoMsgToAny(msg proto2.Message) *proto.Any {
+	theType, err := proto2.Marshal(msg)
+	if err != nil {
+		return nil
+	}
+
+	return &proto.Any{
+		TypeUrl: proto2.MessageName(msg),
+		Value:   theType,
+	}
+}
+
+func fromProtoMsgSliceToAnySlice(msgs []proto2.Message) []*proto.Any {
+	result := make([]*proto.Any, len(msgs))
+	for i, msg := range msgs {
+		result[i] = fromProtoMsgToAny(msg)
+	}
+	return result
 }
