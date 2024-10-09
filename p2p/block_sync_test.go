@@ -15,7 +15,7 @@ func TestBlockSync(t *testing.T) {
 	logger := log.TestingLogger()
 	ctx := context.Background()
 
-	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, nil, nil)
+	manager, err := testutil.GetManager("test", testutil.GetManagerConfig(), nil, 1, 1, 0, nil, nil)
 
 	require.NoError(t, err)
 	require.NotNil(t, manager)
@@ -26,7 +26,7 @@ func TestBlockSync(t *testing.T) {
 	}
 
 	// Create a block for height 1
-	blocks, err := testutil.GenerateBlocksWithTxs(1, 1, manager.LocalKey, 1)
+	blocks, err := testutil.GenerateBlocksWithTxs(1, 1, manager.LocalKey, 1, "test")
 	require.NoError(t, err)
 
 	// Create commit
