@@ -387,7 +387,6 @@ func TestApplyLocalBlock_WithFraudCheck(t *testing.T) {
 	}()
 	<-ctx.Done()
 	assert.Equal(t, batchs[1].EndHeight(), manager.LastSubmittedHeight.Load())
-
 	mockExecutor.AssertExpectations(t)
 	mockFraudHandler.AssertExpectations(t)
 }
