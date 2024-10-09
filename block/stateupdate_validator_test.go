@@ -21,10 +21,10 @@ func TestStateUpdateValidator_ValidateP2PBlocks(t *testing.T) {
 	proposerKey, _, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
 
-	batch, err := testutil.GenerateBatch(1, 10, proposerKey)
+	batch, err := testutil.GenerateBatch(1, 10, proposerKey, "test", [32]byte{})
 	require.NoError(t, err)
 
-	doubleSignedBatch, err := testutil.GenerateBatch(1, 10, proposerKey)
+	doubleSignedBatch, err := testutil.GenerateBatch(1, 10, proposerKey, "test", [32]byte{})
 	require.NoError(t, err)
 
 	mixedBatch := make([]*types.Block, 10)
@@ -82,7 +82,7 @@ func TestStateUpdateValidator_ValidateDaBlocks(t *testing.T) {
 	proposerKey, _, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
 
-	batch, err := testutil.GenerateBatch(1, 2, proposerKey)
+	batch, err := testutil.GenerateBatch(1, 2, proposerKey, "test", [32]byte{})
 	require.NoError(t, err)
 
 	tests := []struct {
@@ -144,8 +144,8 @@ func TestStateUpdateValidator_ValidateDaBlocks(t *testing.T) {
 			slBatch: &settlement.ResultRetrieveBatch{
 				Batch: &settlement.Batch{
 					BlockDescriptors: []settlement.BlockDescriptor{
-						{Height: 1, StateRoot: batch.Blocks[1].Header.AppHash[:], Timestamp: batch.Blocks[0].Header.GetTimestamp()},
-						{Height: 2, StateRoot: batch.Blocks[1].Header.AppHash[:], Timestamp: batch.Blocks[1].Header.GetTimestamp()},
+						{Height: 1, StateRoot: batch.Blocks[0].Header.AppHash[:], Timestamp: batch.Blocks[0].Header.GetTimestamp()},
+						{Height: 2, StateRoot: []byte{1, 2, 3, 4}, Timestamp: batch.Blocks[1].Header.GetTimestamp()},
 					},
 				},
 				ResultBase: settlement.ResultBase{
@@ -153,7 +153,7 @@ func TestStateUpdateValidator_ValidateDaBlocks(t *testing.T) {
 				},
 			},
 			daBlocks:      batch.Blocks,
-			expectedError: fmt.Errorf("state root mismatch between state update and DA batch. State index: 1: Height: 1 State root SL: %d State root DA: %d", batch.Blocks[1].Header.AppHash[:], batch.Blocks[0].Header.AppHash[:]),
+			expectedError: fmt.Errorf("state root mismatch between state update and DA batch. State index: 1: Height: 2 State root SL: %d State root DA: %d", []byte{1, 2, 3, 4}, batch.Blocks[0].Header.AppHash[:]),
 		},
 		{
 			name: "Error - timestamp mismatch",
