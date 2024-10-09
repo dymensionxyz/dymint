@@ -27,6 +27,7 @@ import (
 	"github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
 	rollapptypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
+	"github.com/dymensionxyz/dymint/version"
 )
 
 const kvStoreDBName = "settlement"
@@ -278,9 +279,10 @@ func (c *Client) convertBatchToSettlementBatch(batch *types.Batch, daResult *da.
 	bds := []rollapp.BlockDescriptor{}
 	for _, block := range batch.Blocks {
 		bd := rollapp.BlockDescriptor{
-			Height:    block.Header.Height,
-			StateRoot: block.Header.AppHash[:],
-			Timestamp: block.Header.GetTimestamp(),
+			Height:     block.Header.Height,
+			StateRoot:  block.Header.AppHash[:],
+			Timestamp:  block.Header.GetTimestamp(),
+			DrsVersion: version.Commit,
 		}
 		bds = append(bds, bd)
 	}

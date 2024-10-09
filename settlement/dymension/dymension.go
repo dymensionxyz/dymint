@@ -539,9 +539,10 @@ func (c *Client) convertBatchToMsgUpdateState(batch *types.Batch, daResult *da.R
 	blockDescriptors := make([]rollapptypes.BlockDescriptor, len(batch.Blocks))
 	for index, block := range batch.Blocks {
 		blockDescriptor := rollapptypes.BlockDescriptor{
-			Height:    block.Header.Height,
-			StateRoot: block.Header.AppHash[:],
-			Timestamp: block.Header.GetTimestamp(),
+			Height:     block.Header.Height,
+			StateRoot:  block.Header.AppHash[:],
+			Timestamp:  block.Header.GetTimestamp(),
+			DrsVersion: version.Commit,
 		}
 		blockDescriptors[index] = blockDescriptor
 	}

@@ -27,6 +27,7 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
 	rollapptypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
+	"github.com/dymensionxyz/dymint/version"
 )
 
 // Client is an extension of the base settlement layer client
@@ -310,9 +311,10 @@ func (c *Client) convertBatchtoSettlementBatch(batch *types.Batch, daResult *da.
 	bds := []rollapp.BlockDescriptor{}
 	for _, block := range batch.Blocks {
 		bd := rollapp.BlockDescriptor{
-			Height:    block.Header.Height,
-			StateRoot: block.Header.AppHash[:],
-			Timestamp: block.Header.GetTimestamp(),
+			Height:     block.Header.Height,
+			StateRoot:  block.Header.AppHash[:],
+			Timestamp:  block.Header.GetTimestamp(),
+			DrsVersion: version.Commit,
 		}
 		bds = append(bds, bd)
 	}
