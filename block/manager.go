@@ -112,7 +112,7 @@ func NewManager(
 		mempool,
 		proxyApp,
 		eventBus,
-		nil, // TODO add ConsensusMessagesStream
+		nil, // TODO add ConsensusMessagesStream: https://github.com/dymensionxyz/dymint/issues/1125
 		logger,
 	)
 	if err != nil {

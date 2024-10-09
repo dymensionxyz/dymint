@@ -172,6 +172,10 @@ func (m *Manager) produceBlock(allowEmpty bool, nextProposerInfo *nextProposerIn
 		nextProposerAddr = nextProposerInfo.nextProposerAddr
 		lastProposerBlock = true
 	}
+	// TODO: Ideally, there should be only one point for adding consensus messages. Given that they come from
+	// ConsensusMessagesStream, this should send them there instead of having to ways of sending consensusMessages.
+	// There is no implementation of the stream as of now. Unify the approach of adding consensus messages when
+	// the stream is implemented! https://github.com/dymensionxyz/dymint/issues/1125
 	consensusMsgs, err := m.consensusMsgsOnCreateBlock(nextProposerAddr, lastProposerBlock)
 	if err != nil {
 		return nil, nil, fmt.Errorf("create consensus msgs for create block: last proposer block: %v, height: %d, next proposer addr: %s: %w: %w", lastProposerBlock, newHeight, nextProposerAddr, err, ErrNonRecoverable)
