@@ -51,8 +51,9 @@ func GetRandomBytes(n uint64) []byte {
 }
 
 // generateBlock generates random blocks.
-func generateBlock(height uint64, proposerHash []byte) *types.Block {
+func generateBlock(height uint64, lastHeaderHash [32]byte, proposerHash []byte, chainId string, proposerAddress []byte) *types.Block {
 	h := createRandomHashes()
+
 	block := &types.Block{
 		Header: types.Header{
 			Version: types.Version{
@@ -61,15 +62,16 @@ func generateBlock(height uint64, proposerHash []byte) *types.Block {
 			},
 			Height:             height,
 			Time:               4567,
-			LastHeaderHash:     h[0],
+			LastHeaderHash:     lastHeaderHash,
 			LastCommitHash:     h[1],
 			DataHash:           h[2],
 			ConsensusHash:      h[3],
 			AppHash:            [32]byte{},
 			LastResultsHash:    GetEmptyLastResultsHash(),
-			ProposerAddress:    []byte{4, 3, 2, 1},
+			ProposerAddress:    proposerAddress,
 			SequencerHash:      [32]byte(proposerHash),
 			NextSequencersHash: [32]byte(proposerHash),
+			ChainID:            chainId,
 		},
 		Data: types.Data{
 			Txs:                    nil,
@@ -86,15 +88,18 @@ func generateBlock(height uint64, proposerHash []byte) *types.Block {
 	return block
 }
 
-func GenerateBlocksWithTxs(startHeight uint64, num uint64, proposerKey crypto.PrivKey, nTxs int) ([]*types.Block, error) {
+func GenerateBlocksWithTxs(startHeight uint64, num uint64, proposerKey crypto.PrivKey, nTxs int, chainId string) ([]*types.Block, error) {
 	r, _ := proposerKey.Raw()
 	seq := types.NewSequencerFromValidator(*tmtypes.NewValidator(ed25519.PrivKey(r).PubKey(), 1))
 	proposerHash := seq.Hash()
 
 	blocks := make([]*types.Block, num)
 	for i := uint64(0); i < num; i++ {
-
-		block := generateBlock(i+startHeight, proposerHash)
+		lastHeaderHash := [32]byte{}
+		if i > 0 {
+			lastHeaderHash = blocks[i-1].Header.Hash()
+		}
+		block := generateBlock(i+startHeight, lastHeaderHash, proposerHash, chainId, seq.PubKey().Address())
 
 		block.Data = types.Data{
 			Txs: make(types.Txs, nTxs),
@@ -119,14 +124,17 @@ func GenerateBlocksWithTxs(startHeight uint64, num uint64, proposerKey crypto.Pr
 }
 
 // GenerateBlocks generates random blocks.
-func GenerateBlocks(startHeight uint64, num uint64, proposerKey crypto.PrivKey) ([]*types.Block, error) {
+func GenerateBlocks(startHeight uint64, num uint64, proposerKey crypto.PrivKey, chainId string, lastHeaderHash [32]byte) ([]*types.Block, error) {
 	r, _ := proposerKey.Raw()
 	seq := types.NewSequencerFromValidator(*tmtypes.NewValidator(ed25519.PrivKey(r).PubKey(), 1))
 	proposerHash := seq.Hash()
 
 	blocks := make([]*types.Block, num)
 	for i := uint64(0); i < num; i++ {
-		block := generateBlock(i+startHeight, proposerHash)
+		if i > 0 {
+			lastHeaderHash = blocks[i-1].Header.Hash()
+		}
+		block := generateBlock(i+startHeight, lastHeaderHash, proposerHash, chainId, seq.PubKey().Address())
 		copy(block.Header.DataHash[:], types.GetDataHash(block))
 		if i > 0 {
 			copy(block.Header.LastCommitHash[:], types.GetLastCommitHash(&blocks[i-1].LastCommit, &block.Header))
@@ -176,8 +184,8 @@ func generateSignature(proposerKey crypto.PrivKey, header *types.Header) ([]byte
 }
 
 // GenerateBatch generates a batch out of random blocks
-func GenerateBatch(startHeight uint64, endHeight uint64, proposerKey crypto.PrivKey) (*types.Batch, error) {
-	blocks, err := GenerateBlocks(startHeight, endHeight-startHeight+1, proposerKey)
+func GenerateBatch(startHeight uint64, endHeight uint64, proposerKey crypto.PrivKey, chainId string, lastHeaderHash [32]byte) (*types.Batch, error) {
+	blocks, err := GenerateBlocks(startHeight, endHeight-startHeight+1, proposerKey, chainId, lastHeaderHash)
 	if err != nil {
 		return nil, err
 	}
@@ -192,8 +200,8 @@ func GenerateBatch(startHeight uint64, endHeight uint64, proposerKey crypto.Priv
 	return batch, nil
 }
 
-func MustGenerateBatch(startHeight uint64, endHeight uint64, proposerKey crypto.PrivKey) *types.Batch {
-	blocks, err := GenerateBlocks(startHeight, endHeight-startHeight+1, proposerKey)
+func MustGenerateBatch(startHeight uint64, endHeight uint64, proposerKey crypto.PrivKey, chainId string, lastHeaderHash [32]byte) *types.Batch {
+	blocks, err := GenerateBlocks(startHeight, endHeight-startHeight+1, proposerKey, chainId, lastHeaderHash)
 	if err != nil {
 		panic(err)
 	}
@@ -207,12 +215,12 @@ func MustGenerateBatch(startHeight uint64, endHeight uint64, proposerKey crypto.
 	}
 }
 
-func MustGenerateBatchAndKey(startHeight uint64, endHeight uint64) *types.Batch {
+func MustGenerateBatchAndKey(startHeight uint64, endHeight uint64, chainId string, lastHeaderHash [32]byte) *types.Batch {
 	proposerKey, _, err := crypto.GenerateEd25519Key(nil)
 	if err != nil {
 		panic(err)
 	}
-	return MustGenerateBatch(startHeight, endHeight, proposerKey)
+	return MustGenerateBatch(startHeight, endHeight, proposerKey, chainId, lastHeaderHash)
 }
 
 // GenerateRandomValidatorSet generates random validator sets
@@ -253,9 +261,9 @@ func GenerateStateWithSequencer(initialHeight int64, lastBlockHeight int64, pubk
 }
 
 // GenerateGenesis generates a genesis for testing.
-func GenerateGenesis(initialHeight int64) *tmtypes.GenesisDoc {
+func GenerateGenesis(chainId string, initialHeight int64) *tmtypes.GenesisDoc {
 	return &tmtypes.GenesisDoc{
-		ChainID:       "test-chain",
+		ChainID:       chainId,
 		InitialHeight: initialHeight,
 		ConsensusParams: &tmproto.ConsensusParams{
 			Block: tmproto.BlockParams{

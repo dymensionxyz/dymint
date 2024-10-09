@@ -35,7 +35,8 @@ import (
 // 1. single block with single large tx
 // 2. single block with multiple small tx
 func TestBatchOverhead(t *testing.T) {
-	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, nil, nil)
+	chanId := "test"
+	manager, err := testutil.GetManager(chanId, testutil.GetManagerConfig(), nil, 1, 1, 0, nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, manager)
 
@@ -58,7 +59,7 @@ func TestBatchOverhead(t *testing.T) {
 	}
 
 	for _, tcase := range tcases {
-		blocks, err := testutil.GenerateBlocks(1, 1, manager.LocalKey)
+		blocks, err := testutil.GenerateBlocks(1, 1, manager.LocalKey, chanId, [32]byte{})
 		require.NoError(t, err)
 		block := blocks[0]
 
@@ -123,7 +124,7 @@ func TestBatchSubmissionHappyFlow(t *testing.T) {
 			},
 		},
 	})
-	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, nil)
+	manager, err := testutil.GetManager("test", testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
 	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
@@ -182,7 +183,7 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 	slmock.On("Start").Return(nil)
 	slmock.On("GetProposer").Return(proposer)
 
-	manager, err := testutil.GetManagerWithProposerKey(testutil.GetManagerConfig(), lib2pPrivKey, slmock, 1, 1, 0, proxyApp, nil)
+	manager, err := testutil.GetManagerWithProposerKey("test", testutil.GetManagerConfig(), lib2pPrivKey, slmock, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
 	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
@@ -247,7 +248,7 @@ func TestSubmissionByTime(t *testing.T) {
 		BatchSubmitBytes: 1000,
 	}
 
-	manager, err := testutil.GetManager(managerConfig, nil, 1, 1, 0, proxyApp, nil)
+	manager, err := testutil.GetManager("test", managerConfig, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
 	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
@@ -323,7 +324,7 @@ func TestSubmissionByBatchSize(t *testing.T) {
 
 		managerConfig := testutil.GetManagerConfig()
 		managerConfig.BatchSubmitBytes = c.blockBatchMaxSizeBytes
-		manager, err := testutil.GetManager(managerConfig, nil, 1, 1, 0, proxyApp, nil)
+		manager, err := testutil.GetManager("test", managerConfig, nil, 1, 1, 0, proxyApp, nil)
 		require.NoError(err)
 
 		manager.DAClient = testutil.GetMockDALC(log.TestingLogger())

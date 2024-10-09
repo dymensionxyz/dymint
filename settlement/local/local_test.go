@@ -59,9 +59,9 @@ func TestSubmitBatch(t *testing.T) {
 	// Create a batches which will be submitted
 	proposerKey, _, err := crypto.GenerateEd25519Key(nil)
 	require.NoError(err)
-	batch1, err := testutil.GenerateBatch(1, 1, proposerKey)
+	batch1, err := testutil.GenerateBatch(1, 1, proposerKey, "test", [32]byte{})
 	require.NoError(err)
-	batch2, err := testutil.GenerateBatch(2, 2, proposerKey)
+	batch2, err := testutil.GenerateBatch(2, 2, proposerKey, "test", [32]byte{})
 	require.NoError(err)
 	resultSubmitBatch := &da.ResultSubmitBatch{}
 	resultSubmitBatch.SubmitMetaData = &da.DASubmitMetaData{}
@@ -133,7 +133,7 @@ func TestPersistency(t *testing.T) {
 	assert.Error(err) // no batch should be present
 
 	// Create a batches which will be submitted
-	batch1, err := testutil.GenerateBatch(1, 1, proposerKey)
+	batch1, err := testutil.GenerateBatch(1, 1, proposerKey, "test", [32]byte{})
 	require.NoError(err)
 	resultSubmitBatch := &da.ResultSubmitBatch{}
 	resultSubmitBatch.SubmitMetaData = &da.DASubmitMetaData{}
