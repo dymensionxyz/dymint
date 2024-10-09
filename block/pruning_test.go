@@ -38,7 +38,7 @@ func TestPruningRetainHeight(t *testing.T) {
 	err := proxyApp.Start()
 	require.NoError(err)
 
-	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, nil)
+	manager, err := testutil.GetManager("test", testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
 	manager.Retriever = manager.DAClient.(da.BatchRetriever)

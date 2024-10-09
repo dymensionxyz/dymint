@@ -22,7 +22,7 @@ func CreateLocalServer(t *testing.T) (*rpc.Server, net.Listener) {
 	var server *rpc.Server
 	// Start server with listener
 	go func() {
-		node, err := CreateNode(true, nil, GenerateGenesis(0))
+		node, err := CreateNode(true, nil, GenerateGenesis("test", 0))
 		require.NoError(t, err)
 		err = node.Start()
 		require.NoError(t, err)
