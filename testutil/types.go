@@ -260,9 +260,9 @@ func GenerateStateWithSequencer(initialHeight int64, lastBlockHeight int64, pubk
 }
 
 // GenerateGenesis generates a genesis for testing.
-func GenerateGenesis(initialHeight int64) *tmtypes.GenesisDoc {
+func GenerateGenesis(chainId string, initialHeight int64) *tmtypes.GenesisDoc {
 	return &tmtypes.GenesisDoc{
-		ChainID:       "test-chain",
+		ChainID:       chainId,
 		InitialHeight: initialHeight,
 		ConsensusParams: &tmproto.ConsensusParams{
 			Block: tmproto.BlockParams{

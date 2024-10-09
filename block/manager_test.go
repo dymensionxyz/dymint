@@ -46,7 +46,7 @@ import (
 func TestInitialState(t *testing.T) {
 	var err error
 	assert := assert.New(t)
-	genesis := testutil.GenerateGenesis(123)
+	genesis := testutil.GenerateGenesis("test", 123)
 	key, _, _ := crypto.GenerateEd25519Key(rand.Reader)
 	raw, _ := key.GetPublic().Raw()
 	pubkey := ed25519.PubKey(raw)
@@ -224,7 +224,8 @@ func TestApplyCachedBlocks_WithFraudCheck(t *testing.T) {
 	proxyApp := proxy.NewAppConns(clientCreator)
 	err := proxyApp.Start()
 	require.NoError(t, err)
-	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, nil)
+	chainId := "test"
+	manager, err := testutil.GetManager(chainId, testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(t, err)
 	require.NotNil(t, manager)
 
@@ -388,7 +389,8 @@ func TestApplyLocalBlock_WithFraudCheck(t *testing.T) {
 }
 
 func TestRetrieveDaBatchesFailed(t *testing.T) {
-	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, nil, nil)
+	chainId := "test"
+	manager, err := testutil.GetManager(chainId, testutil.GetManagerConfig(), nil, 1, 1, 0, nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, manager)
 	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
@@ -427,7 +429,8 @@ func TestProduceNewBlock(t *testing.T) {
 	err := proxyApp.Start()
 	require.NoError(t, err)
 	// Init manager
-	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, nil)
+	chainId := "test"
+	manager, err := testutil.GetManager(chainId, testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(t, err)
 	// Produce block
 	_, _, err = manager.ProduceApplyGossipBlock(context.Background(), true)
@@ -498,7 +501,8 @@ func TestProduceBlockFailAfterCommit(t *testing.T) {
 	// Create a new mock store which should succeed to save the first block
 	mockStore := testutil.NewMockStore()
 	// Init manager
-	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, mockStore)
+	chainId := "test"
+	manager, err := testutil.GetManager(chainId, testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, mockStore)
 	require.NoError(err)
 
 	cases := []struct {
@@ -607,7 +611,8 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 	// Init manager
 	managerConfig := testutil.GetManagerConfig()
 	managerConfig.BatchSubmitBytes = batchLimitBytes // enough for 2 block, not enough for 10 blocks
-	manager, err := testutil.GetManager(managerConfig, nil, 1, 1, 0, proxyApp, nil)
+	chainId := "test"
+	manager, err := testutil.GetManager(chainId, managerConfig, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -689,7 +694,8 @@ func TestDAFetch(t *testing.T) {
 	// Create a new mock store which should succeed to save the first block
 	mockStore := testutil.NewMockStore()
 	// Init manager
-	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, mockStore)
+	chainId := "test"
+	manager, err := testutil.GetManager(chainId, testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, mockStore)
 	require.NoError(err)
 	commitHash := [32]byte{}
 
@@ -774,7 +780,8 @@ func TestManager_ProcessNextDABatch_FraudHandling(t *testing.T) {
 	// Create a new mock store which should succeed to save the first block
 	mockStore := testutil.NewMockStore()
 	// Init manager
-	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, mockStore)
+	chainId := "test"
+	manager, err := testutil.GetManager(chainId, testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, mockStore)
 	require.NoError(err)
 	commitHash := [32]byte{1}
 	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
