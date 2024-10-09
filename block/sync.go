@@ -38,13 +38,11 @@ func (m *Manager) onNewStateUpdate(event pubsub.Message) {
 		// trigger state update validation (in case no state update is applied)
 		m.triggerStateUpdateValidation()
 	}
-
 }
 
 // SyncLoop listens for syncing events (from new state update or from initial syncing) and syncs to the last submitted height.
 // After syncing it sends signal to validation loop
 func (m *Manager) SyncLoop(ctx context.Context) error {
-
 	for {
 		select {
 		case <-ctx.Done():
