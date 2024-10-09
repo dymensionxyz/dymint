@@ -199,11 +199,7 @@ func (c *Client) GetLatestBatch() (*settlement.ResultRetrieveBatch, error) {
 	return batchResult, nil
 }
 
-<<<<<<< HEAD
 // GetLatestFinalizedBatch returns the latest finalized batch from the kv store. batches are never finalized for grpc settlement
-=======
-// GetLatestFinalizedBatch returns the latest finalized batch from the kv store
->>>>>>> 4c890c7 (adding finalized and validated height)
 func (c *Client) GetLatestFinalizedBatch() (*settlement.ResultRetrieveBatch, error) {
 	return nil, gerrc.ErrNotFound
 }
@@ -219,7 +215,6 @@ func (c *Client) GetBatchAtIndex(index uint64) (*settlement.ResultRetrieveBatch,
 	return batchResult, nil
 }
 
-<<<<<<< HEAD
 func (c *Client) GetBatchAtHeight(h uint64) (*settlement.ResultRetrieveBatch, error) {
 	// Binary search implementation
 	left, right := uint64(1), c.slStateIndex
@@ -245,10 +240,6 @@ func (c *Client) GetBatchAtHeight(h uint64) (*settlement.ResultRetrieveBatch, er
 	}
 
 	return nil, gerrc.ErrNotFound
-=======
-func (c *Client) GetBatchAtHeight(height uint64) (*settlement.ResultRetrieveBatch, error) {
-	panic("hub grpc client get height state is not implemented: implement me") // TODO: impl
->>>>>>> 4c890c7 (adding finalized and validated height)
 }
 
 // GetProposer implements settlement.ClientI.
@@ -316,7 +307,11 @@ func (c *Client) saveBatch(batch *settlement.Batch) error {
 }
 
 func (c *Client) convertBatchtoSettlementBatch(batch *types.Batch, daResult *da.ResultSubmitBatch) *settlement.Batch {
+<<<<<<< HEAD
 	bds := []rollapp.BlockDescriptor{}
+=======
+	bds := []settlement.BlockDescriptor{}
+>>>>>>> 9270799 (checkin missed error)
 	for _, block := range batch.Blocks {
 		bd := rollapp.BlockDescriptor{
 			Height:    block.Header.Height,

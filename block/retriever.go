@@ -39,7 +39,6 @@ func (m *Manager) syncFromDABatch() error {
 // ----
 // when this scenario encountered previously, we wanted to apply same block instead of producing new one
 func (m *Manager) applyLocalBlock(height uint64) error {
-
 	defer m.retrieverMu.Unlock()
 	m.retrieverMu.Lock()
 

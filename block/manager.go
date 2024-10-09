@@ -306,12 +306,6 @@ func (m *Manager) syncFromSettlement() error {
 		m.logger.Error("update bonded sequencer set", "error", err)
 	}
 
-	// Update sequencers list from SL
-	err := m.UpdateSequencerSetFromSL()
-	if err != nil {
-		m.logger.Error("update bonded sequencer set", "error", err)
-	}
-
 	res, err := m.SLClient.GetLatestBatch()
 	if errors.Is(err, gerrc.ErrNotFound) {
 		// The SL hasn't got any batches for this chain yet.
