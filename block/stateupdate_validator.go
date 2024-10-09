@@ -65,6 +65,7 @@ func (v *StateUpdateValidator) ValidateStateUpdate(batch *settlement.ResultRetri
 		}
 	}
 
+	// if not all blocks are applied from DA, it is necessary to get all batch blocks from DA
 	numBlocks := batch.EndHeight - batch.StartHeight + 1
 	if uint64(len(daBlocks)) != numBlocks {
 		daBlocks = []*types.Block{}
@@ -77,23 +78,31 @@ func (v *StateUpdateValidator) ValidateStateUpdate(batch *settlement.ResultRetri
 		}
 	}
 
+	// validate DA blocks against the state update
 	err = v.ValidateDaBlocks(batch, daBlocks)
 	if err != nil {
 		return err
 	}
 
-	if len(p2pBlocks) > 0 {
-		err = v.ValidateP2PBlocks(daBlocks, p2pBlocks)
-		if err != nil {
-			return err
-		}
+	// compare the batch blocks with the blocks applied from P2P
+	err = v.ValidateP2PBlocks(daBlocks, p2pBlocks)
+	if err != nil {
+		return err
 	}
 
+	// update the last validated height to the batch last block height
 	v.blockManager.State.SetLastValidatedHeight(batch.EndHeight)
 	return nil
 }
 
 func (v *StateUpdateValidator) ValidateP2PBlocks(daBlocks []*types.Block, p2pBlocks []*types.Block) error {
+
+	// nothing to compare
+	if len(p2pBlocks) == 0 {
+		return nil
+	}
+
+	// iterate over daBlocks and compare hashes if there block is also in p2pBlocks
 	i := 0
 	for _, daBlock := range daBlocks {
 
@@ -153,6 +162,7 @@ func (v *StateUpdateValidator) validateDRS(startHeight, endHeight uint64, versio
 	return nil
 }
 
+// blockHash generates a hash from the block bytes to compare them
 func blockHash(block *types.Block) ([]byte, error) {
 	blockBytes, err := block.MarshalBinary()
 	if err != nil {
