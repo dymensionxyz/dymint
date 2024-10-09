@@ -155,7 +155,6 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 	require.NoError(t, err)
 
 	manager, err := testutil.GetManagerWithProposerKey(chainId, testutil.GetManagerConfig(), proposerKey, nil, 1, 1, 0, proxyApp, nil)
-	//manager, err := testutil.GetManager(chainId, testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(t, err)
 	require.NotNil(t, manager)
 
