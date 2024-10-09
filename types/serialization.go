@@ -268,6 +268,7 @@ func (s *State) ToProto() (*pb.State, error) {
 		LastHeaderHash:                   s.LastHeaderHash[:],
 		AppHash:                          s.AppHash[:],
 		RollappParams:                    s.RollappParams,
+		LastHeaderHash:                   s.LastHeaderHash[:],
 		LastValidatedHeight:              int64(s.GetLastValidatedHeight()),
 	}, nil
 }
@@ -292,6 +293,7 @@ func (s *State) FromProto(other *pb.State) error {
 	copy(s.LastHeaderHash[:], other.LastHeaderHash)
 	copy(s.AppHash[:], other.AppHash)
 	s.RollappParams = other.RollappParams
+	copy(s.LastHeaderHash[:], other.LastHeaderHash)
 	s.SetLastValidatedHeight(uint64(other.LastValidatedHeight))
 	return nil
 }
