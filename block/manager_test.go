@@ -46,7 +46,7 @@ import (
 func TestInitialState(t *testing.T) {
 	var err error
 	assert := assert.New(t)
-	genesis := testutil.GenerateGenesis(123)
+	genesis := testutil.GenerateGenesis("test", 123)
 	key, _, _ := crypto.GenerateEd25519Key(rand.Reader)
 	raw, _ := key.GetPublic().Raw()
 	pubkey := ed25519.PubKey(raw)
@@ -150,7 +150,12 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 	proxyApp := proxy.NewAppConns(clientCreator)
 	err := proxyApp.Start()
 	require.NoError(t, err)
-	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, nil)
+	chainId := "test"
+	proposerKey, _, err := crypto.GenerateEd25519Key(rand.Reader)
+	require.NoError(t, err)
+
+	manager, err := testutil.GetManagerWithProposerKey(chainId, testutil.GetManagerConfig(), proposerKey, nil, 1, 1, 0, proxyApp, nil)
+	//manager, err := testutil.GetManager(chainId, testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(t, err)
 	require.NotNil(t, manager)
 
@@ -160,6 +165,7 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 
 	numBatchesToAdd := 2
 	nextBatchStartHeight := manager.NextHeightToSubmit()
+<<<<<<< HEAD
 	var lastBlockHeaderHash [32]byte
 	var batch *types.Batch
 	for i := 0; i < numBatchesToAdd; i++ {
@@ -167,6 +173,15 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 			nextBatchStartHeight, nextBatchStartHeight+uint64(testutil.DefaultTestBatchSize-1), manager.LocalKey,
 			lastBlockHeaderHash,
 		)
+=======
+	var batchs []*types.Batch
+	for i := 0; i < numBatchesToAdd; i++ {
+		lastHeaderHash := [32]byte{}
+		if i > 0 {
+			lastHeaderHash = batchs[i-1].Blocks[len(batchs[i-1].Blocks)-1].Header.Hash()
+		}
+		batch, err := testutil.GenerateBatch(nextBatchStartHeight, nextBatchStartHeight+uint64(testutil.DefaultTestBatchSize-1), proposerKey, chainId, lastHeaderHash)
+>>>>>>> 51d10be (fix manager tests for proposer address and lastheighthash)
 		assert.NoError(t, err)
 		daResultSubmitBatch := manager.DAClient.SubmitBatch(batch)
 		assert.Equal(t, daResultSubmitBatch.Code, da.StatusSuccess)
@@ -176,6 +191,7 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 		lastBlockHeaderHash = batch.Blocks[len(batch.Blocks)-1].Header.Hash()
 		// Wait until daHeight is updated
 		time.Sleep(time.Millisecond * 500)
+		batchs = append(batchs, batch)
 	}
 
 	// Initially sync target is 0
@@ -194,9 +210,9 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 		require.NoError(t, err)
 	}()
 	<-ctx.Done()
-	assert.Equal(t, batch.EndHeight(), manager.LastSubmittedHeight.Load())
+	assert.Equal(t, batchs[1].EndHeight(), manager.LastSubmittedHeight.Load())
 	// validate that we produced blocks
-	assert.Greater(t, manager.State.Height(), batch.EndHeight())
+	assert.Greater(t, manager.State.Height(), batchs[1].EndHeight())
 }
 
 // TestApplyCachedBlocks checks the flow that happens when we are receiving blocks from p2p and some of the blocks
@@ -221,7 +237,8 @@ func TestApplyCachedBlocks_WithFraudCheck(t *testing.T) {
 	proxyApp := proxy.NewAppConns(clientCreator)
 	err := proxyApp.Start()
 	require.NoError(t, err)
-	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, nil)
+	chainId := "test"
+	manager, err := testutil.GetManager(chainId, testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(t, err)
 	require.NotNil(t, manager)
 
@@ -264,7 +281,11 @@ func TestApplyCachedBlocks_WithFraudCheck(t *testing.T) {
 	nextBatchStartHeight := manager.NextHeightToSubmit()
 	var batch *types.Batch
 	for i := 0; i < numBatchesToAdd; i++ {
+<<<<<<< HEAD
 		batch, err = testutil.GenerateBatch(nextBatchStartHeight, nextBatchStartHeight, manager.LocalKey, [32]byte{})
+=======
+		batch, err = testutil.GenerateBatch(nextBatchStartHeight, nextBatchStartHeight, manager.LocalKey, chainId, [32]byte{})
+>>>>>>> 51d10be (fix manager tests for proposer address and lastheighthash)
 		assert.NoError(t, err)
 		blockData := p2p.BlockData{Block: *batch.Blocks[0], Commit: *batch.Commits[0]}
 		msg := pubsub.NewMessage(blockData, map[string][]string{p2p.EventTypeKey: {p2p.EventNewGossipedBlock}})
@@ -310,11 +331,10 @@ func TestApplyLocalBlock_WithFraudCheck(t *testing.T) {
 	proxyApp := proxy.NewAppConns(clientCreator)
 	err := proxyApp.Start()
 	require.NoError(t, err)
-
-	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, nil)
+	chainId := "test"
+	manager, err := testutil.GetManager(chainId, testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(t, err)
 	require.NotNil(t, manager)
-
 	t.Log("Taking the manager out of sync by submitting a batch")
 	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
 	manager.Retriever = manager.DAClient.(da.BatchRetriever)
@@ -322,18 +342,26 @@ func TestApplyLocalBlock_WithFraudCheck(t *testing.T) {
 	numBatchesToAdd := 2
 	nextBatchStartHeight := manager.NextHeightToSubmit()
 
-	var batch *types.Batch
+	var batchs []*types.Batch
 	for i := 0; i < numBatchesToAdd; i++ {
+<<<<<<< HEAD
 		batch, err = testutil.GenerateBatch(
 			nextBatchStartHeight,
 			nextBatchStartHeight+uint64(testutil.DefaultTestBatchSize-1),
 			manager.LocalKey,
 			[32]byte{},
 		)
+=======
+		lastHeaderHash := [32]byte{}
+		if i > 0 {
+			lastHeaderHash = batchs[i-1].Blocks[len(batchs[i-1].Blocks)-1].Header.Hash()
+		}
+		batch, err := testutil.GenerateBatch(nextBatchStartHeight, nextBatchStartHeight+uint64(testutil.DefaultTestBatchSize-1), manager.LocalKey, chainId, lastHeaderHash)
+>>>>>>> 51d10be (fix manager tests for proposer address and lastheighthash)
 		assert.NoError(t, err)
 
 		// Save one block on state to enforce local block application
-		_, err := manager.Store.SaveBlock(batch.Blocks[0], batch.Commits[0], nil)
+		_, err = manager.Store.SaveBlock(batch.Blocks[0], batch.Commits[0], nil)
 		require.NoError(t, err)
 
 		daResultSubmitBatch := manager.DAClient.SubmitBatch(batch)
@@ -344,6 +372,7 @@ func TestApplyLocalBlock_WithFraudCheck(t *testing.T) {
 
 		nextBatchStartHeight = batch.EndHeight() + 1
 
+		batchs = append(batchs, batch)
 		time.Sleep(time.Millisecond * 500)
 	}
 
@@ -351,7 +380,7 @@ func TestApplyLocalBlock_WithFraudCheck(t *testing.T) {
 	manager.Executor = mockExecutor
 	mockExecutor.On("InitChain", mock.Anything, mock.Anything).Return(&abci.ResponseInitChain{}, nil)
 	mockExecutor.On("GetAppInfo").Return(&abci.ResponseInfo{
-		LastBlockHeight: int64(batch.EndHeight()),
+		LastBlockHeight: int64(batchs[1].EndHeight()),
 	}, nil)
 	mockExecutor.On("UpdateStateAfterInitChain", mock.Anything, mock.Anything).Return(nil)
 	mockExecutor.On("UpdateMempoolAfterInitChain", mock.Anything).Return(nil)
@@ -370,7 +399,7 @@ func TestApplyLocalBlock_WithFraudCheck(t *testing.T) {
 	assert.True(t, manager.State.Height() == 0)
 
 	// enough time to sync and produce blocks
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*4)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*40)
 	defer cancel()
 	// Capture the error returned by manager.Start.
 
@@ -381,14 +410,15 @@ func TestApplyLocalBlock_WithFraudCheck(t *testing.T) {
 		require.True(t, errors.Is(err, gerrc.ErrFault))
 	}()
 	<-ctx.Done()
-	assert.Equal(t, batch.EndHeight(), manager.LastSubmittedHeight.Load())
+	assert.Equal(t, batchs[1].EndHeight(), manager.LastSubmittedHeight.Load())
 
 	mockExecutor.AssertExpectations(t)
 	mockFraudHandler.AssertExpectations(t)
 }
 
 func TestRetrieveDaBatchesFailed(t *testing.T) {
-	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, nil, nil)
+	chainId := "test"
+	manager, err := testutil.GetManager(chainId, testutil.GetManagerConfig(), nil, 1, 1, 0, nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, manager)
 	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
@@ -426,7 +456,8 @@ func TestProduceNewBlock(t *testing.T) {
 	err := proxyApp.Start()
 	require.NoError(t, err)
 	// Init manager
-	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, nil)
+	chainId := "test"
+	manager, err := testutil.GetManager(chainId, testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(t, err)
 	// Produce block
 	_, _, err = manager.ProduceApplyGossipBlock(context.Background(), true)
@@ -459,8 +490,8 @@ func TestProducePendingBlock(t *testing.T) {
 	err := proxyApp.Start()
 	require.NoError(t, err)
 	// Init manager
-
-	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, nil)
+	chainId := "test"
+	manager, err := testutil.GetManager(chainId, testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(t, err)
 	// Generate block and commit and save it to the store
 	block := testutil.GetRandomBlock(1, 3)
@@ -498,7 +529,8 @@ func TestProduceBlockFailAfterCommit(t *testing.T) {
 	// Create a new mock store which should succeed to save the first block
 	mockStore := testutil.NewMockStore()
 	// Init manager
-	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, mockStore)
+	chainId := "test"
+	manager, err := testutil.GetManager(chainId, testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, mockStore)
 	require.NoError(err)
 
 	cases := []struct {
@@ -607,7 +639,8 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 	// Init manager
 	managerConfig := testutil.GetManagerConfig()
 	managerConfig.BatchSubmitBytes = batchLimitBytes // enough for 2 block, not enough for 10 blocks
-	manager, err := testutil.GetManager(managerConfig, nil, 1, 1, 0, proxyApp, nil)
+	chainId := "test"
+	manager, err := testutil.GetManager(chainId, managerConfig, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -689,7 +722,8 @@ func TestDAFetch(t *testing.T) {
 	// Create a new mock store which should succeed to save the first block
 	mockStore := testutil.NewMockStore()
 	// Init manager
-	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, mockStore)
+	chainId := "test"
+	manager, err := testutil.GetManager(chainId, testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, mockStore)
 	require.NoError(err)
 	commitHash := [32]byte{}
 
@@ -699,12 +733,16 @@ func TestDAFetch(t *testing.T) {
 	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{Data: commitHash[:]})
 
 	nextBatchStartHeight := manager.NextHeightToSubmit()
+<<<<<<< HEAD
 	batch, err := testutil.GenerateBatch(
 		nextBatchStartHeight,
 		nextBatchStartHeight+uint64(testutil.DefaultTestBatchSize-1),
 		manager.LocalKey,
 		[32]byte{},
 	)
+=======
+	batch, err := testutil.GenerateBatch(nextBatchStartHeight, nextBatchStartHeight+uint64(testutil.DefaultTestBatchSize-1), manager.LocalKey, chainId, [32]byte{})
+>>>>>>> 51d10be (fix manager tests for proposer address and lastheighthash)
 	require.NoError(err)
 	daResultSubmitBatch := manager.DAClient.SubmitBatch(batch)
 	require.Equal(daResultSubmitBatch.Code, da.StatusSuccess)
@@ -773,7 +811,8 @@ func TestManager_ProcessNextDABatch_FraudHandling(t *testing.T) {
 	// Create a new mock store which should succeed to save the first block
 	mockStore := testutil.NewMockStore()
 	// Init manager
-	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, mockStore)
+	chainId := "test"
+	manager, err := testutil.GetManager(chainId, testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, mockStore)
 	require.NoError(err)
 	commitHash := [32]byte{1}
 	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
