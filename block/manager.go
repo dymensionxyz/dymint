@@ -106,7 +106,15 @@ func NewManager(
 	if err != nil {
 		return nil, err
 	}
-	exec, err := NewExecutor(localAddress, genesis.ChainID, mempool, proxyApp, eventBus, logger)
+	exec, err := NewExecutor(
+		localAddress,
+		genesis.ChainID,
+		mempool,
+		proxyApp,
+		eventBus,
+		nil, // TODO add ConsensusMessagesStream
+		logger,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("create block executor: %w", err)
 	}
