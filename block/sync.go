@@ -3,6 +3,7 @@ package block
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/settlement"
@@ -65,6 +66,11 @@ func (m *Manager) SyncLoop(ctx context.Context) error {
 				err = m.syncFromDABatch()
 				if err != nil {
 					m.logger.Error("process next DA batch", "err", err)
+				}
+
+				// if height havent been updated, we are stuck
+				if m.State.NextHeight() == currH {
+					return fmt.Errorf("stuck at height %d", currH)
 				}
 
 				m.logger.Info("Synced from DA", "store height", m.State.Height(), "target height", m.LastSubmittedHeight.Load())
