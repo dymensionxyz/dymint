@@ -10,7 +10,6 @@ import (
 )
 
 func (m *Manager) syncFromDABatch() error {
-
 	settlementBatch, err := m.SLClient.GetBatchAtHeight(m.State.NextHeight())
 	if err != nil {
 		return fmt.Errorf("retrieve batch: %w", err)
@@ -32,7 +31,6 @@ func (m *Manager) syncFromDABatch() error {
 }
 
 func (m *Manager) applyLocalBlock(height uint64) error {
-
 	defer m.retrieverMu.Unlock()
 	m.retrieverMu.Lock()
 
@@ -54,7 +52,6 @@ func (m *Manager) applyLocalBlock(height uint64) error {
 }
 
 func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
-
 	m.logger.Debug("trying to retrieve batch from DA", "daHeight", daMetaData.Height)
 	batchResp := m.fetchBatch(daMetaData)
 	if batchResp.Code != da.StatusSuccess {

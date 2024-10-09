@@ -285,7 +285,6 @@ func (m *Manager) NextHeightToSubmit() uint64 {
 
 // syncFromSettlement enforces the node to be synced on initial run from SL and DA.
 func (m *Manager) syncFromSettlement() error {
-
 	// Update sequencers list from SL
 	err := m.UpdateSequencerSetFromSL()
 	if err != nil {
@@ -309,7 +308,10 @@ func (m *Manager) syncFromSettlement() error {
 	m.UpdateTargetHeight(res.EndHeight)
 
 	// get the latest finalized height to know from where to start validating
-	m.UpdateFinalizedHeight()
+	err = m.UpdateFinalizedHeight()
+	if err != nil {
+		return err
+	}
 
 	// try to sync to last state update submitted on startup
 	m.triggerStateUpdateSyncing()

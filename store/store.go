@@ -119,7 +119,6 @@ func (s *DefaultStore) LoadBlockByHash(hash [32]byte) (*types.Block, error) {
 
 // SaveBlockValidation saves block validation in Store.
 func (s *DefaultStore) SaveBlockSource(height uint64, source string, batch KVBatch) (KVBatch, error) {
-
 	if batch == nil {
 		return nil, s.db.Set(getSourceKey(height), []byte(source))
 	}
@@ -129,14 +128,12 @@ func (s *DefaultStore) SaveBlockSource(height uint64, source string, batch KVBat
 
 // LoadBlockValidation returns block validation in Store.
 func (s *DefaultStore) LoadBlockSource(height uint64) (string, error) {
-
 	source, err := s.db.Get(getSourceKey(height))
 	if err != nil {
 		return "", fmt.Errorf("retrieve block results from height %v: %w", height, err)
 	}
 
 	return string(source[:]), nil
-
 }
 
 // SaveBlockResponses saves block responses (events, tx responses, etc) in Store.

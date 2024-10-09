@@ -220,7 +220,8 @@ func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *d
 func (c *Client) getStateInfo(index, height *uint64, finalized bool) (res *rollapptypes.QueryGetStateInfoResponse, err error) {
 	req := &rollapptypes.QueryGetStateInfoRequest{
 		RollappId: c.rollappId,
-		Finalized: finalized}
+		Finalized: finalized,
+	}
 	if index != nil {
 		req.Index = *index
 	}
@@ -273,7 +274,6 @@ func (c *Client) GetBatchAtIndex(index uint64) (*settlement.ResultRetrieveBatch,
 
 // GetBatchAtHeight returns the batch at the given height from the Dymension Hub.
 func (c *Client) GetBatchAtHeight(height uint64) (*settlement.ResultRetrieveBatch, error) {
-
 	res, err := c.getStateInfo(nil, &height, false)
 	if err != nil {
 		return nil, fmt.Errorf("get state info: %w", err)

@@ -24,8 +24,10 @@ type StateUpdateValidator struct {
 	blockManager *Manager
 }
 
-var _ DABlocksValidator = &StateUpdateValidator{}
-var _ P2PBlockValidator = &StateUpdateValidator{}
+var (
+	_ DABlocksValidator = &StateUpdateValidator{}
+	_ P2PBlockValidator = &StateUpdateValidator{}
+)
 
 // NewValidator creates a new Validator.
 func NewStateUpdateValidator(logger types.Logger, blockManager *Manager) *StateUpdateValidator {
@@ -36,7 +38,6 @@ func NewStateUpdateValidator(logger types.Logger, blockManager *Manager) *StateU
 }
 
 func (v *StateUpdateValidator) ValidateStateUpdate(batch *settlement.ResultRetrieveBatch) error {
-
 	v.logger.Debug("validating state update", "start height", batch.StartHeight, "end height", batch.EndHeight)
 
 	err := v.validateDRS(batch.StartHeight, batch.EndHeight, batch.DRSVersion)
@@ -47,7 +48,7 @@ func (v *StateUpdateValidator) ValidateStateUpdate(batch *settlement.ResultRetri
 	var daBlocks []*types.Block
 	var p2pBlocks []*types.Block
 
-	//load blocks for the batch height, either P2P or DA blocks
+	// load blocks for the batch height, either P2P or DA blocks
 	for height := batch.StartHeight; height <= batch.EndHeight; height++ {
 		source, err := v.blockManager.Store.LoadBlockSource(height)
 		if err != nil {
@@ -93,7 +94,6 @@ func (v *StateUpdateValidator) ValidateStateUpdate(batch *settlement.ResultRetri
 }
 
 func (v *StateUpdateValidator) ValidateP2PBlocks(daBlocks []*types.Block, p2pBlocks []*types.Block) error {
-
 	i := 0
 	for _, daBlock := range daBlocks {
 
@@ -120,7 +120,6 @@ func (v *StateUpdateValidator) ValidateP2PBlocks(daBlocks []*types.Block, p2pBlo
 }
 
 func (v *StateUpdateValidator) ValidateDaBlocks(slBatch *settlement.ResultRetrieveBatch, daBlocks []*types.Block) error {
-
 	// check numblocks
 	numSlBlocks := len(slBatch.BlockDescriptors)
 	numDABlocks := len(daBlocks)
@@ -145,13 +144,12 @@ func (v *StateUpdateValidator) ValidateDaBlocks(slBatch *settlement.ResultRetrie
 		}
 	}
 
-	//TODO(srene): implement sequencer address validation
+	// TODO(srene): implement sequencer address validation
 	return nil
 }
 
 // TODO(srene): implement DRS/height verification
 func (v *StateUpdateValidator) validateDRS(startHeight, endHeight uint64, version string) error {
-
 	return nil
 }
 

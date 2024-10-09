@@ -16,13 +16,11 @@ func (m *Manager) onNewStateUpdateFinalized(event pubsub.Message) {
 		return
 	}
 	m.State.SetLastValidatedHeight(eventData.EndHeight)
-
 }
 
 // SyncTargetLoop listens for syncing events (from new state update or from initial syncing) and syncs to the last submitted height.
 // In case the node is already synced, it validate
 func (m *Manager) ValidateLoop(ctx context.Context) error {
-
 	for {
 		select {
 		case <-ctx.Done():
