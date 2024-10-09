@@ -55,7 +55,6 @@ func (b *BlockData) FromProto(other *pb.BlockData) error {
 
 // Validate run basic validation on the p2p block received
 func (b *BlockData) Validate(proposerPubKey tmcrypto.PubKey) error {
-
 	if err := b.Block.ValidateBasic(); err != nil {
 		return err
 	}
