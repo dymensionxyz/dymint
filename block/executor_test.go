@@ -138,8 +138,6 @@ func TestApplyBlock(t *testing.T) {
 	appConns := &tmmocksproxy.MockAppConns{}
 	appConns.On("Consensus").Return(abciClient)
 	appConns.On("Query").Return(abciClient)
-	executor, err := block.NewExecutor([]byte("test address"), chainID, mpool, appConns, eventBus, logger)
-	assert.NoError(err)
 
 	// Subscribe to tx events
 	txQuery, err := query.New("tm.event='Tx'")
@@ -169,6 +167,10 @@ func TestApplyBlock(t *testing.T) {
 	state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
 	state.ConsensusParams.Block.MaxGas = 100000
 	state.RollappParams.Da = "mock"
+	state.ChainID = chainID
+
+	executor, err := block.NewExecutor(state.Sequencers.GetProposerPubKey().Address(), chainID, mpool, appConns, eventBus, logger)
+	assert.NoError(err)
 
 	// Create first block with one Tx from mempool
 	_ = mpool.CheckTx([]byte{1, 2, 3, 4}, func(r *abci.Response) {}, mempool.TxInfo{})
@@ -208,7 +210,9 @@ func TestApplyBlock(t *testing.T) {
 	require.NoError(mpool.CheckTx([]byte{5, 6, 7, 8, 9}, func(r *abci.Response) {}, mempool.TxInfo{}))
 	require.NoError(mpool.CheckTx([]byte{1, 2, 3, 4, 5}, func(r *abci.Response) {}, mempool.TxInfo{}))
 	require.NoError(mpool.CheckTx(make([]byte, 9990), func(r *abci.Response) {}, mempool.TxInfo{}))
-	block = executor.CreateBlock(2, commit, [32]byte{}, [32]byte(state.Sequencers.ProposerHash()), state, maxBytes)
+
+	lastHeaderHash := block.Header.Hash()
+	block = executor.CreateBlock(2, commit, lastHeaderHash, [32]byte(state.Sequencers.ProposerHash()), state, maxBytes)
 	require.NotNil(block)
 	assert.Equal(uint64(2), block.Header.Height)
 	assert.Len(block.Data.Txs, 3)
@@ -230,7 +234,7 @@ func TestApplyBlock(t *testing.T) {
 
 	// Apply the block with an invalid commit
 	err = types.ValidateProposedTransition(state, block, invalidCommit, state.Sequencers.GetProposerPubKey())
-	require.ErrorIs(err, types.ErrInvalidSignature)
+	require.Error(err, types.NewErrInvalidSignatureFraud(types.ErrInvalidSignature))
 
 	// Create a valid commit for the block
 	signature, err = proposerKey.Sign(abciHeaderBytes)
