@@ -181,6 +181,9 @@ func (m *Manager) Start(ctx context.Context) error {
 		return m.PruningLoop(ctx)
 	})
 
+	// listen to new bonded sequencers events to add them in the sequencer set
+	go uevent.MustSubscribe(ctx, m.Pubsub, "newBondedSequencer", settlement.EventQueryNewBondedSequencer, m.UpdateSequencerSet, m.logger)
+
 	/* ----------------------------- full node mode ----------------------------- */
 	if !isProposer {
 		// Full-nodes can sync from DA but it is not necessary to wait for it, since it can sync from P2P as well in parallel.

@@ -8,6 +8,7 @@ import (
 
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
 func (m *Manager) MonitorSequencerRotation(ctx context.Context, rotateC chan string) error {
@@ -181,4 +182,27 @@ func (m *Manager) UpdateSequencerSetFromSL() error {
 func (m *Manager) UpdateProposer() error {
 	m.State.Sequencers.SetProposer(m.SLClient.GetProposer())
 	return nil
+}
+
+// UpdateLastSubmittedHeight will update last height submitted height upon events.
+// This may be necessary in case we crashed/restarted before getting response for our submission to the settlement layer.
+func (m *Manager) UpdateSequencerSet(event pubsub.Message) {
+	eventData, ok := event.Data().(*settlement.EventDataNewBondedSequencer)
+	if !ok {
+		m.logger.Error("onReceivedBatch", "err", "wrong event data received")
+		return
+	}
+
+	if m.State.Sequencers.GetByAddress(eventData.SeqAddr) != nil {
+		m.logger.Debug("Sequencer not added from new bonded sequencer event because already in the list.")
+		return
+	}
+
+	newSequencer, err := m.SLClient.GetSequencerByAddress(eventData.SeqAddr)
+	if err != nil {
+		m.logger.Error("Unable to add new sequencer from event. err:%w", err)
+		return
+	}
+	sequencers := append(m.State.Sequencers.Sequencers, newSequencer)
+	m.State.Sequencers.SetSequencers(sequencers)
 }

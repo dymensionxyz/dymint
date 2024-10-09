@@ -73,7 +73,8 @@ type ClientI interface {
 	GetLatestBatch() (*ResultRetrieveBatch, error)
 	// GetBatchAtIndex returns the batch at the given index.
 	GetBatchAtIndex(index uint64) (*ResultRetrieveBatch, error)
-
+	// GetSequencerByAddress returns all sequencer information by its address.
+	GetSequencerByAddress(address string) (types.Sequencer, error)
 	// GetAllSequencers returns all sequencers for this rollapp (bonded and not bonded).
 	GetAllSequencers() ([]types.Sequencer, error)
 	// GetBondedSequencers returns the list of the bonded sequencers for this rollapp.

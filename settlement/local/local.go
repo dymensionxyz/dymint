@@ -215,6 +215,11 @@ func (c *Client) GetProposer() *types.Sequencer {
 	return types.NewSequencer(tmPubKey, settlementAddr)
 }
 
+// GetSequencerByAddress returns all sequencer information by its address. Not implemented since it will not be used in mock SL
+func (c *Client) GetSequencerByAddress(address string) (types.Sequencer, error) {
+	panic("GetSequencerByAddress not implemented in local SL")
+}
+
 // GetAllSequencers implements settlement.ClientI.
 func (c *Client) GetAllSequencers() ([]types.Sequencer, error) {
 	return c.GetBondedSequencers()
