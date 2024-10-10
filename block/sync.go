@@ -2,13 +2,11 @@ package block
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/settlement"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
-	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
@@ -53,17 +51,8 @@ func (m *Manager) SyncLoop(ctx context.Context) error {
 			m.logger.Info("syncing to target height", "targetHeight", m.LastSubmittedHeight.Load())
 
 			for currH := m.State.NextHeight(); currH <= m.LastSubmittedHeight.Load(); currH = m.State.NextHeight() {
-				// if we have the block locally, we don't need to fetch it from the DA
-				err := m.applyLocalBlock(currH)
-				if err == nil {
-					m.logger.Info("Synced from local", "store height", currH, "target height", m.LastSubmittedHeight.Load())
-					continue
-				}
-				if !errors.Is(err, gerrc.ErrNotFound) {
-					m.logger.Error("Apply local block", "err", err)
-				}
 
-				err = m.syncFromDABatch()
+				err := m.syncFromDABatch()
 				if err != nil {
 					m.logger.Error("process next DA batch", "err", err)
 				}

@@ -3,8 +3,6 @@ package block
 import (
 	"fmt"
 
-	"github.com/dymensionxyz/gerr-cosmos/gerrc"
-
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/types"
 )
@@ -30,27 +28,6 @@ func (m *Manager) syncFromDABatch() error {
 	return nil
 }
 
-func (m *Manager) applyLocalBlock(height uint64) error {
-	defer m.retrieverMu.Unlock()
-	m.retrieverMu.Lock()
-
-	block, err := m.Store.LoadBlock(height)
-	if err != nil {
-		return fmt.Errorf("load block: %w", gerrc.ErrNotFound)
-	}
-	commit, err := m.Store.LoadCommit(height)
-	if err != nil {
-		return fmt.Errorf("load commit: %w", gerrc.ErrNotFound)
-	}
-
-	err = m.applyBlockWithFraudHandling(block, commit, types.BlockMetaData{Source: types.LocalDb}, true)
-	if err != nil {
-		return fmt.Errorf("apply block from local store: height: %d: %w", height, err)
-	}
-
-	return nil
-}
-
 func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
 	m.logger.Debug("trying to retrieve batch from DA", "daHeight", daMetaData.Height)
 	batchResp := m.fetchBatch(daMetaData)
@@ -69,13 +46,9 @@ func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
 			if block.Header.Height != m.State.NextHeight() {
 				continue
 			}
-			if err := m.validateBlockBeforeApply(block, batch.Commits[i]); err != nil {
-				m.logger.Error("validate block from DA", "height", block.Header.Height, "err", err)
-				continue
-			}
 
 			// We dont validate because validateBlockBeforeApply already checks if the block is already applied, and we don't need to fail there.
-			err := m.applyBlockWithFraudHandling(block, batch.Commits[i], types.BlockMetaData{Source: types.DA, DAHeight: daMetaData.Height}, false)
+			err := m.applyBlockWithFraudHandling(block, batch.Commits[i], types.BlockMetaData{Source: types.DA, DAHeight: daMetaData.Height})
 			if err != nil {
 				return fmt.Errorf("apply block: height: %d: %w", block.Header.Height, err)
 			}
