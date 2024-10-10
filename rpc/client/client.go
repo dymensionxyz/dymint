@@ -822,6 +822,13 @@ func (c *Client) CheckTx(ctx context.Context, tx tmtypes.Tx) (*ctypes.ResultChec
 }
 
 func (c *Client) BlockValidated(ctx context.Context, height *int64) (*ResultBlockValidated, error) {
+
+	if uint64(*height) > c.node.BlockManager.State.Height() {
+		return &ResultBlockValidated{Result: 0}, nil
+	}
+	if uint64(*height) <= c.node.BlockManager.State.GetLastValidatedHeight() {
+		return &ResultBlockValidated{Result: 2}, nil
+	}
 	return &ResultBlockValidated{Result: 1}, nil
 }
 

@@ -194,6 +194,7 @@ func (s *service) NetInfo(req *http.Request, args *netInfoArgs) (*ctypes.ResultN
 }
 
 func (s *service) BlockchainInfo(req *http.Request, args *blockchainInfoArgs) (*ctypes.ResultBlockchainInfo, error) {
+	fmt.Println(args)
 	return s.client.BlockchainInfo(req.Context(), int64(args.MinHeight), int64(args.MaxHeight))
 }
 
@@ -292,5 +293,6 @@ func (s *service) BroadcastEvidence(req *http.Request, args *broadcastEvidenceAr
 }
 
 func (s *service) BlockValidated(req *http.Request, args *blockArgs) (*client.ResultBlockValidated, error) {
+	fmt.Println(args)
 	return s.client.BlockValidated(req.Context(), (*int64)(&args.Height))
 }
