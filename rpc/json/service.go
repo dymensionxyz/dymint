@@ -291,6 +291,6 @@ func (s *service) BroadcastEvidence(req *http.Request, args *broadcastEvidenceAr
 	return s.client.BroadcastEvidence(req.Context(), args.Evidence)
 }
 
-func (s *service) BlockValidated(req *http.Request, args struct{}) (*client.ResultBlockValidated, error) {
-	return s.client.BlockValidated(req.Context())
+func (s *service) BlockValidated(req *http.Request, args *blockArgs) (*client.ResultBlockValidated, error) {
+	return s.client.BlockValidated(req.Context(), (*int64)(&args.Height))
 }

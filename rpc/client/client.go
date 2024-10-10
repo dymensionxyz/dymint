@@ -801,7 +801,7 @@ func (c *Client) CheckTx(ctx context.Context, tx tmtypes.Tx) (*ctypes.ResultChec
 	return &ctypes.ResultCheckTx{ResponseCheckTx: *res}, nil
 }
 
-func (c *Client) BlockValidated(ctx context.Context) (*ResultBlockValidated, error) {
+func (c *Client) BlockValidated(ctx context.Context, height *int64) (*ResultBlockValidated, error) {
 	return &ResultBlockValidated{Result: 1}, nil
 }
 
