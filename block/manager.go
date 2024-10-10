@@ -231,7 +231,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	// Sequencer must wait till DA is synced to start submitting blobs
 	m.DAClient.WaitForSyncing()
 
-	// Sequencer must wait till node is synced till last submittedHeight, in case is not
+	// Sequencer must wait till node is synced till last submittedHeight, in case it is not
 	m.waitForSyncing()
 	// check if sequencer in the middle of rotation
 	nextSeqAddr, missing, err := m.MissingLastBatch()
