@@ -1,6 +1,7 @@
 package types
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"time"
@@ -310,5 +311,93 @@ func (e ErrInvalidHeaderDataHashFraud) Error() string {
 }
 
 func (e ErrInvalidHeaderDataHashFraud) Unwrap() error {
+	return gerrc.ErrFault
+}
+
+type ErrStateUpdateHeightNotMatchingFraud struct {
+	StateIndex uint64
+	SLHeight   uint64
+	DAHeight   uint64
+}
+
+func NewErrStateUpdateHeightNotMatchingFraud(stateIndex uint64, slHeight uint64, daHeight uint64) error {
+	return &ErrStateUpdateHeightNotMatchingFraud{
+		StateIndex: stateIndex,
+		SLHeight:   slHeight,
+		DAHeight:   daHeight,
+	}
+}
+
+func (e ErrStateUpdateHeightNotMatchingFraud) Error() string {
+	return fmt.Sprintf("block height in DA batch not matching SL batch height. StateIndex: %d SLHeight: %d DAHeight: %d", e.StateIndex, e.SLHeight, e.DAHeight)
+}
+
+func (e ErrStateUpdateHeightNotMatchingFraud) Unwrap() error {
+	return gerrc.ErrFault
+}
+
+type ErrStateUpdateStateRootNotMatchingFraud struct {
+	StateIndex  uint64
+	Height      uint64
+	SLStateRoot []byte
+	DAStateRoot []byte
+}
+
+func NewErrStateUpdateStateRootNotMatchingFraud(stateIndex uint64, height uint64, slStateRoot []byte, daStateRoot []byte) error {
+	return &ErrStateUpdateStateRootNotMatchingFraud{
+		StateIndex:  stateIndex,
+		Height:      height,
+		SLStateRoot: slStateRoot,
+		DAStateRoot: daStateRoot,
+	}
+}
+
+func (e ErrStateUpdateStateRootNotMatchingFraud) Error() string {
+	return fmt.Sprintf("state root in DA batch block not matching state root in SL. StateIndex: %d Height: %d SLTimestsamp: %s DA:Timestamp: %s", e.StateIndex, e.Height, hex.EncodeToString(e.SLStateRoot), hex.EncodeToString(e.DAStateRoot))
+}
+
+func (e ErrStateUpdateStateRootNotMatchingFraud) Unwrap() error {
+	return gerrc.ErrFault
+}
+
+type ErrStateUpdateTimestampNotMatchingFraud struct {
+	StateIndex  uint64
+	Height      uint64
+	SLTimestamp time.Time
+	DATimestamp time.Time
+}
+
+func NewErrStateUpdateTimestampNotMatchingFraud(stateIndex uint64, height uint64, slTimestamp time.Time, daTimestamp time.Time) error {
+	return &ErrStateUpdateTimestampNotMatchingFraud{
+		StateIndex:  stateIndex,
+		Height:      height,
+		SLTimestamp: slTimestamp,
+		DATimestamp: daTimestamp,
+	}
+}
+
+func (e ErrStateUpdateTimestampNotMatchingFraud) Error() string {
+	return fmt.Sprintf("timestamp in DA batch block not matching timestamp in SL. StateIndex: %d Height: %d SLTimestsamp: %s DA:Timestamp: %s", e.StateIndex, e.Height, e.SLTimestamp, e.DATimestamp)
+}
+
+func (e ErrStateUpdateTimestampNotMatchingFraud) Unwrap() error {
+	return gerrc.ErrFault
+}
+
+type ErrStateUpdateDoubleSigningFraud struct {
+	Height uint64
+}
+
+func NewErrStateUpdateDoubleSigningFraud(height uint64) error {
+	return &ErrStateUpdateDoubleSigningFraud{
+		Height: height,
+	}
+}
+
+func (e ErrStateUpdateDoubleSigningFraud) Error() string {
+	return fmt.Sprintf("block received from P2P not matching block found in DA. Height: %d", e.Height)
+}
+
+func (e ErrStateUpdateDoubleSigningFraud) Unwrap() error {
 	return gerrc.ErrFault
 }

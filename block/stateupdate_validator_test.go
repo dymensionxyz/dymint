@@ -2,7 +2,7 @@ package block_test
 
 import (
 	"crypto/rand"
-	"fmt"
+	"errors"
 	"testing"
 	"time"
 
@@ -40,44 +40,46 @@ func TestStateUpdateValidator_ValidateP2PBlocks(t *testing.T) {
 	mixedBatch[2] = doubleSignedBatch.Blocks[2]
 
 	tests := []struct {
-		name      string
-		daBlocks  []*types.Block
-		p2pBlocks []*types.Block
-		wantErr   bool
+		name            string
+		daBlocks        []*types.Block
+		p2pBlocks       []*types.Block
+		expectedErrType interface{}
 	}{
 		{
-			name:      "Empty blocks",
-			daBlocks:  []*types.Block{},
-			p2pBlocks: []*types.Block{},
-			wantErr:   false,
+			name:            "Empty blocks",
+			daBlocks:        []*types.Block{},
+			p2pBlocks:       []*types.Block{},
+			expectedErrType: nil,
 		},
 		{
-			name:      "Matching blocks",
-			daBlocks:  batch.Blocks,
-			p2pBlocks: batch.Blocks,
-			wantErr:   false,
+			name:            "Matching blocks",
+			daBlocks:        batch.Blocks,
+			p2pBlocks:       batch.Blocks,
+			expectedErrType: nil,
 		},
 		{
-			name:      "double signing",
-			daBlocks:  batch.Blocks,
-			p2pBlocks: doubleSignedBatch.Blocks,
-			wantErr:   true,
+			name:            "double signing",
+			daBlocks:        batch.Blocks,
+			p2pBlocks:       doubleSignedBatch.Blocks,
+			expectedErrType: types.ErrStateUpdateDoubleSigningFraud{},
 		},
 		{
-			name:      "mixed blocks",
-			daBlocks:  batch.Blocks,
-			p2pBlocks: mixedBatch,
-			wantErr:   true,
+			name:            "mixed blocks",
+			daBlocks:        batch.Blocks,
+			p2pBlocks:       mixedBatch,
+			expectedErrType: types.ErrStateUpdateDoubleSigningFraud{},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := validator.ValidateP2PBlocks(tt.daBlocks, tt.p2pBlocks)
-			if tt.wantErr {
-				assert.Error(t, err)
-			} else {
+			// Check the result
+			if tt.expectedErrType == nil {
 				assert.NoError(t, err)
+			} else {
+				assert.True(t, errors.As(err, &tt.expectedErrType),
+					"expected error of type %T, got %T", tt.expectedErrType, err)
 			}
 		})
 	}
@@ -94,10 +96,10 @@ func TestStateUpdateValidator_ValidateDaBlocks(t *testing.T) {
 	require.NoError(t, err)
 
 	tests := []struct {
-		name          string
-		slBatch       *settlement.ResultRetrieveBatch
-		daBlocks      []*types.Block
-		expectedError error
+		name            string
+		slBatch         *settlement.ResultRetrieveBatch
+		daBlocks        []*types.Block
+		expectedErrType interface{}
 	}{
 		{
 			name: "Happy path - all validations pass",
@@ -112,8 +114,8 @@ func TestStateUpdateValidator_ValidateDaBlocks(t *testing.T) {
 					StateIndex: 1,
 				},
 			},
-			daBlocks:      batch.Blocks,
-			expectedError: nil,
+			daBlocks:        batch.Blocks,
+			expectedErrType: nil,
 		},
 		{
 			name: "Error - number of blocks mismatch",
@@ -128,8 +130,8 @@ func TestStateUpdateValidator_ValidateDaBlocks(t *testing.T) {
 					StateIndex: 1,
 				},
 			},
-			daBlocks:      []*types.Block{batch.Blocks[0]},
-			expectedError: fmt.Errorf("num blocks mismatch between state update and DA batch. State index: 1 State update blocks: 2 DA batch blocks: 1"),
+			daBlocks:        []*types.Block{batch.Blocks[0]},
+			expectedErrType: types.ErrStateUpdateHeightNotMatchingFraud{},
 		},
 		{
 			name: "Error - height mismatch",
@@ -144,8 +146,8 @@ func TestStateUpdateValidator_ValidateDaBlocks(t *testing.T) {
 					StateIndex: 1,
 				},
 			},
-			daBlocks:      batch.Blocks,
-			expectedError: fmt.Errorf("height mismatch between state update and DA batch. State index: 1 SL height: 101 DA height: 1"),
+			daBlocks:        batch.Blocks,
+			expectedErrType: types.ErrStateUpdateHeightNotMatchingFraud{},
 		},
 		{
 			name: "Error - state root mismatch",
@@ -160,8 +162,8 @@ func TestStateUpdateValidator_ValidateDaBlocks(t *testing.T) {
 					StateIndex: 1,
 				},
 			},
-			daBlocks:      batch.Blocks,
-			expectedError: fmt.Errorf("state root mismatch between state update and DA batch. State index: 1: Height: 2 State root SL: %d State root DA: %d", []byte{1, 2, 3, 4}, batch.Blocks[0].Header.AppHash[:]),
+			daBlocks:        batch.Blocks,
+			expectedErrType: types.ErrStateUpdateStateRootNotMatchingFraud{},
 		},
 		{
 			name: "Error - timestamp mismatch",
@@ -176,19 +178,22 @@ func TestStateUpdateValidator_ValidateDaBlocks(t *testing.T) {
 					StateIndex: 1,
 				},
 			},
-			daBlocks: batch.Blocks,
-			expectedError: fmt.Errorf("timestamp mismatch between state update and DA batch. State index: 1: Height: 2 Timestamp SL: %s Timestamp DA: %s",
-				batch.Blocks[1].Header.GetTimestamp().UTC().Add(1*time.Second), batch.Blocks[1].Header.GetTimestamp().UTC()),
+			daBlocks:        batch.Blocks,
+			expectedErrType: types.ErrStateUpdateTimestampNotMatchingFraud{},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+
+			// validate DA blocks
 			err := validator.ValidateDaBlocks(tt.slBatch, tt.daBlocks)
 
-			if tt.expectedError != nil {
-				assert.EqualError(t, err, tt.expectedError.Error())
-			} else {
+			// Check the result
+			if tt.expectedErrType == nil {
 				assert.NoError(t, err)
+			} else {
+				assert.True(t, errors.As(err, &tt.expectedErrType),
+					"expected error of type %T, got %T", tt.expectedErrType, err)
 			}
 		})
 	}
@@ -228,49 +233,49 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 		p2pBlocks          bool
 		doubleSignedBlocks []*types.Block
 		stateUpdateFraud   string
-		expectedError      error
+		expectedErrType    interface{}
 	}{
 		{
 			name:               "Successful validation applied from DA",
 			p2pBlocks:          false,
 			doubleSignedBlocks: nil,
 			stateUpdateFraud:   "",
-			expectedError:      nil,
+			expectedErrType:    nil,
 		},
 		{
 			name:               "Successful validation applied from P2P",
 			p2pBlocks:          true,
 			doubleSignedBlocks: nil,
 			stateUpdateFraud:   "",
-			expectedError:      nil,
+			expectedErrType:    nil,
 		},
 		{
 			name:               "Failed validation blocks not matching",
 			p2pBlocks:          true,
 			stateUpdateFraud:   "",
 			doubleSignedBlocks: doubleSigned,
-			expectedError:      fmt.Errorf("p2p block different from DA block. p2p height: 1, DA height: 1"),
+			expectedErrType:    types.ErrStateUpdateDoubleSigningFraud{},
 		},
 		{
 			name:               "Failed validation wrong state roots",
 			p2pBlocks:          true,
 			stateUpdateFraud:   "stateroot",
 			doubleSignedBlocks: doubleSigned,
-			expectedError:      fmt.Errorf("state root mismatch between state update and DA batch. State index: 1: Height: 1 State root SL: [] State root DA: [0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0]"),
+			expectedErrType:    types.ErrStateUpdateStateRootNotMatchingFraud{},
 		},
 		{
 			name:               "Failed validation wrong timestamps",
 			p2pBlocks:          true,
 			stateUpdateFraud:   "timestamp",
 			doubleSignedBlocks: doubleSigned,
-			expectedError:      fmt.Errorf("timestamp mismatch between state update and DA batch. State index: 1: Height: 1 Timestamp SL: 1970-01-01 00:00:01.000004567 +0000 UTC Timestamp DA: 1970-01-01 00:00:00.000004567 +0000 UTC"),
+			expectedErrType:    types.ErrStateUpdateTimestampNotMatchingFraud{},
 		},
 		{
 			name:               "Failed validation wrong height",
 			p2pBlocks:          true,
 			stateUpdateFraud:   "height",
 			doubleSignedBlocks: doubleSigned,
-			expectedError:      fmt.Errorf("height mismatch between state update and DA batch. State index: 1 SL height: 2 DA height: 1"),
+			expectedErrType:    types.ErrStateUpdateHeightNotMatchingFraud{},
 		},
 	}
 	for _, tc := range testCases {
@@ -318,6 +323,11 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 					StateIndex: 1,
 				},
 			}
+
+			// Create the StateUpdateValidator
+			validator := block.NewStateUpdateValidator(testutil.NewLogger(t), manager)
+
+			// set fraud data
 			switch tc.stateUpdateFraud {
 			case "stateroot":
 				slBatch.BlockDescriptors[0].StateRoot = []byte{}
@@ -326,8 +336,6 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 			case "height":
 				slBatch.BlockDescriptors[0].Height = 2
 			}
-			// Create the StateUpdateValidator
-			validator := block.NewStateUpdateValidator(testutil.NewLogger(t), manager)
 
 			if tc.doubleSignedBlocks != nil {
 				batch.Blocks = tc.doubleSignedBlocks
@@ -344,14 +352,16 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 			} else {
 				manager.ProcessNextDABatch(slBatch.MetaData.DA)
 			}
-			// Call the function
+
+			// validate the state update
 			err = validator.ValidateStateUpdate(slBatch)
 
 			// Check the result
-			if tc.expectedError == nil {
+			if tc.expectedErrType == nil {
 				assert.NoError(t, err)
 			} else {
-				assert.EqualError(t, err, tc.expectedError.Error())
+				assert.True(t, errors.As(err, &tc.expectedErrType),
+					"expected error of type %T, got %T", tc.expectedErrType, err)
 			}
 
 		})
