@@ -802,7 +802,14 @@ func (c *Client) CheckTx(ctx context.Context, tx tmtypes.Tx) (*ctypes.ResultChec
 }
 
 func (c *Client) BlockValidated(ctx context.Context, height *int64) (*ResultBlockValidated, error) {
-
+	if *height < 0 {
+		return &ResultBlockValidated{Result: -1}, nil
+	}
+	// node is still syncing
+	if c.node.BlockManager.State.Height() < c.node.BlockManager.LastSubmittedHeight.Load() {
+		return &ResultBlockValidated{Result: -1}, nil
+	}
+	// node has not reached the height yet
 	if uint64(*height) > c.node.BlockManager.State.Height() {
 		return &ResultBlockValidated{Result: 0}, nil
 	}
