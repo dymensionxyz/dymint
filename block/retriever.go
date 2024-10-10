@@ -99,7 +99,7 @@ func (m *Manager) syncFromDABatch() error {
 	return nil
 }
 
-// Used it when loading from snapshot, to skip DA if u have the blocks locally
+// Used it when doing local rollback, and applying same blocks (instead of producing new ones)
 // it was used for an edge case, eg:
 // seq produced block H and gossiped
 // bug in code produces app mismatch across nodes
