@@ -99,6 +99,14 @@ func (m *Manager) syncFromDABatch() error {
 	return nil
 }
 
+// Used it when loading from snapshot, to skip DA if u have the blocks locally
+// it was used for an edge case, eg:
+// seq produced block H and gossiped
+// bug in code produces app mismatch across nodes
+// bug fixed, state rolled back to H-1
+// if seq produces new block H, it can lead to double signing, as the old block can still be in the p2p network
+// ----
+// when this scenario encountered previously, we wanted to apply same block instead of producing new one
 func (m *Manager) applyLocalBlock(height uint64) error {
 	defer m.retrieverMu.Unlock()
 	m.retrieverMu.Lock()
