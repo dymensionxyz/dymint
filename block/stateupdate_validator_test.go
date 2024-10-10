@@ -1,0 +1,370 @@
+package block_test
+
+import (
+	"crypto/rand"
+	"errors"
+	"testing"
+	"time"
+
+	"github.com/dymensionxyz/dymint/block"
+	"github.com/dymensionxyz/dymint/da"
+	"github.com/dymensionxyz/dymint/p2p"
+	"github.com/dymensionxyz/dymint/settlement"
+	"github.com/dymensionxyz/dymint/testutil"
+	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/dymint/version"
+	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
+	abci "github.com/tendermint/tendermint/abci/types"
+	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/libs/pubsub"
+	"github.com/tendermint/tendermint/proxy"
+)
+
+func TestStateUpdateValidator_ValidateP2PBlocks(t *testing.T) {
+	validator := &block.StateUpdateValidator{}
+
+	proposerKey, _, err := crypto.GenerateEd25519Key(rand.Reader)
+	require.NoError(t, err)
+
+	batch, err := testutil.GenerateBatch(1, 10, proposerKey, "test", [32]byte{})
+	require.NoError(t, err)
+
+	doubleSignedBatch, err := testutil.GenerateBatch(1, 10, proposerKey, "test", [32]byte{})
+	require.NoError(t, err)
+
+	mixedBatch := make([]*types.Block, 10)
+	copy(mixedBatch, batch.Blocks)
+	mixedBatch[2] = doubleSignedBatch.Blocks[2]
+
+	tests := []struct {
+		name            string
+		daBlocks        []*types.Block
+		p2pBlocks       []*types.Block
+		expectedErrType interface{}
+	}{
+		{
+			name:            "Empty blocks",
+			daBlocks:        []*types.Block{},
+			p2pBlocks:       []*types.Block{},
+			expectedErrType: nil,
+		},
+		{
+			name:            "Matching blocks",
+			daBlocks:        batch.Blocks,
+			p2pBlocks:       batch.Blocks,
+			expectedErrType: nil,
+		},
+		{
+			name:            "double signing",
+			daBlocks:        batch.Blocks,
+			p2pBlocks:       doubleSignedBatch.Blocks,
+			expectedErrType: types.ErrStateUpdateDoubleSigningFraud{},
+		},
+		{
+			name:            "mixed blocks",
+			daBlocks:        batch.Blocks,
+			p2pBlocks:       mixedBatch,
+			expectedErrType: types.ErrStateUpdateDoubleSigningFraud{},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := validator.ValidateP2PBlocks(tt.daBlocks, tt.p2pBlocks)
+			// Check the result
+			if tt.expectedErrType == nil {
+				assert.NoError(t, err)
+			} else {
+				assert.True(t, errors.As(err, &tt.expectedErrType),
+					"expected error of type %T, got %T", tt.expectedErrType, err)
+			}
+		})
+	}
+}
+
+func TestStateUpdateValidator_ValidateDaBlocks(t *testing.T) {
+
+	validator := &block.StateUpdateValidator{}
+
+	proposerKey, _, err := crypto.GenerateEd25519Key(rand.Reader)
+	require.NoError(t, err)
+
+	batch, err := testutil.GenerateBatch(1, 2, proposerKey, "test", [32]byte{})
+	require.NoError(t, err)
+
+	tests := []struct {
+		name            string
+		slBatch         *settlement.ResultRetrieveBatch
+		daBlocks        []*types.Block
+		expectedErrType interface{}
+	}{
+		{
+			name: "Happy path - all validations pass",
+			slBatch: &settlement.ResultRetrieveBatch{
+				Batch: &settlement.Batch{
+					BlockDescriptors: []settlement.BlockDescriptor{
+						{Height: 1, StateRoot: batch.Blocks[0].Header.AppHash[:], Timestamp: batch.Blocks[0].Header.GetTimestamp()},
+						{Height: 2, StateRoot: batch.Blocks[1].Header.AppHash[:], Timestamp: batch.Blocks[0].Header.GetTimestamp()},
+					},
+				},
+				ResultBase: settlement.ResultBase{
+					StateIndex: 1,
+				},
+			},
+			daBlocks:        batch.Blocks,
+			expectedErrType: nil,
+		},
+		{
+			name: "Error - number of blocks mismatch",
+			slBatch: &settlement.ResultRetrieveBatch{
+				Batch: &settlement.Batch{
+					BlockDescriptors: []settlement.BlockDescriptor{
+						{Height: 1, StateRoot: batch.Blocks[0].Header.AppHash[:], Timestamp: batch.Blocks[0].Header.GetTimestamp()},
+						{Height: 2, StateRoot: batch.Blocks[1].Header.AppHash[:], Timestamp: batch.Blocks[1].Header.GetTimestamp()},
+					},
+				},
+				ResultBase: settlement.ResultBase{
+					StateIndex: 1,
+				},
+			},
+			daBlocks:        []*types.Block{batch.Blocks[0]},
+			expectedErrType: types.ErrStateUpdateHeightNotMatchingFraud{},
+		},
+		{
+			name: "Error - height mismatch",
+			slBatch: &settlement.ResultRetrieveBatch{
+				Batch: &settlement.Batch{
+					BlockDescriptors: []settlement.BlockDescriptor{
+						{Height: 101, StateRoot: batch.Blocks[0].Header.AppHash[:], Timestamp: batch.Blocks[0].Header.GetTimestamp()},
+						{Height: 102, StateRoot: batch.Blocks[1].Header.AppHash[:], Timestamp: batch.Blocks[1].Header.GetTimestamp()},
+					},
+				},
+				ResultBase: settlement.ResultBase{
+					StateIndex: 1,
+				},
+			},
+			daBlocks:        batch.Blocks,
+			expectedErrType: types.ErrStateUpdateHeightNotMatchingFraud{},
+		},
+		{
+			name: "Error - state root mismatch",
+			slBatch: &settlement.ResultRetrieveBatch{
+				Batch: &settlement.Batch{
+					BlockDescriptors: []settlement.BlockDescriptor{
+						{Height: 1, StateRoot: batch.Blocks[0].Header.AppHash[:], Timestamp: batch.Blocks[0].Header.GetTimestamp()},
+						{Height: 2, StateRoot: []byte{1, 2, 3, 4}, Timestamp: batch.Blocks[1].Header.GetTimestamp()},
+					},
+				},
+				ResultBase: settlement.ResultBase{
+					StateIndex: 1,
+				},
+			},
+			daBlocks:        batch.Blocks,
+			expectedErrType: types.ErrStateUpdateStateRootNotMatchingFraud{},
+		},
+		{
+			name: "Error - timestamp mismatch",
+			slBatch: &settlement.ResultRetrieveBatch{
+				Batch: &settlement.Batch{
+					BlockDescriptors: []settlement.BlockDescriptor{
+						{Height: 1, StateRoot: batch.Blocks[0].Header.AppHash[:], Timestamp: batch.Blocks[0].Header.GetTimestamp()},
+						{Height: 2, StateRoot: batch.Blocks[1].Header.AppHash[:], Timestamp: batch.Blocks[1].Header.GetTimestamp().Add(1 * time.Second)},
+					},
+				},
+				ResultBase: settlement.ResultBase{
+					StateIndex: 1,
+				},
+			},
+			daBlocks:        batch.Blocks,
+			expectedErrType: types.ErrStateUpdateTimestampNotMatchingFraud{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			// validate DA blocks
+			err := validator.ValidateDaBlocks(tt.slBatch, tt.daBlocks)
+
+			// Check the result
+			if tt.expectedErrType == nil {
+				assert.NoError(t, err)
+			} else {
+				assert.True(t, errors.As(err, &tt.expectedErrType),
+					"expected error of type %T, got %T", tt.expectedErrType, err)
+			}
+		})
+	}
+}
+
+func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
+
+	// Init app
+	app := testutil.GetAppMock(testutil.EndBlock)
+	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
+		RollappParamUpdates: &abci.RollappParams{
+			Da:      "mock",
+			Version: version.Commit,
+		},
+		ConsensusParamUpdates: &abci.ConsensusParams{
+			Block: &abci.BlockParams{
+				MaxGas:   40000000,
+				MaxBytes: 500000,
+			},
+		},
+	})
+	// Create proxy app
+	clientCreator := proxy.NewLocalClientCreator(app)
+	proxyApp := proxy.NewAppConns(clientCreator)
+	err := proxyApp.Start()
+	require.NoError(t, err)
+	chainId := "test"
+	proposerKey, _, err := crypto.GenerateEd25519Key(rand.Reader)
+	require.NoError(t, err)
+
+	doubleSigned, err := testutil.GenerateBlocks(1, 10, proposerKey, chainId, [32]byte{})
+	require.NoError(t, err)
+
+	// Test cases
+	testCases := []struct {
+		name               string
+		p2pBlocks          bool
+		doubleSignedBlocks []*types.Block
+		stateUpdateFraud   string
+		expectedErrType    interface{}
+	}{
+		{
+			name:               "Successful validation applied from DA",
+			p2pBlocks:          false,
+			doubleSignedBlocks: nil,
+			stateUpdateFraud:   "",
+			expectedErrType:    nil,
+		},
+		{
+			name:               "Successful validation applied from P2P",
+			p2pBlocks:          true,
+			doubleSignedBlocks: nil,
+			stateUpdateFraud:   "",
+			expectedErrType:    nil,
+		},
+		{
+			name:               "Failed validation blocks not matching",
+			p2pBlocks:          true,
+			stateUpdateFraud:   "",
+			doubleSignedBlocks: doubleSigned,
+			expectedErrType:    types.ErrStateUpdateDoubleSigningFraud{},
+		},
+		{
+			name:               "Failed validation wrong state roots",
+			p2pBlocks:          true,
+			stateUpdateFraud:   "stateroot",
+			doubleSignedBlocks: doubleSigned,
+			expectedErrType:    types.ErrStateUpdateStateRootNotMatchingFraud{},
+		},
+		{
+			name:               "Failed validation wrong timestamps",
+			p2pBlocks:          true,
+			stateUpdateFraud:   "timestamp",
+			doubleSignedBlocks: doubleSigned,
+			expectedErrType:    types.ErrStateUpdateTimestampNotMatchingFraud{},
+		},
+		{
+			name:               "Failed validation wrong height",
+			p2pBlocks:          true,
+			stateUpdateFraud:   "height",
+			doubleSignedBlocks: doubleSigned,
+			expectedErrType:    types.ErrStateUpdateHeightNotMatchingFraud{},
+		},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+
+			// Create manager
+			manager, err := testutil.GetManagerWithProposerKey(chainId, testutil.GetManagerConfig(), proposerKey, nil, 1, 1, 0, proxyApp, nil)
+			require.NoError(t, err)
+			require.NotNil(t, manager)
+
+			// Create DA
+			manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
+			manager.Retriever = manager.DAClient.(da.BatchRetriever)
+
+			// Generate batch
+			batch, err := testutil.GenerateBatch(1, 10, proposerKey, chainId, [32]byte{})
+			assert.NoError(t, err)
+
+			// Submit batch to DA
+			daResultSubmitBatch := manager.DAClient.SubmitBatch(batch)
+			assert.Equal(t, daResultSubmitBatch.Code, da.StatusSuccess)
+
+			// Create block descriptors
+			var bds []settlement.BlockDescriptor
+			for _, block := range batch.Blocks {
+				bd := settlement.BlockDescriptor{
+					Height:    block.Header.Height,
+					StateRoot: block.Header.AppHash[:],
+					Timestamp: block.Header.GetTimestamp(),
+				}
+				bds = append(bds, bd)
+			}
+
+			// create the batch in settlement
+			slBatch := &settlement.ResultRetrieveBatch{
+				Batch: &settlement.Batch{
+					BlockDescriptors: bds,
+					MetaData: &settlement.BatchMetaData{
+						DA: daResultSubmitBatch.SubmitMetaData,
+					},
+					StartHeight: 1,
+					EndHeight:   10,
+				},
+				ResultBase: settlement.ResultBase{
+					StateIndex: 1,
+				},
+			}
+
+			// Create the StateUpdateValidator
+			validator := block.NewStateUpdateValidator(testutil.NewLogger(t), manager)
+
+			// set fraud data
+			switch tc.stateUpdateFraud {
+			case "stateroot":
+				slBatch.BlockDescriptors[0].StateRoot = []byte{}
+			case "timestamp":
+				slBatch.BlockDescriptors[0].Timestamp = slBatch.BlockDescriptors[0].Timestamp.Add(time.Second)
+			case "height":
+				slBatch.BlockDescriptors[0].Height = 2
+			}
+
+			if tc.doubleSignedBlocks != nil {
+				batch.Blocks = tc.doubleSignedBlocks
+				batch.Commits, err = testutil.GenerateCommits(batch.Blocks, proposerKey)
+				require.NoError(t, err)
+			}
+
+			if tc.p2pBlocks {
+				for i, block := range batch.Blocks {
+					blockData := p2p.BlockData{Block: *block, Commit: *batch.Commits[i]}
+					msg := pubsub.NewMessage(blockData, map[string][]string{p2p.EventTypeKey: {p2p.EventNewGossipedBlock}})
+					manager.OnReceivedBlock(msg)
+				}
+			} else {
+				manager.ProcessNextDABatch(slBatch.MetaData.DA)
+			}
+
+			// validate the state update
+			err = validator.ValidateStateUpdate(slBatch)
+
+			// Check the result
+			if tc.expectedErrType == nil {
+				assert.NoError(t, err)
+			} else {
+				assert.True(t, errors.As(err, &tc.expectedErrType),
+					"expected error of type %T, got %T", tc.expectedErrType, err)
+			}
+
+		})
+	}
+
+}

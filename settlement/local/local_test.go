@@ -76,11 +76,11 @@ func TestSubmitBatch(t *testing.T) {
 	require.NoError(err)
 	assert.Equal(batch1.EndHeight(), queriedBatch.Batch.EndHeight)
 
-	state, err := sllayer.GetHeightState(1)
+	queriedBatchAtState, err := sllayer.GetBatchAtHeight(1)
 	require.NoError(err)
-	assert.Equal(queriedBatch.StateIndex, state.State.StateIndex)
+	assert.Equal(queriedBatch.StateIndex, queriedBatchAtState.StateIndex)
 
-	queriedBatch, err = sllayer.GetBatchAtIndex(state.State.StateIndex)
+	queriedBatch, err = sllayer.GetBatchAtIndex(queriedBatchAtState.StateIndex)
 	require.NoError(err)
 	assert.Equal(batch1.EndHeight(), queriedBatch.Batch.EndHeight)
 
@@ -94,11 +94,11 @@ func TestSubmitBatch(t *testing.T) {
 	require.NoError(err)
 	assert.Equal(batch2.EndHeight(), queriedBatch.Batch.EndHeight)
 
-	state, err = sllayer.GetHeightState(2)
+	queriedBatchAtState, err = sllayer.GetBatchAtHeight(2)
 	require.NoError(err)
-	assert.Equal(queriedBatch.StateIndex, state.State.StateIndex)
+	assert.Equal(queriedBatch.StateIndex, queriedBatchAtState.StateIndex)
 
-	queriedBatch, err = sllayer.GetBatchAtIndex(state.State.StateIndex)
+	queriedBatch, err = sllayer.GetBatchAtIndex(queriedBatchAtState.StateIndex)
 	require.NoError(err)
 	assert.Equal(batch2.EndHeight(), queriedBatch.Batch.EndHeight)
 

@@ -27,7 +27,7 @@ const (
 
 func createRandomHashes() [][32]byte {
 	h := [][32]byte{}
-	for i := 0; i < 8; i++ {
+	for i := 0; i < 4; i++ {
 		var h1 [32]byte
 		_, err := rand.Read(h1[:])
 		if err != nil {
@@ -63,9 +63,9 @@ func generateBlock(height uint64, lastHeaderHash [32]byte, proposerHash []byte, 
 			Height:             height,
 			Time:               4567,
 			LastHeaderHash:     lastHeaderHash,
-			LastCommitHash:     h[1],
-			DataHash:           h[2],
-			ConsensusHash:      h[3],
+			LastCommitHash:     h[0],
+			DataHash:           h[1],
+			ConsensusHash:      h[2],
 			AppHash:            [32]byte{},
 			LastResultsHash:    GetEmptyLastResultsHash(),
 			ProposerAddress:    proposerAddress,
@@ -80,7 +80,7 @@ func generateBlock(height uint64, lastHeaderHash [32]byte, proposerHash []byte, 
 		},
 		LastCommit: types.Commit{
 			Height:     8,
-			HeaderHash: h[7],
+			HeaderHash: h[3],
 			Signatures: []types.Signature{},
 		},
 	}

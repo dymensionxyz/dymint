@@ -152,7 +152,7 @@ func (c *Client) Start() error {
 						if err != nil {
 							panic(err)
 						}
-						err = c.pubsub.PublishWithEvents(context.Background(), &settlement.EventDataNewBatchAccepted{EndHeight: b.EndHeight}, settlement.EventNewBatchAcceptedList)
+						err = c.pubsub.PublishWithEvents(context.Background(), &settlement.EventDataNewBatch{EndHeight: b.EndHeight}, settlement.EventNewBatchAcceptedList)
 						if err != nil {
 							panic(err)
 						}
@@ -181,7 +181,7 @@ func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *d
 	}
 
 	time.Sleep(10 * time.Millisecond) // mimic a delay in batch acceptance
-	err = c.pubsub.PublishWithEvents(context.Background(), &settlement.EventDataNewBatchAccepted{EndHeight: settlementBatch.EndHeight}, settlement.EventNewBatchAcceptedList)
+	err = c.pubsub.PublishWithEvents(context.Background(), &settlement.EventDataNewBatch{EndHeight: settlementBatch.EndHeight}, settlement.EventNewBatchAcceptedList)
 	if err != nil {
 		return err
 	}
@@ -198,6 +198,11 @@ func (c *Client) GetLatestBatch() (*settlement.ResultRetrieveBatch, error) {
 	return batchResult, nil
 }
 
+// GetLatestFinalizedBatch returns the latest finalized batch from the kv store
+func (c *Client) GetLatestFinalizedBatch() (*settlement.ResultRetrieveBatch, error) {
+	return nil, gerrc.ErrNotFound
+}
+
 // GetBatchAtIndex returns the batch at the given index
 func (c *Client) GetBatchAtIndex(index uint64) (*settlement.ResultRetrieveBatch, error) {
 	batchResult, err := c.retrieveBatchAtStateIndex(index)
@@ -209,7 +214,7 @@ func (c *Client) GetBatchAtIndex(index uint64) (*settlement.ResultRetrieveBatch,
 	return batchResult, nil
 }
 
-func (c *Client) GetHeightState(index uint64) (*settlement.ResultGetHeightState, error) {
+func (c *Client) GetBatchAtHeight(height uint64) (*settlement.ResultRetrieveBatch, error) {
 	panic("hub grpc client get height state is not implemented: implement me") // TODO: impl
 }
 
@@ -273,6 +278,16 @@ func (c *Client) saveBatch(batch *settlement.Batch) error {
 }
 
 func (c *Client) convertBatchtoSettlementBatch(batch *types.Batch, daResult *da.ResultSubmitBatch) *settlement.Batch {
+	bds := []settlement.BlockDescriptor{}
+	for _, block := range batch.Blocks {
+		bd := settlement.BlockDescriptor{
+			Height:    block.Header.Height,
+			StateRoot: block.Header.AppHash[:],
+			Timestamp: block.Header.GetTimestamp(),
+		}
+		bds = append(bds, bd)
+	}
+
 	settlementBatch := &settlement.Batch{
 		Sequencer:   c.GetProposer().SettlementAddress,
 		StartHeight: batch.StartHeight(),
@@ -283,10 +298,9 @@ func (c *Client) convertBatchtoSettlementBatch(batch *types.Batch, daResult *da.
 				Client: daResult.SubmitMetaData.Client,
 			},
 		},
+		BlockDescriptors: bds,
 	}
-	for _, block := range batch.Blocks {
-		settlementBatch.AppHashes = append(settlementBatch.AppHashes, block.Header.AppHash)
-	}
+
 	return settlementBatch
 }
 
