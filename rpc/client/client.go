@@ -53,6 +53,10 @@ type Client struct {
 	genChunks []string
 }
 
+type ResultBlockValidated struct {
+	Result int
+}
+
 // NewClient returns Client working with given node.
 func NewClient(node *node.Node) *Client {
 	return &Client{
@@ -815,6 +819,28 @@ func (c *Client) CheckTx(ctx context.Context, tx tmtypes.Tx) (*ctypes.ResultChec
 		return nil, err
 	}
 	return &ctypes.ResultCheckTx{ResponseCheckTx: *res}, nil
+}
+
+// BlockValidated returns the settlement validation status for a specific height: 0: Not validated, 1: Validated from P2P, 2: Validated from settlement, -1: node is still syncing.
+func (c *Client) BlockValidated(ctx context.Context, height *int64) (*ResultBlockValidated, error) {
+	if *height < 0 {
+		return &ResultBlockValidated{Result: -1}, nil
+	}
+	// node is still syncing
+	if c.node.BlockManager.State.Height() < c.node.BlockManager.LastSubmittedHeight.Load() {
+		return &ResultBlockValidated{Result: -1}, nil
+	}
+	// node has not reached the height yet
+	if uint64(*height) > c.node.BlockManager.State.Height() {
+		return &ResultBlockValidated{Result: 0}, nil
+	}
+	// height has been validated by the node
+	if uint64(*height) <= c.node.BlockManager.State.GetLastValidatedHeight() {
+		return &ResultBlockValidated{Result: 2}, nil
+	}
+
+	// node applied the block from P2P, but is not yet validated
+	return &ResultBlockValidated{Result: 1}, nil
 }
 
 func (c *Client) eventsRoutine(sub tmtypes.Subscription, subscriber string, q tmpubsub.Query, outc chan<- ctypes.ResultEvent) {
