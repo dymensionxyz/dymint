@@ -10,24 +10,11 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
-type P2PBlockValidator interface {
-	ValidateP2PBlocks(daBlocks []*types.Block, p2pBlocks []*types.Block) error
-}
-
-type DABlocksValidator interface {
-	ValidateDaBlocks(slBatch *settlement.ResultRetrieveBatch, daBlocks []*types.Block) error
-}
-
 // StateUpdateValidator is a validator for messages gossiped in the p2p network.
 type StateUpdateValidator struct {
 	logger       types.Logger
 	blockManager *Manager
 }
-
-var (
-	_ DABlocksValidator = &StateUpdateValidator{}
-	_ P2PBlockValidator = &StateUpdateValidator{}
-)
 
 // NewValidator creates a new Validator.
 func NewStateUpdateValidator(logger types.Logger, blockManager *Manager) *StateUpdateValidator {
@@ -99,7 +86,6 @@ func (v *StateUpdateValidator) ValidateStateUpdate(batch *settlement.ResultRetri
 }
 
 func (v *StateUpdateValidator) ValidateP2PBlocks(daBlocks []*types.Block, p2pBlocks []*types.Block) error {
-
 	// nothing to compare
 	if len(p2pBlocks) == 0 {
 		return nil
