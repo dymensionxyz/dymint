@@ -6,7 +6,6 @@ import (
 
 	proto2 "github.com/gogo/protobuf/proto"
 	proto "github.com/gogo/protobuf/types"
-
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmcrypto "github.com/tendermint/tendermint/crypto/encoding"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
@@ -104,25 +103,25 @@ func (e *Executor) InitChain(genesis *tmtypes.GenesisDoc, valset []*tmtypes.Vali
 	})
 }
 
-// CreateBlock reaps transactions from mempool and builds a block.
+// CreateBlock reaps transactions from mempool and builds a block. Optionally, executes consensus messages that
+// gets from the consensus messages stream or from the method args.
 func (e *Executor) CreateBlock(
 	height uint64,
 	lastCommit *types.Commit,
 	lastHeaderHash, nextSeqHash [32]byte,
 	state *types.State,
 	maxBlockDataSizeBytes uint64,
+	consensusMsgs ...proto2.Message,
 ) *types.Block {
 	maxBlockDataSizeBytes = min(maxBlockDataSizeBytes, uint64(max(minBlockMaxBytes, state.ConsensusParams.Block.MaxBytes)))
 	mempoolTxs := e.mempool.ReapMaxBytesMaxGas(int64(maxBlockDataSizeBytes), state.ConsensusParams.Block.MaxGas)
 
-	var consensusAnyMessages []*proto.Any
 	if e.consensusMessagesStream != nil {
 		consensusMessages, err := e.consensusMessagesStream.GetConsensusMessages()
 		if err != nil {
 			e.logger.Error("Failed to get consensus messages", "error", err)
 		}
-
-		consensusAnyMessages = fromProtoMsgSliceToAnySlice(consensusMessages)
+		consensusMsgs = append(consensusMsgs, consensusMessages...)
 	}
 
 	block := &types.Block{
@@ -145,7 +144,7 @@ func (e *Executor) CreateBlock(
 			Txs:                    toDymintTxs(mempoolTxs),
 			IntermediateStateRoots: types.IntermediateStateRoots{RawRootsList: nil},
 			Evidence:               types.EvidenceData{Evidence: nil},
-			ConsensusMessages:      consensusAnyMessages,
+			ConsensusMessages:      fromProtoMsgSliceToAnySlice(consensusMsgs...),
 		},
 		LastCommit: *lastCommit,
 	}
@@ -328,7 +327,7 @@ func fromProtoMsgToAny(msg proto2.Message) *proto.Any {
 	}
 }
 
-func fromProtoMsgSliceToAnySlice(msgs []proto2.Message) []*proto.Any {
+func fromProtoMsgSliceToAnySlice(msgs ...proto2.Message) []*proto.Any {
 	result := make([]*proto.Any, len(msgs))
 	for i, msg := range msgs {
 		result[i] = fromProtoMsgToAny(msg)
