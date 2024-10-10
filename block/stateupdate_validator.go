@@ -69,9 +69,12 @@ func (v *StateUpdateValidator) ValidateStateUpdate(batch *settlement.ResultRetri
 	numBlocks := batch.EndHeight - batch.StartHeight + 1
 	if uint64(len(daBlocks)) != numBlocks {
 		daBlocks = []*types.Block{}
-		daBatch := v.blockManager.Retriever.RetrieveBatches(batch.MetaData.DA)
-		if daBatch.Code != da.StatusSuccess {
-			return daBatch.Error
+		var daBatch da.ResultRetrieveBatch
+		for {
+			daBatch = v.blockManager.Retriever.RetrieveBatches(batch.MetaData.DA)
+			if daBatch.Code == da.StatusSuccess {
+				break
+			}
 		}
 		for _, batch := range daBatch.Batches {
 			daBlocks = append(daBlocks, batch.Blocks...)
@@ -118,7 +121,7 @@ func (v *StateUpdateValidator) ValidateP2PBlocks(daBlocks []*types.Block, p2pBlo
 			return err
 		}
 		if !bytes.Equal(p2pBlockHash, daBlockHash) {
-			return fmt.Errorf("p2p block different from DA block. p2p height: %d, DA height: %d", p2pBlocks[i].Header.Height, daBlock.Header.Height)
+			return types.NewErrStateUpdateDoubleSigningFraud(daBlock.Header.Height)
 		}
 		i++
 		if i == len(p2pBlocks) {
@@ -140,16 +143,16 @@ func (v *StateUpdateValidator) ValidateDaBlocks(slBatch *settlement.ResultRetrie
 	for i, bd := range slBatch.BlockDescriptors {
 		// height check
 		if bd.Height != daBlocks[i].Header.Height {
-			return fmt.Errorf("height mismatch between state update and DA batch. State index: %d SL height: %d DA height: %d", slBatch.StateIndex, bd.Height, daBlocks[i].Header.Height)
+			return types.NewErrStateUpdateHeightNotMatchingFraud(slBatch.StateIndex, bd.Height, daBlocks[i].Header.Height)
 		}
 		// we compare the state root between SL state info and DA block
 		if !bytes.Equal(bd.StateRoot, daBlocks[i].Header.AppHash[:]) {
-			return fmt.Errorf("state root mismatch between state update and DA batch. State index: %d: Height: %d State root SL: %d State root DA: %d", slBatch.StateIndex, bd.Height, bd.StateRoot, daBlocks[i].Header.AppHash[:])
+			return types.NewErrStateUpdateStateRootNotMatchingFraud(slBatch.StateIndex, bd.Height, bd.StateRoot, daBlocks[i].Header.AppHash[:])
 		}
 
 		// we compare the timestamp between SL state info and DA block
 		if !bd.Timestamp.Equal(daBlocks[i].Header.GetTimestamp()) {
-			return fmt.Errorf("timestamp mismatch between state update and DA batch. State index: %d: Height: %d Timestamp SL: %s Timestamp DA: %s", slBatch.StateIndex, bd.Height, bd.Timestamp.UTC(), daBlocks[i].Header.GetTimestamp().UTC())
+			return types.NewErrStateUpdateTimestampNotMatchingFraud(slBatch.StateIndex, bd.Height, bd.Timestamp, daBlocks[i].Header.GetTimestamp())
 		}
 	}
 
