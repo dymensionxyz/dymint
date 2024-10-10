@@ -12,7 +12,7 @@ import (
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
-// onNewStateUpdate will update the last submitted height and will update sequencers list from SL
+// onNewStateUpdate will update the last submitted height and will update sequencers list from SL. After, it triggers syncing or validation, depending whether it needs to sync first or only validate.
 func (m *Manager) onNewStateUpdate(event pubsub.Message) {
 	eventData, ok := event.Data().(*settlement.EventDataNewBatch)
 	if !ok {
@@ -42,7 +42,7 @@ func (m *Manager) onNewStateUpdate(event pubsub.Message) {
 }
 
 // SyncLoop listens for syncing events (from new state update or from initial syncing) and syncs to the last submitted height.
-// After syncing it sends signal to validation loop
+// It sends signal to validation loop for each synced state updated
 func (m *Manager) SyncLoop(ctx context.Context) error {
 	for {
 		select {
