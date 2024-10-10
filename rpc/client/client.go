@@ -53,6 +53,10 @@ type Client struct {
 	genChunks []string
 }
 
+type ResultBlockValidated struct {
+	Result int
+}
+
 // NewClient returns Client working with given node.
 func NewClient(node *node.Node) *Client {
 	return &Client{
@@ -815,6 +819,10 @@ func (c *Client) CheckTx(ctx context.Context, tx tmtypes.Tx) (*ctypes.ResultChec
 		return nil, err
 	}
 	return &ctypes.ResultCheckTx{ResponseCheckTx: *res}, nil
+}
+
+func (c *Client) BlockValidated(ctx context.Context) (*ResultBlockValidated, error) {
+	return &ResultBlockValidated{Result: 1}, nil
 }
 
 func (c *Client) eventsRoutine(sub tmtypes.Subscription, subscriber string, q tmpubsub.Query, outc chan<- ctypes.ResultEvent) {

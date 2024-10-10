@@ -109,6 +109,7 @@ func newService(c *client.Client, l types.Logger, opts ...option) *service {
 		"abci_query":           newMethod(s.ABCIQuery),
 		"abci_info":            newMethod(s.ABCIInfo),
 		"broadcast_evidence":   newMethod(s.BroadcastEvidence),
+		"block_validated":      newMethod(s.BlockValidated),
 	}
 
 	for _, opt := range opts {
@@ -288,4 +289,8 @@ func (s *service) ABCIInfo(req *http.Request, args *ABCIInfoArgs) (*ctypes.Resul
 // evidence API
 func (s *service) BroadcastEvidence(req *http.Request, args *broadcastEvidenceArgs) (*ctypes.ResultBroadcastEvidence, error) {
 	return s.client.BroadcastEvidence(req.Context(), args.Evidence)
+}
+
+func (s *service) BlockValidated(req *http.Request, args struct{}) (*client.ResultBlockValidated, error) {
+	return s.client.BlockValidated(req.Context())
 }
