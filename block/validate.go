@@ -35,7 +35,7 @@ func (m *Manager) ValidateLoop(ctx context.Context) error {
 				batch, err := m.SLClient.GetBatchAtHeight(currH)
 				if err != nil {
 					m.logger.Error("failed batch retrieval", "error", err)
-					break
+					continue
 				}
 				// validate batch
 				err = m.validator.ValidateStateUpdate(batch)
