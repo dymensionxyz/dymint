@@ -3,6 +3,8 @@ package block
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/hex"
+	"errors"
 	"fmt"
 
 	"github.com/dymensionxyz/dymint/da"
@@ -56,10 +58,16 @@ func (v *StateUpdateValidator) ValidateStateUpdate(batch *settlement.ResultRetri
 		daBlocks = []*types.Block{}
 		var daBatch da.ResultRetrieveBatch
 		for {
+
 			daBatch = v.blockManager.Retriever.RetrieveBatches(batch.MetaData.DA)
 			if daBatch.Code == da.StatusSuccess {
 				break
 			}
+			checkBatchResult := v.blockManager.Retriever.CheckBatchAvailability(batch.MetaData.DA)
+			if errors.Is(checkBatchResult.Error, da.ErrBlobNotIncluded) {
+				return types.NewErrStateUpdateBlobNotAvailableFraud(batch.StateIndex, string(batch.MetaData.DA.Client), batch.MetaData.DA.Height, hex.EncodeToString(batch.MetaData.DA.Commitment))
+			}
+
 		}
 		for _, batch := range daBatch.Batches {
 			daBlocks = append(daBlocks, batch.Blocks...)
