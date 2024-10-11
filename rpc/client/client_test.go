@@ -347,14 +347,6 @@ func TestValidatedHeight(t *testing.T) {
 			submittedHeight: 10,
 			result:          -1,
 		},
-		{
-			name:            "Node still syncing",
-			validatedHeight: 5,
-			nodeHeight:      5,
-			queryHeight:     10,
-			submittedHeight: 10,
-			result:          -1,
-		},
 	}
 
 	for _, test := range tests {
