@@ -802,7 +802,6 @@ func (c *Client) CheckTx(ctx context.Context, tx tmtypes.Tx) (*ctypes.ResultChec
 }
 
 func (c *Client) BlockValidated(ctx context.Context, height *int64) (*ResultBlockValidated, error) {
-
 	if *height < 0 {
 		return &ResultBlockValidated{Result: -1}, nil
 	}
