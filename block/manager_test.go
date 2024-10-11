@@ -714,8 +714,6 @@ func TestDAFetch(t *testing.T) {
 	require.NoError(err)
 	daResultSubmitBatch := manager.DAClient.SubmitBatch(batch)
 	require.Equal(daResultSubmitBatch.Code, da.StatusSuccess)
-	err = manager.SLClient.SubmitBatch(batch, manager.DAClient.GetClientType(), &daResultSubmitBatch)
-	require.NoError(err)
 
 	cases := []struct {
 		name       string
@@ -744,7 +742,7 @@ func TestDAFetch(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			app.On("Commit", mock.Anything).Return(abci.ResponseCommit{Data: commitHash[:]}).Once()
 			app.On("Info", mock.Anything).Return(abci.ResponseInfo{
-				LastBlockHeight:  int64(batch.EndHeight()),
+				LastBlockHeight:  int64(batch.EndHeight()) + 1,
 				LastBlockAppHash: commitHash[:],
 			})
 
