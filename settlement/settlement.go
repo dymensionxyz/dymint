@@ -1,10 +1,9 @@
 package settlement
 
 import (
-	"time"
-
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
@@ -33,21 +32,12 @@ type BatchMetaData struct {
 	DA *da.DASubmitMetaData
 }
 
-type BlockDescriptor struct {
-	// height is the height of the block
-	Height uint64
-	// stateRoot is a 32 byte array of the hash of the block (state root of the block)
-	StateRoot []byte
-	// timestamp is the time from the block header
-	Timestamp time.Time
-}
-
 type Batch struct {
 	// sequencer is the bech32-encoded address of the sequencer sent the update
 	Sequencer        string
 	StartHeight      uint64
 	EndHeight        uint64
-	BlockDescriptors []BlockDescriptor
+	BlockDescriptors []rollapp.BlockDescriptor
 	// MetaData about the batch in the DA layer
 	MetaData   *BatchMetaData
 	DRSVersion string
