@@ -25,6 +25,7 @@ import (
 	"github.com/dymensionxyz/dymint/settlement"
 	slmock "github.com/dymensionxyz/dymint/settlement/grpc/mockserv/proto"
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
 	rollapptypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
 )
 
@@ -283,9 +284,9 @@ func (c *Client) saveBatch(batch *settlement.Batch) error {
 }
 
 func (c *Client) convertBatchtoSettlementBatch(batch *types.Batch, daResult *da.ResultSubmitBatch) *settlement.Batch {
-	bds := []settlement.BlockDescriptor{}
+	bds := []rollapp.BlockDescriptor{}
 	for _, block := range batch.Blocks {
-		bd := settlement.BlockDescriptor{
+		bd := rollapp.BlockDescriptor{
 			Height:    block.Header.Height,
 			StateRoot: block.Header.AppHash[:],
 			Timestamp: block.Header.GetTimestamp(),

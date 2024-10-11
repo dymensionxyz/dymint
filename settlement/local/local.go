@@ -24,6 +24,7 @@ import (
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
 	rollapptypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
 )
@@ -274,9 +275,9 @@ func (c *Client) retrieveBatchAtStateIndex(slStateIndex uint64) (*settlement.Res
 }
 
 func (c *Client) convertBatchToSettlementBatch(batch *types.Batch, daResult *da.ResultSubmitBatch) *settlement.Batch {
-	bds := []settlement.BlockDescriptor{}
+	bds := []rollapp.BlockDescriptor{}
 	for _, block := range batch.Blocks {
-		bd := settlement.BlockDescriptor{
+		bd := rollapp.BlockDescriptor{
 			Height:    block.Header.Height,
 			StateRoot: block.Header.AppHash[:],
 			Timestamp: block.Header.GetTimestamp(),
