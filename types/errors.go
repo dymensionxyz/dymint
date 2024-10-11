@@ -455,3 +455,27 @@ func (e ErrStateUpdateDoubleSigningFraud) Error() string {
 func (e ErrStateUpdateDoubleSigningFraud) Unwrap() error {
 	return gerrc.ErrFault
 }
+
+type ErrStateUpdateBlobNotAvailableFraud struct {
+	StateIndex uint64
+	DA         string
+	DAHeight   uint64
+	Commitment string
+}
+
+func NewErrStateUpdateBlobNotAvailableFraud(stateIndex uint64, da string, daHeight uint64, commitment string) error {
+	return &ErrStateUpdateBlobNotAvailableFraud{
+		StateIndex: stateIndex,
+		DA:         da,
+		DAHeight:   daHeight,
+		Commitment: commitment,
+	}
+}
+
+func (e ErrStateUpdateBlobNotAvailableFraud) Error() string {
+	return fmt.Sprintf("blob not available in DA. StateIndex: %d DA: %s DA Height: %d Commitment: %s", e.StateIndex, e.DA, e.DAHeight, e.Commitment)
+}
+
+func (e ErrStateUpdateBlobNotAvailableFraud) Unwrap() error {
+	return gerrc.ErrFault
+}

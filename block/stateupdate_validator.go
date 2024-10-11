@@ -16,14 +16,6 @@ type StateUpdateValidator struct {
 	blockManager *Manager
 }
 
-<<<<<<< HEAD
-=======
-var (
-	_ DABlocksValidator = &StateUpdateValidator{}
-	_ P2PBlockValidator = &StateUpdateValidator{}
-)
-
->>>>>>> 9270799 (checkin missed error)
 // NewValidator creates a new Validator.
 func NewStateUpdateValidator(logger types.Logger, blockManager *Manager) *StateUpdateValidator {
 	return &StateUpdateValidator{
