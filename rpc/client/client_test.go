@@ -296,6 +296,83 @@ func TestGetBlock(t *testing.T) {
 	require.NoError(err)
 }
 
+func TestValidatedHeight(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+	mockApp, rpc, node := getRPCAndNode(t)
+
+	mockApp.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
+	mockApp.On("Commit", mock.Anything).Return(abci.ResponseCommit{})
+	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
+
+	err := node.Start()
+	require.NoError(err)
+
+	tests := []struct {
+		name            string
+		validatedHeight uint64
+		nodeHeight      uint64
+		submittedHeight uint64
+		queryHeight     int64
+		result          int
+	}{
+		{
+			name:            "SL validated height",
+			validatedHeight: 10,
+			nodeHeight:      15,
+			queryHeight:     10,
+			submittedHeight: 10,
+			result:          2,
+		},
+		{
+			name:            "P2P validated height",
+			validatedHeight: 10,
+			nodeHeight:      15,
+			queryHeight:     13,
+			submittedHeight: 10,
+			result:          1,
+		},
+		{
+			name:            "Non validated height",
+			validatedHeight: 10,
+			nodeHeight:      15,
+			queryHeight:     20,
+			submittedHeight: 10,
+			result:          0,
+		},
+		{
+			name:            "Invalid height",
+			validatedHeight: 1,
+			nodeHeight:      5,
+			queryHeight:     -1,
+			submittedHeight: 10,
+			result:          -1,
+		},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+
+			node.BlockManager.State.LastValidatedHeight.Store(test.validatedHeight)
+			node.BlockManager.LastSubmittedHeight.Store(test.submittedHeight)
+
+			node.BlockManager.State.SetHeight(test.nodeHeight)
+
+			validationResponse, err := rpc.BlockValidated(context.Background(), &test.queryHeight)
+			require.NoError(err)
+			require.NotNil(validationResponse)
+			assert.Equal(test.result, validationResponse.Result)
+
+		})
+
+	}
+
+	err = node.Stop()
+	require.NoError(err)
+
+}
+
 func TestGetCommit(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
