@@ -13,18 +13,16 @@ import (
 )
 
 // applyBlockWithFraudHandling calls applyBlock and validateBlockBeforeApply with fraud handling.
-func (m *Manager) applyBlockWithFraudHandling(block *types.Block, commit *types.Commit, blockMetaData types.BlockMetaData, validate bool) error {
-	if validate {
-		if err := m.validateBlockBeforeApply(block, commit); err != nil {
-			if errors.Is(err, gerrc.ErrFault) {
-				m.FraudHandler.HandleFault(context.Background(), err)
-			} else if err != nil {
-				m.blockCache.Delete(block.Header.Height)
-				// TODO: can we take an action here such as dropping the peer / reducing their reputation?
-			}
-
-			return fmt.Errorf("block not valid at height %d, dropping it: err:%w", block.Header.Height, err)
+func (m *Manager) applyBlockWithFraudHandling(block *types.Block, commit *types.Commit, blockMetaData types.BlockMetaData) error {
+	if err := m.validateBlockBeforeApply(block, commit); err != nil {
+		if errors.Is(err, gerrc.ErrFault) {
+			m.FraudHandler.HandleFault(context.Background(), err)
+		} else if err != nil {
+			m.blockCache.Delete(block.Header.Height)
+			// TODO: can we take an action here such as dropping the peer / reducing their reputation?
 		}
+
+		return fmt.Errorf("block not valid at height %d, dropping it: err:%w", block.Header.Height, err)
 	}
 
 	if err := m.applyBlock(block, commit, blockMetaData); err != nil {
@@ -185,7 +183,7 @@ func (m *Manager) attemptApplyCachedBlocks() error {
 			break
 		}
 
-		err := m.applyBlockWithFraudHandling(cachedBlock.Block, cachedBlock.Commit, types.BlockMetaData{Source: cachedBlock.Source}, true)
+		err := m.applyBlockWithFraudHandling(cachedBlock.Block, cachedBlock.Commit, types.BlockMetaData{Source: cachedBlock.Source})
 		if err != nil {
 			return fmt.Errorf("apply cached block: expected height: %d: %w", expectedHeight, err)
 		}
