@@ -8,7 +8,7 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// sequencer is a struct that holds the sequencer's settlement address and tendermint validator
+// Sequencer is a struct that holds the sequencer's settlement address and tendermint validator
 // it's populated from the SL client
 // uses tendermint's validator types for compatibility
 type Sequencer struct {

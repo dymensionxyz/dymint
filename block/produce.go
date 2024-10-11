@@ -7,7 +7,6 @@ import (
 	"time"
 
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
-	"github.com/cosmos/cosmos-sdk/types/bech32"
 	sequencertypes "github.com/dymensionxyz/dymension-rdk/x/sequencers/types"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/gogo/protobuf/proto"
@@ -99,16 +98,20 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int)
 	}
 }
 
-// nextProposerInfo holds information about the next proposer.
-type nextProposerInfo struct {
-	// nextProposerHash is a tendermint-compatible hash of the sequencer.
-	nextProposerHash [32]byte
-	// nextProposerAddr is a sequencer's settlement address.
-	nextProposerAddr string
+// NextProposerInfo holds information about the next proposer.
+type NextProposerInfo struct {
+	// Hash is a tendermint-compatible hash of the sequencer.
+	Hash [32]byte
+	// Address is a sequencer's settlement address.
+	Address string
+	// RewardAddr is a bech32-encoded address string.
+	RewardAddr string
+	// WhitelistedRelayers is a list of the whitelisted relayer addresses. Addresses are bech32-encoded strings.
+	WhitelistedRelayers []string
 }
 
 // ProduceApplyGossipLastBlock produces and applies a block with the given nextProposerHash.
-func (m *Manager) ProduceApplyGossipLastBlock(ctx context.Context, nextProposerInfo nextProposerInfo) (err error) {
+func (m *Manager) ProduceApplyGossipLastBlock(ctx context.Context, nextProposerInfo NextProposerInfo) (err error) {
 	_, _, err = m.produceApplyGossip(ctx, true, &nextProposerInfo)
 	return err
 }
@@ -117,7 +120,7 @@ func (m *Manager) ProduceApplyGossipBlock(ctx context.Context, allowEmpty bool) 
 	return m.produceApplyGossip(ctx, allowEmpty, nil)
 }
 
-func (m *Manager) produceApplyGossip(ctx context.Context, allowEmpty bool, nextProposerInfo *nextProposerInfo) (block *types.Block, commit *types.Commit, err error) {
+func (m *Manager) produceApplyGossip(ctx context.Context, allowEmpty bool, nextProposerInfo *NextProposerInfo) (block *types.Block, commit *types.Commit, err error) {
 	block, commit, err = m.produceBlock(allowEmpty, nextProposerInfo)
 	if err != nil {
 		return nil, nil, fmt.Errorf("produce block: %w", err)
@@ -134,7 +137,7 @@ func (m *Manager) produceApplyGossip(ctx context.Context, allowEmpty bool, nextP
 	return block, commit, nil
 }
 
-func (m *Manager) produceBlock(allowEmpty bool, nextProposerInfo *nextProposerInfo) (*types.Block, *types.Commit, error) {
+func (m *Manager) produceBlock(allowEmpty bool, nextProposer *NextProposerInfo) (*types.Block, *types.Commit, error) {
 	newHeight := m.State.NextHeight()
 	lastHeaderHash, lastCommit, err := m.GetPreviousBlockHashes(newHeight)
 	if err != nil {
@@ -165,18 +168,18 @@ func (m *Manager) produceBlock(allowEmpty bool, nextProposerInfo *nextProposerIn
 		nextProposerAddr     = m.State.Sequencers.Proposer.SettlementAddress
 		lastProposerBlock    = false // Indicates that the block is the last for the current seq. True during the rotation.
 	)
-	// if nextProposerInfo is set, we create a last block
-	if nextProposerInfo != nil {
+	// if nextProposer is set, we create a last block
+	if nextProposer != nil {
 		maxBlockDataSize = 0
-		proposerHashForBlock = nextProposerInfo.nextProposerHash
-		nextProposerAddr = nextProposerInfo.nextProposerAddr
+		proposerHashForBlock = nextProposer.Hash
+		nextProposerAddr = nextProposer.Address
 		lastProposerBlock = true
 	}
 	// TODO: Ideally, there should be only one point for adding consensus messages. Given that they come from
 	// ConsensusMessagesStream, this should send them there instead of having to ways of sending consensusMessages.
 	// There is no implementation of the stream as of now. Unify the approach of adding consensus messages when
 	// the stream is implemented! https://github.com/dymensionxyz/dymint/issues/1125
-	consensusMsgs, err := m.consensusMsgsOnCreateBlock(nextProposerAddr, lastProposerBlock)
+	consensusMsgs, err := m.consensusMsgsOnCreateBlock(nextProposer)
 	if err != nil {
 		return nil, nil, fmt.Errorf("create consensus msgs for create block: last proposer block: %v, height: %d, next proposer addr: %s: %w: %w", lastProposerBlock, newHeight, nextProposerAddr, err, ErrNonRecoverable)
 	}
@@ -201,14 +204,14 @@ func (m *Manager) produceBlock(allowEmpty bool, nextProposerInfo *nextProposerIn
 //   - On the very first block after the genesis or
 //   - On the last block of the current sequencer (eg, during the rotation).
 func (m *Manager) consensusMsgsOnCreateBlock(
-	nextProposerSettlementAddr string,
-	lastSeqBlock bool, // Indicates that the block is the last for the current seq. True during the rotation.
+	nextProposer *NextProposerInfo,
 ) ([]proto.Message, error) {
-	if m.State.IsGenesis() || lastSeqBlock {
-		nextSeq := m.State.Sequencers.GetByAddress(nextProposerSettlementAddr)
+	// if nextProposer is set, we create a last block
+	if nextProposer != nil {
+		nextSeq := m.State.Sequencers.GetByAddress(nextProposer.Address)
 		// Sanity check. Must never happen in practice. The sequencer's existence is verified beforehand in Manager.CompleteRotation.
 		if nextSeq == nil {
-			return nil, fmt.Errorf("no sequencer found for address while creating a new block: %s", nextProposerSettlementAddr)
+			return nil, fmt.Errorf("no sequencer found for address while creating a new block: %s", nextProposer.Address)
 		}
 
 		// Get proposer's consensus public key and convert it to proto.Any
@@ -225,17 +228,15 @@ func (m *Manager) consensusMsgsOnCreateBlock(
 			return nil, fmt.Errorf("next squencer pubkey to proto any: %w", err)
 		}
 
-		// Get raw bytes of the proposer's settlement address. These bytes will to be converted to the rollapp format in the app.
-		_, addrBytes, err := bech32.DecodeAndConvert(nextProposerSettlementAddr)
-		if err != nil {
-			return nil, fmt.Errorf("next squencer settlement addr to bech32: %w", err)
-		}
-
-		return []proto.Message{&sequencertypes.MsgUpsertSequencer{
-			Operator:        nextProposerSettlementAddr,
-			ConsPubKey:      anyPubKey,
-			RewardAddrBytes: addrBytes,
+		return []proto.Message{&sequencertypes.ConsensusMsgUpsertSequencer{
+			Operator:   nextProposer.Address,
+			ConsPubKey: anyPubKey,
+			RewardAddr: nextProposer.RewardAddr,
+			Relayers:   nextProposer.WhitelistedRelayers,
 		}}, nil
+	}
+	if m.State.IsGenesis() {
+		// TODO!
 	}
 	return nil, nil
 }

@@ -52,9 +52,14 @@ func (e EventDataNewBondedSequencer) String() string {
 }
 
 type EventDataRotationStarted struct {
+	// NextSeqAddr is a next proposer settlement address.
 	NextSeqAddr string
+	// RewardAddr is a bech32-encoded address string.
+	RewardAddr string
+	// WhitelistedRelayers is a list of the whitelisted relayer addresses. Addresses are bech32-encoded strings.
+	WhitelistedRelayers []string
 }
 
 func (e EventDataRotationStarted) String() string {
-	return fmt.Sprintf("NextSeqAddr: %s", e.NextSeqAddr)
+	return fmt.Sprintf("NextSeqAddr: %s RewardAddr: %s WhitelistedRelayers: %v", e.NextSeqAddr, e.RewardAddr, e.WhitelistedRelayers)
 }

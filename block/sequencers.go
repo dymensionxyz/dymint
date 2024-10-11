@@ -6,12 +6,13 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/tendermint/tendermint/libs/pubsub"
+
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
-	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
-func (m *Manager) MonitorSequencerRotation(ctx context.Context, rotateC chan string) error {
+func (m *Manager) MonitorSequencerRotation(ctx context.Context, rotateC chan NextProposerInfo) error {
 	sequencerRotationEventClient := "sequencer_rotation"
 	subscription, err := m.Pubsub.Subscribe(ctx, sequencerRotationEventClient, settlement.EventQueryRotationStarted)
 	if err != nil {
@@ -22,11 +23,12 @@ func (m *Manager) MonitorSequencerRotation(ctx context.Context, rotateC chan str
 	ticker := time.NewTicker(3 * time.Minute) // TODO: make this configurable
 	defer ticker.Stop()
 
-	var nextSeqAddr string
+	var nextSeq NextProposerInfo
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
+
 		case <-ticker.C:
 			next, err := m.SLClient.CheckRotationInProgress()
 			if err != nil {
@@ -36,17 +38,24 @@ func (m *Manager) MonitorSequencerRotation(ctx context.Context, rotateC chan str
 			if next == nil {
 				continue
 			}
-			nextSeqAddr = next.SettlementAddress
+			nextSeq = next.SettlementAddress
+
 		case event := <-subscription.Out():
 			eventData, _ := event.Data().(*settlement.EventDataRotationStarted)
-			nextSeqAddr = eventData.NextSeqAddr
+			nextSeq = NextProposerInfo{
+				Hash:                [32]byte{}, // is set later
+				Address:             eventData.NextSeqAddr,
+				RewardAddr:          eventData.RewardAddr,
+				WhitelistedRelayers: eventData.WhitelistedRelayers,
+			}
 		}
 		break // break out of the loop after getting the next sequencer address
 	}
+
 	// we get here once a sequencer rotation signal is received
-	m.logger.Info("Sequencer rotation started.", "next_seq", nextSeqAddr)
+	m.logger.Info("Sequencer rotation started.", "next_seq", nextSeq)
 	go func() {
-		rotateC <- nextSeqAddr
+		rotateC <- nextSeq
 	}()
 	return fmt.Errorf("sequencer rotation started. signal to stop production")
 }
@@ -93,9 +102,9 @@ func (m *Manager) MissingLastBatch() (string, bool, error) {
 
 // handleRotationReq completes the rotation flow once a signal is received from the SL
 // this called after manager shuts down the block producer and submitter
-func (m *Manager) handleRotationReq(ctx context.Context, nextSeqAddr string) {
-	m.logger.Info("Sequencer rotation started. Production stopped on this sequencer", "nextSeqAddr", nextSeqAddr)
-	err := m.CompleteRotation(ctx, nextSeqAddr)
+func (m *Manager) handleRotationReq(ctx context.Context, nextSeq NextProposerInfo) {
+	m.logger.Info("Sequencer rotation started. Production stopped on this sequencer", "nextSeq", nextSeq)
+	err := m.CompleteRotation(ctx, nextSeq)
 	if err != nil {
 		panic(err)
 	}
@@ -109,32 +118,30 @@ func (m *Manager) handleRotationReq(ctx context.Context, nextSeqAddr string) {
 // the sequencer will create his last block, with the next sequencer's hash, to handover the proposer role
 // then it will submit all the data accumulated thus far and mark the last state update
 // if nextSeqAddr is empty, the nodes will halt after applying the block produced
-func (m *Manager) CompleteRotation(ctx context.Context, nextSeqAddr string) error {
+func (m *Manager) CompleteRotation(ctx context.Context, nextSeq NextProposerInfo) error {
 	// validate nextSeq is in the bonded set
 	var nextSeqHash [32]byte
-	if nextSeqAddr != "" {
-		seq := m.State.Sequencers.GetByAddress(nextSeqAddr)
+	if nextSeq.Address != "" {
+		seq := m.State.Sequencers.GetByAddress(nextSeq.Address)
 		if seq == nil {
 			return types.ErrMissingProposerPubKey
 		}
 		copy(nextSeqHash[:], seq.Hash())
 	}
 
-	err := m.CreateAndPostLastBatch(ctx, nextProposerInfo{
-		nextProposerHash: nextSeqHash,
-		nextProposerAddr: nextSeqAddr,
-	})
+	nextSeq.Hash = nextSeqHash
+	err := m.CreateAndPostLastBatch(ctx, nextSeq)
 	if err != nil {
 		return fmt.Errorf("create and post last batch: %w", err)
 	}
 
-	m.logger.Info("Sequencer rotation completed. sequencer is no longer the proposer", "nextSeqAddr", nextSeqAddr)
+	m.logger.Info("Sequencer rotation completed. sequencer is no longer the proposer", "nextSeq", nextSeq)
 	return nil
 }
 
 // CreateAndPostLastBatch creates and posts the last batch to the hub
 // this called after manager shuts down the block producer and submitter
-func (m *Manager) CreateAndPostLastBatch(ctx context.Context, nextProposerInfo nextProposerInfo) error {
+func (m *Manager) CreateAndPostLastBatch(ctx context.Context, nextProposerInfo NextProposerInfo) error {
 	h := m.State.Height()
 	block, err := m.Store.LoadBlock(h)
 	if err != nil {
@@ -142,7 +149,7 @@ func (m *Manager) CreateAndPostLastBatch(ctx context.Context, nextProposerInfo n
 	}
 
 	// check if the last block already produced with nextProposerHash set
-	if bytes.Equal(block.Header.NextSequencersHash[:], nextProposerInfo.nextProposerHash[:]) {
+	if bytes.Equal(block.Header.NextSequencersHash[:], nextProposerInfo.Hash[:]) {
 		m.logger.Debug("Last block already produced and applied.")
 	} else {
 		err := m.ProduceApplyGossipLastBlock(ctx, nextProposerInfo)

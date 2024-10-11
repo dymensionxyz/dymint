@@ -213,13 +213,13 @@ func (m *Manager) Start(ctx context.Context) error {
 		return fmt.Errorf("sync block manager from settlement: %w", err)
 	}
 	// check if sequencer in the middle of rotation
-	nextSeqAddr, missing, err := m.MissingLastBatch()
+	nextSeq, missing, err := m.MissingLastBatch()
 	if err != nil {
 		return fmt.Errorf("checking if missing last batch: %w", err)
 	}
 	// if sequencer is in the middle of rotation, complete rotation instead of running the main loop
 	if missing {
-		m.handleRotationReq(ctx, nextSeqAddr)
+		m.handleRotationReq(ctx, nextSeq)
 		return nil
 	}
 
@@ -227,7 +227,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	bytesProducedC := make(chan int)
 
 	// channel to signal sequencer rotation started
-	rotateSequencerC := make(chan string, 1)
+	rotateSequencerC := make(chan NextProposerInfo, 1)
 
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		return m.SubmitLoop(ctx, bytesProducedC)
@@ -244,8 +244,8 @@ func (m *Manager) Start(ctx context.Context) error {
 		_ = eg.Wait()
 		// Check if exited due to sequencer rotation signal
 		select {
-		case nextSeqAddr := <-rotateSequencerC:
-			m.handleRotationReq(ctx, nextSeqAddr)
+		case nextSeq := <-rotateSequencerC:
+			m.handleRotationReq(ctx, nextSeq)
 		default:
 			m.logger.Info("Block manager err group finished.")
 		}

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/dymensionxyz/dymint/settlement"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
@@ -152,11 +153,23 @@ func convertToRotationStartedEvent(rawEventData ctypes.ResultEvent) (*settlement
 	// TODO: validate rollappID
 
 	if events["proposer_rotation_started.next_proposer"] == nil {
-		return nil, fmt.Errorf("missing expected attributes in event")
+		return nil, fmt.Errorf("missing next_proposer attribute in event")
 	}
 	nextProposer := events["proposer_rotation_started.next_proposer"][0]
-	rotationStartedEvent := &settlement.EventDataRotationStarted{
-		NextSeqAddr: nextProposer,
+
+	if events["proposer_rotation_started.reward_addr"] == nil {
+		return nil, fmt.Errorf("missing reward_addr attribute in event")
 	}
-	return rotationStartedEvent, nil
+	rewardAddr := events["proposer_rotation_started.reward_addr"][0]
+
+	if events["proposer_rotation_started.whitelisted_relayers"] == nil {
+		return nil, fmt.Errorf("missing whitelisted_relayers attribute in event")
+	}
+	whitelistedRelayers := strings.Split(events["proposer_rotation_started.whitelisted_relayers"][0], ",")
+
+	return &settlement.EventDataRotationStarted{
+		NextSeqAddr:         nextProposer,
+		RewardAddr:          rewardAddr,
+		WhitelistedRelayers: whitelistedRelayers,
+	}, nil
 }
