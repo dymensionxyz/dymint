@@ -38,15 +38,6 @@ func convertStateInfoToResultRetrieveBatch(stateInfo *rollapptypes.StateInfo) (*
 	if err != nil {
 		return nil, err
 	}
-	bds := []settlement.BlockDescriptor{}
-	for _, blockDescriptor := range stateInfo.BDs.BD {
-		bd := settlement.BlockDescriptor{
-			Height:    blockDescriptor.Height,
-			StateRoot: blockDescriptor.StateRoot,
-			Timestamp: blockDescriptor.Timestamp,
-		}
-		bds = append(bds, bd)
-	}
 
 	batchResult := &settlement.Batch{
 		Sequencer:   stateInfo.Sequencer,
@@ -56,7 +47,7 @@ func convertStateInfoToResultRetrieveBatch(stateInfo *rollapptypes.StateInfo) (*
 			DA: daMetaData,
 		},
 		DRSVersion:       stateInfo.DrsVersion,
-		BlockDescriptors: bds,
+		BlockDescriptors: stateInfo.BDs.BD,
 	}
 
 	return &settlement.ResultRetrieveBatch{

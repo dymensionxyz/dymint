@@ -12,6 +12,7 @@ import (
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
 	"github.com/dymensionxyz/dymint/version"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/stretchr/testify/assert"
@@ -105,7 +106,7 @@ func TestStateUpdateValidator_ValidateDaBlocks(t *testing.T) {
 			name: "Happy path - all validations pass",
 			slBatch: &settlement.ResultRetrieveBatch{
 				Batch: &settlement.Batch{
-					BlockDescriptors: []settlement.BlockDescriptor{
+					BlockDescriptors: []rollapp.BlockDescriptor{
 						{Height: 1, StateRoot: batch.Blocks[0].Header.AppHash[:], Timestamp: batch.Blocks[0].Header.GetTimestamp()},
 						{Height: 2, StateRoot: batch.Blocks[1].Header.AppHash[:], Timestamp: batch.Blocks[0].Header.GetTimestamp()},
 					},
@@ -121,7 +122,7 @@ func TestStateUpdateValidator_ValidateDaBlocks(t *testing.T) {
 			name: "Error - number of blocks mismatch",
 			slBatch: &settlement.ResultRetrieveBatch{
 				Batch: &settlement.Batch{
-					BlockDescriptors: []settlement.BlockDescriptor{
+					BlockDescriptors: []rollapp.BlockDescriptor{
 						{Height: 1, StateRoot: batch.Blocks[0].Header.AppHash[:], Timestamp: batch.Blocks[0].Header.GetTimestamp()},
 						{Height: 2, StateRoot: batch.Blocks[1].Header.AppHash[:], Timestamp: batch.Blocks[1].Header.GetTimestamp()},
 					},
@@ -137,7 +138,7 @@ func TestStateUpdateValidator_ValidateDaBlocks(t *testing.T) {
 			name: "Error - height mismatch",
 			slBatch: &settlement.ResultRetrieveBatch{
 				Batch: &settlement.Batch{
-					BlockDescriptors: []settlement.BlockDescriptor{
+					BlockDescriptors: []rollapp.BlockDescriptor{
 						{Height: 101, StateRoot: batch.Blocks[0].Header.AppHash[:], Timestamp: batch.Blocks[0].Header.GetTimestamp()},
 						{Height: 102, StateRoot: batch.Blocks[1].Header.AppHash[:], Timestamp: batch.Blocks[1].Header.GetTimestamp()},
 					},
@@ -153,7 +154,7 @@ func TestStateUpdateValidator_ValidateDaBlocks(t *testing.T) {
 			name: "Error - state root mismatch",
 			slBatch: &settlement.ResultRetrieveBatch{
 				Batch: &settlement.Batch{
-					BlockDescriptors: []settlement.BlockDescriptor{
+					BlockDescriptors: []rollapp.BlockDescriptor{
 						{Height: 1, StateRoot: batch.Blocks[0].Header.AppHash[:], Timestamp: batch.Blocks[0].Header.GetTimestamp()},
 						{Height: 2, StateRoot: []byte{1, 2, 3, 4}, Timestamp: batch.Blocks[1].Header.GetTimestamp()},
 					},
@@ -169,7 +170,7 @@ func TestStateUpdateValidator_ValidateDaBlocks(t *testing.T) {
 			name: "Error - timestamp mismatch",
 			slBatch: &settlement.ResultRetrieveBatch{
 				Batch: &settlement.Batch{
-					BlockDescriptors: []settlement.BlockDescriptor{
+					BlockDescriptors: []rollapp.BlockDescriptor{
 						{Height: 1, StateRoot: batch.Blocks[0].Header.AppHash[:], Timestamp: batch.Blocks[0].Header.GetTimestamp()},
 						{Height: 2, StateRoot: batch.Blocks[1].Header.AppHash[:], Timestamp: batch.Blocks[1].Header.GetTimestamp().Add(1 * time.Second)},
 					},
@@ -299,9 +300,9 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 			assert.Equal(t, daResultSubmitBatch.Code, da.StatusSuccess)
 
 			// Create block descriptors
-			var bds []settlement.BlockDescriptor
+			var bds []rollapp.BlockDescriptor
 			for _, block := range batch.Blocks {
-				bd := settlement.BlockDescriptor{
+				bd := rollapp.BlockDescriptor{
 					Height:    block.Header.Height,
 					StateRoot: block.Header.AppHash[:],
 					Timestamp: block.Header.GetTimestamp(),
