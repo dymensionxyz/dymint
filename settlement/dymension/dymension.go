@@ -555,7 +555,6 @@ func (c *Client) convertBatchToMsgUpdateState(batch *types.Batch, daResult *da.R
 		DAPath:      daResult.SubmitMetaData.ToPath(),
 		BDs:         rollapptypes.BlockDescriptors{BD: blockDescriptors},
 		Last:        batch.LastBatch,
-		DrsVersion:  version.Commit,
 	}
 	return settlementBatch, nil
 }
