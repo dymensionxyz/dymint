@@ -141,9 +141,10 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 			var bds []rollapp.BlockDescriptor
 			for _, block := range batch.Blocks {
 				bd := rollapp.BlockDescriptor{
-					Height:    block.Header.Height,
-					StateRoot: block.Header.AppHash[:],
-					Timestamp: block.Header.GetTimestamp(),
+					Height:     block.Header.Height,
+					StateRoot:  block.Header.AppHash[:],
+					Timestamp:  block.Header.GetTimestamp(),
+					DrsVersion: version.Commit,
 				}
 				bds = append(bds, bd)
 			}

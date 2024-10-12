@@ -29,11 +29,6 @@ func NewStateUpdateValidator(logger types.Logger, blockManager *Manager) *StateU
 func (v *StateUpdateValidator) ValidateStateUpdate(batch *settlement.ResultRetrieveBatch) error {
 	v.logger.Debug("validating state update", "start height", batch.StartHeight, "end height", batch.EndHeight)
 
-	err := v.validateDRS(batch.StartHeight, batch.EndHeight, batch.DRSVersion)
-	if err != nil {
-		return err
-	}
-
 	var daBlocks []*types.Block
 	var p2pBlocks []*types.Block
 
@@ -75,7 +70,7 @@ func (v *StateUpdateValidator) ValidateStateUpdate(batch *settlement.ResultRetri
 	}
 
 	// validate DA blocks against the state update
-	err = v.ValidateDaBlocks(batch, daBlocks)
+	err := v.ValidateDaBlocks(batch, daBlocks)
 	if err != nil {
 		return err
 	}
@@ -147,6 +142,12 @@ func (v *StateUpdateValidator) ValidateDaBlocks(slBatch *settlement.ResultRetrie
 		if !bd.Timestamp.Equal(daBlocks[i].Header.GetTimestamp()) {
 			return types.NewErrStateUpdateTimestampNotMatchingFraud(slBatch.StateIndex, bd.Height, bd.Timestamp, daBlocks[i].Header.GetTimestamp())
 		}
+
+		err := v.validateDRS(slBatch.StateIndex, bd.Height, bd.DrsVersion)
+		if err != nil {
+			return err
+		}
+
 	}
 
 	// TODO(srene): implement sequencer address validation
@@ -154,7 +155,14 @@ func (v *StateUpdateValidator) ValidateDaBlocks(slBatch *settlement.ResultRetrie
 }
 
 // TODO(srene): implement DRS/height verification
-func (v *StateUpdateValidator) validateDRS(startHeight, endHeight uint64, version string) error {
+func (v *StateUpdateValidator) validateDRS(stateIndex uint64, height uint64, version string) error {
+	drs, err := v.blockManager.State.GetDRSVersion(height)
+	if err != nil {
+		panic(fmt.Errorf("unable to validate drs version. DRS: %s. height: %d err: %w", drs, height, err))
+	}
+	if drs != version {
+		return types.NewErrStateUpdateDRSVersionFraud(stateIndex, height, drs, version)
+	}
 	return nil
 }
 

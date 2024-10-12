@@ -449,3 +449,27 @@ func (e ErrStateUpdateBlobNotAvailableFraud) Error() string {
 func (e ErrStateUpdateBlobNotAvailableFraud) Unwrap() error {
 	return gerrc.ErrFault
 }
+
+type ErrStateUpdateDRSVersionFraud struct {
+	StateIndex   uint64
+	Height       uint64
+	BlockVersion string
+	SLVersion    string
+}
+
+func NewErrStateUpdateDRSVersionFraud(stateIndex uint64, height uint64, blockVersion string, slVersion string) error {
+	return &ErrStateUpdateDRSVersionFraud{
+		StateIndex:   stateIndex,
+		Height:       height,
+		BlockVersion: blockVersion,
+		SLVersion:    slVersion,
+	}
+}
+
+func (e ErrStateUpdateDRSVersionFraud) Error() string {
+	return fmt.Sprintf("drs version not matching. StateIndex: %d Height: %d Block DRS: %s SL DRS: %s", e.StateIndex, e.Height, e.BlockVersion, e.SLVersion)
+}
+
+func (e ErrStateUpdateDRSVersionFraud) Unwrap() error {
+	return gerrc.ErrFault
+}

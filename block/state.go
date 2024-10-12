@@ -62,7 +62,7 @@ func NewStateFromGenesis(genDoc *tmtypes.GenesisDoc) (*types.State, error) {
 		InitialHeight:                    uint64(genDoc.InitialHeight),
 		BaseHeight:                       uint64(genDoc.InitialHeight),
 		ConsensusParams:                  *genDoc.ConsensusParams,
-		LastHeightConsensusParamsChanged: genDoc.InitialHeight,
+		LastHeightConsensusParamsChanged: uint64(genDoc.InitialHeight),
 	}
 	s.SetHeight(0)
 	copy(s.AppHash[:], genDoc.AppHash)
@@ -133,10 +133,12 @@ func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResp
 	if resp.EndBlock.ConsensusParamUpdates != nil {
 		s.ConsensusParams.Block.MaxGas = resp.EndBlock.ConsensusParamUpdates.Block.MaxGas
 		s.ConsensusParams.Block.MaxBytes = resp.EndBlock.ConsensusParamUpdates.Block.MaxBytes
+		s.LastHeightConsensusParamsChanged = height
 	}
 	if resp.EndBlock.RollappParamUpdates != nil {
 		s.RollappParams.Da = resp.EndBlock.RollappParamUpdates.Da
 		s.RollappParams.Version = resp.EndBlock.RollappParamUpdates.Version
+		s.AddDRSVersion(s.NextHeight(), s.RollappParams.Version)
 	}
 }
 
