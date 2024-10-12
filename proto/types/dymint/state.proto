@@ -47,6 +47,7 @@ message State {
 
   bytes last_header_hash = 20;
 
+  repeated DRSVersion drs_version_history = 21;
 }
 
 //rollapp params defined in genesis and updated via gov proposal
@@ -56,4 +57,10 @@ message RollappParams {
   //commit used for the rollapp executable
   string version = 2 ;
   
+}
+
+//DRSVersion recent history of node DRSVersion including update height
+message DRSVersion {
+  uint64 height = 1 ;
+  string version = 2 ;
 }
