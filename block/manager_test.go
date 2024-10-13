@@ -155,7 +155,6 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 	require.NoError(t, err)
 
 	manager, err := testutil.GetManagerWithProposerKey(chainId, testutil.GetManagerConfig(), proposerKey, nil, 1, 1, 0, proxyApp, nil)
-	//manager, err := testutil.GetManager(chainId, testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(t, err)
 	require.NotNil(t, manager)
 
@@ -387,7 +386,6 @@ func TestApplyLocalBlock_WithFraudCheck(t *testing.T) {
 	}()
 	<-ctx.Done()
 	assert.Equal(t, batchs[1].EndHeight(), manager.LastSubmittedHeight.Load())
-
 	mockExecutor.AssertExpectations(t)
 	mockFraudHandler.AssertExpectations(t)
 }
@@ -404,6 +402,7 @@ func TestRetrieveDaBatchesFailed(t *testing.T) {
 		Client: da.Mock,
 		Height: 1,
 	}
+
 	err = manager.ProcessNextDABatch(daMetaData)
 	t.Log(err)
 	assert.ErrorIs(t, err, da.ErrBlobNotFound)
@@ -746,6 +745,7 @@ func TestDAFetch(t *testing.T) {
 				LastBlockHeight:  int64(batch.EndHeight()),
 				LastBlockAppHash: commitHash[:],
 			})
+
 			err := manager.ProcessNextDABatch(c.daMetaData)
 			require.Equal(c.err, err)
 		})

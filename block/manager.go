@@ -30,6 +30,8 @@ import (
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
+
+	uchannel "github.com/dymensionxyz/dymint/utils/channel"
 )
 
 // Manager is responsible for aggregating transactions into blocks.
@@ -67,9 +69,8 @@ type Manager struct {
 	// Protect against processing two blocks at once when there are two routines handling incoming gossiped blocks,
 	// and incoming DA blocks, respectively.
 	retrieverMu sync.Mutex
-	// Protect against syncing twice from DA in case new batch is posted but it did not finish to sync yet.
-	syncFromDaMu sync.Mutex
-	Retriever    da.BatchRetriever
+
+	Retriever da.BatchRetriever
 	// Cached blocks and commits for applying at future heights. The blocks may not be valid, because
 	// we can only do full validation in sequential order.
 	blockCache *Cache
@@ -85,6 +86,14 @@ type Manager struct {
 
 	// indexer
 	indexerService *txindex.IndexerService
+
+	syncingC chan struct{}
+
+	validateC chan struct{}
+
+	synced *uchannel.Nudger
+
+	validator *StateUpdateValidator
 }
 
 // NewManager creates new block Manager.
@@ -128,6 +137,9 @@ func NewManager(
 		},
 		FraudHandler: nil,                  // TODO: create a default handler
 		pruningC:     make(chan int64, 10), // use of buffered channel to avoid blocking applyBlock thread. In case channel is full, pruning will be skipped, but the retain height can be pruned in the next iteration.
+		syncingC:     make(chan struct{}, 1),
+		validateC:    make(chan struct{}, 1),
+		synced:       uchannel.NewNudger(),
 	}
 
 	err = m.LoadStateOnInit(store, genesis, logger)
@@ -145,6 +157,8 @@ func NewManager(
 	if err != nil {
 		return nil, err
 	}
+
+	m.validator = NewStateUpdateValidator(m.logger, m)
 
 	return m, nil
 }
@@ -175,21 +189,28 @@ func (m *Manager) Start(ctx context.Context) error {
 		return m.PruningLoop(ctx)
 	})
 
+	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
+		return m.SyncLoop(ctx)
+	})
+
+	err = m.syncFromSettlement()
+	if err != nil {
+		return fmt.Errorf("sync block manager from settlement: %w", err)
+	}
+
 	/* ----------------------------- full node mode ----------------------------- */
 	if !isProposer {
-		// Full-nodes can sync from DA but it is not necessary to wait for it, since it can sync from P2P as well in parallel.
-		go func() {
-			err := m.syncFromSettlement()
-			if err != nil {
-				m.logger.Error("sync block manager from settlement", "err", err)
-			}
-			// DA Sync. Subscribe to SL next batch events
-			go uevent.MustSubscribe(ctx, m.Pubsub, "syncTargetLoop", settlement.EventQueryNewSettlementBatchAccepted, m.onNewStateUpdate, m.logger)
-		}()
+
+		uerrors.ErrGroupGoLog(eg, m.logger, func() error {
+			return m.ValidateLoop(ctx)
+		})
+		go uevent.MustSubscribe(ctx, m.Pubsub, "syncLoop", settlement.EventQueryNewSettlementBatchAccepted, m.onNewStateUpdate, m.logger)
+		go uevent.MustSubscribe(ctx, m.Pubsub, "validateLoop", settlement.EventQueryNewSettlementBatchFinalized, m.onNewStateUpdateFinalized, m.logger)
 
 		// P2P Sync. Subscribe to P2P received blocks events
 		go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewGossipedBlock, m.OnReceivedBlock, m.logger)
 		go uevent.MustSubscribe(ctx, m.Pubsub, "applyBlockSyncBlocksLoop", p2p.EventQueryNewBlockSyncBlock, m.OnReceivedBlock, m.logger)
+
 		return nil
 	}
 
@@ -198,11 +219,10 @@ func (m *Manager) Start(ctx context.Context) error {
 	go uevent.MustSubscribe(ctx, m.Pubsub, "updateSubmittedHeightLoop", settlement.EventQueryNewSettlementBatchAccepted, m.UpdateLastSubmittedHeight, m.logger)
 
 	// Sequencer must wait till DA is synced to start submitting blobs
-	<-m.DAClient.Synced()
-	err = m.syncFromSettlement()
-	if err != nil {
-		return fmt.Errorf("sync block manager from settlement: %w", err)
-	}
+	m.DAClient.WaitForSyncing()
+
+	// Sequencer must wait till node is synced till last submittedHeight, in case it is not
+	m.waitForSyncing()
 	// check if sequencer in the middle of rotation
 	nextSeqAddr, missing, err := m.MissingLastBatch()
 	if err != nil {
@@ -265,9 +285,10 @@ func (m *Manager) NextHeightToSubmit() uint64 {
 
 // syncFromSettlement enforces the node to be synced on initial run from SL and DA.
 func (m *Manager) syncFromSettlement() error {
+	// Update sequencers list from SL
 	err := m.UpdateSequencerSetFromSL()
 	if err != nil {
-		return fmt.Errorf("update bonded sequencer set: %w", err)
+		m.logger.Error("update bonded sequencer set", "error", err)
 	}
 
 	res, err := m.SLClient.GetLatestBatch()
@@ -282,14 +303,21 @@ func (m *Manager) syncFromSettlement() error {
 		// TODO: separate between fresh rollapp and non-registered rollapp
 		return err
 	}
+
 	m.LastSubmittedHeight.Store(res.EndHeight)
-	err = m.syncToTargetHeight(res.EndHeight)
 	m.UpdateTargetHeight(res.EndHeight)
+
+	// get the latest finalized height to know from where to start validating
+	err = m.UpdateFinalizedHeight()
 	if err != nil {
 		return err
 	}
 
-	m.logger.Info("Synced.", "current height", m.State.Height(), "last submitted height", m.LastSubmittedHeight.Load())
+	// try to sync to last state update submitted on startup
+	m.triggerStateUpdateSyncing()
+	// try to validate all pending state updates on startup
+	m.triggerStateUpdateValidation()
+
 	return nil
 }
 
@@ -304,6 +332,24 @@ func (m *Manager) UpdateTargetHeight(h uint64) {
 			break
 		}
 	}
+}
+
+// UpdateFinalizedHeight retrieves the latest finalized batch and updates validation height with it
+func (m *Manager) UpdateFinalizedHeight() error {
+	res, err := m.SLClient.GetLatestFinalizedBatch()
+	if err != nil && !errors.Is(err, gerrc.ErrNotFound) {
+		// The SL hasn't got any batches for this chain yet.
+		return fmt.Errorf("getting finalized height. err: %w", err)
+	}
+	if errors.Is(err, gerrc.ErrNotFound) {
+		// The SL hasn't got any batches for this chain yet.
+		m.logger.Info("No finalized batches for chain found in SL.")
+		m.State.SetLastValidatedHeight(0)
+	} else {
+		// update validation height with latest finalized height (it will be updated only of finalized height is higher)
+		m.State.SetLastValidatedHeight(res.EndHeight)
+	}
+	return nil
 }
 
 // ValidateConfigWithRollappParams checks the configuration params are consistent with the params in the dymint state (e.g. DA and version)

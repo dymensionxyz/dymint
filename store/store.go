@@ -23,6 +23,7 @@ var (
 	responsesPrefix  = [1]byte{5}
 	sequencersPrefix = [1]byte{6}
 	cidPrefix        = [1]byte{7}
+	sourcePrefix     = [1]byte{8}
 )
 
 // DefaultStore is a default store implementation.
@@ -114,6 +115,25 @@ func (s *DefaultStore) LoadBlockByHash(hash [32]byte) (*types.Block, error) {
 	}
 
 	return block, nil
+}
+
+// SaveBlockValidation saves block validation in Store.
+func (s *DefaultStore) SaveBlockSource(height uint64, source string, batch KVBatch) (KVBatch, error) {
+	if batch == nil {
+		return nil, s.db.Set(getSourceKey(height), []byte(source))
+	}
+	err := batch.Set(getSourceKey(height), []byte(source))
+	return batch, err
+}
+
+// LoadBlockValidation returns block validation in Store.
+func (s *DefaultStore) LoadBlockSource(height uint64) (string, error) {
+	source, err := s.db.Get(getSourceKey(height))
+	if err != nil {
+		return "", fmt.Errorf("retrieve block results from height %v: %w", height, err)
+	}
+
+	return string(source[:]), nil
 }
 
 // SaveBlockResponses saves block responses (events, tx responses, etc) in Store.
@@ -331,4 +351,10 @@ func getCidKey(height uint64) []byte {
 	buf := make([]byte, 8)
 	binary.BigEndian.PutUint64(buf, height)
 	return append(cidPrefix[:], buf[:]...)
+}
+
+func getSourceKey(height uint64) []byte {
+	buf := make([]byte, 8)
+	binary.BigEndian.PutUint64(buf, height)
+	return append(sourcePrefix[:], buf[:]...)
 }

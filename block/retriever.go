@@ -1,94 +1,25 @@
 package block
 
 import (
-	"context"
-	"errors"
 	"fmt"
 
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 
 	"github.com/dymensionxyz/dymint/da"
-	"github.com/dymensionxyz/dymint/node/events"
-	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
-	uevent "github.com/dymensionxyz/dymint/utils/event"
-	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
-// onNewStateUpdate will try to sync to new height, if not already synced
-func (m *Manager) onNewStateUpdate(event pubsub.Message) {
-	eventData, ok := event.Data().(*settlement.EventDataNewBatchAccepted)
-	if !ok {
-		m.logger.Error("onReceivedBatch", "err", "wrong event data received")
-		return
-	}
-	h := eventData.EndHeight
-	m.UpdateTargetHeight(h)
-	err := m.syncToTargetHeight(h)
-	if err != nil {
-		m.logger.Error("sync until target", "err", err)
-	}
-}
-
-// syncToTargetHeight syncs blocks until the target height is reached.
-// It fetches the batches from the settlement, gets the DA height and gets
-// the actual blocks from the DA.
-func (m *Manager) syncToTargetHeight(targetHeight uint64) error {
-	defer m.syncFromDaMu.Unlock()
-	m.syncFromDaMu.Lock()
-	for currH := m.State.NextHeight(); currH <= targetHeight; currH = m.State.NextHeight() {
-		// if we have the block locally, we don't need to fetch it from the DA
-		err := m.applyLocalBlock(currH)
-		if err == nil {
-			m.logger.Info("Synced from local", "store height", currH, "target height", targetHeight)
-			continue
-		}
-		if !errors.Is(err, gerrc.ErrNotFound) {
-			m.logger.Error("Apply local block", "err", err)
-		}
-
-		err = m.syncFromDABatch()
-		if err != nil {
-			return fmt.Errorf("process next DA batch: %w", err)
-		}
-
-		// if height havent been updated, we are stuck
-		if m.State.NextHeight() == currH {
-			return fmt.Errorf("stuck at height %d", currH)
-		}
-		m.logger.Info("Synced from DA", "store height", m.State.Height(), "target height", targetHeight)
-
-	}
-
-	err := m.attemptApplyCachedBlocks()
-	if err != nil {
-		uevent.MustPublish(context.TODO(), m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
-		m.logger.Error("Attempt apply cached blocks.", "err", err)
-	}
-
-	return nil
-}
-
 func (m *Manager) syncFromDABatch() error {
-	// It's important that we query the state index before fetching the batch, rather
-	// than e.g. keep it and increment it, because we might be concurrently applying blocks
-	// and may require a higher index than expected.
-	res, err := m.SLClient.GetHeightState(m.State.NextHeight())
-	if err != nil {
-		return fmt.Errorf("retrieve state: %w", err)
-	}
-	stateIndex := res.State.StateIndex
-
-	settlementBatch, err := m.SLClient.GetBatchAtIndex(stateIndex)
+	settlementBatch, err := m.SLClient.GetBatchAtHeight(m.State.NextHeight())
 	if err != nil {
 		return fmt.Errorf("retrieve batch: %w", err)
 	}
-	m.logger.Info("Retrieved batch.", "state_index", stateIndex)
+	m.logger.Info("Retrieved batch.", "state_index", settlementBatch.StateIndex)
 
 	// update the proposer when syncing from the settlement layer
 	proposer := m.State.Sequencers.GetByAddress(settlementBatch.Batch.Sequencer)
 	if proposer == nil {
-		return fmt.Errorf("proposer not found: batch: %d: %s", stateIndex, settlementBatch.Batch.Sequencer)
+		return fmt.Errorf("proposer not found: batch: %d: %s", settlementBatch.StateIndex, settlementBatch.Batch.Sequencer)
 	}
 	m.State.Sequencers.SetProposer(proposer)
 
