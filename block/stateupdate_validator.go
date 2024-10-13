@@ -8,6 +8,7 @@ import (
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 )
 
 // StateUpdateValidator is a validator for messages gossiped in the p2p network.
@@ -122,7 +123,7 @@ func (v *StateUpdateValidator) ValidateDaBlocks(slBatch *settlement.ResultRetrie
 	numSlBlocks := len(slBatch.BlockDescriptors)
 	numDABlocks := len(daBlocks)
 	if numSlBlocks != numDABlocks {
-		return fmt.Errorf("num blocks mismatch between state update and DA batch. State index: %d State update blocks: %d DA batch blocks: %d", slBatch.StateIndex, numSlBlocks, numDABlocks)
+		return fmt.Errorf("num blocks mismatch between state update and DA batch. State index: %d State update blocks: %d DA batch blocks: %d Err:%w", slBatch.StateIndex, numSlBlocks, numDABlocks, gerrc.ErrInvalidArgument)
 	}
 
 	// check blocks
