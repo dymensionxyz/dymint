@@ -48,6 +48,7 @@ func convertStateInfoToResultRetrieveBatch(stateInfo *rollapptypes.StateInfo) (*
 		},
 		DRSVersion:       stateInfo.DrsVersion,
 		BlockDescriptors: stateInfo.BDs.BD,
+		NumBlocks:        stateInfo.NumBlocks,
 	}
 
 	return &settlement.ResultRetrieveBatch{

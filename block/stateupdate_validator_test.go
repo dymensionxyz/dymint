@@ -85,8 +85,22 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 			name:               "Failed validation wrong state roots",
 			p2pBlocks:          true,
 			stateUpdateFraud:   "stateroot",
-			doubleSignedBlocks: doubleSigned,
+			doubleSignedBlocks: nil,
 			expectedErrType:    types.ErrStateUpdateStateRootNotMatchingFraud{},
+		},
+		{
+			name:               "Failed validation batch num blocks",
+			p2pBlocks:          true,
+			stateUpdateFraud:   "batchnumblocks",
+			doubleSignedBlocks: nil,
+			expectedErrType:    types.ErrStateUpdateNumBlocksNotMatchingFraud{},
+		},
+		{
+			name:               "Failed validation batch num bds",
+			p2pBlocks:          true,
+			stateUpdateFraud:   "batchnumbds",
+			doubleSignedBlocks: nil,
+			expectedErrType:    types.ErrStateUpdateNumBlocksNotMatchingFraud{},
 		},
 		{
 			name:               "Failed validation wrong timestamps",
@@ -143,6 +157,7 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 					},
 					StartHeight: 1,
 					EndHeight:   10,
+					NumBlocks:   10,
 				},
 				ResultBase: settlement.ResultBase{
 					StateIndex: 1,
@@ -154,6 +169,11 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 
 			// set fraud data
 			switch tc.stateUpdateFraud {
+			case "batchnumblocks":
+				slBatch.NumBlocks = 11
+			case "batchnumbds":
+				bds = append(bds, rollapp.BlockDescriptor{})
+				slBatch.BlockDescriptors = bds
 			case "stateroot":
 				slBatch.BlockDescriptors[0].StateRoot = []byte{}
 			case "timestamp":

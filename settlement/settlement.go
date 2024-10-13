@@ -41,6 +41,7 @@ type Batch struct {
 	// MetaData about the batch in the DA layer
 	MetaData   *BatchMetaData
 	DRSVersion string
+	NumBlocks  uint64
 }
 
 type ResultRetrieveBatch struct {

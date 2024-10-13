@@ -318,6 +318,30 @@ func (e ErrInvalidHeaderDataHashFraud) Unwrap() error {
 	return gerrc.ErrFault
 }
 
+type ErrStateUpdateNumBlocksNotMatchingFraud struct {
+	StateIndex  uint64
+	SLNumblocks uint64
+	DAblocks    uint64
+	NumBds      uint64
+}
+
+func NewErrStateUpdateNumBlocksNotMatchingFraud(stateIndex uint64, slNumBlocks uint64, daBlocks uint64, numbds uint64) error {
+	return &ErrStateUpdateNumBlocksNotMatchingFraud{
+		StateIndex:  stateIndex,
+		SLNumblocks: slNumBlocks,
+		DAblocks:    daBlocks,
+		NumBds:      numbds,
+	}
+}
+
+func (e ErrStateUpdateNumBlocksNotMatchingFraud) Error() string {
+	return fmt.Sprintf("numblocks not matching. StateIndex: %d Batch numblocks: %d Blocks in DA: %d Num of block descriptors: %d", e.StateIndex, e.SLNumblocks, e.DAblocks, e.NumBds)
+}
+
+func (e ErrStateUpdateNumBlocksNotMatchingFraud) Unwrap() error {
+	return gerrc.ErrFault
+}
+
 type ErrStateUpdateHeightNotMatchingFraud struct {
 	StateIndex uint64
 	SLHeight   uint64
