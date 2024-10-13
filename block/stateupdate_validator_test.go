@@ -116,6 +116,13 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 			doubleSignedBlocks: doubleSigned,
 			expectedErrType:    types.ErrStateUpdateHeightNotMatchingFraud{},
 		},
+		{
+			name:               "Failed validation drs version",
+			p2pBlocks:          true,
+			stateUpdateFraud:   "drs",
+			doubleSignedBlocks: nil,
+			expectedErrType:    types.ErrStateUpdateDRSVersionFraud{},
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -173,6 +180,8 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 
 			// set fraud data
 			switch tc.stateUpdateFraud {
+			case "drs":
+				slBatch.BlockDescriptors[0].DrsVersion = "b306cc32d3ef1782879fdef5e6ab60f270a16817"
 			case "batchnumblocks":
 				slBatch.NumBlocks = 11
 			case "batchnumbds":
