@@ -137,6 +137,9 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 			daResultSubmitBatch := manager.DAClient.SubmitBatch(batch)
 			assert.Equal(t, daResultSubmitBatch.Code, da.StatusSuccess)
 
+			// add drs version to state
+			manager.State.AddDRSVersion(0, version.Commit)
+
 			// Create block descriptors
 			var bds []rollapp.BlockDescriptor
 			for _, block := range batch.Blocks {
