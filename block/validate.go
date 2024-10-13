@@ -2,9 +2,10 @@ package block
 
 import (
 	"context"
-	"fmt"
+	"errors"
 
 	"github.com/dymensionxyz/dymint/settlement"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
@@ -38,8 +39,10 @@ func (m *Manager) ValidateLoop(ctx context.Context) error {
 				}
 				// validate batch
 				err = m.validator.ValidateStateUpdate(batch)
-				if err != nil {
+				if errors.Is(err, gerrc.ErrFault) {
 					m.FraudHandler.HandleFault(ctx, err)
+				} else if err != nil {
+					panic(err)
 				}
 
 				// this should not happen. if validation is successful m.State.NextValidationHeight() should advance.
@@ -50,7 +53,7 @@ func (m *Manager) ValidateLoop(ctx context.Context) error {
 				// update state with new validation height
 				_, err = m.Store.SaveState(m.State, nil)
 				if err != nil {
-					return fmt.Errorf("save state: %w", err)
+					m.logger.Error("save state: %w", err)
 				}
 
 				m.logger.Debug("state info validated", "batch end height", batch.EndHeight, "lastValidatedHeight", m.State.GetLastValidatedHeight())
