@@ -116,7 +116,6 @@ func (v *StateUpdateValidator) ValidateP2PBlocks(daBlocks []*types.Block, p2pBlo
 }
 
 func (v *StateUpdateValidator) ValidateDaBlocks(slBatch *settlement.ResultRetrieveBatch, daBlocks []*types.Block) error {
-
 	// check numblocks
 	numSlBDs := uint64((len(slBatch.BlockDescriptors)))
 	numDABlocks := uint64(len(daBlocks))
