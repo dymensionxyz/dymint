@@ -8,7 +8,6 @@ import (
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
-	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 )
 
 // StateUpdateValidator is a validator for messages gossiped in the p2p network.
@@ -53,9 +52,7 @@ func (v *StateUpdateValidator) ValidateStateUpdate(batch *settlement.ResultRetri
 		}
 	}
 
-	// if not all blocks are applied from DA, it is necessary to get all batch blocks from DA
-	numBlocks := batch.EndHeight - batch.StartHeight + 1
-	if uint64(len(daBlocks)) != numBlocks {
+	if uint64(len(daBlocks)) != batch.NumBlocks {
 		daBlocks = []*types.Block{}
 		var daBatch da.ResultRetrieveBatch
 		for {
@@ -119,11 +116,13 @@ func (v *StateUpdateValidator) ValidateP2PBlocks(daBlocks []*types.Block, p2pBlo
 }
 
 func (v *StateUpdateValidator) ValidateDaBlocks(slBatch *settlement.ResultRetrieveBatch, daBlocks []*types.Block) error {
+
 	// check numblocks
-	numSlBlocks := len(slBatch.BlockDescriptors)
-	numDABlocks := len(daBlocks)
-	if numSlBlocks != numDABlocks {
-		return fmt.Errorf("num blocks mismatch between state update and DA batch. State index: %d State update blocks: %d DA batch blocks: %d Err:%w", slBatch.StateIndex, numSlBlocks, numDABlocks, gerrc.ErrInvalidArgument)
+	numSlBDs := uint64((len(slBatch.BlockDescriptors)))
+	numDABlocks := uint64(len(daBlocks))
+	numSLBlocks := slBatch.NumBlocks
+	if numSLBlocks != numDABlocks || numSLBlocks != numSlBDs {
+		return types.NewErrStateUpdateNumBlocksNotMatchingFraud(slBatch.EndHeight, numSLBlocks, numDABlocks, numSLBlocks)
 	}
 
 	// check blocks
