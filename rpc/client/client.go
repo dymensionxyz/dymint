@@ -39,7 +39,7 @@ const (
 type ValidationStatus int
 
 const (
-	NotValidated = iota
+	BlockNotValidated = iota
 	BlockValidated
 	BlockValidatedWithSL
 )
@@ -836,7 +836,7 @@ func (c *Client) BlockValidated(ctx context.Context, height *int64) (*ResultBloc
 	}
 	// node has not reached the height yet
 	if uint64(*height) > c.node.BlockManager.State.Height() {
-		return &ResultBlockValidated{Result: NotValidated}, nil
+		return &ResultBlockValidated{Result: BlockNotValidated}, nil
 	}
 	// height has been validated by the node
 	if uint64(*height) <= c.node.BlockManager.State.GetLastValidatedHeight() {
