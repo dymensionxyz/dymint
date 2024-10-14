@@ -3,6 +3,8 @@ package block
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/hex"
+	"errors"
 	"fmt"
 
 	"github.com/dymensionxyz/dymint/da"
@@ -30,12 +32,6 @@ func NewStateUpdateValidator(logger types.Logger, blockManager *Manager) *StateU
 func (v *StateUpdateValidator) ValidateStateUpdate(batch *settlement.ResultRetrieveBatch) error {
 	v.logger.Debug("validating state update", "start height", batch.StartHeight, "end height", batch.EndHeight)
 
-	// validate that the DRS version specified batch matches the node state
-	err := v.validateDRS(batch.StartHeight, batch.EndHeight)
-	if err != nil {
-		return err
-	}
-
 	// load blocks applied from P2P for the batch heights
 	p2pBlocks := make(map[uint64]*types.Block)
 
@@ -58,17 +54,26 @@ func (v *StateUpdateValidator) ValidateStateUpdate(batch *settlement.ResultRetri
 	daBlocks := []*types.Block{}
 	var daBatch da.ResultRetrieveBatch
 	for {
+
 		daBatch = v.blockManager.Retriever.RetrieveBatches(batch.MetaData.DA)
 		if daBatch.Code == da.StatusSuccess {
 			break
 		}
+		if errors.Is(daBatch.BaseResult.Error, da.ErrBlobNotParsed) {
+			return types.NewErrStateUpdateBlobCorruptedFraud(batch.StateIndex, string(batch.MetaData.DA.Client), batch.MetaData.DA.Height, hex.EncodeToString(batch.MetaData.DA.Commitment))
+		}
+		checkBatchResult := v.blockManager.Retriever.CheckBatchAvailability(batch.MetaData.DA)
+		if errors.Is(checkBatchResult.Error, da.ErrBlobNotIncluded) {
+			return types.NewErrStateUpdateBlobNotAvailableFraud(batch.StateIndex, string(batch.MetaData.DA.Client), batch.MetaData.DA.Height, hex.EncodeToString(batch.MetaData.DA.Commitment))
+		}
+
 	}
 	for _, batch := range daBatch.Batches {
 		daBlocks = append(daBlocks, batch.Blocks...)
 	}
 
 	// validate DA blocks against the state update
-	err := v.ValidateDaBlocks(batch, daBlocks)
+	err = v.ValidateDaBlocks(batch, daBlocks)
 	if err != nil {
 		return err
 	}
@@ -149,7 +154,6 @@ func (v *StateUpdateValidator) ValidateDaBlocks(slBatch *settlement.ResultRetrie
 
 	}
 
-	// TODO(srene): implement sequencer address validation
 	return nil
 }
 
