@@ -155,6 +155,100 @@ func NewManager(
 	return m, nil
 }
 
+// runNonProducerLoops runs the loops that are common to all nodes, but not the proposer.
+func (m *Manager) runNonProducerLoops(ctx context.Context) {
+	// P2P Sync. Subscribe to P2P received blocks events
+	go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewGossipedBlock, m.onReceivedBlock, m.logger)
+	go uevent.MustSubscribe(ctx, m.Pubsub, "applyBlockSyncBlocksLoop", p2p.EventQueryNewBlockSyncBlock, m.onReceivedBlock, m.logger)
+
+	// FIXME: we used to call this in full node, ONLY after DA sync. isn't this the same as the below??
+	// FIXME: probably need to have some mutex and maintaining the last height synced from DA
+	go uevent.MustSubscribe(ctx, m.Pubsub, "syncTargetLoop", settlement.EventQueryNewSettlementBatchAccepted, m.onNewStateUpdate, m.logger)
+}
+
+func (m *Manager) runProducerLoops(ctx context.Context, eg *errgroup.Group) {
+	// populate the bytes produced channel
+	bytesProducedC := make(chan int)
+	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
+		return m.SubmitLoop(ctx, bytesProducedC)
+	})
+	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
+		bytesProducedC <- m.GetUnsubmittedBytes() // load unsubmitted bytes from previous run
+		return m.ProduceBlockLoop(ctx, bytesProducedC)
+	})
+
+	// channel to signal sequencer rotation started
+	rotateSequencerC := make(chan string, 1)
+	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
+		return m.MonitorSequencerRotation(ctx, rotateSequencerC)
+	})
+
+	_ = eg.Wait()
+	// Check if exited due to sequencer rotation signal
+	select {
+	case nextSeqAddr := <-rotateSequencerC:
+		m.handleRotationReq(ctx, nextSeqAddr)
+		// FIXME: produce roleSwitch event
+	default:
+		m.logger.Info("Block manager err group finished.")
+	}
+}
+
+func (m *Manager) RunLoops(ctx context.Context, roleSwitchC chan bool) error {
+	ctx, cancel := context.WithCancel(ctx)
+	eg, ctx := errgroup.WithContext(ctx)
+
+	/* --------------------------------- common --------------------------------- */
+	// listen to new bonded sequencers events to add them in the sequencer set
+	go uevent.MustSubscribe(ctx, m.Pubsub, "newBondedSequencer", settlement.EventQueryNewBondedSequencer, m.UpdateSequencerSet, m.logger)
+	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
+		return m.PruningLoop(ctx)
+	})
+
+	// run loops initially if needed
+	if m.Proposer {
+		m.runProducerLoops()
+	} else {
+		m.runNonProducerLoops(ctx)
+	}
+
+	// listen to role switch trigger
+	newRoleC := make(chan bool) // channel to receive new role (true for proposer, false for non-producer)
+	for {
+		select {
+		case <-ctx.Done():
+			break
+		case proposer := <-newRoleC:
+			if proposer == m.Proposer {
+				//log error
+				continue
+			}
+			m.Proposer = proposer
+
+			// if false->true, start producing
+			if proposer {
+				m.runProducerLoops()
+			}
+
+			// if true->false, stop producing
+			if !proposer {
+				cancel() // shutdown all loops
+				_ = eg.Wait()
+				// Check if exited due to sequencer rotation signal
+				select {
+				case nextSeqAddr := <-rotateSequencerC:
+					m.handleRotationReq(ctx, nextSeqAddr)
+				default:
+					m.logger.Info("Block manager err group finished.")
+				}
+			}
+
+		}
+		_ = eg.Wait()
+		return nil
+	}
+}
+
 // Start starts the block manager.
 func (m *Manager) Start(ctx context.Context) error {
 	// Check if InitChain flow is needed
@@ -176,14 +270,12 @@ func (m *Manager) Start(ctx context.Context) error {
 	isProposer := m.IsProposer()
 	m.logger.Info("starting block manager", "proposer", isProposer)
 
+	/* ---------------------------- common goroutines --------------------------- */
 	eg, ctx := errgroup.WithContext(ctx)
-	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
-		return m.PruningLoop(ctx)
-	})
 
-	// listen to new bonded sequencers events to add them in the sequencer set
-	go uevent.MustSubscribe(ctx, m.Pubsub, "newBondedSequencer", settlement.EventQueryNewBondedSequencer, m.UpdateSequencerSet, m.logger)
-
+	/* -------------------------------------------------------------------------- */
+	/*                                sync section                                */
+	/* -------------------------------------------------------------------------- */
 	/* ----------------------------- full node mode ----------------------------- */
 	if !isProposer {
 		// Full-nodes can sync from DA but it is not necessary to wait for it, since it can sync from P2P as well in parallel.
@@ -195,61 +287,30 @@ func (m *Manager) Start(ctx context.Context) error {
 			// DA Sync. Subscribe to SL next batch events
 			go uevent.MustSubscribe(ctx, m.Pubsub, "syncTargetLoop", settlement.EventQueryNewSettlementBatchAccepted, m.onNewStateUpdate, m.logger)
 		}()
+	} else {
 
-		// P2P Sync. Subscribe to P2P received blocks events
-		go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewGossipedBlock, m.onReceivedBlock, m.logger)
-		go uevent.MustSubscribe(ctx, m.Pubsub, "applyBlockSyncBlocksLoop", p2p.EventQueryNewBlockSyncBlock, m.onReceivedBlock, m.logger)
-		return nil
-	}
-
-	/* ----------------------------- sequencer mode ----------------------------- */
-	// Subscribe to batch events, to update last submitted height in case batch confirmation was lost. This could happen if the sequencer crash/restarted just after submitting a batch to the settlement and by the time we query the last batch, this batch wasn't accepted yet.
-	go uevent.MustSubscribe(ctx, m.Pubsub, "updateSubmittedHeightLoop", settlement.EventQueryNewSettlementBatchAccepted, m.UpdateLastSubmittedHeight, m.logger)
-
-	// Sequencer must wait till DA is synced to start submitting blobs
-	<-m.DAClient.Synced()
-	err = m.syncFromSettlement()
-	if err != nil {
-		return fmt.Errorf("sync block manager from settlement: %w", err)
-	}
-	// check if sequencer in the middle of rotation
-	nextSeqAddr, missing, err := m.MissingLastBatch()
-	if err != nil {
-		return fmt.Errorf("checking if missing last batch: %w", err)
-	}
-	// if sequencer is in the middle of rotation, complete rotation instead of running the main loop
-	if missing {
-		m.handleRotationReq(ctx, nextSeqAddr)
-		return nil
-	}
-
-	// populate the bytes produced channel
-	bytesProducedC := make(chan int)
-
-	// channel to signal sequencer rotation started
-	rotateSequencerC := make(chan string, 1)
-
-	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
-		return m.SubmitLoop(ctx, bytesProducedC)
-	})
-	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
-		bytesProducedC <- m.GetUnsubmittedBytes() // load unsubmitted bytes from previous run
-		return m.ProduceBlockLoop(ctx, bytesProducedC)
-	})
-	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
-		return m.MonitorSequencerRotation(ctx, rotateSequencerC)
-	})
-
-	go func() {
-		_ = eg.Wait()
-		// Check if exited due to sequencer rotation signal
-		select {
-		case nextSeqAddr := <-rotateSequencerC:
-			m.handleRotationReq(ctx, nextSeqAddr)
-		default:
-			m.logger.Info("Block manager err group finished.")
+		/* ----------------------------- sequencer mode ----------------------------- */
+		// Sequencer must wait till DA is synced to start submitting blobs
+		<-m.DAClient.Synced()
+		err = m.syncFromSettlement()
+		if err != nil {
+			return fmt.Errorf("sync block manager from settlement: %w", err)
 		}
-	}()
+		// check if sequencer in the middle of rotation
+		nextSeqAddr, missing, err := m.MissingLastBatch()
+		if err != nil {
+			return fmt.Errorf("checking if missing last batch: %w", err)
+		}
+		// if sequencer is in the middle of rotation, complete rotation instead of running the main loop
+		if missing {
+			m.handleRotationReq(ctx, nextSeqAddr)
+			return nil
+		}
+	}
+
+	/* -------------------------------------------------------------------------- */
+	/*                                loops section                               */
+	/* -------------------------------------------------------------------------- */
 
 	return nil
 }
@@ -339,6 +400,8 @@ func (m *Manager) setDA(daconfig string, dalcKV store.KV, logger log.Logger) err
 	if dalc == nil {
 		return fmt.Errorf("get data availability client named '%s'", daLayer)
 	}
+
+	// FIXME: have each client expected config struct. try to unmarshal
 
 	err := dalc.Init([]byte(daconfig), m.Pubsub, dalcKV, logger.With("module", string(dalc.GetClientType())))
 	if err != nil {

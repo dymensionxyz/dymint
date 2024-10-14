@@ -33,8 +33,12 @@ func MustSubscribe(
 		return
 	}
 
+	// FIXME: validate it's still be unsubscribed if the context is cancelled
+	defer pubsubServer.UnsubscribeAll(ctx, clientID) //nolint:errcheck
+
 	for {
 		select {
+		// FIXME: maybe this needs to be removed? as the ctx used for subscribing.
 		case <-ctx.Done():
 			return
 		case event := <-subscription.Out():

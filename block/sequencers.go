@@ -73,6 +73,7 @@ func (m *Manager) IsProposer() bool {
 	return bytes.Equal(l2Proposer, localProposerKey) || bytes.Equal(expectedHubProposer, localProposerKey)
 }
 
+// FIXME: rename
 // MissingLastBatch checks if the sequencer is in the middle of rotation (I'm the proposer, but needs to complete rotation)
 // returns the next sequencer address and a flag if the sequencer is the old proposer and the hub waits for the last batch
 func (m *Manager) MissingLastBatch() (string, bool, error) {

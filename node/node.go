@@ -267,6 +267,8 @@ func (n *Node) OnStop() {
 		n.Logger.Error("close store", "error", err)
 	}
 
+	// FIXME: stop the pubsub?????
+
 	n.cancel()
 }
 
