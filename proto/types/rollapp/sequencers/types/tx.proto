@@ -1,0 +1,45 @@
+syntax = "proto3";
+package rollapp.sequencers.types;
+
+import "gogoproto/gogo.proto";
+import "types/cosmos/msg/v1/msg.proto";
+import "google/protobuf/any.proto";
+
+option go_package = "github.com/dymensionxyz/dymint/types/pb/rollapp/sequencers";
+
+message MsgCreateSequencer {
+    option (cosmos.msg.v1.signer) = "operator";
+    // Operator is the bech32-encoded address of the actor sending the update - must be val addr
+    string operator = 1;
+    // PubKey is a tendermint consensus pub key
+    google.protobuf.Any pub_key = 2;
+    // Signature is operator signed with the private key of pub_key
+    bytes signature = 3;
+}
+
+message MsgCreateSequencerResponse {}
+
+message MsgUpdateSequencer {
+    option (cosmos.msg.v1.signer) = "operator";
+    // Operator is the bech32-encoded address of the actor sending the update - must be val addr
+    string operator = 1;
+    // Field no.2 is missing
+    reserved 2;
+    // RewardAddr is a bech32 encoded sdk acc address
+    string reward_addr = 3;
+}
+
+message MsgUpdateSequencerResponse {}
+
+// ConsensusMsgUpsertSequencer is a consensus message to upsert the sequencer.
+message ConsensusMsgUpsertSequencer {
+    option (cosmos.msg.v1.signer) = "operator";
+    // Operator is the bech32-encoded address of the actor sending the update
+    string operator = 1;
+    // ConsPubKey is a tendermint consensus pub key
+    google.protobuf.Any cons_pub_key = 2;
+    // RewardAddr is the bech32-encoded sequencer's reward address
+    string reward_addr = 3;
+}
+
+message ConsensusMsgUpsertSequencerResponse {}

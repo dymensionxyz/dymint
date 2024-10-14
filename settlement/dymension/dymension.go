@@ -22,9 +22,11 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	sequencertypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/sequencer"
+	protoutils "github.com/dymensionxyz/dymint/utils/proto"
+
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/settlement"
-	sequencertypes "github.com/dymensionxyz/dymint/third_party/dymension/sequencer/types"
 	"github.com/dymensionxyz/dymint/types"
 	rollapptypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
 	"github.com/dymensionxyz/dymint/version"
@@ -341,8 +343,9 @@ func (c *Client) GetSequencerByAddress(address string) (types.Sequencer, error) 
 		return types.Sequencer{}, err
 	}
 
+	dymintPubKey := protoutils.GogoToCosmos(res.Sequencer.DymintPubKey)
 	var pubKey cryptotypes.PubKey
-	err = c.protoCodec.UnpackAny(res.Sequencer.DymintPubKey, &pubKey)
+	err = c.protoCodec.UnpackAny(dymintPubKey, &pubKey)
 	if err != nil {
 		return types.Sequencer{}, err
 	}
@@ -387,8 +390,9 @@ func (c *Client) GetAllSequencers() ([]types.Sequencer, error) {
 
 	var sequencerList []types.Sequencer
 	for _, sequencer := range res.Sequencers {
+		dymintPubKey := protoutils.GogoToCosmos(sequencer.DymintPubKey)
 		var pubKey cryptotypes.PubKey
-		err := c.protoCodec.UnpackAny(sequencer.DymintPubKey, &pubKey)
+		err := c.protoCodec.UnpackAny(dymintPubKey, &pubKey)
 		if err != nil {
 			return nil, err
 		}
@@ -435,8 +439,9 @@ func (c *Client) GetBondedSequencers() ([]types.Sequencer, error) {
 
 	var sequencerList []types.Sequencer
 	for _, sequencer := range res.Sequencers {
+		dymintPubKey := protoutils.GogoToCosmos(sequencer.DymintPubKey)
 		var pubKey cryptotypes.PubKey
-		err := c.protoCodec.UnpackAny(sequencer.DymintPubKey, &pubKey)
+		err := c.protoCodec.UnpackAny(dymintPubKey, &pubKey)
 		if err != nil {
 			return nil, err
 		}

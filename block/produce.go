@@ -7,20 +7,21 @@ import (
 	"time"
 
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
-	"github.com/cosmos/cosmos-sdk/types/bech32"
-	sequencertypes "github.com/dymensionxyz/dymension-rdk/x/sequencers/types"
+	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/gogo/protobuf/proto"
 	tmed25519 "github.com/tendermint/tendermint/crypto/ed25519"
-	tmcrypto "github.com/tendermint/tendermint/crypto/encoding"
 	cmtproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	tmtypes "github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
+
+	sequencertypes "github.com/dymensionxyz/dymint/types/pb/rollapp/sequencers/types"
 
 	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
+	protoutils "github.com/dymensionxyz/dymint/utils/proto"
 )
 
 // ProduceBlockLoop is calling publishBlock in a loop as long as we're synced.
@@ -204,40 +205,35 @@ func (m *Manager) consensusMsgsOnCreateBlock(
 	nextProposerSettlementAddr string,
 	lastSeqBlock bool, // Indicates that the block is the last for the current seq. True during the rotation.
 ) ([]proto.Message, error) {
-	if m.State.IsGenesis() || lastSeqBlock {
-		nextSeq := m.State.Sequencers.GetByAddress(nextProposerSettlementAddr)
-		// Sanity check. Must never happen in practice. The sequencer's existence is verified beforehand in Manager.CompleteRotation.
-		if nextSeq == nil {
-			return nil, fmt.Errorf("no sequencer found for address while creating a new block: %s", nextProposerSettlementAddr)
-		}
-
-		// Get proposer's consensus public key and convert it to proto.Any
-		val, err := nextSeq.TMValidator()
-		if err != nil {
-			return nil, fmt.Errorf("convert next squencer to tendermint validator: %w", err)
-		}
-		pubKey, err := tmcrypto.PubKeyToProto(val.PubKey)
-		if err != nil {
-			return nil, fmt.Errorf("next squencer pub key to proto: %w", err)
-		}
-		anyPubKey, err := codectypes.NewAnyWithValue(&pubKey)
-		if err != nil {
-			return nil, fmt.Errorf("next squencer pubkey to proto any: %w", err)
-		}
-
-		// Get raw bytes of the proposer's settlement address. These bytes will to be converted to the rollapp format in the app.
-		_, addrBytes, err := bech32.DecodeAndConvert(nextProposerSettlementAddr)
-		if err != nil {
-			return nil, fmt.Errorf("next squencer settlement addr to bech32: %w", err)
-		}
-
-		return []proto.Message{&sequencertypes.MsgUpsertSequencer{
-			Operator:        nextProposerSettlementAddr,
-			ConsPubKey:      anyPubKey,
-			RewardAddrBytes: addrBytes,
-		}}, nil
+	if !m.State.IsGenesis() && !lastSeqBlock {
+		return nil, nil
 	}
-	return nil, nil
+
+	nextSeq := m.State.Sequencers.GetByAddress(nextProposerSettlementAddr)
+	// Sanity check. Must never happen in practice. The sequencer's existence is verified beforehand in Manager.CompleteRotation.
+	if nextSeq == nil {
+		return nil, fmt.Errorf("no sequencer found for address while creating a new block: %s", nextProposerSettlementAddr)
+	}
+
+	// Get proposer's consensus public key and convert it to proto.Any
+	val, err := nextSeq.TMValidator()
+	if err != nil {
+		return nil, fmt.Errorf("convert next squencer to tendermint validator: %w", err)
+	}
+	pubKey, err := cryptocodec.FromTmPubKeyInterface(val.PubKey)
+	if err != nil {
+		return nil, fmt.Errorf("convert tendermint pubkey to cosmos: %w", err)
+	}
+	anyPK, err := codectypes.NewAnyWithValue(pubKey)
+	if err != nil {
+		return nil, fmt.Errorf("convert cosmos pubkey to any: %w", err)
+	}
+
+	return []proto.Message{&sequencertypes.ConsensusMsgUpsertSequencer{
+		Operator:   nextProposerSettlementAddr,
+		ConsPubKey: protoutils.CosmosToGogo(anyPK),
+		RewardAddr: nextProposerSettlementAddr,
+	}}, nil
 }
 
 // create commit for block

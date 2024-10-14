@@ -11,7 +11,6 @@ require (
 	github.com/cosmos/cosmos-sdk v0.46.16
 	github.com/dgraph-io/badger/v4 v4.3.0
 	github.com/dymensionxyz/cosmosclient v0.4.2-beta.0.20240821081230-b4018b2bac13
-	github.com/dymensionxyz/dymension-rdk v1.6.1
 	github.com/dymensionxyz/gerr-cosmos v1.0.0
 	github.com/go-kit/kit v0.12.0
 	github.com/gofrs/uuid v4.3.0+incompatible
@@ -43,14 +42,19 @@ require (
 )
 
 require (
+	cloud.google.com/go v0.112.1 // indirect
+	cloud.google.com/go/storage v1.38.0 // indirect
 	github.com/celestiaorg/go-square v1.0.1 // indirect
 	github.com/celestiaorg/go-square/merkle v0.0.0-20240429192549-dea967e1533b // indirect
+	github.com/cosmos/ibc-go/v6 v6.2.1 // indirect
 	github.com/cskr/pubsub v1.0.2 // indirect
 	github.com/dgraph-io/badger/v3 v3.2103.3 // indirect
+	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/hashicorp/go-getter v1.7.5 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/ipfs/go-block-format v0.2.0 // indirect
 	github.com/tklauser/numcpus v0.6.0 // indirect
+	google.golang.org/api v0.169.0 // indirect
 )
 
 require (
@@ -117,7 +121,7 @@ require (
 	go.uber.org/fx v1.20.1 // indirect
 	golang.org/x/exp v0.0.0-20240213143201-ec583247a57a
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20240318140521-94a12d6c2237
+	google.golang.org/genproto/googleapis/api v0.0.0-20240318140521-94a12d6c2237 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240318140521-94a12d6c2237 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
@@ -292,13 +296,7 @@ require (
 )
 
 replace (
-	// This replacement is needed in order to import dymension-rdk properly. It's inherited from
-	// https://github.com/dymensionxyz/dymension-rdk/blob/82c4d5f8c09365b20b4378c0cc459b414fd306e8/go.mod#L315.
-	github.com/CosmWasm/wasmd => github.com/decentrio/wasmd v0.33.0-sdk46.2
 	github.com/centrifuge/go-substrate-rpc-client/v4 => github.com/availproject/go-substrate-rpc-client/v4 v4.0.12-avail-1.4.0-rc1-5e286e3
-	// TODO: uncomment after https://github.com/dymensionxyz/dymension-rdk/pull/563 is merged
-	// github.com/dymensionxyz/dymension-rdk => github.com/dymensionxyz/dymension-rdk v1.6.1-0.20240827102903-08636e7ab3f8
-	github.com/dymensionxyz/dymension-rdk => ../dymension-rdk
 	github.com/evmos/evmos/v12 => github.com/dymensionxyz/evmos/v12 v12.1.6-dymension-v0.3
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.2-alpha.regen.4
 	github.com/gorilla/rpc => github.com/dymensionxyz/rpc v1.3.1

@@ -22,14 +22,16 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	sequencertypesmock "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/sequencer"
+	sequencertypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/sequencer"
+	protoutils "github.com/dymensionxyz/dymint/utils/proto"
+
 	"github.com/dymensionxyz/dymint/da"
 	dymensionmock "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/settlement/dymension"
-	sequencertypesmock "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/third_party/dymension/sequencer/types"
 	rollapptypesmock "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/settlement/dymension"
 	"github.com/dymensionxyz/dymint/testutil"
-	sequencertypes "github.com/dymensionxyz/dymint/third_party/dymension/sequencer/types"
 	rollapptypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
 )
 
@@ -221,7 +223,7 @@ func generateSequencerByRollappResponse(t *testing.T, count int) *sequencertypes
 		require.NoError(t, err)
 
 		seq := sequencertypes.Sequencer{
-			DymintPubKey: pk,
+			DymintPubKey: protoutils.CosmosToGogo(pk),
 			Status:       sequencertypes.Bonded,
 		}
 		sequencerInfoList = append(sequencerInfoList, seq)

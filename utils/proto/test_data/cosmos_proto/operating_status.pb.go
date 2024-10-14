@@ -56,7 +56,7 @@ func (OperatingStatus) EnumDescriptor() ([]byte, []int) {
 }
 
 func init() {
-	proto.RegisterEnum("dymensionxyz.dymension.sequencer.OperatingStatus", OperatingStatus_name, OperatingStatus_value)
+	proto.RegisterEnum("dymensionxyz.dymension.sequencer.OperatingStatus1", OperatingStatus_name, OperatingStatus_value)
 }
 
 func init() {
