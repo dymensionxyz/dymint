@@ -36,6 +36,14 @@ const (
 	subscribeTimeout = 5 * time.Second
 )
 
+type ValidationStatus int
+
+const (
+	NotValidated = iota
+	P2PValidated
+	SLValidated
+)
+
 // ErrConsensusStateNotAvailable is returned because Dymint doesn't use Tendermint consensus.
 var ErrConsensusStateNotAvailable = errors.New("consensus state not available in Dymint")
 
@@ -807,14 +815,14 @@ func (c *Client) BlockValidated(ctx context.Context, height *int64) (*ResultBloc
 	}
 	// node has not reached the height yet
 	if uint64(*height) > c.node.BlockManager.State.Height() {
-		return &ResultBlockValidated{Result: 0}, nil
+		return &ResultBlockValidated{Result: NotValidated}, nil
 	}
 	if uint64(*height) <= c.node.BlockManager.State.GetLastValidatedHeight() {
-		return &ResultBlockValidated{Result: 2}, nil
+		return &ResultBlockValidated{Result: SLValidated}, nil
 	}
 
 	// block is applied, and therefore it is validated at block level but not at state update level
-	return &ResultBlockValidated{Result: 1}, nil
+	return &ResultBlockValidated{Result: P2PValidated}, nil
 }
 
 func (c *Client) eventsRoutine(sub tmtypes.Subscription, subscriber string, q tmpubsub.Query, outc chan<- ctypes.ResultEvent) {
