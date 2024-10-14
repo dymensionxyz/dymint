@@ -194,7 +194,6 @@ func (s *service) NetInfo(req *http.Request, args *netInfoArgs) (*ctypes.ResultN
 }
 
 func (s *service) BlockchainInfo(req *http.Request, args *blockchainInfoArgs) (*ctypes.ResultBlockchainInfo, error) {
-	fmt.Println(args)
 	return s.client.BlockchainInfo(req.Context(), int64(args.MinHeight), int64(args.MaxHeight))
 }
 

@@ -62,7 +62,7 @@ type Client struct {
 }
 
 type ResultBlockValidated struct {
-	Result int
+	Result ValidationStatus
 }
 
 // NewClient returns Client working with given node.
