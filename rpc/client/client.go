@@ -40,8 +40,8 @@ type ValidationStatus int
 
 const (
 	NotValidated = iota
-	P2PValidated
-	SLValidated
+	BlockValidated
+	BlockValidatedWithSL
 )
 
 // ErrConsensusStateNotAvailable is returned because Dymint doesn't use Tendermint consensus.
@@ -818,11 +818,11 @@ func (c *Client) BlockValidated(ctx context.Context, height *int64) (*ResultBloc
 		return &ResultBlockValidated{Result: NotValidated}, nil
 	}
 	if uint64(*height) <= c.node.BlockManager.State.GetLastValidatedHeight() {
-		return &ResultBlockValidated{Result: SLValidated}, nil
+		return &ResultBlockValidated{Result: BlockValidatedWithSL}, nil
 	}
 
 	// block is applied, and therefore it is validated at block level but not at state update level
-	return &ResultBlockValidated{Result: P2PValidated}, nil
+	return &ResultBlockValidated{Result: BlockValidated}, nil
 }
 
 func (c *Client) eventsRoutine(sub tmtypes.Subscription, subscriber string, q tmpubsub.Query, outc chan<- ctypes.ResultEvent) {
