@@ -29,10 +29,13 @@ import (
 	"github.com/dymensionxyz/dymint/da"
 	dymensionmock "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/settlement/dymension"
 	rollapptypesmock "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
+	sequencertypesmock "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/sequencer"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/settlement/dymension"
 	"github.com/dymensionxyz/dymint/testutil"
 	rollapptypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
+	sequencertypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/sequencer"
+	protoutils "github.com/dymensionxyz/dymint/utils/proto"
 )
 
 func TestGetSequencers(t *testing.T) {

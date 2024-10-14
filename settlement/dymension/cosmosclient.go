@@ -13,9 +13,8 @@ import (
 	"github.com/ignite/cli/ignite/pkg/cosmosaccount"
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 
-	sequencertypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/sequencer"
-
 	rollapptypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
+	sequencertypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/sequencer"
 )
 
 // CosmosClient is an interface for interacting with cosmos client chains.

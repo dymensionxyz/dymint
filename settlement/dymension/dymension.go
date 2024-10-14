@@ -29,6 +29,8 @@ import (
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
 	rollapptypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
+	sequencertypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/sequencer"
+	protoutils "github.com/dymensionxyz/dymint/utils/proto"
 	"github.com/dymensionxyz/dymint/version"
 )
 
