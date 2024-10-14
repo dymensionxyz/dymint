@@ -450,6 +450,30 @@ func (e ErrStateUpdateBlobNotAvailableFraud) Unwrap() error {
 	return gerrc.ErrFault
 }
 
+type ErrStateUpdateBlobCorruptedFraud struct {
+	StateIndex uint64
+	DA         string
+	DAHeight   uint64
+	Commitment string
+}
+
+func NewErrStateUpdateBlobCorruptedFraud(stateIndex uint64, da string, daHeight uint64, commitment string) error {
+	return &ErrStateUpdateBlobCorruptedFraud{
+		StateIndex: stateIndex,
+		DA:         da,
+		DAHeight:   daHeight,
+		Commitment: commitment,
+	}
+}
+
+func (e ErrStateUpdateBlobCorruptedFraud) Error() string {
+	return fmt.Sprintf("blob not parsable in DA. StateIndex: %d DA: %s DA Height: %d Commitment: %s", e.StateIndex, e.DA, e.DAHeight, e.Commitment)
+}
+
+func (e ErrStateUpdateBlobCorruptedFraud) Unwrap() error {
+	return gerrc.ErrFault
+}
+
 type ErrStateUpdateDRSVersionFraud struct {
 	StateIndex   uint64
 	Height       uint64
