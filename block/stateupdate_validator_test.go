@@ -1,23 +1,16 @@
 package block_test
 
 import (
-	"bytes"
 	"crypto/rand"
-	"crypto/sha256"
-	"encoding/json"
 	"errors"
-	"fmt"
 	"testing"
 	"time"
 
 	"github.com/celestiaorg/celestia-openrpc/types/blob"
-	"github.com/celestiaorg/nmt"
 	"github.com/dymensionxyz/dymint/block"
 	"github.com/dymensionxyz/dymint/da"
-	"github.com/dymensionxyz/dymint/da/registry"
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/settlement"
-	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
@@ -30,9 +23,6 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/proxy"
-
-	celestia "github.com/dymensionxyz/dymint/da/celestia"
-	damocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/da/celestia/types"
 )
 
 func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
@@ -158,32 +148,10 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 			manager.State.AddDRSVersion(0, version.Commit)
 
 			// Create block descriptors
-			var bds []rollapp.BlockDescriptor
-			for _, block := range batch.Blocks {
-				bd := rollapp.BlockDescriptor{
-					Height:     block.Header.Height,
-					StateRoot:  block.Header.AppHash[:],
-					Timestamp:  block.Header.GetTimestamp(),
-					DrsVersion: version.Commit,
-				}
-				bds = append(bds, bd)
-			}
+			bds := getBlockDescriptors(batch)
 
 			// create the batch in settlement
-			slBatch := &settlement.ResultRetrieveBatch{
-				Batch: &settlement.Batch{
-					BlockDescriptors: bds,
-					MetaData: &settlement.BatchMetaData{
-						DA: daResultSubmitBatch.SubmitMetaData,
-					},
-					StartHeight: 1,
-					EndHeight:   10,
-					NumBlocks:   10,
-				},
-				ResultBase: settlement.ResultBase{
-					StateIndex: 1,
-				},
-			}
+			slBatch := getSLBatch(bds, daResultSubmitBatch.SubmitMetaData, 1, 10)
 
 			// Create the StateUpdateValidator
 			validator := block.NewStateUpdateValidator(testutil.NewLogger(t), manager)
@@ -205,18 +173,21 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 				slBatch.BlockDescriptors[0].Height = 2
 			}
 
+			// in case double signing generate commits for these blocks
 			if tc.doubleSignedBlocks != nil {
 				batch.Blocks = tc.doubleSignedBlocks
 				batch.Commits, err = testutil.GenerateCommits(batch.Blocks, proposerKey)
 				require.NoError(t, err)
 			}
 
+			// call manager flow for p2p received blocks
 			if tc.p2pBlocks {
 				for i, block := range batch.Blocks {
 					blockData := p2p.BlockData{Block: *block, Commit: *batch.Commits[i]}
 					msg := pubsub.NewMessage(blockData, map[string][]string{p2p.EventTypeKey: {p2p.EventNewGossipedBlock}})
 					manager.OnReceivedBlock(msg)
 				}
+				// otherwise load them from DA
 			} else {
 				manager.ProcessNextDABatch(slBatch.MetaData.DA)
 			}
@@ -262,74 +233,115 @@ func TestStateUpdateValidator_ValidateDAFraud(t *testing.T) {
 	proposerKey, _, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
 
-	// Create manager
-	manager, err := testutil.GetManagerWithProposerKey(chainId, testutil.GetManagerConfig(), proposerKey, nil, 1, 1, 0, proxyApp, nil)
-	require.NoError(t, err)
-	require.NotNil(t, manager)
-
-	// Create DA
-	// init celestia DA with mock RPC client
-	manager.DAClient = registry.GetClient("celestia")
-
-	config := celestia.Config{
-		BaseURL:        "http://localhost:26658",
-		Timeout:        30 * time.Second,
-		GasPrices:      celestia.DefaultGasPrices,
-		NamespaceIDStr: "0000000000000000ffff",
-	}
-	err = config.InitNamespaceID()
-	require.NoError(t, err)
-	conf, err := json.Marshal(config)
-	require.NoError(t, err)
-
-	mockRPCClient := damocks.NewMockCelestiaRPCClient(t)
-	options := []da.Option{
-		celestia.WithRPCClient(mockRPCClient),
-		celestia.WithRPCAttempts(1),
-		celestia.WithRPCRetryDelay(time.Second * 2),
-	}
-	/*roots := [][]byte{[]byte("apple"), []byte("watermelon"), []byte("kiwi")}
-	dah := &header.DataAvailabilityHeader{
-		RowRoots:    roots,
-		ColumnRoots: roots,
-	}
-	header := &header.ExtendedHeader{
-		DAH: dah,
-	}*/
-
-	nID := config.NamespaceID.Bytes()
-	nIDSize := 1
-	tree := exampleNMT(nIDSize, true, 1, 2, 3, 4)
-	// build a proof for an NID that is within the namespace range of the tree
-	proof, _ := tree.ProveNamespace(nID)
-	blobProof := blob.Proof([]*nmt.Proof{&proof})
-
-	mockRPCClient.On("Submit", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(uint64(1234), nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
-	mockRPCClient.On("GetProof", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&blobProof, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
-	mockRPCClient.On("Included", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
-
-	mockRPCClient.On("Get", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil).Run(func(args mock.Arguments) {
-	})
-
-	err = manager.DAClient.Init(conf, nil, store.NewDefaultInMemoryKVStore(), log.TestingLogger(), options...)
-	require.NoError(t, err)
-
-	err = manager.DAClient.Start()
-	require.NoError(t, err)
-
-	manager.Retriever = manager.DAClient.(da.BatchRetriever)
-
 	// Generate batch
 	batch, err := testutil.GenerateBatch(1, 10, proposerKey, chainId, [32]byte{})
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	// Submit batch to DA
-	daResultSubmitBatch := manager.DAClient.SubmitBatch(batch)
-	assert.Equal(t, daResultSubmitBatch.Code, da.StatusSuccess)
+	// Batch data to be included in a blob
+	batchData, err := batch.MarshalBinary()
+	require.NoError(t, err)
 
-	// add drs version to state
-	manager.State.AddDRSVersion(0, version.Commit)
+	// Batch data to be included in a fraud blob
+	randomData := []byte{1, 2, 3, 4}
 
+	// Test cases
+	testCases := []struct {
+		name              string
+		checkAvailability bool
+		blobData          []byte
+		expectedErrType   interface{}
+	}{
+		{
+			name:              "Successful DA Blob",
+			checkAvailability: false,
+			blobData:          batchData,
+			expectedErrType:   nil,
+		},
+		{
+			name:              "Blob not valid",
+			checkAvailability: false,
+			blobData:          randomData,
+			expectedErrType:   types.ErrStateUpdateBlobCorruptedFraud{},
+		},
+		{
+			name:              "Blob unavailable",
+			checkAvailability: true,
+			blobData:          batchData,
+			expectedErrType:   types.ErrStateUpdateBlobNotAvailableFraud{},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+
+			// Create manager
+			manager, err := testutil.GetManagerWithProposerKey(chainId, testutil.GetManagerConfig(), proposerKey, nil, 1, 1, 0, proxyApp, nil)
+			require.NoError(t, err)
+			require.NotNil(t, manager)
+
+			// Create Mock DA
+			mockDA, err := testutil.NewMockDA(t)
+			require.NoError(t, err)
+
+			// Start DA client
+			manager.DAClient = mockDA.DaClient
+			err = manager.DAClient.Start()
+			require.NoError(t, err)
+			manager.Retriever = manager.DAClient.(da.BatchRetriever)
+
+			// Generate blob from batch data
+			require.NoError(t, err)
+			batchBlob, err := blob.NewBlobV0(mockDA.NID, tc.blobData)
+			require.NoError(t, err)
+
+			// RPC calls necessary for blob submission
+			mockDA.MockRPC.On("Submit", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(uint64(1234), nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+			mockDA.MockRPC.On("GetProof", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&mockDA.BlobProof, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+			mockDA.MockRPC.On("Included", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(true, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+			mockDA.MockRPC.On("GetByHeight", mock.Anything, mock.Anything).Return(mockDA.Header, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+
+			// Submit batch to DA
+			daResultSubmitBatch := manager.DAClient.SubmitBatch(batch)
+			assert.Equal(t, daResultSubmitBatch.Code, da.StatusSuccess)
+
+			// RPC calls for successful blob retrieval
+			if !tc.checkAvailability {
+				mockDA.MockRPC.On("Get", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(batchBlob, nil).Run(func(args mock.Arguments) {})
+			}
+
+			// RPC calls for unavailable blobs
+			if tc.checkAvailability {
+				mockDA.MockRPC.On("Get", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil, nil).Run(func(args mock.Arguments) {})
+				mockDA.MockRPC.On("GetProof", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(&mockDA.BlobProof, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+				mockDA.MockRPC.On("Included", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(false, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+				mockDA.MockRPC.On("GetByHeight", mock.Anything, mock.Anything).Return(mockDA.Header, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
+			}
+
+			// add drs version to state
+			manager.State.AddDRSVersion(0, version.Commit)
+
+			// Create the StateUpdateValidator
+			validator := block.NewStateUpdateValidator(testutil.NewLogger(t), manager)
+
+			// Generate batch with block descriptors
+			slBatch := getSLBatch(getBlockDescriptors(batch), daResultSubmitBatch.SubmitMetaData, 1, 10)
+
+			// Validate state
+			err = validator.ValidateStateUpdate(slBatch)
+
+			// Check the result
+			if tc.expectedErrType == nil {
+				assert.NoError(t, err)
+			} else {
+				assert.True(t, errors.As(err, &tc.expectedErrType),
+					"expected error of type %T, got %T", tc.expectedErrType, err)
+			}
+		})
+	}
+
+}
+
+func getBlockDescriptors(batch *types.Batch) []rollapp.BlockDescriptor {
 	// Create block descriptors
 	var bds []rollapp.BlockDescriptor
 	for _, block := range batch.Blocks {
@@ -341,40 +353,23 @@ func TestStateUpdateValidator_ValidateDAFraud(t *testing.T) {
 		}
 		bds = append(bds, bd)
 	}
+	return bds
+}
 
+func getSLBatch(bds []rollapp.BlockDescriptor, daMetaData *da.DASubmitMetaData, startHeight uint64, endHeight uint64) *settlement.ResultRetrieveBatch {
 	// create the batch in settlement
-	slBatch := &settlement.ResultRetrieveBatch{
+	return &settlement.ResultRetrieveBatch{
 		Batch: &settlement.Batch{
 			BlockDescriptors: bds,
 			MetaData: &settlement.BatchMetaData{
-				DA: daResultSubmitBatch.SubmitMetaData,
+				DA: daMetaData,
 			},
-			StartHeight: 1,
-			EndHeight:   10,
-			NumBlocks:   10,
+			StartHeight: startHeight,
+			EndHeight:   endHeight,
+			NumBlocks:   endHeight - startHeight + 1,
 		},
 		ResultBase: settlement.ResultBase{
 			StateIndex: 1,
 		},
 	}
-
-	// Create the StateUpdateValidator
-	validator := block.NewStateUpdateValidator(testutil.NewLogger(t), manager)
-
-	err = validator.ValidateStateUpdate(slBatch)
-	require.NoError(t, err)
-
-}
-
-// exampleNMT creates a new NamespacedMerkleTree with the given namespace ID size and leaf namespace IDs. Each byte in the leavesNIDs parameter corresponds to one leaf's namespace ID. If nidSize is greater than 1, the function repeats each NID in leavesNIDs nidSize times before prepending it to the leaf data.
-func exampleNMT(nidSize int, ignoreMaxNamespace bool, leavesNIDs ...byte) *nmt.NamespacedMerkleTree {
-	tree := nmt.New(sha256.New(), nmt.NamespaceIDSize(nidSize), nmt.IgnoreMaxNamespace(ignoreMaxNamespace))
-	for i, nid := range leavesNIDs {
-		namespace := bytes.Repeat([]byte{nid}, nidSize)
-		d := append(namespace, []byte(fmt.Sprintf("leaf_%d", i))...)
-		if err := tree.Push(d); err != nil {
-			panic(fmt.Sprintf("unexpected error: %v", err))
-		}
-	}
-	return tree
 }

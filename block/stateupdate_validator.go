@@ -54,7 +54,6 @@ func (v *StateUpdateValidator) ValidateStateUpdate(batch *settlement.ResultRetri
 	daBlocks := []*types.Block{}
 	var daBatch da.ResultRetrieveBatch
 	for {
-
 		daBatch = v.blockManager.Retriever.RetrieveBatches(batch.MetaData.DA)
 		if daBatch.Code == da.StatusSuccess {
 			break
@@ -62,18 +61,19 @@ func (v *StateUpdateValidator) ValidateStateUpdate(batch *settlement.ResultRetri
 		if errors.Is(daBatch.BaseResult.Error, da.ErrBlobNotParsed) {
 			return types.NewErrStateUpdateBlobCorruptedFraud(batch.StateIndex, string(batch.MetaData.DA.Client), batch.MetaData.DA.Height, hex.EncodeToString(batch.MetaData.DA.Commitment))
 		}
+
 		checkBatchResult := v.blockManager.Retriever.CheckBatchAvailability(batch.MetaData.DA)
 		if errors.Is(checkBatchResult.Error, da.ErrBlobNotIncluded) {
 			return types.NewErrStateUpdateBlobNotAvailableFraud(batch.StateIndex, string(batch.MetaData.DA.Client), batch.MetaData.DA.Height, hex.EncodeToString(batch.MetaData.DA.Commitment))
 		}
-
 	}
+
 	for _, batch := range daBatch.Batches {
 		daBlocks = append(daBlocks, batch.Blocks...)
 	}
 
 	// validate DA blocks against the state update
-	err = v.ValidateDaBlocks(batch, daBlocks)
+	err := v.ValidateDaBlocks(batch, daBlocks)
 	if err != nil {
 		return err
 	}
