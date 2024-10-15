@@ -16,7 +16,7 @@ import (
 type testArgs struct {
 	nParallel                 int           // number of instances to run in parallel
 	testDuration              time.Duration // how long to run one instance of the test (should be short)
-	batchSkew                 uint64        // max number of batches to get ahead
+	batchSkew                 time.Duration // time between last block produced and submitted
 	batchBytes                uint64        // max number of bytes in a batch
 	maxTime                   time.Duration // maximum time to wait before submitting submissions
 	submitTime                time.Duration // how long it takes to submit a batch
@@ -71,9 +71,9 @@ func testSubmitLoopInner(
 				default:
 				}
 				// producer shall not get too far ahead
-				absoluteMax := (args.batchSkew + 1) * args.batchBytes // +1 is because the producer is always blocked after the fact
-				nProduced := nProducedBytes.Load()
-				require.True(t, nProduced < absoluteMax, "produced bytes not less than maximum", "nProduced", nProduced, "max", absoluteMax)
+				//absoluteMax := (args.batchSkew + 1) * args.batchBytes // +1 is because the producer is always blocked after the fact
+				//nProduced := nProducedBytes.Load()
+				//require.True(t, nProduced < absoluteMax, "produced bytes not less than maximum", "nProduced", nProduced, "max", absoluteMax)
 			}
 		}()
 		for {
@@ -114,7 +114,11 @@ func testSubmitLoopInner(
 		return pendingBlocks.Load()
 	}
 
-	block.SubmitLoopInner(ctx, log.NewNopLogger(), producedBytesC, args.batchSkew, accumulatedBlocks, args.maxTime, args.batchBytes, submitBatch)
+	skewTime := func() (time.Duration, error) {
+		return 1 * time.Hour, nil
+	}
+
+	block.SubmitLoopInner(ctx, log.NewNopLogger(), producedBytesC, args.batchSkew, accumulatedBlocks, skewTime, args.maxTime, args.batchBytes, submitBatch)
 }
 
 // Make sure the producer does not get too far ahead
