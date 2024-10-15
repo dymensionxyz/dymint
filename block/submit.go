@@ -46,7 +46,7 @@ func SubmitLoopInner(
 	bytesProduced chan int, // a channel of block and commit bytes produced
 	maxBatchSkew time.Duration, // max number of blocks that submitter is allowed to have pending
 	unsubmittedBlocksNum func() uint64,
-	unsubmittedBlocksTime func() (time.Duration, error),
+	unsubmittedBlocksTime func() time.Duration,
 	maxBatchTime time.Duration, // max time to allow between batches
 	maxBatchBytes uint64, // max size of serialised batch in bytes
 	createAndSubmitBatch func(maxSizeBytes uint64) (sizeBlocksCommits uint64, err error),
@@ -62,10 +62,7 @@ func SubmitLoopInner(
 		// 'trigger': this thread is responsible for waking up the submitter when a new block arrives, and back-pressures the block production loop
 		// if it gets too far ahead.
 		for {
-			skewTime, err := unsubmittedBlocksTime()
-			if err != nil {
-				return err
-			}
+			skewTime := unsubmittedBlocksTime()
 			if maxBatchSkew < skewTime {
 				// too much stuff is pending submission
 				// we block here until we get a progress nudge from the submitter thread
@@ -103,10 +100,8 @@ func SubmitLoopInner(
 			case <-submitter.C:
 			}
 			pending := pendingBytes.Load()
-			skewTime, err := unsubmittedBlocksTime()
-			if err != nil {
-				return err
-			}
+			skewTime := unsubmittedBlocksTime()
+
 			types.RollappPendingSubmissionsSkewBytes.Set(float64(pendingBytes.Load()))
 			types.RollappPendingSubmissionsSkewBlocks.Set(float64(unsubmittedBlocksNum()))
 			types.RollappPendingSubmissionsSkewTimeHours.Set(float64(skewTime.Hours()))
@@ -115,10 +110,8 @@ func SubmitLoopInner(
 			for {
 				done := ctx.Err() != nil
 				nothingToSubmit := pending == 0
-				skewTime, err := unsubmittedBlocksTime()
-				if err != nil {
-					return err
-				}
+				skewTime := unsubmittedBlocksTime()
+
 				lastSubmissionIsRecent := skewTime < maxBatchTime
 				maxDataNotExceeded := pending <= maxBatchBytes
 				if done || nothingToSubmit || (lastSubmissionIsRecent && maxDataNotExceeded) {
@@ -294,16 +287,16 @@ func (m *Manager) GetUnsubmittedBlocks() uint64 {
 	return m.State.Height() - m.LastSettlementHeight.Load()
 }
 
-func (m *Manager) GetTimeSkew() (time.Duration, error) {
+func (m *Manager) GetTimeSkew() time.Duration {
 	currentBlock, err := m.Store.LoadBlock(m.State.Height())
 	if err != nil {
-		return time.Duration(0), err
+		return time.Duration(0)
 	}
 	lastSubmittedBlock, err := m.Store.LoadBlock(m.LastSubmittedHeight.Load())
 	if err != nil {
-		return time.Duration(0), err
+		return time.Duration(0)
 	}
-	return currentBlock.Header.GetTimestamp().Sub(lastSubmittedBlock.Header.GetTimestamp()), nil
+	return currentBlock.Header.GetTimestamp().Sub(lastSubmittedBlock.Header.GetTimestamp())
 
 }
 

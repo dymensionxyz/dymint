@@ -114,8 +114,8 @@ func testSubmitLoopInner(
 		return pendingBlocks.Load()
 	}
 
-	skewTime := func() (time.Duration, error) {
-		return 1 * time.Hour, nil
+	skewTime := func() time.Duration {
+		return time.Duration(0)
 	}
 
 	block.SubmitLoopInner(ctx, log.NewNopLogger(), producedBytesC, args.batchSkew, accumulatedBlocks, skewTime, args.maxTime, args.batchBytes, submitBatch)
