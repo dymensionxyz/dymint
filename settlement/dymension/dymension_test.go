@@ -22,10 +22,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	sequencertypesmock "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/sequencer"
-	sequencertypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/sequencer"
-	protoutils "github.com/dymensionxyz/dymint/utils/proto"
-
 	"github.com/dymensionxyz/dymint/da"
 	dymensionmock "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/settlement/dymension"
 	rollapptypesmock "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
