@@ -192,7 +192,6 @@ type MockDA struct {
 }
 
 func NewMockDA(t *testing.T) (*MockDA, error) {
-
 	mockDA := &MockDA{}
 	// Create DA
 	// init celestia DA with mock RPC client
