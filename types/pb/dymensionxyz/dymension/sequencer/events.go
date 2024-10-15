@@ -1,4 +1,4 @@
-package types
+package sequencer
 
 // Incentive module event types.
 const (

@@ -1,4 +1,4 @@
-package types
+package sequencer
 
 import (
 	"gopkg.in/yaml.v2"
