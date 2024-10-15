@@ -21,6 +21,8 @@ var (
 	ErrBlobNotFound = errors.New("blob not found")
 	// ErrBlobNotIncluded is returned when blob is not included.
 	ErrBlobNotIncluded = errors.New("blob not included")
+	// ErrBlobNotParsed is returned when blob cannot be parsed
+	ErrBlobNotParsed = errors.New("unable to parse blob to batch")
 	// ErrProofNotMatching is returned when proof does not match.
 	ErrProofNotMatching = errors.New("proof not matching")
 	// ErrNameSpace is returned when wrong namespace used

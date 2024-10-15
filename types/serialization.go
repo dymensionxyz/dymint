@@ -263,12 +263,13 @@ func (s *State) ToProto() (*pb.State, error) {
 		SequencerSet:                     *seqsProto,
 		BaseHeight:                       s.BaseHeight,
 		ConsensusParams:                  s.ConsensusParams,
-		LastHeightConsensusParamsChanged: s.LastHeightConsensusParamsChanged,
+		LastHeightConsensusParamsChanged: int64(s.LastHeightConsensusParamsChanged),
 		LastResultsHash:                  s.LastResultsHash[:],
 		AppHash:                          s.AppHash[:],
 		RollappParams:                    s.RollappParams,
 		LastHeaderHash:                   s.LastHeaderHash[:],
 		LastValidatedHeight:              int64(s.GetLastValidatedHeight()),
+		DrsVersionHistory:                s.DrsVersionHistory,
 	}, nil
 }
 
@@ -287,12 +288,13 @@ func (s *State) FromProto(other *pb.State) error {
 	}
 
 	s.ConsensusParams = other.ConsensusParams
-	s.LastHeightConsensusParamsChanged = other.LastHeightConsensusParamsChanged
+	s.LastHeightConsensusParamsChanged = uint64(other.LastHeightConsensusParamsChanged)
 	copy(s.LastResultsHash[:], other.LastResultsHash)
 	copy(s.AppHash[:], other.AppHash)
 	s.RollappParams = other.RollappParams
 	copy(s.LastHeaderHash[:], other.LastHeaderHash)
 	s.SetLastValidatedHeight(uint64(other.LastValidatedHeight))
+	s.DrsVersionHistory = other.DrsVersionHistory
 	return nil
 }
 

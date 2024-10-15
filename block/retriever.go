@@ -43,7 +43,7 @@ func (m *Manager) applyLocalBlock(height uint64) error {
 		return fmt.Errorf("load commit: %w", gerrc.ErrNotFound)
 	}
 
-	err = m.applyBlockWithFraudHandling(block, commit, types.BlockMetaData{Source: types.LocalDb}, true)
+	err = m.applyBlockWithFraudHandling(block, commit, types.BlockMetaData{Source: types.LocalDb})
 	if err != nil {
 		return fmt.Errorf("apply block from local store: height: %d: %w", height, err)
 	}
@@ -69,13 +69,9 @@ func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
 			if block.Header.Height != m.State.NextHeight() {
 				continue
 			}
-			if err := m.validateBlockBeforeApply(block, batch.Commits[i]); err != nil {
-				m.logger.Error("validate block from DA", "height", block.Header.Height, "err", err)
-				continue
-			}
 
 			// We dont validate because validateBlockBeforeApply already checks if the block is already applied, and we don't need to fail there.
-			err := m.applyBlockWithFraudHandling(block, batch.Commits[i], types.BlockMetaData{Source: types.DA, DAHeight: daMetaData.Height}, false)
+			err := m.applyBlockWithFraudHandling(block, batch.Commits[i], types.BlockMetaData{Source: types.DA, DAHeight: daMetaData.Height})
 			if err != nil {
 				return fmt.Errorf("apply block: height: %d: %w", block.Header.Height, err)
 			}

@@ -3,6 +3,8 @@ package block
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/hex"
+	"errors"
 	"fmt"
 
 	"github.com/dymensionxyz/dymint/da"
@@ -27,11 +29,6 @@ func NewStateUpdateValidator(logger types.Logger, blockManager *Manager) *StateU
 func (v *StateUpdateValidator) ValidateStateUpdate(batch *settlement.ResultRetrieveBatch) error {
 	v.logger.Debug("validating state update", "start height", batch.StartHeight, "end height", batch.EndHeight)
 
-	err := v.validateDRS(batch.StartHeight, batch.EndHeight, batch.DRSVersion)
-	if err != nil {
-		return err
-	}
-
 	var daBlocks []*types.Block
 	var p2pBlocks []*types.Block
 
@@ -52,16 +49,24 @@ func (v *StateUpdateValidator) ValidateStateUpdate(batch *settlement.ResultRetri
 		}
 	}
 
-	// if not all blocks are applied from DA, it is necessary to get all batch blocks from DA
-	numBlocks := batch.EndHeight - batch.StartHeight + 1
-	if uint64(len(daBlocks)) != numBlocks {
+	if uint64(len(daBlocks)) != batch.NumBlocks {
 		daBlocks = []*types.Block{}
 		var daBatch da.ResultRetrieveBatch
 		for {
+
 			daBatch = v.blockManager.Retriever.RetrieveBatches(batch.MetaData.DA)
 			if daBatch.Code == da.StatusSuccess {
 				break
 			}
+			if errors.Is(daBatch.BaseResult.Error, da.ErrBlobNotParsed) {
+				return types.NewErrStateUpdateBlobCorruptedFraud(batch.StateIndex, string(batch.MetaData.DA.Client), batch.MetaData.DA.Height, hex.EncodeToString(batch.MetaData.DA.Commitment))
+			}
+
+			checkBatchResult := v.blockManager.Retriever.CheckBatchAvailability(batch.MetaData.DA)
+			if errors.Is(checkBatchResult.Error, da.ErrBlobNotIncluded) {
+				return types.NewErrStateUpdateBlobNotAvailableFraud(batch.StateIndex, string(batch.MetaData.DA.Client), batch.MetaData.DA.Height, hex.EncodeToString(batch.MetaData.DA.Commitment))
+			}
+
 		}
 		for _, batch := range daBatch.Batches {
 			daBlocks = append(daBlocks, batch.Blocks...)
@@ -69,7 +74,7 @@ func (v *StateUpdateValidator) ValidateStateUpdate(batch *settlement.ResultRetri
 	}
 
 	// validate DA blocks against the state update
-	err = v.ValidateDaBlocks(batch, daBlocks)
+	err := v.ValidateDaBlocks(batch, daBlocks)
 	if err != nil {
 		return err
 	}
@@ -119,10 +124,11 @@ func (v *StateUpdateValidator) ValidateP2PBlocks(daBlocks []*types.Block, p2pBlo
 
 func (v *StateUpdateValidator) ValidateDaBlocks(slBatch *settlement.ResultRetrieveBatch, daBlocks []*types.Block) error {
 	// check numblocks
-	numSlBlocks := len(slBatch.BlockDescriptors)
-	numDABlocks := len(daBlocks)
-	if numSlBlocks != numDABlocks {
-		return fmt.Errorf("num blocks mismatch between state update and DA batch. State index: %d State update blocks: %d DA batch blocks: %d", slBatch.StateIndex, numSlBlocks, numDABlocks)
+	numSlBDs := uint64((len(slBatch.BlockDescriptors)))
+	numDABlocks := uint64(len(daBlocks))
+	numSLBlocks := slBatch.NumBlocks
+	if numSLBlocks != numDABlocks || numSLBlocks != numSlBDs {
+		return types.NewErrStateUpdateNumBlocksNotMatchingFraud(slBatch.EndHeight, numSLBlocks, numDABlocks, numSLBlocks)
 	}
 
 	// check blocks
@@ -140,6 +146,12 @@ func (v *StateUpdateValidator) ValidateDaBlocks(slBatch *settlement.ResultRetrie
 		if !bd.Timestamp.Equal(daBlocks[i].Header.GetTimestamp()) {
 			return types.NewErrStateUpdateTimestampNotMatchingFraud(slBatch.StateIndex, bd.Height, bd.Timestamp, daBlocks[i].Header.GetTimestamp())
 		}
+
+		err := v.validateDRS(slBatch.StateIndex, bd.Height, bd.DrsVersion)
+		if err != nil {
+			return err
+		}
+
 	}
 
 	// TODO(srene): implement sequencer address validation
@@ -147,7 +159,14 @@ func (v *StateUpdateValidator) ValidateDaBlocks(slBatch *settlement.ResultRetrie
 }
 
 // TODO(srene): implement DRS/height verification
-func (v *StateUpdateValidator) validateDRS(startHeight, endHeight uint64, version string) error {
+func (v *StateUpdateValidator) validateDRS(stateIndex uint64, height uint64, version string) error {
+	drs, err := v.blockManager.State.GetDRSVersion(height)
+	if err != nil {
+		panic(fmt.Errorf("unable to validate drs version. DRS: %s. height: %d err: %w", drs, height, err))
+	}
+	if drs != version {
+		return types.NewErrStateUpdateDRSVersionFraud(stateIndex, height, drs, version)
+	}
 	return nil
 }
 
