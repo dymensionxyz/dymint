@@ -2,7 +2,7 @@ package block_test
 
 import (
 	"crypto/rand"
-	"errors"
+	"reflect"
 	"testing"
 	"time"
 
@@ -58,7 +58,7 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 		p2pBlocks          bool
 		doubleSignedBlocks []*types.Block
 		stateUpdateFraud   string
-		expectedErrType    interface{}
+		expectedErrType    error
 	}{
 		{
 			name:               "Successful validation applied from DA",
@@ -79,49 +79,49 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 			p2pBlocks:          true,
 			stateUpdateFraud:   "",
 			doubleSignedBlocks: doubleSigned,
-			expectedErrType:    types.ErrStateUpdateDoubleSigningFraud{},
+			expectedErrType:    &types.ErrStateUpdateDoubleSigningFraud{},
 		},
 		{
 			name:               "Failed validation wrong state roots",
 			p2pBlocks:          true,
 			stateUpdateFraud:   "stateroot",
 			doubleSignedBlocks: nil,
-			expectedErrType:    types.ErrStateUpdateStateRootNotMatchingFraud{},
+			expectedErrType:    &types.ErrStateUpdateStateRootNotMatchingFraud{},
 		},
 		{
 			name:               "Failed validation batch num blocks",
 			p2pBlocks:          true,
 			stateUpdateFraud:   "batchnumblocks",
 			doubleSignedBlocks: nil,
-			expectedErrType:    types.ErrStateUpdateNumBlocksNotMatchingFraud{},
+			expectedErrType:    &types.ErrStateUpdateNumBlocksNotMatchingFraud{},
 		},
 		{
 			name:               "Failed validation batch num bds",
 			p2pBlocks:          true,
 			stateUpdateFraud:   "batchnumbds",
 			doubleSignedBlocks: nil,
-			expectedErrType:    types.ErrStateUpdateNumBlocksNotMatchingFraud{},
+			expectedErrType:    &types.ErrStateUpdateNumBlocksNotMatchingFraud{},
 		},
 		{
 			name:               "Failed validation wrong timestamps",
 			p2pBlocks:          true,
 			stateUpdateFraud:   "timestamp",
 			doubleSignedBlocks: doubleSigned,
-			expectedErrType:    types.ErrStateUpdateTimestampNotMatchingFraud{},
+			expectedErrType:    &types.ErrStateUpdateTimestampNotMatchingFraud{},
 		},
 		{
 			name:               "Failed validation wrong height",
 			p2pBlocks:          true,
 			stateUpdateFraud:   "height",
 			doubleSignedBlocks: doubleSigned,
-			expectedErrType:    types.ErrStateUpdateHeightNotMatchingFraud{},
+			expectedErrType:    &types.ErrStateUpdateHeightNotMatchingFraud{},
 		},
 		{
 			name:               "Failed validation drs version",
 			p2pBlocks:          true,
 			stateUpdateFraud:   "drs",
 			doubleSignedBlocks: nil,
-			expectedErrType:    types.ErrStateUpdateDRSVersionFraud{},
+			expectedErrType:    &types.ErrStateUpdateDRSVersionFraud{},
 		},
 	}
 	for _, tc := range testCases {
@@ -199,8 +199,7 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 			if tc.expectedErrType == nil {
 				assert.NoError(t, err)
 			} else {
-				assert.True(t, errors.As(err, &tc.expectedErrType),
-					"expected error of type %T, got %T", tc.expectedErrType, err)
+				require.Equal(t, reflect.ValueOf(tc.expectedErrType).Type(), reflect.TypeOf(err))
 			}
 
 		})
@@ -249,7 +248,7 @@ func TestStateUpdateValidator_ValidateDAFraud(t *testing.T) {
 		name              string
 		checkAvailability bool
 		blobData          []byte
-		expectedErrType   interface{}
+		expectedErrType   error
 	}{
 		{
 			name:              "Successful DA Blob",
@@ -261,13 +260,13 @@ func TestStateUpdateValidator_ValidateDAFraud(t *testing.T) {
 			name:              "Blob not valid",
 			checkAvailability: false,
 			blobData:          randomData,
-			expectedErrType:   types.ErrStateUpdateBlobCorruptedFraud{},
+			expectedErrType:   &types.ErrStateUpdateBlobCorruptedFraud{},
 		},
 		{
 			name:              "Blob unavailable",
 			checkAvailability: true,
 			blobData:          batchData,
-			expectedErrType:   types.ErrStateUpdateBlobNotAvailableFraud{},
+			expectedErrType:   &types.ErrStateUpdateBlobNotAvailableFraud{},
 		},
 	}
 
@@ -333,8 +332,7 @@ func TestStateUpdateValidator_ValidateDAFraud(t *testing.T) {
 			if tc.expectedErrType == nil {
 				assert.NoError(t, err)
 			} else {
-				assert.True(t, errors.As(err, &tc.expectedErrType),
-					"expected error of type %T, got %T", tc.expectedErrType, err)
+				require.Equal(t, reflect.ValueOf(tc.expectedErrType).Type(), reflect.TypeOf(err))
 			}
 		})
 	}
