@@ -64,7 +64,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	// In case the following true, it means we crashed after the app commit but before updating the state
 	// In that case we'll want to align the state with the app commit result, as if the block was applied.
 	if isBlockAlreadyApplied {
-		err := m.UpdateStateFromApp()
+		err := m.UpdateStateFromApp(block.Header.Hash())
 		if err != nil {
 			return fmt.Errorf("update state from app: %w", err)
 		}

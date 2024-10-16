@@ -76,7 +76,7 @@ func NewStateFromGenesis(genDoc *tmtypes.GenesisDoc) (*types.State, error) {
 }
 
 // UpdateStateFromApp is responsible for aligning the state of the store from the abci app
-func (m *Manager) UpdateStateFromApp() error {
+func (m *Manager) UpdateStateFromApp(blockHeaderHash [32]byte) error {
 	proxyAppInfo, err := m.Executor.GetAppInfo()
 	if err != nil {
 		return errorsmod.Wrap(err, "get app info")
@@ -88,13 +88,8 @@ func (m *Manager) UpdateStateFromApp() error {
 		return errorsmod.Wrap(err, "load block responses")
 	}
 
-	block, err := m.Store.LoadBlock(appHeight)
-	if err != nil {
-		return errorsmod.Wrap(err, "load block")
-	}
-
 	// update the state with the app hashes created on the app commit
-	m.Executor.UpdateStateAfterCommit(m.State, resp, proxyAppInfo.LastBlockAppHash, appHeight, block.Header.Hash())
+	m.Executor.UpdateStateAfterCommit(m.State, resp, proxyAppInfo.LastBlockAppHash, appHeight, blockHeaderHash)
 
 	return nil
 }
