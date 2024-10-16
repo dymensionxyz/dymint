@@ -51,6 +51,7 @@ func TestClientStartup(t *testing.T) {
 }
 
 // TestBootstrapping TODO: this test is flaky in main. Try running it 100 times to reproduce.
+// https://github.com/dymensionxyz/dymint/issues/869
 func TestBootstrapping(t *testing.T) {
 	assert := assert.New(t)
 	logger := log.TestingLogger()

@@ -94,14 +94,6 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int)
 	}
 }
 
-// nextProposerInfo holds information about the next proposer.
-type nextProposerInfo struct {
-	// nextProposerHash is a tendermint-compatible hash of the sequencer.
-	nextProposerHash [32]byte
-	// nextProposerAddr is a sequencer's settlement address.
-	nextProposerAddr string
-}
-
 // ProduceApplyGossipLastBlock produces and applies a block with the given nextProposerHash.
 func (m *Manager) ProduceApplyGossipLastBlock(ctx context.Context, nextProposerHash [32]byte) (err error) {
 	_, _, err = m.produceApplyGossip(ctx, true, &nextProposerHash)
