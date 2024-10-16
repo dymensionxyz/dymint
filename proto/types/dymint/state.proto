@@ -48,6 +48,9 @@ message State {
 
   // Proposer is a sequencer that acts as a proposer. Can be nil if no proposer is set.
   Sequencer proposer = 20;
+
+  google.protobuf.Timestamp last_submitted_block_time = 21 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+
 }
 
 //rollapp params defined in genesis and updated via gov proposal

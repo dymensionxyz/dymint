@@ -261,17 +261,18 @@ func (s *State) ToProto() (*pb.State, error) {
 	}
 
 	return &pb.State{
-		Version:         &s.Version,
-		ChainId:         s.ChainID,
-		InitialHeight:   int64(s.InitialHeight),
-		LastBlockHeight: int64(s.Height()),
-		LastBlockTime:   s.LastBlockTime,
-		ConsensusParams: s.ConsensusParams,
-		LastResultsHash: s.LastResultsHash[:],
-		LastHeaderHash:  s.LastHeaderHash[:],
-		AppHash:         s.AppHash[:],
-		RollappParams:   s.RollappParams,
-		Proposer:        proposerProto,
+		Version:                &s.Version,
+		ChainId:                s.ChainID,
+		InitialHeight:          int64(s.InitialHeight),
+		LastBlockHeight:        int64(s.Height()),
+		LastBlockTime:          s.LastBlockTime,
+		ConsensusParams:        s.ConsensusParams,
+		LastResultsHash:        s.LastResultsHash[:],
+		LastHeaderHash:         s.LastHeaderHash[:],
+		AppHash:                s.AppHash[:],
+		RollappParams:          s.RollappParams,
+		Proposer:               proposerProto,
+		LastSubmittedBlockTime: s.LastSubmittedBlockTime,
 	}, nil
 }
 
@@ -298,7 +299,7 @@ func (s *State) FromProto(other *pb.State) error {
 	copy(s.AppHash[:], other.AppHash)
 	s.RollappParams = other.RollappParams
 	s.LastBlockTime = other.LastBlockTime
-
+	s.LastSubmittedBlockTime = other.LastSubmittedBlockTime
 	return nil
 }
 
