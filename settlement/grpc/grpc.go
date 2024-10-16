@@ -278,7 +278,6 @@ func (c *Client) saveBatch(batch *settlement.Batch) error {
 }
 
 func (c *Client) convertBatchtoSettlementBatch(batch *types.Batch, daResult *da.ResultSubmitBatch) *settlement.Batch {
-
 	blockDescriptors := make([]rollapptypes.BlockDescriptor, len(batch.Blocks))
 	for index, block := range batch.Blocks {
 		blockDescriptor := rollapptypes.BlockDescriptor{
