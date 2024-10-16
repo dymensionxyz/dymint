@@ -268,6 +268,7 @@ func (s *State) ToProto() (*pb.State, error) {
 		LastResultsHash:                  s.LastResultsHash[:],
 		AppHash:                          s.AppHash[:],
 		RollappParams:                    s.RollappParams,
+		LastSubmittedBlockTime:           s.LastSubmittedBlockTime,
 	}, nil
 }
 
@@ -291,7 +292,7 @@ func (s *State) FromProto(other *pb.State) error {
 	copy(s.AppHash[:], other.AppHash)
 	s.RollappParams = other.RollappParams
 	s.LastBlockTime = other.LastBlockTime
-
+	s.LastSubmittedBlockTime = other.LastSubmittedBlockTime
 	return nil
 }
 
