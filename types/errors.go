@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
+	tmcrypto "github.com/tendermint/tendermint/crypto"
 )
 
 var (
