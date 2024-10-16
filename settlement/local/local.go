@@ -272,6 +272,17 @@ func (c *Client) retrieveBatchAtStateIndex(slStateIndex uint64) (*settlement.Res
 }
 
 func (c *Client) convertBatchToSettlementBatch(batch *types.Batch, daResult *da.ResultSubmitBatch) *settlement.Batch {
+
+	blockDescriptors := make([]rollapptypes.BlockDescriptor, len(batch.Blocks))
+	for index, block := range batch.Blocks {
+		blockDescriptor := rollapptypes.BlockDescriptor{
+			Height:    block.Header.Height,
+			StateRoot: block.Header.AppHash[:],
+			Timestamp: block.Header.GetTimestamp(),
+		}
+		blockDescriptors[index] = blockDescriptor
+	}
+
 	settlementBatch := &settlement.Batch{
 		Sequencer:   c.GetProposer().SettlementAddress,
 		StartHeight: batch.StartHeight(),
@@ -282,6 +293,7 @@ func (c *Client) convertBatchToSettlementBatch(batch *types.Batch, daResult *da.
 				Client: daResult.SubmitMetaData.Client,
 			},
 		},
+		BlockDescriptors: blockDescriptors,
 	}
 	for _, block := range batch.Blocks {
 		settlementBatch.AppHashes = append(settlementBatch.AppHashes, block.Header.AppHash)
