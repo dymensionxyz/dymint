@@ -284,13 +284,13 @@ func (m *Manager) updateFromLastSettlementState() error {
 		m.LastSettlementHeight.Store(uint64(m.Genesis.InitialHeight - 1))
 		return nil
 	}
-
 	if err != nil {
 		// TODO: separate between fresh rollapp and non-registered rollapp
 		return err
 	}
 
 	m.LastSettlementHeight.Store(latestHeight)
+	m.State.LastSubmittedBlockTime = res.BlockDescriptors[len(res.BlockDescriptors)-1].Timestamp
 
 	if latestHeight >= m.State.NextHeight() {
 		m.UpdateTargetHeight(latestHeight)

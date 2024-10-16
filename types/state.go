@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync/atomic"
+	"time"
 
 	// TODO(tzdybal): copy to local project?
 
@@ -43,6 +44,12 @@ type State struct {
 
 	// LastHeaderHash is the hash of the last block header.
 	LastHeaderHash [32]byte
+
+	// Last block time
+	LastBlockTime time.Time
+
+	// Last submitted block time
+	LastSubmittedBlockTime time.Time
 }
 
 func (s *State) GetProposer() *Sequencer {
@@ -96,6 +103,10 @@ func (s *State) NextHeight() uint64 {
 		return s.InitialHeight
 	}
 	return s.Height() + 1
+}
+
+func (s *State) GetSkewTime() time.Duration {
+	return s.LastBlockTime.Sub(s.LastSubmittedBlockTime)
 }
 
 // SetRollappParamsFromGenesis sets the rollapp consensus params from genesis

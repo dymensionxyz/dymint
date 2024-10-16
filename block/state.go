@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"time"
 
 	errorsmod "cosmossdk.io/errors"
 
@@ -64,6 +65,7 @@ func NewStateFromGenesis(genDoc *tmtypes.GenesisDoc) (*types.State, error) {
 		ConsensusParams: *genDoc.ConsensusParams,
 	}
 	s.SetHeight(0)
+	s.LastBlockTime = time.Now()
 	copy(s.AppHash[:], genDoc.AppHash)
 
 	err = s.SetRollappParamsFromGenesis(genDoc.AppState)
@@ -123,7 +125,7 @@ func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResp
 	copy(s.LastHeaderHash[:], lastHeaderHash[:])
 
 	s.SetHeight(height)
-
+	s.LastBlockTime = time.Now()
 	if resp.EndBlock.ConsensusParamUpdates != nil {
 		s.ConsensusParams.Block.MaxGas = resp.EndBlock.ConsensusParamUpdates.Block.MaxGas
 		s.ConsensusParams.Block.MaxBytes = resp.EndBlock.ConsensusParamUpdates.Block.MaxBytes

@@ -78,7 +78,7 @@ func TestMempoolDirectly(t *testing.T) {
 			BlockTime:        1 * time.Second,
 			BatchSubmitTime:  60 * time.Second,
 			BatchSubmitBytes: 100000,
-			BatchSkew:        24 * time.Hour,
+			BatchSkew:        10,
 		},
 		DAConfig:         "",
 		SettlementLayer:  "mock",

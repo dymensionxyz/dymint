@@ -250,6 +250,7 @@ func (m *Manager) SubmitBatch(batch *types.Batch) error {
 
 	types.RollappHubHeightGauge.Set(float64(batch.EndHeight()))
 	m.LastSettlementHeight.Store(batch.EndHeight())
+	m.State.LastSubmittedBlockTime = time.Now()
 
 	return nil
 }
