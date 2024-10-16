@@ -107,7 +107,15 @@ func NewManager(
 	if err != nil {
 		return nil, err
 	}
-	exec, err := NewExecutor(localAddress, genesis.ChainID, mempool, proxyApp, eventBus, logger)
+	exec, err := NewExecutor(
+		localAddress,
+		genesis.ChainID,
+		mempool,
+		proxyApp,
+		eventBus,
+		nil, // TODO add ConsensusMessagesStream
+		logger,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("create block executor: %w", err)
 	}
@@ -174,6 +182,9 @@ func (m *Manager) Start(ctx context.Context) error {
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		return m.PruningLoop(ctx)
 	})
+
+	// listen to new bonded sequencers events to add them in the sequencer set
+	go uevent.MustSubscribe(ctx, m.Pubsub, "newBondedSequencer", settlement.EventQueryNewBondedSequencer, m.UpdateSequencerSet, m.logger)
 
 	/* ----------------------------- full node mode ----------------------------- */
 	if !isProposer {

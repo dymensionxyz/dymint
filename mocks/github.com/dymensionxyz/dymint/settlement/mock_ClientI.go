@@ -417,6 +417,62 @@ func (_c *MockClientI_GetProposer_Call) RunAndReturn(run func() *types.Sequencer
 	return _c
 }
 
+// GetSequencerByAddress provides a mock function with given fields: address
+func (_m *MockClientI) GetSequencerByAddress(address string) (types.Sequencer, error) {
+	ret := _m.Called(address)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetSequencerByAddress")
+	}
+
+	var r0 types.Sequencer
+	var r1 error
+	if rf, ok := ret.Get(0).(func(string) (types.Sequencer, error)); ok {
+		return rf(address)
+	}
+	if rf, ok := ret.Get(0).(func(string) types.Sequencer); ok {
+		r0 = rf(address)
+	} else {
+		r0 = ret.Get(0).(types.Sequencer)
+	}
+
+	if rf, ok := ret.Get(1).(func(string) error); ok {
+		r1 = rf(address)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockClientI_GetSequencerByAddress_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetSequencerByAddress'
+type MockClientI_GetSequencerByAddress_Call struct {
+	*mock.Call
+}
+
+// GetSequencerByAddress is a helper method to define mock.On call
+//   - address string
+func (_e *MockClientI_Expecter) GetSequencerByAddress(address interface{}) *MockClientI_GetSequencerByAddress_Call {
+	return &MockClientI_GetSequencerByAddress_Call{Call: _e.mock.On("GetSequencerByAddress", address)}
+}
+
+func (_c *MockClientI_GetSequencerByAddress_Call) Run(run func(address string)) *MockClientI_GetSequencerByAddress_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(string))
+	})
+	return _c
+}
+
+func (_c *MockClientI_GetSequencerByAddress_Call) Return(_a0 types.Sequencer, _a1 error) *MockClientI_GetSequencerByAddress_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockClientI_GetSequencerByAddress_Call) RunAndReturn(run func(string) (types.Sequencer, error)) *MockClientI_GetSequencerByAddress_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // Init provides a mock function with given fields: config, rollappId, _a2, logger, options
 func (_m *MockClientI) Init(config settlement.Config, rollappId string, _a2 *pubsub.Server, logger types.Logger, options ...settlement.Option) error {
 	_va := make([]interface{}, len(options))

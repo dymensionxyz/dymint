@@ -4,6 +4,7 @@ option go_package = "github.com/dymensionxyz/dymint/types/pb/dymint";
 import "types/tendermint/abci/types.proto";
 import "types/tendermint/types/types.proto";
 import "types/tendermint/types/validator.proto";
+import "google/protobuf/any.proto";
 
 // Version captures the consensus rules for processing a block in the blockchain,
 // including all blockchain data structures and the rules of the application's
@@ -74,6 +75,7 @@ message Data {
 	repeated bytes txs = 1;
 	repeated bytes intermediate_state_roots = 2;
 	repeated tendermint.abci.Evidence evidence = 3;
+	repeated google.protobuf.Any consensus_messages = 4;
 }
 
 message Block {	

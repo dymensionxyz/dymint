@@ -10,7 +10,7 @@ packages:
   github.com/dymensionxyz/dymint/settlement/dymension:
     interfaces:
       CosmosClient:
-  github.com/dymensionxyz/dymint/third_party/dymension/sequencer/types:
+  github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/sequencer:
     interfaces:
       QueryClient:
   github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp:

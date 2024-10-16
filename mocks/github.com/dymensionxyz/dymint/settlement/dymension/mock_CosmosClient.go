@@ -17,7 +17,7 @@ import (
 
 	rollapp "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
 
-	sequencertypes "github.com/dymensionxyz/dymint/third_party/dymension/sequencer/types"
+	sequencertypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/sequencer"
 
 	types "github.com/cosmos/cosmos-sdk/types"
 )

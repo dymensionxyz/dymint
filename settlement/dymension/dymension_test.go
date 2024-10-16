@@ -24,13 +24,14 @@ import (
 
 	"github.com/dymensionxyz/dymint/da"
 	dymensionmock "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/settlement/dymension"
-	sequencertypesmock "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/third_party/dymension/sequencer/types"
 	rollapptypesmock "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
+	sequencertypesmock "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/sequencer"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/settlement/dymension"
 	"github.com/dymensionxyz/dymint/testutil"
-	sequencertypes "github.com/dymensionxyz/dymint/third_party/dymension/sequencer/types"
 	rollapptypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
+	sequencertypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/sequencer"
+	protoutils "github.com/dymensionxyz/dymint/utils/proto"
 )
 
 func TestGetSequencers(t *testing.T) {
@@ -221,7 +222,7 @@ func generateSequencerByRollappResponse(t *testing.T, count int) *sequencertypes
 		require.NoError(t, err)
 
 		seq := sequencertypes.Sequencer{
-			DymintPubKey: pk,
+			DymintPubKey: protoutils.CosmosToGogo(pk),
 			Status:       sequencertypes.Bonded,
 		}
 		sequencerInfoList = append(sequencerInfoList, seq)
