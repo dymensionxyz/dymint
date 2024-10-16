@@ -134,9 +134,9 @@ func NewManager(
 		blockCache: &Cache{
 			cache: make(map[uint64]types.CachedBlock),
 		},
-		FraudHandler: nil,                  // TODO: create a default handler
-		pruningC:     make(chan int64, 10), // use of buffered channel to avoid blocking applyBlock thread. In case channel is full, pruning will be skipped, but the retain height can be pruned in the next iteration.
+		pruningC: make(chan int64, 10), // use of buffered channel to avoid blocking applyBlock thread. In case channel is full, pruning will be skipped, but the retain height can be pruned in the next iteration.
 	}
+	m.setFraudHandler(NewFreezeHandler(m))
 
 	err = m.LoadStateOnInit(store, genesis, logger)
 	if err != nil {
@@ -353,4 +353,9 @@ func (m *Manager) setDA(daconfig string, dalcKV store.KV, logger log.Logger) err
 	}
 	m.Retriever = retriever
 	return nil
+}
+
+// setFraudHandler sets the fraud handler for the block manager.
+func (m *Manager) setFraudHandler(handler *FreezeHandler) {
+	m.FraudHandler = handler
 }
