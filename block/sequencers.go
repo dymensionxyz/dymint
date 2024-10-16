@@ -6,9 +6,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/tendermint/tendermint/libs/pubsub"
+
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
-	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
 func (m *Manager) MonitorSequencerRotation(ctx context.Context, rotateC chan string) error {
@@ -120,10 +121,7 @@ func (m *Manager) CompleteRotation(ctx context.Context, nextSeqAddr string) erro
 		copy(nextSeqHash[:], seq.Hash())
 	}
 
-	err := m.CreateAndPostLastBatch(ctx, nextProposerInfo{
-		nextProposerHash: nextSeqHash,
-		nextProposerAddr: nextSeqAddr,
-	})
+	err := m.CreateAndPostLastBatch(ctx, nextSeqHash)
 	if err != nil {
 		return fmt.Errorf("create and post last batch: %w", err)
 	}
@@ -134,7 +132,7 @@ func (m *Manager) CompleteRotation(ctx context.Context, nextSeqAddr string) erro
 
 // CreateAndPostLastBatch creates and posts the last batch to the hub
 // this called after manager shuts down the block producer and submitter
-func (m *Manager) CreateAndPostLastBatch(ctx context.Context, nextProposerInfo nextProposerInfo) error {
+func (m *Manager) CreateAndPostLastBatch(ctx context.Context, nextSeqHash [32]byte) error {
 	h := m.State.Height()
 	block, err := m.Store.LoadBlock(h)
 	if err != nil {
@@ -142,10 +140,10 @@ func (m *Manager) CreateAndPostLastBatch(ctx context.Context, nextProposerInfo n
 	}
 
 	// check if the last block already produced with nextProposerHash set
-	if bytes.Equal(block.Header.NextSequencersHash[:], nextProposerInfo.nextProposerHash[:]) {
+	if bytes.Equal(block.Header.NextSequencersHash[:], nextSeqHash[:]) {
 		m.logger.Debug("Last block already produced and applied.")
 	} else {
-		err := m.ProduceApplyGossipLastBlock(ctx, nextProposerInfo)
+		err := m.ProduceApplyGossipLastBlock(ctx, nextSeqHash)
 		if err != nil {
 			return fmt.Errorf("produce apply gossip last block: %w", err)
 		}

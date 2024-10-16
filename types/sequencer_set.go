@@ -97,6 +97,18 @@ func (s *SequencerSet) SetProposerByHash(hash []byte) error {
 	return ErrMissingProposerPubKey
 }
 
+// GetByHash gets the sequencer by hash. It returns an error if the hash is not found in the sequencer set.
+func (s *SequencerSet) GetByHash(hash []byte) (Sequencer, error) {
+	for _, seq := range s.Sequencers {
+		if bytes.Equal(seq.Hash(), hash) {
+			return seq, nil
+		}
+	}
+	// can't find the proposer in the sequencer set
+	// can happen in cases where the node is not synced with the SL and the sequencer array in the set is not updated
+	return Sequencer{}, ErrMissingProposerPubKey
+}
+
 // SetProposer sets the proposer and adds it to the sequencer set if not already present.
 func (s *SequencerSet) SetProposer(proposer *Sequencer) {
 	if proposer == nil {

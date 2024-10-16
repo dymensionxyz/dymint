@@ -6,22 +6,16 @@ import (
 	"fmt"
 	"time"
 
-	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
-	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
-	"github.com/gogo/protobuf/proto"
 	tmed25519 "github.com/tendermint/tendermint/crypto/ed25519"
 	cmtproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	tmtypes "github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 
-	sequencertypes "github.com/dymensionxyz/dymint/types/pb/rollapp/sequencers/types"
-
 	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
-	protoutils "github.com/dymensionxyz/dymint/utils/proto"
 )
 
 // ProduceBlockLoop is calling publishBlock in a loop as long as we're synced.
@@ -109,8 +103,8 @@ type nextProposerInfo struct {
 }
 
 // ProduceApplyGossipLastBlock produces and applies a block with the given nextProposerHash.
-func (m *Manager) ProduceApplyGossipLastBlock(ctx context.Context, nextProposerInfo nextProposerInfo) (err error) {
-	_, _, err = m.produceApplyGossip(ctx, true, &nextProposerInfo)
+func (m *Manager) ProduceApplyGossipLastBlock(ctx context.Context, nextProposerHash [32]byte) (err error) {
+	_, _, err = m.produceApplyGossip(ctx, true, &nextProposerHash)
 	return err
 }
 
@@ -118,8 +112,8 @@ func (m *Manager) ProduceApplyGossipBlock(ctx context.Context, allowEmpty bool) 
 	return m.produceApplyGossip(ctx, allowEmpty, nil)
 }
 
-func (m *Manager) produceApplyGossip(ctx context.Context, allowEmpty bool, nextProposerInfo *nextProposerInfo) (block *types.Block, commit *types.Commit, err error) {
-	block, commit, err = m.produceBlock(allowEmpty, nextProposerInfo)
+func (m *Manager) produceApplyGossip(ctx context.Context, allowEmpty bool, nextProposerHash *[32]byte) (block *types.Block, commit *types.Commit, err error) {
+	block, commit, err = m.produceBlock(allowEmpty, nextProposerHash)
 	if err != nil {
 		return nil, nil, fmt.Errorf("produce block: %w", err)
 	}
@@ -135,7 +129,7 @@ func (m *Manager) produceApplyGossip(ctx context.Context, allowEmpty bool, nextP
 	return block, commit, nil
 }
 
-func (m *Manager) produceBlock(allowEmpty bool, nextProposerInfo *nextProposerInfo) (*types.Block, *types.Commit, error) {
+func (m *Manager) produceBlock(allowEmpty bool, nextProposerHash *[32]byte) (*types.Block, *types.Commit, error) {
 	newHeight := m.State.NextHeight()
 	lastHeaderHash, lastCommit, err := m.GetPreviousBlockHashes(newHeight)
 	if err != nil {
@@ -167,10 +161,14 @@ func (m *Manager) produceBlock(allowEmpty bool, nextProposerInfo *nextProposerIn
 		lastProposerBlock    = false // Indicates that the block is the last for the current seq. True during the rotation.
 	)
 	// if nextProposerInfo is set, we create a last block
-	if nextProposerInfo != nil {
+	if nextProposerHash != nil {
+		nextSeq, err := m.State.Sequencers.GetByHash(nextProposerHash[:])
+		if err != nil {
+			return nil, nil, fmt.Errorf("get next sequencer by hash: %w", err)
+		}
 		maxBlockDataSize = 0
-		proposerHashForBlock = nextProposerInfo.nextProposerHash
-		nextProposerAddr = nextProposerInfo.nextProposerAddr
+		proposerHashForBlock = *nextProposerHash
+		nextProposerAddr = nextSeq.SettlementAddress
 		lastProposerBlock = true
 	}
 	// TODO: Ideally, there should be only one point for adding consensus messages. Given that they come from
@@ -195,45 +193,6 @@ func (m *Manager) produceBlock(allowEmpty bool, nextProposerInfo *nextProposerIn
 	types.RollappBlockSizeBytesGauge.Set(float64(len(block.Data.Txs)))
 	types.RollappBlockSizeTxsGauge.Set(float64(len(block.Data.Txs)))
 	return block, commit, nil
-}
-
-// consensusMsgsOnCreateBlock forms a list of consensus messages that need execution on rollapp's BeginBlock.
-// Currently, we need to create a sequencer in the rollapp if it doesn't exist in the following cases:
-//   - On the very first block after the genesis or
-//   - On the last block of the current sequencer (eg, during the rotation).
-func (m *Manager) consensusMsgsOnCreateBlock(
-	nextProposerSettlementAddr string,
-	lastSeqBlock bool, // Indicates that the block is the last for the current seq. True during the rotation.
-) ([]proto.Message, error) {
-	if !m.State.IsGenesis() && !lastSeqBlock {
-		return nil, nil
-	}
-
-	nextSeq := m.State.Sequencers.GetByAddress(nextProposerSettlementAddr)
-	// Sanity check. Must never happen in practice. The sequencer's existence is verified beforehand in Manager.CompleteRotation.
-	if nextSeq == nil {
-		return nil, fmt.Errorf("no sequencer found for address while creating a new block: %s", nextProposerSettlementAddr)
-	}
-
-	// Get proposer's consensus public key and convert it to proto.Any
-	val, err := nextSeq.TMValidator()
-	if err != nil {
-		return nil, fmt.Errorf("convert next squencer to tendermint validator: %w", err)
-	}
-	pubKey, err := cryptocodec.FromTmPubKeyInterface(val.PubKey)
-	if err != nil {
-		return nil, fmt.Errorf("convert tendermint pubkey to cosmos: %w", err)
-	}
-	anyPK, err := codectypes.NewAnyWithValue(pubKey)
-	if err != nil {
-		return nil, fmt.Errorf("convert cosmos pubkey to any: %w", err)
-	}
-
-	return []proto.Message{&sequencertypes.ConsensusMsgUpsertSequencer{
-		Operator:   nextProposerSettlementAddr,
-		ConsPubKey: protoutils.CosmosToGogo(anyPK),
-		RewardAddr: nextProposerSettlementAddr,
-	}}, nil
 }
 
 // create commit for block
