@@ -112,7 +112,7 @@ func NewManager(
 		mempool,
 		proxyApp,
 		eventBus,
-		nil, // TODO add ConsensusMessagesStream: https://github.com/dymensionxyz/dymint/issues/1125
+		NewConsensusMessagesQueue(), // TODO properly specify ConsensusMessagesStream: https://github.com/dymensionxyz/dymint/issues/1125
 		logger,
 	)
 	if err != nil {
@@ -180,9 +180,6 @@ func (m *Manager) Start(ctx context.Context) error {
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		return m.PruningLoop(ctx)
 	})
-
-	// listen to new bonded sequencers events to add them in the sequencer set
-	go uevent.MustSubscribe(ctx, m.Pubsub, "newBondedSequencer", settlement.EventQueryNewBondedSequencer, m.UpdateSequencerSet, m.logger)
 
 	/* ----------------------------- full node mode ----------------------------- */
 	if !isProposer {

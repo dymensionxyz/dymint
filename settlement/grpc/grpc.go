@@ -235,7 +235,12 @@ func (c *Client) GetProposer() *types.Sequencer {
 		c.logger.Error("Error converting pubkey to settlement address", "err", err)
 		return nil
 	}
-	return types.NewSequencer(tmPubKey, settlementAddr)
+	return types.NewSequencer(
+		tmPubKey,
+		settlementAddr,
+		settlementAddr,
+		[]string{},
+	)
 }
 
 // GetSequencerByAddress returns all sequencer information by its address. Not implemented since it will not be used in grpc SL

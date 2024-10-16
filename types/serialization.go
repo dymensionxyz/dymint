@@ -292,60 +292,80 @@ func (s *State) FromProto(other *pb.State) error {
 	return nil
 }
 
+// ToProto converts Sequencer into protobuf representation and returns it.
+func (s *Sequencer) ToProto() (*pb.Sequencer, error) {
+	protoVal, err := s.val.ToProto()
+	if err != nil {
+		return nil, fmt.Errorf("tendermint validator to proto: %w", err)
+	}
+	return &pb.Sequencer{
+		SettlementAddress:   s.SettlementAddress,
+		Validator:           protoVal,
+		RewardAddr:          s.RewardAddr,
+		WhitelistedRelayers: s.WhitelistedRelayers,
+	}, nil
+}
+
+// SequencerFromProto fills Sequencer with data from its protobuf representation.
+func SequencerFromProto(seq *pb.Sequencer) (Sequencer, error) {
+	val, err := types.ValidatorFromProto(seq.Validator)
+	if err != nil {
+		return Sequencer{}, fmt.Errorf("tendermint validator from proto: %w", err)
+	}
+	return Sequencer{
+		SettlementAddress:   seq.SettlementAddress,
+		RewardAddr:          seq.RewardAddr,
+		WhitelistedRelayers: seq.WhitelistedRelayers,
+		val:                 *val,
+	}, nil
+}
+
 // ToProto converts SequencerSet into protobuf representation and returns it.
 func (s *SequencerSet) ToProto() (*pb.SequencerSet, error) {
-	protoSet := new(pb.SequencerSet)
-
-	seqsProto := make([]*pb.Sequencer, len(s.Sequencers))
+	sequencers := make([]*pb.Sequencer, len(s.Sequencers))
 	for i := 0; i < len(s.Sequencers); i++ {
-		valp, err := s.Sequencers[i].val.ToProto()
+		seq, err := s.Sequencers[i].ToProto()
 		if err != nil {
-			return nil, fmt.Errorf("ToProto: SequencerSet: %w", err)
+			return nil, fmt.Errorf("Sequencer.ToProto: %w", err)
 		}
-		seq := new(pb.Sequencer)
-		seq.SettlementAddress = s.Sequencers[i].SettlementAddress
-		seq.Validator = valp
-		seqsProto[i] = seq
+		sequencers[i] = seq
 	}
-	protoSet.Sequencers = seqsProto
 
+	var proposer *pb.Sequencer
 	if s.Proposer != nil {
-		valp, err := s.Proposer.val.ToProto()
+		prop, err := s.Proposer.ToProto()
 		if err != nil {
-			return nil, fmt.Errorf("ToProto: SequencerSet: %w", err)
+			return nil, fmt.Errorf("Sequencer.ToProto (proposer): %w", err)
 		}
-		seq := new(pb.Sequencer)
-		seq.Validator = valp
-		seq.SettlementAddress = s.Proposer.SettlementAddress
-		protoSet.Proposer = seq
+		proposer = prop
 	}
 
-	return protoSet, nil
+	return &pb.SequencerSet{
+		Sequencers: sequencers,
+		Proposer:   proposer,
+	}, nil
 }
 
 // FromProto fills SequencerSet with data from its protobuf representation.
 func (s *SequencerSet) FromProto(protoSet pb.SequencerSet) error {
-	seqs := make([]Sequencer, len(protoSet.Sequencers))
+	sequencers := make([]Sequencer, len(protoSet.Sequencers))
 	for i, seqProto := range protoSet.Sequencers {
-		val, err := types.ValidatorFromProto(seqProto.Validator)
+		seq, err := SequencerFromProto(seqProto)
 		if err != nil {
-			return fmt.Errorf("fromProto: SequencerSet: %w", err)
+			return fmt.Errorf("SequencerFromProto: %w", err)
 		}
-		seqs[i].val = *val
-		seqs[i].SettlementAddress = seqProto.SettlementAddress
+		sequencers[i] = seq
 	}
-	s.Sequencers = seqs
+	s.Sequencers = sequencers
 
 	if protoSet.Proposer != nil {
-		valProposer, err := types.ValidatorFromProto(protoSet.Proposer.Validator)
+		proposer, err := SequencerFromProto(protoSet.Proposer)
 		if err != nil {
-			return fmt.Errorf("fromProto: SequencerSet proposer: %w", err)
+			return fmt.Errorf("SequencerFromProto (proposer): %w", err)
 		}
-		proposer := new(Sequencer)
-		proposer.val = *valProposer
-		proposer.SettlementAddress = protoSet.Proposer.SettlementAddress
-		s.Proposer = proposer
+		s.Proposer = &proposer
 	}
+
 	return nil
 }
 

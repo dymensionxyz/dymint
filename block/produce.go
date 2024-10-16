@@ -149,29 +149,13 @@ func (m *Manager) produceBlock(allowEmpty bool, nextProposerHash *[32]byte) (*ty
 	var (
 		maxBlockDataSize     = uint64(float64(m.Conf.BatchSubmitBytes) * types.MaxBlockSizeAdjustment)
 		proposerHashForBlock = [32]byte(m.State.Sequencers.ProposerHash())
-		nextProposerAddr     = m.State.Sequencers.Proposer.SettlementAddress
-		lastProposerBlock    = false // Indicates that the block is the last for the current seq. True during the rotation.
 	)
 	// if nextProposerInfo is set, we create a last block
 	if nextProposerHash != nil {
-		nextSeq, err := m.State.Sequencers.GetByHash(nextProposerHash[:])
-		if err != nil {
-			return nil, nil, fmt.Errorf("get next sequencer by hash: %w", err)
-		}
 		maxBlockDataSize = 0
 		proposerHashForBlock = *nextProposerHash
-		nextProposerAddr = nextSeq.SettlementAddress
-		lastProposerBlock = true
 	}
-	// TODO: Ideally, there should be only one point for adding consensus messages. Given that they come from
-	// ConsensusMessagesStream, this should send them there instead of having to ways of sending consensusMessages.
-	// There is no implementation of the stream as of now. Unify the approach of adding consensus messages when
-	// the stream is implemented! https://github.com/dymensionxyz/dymint/issues/1125
-	consensusMsgs, err := m.consensusMsgsOnCreateBlock(nextProposerAddr, lastProposerBlock)
-	if err != nil {
-		return nil, nil, fmt.Errorf("create consensus msgs for create block: last proposer block: %v, height: %d, next proposer addr: %s: %w: %w", lastProposerBlock, newHeight, nextProposerAddr, err, ErrNonRecoverable)
-	}
-	block = m.Executor.CreateBlock(newHeight, lastCommit, lastHeaderHash, proposerHashForBlock, m.State, maxBlockDataSize, consensusMsgs...)
+	block = m.Executor.CreateBlock(newHeight, lastCommit, lastHeaderHash, proposerHashForBlock, m.State, maxBlockDataSize)
 	if !allowEmpty && len(block.Data.Txs) == 0 {
 		return nil, nil, fmt.Errorf("%w: %w", types.ErrEmptyBlock, ErrRecoverable)
 	}
