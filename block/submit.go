@@ -298,7 +298,6 @@ func (m *Manager) GetTimeSkew() time.Duration {
 		return time.Duration(0)
 	}
 	return currentBlock.Header.GetTimestamp().Sub(lastSubmittedBlock.Header.GetTimestamp())
-
 }
 
 // UpdateLastSubmittedHeight will update last height submitted height upon events.
