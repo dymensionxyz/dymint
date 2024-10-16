@@ -52,6 +52,10 @@ func (s Sequencer) Hash() []byte {
 	return tempProposerSet.Hash()
 }
 
+func (s Sequencer) String() string {
+	return fmt.Sprintf("Sequencer{SettlementAddress: %s Validator: %s}", s.SettlementAddress, s.val.String())
+}
+
 // SequencerSet is a set of rollapp sequencers and a proposer.
 type SequencerSet struct {
 	// Sequencers is the set of sequencers registered in the settlement layer
@@ -91,6 +95,18 @@ func (s *SequencerSet) SetProposerByHash(hash []byte) error {
 	// can't find the proposer in the sequencer set
 	// can happen in cases where the node is not synced with the SL and the sequencer array in the set is not updated
 	return ErrMissingProposerPubKey
+}
+
+// GetByHash gets the sequencer by hash. It returns an error if the hash is not found in the sequencer set.
+func (s *SequencerSet) GetByHash(hash []byte) (Sequencer, error) {
+	for _, seq := range s.Sequencers {
+		if bytes.Equal(seq.Hash(), hash) {
+			return seq, nil
+		}
+	}
+	// can't find the proposer in the sequencer set
+	// can happen in cases where the node is not synced with the SL and the sequencer array in the set is not updated
+	return Sequencer{}, ErrMissingProposerPubKey
 }
 
 // SetProposer sets the proposer and adds it to the sequencer set if not already present.

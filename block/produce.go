@@ -7,17 +7,15 @@ import (
 	"time"
 
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
-
-	"github.com/dymensionxyz/dymint/node/events"
-	"github.com/dymensionxyz/dymint/store"
-	uevent "github.com/dymensionxyz/dymint/utils/event"
-
 	tmed25519 "github.com/tendermint/tendermint/crypto/ed25519"
 	cmtproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	tmtypes "github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 
+	"github.com/dymensionxyz/dymint/node/events"
+	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
+	uevent "github.com/dymensionxyz/dymint/utils/event"
 )
 
 // ProduceBlockLoop is calling publishBlock in a loop as long as we're synced.
@@ -148,14 +146,32 @@ func (m *Manager) produceBlock(allowEmpty bool, nextProposerHash *[32]byte) (*ty
 		return nil, nil, fmt.Errorf("load block: height: %d: %w: %w", newHeight, err, ErrNonRecoverable)
 	}
 
-	maxBlockDataSize := uint64(float64(m.Conf.BatchSubmitBytes) * types.MaxBlockSizeAdjustment)
-	proposerHashForBlock := [32]byte(m.State.Sequencers.ProposerHash())
-	// if nextProposerHash is set, we create a last block
+	var (
+		maxBlockDataSize     = uint64(float64(m.Conf.BatchSubmitBytes) * types.MaxBlockSizeAdjustment)
+		proposerHashForBlock = [32]byte(m.State.Sequencers.ProposerHash())
+		nextProposerAddr     = m.State.Sequencers.Proposer.SettlementAddress
+		lastProposerBlock    = false // Indicates that the block is the last for the current seq. True during the rotation.
+	)
+	// if nextProposerInfo is set, we create a last block
 	if nextProposerHash != nil {
+		nextSeq, err := m.State.Sequencers.GetByHash(nextProposerHash[:])
+		if err != nil {
+			return nil, nil, fmt.Errorf("get next sequencer by hash: %w", err)
+		}
 		maxBlockDataSize = 0
 		proposerHashForBlock = *nextProposerHash
+		nextProposerAddr = nextSeq.SettlementAddress
+		lastProposerBlock = true
 	}
-	block = m.Executor.CreateBlock(newHeight, lastCommit, lastHeaderHash, proposerHashForBlock, m.State, maxBlockDataSize)
+	// TODO: Ideally, there should be only one point for adding consensus messages. Given that they come from
+	// ConsensusMessagesStream, this should send them there instead of having to ways of sending consensusMessages.
+	// There is no implementation of the stream as of now. Unify the approach of adding consensus messages when
+	// the stream is implemented! https://github.com/dymensionxyz/dymint/issues/1125
+	consensusMsgs, err := m.consensusMsgsOnCreateBlock(nextProposerAddr, lastProposerBlock)
+	if err != nil {
+		return nil, nil, fmt.Errorf("create consensus msgs for create block: last proposer block: %v, height: %d, next proposer addr: %s: %w: %w", lastProposerBlock, newHeight, nextProposerAddr, err, ErrNonRecoverable)
+	}
+	block = m.Executor.CreateBlock(newHeight, lastCommit, lastHeaderHash, proposerHashForBlock, m.State, maxBlockDataSize, consensusMsgs...)
 	if !allowEmpty && len(block.Data.Txs) == 0 {
 		return nil, nil, fmt.Errorf("%w: %w", types.ErrEmptyBlock, ErrRecoverable)
 	}
