@@ -29,22 +29,21 @@ type ErrFraudHeightMismatch struct {
 	Expected uint64
 	Actual   uint64
 
-	HeaderHeight uint64
-	HeaderHash   [32]byte
-	Proposer     []byte
+	HeaderHash [32]byte
+	Proposer   []byte
 }
 
 // NewErrFraudHeightMismatch creates a new ErrFraudHeightMismatch error.
 func NewErrFraudHeightMismatch(expected uint64, actual uint64, block *Block) error {
 	return &ErrFraudHeightMismatch{
 		Expected: expected, Actual: actual,
-		HeaderHeight: block.Header.Height, HeaderHash: block.Header.Hash(), Proposer: block.Header.ProposerAddress,
+		HeaderHash: block.Header.Hash(), Proposer: block.Header.ProposerAddress,
 	}
 }
 
 func (e ErrFraudHeightMismatch) Error() string {
 	return fmt.Sprintf("possible fraud detected on height %d, with header hash %X, emitted by sequencer %X:"+
-		" height mismatch: state expected %d, got %d", e.HeaderHeight, e.HeaderHash, e.Proposer, e.Expected, e.Actual)
+		" height mismatch: state expected %d, got %d", e.Expected, e.HeaderHash, e.Proposer, e.Expected, e.Actual)
 }
 
 func (e ErrFraudHeightMismatch) Unwrap() error {
