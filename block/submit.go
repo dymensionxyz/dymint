@@ -248,8 +248,8 @@ func (m *Manager) SubmitBatch(batch *types.Batch) error {
 
 	types.RollappHubHeightGauge.Set(float64(batch.EndHeight()))
 	m.LastSettlementHeight.Store(batch.EndHeight())
-	m.State.SetLastSubmittedBlockTime(time.Now())
-
+	// update last submitted block time with batch last block (used to calculate max skew time)
+	m.State.SetLastSubmittedBlockTime(batch.Blocks[len(batch.Blocks)-1].Header.GetTimestamp())
 	return nil
 }
 
