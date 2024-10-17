@@ -291,6 +291,8 @@ func (m *Manager) syncFromSettlement() error {
 		return err
 	}
 	m.LastSubmittedHeight.Store(res.EndHeight)
+
+	// update last block submitted time from last batch when starting the  node
 	lastBlockTimestamp := res.BlockDescriptors[len(res.BlockDescriptors)-1].GetTimestamp()
 	m.State.SetLastSubmittedBlockTime(lastBlockTimestamp)
 
