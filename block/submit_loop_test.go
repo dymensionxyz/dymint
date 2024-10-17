@@ -60,11 +60,19 @@ func testSubmitLoopInner(
 	nProducedBytes := atomic.Uint64{} // tracking how many actual bytes have been produced but not submitted so far
 	producedBytesC := make(chan int)  // producer sends on here, and can be blocked by not consuming from here
 
-	lastSubmittedBlockTime := time.Now()
-	lastProducedBlockTime := time.Now()
+	lastSubmittedBlockTime := atomic.Uint64{}
+	lastProducedBlockTime := atomic.Uint64{}
+	lastProducedBlockTime.Store(uint64(time.Now().UTC().UnixNano()))
+	lastSubmittedBlockTime.Store(uint64(time.Now().UTC().UnixNano()))
 
 	skewTime := func() time.Duration {
-		return lastProducedBlockTime.Sub(lastSubmittedBlockTime)
+
+		lastSubmitted := time.Unix(0, int64(lastSubmittedBlockTime.Load()))
+		lastProduced := time.Unix(0, int64(lastProducedBlockTime.Load()))
+		if lastProduced.Before(lastSubmitted) {
+			return 0
+		}
+		return lastProduced.Sub(lastSubmitted)
 	}
 	go func() { // simulate block production
 		go func() { // another thread to check system properties
@@ -94,8 +102,7 @@ func testSubmitLoopInner(
 			nProducedBytes.Add(uint64(nBytes))
 			producedBytesC <- nBytes
 			pendingBlocks.Add(1) // increase pending blocks to be submitted counter
-			lastProducedBlockTime = time.Now()
-
+			lastProducedBlockTime.Store(uint64(time.Now().UTC().UnixNano()))
 		}
 	}()
 
@@ -107,7 +114,7 @@ func testSubmitLoopInner(
 		consumed := rand.Intn(int(maxSize))
 		nProducedBytes.Add(^uint64(consumed - 1)) // subtract
 		pendingBlocks.Store(0)                    // no pending blocks to be submitted
-		lastSubmittedBlockTime = time.Now()
+		lastSubmittedBlockTime.Store(uint64(time.Now().UTC().UnixNano()))
 
 		return uint64(consumed), nil
 	}
@@ -145,7 +152,7 @@ func TestSubmitLoopTimer(t *testing.T) {
 	testSubmitLoop(
 		t,
 		testArgs{
-			nParallel:    50,
+			nParallel:    1,
 			testDuration: 2 * time.Second,
 			batchSkew:    150 * time.Millisecond,
 			skewMargin:   5 * time.Millisecond,

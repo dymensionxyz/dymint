@@ -253,7 +253,7 @@ func TestSubmissionByTime(t *testing.T) {
 	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
 	manager.Retriever = manager.DAClient.(da.BatchRetriever)
 
-	manager.State.LastSubmittedBlockTime = time.Now()
+	manager.State.SetLastSubmittedBlockTime(time.Now())
 	// Check initial height
 	initialHeight := uint64(0)
 	require.Equal(initialHeight, manager.State.Height())
@@ -326,7 +326,7 @@ func TestSubmissionByBatchSize(t *testing.T) {
 		managerConfig.BatchSubmitBytes = c.blockBatchMaxSizeBytes
 		manager, err := testutil.GetManager(managerConfig, nil, 1, 1, 0, proxyApp, nil)
 		require.NoError(err)
-		manager.State.LastSubmittedBlockTime = time.Now()
+		manager.State.SetLastSubmittedBlockTime(time.Now())
 
 		manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
 		manager.Retriever = manager.DAClient.(da.BatchRetriever)

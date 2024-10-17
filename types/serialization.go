@@ -260,7 +260,7 @@ func (s *State) ToProto() (*pb.State, error) {
 		ChainId:                          s.ChainID,
 		InitialHeight:                    int64(s.InitialHeight),
 		LastBlockHeight:                  int64(s.Height()),
-		LastBlockTime:                    s.LastBlockTime,
+		LastBlockTime:                    s.LastBlockTime.Load(),
 		SequencerSet:                     *seqsProto,
 		BaseHeight:                       s.BaseHeight,
 		ConsensusParams:                  s.ConsensusParams,
@@ -268,7 +268,7 @@ func (s *State) ToProto() (*pb.State, error) {
 		LastResultsHash:                  s.LastResultsHash[:],
 		AppHash:                          s.AppHash[:],
 		RollappParams:                    s.RollappParams,
-		LastSubmittedBlockTime:           s.LastSubmittedBlockTime,
+		LastSubmittedBlockTime:           s.LastSubmittedBlockTime.Load(),
 	}, nil
 }
 
@@ -291,8 +291,8 @@ func (s *State) FromProto(other *pb.State) error {
 	copy(s.LastResultsHash[:], other.LastResultsHash)
 	copy(s.AppHash[:], other.AppHash)
 	s.RollappParams = other.RollappParams
-	s.LastBlockTime = other.LastBlockTime
-	s.LastSubmittedBlockTime = other.LastSubmittedBlockTime
+	s.LastBlockTime.Store(other.LastBlockTime)
+	s.LastSubmittedBlockTime.Store(other.LastSubmittedBlockTime)
 	return nil
 }
 
