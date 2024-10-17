@@ -226,12 +226,18 @@ func (m *Manager) Start(ctx context.Context) error {
 	// channel to signal sequencer rotation started
 	rotateSequencerC := make(chan string, 1)
 
+	// channel for sequencer set updates
+	sequencerSetUpdatesC := make(chan []types.Sequencer)
+
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		return m.SubmitLoop(ctx, bytesProducedC)
 	})
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
+		return m.MonitorSequencerSetUpdates(ctx, sequencerSetUpdatesC)
+	})
+	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		bytesProducedC <- m.GetUnsubmittedBytes() // load unsubmitted bytes from previous run
-		return m.ProduceBlockLoop(ctx, bytesProducedC)
+		return m.ProduceBlockLoop(ctx, bytesProducedC, sequencerSetUpdatesC)
 	})
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		return m.MonitorSequencerRotation(ctx, rotateSequencerC)
@@ -270,6 +276,7 @@ func (m *Manager) NextHeightToSubmit() uint64 {
 }
 
 // syncFromSettlement enforces the node to be synced on initial run from SL and DA.
+// The method modifies the state and is not thread-safe.
 func (m *Manager) syncFromSettlement() error {
 	err := m.UpdateSequencerSetFromSL()
 	if err != nil {

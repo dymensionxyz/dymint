@@ -21,7 +21,7 @@ import (
 // ProduceBlockLoop is calling publishBlock in a loop as long as we're synced.
 // A signal will be sent to the bytesProduced channel for each block produced
 // In this way it's possible to pause block production by not consuming the channel
-func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int) error {
+func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int, sequencerSetUpdates <-chan []types.Sequencer) error {
 	m.logger.Info("Started block producer loop.")
 
 	ticker := time.NewTicker(m.Conf.BlockTime)
@@ -37,6 +37,15 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int)
 		select {
 		case <-ctx.Done():
 			return nil
+
+		case update := <-sequencerSetUpdates:
+			err := m.handleSequencerSetUpdate(update)
+			if err != nil {
+				// occurs on serialization issues and shouldn't happen in practice
+				uevent.MustPublish(ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
+				return err
+			}
+
 		case <-ticker.C:
 
 			// if empty blocks are configured to be enabled, and one is scheduled...

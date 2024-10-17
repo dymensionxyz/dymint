@@ -12,19 +12,22 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/dymensionxyz/dymint/mempool"
+	"github.com/dymensionxyz/dymint/types"
 	"github.com/dymensionxyz/dymint/version"
+
+	abci "github.com/tendermint/tendermint/abci/types"
+	tmcfg "github.com/tendermint/tendermint/config"
 
 	mempoolv1 "github.com/dymensionxyz/dymint/mempool/v1"
 	"github.com/dymensionxyz/dymint/node/events"
 	uchannel "github.com/dymensionxyz/dymint/utils/channel"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
-	abci "github.com/tendermint/tendermint/abci/types"
-	tmcfg "github.com/tendermint/tendermint/config"
 
-	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/proxy"
+
+	"github.com/dymensionxyz/dymint/testutil"
 )
 
 // TODO: test producing lastBlock
@@ -78,8 +81,10 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 	defer cancel()
 	bytesProduced1 := make(chan int)
 	bytesProduced2 := make(chan int)
-	go manager.ProduceBlockLoop(mCtx, bytesProduced1)
-	go managerWithEmptyBlocks.ProduceBlockLoop(mCtx, bytesProduced2)
+	sequencerSetUpdates1 := make(chan []types.Sequencer)
+	sequencerSetUpdates2 := make(chan []types.Sequencer)
+	go manager.ProduceBlockLoop(mCtx, bytesProduced1, sequencerSetUpdates1)
+	go managerWithEmptyBlocks.ProduceBlockLoop(mCtx, bytesProduced2, sequencerSetUpdates2)
 	uchannel.DrainForever(bytesProduced1, bytesProduced2)
 	<-mCtx.Done()
 
@@ -161,7 +166,8 @@ func TestCreateEmptyBlocksNew(t *testing.T) {
 	mCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	bytesProduced := make(chan int)
-	go manager.ProduceBlockLoop(mCtx, bytesProduced)
+	sequencerSetUpdates := make(chan []types.Sequencer)
+	go manager.ProduceBlockLoop(mCtx, bytesProduced, sequencerSetUpdates)
 	uchannel.DrainForever(bytesProduced)
 
 	<-time.Tick(1 * time.Second)
@@ -240,9 +246,10 @@ func TestStopBlockProduction(t *testing.T) {
 	defer cancel()
 
 	bytesProducedC := make(chan int)
+	sequencerSetUpdates := make(chan []types.Sequencer)
 
 	go func() {
-		manager.ProduceBlockLoop(ctx, bytesProducedC)
+		manager.ProduceBlockLoop(ctx, bytesProducedC, sequencerSetUpdates)
 		wg.Done() // Decrease counter when this goroutine finishes
 	}()
 
