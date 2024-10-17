@@ -77,7 +77,7 @@ func (b *Block) ValidateWithState(state *State) error {
 		return NewErrFraudHeightMismatch(state.NextHeight(), b.Header.Height, b)
 	}
 
-	if !bytes.Equal(b.Header.NextSequencersHash[:], state.Sequencers.ProposerHash()) { // will change when sequencer rotation is implemented
+	if !bytes.Equal(b.Header.NextSequencersHash[:], state.Sequencers.ProposerHash()) {
 		return NewErrInvalidNextSequencersHashFraud([32]byte(state.Sequencers.ProposerHash()), b.Header.NextSequencersHash)
 	}
 
