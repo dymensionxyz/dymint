@@ -113,6 +113,9 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 			return fmt.Errorf("commit block: %w", err)
 		}
 
+		// update last block time
+		m.State.SetLastBlockTime(block.Header.GetTimestamp())
+
 		// Prune old heights, if requested by ABCI app.
 		// retainHeight is determined by currentHeight - min-retain-blocks (app.toml config).
 		// Unless max_age_num_blocks in consensus params is higher than min-retain-block, then max_age_num_blocks will be used instead of min-retain-blocks.
@@ -124,7 +127,6 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 				m.logger.Debug("pruning channel full. skipping pruning", "retainHeight", retainHeight)
 			}
 		}
-
 		// Update the state with the new app hash, and store height from the commit.
 		// Every one of those, if happens before commit, prevents us from re-executing the block in case failed during commit.
 		m.Executor.UpdateStateAfterCommit(m.State, responses, appHash, block.Header.Height, block.Header.Hash())

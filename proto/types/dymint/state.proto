@@ -21,7 +21,7 @@ message State {
   int64 last_block_height = 4;
 
   tendermint.types.BlockID last_block_id = 5 [(gogoproto.nullable) = false, (gogoproto.customname) = "LastBlockID"];
-  google.protobuf.Timestamp last_block_time = 6 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  uint64 last_block_time = 6;
 
   reserved 7;
   reserved 8;
@@ -49,7 +49,7 @@ message State {
   // Proposer is a sequencer that acts as a proposer. Can be nil if no proposer is set.
   Sequencer proposer = 20;
 
-  google.protobuf.Timestamp last_submitted_block_time = 21 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  uint64 last_submitted_block_time = 21;
 
 }
 

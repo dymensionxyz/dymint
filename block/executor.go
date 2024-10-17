@@ -261,7 +261,7 @@ func (e *Executor) ExecuteBlock(block *types.Block) (*tmstate.ABCIResponses, err
 				Votes: nil,
 			},
 			ByzantineValidators: nil,
-			ConsensusMessages:   block.Data.ConsensusMessages,
+			//ConsensusMessages:   block.Data.ConsensusMessages,
 		})
 	if err != nil {
 		return nil, err

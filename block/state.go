@@ -65,7 +65,6 @@ func NewStateFromGenesis(genDoc *tmtypes.GenesisDoc) (*types.State, error) {
 		ConsensusParams: *genDoc.ConsensusParams,
 	}
 	s.SetHeight(0)
-	s.LastBlockTime = time.Now()
 	copy(s.AppHash[:], genDoc.AppHash)
 
 	err = s.SetRollappParamsFromGenesis(genDoc.AppState)
@@ -111,7 +110,9 @@ func (e *Executor) UpdateStateAfterInitChain(s *types.State, res *abci.ResponseI
 	}
 	// We update the last results hash with the empty hash, to conform with RFC-6962.
 	copy(s.LastResultsHash[:], merkle.HashFromByteSlices(nil))
-	s.LastSubmittedBlockTime = time.Now()
+
+	s.SetLastSubmittedBlockTime(time.Now())
+
 }
 
 func (e *Executor) UpdateMempoolAfterInitChain(s *types.State) {
@@ -126,7 +127,6 @@ func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResp
 	copy(s.LastHeaderHash[:], lastHeaderHash[:])
 
 	s.SetHeight(height)
-	s.LastBlockTime = time.Now()
 	if resp.EndBlock.ConsensusParamUpdates != nil {
 		s.ConsensusParams.Block.MaxGas = resp.EndBlock.ConsensusParamUpdates.Block.MaxGas
 		s.ConsensusParams.Block.MaxBytes = resp.EndBlock.ConsensusParamUpdates.Block.MaxBytes

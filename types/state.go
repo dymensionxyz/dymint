@@ -46,10 +46,9 @@ type State struct {
 	LastHeaderHash [32]byte
 
 	// Last block time
-	LastBlockTime time.Time
-
+	LastBlockTime atomic.Uint64 // time in tai64 format
 	// Last submitted block time
-	LastSubmittedBlockTime time.Time
+	LastSubmittedBlockTime atomic.Uint64 // time in tai64 format
 }
 
 func (s *State) GetProposer() *Sequencer {
@@ -92,6 +91,30 @@ func (s *State) SetHeight(height uint64) {
 	s.LastBlockHeight.Store(height)
 }
 
+// SetLastBlockTime saves the last block produced timestamp
+func (s *State) SetLastBlockTime(time time.Time) {
+	if time.After(s.GetLastBlockTime()) {
+		s.LastBlockTime.Store(uint64(time.UTC().UnixNano()))
+	}
+}
+
+// GetLastBlockTime returns the last block produced timestamp
+func (s *State) GetLastBlockTime() time.Time {
+	return time.Unix(0, int64(s.LastBlockTime.Load()))
+}
+
+// SetLastSubmittedBlockTime saves the last block submitted to SL timestamp
+func (s *State) SetLastSubmittedBlockTime(time time.Time) {
+	if time.After(s.GetLastSubmittedBlockTime()) {
+		s.LastSubmittedBlockTime.Store(uint64(time.UTC().UnixNano()))
+	}
+}
+
+// GetLastSubmittedBlockTime returns the last block submitted to SL timestamp
+func (s *State) GetLastSubmittedBlockTime() time.Time {
+	return time.Unix(0, int64(s.LastSubmittedBlockTime.Load()))
+}
+
 // Height returns height of the highest block saved in the Store.
 func (s *State) Height() uint64 {
 	return s.LastBlockHeight.Load()
@@ -106,10 +129,10 @@ func (s *State) NextHeight() uint64 {
 }
 
 func (s *State) GetSkewTime() time.Duration {
-	if s.LastBlockTime.Before(s.LastSubmittedBlockTime) {
+	if s.GetLastBlockTime().Before(s.GetLastSubmittedBlockTime()) {
 		return 0
 	}
-	return s.LastBlockTime.Sub(s.LastSubmittedBlockTime)
+	return s.GetLastBlockTime().Sub(s.GetLastSubmittedBlockTime())
 }
 
 // SetRollappParamsFromGenesis sets the rollapp consensus params from genesis

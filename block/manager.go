@@ -290,7 +290,8 @@ func (m *Manager) updateFromLastSettlementState() error {
 	}
 
 	m.LastSettlementHeight.Store(latestHeight)
-	m.State.LastSubmittedBlockTime = res.BlockDescriptors[len(res.BlockDescriptors)-1].Timestamp
+	lastBlockTimestamp := res.BlockDescriptors[len(res.BlockDescriptors)-1].GetTimestamp()
+	m.State.SetLastSubmittedBlockTime(lastBlockTimestamp)
 
 	if latestHeight >= m.State.NextHeight() {
 		m.UpdateTargetHeight(latestHeight)
