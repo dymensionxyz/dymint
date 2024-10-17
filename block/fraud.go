@@ -16,6 +16,7 @@ type FraudHandler interface {
 }
 
 // FreezeHandler is used to handle faults coming from executing and validating blocks.
+// once a fault is detected, it publishes a DataHealthStatus event to the pubsub which sets the node in a frozen state.
 type FreezeHandler struct {
 	m *Manager
 }
