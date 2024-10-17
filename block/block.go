@@ -14,28 +14,34 @@ import (
 
 // applyBlockWithFraudHandling calls applyBlock and validateBlockBeforeApply with fraud handling.
 func (m *Manager) applyBlockWithFraudHandling(block *types.Block, commit *types.Commit, blockMetaData types.BlockMetaData, validate bool) error {
-	if validate {
-		if err := m.validateBlockBeforeApply(block, commit); err != nil {
-			if errors.Is(err, gerrc.ErrFault) {
-				// Here we handle the fault by calling the fraud handler.
-				// FraudHandler is an interface that defines a method to handle faults. Implement this interface to handle faults
-				// in specific ways. For example, once a fault is detected, it publishes a DataHealthStatus event to the
-				// pubsub which sets the node in a frozen state.
-				m.FraudHandler.HandleFault(context.Background(), err)
-			} else if err != nil {
-				m.blockCache.Delete(block.Header.Height)
-				// TODO: can we take an action here such as dropping the peer / reducing their reputation?
-			}
+	validateWithFraud := func() error {
+		if validate {
+			if err := m.validateBlockBeforeApply(block, commit); err != nil {
+				if err != nil {
+					m.blockCache.Delete(block.Header.Height)
+					// TODO: can we take an action here such as dropping the peer / reducing their reputation?
 
-			return fmt.Errorf("block not valid at height %d, dropping it: err:%w", block.Header.Height, err)
+					return fmt.Errorf("block not valid at height %d, dropping it: err:%w", block.Header.Height, err)
+				}
+			}
 		}
+
+		if err := m.applyBlock(block, commit, blockMetaData); err != nil {
+			return fmt.Errorf("apply block: %w", err)
+		}
+
+		return nil
 	}
 
-	if err := m.applyBlock(block, commit, blockMetaData); err != nil {
-		if errors.Is(err, gerrc.ErrFault) {
-			m.FraudHandler.HandleFault(context.Background(), err)
-		}
-		return fmt.Errorf("apply block: %w", err)
+	err := validateWithFraud()
+	if errors.Is(err, gerrc.ErrFault) {
+		// Here we handle the fault by calling the fraud handler.
+		// FraudHandler is an interface that defines a method to handle faults. Implement this interface to handle faults
+		// in specific ways. For example, once a fault is detected, it publishes a DataHealthStatus event to the
+		// pubsub which sets the node in a frozen state.
+		m.FraudHandler.HandleFault(context.Background(), err)
+
+		return err
 	}
 
 	return nil
