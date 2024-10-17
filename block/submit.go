@@ -62,6 +62,13 @@ func SubmitLoopInner(
 		// 'trigger': this thread is responsible for waking up the submitter when a new block arrives, and back-pressures the block production loop
 		// if it gets too far ahead.
 		for {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case n := <-bytesProduced:
+				pendingBytes.Add(uint64(n))
+				logger.Debug("Added bytes produced to bytes pending submission counter.", "bytes added", n, "pending", pendingBytes.Load())
+			}
 			if maxBatchSkew < skewTime() {
 				// too much stuff is pending submission
 				// we block here until we get a progress nudge from the submitter thread
@@ -69,14 +76,6 @@ func SubmitLoopInner(
 				case <-ctx.Done():
 					return ctx.Err()
 				case <-trigger.C:
-				}
-			} else {
-				select {
-				case <-ctx.Done():
-					return ctx.Err()
-				case n := <-bytesProduced:
-					pendingBytes.Add(uint64(n))
-					logger.Debug("Added bytes produced to bytes pending submission counter.", "bytes added", n, "pending", pendingBytes.Load())
 				}
 			}
 
