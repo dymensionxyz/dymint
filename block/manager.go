@@ -286,12 +286,16 @@ func (m *Manager) syncFromSettlement() error {
 		m.LastSubmittedHeight.Store(uint64(m.Genesis.InitialHeight - 1))
 		return nil
 	}
-
 	if err != nil {
 		// TODO: separate between fresh rollapp and non-registered rollapp
 		return err
 	}
 	m.LastSubmittedHeight.Store(res.EndHeight)
+
+	// update last block submitted time from last batch when starting the  node
+	lastBlockTimestamp := res.BlockDescriptors[len(res.BlockDescriptors)-1].GetTimestamp()
+	m.State.SetLastSubmittedBlockTime(lastBlockTimestamp)
+
 	err = m.syncToTargetHeight(res.EndHeight)
 	m.UpdateTargetHeight(res.EndHeight)
 	if err != nil {
