@@ -23,6 +23,8 @@ var (
 // TimeFraudMaxDrift is the maximum allowed time drift between the block time and the local time.
 var TimeFraudMaxDrift = 10 * time.Minute
 
+// ErrFraudHeightMismatch is the fraud that occurs when the height of the block is different from the expected
+// next height of the state.
 type ErrFraudHeightMismatch struct {
 	Expected uint64
 	Actual   uint64
@@ -176,6 +178,8 @@ func (e ErrInvalidChainID) Unwrap() error {
 	return gerrc.ErrFault
 }
 
+// ErrInvalidBlockHeightFraud is the fraud that happens when the height that is on the commit header is
+// different from the height of the block.
 type ErrInvalidBlockHeightFraud struct {
 	Expected     uint64
 	ActualHeight uint64
