@@ -111,17 +111,13 @@ func (e *Executor) CreateBlock(
 	lastHeaderHash, nextSeqHash [32]byte,
 	state *types.State,
 	maxBlockDataSizeBytes uint64,
-	consensusMsgs ...proto2.Message,
 ) *types.Block {
 	maxBlockDataSizeBytes = min(maxBlockDataSizeBytes, uint64(max(minBlockMaxBytes, state.ConsensusParams.Block.MaxBytes)))
 	mempoolTxs := e.mempool.ReapMaxBytesMaxGas(int64(maxBlockDataSizeBytes), state.ConsensusParams.Block.MaxGas)
 
+	var consensusMsgs []proto2.Message
 	if e.consensusMessagesStream != nil {
-		consensusMessages, err := e.consensusMessagesStream.GetConsensusMessages()
-		if err != nil {
-			e.logger.Error("Failed to get consensus messages", "error", err)
-		}
-		consensusMsgs = append(consensusMsgs, consensusMessages...)
+		consensusMsgs = e.consensusMessagesStream.Get()
 	}
 
 	block := &types.Block{

@@ -2,29 +2,41 @@ package types
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"fmt"
 
 	tmcrypto "github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/types"
 )
 
-// sequencer is a struct that holds the sequencer's settlement address and tendermint validator
-// it's populated from the SL client
-// uses tendermint's validator types for compatibility
+// Sequencer is a struct that holds the sequencer's settlement address and tendermint validator.
+// It's populated from the SL client. Uses tendermint's validator types for compatibility.
 type Sequencer struct {
-	// SettlementAddress is the address of the sequencer in the settlement layer (bech32 string)
+	// SettlementAddress is the address of the sequencer in the settlement layer (bech32 string).
 	SettlementAddress string `json:"settlement_address"`
-	// tendermint validator type for compatibility. holds the public key and cons address
+	// RewardAddr is the bech32-encoded sequencer's reward address.
+	RewardAddr string `protobuf:"bytes,3,opt,name=reward_addr,json=rewardAddr,proto3" json:"reward_addr,omitempty"`
+	// WhitelistedRelayers is a list of the whitelisted relayer addresses. Addresses are bech32-encoded strings.
+	WhitelistedRelayers []string `protobuf:"bytes,4,rep,name=relayers,proto3" json:"relayers,omitempty"`
+
+	// val is a tendermint validator type for compatibility. Holds the public key and cons address.
 	val types.Validator
 }
 
-func NewSequencer(pubKey tmcrypto.PubKey, settlementAddress string) *Sequencer {
+func NewSequencer(
+	pubKey tmcrypto.PubKey,
+	settlementAddress string,
+	rewardAddr string,
+	whitelistedRelayers []string,
+) *Sequencer {
 	if pubKey == nil {
 		return nil
 	}
 	return &Sequencer{
-		SettlementAddress: settlementAddress,
-		val:               *types.NewValidator(pubKey, 1),
+		SettlementAddress:   settlementAddress,
+		RewardAddr:          rewardAddr,
+		WhitelistedRelayers: whitelistedRelayers,
+		val:                 *types.NewValidator(pubKey, 1),
 	}
 }
 
@@ -38,12 +50,28 @@ func (s Sequencer) TMValidator() (*types.Validator, error) {
 	return &s.val, nil
 }
 
+func (s Sequencer) Equal(rhs Sequencer) bool {
+	return bytes.Equal(s.FullHash(), rhs.FullHash())
+}
+
 func (s Sequencer) ConsAddress() string {
 	return s.val.Address.String()
 }
 
 func (s Sequencer) PubKey() tmcrypto.PubKey {
 	return s.val.PubKey
+}
+
+// FullHash returns a "full" hash of the sequencer that includes all fields of the Sequencer type.
+func (s Sequencer) FullHash() []byte {
+	h := sha256.New()
+	h.Write([]byte(s.SettlementAddress))
+	h.Write([]byte(s.RewardAddr))
+	for _, r := range s.WhitelistedRelayers {
+		h.Write([]byte(r))
+	}
+	h.Write(s.Hash())
+	return h.Sum(nil)
 }
 
 // Hash returns tendermint compatible hash of the sequencer
@@ -150,6 +178,28 @@ func (s *SequencerSet) GetByConsAddress(cons_addr []byte) *Sequencer {
 	return nil
 }
 
+// SequencerListRightOuterJoin returns a set of sequencers that are in B but not in A.
+// CONTRACT: both A and B do not have duplicates!
+//
+// Example 1:
+//
+//	s1 =      {seq1, seq2, seq3}
+//	s2 =      {      seq2, seq3, seq4}
+//	s1 * s2 = {                  seq4}
+func SequencerListRightOuterJoin(A, B []Sequencer) []Sequencer {
+	lhsSet := make(map[string]struct{})
+	for _, s := range A {
+		lhsSet[string(s.FullHash())] = struct{}{}
+	}
+	var diff []Sequencer
+	for _, s := range B {
+		if _, ok := lhsSet[string(s.FullHash())]; !ok {
+			diff = append(diff, s)
+		}
+	}
+	return diff
+}
+
 func (s *SequencerSet) String() string {
 	return fmt.Sprintf("SequencerSet: %v", s.Sequencers)
 }
@@ -157,6 +207,7 @@ func (s *SequencerSet) String() string {
 /* -------------------------- backward compatibility ------------------------- */
 // old dymint version used tendermint.ValidatorSet for sequencers
 // these methods are used for backward compatibility
+
 func NewSequencerFromValidator(val types.Validator) *Sequencer {
 	return &Sequencer{
 		SettlementAddress: "",

@@ -235,6 +235,15 @@ func GenerateRandomValidatorSet() *tmtypes.ValidatorSet {
 	})
 }
 
+func GenerateSequencer() *types.Sequencer {
+	return types.NewSequencer(
+		tmtypes.NewValidator(ed25519.GenPrivKey().PubKey(), 1).PubKey,
+		GenerateSettlementAddress(),
+		GenerateSettlementAddress(),
+		[]string{GenerateSettlementAddress(), GenerateSettlementAddress()},
+	)
+}
+
 // GenerateStateWithSequencer generates an initial state for testing.
 func GenerateStateWithSequencer(initialHeight int64, lastBlockHeight int64, pubkey tmcrypto.PubKey) *types.State {
 	s := &types.State{
@@ -260,7 +269,12 @@ func GenerateStateWithSequencer(initialHeight int64, lastBlockHeight int64, pubk
 			},
 		},
 	}
-	s.Sequencers.SetProposer(types.NewSequencer(pubkey, GenerateSettlementAddress()))
+	s.Sequencers.SetProposer(types.NewSequencer(
+		pubkey,
+		GenerateSettlementAddress(),
+		GenerateSettlementAddress(),
+		[]string{GenerateSettlementAddress()},
+	))
 	s.SetHeight(uint64(lastBlockHeight))
 	return s
 }

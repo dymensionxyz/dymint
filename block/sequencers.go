@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/tendermint/tendermint/libs/pubsub"
-
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
 )
@@ -52,6 +50,39 @@ func (m *Manager) MonitorSequencerRotation(ctx context.Context, rotateC chan str
 	return fmt.Errorf("sequencer rotation started. signal to stop production")
 }
 
+func (m *Manager) MonitorSequencerSetUpdates(ctx context.Context, updatesC chan<- []types.Sequencer) error {
+	ticker := time.NewTicker(3 * time.Minute) // TODO: make this configurable
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-ticker.C:
+			currentSLSet, err := m.SLClient.GetAllSequencers()
+			if err != nil {
+				m.logger.Error("Get bonded sequencers", "err", err)
+				continue
+			}
+			updatesC <- currentSLSet
+		}
+	}
+}
+
+// handleSequencerSetUpdate calculates the diff between hub's and current sequencer sets and
+// creates consensus messages for all new sequencers. The method updates the current state
+// and is not thread-safe. Returns errors on serialization issues.
+func (m *Manager) handleSequencerSetUpdate(newSet []types.Sequencer) error {
+	newSequencers := types.SequencerListRightOuterJoin(m.State.Sequencers.Sequencers, newSet)
+	msgs, err := ConsensusMsgsOnSequencerSetUpdate(newSequencers)
+	if err != nil {
+		return fmt.Errorf("consensus msgs on sequencers set update: %w", err)
+	}
+	m.State.Sequencers.SetSequencers(newSequencers)
+	m.Executor.consensusMessagesStream.Add(msgs...)
+	return nil
+}
+
 // IsProposer checks if the local node is the proposer
 // In case of sequencer rotation, there's a phase where proposer rotated on L2 but hasn't yet rotated on hub.
 // for this case, the old proposer counts as "sequencer" as well, so he'll be able to submit the last state update.
@@ -93,12 +124,18 @@ func (m *Manager) MissingLastBatch() (string, bool, error) {
 }
 
 // handleRotationReq completes the rotation flow once a signal is received from the SL
-// this called after manager shuts down the block producer and submitter
+// this called after manager shuts down the block producer and submitter. The method updates
+// the state and is not thread-safe.
 func (m *Manager) handleRotationReq(ctx context.Context, nextSeqAddr string) {
-	m.logger.Info("Sequencer rotation started. Production stopped on this sequencer", "nextSeqAddr", nextSeqAddr)
-	err := m.CompleteRotation(ctx, nextSeqAddr)
+	err := m.UpdateSequencerSetFromSL()
 	if err != nil {
-		panic(err)
+		panic(fmt.Errorf("update sequencer set upon rotation: %w", err))
+	}
+
+	m.logger.Info("Sequencer rotation started. Production stopped on this sequencer", "nextSeqAddr", nextSeqAddr)
+	err = m.CompleteRotation(ctx, nextSeqAddr)
+	if err != nil {
+		panic(fmt.Errorf("complete sequencer rotation: %w", err))
 	}
 
 	// TODO: graceful fallback to full node (https://github.com/dymensionxyz/dymint/issues/1008)
@@ -164,14 +201,17 @@ func (m *Manager) CreateAndPostLastBatch(ctx context.Context, nextSeqHash [32]by
 	return nil
 }
 
-// UpdateSequencerSetFromSL updates the sequencer set from the SL
-// proposer is not changed here
+// UpdateSequencerSetFromSL updates the sequencer set from the SL proposer is not changed here.
+// The method modifies the state and is not thread-safe.
 func (m *Manager) UpdateSequencerSetFromSL() error {
 	seqs, err := m.SLClient.GetAllSequencers()
 	if err != nil {
 		return err
 	}
-	m.State.Sequencers.SetSequencers(seqs)
+	err = m.handleSequencerSetUpdate(seqs)
+	if err != nil {
+		return err
+	}
 	m.logger.Debug("Updated bonded sequencer set.", "newSet", m.State.Sequencers.String())
 	return nil
 }
@@ -180,27 +220,4 @@ func (m *Manager) UpdateSequencerSetFromSL() error {
 func (m *Manager) UpdateProposer() error {
 	m.State.Sequencers.SetProposer(m.SLClient.GetProposer())
 	return nil
-}
-
-// UpdateLastSubmittedHeight will update last height submitted height upon events.
-// This may be necessary in case we crashed/restarted before getting response for our submission to the settlement layer.
-func (m *Manager) UpdateSequencerSet(event pubsub.Message) {
-	eventData, ok := event.Data().(*settlement.EventDataNewBondedSequencer)
-	if !ok {
-		m.logger.Error("onReceivedBatch", "err", "wrong event data received")
-		return
-	}
-
-	if m.State.Sequencers.GetByAddress(eventData.SeqAddr) != nil {
-		m.logger.Debug("Sequencer not added from new bonded sequencer event because already in the list.")
-		return
-	}
-
-	newSequencer, err := m.SLClient.GetSequencerByAddress(eventData.SeqAddr)
-	if err != nil {
-		m.logger.Error("Unable to add new sequencer from event. err:%w", err)
-		return
-	}
-	sequencers := append(m.State.Sequencers.Sequencers, newSequencer)
-	m.State.Sequencers.SetSequencers(sequencers)
 }
