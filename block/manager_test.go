@@ -690,7 +690,7 @@ func TestDAFetch(t *testing.T) {
 	// Init manager
 	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, mockStore)
 	require.NoError(err)
-	commitHash := [32]byte{1}
+	commitHash := [32]byte{}
 
 	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
 	manager.Retriever = manager.DAClient.(da.BatchRetriever)
