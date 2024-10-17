@@ -69,6 +69,13 @@ func SubmitLoopInner(
 				pendingBytes.Add(uint64(n))
 				logger.Debug("Added bytes produced to bytes pending submission counter.", "bytes added", n, "pending", pendingBytes.Load())
 			}
+
+			types.RollappPendingSubmissionsSkewBytes.Set(float64(pendingBytes.Load()))
+			types.RollappPendingSubmissionsSkewBlocks.Set(float64(unsubmittedBlocksNum()))
+			types.RollappPendingSubmissionsSkewTimeHours.Set(float64(skewTime().Hours()))
+
+			submitter.Nudge()
+
 			if maxBatchSkew < skewTime() {
 				// too much stuff is pending submission
 				// we block here until we get a progress nudge from the submitter thread
@@ -79,11 +86,6 @@ func SubmitLoopInner(
 				}
 			}
 
-			types.RollappPendingSubmissionsSkewBytes.Set(float64(pendingBytes.Load()))
-			types.RollappPendingSubmissionsSkewBlocks.Set(float64(unsubmittedBlocksNum()))
-			types.RollappPendingSubmissionsSkewTimeHours.Set(float64(skewTime().Hours()))
-
-			submitter.Nudge()
 		}
 	})
 
@@ -99,7 +101,7 @@ func SubmitLoopInner(
 			}
 			pending := pendingBytes.Load()
 
-			types.RollappPendingSubmissionsSkewBytes.Set(float64(pendingBytes.Load()))
+			types.RollappPendingSubmissionsSkewBytes.Set(float64(pending))
 			types.RollappPendingSubmissionsSkewBlocks.Set(float64(unsubmittedBlocksNum()))
 			types.RollappPendingSubmissionsSkewTimeHours.Set(float64(skewTime().Hours()))
 

@@ -291,6 +291,7 @@ func (m *Manager) syncFromSettlement() error {
 		return err
 	}
 	m.LastSubmittedHeight.Store(res.EndHeight)
+	m.State.LastSubmittedBlockTime = res.BlockDescriptors[len(res.BlockDescriptors)-1].GetTimestamp()
 	err = m.syncToTargetHeight(res.EndHeight)
 	m.UpdateTargetHeight(res.EndHeight)
 	if err != nil {
