@@ -48,7 +48,7 @@ func (b *Block) ValidateWithState(state *State) error {
 	err := b.ValidateBasic()
 	if err != nil {
 		if errors.Is(err, ErrInvalidHeaderDataHash) {
-			return NewErrInvalidHeaderDataHashFraud(err)
+			return NewErrInvalidHeaderDataHashFraud(b.Header.DataHash, [32]byte(GetDataHash(b)))
 		}
 
 		return err

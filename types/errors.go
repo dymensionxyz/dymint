@@ -298,17 +298,19 @@ func (e ErrInvalidNextSequencersHashFraud) Unwrap() error {
 }
 
 type ErrInvalidHeaderDataHashFraud struct {
-	Err error
+	Expected [32]byte
+	Actual   [32]byte
 }
 
-func NewErrInvalidHeaderDataHashFraud(err error) error {
+func NewErrInvalidHeaderDataHashFraud(expected [32]byte, actual [32]byte) error {
 	return &ErrInvalidHeaderDataHashFraud{
-		Err: err,
+		Expected: expected,
+		Actual:   actual,
 	}
 }
 
 func (e ErrInvalidHeaderDataHashFraud) Error() string {
-	return fmt.Sprintf("invalid header data hash: %s", e.Err)
+	return fmt.Sprintf("invalid header data hash. expected=%X, got=%X", e.Expected, e.Actual)
 }
 
 func (e ErrInvalidHeaderDataHashFraud) Unwrap() error {
