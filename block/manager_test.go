@@ -159,15 +159,20 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 
 	numBatchesToAdd := 2
 	nextBatchStartHeight := manager.NextHeightToSubmit()
+	var lastBlockHeaderHash [32]byte
 	var batch *types.Batch
 	for i := 0; i < numBatchesToAdd; i++ {
-		batch, err = testutil.GenerateBatch(nextBatchStartHeight, nextBatchStartHeight+uint64(testutil.DefaultTestBatchSize-1), manager.LocalKey)
+		batch, err = testutil.GenerateBatch(
+			nextBatchStartHeight, nextBatchStartHeight+uint64(testutil.DefaultTestBatchSize-1), manager.LocalKey,
+			lastBlockHeaderHash,
+		)
 		assert.NoError(t, err)
 		daResultSubmitBatch := manager.DAClient.SubmitBatch(batch)
 		assert.Equal(t, daResultSubmitBatch.Code, da.StatusSuccess)
 		err = manager.SLClient.SubmitBatch(batch, manager.DAClient.GetClientType(), &daResultSubmitBatch)
 		require.NoError(t, err)
 		nextBatchStartHeight = batch.EndHeight() + 1
+		lastBlockHeaderHash = batch.Blocks[len(batch.Blocks)-1].Header.Hash()
 		// Wait until daHeight is updated
 		time.Sleep(time.Millisecond * 500)
 	}
@@ -258,7 +263,7 @@ func TestApplyCachedBlocks_WithFraudCheck(t *testing.T) {
 	nextBatchStartHeight := manager.NextHeightToSubmit()
 	var batch *types.Batch
 	for i := 0; i < numBatchesToAdd; i++ {
-		batch, err = testutil.GenerateBatch(nextBatchStartHeight, nextBatchStartHeight, manager.LocalKey)
+		batch, err = testutil.GenerateBatch(nextBatchStartHeight, nextBatchStartHeight, manager.LocalKey, [32]byte{})
 		assert.NoError(t, err)
 		blockData := p2p.BlockData{Block: *batch.Blocks[0], Commit: *batch.Commits[0]}
 		msg := pubsub.NewMessage(blockData, map[string][]string{p2p.EventTypeKey: {p2p.EventNewGossipedBlock}})
@@ -318,7 +323,12 @@ func TestApplyLocalBlock_WithFraudCheck(t *testing.T) {
 
 	var batch *types.Batch
 	for i := 0; i < numBatchesToAdd; i++ {
-		batch, err = testutil.GenerateBatch(nextBatchStartHeight, nextBatchStartHeight+uint64(testutil.DefaultTestBatchSize-1), manager.LocalKey)
+		batch, err = testutil.GenerateBatch(
+			nextBatchStartHeight,
+			nextBatchStartHeight+uint64(testutil.DefaultTestBatchSize-1),
+			manager.LocalKey,
+			[32]byte{},
+		)
 		assert.NoError(t, err)
 
 		// Save one block on state to enforce local block application
@@ -688,7 +698,12 @@ func TestDAFetch(t *testing.T) {
 	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{Data: commitHash[:]})
 
 	nextBatchStartHeight := manager.NextHeightToSubmit()
-	batch, err := testutil.GenerateBatch(nextBatchStartHeight, nextBatchStartHeight+uint64(testutil.DefaultTestBatchSize-1), manager.LocalKey)
+	batch, err := testutil.GenerateBatch(
+		nextBatchStartHeight,
+		nextBatchStartHeight+uint64(testutil.DefaultTestBatchSize-1),
+		manager.LocalKey,
+		[32]byte{},
+	)
 	require.NoError(err)
 	daResultSubmitBatch := manager.DAClient.SubmitBatch(batch)
 	require.Equal(daResultSubmitBatch.Code, da.StatusSuccess)
@@ -764,7 +779,12 @@ func TestManager_ProcessNextDABatch_FraudHandling(t *testing.T) {
 	manager.Retriever = manager.DAClient.(da.BatchRetriever)
 	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{Data: commitHash[:]})
 	nextBatchStartHeight := manager.NextHeightToSubmit()
-	batch, err := testutil.GenerateBatch(nextBatchStartHeight, nextBatchStartHeight+uint64(testutil.DefaultTestBatchSize-1), manager.LocalKey)
+	batch, err := testutil.GenerateBatch(
+		nextBatchStartHeight,
+		nextBatchStartHeight+uint64(testutil.DefaultTestBatchSize-1),
+		manager.LocalKey,
+		[32]byte{},
+	)
 	require.NoError(err)
 	daResultSubmitBatch := manager.DAClient.SubmitBatch(batch)
 	require.Equal(daResultSubmitBatch.Code, da.StatusSuccess)

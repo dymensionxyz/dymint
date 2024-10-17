@@ -183,6 +183,11 @@ func TestApplyBlock(t *testing.T) {
 
 	logger := log.TestingLogger()
 
+	// Create a valid proposer for the block
+	proposerKey := ed25519.GenPrivKey()
+	tmPubKey, err := cryptocodec.ToTmPubKeyInterface(proposerKey.PubKey())
+	require.NoError(err)
+
 	// Mock ABCI app
 	app := &tmmocks.MockApplication{}
 	app.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{})
@@ -201,7 +206,7 @@ func TestApplyBlock(t *testing.T) {
 		},
 	})
 	var mockAppHash [32]byte
-	_, err := rand.Read(mockAppHash[:])
+	_, err = rand.Read(mockAppHash[:])
 	require.NoError(err)
 	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{
 		Data: mockAppHash[:],
@@ -229,7 +234,7 @@ func TestApplyBlock(t *testing.T) {
 	appConns := &tmmocksproxy.MockAppConns{}
 	appConns.On("Consensus").Return(abciClient)
 	appConns.On("Query").Return(abciClient)
-	executor, err := block.NewExecutor([]byte("test address"), chainID, mpool, appConns, eventBus, nil, logger)
+	executor, err := block.NewExecutor(proposerKey.PubKey().Address(), chainID, mpool, appConns, eventBus, nil, logger)
 	assert.NoError(err)
 
 	// Subscribe to tx events
@@ -246,25 +251,22 @@ func TestApplyBlock(t *testing.T) {
 	require.NoError(err)
 	require.NotNil(headerSub)
 
-	// Create a valid proposer for the block
-	proposerKey := ed25519.GenPrivKey()
-	tmPubKey, err := cryptocodec.ToTmPubKeyInterface(proposerKey.PubKey())
-	require.NoError(err)
-
 	// Init state
 	state := &types.State{}
 	state.Sequencers.SetProposer(types.NewSequencerFromValidator(*tmtypes.NewValidator(tmPubKey, 1)))
 	state.InitialHeight = 1
+	state.ChainID = chainID
 	state.SetHeight(0)
 	maxBytes := uint64(10000)
 	state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
 	state.ConsensusParams.Block.MaxGas = 100000
 	state.RollappParams.Da = "mock"
+	state.LastHeaderHash = [32]byte{0x01}
 
 	// Create first block with one Tx from mempool
 	_ = mpool.CheckTx([]byte{1, 2, 3, 4}, func(r *abci.Response) {}, mempool.TxInfo{})
 	require.NoError(err)
-	block := executor.CreateBlock(1, &types.Commit{Height: 0}, [32]byte{}, [32]byte(state.Sequencers.ProposerHash()), state, maxBytes)
+	block := executor.CreateBlock(1, &types.Commit{Height: 0}, [32]byte{0x01}, [32]byte(state.Sequencers.ProposerHash()), state, maxBytes)
 	require.NotNil(block)
 	assert.Equal(uint64(1), block.Header.Height)
 	assert.Len(block.Data.Txs, 1)
@@ -299,7 +301,7 @@ func TestApplyBlock(t *testing.T) {
 	require.NoError(mpool.CheckTx([]byte{5, 6, 7, 8, 9}, func(r *abci.Response) {}, mempool.TxInfo{}))
 	require.NoError(mpool.CheckTx([]byte{1, 2, 3, 4, 5}, func(r *abci.Response) {}, mempool.TxInfo{}))
 	require.NoError(mpool.CheckTx(make([]byte, 9990), func(r *abci.Response) {}, mempool.TxInfo{}))
-	block = executor.CreateBlock(2, commit, [32]byte{}, [32]byte(state.Sequencers.ProposerHash()), state, maxBytes)
+	block = executor.CreateBlock(2, commit, block.Header.Hash(), [32]byte(state.Sequencers.ProposerHash()), state, maxBytes)
 	require.NotNil(block)
 	assert.Equal(uint64(2), block.Header.Height)
 	assert.Len(block.Data.Txs, 3)
@@ -321,7 +323,7 @@ func TestApplyBlock(t *testing.T) {
 
 	// Apply the block with an invalid commit
 	err = types.ValidateProposedTransition(state, block, invalidCommit, state.Sequencers.GetProposerPubKey())
-	require.ErrorIs(err, types.ErrInvalidSignature)
+	require.ErrorContains(err, types.ErrInvalidSignature.Error())
 
 	// Create a valid commit for the block
 	signature, err = proposerKey.Sign(abciHeaderBytes)
