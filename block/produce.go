@@ -241,7 +241,7 @@ func (m *Manager) createTMSignature(block *types.Block, proposerAddress []byte, 
 // GetPreviousBlockHashes returns the hash of the last block and the commit for the last block
 // to be used as the previous block hash and commit for the next block
 func (m *Manager) GetPreviousBlockHashes(forHeight uint64) (lastHeaderHash [32]byte, lastCommit *types.Commit, err error) {
-	lastHeaderHash, lastCommit, err = loadPrevBlock(m.Store, forHeight-1) // prev height = forHeight - 1
+	lastHeaderHash, lastCommit, err = getHeaderHashAndCommit(m.Store, forHeight-1) // prev height = forHeight - 1
 	if err != nil {
 		if !m.State.IsGenesis() { // allow prevBlock not to be found only on genesis
 			return [32]byte{}, nil, fmt.Errorf("load prev block: %w: %w", err, ErrNonRecoverable)
@@ -252,7 +252,8 @@ func (m *Manager) GetPreviousBlockHashes(forHeight uint64) (lastHeaderHash [32]b
 	return lastHeaderHash, lastCommit, nil
 }
 
-func loadPrevBlock(store store.Store, height uint64) ([32]byte, *types.Commit, error) {
+// getHeaderHashAndCommit returns the Header Hash and Commit for a given height
+func getHeaderHashAndCommit(store store.Store, height uint64) ([32]byte, *types.Commit, error) {
 	lastCommit, err := store.LoadCommit(height)
 	if err != nil {
 		return [32]byte{}, nil, fmt.Errorf("load commit: height: %d: %w", height, err)

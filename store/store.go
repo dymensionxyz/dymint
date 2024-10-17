@@ -166,7 +166,7 @@ func (s *DefaultStore) LoadCommitByHash(hash [32]byte) (*types.Commit, error) {
 	return commit, nil
 }
 
-// UpdateState updates state saved in Store. Only one State is stored.
+// SaveState updates state saved in Store. Only one State is stored.
 // If there is no State in Store, state will be saved.
 func (s *DefaultStore) SaveState(state *types.State, batch KVBatch) (KVBatch, error) {
 	pbState, err := state.ToProto()

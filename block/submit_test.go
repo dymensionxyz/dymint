@@ -58,7 +58,7 @@ func TestBatchOverhead(t *testing.T) {
 	}
 
 	for _, tcase := range tcases {
-		blocks, err := testutil.GenerateBlocks(1, 1, manager.LocalKey)
+		blocks, err := testutil.GenerateBlocks(1, 1, manager.LocalKey, [32]byte{})
 		require.NoError(t, err)
 		block := blocks[0]
 

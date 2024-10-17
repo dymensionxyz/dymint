@@ -42,6 +42,9 @@ type State struct {
 
 	// New rollapp parameters .
 	RollappParams dymint.RollappParams
+
+	// LastHeaderHash is the hash of the last block header.
+	LastHeaderHash [32]byte
 }
 
 func (s *State) IsGenesis() bool {

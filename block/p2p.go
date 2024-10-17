@@ -12,7 +12,7 @@ import (
 )
 
 // onReceivedBlock receives a block received event from P2P, saves the block to a cache and tries to apply the blocks from the cache.
-func (m *Manager) onReceivedBlock(event pubsub.Message) {
+func (m *Manager) OnReceivedBlock(event pubsub.Message) {
 	eventData, ok := event.Data().(p2p.BlockData)
 	if !ok {
 		m.logger.Error("onReceivedBlock", "err", "wrong event data received")

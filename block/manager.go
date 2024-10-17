@@ -21,15 +21,13 @@ import (
 	tmcrypto "github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/pubsub"
-	tmtypes "github.com/tendermint/tendermint/types"
-
-	"github.com/dymensionxyz/dymint/p2p"
-
 	"github.com/tendermint/tendermint/proxy"
+	tmtypes "github.com/tendermint/tendermint/types"
 
 	"github.com/dymensionxyz/dymint/config"
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/mempool"
+	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
 )
@@ -46,7 +44,7 @@ type Manager struct {
 	// Store and execution
 	Store    store.Store
 	State    *types.State
-	Executor *Executor
+	Executor ExecutorI
 
 	// Clients and servers
 	Pubsub    *pubsub.Server
@@ -78,6 +76,9 @@ type Manager struct {
 
 	// TargetHeight holds the value of the current highest block seen from either p2p (probably higher) or the DA
 	TargetHeight atomic.Uint64
+
+	// Fraud handler
+	FraudHandler FraudHandler
 
 	// channel used to send the retain height to the pruning background loop
 	pruningC chan int64
@@ -135,6 +136,7 @@ func NewManager(
 		},
 		pruningC: make(chan int64, 10), // use of buffered channel to avoid blocking applyBlock thread. In case channel is full, pruning will be skipped, but the retain height can be pruned in the next iteration.
 	}
+	m.setFraudHandler(NewFreezeHandler(m))
 
 	err = m.LoadStateOnInit(store, genesis, logger)
 	if err != nil {
@@ -197,8 +199,8 @@ func (m *Manager) Start(ctx context.Context) error {
 		}()
 
 		// P2P Sync. Subscribe to P2P received blocks events
-		go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewGossipedBlock, m.onReceivedBlock, m.logger)
-		go uevent.MustSubscribe(ctx, m.Pubsub, "applyBlockSyncBlocksLoop", p2p.EventQueryNewBlockSyncBlock, m.onReceivedBlock, m.logger)
+		go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewGossipedBlock, m.OnReceivedBlock, m.logger)
+		go uevent.MustSubscribe(ctx, m.Pubsub, "applyBlockSyncBlocksLoop", p2p.EventQueryNewBlockSyncBlock, m.OnReceivedBlock, m.logger)
 		return nil
 	}
 
@@ -351,4 +353,9 @@ func (m *Manager) setDA(daconfig string, dalcKV store.KV, logger log.Logger) err
 	}
 	m.Retriever = retriever
 	return nil
+}
+
+// setFraudHandler sets the fraud handler for the block manager.
+func (m *Manager) setFraudHandler(handler *FreezeHandler) {
+	m.FraudHandler = handler
 }

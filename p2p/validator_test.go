@@ -125,7 +125,7 @@ func TestValidator_BlockValidator(t *testing.T) {
 			require.NotNil(t, clientCreator)
 			require.NotNil(t, abciClient)
 			mpool := mempoolv1.NewTxMempool(logger, cfg.DefaultMempoolConfig(), proxy.NewAppConnMempool(abciClient), 0)
-			executor, err := block.NewExecutor([]byte("test address"), "test", mpool, proxy.NewAppConns(clientCreator), nil, nil, logger)
+			executor, err := block.NewExecutor(proposerKey.PubKey().Address(), "test", mpool, proxy.NewAppConns(clientCreator), nil, nil, logger)
 			assert.NoError(t, err)
 
 			// Create state
