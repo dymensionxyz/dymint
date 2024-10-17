@@ -112,7 +112,6 @@ func (e *Executor) UpdateStateAfterInitChain(s *types.State, res *abci.ResponseI
 	copy(s.LastResultsHash[:], merkle.HashFromByteSlices(nil))
 
 	s.SetLastSubmittedBlockTime(time.Now())
-
 }
 
 func (e *Executor) UpdateMempoolAfterInitChain(s *types.State) {
