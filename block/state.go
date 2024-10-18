@@ -111,6 +111,7 @@ func (e *Executor) UpdateStateAfterInitChain(s *types.State, res *abci.ResponseI
 	// We update the last results hash with the empty hash, to conform with RFC-6962.
 	copy(s.LastResultsHash[:], merkle.HashFromByteSlices(nil))
 
+	// we init the last submitted block time, to be able go calculate max skew time before first batch is submitted
 	s.SetLastSubmittedBlockTime(time.Now())
 }
 
