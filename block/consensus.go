@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"sync"
 
-	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
-	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	"github.com/gogo/protobuf/proto"
 
 	"github.com/dymensionxyz/dymint/types"
@@ -47,20 +45,10 @@ func (q *ConsensusMessagesQueue) Get() []proto.Message {
 func ConsensusMsgsOnSequencerSetUpdate(newSequencers []types.Sequencer) ([]proto.Message, error) {
 	msgs := make([]proto.Message, 0, len(newSequencers))
 	for _, s := range newSequencers {
-		// Get proposer's consensus public key and convert it to proto.Any
-		val, err := s.TMValidator()
+		anyPK, err := s.AnyConsPubKey()
 		if err != nil {
-			return nil, fmt.Errorf("convert next squencer to tendermint validator: %w", err)
+			return nil, fmt.Errorf("sequencer consensus public key: %w", err)
 		}
-		pubKey, err := cryptocodec.FromTmPubKeyInterface(val.PubKey)
-		if err != nil {
-			return nil, fmt.Errorf("convert tendermint pubkey to cosmos: %w", err)
-		}
-		anyPK, err := codectypes.NewAnyWithValue(pubKey)
-		if err != nil {
-			return nil, fmt.Errorf("convert cosmos pubkey to any: %w", err)
-		}
-
 		msgs = append(msgs, &rdktypes.ConsensusMsgUpsertSequencer{
 			Operator:   s.SettlementAddress,
 			ConsPubKey: protoutils.CosmosToGogo(anyPK),

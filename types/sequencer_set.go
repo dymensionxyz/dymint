@@ -5,6 +5,8 @@ import (
 	"crypto/sha256"
 	"fmt"
 
+	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
+	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	tmcrypto "github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/types"
 )
@@ -60,6 +62,23 @@ func (s Sequencer) ConsAddress() string {
 
 func (s Sequencer) PubKey() tmcrypto.PubKey {
 	return s.val.PubKey
+}
+
+// AnyConsPubKey returns sequencer's consensus public key represented as Cosmos proto.Any.
+func (s Sequencer) AnyConsPubKey() (*codectypes.Any, error) {
+	val, err := s.TMValidator()
+	if err != nil {
+		return nil, fmt.Errorf("convert next squencer to tendermint validator: %w", err)
+	}
+	pubKey, err := cryptocodec.FromTmPubKeyInterface(val.PubKey)
+	if err != nil {
+		return nil, fmt.Errorf("convert tendermint pubkey to cosmos: %w", err)
+	}
+	anyPK, err := codectypes.NewAnyWithValue(pubKey)
+	if err != nil {
+		return nil, fmt.Errorf("convert cosmos pubkey to any: %w", err)
+	}
+	return anyPK, nil
 }
 
 // FullHash returns a "full" hash of the sequencer that includes all fields of the Sequencer type.

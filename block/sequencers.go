@@ -69,17 +69,21 @@ func (m *Manager) MonitorSequencerSetUpdates(ctx context.Context, updatesC chan<
 	}
 }
 
-// handleSequencerSetUpdate calculates the diff between hub's and current sequencer sets and
+// HandleSequencerSetUpdate calculates the diff between hub's and current sequencer sets and
 // creates consensus messages for all new sequencers. The method updates the current state
 // and is not thread-safe. Returns errors on serialization issues.
-func (m *Manager) handleSequencerSetUpdate(newSet []types.Sequencer) error {
+func (m *Manager) HandleSequencerSetUpdate(newSet []types.Sequencer) error {
+	// find new (updated) sequencers
 	newSequencers := types.SequencerListRightOuterJoin(m.State.Sequencers.Sequencers, newSet)
+	// create consensus msgs for new sequencers
 	msgs, err := ConsensusMsgsOnSequencerSetUpdate(newSequencers)
 	if err != nil {
 		return fmt.Errorf("consensus msgs on sequencers set update: %w", err)
 	}
-	m.State.Sequencers.SetSequencers(newSequencers)
+	// add consensus msgs to the stream
 	m.Executor.consensusMessagesStream.Add(msgs...)
+	// save the new sequencer set to the state
+	m.State.Sequencers.SetSequencers(newSet)
 	return nil
 }
 
@@ -208,7 +212,7 @@ func (m *Manager) UpdateSequencerSetFromSL() error {
 	if err != nil {
 		return err
 	}
-	err = m.handleSequencerSetUpdate(seqs)
+	err = m.HandleSequencerSetUpdate(seqs)
 	if err != nil {
 		return err
 	}

@@ -295,6 +295,10 @@ func (e *Executor) publishEvents(resp *tmstate.ABCIResponses, block *types.Block
 	return err
 }
 
+func (e *Executor) GetConsensusMessagesStream() ConsensusMessagesStream {
+	return e.consensusMessagesStream
+}
+
 func toDymintTxs(txs tmtypes.Txs) types.Txs {
 	optiTxs := make(types.Txs, len(txs))
 	for i := range txs {

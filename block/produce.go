@@ -39,7 +39,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int,
 			return nil
 
 		case update := <-sequencerSetUpdates:
-			err := m.handleSequencerSetUpdate(update)
+			err := m.HandleSequencerSetUpdate(update)
 			if err != nil {
 				// occurs on serialization issues and shouldn't happen in practice
 				uevent.MustPublish(ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
