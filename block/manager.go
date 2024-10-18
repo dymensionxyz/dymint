@@ -80,7 +80,7 @@ type Manager struct {
 	pruningC chan int64
 
 	// indexer
-	indexerService *txindex.IndexerService
+	IndexerService *txindex.IndexerService
 }
 
 // NewManager creates new block Manager.
@@ -119,7 +119,7 @@ func NewManager(
 		Executor:       exec,
 		DAClient:       dalc,
 		SLClient:       settlementClient,
-		indexerService: indexerService,
+		IndexerService: indexerService,
 		Retriever:      dalc.(da.BatchRetriever),
 		logger:         logger,
 		blockCache: &Cache{
