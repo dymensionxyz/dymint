@@ -221,7 +221,6 @@ func (c *Client) SaveBlock(ctx context.Context, height uint64, blockBytes []byte
 
 // RemoveBlocks is used to prune blocks from the block sync datastore.
 func (c *Client) RemoveBlocks(ctx context.Context, from, to uint64) (uint64, error) {
-
 	prunedBlocks := uint64(0)
 
 	if from <= 0 {
