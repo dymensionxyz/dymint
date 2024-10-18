@@ -214,11 +214,13 @@ func GenerateRandomValidatorSet() *tmtypes.ValidatorSet {
 // GenerateState generates an initial state for testing.
 func GenerateState(initialHeight int64, lastBlockHeight int64) *types.State {
 	s := &types.State{
-		ChainID:         "test-chain",
-		InitialHeight:   uint64(initialHeight),
-		BaseHeight:      uint64(initialHeight),
-		AppHash:         [32]byte{},
-		LastResultsHash: GetEmptyLastResultsHash(),
+		ChainID:             "test-chain",
+		InitialHeight:       uint64(initialHeight),
+		BaseHeight:          uint64(initialHeight),
+		BaseIndexerHeight:   uint64(initialHeight),
+		BaseBlocksyncHeight: uint64(initialHeight),
+		AppHash:             [32]byte{},
+		LastResultsHash:     GetEmptyLastResultsHash(),
 		Version: tmstate.Version{
 			Consensus: version.Consensus{
 				Block: BlockVersion,

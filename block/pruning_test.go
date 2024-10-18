@@ -5,8 +5,10 @@ import (
 	"testing"
 
 	"github.com/dymensionxyz/dymint/testutil"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/proxy"
 )
 
@@ -45,11 +47,16 @@ func TestPruningRetainHeight(t *testing.T) {
 		_, _, err = manager.ProduceAndGossipBlock(ctx, true)
 		require.NoError(err)
 	}
-
-	validRetainHeight := lastSubmitted + 1 // the max possible valid retain height
-	for i := validRetainHeight + 1; i < manager.State.Height(); i++ {
-		err = manager.PruneBlocks(i)
-		require.Error(err) // cannot prune blocks before they have been submitted
+	validRetainHeight := manager.NextHeightToSubmit() // the max possible valid retain height
+	for i := validRetainHeight; i < manager.State.Height(); i++ {
+		expectedPruned := validRetainHeight - manager.State.BaseHeight
+		pruned, err := manager.Store.PruneStore(manager.State.BaseHeight, validRetainHeight, log.NewNopLogger())
+		if i <= validRetainHeight {
+			require.NoError(err)
+			assert.Equal(t, expectedPruned, pruned)
+		} else {
+			require.Error(gerrc.ErrInvalidArgument)
+		}
 	}
 
 	err = manager.PruneBlocks(validRetainHeight)

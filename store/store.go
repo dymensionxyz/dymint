@@ -273,6 +273,11 @@ func (s *DefaultStore) LoadBlockCid(height uint64) (cid.Cid, error) {
 	return parsedCid, nil
 }
 
+func (s *DefaultStore) RemoveBlockCid(height uint64) error {
+	err := s.db.Delete(getCidKey(height))
+	return err
+}
+
 func getBlockKey(hash [32]byte) []byte {
 	return append(blockPrefix[:], hash[:]...)
 }

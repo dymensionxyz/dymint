@@ -3,6 +3,7 @@ package store
 import (
 	"fmt"
 
+	"github.com/dymensionxyz/dymint/types"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 )
 
@@ -16,6 +17,54 @@ func (s *DefaultStore) PruneBlocks(from, to uint64) (uint64, error) {
 		return 0, fmt.Errorf("to height must be greater than from height: to: %d: from: %d: %w", to, from, gerrc.ErrInvalidArgument)
 	}
 
+	prunedBlocks, err := s.pruneBlocks(from, to, logger)
+	if err != nil {
+		logger.Error("pruning blocks", "from", from, "to", to, "blocks pruned", prunedBlocks, "err", err)
+	}
+
+	prunedResponses, err := s.pruneResponses(from, to, logger)
+	if err != nil {
+		logger.Error("pruning responses", "from", from, "to", to, "responses pruned", prunedResponses, "err", err)
+	}
+
+	return prunedBlocks, nil
+}
+
+// pruneBlocks prunes all store entries that are stored along blocks (blocks,commit and block hash)
+func (s *DefaultStore) pruneBlocks(from, to uint64, logger types.Logger) (uint64, error) {
+	pruneBlocks := func(batch KVBatch, height uint64) error {
+		hash, err := s.loadHashFromIndex(height)
+		if err != nil {
+			return err
+		}
+		if err := batch.Delete(getBlockKey(hash)); err != nil {
+			return err
+		}
+		if err := batch.Delete(getCommitKey(hash)); err != nil {
+			return err
+		}
+		if err := batch.Delete(getIndexKey(height)); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	prunedBlocks, err := s.pruneHeights(from, to, pruneBlocks, logger)
+	return prunedBlocks, err
+}
+
+// pruneResponses prunes block execution responses from store
+func (s *DefaultStore) pruneResponses(from, to uint64, logger types.Logger) (uint64, error) {
+	pruneResponses := func(batch KVBatch, height uint64) error {
+		return batch.Delete(getResponsesKey(height))
+	}
+
+	prunedResponses, err := s.pruneHeights(from, to, pruneResponses, logger)
+	return prunedResponses, err
+}
+
+// pruneHeights is the common function for all pruning that iterates through all heights and prunes according to the pruning function set
+func (s *DefaultStore) pruneHeights(from, to uint64, prune func(batch KVBatch, height uint64) error, logger types.Logger) (uint64, error) {
 	pruned := uint64(0)
 	batch := s.db.NewBatch()
 	defer batch.Discard()

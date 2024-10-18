@@ -220,13 +220,16 @@ func (c *Client) SaveBlock(ctx context.Context, height uint64, blockBytes []byte
 }
 
 // RemoveBlocks is used to prune blocks from the block sync datastore.
-func (c *Client) RemoveBlocks(ctx context.Context, from, to uint64) error {
+func (c *Client) RemoveBlocks(ctx context.Context, from, to uint64) (uint64, error) {
+
+	prunedBlocks := uint64(0)
+
 	if from <= 0 {
-		return fmt.Errorf("from height must be greater than 0: %w", gerrc.ErrInvalidArgument)
+		return prunedBlocks, fmt.Errorf("from height must be greater than 0: %w", gerrc.ErrInvalidArgument)
 	}
 
 	if to <= from {
-		return fmt.Errorf("to height must be greater than from height: to: %d: from: %d: %w", to, from, gerrc.ErrInvalidArgument)
+		return prunedBlocks, fmt.Errorf("to height must be greater than from height: to: %d: from: %d: %w", to, from, gerrc.ErrInvalidArgument)
 	}
 
 	for h := from; h < to; h++ {
@@ -237,10 +240,17 @@ func (c *Client) RemoveBlocks(ctx context.Context, from, to uint64) error {
 		}
 		err = c.blocksync.DeleteBlock(ctx, cid)
 		if err != nil {
-			return fmt.Errorf("remove block height %d: %w", h, err)
+			c.logger.Error("remove blocksync block", "height", h, "err", err)
+			continue
 		}
+		err = c.store.RemoveBlockCid(h)
+		if err != nil {
+			c.logger.Error("remove cid from dymint store", "height", h, "cid", cid, "err", err)
+			continue
+		}
+		prunedBlocks++
 	}
-	return nil
+	return prunedBlocks, nil
 }
 
 // AdvertiseBlockIdToDHT is used to advertise the identifier (cid) for a specific block height to the DHT, using a PutValue operation
