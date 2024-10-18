@@ -32,11 +32,6 @@ func (s *DefaultStore) PruneStore(from, to uint64, logger types.Logger) (uint64,
 		logger.Error("pruning sequencers", "from", from, "to", to, "sequencers pruned", prunedSequencers, "err", err)
 	}
 
-	prunedCids, err := s.pruneCids(from, to, logger)
-	if err != nil {
-		logger.Error("pruning block sync identifiers", "from", from, "to", to, "cids pruned", prunedCids, "err", err)
-	}
-
 	return prunedBlocks, nil
 }
 
@@ -80,15 +75,6 @@ func (s *DefaultStore) pruneSequencers(from, to uint64, logger types.Logger) (ui
 	}
 	prunedSequencers, err := s.pruneHeights(from, to, pruneSequencers, logger)
 	return prunedSequencers, err
-}
-
-// pruneCids prunes content identifiers from store
-func (s *DefaultStore) pruneCids(from, to uint64, logger types.Logger) (uint64, error) {
-	pruneCids := func(batch KVBatch, height uint64) error {
-		return batch.Delete(getCidKey(height))
-	}
-	prunedCids, err := s.pruneHeights(from, to, pruneCids, logger)
-	return prunedCids, err
 }
 
 // pruneHeights is the common function for all pruning that iterates through all heights and prunes according to the pruning function set
