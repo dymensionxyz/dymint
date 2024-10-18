@@ -42,7 +42,6 @@ func (m *Manager) PruneBlocks(retainHeight uint64) {
 	if err != nil {
 		m.logger.Error("save state", "err", err)
 	}
-
 }
 
 func (m *Manager) PruningLoop(ctx context.Context) error {
