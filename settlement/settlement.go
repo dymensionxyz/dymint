@@ -3,6 +3,7 @@ package settlement
 import (
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
@@ -33,10 +34,11 @@ type BatchMetaData struct {
 
 type Batch struct {
 	// sequencer is the bech32-encoded address of the sequencer sent the update
-	Sequencer   string
-	StartHeight uint64
-	EndHeight   uint64
-	AppHashes   [][32]byte
+	Sequencer        string
+	StartHeight      uint64
+	EndHeight        uint64
+	AppHashes        [][32]byte
+	BlockDescriptors []rollapp.BlockDescriptor
 	// MetaData about the batch in the DA layer
 	MetaData *BatchMetaData
 }

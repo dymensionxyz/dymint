@@ -21,7 +21,7 @@ message State {
   int64 last_block_height = 4;
 
   tendermint.types.BlockID last_block_id = 5 [(gogoproto.nullable) = false, (gogoproto.customname) = "LastBlockID"];
-  google.protobuf.Timestamp last_block_time = 6 [(gogoproto.nullable) = false, (gogoproto.stdtime) = true];
+  uint64 last_block_time = 6;
 
   reserved 7;
   reserved 8;
@@ -44,6 +44,7 @@ message State {
 
   SequencerSet sequencerSet         = 18 [(gogoproto.nullable) = false];
   RollappParams rollapp_params = 19 [(gogoproto.nullable) = false];
+  uint64 last_submitted_block_time = 20;
 
 }
 

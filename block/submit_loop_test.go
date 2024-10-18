@@ -16,7 +16,8 @@ import (
 type testArgs struct {
 	nParallel                 int           // number of instances to run in parallel
 	testDuration              time.Duration // how long to run one instance of the test (should be short)
-	batchSkew                 uint64        // max number of batches to get ahead
+	batchSkew                 time.Duration // time between last block produced and submitted
+	skewMargin                time.Duration // skew margin allowed
 	batchBytes                uint64        // max number of bytes in a batch
 	maxTime                   time.Duration // maximum time to wait before submitting submissions
 	submitTime                time.Duration // how long it takes to submit a batch
@@ -59,9 +60,20 @@ func testSubmitLoopInner(
 	nProducedBytes := atomic.Uint64{} // tracking how many actual bytes have been produced but not submitted so far
 	producedBytesC := make(chan int)  // producer sends on here, and can be blocked by not consuming from here
 
-	// the time of the last block produced or the last batch submitted or the last starting of the node
-	timeLastProgress := atomic.Int64{}
+	lastSubmittedBlockTime := atomic.Uint64{}
+	lastProducedBlockTime := atomic.Uint64{}
+	lastProducedBlockTime.Store(uint64(time.Now().UTC().UnixNano()))
+	lastSubmittedBlockTime.Store(uint64(time.Now().UTC().UnixNano()))
 
+	skewTime := func() time.Duration {
+
+		lastSubmitted := time.Unix(0, int64(lastSubmittedBlockTime.Load()))
+		lastProduced := time.Unix(0, int64(lastProducedBlockTime.Load()))
+		if lastProduced.Before(lastSubmitted) {
+			return 0
+		}
+		return lastProduced.Sub(lastSubmitted)
+	}
 	go func() { // simulate block production
 		go func() { // another thread to check system properties
 			for {
@@ -71,9 +83,7 @@ func testSubmitLoopInner(
 				default:
 				}
 				// producer shall not get too far ahead
-				absoluteMax := (args.batchSkew + 1) * args.batchBytes // +1 is because the producer is always blocked after the fact
-				nProduced := nProducedBytes.Load()
-				require.True(t, nProduced < absoluteMax, "produced bytes not less than maximum", "nProduced", nProduced, "max", absoluteMax)
+				require.True(t, skewTime() < args.batchSkew+args.skewMargin, "last produced blocks time not less than maximum skew time", "produced block skew time", skewTime(), "max skew time", args.batchSkew)
 			}
 		}()
 		for {
@@ -82,13 +92,17 @@ func testSubmitLoopInner(
 				return
 			default:
 			}
+
 			time.Sleep(approx(args.produceTime))
+
+			if args.batchSkew <= skewTime() {
+				continue
+			}
 			nBytes := rand.Intn(args.produceBytes) // simulate block production
 			nProducedBytes.Add(uint64(nBytes))
 			producedBytesC <- nBytes
 			pendingBlocks.Add(1) // increase pending blocks to be submitted counter
-
-			timeLastProgress.Store(time.Now().Unix())
+			lastProducedBlockTime.Store(uint64(time.Now().UTC().UnixNano()))
 		}
 	}()
 
@@ -96,25 +110,19 @@ func testSubmitLoopInner(
 		time.Sleep(approx(args.submitTime))
 		if rand.Float64() < args.submissionHaltProbability {
 			time.Sleep(args.submissionHaltTime)
-			timeLastProgress.Store(time.Now().Unix()) // we have now recovered
 		}
 		consumed := rand.Intn(int(maxSize))
 		nProducedBytes.Add(^uint64(consumed - 1)) // subtract
-
-		timeLastProgressT := time.Unix(timeLastProgress.Load(), 0)
-		absoluteMax := int64(2 * float64(args.maxTime)) // allow some leeway for code execution. Tests may run on small boxes (GH actions)
-		timeSinceLast := time.Since(timeLastProgressT).Milliseconds()
-		require.True(t, timeSinceLast < absoluteMax, "too long since last update", "timeSinceLast", timeSinceLast, "max", absoluteMax)
-
 		pendingBlocks.Store(0)                    // no pending blocks to be submitted
-		timeLastProgress.Store(time.Now().Unix()) // we have submitted  batch
+		lastSubmittedBlockTime.Store(uint64(time.Now().UTC().UnixNano()))
+
 		return uint64(consumed), nil
 	}
 	accumulatedBlocks := func() uint64 {
 		return pendingBlocks.Load()
 	}
 
-	block.SubmitLoopInner(ctx, log.NewNopLogger(), producedBytesC, args.batchSkew, accumulatedBlocks, args.maxTime, args.batchBytes, submitBatch)
+	block.SubmitLoopInner(ctx, log.NewNopLogger(), producedBytesC, args.batchSkew, accumulatedBlocks, skewTime, args.maxTime, args.batchBytes, submitBatch)
 }
 
 // Make sure the producer does not get too far ahead
@@ -124,7 +132,8 @@ func TestSubmitLoopFastProducerHaltingSubmitter(t *testing.T) {
 		testArgs{
 			nParallel:    50,
 			testDuration: 2 * time.Second,
-			batchSkew:    10,
+			batchSkew:    100 * time.Millisecond,
+			skewMargin:   5 * time.Millisecond,
 			batchBytes:   100,
 			maxTime:      10 * time.Millisecond,
 			submitTime:   2 * time.Millisecond,
@@ -132,8 +141,8 @@ func TestSubmitLoopFastProducerHaltingSubmitter(t *testing.T) {
 			produceTime:  2 * time.Millisecond,
 			// a relatively long possibility of the submitter halting
 			// tests the case where we need to stop the producer getting too far ahead
-			submissionHaltTime:        50 * time.Millisecond,
-			submissionHaltProbability: 0.01,
+			submissionHaltTime:        200 * time.Millisecond,
+			submissionHaltProbability: 0.05,
 		},
 	)
 }
@@ -145,7 +154,8 @@ func TestSubmitLoopTimer(t *testing.T) {
 		testArgs{
 			nParallel:    50,
 			testDuration: 2 * time.Second,
-			batchSkew:    10,
+			batchSkew:    100 * time.Millisecond,
+			skewMargin:   5 * time.Millisecond,
 			batchBytes:   100,
 			maxTime:      10 * time.Millisecond,
 			submitTime:   2 * time.Millisecond,

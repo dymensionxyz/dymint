@@ -561,6 +561,8 @@ func (idx *BlockerIndexer) pruneBlocks(from, to uint64, logger log.Logger) (uint
 		if !ok {
 			continue
 		}
+		pruned++
+
 		key, err := heightKey(h)
 		if err != nil {
 			logger.Debug("pruning block indexer getting height key", "err", err)
@@ -574,7 +576,6 @@ func (idx *BlockerIndexer) pruneBlocks(from, to uint64, logger log.Logger) (uint
 			logger.Debug("pruning block indexer events", "err", err)
 			continue
 		}
-		pruned++
 
 		// flush every 1000 blocks to avoid batches becoming too large
 		if pruned%1000 == 0 && pruned > 0 {
