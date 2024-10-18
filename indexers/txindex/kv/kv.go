@@ -640,7 +640,6 @@ func (txi *TxIndex) pruneTxsAndEvents(from, to uint64) (uint64, error) {
 }
 
 func (txi *TxIndex) pruneEvents(height uint64, batch store.KVBatch) (uint64, error) {
-
 	pruned := uint64(0)
 	eventKey, err := eventHeightKey(int64(height))
 	if err != nil {

@@ -113,7 +113,6 @@ func (bsDagService *BlockSyncDagService) LoadBlock(ctx context.Context, cid cid.
 }
 
 func (bsDagService *BlockSyncDagService) DeleteBlock(ctx context.Context, cid cid.Cid) error {
-
 	// first it gets the root node
 	root, err := bsDagService.Get(ctx, cid)
 	if err != nil {
