@@ -132,7 +132,7 @@ func TestSubmitLoopFastProducerHaltingSubmitter(t *testing.T) {
 		testArgs{
 			nParallel:    50,
 			testDuration: 2 * time.Second,
-			batchSkew:    40 * time.Millisecond,
+			batchSkew:    100 * time.Millisecond,
 			skewMargin:   5 * time.Millisecond,
 			batchBytes:   100,
 			maxTime:      10 * time.Millisecond,
@@ -141,7 +141,7 @@ func TestSubmitLoopFastProducerHaltingSubmitter(t *testing.T) {
 			produceTime:  2 * time.Millisecond,
 			// a relatively long possibility of the submitter halting
 			// tests the case where we need to stop the producer getting too far ahead
-			submissionHaltTime:        50 * time.Millisecond,
+			submissionHaltTime:        200 * time.Millisecond,
 			submissionHaltProbability: 0.05,
 		},
 	)
@@ -154,7 +154,7 @@ func TestSubmitLoopTimer(t *testing.T) {
 		testArgs{
 			nParallel:    50,
 			testDuration: 2 * time.Second,
-			batchSkew:    150 * time.Millisecond,
+			batchSkew:    100 * time.Millisecond,
 			skewMargin:   5 * time.Millisecond,
 			batchBytes:   100,
 			maxTime:      10 * time.Millisecond,
