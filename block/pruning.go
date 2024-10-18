@@ -21,27 +21,26 @@ func (m *Manager) PruneBlocks(retainHeight uint64) {
 	pruned, err := m.P2PClient.RemoveBlocks(context.Background(), m.State.BaseBlocksyncHeight, retainHeight)
 	if err != nil {
 		m.logger.Error("pruning blocksync store", "retain_height", retainHeight, "err", err)
+	} else {
+		m.logger.Debug("blocksync store pruned", "from", m.State.BaseBlocksyncHeight, "to", retainHeight, "pruned", pruned)
+		m.State.BaseBlocksyncHeight = retainHeight
 	}
-	m.logger.Debug("blocksync store pruned", "from", m.State.BaseBlocksyncHeight, "to", retainHeight, "pruned", pruned)
-	m.State.BaseBlocksyncHeight = retainHeight
-
 	// prune blocks from indexer store
 	pruned, err = m.IndexerService.Prune(m.State.BaseIndexerHeight, retainHeight)
 	if err != nil {
 		m.logger.Error("pruning indexer", "retain_height", retainHeight, "err", err)
+	} else {
+		m.logger.Debug("indexer store pruned", "from", m.State.BaseIndexerHeight, "to", retainHeight, "pruned", pruned)
+		m.State.BaseIndexerHeight = retainHeight
 	}
-
-	m.logger.Debug("indexer store pruned", "from", m.State.BaseIndexerHeight, "to", retainHeight, "pruned", pruned)
-	m.State.BaseIndexerHeight = retainHeight
-
 	// prune blocks from dymint store
 	pruned, err = m.Store.PruneStore(m.State.BaseHeight, retainHeight, m.logger)
 	if err != nil {
 		m.logger.Error("pruning block store", "retain_height", retainHeight, "err", err)
+	} else {
+		m.logger.Debug("dymint store pruned", "from", m.State.BaseHeight, "to", retainHeight, "pruned", pruned)
+		m.State.BaseHeight = retainHeight
 	}
-
-	m.logger.Debug("dymint store pruned", "from", m.State.BaseHeight, "to", retainHeight, "pruned", pruned)
-	m.State.BaseHeight = retainHeight
 
 	// store state with base heights updates
 	_, err = m.Store.SaveState(m.State, nil)
