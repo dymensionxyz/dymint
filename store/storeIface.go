@@ -90,5 +90,7 @@ type Store interface {
 
 	SaveDRSVersion(height uint64, version uint32, batch KVBatch) (KVBatch, error)
 
+	RemoveBlockCid(height uint64) error
+
 	Close() error
 }

@@ -261,16 +261,20 @@ func (s *State) ToProto() (*pb.State, error) {
 	}
 
 	return &pb.State{
-		Version:         &s.Version,
-		ChainId:         s.ChainID,
-		InitialHeight:   int64(s.InitialHeight),
-		LastBlockHeight: int64(s.Height()),
-		BaseHeight:      s.BaseHeight,
-		ConsensusParams: s.ConsensusParams,
-		LastResultsHash: s.LastResultsHash[:],
-		LastHeaderHash:  s.LastHeaderHash[:],
-		AppHash:         s.AppHash[:],
-		RollappParams:   s.RollappParams,
+		Version:                          &s.Version,
+		ChainId:                          s.ChainID,
+		InitialHeight:                    int64(s.InitialHeight),
+		LastBlockHeight:                  int64(s.Height()),
+		SequencerSet:                     *seqsProto,
+		BaseHeight:                       s.BaseHeight,
+		BaseBlocksyncHeight:              s.BaseBlocksyncHeight,
+		BaseIndexerHeight:                s.BaseIndexerHeight,
+		ConsensusParams:                  s.ConsensusParams,
+		LastHeightConsensusParamsChanged: s.LastHeightConsensusParamsChanged,
+		LastResultsHash:                  s.LastResultsHash[:],
+		LastHeaderHash:                   s.LastHeaderHash[:],
+		AppHash:                          s.AppHash[:],
+		RollappParams:                    s.RollappParams,
 		Proposer:        proposerProto,
 	}, nil
 }
@@ -292,6 +296,11 @@ func (s *State) FromProto(other *pb.State) error {
 	} else {
 		// proposer may be nil in the state
 		s.SetProposer(nil)
+	s.BaseBlocksyncHeight = other.BaseBlocksyncHeight
+	s.BaseIndexerHeight = other.BaseIndexerHeight
+	err = s.Sequencers.FromProto(other.SequencerSet)
+	if err != nil {
+		return err
 	}
 
 	s.ConsensusParams = other.ConsensusParams

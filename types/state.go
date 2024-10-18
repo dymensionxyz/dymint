@@ -30,6 +30,14 @@ type State struct {
 
 	// Proposer is a sequencer that acts as a proposer. Can be nil if no proposer is set.
 	Proposer atomic.Pointer[Sequencer]
+	// BaseBlocksyncHeight is the height of the first block we have in blocksync store.
+	BaseBlocksyncHeight uint64
+
+	// BaseIndexerHeight is the height of the first block we have in blocksync store.
+	BaseIndexerHeight uint64
+
+	// Sequencers is the set of sequencers that are currently active on the rollapp.
+	Sequencers SequencerSet
 
 	// Consensus parameters used for validating blocks.
 	// Changes returned by EndBlock and updated after Commit.

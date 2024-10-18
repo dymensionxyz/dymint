@@ -315,6 +315,9 @@ func (s *DefaultStore) LoadValidationHeight() (uint64, error) {
 		return 0, err
 	}
 	return binary.LittleEndian.Uint64(b), nil
+func (s *DefaultStore) RemoveBlockCid(height uint64) error {
+	err := s.db.Delete(getCidKey(height))
+	return err
 }
 
 func (s *DefaultStore) LoadDRSVersion(height uint64) (uint32, error) {
