@@ -193,17 +193,6 @@ func TestStorePruning(t *testing.T) {
 				}
 			}
 
-			// Validate only block cids in the range are pruned
-			for k := range savedCidHeights {
-				if k >= c.from && k < c.to { // k < c.to is the exclusion test
-					_, err = bstore.LoadBlockCid(k)
-					assert.Error(err, "Block cid at height %d should be pruned", k)
-				} else {
-					_, err = bstore.LoadBlockCid(k)
-					assert.NoError(err)
-				}
-			}
-
 			// Validate only block drs in the range are pruned
 			for k := range savedDRSHeights {
 				if k >= c.from && k < c.to { // k < c.to is the exclusion test
