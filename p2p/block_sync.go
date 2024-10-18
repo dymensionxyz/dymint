@@ -113,5 +113,5 @@ func (blocksync *BlockSync) LoadBlock(ctx context.Context, cid cid.Cid) (BlockDa
 
 // RemoveBlock removes the block from the DAGservice.
 func (blocksync *BlockSync) DeleteBlock(ctx context.Context, cid cid.Cid) error {
-	return blocksync.dsrv.Remove(ctx, cid)
+	return blocksync.dsrv.DeleteBlock(ctx, cid)
 }

@@ -595,27 +595,31 @@ func (txi *TxIndex) pruneTxs(from, to uint64) (uint64, error) {
 		it := txi.store.PrefixIterator(prefixForHeight(int64(h)))
 		defer it.Discard()
 
+		if err := txi.pruneEvents(h, batch); err != nil {
+			continue
+		}
+		pruned++
+
 		for ; it.Valid(); it.Next() {
 			if err := batch.Delete(it.Key()); err != nil {
 				continue
 			}
+
 			if err := batch.Delete(it.Value()); err != nil {
 				continue
 			}
-			if err := txi.pruneEvents(h, batch); err != nil {
-				continue
-			}
-			pruned++
-			// flush every 1000 txs to avoid batches becoming too large
-			if pruned%1000 == 0 && pruned > 0 {
-				err := flush(batch, int64(h))
-				if err != nil {
-					return 0, err
-				}
-				batch.Discard()
-				batch = txi.store.NewBatch()
-			}
 		}
+
+		// flush every 1000 txs to avoid batches becoming too large
+		if pruned%1000 == 0 && pruned > 0 {
+			err := flush(batch, int64(h))
+			if err != nil {
+				return 0, err
+			}
+			batch.Discard()
+			batch = txi.store.NewBatch()
+		}
+
 	}
 
 	err := flush(batch, int64(to))
