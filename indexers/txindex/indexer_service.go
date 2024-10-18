@@ -59,7 +59,7 @@ func (is *IndexerService) OnStart() error {
 			msg := <-blockHeadersSub.Out()
 			eventDataHeader, _ := msg.Data().(types.EventDataNewBlockHeader)
 			height := eventDataHeader.Header.Height
-			batch := NewBatch(eventDataHeader.NumTxs)
+			batch := NewBatch(eventDataHeader.NumTxs, height)
 
 			for i := int64(0); i < eventDataHeader.NumTxs; i++ {
 				msg2 := <-txsSub.Out()
@@ -99,14 +99,14 @@ func (is *IndexerService) OnStop() {
 }
 
 // Prune removes tx and blocks indexed up to (but not including) a height.
-func (is *IndexerService) Prune(from, to uint64) error {
-	_, err := is.blockIdxr.Prune(from, to, is.Logger)
+func (is *IndexerService) Prune(from, to uint64) (uint64, error) {
+	blockPruned, err := is.blockIdxr.Prune(from, to, is.Logger)
 	if err != nil {
-		return err
+		return blockPruned, err
 	}
-	_, err = is.txIdxr.Prune(from, to, is.Logger)
+	txPruned, err := is.txIdxr.Prune(from, to, is.Logger)
 	if err != nil {
-		return err
+		return txPruned, err
 	}
-	return nil
+	return blockPruned + txPruned, nil
 }

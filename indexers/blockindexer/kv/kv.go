@@ -535,12 +535,12 @@ func (idx *BlockerIndexer) Prune(from, to uint64, logger log.Logger) (uint64, er
 	if to <= from {
 		return 0, fmt.Errorf("to height must be greater than from height: to: %d: from: %d: %w", to, from, gerrc.ErrInvalidArgument)
 	}
-	blocksPruned, err := idx.pruneBlocks(from, to, logger)
-	return blocksPruned, err
+	return idx.pruneBlocks(from, to, logger)
 }
 
 func (idx *BlockerIndexer) pruneBlocks(from, to uint64, logger log.Logger) (uint64, error) {
 	pruned := uint64(0)
+	tobeFlushed := uint64(0)
 	batch := idx.store.NewBatch()
 	defer batch.Discard()
 
@@ -553,14 +553,6 @@ func (idx *BlockerIndexer) pruneBlocks(from, to uint64, logger log.Logger) (uint
 	}
 
 	for h := int64(from); h < int64(to); h++ {
-		ok, err := idx.Has(h)
-		if err != nil {
-			logger.Debug("pruning block indexer checking height", "err", err)
-			continue
-		}
-		if !ok {
-			continue
-		}
 		key, err := heightKey(h)
 		if err != nil {
 			logger.Debug("pruning block indexer getting height key", "err", err)
@@ -570,20 +562,28 @@ func (idx *BlockerIndexer) pruneBlocks(from, to uint64, logger log.Logger) (uint
 			logger.Debug("pruning block indexer deleting height key", "err", err)
 			continue
 		}
-		if err := idx.pruneEvents(h, batch); err != nil {
+
+		// we update here to avoid acccumulating batches in case pruneEvents fails
+		pruned++
+
+		prunedEvents, err := idx.pruneEvents(h, batch)
+		if err != nil {
 			logger.Debug("pruning block indexer events", "err", err)
 			continue
 		}
-		pruned++
+		pruned += prunedEvents
 
+		tobeFlushed += pruned
 		// flush every 1000 blocks to avoid batches becoming too large
-		if pruned%1000 == 0 && pruned > 0 {
+		if tobeFlushed > 1000 {
 			err := flush(batch, h)
 			if err != nil {
 				return 0, err
 			}
 			batch.Discard()
 			batch = idx.store.NewBatch()
+
+			tobeFlushed = 0
 		}
 	}
 
@@ -595,27 +595,31 @@ func (idx *BlockerIndexer) pruneBlocks(from, to uint64, logger log.Logger) (uint
 	return pruned, nil
 }
 
-func (idx *BlockerIndexer) pruneEvents(height int64, batch store.KVBatch) error {
+func (idx *BlockerIndexer) pruneEvents(height int64, batch store.KVBatch) (uint64, error) {
+	pruned := uint64(0)
+
 	eventKey, err := eventHeightKey(height)
 	if err != nil {
-		return err
+		return pruned, err
 	}
 	keysList, err := idx.store.Get(eventKey)
 	if err != nil {
-		return err
+		return pruned, err
 	}
 	eventKeys := &dymint.EventKeys{}
 	err = eventKeys.Unmarshal(keysList)
 	if err != nil {
-		return err
+		return pruned, err
 	}
 	for _, key := range eventKeys.Keys {
 		err := batch.Delete(key)
 		if err != nil {
-			return err
+			return pruned, err
 		}
+		pruned++
+
 	}
-	return nil
+	return pruned, nil
 }
 
 func (idx *BlockerIndexer) addEventKeys(height int64, beginKeys *dymint.EventKeys, endKeys *dymint.EventKeys, batch store.KVBatch) error {

@@ -26,6 +26,12 @@ type State struct {
 	// BaseHeight is the height of the first block we have in store after pruning.
 	BaseHeight uint64
 
+	// BaseBlocksyncHeight is the height of the first block we have in blocksync store.
+	BaseBlocksyncHeight uint64
+
+	// BaseIndexerHeight is the height of the first block we have in blocksync store.
+	BaseIndexerHeight uint64
+
 	// Sequencers is the set of sequencers that are currently active on the rollapp.
 	Sequencers SequencerSet
 

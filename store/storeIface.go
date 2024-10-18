@@ -78,4 +78,6 @@ type Store interface {
 	SaveBlockCid(height uint64, cid cid.Cid, batch KVBatch) (KVBatch, error)
 
 	LoadBlockCid(height uint64) (cid.Cid, error)
+
+	RemoveBlockCid(height uint64) error
 }
