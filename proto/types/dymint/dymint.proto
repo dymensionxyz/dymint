@@ -95,6 +95,10 @@ message Batch {
 message Sequencer {
 	string settlement_address = 1;
 	tendermint.types.Validator validator = 2;
+	// RewardAddr is the bech32-encoded sequencer's reward address.
+	string reward_addr = 3;
+	// Relayers is an array of the whitelisted relayer addresses. Addresses are bech32-encoded strings.
+	repeated string whitelisted_relayers = 4;
 }
 
 message SequencerSet {

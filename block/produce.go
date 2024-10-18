@@ -7,23 +7,21 @@ import (
 	"time"
 
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
-
-	"github.com/dymensionxyz/dymint/node/events"
-	"github.com/dymensionxyz/dymint/store"
-	uevent "github.com/dymensionxyz/dymint/utils/event"
-
 	tmed25519 "github.com/tendermint/tendermint/crypto/ed25519"
 	cmtproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	tmtypes "github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 
+	"github.com/dymensionxyz/dymint/node/events"
+	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
+	uevent "github.com/dymensionxyz/dymint/utils/event"
 )
 
 // ProduceBlockLoop is calling publishBlock in a loop as long as we're synced.
 // A signal will be sent to the bytesProduced channel for each block produced
 // In this way it's possible to pause block production by not consuming the channel
-func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int) error {
+func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int, sequencerSetUpdates <-chan []types.Sequencer) error {
 	m.logger.Info("Started block producer loop.")
 
 	ticker := time.NewTicker(m.Conf.BlockTime)
@@ -39,6 +37,15 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int)
 		select {
 		case <-ctx.Done():
 			return nil
+
+		case update := <-sequencerSetUpdates:
+			err := m.HandleSequencerSetUpdate(update)
+			if err != nil {
+				// occurs on serialization issues and shouldn't happen in practice
+				uevent.MustPublish(ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
+				return err
+			}
+
 		case <-ticker.C:
 
 			// if empty blocks are configured to be enabled, and one is scheduled...
@@ -148,9 +155,11 @@ func (m *Manager) produceBlock(allowEmpty bool, nextProposerHash *[32]byte) (*ty
 		return nil, nil, fmt.Errorf("load block: height: %d: %w: %w", newHeight, err, ErrNonRecoverable)
 	}
 
-	maxBlockDataSize := uint64(float64(m.Conf.BatchSubmitBytes) * types.MaxBlockSizeAdjustment)
-	proposerHashForBlock := [32]byte(m.State.Sequencers.ProposerHash())
-	// if nextProposerHash is set, we create a last block
+	var (
+		maxBlockDataSize     = uint64(float64(m.Conf.BatchSubmitBytes) * types.MaxBlockSizeAdjustment)
+		proposerHashForBlock = [32]byte(m.State.Sequencers.ProposerHash())
+	)
+	// if nextProposerInfo is set, we create a last block
 	if nextProposerHash != nil {
 		maxBlockDataSize = 0
 		proposerHashForBlock = *nextProposerHash

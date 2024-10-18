@@ -117,7 +117,7 @@ func TestCreateBlockWithConsensusMessages(t *testing.T) {
 
 	// Create a mock ConsensusMessagesStream
 	mockStream := &MockConsensusMessagesStream{}
-	mockStream.On("GetConsensusMessages").Return([]proto.Message{
+	mockStream.On("Get").Return([]proto.Message{
 		theMsg1,
 		theMsg2,
 	}, nil)
@@ -172,9 +172,13 @@ type MockConsensusMessagesStream struct {
 	mock.Mock
 }
 
-func (m *MockConsensusMessagesStream) GetConsensusMessages() ([]proto.Message, error) {
+func (m *MockConsensusMessagesStream) Get() []proto.Message {
 	args := m.Called()
-	return args.Get(0).([]proto.Message), args.Error(1)
+	return args.Get(0).([]proto.Message)
+}
+
+func (m *MockConsensusMessagesStream) Add(msgs ...proto.Message) {
+	m.Called(msgs)
 }
 
 func TestApplyBlock(t *testing.T) {
