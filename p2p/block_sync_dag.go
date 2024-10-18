@@ -112,6 +112,24 @@ func (bsDagService *BlockSyncDagService) LoadBlock(ctx context.Context, cid cid.
 	return data, nil
 }
 
+func (bsDagService *BlockSyncDagService) DeleteBlock(ctx context.Context, cid cid.Cid) error {
+
+	// first it gets the root node
+	root, err := bsDagService.Get(ctx, cid)
+	if err != nil {
+		return err
+	}
+
+	// then it iterates all the cids to remove them from the block store
+	for _, l := range root.Links() {
+		err := bsDagService.Remove(ctx, l.Cid)
+		if err != nil {
+			return nil
+		}
+	}
+	return nil
+}
+
 // dagReader is used to read the DAG (all the block chunks) from the root (IPLD) node
 func dagReader(root ipld.Node, ds ipld.DAGService) (io.Reader, error) {
 	ctx := context.Background()
