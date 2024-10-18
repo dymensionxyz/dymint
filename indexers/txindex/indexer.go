@@ -32,13 +32,15 @@ type TxIndexer interface {
 // Batch groups together multiple Index operations to be performed at the same time.
 // NOTE: Batch is NOT thread-safe and must not be modified after starting its execution.
 type Batch struct {
-	Ops []*abci.TxResult
+	Height int64
+	Ops    []*abci.TxResult
 }
 
 // NewBatch creates a new Batch.
-func NewBatch(n int64) *Batch {
+func NewBatch(n int64, height int64) *Batch {
 	return &Batch{
-		Ops: make([]*abci.TxResult, n),
+		Height: height,
+		Ops:    make([]*abci.TxResult, n),
 	}
 }
 

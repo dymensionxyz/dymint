@@ -59,7 +59,7 @@ func (is *IndexerService) OnStart() error {
 			msg := <-blockHeadersSub.Out()
 			eventDataHeader, _ := msg.Data().(types.EventDataNewBlockHeader)
 			height := eventDataHeader.Header.Height
-			batch := NewBatch(eventDataHeader.NumTxs)
+			batch := NewBatch(eventDataHeader.NumTxs, height)
 
 			for i := int64(0); i < eventDataHeader.NumTxs; i++ {
 				msg2 := <-txsSub.Out()
