@@ -83,7 +83,7 @@ type Manager struct {
 	pruningC chan int64
 
 	// indexer
-	indexerService *txindex.IndexerService
+	IndexerService *txindex.IndexerService
 }
 
 // NewManager creates new block Manager.
@@ -128,7 +128,7 @@ func NewManager(
 		Store:          store,
 		Executor:       exec,
 		SLClient:       settlementClient,
-		indexerService: indexerService,
+		IndexerService: indexerService,
 		logger:         logger.With("module", "block_manager"),
 		blockCache: &Cache{
 			cache: make(map[uint64]types.CachedBlock),
