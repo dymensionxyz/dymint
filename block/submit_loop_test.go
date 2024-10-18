@@ -152,7 +152,7 @@ func TestSubmitLoopTimer(t *testing.T) {
 	testSubmitLoop(
 		t,
 		testArgs{
-			nParallel:    1,
+			nParallel:    50,
 			testDuration: 2 * time.Second,
 			batchSkew:    150 * time.Millisecond,
 			skewMargin:   5 * time.Millisecond,
