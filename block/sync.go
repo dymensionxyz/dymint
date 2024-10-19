@@ -47,7 +47,8 @@ func (m *Manager) SyncLoop(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			return nil
+			return ctx.Err()
+
 		case <-m.syncingC:
 
 			m.logger.Info("syncing to target height", "targetHeight", m.LastSubmittedHeight.Load())
