@@ -354,10 +354,9 @@ func (m *Manager) UpdateFinalizedHeight() error {
 	if errors.Is(err, gerrc.ErrNotFound) {
 		// The SL hasn't got any batches for this chain yet.
 		m.logger.Info("No finalized batches for chain found in SL.")
-		m.State.SetLastValidatedHeight(0)
 	} else {
 		// update validation height with latest finalized height (it will be updated only of finalized height is higher)
-		m.State.SetLastValidatedHeight(res.EndHeight)
+		m.State.UpdateLastValidatedHeight(res.EndHeight)
 	}
 	return nil
 }

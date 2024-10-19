@@ -16,7 +16,7 @@ func (m *Manager) onNewStateUpdateFinalized(event pubsub.Message) {
 		m.logger.Error("onReceivedBatch", "err", "wrong event data received")
 		return
 	}
-	m.State.SetLastValidatedHeight(eventData.EndHeight)
+	m.State.UpdateLastValidatedHeight(eventData.EndHeight)
 }
 
 // ValidateLoop listens for syncing events (from new state update or from initial syncing) and validates state updates to the last submitted height.

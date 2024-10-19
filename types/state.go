@@ -68,10 +68,15 @@ func (s *State) Height() uint64 {
 	return s.LastBlockHeight.Load()
 }
 
-// SetHeight sets the height saved in the Store if it is higher than the existing height
+// UpdateLastValidatedHeight sets the height saved in the Store if it is higher than the existing height
 // returns OK if the value was updated successfully or did not need to be updated
-func (s *State) SetLastValidatedHeight(height uint64) {
-	s.LastValidatedHeight.Store(max(s.GetLastValidatedHeight(), height))
+func (s *State) UpdateLastValidatedHeight(height uint64) {
+	for {
+		curr := s.LastValidatedHeight.Load()
+		if s.LastValidatedHeight.CompareAndSwap(curr, max(curr, height)) {
+			break
+		}
+	}
 }
 
 // Height returns height of the highest block saved in the Store.
