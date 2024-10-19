@@ -133,11 +133,7 @@ func TestPersistency(t *testing.T) {
 	assert.Error(err) // no batch should be present
 
 	// Create a batches which will be submitted
-<<<<<<< HEAD
 	batch1, err := testutil.GenerateBatch(1, 1, proposerKey, [32]byte{})
-=======
-	batch1, err := testutil.GenerateBatch(1, 1, proposerKey, "test", [32]byte{})
->>>>>>> 51d10be (fix manager tests for proposer address and lastheighthash)
 	require.NoError(err)
 	resultSubmitBatch := &da.ResultSubmitBatch{}
 	resultSubmitBatch.SubmitMetaData = &da.DASubmitMetaData{}

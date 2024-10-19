@@ -38,8 +38,8 @@ const (
 /*                                    utils                                   */
 /* -------------------------------------------------------------------------- */
 
-func GetManagerWithProposerKey(chainId string, conf config.BlockManagerConfig, proposerKey crypto.PrivKey, settlementlc settlement.ClientI, genesisHeight, storeInitialHeight, storeLastBlockHeight int64, proxyAppConns proxy.AppConns, mockStore store.Store) (*block.Manager, error) {
-	genesis := GenerateGenesis(chainId, genesisHeight)
+func GetManagerWithProposerKey(conf config.BlockManagerConfig, proposerKey crypto.PrivKey, settlementlc settlement.ClientI, genesisHeight, storeInitialHeight, storeLastBlockHeight int64, proxyAppConns proxy.AppConns, mockStore store.Store) (*block.Manager, error) {
+	genesis := GenerateGenesis(genesisHeight)
 	// Change the LastBlockHeight to avoid calling InitChainSync within the manager
 	// And updating the state according to the genesis.
 	raw, _ := proposerKey.GetPublic().Raw()
@@ -99,7 +99,7 @@ func GetManagerWithProposerKey(chainId string, conf config.BlockManagerConfig, p
 		GossipSubCacheSize:           50,
 		BootstrapRetryTime:           30 * time.Second,
 		BlockSyncRequestIntervalTime: 30 * time.Second,
-	}, p2pKey, chainId, managerStore, pubsubServer, datastore.NewMapDatastore(), logger)
+	}, p2pKey, "TestChain", managerStore, pubsubServer, datastore.NewMapDatastore(), logger)
 	if err != nil {
 		return nil, err
 	}
@@ -132,12 +132,12 @@ func GetManagerWithProposerKey(chainId string, conf config.BlockManagerConfig, p
 	return manager, nil
 }
 
-func GetManager(chainId string, conf config.BlockManagerConfig, settlementlc settlement.ClientI, genesisHeight, storeInitialHeight, storeLastBlockHeight int64, proxyAppConns proxy.AppConns, mockStore store.Store) (*block.Manager, error) {
+func GetManager(conf config.BlockManagerConfig, settlementlc settlement.ClientI, genesisHeight, storeInitialHeight, storeLastBlockHeight int64, proxyAppConns proxy.AppConns, mockStore store.Store) (*block.Manager, error) {
 	proposerKey, _, err := crypto.GenerateEd25519Key(rand.Reader)
 	if err != nil {
 		return nil, err
 	}
-	return GetManagerWithProposerKey(chainId, conf, proposerKey, settlementlc, genesisHeight, storeInitialHeight, storeLastBlockHeight, proxyAppConns, mockStore)
+	return GetManagerWithProposerKey(conf, proposerKey, settlementlc, genesisHeight, storeInitialHeight, storeLastBlockHeight, proxyAppConns, mockStore)
 }
 
 func GetMockDALC(logger log.Logger) da.DataAvailabilityLayerClient {
