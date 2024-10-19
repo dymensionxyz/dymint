@@ -8,9 +8,9 @@ import (
 // PruneBlocks prune all block related data from dymint store up to (but not including) retainHeight. It returns the number of blocks pruned, used for testing.
 func (m *Manager) PruneBlocks(retainHeight uint64) (uint64, error) {
 	if m.IsProposer() { // do not delete anything that we might submit in future
-		retainHeight = max(m.NextHeightToSubmit(), retainHeight)
+		retainHeight = min(m.NextHeightToSubmit(), retainHeight)
 	} else { // do not delete anything that is not validated yet
-		retainHeight = max(m.State.NextValidationHeight(), retainHeight)
+		retainHeight = min(m.State.NextValidationHeight(), retainHeight)
 	}
 
 	// prune blocks from blocksync store
