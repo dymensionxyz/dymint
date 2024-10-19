@@ -24,7 +24,7 @@ func (m *Manager) ValidateLoop(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			return nil
+			return ctx.Err()
 		case <-m.validateC:
 
 			m.logger.Info("validating state updates to target height", "targetHeight", m.LastSubmittedHeight.Load())
