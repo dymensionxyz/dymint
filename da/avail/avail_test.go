@@ -52,8 +52,8 @@ func TestRetrieveBatches(t *testing.T) {
 	// Set the mock functions
 	mockSubstrateApiClient.On("GetBlockHash", mock.Anything).Return(availtypes.NewHash([]byte("123")), nil)
 	// Build batches for the block extrinsics
-	batch1 := testutil.MustGenerateBatchAndKey(0, 1, "test", [32]byte{})
-	batch2 := testutil.MustGenerateBatchAndKey(2, 3, "test", [32]byte{})
+	batch1 := testutil.MustGenerateBatchAndKey(0, 1)
+	batch2 := testutil.MustGenerateBatchAndKey(2, 3)
 	batch1bytes, err := batch1.MarshalBinary()
 	require.NoError(err)
 	batch2bytes, err := batch2.MarshalBinary()

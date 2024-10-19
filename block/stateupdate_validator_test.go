@@ -45,11 +45,10 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 	proxyApp := proxy.NewAppConns(clientCreator)
 	err := proxyApp.Start()
 	require.NoError(t, err)
-	chainId := "test"
 	proposerKey, _, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
 
-	doubleSigned, err := testutil.GenerateBlocks(1, 10, proposerKey, chainId, [32]byte{})
+	doubleSigned, err := testutil.GenerateBlocks(1, 10, proposerKey, [32]byte{})
 	require.NoError(t, err)
 
 	// Test cases
@@ -121,7 +120,7 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 
 			// Create manager
-			manager, err := testutil.GetManagerWithProposerKey(chainId, testutil.GetManagerConfig(), proposerKey, nil, 1, 1, 0, proxyApp, nil)
+			manager, err := testutil.GetManagerWithProposerKey(testutil.GetManagerConfig(), proposerKey, nil, 1, 1, 0, proxyApp, nil)
 			require.NoError(t, err)
 			require.NotNil(t, manager)
 
@@ -130,7 +129,7 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 			manager.Retriever = manager.DAClient.(da.BatchRetriever)
 
 			// Generate batch
-			batch, err := testutil.GenerateBatch(1, 10, proposerKey, chainId, [32]byte{})
+			batch, err := testutil.GenerateBatch(1, 10, proposerKey, [32]byte{})
 			assert.NoError(t, err)
 
 			// Submit batch to DA

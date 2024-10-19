@@ -68,7 +68,7 @@ func generateBlock(height uint64, proposerHash []byte, lastHeaderHash [32]byte) 
 			ConsensusHash:      h[2],
 			AppHash:            [32]byte{},
 			LastResultsHash:    GetEmptyLastResultsHash(),
-			ProposerAddress:    proposerAddress,
+			ProposerAddress:    []byte{4, 3, 2, 1},
 			SequencerHash:      [32]byte(proposerHash),
 			NextSequencersHash: [32]byte(proposerHash),
 			ChainID:            "test-chain",
@@ -214,12 +214,12 @@ func MustGenerateBatch(startHeight uint64, endHeight uint64, proposerKey crypto.
 	}
 }
 
-func MustGenerateBatchAndKey(startHeight uint64, endHeight uint64, chainId string, lastHeaderHash [32]byte) *types.Batch {
+func MustGenerateBatchAndKey(startHeight uint64, endHeight uint64) *types.Batch {
 	proposerKey, _, err := crypto.GenerateEd25519Key(nil)
 	if err != nil {
 		panic(err)
 	}
-	return MustGenerateBatch(startHeight, endHeight, proposerKey, chainId, lastHeaderHash)
+	return MustGenerateBatch(startHeight, endHeight, proposerKey)
 }
 
 // GenerateRandomValidatorSet generates random validator sets
@@ -260,9 +260,9 @@ func GenerateStateWithSequencer(initialHeight int64, lastBlockHeight int64, pubk
 }
 
 // GenerateGenesis generates a genesis for testing.
-func GenerateGenesis(chainId string, initialHeight int64) *tmtypes.GenesisDoc {
+func GenerateGenesis(initialHeight int64) *tmtypes.GenesisDoc {
 	return &tmtypes.GenesisDoc{
-		ChainID:       chainId,
+		ChainID:       "test-chain",
 		InitialHeight: initialHeight,
 		ConsensusParams: &tmproto.ConsensusParams{
 			Block: tmproto.BlockParams{

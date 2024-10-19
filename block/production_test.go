@@ -59,7 +59,7 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 	managerConfigCreatesEmptyBlocks := testutil.GetManagerConfig()
 	managerConfigCreatesEmptyBlocks.BlockTime = blockTime
 	managerConfigCreatesEmptyBlocks.MaxIdleTime = 0 * time.Second
-	managerWithEmptyBlocks, err := testutil.GetManager("test", managerConfigCreatesEmptyBlocks, nil, 1, 1, 0, proxyApp, nil)
+	managerWithEmptyBlocks, err := testutil.GetManager(managerConfigCreatesEmptyBlocks, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
 	// Init manager with empty blocks feature enabled
@@ -67,7 +67,7 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 	managerConfig.BlockTime = blockTime
 	managerConfig.MaxIdleTime = MaxIdleTime
 	managerConfig.MaxProofTime = MaxIdleTime
-	manager, err := testutil.GetManager("test", managerConfig, nil, 1, 1, 0, proxyApp, nil)
+	manager, err := testutil.GetManager(managerConfig, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
 	// Check initial height
@@ -132,7 +132,7 @@ func TestCreateEmptyBlocksNew(t *testing.T) {
 	managerConfig := testutil.GetManagerConfig()
 	managerConfig.BlockTime = 200 * time.Millisecond
 	managerConfig.MaxIdleTime = 1 * time.Second
-	manager, err := testutil.GetManager("test", managerConfig, nil, 1, 1, 0, proxyApp, nil)
+	manager, err := testutil.GetManager(managerConfig, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
 	abciClient, err := clientCreator.NewABCIClient()
@@ -221,7 +221,7 @@ func TestStopBlockProduction(t *testing.T) {
 
 	managerConfig := testutil.GetManagerConfig()
 	managerConfig.BatchSubmitBytes = 1000 // small batch size to fill up quickly
-	manager, err := testutil.GetManager("test", managerConfig, nil, 1, 1, 0, proxyApp, nil)
+	manager, err := testutil.GetManager(managerConfig, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
 	assert.Equal(manager.State.Height(), uint64(0))
