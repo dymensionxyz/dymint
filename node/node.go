@@ -106,7 +106,7 @@ func NewNode(
 		dstore = datastore.NewMapDatastore()
 	} else {
 		// TODO(omritoptx): Move dymint to const
-		baseKV = store.NewKVStore(conf.RootDir, conf.DBPath, "dymint", conf.DBConfig.SyncWrites)
+		baseKV = store.NewKVStore(conf.RootDir, conf.DBPath, "dymint", conf.DBConfig.SyncWrites, logger)
 		path := filepath.Join(store.Rootify(conf.RootDir, conf.DBPath), "blocksync")
 		var err error
 		dstore, err = leveldb.NewDatastore(path, &leveldb.Options{})
@@ -160,6 +160,7 @@ func NewNode(
 		pubsubServer,
 		nil, // p2p client is set later
 		dalcKV,
+		indexerService,
 		logger,
 	)
 	if err != nil {

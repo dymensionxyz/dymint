@@ -9,6 +9,9 @@ import (
 	"github.com/ipfs/go-cid"
 	mh "github.com/multiformats/go-multihash"
 	"github.com/stretchr/testify/assert"
+	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/proto/tendermint/state"
+	"golang.org/x/exp/rand"
 )
 
 func TestStorePruning(t *testing.T) {
@@ -60,37 +63,74 @@ func TestStorePruning(t *testing.T) {
 			assert := assert.New(t)
 			bstore := store.New(store.NewDefaultInMemoryKVStore())
 
-			savedHeights := make(map[uint64]bool)
-			for _, block := range c.blocks {
-				_, err := bstore.SaveBlock(block, &types.Commit{}, nil)
-				assert.NoError(err)
-				savedHeights[block.Header.Height] = true
-				blockBytes, err := block.MarshalBinary()
-				assert.NoError(err)
-				// Create a cid manually by specifying the 'prefix' parameters
-				pref := &cid.Prefix{
-					Codec:    cid.DagProtobuf,
-					MhLength: -1,
-					MhType:   mh.SHA2_256,
-					Version:  1,
-				}
-				cid, err := pref.Sum(blockBytes)
-				assert.NoError(err)
-				_, err = bstore.SaveBlockCid(block.Header.Height, cid, nil)
-				assert.NoError(err)
+			savedBlockHeights := make(map[uint64]bool)
+			savedRespHeights := make(map[uint64]bool)
+			savedSeqHeights := make(map[uint64]bool)
+			savedCidHeights := make(map[uint64]bool)
 
-				// TODO: add block responses and commits
+			for _, block := range c.blocks {
+
+				_, err := bstore.SaveBlock(block, &types.Commit{Height: block.Header.Height}, nil)
+				assert.NoError(err)
+				savedBlockHeights[block.Header.Height] = true
+
+				// generate and store block responses randomly for block heights
+				if randBool() {
+					_, err = bstore.SaveBlockResponses(block.Header.Height, &state.ABCIResponses{}, nil)
+					savedRespHeights[block.Header.Height] = true
+					assert.NoError(err)
+				}
+
+				// generate and store sequencers randomly for block heights
+				if randBool() {
+					_, err = bstore.SaveSequencers(block.Header.Height, &types.SequencerSet{}, nil)
+					savedSeqHeights[block.Header.Height] = true
+					assert.NoError(err)
+				}
+
+				// generate and store cids randomly for block heights
+				if randBool() {
+					// generate cid from block
+					blockBytes, err := block.MarshalBinary()
+					assert.NoError(err)
+					// Create a cid manually by specifying the 'prefix' parameters
+					pref := &cid.Prefix{
+						Codec:    cid.DagProtobuf,
+						MhLength: -1,
+						MhType:   mh.SHA2_256,
+						Version:  1,
+					}
+					cid, err := pref.Sum(blockBytes)
+					assert.NoError(err)
+					_, err = bstore.SaveBlockCid(block.Header.Height, cid, nil)
+					assert.NoError(err)
+					savedCidHeights[block.Header.Height] = true
+				}
+
 			}
 
-			// And then feed it some data
-			// expectedCid, err := pref.Sum(block)
-			// Validate all blocks are saved
-			for k := range savedHeights {
+			// Validate everything is saved
+			for k := range savedBlockHeights {
 				_, err := bstore.LoadBlock(k)
 				assert.NoError(err)
 			}
 
-			_, err := bstore.PruneBlocks(c.from, c.to)
+			for k := range savedRespHeights {
+				_, err := bstore.LoadBlockResponses(k)
+				assert.NoError(err)
+			}
+
+			for k := range savedSeqHeights {
+				_, err := bstore.LoadSequencers(k)
+				assert.NoError(err)
+			}
+
+			for k := range savedCidHeights {
+				_, err := bstore.LoadBlockCid(k)
+				assert.NoError(err)
+			}
+
+			_, err := bstore.PruneStore(c.from, c.to, log.NewNopLogger())
 			if c.shouldError {
 				assert.Error(err)
 				return
@@ -99,27 +139,54 @@ func TestStorePruning(t *testing.T) {
 			assert.NoError(err)
 
 			// Validate only blocks in the range are pruned
-			for k := range savedHeights {
+			for k := range savedBlockHeights {
 				if k >= c.from && k < c.to { // k < c.to is the exclusion test
 					_, err := bstore.LoadBlock(k)
 					assert.Error(err, "Block at height %d should be pruned", k)
 
-					_, err = bstore.LoadBlockResponses(k)
-					assert.Error(err, "BlockResponse at height %d should be pruned", k)
-
 					_, err = bstore.LoadCommit(k)
 					assert.Error(err, "Commit at height %d should be pruned", k)
-
-					_, err = bstore.LoadBlockCid(k)
-					assert.Error(err, "Cid at height %d should be pruned", k)
 
 				} else {
 					_, err := bstore.LoadBlock(k)
 					assert.NoError(err)
 
-					_, err = bstore.LoadBlockCid(k)
+					_, err = bstore.LoadCommit(k)
 					assert.NoError(err)
 
+				}
+			}
+
+			// Validate only block responses in the range are pruned
+			for k := range savedRespHeights {
+				if k >= c.from && k < c.to { // k < c.to is the exclusion test
+					_, err = bstore.LoadBlockResponses(k)
+					assert.Error(err, "Block response at height %d should be pruned", k)
+				} else {
+					_, err = bstore.LoadBlockResponses(k)
+					assert.NoError(err)
+				}
+			}
+
+			// Validate only sequencers in the range are pruned
+			for k := range savedSeqHeights {
+				if k >= c.from && k < c.to { // k < c.to is the exclusion test
+					_, err = bstore.LoadSequencers(k)
+					assert.Error(err, "Block cid at height %d should be pruned", k)
+				} else {
+					_, err = bstore.LoadSequencers(k)
+					assert.NoError(err)
+				}
+			}
+
+			// Validate only block cids in the range are pruned
+			for k := range savedCidHeights {
+				if k >= c.from && k < c.to { // k < c.to is the exclusion test
+					_, err = bstore.LoadBlockCid(k)
+					assert.Error(err, "Block cid at height %d should be pruned", k)
+				} else {
+					_, err = bstore.LoadBlockCid(k)
+					assert.NoError(err)
 				}
 			}
 		})
@@ -127,3 +194,7 @@ func TestStorePruning(t *testing.T) {
 }
 
 // TODO: prune twice
+
+func randBool() bool {
+	return rand.Intn(2) == 0
+}

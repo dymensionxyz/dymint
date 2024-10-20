@@ -117,8 +117,8 @@ func SubmitLoopInner(
 						logger.Error("Create and submit batch", "err", err, "pending", pending)
 						panic(err)
 					}
-					// this could happen if we timed-out waiting for acceptance in the previous iteration, but the batch was indeed submitted. 
-                    // we panic here cause restarting may reset the last batch submitted counter and the sequencer can potentially resume submitting batches.
+					// this could happen if we timed-out waiting for acceptance in the previous iteration, but the batch was indeed submitted.
+					// we panic here cause restarting may reset the last batch submitted counter and the sequencer can potentially resume submitting batches.
 					if errors.Is(err, gerrc.ErrAlreadyExists) {
 						logger.Debug("Batch already accepted", "err", err, "pending", pending)
 						panic(err)
@@ -273,7 +273,7 @@ func (m *Manager) GetUnsubmittedBlocks() uint64 {
 	return m.State.Height() - m.LastSubmittedHeight.Load()
 }
 
-// UpdateLastSubmittedHeight will update last height submitted height upon events. 
+// UpdateLastSubmittedHeight will update last height submitted height upon events.
 // This may be necessary in case we crashed/restarted before getting response for our submission to the settlement layer.
 func (m *Manager) UpdateLastSubmittedHeight(event pubsub.Message) {
 	eventData, ok := event.Data().(*settlement.EventDataNewBatchAccepted)
@@ -282,7 +282,11 @@ func (m *Manager) UpdateLastSubmittedHeight(event pubsub.Message) {
 		return
 	}
 	h := eventData.EndHeight
-	if m.LastSubmittedHeight.Load() < h {
-		m.LastSubmittedHeight.Store(h)
+
+	for {
+		curr := m.LastSubmittedHeight.Load()
+		if m.LastSubmittedHeight.CompareAndSwap(curr, max(curr, h)) {
+			break
+		}
 	}
 }

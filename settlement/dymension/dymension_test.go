@@ -6,35 +6,32 @@ import (
 	"testing"
 	"time"
 
-	"google.golang.org/grpc/codes"
-
-	"google.golang.org/grpc/status"
-
-	"github.com/tendermint/tendermint/libs/log"
-
+	sdkcodectypes "github.com/cosmos/cosmos-sdk/codec/types"
 	"github.com/cosmos/cosmos-sdk/crypto/keyring"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/secp256k1"
 	"github.com/cosmos/cosmos-sdk/types"
+	"github.com/dymensionxyz/cosmosclient/cosmosclient"
 	"github.com/ignite/cli/ignite/pkg/cosmosaccount"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	coretypes "github.com/tendermint/tendermint/rpc/core/types"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
-	"github.com/dymensionxyz/cosmosclient/cosmosclient"
 	"github.com/dymensionxyz/dymint/da"
-	rollapptypesmock "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymension/v3/x/rollapp/types"
-	sequencertypesmock "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymension/v3/x/sequencer/types"
 	dymensionmock "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/settlement/dymension"
+	rollapptypesmock "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
+	sequencertypesmock "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/sequencer"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/settlement/dymension"
 	"github.com/dymensionxyz/dymint/testutil"
-	rollapptypes "github.com/dymensionxyz/dymint/third_party/dymension/rollapp/types"
-	sequencertypes "github.com/dymensionxyz/dymint/third_party/dymension/sequencer/types"
-
-	sdkcodectypes "github.com/cosmos/cosmos-sdk/codec/types"
+	rollapptypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
+	sequencertypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/sequencer"
+	protoutils "github.com/dymensionxyz/dymint/utils/proto"
 )
 
 func TestGetSequencers(t *testing.T) {
@@ -225,7 +222,7 @@ func generateSequencerByRollappResponse(t *testing.T, count int) *sequencertypes
 		require.NoError(t, err)
 
 		seq := sequencertypes.Sequencer{
-			DymintPubKey: pk,
+			DymintPubKey: protoutils.CosmosToGogo(pk),
 			Status:       sequencertypes.Bonded,
 		}
 		sequencerInfoList = append(sequencerInfoList, seq)

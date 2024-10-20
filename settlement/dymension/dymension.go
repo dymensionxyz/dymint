@@ -15,8 +15,6 @@ import (
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	"github.com/dymensionxyz/cosmosclient/cosmosclient"
-	rollapptypes "github.com/dymensionxyz/dymint/third_party/dymension/rollapp/types"
-	sequencertypes "github.com/dymensionxyz/dymint/third_party/dymension/sequencer/types"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/google/uuid"
 	"github.com/ignite/cli/ignite/pkg/cosmosaccount"
@@ -27,6 +25,10 @@ import (
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
+	rollapptypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
+	sequencertypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/sequencer"
+	protoutils "github.com/dymensionxyz/dymint/utils/proto"
+	"github.com/dymensionxyz/dymint/version"
 )
 
 const (
@@ -317,6 +319,46 @@ func (c *Client) GetProposer() *types.Sequencer {
 	return &seqs[index]
 }
 
+// GetSequencerByAddress returns a sequencer by its address.
+func (c *Client) GetSequencerByAddress(address string) (types.Sequencer, error) {
+	var res *sequencertypes.QueryGetSequencerResponse
+	req := &sequencertypes.QueryGetSequencerRequest{
+		SequencerAddress: address,
+	}
+
+	err := c.RunWithRetry(func() error {
+		var err error
+		res, err = c.sequencerQueryClient.Sequencer(c.ctx, req)
+		if err == nil {
+			return nil
+		}
+
+		if status.Code(err) == codes.NotFound {
+			return retry.Unrecoverable(errors.Join(gerrc.ErrNotFound, err))
+		}
+		return err
+	})
+	if err != nil {
+		return types.Sequencer{}, err
+	}
+
+	dymintPubKey := protoutils.GogoToCosmos(res.Sequencer.DymintPubKey)
+	var pubKey cryptotypes.PubKey
+	err = c.protoCodec.UnpackAny(dymintPubKey, &pubKey)
+	if err != nil {
+		return types.Sequencer{}, err
+	}
+
+	tmPubKey, err := cryptocodec.ToTmPubKeyInterface(pubKey)
+	if err != nil {
+		return types.Sequencer{}, err
+	}
+
+	sequencer := *types.NewSequencer(tmPubKey, res.Sequencer.Address)
+
+	return sequencer, nil
+}
+
 // GetAllSequencers returns all sequencers of the given rollapp.
 func (c *Client) GetAllSequencers() ([]types.Sequencer, error) {
 	var res *sequencertypes.QueryGetSequencersByRollappResponse
@@ -347,8 +389,9 @@ func (c *Client) GetAllSequencers() ([]types.Sequencer, error) {
 
 	var sequencerList []types.Sequencer
 	for _, sequencer := range res.Sequencers {
+		dymintPubKey := protoutils.GogoToCosmos(sequencer.DymintPubKey)
 		var pubKey cryptotypes.PubKey
-		err := c.protoCodec.UnpackAny(sequencer.DymintPubKey, &pubKey)
+		err := c.protoCodec.UnpackAny(dymintPubKey, &pubKey)
 		if err != nil {
 			return nil, err
 		}
@@ -395,8 +438,9 @@ func (c *Client) GetBondedSequencers() ([]types.Sequencer, error) {
 
 	var sequencerList []types.Sequencer
 	for _, sequencer := range res.Sequencers {
+		dymintPubKey := protoutils.GogoToCosmos(sequencer.DymintPubKey)
 		var pubKey cryptotypes.PubKey
-		err := c.protoCodec.UnpackAny(sequencer.DymintPubKey, &pubKey)
+		err := c.protoCodec.UnpackAny(dymintPubKey, &pubKey)
 		if err != nil {
 			return nil, err
 		}
@@ -502,6 +546,7 @@ func (c *Client) convertBatchToMsgUpdateState(batch *types.Batch, daResult *da.R
 		DAPath:      daResult.SubmitMetaData.ToPath(),
 		BDs:         rollapptypes.BlockDescriptors{BD: blockDescriptors},
 		Last:        batch.LastBatch,
+		DrsVersion:  version.Commit,
 	}
 	return settlementBatch, nil
 }

@@ -71,7 +71,7 @@ type Store interface {
 
 	LoadSequencers(height uint64) (*types.SequencerSet, error)
 
-	PruneBlocks(from, to uint64) (uint64, error)
+	PruneStore(from, to uint64, logger types.Logger) (uint64, error)
 
 	Close() error
 
