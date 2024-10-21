@@ -10,7 +10,7 @@ func (m *Manager) PruneBlocks(retainHeight uint64) (uint64, error) {
 	if m.IsProposer() { // do not delete anything that we might submit in future
 		retainHeight = min(m.NextHeightToSubmit(), retainHeight)
 	} else { // do not delete anything that is not validated yet
-		retainHeight = min(m.State.NextValidationHeight(), retainHeight)
+		retainHeight = min(m.NextValidationHeight(), retainHeight)
 	}
 
 	// prune blocks from blocksync store

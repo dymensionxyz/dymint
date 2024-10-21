@@ -78,7 +78,8 @@ func (v *StateUpdateValidator) ValidateStateUpdate(batch *settlement.ResultRetri
 	}
 
 	// update the last validated height to the batch last block height
-	v.blockManager.State.UpdateLastValidatedHeight(batch.EndHeight)
+	v.blockManager.UpdateLastValidatedHeight(batch.EndHeight)
+
 	return nil
 }
 
