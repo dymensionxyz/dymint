@@ -320,7 +320,7 @@ func (s *DefaultStore) LoadBlockCid(height uint64) (cid.Cid, error) {
 
 func (s *DefaultStore) SaveValidationHeight(height uint64, batch KVBatch) (KVBatch, error) {
 	b := make([]byte, 8)
-	binary.LittleEndian.PutUint64(b, uint64(height))
+	binary.LittleEndian.PutUint64(b, height)
 	if batch == nil {
 		return nil, s.db.Set(getValidatedHeightKey(), b)
 	}
@@ -333,7 +333,7 @@ func (s *DefaultStore) LoadValidationHeight() (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
-	return uint64(binary.LittleEndian.Uint64(b)), nil
+	return binary.LittleEndian.Uint64(b), nil
 }
 
 func getBlockKey(hash [32]byte) []byte {
