@@ -120,7 +120,7 @@ require (
 	go.uber.org/fx v1.20.1 // indirect
 	golang.org/x/exp v0.0.0-20240213143201-ec583247a57a
 	golang.org/x/xerrors v0.0.0-20231012003039-104605ab7028 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20240318140521-94a12d6c2237
+	google.golang.org/genproto/googleapis/api v0.0.0-20240318140521-94a12d6c2237 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240318140521-94a12d6c2237 // indirect
 	gopkg.in/natefinch/npipe.v2 v2.0.0-20160621034901-c1b8fa8bdcce // indirect
 	sigs.k8s.io/yaml v1.4.0 // indirect
