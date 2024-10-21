@@ -542,34 +542,33 @@ func TestDAFetch(t *testing.T) {
 		})
 	}
 }
-
-func TestManager_updateTargetHeight(t *testing.T) {
+func TestManager_updateLastSubmittedHeight(t *testing.T) {
 	tests := []struct {
-		name            string
-		TargetHeight    uint64
-		h               uint64
-		expTargetHeight uint64
+		name                   string
+		LastSubmittedHeight    uint64
+		h                      uint64
+		expLastSubmittedHeight uint64
 	}{
 		{
-			name:            "no update target height",
-			TargetHeight:    100,
-			h:               99,
-			expTargetHeight: 100,
+			name:                   "no update last submitted height",
+			LastSubmittedHeight:    100,
+			h:                      99,
+			expLastSubmittedHeight: 100,
 		}, {
-			name:            "update target height",
-			TargetHeight:    100,
-			h:               101,
-			expTargetHeight: 101,
+			name:                   "update last submitted height",
+			LastSubmittedHeight:    100,
+			h:                      101,
+			expLastSubmittedHeight: 101,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			m := &block.Manager{
-				TargetHeight: atomic.Uint64{},
+				LastSubmittedHeight: atomic.Uint64{},
 			}
-			m.TargetHeight.Store(tt.TargetHeight)
-			m.UpdateTargetHeight(tt.h)
-			assert.Equal(t, tt.expTargetHeight, m.TargetHeight.Load())
+			m.LastSubmittedHeight.Store(tt.LastSubmittedHeight)
+			m.UpdateLastSubmittedHeight(tt.h)
+			assert.Equal(t, tt.expLastSubmittedHeight, m.LastSubmittedHeight.Load())
 		})
 	}
 }

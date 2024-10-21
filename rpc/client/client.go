@@ -737,6 +737,8 @@ func (c *Client) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
 	id, addr, network := c.node.P2P.Info()
 	txIndexerStatus := "on"
 
+	lastSeenHeight := max(c.node.BlockManager.LastSubmittedHeight.Load(), c.node.BlockManager.GetLatestP2PHeight())
+
 	result := &ctypes.ResultStatus{
 		// TODO(ItzhakBokris): update NodeInfo fields
 		NodeInfo: p2p.DefaultNodeInfo{
@@ -758,7 +760,7 @@ func (c *Client) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
 			LatestBlockHeight: int64(latestHeight),
 			LatestBlockTime:   time.Unix(0, int64(latestBlockTimeNano)),
 			// CatchingUp is true if the node is not at the latest height received from p2p or da.
-			CatchingUp: c.node.BlockManager.TargetHeight.Load() > latestHeight,
+			CatchingUp: lastSeenHeight > latestHeight,
 			// TODO(tzdybal): add missing fields
 			// EarliestBlockHash:   earliestBlockHash,
 			// EarliestAppHash:     earliestAppHash,
