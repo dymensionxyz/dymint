@@ -421,7 +421,6 @@ type ErrStateUpdateDoubleSigningFraud struct {
 }
 
 func NewErrStateUpdateDoubleSigningFraud(height uint64, block *Block) error {
-
 	hash := block.Hash()
 	abciBlock, err := ToABCIBlock(block)
 	if err != nil {
@@ -450,7 +449,6 @@ func NewErrStateUpdateDoubleSigningFraud(height uint64, block *Block) error {
 }
 
 func (e ErrStateUpdateDoubleSigningFraud) Error() string {
-
 	return fmt.Sprintf("block received from P2P not matching block found in DA. Height: %d Block:%s", e.Height, e.Block)
 }
 

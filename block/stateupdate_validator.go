@@ -30,7 +30,7 @@ func NewStateUpdateValidator(logger types.Logger, blockManager *Manager) *StateU
 func (v *StateUpdateValidator) ValidateStateUpdate(batch *settlement.ResultRetrieveBatch) error {
 	v.logger.Debug("validating state update", "start height", batch.StartHeight, "end height", batch.EndHeight)
 
-	//validate that the DRS version specified batch matches the node state
+	// validate that the DRS version specified batch matches the node state
 	err := v.validateDRS(batch.StartHeight, batch.EndHeight)
 	if err != nil {
 		return err
