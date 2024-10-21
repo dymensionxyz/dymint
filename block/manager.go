@@ -199,7 +199,7 @@ func (m *Manager) runProducerLoops(ctx context.Context) {
 	}
 }
 
-func (m *Manager) RunLoops(ctx context.Context) error {
+func (m *Manager) RunLoops(ctx context.Context) {
 	/* --------------------------------- common --------------------------------- */
 	// listen to new bonded sequencers events to add them in the sequencer set
 	go uevent.MustSubscribe(ctx, m.Pubsub, "newBondedSequencer", settlement.EventQueryNewBondedSequencer, m.UpdateSequencerSet, m.logger)
@@ -210,23 +210,26 @@ func (m *Manager) RunLoops(ctx context.Context) error {
 	cancel := m.runLoopsWithCancelFunc(ctx)
 
 	// listen to role switch trigger
-	for {
-		select {
-		// ctx cancelled, shutdown
-		case <-ctx.Done():
-			cancel()
-			return nil
-		case proposer := <-m.roleSwitchC:
-			if proposer == m.isProposer {
-				m.logger.Error("Role switch signal received, but already in the same role", "proposer", proposer)
-				continue
+	go func() {
+		for {
+			select {
+			// ctx cancelled, shutdown
+			case <-ctx.Done():
+				cancel()
+				return
+			case proposer := <-m.roleSwitchC:
+				if proposer == m.isProposer {
+					m.logger.Error("Role switch signal received, but already in the same role", "proposer", proposer)
+					continue
+				}
+				m.isProposer = proposer
+
+				// shutdown all active loops and run loops again with new role
+				cancel()
+				cancel = m.runLoopsWithCancelFunc(ctx)
 			}
-			m.isProposer = proposer
-			cancel() // shutdown all active loops
-			// run loops again with new role
-			cancel = m.runLoopsWithCancelFunc(ctx)
 		}
-	}
+	}()
 }
 
 func (m *Manager) runLoopsWithCancelFunc(ctx context.Context) context.CancelFunc {
@@ -271,8 +274,6 @@ func (m *Manager) Start(ctx context.Context) error {
 			if err != nil {
 				m.logger.Error("sync block manager from settlement", "err", err)
 			}
-			// DA Sync. Subscribe to SL next batch events
-			go uevent.MustSubscribe(ctx, m.Pubsub, "syncTargetLoop", settlement.EventQueryNewSettlementBatchAccepted, m.onNewStateUpdate, m.logger)
 		}()
 	} else {
 		/* ----------------------------- sequencer mode ----------------------------- */
@@ -298,11 +299,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	/* -------------------------------------------------------------------------- */
 	/*                                loops section                               */
 	/* -------------------------------------------------------------------------- */
-
-	err = m.RunLoops(ctx)
-	if err != nil {
-		return fmt.Errorf("run loops: %w", err)
-	}
+	m.RunLoops(ctx)
 
 	return nil
 }
@@ -344,9 +341,11 @@ func (m *Manager) syncFromSettlement() error {
 		// TODO: separate between fresh rollapp and non-registered rollapp
 		return err
 	}
-	m.LastSubmittedHeight.Store(res.EndHeight)
-	err = m.syncToTargetHeight(res.EndHeight)
+
+	m.UpdateLastSubmittedHeight(res.EndHeight)
 	m.UpdateTargetHeight(res.EndHeight)
+
+	err = m.syncToTargetHeight(res.EndHeight)
 	if err != nil {
 		return err
 	}
@@ -359,10 +358,21 @@ func (m *Manager) GetProposerPubKey() tmcrypto.PubKey {
 	return m.State.Sequencers.GetProposerPubKey()
 }
 
+// UpdateTargetHeight will update the highest height seen from either P2P or DA.
 func (m *Manager) UpdateTargetHeight(h uint64) {
 	for {
 		currentHeight := m.TargetHeight.Load()
 		if m.TargetHeight.CompareAndSwap(currentHeight, max(currentHeight, h)) {
+			break
+		}
+	}
+}
+
+// UpdateLastSubmittedHeight will update last height seen on the settlement layer.
+func (m *Manager) UpdateLastSubmittedHeight(h uint64) {
+	for {
+		curr := m.LastSubmittedHeight.Load()
+		if m.LastSubmittedHeight.CompareAndSwap(curr, max(curr, h)) {
 			break
 		}
 	}
@@ -392,8 +402,6 @@ func (m *Manager) setDA(daconfig string, dalcKV store.KV, logger log.Logger) err
 	if dalc == nil {
 		return fmt.Errorf("get data availability client named '%s'", daLayer)
 	}
-
-	// FIXME: have each client expected config struct. try to unmarshal
 
 	err := dalc.Init([]byte(daconfig), m.Pubsub, dalcKV, logger.With("module", string(dalc.GetClientType())))
 	if err != nil {

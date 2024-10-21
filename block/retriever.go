@@ -23,10 +23,10 @@ func (m *Manager) onNewStateUpdate(event pubsub.Message) {
 		return
 	}
 
-	// FIXME: probably need to have some mutex over syncing with DA proccess
-
 	h := eventData.EndHeight
 	m.UpdateTargetHeight(h)
+	m.UpdateLastSubmittedHeight(h)
+
 	err := m.syncToTargetHeight(h)
 	if err != nil {
 		m.logger.Error("sync until target", "err", err)

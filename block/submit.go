@@ -8,11 +8,9 @@ import (
 	"time"
 
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
-	"github.com/tendermint/tendermint/libs/pubsub"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/dymensionxyz/dymint/da"
-	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
 	uatomic "github.com/dymensionxyz/dymint/utils/atomic"
 	uchannel "github.com/dymensionxyz/dymint/utils/channel"
@@ -271,22 +269,4 @@ func (m *Manager) GetUnsubmittedBytes() int {
 
 func (m *Manager) GetUnsubmittedBlocks() uint64 {
 	return m.State.Height() - m.LastSubmittedHeight.Load()
-}
-
-// UpdateLastSubmittedHeight will update last height submitted height upon events.
-// This may be necessary in case we crashed/restarted before getting response for our submission to the settlement layer.
-func (m *Manager) UpdateLastSubmittedHeight(event pubsub.Message) {
-	eventData, ok := event.Data().(*settlement.EventDataNewBatchAccepted)
-	if !ok {
-		m.logger.Error("onReceivedBatch", "err", "wrong event data received")
-		return
-	}
-	h := eventData.EndHeight
-
-	for {
-		curr := m.LastSubmittedHeight.Load()
-		if m.LastSubmittedHeight.CompareAndSwap(curr, max(curr, h)) {
-			break
-		}
-	}
 }
