@@ -542,6 +542,7 @@ func TestDAFetch(t *testing.T) {
 		})
 	}
 }
+
 func TestManager_updateLastSubmittedHeight(t *testing.T) {
 	tests := []struct {
 		name                   string

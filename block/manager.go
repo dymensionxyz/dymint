@@ -163,7 +163,6 @@ func (m *Manager) runNonProducerLoops(ctx context.Context) {
 	go uevent.MustSubscribe(ctx, m.Pubsub, "applyBlockSyncBlocksLoop", p2p.EventQueryNewBlockSyncBlock, m.onReceivedBlock, m.logger)
 	// SL Sync. Subscribe to SL state update events
 	go uevent.MustSubscribe(ctx, m.Pubsub, "syncTargetLoop", settlement.EventQueryNewSettlementBatchAccepted, m.onNewStateUpdate, m.logger)
-
 }
 
 func (m *Manager) runProducerLoops(ctx context.Context) {
