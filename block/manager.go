@@ -78,6 +78,9 @@ type Manager struct {
 	// we can only do full validation in sequential order.
 	blockCache *Cache
 
+	// TargetHeight holds the value of the current highest block seen from either p2p (probably higher) or the DA
+	TargetHeight atomic.Uint64
+
 	// channel used to send the retain height to the pruning background loop
 	pruningC chan int64
 
@@ -339,6 +342,7 @@ func (m *Manager) syncFromSettlement() error {
 	}
 
 	m.UpdateLastSubmittedHeight(res.EndHeight)
+	m.UpdateTargetHeight(res.EndHeight)
 
 	err = m.syncToTargetHeight(res.EndHeight)
 	if err != nil {
@@ -351,6 +355,16 @@ func (m *Manager) syncFromSettlement() error {
 
 func (m *Manager) GetProposerPubKey() tmcrypto.PubKey {
 	return m.State.Sequencers.GetProposerPubKey()
+}
+
+// UpdateTargetHeight will update the highest height seen from either P2P or DA.
+func (m *Manager) UpdateTargetHeight(h uint64) {
+	for {
+		currentHeight := m.TargetHeight.Load()
+		if m.TargetHeight.CompareAndSwap(currentHeight, max(currentHeight, h)) {
+			break
+		}
+	}
 }
 
 // UpdateLastSubmittedHeight will update last height seen on the settlement layer.

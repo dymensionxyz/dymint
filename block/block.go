@@ -115,7 +115,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 
 	// signal the role switch, in case where this node is the new proposer
 	// the other direction is handled elsewhere
-	if switchRole && !m.isProposer {
+	if switchRole && !m.isProposer && block.Header.Height == m.TargetHeight.Load() {
 		m.roleSwitchC <- true
 		m.logger.Info("Node changing to proposer role")
 	}

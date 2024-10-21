@@ -157,6 +157,7 @@ func (e *Executor) UpdateProposerFromBlock(s *types.State, block *types.Block) (
 		return false, err
 	}
 
+	// check if this node is the new proposer
 	localSeq := s.Sequencers.GetByConsAddress(e.localAddress)
 	if localSeq != nil && bytes.Equal(localSeq.Hash(), block.Header.NextSequencersHash[:]) {
 		return true, nil

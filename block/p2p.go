@@ -46,6 +46,7 @@ func (m *Manager) onReceivedBlock(event pubsub.Message) {
 		return
 	}
 
+	m.UpdateTargetHeight(height)
 	types.LastReceivedP2PHeightGauge.Set(float64(height))
 
 	m.logger.Debug("Received new block from p2p.", "block height", height, "source", source.String(), "store height", m.State.Height(), "n cachedBlocks", m.blockCache.Size())
@@ -92,8 +93,4 @@ func (m *Manager) saveP2PBlockToBlockSync(block *types.Block, commit *types.Comm
 		m.logger.Error("Adding  block to blocksync store.", "err", err, "height", gossipedBlock.Block.Header.Height)
 	}
 	return nil
-}
-
-func (m *Manager) GetLatestP2PHeight() uint64 {
-	return m.blockCache.lastSeenHeight
 }

@@ -24,6 +24,7 @@ func (m *Manager) onNewStateUpdate(event pubsub.Message) {
 	}
 
 	h := eventData.EndHeight
+	m.UpdateTargetHeight(h)
 	m.UpdateLastSubmittedHeight(h)
 
 	err := m.syncToTargetHeight(h)
