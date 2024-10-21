@@ -288,15 +288,9 @@ func (m *Manager) Start(ctx context.Context) error {
 		}
 
 		// check if sequencer in the middle of rotation
-		nextSeqAddr, missing, err := m.MissingLastBatch()
+		err := m.CompleteRotationIfNeeded(ctx)
 		if err != nil {
 			return fmt.Errorf("checking if missing last batch: %w", err)
-		}
-		// if sequencer is in the middle of rotation, complete rotation instead of running the main loop
-		if missing {
-			m.handleRotationReq(ctx, nextSeqAddr)
-			m.isProposer = false
-			m.logger.Info("Sequencer is no longer the proposer")
 		}
 	}
 
