@@ -160,7 +160,7 @@ func (c *Client) GetLatestBatch() (*settlement.ResultRetrieveBatch, error) {
 	return batchResult, nil
 }
 
-// GetLatestFinalizedBatch returns the latest finalized batch from the kv store
+// GetLatestFinalizedBatch returns the latest finalized batch from the kv store. batches are never finalized for local settlement
 func (c *Client) GetLatestFinalizedBatch() (*settlement.ResultRetrieveBatch, error) {
 	return nil, gerrc.ErrNotFound // TODO: need to return a cosmos specific error?
 }
