@@ -6,8 +6,11 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/cosmos/cosmos-sdk/codec/legacy"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	tmcrypto "github.com/tendermint/tendermint/crypto"
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	tmtypes "github.com/tendermint/tendermint/types"
 )
 
 var (
@@ -381,7 +384,7 @@ func NewErrStateUpdateStateRootNotMatchingFraud(stateIndex uint64, height uint64
 }
 
 func (e ErrStateUpdateStateRootNotMatchingFraud) Error() string {
-	return fmt.Sprintf("state root in DA batch block not matching state root in SL. StateIndex: %d Height: %d SLTimestsamp: %s DA:Timestamp: %s", e.StateIndex, e.Height, hex.EncodeToString(e.SLStateRoot), hex.EncodeToString(e.DAStateRoot))
+	return fmt.Sprintf("state root in DA batch block not matching state root in SL. StateIndex: %d Height: %d SL state root: %s DA state root: %s", e.StateIndex, e.Height, hex.EncodeToString(e.SLStateRoot), hex.EncodeToString(e.DAStateRoot))
 }
 
 func (e ErrStateUpdateStateRootNotMatchingFraud) Unwrap() error {
@@ -405,7 +408,7 @@ func NewErrStateUpdateTimestampNotMatchingFraud(stateIndex uint64, height uint64
 }
 
 func (e ErrStateUpdateTimestampNotMatchingFraud) Error() string {
-	return fmt.Sprintf("timestamp in DA batch block not matching timestamp in SL. StateIndex: %d Height: %d SLTimestsamp: %s DA:Timestamp: %s", e.StateIndex, e.Height, e.SLTimestamp, e.DATimestamp)
+	return fmt.Sprintf("timestamp in DA batch block not matching timestamp in SL. StateIndex: %d Height: %d SL timestsamp: %s DA timestamp: %s", e.StateIndex, e.Height, e.SLTimestamp, e.DATimestamp)
 }
 
 func (e ErrStateUpdateTimestampNotMatchingFraud) Unwrap() error {
@@ -414,16 +417,41 @@ func (e ErrStateUpdateTimestampNotMatchingFraud) Unwrap() error {
 
 type ErrStateUpdateDoubleSigningFraud struct {
 	Height uint64
+	Block  []byte
 }
 
-func NewErrStateUpdateDoubleSigningFraud(height uint64) error {
+func NewErrStateUpdateDoubleSigningFraud(height uint64, block *Block) error {
+
+	hash := block.Hash()
+	abciBlock, err := ToABCIBlock(block)
+	if err != nil {
+		return err
+	}
+	resultBlock := &ctypes.ResultBlock{
+		BlockID: tmtypes.BlockID{
+			Hash: hash[:],
+			PartSetHeader: tmtypes.PartSetHeader{
+				Total: 1,
+				Hash:  hash[:],
+			},
+		},
+		Block: abciBlock,
+	}
+
+	jsonBlock, err := legacy.Cdc.MarshalJSON(resultBlock)
+	if err != nil {
+		return err
+	}
+
 	return &ErrStateUpdateDoubleSigningFraud{
 		Height: height,
+		Block:  jsonBlock,
 	}
 }
 
 func (e ErrStateUpdateDoubleSigningFraud) Error() string {
-	return fmt.Sprintf("block received from P2P not matching block found in DA. Height: %d", e.Height)
+
+	return fmt.Sprintf("block received from P2P not matching block found in DA. Height: %d Block:%s", e.Height, e.Block)
 }
 
 func (e ErrStateUpdateDoubleSigningFraud) Unwrap() error {

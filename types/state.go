@@ -45,8 +45,6 @@ type State struct {
 
 	// LastHeaderHash is the hash of the last block header.
 	LastHeaderHash [32]byte
-	// The last height which the node validated from available state updates.
-	LastValidatedHeight atomic.Uint64
 }
 
 func (s *State) IsGenesis() bool {
