@@ -7,7 +7,6 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/dymensionxyz/dymint/da/registry"
@@ -16,6 +15,7 @@ import (
 	uerrors "github.com/dymensionxyz/dymint/utils/errors"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
 	"github.com/dymensionxyz/dymint/version"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
 	tmcrypto "github.com/tendermint/tendermint/crypto"
@@ -235,6 +235,9 @@ func (m *Manager) RunLoops(ctx context.Context) {
 func (m *Manager) runLoopsWithCancelFunc(ctx context.Context) context.CancelFunc {
 	loopCtx, cancel := context.WithCancel(ctx)
 	if m.isProposer {
+		// we processed the last block, so it will be the committed height (submitted by the previous proposer)
+		m.UpdateLastSubmittedHeight(m.State.Height())
+
 		go m.runProducerLoops(loopCtx)
 	} else {
 		m.runNonProducerLoops(loopCtx)
@@ -266,7 +269,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	}
 	targetHeight := m.TargetHeight.Load()
 
-	m.logger.Info("starting block manager", "proposer", m.isProposer, "targetHeight", targetHeight)
+	m.logger.Info("starting block manager", "proposer", m.isProposer, "targetHeight", targetHeight, "height", m.State.Height())
 	/* -------------------------------------------------------------------------- */
 	/*                                sync section                                */
 	/* -------------------------------------------------------------------------- */
@@ -330,21 +333,26 @@ func (m *Manager) syncMetadataFromSettlement() error {
 		return fmt.Errorf("update bonded sequencer set: %w", err)
 	}
 
-	targetHeight := uint64(m.Genesis.InitialHeight - 1)
-
-	res, err := m.SLClient.GetLatestBatch()
-	if errors.Is(err, gerrc.ErrNotFound) {
-		// The SL hasn't got any batches for this chain yet.
-		m.logger.Info("No batches for chain found in SL.")
-	} else if err != nil {
-		// TODO: separate between fresh rollapp and non-registered rollapp
-		return err
-	} else {
-		targetHeight = res.EndHeight
+	err = m.syncLastCommittedHeight()
+	if err != nil {
+		return fmt.Errorf("sync last committed height: %w", err)
 	}
 
-	m.UpdateLastSubmittedHeight(targetHeight)
-	m.UpdateTargetHeight(targetHeight)
+	return nil
+}
+
+func (m *Manager) syncLastCommittedHeight() error {
+	res, err := m.SLClient.GetLatestBatch()
+	// TODO: separate between fresh rollapp and non-registered rollapp
+	// The SL hasn't got any batches for this chain yet.
+	if errors.Is(err, gerrc.ErrNotFound) {
+		return nil
+	} else if err != nil {
+		return err
+	}
+
+	m.UpdateLastSubmittedHeight(res.EndHeight)
+	m.UpdateTargetHeight(res.EndHeight)
 	return nil
 }
 
