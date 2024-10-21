@@ -66,27 +66,6 @@ func (s *State) Height() uint64 {
 	return s.LastBlockHeight.Load()
 }
 
-// UpdateLastValidatedHeight sets the height saved in the Store if it is higher than the existing height
-// returns OK if the value was updated successfully or did not need to be updated
-func (s *State) UpdateLastValidatedHeight(height uint64) {
-	for {
-		curr := s.LastValidatedHeight.Load()
-		if s.LastValidatedHeight.CompareAndSwap(curr, max(curr, height)) {
-			break
-		}
-	}
-}
-
-// Height returns height of the highest block saved in the Store.
-func (s *State) GetLastValidatedHeight() uint64 {
-	return s.LastValidatedHeight.Load()
-}
-
-// Height returns height of the highest block saved in the Store.
-func (s *State) NextValidationHeight() uint64 {
-	return s.LastValidatedHeight.Load() + 1
-}
-
 // NextHeight returns the next height that expected to be stored in store.
 func (s *State) NextHeight() uint64 {
 	if s.IsGenesis() {

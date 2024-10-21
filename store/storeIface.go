@@ -82,4 +82,8 @@ type Store interface {
 	SaveBlockSource(height uint64, source string, batch KVBatch) (KVBatch, error)
 
 	LoadBlockSource(height uint64) (string, error)
+
+	SaveValidationHeight(height uint64, batch KVBatch) (KVBatch, error)
+
+	LoadValidationHeight() (uint64, error)
 }

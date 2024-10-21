@@ -94,6 +94,8 @@ type Manager struct {
 	synced *uchannel.Nudger
 
 	validator *StateUpdateValidator
+
+	lastValidatedHeight atomic.Uint64
 }
 
 // NewManager creates new block Manager.
@@ -356,7 +358,7 @@ func (m *Manager) UpdateFinalizedHeight() error {
 		m.logger.Info("No finalized batches for chain found in SL.")
 	} else {
 		// update validation height with latest finalized height (it will be updated only of finalized height is higher)
-		m.State.UpdateLastValidatedHeight(res.EndHeight)
+		m.UpdateLastValidatedHeight(res.EndHeight)
 	}
 	return nil
 }
