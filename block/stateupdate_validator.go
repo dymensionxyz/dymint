@@ -27,7 +27,7 @@ func NewStateUpdateValidator(logger types.Logger, blockManager *Manager) *StateU
 func (v *StateUpdateValidator) ValidateStateUpdate(batch *settlement.ResultRetrieveBatch) error {
 	v.logger.Debug("validating state update", "start height", batch.StartHeight, "end height", batch.EndHeight)
 
-	err := v.validateDRS(batch.StartHeight, batch.EndHeight, batch.DRSVersion)
+	err := v.validateDRS(batch.StartHeight, batch.EndHeight)
 	if err != nil {
 		return err
 	}
@@ -117,7 +117,7 @@ func (v *StateUpdateValidator) ValidateP2PBlocks(daBlocks []*types.Block, p2pBlo
 
 func (v *StateUpdateValidator) ValidateDaBlocks(slBatch *settlement.ResultRetrieveBatch, daBlocks []*types.Block) error {
 	// check numblocks
-	numSlBDs := uint64((len(slBatch.BlockDescriptors)))
+	numSlBDs := uint64(len(slBatch.BlockDescriptors))
 	numDABlocks := uint64(len(daBlocks))
 	numSLBlocks := slBatch.NumBlocks
 	if numSLBlocks != numDABlocks || numSLBlocks != numSlBDs {
@@ -146,7 +146,7 @@ func (v *StateUpdateValidator) ValidateDaBlocks(slBatch *settlement.ResultRetrie
 }
 
 // TODO(srene): implement DRS/height verification
-func (v *StateUpdateValidator) validateDRS(startHeight, endHeight uint64, version string) error {
+func (v *StateUpdateValidator) validateDRS(startHeight, endHeight uint64) error {
 	return nil
 }
 

@@ -199,7 +199,7 @@ func (c *Client) GetLatestBatch() (*settlement.ResultRetrieveBatch, error) {
 	return batchResult, nil
 }
 
-// GetLatestFinalizedBatch returns the latest finalized batch from the kv store
+// GetLatestFinalizedBatch returns the latest finalized batch from the kv store. batches are never finalized for grpc settlement
 func (c *Client) GetLatestFinalizedBatch() (*settlement.ResultRetrieveBatch, error) {
 	return nil, gerrc.ErrNotFound
 }
@@ -215,8 +215,31 @@ func (c *Client) GetBatchAtIndex(index uint64) (*settlement.ResultRetrieveBatch,
 	return batchResult, nil
 }
 
-func (c *Client) GetBatchAtHeight(height uint64) (*settlement.ResultRetrieveBatch, error) {
-	panic("hub grpc client get height state is not implemented: implement me") // TODO: impl
+func (c *Client) GetBatchAtHeight(h uint64) (*settlement.ResultRetrieveBatch, error) {
+	// Binary search implementation
+	left, right := uint64(1), c.slStateIndex
+
+	for left <= right {
+		mid := left + (right-left)/2
+		b, err := c.GetBatchAtIndex(mid)
+		if err != nil {
+			return &settlement.ResultRetrieveBatch{
+				ResultBase: settlement.ResultBase{Code: settlement.StatusError, Message: err.Error()},
+			}, err
+		}
+
+		if b.StartHeight <= h && b.EndHeight >= h {
+			return b, nil
+		}
+
+		if h < b.StartHeight {
+			right = mid - 1
+		} else {
+			left = mid + 1
+		}
+	}
+
+	return nil, gerrc.ErrNotFound
 }
 
 // GetProposer implements settlement.ClientI.

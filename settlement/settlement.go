@@ -39,9 +39,8 @@ type Batch struct {
 	EndHeight        uint64
 	BlockDescriptors []rollapp.BlockDescriptor
 	// MetaData about the batch in the DA layer
-	MetaData   *BatchMetaData
-	DRSVersion string
-	NumBlocks  uint64
+	MetaData  *BatchMetaData
+	NumBlocks uint64
 }
 
 type ResultRetrieveBatch struct {
