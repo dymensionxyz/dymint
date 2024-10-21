@@ -86,8 +86,9 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		m.Executor.UpdateStateAfterCommit(m.State, responses, appHash, block.Header.Height)
 	}
 
-	// check if the proposer needs to be changed
-	switchRole, err := m.Executor.UpdateProposerFromBlock(m.State, block)
+	// update proposer from block header if needed
+	// if new proposer is set, we become the proposer
+	isNewProposer, err := m.Executor.UpdateProposerFromBlock(m.State, block)
 	if err != nil {
 		return fmt.Errorf("update proposer from block: %w", err)
 	}
@@ -115,12 +116,11 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 
 	// signal the role switch, in case where this node is the new proposer
 	// the other direction is handled elsewhere
-	if switchRole && !m.isProposer && block.Header.Height == m.TargetHeight.Load() {
+	if isNewProposer && block.Header.Height == m.TargetHeight.Load() {
 		m.roleSwitchC <- true
 		m.logger.Info("Node changing to proposer role")
 	}
 
-	// FIXME: isn't this supposed to be checked before committing the state?
 	// validate whether configuration params and rollapp consensus params keep in line, after rollapp params are updated from the responses received in the block execution
 	err = m.ValidateConfigWithRollappParams()
 	if err != nil {
