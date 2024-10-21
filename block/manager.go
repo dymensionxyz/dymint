@@ -221,6 +221,7 @@ func (m *Manager) RunLoops(ctx context.Context) {
 					m.logger.Error("Role switch signal received, but already in the same role", "proposer", proposer)
 					continue
 				}
+				m.logger.Info("Role switch signal received", "from", m.isProposer, "to", proposer)
 				m.isProposer = proposer
 
 				// shutdown all active loops and run loops again with new role
