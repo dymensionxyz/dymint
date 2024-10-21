@@ -34,8 +34,8 @@ func (s Sequencer) IsEmpty() bool {
 	return s.val.PubKey == nil
 }
 
-func (s Sequencer) TMValidator() (*types.Validator, error) {
-	return &s.val, nil
+func (s Sequencer) TMValidator() *types.Validator {
+	return &s.val
 }
 
 func (s Sequencer) ConsAddress() string {
@@ -62,6 +62,8 @@ type SequencerSet struct {
 	// proposer is also included in the sequencers set
 	Proposer *Sequencer `json:"proposer"`
 }
+
+func (s *SequencerSet) TMProposer()
 
 func (s *SequencerSet) GetProposerPubKey() tmcrypto.PubKey {
 	if s.Proposer == nil {
