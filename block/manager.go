@@ -259,9 +259,13 @@ func (m *Manager) Start(ctx context.Context) error {
 		return err
 	}
 
-	m.isProposer = m.IsProposer()
-	m.logger.Info("starting block manager", "proposer", m.isProposer)
+	err = m.syncMetadataFromSettlement()
+	if err != nil {
+		return fmt.Errorf("sync block manager from settlement: %w", err)
+	}
+	targetHeight := m.TargetHeight.Load()
 
+	m.logger.Info("starting block manager", "proposer", m.isProposer, "targetHeight", targetHeight)
 	/* -------------------------------------------------------------------------- */
 	/*                                sync section                                */
 	/* -------------------------------------------------------------------------- */
@@ -269,19 +273,20 @@ func (m *Manager) Start(ctx context.Context) error {
 		/* ----------------------------- full node mode ----------------------------- */
 		// Full-nodes can sync from DA but it is not necessary to wait for it, since it can sync from P2P as well in parallel.
 		go func() {
-			err := m.syncFromSettlement()
+			err = m.syncToTargetHeight(targetHeight)
 			if err != nil {
-				m.logger.Error("sync block manager from settlement", "err", err)
+				m.logger.Error("sync to target height", "error", err)
 			}
 		}()
 	} else {
 		/* ----------------------------- sequencer mode ----------------------------- */
 		// Sequencer must wait till DA is synced to start submitting blobs
 		<-m.DAClient.Synced()
-		err = m.syncFromSettlement()
+		err = m.syncToTargetHeight(targetHeight)
 		if err != nil {
 			return fmt.Errorf("sync block manager from settlement: %w", err)
 		}
+
 		// check if sequencer in the middle of rotation
 		nextSeqAddr, missing, err := m.MissingLastBatch()
 		if err != nil {
@@ -321,35 +326,30 @@ func (m *Manager) NextHeightToSubmit() uint64 {
 	return m.LastSubmittedHeight.Load() + 1
 }
 
-// syncFromSettlement enforces the node to be synced on initial run from SL and DA.
-func (m *Manager) syncFromSettlement() error {
+// syncMetadataFromSettlement gets the latest height and sequencer set from the settlement layer.
+func (m *Manager) syncMetadataFromSettlement() error {
+	m.isProposer = m.IsProposer()
+
 	err := m.UpdateSequencerSetFromSL()
 	if err != nil {
 		return fmt.Errorf("update bonded sequencer set: %w", err)
 	}
 
+	targetHeight := uint64(m.Genesis.InitialHeight - 1)
+
 	res, err := m.SLClient.GetLatestBatch()
 	if errors.Is(err, gerrc.ErrNotFound) {
 		// The SL hasn't got any batches for this chain yet.
 		m.logger.Info("No batches for chain found in SL.")
-		m.LastSubmittedHeight.Store(uint64(m.Genesis.InitialHeight - 1))
-		return nil
-	}
-
-	if err != nil {
+	} else if err != nil {
 		// TODO: separate between fresh rollapp and non-registered rollapp
 		return err
+	} else {
+		targetHeight = res.EndHeight
 	}
 
-	m.UpdateLastSubmittedHeight(res.EndHeight)
-	m.UpdateTargetHeight(res.EndHeight)
-
-	err = m.syncToTargetHeight(res.EndHeight)
-	if err != nil {
-		return err
-	}
-
-	m.logger.Info("Synced.", "current height", m.State.Height(), "last submitted height", m.LastSubmittedHeight.Load())
+	m.UpdateLastSubmittedHeight(targetHeight)
+	m.UpdateTargetHeight(targetHeight)
 	return nil
 }
 
