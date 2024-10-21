@@ -339,20 +339,30 @@ func TestGetCommit(t *testing.T) {
 // Ensures the results of the commit and validators queries are consistent wrt. val set hash
 func TestValidatorSetHashConsistency(t *testing.T) {
 	require := require.New(t)
-	assert := assert.New(t)
-	mockApp, rpc, node := getRPCAndNodeSequencer(t)
+	mockApp, rpc, node := getRPCAndNode(t)
 
 	mockApp.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
 	mockApp.On("Commit", mock.Anything).Return(abci.ResponseCommit{})
 	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 
+	v := tmtypes.NewValidator(ed25519.GenPrivKey().PubKey(), 1)
+	s := types.NewSequencerFromValidator(*v)
+	node.BlockManager.State.Sequencers.SetProposer(s)
+
 	b := getRandomBlock(1, 10)
+	copy(b.Header.SequencerHash[:], node.BlockManager.State.Sequencers.ProposerHash())
 
 	err := node.Start()
 	require.NoError(err)
 
 	_, err = node.Store.SaveBlock(b, &types.Commit{Height: b.Header.Height}, nil)
 	node.BlockManager.State.SetHeight(b.Header.Height)
+	require.NoError(err)
+
+	batch := node.Store.NewBatch()
+	batch, err = node.Store.SaveSequencers(b.Header.Height, &node.BlockManager.State.Sequencers, batch)
+	require.NoError(err)
+	err = batch.Commit()
 	require.NoError(err)
 
 	h := int64(b.Header.Height)
@@ -363,10 +373,10 @@ func TestValidatorSetHashConsistency(t *testing.T) {
 	vals, err := rpc.Validators(context.Background(), &h, nil, nil)
 	require.NoError(err)
 
-	commitValHash := commit.ValidatorsHash
-	valsValHash, err := tmtypes.ValidatorSetFromExistingValidators(vals.Validators)
+	valsRes, err := tmtypes.ValidatorSetFromExistingValidators(vals.Validators)
 	require.NoError(err)
-	ok := stdbytes.Equal(commitValHash, valsValHash.Hash())
+	hash := valsRes.Hash()
+	ok := stdbytes.Equal(commit.ValidatorsHash, hash)
 	require.True(ok)
 }
 
