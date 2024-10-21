@@ -34,10 +34,6 @@ func (s Sequencer) IsEmpty() bool {
 	return s.val.PubKey == nil
 }
 
-func (s Sequencer) TMValidator() *types.Validator {
-	return &s.val
-}
-
 func (s Sequencer) ConsAddress() string {
 	return s.val.Address.String()
 }
@@ -46,10 +42,34 @@ func (s Sequencer) PubKey() tmcrypto.PubKey {
 	return s.val.PubKey
 }
 
+func (s Sequencer) TMValidator() *types.Validator {
+	return &s.val
+}
+
+func (s Sequencer) TMValidators() []*types.Validator {
+	return []*types.Validator{s.TMValidator()}
+}
+
+func (s Sequencer) TMValset() (*types.ValidatorSet, error) {
+	return types.ValidatorSetFromExistingValidators(s.TMValidators())
+}
+
 // Hash returns tendermint compatible hash of the sequencer
-func (s Sequencer) Hash() []byte {
-	tempProposerSet := types.NewValidatorSet([]*types.Validator{&s.val})
-	return tempProposerSet.Hash()
+func (s Sequencer) Hash() ([]byte, error) {
+	vs, err := s.TMValset()
+	if err != nil {
+		return nil, fmt.Errorf("tm valset: %w", err)
+	}
+	return vs.Hash(), nil
+}
+
+// MustHash returns tendermint compatible hash of the sequencer
+func (s Sequencer) MustHash() []byte {
+	h, err := s.Hash()
+	if err != nil {
+		panic(fmt.Errorf("hash: %w", err))
+	}
+	return h
 }
 
 // SequencerSet is a set of rollapp sequencers and a proposer.
@@ -63,8 +83,6 @@ type SequencerSet struct {
 	Proposer *Sequencer `json:"proposer"`
 }
 
-func (s *SequencerSet) TMProposer()
-
 func (s *SequencerSet) GetProposerPubKey() tmcrypto.PubKey {
 	if s.Proposer == nil {
 		return nil
@@ -77,7 +95,7 @@ func (s *SequencerSet) ProposerHash() []byte {
 	if s.Proposer == nil {
 		return make([]byte, 0, 32)
 	}
-	return s.Proposer.Hash()
+	return s.Proposer.MustHash()
 }
 
 // SetProposerByHash sets the proposer by hash.
@@ -85,7 +103,7 @@ func (s *SequencerSet) ProposerHash() []byte {
 // Used when updating proposer from the L2 blocks (nextSequencerHash header field)
 func (s *SequencerSet) SetProposerByHash(hash []byte) error {
 	for _, seq := range s.Sequencers {
-		if bytes.Equal(seq.Hash(), hash) {
+		if bytes.Equal(seq.MustHash(), hash) {
 			s.SetProposer(&seq)
 			return nil
 		}

@@ -1,6 +1,7 @@
 package client_test
 
 import (
+	stdbytes "bytes"
 	"context"
 	crand "crypto/rand"
 	"encoding/hex"
@@ -333,6 +334,40 @@ func TestGetCommit(t *testing.T) {
 
 	err = node.Stop()
 	require.NoError(err)
+}
+
+// Ensures the results of the commit and validators queries are consistent wrt. val set hash
+func TestValidatorSetHashConsistency(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+	mockApp, rpc, node := getRPCAndNodeSequencer(t)
+
+	mockApp.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
+	mockApp.On("Commit", mock.Anything).Return(abci.ResponseCommit{})
+	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
+
+	b := getRandomBlock(1, 10)
+
+	err := node.Start()
+	require.NoError(err)
+
+	_, err = node.Store.SaveBlock(b, &types.Commit{Height: b.Header.Height}, nil)
+	node.BlockManager.State.SetHeight(b.Header.Height)
+	require.NoError(err)
+
+	h := int64(b.Header.Height)
+	commit, err := rpc.Commit(context.Background(), &h)
+	require.NoError(err)
+	require.NotNil(commit)
+
+	vals, err := rpc.Validators(context.Background(), &h, nil, nil)
+	require.NoError(err)
+
+	commitValHash := commit.ValidatorsHash
+	valsValHash, err := tmtypes.ValidatorSetFromExistingValidators(vals.Validators)
+	require.NoError(err)
+	ok := stdbytes.Equal(commitValHash, valsValHash.Hash())
+	require.True(ok)
 }
 
 func TestBlockSearch(t *testing.T) {

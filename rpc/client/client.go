@@ -514,7 +514,7 @@ func (c *Client) Validators(ctx context.Context, heightPtr *int64, pagePtr, perP
 	}
 	return &ctypes.ResultValidators{
 		BlockHeight: int64(height),
-		Validators:  []*tmtypes.Validator{sequencers.Proposer.TMValidator()},
+		Validators:  sequencers.Proposer.TMValidators(),
 		Count:       1,
 		Total:       1,
 	}, nil
