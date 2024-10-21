@@ -21,7 +21,6 @@ func (m *Manager) onNewStateUpdateFinalized(event pubsub.Message) {
 
 // ValidateLoop listens for syncing events (from new state update or from initial syncing) and validates state updates to the last submitted height.
 func (m *Manager) ValidateLoop(ctx context.Context) error {
-
 	lastValidatedHeight, err := m.Store.LoadValidationHeight()
 	if err != nil {
 		m.logger.Debug("validation height not loaded", "err", err)
