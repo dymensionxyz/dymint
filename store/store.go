@@ -334,7 +334,6 @@ func (s *DefaultStore) LoadValidationHeight() (uint64, error) {
 		return 0, err
 	}
 	return uint64(binary.BigEndian.Uint64(b)), nil
-
 }
 
 func getBlockKey(hash [32]byte) []byte {
