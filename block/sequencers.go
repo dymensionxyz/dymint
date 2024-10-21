@@ -45,9 +45,7 @@ func (m *Manager) MonitorSequencerRotation(ctx context.Context, rotateC chan str
 	}
 	// we get here once a sequencer rotation signal is received
 	m.logger.Info("Sequencer rotation started.", "next_seq", nextSeqAddr)
-	go func() {
-		rotateC <- nextSeqAddr
-	}()
+	rotateC <- nextSeqAddr
 	return fmt.Errorf("sequencer rotation started. signal to stop production")
 }
 
@@ -100,10 +98,6 @@ func (m *Manager) handleRotationReq(ctx context.Context, nextSeqAddr string) {
 	if err != nil {
 		panic(err)
 	}
-
-	// TODO: graceful fallback to full node (https://github.com/dymensionxyz/dymint/issues/1008)
-	m.logger.Info("Sequencer is no longer the proposer")
-	panic("sequencer is no longer the proposer")
 }
 
 // CompleteRotation completes the sequencer rotation flow

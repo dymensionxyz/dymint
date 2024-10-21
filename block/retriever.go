@@ -22,6 +22,9 @@ func (m *Manager) onNewStateUpdate(event pubsub.Message) {
 		m.logger.Error("onReceivedBatch", "err", "wrong event data received")
 		return
 	}
+
+	// FIXME: probably need to have some mutex over syncing with DA proccess
+
 	h := eventData.EndHeight
 	m.UpdateTargetHeight(h)
 	err := m.syncToTargetHeight(h)

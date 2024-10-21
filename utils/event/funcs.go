@@ -34,6 +34,7 @@ func MustSubscribe(
 	}
 
 	// FIXME: validate it's still be unsubscribed if the context is cancelled
+	// FIXME: another alternative is to just have no-op in the event callbacks if the node is not the proposer
 	defer pubsubServer.UnsubscribeAll(ctx, clientID) //nolint:errcheck
 
 	for {

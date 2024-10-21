@@ -110,10 +110,10 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 
 	m.blockCache.Delete(block.Header.Height)
 
-	if switchRole {
-		// TODO: graceful role change (https://github.com/dymensionxyz/dymint/issues/1008)
+	// TODO: graceful role change (https://github.com/dymensionxyz/dymint/issues/1008)
+	if switchRole && m.isProposer {
+		m.roleSwitchC <- true
 		m.logger.Info("Node changing to proposer role")
-		panic("sequencer is no longer the proposer")
 	}
 
 	// validate whether configuration params and rollapp consensus params keep in line, after rollapp params are updated from the responses received in the block execution

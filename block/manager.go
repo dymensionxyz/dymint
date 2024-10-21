@@ -54,6 +54,8 @@ type Manager struct {
 	DAClient  da.DataAvailabilityLayerClient
 	SLClient  settlement.ClientI
 
+	isProposer  bool      // is the local node the proposer
+	roleSwitchC chan bool // channel to receive role switch signal
 	/*
 		Submission
 	*/
@@ -134,6 +136,7 @@ func NewManager(
 			cache: make(map[uint64]types.CachedBlock),
 		},
 		pruningC: make(chan int64, 10), // use of buffered channel to avoid blocking applyBlock thread. In case channel is full, pruning will be skipped, but the retain height can be pruned in the next iteration.
+		// todo: make roleSwitchC buffered
 	}
 
 	err = m.LoadStateOnInit(store, genesis, logger)
@@ -156,17 +159,20 @@ func NewManager(
 }
 
 // runNonProducerLoops runs the loops that are common to all nodes, but not the proposer.
+// This includes syncing from the DA and SL, and listening to new blocks from P2P.
+// when ctx is cancelled, all loops will be unsubscribed.
 func (m *Manager) runNonProducerLoops(ctx context.Context) {
 	// P2P Sync. Subscribe to P2P received blocks events
 	go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewGossipedBlock, m.onReceivedBlock, m.logger)
 	go uevent.MustSubscribe(ctx, m.Pubsub, "applyBlockSyncBlocksLoop", p2p.EventQueryNewBlockSyncBlock, m.onReceivedBlock, m.logger)
-
-	// FIXME: we used to call this in full node, ONLY after DA sync. isn't this the same as the below??
-	// FIXME: probably need to have some mutex and maintaining the last height synced from DA
+	// SL Sync. Subscribe to SL state update events
 	go uevent.MustSubscribe(ctx, m.Pubsub, "syncTargetLoop", settlement.EventQueryNewSettlementBatchAccepted, m.onNewStateUpdate, m.logger)
+
 }
 
-func (m *Manager) runProducerLoops(ctx context.Context, eg *errgroup.Group) {
+func (m *Manager) runProducerLoops(ctx context.Context) {
+	eg, ctx := errgroup.WithContext(ctx)
+
 	// populate the bytes produced channel
 	bytesProducedC := make(chan int)
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
@@ -188,65 +194,54 @@ func (m *Manager) runProducerLoops(ctx context.Context, eg *errgroup.Group) {
 	select {
 	case nextSeqAddr := <-rotateSequencerC:
 		m.handleRotationReq(ctx, nextSeqAddr)
-		// FIXME: produce roleSwitch event
+		m.roleSwitchC <- false
 	default:
-		m.logger.Info("Block manager err group finished.")
+		m.logger.Info("producer err group finished.")
 	}
 }
 
-func (m *Manager) RunLoops(ctx context.Context, roleSwitchC chan bool) error {
-	ctx, cancel := context.WithCancel(ctx)
-	eg, ctx := errgroup.WithContext(ctx)
-
+func (m *Manager) RunLoops(ctx context.Context) error {
 	/* --------------------------------- common --------------------------------- */
 	// listen to new bonded sequencers events to add them in the sequencer set
 	go uevent.MustSubscribe(ctx, m.Pubsub, "newBondedSequencer", settlement.EventQueryNewBondedSequencer, m.UpdateSequencerSet, m.logger)
-	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
-		return m.PruningLoop(ctx)
-	})
+	// run pruning loop
+	go m.PruningLoop(ctx)
 
-	// run loops initially if needed
-	if m.Proposer {
-		m.runProducerLoops()
-	} else {
-		m.runNonProducerLoops(ctx)
-	}
+	// run loops initially, by role
+	cancel := m.runLoopsWithCancelFunc(ctx)
 
 	// listen to role switch trigger
-	newRoleC := make(chan bool) // channel to receive new role (true for proposer, false for non-producer)
 	for {
 		select {
+		// ctx cancelled, shutdown
 		case <-ctx.Done():
-			break
-		case proposer := <-newRoleC:
-			if proposer == m.Proposer {
-				//log error
+			cancel()
+			return nil
+		case proposer := <-m.roleSwitchC:
+			if proposer == m.isProposer {
+				m.logger.Error("Role switch signal received, but already in the same role", "proposer", proposer)
 				continue
 			}
-			m.Proposer = proposer
+			m.isProposer = proposer
+			cancel() // shutdown all active loops
+			// FIXME: need to wait?
+			//(producer -> non-producer: guaranteed to be stopped)
+			//(non-producer -> producer: need to wait for all non-producer loops to stop)
+			// _ = eg.Wait()
 
-			// if false->true, start producing
-			if proposer {
-				m.runProducerLoops()
-			}
-
-			// if true->false, stop producing
-			if !proposer {
-				cancel() // shutdown all loops
-				_ = eg.Wait()
-				// Check if exited due to sequencer rotation signal
-				select {
-				case nextSeqAddr := <-rotateSequencerC:
-					m.handleRotationReq(ctx, nextSeqAddr)
-				default:
-					m.logger.Info("Block manager err group finished.")
-				}
-			}
-
+			cancel = m.runLoopsWithCancelFunc(ctx)
 		}
-		_ = eg.Wait()
-		return nil
 	}
+}
+
+func (m *Manager) runLoopsWithCancelFunc(ctx context.Context) context.CancelFunc {
+	loopCtx, cancel := context.WithCancel(ctx)
+	if m.isProposer {
+		go m.runProducerLoops(loopCtx)
+	} else {
+		m.runNonProducerLoops(loopCtx)
+	}
+	return cancel
 }
 
 // Start starts the block manager.
@@ -267,17 +262,14 @@ func (m *Manager) Start(ctx context.Context) error {
 		return err
 	}
 
-	isProposer := m.IsProposer()
-	m.logger.Info("starting block manager", "proposer", isProposer)
-
-	/* ---------------------------- common goroutines --------------------------- */
-	eg, ctx := errgroup.WithContext(ctx)
+	m.isProposer = m.IsProposer()
+	m.logger.Info("starting block manager", "proposer", m.isProposer)
 
 	/* -------------------------------------------------------------------------- */
 	/*                                sync section                                */
 	/* -------------------------------------------------------------------------- */
-	/* ----------------------------- full node mode ----------------------------- */
-	if !isProposer {
+	if !m.isProposer {
+		/* ----------------------------- full node mode ----------------------------- */
 		// Full-nodes can sync from DA but it is not necessary to wait for it, since it can sync from P2P as well in parallel.
 		go func() {
 			err := m.syncFromSettlement()
@@ -288,7 +280,6 @@ func (m *Manager) Start(ctx context.Context) error {
 			go uevent.MustSubscribe(ctx, m.Pubsub, "syncTargetLoop", settlement.EventQueryNewSettlementBatchAccepted, m.onNewStateUpdate, m.logger)
 		}()
 	} else {
-
 		/* ----------------------------- sequencer mode ----------------------------- */
 		// Sequencer must wait till DA is synced to start submitting blobs
 		<-m.DAClient.Synced()
@@ -304,13 +295,19 @@ func (m *Manager) Start(ctx context.Context) error {
 		// if sequencer is in the middle of rotation, complete rotation instead of running the main loop
 		if missing {
 			m.handleRotationReq(ctx, nextSeqAddr)
-			return nil
+			m.isProposer = false
+			m.logger.Info("Sequencer is no longer the proposer")
 		}
 	}
 
 	/* -------------------------------------------------------------------------- */
 	/*                                loops section                               */
 	/* -------------------------------------------------------------------------- */
+
+	err = m.RunLoops(ctx)
+	if err != nil {
+		return fmt.Errorf("run loops: %w", err)
+	}
 
 	return nil
 }
