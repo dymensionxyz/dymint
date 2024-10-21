@@ -24,18 +24,20 @@ func NewStateUpdateValidator(logger types.Logger, blockManager *Manager) *StateU
 	}
 }
 
+// ValidateStateUpdate validates that the blocks from the state info are available in DA,
+// that the information included in the Hub state info matches the blocks retrieved from DA
+// and those blocks are the same that are obtained via P2P.
 func (v *StateUpdateValidator) ValidateStateUpdate(batch *settlement.ResultRetrieveBatch) error {
 	v.logger.Debug("validating state update", "start height", batch.StartHeight, "end height", batch.EndHeight)
 
+	//validate that the DRS version specified batch matches the node state
 	err := v.validateDRS(batch.StartHeight, batch.EndHeight)
 	if err != nil {
 		return err
 	}
 
-	var daBlocks []*types.Block
+	// load blocks applied from P2P for the batch heights
 	p2pBlocks := make(map[uint64]*types.Block)
-
-	// load blocks for the batch height, either P2P or DA blocks
 	for height := batch.StartHeight; height <= batch.EndHeight; height++ {
 		source, err := v.blockManager.Store.LoadBlockSource(height)
 		if err != nil {
@@ -45,26 +47,22 @@ func (v *StateUpdateValidator) ValidateStateUpdate(batch *settlement.ResultRetri
 		if err != nil {
 			continue
 		}
-		if source == types.DA.String() {
-			daBlocks = append(daBlocks, block)
-		} else {
+		if source == types.Gossiped.String() || source == types.BlockSync.String() {
 			p2pBlocks[block.Header.Height] = block
 		}
 	}
 
-	// load all da blocks for the batch (to be verified), if not already loaded
-	if uint64(len(daBlocks)) != batch.NumBlocks {
-		daBlocks = []*types.Block{}
-		var daBatch da.ResultRetrieveBatch
-		for {
-			daBatch = v.blockManager.Retriever.RetrieveBatches(batch.MetaData.DA)
-			if daBatch.Code == da.StatusSuccess {
-				break
-			}
+	// load all DA blocks from the batch to be validated
+	daBlocks := []*types.Block{}
+	var daBatch da.ResultRetrieveBatch
+	for {
+		daBatch = v.blockManager.Retriever.RetrieveBatches(batch.MetaData.DA)
+		if daBatch.Code == da.StatusSuccess {
+			break
 		}
-		for _, batch := range daBatch.Batches {
-			daBlocks = append(daBlocks, batch.Blocks...)
-		}
+	}
+	for _, batch := range daBatch.Batches {
+		daBlocks = append(daBlocks, batch.Blocks...)
 	}
 
 	// validate DA blocks against the state update
@@ -73,7 +71,7 @@ func (v *StateUpdateValidator) ValidateStateUpdate(batch *settlement.ResultRetri
 		return err
 	}
 
-	// compare the batch blocks with the blocks applied from P2P
+	// validate P2P blocks against DA blocks
 	err = v.ValidateP2PBlocks(daBlocks, p2pBlocks)
 	if err != nil {
 		return err
@@ -84,20 +82,22 @@ func (v *StateUpdateValidator) ValidateStateUpdate(batch *settlement.ResultRetri
 	return nil
 }
 
+// ValidateP2PBlocks basically compares that the blocks applied from P2P are the same blocks included in the batch and retrieved from DA.
+// Since DA blocks have been already validated against Hub state info block descriptors, if P2P blocks match with DA blocks, it means they are also validated against state info block descriptors.
 func (v *StateUpdateValidator) ValidateP2PBlocks(daBlocks []*types.Block, p2pBlocks map[uint64]*types.Block) error {
 	// nothing to compare
 	if len(p2pBlocks) == 0 {
 		return nil
 	}
 
-	// iterate over daBlocks and compare hashes if there block is also in p2pBlocks
-	i := 0
+	// iterate over daBlocks and compare hashes with the corresponding block from P2P (if exists) to see whether they are actually the same block
 	for _, daBlock := range daBlocks {
 
-		if p2pBlocks[i].Header.Height != daBlock.Header.Height {
-			break
+		p2pBlock, ok := p2pBlocks[daBlock.Header.Height]
+		if !ok {
+			continue
 		}
-		p2pBlockHash, err := blockHash(p2pBlocks[i])
+		p2pBlockHash, err := blockHash(p2pBlock)
 		if err != nil {
 			return err
 		}
@@ -108,16 +108,14 @@ func (v *StateUpdateValidator) ValidateP2PBlocks(daBlocks []*types.Block, p2pBlo
 		if !bytes.Equal(p2pBlockHash, daBlockHash) {
 			return types.NewErrStateUpdateDoubleSigningFraud(daBlock.Header.Height)
 		}
-		i++
-		if i == len(p2pBlocks) {
-			break
-		}
+
 	}
 	return nil
 }
 
+// ValidateDaBlocks checks that the information included in the Hub state info (height, state roots and timestamps), correspond to the blocks obtained from DA.
 func (v *StateUpdateValidator) ValidateDaBlocks(slBatch *settlement.ResultRetrieveBatch, daBlocks []*types.Block) error {
-	// check numblocks
+	// we first verify the numblocks included in the state info match the block descriptors and the blocks obtained from DA
 	numSlBDs := uint64(len(slBatch.BlockDescriptors))
 	numDABlocks := uint64(len(daBlocks))
 	numSLBlocks := slBatch.NumBlocks
@@ -125,7 +123,7 @@ func (v *StateUpdateValidator) ValidateDaBlocks(slBatch *settlement.ResultRetrie
 		return types.NewErrStateUpdateNumBlocksNotMatchingFraud(slBatch.EndHeight, numSLBlocks, numDABlocks, numSLBlocks)
 	}
 
-	// check blocks
+	// we compare all DA blocks against the information included in the state info block descriptors
 	for i, bd := range slBatch.BlockDescriptors {
 		// height check
 		if bd.Height != daBlocks[i].Header.Height {
