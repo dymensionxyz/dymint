@@ -87,7 +87,10 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	}
 
 	// check if the proposer needs to be changed
-	switchRole := m.Executor.UpdateProposerFromBlock(m.State, block)
+	switchRole, err := m.Executor.UpdateProposerFromBlock(m.State, block)
+	if err != nil {
+		return fmt.Errorf("update proposer from block: %w", err)
+	}
 
 	// save sequencers to store to be queried over RPC
 	batch := m.Store.NewBatch()
@@ -110,12 +113,14 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 
 	m.blockCache.Delete(block.Header.Height)
 
-	// TODO: graceful role change (https://github.com/dymensionxyz/dymint/issues/1008)
-	if switchRole && m.isProposer {
+	// signal the role switch, in case where this node is the new proposer
+	// the other direction is handled elsewhere
+	if switchRole && !m.isProposer {
 		m.roleSwitchC <- true
 		m.logger.Info("Node changing to proposer role")
 	}
 
+	// FIXME: isn't this supposed to be checked before committing the state?
 	// validate whether configuration params and rollapp consensus params keep in line, after rollapp params are updated from the responses received in the block execution
 	err = m.ValidateConfigWithRollappParams()
 	if err != nil {
