@@ -33,7 +33,7 @@ func (v *StateUpdateValidator) ValidateStateUpdate(batch *settlement.ResultRetri
 	}
 
 	var daBlocks []*types.Block
-	var p2pBlocks []*types.Block
+	p2pBlocks := make(map[uint64]*types.Block)
 
 	// load blocks for the batch height, either P2P or DA blocks
 	for height := batch.StartHeight; height <= batch.EndHeight; height++ {
@@ -48,10 +48,11 @@ func (v *StateUpdateValidator) ValidateStateUpdate(batch *settlement.ResultRetri
 		if source == types.DA.String() {
 			daBlocks = append(daBlocks, block)
 		} else {
-			p2pBlocks = append(p2pBlocks, block)
+			p2pBlocks[block.Header.Height] = block
 		}
 	}
 
+	// load all da blocks for the batch (to be verified), if not already loaded
 	if uint64(len(daBlocks)) != batch.NumBlocks {
 		daBlocks = []*types.Block{}
 		var daBatch da.ResultRetrieveBatch
@@ -83,7 +84,7 @@ func (v *StateUpdateValidator) ValidateStateUpdate(batch *settlement.ResultRetri
 	return nil
 }
 
-func (v *StateUpdateValidator) ValidateP2PBlocks(daBlocks []*types.Block, p2pBlocks []*types.Block) error {
+func (v *StateUpdateValidator) ValidateP2PBlocks(daBlocks []*types.Block, p2pBlocks map[uint64]*types.Block) error {
 	// nothing to compare
 	if len(p2pBlocks) == 0 {
 		return nil
