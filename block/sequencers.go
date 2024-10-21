@@ -96,6 +96,7 @@ func (m *Manager) handleRotationReq(ctx context.Context, nextSeqAddr string) {
 	m.logger.Info("Sequencer rotation started. Production stopped on this sequencer", "nextSeqAddr", nextSeqAddr)
 	err := m.CompleteRotation(ctx, nextSeqAddr)
 	if err != nil {
+		m.logger.Error("Complete rotation", "err", err)
 		panic(err)
 	}
 }

@@ -160,7 +160,6 @@ func NewManager(
 
 // runNonProducerLoops runs the loops that are common to all nodes, but not the proposer.
 // This includes syncing from the DA and SL, and listening to new blocks from P2P.
-// when ctx is cancelled, all loops will be unsubscribed.
 func (m *Manager) runNonProducerLoops(ctx context.Context) {
 	// P2P Sync. Subscribe to P2P received blocks events
 	go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewGossipedBlock, m.onReceivedBlock, m.logger)
@@ -207,7 +206,7 @@ func (m *Manager) RunLoops(ctx context.Context) error {
 	// run pruning loop
 	go m.PruningLoop(ctx)
 
-	// run loops initially, by role
+	// run loops initially (producer or non-producer)
 	cancel := m.runLoopsWithCancelFunc(ctx)
 
 	// listen to role switch trigger
@@ -224,11 +223,7 @@ func (m *Manager) RunLoops(ctx context.Context) error {
 			}
 			m.isProposer = proposer
 			cancel() // shutdown all active loops
-			// FIXME: need to wait?
-			//(producer -> non-producer: guaranteed to be stopped)
-			//(non-producer -> producer: need to wait for all non-producer loops to stop)
-			// _ = eg.Wait()
-
+			// run loops again with new role
 			cancel = m.runLoopsWithCancelFunc(ctx)
 		}
 	}

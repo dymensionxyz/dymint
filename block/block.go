@@ -72,8 +72,8 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		// Prune old heights, if requested by ABCI app.
 		// retainHeight is determined by currentHeight - min-retain-blocks (app.toml config).
 		// Unless max_age_num_blocks in consensus params is higher than min-retain-block, then max_age_num_blocks will be used instead of min-retain-blocks.
-
 		if 0 < retainHeight {
+			// TODO: can be called in intervals rather than every block (https://github.com/dymensionxyz/dymint/issues/334)
 			select {
 			case m.pruningC <- retainHeight:
 			default:

@@ -42,7 +42,6 @@ func (m *Manager) PruneBlocks(retainHeight uint64) (uint64, error) {
 	return pruned, nil
 }
 
-// TODO: no need to return error here, just log it
 func (m *Manager) PruningLoop(ctx context.Context) {
 	for {
 		select {

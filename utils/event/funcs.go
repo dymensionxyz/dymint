@@ -33,13 +33,10 @@ func MustSubscribe(
 		return
 	}
 
-	// FIXME: validate it's still be unsubscribed if the context is cancelled
-	// FIXME: another alternative is to just have no-op in the event callbacks if the node is not the proposer
-	defer pubsubServer.UnsubscribeAll(ctx, clientID) //nolint:errcheck
+	defer pubsubServer.UnsubscribeAll(context.Background(), clientID) //nolint:errcheck
 
 	for {
 		select {
-		// FIXME: maybe this needs to be removed? as the ctx used for subscribing.
 		case <-ctx.Done():
 			return
 		case event := <-subscription.Out():
