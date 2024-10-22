@@ -57,11 +57,13 @@ func (s *DefaultStore) NewBatch() KVBatch {
 // Stored height is updated if block height is greater than stored value.
 // In case a batch is provided, the block and commit are added to the batch and not saved.
 func (s *DefaultStore) SaveBlock(block *types.Block, commit *types.Commit, batch KVBatch) (KVBatch, error) {
-
-	//if no base height is stored, it means this is the first block
+	// if no base height is stored, it means this is the first block
 	_, err := s.LoadBaseHeight()
 	if err != nil {
-		s.SaveBaseHeight(block.Header.Height)
+		err = s.SaveBaseHeight(block.Header.Height)
+		if err != nil {
+			return batch, fmt.Errorf("save blocksync base height: %w", err)
+		}
 	}
 	hash := block.Header.Hash()
 	blockBlob, err := block.MarshalBinary()
@@ -361,7 +363,6 @@ func (s *DefaultStore) SaveBaseHeight(height uint64) error {
 	b := make([]byte, 8)
 	binary.LittleEndian.PutUint64(b, height)
 	return s.db.Set(getBaseHeightKey(), b)
-
 }
 
 func (s *DefaultStore) LoadBlockSyncBaseHeight() (uint64, error) {
