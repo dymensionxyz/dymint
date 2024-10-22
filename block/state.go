@@ -161,7 +161,7 @@ func (e *Executor) UpdateProposerFromBlock(s *types.State, block *types.Block) b
 	}
 
 	localSeq := s.Sequencers.GetByConsAddress(e.localAddress)
-	if localSeq != nil && bytes.Equal(localSeq.Hash(), block.Header.NextSequencersHash[:]) {
+	if localSeq != nil && bytes.Equal(localSeq.MustHash(), block.Header.NextSequencersHash[:]) {
 		return true
 	}
 
