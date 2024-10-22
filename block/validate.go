@@ -17,7 +17,6 @@ func (m *Manager) onNewStateUpdateFinalized(event pubsub.Message) {
 		return
 	}
 	m.UpdateLastValidatedHeight(eventData.EndHeight)
-	m.State.SetLastFinalizedHeight(eventData.EndHeight)
 
 	// remove drs heights record for already finalized heights, since we do not need them for validation
 	m.State.ClearDRSVersionHeights(eventData.EndHeight)

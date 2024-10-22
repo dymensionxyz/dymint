@@ -117,14 +117,15 @@ func (s *State) SetRollappParamsFromGenesis(appState json.RawMessage) error {
 // It is not keeping all historic but only for non-finalized height.
 // If input height is already finalized it returns empty string and not found error.
 func (s *State) GetDRSVersion(height uint64) (string, error) {
-	if height <= s.GetLastFinalizedHeight() {
-		return "", gerrc.ErrNotFound
-	}
+
 	drsVersion := ""
 	for _, drs := range s.DrsVersionHistory {
 		if height >= drs.Height {
 			drsVersion = drs.Version
 		}
+	}
+	if drsVersion == "" {
+		return drsVersion, gerrc.ErrNotFound
 	}
 	return drsVersion, nil
 }

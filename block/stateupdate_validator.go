@@ -147,6 +147,7 @@ func (v *StateUpdateValidator) ValidateDaBlocks(slBatch *settlement.ResultRetrie
 			return types.NewErrStateUpdateTimestampNotMatchingFraud(slBatch.StateIndex, bd.Height, bd.Timestamp, daBlocks[i].Header.GetTimestamp())
 		}
 
+		// we validate block descriptor drs version per height
 		err := v.validateDRS(slBatch.StateIndex, bd.Height, bd.DrsVersion)
 		if err != nil {
 			return err
@@ -157,7 +158,8 @@ func (v *StateUpdateValidator) ValidateDaBlocks(slBatch *settlement.ResultRetrie
 	return nil
 }
 
-// TODO(srene): implement DRS/height verification
+// validateDRS compares the DRS version stored for the specific height, obtained from rollapp params.
+// DRS checks will work only for non-finalized heights, since it does not store the whole history, but it will never validate finalized heights.
 func (v *StateUpdateValidator) validateDRS(stateIndex uint64, height uint64, version string) error {
 	drs, err := v.blockManager.State.GetDRSVersion(height)
 	if err != nil {
