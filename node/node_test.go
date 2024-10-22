@@ -32,7 +32,7 @@ func TestStartup(t *testing.T) {
 	require := require.New(t)
 
 	// TODO(omritoptix): Test with and without sequencer mode.
-	node, err := testutil.CreateNode(false, nil, testutil.GenerateGenesis("test", 0))
+	node, err := testutil.CreateNode(false, nil, testutil.GenerateGenesis(0))
 	require.NoError(err)
 	require.NotNil(node)
 
@@ -87,7 +87,7 @@ func TestMempoolDirectly(t *testing.T) {
 		key,
 		signingKey,
 		proxy.NewLocalClientCreator(app),
-		testutil.GenerateGenesis("test", 0),
+		testutil.GenerateGenesis(0),
 		log.TestingLogger(),
 		mempool.NopMetrics(),
 	)

@@ -84,7 +84,7 @@ func TestCheckTx(t *testing.T) {
 func TestGenesisChunked(t *testing.T) {
 	assert := assert.New(t)
 
-	genDoc := testutil.GenerateGenesis("test", 1)
+	genDoc := testutil.GenerateGenesis(1)
 
 	mockApp := &tmmocks.MockApplication{}
 	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
@@ -803,7 +803,7 @@ func TestValidatorSetHandling(t *testing.T) {
 		key,
 		signingKey,
 		proxy.NewLocalClientCreator(app),
-		testutil.GenerateGenesis("test", 0),
+		testutil.GenerateGenesis(0),
 		log.TestingLogger(),
 		mempool.NopMetrics(),
 	)
@@ -964,7 +964,7 @@ func getRPCInternal(t *testing.T, sequencer bool) (*tmmocks.MockApplication, *cl
 		key,
 		localKey, // this is where sequencer mode is set. if same key as in settlement.Config, it's sequencer
 		proxy.NewLocalClientCreator(app),
-		testutil.GenerateGenesis("test", 0),
+		testutil.GenerateGenesis(0),
 		log.TestingLogger(),
 		mempool.NopMetrics(),
 	)
@@ -1038,7 +1038,7 @@ func TestMempool2Nodes(t *testing.T) {
 	id1, err := peer.IDFromPrivateKey(key1)
 	require.NoError(err)
 
-	genesis := testutil.GenerateGenesis("test", 0)
+	genesis := testutil.GenerateGenesis(0)
 	node1, err := node.NewNode(context.Background(), config.NodeConfig{
 		SettlementLayer: "mock",
 		SettlementConfig: settlement.Config{
