@@ -831,7 +831,8 @@ func (c *Client) CheckTx(ctx context.Context, tx tmtypes.Tx) (*ctypes.ResultChec
 
 // BlockValidated returns the settlement validation status for a specific height: 0: Not validated, 1: Validated from P2P, 2: Validated from settlement, -1: node is still syncing.
 func (c *Client) BlockValidated(ctx context.Context, height *int64) (*ResultBlockValidated, error) {
-	if *height < 0 {
+	// invalid height
+	if *height < 0 || height == nil {
 		return &ResultBlockValidated{Result: -1}, nil
 	}
 	// node has not reached the height yet
