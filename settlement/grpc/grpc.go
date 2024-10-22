@@ -307,11 +307,7 @@ func (c *Client) saveBatch(batch *settlement.Batch) error {
 }
 
 func (c *Client) convertBatchtoSettlementBatch(batch *types.Batch, daResult *da.ResultSubmitBatch) *settlement.Batch {
-<<<<<<< HEAD
 	bds := []rollapp.BlockDescriptor{}
-=======
-	bds := []settlement.BlockDescriptor{}
->>>>>>> 9270799 (checkin missed error)
 	for _, block := range batch.Blocks {
 		bd := rollapp.BlockDescriptor{
 			Height:    block.Header.Height,
