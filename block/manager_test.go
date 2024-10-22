@@ -389,8 +389,7 @@ func TestApplyLocalBlock_WithFraudCheck(t *testing.T) {
 }
 
 func TestRetrieveDaBatchesFailed(t *testing.T) {
-	chainId := "test"
-	manager, err := testutil.GetManager(chainId, testutil.GetManagerConfig(), nil, 1, 1, 0, nil, nil)
+	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, manager)
 	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
@@ -429,8 +428,7 @@ func TestProduceNewBlock(t *testing.T) {
 	err := proxyApp.Start()
 	require.NoError(t, err)
 	// Init manager
-	chainId := "test"
-	manager, err := testutil.GetManager(chainId, testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, nil)
+	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(t, err)
 	// Produce block
 	_, _, err = manager.ProduceApplyGossipBlock(context.Background(), true)

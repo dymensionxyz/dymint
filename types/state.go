@@ -83,24 +83,6 @@ func (s *State) GetLastValidatedHeight() uint64 {
 	return s.LastValidatedHeight.Load()
 }
 
-<<<<<<< HEAD
-=======
-// NextValidationHeight returns the next height needs to be validated from state updates.
-func (s *State) NextValidationHeight() uint64 {
-	return max(s.LastValidatedHeight.Load(), s.LastFinalizedHeight.Load()) + 1
-}
-
-// SetLastFinalizedHeight sets the last finalization height from finalization events.
-func (s *State) SetLastFinalizedHeight(height uint64) {
-	s.LastFinalizedHeight.Store(max(s.GetLastFinalizedHeight(), height))
-}
-
-// GetLastFinalizedHeight returns last finalized height.
-func (s *State) GetLastFinalizedHeight() uint64 {
-	return s.LastValidatedHeight.Load()
-}
-
->>>>>>> 541044b (drs version updated)
 // NextHeight returns the next height that expected to be stored in store.
 func (s *State) NextHeight() uint64 {
 	if s.IsGenesis() {

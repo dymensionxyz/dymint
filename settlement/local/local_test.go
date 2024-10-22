@@ -59,15 +59,9 @@ func TestSubmitBatch(t *testing.T) {
 	// Create a batches which will be submitted
 	proposerKey, _, err := crypto.GenerateEd25519Key(nil)
 	require.NoError(err)
-<<<<<<< HEAD
 	batch1, err := testutil.GenerateBatch(1, 1, proposerKey, [32]byte{})
 	require.NoError(err)
 	batch2, err := testutil.GenerateBatch(2, 2, proposerKey, [32]byte{})
-=======
-	batch1, err := testutil.GenerateBatch(1, 1, proposerKey, "test", [32]byte{})
-	require.NoError(err)
-	batch2, err := testutil.GenerateBatch(2, 2, proposerKey, "test", [32]byte{})
->>>>>>> 51d10be (fix manager tests for proposer address and lastheighthash)
 	require.NoError(err)
 	resultSubmitBatch := &da.ResultSubmitBatch{}
 	resultSubmitBatch.SubmitMetaData = &da.DASubmitMetaData{}
