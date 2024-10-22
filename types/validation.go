@@ -134,7 +134,11 @@ func (c *Commit) ValidateWithHeader(proposerPubKey tmcrypto.PubKey, header *Head
 	}
 
 	seq := NewSequencerFromValidator(*tmtypes.NewValidator(proposerPubKey, 1))
-	proposerHash := seq.Hash()
+	proposerHash, err := seq.Hash()
+	if err != nil {
+		return err
+	}
+
 	if !bytes.Equal(header.SequencerHash[:], proposerHash) {
 		return NewErrInvalidSequencerHashFraud(header.SequencerHash, proposerHash)
 	}

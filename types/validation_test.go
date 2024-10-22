@@ -18,6 +18,7 @@ import (
 
 func TestBlock_ValidateWithState(t *testing.T) {
 	proposer := NewSequencerFromValidator(*tmtypes.NewValidator(ed25519.GenPrivKey().PubKey(), 1))
+	proposerHash := proposer.MustHash()
 	currentTime := time.Now().UTC()
 	validState := &State{
 		Version: tmstate.Version{
@@ -51,7 +52,7 @@ func TestBlock_ValidateWithState(t *testing.T) {
 			DataHash:           [32]byte{},
 			LastHeaderHash:     [32]byte{7, 8, 9},
 			ChainID:            "chainID",
-			NextSequencersHash: [32]byte(proposer.Hash()),
+			NextSequencersHash: [32]byte(proposerHash),
 		},
 		Data:       Data{},
 		LastCommit: Commit{},
@@ -320,7 +321,7 @@ func TestCommit_ValidateWithHeader(t *testing.T) {
 	// Helper function to create a valid commit
 	createValidCommit := func() (*Commit, *Block, []byte, error) {
 		seq := NewSequencerFromValidator(*tmtypes.NewValidator(proposerKey.PubKey(), 1))
-		proposerHash := seq.Hash()
+		proposerHash := seq.MustHash()
 
 		block := &Block{
 			Header: Header{
@@ -463,11 +464,15 @@ func TestCommit_ValidateWithHeader(t *testing.T) {
 		block.Header.SequencerHash = [32]byte{1, 2, 3} // Set to an invalid hash
 
 		// Ensure the SequencerHash does not match the proposer's hash
-		require.NotEqual(t, block.Header.SequencerHash, NewSequencerFromValidator(*tmtypes.NewValidator(proposerKey.PubKey(), 1)).Hash(), "The SequencerHash should not match the proposer's hash")
+		hash := NewSequencerFromValidator(*tmtypes.NewValidator(proposerKey.PubKey(), 1)).MustHash()
+		require.NoError(t, err, "Generating the SequencerHash should not fail")
+		require.NotEqual(t, block.Header.SequencerHash, hash, "The SequencerHash should not match the proposer's hash")
 
 		// Validate and expect an error due to mismatching SequencerHash
 		err = commit.ValidateWithHeader(proposerKey.PubKey(), &block.Header)
-		require.Equal(t, &ErrInvalidSequencerHashFraud{[32]byte{1, 2, 3}, NewSequencerFromValidator(*tmtypes.NewValidator(proposerKey.PubKey(), 1)).Hash()}, err)
+		bytes := NewSequencerFromValidator(*tmtypes.NewValidator(proposerKey.PubKey(), 1)).MustHash()
+
+		require.Equal(t, &ErrInvalidSequencerHashFraud{[32]byte{1, 2, 3}, bytes}, err)
 		require.True(t, errors.Is(err, gerrc.ErrFault), "The error should be a fraud error")
 	})
 
