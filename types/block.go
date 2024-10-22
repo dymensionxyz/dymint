@@ -14,7 +14,7 @@ type Header struct {
 	Version Version
 
 	Height uint64
-	Time   uint64 // time in tai64 format
+	Time   uint64 // UNIX time in milliseconds
 
 	// prev block info
 	LastHeaderHash [32]byte

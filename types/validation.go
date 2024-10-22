@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"time"
 
 	tmcrypto "github.com/tendermint/tendermint/crypto"
 	tmtypes "github.com/tendermint/tendermint/types"
@@ -46,22 +47,46 @@ func (b *Block) ValidateBasic() error {
 func (b *Block) ValidateWithState(state *State) error {
 	err := b.ValidateBasic()
 	if err != nil {
+		if errors.Is(err, ErrInvalidHeaderDataHash) {
+			return NewErrInvalidHeaderDataHashFraud(b.Header.DataHash, [32]byte(GetDataHash(b)))
+		}
+
 		return err
 	}
-	if b.Header.Version.App != state.Version.Consensus.App ||
-		b.Header.Version.Block != state.Version.Consensus.Block {
-		return errors.New("b version mismatch")
+
+	if b.Header.ChainID != state.ChainID {
+		return NewErrInvalidChainID(state.ChainID, b)
 	}
 
-	if b.Header.Height != state.NextHeight() {
-		return errors.New("height mismatch")
+	if b.Header.LastHeaderHash != state.LastHeaderHash {
+		return NewErrLastHeaderHashMismatch(state.LastHeaderHash, b)
+	}
+
+	currentTime := time.Now().UTC()
+	if currentTime.Add(TimeFraudMaxDrift).Before(time.Unix(0, int64(b.Header.Time))) {
+		return NewErrTimeFraud(b, currentTime)
+	}
+
+	if b.Header.Version.App != state.Version.Consensus.App ||
+		b.Header.Version.Block != state.Version.Consensus.Block {
+		return ErrVersionMismatch
+	}
+
+	nextHeight := state.NextHeight()
+	if b.Header.Height != nextHeight {
+		return NewErrFraudHeightMismatch(state.NextHeight(), b.Header.Height, b)
+	}
+
+	if !bytes.Equal(b.Header.NextSequencersHash[:], state.Sequencers.ProposerHash()) {
+		return NewErrInvalidNextSequencersHashFraud([32]byte(state.Sequencers.ProposerHash()), b.Header.NextSequencersHash)
 	}
 
 	if !bytes.Equal(b.Header.AppHash[:], state.AppHash[:]) {
-		return errors.New("AppHash mismatch")
+		return NewErrFraudAppHashMismatch(state.AppHash, b.Header.AppHash, b)
 	}
+
 	if !bytes.Equal(b.Header.LastResultsHash[:], state.LastResultsHash[:]) {
-		return errors.New("LastResultsHash mismatch")
+		return NewErrLastResultsHashMismatch(state.LastResultsHash, b)
 	}
 
 	return nil
@@ -70,7 +95,7 @@ func (b *Block) ValidateWithState(state *State) error {
 // ValidateBasic performs basic validation of a header.
 func (h *Header) ValidateBasic() error {
 	if len(h.ProposerAddress) == 0 {
-		return errors.New("no proposer address")
+		return ErrEmptyProposerAddress
 	}
 
 	return nil
@@ -97,16 +122,41 @@ func (c *Commit) ValidateBasic() error {
 
 func (c *Commit) ValidateWithHeader(proposerPubKey tmcrypto.PubKey, header *Header) error {
 	if err := c.ValidateBasic(); err != nil {
-		return err
+		return NewErrInvalidSignatureFraud(err)
 	}
+
 	abciHeaderPb := ToABCIHeaderPB(header)
 	abciHeaderBytes, err := abciHeaderPb.Marshal()
 	if err != nil {
 		return err
 	}
+
 	// commit is validated to have single signature
 	if !proposerPubKey.VerifySignature(abciHeaderBytes, c.Signatures[0]) {
-		return ErrInvalidSignature
+		return NewErrInvalidSignatureFraud(ErrInvalidSignature)
 	}
+
+	if c.Height != header.Height {
+		return NewErrInvalidBlockHeightFraud(c.Height, header.Height)
+	}
+
+	if !bytes.Equal(header.ProposerAddress, proposerPubKey.Address()) {
+		return NewErrInvalidProposerAddressFraud(header.ProposerAddress, proposerPubKey.Address())
+	}
+
+	seq := NewSequencerFromValidator(*tmtypes.NewValidator(proposerPubKey, 1))
+	proposerHash, err := seq.Hash()
+	if err != nil {
+		return err
+	}
+
+	if !bytes.Equal(header.SequencerHash[:], proposerHash) {
+		return NewErrInvalidSequencerHashFraud(header.SequencerHash, proposerHash)
+	}
+
+	if c.HeaderHash != header.Hash() {
+		return NewErrInvalidHeaderHashFraud(c.HeaderHash, header.Hash())
+	}
+
 	return nil
 }
