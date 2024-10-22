@@ -2,6 +2,8 @@ package block
 
 import (
 	"context"
+
+	"github.com/dymensionxyz/dymint/types"
 )
 
 // PruneBlocks prune all block related data from dymint store up to (but not including) retainHeight.
@@ -12,13 +14,18 @@ func (m *Manager) PruneBlocks(retainHeight uint64) {
 		retainHeight = nextSubmissionHeight
 	}
 
+	// logging pruning result
+	logResult := func(err error, logger types.Logger, retainHeight uint64, pruned uint64) {
+		if err != nil {
+			m.logger.Error("pruning blocksync store", "retain_height", retainHeight, "err", err)
+		} else {
+			m.logger.Debug("blocksync store pruned", "to", retainHeight, "pruned", pruned)
+		}
+	}
+
 	// prune blocks from blocksync store
 	pruned, err := m.p2pClient.RemoveBlocks(context.Background(), retainHeight)
-	if err != nil {
-		m.logger.Error("pruning blocksync store", "retain_height", retainHeight, "err", err)
-	} else {
-		m.logger.Debug("blocksync store pruned", "to", retainHeight, "pruned", pruned)
-	}
+	logResult(err, m.logger, retainHeight, pruned)
 
 	// prune blocks from indexer store
 	baseHeight, err := m.Store.LoadIndexerBaseHeight()
@@ -26,11 +33,8 @@ func (m *Manager) PruneBlocks(retainHeight uint64) {
 		baseHeight = 1
 	}
 	pruned, err = m.IndexerService.Prune(baseHeight, retainHeight)
-	if err != nil {
-		m.logger.Error("pruning indexer", "retain_height", retainHeight, "err", err)
-	} else {
-		m.logger.Debug("indexer store pruned", "to", retainHeight, "pruned", pruned)
-	}
+	logResult(err, m.logger, retainHeight, pruned)
+
 	err = m.Store.SaveIndexerBaseHeight(retainHeight)
 	if err != nil {
 		m.logger.Error("saving indexer base height", "err", err)
@@ -38,11 +42,7 @@ func (m *Manager) PruneBlocks(retainHeight uint64) {
 
 	// prune blocks from dymint store
 	pruned, err = m.Store.PruneStore(retainHeight, m.logger)
-	if err != nil {
-		m.logger.Error("pruning block store", "retain_height", retainHeight, "err", err)
-	} else {
-		m.logger.Debug("dymint store pruned", "to", retainHeight, "pruned", pruned)
-	}
+	logResult(err, m.logger, retainHeight, pruned)
 
 }
 
