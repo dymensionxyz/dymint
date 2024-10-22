@@ -113,6 +113,9 @@ type Manager struct {
 
 	// validates all non-finalized state updates from settlement, checking there is consistency between DA and P2P blocks, and the information in the state update.
 	SettlementValidator *SettlementValidator
+
+	// BaseHeight is the height of the first block we have in store after pruning.
+	BaseHeight uint64
 }
 
 // NewManager creates new block Manager.

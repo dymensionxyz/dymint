@@ -528,19 +528,12 @@ func (idx *BlockerIndexer) indexEvents(batch store.KVBatch, events []abci.Event,
 }
 
 func (idx *BlockerIndexer) Prune(from, to uint64, logger log.Logger) (uint64, error) {
-	if from <= 0 {
-		return 0, fmt.Errorf("from height must be greater than 0: %w", gerrc.ErrInvalidArgument)
-	}
-
-	if to <= from {
-		return 0, fmt.Errorf("to height must be greater than from height: to: %d: from: %d: %w", to, from, gerrc.ErrInvalidArgument)
-	}
 	return idx.pruneBlocks(from, to, logger)
 }
 
 func (idx *BlockerIndexer) pruneBlocks(from, to uint64, logger log.Logger) (uint64, error) {
 	pruned := uint64(0)
-	tobeFlushed := uint64(0)
+	toFlush := uint64(0)
 	batch := idx.store.NewBatch()
 	defer batch.Discard()
 
@@ -563,7 +556,6 @@ func (idx *BlockerIndexer) pruneBlocks(from, to uint64, logger log.Logger) (uint
 			continue
 		}
 
-		// we update here to avoid acccumulating batches in case pruneEvents fails
 		pruned++
 
 		prunedEvents, err := idx.pruneEvents(h, batch)
@@ -573,9 +565,10 @@ func (idx *BlockerIndexer) pruneBlocks(from, to uint64, logger log.Logger) (uint
 		}
 		pruned += prunedEvents
 
-		tobeFlushed += pruned
+		toFlush += pruned
+
 		// flush every 1000 blocks to avoid batches becoming too large
-		if tobeFlushed > 1000 {
+		if toFlush > 1000 {
 			err := flush(batch, h)
 			if err != nil {
 				return 0, err
@@ -583,7 +576,7 @@ func (idx *BlockerIndexer) pruneBlocks(from, to uint64, logger log.Logger) (uint
 			batch.Discard()
 			batch = idx.store.NewBatch()
 
-			tobeFlushed = 0
+			toFlush = 0
 		}
 	}
 
