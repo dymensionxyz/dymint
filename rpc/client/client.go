@@ -811,7 +811,7 @@ func (c *Client) CheckTx(ctx context.Context, tx tmtypes.Tx) (*ctypes.ResultChec
 
 func (c *Client) BlockValidated(ctx context.Context, height *int64) (*ResultBlockValidated, error) {
 	// invalid height
-	if *height < 0 || height == nil {
+	if height == nil || *height < 0 {
 		return &ResultBlockValidated{Result: -1}, nil
 	}
 	// node has not reached the height yet

@@ -308,19 +308,21 @@ func TestValidatedHeight(t *testing.T) {
 	err := node.Start()
 	require.NoError(err)
 
+	ptr := func(i int64) *int64 { return &i }
+
 	tests := []struct {
 		name            string
 		validatedHeight uint64
 		nodeHeight      uint64
 		submittedHeight uint64
-		queryHeight     int64
+		queryHeight     *int64
 		result          client.ValidationStatus
 	}{
 		{
 			name:            "SL validated height",
 			validatedHeight: 10,
 			nodeHeight:      15,
-			queryHeight:     10,
+			queryHeight:     ptr(10),
 			submittedHeight: 10,
 			result:          client.BlockValidatedWithSL,
 		},
@@ -328,7 +330,7 @@ func TestValidatedHeight(t *testing.T) {
 			name:            "P2P validated height",
 			validatedHeight: 10,
 			nodeHeight:      15,
-			queryHeight:     13,
+			queryHeight:     ptr(13),
 			submittedHeight: 10,
 			result:          client.BlockValidated,
 		},
@@ -336,7 +338,7 @@ func TestValidatedHeight(t *testing.T) {
 			name:            "Non validated height",
 			validatedHeight: 10,
 			nodeHeight:      15,
-			queryHeight:     20,
+			queryHeight:     ptr(20),
 			submittedHeight: 10,
 			result:          client.BlockNotValidated,
 		},
@@ -344,7 +346,15 @@ func TestValidatedHeight(t *testing.T) {
 			name:            "Invalid height",
 			validatedHeight: 1,
 			nodeHeight:      5,
-			queryHeight:     -1,
+			queryHeight:     ptr(-1),
+			submittedHeight: 10,
+			result:          -1,
+		},
+		{
+			name:            "Nil height",
+			validatedHeight: 1,
+			nodeHeight:      5,
+			queryHeight:     nil,
 			submittedHeight: 10,
 			result:          -1,
 		},
@@ -359,7 +369,7 @@ func TestValidatedHeight(t *testing.T) {
 
 			node.BlockManager.State.SetHeight(test.nodeHeight)
 
-			validationResponse, err := rpc.BlockValidated(context.Background(), &test.queryHeight)
+			validationResponse, err := rpc.BlockValidated(context.Background(), test.queryHeight)
 			require.NoError(err)
 			require.NotNil(validationResponse)
 			assert.Equal(test.result, validationResponse.Result)
