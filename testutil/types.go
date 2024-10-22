@@ -90,7 +90,7 @@ func generateBlock(height uint64, proposerHash []byte, lastHeaderHash [32]byte) 
 func GenerateBlocksWithTxs(startHeight uint64, num uint64, proposerKey crypto.PrivKey, nTxs int) ([]*types.Block, error) {
 	r, _ := proposerKey.Raw()
 	seq := types.NewSequencerFromValidator(*tmtypes.NewValidator(ed25519.PrivKey(r).PubKey(), 1))
-	proposerHash := seq.Hash()
+	proposerHash := seq.MustHash()
 
 	blocks := make([]*types.Block, num)
 	lastHeaderHash := [32]byte{}
@@ -125,7 +125,7 @@ func GenerateBlocksWithTxs(startHeight uint64, num uint64, proposerKey crypto.Pr
 func GenerateBlocks(startHeight uint64, num uint64, proposerKey crypto.PrivKey, lastBlockHeader [32]byte) ([]*types.Block, error) {
 	r, _ := proposerKey.Raw()
 	seq := types.NewSequencerFromValidator(*tmtypes.NewValidator(ed25519.PrivKey(r).PubKey(), 1))
-	proposerHash := seq.Hash()
+	proposerHash := seq.MustHash()
 
 	blocks := make([]*types.Block, num)
 	lastHeaderHash := lastBlockHeader
