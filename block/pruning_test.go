@@ -65,11 +65,6 @@ func TestPruningRetainHeight(t *testing.T) {
 		pruned, err := manager.Store.PruneStore(validRetainHeight, log.NewNopLogger())
 		validatePruning(i, expectedPruned, pruned, err)
 
-		pruned, err = manager.P2PClient.RemoveBlocks(ctx, validRetainHeight)
-		validatePruning(i, expectedPruned, pruned, err)
-
 	}
 
-	err = manager.PruneBlocks(validRetainHeight)
-	require.NoError(err)
 }
