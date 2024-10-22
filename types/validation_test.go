@@ -2,26 +2,24 @@ package types
 
 import (
 	"errors"
-	"github.com/cometbft/cometbft/libs/math"
-	"github.com/dymensionxyz/gerr-cosmos/gerrc"
-	"github.com/tendermint/tendermint/crypto/ed25519"
-	tmtypes "github.com/tendermint/tendermint/types"
 	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/cometbft/cometbft/libs/math"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
+	"github.com/tendermint/tendermint/crypto/ed25519"
+	tmtypes "github.com/tendermint/tendermint/types"
+
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
+	"github.com/tendermint/tendermint/proto/tendermint/version"
 )
-<<<<<<< HEAD
-	proposer := NewSequencerFromValidator(*tmtypes.NewValidator(ed25519.GenPrivKey().PubKey(), 1))
-	proposerHash := proposer.MustHash()
-=======
 
 func TestBlock_ValidateWithState(t *testing.T) {
 	proposer := NewSequencerFromValidator(*tmtypes.NewValidator(ed25519.GenPrivKey().PubKey(), 1))
->>>>>>> 99abc4e (include next sequencer hash)
+	proposerHash := proposer.MustHash()
 	currentTime := time.Now().UTC()
 	validState := &State{
 		Version: tmstate.Version{
@@ -55,11 +53,7 @@ func TestBlock_ValidateWithState(t *testing.T) {
 			DataHash:           [32]byte{},
 			LastHeaderHash:     [32]byte{7, 8, 9},
 			ChainID:            "chainID",
-<<<<<<< HEAD
 			NextSequencersHash: [32]byte(proposerHash),
-=======
-			NextSequencersHash: [32]byte(proposer.Hash()),
->>>>>>> 99abc4e (include next sequencer hash)
 		},
 		Data:       Data{},
 		LastCommit: Commit{},
