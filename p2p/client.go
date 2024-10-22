@@ -240,7 +240,8 @@ func (c *Client) RemoveBlocks(ctx context.Context, to uint64) (uint64, error) {
 
 		cid, err := c.store.LoadBlockCid(h)
 		if err != nil {
-			return fmt.Errorf("load block id from store %d: %w", h, err)
+			c.logger.Error("load block id from store", "height", h, "err", err)
+			continue
 		}
 		err = c.blocksync.DeleteBlock(ctx, cid)
 		if err != nil {
