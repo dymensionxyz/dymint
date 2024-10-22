@@ -43,7 +43,6 @@ func (m *Manager) PruneBlocks(retainHeight uint64) {
 	// prune blocks from dymint store
 	pruned, err = m.Store.PruneStore(retainHeight, m.logger)
 	logResult(err, m.logger, retainHeight, pruned)
-
 }
 
 func (m *Manager) PruningLoop(ctx context.Context) error {
