@@ -18,7 +18,7 @@ type StateUpdateValidator struct {
 	blockManager *Manager
 }
 
-// NewValidator creates a new Validator.
+// NewStateUpdateValidator creates a new Validator.
 func NewStateUpdateValidator(logger types.Logger, blockManager *Manager) *StateUpdateValidator {
 	return &StateUpdateValidator{
 		logger:       logger,
@@ -131,6 +131,8 @@ func (v *StateUpdateValidator) ValidateDaBlocks(slBatch *settlement.ResultRetrie
 		return types.NewErrStateUpdateNumBlocksNotMatchingFraud(slBatch.EndHeight, numSLBlocks, numDABlocks, numSLBlocks)
 	}
 
+	nextSequencerAddress := v.blockManager.NextSequencerAddress.Load()
+
 	// check blocks
 	for i, bd := range slBatch.BlockDescriptors {
 		// height check
@@ -152,9 +154,21 @@ func (v *StateUpdateValidator) ValidateDaBlocks(slBatch *settlement.ResultRetrie
 			return err
 		}
 
+		// we compare the sequencer address between SL state info and DA block
+		// if next sequencer is not set, we check if the sequencer hash is equal to the next sequencer hash
+		// because it did not change
+		if nextSequencerAddress == "" {
+			if bytes.Equal(daBlocks[i].Header.SequencerHash[:], daBlocks[i].Header.NextSequencersHash[:]) {
+				return types.NewErrInvalidNextSequencersHashFraud(
+					daBlocks[i].Header.SequencerHash,
+					daBlocks[i].Header.NextSequencersHash,
+				)
+			}
+		} else {
+
+		}
 	}
 
-	// TODO(srene): implement sequencer address validation
 	return nil
 }
 
