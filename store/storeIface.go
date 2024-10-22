@@ -71,7 +71,7 @@ type Store interface {
 
 	LoadSequencers(height uint64) (*types.SequencerSet, error)
 
-	PruneStore(from, to uint64, logger types.Logger) (uint64, error)
+	PruneStore(to uint64, logger types.Logger) (uint64, error)
 
 	Close() error
 
@@ -80,4 +80,16 @@ type Store interface {
 	LoadBlockCid(height uint64) (cid.Cid, error)
 
 	RemoveBlockCid(height uint64) error
+
+	LoadBaseHeight() (uint64, error)
+
+	SaveBaseHeight(height uint64) error
+
+	LoadBlockSyncBaseHeight() (uint64, error)
+
+	SaveBlockSyncBaseHeight(height uint64) error
+
+	LoadIndexerBaseHeight() (uint64, error)
+
+	SaveIndexerBaseHeight(height uint64) error
 }
