@@ -8,7 +8,6 @@ import (
 
 // PruneStore removes blocks up to (but not including) a height. It returns number of blocks pruned.
 func (s *DefaultStore) PruneStore(to uint64, logger types.Logger) (uint64, error) {
-
 	from, err := s.LoadBaseHeight()
 	if err != nil {
 		return uint64(0), fmt.Errorf("unable to retrieve stored base: %w", err)
@@ -22,8 +21,11 @@ func (s *DefaultStore) PruneStore(to uint64, logger types.Logger) (uint64, error
 	if err != nil {
 		logger.Error("pruning responses", "from", from, "to", to, "responses pruned", prunedResponses, "err", err)
 	}
-	s.SaveBaseHeight(from + prunedBlocks)
 
+	err = s.SaveBaseHeight(from + prunedBlocks)
+	if err != nil {
+		logger.Error("saving base height", "error", err)
+	}
 	return prunedBlocks, nil
 }
 
