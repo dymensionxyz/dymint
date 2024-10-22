@@ -342,13 +342,7 @@ func TestCommit_ValidateWithHeader(t *testing.T) {
 			},
 		}
 
-		abciHeaderPb := ToABCIHeaderPB(&block.Header)
-		abciHeaderBytes, err := abciHeaderPb.Marshal()
-		if err != nil {
-			return nil, nil, nil, err
-		}
-
-		signature, err := proposerKey.Sign(abciHeaderBytes)
+		abciHeaderBytes, signature, err := signBlock(block, proposerKey)
 		if err != nil {
 			return nil, nil, nil, err
 		}
@@ -446,6 +440,14 @@ func TestCommit_ValidateWithHeader(t *testing.T) {
 		// Modify the block header's proposer address to simulate a mismatch
 		block.Header.ProposerAddress = anotherKey.PubKey().Address() // Set to a different proposer's address
 
+		// resign the block with the new proposer address
+		_, signature, err := signBlock(block, proposerKey)
+		if err != nil {
+			return
+		}
+
+		commit.Signatures = []Signature{signature}
+
 		// Ensure the proposer's address does not match the block header's proposer address
 		require.NotEqual(t, proposerKey.PubKey().Address(), block.Header.ProposerAddress, "The proposer's public key address should not match the block header proposer address")
 
@@ -462,6 +464,14 @@ func TestCommit_ValidateWithHeader(t *testing.T) {
 
 		// Modify the block header's SequencerHash to simulate a mismatch
 		block.Header.SequencerHash = [32]byte{1, 2, 3} // Set to an invalid hash
+
+		// resign the block with the new SequencerHash
+		_, signature, err := signBlock(block, proposerKey)
+		if err != nil {
+			return
+		}
+
+		commit.Signatures = []Signature{signature}
 
 		// Ensure the SequencerHash does not match the proposer's hash
 		hash := NewSequencerFromValidator(*tmtypes.NewValidator(proposerKey.PubKey(), 1)).MustHash()
@@ -488,4 +498,19 @@ func TestCommit_ValidateWithHeader(t *testing.T) {
 		require.Equal(t, &ErrInvalidHeaderHashFraud{[32]byte{1, 2, 3}, block.Hash()}, err)
 		require.True(t, errors.Is(err, gerrc.ErrFault), "The error should be a fraud error")
 	})
+}
+
+func signBlock(block *Block, proposerKey ed25519.PrivKey) ([]byte, []byte, error) {
+	abciHeaderPb := ToABCIHeaderPB(&block.Header)
+	abciHeaderBytes, err := abciHeaderPb.Marshal()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	signature, err := proposerKey.Sign(abciHeaderBytes)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return abciHeaderBytes, signature, nil
 }

@@ -125,6 +125,17 @@ func (c *Commit) ValidateWithHeader(proposerPubKey tmcrypto.PubKey, header *Head
 		return NewErrInvalidSignatureFraud(err)
 	}
 
+	abciHeaderPb := ToABCIHeaderPB(header)
+	abciHeaderBytes, err := abciHeaderPb.Marshal()
+	if err != nil {
+		return err
+	}
+
+	// commit is validated to have single signature
+	if !proposerPubKey.VerifySignature(abciHeaderBytes, c.Signatures[0]) {
+		return NewErrInvalidSignatureFraud(ErrInvalidSignature)
+	}
+
 	if c.Height != header.Height {
 		return NewErrInvalidBlockHeightFraud(c.Height, header.Height)
 	}
@@ -147,14 +158,5 @@ func (c *Commit) ValidateWithHeader(proposerPubKey tmcrypto.PubKey, header *Head
 		return NewErrInvalidHeaderHashFraud(c.HeaderHash, header.Hash())
 	}
 
-	abciHeaderPb := ToABCIHeaderPB(header)
-	abciHeaderBytes, err := abciHeaderPb.Marshal()
-	if err != nil {
-		return err
-	}
-	// commit is validated to have single signature
-	if !proposerPubKey.VerifySignature(abciHeaderBytes, c.Signatures[0]) {
-		return NewErrInvalidSignatureFraud(ErrInvalidSignature)
-	}
 	return nil
 }
