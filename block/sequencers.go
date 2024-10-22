@@ -115,7 +115,7 @@ func (m *Manager) CompleteRotation(ctx context.Context, nextSeqAddr string) erro
 		if seq == nil {
 			return types.ErrMissingProposerPubKey
 		}
-		copy(nextSeqHash[:], seq.Hash())
+		copy(nextSeqHash[:], seq.MustHash())
 	}
 
 	err := m.CreateAndPostLastBatch(ctx, nextSeqHash)

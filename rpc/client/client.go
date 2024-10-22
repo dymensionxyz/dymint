@@ -512,31 +512,11 @@ func (c *Client) Validators(ctx context.Context, heightPtr *int64, pagePtr, perP
 	if err != nil {
 		return nil, fmt.Errorf("load validators for height %d: %w", height, err)
 	}
-
-	totalCount := len(sequencers.Sequencers)
-	perPage := validatePerPage(perPagePtr)
-	page, err := validatePage(pagePtr, perPage, totalCount)
-	if err != nil {
-		return nil, err
-	}
-
-	skipCount := validateSkipCount(page, perPage)
-
-	var vals []*tmtypes.Validator
-	for _, s := range sequencers.Sequencers {
-		val, err := s.TMValidator()
-		if err != nil {
-			return nil, fmt.Errorf("convert sequencer to validator: %s :%w", s.SettlementAddress, err)
-		}
-		vals = append(vals, val)
-	}
-
-	v := vals[skipCount : skipCount+tmmath.MinInt(perPage, totalCount-skipCount)]
 	return &ctypes.ResultValidators{
 		BlockHeight: int64(height),
-		Validators:  v,
-		Count:       len(v),
-		Total:       totalCount,
+		Validators:  sequencers.Proposer.TMValidators(),
+		Count:       1,
+		Total:       1,
 	}, nil
 }
 
