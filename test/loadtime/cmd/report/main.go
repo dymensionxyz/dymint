@@ -50,10 +50,6 @@ func newBlockStore(kvstore store.KV, baseHeight uint64) *BlockStore {
 	if err != nil {
 		log.Fatalf("loading state %s", err)
 	}
-	baseHeight, err = store.LoadBaseHeight()
-	if err != nil {
-		log.Fatalf("loading state %s", err)
-	}
 	return &BlockStore{
 		DefaultStore: store,
 		base:         baseHeight,
