@@ -571,16 +571,16 @@ LOOP:
 }
 
 func (txi *TxIndex) Prune(from, to uint64, logger log.Logger) (uint64, error) {
-	pruned, err := txi.pruneTxsAndEvents(from, to)
+	pruned, err := txi.pruneTxsAndEvents(from, to, logger)
 	if err != nil {
 		return 0, err
 	}
 	return pruned, nil
 }
 
-func (txi *TxIndex) pruneTxsAndEvents(from, to uint64) (uint64, error) {
+func (txi *TxIndex) pruneTxsAndEvents(from, to uint64, logger log.Logger) (uint64, error) {
 	pruned := uint64(0)
-	tobeFlushed := uint64(0)
+	toFlush := uint64(0)
 	batch := txi.store.NewBatch()
 	defer batch.Discard()
 
@@ -597,6 +597,7 @@ func (txi *TxIndex) pruneTxsAndEvents(from, to uint64) (uint64, error) {
 		// first all events are pruned associated to the same height
 		prunedEvents, err := txi.pruneEvents(h, batch)
 		if err != nil {
+			logger.Error("unable to prune height events", "height", h, "error", err)
 			continue
 		}
 		pruned += prunedEvents
@@ -608,25 +609,27 @@ func (txi *TxIndex) pruneTxsAndEvents(from, to uint64) (uint64, error) {
 		// and deleted all indexed (by hash and by keyheight)
 		for ; it.Valid(); it.Next() {
 			if err := batch.Delete(it.Key()); err != nil {
+				logger.Error("unable to prune indexed event", "height", h, "error", err)
 				continue
 			}
 
 			if err := batch.Delete(it.Value()); err != nil {
+				logger.Error("unable to prune indexed event", "height", h, "error", err)
 				continue
 			}
 			pruned++
 		}
 
-		tobeFlushed += pruned
+		toFlush += pruned
 		// flush every 1000 txs to avoid batches becoming too large
-		if tobeFlushed > 1000 {
+		if toFlush > 1000 {
 			err := flush(batch, int64(h))
 			if err != nil {
 				return 0, err
 			}
 			batch.Discard()
 			batch = txi.store.NewBatch()
-			tobeFlushed = 0
+			toFlush = 0
 		}
 
 	}
