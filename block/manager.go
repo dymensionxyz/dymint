@@ -63,10 +63,6 @@ type Manager struct {
 	// prune anything that might be submitted in the future. Therefore, it must be atomic.
 	LastSubmittedHeight atomic.Uint64
 
-	// This is set whenever a new proposer is set on the batch, it is used to check against DA Layer to avoid
-	// frauds from the sequencer.
-	NextSequencerAddress atomic.Value
-
 	/*
 		Retrieval
 	*/
