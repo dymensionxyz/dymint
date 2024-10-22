@@ -32,6 +32,7 @@ func (m *Manager) SubmitLoop(ctx context.Context,
 		bytesProduced,
 		m.Conf.BatchSkew,
 		m.GetUnsubmittedBlocks,
+		m.State.GetSkewTime,
 		m.Conf.BatchSubmitTime,
 		m.Conf.BatchSubmitBytes,
 		m.CreateAndSubmitBatchGetSizeBlocksCommits,
@@ -43,8 +44,9 @@ func SubmitLoopInner(
 	ctx context.Context,
 	logger types.Logger,
 	bytesProduced chan int, // a channel of block and commit bytes produced
-	maxBatchSkew uint64, // max number of blocks that submitter is allowed to have pending
-	unsubmittedBlocks func() uint64,
+	maxBatchSkew time.Duration, // max number of blocks that submitter is allowed to have pending
+	unsubmittedBlocksNum func() uint64,
+	skewTime func() time.Duration,
 	maxBatchTime time.Duration, // max time to allow between batches
 	maxBatchBytes uint64, // max size of serialised batch in bytes
 	createAndSubmitBatch func(maxSizeBytes uint64) (sizeBlocksCommits uint64, err error),
@@ -60,7 +62,21 @@ func SubmitLoopInner(
 		// 'trigger': this thread is responsible for waking up the submitter when a new block arrives, and back-pressures the block production loop
 		// if it gets too far ahead.
 		for {
-			if maxBatchSkew*maxBatchBytes < pendingBytes.Load() {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case n := <-bytesProduced:
+				pendingBytes.Add(uint64(n))
+				logger.Debug("Added bytes produced to bytes pending submission counter.", "bytes added", n, "pending", pendingBytes.Load())
+			}
+
+			types.RollappPendingSubmissionsSkewBytes.Set(float64(pendingBytes.Load()))
+			types.RollappPendingSubmissionsSkewBlocks.Set(float64(unsubmittedBlocksNum()))
+			types.RollappPendingSubmissionsSkewTimeHours.Set(float64(skewTime().Hours()))
+
+			submitter.Nudge()
+
+			if maxBatchSkew < skewTime() {
 				// too much stuff is pending submission
 				// we block here until we get a progress nudge from the submitter thread
 				select {
@@ -68,25 +84,13 @@ func SubmitLoopInner(
 					return ctx.Err()
 				case <-trigger.C:
 				}
-			} else {
-				select {
-				case <-ctx.Done():
-					return ctx.Err()
-				case n := <-bytesProduced:
-					pendingBytes.Add(uint64(n))
-					logger.Debug("Added bytes produced to bytes pending submission counter.", "bytes added", n, "pending", pendingBytes.Load())
-				}
 			}
 
-			types.RollappPendingSubmissionsSkewBytes.Set(float64(pendingBytes.Load()))
-			types.RollappPendingSubmissionsSkewBlocks.Set(float64(unsubmittedBlocks()))
-			submitter.Nudge()
 		}
 	})
 
 	eg.Go(func() error {
 		// 'submitter': this thread actually creates and submits batches, and will do it on a timer if he isn't nudged by block production
-		timeLastSubmission := time.Now()
 		ticker := time.NewTicker(maxBatchTime / 10) // interval does not need to match max batch time since we keep track anyway, it's just to wakeup
 		for {
 			select {
@@ -96,15 +100,17 @@ func SubmitLoopInner(
 			case <-submitter.C:
 			}
 			pending := pendingBytes.Load()
-			types.RollappPendingSubmissionsSkewBytes.Set(float64(pendingBytes.Load()))
-			types.RollappPendingSubmissionsSkewBlocks.Set(float64(unsubmittedBlocks()))
-			types.RollappPendingSubmissionsSkewBatches.Set(float64(pendingBytes.Load() / maxBatchBytes))
+
+			types.RollappPendingSubmissionsSkewBytes.Set(float64(pending))
+			types.RollappPendingSubmissionsSkewBlocks.Set(float64(unsubmittedBlocksNum()))
+			types.RollappPendingSubmissionsSkewTimeHours.Set(float64(skewTime().Hours()))
 
 			// while there are accumulated blocks, create and submit batches!!
 			for {
 				done := ctx.Err() != nil
 				nothingToSubmit := pending == 0
-				lastSubmissionIsRecent := time.Since(timeLastSubmission) < maxBatchTime
+
+				lastSubmissionIsRecent := skewTime() < maxBatchTime
 				maxDataNotExceeded := pending <= maxBatchBytes
 				if done || nothingToSubmit || (lastSubmissionIsRecent && maxDataNotExceeded) {
 					break
@@ -125,7 +131,6 @@ func SubmitLoopInner(
 					}
 					return err
 				}
-				timeLastSubmission = time.Now()
 				ticker.Reset(maxBatchTime)
 				pending = uatomic.Uint64Sub(&pendingBytes, nConsumed)
 				logger.Info("Submitted a batch to both sub-layers.", "n bytes consumed from pending", nConsumed, "pending after", pending) // TODO: debug level
@@ -237,6 +242,10 @@ func (m *Manager) SubmitBatch(batch *types.Batch) error {
 
 	types.RollappHubHeightGauge.Set(float64(batch.EndHeight()))
 	m.LastSubmittedHeight.Store(batch.EndHeight())
+
+	// update last submitted block time with batch last block (used to calculate max skew time)
+	m.State.SetLastSubmittedBlockTime(batch.Blocks[len(batch.Blocks)-1].Header.GetTimestamp())
+
 	return nil
 }
 

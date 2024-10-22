@@ -45,6 +45,7 @@ func convertStateInfoToResultRetrieveBatch(stateInfo *rollapptypes.StateInfo) (*
 		MetaData: &settlement.BatchMetaData{
 			DA: daMetaData,
 		},
+		BlockDescriptors: stateInfo.BDs.BD,
 	}
 	return &settlement.ResultRetrieveBatch{
 		ResultBase: settlement.ResultBase{Code: settlement.StatusSuccess, StateIndex: stateInfo.StateInfoIndex.Index},
