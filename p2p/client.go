@@ -204,6 +204,14 @@ func (c *Client) SaveBlock(ctx context.Context, height uint64, blockBytes []byte
 	if !c.conf.BlockSyncEnabled {
 		return nil
 	}
+	_, err := c.store.LoadBlockSyncBaseHeight()
+	if err != nil {
+		err = c.store.SaveBlockSyncBaseHeight(height)
+		if err != nil {
+			return err
+		}
+	}
+
 	cid, err := c.blocksync.SaveBlock(ctx, blockBytes)
 	if err != nil {
 		return fmt.Errorf("blocksync add block: %w", err)
@@ -220,15 +228,12 @@ func (c *Client) SaveBlock(ctx context.Context, height uint64, blockBytes []byte
 }
 
 // RemoveBlocks is used to prune blocks from the block sync datastore.
-func (c *Client) RemoveBlocks(ctx context.Context, from, to uint64) (uint64, error) {
+func (c *Client) RemoveBlocks(ctx context.Context, to uint64) (uint64, error) {
 	prunedBlocks := uint64(0)
 
-	if from <= 0 {
-		return prunedBlocks, fmt.Errorf("from height must be greater than 0: %w", gerrc.ErrInvalidArgument)
-	}
-
-	if to <= from {
-		return prunedBlocks, fmt.Errorf("to height must be greater than from height: to: %d: from: %d: %w", to, from, gerrc.ErrInvalidArgument)
+	from, err := c.store.LoadBlockSyncBaseHeight()
+	if err != nil {
+		return prunedBlocks, err
 	}
 
 	for h := from; h < to; h++ {
@@ -249,6 +254,12 @@ func (c *Client) RemoveBlocks(ctx context.Context, from, to uint64) (uint64, err
 		}
 		prunedBlocks++
 	}
+
+	err = c.store.SaveBlockSyncBaseHeight(from + prunedBlocks)
+	if err != nil {
+		return prunedBlocks, err
+	}
+
 	return prunedBlocks, nil
 }
 
@@ -628,7 +639,11 @@ func (c *Client) advertiseBlockSyncCids(ctx context.Context) {
 	if err != nil {
 		return
 	}
-	for h := state.BaseHeight; h <= state.Height(); h++ {
+	baseHeight, err := c.store.LoadBaseHeight()
+	if err != nil {
+		return
+	}
+	for h := baseHeight; h <= state.Height(); h++ {
 
 		id, err := c.store.LoadBlockCid(h)
 		if err != nil || id == cid.Undef {

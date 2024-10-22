@@ -13,35 +13,37 @@ func (m *Manager) PruneBlocks(retainHeight uint64) {
 	}
 
 	// prune blocks from blocksync store
-	pruned, err := m.P2PClient.RemoveBlocks(context.Background(), m.State.BaseBlocksyncHeight, retainHeight)
+	pruned, err := m.P2PClient.RemoveBlocks(context.Background(), retainHeight)
 	if err != nil {
 		m.logger.Error("pruning blocksync store", "retain_height", retainHeight, "err", err)
 	} else {
-		m.logger.Debug("blocksync store pruned", "from", m.State.BaseBlocksyncHeight, "to", retainHeight, "pruned", pruned)
-		m.State.BaseBlocksyncHeight = retainHeight
+		m.logger.Debug("blocksync store pruned", "to", retainHeight, "pruned", pruned)
 	}
+
 	// prune blocks from indexer store
-	pruned, err = m.IndexerService.Prune(m.State.BaseIndexerHeight, retainHeight)
+	baseHeight, err := m.Store.LoadIndexerBaseHeight()
+	if err != nil {
+		baseHeight = 1
+	}
+	pruned, err = m.IndexerService.Prune(baseHeight, retainHeight)
 	if err != nil {
 		m.logger.Error("pruning indexer", "retain_height", retainHeight, "err", err)
 	} else {
-		m.logger.Debug("indexer store pruned", "from", m.State.BaseIndexerHeight, "to", retainHeight, "pruned", pruned)
-		m.State.BaseIndexerHeight = retainHeight
+		m.logger.Debug("indexer store pruned", "to", retainHeight, "pruned", pruned)
 	}
+	err = m.Store.SaveIndexerBaseHeight(retainHeight)
+	if err != nil {
+		m.logger.Error("saving indexer base height", "err", err)
+	}
+
 	// prune blocks from dymint store
-	pruned, err = m.Store.PruneStore(m.State.BaseHeight, retainHeight, m.logger)
+	pruned, err = m.Store.PruneStore(retainHeight, m.logger)
 	if err != nil {
 		m.logger.Error("pruning block store", "retain_height", retainHeight, "err", err)
 	} else {
-		m.logger.Debug("dymint store pruned", "from", m.State.BaseHeight, "to", retainHeight, "pruned", pruned)
-		m.State.BaseHeight = retainHeight
+		m.logger.Debug("dymint store pruned", "to", retainHeight, "pruned", pruned)
 	}
 
-	// store state with base heights updates
-	_, err = m.Store.SaveState(m.State, nil)
-	if err != nil {
-		m.logger.Error("save state", "err", err)
-	}
 }
 
 func (m *Manager) PruningLoop(ctx context.Context) error {

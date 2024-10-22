@@ -4,19 +4,15 @@ import (
 	"fmt"
 
 	"github.com/dymensionxyz/dymint/types"
-	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 )
 
-// PruneBlocks removes block up to (but not including) a height. It returns number of blocks pruned.
-func (s *DefaultStore) PruneBlocks(from, to uint64) (uint64, error) {
-	if from <= 0 {
-		return 0, fmt.Errorf("from height must be greater than 0: %w", gerrc.ErrInvalidArgument)
-	}
+// PruneStore removes blocks up to (but not including) a height. It returns number of blocks pruned.
+func (s *DefaultStore) PruneStore(to uint64, logger types.Logger) (uint64, error) {
 
-	if to <= from {
-		return 0, fmt.Errorf("to height must be greater than from height: to: %d: from: %d: %w", to, from, gerrc.ErrInvalidArgument)
+	from, err := s.LoadBaseHeight()
+	if err != nil {
+		return uint64(0), fmt.Errorf("unable to retrieve stored base: %w", err)
 	}
-
 	prunedBlocks, err := s.pruneBlocks(from, to, logger)
 	if err != nil {
 		logger.Error("pruning blocks", "from", from, "to", to, "blocks pruned", prunedBlocks, "err", err)
@@ -26,6 +22,7 @@ func (s *DefaultStore) PruneBlocks(from, to uint64) (uint64, error) {
 	if err != nil {
 		logger.Error("pruning responses", "from", from, "to", to, "responses pruned", prunedResponses, "err", err)
 	}
+	s.SaveBaseHeight(from + prunedBlocks)
 
 	return prunedBlocks, nil
 }

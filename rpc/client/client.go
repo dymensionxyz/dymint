@@ -312,8 +312,12 @@ func (c *Client) GenesisChunked(context context.Context, id uint) (*ctypes.Resul
 func (c *Client) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, error) {
 	const limit int64 = 20
 
-	minHeight, maxHeight, err := filterMinMax(
-		0, // FIXME: we might be pruned
+	baseHeight, err := c.node.BlockManager.Store.LoadBaseHeight()
+	if err != nil {
+		return nil, err
+	}
+	minHeight, maxHeight, err = filterMinMax(
+		int64(baseHeight),
 		int64(c.node.GetBlockManagerHeight()),
 		minHeight,
 		maxHeight,
