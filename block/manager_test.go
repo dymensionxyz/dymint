@@ -561,6 +561,12 @@ func TestManager_updateTargetHeight(t *testing.T) {
 			h:               101,
 			expTargetHeight: 101,
 		},
+		{
+			name:            "same height",
+			TargetHeight:    100,
+			h:               100,
+			expTargetHeight: 100,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

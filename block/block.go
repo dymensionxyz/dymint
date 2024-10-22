@@ -72,8 +72,8 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		// Prune old heights, if requested by ABCI app.
 		// retainHeight is determined by currentHeight - min-retain-blocks (app.toml config).
 		// Unless max_age_num_blocks in consensus params is higher than min-retain-block, then max_age_num_blocks will be used instead of min-retain-blocks.
-
 		if 0 < retainHeight {
+			// TODO: can be called in intervals rather than every block (https://github.com/dymensionxyz/dymint/issues/334)
 			select {
 			case m.pruningC <- retainHeight:
 			default:
@@ -86,8 +86,12 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		m.Executor.UpdateStateAfterCommit(m.State, responses, appHash, block.Header.Height)
 	}
 
-	// check if the proposer needs to be changed
-	switchRole := m.Executor.UpdateProposerFromBlock(m.State, block)
+	// update proposer from block header if needed
+	// if new proposer is set, we become the proposer
+	isNewProposer, err := m.Executor.UpdateProposerFromBlock(m.State, block)
+	if err != nil {
+		return fmt.Errorf("update proposer from block: %w", err)
+	}
 
 	// save sequencers to store to be queried over RPC
 	batch := m.Store.NewBatch()
@@ -110,10 +114,11 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 
 	m.blockCache.Delete(block.Header.Height)
 
-	if switchRole {
-		// TODO: graceful role change (https://github.com/dymensionxyz/dymint/issues/1008)
+	// signal the role switch, in case where this node is the new proposer
+	// the other direction is handled elsewhere
+	if isNewProposer && block.Header.Height == m.TargetHeight.Load() {
+		m.roleSwitchC <- true
 		m.logger.Info("Node changing to proposer role")
-		panic("sequencer is no longer the proposer")
 	}
 
 	// validate whether configuration params and rollapp consensus params keep in line, after rollapp params are updated from the responses received in the block execution

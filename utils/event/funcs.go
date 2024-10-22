@@ -33,6 +33,8 @@ func MustSubscribe(
 		return
 	}
 
+	defer pubsubServer.UnsubscribeAll(context.Background(), clientID) //nolint:errcheck
+
 	for {
 		select {
 		case <-ctx.Done():

@@ -22,8 +22,11 @@ func (m *Manager) onNewStateUpdate(event pubsub.Message) {
 		m.logger.Error("onReceivedBatch", "err", "wrong event data received")
 		return
 	}
+
 	h := eventData.EndHeight
 	m.UpdateTargetHeight(h)
+	m.UpdateLastSubmittedHeight(h)
+
 	err := m.syncToTargetHeight(h)
 	if err != nil {
 		m.logger.Error("sync until target", "err", err)

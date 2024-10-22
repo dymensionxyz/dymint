@@ -267,6 +267,11 @@ func (n *Node) OnStop() {
 		n.Logger.Error("close store", "error", err)
 	}
 
+	err = n.PubsubServer.Stop()
+	if err != nil {
+		n.Logger.Error("stop pubsub server", "error", err)
+	}
+
 	n.cancel()
 }
 

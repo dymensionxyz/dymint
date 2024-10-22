@@ -42,17 +42,16 @@ func (m *Manager) PruneBlocks(retainHeight uint64) (uint64, error) {
 	return pruned, nil
 }
 
-func (m *Manager) PruningLoop(ctx context.Context) error {
+func (m *Manager) PruningLoop(ctx context.Context) {
 	for {
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return
 		case retainHeight := <-m.pruningC:
 			_, err := m.PruneBlocks(uint64(retainHeight))
 			if err != nil {
 				m.logger.Error("pruning blocks", "retainHeight", retainHeight, "err", err)
 			}
-
 		}
 	}
 }

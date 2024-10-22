@@ -7,7 +7,6 @@ import (
 	"sync"
 	"sync/atomic"
 
-	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/dymensionxyz/dymint/da/registry"
@@ -16,6 +15,7 @@ import (
 	uerrors "github.com/dymensionxyz/dymint/utils/errors"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
 	"github.com/dymensionxyz/dymint/version"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
 	tmcrypto "github.com/tendermint/tendermint/crypto"
@@ -54,6 +54,8 @@ type Manager struct {
 	DAClient  da.DataAvailabilityLayerClient
 	SLClient  settlement.ClientI
 
+	isProposer  bool      // is the local node the proposer
+	roleSwitchC chan bool // channel to receive role switch signal
 	/*
 		Submission
 	*/
@@ -133,7 +135,8 @@ func NewManager(
 		blockCache: &Cache{
 			cache: make(map[uint64]types.CachedBlock),
 		},
-		pruningC: make(chan int64, 10), // use of buffered channel to avoid blocking applyBlock thread. In case channel is full, pruning will be skipped, but the retain height can be pruned in the next iteration.
+		pruningC:    make(chan int64, 10), // use of buffered channel to avoid blocking applyBlock thread. In case channel is full, pruning will be skipped, but the retain height can be pruned in the next iteration.
+		roleSwitchC: make(chan bool, 1),   // channel to be used to signal role switch
 	}
 
 	err = m.LoadStateOnInit(store, genesis, logger)
@@ -155,6 +158,93 @@ func NewManager(
 	return m, nil
 }
 
+// runNonProducerLoops runs the loops that are common to all nodes, but not the proposer.
+// This includes syncing from the DA and SL, and listening to new blocks from P2P.
+func (m *Manager) runNonProducerLoops(ctx context.Context) {
+	// P2P Sync. Subscribe to P2P received blocks events
+	go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewGossipedBlock, m.onReceivedBlock, m.logger)
+	go uevent.MustSubscribe(ctx, m.Pubsub, "applyBlockSyncBlocksLoop", p2p.EventQueryNewBlockSyncBlock, m.onReceivedBlock, m.logger)
+	// SL Sync. Subscribe to SL state update events
+	go uevent.MustSubscribe(ctx, m.Pubsub, "syncTargetLoop", settlement.EventQueryNewSettlementBatchAccepted, m.onNewStateUpdate, m.logger)
+}
+
+func (m *Manager) runProducerLoops(ctx context.Context) {
+	eg, ctx := errgroup.WithContext(ctx)
+
+	// populate the bytes produced channel
+	bytesProducedC := make(chan int)
+	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
+		return m.SubmitLoop(ctx, bytesProducedC)
+	})
+	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
+		bytesProducedC <- m.GetUnsubmittedBytes() // load unsubmitted bytes from previous run
+		return m.ProduceBlockLoop(ctx, bytesProducedC)
+	})
+
+	// channel to signal sequencer rotation started
+	rotateSequencerC := make(chan string, 1)
+	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
+		return m.MonitorSequencerRotation(ctx, rotateSequencerC)
+	})
+
+	_ = eg.Wait()
+	// Check if exited due to sequencer rotation signal
+	select {
+	case nextSeqAddr := <-rotateSequencerC:
+		m.handleRotationReq(ctx, nextSeqAddr)
+		m.roleSwitchC <- false
+	default:
+		m.logger.Info("producer err group finished.")
+	}
+}
+
+func (m *Manager) RunLoops(ctx context.Context) {
+	/* --------------------------------- common --------------------------------- */
+	// listen to new bonded sequencers events to add them in the sequencer set
+	go uevent.MustSubscribe(ctx, m.Pubsub, "newBondedSequencer", settlement.EventQueryNewBondedSequencer, m.UpdateSequencerSet, m.logger)
+	// run pruning loop
+	go m.PruningLoop(ctx)
+
+	// run loops initially (producer or non-producer)
+	cancel := m.runLoopsWithCancelFunc(ctx)
+
+	// listen to role switch trigger
+	go func() {
+		for {
+			select {
+			// ctx cancelled, shutdown
+			case <-ctx.Done():
+				cancel()
+				return
+			case proposer := <-m.roleSwitchC:
+				if proposer == m.isProposer {
+					m.logger.Error("Role switch signal received, but already in the same role", "proposer", proposer)
+					continue
+				}
+				m.logger.Info("Role switch signal received", "from", m.isProposer, "to", proposer)
+				m.isProposer = proposer
+
+				// shutdown all active loops and run loops again with new role
+				cancel()
+				cancel = m.runLoopsWithCancelFunc(ctx)
+			}
+		}
+	}()
+}
+
+func (m *Manager) runLoopsWithCancelFunc(ctx context.Context) context.CancelFunc {
+	loopCtx, cancel := context.WithCancel(ctx)
+	if m.isProposer {
+		// we processed the last block, so it will be the committed height (submitted by the previous proposer)
+		m.UpdateLastSubmittedHeight(m.State.Height())
+
+		go m.runProducerLoops(loopCtx)
+	} else {
+		m.runNonProducerLoops(loopCtx)
+	}
+	return cancel
+}
+
 // Start starts the block manager.
 func (m *Manager) Start(ctx context.Context) error {
 	// Check if InitChain flow is needed
@@ -173,83 +263,45 @@ func (m *Manager) Start(ctx context.Context) error {
 		return err
 	}
 
-	isProposer := m.IsProposer()
-	m.logger.Info("starting block manager", "proposer", isProposer)
-
-	eg, ctx := errgroup.WithContext(ctx)
-	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
-		return m.PruningLoop(ctx)
-	})
-
-	// listen to new bonded sequencers events to add them in the sequencer set
-	go uevent.MustSubscribe(ctx, m.Pubsub, "newBondedSequencer", settlement.EventQueryNewBondedSequencer, m.UpdateSequencerSet, m.logger)
-
-	/* ----------------------------- full node mode ----------------------------- */
-	if !isProposer {
-		// Full-nodes can sync from DA but it is not necessary to wait for it, since it can sync from P2P as well in parallel.
-		go func() {
-			err := m.syncFromSettlement()
-			if err != nil {
-				m.logger.Error("sync block manager from settlement", "err", err)
-			}
-			// DA Sync. Subscribe to SL next batch events
-			go uevent.MustSubscribe(ctx, m.Pubsub, "syncTargetLoop", settlement.EventQueryNewSettlementBatchAccepted, m.onNewStateUpdate, m.logger)
-		}()
-
-		// P2P Sync. Subscribe to P2P received blocks events
-		go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewGossipedBlock, m.onReceivedBlock, m.logger)
-		go uevent.MustSubscribe(ctx, m.Pubsub, "applyBlockSyncBlocksLoop", p2p.EventQueryNewBlockSyncBlock, m.onReceivedBlock, m.logger)
-		return nil
-	}
-
-	/* ----------------------------- sequencer mode ----------------------------- */
-	// Subscribe to batch events, to update last submitted height in case batch confirmation was lost. This could happen if the sequencer crash/restarted just after submitting a batch to the settlement and by the time we query the last batch, this batch wasn't accepted yet.
-	go uevent.MustSubscribe(ctx, m.Pubsub, "updateSubmittedHeightLoop", settlement.EventQueryNewSettlementBatchAccepted, m.UpdateLastSubmittedHeight, m.logger)
-
-	// Sequencer must wait till DA is synced to start submitting blobs
-	<-m.DAClient.Synced()
-	err = m.syncFromSettlement()
+	err = m.syncMetadataFromSettlement()
 	if err != nil {
 		return fmt.Errorf("sync block manager from settlement: %w", err)
 	}
-	// check if sequencer in the middle of rotation
-	nextSeqAddr, missing, err := m.MissingLastBatch()
-	if err != nil {
-		return fmt.Errorf("checking if missing last batch: %w", err)
-	}
-	// if sequencer is in the middle of rotation, complete rotation instead of running the main loop
-	if missing {
-		m.handleRotationReq(ctx, nextSeqAddr)
-		return nil
-	}
+	targetHeight := m.TargetHeight.Load()
 
-	// populate the bytes produced channel
-	bytesProducedC := make(chan int)
-
-	// channel to signal sequencer rotation started
-	rotateSequencerC := make(chan string, 1)
-
-	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
-		return m.SubmitLoop(ctx, bytesProducedC)
-	})
-	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
-		bytesProducedC <- m.GetUnsubmittedBytes() // load unsubmitted bytes from previous run
-		return m.ProduceBlockLoop(ctx, bytesProducedC)
-	})
-	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
-		return m.MonitorSequencerRotation(ctx, rotateSequencerC)
-	})
-
-	go func() {
-		_ = eg.Wait()
-		// Check if exited due to sequencer rotation signal
-		select {
-		case nextSeqAddr := <-rotateSequencerC:
-			m.handleRotationReq(ctx, nextSeqAddr)
-		default:
-			m.logger.Info("Block manager err group finished.")
+	m.logger.Info("starting block manager", "proposer", m.isProposer, "targetHeight", targetHeight, "height", m.State.Height())
+	/* -------------------------------------------------------------------------- */
+	/*                                sync section                                */
+	/* -------------------------------------------------------------------------- */
+	if !m.isProposer {
+		/* ----------------------------- full node mode ----------------------------- */
+		// Full-nodes can sync from DA but it is not necessary to wait for it, since it can sync from P2P as well in parallel.
+		go func() {
+			err = m.syncToTargetHeight(targetHeight)
+			if err != nil {
+				m.logger.Error("sync to target height", "error", err)
+			}
+		}()
+	} else {
+		/* ----------------------------- sequencer mode ----------------------------- */
+		// Sequencer must wait till DA is synced to start submitting blobs
+		<-m.DAClient.Synced()
+		err = m.syncToTargetHeight(targetHeight)
+		if err != nil {
+			return fmt.Errorf("sync block manager from settlement: %w", err)
 		}
-	}()
+
+		// check if sequencer in the middle of rotation
+		err := m.CompleteRotationIfNeeded(ctx)
+		if err != nil {
+			return fmt.Errorf("checking if missing last batch: %w", err)
+		}
+	}
+
+	/* -------------------------------------------------------------------------- */
+	/*                                loops section                               */
+	/* -------------------------------------------------------------------------- */
+	m.RunLoops(ctx)
 
 	return nil
 }
@@ -272,33 +324,35 @@ func (m *Manager) NextHeightToSubmit() uint64 {
 	return m.LastSubmittedHeight.Load() + 1
 }
 
-// syncFromSettlement enforces the node to be synced on initial run from SL and DA.
-func (m *Manager) syncFromSettlement() error {
+// syncMetadataFromSettlement gets the latest height and sequencer set from the settlement layer.
+func (m *Manager) syncMetadataFromSettlement() error {
+	m.isProposer = m.IsProposer()
+
 	err := m.UpdateSequencerSetFromSL()
 	if err != nil {
 		return fmt.Errorf("update bonded sequencer set: %w", err)
 	}
 
+	err = m.syncLastCommittedHeight()
+	if err != nil {
+		return fmt.Errorf("sync last committed height: %w", err)
+	}
+
+	return nil
+}
+
+func (m *Manager) syncLastCommittedHeight() error {
 	res, err := m.SLClient.GetLatestBatch()
+	// TODO: separate between fresh rollapp and non-registered rollapp
+	// The SL hasn't got any batches for this chain yet.
 	if errors.Is(err, gerrc.ErrNotFound) {
-		// The SL hasn't got any batches for this chain yet.
-		m.logger.Info("No batches for chain found in SL.")
-		m.LastSubmittedHeight.Store(uint64(m.Genesis.InitialHeight - 1))
 		return nil
-	}
-
-	if err != nil {
-		// TODO: separate between fresh rollapp and non-registered rollapp
+	} else if err != nil {
 		return err
 	}
-	m.LastSubmittedHeight.Store(res.EndHeight)
-	err = m.syncToTargetHeight(res.EndHeight)
+
+	m.UpdateLastSubmittedHeight(res.EndHeight)
 	m.UpdateTargetHeight(res.EndHeight)
-	if err != nil {
-		return err
-	}
-
-	m.logger.Info("Synced.", "current height", m.State.Height(), "last submitted height", m.LastSubmittedHeight.Load())
 	return nil
 }
 
@@ -306,10 +360,21 @@ func (m *Manager) GetProposerPubKey() tmcrypto.PubKey {
 	return m.State.Sequencers.GetProposerPubKey()
 }
 
+// UpdateTargetHeight will update the highest height seen from either P2P or DA.
 func (m *Manager) UpdateTargetHeight(h uint64) {
 	for {
 		currentHeight := m.TargetHeight.Load()
 		if m.TargetHeight.CompareAndSwap(currentHeight, max(currentHeight, h)) {
+			break
+		}
+	}
+}
+
+// UpdateLastSubmittedHeight will update last height seen on the settlement layer.
+func (m *Manager) UpdateLastSubmittedHeight(h uint64) {
+	for {
+		curr := m.LastSubmittedHeight.Load()
+		if m.LastSubmittedHeight.CompareAndSwap(curr, max(curr, h)) {
 			break
 		}
 	}

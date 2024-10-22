@@ -24,5 +24,9 @@ func (m *Manager) RunInitChain(ctx context.Context) error {
 	if _, err := m.Store.SaveState(m.State, nil); err != nil {
 		return err
 	}
+
+	targetHeight := uint64(m.Genesis.InitialHeight - 1)
+	m.UpdateLastSubmittedHeight(targetHeight)
+	m.UpdateTargetHeight(targetHeight)
 	return nil
 }

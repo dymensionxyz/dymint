@@ -45,9 +45,7 @@ func (m *Manager) MonitorSequencerRotation(ctx context.Context, rotateC chan str
 	}
 	// we get here once a sequencer rotation signal is received
 	m.logger.Info("Sequencer rotation started.", "next_seq", nextSeqAddr)
-	go func() {
-		rotateC <- nextSeqAddr
-	}()
+	rotateC <- nextSeqAddr
 	return fmt.Errorf("sequencer rotation started. signal to stop production")
 }
 
@@ -73,22 +71,25 @@ func (m *Manager) IsProposer() bool {
 	return bytes.Equal(l2Proposer, localProposerKey) || bytes.Equal(expectedHubProposer, localProposerKey)
 }
 
-// MissingLastBatch checks if the sequencer is in the middle of rotation (I'm the proposer, but needs to complete rotation)
+// CompleteRotationIfNeeded checks if the sequencer is in the middle of rotation (I'm the proposer, but needs to complete rotation)
 // returns the next sequencer address and a flag if the sequencer is the old proposer and the hub waits for the last batch
-func (m *Manager) MissingLastBatch() (string, bool, error) {
+func (m *Manager) CompleteRotationIfNeeded(ctx context.Context) error {
 	localProposerKey, _ := m.LocalKey.GetPublic().Raw()
 	next, err := m.SLClient.CheckRotationInProgress()
 	if err != nil {
-		return "", false, err
+		return err
 	}
 	if next == nil {
-		return "", false, nil
+		return nil
 	}
-	// rotation in progress,
-	// check if we're the old proposer and needs to complete rotation
-	curr := m.SLClient.GetProposer()
-	isProposer := bytes.Equal(curr.PubKey().Bytes(), localProposerKey)
-	return next.SettlementAddress, isProposer, nil
+	// rotation in not completed yet! check if we're the old proposer and needs to complete rotation
+	if bytes.Equal(m.SLClient.GetProposer().PubKey().Bytes(), localProposerKey) {
+		// complete rotation before running the main loops
+		m.handleRotationReq(ctx, next.SettlementAddress)
+		m.isProposer = false
+		m.logger.Info("Sequencer is no longer the proposer")
+	}
+	return nil
 }
 
 // handleRotationReq completes the rotation flow once a signal is received from the SL
@@ -97,12 +98,9 @@ func (m *Manager) handleRotationReq(ctx context.Context, nextSeqAddr string) {
 	m.logger.Info("Sequencer rotation started. Production stopped on this sequencer", "nextSeqAddr", nextSeqAddr)
 	err := m.CompleteRotation(ctx, nextSeqAddr)
 	if err != nil {
+		m.logger.Error("Complete rotation", "err", err)
 		panic(err)
 	}
-
-	// TODO: graceful fallback to full node (https://github.com/dymensionxyz/dymint/issues/1008)
-	m.logger.Info("Sequencer is no longer the proposer")
-	panic("sequencer is no longer the proposer")
 }
 
 // CompleteRotation completes the sequencer rotation flow

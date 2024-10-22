@@ -88,5 +88,4 @@ func TestIndexerServiceIndexesBlocks(t *testing.T) {
 	require.NoError(t, err)
 	expectedTxPruned := uint64(2)
 	require.Equal(t, expectedTxPruned, txPruned)
-
 }
