@@ -147,9 +147,9 @@ func (_c *MockExecutorI_CreateBlock_Call) RunAndReturn(run func(uint64, *types.C
 	return _c
 }
 
-// ExecuteBlock provides a mock function with given fields: _a0, _a1
-func (_m *MockExecutorI) ExecuteBlock(_a0 *types.State, _a1 *types.Block) (*state.ABCIResponses, error) {
-	ret := _m.Called(_a0, _a1)
+// ExecuteBlock provides a mock function with given fields: s, _a1
+func (_m *MockExecutorI) ExecuteBlock(s *types.State, _a1 *types.Block) (*state.ABCIResponses, error) {
+	ret := _m.Called(s, _a1)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ExecuteBlock")
@@ -158,10 +158,10 @@ func (_m *MockExecutorI) ExecuteBlock(_a0 *types.State, _a1 *types.Block) (*stat
 	var r0 *state.ABCIResponses
 	var r1 error
 	if rf, ok := ret.Get(0).(func(*types.State, *types.Block) (*state.ABCIResponses, error)); ok {
-		return rf(_a0, _a1)
+		return rf(s, _a1)
 	}
 	if rf, ok := ret.Get(0).(func(*types.State, *types.Block) *state.ABCIResponses); ok {
-		r0 = rf(_a0, _a1)
+		r0 = rf(s, _a1)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*state.ABCIResponses)
@@ -169,7 +169,7 @@ func (_m *MockExecutorI) ExecuteBlock(_a0 *types.State, _a1 *types.Block) (*stat
 	}
 
 	if rf, ok := ret.Get(1).(func(*types.State, *types.Block) error); ok {
-		r1 = rf(_a0, _a1)
+		r1 = rf(s, _a1)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -183,13 +183,13 @@ type MockExecutorI_ExecuteBlock_Call struct {
 }
 
 // ExecuteBlock is a helper method to define mock.On call
-//   - _a0 *types.State
+//   - s *types.State
 //   - _a1 *types.Block
-func (_e *MockExecutorI_Expecter) ExecuteBlock(_a0 interface{}, _a1 interface{}) *MockExecutorI_ExecuteBlock_Call {
-	return &MockExecutorI_ExecuteBlock_Call{Call: _e.mock.On("ExecuteBlock", _a0, _a1)}
+func (_e *MockExecutorI_Expecter) ExecuteBlock(s interface{}, _a1 interface{}) *MockExecutorI_ExecuteBlock_Call {
+	return &MockExecutorI_ExecuteBlock_Call{Call: _e.mock.On("ExecuteBlock", s, _a1)}
 }
 
-func (_c *MockExecutorI_ExecuteBlock_Call) Run(run func(_a0 *types.State, _a1 *types.Block)) *MockExecutorI_ExecuteBlock_Call {
+func (_c *MockExecutorI_ExecuteBlock_Call) Run(run func(s *types.State, _a1 *types.Block)) *MockExecutorI_ExecuteBlock_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(*types.State), args[1].(*types.Block))
 	})

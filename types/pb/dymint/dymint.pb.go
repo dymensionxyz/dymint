@@ -2887,7 +2887,7 @@ func (m *SequencerSet) Unmarshal(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field sequencers", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field Sequencers", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {

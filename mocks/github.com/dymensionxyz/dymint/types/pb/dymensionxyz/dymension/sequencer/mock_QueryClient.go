@@ -407,7 +407,7 @@ func (_m *MockQueryClient) Sequencers(ctx context.Context, in *sequencer.QuerySe
 	ret := _m.Called(_ca...)
 
 	if len(ret) == 0 {
-		panic("no return value specified for sequencers")
+		panic("no return value specified for Sequencers")
 	}
 
 	var r0 *sequencer.QuerySequencersResponse
@@ -442,7 +442,7 @@ type MockQueryClient_Sequencers_Call struct {
 //   - in *sequencer.QuerySequencersRequest
 //   - opts ...grpc.CallOption
 func (_e *MockQueryClient_Expecter) Sequencers(ctx interface{}, in interface{}, opts ...interface{}) *MockQueryClient_Sequencers_Call {
-	return &MockQueryClient_Sequencers_Call{Call: _e.mock.On("sequencers",
+	return &MockQueryClient_Sequencers_Call{Call: _e.mock.On("Sequencers",
 		append([]interface{}{ctx, in}, opts...)...)}
 }
 
