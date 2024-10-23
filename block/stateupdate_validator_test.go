@@ -2,6 +2,8 @@ package block_test
 
 import (
 	"crypto/rand"
+	"encoding/hex"
+	"github.com/tendermint/tendermint/crypto/ed25519"
 	"reflect"
 	"testing"
 	"time"
@@ -49,6 +51,12 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 	proposerKey, _, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
 
+	fakeProposerKey, _, err := crypto.GenerateEd25519Key(rand.Reader)
+	require.NoError(t, err)
+
+	nextSequencerKey, _, err := crypto.GenerateEd25519Key(rand.Reader)
+	require.NoError(t, err)
+
 	doubleSigned, err := testutil.GenerateBlocks(1, 10, proposerKey, [32]byte{})
 	require.NoError(t, err)
 
@@ -59,6 +67,7 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 		doubleSignedBlocks []*types.Block
 		stateUpdateFraud   string
 		expectedErrType    error
+		last               bool
 	}{
 		{
 			name:               "Successful validation applied from DA",
@@ -123,6 +132,14 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 			doubleSignedBlocks: nil,
 			expectedErrType:    &types.ErrStateUpdateDRSVersionFraud{},
 		},
+		{
+			name:               "Failed validation next sequencer",
+			p2pBlocks:          false,
+			stateUpdateFraud:   "nextsequencer",
+			doubleSignedBlocks: nil,
+			expectedErrType:    &types.ErrInvalidNextSequencersHashFraud{},
+			last:               true,
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -132,13 +149,37 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, manager)
 
+			if tc.last {
+				proposerPubKey := nextSequencerKey.GetPublic()
+				pubKeybytes, err := proposerPubKey.Raw()
+				if err != nil {
+					panic(err)
+				}
+
+				// Set next sequencer
+				raw, _ := nextSequencerKey.GetPublic().Raw()
+				pubkey := ed25519.PubKey(raw)
+				manager.State.Sequencers.SetProposer(types.NewSequencer(pubkey, hex.EncodeToString(pubKeybytes)))
+
+				// set proposer
+				raw, _ = proposerKey.GetPublic().Raw()
+				pubkey = ed25519.PubKey(raw)
+				manager.State.Sequencers.Proposer = types.NewSequencer(pubkey, "")
+			}
+
 			// Create DA
 			manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
 			manager.Retriever = manager.DAClient.(da.BatchRetriever)
 
 			// Generate batch
-			batch, err := testutil.GenerateBatch(1, 10, proposerKey, [32]byte{})
-			assert.NoError(t, err)
+			var batch *types.Batch
+			if tc.last {
+				batch, err = testutil.GenerateLastBatch(1, 10, proposerKey, fakeProposerKey, [32]byte{})
+				assert.NoError(t, err)
+			} else {
+				batch, err = testutil.GenerateBatch(1, 10, proposerKey, [32]byte{})
+				assert.NoError(t, err)
+			}
 
 			// Submit batch to DA
 			daResultSubmitBatch := manager.DAClient.SubmitBatch(batch)
@@ -171,6 +212,14 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 				slBatch.BlockDescriptors[0].Timestamp = slBatch.BlockDescriptors[0].Timestamp.Add(time.Second)
 			case "height":
 				slBatch.BlockDescriptors[0].Height = 2
+			case "nextsequencer":
+				proposerPubKey := nextSequencerKey.GetPublic()
+				pubKeybytes, err := proposerPubKey.Raw()
+				if err != nil {
+					panic(err)
+				}
+
+				slBatch.NextSequencer = hex.EncodeToString(pubKeybytes)
 			}
 
 			// in case double signing generate commits for these blocks
@@ -189,7 +238,9 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 				}
 				// otherwise load them from DA
 			} else {
-				manager.ProcessNextDABatch(slBatch.MetaData.DA)
+				if !tc.last {
+					manager.ProcessNextDABatch(slBatch.MetaData.DA)
+				}
 			}
 
 			// validate the state update
@@ -208,7 +259,6 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 }
 
 func TestStateUpdateValidator_ValidateDAFraud(t *testing.T) {
-
 	// Init app
 	app := testutil.GetAppMock(testutil.EndBlock)
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
