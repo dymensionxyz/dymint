@@ -20,9 +20,6 @@ func (m *Manager) onNewStateUpdate(event pubsub.Message) {
 		return
 	}
 
-	// update next sequencer address, it can be empty
-	m.NextSequencerAddress.Store(eventData.NextProposerAddress)
-
 	// Update heights based on state update end height
 	m.LastSubmittedHeight.Store(eventData.EndHeight)
 	m.UpdateTargetHeight(eventData.EndHeight)

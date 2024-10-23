@@ -168,7 +168,7 @@ func (v *StateUpdateValidator) ValidateDaBlocks(slBatch *settlement.ResultRetrie
 				)
 			}
 		} else {
-			if bytes.Equal(daBlocks[i].Header.SequencerHash[:], daBlocks[i].Header.NextSequencersHash[:]) {
+			if !bytes.Equal(daBlocks[i].Header.SequencerHash[:], daBlocks[i].Header.NextSequencersHash[:]) {
 				return types.NewErrInvalidNextSequencersHashFraud(
 					daBlocks[i].Header.SequencerHash,
 					daBlocks[i].Header.NextSequencersHash,
