@@ -30,7 +30,7 @@ func NewStateUpdateValidator(logger types.Logger, blockManager *Manager) *StateU
 func (v *StateUpdateValidator) ValidateStateUpdate(batch *settlement.ResultRetrieveBatch) error {
 	v.logger.Debug("validating state update", "start height", batch.StartHeight, "end height", batch.EndHeight)
 
-	// load blocks applied from P2P for the batch heights
+	// this checks if there are blocks corresponding to the state update heights that are applied from P2P and loads them.
 	p2pBlocks := make(map[uint64]*types.Block)
 	for height := batch.StartHeight; height <= batch.EndHeight; height++ {
 		source, err := v.blockManager.Store.LoadBlockSource(height)

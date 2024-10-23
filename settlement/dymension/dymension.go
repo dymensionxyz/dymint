@@ -221,13 +221,15 @@ func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *d
 func (c *Client) getStateInfo(index, height *uint64, finalized bool) (res *rollapptypes.QueryGetStateInfoResponse, err error) {
 	req := &rollapptypes.QueryGetStateInfoRequest{
 		RollappId: c.rollappId,
-		Finalized: finalized,
 	}
 	if index != nil {
 		req.Index = *index
 	}
 	if height != nil {
 		req.Height = *height
+	}
+	if finalized {
+		req.Finalized = finalized
 	}
 	err = c.RunWithRetry(func() error {
 		res, err = c.rollappQueryClient.StateInfo(c.ctx, req)
