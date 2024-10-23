@@ -4,12 +4,15 @@ import (
 	"context"
 	"errors"
 
+	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/settlement"
+	uevent "github.com/dymensionxyz/dymint/utils/event"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
-// onNewStateUpdateFinalized will update the last validated height with the last finalized height
+// onNewStateUpdateFinalized will update the last validated height with the last finalized height.
+// Unlike pending heights, once heights are finalized, we treat them as validated as there is no point validating finalized heights.
 func (m *Manager) onNewStateUpdateFinalized(event pubsub.Message) {
 	eventData, ok := event.Data().(*settlement.EventDataNewBatch)
 	if !ok {
@@ -32,33 +35,29 @@ func (m *Manager) ValidateLoop(ctx context.Context) error {
 			return ctx.Err()
 		case <-m.validateC:
 
-			m.logger.Info("validating state updates to target height", "targetHeight", m.LastSubmittedHeight.Load())
+			m.logger.Info("validating state updates to target height", "targetHeight", m.LastSettlementHeight.Load())
 
-			for currH := m.NextValidationHeight(); currH <= m.LastSubmittedHeight.Load(); currH = m.NextValidationHeight() {
+			for currH := m.NextValidationHeight(); currH <= m.LastSettlementHeight.Load(); currH = m.NextValidationHeight() {
 
 				// get next batch that needs to be validated from SL
 				batch, err := m.SLClient.GetBatchAtHeight(currH)
 				if err != nil {
-					m.logger.Error("failed batch retrieval", "error", err)
-					continue
+					uevent.MustPublish(ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
+					return err
 				}
 				// validate batch
 				err = m.validator.ValidateStateUpdate(batch)
-				if errors.Is(err, gerrc.ErrFault) {
-					m.FraudHandler.HandleFault(ctx, err)
-				} else if err != nil {
-					m.logger.Error("validate loop", "err", err)
-				}
-
-				// this should not happen. if validation is successful m.NextValidationHeight() should advance.
-				if currH == m.NextValidationHeight() {
-					panic("validation not progressing")
-				}
-
-				_, err = m.Store.SaveValidationHeight(m.GetLastValidatedHeight(), nil)
 				if err != nil {
-					m.logger.Error("update validation height: %w", err)
+					if errors.Is(err, gerrc.ErrFault) {
+						m.FraudHandler.HandleFault(ctx, err)
+					} else {
+						uevent.MustPublish(ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
+					}
+					return err
 				}
+
+				// update the last validated height to the batch last block height
+				m.UpdateLastValidatedHeight(batch.EndHeight)
 
 				m.logger.Debug("state info validated", "batch end height", batch.EndHeight, "lastValidatedHeight", m.GetLastValidatedHeight())
 			}
@@ -73,17 +72,21 @@ func (m *Manager) UpdateLastValidatedHeight(height uint64) {
 	for {
 		curr := m.lastValidatedHeight.Load()
 		if m.lastValidatedHeight.CompareAndSwap(curr, max(curr, height)) {
+			_, err := m.Store.SaveValidationHeight(m.GetLastValidatedHeight(), nil)
+			if err != nil {
+				m.logger.Error("update validation height: %w", err)
+			}
 			break
 		}
 	}
 }
 
-// Height returns height of the highest block saved in the Store.
+// GetLastValidatedHeight returns the most last block height that is validated with settlement state updates.
 func (m *Manager) GetLastValidatedHeight() uint64 {
 	return m.lastValidatedHeight.Load()
 }
 
-// Height returns height of the highest block saved in the Store.
+// GetLastValidatedHeight returns the next height that needs to be validated with settlement state updates.
 func (m *Manager) NextValidationHeight() uint64 {
 	return m.lastValidatedHeight.Load() + 1
 }

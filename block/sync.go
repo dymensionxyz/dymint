@@ -21,7 +21,7 @@ func (m *Manager) onNewStateUpdate(event pubsub.Message) {
 	}
 
 	// Update heights based on state update end height
-	m.LastSubmittedHeight.Store(eventData.EndHeight)
+	m.LastSettlementHeight.Store(eventData.EndHeight)
 	m.UpdateTargetHeight(eventData.EndHeight)
 
 	m.logger.Error("syncing")
@@ -41,9 +41,12 @@ func (m *Manager) onNewStateUpdate(event pubsub.Message) {
 	}
 }
 
-// SyncLoop listens for syncing events (from new state update or from initial syncing) and syncs to the last submitted height.
-// It sends signal to validation loop for each synced state updated
-func (m *Manager) SyncLoop(ctx context.Context) error {
+// SettlementSyncLoop listens for syncing triggers which indicate new settlement height updates, and attempts to sync to the last seen settlement height.
+// Syncing triggers can be called when a new settlement state update event arrives or explicitly from the `SyncFromSettlement` method which is only being called upon startup.
+// Upon new trigger, we know the settlement reached a new height we haven't seen before so a validation signal is sent to validate the settlement batch.
+
+// Note: even when a sync is triggered, there is no guarantee that the batch will be applied from settlement as there is a race condition with the p2p/blocksync for syncing.
+func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
@@ -51,13 +54,14 @@ func (m *Manager) SyncLoop(ctx context.Context) error {
 
 		case <-m.syncingC:
 
-			m.logger.Info("syncing to target height", "targetHeight", m.LastSubmittedHeight.Load())
+			m.logger.Info("syncing to target height", "targetHeight", m.LastSettlementHeight.Load())
 
-			for currH := m.State.NextHeight(); currH <= m.LastSubmittedHeight.Load(); currH = m.State.NextHeight() {
-				// if we have the block locally, we don't need to fetch it from the DA
+			for currH := m.State.NextHeight(); currH <= m.LastSettlementHeight.Load(); currH = m.State.NextHeight() {
+				// if we have the block locally, we don't need to fetch it from the DA.
+				// it will only happen in case of rollback.
 				err := m.applyLocalBlock(currH)
 				if err == nil {
-					m.logger.Info("Synced from local", "store height", currH, "target height", m.LastSubmittedHeight.Load())
+					m.logger.Info("Synced from local", "store height", currH, "target height", m.LastSettlementHeight.Load())
 					continue
 				}
 				if !errors.Is(err, gerrc.ErrNotFound) {
@@ -74,7 +78,7 @@ func (m *Manager) SyncLoop(ctx context.Context) error {
 					return fmt.Errorf("stuck at height %d", currH)
 				}
 
-				m.logger.Info("Synced from DA", "store height", m.State.Height(), "target height", m.LastSubmittedHeight.Load())
+				m.logger.Info("Synced from DA", "store height", m.State.Height(), "target height", m.LastSettlementHeight.Load())
 
 				// trigger state update validation, after each state update is applied
 				m.triggerStateUpdateValidation()
@@ -87,7 +91,7 @@ func (m *Manager) SyncLoop(ctx context.Context) error {
 
 			}
 
-			m.logger.Info("Synced.", "current height", m.State.Height(), "last submitted height", m.LastSubmittedHeight.Load())
+			m.logger.Info("Synced.", "current height", m.State.Height(), "last submitted height", m.LastSettlementHeight.Load())
 
 			m.synced.Nudge()
 
@@ -97,7 +101,7 @@ func (m *Manager) SyncLoop(ctx context.Context) error {
 
 // waitForSyncing waits for synced nudge (in case it needs to because it was syncing)
 func (m *Manager) waitForSyncing() {
-	if m.State.Height() < m.LastSubmittedHeight.Load() {
+	if m.State.Height() < m.LastSettlementHeight.Load() {
 		<-m.synced.C
 	}
 }

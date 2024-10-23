@@ -57,11 +57,11 @@ type Manager struct {
 	/*
 		Submission
 	*/
-	// The last height which was submitted to both sublayers, that we know of. When we produce new batches, we will
+	// The last height which was submitted to settlement, that we know of. When we produce new batches, we will
 	// start at this height + 1.
 	// It is ALSO used by the producer, because the producer needs to check if it can prune blocks and it won't
 	// prune anything that might be submitted in the future. Therefore, it must be atomic.
-	LastSubmittedHeight atomic.Uint64
+	LastSettlementHeight atomic.Uint64
 
 	/*
 		Retrieval
@@ -202,7 +202,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	// listen to new bonded sequencers events to add them in the sequencer set
 	go uevent.MustSubscribe(ctx, m.Pubsub, "newBondedSequencer", settlement.EventQueryNewBondedSequencer, m.UpdateSequencerSet, m.logger)
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
-		return m.SyncLoop(ctx)
+		return m.SettlementSyncLoop(ctx)
 	})
 
 	err = m.syncFromSettlement()
@@ -292,7 +292,7 @@ func (m *Manager) isChainHalted() error {
 }
 
 func (m *Manager) NextHeightToSubmit() uint64 {
-	return m.LastSubmittedHeight.Load() + 1
+	return m.LastSettlementHeight.Load() + 1
 }
 
 // syncFromSettlement enforces the node to be synced on initial run from SL and DA.
@@ -307,7 +307,7 @@ func (m *Manager) syncFromSettlement() error {
 	if errors.Is(err, gerrc.ErrNotFound) {
 		// The SL hasn't got any batches for this chain yet.
 		m.logger.Info("No batches for chain found in SL.")
-		m.LastSubmittedHeight.Store(uint64(m.Genesis.InitialHeight - 1))
+		m.LastSettlementHeight.Store(uint64(m.Genesis.InitialHeight - 1))
 		return nil
 	}
 
@@ -316,7 +316,7 @@ func (m *Manager) syncFromSettlement() error {
 		return err
 	}
 
-	m.LastSubmittedHeight.Store(res.EndHeight)
+	m.LastSettlementHeight.Store(res.EndHeight)
 	m.UpdateTargetHeight(res.EndHeight)
 
 	// get the latest finalized height to know from where to start validating

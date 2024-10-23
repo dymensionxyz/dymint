@@ -182,7 +182,7 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 	}
 
 	// Initially sync target is 0
-	assert.Zero(t, manager.LastSubmittedHeight.Load())
+	assert.Zero(t, manager.LastSettlementHeight.Load())
 	assert.True(t, manager.State.Height() == 0)
 
 	// enough time to sync and produce blocks
@@ -197,7 +197,7 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 		require.NoError(t, err)
 	}()
 	<-ctx.Done()
-	assert.Equal(t, batch.EndHeight(), manager.LastSubmittedHeight.Load())
+	assert.Equal(t, batch.EndHeight(), manager.LastSettlementHeight.Load())
 	// validate that we produced blocks
 	assert.Greater(t, manager.State.Height(), batch.EndHeight())
 }
@@ -367,7 +367,7 @@ func TestApplyLocalBlock_WithFraudCheck(t *testing.T) {
 	})).Return(nil)
 
 	// Initially sync target is 0
-	assert.Zero(t, manager.LastSubmittedHeight.Load())
+	assert.Zero(t, manager.LastSettlementHeight.Load())
 	assert.True(t, manager.State.Height() == 0)
 
 	// enough time to sync and produce blocks
@@ -382,7 +382,7 @@ func TestApplyLocalBlock_WithFraudCheck(t *testing.T) {
 		require.True(t, errors.Is(err, gerrc.ErrFault))
 	}()
 	<-ctx.Done()
-	assert.Equal(t, batch.EndHeight(), manager.LastSubmittedHeight.Load())
+	assert.Equal(t, batch.EndHeight(), manager.LastSettlementHeight.Load())
 	mockExecutor.AssertExpectations(t)
 	mockFraudHandler.AssertExpectations(t)
 }

@@ -79,9 +79,9 @@ type Store interface {
 
 	LoadBlockCid(height uint64) (cid.Cid, error)
 
-	SaveBlockSource(height uint64, source string, batch KVBatch) (KVBatch, error)
+	SaveBlockSource(height uint64, source types.BlockSource, batch KVBatch) (KVBatch, error)
 
-	LoadBlockSource(height uint64) (string, error)
+	LoadBlockSource(height uint64) (types.BlockSource, error)
 
 	SaveValidationHeight(height uint64, batch KVBatch) (KVBatch, error)
 

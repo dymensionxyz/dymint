@@ -51,7 +51,12 @@ func (m *Manager) applyLocalBlock(height uint64) error {
 		return fmt.Errorf("load commit: %w", gerrc.ErrNotFound)
 	}
 
-	err = m.applyBlockWithFraudHandling(block, commit, types.BlockMetaData{Source: types.LocalDb})
+	source, err := m.Store.LoadBlockSource(height)
+	if err != nil {
+		return fmt.Errorf("load source: %w", gerrc.ErrNotFound)
+	}
+
+	err = m.applyBlockWithFraudHandling(block, commit, types.BlockMetaData{Source: source})
 	if err != nil {
 		return fmt.Errorf("apply block from local store: height: %d: %w", height, err)
 	}

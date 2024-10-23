@@ -236,7 +236,7 @@ func (m *Manager) SubmitBatch(batch *types.Batch) error {
 	m.logger.Info("Submitted batch to SL.", "start height", batch.StartHeight(), "end height", batch.EndHeight())
 
 	types.RollappHubHeightGauge.Set(float64(batch.EndHeight()))
-	m.LastSubmittedHeight.Store(batch.EndHeight())
+	m.LastSettlementHeight.Store(batch.EndHeight())
 	return nil
 }
 
@@ -270,7 +270,7 @@ func (m *Manager) GetUnsubmittedBytes() int {
 }
 
 func (m *Manager) GetUnsubmittedBlocks() uint64 {
-	return m.State.Height() - m.LastSubmittedHeight.Load()
+	return m.State.Height() - m.LastSettlementHeight.Load()
 }
 
 // UpdateLastSubmittedHeight will update last height submitted height upon events.
@@ -284,8 +284,8 @@ func (m *Manager) UpdateLastSubmittedHeight(event pubsub.Message) {
 	h := eventData.EndHeight
 
 	for {
-		curr := m.LastSubmittedHeight.Load()
-		if m.LastSubmittedHeight.CompareAndSwap(curr, max(curr, h)) {
+		curr := m.LastSettlementHeight.Load()
+		if m.LastSettlementHeight.CompareAndSwap(curr, max(curr, h)) {
 			break
 		}
 	}

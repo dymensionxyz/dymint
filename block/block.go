@@ -100,7 +100,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 			return fmt.Errorf("save block responses: %w", err)
 		}
 
-		_, err = m.Store.SaveBlockSource(block.Header.Height, blockMetaData.Source.String(), nil)
+		_, err = m.Store.SaveBlockSource(block.Header.Height, blockMetaData.Source, nil)
 		if err != nil {
 			return fmt.Errorf("save block source: %w", err)
 		}

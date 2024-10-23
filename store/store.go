@@ -119,22 +119,23 @@ func (s *DefaultStore) LoadBlockByHash(hash [32]byte) (*types.Block, error) {
 }
 
 // SaveBlockValidation saves block validation in Store.
-func (s *DefaultStore) SaveBlockSource(height uint64, source string, batch KVBatch) (KVBatch, error) {
+func (s *DefaultStore) SaveBlockSource(height uint64, source types.BlockSource, batch KVBatch) (KVBatch, error) {
+	b := make([]byte, 8)
+	binary.LittleEndian.PutUint64(b, uint64(source))
 	if batch == nil {
-		return nil, s.db.Set(getSourceKey(height), []byte(source))
+		return nil, s.db.Set(getSourceKey(height), b)
 	}
-	err := batch.Set(getSourceKey(height), []byte(source))
+	err := batch.Set(getSourceKey(height), b)
 	return batch, err
 }
 
 // LoadBlockValidation returns block validation in Store.
-func (s *DefaultStore) LoadBlockSource(height uint64) (string, error) {
+func (s *DefaultStore) LoadBlockSource(height uint64) (types.BlockSource, error) {
 	source, err := s.db.Get(getSourceKey(height))
 	if err != nil {
-		return "", fmt.Errorf("retrieve block results from height %v: %w", height, err)
+		return types.BlockSource(0), fmt.Errorf("get block source for height %v: %w", height, err)
 	}
-
-	return string(source[:]), nil
+	return types.BlockSource(binary.LittleEndian.Uint64(source)), nil
 }
 
 // SaveBlockResponses saves block responses (events, tx responses, etc) in Store.

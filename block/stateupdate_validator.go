@@ -16,7 +16,7 @@ type StateUpdateValidator struct {
 	blockManager *Manager
 }
 
-// NewValidator creates a new Validator.
+// NewStateUpdateValidator returns a new StateUpdateValidator instance.
 func NewStateUpdateValidator(logger types.Logger, blockManager *Manager) *StateUpdateValidator {
 	return &StateUpdateValidator{
 		logger:       logger,
@@ -30,26 +30,27 @@ func NewStateUpdateValidator(logger types.Logger, blockManager *Manager) *StateU
 func (v *StateUpdateValidator) ValidateStateUpdate(batch *settlement.ResultRetrieveBatch) error {
 	v.logger.Debug("validating state update", "start height", batch.StartHeight, "end height", batch.EndHeight)
 
-	// validate that the DRS version specified batch matches the node state
-	err := v.validateDRS(batch.StartHeight, batch.EndHeight)
-	if err != nil {
-		return err
-	}
-
 	// load blocks applied from P2P for the batch heights
 	p2pBlocks := make(map[uint64]*types.Block)
 	for height := batch.StartHeight; height <= batch.EndHeight; height++ {
 		source, err := v.blockManager.Store.LoadBlockSource(height)
 		if err != nil {
+			v.logger.Error("load block source", "error", err)
 			continue
 		}
+
+		// if block is not P2P block, skip
+		if source != types.Gossiped && source != types.BlockSync {
+			continue
+		}
+
 		block, err := v.blockManager.Store.LoadBlock(height)
 		if err != nil {
+			v.logger.Error("load block", "error", err)
 			continue
 		}
-		if source == types.Gossiped.String() || source == types.BlockSync.String() {
-			p2pBlocks[block.Header.Height] = block
-		}
+		p2pBlocks[block.Header.Height] = block
+
 	}
 
 	// load all DA blocks from the batch to be validated
@@ -66,9 +67,14 @@ func (v *StateUpdateValidator) ValidateStateUpdate(batch *settlement.ResultRetri
 	}
 
 	// validate DA blocks against the state update
-	err = v.ValidateDaBlocks(batch, daBlocks)
+	err := v.ValidateDaBlocks(batch, daBlocks)
 	if err != nil {
 		return err
+	}
+
+	// nothing to validate at P2P level, finish here.
+	if len(p2pBlocks) == 0 {
+		return nil
 	}
 
 	// validate P2P blocks against DA blocks
@@ -77,19 +83,12 @@ func (v *StateUpdateValidator) ValidateStateUpdate(batch *settlement.ResultRetri
 		return err
 	}
 
-	// update the last validated height to the batch last block height
-	v.blockManager.UpdateLastValidatedHeight(batch.EndHeight)
-
 	return nil
 }
 
 // ValidateP2PBlocks basically compares that the blocks applied from P2P are the same blocks included in the batch and retrieved from DA.
 // Since DA blocks have been already validated against Hub state info block descriptors, if P2P blocks match with DA blocks, it means they are also validated against state info block descriptors.
 func (v *StateUpdateValidator) ValidateP2PBlocks(daBlocks []*types.Block, p2pBlocks map[uint64]*types.Block) error {
-	// nothing to compare
-	if len(p2pBlocks) == 0 {
-		return nil
-	}
 
 	// iterate over daBlocks and compare hashes with the corresponding block from P2P (if exists) to see whether they are actually the same block
 	for _, daBlock := range daBlocks {
@@ -141,12 +140,6 @@ func (v *StateUpdateValidator) ValidateDaBlocks(slBatch *settlement.ResultRetrie
 		}
 	}
 
-	// TODO(srene): implement sequencer address validation
-	return nil
-}
-
-// TODO(srene): implement DRS/height verification
-func (v *StateUpdateValidator) validateDRS(startHeight, endHeight uint64) error {
 	return nil
 }
 
