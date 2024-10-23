@@ -11,7 +11,6 @@ import "types/cosmos/msg/v1/msg.proto";
 import "types/dymensionxyz/dymension/rollapp/block_descriptor.proto";
 import "types/dymensionxyz/dymension/rollapp/rollapp.proto";
 import "types/dymensionxyz/dymension/rollapp/metadata.proto";
-import "types/dymensionxyz/dymension/rollapp/genesis_info.proto";
 import "gogoproto/gogo.proto";
 
 // MsgCreateRollapp creates a new rollapp chain on the hub.
