@@ -202,18 +202,15 @@ func GenerateBatch(startHeight uint64, endHeight uint64, proposerKey crypto.Priv
 
 // GenerateLastBatch generates a final batch with LastBatch flag set to true and different NextSequencerHash
 func GenerateLastBatch(startHeight uint64, endHeight uint64, proposerKey crypto.PrivKey, nextSequencerKey crypto.PrivKey, chainId string, lastHeaderHash [32]byte) (*types.Batch, error) {
-	// Primero obtenemos el hash del siguiente sequencer
 	nextSequencerRaw, _ := nextSequencerKey.Raw()
 	nextSeq := types.NewSequencerFromValidator(*tmtypes.NewValidator(ed25519.PrivKey(nextSequencerRaw).PubKey(), 1))
 	nextSequencerHash := nextSeq.Hash()
 
-	// Generamos los bloques con el nuevo NextSequencerHash
 	blocks, err := GenerateLastBlocks(startHeight, endHeight-startHeight+1, proposerKey, chainId, lastHeaderHash, [32]byte(nextSequencerHash))
 	if err != nil {
 		return nil, err
 	}
 
-	// Generamos los commits
 	commits, err := GenerateCommits(blocks, proposerKey)
 	if err != nil {
 		return nil, err
