@@ -36,7 +36,7 @@ func TestTxIndex(t *testing.T) {
 	}
 	hash := tx.Hash()
 
-	batch := txindex.NewBatch(1)
+	batch := txindex.NewBatch(1, txResult.Height)
 	if err := batch.Add(txResult); err != nil {
 		t.Error(err)
 	}
@@ -321,7 +321,7 @@ func TestTxIndexerPruning(t *testing.T) {
 	numBlocks := uint64(100)
 
 	txsWithEvents := 0
-
+	numEvents := uint64(0)
 	// index tx event data
 	for i := uint64(1); i <= numBlocks; i++ {
 		events := getNEvents(rand.Intn(10))
@@ -331,6 +331,7 @@ func TestTxIndexerPruning(t *testing.T) {
 		if len(events) > 0 {
 			txsWithEvents++
 		}
+		numEvents += uint64(len(events))
 	}
 
 	q := query.MustParse("account.number = 1")
@@ -342,7 +343,7 @@ func TestTxIndexerPruning(t *testing.T) {
 	// prune indexer for all heights
 	pruned, err := indexer.Prune(1, numBlocks+1, log.NewNopLogger())
 	require.NoError(t, err)
-	require.Equal(t, uint64(numBlocks), pruned)
+	require.Equal(t, numBlocks+numEvents, pruned)
 
 	// check the query returns empty
 	results, err = indexer.Search(context.Background(), q)
@@ -428,7 +429,7 @@ func benchmarkTxIndex(txsCount int64, b *testing.B) {
 	require.NoError(b, err)
 	indexer := NewTxIndex(store)
 
-	batch := txindex.NewBatch(txsCount)
+	batch := txindex.NewBatch(txsCount, int64(0))
 	txIndex := uint32(0)
 	for i := int64(0); i < txsCount; i++ {
 		tx := tmrand.Bytes(250)

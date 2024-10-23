@@ -4,19 +4,14 @@ import (
 	"fmt"
 
 	"github.com/dymensionxyz/dymint/types"
-	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 )
 
 // PruneStore removes blocks up to (but not including) a height. It returns number of blocks pruned.
-func (s *DefaultStore) PruneStore(from, to uint64, logger types.Logger) (uint64, error) {
-	if from <= 0 {
-		return 0, fmt.Errorf("from height must be greater than 0: %w", gerrc.ErrInvalidArgument)
+func (s *DefaultStore) PruneStore(to uint64, logger types.Logger) (uint64, error) {
+	from, err := s.LoadBaseHeight()
+	if err != nil {
+		return uint64(0), fmt.Errorf("unable to retrieve stored base: %w", err)
 	}
-
-	if to <= from {
-		return 0, fmt.Errorf("to height must be greater than from height: to: %d: from: %d: %w", to, from, gerrc.ErrInvalidArgument)
-	}
-
 	prunedBlocks, err := s.pruneBlocks(from, to, logger)
 	if err != nil {
 		logger.Error("pruning blocks", "from", from, "to", to, "blocks pruned", prunedBlocks, "err", err)
@@ -32,11 +27,10 @@ func (s *DefaultStore) PruneStore(from, to uint64, logger types.Logger) (uint64,
 		logger.Error("pruning sequencers", "from", from, "to", to, "sequencers pruned", prunedSequencers, "err", err)
 	}
 
-	prunedCids, err := s.pruneCids(from, to, logger)
+	err = s.SaveBaseHeight(from + prunedBlocks)
 	if err != nil {
-		logger.Error("pruning block sync identifiers", "from", from, "to", to, "cids pruned", prunedCids, "err", err)
+		logger.Error("saving base height", "error", err)
 	}
-
 	return prunedBlocks, nil
 }
 
@@ -80,15 +74,6 @@ func (s *DefaultStore) pruneSequencers(from, to uint64, logger types.Logger) (ui
 	}
 	prunedSequencers, err := s.pruneHeights(from, to, pruneSequencers, logger)
 	return prunedSequencers, err
-}
-
-// pruneCids prunes content identifiers from store
-func (s *DefaultStore) pruneCids(from, to uint64, logger types.Logger) (uint64, error) {
-	pruneCids := func(batch KVBatch, height uint64) error {
-		return batch.Delete(getCidKey(height))
-	}
-	prunedCids, err := s.pruneHeights(from, to, pruneCids, logger)
-	return prunedCids, err
 }
 
 // pruneHeights is the common function for all pruning that iterates through all heights and prunes according to the pruning function set

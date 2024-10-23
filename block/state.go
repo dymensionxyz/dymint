@@ -60,7 +60,6 @@ func NewStateFromGenesis(genDoc *tmtypes.GenesisDoc) (*types.State, error) {
 		ChainID: genDoc.ChainID,
 
 		InitialHeight:                    uint64(genDoc.InitialHeight),
-		BaseHeight:                       uint64(genDoc.InitialHeight),
 		ConsensusParams:                  *genDoc.ConsensusParams,
 		LastHeightConsensusParamsChanged: genDoc.InitialHeight,
 	}

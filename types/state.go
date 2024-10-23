@@ -23,9 +23,6 @@ type State struct {
 	// LastBlockHeight=0 at genesis (ie. block(H=0) does not exist)
 	LastBlockHeight atomic.Uint64
 
-	// BaseHeight is the height of the first block we have in store after pruning.
-	BaseHeight uint64
-
 	// Sequencers is the set of sequencers that are currently active on the rollapp.
 	Sequencers SequencerSet
 

@@ -84,7 +84,10 @@ type Manager struct {
 	pruningC chan int64
 
 	// indexer
-	indexerService *txindex.IndexerService
+	IndexerService *txindex.IndexerService
+
+	// BaseHeight is the height of the first block we have in store after pruning.
+	BaseHeight uint64
 }
 
 // NewManager creates new block Manager.
@@ -129,7 +132,7 @@ func NewManager(
 		Store:          store,
 		Executor:       exec,
 		SLClient:       settlementClient,
-		indexerService: indexerService,
+		IndexerService: indexerService,
 		logger:         logger.With("module", "block_manager"),
 		blockCache: &Cache{
 			cache: make(map[uint64]types.CachedBlock),
