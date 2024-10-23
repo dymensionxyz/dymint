@@ -33,7 +33,7 @@ func (m *Manager) ValidateLoop(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case <-m.validateC:
+		case <-m.settlementValidationC:
 
 			m.logger.Info("validating state updates to target height", "targetHeight", m.LastSettlementHeight.Load())
 
@@ -46,7 +46,7 @@ func (m *Manager) ValidateLoop(ctx context.Context) error {
 					return err
 				}
 				// validate batch
-				err = m.validator.ValidateStateUpdate(batch)
+				err = m.settlementValidator.ValidateStateUpdate(batch)
 				if err != nil {
 					if errors.Is(err, gerrc.ErrFault) {
 						m.FraudHandler.HandleFault(ctx, err)

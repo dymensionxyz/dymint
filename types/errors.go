@@ -331,14 +331,14 @@ type ErrStateUpdateNumBlocksNotMatchingFraud struct {
 func NewErrStateUpdateNumBlocksNotMatchingFraud(stateIndex uint64, slNumBlocks uint64, daBlocks uint64, numbds uint64) error {
 	return &ErrStateUpdateNumBlocksNotMatchingFraud{
 		StateIndex:  stateIndex,
-		SLNumblocks: slNumBlocks,
+		SLNumBlocks: slNumBlocks,
 		DAblocks:    daBlocks,
 		NumBds:      numbds,
 	}
 }
 
 func (e ErrStateUpdateNumBlocksNotMatchingFraud) Error() string {
-	return fmt.Sprintf("numblocks not matching. StateIndex: %d Batch numblocks: %d Blocks in DA: %d Num of block descriptors: %d", e.StateIndex, e.SLNumblocks, e.DAblocks, e.NumBds)
+	return fmt.Sprintf("numblocks not matching. StateIndex: %d Batch numblocks: %d Blocks in DA: %d Num of block descriptors: %d", e.StateIndex, e.SLNumBlocks, e.DAblocks, e.NumBds)
 }
 
 func (e ErrStateUpdateNumBlocksNotMatchingFraud) Unwrap() error {
@@ -420,15 +420,38 @@ func (e ErrStateUpdateTimestampNotMatchingFraud) Unwrap() error {
 }
 
 type ErrStateUpdateDoubleSigningFraud struct {
-	Height uint64
-	Block  []byte
+	DABlock  []byte
+	P2PBlock []byte
 }
 
-func NewErrStateUpdateDoubleSigningFraud(height uint64, block *Block) error {
+func NewErrStateUpdateDoubleSigningFraud(daBlock *Block, p2pBlock *Block) error {
+	jsonDABlock, err := getJsonFromBlock(daBlock)
+	if err != nil {
+		return err
+	}
+	jsonP2PBlock, err := getJsonFromBlock(p2pBlock)
+	if err != nil {
+		return err
+	}
+	return &ErrStateUpdateDoubleSigningFraud{
+		DABlock:  jsonDABlock,
+		P2PBlock: jsonP2PBlock,
+	}
+}
+
+func (e ErrStateUpdateDoubleSigningFraud) Error() string {
+	return fmt.Sprintf("block received from P2P not matching block found in DA. P2P Block: %s DA Block:%s", e.P2PBlock, e.DABlock)
+}
+
+func (e ErrStateUpdateDoubleSigningFraud) Unwrap() error {
+	return gerrc.ErrFault
+}
+
+func getJsonFromBlock(block *Block) ([]byte, error) {
 	hash := block.Hash()
 	abciBlock, err := ToABCIBlock(block)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	resultBlock := &ctypes.ResultBlock{
 		BlockID: tmtypes.BlockID{
@@ -443,19 +466,7 @@ func NewErrStateUpdateDoubleSigningFraud(height uint64, block *Block) error {
 
 	jsonBlock, err := legacy.Cdc.MarshalJSON(resultBlock)
 	if err != nil {
-		return err
+		return nil, err
 	}
-
-	return &ErrStateUpdateDoubleSigningFraud{
-		Height: height,
-		Block:  jsonBlock,
-	}
-}
-
-func (e ErrStateUpdateDoubleSigningFraud) Error() string {
-	return fmt.Sprintf("block received from P2P not matching block found in DA. Height: %d Block:%s", e.Height, e.Block)
-}
-
-func (e ErrStateUpdateDoubleSigningFraud) Unwrap() error {
-	return gerrc.ErrFault
+	return jsonBlock, nil
 }

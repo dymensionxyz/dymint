@@ -87,13 +87,13 @@ type Manager struct {
 	// indexer
 	indexerService *txindex.IndexerService
 
-	syncingC chan struct{}
+	settlementSyncingC chan struct{}
 
-	validateC chan struct{}
+	settlementValidationC chan struct{}
 
-	synced *uchannel.Nudger
+	syncedFromSettlement *uchannel.Nudger
 
-	validator *StateUpdateValidator
+	settlementValidator *StateUpdateValidator
 
 	lastValidatedHeight atomic.Uint64
 }
@@ -145,10 +145,10 @@ func NewManager(
 		blockCache: &Cache{
 			cache: make(map[uint64]types.CachedBlock),
 		},
-		pruningC:  make(chan int64, 10), // use of buffered channel to avoid blocking applyBlock thread. In case channel is full, pruning will be skipped, but the retain height can be pruned in the next iteration.
-		syncingC:  make(chan struct{}, 1),
-		validateC: make(chan struct{}, 1),
-		synced:    uchannel.NewNudger(),
+		pruningC:              make(chan int64, 10), // use of buffered channel to avoid blocking applyBlock thread. In case channel is full, pruning will be skipped, but the retain height can be pruned in the next iteration.
+		settlementSyncingC:    make(chan struct{}, 1),
+		settlementValidationC: make(chan struct{}, 1),
+		syncedFromSettlement:  uchannel.NewNudger(),
 	}
 	m.setFraudHandler(NewFreezeHandler(m))
 
@@ -168,7 +168,7 @@ func NewManager(
 		return nil, err
 	}
 
-	m.validator = NewStateUpdateValidator(m.logger, m)
+	m.settlementValidator = NewStateUpdateValidator(m.logger, m)
 
 	return m, nil
 }
@@ -205,13 +205,19 @@ func (m *Manager) Start(ctx context.Context) error {
 		return m.SettlementSyncLoop(ctx)
 	})
 
-	err = m.syncFromSettlement()
+	err = m.updateFromLastSettlementState()
 	if err != nil {
 		return fmt.Errorf("sync block manager from settlement: %w", err)
 	}
 
 	/* ----------------------------- full node mode ----------------------------- */
 	if !isProposer {
+
+		// get the latest finalized height to know from where to start validating
+		err = m.UpdateFinalizedHeight()
+		if err != nil {
+			return err
+		}
 
 		uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 			return m.ValidateLoop(ctx)
@@ -234,7 +240,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	m.DAClient.WaitForSyncing()
 
 	// Sequencer must wait till node is synced till last submittedHeight, in case it is not
-	m.waitForSyncing()
+	m.waitForSettlementSyncing()
 	// check if sequencer in the middle of rotation
 	nextSeqAddr, missing, err := m.MissingLastBatch()
 	if err != nil {
@@ -295,8 +301,8 @@ func (m *Manager) NextHeightToSubmit() uint64 {
 	return m.LastSettlementHeight.Load() + 1
 }
 
-// syncFromSettlement enforces the node to be synced on initial run from SL and DA.
-func (m *Manager) syncFromSettlement() error {
+// updateFromLastSettlementState retrieves last sequencers and state update from the Hub and updates relevant info with it
+func (m *Manager) updateFromLastSettlementState() error {
 	// Update sequencers list from SL
 	err := m.UpdateSequencerSetFromSL()
 	if err != nil {
@@ -317,12 +323,9 @@ func (m *Manager) syncFromSettlement() error {
 	}
 
 	m.LastSettlementHeight.Store(res.EndHeight)
-	m.UpdateTargetHeight(res.EndHeight)
 
-	// get the latest finalized height to know from where to start validating
-	err = m.UpdateFinalizedHeight()
-	if err != nil {
-		return err
+	if res.EndHeight >= m.State.NextHeight() {
+		m.UpdateTargetHeight(res.EndHeight)
 	}
 
 	// try to sync to last state update submitted on startup

@@ -22,7 +22,6 @@ func (m *Manager) onNewStateUpdate(event pubsub.Message) {
 
 	// Update heights based on state update end height
 	m.LastSettlementHeight.Store(eventData.EndHeight)
-	m.UpdateTargetHeight(eventData.EndHeight)
 
 	m.logger.Error("syncing")
 
@@ -35,6 +34,9 @@ func (m *Manager) onNewStateUpdate(event pubsub.Message) {
 	if eventData.EndHeight > m.State.Height() {
 		// Trigger syncing from DA.
 		m.triggerStateUpdateSyncing()
+		// update target height used for syncing status rpc
+		m.UpdateTargetHeight(eventData.EndHeight)
+
 	} else {
 		// trigger state update validation (in case no state update is applied)
 		m.triggerStateUpdateValidation()
@@ -52,7 +54,7 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 		case <-ctx.Done():
 			return ctx.Err()
 
-		case <-m.syncingC:
+		case <-m.settlementSyncingC:
 
 			m.logger.Info("syncing to target height", "targetHeight", m.LastSettlementHeight.Load())
 
@@ -93,23 +95,24 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 
 			m.logger.Info("Synced.", "current height", m.State.Height(), "last submitted height", m.LastSettlementHeight.Load())
 
-			m.synced.Nudge()
+			// nudge to signal to any listens that we're currently synced with the last settlement height we've seen so far
+			m.syncedFromSettlement.Nudge()
 
 		}
 	}
 }
 
 // waitForSyncing waits for synced nudge (in case it needs to because it was syncing)
-func (m *Manager) waitForSyncing() {
+func (m *Manager) waitForSettlementSyncing() {
 	if m.State.Height() < m.LastSettlementHeight.Load() {
-		<-m.synced.C
+		<-m.syncedFromSettlement.C
 	}
 }
 
 // triggerStateUpdateSyncing sends signal to channel used by syncing loop
 func (m *Manager) triggerStateUpdateSyncing() {
 	select {
-	case m.syncingC <- struct{}{}:
+	case m.settlementSyncingC <- struct{}{}:
 	default:
 		m.logger.Debug("disregarding new state update, node is still syncing")
 	}
@@ -118,7 +121,7 @@ func (m *Manager) triggerStateUpdateSyncing() {
 // triggerStateUpdateValidation sends signal to channel used by validation loop
 func (m *Manager) triggerStateUpdateValidation() {
 	select {
-	case m.validateC <- struct{}{}:
+	case m.settlementValidationC <- struct{}{}:
 	default:
 		m.logger.Debug("disregarding new state update, node is still validating")
 	}
