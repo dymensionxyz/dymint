@@ -28,13 +28,15 @@ func (m *Manager) PruneBlocks(retainHeight uint64) {
 	logResult(err, m.logger, retainHeight, pruned)
 
 	// prune blocks from indexer store
-	baseHeight, err := m.Store.LoadIndexerBaseHeight()
+	// load indexer base height
+	indexerBaseHeight, err := m.Store.LoadIndexerBaseHeight()
 	if err != nil {
-		baseHeight = 1
+		indexerBaseHeight = 1
 	}
-	pruned, err = m.IndexerService.Prune(baseHeight, retainHeight)
+	pruned, err = m.IndexerService.Prune(indexerBaseHeight, retainHeight)
 	logResult(err, m.logger, retainHeight, pruned)
 
+	// store indexer base height
 	err = m.Store.SaveIndexerBaseHeight(retainHeight)
 	if err != nil {
 		m.logger.Error("saving indexer base height", "err", err)
