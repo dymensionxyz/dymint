@@ -205,6 +205,7 @@ func (m *Manager) Start(ctx context.Context) error {
 		return m.SettlementSyncLoop(ctx)
 	})
 
+	// update local state from latest state in settlement
 	err = m.updateFromLastSettlementState()
 	if err != nil {
 		return fmt.Errorf("sync block manager from settlement: %w", err)
@@ -301,7 +302,7 @@ func (m *Manager) NextHeightToSubmit() uint64 {
 	return m.LastSettlementHeight.Load() + 1
 }
 
-// updateFromLastSettlementState retrieves last sequencers and state update from the Hub and updates relevant info with it
+// updateFromLastSettlementState retrieves last sequencers and state update from the Hub and updates local state with it
 func (m *Manager) updateFromLastSettlementState() error {
 	// Update sequencers list from SL
 	err := m.UpdateSequencerSetFromSL()
