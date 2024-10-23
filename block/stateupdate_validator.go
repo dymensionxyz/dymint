@@ -89,7 +89,6 @@ func (v *StateUpdateValidator) ValidateStateUpdate(batch *settlement.ResultRetri
 // ValidateP2PBlocks basically compares that the blocks applied from P2P are the same blocks included in the batch and retrieved from DA.
 // Since DA blocks have been already validated against Hub state info block descriptors, if P2P blocks match with DA blocks, it means they are also validated against state info block descriptors.
 func (v *StateUpdateValidator) ValidateP2PBlocks(daBlocks []*types.Block, p2pBlocks map[uint64]*types.Block) error {
-
 	// iterate over daBlocks and compare hashes with the corresponding block from P2P (if exists) to see whether they are actually the same block
 	for _, daBlock := range daBlocks {
 
@@ -127,7 +126,7 @@ func (v *StateUpdateValidator) ValidateDaBlocks(slBatch *settlement.ResultRetrie
 	for i, bd := range slBatch.BlockDescriptors {
 		// height check
 		if bd.Height != daBlocks[i].Header.Height {
-			return types.NewErrStateUpdateHeightNotMatchingFraud(slBatch.StateIndex, bd.Height, daBlocks[i].Header.Height)
+			return types.NewErrStateUpdateHeightNotMatchingFraud(slBatch.StateIndex, slBatch.BlockDescriptors[0].Height, daBlocks[0].Header.Height, slBatch.BlockDescriptors[len(slBatch.BlockDescriptors)-1].Height, daBlocks[len(daBlocks)-1].Header.Height)
 		}
 		// we compare the state root between SL state info and DA block
 		if !bytes.Equal(bd.StateRoot, daBlocks[i].Header.AppHash[:]) {

@@ -323,7 +323,7 @@ func (e ErrInvalidHeaderDataHashFraud) Unwrap() error {
 
 type ErrStateUpdateNumBlocksNotMatchingFraud struct {
 	StateIndex  uint64
-	SLNumblocks uint64
+	SLNumBlocks uint64
 	DAblocks    uint64
 	NumBds      uint64
 }
@@ -346,21 +346,25 @@ func (e ErrStateUpdateNumBlocksNotMatchingFraud) Unwrap() error {
 }
 
 type ErrStateUpdateHeightNotMatchingFraud struct {
-	StateIndex uint64
-	SLHeight   uint64
-	DAHeight   uint64
+	StateIndex    uint64
+	SLBeginHeight uint64
+	DABeginHeight uint64
+	SLEndHeight   uint64
+	DAEndHeight   uint64
 }
 
-func NewErrStateUpdateHeightNotMatchingFraud(stateIndex uint64, slHeight uint64, daHeight uint64) error {
+func NewErrStateUpdateHeightNotMatchingFraud(stateIndex uint64, slBeginHeight uint64, daBeginHeight uint64, slEndHeight uint64, daEndHeight uint64) error {
 	return &ErrStateUpdateHeightNotMatchingFraud{
-		StateIndex: stateIndex,
-		SLHeight:   slHeight,
-		DAHeight:   daHeight,
+		StateIndex:    stateIndex,
+		SLBeginHeight: slBeginHeight,
+		DABeginHeight: daBeginHeight,
+		SLEndHeight:   slEndHeight,
+		DAEndHeight:   daEndHeight,
 	}
 }
 
 func (e ErrStateUpdateHeightNotMatchingFraud) Error() string {
-	return fmt.Sprintf("block height in DA batch not matching SL batch height. StateIndex: %d SLHeight: %d DAHeight: %d", e.StateIndex, e.SLHeight, e.DAHeight)
+	return fmt.Sprintf("block height in DA batch not matching SL batch height. StateIndex: %d SL Begin height: %d DA Begin height: %d SL End height:%d DA End height: %d", e.StateIndex, e.SLBeginHeight, e.DABeginHeight, e.SLEndHeight, e.DAEndHeight)
 }
 
 func (e ErrStateUpdateHeightNotMatchingFraud) Unwrap() error {
