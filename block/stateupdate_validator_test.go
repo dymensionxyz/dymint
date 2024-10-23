@@ -60,6 +60,7 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 		doubleSignedBlocks []*types.Block
 		stateUpdateFraud   string
 		expectedErrType    error
+		last               bool
 	}{
 		{
 			name:               "Successful validation applied from DA",
@@ -124,6 +125,14 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 			doubleSignedBlocks: nil,
 			expectedErrType:    &types.ErrStateUpdateDRSVersionFraud{},
 		},
+		{
+			name:               "Failed validation next sequencer",
+			p2pBlocks:          false,
+			stateUpdateFraud:   "nextsequencer",
+			doubleSignedBlocks: nil,
+			expectedErrType:    &types.ErrInvalidNextSequencersHashFraud{},
+			last:               true,
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -138,8 +147,14 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 			manager.Retriever = manager.DAClient.(da.BatchRetriever)
 
 			// Generate batch
-			batch, err := testutil.GenerateBatch(1, 10, proposerKey, chainId, [32]byte{})
-			assert.NoError(t, err)
+			var batch *types.Batch
+			if tc.last {
+				batch, err = testutil.GenerateLastBatch(1, 10, proposerKey, proposerKey, chainId, [32]byte{})
+				assert.NoError(t, err)
+			} else {
+				batch, err = testutil.GenerateBatch(1, 10, proposerKey, chainId, [32]byte{})
+				assert.NoError(t, err)
+			}
 
 			// Submit batch to DA
 			daResultSubmitBatch := manager.DAClient.SubmitBatch(batch)
@@ -209,7 +224,6 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 }
 
 func TestStateUpdateValidator_ValidateDAFraud(t *testing.T) {
-
 	// Init app
 	app := testutil.GetAppMock(testutil.EndBlock)
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
