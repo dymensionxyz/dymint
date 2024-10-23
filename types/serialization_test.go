@@ -115,7 +115,11 @@ func TestStateRoundTrip(t *testing.T) {
 					},
 					Software: "dymint",
 				},
-				ChainID:       "testchain",
+				ChainID: "testchain",
+				Sequencers: types.NewSequencerSet([]types.Sequencer{
+					*testutil.GenerateSequencer(),
+					*testutil.GenerateSequencer(),
+				}),
 				InitialHeight: 987,
 				ConsensusParams: tmproto.ConsensusParams{
 					Block: tmproto.BlockParams{

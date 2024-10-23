@@ -508,13 +508,13 @@ func (c *Client) Commit(ctx context.Context, height *int64) (*ctypes.ResultCommi
 // Validators returns paginated list of validators at given height.
 func (c *Client) Validators(ctx context.Context, heightPtr *int64, pagePtr, perPagePtr *int) (*ctypes.ResultValidators, error) {
 	height := c.normalizeHeight(heightPtr)
-	sequencers, err := c.node.Store.LoadSequencers(height)
+	proposer, err := c.node.Store.LoadProposer(height)
 	if err != nil {
 		return nil, fmt.Errorf("load validators for height %d: %w", height, err)
 	}
 	return &ctypes.ResultValidators{
 		BlockHeight: int64(height),
-		Validators:  sequencers.Proposer.TMValidators(),
+		Validators:  proposer.TMValidators(),
 		Count:       1,
 		Total:       1,
 	}, nil
@@ -697,13 +697,12 @@ func (c *Client) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
 	latestHeight := latest.Header.Height
 	latestBlockTimeNano := latest.Header.Time
 
-	sequencers, err := c.node.Store.LoadSequencers(latest.Header.Height)
+	proposer, err := c.node.Store.LoadProposer(latest.Header.Height)
 	if err != nil {
 		return nil, fmt.Errorf("fetch the validator info at latest block: %w", err)
 	}
-	proposer := sequencers.Proposer
 	if proposer == nil {
-		return nil, fmt.Errorf("find proposer %s in the valSet", string(latest.Header.ProposerAddress))
+		return nil, fmt.Errorf("load proposer: height %d: proposer %s", latest.Header.Height, string(latest.Header.ProposerAddress))
 	}
 	state, err := c.node.Store.LoadState()
 	if err != nil {

@@ -99,7 +99,6 @@ message Sequencer {
 
 message SequencerSet {
 	repeated Sequencer sequencers = 1;
-	Sequencer proposer = 2;
 }
 
 message EventKeys {

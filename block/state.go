@@ -150,17 +150,19 @@ func (e *Executor) UpdateProposerFromBlock(s *types.State, block *types.Block) b
 		// the chain will be halted until proposer is set
 		// TODO: recover from halt (https://github.com/dymensionxyz/dymint/issues/1021)
 		e.logger.Info("rollapp left with no proposer. chain is halted")
-		s.Sequencers.SetProposer(nil)
+		s.SetProposer(nil)
 		return false
 	}
 
-	// if hash changed, update the active sequencer
-	err := s.Sequencers.SetProposerByHash(block.Header.NextSequencersHash[:])
+	// if hash changed, update the proposer
+	seq, err := s.Sequencers.GetByHash(block.Header.NextSequencersHash[:])
 	if err != nil {
-		e.logger.Error("update new proposer", "err", err)
-		panic(fmt.Sprintf("failed to update new proposer: %v", err))
+		e.logger.Error("get proposer by hash", "err", err)
+		panic(fmt.Sprintf("get proposer by hash: %v", err))
 	}
+	s.Proposer.Store(&seq)
 
+	// check if this node becomes a proposer
 	localSeq := s.Sequencers.GetByConsAddress(e.localAddress)
 	if localSeq != nil && bytes.Equal(localSeq.MustHash(), block.Header.NextSequencersHash[:]) {
 		return true

@@ -27,7 +27,7 @@ type ExecutorI interface {
 	CreateBlock(height uint64, lastCommit *types.Commit, lastHeaderHash, nextSeqHash [32]byte, state *types.State, maxBlockDataSizeBytes uint64) *types.Block
 	Commit(state *types.State, block *types.Block, resp *tmstate.ABCIResponses) ([]byte, int64, error)
 	GetAppInfo() (*abci.ResponseInfo, error)
-	ExecuteBlock(state *types.State, block *types.Block) (*tmstate.ABCIResponses, error)
+	ExecuteBlock(s *types.State, block *types.Block) (*tmstate.ABCIResponses, error)
 	UpdateStateAfterInitChain(s *types.State, res *abci.ResponseInitChain)
 	UpdateMempoolAfterInitChain(s *types.State)
 	UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResponses, appHash []byte, height uint64, lastHeaderHash [32]byte)
@@ -163,7 +163,7 @@ func (e *Executor) CreateBlock(
 	}
 	copy(block.Header.LastCommitHash[:], types.GetLastCommitHash(lastCommit, &block.Header))
 	copy(block.Header.DataHash[:], types.GetDataHash(block))
-	copy(block.Header.SequencerHash[:], state.Sequencers.ProposerHash())
+	copy(block.Header.SequencerHash[:], state.GetProposerHash())
 	copy(block.Header.NextSequencersHash[:], nextSeqHash[:])
 
 	return block
@@ -216,7 +216,7 @@ func (e *Executor) commit(state *types.State, block *types.Block, deliverTxs []*
 }
 
 // ExecuteBlock executes the block and returns the ABCIResponses. Block should be valid (passed validation checks).
-func (e *Executor) ExecuteBlock(state *types.State, block *types.Block) (*tmstate.ABCIResponses, error) {
+func (e *Executor) ExecuteBlock(_ *types.State, block *types.Block) (*tmstate.ABCIResponses, error) {
 	abciResponses := new(tmstate.ABCIResponses)
 	abciResponses.DeliverTxs = make([]*abci.ResponseDeliverTx, len(block.Data.Txs))
 

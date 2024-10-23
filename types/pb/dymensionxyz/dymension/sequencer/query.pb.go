@@ -911,7 +911,7 @@ func (c *queryClient) Sequencer(ctx context.Context, in *QueryGetSequencerReques
 
 func (c *queryClient) Sequencers(ctx context.Context, in *QuerySequencersRequest, opts ...grpc.CallOption) (*QuerySequencersResponse, error) {
 	out := new(QuerySequencersResponse)
-	err := c.cc.Invoke(ctx, "/dymensionxyz.dymension.sequencer.Query/Sequencers", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/dymensionxyz.dymension.sequencer.Query/sequencers", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -994,7 +994,7 @@ func (*UnimplementedQueryServer) Sequencer(ctx context.Context, req *QueryGetSeq
 	return nil, status.Errorf(codes.Unimplemented, "method Sequencer not implemented")
 }
 func (*UnimplementedQueryServer) Sequencers(ctx context.Context, req *QuerySequencersRequest) (*QuerySequencersResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Sequencers not implemented")
+	return nil, status.Errorf(codes.Unimplemented, "method sequencers not implemented")
 }
 func (*UnimplementedQueryServer) SequencersByRollapp(ctx context.Context, req *QueryGetSequencersByRollappRequest) (*QueryGetSequencersByRollappResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SequencersByRollapp not implemented")
@@ -1062,7 +1062,7 @@ func _Query_Sequencers_Handler(srv interface{}, ctx context.Context, dec func(in
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/dymensionxyz.dymension.sequencer.Query/Sequencers",
+		FullMethod: "/dymensionxyz.dymension.sequencer.Query/sequencers",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(QueryServer).Sequencers(ctx, req.(*QuerySequencersRequest))
@@ -1173,7 +1173,7 @@ var _Query_serviceDesc = grpc.ServiceDesc{
 			Handler:    _Query_Sequencer_Handler,
 		},
 		{
-			MethodName: "Sequencers",
+			MethodName: "sequencers",
 			Handler:    _Query_Sequencers_Handler,
 		},
 		{
@@ -2411,7 +2411,7 @@ func (m *QuerySequencersResponse) Unmarshal(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Sequencers", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field sequencers", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -2613,7 +2613,7 @@ func (m *QueryGetSequencersByRollappResponse) Unmarshal(dAtA []byte) error {
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Sequencers", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field sequencers", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -2798,7 +2798,7 @@ func (m *QueryGetSequencersByRollappByStatusResponse) Unmarshal(dAtA []byte) err
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Sequencers", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field sequencers", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {

@@ -23,6 +23,7 @@ var (
 	responsesPrefix  = [1]byte{5}
 	sequencersPrefix = [1]byte{6}
 	cidPrefix        = [1]byte{7}
+	proposerPrefix   = [1]byte{8}
 )
 
 // DefaultStore is a default store implementation.
@@ -246,6 +247,44 @@ func (s *DefaultStore) LoadSequencers(height uint64) (*types.SequencerSet, error
 	return &ss, nil
 }
 
+// SaveProposer stores the proposer for given block height in store.
+func (s *DefaultStore) SaveProposer(height uint64, proposer *types.Sequencer, batch KVBatch) (KVBatch, error) {
+	pbProposer, err := proposer.ToProto()
+	if err != nil {
+		return batch, fmt.Errorf("marshal proposer to protobuf: %w", err)
+	}
+	blob, err := pbProposer.Marshal()
+	if err != nil {
+		return batch, fmt.Errorf("marshal proposer: %w", err)
+	}
+
+	if batch == nil {
+		return nil, s.db.Set(getProposerKey(height), blob)
+	}
+	err = batch.Set(getProposerKey(height), blob)
+	return batch, err
+}
+
+// LoadProposer loads proposer at given block height from store.
+func (s *DefaultStore) LoadProposer(height uint64) (*types.Sequencer, error) {
+	blob, err := s.db.Get(getProposerKey(height))
+	if err != nil {
+		return nil, fmt.Errorf("load proposer for height %v: %w", height, err)
+	}
+	pbProposer := new(pb.Sequencer)
+	err = pbProposer.Unmarshal(blob)
+	if err != nil {
+		return nil, fmt.Errorf("parsing blob as proposer: %w", err)
+	}
+
+	proposer, err := types.SequencerFromProto(pbProposer)
+	if err != nil {
+		return nil, fmt.Errorf("unmarshal proposer from proto: %w", err)
+	}
+
+	return &proposer, nil
+}
+
 func parseAsValidatorSet(blob []byte) (*types.SequencerSet, error) {
 	var (
 		ss          types.SequencerSet
@@ -331,4 +370,10 @@ func getCidKey(height uint64) []byte {
 	buf := make([]byte, 8)
 	binary.BigEndian.PutUint64(buf, height)
 	return append(cidPrefix[:], buf[:]...)
+}
+
+func getProposerKey(height uint64) []byte {
+	buf := make([]byte, 8)
+	binary.BigEndian.PutUint64(buf, height)
+	return append(sequencersPrefix[:], buf[:]...)
 }

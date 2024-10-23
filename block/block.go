@@ -128,9 +128,9 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 
 	// save sequencers to store to be queried over RPC
 	batch := m.Store.NewBatch()
-	batch, err = m.Store.SaveSequencers(block.Header.Height, &m.State.Sequencers, batch)
+	batch, err = m.Store.SaveProposer(block.Header.Height, m.State.GetProposer(), batch)
 	if err != nil {
-		return fmt.Errorf("save sequencers: %w", err)
+		return fmt.Errorf("save proposer: %w", err)
 	}
 
 	batch, err = m.Store.SaveState(m.State, batch)

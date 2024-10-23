@@ -184,7 +184,9 @@ func (m *Manager) Start(ctx context.Context) error {
 	})
 
 	// listen to new bonded sequencers events to add them in the sequencer set
-	go uevent.MustSubscribe(ctx, m.Pubsub, "newBondedSequencer", settlement.EventQueryNewBondedSequencer, m.UpdateSequencerSet, m.logger)
+	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
+		return m.MonitorSequencerSetUpdates(ctx)
+	})
 
 	/* ----------------------------- full node mode ----------------------------- */
 	if !isProposer {
@@ -305,7 +307,7 @@ func (m *Manager) syncFromSettlement() error {
 }
 
 func (m *Manager) GetProposerPubKey() tmcrypto.PubKey {
-	return m.State.Sequencers.GetProposerPubKey()
+	return m.State.GetProposerPubKey()
 }
 
 func (m *Manager) UpdateTargetHeight(h uint64) {

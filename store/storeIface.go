@@ -1,9 +1,10 @@
 package store
 
 import (
-	"github.com/dymensionxyz/dymint/types"
 	"github.com/ipfs/go-cid"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
+
+	"github.com/dymensionxyz/dymint/types"
 )
 
 // KV encapsulates key-value store abstraction, in minimalistic interface.
@@ -70,6 +71,10 @@ type Store interface {
 	SaveSequencers(height uint64, seqSet *types.SequencerSet, batch KVBatch) (KVBatch, error)
 
 	LoadSequencers(height uint64) (*types.SequencerSet, error)
+
+	SaveProposer(height uint64, proposer *types.Sequencer, batch KVBatch) (KVBatch, error)
+
+	LoadProposer(height uint64) (*types.Sequencer, error)
 
 	PruneStore(from, to uint64, logger types.Logger) (uint64, error)
 

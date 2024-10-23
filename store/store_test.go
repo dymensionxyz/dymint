@@ -13,10 +13,11 @@ import (
 
 	"github.com/dymensionxyz/dymint/store"
 
-	"github.com/dymensionxyz/dymint/testutil"
-	"github.com/dymensionxyz/dymint/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/dymensionxyz/dymint/testutil"
+	"github.com/dymensionxyz/dymint/types"
 )
 
 func TestStoreLoad(t *testing.T) {
@@ -248,4 +249,25 @@ func TestBlockId(t *testing.T) {
 	resultCid, err = s.LoadBlockCid(2)
 	require.NoError(err)
 	require.Equal(expectedCid, resultCid)
+}
+
+func TestProposer(t *testing.T) {
+	t.Parallel()
+
+	kv := store.NewDefaultInMemoryKVStore()
+	s := store.New(kv)
+
+	expected := testutil.GenerateSequencer()
+
+	_, err := s.SaveProposer(1, expected, nil)
+	require.NoError(t, err)
+
+	resp, err := s.LoadProposer(123)
+	require.Error(t, err)
+	require.Nil(t, resp)
+
+	resp, err = s.LoadProposer(1)
+	require.NoError(t, err)
+	require.NotNil(t, resp)
+	require.Equal(t, expected, resp)
 }

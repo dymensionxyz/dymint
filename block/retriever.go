@@ -7,12 +7,13 @@ import (
 
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 
+	"github.com/tendermint/tendermint/libs/pubsub"
+
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
-	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
 // onNewStateUpdate will try to sync to new height, if not already synced
@@ -90,7 +91,7 @@ func (m *Manager) syncFromDABatch() error {
 	if proposer == nil {
 		return fmt.Errorf("proposer not found: batch: %d: %s", stateIndex, settlementBatch.Batch.Sequencer)
 	}
-	m.State.Sequencers.SetProposer(proposer)
+	m.State.SetProposer(proposer)
 
 	err = m.ProcessNextDABatch(settlementBatch.MetaData.DA)
 	if err != nil {
