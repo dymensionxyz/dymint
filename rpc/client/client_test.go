@@ -364,8 +364,8 @@ func TestValidatedHeight(t *testing.T) {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 
-			node.BlockManager.State.LastValidatedHeight.Store(test.validatedHeight)
-			node.BlockManager.LastSubmittedHeight.Store(test.submittedHeight)
+			node.BlockManager.SettlementValidator.UpdateLastValidatedHeight(test.validatedHeight)
+			node.BlockManager.LastSettlementHeight.Store(test.submittedHeight)
 
 			node.BlockManager.State.SetHeight(test.nodeHeight)
 

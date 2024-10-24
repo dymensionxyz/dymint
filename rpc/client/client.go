@@ -818,7 +818,8 @@ func (c *Client) BlockValidated(ctx context.Context, height *int64) (*ResultBloc
 	if uint64(*height) > c.node.BlockManager.State.Height() {
 		return &ResultBlockValidated{Result: BlockNotValidated}, nil
 	}
-	if uint64(*height) <= c.node.BlockManager.State.GetLastValidatedHeight() {
+
+	if uint64(*height) <= c.node.BlockManager.SettlementValidator.GetLastValidatedHeight() {
 		return &ResultBlockValidated{Result: BlockValidatedWithSL}, nil
 	}
 
