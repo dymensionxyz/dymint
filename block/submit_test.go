@@ -140,6 +140,9 @@ func TestBatchSubmissionHappyFlow(t *testing.T) {
 	assert.Greater(t, manager.State.Height(), initialHeight)
 	assert.Zero(t, manager.LastSettlementHeight.Load())
 
+	// add drs version to state
+	manager.State.AddDRSVersion(0, version.Commit)
+
 	// submit and validate sync target
 	manager.CreateAndSubmitBatch(manager.Conf.BatchSubmitBytes, false)
 	assert.EqualValues(t, manager.State.Height(), manager.LastSettlementHeight.Load())
@@ -187,6 +190,9 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 
 	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
 	manager.Retriever = manager.DAClient.(da.BatchRetriever)
+
+	// add drs version to state
+	manager.State.AddDRSVersion(0, version.Commit)
 
 	// Check initial assertions
 	initialHeight := uint64(0)
@@ -252,6 +258,9 @@ func TestSubmissionByTime(t *testing.T) {
 
 	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
 	manager.Retriever = manager.DAClient.(da.BatchRetriever)
+
+	// add drs version to state
+	manager.State.AddDRSVersion(0, version.Commit)
 
 	// Check initial height
 	initialHeight := uint64(0)
@@ -328,6 +337,9 @@ func TestSubmissionByBatchSize(t *testing.T) {
 
 		manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
 		manager.Retriever = manager.DAClient.(da.BatchRetriever)
+
+		// add drs version to state
+		manager.State.AddDRSVersion(0, version.Commit)
 
 		assert.Equal(manager.State.Height(), uint64(0))
 

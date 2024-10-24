@@ -43,6 +43,9 @@ func TestPruningRetainHeight(t *testing.T) {
 	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
 	manager.Retriever = manager.DAClient.(da.BatchRetriever)
 
+	// add drs version to state
+	manager.State.AddDRSVersion(0, version.Commit)
+
 	// Check initial assertions
 	require.Zero(manager.State.Height())
 	require.Zero(manager.LastSettlementHeight.Load())

@@ -201,8 +201,14 @@ func (m *Manager) CreateBatch(maxBatchSize uint64, startHeight uint64, endHeight
 			return nil, fmt.Errorf("load commit: h: %d: %w", h, err)
 		}
 
+		drsVersion, err := m.State.GetDRSVersion(block.Header.Height)
+		if err != nil {
+			return nil, fmt.Errorf("load drs: h: %d: %w", h, err)
+		}
+
 		batch.Blocks = append(batch.Blocks, block)
 		batch.Commits = append(batch.Commits, commit)
+		batch.DRSVersion = append(batch.DRSVersion, drsVersion)
 
 		totalSize := batch.SizeBytes()
 		if int(maxBatchSize) < totalSize {
@@ -210,6 +216,7 @@ func (m *Manager) CreateBatch(maxBatchSize uint64, startHeight uint64, endHeight
 			// Remove the last block and commit from the batch
 			batch.Blocks = batch.Blocks[:len(batch.Blocks)-1]
 			batch.Commits = batch.Commits[:len(batch.Commits)-1]
+			batch.DRSVersion = batch.DRSVersion[:len(batch.DRSVersion)-1]
 
 			if h == startHeight {
 				return nil, fmt.Errorf("block size exceeds max batch size: h %d: size: %d: %w", h, totalSize, gerrc.ErrOutOfRange)

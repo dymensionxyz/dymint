@@ -610,6 +610,9 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 	manager, err := testutil.GetManager(managerConfig, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 
+	// add drs version to state
+	manager.State.AddDRSVersion(0, version.Commit)
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 

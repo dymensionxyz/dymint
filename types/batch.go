@@ -10,7 +10,8 @@ type Batch struct {
 	Blocks  []*Block
 	Commits []*Commit
 	// LastBatch is true if this is the last batch of the sequencer (i.e completes it's rotation flow).
-	LastBatch bool
+	LastBatch  bool
+	DRSVersion []string
 }
 
 // StartHeight is the height of the first block in the batch.
