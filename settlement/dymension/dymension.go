@@ -28,7 +28,6 @@ import (
 	rollapptypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
 	sequencertypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/sequencer"
 	protoutils "github.com/dymensionxyz/dymint/utils/proto"
-	"github.com/dymensionxyz/dymint/version"
 )
 
 const (
@@ -541,9 +540,10 @@ func (c *Client) convertBatchToMsgUpdateState(batch *types.Batch, daResult *da.R
 	blockDescriptors := make([]rollapptypes.BlockDescriptor, len(batch.Blocks))
 	for index, block := range batch.Blocks {
 		blockDescriptor := rollapptypes.BlockDescriptor{
-			Height:    block.Header.Height,
-			StateRoot: block.Header.AppHash[:],
-			Timestamp: block.Header.GetTimestamp(),
+			Height:     block.Header.Height,
+			StateRoot:  block.Header.AppHash[:],
+			Timestamp:  block.Header.GetTimestamp(),
+			DrsVersion: batch.DRSVersion[index],
 		}
 		blockDescriptors[index] = blockDescriptor
 	}
@@ -556,7 +556,6 @@ func (c *Client) convertBatchToMsgUpdateState(batch *types.Batch, daResult *da.R
 		DAPath:      daResult.SubmitMetaData.ToPath(),
 		BDs:         rollapptypes.BlockDescriptors{BD: blockDescriptors},
 		Last:        batch.LastBatch,
-		DrsVersion:  version.Commit,
 	}
 	return settlementBatch, nil
 }

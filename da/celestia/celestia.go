@@ -328,7 +328,14 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMet
 	var batch pb.Batch
 	err = proto.Unmarshal(blob.Data, &batch)
 	if err != nil {
-		c.logger.Error("Unmarshal block.", "daHeight", daMetaData.Height, "error", err)
+		c.logger.Error("Unmarshal blob.", "daHeight", daMetaData.Height, "error", err)
+		return da.ResultRetrieveBatch{
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: err.Error(),
+				Error:   da.ErrBlobNotParsed,
+			},
+		}
 	}
 
 	c.logger.Debug("Blob retrieved successfully from DA.", "DA height", daMetaData.Height, "lastBlockHeight", batch.EndHeight)
@@ -340,7 +347,7 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMet
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
 				Message: err.Error(),
-				Error:   err,
+				Error:   da.ErrBlobNotParsed,
 			},
 		}
 	}

@@ -862,8 +862,12 @@ func TestValidatorSetHandling(t *testing.T) {
 		log.TestingLogger(),
 		mempool.NopMetrics(),
 	)
+
 	require.NoError(err)
 	require.NotNil(node)
+
+	// add drs version to state
+	node.BlockManager.State.AddDRSVersion(0, version.Commit)
 
 	rpc := client.NewClient(node)
 	require.NotNil(rpc)
