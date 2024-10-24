@@ -198,22 +198,28 @@ func (m *Manager) Start(ctx context.Context) error {
 	isProposer := m.IsProposer()
 	m.logger.Info("starting block manager", "proposer", isProposer)
 
-	eg, ctx := errgroup.WithContext(ctx)
-	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
-		return m.PruningLoop(ctx)
-	})
-
-	// listen to new bonded sequencers events to add them in the sequencer set
-	go uevent.MustSubscribe(ctx, m.Pubsub, "newBondedSequencer", settlement.EventQueryNewBondedSequencer, m.UpdateSequencerSet, m.logger)
-	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
-		return m.SettlementSyncLoop(ctx)
-	})
-
 	// update local state from latest state in settlement
 	err = m.updateFromLastSettlementState()
 	if err != nil {
 		return fmt.Errorf("sync block manager from settlement: %w", err)
 	}
+
+	// listen to new bonded sequencers events to add them in the sequencer set
+	go uevent.MustSubscribe(ctx, m.Pubsub, "newBondedSequencer", settlement.EventQueryNewBondedSequencer, m.UpdateSequencerSet, m.logger)
+	// send signal to syncing loop with last settlement state update
+	m.triggerSettlementSyncing()
+	// send signal to validation loop with last settlement state update
+	m.triggerSettlementValidation()
+
+	eg, ctx := errgroup.WithContext(ctx)
+
+	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
+		return m.PruningLoop(ctx)
+	})
+
+	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
+		return m.SettlementSyncLoop(ctx)
+	})
 
 	/* ----------------------------- full node mode ----------------------------- */
 	if !isProposer {
@@ -334,11 +340,6 @@ func (m *Manager) updateFromLastSettlementState() error {
 	if err != nil {
 		return err
 	}
-
-	// send signal to syncing loop with last settlement state update
-	m.triggerSettlementSyncing()
-	// send signal to validation loop with last settlement state update
-	m.triggerSettlementValidation()
 
 	return nil
 }

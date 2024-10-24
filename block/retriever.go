@@ -9,7 +9,7 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
-func (m *Manager) ApplyFromSLBatch(daMetaData *da.DASubmitMetaData) error {
+func (m *Manager) ApplyBatchFromSL(daMetaData *da.DASubmitMetaData) error {
 
 	m.logger.Debug("trying to retrieve batch from DA", "daHeight", daMetaData.Height)
 	batchResp := m.fetchBatch(daMetaData)

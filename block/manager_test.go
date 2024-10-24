@@ -399,7 +399,7 @@ func TestRetrieveDaBatchesFailed(t *testing.T) {
 		Height: 1,
 	}
 
-	err = manager.ApplyFromSLBatch(daMetaData)
+	err = manager.ApplyBatchFromSL(daMetaData)
 	t.Log(err)
 	assert.ErrorIs(t, err, da.ErrBlobNotFound)
 }
@@ -742,15 +742,14 @@ func TestDAFetch(t *testing.T) {
 				LastBlockAppHash: commitHash[:],
 			})
 
-			err := manager.ApplyFromSLBatch(c.daMetaData)
+			err := manager.ApplyBatchFromSL(c.daMetaData)
 			require.Equal(c.err, err)
 		})
 	}
 }
 
-// TestManager_ProcessNextDABatch_FraudHandling tests the case when the manager receives a fraud when the block is
-// part of the batch received from the DA.
-func TestManager_ProcessNextDABatch_FraudHandling(t *testing.T) {
+// TestManager_ApplyBatchFromSL_FraudHandling tests the case when the manager receives a fraud when the block is part of the batch received from the DA.
+func TestManager_ApplyBatchFromSL_FraudHandling(t *testing.T) {
 	require := require.New(t)
 	// Setup app
 	app := testutil.GetAppMock(testutil.Info, testutil.Commit, testutil.EndBlock)
@@ -815,8 +814,8 @@ func TestManager_ProcessNextDABatch_FraudHandling(t *testing.T) {
 		LastBlockAppHash: commitHash[:],
 	})
 
-	// Call ProcessNextDABatch
-	err = manager.ApplyFromSLBatch(daResultSubmitBatch.SubmitMetaData)
+	// Call ApplyBatchFromSL
+	err = manager.ApplyBatchFromSL(daResultSubmitBatch.SubmitMetaData)
 
 	// Verify
 	require.True(errors.Is(err, gerrc.ErrFault))

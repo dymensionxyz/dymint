@@ -76,7 +76,7 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 				}
 				m.logger.Info("Retrieved state update from SL.", "state_index", settlementBatch.StateIndex)
 
-				err = m.ApplyFromSLBatch(settlementBatch.MetaData.DA)
+				err = m.ApplyBatchFromSL(settlementBatch.MetaData.DA)
 				if err != nil {
 					m.logger.Error("process next DA batch", "err", err)
 				}
