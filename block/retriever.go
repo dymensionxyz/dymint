@@ -16,13 +16,6 @@ func (m *Manager) syncFromDABatch() error {
 	}
 	m.logger.Info("Retrieved batch.", "state_index", settlementBatch.StateIndex)
 
-	// update the proposer when syncing from the settlement layer
-	proposer := m.State.Sequencers.GetByAddress(settlementBatch.Batch.Sequencer)
-	if proposer == nil {
-		return fmt.Errorf("proposer not found: batch: %d: %s", settlementBatch.StateIndex, settlementBatch.Batch.Sequencer)
-	}
-	m.State.Sequencers.SetProposer(proposer)
-
 	err = m.ProcessNextDABatch(settlementBatch.MetaData.DA)
 	if err != nil {
 		return fmt.Errorf("process next DA batch: %w", err)

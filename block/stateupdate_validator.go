@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"fmt"
+	"sync/atomic"
 
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/settlement"
@@ -12,16 +13,26 @@ import (
 
 // StateUpdateValidator is a validator for messages gossiped in the p2p network.
 type StateUpdateValidator struct {
-	logger       types.Logger
-	blockManager *Manager
+	logger              types.Logger
+	blockManager        *Manager
+	lastValidatedHeight atomic.Uint64
 }
 
 // NewStateUpdateValidator returns a new StateUpdateValidator instance.
 func NewStateUpdateValidator(logger types.Logger, blockManager *Manager) *StateUpdateValidator {
-	return &StateUpdateValidator{
+
+	lastValidatedHeight, err := blockManager.Store.LoadValidationHeight()
+	if err != nil {
+		logger.Debug("validation height not loaded", "err", err)
+	}
+
+	validator := &StateUpdateValidator{
 		logger:       logger,
 		blockManager: blockManager,
 	}
+	validator.lastValidatedHeight.Store(lastValidatedHeight)
+
+	return validator
 }
 
 // ValidateStateUpdate validates that the blocks from the state info are available in DA,
@@ -140,6 +151,31 @@ func (v *StateUpdateValidator) ValidateDaBlocks(slBatch *settlement.ResultRetrie
 	}
 
 	return nil
+}
+
+// UpdateLastValidatedHeight sets the height saved in the Store if it is higher than the existing height
+// returns OK if the value was updated successfully or did not need to be updated
+func (v *StateUpdateValidator) UpdateLastValidatedHeight(height uint64) {
+	for {
+		curr := v.lastValidatedHeight.Load()
+		if v.lastValidatedHeight.CompareAndSwap(curr, max(curr, height)) {
+			_, err := v.blockManager.Store.SaveValidationHeight(v.GetLastValidatedHeight(), nil)
+			if err != nil {
+				v.logger.Error("update validation height: %w", err)
+			}
+			break
+		}
+	}
+}
+
+// GetLastValidatedHeight returns the most last block height that is validated with settlement state updates.
+func (v *StateUpdateValidator) GetLastValidatedHeight() uint64 {
+	return v.lastValidatedHeight.Load()
+}
+
+// GetLastValidatedHeight returns the next height that needs to be validated with settlement state updates.
+func (v *StateUpdateValidator) NextValidationHeight() uint64 {
+	return v.lastValidatedHeight.Load() + 1
 }
 
 // blockHash generates a hash from the block bytes to compare them

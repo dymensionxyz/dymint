@@ -19,16 +19,12 @@ func (m *Manager) onNewStateUpdateFinalized(event pubsub.Message) {
 		m.logger.Error("onNewStateUpdateFinalized", "err", "wrong event data received")
 		return
 	}
-	m.UpdateLastValidatedHeight(eventData.EndHeight)
+	m.settlementValidator.UpdateLastValidatedHeight(eventData.EndHeight)
 }
 
 // ValidateLoop listens for syncing events (from new state update or from initial syncing) and validates state updates to the last submitted height.
 func (m *Manager) ValidateLoop(ctx context.Context) error {
-	lastValidatedHeight, err := m.Store.LoadValidationHeight()
-	if err != nil {
-		m.logger.Debug("validation height not loaded", "err", err)
-	}
-	m.UpdateLastValidatedHeight(lastValidatedHeight)
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -37,7 +33,7 @@ func (m *Manager) ValidateLoop(ctx context.Context) error {
 
 			m.logger.Info("validating state updates to target height", "targetHeight", m.LastSettlementHeight.Load())
 
-			for currH := m.NextValidationHeight(); currH <= m.LastSettlementHeight.Load(); currH = m.NextValidationHeight() {
+			for currH := m.settlementValidator.NextValidationHeight(); currH <= m.LastSettlementHeight.Load(); currH = m.settlementValidator.NextValidationHeight() {
 
 				// get next batch that needs to be validated from SL
 				batch, err := m.SLClient.GetBatchAtHeight(currH)
@@ -57,36 +53,11 @@ func (m *Manager) ValidateLoop(ctx context.Context) error {
 				}
 
 				// update the last validated height to the batch last block height
-				m.UpdateLastValidatedHeight(batch.EndHeight)
+				m.settlementValidator.UpdateLastValidatedHeight(batch.EndHeight)
 
-				m.logger.Debug("state info validated", "batch end height", batch.EndHeight, "lastValidatedHeight", m.GetLastValidatedHeight())
+				m.logger.Debug("state info validated", "batch end height", batch.EndHeight, "lastValidatedHeight", m.settlementValidator.GetLastValidatedHeight())
 			}
 
 		}
 	}
-}
-
-// UpdateLastValidatedHeight sets the height saved in the Store if it is higher than the existing height
-// returns OK if the value was updated successfully or did not need to be updated
-func (m *Manager) UpdateLastValidatedHeight(height uint64) {
-	for {
-		curr := m.lastValidatedHeight.Load()
-		if m.lastValidatedHeight.CompareAndSwap(curr, max(curr, height)) {
-			_, err := m.Store.SaveValidationHeight(m.GetLastValidatedHeight(), nil)
-			if err != nil {
-				m.logger.Error("update validation height: %w", err)
-			}
-			break
-		}
-	}
-}
-
-// GetLastValidatedHeight returns the most last block height that is validated with settlement state updates.
-func (m *Manager) GetLastValidatedHeight() uint64 {
-	return m.lastValidatedHeight.Load()
-}
-
-// GetLastValidatedHeight returns the next height that needs to be validated with settlement state updates.
-func (m *Manager) NextValidationHeight() uint64 {
-	return m.lastValidatedHeight.Load() + 1
 }

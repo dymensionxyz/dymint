@@ -32,19 +32,19 @@ func (m *Manager) onNewStateUpdate(event pubsub.Message) {
 	}
 
 	if eventData.EndHeight > m.State.Height() {
-		// Trigger syncing from DA.
-		m.triggerStateUpdateSyncing()
+		// trigger syncing from settlement last state update.
+		m.triggerSettlementSyncing()
 		// update target height used for syncing status rpc
 		m.UpdateTargetHeight(eventData.EndHeight)
 
 	} else {
-		// trigger state update validation (in case no state update is applied)
-		m.triggerStateUpdateValidation()
+		// trigger validation of the last state update available in settlement
+		m.triggerSettlementValidation()
 	}
 }
 
 // SettlementSyncLoop listens for syncing triggers which indicate new settlement height updates, and attempts to sync to the last seen settlement height.
-// Syncing triggers can be called when a new settlement state update event arrives or explicitly from the `SyncFromSettlement` method which is only being called upon startup.
+// Syncing triggers can be called when a new settlement state update event arrives or explicitly from the `updateFromLastSettlementState` method which is only being called upon startup.
 // Upon new trigger, we know the settlement reached a new height we haven't seen before so a validation signal is sent to validate the settlement batch.
 
 // Note: even when a sync is triggered, there is no guarantee that the batch will be applied from settlement as there is a race condition with the p2p/blocksync for syncing.
@@ -83,7 +83,7 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 				m.logger.Info("Synced from DA", "store height", m.State.Height(), "target height", m.LastSettlementHeight.Load())
 
 				// trigger state update validation, after each state update is applied
-				m.triggerStateUpdateValidation()
+				m.triggerSettlementValidation()
 
 				err = m.attemptApplyCachedBlocks()
 				if err != nil {
@@ -110,7 +110,7 @@ func (m *Manager) waitForSettlementSyncing() {
 }
 
 // triggerStateUpdateSyncing sends signal to channel used by syncing loop
-func (m *Manager) triggerStateUpdateSyncing() {
+func (m *Manager) triggerSettlementSyncing() {
 	select {
 	case m.settlementSyncingC <- struct{}{}:
 	default:
@@ -119,7 +119,7 @@ func (m *Manager) triggerStateUpdateSyncing() {
 }
 
 // triggerStateUpdateValidation sends signal to channel used by validation loop
-func (m *Manager) triggerStateUpdateValidation() {
+func (m *Manager) triggerSettlementValidation() {
 	select {
 	case m.settlementValidationC <- struct{}{}:
 	default:
