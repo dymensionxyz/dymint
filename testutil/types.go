@@ -170,7 +170,6 @@ func GenerateCommits(blocks []*types.Block, proposerKey crypto.PrivKey) ([]*type
 }
 
 func GenerateDRS(blocks int) []string {
-
 	drs := make([]string, blocks)
 	for i := 0; i < blocks; i++ {
 		drs = append(drs, dymintversion.Commit)
