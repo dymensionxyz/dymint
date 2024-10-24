@@ -255,9 +255,13 @@ func (s *State) ToProto() (*pb.State, error) {
 		return nil, err
 	}
 
-	proposer, err := s.Proposer.Load().ToProto()
-	if err != nil {
-		return nil, err
+	var proposerProto *pb.Sequencer
+	proposer := s.GetProposer()
+	if proposer != nil {
+		proposerProto, err = proposer.ToProto()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &pb.State{
@@ -272,7 +276,7 @@ func (s *State) ToProto() (*pb.State, error) {
 		LastResultsHash:                  s.LastResultsHash[:],
 		AppHash:                          s.AppHash[:],
 		RollappParams:                    s.RollappParams,
-		Proposer:                         proposer,
+		Proposer:                         proposerProto,
 	}, nil
 }
 
@@ -290,12 +294,16 @@ func (s *State) FromProto(other *pb.State) error {
 		return err
 	}
 
-	proposer, err := SequencerFromProto(other.Proposer)
-	if err != nil {
-		return err
+	if other.Proposer != nil {
+		proposer, err := SequencerFromProto(other.Proposer)
+		if err != nil {
+			return err
+		}
+		s.SetProposer(proposer)
+	} else {
+		// proposer may be nil
+		s.SetProposer(nil)
 	}
-	// proposer may be nil
-	s.Proposer.Store(proposer)
 
 	s.ConsensusParams = other.ConsensusParams
 	s.LastHeightConsensusParamsChanged = other.LastHeightConsensusParamsChanged
@@ -306,10 +314,9 @@ func (s *State) FromProto(other *pb.State) error {
 }
 
 // ToProto converts Sequencer into protobuf representation and returns it.
-// Sequencer is nullable, so returning nil is a valid case.
 func (s *Sequencer) ToProto() (*pb.Sequencer, error) {
 	if s == nil {
-		return nil, nil
+		return nil, fmt.Errorf("nil sequencer")
 	}
 	protoVal, err := s.val.ToProto()
 	if err != nil {
@@ -322,10 +329,9 @@ func (s *Sequencer) ToProto() (*pb.Sequencer, error) {
 }
 
 // SequencerFromProto fills Sequencer with data from its protobuf representation.
-// Sequencer is nullable, so returning nil is a valid case.
 func SequencerFromProto(seq *pb.Sequencer) (*Sequencer, error) {
 	if seq == nil {
-		return nil, nil
+		return nil, fmt.Errorf("nil sequencer")
 	}
 	val, err := types.ValidatorFromProto(seq.Validator)
 	if err != nil {

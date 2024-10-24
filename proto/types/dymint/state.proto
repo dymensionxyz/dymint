@@ -47,7 +47,7 @@ message State {
 
   bytes last_header_hash = 20;
 
-  Sequencer proposer = 21;
+  Sequencer proposer = 21 [(gogoproto.nullable) = true];
 }
 
 //rollapp params defined in genesis and updated via gov proposal

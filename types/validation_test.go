@@ -8,11 +8,6 @@ import (
 
 	"github.com/cometbft/cometbft/libs/math"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
-	"github.com/tendermint/tendermint/crypto/ed25519"
-	tmtypes "github.com/tendermint/tendermint/types"
-
-	"github.com/cometbft/cometbft/libs/math"
-	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/crypto/ed25519"
@@ -37,10 +32,9 @@ func TestBlock_ValidateWithState(t *testing.T) {
 		LastResultsHash: [32]byte{4, 5, 6},
 		LastHeaderHash:  [32]byte{7, 8, 9},
 		ChainID:         "chainID",
-		Proposer:        atomic.Pointer[Sequencer]{},
 	}
 	validState.LastBlockHeight.Store(9)
-	validState.Proposer.Store(proposer)
+	validState.SetProposer(proposer)
 
 	validBlock := &Block{
 		Header: Header{

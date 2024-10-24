@@ -68,10 +68,6 @@ type Store interface {
 	// LoadState returns last state saved with UpdateState.
 	LoadState() (*types.State, error)
 
-	SaveSequencers(height uint64, seqSet *types.SequencerSet, batch KVBatch) (KVBatch, error)
-
-	LoadSequencers(height uint64) (*types.SequencerSet, error)
-
 	SaveProposer(height uint64, proposer *types.Sequencer, batch KVBatch) (KVBatch, error)
 
 	LoadProposer(height uint64) (*types.Sequencer, error)

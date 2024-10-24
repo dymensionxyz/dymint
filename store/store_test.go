@@ -7,15 +7,12 @@ import (
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/ipfs/go-cid"
 	mh "github.com/multiformats/go-multihash"
-
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	abcitypes "github.com/tendermint/tendermint/abci/types"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 
 	"github.com/dymensionxyz/dymint/store"
-
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
 )
@@ -259,15 +256,48 @@ func TestProposer(t *testing.T) {
 
 	expected := testutil.GenerateSequencer()
 
-	_, err := s.SaveProposer(1, expected, nil)
-	require.NoError(t, err)
+	t.Run("happy path", func(t *testing.T) {
+		t.Parallel()
 
-	resp, err := s.LoadProposer(123)
-	require.Error(t, err)
-	require.Nil(t, resp)
+		_, err := s.SaveProposer(1, expected, nil)
+		require.NoError(t, err)
 
-	resp, err = s.LoadProposer(1)
-	require.NoError(t, err)
-	require.NotNil(t, resp)
-	require.Equal(t, expected, resp)
+		resp, err := s.LoadProposer(1)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Equal(t, expected, resp)
+	})
+
+	t.Run("proposer not found", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := s.SaveProposer(2, expected, nil)
+		require.NoError(t, err)
+
+		resp, err := s.LoadProposer(2000)
+		require.Error(t, err)
+		require.Nil(t, resp)
+	})
+
+	t.Run("empty proposer is invalid", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := s.SaveProposer(3, &types.Sequencer{}, nil)
+		require.Error(t, err)
+
+		resp, err := s.LoadProposer(3)
+		require.Error(t, err)
+		require.Nil(t, resp)
+	})
+
+	t.Run("nil proposer is valid", func(t *testing.T) {
+		t.Parallel()
+
+		_, err := s.SaveProposer(3, nil, nil)
+		require.NoError(t, err)
+
+		resp, err := s.LoadProposer(3)
+		require.NoError(t, err)
+		require.Nil(t, resp)
+	})
 }

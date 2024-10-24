@@ -155,16 +155,16 @@ func (e *Executor) UpdateProposerFromBlock(s *types.State, block *types.Block) b
 	}
 
 	// if hash changed, update the proposer
-	seq, err := s.Sequencers.GetByHash(block.Header.NextSequencersHash[:])
-	if err != nil {
-		e.logger.Error("get proposer by hash", "err", err)
-		panic(fmt.Sprintf("get proposer by hash: %v", err))
+	seq, found := s.Sequencers.GetByHash(block.Header.NextSequencersHash[:])
+	if !found {
+		e.logger.Error("cannot find proposer by hash")
+		panic("cannot find proposer by hash")
 	}
-	s.Proposer.Store(&seq)
+	s.SetProposer(&seq)
 
 	// check if this node becomes a proposer
-	localSeq := s.Sequencers.GetByConsAddress(e.localAddress)
-	if localSeq != nil && bytes.Equal(localSeq.MustHash(), block.Header.NextSequencersHash[:]) {
+	localSeq, found := s.Sequencers.GetByConsAddress(e.localAddress)
+	if found && bytes.Equal(localSeq.MustHash(), block.Header.NextSequencersHash[:]) {
 		return true
 	}
 

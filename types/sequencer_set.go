@@ -96,6 +96,13 @@ func (s *SequencerSet) SetSequencers(sequencers []Sequencer) {
 	s.sequencers = sequencers
 }
 
+// AppendSequencer appends a new sequencer the sequencer set.
+func (s *SequencerSet) AppendSequencer(sequencer Sequencer) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.sequencers = append(s.sequencers, sequencer)
+}
+
 func (s *SequencerSet) GetSequencers() []Sequencer {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -103,40 +110,40 @@ func (s *SequencerSet) GetSequencers() []Sequencer {
 }
 
 // GetByHash gets the sequencer by hash. It returns an error if the hash is not found in the sequencer set.
-func (s *SequencerSet) GetByHash(hash []byte) (Sequencer, error) {
+func (s *SequencerSet) GetByHash(hash []byte) (Sequencer, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	for _, seq := range s.sequencers {
 		if bytes.Equal(seq.MustHash(), hash) {
-			return seq, nil
+			return seq, true
 		}
 	}
-	return Sequencer{}, ErrMissingProposerPubKey
+	return Sequencer{}, false
 }
 
 // GetByAddress returns the sequencer with the given settlement address.
 // used when handling events from the settlement, where the settlement address is used
-func (s *SequencerSet) GetByAddress(settlementAddress string) *Sequencer {
+func (s *SequencerSet) GetByAddress(settlementAddress string) (Sequencer, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	for _, seq := range s.sequencers {
 		if seq.SettlementAddress == settlementAddress {
-			return &seq
+			return seq, true
 		}
 	}
-	return nil
+	return Sequencer{}, false
 }
 
 // GetByConsAddress returns the sequencer with the given consensus address.
-func (s *SequencerSet) GetByConsAddress(consAddr []byte) *Sequencer {
+func (s *SequencerSet) GetByConsAddress(consAddr []byte) (Sequencer, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	for _, seq := range s.sequencers {
 		if bytes.Equal(seq.val.Address, consAddr) {
-			return &seq
+			return seq, true
 		}
 	}
-	return nil
+	return Sequencer{}, false
 }
 
 func (s *SequencerSet) String() string {

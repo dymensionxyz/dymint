@@ -520,15 +520,22 @@ func (c *Client) Commit(ctx context.Context, height *int64) (*ctypes.ResultCommi
 // Validators returns paginated list of validators at given height.
 func (c *Client) Validators(ctx context.Context, heightPtr *int64, pagePtr, perPagePtr *int) (*ctypes.ResultValidators, error) {
 	height := c.normalizeHeight(heightPtr)
+
 	proposer, err := c.node.Store.LoadProposer(height)
 	if err != nil {
 		return nil, fmt.Errorf("load validators for height %d: %w", height, err)
 	}
+
+	var validators []*tmtypes.Validator
+	if proposer != nil {
+		validators = proposer.TMValidators()
+	}
+
 	return &ctypes.ResultValidators{
 		BlockHeight: int64(height),
-		Validators:  proposer.TMValidators(),
-		Count:       1,
-		Total:       1,
+		Validators:  validators,
+		Count:       len(validators),
+		Total:       len(validators),
 	}, nil
 }
 

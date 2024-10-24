@@ -223,11 +223,6 @@ func (m *Manager) Start(ctx context.Context) error {
 		return m.SettlementSyncLoop(ctx)
 	})
 
-	// listen to new bonded sequencers events to add them in the sequencer set
-	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
-		return m.MonitorSequencerSetUpdates(ctx)
-	})
-
 	/* ----------------------------- full node mode ----------------------------- */
 	if !isProposer {
 

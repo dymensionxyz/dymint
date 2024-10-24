@@ -5,8 +5,6 @@ import (
 
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 
-	"github.com/tendermint/tendermint/libs/pubsub"
-
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/types"
 )
