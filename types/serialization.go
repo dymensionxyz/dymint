@@ -269,6 +269,7 @@ func (s *State) ToProto() (*pb.State, error) {
 		ConsensusParams:                  s.ConsensusParams,
 		LastHeightConsensusParamsChanged: s.LastHeightConsensusParamsChanged,
 		LastResultsHash:                  s.LastResultsHash[:],
+		LastHeaderHash:                   s.LastHeaderHash[:],
 		AppHash:                          s.AppHash[:],
 		RollappParams:                    s.RollappParams,
 		Proposer:                         proposerProto,

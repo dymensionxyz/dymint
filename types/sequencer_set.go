@@ -160,17 +160,3 @@ func NewSequencerFromValidator(val types.Validator) *Sequencer {
 		val:               val,
 	}
 }
-
-// LoadFromValSet sets the sequencers from a tendermint validator set.
-// used for backward compatibility. should be used only for queries (used by rpc/client)
-func (s *SequencerSet) LoadFromValSet(valSet *types.ValidatorSet) {
-	if valSet == nil {
-		return
-	}
-
-	sequencers := make([]Sequencer, len(valSet.Validators))
-	for i, val := range valSet.Validators {
-		sequencers[i] = *NewSequencerFromValidator(*val)
-	}
-	s.sequencers = sequencers
-}
