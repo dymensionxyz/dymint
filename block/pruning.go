@@ -7,7 +7,6 @@ import (
 
 // PruneBlocks prune all block related data from dymint store up to (but not including) retainHeight. It returns the number of blocks pruned, used for testing.
 func (m *Manager) PruneBlocks(retainHeight uint64) (uint64, error) {
-
 	// prune blocks from blocksync store
 	err := m.P2PClient.RemoveBlocks(context.Background(), m.State.BaseHeight, retainHeight)
 	if err != nil {

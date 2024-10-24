@@ -10,7 +10,6 @@ import (
 )
 
 func (m *Manager) ApplyBatchFromSL(daMetaData *da.DASubmitMetaData) error {
-
 	m.logger.Debug("trying to retrieve batch from DA", "daHeight", daMetaData.Height)
 	batchResp := m.fetchBatch(daMetaData)
 	if batchResp.Code != da.StatusSuccess {

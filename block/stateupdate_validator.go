@@ -20,7 +20,6 @@ type StateUpdateValidator struct {
 
 // NewStateUpdateValidator returns a new StateUpdateValidator instance.
 func NewStateUpdateValidator(logger types.Logger, blockManager *Manager) *StateUpdateValidator {
-
 	lastValidatedHeight, err := blockManager.Store.LoadValidationHeight()
 	if err != nil {
 		logger.Debug("validation height not loaded", "err", err)
