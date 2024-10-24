@@ -31,7 +31,7 @@ const (
 
 func createRandomHashes() [][32]byte {
 	h := [][32]byte{}
-	for i := 0; i < 8; i++ {
+	for i := 0; i < 4; i++ {
 		var h1 [32]byte
 		_, err := rand.Read(h1[:])
 		if err != nil {
@@ -66,6 +66,7 @@ func GenerateSettlementAddress() string {
 // generateBlock generates random blocks.
 func generateBlock(height uint64, proposerHash []byte, lastHeaderHash [32]byte) *types.Block {
 	h := createRandomHashes()
+
 	block := &types.Block{
 		Header: types.Header{
 			Version: types.Version{
@@ -75,9 +76,9 @@ func generateBlock(height uint64, proposerHash []byte, lastHeaderHash [32]byte) 
 			Height:             height,
 			Time:               4567,
 			LastHeaderHash:     lastHeaderHash,
-			LastCommitHash:     h[1],
-			DataHash:           h[2],
-			ConsensusHash:      h[3],
+			LastCommitHash:     h[0],
+			DataHash:           h[1],
+			ConsensusHash:      h[2],
 			AppHash:            [32]byte{},
 			LastResultsHash:    GetEmptyLastResultsHash(),
 			ProposerAddress:    []byte{4, 3, 2, 1},
@@ -92,7 +93,7 @@ func generateBlock(height uint64, proposerHash []byte, lastHeaderHash [32]byte) 
 		},
 		LastCommit: types.Commit{
 			Height:     8,
-			HeaderHash: h[7],
+			HeaderHash: h[3],
 			Signatures: []types.Signature{},
 		},
 	}
@@ -100,7 +101,7 @@ func generateBlock(height uint64, proposerHash []byte, lastHeaderHash [32]byte) 
 	return block
 }
 
-func GenerateBlocksWithTxs(startHeight uint64, num uint64, proposerKey crypto.PrivKey, nTxs int) ([]*types.Block, error) {
+func GenerateBlocksWithTxs(startHeight uint64, num uint64, proposerKey crypto.PrivKey, nTxs int, chainId string) ([]*types.Block, error) {
 	r, _ := proposerKey.Raw()
 	seq := types.NewSequencerFromValidator(*tmtypes.NewValidator(ed25519.PrivKey(r).PubKey(), 1))
 	proposerHash := seq.MustHash()

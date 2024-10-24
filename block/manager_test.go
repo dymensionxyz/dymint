@@ -150,7 +150,10 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 	proxyApp := proxy.NewAppConns(clientCreator)
 	err := proxyApp.Start()
 	require.NoError(t, err)
-	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, nil)
+	proposerKey, _, err := crypto.GenerateEd25519Key(rand.Reader)
+	require.NoError(t, err)
+
+	manager, err := testutil.GetManagerWithProposerKey(testutil.GetManagerConfig(), proposerKey, nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(t, err)
 	require.NotNil(t, manager)
 
@@ -179,7 +182,7 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 	}
 
 	// Initially sync target is 0
-	assert.Zero(t, manager.LastSubmittedHeight.Load())
+	assert.Zero(t, manager.LastSettlementHeight.Load())
 	assert.True(t, manager.State.Height() == 0)
 
 	// enough time to sync and produce blocks
@@ -194,7 +197,7 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 		require.NoError(t, err)
 	}()
 	<-ctx.Done()
-	assert.Equal(t, batch.EndHeight(), manager.LastSubmittedHeight.Load())
+	assert.Equal(t, batch.EndHeight(), manager.LastSettlementHeight.Load())
 	// validate that we produced blocks
 	assert.Greater(t, manager.State.Height(), batch.EndHeight())
 }
@@ -310,11 +313,9 @@ func TestApplyLocalBlock_WithFraudCheck(t *testing.T) {
 	proxyApp := proxy.NewAppConns(clientCreator)
 	err := proxyApp.Start()
 	require.NoError(t, err)
-
 	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(t, err)
 	require.NotNil(t, manager)
-
 	t.Log("Taking the manager out of sync by submitting a batch")
 	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
 	manager.Retriever = manager.DAClient.(da.BatchRetriever)
@@ -333,7 +334,7 @@ func TestApplyLocalBlock_WithFraudCheck(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Save one block on state to enforce local block application
-		_, err := manager.Store.SaveBlock(batch.Blocks[0], batch.Commits[0], nil)
+		_, err = manager.Store.SaveBlock(batch.Blocks[0], batch.Commits[0], nil)
 		require.NoError(t, err)
 
 		daResultSubmitBatch := manager.DAClient.SubmitBatch(batch)
@@ -366,7 +367,7 @@ func TestApplyLocalBlock_WithFraudCheck(t *testing.T) {
 	})).Return(nil)
 
 	// Initially sync target is 0
-	assert.Zero(t, manager.LastSubmittedHeight.Load())
+	assert.Zero(t, manager.LastSettlementHeight.Load())
 	assert.True(t, manager.State.Height() == 0)
 
 	// enough time to sync and produce blocks
@@ -381,8 +382,7 @@ func TestApplyLocalBlock_WithFraudCheck(t *testing.T) {
 		require.True(t, errors.Is(err, gerrc.ErrFault))
 	}()
 	<-ctx.Done()
-	assert.Equal(t, batch.EndHeight(), manager.LastSubmittedHeight.Load())
-
+	assert.Equal(t, batch.EndHeight(), manager.LastSettlementHeight.Load())
 	mockExecutor.AssertExpectations(t)
 	mockFraudHandler.AssertExpectations(t)
 }
@@ -398,7 +398,8 @@ func TestRetrieveDaBatchesFailed(t *testing.T) {
 		Client: da.Mock,
 		Height: 1,
 	}
-	err = manager.ProcessNextDABatch(daMetaData)
+
+	err = manager.ApplyBatchFromSL(daMetaData)
 	t.Log(err)
 	assert.ErrorIs(t, err, da.ErrBlobNotFound)
 }
@@ -459,7 +460,6 @@ func TestProducePendingBlock(t *testing.T) {
 	err := proxyApp.Start()
 	require.NoError(t, err)
 	// Init manager
-
 	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(t, err)
 	// Generate block and commit and save it to the store
@@ -741,15 +741,15 @@ func TestDAFetch(t *testing.T) {
 				LastBlockHeight:  int64(batch.EndHeight()),
 				LastBlockAppHash: commitHash[:],
 			})
-			err := manager.ProcessNextDABatch(c.daMetaData)
+
+			err := manager.ApplyBatchFromSL(c.daMetaData)
 			require.Equal(c.err, err)
 		})
 	}
 }
 
-// TestManager_ProcessNextDABatch_FraudHandling tests the case when the manager receives a fraud when the block is
-// part of the batch received from the DA.
-func TestManager_ProcessNextDABatch_FraudHandling(t *testing.T) {
+// TestManager_ApplyBatchFromSL_FraudHandling tests the case when the manager receives a fraud when the block is part of the batch received from the DA.
+func TestManager_ApplyBatchFromSL_FraudHandling(t *testing.T) {
 	require := require.New(t)
 	// Setup app
 	app := testutil.GetAppMock(testutil.Info, testutil.Commit, testutil.EndBlock)
@@ -814,8 +814,8 @@ func TestManager_ProcessNextDABatch_FraudHandling(t *testing.T) {
 		LastBlockAppHash: commitHash[:],
 	})
 
-	// Call ProcessNextDABatch
-	err = manager.ProcessNextDABatch(daResultSubmitBatch.SubmitMetaData)
+	// Call ApplyBatchFromSL
+	err = manager.ApplyBatchFromSL(daResultSubmitBatch.SubmitMetaData)
 
 	// Verify
 	require.True(errors.Is(err, gerrc.ErrFault))

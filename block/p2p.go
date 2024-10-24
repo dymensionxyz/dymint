@@ -38,6 +38,10 @@ func (m *Manager) OnReceivedBlock(event pubsub.Message) {
 	block := eventData.Block
 	commit := eventData.Commit
 	height := block.Header.Height
+
+	if block.Header.Height < m.State.NextHeight() {
+		return
+	}
 	m.retrieverMu.Lock() // needed to protect blockCache access
 
 	// It is not strictly necessary to return early, for correctness, but doing so helps us avoid mutex pressure and unnecessary repeated attempts to apply cached blocks
@@ -50,11 +54,8 @@ func (m *Manager) OnReceivedBlock(event pubsub.Message) {
 	types.LastReceivedP2PHeightGauge.Set(float64(height))
 
 	m.logger.Debug("Received new block from p2p.", "block height", height, "source", source.String(), "store height", m.State.Height(), "n cachedBlocks", m.blockCache.Size())
+	m.blockCache.Add(height, &block, &commit, source)
 
-	nextHeight := m.State.NextHeight()
-	if height >= nextHeight {
-		m.blockCache.Add(height, &block, &commit, source)
-	}
 	m.retrieverMu.Unlock() // have to give this up as it's locked again in attempt apply, and we're not re-entrant
 
 	err := m.attemptApplyCachedBlocks()

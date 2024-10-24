@@ -16,14 +16,16 @@ import (
 )
 
 var (
-	blockPrefix      = [1]byte{1}
-	indexPrefix      = [1]byte{2}
-	commitPrefix     = [1]byte{3}
-	statePrefix      = [1]byte{4}
-	responsesPrefix  = [1]byte{5}
-	sequencersPrefix = [1]byte{6}
-	cidPrefix        = [1]byte{7}
-	proposerPrefix   = [1]byte{8}
+	blockPrefix           = [1]byte{1}
+	indexPrefix           = [1]byte{2}
+	commitPrefix          = [1]byte{3}
+	statePrefix           = [1]byte{4}
+	responsesPrefix       = [1]byte{5}
+	sequencersPrefix      = [1]byte{6}
+	cidPrefix             = [1]byte{7}
+	sourcePrefix          = [1]byte{8}
+	validatedHeightPrefix = [1]byte{9}
+	proposerPrefix        = [1]byte{10}
 )
 
 // DefaultStore is a default store implementation.
@@ -115,6 +117,26 @@ func (s *DefaultStore) LoadBlockByHash(hash [32]byte) (*types.Block, error) {
 	}
 
 	return block, nil
+}
+
+// SaveBlockValidation saves block validation in Store.
+func (s *DefaultStore) SaveBlockSource(height uint64, source types.BlockSource, batch KVBatch) (KVBatch, error) {
+	b := make([]byte, 8)
+	binary.LittleEndian.PutUint64(b, uint64(source))
+	if batch == nil {
+		return nil, s.db.Set(getSourceKey(height), b)
+	}
+	err := batch.Set(getSourceKey(height), b)
+	return batch, err
+}
+
+// LoadBlockValidation returns block validation in Store.
+func (s *DefaultStore) LoadBlockSource(height uint64) (types.BlockSource, error) {
+	source, err := s.db.Get(getSourceKey(height))
+	if err != nil {
+		return types.BlockSource(0), fmt.Errorf("get block source for height %v: %w", height, err)
+	}
+	return types.BlockSource(binary.LittleEndian.Uint64(source)), nil
 }
 
 // SaveBlockResponses saves block responses (events, tx responses, etc) in Store.
@@ -336,6 +358,24 @@ func (s *DefaultStore) LoadBlockCid(height uint64) (cid.Cid, error) {
 	return parsedCid, nil
 }
 
+func (s *DefaultStore) SaveValidationHeight(height uint64, batch KVBatch) (KVBatch, error) {
+	b := make([]byte, 8)
+	binary.LittleEndian.PutUint64(b, height)
+	if batch == nil {
+		return nil, s.db.Set(getValidatedHeightKey(), b)
+	}
+	err := batch.Set(getValidatedHeightKey(), b)
+	return batch, err
+}
+
+func (s *DefaultStore) LoadValidationHeight() (uint64, error) {
+	b, err := s.db.Get(getValidatedHeightKey())
+	if err != nil {
+		return 0, err
+	}
+	return binary.LittleEndian.Uint64(b), nil
+}
+
 func getBlockKey(hash [32]byte) []byte {
 	return append(blockPrefix[:], hash[:]...)
 }
@@ -370,6 +410,16 @@ func getCidKey(height uint64) []byte {
 	buf := make([]byte, 8)
 	binary.BigEndian.PutUint64(buf, height)
 	return append(cidPrefix[:], buf[:]...)
+}
+
+func getSourceKey(height uint64) []byte {
+	buf := make([]byte, 8)
+	binary.BigEndian.PutUint64(buf, height)
+	return append(sourcePrefix[:], buf[:]...)
+}
+
+func getValidatedHeightKey() []byte {
+	return validatedHeightPrefix[:]
 }
 
 func getProposerKey(height uint64) []byte {

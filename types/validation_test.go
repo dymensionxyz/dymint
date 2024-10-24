@@ -8,6 +8,11 @@ import (
 
 	"github.com/cometbft/cometbft/libs/math"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
+	"github.com/tendermint/tendermint/crypto/ed25519"
+	tmtypes "github.com/tendermint/tendermint/types"
+
+	"github.com/cometbft/cometbft/libs/math"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/crypto/ed25519"
