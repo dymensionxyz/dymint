@@ -194,7 +194,7 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 					manager.OnReceivedBlock(msg)
 				}
 			} else {
-				manager.ApplyFromSLBatch(slBatch.MetaData.DA)
+				manager.ApplyBatchFromSL(slBatch.MetaData.DA)
 			}
 
 			// validate the state update
