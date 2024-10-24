@@ -102,9 +102,9 @@ func TestPostBatch(t *testing.T) {
 	}
 
 	// Create a batch which will be submitted
-	propserKey, _, err := crypto.GenerateEd25519Key(nil)
+	proposerKey, _, err := crypto.GenerateEd25519Key(nil)
 	require.NoError(err)
-	batch, err := testutil.GenerateBatch(1, 1, propserKey, [32]byte{})
+	batch, err := testutil.GenerateBatch(1, 1, proposerKey, [32]byte{})
 	require.NoError(err)
 
 	cases := []struct {

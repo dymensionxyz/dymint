@@ -1,12 +1,16 @@
 package types
 
 import (
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"time"
 
+	"github.com/cosmos/cosmos-sdk/codec/legacy"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	tmcrypto "github.com/tendermint/tendermint/crypto"
+	ctypes "github.com/tendermint/tendermint/rpc/core/types"
+	tmtypes "github.com/tendermint/tendermint/types"
 )
 
 var (
@@ -315,4 +319,154 @@ func (e ErrInvalidHeaderDataHashFraud) Error() string {
 
 func (e ErrInvalidHeaderDataHashFraud) Unwrap() error {
 	return gerrc.ErrFault
+}
+
+type ErrStateUpdateNumBlocksNotMatchingFraud struct {
+	StateIndex  uint64
+	SLNumBlocks uint64
+	DAblocks    uint64
+	NumBds      uint64
+}
+
+func NewErrStateUpdateNumBlocksNotMatchingFraud(stateIndex uint64, slNumBlocks uint64, daBlocks uint64, numbds uint64) error {
+	return &ErrStateUpdateNumBlocksNotMatchingFraud{
+		StateIndex:  stateIndex,
+		SLNumBlocks: slNumBlocks,
+		DAblocks:    daBlocks,
+		NumBds:      numbds,
+	}
+}
+
+func (e ErrStateUpdateNumBlocksNotMatchingFraud) Error() string {
+	return fmt.Sprintf("numblocks not matching. StateIndex: %d Batch numblocks: %d Blocks in DA: %d Num of block descriptors: %d", e.StateIndex, e.SLNumBlocks, e.DAblocks, e.NumBds)
+}
+
+func (e ErrStateUpdateNumBlocksNotMatchingFraud) Unwrap() error {
+	return gerrc.ErrFault
+}
+
+type ErrStateUpdateHeightNotMatchingFraud struct {
+	StateIndex    uint64
+	SLBeginHeight uint64
+	DABeginHeight uint64
+	SLEndHeight   uint64
+	DAEndHeight   uint64
+}
+
+func NewErrStateUpdateHeightNotMatchingFraud(stateIndex uint64, slBeginHeight uint64, daBeginHeight uint64, slEndHeight uint64, daEndHeight uint64) error {
+	return &ErrStateUpdateHeightNotMatchingFraud{
+		StateIndex:    stateIndex,
+		SLBeginHeight: slBeginHeight,
+		DABeginHeight: daBeginHeight,
+		SLEndHeight:   slEndHeight,
+		DAEndHeight:   daEndHeight,
+	}
+}
+
+func (e ErrStateUpdateHeightNotMatchingFraud) Error() string {
+	return fmt.Sprintf("block height in DA batch not matching SL batch height. StateIndex: %d SL Begin height: %d DA Begin height: %d SL End height:%d DA End height: %d", e.StateIndex, e.SLBeginHeight, e.DABeginHeight, e.SLEndHeight, e.DAEndHeight)
+}
+
+func (e ErrStateUpdateHeightNotMatchingFraud) Unwrap() error {
+	return gerrc.ErrFault
+}
+
+type ErrStateUpdateStateRootNotMatchingFraud struct {
+	StateIndex  uint64
+	Height      uint64
+	SLStateRoot []byte
+	DAStateRoot []byte
+}
+
+func NewErrStateUpdateStateRootNotMatchingFraud(stateIndex uint64, height uint64, slStateRoot []byte, daStateRoot []byte) error {
+	return &ErrStateUpdateStateRootNotMatchingFraud{
+		StateIndex:  stateIndex,
+		Height:      height,
+		SLStateRoot: slStateRoot,
+		DAStateRoot: daStateRoot,
+	}
+}
+
+func (e ErrStateUpdateStateRootNotMatchingFraud) Error() string {
+	return fmt.Sprintf("state root in DA batch block not matching state root in SL. StateIndex: %d Height: %d SL state root: %s DA state root: %s", e.StateIndex, e.Height, hex.EncodeToString(e.SLStateRoot), hex.EncodeToString(e.DAStateRoot))
+}
+
+func (e ErrStateUpdateStateRootNotMatchingFraud) Unwrap() error {
+	return gerrc.ErrFault
+}
+
+type ErrStateUpdateTimestampNotMatchingFraud struct {
+	StateIndex  uint64
+	Height      uint64
+	SLTimestamp time.Time
+	DATimestamp time.Time
+}
+
+func NewErrStateUpdateTimestampNotMatchingFraud(stateIndex uint64, height uint64, slTimestamp time.Time, daTimestamp time.Time) error {
+	return &ErrStateUpdateTimestampNotMatchingFraud{
+		StateIndex:  stateIndex,
+		Height:      height,
+		SLTimestamp: slTimestamp,
+		DATimestamp: daTimestamp,
+	}
+}
+
+func (e ErrStateUpdateTimestampNotMatchingFraud) Error() string {
+	return fmt.Sprintf("timestamp in DA batch block not matching timestamp in SL. StateIndex: %d Height: %d SL timestsamp: %s DA timestamp: %s", e.StateIndex, e.Height, e.SLTimestamp, e.DATimestamp)
+}
+
+func (e ErrStateUpdateTimestampNotMatchingFraud) Unwrap() error {
+	return gerrc.ErrFault
+}
+
+type ErrStateUpdateDoubleSigningFraud struct {
+	DABlock  []byte
+	P2PBlock []byte
+}
+
+func NewErrStateUpdateDoubleSigningFraud(daBlock *Block, p2pBlock *Block) error {
+	jsonDABlock, err := getJsonFromBlock(daBlock)
+	if err != nil {
+		return err
+	}
+	jsonP2PBlock, err := getJsonFromBlock(p2pBlock)
+	if err != nil {
+		return err
+	}
+	return &ErrStateUpdateDoubleSigningFraud{
+		DABlock:  jsonDABlock,
+		P2PBlock: jsonP2PBlock,
+	}
+}
+
+func (e ErrStateUpdateDoubleSigningFraud) Error() string {
+	return fmt.Sprintf("block received from P2P not matching block found in DA. P2P Block: %s DA Block:%s", e.P2PBlock, e.DABlock)
+}
+
+func (e ErrStateUpdateDoubleSigningFraud) Unwrap() error {
+	return gerrc.ErrFault
+}
+
+func getJsonFromBlock(block *Block) ([]byte, error) {
+	hash := block.Hash()
+	abciBlock, err := ToABCIBlock(block)
+	if err != nil {
+		return nil, err
+	}
+	resultBlock := &ctypes.ResultBlock{
+		BlockID: tmtypes.BlockID{
+			Hash: hash[:],
+			PartSetHeader: tmtypes.PartSetHeader{
+				Total: 1,
+				Hash:  hash[:],
+			},
+		},
+		Block: abciBlock,
+	}
+
+	jsonBlock, err := legacy.Cdc.MarshalJSON(resultBlock)
+	if err != nil {
+		return nil, err
+	}
+	return jsonBlock, nil
 }

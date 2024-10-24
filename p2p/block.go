@@ -58,9 +58,7 @@ func (b *BlockData) Validate(proposerPubKey tmcrypto.PubKey) error {
 	if err := b.Block.ValidateBasic(); err != nil {
 		return err
 	}
-	if err := b.Commit.ValidateBasic(); err != nil {
-		return err
-	}
+
 	if err := b.Commit.ValidateWithHeader(proposerPubKey, &b.Block.Header); err != nil {
 		return err
 	}

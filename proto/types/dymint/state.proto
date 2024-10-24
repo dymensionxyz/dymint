@@ -46,6 +46,7 @@ message State {
   RollappParams rollapp_params = 19 [(gogoproto.nullable) = false];
 
   bytes last_header_hash = 20;
+
 }
 
 //rollapp params defined in genesis and updated via gov proposal

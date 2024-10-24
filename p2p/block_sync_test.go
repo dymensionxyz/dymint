@@ -26,7 +26,7 @@ func TestBlockSync(t *testing.T) {
 	}
 
 	// Create a block for height 1
-	blocks, err := testutil.GenerateBlocksWithTxs(1, 1, manager.LocalKey, 1)
+	blocks, err := testutil.GenerateBlocksWithTxs(1, 1, manager.LocalKey, 1, "test")
 	require.NoError(t, err)
 
 	// Create commit
