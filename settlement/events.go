@@ -41,6 +41,8 @@ type EventDataNewBatch struct {
 	EndHeight uint64
 	// StateIndex is the rollapp-specific index the batch was saved in the SL
 	StateIndex uint64
+	// NextProposerAddress is the address of the next proposer
+	NextProposerAddress string
 }
 
 func (e EventDataNewBatch) String() string {
