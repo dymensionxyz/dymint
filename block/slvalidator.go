@@ -3,6 +3,8 @@ package block
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/hex"
+	"errors"
 	"fmt"
 	"sync/atomic"
 
@@ -71,7 +73,19 @@ func (v *SettlementValidator) ValidateStateUpdate(batch *settlement.ResultRetrie
 		if daBatch.Code == da.StatusSuccess {
 			break
 		}
+
+		// fraud detected in case blob is retrieved but unable to get blocks from it.
+		if errors.Is(daBatch.BaseResult.Error, da.ErrBlobNotParsed) {
+			return types.NewErrStateUpdateBlobCorruptedFraud(batch.StateIndex, string(batch.MetaData.DA.Client), batch.MetaData.DA.Height, hex.EncodeToString(batch.MetaData.DA.Commitment))
+		}
+
+		// fraud detected in case availability checks fail and therefore there certainty the blob, according to the state update DA path, is not available.
+		checkBatchResult := v.blockManager.Retriever.CheckBatchAvailability(batch.MetaData.DA)
+		if errors.Is(checkBatchResult.Error, da.ErrBlobNotIncluded) {
+			return types.NewErrStateUpdateBlobNotAvailableFraud(batch.StateIndex, string(batch.MetaData.DA.Client), batch.MetaData.DA.Height, hex.EncodeToString(batch.MetaData.DA.Commitment))
+		}
 	}
+
 	for _, batch := range daBatch.Batches {
 		daBlocks = append(daBlocks, batch.Blocks...)
 	}
@@ -148,6 +162,12 @@ func (v *SettlementValidator) ValidateDaBlocks(slBatch *settlement.ResultRetriev
 		if !bd.Timestamp.Equal(daBlocks[i].Header.GetTimestamp()) {
 			return types.NewErrStateUpdateTimestampNotMatchingFraud(slBatch.StateIndex, bd.Height, bd.Timestamp, daBlocks[i].Header.GetTimestamp())
 		}
+
+		// we validate block descriptor drs version per height
+		err := v.validateDRS(slBatch.StateIndex, bd.Height, bd.DrsVersion)
+		if err != nil {
+			return err
+		}
 	}
 	v.logger.Debug("DA blocks validated successfully", "start height", daBlocks[0].Header.Height, "end height", daBlocks[len(daBlocks)-1].Header.Height)
 	return nil
@@ -176,6 +196,19 @@ func (v *SettlementValidator) GetLastValidatedHeight() uint64 {
 // GetLastValidatedHeight returns the next height that needs to be validated with settlement state updates.
 func (v *SettlementValidator) NextValidationHeight() uint64 {
 	return v.lastValidatedHeight.Load() + 1
+}
+
+// validateDRS compares the DRS version stored for the specific height, obtained from rollapp params.
+// DRS checks will work only for non-finalized heights, since it does not store the whole history, but it will never validate finalized heights.
+func (v *SettlementValidator) validateDRS(stateIndex uint64, height uint64, version string) error {
+	drs, err := v.blockManager.State.GetDRSVersion(height)
+	if err != nil {
+		panic(fmt.Errorf("unable to validate drs version. DRS: %s. height: %d err: %w", drs, height, err))
+	}
+	if drs != version {
+		return types.NewErrStateUpdateDRSVersionFraud(stateIndex, height, drs, version)
+	}
+	return nil
 }
 
 // blockHash generates a hash from the block bytes to compare them
