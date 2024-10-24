@@ -36,12 +36,12 @@ const (
 	subscribeTimeout = 5 * time.Second
 )
 
-type ValidationStatus int
+type BlockValidationStatus int
 
 const (
-	BlockNotValidated = iota
-	BlockValidated
-	BlockValidatedWithSL
+	NotValidated = iota
+	P2PValidated
+	SLValidated
 )
 
 // ErrConsensusStateNotAvailable is returned because Dymint doesn't use Tendermint consensus.
