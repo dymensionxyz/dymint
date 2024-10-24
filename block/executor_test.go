@@ -287,7 +287,7 @@ func TestApplyBlock(t *testing.T) {
 	err = types.ValidateProposedTransition(state, block, commit, state.GetProposerPubKey())
 	require.NoError(err)
 
-	resp, err := executor.ExecuteBlock(state, block)
+	resp, err := executor.ExecuteBlock(block)
 	require.NoError(err)
 	require.NotNil(resp)
 	appHash, _, err := executor.Commit(state, block, resp)
@@ -337,7 +337,7 @@ func TestApplyBlock(t *testing.T) {
 	// Apply the block
 	err = types.ValidateProposedTransition(state, block, commit, state.GetProposerPubKey())
 	require.NoError(err)
-	resp, err = executor.ExecuteBlock(state, block)
+	resp, err = executor.ExecuteBlock(block)
 	require.NoError(err)
 	require.NotNil(resp)
 	_, _, err = executor.Commit(state, block, resp)

@@ -90,7 +90,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 			m.logger.Error("save block blocksync", "err", err)
 		}
 
-		responses, err := m.Executor.ExecuteBlock(m.State, block)
+		responses, err := m.Executor.ExecuteBlock(block)
 		if err != nil {
 			return fmt.Errorf("execute block: %w", err)
 		}
