@@ -9,17 +9,40 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
-func (m *Manager) syncFromDABatch() error {
-	settlementBatch, err := m.SLClient.GetBatchAtHeight(m.State.NextHeight())
-	if err != nil {
-		return fmt.Errorf("retrieve batch: %w", err)
-	}
-	m.logger.Info("Retrieved batch.", "state_index", settlementBatch.StateIndex)
+func (m *Manager) ApplyFromSLBatch(daMetaData *da.DASubmitMetaData) error {
 
-	err = m.ProcessNextDABatch(settlementBatch.MetaData.DA)
-	if err != nil {
-		return fmt.Errorf("process next DA batch: %w", err)
+	m.logger.Debug("trying to retrieve batch from DA", "daHeight", daMetaData.Height)
+	batchResp := m.fetchBatch(daMetaData)
+	if batchResp.Code != da.StatusSuccess {
+		return batchResp.Error
 	}
+
+	m.logger.Debug("retrieved batches", "n", len(batchResp.Batches), "daHeight", daMetaData.Height)
+
+	m.retrieverMu.Lock()
+	defer m.retrieverMu.Unlock()
+
+	var lastAppliedHeight float64
+	for _, batch := range batchResp.Batches {
+		for i, block := range batch.Blocks {
+			if block.Header.Height != m.State.NextHeight() {
+				continue
+			}
+
+			// We dont validate because validateBlockBeforeApply already checks if the block is already applied, and we don't need to fail there.
+			err := m.applyBlockWithFraudHandling(block, batch.Commits[i], types.BlockMetaData{Source: types.DA, DAHeight: daMetaData.Height})
+			if err != nil {
+				return fmt.Errorf("apply block: height: %d: %w", block.Header.Height, err)
+			}
+
+			lastAppliedHeight = float64(block.Header.Height)
+
+			m.blockCache.Delete(block.Header.Height)
+
+		}
+	}
+	types.LastReceivedDAHeightGauge.Set(lastAppliedHeight)
+
 	return nil
 }
 
@@ -53,42 +76,6 @@ func (m *Manager) applyLocalBlock(height uint64) error {
 	if err != nil {
 		return fmt.Errorf("apply block from local store: height: %d: %w", height, err)
 	}
-
-	return nil
-}
-
-func (m *Manager) ProcessNextDABatch(daMetaData *da.DASubmitMetaData) error {
-	m.logger.Debug("trying to retrieve batch from DA", "daHeight", daMetaData.Height)
-	batchResp := m.fetchBatch(daMetaData)
-	if batchResp.Code != da.StatusSuccess {
-		return batchResp.Error
-	}
-
-	m.logger.Debug("retrieved batches", "n", len(batchResp.Batches), "daHeight", daMetaData.Height)
-
-	m.retrieverMu.Lock()
-	defer m.retrieverMu.Unlock()
-
-	var lastAppliedHeight float64
-	for _, batch := range batchResp.Batches {
-		for i, block := range batch.Blocks {
-			if block.Header.Height != m.State.NextHeight() {
-				continue
-			}
-
-			// We dont validate because validateBlockBeforeApply already checks if the block is already applied, and we don't need to fail there.
-			err := m.applyBlockWithFraudHandling(block, batch.Commits[i], types.BlockMetaData{Source: types.DA, DAHeight: daMetaData.Height})
-			if err != nil {
-				return fmt.Errorf("apply block: height: %d: %w", block.Header.Height, err)
-			}
-
-			lastAppliedHeight = float64(block.Header.Height)
-
-			m.blockCache.Delete(block.Header.Height)
-
-		}
-	}
-	types.LastReceivedDAHeightGauge.Set(lastAppliedHeight)
 
 	return nil
 }

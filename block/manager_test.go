@@ -399,7 +399,7 @@ func TestRetrieveDaBatchesFailed(t *testing.T) {
 		Height: 1,
 	}
 
-	err = manager.ProcessNextDABatch(daMetaData)
+	err = manager.ApplyFromSLBatch(daMetaData)
 	t.Log(err)
 	assert.ErrorIs(t, err, da.ErrBlobNotFound)
 }
@@ -742,7 +742,7 @@ func TestDAFetch(t *testing.T) {
 				LastBlockAppHash: commitHash[:],
 			})
 
-			err := manager.ProcessNextDABatch(c.daMetaData)
+			err := manager.ApplyFromSLBatch(c.daMetaData)
 			require.Equal(c.err, err)
 		})
 	}
@@ -816,7 +816,7 @@ func TestManager_ProcessNextDABatch_FraudHandling(t *testing.T) {
 	})
 
 	// Call ProcessNextDABatch
-	err = manager.ProcessNextDABatch(daResultSubmitBatch.SubmitMetaData)
+	err = manager.ApplyFromSLBatch(daResultSubmitBatch.SubmitMetaData)
 
 	// Verify
 	require.True(errors.Is(err, gerrc.ErrFault))

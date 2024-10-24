@@ -70,7 +70,13 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 					m.logger.Error("Apply local block", "err", err)
 				}
 
-				err = m.syncFromDABatch()
+				settlementBatch, err := m.SLClient.GetBatchAtHeight(m.State.NextHeight())
+				if err != nil {
+					return fmt.Errorf("retrieve batch: %w", err)
+				}
+				m.logger.Info("Retrieved state update from SL.", "state_index", settlementBatch.StateIndex)
+
+				err = m.ApplyFromSLBatch(settlementBatch.MetaData.DA)
 				if err != nil {
 					m.logger.Error("process next DA batch", "err", err)
 				}
