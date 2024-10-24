@@ -42,11 +42,12 @@ message State {
   uint64 last_store_height = 16 [(gogoproto.customname) = "LastStoreHeight"];
   uint64 base_height = 17;
 
-  SequencerSet sequencerSet         = 18 [(gogoproto.nullable) = false];
+  reserved 18;
   RollappParams rollapp_params = 19 [(gogoproto.nullable) = false];
 
   bytes last_header_hash = 20;
 
+  // Proposer is a sequencer that acts as a proposer. Can be nil if no proposer is set.
   Sequencer proposer = 21 [(gogoproto.nullable) = true];
 }
 

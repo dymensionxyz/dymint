@@ -11,7 +11,6 @@ import (
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 
-	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
 	pb "github.com/dymensionxyz/dymint/types/pb/dymint"
 	"github.com/dymensionxyz/dymint/version"
@@ -87,8 +86,6 @@ func TestBlockSerializationRoundTrip(t *testing.T) {
 func TestStateRoundTrip(t *testing.T) {
 	t.Parallel()
 
-	valSet := testutil.GenerateRandomValidatorSet()
-
 	cases := []struct {
 		name  string
 		state types.State
@@ -115,11 +112,7 @@ func TestStateRoundTrip(t *testing.T) {
 					},
 					Software: "dymint",
 				},
-				ChainID: "testchain",
-				Sequencers: types.NewSequencerSet([]types.Sequencer{
-					*testutil.GenerateSequencer(),
-					*testutil.GenerateSequencer(),
-				}),
+				ChainID:       "testchain",
 				InitialHeight: 987,
 				ConsensusParams: tmproto.ConsensusParams{
 					Block: tmproto.BlockParams{
@@ -154,8 +147,6 @@ func TestStateRoundTrip(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			require := require.New(t)
 			assert := assert.New(t)
-
-			c.state.Sequencers.LoadFromValSet(valSet)
 
 			if c.state.InitialHeight != 0 {
 				c.state.SetHeight(986321)

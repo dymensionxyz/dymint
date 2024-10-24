@@ -82,8 +82,8 @@ type SequencerSet struct {
 	sequencers []Sequencer
 }
 
-func NewSequencerSet(s []Sequencer) SequencerSet {
-	return SequencerSet{
+func NewSequencerSet(s ...Sequencer) *SequencerSet {
+	return &SequencerSet{
 		mu:         sync.RWMutex{},
 		sequencers: s,
 	}

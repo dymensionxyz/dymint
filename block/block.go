@@ -129,7 +129,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	}
 
 	// check if the proposer needs to be changed
-	switchRole := m.Executor.UpdateProposerFromBlock(m.State, block)
+	switchRole := m.Executor.UpdateProposerFromBlock(m.State, m.Sequencers, block)
 
 	// save sequencers to store to be queried over RPC
 	batch := m.Store.NewBatch()

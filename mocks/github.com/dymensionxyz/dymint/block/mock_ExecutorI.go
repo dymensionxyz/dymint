@@ -354,17 +354,17 @@ func (_c *MockExecutorI_UpdateMempoolAfterInitChain_Call) RunAndReturn(run func(
 	return _c
 }
 
-// UpdateProposerFromBlock provides a mock function with given fields: s, _a1
-func (_m *MockExecutorI) UpdateProposerFromBlock(s *types.State, _a1 *types.Block) bool {
-	ret := _m.Called(s, _a1)
+// UpdateProposerFromBlock provides a mock function with given fields: s, seqSet, _a2
+func (_m *MockExecutorI) UpdateProposerFromBlock(s *types.State, seqSet *types.SequencerSet, _a2 *types.Block) bool {
+	ret := _m.Called(s, seqSet, _a2)
 
 	if len(ret) == 0 {
 		panic("no return value specified for UpdateProposerFromBlock")
 	}
 
 	var r0 bool
-	if rf, ok := ret.Get(0).(func(*types.State, *types.Block) bool); ok {
-		r0 = rf(s, _a1)
+	if rf, ok := ret.Get(0).(func(*types.State, *types.SequencerSet, *types.Block) bool); ok {
+		r0 = rf(s, seqSet, _a2)
 	} else {
 		r0 = ret.Get(0).(bool)
 	}
@@ -379,14 +379,15 @@ type MockExecutorI_UpdateProposerFromBlock_Call struct {
 
 // UpdateProposerFromBlock is a helper method to define mock.On call
 //   - s *types.State
-//   - _a1 *types.Block
-func (_e *MockExecutorI_Expecter) UpdateProposerFromBlock(s interface{}, _a1 interface{}) *MockExecutorI_UpdateProposerFromBlock_Call {
-	return &MockExecutorI_UpdateProposerFromBlock_Call{Call: _e.mock.On("UpdateProposerFromBlock", s, _a1)}
+//   - seqSet *types.SequencerSet
+//   - _a2 *types.Block
+func (_e *MockExecutorI_Expecter) UpdateProposerFromBlock(s interface{}, seqSet interface{}, _a2 interface{}) *MockExecutorI_UpdateProposerFromBlock_Call {
+	return &MockExecutorI_UpdateProposerFromBlock_Call{Call: _e.mock.On("UpdateProposerFromBlock", s, seqSet, _a2)}
 }
 
-func (_c *MockExecutorI_UpdateProposerFromBlock_Call) Run(run func(s *types.State, _a1 *types.Block)) *MockExecutorI_UpdateProposerFromBlock_Call {
+func (_c *MockExecutorI_UpdateProposerFromBlock_Call) Run(run func(s *types.State, seqSet *types.SequencerSet, _a2 *types.Block)) *MockExecutorI_UpdateProposerFromBlock_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*types.State), args[1].(*types.Block))
+		run(args[0].(*types.State), args[1].(*types.SequencerSet), args[2].(*types.Block))
 	})
 	return _c
 }
@@ -396,7 +397,7 @@ func (_c *MockExecutorI_UpdateProposerFromBlock_Call) Return(_a0 bool) *MockExec
 	return _c
 }
 
-func (_c *MockExecutorI_UpdateProposerFromBlock_Call) RunAndReturn(run func(*types.State, *types.Block) bool) *MockExecutorI_UpdateProposerFromBlock_Call {
+func (_c *MockExecutorI_UpdateProposerFromBlock_Call) RunAndReturn(run func(*types.State, *types.SequencerSet, *types.Block) bool) *MockExecutorI_UpdateProposerFromBlock_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -32,9 +32,6 @@ type State struct {
 	// Proposer is a sequencer that acts as a proposer. Can be nil if no proposer is set.
 	Proposer atomic.Pointer[Sequencer]
 
-	// Sequencers is the set of sequencers that are currently active on the rollapp.
-	Sequencers SequencerSet
-
 	// Consensus parameters used for validating blocks.
 	// Changes returned by EndBlock and updated after Commit.
 	ConsensusParams                  tmproto.ConsensusParams
@@ -90,7 +87,6 @@ func (s *State) LoadFromValSet(valSet *types.ValidatorSet) {
 	for i, val := range valSet.Validators {
 		sequencers[i] = *NewSequencerFromValidator(*val)
 	}
-	s.Sequencers.SetSequencers(sequencers)
 	s.SetProposer(NewSequencerFromValidator(*valSet.Proposer))
 }
 

@@ -114,7 +114,7 @@ func (m *Manager) CompleteRotation(ctx context.Context, nextSeqAddr string) erro
 	// validate nextSeq is in the bonded set
 	var nextSeqHash [32]byte
 	if nextSeqAddr != "" {
-		seq, found := m.State.Sequencers.GetByAddress(nextSeqAddr)
+		seq, found := m.Sequencers.GetByAddress(nextSeqAddr)
 		if !found {
 			return types.ErrMissingProposerPubKey
 		}
@@ -171,8 +171,8 @@ func (m *Manager) UpdateSequencerSetFromSL() error {
 	if err != nil {
 		return err
 	}
-	m.State.Sequencers.SetSequencers(seqs)
-	m.logger.Debug("Updated bonded sequencer set.", "newSet", m.State.Sequencers.String())
+	m.Sequencers.SetSequencers(seqs)
+	m.logger.Debug("Updated bonded sequencer set.", "newSet", m.Sequencers.String())
 	return nil
 }
 
@@ -191,7 +191,7 @@ func (m *Manager) UpdateSequencerSet(event pubsub.Message) {
 		return
 	}
 
-	if _, found := m.State.Sequencers.GetByAddress(eventData.SeqAddr); found {
+	if _, found := m.Sequencers.GetByAddress(eventData.SeqAddr); found {
 		m.logger.Debug("Sequencer not added from new bonded sequencer event because already in the list.")
 		return
 	}
@@ -202,5 +202,5 @@ func (m *Manager) UpdateSequencerSet(event pubsub.Message) {
 		return
 	}
 
-	m.State.Sequencers.AppendSequencer(newSequencer)
+	m.Sequencers.AppendSequencer(newSequencer)
 }

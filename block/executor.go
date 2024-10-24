@@ -31,8 +31,10 @@ type ExecutorI interface {
 	UpdateStateAfterInitChain(s *types.State, res *abci.ResponseInitChain)
 	UpdateMempoolAfterInitChain(s *types.State)
 	UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResponses, appHash []byte, height uint64, lastHeaderHash [32]byte)
-	UpdateProposerFromBlock(s *types.State, block *types.Block) bool
+	UpdateProposerFromBlock(s *types.State, seqSet *types.SequencerSet, block *types.Block) bool
 }
+
+var _ ExecutorI = new(Executor)
 
 // Executor creates and applies blocks and maintains state.
 type Executor struct {

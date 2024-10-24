@@ -97,10 +97,6 @@ message Sequencer {
 	tendermint.types.Validator validator = 2;
 }
 
-message SequencerSet {
-	repeated Sequencer sequencers = 1;
-}
-
 message EventKeys {
 	repeated bytes keys = 1;
 }

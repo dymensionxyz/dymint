@@ -230,6 +230,8 @@ func (s *DefaultStore) LoadState() (*types.State, error) {
 func (s *DefaultStore) SaveProposer(height uint64, proposer *types.Sequencer, batch KVBatch) (KVBatch, error) {
 	blob := make([]byte, 0)
 
+	// nil proposer is a valid case.
+	// in that case, blob is empty.
 	if proposer != nil {
 		pbProposer, err := proposer.ToProto()
 		if err != nil {
@@ -255,6 +257,8 @@ func (s *DefaultStore) LoadProposer(height uint64) (*types.Sequencer, error) {
 		return nil, fmt.Errorf("load proposer for height %v: %w", height, err)
 	}
 
+	// nil proposer is a valid case.
+	// in that case, blob is empty.
 	if len(blob) == 0 {
 		return nil, nil
 	}
