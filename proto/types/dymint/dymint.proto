@@ -101,11 +101,6 @@ message Sequencer {
 	repeated string whitelisted_relayers = 4;
 }
 
-message SequencerSet {
-	repeated Sequencer sequencers = 1;
-	Sequencer proposer = 2;
-}
-
 message EventKeys {
 	repeated bytes keys = 1;
 }

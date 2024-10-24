@@ -7,21 +7,23 @@ import (
 	"time"
 
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
+
+	"github.com/dymensionxyz/dymint/node/events"
+	"github.com/dymensionxyz/dymint/store"
+	uevent "github.com/dymensionxyz/dymint/utils/event"
+
 	tmed25519 "github.com/tendermint/tendermint/crypto/ed25519"
 	cmtproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	tmtypes "github.com/tendermint/tendermint/types"
 	tmtime "github.com/tendermint/tendermint/types/time"
 
-	"github.com/dymensionxyz/dymint/node/events"
-	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
-	uevent "github.com/dymensionxyz/dymint/utils/event"
 )
 
 // ProduceBlockLoop is calling publishBlock in a loop as long as we're synced.
 // A signal will be sent to the bytesProduced channel for each block produced
 // In this way it's possible to pause block production by not consuming the channel
-func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int, sequencerSetUpdates <-chan []types.Sequencer) error {
+func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int) error {
 	m.logger.Info("Started block producer loop.")
 
 	ticker := time.NewTicker(m.Conf.BlockTime)
@@ -37,15 +39,6 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int,
 		select {
 		case <-ctx.Done():
 			return nil
-
-		case update := <-sequencerSetUpdates:
-			err := m.HandleSequencerSetUpdate(update)
-			if err != nil {
-				// occurs on serialization issues and shouldn't happen in practice
-				uevent.MustPublish(ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
-				return err
-			}
-
 		case <-ticker.C:
 
 			// if empty blocks are configured to be enabled, and one is scheduled...
@@ -155,11 +148,9 @@ func (m *Manager) produceBlock(allowEmpty bool, nextProposerHash *[32]byte) (*ty
 		return nil, nil, fmt.Errorf("load block: height: %d: %w: %w", newHeight, err, ErrNonRecoverable)
 	}
 
-	var (
-		maxBlockDataSize     = uint64(float64(m.Conf.BatchSubmitBytes) * types.MaxBlockSizeAdjustment)
-		proposerHashForBlock = [32]byte(m.State.Sequencers.ProposerHash())
-	)
-	// if nextProposerInfo is set, we create a last block
+	maxBlockDataSize := uint64(float64(m.Conf.BatchSubmitBytes) * types.MaxBlockSizeAdjustment)
+	proposerHashForBlock := [32]byte(m.State.GetProposerHash())
+	// if nextProposerHash is set, we create a last block
 	if nextProposerHash != nil {
 		maxBlockDataSize = 0
 		proposerHashForBlock = *nextProposerHash
@@ -250,7 +241,7 @@ func (m *Manager) createTMSignature(block *types.Block, proposerAddress []byte, 
 // GetPreviousBlockHashes returns the hash of the last block and the commit for the last block
 // to be used as the previous block hash and commit for the next block
 func (m *Manager) GetPreviousBlockHashes(forHeight uint64) (lastHeaderHash [32]byte, lastCommit *types.Commit, err error) {
-	lastHeaderHash, lastCommit, err = loadPrevBlock(m.Store, forHeight-1) // prev height = forHeight - 1
+	lastHeaderHash, lastCommit, err = getHeaderHashAndCommit(m.Store, forHeight-1) // prev height = forHeight - 1
 	if err != nil {
 		if !m.State.IsGenesis() { // allow prevBlock not to be found only on genesis
 			return [32]byte{}, nil, fmt.Errorf("load prev block: %w: %w", err, ErrNonRecoverable)
@@ -261,7 +252,8 @@ func (m *Manager) GetPreviousBlockHashes(forHeight uint64) (lastHeaderHash [32]b
 	return lastHeaderHash, lastCommit, nil
 }
 
-func loadPrevBlock(store store.Store, height uint64) ([32]byte, *types.Commit, error) {
+// getHeaderHashAndCommit returns the Header Hash and Commit for a given height
+func getHeaderHashAndCommit(store store.Store, height uint64) ([32]byte, *types.Commit, error) {
 	lastCommit, err := store.LoadCommit(height)
 	if err != nil {
 		return [32]byte{}, nil, fmt.Errorf("load commit: height: %d: %w", height, err)

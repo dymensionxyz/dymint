@@ -250,9 +250,14 @@ func (c *Commit) FromProto(other *pb.Commit) error {
 
 // ToProto converts State into protobuf representation and returns it.
 func (s *State) ToProto() (*pb.State, error) {
-	seqsProto, err := s.Sequencers.ToProto()
-	if err != nil {
-		return nil, err
+	var proposerProto *pb.Sequencer
+	proposer := s.GetProposer()
+	if proposer != nil {
+		var err error
+		proposerProto, err = proposer.ToProto()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return &pb.State{
@@ -260,28 +265,34 @@ func (s *State) ToProto() (*pb.State, error) {
 		ChainId:                          s.ChainID,
 		InitialHeight:                    int64(s.InitialHeight),
 		LastBlockHeight:                  int64(s.Height()),
-		SequencerSet:                     *seqsProto,
 		BaseHeight:                       s.BaseHeight,
 		ConsensusParams:                  s.ConsensusParams,
 		LastHeightConsensusParamsChanged: s.LastHeightConsensusParamsChanged,
 		LastResultsHash:                  s.LastResultsHash[:],
+		LastHeaderHash:                   s.LastHeaderHash[:],
 		AppHash:                          s.AppHash[:],
 		RollappParams:                    s.RollappParams,
+		Proposer:                         proposerProto,
 	}, nil
 }
 
 // FromProto fills State with data from its protobuf representation.
 func (s *State) FromProto(other *pb.State) error {
-	var err error
 	s.Version = *other.Version
 	s.ChainID = other.ChainId
 	s.InitialHeight = uint64(other.InitialHeight)
 	s.SetHeight(uint64(other.LastBlockHeight))
 	s.BaseHeight = other.BaseHeight
 
-	err = s.Sequencers.FromProto(other.SequencerSet)
-	if err != nil {
-		return err
+	if other.Proposer != nil {
+		proposer, err := SequencerFromProto(other.Proposer)
+		if err != nil {
+			return err
+		}
+		s.SetProposer(proposer)
+	} else {
+		// proposer may be nil
+		s.SetProposer(nil)
 	}
 
 	s.ConsensusParams = other.ConsensusParams
@@ -294,79 +305,32 @@ func (s *State) FromProto(other *pb.State) error {
 
 // ToProto converts Sequencer into protobuf representation and returns it.
 func (s *Sequencer) ToProto() (*pb.Sequencer, error) {
+	if s == nil {
+		return nil, fmt.Errorf("nil sequencer")
+	}
 	protoVal, err := s.val.ToProto()
 	if err != nil {
 		return nil, fmt.Errorf("tendermint validator to proto: %w", err)
 	}
 	return &pb.Sequencer{
-		SettlementAddress:   s.SettlementAddress,
-		Validator:           protoVal,
-		RewardAddr:          s.RewardAddr,
-		WhitelistedRelayers: s.WhitelistedRelayers,
+		SettlementAddress: s.SettlementAddress,
+		Validator:         protoVal,
 	}, nil
 }
 
 // SequencerFromProto fills Sequencer with data from its protobuf representation.
-func SequencerFromProto(seq *pb.Sequencer) (Sequencer, error) {
+func SequencerFromProto(seq *pb.Sequencer) (*Sequencer, error) {
+	if seq == nil {
+		return nil, fmt.Errorf("nil sequencer")
+	}
 	val, err := types.ValidatorFromProto(seq.Validator)
 	if err != nil {
-		return Sequencer{}, fmt.Errorf("tendermint validator from proto: %w", err)
+		return nil, fmt.Errorf("tendermint validator from proto: %w", err)
 	}
-	return Sequencer{
-		SettlementAddress:   seq.SettlementAddress,
-		RewardAddr:          seq.RewardAddr,
-		WhitelistedRelayers: seq.WhitelistedRelayers,
-		val:                 *val,
+	return &Sequencer{
+		SettlementAddress: seq.SettlementAddress,
+		val:               *val,
 	}, nil
-}
-
-// ToProto converts SequencerSet into protobuf representation and returns it.
-func (s *SequencerSet) ToProto() (*pb.SequencerSet, error) {
-	sequencers := make([]*pb.Sequencer, len(s.Sequencers))
-	for i := 0; i < len(s.Sequencers); i++ {
-		seq, err := s.Sequencers[i].ToProto()
-		if err != nil {
-			return nil, fmt.Errorf("Sequencer.ToProto: %w", err)
-		}
-		sequencers[i] = seq
-	}
-
-	var proposer *pb.Sequencer
-	if s.Proposer != nil {
-		prop, err := s.Proposer.ToProto()
-		if err != nil {
-			return nil, fmt.Errorf("Sequencer.ToProto (proposer): %w", err)
-		}
-		proposer = prop
-	}
-
-	return &pb.SequencerSet{
-		Sequencers: sequencers,
-		Proposer:   proposer,
-	}, nil
-}
-
-// FromProto fills SequencerSet with data from its protobuf representation.
-func (s *SequencerSet) FromProto(protoSet pb.SequencerSet) error {
-	sequencers := make([]Sequencer, len(protoSet.Sequencers))
-	for i, seqProto := range protoSet.Sequencers {
-		seq, err := SequencerFromProto(seqProto)
-		if err != nil {
-			return fmt.Errorf("SequencerFromProto: %w", err)
-		}
-		sequencers[i] = seq
-	}
-	s.Sequencers = sequencers
-
-	if protoSet.Proposer != nil {
-		proposer, err := SequencerFromProto(protoSet.Proposer)
-		if err != nil {
-			return fmt.Errorf("SequencerFromProto (proposer): %w", err)
-		}
-		s.Proposer = &proposer
-	}
-
-	return nil
 }
 
 func txsToByteSlices(txs Txs) [][]byte {

@@ -46,6 +46,7 @@ func GetManagerWithProposerKey(conf config.BlockManagerConfig, proposerKey crypt
 	pubkey := ed25519.PubKey(raw)
 
 	state := GenerateStateWithSequencer(storeInitialHeight, storeLastBlockHeight, pubkey)
+	state.ChainID = genesis.ChainID
 	var managerStore store.Store
 	if mockStore == nil {
 		managerStore = store.New(store.NewDefaultInMemoryKVStore())

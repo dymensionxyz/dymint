@@ -13,10 +13,7 @@ func (m *Manager) RunInitChain(ctx context.Context) error {
 	if proposer == nil {
 		return errors.New("failed to get proposer")
 	}
-	tmProposer, err := proposer.TMValidator()
-	if err != nil {
-		return err
-	}
+	tmProposer := proposer.TMValidator()
 	res, err := m.Executor.InitChain(m.Genesis, []*tmtypes.Validator{tmProposer})
 	if err != nil {
 		return err

@@ -26,6 +26,7 @@ import (
 	"github.com/dymensionxyz/dymint/settlement"
 	slmock "github.com/dymensionxyz/dymint/settlement/grpc/mockserv/proto"
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
 	rollapptypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
 )
 
@@ -157,7 +158,7 @@ func (c *Client) Start() error {
 						if err != nil {
 							panic(err)
 						}
-						err = c.pubsub.PublishWithEvents(context.Background(), &settlement.EventDataNewBatchAccepted{EndHeight: b.EndHeight}, settlement.EventNewBatchAcceptedList)
+						err = c.pubsub.PublishWithEvents(context.Background(), &settlement.EventDataNewBatch{EndHeight: b.EndHeight}, settlement.EventNewBatchAcceptedList)
 						if err != nil {
 							panic(err)
 						}
@@ -186,7 +187,7 @@ func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *d
 	}
 
 	time.Sleep(10 * time.Millisecond) // mimic a delay in batch acceptance
-	err = c.pubsub.PublishWithEvents(context.Background(), &settlement.EventDataNewBatchAccepted{EndHeight: settlementBatch.EndHeight}, settlement.EventNewBatchAcceptedList)
+	err = c.pubsub.PublishWithEvents(context.Background(), &settlement.EventDataNewBatch{EndHeight: settlementBatch.EndHeight}, settlement.EventNewBatchAcceptedList)
 	if err != nil {
 		return err
 	}
@@ -203,6 +204,11 @@ func (c *Client) GetLatestBatch() (*settlement.ResultRetrieveBatch, error) {
 	return batchResult, nil
 }
 
+// GetLatestFinalizedBatch returns the latest finalized batch from the kv store. batches are never finalized for grpc settlement
+func (c *Client) GetLatestFinalizedBatch() (*settlement.ResultRetrieveBatch, error) {
+	return nil, gerrc.ErrNotFound
+}
+
 // GetBatchAtIndex returns the batch at the given index
 func (c *Client) GetBatchAtIndex(index uint64) (*settlement.ResultRetrieveBatch, error) {
 	batchResult, err := c.retrieveBatchAtStateIndex(index)
@@ -214,8 +220,31 @@ func (c *Client) GetBatchAtIndex(index uint64) (*settlement.ResultRetrieveBatch,
 	return batchResult, nil
 }
 
-func (c *Client) GetHeightState(index uint64) (*settlement.ResultGetHeightState, error) {
-	panic("hub grpc client get height state is not implemented: implement me") // TODO: impl
+func (c *Client) GetBatchAtHeight(h uint64) (*settlement.ResultRetrieveBatch, error) {
+	// Binary search implementation
+	left, right := uint64(1), c.slStateIndex
+
+	for left <= right {
+		mid := left + (right-left)/2
+		b, err := c.GetBatchAtIndex(mid)
+		if err != nil {
+			return &settlement.ResultRetrieveBatch{
+				ResultBase: settlement.ResultBase{Code: settlement.StatusError, Message: err.Error()},
+			}, err
+		}
+
+		if b.StartHeight <= h && b.EndHeight >= h {
+			return b, nil
+		}
+
+		if h < b.StartHeight {
+			right = mid - 1
+		} else {
+			left = mid + 1
+		}
+	}
+
+	return nil, gerrc.ErrNotFound
 }
 
 // GetProposer implements settlement.ClientI.
@@ -293,6 +322,16 @@ func (c *Client) saveBatch(batch *settlement.Batch) error {
 }
 
 func (c *Client) convertBatchtoSettlementBatch(batch *types.Batch, daResult *da.ResultSubmitBatch) *settlement.Batch {
+	bds := []rollapp.BlockDescriptor{}
+	for _, block := range batch.Blocks {
+		bd := rollapp.BlockDescriptor{
+			Height:    block.Header.Height,
+			StateRoot: block.Header.AppHash[:],
+			Timestamp: block.Header.GetTimestamp(),
+		}
+		bds = append(bds, bd)
+	}
+
 	settlementBatch := &settlement.Batch{
 		Sequencer:   c.GetProposer().SettlementAddress,
 		StartHeight: batch.StartHeight(),
@@ -303,10 +342,9 @@ func (c *Client) convertBatchtoSettlementBatch(batch *types.Batch, daResult *da.
 				Client: daResult.SubmitMetaData.Client,
 			},
 		},
+		BlockDescriptors: bds,
 	}
-	for _, block := range batch.Blocks {
-		settlementBatch.AppHashes = append(settlementBatch.AppHashes, block.Header.AppHash)
-	}
+
 	return settlementBatch
 }
 

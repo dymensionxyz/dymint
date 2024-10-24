@@ -21,6 +21,20 @@ import (
 // default minimum block max size allowed. not specific reason to set it to 10K, but we need to avoid no transactions can be included in a block.
 const minBlockMaxBytes = 10000
 
+type ExecutorI interface {
+	InitChain(genesis *tmtypes.GenesisDoc, valset []*tmtypes.Validator) (*abci.ResponseInitChain, error)
+	CreateBlock(height uint64, lastCommit *types.Commit, lastHeaderHash, nextSeqHash [32]byte, state *types.State, maxBlockDataSizeBytes uint64) *types.Block
+	Commit(state *types.State, block *types.Block, resp *tmstate.ABCIResponses) ([]byte, int64, error)
+	GetAppInfo() (*abci.ResponseInfo, error)
+	ExecuteBlock(block *types.Block) (*tmstate.ABCIResponses, error)
+	UpdateStateAfterInitChain(s *types.State, res *abci.ResponseInitChain)
+	UpdateMempoolAfterInitChain(s *types.State)
+	UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResponses, appHash []byte, height uint64, lastHeaderHash [32]byte)
+	UpdateProposerFromBlock(s *types.State, seqSet *types.SequencerSet, block *types.Block) bool
+}
+
+var _ ExecutorI = new(Executor)
+
 // Executor creates and applies blocks and maintains state.
 type Executor struct {
 	localAddress            []byte
@@ -45,7 +59,7 @@ func NewExecutor(
 	eventBus *tmtypes.EventBus,
 	consensusMessagesStream ConsensusMessagesStream,
 	logger types.Logger,
-) (*Executor, error) {
+) (ExecutorI, error) {
 	be := Executor{
 		localAddress:            localAddress,
 		chainID:                 chainID,
@@ -146,7 +160,7 @@ func (e *Executor) CreateBlock(
 	}
 	copy(block.Header.LastCommitHash[:], types.GetLastCommitHash(lastCommit, &block.Header))
 	copy(block.Header.DataHash[:], types.GetDataHash(block))
-	copy(block.Header.SequencerHash[:], state.Sequencers.ProposerHash())
+	copy(block.Header.SequencerHash[:], state.GetProposerHash())
 	copy(block.Header.NextSequencersHash[:], nextSeqHash[:])
 
 	return block
@@ -199,7 +213,7 @@ func (e *Executor) commit(state *types.State, block *types.Block, deliverTxs []*
 }
 
 // ExecuteBlock executes the block and returns the ABCIResponses. Block should be valid (passed validation checks).
-func (e *Executor) ExecuteBlock(state *types.State, block *types.Block) (*tmstate.ABCIResponses, error) {
+func (e *Executor) ExecuteBlock(block *types.Block) (*tmstate.ABCIResponses, error) {
 	abciResponses := new(tmstate.ABCIResponses)
 	abciResponses.DeliverTxs = make([]*abci.ResponseDeliverTx, len(block.Data.Txs))
 
@@ -234,7 +248,7 @@ func (e *Executor) ExecuteBlock(state *types.State, block *types.Block) (*tmstat
 				Votes: nil,
 			},
 			ByzantineValidators: nil,
-			ConsensusMessages:   block.Data.ConsensusMessages,
+			// ConsensusMessages:   block.Data.ConsensusMessages,
 		})
 	if err != nil {
 		return nil, err

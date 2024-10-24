@@ -301,6 +301,62 @@ func (_c *MockStore_LoadBlockResponses_Call) RunAndReturn(run func(uint64) (*sta
 	return _c
 }
 
+// LoadBlockSource provides a mock function with given fields: height
+func (_m *MockStore) LoadBlockSource(height uint64) (types.BlockSource, error) {
+	ret := _m.Called(height)
+
+	if len(ret) == 0 {
+		panic("no return value specified for LoadBlockSource")
+	}
+
+	var r0 types.BlockSource
+	var r1 error
+	if rf, ok := ret.Get(0).(func(uint64) (types.BlockSource, error)); ok {
+		return rf(height)
+	}
+	if rf, ok := ret.Get(0).(func(uint64) types.BlockSource); ok {
+		r0 = rf(height)
+	} else {
+		r0 = ret.Get(0).(types.BlockSource)
+	}
+
+	if rf, ok := ret.Get(1).(func(uint64) error); ok {
+		r1 = rf(height)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockStore_LoadBlockSource_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'LoadBlockSource'
+type MockStore_LoadBlockSource_Call struct {
+	*mock.Call
+}
+
+// LoadBlockSource is a helper method to define mock.On call
+//   - height uint64
+func (_e *MockStore_Expecter) LoadBlockSource(height interface{}) *MockStore_LoadBlockSource_Call {
+	return &MockStore_LoadBlockSource_Call{Call: _e.mock.On("LoadBlockSource", height)}
+}
+
+func (_c *MockStore_LoadBlockSource_Call) Run(run func(height uint64)) *MockStore_LoadBlockSource_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(uint64))
+	})
+	return _c
+}
+
+func (_c *MockStore_LoadBlockSource_Call) Return(_a0 types.BlockSource, _a1 error) *MockStore_LoadBlockSource_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockStore_LoadBlockSource_Call) RunAndReturn(run func(uint64) (types.BlockSource, error)) *MockStore_LoadBlockSource_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // LoadCommit provides a mock function with given fields: height
 func (_m *MockStore) LoadCommit(height uint64) (*types.Commit, error) {
 	ret := _m.Called(height)
@@ -417,24 +473,24 @@ func (_c *MockStore_LoadCommitByHash_Call) RunAndReturn(run func([32]byte) (*typ
 	return _c
 }
 
-// LoadSequencers provides a mock function with given fields: height
-func (_m *MockStore) LoadSequencers(height uint64) (*types.SequencerSet, error) {
+// LoadProposer provides a mock function with given fields: height
+func (_m *MockStore) LoadProposer(height uint64) (*types.Sequencer, error) {
 	ret := _m.Called(height)
 
 	if len(ret) == 0 {
-		panic("no return value specified for LoadSequencers")
+		panic("no return value specified for LoadProposer")
 	}
 
-	var r0 *types.SequencerSet
+	var r0 *types.Sequencer
 	var r1 error
-	if rf, ok := ret.Get(0).(func(uint64) (*types.SequencerSet, error)); ok {
+	if rf, ok := ret.Get(0).(func(uint64) (*types.Sequencer, error)); ok {
 		return rf(height)
 	}
-	if rf, ok := ret.Get(0).(func(uint64) *types.SequencerSet); ok {
+	if rf, ok := ret.Get(0).(func(uint64) *types.Sequencer); ok {
 		r0 = rf(height)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*types.SequencerSet)
+			r0 = ret.Get(0).(*types.Sequencer)
 		}
 	}
 
@@ -447,30 +503,30 @@ func (_m *MockStore) LoadSequencers(height uint64) (*types.SequencerSet, error) 
 	return r0, r1
 }
 
-// MockStore_LoadSequencers_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'LoadSequencers'
-type MockStore_LoadSequencers_Call struct {
+// MockStore_LoadProposer_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'LoadProposer'
+type MockStore_LoadProposer_Call struct {
 	*mock.Call
 }
 
-// LoadSequencers is a helper method to define mock.On call
+// LoadProposer is a helper method to define mock.On call
 //   - height uint64
-func (_e *MockStore_Expecter) LoadSequencers(height interface{}) *MockStore_LoadSequencers_Call {
-	return &MockStore_LoadSequencers_Call{Call: _e.mock.On("LoadSequencers", height)}
+func (_e *MockStore_Expecter) LoadProposer(height interface{}) *MockStore_LoadProposer_Call {
+	return &MockStore_LoadProposer_Call{Call: _e.mock.On("LoadProposer", height)}
 }
 
-func (_c *MockStore_LoadSequencers_Call) Run(run func(height uint64)) *MockStore_LoadSequencers_Call {
+func (_c *MockStore_LoadProposer_Call) Run(run func(height uint64)) *MockStore_LoadProposer_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run(args[0].(uint64))
 	})
 	return _c
 }
 
-func (_c *MockStore_LoadSequencers_Call) Return(_a0 *types.SequencerSet, _a1 error) *MockStore_LoadSequencers_Call {
+func (_c *MockStore_LoadProposer_Call) Return(_a0 *types.Sequencer, _a1 error) *MockStore_LoadProposer_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockStore_LoadSequencers_Call) RunAndReturn(run func(uint64) (*types.SequencerSet, error)) *MockStore_LoadSequencers_Call {
+func (_c *MockStore_LoadProposer_Call) RunAndReturn(run func(uint64) (*types.Sequencer, error)) *MockStore_LoadProposer_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -528,6 +584,61 @@ func (_c *MockStore_LoadState_Call) Return(_a0 *types.State, _a1 error) *MockSto
 }
 
 func (_c *MockStore_LoadState_Call) RunAndReturn(run func() (*types.State, error)) *MockStore_LoadState_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// LoadValidationHeight provides a mock function with given fields:
+func (_m *MockStore) LoadValidationHeight() (uint64, error) {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for LoadValidationHeight")
+	}
+
+	var r0 uint64
+	var r1 error
+	if rf, ok := ret.Get(0).(func() (uint64, error)); ok {
+		return rf()
+	}
+	if rf, ok := ret.Get(0).(func() uint64); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(uint64)
+	}
+
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockStore_LoadValidationHeight_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'LoadValidationHeight'
+type MockStore_LoadValidationHeight_Call struct {
+	*mock.Call
+}
+
+// LoadValidationHeight is a helper method to define mock.On call
+func (_e *MockStore_Expecter) LoadValidationHeight() *MockStore_LoadValidationHeight_Call {
+	return &MockStore_LoadValidationHeight_Call{Call: _e.mock.On("LoadValidationHeight")}
+}
+
+func (_c *MockStore_LoadValidationHeight_Call) Run(run func()) *MockStore_LoadValidationHeight_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockStore_LoadValidationHeight_Call) Return(_a0 uint64, _a1 error) *MockStore_LoadValidationHeight_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockStore_LoadValidationHeight_Call) RunAndReturn(run func() (uint64, error)) *MockStore_LoadValidationHeight_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -817,29 +928,29 @@ func (_c *MockStore_SaveBlockResponses_Call) RunAndReturn(run func(uint64, *stat
 	return _c
 }
 
-// SaveSequencers provides a mock function with given fields: height, seqSet, batch
-func (_m *MockStore) SaveSequencers(height uint64, seqSet *types.SequencerSet, batch store.KVBatch) (store.KVBatch, error) {
-	ret := _m.Called(height, seqSet, batch)
+// SaveBlockSource provides a mock function with given fields: height, source, batch
+func (_m *MockStore) SaveBlockSource(height uint64, source types.BlockSource, batch store.KVBatch) (store.KVBatch, error) {
+	ret := _m.Called(height, source, batch)
 
 	if len(ret) == 0 {
-		panic("no return value specified for SaveSequencers")
+		panic("no return value specified for SaveBlockSource")
 	}
 
 	var r0 store.KVBatch
 	var r1 error
-	if rf, ok := ret.Get(0).(func(uint64, *types.SequencerSet, store.KVBatch) (store.KVBatch, error)); ok {
-		return rf(height, seqSet, batch)
+	if rf, ok := ret.Get(0).(func(uint64, types.BlockSource, store.KVBatch) (store.KVBatch, error)); ok {
+		return rf(height, source, batch)
 	}
-	if rf, ok := ret.Get(0).(func(uint64, *types.SequencerSet, store.KVBatch) store.KVBatch); ok {
-		r0 = rf(height, seqSet, batch)
+	if rf, ok := ret.Get(0).(func(uint64, types.BlockSource, store.KVBatch) store.KVBatch); ok {
+		r0 = rf(height, source, batch)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(store.KVBatch)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(uint64, *types.SequencerSet, store.KVBatch) error); ok {
-		r1 = rf(height, seqSet, batch)
+	if rf, ok := ret.Get(1).(func(uint64, types.BlockSource, store.KVBatch) error); ok {
+		r1 = rf(height, source, batch)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -847,32 +958,92 @@ func (_m *MockStore) SaveSequencers(height uint64, seqSet *types.SequencerSet, b
 	return r0, r1
 }
 
-// MockStore_SaveSequencers_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SaveSequencers'
-type MockStore_SaveSequencers_Call struct {
+// MockStore_SaveBlockSource_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SaveBlockSource'
+type MockStore_SaveBlockSource_Call struct {
 	*mock.Call
 }
 
-// SaveSequencers is a helper method to define mock.On call
+// SaveBlockSource is a helper method to define mock.On call
 //   - height uint64
-//   - seqSet *types.SequencerSet
+//   - source types.BlockSource
 //   - batch store.KVBatch
-func (_e *MockStore_Expecter) SaveSequencers(height interface{}, seqSet interface{}, batch interface{}) *MockStore_SaveSequencers_Call {
-	return &MockStore_SaveSequencers_Call{Call: _e.mock.On("SaveSequencers", height, seqSet, batch)}
+func (_e *MockStore_Expecter) SaveBlockSource(height interface{}, source interface{}, batch interface{}) *MockStore_SaveBlockSource_Call {
+	return &MockStore_SaveBlockSource_Call{Call: _e.mock.On("SaveBlockSource", height, source, batch)}
 }
 
-func (_c *MockStore_SaveSequencers_Call) Run(run func(height uint64, seqSet *types.SequencerSet, batch store.KVBatch)) *MockStore_SaveSequencers_Call {
+func (_c *MockStore_SaveBlockSource_Call) Run(run func(height uint64, source types.BlockSource, batch store.KVBatch)) *MockStore_SaveBlockSource_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(uint64), args[1].(*types.SequencerSet), args[2].(store.KVBatch))
+		run(args[0].(uint64), args[1].(types.BlockSource), args[2].(store.KVBatch))
 	})
 	return _c
 }
 
-func (_c *MockStore_SaveSequencers_Call) Return(_a0 store.KVBatch, _a1 error) *MockStore_SaveSequencers_Call {
+func (_c *MockStore_SaveBlockSource_Call) Return(_a0 store.KVBatch, _a1 error) *MockStore_SaveBlockSource_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockStore_SaveSequencers_Call) RunAndReturn(run func(uint64, *types.SequencerSet, store.KVBatch) (store.KVBatch, error)) *MockStore_SaveSequencers_Call {
+func (_c *MockStore_SaveBlockSource_Call) RunAndReturn(run func(uint64, types.BlockSource, store.KVBatch) (store.KVBatch, error)) *MockStore_SaveBlockSource_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SaveProposer provides a mock function with given fields: height, proposer, batch
+func (_m *MockStore) SaveProposer(height uint64, proposer *types.Sequencer, batch store.KVBatch) (store.KVBatch, error) {
+	ret := _m.Called(height, proposer, batch)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SaveProposer")
+	}
+
+	var r0 store.KVBatch
+	var r1 error
+	if rf, ok := ret.Get(0).(func(uint64, *types.Sequencer, store.KVBatch) (store.KVBatch, error)); ok {
+		return rf(height, proposer, batch)
+	}
+	if rf, ok := ret.Get(0).(func(uint64, *types.Sequencer, store.KVBatch) store.KVBatch); ok {
+		r0 = rf(height, proposer, batch)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(store.KVBatch)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(uint64, *types.Sequencer, store.KVBatch) error); ok {
+		r1 = rf(height, proposer, batch)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockStore_SaveProposer_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SaveProposer'
+type MockStore_SaveProposer_Call struct {
+	*mock.Call
+}
+
+// SaveProposer is a helper method to define mock.On call
+//   - height uint64
+//   - proposer *types.Sequencer
+//   - batch store.KVBatch
+func (_e *MockStore_Expecter) SaveProposer(height interface{}, proposer interface{}, batch interface{}) *MockStore_SaveProposer_Call {
+	return &MockStore_SaveProposer_Call{Call: _e.mock.On("SaveProposer", height, proposer, batch)}
+}
+
+func (_c *MockStore_SaveProposer_Call) Run(run func(height uint64, proposer *types.Sequencer, batch store.KVBatch)) *MockStore_SaveProposer_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(uint64), args[1].(*types.Sequencer), args[2].(store.KVBatch))
+	})
+	return _c
+}
+
+func (_c *MockStore_SaveProposer_Call) Return(_a0 store.KVBatch, _a1 error) *MockStore_SaveProposer_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockStore_SaveProposer_Call) RunAndReturn(run func(uint64, *types.Sequencer, store.KVBatch) (store.KVBatch, error)) *MockStore_SaveProposer_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -932,6 +1103,65 @@ func (_c *MockStore_SaveState_Call) Return(_a0 store.KVBatch, _a1 error) *MockSt
 }
 
 func (_c *MockStore_SaveState_Call) RunAndReturn(run func(*types.State, store.KVBatch) (store.KVBatch, error)) *MockStore_SaveState_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SaveValidationHeight provides a mock function with given fields: height, batch
+func (_m *MockStore) SaveValidationHeight(height uint64, batch store.KVBatch) (store.KVBatch, error) {
+	ret := _m.Called(height, batch)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SaveValidationHeight")
+	}
+
+	var r0 store.KVBatch
+	var r1 error
+	if rf, ok := ret.Get(0).(func(uint64, store.KVBatch) (store.KVBatch, error)); ok {
+		return rf(height, batch)
+	}
+	if rf, ok := ret.Get(0).(func(uint64, store.KVBatch) store.KVBatch); ok {
+		r0 = rf(height, batch)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(store.KVBatch)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(uint64, store.KVBatch) error); ok {
+		r1 = rf(height, batch)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockStore_SaveValidationHeight_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SaveValidationHeight'
+type MockStore_SaveValidationHeight_Call struct {
+	*mock.Call
+}
+
+// SaveValidationHeight is a helper method to define mock.On call
+//   - height uint64
+//   - batch store.KVBatch
+func (_e *MockStore_Expecter) SaveValidationHeight(height interface{}, batch interface{}) *MockStore_SaveValidationHeight_Call {
+	return &MockStore_SaveValidationHeight_Call{Call: _e.mock.On("SaveValidationHeight", height, batch)}
+}
+
+func (_c *MockStore_SaveValidationHeight_Call) Run(run func(height uint64, batch store.KVBatch)) *MockStore_SaveValidationHeight_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(uint64), args[1].(store.KVBatch))
+	})
+	return _c
+}
+
+func (_c *MockStore_SaveValidationHeight_Call) Return(_a0 store.KVBatch, _a1 error) *MockStore_SaveValidationHeight_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockStore_SaveValidationHeight_Call) RunAndReturn(run func(uint64, store.KVBatch) (store.KVBatch, error)) *MockStore_SaveValidationHeight_Call {
 	_c.Call.Return(run)
 	return _c
 }

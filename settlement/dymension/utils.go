@@ -38,6 +38,7 @@ func convertStateInfoToResultRetrieveBatch(stateInfo *rollapptypes.StateInfo) (*
 	if err != nil {
 		return nil, err
 	}
+
 	batchResult := &settlement.Batch{
 		Sequencer:   stateInfo.Sequencer,
 		StartHeight: stateInfo.StartHeight,
@@ -45,7 +46,10 @@ func convertStateInfoToResultRetrieveBatch(stateInfo *rollapptypes.StateInfo) (*
 		MetaData: &settlement.BatchMetaData{
 			DA: daMetaData,
 		},
+		BlockDescriptors: stateInfo.BDs.BD,
+		NumBlocks:        stateInfo.NumBlocks,
 	}
+
 	return &settlement.ResultRetrieveBatch{
 		ResultBase: settlement.ResultBase{Code: settlement.StatusSuccess, StateIndex: stateInfo.StateInfoIndex.Index},
 		Batch:      batchResult,

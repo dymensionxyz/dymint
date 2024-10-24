@@ -31,7 +31,7 @@ const (
 
 func createRandomHashes() [][32]byte {
 	h := [][32]byte{}
-	for i := 0; i < 8; i++ {
+	for i := 0; i < 4; i++ {
 		var h1 [32]byte
 		_, err := rand.Read(h1[:])
 		if err != nil {
@@ -40,15 +40,6 @@ func createRandomHashes() [][32]byte {
 		h = append(h, h1)
 	}
 	return h
-}
-
-func GenerateSettlementAddress() string {
-	addrBytes := ed25519.GenPrivKey().PubKey().Address().Bytes()
-	addr, err := bech32.ConvertAndEncode(SettlementAccountPrefix, addrBytes)
-	if err != nil {
-		panic(err)
-	}
-	return addr
 }
 
 func GetRandomTx() types.Tx {
@@ -63,9 +54,19 @@ func GetRandomBytes(n uint64) []byte {
 	return data
 }
 
+func GenerateSettlementAddress() string {
+	addrBytes := ed25519.GenPrivKey().PubKey().Address().Bytes()
+	addr, err := bech32.ConvertAndEncode(SettlementAccountPrefix, addrBytes)
+	if err != nil {
+		panic(err)
+	}
+	return addr
+}
+
 // generateBlock generates random blocks.
-func generateBlock(height uint64, proposerHash []byte) *types.Block {
+func generateBlock(height uint64, proposerHash []byte, lastHeaderHash [32]byte) *types.Block {
 	h := createRandomHashes()
+
 	block := &types.Block{
 		Header: types.Header{
 			Version: types.Version{
@@ -74,15 +75,16 @@ func generateBlock(height uint64, proposerHash []byte) *types.Block {
 			},
 			Height:             height,
 			Time:               4567,
-			LastHeaderHash:     h[0],
-			LastCommitHash:     h[1],
-			DataHash:           h[2],
-			ConsensusHash:      h[3],
+			LastHeaderHash:     lastHeaderHash,
+			LastCommitHash:     h[0],
+			DataHash:           h[1],
+			ConsensusHash:      h[2],
 			AppHash:            [32]byte{},
 			LastResultsHash:    GetEmptyLastResultsHash(),
 			ProposerAddress:    []byte{4, 3, 2, 1},
 			SequencerHash:      [32]byte(proposerHash),
 			NextSequencersHash: [32]byte(proposerHash),
+			ChainID:            "test-chain",
 		},
 		Data: types.Data{
 			Txs:                    nil,
@@ -91,7 +93,7 @@ func generateBlock(height uint64, proposerHash []byte) *types.Block {
 		},
 		LastCommit: types.Commit{
 			Height:     8,
-			HeaderHash: h[7],
+			HeaderHash: h[3],
 			Signatures: []types.Signature{},
 		},
 	}
@@ -99,15 +101,16 @@ func generateBlock(height uint64, proposerHash []byte) *types.Block {
 	return block
 }
 
-func GenerateBlocksWithTxs(startHeight uint64, num uint64, proposerKey crypto.PrivKey, nTxs int) ([]*types.Block, error) {
+func GenerateBlocksWithTxs(startHeight uint64, num uint64, proposerKey crypto.PrivKey, nTxs int, chainId string) ([]*types.Block, error) {
 	r, _ := proposerKey.Raw()
 	seq := types.NewSequencerFromValidator(*tmtypes.NewValidator(ed25519.PrivKey(r).PubKey(), 1))
-	proposerHash := seq.Hash()
+	proposerHash := seq.MustHash()
 
 	blocks := make([]*types.Block, num)
+	lastHeaderHash := [32]byte{}
 	for i := uint64(0); i < num; i++ {
 
-		block := generateBlock(i+startHeight, proposerHash)
+		block := generateBlock(i+startHeight, proposerHash, lastHeaderHash)
 
 		block.Data = types.Data{
 			Txs: make(types.Txs, nTxs),
@@ -127,19 +130,21 @@ func GenerateBlocksWithTxs(startHeight uint64, num uint64, proposerKey crypto.Pr
 		}
 		block.LastCommit.Signatures = []types.Signature{signature}
 		blocks[i] = block
+		lastHeaderHash = block.Header.Hash()
 	}
 	return blocks, nil
 }
 
 // GenerateBlocks generates random blocks.
-func GenerateBlocks(startHeight uint64, num uint64, proposerKey crypto.PrivKey) ([]*types.Block, error) {
+func GenerateBlocks(startHeight uint64, num uint64, proposerKey crypto.PrivKey, lastBlockHeader [32]byte) ([]*types.Block, error) {
 	r, _ := proposerKey.Raw()
 	seq := types.NewSequencerFromValidator(*tmtypes.NewValidator(ed25519.PrivKey(r).PubKey(), 1))
-	proposerHash := seq.Hash()
+	proposerHash := seq.MustHash()
 
 	blocks := make([]*types.Block, num)
+	lastHeaderHash := lastBlockHeader
 	for i := uint64(0); i < num; i++ {
-		block := generateBlock(i+startHeight, proposerHash)
+		block := generateBlock(i+startHeight, proposerHash, lastHeaderHash)
 		copy(block.Header.DataHash[:], types.GetDataHash(block))
 		if i > 0 {
 			copy(block.Header.LastCommitHash[:], types.GetLastCommitHash(&blocks[i-1].LastCommit, &block.Header))
@@ -150,7 +155,9 @@ func GenerateBlocks(startHeight uint64, num uint64, proposerKey crypto.PrivKey) 
 			return nil, err
 		}
 		block.LastCommit.Signatures = []types.Signature{signature}
+		block.Header.ProposerAddress = ed25519.PrivKey(r).PubKey().Address()
 		blocks[i] = block
+		lastHeaderHash = block.Header.Hash()
 	}
 	return blocks, nil
 }
@@ -189,8 +196,8 @@ func generateSignature(proposerKey crypto.PrivKey, header *types.Header) ([]byte
 }
 
 // GenerateBatch generates a batch out of random blocks
-func GenerateBatch(startHeight uint64, endHeight uint64, proposerKey crypto.PrivKey) (*types.Batch, error) {
-	blocks, err := GenerateBlocks(startHeight, endHeight-startHeight+1, proposerKey)
+func GenerateBatch(startHeight uint64, endHeight uint64, proposerKey crypto.PrivKey, lastBlockHeader [32]byte) (*types.Batch, error) {
+	blocks, err := GenerateBlocks(startHeight, endHeight-startHeight+1, proposerKey, lastBlockHeader)
 	if err != nil {
 		return nil, err
 	}
@@ -206,7 +213,7 @@ func GenerateBatch(startHeight uint64, endHeight uint64, proposerKey crypto.Priv
 }
 
 func MustGenerateBatch(startHeight uint64, endHeight uint64, proposerKey crypto.PrivKey) *types.Batch {
-	blocks, err := GenerateBlocks(startHeight, endHeight-startHeight+1, proposerKey)
+	blocks, err := GenerateBlocks(startHeight, endHeight-startHeight+1, proposerKey, [32]byte{})
 	if err != nil {
 		panic(err)
 	}
@@ -239,8 +246,6 @@ func GenerateSequencer() *types.Sequencer {
 	return types.NewSequencer(
 		tmtypes.NewValidator(ed25519.GenPrivKey().PubKey(), 1).PubKey,
 		GenerateSettlementAddress(),
-		GenerateSettlementAddress(),
-		[]string{GenerateSettlementAddress(), GenerateSettlementAddress()},
 	)
 }
 
@@ -269,12 +274,7 @@ func GenerateStateWithSequencer(initialHeight int64, lastBlockHeight int64, pubk
 			},
 		},
 	}
-	s.Sequencers.SetProposer(types.NewSequencer(
-		pubkey,
-		GenerateSettlementAddress(),
-		GenerateSettlementAddress(),
-		[]string{GenerateSettlementAddress()},
-	))
+	s.SetProposer(types.NewSequencer(pubkey, ""))
 	s.SetHeight(uint64(lastBlockHeight))
 	return s
 }

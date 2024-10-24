@@ -1,6 +1,7 @@
 package client_test
 
 import (
+	stdbytes "bytes"
 	"context"
 	crand "crypto/rand"
 	"encoding/hex"
@@ -295,6 +296,93 @@ func TestGetBlock(t *testing.T) {
 	require.NoError(err)
 }
 
+func TestValidatedHeight(t *testing.T) {
+	require := require.New(t)
+	assert := assert.New(t)
+	mockApp, rpc, node := getRPCAndNode(t)
+
+	mockApp.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
+	mockApp.On("Commit", mock.Anything).Return(abci.ResponseCommit{})
+	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
+
+	err := node.Start()
+	require.NoError(err)
+
+	ptr := func(i int64) *int64 { return &i }
+
+	tests := []struct {
+		name            string
+		validatedHeight uint64
+		nodeHeight      uint64
+		submittedHeight uint64
+		queryHeight     *int64
+		result          client.BlockValidationStatus
+	}{
+		{
+			name:            "SL validated height",
+			validatedHeight: 10,
+			nodeHeight:      15,
+			queryHeight:     ptr(10),
+			submittedHeight: 10,
+			result:          client.SLValidated,
+		},
+		{
+			name:            "P2P validated height",
+			validatedHeight: 10,
+			nodeHeight:      15,
+			queryHeight:     ptr(13),
+			submittedHeight: 10,
+			result:          client.P2PValidated,
+		},
+		{
+			name:            "Non validated height",
+			validatedHeight: 10,
+			nodeHeight:      15,
+			queryHeight:     ptr(20),
+			submittedHeight: 10,
+			result:          client.NotValidated,
+		},
+		{
+			name:            "Invalid height",
+			validatedHeight: 1,
+			nodeHeight:      5,
+			queryHeight:     ptr(-1),
+			submittedHeight: 10,
+			result:          -1,
+		},
+		{
+			name:            "Nil height",
+			validatedHeight: 1,
+			nodeHeight:      5,
+			queryHeight:     nil,
+			submittedHeight: 10,
+			result:          -1,
+		},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+
+			node.BlockManager.SettlementValidator.UpdateLastValidatedHeight(test.validatedHeight)
+			node.BlockManager.LastSettlementHeight.Store(test.submittedHeight)
+
+			node.BlockManager.State.SetHeight(test.nodeHeight)
+
+			validationResponse, err := rpc.BlockValidated(context.Background(), test.queryHeight)
+			require.NoError(err)
+			require.NotNil(validationResponse)
+			assert.Equal(test.result, validationResponse.Result)
+
+		})
+
+	}
+
+	err = node.Stop()
+	require.NoError(err)
+
+}
+
 func TestGetCommit(t *testing.T) {
 	require := require.New(t)
 	assert := assert.New(t)
@@ -333,6 +421,50 @@ func TestGetCommit(t *testing.T) {
 
 	err = node.Stop()
 	require.NoError(err)
+}
+
+// Ensures the results of the commit and validators queries are consistent wrt. val set hash
+func TestValidatorSetHashConsistency(t *testing.T) {
+	require := require.New(t)
+	mockApp, rpc, node := getRPCAndNode(t)
+
+	mockApp.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
+	mockApp.On("Commit", mock.Anything).Return(abci.ResponseCommit{})
+	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
+
+	v := tmtypes.NewValidator(ed25519.GenPrivKey().PubKey(), 1)
+	s := types.NewSequencerFromValidator(*v)
+	node.BlockManager.State.SetProposer(s)
+
+	b := getRandomBlock(1, 10)
+	copy(b.Header.SequencerHash[:], node.BlockManager.State.GetProposerHash())
+
+	err := node.Start()
+	require.NoError(err)
+
+	_, err = node.Store.SaveBlock(b, &types.Commit{Height: b.Header.Height}, nil)
+	node.BlockManager.State.SetHeight(b.Header.Height)
+	require.NoError(err)
+
+	batch := node.Store.NewBatch()
+	batch, err = node.Store.SaveProposer(b.Header.Height, node.BlockManager.State.GetProposer(), batch)
+	require.NoError(err)
+	err = batch.Commit()
+	require.NoError(err)
+
+	h := int64(b.Header.Height)
+	commit, err := rpc.Commit(context.Background(), &h)
+	require.NoError(err)
+	require.NotNil(commit)
+
+	vals, err := rpc.Validators(context.Background(), &h, nil, nil)
+	require.NoError(err)
+
+	valsRes, err := tmtypes.ValidatorSetFromExistingValidators(vals.Validators)
+	require.NoError(err)
+	hash := valsRes.Hash()
+	ok := stdbytes.Equal(commit.ValidatorsHash, hash)
+	require.True(ok)
 }
 
 func TestBlockSearch(t *testing.T) {

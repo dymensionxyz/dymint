@@ -36,6 +36,14 @@ const (
 	subscribeTimeout = 5 * time.Second
 )
 
+type BlockValidationStatus int
+
+const (
+	NotValidated = iota
+	P2PValidated
+	SLValidated
+)
+
 // ErrConsensusStateNotAvailable is returned because Dymint doesn't use Tendermint consensus.
 var ErrConsensusStateNotAvailable = errors.New("consensus state not available in Dymint")
 
@@ -51,6 +59,10 @@ type Client struct {
 
 	// cache of chunked genesis data.
 	genChunks []string
+}
+
+type ResultBlockValidated struct {
+	Result BlockValidationStatus
 }
 
 // NewClient returns Client working with given node.
@@ -508,35 +520,22 @@ func (c *Client) Commit(ctx context.Context, height *int64) (*ctypes.ResultCommi
 // Validators returns paginated list of validators at given height.
 func (c *Client) Validators(ctx context.Context, heightPtr *int64, pagePtr, perPagePtr *int) (*ctypes.ResultValidators, error) {
 	height := c.normalizeHeight(heightPtr)
-	sequencers, err := c.node.Store.LoadSequencers(height)
+
+	proposer, err := c.node.Store.LoadProposer(height)
 	if err != nil {
 		return nil, fmt.Errorf("load validators for height %d: %w", height, err)
 	}
 
-	totalCount := len(sequencers.Sequencers)
-	perPage := validatePerPage(perPagePtr)
-	page, err := validatePage(pagePtr, perPage, totalCount)
-	if err != nil {
-		return nil, err
+	var validators []*tmtypes.Validator
+	if proposer != nil {
+		validators = proposer.TMValidators()
 	}
 
-	skipCount := validateSkipCount(page, perPage)
-
-	var vals []*tmtypes.Validator
-	for _, s := range sequencers.Sequencers {
-		val, err := s.TMValidator()
-		if err != nil {
-			return nil, fmt.Errorf("convert sequencer to validator: %s :%w", s.SettlementAddress, err)
-		}
-		vals = append(vals, val)
-	}
-
-	v := vals[skipCount : skipCount+tmmath.MinInt(perPage, totalCount-skipCount)]
 	return &ctypes.ResultValidators{
 		BlockHeight: int64(height),
-		Validators:  v,
-		Count:       len(v),
-		Total:       totalCount,
+		Validators:  validators,
+		Count:       len(validators),
+		Total:       len(validators),
 	}, nil
 }
 
@@ -717,13 +716,12 @@ func (c *Client) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
 	latestHeight := latest.Header.Height
 	latestBlockTimeNano := latest.Header.Time
 
-	sequencers, err := c.node.Store.LoadSequencers(latest.Header.Height)
+	proposer, err := c.node.Store.LoadProposer(latest.Header.Height)
 	if err != nil {
 		return nil, fmt.Errorf("fetch the validator info at latest block: %w", err)
 	}
-	proposer := sequencers.Proposer
 	if proposer == nil {
-		return nil, fmt.Errorf("find proposer %s in the valSet", string(latest.Header.ProposerAddress))
+		return nil, fmt.Errorf("load proposer: height %d: proposer %s", latest.Header.Height, string(latest.Header.ProposerAddress))
 	}
 	state, err := c.node.Store.LoadState()
 	if err != nil {
@@ -815,6 +813,24 @@ func (c *Client) CheckTx(ctx context.Context, tx tmtypes.Tx) (*ctypes.ResultChec
 		return nil, err
 	}
 	return &ctypes.ResultCheckTx{ResponseCheckTx: *res}, nil
+}
+
+func (c *Client) BlockValidated(ctx context.Context, height *int64) (*ResultBlockValidated, error) {
+	// invalid height
+	if height == nil || *height < 0 {
+		return &ResultBlockValidated{Result: -1}, nil
+	}
+	// node has not reached the height yet
+	if uint64(*height) > c.node.BlockManager.State.Height() {
+		return &ResultBlockValidated{Result: NotValidated}, nil
+	}
+
+	if uint64(*height) <= c.node.BlockManager.SettlementValidator.GetLastValidatedHeight() {
+		return &ResultBlockValidated{Result: SLValidated}, nil
+	}
+
+	// block is applied, and therefore it is validated at block level but not at state update level
+	return &ResultBlockValidated{Result: P2PValidated}, nil
 }
 
 func (c *Client) eventsRoutine(sub tmtypes.Subscription, subscriber string, q tmpubsub.Query, outc chan<- ctypes.ResultEvent) {

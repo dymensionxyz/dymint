@@ -59,9 +59,9 @@ func TestSubmitBatch(t *testing.T) {
 	// Create a batches which will be submitted
 	proposerKey, _, err := crypto.GenerateEd25519Key(nil)
 	require.NoError(err)
-	batch1, err := testutil.GenerateBatch(1, 1, proposerKey)
+	batch1, err := testutil.GenerateBatch(1, 1, proposerKey, [32]byte{})
 	require.NoError(err)
-	batch2, err := testutil.GenerateBatch(2, 2, proposerKey)
+	batch2, err := testutil.GenerateBatch(2, 2, proposerKey, [32]byte{})
 	require.NoError(err)
 	resultSubmitBatch := &da.ResultSubmitBatch{}
 	resultSubmitBatch.SubmitMetaData = &da.DASubmitMetaData{}
@@ -76,11 +76,11 @@ func TestSubmitBatch(t *testing.T) {
 	require.NoError(err)
 	assert.Equal(batch1.EndHeight(), queriedBatch.Batch.EndHeight)
 
-	state, err := sllayer.GetHeightState(1)
+	queriedBatchAtState, err := sllayer.GetBatchAtHeight(1)
 	require.NoError(err)
-	assert.Equal(queriedBatch.StateIndex, state.State.StateIndex)
+	assert.Equal(queriedBatch.StateIndex, queriedBatchAtState.StateIndex)
 
-	queriedBatch, err = sllayer.GetBatchAtIndex(state.State.StateIndex)
+	queriedBatch, err = sllayer.GetBatchAtIndex(queriedBatchAtState.StateIndex)
 	require.NoError(err)
 	assert.Equal(batch1.EndHeight(), queriedBatch.Batch.EndHeight)
 
@@ -94,11 +94,11 @@ func TestSubmitBatch(t *testing.T) {
 	require.NoError(err)
 	assert.Equal(batch2.EndHeight(), queriedBatch.Batch.EndHeight)
 
-	state, err = sllayer.GetHeightState(2)
+	queriedBatchAtState, err = sllayer.GetBatchAtHeight(2)
 	require.NoError(err)
-	assert.Equal(queriedBatch.StateIndex, state.State.StateIndex)
+	assert.Equal(queriedBatch.StateIndex, queriedBatchAtState.StateIndex)
 
-	queriedBatch, err = sllayer.GetBatchAtIndex(state.State.StateIndex)
+	queriedBatch, err = sllayer.GetBatchAtIndex(queriedBatchAtState.StateIndex)
 	require.NoError(err)
 	assert.Equal(batch2.EndHeight(), queriedBatch.Batch.EndHeight)
 
@@ -133,7 +133,7 @@ func TestPersistency(t *testing.T) {
 	assert.Error(err) // no batch should be present
 
 	// Create a batches which will be submitted
-	batch1, err := testutil.GenerateBatch(1, 1, proposerKey)
+	batch1, err := testutil.GenerateBatch(1, 1, proposerKey, [32]byte{})
 	require.NoError(err)
 	resultSubmitBatch := &da.ResultSubmitBatch{}
 	resultSubmitBatch.SubmitMetaData = &da.DASubmitMetaData{}

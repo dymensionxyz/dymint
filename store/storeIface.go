@@ -1,9 +1,10 @@
 package store
 
 import (
-	"github.com/dymensionxyz/dymint/types"
 	"github.com/ipfs/go-cid"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
+
+	"github.com/dymensionxyz/dymint/types"
 )
 
 // KV encapsulates key-value store abstraction, in minimalistic interface.
@@ -67,9 +68,9 @@ type Store interface {
 	// LoadState returns last state saved with UpdateState.
 	LoadState() (*types.State, error)
 
-	SaveSequencers(height uint64, seqSet *types.SequencerSet, batch KVBatch) (KVBatch, error)
+	SaveProposer(height uint64, proposer *types.Sequencer, batch KVBatch) (KVBatch, error)
 
-	LoadSequencers(height uint64) (*types.SequencerSet, error)
+	LoadProposer(height uint64) (*types.Sequencer, error)
 
 	PruneStore(from, to uint64, logger types.Logger) (uint64, error)
 
@@ -78,4 +79,12 @@ type Store interface {
 	SaveBlockCid(height uint64, cid cid.Cid, batch KVBatch) (KVBatch, error)
 
 	LoadBlockCid(height uint64) (cid.Cid, error)
+
+	SaveBlockSource(height uint64, source types.BlockSource, batch KVBatch) (KVBatch, error)
+
+	LoadBlockSource(height uint64) (types.BlockSource, error)
+
+	SaveValidationHeight(height uint64, batch KVBatch) (KVBatch, error)
+
+	LoadValidationHeight() (uint64, error)
 }
