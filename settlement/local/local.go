@@ -24,6 +24,7 @@ import (
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
 	rollapptypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
 )
@@ -142,7 +143,7 @@ func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *d
 
 	time.Sleep(100 * time.Millisecond) // mimic a delay in batch acceptance
 	ctx := context.Background()
-	uevent.MustPublish(ctx, c.pubsub, settlement.EventDataNewBatchAccepted{EndHeight: settlementBatch.EndHeight}, settlement.EventNewBatchAcceptedList)
+	uevent.MustPublish(ctx, c.pubsub, settlement.EventDataNewBatch{EndHeight: settlementBatch.EndHeight}, settlement.EventNewBatchAcceptedList)
 
 	return nil
 }
@@ -159,6 +160,11 @@ func (c *Client) GetLatestBatch() (*settlement.ResultRetrieveBatch, error) {
 	return batchResult, nil
 }
 
+// GetLatestFinalizedBatch returns the latest finalized batch from the kv store. batches are never finalized for local settlement
+func (c *Client) GetLatestFinalizedBatch() (*settlement.ResultRetrieveBatch, error) {
+	return nil, gerrc.ErrNotFound // TODO: need to return a cosmos specific error?
+}
+
 // GetBatchAtIndex returns the batch at the given index
 func (c *Client) GetBatchAtIndex(index uint64) (*settlement.ResultRetrieveBatch, error) {
 	batchResult, err := c.retrieveBatchAtStateIndex(index)
@@ -170,22 +176,19 @@ func (c *Client) GetBatchAtIndex(index uint64) (*settlement.ResultRetrieveBatch,
 	return batchResult, nil
 }
 
-func (c *Client) GetHeightState(h uint64) (*settlement.ResultGetHeightState, error) {
+func (c *Client) GetBatchAtHeight(h uint64) (*settlement.ResultRetrieveBatch, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	// TODO: optimize (binary search, or just make another index)
 	for i := c.slStateIndex; i > 0; i-- {
 		b, err := c.GetBatchAtIndex(i)
 		if err != nil {
-			return nil, err
+			return &settlement.ResultRetrieveBatch{
+				ResultBase: settlement.ResultBase{Code: settlement.StatusError, Message: err.Error()},
+			}, err
 		}
 		if b.StartHeight <= h && b.EndHeight >= h {
-			return &settlement.ResultGetHeightState{
-				ResultBase: settlement.ResultBase{Code: settlement.StatusSuccess},
-				State: settlement.State{
-					StateIndex: i,
-				},
-			}, nil
+			return b, nil
 		}
 	}
 	return nil, gerrc.ErrNotFound // TODO: need to return a cosmos specific error?
@@ -272,6 +275,16 @@ func (c *Client) retrieveBatchAtStateIndex(slStateIndex uint64) (*settlement.Res
 }
 
 func (c *Client) convertBatchToSettlementBatch(batch *types.Batch, daResult *da.ResultSubmitBatch) *settlement.Batch {
+	bds := []rollapp.BlockDescriptor{}
+	for _, block := range batch.Blocks {
+		bd := rollapp.BlockDescriptor{
+			Height:    block.Header.Height,
+			StateRoot: block.Header.AppHash[:],
+			Timestamp: block.Header.GetTimestamp(),
+		}
+		bds = append(bds, bd)
+	}
+
 	settlementBatch := &settlement.Batch{
 		Sequencer:   c.GetProposer().SettlementAddress,
 		StartHeight: batch.StartHeight(),
@@ -282,10 +295,9 @@ func (c *Client) convertBatchToSettlementBatch(batch *types.Batch, daResult *da.
 				Client: daResult.SubmitMetaData.Client,
 			},
 		},
+		BlockDescriptors: bds,
 	}
-	for _, block := range batch.Blocks {
-		settlementBatch.AppHashes = append(settlementBatch.AppHashes, block.Header.AppHash)
-	}
+
 	return settlementBatch
 }
 

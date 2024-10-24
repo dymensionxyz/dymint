@@ -45,7 +45,7 @@ func TestPruningRetainHeight(t *testing.T) {
 
 	// Check initial assertions
 	require.Zero(manager.State.Height())
-	require.Zero(manager.LastSubmittedHeight.Load())
+	require.Zero(manager.LastSettlementHeight.Load())
 
 	batchSize := 10
 
@@ -56,7 +56,7 @@ func TestPruningRetainHeight(t *testing.T) {
 	}
 	// submit and validate sync target
 	manager.CreateAndSubmitBatch(100000000, false)
-	lastSubmitted := manager.LastSubmittedHeight.Load()
+	lastSubmitted := manager.LastSettlementHeight.Load()
 	assert.EqualValues(t, manager.State.Height(), lastSubmitted)
 	assert.Equal(t, lastSubmitted, uint64(batchSize))
 

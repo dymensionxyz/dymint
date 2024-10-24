@@ -13,7 +13,6 @@ const (
 	Gossiped
 	BlockSync
 	DA
-	LocalDb
 )
 
 func (s BlockSource) String() string {
