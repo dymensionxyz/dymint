@@ -255,6 +255,11 @@ func (s *State) ToProto() (*pb.State, error) {
 		return nil, err
 	}
 
+	proposer, err := s.Proposer.Load().ToProto()
+	if err != nil {
+		return nil, err
+	}
+
 	return &pb.State{
 		Version:                          &s.Version,
 		ChainId:                          s.ChainID,
@@ -267,6 +272,7 @@ func (s *State) ToProto() (*pb.State, error) {
 		LastResultsHash:                  s.LastResultsHash[:],
 		AppHash:                          s.AppHash[:],
 		RollappParams:                    s.RollappParams,
+		Proposer:                         proposer,
 	}, nil
 }
 
@@ -284,6 +290,13 @@ func (s *State) FromProto(other *pb.State) error {
 		return err
 	}
 
+	proposer, err := SequencerFromProto(other.Proposer)
+	if err != nil {
+		return err
+	}
+	// proposer may be nil
+	s.Proposer.Store(proposer)
+
 	s.ConsensusParams = other.ConsensusParams
 	s.LastHeightConsensusParamsChanged = other.LastHeightConsensusParamsChanged
 	copy(s.LastResultsHash[:], other.LastResultsHash)
@@ -293,7 +306,11 @@ func (s *State) FromProto(other *pb.State) error {
 }
 
 // ToProto converts Sequencer into protobuf representation and returns it.
+// Sequencer is nullable, so returning nil is a valid case.
 func (s *Sequencer) ToProto() (*pb.Sequencer, error) {
+	if s == nil {
+		return nil, nil
+	}
 	protoVal, err := s.val.ToProto()
 	if err != nil {
 		return nil, fmt.Errorf("tendermint validator to proto: %w", err)
@@ -305,12 +322,16 @@ func (s *Sequencer) ToProto() (*pb.Sequencer, error) {
 }
 
 // SequencerFromProto fills Sequencer with data from its protobuf representation.
-func SequencerFromProto(seq *pb.Sequencer) (Sequencer, error) {
+// Sequencer is nullable, so returning nil is a valid case.
+func SequencerFromProto(seq *pb.Sequencer) (*Sequencer, error) {
+	if seq == nil {
+		return nil, nil
+	}
 	val, err := types.ValidatorFromProto(seq.Validator)
 	if err != nil {
-		return Sequencer{}, fmt.Errorf("tendermint validator from proto: %w", err)
+		return nil, fmt.Errorf("tendermint validator from proto: %w", err)
 	}
-	return Sequencer{
+	return &Sequencer{
 		SettlementAddress: seq.SettlementAddress,
 		val:               *val,
 	}, nil
@@ -338,7 +359,7 @@ func (s *SequencerSet) FromProto(protoSet pb.SequencerSet) error {
 		if err != nil {
 			return fmt.Errorf("SequencerFromProto: %w", err)
 		}
-		sequencers[i] = seq
+		sequencers[i] = *seq
 	}
 	s.sequencers = sequencers
 	return nil

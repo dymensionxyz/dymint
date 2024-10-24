@@ -3,15 +3,16 @@ package store_test
 import (
 	"testing"
 
-	"github.com/dymensionxyz/dymint/store"
-	"github.com/dymensionxyz/dymint/testutil"
-	"github.com/dymensionxyz/dymint/types"
 	"github.com/ipfs/go-cid"
 	mh "github.com/multiformats/go-multihash"
 	"github.com/stretchr/testify/assert"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/proto/tendermint/state"
 	"golang.org/x/exp/rand"
+
+	"github.com/dymensionxyz/dymint/store"
+	"github.com/dymensionxyz/dymint/testutil"
+	"github.com/dymensionxyz/dymint/types"
 )
 
 func TestStorePruning(t *testing.T) {
@@ -83,7 +84,7 @@ func TestStorePruning(t *testing.T) {
 
 				// generate and store sequencers randomly for block heights
 				if randBool() {
-					_, err = bstore.SaveSequencers(block.Header.Height, &types.SequencerSet{}, nil)
+					_, err = bstore.SaveProposer(block.Header.Height, &types.Sequencer{}, nil)
 					savedSeqHeights[block.Header.Height] = true
 					assert.NoError(err)
 				}
@@ -121,7 +122,7 @@ func TestStorePruning(t *testing.T) {
 			}
 
 			for k := range savedSeqHeights {
-				_, err := bstore.LoadSequencers(k)
+				_, err := bstore.LoadProposer(k)
 				assert.NoError(err)
 			}
 
@@ -171,10 +172,10 @@ func TestStorePruning(t *testing.T) {
 			// Validate only sequencers in the range are pruned
 			for k := range savedSeqHeights {
 				if k >= c.from && k < c.to { // k < c.to is the exclusion test
-					_, err = bstore.LoadSequencers(k)
+					_, err = bstore.LoadProposer(k)
 					assert.Error(err, "Block cid at height %d should be pruned", k)
 				} else {
-					_, err = bstore.LoadSequencers(k)
+					_, err = bstore.LoadProposer(k)
 					assert.NoError(err)
 				}
 			}

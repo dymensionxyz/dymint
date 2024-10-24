@@ -265,7 +265,7 @@ func (s *DefaultStore) SaveProposer(height uint64, proposer *types.Sequencer, ba
 	return batch, err
 }
 
-// LoadProposer loads proposer at given block height from store.
+// LoadProposer loads proposer at given block height from store. Nil sequencer is a valid return value.
 func (s *DefaultStore) LoadProposer(height uint64) (*types.Sequencer, error) {
 	blob, err := s.db.Get(getProposerKey(height))
 	if err != nil {
@@ -282,7 +282,7 @@ func (s *DefaultStore) LoadProposer(height uint64) (*types.Sequencer, error) {
 		return nil, fmt.Errorf("unmarshal proposer from proto: %w", err)
 	}
 
-	return &proposer, nil
+	return proposer, nil
 }
 
 func parseAsValidatorSet(blob []byte) (*types.SequencerSet, error) {
