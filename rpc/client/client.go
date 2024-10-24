@@ -62,7 +62,7 @@ type Client struct {
 }
 
 type ResultBlockValidated struct {
-	Result ValidationStatus
+	Result BlockValidationStatus
 }
 
 // NewClient returns Client working with given node.
@@ -816,15 +816,15 @@ func (c *Client) BlockValidated(ctx context.Context, height *int64) (*ResultBloc
 	}
 	// node has not reached the height yet
 	if uint64(*height) > c.node.BlockManager.State.Height() {
-		return &ResultBlockValidated{Result: BlockNotValidated}, nil
+		return &ResultBlockValidated{Result: NotValidated}, nil
 	}
 
 	if uint64(*height) <= c.node.BlockManager.SettlementValidator.GetLastValidatedHeight() {
-		return &ResultBlockValidated{Result: BlockValidatedWithSL}, nil
+		return &ResultBlockValidated{Result: SLValidated}, nil
 	}
 
 	// block is applied, and therefore it is validated at block level but not at state update level
-	return &ResultBlockValidated{Result: BlockValidated}, nil
+	return &ResultBlockValidated{Result: P2PValidated}, nil
 }
 
 func (c *Client) eventsRoutine(sub tmtypes.Subscription, subscriber string, q tmpubsub.Query, outc chan<- ctypes.ResultEvent) {

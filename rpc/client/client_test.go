@@ -316,7 +316,7 @@ func TestValidatedHeight(t *testing.T) {
 		nodeHeight      uint64
 		submittedHeight uint64
 		queryHeight     *int64
-		result          client.ValidationStatus
+		result          client.BlockValidationStatus
 	}{
 		{
 			name:            "SL validated height",
@@ -324,7 +324,7 @@ func TestValidatedHeight(t *testing.T) {
 			nodeHeight:      15,
 			queryHeight:     ptr(10),
 			submittedHeight: 10,
-			result:          client.BlockValidatedWithSL,
+			result:          client.SLValidated,
 		},
 		{
 			name:            "P2P validated height",
@@ -332,7 +332,7 @@ func TestValidatedHeight(t *testing.T) {
 			nodeHeight:      15,
 			queryHeight:     ptr(13),
 			submittedHeight: 10,
-			result:          client.BlockValidated,
+			result:          client.P2PValidated,
 		},
 		{
 			name:            "Non validated height",
@@ -340,7 +340,7 @@ func TestValidatedHeight(t *testing.T) {
 			nodeHeight:      15,
 			queryHeight:     ptr(20),
 			submittedHeight: 10,
-			result:          client.BlockNotValidated,
+			result:          client.NotValidated,
 		},
 		{
 			name:            "Invalid height",
