@@ -116,13 +116,10 @@ func TestCreateBlockWithConsensusMessages(t *testing.T) {
 	}
 
 	// Create a mock ConsensusMessagesStream
-	mockStream := &MockConsensusMessagesStream{}
-	mockStream.On("Get").Return([]proto.Message{
-		theMsg1,
-		theMsg2,
-	}, nil)
+	consensusMsgQueue := block.NewConsensusMsgQueue()
+	consensusMsgQueue.Add(theMsg1, theMsg2)
 
-	executor, err := block.NewExecutor([]byte("test address"), "test", mpool, proxy.NewAppConns(clientCreator), nil, mockStream, logger)
+	executor, err := block.NewExecutor([]byte("test address"), "test", mpool, proxy.NewAppConns(clientCreator), nil, consensusMsgQueue, logger)
 	assert.NoError(err)
 
 	maxBytes := uint64(1000)
@@ -163,22 +160,6 @@ func TestCreateBlockWithConsensusMessages(t *testing.T) {
 
 	assert.True(proto.Equal(anyMsg1, block.Data.ConsensusMessages[0]))
 	assert.True(proto.Equal(anyMsg2, block.Data.ConsensusMessages[1]))
-
-	mockStream.AssertExpectations(t)
-}
-
-// MockConsensusMessagesStream is a mock implementation of ConsensusMessagesStream
-type MockConsensusMessagesStream struct {
-	mock.Mock
-}
-
-func (m *MockConsensusMessagesStream) Get() []proto.Message {
-	args := m.Called()
-	return args.Get(0).([]proto.Message)
-}
-
-func (m *MockConsensusMessagesStream) Add(msgs ...proto.Message) {
-	m.Called(msgs)
 }
 
 func TestApplyBlock(t *testing.T) {

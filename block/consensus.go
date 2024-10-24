@@ -12,30 +12,25 @@ import (
 	"github.com/dymensionxyz/dymint/utils/queue"
 )
 
-type ConsensusMessagesStream interface {
-	Add(...proto.Message)
-	Get() []proto.Message
-}
-
-type ConsensusMessagesQueue struct {
+type ConsensusMsgQueue struct {
 	mu    sync.Mutex
 	queue *queue.Queue[proto.Message]
 }
 
-func NewConsensusMessagesQueue() *ConsensusMessagesQueue {
-	return &ConsensusMessagesQueue{
+func NewConsensusMsgQueue() *ConsensusMsgQueue {
+	return &ConsensusMsgQueue{
 		mu:    sync.Mutex{},
 		queue: queue.New[proto.Message](),
 	}
 }
 
-func (q *ConsensusMessagesQueue) Add(message ...proto.Message) {
+func (q *ConsensusMsgQueue) Add(message ...proto.Message) {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	q.queue.Enqueue(message...)
 }
 
-func (q *ConsensusMessagesQueue) Get() []proto.Message {
+func (q *ConsensusMsgQueue) Get() []proto.Message {
 	q.mu.Lock()
 	defer q.mu.Unlock()
 	return q.queue.DequeueAll()

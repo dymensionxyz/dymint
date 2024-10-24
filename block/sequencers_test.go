@@ -85,16 +85,16 @@ func TestHandleSequencerSetUpdate(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, manager)
 			// Set the initial set
-			manager.State.Sequencers.SetSequencers(tc.initial)
+			manager.Sequencers.Set(tc.initial)
 
 			// Update the set
 			err = manager.HandleSequencerSetUpdate(tc.update)
 			require.NoError(t, err)
-			require.ElementsMatch(t, manager.State.Sequencers.Sequencers, tc.update)
+			require.ElementsMatch(t, manager.Sequencers.GetAll(), tc.update)
 
 			// Get the consensus msgs queue and verify the result
 			// Msgs are created only for the diff
-			actualConsMsgs := manager.Executor.GetConsensusMessagesStream().Get()
+			actualConsMsgs := manager.Executor.GetConsensusMsgs()
 			require.Len(t, actualConsMsgs, len(tc.diff))
 
 			expConsMsgs, err := block.ConsensusMsgsOnSequencerSetUpdate(tc.diff)

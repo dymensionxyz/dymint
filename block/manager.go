@@ -129,7 +129,7 @@ func NewManager(
 		mempool,
 		proxyApp,
 		eventBus,
-		nil, // TODO add ConsensusMessagesStream
+		NewConsensusMsgQueue(), // TODO properly specify ConsensusMsgStream: https://github.com/dymensionxyz/dymint/issues/1125
 		logger,
 	)
 	if err != nil {
@@ -206,8 +206,6 @@ func (m *Manager) Start(ctx context.Context) error {
 		return fmt.Errorf("sync block manager from settlement: %w", err)
 	}
 
-	// listen to new bonded sequencers events to add them in the sequencer set
-	go uevent.MustSubscribe(ctx, m.Pubsub, "newBondedSequencer", settlement.EventQueryNewBondedSequencer, m.UpdateSequencerSet, m.logger)
 	// send signal to syncing loop with last settlement state update
 	m.triggerSettlementSyncing()
 	// send signal to validation loop with last settlement state update
@@ -223,6 +221,10 @@ func (m *Manager) Start(ctx context.Context) error {
 	// Start the settlement sync loop in the background
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		return m.SettlementSyncLoop(ctx)
+	})
+
+	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
+		return m.MonitorSequencerSetUpdates(ctx)
 	})
 
 	/* ----------------------------- full node mode ----------------------------- */

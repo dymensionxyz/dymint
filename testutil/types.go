@@ -246,6 +246,8 @@ func GenerateSequencer() *types.Sequencer {
 	return types.NewSequencer(
 		tmtypes.NewValidator(ed25519.GenPrivKey().PubKey(), 1).PubKey,
 		GenerateSettlementAddress(),
+		GenerateSettlementAddress(),
+		[]string{GenerateSettlementAddress(), GenerateSettlementAddress()},
 	)
 }
 
@@ -274,7 +276,12 @@ func GenerateStateWithSequencer(initialHeight int64, lastBlockHeight int64, pubk
 			},
 		},
 	}
-	s.SetProposer(types.NewSequencer(pubkey, ""))
+	s.SetProposer(types.NewSequencer(
+		pubkey,
+		GenerateSettlementAddress(),
+		GenerateSettlementAddress(),
+		[]string{GenerateSettlementAddress()},
+	))
 	s.SetHeight(uint64(lastBlockHeight))
 	return s
 }
