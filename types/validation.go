@@ -77,8 +77,9 @@ func (b *Block) ValidateWithState(state *State) error {
 		return NewErrFraudHeightMismatch(state.NextHeight(), b.Header.Height, b)
 	}
 
-	if !bytes.Equal(b.Header.NextSequencersHash[:], state.Sequencers.ProposerHash()) {
-		return NewErrInvalidNextSequencersHashFraud([32]byte(state.Sequencers.ProposerHash()), b.Header.NextSequencersHash)
+	proposerHash := state.GetProposerHash()
+	if !bytes.Equal(b.Header.NextSequencersHash[:], proposerHash) {
+		return NewErrInvalidNextSequencersHashFraud([32]byte(proposerHash), b.Header.NextSequencersHash)
 	}
 
 	if !bytes.Equal(b.Header.AppHash[:], state.AppHash[:]) {

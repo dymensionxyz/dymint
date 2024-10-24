@@ -90,7 +90,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 			m.logger.Error("save block blocksync", "err", err)
 		}
 
-		responses, err := m.Executor.ExecuteBlock(m.State, block)
+		responses, err := m.Executor.ExecuteBlock(block)
 		if err != nil {
 			return fmt.Errorf("execute block: %w", err)
 		}
@@ -129,13 +129,13 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	}
 
 	// check if the proposer needs to be changed
-	switchRole := m.Executor.UpdateProposerFromBlock(m.State, block)
+	switchRole := m.Executor.UpdateProposerFromBlock(m.State, m.Sequencers, block)
 
 	// save sequencers to store to be queried over RPC
 	batch := m.Store.NewBatch()
-	batch, err = m.Store.SaveSequencers(block.Header.Height, &m.State.Sequencers, batch)
+	batch, err = m.Store.SaveProposer(block.Header.Height, m.State.GetProposer(), batch)
 	if err != nil {
-		return fmt.Errorf("save sequencers: %w", err)
+		return fmt.Errorf("save proposer: %w", err)
 	}
 
 	batch, err = m.Store.SaveState(m.State, batch)
