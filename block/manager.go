@@ -99,7 +99,7 @@ type Manager struct {
 	syncedFromSettlement *uchannel.Nudger
 
 	// validates all non-finalized state updates from settlement, checking there is consistency between DA and P2P blocks, and the information in the state update.
-	settlementValidator *StateUpdateValidator
+	settlementValidator *SettlementValidator
 }
 
 // NewManager creates new block Manager.
@@ -172,7 +172,7 @@ func NewManager(
 		return nil, err
 	}
 
-	m.settlementValidator = NewStateUpdateValidator(m.logger, m)
+	m.settlementValidator = NewSettlementValidator(m.logger, m)
 
 	return m, nil
 }
@@ -213,10 +213,12 @@ func (m *Manager) Start(ctx context.Context) error {
 
 	eg, ctx := errgroup.WithContext(ctx)
 
+	// Start the pruning loop in the background
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		return m.PruningLoop(ctx)
 	})
 
+	// Start the settlement sync loop in the background
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		return m.SettlementSyncLoop(ctx)
 	})
@@ -224,13 +226,16 @@ func (m *Manager) Start(ctx context.Context) error {
 	/* ----------------------------- full node mode ----------------------------- */
 	if !isProposer {
 
+		// Start the settlement validation loop in the background
 		uerrors.ErrGroupGoLog(eg, m.logger, func() error {
-			return m.ValidateLoop(ctx)
+			return m.SettlementValidateLoop(ctx)
 		})
+
+		// Subscribe to new (or finalized) state updates events.
 		go uevent.MustSubscribe(ctx, m.Pubsub, "syncLoop", settlement.EventQueryNewSettlementBatchAccepted, m.onNewStateUpdate, m.logger)
 		go uevent.MustSubscribe(ctx, m.Pubsub, "validateLoop", settlement.EventQueryNewSettlementBatchFinalized, m.onNewStateUpdateFinalized, m.logger)
 
-		// P2P Sync. Subscribe to P2P received blocks events
+		// Subscribe to P2P received blocks events (used for P2P syncing).
 		go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewGossipedBlock, m.OnReceivedBlock, m.logger)
 		go uevent.MustSubscribe(ctx, m.Pubsub, "applyBlockSyncBlocksLoop", p2p.EventQueryNewBlockSyncBlock, m.OnReceivedBlock, m.logger)
 

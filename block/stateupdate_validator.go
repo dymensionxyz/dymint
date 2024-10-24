@@ -11,21 +11,21 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
-// StateUpdateValidator is a validator for messages gossiped in the p2p network.
-type StateUpdateValidator struct {
+// SettlementValidator validates batches from settlement layer with the corresponding blocks from DA and P2P.
+type SettlementValidator struct {
 	logger              types.Logger
 	blockManager        *Manager
 	lastValidatedHeight atomic.Uint64
 }
 
-// NewStateUpdateValidator returns a new StateUpdateValidator instance.
-func NewStateUpdateValidator(logger types.Logger, blockManager *Manager) *StateUpdateValidator {
+// NewSettlementValidator returns a new StateUpdateValidator instance.
+func NewSettlementValidator(logger types.Logger, blockManager *Manager) *SettlementValidator {
 	lastValidatedHeight, err := blockManager.Store.LoadValidationHeight()
 	if err != nil {
 		logger.Debug("validation height not loaded", "err", err)
 	}
 
-	validator := &StateUpdateValidator{
+	validator := &SettlementValidator{
 		logger:       logger,
 		blockManager: blockManager,
 	}
@@ -37,7 +37,7 @@ func NewStateUpdateValidator(logger types.Logger, blockManager *Manager) *StateU
 // ValidateStateUpdate validates that the blocks from the state info are available in DA,
 // that the information included in the Hub state info matches the blocks retrieved from DA
 // and those blocks are the same that are obtained via P2P.
-func (v *StateUpdateValidator) ValidateStateUpdate(batch *settlement.ResultRetrieveBatch) error {
+func (v *SettlementValidator) ValidateStateUpdate(batch *settlement.ResultRetrieveBatch) error {
 	v.logger.Debug("validating state update", "start height", batch.StartHeight, "end height", batch.EndHeight)
 
 	// loads blocks applied from P2P, if any.
@@ -98,7 +98,7 @@ func (v *StateUpdateValidator) ValidateStateUpdate(batch *settlement.ResultRetri
 
 // ValidateP2PBlocks basically compares that the blocks applied from P2P are the same blocks included in the batch and retrieved from DA.
 // Since DA blocks have been already validated against Hub state info block descriptors, if P2P blocks match with DA blocks, it means they are also validated against state info block descriptors.
-func (v *StateUpdateValidator) ValidateP2PBlocks(daBlocks []*types.Block, p2pBlocks map[uint64]*types.Block) error {
+func (v *SettlementValidator) ValidateP2PBlocks(daBlocks []*types.Block, p2pBlocks map[uint64]*types.Block) error {
 	// iterate over daBlocks and compare hashes with the corresponding block from P2P (if exists) to see whether they are actually the same block
 	for _, daBlock := range daBlocks {
 
@@ -124,7 +124,7 @@ func (v *StateUpdateValidator) ValidateP2PBlocks(daBlocks []*types.Block, p2pBlo
 }
 
 // ValidateDaBlocks checks that the information included in the Hub state info (height, state roots and timestamps), correspond to the blocks obtained from DA.
-func (v *StateUpdateValidator) ValidateDaBlocks(slBatch *settlement.ResultRetrieveBatch, daBlocks []*types.Block) error {
+func (v *SettlementValidator) ValidateDaBlocks(slBatch *settlement.ResultRetrieveBatch, daBlocks []*types.Block) error {
 	// we first verify the numblocks included in the state info match the block descriptors and the blocks obtained from DA
 	numSlBDs := uint64(len(slBatch.BlockDescriptors))
 	numDABlocks := uint64(len(daBlocks))
@@ -155,7 +155,7 @@ func (v *StateUpdateValidator) ValidateDaBlocks(slBatch *settlement.ResultRetrie
 
 // UpdateLastValidatedHeight sets the height saved in the Store if it is higher than the existing height
 // returns OK if the value was updated successfully or did not need to be updated
-func (v *StateUpdateValidator) UpdateLastValidatedHeight(height uint64) {
+func (v *SettlementValidator) UpdateLastValidatedHeight(height uint64) {
 	for {
 		curr := v.lastValidatedHeight.Load()
 		if v.lastValidatedHeight.CompareAndSwap(curr, max(curr, height)) {
@@ -169,12 +169,12 @@ func (v *StateUpdateValidator) UpdateLastValidatedHeight(height uint64) {
 }
 
 // GetLastValidatedHeight returns the most last block height that is validated with settlement state updates.
-func (v *StateUpdateValidator) GetLastValidatedHeight() uint64 {
+func (v *SettlementValidator) GetLastValidatedHeight() uint64 {
 	return v.lastValidatedHeight.Load()
 }
 
 // GetLastValidatedHeight returns the next height that needs to be validated with settlement state updates.
-func (v *StateUpdateValidator) NextValidationHeight() uint64 {
+func (v *SettlementValidator) NextValidationHeight() uint64 {
 	return v.lastValidatedHeight.Load() + 1
 }
 

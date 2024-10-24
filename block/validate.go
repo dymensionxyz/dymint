@@ -23,7 +23,7 @@ func (m *Manager) onNewStateUpdateFinalized(event pubsub.Message) {
 }
 
 // ValidateLoop listens for syncing events (from new state update or from initial syncing) and validates state updates to the last submitted height.
-func (m *Manager) ValidateLoop(ctx context.Context) error {
+func (m *Manager) SettlementValidateLoop(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():

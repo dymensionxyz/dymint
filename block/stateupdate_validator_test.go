@@ -24,7 +24,7 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 )
 
-func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
+func TestSettlementValidator_ValidateStateUpdate(t *testing.T) {
 
 	// Init app
 	app := testutil.GetAppMock(testutil.EndBlock)
@@ -163,8 +163,8 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 				},
 			}
 
-			// Create the StateUpdateValidator
-			validator := block.NewStateUpdateValidator(testutil.NewLogger(t), manager)
+			// Create the SettlementValidator
+			validator := block.NewSettlementValidator(testutil.NewLogger(t), manager)
 
 			// set fraud data
 			switch tc.stateUpdateFraud {
