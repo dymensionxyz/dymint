@@ -11,6 +11,7 @@ import (
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 
+	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
 	pb "github.com/dymensionxyz/dymint/types/pb/dymint"
 	"github.com/dymensionxyz/dymint/version"
@@ -112,7 +113,14 @@ func TestStateRoundTrip(t *testing.T) {
 					},
 					Software: "dymint",
 				},
-				ChainID:       "testchain",
+				ChainID: "testchain",
+				Sequencers: types.SequencerSet{
+					Sequencers: []types.Sequencer{
+						*testutil.GenerateSequencer(),
+						*testutil.GenerateSequencer(),
+					},
+					Proposer: testutil.GenerateSequencer(),
+				},
 				InitialHeight: 987,
 				ConsensusParams: tmproto.ConsensusParams{
 					Block: tmproto.BlockParams{

@@ -174,7 +174,12 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 	require.NoError(err)
 
 	proposerKey := tmed25519.PrivKey(priv)
-	proposer := *types.NewSequencer(proposerKey.PubKey(), "")
+	proposer := *types.NewSequencer(
+		proposerKey.PubKey(),
+		testutil.GenerateSettlementAddress(),
+		testutil.GenerateSettlementAddress(),
+		[]string{testutil.GenerateSettlementAddress()},
+	)
 
 	// Create a new mock ClientI
 	slmock := &slmocks.MockClientI{}
@@ -265,8 +270,9 @@ func TestSubmissionByTime(t *testing.T) {
 	wg.Add(2) // Add 2 because we have 2 goroutines
 
 	bytesProducedC := make(chan int)
+	sequencerSetUpdates := make(chan []types.Sequencer)
 	go func() {
-		manager.ProduceBlockLoop(mCtx, bytesProducedC)
+		manager.ProduceBlockLoop(mCtx, bytesProducedC, sequencerSetUpdates)
 		wg.Done() // Decrease counter when this goroutine finishes
 	}()
 
@@ -343,9 +349,10 @@ func submissionByBatchSize(manager *block.Manager, assert *assert.Assertions, ex
 	defer cancel()
 
 	bytesProducedC := make(chan int)
+	sequencerSetUpdates := make(chan []types.Sequencer)
 
 	go func() {
-		manager.ProduceBlockLoop(ctx, bytesProducedC)
+		manager.ProduceBlockLoop(ctx, bytesProducedC, sequencerSetUpdates)
 		wg.Done() // Decrease counter when this goroutine finishes
 	}()
 

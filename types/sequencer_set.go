@@ -2,9 +2,12 @@ package types
 
 import (
 	"bytes"
+	"crypto/sha256"
 	"fmt"
 	"sync"
 
+	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
+	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	tmcrypto "github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/types"
 )
@@ -13,19 +16,30 @@ import (
 // It's populated from the SL client. Uses tendermint's validator types for compatibility.
 type Sequencer struct {
 	// SettlementAddress is the address of the sequencer in the settlement layer (bech32 string)
-	SettlementAddress string `json:"settlement_address"`
+	SettlementAddress string
+	// RewardAddr is the bech32-encoded sequencer's reward address
+	RewardAddr string
+	// WhitelistedRelayers is a list of the whitelisted relayer addresses. Addresses are bech32-encoded strings.
+	WhitelistedRelayers []string
 
-	// tendermint validator type for compatibility. holds the public key and cons address
+	// val is a tendermint validator type for compatibility. holds the public key and cons address
 	val types.Validator
 }
 
-func NewSequencer(pubKey tmcrypto.PubKey, settlementAddress string) *Sequencer {
+func NewSequencer(
+	pubKey tmcrypto.PubKey,
+	settlementAddress string,
+	rewardAddr string,
+	whitelistedRelayers []string,
+) *Sequencer {
 	if pubKey == nil {
 		return nil
 	}
 	return &Sequencer{
-		SettlementAddress: settlementAddress,
-		val:               *types.NewValidator(pubKey, 1),
+		SettlementAddress:   settlementAddress,
+		RewardAddr:          rewardAddr,
+		WhitelistedRelayers: whitelistedRelayers,
+		val:                 *types.NewValidator(pubKey, 1),
 	}
 }
 
@@ -89,21 +103,14 @@ func NewSequencerSet(s ...Sequencer) *SequencerSet {
 	}
 }
 
-// SetSequencers sets the sequencers of the sequencer set.
-func (s *SequencerSet) SetSequencers(sequencers []Sequencer) {
+// Set sets the sequencers of the sequencer set.
+func (s *SequencerSet) Set(sequencers []Sequencer) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.sequencers = sequencers
 }
 
-// AppendSequencer appends a new sequencer the sequencer set.
-func (s *SequencerSet) AppendSequencer(sequencer Sequencer) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.sequencers = append(s.sequencers, sequencer)
-}
-
-func (s *SequencerSet) GetSequencers() []Sequencer {
+func (s *SequencerSet) GetAll() []Sequencer {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.sequencers
@@ -144,6 +151,54 @@ func (s *SequencerSet) GetByConsAddress(consAddr []byte) (Sequencer, bool) {
 		}
 	}
 	return Sequencer{}, false
+}
+
+// AnyConsPubKey returns sequencer's consensus public key represented as Cosmos proto.Any.
+func (s Sequencer) AnyConsPubKey() (*codectypes.Any, error) {
+	val := s.TMValidator()
+	pubKey, err := cryptocodec.FromTmPubKeyInterface(val.PubKey)
+	if err != nil {
+		return nil, fmt.Errorf("convert tendermint pubkey to cosmos: %w", err)
+	}
+	anyPK, err := codectypes.NewAnyWithValue(pubKey)
+	if err != nil {
+		return nil, fmt.Errorf("convert cosmos pubkey to any: %w", err)
+	}
+	return anyPK, nil
+}
+
+// MustFullHash returns a "full" hash of the sequencer that includes all fields of the Sequencer type.
+func (s Sequencer) MustFullHash() []byte {
+	h := sha256.New()
+	h.Write([]byte(s.SettlementAddress))
+	h.Write([]byte(s.RewardAddr))
+	for _, r := range s.WhitelistedRelayers {
+		h.Write([]byte(r))
+	}
+	h.Write(s.MustHash())
+	return h.Sum(nil)
+}
+
+// SequencerListRightOuterJoin returns a set of sequencers that are in B but not in A.
+// CONTRACT: both A and B do not have duplicates!
+//
+// Example 1:
+//
+//	s1 =      {seq1, seq2, seq3}
+//	s2 =      {      seq2, seq3, seq4}
+//	s1 * s2 = {                  seq4}
+func SequencerListRightOuterJoin(A, B []Sequencer) []Sequencer {
+	lhsSet := make(map[string]struct{})
+	for _, s := range A {
+		lhsSet[string(s.MustFullHash())] = struct{}{}
+	}
+	var diff []Sequencer
+	for _, s := range B {
+		if _, ok := lhsSet[string(s.MustFullHash())]; !ok {
+			diff = append(diff, s)
+		}
+	}
+	return diff
 }
 
 func (s *SequencerSet) String() string {
