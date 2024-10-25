@@ -11,8 +11,6 @@ import (
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
-	dymintversion "github.com/dymensionxyz/dymint/version"
-	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 )
 
 // SettlementValidator validates batches from settlement layer with the corresponding blocks from DA and P2P.
@@ -204,9 +202,7 @@ func (v *SettlementValidator) NextValidationHeight() uint64 {
 // DRS checks will work only for non-finalized heights, since it does not store the whole history, but it will never validate finalized heights.
 func (v *SettlementValidator) validateDRS(stateIndex uint64, height uint64, version string) error {
 	drs, err := v.blockManager.State.GetDRSVersion(height)
-	if errors.Is(err, gerrc.ErrNotFound) {
-		drs = dymintversion.Commit
-	} else if err != nil {
+	if err != nil {
 		return err
 	}
 	if drs != version {
