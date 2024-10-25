@@ -160,9 +160,14 @@ func (c *Client) GetLatestBatch() (*settlement.ResultRetrieveBatch, error) {
 	return batchResult, nil
 }
 
-// GetLatestFinalizedBatch returns the latest finalized batch from the kv store. batches are never finalized for local settlement
-func (c *Client) GetLatestFinalizedBatch() (*settlement.ResultRetrieveBatch, error) {
-	return nil, gerrc.ErrNotFound // TODO: need to return a cosmos specific error?
+// GetLatestHeight returns the latest state update height from the settlement layer.
+func (c *Client) GetLatestHeight() (uint64, error) {
+	return c.latestHeight, nil
+}
+
+// GetLatestFinalizedHeight returns the latest finalized height from the settlement layer.
+func (c *Client) GetLatestFinalizedHeight() (uint64, error) {
+	return uint64(0), gerrc.ErrNotFound
 }
 
 // GetBatchAtIndex returns the batch at the given index
