@@ -351,7 +351,6 @@ func (m *Manager) updateFromLastSettlementState() error {
 }
 
 func (m *Manager) updateLastFinalizedHeightFromSettlement() error {
-
 	// update latest finalized height from SL
 	height, err := m.SLClient.GetLatestFinalizedHeight()
 	if errors.Is(err, gerrc.ErrNotFound) {

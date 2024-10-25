@@ -138,7 +138,6 @@ func (s *State) AddDRSVersion(height uint64, version string) {
 // sequencers clear anything previous to the last submitted height
 // and full-nodes clear up to last finalized height
 func (s *State) ClearDRSVersionHeights(height uint64) {
-
 	if len(s.DrsVersionHistory) == 1 {
 		return
 	}
