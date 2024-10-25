@@ -201,8 +201,10 @@ func (m *Manager) CreateBatch(maxBatchSize uint64, startHeight uint64, endHeight
 			return nil, fmt.Errorf("load commit: h: %d: %w", h, err)
 		}
 
-		drsVersion := m.DRSVersionHistory.GetDRSVersion(block.Header.Height)
-
+		drsVersion, err := m.DRSVersionHistory.GetDRSVersion(block.Header.Height)
+		if err != nil {
+			return nil, fmt.Errorf("load drs version: h: %d: %w", h, err)
+		}
 		batch.Blocks = append(batch.Blocks, block)
 		batch.Commits = append(batch.Commits, commit)
 		batch.DRSVersion = append(batch.DRSVersion, drsVersion)

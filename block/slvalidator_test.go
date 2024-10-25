@@ -2,7 +2,6 @@ package block_test
 
 import (
 	"crypto/rand"
-	mrand "math/rand"
 	"reflect"
 	"testing"
 	"time"
@@ -181,7 +180,7 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 			switch tc.stateUpdateFraud {
 			case "drs":
 				// set different bd drs version
-				slBatch.BlockDescriptors[0].DrsVersion = createRandomVersion()
+				slBatch.BlockDescriptors[0].DrsVersion = testutil.CreateRandomVersionCommit()
 			case "batchnumblocks":
 				// set wrong numblocks in state update
 				slBatch.NumBlocks = 11
@@ -357,7 +356,7 @@ func getBlockDescriptors(batch *types.Batch) []rollapp.BlockDescriptor {
 			Height:     block.Header.Height,
 			StateRoot:  block.Header.AppHash[:],
 			Timestamp:  block.Header.GetTimestamp(),
-			DrsVersion: createRandomVersion(),
+			DrsVersion: testutil.CreateRandomVersionCommit(),
 		}
 		bds = append(bds, bd)
 	}
@@ -380,13 +379,4 @@ func getSLBatch(bds []rollapp.BlockDescriptor, daMetaData *da.DASubmitMetaData, 
 			StateIndex: 1,
 		},
 	}
-}
-
-func createRandomVersion() string {
-	var letterRunes = []rune("abcdefghijklmnopqrstuvwxyz")
-	b := make([]rune, 40)
-	for i := range b {
-		b[i] = letterRunes[mrand.Intn(len(letterRunes))]
-	}
-	return string(b)
 }
