@@ -5,7 +5,6 @@ import (
 
 	"github.com/dymensionxyz/dymint/types/pb/dymint"
 	"github.com/dymensionxyz/dymint/version"
-	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 )
 
 // Executor creates and applies blocks and maintains state.
@@ -16,15 +15,11 @@ type DRSVersionHistory struct {
 }
 
 // GetDRSVersion returns the DRS version stored in rollapp params updates for a specific height.
-// It only works for non-finalized heights.
 // If drs history is empty (because there is no version update for non-finalized heights) it will return current version.
-func (d *DRSVersionHistory) GetDRSVersion(height uint64) (string, error) {
+func (d *DRSVersionHistory) GetDRSVersion(height uint64) string {
 	defer d.drsMux.Unlock()
 	d.drsMux.Lock()
 
-	if len(d.History) == 0 {
-		return version.Commit, nil
-	}
 	drsVersion := ""
 	for _, drs := range d.History {
 		if height >= drs.Height {
@@ -34,9 +29,9 @@ func (d *DRSVersionHistory) GetDRSVersion(height uint64) (string, error) {
 		}
 	}
 	if drsVersion == "" {
-		return drsVersion, gerrc.ErrNotFound
+		return version.Commit
 	}
-	return drsVersion, nil
+	return drsVersion
 }
 
 // AddDRSVersion adds a new record for the DRS version update heights.
@@ -56,9 +51,6 @@ func (d *DRSVersionHistory) AddDRSVersion(height uint64, version string) bool {
 // sequencers clear anything previous to the last submitted height
 // and full-nodes clear up to last finalized height
 func (d *DRSVersionHistory) ClearDRSVersionHeights(height uint64) {
-	if len(d.History) == 1 {
-		return
-	}
 
 	for i, drs := range d.History {
 		if drs.Height < height {
