@@ -134,8 +134,7 @@ func (e *Executor) InitChain(genesis *tmtypes.GenesisDoc, valset []*tmtypes.Vali
 	})
 }
 
-// CreateBlock reaps transactions from mempool and builds a block. Optionally, executes consensus messages that
-// gets from the consensus messages stream or from the method args.
+// CreateBlock reaps transactions from mempool and builds a block.
 func (e *Executor) CreateBlock(
 	height uint64,
 	lastCommit *types.Commit,
