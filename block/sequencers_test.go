@@ -65,6 +65,12 @@ func TestHandleSequencerSetUpdate(t *testing.T) {
 			diff:    nil,
 		},
 		{
+			name:    "both are empty",
+			initial: []types.Sequencer{},
+			update:  []types.Sequencer{},
+			diff:    nil,
+		},
+		{
 			name:    "initial is nil",
 			initial: nil,
 			update:  []types.Sequencer{seq1, seq2, seq3},
@@ -75,6 +81,30 @@ func TestHandleSequencerSetUpdate(t *testing.T) {
 			initial: []types.Sequencer{seq1, seq2, seq3},
 			update:  nil,
 			diff:    nil,
+		},
+		{
+			name:    "both are nil",
+			initial: nil,
+			update:  nil,
+			diff:    nil,
+		},
+		{
+			name:    "initial has duplicates",
+			initial: []types.Sequencer{seq1, seq1, seq2, seq2},
+			update:  []types.Sequencer{seq2, seq3},
+			diff:    []types.Sequencer{seq3},
+		},
+		{
+			name:    "update has duplicates",
+			initial: []types.Sequencer{seq1, seq2},
+			update:  []types.Sequencer{seq2, seq3, seq2, seq3},
+			diff:    []types.Sequencer{seq3, seq3},
+		},
+		{
+			name:    "initial and update have duplicates",
+			initial: []types.Sequencer{seq1, seq2, seq2},
+			update:  []types.Sequencer{seq2, seq3, seq2, seq3},
+			diff:    []types.Sequencer{seq3, seq3},
 		},
 	}
 

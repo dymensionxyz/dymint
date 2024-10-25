@@ -300,13 +300,13 @@ func (m *Manager) Start(ctx context.Context) error {
 }
 
 func (m *Manager) isChainHalted() error {
-	if m.GetProposerPubKey() == nil {
+	if m.State.GetProposerPubKey() == nil {
 		// if no proposer set in state, try to update it from the hub
 		err := m.UpdateProposerFromSL()
 		if err != nil {
 			return fmt.Errorf("update proposer: %w", err)
 		}
-		if m.GetProposerPubKey() == nil {
+		if m.State.GetProposerPubKey() == nil {
 			return fmt.Errorf("no proposer pubkey found. chain is halted")
 		}
 	}

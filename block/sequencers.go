@@ -73,7 +73,7 @@ func (m *Manager) MonitorSequencerSetUpdates(ctx context.Context) error {
 // for this case, the old proposer counts as "sequencer" as well, so he'll be able to submit the last state update.
 func (m *Manager) IsProposer() bool {
 	localProposerKey, _ := m.LocalKey.GetPublic().Raw()
-	l2Proposer := m.GetProposerPubKey().Bytes()
+	l2Proposer := m.State.GetProposerPubKey().Bytes()
 
 	var expectedHubProposer []byte
 	hubProposer := m.SLClient.GetProposer()

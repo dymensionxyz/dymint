@@ -185,7 +185,7 @@ func (s Sequencer) MustFullHash() []byte {
 }
 
 // SequencerListRightOuterJoin returns a set of sequencers that are in B but not in A.
-// CONTRACT: both A and B do not have duplicates!
+// Sequencer is identified by a hash of all of it's fields.
 //
 // Example 1:
 //
