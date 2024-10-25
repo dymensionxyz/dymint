@@ -329,9 +329,6 @@ func TestSubmissionByBatchSize(t *testing.T) {
 		manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
 		manager.Retriever = manager.DAClient.(da.BatchRetriever)
 
-		// add drs version to state
-		manager.State.AddDRSVersion(0, version.Commit)
-
 		assert.Equal(manager.State.Height(), uint64(0))
 
 		submissionByBatchSize(manager, assert, c.expectedSubmission)

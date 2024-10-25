@@ -2,6 +2,7 @@ package block_test
 
 import (
 	"crypto/rand"
+	mrand "math/rand"
 	"reflect"
 	"testing"
 	"time"
@@ -144,11 +145,12 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 			daResultSubmitBatch := manager.DAClient.SubmitBatch(batch)
 			assert.Equal(t, daResultSubmitBatch.Code, da.StatusSuccess)
 
-			// add drs version to state
-			manager.State.AddDRSVersion(0, version.Commit)
-
 			// Create block descriptors
 			bds := getBlockDescriptors(batch)
+
+			for _, bd := range bds {
+				manager.State.AddDRSVersion(bd.Height, bd.DrsVersion)
+			}
 
 			// create the batch in settlement
 			slBatch := getSLBatch(bds, daResultSubmitBatch.SubmitMetaData, 1, 10)
@@ -159,17 +161,23 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 			// set fraud data
 			switch tc.stateUpdateFraud {
 			case "drs":
-				slBatch.BlockDescriptors[0].DrsVersion = "b306cc32d3ef1782879fdef5e6ab60f270a16817"
+				// set different bd drs version
+				slBatch.BlockDescriptors[0].DrsVersion = createRandomVersion()
 			case "batchnumblocks":
+				// set wrong numblocks in state update
 				slBatch.NumBlocks = 11
 			case "batchnumbds":
+				// add more block descriptors than blocks
 				bds = append(bds, rollapp.BlockDescriptor{})
 				slBatch.BlockDescriptors = bds
 			case "stateroot":
+				// post empty state root
 				slBatch.BlockDescriptors[0].StateRoot = []byte{}
 			case "timestamp":
+				// add wrong timestamp
 				slBatch.BlockDescriptors[0].Timestamp = slBatch.BlockDescriptors[0].Timestamp.Add(time.Second)
 			case "height":
+				// add blockdescriptor with wrong height
 				slBatch.BlockDescriptors[0].Height = 2
 			}
 
@@ -223,6 +231,7 @@ func TestStateUpdateValidator_ValidateDAFraud(t *testing.T) {
 			},
 		},
 	})
+
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(clientCreator)
@@ -315,9 +324,6 @@ func TestStateUpdateValidator_ValidateDAFraud(t *testing.T) {
 				mockDA.MockRPC.On("GetByHeight", mock.Anything, mock.Anything).Return(mockDA.Header, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
 			}
 
-			// add drs version to state
-			manager.State.AddDRSVersion(0, version.Commit)
-
 			// Create the StateUpdateValidator
 			validator := block.NewSettlementValidator(testutil.NewLogger(t), manager)
 
@@ -346,7 +352,7 @@ func getBlockDescriptors(batch *types.Batch) []rollapp.BlockDescriptor {
 			Height:     block.Header.Height,
 			StateRoot:  block.Header.AppHash[:],
 			Timestamp:  block.Header.GetTimestamp(),
-			DrsVersion: version.Commit,
+			DrsVersion: createRandomVersion(),
 		}
 		bds = append(bds, bd)
 	}
@@ -369,4 +375,13 @@ func getSLBatch(bds []rollapp.BlockDescriptor, daMetaData *da.DASubmitMetaData, 
 			StateIndex: 1,
 		},
 	}
+}
+
+func createRandomVersion() string {
+	var letterRunes = []rune("abcdefghijklmnopqrstuvwxyz")
+	b := make([]rune, 40)
+	for i := range b {
+		b[i] = letterRunes[mrand.Intn(len(letterRunes))]
+	}
+	return string(b)
 }

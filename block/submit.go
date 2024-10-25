@@ -247,6 +247,9 @@ func (m *Manager) SubmitBatch(batch *types.Batch) error {
 
 	types.RollappHubHeightGauge.Set(float64(batch.EndHeight()))
 	m.LastSettlementHeight.Store(batch.EndHeight())
+
+	// clear drs history for submitted heights
+	m.State.ClearDRSVersionHeights(batch.EndHeight())
 	return nil
 }
 

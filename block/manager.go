@@ -226,6 +226,12 @@ func (m *Manager) Start(ctx context.Context) error {
 	/* ----------------------------- full node mode ----------------------------- */
 	if !isProposer {
 
+		// update latest finalized height
+		err = m.updateLastFinalizedHeightFromSettlement()
+		if err != nil {
+			return fmt.Errorf("sync block manager from settlement: %w", err)
+		}
+
 		// Start the settlement validation loop in the background
 		uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 			return m.SettlementValidateLoop(ctx)
@@ -340,6 +346,11 @@ func (m *Manager) updateFromLastSettlementState() error {
 	if latestHeight >= m.State.NextHeight() {
 		m.UpdateTargetHeight(latestHeight)
 	}
+
+	return nil
+}
+
+func (m *Manager) updateLastFinalizedHeightFromSettlement() error {
 
 	// update latest finalized height from SL
 	height, err := m.SLClient.GetLatestFinalizedHeight()

@@ -3,6 +3,7 @@ package types
 import (
 	"encoding/json"
 	"fmt"
+	"sync"
 	"sync/atomic"
 
 	// TODO(tzdybal): copy to local project?
@@ -33,8 +34,7 @@ type State struct {
 
 	// Consensus parameters used for validating blocks.
 	// Changes returned by EndBlock and updated after Commit.
-	ConsensusParams                  tmproto.ConsensusParams
-	LastHeightConsensusParamsChanged int64
+	ConsensusParams tmproto.ConsensusParams
 
 	// Merkle root of the results from executing prev block
 	LastResultsHash [32]byte
@@ -50,6 +50,8 @@ type State struct {
 
 	// The last DRS versions including height upgrade
 	DrsVersionHistory []*dymint.DRSVersion
+
+	drsMux sync.Mutex
 }
 
 func (s *State) IsGenesis() bool {
@@ -104,6 +106,9 @@ func (s *State) SetRollappParamsFromGenesis(appState json.RawMessage) error {
 // It only works for non-finalized heights.
 // If drs history is empty (because there is no version update for non-finalized heights) it will return current version.
 func (s *State) GetDRSVersion(height uint64) (string, error) {
+	defer s.drsMux.Unlock()
+	s.drsMux.Lock()
+
 	if len(s.DrsVersionHistory) == 0 {
 		return version.Commit, nil
 	}
@@ -111,6 +116,8 @@ func (s *State) GetDRSVersion(height uint64) (string, error) {
 	for _, drs := range s.DrsVersionHistory {
 		if height >= drs.Height {
 			drsVersion = drs.Version
+		} else {
+			break
 		}
 	}
 	if drsVersion == "" {
@@ -121,18 +128,26 @@ func (s *State) GetDRSVersion(height uint64) (string, error) {
 
 // AddDRSVersion adds a new record for the DRS version update heights.
 func (s *State) AddDRSVersion(height uint64, version string) {
+	defer s.drsMux.Unlock()
+	s.drsMux.Lock()
 	s.DrsVersionHistory = append(s.DrsVersionHistory, &dymint.DRSVersion{Height: height, Version: version})
 }
 
-// ClearDrsVersionHeights clears drs version previous to the specified (finalization) height,
+// ClearDrsVersionHeights clears drs version previous to the specified height,
 // but keeping always the last drs version record.
+// sequencers clear anything previous to the last submitted height
+// and full-nodes clear up to last finalized height
 func (s *State) ClearDRSVersionHeights(height uint64) {
+
 	if len(s.DrsVersionHistory) == 1 {
 		return
 	}
+
 	for i, drs := range s.DrsVersionHistory {
 		if drs.Height < height {
+			s.drsMux.Lock()
 			s.DrsVersionHistory = append(s.DrsVersionHistory[:i], s.DrsVersionHistory[i+1:]...)
+			s.drsMux.Unlock()
 		}
 	}
 }
