@@ -302,7 +302,7 @@ func (m *Manager) Start(ctx context.Context) error {
 func (m *Manager) isChainHalted() error {
 	if m.GetProposerPubKey() == nil {
 		// if no proposer set in state, try to update it from the hub
-		err := m.UpdateProposer()
+		err := m.UpdateProposerFromSL()
 		if err != nil {
 			return fmt.Errorf("update proposer: %w", err)
 		}
@@ -322,7 +322,8 @@ func (m *Manager) updateFromLastSettlementState() error {
 	// Update sequencers list from SL
 	err := m.UpdateSequencerSetFromSL()
 	if err != nil {
-		m.logger.Error("update bonded sequencer set", "error", err)
+		// this error is not critical
+		m.logger.Error("Cannot fetch sequencer set from the Hub", "error", err)
 	}
 
 	res, err := m.SLClient.GetLatestBatch()

@@ -313,8 +313,10 @@ func (s *Sequencer) ToProto() (*pb.Sequencer, error) {
 		return nil, fmt.Errorf("tendermint validator to proto: %w", err)
 	}
 	return &pb.Sequencer{
-		SettlementAddress: s.SettlementAddress,
-		Validator:         protoVal,
+		SettlementAddress:   s.SettlementAddress,
+		Validator:           protoVal,
+		RewardAddr:          s.RewardAddr,
+		WhitelistedRelayers: s.WhitelistedRelayers,
 	}, nil
 }
 
@@ -328,8 +330,10 @@ func SequencerFromProto(seq *pb.Sequencer) (*Sequencer, error) {
 		return nil, fmt.Errorf("tendermint validator from proto: %w", err)
 	}
 	return &Sequencer{
-		SettlementAddress: seq.SettlementAddress,
-		val:               *val,
+		SettlementAddress:   seq.SettlementAddress,
+		RewardAddr:          seq.RewardAddr,
+		WhitelistedRelayers: seq.WhitelistedRelayers,
+		val:                 *val,
 	}, nil
 }
 

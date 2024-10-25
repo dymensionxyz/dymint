@@ -92,8 +92,8 @@ func TestStateRoundTrip(t *testing.T) {
 		state types.State
 	}{
 		{
-			"with max bytes",
-			types.State{
+			name: "with max bytes",
+			state: types.State{
 				ConsensusParams: tmproto.ConsensusParams{
 					Block: tmproto.BlockParams{
 						MaxBytes:   123,
@@ -113,14 +113,7 @@ func TestStateRoundTrip(t *testing.T) {
 					},
 					Software: "dymint",
 				},
-				ChainID: "testchain",
-				Sequencers: types.SequencerSet{
-					Sequencers: []types.Sequencer{
-						*testutil.GenerateSequencer(),
-						*testutil.GenerateSequencer(),
-					},
-					Proposer: testutil.GenerateSequencer(),
-				},
+				ChainID:       "testchain",
 				InitialHeight: 987,
 				ConsensusParams: tmproto.ConsensusParams{
 					Block: tmproto.BlockParams{
@@ -177,6 +170,50 @@ func TestStateRoundTrip(t *testing.T) {
 			require.NoError(err)
 
 			assert.Equal(c.state, newState)
+		})
+	}
+}
+
+func TestStateWithProposer(t *testing.T) {
+	t.Parallel()
+
+	cases := []struct {
+		name     string
+		proposer *types.Sequencer
+	}{
+		{
+			name:     "nil proposer",
+			proposer: nil,
+		},
+		{
+			name:     "non-nil proposer",
+			proposer: testutil.GenerateSequencer(),
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			state := new(types.State)
+
+			state.SetProposer(c.proposer)
+
+			pState, err := state.ToProto()
+			require.NoError(t, err)
+			require.NotNil(t, pState)
+
+			bytes, err := pState.Marshal()
+			require.NoError(t, err)
+			require.NotEmpty(t, bytes)
+
+			newProtoState := new(pb.State)
+			err = newProtoState.Unmarshal(bytes)
+			require.NoError(t, err)
+
+			newState := new(types.State)
+			err = newState.FromProto(newProtoState)
+			require.NoError(t, err)
+
+			assert.Equal(t, state.GetProposer(), newState.GetProposer())
 		})
 	}
 }

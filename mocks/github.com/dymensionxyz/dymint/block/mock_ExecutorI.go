@@ -7,6 +7,8 @@ import (
 
 	mock "github.com/stretchr/testify/mock"
 
+	proto "github.com/gogo/protobuf/proto"
+
 	state "github.com/tendermint/tendermint/proto/tendermint/state"
 
 	tenderminttypes "github.com/tendermint/tendermint/types"
@@ -25,6 +27,52 @@ type MockExecutorI_Expecter struct {
 
 func (_m *MockExecutorI) EXPECT() *MockExecutorI_Expecter {
 	return &MockExecutorI_Expecter{mock: &_m.Mock}
+}
+
+// AddConsensusMsgs provides a mock function with given fields: _a0
+func (_m *MockExecutorI) AddConsensusMsgs(_a0 ...proto.Message) {
+	_va := make([]interface{}, len(_a0))
+	for _i := range _a0 {
+		_va[_i] = _a0[_i]
+	}
+	var _ca []interface{}
+	_ca = append(_ca, _va...)
+	_m.Called(_ca...)
+}
+
+// MockExecutorI_AddConsensusMsgs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'AddConsensusMsgs'
+type MockExecutorI_AddConsensusMsgs_Call struct {
+	*mock.Call
+}
+
+// AddConsensusMsgs is a helper method to define mock.On call
+//   - _a0 ...proto.Message
+func (_e *MockExecutorI_Expecter) AddConsensusMsgs(_a0 ...interface{}) *MockExecutorI_AddConsensusMsgs_Call {
+	return &MockExecutorI_AddConsensusMsgs_Call{Call: _e.mock.On("AddConsensusMsgs",
+		append([]interface{}{}, _a0...)...)}
+}
+
+func (_c *MockExecutorI_AddConsensusMsgs_Call) Run(run func(_a0 ...proto.Message)) *MockExecutorI_AddConsensusMsgs_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		variadicArgs := make([]proto.Message, len(args)-0)
+		for i, a := range args[0:] {
+			if a != nil {
+				variadicArgs[i] = a.(proto.Message)
+			}
+		}
+		run(variadicArgs...)
+	})
+	return _c
+}
+
+func (_c *MockExecutorI_AddConsensusMsgs_Call) Return() *MockExecutorI_AddConsensusMsgs_Call {
+	_c.Call.Return()
+	return _c
+}
+
+func (_c *MockExecutorI_AddConsensusMsgs_Call) RunAndReturn(run func(...proto.Message)) *MockExecutorI_AddConsensusMsgs_Call {
+	_c.Call.Return(run)
+	return _c
 }
 
 // Commit provides a mock function with given fields: _a0, _a1, resp
@@ -258,6 +306,53 @@ func (_c *MockExecutorI_GetAppInfo_Call) Return(_a0 *abcitypes.ResponseInfo, _a1
 }
 
 func (_c *MockExecutorI_GetAppInfo_Call) RunAndReturn(run func() (*abcitypes.ResponseInfo, error)) *MockExecutorI_GetAppInfo_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetConsensusMsgs provides a mock function with given fields:
+func (_m *MockExecutorI) GetConsensusMsgs() []proto.Message {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetConsensusMsgs")
+	}
+
+	var r0 []proto.Message
+	if rf, ok := ret.Get(0).(func() []proto.Message); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]proto.Message)
+		}
+	}
+
+	return r0
+}
+
+// MockExecutorI_GetConsensusMsgs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetConsensusMsgs'
+type MockExecutorI_GetConsensusMsgs_Call struct {
+	*mock.Call
+}
+
+// GetConsensusMsgs is a helper method to define mock.On call
+func (_e *MockExecutorI_Expecter) GetConsensusMsgs() *MockExecutorI_GetConsensusMsgs_Call {
+	return &MockExecutorI_GetConsensusMsgs_Call{Call: _e.mock.On("GetConsensusMsgs")}
+}
+
+func (_c *MockExecutorI_GetConsensusMsgs_Call) Run(run func()) *MockExecutorI_GetConsensusMsgs_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockExecutorI_GetConsensusMsgs_Call) Return(_a0 []proto.Message) *MockExecutorI_GetConsensusMsgs_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockExecutorI_GetConsensusMsgs_Call) RunAndReturn(run func() []proto.Message) *MockExecutorI_GetConsensusMsgs_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -86,10 +86,8 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 	defer cancel()
 	bytesProduced1 := make(chan int)
 	bytesProduced2 := make(chan int)
-	sequencerSetUpdates1 := make(chan []types.Sequencer)
-	sequencerSetUpdates2 := make(chan []types.Sequencer)
-	go manager.ProduceBlockLoop(mCtx, bytesProduced1, sequencerSetUpdates1)
-	go managerWithEmptyBlocks.ProduceBlockLoop(mCtx, bytesProduced2, sequencerSetUpdates2)
+	go manager.ProduceBlockLoop(mCtx, bytesProduced1)
+	go managerWithEmptyBlocks.ProduceBlockLoop(mCtx, bytesProduced2)
 	uchannel.DrainForever(bytesProduced1, bytesProduced2)
 	<-mCtx.Done()
 
@@ -171,8 +169,7 @@ func TestCreateEmptyBlocksNew(t *testing.T) {
 	mCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	bytesProduced := make(chan int)
-	sequencerSetUpdates := make(chan []types.Sequencer)
-	go manager.ProduceBlockLoop(mCtx, bytesProduced, sequencerSetUpdates)
+	go manager.ProduceBlockLoop(mCtx, bytesProduced)
 	uchannel.DrainForever(bytesProduced)
 
 	<-time.Tick(1 * time.Second)
@@ -251,10 +248,9 @@ func TestStopBlockProduction(t *testing.T) {
 	defer cancel()
 
 	bytesProducedC := make(chan int)
-	sequencerSetUpdates := make(chan []types.Sequencer)
 
 	go func() {
-		manager.ProduceBlockLoop(ctx, bytesProducedC, sequencerSetUpdates)
+		manager.ProduceBlockLoop(ctx, bytesProducedC)
 		wg.Done() // Decrease counter when this goroutine finishes
 	}()
 
@@ -340,7 +336,7 @@ func TestUpdateInitialSequencerSet(t *testing.T) {
 
 	// Check initial assertions
 	require.Zero(manager.State.Height())
-	require.Zero(manager.LastSubmittedHeight.Load())
+	require.Zero(manager.LastSettlementHeight.Load())
 
 	// Simulate updating the sequencer set from SL.
 	// This will add new consensus msgs to the queue.
@@ -351,7 +347,7 @@ func TestUpdateInitialSequencerSet(t *testing.T) {
 	block, _, err := manager.ProduceApplyGossipBlock(ctx, true)
 	require.NoError(err)
 	assert.Greater(t, manager.State.Height(), uint64(0))
-	assert.Zero(t, manager.LastSubmittedHeight.Load())
+	assert.Zero(t, manager.LastSettlementHeight.Load())
 
 	// Validate that the block has expected consensus msgs
 	require.Len(block.Data.ConsensusMessages, 2)
@@ -431,7 +427,6 @@ func TestUpdateExistingSequencerSet(t *testing.T) {
 	slmock.On("Init", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	slmock.On("Start").Return(nil)
 	slmock.On("GetProposer").Return(proposer)
-	slmock.On("GetAllSequencers").Return([]types.Sequencer{*proposer, *sequencer}, nil)
 
 	manager, err := testutil.GetManagerWithProposerKey(testutil.GetManagerConfig(), lib2pPrivKey, slmock, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
@@ -440,51 +435,40 @@ func TestUpdateExistingSequencerSet(t *testing.T) {
 	manager.Retriever = manager.DAClient.(da.BatchRetriever)
 
 	// Set the initial sequencer set
-	manager.State.Sequencers.SetSequencers([]types.Sequencer{*proposer, *sequencer})
+	manager.Sequencers.Set([]types.Sequencer{*proposer, *sequencer})
 
 	// Check initial assertions
 	require.Zero(manager.State.Height())
-	require.Zero(manager.LastSubmittedHeight.Load())
-	require.Len(manager.State.Sequencers.Sequencers, 2)
-	require.Equal(manager.State.Sequencers.Sequencers[0], *proposer)
-	require.Equal(manager.State.Sequencers.Sequencers[1], *sequencer)
-
-	// Prepare produce loop
-	ctx, cancel := context.WithCancel(context.Background())
-	produceBlockLoopWg := sync.WaitGroup{}
-	produceBlockLoopWg.Add(1)
-	bytesProducedC := make(chan int)
-	sequencerSetUpdates := make(chan []types.Sequencer)
-
-	go func() {
-		err = manager.ProduceBlockLoop(ctx, bytesProducedC, sequencerSetUpdates)
-		require.NoError(err)
-		produceBlockLoopWg.Done()
-	}()
+	require.Zero(manager.LastSettlementHeight.Load())
+	initialSequencers := manager.Sequencers.GetAll()
+	require.Len(initialSequencers, 2)
+	require.Equal(initialSequencers[0], *proposer)
+	require.Equal(initialSequencers[1], *sequencer)
 
 	// Update one of the sequencers and pass the update to the manager.
 	// We expect that the manager will update the sequencer set in the state and generate a new consensus msg.
 	updatedSequencer := *sequencer // sequencer is a pointer, but we want to have its copy, so we dereference it
 	const newSequencerRewardAddr = "dym1mk7pw34ypusacm29m92zshgxee3yreums8avur"
 	updatedSequencer.RewardAddr = newSequencerRewardAddr
-	// Now ProduceBlockLoop must be unblocked and called
-	sequencerSetUpdates <- []types.Sequencer{*proposer, updatedSequencer}
-	// Exit ProduceBlockLoop and wait until it finishes
-	cancel()
-	produceBlockLoopWg.Wait()
+	// GetAllSequencers now return an updated sequencer
+	slmock.On("GetAllSequencers").Return([]types.Sequencer{*proposer, updatedSequencer}, nil)
+
+	err = manager.UpdateSequencerSetFromSL()
+	require.NoError(err)
 
 	// The number of sequencers is the same. However, the second sequencer is modified.
-	require.Len(manager.State.Sequencers.Sequencers, 2)
-	require.Equal(manager.State.Sequencers.Sequencers[0], *proposer)
+	sequencers := manager.Sequencers.GetAll()
+	require.Len(sequencers, 2)
+	require.Equal(sequencers[0], *proposer)
 	// Now Sequencers[1] is a sequencer with the new reward address
-	require.NotEqual(*sequencer, manager.State.Sequencers.Sequencers[1])
-	require.Equal(updatedSequencer, manager.State.Sequencers.Sequencers[1])
+	require.NotEqual(*sequencer, sequencers[1])
+	require.Equal(updatedSequencer, sequencers[1])
 
 	// Produce block and validate that we produced blocks
 	block, _, err := manager.ProduceApplyGossipBlock(ctx, true)
 	require.NoError(err)
 	assert.Greater(t, manager.State.Height(), uint64(0))
-	assert.Zero(t, manager.LastSubmittedHeight.Load())
+	assert.Zero(t, manager.LastSettlementHeight.Load())
 
 	// Validate that the block has expected consensus msgs: one msg for one new sequencer
 	require.Len(block.Data.ConsensusMessages, 1)

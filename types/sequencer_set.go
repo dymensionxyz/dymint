@@ -12,8 +12,9 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-// Sequencer is a struct that holds the sequencer's settlement address and tendermint validator.
-// It's populated from the SL client. Uses tendermint's validator types for compatibility.
+// Sequencer is a struct that holds the sequencer's information and tendermint validator.
+// It is populated from the Hub on start and is periodically updated from the Hub polling.
+// Uses tendermint's validator types for compatibility.
 type Sequencer struct {
 	// SettlementAddress is the address of the sequencer in the settlement layer (bech32 string)
 	SettlementAddress string
@@ -22,7 +23,7 @@ type Sequencer struct {
 	// WhitelistedRelayers is a list of the whitelisted relayer addresses. Addresses are bech32-encoded strings.
 	WhitelistedRelayers []string
 
-	// val is a tendermint validator type for compatibility. holds the public key and cons address
+	// val is a tendermint validator type for compatibility. Holds the public key and cons address.
 	val types.Validator
 }
 
@@ -85,6 +86,10 @@ func (s Sequencer) MustHash() []byte {
 		panic(fmt.Errorf("hash: %w", err))
 	}
 	return h
+}
+
+func (s Sequencer) String() string {
+	return fmt.Sprintf("Sequencer{SettlementAddress: %s RewardAddr: %s WhitelistedRelayers: %v Validator: %s}", s.SettlementAddress, s.RewardAddr, s.WhitelistedRelayers, s.val.String())
 }
 
 // SequencerSet is a set of rollapp sequencers. It holds the entire set of sequencers

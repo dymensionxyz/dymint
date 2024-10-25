@@ -59,32 +59,13 @@ func (m *Manager) MonitorSequencerSetUpdates(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case <-ticker.C:
-			currentSLSet, err := m.SLClient.GetAllSequencers()
+			err := m.UpdateSequencerSetFromSL()
 			if err != nil {
-				m.logger.Error("Get bonded sequencers", "err", err)
-				continue
+				// this error is not critical
+				m.logger.Error("Cannot fetch sequencer set from the Hub", "error", err)
 			}
-			m.HandleSequencerSetUpdate(currentSLSet)
 		}
 	}
-}
-
-// HandleSequencerSetUpdate calculates the diff between hub's and current sequencer sets and
-// creates consensus messages for all new sequencers. The method updates the current state
-// and is not thread-safe. Returns errors on serialization issues.
-func (m *Manager) HandleSequencerSetUpdate(newSet []types.Sequencer) error {
-	// find new (updated) sequencers
-	newSequencers := types.SequencerListRightOuterJoin(m.Sequencers.GetAll(), newSet)
-	// create consensus msgs for new sequencers
-	msgs, err := ConsensusMsgsOnSequencerSetUpdate(newSequencers)
-	if err != nil {
-		return fmt.Errorf("consensus msgs on sequencers set update: %w", err)
-	}
-	// add consensus msgs to the stream
-	m.Executor.AddConsensusMsgs(msgs...)
-	// save the new sequencer set to the state
-	m.Sequencers.Set(newSet)
-	return nil
 }
 
 // IsProposer checks if the local node is the proposer
@@ -131,7 +112,15 @@ func (m *Manager) MissingLastBatch() (string, bool, error) {
 // this called after manager shuts down the block producer and submitter
 func (m *Manager) handleRotationReq(ctx context.Context, nextSeqAddr string) {
 	m.logger.Info("Sequencer rotation started. Production stopped on this sequencer", "nextSeqAddr", nextSeqAddr)
-	err := m.CompleteRotation(ctx, nextSeqAddr)
+
+	// Update sequencers list from SL
+	err := m.UpdateSequencerSetFromSL()
+	if err != nil {
+		// this error is not critical, try to complete the rotation anyway
+		m.logger.Error("Cannot fetch sequencer set from the Hub", "error", err)
+	}
+
+	err = m.CompleteRotation(ctx, nextSeqAddr)
 	if err != nil {
 		panic(err)
 	}
@@ -214,8 +203,26 @@ func (m *Manager) UpdateSequencerSetFromSL() error {
 	return nil
 }
 
-// UpdateProposer updates the proposer from the hub
-func (m *Manager) UpdateProposer() error {
+// HandleSequencerSetUpdate calculates the diff between hub's and current sequencer sets and
+// creates consensus messages for all new sequencers. The method updates the current state
+// and is not thread-safe. Returns errors on serialization issues.
+func (m *Manager) HandleSequencerSetUpdate(newSet []types.Sequencer) error {
+	// find new (updated) sequencers
+	newSequencers := types.SequencerListRightOuterJoin(m.Sequencers.GetAll(), newSet)
+	// create consensus msgs for new sequencers
+	msgs, err := ConsensusMsgsOnSequencerSetUpdate(newSequencers)
+	if err != nil {
+		return fmt.Errorf("consensus msgs on sequencers set update: %w", err)
+	}
+	// add consensus msgs to the stream
+	m.Executor.AddConsensusMsgs(msgs...)
+	// save the new sequencer set to the state
+	m.Sequencers.Set(newSet)
+	return nil
+}
+
+// UpdateProposerFromSL updates the proposer from the hub
+func (m *Manager) UpdateProposerFromSL() error {
 	m.State.SetProposer(m.SLClient.GetProposer())
 	return nil
 }
