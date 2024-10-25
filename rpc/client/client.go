@@ -36,6 +36,14 @@ const (
 	subscribeTimeout = 5 * time.Second
 )
 
+type BlockValidationStatus int
+
+const (
+	NotValidated = iota
+	P2PValidated
+	SLValidated
+)
+
 // ErrConsensusStateNotAvailable is returned because Dymint doesn't use Tendermint consensus.
 var ErrConsensusStateNotAvailable = errors.New("consensus state not available in Dymint")
 
@@ -51,6 +59,10 @@ type Client struct {
 
 	// cache of chunked genesis data.
 	genChunks []string
+}
+
+type ResultBlockValidated struct {
+	Result BlockValidationStatus
 }
 
 // NewClient returns Client working with given node.
@@ -795,6 +807,24 @@ func (c *Client) CheckTx(ctx context.Context, tx tmtypes.Tx) (*ctypes.ResultChec
 		return nil, err
 	}
 	return &ctypes.ResultCheckTx{ResponseCheckTx: *res}, nil
+}
+
+func (c *Client) BlockValidated(ctx context.Context, height *int64) (*ResultBlockValidated, error) {
+	// invalid height
+	if height == nil || *height < 0 {
+		return &ResultBlockValidated{Result: -1}, nil
+	}
+	// node has not reached the height yet
+	if uint64(*height) > c.node.BlockManager.State.Height() {
+		return &ResultBlockValidated{Result: NotValidated}, nil
+	}
+
+	if uint64(*height) <= c.node.BlockManager.SettlementValidator.GetLastValidatedHeight() {
+		return &ResultBlockValidated{Result: SLValidated}, nil
+	}
+
+	// block is applied, and therefore it is validated at block level but not at state update level
+	return &ResultBlockValidated{Result: P2PValidated}, nil
 }
 
 func (c *Client) eventsRoutine(sub tmtypes.Subscription, subscriber string, q tmpubsub.Query, outc chan<- ctypes.ResultEvent) {

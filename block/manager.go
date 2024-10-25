@@ -99,7 +99,7 @@ type Manager struct {
 	syncedFromSettlement *uchannel.Nudger
 
 	// validates all non-finalized state updates from settlement, checking there is consistency between DA and P2P blocks, and the information in the state update.
-	settlementValidator *SettlementValidator
+	SettlementValidator *SettlementValidator
 }
 
 // NewManager creates new block Manager.
@@ -172,7 +172,7 @@ func NewManager(
 		return nil, err
 	}
 
-	m.settlementValidator = NewSettlementValidator(m.logger, m)
+	m.SettlementValidator = NewSettlementValidator(m.logger, m)
 
 	return m, nil
 }
