@@ -69,6 +69,7 @@ func (m *Manager) SettlementValidateLoop(ctx context.Context) error {
 	}
 }
 
+// LoadDrsHistoryFromStore loads drs history from store
 func (m *Manager) LoadDrsHistoryFromStore() error {
 	drsHistory, err := m.Store.LoadDRSVersionHistory()
 	if errors.Is(err, gerrc.ErrNotFound) {
