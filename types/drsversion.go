@@ -47,11 +47,9 @@ func (d *DRSVersionHistory) AddDRSVersion(height uint64, version string) bool {
 }
 
 // ClearDrsVersionHeights clears drs version previous to the specified height,
-// but keeping always the last drs version record.
 // sequencers clear anything previous to the last submitted height
 // and full-nodes clear up to last finalized height
 func (d *DRSVersionHistory) ClearDRSVersionHeights(height uint64) {
-
 	for i, drs := range d.History {
 		if drs.Height < height {
 			d.drsMux.Lock()
