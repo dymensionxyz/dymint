@@ -250,6 +250,11 @@ func (m *Manager) SubmitBatch(batch *types.Batch) error {
 
 	// clear drs history for submitted heights
 	m.DRSVersionHistory.ClearDRSVersionHeights(batch.EndHeight())
+	_, err = m.Store.SaveDRSVersionHistory(m.DRSVersionHistory, nil)
+	if err != nil {
+		m.logger.Error("save drs history", "error", err)
+	}
+
 	return nil
 }
 

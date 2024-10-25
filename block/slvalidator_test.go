@@ -148,15 +148,34 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 			// Create block descriptors
 			bds := getBlockDescriptors(batch)
 
-			for _, bd := range bds {
-				manager.DRSVersionHistory.AddDRSVersion(bd.Height, bd.DrsVersion)
-			}
-
 			// create the batch in settlement
 			slBatch := getSLBatch(bds, daResultSubmitBatch.SubmitMetaData, 1, 10)
 
 			// Create the StateUpdateValidator
 			validator := block.NewSettlementValidator(testutil.NewLogger(t), manager)
+
+			// in case double signing generate commits for these blocks
+			if tc.doubleSignedBlocks != nil {
+				batch.Blocks = tc.doubleSignedBlocks
+				batch.Commits, err = testutil.GenerateCommits(batch.Blocks, proposerKey)
+				require.NoError(t, err)
+			}
+
+			// call manager flow for p2p received blocks
+			if tc.p2pBlocks {
+				for i, block := range batch.Blocks {
+					blockData := p2p.BlockData{Block: *block, Commit: *batch.Commits[i]}
+					msg := pubsub.NewMessage(blockData, map[string][]string{p2p.EventTypeKey: {p2p.EventNewGossipedBlock}})
+					manager.OnReceivedBlock(msg)
+				}
+				// otherwise load them from DA
+			} else {
+				manager.ApplyBatchFromSL(slBatch.MetaData.DA)
+			}
+
+			for _, bd := range bds {
+				manager.DRSVersionHistory.AddDRSVersion(bd.Height, bd.DrsVersion)
+			}
 
 			// set fraud data
 			switch tc.stateUpdateFraud {
@@ -179,25 +198,6 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 			case "height":
 				// add blockdescriptor with wrong height
 				slBatch.BlockDescriptors[0].Height = 2
-			}
-
-			// in case double signing generate commits for these blocks
-			if tc.doubleSignedBlocks != nil {
-				batch.Blocks = tc.doubleSignedBlocks
-				batch.Commits, err = testutil.GenerateCommits(batch.Blocks, proposerKey)
-				require.NoError(t, err)
-			}
-
-			// call manager flow for p2p received blocks
-			if tc.p2pBlocks {
-				for i, block := range batch.Blocks {
-					blockData := p2p.BlockData{Block: *block, Commit: *batch.Commits[i]}
-					msg := pubsub.NewMessage(blockData, map[string][]string{p2p.EventTypeKey: {p2p.EventNewGossipedBlock}})
-					manager.OnReceivedBlock(msg)
-				}
-				// otherwise load them from DA
-			} else {
-				manager.ApplyBatchFromSL(slBatch.MetaData.DA)
 			}
 
 			// validate the state update

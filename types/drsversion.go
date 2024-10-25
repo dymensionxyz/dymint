@@ -10,7 +10,6 @@ import (
 
 // Executor creates and applies blocks and maintains state.
 type DRSVersionHistory struct {
-
 	// The last DRS versions including height upgrade
 	History []*dymint.DRSVersion
 	drsMux  sync.Mutex
@@ -41,10 +40,15 @@ func (d *DRSVersionHistory) GetDRSVersion(height uint64) (string, error) {
 }
 
 // AddDRSVersion adds a new record for the DRS version update heights.
-func (d *DRSVersionHistory) AddDRSVersion(height uint64, version string) {
+// Returns true if its added (because its actually a new version)
+func (d *DRSVersionHistory) AddDRSVersion(height uint64, version string) bool {
+	if len(d.History) > 0 && version == d.History[len(d.History)-1].Version {
+		return false
+	}
 	defer d.drsMux.Unlock()
 	d.drsMux.Lock()
 	d.History = append(d.History, &dymint.DRSVersion{Height: height, Version: version})
+	return true
 }
 
 // ClearDrsVersionHeights clears drs version previous to the specified height,
