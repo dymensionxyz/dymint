@@ -124,7 +124,7 @@ func (s *State) AddDRSVersion(height uint64, version string) {
 	s.DrsVersionHistory = append(s.DrsVersionHistory, &dymint.DRSVersion{Height: height, Version: version})
 }
 
-// ClearDrsVersionHeights clears previous drs version update heights previous to finalization height,
+// ClearDrsVersionHeights clears drs version previous to the specified (finalization) height,
 // but keeping always the last drs version record.
 func (s *State) ClearDRSVersionHeights(height uint64) {
 	if len(s.DrsVersionHistory) == 1 {
