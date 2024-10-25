@@ -164,6 +164,11 @@ func NewManager(
 		return nil, fmt.Errorf("get initial state: %w", err)
 	}
 
+	err = m.LoadDrsHistoryFromStore()
+	if err != nil {
+		return nil, fmt.Errorf("get initial DRS history: %w", err)
+	}
+
 	err = m.setDA(conf.DAConfig, dalcKV, logger)
 	if err != nil {
 		return nil, err

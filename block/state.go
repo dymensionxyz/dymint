@@ -17,7 +17,6 @@ import (
 	"github.com/dymensionxyz/dymint/mempool"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
-	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 )
 
 // LoadStateOnInit tries to load lastState from Store, and if it's not available it reads GenesisDoc.
@@ -33,17 +32,6 @@ func (m *Manager) LoadStateOnInit(store store.Store, genesis *tmtypes.GenesisDoc
 	}
 
 	m.State = s
-
-	drsHistory, err := store.LoadDRSVersionHistory()
-	if errors.Is(err, gerrc.ErrNotFound) {
-		logger.Info("failed to find drs history in the store, creating new")
-		m.DRSVersionHistory = &types.DRSVersionHistory{}
-		return nil
-	} else if err != nil {
-		return fmt.Errorf("get drs version history: %w", err)
-	}
-
-	m.DRSVersionHistory = drsHistory
 
 	return nil
 }

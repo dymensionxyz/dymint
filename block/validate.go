@@ -3,9 +3,11 @@ package block
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/settlement"
+	"github.com/dymensionxyz/dymint/types"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/tendermint/tendermint/libs/pubsub"
@@ -65,4 +67,19 @@ func (m *Manager) SettlementValidateLoop(ctx context.Context) error {
 
 		}
 	}
+}
+
+func (m *Manager) LoadDrsHistoryFromStore() error {
+	drsHistory, err := m.Store.LoadDRSVersionHistory()
+	if errors.Is(err, gerrc.ErrNotFound) {
+		m.logger.Info("failed to find drs history in the store, creating new")
+		m.DRSVersionHistory = &types.DRSVersionHistory{}
+		return nil
+	} else if err != nil {
+		return fmt.Errorf("get drs version history: %w", err)
+	}
+
+	m.DRSVersionHistory = drsHistory
+
+	return nil
 }
