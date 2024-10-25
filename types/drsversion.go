@@ -18,7 +18,6 @@ type DRSVersionHistory struct {
 // GetDRSVersion returns the DRS version stored from rollapp params updates for a specific height.
 // If height is already cleared it returns not found error.
 func (d *DRSVersionHistory) GetDRSVersion(height uint64) (string, error) {
-
 	drsVersion := ""
 
 	if height < d.lastHeight {

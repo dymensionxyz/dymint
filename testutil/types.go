@@ -323,7 +323,7 @@ func GetRandomBlock(height uint64, nTxs int) *types.Block {
 }
 
 func CreateRandomVersionCommit() string {
-	var letterRunes = []rune("abcdefghijklmnopqrstuvwxyz")
+	letterRunes := []rune("abcdefghijklmnopqrstuvwxyz")
 	b := make([]rune, 40)
 	for i := range b {
 		b[i] = letterRunes[mrand.Intn(len(letterRunes))]
