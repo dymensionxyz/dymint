@@ -17,6 +17,7 @@ import (
 	"github.com/dymensionxyz/dymint/mempool"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 )
 
 // LoadStateOnInit tries to load lastState from Store, and if it's not available it reads GenesisDoc.
@@ -32,6 +33,18 @@ func (m *Manager) LoadStateOnInit(store store.Store, genesis *tmtypes.GenesisDoc
 	}
 
 	m.State = s
+
+	drsHistory, err := store.LoadDRSVersionHistory()
+	if errors.Is(err, gerrc.ErrNotFound) {
+		logger.Info("failed to find drs history in the store, creating new")
+		m.DRSVersionHistory = &types.DRSVersionHistory{}
+		return nil
+	} else if err != nil {
+		return fmt.Errorf("get drs version history: %w", err)
+	}
+
+	m.DRSVersionHistory = drsHistory
+
 	return nil
 }
 
@@ -88,7 +101,7 @@ func (m *Manager) UpdateStateFromApp(blockHeaderHash [32]byte) error {
 	}
 
 	// update the state with the app hashes created on the app commit
-	m.Executor.UpdateStateAfterCommit(m.State, resp, proxyAppInfo.LastBlockAppHash, appHeight, blockHeaderHash)
+	m.Executor.UpdateStateAfterCommit(m.State, m.DRSVersionHistory, resp, proxyAppInfo.LastBlockAppHash, appHeight, blockHeaderHash)
 
 	return nil
 }
@@ -117,7 +130,7 @@ func (e *Executor) UpdateMempoolAfterInitChain(s *types.State) {
 }
 
 // UpdateStateAfterCommit updates the state with the app hash and last results hash
-func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResponses, appHash []byte, height uint64, lastHeaderHash [32]byte) {
+func (e *Executor) UpdateStateAfterCommit(s *types.State, d *types.DRSVersionHistory, resp *tmstate.ABCIResponses, appHash []byte, height uint64, lastHeaderHash [32]byte) {
 	copy(s.AppHash[:], appHash[:])
 	copy(s.LastResultsHash[:], tmtypes.NewResults(resp.DeliverTxs).Hash())
 	copy(s.LastHeaderHash[:], lastHeaderHash[:])
@@ -130,10 +143,9 @@ func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResp
 	}
 	if resp.EndBlock.RollappParamUpdates != nil {
 		s.RollappParams.Da = resp.EndBlock.RollappParamUpdates.Da
-
 		if s.RollappParams.Version != resp.EndBlock.RollappParamUpdates.Version {
-			s.AddDRSVersion(height, resp.EndBlock.RollappParamUpdates.Version)
 			s.RollappParams.Version = resp.EndBlock.RollappParamUpdates.Version
+			d.AddDRSVersion(height, resp.EndBlock.RollappParamUpdates.Version)
 		}
 	}
 }

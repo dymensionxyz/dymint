@@ -202,7 +202,7 @@ func (m *Manager) CreateBatch(maxBatchSize uint64, startHeight uint64, endHeight
 			return nil, fmt.Errorf("load commit: h: %d: %w", h, err)
 		}
 
-		drsVersion, err := m.State.GetDRSVersion(block.Header.Height)
+		drsVersion, err := m.DRSVersionHistory.GetDRSVersion(block.Header.Height)
 		if errors.Is(err, gerrc.ErrNotFound) {
 			drsVersion = version.Commit
 		} else if err != nil {
@@ -249,7 +249,7 @@ func (m *Manager) SubmitBatch(batch *types.Batch) error {
 	m.LastSettlementHeight.Store(batch.EndHeight())
 
 	// clear drs history for submitted heights
-	m.State.ClearDRSVersionHeights(batch.EndHeight())
+	m.DRSVersionHistory.ClearDRSVersionHeights(batch.EndHeight())
 	return nil
 }
 

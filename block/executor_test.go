@@ -292,7 +292,8 @@ func TestApplyBlock(t *testing.T) {
 	require.NotNil(resp)
 	appHash, _, err := executor.Commit(state, block, resp)
 	require.NoError(err)
-	executor.UpdateStateAfterCommit(state, resp, appHash, block.Header.Height, block.Header.Hash())
+	drs := &types.DRSVersionHistory{}
+	executor.UpdateStateAfterCommit(state, drs, resp, appHash, block.Header.Height, block.Header.Hash())
 	assert.Equal(uint64(1), state.Height())
 	assert.Equal(mockAppHash, state.AppHash)
 
@@ -342,7 +343,7 @@ func TestApplyBlock(t *testing.T) {
 	require.NotNil(resp)
 	_, _, err = executor.Commit(state, block, resp)
 	require.NoError(err)
-	executor.UpdateStateAfterCommit(state, resp, appHash, block.Header.Height, block.Header.Hash())
+	executor.UpdateStateAfterCommit(state, drs, resp, appHash, block.Header.Height, block.Header.Hash())
 	assert.Equal(uint64(2), state.Height())
 
 	// check rollapp params update

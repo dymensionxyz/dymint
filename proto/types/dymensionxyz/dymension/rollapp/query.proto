@@ -31,10 +31,6 @@ service Query {
   rpc LatestHeight(QueryGetLatestHeightRequest)
       returns (QueryGetLatestHeightResponse) {}
 
-        // Queries a LatestHeight by rollapp-id.
-  rpc LatestHeight(QueryGetLatestHeightRequest)
-      returns (QueryGetLatestHeightResponse) {}
-
   // Queries a LatestStateIndex by rollapp-id.
   rpc LatestStateIndex(QueryGetLatestStateIndexRequest)
       returns (QueryGetLatestStateIndexResponse) {}

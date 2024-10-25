@@ -100,6 +100,9 @@ type Manager struct {
 
 	// validates all non-finalized state updates from settlement, checking there is consistency between DA and P2P blocks, and the information in the state update.
 	SettlementValidator *SettlementValidator
+
+	// used to store recent version history for DRS validation
+	DRSVersionHistory *types.DRSVersionHistory
 }
 
 // NewManager creates new block Manager.

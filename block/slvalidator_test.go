@@ -149,7 +149,7 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 			bds := getBlockDescriptors(batch)
 
 			for _, bd := range bds {
-				manager.State.AddDRSVersion(bd.Height, bd.DrsVersion)
+				manager.DRSVersionHistory.AddDRSVersion(bd.Height, bd.DrsVersion)
 			}
 
 			// create the batch in settlement
@@ -327,8 +327,13 @@ func TestStateUpdateValidator_ValidateDAFraud(t *testing.T) {
 			// Create the StateUpdateValidator
 			validator := block.NewSettlementValidator(testutil.NewLogger(t), manager)
 
+			bds := getBlockDescriptors(batch)
 			// Generate batch with block descriptors
-			slBatch := getSLBatch(getBlockDescriptors(batch), daResultSubmitBatch.SubmitMetaData, 1, 10)
+			slBatch := getSLBatch(bds, daResultSubmitBatch.SubmitMetaData, 1, 10)
+
+			for _, bd := range bds {
+				manager.DRSVersionHistory.AddDRSVersion(bd.Height, bd.DrsVersion)
+			}
 
 			// Validate state
 			err = validator.ValidateStateUpdate(slBatch)

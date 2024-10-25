@@ -20,7 +20,7 @@ func (m *Manager) onNewStateUpdateFinalized(event pubsub.Message) {
 		return
 	}
 	m.SettlementValidator.UpdateLastValidatedHeight(eventData.EndHeight)
-	m.State.ClearDRSVersionHeights(eventData.EndHeight)
+	m.DRSVersionHistory.ClearDRSVersionHeights(eventData.EndHeight)
 }
 
 // ValidateLoop listens for syncing events (from new state update or from initial syncing) and validates state updates to the last submitted height.

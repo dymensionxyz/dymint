@@ -25,6 +25,7 @@ var (
 	cidPrefix             = [1]byte{7}
 	sourcePrefix          = [1]byte{8}
 	validatedHeightPrefix = [1]byte{9}
+	drsVersionPrefix      = [1]byte{10}
 )
 
 // DefaultStore is a default store implementation.
@@ -337,6 +338,36 @@ func (s *DefaultStore) LoadValidationHeight() (uint64, error) {
 	return binary.LittleEndian.Uint64(b), nil
 }
 
+func (s *DefaultStore) SaveDRSVersionHistory(drs *types.DRSVersionHistory, batch KVBatch) (KVBatch, error) {
+	pbDRS := drs.ToProto()
+	data, err := pbDRS.Marshal()
+	if err != nil {
+		return batch, err
+	}
+	if batch == nil {
+		return nil, s.db.Set(getDRSVersionKey(), data)
+	}
+	err = batch.Set(getDRSVersionKey(), data)
+	return batch, err
+}
+
+func (s *DefaultStore) LoadDRSVersionHistory() (*types.DRSVersionHistory, error) {
+	blob, err := s.db.Get(getDRSVersionKey())
+	if err != nil {
+		return nil, err
+	}
+	var pbDRSVersion pb.DRS
+	err = pbDRSVersion.Unmarshal(blob)
+	if err != nil {
+		return nil, fmt.Errorf("unmarshal state from store: %w", err)
+	}
+
+	var drsVersion types.DRSVersionHistory
+	drsVersion.FromProto(&pbDRSVersion)
+
+	return &drsVersion, nil
+}
+
 func getBlockKey(hash [32]byte) []byte {
 	return append(blockPrefix[:], hash[:]...)
 }
@@ -381,4 +412,8 @@ func getSourceKey(height uint64) []byte {
 
 func getValidatedHeightKey() []byte {
 	return validatedHeightPrefix[:]
+}
+
+func getDRSVersionKey() []byte {
+	return drsVersionPrefix[:]
 }
