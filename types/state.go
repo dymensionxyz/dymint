@@ -101,11 +101,9 @@ func (s *State) SetRollappParamsFromGenesis(appState json.RawMessage) error {
 }
 
 // GetDRSVersion returns the DRS version stored in rollapp params updates for a specific height.
-// It is not keeping all historic but only for non-finalized height.
-// If input height is already finalized it will return not found error.
-// If no drs history exists it will return current version.
+// It only works for non-finalized heights.
+// If drs history is empty (because there is no version update for non-finalized heights) it will return current version.
 func (s *State) GetDRSVersion(height uint64) (string, error) {
-
 	if len(s.DrsVersionHistory) == 0 {
 		return version.Commit, nil
 	}
