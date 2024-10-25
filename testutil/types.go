@@ -208,6 +208,63 @@ func GenerateBatch(startHeight uint64, endHeight uint64, proposerKey crypto.Priv
 	return batch, nil
 }
 
+// GenerateLastBatch generates a final batch with LastBatch flag set to true and different NextSequencerHash
+func GenerateLastBatch(startHeight uint64, endHeight uint64, proposerKey crypto.PrivKey, nextSequencerKey crypto.PrivKey, lastHeaderHash [32]byte) (*types.Batch, error) {
+	nextSequencerRaw, _ := nextSequencerKey.Raw()
+	nextSeq := types.NewSequencerFromValidator(*tmtypes.NewValidator(ed25519.PrivKey(nextSequencerRaw).PubKey(), 1))
+	nextSequencerHash := nextSeq.MustHash()
+
+	blocks, err := GenerateLastBlocks(startHeight, endHeight-startHeight+1, proposerKey, lastHeaderHash, [32]byte(nextSequencerHash))
+	if err != nil {
+		return nil, err
+	}
+
+	commits, err := GenerateCommits(blocks, proposerKey)
+	if err != nil {
+		return nil, err
+	}
+
+	batch := &types.Batch{
+		Blocks:    blocks,
+		Commits:   commits,
+		LastBatch: true,
+	}
+
+	return batch, nil
+}
+
+// GenerateLastBlocks es similar a GenerateBlocks pero incluye el NextSequencerHash
+func GenerateLastBlocks(startHeight uint64, num uint64, proposerKey crypto.PrivKey, lastHeaderHash [32]byte, nextSequencerHash [32]byte) ([]*types.Block, error) {
+	r, _ := proposerKey.Raw()
+	seq := types.NewSequencerFromValidator(*tmtypes.NewValidator(ed25519.PrivKey(r).PubKey(), 1))
+	proposerHash := seq.MustHash()
+	blocks := make([]*types.Block, num)
+
+	for i := uint64(0); i < num; i++ {
+		if i > 0 {
+			lastHeaderHash = blocks[i-1].Header.Hash()
+		}
+		block := generateBlock(i+startHeight, proposerHash, lastHeaderHash)
+
+		if i == num-1 {
+			copy(block.Header.NextSequencersHash[:], nextSequencerHash[:])
+		}
+
+		copy(block.Header.DataHash[:], types.GetDataHash(block))
+		if i > 0 {
+			copy(block.Header.LastCommitHash[:], types.GetLastCommitHash(&blocks[i-1].LastCommit, &block.Header))
+		}
+
+		signature, err := generateSignature(proposerKey, &block.Header)
+		if err != nil {
+			return nil, err
+		}
+		block.LastCommit.Signatures = []types.Signature{signature}
+		blocks[i] = block
+	}
+	return blocks, nil
+}
+
 func MustGenerateBatch(startHeight uint64, endHeight uint64, proposerKey crypto.PrivKey) *types.Batch {
 	blocks, err := GenerateBlocks(startHeight, endHeight-startHeight+1, proposerKey, [32]byte{})
 	if err != nil {

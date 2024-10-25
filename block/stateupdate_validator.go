@@ -170,6 +170,31 @@ func (v *SettlementValidator) ValidateDaBlocks(slBatch *settlement.ResultRetriev
 		if err != nil {
 			return err
 		}
+
+		// we compare the sequencer address between SL state info and DA block
+		// if next sequencer is not set, we check if the sequencer hash is equal to the next sequencer hash
+		// because it did not change. If the next sequencer is set, we check if the next sequencer hash is equal on the
+		// last block of the batch
+		isLastBlock := i == len(slBatch.BlockDescriptors)-1
+		if slBatch.NextSequencer != "" && isLastBlock {
+			nextSequencer := v.blockManager.State.Sequencers.GetByAddress(slBatch.NextSequencer)
+			var nextSequencerHash [32]byte
+			copy(nextSequencerHash[:], nextSequencer.MustHash())
+
+			if !bytes.Equal(nextSequencer.MustHash(), daBlocks[i].Header.NextSequencersHash[:]) {
+				return types.NewErrInvalidNextSequencersHashFraud(
+					nextSequencerHash,
+					daBlocks[i].Header.NextSequencersHash,
+				)
+			}
+		} else {
+			if !bytes.Equal(daBlocks[i].Header.SequencerHash[:], daBlocks[i].Header.NextSequencersHash[:]) {
+				return types.NewErrInvalidNextSequencersHashFraud(
+					daBlocks[i].Header.SequencerHash,
+					daBlocks[i].Header.NextSequencersHash,
+				)
+			}
+		}
 	}
 	v.logger.Debug("DA blocks validated successfully", "start height", daBlocks[0].Header.Height, "end height", daBlocks[len(daBlocks)-1].Header.Height)
 	return nil
