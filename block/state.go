@@ -101,7 +101,7 @@ func (m *Manager) UpdateStateFromApp(blockHeaderHash [32]byte) error {
 	}
 
 	// update the state with the app hashes created on the app commit
-	m.Executor.UpdateStateAfterCommit(m.State, m.DRSVersionHistory, resp, proxyAppInfo.LastBlockAppHash, appHeight, blockHeaderHash)
+	m.Executor.UpdateStateAfterCommit(m.State, resp, proxyAppInfo.LastBlockAppHash, appHeight, blockHeaderHash)
 
 	return nil
 }
@@ -130,7 +130,7 @@ func (e *Executor) UpdateMempoolAfterInitChain(s *types.State) {
 }
 
 // UpdateStateAfterCommit updates the state with the app hash and last results hash
-func (e *Executor) UpdateStateAfterCommit(s *types.State, d *types.DRSVersionHistory, resp *tmstate.ABCIResponses, appHash []byte, height uint64, lastHeaderHash [32]byte) {
+func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResponses, appHash []byte, height uint64, lastHeaderHash [32]byte) {
 	copy(s.AppHash[:], appHash[:])
 	copy(s.LastResultsHash[:], tmtypes.NewResults(resp.DeliverTxs).Hash())
 	copy(s.LastHeaderHash[:], lastHeaderHash[:])
@@ -145,7 +145,6 @@ func (e *Executor) UpdateStateAfterCommit(s *types.State, d *types.DRSVersionHis
 		s.RollappParams.Da = resp.EndBlock.RollappParamUpdates.Da
 		if s.RollappParams.Version != resp.EndBlock.RollappParamUpdates.Version {
 			s.RollappParams.Version = resp.EndBlock.RollappParamUpdates.Version
-			d.AddDRSVersion(height, resp.EndBlock.RollappParamUpdates.Version)
 		}
 	}
 }
