@@ -145,7 +145,8 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 			assert.Equal(t, daResultSubmitBatch.Code, da.StatusSuccess)
 
 			// Create block descriptors
-			bds := getBlockDescriptors(batch)
+			bds, err := getBlockDescriptors(batch)
+			require.NoError(t, err)
 
 			// create the batch in settlement
 			slBatch := getSLBatch(bds, daResultSubmitBatch.SubmitMetaData, 1, 10)
@@ -180,7 +181,9 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 			switch tc.stateUpdateFraud {
 			case "drs":
 				// set different bd drs version
-				slBatch.BlockDescriptors[0].DrsVersion = testutil.CreateRandomVersionCommit()
+				version, err := testutil.CreateRandomVersionCommit()
+				require.NoError(t, err)
+				slBatch.BlockDescriptors[0].DrsVersion = version
 			case "batchnumblocks":
 				// set wrong numblocks in state update
 				slBatch.NumBlocks = 11
@@ -326,7 +329,8 @@ func TestStateUpdateValidator_ValidateDAFraud(t *testing.T) {
 			// Create the StateUpdateValidator
 			validator := block.NewSettlementValidator(testutil.NewLogger(t), manager)
 
-			bds := getBlockDescriptors(batch)
+			bds, err := getBlockDescriptors(batch)
+			require.NoError(t, err)
 			// Generate batch with block descriptors
 			slBatch := getSLBatch(bds, daResultSubmitBatch.SubmitMetaData, 1, 10)
 
@@ -348,19 +352,23 @@ func TestStateUpdateValidator_ValidateDAFraud(t *testing.T) {
 
 }
 
-func getBlockDescriptors(batch *types.Batch) []rollapp.BlockDescriptor {
+func getBlockDescriptors(batch *types.Batch) ([]rollapp.BlockDescriptor, error) {
 	// Create block descriptors
 	var bds []rollapp.BlockDescriptor
 	for _, block := range batch.Blocks {
+		version, err := testutil.CreateRandomVersionCommit()
+		if err != nil {
+			return nil, err
+		}
 		bd := rollapp.BlockDescriptor{
 			Height:     block.Header.Height,
 			StateRoot:  block.Header.AppHash[:],
 			Timestamp:  block.Header.GetTimestamp(),
-			DrsVersion: testutil.CreateRandomVersionCommit(),
+			DrsVersion: version,
 		}
 		bds = append(bds, bd)
 	}
-	return bds
+	return bds, nil
 }
 
 func getSLBatch(bds []rollapp.BlockDescriptor, daMetaData *da.DASubmitMetaData, startHeight uint64, endHeight uint64) *settlement.ResultRetrieveBatch {

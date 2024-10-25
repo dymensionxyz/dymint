@@ -3,7 +3,6 @@ package testutil
 import (
 	"crypto/rand"
 	"math/big"
-	mrand "math/rand"
 	"time"
 
 	"github.com/dymensionxyz/dymint/types"
@@ -322,11 +321,15 @@ func GetRandomBlock(height uint64, nTxs int) *types.Block {
 	return block
 }
 
-func CreateRandomVersionCommit() string {
+func CreateRandomVersionCommit() (string, error) {
 	letterRunes := []rune("abcdefghijklmnopqrstuvwxyz")
 	b := make([]rune, 40)
 	for i := range b {
-		b[i] = letterRunes[mrand.Intn(len(letterRunes))]
+		num, err := rand.Int(rand.Reader, big.NewInt(int64(len(letterRunes))))
+		if err != nil {
+			return "", err
+		}
+		b[i] = letterRunes[num.Int64()]
 	}
-	return string(b)
+	return string(b), nil
 }

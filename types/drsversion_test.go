@@ -22,7 +22,9 @@ func Test_DRS(t *testing.T) {
 	versions := make([]string, len(upgrades)+1)
 	versionList := make([]string, 20)
 	for i := 0; i < len(versions); i++ {
-		versions[i] = testutil.CreateRandomVersionCommit()
+		version, err := testutil.CreateRandomVersionCommit()
+		require.NoError(t, err)
+		versions[i] = version
 	}
 
 	// populate version list per height
