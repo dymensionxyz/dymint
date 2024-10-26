@@ -35,7 +35,7 @@ func (s *DefaultStore) PruneStore(to uint64, logger types.Logger) (uint64, error
 		logger.Error("pruning sequencers", "from", from, "to", to, "sequencers pruned", prunedSequencers, "err", err)
 	}
 
-	err = s.SaveBaseHeight(from + prunedBlocks)
+	err = s.SaveBaseHeight(to)
 	if err != nil {
 		logger.Error("saving base height", "error", err)
 	}
