@@ -103,7 +103,6 @@ func (is *IndexerService) OnStop() {
 
 // Prune removes tx and blocks indexed up to (but not including) a height.
 func (is *IndexerService) Prune(to uint64, s store.Store) (uint64, error) {
-
 	// load indexer base height
 	indexerBaseHeight, err := s.LoadIndexerBaseHeight()
 
