@@ -2,8 +2,6 @@ package block
 
 import (
 	"context"
-
-	"github.com/dymensionxyz/dymint/types"
 )
 
 // PruneBlocks prune all block related data from dymint store and blocksync store up to (but not including) retainHeight.
@@ -15,17 +13,17 @@ func (m *Manager) PruneBlocks(retainHeight uint64) {
 	}
 
 	// logging pruning result
-	logResult := func(err error, logger types.Logger, retainHeight uint64, pruned uint64) {
+	logResult := func(err error, source string, retainHeight uint64, pruned uint64) {
 		if err != nil {
-			m.logger.Error("pruning blocksync store", "retain_height", retainHeight, "err", err)
+			m.logger.Error("pruning", "from", source, "retain_height", retainHeight, "err", err)
 		} else {
-			m.logger.Debug("blocksync store pruned", "to", retainHeight, "pruned", pruned)
+			m.logger.Debug("pruned", "from", source, "retain_height", retainHeight, "pruned", pruned)
 		}
 	}
 
 	// prune blocks from blocksync store
 	pruned, err := m.P2PClient.RemoveBlocks(context.Background(), retainHeight)
-	logResult(err, m.logger, retainHeight, pruned)
+	logResult(err, "blocksync", retainHeight, pruned)
 
 	// prune blocks from indexer store
 	// load indexer base height
@@ -34,7 +32,7 @@ func (m *Manager) PruneBlocks(retainHeight uint64) {
 		indexerBaseHeight = 1
 	}
 	pruned, err = m.IndexerService.Prune(indexerBaseHeight, retainHeight)
-	logResult(err, m.logger, retainHeight, pruned)
+	logResult(err, "indexer", retainHeight, pruned)
 
 	// store indexer base height
 	err = m.Store.SaveIndexerBaseHeight(retainHeight)
@@ -44,7 +42,7 @@ func (m *Manager) PruneBlocks(retainHeight uint64) {
 
 	// prune blocks from dymint store
 	pruned, err = m.Store.PruneStore(retainHeight, m.logger)
-	logResult(err, m.logger, retainHeight, pruned)
+	logResult(err, "dymint store", retainHeight, pruned)
 }
 
 func (m *Manager) PruningLoop(ctx context.Context) error {
@@ -60,11 +58,7 @@ func (m *Manager) PruningLoop(ctx context.Context) error {
 				pruningHeight = min(m.SettlementValidator.NextValidationHeight(), uint64(retainHeight))
 			}
 
-			_, err := m.PruneBlocks(pruningHeight)
-			if err != nil {
-				m.logger.Error("pruning blocks", "retainHeight", retainHeight, "err", err)
-			}
-
+			m.PruneBlocks(pruningHeight)
 		}
 	}
 }
