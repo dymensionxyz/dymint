@@ -232,7 +232,9 @@ func (c *Client) RemoveBlocks(ctx context.Context, to uint64) (uint64, error) {
 	prunedBlocks := uint64(0)
 
 	from, err := c.store.LoadBlockSyncBaseHeight()
-	if err != nil {
+	if errors.Is(err, gerrc.ErrNotFound) {
+		c.logger.Error("load blocksync base height", "err", err)
+	} else if err != nil {
 		return prunedBlocks, err
 	}
 
@@ -256,7 +258,7 @@ func (c *Client) RemoveBlocks(ctx context.Context, to uint64) (uint64, error) {
 		prunedBlocks++
 	}
 
-	err = c.store.SaveBlockSyncBaseHeight(from + prunedBlocks)
+	err = c.store.SaveBlockSyncBaseHeight(to)
 	if err != nil {
 		return prunedBlocks, err
 	}
