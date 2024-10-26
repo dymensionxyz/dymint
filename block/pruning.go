@@ -6,11 +6,6 @@ import (
 
 // PruneBlocks prune all block related data from dymint store and blocksync store up to (but not including) retainHeight.
 func (m *Manager) PruneBlocks(retainHeight uint64) {
-	nextSubmissionHeight := m.NextHeightToSubmit()
-	if m.IsProposer() && nextSubmissionHeight < retainHeight { // do not delete anything that we might submit in future
-		m.logger.Debug("cannot prune blocks before they have been submitted. using height last submitted height for pruning", "retain_height", retainHeight, "height_to_submit", m.NextHeightToSubmit())
-		retainHeight = nextSubmissionHeight
-	}
 
 	// logging pruning result
 	logResult := func(err error, source string, retainHeight uint64, pruned uint64) {
@@ -25,6 +20,7 @@ func (m *Manager) PruneBlocks(retainHeight uint64) {
 	pruned, err := m.P2PClient.RemoveBlocks(context.Background(), retainHeight)
 	logResult(err, "blocksync", retainHeight, pruned)
 
+	// prune indexed block and txs and associated events
 	pruned, err = m.IndexerService.Prune(retainHeight, m.Store)
 	logResult(err, "indexer", retainHeight, pruned)
 
