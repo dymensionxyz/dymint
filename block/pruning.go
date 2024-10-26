@@ -38,6 +38,8 @@ func (m *Manager) PruningLoop(ctx context.Context) error {
 			var pruningHeight uint64
 			if m.IsSequencer() { // do not delete anything that we might submit in future
 				pruningHeight = min(m.NextHeightToSubmit(), uint64(retainHeight))
+			} else {
+				pruningHeight = uint64(retainHeight)
 			}
 			m.PruneBlocks(pruningHeight)
 		}
