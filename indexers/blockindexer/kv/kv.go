@@ -558,7 +558,7 @@ func (idx *BlockerIndexer) pruneBlocks(from, to uint64, logger log.Logger) (uint
 
 		pruned++
 
-		prunedEvents, err := idx.pruneEvents(h, batch)
+		prunedEvents, err := idx.pruneEvents(h, logger, batch)
 		if err != nil {
 			logger.Debug("pruning block indexer events", "err", err)
 			continue
@@ -588,7 +588,7 @@ func (idx *BlockerIndexer) pruneBlocks(from, to uint64, logger log.Logger) (uint
 	return pruned, nil
 }
 
-func (idx *BlockerIndexer) pruneEvents(height int64, batch store.KVBatch) (uint64, error) {
+func (idx *BlockerIndexer) pruneEvents(height int64, logger log.Logger, batch store.KVBatch) (uint64, error) {
 	pruned := uint64(0)
 
 	eventKey, err := eventHeightKey(height)
@@ -607,7 +607,8 @@ func (idx *BlockerIndexer) pruneEvents(height int64, batch store.KVBatch) (uint6
 	for _, key := range eventKeys.Keys {
 		err := batch.Delete(key)
 		if err != nil {
-			return pruned, err
+			logger.Error("pruning block indexer events", "err", err)
+			continue
 		}
 		pruned++
 
