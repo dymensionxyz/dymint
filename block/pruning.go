@@ -41,6 +41,8 @@ func (m *Manager) PruningLoop(ctx context.Context) error {
 			} else {
 				pruningHeight = uint64(retainHeight)
 			}
+			m.logger.Debug("pruning loop", "retainHeight", retainHeight, "pruningHeight", pruningHeight)
+
 			m.PruneBlocks(pruningHeight)
 		}
 	}
