@@ -6,7 +6,6 @@ import (
 
 // PruneBlocks prune all block related data from dymint store and blocksync store up to (but not including) retainHeight.
 func (m *Manager) PruneBlocks(retainHeight uint64) {
-
 	// logging pruning result
 	logResult := func(err error, source string, retainHeight uint64, pruned uint64) {
 		if err != nil {
