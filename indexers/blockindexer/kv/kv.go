@@ -546,6 +546,14 @@ func (idx *BlockerIndexer) pruneBlocks(from, to uint64, logger log.Logger) (uint
 	}
 
 	for h := int64(from); h < int64(to); h++ {
+		ok, err := idx.Has(h)
+		if err != nil {
+			logger.Debug("pruning block indexer checking height", "err", err)
+			continue
+		}
+		if !ok {
+			continue
+		}
 		key, err := heightKey(h)
 		if err != nil {
 			logger.Debug("pruning block indexer getting height key", "err", err)
