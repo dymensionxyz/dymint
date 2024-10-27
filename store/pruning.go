@@ -1,18 +1,23 @@
 package store
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 )
 
 // PruneStore removes blocks up to (but not including) a height. It returns number of blocks pruned.
 func (s *DefaultStore) PruneStore(to uint64, logger types.Logger) (uint64, error) {
+	prunedBlocks := uint64(0)
 	from, err := s.LoadBaseHeight()
-	if err != nil {
-		return uint64(0), fmt.Errorf("unable to retrieve stored base: %w", err)
+	if errors.Is(err, gerrc.ErrNotFound) {
+		logger.Error("load store base height", "err", err)
+	} else if err != nil {
+		return prunedBlocks, err
 	}
-	prunedBlocks, err := s.pruneBlocks(from, to, logger)
+	prunedBlocks, err = s.pruneBlocks(from, to, logger)
 	if err != nil {
 		logger.Error("pruning blocks", "from", from, "to", to, "blocks pruned", prunedBlocks, "err", err)
 	}

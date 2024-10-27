@@ -205,13 +205,6 @@ func (c *Client) SaveBlock(ctx context.Context, height uint64, blockBytes []byte
 	if !c.conf.BlockSyncEnabled {
 		return nil
 	}
-	_, err := c.store.LoadBlockSyncBaseHeight()
-	if err != nil {
-		err = c.store.SaveBlockSyncBaseHeight(height)
-		if err != nil {
-			return err
-		}
-	}
 
 	cid, err := c.blocksync.SaveBlock(ctx, blockBytes)
 	if err != nil {
