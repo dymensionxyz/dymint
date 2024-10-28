@@ -176,6 +176,8 @@ func TestStateRoundTrip(t *testing.T) {
 func TestStateWithProposer(t *testing.T) {
 	t.Parallel()
 
+	proposer := testutil.GenerateSequencer()
+
 	cases := []struct {
 		name     string
 		proposer *types.Sequencer
@@ -186,7 +188,7 @@ func TestStateWithProposer(t *testing.T) {
 		},
 		{
 			name:     "non-nil proposer",
-			proposer: testutil.GenerateSequencer(),
+			proposer: &proposer,
 		},
 	}
 

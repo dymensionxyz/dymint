@@ -326,7 +326,7 @@ func TestUpdateInitialSequencerSet(t *testing.T) {
 	slmock.On("Init", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	slmock.On("Start").Return(nil)
 	slmock.On("GetProposer").Return(proposer)
-	slmock.On("GetAllSequencers").Return([]types.Sequencer{*proposer, *sequencer}, nil)
+	slmock.On("GetAllSequencers").Return([]types.Sequencer{proposer, sequencer}, nil)
 
 	manager, err := testutil.GetManagerWithProposerKey(testutil.GetManagerConfig(), lib2pPrivKey, slmock, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
@@ -435,23 +435,23 @@ func TestUpdateExistingSequencerSet(t *testing.T) {
 	manager.Retriever = manager.DAClient.(da.BatchRetriever)
 
 	// Set the initial sequencer set
-	manager.Sequencers.Set([]types.Sequencer{*proposer, *sequencer})
+	manager.Sequencers.Set([]types.Sequencer{proposer, sequencer})
 
 	// Check initial assertions
 	require.Zero(manager.State.Height())
 	require.Zero(manager.LastSettlementHeight.Load())
 	initialSequencers := manager.Sequencers.GetAll()
 	require.Len(initialSequencers, 2)
-	require.Equal(initialSequencers[0], *proposer)
-	require.Equal(initialSequencers[1], *sequencer)
+	require.Equal(initialSequencers[0], proposer)
+	require.Equal(initialSequencers[1], sequencer)
 
 	// Update one of the sequencers and pass the update to the manager.
 	// We expect that the manager will update the sequencer set in the state and generate a new consensus msg.
-	updatedSequencer := *sequencer // sequencer is a pointer, but we want to have its copy, so we dereference it
+	updatedSequencer := sequencer
 	const newSequencerRewardAddr = "dym1mk7pw34ypusacm29m92zshgxee3yreums8avur"
 	updatedSequencer.RewardAddr = newSequencerRewardAddr
 	// GetAllSequencers now return an updated sequencer
-	slmock.On("GetAllSequencers").Return([]types.Sequencer{*proposer, updatedSequencer}, nil)
+	slmock.On("GetAllSequencers").Return([]types.Sequencer{proposer, updatedSequencer}, nil)
 
 	err = manager.UpdateSequencerSetFromSL()
 	require.NoError(err)
@@ -459,9 +459,9 @@ func TestUpdateExistingSequencerSet(t *testing.T) {
 	// The number of sequencers is the same. However, the second sequencer is modified.
 	sequencers := manager.Sequencers.GetAll()
 	require.Len(sequencers, 2)
-	require.Equal(sequencers[0], *proposer)
+	require.Equal(sequencers[0], proposer)
 	// Now Sequencers[1] is a sequencer with the new reward address
-	require.NotEqual(*sequencer, sequencers[1])
+	require.NotEqual(sequencer, sequencers[1])
 	require.Equal(updatedSequencer, sequencers[1])
 
 	// Produce block and validate that we produced blocks

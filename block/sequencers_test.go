@@ -11,10 +11,10 @@ import (
 )
 
 func TestHandleSequencerSetUpdate(t *testing.T) {
-	seq1 := *testutil.GenerateSequencer()
-	seq2 := *testutil.GenerateSequencer()
-	seq3 := *testutil.GenerateSequencer()
-	seq4 := *testutil.GenerateSequencer()
+	seq1 := testutil.GenerateSequencer()
+	seq2 := testutil.GenerateSequencer()
+	seq3 := testutil.GenerateSequencer()
+	seq4 := testutil.GenerateSequencer()
 
 	testCases := []struct {
 		name    string
