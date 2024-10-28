@@ -302,22 +302,22 @@ func (_c *MockStore_LoadBlockResponses_Call) RunAndReturn(run func(uint64) (*sta
 }
 
 // LoadBlockSource provides a mock function with given fields: height
-func (_m *MockStore) LoadBlockSource(height uint64) (string, error) {
+func (_m *MockStore) LoadBlockSource(height uint64) (types.BlockSource, error) {
 	ret := _m.Called(height)
 
 	if len(ret) == 0 {
 		panic("no return value specified for LoadBlockSource")
 	}
 
-	var r0 string
+	var r0 types.BlockSource
 	var r1 error
-	if rf, ok := ret.Get(0).(func(uint64) (string, error)); ok {
+	if rf, ok := ret.Get(0).(func(uint64) (types.BlockSource, error)); ok {
 		return rf(height)
 	}
-	if rf, ok := ret.Get(0).(func(uint64) string); ok {
+	if rf, ok := ret.Get(0).(func(uint64) types.BlockSource); ok {
 		r0 = rf(height)
 	} else {
-		r0 = ret.Get(0).(string)
+		r0 = ret.Get(0).(types.BlockSource)
 	}
 
 	if rf, ok := ret.Get(1).(func(uint64) error); ok {
@@ -347,12 +347,12 @@ func (_c *MockStore_LoadBlockSource_Call) Run(run func(height uint64)) *MockStor
 	return _c
 }
 
-func (_c *MockStore_LoadBlockSource_Call) Return(_a0 string, _a1 error) *MockStore_LoadBlockSource_Call {
+func (_c *MockStore_LoadBlockSource_Call) Return(_a0 types.BlockSource, _a1 error) *MockStore_LoadBlockSource_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockStore_LoadBlockSource_Call) RunAndReturn(run func(uint64) (string, error)) *MockStore_LoadBlockSource_Call {
+func (_c *MockStore_LoadBlockSource_Call) RunAndReturn(run func(uint64) (types.BlockSource, error)) *MockStore_LoadBlockSource_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -584,6 +584,61 @@ func (_c *MockStore_LoadState_Call) Return(_a0 *types.State, _a1 error) *MockSto
 }
 
 func (_c *MockStore_LoadState_Call) RunAndReturn(run func() (*types.State, error)) *MockStore_LoadState_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// LoadValidationHeight provides a mock function with given fields:
+func (_m *MockStore) LoadValidationHeight() (uint64, error) {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for LoadValidationHeight")
+	}
+
+	var r0 uint64
+	var r1 error
+	if rf, ok := ret.Get(0).(func() (uint64, error)); ok {
+		return rf()
+	}
+	if rf, ok := ret.Get(0).(func() uint64); ok {
+		r0 = rf()
+	} else {
+		r0 = ret.Get(0).(uint64)
+	}
+
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockStore_LoadValidationHeight_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'LoadValidationHeight'
+type MockStore_LoadValidationHeight_Call struct {
+	*mock.Call
+}
+
+// LoadValidationHeight is a helper method to define mock.On call
+func (_e *MockStore_Expecter) LoadValidationHeight() *MockStore_LoadValidationHeight_Call {
+	return &MockStore_LoadValidationHeight_Call{Call: _e.mock.On("LoadValidationHeight")}
+}
+
+func (_c *MockStore_LoadValidationHeight_Call) Run(run func()) *MockStore_LoadValidationHeight_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockStore_LoadValidationHeight_Call) Return(_a0 uint64, _a1 error) *MockStore_LoadValidationHeight_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockStore_LoadValidationHeight_Call) RunAndReturn(run func() (uint64, error)) *MockStore_LoadValidationHeight_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -874,7 +929,7 @@ func (_c *MockStore_SaveBlockResponses_Call) RunAndReturn(run func(uint64, *stat
 }
 
 // SaveBlockSource provides a mock function with given fields: height, source, batch
-func (_m *MockStore) SaveBlockSource(height uint64, source string, batch store.KVBatch) (store.KVBatch, error) {
+func (_m *MockStore) SaveBlockSource(height uint64, source types.BlockSource, batch store.KVBatch) (store.KVBatch, error) {
 	ret := _m.Called(height, source, batch)
 
 	if len(ret) == 0 {
@@ -883,10 +938,10 @@ func (_m *MockStore) SaveBlockSource(height uint64, source string, batch store.K
 
 	var r0 store.KVBatch
 	var r1 error
-	if rf, ok := ret.Get(0).(func(uint64, string, store.KVBatch) (store.KVBatch, error)); ok {
+	if rf, ok := ret.Get(0).(func(uint64, types.BlockSource, store.KVBatch) (store.KVBatch, error)); ok {
 		return rf(height, source, batch)
 	}
-	if rf, ok := ret.Get(0).(func(uint64, string, store.KVBatch) store.KVBatch); ok {
+	if rf, ok := ret.Get(0).(func(uint64, types.BlockSource, store.KVBatch) store.KVBatch); ok {
 		r0 = rf(height, source, batch)
 	} else {
 		if ret.Get(0) != nil {
@@ -894,7 +949,7 @@ func (_m *MockStore) SaveBlockSource(height uint64, source string, batch store.K
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(uint64, string, store.KVBatch) error); ok {
+	if rf, ok := ret.Get(1).(func(uint64, types.BlockSource, store.KVBatch) error); ok {
 		r1 = rf(height, source, batch)
 	} else {
 		r1 = ret.Error(1)
@@ -910,15 +965,15 @@ type MockStore_SaveBlockSource_Call struct {
 
 // SaveBlockSource is a helper method to define mock.On call
 //   - height uint64
-//   - source string
+//   - source types.BlockSource
 //   - batch store.KVBatch
 func (_e *MockStore_Expecter) SaveBlockSource(height interface{}, source interface{}, batch interface{}) *MockStore_SaveBlockSource_Call {
 	return &MockStore_SaveBlockSource_Call{Call: _e.mock.On("SaveBlockSource", height, source, batch)}
 }
 
-func (_c *MockStore_SaveBlockSource_Call) Run(run func(height uint64, source string, batch store.KVBatch)) *MockStore_SaveBlockSource_Call {
+func (_c *MockStore_SaveBlockSource_Call) Run(run func(height uint64, source types.BlockSource, batch store.KVBatch)) *MockStore_SaveBlockSource_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(uint64), args[1].(string), args[2].(store.KVBatch))
+		run(args[0].(uint64), args[1].(types.BlockSource), args[2].(store.KVBatch))
 	})
 	return _c
 }
@@ -928,7 +983,7 @@ func (_c *MockStore_SaveBlockSource_Call) Return(_a0 store.KVBatch, _a1 error) *
 	return _c
 }
 
-func (_c *MockStore_SaveBlockSource_Call) RunAndReturn(run func(uint64, string, store.KVBatch) (store.KVBatch, error)) *MockStore_SaveBlockSource_Call {
+func (_c *MockStore_SaveBlockSource_Call) RunAndReturn(run func(uint64, types.BlockSource, store.KVBatch) (store.KVBatch, error)) *MockStore_SaveBlockSource_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -1048,6 +1103,65 @@ func (_c *MockStore_SaveState_Call) Return(_a0 store.KVBatch, _a1 error) *MockSt
 }
 
 func (_c *MockStore_SaveState_Call) RunAndReturn(run func(*types.State, store.KVBatch) (store.KVBatch, error)) *MockStore_SaveState_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SaveValidationHeight provides a mock function with given fields: height, batch
+func (_m *MockStore) SaveValidationHeight(height uint64, batch store.KVBatch) (store.KVBatch, error) {
+	ret := _m.Called(height, batch)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SaveValidationHeight")
+	}
+
+	var r0 store.KVBatch
+	var r1 error
+	if rf, ok := ret.Get(0).(func(uint64, store.KVBatch) (store.KVBatch, error)); ok {
+		return rf(height, batch)
+	}
+	if rf, ok := ret.Get(0).(func(uint64, store.KVBatch) store.KVBatch); ok {
+		r0 = rf(height, batch)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(store.KVBatch)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(uint64, store.KVBatch) error); ok {
+		r1 = rf(height, batch)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockStore_SaveValidationHeight_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SaveValidationHeight'
+type MockStore_SaveValidationHeight_Call struct {
+	*mock.Call
+}
+
+// SaveValidationHeight is a helper method to define mock.On call
+//   - height uint64
+//   - batch store.KVBatch
+func (_e *MockStore_Expecter) SaveValidationHeight(height interface{}, batch interface{}) *MockStore_SaveValidationHeight_Call {
+	return &MockStore_SaveValidationHeight_Call{Call: _e.mock.On("SaveValidationHeight", height, batch)}
+}
+
+func (_c *MockStore_SaveValidationHeight_Call) Run(run func(height uint64, batch store.KVBatch)) *MockStore_SaveValidationHeight_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(uint64), args[1].(store.KVBatch))
+	})
+	return _c
+}
+
+func (_c *MockStore_SaveValidationHeight_Call) Return(_a0 store.KVBatch, _a1 error) *MockStore_SaveValidationHeight_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockStore_SaveValidationHeight_Call) RunAndReturn(run func(uint64, store.KVBatch) (store.KVBatch, error)) *MockStore_SaveValidationHeight_Call {
 	_c.Call.Return(run)
 	return _c
 }

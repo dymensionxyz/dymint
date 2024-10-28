@@ -3,6 +3,8 @@ package block
 import (
 	"bytes"
 	"crypto/sha256"
+	"encoding/hex"
+	"errors"
 	"fmt"
 	"sync/atomic"
 
@@ -71,7 +73,19 @@ func (v *SettlementValidator) ValidateStateUpdate(batch *settlement.ResultRetrie
 		if daBatch.Code == da.StatusSuccess {
 			break
 		}
+
+		// fraud detected in case blob is retrieved but unable to get blocks from it.
+		if errors.Is(daBatch.BaseResult.Error, da.ErrBlobNotParsed) {
+			return types.NewErrStateUpdateBlobCorruptedFraud(batch.StateIndex, string(batch.MetaData.DA.Client), batch.MetaData.DA.Height, hex.EncodeToString(batch.MetaData.DA.Commitment))
+		}
+
+		// fraud detected in case availability checks fail and therefore there certainty the blob, according to the state update DA path, is not available.
+		checkBatchResult := v.blockManager.Retriever.CheckBatchAvailability(batch.MetaData.DA)
+		if errors.Is(checkBatchResult.Error, da.ErrBlobNotIncluded) {
+			return types.NewErrStateUpdateBlobNotAvailableFraud(batch.StateIndex, string(batch.MetaData.DA.Client), batch.MetaData.DA.Height, hex.EncodeToString(batch.MetaData.DA.Commitment))
+		}
 	}
+
 	for _, batch := range daBatch.Batches {
 		daBlocks = append(daBlocks, batch.Blocks...)
 	}
@@ -127,10 +141,9 @@ func (v *SettlementValidator) ValidateP2PBlocks(daBlocks []*types.Block, p2pBloc
 func (v *SettlementValidator) ValidateDaBlocks(slBatch *settlement.ResultRetrieveBatch, daBlocks []*types.Block) error {
 	// we first verify the numblocks included in the state info match the block descriptors and the blocks obtained from DA
 	numSlBDs := uint64(len(slBatch.BlockDescriptors))
-	numDABlocks := uint64(len(daBlocks))
 	numSLBlocks := slBatch.NumBlocks
-	if numSLBlocks != numDABlocks || numSLBlocks != numSlBDs {
-		return types.NewErrStateUpdateNumBlocksNotMatchingFraud(slBatch.EndHeight, numSLBlocks, numDABlocks, numSLBlocks)
+	if numSLBlocks != numSlBDs {
+		return types.NewErrStateUpdateNumBlocksNotMatchingFraud(slBatch.EndHeight, numSLBlocks, numSLBlocks)
 	}
 
 	// we compare all DA blocks against the information included in the state info block descriptors
@@ -147,6 +160,12 @@ func (v *SettlementValidator) ValidateDaBlocks(slBatch *settlement.ResultRetriev
 		// we compare the timestamp between SL state info and DA block
 		if !bd.Timestamp.Equal(daBlocks[i].Header.GetTimestamp()) {
 			return types.NewErrStateUpdateTimestampNotMatchingFraud(slBatch.StateIndex, bd.Height, bd.Timestamp, daBlocks[i].Header.GetTimestamp())
+		}
+
+		// we validate block descriptor drs version per height
+		err := v.validateDRS(slBatch.StateIndex, bd.Height, bd.DrsVersion)
+		if err != nil {
+			return err
 		}
 	}
 	v.logger.Debug("DA blocks validated successfully", "start height", daBlocks[0].Header.Height, "end height", daBlocks[len(daBlocks)-1].Header.Height)
@@ -173,9 +192,22 @@ func (v *SettlementValidator) GetLastValidatedHeight() uint64 {
 	return v.lastValidatedHeight.Load()
 }
 
-// GetLastValidatedHeight returns the next height that needs to be validated with settlement state updates.
+// NextValidationHeight returns the next height that needs to be validated with settlement state updates.
 func (v *SettlementValidator) NextValidationHeight() uint64 {
 	return v.lastValidatedHeight.Load() + 1
+}
+
+// validateDRS compares the DRS version stored for the specific height, obtained from rollapp params.
+func (v *SettlementValidator) validateDRS(stateIndex uint64, height uint64, version string) error {
+	drs, err := v.blockManager.Store.LoadDRSVersion(height)
+	if err != nil {
+		return err
+	}
+	if drs != version {
+		return types.NewErrStateUpdateDRSVersionFraud(stateIndex, height, drs, version)
+	}
+
+	return nil
 }
 
 // blockHash generates a hash from the block bytes to compare them

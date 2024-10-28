@@ -133,32 +133,6 @@ func TestRetrievalNotFound(t *testing.T) {
 	require.True(len(retreiveRes.Batches) == 0)
 }
 
-func TestRetrievalNoCommitment(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
-
-	mockRPCClient, dalc, nID, _ := setDAandMock(t)
-	block1 := getRandomBlock(1, 10)
-	batch1 := &types.Batch{
-		Blocks: []*types.Block{block1},
-	}
-	// only blocks b1 and b2 will be submitted to DA
-	data1, _ := batch1.MarshalBinary()
-	blob1, _ := blob.NewBlobV0(nID, data1)
-
-	mockRPCClient.On("GetAll", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return([]*blob.Blob{blob1}, nil).Run(func(args mock.Arguments) {
-	})
-
-	retriever := dalc.(da.BatchRetriever)
-
-	h1 := &da.DASubmitMetaData{
-		Height: 1,
-	}
-	retreiveRes := retriever.RetrieveBatches(h1)
-	assert.Equal(da.StatusSuccess, retreiveRes.Code)
-	require.True(len(retreiveRes.Batches) == 1)
-}
-
 func TestAvalabilityOK(t *testing.T) {
 	assert := assert.New(t)
 	// require := require.New(t)

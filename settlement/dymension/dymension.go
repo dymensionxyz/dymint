@@ -28,7 +28,6 @@ import (
 	rollapptypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
 	sequencertypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/sequencer"
 	protoutils "github.com/dymensionxyz/dymint/utils/proto"
-	"github.com/dymensionxyz/dymint/version"
 )
 
 const (
@@ -218,7 +217,7 @@ func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *d
 	}
 }
 
-func (c *Client) getStateInfo(index, height *uint64, finalized bool) (res *rollapptypes.QueryGetStateInfoResponse, err error) {
+func (c *Client) getStateInfo(index, height *uint64) (res *rollapptypes.QueryGetStateInfoResponse, err error) {
 	req := &rollapptypes.QueryGetStateInfoRequest{
 		RollappId: c.rollappId,
 	}
@@ -227,9 +226,6 @@ func (c *Client) getStateInfo(index, height *uint64, finalized bool) (res *rolla
 	}
 	if height != nil {
 		req.Height = *height
-	}
-	if finalized {
-		req.Finalized = finalized
 	}
 	err = c.RunWithRetry(func() error {
 		res, err = c.rollappQueryClient.StateInfo(c.ctx, req)
@@ -248,18 +244,31 @@ func (c *Client) getStateInfo(index, height *uint64, finalized bool) (res *rolla
 	return
 }
 
-// GetLatestBatch returns the latest batch from the Dymension Hub.
-func (c *Client) GetLatestBatch() (*settlement.ResultRetrieveBatch, error) {
-	res, err := c.getStateInfo(nil, nil, false)
-	if err != nil {
-		return nil, fmt.Errorf("get state info: %w", err)
+func (c *Client) getLatestHeight(finalized bool) (res *rollapptypes.QueryGetLatestHeightResponse, err error) {
+	req := &rollapptypes.QueryGetLatestHeightRequest{
+		RollappId: c.rollappId,
+		Finalized: finalized,
 	}
-	return convertStateInfoToResultRetrieveBatch(&res.StateInfo)
+	err = c.RunWithRetry(func() error {
+		res, err = c.rollappQueryClient.LatestHeight(c.ctx, req)
+
+		if status.Code(err) == codes.NotFound {
+			return retry.Unrecoverable(errors.Join(gerrc.ErrNotFound, err))
+		}
+		return err
+	})
+	if err != nil {
+		return nil, fmt.Errorf("query state info: %w", err)
+	}
+	if res == nil { // not supposed to happen
+		return nil, fmt.Errorf("empty response with nil err: %w", gerrc.ErrUnknown)
+	}
+	return
 }
 
-// GetLatestFinalizedBatch returns the latest finalized batch from the Dymension Hub.
-func (c *Client) GetLatestFinalizedBatch() (*settlement.ResultRetrieveBatch, error) {
-	res, err := c.getStateInfo(nil, nil, true)
+// GetLatestBatch returns the latest batch from the Dymension Hub.
+func (c *Client) GetLatestBatch() (*settlement.ResultRetrieveBatch, error) {
+	res, err := c.getStateInfo(nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("get state info: %w", err)
 	}
@@ -268,7 +277,7 @@ func (c *Client) GetLatestFinalizedBatch() (*settlement.ResultRetrieveBatch, err
 
 // GetBatchAtIndex returns the batch at the given index from the Dymension Hub.
 func (c *Client) GetBatchAtIndex(index uint64) (*settlement.ResultRetrieveBatch, error) {
-	res, err := c.getStateInfo(&index, nil, false)
+	res, err := c.getStateInfo(&index, nil)
 	if err != nil {
 		return nil, fmt.Errorf("get state info: %w", err)
 	}
@@ -277,11 +286,29 @@ func (c *Client) GetBatchAtIndex(index uint64) (*settlement.ResultRetrieveBatch,
 
 // GetBatchAtHeight returns the batch at the given height from the Dymension Hub.
 func (c *Client) GetBatchAtHeight(height uint64) (*settlement.ResultRetrieveBatch, error) {
-	res, err := c.getStateInfo(nil, &height, false)
+	res, err := c.getStateInfo(nil, &height)
 	if err != nil {
 		return nil, fmt.Errorf("get state info: %w", err)
 	}
 	return convertStateInfoToResultRetrieveBatch(&res.StateInfo)
+}
+
+// GetLatestHeight returns the latest state update height from the settlement layer.
+func (c *Client) GetLatestHeight() (uint64, error) {
+	res, err := c.getLatestHeight(false)
+	if err != nil {
+		return uint64(0), fmt.Errorf("get latest height: %w", err)
+	}
+	return res.Height, nil
+}
+
+// GetLatestFinalizedHeight returns the latest finalized height from the settlement layer.
+func (c *Client) GetLatestFinalizedHeight() (uint64, error) {
+	res, err := c.getLatestHeight(true)
+	if err != nil {
+		return uint64(0), fmt.Errorf("get latest height: %w", err)
+	}
+	return res.Height, nil
 }
 
 // GetProposer implements settlement.ClientI.
@@ -541,9 +568,10 @@ func (c *Client) convertBatchToMsgUpdateState(batch *types.Batch, daResult *da.R
 	blockDescriptors := make([]rollapptypes.BlockDescriptor, len(batch.Blocks))
 	for index, block := range batch.Blocks {
 		blockDescriptor := rollapptypes.BlockDescriptor{
-			Height:    block.Header.Height,
-			StateRoot: block.Header.AppHash[:],
-			Timestamp: block.Header.GetTimestamp(),
+			Height:     block.Header.Height,
+			StateRoot:  block.Header.AppHash[:],
+			Timestamp:  block.Header.GetTimestamp(),
+			DrsVersion: batch.DRSVersion[index],
 		}
 		blockDescriptors[index] = blockDescriptor
 	}
@@ -556,7 +584,6 @@ func (c *Client) convertBatchToMsgUpdateState(batch *types.Batch, daResult *da.R
 		DAPath:      daResult.SubmitMetaData.ToPath(),
 		BDs:         rollapptypes.BlockDescriptors{BD: blockDescriptors},
 		Last:        batch.LastBatch,
-		DrsVersion:  version.Commit,
 	}
 	return settlementBatch, nil
 }

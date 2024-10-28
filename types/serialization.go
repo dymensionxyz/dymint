@@ -256,18 +256,17 @@ func (s *State) ToProto() (*pb.State, error) {
 	}
 
 	return &pb.State{
-		Version:                          &s.Version,
-		ChainId:                          s.ChainID,
-		InitialHeight:                    int64(s.InitialHeight),
-		LastBlockHeight:                  int64(s.Height()),
-		SequencerSet:                     *seqsProto,
-		BaseHeight:                       s.BaseHeight,
-		ConsensusParams:                  s.ConsensusParams,
-		LastHeightConsensusParamsChanged: s.LastHeightConsensusParamsChanged,
-		LastResultsHash:                  s.LastResultsHash[:],
-		LastHeaderHash:                   s.LastHeaderHash[:],
-		AppHash:                          s.AppHash[:],
-		RollappParams:                    s.RollappParams,
+		Version:         &s.Version,
+		ChainId:         s.ChainID,
+		InitialHeight:   int64(s.InitialHeight),
+		LastBlockHeight: int64(s.Height()),
+		SequencerSet:    *seqsProto,
+		BaseHeight:      s.BaseHeight,
+		ConsensusParams: s.ConsensusParams,
+		LastResultsHash: s.LastResultsHash[:],
+		LastHeaderHash:  s.LastHeaderHash[:],
+		AppHash:         s.AppHash[:],
+		RollappParams:   s.RollappParams,
 	}, nil
 }
 
@@ -286,7 +285,6 @@ func (s *State) FromProto(other *pb.State) error {
 	}
 
 	s.ConsensusParams = other.ConsensusParams
-	s.LastHeightConsensusParamsChanged = other.LastHeightConsensusParamsChanged
 	copy(s.LastResultsHash[:], other.LastResultsHash)
 	copy(s.LastHeaderHash[:], other.LastHeaderHash)
 	copy(s.AppHash[:], other.AppHash)

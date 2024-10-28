@@ -32,6 +32,7 @@ func (m *Manager) LoadStateOnInit(store store.Store, genesis *tmtypes.GenesisDoc
 	}
 
 	m.State = s
+
 	return nil
 }
 
@@ -59,10 +60,9 @@ func NewStateFromGenesis(genDoc *tmtypes.GenesisDoc) (*types.State, error) {
 		Version: InitStateVersion,
 		ChainID: genDoc.ChainID,
 
-		InitialHeight:                    uint64(genDoc.InitialHeight),
-		BaseHeight:                       uint64(genDoc.InitialHeight),
-		ConsensusParams:                  *genDoc.ConsensusParams,
-		LastHeightConsensusParamsChanged: genDoc.InitialHeight,
+		InitialHeight:   uint64(genDoc.InitialHeight),
+		BaseHeight:      uint64(genDoc.InitialHeight),
+		ConsensusParams: *genDoc.ConsensusParams,
 	}
 	s.SetHeight(0)
 	copy(s.AppHash[:], genDoc.AppHash)
