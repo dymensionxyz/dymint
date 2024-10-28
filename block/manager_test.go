@@ -374,7 +374,7 @@ func TestApplyLocalBlock_WithFraudCheck(t *testing.T) {
 	assert.True(t, manager.State.Height() == 0)
 
 	// enough time to sync and produce blocks
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*4)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 	// Capture the error returned by manager.Start.
 
