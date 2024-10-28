@@ -215,5 +215,5 @@ func (m *Manager) attemptApplyCachedBlocks() error {
 
 // This function validates the block and commit against the state before applying it.
 func (m *Manager) validateBlockBeforeApply(block *types.Block, commit *types.Commit) error {
-	return types.ValidateProposedTransition(m.State, block, commit, m.GetProposerPubKey())
+	return types.ValidateProposedTransition(m.State, block, commit, m.State.GetProposerPubKey())
 }

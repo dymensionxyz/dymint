@@ -10,7 +10,6 @@ import (
 	tmcrypto "github.com/tendermint/tendermint/crypto"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	"github.com/tendermint/tendermint/types"
 
 	"github.com/dymensionxyz/dymint/types/pb/dymint"
 )
@@ -73,20 +72,6 @@ func (s *State) GetProposerHash() []byte {
 // SetProposer sets the proposer. It may set the proposer to nil.
 func (s *State) SetProposer(proposer *Sequencer) {
 	s.Proposer.Store(proposer)
-}
-
-// LoadFromValSet sets the sequencers from a tendermint validator set.
-// Used for backward compatibility. Should be used only for queries (used by rpc/client).
-func (s *State) LoadFromValSet(valSet *types.ValidatorSet) {
-	if valSet == nil {
-		return
-	}
-
-	sequencers := make([]Sequencer, len(valSet.Validators))
-	for i, val := range valSet.Validators {
-		sequencers[i] = *NewSequencerFromValidator(*val)
-	}
-	s.SetProposer(NewSequencerFromValidator(*valSet.Proposer))
 }
 
 func (s *State) IsGenesis() bool {

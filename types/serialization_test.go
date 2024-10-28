@@ -11,6 +11,7 @@ import (
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 
+	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
 	pb "github.com/dymensionxyz/dymint/types/pb/dymint"
 	"github.com/dymensionxyz/dymint/version"
@@ -91,8 +92,8 @@ func TestStateRoundTrip(t *testing.T) {
 		state types.State
 	}{
 		{
-			"with max bytes",
-			types.State{
+			name: "with max bytes",
+			state: types.State{
 				ConsensusParams: tmproto.ConsensusParams{
 					Block: tmproto.BlockParams{
 						MaxBytes:   123,
@@ -168,6 +169,52 @@ func TestStateRoundTrip(t *testing.T) {
 			require.NoError(err)
 
 			assert.Equal(c.state, newState)
+		})
+	}
+}
+
+func TestStateWithProposer(t *testing.T) {
+	t.Parallel()
+
+	proposer := testutil.GenerateSequencer()
+
+	cases := []struct {
+		name     string
+		proposer *types.Sequencer
+	}{
+		{
+			name:     "nil proposer",
+			proposer: nil,
+		},
+		{
+			name:     "non-nil proposer",
+			proposer: &proposer,
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			state := new(types.State)
+
+			state.SetProposer(c.proposer)
+
+			pState, err := state.ToProto()
+			require.NoError(t, err)
+			require.NotNil(t, pState)
+
+			bytes, err := pState.Marshal()
+			require.NoError(t, err)
+			require.NotEmpty(t, bytes)
+
+			newProtoState := new(pb.State)
+			err = newProtoState.Unmarshal(bytes)
+			require.NoError(t, err)
+
+			newState := new(types.State)
+			err = newState.FromProto(newProtoState)
+			require.NoError(t, err)
+
+			assert.Equal(t, state.GetProposer(), newState.GetProposer())
 		})
 	}
 }

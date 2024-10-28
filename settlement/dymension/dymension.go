@@ -391,9 +391,12 @@ func (c *Client) GetSequencerByAddress(address string) (types.Sequencer, error) 
 		return types.Sequencer{}, err
 	}
 
-	sequencer := *types.NewSequencer(tmPubKey, res.Sequencer.Address)
-
-	return sequencer, nil
+	return *types.NewSequencer(
+		tmPubKey,
+		res.Sequencer.Address,
+		res.Sequencer.RewardAddr,
+		res.Sequencer.WhitelistedRelayers,
+	), nil
 }
 
 // GetAllSequencers returns all sequencers of the given rollapp.
@@ -438,7 +441,12 @@ func (c *Client) GetAllSequencers() ([]types.Sequencer, error) {
 			return nil, err
 		}
 
-		sequencerList = append(sequencerList, *types.NewSequencer(tmPubKey, sequencer.Address))
+		sequencerList = append(sequencerList, *types.NewSequencer(
+			tmPubKey,
+			sequencer.Address,
+			sequencer.RewardAddr,
+			sequencer.WhitelistedRelayers,
+		))
 	}
 
 	return sequencerList, nil
@@ -486,7 +494,12 @@ func (c *Client) GetBondedSequencers() ([]types.Sequencer, error) {
 		if err != nil {
 			return nil, err
 		}
-		sequencerList = append(sequencerList, *types.NewSequencer(tmPubKey, sequencer.Address))
+		sequencerList = append(sequencerList, *types.NewSequencer(
+			tmPubKey,
+			sequencer.Address,
+			sequencer.RewardAddr,
+			sequencer.WhitelistedRelayers,
+		))
 	}
 
 	return sequencerList, nil
