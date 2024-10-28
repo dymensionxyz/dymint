@@ -123,7 +123,7 @@ func (bsDagService *BlockSyncDagService) DeleteBlock(ctx context.Context, cid ci
 	for _, l := range root.Links() {
 		err := bsDagService.Remove(ctx, l.Cid)
 		if err != nil {
-			return nil
+			return err
 		}
 	}
 	return nil
