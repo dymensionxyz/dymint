@@ -175,6 +175,10 @@ func (v *SettlementValidator) ValidateDaBlocks(slBatch *settlement.ResultRetriev
 		// last block of the batch
 		isLastBlock := i == len(slBatch.BlockDescriptors)-1
 		if slBatch.NextSequencer != "" && isLastBlock {
+			err := v.blockManager.UpdateSequencerSetFromSL()
+			if err != nil {
+				return fmt.Errorf("update sequencer set from SL: %w", err)
+			}
 			nextSequencer := v.blockManager.State.Sequencers.GetByAddress(slBatch.NextSequencer)
 			if !bytes.Equal(nextSequencer.MustHash(), daBlocks[i].Header.NextSequencersHash[:]) {
 				return types.NewErrInvalidNextSequencersHashFraud(

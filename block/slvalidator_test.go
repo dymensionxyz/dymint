@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"github.com/tendermint/tendermint/crypto/ed25519"
+	tmtypes "github.com/tendermint/tendermint/types"
 	"reflect"
 	"testing"
 	"time"
@@ -54,6 +55,7 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 	fakeProposerKey, _, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
 
+	nextProposerKey := ed25519.GenPrivKey()
 	nextSequencerKey, _, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
 
@@ -150,8 +152,8 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 			require.NotNil(t, manager)
 
 			if tc.last {
-				proposerPubKey := nextSequencerKey.GetPublic()
-				pubKeybytes, err := proposerPubKey.Raw()
+				proposerPubKey := nextProposerKey.PubKey()
+				pubKeybytes := proposerPubKey.Bytes()
 				if err != nil {
 					panic(err)
 				}
@@ -244,13 +246,9 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 				// add blockdescriptor with wrong height
 				slBatch.BlockDescriptors[0].Height = 2
 			case "nextsequencer":
-				proposerPubKey := nextSequencerKey.GetPublic()
-				pubKeybytes, err := proposerPubKey.Raw()
-				if err != nil {
-					panic(err)
-				}
+				seq := types.NewSequencerFromValidator(*tmtypes.NewValidator(nextProposerKey.PubKey(), 1))
 
-				slBatch.NextSequencer = hex.EncodeToString(pubKeybytes)
+				slBatch.NextSequencer = seq.SettlementAddress
 			}
 
 			// validate the state update
