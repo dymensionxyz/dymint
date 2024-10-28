@@ -265,7 +265,6 @@ func (s *State) ToProto() (*pb.State, error) {
 		ChainId:         s.ChainID,
 		InitialHeight:   int64(s.InitialHeight),
 		LastBlockHeight: int64(s.Height()),
-		SequencerSet:    *seqsProto,
 		BaseHeight:      s.BaseHeight,
 		ConsensusParams: s.ConsensusParams,
 		LastResultsHash: s.LastResultsHash[:],

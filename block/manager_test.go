@@ -204,6 +204,7 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 
 // TestApplyCachedBlocks checks the flow that happens when we are receiving blocks from p2p and some of the blocks
 // are already cached. This means blocks that were gossiped but are bigger than the expected next block height.
+// TODO: this test is flaky! https://github.com/dymensionxyz/dymint/issues/1173
 func TestApplyCachedBlocks_WithFraudCheck(t *testing.T) {
 	// Init app
 	app := testutil.GetAppMock(testutil.EndBlock)
