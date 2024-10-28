@@ -16,7 +16,6 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 	uatomic "github.com/dymensionxyz/dymint/utils/atomic"
 	uchannel "github.com/dymensionxyz/dymint/utils/channel"
-	"github.com/dymensionxyz/dymint/version"
 )
 
 // SubmitLoop is the main loop for submitting blocks to the DA and SL layers.
@@ -202,13 +201,10 @@ func (m *Manager) CreateBatch(maxBatchSize uint64, startHeight uint64, endHeight
 			return nil, fmt.Errorf("load commit: h: %d: %w", h, err)
 		}
 
-		drsVersion, err := m.State.GetDRSVersion(block.Header.Height)
-		if errors.Is(err, gerrc.ErrNotFound) {
-			drsVersion = version.Commit
-		} else if err != nil {
-			return nil, fmt.Errorf("load drs: h: %d: %w", h, err)
+		drsVersion, err := m.Store.LoadDRSVersion(block.Header.Height)
+		if err != nil {
+			return nil, fmt.Errorf("load drs version: h: %d: %w", h, err)
 		}
-
 		batch.Blocks = append(batch.Blocks, block)
 		batch.Commits = append(batch.Commits, commit)
 		batch.DRSVersion = append(batch.DRSVersion, drsVersion)
@@ -247,6 +243,7 @@ func (m *Manager) SubmitBatch(batch *types.Batch) error {
 
 	types.RollappHubHeightGauge.Set(float64(batch.EndHeight()))
 	m.LastSettlementHeight.Store(batch.EndHeight())
+
 	return nil
 }
 

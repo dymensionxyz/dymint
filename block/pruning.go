@@ -47,7 +47,7 @@ func (m *Manager) PruningLoop(ctx context.Context) error {
 			if m.IsProposer() { // do not delete anything that we might submit in future
 				pruningHeight = min(m.NextHeightToSubmit(), uint64(retainHeight))
 			} else { // do not delete anything that is not validated yet
-				pruningHeight = min(m.settlementValidator.NextValidationHeight(), uint64(retainHeight))
+				pruningHeight = min(m.SettlementValidator.NextValidationHeight(), uint64(retainHeight))
 			}
 
 			_, err := m.PruneBlocks(pruningHeight)

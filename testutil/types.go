@@ -172,7 +172,7 @@ func GenerateCommits(blocks []*types.Block, proposerKey crypto.PrivKey) ([]*type
 func GenerateDRS(blocks int) []string {
 	drs := make([]string, blocks)
 	for i := 0; i < blocks; i++ {
-		drs = append(drs, dymintversion.Commit)
+		drs[i] = dymintversion.Commit
 	}
 	return drs
 }
@@ -376,4 +376,17 @@ func GetRandomBlock(height uint64, nTxs int) *types.Block {
 	}
 
 	return block
+}
+
+func CreateRandomVersionCommit() (string, error) {
+	letterRunes := []rune("abcdefghijklmnopqrstuvwxyz")
+	b := make([]rune, 40)
+	for i := range b {
+		num, err := rand.Int(rand.Reader, big.NewInt(int64(len(letterRunes))))
+		if err != nil {
+			return "", err
+		}
+		b[i] = letterRunes[num.Int64()]
+	}
+	return string(b), nil
 }

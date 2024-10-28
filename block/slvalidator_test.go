@@ -185,42 +185,15 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 			daResultSubmitBatch := manager.DAClient.SubmitBatch(batch)
 			assert.Equal(t, daResultSubmitBatch.Code, da.StatusSuccess)
 
-			// add drs version to state
-			manager.State.AddDRSVersion(0, version.Commit)
-
 			// Create block descriptors
-			bds := getBlockDescriptors(batch)
+			bds, err := getBlockDescriptors(batch)
+			require.NoError(t, err)
 
 			// create the batch in settlement
 			slBatch := getSLBatch(bds, daResultSubmitBatch.SubmitMetaData, 1, 10)
 
 			// Create the StateUpdateValidator
 			validator := block.NewSettlementValidator(testutil.NewLogger(t), manager)
-
-			// set fraud data
-			switch tc.stateUpdateFraud {
-			case "drs":
-				slBatch.BlockDescriptors[0].DrsVersion = "b306cc32d3ef1782879fdef5e6ab60f270a16817"
-			case "batchnumblocks":
-				slBatch.NumBlocks = 11
-			case "batchnumbds":
-				bds = append(bds, rollapp.BlockDescriptor{})
-				slBatch.BlockDescriptors = bds
-			case "stateroot":
-				slBatch.BlockDescriptors[0].StateRoot = []byte{}
-			case "timestamp":
-				slBatch.BlockDescriptors[0].Timestamp = slBatch.BlockDescriptors[0].Timestamp.Add(time.Second)
-			case "height":
-				slBatch.BlockDescriptors[0].Height = 2
-			case "nextsequencer":
-				proposerPubKey := nextSequencerKey.GetPublic()
-				pubKeybytes, err := proposerPubKey.Raw()
-				if err != nil {
-					panic(err)
-				}
-
-				slBatch.NextSequencer = hex.EncodeToString(pubKeybytes)
-			}
 
 			// in case double signing generate commits for these blocks
 			if tc.doubleSignedBlocks != nil {
@@ -241,6 +214,43 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 				if !tc.last {
 					manager.ApplyBatchFromSL(slBatch.MetaData.DA)
 				}
+			}
+
+			for _, bd := range bds {
+				manager.Store.SaveDRSVersion(bd.Height, bd.DrsVersion, nil)
+			}
+
+			// set fraud data
+			switch tc.stateUpdateFraud {
+			case "drs":
+				// set different bd drs version
+				version, err := testutil.CreateRandomVersionCommit()
+				require.NoError(t, err)
+				slBatch.BlockDescriptors[0].DrsVersion = version
+			case "batchnumblocks":
+				// set wrong numblocks in state update
+				slBatch.NumBlocks = 11
+			case "batchnumbds":
+				// add more block descriptors than blocks
+				bds = append(bds, rollapp.BlockDescriptor{})
+				slBatch.BlockDescriptors = bds
+			case "stateroot":
+				// post empty state root
+				slBatch.BlockDescriptors[0].StateRoot = []byte{}
+			case "timestamp":
+				// add wrong timestamp
+				slBatch.BlockDescriptors[0].Timestamp = slBatch.BlockDescriptors[0].Timestamp.Add(time.Second)
+			case "height":
+				// add blockdescriptor with wrong height
+				slBatch.BlockDescriptors[0].Height = 2
+			case "nextsequencer":
+				proposerPubKey := nextSequencerKey.GetPublic()
+				pubKeybytes, err := proposerPubKey.Raw()
+				if err != nil {
+					panic(err)
+				}
+
+				slBatch.NextSequencer = hex.EncodeToString(pubKeybytes)
 			}
 
 			// validate the state update
@@ -273,6 +283,7 @@ func TestStateUpdateValidator_ValidateDAFraud(t *testing.T) {
 			},
 		},
 	})
+
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(clientCreator)
@@ -365,14 +376,17 @@ func TestStateUpdateValidator_ValidateDAFraud(t *testing.T) {
 				mockDA.MockRPC.On("GetByHeight", mock.Anything, mock.Anything).Return(mockDA.Header, nil).Once().Run(func(args mock.Arguments) { time.Sleep(10 * time.Millisecond) })
 			}
 
-			// add drs version to state
-			manager.State.AddDRSVersion(0, version.Commit)
-
 			// Create the StateUpdateValidator
 			validator := block.NewSettlementValidator(testutil.NewLogger(t), manager)
 
+			bds, err := getBlockDescriptors(batch)
+			require.NoError(t, err)
 			// Generate batch with block descriptors
-			slBatch := getSLBatch(getBlockDescriptors(batch), daResultSubmitBatch.SubmitMetaData, 1, 10)
+			slBatch := getSLBatch(bds, daResultSubmitBatch.SubmitMetaData, 1, 10)
+
+			for _, bd := range bds {
+				manager.Store.SaveDRSVersion(bd.Height, bd.DrsVersion, nil)
+			}
 
 			// Validate state
 			err = validator.ValidateStateUpdate(slBatch)
@@ -388,19 +402,23 @@ func TestStateUpdateValidator_ValidateDAFraud(t *testing.T) {
 
 }
 
-func getBlockDescriptors(batch *types.Batch) []rollapp.BlockDescriptor {
+func getBlockDescriptors(batch *types.Batch) ([]rollapp.BlockDescriptor, error) {
 	// Create block descriptors
 	var bds []rollapp.BlockDescriptor
 	for _, block := range batch.Blocks {
+		version, err := testutil.CreateRandomVersionCommit()
+		if err != nil {
+			return nil, err
+		}
 		bd := rollapp.BlockDescriptor{
 			Height:     block.Header.Height,
 			StateRoot:  block.Header.AppHash[:],
 			Timestamp:  block.Header.GetTimestamp(),
-			DrsVersion: version.Commit,
+			DrsVersion: version,
 		}
 		bds = append(bds, bd)
 	}
-	return bds
+	return bds, nil
 }
 
 func getSLBatch(bds []rollapp.BlockDescriptor, daMetaData *da.DASubmitMetaData, startHeight uint64, endHeight uint64) *settlement.ResultRetrieveBatch {

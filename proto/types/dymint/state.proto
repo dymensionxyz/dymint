@@ -33,7 +33,7 @@ message State {
   
 
   tendermint.types.ConsensusParams consensus_params = 12 [(gogoproto.nullable) = false];
-  int64 last_height_consensus_params_changed = 13;
+  reserved 13;
 
   bytes last_results_hash = 14;
 
@@ -47,7 +47,6 @@ message State {
 
   bytes last_header_hash = 20;
 
-  repeated DRSVersion drs_version_history = 21;
 }
 
 //rollapp params defined in genesis and updated via gov proposal
@@ -55,11 +54,5 @@ message RollappParams {
   //data availability type (e.g. celestia) used in the rollapp
   string da = 1 ;
   //commit used for the rollapp executable
-  string version = 2 ;
-}
-
-//DRSVersion recent history of node DRSVersion including update height
-message DRSVersion {
-  uint64 height = 1 ;
   string version = 2 ;
 }

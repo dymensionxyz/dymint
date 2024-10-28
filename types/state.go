@@ -8,7 +8,6 @@ import (
 	// TODO(tzdybal): copy to local project?
 
 	"github.com/dymensionxyz/dymint/types/pb/dymint"
-	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 )
@@ -32,8 +31,7 @@ type State struct {
 
 	// Consensus parameters used for validating blocks.
 	// Changes returned by EndBlock and updated after Commit.
-	ConsensusParams                  tmproto.ConsensusParams
-	LastHeightConsensusParamsChanged int64
+	ConsensusParams tmproto.ConsensusParams
 
 	// Merkle root of the results from executing prev block
 	LastResultsHash [32]byte
@@ -46,9 +44,6 @@ type State struct {
 
 	// LastHeaderHash is the hash of the last block header.
 	LastHeaderHash [32]byte
-
-	// The last DRS versions including height upgrade
-	DrsVersionHistory []*dymint.DRSVersion
 }
 
 func (s *State) IsGenesis() bool {
@@ -97,38 +92,4 @@ func (s *State) SetRollappParamsFromGenesis(appState json.RawMessage) error {
 	}
 	s.RollappParams = *rollappParams.Params
 	return nil
-}
-
-// GetDRSVersion returns the DRS version stored in rollapp params updates for a specific height.
-// It is not keeping all historic but only for non-finalized height.
-// If input height is already finalized it returns empty string and not found error.
-func (s *State) GetDRSVersion(height uint64) (string, error) {
-	drsVersion := ""
-	for _, drs := range s.DrsVersionHistory {
-		if height >= drs.Height {
-			drsVersion = drs.Version
-		}
-	}
-	if drsVersion == "" {
-		return drsVersion, gerrc.ErrNotFound
-	}
-	return drsVersion, nil
-}
-
-// AddDRSVersion adds a new record for the DRS version update heights.
-func (s *State) AddDRSVersion(height uint64, version string) {
-	s.DrsVersionHistory = append(s.DrsVersionHistory, &dymint.DRSVersion{Height: height, Version: version})
-}
-
-// ClearDrsVersionHeights clears previous drs version update heights previous to finalization height,
-// but keeping always the last drs version record.
-func (s *State) ClearDRSVersionHeights(height uint64) {
-	if len(s.DrsVersionHistory) == 1 {
-		return
-	}
-	for i, drs := range s.DrsVersionHistory {
-		if drs.Height < height {
-			s.DrsVersionHistory = append(s.DrsVersionHistory[:i], s.DrsVersionHistory[i+1:]...)
-		}
-	}
 }

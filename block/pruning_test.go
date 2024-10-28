@@ -18,7 +18,7 @@ import (
 
 func TestPruningRetainHeight(t *testing.T) {
 	require := require.New(t)
-	app := testutil.GetAppMock()
+	app := testutil.GetAppMock(testutil.EndBlock)
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
 		RollappParamUpdates: &abci.RollappParams{
 			Da:      "mock",
@@ -42,9 +42,6 @@ func TestPruningRetainHeight(t *testing.T) {
 	require.NoError(err)
 	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
 	manager.Retriever = manager.DAClient.(da.BatchRetriever)
-
-	// add drs version to state
-	manager.State.AddDRSVersion(0, version.Commit)
 
 	// Check initial assertions
 	require.Zero(manager.State.Height())

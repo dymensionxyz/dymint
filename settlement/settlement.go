@@ -81,8 +81,10 @@ type ClientI interface {
 	GetSequencerByAddress(address string) (types.Sequencer, error)
 	// GetBatchAtHeight returns the batch at the given height.
 	GetBatchAtHeight(index uint64) (*ResultRetrieveBatch, error)
-	// GetLatestFinalizedBatch returns the latest finalized batch from the settlement layer.
-	GetLatestFinalizedBatch() (*ResultRetrieveBatch, error)
+	// GetLatestHeight returns the latest state update height from the settlement layer.
+	GetLatestHeight() (uint64, error)
+	// GetLatestFinalizedHeight returns the latest finalized height from the settlement layer.
+	GetLatestFinalizedHeight() (uint64, error)
 	// GetAllSequencers returns all sequencers for this rollapp (bonded and not bonded).
 	GetAllSequencers() ([]types.Sequencer, error)
 	// GetBondedSequencers returns the list of the bonded sequencers for this rollapp.
