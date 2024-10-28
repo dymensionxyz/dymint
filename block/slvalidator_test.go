@@ -170,7 +170,7 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 				}
 				// otherwise load them from DA
 			} else {
-				manager.ApplyBatchFromSL(slBatch.MetaData.DA)
+				manager.ApplyBatchFromSL(slBatch.Batch)
 			}
 
 			for _, bd := range bds {
