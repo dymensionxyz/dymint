@@ -146,6 +146,8 @@ func (v *SettlementValidator) ValidateDaBlocks(slBatch *settlement.ResultRetriev
 		return types.NewErrStateUpdateNumBlocksNotMatchingFraud(slBatch.EndHeight, numSLBlocks, numSLBlocks)
 	}
 
+	currentProposer := v.blockManager.State.Sequencers.Proposer
+
 	// we compare all DA blocks against the information included in the state info block descriptors
 	for i, bd := range slBatch.BlockDescriptors {
 		// height check
@@ -173,7 +175,7 @@ func (v *SettlementValidator) ValidateDaBlocks(slBatch *settlement.ResultRetriev
 		// because it did not change. If the next sequencer is set, we check if the next sequencer hash is equal on the
 		// last block of the batch
 		isLastBlock := i == len(slBatch.BlockDescriptors)-1
-		if slBatch.NextSequencer != "" && isLastBlock {
+		if slBatch.NextSequencer != currentProposer.SettlementAddress && isLastBlock {
 			err := v.blockManager.UpdateSequencerSetFromSL()
 			if err != nil {
 				return fmt.Errorf("update sequencer set from SL: %w", err)
