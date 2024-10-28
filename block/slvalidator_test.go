@@ -161,12 +161,12 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 				// Set next sequencer
 				raw, _ := nextSequencerKey.GetPublic().Raw()
 				pubkey := ed25519.PubKey(raw)
-				manager.State.Sequencers.SetProposer(types.NewSequencer(pubkey, hex.EncodeToString(pubKeybytes)))
+				manager.State.SetProposer(types.NewSequencer(pubkey, hex.EncodeToString(pubKeybytes), "", nil))
 
 				// set proposer
-				raw, _ = proposerKey.GetPublic().Raw()
-				pubkey = ed25519.PubKey(raw)
-				manager.State.Sequencers.Proposer = types.NewSequencer(pubkey, "")
+				//raw, _ = proposerKey.GetPublic().Raw()
+				//pubkey = ed25519.PubKey(raw)
+				//manager.State.SetProposer(types.NewSequencer(pubkey, "", "", nil))
 			}
 
 			// Create DA

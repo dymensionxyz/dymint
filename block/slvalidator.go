@@ -146,7 +146,7 @@ func (v *SettlementValidator) ValidateDaBlocks(slBatch *settlement.ResultRetriev
 		return types.NewErrStateUpdateNumBlocksNotMatchingFraud(slBatch.EndHeight, numSLBlocks, numSLBlocks)
 	}
 
-	currentProposer := v.blockManager.State.Sequencers.Proposer
+	currentProposer := v.blockManager.State.GetProposer()
 	if currentProposer == nil {
 		return fmt.Errorf("proposer is not set")
 	}
@@ -183,7 +183,10 @@ func (v *SettlementValidator) ValidateDaBlocks(slBatch *settlement.ResultRetriev
 			if err != nil {
 				return fmt.Errorf("update sequencer set from SL: %w", err)
 			}
-			nextSequencer := v.blockManager.State.Sequencers.GetByAddress(slBatch.NextSequencer)
+			nextSequencer, found := v.blockManager.Sequencers.GetByAddress(slBatch.NextSequencer)
+			if !found {
+				return fmt.Errorf("next sequencer not found")
+			}
 			if !bytes.Equal(nextSequencer.MustHash(), daBlocks[i].Header.NextSequencersHash[:]) {
 				return types.NewErrInvalidNextSequencersHashFraud(
 					[32]byte(nextSequencer.MustHash()),
