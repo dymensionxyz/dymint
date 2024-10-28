@@ -147,6 +147,9 @@ func (v *SettlementValidator) ValidateDaBlocks(slBatch *settlement.ResultRetriev
 	}
 
 	currentProposer := v.blockManager.State.Sequencers.Proposer
+	if currentProposer == nil {
+		return fmt.Errorf("proposer is not set")
+	}
 
 	// we compare all DA blocks against the information included in the state info block descriptors
 	for i, bd := range slBatch.BlockDescriptors {
