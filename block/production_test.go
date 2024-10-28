@@ -2,29 +2,37 @@ package block_test
 
 import (
 	"context"
+	"crypto/ed25519"
+	"crypto/rand"
 	"fmt"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
+	prototypes "github.com/gogo/protobuf/types"
+	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-
-	"github.com/dymensionxyz/dymint/mempool"
-	"github.com/dymensionxyz/dymint/version"
-
-	mempoolv1 "github.com/dymensionxyz/dymint/mempool/v1"
-	"github.com/dymensionxyz/dymint/node/events"
-	uchannel "github.com/dymensionxyz/dymint/utils/channel"
-	uevent "github.com/dymensionxyz/dymint/utils/event"
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmcfg "github.com/tendermint/tendermint/config"
-
-	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/proxy"
+
+	"github.com/dymensionxyz/dymint/da"
+	"github.com/dymensionxyz/dymint/mempool"
+	mempoolv1 "github.com/dymensionxyz/dymint/mempool/v1"
+	slmocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/settlement"
+	"github.com/dymensionxyz/dymint/node/events"
+	"github.com/dymensionxyz/dymint/testutil"
+	"github.com/dymensionxyz/dymint/types"
+	rdktypes "github.com/dymensionxyz/dymint/types/pb/rollapp/sequencers/types"
+	uchannel "github.com/dymensionxyz/dymint/utils/channel"
+	uevent "github.com/dymensionxyz/dymint/utils/event"
+	protoutils "github.com/dymensionxyz/dymint/utils/proto"
+	"github.com/dymensionxyz/dymint/version"
 )
 
 // TODO: test producing lastBlock
@@ -279,4 +287,208 @@ func TestStopBlockProduction(t *testing.T) {
 	// make sure block production is resumed
 	time.Sleep(400 * time.Millisecond)
 	assert.Greater(manager.State.Height(), stoppedHeight)
+}
+
+func TestUpdateInitialSequencerSet(t *testing.T) {
+	require := require.New(t)
+	app := testutil.GetAppMock(testutil.EndBlock)
+	ctx := context.Background()
+	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
+		RollappParamUpdates: &abci.RollappParams{
+			Da:      "mock",
+			Version: version.Commit,
+		},
+		ConsensusParamUpdates: &abci.ConsensusParams{
+			Block: &abci.BlockParams{
+				MaxGas:   40000000,
+				MaxBytes: 500000,
+			},
+		},
+	})
+
+	// Create proxy app
+	clientCreator := proxy.NewLocalClientCreator(app)
+	proxyApp := proxy.NewAppConns(clientCreator)
+	err := proxyApp.Start()
+	require.NoError(err)
+
+	_, priv, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(err)
+
+	lib2pPrivKey, err := crypto.UnmarshalEd25519PrivateKey(priv)
+	require.NoError(err)
+
+	proposer := testutil.GenerateSequencer()
+	sequencer := testutil.GenerateSequencer()
+
+	// Create a new mock ClientI
+	slmock := &slmocks.MockClientI{}
+	slmock.On("Init", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	slmock.On("Start").Return(nil)
+	slmock.On("GetProposer").Return(proposer)
+	slmock.On("GetAllSequencers").Return([]types.Sequencer{proposer, sequencer}, nil)
+
+	manager, err := testutil.GetManagerWithProposerKey(testutil.GetManagerConfig(), lib2pPrivKey, slmock, 1, 1, 0, proxyApp, nil)
+	require.NoError(err)
+
+	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
+	manager.Retriever = manager.DAClient.(da.BatchRetriever)
+
+	// Check initial assertions
+	require.Zero(manager.State.Height())
+	require.Zero(manager.LastSettlementHeight.Load())
+
+	// Simulate updating the sequencer set from SL.
+	// This will add new consensus msgs to the queue.
+	err = manager.UpdateSequencerSetFromSL()
+	require.NoError(err)
+
+	// Produce block and validate that we produced blocks
+	block, _, err := manager.ProduceApplyGossipBlock(ctx, true)
+	require.NoError(err)
+	assert.Greater(t, manager.State.Height(), uint64(0))
+	assert.Zero(t, manager.LastSettlementHeight.Load())
+
+	// Validate that the block has expected consensus msgs
+	require.Len(block.Data.ConsensusMessages, 2)
+
+	// Construct expected messages
+	// Msg 1
+	anyPK1, err := proposer.AnyConsPubKey()
+	require.NoError(err)
+	expectedConsMsg1 := &rdktypes.ConsensusMsgUpsertSequencer{
+		Operator:   proposer.SettlementAddress,
+		ConsPubKey: protoutils.CosmosToGogo(anyPK1),
+		RewardAddr: proposer.RewardAddr,
+		Relayers:   proposer.WhitelistedRelayers,
+	}
+	expectedConsMsgBytes1, err := proto.Marshal(expectedConsMsg1)
+	require.NoError(err)
+	anyMsg1 := &prototypes.Any{
+		TypeUrl: proto.MessageName(expectedConsMsg1),
+		Value:   expectedConsMsgBytes1,
+	}
+
+	// Msg 2
+	anyPK2, err := sequencer.AnyConsPubKey()
+	require.NoError(err)
+	expectedConsMsg2 := &rdktypes.ConsensusMsgUpsertSequencer{
+		Operator:   sequencer.SettlementAddress,
+		ConsPubKey: protoutils.CosmosToGogo(anyPK2),
+		RewardAddr: sequencer.RewardAddr,
+		Relayers:   sequencer.WhitelistedRelayers,
+	}
+	expectedConsMsgBytes2, err := proto.Marshal(expectedConsMsg2)
+	require.NoError(err)
+	anyMsg2 := &prototypes.Any{
+		TypeUrl: proto.MessageName(expectedConsMsg2),
+		Value:   expectedConsMsgBytes2,
+	}
+
+	// Verify the result
+	require.True(proto.Equal(anyMsg1, block.Data.ConsensusMessages[0]))
+	require.True(proto.Equal(anyMsg2, block.Data.ConsensusMessages[1]))
+}
+
+func TestUpdateExistingSequencerSet(t *testing.T) {
+	require := require.New(t)
+	app := testutil.GetAppMock(testutil.EndBlock)
+	ctx := context.Background()
+	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
+		RollappParamUpdates: &abci.RollappParams{
+			Da:      "mock",
+			Version: version.Commit,
+		},
+		ConsensusParamUpdates: &abci.ConsensusParams{
+			Block: &abci.BlockParams{
+				MaxGas:   40000000,
+				MaxBytes: 500000,
+			},
+		},
+	})
+
+	// Create proxy app
+	clientCreator := proxy.NewLocalClientCreator(app)
+	proxyApp := proxy.NewAppConns(clientCreator)
+	err := proxyApp.Start()
+	require.NoError(err)
+
+	_, priv, err := ed25519.GenerateKey(rand.Reader)
+	require.NoError(err)
+
+	lib2pPrivKey, err := crypto.UnmarshalEd25519PrivateKey(priv)
+	require.NoError(err)
+
+	proposer := testutil.GenerateSequencer()
+	sequencer := testutil.GenerateSequencer()
+
+	// Create a new mock ClientI
+	slmock := &slmocks.MockClientI{}
+	slmock.On("Init", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
+	slmock.On("Start").Return(nil)
+	slmock.On("GetProposer").Return(proposer)
+
+	manager, err := testutil.GetManagerWithProposerKey(testutil.GetManagerConfig(), lib2pPrivKey, slmock, 1, 1, 0, proxyApp, nil)
+	require.NoError(err)
+
+	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
+	manager.Retriever = manager.DAClient.(da.BatchRetriever)
+
+	// Set the initial sequencer set
+	manager.Sequencers.Set([]types.Sequencer{proposer, sequencer})
+
+	// Check initial assertions
+	require.Zero(manager.State.Height())
+	require.Zero(manager.LastSettlementHeight.Load())
+	initialSequencers := manager.Sequencers.GetAll()
+	require.Len(initialSequencers, 2)
+	require.Equal(initialSequencers[0], proposer)
+	require.Equal(initialSequencers[1], sequencer)
+
+	// Update one of the sequencers and pass the update to the manager.
+	// We expect that the manager will update the sequencer set in the state and generate a new consensus msg.
+	updatedSequencer := sequencer
+	const newSequencerRewardAddr = "dym1mk7pw34ypusacm29m92zshgxee3yreums8avur"
+	updatedSequencer.RewardAddr = newSequencerRewardAddr
+	// GetAllSequencers now return an updated sequencer
+	slmock.On("GetAllSequencers").Return([]types.Sequencer{proposer, updatedSequencer}, nil)
+
+	err = manager.UpdateSequencerSetFromSL()
+	require.NoError(err)
+
+	// The number of sequencers is the same. However, the second sequencer is modified.
+	sequencers := manager.Sequencers.GetAll()
+	require.Len(sequencers, 2)
+	require.Equal(sequencers[0], proposer)
+	// Now Sequencers[1] is a sequencer with the new reward address
+	require.NotEqual(sequencer, sequencers[1])
+	require.Equal(updatedSequencer, sequencers[1])
+
+	// Produce block and validate that we produced blocks
+	block, _, err := manager.ProduceApplyGossipBlock(ctx, true)
+	require.NoError(err)
+	assert.Greater(t, manager.State.Height(), uint64(0))
+	assert.Zero(t, manager.LastSettlementHeight.Load())
+
+	// Validate that the block has expected consensus msgs: one msg for one new sequencer
+	require.Len(block.Data.ConsensusMessages, 1)
+
+	// Construct the expected message
+	anyPK, err := updatedSequencer.AnyConsPubKey()
+	require.NoError(err)
+	expectedConsMsg := &rdktypes.ConsensusMsgUpsertSequencer{
+		Operator:   updatedSequencer.SettlementAddress,
+		ConsPubKey: protoutils.CosmosToGogo(anyPK),
+		RewardAddr: updatedSequencer.RewardAddr,
+		Relayers:   updatedSequencer.WhitelistedRelayers,
+	}
+	expectedConsMsgBytes, err := proto.Marshal(expectedConsMsg)
+	require.NoError(err)
+	anyMsg1 := &prototypes.Any{
+		TypeUrl: proto.MessageName(expectedConsMsg),
+		Value:   expectedConsMsgBytes,
+	}
+
+	// Verify the result
+	require.True(proto.Equal(anyMsg1, block.Data.ConsensusMessages[0]))
 }

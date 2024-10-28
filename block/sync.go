@@ -5,11 +5,12 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
+	"github.com/tendermint/tendermint/libs/pubsub"
+
 	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/settlement"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
-	"github.com/dymensionxyz/gerr-cosmos/gerrc"
-	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
 // onNewStateUpdate will update the last submitted height and will update sequencers list from SL. After, it triggers syncing or validation, depending whether it needs to sync first or only validate.
@@ -26,7 +27,8 @@ func (m *Manager) onNewStateUpdate(event pubsub.Message) {
 	// Update sequencers list from SL
 	err := m.UpdateSequencerSetFromSL()
 	if err != nil {
-		m.logger.Error("update bonded sequencer set", "error", err)
+		// this error is not critical
+		m.logger.Error("Cannot fetch sequencer set from the Hub", "error", err)
 	}
 
 	if eventData.EndHeight > m.State.Height() {
@@ -73,7 +75,7 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 				}
 				m.logger.Info("Retrieved state update from SL.", "state_index", settlementBatch.StateIndex)
 
-				err = m.ApplyBatchFromSL(settlementBatch.MetaData.DA)
+				err = m.ApplyBatchFromSL(settlementBatch.Batch)
 				if err != nil {
 					m.logger.Error("process next DA batch", "err", err)
 				}

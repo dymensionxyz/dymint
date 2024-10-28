@@ -174,7 +174,12 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 	require.NoError(err)
 
 	proposerKey := tmed25519.PrivKey(priv)
-	proposer := *types.NewSequencer(proposerKey.PubKey(), "")
+	proposer := *types.NewSequencer(
+		proposerKey.PubKey(),
+		testutil.GenerateSettlementAddress(),
+		testutil.GenerateSettlementAddress(),
+		[]string{testutil.GenerateSettlementAddress()},
+	)
 
 	// Create a new mock ClientI
 	slmock := &slmocks.MockClientI{}

@@ -87,15 +87,13 @@ func TestBlockSerializationRoundTrip(t *testing.T) {
 func TestStateRoundTrip(t *testing.T) {
 	t.Parallel()
 
-	valSet := testutil.GenerateRandomValidatorSet()
-
 	cases := []struct {
 		name  string
 		state types.State
 	}{
 		{
-			"with max bytes",
-			types.State{
+			name: "with max bytes",
+			state: types.State{
 				ConsensusParams: tmproto.ConsensusParams{
 					Block: tmproto.BlockParams{
 						MaxBytes:   123,
@@ -150,8 +148,6 @@ func TestStateRoundTrip(t *testing.T) {
 			require := require.New(t)
 			assert := assert.New(t)
 
-			c.state.Sequencers.LoadFromValSet(valSet)
-
 			if c.state.InitialHeight != 0 {
 				c.state.SetHeight(986321)
 			}
@@ -173,6 +169,52 @@ func TestStateRoundTrip(t *testing.T) {
 			require.NoError(err)
 
 			assert.Equal(c.state, newState)
+		})
+	}
+}
+
+func TestStateWithProposer(t *testing.T) {
+	t.Parallel()
+
+	proposer := testutil.GenerateSequencer()
+
+	cases := []struct {
+		name     string
+		proposer *types.Sequencer
+	}{
+		{
+			name:     "nil proposer",
+			proposer: nil,
+		},
+		{
+			name:     "non-nil proposer",
+			proposer: &proposer,
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			state := new(types.State)
+
+			state.SetProposer(c.proposer)
+
+			pState, err := state.ToProto()
+			require.NoError(t, err)
+			require.NotNil(t, pState)
+
+			bytes, err := pState.Marshal()
+			require.NoError(t, err)
+			require.NotEmpty(t, bytes)
+
+			newProtoState := new(pb.State)
+			err = newProtoState.Unmarshal(bytes)
+			require.NoError(t, err)
+
+			newState := new(types.State)
+			err = newState.FromProto(newProtoState)
+			require.NoError(t, err)
+
+			assert.Equal(t, state.GetProposer(), newState.GetProposer())
 		})
 	}
 }

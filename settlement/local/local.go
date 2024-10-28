@@ -15,6 +15,7 @@ import (
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
+	"github.com/cosmos/cosmos-sdk/types/bech32"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/tendermint/tendermint/libs/pubsub"
@@ -29,7 +30,10 @@ import (
 	uevent "github.com/dymensionxyz/dymint/utils/event"
 )
 
-const kvStoreDBName = "settlement"
+const (
+	kvStoreDBName = "settlement"
+	addressPrefix = "dym"
+)
 
 var (
 	settlementKVPrefix = []byte{0}
@@ -211,7 +215,17 @@ func (c *Client) GetProposer() *types.Sequencer {
 		c.logger.Error("Error converting to tendermint pubkey", "err", err)
 		return nil
 	}
-	return types.NewSequencer(tmPubKey, pubKey.Address().String())
+	settlementAddr, err := bech32.ConvertAndEncode(addressPrefix, pubKeyBytes)
+	if err != nil {
+		c.logger.Error("Error converting pubkey to settlement address", "err", err)
+		return nil
+	}
+	return types.NewSequencer(
+		tmPubKey,
+		settlementAddr,
+		settlementAddr,
+		[]string{},
+	)
 }
 
 // GetSequencerByAddress returns all sequencer information by its address. Not implemented since it will not be used in mock SL

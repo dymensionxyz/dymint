@@ -51,7 +51,7 @@ func TestCreateBlock(t *testing.T) {
 	require.NotNil(abciClient)
 
 	mpool := mempoolv1.NewTxMempool(logger, cfg.DefaultMempoolConfig(), proxy.NewAppConnMempool(abciClient), 0)
-	executor, err := block.NewExecutor([]byte("test address"), "test", mpool, proxy.NewAppConns(clientCreator), nil, nil, logger)
+	executor, err := block.NewExecutor([]byte("test address"), "test", mpool, proxy.NewAppConns(clientCreator), nil, block.NewConsensusMsgQueue(), logger)
 	assert.NoError(err)
 
 	maxBytes := uint64(100)
@@ -63,11 +63,11 @@ func TestCreateBlock(t *testing.T) {
 
 	// Init state
 	state := &types.State{}
-	state.Sequencers.SetProposer(types.NewSequencerFromValidator(*tmtypes.NewValidator(tmPubKey, 1)))
+	state.SetProposer(types.NewSequencerFromValidator(*tmtypes.NewValidator(tmPubKey, 1)))
 	state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
 	state.ConsensusParams.Block.MaxGas = 100000
 	// empty block
-	block := executor.CreateBlock(1, &types.Commit{}, [32]byte{}, [32]byte(state.Sequencers.ProposerHash()[:]), state, maxBytes)
+	block := executor.CreateBlock(1, &types.Commit{}, [32]byte{}, [32]byte(state.GetProposerHash()), state, maxBytes)
 	require.NotNil(block)
 	assert.Empty(block.Data.Txs)
 	assert.Equal(uint64(1), block.Header.Height)
@@ -75,7 +75,7 @@ func TestCreateBlock(t *testing.T) {
 	// one small Tx
 	err = mpool.CheckTx([]byte{1, 2, 3, 4}, func(r *abci.Response) {}, mempool.TxInfo{})
 	require.NoError(err)
-	block = executor.CreateBlock(2, &types.Commit{}, [32]byte{}, [32]byte(state.Sequencers.ProposerHash()), state, maxBytes)
+	block = executor.CreateBlock(2, &types.Commit{}, [32]byte{}, [32]byte(state.GetProposerHash()), state, maxBytes)
 	require.NotNil(block)
 	assert.Equal(uint64(2), block.Header.Height)
 	assert.Len(block.Data.Txs, 1)
@@ -85,7 +85,7 @@ func TestCreateBlock(t *testing.T) {
 	require.NoError(err)
 	err = mpool.CheckTx(make([]byte, 100), func(r *abci.Response) {}, mempool.TxInfo{})
 	require.NoError(err)
-	block = executor.CreateBlock(3, &types.Commit{}, [32]byte{}, [32]byte(state.Sequencers.ProposerHash()), state, maxBytes)
+	block = executor.CreateBlock(3, &types.Commit{}, [32]byte{}, [32]byte(state.GetProposerHash()), state, maxBytes)
 	require.NotNil(block)
 	assert.Len(block.Data.Txs, 2)
 }
@@ -116,13 +116,10 @@ func TestCreateBlockWithConsensusMessages(t *testing.T) {
 	}
 
 	// Create a mock ConsensusMessagesStream
-	mockStream := &MockConsensusMessagesStream{}
-	mockStream.On("GetConsensusMessages").Return([]proto.Message{
-		theMsg1,
-		theMsg2,
-	}, nil)
+	consensusMsgQueue := block.NewConsensusMsgQueue()
+	consensusMsgQueue.Add(theMsg1, theMsg2)
 
-	executor, err := block.NewExecutor([]byte("test address"), "test", mpool, proxy.NewAppConns(clientCreator), nil, mockStream, logger)
+	executor, err := block.NewExecutor([]byte("test address"), "test", mpool, proxy.NewAppConns(clientCreator), nil, consensusMsgQueue, logger)
 	assert.NoError(err)
 
 	maxBytes := uint64(1000)
@@ -131,11 +128,11 @@ func TestCreateBlockWithConsensusMessages(t *testing.T) {
 	require.NoError(err)
 
 	state := &types.State{}
-	state.Sequencers.SetProposer(types.NewSequencerFromValidator(*tmtypes.NewValidator(tmPubKey, 1)))
+	state.SetProposer(types.NewSequencerFromValidator(*tmtypes.NewValidator(tmPubKey, 1)))
 	state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
 	state.ConsensusParams.Block.MaxGas = 100000
 
-	block := executor.CreateBlock(1, &types.Commit{}, [32]byte{}, [32]byte(state.Sequencers.ProposerHash()[:]), state, maxBytes)
+	block := executor.CreateBlock(1, &types.Commit{}, [32]byte{}, [32]byte(state.GetProposerHash()[:]), state, maxBytes)
 
 	require.NotNil(block)
 	assert.Empty(block.Data.Txs)
@@ -163,18 +160,6 @@ func TestCreateBlockWithConsensusMessages(t *testing.T) {
 
 	assert.True(proto.Equal(anyMsg1, block.Data.ConsensusMessages[0]))
 	assert.True(proto.Equal(anyMsg2, block.Data.ConsensusMessages[1]))
-
-	mockStream.AssertExpectations(t)
-}
-
-// MockConsensusMessagesStream is a mock implementation of ConsensusMessagesStream
-type MockConsensusMessagesStream struct {
-	mock.Mock
-}
-
-func (m *MockConsensusMessagesStream) GetConsensusMessages() ([]proto.Message, error) {
-	args := m.Called()
-	return args.Get(0).([]proto.Message), args.Error(1)
 }
 
 func TestApplyBlock(t *testing.T) {
@@ -234,7 +219,7 @@ func TestApplyBlock(t *testing.T) {
 	appConns := &tmmocksproxy.MockAppConns{}
 	appConns.On("Consensus").Return(abciClient)
 	appConns.On("Query").Return(abciClient)
-	executor, err := block.NewExecutor(proposerKey.PubKey().Address(), chainID, mpool, appConns, eventBus, nil, logger)
+	executor, err := block.NewExecutor(proposerKey.PubKey().Address(), chainID, mpool, appConns, eventBus, block.NewConsensusMsgQueue(), logger)
 	assert.NoError(err)
 
 	// Subscribe to tx events
@@ -253,7 +238,7 @@ func TestApplyBlock(t *testing.T) {
 
 	// Init state
 	state := &types.State{}
-	state.Sequencers.SetProposer(types.NewSequencerFromValidator(*tmtypes.NewValidator(tmPubKey, 1)))
+	state.SetProposer(types.NewSequencerFromValidator(*tmtypes.NewValidator(tmPubKey, 1)))
 	state.InitialHeight = 1
 	state.ChainID = chainID
 	state.SetHeight(0)
@@ -266,7 +251,7 @@ func TestApplyBlock(t *testing.T) {
 	// Create first block with one Tx from mempool
 	_ = mpool.CheckTx([]byte{1, 2, 3, 4}, func(r *abci.Response) {}, mempool.TxInfo{})
 	require.NoError(err)
-	block := executor.CreateBlock(1, &types.Commit{Height: 0}, [32]byte{0x01}, [32]byte(state.Sequencers.ProposerHash()), state, maxBytes)
+	block := executor.CreateBlock(1, &types.Commit{Height: 0}, [32]byte{0x01}, [32]byte(state.GetProposerHash()), state, maxBytes)
 	require.NotNil(block)
 	assert.Equal(uint64(1), block.Header.Height)
 	assert.Len(block.Data.Txs, 1)
@@ -284,10 +269,10 @@ func TestApplyBlock(t *testing.T) {
 	}
 
 	// Apply the block
-	err = types.ValidateProposedTransition(state, block, commit, state.Sequencers.GetProposerPubKey())
+	err = types.ValidateProposedTransition(state, block, commit, state.GetProposerPubKey())
 	require.NoError(err)
 
-	resp, err := executor.ExecuteBlock(state, block)
+	resp, err := executor.ExecuteBlock(block)
 	require.NoError(err)
 	require.NotNil(resp)
 	appHash, _, err := executor.Commit(state, block, resp)
@@ -301,7 +286,7 @@ func TestApplyBlock(t *testing.T) {
 	require.NoError(mpool.CheckTx([]byte{5, 6, 7, 8, 9}, func(r *abci.Response) {}, mempool.TxInfo{}))
 	require.NoError(mpool.CheckTx([]byte{1, 2, 3, 4, 5}, func(r *abci.Response) {}, mempool.TxInfo{}))
 	require.NoError(mpool.CheckTx(make([]byte, 9990), func(r *abci.Response) {}, mempool.TxInfo{}))
-	block = executor.CreateBlock(2, commit, block.Header.Hash(), [32]byte(state.Sequencers.ProposerHash()), state, maxBytes)
+	block = executor.CreateBlock(2, commit, block.Header.Hash(), [32]byte(state.GetProposerHash()), state, maxBytes)
 	require.NotNil(block)
 	assert.Equal(uint64(2), block.Header.Height)
 	assert.Len(block.Data.Txs, 3)
@@ -322,7 +307,7 @@ func TestApplyBlock(t *testing.T) {
 	}
 
 	// Apply the block with an invalid commit
-	err = types.ValidateProposedTransition(state, block, invalidCommit, state.Sequencers.GetProposerPubKey())
+	err = types.ValidateProposedTransition(state, block, invalidCommit, state.GetProposerPubKey())
 	require.ErrorContains(err, types.ErrInvalidSignature.Error())
 
 	// Create a valid commit for the block
@@ -335,9 +320,9 @@ func TestApplyBlock(t *testing.T) {
 	}
 
 	// Apply the block
-	err = types.ValidateProposedTransition(state, block, commit, state.Sequencers.GetProposerPubKey())
+	err = types.ValidateProposedTransition(state, block, commit, state.GetProposerPubKey())
 	require.NoError(err)
-	resp, err = executor.ExecuteBlock(state, block)
+	resp, err = executor.ExecuteBlock(block)
 	require.NoError(err)
 	require.NotNil(resp)
 	_, _, err = executor.Commit(state, block, resp)

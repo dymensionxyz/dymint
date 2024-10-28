@@ -22,6 +22,7 @@ import (
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
 	"github.com/dymensionxyz/dymint/version"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -204,6 +205,7 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 
 // TestApplyCachedBlocks checks the flow that happens when we are receiving blocks from p2p and some of the blocks
 // are already cached. This means blocks that were gossiped but are bigger than the expected next block height.
+// TODO: this test is flaky! https://github.com/dymensionxyz/dymint/issues/1173
 func TestApplyCachedBlocks_WithFraudCheck(t *testing.T) {
 	// Init app
 	app := testutil.GetAppMock(testutil.EndBlock)
@@ -357,6 +359,7 @@ func TestApplyLocalBlock_WithFraudCheck(t *testing.T) {
 	mockExecutor.On("UpdateStateAfterInitChain", mock.Anything, mock.Anything).Return(nil)
 	mockExecutor.On("UpdateMempoolAfterInitChain", mock.Anything).Return(nil)
 	mockExecutor.On("ExecuteBlock", mock.Anything, mock.Anything).Return(nil, gerrc.ErrFault)
+	mockExecutor.On("AddConsensusMsgs", mock.Anything).Return()
 
 	// Check that handle fault is called
 	mockFraudHandler := &blockmocks.MockFraudHandler{}
@@ -394,12 +397,16 @@ func TestRetrieveDaBatchesFailed(t *testing.T) {
 	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
 	manager.Retriever = manager.DAClient.(da.BatchRetriever)
 
-	daMetaData := &da.DASubmitMetaData{
-		Client: da.Mock,
-		Height: 1,
+	batch := &settlement.Batch{
+		MetaData: &settlement.BatchMetaData{
+			DA: &da.DASubmitMetaData{
+				Client: da.Mock,
+				Height: 1,
+			},
+		},
 	}
 
-	err = manager.ApplyBatchFromSL(daMetaData)
+	err = manager.ApplyBatchFromSL(batch)
 	t.Log(err)
 	assert.ErrorIs(t, err, da.ErrBlobNotFound)
 }
@@ -464,8 +471,8 @@ func TestProducePendingBlock(t *testing.T) {
 	require.NoError(t, err)
 	// Generate block and commit and save it to the store
 	block := testutil.GetRandomBlock(1, 3)
-	copy(block.Header.SequencerHash[:], manager.State.Sequencers.ProposerHash())
-	copy(block.Header.NextSequencersHash[:], manager.State.Sequencers.ProposerHash())
+	copy(block.Header.SequencerHash[:], manager.State.GetProposerHash())
+	copy(block.Header.NextSequencersHash[:], manager.State.GetProposerHash())
 
 	_, err = manager.Store.SaveBlock(block, &block.LastCommit, nil)
 	require.NoError(t, err)
@@ -742,7 +749,19 @@ func TestDAFetch(t *testing.T) {
 				LastBlockAppHash: commitHash[:],
 			})
 
-			err := manager.ApplyBatchFromSL(c.daMetaData)
+			var bds []rollapp.BlockDescriptor
+			for _, block := range batch.Blocks {
+				bds = append(bds, rollapp.BlockDescriptor{
+					Height: block.Header.Height,
+				})
+			}
+			slBatch := &settlement.Batch{
+				MetaData: &settlement.BatchMetaData{
+					DA: c.daMetaData,
+				},
+				BlockDescriptors: bds,
+			}
+			err := manager.ApplyBatchFromSL(slBatch)
 			require.Equal(c.err, err)
 		})
 	}
@@ -814,8 +833,21 @@ func TestManager_ApplyBatchFromSL_FraudHandling(t *testing.T) {
 		LastBlockAppHash: commitHash[:],
 	})
 
+	var bds []rollapp.BlockDescriptor
+	for _, block := range batch.Blocks {
+		bds = append(bds, rollapp.BlockDescriptor{
+			Height: block.Header.Height,
+		})
+	}
+	slBatch := &settlement.Batch{
+		MetaData: &settlement.BatchMetaData{
+			DA: daResultSubmitBatch.SubmitMetaData,
+		},
+		BlockDescriptors: bds,
+	}
+
 	// Call ApplyBatchFromSL
-	err = manager.ApplyBatchFromSL(daResultSubmitBatch.SubmitMetaData)
+	err = manager.ApplyBatchFromSL(slBatch)
 
 	// Verify
 	require.True(errors.Is(err, gerrc.ErrFault))

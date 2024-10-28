@@ -6,7 +6,6 @@ import (
 
 	proto2 "github.com/gogo/protobuf/proto"
 	proto "github.com/gogo/protobuf/types"
-
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmcrypto "github.com/tendermint/tendermint/crypto/encoding"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
@@ -27,21 +26,28 @@ type ExecutorI interface {
 	CreateBlock(height uint64, lastCommit *types.Commit, lastHeaderHash, nextSeqHash [32]byte, state *types.State, maxBlockDataSizeBytes uint64) *types.Block
 	Commit(state *types.State, block *types.Block, resp *tmstate.ABCIResponses) ([]byte, int64, error)
 	GetAppInfo() (*abci.ResponseInfo, error)
-	ExecuteBlock(state *types.State, block *types.Block) (*tmstate.ABCIResponses, error)
+	ExecuteBlock(block *types.Block) (*tmstate.ABCIResponses, error)
 	UpdateStateAfterInitChain(s *types.State, res *abci.ResponseInitChain)
 	UpdateMempoolAfterInitChain(s *types.State)
 	UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResponses, appHash []byte, height uint64, lastHeaderHash [32]byte)
-	UpdateProposerFromBlock(s *types.State, block *types.Block) bool
+	UpdateProposerFromBlock(s *types.State, seqSet *types.SequencerSet, block *types.Block) bool
+
+	/* Consensus Messages */
+
+	AddConsensusMsgs(...proto2.Message)
+	GetConsensusMsgs() []proto2.Message
 }
+
+var _ ExecutorI = new(Executor)
 
 // Executor creates and applies blocks and maintains state.
 type Executor struct {
-	localAddress            []byte
-	chainID                 string
-	proxyAppConsensusConn   proxy.AppConnConsensus
-	proxyAppQueryConn       proxy.AppConnQuery
-	mempool                 mempool.Mempool
-	consensusMessagesStream ConsensusMessagesStream
+	localAddress          []byte
+	chainID               string
+	proxyAppConsensusConn proxy.AppConnConsensus
+	proxyAppQueryConn     proxy.AppConnQuery
+	mempool               mempool.Mempool
+	consensusMsgQueue     *ConsensusMsgQueue
 
 	eventBus *tmtypes.EventBus
 
@@ -56,20 +62,32 @@ func NewExecutor(
 	mempool mempool.Mempool,
 	proxyApp proxy.AppConns,
 	eventBus *tmtypes.EventBus,
-	consensusMessagesStream ConsensusMessagesStream,
+	consensusMsgsQueue *ConsensusMsgQueue,
 	logger types.Logger,
 ) (ExecutorI, error) {
 	be := Executor{
-		localAddress:            localAddress,
-		chainID:                 chainID,
-		proxyAppConsensusConn:   proxyApp.Consensus(),
-		proxyAppQueryConn:       proxyApp.Query(),
-		mempool:                 mempool,
-		eventBus:                eventBus,
-		consensusMessagesStream: consensusMessagesStream,
-		logger:                  logger,
+		localAddress:          localAddress,
+		chainID:               chainID,
+		proxyAppConsensusConn: proxyApp.Consensus(),
+		proxyAppQueryConn:     proxyApp.Query(),
+		mempool:               mempool,
+		eventBus:              eventBus,
+		consensusMsgQueue:     consensusMsgsQueue,
+		logger:                logger,
 	}
 	return &be, nil
+}
+
+// AddConsensusMsgs adds new consensus msgs to the queue.
+// The method is thread-safe.
+func (e *Executor) AddConsensusMsgs(msgs ...proto2.Message) {
+	e.consensusMsgQueue.Add(msgs...)
+}
+
+// GetConsensusMsgs dequeues consensus msgs from the queue.
+// The method is thread-safe.
+func (e *Executor) GetConsensusMsgs() []proto2.Message {
+	return e.consensusMsgQueue.Get()
 }
 
 // InitChain calls InitChainSync using consensus connection to app.
@@ -127,16 +145,6 @@ func (e *Executor) CreateBlock(
 	maxBlockDataSizeBytes = min(maxBlockDataSizeBytes, uint64(max(minBlockMaxBytes, state.ConsensusParams.Block.MaxBytes)))
 	mempoolTxs := e.mempool.ReapMaxBytesMaxGas(int64(maxBlockDataSizeBytes), state.ConsensusParams.Block.MaxGas)
 
-	var consensusAnyMessages []*proto.Any
-	if e.consensusMessagesStream != nil {
-		consensusMessages, err := e.consensusMessagesStream.GetConsensusMessages()
-		if err != nil {
-			e.logger.Error("Failed to get consensus messages", "error", err)
-		}
-
-		consensusAnyMessages = fromProtoMsgSliceToAnySlice(consensusMessages)
-	}
-
 	block := &types.Block{
 		Header: types.Header{
 			Version: types.Version{
@@ -157,13 +165,13 @@ func (e *Executor) CreateBlock(
 			Txs:                    toDymintTxs(mempoolTxs),
 			IntermediateStateRoots: types.IntermediateStateRoots{RawRootsList: nil},
 			Evidence:               types.EvidenceData{Evidence: nil},
-			ConsensusMessages:      consensusAnyMessages,
+			ConsensusMessages:      fromProtoMsgSliceToAnySlice(e.consensusMsgQueue.Get()...),
 		},
 		LastCommit: *lastCommit,
 	}
 	copy(block.Header.LastCommitHash[:], types.GetLastCommitHash(lastCommit, &block.Header))
 	copy(block.Header.DataHash[:], types.GetDataHash(block))
-	copy(block.Header.SequencerHash[:], state.Sequencers.ProposerHash())
+	copy(block.Header.SequencerHash[:], state.GetProposerHash())
 	copy(block.Header.NextSequencersHash[:], nextSeqHash[:])
 
 	return block
@@ -216,7 +224,7 @@ func (e *Executor) commit(state *types.State, block *types.Block, deliverTxs []*
 }
 
 // ExecuteBlock executes the block and returns the ABCIResponses. Block should be valid (passed validation checks).
-func (e *Executor) ExecuteBlock(state *types.State, block *types.Block) (*tmstate.ABCIResponses, error) {
+func (e *Executor) ExecuteBlock(block *types.Block) (*tmstate.ABCIResponses, error) {
 	abciResponses := new(tmstate.ABCIResponses)
 	abciResponses.DeliverTxs = make([]*abci.ResponseDeliverTx, len(block.Data.Txs))
 
@@ -340,7 +348,7 @@ func fromProtoMsgToAny(msg proto2.Message) *proto.Any {
 	}
 }
 
-func fromProtoMsgSliceToAnySlice(msgs []proto2.Message) []*proto.Any {
+func fromProtoMsgSliceToAnySlice(msgs ...proto2.Message) []*proto.Any {
 	result := make([]*proto.Any, len(msgs))
 	for i, msg := range msgs {
 		result[i] = fromProtoMsgToAny(msg)

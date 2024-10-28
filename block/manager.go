@@ -44,9 +44,10 @@ type Manager struct {
 	LocalKey crypto.PrivKey
 
 	// Store and execution
-	Store    store.Store
-	State    *types.State
-	Executor ExecutorI
+	Store      store.Store
+	State      *types.State
+	Executor   ExecutorI
+	Sequencers *types.SequencerSet // Sequencers is the set of sequencers that are currently active on the rollapp
 
 	// Clients and servers
 	Pubsub    *pubsub.Server
@@ -128,7 +129,7 @@ func NewManager(
 		mempool,
 		proxyApp,
 		eventBus,
-		nil, // TODO add ConsensusMessagesStream
+		NewConsensusMsgQueue(), // TODO properly specify ConsensusMsgStream: https://github.com/dymensionxyz/dymint/issues/1125
 		logger,
 	)
 	if err != nil {
@@ -143,6 +144,7 @@ func NewManager(
 		Genesis:        genesis,
 		Store:          store,
 		Executor:       exec,
+		Sequencers:     types.NewSequencerSet(),
 		SLClient:       settlementClient,
 		indexerService: indexerService,
 		logger:         logger.With("module", "block_manager"),
@@ -204,8 +206,6 @@ func (m *Manager) Start(ctx context.Context) error {
 		return fmt.Errorf("sync block manager from settlement: %w", err)
 	}
 
-	// listen to new bonded sequencers events to add them in the sequencer set
-	go uevent.MustSubscribe(ctx, m.Pubsub, "newBondedSequencer", settlement.EventQueryNewBondedSequencer, m.UpdateSequencerSet, m.logger)
 	// send signal to syncing loop with last settlement state update
 	m.triggerSettlementSyncing()
 	// send signal to validation loop with last settlement state update
@@ -221,6 +221,10 @@ func (m *Manager) Start(ctx context.Context) error {
 	// Start the settlement sync loop in the background
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		return m.SettlementSyncLoop(ctx)
+	})
+
+	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
+		return m.MonitorSequencerSetUpdates(ctx)
 	})
 
 	/* ----------------------------- full node mode ----------------------------- */
@@ -302,13 +306,13 @@ func (m *Manager) Start(ctx context.Context) error {
 }
 
 func (m *Manager) isChainHalted() error {
-	if m.GetProposerPubKey() == nil {
+	if m.State.GetProposerPubKey() == nil {
 		// if no proposer set in state, try to update it from the hub
-		err := m.UpdateProposer()
+		err := m.UpdateProposerFromSL()
 		if err != nil {
 			return fmt.Errorf("update proposer: %w", err)
 		}
-		if m.GetProposerPubKey() == nil {
+		if m.State.GetProposerPubKey() == nil {
 			return fmt.Errorf("no proposer pubkey found. chain is halted")
 		}
 	}
@@ -324,7 +328,8 @@ func (m *Manager) updateFromLastSettlementState() error {
 	// Update sequencers list from SL
 	err := m.UpdateSequencerSetFromSL()
 	if err != nil {
-		m.logger.Error("update bonded sequencer set", "error", err)
+		// this error is not critical
+		m.logger.Error("Cannot fetch sequencer set from the Hub", "error", err)
 	}
 
 	// update latest height from SL
@@ -364,7 +369,7 @@ func (m *Manager) updateLastFinalizedHeightFromSettlement() error {
 }
 
 func (m *Manager) GetProposerPubKey() tmcrypto.PubKey {
-	return m.State.Sequencers.GetProposerPubKey()
+	return m.State.GetProposerPubKey()
 }
 
 func (m *Manager) UpdateTargetHeight(h uint64) {

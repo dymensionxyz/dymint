@@ -125,18 +125,18 @@ func TestValidator_BlockValidator(t *testing.T) {
 			require.NotNil(t, clientCreator)
 			require.NotNil(t, abciClient)
 			mpool := mempoolv1.NewTxMempool(logger, cfg.DefaultMempoolConfig(), proxy.NewAppConnMempool(abciClient), 0)
-			executor, err := block.NewExecutor(proposerKey.PubKey().Address(), "test", mpool, proxy.NewAppConns(clientCreator), nil, nil, logger)
+			executor, err := block.NewExecutor(proposerKey.PubKey().Address(), "test", mpool, proxy.NewAppConns(clientCreator), nil, block.NewConsensusMsgQueue(), logger)
 			assert.NoError(t, err)
 
 			// Create state
 			maxBytes := uint64(100)
 			state := &types.State{}
-			state.Sequencers.SetProposer(types.NewSequencerFromValidator(*tmtypes.NewValidator(proposerKey.PubKey(), 1)))
+			state.SetProposer(types.NewSequencerFromValidator(*tmtypes.NewValidator(proposerKey.PubKey(), 1)))
 			state.ConsensusParams.Block.MaxGas = 100000
 			state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
 
 			// Create empty block
-			block := executor.CreateBlock(1, &types.Commit{}, [32]byte{}, [32]byte(state.Sequencers.ProposerHash()), state, maxBytes)
+			block := executor.CreateBlock(1, &types.Commit{}, [32]byte{}, [32]byte(state.GetProposerHash()), state, maxBytes)
 
 			getProposer := &p2pmock.MockGetProposerI{}
 			getProposer.On("GetProposerPubKey").Return(proposerKey.PubKey())

@@ -214,7 +214,7 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 				// otherwise load them from DA
 			} else {
 				if !tc.last {
-					manager.ApplyBatchFromSL(slBatch.MetaData.DA)
+					manager.ApplyBatchFromSL(slBatch.Batch)
 				}
 			}
 

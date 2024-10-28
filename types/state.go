@@ -7,9 +7,11 @@ import (
 
 	// TODO(tzdybal): copy to local project?
 
-	"github.com/dymensionxyz/dymint/types/pb/dymint"
+	tmcrypto "github.com/tendermint/tendermint/crypto"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
+
+	"github.com/dymensionxyz/dymint/types/pb/dymint"
 )
 
 // State contains information about current state of the blockchain.
@@ -26,8 +28,8 @@ type State struct {
 	// BaseHeight is the height of the first block we have in store after pruning.
 	BaseHeight uint64
 
-	// Sequencers is the set of sequencers that are currently active on the rollapp.
-	Sequencers SequencerSet
+	// Proposer is a sequencer that acts as a proposer. Can be nil if no proposer is set.
+	Proposer atomic.Pointer[Sequencer]
 
 	// Consensus parameters used for validating blocks.
 	// Changes returned by EndBlock and updated after Commit.
@@ -44,6 +46,32 @@ type State struct {
 
 	// LastHeaderHash is the hash of the last block header.
 	LastHeaderHash [32]byte
+}
+
+func (s *State) GetProposer() *Sequencer {
+	return s.Proposer.Load()
+}
+
+func (s *State) GetProposerPubKey() tmcrypto.PubKey {
+	proposer := s.Proposer.Load()
+	if proposer == nil {
+		return nil
+	}
+	return proposer.PubKey()
+}
+
+// GetProposerHash returns the hash of the proposer
+func (s *State) GetProposerHash() []byte {
+	proposer := s.Proposer.Load()
+	if proposer == nil {
+		return nil
+	}
+	return proposer.MustHash()
+}
+
+// SetProposer sets the proposer. It may set the proposer to nil.
+func (s *State) SetProposer(proposer *Sequencer) {
+	s.Proposer.Store(proposer)
 }
 
 func (s *State) IsGenesis() bool {
