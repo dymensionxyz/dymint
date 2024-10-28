@@ -546,9 +546,14 @@ func (idx *BlockerIndexer) pruneBlocks(from, to uint64, logger log.Logger) (uint
 	}
 
 	for h := int64(from); h < int64(to); h++ {
-
-		toFlush++
-
+		ok, err := idx.Has(h)
+		if err != nil {
+			logger.Debug("pruning block indexer checking height", "err", err)
+			continue
+		}
+		if !ok {
+			continue
+		}
 		key, err := heightKey(h)
 		if err != nil {
 			logger.Debug("pruning block indexer getting height key", "err", err)
@@ -556,7 +561,6 @@ func (idx *BlockerIndexer) pruneBlocks(from, to uint64, logger log.Logger) (uint
 		}
 		if err := batch.Delete(key); err != nil {
 			logger.Debug("pruning block indexer deleting height key", "err", err)
-			continue
 		}
 
 		pruned++
@@ -564,9 +568,9 @@ func (idx *BlockerIndexer) pruneBlocks(from, to uint64, logger log.Logger) (uint
 		prunedEvents, err := idx.pruneEvents(h, logger, batch)
 		if err != nil {
 			logger.Debug("pruning block indexer events", "err", err)
-			continue
 		}
 		pruned += prunedEvents
+		toFlush += pruned
 
 		// flush every 1000 blocks to avoid batches becoming too large
 		if toFlush > 1000 {

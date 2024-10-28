@@ -239,16 +239,18 @@ func (c *Client) RemoveBlocks(ctx context.Context, to uint64) (uint64, error) {
 			c.logger.Error("load block id from store", "height", h, "err", err)
 			continue
 		}
+
+		err = c.store.RemoveBlockCid(h)
+		if err != nil {
+			c.logger.Error("remove cid from dymint store", "height", h, "cid", cid, "err", err)
+		}
+
 		err = c.blocksync.DeleteBlock(ctx, cid)
 		if err != nil {
 			c.logger.Error("remove blocksync block", "height", h, "err", err)
 			continue
 		}
-		err = c.store.RemoveBlockCid(h)
-		if err != nil {
-			c.logger.Error("remove cid from dymint store", "height", h, "cid", cid, "err", err)
-			continue
-		}
+
 		prunedBlocks++
 	}
 

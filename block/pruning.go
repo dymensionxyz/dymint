@@ -19,6 +19,7 @@ func (m *Manager) PruneBlocks(retainHeight uint64) {
 	pruned, err := m.p2pClient.RemoveBlocks(context.Background(), retainHeight)
 	logResult(err, "blocksync", retainHeight, pruned)
 
+	// prune indexed block and txs and associated events
 	pruned, err = m.IndexerService.Prune(retainHeight, m.Store)
 	logResult(err, "indexer", retainHeight, pruned)
 

@@ -82,29 +82,11 @@ func (s *DefaultStore) pruneHeights(from, to uint64, prune func(batch KVBatch, h
 	}
 
 	for h := from; h < to; h++ {
-		hash, err := s.loadHashFromIndex(h)
+		err := prune(batch, h)
 		if err != nil {
+			logger.Debug("unable to prune", "height", h, "err", err)
 			continue
 		}
-		if err := batch.Delete(getBlockKey(hash)); err != nil {
-			return 0, err
-		}
-		if err := batch.Delete(getCommitKey(hash)); err != nil {
-			return 0, err
-		}
-		if err := batch.Delete(getIndexKey(h)); err != nil {
-			return 0, err
-		}
-		if err := batch.Delete(getResponsesKey(h)); err != nil {
-			return 0, err
-		}
-		if err := batch.Delete(getValidatorsKey(h)); err != nil {
-			return 0, err
-		}
-		if err := batch.Delete(getCidKey(h)); err != nil {
-			return 0, err
-		}
-
 		pruned++
 
 		// flush every 1000 blocks to avoid batches becoming too large
@@ -116,11 +98,12 @@ func (s *DefaultStore) pruneHeights(from, to uint64, prune func(batch KVBatch, h
 			batch.Discard()
 			batch = s.db.NewBatch()
 		}
-	}
 
+	}
 	err := flush(batch, to)
 	if err != nil {
 		return 0, err
 	}
+
 	return pruned, nil
 }
