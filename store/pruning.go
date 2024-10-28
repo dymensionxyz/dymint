@@ -8,7 +8,7 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
-// PruneStore removes blocks up to (but not including) a height. It returns number of blocks pruned.
+// PruneStore removes store items up to (but not including) a height. It returns number of blocks pruned.
 func (s *DefaultStore) PruneStore(from, to uint64, logger types.Logger) (uint64, error) {
 	if from <= 0 {
 		return 0, fmt.Errorf("from height must be greater than 0: %w", gerrc.ErrInvalidArgument)

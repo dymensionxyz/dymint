@@ -3,6 +3,7 @@ package types
 import (
 	"bytes"
 	"fmt"
+	"slices"
 	"sync"
 
 	tmcrypto "github.com/tendermint/tendermint/crypto"
@@ -103,10 +104,10 @@ func (s *SequencerSet) AppendSequencer(sequencer Sequencer) {
 	s.sequencers = append(s.sequencers, sequencer)
 }
 
-func (s *SequencerSet) GetSequencers() []Sequencer {
+func (s *SequencerSet) GetAll() []Sequencer {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return s.sequencers
+	return slices.Clone(s.sequencers)
 }
 
 // GetByHash gets the sequencer by hash. It returns an error if the hash is not found in the sequencer set.
