@@ -29,7 +29,6 @@ import (
 )
 
 func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
-
 	// Init app
 	app := testutil.GetAppMock(testutil.EndBlock)
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
@@ -164,9 +163,9 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 				manager.State.SetProposer(types.NewSequencer(pubkey, hex.EncodeToString(pubKeybytes), "", nil))
 
 				// set proposer
-				//raw, _ = proposerKey.GetPublic().Raw()
-				//pubkey = ed25519.PubKey(raw)
-				//manager.State.SetProposer(types.NewSequencer(pubkey, "", "", nil))
+				raw, _ = proposerKey.GetPublic().Raw()
+				pubkey = ed25519.PubKey(raw)
+				manager.State.Proposer.Store(types.NewSequencer(pubkey, "", "", nil))
 			}
 
 			// Create DA
@@ -192,7 +191,7 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 			require.NoError(t, err)
 
 			// create the batch in settlement
-			slBatch := getSLBatch(bds, daResultSubmitBatch.SubmitMetaData, 1, 10)
+			slBatch := getSLBatch(bds, daResultSubmitBatch.SubmitMetaData, 1, 10, manager.State.GetProposer().SettlementAddress)
 
 			// Create the StateUpdateValidator
 			validator := block.NewSettlementValidator(testutil.NewLogger(t), manager)
@@ -247,7 +246,6 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 				slBatch.BlockDescriptors[0].Height = 2
 			case "nextsequencer":
 				seq := types.NewSequencerFromValidator(*tmtypes.NewValidator(nextProposerKey.PubKey(), 1))
-
 				slBatch.NextSequencer = seq.SettlementAddress
 			}
 
@@ -381,7 +379,7 @@ func TestStateUpdateValidator_ValidateDAFraud(t *testing.T) {
 			bds, err := getBlockDescriptors(batch)
 			require.NoError(t, err)
 			// Generate batch with block descriptors
-			slBatch := getSLBatch(bds, daResultSubmitBatch.SubmitMetaData, 1, 10)
+			slBatch := getSLBatch(bds, daResultSubmitBatch.SubmitMetaData, 1, 10, manager.State.GetProposer().SettlementAddress)
 
 			for _, bd := range bds {
 				manager.Store.SaveDRSVersion(bd.Height, bd.DrsVersion, nil)
@@ -420,7 +418,7 @@ func getBlockDescriptors(batch *types.Batch) ([]rollapp.BlockDescriptor, error) 
 	return bds, nil
 }
 
-func getSLBatch(bds []rollapp.BlockDescriptor, daMetaData *da.DASubmitMetaData, startHeight uint64, endHeight uint64) *settlement.ResultRetrieveBatch {
+func getSLBatch(bds []rollapp.BlockDescriptor, daMetaData *da.DASubmitMetaData, startHeight uint64, endHeight uint64, nextSequencer string) *settlement.ResultRetrieveBatch {
 	// create the batch in settlement
 	return &settlement.ResultRetrieveBatch{
 		Batch: &settlement.Batch{
@@ -428,9 +426,10 @@ func getSLBatch(bds []rollapp.BlockDescriptor, daMetaData *da.DASubmitMetaData, 
 			MetaData: &settlement.BatchMetaData{
 				DA: daMetaData,
 			},
-			StartHeight: startHeight,
-			EndHeight:   endHeight,
-			NumBlocks:   endHeight - startHeight + 1,
+			StartHeight:   startHeight,
+			EndHeight:     endHeight,
+			NumBlocks:     endHeight - startHeight + 1,
+			NextSequencer: nextSequencer,
 		},
 		ResultBase: settlement.ResultBase{
 			StateIndex: 1,
