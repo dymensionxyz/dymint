@@ -31,8 +31,7 @@ type State struct {
 
 	// Consensus parameters used for validating blocks.
 	// Changes returned by EndBlock and updated after Commit.
-	ConsensusParams                  tmproto.ConsensusParams
-	LastHeightConsensusParamsChanged int64
+	ConsensusParams tmproto.ConsensusParams
 
 	// Merkle root of the results from executing prev block
 	LastResultsHash [32]byte

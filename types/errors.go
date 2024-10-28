@@ -324,21 +324,19 @@ func (e ErrInvalidHeaderDataHashFraud) Unwrap() error {
 type ErrStateUpdateNumBlocksNotMatchingFraud struct {
 	StateIndex  uint64
 	SLNumBlocks uint64
-	DAblocks    uint64
 	NumBds      uint64
 }
 
-func NewErrStateUpdateNumBlocksNotMatchingFraud(stateIndex uint64, slNumBlocks uint64, daBlocks uint64, numbds uint64) error {
+func NewErrStateUpdateNumBlocksNotMatchingFraud(stateIndex uint64, slNumBlocks uint64, numbds uint64) error {
 	return &ErrStateUpdateNumBlocksNotMatchingFraud{
 		StateIndex:  stateIndex,
 		SLNumBlocks: slNumBlocks,
-		DAblocks:    daBlocks,
 		NumBds:      numbds,
 	}
 }
 
 func (e ErrStateUpdateNumBlocksNotMatchingFraud) Error() string {
-	return fmt.Sprintf("numblocks not matching. StateIndex: %d Batch numblocks: %d Blocks in DA: %d Num of block descriptors: %d", e.StateIndex, e.SLNumBlocks, e.DAblocks, e.NumBds)
+	return fmt.Sprintf("numblocks not matching. StateIndex: %d Batch numblocks: %d Num of block descriptors: %d", e.StateIndex, e.SLNumBlocks, e.NumBds)
 }
 
 func (e ErrStateUpdateNumBlocksNotMatchingFraud) Unwrap() error {
@@ -469,4 +467,76 @@ func getJsonFromBlock(block *Block) ([]byte, error) {
 		return nil, err
 	}
 	return jsonBlock, nil
+}
+
+type ErrStateUpdateBlobNotAvailableFraud struct {
+	StateIndex uint64
+	DA         string
+	DAHeight   uint64
+	Commitment string
+}
+
+func NewErrStateUpdateBlobNotAvailableFraud(stateIndex uint64, da string, daHeight uint64, commitment string) error {
+	return &ErrStateUpdateBlobNotAvailableFraud{
+		StateIndex: stateIndex,
+		DA:         da,
+		DAHeight:   daHeight,
+		Commitment: commitment,
+	}
+}
+
+func (e ErrStateUpdateBlobNotAvailableFraud) Error() string {
+	return fmt.Sprintf("blob not available in DA. StateIndex: %d DA: %s DA Height: %d Commitment: %s", e.StateIndex, e.DA, e.DAHeight, e.Commitment)
+}
+
+func (e ErrStateUpdateBlobNotAvailableFraud) Unwrap() error {
+	return gerrc.ErrFault
+}
+
+type ErrStateUpdateBlobCorruptedFraud struct {
+	StateIndex uint64
+	DA         string
+	DAHeight   uint64
+	Commitment string
+}
+
+func NewErrStateUpdateBlobCorruptedFraud(stateIndex uint64, da string, daHeight uint64, commitment string) error {
+	return &ErrStateUpdateBlobCorruptedFraud{
+		StateIndex: stateIndex,
+		DA:         da,
+		DAHeight:   daHeight,
+		Commitment: commitment,
+	}
+}
+
+func (e ErrStateUpdateBlobCorruptedFraud) Error() string {
+	return fmt.Sprintf("blob not parsable in DA. StateIndex: %d DA: %s DA Height: %d Commitment: %s", e.StateIndex, e.DA, e.DAHeight, e.Commitment)
+}
+
+func (e ErrStateUpdateBlobCorruptedFraud) Unwrap() error {
+	return gerrc.ErrFault
+}
+
+type ErrStateUpdateDRSVersionFraud struct {
+	StateIndex   uint64
+	Height       uint64
+	BlockVersion string
+	SLVersion    string
+}
+
+func NewErrStateUpdateDRSVersionFraud(stateIndex uint64, height uint64, blockVersion string, slVersion string) error {
+	return &ErrStateUpdateDRSVersionFraud{
+		StateIndex:   stateIndex,
+		Height:       height,
+		BlockVersion: blockVersion,
+		SLVersion:    slVersion,
+	}
+}
+
+func (e ErrStateUpdateDRSVersionFraud) Error() string {
+	return fmt.Sprintf("drs version not matching. StateIndex: %d Height: %d Block DRS: %s SL DRS: %s", e.StateIndex, e.Height, e.BlockVersion, e.SLVersion)
+}
+
+func (e ErrStateUpdateDRSVersionFraud) Unwrap() error {
+	return gerrc.ErrFault
 }

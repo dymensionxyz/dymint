@@ -199,11 +199,6 @@ func (c *Client) GetLatestBatch() (*settlement.ResultRetrieveBatch, error) {
 	return batchResult, nil
 }
 
-// GetLatestFinalizedBatch returns the latest finalized batch from the kv store. batches are never finalized for grpc settlement
-func (c *Client) GetLatestFinalizedBatch() (*settlement.ResultRetrieveBatch, error) {
-	return nil, gerrc.ErrNotFound
-}
-
 // GetBatchAtIndex returns the batch at the given index
 func (c *Client) GetBatchAtIndex(index uint64) (*settlement.ResultRetrieveBatch, error) {
 	batchResult, err := c.retrieveBatchAtStateIndex(index)
@@ -275,6 +270,16 @@ func (c *Client) GetBondedSequencers() ([]types.Sequencer, error) {
 // CheckRotationInProgress implements settlement.ClientI.
 func (c *Client) CheckRotationInProgress() (*types.Sequencer, error) {
 	return nil, nil
+}
+
+// GetLatestHeight returns the latest state update height from the settlement layer.
+func (c *Client) GetLatestHeight() (uint64, error) {
+	return c.latestHeight.Load(), nil
+}
+
+// GetLatestFinalizedHeight returns the latest finalized height from the settlement layer.
+func (c *Client) GetLatestFinalizedHeight() (uint64, error) {
+	return uint64(0), gerrc.ErrNotFound
 }
 
 func (c *Client) saveBatch(batch *settlement.Batch) error {
