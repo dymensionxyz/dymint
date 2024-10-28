@@ -37,6 +37,11 @@ func (s *DefaultStore) PruneStore(from, to uint64, logger types.Logger) (uint64,
 		logger.Error("pruning block sync identifiers", "from", from, "to", to, "cids pruned", prunedCids, "err", err)
 	}
 
+	prunedDRS, err := s.pruneDRSVersion(from, to, logger)
+	if err != nil {
+		logger.Error("pruning drs version", "from", from, "to", to, "drs pruned", prunedDRS, "err", err)
+	}
+
 	return prunedBlocks, nil
 }
 
@@ -89,6 +94,15 @@ func (s *DefaultStore) pruneCids(from, to uint64, logger types.Logger) (uint64, 
 	}
 	prunedCids, err := s.pruneHeights(from, to, pruneCids, logger)
 	return prunedCids, err
+}
+
+// pruneDRSVersion prunes drs version info from store
+func (s *DefaultStore) pruneDRSVersion(from, to uint64, logger types.Logger) (uint64, error) {
+	pruneDRS := func(batch KVBatch, height uint64) error {
+		return batch.Delete(getDRSVersionKey(height))
+	}
+	prunedSequencers, err := s.pruneHeights(from, to, pruneDRS, logger)
+	return prunedSequencers, err
 }
 
 // pruneHeights is the common function for all pruning that iterates through all heights and prunes according to the pruning function set
