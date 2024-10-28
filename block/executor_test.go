@@ -51,7 +51,7 @@ func TestCreateBlock(t *testing.T) {
 	require.NotNil(abciClient)
 
 	mpool := mempoolv1.NewTxMempool(logger, cfg.DefaultMempoolConfig(), proxy.NewAppConnMempool(abciClient), 0)
-	executor, err := block.NewExecutor([]byte("test address"), "test", mpool, proxy.NewAppConns(clientCreator), nil, nil, logger)
+	executor, err := block.NewExecutor([]byte("test address"), "test", mpool, proxy.NewAppConns(clientCreator), nil, block.NewConsensusMsgQueue(), logger)
 	assert.NoError(err)
 
 	maxBytes := uint64(100)
@@ -116,13 +116,10 @@ func TestCreateBlockWithConsensusMessages(t *testing.T) {
 	}
 
 	// Create a mock ConsensusMessagesStream
-	mockStream := &MockConsensusMessagesStream{}
-	mockStream.On("GetConsensusMessages").Return([]proto.Message{
-		theMsg1,
-		theMsg2,
-	}, nil)
+	consensusMsgQueue := block.NewConsensusMsgQueue()
+	consensusMsgQueue.Add(theMsg1, theMsg2)
 
-	executor, err := block.NewExecutor([]byte("test address"), "test", mpool, proxy.NewAppConns(clientCreator), nil, mockStream, logger)
+	executor, err := block.NewExecutor([]byte("test address"), "test", mpool, proxy.NewAppConns(clientCreator), nil, consensusMsgQueue, logger)
 	assert.NoError(err)
 
 	maxBytes := uint64(1000)
@@ -163,18 +160,6 @@ func TestCreateBlockWithConsensusMessages(t *testing.T) {
 
 	assert.True(proto.Equal(anyMsg1, block.Data.ConsensusMessages[0]))
 	assert.True(proto.Equal(anyMsg2, block.Data.ConsensusMessages[1]))
-
-	mockStream.AssertExpectations(t)
-}
-
-// MockConsensusMessagesStream is a mock implementation of ConsensusMessagesStream
-type MockConsensusMessagesStream struct {
-	mock.Mock
-}
-
-func (m *MockConsensusMessagesStream) GetConsensusMessages() ([]proto.Message, error) {
-	args := m.Called()
-	return args.Get(0).([]proto.Message), args.Error(1)
 }
 
 func TestApplyBlock(t *testing.T) {
@@ -234,7 +219,7 @@ func TestApplyBlock(t *testing.T) {
 	appConns := &tmmocksproxy.MockAppConns{}
 	appConns.On("Consensus").Return(abciClient)
 	appConns.On("Query").Return(abciClient)
-	executor, err := block.NewExecutor(proposerKey.PubKey().Address(), chainID, mpool, appConns, eventBus, nil, logger)
+	executor, err := block.NewExecutor(proposerKey.PubKey().Address(), chainID, mpool, appConns, eventBus, block.NewConsensusMsgQueue(), logger)
 	assert.NoError(err)
 
 	// Subscribe to tx events

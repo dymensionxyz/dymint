@@ -17,9 +17,10 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/dymensionxyz/dymint/store"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/pubsub"
+
+	"github.com/dymensionxyz/dymint/store"
 
 	"github.com/dymensionxyz/dymint/config"
 	"github.com/dymensionxyz/dymint/p2p"
@@ -49,6 +50,8 @@ func TestClientStartup(t *testing.T) {
 	assert.NoError(err)
 }
 
+// TestBootstrapping TODO: this test is flaky in main. Try running it 100 times to reproduce.
+// https://github.com/dymensionxyz/dymint/issues/869
 func TestBootstrapping(t *testing.T) {
 	assert := assert.New(t)
 	logger := log.TestingLogger()
