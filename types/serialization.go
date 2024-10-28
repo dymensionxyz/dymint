@@ -261,18 +261,17 @@ func (s *State) ToProto() (*pb.State, error) {
 	}
 
 	return &pb.State{
-		Version:                          &s.Version,
-		ChainId:                          s.ChainID,
-		InitialHeight:                    int64(s.InitialHeight),
-		LastBlockHeight:                  int64(s.Height()),
-		BaseHeight:                       s.BaseHeight,
-		ConsensusParams:                  s.ConsensusParams,
-		LastHeightConsensusParamsChanged: s.LastHeightConsensusParamsChanged,
-		LastResultsHash:                  s.LastResultsHash[:],
-		LastHeaderHash:                   s.LastHeaderHash[:],
-		AppHash:                          s.AppHash[:],
-		RollappParams:                    s.RollappParams,
-		Proposer:                         proposerProto,
+		Version:         &s.Version,
+		ChainId:         s.ChainID,
+		InitialHeight:   int64(s.InitialHeight),
+		LastBlockHeight: int64(s.Height()),
+		BaseHeight:      s.BaseHeight,
+		ConsensusParams: s.ConsensusParams,
+		LastResultsHash: s.LastResultsHash[:],
+		LastHeaderHash:  s.LastHeaderHash[:],
+		AppHash:         s.AppHash[:],
+		RollappParams:   s.RollappParams,
+		Proposer:        proposerProto,
 	}, nil
 }
 
@@ -291,12 +290,11 @@ func (s *State) FromProto(other *pb.State) error {
 		}
 		s.SetProposer(proposer)
 	} else {
-		// proposer may be nil
+		// proposer may be nil in the state
 		s.SetProposer(nil)
 	}
 
 	s.ConsensusParams = other.ConsensusParams
-	s.LastHeightConsensusParamsChanged = other.LastHeightConsensusParamsChanged
 	copy(s.LastResultsHash[:], other.LastResultsHash)
 	copy(s.AppHash[:], other.AppHash)
 	s.RollappParams = other.RollappParams
@@ -314,7 +312,7 @@ func (s *Sequencer) ToProto() (*pb.Sequencer, error) {
 	}
 	return &pb.Sequencer{
 		SettlementAddress:   s.SettlementAddress,
-		Validator:           protoVal,
+		Validator:           *protoVal,
 		RewardAddr:          s.RewardAddr,
 		WhitelistedRelayers: s.WhitelistedRelayers,
 	}, nil
@@ -325,7 +323,7 @@ func SequencerFromProto(seq *pb.Sequencer) (*Sequencer, error) {
 	if seq == nil {
 		return nil, fmt.Errorf("nil sequencer")
 	}
-	val, err := types.ValidatorFromProto(seq.Validator)
+	val, err := types.ValidatorFromProto(&seq.Validator)
 	if err != nil {
 		return nil, fmt.Errorf("tendermint validator from proto: %w", err)
 	}

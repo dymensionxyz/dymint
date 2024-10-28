@@ -8,7 +8,7 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
-// PruneStore removes blocks up to (but not including) a height. It returns number of blocks pruned.
+// PruneStore removes store items up to (but not including) a height. It returns number of blocks pruned.
 func (s *DefaultStore) PruneStore(from, to uint64, logger types.Logger) (uint64, error) {
 	if from <= 0 {
 		return 0, fmt.Errorf("from height must be greater than 0: %w", gerrc.ErrInvalidArgument)
@@ -31,6 +31,11 @@ func (s *DefaultStore) PruneStore(from, to uint64, logger types.Logger) (uint64,
 	prunedCids, err := s.pruneCids(from, to, logger)
 	if err != nil {
 		logger.Error("pruning block sync identifiers", "from", from, "to", to, "cids pruned", prunedCids, "err", err)
+	}
+
+	prunedDRS, err := s.pruneDRSVersion(from, to, logger)
+	if err != nil {
+		logger.Error("pruning drs version", "from", from, "to", to, "drs pruned", prunedDRS, "err", err)
 	}
 
 	prunedProposers, err := s.pruneProposers(from, to, logger)
@@ -81,6 +86,15 @@ func (s *DefaultStore) pruneCids(from, to uint64, logger types.Logger) (uint64, 
 	}
 	prunedCids, err := s.pruneHeights(from, to, pruneCids, logger)
 	return prunedCids, err
+}
+
+// pruneDRSVersion prunes drs version info from store
+func (s *DefaultStore) pruneDRSVersion(from, to uint64, logger types.Logger) (uint64, error) {
+	pruneDRS := func(batch KVBatch, height uint64) error {
+		return batch.Delete(getDRSVersionKey(height))
+	}
+	prunedSequencers, err := s.pruneHeights(from, to, pruneDRS, logger)
+	return prunedSequencers, err
 }
 
 // pruneHeights is the common function for all pruning that iterates through all heights and prunes according to the pruning function set

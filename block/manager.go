@@ -230,6 +230,12 @@ func (m *Manager) Start(ctx context.Context) error {
 	/* ----------------------------- full node mode ----------------------------- */
 	if !isProposer {
 
+		// update latest finalized height
+		err = m.updateLastFinalizedHeightFromSettlement()
+		if err != nil {
+			return fmt.Errorf("sync block manager from settlement: %w", err)
+		}
+
 		// Start the settlement validation loop in the background
 		uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 			return m.SettlementValidateLoop(ctx)
@@ -326,7 +332,8 @@ func (m *Manager) updateFromLastSettlementState() error {
 		m.logger.Error("Cannot fetch sequencer set from the Hub", "error", err)
 	}
 
-	res, err := m.SLClient.GetLatestBatch()
+	// update latest height from SL
+	latestHeight, err := m.SLClient.GetLatestHeight()
 	if errors.Is(err, gerrc.ErrNotFound) {
 		// The SL hasn't got any batches for this chain yet.
 		m.logger.Info("No batches for chain found in SL.")
@@ -339,17 +346,24 @@ func (m *Manager) updateFromLastSettlementState() error {
 		return err
 	}
 
-	m.LastSettlementHeight.Store(res.EndHeight)
+	m.LastSettlementHeight.Store(latestHeight)
 
-	if res.EndHeight >= m.State.NextHeight() {
-		m.UpdateTargetHeight(res.EndHeight)
+	if latestHeight >= m.State.NextHeight() {
+		m.UpdateTargetHeight(latestHeight)
 	}
 
-	// get the latest finalized height to know from where to start validating
-	err = m.UpdateFinalizedHeight()
-	if err != nil {
-		return err
+	return nil
+}
+
+func (m *Manager) updateLastFinalizedHeightFromSettlement() error {
+	// update latest finalized height from SL
+	height, err := m.SLClient.GetLatestFinalizedHeight()
+	if errors.Is(err, gerrc.ErrNotFound) {
+		m.logger.Info("No finalized batches for chain found in SL.")
+	} else if err != nil {
+		return fmt.Errorf("getting finalized height. err: %w", err)
 	}
+	m.SettlementValidator.UpdateLastValidatedHeight(height)
 
 	return nil
 }
@@ -365,23 +379,6 @@ func (m *Manager) UpdateTargetHeight(h uint64) {
 			break
 		}
 	}
-}
-
-// UpdateFinalizedHeight retrieves the latest finalized batch and updates validation height with it
-func (m *Manager) UpdateFinalizedHeight() error {
-	res, err := m.SLClient.GetLatestFinalizedBatch()
-	if err != nil && !errors.Is(err, gerrc.ErrNotFound) {
-		// The SL hasn't got any batches for this chain yet.
-		return fmt.Errorf("getting finalized height. err: %w", err)
-	}
-	if errors.Is(err, gerrc.ErrNotFound) {
-		// The SL hasn't got any batches for this chain yet.
-		m.logger.Info("No finalized batches for chain found in SL.")
-	} else {
-		// update validation height with latest finalized height (it will be updated only of finalized height is higher)
-		m.SettlementValidator.UpdateLastValidatedHeight(res.EndHeight)
-	}
-	return nil
 }
 
 // ValidateConfigWithRollappParams checks the configuration params are consistent with the params in the dymint state (e.g. DA and version)

@@ -272,9 +272,8 @@ func TestProposer(t *testing.T) {
 		_, err := s.SaveProposer(2, expected, nil)
 		require.NoError(t, err)
 
-		resp, err := s.LoadProposer(2000)
+		_, err = s.LoadProposer(2000)
 		require.Error(t, err)
-		require.Nil(t, resp)
 	})
 
 	t.Run("empty proposer is invalid", func(t *testing.T) {
@@ -282,24 +281,10 @@ func TestProposer(t *testing.T) {
 
 		s := store.New(store.NewDefaultInMemoryKVStore())
 
-		_, err := s.SaveProposer(3, &types.Sequencer{}, nil)
+		_, err := s.SaveProposer(3, types.Sequencer{}, nil)
 		require.Error(t, err)
 
-		resp, err := s.LoadProposer(3)
+		_, err = s.LoadProposer(3)
 		require.Error(t, err)
-		require.Nil(t, resp)
-	})
-
-	t.Run("nil proposer is valid", func(t *testing.T) {
-		t.Parallel()
-
-		s := store.New(store.NewDefaultInMemoryKVStore())
-
-		_, err := s.SaveProposer(4, nil, nil)
-		require.NoError(t, err)
-
-		resp, err := s.LoadProposer(4)
-		require.NoError(t, err)
-		require.Nil(t, resp)
 	})
 }

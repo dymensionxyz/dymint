@@ -24,8 +24,6 @@ func (m *Manager) onNewStateUpdate(event pubsub.Message) {
 	// Update heights based on state update end height
 	m.LastSettlementHeight.Store(eventData.EndHeight)
 
-	m.logger.Error("syncing")
-
 	// Update sequencers list from SL
 	err := m.UpdateSequencerSetFromSL()
 	if err != nil {
@@ -38,7 +36,6 @@ func (m *Manager) onNewStateUpdate(event pubsub.Message) {
 		m.triggerSettlementSyncing()
 		// update target height used for syncing status rpc
 		m.UpdateTargetHeight(eventData.EndHeight)
-
 	} else {
 		// trigger validation of the last state update available in settlement
 		m.triggerSettlementValidation()

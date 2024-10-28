@@ -1,6 +1,8 @@
 syntax = "proto3";
 package dymint;
 option go_package = "github.com/dymensionxyz/dymint/types/pb/dymint";
+
+import "gogoproto/gogo.proto";
 import "types/tendermint/abci/types.proto";
 import "types/tendermint/types/types.proto";
 import "types/tendermint/types/validator.proto";
@@ -99,7 +101,7 @@ message Sequencer {
 	// SettlementAddress is the address of the sequencer in the settlement layer (bech32 string)
 	string settlement_address = 1;
 	// Validator is a tendermint validator type for compatibility. Holds the public key and cons address.
-	tendermint.types.Validator validator = 2;
+	tendermint.types.Validator validator = 2 [(gogoproto.nullable) = false];
 	// RewardAddr is the bech32-encoded sequencer's reward address.
 	string reward_addr = 3;
 	// Relayers is an array of the whitelisted relayer addresses. Addresses are bech32-encoded strings.

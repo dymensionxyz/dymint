@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"fmt"
+	"slices"
 	"sync"
 
 	codectypes "github.com/cosmos/cosmos-sdk/codec/types"
@@ -166,7 +167,7 @@ func (s *SequencerSet) Set(sequencers []Sequencer) {
 func (s *SequencerSet) GetAll() []Sequencer {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return s.sequencers
+	return slices.Clone(s.sequencers)
 }
 
 // GetByHash gets the sequencer by hash. It returns an error if the hash is not found in the sequencer set.

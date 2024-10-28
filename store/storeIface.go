@@ -68,13 +68,11 @@ type Store interface {
 	// LoadState returns last state saved with UpdateState.
 	LoadState() (*types.State, error)
 
-	SaveProposer(height uint64, proposer *types.Sequencer, batch KVBatch) (KVBatch, error)
+	SaveProposer(height uint64, proposer types.Sequencer, batch KVBatch) (KVBatch, error)
 
-	LoadProposer(height uint64) (*types.Sequencer, error)
+	LoadProposer(height uint64) (types.Sequencer, error)
 
 	PruneStore(from, to uint64, logger types.Logger) (uint64, error)
-
-	Close() error
 
 	SaveBlockCid(height uint64, cid cid.Cid, batch KVBatch) (KVBatch, error)
 
@@ -87,4 +85,10 @@ type Store interface {
 	SaveValidationHeight(height uint64, batch KVBatch) (KVBatch, error)
 
 	LoadValidationHeight() (uint64, error)
+
+	LoadDRSVersion(height uint64) (string, error)
+
+	SaveDRSVersion(height uint64, version string, batch KVBatch) (KVBatch, error)
+
+	Close() error
 }
