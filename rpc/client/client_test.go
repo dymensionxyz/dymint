@@ -434,10 +434,10 @@ func TestValidatorSetHashConsistency(t *testing.T) {
 
 	v := tmtypes.NewValidator(ed25519.GenPrivKey().PubKey(), 1)
 	s := types.NewSequencerFromValidator(*v)
-	node.BlockManager.State.Sequencers.SetProposer(s)
+	node.BlockManager.State.SetProposer(s)
 
 	b := getRandomBlock(1, 10)
-	copy(b.Header.SequencerHash[:], node.BlockManager.State.Sequencers.ProposerHash())
+	copy(b.Header.SequencerHash[:], node.BlockManager.State.GetProposerHash())
 
 	err := node.Start()
 	require.NoError(err)
@@ -447,7 +447,7 @@ func TestValidatorSetHashConsistency(t *testing.T) {
 	require.NoError(err)
 
 	batch := node.Store.NewBatch()
-	batch, err = node.Store.SaveSequencers(b.Header.Height, &node.BlockManager.State.Sequencers, batch)
+	batch, err = node.Store.SaveProposer(b.Header.Height, *node.BlockManager.State.GetProposer(), batch)
 	require.NoError(err)
 	err = batch.Commit()
 	require.NoError(err)

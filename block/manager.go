@@ -44,9 +44,10 @@ type Manager struct {
 	LocalKey crypto.PrivKey
 
 	// Store and execution
-	Store    store.Store
-	State    *types.State
-	Executor ExecutorI
+	Store      store.Store
+	State      *types.State
+	Executor   ExecutorI
+	Sequencers *types.SequencerSet // Sequencers is the set of sequencers that are currently active on the rollapp
 
 	// Clients and servers
 	Pubsub    *pubsub.Server
@@ -143,6 +144,7 @@ func NewManager(
 		Genesis:        genesis,
 		Store:          store,
 		Executor:       exec,
+		Sequencers:     types.NewSequencerSet(),
 		SLClient:       settlementClient,
 		indexerService: indexerService,
 		logger:         logger.With("module", "block_manager"),
@@ -364,7 +366,7 @@ func (m *Manager) updateLastFinalizedHeightFromSettlement() error {
 }
 
 func (m *Manager) GetProposerPubKey() tmcrypto.PubKey {
-	return m.State.Sequencers.GetProposerPubKey()
+	return m.State.GetProposerPubKey()
 }
 
 func (m *Manager) UpdateTargetHeight(h uint64) {
