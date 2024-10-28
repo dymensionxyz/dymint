@@ -339,15 +339,14 @@ func (s *DefaultStore) LoadValidationHeight() (uint64, error) {
 }
 
 func (s *DefaultStore) LoadDRSVersion(height uint64) (string, error) {
-
 	versionBytes, err := s.db.Get(getDRSVersionKey(height))
 	if err != nil {
 		return "", fmt.Errorf("load drs version for height %v: %w", height, err)
 	}
 	return string(versionBytes), nil
 }
-func (s *DefaultStore) SaveDRSVersion(height uint64, version string, batch KVBatch) (KVBatch, error) {
 
+func (s *DefaultStore) SaveDRSVersion(height uint64, version string, batch KVBatch) (KVBatch, error) {
 	versionBytes := []byte(version)
 	if batch == nil {
 		return nil, s.db.Set(getDRSVersionKey(height), versionBytes)
