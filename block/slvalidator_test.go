@@ -267,6 +267,7 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 }
 
 func TestStateUpdateValidator_ValidateDAFraud(t *testing.T) {
+
 	// Init app
 	app := testutil.GetAppMock(testutil.EndBlock)
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{

@@ -324,21 +324,19 @@ func (e ErrInvalidHeaderDataHashFraud) Unwrap() error {
 type ErrStateUpdateNumBlocksNotMatchingFraud struct {
 	StateIndex  uint64
 	SLNumBlocks uint64
-	DAblocks    uint64
 	NumBds      uint64
 }
 
-func NewErrStateUpdateNumBlocksNotMatchingFraud(stateIndex uint64, slNumBlocks uint64, daBlocks uint64, numbds uint64) error {
+func NewErrStateUpdateNumBlocksNotMatchingFraud(stateIndex uint64, slNumBlocks uint64, numbds uint64) error {
 	return &ErrStateUpdateNumBlocksNotMatchingFraud{
 		StateIndex:  stateIndex,
 		SLNumBlocks: slNumBlocks,
-		DAblocks:    daBlocks,
 		NumBds:      numbds,
 	}
 }
 
 func (e ErrStateUpdateNumBlocksNotMatchingFraud) Error() string {
-	return fmt.Sprintf("numblocks not matching. StateIndex: %d Batch numblocks: %d Blocks in DA: %d Num of block descriptors: %d", e.StateIndex, e.SLNumBlocks, e.DAblocks, e.NumBds)
+	return fmt.Sprintf("numblocks not matching. StateIndex: %d Batch numblocks: %d Num of block descriptors: %d", e.StateIndex, e.SLNumBlocks, e.NumBds)
 }
 
 func (e ErrStateUpdateNumBlocksNotMatchingFraud) Unwrap() error {

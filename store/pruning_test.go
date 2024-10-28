@@ -67,6 +67,7 @@ func TestStorePruning(t *testing.T) {
 			savedRespHeights := make(map[uint64]bool)
 			savedSeqHeights := make(map[uint64]bool)
 			savedCidHeights := make(map[uint64]bool)
+			savedDRSHeights := make(map[uint64]bool)
 
 			for _, block := range c.blocks {
 
@@ -107,6 +108,13 @@ func TestStorePruning(t *testing.T) {
 					savedCidHeights[block.Header.Height] = true
 				}
 
+				// generate and store drs version randomly for block heights
+				if randBool() {
+					_, err = bstore.SaveDRSVersion(block.Header.Height, "", nil)
+					savedDRSHeights[block.Header.Height] = true
+					assert.NoError(err)
+				}
+
 			}
 
 			// Validate everything is saved
@@ -127,6 +135,11 @@ func TestStorePruning(t *testing.T) {
 
 			for k := range savedCidHeights {
 				_, err := bstore.LoadBlockCid(k)
+				assert.NoError(err)
+			}
+
+			for k := range savedDRSHeights {
+				_, err := bstore.LoadDRSVersion(k)
 				assert.NoError(err)
 			}
 
@@ -186,6 +199,17 @@ func TestStorePruning(t *testing.T) {
 					assert.Error(err, "Block cid at height %d should be pruned", k)
 				} else {
 					_, err = bstore.LoadBlockCid(k)
+					assert.NoError(err)
+				}
+			}
+
+			// Validate only block drs in the range are pruned
+			for k := range savedDRSHeights {
+				if k >= c.from && k < c.to { // k < c.to is the exclusion test
+					_, err = bstore.LoadDRSVersion(k)
+					assert.Error(err, "DRS version at height %d should be pruned", k)
+				} else {
+					_, err = bstore.LoadDRSVersion(k)
 					assert.NoError(err)
 				}
 			}
