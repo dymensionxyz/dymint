@@ -6,30 +6,35 @@ import (
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 
 	"github.com/dymensionxyz/dymint/da"
+	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
 )
 
-func (m *Manager) ApplyBatchFromSL(daMetaData *da.DASubmitMetaData) error {
-	m.logger.Debug("trying to retrieve batch from DA", "daHeight", daMetaData.Height)
-	batchResp := m.fetchBatch(daMetaData)
+func (m *Manager) ApplyBatchFromSL(slBatch *settlement.Batch) error {
+	m.logger.Debug("trying to retrieve batch from DA", "daHeight", slBatch.MetaData.DA.Height)
+	batchResp := m.fetchBatch(slBatch.MetaData.DA)
 	if batchResp.Code != da.StatusSuccess {
 		return batchResp.Error
 	}
 
-	m.logger.Debug("retrieved batches", "n", len(batchResp.Batches), "daHeight", daMetaData.Height)
+	m.logger.Debug("retrieved batches", "n", len(batchResp.Batches), "daHeight", slBatch.MetaData.DA.Height)
 
 	m.retrieverMu.Lock()
 	defer m.retrieverMu.Unlock()
 
 	var lastAppliedHeight float64
+	blockIndex := 0
 	for _, batch := range batchResp.Batches {
 		for i, block := range batch.Blocks {
 			if block.Header.Height != m.State.NextHeight() {
 				continue
 			}
-
+			// We dont apply a block if not included in the block descriptor (adds support for ro)
+			if slBatch.BlockDescriptors[blockIndex].Height != block.Header.Height {
+				continue
+			}
 			// We dont validate because validateBlockBeforeApply already checks if the block is already applied, and we don't need to fail there.
-			err := m.applyBlockWithFraudHandling(block, batch.Commits[i], types.BlockMetaData{Source: types.DA, DAHeight: daMetaData.Height})
+			err := m.applyBlockWithFraudHandling(block, batch.Commits[i], types.BlockMetaData{Source: types.DA, DAHeight: slBatch.MetaData.DA.Height})
 			if err != nil {
 				return fmt.Errorf("apply block: height: %d: %w", block.Header.Height, err)
 			}
@@ -37,7 +42,7 @@ func (m *Manager) ApplyBatchFromSL(daMetaData *da.DASubmitMetaData) error {
 			lastAppliedHeight = float64(block.Header.Height)
 
 			m.blockCache.Delete(block.Header.Height)
-
+			blockIndex++
 		}
 	}
 	types.LastReceivedDAHeightGauge.Set(lastAppliedHeight)
