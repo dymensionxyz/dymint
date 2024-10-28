@@ -26,13 +26,15 @@ func (m *Manager) ApplyBatchFromSL(slBatch *settlement.Batch) error {
 	blockIndex := 0
 	for _, batch := range batchResp.Batches {
 		for i, block := range batch.Blocks {
-			if block.Header.Height != m.State.NextHeight() {
-				continue
-			}
 			// We dont apply a block if not included in the block descriptor (adds support for rollback)
 			if blockIndex >= len(slBatch.BlockDescriptors) {
 				break
 			}
+
+			if block.Header.Height != m.State.NextHeight() {
+				continue
+			}
+
 			// We dont validate because validateBlockBeforeApply already checks if the block is already applied, and we don't need to fail there.
 			err := m.applyBlockWithFraudHandling(block, batch.Commits[i], types.BlockMetaData{Source: types.DA, DAHeight: slBatch.MetaData.DA.Height})
 			if err != nil {
