@@ -176,12 +176,9 @@ func (v *SettlementValidator) ValidateDaBlocks(slBatch *settlement.ResultRetriev
 		isLastBlock := i == len(slBatch.BlockDescriptors)-1
 		if slBatch.NextSequencer != "" && isLastBlock {
 			nextSequencer := v.blockManager.State.Sequencers.GetByAddress(slBatch.NextSequencer)
-			var nextSequencerHash [32]byte
-			copy(nextSequencerHash[:], nextSequencer.MustHash())
-
 			if !bytes.Equal(nextSequencer.MustHash(), daBlocks[i].Header.NextSequencersHash[:]) {
 				return types.NewErrInvalidNextSequencersHashFraud(
-					nextSequencerHash,
+					[32]byte(nextSequencer.MustHash()),
 					daBlocks[i].Header.NextSequencersHash,
 				)
 			}
