@@ -29,7 +29,6 @@ message MsgUpdateWhitelistedRelayersResponse {}
 
 // ConsensusMsgUpsertSequencer is a consensus message to upsert the sequencer.
 message ConsensusMsgUpsertSequencer {
-    option (cosmos.msg.v1.signer) = "operator";
     // Operator is the bech32-encoded address of the actor sending the update
     string operator = 1;
     // ConsPubKey is a tendermint consensus pub key
