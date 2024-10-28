@@ -22,6 +22,7 @@ import (
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
 	"github.com/dymensionxyz/dymint/version"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -396,12 +397,16 @@ func TestRetrieveDaBatchesFailed(t *testing.T) {
 	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
 	manager.Retriever = manager.DAClient.(da.BatchRetriever)
 
-	daMetaData := &da.DASubmitMetaData{
-		Client: da.Mock,
-		Height: 1,
+	batch := &settlement.Batch{
+		MetaData: &settlement.BatchMetaData{
+			DA: &da.DASubmitMetaData{
+				Client: da.Mock,
+				Height: 1,
+			},
+		},
 	}
 
-	err = manager.ApplyBatchFromSL(daMetaData)
+	err = manager.ApplyBatchFromSL(batch)
 	t.Log(err)
 	assert.ErrorIs(t, err, da.ErrBlobNotFound)
 }
@@ -744,7 +749,19 @@ func TestDAFetch(t *testing.T) {
 				LastBlockAppHash: commitHash[:],
 			})
 
-			err := manager.ApplyBatchFromSL(c.daMetaData)
+			var bds []rollapp.BlockDescriptor
+			for _, block := range batch.Blocks {
+				bds = append(bds, rollapp.BlockDescriptor{
+					Height: block.Header.Height,
+				})
+			}
+			slBatch := &settlement.Batch{
+				MetaData: &settlement.BatchMetaData{
+					DA: c.daMetaData,
+				},
+				BlockDescriptors: bds,
+			}
+			err := manager.ApplyBatchFromSL(slBatch)
 			require.Equal(c.err, err)
 		})
 	}
@@ -816,8 +833,21 @@ func TestManager_ApplyBatchFromSL_FraudHandling(t *testing.T) {
 		LastBlockAppHash: commitHash[:],
 	})
 
+	var bds []rollapp.BlockDescriptor
+	for _, block := range batch.Blocks {
+		bds = append(bds, rollapp.BlockDescriptor{
+			Height: block.Header.Height,
+		})
+	}
+	slBatch := &settlement.Batch{
+		MetaData: &settlement.BatchMetaData{
+			DA: daResultSubmitBatch.SubmitMetaData,
+		},
+		BlockDescriptors: bds,
+	}
+
 	// Call ApplyBatchFromSL
-	err = manager.ApplyBatchFromSL(daResultSubmitBatch.SubmitMetaData)
+	err = manager.ApplyBatchFromSL(slBatch)
 
 	// Verify
 	require.True(errors.Is(err, gerrc.ErrFault))
