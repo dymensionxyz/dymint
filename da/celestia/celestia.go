@@ -270,18 +270,11 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 			var resultRetrieveBatch da.ResultRetrieveBatch
 			err := retry.Do(
 				func() error {
-					var result da.ResultRetrieveBatch
-					// Just for backward compatibility, in case no commitments are sent from the Hub, batch can be retrieved using previous implementation.
-					if daMetaData.Commitment == nil {
-						result = c.retrieveBatchesNoCommitment(daMetaData.Height)
-					} else {
-						result = c.retrieveBatches(daMetaData)
-					}
-					resultRetrieveBatch = result
+					resultRetrieveBatch = c.retrieveBatches(daMetaData)
 
-					if errors.Is(result.Error, da.ErrRetrieval) {
-						c.logger.Error("Retrieve batch.", "error", result.Error)
-						return result.Error
+					if errors.Is(resultRetrieveBatch.Error, da.ErrRetrieval) {
+						c.logger.Error("Retrieve batch.", "error", resultRetrieveBatch.Error)
+						return resultRetrieveBatch.Error
 					}
 
 					return nil
