@@ -17,7 +17,6 @@ import (
 	"github.com/tendermint/tendermint/libs/pubsub"
 
 	openrpc "github.com/celestiaorg/celestia-openrpc"
-	"github.com/celestiaorg/celestia-openrpc/types/share"
 
 	"github.com/dymensionxyz/dymint/da"
 	celtypes "github.com/dymensionxyz/dymint/da/celestia/types"
@@ -349,49 +348,6 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMet
 		BaseResult: da.BaseResult{
 			Code:    da.StatusSuccess,
 			Message: "Batch retrieval successful",
-		},
-		Batches: batches,
-	}
-}
-
-// RetrieveBatches gets a batch of blocks from DA layer.
-func (c *DataAvailabilityLayerClient) retrieveBatchesNoCommitment(dataLayerHeight uint64) da.ResultRetrieveBatch {
-	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
-	defer cancel()
-	blobs, err := c.rpc.GetAll(ctx, dataLayerHeight, []share.Namespace{c.config.NamespaceID.Bytes()})
-	if err != nil {
-		return da.ResultRetrieveBatch{
-			BaseResult: da.BaseResult{
-				Code:    da.StatusError,
-				Message: err.Error(),
-			},
-		}
-	}
-
-	var batches []*types.Batch
-	for i, blob := range blobs {
-		var batch pb.Batch
-		err = proto.Unmarshal(blob.Data, &batch)
-		if err != nil {
-			c.logger.Error("Unmarshal block.", "daHeight", dataLayerHeight, "position", i, "error", err)
-			continue
-		}
-		parsedBatch := new(types.Batch)
-		err := parsedBatch.FromProto(&batch)
-		if err != nil {
-			return da.ResultRetrieveBatch{
-				BaseResult: da.BaseResult{
-					Code:    da.StatusError,
-					Message: err.Error(),
-				},
-			}
-		}
-		batches = append(batches, parsedBatch)
-	}
-
-	return da.ResultRetrieveBatch{
-		BaseResult: da.BaseResult{
-			Code: da.StatusSuccess,
 		},
 		Batches: batches,
 	}
