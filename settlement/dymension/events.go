@@ -128,18 +128,10 @@ func convertToNewBatchEvent(rawEventData ctypes.ResultEvent) (*settlement.EventD
 	}
 	endHeight := uint64(startHeight + numBlocks - 1)
 
-	var nextProposer string
-	if events["state_update.next_proposer"] == nil {
-		nextProposer = ""
-	} else {
-		nextProposer = events["state_update.next_proposer"][0]
-	}
-
 	NewBatchEvent := &settlement.EventDataNewBatch{
-		StartHeight:         uint64(startHeight),
-		EndHeight:           endHeight,
-		StateIndex:          uint64(stateIndex),
-		NextProposerAddress: nextProposer,
+		StartHeight: uint64(startHeight),
+		EndHeight:   endHeight,
+		StateIndex:  uint64(stateIndex),
 	}
 	return NewBatchEvent, nil
 }
