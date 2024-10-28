@@ -204,6 +204,7 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 
 // TestApplyCachedBlocks checks the flow that happens when we are receiving blocks from p2p and some of the blocks
 // are already cached. This means blocks that were gossiped but are bigger than the expected next block height.
+// TODO: this test is flaky! https://github.com/dymensionxyz/dymint/issues/1173
 func TestApplyCachedBlocks_WithFraudCheck(t *testing.T) {
 	// Init app
 	app := testutil.GetAppMock(testutil.EndBlock)
@@ -464,8 +465,8 @@ func TestProducePendingBlock(t *testing.T) {
 	require.NoError(t, err)
 	// Generate block and commit and save it to the store
 	block := testutil.GetRandomBlock(1, 3)
-	copy(block.Header.SequencerHash[:], manager.State.Sequencers.ProposerHash())
-	copy(block.Header.NextSequencersHash[:], manager.State.Sequencers.ProposerHash())
+	copy(block.Header.SequencerHash[:], manager.State.GetProposerHash())
+	copy(block.Header.NextSequencersHash[:], manager.State.GetProposerHash())
 
 	_, err = manager.Store.SaveBlock(block, &block.LastCommit, nil)
 	require.NoError(t, err)

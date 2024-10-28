@@ -7,8 +7,6 @@ import (
 
 	"github.com/ipfs/go-cid"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
-	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
-	tmtypes "github.com/tendermint/tendermint/types"
 	"go.uber.org/multierr"
 
 	"github.com/dymensionxyz/dymint/types"
@@ -21,7 +19,7 @@ var (
 	commitPrefix          = [1]byte{3}
 	statePrefix           = [1]byte{4}
 	responsesPrefix       = [1]byte{5}
-	sequencersPrefix      = [1]byte{6}
+	proposerPrefix        = [1]byte{6}
 	cidPrefix             = [1]byte{7}
 	sourcePrefix          = [1]byte{8}
 	validatedHeightPrefix = [1]byte{9}
@@ -119,7 +117,7 @@ func (s *DefaultStore) LoadBlockByHash(hash [32]byte) (*types.Block, error) {
 	return block, nil
 }
 
-// SaveBlockValidation saves block validation in Store.
+// SaveBlockSource saves block validation in Store.
 func (s *DefaultStore) SaveBlockSource(height uint64, source types.BlockSource, batch KVBatch) (KVBatch, error) {
 	b := make([]byte, 8)
 	binary.LittleEndian.PutUint64(b, uint64(source))
@@ -130,7 +128,7 @@ func (s *DefaultStore) SaveBlockSource(height uint64, source types.BlockSource, 
 	return batch, err
 }
 
-// LoadBlockValidation returns block validation in Store.
+// LoadBlockSource returns block validation in Store.
 func (s *DefaultStore) LoadBlockSource(height uint64) (types.BlockSource, error) {
 	source, err := s.db.Get(getSourceKey(height))
 	if err != nil {
@@ -229,61 +227,42 @@ func (s *DefaultStore) LoadState() (*types.State, error) {
 	return &state, nil
 }
 
-// SaveSequencers stores sequencerSet for given block height in store.
-func (s *DefaultStore) SaveSequencers(height uint64, sequencerSet *types.SequencerSet, batch KVBatch) (KVBatch, error) {
-	pbValSet, err := sequencerSet.ToProto()
+// SaveProposer stores the proposer for given block height in store.
+func (s *DefaultStore) SaveProposer(height uint64, proposer types.Sequencer, batch KVBatch) (KVBatch, error) {
+	pbProposer, err := proposer.ToProto()
 	if err != nil {
-		return batch, fmt.Errorf("marshal sequencerSet to protobuf: %w", err)
+		return batch, fmt.Errorf("marshal proposer to protobuf: %w", err)
 	}
-	blob, err := pbValSet.Marshal()
+	blob, err := pbProposer.Marshal()
 	if err != nil {
-		return batch, fmt.Errorf("marshal sequencerSet: %w", err)
+		return batch, fmt.Errorf("marshal proposer: %w", err)
 	}
 
 	if batch == nil {
-		return nil, s.db.Set(getSequencersKey(height), blob)
+		return nil, s.db.Set(getProposerKey(height), blob)
 	}
-	err = batch.Set(getSequencersKey(height), blob)
+	err = batch.Set(getProposerKey(height), blob)
 	return batch, err
 }
 
-// LoadSequencers loads sequencer set at given block height from store.
-func (s *DefaultStore) LoadSequencers(height uint64) (*types.SequencerSet, error) {
-	blob, err := s.db.Get(getSequencersKey(height))
+// LoadProposer loads proposer at given block height from store.
+func (s *DefaultStore) LoadProposer(height uint64) (types.Sequencer, error) {
+	blob, err := s.db.Get(getProposerKey(height))
 	if err != nil {
-		return nil, fmt.Errorf("load sequencers for height %v: %w", height, err)
-	}
-	var pbValSet pb.SequencerSet
-	err = pbValSet.Unmarshal(blob)
-	if err != nil {
-		// migration support: try to unmarshal as old ValidatorSet
-		return parseAsValidatorSet(blob)
+		return types.Sequencer{}, fmt.Errorf("load proposer for height %v: %w", height, err)
 	}
 
-	var ss types.SequencerSet
-	err = ss.FromProto(pbValSet)
+	pbProposer := new(pb.Sequencer)
+	err = pbProposer.Unmarshal(blob)
 	if err != nil {
-		return nil, fmt.Errorf("unmarshal from proto: %w", err)
+		return types.Sequencer{}, fmt.Errorf("parsing blob as proposer: %w", err)
+	}
+	proposer, err := types.SequencerFromProto(pbProposer)
+	if err != nil {
+		return types.Sequencer{}, fmt.Errorf("unmarshal proposer from proto: %w", err)
 	}
 
-	return &ss, nil
-}
-
-func parseAsValidatorSet(blob []byte) (*types.SequencerSet, error) {
-	var (
-		ss          types.SequencerSet
-		pbValSetOld tmproto.ValidatorSet
-	)
-	err := pbValSetOld.Unmarshal(blob)
-	if err != nil {
-		return nil, fmt.Errorf("unmarshal protobuf: %w", err)
-	}
-	pbValSet, err := tmtypes.ValidatorSetFromProto(&pbValSetOld)
-	if err != nil {
-		return nil, fmt.Errorf("unmarshal to ValidatorSet: %w", err)
-	}
-	ss.LoadFromValSet(pbValSet)
-	return &ss, nil
+	return *proposer, nil
 }
 
 func (s *DefaultStore) loadHashFromIndex(height uint64) ([32]byte, error) {
@@ -379,12 +358,6 @@ func getResponsesKey(height uint64) []byte {
 	return append(responsesPrefix[:], buf[:]...)
 }
 
-func getSequencersKey(height uint64) []byte {
-	buf := make([]byte, 8)
-	binary.BigEndian.PutUint64(buf, height)
-	return append(sequencersPrefix[:], buf[:]...)
-}
-
 func getCidKey(height uint64) []byte {
 	buf := make([]byte, 8)
 	binary.BigEndian.PutUint64(buf, height)
@@ -405,4 +378,10 @@ func getDRSVersionKey(height uint64) []byte {
 	buf := make([]byte, 8)
 	binary.BigEndian.PutUint64(buf, height)
 	return append(drsVersionPrefix[:], buf[:]...)
+}
+
+func getProposerKey(height uint64) []byte {
+	buf := make([]byte, 8)
+	binary.BigEndian.PutUint64(buf, height)
+	return append(proposerPrefix[:], buf[:]...)
 }

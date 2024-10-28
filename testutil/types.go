@@ -5,9 +5,7 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/dymensionxyz/dymint/types"
-	"github.com/dymensionxyz/dymint/types/pb/dymint"
-	dymintversion "github.com/dymensionxyz/dymint/version"
+	"github.com/cosmos/cosmos-sdk/types/bech32"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmcrypto "github.com/tendermint/tendermint/crypto"
@@ -16,6 +14,10 @@ import (
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	version "github.com/tendermint/tendermint/proto/tendermint/version"
 	tmtypes "github.com/tendermint/tendermint/types"
+
+	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/dymint/types/pb/dymint"
+	dymintversion "github.com/dymensionxyz/dymint/version"
 )
 
 const (
@@ -23,6 +25,8 @@ const (
 	BlockVersion = 1
 	// AppVersion is the default app version for testing
 	AppVersion = 2
+
+	SettlementAccountPrefix = "dym"
 )
 
 func createRandomHashes() [][32]byte {
@@ -48,6 +52,15 @@ func GetRandomBytes(n uint64) []byte {
 	data := make([]byte, n)
 	_, _ = rand.Read(data)
 	return data
+}
+
+func GenerateSettlementAddress() string {
+	addrBytes := ed25519.GenPrivKey().PubKey().Address().Bytes()
+	addr, err := bech32.ConvertAndEncode(SettlementAccountPrefix, addrBytes)
+	if err != nil {
+		panic(err)
+	}
+	return addr
 }
 
 // generateBlock generates random blocks.
@@ -239,6 +252,13 @@ func GenerateRandomValidatorSet() *tmtypes.ValidatorSet {
 	})
 }
 
+func GenerateSequencer() types.Sequencer {
+	return *types.NewSequencer(
+		tmtypes.NewValidator(ed25519.GenPrivKey().PubKey(), 1).PubKey,
+		GenerateSettlementAddress(),
+	)
+}
+
 // GenerateStateWithSequencer generates an initial state for testing.
 func GenerateStateWithSequencer(initialHeight int64, lastBlockHeight int64, pubkey tmcrypto.PubKey) *types.State {
 	s := &types.State{
@@ -264,7 +284,7 @@ func GenerateStateWithSequencer(initialHeight int64, lastBlockHeight int64, pubk
 			},
 		},
 	}
-	s.Sequencers.SetProposer(types.NewSequencer(pubkey, ""))
+	s.SetProposer(types.NewSequencer(pubkey, ""))
 	s.SetHeight(uint64(lastBlockHeight))
 	return s
 }

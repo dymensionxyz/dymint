@@ -6,9 +6,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/tendermint/tendermint/libs/pubsub"
+
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
-	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
 func (m *Manager) MonitorSequencerRotation(ctx context.Context, rotateC chan string) error {
@@ -66,7 +67,7 @@ func (m *Manager) IsProposer() bool {
 
 	// check if recovering from halt
 	if l2Proposer == nil && hubProposer != nil {
-		m.State.Sequencers.SetProposer(hubProposer)
+		m.State.SetProposer(hubProposer)
 	}
 
 	// we run sequencer flow if we're proposer on L2 or hub (can be different during rotation phase, before hub receives the last state update)
@@ -113,8 +114,8 @@ func (m *Manager) CompleteRotation(ctx context.Context, nextSeqAddr string) erro
 	// validate nextSeq is in the bonded set
 	var nextSeqHash [32]byte
 	if nextSeqAddr != "" {
-		seq := m.State.Sequencers.GetByAddress(nextSeqAddr)
-		if seq == nil {
+		seq, found := m.Sequencers.GetByAddress(nextSeqAddr)
+		if !found {
 			return types.ErrMissingProposerPubKey
 		}
 		copy(nextSeqHash[:], seq.MustHash())
@@ -170,18 +171,18 @@ func (m *Manager) UpdateSequencerSetFromSL() error {
 	if err != nil {
 		return err
 	}
-	m.State.Sequencers.SetSequencers(seqs)
-	m.logger.Debug("Updated bonded sequencer set.", "newSet", m.State.Sequencers.String())
+	m.Sequencers.SetSequencers(seqs)
+	m.logger.Debug("Updated bonded sequencer set.", "newSet", m.Sequencers.String())
 	return nil
 }
 
 // UpdateProposer updates the proposer from the hub
 func (m *Manager) UpdateProposer() error {
-	m.State.Sequencers.SetProposer(m.SLClient.GetProposer())
+	m.State.SetProposer(m.SLClient.GetProposer())
 	return nil
 }
 
-// UpdateLastSubmittedHeight will update last height submitted height upon events.
+// UpdateSequencerSet will update last height submitted height upon events.
 // This may be necessary in case we crashed/restarted before getting response for our submission to the settlement layer.
 func (m *Manager) UpdateSequencerSet(event pubsub.Message) {
 	eventData, ok := event.Data().(*settlement.EventDataNewBondedSequencer)
@@ -190,7 +191,7 @@ func (m *Manager) UpdateSequencerSet(event pubsub.Message) {
 		return
 	}
 
-	if m.State.Sequencers.GetByAddress(eventData.SeqAddr) != nil {
+	if _, found := m.Sequencers.GetByAddress(eventData.SeqAddr); found {
 		m.logger.Debug("Sequencer not added from new bonded sequencer event because already in the list.")
 		return
 	}
@@ -200,6 +201,6 @@ func (m *Manager) UpdateSequencerSet(event pubsub.Message) {
 		m.logger.Error("Unable to add new sequencer from event. err:%w", err)
 		return
 	}
-	sequencers := append(m.State.Sequencers.Sequencers, newSequencer)
-	m.State.Sequencers.SetSequencers(sequencers)
+
+	m.Sequencers.AppendSequencer(newSequencer)
 }

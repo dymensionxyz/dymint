@@ -3,11 +3,12 @@ package store
 import (
 	"fmt"
 
-	"github.com/dymensionxyz/dymint/types"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
+
+	"github.com/dymensionxyz/dymint/types"
 )
 
-// PruneStore removes blocks up to (but not including) a height. It returns number of blocks pruned.
+// PruneStore removes store items up to (but not including) a height. It returns number of blocks pruned.
 func (s *DefaultStore) PruneStore(from, to uint64, logger types.Logger) (uint64, error) {
 	if from <= 0 {
 		return 0, fmt.Errorf("from height must be greater than 0: %w", gerrc.ErrInvalidArgument)
@@ -27,11 +28,6 @@ func (s *DefaultStore) PruneStore(from, to uint64, logger types.Logger) (uint64,
 		logger.Error("pruning responses", "from", from, "to", to, "responses pruned", prunedResponses, "err", err)
 	}
 
-	prunedSequencers, err := s.pruneSequencers(from, to, logger)
-	if err != nil {
-		logger.Error("pruning sequencers", "from", from, "to", to, "sequencers pruned", prunedSequencers, "err", err)
-	}
-
 	prunedCids, err := s.pruneCids(from, to, logger)
 	if err != nil {
 		logger.Error("pruning block sync identifiers", "from", from, "to", to, "cids pruned", prunedCids, "err", err)
@@ -40,6 +36,11 @@ func (s *DefaultStore) PruneStore(from, to uint64, logger types.Logger) (uint64,
 	prunedDRS, err := s.pruneDRSVersion(from, to, logger)
 	if err != nil {
 		logger.Error("pruning drs version", "from", from, "to", to, "drs pruned", prunedDRS, "err", err)
+	}
+
+	prunedProposers, err := s.pruneProposers(from, to, logger)
+	if err != nil {
+		logger.Error("pruning block sync identifiers", "from", from, "to", to, "proposers pruned", prunedProposers, "err", err)
 	}
 
 	return prunedBlocks, nil
@@ -76,15 +77,6 @@ func (s *DefaultStore) pruneResponses(from, to uint64, logger types.Logger) (uin
 
 	prunedResponses, err := s.pruneHeights(from, to, pruneResponses, logger)
 	return prunedResponses, err
-}
-
-// pruneSequencers prunes sequencers from store
-func (s *DefaultStore) pruneSequencers(from, to uint64, logger types.Logger) (uint64, error) {
-	pruneSequencers := func(batch KVBatch, height uint64) error {
-		return batch.Delete(getSequencersKey(height))
-	}
-	prunedSequencers, err := s.pruneHeights(from, to, pruneSequencers, logger)
-	return prunedSequencers, err
 }
 
 // pruneCids prunes content identifiers from store
@@ -145,4 +137,13 @@ func (s *DefaultStore) pruneHeights(from, to uint64, prune func(batch KVBatch, h
 	}
 
 	return pruned, nil
+}
+
+// pruneSequencers prunes proposer from store
+func (s *DefaultStore) pruneProposers(from, to uint64, logger types.Logger) (uint64, error) {
+	pruneProposers := func(batch KVBatch, height uint64) error {
+		return batch.Delete(getProposerKey(height))
+	}
+	prunedSequencers, err := s.pruneHeights(from, to, pruneProposers, logger)
+	return prunedSequencers, err
 }

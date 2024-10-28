@@ -90,7 +90,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 			m.logger.Error("save block blocksync", "err", err)
 		}
 
-		responses, err := m.Executor.ExecuteBlock(m.State, block)
+		responses, err := m.Executor.ExecuteBlock(block)
 		if err != nil {
 			return fmt.Errorf("execute block: %w", err)
 		}
@@ -133,14 +133,16 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		m.Executor.UpdateStateAfterCommit(m.State, responses, appHash, block.Header.Height, block.Header.Hash())
 	}
 
-	// check if the proposer needs to be changed
-	switchRole := m.Executor.UpdateProposerFromBlock(m.State, block)
+	// save the proposer to store to be queried over RPC
+	proposer := m.State.GetProposer()
+	if proposer == nil {
+		return fmt.Errorf("logic error: got nil proposer while applying block")
+	}
 
-	// save sequencers to store to be queried over RPC
 	batch := m.Store.NewBatch()
-	batch, err = m.Store.SaveSequencers(block.Header.Height, &m.State.Sequencers, batch)
+	batch, err = m.Store.SaveProposer(block.Header.Height, *proposer, batch)
 	if err != nil {
-		return fmt.Errorf("save sequencers: %w", err)
+		return fmt.Errorf("save proposer: %w", err)
 	}
 
 	batch, err = m.Store.SaveState(m.State, batch)
@@ -156,6 +158,9 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	types.RollappHeightGauge.Set(float64(block.Header.Height))
 
 	m.blockCache.Delete(block.Header.Height)
+
+	// check if the proposer needs to be changed and change it if that's the case
+	switchRole := m.Executor.UpdateProposerFromBlock(m.State, m.Sequencers, block)
 
 	if switchRole {
 		// TODO: graceful role change (https://github.com/dymensionxyz/dymint/issues/1008)

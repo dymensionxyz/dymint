@@ -7,16 +7,14 @@ import (
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/ipfs/go-cid"
 	mh "github.com/multiformats/go-multihash"
-
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	abcitypes "github.com/tendermint/tendermint/abci/types"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 
 	"github.com/dymensionxyz/dymint/store"
-
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestStoreLoad(t *testing.T) {
@@ -92,13 +90,10 @@ func TestLoadState(t *testing.T) {
 
 	assert := assert.New(t)
 
-	validatorSet := testutil.GenerateRandomValidatorSet()
-
 	kv := store.NewDefaultInMemoryKVStore()
 	s1 := store.New(kv)
 	expectedHeight := uint64(10)
 	s := &types.State{}
-	s.Sequencers.LoadFromValSet(validatorSet)
 
 	s.SetHeight(expectedHeight)
 	_, err := s1.SaveState(s, nil)
@@ -248,4 +243,48 @@ func TestBlockId(t *testing.T) {
 	resultCid, err = s.LoadBlockCid(2)
 	require.NoError(err)
 	require.Equal(expectedCid, resultCid)
+}
+
+func TestProposer(t *testing.T) {
+	t.Parallel()
+
+	expected := testutil.GenerateSequencer()
+
+	t.Run("happy path", func(t *testing.T) {
+		t.Parallel()
+
+		s := store.New(store.NewDefaultInMemoryKVStore())
+
+		_, err := s.SaveProposer(1, expected, nil)
+		require.NoError(t, err)
+
+		resp, err := s.LoadProposer(1)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Equal(t, expected, resp)
+	})
+
+	t.Run("proposer not found", func(t *testing.T) {
+		t.Parallel()
+
+		s := store.New(store.NewDefaultInMemoryKVStore())
+
+		_, err := s.SaveProposer(2, expected, nil)
+		require.NoError(t, err)
+
+		_, err = s.LoadProposer(2000)
+		require.Error(t, err)
+	})
+
+	t.Run("empty proposer is invalid", func(t *testing.T) {
+		t.Parallel()
+
+		s := store.New(store.NewDefaultInMemoryKVStore())
+
+		_, err := s.SaveProposer(3, types.Sequencer{}, nil)
+		require.Error(t, err)
+
+		_, err = s.LoadProposer(3)
+		require.Error(t, err)
+	})
 }

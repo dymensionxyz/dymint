@@ -1,6 +1,8 @@
 syntax = "proto3";
 package dymint;
 option go_package = "github.com/dymensionxyz/dymint/types/pb/dymint";
+
+import "gogoproto/gogo.proto";
 import "types/tendermint/abci/types.proto";
 import "types/tendermint/types/types.proto";
 import "types/tendermint/types/validator.proto";
@@ -94,12 +96,7 @@ message Batch {
 
 message Sequencer {
 	string settlement_address = 1;
-	tendermint.types.Validator validator = 2;
-}
-
-message SequencerSet {
-	repeated Sequencer sequencers = 1;
-	Sequencer proposer = 2;
+	tendermint.types.Validator validator = 2 [(gogoproto.nullable) = false];
 }
 
 message EventKeys {
