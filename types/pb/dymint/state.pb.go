@@ -47,7 +47,7 @@ type State struct {
 	BaseHeight                       uint64                `protobuf:"varint,17,opt,name=base_height,json=baseHeight,proto3" json:"base_height,omitempty"`
 	RollappParams                    RollappParams         `protobuf:"bytes,18,opt,name=rollapp_params,json=rollappParams,proto3" json:"rollapp_params"`
 	LastHeaderHash                   []byte                `protobuf:"bytes,19,opt,name=last_header_hash,json=lastHeaderHash,proto3" json:"last_header_hash,omitempty"`
-	// Proposer is a sequencer that acts as a proposer
+	// Proposer is a sequencer that acts as a proposer. Can be nil if no proposer is set.
 	Proposer *Sequencer `protobuf:"bytes,20,opt,name=proposer,proto3" json:"proposer,omitempty"`
 }
 

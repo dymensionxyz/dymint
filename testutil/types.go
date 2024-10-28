@@ -242,8 +242,8 @@ func GenerateRandomValidatorSet() *tmtypes.ValidatorSet {
 	})
 }
 
-func GenerateSequencer() *types.Sequencer {
-	return types.NewSequencer(
+func GenerateSequencer() types.Sequencer {
+	return *types.NewSequencer(
 		tmtypes.NewValidator(ed25519.GenPrivKey().PubKey(), 1).PubKey,
 		GenerateSettlementAddress(),
 	)

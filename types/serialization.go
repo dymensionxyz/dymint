@@ -291,7 +291,7 @@ func (s *State) FromProto(other *pb.State) error {
 		}
 		s.SetProposer(proposer)
 	} else {
-		// proposer may be nil
+		// proposer may be nil in the state
 		s.SetProposer(nil)
 	}
 
@@ -314,7 +314,7 @@ func (s *Sequencer) ToProto() (*pb.Sequencer, error) {
 	}
 	return &pb.Sequencer{
 		SettlementAddress: s.SettlementAddress,
-		Validator:         protoVal,
+		Validator:         *protoVal,
 	}, nil
 }
 
@@ -323,7 +323,7 @@ func SequencerFromProto(seq *pb.Sequencer) (*Sequencer, error) {
 	if seq == nil {
 		return nil, fmt.Errorf("nil sequencer")
 	}
-	val, err := types.ValidatorFromProto(seq.Validator)
+	val, err := types.ValidatorFromProto(&seq.Validator)
 	if err != nil {
 		return nil, fmt.Errorf("tendermint validator from proto: %w", err)
 	}

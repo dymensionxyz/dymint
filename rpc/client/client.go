@@ -523,19 +523,14 @@ func (c *Client) Validators(ctx context.Context, heightPtr *int64, pagePtr, perP
 
 	proposer, err := c.node.Store.LoadProposer(height)
 	if err != nil {
-		return nil, fmt.Errorf("load validators for height %d: %w", height, err)
-	}
-
-	var validators []*tmtypes.Validator
-	if proposer != nil {
-		validators = proposer.TMValidators()
+		return nil, fmt.Errorf("load validators: height %d: %w", height, err)
 	}
 
 	return &ctypes.ResultValidators{
 		BlockHeight: int64(height),
-		Validators:  validators,
-		Count:       len(validators),
-		Total:       len(validators),
+		Validators:  proposer.TMValidators(),
+		Count:       1,
+		Total:       1,
 	}, nil
 }
 
@@ -719,9 +714,6 @@ func (c *Client) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
 	proposer, err := c.node.Store.LoadProposer(latest.Header.Height)
 	if err != nil {
 		return nil, fmt.Errorf("fetch the validator info at latest block: %w", err)
-	}
-	if proposer == nil {
-		return nil, fmt.Errorf("load proposer: height %d: proposer %s", latest.Header.Height, string(latest.Header.ProposerAddress))
 	}
 	state, err := c.node.Store.LoadState()
 	if err != nil {

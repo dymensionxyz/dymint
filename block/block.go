@@ -135,7 +135,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	}
 
 	batch := m.Store.NewBatch()
-	batch, err = m.Store.SaveProposer(block.Header.Height, proposer, batch)
+	batch, err = m.Store.SaveProposer(block.Header.Height, *proposer, batch)
 	if err != nil {
 		return fmt.Errorf("save proposer: %w", err)
 	}

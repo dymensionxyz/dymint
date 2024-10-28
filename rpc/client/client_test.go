@@ -447,7 +447,7 @@ func TestValidatorSetHashConsistency(t *testing.T) {
 	require.NoError(err)
 
 	batch := node.Store.NewBatch()
-	batch, err = node.Store.SaveProposer(b.Header.Height, node.BlockManager.State.GetProposer(), batch)
+	batch, err = node.Store.SaveProposer(b.Header.Height, *node.BlockManager.State.GetProposer(), batch)
 	require.NoError(err)
 	err = batch.Commit()
 	require.NoError(err)

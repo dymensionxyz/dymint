@@ -68,9 +68,9 @@ type Store interface {
 	// LoadState returns last state saved with UpdateState.
 	LoadState() (*types.State, error)
 
-	SaveProposer(height uint64, proposer *types.Sequencer, batch KVBatch) (KVBatch, error)
+	SaveProposer(height uint64, proposer types.Sequencer, batch KVBatch) (KVBatch, error)
 
-	LoadProposer(height uint64) (*types.Sequencer, error)
+	LoadProposer(height uint64) (types.Sequencer, error)
 
 	PruneStore(from, to uint64, logger types.Logger) (uint64, error)
 

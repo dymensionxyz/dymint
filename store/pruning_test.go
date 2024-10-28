@@ -84,7 +84,7 @@ func TestStorePruning(t *testing.T) {
 
 				// generate and store sequencers randomly for block heights
 				if randBool() {
-					_, err = bstore.SaveProposer(block.Header.Height, nil, nil)
+					_, err = bstore.SaveProposer(block.Header.Height, testutil.GenerateSequencer(), nil)
 					savedSeqHeights[block.Header.Height] = true
 					assert.NoError(err)
 				}

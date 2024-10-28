@@ -227,53 +227,41 @@ func (s *DefaultStore) LoadState() (*types.State, error) {
 }
 
 // SaveProposer stores the proposer for given block height in store.
-func (s *DefaultStore) SaveProposer(height uint64, proposer *types.Sequencer, batch KVBatch) (KVBatch, error) {
-	blob := make([]byte, 0)
-
-	// nil proposer is a valid case.
-	// in that case, blob is empty.
-	if proposer != nil {
-		pbProposer, err := proposer.ToProto()
-		if err != nil {
-			return batch, fmt.Errorf("marshal proposer to protobuf: %w", err)
-		}
-		blob, err = pbProposer.Marshal()
-		if err != nil {
-			return batch, fmt.Errorf("marshal proposer: %w", err)
-		}
+func (s *DefaultStore) SaveProposer(height uint64, proposer types.Sequencer, batch KVBatch) (KVBatch, error) {
+	pbProposer, err := proposer.ToProto()
+	if err != nil {
+		return batch, fmt.Errorf("marshal proposer to protobuf: %w", err)
+	}
+	blob, err := pbProposer.Marshal()
+	if err != nil {
+		return batch, fmt.Errorf("marshal proposer: %w", err)
 	}
 
 	if batch == nil {
 		return nil, s.db.Set(getProposerKey(height), blob)
 	}
-	err := batch.Set(getProposerKey(height), blob)
+	err = batch.Set(getProposerKey(height), blob)
 	return batch, err
 }
 
-// LoadProposer loads proposer at given block height from store. Nil sequencer is a valid return value.
-func (s *DefaultStore) LoadProposer(height uint64) (*types.Sequencer, error) {
+// LoadProposer loads proposer at given block height from store.
+func (s *DefaultStore) LoadProposer(height uint64) (types.Sequencer, error) {
 	blob, err := s.db.Get(getProposerKey(height))
 	if err != nil {
-		return nil, fmt.Errorf("load proposer for height %v: %w", height, err)
-	}
-
-	// nil proposer is a valid case.
-	// in that case, blob is empty.
-	if len(blob) == 0 {
-		return nil, nil
+		return types.Sequencer{}, fmt.Errorf("load proposer for height %v: %w", height, err)
 	}
 
 	pbProposer := new(pb.Sequencer)
 	err = pbProposer.Unmarshal(blob)
 	if err != nil {
-		return nil, fmt.Errorf("parsing blob as proposer: %w", err)
+		return types.Sequencer{}, fmt.Errorf("parsing blob as proposer: %w", err)
 	}
 	proposer, err := types.SequencerFromProto(pbProposer)
 	if err != nil {
-		return nil, fmt.Errorf("unmarshal proposer from proto: %w", err)
+		return types.Sequencer{}, fmt.Errorf("unmarshal proposer from proto: %w", err)
 	}
 
-	return proposer, nil
+	return *proposer, nil
 }
 
 func (s *DefaultStore) loadHashFromIndex(height uint64) ([32]byte, error) {
