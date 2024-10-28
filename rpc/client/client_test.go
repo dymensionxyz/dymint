@@ -823,8 +823,19 @@ func TestValidatorSetHandling(t *testing.T) {
 	// dummy pubkey, we don't care about the actual key
 	pbValKey, err := encoding.PubKeyToProto(vKeys[0].PubKey())
 	require.NoError(err)
-	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{ValidatorUpdates: []abci.ValidatorUpdate{{PubKey: pbValKey, Power: 100}}})
-
+	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
+		RollappParamUpdates: &abci.RollappParams{
+			Da:      "mock",
+			Version: version.Commit,
+		},
+		ConsensusParamUpdates: &abci.ConsensusParams{
+			Block: &abci.BlockParams{
+				MaxGas:   100,
+				MaxBytes: 100,
+			},
+		},
+		ValidatorUpdates: []abci.ValidatorUpdate{{PubKey: pbValKey, Power: 100}},
+	})
 	waitCh := make(chan interface{})
 
 	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{}).Times(5)
