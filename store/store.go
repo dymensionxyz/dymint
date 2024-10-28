@@ -338,34 +338,22 @@ func (s *DefaultStore) LoadValidationHeight() (uint64, error) {
 	return binary.LittleEndian.Uint64(b), nil
 }
 
-func (s *DefaultStore) SaveDRSVersionHistory(drs *types.DRSVersionHistory, batch KVBatch) (KVBatch, error) {
-	pbDRS := drs.ToProto()
-	data, err := pbDRS.Marshal()
+func (s *DefaultStore) LoadDRSVersion(height uint64) (string, error) {
+
+	versionBytes, err := s.db.Get(getDRSVersionKey(height))
 	if err != nil {
-		return batch, err
+		return "", fmt.Errorf("load drs version for height %v: %w", height, err)
 	}
-	if batch == nil {
-		return nil, s.db.Set(getDRSVersionKey(), data)
-	}
-	err = batch.Set(getDRSVersionKey(), data)
-	return batch, err
+	return string(versionBytes), nil
 }
+func (s *DefaultStore) SaveDRSVersion(height uint64, version string, batch KVBatch) (KVBatch, error) {
 
-func (s *DefaultStore) LoadDRSVersionHistory() (*types.DRSVersionHistory, error) {
-	blob, err := s.db.Get(getDRSVersionKey())
-	if err != nil {
-		return nil, err
+	versionBytes := []byte(version)
+	if batch == nil {
+		return nil, s.db.Set(getDRSVersionKey(height), versionBytes)
 	}
-	var pbDRSVersion pb.DRS
-	err = pbDRSVersion.Unmarshal(blob)
-	if err != nil {
-		return nil, fmt.Errorf("unmarshal state from store: %w", err)
-	}
-
-	var drsVersion types.DRSVersionHistory
-	drsVersion.FromProto(&pbDRSVersion)
-
-	return &drsVersion, nil
+	err := batch.Set(getDRSVersionKey(height), versionBytes)
+	return batch, err
 }
 
 func getBlockKey(hash [32]byte) []byte {
@@ -414,6 +402,8 @@ func getValidatedHeightKey() []byte {
 	return validatedHeightPrefix[:]
 }
 
-func getDRSVersionKey() []byte {
-	return drsVersionPrefix[:]
+func getDRSVersionKey(height uint64) []byte {
+	buf := make([]byte, 8)
+	binary.BigEndian.PutUint64(buf, height)
+	return append(drsVersionPrefix[:], buf[:]...)
 }

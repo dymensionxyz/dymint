@@ -201,7 +201,7 @@ func (m *Manager) CreateBatch(maxBatchSize uint64, startHeight uint64, endHeight
 			return nil, fmt.Errorf("load commit: h: %d: %w", h, err)
 		}
 
-		drsVersion, err := m.DRSVersionHistory.GetDRSVersion(block.Header.Height)
+		drsVersion, err := m.Store.LoadDRSVersion(block.Header.Height)
 		if err != nil {
 			return nil, fmt.Errorf("load drs version: h: %d: %w", h, err)
 		}
@@ -243,13 +243,6 @@ func (m *Manager) SubmitBatch(batch *types.Batch) error {
 
 	types.RollappHubHeightGauge.Set(float64(batch.EndHeight()))
 	m.LastSettlementHeight.Store(batch.EndHeight())
-
-	// clear drs history for submitted heights
-	m.DRSVersionHistory.ClearDRSVersionHeights(batch.EndHeight())
-	_, err = m.Store.SaveDRSVersionHistory(m.DRSVersionHistory, nil)
-	if err != nil {
-		m.logger.Error("save drs history", "error", err)
-	}
 
 	return nil
 }

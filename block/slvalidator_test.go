@@ -174,7 +174,7 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 			}
 
 			for _, bd := range bds {
-				manager.DRSVersionHistory.AddDRSVersion(bd.Height, bd.DrsVersion)
+				manager.Store.SaveDRSVersion(bd.Height, bd.DrsVersion, nil)
 			}
 
 			// set fraud data
@@ -335,7 +335,7 @@ func TestStateUpdateValidator_ValidateDAFraud(t *testing.T) {
 			slBatch := getSLBatch(bds, daResultSubmitBatch.SubmitMetaData, 1, 10)
 
 			for _, bd := range bds {
-				manager.DRSVersionHistory.AddDRSVersion(bd.Height, bd.DrsVersion)
+				manager.Store.SaveDRSVersion(bd.Height, bd.DrsVersion, nil)
 			}
 
 			// Validate state

@@ -473,63 +473,6 @@ func (_c *MockStore_LoadCommitByHash_Call) RunAndReturn(run func([32]byte) (*typ
 	return _c
 }
 
-// LoadDRSVersionHistory provides a mock function with given fields:
-func (_m *MockStore) LoadDRSVersionHistory() (*types.DRSVersionHistory, error) {
-	ret := _m.Called()
-
-	if len(ret) == 0 {
-		panic("no return value specified for LoadDRSVersionHistory")
-	}
-
-	var r0 *types.DRSVersionHistory
-	var r1 error
-	if rf, ok := ret.Get(0).(func() (*types.DRSVersionHistory, error)); ok {
-		return rf()
-	}
-	if rf, ok := ret.Get(0).(func() *types.DRSVersionHistory); ok {
-		r0 = rf()
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*types.DRSVersionHistory)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func() error); ok {
-		r1 = rf()
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockStore_LoadDRSVersionHistory_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'LoadDRSVersionHistory'
-type MockStore_LoadDRSVersionHistory_Call struct {
-	*mock.Call
-}
-
-// LoadDRSVersionHistory is a helper method to define mock.On call
-func (_e *MockStore_Expecter) LoadDRSVersionHistory() *MockStore_LoadDRSVersionHistory_Call {
-	return &MockStore_LoadDRSVersionHistory_Call{Call: _e.mock.On("LoadDRSVersionHistory")}
-}
-
-func (_c *MockStore_LoadDRSVersionHistory_Call) Run(run func()) *MockStore_LoadDRSVersionHistory_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run()
-	})
-	return _c
-}
-
-func (_c *MockStore_LoadDRSVersionHistory_Call) Return(_a0 *types.DRSVersionHistory, _a1 error) *MockStore_LoadDRSVersionHistory_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockStore_LoadDRSVersionHistory_Call) RunAndReturn(run func() (*types.DRSVersionHistory, error)) *MockStore_LoadDRSVersionHistory_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // LoadSequencers provides a mock function with given fields: height
 func (_m *MockStore) LoadSequencers(height uint64) (*types.SequencerSet, error) {
 	ret := _m.Called(height)
@@ -1041,65 +984,6 @@ func (_c *MockStore_SaveBlockSource_Call) Return(_a0 store.KVBatch, _a1 error) *
 }
 
 func (_c *MockStore_SaveBlockSource_Call) RunAndReturn(run func(uint64, types.BlockSource, store.KVBatch) (store.KVBatch, error)) *MockStore_SaveBlockSource_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// SaveDRSVersionHistory provides a mock function with given fields: drs, batch
-func (_m *MockStore) SaveDRSVersionHistory(drs *types.DRSVersionHistory, batch store.KVBatch) (store.KVBatch, error) {
-	ret := _m.Called(drs, batch)
-
-	if len(ret) == 0 {
-		panic("no return value specified for SaveDRSVersionHistory")
-	}
-
-	var r0 store.KVBatch
-	var r1 error
-	if rf, ok := ret.Get(0).(func(*types.DRSVersionHistory, store.KVBatch) (store.KVBatch, error)); ok {
-		return rf(drs, batch)
-	}
-	if rf, ok := ret.Get(0).(func(*types.DRSVersionHistory, store.KVBatch) store.KVBatch); ok {
-		r0 = rf(drs, batch)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(store.KVBatch)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(*types.DRSVersionHistory, store.KVBatch) error); ok {
-		r1 = rf(drs, batch)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockStore_SaveDRSVersionHistory_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SaveDRSVersionHistory'
-type MockStore_SaveDRSVersionHistory_Call struct {
-	*mock.Call
-}
-
-// SaveDRSVersionHistory is a helper method to define mock.On call
-//   - drs *types.DRSVersionHistory
-//   - batch store.KVBatch
-func (_e *MockStore_Expecter) SaveDRSVersionHistory(drs interface{}, batch interface{}) *MockStore_SaveDRSVersionHistory_Call {
-	return &MockStore_SaveDRSVersionHistory_Call{Call: _e.mock.On("SaveDRSVersionHistory", drs, batch)}
-}
-
-func (_c *MockStore_SaveDRSVersionHistory_Call) Run(run func(drs *types.DRSVersionHistory, batch store.KVBatch)) *MockStore_SaveDRSVersionHistory_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*types.DRSVersionHistory), args[1].(store.KVBatch))
-	})
-	return _c
-}
-
-func (_c *MockStore_SaveDRSVersionHistory_Call) Return(_a0 store.KVBatch, _a1 error) *MockStore_SaveDRSVersionHistory_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockStore_SaveDRSVersionHistory_Call) RunAndReturn(run func(*types.DRSVersionHistory, store.KVBatch) (store.KVBatch, error)) *MockStore_SaveDRSVersionHistory_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -106,13 +106,3 @@ message EventKeys {
 	repeated bytes keys = 1;
 }
 
-//DRSVersion recent history of node DRSVersion including update height
-message DRS {
-  repeated DRSVersion drs_version_history = 1;
-  uint64 lastHeight = 2; 
-}
-
-message DRSVersion {
-  uint64 height = 1 ;
-  string version = 2 ;
-}

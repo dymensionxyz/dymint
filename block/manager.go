@@ -100,9 +100,6 @@ type Manager struct {
 
 	// validates all non-finalized state updates from settlement, checking there is consistency between DA and P2P blocks, and the information in the state update.
 	SettlementValidator *SettlementValidator
-
-	// used to store recent version history for DRS validation
-	DRSVersionHistory *types.DRSVersionHistory
 }
 
 // NewManager creates new block Manager.
@@ -162,11 +159,6 @@ func NewManager(
 	err = m.LoadStateOnInit(store, genesis, logger)
 	if err != nil {
 		return nil, fmt.Errorf("get initial state: %w", err)
-	}
-
-	err = m.LoadDrsHistoryFromStore()
-	if err != nil {
-		return nil, fmt.Errorf("get initial DRS history: %w", err)
 	}
 
 	err = m.setDA(conf.DAConfig, dalcKV, logger)

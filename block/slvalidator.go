@@ -201,7 +201,7 @@ func (v *SettlementValidator) NextValidationHeight() uint64 {
 // validateDRS compares the DRS version stored for the specific height, obtained from rollapp params.
 // DRS checks will work only for non-finalized heights, since it does not store the whole history, but it will never validate finalized heights.
 func (v *SettlementValidator) validateDRS(stateIndex uint64, height uint64, version string) error {
-	drs, err := v.blockManager.DRSVersionHistory.GetDRSVersion(height)
+	drs, err := v.blockManager.Store.LoadDRSVersion(height)
 	if err != nil {
 		return err
 	}

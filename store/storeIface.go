@@ -85,9 +85,9 @@ type Store interface {
 
 	LoadValidationHeight() (uint64, error)
 
-	SaveDRSVersionHistory(drs *types.DRSVersionHistory, batch KVBatch) (KVBatch, error)
+	LoadDRSVersion(height uint64) (string, error)
 
-	LoadDRSVersionHistory() (*types.DRSVersionHistory, error)
+	SaveDRSVersion(height uint64, version string, batch KVBatch) (KVBatch, error)
 
 	Close() error
 }

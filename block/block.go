@@ -105,6 +105,11 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 			return fmt.Errorf("save block source: %w", err)
 		}
 
+		_, err = m.Store.SaveDRSVersion(block.Header.Height, responses.EndBlock.RollappParamUpdates.Version, nil)
+		if err != nil {
+			return fmt.Errorf("add drs version: %w", err)
+		}
+
 		// Commit block to app
 		appHash, retainHeight, err = m.Executor.Commit(m.State, block, responses)
 		if err != nil {
@@ -122,15 +127,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 				m.logger.Error("pruning channel full. skipping pruning", "retainHeight", retainHeight)
 			}
 		}
-		if responses.EndBlock.RollappParamUpdates != nil {
-			newDRS := m.DRSVersionHistory.AddDRSVersion(block.Header.Height, responses.EndBlock.RollappParamUpdates.Version)
-			if newDRS {
-				_, err = m.Store.SaveDRSVersionHistory(m.DRSVersionHistory, nil)
-				if err != nil {
-					return fmt.Errorf("save drs history: %w", err)
-				}
-			}
-		}
+
 		// Update the state with the new app hash, and store height from the commit.
 		// Every one of those, if happens before commit, prevents us from re-executing the block in case failed during commit.
 		m.Executor.UpdateStateAfterCommit(m.State, responses, appHash, block.Header.Height, block.Header.Hash())
