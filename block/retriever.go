@@ -30,6 +30,7 @@ func (m *Manager) ApplyBatchFromSL(slBatch *settlement.Batch) error {
 			if blockIndex >= len(slBatch.BlockDescriptors) {
 				break
 			}
+			blockIndex++
 
 			if block.Header.Height != m.State.NextHeight() {
 				continue
@@ -44,7 +45,6 @@ func (m *Manager) ApplyBatchFromSL(slBatch *settlement.Batch) error {
 			lastAppliedHeight = float64(block.Header.Height)
 
 			m.blockCache.Delete(block.Header.Height)
-			blockIndex++
 		}
 	}
 	types.LastReceivedDAHeightGauge.Set(lastAppliedHeight)
