@@ -17,7 +17,6 @@ import (
 	"github.com/tendermint/tendermint/libs/pubsub"
 
 	openrpc "github.com/celestiaorg/celestia-openrpc"
-	"github.com/celestiaorg/celestia-openrpc/types/share"
 
 	"github.com/dymensionxyz/dymint/da"
 	celtypes "github.com/dymensionxyz/dymint/da/celestia/types"
@@ -270,18 +269,11 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 			var resultRetrieveBatch da.ResultRetrieveBatch
 			err := retry.Do(
 				func() error {
-					var result da.ResultRetrieveBatch
-					// Just for backward compatibility, in case no commitments are sent from the Hub, batch can be retrieved using previous implementation.
-					if daMetaData.Commitment == nil {
-						result = c.retrieveBatchesNoCommitment(daMetaData.Height)
-					} else {
-						result = c.retrieveBatches(daMetaData)
-					}
-					resultRetrieveBatch = result
+					resultRetrieveBatch = c.retrieveBatches(daMetaData)
 
-					if errors.Is(result.Error, da.ErrRetrieval) {
-						c.logger.Error("Retrieve batch.", "error", result.Error)
-						return result.Error
+					if errors.Is(resultRetrieveBatch.Error, da.ErrRetrieval) {
+						c.logger.Error("Retrieve batch.", "error", resultRetrieveBatch.Error)
+						return resultRetrieveBatch.Error
 					}
 
 					return nil
@@ -328,7 +320,14 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMet
 	var batch pb.Batch
 	err = proto.Unmarshal(blob.Data, &batch)
 	if err != nil {
-		c.logger.Error("Unmarshal block.", "daHeight", daMetaData.Height, "error", err)
+		c.logger.Error("Unmarshal blob.", "daHeight", daMetaData.Height, "error", err)
+		return da.ResultRetrieveBatch{
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: err.Error(),
+				Error:   da.ErrBlobNotParsed,
+			},
+		}
 	}
 
 	c.logger.Debug("Blob retrieved successfully from DA.", "DA height", daMetaData.Height, "lastBlockHeight", batch.EndHeight)
@@ -340,7 +339,7 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMet
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
 				Message: err.Error(),
-				Error:   err,
+				Error:   da.ErrBlobNotParsed,
 			},
 		}
 	}
@@ -349,49 +348,6 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMet
 		BaseResult: da.BaseResult{
 			Code:    da.StatusSuccess,
 			Message: "Batch retrieval successful",
-		},
-		Batches: batches,
-	}
-}
-
-// RetrieveBatches gets a batch of blocks from DA layer.
-func (c *DataAvailabilityLayerClient) retrieveBatchesNoCommitment(dataLayerHeight uint64) da.ResultRetrieveBatch {
-	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
-	defer cancel()
-	blobs, err := c.rpc.GetAll(ctx, dataLayerHeight, []share.Namespace{c.config.NamespaceID.Bytes()})
-	if err != nil {
-		return da.ResultRetrieveBatch{
-			BaseResult: da.BaseResult{
-				Code:    da.StatusError,
-				Message: err.Error(),
-			},
-		}
-	}
-
-	var batches []*types.Batch
-	for i, blob := range blobs {
-		var batch pb.Batch
-		err = proto.Unmarshal(blob.Data, &batch)
-		if err != nil {
-			c.logger.Error("Unmarshal block.", "daHeight", dataLayerHeight, "position", i, "error", err)
-			continue
-		}
-		parsedBatch := new(types.Batch)
-		err := parsedBatch.FromProto(&batch)
-		if err != nil {
-			return da.ResultRetrieveBatch{
-				BaseResult: da.BaseResult{
-					Code:    da.StatusError,
-					Message: err.Error(),
-				},
-			}
-		}
-		batches = append(batches, parsedBatch)
-	}
-
-	return da.ResultRetrieveBatch{
-		BaseResult: da.BaseResult{
-			Code: da.StatusSuccess,
 		},
 		Batches: batches,
 	}

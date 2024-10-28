@@ -182,6 +182,14 @@ func GenerateCommits(blocks []*types.Block, proposerKey crypto.PrivKey) ([]*type
 	return commits, nil
 }
 
+func GenerateDRS(blocks int) []string {
+	drs := make([]string, blocks)
+	for i := 0; i < blocks; i++ {
+		drs[i] = dymintversion.Commit
+	}
+	return drs
+}
+
 func generateSignature(proposerKey crypto.PrivKey, header *types.Header) ([]byte, error) {
 	abciHeaderPb := types.ToABCIHeaderPB(header)
 	abciHeaderBytes, err := abciHeaderPb.Marshal()
@@ -206,8 +214,9 @@ func GenerateBatch(startHeight uint64, endHeight uint64, proposerKey crypto.Priv
 		return nil, err
 	}
 	batch := &types.Batch{
-		Blocks:  blocks,
-		Commits: commits,
+		Blocks:     blocks,
+		Commits:    commits,
+		DRSVersion: GenerateDRS(len(blocks)),
 	}
 	return batch, nil
 }
@@ -222,8 +231,9 @@ func MustGenerateBatch(startHeight uint64, endHeight uint64, proposerKey crypto.
 		panic(err)
 	}
 	return &types.Batch{
-		Blocks:  blocks,
-		Commits: commits,
+		Blocks:     blocks,
+		Commits:    commits,
+		DRSVersion: GenerateDRS(len(blocks)),
 	}
 }
 
@@ -329,4 +339,17 @@ func GetRandomBlock(height uint64, nTxs int) *types.Block {
 	}
 
 	return block
+}
+
+func CreateRandomVersionCommit() (string, error) {
+	letterRunes := []rune("abcdefghijklmnopqrstuvwxyz")
+	b := make([]rune, 40)
+	for i := range b {
+		num, err := rand.Int(rand.Reader, big.NewInt(int64(len(letterRunes))))
+		if err != nil {
+			return "", err
+		}
+		b[i] = letterRunes[num.Int64()]
+	}
+	return string(b), nil
 }

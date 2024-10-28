@@ -23,6 +23,7 @@ var (
 	cidPrefix             = [1]byte{7}
 	sourcePrefix          = [1]byte{8}
 	validatedHeightPrefix = [1]byte{9}
+	drsVersionPrefix      = [1]byte{10}
 )
 
 // DefaultStore is a default store implementation.
@@ -316,6 +317,23 @@ func (s *DefaultStore) LoadValidationHeight() (uint64, error) {
 	return binary.LittleEndian.Uint64(b), nil
 }
 
+func (s *DefaultStore) LoadDRSVersion(height uint64) (string, error) {
+	versionBytes, err := s.db.Get(getDRSVersionKey(height))
+	if err != nil {
+		return "", fmt.Errorf("load drs version for height %v: %w", height, err)
+	}
+	return string(versionBytes), nil
+}
+
+func (s *DefaultStore) SaveDRSVersion(height uint64, version string, batch KVBatch) (KVBatch, error) {
+	versionBytes := []byte(version)
+	if batch == nil {
+		return nil, s.db.Set(getDRSVersionKey(height), versionBytes)
+	}
+	err := batch.Set(getDRSVersionKey(height), versionBytes)
+	return batch, err
+}
+
 func getBlockKey(hash [32]byte) []byte {
 	return append(blockPrefix[:], hash[:]...)
 }
@@ -354,6 +372,12 @@ func getSourceKey(height uint64) []byte {
 
 func getValidatedHeightKey() []byte {
 	return validatedHeightPrefix[:]
+}
+
+func getDRSVersionKey(height uint64) []byte {
+	buf := make([]byte, 8)
+	binary.BigEndian.PutUint64(buf, height)
+	return append(drsVersionPrefix[:], buf[:]...)
 }
 
 func getProposerKey(height uint64) []byte {

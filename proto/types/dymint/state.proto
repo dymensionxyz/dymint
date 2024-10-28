@@ -33,7 +33,7 @@ message State {
   
 
   tendermint.types.ConsensusParams consensus_params = 12 [(gogoproto.nullable) = false];
-  int64 last_height_consensus_params_changed = 13;
+  reserved 13;
 
   bytes last_results_hash = 14;
 
@@ -56,5 +56,4 @@ message RollappParams {
   string da = 1 ;
   //commit used for the rollapp executable
   string version = 2 ;
-  
 }
