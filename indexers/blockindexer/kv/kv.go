@@ -548,7 +548,7 @@ func (idx *BlockerIndexer) pruneBlocks(from, to uint64, logger log.Logger) (uint
 	for h := int64(from); h < int64(to); h++ {
 		ok, err := idx.Has(h)
 		if err != nil {
-			logger.Debug("pruning block indexer checking height", "err", err)
+			logger.Debug("pruning block indexer checking height", "height", h, "err", err)
 			continue
 		}
 		if !ok {
@@ -556,18 +556,20 @@ func (idx *BlockerIndexer) pruneBlocks(from, to uint64, logger log.Logger) (uint
 		}
 		key, err := heightKey(h)
 		if err != nil {
-			logger.Debug("pruning block indexer getting height key", "err", err)
+			logger.Debug("pruning block indexer getting height key", "height", h, "err", err)
 			continue
 		}
 		if err := batch.Delete(key); err != nil {
-			logger.Debug("pruning block indexer deleting height key", "err", err)
+			logger.Debug("pruning block indexer deleting height key", "height", h, "err", err)
+			continue
 		}
 
 		pruned++
 
 		prunedEvents, err := idx.pruneEvents(h, logger, batch)
 		if err != nil {
-			logger.Debug("pruning block indexer events", "err", err)
+			logger.Debug("pruning block indexer events", "height", h, "err", err)
+			continue
 		}
 		pruned += prunedEvents
 		toFlush += pruned
@@ -612,7 +614,7 @@ func (idx *BlockerIndexer) pruneEvents(height int64, logger log.Logger, batch st
 	for _, key := range eventKeys.Keys {
 		err := batch.Delete(key)
 		if err != nil {
-			logger.Error("pruning block indexer events", "err", err)
+			logger.Error("pruning block indexer iterate events", "height", height, "err", err)
 			continue
 		}
 		pruned++
