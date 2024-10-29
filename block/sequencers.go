@@ -68,10 +68,10 @@ func (m *Manager) MonitorSequencerSetUpdates(ctx context.Context) error {
 	}
 }
 
-// IsProposer checks if the local node is the proposer
+// AmIProposer checks if the the current node is the proposer
 // In case of sequencer rotation, there's a phase where proposer rotated on L2 but hasn't yet rotated on hub.
-// for this case, the old proposer counts as "sequencer" as well, so he'll be able to submit the last state update.
-func (m *Manager) IsProposer() bool {
+// for this case, 2 nodes will get `true` for `AmIProposer` as the old proposer counts as "proposer" as well, so he'll be able to submit the last state update.
+func (m *Manager) AmIProposer() bool {
 	localProposerKey, _ := m.LocalKey.GetPublic().Raw()
 	l2Proposer := m.State.GetProposerPubKey().Bytes()
 
@@ -86,7 +86,7 @@ func (m *Manager) IsProposer() bool {
 		m.State.SetProposer(hubProposer)
 	}
 
-	// we run sequencer flow if we're proposer on L2 or hub (can be different during rotation phase, before hub receives the last state update)
+	// we run proposer flow if we're proposer on L2 or on the hub (can be different during rotation phase, before hub receives the last state update)
 	return bytes.Equal(l2Proposer, localProposerKey) || bytes.Equal(expectedHubProposer, localProposerKey)
 }
 
