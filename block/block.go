@@ -16,12 +16,9 @@ import (
 func (m *Manager) applyBlockWithFraudHandling(block *types.Block, commit *types.Commit, blockMetaData types.BlockMetaData) error {
 	validateWithFraud := func() error {
 		if err := m.validateBlockBeforeApply(block, commit); err != nil {
-			if err != nil {
-				m.blockCache.Delete(block.Header.Height)
-				// TODO: can we take an action here such as dropping the peer / reducing their reputation?
-
-				return fmt.Errorf("block not valid at height %d, dropping it: err:%w", block.Header.Height, err)
-			}
+			m.blockCache.Delete(block.Header.Height)
+			// TODO: can we take an action here such as dropping the peer / reducing their reputation?
+			return fmt.Errorf("block not valid at height %d, dropping it: err:%w", block.Header.Height, err)
 		}
 
 		if err := m.applyBlock(block, commit, blockMetaData); err != nil {
