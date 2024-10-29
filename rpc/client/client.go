@@ -62,7 +62,8 @@ type Client struct {
 }
 
 type ResultBlockValidated struct {
-	Result BlockValidationStatus
+	ChainID string
+	Result  BlockValidationStatus
 }
 
 // NewClient returns Client working with given node.
@@ -807,22 +808,23 @@ func (c *Client) CheckTx(ctx context.Context, tx tmtypes.Tx) (*ctypes.ResultChec
 	return &ctypes.ResultCheckTx{ResponseCheckTx: *res}, nil
 }
 
-func (c *Client) BlockValidated(ctx context.Context, height *int64) (*ResultBlockValidated, error) {
+func (c *Client) BlockValidated(height *int64) (*ResultBlockValidated, error) {
+	_, _, chainID := c.node.P2P.Info()
 	// invalid height
 	if height == nil || *height < 0 {
-		return &ResultBlockValidated{Result: -1}, nil
+		return &ResultBlockValidated{Result: -1, ChainID: chainID}, nil
 	}
 	// node has not reached the height yet
 	if uint64(*height) > c.node.BlockManager.State.Height() {
-		return &ResultBlockValidated{Result: NotValidated}, nil
+		return &ResultBlockValidated{Result: NotValidated, ChainID: chainID}, nil
 	}
 
 	if uint64(*height) <= c.node.BlockManager.SettlementValidator.GetLastValidatedHeight() {
-		return &ResultBlockValidated{Result: SLValidated}, nil
+		return &ResultBlockValidated{Result: SLValidated, ChainID: chainID}, nil
 	}
 
 	// block is applied, and therefore it is validated at block level but not at state update level
-	return &ResultBlockValidated{Result: P2PValidated}, nil
+	return &ResultBlockValidated{Result: P2PValidated, ChainID: chainID}, nil
 }
 
 func (c *Client) eventsRoutine(sub tmtypes.Subscription, subscriber string, q tmpubsub.Query, outc chan<- ctypes.ResultEvent) {
