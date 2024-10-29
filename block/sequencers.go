@@ -10,7 +10,7 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
-func (m *Manager) MonitorSequencerRotation(ctx context.Context, rotateC chan string) error {
+func (m *Manager) MonitorProposerRotation(ctx context.Context, rotateC chan string) error {
 	sequencerRotationEventClient := "sequencer_rotation"
 	subscription, err := m.Pubsub.Subscribe(ctx, sequencerRotationEventClient, settlement.EventQueryRotationStarted)
 	if err != nil {
@@ -27,7 +27,7 @@ func (m *Manager) MonitorSequencerRotation(ctx context.Context, rotateC chan str
 		case <-ctx.Done():
 			return nil
 		case <-ticker.C:
-			next, err := m.SLClient.CheckRotationInProgress()
+			next, err := m.SLClient.GetNextProposer()
 			if err != nil {
 				m.logger.Error("Check rotation in progress", "err", err)
 				continue
@@ -68,49 +68,54 @@ func (m *Manager) MonitorSequencerSetUpdates(ctx context.Context) error {
 	}
 }
 
-// AmIProposer checks if the the current node is the proposer
+// AmIPropoesr checks if the the current node is the proposer either on L2 or on the hub.
 // In case of sequencer rotation, there's a phase where proposer rotated on L2 but hasn't yet rotated on hub.
-// for this case, 2 nodes will get `true` for `AmIProposer` as the old proposer counts as "proposer" as well, so he'll be able to submit the last state update.
+// for this case, 2 nodes will get `true` for `AmIProposer` so the l2 proposer can produce blocks and the hub proposer can submit his last batch.
 func (m *Manager) AmIProposer() bool {
-	localProposerKey, _ := m.LocalKey.GetPublic().Raw()
-	l2Proposer := m.State.GetProposerPubKey().Bytes()
+	return m.AmIProposerOnHub() || m.AmIProposerOnRollapp()
+}
 
-	var expectedHubProposer []byte
+// AmIProposerOnHub checks if the current node is the proposer on the hub
+// Proposer on the Hub is not necessarily the proposer on the L2 during rotation phase.
+func (m *Manager) AmIProposerOnHub() bool {
+	localProposerKeyBytes, _ := m.LocalKey.GetPublic().Raw()
+
+	// get hub proposer key
+	var hubProposerKeyBytes []byte
 	hubProposer := m.SLClient.GetProposer()
 	if hubProposer != nil {
-		expectedHubProposer = hubProposer.PubKey().Bytes()
+		hubProposerKeyBytes = hubProposer.PubKey().Bytes()
 	}
-
-	// check if recovering from halt
-	if l2Proposer == nil && hubProposer != nil {
-		m.State.SetProposer(hubProposer)
-	}
-
-	// we run proposer flow if we're proposer on L2 or on the hub (can be different during rotation phase, before hub receives the last state update)
-	return bytes.Equal(l2Proposer, localProposerKey) || bytes.Equal(expectedHubProposer, localProposerKey)
+	return bytes.Equal(hubProposerKeyBytes, localProposerKeyBytes)
 }
 
-// MissingLastBatch checks if the sequencer is in the middle of rotation (I'm the proposer, but needs to complete rotation)
-// returns the next sequencer address and a flag if the sequencer is the old proposer and the hub waits for the last batch
-func (m *Manager) MissingLastBatch() (string, bool, error) {
-	localProposerKey, _ := m.LocalKey.GetPublic().Raw()
-	next, err := m.SLClient.CheckRotationInProgress()
+// AmIProposerOnRollapp checks if the current node is the proposer on the rollapp.
+// Proposer on the rollapp is not necessarily the proposer on the hub during rotation phase.
+func (m *Manager) AmIProposerOnRollapp() bool {
+	localProposerKeyBytes, _ := m.LocalKey.GetPublic().Raw()
+	rollappProposer := m.State.GetProposerPubKey().Bytes()
+
+	return bytes.Equal(rollappProposer, localProposerKeyBytes)
+}
+
+// ShouldRotate checks if the we are in the middle of rotation and we are the rotating proposer (i.e current proposer on the hub).
+// We check it by checking if there is a "next" proposer on the hub which is not us.
+func (m *Manager) ShouldRotate() (bool, error) {
+	nextProposer, err := m.SLClient.GetNextProposer()
 	if err != nil {
-		return "", false, err
+		return false, err
 	}
-	if next == nil {
-		return "", false, nil
+	if nextProposer == nil {
+		return false, nil
 	}
-	// rotation in progress,
-	// check if we're the old proposer and needs to complete rotation
-	curr := m.SLClient.GetProposer()
-	isProposer := bytes.Equal(curr.PubKey().Bytes(), localProposerKey)
-	return next.SettlementAddress, isProposer, nil
+	// At this point we know that there is a next proposer,
+	// so we should rotate only if we are the current proposer on the hub
+	return m.AmIProposerOnHub(), nil
 }
 
-// handleRotationReq completes the rotation flow once a signal is received from the SL
-// this called after manager shuts down the block producer and submitter
-func (m *Manager) handleRotationReq(ctx context.Context, nextSeqAddr string) {
+// rotate rotates current proposer by changing the next sequencer on the last block and submitting the last batch.
+// The assumption is that at this point the sequencer has stopped producing blocks.
+func (m *Manager) rotate(ctx context.Context, nextSeqAddr string) error {
 	m.logger.Info("Sequencer rotation started. Production stopped on this sequencer", "nextSeqAddr", nextSeqAddr)
 
 	// Update sequencers list from SL
@@ -120,21 +125,6 @@ func (m *Manager) handleRotationReq(ctx context.Context, nextSeqAddr string) {
 		m.logger.Error("Cannot fetch sequencer set from the Hub", "error", err)
 	}
 
-	err = m.CompleteRotation(ctx, nextSeqAddr)
-	if err != nil {
-		panic(err)
-	}
-
-	// TODO: graceful fallback to full node (https://github.com/dymensionxyz/dymint/issues/1008)
-	m.logger.Info("Sequencer is no longer the proposer")
-	panic("sequencer is no longer the proposer")
-}
-
-// CompleteRotation completes the sequencer rotation flow
-// the sequencer will create his last block, with the next sequencer's hash, to handover the proposer role
-// then it will submit all the data accumulated thus far and mark the last state update
-// if nextSeqAddr is empty, the nodes will halt after applying the block produced
-func (m *Manager) CompleteRotation(ctx context.Context, nextSeqAddr string) error {
 	// validate nextSeq is in the bonded set
 	var nextSeqHash [32]byte
 	if nextSeqAddr != "" {
@@ -145,13 +135,14 @@ func (m *Manager) CompleteRotation(ctx context.Context, nextSeqAddr string) erro
 		copy(nextSeqHash[:], seq.MustHash())
 	}
 
-	err := m.CreateAndPostLastBatch(ctx, nextSeqHash)
+	err = m.CreateAndPostLastBatch(ctx, nextSeqHash)
 	if err != nil {
 		return fmt.Errorf("create and post last batch: %w", err)
 	}
 
 	m.logger.Info("Sequencer rotation completed. sequencer is no longer the proposer", "nextSeqAddr", nextSeqAddr)
-	return nil
+
+	return fmt.Errorf("sequencer is no longer the proposer")
 }
 
 // CreateAndPostLastBatch creates and posts the last batch to the hub

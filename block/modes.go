@@ -46,22 +46,26 @@ func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {
 	// Sequencer must wait till node is synced till last submittedHeight, in case it is not
 	m.waitForSettlementSyncing()
 
-	// check if sequencer in the middle of rotation
-	nextSeqAddr, missing, err := m.MissingLastBatch()
+	// check if we should rotate
+	shouldRotate, err := m.ShouldRotate()
 	if err != nil {
 		return fmt.Errorf("checking if missing last batch: %w", err)
 	}
-	// if sequencer is in the middle of rotation, complete rotation instead of running the main loop
-	if missing {
-		m.handleRotationReq(ctx, nextSeqAddr)
-		return nil
+	if shouldRotate {
+		// Get next proposer address
+		nextProposer, err := m.SLClient.GetNextProposer()
+		if err != nil {
+			return err
+		}
+		// rotate and panic to restart as full node
+		panic(m.rotate(ctx, nextProposer.SettlementAddress))
 	}
 
 	// populate the bytes produced channel
 	bytesProducedC := make(chan int)
 
 	// channel to signal sequencer rotation started
-	rotateSequencerC := make(chan string, 1)
+	rotateProposerC := make(chan string, 1)
 
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		return m.SubmitLoop(ctx, bytesProducedC)
@@ -71,20 +75,28 @@ func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {
 		return m.ProduceBlockLoop(ctx, bytesProducedC)
 	})
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
-		return m.MonitorSequencerRotation(ctx, rotateSequencerC)
+		return m.MonitorProposerRotation(ctx, rotateProposerC)
 	})
 
-	go func() {
-		_ = eg.Wait()
-		// Check if exited due to sequencer rotation signal
-		select {
-		case nextSeqAddr := <-rotateSequencerC:
-			m.handleRotationReq(ctx, nextSeqAddr)
-		default:
-			m.logger.Info("Block manager err group finished.")
-		}
-	}()
+	go m.listenToRotationSignal(ctx, eg, rotateProposerC)
 
 	return nil
+}
 
+// listenToRotationSignal listens for rotation signal and rotates the sequencer.
+func (m *Manager) listenToRotationSignal(ctx context.Context, eg *errgroup.Group, rotateProposerC chan string) {
+	// Wait for error group to complete and capture the error
+	if err := eg.Wait(); err != nil {
+		m.logger.Error("Error group failed", "error", err)
+		return
+	}
+	select {
+	case nextProposerAddr := <-rotateProposerC:
+		// rotate and panic to restart as full node
+		panic(m.rotate(ctx, nextProposerAddr))
+	case <-ctx.Done():
+		m.logger.Info("Context cancelled, stopping rotation listener")
+	default:
+		m.logger.Info("Block manager completed successfully")
+	}
 }

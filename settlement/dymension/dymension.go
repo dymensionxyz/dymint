@@ -31,7 +31,8 @@ import (
 )
 
 const (
-	addressPrefix = "dym"
+	addressPrefix        = "dym"
+	UNAVAILABLE_PROPOSER = ""
 )
 
 const (
@@ -505,8 +506,11 @@ func (c *Client) GetBondedSequencers() ([]types.Sequencer, error) {
 	return sequencerList, nil
 }
 
-// CheckRotationInProgress implements settlement.ClientI.
-func (c *Client) CheckRotationInProgress() (*types.Sequencer, error) {
+// GetNextProposer returns the next proposer on the hub.
+// In case there is a current proposer but no next proposer, it returns nil.
+// in case there isnt current or next proposer, it returns an empty sequencer struct.
+// in case there is a next proposer, it returns the next proposer.
+func (c *Client) GetNextProposer() (*types.Sequencer, error) {
 	var (
 		nextAddr string
 		found    bool
@@ -532,7 +536,7 @@ func (c *Client) CheckRotationInProgress() (*types.Sequencer, error) {
 	if !found {
 		return nil, nil
 	}
-	if nextAddr == "" {
+	if nextAddr == UNAVAILABLE_PROPOSER {
 		return &types.Sequencer{}, nil
 	}
 

@@ -196,7 +196,19 @@ func (m *Manager) Start(ctx context.Context) error {
 		return err
 	}
 
-	amIProposer := m.AmIProposer()
+	// Check if a proposer on the rollapp is set. In case no proposer is set on the Rollapp, fallback to the hub proposer.
+	// This can happen, for exampe,  in case there was no proposer previously.
+	if m.State.GetProposer() == nil {
+		m.logger.Info("No proposer on the rollapp, fallback to the hub proposer if available")
+		m.State.SetProposer(m.SLClient.GetProposer())
+	}
+
+	// checks if the the current node is the proposer either on rollapp or on the hub.
+	// In case of sequencer rotation, there's a phase where proposer rotated on L2 but hasn't yet rotated on hub.
+	// for this case, 2 nodes will get `true` for `AmIProposer` so the l2 proposer can produce blocks and the hub proposer can submit his last batch.
+	// The hub proposer, after sending the last state update, will panic and restart as full node.
+	amIProposer := m.AmIProposerOnHub() || m.AmIProposerOnRollapp()
+
 	m.logger.Info("starting block manager", "mode", map[bool]string{true: "proposer", false: "full node"}[amIProposer])
 
 	// update local state from latest state in settlement
@@ -222,6 +234,7 @@ func (m *Manager) Start(ctx context.Context) error {
 		return m.SettlementSyncLoop(ctx)
 	})
 
+	// Monitor sequencer set updates
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		return m.MonitorSequencerSetUpdates(ctx)
 	})
