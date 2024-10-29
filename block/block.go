@@ -133,22 +133,34 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		m.Executor.UpdateStateAfterCommit(m.State, responses, appHash, block.Header.Height, block.Header.Hash())
 	}
 
-	// save the proposer to store to be queried over RPC
+	// Update the store:
+	//  1. Save the proposer for the current height to the store.
+	//  2. Update the proposer in the state in case of rotation.
+	//  3. Save the state to the store (independently of the height). Here the proposer might differ from (1).
+	// here, (3) helps properly handle reboots (specifically when there's rotation).
+	// If reboot happens after block H (which rotates seqA -> seqB):
+	//  - Block H+1 will be signed by seqB.
+	//  - The state must have seqB as proposer.
+
+	// Proposer cannot be empty while applying the block
 	proposer := m.State.GetProposer()
 	if proposer == nil {
 		return fmt.Errorf("logic error: got nil proposer while applying block")
 	}
 
 	batch := m.Store.NewBatch()
+
+	// 1. Save the proposer for the current height to the store.
+	// Proposer in the store is used for RPC queries.
 	batch, err = m.Store.SaveProposer(block.Header.Height, *proposer, batch)
 	if err != nil {
 		return fmt.Errorf("save proposer: %w", err)
 	}
 
-	// Check if the proposer needs to be changed and change it if that's the case.
-	// It's important to update the state before the batch is commited, because ...
+	// 2. Update the proposer in the state in case of rotation.
 	switchRole := m.Executor.UpdateProposerFromBlock(m.State, m.Sequencers, block)
 
+	// 3. Save the state to the store (independently of the height). Here the proposer might differ from (1).
 	batch, err = m.Store.SaveState(m.State, batch)
 	if err != nil {
 		return fmt.Errorf("update state: %w", err)
