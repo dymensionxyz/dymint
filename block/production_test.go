@@ -21,6 +21,7 @@ import (
 	"github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/proxy"
 
+	block2 "github.com/dymensionxyz/dymint/block"
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/mempool"
 	mempoolv1 "github.com/dymensionxyz/dymint/mempool/v1"
@@ -353,10 +354,14 @@ func TestUpdateInitialSequencerSet(t *testing.T) {
 	require.Len(block.Data.ConsensusMessages, 2)
 
 	// Construct expected messages
+	signer, err := block2.ConsensusMsgSigner(new(rdktypes.ConsensusMsgUpsertSequencer))
+	require.NoError(err)
+
 	// Msg 1
 	anyPK1, err := proposer.AnyConsPubKey()
 	require.NoError(err)
 	expectedConsMsg1 := &rdktypes.ConsensusMsgUpsertSequencer{
+		Signer:     signer.String(),
 		Operator:   proposer.SettlementAddress,
 		ConsPubKey: protoutils.CosmosToGogo(anyPK1),
 		RewardAddr: proposer.RewardAddr,
@@ -373,6 +378,7 @@ func TestUpdateInitialSequencerSet(t *testing.T) {
 	anyPK2, err := sequencer.AnyConsPubKey()
 	require.NoError(err)
 	expectedConsMsg2 := &rdktypes.ConsensusMsgUpsertSequencer{
+		Signer:     signer.String(),
 		Operator:   sequencer.SettlementAddress,
 		ConsPubKey: protoutils.CosmosToGogo(anyPK2),
 		RewardAddr: sequencer.RewardAddr,
@@ -474,9 +480,12 @@ func TestUpdateExistingSequencerSet(t *testing.T) {
 	require.Len(block.Data.ConsensusMessages, 1)
 
 	// Construct the expected message
+	signer, err := block2.ConsensusMsgSigner(new(rdktypes.ConsensusMsgUpsertSequencer))
+	require.NoError(err)
 	anyPK, err := updatedSequencer.AnyConsPubKey()
 	require.NoError(err)
 	expectedConsMsg := &rdktypes.ConsensusMsgUpsertSequencer{
+		Signer:     signer.String(),
 		Operator:   updatedSequencer.SettlementAddress,
 		ConsPubKey: protoutils.CosmosToGogo(anyPK),
 		RewardAddr: updatedSequencer.RewardAddr,
