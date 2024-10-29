@@ -114,7 +114,7 @@ func TestBatchSubmissionHappyFlow(t *testing.T) {
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
 		RollappParamUpdates: &abci.RollappParams{
 			Da:      "mock",
-			Version: version.Commit,
+			Version: version.DRSVersion,
 		},
 		ConsensusParamUpdates: &abci.ConsensusParams{
 			Block: &abci.BlockParams{
@@ -152,7 +152,7 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
 		RollappParamUpdates: &abci.RollappParams{
 			Da:      "mock",
-			Version: version.Commit,
+			Version: version.DRSVersion,
 		},
 		ConsensusParamUpdates: &abci.ConsensusParams{
 			Block: &abci.BlockParams{
@@ -228,7 +228,7 @@ func TestSubmissionByTime(t *testing.T) {
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
 		RollappParamUpdates: &abci.RollappParams{
 			Da:      "mock",
-			Version: version.Commit,
+			Version: version.DRSVersion,
 		},
 		ConsensusParamUpdates: &abci.ConsensusParams{
 			Block: &abci.BlockParams{
@@ -311,7 +311,7 @@ func TestSubmissionByBatchSize(t *testing.T) {
 		app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
 			RollappParamUpdates: &abci.RollappParams{
 				Da:      "mock",
-				Version: version.Commit,
+				Version: version.DRSVersion,
 			},
 			ConsensusParamUpdates: &abci.ConsensusParams{
 				Block: &abci.BlockParams{

@@ -46,6 +46,7 @@ import (
 // TODO: test halt scenario
 func TestInitialState(t *testing.T) {
 	var err error
+	version.DRSVersion = 1
 	assert := assert.New(t)
 	genesis := testutil.GenerateGenesis(123)
 	key, _, _ := crypto.GenerateEd25519Key(rand.Reader)
@@ -137,7 +138,7 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
 		RollappParamUpdates: &abci.RollappParams{
 			Da:      "mock",
-			Version: version.Commit,
+			Version: 1,
 		},
 		ConsensusParamUpdates: &abci.ConsensusParams{
 			Block: &abci.BlockParams{
@@ -212,7 +213,7 @@ func TestApplyCachedBlocks_WithFraudCheck(t *testing.T) {
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
 		RollappParamUpdates: &abci.RollappParams{
 			Da:      "mock",
-			Version: version.Commit,
+			Version: 1,
 		},
 		ConsensusParamUpdates: &abci.ConsensusParams{
 			Block: &abci.BlockParams{
@@ -300,7 +301,7 @@ func TestApplyLocalBlock_WithFraudCheck(t *testing.T) {
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
 		RollappParamUpdates: &abci.RollappParams{
 			Da:      "mock",
-			Version: version.Commit,
+			Version: 1,
 		},
 		ConsensusParamUpdates: &abci.ConsensusParams{
 			Block: &abci.BlockParams{
@@ -419,7 +420,7 @@ func TestProduceNewBlock(t *testing.T) {
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
 		RollappParamUpdates: &abci.RollappParams{
 			Da:      "mock",
-			Version: version.Commit,
+			Version: 1,
 		},
 		ConsensusParamUpdates: &abci.ConsensusParams{
 			Block: &abci.BlockParams{
@@ -452,7 +453,7 @@ func TestProducePendingBlock(t *testing.T) {
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
 		RollappParamUpdates: &abci.RollappParams{
 			Da:      "mock",
-			Version: version.Commit,
+			Version: 1,
 		},
 		ConsensusParamUpdates: &abci.ConsensusParams{
 			Block: &abci.BlockParams{
@@ -565,7 +566,7 @@ func TestProduceBlockFailAfterCommit(t *testing.T) {
 			app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
 				RollappParamUpdates: &abci.RollappParams{
 					Da:      "mock",
-					Version: version.Commit,
+					Version: 1,
 				},
 				ConsensusParamUpdates: &abci.ConsensusParams{
 					Block: &abci.BlockParams{
@@ -597,7 +598,7 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
 		RollappParamUpdates: &abci.RollappParams{
 			Da:      "mock",
-			Version: version.Commit,
+			Version: 1,
 		},
 		ConsensusParamUpdates: &abci.ConsensusParams{
 			Block: &abci.BlockParams{
@@ -679,7 +680,7 @@ func TestDAFetch(t *testing.T) {
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
 		RollappParamUpdates: &abci.RollappParams{
 			Da:      "mock",
-			Version: version.Commit,
+			Version: 1,
 		},
 		ConsensusParamUpdates: &abci.ConsensusParams{
 			Block: &abci.BlockParams{
@@ -775,7 +776,7 @@ func TestManager_ApplyBatchFromSL_FraudHandling(t *testing.T) {
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
 		RollappParamUpdates: &abci.RollappParams{
 			Da:      "mock",
-			Version: version.Commit,
+			Version: 1,
 		},
 		ConsensusParamUpdates: &abci.ConsensusParams{
 			Block: &abci.BlockParams{

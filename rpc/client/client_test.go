@@ -576,7 +576,7 @@ func TestTx(t *testing.T) {
 	mockApp.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
 		RollappParamUpdates: &abci.RollappParams{
 			Da:      "mock",
-			Version: version.Commit,
+			Version: 1,
 		},
 		ConsensusParamUpdates: &abci.ConsensusParams{
 			Block: &abci.BlockParams{
@@ -824,7 +824,7 @@ func TestValidatorSetHandling(t *testing.T) {
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
 		RollappParamUpdates: &abci.RollappParams{
 			Da:      "mock",
-			Version: version.Commit,
+			Version: 1,
 		},
 		ConsensusParamUpdates: &abci.ConsensusParams{
 			Block: &abci.BlockParams{
@@ -985,6 +985,7 @@ func getRPCAndNodeSequencer(t *testing.T) (*tmmocks.MockApplication, *client.Cli
 func getRPCInternal(t *testing.T, sequencer bool) (*tmmocks.MockApplication, *client.Client, *node.Node) {
 	t.Helper()
 	require := require.New(t)
+	version.DRSVersion = 1
 	app := &tmmocks.MockApplication{}
 	app.On("Info", mock.Anything).Return(expectedInfo)
 	key, _, _ := crypto.GenerateEd25519Key(crand.Reader)

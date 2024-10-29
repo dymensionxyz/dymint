@@ -14,6 +14,7 @@ import (
 	"github.com/dymensionxyz/dymint/node"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/testutil"
+	"github.com/dymensionxyz/dymint/version"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -28,6 +29,8 @@ import (
 
 // simply check that node is starting and stopping without panicking
 func TestStartup(t *testing.T) {
+
+	version.DRSVersion = 1
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -50,6 +53,7 @@ func TestStartup(t *testing.T) {
 func TestMempoolDirectly(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
+	version.DRSVersion = 1
 
 	app := &tmmocks.MockApplication{}
 	app.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})

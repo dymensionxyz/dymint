@@ -182,10 +182,10 @@ func GenerateCommits(blocks []*types.Block, proposerKey crypto.PrivKey) ([]*type
 	return commits, nil
 }
 
-func GenerateDRS(blocks int) []string {
-	drs := make([]string, blocks)
+func GenerateDRS(blocks int) []uint64 {
+	drs := make([]uint64, blocks)
 	for i := 0; i < blocks; i++ {
-		drs[i] = dymintversion.Commit
+		drs[i] = dymintversion.DRSVersion
 	}
 	return drs
 }
@@ -334,7 +334,7 @@ func GenerateStateWithSequencer(initialHeight int64, lastBlockHeight int64, pubk
 		},
 		RollappParams: dymint.RollappParams{
 			Da:      "mock",
-			Version: dymintversion.Commit,
+			Version: dymintversion.DRSVersion,
 		},
 		ConsensusParams: tmproto.ConsensusParams{
 			Block: tmproto.BlockParams{
@@ -375,7 +375,7 @@ func GenerateGenesis(initialHeight int64) *tmtypes.GenesisDoc {
 				AppVersion: AppVersion,
 			},
 		},
-		AppState: []byte("{\"rollappparams\": {\"params\": {\"da\": \"mock\",\"version\": \"" + dymintversion.Commit + "\"}}}"),
+		AppState: []byte("{\"rollappparams\": {\"params\": {\"da\": \"mock\",\"version\": 1}}}"),
 	}
 }
 
@@ -403,17 +403,4 @@ func GetRandomBlock(height uint64, nTxs int) *types.Block {
 	}
 
 	return block
-}
-
-func CreateRandomVersionCommit() (string, error) {
-	letterRunes := []rune("abcdefghijklmnopqrstuvwxyz")
-	b := make([]rune, 40)
-	for i := range b {
-		num, err := rand.Int(rand.Reader, big.NewInt(int64(len(letterRunes))))
-		if err != nil {
-			return "", err
-		}
-		b[i] = letterRunes[num.Int64()]
-	}
-	return string(b), nil
 }

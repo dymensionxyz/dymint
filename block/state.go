@@ -132,6 +132,7 @@ func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResp
 	if resp.EndBlock.RollappParamUpdates != nil {
 		s.RollappParams.Da = resp.EndBlock.RollappParamUpdates.Da
 		s.RollappParams.Version = resp.EndBlock.RollappParamUpdates.Version
+		s.RollappParams.Commit = resp.EndBlock.RollappParamUpdates.Commit
 	}
 }
 

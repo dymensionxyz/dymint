@@ -277,13 +277,14 @@ func TestSubscription(t *testing.T) {
 func getRPC(t *testing.T) (*tmmocks.MockApplication, *client.Client) {
 	t.Helper()
 	require := require.New(t)
+	version.DRSVersion = 1
 	app := &tmmocks.MockApplication{}
 	app.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 	app.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
 		RollappParamUpdates: &abci.RollappParams{
 			Da:      "mock",
-			Version: version.Commit,
+			Version: 1,
 		},
 		ConsensusParamUpdates: &abci.ConsensusParams{
 			Block: &abci.BlockParams{
@@ -336,7 +337,7 @@ func getRPC(t *testing.T) (*tmmocks.MockApplication, *client.Client) {
 		key,
 		signingKey,
 		proxy.NewLocalClientCreator(app),
-		&types.GenesisDoc{ChainID: rollappID, AppState: []byte("{\"rollappparams\": {\"params\": {\"da\": \"mock\",\"version\": \"" + version.Commit + "\"}}}")},
+		&types.GenesisDoc{ChainID: rollappID, AppState: []byte("{\"rollappparams\": {\"params\": {\"da\": \"mock\",\"version\": 1}}}")},
 		log.TestingLogger(),
 		mempool.NopMetrics(),
 	)
