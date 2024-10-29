@@ -369,13 +369,11 @@ func TestValidatedHeight(t *testing.T) {
 
 			node.BlockManager.State.SetHeight(test.nodeHeight)
 
-			validationResponse, err := rpc.BlockValidated(context.Background(), test.queryHeight)
+			validationResponse, err := rpc.BlockValidated(test.queryHeight)
 			require.NoError(err)
 			require.NotNil(validationResponse)
 			assert.Equal(test.result, validationResponse.Result)
-
 		})
-
 	}
 
 	err = node.Stop()
