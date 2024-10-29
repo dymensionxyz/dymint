@@ -2,6 +2,7 @@ package types_test
 
 import (
 	"crypto/rand"
+	"strconv"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -86,7 +87,8 @@ func TestBlockSerializationRoundTrip(t *testing.T) {
 
 func TestStateRoundTrip(t *testing.T) {
 	t.Parallel()
-
+	dymintVersion, err := strconv.ParseUint(version.DRSVersion, 10, 64)
+	require.NoError(t, err)
 	cases := []struct {
 		name  string
 		state types.State
@@ -135,7 +137,7 @@ func TestStateRoundTrip(t *testing.T) {
 				},
 				RollappParams: pb.RollappParams{
 					Da:      "mock",
-					Version: version.DRSVersion,
+					Version: dymintVersion,
 				},
 				LastResultsHash: [32]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2},
 				AppHash:         [32]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1},

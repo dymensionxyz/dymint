@@ -985,7 +985,7 @@ func getRPCAndNodeSequencer(t *testing.T) (*tmmocks.MockApplication, *client.Cli
 func getRPCInternal(t *testing.T, sequencer bool) (*tmmocks.MockApplication, *client.Client, *node.Node) {
 	t.Helper()
 	require := require.New(t)
-	version.DRSVersion = 1
+	version.DRSVersion = "1"
 	app := &tmmocks.MockApplication{}
 	app.On("Info", mock.Anything).Return(expectedInfo)
 	key, _, _ := crypto.GenerateEd25519Key(crand.Reader)

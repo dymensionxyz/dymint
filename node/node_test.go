@@ -30,7 +30,7 @@ import (
 // simply check that node is starting and stopping without panicking
 func TestStartup(t *testing.T) {
 
-	version.DRSVersion = 1
+	version.DRSVersion = "1"
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -53,7 +53,7 @@ func TestStartup(t *testing.T) {
 func TestMempoolDirectly(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	version.DRSVersion = 1
+	version.DRSVersion = "1"
 
 	app := &tmmocks.MockApplication{}
 	app.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})

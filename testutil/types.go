@@ -3,6 +3,7 @@ package testutil
 import (
 	"crypto/rand"
 	"math/big"
+	"strconv"
 	"time"
 
 	"github.com/cosmos/cosmos-sdk/types/bech32"
@@ -183,9 +184,10 @@ func GenerateCommits(blocks []*types.Block, proposerKey crypto.PrivKey) ([]*type
 }
 
 func GenerateDRS(blocks int) []uint64 {
+	dymintVersion, _ := strconv.ParseUint(dymintversion.DRSVersion, 10, 64)
 	drs := make([]uint64, blocks)
 	for i := 0; i < blocks; i++ {
-		drs[i] = dymintversion.DRSVersion
+		drs[i] = dymintVersion
 	}
 	return drs
 }
@@ -320,6 +322,7 @@ func GenerateSequencer() types.Sequencer {
 
 // GenerateStateWithSequencer generates an initial state for testing.
 func GenerateStateWithSequencer(initialHeight int64, lastBlockHeight int64, pubkey tmcrypto.PubKey) *types.State {
+	dymintVersion, _ := strconv.ParseUint(dymintversion.DRSVersion, 10, 64)
 	s := &types.State{
 		ChainID:         "test-chain",
 		InitialHeight:   uint64(initialHeight),
@@ -334,7 +337,7 @@ func GenerateStateWithSequencer(initialHeight int64, lastBlockHeight int64, pubk
 		},
 		RollappParams: dymint.RollappParams{
 			Da:      "mock",
-			Version: dymintversion.DRSVersion,
+			Version: dymintVersion,
 		},
 		ConsensusParams: tmproto.ConsensusParams{
 			Block: tmproto.BlockParams{

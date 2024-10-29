@@ -6,6 +6,7 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	tmtypes "github.com/tendermint/tendermint/types"
 	"reflect"
+	"strconv"
 	"testing"
 	"time"
 
@@ -264,12 +265,14 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 
 func TestStateUpdateValidator_ValidateDAFraud(t *testing.T) {
 
+	dymintVersion, err := strconv.ParseUint(version.DRSVersion, 10, 64)
+	require.NoError(t, err)
 	// Init app
 	app := testutil.GetAppMock(testutil.EndBlock)
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
 		RollappParamUpdates: &abci.RollappParams{
 			Da:      "mock",
-			Version: version.DRSVersion,
+			Version: dymintVersion,
 		},
 		ConsensusParamUpdates: &abci.ConsensusParams{
 			Block: &abci.BlockParams{
@@ -282,7 +285,7 @@ func TestStateUpdateValidator_ValidateDAFraud(t *testing.T) {
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(clientCreator)
-	err := proxyApp.Start()
+	err = proxyApp.Start()
 	require.NoError(t, err)
 	proposerKey, _, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)

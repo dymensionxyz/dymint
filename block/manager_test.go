@@ -46,7 +46,7 @@ import (
 // TODO: test halt scenario
 func TestInitialState(t *testing.T) {
 	var err error
-	version.DRSVersion = 1
+	version.DRSVersion = "1"
 	assert := assert.New(t)
 	genesis := testutil.GenerateGenesis(123)
 	key, _, _ := crypto.GenerateEd25519Key(rand.Reader)

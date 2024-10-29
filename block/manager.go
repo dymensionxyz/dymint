@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"sync"
 	"sync/atomic"
 
@@ -383,8 +384,13 @@ func (m *Manager) UpdateTargetHeight(h uint64) {
 
 // ValidateConfigWithRollappParams checks the configuration params are consistent with the params in the dymint state (e.g. DA and version)
 func (m *Manager) ValidateConfigWithRollappParams() error {
-	if version.DRSVersion != m.State.RollappParams.Version {
-		return fmt.Errorf("DRS version mismatch. rollapp param: %d binary used:%d", m.State.RollappParams.Version, version.DRSVersion)
+
+	dymintVersion, err := strconv.ParseUint(version.DRSVersion, 10, 64)
+	if err != nil {
+		return fmt.Errorf("unable to parse dymint version")
+	}
+	if dymintVersion != m.State.RollappParams.Version {
+		return fmt.Errorf("DRS version mismatch. rollapp param: %d binary used:%d", m.State.RollappParams.Version, dymintVersion)
 	}
 
 	if da.Client(m.State.RollappParams.Da) != m.DAClient.GetClientType() {
