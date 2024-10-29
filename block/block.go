@@ -145,6 +145,10 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		return fmt.Errorf("save proposer: %w", err)
 	}
 
+	// Check if the proposer needs to be changed and change it if that's the case.
+	// It's important to update the state before the batch is commited, because ...
+	switchRole := m.Executor.UpdateProposerFromBlock(m.State, m.Sequencers, block)
+
 	batch, err = m.Store.SaveState(m.State, batch)
 	if err != nil {
 		return fmt.Errorf("update state: %w", err)
@@ -158,9 +162,6 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	types.RollappHeightGauge.Set(float64(block.Header.Height))
 
 	m.blockCache.Delete(block.Header.Height)
-
-	// check if the proposer needs to be changed and change it if that's the case
-	switchRole := m.Executor.UpdateProposerFromBlock(m.State, m.Sequencers, block)
 
 	if switchRole {
 		// TODO: graceful role change (https://github.com/dymensionxyz/dymint/issues/1008)
