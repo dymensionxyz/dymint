@@ -2,6 +2,9 @@ package block_test
 
 import (
 	"crypto/rand"
+	"encoding/hex"
+	"github.com/tendermint/tendermint/crypto/ed25519"
+	tmtypes "github.com/tendermint/tendermint/types"
 	"reflect"
 	"testing"
 	"time"
@@ -26,7 +29,6 @@ import (
 )
 
 func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
-
 	// Init app
 	app := testutil.GetAppMock(testutil.EndBlock)
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
@@ -49,6 +51,13 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 	proposerKey, _, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
 
+	fakeProposerKey, _, err := crypto.GenerateEd25519Key(rand.Reader)
+	require.NoError(t, err)
+
+	nextProposerKey := ed25519.GenPrivKey()
+	nextSequencerKey, _, err := crypto.GenerateEd25519Key(rand.Reader)
+	require.NoError(t, err)
+
 	doubleSigned, err := testutil.GenerateBlocks(1, 10, proposerKey, [32]byte{})
 	require.NoError(t, err)
 
@@ -59,6 +68,7 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 		doubleSignedBlocks []*types.Block
 		stateUpdateFraud   string
 		expectedErrType    error
+		last               bool
 	}{
 		{
 			name:               "Successful validation applied from DA",
@@ -123,6 +133,14 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 			doubleSignedBlocks: nil,
 			expectedErrType:    &types.ErrStateUpdateDRSVersionFraud{},
 		},
+		{
+			name:               "Failed validation next sequencer",
+			p2pBlocks:          false,
+			stateUpdateFraud:   "nextsequencer",
+			doubleSignedBlocks: nil,
+			expectedErrType:    &types.ErrInvalidNextSequencersHashFraud{},
+			last:               true,
+		},
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -132,13 +150,37 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 			require.NoError(t, err)
 			require.NotNil(t, manager)
 
+			if tc.last {
+				proposerPubKey := nextProposerKey.PubKey()
+				pubKeybytes := proposerPubKey.Bytes()
+				if err != nil {
+					panic(err)
+				}
+
+				// Set next sequencer
+				raw, _ := nextSequencerKey.GetPublic().Raw()
+				pubkey := ed25519.PubKey(raw)
+				manager.State.SetProposer(types.NewSequencer(pubkey, hex.EncodeToString(pubKeybytes), "", nil))
+
+				// set proposer
+				raw, _ = proposerKey.GetPublic().Raw()
+				pubkey = ed25519.PubKey(raw)
+				manager.State.Proposer.Store(types.NewSequencer(pubkey, "", "", nil))
+			}
+
 			// Create DA
 			manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
 			manager.Retriever = manager.DAClient.(da.BatchRetriever)
 
 			// Generate batch
-			batch, err := testutil.GenerateBatch(1, 10, proposerKey, [32]byte{})
-			assert.NoError(t, err)
+			var batch *types.Batch
+			if tc.last {
+				batch, err = testutil.GenerateLastBatch(1, 10, proposerKey, fakeProposerKey, [32]byte{})
+				assert.NoError(t, err)
+			} else {
+				batch, err = testutil.GenerateBatch(1, 10, proposerKey, [32]byte{})
+				assert.NoError(t, err)
+			}
 
 			// Submit batch to DA
 			daResultSubmitBatch := manager.DAClient.SubmitBatch(batch)
@@ -149,7 +191,7 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 			require.NoError(t, err)
 
 			// create the batch in settlement
-			slBatch := getSLBatch(bds, daResultSubmitBatch.SubmitMetaData, 1, 10)
+			slBatch := getSLBatch(bds, daResultSubmitBatch.SubmitMetaData, 1, 10, manager.State.GetProposer().SettlementAddress)
 
 			// Create the StateUpdateValidator
 			validator := block.NewSettlementValidator(testutil.NewLogger(t), manager)
@@ -170,7 +212,9 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 				}
 				// otherwise load them from DA
 			} else {
-				manager.ApplyBatchFromSL(slBatch.Batch)
+				if !tc.last {
+					manager.ApplyBatchFromSL(slBatch.Batch)
+				}
 			}
 
 			for _, bd := range bds {
@@ -200,6 +244,9 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 			case "height":
 				// add blockdescriptor with wrong height
 				slBatch.BlockDescriptors[0].Height = 2
+			case "nextsequencer":
+				seq := types.NewSequencerFromValidator(*tmtypes.NewValidator(nextProposerKey.PubKey(), 1))
+				slBatch.NextSequencer = seq.SettlementAddress
 			}
 
 			// validate the state update
@@ -332,7 +379,7 @@ func TestStateUpdateValidator_ValidateDAFraud(t *testing.T) {
 			bds, err := getBlockDescriptors(batch)
 			require.NoError(t, err)
 			// Generate batch with block descriptors
-			slBatch := getSLBatch(bds, daResultSubmitBatch.SubmitMetaData, 1, 10)
+			slBatch := getSLBatch(bds, daResultSubmitBatch.SubmitMetaData, 1, 10, manager.State.GetProposer().SettlementAddress)
 
 			for _, bd := range bds {
 				manager.Store.SaveDRSVersion(bd.Height, bd.DrsVersion, nil)
@@ -371,7 +418,7 @@ func getBlockDescriptors(batch *types.Batch) ([]rollapp.BlockDescriptor, error) 
 	return bds, nil
 }
 
-func getSLBatch(bds []rollapp.BlockDescriptor, daMetaData *da.DASubmitMetaData, startHeight uint64, endHeight uint64) *settlement.ResultRetrieveBatch {
+func getSLBatch(bds []rollapp.BlockDescriptor, daMetaData *da.DASubmitMetaData, startHeight uint64, endHeight uint64, nextSequencer string) *settlement.ResultRetrieveBatch {
 	// create the batch in settlement
 	return &settlement.ResultRetrieveBatch{
 		Batch: &settlement.Batch{
@@ -379,9 +426,10 @@ func getSLBatch(bds []rollapp.BlockDescriptor, daMetaData *da.DASubmitMetaData, 
 			MetaData: &settlement.BatchMetaData{
 				DA: daMetaData,
 			},
-			StartHeight: startHeight,
-			EndHeight:   endHeight,
-			NumBlocks:   endHeight - startHeight + 1,
+			StartHeight:   startHeight,
+			EndHeight:     endHeight,
+			NumBlocks:     endHeight - startHeight + 1,
+			NextSequencer: nextSequencer,
 		},
 		ResultBase: settlement.ResultBase{
 			StateIndex: 1,

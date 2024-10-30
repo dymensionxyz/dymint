@@ -834,6 +834,7 @@ func TestValidatorSetHandling(t *testing.T) {
 		},
 		ValidatorUpdates: []abci.ValidatorUpdate{{PubKey: pbValKey, Power: 100}},
 	})
+
 	waitCh := make(chan interface{})
 
 	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{}).Times(5)
