@@ -40,6 +40,10 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int)
 		case <-ctx.Done():
 			return nil
 		case <-ticker.C:
+			// Only produce if I'm the current rollapp proposer.
+			if !m.AmIProposerOnRollapp() {
+				continue
+			}
 
 			// if empty blocks are configured to be enabled, and one is scheduled...
 			produceEmptyBlock := firstBlock || m.Conf.MaxIdleTime == 0 || nextEmptyBlock.Before(time.Now())
@@ -107,6 +111,7 @@ func (m *Manager) ProduceApplyGossipBlock(ctx context.Context, allowEmpty bool) 
 }
 
 func (m *Manager) produceApplyGossip(ctx context.Context, allowEmpty bool, nextProposerHash *[32]byte) (block *types.Block, commit *types.Commit, err error) {
+	// If I'm not the current rollapp proposer, I should not produce a blocks.
 	block, commit, err = m.produceBlock(allowEmpty, nextProposerHash)
 	if err != nil {
 		return nil, nil, fmt.Errorf("produce block: %w", err)

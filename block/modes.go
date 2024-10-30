@@ -52,20 +52,12 @@ func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {
 		return fmt.Errorf("checking if missing last batch: %w", err)
 	}
 	if shouldRotate {
-		// Get next proposer address
-		nextProposer, err := m.SLClient.GetNextProposer()
-		if err != nil {
-			return err
-		}
 		// rotate and panic to restart as full node
-		panic(m.rotate(ctx, nextProposer.SettlementAddress))
+		m.rotate(ctx)
 	}
 
 	// populate the bytes produced channel
 	bytesProducedC := make(chan int)
-
-	// channel to signal sequencer rotation started
-	rotateProposerC := make(chan string, 1)
 
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		return m.SubmitLoop(ctx, bytesProducedC)
@@ -74,29 +66,9 @@ func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {
 		bytesProducedC <- m.GetUnsubmittedBytes() // load unsubmitted bytes from previous run
 		return m.ProduceBlockLoop(ctx, bytesProducedC)
 	})
-	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
-		return m.MonitorProposerRotation(ctx, rotateProposerC)
-	})
 
-	go m.listenToRotationSignal(ctx, eg, rotateProposerC)
+	// Monitor and handling of the rotation
+	go m.MonitorProposerRotation(ctx)
 
 	return nil
-}
-
-// listenToRotationSignal listens for rotation signal and rotates the sequencer.
-func (m *Manager) listenToRotationSignal(ctx context.Context, eg *errgroup.Group, rotateProposerC chan string) {
-	// Wait for error group to complete and capture the error
-	if err := eg.Wait(); err != nil {
-		m.logger.Error("Error group failed", "error", err)
-		return
-	}
-	select {
-	case nextProposerAddr := <-rotateProposerC:
-		// rotate and panic to restart as full node
-		panic(m.rotate(ctx, nextProposerAddr))
-	case <-ctx.Done():
-		m.logger.Info("Context cancelled, stopping rotation listener")
-	default:
-		m.logger.Info("Block manager completed successfully")
-	}
 }

@@ -204,7 +204,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	}
 
 	// checks if the the current node is the proposer either on rollapp or on the hub.
-	// In case of sequencer rotation, there's a phase where proposer rotated on L2 but hasn't yet rotated on hub.
+	// In case of sequencer rotation, there's a phase where proposer rotated on Rollapp but hasn't yet rotated on hub.
 	// for this case, 2 nodes will get `true` for `AmIProposer` so the l2 proposer can produce blocks and the hub proposer can submit his last batch.
 	// The hub proposer, after sending the last state update, will panic and restart as full node.
 	amIProposer := m.AmIProposerOnSL() || m.AmIProposerOnRollapp()
@@ -239,6 +239,7 @@ func (m *Manager) Start(ctx context.Context) error {
 		return m.MonitorSequencerSetUpdates(ctx)
 	})
 
+	// run based on the node role
 	if !amIProposer {
 		return m.runAsFullNode(ctx, eg)
 	}

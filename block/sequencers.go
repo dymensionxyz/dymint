@@ -6,48 +6,28 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
 )
 
-func (m *Manager) MonitorProposerRotation(ctx context.Context, rotateC chan string) error {
-	sequencerRotationEventClient := "sequencer_rotation"
-	subscription, err := m.Pubsub.Subscribe(ctx, sequencerRotationEventClient, settlement.EventQueryRotationStarted)
-	if err != nil {
-		panic("Error subscribing to events")
-	}
-	defer m.Pubsub.UnsubscribeAll(ctx, sequencerRotationEventClient) //nolint:errcheck
-
+func (m *Manager) MonitorProposerRotation(ctx context.Context) {
 	ticker := time.NewTicker(3 * time.Minute) // TODO: make this configurable
 	defer ticker.Stop()
 
-	var nextSeqAddr string
 	for {
 		select {
 		case <-ctx.Done():
-			return nil
+			return
 		case <-ticker.C:
 			next, err := m.SLClient.GetNextProposer()
 			if err != nil {
 				m.logger.Error("Check rotation in progress", "err", err)
 				continue
 			}
-			if next == nil {
-				continue
+			if next != nil {
+				m.rotate(ctx)
 			}
-			nextSeqAddr = next.SettlementAddress
-		case event := <-subscription.Out():
-			eventData, _ := event.Data().(*settlement.EventDataRotationStarted)
-			nextSeqAddr = eventData.NextSeqAddr
 		}
-		break // break out of the loop after getting the next sequencer address
 	}
-	// we get here once a sequencer rotation signal is received
-	m.logger.Info("Sequencer rotation started.", "next_seq", nextSeqAddr)
-	go func() {
-		rotateC <- nextSeqAddr
-	}()
-	return fmt.Errorf("sequencer rotation started. signal to stop production")
 }
 
 func (m *Manager) MonitorSequencerSetUpdates(ctx context.Context) error {
@@ -113,36 +93,26 @@ func (m *Manager) ShouldRotate() (bool, error) {
 	return m.AmIProposerOnSL(), nil
 }
 
-// rotate rotates current proposer by changing the next sequencer on the last block and submitting the last batch.
-// The assumption is that at this point the sequencer has stopped producing blocks.
-func (m *Manager) rotate(ctx context.Context, nextSeqAddr string) error {
-	m.logger.Info("Sequencer rotation started. Production stopped on this sequencer", "nextSeqAddr", nextSeqAddr)
-
-	// Update sequencers list from SL
-	err := m.UpdateSequencerSetFromSL()
+// rotate rotates current proposer by doing the following:
+// 1. Creating last block with the new proposer, which will stop him from producing blocks.
+// 2. Submitting the last batch
+// 3. Panicing so the node restarts as full node
+// Note: In case he already created his last block, he will only try to submit the last batch.
+func (m *Manager) rotate(ctx context.Context) {
+	// Get Next Proposer from SL. We assume such exists (even if empty proposer) otherwise function wouldn't be called.
+	nextProposer, err := m.SLClient.GetNextProposer()
 	if err != nil {
-		// this error is not critical, try to complete the rotation anyway
-		m.logger.Error("Cannot fetch sequencer set from the Hub", "error", err)
+		panic(fmt.Sprintf("rotate: fetch next proposer set from Hub: %v", err))
 	}
 
-	// validate nextSeq is in the bonded set
-	var nextSeqHash [32]byte
-	if nextSeqAddr != "" {
-		seq, found := m.Sequencers.GetByAddress(nextSeqAddr)
-		if !found {
-			return types.ErrMissingProposerPubKey
-		}
-		copy(nextSeqHash[:], seq.MustHash())
-	}
-
-	err = m.CreateAndPostLastBatch(ctx, nextSeqHash)
+	err = m.CreateAndPostLastBatch(ctx, [32]byte(nextProposer.MustHash()))
 	if err != nil {
-		return fmt.Errorf("create and post last batch: %w", err)
+		panic(fmt.Sprintf("rotate: create and post last batch: %v", err))
 	}
 
-	m.logger.Info("Sequencer rotation completed. sequencer is no longer the proposer", "nextSeqAddr", nextSeqAddr)
+	m.logger.Info("Sequencer rotation completed. sequencer is no longer the proposer", "nextSeqAddr", nextProposer.SettlementAddress)
 
-	return fmt.Errorf("sequencer is no longer the proposer")
+	panic("rotate: sequencer is no longer the proposer. restarting as a full node")
 }
 
 // CreateAndPostLastBatch creates and posts the last batch to the hub
@@ -154,7 +124,8 @@ func (m *Manager) CreateAndPostLastBatch(ctx context.Context, nextSeqHash [32]by
 		return fmt.Errorf("load block: height: %d: %w", h, err)
 	}
 
-	// check if the last block already produced with nextProposerHash set
+	// check if the last block already produced with nextProposerHash set.
+	// After creating the last block, the sequencer will be restarted so it will not be able to produce blocks anymore.
 	if bytes.Equal(block.Header.NextSequencersHash[:], nextSeqHash[:]) {
 		m.logger.Debug("Last block already produced and applied.")
 	} else {

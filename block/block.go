@@ -181,13 +181,10 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		return err
 	}
 
-	// Check if there was an Update for the proposer and if so restart. Why?
-	// For previous proposer, he's no longer the proposer and should submit last batch and stop producing blocks.
-	// For new proposer, he should start up as a proposer and start producing blocks.
-	// Full nodes should not restart. However for simplicity will restart as well.
-	// FIXME: Full nodes should not restart.
-	if isProposerUpdated {
-		panic("Proposer updated, restarting")
+	// Check if there was an Update for the proposer and if I am the new proposer.
+	// If so, restart so I can start as the proposer.
+	if isProposerUpdated && m.AmIProposerOnRollapp() {
+		panic("I'm the new Proposer now. restarting as a proposer")
 	}
 
 	return nil
