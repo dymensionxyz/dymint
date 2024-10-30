@@ -35,9 +35,6 @@ func (s *DefaultStore) PruneStore(to uint64, logger types.Logger) (uint64, error
 	prunedProposers, err := s.pruneProposers(from, to, logger)
 	if err != nil {
 		logger.Error("pruning block sync identifiers", "from", from, "to", to, "proposers pruned", prunedProposers, "err", err)
-	prunedSequencers, err := s.pruneSequencers(from, to, logger)
-	if err != nil {
-		logger.Error("pruning sequencers", "from", from, "to", to, "sequencers pruned", prunedSequencers, "err", err)
 	}
 
 	err = s.SaveBaseHeight(to)
@@ -85,16 +82,8 @@ func (s *DefaultStore) pruneDRSVersion(from, to uint64, logger types.Logger) (ui
 	pruneDRS := func(batch KVBatch, height uint64) error {
 		return batch.Delete(getDRSVersionKey(height))
 	}
-	prunedSequencers, err := s.pruneHeights(from, to, pruneDRS, logger)
-}
-
-// pruneSequencers prunes sequencers from store
-func (s *DefaultStore) pruneSequencers(from, to uint64, logger types.Logger) (uint64, error) {
-	pruneSequencers := func(batch KVBatch, height uint64) error {
-		return batch.Delete(getSequencersKey(height))
-	}
-	prunedSequencers, err := s.pruneHeights(from, to, pruneSequencers, logger)
-	return prunedSequencers, err
+	prunedDRS, err := s.pruneHeights(from, to, pruneDRS, logger)
+	return prunedDRS, err
 }
 
 // pruneHeights is the common function for all pruning that iterates through all heights and prunes according to the pruning function set
@@ -138,11 +127,11 @@ func (s *DefaultStore) pruneHeights(from, to uint64, prune func(batch KVBatch, h
 	return pruned, nil
 }
 
-// pruneSequencers prunes proposer from store
+// pruneProposers prunes proposer from store
 func (s *DefaultStore) pruneProposers(from, to uint64, logger types.Logger) (uint64, error) {
 	pruneProposers := func(batch KVBatch, height uint64) error {
 		return batch.Delete(getProposerKey(height))
 	}
-	prunedSequencers, err := s.pruneHeights(from, to, pruneProposers, logger)
-	return prunedSequencers, err
+	prunedProposers, err := s.pruneHeights(from, to, pruneProposers, logger)
+	return prunedProposers, err
 }
