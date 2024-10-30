@@ -53,6 +53,7 @@ type Manager struct {
 	Genesis         *tmtypes.GenesisDoc
 	GenesisChecksum string
 	LocalKey        crypto.PrivKey
+	RootDir         string
 
 	// Store and execution
 	Store      store.Store
@@ -155,6 +156,7 @@ func NewManager(
 		Pubsub:          pubsub,
 		P2PClient:       p2pClient,
 		LocalKey:        localKey,
+		RootDir:         conf.RootDir,
 		Conf:            conf.BlockManagerConfig,
 		Genesis:         genesis,
 		GenesisChecksum: genesisChecksum,

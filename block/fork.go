@@ -2,6 +2,9 @@ package block
 
 import (
 	"context"
+	"fmt"
+	"github.com/dymensionxyz/dymint/node/events"
+	uevent "github.com/dymensionxyz/dymint/utils/event"
 	"time"
 
 	"github.com/dymensionxyz/dymint/types"
@@ -17,7 +20,7 @@ func (m *Manager) MonitorForkUpdate(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case <-ticker.C:
-			if err := m.checkForkUpdate(); err != nil {
+			if err := m.checkForkUpdate(ctx); err != nil {
 				continue
 			}
 		}
@@ -25,27 +28,47 @@ func (m *Manager) MonitorForkUpdate(ctx context.Context) error {
 }
 
 // checkForkUpdate checks if the hub has a fork update
-func (m *Manager) checkForkUpdate() error {
+func (m *Manager) checkForkUpdate(ctx context.Context) error {
 	rollapp, err := m.SLClient.GetRollapp()
 	if err != nil {
 		return err
 	}
 
 	lastBlock, err := m.Store.LoadBlock(m.State.Height())
+	if err != nil {
+		return err
+	}
 
 	if m.shouldStopNode(rollapp, lastBlock) {
-		createInstruction(rollapp)
+		err = m.createInstruction(rollapp, lastBlock)
+		if err != nil {
+			return err
+		}
+
+		m.freezeNode(ctx)
 	}
 
 	return nil
 }
 
-func createInstruction(rollapp *types.Rollapp) {
+func (m *Manager) createInstruction(rollapp *types.Rollapp, block *types.Block) error {
+	info, err := m.SLClient.GetStateInfo(block.Header.Height)
+	if err != nil {
+		return err
+	}
+
 	instruction := types.Instruction{
 		Revision:            rollapp.Revision,
 		RevisionStartHeight: rollapp.RevisionStartHeight,
-		Sequencer:
+		Sequencer:           info.NextProposer,
 	}
+
+	err = types.PersistInstructionToDisk(m.Conf.RootDir, instruction)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // shouldStopNode determines if a rollapp node should be stopped based on revision criteria.
@@ -56,8 +79,27 @@ func createInstruction(rollapp *types.Rollapp) {
 func (m *Manager) shouldStopNode(rollapp *types.Rollapp, block *types.Block) bool {
 	revision := block.Header.Version.App
 	if m.State.Height() >= rollapp.RevisionStartHeight && revision < rollapp.Revision {
+		m.logger.Info(
+			"Freezing node due to fork update",
+			"local_block_height",
+			m.State.Height(),
+			"rollapp_revision_start_height",
+			rollapp.RevisionStartHeight,
+			"local_revision",
+			revision,
+			"rollapp_revision",
+			rollapp.Revision,
+		)
 		return true
 	}
 
 	return false
+}
+
+// freezeNode stops the rollapp node
+func (m *Manager) freezeNode(ctx context.Context) {
+	m.logger.Info("Freezing node due to fork update")
+
+	err := fmt.Errorf("node frozen due to fork update")
+	uevent.MustPublish(ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
 }
