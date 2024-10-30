@@ -146,6 +146,11 @@ func (v *SettlementValidator) ValidateDaBlocks(slBatch *settlement.ResultRetriev
 		return types.NewErrStateUpdateNumBlocksNotMatchingFraud(slBatch.EndHeight, numSLBlocks, numSLBlocks)
 	}
 
+	currentProposer := v.blockManager.State.GetProposer()
+	if currentProposer == nil {
+		return fmt.Errorf("proposer is not set")
+	}
+
 	// we compare all DA blocks against the information included in the state info block descriptors
 	for i, bd := range slBatch.BlockDescriptors {
 		// height check
@@ -166,6 +171,35 @@ func (v *SettlementValidator) ValidateDaBlocks(slBatch *settlement.ResultRetriev
 		err := v.validateDRS(slBatch.StateIndex, bd.Height, bd.DrsVersion)
 		if err != nil {
 			return err
+		}
+
+		// we compare the sequencer address between SL state info and DA block
+		// if next sequencer is not set, we check if the sequencer hash is equal to the next sequencer hash
+		// because it did not change. If the next sequencer is set, we check if the next sequencer hash is equal on the
+		// last block of the batch
+		isLastBlock := i == len(slBatch.BlockDescriptors)-1
+		if slBatch.NextSequencer != currentProposer.SettlementAddress && isLastBlock {
+			err := v.blockManager.UpdateSequencerSetFromSL()
+			if err != nil {
+				return fmt.Errorf("update sequencer set from SL: %w", err)
+			}
+			nextSequencer, found := v.blockManager.Sequencers.GetByAddress(slBatch.NextSequencer)
+			if !found {
+				return fmt.Errorf("next sequencer not found")
+			}
+			if !bytes.Equal(nextSequencer.MustHash(), daBlocks[i].Header.NextSequencersHash[:]) {
+				return types.NewErrInvalidNextSequencersHashFraud(
+					[32]byte(nextSequencer.MustHash()),
+					daBlocks[i].Header.NextSequencersHash,
+				)
+			}
+		} else {
+			if !bytes.Equal(daBlocks[i].Header.SequencerHash[:], daBlocks[i].Header.NextSequencersHash[:]) {
+				return types.NewErrInvalidNextSequencersHashFraud(
+					daBlocks[i].Header.SequencerHash,
+					daBlocks[i].Header.NextSequencersHash,
+				)
+			}
 		}
 	}
 	v.logger.Debug("DA blocks validated successfully", "start height", daBlocks[0].Header.Height, "end height", daBlocks[len(daBlocks)-1].Header.Height)
@@ -198,6 +232,7 @@ func (v *SettlementValidator) NextValidationHeight() uint64 {
 }
 
 // validateDRS compares the DRS version stored for the specific height, obtained from rollapp params.
+// DRS checks will work only for non-finalized heights, since it does not store the whole history, but it will never validate finalized heights.
 func (v *SettlementValidator) validateDRS(stateIndex uint64, height uint64, version string) error {
 	drs, err := v.blockManager.Store.LoadDRSVersion(height)
 	if err != nil {
