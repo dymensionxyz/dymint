@@ -527,6 +527,63 @@ func (_c *MockClientI_GetProposer_Call) RunAndReturn(run func() *types.Sequencer
 	return _c
 }
 
+// GetRollapp provides a mock function with given fields:
+func (_m *MockClientI) GetRollapp() (*types.Rollapp, error) {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetRollapp")
+	}
+
+	var r0 *types.Rollapp
+	var r1 error
+	if rf, ok := ret.Get(0).(func() (*types.Rollapp, error)); ok {
+		return rf()
+	}
+	if rf, ok := ret.Get(0).(func() *types.Rollapp); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*types.Rollapp)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockClientI_GetRollapp_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetRollapp'
+type MockClientI_GetRollapp_Call struct {
+	*mock.Call
+}
+
+// GetRollapp is a helper method to define mock.On call
+func (_e *MockClientI_Expecter) GetRollapp() *MockClientI_GetRollapp_Call {
+	return &MockClientI_GetRollapp_Call{Call: _e.mock.On("GetRollapp")}
+}
+
+func (_c *MockClientI_GetRollapp_Call) Run(run func()) *MockClientI_GetRollapp_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockClientI_GetRollapp_Call) Return(_a0 *types.Rollapp, _a1 error) *MockClientI_GetRollapp_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockClientI_GetRollapp_Call) RunAndReturn(run func() (*types.Rollapp, error)) *MockClientI_GetRollapp_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetSequencerByAddress provides a mock function with given fields: address
 func (_m *MockClientI) GetSequencerByAddress(address string) (types.Sequencer, error) {
 	ret := _m.Called(address)

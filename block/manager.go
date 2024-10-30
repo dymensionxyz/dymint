@@ -290,6 +290,9 @@ func (m *Manager) Start(ctx context.Context) error {
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		return m.MonitorSequencerRotation(ctx, rotateSequencerC)
 	})
+	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
+		return m.MonitorForkUpdate(ctx)
+	})
 
 	go func() {
 		_ = eg.Wait()

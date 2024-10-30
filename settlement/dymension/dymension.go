@@ -550,6 +550,39 @@ func (c *Client) CheckRotationInProgress() (*types.Sequencer, error) {
 	return nil, fmt.Errorf("next proposer not found in bonded set: %w", gerrc.ErrInternal)
 }
 
+func (c *Client) GetRollapp() (*types.Rollapp, error) {
+	var res *rollapptypes.QueryGetRollappResponse
+	req := &rollapptypes.QueryGetRollappRequest{
+		RollappId: c.rollappId,
+	}
+
+	err := c.RunWithRetry(func() error {
+		var err error
+		res, err = c.cosmosClient.GetRollappClient().Rollapp(c.ctx, req)
+		if err == nil {
+			return nil
+		}
+		if status.Code(err) == codes.NotFound {
+			return retry.Unrecoverable(errors.Join(gerrc.ErrNotFound, err))
+		}
+		return err
+	})
+	if err != nil {
+		return nil, fmt.Errorf("get rollapp: %w", err)
+	}
+
+	// not supposed to happen, but just in case
+	if res == nil {
+		return nil, fmt.Errorf("empty response: %w", gerrc.ErrUnknown)
+	}
+
+	return &types.Rollapp{
+		RollappID:           c.rollappId,
+		Revision:            uint64(res.Rollapp.Revision),
+		RevisionStartHeight: uint64(res.Rollapp.RevisionStartHeight),
+	}, nil
+}
+
 func (c *Client) broadcastBatch(msgUpdateState *rollapptypes.MsgUpdateState) error {
 	txResp, err := c.cosmosClient.BroadcastTx(c.config.DymAccountName, msgUpdateState)
 	if err != nil {
