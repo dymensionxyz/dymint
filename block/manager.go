@@ -42,6 +42,7 @@ type Manager struct {
 	Conf     config.BlockManagerConfig
 	Genesis  *tmtypes.GenesisDoc
 	LocalKey crypto.PrivKey
+	RootDir  string
 
 	// Store and execution
 	Store      store.Store
@@ -141,6 +142,7 @@ func NewManager(
 		P2PClient:      p2pClient,
 		LocalKey:       localKey,
 		Conf:           conf.BlockManagerConfig,
+		RootDir:        conf.RootDir,
 		Genesis:        genesis,
 		Store:          store,
 		Executor:       exec,
