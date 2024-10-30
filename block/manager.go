@@ -190,29 +190,29 @@ func (m *Manager) Start(ctx context.Context) error {
 		}
 	}
 
-	// Check if the chain is halted
-	err := m.isChainHalted()
-	if err != nil {
-		return err
-	}
-
-	// Check if a proposer on the rollapp is set. In case no proposer is set on the Rollapp, fallback to the hub proposer.
-	// This can happen, for exampe,  in case there was no proposer previously.
+	// Check if a proposer on the rollapp is set. In case no proposer is set on the Rollapp, fallback to the hub proposer (If such exists).
+	// No proposer on the rollapp means that at some point there was no available proposer.
+	// In case there is also no proposer on the hub to our current height, it means that the chain is halted.
+	// FIXME: In case we are syncing we would like to get the proposer from the hub relevant to the current height.
 	if m.State.GetProposer() == nil {
-		m.logger.Info("No proposer on the rollapp, fallback to the hub proposer if available")
-		m.State.SetProposer(m.SLClient.GetProposer())
+		m.logger.Info("No proposer on the rollapp, fallback to the hub proposer, if available")
+		SLProposer := m.SLClient.GetProposer()
+		if SLProposer == nil {
+			return fmt.Errorf("no proposer available. chain is halted")
+		}
+		m.State.SetProposer(SLProposer)
 	}
 
 	// checks if the the current node is the proposer either on rollapp or on the hub.
 	// In case of sequencer rotation, there's a phase where proposer rotated on L2 but hasn't yet rotated on hub.
 	// for this case, 2 nodes will get `true` for `AmIProposer` so the l2 proposer can produce blocks and the hub proposer can submit his last batch.
 	// The hub proposer, after sending the last state update, will panic and restart as full node.
-	amIProposer := m.AmIProposerOnHub() || m.AmIProposerOnRollapp()
+	amIProposer := m.AmIProposerOnSL() || m.AmIProposerOnRollapp()
 
 	m.logger.Info("starting block manager", "mode", map[bool]string{true: "proposer", false: "full node"}[amIProposer])
 
 	// update local state from latest state in settlement
-	err = m.updateFromLastSettlementState()
+	err := m.updateFromLastSettlementState()
 	if err != nil {
 		return fmt.Errorf("sync block manager from settlement: %w", err)
 	}
@@ -244,20 +244,6 @@ func (m *Manager) Start(ctx context.Context) error {
 	}
 
 	return m.runAsProposer(ctx, eg)
-}
-
-func (m *Manager) isChainHalted() error {
-	if m.State.GetProposerPubKey() == nil {
-		// if no proposer set in state, try to update it from the hub
-		err := m.UpdateProposerFromSL()
-		if err != nil {
-			return fmt.Errorf("update proposer: %w", err)
-		}
-		if m.State.GetProposerPubKey() == nil {
-			return fmt.Errorf("no proposer pubkey found. chain is halted")
-		}
-	}
-	return nil
 }
 
 func (m *Manager) NextHeightToSubmit() uint64 {

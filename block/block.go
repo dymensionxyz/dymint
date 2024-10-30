@@ -157,8 +157,8 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		return fmt.Errorf("save proposer: %w", err)
 	}
 
-	// 2. Update the proposer in the state in case of rotation.
-	switchRole := m.Executor.UpdateProposerFromBlock(m.State, m.Sequencers, block)
+	// 2. Update the proposer in the state in case of rotation happened on the rollapp level (not necessarily on the hub yet).
+	isProposerUpdated := m.Executor.UpdateProposerFromBlock(m.State, m.Sequencers, block)
 
 	// 3. Save the state to the store (independently of the height). Here the proposer might differ from (1).
 	batch, err = m.Store.SaveState(m.State, batch)
@@ -175,16 +175,19 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 
 	m.blockCache.Delete(block.Header.Height)
 
-	if switchRole {
-		// TODO: graceful role change (https://github.com/dymensionxyz/dymint/issues/1008)
-		m.logger.Info("Node changing to proposer role")
-		panic("sequencer is no longer the proposer")
-	}
-
 	// validate whether configuration params and rollapp consensus params keep in line, after rollapp params are updated from the responses received in the block execution
 	err = m.ValidateConfigWithRollappParams()
 	if err != nil {
 		return err
+	}
+
+	// Check if there was an Update for the proposer and if so restart. Why?
+	// For previous proposer, he's no longer the proposer and should submit last batch and stop producing blocks.
+	// For new proposer, he should start up as a proposer and start producing blocks.
+	// Full nodes should not restart. However for simplicity will restart as well.
+	// FIXME: Full nodes should not restart.
+	if isProposerUpdated {
+		panic("Proposer updated, restarting")
 	}
 
 	return nil

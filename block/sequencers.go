@@ -72,12 +72,12 @@ func (m *Manager) MonitorSequencerSetUpdates(ctx context.Context) error {
 // In case of sequencer rotation, there's a phase where proposer rotated on L2 but hasn't yet rotated on hub.
 // for this case, 2 nodes will get `true` for `AmIProposer` so the l2 proposer can produce blocks and the hub proposer can submit his last batch.
 func (m *Manager) AmIProposer() bool {
-	return m.AmIProposerOnHub() || m.AmIProposerOnRollapp()
+	return m.AmIProposerOnSL() || m.AmIProposerOnRollapp()
 }
 
-// AmIProposerOnHub checks if the current node is the proposer on the hub
+// AmIProposerOnSL checks if the current node is the proposer on the hub
 // Proposer on the Hub is not necessarily the proposer on the L2 during rotation phase.
-func (m *Manager) AmIProposerOnHub() bool {
+func (m *Manager) AmIProposerOnSL() bool {
 	localProposerKeyBytes, _ := m.LocalKey.GetPublic().Raw()
 
 	// get hub proposer key
@@ -110,7 +110,7 @@ func (m *Manager) ShouldRotate() (bool, error) {
 	}
 	// At this point we know that there is a next proposer,
 	// so we should rotate only if we are the current proposer on the hub
-	return m.AmIProposerOnHub(), nil
+	return m.AmIProposerOnSL(), nil
 }
 
 // rotate rotates current proposer by changing the next sequencer on the last block and submitting the last batch.
@@ -209,11 +209,5 @@ func (m *Manager) HandleSequencerSetUpdate(newSet []types.Sequencer) error {
 	m.Executor.AddConsensusMsgs(msgs...)
 	// save the new sequencer set to the state
 	m.Sequencers.Set(newSet)
-	return nil
-}
-
-// UpdateProposerFromSL updates the proposer from the hub
-func (m *Manager) UpdateProposerFromSL() error {
-	m.State.SetProposer(m.SLClient.GetProposer())
 	return nil
 }
