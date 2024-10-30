@@ -94,4 +94,7 @@ type ClientI interface {
 	// GetNextProposer returns the next proposer for this chain in case of a rotation.
 	// If no rotation is in progress, it should return nil.
 	GetNextProposer() (*types.Sequencer, error)
+	CheckRotationInProgress() (*types.Sequencer, error)
+	// GetRollapp returns the rollapp information.
+	GetRollapp() (*types.Rollapp, error)
 }

@@ -54,6 +54,11 @@ type Client struct {
 	settlementKV store.KV
 }
 
+func (c *Client) GetRollapp() (*types.Rollapp, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 var _ settlement.ClientI = (*Client)(nil)
 
 // Init initializes the mock layer client.

@@ -74,6 +74,12 @@ message Rollapp {
   // The LastStateUpdateHeight HUB height when the last state update was
   // received
   int64 last_state_update_height = 18;
+
+  // Revision is the revision number of the rollapp
+  int64 revision = 19;
+
+  // RevisionStartHeight is the height at which the revision was started
+  int64 revision_start_height = 20;
 }
 
 message GenesisInfo {
