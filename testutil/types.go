@@ -184,10 +184,10 @@ func GenerateCommits(blocks []*types.Block, proposerKey crypto.PrivKey) ([]*type
 }
 
 func GenerateDRS(blocks int) []uint32 {
-	dymintVersion, _ := strconv.ParseUint(dymintversion.DrsVersion, 10, 32)
+	drsVersion, _ := strconv.ParseUint(dymintversion.DrsVersion, 10, 32)
 	drs := make([]uint32, blocks)
 	for i := 0; i < blocks; i++ {
-		drs[i] = uint32(dymintVersion)
+		drs[i] = uint32(drsVersion)
 	}
 	return drs
 }
