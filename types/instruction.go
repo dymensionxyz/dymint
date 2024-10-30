@@ -16,7 +16,7 @@ type Instruction struct {
 const instructionFileName = "instruction.json"
 
 func PersistInstructionToDisk(dir string, instruction Instruction) error {
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
 
@@ -26,7 +26,7 @@ func PersistInstructionToDisk(dir string, instruction Instruction) error {
 	}
 
 	filePath := filepath.Join(dir, instructionFileName)
-	return os.WriteFile(filePath, data, 0644)
+	return os.WriteFile(filePath, data, 0o644)
 }
 
 func LoadInstructionFromDisk(dir string) (Instruction, error) {

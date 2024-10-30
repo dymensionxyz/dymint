@@ -3,9 +3,10 @@ package block
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/dymensionxyz/dymint/node/events"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
-	"time"
 
 	"github.com/dymensionxyz/dymint/types"
 )

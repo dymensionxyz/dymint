@@ -57,7 +57,7 @@ type Client struct {
 }
 
 func (c *Client) GetStateInfo(index uint64) (*types.StateInfo, error) {
-	//TODO implement me
+	// TODO implement me
 	panic("implement me")
 }
 
