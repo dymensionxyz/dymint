@@ -56,6 +56,4 @@ message RollappParams {
   string da = 1 ;
   //drs version
   uint64 version = 2;
-  //commit used for the rollapp executable
-  string commit = 3 ;
 }
