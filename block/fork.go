@@ -63,7 +63,7 @@ func (m *Manager) createInstruction(rollapp *types.Rollapp, block *types.Block) 
 		Sequencer:           info.NextProposer,
 	}
 
-	err = types.PersistInstructionToDisk(m.Conf.RootDir, instruction)
+	err = types.PersistInstructionToDisk(m.RootDir, instruction)
 	if err != nil {
 		return err
 	}

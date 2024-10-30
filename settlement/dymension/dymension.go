@@ -56,6 +56,11 @@ type Client struct {
 	batchAcceptanceAttempts uint
 }
 
+func (c *Client) GetStateInfo(index uint64) (*types.StateInfo, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 var _ settlement.ClientI = &Client{}
 
 // Init is called once. it initializes the struct members.
