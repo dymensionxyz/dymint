@@ -310,7 +310,7 @@ func (c *Client) GetLatestFinalizedHeight() (uint64, error) {
 	return res.Height, nil
 }
 
-// GetProposerAtHeight return the propoesr at height.
+// GetProposerAtHeight return the proposer at height.
 // In case of negative height, it will return the latest proposer.
 func (c *Client) GetProposerAtHeight(height int64) (*types.Sequencer, error) {
 
