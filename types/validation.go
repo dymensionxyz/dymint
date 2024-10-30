@@ -79,7 +79,7 @@ func (b *Block) ValidateWithState(state *State) error {
 
 	proposerHash := state.GetProposerHash()
 	if !bytes.Equal(b.Header.SequencerHash[:], proposerHash) {
-		return NewErrInvalidNextSequencersHashFraud([32]byte(proposerHash), b.Header.SequencerHash)
+		return NewErrInvalidSequencerHashFraud([32]byte(proposerHash), b.Header.SequencerHash)
 	}
 
 	if !bytes.Equal(b.Header.AppHash[:], state.AppHash[:]) {
