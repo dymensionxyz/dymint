@@ -31,8 +31,8 @@ func CreateNode(isSequencer bool, blockManagerConfig *config.BlockManagerConfig,
 	}
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
 		RollappParamUpdates: &abci.RollappParams{
-			Da:      "celestia",
-			Version: 0,
+			Da:         "celestia",
+			DrsVersion: 0,
 		},
 		ConsensusParamUpdates: &abci.ConsensusParams{
 			Block: &abci.BlockParams{

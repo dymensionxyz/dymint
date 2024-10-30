@@ -113,8 +113,8 @@ func TestBatchSubmissionHappyFlow(t *testing.T) {
 	require.NoError(err)
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
 		RollappParamUpdates: &abci.RollappParams{
-			Da:      "mock",
-			Version: 0,
+			Da:         "mock",
+			DrsVersion: 0,
 		},
 		ConsensusParamUpdates: &abci.ConsensusParams{
 			Block: &abci.BlockParams{
@@ -152,8 +152,8 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
 		RollappParamUpdates: &abci.RollappParams{
-			Da:      "mock",
-			Version: 0,
+			Da:         "mock",
+			DrsVersion: 0,
 		},
 		ConsensusParamUpdates: &abci.ConsensusParams{
 			Block: &abci.BlockParams{
@@ -228,8 +228,8 @@ func TestSubmissionByTime(t *testing.T) {
 	app := testutil.GetAppMock(testutil.EndBlock)
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
 		RollappParamUpdates: &abci.RollappParams{
-			Da:      "mock",
-			Version: 0,
+			Da:         "mock",
+			DrsVersion: 0,
 		},
 		ConsensusParamUpdates: &abci.ConsensusParams{
 			Block: &abci.BlockParams{
@@ -311,8 +311,8 @@ func TestSubmissionByBatchSize(t *testing.T) {
 		app := testutil.GetAppMock(testutil.EndBlock)
 		app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
 			RollappParamUpdates: &abci.RollappParams{
-				Da:      "mock",
-				Version: 0,
+				Da:         "mock",
+				DrsVersion: 0,
 			},
 			ConsensusParamUpdates: &abci.ConsensusParams{
 				Block: &abci.BlockParams{

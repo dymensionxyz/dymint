@@ -317,20 +317,20 @@ func (s *DefaultStore) LoadValidationHeight() (uint64, error) {
 	return binary.LittleEndian.Uint64(b), nil
 }
 
-func (s *DefaultStore) LoadDRSVersion(height uint64) (uint64, error) {
+func (s *DefaultStore) LoadDRSVersion(height uint64) (uint32, error) {
 	b, err := s.db.Get(getDRSVersionKey(height))
 	if err != nil {
 		return 0, err
 	}
 	if err != nil {
-		return uint64(0), fmt.Errorf("load drs version for height %v: %w", height, err)
+		return uint32(0), fmt.Errorf("load drs version for height %v: %w", height, err)
 	}
-	return binary.LittleEndian.Uint64(b), nil
+	return binary.LittleEndian.Uint32(b), nil
 }
 
-func (s *DefaultStore) SaveDRSVersion(height uint64, version uint64, batch KVBatch) (KVBatch, error) {
+func (s *DefaultStore) SaveDRSVersion(height uint64, version uint32, batch KVBatch) (KVBatch, error) {
 	b := make([]byte, 8)
-	binary.LittleEndian.PutUint64(b, version)
+	binary.LittleEndian.PutUint32(b, version)
 	if batch == nil {
 		return nil, s.db.Set(getDRSVersionKey(height), b)
 	}

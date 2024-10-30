@@ -183,11 +183,11 @@ func GenerateCommits(blocks []*types.Block, proposerKey crypto.PrivKey) ([]*type
 	return commits, nil
 }
 
-func GenerateDRS(blocks int) []uint64 {
-	dymintVersion, _ := strconv.ParseUint(dymintversion.DRSVersion, 10, 64)
-	drs := make([]uint64, blocks)
+func GenerateDRS(blocks int) []uint32 {
+	dymintVersion, _ := strconv.ParseUint(dymintversion.DrsVersion, 10, 32)
+	drs := make([]uint32, blocks)
 	for i := 0; i < blocks; i++ {
-		drs[i] = dymintVersion
+		drs[i] = uint32(dymintVersion)
 	}
 	return drs
 }
@@ -322,7 +322,7 @@ func GenerateSequencer() types.Sequencer {
 
 // GenerateStateWithSequencer generates an initial state for testing.
 func GenerateStateWithSequencer(initialHeight int64, lastBlockHeight int64, pubkey tmcrypto.PubKey) *types.State {
-	dymintVersion, _ := strconv.ParseUint(dymintversion.DRSVersion, 10, 64)
+	dymintVersion, _ := strconv.ParseUint(dymintversion.DrsVersion, 10, 32)
 	s := &types.State{
 		ChainID:         "test-chain",
 		InitialHeight:   uint64(initialHeight),
@@ -336,8 +336,8 @@ func GenerateStateWithSequencer(initialHeight int64, lastBlockHeight int64, pubk
 			},
 		},
 		RollappParams: dymint.RollappParams{
-			Da:      "mock",
-			Version: dymintVersion,
+			Da:         "mock",
+			DrsVersion: uint32(dymintVersion),
 		},
 		ConsensusParams: tmproto.ConsensusParams{
 			Block: tmproto.BlockParams{

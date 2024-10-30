@@ -55,5 +55,5 @@ message RollappParams {
   //data availability type (e.g. celestia) used in the rollapp
   string da = 1 ;
   //drs version
-  uint64 version = 2;
+  uint32 drs_version = 2;
 }

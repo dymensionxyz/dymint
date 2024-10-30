@@ -520,11 +520,11 @@ func (e ErrStateUpdateBlobCorruptedFraud) Unwrap() error {
 type ErrStateUpdateDRSVersionFraud struct {
 	StateIndex   uint64
 	Height       uint64
-	BlockVersion uint64
-	SLVersion    uint64
+	BlockVersion uint32
+	SLVersion    uint32
 }
 
-func NewErrStateUpdateDRSVersionFraud(stateIndex uint64, height uint64, blockVersion uint64, slVersion uint64) error {
+func NewErrStateUpdateDRSVersionFraud(stateIndex uint64, height uint64, blockVersion uint32, slVersion uint32) error {
 	return &ErrStateUpdateDRSVersionFraud{
 		StateIndex:   stateIndex,
 		Height:       height,
