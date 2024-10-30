@@ -261,17 +261,15 @@ func (s *State) ToProto() (*pb.State, error) {
 	}
 
 	return &pb.State{
-		Version:                          &s.Version,
-		ChainId:                          s.ChainID,
-		InitialHeight:                    int64(s.InitialHeight),
-		LastBlockHeight:                  int64(s.Height()),
-		SequencerSet:                     *seqsProto,
-		ConsensusParams:                  s.ConsensusParams,
-		LastHeightConsensusParamsChanged: s.LastHeightConsensusParamsChanged,
-		LastResultsHash:                  s.LastResultsHash[:],
-		LastHeaderHash:                   s.LastHeaderHash[:],
-		AppHash:                          s.AppHash[:],
-		RollappParams:                    s.RollappParams,
+		Version:         &s.Version,
+		ChainId:         s.ChainID,
+		InitialHeight:   int64(s.InitialHeight),
+		LastBlockHeight: int64(s.Height()),
+		ConsensusParams: s.ConsensusParams,
+		LastResultsHash: s.LastResultsHash[:],
+		LastHeaderHash:  s.LastHeaderHash[:],
+		AppHash:         s.AppHash[:],
+		RollappParams:   s.RollappParams,
 		Proposer:        proposerProto,
 	}, nil
 }
@@ -292,11 +290,8 @@ func (s *State) FromProto(other *pb.State) error {
 	} else {
 		// proposer may be nil in the state
 		s.SetProposer(nil)
-
-	err = s.Sequencers.FromProto(other.SequencerSet)
-	if err != nil {
-		return err
 	}
+
 	s.ConsensusParams = other.ConsensusParams
 	copy(s.LastResultsHash[:], other.LastResultsHash)
 	copy(s.AppHash[:], other.AppHash)
