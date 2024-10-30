@@ -21,7 +21,7 @@ func TestPruningRetainHeight(t *testing.T) {
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
 		RollappParamUpdates: &abci.RollappParams{
 			Da:      "mock",
-			Version: 1,
+			Version: 0,
 		},
 		ConsensusParamUpdates: &abci.ConsensusParams{
 			Block: &abci.BlockParams{

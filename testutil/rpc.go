@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/dymensionxyz/dymint/rpc"
-	"github.com/dymensionxyz/dymint/version"
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/log"
@@ -17,7 +16,6 @@ func CreateLocalServer(t *testing.T) (*rpc.Server, net.Listener) {
 	// Create a new local listener
 	listener, err := nettest.NewLocalListener("tcp")
 	require.NoError(t, err)
-	version.DRSVersion = "1"
 	serverReadyCh := make(chan bool, 1)
 
 	var server *rpc.Server

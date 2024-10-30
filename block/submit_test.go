@@ -5,7 +5,6 @@ import (
 	"crypto/ed25519"
 	"crypto/rand"
 	"fmt"
-	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -27,7 +26,6 @@ import (
 	slmocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
-	"github.com/dymensionxyz/dymint/version"
 )
 
 // TestBatchOverhead tests the scenario where we have a single block that is very large, and occupies the entire batch size.
@@ -107,17 +105,16 @@ func TestBatchSubmissionHappyFlow(t *testing.T) {
 	require := require.New(t)
 	app := testutil.GetAppMock(testutil.EndBlock)
 	ctx := context.Background()
-	dymintVersion, err := strconv.ParseUint(version.DRSVersion, 10, 64)
-	require.NoError(err)
+
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(clientCreator)
-	err = proxyApp.Start()
+	err := proxyApp.Start()
 	require.NoError(err)
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
 		RollappParamUpdates: &abci.RollappParams{
 			Da:      "mock",
-			Version: dymintVersion,
+			Version: 0,
 		},
 		ConsensusParamUpdates: &abci.ConsensusParams{
 			Block: &abci.BlockParams{
@@ -152,12 +149,11 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 	require := require.New(t)
 	app := testutil.GetAppMock(testutil.EndBlock)
 	ctx := context.Background()
-	dymintVersion, err := strconv.ParseUint(version.DRSVersion, 10, 64)
-	require.NoError(err)
+
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
 		RollappParamUpdates: &abci.RollappParams{
 			Da:      "mock",
-			Version: dymintVersion,
+			Version: 0,
 		},
 		ConsensusParamUpdates: &abci.ConsensusParams{
 			Block: &abci.BlockParams{
@@ -169,7 +165,7 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(clientCreator)
-	err = proxyApp.Start()
+	err := proxyApp.Start()
 	require.NoError(err)
 
 	_, priv, err := ed25519.GenerateKey(rand.Reader)
@@ -227,14 +223,13 @@ func TestSubmissionByTime(t *testing.T) {
 		submitTimeout = 1 * time.Second
 		blockTime     = 200 * time.Millisecond
 	)
-	dymintVersion, err := strconv.ParseUint(version.DRSVersion, 10, 64)
-	require.NoError(t, err)
+
 	require := require.New(t)
 	app := testutil.GetAppMock(testutil.EndBlock)
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
 		RollappParamUpdates: &abci.RollappParams{
 			Da:      "mock",
-			Version: dymintVersion,
+			Version: 0,
 		},
 		ConsensusParamUpdates: &abci.ConsensusParams{
 			Block: &abci.BlockParams{
@@ -246,7 +241,7 @@ func TestSubmissionByTime(t *testing.T) {
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(clientCreator)
-	err = proxyApp.Start()
+	err := proxyApp.Start()
 	require.NoError(err)
 
 	// Init manager with empty blocks feature enabled
@@ -295,8 +290,6 @@ func TestSubmissionByBatchSize(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	dymintVersion, err := strconv.ParseUint(version.DRSVersion, 10, 64)
-	require.NoError(err)
 	cases := []struct {
 		name                   string
 		blockBatchMaxSizeBytes uint64
@@ -319,7 +312,7 @@ func TestSubmissionByBatchSize(t *testing.T) {
 		app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
 			RollappParamUpdates: &abci.RollappParams{
 				Da:      "mock",
-				Version: dymintVersion,
+				Version: 0,
 			},
 			ConsensusParamUpdates: &abci.ConsensusParams{
 				Block: &abci.BlockParams{

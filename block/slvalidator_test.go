@@ -6,7 +6,6 @@ import (
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	tmtypes "github.com/tendermint/tendermint/types"
 	"reflect"
-	"strconv"
 	"testing"
 	"time"
 
@@ -18,7 +17,6 @@ import (
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
-	"github.com/dymensionxyz/dymint/version"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -35,7 +33,7 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
 		RollappParamUpdates: &abci.RollappParams{
 			Da:      "mock",
-			Version: 1,
+			Version: 0,
 		},
 		ConsensusParamUpdates: &abci.ConsensusParams{
 			Block: &abci.BlockParams{
@@ -265,14 +263,12 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 
 func TestStateUpdateValidator_ValidateDAFraud(t *testing.T) {
 
-	dymintVersion, err := strconv.ParseUint(version.DRSVersion, 10, 64)
-	require.NoError(t, err)
 	// Init app
 	app := testutil.GetAppMock(testutil.EndBlock)
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
 		RollappParamUpdates: &abci.RollappParams{
 			Da:      "mock",
-			Version: dymintVersion,
+			Version: 0,
 		},
 		ConsensusParamUpdates: &abci.ConsensusParams{
 			Block: &abci.BlockParams{
@@ -285,7 +281,7 @@ func TestStateUpdateValidator_ValidateDAFraud(t *testing.T) {
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(clientCreator)
-	err = proxyApp.Start()
+	err := proxyApp.Start()
 	require.NoError(t, err)
 	proposerKey, _, err := crypto.GenerateEd25519Key(rand.Reader)
 	require.NoError(t, err)
@@ -409,7 +405,7 @@ func getBlockDescriptors(batch *types.Batch) ([]rollapp.BlockDescriptor, error) 
 			Height:     block.Header.Height,
 			StateRoot:  block.Header.AppHash[:],
 			Timestamp:  block.Header.GetTimestamp(),
-			DrsVersion: 1,
+			DrsVersion: 0,
 		}
 		bds = append(bds, bd)
 	}

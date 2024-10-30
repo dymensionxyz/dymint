@@ -384,7 +384,6 @@ func (m *Manager) UpdateTargetHeight(h uint64) {
 
 // ValidateConfigWithRollappParams checks the configuration params are consistent with the params in the dymint state (e.g. DA and version)
 func (m *Manager) ValidateConfigWithRollappParams() error {
-
 	dymintVersion, err := strconv.ParseUint(version.DRSVersion, 10, 64)
 	if err != nil {
 		return fmt.Errorf("unable to parse dymint version")

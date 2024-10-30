@@ -378,7 +378,7 @@ func GenerateGenesis(initialHeight int64) *tmtypes.GenesisDoc {
 				AppVersion: AppVersion,
 			},
 		},
-		AppState: []byte("{\"rollappparams\": {\"params\": {\"da\": \"mock\",\"version\": 1}}}"),
+		AppState: []byte("{\"rollappparams\": {\"params\": {\"da\": \"mock\",\"version\": 0}}}"),
 	}
 }
 
