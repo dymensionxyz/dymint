@@ -49,10 +49,9 @@ func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {
 	// check if we should rotate
 	shouldRotate, err := m.ShouldRotate()
 	if err != nil {
-		return fmt.Errorf("checking if missing last batch: %w", err)
+		return fmt.Errorf("checking should rotate: %w", err)
 	}
 	if shouldRotate {
-		// rotate and panic to restart as full node
 		m.rotate(ctx)
 	}
 
