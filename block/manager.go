@@ -386,7 +386,7 @@ func (m *Manager) UpdateTargetHeight(h uint64) {
 func (m *Manager) ValidateConfigWithRollappParams() error {
 	drsVersion, err := strconv.ParseUint(version.DrsVersion, 10, 32)
 	if err != nil {
-		return fmt.Errorf("unable to parse dymint version")
+		return fmt.Errorf("unable to parse drs version")
 	}
 	if uint32(drsVersion) != m.State.RollappParams.DrsVersion {
 		return fmt.Errorf("DRS version mismatch. rollapp param: %d binary used:%d", m.State.RollappParams.DrsVersion, drsVersion)
