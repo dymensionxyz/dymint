@@ -3,13 +3,17 @@ package block
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	tmtypes "github.com/tendermint/tendermint/types"
 )
 
 func (m *Manager) RunInitChain(ctx context.Context) error {
-	// FIXME: We want to get the initial proposer and not current one
-	proposer := m.SLClient.GetProposer()
+	// Get the proposer at the initial height
+	proposer, err := m.SLClient.GetProposerAtHeight(1)
+	if err != nil {
+		return fmt.Errorf("get proposer at height: %w", err)
+	}
 	if proposer == nil {
 		return errors.New("failed to get proposer")
 	}

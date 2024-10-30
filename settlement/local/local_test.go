@@ -36,7 +36,8 @@ func TestGetSequencers(t *testing.T) {
 	assert.Equal(1, len(sequencers))
 	assert.Equal(pubKeybytes, sequencers[0].PubKey().Bytes())
 
-	proposer := sllayer.GetProposer()
+	proposer, err := sllayer.GetProposerAtHeight(-1)
+	require.NoError(err)
 	require.NotNil(proposer)
 	assert.Equal(pubKeybytes, proposer.PubKey().Bytes())
 }
