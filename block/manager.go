@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"sync"
 	"sync/atomic"
 
@@ -14,7 +15,6 @@ import (
 	"github.com/dymensionxyz/dymint/indexers/txindex"
 	"github.com/dymensionxyz/dymint/store"
 	uerrors "github.com/dymensionxyz/dymint/utils/errors"
-	uevent "github.com/dymensionxyz/dymint/utils/event"
 	"github.com/dymensionxyz/dymint/version"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
@@ -193,17 +193,29 @@ func (m *Manager) Start(ctx context.Context) error {
 		}
 	}
 
-	// Check if the chain is halted
-	err := m.isChainHalted()
-	if err != nil {
-		return err
+	// Check if a proposer on the rollapp is set. In case no proposer is set on the Rollapp, fallback to the hub proposer (If such exists).
+	// No proposer on the rollapp means that at some point there was no available proposer.
+	// In case there is also no proposer on the hub to our current height, it means that the chain is halted.
+	// FIXME: In case we are syncing we would like to get the proposer from the hub relevant to the current height.
+	if m.State.GetProposer() == nil {
+		m.logger.Info("No proposer on the rollapp, fallback to the hub proposer, if available")
+		SLProposer := m.SLClient.GetProposer()
+		if SLProposer == nil {
+			return fmt.Errorf("no proposer available. chain is halted")
+		}
+		m.State.SetProposer(SLProposer)
 	}
 
-	isProposer := m.IsProposer()
-	m.logger.Info("starting block manager", "proposer", isProposer)
+	// checks if the the current node is the proposer either on rollapp or on the hub.
+	// In case of sequencer rotation, there's a phase where proposer rotated on Rollapp but hasn't yet rotated on hub.
+	// for this case, 2 nodes will get `true` for `AmIProposer` so the l2 proposer can produce blocks and the hub proposer can submit his last batch.
+	// The hub proposer, after sending the last state update, will panic and restart as full node.
+	amIProposer := m.AmIProposerOnSL() || m.AmIProposerOnRollapp()
+
+	m.logger.Info("starting block manager", "mode", map[bool]string{true: "proposer", false: "full node"}[amIProposer])
 
 	// update local state from latest state in settlement
-	err = m.updateFromLastSettlementState()
+	err := m.updateFromLastSettlementState()
 	if err != nil {
 		return fmt.Errorf("sync block manager from settlement: %w", err)
 	}
@@ -225,103 +237,17 @@ func (m *Manager) Start(ctx context.Context) error {
 		return m.SettlementSyncLoop(ctx)
 	})
 
+	// Monitor sequencer set updates
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		return m.MonitorSequencerSetUpdates(ctx)
 	})
 
-	/* ----------------------------- full node mode ----------------------------- */
-	if !isProposer {
-
-		// update latest finalized height
-		err = m.updateLastFinalizedHeightFromSettlement()
-		if err != nil {
-			return fmt.Errorf("sync block manager from settlement: %w", err)
-		}
-
-		// Start the settlement validation loop in the background
-		uerrors.ErrGroupGoLog(eg, m.logger, func() error {
-			return m.SettlementValidateLoop(ctx)
-		})
-
-		// Subscribe to new (or finalized) state updates events.
-		go uevent.MustSubscribe(ctx, m.Pubsub, "syncLoop", settlement.EventQueryNewSettlementBatchAccepted, m.onNewStateUpdate, m.logger)
-		go uevent.MustSubscribe(ctx, m.Pubsub, "validateLoop", settlement.EventQueryNewSettlementBatchFinalized, m.onNewStateUpdateFinalized, m.logger)
-
-		// Subscribe to P2P received blocks events (used for P2P syncing).
-		go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewGossipedBlock, m.OnReceivedBlock, m.logger)
-		go uevent.MustSubscribe(ctx, m.Pubsub, "applyBlockSyncBlocksLoop", p2p.EventQueryNewBlockSyncBlock, m.OnReceivedBlock, m.logger)
-
-		return nil
+	// run based on the node role
+	if !amIProposer {
+		return m.runAsFullNode(ctx, eg)
 	}
 
-	/* ----------------------------- sequencer mode ----------------------------- */
-	// Subscribe to batch events, to update last submitted height in case batch confirmation was lost. This could happen if the sequencer crash/restarted just after submitting a batch to the settlement and by the time we query the last batch, this batch wasn't accepted yet.
-	go uevent.MustSubscribe(ctx, m.Pubsub, "updateSubmittedHeightLoop", settlement.EventQueryNewSettlementBatchAccepted, m.UpdateLastSubmittedHeight, m.logger)
-
-	// Sequencer must wait till the DA light client is synced. Otherwise it will fail when submitting blocks.
-	// Full-nodes does not need to wait, but if it tries to fetch blocks from DA heights previous to the DA light client height it will fail, and it will retry till it reaches the height.
-	m.DAClient.WaitForSyncing()
-
-	// Sequencer must wait till node is synced till last submittedHeight, in case it is not
-	m.waitForSettlementSyncing()
-
-	// check if sequencer in the middle of rotation
-	nextSeqAddr, missing, err := m.MissingLastBatch()
-	if err != nil {
-		return fmt.Errorf("checking if missing last batch: %w", err)
-	}
-	// if sequencer is in the middle of rotation, complete rotation instead of running the main loop
-	if missing {
-		m.handleRotationReq(ctx, nextSeqAddr)
-		return nil
-	}
-
-	// populate the bytes produced channel
-	bytesProducedC := make(chan int)
-
-	// channel to signal sequencer rotation started
-	rotateSequencerC := make(chan string, 1)
-
-	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
-		return m.SubmitLoop(ctx, bytesProducedC)
-	})
-	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
-		bytesProducedC <- m.GetUnsubmittedBytes() // load unsubmitted bytes from previous run
-		return m.ProduceBlockLoop(ctx, bytesProducedC)
-	})
-	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
-		return m.MonitorSequencerRotation(ctx, rotateSequencerC)
-	})
-	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
-		return m.MonitorForkUpdate(ctx)
-	})
-
-	go func() {
-		_ = eg.Wait()
-		// Check if exited due to sequencer rotation signal
-		select {
-		case nextSeqAddr := <-rotateSequencerC:
-			m.handleRotationReq(ctx, nextSeqAddr)
-		default:
-			m.logger.Info("Block manager err group finished.")
-		}
-	}()
-
-	return nil
-}
-
-func (m *Manager) isChainHalted() error {
-	if m.State.GetProposerPubKey() == nil {
-		// if no proposer set in state, try to update it from the hub
-		err := m.UpdateProposerFromSL()
-		if err != nil {
-			return fmt.Errorf("update proposer: %w", err)
-		}
-		if m.State.GetProposerPubKey() == nil {
-			return fmt.Errorf("no proposer pubkey found. chain is halted")
-		}
-	}
-	return nil
+	return m.runAsProposer(ctx, eg)
 }
 
 func (m *Manager) NextHeightToSubmit() uint64 {
@@ -388,8 +314,12 @@ func (m *Manager) UpdateTargetHeight(h uint64) {
 
 // ValidateConfigWithRollappParams checks the configuration params are consistent with the params in the dymint state (e.g. DA and version)
 func (m *Manager) ValidateConfigWithRollappParams() error {
-	if version.Commit != m.State.RollappParams.Version {
-		return fmt.Errorf("binary version mismatch. rollapp param: %s binary used:%s", m.State.RollappParams.Version, version.Commit)
+	drsVersion, err := strconv.ParseUint(version.DrsVersion, 10, 32)
+	if err != nil {
+		return fmt.Errorf("unable to parse drs version")
+	}
+	if uint32(drsVersion) != m.State.RollappParams.DrsVersion {
+		return fmt.Errorf("DRS version mismatch. rollapp param: %d binary used:%d", m.State.RollappParams.DrsVersion, drsVersion)
 	}
 
 	if da.Client(m.State.RollappParams.Da) != m.DAClient.GetClientType() {

@@ -17,7 +17,6 @@ import (
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
-	"github.com/dymensionxyz/dymint/version"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -33,8 +32,8 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 	app := testutil.GetAppMock(testutil.EndBlock)
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
 		RollappParamUpdates: &abci.RollappParams{
-			Da:      "mock",
-			Version: version.Commit,
+			Da:         "mock",
+			DrsVersion: 0,
 		},
 		ConsensusParamUpdates: &abci.ConsensusParams{
 			Block: &abci.BlockParams{
@@ -225,9 +224,7 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 			switch tc.stateUpdateFraud {
 			case "drs":
 				// set different bd drs version
-				version, err := testutil.CreateRandomVersionCommit()
-				require.NoError(t, err)
-				slBatch.BlockDescriptors[0].DrsVersion = version
+				slBatch.BlockDescriptors[0].DrsVersion = 2
 			case "batchnumblocks":
 				// set wrong numblocks in state update
 				slBatch.NumBlocks = 11
@@ -270,8 +267,8 @@ func TestStateUpdateValidator_ValidateDAFraud(t *testing.T) {
 	app := testutil.GetAppMock(testutil.EndBlock)
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
 		RollappParamUpdates: &abci.RollappParams{
-			Da:      "mock",
-			Version: version.Commit,
+			Da:         "mock",
+			DrsVersion: 0,
 		},
 		ConsensusParamUpdates: &abci.ConsensusParams{
 			Block: &abci.BlockParams{
@@ -403,15 +400,12 @@ func getBlockDescriptors(batch *types.Batch) ([]rollapp.BlockDescriptor, error) 
 	// Create block descriptors
 	var bds []rollapp.BlockDescriptor
 	for _, block := range batch.Blocks {
-		version, err := testutil.CreateRandomVersionCommit()
-		if err != nil {
-			return nil, err
-		}
+
 		bd := rollapp.BlockDescriptor{
 			Height:     block.Header.Height,
 			StateRoot:  block.Header.AppHash[:],
 			Timestamp:  block.Header.GetTimestamp(),
-			DrsVersion: version,
+			DrsVersion: 0,
 		}
 		bds = append(bds, bd)
 	}

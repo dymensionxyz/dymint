@@ -26,63 +26,6 @@ func (_m *MockClientI) EXPECT() *MockClientI_Expecter {
 	return &MockClientI_Expecter{mock: &_m.Mock}
 }
 
-// CheckRotationInProgress provides a mock function with given fields:
-func (_m *MockClientI) CheckRotationInProgress() (*types.Sequencer, error) {
-	ret := _m.Called()
-
-	if len(ret) == 0 {
-		panic("no return value specified for CheckRotationInProgress")
-	}
-
-	var r0 *types.Sequencer
-	var r1 error
-	if rf, ok := ret.Get(0).(func() (*types.Sequencer, error)); ok {
-		return rf()
-	}
-	if rf, ok := ret.Get(0).(func() *types.Sequencer); ok {
-		r0 = rf()
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*types.Sequencer)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func() error); ok {
-		r1 = rf()
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockClientI_CheckRotationInProgress_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CheckRotationInProgress'
-type MockClientI_CheckRotationInProgress_Call struct {
-	*mock.Call
-}
-
-// CheckRotationInProgress is a helper method to define mock.On call
-func (_e *MockClientI_Expecter) CheckRotationInProgress() *MockClientI_CheckRotationInProgress_Call {
-	return &MockClientI_CheckRotationInProgress_Call{Call: _e.mock.On("CheckRotationInProgress")}
-}
-
-func (_c *MockClientI_CheckRotationInProgress_Call) Run(run func()) *MockClientI_CheckRotationInProgress_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run()
-	})
-	return _c
-}
-
-func (_c *MockClientI_CheckRotationInProgress_Call) Return(_a0 *types.Sequencer, _a1 error) *MockClientI_CheckRotationInProgress_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockClientI_CheckRotationInProgress_Call) RunAndReturn(run func() (*types.Sequencer, error)) *MockClientI_CheckRotationInProgress_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // GetAllSequencers provides a mock function with given fields:
 func (_m *MockClientI) GetAllSequencers() ([]types.Sequencer, error) {
 	ret := _m.Called()
@@ -476,6 +419,63 @@ func (_c *MockClientI_GetLatestHeight_Call) Return(_a0 uint64, _a1 error) *MockC
 }
 
 func (_c *MockClientI_GetLatestHeight_Call) RunAndReturn(run func() (uint64, error)) *MockClientI_GetLatestHeight_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// GetNextProposer provides a mock function with given fields:
+func (_m *MockClientI) GetNextProposer() (*types.Sequencer, error) {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetNextProposer")
+	}
+
+	var r0 *types.Sequencer
+	var r1 error
+	if rf, ok := ret.Get(0).(func() (*types.Sequencer, error)); ok {
+		return rf()
+	}
+	if rf, ok := ret.Get(0).(func() *types.Sequencer); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*types.Sequencer)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockClientI_GetNextProposer_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetNextProposer'
+type MockClientI_GetNextProposer_Call struct {
+	*mock.Call
+}
+
+// GetNextProposer is a helper method to define mock.On call
+func (_e *MockClientI_Expecter) GetNextProposer() *MockClientI_GetNextProposer_Call {
+	return &MockClientI_GetNextProposer_Call{Call: _e.mock.On("GetNextProposer")}
+}
+
+func (_c *MockClientI_GetNextProposer_Call) Run(run func()) *MockClientI_GetNextProposer_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockClientI_GetNextProposer_Call) Return(_a0 *types.Sequencer, _a1 error) *MockClientI_GetNextProposer_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockClientI_GetNextProposer_Call) RunAndReturn(run func() (*types.Sequencer, error)) *MockClientI_GetNextProposer_Call {
 	_c.Call.Return(run)
 	return _c
 }

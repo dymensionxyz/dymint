@@ -102,7 +102,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 			return fmt.Errorf("save block source: %w", err)
 		}
 
-		_, err = m.Store.SaveDRSVersion(block.Header.Height, responses.EndBlock.RollappParamUpdates.Version, nil)
+		_, err = m.Store.SaveDRSVersion(block.Header.Height, responses.EndBlock.RollappParamUpdates.DrsVersion, nil)
 		if err != nil {
 			return fmt.Errorf("add drs version: %w", err)
 		}
@@ -154,8 +154,8 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		return fmt.Errorf("save proposer: %w", err)
 	}
 
-	// 2. Update the proposer in the state in case of rotation.
-	switchRole := m.Executor.UpdateProposerFromBlock(m.State, m.Sequencers, block)
+	// 2. Update the proposer in the state in case of rotation happened on the rollapp level (not necessarily on the hub yet).
+	isProposerUpdated := m.Executor.UpdateProposerFromBlock(m.State, m.Sequencers, block)
 
 	// 3. Save the state to the store (independently of the height). Here the proposer might differ from (1).
 	batch, err = m.Store.SaveState(m.State, batch)
@@ -172,16 +172,18 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 
 	m.blockCache.Delete(block.Header.Height)
 
-	if switchRole {
-		// TODO: graceful role change (https://github.com/dymensionxyz/dymint/issues/1008)
-		m.logger.Info("Node changing to proposer role")
-		panic("sequencer is no longer the proposer")
-	}
-
 	// validate whether configuration params and rollapp consensus params keep in line, after rollapp params are updated from the responses received in the block execution
 	err = m.ValidateConfigWithRollappParams()
 	if err != nil {
 		return err
+	}
+
+	// Check if there was an Update for the proposer and if I am the new proposer.
+	// If so, restart so I can start as the proposer.
+	// For current proposer, we don't want to restart because we still need to send the last batch.
+	// This will be done as part of the `rotate` function.
+	if isProposerUpdated && m.AmIProposerOnRollapp() {
+		panic("I'm the new Proposer now. restarting as a proposer")
 	}
 
 	return nil
