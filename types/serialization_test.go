@@ -14,7 +14,6 @@ import (
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
 	pb "github.com/dymensionxyz/dymint/types/pb/dymint"
-	"github.com/dymensionxyz/dymint/version"
 )
 
 func TestBlockSerializationRoundTrip(t *testing.T) {
@@ -134,8 +133,8 @@ func TestStateRoundTrip(t *testing.T) {
 					},
 				},
 				RollappParams: pb.RollappParams{
-					Da:      "mock",
-					Version: version.Commit,
+					Da:         "mock",
+					DrsVersion: 0,
 				},
 				LastResultsHash: [32]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2},
 				AppHash:         [32]byte{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1},

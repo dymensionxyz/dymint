@@ -212,9 +212,7 @@ type ConsensusMsgUpsertSequencer struct {
 	Signer string `protobuf:"bytes,1,opt,name=signer,proto3" json:"signer,omitempty"`
 	// Operator is the bech32-encoded address of the sequencer
 	Operator string `protobuf:"bytes,2,opt,name=operator,proto3" json:"operator,omitempty"`
-	// ConsPubKey is a tendermint consensus pub key of the sequencer.
-	// NB! google.protobuf.Any MUST NOT hold any values from the current
-	// package (dymension_rdk.sequencers.types). Otherwise, it will lead to proto wiring error.
+	// ConsPubKey is a tendermint consensus pub key of the sequencer
 	ConsPubKey *types.Any `protobuf:"bytes,3,opt,name=cons_pub_key,json=consPubKey,proto3" json:"cons_pub_key,omitempty"`
 	// RewardAddr is the bech32-encoded sequencer's reward address
 	RewardAddr string `protobuf:"bytes,4,opt,name=reward_addr,json=rewardAddr,proto3" json:"reward_addr,omitempty"`

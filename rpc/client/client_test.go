@@ -36,7 +36,6 @@ import (
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
-	"github.com/dymensionxyz/dymint/version"
 )
 
 var expectedInfo = abci.ResponseInfo{
@@ -575,8 +574,8 @@ func TestTx(t *testing.T) {
 	mockApp.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
 	mockApp.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
 		RollappParamUpdates: &abci.RollappParams{
-			Da:      "mock",
-			Version: version.Commit,
+			Da:         "mock",
+			DrsVersion: 0,
 		},
 		ConsensusParamUpdates: &abci.ConsensusParams{
 			Block: &abci.BlockParams{
@@ -823,8 +822,8 @@ func TestValidatorSetHandling(t *testing.T) {
 	require.NoError(err)
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
 		RollappParamUpdates: &abci.RollappParams{
-			Da:      "mock",
-			Version: version.Commit,
+			Da:         "mock",
+			DrsVersion: 0,
 		},
 		ConsensusParamUpdates: &abci.ConsensusParams{
 			Block: &abci.BlockParams{
@@ -834,6 +833,7 @@ func TestValidatorSetHandling(t *testing.T) {
 		},
 		ValidatorUpdates: []abci.ValidatorUpdate{{PubKey: pbValKey, Power: 100}},
 	})
+
 	waitCh := make(chan interface{})
 
 	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{}).Times(5)

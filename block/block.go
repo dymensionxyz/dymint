@@ -16,12 +16,9 @@ import (
 func (m *Manager) applyBlockWithFraudHandling(block *types.Block, commit *types.Commit, blockMetaData types.BlockMetaData) error {
 	validateWithFraud := func() error {
 		if err := m.validateBlockBeforeApply(block, commit); err != nil {
-			if err != nil {
-				m.blockCache.Delete(block.Header.Height)
-				// TODO: can we take an action here such as dropping the peer / reducing their reputation?
-
-				return fmt.Errorf("block not valid at height %d, dropping it: err:%w", block.Header.Height, err)
-			}
+			m.blockCache.Delete(block.Header.Height)
+			// TODO: can we take an action here such as dropping the peer / reducing their reputation?
+			return fmt.Errorf("block not valid at height %d, dropping it: err:%w", block.Header.Height, err)
 		}
 
 		if err := m.applyBlock(block, commit, blockMetaData); err != nil {
@@ -105,7 +102,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 			return fmt.Errorf("save block source: %w", err)
 		}
 
-		_, err = m.Store.SaveDRSVersion(block.Header.Height, responses.EndBlock.RollappParamUpdates.Version, nil)
+		_, err = m.Store.SaveDRSVersion(block.Header.Height, responses.EndBlock.RollappParamUpdates.DrsVersion, nil)
 		if err != nil {
 			return fmt.Errorf("add drs version: %w", err)
 		}
@@ -183,6 +180,8 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 
 	// Check if there was an Update for the proposer and if I am the new proposer.
 	// If so, restart so I can start as the proposer.
+	// For current proposer, we don't want to restart because we still need to send the last batch.
+	// This will be done as part of the `rotate` function.
 	if isProposerUpdated && m.AmIProposerOnRollapp() {
 		panic("I'm the new Proposer now. restarting as a proposer")
 	}

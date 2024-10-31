@@ -111,15 +111,15 @@ func convertToNewBatchEvent(rawEventData ctypes.ResultEvent) (*settlement.EventD
 		return nil, fmt.Errorf("missing expected attributes in event")
 	}
 
-	numBlocks, err := strconv.ParseInt(rawEventData.Events["state_update.num_blocks"][0], 10, 64)
+	numBlocks, err := strconv.ParseInt(events["state_update.num_blocks"][0], 10, 64)
 	if err != nil {
 		errs = append(errs, err)
 	}
-	startHeight, err := strconv.ParseInt(rawEventData.Events["state_update.start_height"][0], 10, 64)
+	startHeight, err := strconv.ParseInt(events["state_update.start_height"][0], 10, 64)
 	if err != nil {
 		errs = append(errs, err)
 	}
-	stateIndex, err := strconv.ParseInt(rawEventData.Events["state_update.state_info_index"][0], 10, 64)
+	stateIndex, err := strconv.ParseInt(events["state_update.state_info_index"][0], 10, 64)
 	if err != nil {
 		errs = append(errs, err)
 	}
@@ -127,6 +127,7 @@ func convertToNewBatchEvent(rawEventData ctypes.ResultEvent) (*settlement.EventD
 		return nil, errors.Join(errs...)
 	}
 	endHeight := uint64(startHeight + numBlocks - 1)
+
 	NewBatchEvent := &settlement.EventDataNewBatch{
 		StartHeight: uint64(startHeight),
 		EndHeight:   endHeight,
