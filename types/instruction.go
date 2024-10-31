@@ -26,13 +26,13 @@ func PersistInstructionToDisk(dir string, instruction Instruction) error {
 	}
 
 	filePath := filepath.Join(dir, instructionFileName)
-	return os.WriteFile(filePath, data, 0o644)
+	return os.WriteFile(filePath, data, 0o600)
 }
 
 func LoadInstructionFromDisk(dir string) (Instruction, error) {
 	var instruction Instruction
 
-	filePath := filepath.Join(dir, instructionFileName)
+	filePath := filepath.Join(dir, instructionFileName) // nolint:gosec
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		return Instruction{}, err
