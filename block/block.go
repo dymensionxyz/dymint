@@ -39,7 +39,7 @@ func (m *Manager) applyBlockWithFraudHandling(block *types.Block, commit *types.
 		return err
 	}
 
-	return nil
+	return err
 }
 
 // applyBlock applies the block to the store and the abci app.
