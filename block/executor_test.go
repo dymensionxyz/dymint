@@ -180,8 +180,8 @@ func TestApplyBlock(t *testing.T) {
 	app.On("DeliverTx", mock.Anything).Return(abci.ResponseDeliverTx{})
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
 		RollappParamUpdates: &abci.RollappParams{
-			Da:      "celestia",
-			Version: "abcde",
+			Da:         "celestia",
+			DrsVersion: 0,
 		},
 		ConsensusParamUpdates: &abci.ConsensusParams{
 			Block: &abci.BlockParams{
@@ -332,7 +332,7 @@ func TestApplyBlock(t *testing.T) {
 
 	// check rollapp params update
 	assert.Equal(state.RollappParams.Da, "celestia")
-	assert.Equal(state.RollappParams.Version, "abcde")
+	assert.Equal(state.RollappParams.DrsVersion, uint32(0))
 	assert.Equal(state.ConsensusParams.Block.MaxBytes, int64(100))
 	assert.Equal(state.ConsensusParams.Block.MaxGas, int64(100))
 

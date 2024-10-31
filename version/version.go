@@ -2,5 +2,5 @@ package version
 
 var (
 	BuildVersion = "<version>"
-	Commit       = "<commit>"
+	DrsVersion   = "0"
 )

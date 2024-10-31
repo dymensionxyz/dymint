@@ -3,6 +3,7 @@ package testutil
 import (
 	"crypto/rand"
 	"math/big"
+	"strconv"
 	"time"
 
 	"github.com/cosmos/cosmos-sdk/types/bech32"
@@ -182,10 +183,11 @@ func GenerateCommits(blocks []*types.Block, proposerKey crypto.PrivKey) ([]*type
 	return commits, nil
 }
 
-func GenerateDRS(blocks int) []string {
-	drs := make([]string, blocks)
+func GenerateDRS(blocks int) []uint32 {
+	drsVersion, _ := strconv.ParseUint(dymintversion.DrsVersion, 10, 32)
+	drs := make([]uint32, blocks)
 	for i := 0; i < blocks; i++ {
-		drs[i] = dymintversion.Commit
+		drs[i] = uint32(drsVersion)
 	}
 	return drs
 }
@@ -219,6 +221,63 @@ func GenerateBatch(startHeight uint64, endHeight uint64, proposerKey crypto.Priv
 		DRSVersion: GenerateDRS(len(blocks)),
 	}
 	return batch, nil
+}
+
+// GenerateLastBatch generates a final batch with LastBatch flag set to true and different NextSequencerHash
+func GenerateLastBatch(startHeight uint64, endHeight uint64, proposerKey crypto.PrivKey, nextSequencerKey crypto.PrivKey, lastHeaderHash [32]byte) (*types.Batch, error) {
+	nextSequencerRaw, _ := nextSequencerKey.Raw()
+	nextSeq := types.NewSequencerFromValidator(*tmtypes.NewValidator(ed25519.PrivKey(nextSequencerRaw).PubKey(), 1))
+	nextSequencerHash := nextSeq.MustHash()
+
+	blocks, err := GenerateLastBlocks(startHeight, endHeight-startHeight+1, proposerKey, lastHeaderHash, [32]byte(nextSequencerHash))
+	if err != nil {
+		return nil, err
+	}
+
+	commits, err := GenerateCommits(blocks, proposerKey)
+	if err != nil {
+		return nil, err
+	}
+
+	batch := &types.Batch{
+		Blocks:    blocks,
+		Commits:   commits,
+		LastBatch: true,
+	}
+
+	return batch, nil
+}
+
+// GenerateLastBlocks es similar a GenerateBlocks pero incluye el NextSequencerHash
+func GenerateLastBlocks(startHeight uint64, num uint64, proposerKey crypto.PrivKey, lastHeaderHash [32]byte, nextSequencerHash [32]byte) ([]*types.Block, error) {
+	r, _ := proposerKey.Raw()
+	seq := types.NewSequencerFromValidator(*tmtypes.NewValidator(ed25519.PrivKey(r).PubKey(), 1))
+	proposerHash := seq.MustHash()
+	blocks := make([]*types.Block, num)
+
+	for i := uint64(0); i < num; i++ {
+		if i > 0 {
+			lastHeaderHash = blocks[i-1].Header.Hash()
+		}
+		block := generateBlock(i+startHeight, proposerHash, lastHeaderHash)
+
+		if i == num-1 {
+			copy(block.Header.NextSequencersHash[:], nextSequencerHash[:])
+		}
+
+		copy(block.Header.DataHash[:], types.GetDataHash(block))
+		if i > 0 {
+			copy(block.Header.LastCommitHash[:], types.GetLastCommitHash(&blocks[i-1].LastCommit, &block.Header))
+		}
+
+		signature, err := generateSignature(proposerKey, &block.Header)
+		if err != nil {
+			return nil, err
+		}
+		block.LastCommit.Signatures = []types.Signature{signature}
+		blocks[i] = block
+	}
+	return blocks, nil
 }
 
 func MustGenerateBatch(startHeight uint64, endHeight uint64, proposerKey crypto.PrivKey) *types.Batch {
@@ -263,6 +322,7 @@ func GenerateSequencer() types.Sequencer {
 
 // GenerateStateWithSequencer generates an initial state for testing.
 func GenerateStateWithSequencer(initialHeight int64, lastBlockHeight int64, pubkey tmcrypto.PubKey) *types.State {
+	dymintVersion, _ := strconv.ParseUint(dymintversion.DrsVersion, 10, 32)
 	s := &types.State{
 		ChainID:         "test-chain",
 		InitialHeight:   uint64(initialHeight),
@@ -276,8 +336,8 @@ func GenerateStateWithSequencer(initialHeight int64, lastBlockHeight int64, pubk
 			},
 		},
 		RollappParams: dymint.RollappParams{
-			Da:      "mock",
-			Version: dymintversion.Commit,
+			Da:         "mock",
+			DrsVersion: uint32(dymintVersion),
 		},
 		ConsensusParams: tmproto.ConsensusParams{
 			Block: tmproto.BlockParams{
@@ -318,7 +378,7 @@ func GenerateGenesis(initialHeight int64) *tmtypes.GenesisDoc {
 				AppVersion: AppVersion,
 			},
 		},
-		AppState: []byte("{\"rollappparams\": {\"params\": {\"da\": \"mock\",\"version\": \"" + dymintversion.Commit + "\"}}}"),
+		AppState: []byte("{\"rollappparams\": {\"params\": {\"da\": \"mock\",\"version\": 0}}}"),
 	}
 }
 
@@ -346,17 +406,4 @@ func GetRandomBlock(height uint64, nTxs int) *types.Block {
 	}
 
 	return block
-}
-
-func CreateRandomVersionCommit() (string, error) {
-	letterRunes := []rune("abcdefghijklmnopqrstuvwxyz")
-	b := make([]rune, 40)
-	for i := range b {
-		num, err := rand.Int(rand.Reader, big.NewInt(int64(len(letterRunes))))
-		if err != nil {
-			return "", err
-		}
-		b[i] = letterRunes[num.Int64()]
-	}
-	return string(b), nil
 }

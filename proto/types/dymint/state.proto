@@ -54,6 +54,6 @@ message State {
 message RollappParams {
   //data availability type (e.g. celestia) used in the rollapp
   string da = 1 ;
-  //commit used for the rollapp executable
-  string version = 2 ;
+  //drs version
+  uint32 drs_version = 2;
 }

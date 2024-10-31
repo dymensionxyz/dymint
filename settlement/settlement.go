@@ -38,6 +38,8 @@ type Batch struct {
 	StartHeight      uint64
 	EndHeight        uint64
 	BlockDescriptors []rollapp.BlockDescriptor
+	NextSequencer    string
+
 	// MetaData about the batch in the DA layer
 	MetaData  *BatchMetaData
 	NumBlocks uint64
