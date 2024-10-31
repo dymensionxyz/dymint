@@ -507,8 +507,8 @@ func (c *Client) GetBondedSequencers() ([]types.Sequencer, error) {
 }
 
 // GetNextProposer returns the next proposer on the hub.
-// In case there is a current proposer but no next proposer, it returns nil.
-// in case there isnt current or next proposer, it returns an empty sequencer struct.
+// In case the current proposer is the next proposer, it returns nil. 
+// in case there is no next proposer, it returns an empty sequencer struct.
 // in case there is a next proposer, it returns the next proposer.
 func (c *Client) GetNextProposer() (*types.Sequencer, error) {
 	var (
