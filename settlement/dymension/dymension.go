@@ -589,8 +589,8 @@ func (c *Client) GetRollapp() (*types.Rollapp, error) {
 
 	return &types.Rollapp{
 		RollappID:           c.rollappId,
-		Revision:            uint64(res.Rollapp.Revision),
-		RevisionStartHeight: uint64(res.Rollapp.RevisionStartHeight),
+		Revision:            res.Rollapp.Revision,
+		RevisionStartHeight: res.Rollapp.RevisionStartHeight,
 	}, nil
 }
 

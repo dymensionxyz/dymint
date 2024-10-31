@@ -2,8 +2,6 @@ package block
 
 import (
 	"context"
-	"github.com/dymensionxyz/dymint/node/events"
-	uevent "github.com/dymensionxyz/dymint/utils/event"
 	"testing"
 	"time"
 
@@ -13,7 +11,9 @@ import (
 
 	"github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/store"
+	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/types"
+	uevent "github.com/dymensionxyz/dymint/utils/event"
 )
 
 func TestShouldStopNode(t *testing.T) {
