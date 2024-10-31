@@ -32,8 +32,8 @@ func PersistInstructionToDisk(dir string, instruction Instruction) error {
 func LoadInstructionFromDisk(dir string) (Instruction, error) {
 	var instruction Instruction
 
-	filePath := filepath.Join(dir, instructionFileName) // nolint:gosec
-	data, err := os.ReadFile(filePath)
+	filePath := filepath.Join(dir, instructionFileName)
+	data, err := os.ReadFile(filePath) // nolint:gosec
 	if err != nil {
 		return Instruction{}, err
 	}
