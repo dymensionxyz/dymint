@@ -5,10 +5,12 @@ import (
 
 	"github.com/cosmos/cosmos-sdk/codec"
 	cdctypes "github.com/cosmos/cosmos-sdk/codec/types"
+	cosmos "github.com/cosmos/cosmos-sdk/codec/types"
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
 	"github.com/gogo/protobuf/proto"
+	gogo "github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/require"
 
 	protoutils "github.com/dymensionxyz/dymint/utils/proto"
@@ -19,15 +21,7 @@ import (
 func TestConvertCosmosToGogo(t *testing.T) {
 	setup()
 
-	// generate the expected pubkey
-	expectedPK := ed25519.GenPrivKey().PubKey()
-
-	// convert it to cosmos any
-	cosmosProtoPK, err := cdctypes.NewAnyWithValue(expectedPK)
-	require.NoError(t, err)
-
-	// convert cosmos to gogo any
-	gogoProtoPK := protoutils.CosmosToGogo(cosmosProtoPK)
+	expectedPK, gogoProtoPK := GenerateGogoProtoPK(t)
 
 	// create a sequencer with gogo any
 	gogoSeq := &gogoseq.Sequencer{
@@ -55,12 +49,7 @@ func TestConvertCosmosToGogo(t *testing.T) {
 func TestConvertGogoToCosmos(t *testing.T) {
 	setup()
 
-	// generate the expected pubkey
-	expectedPK := ed25519.GenPrivKey().PubKey()
-
-	// convert it to cosmos any
-	cosmosProtoPK, err := cdctypes.NewAnyWithValue(expectedPK)
-	require.NoError(t, err)
+	expectedPK, cosmosProtoPK := GenerateCosmosProtoPK(t)
 
 	// create a sequencer with cosmos any
 	cosmosSeq := &cosmosseq.Sequencer{
@@ -86,6 +75,35 @@ func TestConvertGogoToCosmos(t *testing.T) {
 
 	// check that the value matches the initial
 	require.Equal(t, expectedPK, actualPK)
+}
+
+func GenerateGogoProtoPK(t *testing.T) (cryptotypes.PubKey, *gogo.Any) {
+	t.Helper()
+
+	// generate the expected pubkey
+	expectedPK := ed25519.GenPrivKey().PubKey()
+
+	// convert it to cosmos any
+	cosmosProtoPK, err := cdctypes.NewAnyWithValue(expectedPK)
+	require.NoError(t, err)
+
+	// convert cosmos to gogo any
+	gogoProtoPK := protoutils.CosmosToGogo(cosmosProtoPK)
+
+	return expectedPK, gogoProtoPK
+}
+
+func GenerateCosmosProtoPK(t *testing.T) (cryptotypes.PubKey, *cosmos.Any) {
+	t.Helper()
+
+	// generate the expected pubkey
+	expectedPK := ed25519.GenPrivKey().PubKey()
+
+	// convert it to cosmos any
+	cosmosProtoPK, err := cdctypes.NewAnyWithValue(expectedPK)
+	require.NoError(t, err)
+
+	return expectedPK, cosmosProtoPK
 }
 
 var cdc *codec.ProtoCodec
