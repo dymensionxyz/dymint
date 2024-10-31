@@ -322,9 +322,6 @@ func (s *DefaultStore) LoadDRSVersion(height uint64) (uint32, error) {
 	if err != nil {
 		return 0, err
 	}
-	if err != nil {
-		return uint32(0), fmt.Errorf("load drs version for height %v: %w", height, err)
-	}
 	return binary.LittleEndian.Uint32(b), nil
 }
 
