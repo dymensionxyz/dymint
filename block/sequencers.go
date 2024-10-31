@@ -57,7 +57,7 @@ func (m *Manager) AmIProposerOnSL() (bool, error) {
 	if err != nil {
 		return false, fmt.Errorf("get proposer at height: %w", err)
 	}
-	return bytes.Equal([]byte(SLProposer.PubKey().Bytes()), localProposerKeyBytes), nil
+	return bytes.Equal(SLProposer.PubKey().Bytes(), localProposerKeyBytes), nil
 }
 
 // AmIProposerOnRollapp checks if the current node is the proposer on the rollapp.
