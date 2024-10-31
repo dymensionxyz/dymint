@@ -16,7 +16,6 @@ func CreateLocalServer(t *testing.T) (*rpc.Server, net.Listener) {
 	// Create a new local listener
 	listener, err := nettest.NewLocalListener("tcp")
 	require.NoError(t, err)
-
 	serverReadyCh := make(chan bool, 1)
 
 	var server *rpc.Server

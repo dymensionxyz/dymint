@@ -3,6 +3,7 @@ package testutil
 import (
 	"crypto/rand"
 	"math/big"
+	"strconv"
 	"time"
 
 	"github.com/cosmos/cosmos-sdk/types/bech32"
@@ -182,10 +183,11 @@ func GenerateCommits(blocks []*types.Block, proposerKey crypto.PrivKey) ([]*type
 	return commits, nil
 }
 
-func GenerateDRS(blocks int) []string {
-	drs := make([]string, blocks)
+func GenerateDRS(blocks int) []uint32 {
+	drsVersion, _ := strconv.ParseUint(dymintversion.DrsVersion, 10, 32)
+	drs := make([]uint32, blocks)
 	for i := 0; i < blocks; i++ {
-		drs[i] = dymintversion.Commit
+		drs[i] = uint32(drsVersion)
 	}
 	return drs
 }
@@ -320,6 +322,7 @@ func GenerateSequencer() types.Sequencer {
 
 // GenerateStateWithSequencer generates an initial state for testing.
 func GenerateStateWithSequencer(initialHeight int64, lastBlockHeight int64, pubkey tmcrypto.PubKey) *types.State {
+	dymintVersion, _ := strconv.ParseUint(dymintversion.DrsVersion, 10, 32)
 	s := &types.State{
 		ChainID:         "test-chain",
 		InitialHeight:   uint64(initialHeight),
@@ -333,8 +336,8 @@ func GenerateStateWithSequencer(initialHeight int64, lastBlockHeight int64, pubk
 			},
 		},
 		RollappParams: dymint.RollappParams{
-			Da:      "mock",
-			Version: dymintversion.Commit,
+			Da:         "mock",
+			DrsVersion: uint32(dymintVersion),
 		},
 		ConsensusParams: tmproto.ConsensusParams{
 			Block: tmproto.BlockParams{
@@ -375,7 +378,7 @@ func GenerateGenesis(initialHeight int64) *tmtypes.GenesisDoc {
 				AppVersion: AppVersion,
 			},
 		},
-		AppState: []byte("{\"rollappparams\": {\"params\": {\"da\": \"mock\",\"version\": \"" + dymintversion.Commit + "\"}}}"),
+		AppState: []byte("{\"rollappparams\": {\"params\": {\"da\": \"mock\",\"version\": 0}}}"),
 	}
 }
 
@@ -403,17 +406,4 @@ func GetRandomBlock(height uint64, nTxs int) *types.Block {
 	}
 
 	return block
-}
-
-func CreateRandomVersionCommit() (string, error) {
-	letterRunes := []rune("abcdefghijklmnopqrstuvwxyz")
-	b := make([]rune, 40)
-	for i := range b {
-		num, err := rand.Int(rand.Reader, big.NewInt(int64(len(letterRunes))))
-		if err != nil {
-			return "", err
-		}
-		b[i] = letterRunes[num.Int64()]
-	}
-	return string(b), nil
 }
