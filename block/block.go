@@ -184,7 +184,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	// Check if there was an Update for the proposer and if I am the new proposer.
 	// If so, restart so I can start as the proposer.
 	// For current proposer, we don't want to restart because we still need to send the last batch.
-	// This will be done as part of the `rotate` function. 
+	// This will be done as part of the `rotate` function.
 	if isProposerUpdated && m.AmIProposerOnRollapp() {
 		panic("I'm the new Proposer now. restarting as a proposer")
 	}
