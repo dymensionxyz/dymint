@@ -26,12 +26,12 @@ func (_m *MockClientI) EXPECT() *MockClientI_Expecter {
 	return &MockClientI_Expecter{mock: &_m.Mock}
 }
 
-// CheckRotationInProgress provides a mock function with given fields:
-func (_m *MockClientI) CheckRotationInProgress() (*types.Sequencer, error) {
+// GetNextProposer provides a mock function with given fields:
+func (_m *MockClientI) GetNextProposer() (*types.Sequencer, error) {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
-		panic("no return value specified for CheckRotationInProgress")
+		panic("no return value specified for GetNextProposer")
 	}
 
 	var r0 *types.Sequencer
@@ -56,29 +56,29 @@ func (_m *MockClientI) CheckRotationInProgress() (*types.Sequencer, error) {
 	return r0, r1
 }
 
-// MockClientI_CheckRotationInProgress_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'CheckRotationInProgress'
-type MockClientI_CheckRotationInProgress_Call struct {
+// MockClientI_GetNextProposer_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetNextProposer'
+type MockClientI_GetNextProposer_Call struct {
 	*mock.Call
 }
 
-// CheckRotationInProgress is a helper method to define mock.On call
-func (_e *MockClientI_Expecter) CheckRotationInProgress() *MockClientI_CheckRotationInProgress_Call {
-	return &MockClientI_CheckRotationInProgress_Call{Call: _e.mock.On("CheckRotationInProgress")}
+// GetNextProposer is a helper method to define mock.On call
+func (_e *MockClientI_Expecter) GetNextProposer() *MockClientI_GetNextProposer_Call {
+	return &MockClientI_GetNextProposer_Call{Call: _e.mock.On("GetNextProposer")}
 }
 
-func (_c *MockClientI_CheckRotationInProgress_Call) Run(run func()) *MockClientI_CheckRotationInProgress_Call {
+func (_c *MockClientI_GetNextProposer_Call) Run(run func()) *MockClientI_GetNextProposer_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		run()
 	})
 	return _c
 }
 
-func (_c *MockClientI_CheckRotationInProgress_Call) Return(_a0 *types.Sequencer, _a1 error) *MockClientI_CheckRotationInProgress_Call {
+func (_c *MockClientI_GetNextProposer_Call) Return(_a0 *types.Sequencer, _a1 error) *MockClientI_GetNextProposer_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockClientI_CheckRotationInProgress_Call) RunAndReturn(run func() (*types.Sequencer, error)) *MockClientI_CheckRotationInProgress_Call {
+func (_c *MockClientI_GetNextProposer_Call) RunAndReturn(run func() (*types.Sequencer, error)) *MockClientI_GetNextProposer_Call {
 	_c.Call.Return(run)
 	return _c
 }

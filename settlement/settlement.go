@@ -91,7 +91,7 @@ type ClientI interface {
 	GetBondedSequencers() ([]types.Sequencer, error)
 	// GetProposer returns the current proposer for this chain.
 	GetProposer() *types.Sequencer
-	// CheckRotationInProgress returns the next proposer for this chain in case of a rotation.
+	// GetNextProposer returns the next proposer for this chain in case of a rotation.
 	// If no rotation is in progress, it should return nil.
-	CheckRotationInProgress() (*types.Sequencer, error)
+	GetNextProposer() (*types.Sequencer, error)
 }
