@@ -6,13 +6,17 @@ import (
 	"time"
 
 	"github.com/dymensionxyz/dymint/node/events"
-	uevent "github.com/dymensionxyz/dymint/utils/event"
-
 	"github.com/dymensionxyz/dymint/types"
+	uevent "github.com/dymensionxyz/dymint/utils/event"
 )
 
 // MonitorForkUpdate listens to the hub
 func (m *Manager) MonitorForkUpdate(ctx context.Context) error {
+	err := m.checkForkUpdate(ctx)
+	if err != nil {
+		return err
+	}
+
 	ticker := time.NewTicker(15 * time.Second)
 	defer ticker.Stop()
 
