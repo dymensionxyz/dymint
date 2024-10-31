@@ -9,8 +9,8 @@ import (
 )
 
 func (m *Manager) RunInitChain(ctx context.Context) error {
-	// Get the proposer at the initial height
-	proposer, err := m.SLClient.GetProposerAtHeight(1)
+	// Get the proposer at the initial height. If we're at genesis the height will be 0.
+	proposer, err := m.SLClient.GetProposerAtHeight(int64(m.State.Height()) + 1)
 	if err != nil {
 		return fmt.Errorf("get proposer at height: %w", err)
 	}

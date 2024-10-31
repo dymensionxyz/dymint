@@ -329,10 +329,21 @@ func (c *Client) GetProposerAtHeight(height int64) (*types.Sequencer, error) {
 	} else {
 		// Get the state info for the relevant height and get address from there
 		res, err := c.GetBatchAtHeight(uint64(height))
+		// if case of height not found, it may be because it didn't arrive to the hub yet.
+		// In that case we want to return the current proposer.
 		if err != nil {
-			return nil, fmt.Errorf("get batch at height: %w", err)
+			// If batch not found, fallback to latest proposer
+			if errors.Is(err, gerrc.ErrNotFound) {
+				proposerAddr, err = c.getLatestProposer()
+				if err != nil {
+					return nil, fmt.Errorf("get latest proposer: %w", err)
+				}
+			} else {
+				return nil, fmt.Errorf("get batch at height: %w", err)
+			}
+		} else {
+			proposerAddr = res.Batch.Sequencer
 		}
-		proposerAddr = res.Batch.Sequencer
 	}
 
 	if proposerAddr == "" {
