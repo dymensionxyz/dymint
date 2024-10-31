@@ -77,12 +77,10 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 
 				err = m.ApplyBatchFromSL(settlementBatch.Batch)
 				if err != nil {
+					uevent.MustPublish(context.TODO(), m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
+					m.runFullNodeUnSubscriptions(context.TODO())
 					m.logger.Error("process next DA batch", "err", err)
-				}
-
-				// if height havent been updated, we are stuck
-				if m.State.NextHeight() == currH {
-					return fmt.Errorf("stuck at height %d", currH)
+					break
 				}
 
 				m.logger.Info("Synced from DA", "store height", m.State.Height(), "target height", m.LastSettlementHeight.Load())
@@ -93,7 +91,9 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 				err = m.attemptApplyCachedBlocks()
 				if err != nil {
 					uevent.MustPublish(context.TODO(), m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
+					m.runFullNodeUnSubscriptions(context.TODO())
 					m.logger.Error("Attempt apply cached blocks.", "err", err)
+					break
 				}
 
 			}

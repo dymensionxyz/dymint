@@ -61,6 +61,7 @@ func (m *Manager) OnReceivedBlock(event pubsub.Message) {
 	err := m.attemptApplyCachedBlocks()
 	if err != nil {
 		uevent.MustPublish(context.TODO(), m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
+		m.runFullNodeUnSubscriptions(context.TODO())
 		m.logger.Error("Attempt apply cached blocks.", "err", err)
 	}
 }

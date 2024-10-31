@@ -26,13 +26,7 @@ func (m *Manager) runAsFullNode(ctx context.Context, eg *errgroup.Group) error {
 		return m.SettlementValidateLoop(ctx)
 	})
 
-	// Subscribe to new (or finalized) state updates events.
-	go uevent.MustSubscribe(ctx, m.Pubsub, "syncLoop", settlement.EventQueryNewSettlementBatchAccepted, m.onNewStateUpdate, m.logger)
-	go uevent.MustSubscribe(ctx, m.Pubsub, "validateLoop", settlement.EventQueryNewSettlementBatchFinalized, m.onNewStateUpdateFinalized, m.logger)
-
-	// Subscribe to P2P received blocks events (used for P2P syncing).
-	go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewGossipedBlock, m.OnReceivedBlock, m.logger)
-	go uevent.MustSubscribe(ctx, m.Pubsub, "applyBlockSyncBlocksLoop", p2p.EventQueryNewBlockSyncBlock, m.OnReceivedBlock, m.logger)
+	m.runFullNodeSubscriptions(ctx)
 
 	return nil
 }
@@ -74,4 +68,34 @@ func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {
 	go m.MonitorProposerRotation(ctx)
 
 	return nil
+}
+
+func (m *Manager) runFullNodeSubscriptions(ctx context.Context) {
+	// Subscribe to new (or finalized) state updates events.
+	go uevent.MustSubscribe(ctx, m.Pubsub, "syncLoop", settlement.EventQueryNewSettlementBatchAccepted, m.onNewStateUpdate, m.logger)
+	go uevent.MustSubscribe(ctx, m.Pubsub, "validateLoop", settlement.EventQueryNewSettlementBatchFinalized, m.onNewStateUpdateFinalized, m.logger)
+
+	// Subscribe to P2P received blocks events (used for P2P syncing).
+	go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewGossipedBlock, m.OnReceivedBlock, m.logger)
+	go uevent.MustSubscribe(ctx, m.Pubsub, "applyBlockSyncBlocksLoop", p2p.EventQueryNewBlockSyncBlock, m.OnReceivedBlock, m.logger)
+
+}
+
+func (m *Manager) runFullNodeUnSubscriptions(ctx context.Context) {
+	if m.AmIProposer() {
+		return
+	}
+
+	// Subscribe to new (or finalized) state updates events.
+	unsubscribe := func(clientId string) {
+		err := m.Pubsub.UnsubscribeAll(ctx, clientId)
+		if err != nil {
+			m.logger.Error("Unsubscribe", "clientId", clientId, "error", err)
+		}
+	}
+	unsubscribe("syncLoop")
+	unsubscribe("validateLoop")
+	unsubscribe("applyGossipedBlocksLoop")
+	unsubscribe("applyBlockSyncBlocksLoop")
+
 }
