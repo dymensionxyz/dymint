@@ -33,7 +33,6 @@ import (
 	uchannel "github.com/dymensionxyz/dymint/utils/channel"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
 	protoutils "github.com/dymensionxyz/dymint/utils/proto"
-	"github.com/dymensionxyz/dymint/version"
 )
 
 // TODO: test producing lastBlock
@@ -48,8 +47,8 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 	app := testutil.GetAppMock(testutil.EndBlock)
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
 		RollappParamUpdates: &abci.RollappParams{
-			Da:      "mock",
-			Version: version.Commit,
+			Da:         "mock",
+			DrsVersion: 0,
 		},
 		ConsensusParamUpdates: &abci.ConsensusParams{
 			Block: &abci.BlockParams{
@@ -212,8 +211,8 @@ func TestStopBlockProduction(t *testing.T) {
 	app := testutil.GetAppMock(testutil.EndBlock)
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
 		RollappParamUpdates: &abci.RollappParams{
-			Da:      "mock",
-			Version: version.Commit,
+			Da:         "mock",
+			DrsVersion: 0,
 		},
 		ConsensusParamUpdates: &abci.ConsensusParams{
 			Block: &abci.BlockParams{
@@ -296,8 +295,8 @@ func TestUpdateInitialSequencerSet(t *testing.T) {
 	ctx := context.Background()
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
 		RollappParamUpdates: &abci.RollappParams{
-			Da:      "mock",
-			Version: version.Commit,
+			Da:         "mock",
+			DrsVersion: 0,
 		},
 		ConsensusParamUpdates: &abci.ConsensusParams{
 			Block: &abci.BlockParams{
@@ -402,8 +401,8 @@ func TestUpdateExistingSequencerSet(t *testing.T) {
 	ctx := context.Background()
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
 		RollappParamUpdates: &abci.RollappParams{
-			Da:      "mock",
-			Version: version.Commit,
+			Da:         "mock",
+			DrsVersion: 0,
 		},
 		ConsensusParamUpdates: &abci.ConsensusParams{
 			Block: &abci.BlockParams{

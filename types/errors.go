@@ -520,11 +520,11 @@ func (e ErrStateUpdateBlobCorruptedFraud) Unwrap() error {
 type ErrStateUpdateDRSVersionFraud struct {
 	StateIndex   uint64
 	Height       uint64
-	BlockVersion string
-	SLVersion    string
+	BlockVersion uint32
+	SLVersion    uint32
 }
 
-func NewErrStateUpdateDRSVersionFraud(stateIndex uint64, height uint64, blockVersion string, slVersion string) error {
+func NewErrStateUpdateDRSVersionFraud(stateIndex uint64, height uint64, blockVersion uint32, slVersion uint32) error {
 	return &ErrStateUpdateDRSVersionFraud{
 		StateIndex:   stateIndex,
 		Height:       height,
@@ -534,7 +534,7 @@ func NewErrStateUpdateDRSVersionFraud(stateIndex uint64, height uint64, blockVer
 }
 
 func (e ErrStateUpdateDRSVersionFraud) Error() string {
-	return fmt.Sprintf("drs version not matching. StateIndex: %d Height: %d Block DRS: %s SL DRS: %s", e.StateIndex, e.Height, e.BlockVersion, e.SLVersion)
+	return fmt.Sprintf("drs version not matching. StateIndex: %d Height: %d Block DRS: %d SL DRS: %d", e.StateIndex, e.Height, e.BlockVersion, e.SLVersion)
 }
 
 func (e ErrStateUpdateDRSVersionFraud) Unwrap() error {
