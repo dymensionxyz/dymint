@@ -137,8 +137,6 @@ func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResp
 
 // UpdateProposerFromBlock updates the proposer from the block
 // The next proposer is defined in the block header (NextSequencersHash)
-// In case of a node that a becomes the proposer, we return true to mark the role change
-// currently the node will rebooted to apply the new role
 // TODO: (https://github.com/dymensionxyz/dymint/issues/1008)
 func (e *Executor) UpdateProposerFromBlock(s *types.State, seqSet *types.SequencerSet, block *types.Block) bool {
 	// no sequencer change
@@ -151,22 +149,17 @@ func (e *Executor) UpdateProposerFromBlock(s *types.State, seqSet *types.Sequenc
 		// TODO: recover from halt (https://github.com/dymensionxyz/dymint/issues/1021)
 		e.logger.Info("rollapp left with no proposer. chain is halted")
 		s.SetProposer(nil)
-		return false
+		return true
 	}
 
 	// if hash changed, update the proposer
+	// We assume here that we're updated with the latest sequencer set
+	// FIXME: Think how to handle not being updated with the latest sequencer set
 	seq, found := seqSet.GetByHash(block.Header.NextSequencersHash[:])
 	if !found {
 		e.logger.Error("cannot find proposer by hash")
 		panic("cannot find proposer by hash")
 	}
 	s.SetProposer(&seq)
-
-	// check if this node becomes a proposer
-	localSeq, found := seqSet.GetByConsAddress(e.localAddress)
-	if found && bytes.Equal(localSeq.MustHash(), block.Header.NextSequencersHash[:]) {
-		return true
-	}
-
-	return false
+	return true
 }

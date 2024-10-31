@@ -282,8 +282,8 @@ func (c *Client) GetBondedSequencers() ([]types.Sequencer, error) {
 	return []types.Sequencer{*c.GetProposer()}, nil
 }
 
-// CheckRotationInProgress implements settlement.ClientI.
-func (c *Client) CheckRotationInProgress() (*types.Sequencer, error) {
+// GetNextProposer implements settlement.ClientI.
+func (c *Client) GetNextProposer() (*types.Sequencer, error) {
 	return nil, nil
 }
 

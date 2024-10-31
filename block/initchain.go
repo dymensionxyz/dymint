@@ -8,7 +8,7 @@ import (
 )
 
 func (m *Manager) RunInitChain(ctx context.Context) error {
-	// get the proposer's consensus pubkey
+	// FIXME: We want to get the initial proposer and not current one
 	proposer := m.SLClient.GetProposer()
 	if proposer == nil {
 		return errors.New("failed to get proposer")
