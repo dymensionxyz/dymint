@@ -4,8 +4,8 @@ import (
 	"context"
 )
 
-// PruneBlocks prune all block related data from dymint store and blocksync store up to (but not including) retainHeight.
-func (m *Manager) PruneBlocks(retainHeight uint64) {
+// Prune function prune all block related data from dymint store and blocksync store up to (but not including) retainHeight.
+func (m *Manager) Prune(retainHeight uint64) {
 	// logging pruning result
 	logResult := func(err error, source string, retainHeight uint64, pruned uint64) {
 		if err != nil {
@@ -41,7 +41,7 @@ func (m *Manager) PruningLoop(ctx context.Context) error {
 				pruningHeight = min(m.SettlementValidator.NextValidationHeight(), uint64(retainHeight))
 			}
 			m.logger.Debug("pruning loop", "retainHeight", retainHeight, "pruningHeight", pruningHeight)
-			m.PruneBlocks(pruningHeight)
+			m.Prune(pruningHeight)
 		}
 	}
 }
