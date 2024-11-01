@@ -2,9 +2,6 @@ package block
 
 import (
 	"context"
-
-	"github.com/dymensionxyz/dymint/node/events"
-	uevent "github.com/dymensionxyz/dymint/utils/event"
 )
 
 // FraudHandler is an interface that defines a method to handle faults.
@@ -22,7 +19,7 @@ type FreezeHandler struct {
 }
 
 func (f FreezeHandler) HandleFault(ctx context.Context, fault error) {
-	uevent.MustPublish(ctx, f.m.Pubsub, &events.DataHealthStatus{Error: fault}, events.HealthStatusList)
+	f.m.setNodeAsUnhealthy(ctx, fault)
 }
 
 func NewFreezeHandler(manager *Manager) *FreezeHandler {

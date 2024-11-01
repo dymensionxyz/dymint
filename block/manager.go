@@ -13,8 +13,10 @@ import (
 
 	"github.com/dymensionxyz/dymint/da/registry"
 	"github.com/dymensionxyz/dymint/indexers/txindex"
+	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/store"
 	uerrors "github.com/dymensionxyz/dymint/utils/errors"
+	uevent "github.com/dymensionxyz/dymint/utils/event"
 	"github.com/dymensionxyz/dymint/version"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
@@ -370,4 +372,9 @@ func (m *Manager) setDA(daconfig string, dalcKV store.KV, logger log.Logger) err
 // setFraudHandler sets the fraud handler for the block manager.
 func (m *Manager) setFraudHandler(handler *FreezeHandler) {
 	m.FraudHandler = handler
+}
+
+func (m *Manager) setNodeAsUnhealthy(ctx context.Context, err error) {
+	uevent.MustPublish(ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
+	m.unsubscribeFullNodeEvents(ctx)
 }

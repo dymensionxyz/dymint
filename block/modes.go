@@ -26,7 +26,7 @@ func (m *Manager) runAsFullNode(ctx context.Context, eg *errgroup.Group) error {
 		return m.SettlementValidateLoop(ctx)
 	})
 
-	m.runFullNodeSubscriptions(ctx)
+	m.subscribeFullNodeEvents(ctx)
 
 	return nil
 }
@@ -70,7 +70,10 @@ func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {
 	return nil
 }
 
-func (m *Manager) runFullNodeSubscriptions(ctx context.Context) {
+func (m *Manager) subscribeFullNodeEvents(ctx context.Context) {
+	if m.AmIProposer() {
+		return
+	}
 	// Subscribe to new (or finalized) state updates events.
 	go uevent.MustSubscribe(ctx, m.Pubsub, "syncLoop", settlement.EventQueryNewSettlementBatchAccepted, m.onNewStateUpdate, m.logger)
 	go uevent.MustSubscribe(ctx, m.Pubsub, "validateLoop", settlement.EventQueryNewSettlementBatchFinalized, m.onNewStateUpdateFinalized, m.logger)
@@ -81,12 +84,12 @@ func (m *Manager) runFullNodeSubscriptions(ctx context.Context) {
 
 }
 
-func (m *Manager) runFullNodeUnSubscriptions(ctx context.Context) {
+func (m *Manager) unsubscribeFullNodeEvents(ctx context.Context) {
 	if m.AmIProposer() {
 		return
 	}
 
-	// Subscribe to new (or finalized) state updates events.
+	// unsubscribe for specific event (clientId)
 	unsubscribe := func(clientId string) {
 		err := m.Pubsub.UnsubscribeAll(ctx, clientId)
 		if err != nil {
