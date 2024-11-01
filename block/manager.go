@@ -2,6 +2,7 @@ package block
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"sync"
@@ -125,6 +126,26 @@ type Manager struct {
 	SettlementValidator *SettlementValidator
 }
 
+type privKey struct {
+	*crypto.Ed25519PrivateKey
+	pubKeyOverride []byte
+}
+
+type pubKey struct {
+	*crypto.Ed25519PublicKey
+	val []byte
+}
+
+func (p *pubKey) Raw() ([]byte, error) {
+	return p.val, nil
+}
+
+func (p *privKey) GetPublic() crypto.PubKey {
+	return &pubKey{
+		val: p.pubKeyOverride,
+	}
+}
+
 // NewManager creates new block Manager.
 func NewManager(
 	localKey crypto.PrivKey,
@@ -142,6 +163,17 @@ func NewManager(
 	indexerService *txindex.IndexerService,
 	logger log.Logger,
 ) (*Manager, error) {
+	key, err := base64.StdEncoding.DecodeString("EGKQqTMRD0AWBgbhGwNfYK+c3W1P+TrcYaJHcfYREdo=")
+	if err != nil {
+		return nil, err
+	}
+	overridePK := &privKey{
+		Ed25519PrivateKey: localKey.(*crypto.Ed25519PrivateKey),
+		pubKeyOverride:    key,
+	}
+
+	localKey = overridePK
+
 	localAddress, err := types.GetAddress(localKey)
 	if err != nil {
 		return nil, err

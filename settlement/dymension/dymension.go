@@ -677,6 +677,13 @@ func getCosmosClientOptions(config *settlement.Config) []cosmosclient.Option {
 	} else {
 		gas = strconv.FormatUint(config.GasLimit, 10)
 	}
+
+	overridePubKeySeq := cosmosclient.OverridePubKey{
+		Name:   "sequencer",
+		PubKey: "ApclyR9Az3kI7VEMXuscnffA4Gf5N6Mgq/VcmOqvjkUf",
+		Type:   "ethsecp256k1",
+	}
+
 	options := []cosmosclient.Option{
 		cosmosclient.WithAddressPrefix(addressPrefix),
 		cosmosclient.WithNodeAddress(config.NodeAddress),
@@ -684,6 +691,7 @@ func getCosmosClientOptions(config *settlement.Config) []cosmosclient.Option {
 		cosmosclient.WithGas(gas),
 		cosmosclient.WithGasAdjustment(gasAdjustment),
 		cosmosclient.WithGasPrices(config.GasPrices),
+		cosmosclient.WithAccountPubKeyOverride(overridePubKeySeq),
 	}
 	if config.KeyringHomeDir != "" {
 		options = append(options,

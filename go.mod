@@ -48,6 +48,7 @@ require (
 	cosmossdk.io/collections v0.4.0 // indirect
 	cosmossdk.io/core v0.12.0 // indirect
 	cosmossdk.io/depinject v1.0.0-alpha.4 // indirect
+	filippo.io/edwards25519 v1.0.0-rc.1 // indirect
 	github.com/celestiaorg/go-square v1.0.1 // indirect
 	github.com/celestiaorg/go-square/merkle v0.0.0-20240429192549-dea967e1533b // indirect
 	github.com/cenkalti/backoff/v4 v4.2.1 // indirect
@@ -60,6 +61,7 @@ require (
 	github.com/gogo/gateway v1.1.0 // indirect
 	github.com/gorilla/handlers v1.5.1 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
+	github.com/hdevalence/ed25519consensus v0.0.0-20220222234857-c00d1f31bab3 // indirect
 	github.com/improbable-eng/grpc-web v0.15.0 // indirect
 	github.com/ipfs/go-block-format v0.2.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
@@ -71,7 +73,6 @@ require (
 )
 
 require (
-	filippo.io/edwards25519 v1.0.0-rc.1 // indirect
 	github.com/99designs/go-keychain v0.0.0-20191008050251-8e49817e8af4 // indirect
 	github.com/99designs/keyring v1.2.1 // indirect
 	github.com/ChainSafe/go-schnorrkel v1.0.0 // indirect
@@ -119,10 +120,6 @@ require (
 	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	github.com/tidwall/btree v1.5.0 // indirect
-	github.com/tidwall/gjson v1.17.1 // indirect
-	github.com/tidwall/match v1.1.1 // indirect
-	github.com/tidwall/pretty v1.2.1 // indirect
-	github.com/tidwall/sjson v1.2.5 // indirect
 	github.com/tyler-smith/go-bip39 v1.1.0 // indirect
 	github.com/vedhavyas/go-subkey v1.0.3 // indirect
 	github.com/zondax/ledger-go v0.14.3 // indirect
@@ -184,7 +181,6 @@ require (
 	github.com/hashicorp/go-immutable-radix v1.3.1 // indirect
 	github.com/hashicorp/golang-lru v1.0.2 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
-	github.com/hdevalence/ed25519consensus v0.0.0-20220222234857-c00d1f31bab3 // indirect
 	github.com/huin/goupnp v1.3.0 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/ipfs/go-cid v0.4.1
@@ -316,8 +312,9 @@ replace (
 // Dymension Forks
 replace (
 	github.com/cosmos/cosmos-sdk => github.com/dymensionxyz/cosmos-sdk v0.46.17-0.20241128210616-e9dfe47b8c73
-	github.com/evmos/evmos/v12 => github.com/dymensionxyz/evmos/v12 v12.1.6-dymension-v0.3
+	github.com/dymensionxyz/cosmosclient => github.com/dymensionxyz/cosmosclient v0.4.2-beta.0.20250110140627-2a26ee51f5b9
+	github.com/evmos/evmos/v12 => github.com/dymensionxyz/evmos/v12 v12.1.7-0.20250109155331-3623e06ed978
 	github.com/gorilla/rpc => github.com/dymensionxyz/rpc v1.3.1
 	github.com/osmosis-labs/osmosis/v15 => github.com/dymensionxyz/osmosis/v15 v15.2.0-dymension-v1.1.2
-	github.com/tendermint/tendermint => github.com/dymensionxyz/cometbft v0.34.29-0.20241128205759-2a9d5f015da5
+	github.com/tendermint/tendermint => github.com/dymensionxyz/cometbft v0.34.29-0.20250109152600-a6a5c8d67ce8
 )
