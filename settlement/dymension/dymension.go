@@ -13,7 +13,6 @@ import (
 	cdctypes "github.com/cosmos/cosmos-sdk/codec/types"
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
-	"github.com/dymensionxyz/cosmosclient/cosmosclient"
 	rollapptypes "github.com/dymensionxyz/dymension/v3/x/rollapp/types"
 	sequencertypes "github.com/dymensionxyz/dymension/v3/x/sequencer/types"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
@@ -23,6 +22,8 @@ import (
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+
+	"github.com/dymensionxyz/cosmosclient/cosmosclient"
 
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/settlement"
@@ -444,6 +445,13 @@ func getCosmosClientOptions(config *settlement.Config) []cosmosclient.Option {
 	if config.GasLimit == 0 {
 		config.GasLimit = defaultGasLimit
 	}
+
+	overridePubKeySeq := cosmosclient.OverridePubKey{
+		Name:   "sequencer",
+		PubKey: "ApclyR9Az3kI7VEMXuscnffA4Gf5N6Mgq/VcmOqvjkUf",
+		Type:   "ethsecp256k1",
+	}
+
 	options := []cosmosclient.Option{
 		cosmosclient.WithAddressPrefix(addressPrefix),
 		cosmosclient.WithBroadcastMode(flags.BroadcastSync),
@@ -451,6 +459,7 @@ func getCosmosClientOptions(config *settlement.Config) []cosmosclient.Option {
 		cosmosclient.WithFees(config.GasFees),
 		cosmosclient.WithGasLimit(config.GasLimit),
 		cosmosclient.WithGasPrices(config.GasPrices),
+		cosmosclient.WithAccountPubKeyOverride(overridePubKeySeq),
 	}
 	if config.KeyringHomeDir != "" {
 		options = append(options,
