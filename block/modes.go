@@ -81,7 +81,6 @@ func (m *Manager) subscribeFullNodeEvents(ctx context.Context) {
 	// Subscribe to P2P received blocks events (used for P2P syncing).
 	go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewGossipedBlock, m.OnReceivedBlock, m.logger)
 	go uevent.MustSubscribe(ctx, m.Pubsub, "applyBlockSyncBlocksLoop", p2p.EventQueryNewBlockSyncBlock, m.OnReceivedBlock, m.logger)
-
 }
 
 func (m *Manager) unsubscribeFullNodeEvents(ctx context.Context) {
@@ -100,5 +99,4 @@ func (m *Manager) unsubscribeFullNodeEvents(ctx context.Context) {
 	unsubscribe("validateLoop")
 	unsubscribe("applyGossipedBlocksLoop")
 	unsubscribe("applyBlockSyncBlocksLoop")
-
 }
