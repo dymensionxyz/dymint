@@ -35,7 +35,6 @@ func (m *Manager) applyBlockWithFraudHandling(block *types.Block, commit *types.
 		// in specific ways. For example, once a fault is detected, it publishes a DataHealthStatus event to the
 		// pubsub which sets the node in a frozen state.
 		m.FraudHandler.HandleFault(context.Background(), err)
-		return nil
 	}
 
 	return err
