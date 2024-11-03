@@ -18,6 +18,7 @@ import (
 	"github.com/dymensionxyz/dymint/version"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
+
 	tmcrypto "github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/pubsub"
@@ -39,9 +40,10 @@ type Manager struct {
 	logger types.Logger
 
 	// Configuration
-	Conf     config.BlockManagerConfig
-	Genesis  *tmtypes.GenesisDoc
-	LocalKey crypto.PrivKey
+	Conf            config.BlockManagerConfig
+	Genesis         *tmtypes.GenesisDoc
+	GenesisChecksum string
+	LocalKey        crypto.PrivKey
 
 	// Store and execution
 	Store      store.Store
@@ -108,6 +110,7 @@ func NewManager(
 	localKey crypto.PrivKey,
 	conf config.NodeConfig,
 	genesis *tmtypes.GenesisDoc,
+	genesisChecksum string,
 	store store.Store,
 	mempool mempool.Mempool,
 	proxyApp proxy.AppConns,
@@ -137,17 +140,18 @@ func NewManager(
 	}
 
 	m := &Manager{
-		Pubsub:         pubsub,
-		P2PClient:      p2pClient,
-		LocalKey:       localKey,
-		Conf:           conf.BlockManagerConfig,
-		Genesis:        genesis,
-		Store:          store,
-		Executor:       exec,
-		Sequencers:     types.NewSequencerSet(),
-		SLClient:       settlementClient,
-		indexerService: indexerService,
-		logger:         logger.With("module", "block_manager"),
+		Pubsub:          pubsub,
+		P2PClient:       p2pClient,
+		LocalKey:        localKey,
+		Conf:            conf.BlockManagerConfig,
+		Genesis:         genesis,
+		GenesisChecksum: genesisChecksum,
+		Store:           store,
+		Executor:        exec,
+		Sequencers:      types.NewSequencerSet(),
+		SLClient:        settlementClient,
+		indexerService:  indexerService,
+		logger:          logger.With("module", "block_manager"),
 		blockCache: &Cache{
 			cache: make(map[uint64]types.CachedBlock),
 		},

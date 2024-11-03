@@ -4,12 +4,16 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
+	"sort"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+
 	tmcfg "github.com/tendermint/tendermint/config"
 	"github.com/tendermint/tendermint/libs/cli"
 	"github.com/tendermint/tendermint/libs/log"
@@ -87,6 +91,11 @@ func startInProcess(config *cfg.NodeConfig, tmConfig *tmcfg.Config, logger log.L
 	}
 	logger.Info("starting node with ABCI dymint in-process", "conf", config)
 
+	genesisChecksum, err := computeGenesisHash(tmConfig.GenesisFile())
+	if err != nil {
+		return fmt.Errorf("failed to compute genesis checksum: %w", err)
+	}
+
 	dymintNode, err := node.NewNode(
 		context.Background(),
 		*config,
@@ -94,6 +103,7 @@ func startInProcess(config *cfg.NodeConfig, tmConfig *tmcfg.Config, logger log.L
 		signingKey,
 		proxy.DefaultClientCreator(tmConfig.ProxyApp, tmConfig.ABCI, tmConfig.DBDir()),
 		genesis,
+		genesisChecksum,
 		logger,
 		mempool.PrometheusMetrics("dymint"),
 	)
@@ -161,4 +171,31 @@ func checkGenesisHash(config *tmcfg.Config) error {
 	}
 
 	return nil
+}
+
+func computeGenesisHash(genesisFilePath string) (string, error) {
+	fileContent, err := os.ReadFile(genesisFilePath)
+	if err != nil {
+		return "", err
+	}
+
+	var jsonObject map[string]interface{}
+	err = json.Unmarshal(fileContent, &jsonObject)
+	if err != nil {
+		return "", err
+	}
+
+	keys := make([]string, 0, len(jsonObject))
+	for k := range jsonObject {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	sortedJSON, err := json.Marshal(jsonObject)
+	if err != nil {
+		return "", err
+	}
+
+	hash := sha256.Sum256(sortedJSON)
+	return hex.EncodeToString(hash[:]), nil
 }

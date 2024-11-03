@@ -6,18 +6,21 @@ import (
 	"encoding/hex"
 	"time"
 
+	"github.com/ipfs/go-datastore"
+	"github.com/libp2p/go-libp2p/core/crypto"
+
 	"github.com/dymensionxyz/dymint/block"
 	"github.com/dymensionxyz/dymint/indexers/txindex"
 	"github.com/dymensionxyz/dymint/indexers/txindex/kv"
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/settlement"
-	"github.com/ipfs/go-datastore"
-	"github.com/libp2p/go-libp2p/core/crypto"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	"github.com/tendermint/tendermint/proxy"
+
+	tmcfg "github.com/tendermint/tendermint/config"
 
 	"github.com/dymensionxyz/dymint/config"
 	"github.com/dymensionxyz/dymint/da"
@@ -27,7 +30,6 @@ import (
 	nodemempool "github.com/dymensionxyz/dymint/node/mempool"
 	slregistry "github.com/dymensionxyz/dymint/settlement/registry"
 	"github.com/dymensionxyz/dymint/store"
-	tmcfg "github.com/tendermint/tendermint/config"
 )
 
 const (
@@ -114,7 +116,7 @@ func GetManagerWithProposerKey(conf config.BlockManagerConfig, proposerKey crypt
 		return nil, err
 	}
 
-	manager, err := block.NewManager(proposerKey, config, genesis, managerStore, mp, proxyApp, settlementlc, nil,
+	manager, err := block.NewManager(proposerKey, config, genesis, "", managerStore, mp, proxyApp, settlementlc, nil,
 		pubsubServer, p2pClient, nil, indexer, logger)
 	if err != nil {
 		return nil, err

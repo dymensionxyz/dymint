@@ -357,9 +357,9 @@ func (_c *MockExecutorI_GetConsensusMsgs_Call) RunAndReturn(run func() []proto.M
 	return _c
 }
 
-// InitChain provides a mock function with given fields: genesis, valset
-func (_m *MockExecutorI) InitChain(genesis *tenderminttypes.GenesisDoc, valset []*tenderminttypes.Validator) (*abcitypes.ResponseInitChain, error) {
-	ret := _m.Called(genesis, valset)
+// InitChain provides a mock function with given fields: genesis, genesisChecksum, valset
+func (_m *MockExecutorI) InitChain(genesis *tenderminttypes.GenesisDoc, genesisChecksum string, valset []*tenderminttypes.Validator) (*abcitypes.ResponseInitChain, error) {
+	ret := _m.Called(genesis, genesisChecksum, valset)
 
 	if len(ret) == 0 {
 		panic("no return value specified for InitChain")
@@ -367,19 +367,19 @@ func (_m *MockExecutorI) InitChain(genesis *tenderminttypes.GenesisDoc, valset [
 
 	var r0 *abcitypes.ResponseInitChain
 	var r1 error
-	if rf, ok := ret.Get(0).(func(*tenderminttypes.GenesisDoc, []*tenderminttypes.Validator) (*abcitypes.ResponseInitChain, error)); ok {
-		return rf(genesis, valset)
+	if rf, ok := ret.Get(0).(func(*tenderminttypes.GenesisDoc, string, []*tenderminttypes.Validator) (*abcitypes.ResponseInitChain, error)); ok {
+		return rf(genesis, genesisChecksum, valset)
 	}
-	if rf, ok := ret.Get(0).(func(*tenderminttypes.GenesisDoc, []*tenderminttypes.Validator) *abcitypes.ResponseInitChain); ok {
-		r0 = rf(genesis, valset)
+	if rf, ok := ret.Get(0).(func(*tenderminttypes.GenesisDoc, string, []*tenderminttypes.Validator) *abcitypes.ResponseInitChain); ok {
+		r0 = rf(genesis, genesisChecksum, valset)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*abcitypes.ResponseInitChain)
 		}
 	}
 
-	if rf, ok := ret.Get(1).(func(*tenderminttypes.GenesisDoc, []*tenderminttypes.Validator) error); ok {
-		r1 = rf(genesis, valset)
+	if rf, ok := ret.Get(1).(func(*tenderminttypes.GenesisDoc, string, []*tenderminttypes.Validator) error); ok {
+		r1 = rf(genesis, genesisChecksum, valset)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -394,14 +394,15 @@ type MockExecutorI_InitChain_Call struct {
 
 // InitChain is a helper method to define mock.On call
 //   - genesis *tenderminttypes.GenesisDoc
+//   - genesisChecksum string
 //   - valset []*tenderminttypes.Validator
-func (_e *MockExecutorI_Expecter) InitChain(genesis interface{}, valset interface{}) *MockExecutorI_InitChain_Call {
-	return &MockExecutorI_InitChain_Call{Call: _e.mock.On("InitChain", genesis, valset)}
+func (_e *MockExecutorI_Expecter) InitChain(genesis interface{}, genesisChecksum interface{}, valset interface{}) *MockExecutorI_InitChain_Call {
+	return &MockExecutorI_InitChain_Call{Call: _e.mock.On("InitChain", genesis, genesisChecksum, valset)}
 }
 
-func (_c *MockExecutorI_InitChain_Call) Run(run func(genesis *tenderminttypes.GenesisDoc, valset []*tenderminttypes.Validator)) *MockExecutorI_InitChain_Call {
+func (_c *MockExecutorI_InitChain_Call) Run(run func(genesis *tenderminttypes.GenesisDoc, genesisChecksum string, valset []*tenderminttypes.Validator)) *MockExecutorI_InitChain_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*tenderminttypes.GenesisDoc), args[1].([]*tenderminttypes.Validator))
+		run(args[0].(*tenderminttypes.GenesisDoc), args[1].(string), args[2].([]*tenderminttypes.Validator))
 	})
 	return _c
 }
@@ -411,7 +412,7 @@ func (_c *MockExecutorI_InitChain_Call) Return(_a0 *abcitypes.ResponseInitChain,
 	return _c
 }
 
-func (_c *MockExecutorI_InitChain_Call) RunAndReturn(run func(*tenderminttypes.GenesisDoc, []*tenderminttypes.Validator) (*abcitypes.ResponseInitChain, error)) *MockExecutorI_InitChain_Call {
+func (_c *MockExecutorI_InitChain_Call) RunAndReturn(run func(*tenderminttypes.GenesisDoc, string, []*tenderminttypes.Validator) (*abcitypes.ResponseInitChain, error)) *MockExecutorI_InitChain_Call {
 	_c.Call.Return(run)
 	return _c
 }
