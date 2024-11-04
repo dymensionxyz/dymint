@@ -91,7 +91,7 @@ func startInProcess(config *cfg.NodeConfig, tmConfig *tmcfg.Config, logger log.L
 	}
 	logger.Info("starting node with ABCI dymint in-process", "conf", config)
 
-	genesisChecksum, err := computeGenesisHash(tmConfig.GenesisFile())
+	genesisChecksum, err := ComputeGenesisHash(tmConfig.GenesisFile())
 	if err != nil {
 		return fmt.Errorf("failed to compute genesis checksum: %w", err)
 	}
@@ -173,7 +173,7 @@ func checkGenesisHash(config *tmcfg.Config) error {
 	return nil
 }
 
-func computeGenesisHash(genesisFilePath string) (string, error) {
+func ComputeGenesisHash(genesisFilePath string) (string, error) {
 	fileContent, err := os.ReadFile(genesisFilePath)
 	if err != nil {
 		return "", err

@@ -351,7 +351,7 @@ func TestApplyLocalBlock_WithFraudCheck(t *testing.T) {
 
 	mockExecutor := &blockmocks.MockExecutorI{}
 	manager.Executor = mockExecutor
-	mockExecutor.On("InitChain", mock.Anything, mock.Anything).Return(&abci.ResponseInitChain{}, nil)
+	mockExecutor.On("InitChain", mock.Anything, mock.Anything, mock.Anything).Return(&abci.ResponseInitChain{}, nil)
 	mockExecutor.On("GetAppInfo").Return(&abci.ResponseInfo{
 		LastBlockHeight: int64(batch.EndHeight()),
 	}, nil)
