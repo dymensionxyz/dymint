@@ -231,6 +231,22 @@ func (m *Manager) Start(ctx context.Context) error {
 	}
 	amIProposer := amIProposerOnSL || m.AmIProposerOnRollapp()
 
+	if m.forkNeeded() {
+		instruction, err := types.LoadInstructionFromDisk(m.RootDir)
+		if err != nil {
+			return fmt.Errorf("load instruction from disk: %w", err)
+		}
+
+		if amIProposer {
+			m.handleSequencerForkTransition(instruction)
+		} else { // full node
+			// m.handleFullNodeForkTransition(instruction)
+			// Nothing?
+		}
+	}
+
+	m.logger.Info("starting block manager", "mode", map[bool]string{true: "proposer", false: "full node"}[amIProposer])
+
 	// update local state from latest state in settlement
 	err = m.updateFromLastSettlementState()
 	if err != nil {

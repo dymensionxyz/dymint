@@ -54,3 +54,23 @@ message ConsensusMsgUpsertSequencer {
 }
 
 message ConsensusMsgUpsertSequencerResponse {}
+
+message MsgBumpAccountSequences {
+    option (cosmos.msg.v1.signer) = "authority";
+    // authority defines the address of the authority that is allowed to bump the account sequences.
+    // this is gov but it can be triggered by a consensus message.
+    string authority = 1;
+}
+
+message MsgBumpAccountSequencesResponse {}
+
+message MsgUpgradeDRS {
+    option (cosmos.msg.v1.signer) = "authority";
+    // authority defines the address of the authority that is allowed to bump the account sequences.
+    // this is gov but it can be triggered by a consensus message.
+    string authority = 1;
+
+    uint64 drs_version = 2;
+}
+
+message MsgUpgradeDRSResponse {}
