@@ -212,6 +212,20 @@ func (m *Manager) Start(ctx context.Context) error {
 	// The hub proposer, after sending the last state update, will panic and restart as full node.
 	amIProposer := m.AmIProposerOnSL() || m.AmIProposerOnRollapp()
 
+	if m.forkNeeded() {
+		instruction, err := types.LoadInstructionFromDisk(m.RootDir)
+		if err != nil {
+			return fmt.Errorf("load instruction from disk: %w", err)
+		}
+
+		if amIProposer {
+			m.handleSequencerForkTransition(instruction)
+		} else { // full node
+			// m.handleFullNodeForkTransition(instruction)
+			// Nothing?
+		}
+	}
+
 	m.logger.Info("starting block manager", "mode", map[bool]string{true: "proposer", false: "full node"}[amIProposer])
 
 	// update local state from latest state in settlement

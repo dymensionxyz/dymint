@@ -112,7 +112,7 @@ func (m *Manager) ProduceApplyGossipBlock(ctx context.Context, allowEmpty bool) 
 
 func (m *Manager) produceApplyGossip(ctx context.Context, allowEmpty bool, nextProposerHash *[32]byte) (block *types.Block, commit *types.Commit, err error) {
 	// If I'm not the current rollapp proposer, I should not produce a blocks.
-	block, commit, err = m.produceBlock(allowEmpty, nextProposerHash)
+	block, commit, err = m.produceBlock(allowEmpty, nextProposerHash, false)
 	if err != nil {
 		return nil, nil, fmt.Errorf("produce block: %w", err)
 	}
@@ -128,7 +128,7 @@ func (m *Manager) produceApplyGossip(ctx context.Context, allowEmpty bool, nextP
 	return block, commit, nil
 }
 
-func (m *Manager) produceBlock(allowEmpty bool, nextProposerHash *[32]byte) (*types.Block, *types.Commit, error) {
+func (m *Manager) produceBlock(allowEmpty bool, nextProposerHash *[32]byte, enforceEmpty bool) (*types.Block, *types.Commit, error) {
 	newHeight := m.State.NextHeight()
 	lastHeaderHash, lastCommit, err := m.GetPreviousBlockHashes(newHeight)
 	if err != nil {
@@ -137,6 +137,7 @@ func (m *Manager) produceBlock(allowEmpty bool, nextProposerHash *[32]byte) (*ty
 
 	var block *types.Block
 	var commit *types.Commit
+
 	// Check if there's an already stored block and commit at a newer height
 	// If there is use that instead of creating a new block
 	pendingBlock, err := m.Store.LoadBlock(newHeight)
@@ -160,6 +161,7 @@ func (m *Manager) produceBlock(allowEmpty bool, nextProposerHash *[32]byte) (*ty
 		maxBlockDataSize = 0
 		proposerHashForBlock = *nextProposerHash
 	}
+
 	block = m.Executor.CreateBlock(newHeight, lastCommit, lastHeaderHash, proposerHashForBlock, m.State, maxBlockDataSize)
 	if !allowEmpty && len(block.Data.Txs) == 0 {
 		return nil, nil, fmt.Errorf("%w: %w", types.ErrEmptyBlock, ErrRecoverable)

@@ -5,19 +5,27 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/gogo/protobuf/proto"
+
 	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/types"
+	sequencers "github.com/dymensionxyz/dymint/types/pb/rollapp/sequencers/types"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
 )
 
-// MonitorForkUpdate listens to the hub
-func (m *Manager) MonitorForkUpdate(ctx context.Context) error {
+const (
+	LoopInterval  = 15 * time.Second
+	FetchInterval = 5 * time.Second
+)
+
+// MonitorForkUpdateLoop monitors the hub for fork updates in a loop
+func (m *Manager) MonitorForkUpdateLoop(ctx context.Context) error {
 	err := m.checkForkUpdate(ctx)
 	if err != nil {
 		return err
 	}
 
-	ticker := time.NewTicker(15 * time.Second)
+	ticker := time.NewTicker(LoopInterval) // TODO make this configurable
 	defer ticker.Stop()
 
 	for {
@@ -108,3 +116,97 @@ func (m *Manager) freezeNode(ctx context.Context) {
 	err := fmt.Errorf("node frozen due to fork update")
 	uevent.MustPublish(ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
 }
+
+// forkNeeded returns true if the fork file exists
+func (m *Manager) forkNeeded() bool {
+	if _, err := types.LoadInstructionFromDisk(m.RootDir); err == nil {
+		return true
+	}
+
+	return false
+}
+
+// handleSequencerForkTransition handles the sequencer fork transition
+func (m *Manager) handleSequencerForkTransition(instruction types.Instruction) {
+	lastBlock, err := m.Store.LoadBlock(m.State.Height())
+	if err != nil {
+		panic(fmt.Sprintf("load block: height: %d: %v", m.State.Height(), err))
+	}
+
+	var consensusMsgs []proto.Message
+	if instruction.FaultyDRS != nil {
+		if lastBlock.Header.Version.App == instruction.Revision {
+			panic(fmt.Sprintf("running faulty DRS version %d", *instruction.FaultyDRS))
+		}
+
+		msgUpgradeDRS := &sequencers.MsgUpgradeDRS{
+			DrsVersion: *instruction.FaultyDRS,
+		}
+
+		consensusMsgs = append(consensusMsgs, msgUpgradeDRS)
+	}
+
+	// Always bump the account sequences
+	msgBumpSequences := &sequencers.MsgBumpAccountSequences{Authority: "gov"}
+
+	consensusMsgs = append(consensusMsgs, msgBumpSequences)
+
+	// Create a new block with the consensus messages
+	m.Executor.AddConsensusMsgs(consensusMsgs...)
+
+	block, commit, err := m.produceBlock(true, nil, true)
+	if err != nil {
+		panic(fmt.Sprintf("produce block: %v", err))
+	}
+
+	err = m.applyBlock(block, commit, types.BlockMetaData{Source: types.Produced})
+
+	// Create another block emtpy
+	block, commit, err = m.produceBlock(true, nil, true)
+	if err != nil {
+		panic(fmt.Sprintf("produce empty block: %v", err))
+	}
+
+	err = m.applyBlock(block, commit, types.BlockMetaData{Source: types.Produced})
+
+	// Create Batch and send
+	_, err = m.CreateAndSubmitBatch(m.Conf.BatchSubmitBytes, false)
+	if err != nil {
+		panic(fmt.Sprintf("create and submit batch: %v", err))
+	}
+}
+
+/*// handleFullNodeForkTransition handles the full node fork transition
+func (m *Manager) handleFullNodeForkTransition(instruction types.Instruction) {
+	for {
+		select {
+		case <-time.After(FetchInterval):
+			lastBlock, err := m.Store.LoadBlock(m.State.Height())
+			if err != nil {
+				panic(fmt.Sprintf("load block: height: %d: %v", m.State.Height(), err))
+			}
+
+			hubState := m.fetchBatch()
+
+			// First validate software version
+			drsVersion, err := strconv.ParseUint(version.DrsVersion, 10, 32)
+			if err != nil {
+				panic(fmt.Sprintf("parse software version: %v", err))
+			}
+
+			if drsVersion != lastBlock.Header.Version.App {
+				panic(fmt.Sprintf("software version mismatch: local: %d, hub: %d", drsVersion, lastBlock.Header.Version.App))
+			}
+
+			// Check if first block of new fork has arrived
+			if hasNewForkBlock(hubState, instruction.Revision) {
+				log.Info("Received first block of new fork, resuming normal operation")
+				return nil
+			}
+
+		case <-ctx.Done():
+			return ctx.Err()
+		}
+	}
+}
+*/

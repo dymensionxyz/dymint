@@ -202,7 +202,7 @@ func TestMonitorForkUpdate(t *testing.T) {
 	errCh := make(chan error)
 	go func() {
 		time.Sleep(1 * time.Second) // Wait for the pubsub server to start
-		errCh <- manager.MonitorForkUpdate(ctx)
+		errCh <- manager.MonitorForkUpdateLoop(ctx)
 	}()
 
 	// Wait for context cancellation or error
