@@ -3,11 +3,8 @@ package block
 import (
 	"context"
 	"errors"
-<<<<<<< HEAD
 	"fmt"
-=======
 	"time"
->>>>>>> 120347e (store last settlement block time on store)
 
 	tmtypes "github.com/tendermint/tendermint/types"
 )
