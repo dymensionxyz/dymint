@@ -14,8 +14,7 @@ import (
 )
 
 const (
-	LoopInterval  = 15 * time.Second
-	FetchInterval = 5 * time.Second
+	LoopInterval = 15 * time.Second
 )
 
 // MonitorForkUpdateLoop monitors the hub for fork updates in a loop
@@ -175,38 +174,3 @@ func (m *Manager) handleSequencerForkTransition(instruction types.Instruction) {
 		panic(fmt.Sprintf("create and submit batch: %v", err))
 	}
 }
-
-/*// handleFullNodeForkTransition handles the full node fork transition
-func (m *Manager) handleFullNodeForkTransition(instruction types.Instruction) {
-	for {
-		select {
-		case <-time.After(FetchInterval):
-			lastBlock, err := m.Store.LoadBlock(m.State.Height())
-			if err != nil {
-				panic(fmt.Sprintf("load block: height: %d: %v", m.State.Height(), err))
-			}
-
-			hubState := m.fetchBatch()
-
-			// First validate software version
-			drsVersion, err := strconv.ParseUint(version.DrsVersion, 10, 32)
-			if err != nil {
-				panic(fmt.Sprintf("parse software version: %v", err))
-			}
-
-			if drsVersion != lastBlock.Header.Version.App {
-				panic(fmt.Sprintf("software version mismatch: local: %d, hub: %d", drsVersion, lastBlock.Header.Version.App))
-			}
-
-			// Check if first block of new fork has arrived
-			if hasNewForkBlock(hubState, instruction.Revision) {
-				log.Info("Received first block of new fork, resuming normal operation")
-				return nil
-			}
-
-		case <-ctx.Done():
-			return ctx.Err()
-		}
-	}
-}
-*/
