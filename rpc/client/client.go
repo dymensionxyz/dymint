@@ -26,6 +26,7 @@ import (
 	"github.com/dymensionxyz/dymint/node"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/dymensionxyz/dymint/version"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 )
 
 const (
@@ -326,8 +327,11 @@ func (c *Client) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64)
 	const limit int64 = 20
 
 	baseHeight, err := c.node.BlockManager.Store.LoadBaseHeight()
-	if err != nil {
+	if err != nil && !errors.Is(err, gerrc.ErrNotFound) {
 		return nil, err
+	}
+	if errors.Is(err, gerrc.ErrNotFound) {
+		baseHeight = 1
 	}
 	minHeight, maxHeight, err = filterMinMax(
 		int64(baseHeight),
