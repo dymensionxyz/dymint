@@ -116,7 +116,7 @@ func SubmitLoopInner(
 					break
 				}
 
-				nConsumed, err := createAndSubmitBatch(min(pending, maxBatchBytes))
+				nConsumed, err := createAndSubmitBatch(maxBatchBytes)
 				if err != nil {
 					err = fmt.Errorf("create and submit batch: %w", err)
 					if errors.Is(err, gerrc.ErrInternal) {
@@ -223,7 +223,7 @@ func (m *Manager) CreateBatch(maxBatchSize uint64, startHeight uint64, endHeight
 			batch.DRSVersion = batch.DRSVersion[:len(batch.DRSVersion)-1]
 
 			if h == startHeight {
-				return nil, fmt.Errorf("block size exceeds max batch size: h %d: size: %d: %w", h, totalSize, gerrc.ErrOutOfRange)
+				return nil, fmt.Errorf("block size exceeds max batch size: h %d: batch size: %d: max size: %d err:%w", h, totalSize, maxBatchSize, gerrc.ErrOutOfRange)
 			}
 			break
 		}

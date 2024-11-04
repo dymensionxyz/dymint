@@ -129,9 +129,6 @@ func (s *State) NextHeight() uint64 {
 }
 
 func (s *State) GetSkewTime() time.Duration {
-	if s.GetLastBlockTime().Before(s.GetLastSubmittedBlockTime()) {
-		return 0
-	}
 	return s.GetLastBlockTime().Sub(s.GetLastSubmittedBlockTime())
 }
 

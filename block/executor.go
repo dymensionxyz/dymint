@@ -175,7 +175,7 @@ func (e *Executor) CreateBlock(
 	copy(block.Header.DataHash[:], types.GetDataHash(block))
 	copy(block.Header.SequencerHash[:], state.GetProposerHash())
 	copy(block.Header.NextSequencersHash[:], nextSeqHash[:])
-
+	state.SetLastBlockTime(time.Now())
 	return block
 }
 
