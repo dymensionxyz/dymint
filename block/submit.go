@@ -314,3 +314,30 @@ func (m *Manager) UpdateLastSubmittedHeight(event pubsub.Message) {
 		}
 	}
 }
+
+// SetLastSettlementBlockTime saves the last block on SL timestamp
+func (m *Manager) SetLastSettlementBlockTime(time time.Time) error {
+	_, err := m.Store.SaveLastSettlementBlockTime(uint64(time.UTC().UnixNano()), nil)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// GetLastSettlementBlockTime returns the last block on  SL timestamp
+func (m *Manager) GetLastSettlementBlockTime() (time.Time, error) {
+	lastSettlementBlockTime, err := m.Store.LoadLastSettlementBlockTime()
+	if err != nil {
+		return time.Time{}, err
+	}
+	return time.Unix(0, int64(lastSettlementBlockTime)), nil
+}
+
+// GetSkewTime returns the time between the last produced block and the last block submitted to SL
+func (m *Manager) GetSkewTime() (time.Duration, error) {
+	lastSettlementBlockTime, err := m.GetLastSettlementBlockTime()
+	if err != nil {
+		return time.Duration(0), err
+	}
+	return m.State.GetLastBlockTime().Sub(lastSettlementBlockTime), nil
+}
