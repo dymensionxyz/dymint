@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"sort"
 
 	"github.com/spf13/cobra"
@@ -174,7 +175,7 @@ func checkGenesisHash(config *tmcfg.Config) error {
 }
 
 func ComputeGenesisHash(genesisFilePath string) (string, error) {
-	fileContent, err := os.ReadFile(genesisFilePath)
+	fileContent, err := os.ReadFile(filepath.Clean(genesisFilePath))
 	if err != nil {
 		return "", err
 	}
