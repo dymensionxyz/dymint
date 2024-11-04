@@ -300,7 +300,7 @@ replace (
 	github.com/evmos/evmos/v12 => github.com/dymensionxyz/evmos/v12 v12.1.6-dymension-v0.3
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.2-alpha.regen.4
 	github.com/gorilla/rpc => github.com/dymensionxyz/rpc v1.3.1
-	github.com/tendermint/tendermint => github.com/dymensionxyz/cometbft v0.34.29-0.20241030154748-3f9dfa21d17b
+	github.com/tendermint/tendermint => github.com/dymensionxyz/cometbft v0.34.29-0.20241104165035-feade34f8f89
 )
 
 replace github.com/osmosis-labs/osmosis/v15 => github.com/dymensionxyz/osmosis/v15 v15.2.0-dymension-v1.1.2

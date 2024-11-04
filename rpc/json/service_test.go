@@ -20,6 +20,7 @@ import (
 
 	"github.com/gorilla/rpc/v2/json2"
 	"github.com/libp2p/go-libp2p/core/crypto"
+
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/proxy"
@@ -337,6 +338,7 @@ func getRPC(t *testing.T) (*tmmocks.MockApplication, *client.Client) {
 		signingKey,
 		proxy.NewLocalClientCreator(app),
 		&types.GenesisDoc{ChainID: rollappID, AppState: []byte("{\"rollappparams\": {\"params\": {\"da\": \"mock\",\"version\": 1}}}")},
+		"",
 		log.TestingLogger(),
 		mempool.NopMetrics(),
 	)
