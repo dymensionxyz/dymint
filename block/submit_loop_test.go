@@ -65,14 +65,14 @@ func testSubmitLoopInner(
 	lastProducedBlockTime.Store(uint64(time.Now().UTC().UnixNano()))
 	lastSubmittedBlockTime.Store(uint64(time.Now().UTC().UnixNano()))
 
-	skewTime := func() time.Duration {
+	skewTime := func() (time.Duration, error) {
 
 		lastSubmitted := time.Unix(0, int64(lastSubmittedBlockTime.Load()))
 		lastProduced := time.Unix(0, int64(lastProducedBlockTime.Load()))
 		if lastProduced.Before(lastSubmitted) {
-			return 0
+			return 0, nil
 		}
-		return lastProduced.Sub(lastSubmitted)
+		return lastProduced.Sub(lastSubmitted), nil
 	}
 	go func() { // simulate block production
 		go func() { // another thread to check system properties
@@ -83,7 +83,8 @@ func testSubmitLoopInner(
 				default:
 				}
 				// producer shall not get too far ahead
-				require.True(t, skewTime() < args.batchSkew+args.skewMargin, "last produced blocks time not less than maximum skew time", "produced block skew time", skewTime(), "max skew time", args.batchSkew)
+				skewTime, _ := skewTime()
+				require.True(t, skewTime < args.batchSkew+args.skewMargin, "last produced blocks time not less than maximum skew time", "produced block skew time", skewTime, "max skew time", args.batchSkew)
 			}
 		}()
 		for {
@@ -95,7 +96,8 @@ func testSubmitLoopInner(
 
 			time.Sleep(approx(args.produceTime))
 
-			if args.batchSkew <= skewTime() {
+			skewTime, _ := skewTime()
+			if args.batchSkew <= skewTime {
 				continue
 			}
 			nBytes := rand.Intn(args.produceBytes) // simulate block production

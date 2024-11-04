@@ -14,19 +14,20 @@ import (
 )
 
 var (
-	blockPrefix               = [1]byte{1}
-	indexPrefix               = [1]byte{2}
-	commitPrefix              = [1]byte{3}
-	statePrefix               = [1]byte{4}
-	responsesPrefix           = [1]byte{5}
-	proposerPrefix            = [1]byte{6}
-	cidPrefix                 = [1]byte{7}
-	sourcePrefix              = [1]byte{8}
-	validatedHeightPrefix     = [1]byte{9}
-	baseHeightPrefix          = [1]byte{10}
-	blocksyncBaseHeightPrefix = [1]byte{11}
-	indexerBaseHeightPrefix   = [1]byte{12}
-	drsVersionPrefix          = [1]byte{13}
+	blockPrefix                   = [1]byte{1}
+	indexPrefix                   = [1]byte{2}
+	commitPrefix                  = [1]byte{3}
+	statePrefix                   = [1]byte{4}
+	responsesPrefix               = [1]byte{5}
+	proposerPrefix                = [1]byte{6}
+	cidPrefix                     = [1]byte{7}
+	sourcePrefix                  = [1]byte{8}
+	validatedHeightPrefix         = [1]byte{9}
+	baseHeightPrefix              = [1]byte{10}
+	blocksyncBaseHeightPrefix     = [1]byte{11}
+	indexerBaseHeightPrefix       = [1]byte{12}
+	drsVersionPrefix              = [1]byte{13}
+	lastSettlementBlockTimePrefix = [1]byte{14}
 )
 
 // DefaultStore is a default store implementation.
@@ -345,16 +346,30 @@ func (s *DefaultStore) SaveDRSVersion(height uint64, version uint32, batch KVBat
 
 func (s *DefaultStore) LoadBaseHeight() (uint64, error) {
 	b, err := s.db.Get(getBaseHeightKey())
-	if err != nil {
-		return 0, err
-	}
-	return binary.LittleEndian.Uint64(b), nil
 }
 
 func (s *DefaultStore) SaveBaseHeight(height uint64) error {
 	b := make([]byte, 8)
 	binary.LittleEndian.PutUint64(b, height)
 	return s.db.Set(getBaseHeightKey(), b)
+}
+
+func (s *DefaultStore) SaveLastSettlementBlockTime(time uint64, batch KVBatch) (KVBatch, error) {
+	b := make([]byte, 8)
+	binary.LittleEndian.PutUint64(b, time)
+	if batch == nil {
+		return nil, s.db.Set(getLastSettlementBlockTimeKey(), b)
+	}
+	err := batch.Set(getLastSettlementBlockTimeKey(), b)
+	return batch, err
+}
+
+func (s *DefaultStore) LoadLastSettlementBlockTime() (uint64, error) {
+	b, err := s.db.Get(getLastSettlementBlockTimeKey())
+	if err != nil {
+		return 0, err
+	}
+	return binary.LittleEndian.Uint64(b), nil
 }
 
 func (s *DefaultStore) LoadBlockSyncBaseHeight() (uint64, error) {
@@ -447,4 +462,8 @@ func getBlockSyncBaseHeightKey() []byte {
 
 func getIndexerBaseHeightKey() []byte {
 	return indexerBaseHeightPrefix[:]
+}
+
+func getLastSettlementBlockTimeKey() []byte {
+	return lastSettlementBlockTimePrefix[:]
 }

@@ -104,5 +104,9 @@ type Store interface {
 
 	SaveIndexerBaseHeight(height uint64) error
 
+	LoadLastSettlementBlockTime() (uint64, error)
+
+	SaveLastSettlementBlockTime(height uint64, batch KVBatch) (KVBatch, error)
+
 	Close() error
 }

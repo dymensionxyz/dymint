@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"golang.org/x/sync/errgroup"
@@ -289,7 +290,6 @@ func (m *Manager) updateFromLastSettlementState() error {
 		return err
 	}
 
-	// update last block submitted time from last batch when starting the  node
 	m.LastSettlementHeight.Store(latestHeight)
 
 	if latestHeight >= m.State.NextHeight() {
@@ -370,4 +370,30 @@ func (m *Manager) setDA(daconfig string, dalcKV store.KV, logger log.Logger) err
 // setFraudHandler sets the fraud handler for the block manager.
 func (m *Manager) setFraudHandler(handler *FreezeHandler) {
 	m.FraudHandler = handler
+}
+
+// SetLastSettlementBlockTime saves the last block in SL timestamp
+func (m *Manager) SetLastSettlementBlockTime(time time.Time) error {
+	_, err := m.Store.SaveLastSettlementBlockTime(uint64(time.UTC().UnixNano()), nil)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// GetLastSettlementBlockTime returns the last block in  SL timestamp
+func (m *Manager) GetLastSettlementBlockTime() (time.Time, error) {
+	lastSettlementBlockTime, err := m.Store.LoadLastSettlementBlockTime()
+	if err != nil {
+		return time.Time{}, err
+	}
+	return time.Unix(0, int64(lastSettlementBlockTime)), nil
+}
+
+func (m *Manager) GetSkewTime() (time.Duration, error) {
+	lastSettlementBlockTime, err := m.GetLastSettlementBlockTime()
+	if err != nil {
+		return time.Duration(0), err
+	}
+	return m.State.GetLastBlockTime().Sub(lastSettlementBlockTime), nil
 }
