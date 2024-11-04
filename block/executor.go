@@ -6,13 +6,14 @@ import (
 
 	proto2 "github.com/gogo/protobuf/proto"
 	proto "github.com/gogo/protobuf/types"
+	"go.uber.org/multierr"
+
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmcrypto "github.com/tendermint/tendermint/crypto/encoding"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/proxy"
 	tmtypes "github.com/tendermint/tendermint/types"
-	"go.uber.org/multierr"
 
 	"github.com/dymensionxyz/dymint/mempool"
 	"github.com/dymensionxyz/dymint/types"
@@ -22,7 +23,7 @@ import (
 const minBlockMaxBytes = 10000
 
 type ExecutorI interface {
-	InitChain(genesis *tmtypes.GenesisDoc, valset []*tmtypes.Validator) (*abci.ResponseInitChain, error)
+	InitChain(genesis *tmtypes.GenesisDoc, genesisChecksum string, valset []*tmtypes.Validator) (*abci.ResponseInitChain, error)
 	CreateBlock(height uint64, lastCommit *types.Commit, lastHeaderHash, nextSeqHash [32]byte, state *types.State, maxBlockDataSizeBytes uint64) *types.Block
 	Commit(state *types.State, block *types.Block, resp *tmstate.ABCIResponses) ([]byte, int64, error)
 	GetAppInfo() (*abci.ResponseInfo, error)
@@ -91,7 +92,7 @@ func (e *Executor) GetConsensusMsgs() []proto2.Message {
 }
 
 // InitChain calls InitChainSync using consensus connection to app.
-func (e *Executor) InitChain(genesis *tmtypes.GenesisDoc, valset []*tmtypes.Validator) (*abci.ResponseInitChain, error) {
+func (e *Executor) InitChain(genesis *tmtypes.GenesisDoc, genesisChecksum string, valset []*tmtypes.Validator) (*abci.ResponseInitChain, error) {
 	valUpdates := abci.ValidatorUpdates{}
 
 	// prepare the validator updates as expected by the ABCI app
@@ -129,8 +130,9 @@ func (e *Executor) InitChain(genesis *tmtypes.GenesisDoc, valset []*tmtypes.Vali
 				AppVersion: params.Version.AppVersion,
 			},
 		}, Validators: valUpdates,
-		AppStateBytes: genesis.AppState,
-		InitialHeight: genesis.InitialHeight,
+		AppStateBytes:   genesis.AppState,
+		InitialHeight:   genesis.InitialHeight,
+		GenesisChecksum: genesisChecksum,
 	})
 }
 

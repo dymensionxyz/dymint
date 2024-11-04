@@ -7,11 +7,13 @@ import (
 	"time"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
+
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/proxy"
 	"github.com/tendermint/tendermint/types"
 
 	"github.com/stretchr/testify/mock"
+
 	abci "github.com/tendermint/tendermint/abci/types"
 
 	"github.com/dymensionxyz/dymint/config"
@@ -69,6 +71,7 @@ func CreateNode(isSequencer bool, blockManagerConfig *config.BlockManagerConfig,
 		signingKey,
 		proxy.NewLocalClientCreator(app),
 		genesis,
+		"",
 		log.TestingLogger(),
 		mempool.NopMetrics(),
 	)
