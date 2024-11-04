@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -50,7 +49,6 @@ type Client struct {
 	rollappQueryClient      rollapptypes.QueryClient
 	sequencerQueryClient    sequencertypes.QueryClient
 	protoCodec              *codec.ProtoCodec
-	proposer                types.Sequencer
 	retryAttempts           uint
 	retryMinDelay           time.Duration
 	retryMaxDelay           time.Duration
@@ -317,49 +315,53 @@ func (c *Client) GetLatestFinalizedHeight() (uint64, error) {
 	return res.Height, nil
 }
 
-// GetProposer implements settlement.ClientI.
-func (c *Client) GetProposer() *types.Sequencer {
-	// return cached proposer
-	if !c.proposer.IsEmpty() {
-		return &c.proposer
-	}
-
+// GetProposerAtHeight return the proposer at height.
+// In case of negative height, it will return the latest proposer.
+func (c *Client) GetProposerAtHeight(height int64) (*types.Sequencer, error) {
+	// Get all sequencers to find the proposer address
 	seqs, err := c.GetBondedSequencers()
 	if err != nil {
-		c.logger.Error("GetBondedSequencers", "error", err)
-		return nil
+		return nil, fmt.Errorf("get bonded sequencers: %w", err)
 	}
 
+	// Get either latest proposer or proposer at height
 	var proposerAddr string
-	err = c.RunWithRetry(func() error {
-		reqProposer := &sequencertypes.QueryGetProposerByRollappRequest{
-			RollappId: c.rollappId,
+	if height < 0 {
+		proposerAddr, err = c.getLatestProposer()
+		if err != nil {
+			return nil, fmt.Errorf("get latest proposer: %w", err)
 		}
-		res, err := c.sequencerQueryClient.GetProposerByRollapp(c.ctx, reqProposer)
-		if err == nil {
-			proposerAddr = res.ProposerAddr
-			return nil
+	} else {
+		// Get the state info for the relevant height and get address from there
+		res, err := c.GetBatchAtHeight(uint64(height))
+		// if case of height not found, it may be because it didn't arrive to the hub yet.
+		// In that case we want to return the current proposer.
+		if err != nil {
+			// If batch not found, fallback to latest proposer
+			if errors.Is(err, gerrc.ErrNotFound) {
+				proposerAddr, err = c.getLatestProposer()
+				if err != nil {
+					return nil, fmt.Errorf("get latest proposer: %w", err)
+				}
+			} else {
+				return nil, fmt.Errorf("get batch at height: %w", err)
+			}
+		} else {
+			proposerAddr = res.Batch.Sequencer
 		}
-		if status.Code(err) == codes.NotFound {
-			return nil
-		}
-		return err
-	})
-	if err != nil {
-		c.logger.Error("GetProposer", "error", err)
-		return nil
 	}
 
-	// find the sequencer with the proposer address
-	index := slices.IndexFunc(seqs, func(seq types.Sequencer) bool {
-		return seq.SettlementAddress == proposerAddr
-	})
-	// will return nil if the proposer is not set
-	if index == -1 {
-		return nil
+	if proposerAddr == "" {
+		return nil, fmt.Errorf("proposer address is empty")
 	}
-	c.proposer = seqs[index]
-	return &seqs[index]
+
+	// Find and return the matching sequencer
+	for _, seq := range seqs {
+		if seq.SettlementAddress == proposerAddr {
+			return &seq, nil
+		}
+	}
+	return nil, fmt.Errorf("proposer not found")
 }
 
 // GetSequencerByAddress returns a sequencer by its address.
@@ -679,4 +681,26 @@ func (c *Client) pollForBatchInclusion(batchEndHeight uint64) (bool, error) {
 	}
 
 	return latestBatch.Batch.EndHeight == batchEndHeight, nil
+}
+
+func (c *Client) getLatestProposer() (string, error) {
+	var proposerAddr string
+	err := c.RunWithRetry(func() error {
+		reqProposer := &sequencertypes.QueryGetProposerByRollappRequest{
+			RollappId: c.rollappId,
+		}
+		res, err := c.sequencerQueryClient.GetProposerByRollapp(c.ctx, reqProposer)
+		if err == nil {
+			proposerAddr = res.ProposerAddr
+			return nil
+		}
+		if status.Code(err) == codes.NotFound {
+			return nil
+		}
+		return err
+	})
+	if err != nil {
+		return "", err
+	}
+	return proposerAddr, nil
 }

@@ -481,11 +481,11 @@ func (_c *MockClientI_GetNextProposer_Call) RunAndReturn(run func() (*types.Sequ
 }
 
 // GetProposer provides a mock function with given fields:
-func (_m *MockClientI) GetProposer() *types.Sequencer {
-	ret := _m.Called()
+func (_m *MockClientI) GetProposerAtHeight(height int64) (*types.Sequencer, error) {
+	ret := _m.Called(height)
 
 	if len(ret) == 0 {
-		panic("no return value specified for GetProposer")
+		panic("no return value specified for GetProposerAtHeight")
 	}
 
 	var r0 *types.Sequencer
@@ -497,7 +497,14 @@ func (_m *MockClientI) GetProposer() *types.Sequencer {
 		}
 	}
 
-	return r0
+	var r1 error
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // MockClientI_GetProposer_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetProposer'

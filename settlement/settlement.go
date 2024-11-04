@@ -89,8 +89,8 @@ type ClientI interface {
 	GetAllSequencers() ([]types.Sequencer, error)
 	// GetBondedSequencers returns the list of the bonded sequencers for this rollapp.
 	GetBondedSequencers() ([]types.Sequencer, error)
-	// GetProposer returns the current proposer for this chain.
-	GetProposer() *types.Sequencer
+	// GetProposerAtHeight returns the current proposer for this chain.
+	GetProposerAtHeight(height int64) (*types.Sequencer, error)
 	// GetNextProposer returns the next proposer for this chain in case of a rotation.
 	// If no rotation is in progress, it should return nil.
 	GetNextProposer() (*types.Sequencer, error)
