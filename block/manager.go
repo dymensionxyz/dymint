@@ -18,6 +18,7 @@ import (
 	"github.com/dymensionxyz/dymint/version"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
+
 	tmcrypto "github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/libs/pubsub"
@@ -34,16 +35,24 @@ import (
 	uchannel "github.com/dymensionxyz/dymint/utils/channel"
 )
 
+const (
+	// RunModeProposer represents a node running as a proposer
+	RunModeProposer uint = iota
+	// RunModeFullNode represents a node running as a full node
+	RunModeFullNode
+)
+
 // Manager is responsible for aggregating transactions into blocks.
 type Manager struct {
 	logger types.Logger
 
 	// Configuration
-	Conf     config.BlockManagerConfig
-	Genesis  *tmtypes.GenesisDoc
-	LocalKey crypto.PrivKey
-	RootDir  string
+	Conf            config.BlockManagerConfig
+	Genesis         *tmtypes.GenesisDoc
+	GenesisChecksum string
+	LocalKey        crypto.PrivKey
 
+	RootDir  string
 	// Store and execution
 	Store      store.Store
 	State      *types.State
@@ -55,6 +64,9 @@ type Manager struct {
 	P2PClient *p2p.Client
 	DAClient  da.DataAvailabilityLayerClient
 	SLClient  settlement.ClientI
+
+	// RunMode represents the mode of the node. Set during initialization and shouldn't change after that.
+	RunMode uint
 
 	/*
 		Sequencer and full-node
@@ -109,6 +121,7 @@ func NewManager(
 	localKey crypto.PrivKey,
 	conf config.NodeConfig,
 	genesis *tmtypes.GenesisDoc,
+	genesisChecksum string,
 	store store.Store,
 	mempool mempool.Mempool,
 	proxyApp proxy.AppConns,
@@ -138,18 +151,19 @@ func NewManager(
 	}
 
 	m := &Manager{
-		Pubsub:         pubsub,
-		P2PClient:      p2pClient,
-		LocalKey:       localKey,
-		Conf:           conf.BlockManagerConfig,
+		Pubsub:          pubsub,
+		P2PClient:       p2pClient,
+		LocalKey:        localKey,
+		Conf:            conf.BlockManagerConfig,
+		Genesis:         genesis,
+		GenesisChecksum: genesisChecksum,
+		Store:           store,
+		Executor:        exec,
+		Sequencers:      types.NewSequencerSet(),
+		SLClient:        settlementClient,
+		indexerService:  indexerService,
+		logger:          logger.With("module", "block_manager"),
 		RootDir:        conf.RootDir,
-		Genesis:        genesis,
-		Store:          store,
-		Executor:       exec,
-		Sequencers:     types.NewSequencerSet(),
-		SLClient:       settlementClient,
-		indexerService: indexerService,
-		logger:         logger.With("module", "block_manager"),
 		blockCache: &Cache{
 			cache: make(map[uint64]types.CachedBlock),
 		},
@@ -196,12 +210,11 @@ func (m *Manager) Start(ctx context.Context) error {
 	// Check if a proposer on the rollapp is set. In case no proposer is set on the Rollapp, fallback to the hub proposer (If such exists).
 	// No proposer on the rollapp means that at some point there was no available proposer.
 	// In case there is also no proposer on the hub to our current height, it means that the chain is halted.
-	// FIXME: In case we are syncing we would like to get the proposer from the hub relevant to the current height.
 	if m.State.GetProposer() == nil {
 		m.logger.Info("No proposer on the rollapp, fallback to the hub proposer, if available")
-		SLProposer := m.SLClient.GetProposer()
-		if SLProposer == nil {
-			return fmt.Errorf("no proposer available. chain is halted")
+		SLProposer, err := m.SLClient.GetProposerAtHeight(int64(m.State.Height()))
+		if err != nil {
+			return fmt.Errorf("get proposer at height: %w", err)
 		}
 		m.State.SetProposer(SLProposer)
 	}
@@ -210,7 +223,11 @@ func (m *Manager) Start(ctx context.Context) error {
 	// In case of sequencer rotation, there's a phase where proposer rotated on Rollapp but hasn't yet rotated on hub.
 	// for this case, 2 nodes will get `true` for `AmIProposer` so the l2 proposer can produce blocks and the hub proposer can submit his last batch.
 	// The hub proposer, after sending the last state update, will panic and restart as full node.
-	amIProposer := m.AmIProposerOnSL() || m.AmIProposerOnRollapp()
+	amIProposerOnSL, err := m.AmIProposerOnSL()
+	if err != nil {
+		return fmt.Errorf("am i proposer on SL: %w", err)
+	}
+	amIProposer := amIProposerOnSL || m.AmIProposerOnRollapp()
 
 	if m.forkNeeded() {
 		instruction, err := types.LoadInstructionFromDisk(m.RootDir)
@@ -229,7 +246,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	m.logger.Info("starting block manager", "mode", map[bool]string{true: "proposer", false: "full node"}[amIProposer])
 
 	// update local state from latest state in settlement
-	err := m.updateFromLastSettlementState()
+	err = m.updateFromLastSettlementState()
 	if err != nil {
 		return fmt.Errorf("sync block manager from settlement: %w", err)
 	}

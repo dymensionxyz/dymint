@@ -13,6 +13,12 @@ import (
 
 	"github.com/libp2p/go-libp2p/core/crypto"
 
+	"github.com/tendermint/tendermint/libs/log"
+	"github.com/tendermint/tendermint/libs/pubsub"
+	"github.com/tendermint/tendermint/libs/service"
+	"github.com/tendermint/tendermint/proxy"
+	tmtypes "github.com/tendermint/tendermint/types"
+
 	"github.com/dymensionxyz/dymint/block"
 	"github.com/dymensionxyz/dymint/config"
 	indexer "github.com/dymensionxyz/dymint/indexers/blockindexer"
@@ -26,11 +32,6 @@ import (
 	"github.com/dymensionxyz/dymint/settlement"
 	slregistry "github.com/dymensionxyz/dymint/settlement/registry"
 	"github.com/dymensionxyz/dymint/store"
-	"github.com/tendermint/tendermint/libs/log"
-	"github.com/tendermint/tendermint/libs/pubsub"
-	"github.com/tendermint/tendermint/libs/service"
-	"github.com/tendermint/tendermint/proxy"
-	tmtypes "github.com/tendermint/tendermint/types"
 )
 
 // prefixes used in KV store to separate main node data from DALC data
@@ -80,6 +81,7 @@ func NewNode(
 	signingKey crypto.PrivKey,
 	clientCreator proxy.ClientCreator,
 	genesis *tmtypes.GenesisDoc,
+	genesisChecksum string,
 	logger log.Logger,
 	metrics *mempool.Metrics,
 ) (*Node, error) {
@@ -152,6 +154,7 @@ func NewNode(
 		signingKey,
 		conf,
 		genesis,
+		genesisChecksum,
 		s,
 		mp,
 		proxyApp,

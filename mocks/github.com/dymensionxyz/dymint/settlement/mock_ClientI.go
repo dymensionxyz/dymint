@@ -480,49 +480,60 @@ func (_c *MockClientI_GetNextProposer_Call) RunAndReturn(run func() (*types.Sequ
 	return _c
 }
 
-// GetProposer provides a mock function with given fields:
-func (_m *MockClientI) GetProposer() *types.Sequencer {
-	ret := _m.Called()
+// GetProposerAtHeight provides a mock function with given fields: height
+func (_m *MockClientI) GetProposerAtHeight(height int64) (*types.Sequencer, error) {
+	ret := _m.Called(height)
 
 	if len(ret) == 0 {
-		panic("no return value specified for GetProposer")
+		panic("no return value specified for GetProposerAtHeight")
 	}
 
 	var r0 *types.Sequencer
-	if rf, ok := ret.Get(0).(func() *types.Sequencer); ok {
-		r0 = rf()
+	var r1 error
+	if rf, ok := ret.Get(0).(func(int64) (*types.Sequencer, error)); ok {
+		return rf(height)
+	}
+	if rf, ok := ret.Get(0).(func(int64) *types.Sequencer); ok {
+		r0 = rf(height)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*types.Sequencer)
 		}
 	}
 
-	return r0
+	if rf, ok := ret.Get(1).(func(int64) error); ok {
+		r1 = rf(height)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
-// MockClientI_GetProposer_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetProposer'
-type MockClientI_GetProposer_Call struct {
+// MockClientI_GetProposerAtHeight_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetProposerAtHeight'
+type MockClientI_GetProposerAtHeight_Call struct {
 	*mock.Call
 }
 
-// GetProposer is a helper method to define mock.On call
-func (_e *MockClientI_Expecter) GetProposer() *MockClientI_GetProposer_Call {
-	return &MockClientI_GetProposer_Call{Call: _e.mock.On("GetProposer")}
+// GetProposerAtHeight is a helper method to define mock.On call
+//   - height int64
+func (_e *MockClientI_Expecter) GetProposerAtHeight(height interface{}) *MockClientI_GetProposerAtHeight_Call {
+	return &MockClientI_GetProposerAtHeight_Call{Call: _e.mock.On("GetProposerAtHeight", height)}
 }
 
-func (_c *MockClientI_GetProposer_Call) Run(run func()) *MockClientI_GetProposer_Call {
+func (_c *MockClientI_GetProposerAtHeight_Call) Run(run func(height int64)) *MockClientI_GetProposerAtHeight_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run()
+		run(args[0].(int64))
 	})
 	return _c
 }
 
-func (_c *MockClientI_GetProposer_Call) Return(_a0 *types.Sequencer) *MockClientI_GetProposer_Call {
-	_c.Call.Return(_a0)
+func (_c *MockClientI_GetProposerAtHeight_Call) Return(_a0 *types.Sequencer, _a1 error) *MockClientI_GetProposerAtHeight_Call {
+	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockClientI_GetProposer_Call) RunAndReturn(run func() *types.Sequencer) *MockClientI_GetProposer_Call {
+func (_c *MockClientI_GetProposerAtHeight_Call) RunAndReturn(run func(int64) (*types.Sequencer, error)) *MockClientI_GetProposerAtHeight_Call {
 	_c.Call.Return(run)
 	return _c
 }
