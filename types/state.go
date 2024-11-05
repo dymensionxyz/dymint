@@ -47,7 +47,6 @@ type State struct {
 
 	// Last block time
 	LastBlockTime atomic.Uint64 // time in tai64 format
-
 }
 
 func (s *State) GetProposer() *Sequencer {

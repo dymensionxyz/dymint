@@ -111,7 +111,6 @@ func (e *Executor) UpdateStateAfterInitChain(s *types.State, res *abci.ResponseI
 	// We update the last results hash with the empty hash, to conform with RFC-6962.
 	copy(s.LastResultsHash[:], merkle.HashFromByteSlices(nil))
 	s.SetLastBlockTime(time.Now())
-
 }
 
 func (e *Executor) UpdateMempoolAfterInitChain(s *types.State) {
