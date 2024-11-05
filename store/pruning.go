@@ -10,27 +10,27 @@ import (
 
 // PruneStore removes blocks up to (but not including) a height. It returns number of blocks pruned.
 func (s *DefaultStore) PruneStore(to uint64, logger types.Logger) (uint64, error) {
-	prunedBlocks := uint64(0)
+	pruned := uint64(0)
 	from, err := s.LoadBaseHeight()
 	if errors.Is(err, gerrc.ErrNotFound) {
 		logger.Error("load store base height", "err", err)
 	} else if err != nil {
-		return prunedBlocks, err
+		return pruned, err
 	}
-	prunedBlocks, err = s.pruneBlocks(from, to, logger)
+	pruned, err = s.pruneHeights(from, to, logger)
 	if err != nil {
-		return prunedBlocks, fmt.Errorf("pruning blocks. from: %d to: %d: err:%w", from, to, err)
+		return pruned, fmt.Errorf("pruning blocks. from: %d to: %d: err:%w", from, to, err)
 	}
 
 	err = s.SaveBaseHeight(to)
 	if err != nil {
 		logger.Error("saving base height", "error", err)
 	}
-	return prunedBlocks, nil
+	return pruned, nil
 }
 
-// pruneBlocks prunes all store entries that are stored along blocks (blocks,commit and block hash)
-func (s *DefaultStore) pruneBlocks(from, to uint64, logger types.Logger) (uint64, error) {
+// pruneHeights prunes all store entries that are stored along blocks (blocks,commit,proposer, etc)
+func (s *DefaultStore) pruneHeights(from, to uint64, logger types.Logger) (uint64, error) {
 	pruneBlocks := func(batch KVBatch, height uint64) error {
 
 		if err := batch.Delete(getResponsesKey(height)); err != nil {
@@ -61,12 +61,12 @@ func (s *DefaultStore) pruneBlocks(from, to uint64, logger types.Logger) (uint64
 		return nil
 	}
 
-	prunedBlocks, err := s.pruneHeights(from, to, pruneBlocks, logger)
-	return prunedBlocks, err
+	pruned, err := s.prune(from, to, pruneBlocks, logger)
+	return pruned, err
 }
 
-// pruneHeights is the common function for all pruning that iterates through all heights and prunes according to the pruning function set
-func (s *DefaultStore) pruneHeights(from, to uint64, prune func(batch KVBatch, height uint64) error, logger types.Logger) (uint64, error) {
+// prune is the function  that iterates through all heights and prunes according to the pruning function set
+func (s *DefaultStore) prune(from, to uint64, prune func(batch KVBatch, height uint64) error, logger types.Logger) (uint64, error) {
 	pruned := uint64(0)
 	batch := s.db.NewBatch()
 	defer batch.Discard()
