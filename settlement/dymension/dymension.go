@@ -314,7 +314,7 @@ func (c *Client) GetLatestFinalizedHeight() (uint64, error) {
 // In case of negative height, it will return the latest proposer.
 func (c *Client) GetProposerAtHeight(height int64) (*types.Sequencer, error) {
 	// Get all sequencers to find the proposer address
-	seqs, err := c.GetBondedSequencers()
+	seqs, err := c.GetAllSequencers()
 	if err != nil {
 		return nil, fmt.Errorf("get bonded sequencers: %w", err)
 	}
