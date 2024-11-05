@@ -52,7 +52,7 @@ type Manager struct {
 	GenesisChecksum string
 	LocalKey        crypto.PrivKey
 
-	RootDir  string
+	RootDir string
 	// Store and execution
 	Store      store.Store
 	State      *types.State
@@ -163,7 +163,7 @@ func NewManager(
 		SLClient:        settlementClient,
 		indexerService:  indexerService,
 		logger:          logger.With("module", "block_manager"),
-		RootDir:        conf.RootDir,
+		RootDir:         conf.RootDir,
 		blockCache: &Cache{
 			cache: make(map[uint64]types.CachedBlock),
 		},
@@ -255,6 +255,10 @@ func (m *Manager) Start(ctx context.Context) error {
 	// Monitor sequencer set updates
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		return m.MonitorSequencerSetUpdates(ctx)
+	})
+
+	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
+		return m.MonitorForkUpdate(ctx)
 	})
 
 	// run based on the node role
