@@ -77,6 +77,8 @@ func SubmitLoopInner(
 			if err != nil {
 				return err
 			}
+			fmt.Println("skew time", skewTime)
+
 			types.RollappPendingSubmissionsSkewTimeHours.Set(float64(skewTime.Hours()))
 
 			submitter.Nudge()
@@ -110,6 +112,7 @@ func SubmitLoopInner(
 			if err != nil {
 				return err
 			}
+			fmt.Println("skew time", skewTime)
 			types.RollappPendingSubmissionsSkewBytes.Set(float64(pending))
 			types.RollappPendingSubmissionsSkewBlocks.Set(float64(unsubmittedBlocksNum()))
 			types.RollappPendingSubmissionsSkewTimeHours.Set(float64(skewTime.Hours()))
@@ -339,5 +342,7 @@ func (m *Manager) GetSkewTime() (time.Duration, error) {
 	if err != nil {
 		return time.Duration(0), err
 	}
+	fmt.Println(lastSettlementBlockTime, m.State.GetLastBlockTime())
+
 	return m.State.GetLastBlockTime().Sub(lastSettlementBlockTime), nil
 }

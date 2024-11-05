@@ -23,6 +23,10 @@ func (m *Manager) RunInitChain(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+	err = m.SetLastSettlementBlockTime(time.Now())
+	if err != nil {
+		return err
+	}
 	// update the state with only the consensus pubkey
 	m.Executor.UpdateStateAfterInitChain(m.State, res)
 	m.Executor.UpdateMempoolAfterInitChain(m.State)
@@ -30,9 +34,5 @@ func (m *Manager) RunInitChain(ctx context.Context) error {
 		return err
 	}
 
-	err = m.SetLastSettlementBlockTime(time.Now())
-	if err != nil {
-		return err
-	}
 	return nil
 }

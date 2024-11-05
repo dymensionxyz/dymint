@@ -352,6 +352,7 @@ func GenerateStateWithSequencer(initialHeight int64, lastBlockHeight int64, pubk
 		[]string{GenerateSettlementAddress()},
 	))
 	s.SetHeight(uint64(lastBlockHeight))
+	s.SetLastBlockTime(time.Now())
 	return s
 }
 
