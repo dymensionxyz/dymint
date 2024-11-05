@@ -294,6 +294,8 @@ func (m *Manager) updateFromLastSettlementState() error {
 		m.UpdateTargetHeight(latestHeight)
 	}
 
+	// FIXME: recover from hard fork
+
 	return nil
 }
 
