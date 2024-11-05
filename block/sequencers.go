@@ -48,25 +48,16 @@ func (m *Manager) MonitorSequencerSetUpdates(ctx context.Context) error {
 	}
 }
 
-// AmIPropoesr checks if the the current node is the proposer either on L2 or on the hub.
-// In case of sequencer rotation, there's a phase where proposer rotated on L2 but hasn't yet rotated on hub.
-// for this case, 2 nodes will get `true` for `AmIProposer` so the l2 proposer can produce blocks and the hub proposer can submit his last batch.
-func (m *Manager) AmIProposer() bool {
-	return m.AmIProposerOnSL() || m.AmIProposerOnRollapp()
-}
-
 // AmIProposerOnSL checks if the current node is the proposer on the hub
-// Proposer on the Hub is not necessarily the proposer on the L2 during rotation phase.
-func (m *Manager) AmIProposerOnSL() bool {
+// Proposer on the Hub is not necessarily the proposer on the Rollapp during rotation phase.
+func (m *Manager) AmIProposerOnSL() (bool, error) {
 	localProposerKeyBytes, _ := m.LocalKey.GetPublic().Raw()
-
 	// get hub proposer key
-	var hubProposerKeyBytes []byte
-	hubProposer := m.SLClient.GetProposer()
-	if hubProposer != nil {
-		hubProposerKeyBytes = hubProposer.PubKey().Bytes()
+	SLProposer, err := m.SLClient.GetProposerAtHeight(-1)
+	if err != nil {
+		return false, fmt.Errorf("get proposer at height: %w", err)
 	}
-	return bytes.Equal(hubProposerKeyBytes, localProposerKeyBytes)
+	return bytes.Equal(SLProposer.PubKey().Bytes(), localProposerKeyBytes), nil
 }
 
 // AmIProposerOnRollapp checks if the current node is the proposer on the rollapp.
@@ -90,7 +81,11 @@ func (m *Manager) ShouldRotate() (bool, error) {
 	}
 	// At this point we know that there is a next proposer,
 	// so we should rotate only if we are the current proposer on the hub
-	return m.AmIProposerOnSL(), nil
+	amIProposerOnSL, err := m.AmIProposerOnSL()
+	if err != nil {
+		return false, fmt.Errorf("am i proposer on SL: %w", err)
+	}
+	return amIProposerOnSL, nil
 }
 
 // rotate rotates current proposer by doing the following:

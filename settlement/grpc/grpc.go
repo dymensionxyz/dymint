@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"path/filepath"
 	"strconv"
 	"sync/atomic"
@@ -252,29 +253,27 @@ func (c *Client) GetBatchAtHeight(h uint64) (*settlement.ResultRetrieveBatch, er
 	return nil, gerrc.ErrNotFound
 }
 
-// GetProposer implements settlement.ClientI.
-func (c *Client) GetProposer() *types.Sequencer {
+// GetProposerAtHeight implements settlement.ClientI.
+func (c *Client) GetProposerAtHeight(height int64) (*types.Sequencer, error) {
 	pubKeyBytes, err := hex.DecodeString(c.ProposerPubKey)
 	if err != nil {
-		return nil
+		return nil, fmt.Errorf("decode proposer pubkey: %w", err)
 	}
 	var pubKey cryptotypes.PubKey = &ed25519.PubKey{Key: pubKeyBytes}
 	tmPubKey, err := cryptocodec.ToTmPubKeyInterface(pubKey)
 	if err != nil {
-		c.logger.Error("Error converting to tendermint pubkey", "err", err)
-		return nil
+		return nil, fmt.Errorf("convert to tendermint pubkey: %w", err)
 	}
 	settlementAddr, err := bech32.ConvertAndEncode(addressPrefix, pubKeyBytes)
 	if err != nil {
-		c.logger.Error("Error converting pubkey to settlement address", "err", err)
-		return nil
+		return nil, fmt.Errorf("convert pubkey to settlement address: %w", err)
 	}
 	return types.NewSequencer(
 		tmPubKey,
 		settlementAddr,
 		settlementAddr,
 		[]string{},
-	)
+	), nil
 }
 
 // GetSequencerByAddress returns all sequencer information by its address. Not implemented since it will not be used in grpc SL
@@ -289,7 +288,11 @@ func (c *Client) GetAllSequencers() ([]types.Sequencer, error) {
 
 // GetBondedSequencers implements settlement.ClientI.
 func (c *Client) GetBondedSequencers() ([]types.Sequencer, error) {
-	return []types.Sequencer{*c.GetProposer()}, nil
+	proposer, err := c.GetProposerAtHeight(-1)
+	if err != nil {
+		return nil, fmt.Errorf("get proposer at height: %w", err)
+	}
+	return []types.Sequencer{*proposer}, nil
 }
 
 // GetNextProposer implements settlement.ClientI.
@@ -347,8 +350,13 @@ func (c *Client) convertBatchtoSettlementBatch(batch *types.Batch, daResult *da.
 		bds = append(bds, bd)
 	}
 
+	proposer, err := c.GetProposerAtHeight(0)
+	if err != nil {
+		panic(err)
+	}
+
 	settlementBatch := &settlement.Batch{
-		Sequencer:   c.GetProposer().SettlementAddress,
+		Sequencer:   proposer.SettlementAddress,
 		StartHeight: batch.StartHeight(),
 		EndHeight:   batch.EndHeight(),
 		MetaData: &settlement.BatchMetaData{

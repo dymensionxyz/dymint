@@ -481,11 +481,11 @@ func (_c *MockClientI_GetNextProposer_Call) RunAndReturn(run func() (*types.Sequ
 }
 
 // GetProposer provides a mock function with given fields:
-func (_m *MockClientI) GetProposer() *types.Sequencer {
-	ret := _m.Called()
+func (_m *MockClientI) GetProposerAtHeight(height int64) (*types.Sequencer, error) {
+	ret := _m.Called(height)
 
 	if len(ret) == 0 {
-		panic("no return value specified for GetProposer")
+		panic("no return value specified for GetProposerAtHeight")
 	}
 
 	var r0 *types.Sequencer
@@ -497,7 +497,14 @@ func (_m *MockClientI) GetProposer() *types.Sequencer {
 		}
 	}
 
-	return r0
+	var r1 error
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
 }
 
 // MockClientI_GetProposer_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetProposer'
@@ -523,63 +530,6 @@ func (_c *MockClientI_GetProposer_Call) Return(_a0 *types.Sequencer) *MockClient
 }
 
 func (_c *MockClientI_GetProposer_Call) RunAndReturn(run func() *types.Sequencer) *MockClientI_GetProposer_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// GetRollapp provides a mock function with given fields:
-func (_m *MockClientI) GetRollapp() (*types.Rollapp, error) {
-	ret := _m.Called()
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetRollapp")
-	}
-
-	var r0 *types.Rollapp
-	var r1 error
-	if rf, ok := ret.Get(0).(func() (*types.Rollapp, error)); ok {
-		return rf()
-	}
-	if rf, ok := ret.Get(0).(func() *types.Rollapp); ok {
-		r0 = rf()
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*types.Rollapp)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func() error); ok {
-		r1 = rf()
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockClientI_GetRollapp_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetRollapp'
-type MockClientI_GetRollapp_Call struct {
-	*mock.Call
-}
-
-// GetRollapp is a helper method to define mock.On call
-func (_e *MockClientI_Expecter) GetRollapp() *MockClientI_GetRollapp_Call {
-	return &MockClientI_GetRollapp_Call{Call: _e.mock.On("GetRollapp")}
-}
-
-func (_c *MockClientI_GetRollapp_Call) Run(run func()) *MockClientI_GetRollapp_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run()
-	})
-	return _c
-}
-
-func (_c *MockClientI_GetRollapp_Call) Return(_a0 *types.Rollapp, _a1 error) *MockClientI_GetRollapp_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockClientI_GetRollapp_Call) RunAndReturn(run func() (*types.Rollapp, error)) *MockClientI_GetRollapp_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -636,64 +586,6 @@ func (_c *MockClientI_GetSequencerByAddress_Call) Return(_a0 types.Sequencer, _a
 }
 
 func (_c *MockClientI_GetSequencerByAddress_Call) RunAndReturn(run func(string) (types.Sequencer, error)) *MockClientI_GetSequencerByAddress_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// GetStateInfo provides a mock function with given fields: index
-func (_m *MockClientI) GetStateInfo(index uint64) (*types.StateInfo, error) {
-	ret := _m.Called(index)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetStateInfo")
-	}
-
-	var r0 *types.StateInfo
-	var r1 error
-	if rf, ok := ret.Get(0).(func(uint64) (*types.StateInfo, error)); ok {
-		return rf(index)
-	}
-	if rf, ok := ret.Get(0).(func(uint64) *types.StateInfo); ok {
-		r0 = rf(index)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*types.StateInfo)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(uint64) error); ok {
-		r1 = rf(index)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockClientI_GetStateInfo_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetStateInfo'
-type MockClientI_GetStateInfo_Call struct {
-	*mock.Call
-}
-
-// GetStateInfo is a helper method to define mock.On call
-//   - index uint64
-func (_e *MockClientI_Expecter) GetStateInfo(index interface{}) *MockClientI_GetStateInfo_Call {
-	return &MockClientI_GetStateInfo_Call{Call: _e.mock.On("GetStateInfo", index)}
-}
-
-func (_c *MockClientI_GetStateInfo_Call) Run(run func(index uint64)) *MockClientI_GetStateInfo_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(uint64))
-	})
-	return _c
-}
-
-func (_c *MockClientI_GetStateInfo_Call) Return(_a0 *types.StateInfo, _a1 error) *MockClientI_GetStateInfo_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockClientI_GetStateInfo_Call) RunAndReturn(run func(uint64) (*types.StateInfo, error)) *MockClientI_GetStateInfo_Call {
 	_c.Call.Return(run)
 	return _c
 }

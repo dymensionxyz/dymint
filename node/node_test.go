@@ -17,13 +17,15 @@ import (
 
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
+
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/libs/log"
 	"github.com/tendermint/tendermint/proxy"
 
+	tmcfg "github.com/tendermint/tendermint/config"
+
 	"github.com/dymensionxyz/dymint/config"
 	tmmocks "github.com/dymensionxyz/dymint/mocks/github.com/tendermint/tendermint/abci/types"
-	tmcfg "github.com/tendermint/tendermint/config"
 )
 
 // simply check that node is starting and stopping without panicking
@@ -89,6 +91,7 @@ func TestMempoolDirectly(t *testing.T) {
 		signingKey,
 		proxy.NewLocalClientCreator(app),
 		testutil.GenerateGenesis(0),
+		"",
 		log.TestingLogger(),
 		mempool.NopMetrics(),
 	)
