@@ -130,10 +130,10 @@ func TestSubmitLoopFastProducerHaltingSubmitter(t *testing.T) {
 	testSubmitLoop(
 		t,
 		testArgs{
-			nParallel:    1,
+			nParallel:    50,
 			testDuration: 2 * time.Second,
 			batchSkew:    100 * time.Millisecond,
-			skewMargin:   25 * time.Millisecond,
+			skewMargin:   10 * time.Millisecond,
 			batchBytes:   100,
 			maxTime:      10 * time.Millisecond,
 			submitTime:   2 * time.Millisecond,
