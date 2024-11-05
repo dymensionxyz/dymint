@@ -77,7 +77,6 @@ func SubmitLoopInner(
 			if err != nil {
 				return err
 			}
-			fmt.Println("skew time", skewTime)
 
 			types.RollappPendingSubmissionsSkewTimeHours.Set(float64(skewTime.Hours()))
 
@@ -108,21 +107,24 @@ func SubmitLoopInner(
 			}
 			pending := pendingBytes.Load()
 
-			skewTime, err := skewTime()
+			skew, err := skewTime()
 			if err != nil {
 				return err
 			}
-			fmt.Println("skew time", skewTime)
 			types.RollappPendingSubmissionsSkewBytes.Set(float64(pending))
 			types.RollappPendingSubmissionsSkewBlocks.Set(float64(unsubmittedBlocksNum()))
-			types.RollappPendingSubmissionsSkewTimeHours.Set(float64(skewTime.Hours()))
+			types.RollappPendingSubmissionsSkewTimeHours.Set(float64(skew.Hours()))
 
 			// while there are accumulated blocks, create and submit batches!!
 			for {
 				done := ctx.Err() != nil
 				nothingToSubmit := pending == 0
 
-				lastSubmissionIsRecent := skewTime < maxBatchTime
+				skew, err = skewTime()
+				if err != nil {
+					return err
+				}
+				lastSubmissionIsRecent := skew < maxBatchTime
 				maxDataNotExceeded := pending <= maxBatchBytes
 				if done || nothingToSubmit || (lastSubmissionIsRecent && maxDataNotExceeded) {
 					break
@@ -342,7 +344,6 @@ func (m *Manager) GetSkewTime() (time.Duration, error) {
 	if err != nil {
 		return time.Duration(0), err
 	}
-	fmt.Println(lastSettlementBlockTime, m.State.GetLastBlockTime())
 
 	return m.State.GetLastBlockTime().Sub(lastSettlementBlockTime), nil
 }
