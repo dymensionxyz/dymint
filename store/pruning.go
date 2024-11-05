@@ -19,22 +19,7 @@ func (s *DefaultStore) PruneStore(to uint64, logger types.Logger) (uint64, error
 	}
 	prunedBlocks, err = s.pruneBlocks(from, to, logger)
 	if err != nil {
-		logger.Error("pruning blocks", "from", from, "to", to, "blocks pruned", prunedBlocks, "err", err)
-	}
-
-	prunedResponses, err := s.pruneResponses(from, to, logger)
-	if err != nil {
-		logger.Error("pruning responses", "from", from, "to", to, "responses pruned", prunedResponses, "err", err)
-	}
-
-	prunedDRS, err := s.pruneDRSVersion(from, to, logger)
-	if err != nil {
-		logger.Error("pruning drs version", "from", from, "to", to, "drs pruned", prunedDRS, "err", err)
-	}
-
-	prunedProposers, err := s.pruneProposers(from, to, logger)
-	if err != nil {
-		logger.Error("pruning block sync identifiers", "from", from, "to", to, "proposers pruned", prunedProposers, "err", err)
+		return prunedBlocks, fmt.Errorf("pruning blocks. from: %d to: %d: err:%w", from, to, err)
 	}
 
 	err = s.SaveBaseHeight(to)
@@ -47,43 +32,37 @@ func (s *DefaultStore) PruneStore(to uint64, logger types.Logger) (uint64, error
 // pruneBlocks prunes all store entries that are stored along blocks (blocks,commit and block hash)
 func (s *DefaultStore) pruneBlocks(from, to uint64, logger types.Logger) (uint64, error) {
 	pruneBlocks := func(batch KVBatch, height uint64) error {
+
+		if err := batch.Delete(getResponsesKey(height)); err != nil {
+			logger.Error("delete responses", "error", err)
+		}
+		if err := batch.Delete(getDRSVersionKey(height)); err != nil {
+			logger.Error("delete drs", "error", err)
+		}
+		if err := batch.Delete(getProposerKey(height)); err != nil {
+			logger.Error("delete proposer", "error", err)
+		}
+
 		hash, err := s.loadHashFromIndex(height)
 		if err != nil {
 			return err
 		}
 		if err := batch.Delete(getBlockKey(hash)); err != nil {
-			return err
+			logger.Error("delete block", "error", err)
 		}
 		if err := batch.Delete(getCommitKey(hash)); err != nil {
-			return err
+			logger.Error("delete commit", "error", err)
 		}
+
 		if err := batch.Delete(getIndexKey(height)); err != nil {
-			return err
+			logger.Error("delete hash index", "error", err)
 		}
+
 		return nil
 	}
 
 	prunedBlocks, err := s.pruneHeights(from, to, pruneBlocks, logger)
 	return prunedBlocks, err
-}
-
-// pruneResponses prunes block execution responses from store
-func (s *DefaultStore) pruneResponses(from, to uint64, logger types.Logger) (uint64, error) {
-	pruneResponses := func(batch KVBatch, height uint64) error {
-		return batch.Delete(getResponsesKey(height))
-	}
-
-	prunedResponses, err := s.pruneHeights(from, to, pruneResponses, logger)
-	return prunedResponses, err
-}
-
-// pruneDRSVersion prunes drs version info from store
-func (s *DefaultStore) pruneDRSVersion(from, to uint64, logger types.Logger) (uint64, error) {
-	pruneDRS := func(batch KVBatch, height uint64) error {
-		return batch.Delete(getDRSVersionKey(height))
-	}
-	prunedDRS, err := s.pruneHeights(from, to, pruneDRS, logger)
-	return prunedDRS, err
 }
 
 // pruneHeights is the common function for all pruning that iterates through all heights and prunes according to the pruning function set
@@ -125,13 +104,4 @@ func (s *DefaultStore) pruneHeights(from, to uint64, prune func(batch KVBatch, h
 	}
 
 	return pruned, nil
-}
-
-// pruneProposers prunes proposer from store
-func (s *DefaultStore) pruneProposers(from, to uint64, logger types.Logger) (uint64, error) {
-	pruneProposers := func(batch KVBatch, height uint64) error {
-		return batch.Delete(getProposerKey(height))
-	}
-	prunedProposers, err := s.pruneHeights(from, to, pruneProposers, logger)
-	return prunedProposers, err
 }
