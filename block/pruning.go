@@ -40,7 +40,6 @@ func (m *Manager) PruningLoop(ctx context.Context) error {
 			} else { // do not delete anything that is not validated yet
 				pruningHeight = min(m.SettlementValidator.NextValidationHeight(), uint64(retainHeight))
 			}
-			m.logger.Debug("pruning loop", "retainHeight", retainHeight, "pruningHeight", pruningHeight)
 			m.Prune(pruningHeight)
 		}
 	}
