@@ -142,17 +142,17 @@ func (_c *MockExecutorI_Commit_Call) RunAndReturn(run func(*types.State, *types.
 	return _c
 }
 
-// CreateBlock provides a mock function with given fields: height, lastCommit, lastHeaderHash, nextSeqHash, _a4, maxBlockDataSizeBytes
-func (_m *MockExecutorI) CreateBlock(height uint64, lastCommit *types.Commit, lastHeaderHash [32]byte, nextSeqHash [32]byte, _a4 *types.State, maxBlockDataSizeBytes uint64) *types.Block {
-	ret := _m.Called(height, lastCommit, lastHeaderHash, nextSeqHash, _a4, maxBlockDataSizeBytes)
+// CreateBlock provides a mock function with given fields: height, lastCommit, lastHeaderHash, nextSeqHash, _a4, maxBlockDataSizeBytes, enforceEmpty
+func (_m *MockExecutorI) CreateBlock(height uint64, lastCommit *types.Commit, lastHeaderHash [32]byte, nextSeqHash [32]byte, _a4 *types.State, maxBlockDataSizeBytes uint64, enforceEmpty bool) *types.Block {
+	ret := _m.Called(height, lastCommit, lastHeaderHash, nextSeqHash, _a4, maxBlockDataSizeBytes, enforceEmpty)
 
 	if len(ret) == 0 {
 		panic("no return value specified for CreateBlock")
 	}
 
 	var r0 *types.Block
-	if rf, ok := ret.Get(0).(func(uint64, *types.Commit, [32]byte, [32]byte, *types.State, uint64) *types.Block); ok {
-		r0 = rf(height, lastCommit, lastHeaderHash, nextSeqHash, _a4, maxBlockDataSizeBytes)
+	if rf, ok := ret.Get(0).(func(uint64, *types.Commit, [32]byte, [32]byte, *types.State, uint64, bool) *types.Block); ok {
+		r0 = rf(height, lastCommit, lastHeaderHash, nextSeqHash, _a4, maxBlockDataSizeBytes, enforceEmpty)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*types.Block)
@@ -174,13 +174,14 @@ type MockExecutorI_CreateBlock_Call struct {
 //   - nextSeqHash [32]byte
 //   - _a4 *types.State
 //   - maxBlockDataSizeBytes uint64
-func (_e *MockExecutorI_Expecter) CreateBlock(height interface{}, lastCommit interface{}, lastHeaderHash interface{}, nextSeqHash interface{}, _a4 interface{}, maxBlockDataSizeBytes interface{}) *MockExecutorI_CreateBlock_Call {
-	return &MockExecutorI_CreateBlock_Call{Call: _e.mock.On("CreateBlock", height, lastCommit, lastHeaderHash, nextSeqHash, _a4, maxBlockDataSizeBytes)}
+//   - enforceEmpty bool
+func (_e *MockExecutorI_Expecter) CreateBlock(height interface{}, lastCommit interface{}, lastHeaderHash interface{}, nextSeqHash interface{}, _a4 interface{}, maxBlockDataSizeBytes interface{}, enforceEmpty interface{}) *MockExecutorI_CreateBlock_Call {
+	return &MockExecutorI_CreateBlock_Call{Call: _e.mock.On("CreateBlock", height, lastCommit, lastHeaderHash, nextSeqHash, _a4, maxBlockDataSizeBytes, enforceEmpty)}
 }
 
-func (_c *MockExecutorI_CreateBlock_Call) Run(run func(height uint64, lastCommit *types.Commit, lastHeaderHash [32]byte, nextSeqHash [32]byte, _a4 *types.State, maxBlockDataSizeBytes uint64)) *MockExecutorI_CreateBlock_Call {
+func (_c *MockExecutorI_CreateBlock_Call) Run(run func(height uint64, lastCommit *types.Commit, lastHeaderHash [32]byte, nextSeqHash [32]byte, _a4 *types.State, maxBlockDataSizeBytes uint64, enforceEmpty bool)) *MockExecutorI_CreateBlock_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(uint64), args[1].(*types.Commit), args[2].([32]byte), args[3].([32]byte), args[4].(*types.State), args[5].(uint64))
+		run(args[0].(uint64), args[1].(*types.Commit), args[2].([32]byte), args[3].([32]byte), args[4].(*types.State), args[5].(uint64), args[6].(bool))
 	})
 	return _c
 }
@@ -190,7 +191,7 @@ func (_c *MockExecutorI_CreateBlock_Call) Return(_a0 *types.Block) *MockExecutor
 	return _c
 }
 
-func (_c *MockExecutorI_CreateBlock_Call) RunAndReturn(run func(uint64, *types.Commit, [32]byte, [32]byte, *types.State, uint64) *types.Block) *MockExecutorI_CreateBlock_Call {
+func (_c *MockExecutorI_CreateBlock_Call) RunAndReturn(run func(uint64, *types.Commit, [32]byte, [32]byte, *types.State, uint64, bool) *types.Block) *MockExecutorI_CreateBlock_Call {
 	_c.Call.Return(run)
 	return _c
 }
