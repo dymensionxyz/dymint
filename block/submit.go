@@ -111,6 +111,7 @@ func SubmitLoopInner(
 			if err != nil {
 				return err
 			}
+			logger.Error("skew time", skew)
 			types.RollappPendingSubmissionsSkewBytes.Set(float64(pending))
 			types.RollappPendingSubmissionsSkewBlocks.Set(float64(unsubmittedBlocksNum()))
 			types.RollappPendingSubmissionsSkewTimeHours.Set(float64(skew.Hours()))
@@ -129,6 +130,7 @@ func SubmitLoopInner(
 				if done || nothingToSubmit || (lastSubmissionIsRecent && maxDataNotExceeded) {
 					break
 				}
+				logger.Error("done", done, "nothingToSubmit", nothingToSubmit, "lastSubmissionIsRecent", lastSubmissionIsRecent, "maxDataNotExceeded", maxDataNotExceeded, "skewtime", skewTime, "batchTime", maxBatchTime, "pending", pending)
 
 				nConsumed, err := createAndSubmitBatch(maxBatchBytes)
 				if err != nil {
@@ -322,6 +324,7 @@ func (m *Manager) UpdateLastSubmittedHeight(event pubsub.Message) {
 
 // SetLastSettlementBlockTime saves the last block on SL timestamp
 func (m *Manager) SetLastSettlementBlockTime(time time.Time) error {
+	fmt.Println("set last settlenent time", time)
 	_, err := m.Store.SaveLastSettlementBlockTime(uint64(time.UTC().UnixNano()), nil)
 	if err != nil {
 		return err
@@ -344,6 +347,7 @@ func (m *Manager) GetSkewTime() (time.Duration, error) {
 	if err != nil {
 		return time.Duration(0), err
 	}
+	fmt.Println(lastSettlementBlockTime, m.State.GetLastBlockTime(), m.State.GetLastBlockTime().Sub(lastSettlementBlockTime))
 
 	return m.State.GetLastBlockTime().Sub(lastSettlementBlockTime), nil
 }
