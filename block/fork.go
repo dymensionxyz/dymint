@@ -3,6 +3,8 @@ package block
 import (
 	"context"
 	"fmt"
+	"github.com/dymensionxyz/dymint/version"
+	"strconv"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
@@ -138,8 +140,13 @@ func (m *Manager) handleSequencerForkTransition(instruction types.Instruction) {
 			panic(fmt.Sprintf("running faulty DRS version %d", *instruction.FaultyDRS))
 		}
 
+		drsAsInt, err := strconv.Atoi(version.DrsVersion)
+		if err != nil {
+			panic(fmt.Sprintf("error converting DRS version to int: %v", err))
+		}
+
 		msgUpgradeDRS := &sequencers.MsgUpgradeDRS{
-			DrsVersion: *instruction.FaultyDRS,
+			DrsVersion: uint64(drsAsInt),
 		}
 
 		consensusMsgs = append(consensusMsgs, msgUpgradeDRS)
