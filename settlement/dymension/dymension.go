@@ -30,8 +30,8 @@ import (
 )
 
 const (
-	addressPrefix        = "dym"
-	UNAVAILABLE_PROPOSER = ""
+	addressPrefix     = "dym"
+	SENTINEL_PROPOSER = ""
 )
 
 const (
@@ -346,8 +346,8 @@ func (c *Client) GetProposerAtHeight(height int64) (*types.Sequencer, error) {
 		}
 	}
 
-	if proposerAddr == "" {
-		return nil, fmt.Errorf("proposer address is empty")
+	if proposerAddr == SENTINEL_PROPOSER {
+		return nil, fmt.Errorf("proposer is sentinel")
 	}
 
 	// Find and return the matching sequencer
@@ -538,7 +538,7 @@ func (c *Client) GetNextProposer() (*types.Sequencer, error) {
 	if !found {
 		return nil, nil
 	}
-	if nextAddr == UNAVAILABLE_PROPOSER {
+	if nextAddr == SENTINEL_PROPOSER {
 		return &types.Sequencer{}, nil
 	}
 
