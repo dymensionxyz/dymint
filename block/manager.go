@@ -209,6 +209,16 @@ func (m *Manager) Start(ctx context.Context) error {
 		}
 	}
 
+	if instruction, forkNeeded := m.forkNeeded(); forkNeeded {
+		// Set proposer to nil
+		m.State.SetProposer(nil)
+
+		// Upgrade revision on state
+		state := m.State
+		state.Version.Consensus.App = instruction.Revision
+		m.State = state
+	}
+
 	// Check if a proposer on the rollapp is set. In case no proposer is set on the Rollapp, fallback to the hub proposer (If such exists).
 	// No proposer on the rollapp means that at some point there was no available proposer.
 	// In case there is also no proposer on the hub to our current height, it means that the chain is halted.
@@ -230,20 +240,6 @@ func (m *Manager) Start(ctx context.Context) error {
 		return fmt.Errorf("am i proposer on SL: %w", err)
 	}
 	amIProposer := amIProposerOnSL || m.AmIProposerOnRollapp()
-
-	if m.forkNeeded() {
-		instruction, err := types.LoadInstructionFromDisk(m.RootDir)
-		if err != nil {
-			return fmt.Errorf("load instruction from disk: %w", err)
-		}
-
-		if amIProposer {
-			m.handleSequencerForkTransition(instruction)
-		} else { // full node
-			// m.handleFullNodeForkTransition(instruction)
-			// Nothing?
-		}
-	}
 
 	m.logger.Info("starting block manager", "mode", map[bool]string{true: "proposer", false: "full node"}[amIProposer])
 

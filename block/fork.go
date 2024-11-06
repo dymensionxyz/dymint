@@ -3,7 +3,6 @@ package block
 import (
 	"context"
 	"fmt"
-	"github.com/dymensionxyz/dymint/version"
 	"strconv"
 	"time"
 
@@ -13,6 +12,7 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 	sequencers "github.com/dymensionxyz/dymint/types/pb/rollapp/sequencers/types"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
+	"github.com/dymensionxyz/dymint/version"
 )
 
 const (
@@ -119,12 +119,12 @@ func (m *Manager) freezeNode(ctx context.Context) {
 }
 
 // forkNeeded returns true if the fork file exists
-func (m *Manager) forkNeeded() bool {
-	if _, err := types.LoadInstructionFromDisk(m.RootDir); err == nil {
-		return true
+func (m *Manager) forkNeeded() (types.Instruction, bool) {
+	if instruction, err := types.LoadInstructionFromDisk(m.RootDir); err == nil {
+		return instruction, true
 	}
 
-	return false
+	return types.Instruction{}, false
 }
 
 // handleSequencerForkTransition handles the sequencer fork transition
