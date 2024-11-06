@@ -3,6 +3,8 @@ package block
 import (
 	"context"
 	"fmt"
+	"github.com/dymensionxyz/dymint/version"
+	"strconv"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
@@ -127,19 +129,19 @@ func (m *Manager) forkNeeded() bool {
 
 // handleSequencerForkTransition handles the sequencer fork transition
 func (m *Manager) handleSequencerForkTransition(instruction types.Instruction) {
-	lastBlock, err := m.Store.LoadBlock(m.State.Height())
-	if err != nil {
-		panic(fmt.Sprintf("load block: height: %d: %v", m.State.Height(), err))
-	}
-
 	var consensusMsgs []proto.Message
 	if instruction.FaultyDRS != nil {
-		if lastBlock.Header.Version.App == instruction.Revision {
+		drsAsInt, err := strconv.Atoi(version.DrsVersion)
+		if err != nil {
+			panic(fmt.Sprintf("error converting DRS version to int: %v", err))
+		}
+
+		if *instruction.FaultyDRS == uint64(drsAsInt) {
 			panic(fmt.Sprintf("running faulty DRS version %d", *instruction.FaultyDRS))
 		}
 
 		msgUpgradeDRS := &sequencers.MsgUpgradeDRS{
-			DrsVersion: *instruction.FaultyDRS,
+			DrsVersion: uint64(drsAsInt),
 		}
 
 		consensusMsgs = append(consensusMsgs, msgUpgradeDRS)

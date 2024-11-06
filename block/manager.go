@@ -52,6 +52,7 @@ type Manager struct {
 	GenesisChecksum string
 	LocalKey        crypto.PrivKey
 
+	RootDir string
 	// Store and execution
 	Store      store.Store
 	State      *types.State
@@ -162,6 +163,7 @@ func NewManager(
 		SLClient:        settlementClient,
 		indexerService:  indexerService,
 		logger:          logger.With("module", "block_manager"),
+		RootDir:         conf.RootDir,
 		blockCache: &Cache{
 			cache: make(map[uint64]types.CachedBlock),
 		},
