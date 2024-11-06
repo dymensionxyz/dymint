@@ -18,6 +18,7 @@ import (
 
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
+
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmcrypto "github.com/tendermint/tendermint/crypto"
 	"github.com/tendermint/tendermint/crypto/ed25519"
@@ -120,6 +121,7 @@ func TestGenesisChunked(t *testing.T) {
 		signingKey,
 		proxy.NewLocalClientCreator(mockApp),
 		genDoc,
+		"",
 		log.TestingLogger(),
 		mempool.NopMetrics(),
 	)
@@ -868,6 +870,7 @@ func TestValidatorSetHandling(t *testing.T) {
 		signingKey,
 		proxy.NewLocalClientCreator(app),
 		testutil.GenerateGenesis(0),
+		"",
 		log.TestingLogger(),
 		mempool.NopMetrics(),
 	)
@@ -1030,6 +1033,7 @@ func getRPCInternal(t *testing.T, sequencer bool) (*tmmocks.MockApplication, *cl
 		localKey, // this is where sequencer mode is set. if same key as in settlement.Config, it's sequencer
 		proxy.NewLocalClientCreator(app),
 		testutil.GenerateGenesis(0),
+		"",
 		log.TestingLogger(),
 		mempool.NopMetrics(),
 	)
@@ -1123,7 +1127,7 @@ func TestMempool2Nodes(t *testing.T) {
 			BatchSkew:        10,
 		},
 		MempoolConfig: *tmcfg.DefaultMempoolConfig(),
-	}, key1, signingKey1, proxy.NewLocalClientCreator(app), genesis, log.TestingLogger(), mempool.NopMetrics())
+	}, key1, signingKey1, proxy.NewLocalClientCreator(app), genesis, "", log.TestingLogger(), mempool.NopMetrics())
 	require.NoError(err)
 	require.NotNil(node1)
 
@@ -1146,7 +1150,7 @@ func TestMempool2Nodes(t *testing.T) {
 			BlockSyncRequestIntervalTime: 30 * time.Second,
 		},
 		MempoolConfig: *tmcfg.DefaultMempoolConfig(),
-	}, key2, signingKey2, proxy.NewLocalClientCreator(app), genesis, log.TestingLogger(), mempool.NopMetrics())
+	}, key2, signingKey2, proxy.NewLocalClientCreator(app), genesis, "", log.TestingLogger(), mempool.NopMetrics())
 	require.NoError(err)
 	require.NotNil(node1)
 
