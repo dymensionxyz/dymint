@@ -50,6 +50,11 @@ func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {
 	// Sequencer must wait till node is synced till last submittedHeight, in case it is not
 	m.waitForSettlementSyncing()
 
+	// if instruction file exists
+	if instruction, forkNeeded := m.forkNeeded(); forkNeeded {
+		m.handleSequencerForkTransition(instruction)
+	}
+
 	// check if we should rotate
 	shouldRotate, err := m.ShouldRotate()
 	if err != nil {
