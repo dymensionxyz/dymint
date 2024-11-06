@@ -269,6 +269,10 @@ func (m *Manager) Start(ctx context.Context) error {
 		return m.MonitorSequencerSetUpdates(ctx)
 	})
 
+	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
+		return m.MonitorForkUpdate(ctx)
+	})
+
 	// run based on the node role
 	if !amIProposer {
 		return m.runAsFullNode(ctx, eg)
