@@ -56,7 +56,6 @@ func (s *DefaultStore) NewBatch() KVBatch {
 // Stored height is updated if block height is greater than stored value.
 // In case a batch is provided, the block and commit are added to the batch and not saved.
 func (s *DefaultStore) SaveBlock(block *types.Block, commit *types.Commit, batch KVBatch) (KVBatch, error) {
-
 	hash := block.Header.Hash()
 	blockBlob, err := block.MarshalBinary()
 	if err != nil {

@@ -33,7 +33,6 @@ func (s *DefaultStore) PruneStore(to uint64, logger types.Logger) (uint64, error
 // pruneHeights prunes all store entries that are stored along blocks (blocks,commit and block hash)
 func (s *DefaultStore) pruneHeights(from, to uint64, logger types.Logger) (uint64, error) {
 	pruneBlocks := func(batch KVBatch, height uint64) error {
-
 		if err := batch.Delete(getResponsesKey(height)); err != nil {
 			logger.Error("delete responses", "error", err)
 		}
