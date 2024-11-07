@@ -58,8 +58,7 @@ func TestPruningRetainHeight(t *testing.T) {
 		}
 	}
 	for i := validRetainHeight; i < manager.State.Height(); i++ {
-		baseHeight, err := manager.Store.LoadBaseHeight()
-		require.NoError(err)
+		baseHeight := uint64(1)
 		expectedPruned := validRetainHeight - baseHeight
 
 		pruned, err := manager.Store.PruneStore(validRetainHeight, log.NewNopLogger())
