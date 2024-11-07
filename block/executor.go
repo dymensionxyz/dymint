@@ -23,8 +23,8 @@ import (
 const minBlockMaxBytes = 10000
 
 type ExecutorI interface {
-	InitChain(genesis *tmtypes.GenesisDoc, genesisChecksum string, valset []*tmtypes.Validator) (*abci.ResponseInitChain, error)
 	CreateBlock(height uint64, lastCommit *types.Commit, lastHeaderHash, nextSeqHash [32]byte, state *types.State, maxBlockDataSizeBytes uint64, enforceEmpty bool) *types.Block
+	InitChain(genesis *tmtypes.GenesisDoc, genesisChecksum string, valset []*tmtypes.Validator) (*abci.ResponseInitChain, error)
 	Commit(state *types.State, block *types.Block, resp *tmstate.ABCIResponses) ([]byte, int64, error)
 	GetAppInfo() (*abci.ResponseInfo, error)
 	ExecuteBlock(block *types.Block) (*tmstate.ABCIResponses, error)

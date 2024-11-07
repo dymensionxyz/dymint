@@ -197,6 +197,8 @@ func NewManager(
 
 // Start starts the block manager.
 func (m *Manager) Start(ctx context.Context) error {
+	var err error
+
 	// Check if InitChain flow is needed
 	if m.State.IsGenesis() {
 		m.logger.Info("Running InitChain")
@@ -238,6 +240,7 @@ func (m *Manager) Start(ctx context.Context) error {
 		return fmt.Errorf("am i proposer on SL: %w", err)
 	}
 	amIProposer := amIProposerOnSL || m.AmIProposerOnRollapp()
+	m.RunMode = map[bool]uint{true: RunModeProposer, false: RunModeFullNode}[amIProposer]
 
 	m.logger.Info("starting block manager", "mode", map[bool]string{true: "proposer", false: "full node"}[amIProposer])
 
@@ -313,8 +316,6 @@ func (m *Manager) updateFromLastSettlementState() error {
 	if latestHeight >= m.State.NextHeight() {
 		m.UpdateTargetHeight(latestHeight)
 	}
-
-	// FIXME: recover from hard fork
 
 	return nil
 }
