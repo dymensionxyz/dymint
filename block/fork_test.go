@@ -268,7 +268,7 @@ func TestCreateInstruction(t *testing.T) {
 				RootDir:  t.TempDir(), // Use temporary directory for testing
 			}
 
-			err := manager.createInstruction(tt.rollapp, tt.block)
+			err := manager.createInstruction(tt.rollapp)
 			if tt.expectedError {
 				assert.Error(t, err)
 			} else {
