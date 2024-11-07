@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/tendermint/tendermint/libs/log"
@@ -602,15 +603,14 @@ func (txi *TxIndex) pruneTxsAndEvents(from, to uint64, logger log.Logger) (uint6
 			batch.Discard()
 			batch = txi.store.NewBatch()
 			toFlush = 0
+			time.Sleep(200 * time.Millisecond)
 		}
 
 		// all txs indexed are iterated by height
 		it := txi.store.PrefixIterator(prefixForHeight(int64(h)))
-		defer it.Discard()
 
 		// deleted all events indexed with prefix height (by hash and by keyheight)
 		for ; it.Valid(); it.Next() {
-			toFlush++
 			if err := batch.Delete(it.Key()); err != nil {
 				logger.Error("pruning txs indexer event key", "height", h, "error", err)
 				continue
@@ -621,12 +621,15 @@ func (txi *TxIndex) pruneTxsAndEvents(from, to uint64, logger log.Logger) (uint6
 				continue
 			}
 			pruned++
+			toFlush++
 		}
+
+		it.Discard()
 
 		// all events associated to the same height are pruned
 		prunedEvents, err := txi.pruneEvents(h, batch)
 		if err != nil {
-			logger.Error("pruning txs indexer events by height", "height", h, "error", err)
+			logger.Error("pruning txs indexer events by height", "height", h, "error", err, "")
 		}
 		pruned += prunedEvents
 		toFlush += prunedEvents

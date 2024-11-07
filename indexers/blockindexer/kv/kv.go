@@ -602,11 +602,11 @@ func (idx *BlockerIndexer) pruneEvents(height int64, logger log.Logger, batch st
 
 	eventKey, err := eventHeightKey(height)
 	if err != nil {
-		return pruned, fmt.Errorf("error getting event height key. err %w", err)
+		return pruned, err
 	}
 	keysList, err := idx.store.Get(eventKey)
 	if err != nil {
-		return pruned, fmt.Errorf("error getting event list from store. err %w", err)
+		return pruned, err
 	}
 	eventKeys := &dymint.EventKeys{}
 	err = eventKeys.Unmarshal(keysList)
