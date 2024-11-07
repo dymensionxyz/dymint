@@ -555,7 +555,6 @@ func (idx *BlockerIndexer) pruneBlocks(from, to uint64, logger log.Logger) (uint
 			}
 			batch.Discard()
 			batch = idx.store.NewBatch()
-
 			toFlush = 0
 		}
 
