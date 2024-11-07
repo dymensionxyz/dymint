@@ -708,64 +708,6 @@ func (_c *MockClientI_GetSequencerByAddress_Call) RunAndReturn(run func(string) 
 	return _c
 }
 
-// GetStateInfo provides a mock function with given fields: index
-func (_m *MockClientI) GetStateInfo(index uint64) (*types.StateInfo, error) {
-	ret := _m.Called(index)
-
-	if len(ret) == 0 {
-		panic("no return value specified for GetStateInfo")
-	}
-
-	var r0 *types.StateInfo
-	var r1 error
-	if rf, ok := ret.Get(0).(func(uint64) (*types.StateInfo, error)); ok {
-		return rf(index)
-	}
-	if rf, ok := ret.Get(0).(func(uint64) *types.StateInfo); ok {
-		r0 = rf(index)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*types.StateInfo)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(uint64) error); ok {
-		r1 = rf(index)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockClientI_GetStateInfo_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetStateInfo'
-type MockClientI_GetStateInfo_Call struct {
-	*mock.Call
-}
-
-// GetStateInfo is a helper method to define mock.On call
-//   - index uint64
-func (_e *MockClientI_Expecter) GetStateInfo(index interface{}) *MockClientI_GetStateInfo_Call {
-	return &MockClientI_GetStateInfo_Call{Call: _e.mock.On("GetStateInfo", index)}
-}
-
-func (_c *MockClientI_GetStateInfo_Call) Run(run func(index uint64)) *MockClientI_GetStateInfo_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(uint64))
-	})
-	return _c
-}
-
-func (_c *MockClientI_GetStateInfo_Call) Return(_a0 *types.StateInfo, _a1 error) *MockClientI_GetStateInfo_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockClientI_GetStateInfo_Call) RunAndReturn(run func(uint64) (*types.StateInfo, error)) *MockClientI_GetStateInfo_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // Init provides a mock function with given fields: config, rollappId, _a2, logger, options
 func (_m *MockClientI) Init(config settlement.Config, rollappId string, _a2 *pubsub.Server, logger types.Logger, options ...settlement.Option) error {
 	_va := make([]interface{}, len(options))
