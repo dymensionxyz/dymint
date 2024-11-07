@@ -51,11 +51,6 @@ type Client struct {
 	refreshTime    int
 }
 
-func (c *Client) GetStateInfo(index uint64) (*types.StateInfo, error) {
-	// TODO implement me
-	panic("implement me")
-}
-
 func (c *Client) GetRollapp() (*types.Rollapp, error) {
 	// TODO implement me
 	panic("implement me")
