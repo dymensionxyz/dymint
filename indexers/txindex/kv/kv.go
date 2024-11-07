@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/tendermint/tendermint/libs/log"
@@ -605,7 +604,6 @@ func (txi *TxIndex) pruneTxsAndEvents(from, to uint64, logger log.Logger) (uint6
 			batch.Discard()
 			batch = txi.store.NewBatch()
 			toFlush = 0
-			time.Sleep(200 * time.Millisecond)
 		}
 
 		// all txs indexed are iterated by height
