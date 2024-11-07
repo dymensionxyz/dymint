@@ -54,7 +54,7 @@ func (m *Manager) checkForkUpdate(ctx context.Context) error {
 	}
 
 	if m.shouldStopNode(rollapp, lastBlock) {
-		err = m.createInstruction(rollapp, lastBlock)
+		err = m.createInstruction(rollapp)
 		if err != nil {
 			return err
 		}
@@ -65,7 +65,7 @@ func (m *Manager) checkForkUpdate(ctx context.Context) error {
 	return nil
 }
 
-func (m *Manager) createInstruction(rollapp *types.Rollapp, block *types.Block) error {
+func (m *Manager) createInstruction(rollapp *types.Rollapp) error {
 	nextProposer, err := m.SLClient.GetNextProposer()
 	if err != nil {
 		return err
