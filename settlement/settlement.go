@@ -96,6 +96,4 @@ type ClientI interface {
 	GetNextProposer() (*types.Sequencer, error)
 	// GetRollapp returns the rollapp information.
 	GetRollapp() (*types.Rollapp, error)
-	// GetStateInfo returns the state info for the given index.
-	GetStateInfo(index uint64) (*types.StateInfo, error)
 }
