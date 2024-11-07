@@ -25,9 +25,6 @@ type State struct {
 	// LastBlockHeight=0 at genesis (ie. block(H=0) does not exist)
 	LastBlockHeight atomic.Uint64
 
-	// BaseHeight is the height of the first block we have in store after pruning.
-	BaseHeight uint64
-
 	// Proposer is a sequencer that acts as a proposer. Can be nil if no proposer is set.
 	Proposer atomic.Pointer[Sequencer]
 

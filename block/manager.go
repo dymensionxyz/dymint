@@ -80,7 +80,7 @@ type Manager struct {
 	pruningC chan int64
 
 	// indexer
-	indexerService *txindex.IndexerService
+	IndexerService *txindex.IndexerService
 
 	// used to fetch blocks from DA. Sequencer will only fetch batches in case it requires to re-sync (in case of rollback). Full-node will fetch batches for syncing and validation.
 	Retriever da.BatchRetriever
@@ -160,7 +160,7 @@ func NewManager(
 		Executor:        exec,
 		Sequencers:      types.NewSequencerSet(),
 		SLClient:        settlementClient,
-		indexerService:  indexerService,
+		IndexerService:  indexerService,
 		logger:          logger.With("module", "block_manager"),
 		blockCache: &Cache{
 			cache: make(map[uint64]types.CachedBlock),
