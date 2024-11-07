@@ -625,7 +625,6 @@ func (txi *TxIndex) pruneTxsAndEvents(from, to uint64, logger log.Logger) (uint6
 
 		// all events associated to the same height are pruned
 		prunedEvents, err := txi.pruneEvents(h, batch)
-
 		if err != nil {
 			logger.Error("pruning txs indexer events by height", "height", h, "error", err)
 		}
@@ -649,7 +648,6 @@ func (txi *TxIndex) pruneEvents(height uint64, batch store.KVBatch) (uint64, err
 		return pruned, fmt.Errorf("error getting event height key. err %w", err)
 	}
 	keysList, err := txi.store.Get(eventKey)
-
 	if err != nil {
 		return pruned, err
 	}
