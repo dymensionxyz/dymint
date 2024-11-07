@@ -81,9 +81,6 @@ type Manager struct {
 
 	// indexer
 	IndexerService *txindex.IndexerService
-
-	// BaseHeight is the height of the first block we have in store after pruning.
-	BaseHeight uint64
 }
 
 // NewManager creates new block Manager.
