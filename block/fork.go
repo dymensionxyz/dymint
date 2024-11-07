@@ -155,15 +155,18 @@ func (m *Manager) handleSequencerForkTransition(instruction types.Instruction) {
 	// Create a new block with the consensus messages
 	m.Executor.AddConsensusMsgs(consensusMsgs...)
 
-	block, commit, err := m.produceBlock(true, nil, true)
+	block, commit, err := m.produceBlock(true, nil)
 	if err != nil {
 		panic(fmt.Sprintf("produce block: %v", err))
 	}
 
 	err = m.applyBlock(block, commit, types.BlockMetaData{Source: types.Produced})
+	if err != nil {
+		panic(fmt.Sprintf("apply block: %v", err))
+	}
 
 	// Create another block emtpy
-	block, commit, err = m.produceBlock(true, nil, true)
+	block, commit, err = m.produceBlock(true, nil)
 	if err != nil {
 		panic(fmt.Sprintf("produce empty block: %v", err))
 	}
