@@ -33,16 +33,6 @@ func (s *DefaultStore) PruneStore(to uint64, logger types.Logger) (uint64, error
 func (s *DefaultStore) pruneHeights(from, to uint64, logger types.Logger) (uint64, error) {
 	pruneBlocks := func(batch KVBatch, height uint64) error {
 
-		if err := batch.Delete(getResponsesKey(height)); err != nil {
-			logger.Error("delete responses", "error", err)
-		}
-		if err := batch.Delete(getDRSVersionKey(height)); err != nil {
-			logger.Error("delete drs", "error", err)
-		}
-		if err := batch.Delete(getProposerKey(height)); err != nil {
-			logger.Error("delete proposer", "error", err)
-		}
-
 		hash, err := s.loadHashFromIndex(height)
 		if err != nil {
 			return err
@@ -56,6 +46,16 @@ func (s *DefaultStore) pruneHeights(from, to uint64, logger types.Logger) (uint6
 
 		if err := batch.Delete(getIndexKey(height)); err != nil {
 			logger.Error("delete hash index", "error", err)
+		}
+
+		if err := batch.Delete(getResponsesKey(height)); err != nil {
+			logger.Error("delete responses", "error", err)
+		}
+		if err := batch.Delete(getDRSVersionKey(height)); err != nil {
+			logger.Error("delete drs", "error", err)
+		}
+		if err := batch.Delete(getProposerKey(height)); err != nil {
+			logger.Error("delete proposer", "error", err)
 		}
 
 		return nil
