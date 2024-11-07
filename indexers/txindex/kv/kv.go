@@ -594,6 +594,17 @@ func (txi *TxIndex) pruneTxsAndEvents(from, to uint64, logger log.Logger) (uint6
 
 	for h := from; h < to; h++ {
 
+		// flush every 1000 txs to avoid batches becoming too large
+		if toFlush > 1000 {
+			err := flush(batch, int64(h))
+			if err != nil {
+				return 0, err
+			}
+			batch.Discard()
+			batch = txi.store.NewBatch()
+			toFlush = 0
+		}
+
 		// first all events are pruned associated to the same height
 		prunedEvents, err := txi.pruneEvents(h, batch)
 		if err != nil {
@@ -601,13 +612,14 @@ func (txi *TxIndex) pruneTxsAndEvents(from, to uint64, logger log.Logger) (uint6
 			continue
 		}
 		pruned += prunedEvents
+		toFlush += prunedEvents
 
 		// then all txs indexed are iterated by height
 		it := txi.store.PrefixIterator(prefixForHeight(int64(h)))
-		defer it.Discard()
 
 		// and deleted all indexed (by hash and by keyheight)
 		for ; it.Valid(); it.Next() {
+			toFlush++
 			if err := batch.Delete(it.Key()); err != nil {
 				logger.Error("pruning txs indexer event key", "height", h, "error", err)
 				continue
@@ -620,17 +632,7 @@ func (txi *TxIndex) pruneTxsAndEvents(from, to uint64, logger log.Logger) (uint6
 			pruned++
 		}
 
-		toFlush += pruned
-		// flush every 1000 txs to avoid batches becoming too large
-		if toFlush > 1000 {
-			err := flush(batch, int64(h))
-			if err != nil {
-				return 0, err
-			}
-			batch.Discard()
-			batch = txi.store.NewBatch()
-			toFlush = 0
-		}
+		it.Discard()
 
 	}
 
@@ -658,11 +660,11 @@ func (txi *TxIndex) pruneEvents(height uint64, batch store.KVBatch) (uint64, err
 		return pruned, err
 	}
 	for _, key := range eventKeys.Keys {
+		pruned++
 		err := batch.Delete(key)
 		if err != nil {
 			return pruned, err
 		}
-		pruned++
 	}
 	return pruned, nil
 }
