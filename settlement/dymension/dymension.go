@@ -113,8 +113,8 @@ func (c *Client) Stop() error {
 
 // SubmitBatch posts a batch to the Dymension Hub. it tries to post the batch until it is accepted by the settlement layer.
 // it emits success and failure events to the event bus accordingly.
-func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) error {
-	msgUpdateState, err := c.convertBatchToMsgUpdateState(batch, daResult)
+func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch, revision uint64) error {
+	msgUpdateState, err := c.convertBatchToMsgUpdateState(batch, daResult, revision)
 	if err != nil {
 		return fmt.Errorf("convert batch to msg update state: %w", err)
 	}
@@ -606,7 +606,7 @@ func (c *Client) broadcastBatch(msgUpdateState *rollapptypes.MsgUpdateState) err
 	return nil
 }
 
-func (c *Client) convertBatchToMsgUpdateState(batch *types.Batch, daResult *da.ResultSubmitBatch) (*rollapptypes.MsgUpdateState, error) {
+func (c *Client) convertBatchToMsgUpdateState(batch *types.Batch, daResult *da.ResultSubmitBatch, rollappRevision uint64) (*rollapptypes.MsgUpdateState, error) {
 	account, err := c.cosmosClient.GetAccount(c.config.DymAccountName)
 	if err != nil {
 		return nil, fmt.Errorf("get account: %w", err)
@@ -629,13 +629,14 @@ func (c *Client) convertBatchToMsgUpdateState(batch *types.Batch, daResult *da.R
 	}
 
 	settlementBatch := &rollapptypes.MsgUpdateState{
-		Creator:     addr,
-		RollappId:   c.rollappId,
-		StartHeight: batch.StartHeight(),
-		NumBlocks:   batch.NumBlocks(),
-		DAPath:      daResult.SubmitMetaData.ToPath(),
-		BDs:         rollapptypes.BlockDescriptors{BD: blockDescriptors},
-		Last:        batch.LastBatch,
+		Creator:         addr,
+		RollappId:       c.rollappId,
+		StartHeight:     batch.StartHeight(),
+		NumBlocks:       batch.NumBlocks(),
+		DAPath:          daResult.SubmitMetaData.ToPath(),
+		BDs:             rollapptypes.BlockDescriptors{BD: blockDescriptors},
+		Last:            batch.LastBatch,
+		RollappRevision: rollappRevision,
 	}
 	return settlementBatch, nil
 }

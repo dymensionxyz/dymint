@@ -68,7 +68,7 @@ func TestSubmitBatch(t *testing.T) {
 	resultSubmitBatch.SubmitMetaData = &da.DASubmitMetaData{}
 
 	// Submit the first batch and check if it was successful
-	err = sllayer.SubmitBatch(batch1, da.Mock, resultSubmitBatch)
+	err = sllayer.SubmitBatch(batch1, da.Mock, resultSubmitBatch, 0)
 	assert.NoError(err)
 	assert.True(resultSubmitBatch.Code == 0) // success code
 
@@ -86,7 +86,7 @@ func TestSubmitBatch(t *testing.T) {
 	assert.Equal(batch1.EndHeight(), queriedBatch.Batch.EndHeight)
 
 	// Submit the 2nd batch and check if it was successful
-	err = sllayer.SubmitBatch(batch2, da.Mock, resultSubmitBatch)
+	err = sllayer.SubmitBatch(batch2, da.Mock, resultSubmitBatch, 0)
 	assert.NoError(err)
 	assert.True(resultSubmitBatch.Code == 0) // success code
 
@@ -140,7 +140,7 @@ func TestPersistency(t *testing.T) {
 	resultSubmitBatch.SubmitMetaData = &da.DASubmitMetaData{}
 
 	// Submit the first batch and check if it was successful
-	err = sllayer.SubmitBatch(batch1, da.Mock, resultSubmitBatch)
+	err = sllayer.SubmitBatch(batch1, da.Mock, resultSubmitBatch, 0)
 	assert.NoError(err)
 	assert.True(resultSubmitBatch.Code == 0) // success code
 
