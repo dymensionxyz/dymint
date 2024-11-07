@@ -862,17 +862,17 @@ func (_c *MockClientI_Stop_Call) RunAndReturn(run func() error) *MockClientI_Sto
 	return _c
 }
 
-// SubmitBatch provides a mock function with given fields: batch, daClient, daResult
-func (_m *MockClientI) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) error {
-	ret := _m.Called(batch, daClient, daResult)
+// SubmitBatch provides a mock function with given fields: batch, daClient, daResult, revision
+func (_m *MockClientI) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch, revision uint64) error {
+	ret := _m.Called(batch, daClient, daResult, revision)
 
 	if len(ret) == 0 {
 		panic("no return value specified for SubmitBatch")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func(*types.Batch, da.Client, *da.ResultSubmitBatch) error); ok {
-		r0 = rf(batch, daClient, daResult)
+	if rf, ok := ret.Get(0).(func(*types.Batch, da.Client, *da.ResultSubmitBatch, uint64) error); ok {
+		r0 = rf(batch, daClient, daResult, revision)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -889,13 +889,14 @@ type MockClientI_SubmitBatch_Call struct {
 //   - batch *types.Batch
 //   - daClient da.Client
 //   - daResult *da.ResultSubmitBatch
-func (_e *MockClientI_Expecter) SubmitBatch(batch interface{}, daClient interface{}, daResult interface{}) *MockClientI_SubmitBatch_Call {
-	return &MockClientI_SubmitBatch_Call{Call: _e.mock.On("SubmitBatch", batch, daClient, daResult)}
+//   - revision uint64
+func (_e *MockClientI_Expecter) SubmitBatch(batch interface{}, daClient interface{}, daResult interface{}, revision interface{}) *MockClientI_SubmitBatch_Call {
+	return &MockClientI_SubmitBatch_Call{Call: _e.mock.On("SubmitBatch", batch, daClient, daResult, revision)}
 }
 
-func (_c *MockClientI_SubmitBatch_Call) Run(run func(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch)) *MockClientI_SubmitBatch_Call {
+func (_c *MockClientI_SubmitBatch_Call) Run(run func(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch, revision uint64)) *MockClientI_SubmitBatch_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*types.Batch), args[1].(da.Client), args[2].(*da.ResultSubmitBatch))
+		run(args[0].(*types.Batch), args[1].(da.Client), args[2].(*da.ResultSubmitBatch), args[3].(uint64))
 	})
 	return _c
 }
@@ -905,7 +906,7 @@ func (_c *MockClientI_SubmitBatch_Call) Return(_a0 error) *MockClientI_SubmitBat
 	return _c
 }
 
-func (_c *MockClientI_SubmitBatch_Call) RunAndReturn(run func(*types.Batch, da.Client, *da.ResultSubmitBatch) error) *MockClientI_SubmitBatch_Call {
+func (_c *MockClientI_SubmitBatch_Call) RunAndReturn(run func(*types.Batch, da.Client, *da.ResultSubmitBatch, uint64) error) *MockClientI_SubmitBatch_Call {
 	_c.Call.Return(run)
 	return _c
 }

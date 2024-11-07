@@ -179,7 +179,7 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 		assert.NoError(t, err)
 		daResultSubmitBatch := manager.DAClient.SubmitBatch(batch)
 		assert.Equal(t, daResultSubmitBatch.Code, da.StatusSuccess)
-		err = manager.SLClient.SubmitBatch(batch, manager.DAClient.GetClientType(), &daResultSubmitBatch)
+		err = manager.SLClient.SubmitBatch(batch, manager.DAClient.GetClientType(), &daResultSubmitBatch, 0)
 		require.NoError(t, err)
 		nextBatchStartHeight = batch.EndHeight() + 1
 		lastBlockHeaderHash = batch.Blocks[len(batch.Blocks)-1].Header.Hash()
@@ -347,7 +347,7 @@ func TestApplyLocalBlock_WithFraudCheck(t *testing.T) {
 		daResultSubmitBatch := manager.DAClient.SubmitBatch(batch)
 		assert.Equal(t, daResultSubmitBatch.Code, da.StatusSuccess)
 
-		err = manager.SLClient.SubmitBatch(batch, manager.DAClient.GetClientType(), &daResultSubmitBatch)
+		err = manager.SLClient.SubmitBatch(batch, manager.DAClient.GetClientType(), &daResultSubmitBatch, 0)
 		require.NoError(t, err)
 
 		nextBatchStartHeight = batch.EndHeight() + 1
@@ -720,7 +720,7 @@ func TestDAFetch(t *testing.T) {
 	require.NoError(err)
 	daResultSubmitBatch := manager.DAClient.SubmitBatch(batch)
 	require.Equal(daResultSubmitBatch.Code, da.StatusSuccess)
-	err = manager.SLClient.SubmitBatch(batch, manager.DAClient.GetClientType(), &daResultSubmitBatch)
+	err = manager.SLClient.SubmitBatch(batch, manager.DAClient.GetClientType(), &daResultSubmitBatch, 0)
 	require.NoError(err)
 
 	cases := []struct {
@@ -813,7 +813,7 @@ func TestManager_ApplyBatchFromSL_FraudHandling(t *testing.T) {
 	require.NoError(err)
 	daResultSubmitBatch := manager.DAClient.SubmitBatch(batch)
 	require.Equal(daResultSubmitBatch.Code, da.StatusSuccess)
-	err = manager.SLClient.SubmitBatch(batch, manager.DAClient.GetClientType(), &daResultSubmitBatch)
+	err = manager.SLClient.SubmitBatch(batch, manager.DAClient.GetClientType(), &daResultSubmitBatch, 0)
 	require.NoError(err)
 
 	// Mock Executor to return ErrFraud
