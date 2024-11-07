@@ -606,13 +606,13 @@ func (txi *TxIndex) pruneTxsAndEvents(from, to uint64, logger log.Logger) (uint6
 
 		// first all events are pruned associated to the same height
 		prunedEvents, err := txi.pruneEvents(h, batch)
-		pruned += prunedEvents
 		toFlush += prunedEvents
 
 		if err != nil {
 			logger.Error("pruning txs indexer events by height", "height", h, "error", err)
 			continue
 		}
+		pruned += prunedEvents
 
 		// then all txs indexed are iterated by height
 		it := txi.store.PrefixIterator(prefixForHeight(int64(h)))
@@ -620,7 +620,6 @@ func (txi *TxIndex) pruneTxsAndEvents(from, to uint64, logger log.Logger) (uint6
 
 		// and deleted all indexed (by hash and by keyheight)
 		for ; it.Valid(); it.Next() {
-			pruned++
 			toFlush++
 			if err := batch.Delete(it.Key()); err != nil {
 				logger.Error("pruning txs indexer event key", "height", h, "error", err)
@@ -631,6 +630,8 @@ func (txi *TxIndex) pruneTxsAndEvents(from, to uint64, logger log.Logger) (uint6
 				logger.Error("pruning txs indexer event val", "height", h, "error", err)
 				continue
 			}
+			pruned++
+
 		}
 
 	}
@@ -647,12 +648,12 @@ func (txi *TxIndex) pruneEvents(height uint64, batch store.KVBatch) (uint64, err
 	pruned := uint64(0)
 	eventKey, err := eventHeightKey(int64(height))
 	if err != nil {
-		return pruned, err
+		return pruned, fmt.Errorf("error getting event height key. err %w", err)
 	}
 	pruned++
 	keysList, err := txi.store.Get(eventKey)
 	if err != nil {
-		return pruned, err
+		return pruned, fmt.Errorf("error getting event list from store. err %w", err)
 	}
 	eventKeys := &dymint.EventKeys{}
 	err = eventKeys.Unmarshal(keysList)
