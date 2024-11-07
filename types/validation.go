@@ -78,8 +78,8 @@ func (b *Block) ValidateWithState(state *State) error {
 	}
 
 	proposerHash := state.GetProposerHash()
-	if !bytes.Equal(b.Header.NextSequencersHash[:], proposerHash) {
-		return NewErrInvalidNextSequencersHashFraud([32]byte(proposerHash), b.Header.NextSequencersHash)
+	if !bytes.Equal(b.Header.SequencerHash[:], proposerHash) {
+		return NewErrInvalidSequencerHashFraud([32]byte(proposerHash), b.Header.SequencerHash[:])
 	}
 
 	if !bytes.Equal(b.Header.AppHash[:], state.AppHash[:]) {
@@ -152,7 +152,7 @@ func (c *Commit) ValidateWithHeader(proposerPubKey tmcrypto.PubKey, header *Head
 	}
 
 	if !bytes.Equal(header.SequencerHash[:], proposerHash) {
-		return NewErrInvalidSequencerHashFraud(header.SequencerHash, proposerHash)
+		return NewErrInvalidSequencerHashFraud(header.SequencerHash, proposerHash[:])
 	}
 
 	if c.HeaderHash != header.Hash() {
