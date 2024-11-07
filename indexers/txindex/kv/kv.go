@@ -649,6 +649,7 @@ func (txi *TxIndex) pruneEvents(height uint64, batch store.KVBatch) (uint64, err
 	if err != nil {
 		return pruned, err
 	}
+	pruned++
 	keysList, err := txi.store.Get(eventKey)
 	if err != nil {
 		return pruned, err
@@ -659,11 +660,11 @@ func (txi *TxIndex) pruneEvents(height uint64, batch store.KVBatch) (uint64, err
 		return pruned, err
 	}
 	for _, key := range eventKeys.Keys {
+		pruned++
 		err := batch.Delete(key)
 		if err != nil {
 			return pruned, err
 		}
-		pruned++
 	}
 	return pruned, nil
 }
