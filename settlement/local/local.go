@@ -54,11 +54,6 @@ type Client struct {
 	settlementKV store.KV
 }
 
-func (c *Client) GetStateInfo(index uint64) (*types.StateInfo, error) {
-	// TODO implement me
-	panic("implement me")
-}
-
 func (c *Client) GetRollapp() (*types.Rollapp, error) {
 	// TODO implement me
 	panic("implement me")
@@ -148,7 +143,7 @@ func (c *Client) Stop() error {
 }
 
 // PostBatch saves the batch to the kv store
-func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) error {
+func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch, revision uint64) error {
 	settlementBatch := c.convertBatchToSettlementBatch(batch, daResult)
 	err := c.saveBatch(settlementBatch)
 	if err != nil {

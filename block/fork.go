@@ -54,7 +54,7 @@ func (m *Manager) checkForkUpdate(ctx context.Context) error {
 	}
 
 	if m.shouldStopNode(rollapp, lastBlock) {
-		err = m.createInstruction(rollapp, lastBlock)
+		err = m.createInstruction(rollapp)
 		if err != nil {
 			return err
 		}
@@ -65,8 +65,8 @@ func (m *Manager) checkForkUpdate(ctx context.Context) error {
 	return nil
 }
 
-func (m *Manager) createInstruction(rollapp *types.Rollapp, block *types.Block) error {
-	info, err := m.SLClient.GetStateInfo(block.Header.Height)
+func (m *Manager) createInstruction(rollapp *types.Rollapp) error {
+	nextProposer, err := m.SLClient.GetNextProposer()
 	if err != nil {
 		return err
 	}
@@ -74,7 +74,7 @@ func (m *Manager) createInstruction(rollapp *types.Rollapp, block *types.Block) 
 	instruction := types.Instruction{
 		Revision:            rollapp.Revision,
 		RevisionStartHeight: rollapp.RevisionStartHeight,
-		Sequencer:           info.NextProposer,
+		Sequencer:           nextProposer.SettlementAddress,
 	}
 
 	err = types.PersistInstructionToDisk(m.RootDir, instruction)
@@ -155,15 +155,18 @@ func (m *Manager) handleSequencerForkTransition(instruction types.Instruction) {
 	// Create a new block with the consensus messages
 	m.Executor.AddConsensusMsgs(consensusMsgs...)
 
-	block, commit, err := m.produceBlock(true, nil, true)
+	block, commit, err := m.produceBlock(true, nil)
 	if err != nil {
 		panic(fmt.Sprintf("produce block: %v", err))
 	}
 
 	err = m.applyBlock(block, commit, types.BlockMetaData{Source: types.Produced})
+	if err != nil {
+		panic(fmt.Sprintf("apply block: %v", err))
+	}
 
 	// Create another block emtpy
-	block, commit, err = m.produceBlock(true, nil, true)
+	block, commit, err = m.produceBlock(true, nil)
 	if err != nil {
 		panic(fmt.Sprintf("produce empty block: %v", err))
 	}

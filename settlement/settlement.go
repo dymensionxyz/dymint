@@ -72,7 +72,7 @@ type ClientI interface {
 	Stop() error
 	// SubmitBatch tries submitting the batch in an async way to the settlement layer. This should create a transaction which (potentially)
 	// triggers a state transition in the settlement layer. Events are emitted on success or failure.
-	SubmitBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) error
+	SubmitBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch, revision uint64) error
 	// GetLatestBatch returns the latest batch from the settlement layer.
 	GetLatestBatch() (*ResultRetrieveBatch, error)
 	// GetBatchAtIndex returns the batch at the given index.
@@ -96,6 +96,4 @@ type ClientI interface {
 	GetNextProposer() (*types.Sequencer, error)
 	// GetRollapp returns the rollapp information.
 	GetRollapp() (*types.Rollapp, error)
-	// GetStateInfo returns the state info for the given index.
-	GetStateInfo(index uint64) (*types.StateInfo, error)
 }

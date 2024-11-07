@@ -234,8 +234,8 @@ func TestCreateInstruction(t *testing.T) {
 				},
 			},
 			setupMocks: func(mockSL *settlement.MockClientI) {
-				mockSL.On("GetStateInfo", uint64(150)).Return(&types.StateInfo{
-					NextProposer: "sequencer1",
+				mockSL.On("GetNextProposer").Return(&types.Sequencer{
+					SettlementAddress: "sequencer1",
 				}, nil)
 			},
 			expectedError: false,
@@ -252,7 +252,7 @@ func TestCreateInstruction(t *testing.T) {
 				},
 			},
 			setupMocks: func(mockSL *settlement.MockClientI) {
-				mockSL.On("GetStateInfo", uint64(150)).Return((*types.StateInfo)(nil), assert.AnError)
+				mockSL.On("GetNextProposer").Return((*types.Sequencer)(nil), assert.AnError)
 			},
 			expectedError: true,
 		},
@@ -268,7 +268,7 @@ func TestCreateInstruction(t *testing.T) {
 				RootDir:  t.TempDir(), // Use temporary directory for testing
 			}
 
-			err := manager.createInstruction(tt.rollapp, tt.block)
+			err := manager.createInstruction(tt.rollapp)
 			if tt.expectedError {
 				assert.Error(t, err)
 			} else {
