@@ -121,7 +121,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 			select {
 			case m.pruningC <- retainHeight:
 			default:
-				m.logger.Error("pruning channel full. skipping pruning", "retainHeight", retainHeight)
+				m.logger.Debug("pruning channel full. skipping pruning", "retainHeight", retainHeight)
 			}
 		}
 

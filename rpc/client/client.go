@@ -26,6 +26,7 @@ import (
 	"github.com/dymensionxyz/dymint/node"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/dymensionxyz/dymint/version"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 )
 
 const (
@@ -325,8 +326,15 @@ func (c *Client) GenesisChunked(context context.Context, id uint) (*ctypes.Resul
 func (c *Client) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, error) {
 	const limit int64 = 20
 
-	minHeight, maxHeight, err := filterMinMax(
-		int64(c.node.BlockManager.State.BaseHeight),
+	baseHeight, err := c.node.BlockManager.Store.LoadBaseHeight()
+	if err != nil && !errors.Is(err, gerrc.ErrNotFound) {
+		return nil, err
+	}
+	if errors.Is(err, gerrc.ErrNotFound) {
+		baseHeight = 1
+	}
+	minHeight, maxHeight, err = filterMinMax(
+		int64(baseHeight),
 		int64(c.node.GetBlockManagerHeight()),
 		minHeight,
 		maxHeight,

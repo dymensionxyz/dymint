@@ -72,7 +72,7 @@ type Store interface {
 
 	LoadProposer(height uint64) (types.Sequencer, error)
 
-	PruneStore(from, to uint64, logger types.Logger) (uint64, error)
+	PruneStore(to uint64, logger types.Logger) (uint64, error)
 
 	SaveBlockCid(height uint64, cid cid.Cid, batch KVBatch) (KVBatch, error)
 
@@ -89,6 +89,20 @@ type Store interface {
 	LoadDRSVersion(height uint64) (uint32, error)
 
 	SaveDRSVersion(height uint64, version uint32, batch KVBatch) (KVBatch, error)
+
+	RemoveBlockCid(height uint64) error
+
+	LoadBaseHeight() (uint64, error)
+
+	SaveBaseHeight(height uint64) error
+
+	LoadBlockSyncBaseHeight() (uint64, error)
+
+	SaveBlockSyncBaseHeight(height uint64) error
+
+	LoadIndexerBaseHeight() (uint64, error)
+
+	SaveIndexerBaseHeight(height uint64) error
 
 	Close() error
 }

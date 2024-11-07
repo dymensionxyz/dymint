@@ -73,6 +73,7 @@ func (txi *TxIndex) AddBatch(b *txindex.Batch) error {
 	storeBatch := txi.store.NewBatch()
 	defer storeBatch.Discard()
 
+	var eventKeysBatch dmtypes.EventKeys
 	for _, result := range b.Ops {
 		hash := types.Tx(result.Tx).Hash()
 
@@ -81,12 +82,7 @@ func (txi *TxIndex) AddBatch(b *txindex.Batch) error {
 		if err != nil {
 			return err
 		}
-
-		err = txi.addEventKeys(result.Height, &eventKeys, storeBatch)
-		if err != nil {
-			return err
-		}
-
+		eventKeysBatch.Keys = append(eventKeysBatch.Keys, eventKeys.Keys...)
 		// index by height (always)
 		err = storeBatch.Set(keyForHeight(result), hash)
 		if err != nil {
@@ -102,6 +98,11 @@ func (txi *TxIndex) AddBatch(b *txindex.Batch) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	err := txi.addEventKeys(b.Height, &eventKeysBatch, storeBatch)
+	if err != nil {
+		return err
 	}
 
 	return storeBatch.Commit()
@@ -570,15 +571,16 @@ LOOP:
 }
 
 func (txi *TxIndex) Prune(from, to uint64, logger log.Logger) (uint64, error) {
-	pruned, err := txi.pruneTxs(from, to)
+	pruned, err := txi.pruneTxsAndEvents(from, to, logger)
 	if err != nil {
 		return 0, err
 	}
 	return pruned, nil
 }
 
-func (txi *TxIndex) pruneTxs(from, to uint64) (uint64, error) {
+func (txi *TxIndex) pruneTxsAndEvents(from, to uint64, logger log.Logger) (uint64, error) {
 	pruned := uint64(0)
+	toFlush := uint64(0)
 	batch := txi.store.NewBatch()
 	defer batch.Discard()
 
@@ -592,30 +594,44 @@ func (txi *TxIndex) pruneTxs(from, to uint64) (uint64, error) {
 
 	for h := from; h < to; h++ {
 
+		// first all events are pruned associated to the same height
+		prunedEvents, err := txi.pruneEvents(h, batch)
+		if err != nil {
+			logger.Error("pruning txs indexer events by height", "height", h, "error", err)
+			continue
+		}
+		pruned += prunedEvents
+
+		// then all txs indexed are iterated by height
 		it := txi.store.PrefixIterator(prefixForHeight(int64(h)))
 		defer it.Discard()
 
+		// and deleted all indexed (by hash and by keyheight)
 		for ; it.Valid(); it.Next() {
 			if err := batch.Delete(it.Key()); err != nil {
+				logger.Error("pruning txs indexer event key", "height", h, "error", err)
 				continue
 			}
+
 			if err := batch.Delete(it.Value()); err != nil {
-				continue
-			}
-			if err := txi.pruneEvents(h, batch); err != nil {
+				logger.Error("pruning txs indexer event val", "height", h, "error", err)
 				continue
 			}
 			pruned++
-			// flush every 1000 txs to avoid batches becoming too large
-			if pruned%1000 == 0 && pruned > 0 {
-				err := flush(batch, int64(h))
-				if err != nil {
-					return 0, err
-				}
-				batch.Discard()
-				batch = txi.store.NewBatch()
-			}
 		}
+
+		toFlush += pruned
+		// flush every 1000 txs to avoid batches becoming too large
+		if toFlush > 1000 {
+			err := flush(batch, int64(h))
+			if err != nil {
+				return 0, err
+			}
+			batch.Discard()
+			batch = txi.store.NewBatch()
+			toFlush = 0
+		}
+
 	}
 
 	err := flush(batch, int64(to))
@@ -626,27 +642,29 @@ func (txi *TxIndex) pruneTxs(from, to uint64) (uint64, error) {
 	return pruned, nil
 }
 
-func (txi *TxIndex) pruneEvents(height uint64, batch store.KVBatch) error {
+func (txi *TxIndex) pruneEvents(height uint64, batch store.KVBatch) (uint64, error) {
+	pruned := uint64(0)
 	eventKey, err := eventHeightKey(int64(height))
 	if err != nil {
-		return err
+		return pruned, err
 	}
 	keysList, err := txi.store.Get(eventKey)
 	if err != nil {
-		return err
+		return pruned, err
 	}
 	eventKeys := &dymint.EventKeys{}
 	err = eventKeys.Unmarshal(keysList)
 	if err != nil {
-		return err
+		return pruned, err
 	}
 	for _, key := range eventKeys.Keys {
 		err := batch.Delete(key)
 		if err != nil {
-			return err
+			return pruned, err
 		}
+		pruned++
 	}
-	return nil
+	return pruned, nil
 }
 
 func (txi *TxIndex) addEventKeys(height int64, eventKeys *dymint.EventKeys, batch store.KVBatch) error {
@@ -686,9 +704,8 @@ func keyForEvent(key string, value []byte, result *abci.TxResult) []byte {
 }
 
 func keyForHeight(result *abci.TxResult) []byte {
-	return []byte(fmt.Sprintf("%s/%d/%d/%d",
+	return []byte(fmt.Sprintf("%s/%d/%d",
 		tmtypes.TxHeightKey,
-		result.Height,
 		result.Height,
 		result.Index,
 	))
