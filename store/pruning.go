@@ -33,9 +33,6 @@ func (s *DefaultStore) PruneStore(to uint64, logger types.Logger) (uint64, error
 // pruneHeights prunes all store entries that are stored along blocks (blocks,commit and block hash)
 func (s *DefaultStore) pruneHeights(from, to uint64, logger types.Logger) (uint64, error) {
 	pruneBlocks := func(batch KVBatch, height uint64) error {
-		if err := batch.Delete(getResponsesKey(height)); err != nil {
-			logger.Error("delete responses", "error", err)
-		}
 
 		hash, err := s.loadHashFromIndex(height)
 		if err != nil {
@@ -50,6 +47,10 @@ func (s *DefaultStore) pruneHeights(from, to uint64, logger types.Logger) (uint6
 		if err := batch.Delete(getIndexKey(height)); err != nil {
 			return err
 		}
+		if err := batch.Delete(getResponsesKey(height)); err != nil {
+			return err
+		}
+
 		return nil
 	}
 
@@ -57,7 +58,7 @@ func (s *DefaultStore) pruneHeights(from, to uint64, logger types.Logger) (uint6
 	return prunedBlocks, err
 }
 
-// pruneHeights is the common function for all pruning that iterates through all heights and prunes according to the pruning function set
+// prune is the common function for all pruning that iterates through all heights and prunes according to the pruning function set
 func (s *DefaultStore) prune(from, to uint64, prune func(batch KVBatch, height uint64) error, logger types.Logger) (uint64, error) {
 	pruned := uint64(0)
 	batch := s.db.NewBatch()
