@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -22,6 +23,7 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/dymensionxyz/dymint/types/pb/dymint"
 	dmtypes "github.com/dymensionxyz/dymint/types/pb/dymint"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 )
 
 const (
@@ -628,7 +630,7 @@ func (txi *TxIndex) pruneTxsAndEvents(from, to uint64, logger log.Logger) (uint6
 
 		// all events associated to the same height are pruned
 		prunedEvents, err := txi.pruneEvents(h, batch)
-		if err != nil {
+		if err != nil && !errors.Is(err, gerrc.ErrNotFound) {
 			logger.Error("pruning txs indexer events by height", "height", h, "error", err, "")
 		}
 		pruned += prunedEvents
@@ -648,7 +650,7 @@ func (txi *TxIndex) pruneEvents(height uint64, batch store.KVBatch) (uint64, err
 	pruned := uint64(0)
 	eventKey, err := eventHeightKey(int64(height))
 	if err != nil {
-		return pruned, fmt.Errorf("error getting event height key. err %w", err)
+		return pruned, err
 	}
 	keysList, err := txi.store.Get(eventKey)
 	if err != nil {
