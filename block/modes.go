@@ -71,7 +71,7 @@ func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {
 }
 
 func (m *Manager) subscribeFullNodeEvents(ctx context.Context) {
-	if m.AmIProposer() {
+	if m.RunMode == RunModeProposer {
 		return
 	}
 	// Subscribe to new (or finalized) state updates events.
@@ -84,7 +84,7 @@ func (m *Manager) subscribeFullNodeEvents(ctx context.Context) {
 }
 
 func (m *Manager) unsubscribeFullNodeEvents(ctx context.Context) {
-	if m.AmIProposer() {
+	if m.RunMode == RunModeProposer {
 		return
 	}
 
