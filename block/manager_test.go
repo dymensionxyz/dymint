@@ -745,7 +745,7 @@ func TestDAFetch(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			app.On("Commit", mock.Anything).Return(abci.ResponseCommit{Data: commitHash[:]}).Once()
 			app.On("Info", mock.Anything).Return(abci.ResponseInfo{
-				LastBlockHeight:  int64(batch.EndHeight()),
+				LastBlockHeight:  int64(batch.EndHeight() + 1),
 				LastBlockAppHash: commitHash[:],
 			})
 
