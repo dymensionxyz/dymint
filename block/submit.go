@@ -275,6 +275,8 @@ func (m *Manager) GetUnsubmittedBytes() int {
 		}
 		total += block.SizeBytes() + commit.SizeBytes()
 	}
+	fmt.Println("return unsubmitted bytes")
+
 	return total
 }
 

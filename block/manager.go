@@ -275,8 +275,10 @@ func (m *Manager) Start(ctx context.Context) error {
 
 	// run based on the node role
 	if !amIProposer {
+		fmt.Println("running as fullnode")
 		return m.runAsFullNode(ctx, eg)
 	}
+	fmt.Println("running as proposer")
 
 	return m.runAsProposer(ctx, eg)
 }

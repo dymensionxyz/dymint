@@ -25,6 +25,7 @@ import (
 // In this way it's possible to pause block production by not consuming the channel
 func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int) error {
 	m.logger.Info("Started block producer loop.")
+	fmt.Println("Started block producer loop.")
 
 	ticker := time.NewTicker(m.Conf.BlockTime)
 	defer func() {
@@ -76,6 +77,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int)
 			}
 
 			bytesProducedN := block.SizeBytes() + commit.SizeBytes()
+			fmt.Println("new block")
 			m.logger.Info("New block.", "size", uint64(block.ToProto().Size()))
 			select {
 			case <-ctx.Done():

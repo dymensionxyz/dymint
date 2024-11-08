@@ -206,12 +206,12 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 	assert.Zero(t, manager.LastSettlementHeight.Load())
 
 	// try to submit, we expect failure
-	slmock.On("SubmitBatch", mock.Anything, mock.Anything, mock.Anything).Return(fmt.Errorf("submit batch")).Once()
+	slmock.On("SubmitBatch", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(fmt.Errorf("submit batch")).Once()
 	_, err = manager.CreateAndSubmitBatch(manager.Conf.BatchSubmitBytes, false)
 	assert.Error(t, err)
 
 	// try to submit again, we expect success
-	slmock.On("SubmitBatch", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
+	slmock.On("SubmitBatch", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 	manager.CreateAndSubmitBatch(manager.Conf.BatchSubmitBytes, false)
 	assert.EqualValues(t, manager.State.Height(), manager.LastSettlementHeight.Load())
 }
