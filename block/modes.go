@@ -72,9 +72,7 @@ func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {
 	})
 
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
-		fmt.Println("getting unsubmitted bytes")
 		bytesProducedC <- m.GetUnsubmittedBytes() // load unsubmitted bytes from previous run
-		fmt.Println("return unsubmitted bytes")
 		return m.ProduceBlockLoop(ctx, bytesProducedC)
 	})
 
