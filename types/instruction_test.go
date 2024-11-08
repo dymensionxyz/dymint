@@ -12,7 +12,6 @@ func TestPersistInstruction(t *testing.T) {
 	instructionWithNilFaultyDrs := Instruction{
 		Revision:            1,
 		RevisionStartHeight: 1,
-		Sequencer:           "sequencer",
 		FaultyDRS:           nil,
 	}
 
@@ -28,7 +27,6 @@ func TestPersistInstruction(t *testing.T) {
 	instructionWithFaultyDrs := Instruction{
 		Revision:            1,
 		RevisionStartHeight: 1,
-		Sequencer:           "sequencer",
 		FaultyDRS:           faultyDrs,
 	}
 
