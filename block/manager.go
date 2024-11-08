@@ -374,7 +374,7 @@ func (m *Manager) setFraudHandler(handler *FreezeHandler) {
 	m.FraudHandler = handler
 }
 
-func (m *Manager) setNodeAsUnhealthy(ctx context.Context, err error) {
+func (m *Manager) freezeNode(ctx context.Context, err error) {
 	uevent.MustPublish(ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
 	m.unsubscribeFullNodeEvents(ctx)
 }

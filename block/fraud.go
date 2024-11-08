@@ -19,7 +19,7 @@ type FreezeHandler struct {
 }
 
 func (f FreezeHandler) HandleFault(ctx context.Context, fault error) {
-	f.m.setNodeAsUnhealthy(ctx, fault)
+	f.m.freezeNode(ctx, fault)
 }
 
 func NewFreezeHandler(manager *Manager) *FreezeHandler {

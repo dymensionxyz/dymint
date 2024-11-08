@@ -75,7 +75,7 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 
 				err = m.ApplyBatchFromSL(settlementBatch.Batch)
 				if err != nil {
-					m.setNodeAsUnhealthy(context.Background(), err)
+					m.freezeNode(context.Background(), err)
 					m.logger.Error("process next DA batch", "err", err)
 					break
 				}
@@ -87,7 +87,7 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 
 				err = m.attemptApplyCachedBlocks()
 				if err != nil {
-					m.setNodeAsUnhealthy(context.Background(), err)
+					m.freezeNode(context.Background(), err)
 					m.logger.Error("Attempt apply cached blocks.", "err", err)
 				}
 
