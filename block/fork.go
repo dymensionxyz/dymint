@@ -48,6 +48,9 @@ func (m *Manager) checkForkUpdate(ctx context.Context) error {
 		return err
 	}
 
+	if m.State.Height() == 0 {
+		return nil
+	}
 	lastBlock, err := m.Store.LoadBlock(m.State.Height())
 	if err != nil {
 		return err
