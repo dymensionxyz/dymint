@@ -219,7 +219,6 @@ func TestCreateInstruction(t *testing.T) {
 		name          string
 		rollapp       *types.Rollapp
 		block         *types.Block
-		setupMocks    func(*settlement.MockClientI)
 		expectedError bool
 	}{
 		{
@@ -233,39 +232,14 @@ func TestCreateInstruction(t *testing.T) {
 					Height: 150,
 				},
 			},
-			setupMocks: func(mockSL *settlement.MockClientI) {
-				mockSL.On("GetNextProposer").Return(&types.Sequencer{
-					SettlementAddress: "sequencer1",
-				}, nil)
-			},
 			expectedError: false,
-		},
-		{
-			name: "error getting state info",
-			rollapp: &types.Rollapp{
-				Revision:            2,
-				RevisionStartHeight: 100,
-			},
-			block: &types.Block{
-				Header: types.Header{
-					Height: 150,
-				},
-			},
-			setupMocks: func(mockSL *settlement.MockClientI) {
-				mockSL.On("GetNextProposer").Return((*types.Sequencer)(nil), assert.AnError)
-			},
-			expectedError: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mockSL := new(settlement.MockClientI)
-			tt.setupMocks(mockSL)
-
 			manager := &Manager{
-				SLClient: mockSL,
-				RootDir:  t.TempDir(), // Use temporary directory for testing
+				RootDir: t.TempDir(), // Use temporary directory for testing
 			}
 
 			err := manager.createInstruction(tt.rollapp)

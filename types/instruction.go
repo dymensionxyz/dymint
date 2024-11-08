@@ -9,7 +9,6 @@ import (
 type Instruction struct {
 	Revision            uint64
 	RevisionStartHeight uint64
-	Sequencer           string
 	FaultyDRS           *uint64
 }
 

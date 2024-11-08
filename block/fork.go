@@ -69,18 +69,12 @@ func (m *Manager) checkForkUpdate(ctx context.Context) error {
 }
 
 func (m *Manager) createInstruction(rollapp *types.Rollapp) error {
-	nextProposer, err := m.SLClient.GetNextProposer()
-	if err != nil {
-		return err
-	}
-
 	instruction := types.Instruction{
 		Revision:            rollapp.Revision,
 		RevisionStartHeight: rollapp.RevisionStartHeight,
-		Sequencer:           nextProposer.SettlementAddress,
 	}
 
-	err = types.PersistInstructionToDisk(m.RootDir, instruction)
+	err := types.PersistInstructionToDisk(m.RootDir, instruction)
 	if err != nil {
 		return err
 	}
