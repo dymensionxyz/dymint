@@ -23,7 +23,7 @@ import (
 const minBlockMaxBytes = 10000
 
 type ExecutorI interface {
-	CreateBlock(height uint64, lastCommit *types.Commit, lastHeaderHash, nextSeqHash [32]byte, state *types.State, maxBlockDataSizeBytes uint64, enforceEmpty bool) *types.Block
+	CreateBlock(height uint64, lastCommit *types.Commit, lastHeaderHash, nextSeqHash [32]byte, state *types.State, maxBlockDataSizeBytes uint64) *types.Block
 	InitChain(genesis *tmtypes.GenesisDoc, genesisChecksum string, valset []*tmtypes.Validator) (*abci.ResponseInitChain, error)
 	Commit(state *types.State, block *types.Block, resp *tmstate.ABCIResponses) ([]byte, int64, error)
 	GetAppInfo() (*abci.ResponseInfo, error)
@@ -143,15 +143,11 @@ func (e *Executor) CreateBlock(
 	lastHeaderHash, nextSeqHash [32]byte,
 	state *types.State,
 	maxBlockDataSizeBytes uint64,
-	enforceEmpty bool,
 ) *types.Block {
 	maxBlockDataSizeBytes = min(maxBlockDataSizeBytes, uint64(max(minBlockMaxBytes, state.ConsensusParams.Block.MaxBytes)))
 
-	var txs types.Txs
-	if !enforceEmpty {
-		mempoolTxs := e.mempool.ReapMaxBytesMaxGas(int64(maxBlockDataSizeBytes), state.ConsensusParams.Block.MaxGas)
-		txs = toDymintTxs(mempoolTxs)
-	}
+	mempoolTxs := e.mempool.ReapMaxBytesMaxGas(int64(maxBlockDataSizeBytes), state.ConsensusParams.Block.MaxGas)
+	txs := toDymintTxs(mempoolTxs)
 
 	block := &types.Block{
 		Header: types.Header{
