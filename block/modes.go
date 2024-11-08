@@ -71,9 +71,7 @@ func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {
 }
 
 func (m *Manager) subscribeFullNodeEvents(ctx context.Context) {
-	if m.RunMode == RunModeProposer {
-		return
-	}
+
 	// Subscribe to new (or finalized) state updates events.
 	go uevent.MustSubscribe(ctx, m.Pubsub, "syncLoop", settlement.EventQueryNewSettlementBatchAccepted, m.onNewStateUpdate, m.logger)
 	go uevent.MustSubscribe(ctx, m.Pubsub, "validateLoop", settlement.EventQueryNewSettlementBatchFinalized, m.onNewStateUpdateFinalized, m.logger)
@@ -84,9 +82,6 @@ func (m *Manager) subscribeFullNodeEvents(ctx context.Context) {
 }
 
 func (m *Manager) unsubscribeFullNodeEvents(ctx context.Context) {
-	if m.RunMode == RunModeProposer {
-		return
-	}
 
 	// unsubscribe for specific event (clientId)
 	unsubscribe := func(clientId string) {

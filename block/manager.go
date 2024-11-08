@@ -380,5 +380,7 @@ func (m *Manager) setFraudHandler(handler *FreezeHandler) {
 
 func (m *Manager) freezeNode(ctx context.Context, err error) {
 	uevent.MustPublish(ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
-	m.unsubscribeFullNodeEvents(ctx)
+	if m.RunMode == RunModeFullNode {
+		m.unsubscribeFullNodeEvents(ctx)
+	}
 }
