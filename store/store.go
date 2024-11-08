@@ -346,6 +346,10 @@ func (s *DefaultStore) SaveDRSVersion(height uint64, version uint32, batch KVBat
 
 func (s *DefaultStore) LoadBaseHeight() (uint64, error) {
 	b, err := s.db.Get(getBaseHeightKey())
+	if err != nil {
+		return 0, err
+	}
+	return binary.LittleEndian.Uint64(b), nil
 }
 
 func (s *DefaultStore) SaveBaseHeight(height uint64) error {
