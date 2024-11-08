@@ -3,6 +3,7 @@ package block
 import (
 	"context"
 	"fmt"
+	"github.com/dymensionxyz/dymint/types"
 
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/settlement"
@@ -35,6 +36,13 @@ func (m *Manager) runAsFullNode(ctx context.Context, eg *errgroup.Group) error {
 
 	m.subscribeFullNodeEvents(ctx)
 
+	if _, forkNeeded := m.forkNeeded(); forkNeeded {
+		err := types.DeleteInstructionFromDisk(m.RootDir)
+		if err != nil {
+			return fmt.Errorf("deleting instruction file: %w", err)
+		}
+	}
+
 	return nil
 }
 
@@ -54,6 +62,11 @@ func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {
 	// if instruction file exists
 	if instruction, forkNeeded := m.forkNeeded(); forkNeeded {
 		m.handleSequencerForkTransition(instruction)
+
+		err := types.DeleteInstructionFromDisk(m.RootDir)
+		if err != nil {
+			return fmt.Errorf("deleting instruction file: %w", err)
+		}
 	}
 
 	// check if we should rotate

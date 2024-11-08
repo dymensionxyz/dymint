@@ -45,3 +45,13 @@ func LoadInstructionFromDisk(dir string) (Instruction, error) {
 
 	return instruction, nil
 }
+
+func DeleteInstructionFromDisk(dir string) error {
+	filePath := filepath.Join(dir, instructionFileName)
+	err := os.Remove(filePath)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
