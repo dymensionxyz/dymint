@@ -3,6 +3,7 @@ package block
 import (
 	"context"
 	"errors"
+	"fmt"
 
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/tendermint/tendermint/libs/pubsub"
@@ -75,9 +76,7 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 
 				err = m.ApplyBatchFromSL(settlementBatch.Batch)
 				if err != nil {
-					m.freezeNode(context.Background(), err)
-					m.logger.Error("process next DA batch", "err", err)
-					break
+					return fmt.Errorf("process next DA batch. err:%w", err)
 				}
 
 				m.logger.Info("Synced from DA", "store height", m.State.Height(), "target height", m.LastSettlementHeight.Load())
@@ -87,8 +86,7 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 
 				err = m.attemptApplyCachedBlocks()
 				if err != nil {
-					m.freezeNode(context.Background(), err)
-					m.logger.Error("Attempt apply cached blocks.", "err", err)
+					return fmt.Errorf("Attempt apply cached blocks. err:%w", err)
 				}
 
 			}

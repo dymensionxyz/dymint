@@ -249,7 +249,11 @@ func (m *Manager) Start(ctx context.Context) error {
 
 	// Start the settlement sync loop in the background
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
-		return m.SettlementSyncLoop(ctx)
+		err := m.SettlementSyncLoop(ctx)
+		if err != nil {
+			m.freezeNode(context.Background(), err)
+		}
+		return nil
 	})
 
 	// Monitor sequencer set updates
