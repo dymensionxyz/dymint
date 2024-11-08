@@ -6,20 +6,19 @@ import (
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
-	"github.com/ipfs/go-cid"
-	mh "github.com/multiformats/go-multihash"
 	"github.com/stretchr/testify/assert"
+	"github.com/tendermint/tendermint/libs/log"
 )
 
 func TestStorePruning(t *testing.T) {
 	t.Parallel()
 
 	cases := []struct {
-		name        string
-		blocks      []*types.Block
-		from        uint64
-		to          uint64
-		shouldError bool
+		name   string
+		blocks []*types.Block
+		from   uint64
+		to     uint64
+		pruned uint64
 	}{
 		{"blocks with pruning", []*types.Block{
 			testutil.GetRandomBlock(1, 0),
@@ -27,33 +26,33 @@ func TestStorePruning(t *testing.T) {
 			testutil.GetRandomBlock(3, 0),
 			testutil.GetRandomBlock(4, 0),
 			testutil.GetRandomBlock(5, 0),
-		}, 3, 5, false},
+		}, 3, 5, 2},
 		{"blocks out of order", []*types.Block{
 			testutil.GetRandomBlock(2, 0),
 			testutil.GetRandomBlock(3, 0),
 			testutil.GetRandomBlock(1, 0),
 			testutil.GetRandomBlock(5, 0),
-		}, 3, 5, false},
+		}, 3, 5, 1},
 		{"with a gap", []*types.Block{
 			testutil.GetRandomBlock(1, 0),
 			testutil.GetRandomBlock(9, 0),
 			testutil.GetRandomBlock(10, 0),
-		}, 3, 5, false},
+		}, 3, 5, 0},
 		{"pruning height 0", []*types.Block{
 			testutil.GetRandomBlock(1, 0),
 			testutil.GetRandomBlock(2, 0),
 			testutil.GetRandomBlock(3, 0),
-		}, 0, 1, true},
+		}, 0, 1, 0},
 		{"pruning same height", []*types.Block{
 			testutil.GetRandomBlock(1, 0),
 			testutil.GetRandomBlock(2, 0),
 			testutil.GetRandomBlock(3, 0),
-		}, 3, 3, true},
+		}, 3, 3, 0},
 		{"to height exceeds actual block cnt", []*types.Block{
 			testutil.GetRandomBlock(1, 0),
 			testutil.GetRandomBlock(2, 0),
 			testutil.GetRandomBlock(3, 0),
-		}, 2, 5, false}, // it shouldn't error it should just no-op
+		}, 2, 5, 2},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -61,41 +60,30 @@ func TestStorePruning(t *testing.T) {
 			bstore := store.New(store.NewDefaultInMemoryKVStore())
 
 			savedHeights := make(map[uint64]bool)
+			savedRespHeights := make(map[uint64]bool)
+
+			bstore.SaveBaseHeight(c.from)
 			for _, block := range c.blocks {
 				_, err := bstore.SaveBlock(block, &types.Commit{}, nil)
 				assert.NoError(err)
 				savedHeights[block.Header.Height] = true
-				blockBytes, err := block.MarshalBinary()
-				assert.NoError(err)
-				// Create a cid manually by specifying the 'prefix' parameters
-				pref := &cid.Prefix{
-					Codec:    cid.DagProtobuf,
-					MhLength: -1,
-					MhType:   mh.SHA2_256,
-					Version:  1,
-				}
-				cid, err := pref.Sum(blockBytes)
-				assert.NoError(err)
-				_, err = bstore.SaveBlockCid(block.Header.Height, cid, nil)
-				assert.NoError(err)
 
 				// TODO: add block responses and commits
 			}
 
-			// And then feed it some data
-			//expectedCid, err := pref.Sum(block)
 			// Validate all blocks are saved
 			for k := range savedHeights {
 				_, err := bstore.LoadBlock(k)
 				assert.NoError(err)
 			}
 
-			_, err := bstore.PruneBlocks(c.from, c.to)
-			if c.shouldError {
-				assert.Error(err)
-				return
+			for k := range savedRespHeights {
+				_, err := bstore.LoadBlockResponses(k)
+				assert.NoError(err)
 			}
 
+			pruned, err := bstore.PruneStore(c.to, log.NewNopLogger())
+			assert.Equal(c.pruned, pruned)
 			assert.NoError(err)
 
 			// Validate only blocks in the range are pruned
@@ -110,14 +98,8 @@ func TestStorePruning(t *testing.T) {
 					_, err = bstore.LoadCommit(k)
 					assert.Error(err, "Commit at height %d should be pruned", k)
 
-					_, err = bstore.LoadBlockCid(k)
-					assert.Error(err, "Cid at height %d should be pruned", k)
-
 				} else {
 					_, err := bstore.LoadBlock(k)
-					assert.NoError(err)
-
-					_, err = bstore.LoadBlockCid(k)
 					assert.NoError(err)
 
 				}

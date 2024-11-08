@@ -16,13 +16,16 @@ import (
 )
 
 var (
-	blockPrefix      = [1]byte{1}
-	indexPrefix      = [1]byte{2}
-	commitPrefix     = [1]byte{3}
-	statePrefix      = [1]byte{4}
-	responsesPrefix  = [1]byte{5}
-	validatorsPrefix = [1]byte{6}
-	cidPrefix        = [1]byte{7}
+	blockPrefix               = [1]byte{1}
+	indexPrefix               = [1]byte{2}
+	commitPrefix              = [1]byte{3}
+	statePrefix               = [1]byte{4}
+	responsesPrefix           = [1]byte{5}
+	validatorsPrefix          = [1]byte{6}
+	cidPrefix                 = [1]byte{7}
+	baseHeightPrefix          = [1]byte{8}
+	blocksyncBaseHeightPrefix = [1]byte{9}
+	indexerBaseHeightPrefix   = [1]byte{10}
 )
 
 // DefaultStore is a default store implementation.
@@ -273,6 +276,53 @@ func (s *DefaultStore) LoadBlockCid(height uint64) (cid.Cid, error) {
 	return parsedCid, nil
 }
 
+func (s *DefaultStore) RemoveBlockCid(height uint64) error {
+	err := s.db.Delete(getCidKey(height))
+	return err
+}
+
+func (s *DefaultStore) LoadBaseHeight() (uint64, error) {
+	b, err := s.db.Get(getBaseHeightKey())
+	if err != nil {
+		return 0, err
+	}
+	return binary.LittleEndian.Uint64(b), nil
+}
+
+func (s *DefaultStore) SaveBaseHeight(height uint64) error {
+	b := make([]byte, 8)
+	binary.LittleEndian.PutUint64(b, height)
+	return s.db.Set(getBaseHeightKey(), b)
+}
+
+func (s *DefaultStore) LoadBlockSyncBaseHeight() (uint64, error) {
+	b, err := s.db.Get(getBlockSyncBaseHeightKey())
+	if err != nil {
+		return 0, err
+	}
+	return binary.LittleEndian.Uint64(b), nil
+}
+
+func (s *DefaultStore) SaveBlockSyncBaseHeight(height uint64) error {
+	b := make([]byte, 8)
+	binary.LittleEndian.PutUint64(b, height)
+	return s.db.Set(getBlockSyncBaseHeightKey(), b)
+}
+
+func (s *DefaultStore) LoadIndexerBaseHeight() (uint64, error) {
+	b, err := s.db.Get(getIndexerBaseHeightKey())
+	if err != nil {
+		return 0, err
+	}
+	return binary.LittleEndian.Uint64(b), nil
+}
+
+func (s *DefaultStore) SaveIndexerBaseHeight(height uint64) error {
+	b := make([]byte, 8)
+	binary.LittleEndian.PutUint64(b, height)
+	return s.db.Set(getIndexerBaseHeightKey(), b)
+}
+
 func getBlockKey(hash [32]byte) []byte {
 	return append(blockPrefix[:], hash[:]...)
 }
@@ -307,4 +357,16 @@ func getCidKey(height uint64) []byte {
 	buf := make([]byte, 8)
 	binary.BigEndian.PutUint64(buf, height)
 	return append(cidPrefix[:], buf[:]...)
+}
+
+func getBaseHeightKey() []byte {
+	return baseHeightPrefix[:]
+}
+
+func getBlockSyncBaseHeightKey() []byte {
+	return blocksyncBaseHeightPrefix[:]
+}
+
+func getIndexerBaseHeightKey() []byte {
+	return indexerBaseHeightPrefix[:]
 }

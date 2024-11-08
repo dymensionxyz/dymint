@@ -72,11 +72,25 @@ type Store interface {
 
 	LoadValidators(height uint64) (*tmtypes.ValidatorSet, error)
 
-	PruneBlocks(from, to uint64) (uint64, error)
+	PruneStore(to uint64, logger types.Logger) (uint64, error)
 
 	Close() error
 
 	SaveBlockCid(height uint64, cid cid.Cid, batch KVBatch) (KVBatch, error)
 
 	LoadBlockCid(height uint64) (cid.Cid, error)
+
+	RemoveBlockCid(height uint64) error
+
+	LoadBaseHeight() (uint64, error)
+
+	SaveBaseHeight(height uint64) error
+
+	LoadBlockSyncBaseHeight() (uint64, error)
+
+	SaveBlockSyncBaseHeight(height uint64) error
+
+	LoadIndexerBaseHeight() (uint64, error)
+
+	SaveIndexerBaseHeight(height uint64) error
 }

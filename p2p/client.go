@@ -3,6 +3,7 @@ package p2p
 import (
 	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -204,6 +205,7 @@ func (c *Client) SaveBlock(ctx context.Context, height uint64, blockBytes []byte
 	if !c.conf.BlockSyncEnabled {
 		return nil
 	}
+
 	cid, err := c.blocksync.SaveBlock(ctx, blockBytes)
 	if err != nil {
 		return fmt.Errorf("blocksync add block: %w", err)
@@ -220,27 +222,44 @@ func (c *Client) SaveBlock(ctx context.Context, height uint64, blockBytes []byte
 }
 
 // RemoveBlocks is used to prune blocks from the block sync datastore.
-func (c *Client) RemoveBlocks(ctx context.Context, from, to uint64) error {
-	if from <= 0 {
-		return fmt.Errorf("from height must be greater than 0: %w", gerrc.ErrInvalidArgument)
-	}
+func (c *Client) RemoveBlocks(ctx context.Context, to uint64) (uint64, error) {
+	prunedBlocks := uint64(0)
 
-	if to <= from {
-		return fmt.Errorf("to height must be greater than from height: to: %d: from: %d: %w", to, from, gerrc.ErrInvalidArgument)
+	from, err := c.store.LoadBlockSyncBaseHeight()
+	if errors.Is(err, gerrc.ErrNotFound) {
+		c.logger.Error("load blocksync base height", "err", err)
+	} else if err != nil {
+		return prunedBlocks, err
 	}
 
 	for h := from; h < to; h++ {
 
 		cid, err := c.store.LoadBlockCid(h)
 		if err != nil {
-			return fmt.Errorf("load block id from store %d: %w", h, err)
+			c.logger.Error("load block id from store", "height", h, "err", err)
+			continue
 		}
+
+		err = c.store.RemoveBlockCid(h)
+		if err != nil {
+			c.logger.Error("remove cid from dymint store", "height", h, "cid", cid, "err", err)
+		}
+
 		err = c.blocksync.DeleteBlock(ctx, cid)
 		if err != nil {
-			return fmt.Errorf("remove block height %d: %w", h, err)
+			c.logger.Error("remove blocksync block", "height", h, "err", err)
+			continue
 		}
+
+		prunedBlocks++
 	}
-	return nil
+
+	err = c.store.SaveBlockSyncBaseHeight(to)
+	if err != nil {
+		return prunedBlocks, err
+	}
+
+	return prunedBlocks, nil
 }
 
 // AdvertiseBlockIdToDHT is used to advertise the identifier (cid) for a specific block height to the DHT, using a PutValue operation
@@ -619,7 +638,11 @@ func (c *Client) advertiseBlockSyncCids(ctx context.Context) {
 	if err != nil {
 		return
 	}
-	for h := state.BaseHeight; h <= state.Height(); h++ {
+	baseHeight, err := c.store.LoadBaseHeight()
+	if err != nil {
+		return
+	}
+	for h := baseHeight; h <= state.Height(); h++ {
 
 		id, err := c.store.LoadBlockCid(h)
 		if err != nil || id == cid.Undef {
