@@ -611,6 +611,7 @@ func (txi *TxIndex) pruneTxsAndEvents(from, to uint64, logger log.Logger) (uint6
 
 		// deleted all events indexed with prefix height (by hash and by keyheight)
 		for ; it.Valid(); it.Next() {
+			toFlush++
 			if err := batch.Delete(it.Key()); err != nil {
 				logger.Error("pruning txs indexer event key", "height", h, "error", err)
 				continue
@@ -621,7 +622,6 @@ func (txi *TxIndex) pruneTxsAndEvents(from, to uint64, logger log.Logger) (uint6
 				continue
 			}
 			pruned++
-			toFlush++
 		}
 
 		it.Discard()
