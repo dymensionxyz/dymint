@@ -38,4 +38,10 @@ func TestPersistInstruction(t *testing.T) {
 	instruction, err = LoadInstructionFromDisk(dir)
 	require.NoError(t, err)
 	require.Equal(t, instructionWithFaultyDrs, instruction)
+
+	err = DeleteInstructionFromDisk(dir)
+	require.NoError(t, err)
+
+	_, err = LoadInstructionFromDisk(dir)
+	require.Error(t, err)
 }
