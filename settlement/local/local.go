@@ -55,8 +55,11 @@ type Client struct {
 }
 
 func (c *Client) GetRollapp() (*types.Rollapp, error) {
-	// TODO implement me
-	panic("implement me")
+	return &types.Rollapp{
+		RollappID:           c.rollappID,
+		Revision:            0,
+		RevisionStartHeight: 1,
+	}, nil
 }
 
 var _ settlement.ClientI = (*Client)(nil)
