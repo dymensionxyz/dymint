@@ -171,26 +171,31 @@ func (m *Manager) handleSequencerForkTransition(instruction types.Instruction) {
 		if len(nextBlock.Data.Txs) > 0 {
 			panic("unexpected transactions in next block")
 		}
+	} else {
+		// Create a new block with the consensus messages
+		m.Executor.AddConsensusMsgs(consensusMsgs...)
+		_, _, err := m.ProduceApplyGossipBlock(context.Background(), true)
+		if err != nil {
+			panic(fmt.Sprintf("produce apply gossip block: %v", err))
+		}
 
-		return
+		// Create another block emtpy
+		_, _, err = m.ProduceApplyGossipBlock(context.Background(), true)
+		if err != nil {
+			panic(fmt.Sprintf("produce apply gossip block: %v", err))
+		}
 	}
 
-	// Create a new block with the consensus messages
-	m.Executor.AddConsensusMsgs(consensusMsgs...)
-	_, _, err := m.ProduceApplyGossipBlock(context.Background(), true)
+	resp, err := m.SLClient.GetBatchAtHeight(instruction.RevisionStartHeight)
 	if err != nil {
-		panic(fmt.Sprintf("produce apply gossip block: %v", err))
+		panic(fmt.Sprintf("get batch at height: %v", err))
 	}
 
-	// Create another block emtpy
-	_, _, err = m.ProduceApplyGossipBlock(context.Background(), true)
-	if err != nil {
-		panic(fmt.Sprintf("produce apply gossip block: %v", err))
-	}
-
-	// Create Batch and send
-	_, err = m.CreateAndSubmitBatch(m.Conf.BatchSubmitBytes, false)
-	if err != nil {
-		panic(fmt.Sprintf("create and submit batch: %v", err))
+	if resp.Batch == nil {
+		// Create Batch and send
+		_, err := m.CreateAndSubmitBatch(m.Conf.BatchSubmitBytes, false)
+		if err != nil {
+			panic(fmt.Sprintf("create and submit batch: %v", err))
+		}
 	}
 }
