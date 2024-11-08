@@ -11,6 +11,13 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+const (
+	syncLoop         = "syncLoop"
+	validateLoop     = "validateLoop"
+	p2pGossipLoop    = "applyGossipedBlocksLoop"
+	p2pBlocksyncLoop = "applyBlockSyncBlocksLoop"
+)
+
 // setFraudHandler sets the fraud handler for the block manager.
 func (m *Manager) runAsFullNode(ctx context.Context, eg *errgroup.Group) error {
 	m.logger.Info("starting block manager", "mode", "full node")
@@ -73,12 +80,12 @@ func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {
 func (m *Manager) subscribeFullNodeEvents(ctx context.Context) {
 
 	// Subscribe to new (or finalized) state updates events.
-	go uevent.MustSubscribe(ctx, m.Pubsub, "syncLoop", settlement.EventQueryNewSettlementBatchAccepted, m.onNewStateUpdate, m.logger)
-	go uevent.MustSubscribe(ctx, m.Pubsub, "validateLoop", settlement.EventQueryNewSettlementBatchFinalized, m.onNewStateUpdateFinalized, m.logger)
+	go uevent.MustSubscribe(ctx, m.Pubsub, syncLoop, settlement.EventQueryNewSettlementBatchAccepted, m.onNewStateUpdate, m.logger)
+	go uevent.MustSubscribe(ctx, m.Pubsub, validateLoop, settlement.EventQueryNewSettlementBatchFinalized, m.onNewStateUpdateFinalized, m.logger)
 
 	// Subscribe to P2P received blocks events (used for P2P syncing).
-	go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewGossipedBlock, m.OnReceivedBlock, m.logger)
-	go uevent.MustSubscribe(ctx, m.Pubsub, "applyBlockSyncBlocksLoop", p2p.EventQueryNewBlockSyncBlock, m.OnReceivedBlock, m.logger)
+	go uevent.MustSubscribe(ctx, m.Pubsub, p2pGossipLoop, p2p.EventQueryNewGossipedBlock, m.OnReceivedBlock, m.logger)
+	go uevent.MustSubscribe(ctx, m.Pubsub, p2pBlocksyncLoop, p2p.EventQueryNewBlockSyncBlock, m.OnReceivedBlock, m.logger)
 }
 
 func (m *Manager) unsubscribeFullNodeEvents(ctx context.Context) {
@@ -90,8 +97,8 @@ func (m *Manager) unsubscribeFullNodeEvents(ctx context.Context) {
 			m.logger.Error("Unsubscribe", "clientId", clientId, "error", err)
 		}
 	}
-	unsubscribe("syncLoop")
-	unsubscribe("validateLoop")
-	unsubscribe("applyGossipedBlocksLoop")
-	unsubscribe("applyBlockSyncBlocksLoop")
+	unsubscribe(syncLoop)
+	unsubscribe(validateLoop)
+	unsubscribe(p2pGossipLoop)
+	unsubscribe(p2pBlocksyncLoop)
 }
