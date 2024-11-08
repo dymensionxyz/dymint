@@ -146,18 +146,50 @@ func (m *Manager) handleSequencerForkTransition(instruction types.Instruction) {
 
 	// Always bump the account sequences
 	msgBumpSequences := &sequencers.MsgBumpAccountSequences{Authority: "gov"}
-
 	consensusMsgs = append(consensusMsgs, msgBumpSequences)
+
+	// validate we haven't create the blocks yet
+	if m.State.NextHeight() == instruction.RevisionStartHeight+2 {
+		block, err := m.Store.LoadBlock(instruction.RevisionStartHeight)
+		if err != nil {
+			panic(fmt.Sprintf("load block: %v", err))
+		}
+
+		if len(block.Data.ConsensusMessages) <= 0 {
+			panic("expected consensus messages in block")
+		}
+
+		nextBlock, err := m.Store.LoadBlock(instruction.RevisionStartHeight + 1)
+		if err != nil {
+			panic(fmt.Sprintf("load next block: %v", err))
+		}
+
+		if len(nextBlock.Data.ConsensusMessages) > 0 {
+			panic("unexpected consensus messages in next block")
+		}
+
+		if len(nextBlock.Data.Txs) > 0 {
+			panic("unexpected transactions in next block")
+		}
+
+		return
+	}
 
 	// Create a new block with the consensus messages
 	m.Executor.AddConsensusMsgs(consensusMsgs...)
-	m.ProduceApplyGossipBlock(context.Background(), true)
+	_, _, err := m.ProduceApplyGossipBlock(context.Background(), true)
+	if err != nil {
+		panic(fmt.Sprintf("produce apply gossip block: %v", err))
+	}
 
 	// Create another block emtpy
-	m.ProduceApplyGossipBlock(context.Background(), true)
+	_, _, err = m.ProduceApplyGossipBlock(context.Background(), true)
+	if err != nil {
+		panic(fmt.Sprintf("produce apply gossip block: %v", err))
+	}
 
 	// Create Batch and send
-	_, err := m.CreateAndSubmitBatch(m.Conf.BatchSubmitBytes, false)
+	_, err = m.CreateAndSubmitBatch(m.Conf.BatchSubmitBytes, false)
 	if err != nil {
 		panic(fmt.Sprintf("create and submit batch: %v", err))
 	}
