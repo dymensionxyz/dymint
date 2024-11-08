@@ -13,8 +13,10 @@ import (
 
 	"github.com/dymensionxyz/dymint/da/registry"
 	"github.com/dymensionxyz/dymint/indexers/txindex"
+	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/store"
 	uerrors "github.com/dymensionxyz/dymint/utils/errors"
+	uevent "github.com/dymensionxyz/dymint/utils/event"
 	"github.com/dymensionxyz/dymint/version"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
@@ -247,7 +249,11 @@ func (m *Manager) Start(ctx context.Context) error {
 
 	// Start the settlement sync loop in the background
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
-		return m.SettlementSyncLoop(ctx)
+		err := m.SettlementSyncLoop(ctx)
+		if err != nil {
+			m.freezeNode(context.Background(), err)
+		}
+		return nil
 	})
 
 	// Monitor sequencer set updates
@@ -370,4 +376,11 @@ func (m *Manager) setDA(daconfig string, dalcKV store.KV, logger log.Logger) err
 // setFraudHandler sets the fraud handler for the block manager.
 func (m *Manager) setFraudHandler(handler *FreezeHandler) {
 	m.FraudHandler = handler
+}
+
+func (m *Manager) freezeNode(ctx context.Context, err error) {
+	uevent.MustPublish(ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
+	if m.RunMode == RunModeFullNode {
+		m.unsubscribeFullNodeEvents(ctx)
+	}
 }

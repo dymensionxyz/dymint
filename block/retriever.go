@@ -68,6 +68,7 @@ func (m *Manager) applyLocalBlock(height uint64) error {
 	if err != nil {
 		return fmt.Errorf("load block: %w", gerrc.ErrNotFound)
 	}
+
 	commit, err := m.Store.LoadCommit(height)
 	if err != nil {
 		return fmt.Errorf("load commit: %w", gerrc.ErrNotFound)
