@@ -69,8 +69,7 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 
 				settlementBatch, err := m.SLClient.GetBatchAtHeight(m.State.NextHeight())
 				if err != nil {
-					m.logger.Error("retrieve SL batch", "err", err)
-					break
+					return fmt.Errorf("retrieve SL batch err: %w", err)
 				}
 				m.logger.Info("Retrieved state update from SL.", "state_index", settlementBatch.StateIndex)
 
