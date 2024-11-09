@@ -408,5 +408,4 @@ func (m *Manager) freezeNode(ctx context.Context, err error) {
 	if m.RunMode == RunModeFullNode {
 		m.unsubscribeFullNodeEvents(ctx)
 	}
-
 }

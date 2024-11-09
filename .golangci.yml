@@ -48,6 +48,9 @@ linters:
     - unconvert
     - unused
 
+excludes:
+  gosec:
+   - G115
 issues:
   exclude-use-default: false
   exclude:

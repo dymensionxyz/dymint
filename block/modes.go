@@ -3,6 +3,7 @@ package block
 import (
 	"context"
 	"fmt"
+
 	"github.com/dymensionxyz/dymint/types"
 
 	"github.com/dymensionxyz/dymint/p2p"
