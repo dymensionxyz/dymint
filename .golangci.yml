@@ -48,9 +48,6 @@ linters:
     - unconvert
     - unused
 
-excludes:
-  gosec:
-   - G115
 issues:
   exclude-use-default: false
   exclude:
@@ -75,3 +72,6 @@ linters-settings:
         disabled: true
   errcheck:
     check-type-assertions: true
+  gosec:
+    settings:
+      exclude: "G115"
