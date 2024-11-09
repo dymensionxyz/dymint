@@ -116,6 +116,9 @@ type Manager struct {
 
 	// validates all non-finalized state updates from settlement, checking there is consistency between DA and P2P blocks, and the information in the state update.
 	SettlementValidator *SettlementValidator
+
+	// frozen indicates if the node is frozen due to unhealthy event. used to stop block production.
+	frozen bool
 }
 
 // NewManager creates new block Manager.
@@ -173,6 +176,7 @@ func NewManager(
 		settlementSyncingC:    make(chan struct{}, 1), // use of buffered channel to avoid blocking. In case channel is full, its skipped because there is an ongoing syncing process, but syncing height is updated, which means the ongoing syncing will sync to the new height.
 		settlementValidationC: make(chan struct{}, 1), // use of buffered channel to avoid blocking. In case channel is full, its skipped because there is an ongoing validation process, but validation height is updated, which means the ongoing validation will validate to the new height.
 		syncedFromSettlement:  uchannel.NewNudger(),   // used by the sequencer to wait  till the node completes the syncing from settlement.
+		frozen:                false,
 	}
 	m.setFraudHandler(NewFreezeHandler(m))
 
@@ -396,9 +400,13 @@ func (m *Manager) setFraudHandler(handler *FreezeHandler) {
 	m.FraudHandler = handler
 }
 
+// freezeNode sets the node as unhealthy and prevents the node continues producing and processing blocks
 func (m *Manager) freezeNode(ctx context.Context, err error) {
+	m.logger.Info("Freezing node", "err", err)
+	m.frozen = true
 	uevent.MustPublish(ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
 	if m.RunMode == RunModeFullNode {
 		m.unsubscribeFullNodeEvents(ctx)
 	}
+
 }

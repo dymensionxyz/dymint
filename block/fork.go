@@ -8,10 +8,8 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 
-	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/types"
 	sequencers "github.com/dymensionxyz/dymint/types/pb/rollapp/sequencers/types"
-	uevent "github.com/dymensionxyz/dymint/utils/event"
 	"github.com/dymensionxyz/dymint/version"
 )
 
@@ -61,8 +59,9 @@ func (m *Manager) checkForkUpdate(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-
-		m.freezeNode(ctx)
+		err := fmt.Errorf("fork update")
+		m.freezeNode(ctx, err)
+		return err
 	}
 
 	return nil
@@ -107,14 +106,6 @@ func (m *Manager) shouldStopNode(rollapp *types.Rollapp, block *types.Block) boo
 	return false
 }
 
-// freezeNode stops the rollapp node
-func (m *Manager) freezeNode(ctx context.Context) {
-	m.logger.Info("Freezing node due to fork update")
-
-	err := fmt.Errorf("node frozen due to fork update")
-	uevent.MustPublish(ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
-}
-
 // forkNeeded returns true if the fork file exists
 func (m *Manager) forkNeeded() (types.Instruction, bool) {
 	if instruction, err := types.LoadInstructionFromDisk(m.RootDir); err == nil {
@@ -139,7 +130,7 @@ func (m *Manager) handleSequencerForkTransition(instruction types.Instruction) {
 		panic(fmt.Sprintf("validate existing blocks: %v", err))
 	}
 
-	if err := m.ensureBatchExists(instruction.RevisionStartHeight); err != nil {
+	if err := m.handleForkBatchSubmission(instruction.RevisionStartHeight); err != nil {
 		panic(fmt.Sprintf("ensure batch exists: %v", err))
 	}
 }
@@ -175,14 +166,14 @@ func (m *Manager) prepareDRSUpgradeMessages(faultyDRS *uint64) ([]proto.Message,
 // handleForkBlockCreation manages the block creation process during a fork transition.
 //
 // The function implements the following logic:
-//   1. Checks if blocks for the fork transition have already been created by comparing heights
-//   2. If blocks exist (NextHeight == RevisionStartHeight + 2), validates their state
-//   3. If blocks don't exist, triggers the creation of new blocks with the provided consensus messages
+//  1. Checks if blocks for the fork transition have already been created by comparing heights
+//  2. If blocks exist (NextHeight == RevisionStartHeight + 2), validates their state
+//  3. If blocks don't exist, triggers the creation of new blocks with the provided consensus messages
 //
 // Block Creation Rules:
 //   - Two blocks are considered in this process:
-//     * First block: Contains consensus messages for the fork
-//     * Second block: Should be empty (no messages or transactions)
+//   - First block: Contains consensus messages for the fork
+//   - Second block: Should be empty (no messages or transactions)
 //   - Total height increase should be 2 blocks from RevisionStartHeight
 func (m *Manager) handleForkBlockCreation(instruction types.Instruction, consensusMsgs []proto.Message) error {
 	if m.State.NextHeight() == instruction.RevisionStartHeight+2 {
@@ -241,14 +232,14 @@ func (m *Manager) createNewBlocks(consensusMsgs []proto.Message) error {
 	return nil
 }
 
-// ensureBatchExists verifies and, if necessary, creates a batch at the specified height.
+// handleForkBatchSubmission verifies and, if necessary, creates a batch at the specified height.
 // This function is critical for maintaining batch consistency in the blockchain while
 // preventing duplicate batch submissions.
 //
 // The function performs the following operations:
 //  1. Checks for an existing batch at the specified height via SLClient
 //  2. If no batch exists, creates and submits a new one
-func (m *Manager) ensureBatchExists(height uint64) error {
+func (m *Manager) handleForkBatchSubmission(height uint64) error {
 	resp, err := m.SLClient.GetBatchAtHeight(height)
 	if err != nil {
 		return fmt.Errorf("getting batch at height: %v", err)
