@@ -409,3 +409,8 @@ func (m *Manager) freezeNode(ctx context.Context, err error) {
 		m.unsubscribeFullNodeEvents(ctx)
 	}
 }
+
+// isFrozen returns whether the node is in frozen state
+func (m *Manager) isFrozen() bool {
+	return m.frozen
+}

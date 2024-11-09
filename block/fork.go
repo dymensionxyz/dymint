@@ -2,6 +2,7 @@ package block
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"time"
@@ -11,6 +12,7 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 	sequencers "github.com/dymensionxyz/dymint/types/pb/rollapp/sequencers/types"
 	"github.com/dymensionxyz/dymint/version"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 )
 
 const (
@@ -34,6 +36,9 @@ func (m *Manager) MonitorForkUpdateLoop(ctx context.Context) error {
 		case <-ticker.C:
 			if err := m.checkForkUpdate(ctx); err != nil {
 				continue
+			}
+			if m.frozen {
+				return nil
 			}
 		}
 	}
@@ -61,7 +66,6 @@ func (m *Manager) checkForkUpdate(ctx context.Context) error {
 		}
 		err := fmt.Errorf("fork update")
 		m.freezeNode(ctx, err)
-		return err
 	}
 
 	return nil
@@ -241,7 +245,7 @@ func (m *Manager) createNewBlocks(consensusMsgs []proto.Message) error {
 //  2. If no batch exists, creates and submits a new one
 func (m *Manager) handleForkBatchSubmission(height uint64) error {
 	resp, err := m.SLClient.GetBatchAtHeight(height)
-	if err != nil {
+	if err != nil && !errors.Is(err, gerrc.ErrNotFound) {
 		return fmt.Errorf("getting batch at height: %v", err)
 	}
 
