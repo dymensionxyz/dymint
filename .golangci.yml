@@ -72,6 +72,3 @@ linters-settings:
         disabled: true
   errcheck:
     check-type-assertions: true
-  gosec:
-    settings:
-      exclude: "G115"

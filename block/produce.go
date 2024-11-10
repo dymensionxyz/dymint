@@ -46,7 +46,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int)
 			}
 
 			// finish the block production loop in case the node is frozen
-			if m.frozen {
+			if m.isFrozen() {
 				return nil
 			}
 

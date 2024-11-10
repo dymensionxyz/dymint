@@ -118,7 +118,7 @@ type Manager struct {
 	SettlementValidator *SettlementValidator
 
 	// frozen indicates if the node is frozen due to unhealthy event. used to stop block production.
-	frozen bool
+	frozen atomic.Bool
 }
 
 // NewManager creates new block Manager.
@@ -176,10 +176,8 @@ func NewManager(
 		settlementSyncingC:    make(chan struct{}, 1), // use of buffered channel to avoid blocking. In case channel is full, its skipped because there is an ongoing syncing process, but syncing height is updated, which means the ongoing syncing will sync to the new height.
 		settlementValidationC: make(chan struct{}, 1), // use of buffered channel to avoid blocking. In case channel is full, its skipped because there is an ongoing validation process, but validation height is updated, which means the ongoing validation will validate to the new height.
 		syncedFromSettlement:  uchannel.NewNudger(),   // used by the sequencer to wait  till the node completes the syncing from settlement.
-		frozen:                false,
 	}
 	m.setFraudHandler(NewFreezeHandler(m))
-
 	err = m.LoadStateOnInit(store, genesis, logger)
 	if err != nil {
 		return nil, fmt.Errorf("get initial state: %w", err)
@@ -403,7 +401,7 @@ func (m *Manager) setFraudHandler(handler *FreezeHandler) {
 // freezeNode sets the node as unhealthy and prevents the node continues producing and processing blocks
 func (m *Manager) freezeNode(ctx context.Context, err error) {
 	m.logger.Info("Freezing node", "err", err)
-	m.frozen = true
+	m.frozen.Store(true)
 	uevent.MustPublish(ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
 	if m.RunMode == RunModeFullNode {
 		m.unsubscribeFullNodeEvents(ctx)
@@ -412,5 +410,5 @@ func (m *Manager) freezeNode(ctx context.Context, err error) {
 
 // isFrozen returns whether the node is in frozen state
 func (m *Manager) isFrozen() bool {
-	return m.frozen
+	return m.frozen.Load()
 }
