@@ -165,7 +165,7 @@ func (m *Manager) prepareDRSUpgradeMessages(faultyDRS []uint32) ([]proto.Message
 		return nil, nil
 	}
 
-	actualDRS, err := strconv.Atoi(version.DrsVersion)
+	actualDRS, err := strconv.ParseUint(version.DrsVersion, 10, 32)
 	if err != nil {
 		return nil, fmt.Errorf("converting DRS version to int: %v", err)
 	}
