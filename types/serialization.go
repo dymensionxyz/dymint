@@ -294,6 +294,7 @@ func (s *State) FromProto(other *pb.State) error {
 
 	s.ConsensusParams = other.ConsensusParams
 	copy(s.LastResultsHash[:], other.LastResultsHash)
+	copy(s.LastHeaderHash[:], other.LastHeaderHash)
 	copy(s.AppHash[:], other.AppHash)
 	s.RollappParams = other.RollappParams
 	return nil
