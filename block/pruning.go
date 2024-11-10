@@ -2,38 +2,30 @@ package block
 
 import (
 	"context"
-	"fmt"
 )
 
-// PruneBlocks prune all block related data from dymint store up to (but not including) retainHeight. It returns the number of blocks pruned, used for testing.
-func (m *Manager) PruneBlocks(retainHeight uint64) (uint64, error) {
-	// prune blocks from blocksync store
-	err := m.P2PClient.RemoveBlocks(context.Background(), m.State.BaseHeight, retainHeight)
-	if err != nil {
-		m.logger.Error("pruning blocksync store", "retain_height", retainHeight, "err", err)
+// Prune function prune all block related data from dymint store and blocksync store up to (but not including) retainHeight.
+func (m *Manager) Prune(retainHeight uint64) {
+	// logging pruning result
+	logResult := func(err error, source string, retainHeight uint64, pruned uint64) {
+		if err != nil {
+			m.logger.Error("pruning", "from", source, "retain height", retainHeight, "err", err)
+		} else {
+			m.logger.Debug("pruned", "from", source, "retain height", retainHeight, "pruned", pruned)
+		}
 	}
 
-	// prune blocks from indexer store
-	err = m.indexerService.Prune(m.State.BaseHeight, retainHeight)
-	if err != nil {
-		m.logger.Error("pruning indexer", "retain_height", retainHeight, "err", err)
-	}
+	// prune blocks from blocksync store
+	pruned, err := m.P2PClient.RemoveBlocks(context.Background(), retainHeight)
+	logResult(err, "blocksync", retainHeight, pruned)
+
+	// prune indexed block and txs and associated events
+	pruned, err = m.IndexerService.Prune(retainHeight, m.Store)
+	logResult(err, "indexer", retainHeight, pruned)
 
 	// prune blocks from dymint store
-	pruned, err := m.Store.PruneStore(m.State.BaseHeight, retainHeight, m.logger)
-	if err != nil {
-		return 0, fmt.Errorf("prune block store: %w", err)
-	}
-
-	m.State.BaseHeight = retainHeight
-	_, err = m.Store.SaveState(m.State, nil)
-	if err != nil {
-		return 0, fmt.Errorf("save state: %w", err)
-	}
-
-	m.logger.Info("pruned blocks", "pruned", pruned, "retain_height", retainHeight)
-
-	return pruned, nil
+	pruned, err = m.Store.PruneStore(retainHeight, m.logger)
+	logResult(err, "dymint store", retainHeight, pruned)
 }
 
 func (m *Manager) PruningLoop(ctx context.Context) error {
@@ -48,12 +40,7 @@ func (m *Manager) PruningLoop(ctx context.Context) error {
 			} else { // do not delete anything that is not validated yet
 				pruningHeight = min(m.SettlementValidator.NextValidationHeight(), uint64(retainHeight))
 			}
-
-			_, err := m.PruneBlocks(pruningHeight)
-			if err != nil {
-				m.logger.Error("pruning blocks", "retainHeight", retainHeight, "err", err)
-			}
-
+			m.Prune(pruningHeight)
 		}
 	}
 }

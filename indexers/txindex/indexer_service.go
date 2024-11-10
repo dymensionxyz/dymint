@@ -2,8 +2,11 @@ package txindex
 
 import (
 	"context"
+	"errors"
 
 	indexer "github.com/dymensionxyz/dymint/indexers/blockindexer"
+	"github.com/dymensionxyz/dymint/store"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/tendermint/tendermint/libs/service"
 	"github.com/tendermint/tendermint/types"
 )
@@ -59,7 +62,7 @@ func (is *IndexerService) OnStart() error {
 			msg := <-blockHeadersSub.Out()
 			eventDataHeader, _ := msg.Data().(types.EventDataNewBlockHeader)
 			height := eventDataHeader.Header.Height
-			batch := NewBatch(eventDataHeader.NumTxs)
+			batch := NewBatch(eventDataHeader.NumTxs, height)
 
 			for i := int64(0); i < eventDataHeader.NumTxs; i++ {
 				msg2 := <-txsSub.Out()
@@ -99,14 +102,33 @@ func (is *IndexerService) OnStop() {
 }
 
 // Prune removes tx and blocks indexed up to (but not including) a height.
-func (is *IndexerService) Prune(from, to uint64) error {
-	_, err := is.blockIdxr.Prune(from, to, is.Logger)
-	if err != nil {
-		return err
+func (is *IndexerService) Prune(to uint64, s store.Store) (uint64, error) {
+	// load indexer base height
+	indexerBaseHeight, err := s.LoadIndexerBaseHeight()
+
+	if errors.Is(err, gerrc.ErrNotFound) {
+		is.Logger.Error("load indexer base height", "err", err)
+	} else if err != nil {
+		return 0, err
 	}
-	_, err = is.txIdxr.Prune(from, to, is.Logger)
+
+	// prune indexed blocks
+	blockPruned, err := is.blockIdxr.Prune(indexerBaseHeight, to, is.Logger)
 	if err != nil {
-		return err
+		return blockPruned, err
 	}
-	return nil
+
+	// prune indexes txs
+	txPruned, err := is.txIdxr.Prune(indexerBaseHeight, to, is.Logger)
+	if err != nil {
+		return txPruned, err
+	}
+
+	// store indexer base height
+	err = s.SaveIndexerBaseHeight(to)
+	if err != nil {
+		is.Logger.Error("saving indexer base height", "err", err)
+	}
+
+	return blockPruned + txPruned, nil
 }

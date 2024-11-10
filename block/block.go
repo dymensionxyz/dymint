@@ -35,11 +35,9 @@ func (m *Manager) applyBlockWithFraudHandling(block *types.Block, commit *types.
 		// in specific ways. For example, once a fault is detected, it publishes a DataHealthStatus event to the
 		// pubsub which sets the node in a frozen state.
 		m.FraudHandler.HandleFault(context.Background(), err)
-
-		return err
 	}
 
-	return nil
+	return err
 }
 
 // applyBlock applies the block to the store and the abci app.
@@ -121,7 +119,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 			select {
 			case m.pruningC <- retainHeight:
 			default:
-				m.logger.Error("pruning channel full. skipping pruning", "retainHeight", retainHeight)
+				m.logger.Debug("pruning channel full. skipping pruning", "retainHeight", retainHeight)
 			}
 		}
 

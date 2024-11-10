@@ -65,15 +65,26 @@ func TestPruningRetainHeight(t *testing.T) {
 		require.NoError(err)
 	}
 	validRetainHeight := manager.NextHeightToSubmit() // the max possible valid retain height
-	for i := validRetainHeight; i < manager.State.Height(); i++ {
-		expectedPruned := validRetainHeight - manager.State.BaseHeight
-		pruned, err := manager.PruneBlocks(i)
+
+	validatePruning := func(i uint64, expectedPruned uint64, pruned uint64, err error) {
 		if i <= validRetainHeight {
 			require.NoError(err)
 			assert.Equal(t, expectedPruned, pruned)
 		} else {
 			require.Error(gerrc.ErrInvalidArgument)
 		}
+	}
+	for i := validRetainHeight; i < manager.State.Height(); i++ {
+
+		baseHeight := uint64(1)
+		expectedPruned := validRetainHeight - baseHeight
+
+		pruned, err := manager.Store.PruneStore(validRetainHeight, log.NewNopLogger())
+		validatePruning(i, expectedPruned, pruned, err)
+
+		pruned, err = manager.P2PClient.RemoveBlocks(ctx, validRetainHeight)
+		validatePruning(i, expectedPruned, pruned, err)
+
 	}
 
 }
