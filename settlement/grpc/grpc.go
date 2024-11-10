@@ -56,6 +56,11 @@ func (c *Client) GetRollapp() (*types.Rollapp, error) {
 	panic("implement me")
 }
 
+// GetObsoleteDrs returns the list of deprecated DRS.
+func (c *Client) GetObsoleteDrs() ([]uint32, error) {
+	panic("GetObsoleteDrs not implemented in local SL")
+}
+
 var _ settlement.ClientI = (*Client)(nil)
 
 // Init initializes the mock layer client.

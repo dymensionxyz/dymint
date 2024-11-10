@@ -244,6 +244,11 @@ func (c *Client) GetAllSequencers() ([]types.Sequencer, error) {
 	return c.GetBondedSequencers()
 }
 
+// GetObsoleteDrs returns the list of deprecated DRS.
+func (c *Client) GetObsoleteDrs() ([]uint32, error) {
+	panic("GetObsoleteDrs not implemented in local SL")
+}
+
 // GetBondedSequencers implements settlement.ClientI.
 func (c *Client) GetBondedSequencers() ([]types.Sequencer, error) {
 	proposer, err := c.GetProposerAtHeight(-1)

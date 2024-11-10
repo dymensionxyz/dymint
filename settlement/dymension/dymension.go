@@ -589,6 +589,35 @@ func (c *Client) GetRollapp() (*types.Rollapp, error) {
 	}, nil
 }
 
+// GetObsoleteDrs returns the list of deprecated DRS.
+func (c *Client) GetObsoleteDrs() ([]uint32, error) {
+
+	var res *rollapptypes.QueryObsoleteDRSVersionsResponse
+	req := &rollapptypes.QueryObsoleteDRSVersionsRequest{}
+
+	err := c.RunWithRetry(func() error {
+		var err error
+		res, err = c.cosmosClient.GetRollappClient().ObsoleteDRSVersions(c.ctx, req)
+		if err == nil {
+			return nil
+		}
+		if status.Code(err) == codes.NotFound {
+			return retry.Unrecoverable(errors.Join(gerrc.ErrNotFound, err))
+		}
+		return err
+	})
+	if err != nil {
+		return nil, fmt.Errorf("get rollapp: %w", err)
+	}
+
+	// not supposed to happen, but just in case
+	if res == nil {
+		return nil, fmt.Errorf("empty response: %w", gerrc.ErrUnknown)
+	}
+
+	return res.DrsVersions, nil
+}
+
 func (c *Client) broadcastBatch(msgUpdateState *rollapptypes.MsgUpdateState) error {
 	txResp, err := c.cosmosClient.BroadcastTx(c.config.DymAccountName, msgUpdateState)
 	if err != nil {

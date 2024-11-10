@@ -97,4 +97,6 @@ type ClientI interface {
 	CheckRotationInProgress() (*types.Sequencer, error)
 	// GetRollapp returns the rollapp information.
 	GetRollapp() (*types.Rollapp, error)
+	// GetObsoleteDrs returns the list of deprecated DRS.
+	GetObsoleteDrs() ([]uint32, error)
 }
