@@ -591,7 +591,6 @@ func (c *Client) GetRollapp() (*types.Rollapp, error) {
 
 // GetObsoleteDrs returns the list of deprecated DRS.
 func (c *Client) GetObsoleteDrs() ([]uint32, error) {
-
 	var res *rollapptypes.QueryObsoleteDRSVersionsResponse
 	req := &rollapptypes.QueryObsoleteDRSVersionsRequest{}
 
