@@ -8,10 +8,8 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 
-	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/types"
 	sequencers "github.com/dymensionxyz/dymint/types/pb/rollapp/sequencers/types"
-	uevent "github.com/dymensionxyz/dymint/utils/event"
 	"github.com/dymensionxyz/dymint/version"
 )
 
@@ -62,7 +60,7 @@ func (m *Manager) checkForkUpdate(ctx context.Context) error {
 			return err
 		}
 
-		m.freezeNode(ctx)
+		m.freezeNode(ctx, fmt.Errorf("fork update detected"))
 	}
 
 	return nil
@@ -105,14 +103,6 @@ func (m *Manager) shouldStopNode(rollapp *types.Rollapp, block *types.Block) boo
 	}
 
 	return false
-}
-
-// freezeNode stops the rollapp node
-func (m *Manager) freezeNode(ctx context.Context) {
-	m.logger.Info("Freezing node due to fork update")
-
-	err := fmt.Errorf("node frozen due to fork update")
-	uevent.MustPublish(ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
 }
 
 // forkNeeded returns true if the fork file exists
