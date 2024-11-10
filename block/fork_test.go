@@ -241,7 +241,14 @@ func TestCreateInstruction(t *testing.T) {
 			manager := &Manager{
 				RootDir: t.TempDir(), // Use temporary directory for testing
 			}
+			mockSL := new(settlement.MockClientI)
+			mockSL.On("GetObsoleteDrs").Return([]uint32{}, nil)
+			mockSL.On("GetRollapp").Return(&types.Rollapp{
+				Revision:            2,
+				RevisionStartHeight: 100,
+			}, nil)
 
+			manager.SLClient = mockSL
 			err := manager.createInstruction(tt.rollapp)
 			if tt.expectedError {
 				assert.Error(t, err)

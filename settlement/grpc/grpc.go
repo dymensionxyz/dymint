@@ -58,7 +58,7 @@ func (c *Client) GetRollapp() (*types.Rollapp, error) {
 
 // GetObsoleteDrs returns the list of deprecated DRS.
 func (c *Client) GetObsoleteDrs() ([]uint32, error) {
-	panic("GetObsoleteDrs not implemented in local SL")
+	return []uint32{}, nil
 }
 
 var _ settlement.ClientI = (*Client)(nil)

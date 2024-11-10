@@ -22,8 +22,7 @@ func TestPersistInstruction(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, instructionWithNilFaultyDrs, instruction)
 
-	faultyDrs := new(uint64)
-	*faultyDrs = 1
+	faultyDrs := []uint32{1}
 	instructionWithFaultyDrs := Instruction{
 		Revision:            1,
 		RevisionStartHeight: 1,
