@@ -72,12 +72,17 @@ func (m *Manager) checkForkUpdate(ctx context.Context) error {
 }
 
 func (m *Manager) createInstruction(rollapp *types.Rollapp) error {
+	obsoleteDrs, err := m.SLClient.GetObsoleteDrs()
+	if err != nil {
+		return err
+	}
 	instruction := types.Instruction{
 		Revision:            rollapp.Revision,
 		RevisionStartHeight: rollapp.RevisionStartHeight,
+		FaultyDRS:           obsoleteDrs,
 	}
 
-	err := types.PersistInstructionToDisk(m.RootDir, instruction)
+	err = types.PersistInstructionToDisk(m.RootDir, instruction)
 	if err != nil {
 		return err
 	}
@@ -155,7 +160,7 @@ func (m *Manager) handleSequencerForkTransition(instruction types.Instruction) {
 //   - If no faulty DRS version is provided (faultyDRS is nil), returns no messages
 //   - Validates the current DRS version against the potentially faulty version
 //   - Generates an upgrade message with the current valid DRS version
-func (m *Manager) prepareDRSUpgradeMessages(faultyDRS *uint64) ([]proto.Message, error) {
+func (m *Manager) prepareDRSUpgradeMessages(faultyDRS []uint32) ([]proto.Message, error) {
 	if faultyDRS == nil {
 		return nil, nil
 	}
@@ -165,8 +170,10 @@ func (m *Manager) prepareDRSUpgradeMessages(faultyDRS *uint64) ([]proto.Message,
 		return nil, fmt.Errorf("converting DRS version to int: %v", err)
 	}
 
-	if *faultyDRS == uint64(actualDRS) {
-		return nil, fmt.Errorf("running faulty DRS version %d", *faultyDRS)
+	for _, drs := range faultyDRS {
+		if drs == uint32(actualDRS) {
+			return nil, fmt.Errorf("running faulty DRS version %d", drs)
+		}
 	}
 
 	return []proto.Message{

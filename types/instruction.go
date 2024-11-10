@@ -9,7 +9,7 @@ import (
 type Instruction struct {
 	Revision            uint64
 	RevisionStartHeight uint64
-	FaultyDRS           *uint64
+	FaultyDRS           []uint32
 }
 
 const instructionFileName = "instruction.json"

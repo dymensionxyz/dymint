@@ -480,6 +480,63 @@ func (_c *MockClientI_GetNextProposer_Call) RunAndReturn(run func() (*types.Sequ
 	return _c
 }
 
+// GetObsoleteDrs provides a mock function with given fields:
+func (_m *MockClientI) GetObsoleteDrs() ([]uint32, error) {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetObsoleteDrs")
+	}
+
+	var r0 []uint32
+	var r1 error
+	if rf, ok := ret.Get(0).(func() ([]uint32, error)); ok {
+		return rf()
+	}
+	if rf, ok := ret.Get(0).(func() []uint32); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]uint32)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockClientI_GetObsoleteDrs_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetObsoleteDrs'
+type MockClientI_GetObsoleteDrs_Call struct {
+	*mock.Call
+}
+
+// GetObsoleteDrs is a helper method to define mock.On call
+func (_e *MockClientI_Expecter) GetObsoleteDrs() *MockClientI_GetObsoleteDrs_Call {
+	return &MockClientI_GetObsoleteDrs_Call{Call: _e.mock.On("GetObsoleteDrs")}
+}
+
+func (_c *MockClientI_GetObsoleteDrs_Call) Run(run func()) *MockClientI_GetObsoleteDrs_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockClientI_GetObsoleteDrs_Call) Return(_a0 []uint32, _a1 error) *MockClientI_GetObsoleteDrs_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockClientI_GetObsoleteDrs_Call) RunAndReturn(run func() ([]uint32, error)) *MockClientI_GetObsoleteDrs_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetProposerAtHeight provides a mock function with given fields: height
 func (_m *MockClientI) GetProposerAtHeight(height int64) (*types.Sequencer, error) {
 	ret := _m.Called(height)
