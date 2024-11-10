@@ -67,7 +67,12 @@ func (b *Block) ValidateWithState(state *State) error {
 		return NewErrTimeFraud(b, currentTime)
 	}
 
-	if b.Header.Version.App != state.Version.Consensus.App ||
+	appVersion := state.Version.Consensus.App
+	if b.Header.Height < state.VersionStartHeight {
+		appVersion--
+	}
+
+	if b.Header.Version.App != appVersion ||
 		b.Header.Version.Block != state.Version.Consensus.Block {
 		return ErrVersionMismatch
 	}

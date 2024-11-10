@@ -57,9 +57,8 @@ func NewStateFromGenesis(genDoc *tmtypes.GenesisDoc) (*types.State, error) {
 	}
 
 	s := types.State{
-		Version: InitStateVersion,
-		ChainID: genDoc.ChainID,
-
+		Version:         InitStateVersion,
+		ChainID:         genDoc.ChainID,
 		InitialHeight:   uint64(genDoc.InitialHeight),
 		ConsensusParams: *genDoc.ConsensusParams,
 	}

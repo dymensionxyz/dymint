@@ -218,6 +218,7 @@ func (m *Manager) Start(ctx context.Context) error {
 		// Upgrade revision on state
 		state := m.State
 		state.Version.Consensus.App = instruction.Revision
+		state.VersionStartHeight = instruction.RevisionStartHeight
 		m.State = state
 	}
 
