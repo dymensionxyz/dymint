@@ -167,7 +167,7 @@ func (m *Manager) produceBlock(allowEmpty bool, nextProposerHash *[32]byte) (*ty
 		proposerHashForBlock = *nextProposerHash
 	}
 
-	block = m.Executor.CreateBlock(newHeight, lastCommit, lastHeaderHash, proposerHashForBlock, m.State, maxBlockDataSize, false)
+	block = m.Executor.CreateBlock(newHeight, lastCommit, lastHeaderHash, proposerHashForBlock, m.State, maxBlockDataSize)
 	if !allowEmpty && len(block.Data.Txs) == 0 {
 		return nil, nil, fmt.Errorf("%w: %w", types.ErrEmptyBlock, ErrRecoverable)
 	}

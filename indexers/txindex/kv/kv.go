@@ -665,7 +665,6 @@ func (txi *TxIndex) pruneEvents(height uint64, batch store.KVBatch) (uint64, err
 		if err != nil {
 			return pruned, err
 		}
-		pruned++
 	}
 	return pruned, nil
 }

@@ -143,15 +143,11 @@ func (e *Executor) CreateBlock(
 	lastHeaderHash, nextSeqHash [32]byte,
 	state *types.State,
 	maxBlockDataSizeBytes uint64,
-	enforceEmpty bool,
 ) *types.Block {
 	maxBlockDataSizeBytes = min(maxBlockDataSizeBytes, uint64(max(minBlockMaxBytes, state.ConsensusParams.Block.MaxBytes)))
 
-	var txs types.Txs
-	if !enforceEmpty {
-		mempoolTxs := e.mempool.ReapMaxBytesMaxGas(int64(maxBlockDataSizeBytes), state.ConsensusParams.Block.MaxGas)
-		txs = toDymintTxs(mempoolTxs)
-	}
+	mempoolTxs := e.mempool.ReapMaxBytesMaxGas(int64(maxBlockDataSizeBytes), state.ConsensusParams.Block.MaxGas)
+	txs := toDymintTxs(mempoolTxs)
 
 	block := &types.Block{
 		Header: types.Header{
