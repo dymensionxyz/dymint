@@ -2,10 +2,8 @@ package block
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
-	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/tendermint/tendermint/libs/pubsub"
 
 	"github.com/dymensionxyz/dymint/settlement"
@@ -63,9 +61,6 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 					m.logger.Info("Synced from local", "store height", currH, "target height", m.LastSettlementHeight.Load())
 					continue
 				}
-				if !errors.Is(err, gerrc.ErrNotFound) {
-					m.logger.Error("Apply local block", "err", err)
-				}
 
 				settlementBatch, err := m.SLClient.GetBatchAtHeight(m.State.NextHeight())
 				if err != nil {
@@ -75,7 +70,14 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 
 				err = m.ApplyBatchFromSL(settlementBatch.Batch)
 				if err != nil {
-					return fmt.Errorf("process next DA batch. err:%w", err)
+					m.logger.Error("Apply batch from SL", "err", err)
+					break
+				}
+
+				// if height havent been updated, we are stuck
+				// this covers the scenario where no applicable blocks were found in the DA
+				if m.State.NextHeight() == currH {
+					return fmt.Errorf("stuck at height %d", currH)
 				}
 
 				m.logger.Info("Synced from DA", "store height", m.State.Height(), "target height", m.LastSettlementHeight.Load())
