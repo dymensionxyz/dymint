@@ -196,7 +196,7 @@ func NewManager(
 		state := m.State
 		state.Version.Consensus.App = instruction.Revision
 		state.RevisionStartHeight = instruction.RevisionStartHeight
-		if instruction.RevisionStartHeight == m.State.Height() {
+		if instruction.RevisionStartHeight == m.State.NextHeight() {
 			drsVersion, err := strconv.ParseUint(version.DrsVersion, 10, 32)
 			if err != nil {
 				return nil, fmt.Errorf("unable to parse drs version")

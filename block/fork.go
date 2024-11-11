@@ -96,7 +96,6 @@ func (m *Manager) createInstruction(rollapp *types.Rollapp) error {
 // 1. If the next state height is greater than or equal to the rollapp's revision start height.
 // 2. If the block's app version (equivalent to revision) is less than the rollapp's revision
 func (m *Manager) shouldStopNode(rollapp *types.Rollapp, block *types.Block) bool {
-
 	revision := block.Header.Version.App
 	if m.State.NextHeight() >= rollapp.RevisionStartHeight && revision < rollapp.Revision {
 		m.logger.Info(
@@ -127,7 +126,6 @@ func (m *Manager) forkNeeded() (types.Instruction, bool) {
 
 // handleSequencerForkTransition handles the sequencer fork transition
 func (m *Manager) handleSequencerForkTransition(instruction types.Instruction) {
-
 	consensusMsgs, err := m.prepareDRSUpgradeMessages(instruction.FaultyDRS)
 	if err != nil {
 		panic(fmt.Sprintf("prepare DRS upgrade messages: %v", err))
