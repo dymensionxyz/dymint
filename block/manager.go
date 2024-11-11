@@ -195,7 +195,7 @@ func NewManager(
 		// Upgrade revision on state
 		state := m.State
 		state.Version.Consensus.App = instruction.Revision
-		state.VersionStartHeight = instruction.RevisionStartHeight
+		state.RevisionStartHeight = instruction.RevisionStartHeight
 		if instruction.RevisionStartHeight == m.State.Height() {
 			drsVersion, err := strconv.ParseUint(version.DrsVersion, 10, 32)
 			if err != nil {

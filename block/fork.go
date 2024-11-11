@@ -265,7 +265,7 @@ func (m *Manager) handleForkBatchSubmission(height uint64) error {
 		return fmt.Errorf("getting batch at height: %v", err)
 	}
 
-	if resp.Batch == nil {
+	if resp == nil {
 		if _, err := m.CreateAndSubmitBatch(m.Conf.BatchSubmitBytes, false); err != nil {
 			return fmt.Errorf("creating and submitting batch: %v", err)
 		}

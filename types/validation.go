@@ -68,7 +68,7 @@ func (b *Block) ValidateWithState(state *State) error {
 	}
 
 	appVersion := state.Version.Consensus.App
-	if b.Header.Height < state.VersionStartHeight {
+	if b.Header.Height < state.RevisionStartHeight {
 		appVersion--
 	}
 

@@ -16,8 +16,8 @@ import (
 
 // State contains information about current state of the blockchain.
 type State struct {
-	Version            tmstate.Version
-	VersionStartHeight uint64
+	Version             tmstate.Version
+	RevisionStartHeight uint64
 	// immutable
 	ChainID       string
 	InitialHeight uint64 // should be 1, not 0, when starting from height 1
