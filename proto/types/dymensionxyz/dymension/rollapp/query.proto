@@ -4,7 +4,6 @@ package dymensionxyz.dymension.rollapp;
 option go_package = "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp";
 
 import "gogoproto/gogo.proto";
-import "google/api/annotations.proto";
 import "types/cosmos/base/query/v1beta1/pagination.proto";
 import "types/dymensionxyz/dymension/rollapp/params.proto";
 import "types/dymensionxyz/dymension/rollapp/rollapp.proto";
