@@ -70,8 +70,7 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 
 				err = m.ApplyBatchFromSL(settlementBatch.Batch)
 				if err != nil {
-					m.logger.Error("Apply batch from SL", "err", err)
-					break
+					return fmt.Errorf("process next DA batch. err:%w", err)
 				}
 
 				// if height havent been updated, we are stuck
