@@ -178,10 +178,6 @@ func TestMonitorForkUpdate(t *testing.T) {
 		},
 	}, nil)
 
-	mockSL.On("GetStateInfo", uint64(100)).Return(&types.StateInfo{
-		NextProposer: "sequencer1",
-	}, nil)
-
 	logger := log.NewNopLogger()
 
 	pubsubServer := pubsub.NewServer()
