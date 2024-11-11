@@ -73,12 +73,6 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 					return fmt.Errorf("process next DA batch. err:%w", err)
 				}
 
-				// if height havent been updated, we are stuck
-				// this covers the scenario where no applicable blocks were found in the DA
-				if m.State.NextHeight() == currH {
-					return fmt.Errorf("stuck at height %d", currH)
-				}
-
 				m.logger.Info("Synced from DA", "store height", m.State.Height(), "target height", m.LastSettlementHeight.Load())
 
 				// trigger state update validation, after each state update is applied

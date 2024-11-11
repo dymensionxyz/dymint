@@ -47,6 +47,12 @@ func (m *Manager) ApplyBatchFromSL(slBatch *settlement.Batch) error {
 			m.blockCache.Delete(block.Header.Height)
 		}
 	}
+
+	// if no blocks were applied, we are stuck
+	if lastAppliedHeight == 0 {
+		return fmt.Errorf("no applicable blocks found in the DA")
+	}
+
 	types.LastReceivedDAHeightGauge.Set(lastAppliedHeight)
 
 	return nil
