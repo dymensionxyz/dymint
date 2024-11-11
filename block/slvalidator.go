@@ -83,7 +83,7 @@ func (v *SettlementValidator) ValidateStateUpdate(batch *settlement.ResultRetrie
 			return types.NewErrStateUpdateBlobNotAvailableFraud(batch.StateIndex, string(batch.MetaData.DA.Client), batch.MetaData.DA.Height, hex.EncodeToString(batch.MetaData.DA.Commitment))
 		}
 
-		// FIXME: we need infinite loop here? not returning error?
+		// FIXME: how to handle non-happy case? not returning error?
 		continue
 	}
 
@@ -145,7 +145,7 @@ func (v *SettlementValidator) ValidateDaBlocks(slBatch *settlement.ResultRetriev
 	numSlBDs := uint64(len(slBatch.BlockDescriptors))
 	numSLBlocks := slBatch.NumBlocks
 	numDABlocks := uint64(len(daBlocks))
-	if numSLBlocks != numSlBDs || numDABlocks != numSlBDs {
+	if numSLBlocks != numSlBDs || numDABlocks < numSlBDs {
 		return types.NewErrStateUpdateNumBlocksNotMatchingFraud(slBatch.EndHeight, numSLBlocks, numSLBlocks, numDABlocks)
 	}
 

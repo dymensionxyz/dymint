@@ -47,6 +47,12 @@ func (m *Manager) ApplyBatchFromSL(slBatch *settlement.Batch) error {
 			m.blockCache.Delete(block.Header.Height)
 		}
 	}
+
+	// validate the batch applied successfully and we are at the end height
+	if m.State.Height() != slBatch.EndHeight {
+		return fmt.Errorf("state height mismatch: state height: %d: batch end height: %d", m.State.Height(), slBatch.EndHeight)
+	}
+
 	types.LastReceivedDAHeightGauge.Set(lastAppliedHeight)
 
 	return nil
