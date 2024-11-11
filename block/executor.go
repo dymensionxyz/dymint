@@ -2,6 +2,7 @@ package block
 
 import (
 	"errors"
+	"strings"
 	"time"
 
 	proto2 "github.com/gogo/protobuf/proto"
@@ -344,8 +345,10 @@ func fromProtoMsgToAny(msg proto2.Message) *proto.Any {
 		return nil
 	}
 
+	typeUrl := strings.Replace(proto2.MessageName(msg), "dymension_rdk", "rollapp", 1)
+
 	return &proto.Any{
-		TypeUrl: proto2.MessageName(msg),
+		TypeUrl: typeUrl,
 		Value:   theType,
 	}
 }

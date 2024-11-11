@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	"github.com/gogo/protobuf/proto"
 
 	"github.com/dymensionxyz/dymint/types"
@@ -64,8 +65,7 @@ func (m *Manager) checkForkUpdate(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		err := fmt.Errorf("fork update")
-		m.freezeNode(ctx, err)
+		m.freezeNode(ctx, fmt.Errorf("fork update detected"))
 	}
 
 	return nil
@@ -130,9 +130,8 @@ func (m *Manager) handleSequencerForkTransition(instruction types.Instruction) {
 	if err != nil {
 		panic(fmt.Sprintf("prepare DRS upgrade messages: %v", err))
 	}
-
 	// Always bump the account sequences
-	consensusMsgs = append(consensusMsgs, &sequencers.MsgBumpAccountSequences{Authority: "gov"})
+	consensusMsgs = append(consensusMsgs, &sequencers.MsgBumpAccountSequences{Authority: authtypes.NewModuleAddress("sequencers").String()})
 
 	err = m.handleForkBlockCreation(instruction, consensusMsgs)
 	if err != nil {
@@ -169,6 +168,7 @@ func (m *Manager) prepareDRSUpgradeMessages(faultyDRS []uint32) ([]proto.Message
 
 	return []proto.Message{
 		&sequencers.MsgUpgradeDRS{
+			Authority:  authtypes.NewModuleAddress("sequencers").String(),
 			DrsVersion: uint64(actualDRS),
 		},
 	}, nil
