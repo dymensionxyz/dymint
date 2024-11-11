@@ -369,7 +369,7 @@ func TestUpdateInitialSequencerSet(t *testing.T) {
 	expectedConsMsgBytes1, err := proto.Marshal(expectedConsMsg1)
 	require.NoError(err)
 	anyMsg1 := &prototypes.Any{
-		TypeUrl: proto.MessageName(expectedConsMsg1),
+		TypeUrl: "rollapp.sequencers.types.ConsensusMsgUpsertSequencer",
 		Value:   expectedConsMsgBytes1,
 	}
 
@@ -386,7 +386,7 @@ func TestUpdateInitialSequencerSet(t *testing.T) {
 	expectedConsMsgBytes2, err := proto.Marshal(expectedConsMsg2)
 	require.NoError(err)
 	anyMsg2 := &prototypes.Any{
-		TypeUrl: proto.MessageName(expectedConsMsg2),
+		TypeUrl: "rollapp.sequencers.types.ConsensusMsgUpsertSequencer",
 		Value:   expectedConsMsgBytes2,
 	}
 
@@ -493,7 +493,7 @@ func TestUpdateExistingSequencerSet(t *testing.T) {
 	expectedConsMsgBytes, err := proto.Marshal(expectedConsMsg)
 	require.NoError(err)
 	anyMsg1 := &prototypes.Any{
-		TypeUrl: proto.MessageName(expectedConsMsg),
+		TypeUrl: "rollapp.sequencers.types.ConsensusMsgUpsertSequencer",
 		Value:   expectedConsMsgBytes,
 	}
 
