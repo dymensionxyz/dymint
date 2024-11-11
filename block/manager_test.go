@@ -760,6 +760,7 @@ func TestDAFetch(t *testing.T) {
 					DA: c.daMetaData,
 				},
 				BlockDescriptors: bds,
+				EndHeight:        batch.EndHeight(),
 			}
 			err := manager.ApplyBatchFromSL(slBatch)
 			require.Equal(c.err, err)
