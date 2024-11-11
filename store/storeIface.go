@@ -104,5 +104,9 @@ type Store interface {
 
 	SaveIndexerBaseHeight(height uint64) error
 
+	SaveLastBlockSequencerSet(sequencers types.Sequencers, batch KVBatch) (KVBatch, error)
+
+	LoadLastBlockSequencerSet() (types.Sequencers, error)
+
 	Close() error
 }

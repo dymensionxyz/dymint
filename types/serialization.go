@@ -334,6 +334,35 @@ func SequencerFromProto(seq *pb.Sequencer) (*Sequencer, error) {
 	}, nil
 }
 
+// ToProto converts Sequencers into protobuf representation and returns it.
+func (s Sequencers) ToProto() (*pb.SequencerSet, error) {
+	seqs := make([]pb.Sequencer, len(s))
+	for i, seq := range s {
+		seqProto, err := seq.ToProto()
+		if err != nil {
+			return nil, fmt.Errorf("sequencer to proto: %w", err)
+		}
+		seqs[i] = *seqProto
+	}
+	return &pb.SequencerSet{Sequencers: seqs}, nil
+}
+
+// SequencersFromProto fills Sequencers with data from its protobuf representation.
+func SequencersFromProto(s *pb.SequencerSet) (Sequencers, error) {
+	if s == nil {
+		return Sequencers{}, fmt.Errorf("nil sequencer set")
+	}
+	seqs := make([]Sequencer, len(s.Sequencers))
+	for i, seq := range s.Sequencers {
+		sequencer, err := SequencerFromProto(&seq)
+		if err != nil {
+			return Sequencers{}, fmt.Errorf("sequencer from proto: %w", err)
+		}
+		seqs[i] = *sequencer
+	}
+	return seqs, nil
+}
+
 func txsToByteSlices(txs Txs) [][]byte {
 	bytes := make([][]byte, len(txs))
 	for i := range txs {

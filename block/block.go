@@ -132,6 +132,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	//  1. Save the proposer for the current height to the store.
 	//  2. Update the proposer in the state in case of rotation.
 	//  3. Save the state to the store (independently of the height). Here the proposer might differ from (1).
+	//  4. Save the last block sequencer set to the store if it's present (only applicable in the sequencer mode).
 	// here, (3) helps properly handle reboots (specifically when there's rotation).
 	// If reboot happens after block H (which rotates seqA -> seqB):
 	//  - Block H+1 will be signed by seqB.
@@ -159,6 +160,14 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	batch, err = m.Store.SaveState(m.State, batch)
 	if err != nil {
 		return fmt.Errorf("update state: %w", err)
+	}
+
+	// 4. Save the last block sequencer set to the store if it's present (only applicable in the sequencer mode).
+	if len(blockMetaData.SequencerSet) != 0 {
+		batch, err = m.Store.SaveLastBlockSequencerSet(blockMetaData.SequencerSet, batch)
+		if err != nil {
+			return fmt.Errorf("save last block sequencer set: %w", err)
+		}
 	}
 
 	err = batch.Commit()

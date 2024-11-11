@@ -338,8 +338,7 @@ func TestUpdateInitialSequencerSet(t *testing.T) {
 	require.Zero(manager.State.Height())
 	require.Zero(manager.LastSettlementHeight.Load())
 
-	// Simulate updating the sequencer set from SL.
-	// This will add new consensus msgs to the queue.
+	// Simulate updating the sequencer set from SL
 	err = manager.UpdateSequencerSetFromSL()
 	require.NoError(err)
 

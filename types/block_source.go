@@ -22,8 +22,9 @@ func (s BlockSource) String() string {
 var AllSources = []string{"none", "produced", "gossip", "blocksync", "da", "local_db"}
 
 type BlockMetaData struct {
-	Source   BlockSource
-	DAHeight uint64
+	Source       BlockSource
+	DAHeight     uint64
+	SequencerSet Sequencers
 }
 
 type CachedBlock struct {

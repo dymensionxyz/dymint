@@ -152,10 +152,7 @@ func (m *Manager) UpdateSequencerSetFromSL() error {
 	if err != nil {
 		return fmt.Errorf("get all sequencers from the hub: %w", err)
 	}
-	err = m.HandleSequencerSetUpdate(seqs)
-	if err != nil {
-		return fmt.Errorf("handle sequencer set update: %w", err)
-	}
+	m.Sequencers.Set(seqs)
 	m.logger.Debug("Updated bonded sequencer set.", "newSet", m.Sequencers.String())
 	return nil
 }
@@ -164,15 +161,6 @@ func (m *Manager) UpdateSequencerSetFromSL() error {
 // creates consensus messages for all new sequencers. The method updates the current state
 // and is not thread-safe. Returns errors on serialization issues.
 func (m *Manager) HandleSequencerSetUpdate(newSet []types.Sequencer) error {
-	// find new (updated) sequencers
-	newSequencers := types.SequencerListRightOuterJoin(m.Sequencers.GetAll(), newSet)
-	// create consensus msgs for new sequencers
-	msgs, err := ConsensusMsgsOnSequencerSetUpdate(newSequencers)
-	if err != nil {
-		return fmt.Errorf("consensus msgs on sequencers set update: %w", err)
-	}
-	// add consensus msgs to the stream
-	m.Executor.AddConsensusMsgs(msgs...)
 	// save the new sequencer set to the state
 	m.Sequencers.Set(newSet)
 	return nil

@@ -14,19 +14,20 @@ import (
 )
 
 var (
-	blockPrefix               = [1]byte{1}
-	indexPrefix               = [1]byte{2}
-	commitPrefix              = [1]byte{3}
-	statePrefix               = [1]byte{4}
-	responsesPrefix           = [1]byte{5}
-	proposerPrefix            = [1]byte{6}
-	cidPrefix                 = [1]byte{7}
-	sourcePrefix              = [1]byte{8}
-	validatedHeightPrefix     = [1]byte{9}
-	baseHeightPrefix          = [1]byte{10}
-	blocksyncBaseHeightPrefix = [1]byte{11}
-	indexerBaseHeightPrefix   = [1]byte{12}
-	drsVersionPrefix          = [1]byte{13}
+	blockPrefix                 = [1]byte{1}
+	indexPrefix                 = [1]byte{2}
+	commitPrefix                = [1]byte{3}
+	statePrefix                 = [1]byte{4}
+	responsesPrefix             = [1]byte{5}
+	proposerPrefix              = [1]byte{6}
+	cidPrefix                   = [1]byte{7}
+	sourcePrefix                = [1]byte{8}
+	validatedHeightPrefix       = [1]byte{9}
+	baseHeightPrefix            = [1]byte{10}
+	blocksyncBaseHeightPrefix   = [1]byte{11}
+	indexerBaseHeightPrefix     = [1]byte{12}
+	drsVersionPrefix            = [1]byte{13}
+	lastBlockSequencerSetPrefix = [1]byte{14}
 )
 
 // DefaultStore is a default store implementation.
@@ -385,6 +386,43 @@ func (s *DefaultStore) SaveIndexerBaseHeight(height uint64) error {
 	return s.db.Set(getIndexerBaseHeightKey(), b)
 }
 
+func (s *DefaultStore) SaveLastBlockSequencerSet(sequencers types.Sequencers, batch KVBatch) (KVBatch, error) {
+	pbSequencers, err := sequencers.ToProto()
+	if err != nil {
+		return batch, fmt.Errorf("marshal sequencers to protobuf: %w", err)
+	}
+	blob, err := pbSequencers.Marshal()
+	if err != nil {
+		return batch, fmt.Errorf("marshal sequencers: %w", err)
+	}
+
+	if batch == nil {
+		return nil, s.db.Set(getProposerKey(0), blob)
+	}
+	err = batch.Set(getLastBlockSequencerSetPrefixKey(), blob)
+	return batch, err
+}
+
+func (s *DefaultStore) LoadLastBlockSequencerSet() (types.Sequencers, error) {
+	blob, err := s.db.Get(getLastBlockSequencerSetPrefixKey())
+	if err != nil {
+		return nil, fmt.Errorf("load sequencers: %w", err)
+	}
+
+	pbSequencers := new(pb.SequencerSet)
+	err = pbSequencers.Unmarshal(blob)
+	if err != nil {
+		return nil, fmt.Errorf("unmarshal sequencers: %w", err)
+	}
+
+	sequencers, err := types.SequencersFromProto(pbSequencers)
+	if err != nil {
+		return nil, fmt.Errorf("unmarshal sequencers from proto: %w", err)
+	}
+
+	return sequencers, nil
+}
+
 func getBlockKey(hash [32]byte) []byte {
 	return append(blockPrefix[:], hash[:]...)
 }
@@ -447,4 +485,8 @@ func getBlockSyncBaseHeightKey() []byte {
 
 func getIndexerBaseHeightKey() []byte {
 	return indexerBaseHeightPrefix[:]
+}
+
+func getLastBlockSequencerSetPrefixKey() []byte {
+	return lastBlockSequencerSetPrefix[:]
 }
