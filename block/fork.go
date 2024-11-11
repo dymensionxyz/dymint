@@ -127,6 +127,7 @@ func (m *Manager) forkNeeded() (types.Instruction, bool) {
 
 // handleSequencerForkTransition handles the sequencer fork transition
 func (m *Manager) handleSequencerForkTransition(instruction types.Instruction) {
+
 	consensusMsgs, err := m.prepareDRSUpgradeMessages(instruction.FaultyDRS)
 	if err != nil {
 		panic(fmt.Sprintf("prepare DRS upgrade messages: %v", err))

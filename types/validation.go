@@ -67,6 +67,8 @@ func (b *Block) ValidateWithState(state *State) error {
 		return NewErrTimeFraud(b, currentTime)
 	}
 
+	// FIXME(srene): temporary solution for hardfork syncing, but this does not support multiple hardforks per rollapp
+	// https://github.com/dymensionxyz/dymint/issues/1210
 	appVersion := state.Version.Consensus.App
 	if b.Header.Height < state.RevisionStartHeight {
 		appVersion--
