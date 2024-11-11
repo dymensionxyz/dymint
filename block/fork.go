@@ -93,20 +93,12 @@ func (m *Manager) createInstruction(rollapp *types.Rollapp) error {
 // shouldStopNode determines if a rollapp node should be stopped based on revision criteria.
 //
 // This method checks two conditions to decide if a node should be stopped:
-// 1. If the current state height is greater than or equal to the rollapp's revision start height, for fullnode,
-// or whether the next state height is greater than or equal to the rollapp's revision start height for proposer.
-// This differentiation is because in case no rollback is required, proposer still needs to stop just before the revision start height
-// to enter the fork loop and upgrade.
+// 1. If the next state height is greater than or equal to the rollapp's revision start height.
 // 2. If the block's app version (equivalent to revision) is less than the rollapp's revision
 func (m *Manager) shouldStopNode(rollapp *types.Rollapp, block *types.Block) bool {
-	var stopHeight uint64
-	if m.RunMode == RunModeProposer {
-		stopHeight = m.State.NextHeight()
-	} else {
-		stopHeight = m.State.Height()
-	}
+
 	revision := block.Header.Version.App
-	if stopHeight >= rollapp.RevisionStartHeight && revision < rollapp.Revision {
+	if m.State.NextHeight() >= rollapp.RevisionStartHeight && revision < rollapp.Revision {
 		m.logger.Info(
 			"Freezing node due to fork update",
 			"local_block_height",
