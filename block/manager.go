@@ -188,6 +188,24 @@ func NewManager(
 		return nil, err
 	}
 
+	if instruction, forkNeeded := m.forkNeeded(); forkNeeded {
+		// Set proposer to nil
+		m.State.SetProposer(nil)
+
+		// Upgrade revision on state
+		state := m.State
+		state.Version.Consensus.App = instruction.Revision
+		state.VersionStartHeight = instruction.RevisionStartHeight
+		if instruction.RevisionStartHeight == m.State.Height() {
+			drsVersion, err := strconv.ParseUint(version.DrsVersion, 10, 32)
+			if err != nil {
+				return nil, fmt.Errorf("unable to parse drs version")
+			}
+			state.RollappParams.DrsVersion = uint32(drsVersion)
+		}
+		m.State = state
+	}
+
 	// validate configuration params and rollapp consensus params are in line
 	err = m.ValidateConfigWithRollappParams()
 	if err != nil {
@@ -209,17 +227,6 @@ func (m *Manager) Start(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-	}
-
-	if instruction, forkNeeded := m.forkNeeded(); forkNeeded {
-		// Set proposer to nil
-		m.State.SetProposer(nil)
-
-		// Upgrade revision on state
-		state := m.State
-		state.Version.Consensus.App = instruction.Revision
-		state.VersionStartHeight = instruction.RevisionStartHeight
-		m.State = state
 	}
 
 	// Check if a proposer on the rollapp is set. In case no proposer is set on the Rollapp, fallback to the hub proposer (If such exists).
