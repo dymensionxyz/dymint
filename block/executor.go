@@ -145,9 +145,7 @@ func (e *Executor) CreateBlock(
 	maxBlockDataSizeBytes uint64,
 ) *types.Block {
 	maxBlockDataSizeBytes = min(maxBlockDataSizeBytes, uint64(max(minBlockMaxBytes, state.ConsensusParams.Block.MaxBytes)))
-
 	mempoolTxs := e.mempool.ReapMaxBytesMaxGas(int64(maxBlockDataSizeBytes), state.ConsensusParams.Block.MaxGas)
-	txs := toDymintTxs(mempoolTxs)
 
 	block := &types.Block{
 		Header: types.Header{
@@ -166,7 +164,7 @@ func (e *Executor) CreateBlock(
 			ProposerAddress: e.localAddress,
 		},
 		Data: types.Data{
-			Txs:                    txs,
+			Txs:                    toDymintTxs(mempoolTxs),
 			IntermediateStateRoots: types.IntermediateStateRoots{RawRootsList: nil},
 			Evidence:               types.EvidenceData{Evidence: nil},
 			ConsensusMessages:      fromProtoMsgSliceToAnySlice(e.consensusMsgQueue.Get()...),
