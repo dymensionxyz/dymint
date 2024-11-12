@@ -61,7 +61,7 @@ func (m *Manager) checkForkUpdate(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		m.freezeNode(ctx, fmt.Errorf("fork update detected"))
+		m.freezeNode(ctx, rollapp, lastBlock, fmt.Errorf("fork update detected"))
 	}
 
 	return nil
@@ -94,17 +94,6 @@ func (m *Manager) createInstruction(rollapp *types.Rollapp) error {
 func (m *Manager) shouldStopNode(rollapp *types.Rollapp, block *types.Block) bool {
 	revision := block.Header.Version.App
 	if m.State.NextHeight() >= rollapp.RevisionStartHeight && revision < rollapp.Revision {
-		m.logger.Info(
-			"Freezing node due to fork update",
-			"local_block_height",
-			m.State.Height(),
-			"rollapp_revision_start_height",
-			rollapp.RevisionStartHeight,
-			"local_revision",
-			revision,
-			"rollapp_revision",
-			rollapp.Revision,
-		)
 		return true
 	}
 

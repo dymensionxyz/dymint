@@ -275,7 +275,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		err := m.SettlementSyncLoop(ctx)
 		if err != nil {
-			m.freezeNode(context.Background(), err)
+			m.freezeNode(context.Background(), nil, nil, err)
 		}
 		return nil
 	})
@@ -407,8 +407,21 @@ func (m *Manager) setFraudHandler(handler *FreezeHandler) {
 }
 
 // freezeNode sets the node as unhealthy and prevents the node continues producing and processing blocks
-func (m *Manager) freezeNode(ctx context.Context, err error) {
-	m.logger.Info("Freezing node", "err", err)
+func (m *Manager) freezeNode(ctx context.Context, rollapp *types.Rollapp, block *types.Block, err error) {
+	revision := block.Header.Version.App
+
+	m.logger.Info(
+		"Freezing node due to fork update",
+		"local_block_height",
+		m.State.Height(),
+		"rollapp_revision_start_height",
+		rollapp.RevisionStartHeight,
+		"local_revision",
+		revision,
+		"rollapp_revision",
+		rollapp.Revision,
+	)
+
 	m.frozen.Store(true)
 	uevent.MustPublish(ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
 	if m.RunMode == RunModeFullNode {
