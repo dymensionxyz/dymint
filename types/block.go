@@ -74,6 +74,10 @@ func (b Block) SizeBytes() int {
 	return b.ToProto().Size()
 }
 
+func (b *Block) GetRevision() uint64 {
+	return b.Header.Version.App
+}
+
 var (
 	_ encoding.BinaryMarshaler   = &Block{}
 	_ encoding.BinaryUnmarshaler = &Block{}

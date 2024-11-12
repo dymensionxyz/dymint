@@ -196,13 +196,20 @@ func NewManager(
 		state := m.State
 		state.Version.Consensus.App = instruction.Revision
 		state.RevisionStartHeight = instruction.RevisionStartHeight
-		if instruction.RevisionStartHeight == m.State.NextHeight() {
-			drsVersion, err := strconv.ParseUint(version.DrsVersion, 10, 32)
-			if err != nil {
-				return nil, fmt.Errorf("unable to parse drs version")
-			}
-			state.RollappParams.DrsVersion = uint32(drsVersion)
-		}
+
+		/*		if instruction.RevisionStartHeight == m.State.NextHeight() {
+					drsVersion, err := strconv.ParseUint(version.DrsVersion, 10, 32)
+					if err != nil {
+						return nil, fmt.Errorf("unable to parse drs version")
+					}
+					state.RollappParams.DrsVersion = uint32(drsVersion)
+				}
+
+				TO BE TESTED and removed
+
+				In theory this is happening on func (e *Executor) UpdateStateAfterCommit
+		*/
+
 		m.State = state
 	}
 
@@ -408,8 +415,6 @@ func (m *Manager) setFraudHandler(handler *FreezeHandler) {
 
 // freezeNode sets the node as unhealthy and prevents the node continues producing and processing blocks
 func (m *Manager) freezeNode(ctx context.Context, rollapp *types.Rollapp, block *types.Block, err error) {
-	revision := block.Header.Version.App
-
 	m.logger.Info(
 		"Freezing node due to fork update",
 		"local_block_height",
@@ -417,7 +422,7 @@ func (m *Manager) freezeNode(ctx context.Context, rollapp *types.Rollapp, block 
 		"rollapp_revision_start_height",
 		rollapp.RevisionStartHeight,
 		"local_revision",
-		revision,
+		block.GetRevision(),
 		"rollapp_revision",
 		rollapp.Revision,
 	)
