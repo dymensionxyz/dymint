@@ -6,14 +6,15 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
 
+	"github.com/dymensionxyz/dymint/block"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
 	pb "github.com/dymensionxyz/dymint/types/pb/dymint"
+	protoutils "github.com/dymensionxyz/dymint/utils/proto"
 )
 
 func TestBlockSerializationRoundTrip(t *testing.T) {
@@ -30,6 +31,10 @@ func TestBlockSerializationRoundTrip(t *testing.T) {
 		require.NoError(err)
 		h = append(h, h1)
 	}
+
+	sequencers := []types.Sequencer{testutil.GenerateSequencer()}
+	consensusMsgs, err := block.ConsensusMsgsOnSequencerSetUpdate(sequencers)
+	require.NoError(err)
 
 	cases := []struct {
 		name  string
@@ -57,7 +62,8 @@ func TestBlockSerializationRoundTrip(t *testing.T) {
 				Txs:                    nil,
 				IntermediateStateRoots: types.IntermediateStateRoots{RawRootsList: [][]byte{{0x1}}},
 				// TODO(tzdybal): update when we have actual evidence types
-				Evidence: types.EvidenceData{Evidence: nil},
+				Evidence:          types.EvidenceData{Evidence: nil},
+				ConsensusMessages: protoutils.FromProtoMsgSliceToAnySlice(consensusMsgs...),
 			},
 			LastCommit: types.Commit{
 				Height:     8,

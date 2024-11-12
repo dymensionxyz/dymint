@@ -2,11 +2,9 @@ package block
 
 import (
 	"errors"
-	"strings"
 	"time"
 
 	proto2 "github.com/gogo/protobuf/proto"
-	proto "github.com/gogo/protobuf/types"
 	"go.uber.org/multierr"
 
 	abci "github.com/tendermint/tendermint/abci/types"
@@ -18,6 +16,7 @@ import (
 
 	"github.com/dymensionxyz/dymint/mempool"
 	"github.com/dymensionxyz/dymint/types"
+	protoutils "github.com/dymensionxyz/dymint/utils/proto"
 )
 
 // default minimum block max size allowed. not specific reason to set it to 10K, but we need to avoid no transactions can be included in a block.
@@ -168,7 +167,7 @@ func (e *Executor) CreateBlock(
 			Txs:                    toDymintTxs(mempoolTxs),
 			IntermediateStateRoots: types.IntermediateStateRoots{RawRootsList: nil},
 			Evidence:               types.EvidenceData{Evidence: nil},
-			ConsensusMessages:      fromProtoMsgSliceToAnySlice(e.consensusMsgQueue.Get()...),
+			ConsensusMessages:      protoutils.FromProtoMsgSliceToAnySlice(e.consensusMsgQueue.Get()...),
 		},
 		LastCommit: *lastCommit,
 	}
@@ -337,26 +336,4 @@ func fromDymintTxs(optiTxs types.Txs) tmtypes.Txs {
 		txs[i] = []byte(optiTxs[i])
 	}
 	return txs
-}
-
-func fromProtoMsgToAny(msg proto2.Message) *proto.Any {
-	theType, err := proto2.Marshal(msg)
-	if err != nil {
-		return nil
-	}
-
-	typeUrl := strings.Replace(proto2.MessageName(msg), "dymension_rdk", "rollapp", 1)
-
-	return &proto.Any{
-		TypeUrl: typeUrl,
-		Value:   theType,
-	}
-}
-
-func fromProtoMsgSliceToAnySlice(msgs ...proto2.Message) []*proto.Any {
-	result := make([]*proto.Any, len(msgs))
-	for i, msg := range msgs {
-		result[i] = fromProtoMsgToAny(msg)
-	}
-	return result
 }

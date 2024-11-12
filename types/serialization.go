@@ -175,6 +175,7 @@ func (d *Data) ToProto() *pb.Data {
 		Txs:                    txsToByteSlices(d.Txs),
 		IntermediateStateRoots: d.IntermediateStateRoots.RawRootsList,
 		Evidence:               evidenceToProto(d.Evidence),
+		ConsensusMessages:      d.ConsensusMessages,
 	}
 }
 
@@ -187,6 +188,7 @@ func (b *Block) FromProto(other *pb.Block) error {
 	b.Data.Txs = byteSlicesToTxs(other.Data.Txs)
 	b.Data.IntermediateStateRoots.RawRootsList = other.Data.IntermediateStateRoots
 	b.Data.Evidence = evidenceFromProto(other.Data.Evidence)
+	b.Data.ConsensusMessages = other.Data.ConsensusMessages
 	if other.LastCommit != nil {
 		err := b.LastCommit.FromProto(other.LastCommit)
 		if err != nil {
