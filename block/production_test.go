@@ -338,15 +338,23 @@ func TestUpdateInitialSequencerSet(t *testing.T) {
 	require.Zero(manager.State.Height())
 	require.Zero(manager.LastSettlementHeight.Load())
 
-	// Simulate updating the sequencer set from SL
+	// Simulate updating the sequencer set from SL on start
 	err = manager.UpdateSequencerSetFromSL()
 	require.NoError(err)
 
-	// Produce block and validate that we produced blocks
+	// Produce block and validate results. We expect to have two consensus messages for the two sequencers
+	// since the store for the last block sequencer set is empty.
 	block, _, err := manager.ProduceApplyGossipBlock(ctx, true)
 	require.NoError(err)
 	assert.Greater(t, manager.State.Height(), uint64(0))
 	assert.Zero(t, manager.LastSettlementHeight.Load())
+
+	// Validate the last block sequencer set is persisted in the store
+	actualSeqSet, err := manager.Store.LoadLastBlockSequencerSet()
+	require.NoError(err)
+	require.Len(actualSeqSet, 2)
+	require.Equal(actualSeqSet[0], proposer)
+	require.Equal(actualSeqSet[1], sequencer)
 
 	// Validate that the block has expected consensus msgs
 	require.Len(block.Data.ConsensusMessages, 2)
@@ -392,6 +400,23 @@ func TestUpdateInitialSequencerSet(t *testing.T) {
 	// Verify the result
 	require.True(proto.Equal(anyMsg1, block.Data.ConsensusMessages[0]))
 	require.True(proto.Equal(anyMsg2, block.Data.ConsensusMessages[1]))
+
+	// Produce one more block and validate results. We expect to have zero consensus messages
+	// since there are no sequencer set updates.
+	block, _, err = manager.ProduceApplyGossipBlock(ctx, true)
+	require.NoError(err)
+	assert.Greater(t, manager.State.Height(), uint64(1))
+	assert.Zero(t, manager.LastSettlementHeight.Load())
+
+	// Validate the last block sequencer set is persisted in the store
+	actualSeqSet, err = manager.Store.LoadLastBlockSequencerSet()
+	require.NoError(err)
+	require.Len(actualSeqSet, 2)
+	require.Equal(actualSeqSet[0], proposer)
+	require.Equal(actualSeqSet[1], sequencer)
+
+	// Validate that the block has expected consensus msgs
+	require.Len(block.Data.ConsensusMessages, 0)
 }
 
 func TestUpdateExistingSequencerSet(t *testing.T) {
@@ -440,23 +465,34 @@ func TestUpdateExistingSequencerSet(t *testing.T) {
 
 	// Set the initial sequencer set
 	manager.Sequencers.Set([]types.Sequencer{proposer, sequencer})
+	_, err = manager.Store.SaveLastBlockSequencerSet([]types.Sequencer{proposer, sequencer}, nil)
+	require.NoError(err)
 
 	// Check initial assertions
 	require.Zero(manager.State.Height())
 	require.Zero(manager.LastSettlementHeight.Load())
-	initialSequencers := manager.Sequencers.GetAll()
-	require.Len(initialSequencers, 2)
-	require.Equal(initialSequencers[0], proposer)
-	require.Equal(initialSequencers[1], sequencer)
+	// Memory has the initial sequencer set
+	initialMemorySequencers := manager.Sequencers.GetAll()
+	require.Len(initialMemorySequencers, 2)
+	require.Equal(initialMemorySequencers[0], proposer)
+	require.Equal(initialMemorySequencers[1], sequencer)
+	// Store has the initial sequencer set
+	initialStoreSequencers, err := manager.Store.LoadLastBlockSequencerSet()
+	require.NoError(err)
+	require.Len(initialStoreSequencers, 2)
+	require.Equal(initialStoreSequencers[0], proposer)
+	require.Equal(initialStoreSequencers[1], sequencer)
 
 	// Update one of the sequencers and pass the update to the manager.
-	// We expect that the manager will update the sequencer set in the state and generate a new consensus msg.
+	// We expect that the manager will update the sequencer set in memory and
+	// generate a new consensus msg during block production.
 	updatedSequencer := sequencer
 	const newSequencerRewardAddr = "dym1mk7pw34ypusacm29m92zshgxee3yreums8avur"
 	updatedSequencer.RewardAddr = newSequencerRewardAddr
 	// GetAllSequencers now return an updated sequencer
 	slmock.On("GetAllSequencers").Return([]types.Sequencer{proposer, updatedSequencer}, nil)
 
+	// Simulate updating the sequencer set from SL
 	err = manager.UpdateSequencerSetFromSL()
 	require.NoError(err)
 
@@ -468,7 +504,7 @@ func TestUpdateExistingSequencerSet(t *testing.T) {
 	require.NotEqual(sequencer, sequencers[1])
 	require.Equal(updatedSequencer, sequencers[1])
 
-	// Produce block and validate that we produced blocks
+	// Produce block and validate results. We expect to have one consensus message for the updated sequencer.
 	block, _, err := manager.ProduceApplyGossipBlock(ctx, true)
 	require.NoError(err)
 	assert.Greater(t, manager.State.Height(), uint64(0))
@@ -498,4 +534,11 @@ func TestUpdateExistingSequencerSet(t *testing.T) {
 
 	// Verify the result
 	require.True(proto.Equal(anyMsg1, block.Data.ConsensusMessages[0]))
+
+	// Validate the last block sequencer set is persisted in the store
+	actualStoreSequencers, err := manager.Store.LoadLastBlockSequencerSet()
+	require.NoError(err)
+	require.Len(actualStoreSequencers, 2)
+	require.Equal(actualStoreSequencers[0], proposer)
+	require.Equal(actualStoreSequencers[1], updatedSequencer)
 }

@@ -5,8 +5,6 @@ import (
 	"context"
 	"fmt"
 	"time"
-
-	"github.com/dymensionxyz/dymint/types"
 )
 
 func (m *Manager) MonitorProposerRotation(ctx context.Context) {
@@ -145,7 +143,8 @@ func (m *Manager) CreateAndPostLastBatch(ctx context.Context, nextSeqHash [32]by
 	return nil
 }
 
-// UpdateSequencerSetFromSL updates the sequencer set from the SL.
+// UpdateSequencerSetFromSL updates the sequencer set from the SL. The sequencer set is saved only in memory.
+// It will be persisted to the store when the block is produced (only in the proposer mode).
 // Proposer is not changed here.
 func (m *Manager) UpdateSequencerSetFromSL() error {
 	seqs, err := m.SLClient.GetAllSequencers()
@@ -154,14 +153,5 @@ func (m *Manager) UpdateSequencerSetFromSL() error {
 	}
 	m.Sequencers.Set(seqs)
 	m.logger.Debug("Updated bonded sequencer set.", "newSet", m.Sequencers.String())
-	return nil
-}
-
-// HandleSequencerSetUpdate calculates the diff between hub's and current sequencer sets and
-// creates consensus messages for all new sequencers. The method updates the current state
-// and is not thread-safe. Returns errors on serialization issues.
-func (m *Manager) HandleSequencerSetUpdate(newSet []types.Sequencer) error {
-	// save the new sequencer set to the state
-	m.Sequencers.Set(newSet)
 	return nil
 }

@@ -397,7 +397,7 @@ func (s *DefaultStore) SaveLastBlockSequencerSet(sequencers types.Sequencers, ba
 	}
 
 	if batch == nil {
-		return nil, s.db.Set(getProposerKey(0), blob)
+		return nil, s.db.Set(getLastBlockSequencerSetPrefixKey(), blob)
 	}
 	err = batch.Set(getLastBlockSequencerSetPrefixKey(), blob)
 	return batch, err

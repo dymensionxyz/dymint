@@ -111,7 +111,7 @@ func (m *Manager) ProduceApplyGossipBlock(ctx context.Context, allowEmpty bool) 
 }
 
 func (m *Manager) produceApplyGossip(ctx context.Context, allowEmpty bool, nextProposerHash *[32]byte) (block *types.Block, commit *types.Commit, err error) {
-	newSequencerSet, err := m.snapshotSequencerSet()
+	newSequencerSet, err := m.SnapshotSequencerSet()
 	if err != nil {
 		return nil, nil, fmt.Errorf("snapshot sequencer set: %w", err)
 	}
@@ -133,14 +133,14 @@ func (m *Manager) produceApplyGossip(ctx context.Context, allowEmpty bool, nextP
 	return block, commit, nil
 }
 
-// snapshotSequencerSet loads two versions of the sequencer set:
+// SnapshotSequencerSet loads two versions of the sequencer set:
 //   - the one that was used for the last block (from the store)
-//   - and the most recent one (from the manager)
+//   - and the most recent one (from the manager memory)
 //
-// It then calculates the diff between the two and creates consensus messages for the new sequencers (diff).
-// The new sequencer set will be used for next block and will be stored in the state instead
-// of the old one after the block production.
-func (m *Manager) snapshotSequencerSet() (newSequencerSet types.Sequencers, err error) {
+// It then calculates the diff between the two and creates consensus messages for the new sequencers,
+// i.e., only for the diff between two sets.  The new sequencer set will be used for next block and
+// will be stored in the state after the block production instead of the old sequencer set.
+func (m *Manager) SnapshotSequencerSet() (newSequencerSet types.Sequencers, err error) {
 	// the most recent sequencer set
 	newSequencerSet = m.Sequencers.GetAll()
 
@@ -162,7 +162,7 @@ func (m *Manager) snapshotSequencerSet() (newSequencerSet types.Sequencers, err 
 	}
 	m.Executor.AddConsensusMsgs(msgs...)
 
-	return newSequencers, nil
+	return newSequencerSet, nil
 }
 
 func (m *Manager) produceBlock(allowEmpty bool, nextProposerHash *[32]byte) (*types.Block, *types.Commit, error) {
