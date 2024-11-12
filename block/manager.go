@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
 	"sync"
 	"sync/atomic"
 
@@ -198,11 +197,11 @@ func NewManager(
 
 		// this is necessary to pass ValidateConfigWithRollappParams when DRS upgrade is required
 		if instruction.RevisionStartHeight == m.State.NextHeight() {
-			drsVersion, err := strconv.ParseUint(version.DrsVersion, 10, 32)
+			drsVersion, err := version.CurrentDRSVersion()
 			if err != nil {
-				return nil, fmt.Errorf("unable to parse drs version")
+				return nil, err
 			}
-			state.RollappParams.DrsVersion = uint32(drsVersion)
+			state.RollappParams.DrsVersion = drsVersion
 		}
 
 		m.State = state
