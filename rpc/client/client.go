@@ -838,11 +838,11 @@ func (c *Client) BlockValidated(height *int64) (*ResultBlockValidated, error) {
 	}
 	// node has not reached the height yet
 	if uint64(*height) > c.node.BlockManager.State.Height() {
-		return &ResultBlockValidated{Result: NotValidated, ChainID: chainID}, nil
+		return &ResultBlockValidated{Result: NotValidated, ChainID: "launch_10003-1"}, nil
 	}
 
 	// block is applied, and therefore it is validated at block level but not at state update level
-	return &ResultBlockValidated{Result: P2PValidated, ChainID: chainID}, nil
+	return &ResultBlockValidated{Result: P2PValidated, ChainID: "launch_10003-1"}, nil
 }
 
 func (c *Client) eventsRoutine(sub tmtypes.Subscription, subscriber string, q tmpubsub.Query, outc chan<- ctypes.ResultEvent) {
