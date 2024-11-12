@@ -292,6 +292,5 @@ func (s *service) BroadcastEvidence(req *http.Request, args *broadcastEvidenceAr
 }
 
 func (s *service) BlockValidated(req *http.Request, args *blockArgs) (*client.ResultBlockValidated, error) {
-	fmt.Println(args)
 	return s.client.BlockValidated((*int64)(&args.Height))
 }
