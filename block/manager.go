@@ -115,6 +115,9 @@ type Manager struct {
 
 	// validates all non-finalized state updates from settlement, checking there is consistency between DA and P2P blocks, and the information in the state update.
 	SettlementValidator *SettlementValidator
+
+	// frozen indicates if the node is frozen due to unhealthy event. used to stop block production.
+	frozen atomic.Bool
 }
 
 // NewManager creates new block Manager.
@@ -379,8 +382,15 @@ func (m *Manager) setFraudHandler(handler *FreezeHandler) {
 }
 
 func (m *Manager) freezeNode(ctx context.Context, err error) {
+	m.logger.Info("Freezing node", "err", err)
+	m.frozen.Store(true)
 	uevent.MustPublish(ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
 	if m.RunMode == RunModeFullNode {
 		m.unsubscribeFullNodeEvents(ctx)
 	}
+}
+
+// isFrozen returns whether the node is in frozen state
+func (m *Manager) isFrozen() bool {
+	return m.frozen.Load()
 }

@@ -35,6 +35,7 @@ func (m *Manager) SubmitLoop(ctx context.Context,
 		m.Conf.BatchSubmitTime,
 		m.Conf.BatchSubmitBytes,
 		m.CreateAndSubmitBatchGetSizeBlocksCommits,
+		m.isFrozen,
 	)
 }
 
@@ -48,6 +49,7 @@ func SubmitLoopInner(
 	maxBatchTime time.Duration, // max time to allow between batches
 	maxBatchBytes uint64, // max size of serialised batch in bytes
 	createAndSubmitBatch func(maxSizeBytes uint64) (sizeBlocksCommits uint64, err error),
+	frozen func() bool,
 ) error {
 	eg, ctx := errgroup.WithContext(ctx)
 
@@ -60,6 +62,9 @@ func SubmitLoopInner(
 		// 'trigger': this thread is responsible for waking up the submitter when a new block arrives, and back-pressures the block production loop
 		// if it gets too far ahead.
 		for {
+			if frozen() {
+				return nil
+			}
 			if maxBatchSkew*maxBatchBytes < pendingBytes.Load() {
 				// too much stuff is pending submission
 				// we block here until we get a progress nudge from the submitter thread
@@ -94,6 +99,9 @@ func SubmitLoopInner(
 				return ctx.Err()
 			case <-ticker.C:
 			case <-submitter.C:
+			}
+			if frozen() {
+				return nil
 			}
 			pending := pendingBytes.Load()
 			types.RollappPendingSubmissionsSkewBytes.Set(float64(pendingBytes.Load()))
