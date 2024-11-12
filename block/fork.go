@@ -129,7 +129,7 @@ func (m *Manager) handleSequencerForkTransition(instruction types.Instruction) {
 	// Always bump the account sequences
 	consensusMsgs = append(consensusMsgs, &sequencers.MsgBumpAccountSequences{Authority: authtypes.NewModuleAddress("sequencers").String()})
 
-	err = m.handleForkBlockCreation(instruction, consensusMsgs)
+	err = m.createForkBlocks(instruction, consensusMsgs)
 	if err != nil {
 		panic(fmt.Sprintf("validate existing blocks: %v", err))
 	}
@@ -170,7 +170,7 @@ func (m *Manager) prepareDRSUpgradeMessages(faultyDRS []uint32) ([]proto.Message
 	}, nil
 }
 
-// handleForkBlockCreation manages the block creation process during a fork transition.
+// createForkBlocks manages the block creation process during a fork transition.
 //
 // The function implements the following logic:
 //  1. Checks if blocks for the fork transition have already been created by comparing heights
@@ -182,7 +182,7 @@ func (m *Manager) prepareDRSUpgradeMessages(faultyDRS []uint32) ([]proto.Message
 //   - First block: Contains consensus messages for the fork
 //   - Second block: Should be empty (no messages or transactions)
 //   - Total height increase should be 2 blocks from RevisionStartHeight
-func (m *Manager) handleForkBlockCreation(instruction types.Instruction, consensusMsgs []proto.Message) error {
+func (m *Manager) createForkBlocks(instruction types.Instruction, consensusMsgs []proto.Message) error {
 	if m.State.NextHeight() == instruction.RevisionStartHeight+2 {
 		return m.validateExistingBlocks(instruction)
 	}
