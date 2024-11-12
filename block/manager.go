@@ -212,7 +212,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	// In case there is also no proposer on the hub to our current height, it means that the chain is halted.
 	if m.State.GetProposer() == nil {
 		m.logger.Info("No proposer on the rollapp, fallback to the hub proposer, if available")
-		SLProposer, err := m.SLClient.GetProposerAtHeight(int64(m.State.NextHeight()))
+		SLProposer, err := m.SLClient.GetProposerAtHeight(int64(m.State.NextHeight())) //nolint:gosec // height is non-negative and falls in int64
 		if err != nil {
 			return fmt.Errorf("get proposer at height: %w", err)
 		}
@@ -287,7 +287,7 @@ func (m *Manager) updateFromLastSettlementState() error {
 	if errors.Is(err, gerrc.ErrNotFound) {
 		// The SL hasn't got any batches for this chain yet.
 		m.logger.Info("No batches for chain found in SL.")
-		m.LastSettlementHeight.Store(uint64(m.Genesis.InitialHeight - 1))
+		m.LastSettlementHeight.Store(uint64(m.Genesis.InitialHeight - 1)) //nolint:gosec // height is non-negative and falls in int64
 		return nil
 	}
 

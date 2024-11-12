@@ -60,7 +60,7 @@ func NewStateFromGenesis(genDoc *tmtypes.GenesisDoc) (*types.State, error) {
 		Version: InitStateVersion,
 		ChainID: genDoc.ChainID,
 
-		InitialHeight:   uint64(genDoc.InitialHeight),
+		InitialHeight:   uint64(genDoc.InitialHeight), //nolint:gosec // height is non-negative and falls in int64
 		ConsensusParams: *genDoc.ConsensusParams,
 	}
 	s.SetHeight(0)
@@ -81,7 +81,7 @@ func (m *Manager) UpdateStateFromApp(blockHeaderHash [32]byte) error {
 		return errorsmod.Wrap(err, "get app info")
 	}
 
-	appHeight := uint64(proxyAppInfo.LastBlockHeight)
+	appHeight := uint64(proxyAppInfo.LastBlockHeight) //nolint:gosec // height is non-negative and falls in int64
 	resp, err := m.Store.LoadBlockResponses(appHeight)
 	if err != nil {
 		return errorsmod.Wrap(err, "load block responses")

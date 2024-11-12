@@ -278,7 +278,7 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 
 					return nil
 				},
-				retry.Attempts(uint(*c.config.RetryAttempts)),
+				retry.Attempts(uint(*c.config.RetryAttempts)), //nolint:gosec // RetryAttempts should be always positive
 				retry.DelayType(retry.FixedDelay),
 				retry.Delay(c.config.RetryDelay),
 			)
@@ -361,17 +361,22 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 			c.logger.Debug("Context cancelled")
 			return da.ResultCheckBatch{}
 		default:
-			err := retry.Do(func() error {
-				result := c.checkBatchAvailability(daMetaData)
-				availabilityResult = result
+			err := retry.Do(
+				func() error {
+					result := c.checkBatchAvailability(daMetaData)
+					availabilityResult = result
 
-				if result.Code != da.StatusSuccess {
-					c.logger.Error("Blob submitted not found in DA. Retrying availability check.")
-					return da.ErrBlobNotFound
-				}
+					if result.Code != da.StatusSuccess {
+						c.logger.Error("Blob submitted not found in DA. Retrying availability check.")
+						return da.ErrBlobNotFound
+					}
 
-				return nil
-			}, retry.Attempts(uint(*c.config.RetryAttempts)), retry.DelayType(retry.FixedDelay), retry.Delay(c.config.RetryDelay))
+					return nil
+				},
+				retry.Attempts(uint(*c.config.RetryAttempts)), //nolint:gosec // RetryAttempts should be always positive
+				retry.DelayType(retry.FixedDelay),
+				retry.Delay(c.config.RetryDelay),
+			)
 			if err != nil {
 				c.logger.Error("CheckAvailability process failed.", "error", err)
 			}
@@ -494,11 +499,6 @@ func (c *DataAvailabilityLayerClient) submit(daBlob da.Blob) (uint64, da.Commitm
 
 	if len(commitments) == 0 {
 		return 0, nil, fmt.Errorf("zero commitments: %w: %w", gerrc.ErrNotFound, gerrc.ErrInternal)
-	}
-
-	blobSizes := make([]uint32, len(blobs))
-	for i, blob := range blobs {
-		blobSizes[i] = uint32(len(blob.Data))
 	}
 
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)

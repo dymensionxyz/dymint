@@ -18,10 +18,11 @@ import (
 	"github.com/centrifuge/go-substrate-rpc-client/v4/rpc/state"
 	"github.com/centrifuge/go-substrate-rpc-client/v4/signature"
 	availtypes "github.com/centrifuge/go-substrate-rpc-client/v4/types"
+	"github.com/tendermint/tendermint/libs/pubsub"
+
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/store"
 	pb "github.com/dymensionxyz/dymint/types/pb/dymint"
-	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
 const (
@@ -363,7 +364,7 @@ func (c *DataAvailabilityLayerClient) broadcastTx(tx []byte) (uint64, error) {
 		SpecVersion:        rv.SpecVersion,
 		Tip:                availtypes.NewUCompactFromUInt(c.config.Tip),
 		TransactionVersion: rv.TransactionVersion,
-		AppID:              availtypes.NewUCompactFromUInt(uint64(c.config.AppID)),
+		AppID:              availtypes.NewUCompactFromUInt(uint64(c.config.AppID)), //nolint:gosec // AppID should be always positive
 	}
 
 	// Sign the transaction using Alice's default account

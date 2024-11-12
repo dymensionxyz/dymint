@@ -45,7 +45,7 @@ func createRandomHashes() [][32]byte {
 
 func GetRandomTx() types.Tx {
 	n, _ := rand.Int(rand.Reader, big.NewInt(100))
-	size := uint64(n.Int64()) + 100
+	size := n.Uint64() + 100
 	return types.Tx(GetRandomBytes(size))
 }
 
@@ -325,7 +325,7 @@ func GenerateStateWithSequencer(initialHeight int64, lastBlockHeight int64, pubk
 	dymintVersion, _ := strconv.ParseUint(dymintversion.DrsVersion, 10, 32)
 	s := &types.State{
 		ChainID:         "test-chain",
-		InitialHeight:   uint64(initialHeight),
+		InitialHeight:   uint64(initialHeight), //nolint:gosec // height is non-negative and falls in int64
 		AppHash:         [32]byte{},
 		LastResultsHash: GetEmptyLastResultsHash(),
 		Version: tmstate.Version{
@@ -351,7 +351,7 @@ func GenerateStateWithSequencer(initialHeight int64, lastBlockHeight int64, pubk
 		GenerateSettlementAddress(),
 		[]string{GenerateSettlementAddress()},
 	))
-	s.SetHeight(uint64(lastBlockHeight))
+	s.SetHeight(uint64(lastBlockHeight)) //nolint:gosec // height is non-negative and falls in int64
 	return s
 }
 

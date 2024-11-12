@@ -592,11 +592,11 @@ func (txi *TxIndex) pruneTxsAndEvents(from, to uint64, logger log.Logger) (uint6
 		return nil
 	}
 
-	for h := from; h < to; h++ {
+	for h := int64(from); h < int64(to); h++ { //nolint:gosec // heights (from and to) are always positive and fall in int64
 
 		// flush every 1000 txs to avoid batches becoming too large
 		if toFlush > 1000 {
-			err := flush(batch, int64(h))
+			err := flush(batch, h)
 			if err != nil {
 				return 0, err
 			}
@@ -615,7 +615,7 @@ func (txi *TxIndex) pruneTxsAndEvents(from, to uint64, logger log.Logger) (uint6
 		toFlush += prunedEvents
 
 		// then all txs indexed are iterated by height
-		it := txi.store.PrefixIterator(prefixForHeight(int64(h)))
+		it := txi.store.PrefixIterator(prefixForHeight(h))
 
 		// and deleted all indexed (by hash and by keyheight)
 		for ; it.Valid(); it.Next() {
@@ -636,7 +636,7 @@ func (txi *TxIndex) pruneTxsAndEvents(from, to uint64, logger log.Logger) (uint6
 
 	}
 
-	err := flush(batch, int64(to))
+	err := flush(batch, int64(to)) //nolint:gosec // height is non-negative and falls in int64
 	if err != nil {
 		return 0, err
 	}
@@ -644,9 +644,9 @@ func (txi *TxIndex) pruneTxsAndEvents(from, to uint64, logger log.Logger) (uint6
 	return pruned, nil
 }
 
-func (txi *TxIndex) pruneEvents(height uint64, batch store.KVBatch) (uint64, error) {
+func (txi *TxIndex) pruneEvents(height int64, batch store.KVBatch) (uint64, error) {
 	pruned := uint64(0)
-	eventKey, err := eventHeightKey(int64(height))
+	eventKey, err := eventHeightKey(height)
 	if err != nil {
 		return pruned, err
 	}

@@ -194,7 +194,7 @@ func (m *Manager) isHeightAlreadyApplied(blockHeight uint64) (bool, error) {
 		return false, errorsmod.Wrap(err, "get app info")
 	}
 
-	isBlockAlreadyApplied := uint64(proxyAppInfo.LastBlockHeight) == blockHeight
+	isBlockAlreadyApplied := uint64(proxyAppInfo.LastBlockHeight) == blockHeight //nolint:gosec // LastBlockHeight is always positive
 
 	// TODO: add switch case to validate better the current app state
 

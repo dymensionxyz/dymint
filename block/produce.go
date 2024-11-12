@@ -76,7 +76,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int)
 			}
 
 			bytesProducedN := block.SizeBytes() + commit.SizeBytes()
-			m.logger.Info("New block.", "size", uint64(block.ToProto().Size()))
+			m.logger.Info("New block.", "size", uint64(block.ToProto().Size())) //nolint:gosec // size is always positive and falls in uint64
 			select {
 			case <-ctx.Done():
 				return nil
@@ -211,7 +211,7 @@ func (m *Manager) createTMSignature(block *types.Block, proposerAddress []byte, 
 	headerHash := block.Header.Hash()
 	vote := tmtypes.Vote{
 		Type:      cmtproto.PrecommitType,
-		Height:    int64(block.Header.Height),
+		Height:    int64(block.Header.Height), //nolint:gosec // height is non-negative and falls in int64
 		Round:     0,
 		Timestamp: voteTimestamp,
 		BlockID: tmtypes.BlockID{Hash: headerHash[:], PartSetHeader: tmtypes.PartSetHeader{

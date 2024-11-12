@@ -60,9 +60,6 @@ issues:
     - mempool
     - state/indexer
     - state/txindex
-  exclude-rules:
-    - text: "G115: integer overflow conversion"
-      linters: [ gosec ]
 
 
 linters-settings:

@@ -73,7 +73,7 @@ func SubmitLoopInner(
 				case <-ctx.Done():
 					return ctx.Err()
 				case n := <-bytesProduced:
-					pendingBytes.Add(uint64(n))
+					pendingBytes.Add(uint64(n)) //nolint:gosec // bytes size is always positive
 					logger.Debug("Added bytes produced to bytes pending submission counter.", "bytes added", n, "pending", pendingBytes.Load())
 				}
 			}
@@ -145,7 +145,7 @@ func (m *Manager) CreateAndSubmitBatchGetSizeBlocksCommits(maxSize uint64) (uint
 	if b == nil {
 		return 0, err
 	}
-	return uint64(b.SizeBlockAndCommitBytes()), err
+	return uint64(b.SizeBlockAndCommitBytes()), err //nolint:gosec // size is always positive and falls in uint64
 }
 
 // CreateAndSubmitBatch creates and submits a batch to the DA and SL.
@@ -210,7 +210,7 @@ func (m *Manager) CreateBatch(maxBatchSize uint64, startHeight uint64, endHeight
 		batch.DRSVersion = append(batch.DRSVersion, drsVersion)
 
 		totalSize := batch.SizeBytes()
-		if maxBatchSize < uint64(totalSize) {
+		if maxBatchSize < uint64(totalSize) { //nolint:gosec // size is always positive and falls in uint64
 
 			// Remove the last block and commit from the batch
 			batch.Blocks = batch.Blocks[:len(batch.Blocks)-1]
