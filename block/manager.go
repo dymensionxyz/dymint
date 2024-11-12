@@ -413,18 +413,7 @@ func (m *Manager) setFraudHandler(handler *FreezeHandler) {
 }
 
 // freezeNode sets the node as unhealthy and prevents the node continues producing and processing blocks
-func (m *Manager) freezeNode(ctx context.Context, rollapp *types.Rollapp, block *types.Block, err error) {
-	m.logger.Info(
-		"Freezing node due to fork update",
-		"local_block_height",
-		m.State.Height(),
-		"rollapp_revision_start_height",
-		rollapp.RevisionStartHeight,
-		"local_revision",
-		block.GetRevision(),
-		"rollapp_revision",
-		rollapp.Revision,
-	)
+func (m *Manager) freezeNode(ctx context.Context, err error) {
 
 	m.frozen.Store(true)
 	uevent.MustPublish(ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
