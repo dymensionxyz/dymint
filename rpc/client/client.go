@@ -839,10 +839,6 @@ func (c *Client) BlockValidated(ctx context.Context, height *int64) (*ResultBloc
 		return &ResultBlockValidated{Result: NotValidated}, nil
 	}
 
-	if uint64(*height) <= c.node.BlockManager.SettlementValidator.GetLastValidatedHeight() {
-		return &ResultBlockValidated{Result: SLValidated}, nil
-	}
-
 	// block is applied, and therefore it is validated at block level but not at state update level
 	return &ResultBlockValidated{Result: P2PValidated}, nil
 }
