@@ -14,7 +14,7 @@ type Header struct {
 	Version Version
 
 	Height uint64
-	Time   int64 // UNIX time in milliseconds. Use int64 as Golang stores UNIX nanoseconds in int64.
+	Time   int64 // UNIX time in nanoseconds. Use int64 as Golang stores UNIX nanoseconds in int64.
 
 	// prev block info
 	LastHeaderHash [32]byte
