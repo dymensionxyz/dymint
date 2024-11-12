@@ -39,8 +39,6 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int)
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case <-m.frozenC:
-			return nil
 		case <-ticker.C:
 			// Only produce if I'm the current rollapp proposer.
 			if !m.AmIProposerOnRollapp() {

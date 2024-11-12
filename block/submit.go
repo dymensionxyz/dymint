@@ -35,7 +35,6 @@ func (m *Manager) SubmitLoop(ctx context.Context,
 		m.Conf.BatchSubmitTime,
 		m.Conf.BatchSubmitBytes,
 		m.CreateAndSubmitBatchGetSizeBlocksCommits,
-		m.frozenC,
 	)
 }
 
@@ -49,7 +48,6 @@ func SubmitLoopInner(
 	maxBatchTime time.Duration, // max time to allow between batches
 	maxBatchBytes uint64, // max size of serialised batch in bytes
 	createAndSubmitBatch func(maxSizeBytes uint64) (sizeBlocksCommits uint64, err error),
-	frozenC chan struct{},
 ) error {
 	eg, ctx := errgroup.WithContext(ctx)
 
@@ -69,16 +67,12 @@ func SubmitLoopInner(
 				select {
 				case <-ctx.Done():
 					return ctx.Err()
-				case <-frozenC:
-					return nil
 				case <-trigger.C:
 				}
 			} else {
 				select {
 				case <-ctx.Done():
 					return ctx.Err()
-				case <-frozenC:
-					return nil
 				case n := <-bytesProduced:
 					pendingBytes.Add(uint64(n))
 					logger.Debug("Added bytes produced to bytes pending submission counter.", "bytes added", n, "pending", pendingBytes.Load())
@@ -99,8 +93,6 @@ func SubmitLoopInner(
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
-			case <-frozenC:
-				return nil
 			case <-ticker.C:
 			case <-submitter.C:
 			}
