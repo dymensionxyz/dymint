@@ -234,7 +234,6 @@ func TestApplyCachedBlocks_WithFraudCheck(t *testing.T) {
 	t.Log("Taking the manager out of sync by submitting a batch")
 	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
 	manager.Retriever = manager.DAClient.(da.BatchRetriever)
-
 	mockExecutor := &blockmocks.MockExecutorI{}
 	manager.Executor = mockExecutor
 	mockExecutor.On("GetAppInfo").Return(&abci.ResponseInfo{
@@ -244,12 +243,11 @@ func TestApplyCachedBlocks_WithFraudCheck(t *testing.T) {
 
 	// Check that handle fault is called
 	manager.FraudHandler = block.NewFreezeHandler(manager)
-
 	fraudEventReceived := make(chan *events.DataHealthStatus, 1)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
+	_, manager.Cancel = context.WithCancel(context.Background())
 	go event.MustSubscribe(
 		ctx,
 		manager.Pubsub,

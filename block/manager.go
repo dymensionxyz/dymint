@@ -116,8 +116,7 @@ type Manager struct {
 	// validates all non-finalized state updates from settlement, checking there is consistency between DA and P2P blocks, and the information in the state update.
 	SettlementValidator *SettlementValidator
 
-	// frozen indicates if the node is frozen due to unhealthy event. used to stop block production.
-	frozen atomic.Bool
+	Cancel context.CancelFunc
 }
 
 // NewManager creates new block Manager.
@@ -225,6 +224,7 @@ func NewManager(
 
 // Start starts the block manager.
 func (m *Manager) Start(ctx context.Context) error {
+	ctx, m.Cancel = context.WithCancel(ctx)
 	// Check if InitChain flow is needed
 	if m.State.IsGenesis() {
 		m.logger.Info("Running InitChain")
@@ -281,7 +281,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		err := m.SettlementSyncLoop(ctx)
 		if err != nil {
-			m.freezeNode(context.Background(), nil, nil, err)
+			m.freezeNode(context.Background(), err)
 		}
 		return nil
 	})
@@ -414,15 +414,7 @@ func (m *Manager) setFraudHandler(handler *FreezeHandler) {
 
 // freezeNode sets the node as unhealthy and prevents the node continues producing and processing blocks
 func (m *Manager) freezeNode(ctx context.Context, err error) {
-
-	m.frozen.Store(true)
+	m.logger.Info("Freezing node", "err", err)
 	uevent.MustPublish(ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
-	if m.RunMode == RunModeFullNode {
-		m.unsubscribeFullNodeEvents(ctx)
-	}
-}
-
-// isFrozen returns whether the node is in frozen state
-func (m *Manager) isFrozen() bool {
-	return m.frozen.Load()
+	m.Cancel()
 }

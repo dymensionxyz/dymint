@@ -60,19 +60,8 @@ func (m *Manager) checkForkUpdate(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
-		m.logger.Info(
-			"Freezing node due to fork update",
-			"local_block_height",
-			m.State.Height(),
-			"rollapp_revision_start_height",
-			rollapp.RevisionStartHeight,
-			"local_revision",
-			lastBlock.GetRevision(),
-			"rollapp_revision",
-			rollapp.Revision,
-		)
 
-		m.freezeNode(ctx, rollapp, lastBlock, fmt.Errorf("fork update detected"))
+		m.freezeNode(ctx, fmt.Errorf("fork update detected. local_block_height: %d rollapp_revision_start_height: %d local_revision: %d rollapp_revision: %d", m.State.Height(), rollapp.RevisionStartHeight, lastBlock.GetRevision(), rollapp.Revision))
 	}
 
 	return nil

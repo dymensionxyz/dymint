@@ -62,9 +62,6 @@ func SubmitLoopInner(
 		// 'trigger': this thread is responsible for waking up the submitter when a new block arrives, and back-pressures the block production loop
 		// if it gets too far ahead.
 		for {
-			if frozen() {
-				return nil
-			}
 			if maxBatchSkew*maxBatchBytes < pendingBytes.Load() {
 				// too much stuff is pending submission
 				// we block here until we get a progress nudge from the submitter thread

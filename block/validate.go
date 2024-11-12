@@ -29,7 +29,6 @@ func (m *Manager) SettlementValidateLoop(ctx context.Context) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-m.settlementValidationC:
-
 			targetValidationHeight := min(m.LastSettlementHeight.Load(), m.State.Height())
 			m.logger.Info("validating state updates to target height", "targetHeight", targetValidationHeight)
 

@@ -106,17 +106,3 @@ func (m *Manager) subscribeFullNodeEvents(ctx context.Context) {
 	go uevent.MustSubscribe(ctx, m.Pubsub, p2pGossipLoop, p2p.EventQueryNewGossipedBlock, m.OnReceivedBlock, m.logger)
 	go uevent.MustSubscribe(ctx, m.Pubsub, p2pBlocksyncLoop, p2p.EventQueryNewBlockSyncBlock, m.OnReceivedBlock, m.logger)
 }
-
-func (m *Manager) unsubscribeFullNodeEvents(ctx context.Context) {
-	// unsubscribe for specific event (clientId)
-	unsubscribe := func(clientId string) {
-		err := m.Pubsub.UnsubscribeAll(ctx, clientId)
-		if err != nil {
-			m.logger.Error("Unsubscribe", "clientId", clientId, "error", err)
-		}
-	}
-	unsubscribe(syncLoop)
-	unsubscribe(validateLoop)
-	unsubscribe(p2pGossipLoop)
-	unsubscribe(p2pBlocksyncLoop)
-}
