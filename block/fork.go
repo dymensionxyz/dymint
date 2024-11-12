@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
 	"time"
 
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
@@ -140,13 +139,12 @@ func (m *Manager) prepareDRSUpgradeMessages(faultyDRS []uint32) ([]proto.Message
 		return nil, nil
 	}
 
-	actualDRS, err := strconv.ParseUint(version.DrsVersion, 10, 32)
+	currentDRS, err := version.CurrentDRSVersion()
 	if err != nil {
-		return nil, fmt.Errorf("converting DRS version to int: %v", err)
+		return nil, err
 	}
-
 	for _, drs := range faultyDRS {
-		if drs == uint32(actualDRS) {
+		if drs == currentDRS {
 			return nil, fmt.Errorf("running faulty DRS version %d", drs)
 		}
 	}
@@ -154,7 +152,7 @@ func (m *Manager) prepareDRSUpgradeMessages(faultyDRS []uint32) ([]proto.Message
 	return []proto.Message{
 		&sequencers.MsgUpgradeDRS{
 			Authority:  authtypes.NewModuleAddress("sequencers").String(),
-			DrsVersion: uint64(actualDRS),
+			DrsVersion: uint64(currentDRS),
 		},
 	}, nil
 }

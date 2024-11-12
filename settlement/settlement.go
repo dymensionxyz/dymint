@@ -42,7 +42,7 @@ type Batch struct {
 
 	// MetaData about the batch in the DA layer
 	MetaData  *BatchMetaData
-	NumBlocks uint64
+	NumBlocks uint64 // FIXME: can be removed. not used and will be deprecated
 }
 
 type ResultRetrieveBatch struct {
