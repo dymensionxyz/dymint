@@ -224,6 +224,7 @@ func (m *Manager) CreateBatch(maxBatchSize uint64, startHeight uint64, endHeight
 			break
 		}
 	}
+	batch.Revision = batch.Blocks[len(batch.Blocks)-1].GetRevision()
 
 	return batch, nil
 }
@@ -235,9 +236,7 @@ func (m *Manager) SubmitBatch(batch *types.Batch) error {
 	}
 	m.logger.Info("Submitted batch to DA.", "start height", batch.StartHeight(), "end height", batch.EndHeight())
 
-	revision := m.State.Version.Consensus.App
-
-	err := m.SLClient.SubmitBatch(batch, m.DAClient.GetClientType(), &resultSubmitToDA, revision)
+	err := m.SLClient.SubmitBatch(batch, m.DAClient.GetClientType(), &resultSubmitToDA)
 	if err != nil {
 		return fmt.Errorf("sl client submit batch: start height: %d: end height: %d: %w", batch.StartHeight(), batch.EndHeight(), err)
 	}

@@ -193,7 +193,7 @@ func (c *Client) Stop() error {
 }
 
 // SubmitBatch saves the batch to the kv store
-func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch, revision uint64) error {
+func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) error {
 	settlementBatch := c.convertBatchtoSettlementBatch(batch, daResult)
 	err := c.saveBatch(settlementBatch)
 	if err != nil {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"sync"
 	"sync/atomic"
 
@@ -192,21 +193,17 @@ func NewManager(
 
 		// Upgrade revision on state
 		state := m.State
-		state.Version.Consensus.App = instruction.Revision
+		state.SetRevision(instruction.Revision)
 		state.RevisionStartHeight = instruction.RevisionStartHeight
 
-		/*		if instruction.RevisionStartHeight == m.State.NextHeight() {
-					drsVersion, err := strconv.ParseUint(version.DrsVersion, 10, 32)
-					if err != nil {
-						return nil, fmt.Errorf("unable to parse drs version")
-					}
-					state.RollappParams.DrsVersion = uint32(drsVersion)
-				}
-
-				TO BE TESTED and removed
-
-				In theory this is happening on func (e *Executor) UpdateStateAfterCommit
-		*/
+		// this is necessary to pass ValidateConfigWithRollappParams when DRS upgrade is required
+		if instruction.RevisionStartHeight == m.State.NextHeight() {
+			drsVersion, err := strconv.ParseUint(version.DrsVersion, 10, 32)
+			if err != nil {
+				return nil, fmt.Errorf("unable to parse drs version")
+			}
+			state.RollappParams.DrsVersion = uint32(drsVersion)
+		}
 
 		m.State = state
 	}

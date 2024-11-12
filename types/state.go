@@ -118,3 +118,11 @@ func (s *State) SetRollappParamsFromGenesis(appState json.RawMessage) error {
 	s.RollappParams = *rollappParams.Params
 	return nil
 }
+
+func (s *State) GetRevision() uint64 {
+	return s.Version.Consensus.App
+}
+
+func (s *State) SetRevision(revision uint64) {
+	s.Version.Consensus.App = revision
+}

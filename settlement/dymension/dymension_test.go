@@ -179,7 +179,7 @@ func TestPostBatch(t *testing.T) {
 			errChan := make(chan error, 1) // Create a channel to receive an error from the goroutine
 			// Post the batch in a goroutine and capture any error.
 			go func() {
-				err := hubClient.SubmitBatch(batch, da.Mock, resultSubmitBatch, 0)
+				err := hubClient.SubmitBatch(batch, da.Mock, resultSubmitBatch)
 				errChan <- err // Send any error to the errChan
 			}()
 
