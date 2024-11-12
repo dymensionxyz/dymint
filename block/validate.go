@@ -30,10 +30,10 @@ func (m *Manager) SettlementValidateLoop(ctx context.Context) error {
 			return ctx.Err()
 		case <-m.settlementValidationC:
 
-			m.logger.Info("validating state updates to target height", "targetHeight", min(m.LastSettlementHeight.Load(), m.State.Height()))
+			targetValidationHeight := min(m.LastSettlementHeight.Load(), m.State.Height())
+			m.logger.Info("validating state updates to target height", "targetHeight", targetValidationHeight)
 
-			for currH := m.SettlementValidator.NextValidationHeight(); currH <= min(m.LastSettlementHeight.Load(), m.State.Height()); currH = m.SettlementValidator.NextValidationHeight() {
-
+			for currH := m.SettlementValidator.NextValidationHeight(); currH <= targetValidationHeight; currH = m.SettlementValidator.NextValidationHeight() {
 				// get next batch that needs to be validated from SL
 				batch, err := m.SLClient.GetBatchAtHeight(currH)
 				if err != nil {
