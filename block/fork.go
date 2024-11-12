@@ -33,9 +33,6 @@ func (m *Manager) MonitorForkUpdateLoop(ctx context.Context) error {
 			if err := m.checkForkUpdate(ctx); err != nil {
 				continue
 			}
-			if m.isFrozen() {
-				return nil
-			}
 		}
 	}
 }

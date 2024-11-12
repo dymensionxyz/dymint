@@ -35,7 +35,6 @@ func (m *Manager) SubmitLoop(ctx context.Context,
 		m.Conf.BatchSubmitTime,
 		m.Conf.BatchSubmitBytes,
 		m.CreateAndSubmitBatchGetSizeBlocksCommits,
-		m.isFrozen,
 	)
 }
 
@@ -49,7 +48,6 @@ func SubmitLoopInner(
 	maxBatchTime time.Duration, // max time to allow between batches
 	maxBatchBytes uint64, // max size of serialised batch in bytes
 	createAndSubmitBatch func(maxSizeBytes uint64) (sizeBlocksCommits uint64, err error),
-	frozen func() bool,
 ) error {
 	eg, ctx := errgroup.WithContext(ctx)
 
@@ -97,9 +95,7 @@ func SubmitLoopInner(
 			case <-ticker.C:
 			case <-submitter.C:
 			}
-			if frozen() {
-				return nil
-			}
+
 			pending := pendingBytes.Load()
 			types.RollappPendingSubmissionsSkewBytes.Set(float64(pendingBytes.Load()))
 			types.RollappPendingSubmissionsSkewBlocks.Set(float64(unsubmittedBlocks()))

@@ -45,11 +45,6 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int)
 				continue
 			}
 
-			// finish the block production loop in case the node is frozen
-			if m.isFrozen() {
-				return nil
-			}
-
 			// if empty blocks are configured to be enabled, and one is scheduled...
 			produceEmptyBlock := firstBlock || m.Conf.MaxIdleTime == 0 || nextEmptyBlock.Before(time.Now())
 			firstBlock = false
