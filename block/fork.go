@@ -21,7 +21,6 @@ const (
 
 // MonitorForkUpdateLoop monitors the hub for fork updates in a loop
 func (m *Manager) MonitorForkUpdateLoop(ctx context.Context) error {
-
 	ticker := time.NewTicker(LoopInterval) // TODO make this configurable
 	defer ticker.Stop()
 

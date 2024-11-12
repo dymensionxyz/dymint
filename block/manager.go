@@ -367,7 +367,7 @@ func (m *Manager) ValidateConfigWithRollappParams() error {
 	if err != nil {
 		return err
 	}
-	if uint32(currentDRS) != m.State.RollappParams.DrsVersion {
+	if currentDRS != m.State.RollappParams.DrsVersion {
 		return fmt.Errorf("DRS version mismatch. rollapp param: %d binary used:%d", m.State.RollappParams.DrsVersion, currentDRS)
 	}
 
