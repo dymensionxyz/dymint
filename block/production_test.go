@@ -105,9 +105,9 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 
 		block, err := managerWithEmptyBlocks.Store.LoadBlock(i)
 		assert.NoError(err)
-		assert.NotZero(block.Header.Time)
+		assert.NotZero(block.Header.GetTimestamp())
 
-		diff := time.Unix(0, int64(block.Header.Time)).Sub(time.Unix(0, int64(prevBlock.Header.Time)))
+		diff := block.Header.GetTimestamp().Sub(prevBlock.Header.GetTimestamp())
 		assert.Greater(diff, blockTime-blockTime/10)
 		assert.Less(diff, blockTime+blockTime/10)
 	}
@@ -118,9 +118,9 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 
 		block, err := manager.Store.LoadBlock(i)
 		assert.NoError(err)
-		assert.NotZero(block.Header.Time)
+		assert.NotZero(block.Header.GetTimestamp())
 
-		diff := time.Unix(0, int64(block.Header.Time)).Sub(time.Unix(0, int64(prevBlock.Header.Time)))
+		diff := block.Header.GetTimestamp().Sub(prevBlock.Header.GetTimestamp())
 		assert.Greater(diff, manager.Conf.MaxIdleTime)
 	}
 }
@@ -185,9 +185,9 @@ func TestCreateEmptyBlocksNew(t *testing.T) {
 
 		block, err := manager.Store.LoadBlock(i)
 		assert.NoError(err)
-		assert.NotZero(block.Header.Time)
+		assert.NotZero(block.Header.GetTimestamp())
 
-		diff := time.Unix(0, int64(block.Header.Time)).Sub(time.Unix(0, int64(prevBlock.Header.Time)))
+		diff := block.Header.GetTimestamp().Sub(prevBlock.Header.GetTimestamp())
 		txsCount := len(block.Data.Txs)
 		if txsCount == 0 {
 			assert.Greater(diff, manager.Conf.MaxIdleTime)
