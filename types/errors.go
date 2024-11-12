@@ -325,18 +325,20 @@ type ErrStateUpdateNumBlocksNotMatchingFraud struct {
 	StateIndex  uint64
 	SLNumBlocks uint64
 	NumBds      uint64
+	NumDABlocks uint64
 }
 
-func NewErrStateUpdateNumBlocksNotMatchingFraud(stateIndex uint64, slNumBlocks uint64, numbds uint64) error {
+func NewErrStateUpdateNumBlocksNotMatchingFraud(stateIndex, slNumBlocks, numbds, numDABlocks uint64) error {
 	return &ErrStateUpdateNumBlocksNotMatchingFraud{
 		StateIndex:  stateIndex,
 		SLNumBlocks: slNumBlocks,
 		NumBds:      numbds,
+		NumDABlocks: numDABlocks,
 	}
 }
 
 func (e ErrStateUpdateNumBlocksNotMatchingFraud) Error() string {
-	return fmt.Sprintf("numblocks not matching. StateIndex: %d Batch numblocks: %d Num of block descriptors: %d", e.StateIndex, e.SLNumBlocks, e.NumBds)
+	return fmt.Sprintf("blocks not matching. StateIndex: %d Batch numblocks: %d Num of block descriptors: %d Num of DA blocks: %d", e.StateIndex, e.SLNumBlocks, e.NumBds, e.NumDABlocks)
 }
 
 func (e ErrStateUpdateNumBlocksNotMatchingFraud) Unwrap() error {
