@@ -113,11 +113,9 @@ func testSubmitLoopInner(
 	accumulatedBlocks := func() uint64 {
 		return pendingBlocks.Load()
 	}
-	frozen := func() bool {
-		return false
-	}
+	frozenC := make(chan struct{})
 
-	block.SubmitLoopInner(ctx, log.NewNopLogger(), producedBytesC, args.batchSkew, accumulatedBlocks, args.maxTime, args.batchBytes, submitBatch, frozen)
+	block.SubmitLoopInner(ctx, log.NewNopLogger(), producedBytesC, args.batchSkew, accumulatedBlocks, args.maxTime, args.batchBytes, submitBatch, frozenC)
 }
 
 // Make sure the producer does not get too far ahead

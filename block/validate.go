@@ -28,11 +28,10 @@ func (m *Manager) SettlementValidateLoop(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
+		case <-m.frozenC:
+			return nil
 		case <-m.settlementValidationC:
 
-			if m.isFrozen() {
-				return nil
-			}
 			targetValidationHeight := min(m.LastSettlementHeight.Load(), m.State.Height())
 			m.logger.Info("validating state updates to target height", "targetHeight", targetValidationHeight)
 

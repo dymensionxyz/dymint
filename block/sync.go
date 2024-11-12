@@ -50,12 +50,9 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-
+		case <-m.frozenC:
+			return nil
 		case <-m.settlementSyncingC:
-
-			if m.isFrozen() {
-				return nil
-			}
 			m.logger.Info("syncing to target height", "targetHeight", m.LastSettlementHeight.Load())
 
 			for currH := m.State.NextHeight(); currH <= m.LastSettlementHeight.Load(); currH = m.State.NextHeight() {

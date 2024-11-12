@@ -35,7 +35,7 @@ func (m *Manager) SubmitLoop(ctx context.Context,
 		m.Conf.BatchSubmitTime,
 		m.Conf.BatchSubmitBytes,
 		m.CreateAndSubmitBatchGetSizeBlocksCommits,
-		m.isFrozen,
+		m.frozenC,
 	)
 }
 
@@ -49,7 +49,7 @@ func SubmitLoopInner(
 	maxBatchTime time.Duration, // max time to allow between batches
 	maxBatchBytes uint64, // max size of serialised batch in bytes
 	createAndSubmitBatch func(maxSizeBytes uint64) (sizeBlocksCommits uint64, err error),
-	frozen func() bool,
+	frozenC chan struct{},
 ) error {
 	eg, ctx := errgroup.WithContext(ctx)
 
@@ -62,21 +62,23 @@ func SubmitLoopInner(
 		// 'trigger': this thread is responsible for waking up the submitter when a new block arrives, and back-pressures the block production loop
 		// if it gets too far ahead.
 		for {
-			if frozen() {
-				return nil
-			}
+
 			if maxBatchSkew*maxBatchBytes < pendingBytes.Load() {
 				// too much stuff is pending submission
 				// we block here until we get a progress nudge from the submitter thread
 				select {
 				case <-ctx.Done():
 					return ctx.Err()
+				case <-frozenC:
+					return nil
 				case <-trigger.C:
 				}
 			} else {
 				select {
 				case <-ctx.Done():
 					return ctx.Err()
+				case <-frozenC:
+					return nil
 				case n := <-bytesProduced:
 					pendingBytes.Add(uint64(n))
 					logger.Debug("Added bytes produced to bytes pending submission counter.", "bytes added", n, "pending", pendingBytes.Load())
@@ -97,11 +99,10 @@ func SubmitLoopInner(
 			select {
 			case <-ctx.Done():
 				return ctx.Err()
+			case <-frozenC:
+				return nil
 			case <-ticker.C:
 			case <-submitter.C:
-			}
-			if frozen() {
-				return nil
 			}
 			pending := pendingBytes.Load()
 			types.RollappPendingSubmissionsSkewBytes.Set(float64(pendingBytes.Load()))
