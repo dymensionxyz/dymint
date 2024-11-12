@@ -270,7 +270,7 @@ func (n *Node) OnStop() {
 		n.Logger.Error("close store", "error", err)
 	}
 
-	//n.cancel()
+	n.cancel()
 }
 
 // OnReset is a part of Service interface.

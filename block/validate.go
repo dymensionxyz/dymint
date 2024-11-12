@@ -3,7 +3,6 @@ package block
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/settlement"
@@ -30,7 +29,6 @@ func (m *Manager) SettlementValidateLoop(ctx context.Context) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-m.settlementValidationC:
-			m.freezeNode(ctx, fmt.Errorf("error"))
 			targetValidationHeight := min(m.LastSettlementHeight.Load(), m.State.Height())
 			m.logger.Info("validating state updates to target height", "targetHeight", targetValidationHeight)
 

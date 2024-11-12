@@ -385,5 +385,4 @@ func (m *Manager) freezeNode(ctx context.Context, err error) {
 	m.logger.Info("Freezing node", "err", err)
 	uevent.MustPublish(ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
 	m.Cancel()
-
 }
