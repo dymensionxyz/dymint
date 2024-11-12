@@ -47,7 +47,7 @@ func (v *SettlementValidator) ValidateStateUpdate(batch *settlement.ResultRetrie
 	for height := batch.StartHeight; height <= batch.EndHeight; height++ {
 		source, err := v.blockManager.Store.LoadBlockSource(height)
 		if err != nil {
-			// v.logger.Error("load block source", "error", err)
+			v.logger.Error("load block source", "error", err)
 			continue
 		}
 
@@ -176,7 +176,7 @@ func (v *SettlementValidator) ValidateDaBlocks(slBatch *settlement.ResultRetriev
 	// if next sequencer is not set, we check if the sequencer hash is equal to the next sequencer hash
 	// because it did not change. If the next sequencer is set, we check if the next sequencer hash is equal on the
 	// last block of the batch
-	lastDABlock := daBlocks[len(daBlocks)-1]
+	lastDABlock := daBlocks[numSlBDs-1]
 	expectedNextSeqHash := lastDABlock.Header.SequencerHash
 	if slBatch.NextSequencer != slBatch.Sequencer {
 		nextSequencer, found := v.blockManager.Sequencers.GetByAddress(slBatch.NextSequencer)
