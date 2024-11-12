@@ -4,13 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
 
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/tendermint/tendermint/libs/pubsub"
 
 	"github.com/dymensionxyz/dymint/settlement"
-	"github.com/dymensionxyz/dymint/version"
 )
 
 // onNewStateUpdate will update the last submitted height and will update sequencers list from SL. After, it triggers syncing or validation, depending whether it needs to sync first or only validate.
@@ -75,22 +73,6 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 				}
 				m.logger.Info("Retrieved state update from SL.", "state_index", settlementBatch.StateIndex)
 
-				actualDRS, err := strconv.ParseUint(version.DrsVersion, 10, 32)
-				if err != nil {
-					return fmt.Errorf("converting DRS version to int: %v", err)
-				}
-				if settlementBatch.BlockDescriptors[0].DrsVersion != uint32(actualDRS) {
-
-					rollapp, err := m.SLClient.GetRollapp()
-					if err != nil {
-						return err
-					}
-					err = m.createInstruction(rollapp)
-					if err != nil {
-						return err
-					}
-					return fmt.Errorf("wrong DRS version")
-				}
 				err = m.ApplyBatchFromSL(settlementBatch.Batch)
 				if err != nil {
 					return fmt.Errorf("process next DA batch. err:%w", err)
