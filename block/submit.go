@@ -210,7 +210,7 @@ func (m *Manager) CreateBatch(maxBatchSize uint64, startHeight uint64, endHeight
 		batch.DRSVersion = append(batch.DRSVersion, drsVersion)
 
 		totalSize := batch.SizeBytes()
-		if int(maxBatchSize) < totalSize {
+		if maxBatchSize < uint64(totalSize) {
 
 			// Remove the last block and commit from the batch
 			batch.Blocks = batch.Blocks[:len(batch.Blocks)-1]
