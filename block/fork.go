@@ -154,68 +154,92 @@ func (m *Manager) prepareDRSUpgradeMessages(faultyDRS []uint32) ([]proto.Message
 	}, nil
 }
 
-// handleCreationOfForkBlocks manages the block creation process during a fork transition.
-//
-// The function implements the following logic:
-//  1. Checks if blocks for the fork transition have already been created by comparing heights
-//  2. If blocks exist (NextHeight == RevisionStartHeight + 2), validates their state
-//  3. If blocks don't exist, triggers the creation of new blocks with the provided consensus messages
-//
 // Block Creation Rules:
 //   - Two blocks are considered in this process:
 //   - First block: Contains consensus messages for the fork
 //   - Second block: Should be empty (no messages or transactions)
 //   - Total height increase should be 2 blocks from RevisionStartHeight
 func (m *Manager) handleCreationOfForkBlocks(instruction types.Instruction, consensusMsgs []proto.Message) error {
-	if m.State.NextHeight() == instruction.RevisionStartHeight+2 {
-		return m.validateExistingBlocks(instruction)
+	nextHeight := m.State.NextHeight()
+	heightDiff := nextHeight - instruction.RevisionStartHeight
+
+	// Case 1: Both blocks already exist (heightDiff == 2)
+	if heightDiff == 2 {
+		return m.validateExistingBlocks(instruction, 2)
 	}
 
-	return m.createNewBlocks(consensusMsgs)
+	// Case 2: First block exists (heightDiff == 1)
+	if heightDiff == 1 {
+		if err := m.validateExistingBlocks(instruction, 1); err != nil {
+			return err
+		}
+		return m.createNewBlocks(consensusMsgs, 1) // Create only the second block
+	}
+
+	// Case 3: No blocks exist yet (heightDiff == 0)
+	if heightDiff == 0 {
+		return m.createNewBlocks(consensusMsgs, 2) // Create both blocks
+	}
+
+	return fmt.Errorf("unexpected height difference: %d", heightDiff)
 }
 
-// validateExistingBlocks performs validation checks on a pair of consecutive blocks
-// during the sequencer fork transition process.
+// validateExistingBlocks validates one or two consecutive blocks based on
+// the specified number of blocks to validate.
 //
-// The function performs the following validations:
-//  1. Verifies that the initial block at RevisionStartHeight exists and contains consensus messages
-//  2. Confirms that the subsequent block exists and is empty (no consensus messages or transactions)
-func (m *Manager) validateExistingBlocks(instruction types.Instruction) error {
-	block, err := m.Store.LoadBlock(instruction.RevisionStartHeight)
-	if err != nil {
-		return fmt.Errorf("loading block: %v", err)
+// Validation process:
+//  1. For the first block (if numBlocksToValidate > 0):
+//     - Verifies it contains consensus messages
+//  2. For the second block (if numBlocksToValidate > 1):
+//     - Verifies it does NOT contain consensus messages
+//     - Verifies it does NOT contain transactions
+//     - Basically, that is empty.
+func (m *Manager) validateExistingBlocks(instruction types.Instruction, numBlocksToValidate uint64) error {
+	if numBlocksToValidate > 0 {
+		block, err := m.Store.LoadBlock(instruction.RevisionStartHeight)
+		if err != nil {
+			return fmt.Errorf("loading block: %v", err)
+		}
+
+		if len(block.Data.ConsensusMessages) <= 0 {
+			return fmt.Errorf("expected consensus messages in block")
+		}
 	}
 
-	if len(block.Data.ConsensusMessages) <= 0 {
-		return fmt.Errorf("expected consensus messages in block")
-	}
+	if numBlocksToValidate > 1 {
+		nextBlock, err := m.Store.LoadBlock(instruction.RevisionStartHeight + 1)
+		if err != nil {
+			return fmt.Errorf("loading next block: %v", err)
+		}
 
-	nextBlock, err := m.Store.LoadBlock(instruction.RevisionStartHeight + 1)
-	if err != nil {
-		return fmt.Errorf("loading next block: %v", err)
-	}
+		if len(nextBlock.Data.ConsensusMessages) > 0 {
+			return fmt.Errorf("unexpected consensus messages in next block")
+		}
 
-	if len(nextBlock.Data.ConsensusMessages) > 0 {
-		return fmt.Errorf("unexpected consensus messages in next block")
-	}
-
-	if len(nextBlock.Data.Txs) > 0 {
-		return fmt.Errorf("unexpected transactions in next block")
+		if len(nextBlock.Data.Txs) > 0 {
+			return fmt.Errorf("unexpected transactions in next block")
+		}
 	}
 
 	return nil
 }
 
-// createNewBlocks creates new blocks with the provided consensus messages
-func (m *Manager) createNewBlocks(consensusMsgs []proto.Message) error {
+// createNewBlocks creates new blocks with the provided consensus messages.
+// If blocksToCreate is 1, it creates only the second (empty) block.
+// If blocksToCreate is 2, it creates both the first block (with consensus messages)
+// and the second empty block.
+func (m *Manager) createNewBlocks(consensusMsgs []proto.Message, blocksToCreate uint64) error {
+	// Add consensus messages regardless of blocks to create
 	m.Executor.AddConsensusMsgs(consensusMsgs...)
 
-	// Create first block with consensus messages
-	if _, _, err := m.ProduceApplyGossipBlock(context.Background(), true); err != nil {
-		return fmt.Errorf("producing first block: %v", err)
+	// Create first block with consensus messages if blocksToCreate == 2
+	if blocksToCreate == 2 {
+		if _, _, err := m.ProduceApplyGossipBlock(context.Background(), true); err != nil {
+			return fmt.Errorf("producing first block: %v", err)
+		}
 	}
 
-	// Create second empty block
+	// Create second empty block for both cases (blocksToCreate == 1 or 2)
 	if _, _, err := m.ProduceApplyGossipBlock(context.Background(), true); err != nil {
 		return fmt.Errorf("producing second block: %v", err)
 	}
