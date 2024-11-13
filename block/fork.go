@@ -108,7 +108,6 @@ func (m *Manager) forkNeeded() (types.Instruction, bool) {
 
 // handleSequencerForkTransition handles the sequencer fork transition
 func (m *Manager) handleSequencerForkTransition(instruction types.Instruction) {
-
 	consensusMsgs, err := m.prepareDRSUpgradeMessages(instruction.FaultyDRS)
 	if err != nil {
 		panic(fmt.Sprintf("prepare DRS upgrade messages: %v", err))
@@ -134,7 +133,6 @@ func (m *Manager) handleSequencerForkTransition(instruction types.Instruction) {
 //   - Validates the current DRS version against the potentially faulty version
 //   - Generates an upgrade message with the current valid DRS version
 func (m *Manager) prepareDRSUpgradeMessages(faultyDRS []uint32) ([]proto.Message, error) {
-
 	currentDRS, err := version.CurrentDRSVersion()
 	if err != nil {
 		return nil, err
