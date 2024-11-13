@@ -46,6 +46,12 @@ func LoadInstructionFromDisk(dir string) (Instruction, error) {
 	return instruction, nil
 }
 
+func InstructionExists(dir string) bool {
+	filePath := filepath.Join(dir, instructionFileName)
+	_, err := os.Stat(filePath)
+	return !os.IsNotExist(err)
+}
+
 func DeleteInstructionFromDisk(dir string) error {
 	filePath := filepath.Join(dir, instructionFileName)
 	err := os.Remove(filePath)
