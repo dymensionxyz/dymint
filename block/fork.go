@@ -68,10 +68,15 @@ func (m *Manager) createInstruction(rollapp *types.Rollapp) error {
 	if err != nil {
 		return err
 	}
+	currentDRS, err := version.CurrentDRSVersion()
+	if err != nil {
+		return err
+	}
 	instruction := types.Instruction{
 		Revision:            rollapp.Revision,
 		RevisionStartHeight: rollapp.RevisionStartHeight,
 		FaultyDRS:           obsoleteDrs,
+		DRSPreFork:          currentDRS,
 	}
 
 	err = types.PersistInstructionToDisk(m.RootDir, instruction)
@@ -107,14 +112,19 @@ func (m *Manager) forkNeeded() (types.Instruction, bool) {
 
 // handleSequencerForkTransition handles the sequencer fork transition
 func (m *Manager) handleSequencerForkTransition(instruction types.Instruction) {
-	consensusMsgs, err := m.prepareDRSUpgradeMessages(instruction.FaultyDRS)
-	if err != nil {
-		panic(fmt.Sprintf("prepare DRS upgrade messages: %v", err))
+
+	var consensusMsgs []proto.Message
+	if isDRSFaulty(instruction.DRSPreFork, instruction.FaultyDRS) {
+		msgs, err := m.prepareDRSUpgradeMessages(instruction.FaultyDRS)
+		if err != nil {
+			panic(fmt.Sprintf("prepare DRS upgrade messages: %v", err))
+		}
+		consensusMsgs = append(consensusMsgs, msgs...)
 	}
 	// Always bump the account sequences
 	consensusMsgs = append(consensusMsgs, &sequencers.MsgBumpAccountSequences{Authority: authtypes.NewModuleAddress("sequencers").String()})
 
-	err = m.handleCreationOfForkBlocks(instruction, consensusMsgs)
+	err := m.handleCreationOfForkBlocks(instruction, consensusMsgs)
 	if err != nil {
 		panic(fmt.Sprintf("validate existing blocks: %v", err))
 	}
@@ -132,14 +142,12 @@ func (m *Manager) handleSequencerForkTransition(instruction types.Instruction) {
 //   - Validates the current DRS version against the potentially faulty version
 //   - Generates an upgrade message with the current valid DRS version
 func (m *Manager) prepareDRSUpgradeMessages(faultyDRS []uint32) ([]proto.Message, error) {
-	if len(faultyDRS) == 0 {
-		return nil, nil
-	}
 
 	currentDRS, err := version.CurrentDRSVersion()
 	if err != nil {
 		return nil, err
 	}
+
 	for _, drs := range faultyDRS {
 		if drs == currentDRS {
 			return nil, fmt.Errorf("running faulty DRS version %d", drs)
@@ -243,4 +251,15 @@ func (m *Manager) handleForkBatchSubmission(height uint64) error {
 	}
 
 	return nil
+}
+
+func isDRSFaulty(drs uint32, faultyDRS []uint32) bool {
+
+	found := false
+	for _, faulty := range faultyDRS {
+		if drs == faulty {
+			return true
+		}
+	}
+	return found
 }
