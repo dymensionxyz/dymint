@@ -122,15 +122,9 @@ func (v *SettlementValidator) ValidateP2PBlocks(daBlocks []*types.Block, p2pBloc
 		if !ok {
 			continue
 		}
-		p2pBlockHash, err := blockHash(p2pBlock)
-		if err != nil {
-			return err
-		}
-		daBlockHash, err := blockHash(daBlock)
-		if err != nil {
-			return err
-		}
-		if !bytes.Equal(p2pBlockHash, daBlockHash) {
+		p2pBlockHash := p2pBlock.Hash()
+		daBlockHash := daBlock.Hash()
+		if !bytes.Equal(p2pBlockHash[:], daBlockHash[:]) {
 			return types.NewErrStateUpdateDoubleSigningFraud(daBlock, p2pBlock)
 		}
 
