@@ -485,7 +485,6 @@ func (txmp *TxMempool) initialTxCallback(wtx *WrappedTx, res *abci.Response) {
 			"peer_id", wtx.peers,
 			"code", checkTxRes.CheckTx.Code,
 			"post_check_err", err,
-			"log", checkTxRes.CheckTx.Log,
 		)
 
 		txmp.metrics.FailedTxs.Add(1)
