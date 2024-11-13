@@ -10,6 +10,7 @@ type Instruction struct {
 	Revision            uint64
 	RevisionStartHeight uint64
 	FaultyDRS           []uint32
+	DRSPreFork          uint32
 }
 
 const instructionFileName = "instruction.json"
