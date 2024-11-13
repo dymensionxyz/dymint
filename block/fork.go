@@ -278,12 +278,10 @@ func (m *Manager) handleForkBatchSubmission(height uint64) error {
 }
 
 func isDRSFaulty(drs uint32, faultyDRS []uint32) bool {
-
-	found := false
 	for _, faulty := range faultyDRS {
 		if drs == faulty {
 			return true
 		}
 	}
-	return found
+	return false
 }
