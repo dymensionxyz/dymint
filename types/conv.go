@@ -1,8 +1,6 @@
 package types
 
 import (
-	"time"
-
 	"github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/proto/tendermint/version"
 	tmtypes "github.com/tendermint/tendermint/types"
@@ -24,7 +22,7 @@ func ToABCIHeader(header *Header) tmtypes.Header {
 			App:   header.Version.App,
 		},
 		Height: int64(header.Height),
-		Time:   time.Unix(0, int64(header.Time)),
+		Time:   header.GetTimestamp(),
 		LastBlockID: tmtypes.BlockID{
 			Hash: header.LastHeaderHash[:],
 			PartSetHeader: tmtypes.PartSetHeader{
@@ -120,7 +118,7 @@ func ToABCICommit(commit *Commit, header *Header) *tmtypes.Commit {
 		// This assumes that we have only one signature
 		if len(commit.Signatures) == 1 {
 			tmCommit.Signatures[0].ValidatorAddress = header.ProposerAddress
-			tmCommit.Signatures[0].Timestamp = time.Unix(0, int64(header.Time))
+			tmCommit.Signatures[0].Timestamp = header.GetTimestamp()
 		}
 	} else {
 		tmCommit.Signatures = append(tmCommit.Signatures, commit.TMSignature)
