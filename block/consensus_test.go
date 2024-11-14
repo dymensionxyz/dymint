@@ -3,11 +3,11 @@ package block_test
 import (
 	"testing"
 
+	rdktypes "github.com/dymensionxyz/dymension-rdk/x/sequencers/types"
 	"github.com/stretchr/testify/require"
 
 	"github.com/dymensionxyz/dymint/block"
 	sequencertypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/sequencer"
-	rdktypes "github.com/dymensionxyz/dymint/types/pb/rollapp/sequencers/types"
 )
 
 func TestConsensusMsgSigner(t *testing.T) {
