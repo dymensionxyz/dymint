@@ -427,7 +427,6 @@ type ErrStateUpdateDoubleSigningFraud struct {
 }
 
 func NewErrStateUpdateDoubleSigningFraud(daBlock *Block, p2pBlock *Block, daBlockHash []byte, p2pBlockHash []byte) error {
-
 	return &ErrStateUpdateDoubleSigningFraud{
 		DABlock:      daBlock,
 		P2PBlock:     p2pBlock,
