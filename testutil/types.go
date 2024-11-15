@@ -184,10 +184,9 @@ func GenerateCommits(blocks []*types.Block, proposerKey crypto.PrivKey) ([]*type
 }
 
 func GenerateDRS(blocks int) []uint32 {
-	drsVersion, _ := strconv.ParseUint(dymintversion.DrsVersion, 10, 32)
 	drs := make([]uint32, blocks)
 	for i := 0; i < blocks; i++ {
-		drs[i] = uint32(drsVersion)
+		drs[i] = dymintversion.DRS
 	}
 	return drs
 }
@@ -322,7 +321,7 @@ func GenerateSequencer() types.Sequencer {
 
 // GenerateStateWithSequencer generates an initial state for testing.
 func GenerateStateWithSequencer(initialHeight int64, lastBlockHeight int64, pubkey tmcrypto.PubKey) *types.State {
-	dymintVersion, _ := strconv.ParseUint(dymintversion.DrsVersion, 10, 32)
+	dymintVersion, _ := strconv.ParseUint(dymintversion.DRS, 10, 32)
 	s := &types.State{
 		ChainID:         "test-chain",
 		InitialHeight:   uint64(initialHeight),

@@ -113,8 +113,7 @@ func (m *Manager) forkNeeded() (types.Instruction, bool) {
 	return types.Instruction{}, false
 }
 
-// handleSequencerForkTransition handles the sequencer fork transition
-func (m *Manager) handleSequencerForkTransition(instruction types.Instruction) {
+func (m *Manager) doFork(instruction types.Instruction) {
 	consensusMsgs, err := m.prepareDRSUpgradeMessages(instruction.FaultyDRS)
 	if err != nil {
 		panic(fmt.Sprintf("prepare DRS upgrade messages: %v", err))
@@ -122,12 +121,12 @@ func (m *Manager) handleSequencerForkTransition(instruction types.Instruction) {
 	// Always bump the account sequences
 	consensusMsgs = append(consensusMsgs, &sequencers.MsgBumpAccountSequences{Authority: authtypes.NewModuleAddress("sequencers").String()})
 
-	err = m.handleCreationOfForkBlocks(instruction, consensusMsgs)
+	err = m.createForkBlocks(instruction, consensusMsgs)
 	if err != nil {
 		panic(fmt.Sprintf("validate existing blocks: %v", err))
 	}
 
-	if err := m.handleForkBatchSubmission(instruction.RevisionStartHeight); err != nil {
+	if err := m.submitForkBatch(instruction.RevisionStartHeight); err != nil {
 		panic(fmt.Sprintf("ensure batch exists: %v", err))
 	}
 }
@@ -139,127 +138,62 @@ func (m *Manager) handleSequencerForkTransition(instruction types.Instruction) {
 //   - If no faulty DRS version is provided (faultyDRS is nil), returns no messages
 //   - Validates the current DRS version against the potentially faulty version
 //   - Generates an upgrade message with the current valid DRS version
-func (m *Manager) prepareDRSUpgradeMessages(faultyDRS []uint32) ([]proto.Message, error) {
-	currentDRS, err := version.CurrentDRSVersion()
-	if err != nil {
-		return nil, err
-	}
+func (m *Manager) prepareDRSUpgradeMessages(obsoleteDRS []uint32) ([]proto.Message, error) {
 
-	for _, drs := range faultyDRS {
-		if drs == currentDRS {
-			return nil, fmt.Errorf("running faulty DRS version %d", drs)
+	for _, drs := range obsoleteDRS {
+		if drs == version.DRS {
+			return nil, gerrc.ErrCancelled.Wrapf("obsolete DRS version: %d", drs)
 		}
 	}
 
 	return []proto.Message{
 		&sequencers.MsgUpgradeDRS{
 			Authority:  authtypes.NewModuleAddress("sequencers").String(),
-			DrsVersion: uint64(currentDRS),
+			DrsVersion: uint64(version.DRS),
 		},
 	}, nil
 }
 
-// Block Creation Rules:
-//   - Two blocks are considered in this process:
-//   - First block: Contains consensus messages for the fork
-//   - Second block: Should be empty (no messages or transactions)
-//   - Total height increase should be 2 blocks from RevisionStartHeight
-func (m *Manager) handleCreationOfForkBlocks(instruction types.Instruction, consensusMsgs []proto.Message) error {
+// create the first two blocks of the new revision
+// the first one should have a cons message(s)
+// both should not have tx's
+func (m *Manager) createForkBlocks(instruction types.Instruction, consensusMsgs []proto.Message) error {
 	nextHeight := m.State.NextHeight()
-	heightDiff := nextHeight - instruction.RevisionStartHeight
-
-	// Case 1: Both blocks already exist (heightDiff == 2)
-	if heightDiff == 2 {
-		return m.validateExistingBlocks(instruction, 2)
-	}
-
-	// Case 2: First block exists (heightDiff == 1)
-	if heightDiff == 1 {
-		if err := m.validateExistingBlocks(instruction, 1); err != nil {
-			return err
-		}
-		return m.createNewBlocks(consensusMsgs, 1) // Create only the second block
-	}
-
-	// Case 3: No blocks exist yet (heightDiff == 0)
-	if heightDiff == 0 {
-		return m.createNewBlocks(consensusMsgs, 2) // Create both blocks
-	}
-
-	return fmt.Errorf("unexpected height difference: %d", heightDiff)
-}
-
-// validateExistingBlocks validates one or two consecutive blocks based on
-// the specified number of blocks to validate.
-//
-// Validation process:
-//  1. For the first block (if numBlocksToValidate > 0):
-//     - Verifies it contains consensus messages
-//  2. For the second block (if numBlocksToValidate > 1):
-//     - Verifies it does NOT contain consensus messages
-//     - Verifies it does NOT contain transactions
-//     - Basically, that is empty.
-func (m *Manager) validateExistingBlocks(instruction types.Instruction, numBlocksToValidate uint64) error {
-	if numBlocksToValidate > 0 {
-		block, err := m.Store.LoadBlock(instruction.RevisionStartHeight)
+	for h := instruction.RevisionStartHeight; h < nextHeight; h++ {
+		b, err := m.Store.LoadBlock(h)
 		if err != nil {
-			return fmt.Errorf("loading block: %v", err)
+			return gerrc.ErrInternal.Wrapf("load stored blocks: %d", h)
 		}
 
-		if len(block.Data.ConsensusMessages) <= 0 {
-			return fmt.Errorf("expected consensus messages in block")
-		}
-	}
-
-	if numBlocksToValidate > 1 {
-		nextBlock, err := m.Store.LoadBlock(instruction.RevisionStartHeight + 1)
-		if err != nil {
-			return fmt.Errorf("loading next block: %v", err)
+		if 0 < len(b.Data.Txs) {
+			return gerrc.ErrInternal.Wrapf("fork block has tx: %d", h)
 		}
 
-		if len(nextBlock.Data.ConsensusMessages) > 0 {
-			return fmt.Errorf("unexpected consensus messages in next block")
-		}
-
-		if len(nextBlock.Data.Txs) > 0 {
-			return fmt.Errorf("unexpected transactions in next block")
+		if (h == instruction.RevisionStartHeight) != (0 < len(b.Data.ConsensusMessages)) {
+			return gerrc.ErrInternal.Wrapf("fork block has wrong num cons messages: %d", h)
 		}
 	}
 
-	return nil
-}
-
-// createNewBlocks creates new blocks with the provided consensus messages.
-// If blocksToCreate is 1, it creates only the second (empty) block.
-// If blocksToCreate is 2, it creates both the first block (with consensus messages)
-// and the second empty block.
-func (m *Manager) createNewBlocks(consensusMsgs []proto.Message, blocksToCreate uint64) error {
-	// Add consensus messages regardless of blocks to create
-	m.Executor.AddConsensusMsgs(consensusMsgs...)
-
-	// Create first block with consensus messages if blocksToCreate == 2
-	if blocksToCreate == 2 {
+	for h := nextHeight; h < instruction.RevisionStartHeight+2; h++ {
+		if h == instruction.RevisionStartHeight {
+			m.Executor.AddConsensusMsgs(consensusMsgs...)
+		}
 		if _, _, err := m.ProduceApplyGossipBlock(context.Background(), true); err != nil {
-			return fmt.Errorf("producing first block: %v", err)
+			return fmt.Errorf("produce apply gossip: h: %d : %w", h, err)
 		}
-	}
-
-	// Create second empty block for both cases (blocksToCreate == 1 or 2)
-	if _, _, err := m.ProduceApplyGossipBlock(context.Background(), true); err != nil {
-		return fmt.Errorf("producing second block: %v", err)
 	}
 
 	return nil
 }
 
-// handleForkBatchSubmission verifies and, if necessary, creates a batch at the specified height.
+// submitForkBatch verifies and, if necessary, creates a batch at the specified height.
 // This function is critical for maintaining batch consistency in the blockchain while
 // preventing duplicate batch submissions.
 //
 // The function performs the following operations:
 //  1. Checks for an existing batch at the specified height via SLClient
 //  2. If no batch exists, creates and submits a new one
-func (m *Manager) handleForkBatchSubmission(height uint64) error {
+func (m *Manager) submitForkBatch(height uint64) error {
 	resp, err := m.SLClient.GetBatchAtHeight(height)
 	if err != nil && !errors.Is(err, gerrc.ErrNotFound) {
 		return fmt.Errorf("getting batch at height: %v", err)
