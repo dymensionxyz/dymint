@@ -159,6 +159,9 @@ func (m *Manager) prepareDRSUpgradeMessages(obsoleteDRS []uint32) ([]proto.Messa
 // both should not have tx's
 func (m *Manager) createForkBlocks(instruction types.Instruction, consensusMsgs []proto.Message) error {
 	nextHeight := m.State.NextHeight()
+
+	// Something already been created?
+	// TODO: how is possible to have more than one already created? Crash failure should result in at most one.
 	for h := instruction.RevisionStartHeight; h < nextHeight; h++ {
 		b, err := m.Store.LoadBlock(h)
 		if err != nil {
@@ -199,10 +202,12 @@ func (m *Manager) submitForkBatch(height uint64) error {
 		return fmt.Errorf("getting batch at height: %v", err)
 	}
 
-	if resp == nil {
-		if _, err := m.CreateAndSubmitBatch(m.Conf.BatchSubmitBytes, false); err != nil {
-			return fmt.Errorf("creating and submitting batch: %v", err)
-		}
+	if resp != nil {
+		return nil
+	}
+	
+	if _, err = m.CreateAndSubmitBatch(m.Conf.BatchSubmitBytes, false); err != nil {
+		return fmt.Errorf("creating and submitting batch: %v", err)
 	}
 
 	return nil
