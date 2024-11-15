@@ -436,7 +436,7 @@ func TestProduceNewBlock(t *testing.T) {
 	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(t, err)
 	// Produce block
-	_, _, err = manager.ProduceApplyGossipBlock(context.Background(), true)
+	_, _, err = manager.ProduceApplyGossipBlock(context.Background())
 	require.NoError(t, err)
 	// Validate state is updated with the commit hash
 	assert.Equal(t, uint64(1), manager.State.Height())
@@ -476,7 +476,7 @@ func TestProducePendingBlock(t *testing.T) {
 	_, err = manager.Store.SaveBlock(block, &block.LastCommit, nil)
 	require.NoError(t, err)
 	// Produce block
-	_, _, err = manager.ProduceApplyGossipBlock(context.Background(), true)
+	_, _, err = manager.ProduceApplyGossipBlock(context.Background())
 	require.NoError(t, err)
 
 	// Validate state is updated with the block that was saved in the store
@@ -574,7 +574,7 @@ func TestProduceBlockFailAfterCommit(t *testing.T) {
 				},
 			})
 			mockStore.ShouldFailUpdateStateWithBatch = tc.shoudFailOnSaveState
-			_, _, _ = manager.ProduceApplyGossipBlock(context.Background(), true)
+			_, _, _ = manager.ProduceApplyGossipBlock(context.Background())
 			storeState, err := manager.Store.LoadState()
 			assert.NoError(err)
 			manager.State = storeState
@@ -640,7 +640,7 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Produce blocks
 			for i := 0; i < tc.blocksToProduce; i++ {
-				_, _, err := manager.ProduceApplyGossipBlock(ctx, true)
+				_, _, err := manager.ProduceApplyGossipBlock(ctx)
 				assert.NoError(err)
 			}
 

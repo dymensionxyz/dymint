@@ -178,7 +178,11 @@ func (m *Manager) createForkBlocks(instruction types.Instruction, consensusMsgs 
 		if h == instruction.RevisionStartHeight {
 			m.Executor.AddConsensusMsgs(consensusMsgs...)
 		}
-		if _, _, err := m.ProduceApplyGossipBlock(context.Background(), true); err != nil {
+		if _, _, err := m.ProduceApplyGossipBlock(context.Background(), produceBlockOptions{
+			allowEmpty:       true,
+			maxDataSize:      0,
+			nextProposerHash: nil,
+		}); err != nil {
 			return fmt.Errorf("produce apply gossip: h: %d : %w", h, err)
 		}
 	}
