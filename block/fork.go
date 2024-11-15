@@ -21,7 +21,8 @@ const (
 
 // MonitorForkUpdateLoop monitors the hub for fork updates in a loop
 func (m *Manager) MonitorForkUpdateLoop(ctx context.Context) error {
-	if types.InstructionExists(m.RootDir) { // TODO: why do we have this check
+	// if instruction already exists no need to check for fork update
+	if types.InstructionExists(m.RootDir) {
 		return nil
 	}
 
@@ -47,21 +48,13 @@ func (m *Manager) checkForkUpdate(ctx context.Context) error {
 		return err
 	}
 
-	if m.State.Height() == 0 {
-		return nil
-	}
-	lastBlock, err := m.Store.LoadBlock(m.State.Height())
-	if err != nil {
-		return err
-	}
-
-	if m.shouldStopNode(rollapp, lastBlock) {
+	if m.shouldStopNode(rollapp, m.State.GetRevision()) {
 		err = m.createInstruction(rollapp)
 		if err != nil {
 			return err
 		}
 
-		m.freezeNode(ctx, fmt.Errorf("fork update detected. local_block_height: %d rollapp_revision_start_height: %d local_revision: %d rollapp_revision: %d", m.State.Height(), rollapp.RevisionStartHeight, lastBlock.GetRevision(), rollapp.Revision))
+		m.freezeNode(ctx, fmt.Errorf("fork update detected. local_block_height: %d rollapp_revision_start_height: %d local_revision: %d rollapp_revision: %d", m.State.Height(), rollapp.RevisionStartHeight, m.State.GetRevision(), rollapp.Revision))
 	}
 
 	return nil
@@ -92,12 +85,10 @@ func (m *Manager) createInstruction(rollapp *types.Rollapp) error {
 // This method checks two conditions to decide if a node should be stopped:
 // 1. If the next state height is greater than or equal to the rollapp's revision start height.
 // 2. If the block's app version (equivalent to revision) is less than the rollapp's revision
-func (m *Manager) shouldStopNode(rollapp *types.Rollapp, block *types.Block) bool {
-	revision := block.GetRevision()
+func (m *Manager) shouldStopNode(rollapp *types.Rollapp, revision uint64) bool {
 	if m.State.NextHeight() >= rollapp.RevisionStartHeight && revision < rollapp.Revision {
 		return true
 	}
-
 	return false
 }
 
