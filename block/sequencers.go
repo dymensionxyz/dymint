@@ -119,7 +119,7 @@ func (m *Manager) CreateAndPostLastBatch(ctx context.Context, nextSeqHash [32]by
 		return fmt.Errorf("load block: height: %d: %w", h, err)
 	}
 
-	// check if the last block already produced with nextProposerHash set.
+	// check if the last block already produced with NextProposerHash set.
 	// After creating the last block, the sequencer will be restarted so it will not be able to produce blocks anymore.
 	if bytes.Equal(block.Header.NextSequencersHash[:], nextSeqHash[:]) {
 		m.logger.Debug("Last block already produced and applied.")

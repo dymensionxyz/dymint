@@ -62,7 +62,7 @@ func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {
 
 	// if instruction file exists
 	if instruction, forkNeeded := m.forkNeeded(); forkNeeded {
-		m.handleSequencerForkTransition(instruction)
+		m.doFork(instruction)
 
 		err := types.DeleteInstructionFromDisk(m.RootDir)
 		if err != nil {

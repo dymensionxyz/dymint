@@ -344,7 +344,7 @@ func TestUpdateInitialSequencerSet(t *testing.T) {
 	require.NoError(err)
 
 	// Produce block and validate that we produced blocks
-	block, _, err := manager.ProduceApplyGossipBlock(ctx, true)
+	block, _, err := manager.ProduceApplyGossipBlock(ctx, block2.ProduceBlockOptions{AllowEmpty: true})
 	require.NoError(err)
 	assert.Greater(t, manager.State.Height(), uint64(0))
 	assert.Zero(t, manager.LastSettlementHeight.Load())
@@ -470,7 +470,7 @@ func TestUpdateExistingSequencerSet(t *testing.T) {
 	require.Equal(updatedSequencer, sequencers[1])
 
 	// Produce block and validate that we produced blocks
-	block, _, err := manager.ProduceApplyGossipBlock(ctx, true)
+	block, _, err := manager.ProduceApplyGossipBlock(ctx, block2.ProduceBlockOptions{AllowEmpty: true})
 	require.NoError(err)
 	assert.Greater(t, manager.State.Height(), uint64(0))
 	assert.Zero(t, manager.LastSettlementHeight.Load())
