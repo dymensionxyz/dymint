@@ -75,11 +75,16 @@ message Rollapp {
   // received
   int64 last_state_update_height = 18;
 
-  // Revision is the revision number of the rollapp
-  uint64 revision = 19;
+  // Revisions is a list of all the rollapp revisions.
+  repeated Revision revisions = 19 [ (gogoproto.nullable) = false ];
+}
 
-  // RevisionStartHeight is the height at which the revision was started
-  uint64 revision_start_height = 20;
+// Revision is a representation of the rollapp revision.
+message Revision {
+  // Number is the revision number of the rollapp. Always start with 0 revision.
+  uint64 number = 19;
+  // StartHeight is the first height of the rollapp when the revision started.
+  uint64 start_height = 20;
 }
 
 message GenesisInfo {

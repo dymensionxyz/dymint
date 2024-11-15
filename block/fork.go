@@ -9,10 +9,11 @@ import (
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	"github.com/gogo/protobuf/proto"
 
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
+
 	"github.com/dymensionxyz/dymint/types"
 	sequencers "github.com/dymensionxyz/dymint/types/pb/rollapp/sequencers/types"
 	"github.com/dymensionxyz/dymint/version"
-	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 )
 
 const (
@@ -61,7 +62,8 @@ func (m *Manager) checkForkUpdate(ctx context.Context) error {
 			return err
 		}
 
-		m.freezeNode(ctx, fmt.Errorf("fork update detected. local_block_height: %d rollapp_revision_start_height: %d local_revision: %d rollapp_revision: %d", m.State.Height(), rollapp.RevisionStartHeight, lastBlock.GetRevision(), rollapp.Revision))
+		revision := rollapp.LatestRevision()
+		m.freezeNode(ctx, fmt.Errorf("fork update detected: local_block_height: %d rollapp_revision_start_height: %d local_revision: %d rollapp_revision: %d", m.State.Height(), revision.StartHeight, lastBlock.GetRevision(), revision.Number))
 	}
 
 	return nil
@@ -73,9 +75,10 @@ func (m *Manager) createInstruction(rollapp *types.Rollapp) error {
 		return err
 	}
 
+	revision := rollapp.LatestRevision()
 	instruction := types.Instruction{
-		Revision:            rollapp.Revision,
-		RevisionStartHeight: rollapp.RevisionStartHeight,
+		Revision:            revision.Number,
+		RevisionStartHeight: revision.StartHeight,
 		FaultyDRS:           obsoleteDrs,
 	}
 
@@ -93,8 +96,9 @@ func (m *Manager) createInstruction(rollapp *types.Rollapp) error {
 // 1. If the next state height is greater than or equal to the rollapp's revision start height.
 // 2. If the block's app version (equivalent to revision) is less than the rollapp's revision
 func (m *Manager) shouldStopNode(rollapp *types.Rollapp, block *types.Block) bool {
-	revision := block.GetRevision()
-	if m.State.NextHeight() >= rollapp.RevisionStartHeight && revision < rollapp.Revision {
+	blockRevision := block.GetRevision()
+	rollappRevision := rollapp.LatestRevision()
+	if m.State.NextHeight() >= rollappRevision.StartHeight && blockRevision < rollappRevision.Number {
 		return true
 	}
 

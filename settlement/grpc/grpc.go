@@ -53,9 +53,8 @@ type Client struct {
 
 func (c *Client) GetRollapp() (*types.Rollapp, error) {
 	return &types.Rollapp{
-		RollappID:           c.rollappID,
-		Revision:            0,
-		RevisionStartHeight: 1,
+		RollappID: c.rollappID,
+		Revisions: []types.Revision{{Number: 0, StartHeight: 0}},
 	}, nil
 }
 
