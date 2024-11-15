@@ -100,6 +100,12 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int)
 	}
 }
 
+type produceBlockOptions struct {
+	allowEmpty       bool
+	maxDataSize      uint64
+	nextProposerHash *[32]byte // optional, used for last block
+}
+
 // ProduceApplyGossipLastBlock produces and applies a block with the given nextProposerHash.
 func (m *Manager) ProduceApplyGossipLastBlock(ctx context.Context, nextProposerHash [32]byte) (err error) {
 	_, _, err = m.produceApplyGossip(ctx, true, &nextProposerHash)
