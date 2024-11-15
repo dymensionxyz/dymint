@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/dymensionxyz/dymint/block"
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
@@ -50,7 +51,7 @@ func TestPruningRetainHeight(t *testing.T) {
 
 	// Produce blocks
 	for i := 0; i < batchSize; i++ {
-		_, _, err = manager.ProduceApplyGossipBlock(ctx)
+		_, _, err = manager.ProduceApplyGossipBlock(ctx, block.ProduceBlockOptions{AllowEmpty: true})
 		require.NoError(err)
 	}
 	// submit and validate sync target
@@ -61,7 +62,7 @@ func TestPruningRetainHeight(t *testing.T) {
 
 	// Produce new blocks
 	for i := 0; i < batchSize; i++ {
-		_, _, err = manager.ProduceApplyGossipBlock(ctx)
+		_, _, err = manager.ProduceApplyGossipBlock(ctx, block.ProduceBlockOptions{AllowEmpty: true})
 		require.NoError(err)
 	}
 	validRetainHeight := manager.NextHeightToSubmit() // the max possible valid retain height

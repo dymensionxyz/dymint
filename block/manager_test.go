@@ -436,7 +436,7 @@ func TestProduceNewBlock(t *testing.T) {
 	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(t, err)
 	// Produce block
-	_, _, err = manager.ProduceApplyGossipBlock(context.Background())
+	_, _, err = manager.ProduceApplyGossipBlock(context.Background(), block.ProduceBlockOptions{AllowEmpty: true})
 	require.NoError(t, err)
 	// Validate state is updated with the commit hash
 	assert.Equal(t, uint64(1), manager.State.Height())
@@ -468,19 +468,19 @@ func TestProducePendingBlock(t *testing.T) {
 	// Init manager
 	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(t, err)
-	// Generate block and commit and save it to the store
-	block := testutil.GetRandomBlock(1, 3)
-	copy(block.Header.SequencerHash[:], manager.State.GetProposerHash())
-	copy(block.Header.NextSequencersHash[:], manager.State.GetProposerHash())
+	// Generate b and commit and save it to the store
+	b := testutil.GetRandomBlock(1, 3)
+	copy(b.Header.SequencerHash[:], manager.State.GetProposerHash())
+	copy(b.Header.NextSequencersHash[:], manager.State.GetProposerHash())
 
-	_, err = manager.Store.SaveBlock(block, &block.LastCommit, nil)
+	_, err = manager.Store.SaveBlock(b, &b.LastCommit, nil)
 	require.NoError(t, err)
-	// Produce block
-	_, _, err = manager.ProduceApplyGossipBlock(context.Background())
+	// Produce b
+	_, _, err = manager.ProduceApplyGossipBlock(context.Background(), block.ProduceBlockOptions{AllowEmpty: true})
 	require.NoError(t, err)
 
-	// Validate state is updated with the block that was saved in the store
-	// hacky way to validate the block was indeed contain txs
+	// Validate state is updated with the b that was saved in the store
+	// hacky way to validate the b was indeed contain txs
 	assert.NotEqual(t, manager.State.LastResultsHash, testutil.GetEmptyLastResultsHash())
 }
 
@@ -574,7 +574,7 @@ func TestProduceBlockFailAfterCommit(t *testing.T) {
 				},
 			})
 			mockStore.ShouldFailUpdateStateWithBatch = tc.shoudFailOnSaveState
-			_, _, _ = manager.ProduceApplyGossipBlock(context.Background())
+			_, _, _ = manager.ProduceApplyGossipBlock(context.Background(), block.ProduceBlockOptions{AllowEmpty: true})
 			storeState, err := manager.Store.LoadState()
 			assert.NoError(err)
 			manager.State = storeState
@@ -640,7 +640,7 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Produce blocks
 			for i := 0; i < tc.blocksToProduce; i++ {
-				_, _, err := manager.ProduceApplyGossipBlock(ctx)
+				_, _, err := manager.ProduceApplyGossipBlock(ctx, block.ProduceBlockOptions{AllowEmpty: true})
 				assert.NoError(err)
 			}
 

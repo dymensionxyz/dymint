@@ -135,7 +135,7 @@ func TestBatchSubmissionHappyFlow(t *testing.T) {
 	require.Zero(manager.LastSettlementHeight.Load())
 
 	// Produce block and validate that we produced blocks
-	_, _, err = manager.ProduceApplyGossipBlock(ctx)
+	_, _, err = manager.ProduceApplyGossipBlock(ctx, block.ProduceBlockOptions{AllowEmpty: true})
 	require.NoError(err)
 	assert.Greater(t, manager.State.Height(), initialHeight)
 	assert.Zero(t, manager.LastSettlementHeight.Load())
@@ -200,7 +200,7 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 	require.Zero(manager.LastSettlementHeight.Load())
 
 	// Produce block and validate that we produced blocks
-	_, _, err = manager.ProduceApplyGossipBlock(ctx)
+	_, _, err = manager.ProduceApplyGossipBlock(ctx, block.ProduceBlockOptions{AllowEmpty: true})
 	require.NoError(err)
 	assert.Greater(t, manager.State.Height(), initialHeight)
 	assert.Zero(t, manager.LastSettlementHeight.Load())

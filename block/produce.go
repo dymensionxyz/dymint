@@ -49,7 +49,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int)
 			produceEmptyBlock := firstBlock || m.Conf.MaxIdleTime == 0 || nextEmptyBlock.Before(time.Now())
 			firstBlock = false
 
-			block, commit, err := m.ProduceApplyGossipBlock(ctx, produceBlockOptions{allowEmpty: produceEmptyBlock})
+			block, commit, err := m.ProduceApplyGossipBlock(ctx, ProduceBlockOptions{AllowEmpty: produceEmptyBlock})
 			if errors.Is(err, context.Canceled) {
 				m.logger.Error("Produce and gossip: context canceled.", "error", err)
 				return nil
@@ -100,26 +100,26 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int)
 	}
 }
 
-type produceBlockOptions struct {
-	allowEmpty       bool
-	maxDataSize      *uint64
-	nextProposerHash *[32]byte // optional, used for last block
+type ProduceBlockOptions struct {
+	AllowEmpty       bool
+	MaxData          *uint64
+	NextProposerHash *[32]byte // optional, used for last block
 }
 
-// ProduceApplyGossipLastBlock produces and applies a block with the given nextProposerHash.
+// ProduceApplyGossipLastBlock produces and applies a block with the given NextProposerHash.
 func (m *Manager) ProduceApplyGossipLastBlock(ctx context.Context, nextProposerHash [32]byte) (err error) {
-	_, _, err = m.produceApplyGossip(ctx, produceBlockOptions{
-		allowEmpty:       true,
-		nextProposerHash: &nextProposerHash,
+	_, _, err = m.produceApplyGossip(ctx, ProduceBlockOptions{
+		AllowEmpty:       true,
+		NextProposerHash: &nextProposerHash,
 	})
 	return err
 }
 
-func (m *Manager) ProduceApplyGossipBlock(ctx context.Context, opts produceBlockOptions) (block *types.Block, commit *types.Commit, err error) {
+func (m *Manager) ProduceApplyGossipBlock(ctx context.Context, opts ProduceBlockOptions) (block *types.Block, commit *types.Commit, err error) {
 	return m.produceApplyGossip(ctx, opts)
 }
 
-func (m *Manager) produceApplyGossip(ctx context.Context, opts produceBlockOptions) (block *types.Block, commit *types.Commit, err error) {
+func (m *Manager) produceApplyGossip(ctx context.Context, opts ProduceBlockOptions) (block *types.Block, commit *types.Commit, err error) {
 	// If I'm not the current rollapp proposer, I should not produce a blocks.
 	block, commit, err = m.produceBlock(opts)
 	if err != nil {
@@ -137,7 +137,7 @@ func (m *Manager) produceApplyGossip(ctx context.Context, opts produceBlockOptio
 	return block, commit, nil
 }
 
-func (m *Manager) produceBlock(opts produceBlockOptions) (*types.Block, *types.Commit, error) {
+func (m *Manager) produceBlock(opts ProduceBlockOptions) (*types.Block, *types.Commit, error) {
 	newHeight := m.State.NextHeight()
 	lastHeaderHash, lastCommit, err := m.GetPreviousBlockHashes(newHeight)
 	if err != nil {
@@ -164,18 +164,18 @@ func (m *Manager) produceBlock(opts produceBlockOptions) (*types.Block, *types.C
 	}
 
 	maxBlockDataSize := uint64(float64(m.Conf.BatchSubmitBytes) * types.MaxBlockSizeAdjustment)
-	if opts.maxDataSize != nil {
-		maxBlockDataSize = *opts.maxDataSize
+	if opts.MaxData != nil {
+		maxBlockDataSize = *opts.MaxData
 	}
 	proposerHashForBlock := [32]byte(m.State.GetProposerHash())
-	// if nextProposerHash is set, we create a last block
-	if opts.nextProposerHash != nil {
+	// if NextProposerHash is set, we create a last block
+	if opts.NextProposerHash != nil {
 		maxBlockDataSize = 0
-		proposerHashForBlock = *opts.nextProposerHash
+		proposerHashForBlock = *opts.NextProposerHash
 	}
 
 	block = m.Executor.CreateBlock(newHeight, lastCommit, lastHeaderHash, proposerHashForBlock, m.State, maxBlockDataSize)
-	if !opts.allowEmpty && len(block.Data.Txs) == 0 {
+	if !opts.AllowEmpty && len(block.Data.Txs) == 0 {
 		return nil, nil, fmt.Errorf("%w: %w", types.ErrEmptyBlock, ErrRecoverable)
 	}
 
