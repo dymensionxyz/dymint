@@ -21,24 +21,21 @@ const (
 
 // MonitorForkUpdateLoop monitors the hub for fork updates in a loop
 func (m *Manager) MonitorForkUpdateLoop(ctx context.Context) error {
-	if !types.InstructionExists(m.RootDir) {
-		err := m.checkForkUpdate(ctx)
-		if err != nil {
-			return err
-		}
+	if types.InstructionExists(m.RootDir) { // TODO: why do we have this check
+		return nil
 	}
 
 	ticker := time.NewTicker(LoopInterval) // TODO make this configurable
 	defer ticker.Stop()
 
 	for {
+		if err := m.checkForkUpdate(ctx); err != nil {
+			m.logger.Error("Check for update.", err)
+		}
 		select {
 		case <-ctx.Done():
-			return nil
+			return ctx.Err()
 		case <-ticker.C:
-			if err := m.checkForkUpdate(ctx); err != nil {
-				continue
-			}
 		}
 	}
 }
