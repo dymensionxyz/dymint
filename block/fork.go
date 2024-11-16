@@ -101,7 +101,13 @@ func (m *Manager) forkNeeded() (types.Instruction, bool) {
 	return types.Instruction{}, false
 }
 
-func (m *Manager) doFork(instruction types.Instruction) {
+func (m *Manager) doFork(instruction types.Instruction) error {
+	m.State.SetRevision(instruction.Revision)
+	SLProposer, err := m.SLClient.GetProposerAtHeight(int64(m.State.NextHeight()))
+	if err != nil {
+		return fmt.Errorf("get proposer at height: %w", err)
+	}
+	m.State.SetProposer(SLProposer)
 	consensusMsgs, err := m.prepareDRSUpgradeMessages(instruction.FaultyDRS)
 	if err != nil {
 		panic(fmt.Sprintf("prepare DRS upgrade messages: %v", err))
@@ -117,6 +123,12 @@ func (m *Manager) doFork(instruction types.Instruction) {
 	if err := m.submitForkBatch(instruction.RevisionStartHeight); err != nil {
 		panic(fmt.Sprintf("ensure batch exists: %v", err))
 	}
+
+	err = types.DeleteInstructionFromDisk(m.RootDir)
+	if err != nil {
+		return fmt.Errorf("deleting instruction file: %w", err)
+	}
+	return nil
 }
 
 // prepareDRSUpgradeMessages prepares consensus messages for DRS upgrades.

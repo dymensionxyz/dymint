@@ -62,12 +62,18 @@ func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {
 
 	// if instruction file exists
 	if instruction, forkNeeded := m.forkNeeded(); forkNeeded {
-		m.doFork(instruction)
 
+		if m.LastSettlementHeight.Load() < instruction.RevisionStartHeight {
+			err := m.doFork(instruction)
+			if err != nil {
+				return err
+			}
+		}
 		err := types.DeleteInstructionFromDisk(m.RootDir)
 		if err != nil {
 			return fmt.Errorf("deleting instruction file: %w", err)
 		}
+
 	}
 
 	// check if we should rotate

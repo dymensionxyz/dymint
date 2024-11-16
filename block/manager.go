@@ -192,11 +192,11 @@ func NewManager(
 
 		// Upgrade revision on state
 		state := m.State
-		state.SetRevision(instruction.Revision)
 		state.RevisionStartHeight = instruction.RevisionStartHeight
 
 		// this is necessary to pass ValidateConfigWithRollappParams when DRS upgrade is required
 		if instruction.RevisionStartHeight == m.State.NextHeight() {
+			state.SetRevision(instruction.Revision)
 			drsVersion, err := version.GetDRSVersion()
 			if err != nil {
 				return nil, err
