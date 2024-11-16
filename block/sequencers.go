@@ -100,7 +100,12 @@ func (m *Manager) rotate(ctx context.Context) {
 		panic(fmt.Sprintf("rotate: fetch next proposer set from Hub: %v", err))
 	}
 
-	err = m.CreateAndPostLastBatch(ctx, [32]byte(nextProposer.MustHash()))
+	var nextProposerHash [32]byte
+	if !nextProposer.IsEmpty() {
+		nextProposerHash = [32]byte(nextProposer.MustHash())
+	}
+
+	err = m.CreateAndPostLastBatch(ctx, nextProposerHash)
 	if err != nil {
 		panic(fmt.Sprintf("rotate: create and post last batch: %v", err))
 	}
@@ -164,8 +169,9 @@ func (m *Manager) UpdateSequencerSetFromSL() error {
 // creates consensus messages for all new sequencers. The method updates the current state
 // and is not thread-safe. Returns errors on serialization issues.
 func (m *Manager) HandleSequencerSetUpdate(newSet []types.Sequencer) error {
+	actualSequencers := m.Sequencers.GetAll()
 	// find new (updated) sequencers
-	newSequencers := types.SequencerListRightOuterJoin(m.Sequencers.GetAll(), newSet)
+	newSequencers := types.SequencerListRightOuterJoin(actualSequencers, newSet)
 	// create consensus msgs for new sequencers
 	msgs, err := ConsensusMsgsOnSequencerSetUpdate(newSequencers)
 	if err != nil {
