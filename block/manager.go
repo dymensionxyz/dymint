@@ -186,25 +186,10 @@ func NewManager(
 		return nil, err
 	}
 
-	if instruction, forkNeeded := m.forkNeeded(); forkNeeded {
-		// Set proposer to nil
-		m.State.SetProposer(nil)
-
-		// Upgrade revision on state
-		state := m.State
-		state.RevisionStartHeight = instruction.RevisionStartHeight
-
-		// this is necessary to pass ValidateConfigWithRollappParams when DRS upgrade is required
-		if instruction.RevisionStartHeight == m.State.NextHeight() {
-			state.SetRevision(instruction.Revision)
-			drsVersion, err := version.GetDRSVersion()
-			if err != nil {
-				return nil, err
-			}
-			state.RollappParams.DrsVersion = drsVersion
-		}
-
-		m.State = state
+	// update dymint state with fork info
+	err = m.updateStateWhenFork()
+	if err != nil {
+		return nil, err
 	}
 
 	// validate configuration params and rollapp consensus params are in line
