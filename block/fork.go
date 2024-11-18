@@ -140,7 +140,6 @@ func (m *Manager) doFork(instruction types.Instruction) {
 //   - Validates the current DRS version against the potentially faulty version
 //   - Generates an upgrade message with the current valid DRS version
 func (m *Manager) prepareDRSUpgradeMessages(obsoleteDRS []uint32) ([]proto.Message, error) {
-
 	for _, drs := range obsoleteDRS {
 		if drs == version.DRS {
 			return nil, gerrc.ErrCancelled.Wrapf("obsolete DRS version: %d", drs)
