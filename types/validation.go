@@ -63,7 +63,7 @@ func (b *Block) ValidateWithState(state *State) error {
 	}
 
 	currentTime := time.Now().UTC()
-	if currentTime.Add(TimeFraudMaxDrift).Before(time.Unix(0, int64(b.Header.Time))) {
+	if currentTime.Add(TimeFraudMaxDrift).Before(b.Header.GetTimestamp()) {
 		return NewErrTimeFraud(b, currentTime)
 	}
 

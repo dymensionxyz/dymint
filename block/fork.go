@@ -9,8 +9,9 @@ import (
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
 	"github.com/gogo/protobuf/proto"
 
+	sequencers "github.com/dymensionxyz/dymension-rdk/x/sequencers/types"
 	"github.com/dymensionxyz/dymint/types"
-	sequencers "github.com/dymensionxyz/dymint/types/pb/rollapp/sequencers/types"
+
 	"github.com/dymensionxyz/dymint/version"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 )
