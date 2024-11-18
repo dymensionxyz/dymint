@@ -69,6 +69,9 @@ type Manager struct {
 	// RunMode represents the mode of the node. Set during initialization and shouldn't change after that.
 	RunMode uint
 
+	// context used when freezing node
+	Cancel context.CancelFunc
+	ctx    context.Context
 	/*
 		Sequencer and full-node
 	*/
@@ -115,8 +118,6 @@ type Manager struct {
 
 	// validates all non-finalized state updates from settlement, checking there is consistency between DA and P2P blocks, and the information in the state update.
 	SettlementValidator *SettlementValidator
-
-	Cancel context.CancelFunc
 }
 
 // NewManager creates new block Manager.
@@ -205,7 +206,7 @@ func NewManager(
 
 // Start starts the block manager.
 func (m *Manager) Start(ctx context.Context) error {
-	ctx, m.Cancel = context.WithCancel(ctx)
+	m.ctx, m.Cancel = context.WithCancel(ctx)
 	// Check if InitChain flow is needed
 	if m.State.IsGenesis() {
 		m.logger.Info("Running InitChain")
@@ -262,7 +263,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		err := m.SettlementSyncLoop(ctx)
 		if err != nil {
-			m.freezeNode(context.Background(), err)
+			m.freezeNode(m.ctx, err)
 		}
 		return nil
 	})

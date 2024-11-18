@@ -143,7 +143,7 @@ func TestCheckForkUpdate(t *testing.T) {
 				State:    mockState,
 			}
 
-			err := manager.checkForkUpdate(ctx)
+			err := manager.checkForkUpdate(ctx, "")
 			if tt.expectedError {
 				assert.Error(t, err)
 			} else {

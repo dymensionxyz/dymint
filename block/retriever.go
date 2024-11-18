@@ -1,7 +1,6 @@
 package block
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
@@ -38,19 +37,8 @@ func (m *Manager) ApplyBatchFromSL(slBatch *settlement.Batch) error {
 			}
 
 			if block.GetRevision() != m.State.GetRevision() {
-
-				rollapp, err := m.SLClient.GetRollapp()
-				if err != nil {
-					return err
-				}
-				if m.shouldStopNode(rollapp, m.State.GetRevision()) {
-					err = m.createInstruction(rollapp)
-					if err != nil {
-						return err
-					}
-					m.freezeNode(context.Background(), fmt.Errorf("syncing to fork height. please restart the node. local_block_height: %d rollapp_revision_start_height: %d local_revision: %d rollapp_revision: %d", m.State.Height(), rollapp.RevisionStartHeight, m.State.GetRevision(), rollapp.Revision))
-					return nil
-				}
+				err := m.checkForkUpdate(m.ctx, "syncing to fork height. please restart the node.")
+				return err
 			}
 
 			// We dont validate because validateBlockBeforeApply already checks if the block is already applied, and we don't need to fail there.
