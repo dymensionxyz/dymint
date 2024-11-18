@@ -22,11 +22,12 @@ import (
 	tmtypes "github.com/tendermint/tendermint/types"
 	tm_version "github.com/tendermint/tendermint/version"
 
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
+
 	"github.com/dymensionxyz/dymint/mempool"
 	"github.com/dymensionxyz/dymint/node"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/dymensionxyz/dymint/version"
-	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 )
 
 const (
@@ -718,7 +719,7 @@ func (c *Client) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
 	latestBlockHash := latest.Header.DataHash
 	latestAppHash := latest.Header.AppHash
 	latestHeight := latest.Header.Height
-	latestBlockTimeNano := latest.Header.Time
+	latestBlockTime := latest.Header.GetTimestamp()
 
 	proposer, err := c.node.Store.LoadProposer(latest.Header.Height)
 	if err != nil {
@@ -755,7 +756,7 @@ func (c *Client) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
 			LatestBlockHash:   latestBlockHash[:],
 			LatestAppHash:     latestAppHash[:],
 			LatestBlockHeight: int64(latestHeight),
-			LatestBlockTime:   time.Unix(0, int64(latestBlockTimeNano)),
+			LatestBlockTime:   latestBlockTime,
 			// CatchingUp is true if the node is not at the latest height received from p2p or da.
 			CatchingUp: c.node.BlockManager.TargetHeight.Load() > latestHeight,
 			// TODO(tzdybal): add missing fields

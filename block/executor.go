@@ -155,7 +155,7 @@ func (e *Executor) CreateBlock(
 			},
 			ChainID:         e.chainID,
 			Height:          height,
-			Time:            uint64(time.Now().UTC().UnixNano()),
+			Time:            time.Now().UTC().UnixNano(),
 			LastHeaderHash:  lastHeaderHash,
 			DataHash:        [32]byte{},
 			ConsensusHash:   [32]byte{},

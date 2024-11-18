@@ -7,16 +7,18 @@ import (
 	"time"
 
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/gogo/protobuf/proto"
 
+	sequencers "github.com/dymensionxyz/dymension-rdk/x/sequencers/types"
 	"github.com/dymensionxyz/dymint/types"
-	sequencers "github.com/dymensionxyz/dymint/types/pb/rollapp/sequencers/types"
+
 	"github.com/dymensionxyz/dymint/version"
-	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 )
 
 const (
 	ForkMonitorInterval = 15 * time.Second
+	ForkMessage         = "rollapp fork detected. please rollback to height previous to rollapp_revision_start_height."
 )
 
 // MonitorForkUpdateLoop monitors the hub for fork updates in a loop
@@ -30,7 +32,7 @@ func (m *Manager) MonitorForkUpdateLoop(ctx context.Context) error {
 	defer ticker.Stop()
 
 	for {
-		if err := m.checkForkUpdate(ctx); err != nil {
+		if err := m.checkForkUpdate(ctx, ForkMessage); err != nil {
 			m.logger.Error("Check for update.", err)
 		}
 		select {
@@ -42,7 +44,7 @@ func (m *Manager) MonitorForkUpdateLoop(ctx context.Context) error {
 }
 
 // checkForkUpdate checks if the hub has a fork update
-func (m *Manager) checkForkUpdate(ctx context.Context) error {
+func (m *Manager) checkForkUpdate(ctx context.Context, msg string) error {
 	rollapp, err := m.SLClient.GetRollapp()
 	if err != nil {
 		return err
@@ -54,7 +56,7 @@ func (m *Manager) checkForkUpdate(ctx context.Context) error {
 			return err
 		}
 
-		m.freezeNode(ctx, fmt.Errorf("fork update detected. local_block_height: %d rollapp_revision_start_height: %d local_revision: %d rollapp_revision: %d", m.State.Height(), rollapp.RevisionStartHeight, m.State.GetRevision(), rollapp.Revision))
+		m.freezeNode(ctx, fmt.Errorf("%s  local_block_height: %d rollapp_revision_start_height: %d local_revision: %d rollapp_revision: %d", msg, m.State.Height(), rollapp.LatestRevision().StartHeight, m.State.GetRevision(), rollapp.LatestRevision().Number))
 	}
 
 	return nil
@@ -67,9 +69,10 @@ func (m *Manager) createInstruction(rollapp *types.Rollapp) error {
 		return err
 	}
 
+	revision := rollapp.LatestRevision()
 	instruction := types.Instruction{
-		Revision:            rollapp.Revision,
-		RevisionStartHeight: rollapp.RevisionStartHeight,
+		Revision:            revision.Number,
+		RevisionStartHeight: revision.StartHeight,
 		FaultyDRS:           obsoleteDrs,
 	}
 
@@ -87,7 +90,7 @@ func (m *Manager) createInstruction(rollapp *types.Rollapp) error {
 // 1. If the next state height is greater than or equal to the rollapp's revision start height.
 // 2. If the block's app version (equivalent to revision) is less than the rollapp's revision
 func (m *Manager) shouldStopNode(rollapp *types.Rollapp, revision uint64) bool {
-	if m.State.NextHeight() >= rollapp.RevisionStartHeight && revision < rollapp.Revision {
+	if m.State.NextHeight() >= rollapp.LatestRevision().StartHeight && revision < rollapp.LatestRevision().Number {
 		return true
 	}
 	return false
@@ -104,7 +107,6 @@ func (m *Manager) forkNeeded() (types.Instruction, bool) {
 
 // doFork creates fork blocks and submits a new batch with them
 func (m *Manager) doFork(instruction types.Instruction) error {
-
 	// if fork (two) blocks are not produced and applied yet, produce them
 	if m.State.Height() < instruction.RevisionStartHeight+1 {
 		// add consensus msgs for upgrade DRS only if current DRS is obsolete
@@ -223,7 +225,6 @@ func (m *Manager) submitForkBatch(height uint64) error {
 
 // updateStateWhenFork updates dymint state in case fork is detected
 func (m *Manager) updateStateWhenFork() error {
-
 	// in case fork is detected dymint state needs to be updated
 	if instruction, forkNeeded := m.forkNeeded(); forkNeeded {
 		// Set proposer to nil to force updating it from SL

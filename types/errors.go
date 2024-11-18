@@ -127,7 +127,8 @@ type ErrTimeFraud struct {
 }
 
 func NewErrTimeFraud(block *Block, currentTime time.Time) error {
-	drift := time.Unix(int64(block.Header.Time), 0).Sub(currentTime)
+	headerTime := block.Header.GetTimestamp()
+	drift := headerTime.Sub(currentTime)
 
 	return ErrTimeFraud{
 		CurrentTime:     currentTime,
@@ -135,7 +136,7 @@ func NewErrTimeFraud(block *Block, currentTime time.Time) error {
 		ProposerAddress: block.Header.ProposerAddress,
 		HeaderHash:      block.Header.Hash(),
 		HeaderHeight:    block.Header.Height,
-		HeaderTime:      time.Unix(int64(block.Header.Time), 0),
+		HeaderTime:      headerTime,
 	}
 }
 

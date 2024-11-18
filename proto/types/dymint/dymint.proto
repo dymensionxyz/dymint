@@ -26,8 +26,8 @@ message Header {
 	// Block height
 	uint64 height = 3;
 
-	// Block creation time
-	uint64 time = 4;
+	// Block creation time in nanoseconds. Use int64 as Golang stores UNIX nanoseconds in int64.
+	int64 time = 4;
 
 	// Previous block info
 	bytes last_header_hash = 5;

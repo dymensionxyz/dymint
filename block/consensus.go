@@ -6,11 +6,10 @@ import (
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
+	rdktypes "github.com/dymensionxyz/dymension-rdk/x/sequencers/types"
 	"github.com/gogo/protobuf/proto"
 
 	"github.com/dymensionxyz/dymint/types"
-	rdktypes "github.com/dymensionxyz/dymint/types/pb/rollapp/sequencers/types"
-	protoutils "github.com/dymensionxyz/dymint/utils/proto"
 	"github.com/dymensionxyz/dymint/utils/queue"
 )
 
@@ -63,7 +62,7 @@ func ConsensusMsgsOnSequencerSetUpdate(newSequencers []types.Sequencer) ([]proto
 		msgs = append(msgs, &rdktypes.ConsensusMsgUpsertSequencer{
 			Signer:     signer.String(),
 			Operator:   s.SettlementAddress,
-			ConsPubKey: protoutils.CosmosToGogo(anyPK),
+			ConsPubKey: anyPK,
 			RewardAddr: s.RewardAddr,
 			Relayers:   s.WhitelistedRelayers,
 		})

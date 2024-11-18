@@ -5,11 +5,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/dymensionxyz/dymint/test/loadtime/payload"
 	"github.com/dymensionxyz/dymint/test/loadtime/report"
 	"github.com/dymensionxyz/dymint/test/pb/loadtime"
 	"github.com/dymensionxyz/dymint/types"
-	"github.com/google/uuid"
 )
 
 type mockBlockStore struct {
@@ -63,7 +64,7 @@ func TestGenerateReport(t *testing.T) {
 		blocks: []*types.Block{
 			{
 				Header: types.Header{
-					Time: uint64(t1.UTC().UnixNano()),
+					Time: t1.UTC().UnixNano(),
 				},
 				Data: types.Data{
 					Txs: []types.Tx{b1, b2},
@@ -71,7 +72,7 @@ func TestGenerateReport(t *testing.T) {
 			},
 			{
 				Header: types.Header{
-					Time: uint64(t1.UTC().UnixNano()),
+					Time: t1.UTC().UnixNano(),
 				},
 				Data: types.Data{
 					Txs: []types.Tx{[]byte("error")},
@@ -82,12 +83,12 @@ func TestGenerateReport(t *testing.T) {
 					Txs: []types.Tx{b3, b3},
 				},
 				Header: types.Header{
-					Time: uint64(t2.UTC().UnixNano()),
+					Time: t2.UTC().UnixNano(),
 				},
 			},
 			{
 				Header: types.Header{
-					Time: uint64(t2.UTC().UnixNano()),
+					Time: t2.UTC().UnixNano(),
 				},
 				Data: types.Data{
 					Txs: []types.Tx{},

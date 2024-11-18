@@ -582,11 +582,8 @@ func (c *Client) GetRollapp() (*types.Rollapp, error) {
 		return nil, fmt.Errorf("empty response: %w", gerrc.ErrUnknown)
 	}
 
-	return &types.Rollapp{
-		RollappID:           c.rollappId,
-		Revision:            res.Rollapp.Revision,
-		RevisionStartHeight: res.Rollapp.RevisionStartHeight,
-	}, nil
+	rollapp := types.RollappFromProto(res.Rollapp)
+	return &rollapp, nil
 }
 
 // GetObsoleteDrs returns the list of deprecated DRS.
