@@ -55,7 +55,7 @@ func (m *Manager) checkForkUpdate(ctx context.Context) error {
 			return err
 		}
 
-		m.freezeNode(ctx, fmt.Errorf("fork update detected. local_block_height: %d rollapp_revision_start_height: %d local_revision: %d rollapp_revision: %d", m.State.Height(), rollapp.RevisionStartHeight, m.State.GetRevision(), rollapp.Revision))
+		m.freezeNode(ctx, fmt.Errorf("fork update detected. please rollback to height: %d. local_block_height: %d rollapp_revision_start_height: %d local_revision: %d rollapp_revision: %d", rollapp.RevisionStartHeight-1, m.State.Height(), rollapp.RevisionStartHeight, m.State.GetRevision(), rollapp.Revision))
 	}
 
 	return nil
