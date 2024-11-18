@@ -7,13 +7,13 @@ import (
 	"time"
 
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/gogo/protobuf/proto"
 
 	sequencers "github.com/dymensionxyz/dymension-rdk/x/sequencers/types"
 	"github.com/dymensionxyz/dymint/types"
 
 	"github.com/dymensionxyz/dymint/version"
-	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 )
 
 const (
@@ -56,7 +56,7 @@ func (m *Manager) checkForkUpdate(ctx context.Context, msg string) error {
 			return err
 		}
 
-		m.freezeNode(ctx, fmt.Errorf("%s  local_block_height: %d rollapp_revision_start_height: %d local_revision: %d rollapp_revision: %d", msg, m.State.Height(), rollapp.RevisionStartHeight, m.State.GetRevision(), rollapp.Revision))
+		m.freezeNode(ctx, fmt.Errorf("%s  local_block_height: %d rollapp_revision_start_height: %d local_revision: %d rollapp_revision: %d", msg, m.State.Height(), rollapp.LatestRevision().StartHeight, m.State.GetRevision(), rollapp.LatestRevision().Number))
 	}
 
 	return nil
@@ -69,9 +69,10 @@ func (m *Manager) createInstruction(rollapp *types.Rollapp) error {
 		return err
 	}
 
+	revision := rollapp.LatestRevision()
 	instruction := types.Instruction{
-		Revision:            rollapp.Revision,
-		RevisionStartHeight: rollapp.RevisionStartHeight,
+		Revision:            revision.Number,
+		RevisionStartHeight: revision.StartHeight,
 		FaultyDRS:           obsoleteDrs,
 	}
 
@@ -89,7 +90,7 @@ func (m *Manager) createInstruction(rollapp *types.Rollapp) error {
 // 1. If the next state height is greater than or equal to the rollapp's revision start height.
 // 2. If the block's app version (equivalent to revision) is less than the rollapp's revision
 func (m *Manager) shouldStopNode(rollapp *types.Rollapp, revision uint64) bool {
-	if m.State.NextHeight() >= rollapp.RevisionStartHeight && revision < rollapp.Revision {
+	if m.State.NextHeight() >= rollapp.LatestRevision().StartHeight && revision < rollapp.LatestRevision().Number {
 		return true
 	}
 	return false

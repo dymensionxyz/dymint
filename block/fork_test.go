@@ -27,8 +27,10 @@ func TestShouldStopNode(t *testing.T) {
 		{
 			name: "should stop - current height greater than revision start height and lower revision",
 			rollapp: &types.Rollapp{
-				Revision:            2,
-				RevisionStartHeight: 100,
+				Revisions: []types.Revision{{
+					Number:      2,
+					StartHeight: 100,
+				}},
 			},
 			block: &types.Block{
 				Header: types.Header{
@@ -43,8 +45,10 @@ func TestShouldStopNode(t *testing.T) {
 		{
 			name: "should not stop - current height less than revision start height",
 			rollapp: &types.Rollapp{
-				Revision:            2,
-				RevisionStartHeight: 100,
+				Revisions: []types.Revision{{
+					Number:      2,
+					StartHeight: 100,
+				}},
 			},
 			block: &types.Block{
 				Header: types.Header{
@@ -59,8 +63,10 @@ func TestShouldStopNode(t *testing.T) {
 		{
 			name: "should not stop - same revision",
 			rollapp: &types.Rollapp{
-				Revision:            2,
-				RevisionStartHeight: 100,
+				Revisions: []types.Revision{{
+					Number:      2,
+					StartHeight: 100,
+				}},
 			},
 			block: &types.Block{
 				Header: types.Header{
@@ -106,8 +112,10 @@ func TestCheckForkUpdate(t *testing.T) {
 				mockState.LastBlockHeight.Store(uint64(100))
 
 				mockSL.On("GetRollapp").Return(&types.Rollapp{
-					Revision:            1,
-					RevisionStartHeight: 200,
+					Revisions: []types.Revision{{
+						Number:      1,
+						StartHeight: 200,
+					}},
 				}, nil)
 
 				mockStore.On("LoadBlock", uint64(100)).Return(&types.Block{
@@ -165,8 +173,10 @@ func TestMonitorForkUpdate(t *testing.T) {
 	// Setup basic mocks for a successful check
 	state.LastBlockHeight.Store(uint64(100))
 	mockSL.On("GetRollapp").Return(&types.Rollapp{
-		Revision:            2,
-		RevisionStartHeight: 100,
+		Revisions: []types.Revision{{
+			Number:      2,
+			StartHeight: 100,
+		}},
 	}, nil)
 
 	mockStore.On("LoadBlock", uint64(100)).Return(&types.Block{
@@ -220,8 +230,10 @@ func TestCreateInstruction(t *testing.T) {
 		{
 			name: "successful instruction creation",
 			rollapp: &types.Rollapp{
-				Revision:            2,
-				RevisionStartHeight: 100,
+				Revisions: []types.Revision{{
+					Number:      2,
+					StartHeight: 100,
+				}},
 			},
 			block: &types.Block{
 				Header: types.Header{
@@ -240,8 +252,10 @@ func TestCreateInstruction(t *testing.T) {
 			mockSL := new(settlement.MockClientI)
 			mockSL.On("GetObsoleteDrs").Return([]uint32{}, nil)
 			mockSL.On("GetRollapp").Return(&types.Rollapp{
-				Revision:            2,
-				RevisionStartHeight: 100,
+				Revisions: []types.Revision{{
+					Number:      2,
+					StartHeight: 100,
+				}},
 			}, nil)
 
 			manager.SLClient = mockSL
