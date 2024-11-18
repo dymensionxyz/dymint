@@ -7,9 +7,8 @@ import (
 	"time"
 
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
-	"github.com/gogo/protobuf/proto"
-
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
+	"github.com/gogo/protobuf/proto"
 
 	sequencers "github.com/dymensionxyz/dymension-rdk/x/sequencers/types"
 	"github.com/dymensionxyz/dymint/types"
@@ -51,7 +50,8 @@ func (m *Manager) checkForkUpdate(ctx context.Context, msg string) error {
 		return err
 	}
 
-	if m.shouldStopNode(rollapp, m.State.GetRevision()) {
+	revision := rollapp.LatestRevision()
+	if m.shouldStopNode(revision, m.State.GetRevision()) {
 		err = m.createInstruction(rollapp)
 		if err != nil {
 			return err
@@ -90,8 +90,13 @@ func (m *Manager) createInstruction(rollapp *types.Rollapp) error {
 // This method checks two conditions to decide if a node should be stopped:
 // 1. If the next state height is greater than or equal to the rollapp's revision start height.
 // 2. If the block's app version (equivalent to revision) is less than the rollapp's revision
+<<<<<<< HEAD
 func (m *Manager) shouldStopNode(rollapp *types.Rollapp, revision uint64) bool {
 	if m.State.NextHeight() >= rollapp.LatestRevision().StartHeight && revision < rollapp.LatestRevision().Number {
+=======
+func (m *Manager) shouldStopNode(rollappRevision types.Revision, revision uint64) bool {
+	if m.State.NextHeight() >= rollappRevision.StartHeight && revision < rollappRevision.Number {
+>>>>>>> f7b6af6f146ddcc6dedd9c53c7919686d5682463
 		return true
 	}
 	return false
