@@ -252,7 +252,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	// send signal to validation loop with last settlement state update
 	m.triggerSettlementValidation()
 
-	eg, ctx := errgroup.WithContext(ctx)
+	eg, ctx := errgroup.WithContext(m.ctx)
 
 	// Start the pruning loop in the background
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
