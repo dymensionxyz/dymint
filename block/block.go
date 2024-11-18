@@ -14,7 +14,6 @@ import (
 
 // applyBlockWithFraudHandling calls applyBlock and validateBlockBeforeApply with fraud handling.
 func (m *Manager) applyBlockWithFraudHandling(block *types.Block, commit *types.Commit, blockMetaData types.BlockMetaData) error {
-
 	validateWithFraud := func() error {
 		if err := m.validateBlockBeforeApply(block, commit); err != nil {
 			m.blockCache.Delete(block.Header.Height)

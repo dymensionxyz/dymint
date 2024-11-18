@@ -106,7 +106,6 @@ func (m *Manager) forkNeeded() (types.Instruction, bool) {
 
 // doFork creates fork blocks and submits a new batch with them
 func (m *Manager) doFork(instruction types.Instruction) error {
-
 	// if fork (two) blocks are not produced and applied yet, produce them
 	if m.State.Height() < instruction.RevisionStartHeight+1 {
 		// add consensus msgs for upgrade DRS only if current DRS is obsolete
@@ -225,7 +224,6 @@ func (m *Manager) submitForkBatch(height uint64) error {
 
 // updateStateWhenFork updates dymint state in case fork is detected
 func (m *Manager) updateStateWhenFork() error {
-
 	// in case fork is detected dymint state needs to be updated
 	if instruction, forkNeeded := m.forkNeeded(); forkNeeded {
 		// Set proposer to nil to force updating it from SL
