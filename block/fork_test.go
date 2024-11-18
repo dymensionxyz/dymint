@@ -92,7 +92,7 @@ func TestShouldStopNode(t *testing.T) {
 				logger: logger,
 			}
 
-			result := manager.shouldStopNode(tt.rollapp, tt.block)
+			result := manager.shouldStopNode(tt.rollapp, tt.block.Header.Version.App)
 			assert.Equal(t, tt.expected, result)
 		})
 	}

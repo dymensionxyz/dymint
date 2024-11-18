@@ -192,12 +192,16 @@ func NewManager(
 
 		// Upgrade revision on state
 		state := m.State
-		state.SetRevision(instruction.Revision)
 		state.RevisionStartHeight = instruction.RevisionStartHeight
 
 		// this is necessary to pass ValidateConfigWithRollappParams when DRS upgrade is required
 		if instruction.RevisionStartHeight == m.State.NextHeight() {
-			state.RollappParams.DrsVersion = version.DRS
+			state.SetRevision(instruction.Revision)
+			drsVersion, err := version.GetDRSVersion()
+			if err != nil {
+				return nil, err
+			}
+			state.RollappParams.DrsVersion = drsVersion
 		}
 
 		m.State = state
@@ -359,8 +363,12 @@ func (m *Manager) UpdateTargetHeight(h uint64) {
 
 // ValidateConfigWithRollappParams checks the configuration params are consistent with the params in the dymint state (e.g. DA and version)
 func (m *Manager) ValidateConfigWithRollappParams() error {
-	if version.DRS != m.State.RollappParams.DrsVersion {
-		return fmt.Errorf("DRS version mismatch. rollapp param: %d binary used:%d", m.State.RollappParams.DrsVersion, version.DRS)
+	drsVersion, err := version.GetDRSVersion()
+	if err != nil {
+		return err
+	}
+	if drsVersion != m.State.RollappParams.DrsVersion {
+		return fmt.Errorf("DRS version mismatch. rollapp param: %d binary used:%d", m.State.RollappParams.DrsVersion, drsVersion)
 	}
 
 	if da.Client(m.State.RollappParams.Da) != m.DAClient.GetClientType() {

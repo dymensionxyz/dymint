@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/cosmos/cosmos-sdk/types/bech32"
+	dymintversion "github.com/dymensionxyz/dymint/version"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmcrypto "github.com/tendermint/tendermint/crypto"
@@ -17,8 +18,6 @@ import (
 
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/dymensionxyz/dymint/types/pb/dymint"
-	dversion "github.com/dymensionxyz/dymint/version"
-	dymintversion "github.com/dymensionxyz/dymint/version"
 )
 
 const (
@@ -184,9 +183,10 @@ func GenerateCommits(blocks []*types.Block, proposerKey crypto.PrivKey) ([]*type
 }
 
 func GenerateDRS(blocks int) []uint32 {
+	drsVersion, _ := dymintversion.GetDRSVersion()
 	drs := make([]uint32, blocks)
 	for i := 0; i < blocks; i++ {
-		drs[i] = dymintversion.DRS
+		drs[i] = drsVersion
 	}
 	return drs
 }
@@ -334,7 +334,7 @@ func GenerateStateWithSequencer(initialHeight int64, lastBlockHeight int64, pubk
 		},
 		RollappParams: dymint.RollappParams{
 			Da:         "mock",
-			DrsVersion: dversion.DRS,
+			DrsVersion: 0,
 		},
 		ConsensusParams: tmproto.ConsensusParams{
 			Block: tmproto.BlockParams{

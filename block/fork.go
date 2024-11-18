@@ -7,9 +7,8 @@ import (
 	"time"
 
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
-	"github.com/gogo/protobuf/proto"
-
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
+	"github.com/gogo/protobuf/proto"
 
 	"github.com/dymensionxyz/dymint/types"
 	sequencers "github.com/dymensionxyz/dymint/types/pb/rollapp/sequencers/types"
@@ -22,7 +21,8 @@ const (
 
 // MonitorForkUpdateLoop monitors the hub for fork updates in a loop
 func (m *Manager) MonitorForkUpdateLoop(ctx context.Context) error {
-	if types.InstructionExists(m.RootDir) { // TODO: why do we have this check
+	// if instruction already exists no need to check for fork update
+	if types.InstructionExists(m.RootDir) {
 		return nil
 	}
 
@@ -48,22 +48,14 @@ func (m *Manager) checkForkUpdate(ctx context.Context) error {
 		return err
 	}
 
-	if m.State.Height() == 0 {
-		return nil
-	}
-	lastBlock, err := m.Store.LoadBlock(m.State.Height())
-	if err != nil {
-		return err
-	}
-
-	if m.shouldStopNode(rollapp, lastBlock) {
+	if m.shouldStopNode(rollapp, m.State.GetRevision()) {
 		err = m.createInstruction(rollapp)
 		if err != nil {
 			return err
 		}
 
 		revision := rollapp.LatestRevision()
-		m.freezeNode(ctx, fmt.Errorf("fork update detected: local_block_height: %d rollapp_revision_start_height: %d local_revision: %d rollapp_revision: %d", m.State.Height(), revision.StartHeight, lastBlock.GetRevision(), revision.Number))
+		m.freezeNode(ctx, fmt.Errorf("fork update detected. local_block_height: %d rollapp_revision_start_height: %d local_revision: %d rollapp_revision: %d", m.State.Height(), revision.StartHeight, m.State.GetRevision(), revision.Number))
 	}
 
 	return nil
@@ -95,13 +87,11 @@ func (m *Manager) createInstruction(rollapp *types.Rollapp) error {
 // This method checks two conditions to decide if a node should be stopped:
 // 1. If the next state height is greater than or equal to the rollapp's revision start height.
 // 2. If the block's app version (equivalent to revision) is less than the rollapp's revision
-func (m *Manager) shouldStopNode(rollapp *types.Rollapp, block *types.Block) bool {
-	blockRevision := block.GetRevision()
+func (m *Manager) shouldStopNode(rollapp *types.Rollapp, revision uint64) bool {
 	rollappRevision := rollapp.LatestRevision()
-	if m.State.NextHeight() >= rollappRevision.StartHeight && blockRevision < rollappRevision.Number {
+	if m.State.NextHeight() >= rollappRevision.StartHeight && revision < rollappRevision.Number {
 		return true
 	}
-
 	return false
 }
 
@@ -114,7 +104,13 @@ func (m *Manager) forkNeeded() (types.Instruction, bool) {
 	return types.Instruction{}, false
 }
 
-func (m *Manager) doFork(instruction types.Instruction) {
+func (m *Manager) doFork(instruction types.Instruction) error {
+	m.State.SetRevision(instruction.Revision)
+	SLProposer, err := m.SLClient.GetProposerAtHeight(int64(m.State.NextHeight()))
+	if err != nil {
+		return fmt.Errorf("get proposer at height: %w", err)
+	}
+	m.State.SetProposer(SLProposer)
 	consensusMsgs, err := m.prepareDRSUpgradeMessages(instruction.FaultyDRS)
 	if err != nil {
 		panic(fmt.Sprintf("prepare DRS upgrade messages: %v", err))
@@ -130,6 +126,12 @@ func (m *Manager) doFork(instruction types.Instruction) {
 	if err := m.submitForkBatch(instruction.RevisionStartHeight); err != nil {
 		panic(fmt.Sprintf("ensure batch exists: %v", err))
 	}
+
+	err = types.DeleteInstructionFromDisk(m.RootDir)
+	if err != nil {
+		return fmt.Errorf("deleting instruction file: %w", err)
+	}
+	return nil
 }
 
 // prepareDRSUpgradeMessages prepares consensus messages for DRS upgrades.
@@ -140,8 +142,13 @@ func (m *Manager) doFork(instruction types.Instruction) {
 //   - Validates the current DRS version against the potentially faulty version
 //   - Generates an upgrade message with the current valid DRS version
 func (m *Manager) prepareDRSUpgradeMessages(obsoleteDRS []uint32) ([]proto.Message, error) {
+	drsVersion, err := version.GetDRSVersion()
+	if err != nil {
+		return nil, err
+	}
+
 	for _, drs := range obsoleteDRS {
-		if drs == version.DRS {
+		if drs == drsVersion {
 			return nil, gerrc.ErrCancelled.Wrapf("obsolete DRS version: %d", drs)
 		}
 	}
@@ -149,7 +156,7 @@ func (m *Manager) prepareDRSUpgradeMessages(obsoleteDRS []uint32) ([]proto.Messa
 	return []proto.Message{
 		&sequencers.MsgUpgradeDRS{
 			Authority:  authtypes.NewModuleAddress("sequencers").String(),
-			DrsVersion: uint64(version.DRS),
+			DrsVersion: uint64(drsVersion),
 		},
 	}, nil
 }
