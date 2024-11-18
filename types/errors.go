@@ -38,9 +38,9 @@ type ErrFraudHeightMismatch struct {
 }
 
 // NewErrFraudHeightMismatch creates a new ErrFraudHeightMismatch error.
-func NewErrFraudHeightMismatch(expected uint64, actual uint64, block *Block) error {
+func NewErrFraudHeightMismatch(expected uint64, block *Block) error {
 	return &ErrFraudHeightMismatch{
-		Expected: expected, Actual: actual,
+		Expected: expected, Actual: block.Header.Height,
 		HeaderHash: block.Header.Hash(), Proposer: block.Header.ProposerAddress,
 	}
 }
@@ -54,25 +54,30 @@ func (e ErrFraudHeightMismatch) Unwrap() error {
 	return gerrc.ErrFault
 }
 
+// ErrFraudAppHashMismatch is the fraud that occurs when the AppHash of the block is different from the expected AppHash.
 type ErrFraudAppHashMismatch struct {
 	Expected [32]byte
 
 	HeaderHeight uint64
 	HeaderHash   [32]byte
+	AppHash      [32]byte
 	Proposer     []byte
 }
 
 // NewErrFraudAppHashMismatch creates a new ErrFraudAppHashMismatch error.
-func NewErrFraudAppHashMismatch(expected [32]byte, actual [32]byte, block *Block) error {
+func NewErrFraudAppHashMismatch(expected [32]byte, block *Block) error {
 	return &ErrFraudAppHashMismatch{
 		Expected:     expected,
-		HeaderHeight: block.Header.Height, HeaderHash: block.Header.Hash(), Proposer: block.Header.ProposerAddress,
+		HeaderHeight: block.Header.Height,
+		HeaderHash:   block.Header.Hash(),
+		AppHash:      block.Header.AppHash,
+		Proposer:     block.Header.ProposerAddress,
 	}
 }
 
 func (e ErrFraudAppHashMismatch) Error() string {
 	return fmt.Sprintf("possible fraud detected on height %d, with header hash %X, emitted by sequencer %X:"+
-		" AppHash mismatch: state expected %X, got %X", e.HeaderHeight, e.HeaderHash, e.Proposer, e.Expected, e.HeaderHash)
+		" AppHash mismatch: state expected %X, got %X", e.HeaderHeight, e.HeaderHash, e.Proposer, e.Expected, e.AppHash)
 }
 
 func (e ErrFraudAppHashMismatch) Unwrap() error {
@@ -106,6 +111,7 @@ func (e ErrLastResultsHashMismatch) Unwrap() error {
 	return gerrc.ErrFault
 }
 
+// ErrTimeFraud represents an error indicating a possible fraud due to time drift.
 type ErrTimeFraud struct {
 	Drift           time.Duration
 	ProposerAddress []byte
@@ -119,21 +125,21 @@ func NewErrTimeFraud(block *Block, currentTime time.Time) error {
 	drift := time.Unix(int64(block.Header.Time), 0).Sub(currentTime)
 
 	return ErrTimeFraud{
+		CurrentTime:     currentTime,
 		Drift:           drift,
 		ProposerAddress: block.Header.ProposerAddress,
 		HeaderHash:      block.Header.Hash(),
 		HeaderHeight:    block.Header.Height,
 		HeaderTime:      time.Unix(int64(block.Header.Time), 0),
-		CurrentTime:     currentTime,
 	}
 }
 
 func (e ErrTimeFraud) Error() string {
 	return fmt.Sprintf(
-		"sequencer posted a block with invalid time. "+
-			"Max allowed drift exceeded. "+
-			"proposerAddress=%s headerHash=%s headerHeight=%d drift=%s MaxDrift=%s headerTime=%s currentTime=%s",
-		e.ProposerAddress, e.HeaderHash, e.HeaderHeight, e.Drift, TimeFraudMaxDrift, e.HeaderTime, e.CurrentTime,
+		"possible fraud detected on height %d, with header hash %X, emitted by sequencer %X: "+
+			"Time drift exceeded: drift=%s, max allowed drift=%s, header time=%s, current time=%s",
+		e.HeaderHeight, e.HeaderHash, e.ProposerAddress,
+		e.Drift, TimeFraudMaxDrift, e.HeaderTime, e.CurrentTime,
 	)
 }
 
@@ -141,6 +147,7 @@ func (e ErrTimeFraud) Unwrap() error {
 	return gerrc.ErrFault
 }
 
+// ErrLastHeaderHashMismatch is the error that occurs when the last header hash does not match the expected value.
 type ErrLastHeaderHashMismatch struct {
 	Expected       [32]byte
 	LastHeaderHash [32]byte
@@ -154,13 +161,14 @@ func NewErrLastHeaderHashMismatch(expected [32]byte, block *Block) error {
 }
 
 func (e ErrLastHeaderHashMismatch) Error() string {
-	return fmt.Sprintf("last header hash mismatch. expected=%X, got=%X", e.Expected, e.LastHeaderHash)
+	return fmt.Sprintf("possible fraud detected: last header hash mismatch. expected=%X, got=%X", e.Expected, e.LastHeaderHash)
 }
 
 func (e ErrLastHeaderHashMismatch) Unwrap() error {
 	return gerrc.ErrFault
 }
 
+// ErrInvalidChainID is the fraud that occurs when the chain ID of the block is different from the expected chain ID.
 type ErrInvalidChainID struct {
 	Expected string
 	Block    *Block
@@ -174,7 +182,12 @@ func NewErrInvalidChainID(expected string, block *Block) error {
 }
 
 func (e ErrInvalidChainID) Error() string {
-	return fmt.Sprintf("invalid chain ID. expected=%s, got=%s", e.Expected, e.Block.Header.ChainID)
+	return fmt.Sprintf(
+		"possible fraud detected on height %d, with header hash %X, emitted by sequencer %X: "+
+			"Invalid Chain ID: expected %s, got %s",
+		e.Block.Header.Height, e.Block.Header.Hash(), e.Block.Header.ProposerAddress,
+		e.Expected, e.Block.Header.ChainID,
+	)
 }
 
 func (e ErrInvalidChainID) Unwrap() error {
@@ -184,19 +197,24 @@ func (e ErrInvalidChainID) Unwrap() error {
 // ErrInvalidBlockHeightFraud is the fraud that happens when the height that is on the commit header is
 // different from the height of the block.
 type ErrInvalidBlockHeightFraud struct {
-	Expected     uint64
-	ActualHeight uint64
+	Expected uint64
+	Header   *Header
 }
 
-func NewErrInvalidBlockHeightFraud(expected uint64, actualHeight uint64) error {
+func NewErrInvalidCommitBlockHeightFraud(expected uint64, header *Header) error {
 	return &ErrInvalidBlockHeightFraud{
-		Expected:     expected,
-		ActualHeight: actualHeight,
+		Expected: expected,
+		Header:   header,
 	}
 }
 
 func (e ErrInvalidBlockHeightFraud) Error() string {
-	return fmt.Sprintf("invalid block height. expected=%d, got=%d", e.Expected, e.ActualHeight)
+	return fmt.Sprintf(
+		"possible fraud detected on height %d, with header hash %X, emitted by sequencer %X: "+
+			"Invalid Block Height: expected %d, got %d",
+		e.Header.Height, e.Header.Hash(), e.Header.ProposerAddress,
+		e.Expected, e.Header.Height,
+	)
 }
 
 func (e ErrInvalidBlockHeightFraud) Unwrap() error {
@@ -205,18 +223,23 @@ func (e ErrInvalidBlockHeightFraud) Unwrap() error {
 
 type ErrInvalidHeaderHashFraud struct {
 	ExpectedHash [32]byte
-	ActualHash   [32]byte
+	Header       *Header
 }
 
-func NewErrInvalidHeaderHashFraud(expectedHash [32]byte, actualHash [32]byte) error {
+func NewErrInvalidHeaderHashFraud(expectedHash [32]byte, header *Header) error {
 	return &ErrInvalidHeaderHashFraud{
 		ExpectedHash: expectedHash,
-		ActualHash:   actualHash,
+		Header:       header,
 	}
 }
 
 func (e ErrInvalidHeaderHashFraud) Error() string {
-	return fmt.Sprintf("invalid header hash. expected=%X, got=%X", e.ExpectedHash, e.ActualHash)
+	return fmt.Sprintf(
+		"possible fraud detected on height %d, with header hash %X, emitted by sequencer %X: "+
+			"Invalid Header Hash: expected %X, got %X",
+		e.Header.Height, e.Header.Hash(), e.Header.ProposerAddress,
+		e.ExpectedHash, e.Header.Hash(),
+	)
 }
 
 func (e ErrInvalidHeaderHashFraud) Unwrap() error {

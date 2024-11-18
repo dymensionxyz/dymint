@@ -50,7 +50,7 @@ func TestBlock_ValidateWithState(t *testing.T) {
 			DataHash:        [32]byte{},
 			LastHeaderHash:  [32]byte{7, 8, 9},
 			ChainID:         "chainID",
-			SequencerHash:  [32]byte(proposerHash),
+			SequencerHash:   [32]byte(proposerHash),
 		},
 		Data:       Data{},
 		LastCommit: Commit{},
@@ -370,7 +370,7 @@ func TestCommit_ValidateWithHeader(t *testing.T) {
 
 		err = commit.ValidateWithHeader(proposerKey.PubKey(), &block.Header)
 		require.Error(t, err, "Validation should fail due to an invalid height")
-		require.Equal(t, &ErrInvalidBlockHeightFraud{0, 1}, err)
+		require.Equal(t, &ErrInvalidBlockHeightFraud{0, &block.Header}, err)
 		require.True(t, errors.Is(err, gerrc.ErrFault), "The error should be a fraud error")
 	})
 
@@ -493,7 +493,7 @@ func TestCommit_ValidateWithHeader(t *testing.T) {
 		assert.NotEqual(t, block.Hash(), commit.HeaderHash, "The commit header hash should not match the block header hash")
 
 		err = commit.ValidateWithHeader(proposerKey.PubKey(), &block.Header)
-		require.Equal(t, &ErrInvalidHeaderHashFraud{[32]byte{1, 2, 3}, block.Hash()}, err)
+		require.Equal(t, &ErrInvalidHeaderHashFraud{[32]byte{1, 2, 3}, &block.Header}, err)
 		require.True(t, errors.Is(err, gerrc.ErrFault), "The error should be a fraud error")
 	})
 }

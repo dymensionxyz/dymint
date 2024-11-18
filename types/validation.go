@@ -74,7 +74,7 @@ func (b *Block) ValidateWithState(state *State) error {
 
 	nextHeight := state.NextHeight()
 	if b.Header.Height != nextHeight {
-		return NewErrFraudHeightMismatch(state.NextHeight(), b.Header.Height, b)
+		return NewErrFraudHeightMismatch(state.NextHeight(), b)
 	}
 
 	proposerHash := state.GetProposerHash()
@@ -83,7 +83,7 @@ func (b *Block) ValidateWithState(state *State) error {
 	}
 
 	if !bytes.Equal(b.Header.AppHash[:], state.AppHash[:]) {
-		return NewErrFraudAppHashMismatch(state.AppHash, b.Header.AppHash, b)
+		return NewErrFraudAppHashMismatch(state.AppHash, b)
 	}
 
 	if !bytes.Equal(b.Header.LastResultsHash[:], state.LastResultsHash[:]) {
@@ -138,7 +138,7 @@ func (c *Commit) ValidateWithHeader(proposerPubKey tmcrypto.PubKey, header *Head
 	}
 
 	if c.Height != header.Height {
-		return NewErrInvalidBlockHeightFraud(c.Height, header.Height)
+		return NewErrInvalidCommitBlockHeightFraud(c.Height, header)
 	}
 
 	if !bytes.Equal(header.ProposerAddress, proposerPubKey.Address()) {
@@ -156,7 +156,7 @@ func (c *Commit) ValidateWithHeader(proposerPubKey tmcrypto.PubKey, header *Head
 	}
 
 	if c.HeaderHash != header.Hash() {
-		return NewErrInvalidHeaderHashFraud(c.HeaderHash, header.Hash())
+		return NewErrInvalidHeaderHashFraud(c.HeaderHash, header)
 	}
 
 	return nil
