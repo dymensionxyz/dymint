@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	rdktypes "github.com/dymensionxyz/dymension-rdk/x/sequencers/types"
 	"github.com/gogo/protobuf/proto"
 	prototypes "github.com/gogo/protobuf/types"
 	"github.com/libp2p/go-libp2p/core/crypto"
@@ -29,10 +30,8 @@ import (
 	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
-	rdktypes "github.com/dymensionxyz/dymint/types/pb/rollapp/sequencers/types"
 	uchannel "github.com/dymensionxyz/dymint/utils/channel"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
-	protoutils "github.com/dymensionxyz/dymint/utils/proto"
 )
 
 // TODO: test producing lastBlock
@@ -105,9 +104,9 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 
 		block, err := managerWithEmptyBlocks.Store.LoadBlock(i)
 		assert.NoError(err)
-		assert.NotZero(block.Header.Time)
+		assert.NotZero(block.Header.GetTimestamp())
 
-		diff := time.Unix(0, int64(block.Header.Time)).Sub(time.Unix(0, int64(prevBlock.Header.Time)))
+		diff := block.Header.GetTimestamp().Sub(prevBlock.Header.GetTimestamp())
 		assert.Greater(diff, blockTime-blockTime/10)
 		assert.Less(diff, blockTime+blockTime/10)
 	}
@@ -118,9 +117,9 @@ func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
 
 		block, err := manager.Store.LoadBlock(i)
 		assert.NoError(err)
-		assert.NotZero(block.Header.Time)
+		assert.NotZero(block.Header.GetTimestamp())
 
-		diff := time.Unix(0, int64(block.Header.Time)).Sub(time.Unix(0, int64(prevBlock.Header.Time)))
+		diff := block.Header.GetTimestamp().Sub(prevBlock.Header.GetTimestamp())
 		assert.Greater(diff, manager.Conf.MaxIdleTime)
 	}
 }
@@ -185,9 +184,9 @@ func TestCreateEmptyBlocksNew(t *testing.T) {
 
 		block, err := manager.Store.LoadBlock(i)
 		assert.NoError(err)
-		assert.NotZero(block.Header.Time)
+		assert.NotZero(block.Header.GetTimestamp())
 
-		diff := time.Unix(0, int64(block.Header.Time)).Sub(time.Unix(0, int64(prevBlock.Header.Time)))
+		diff := block.Header.GetTimestamp().Sub(prevBlock.Header.GetTimestamp())
 		txsCount := len(block.Data.Txs)
 		if txsCount == 0 {
 			assert.Greater(diff, manager.Conf.MaxIdleTime)
@@ -369,7 +368,7 @@ func TestUpdateInitialSequencerSet(t *testing.T) {
 	expectedConsMsg1 := &rdktypes.ConsensusMsgUpsertSequencer{
 		Signer:     signer.String(),
 		Operator:   proposer.SettlementAddress,
-		ConsPubKey: protoutils.CosmosToGogo(anyPK1),
+		ConsPubKey: anyPK1,
 		RewardAddr: proposer.RewardAddr,
 		Relayers:   proposer.WhitelistedRelayers,
 	}
@@ -386,7 +385,7 @@ func TestUpdateInitialSequencerSet(t *testing.T) {
 	expectedConsMsg2 := &rdktypes.ConsensusMsgUpsertSequencer{
 		Signer:     signer.String(),
 		Operator:   sequencer.SettlementAddress,
-		ConsPubKey: protoutils.CosmosToGogo(anyPK2),
+		ConsPubKey: anyPK2,
 		RewardAddr: sequencer.RewardAddr,
 		Relayers:   sequencer.WhitelistedRelayers,
 	}
@@ -521,7 +520,7 @@ func TestUpdateExistingSequencerSet(t *testing.T) {
 	expectedConsMsg := &rdktypes.ConsensusMsgUpsertSequencer{
 		Signer:     signer.String(),
 		Operator:   updatedSequencer.SettlementAddress,
-		ConsPubKey: protoutils.CosmosToGogo(anyPK),
+		ConsPubKey: anyPK,
 		RewardAddr: updatedSequencer.RewardAddr,
 		Relayers:   updatedSequencer.WhitelistedRelayers,
 	}

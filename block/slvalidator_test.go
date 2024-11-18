@@ -3,11 +3,12 @@ package block_test
 import (
 	"crypto/rand"
 	"encoding/hex"
-	"github.com/tendermint/tendermint/crypto/ed25519"
-	tmtypes "github.com/tendermint/tendermint/types"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/tendermint/tendermint/crypto/ed25519"
+	tmtypes "github.com/tendermint/tendermint/types"
 
 	"github.com/celestiaorg/celestia-openrpc/types/blob"
 	"github.com/dymensionxyz/dymint/block"

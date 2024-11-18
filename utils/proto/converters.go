@@ -2,6 +2,7 @@ package proto
 
 import (
 	cosmos "github.com/cosmos/cosmos-sdk/codec/types"
+	"github.com/gogo/protobuf/proto"
 	gogo "github.com/gogo/protobuf/types"
 )
 
@@ -23,4 +24,24 @@ func CosmosToGogo(v *cosmos.Any) *gogo.Any {
 		TypeUrl: v.TypeUrl,
 		Value:   v.Value,
 	}
+}
+
+func FromProtoMsgToAny(msg proto.Message) *gogo.Any {
+	theType, err := proto.Marshal(msg)
+	if err != nil {
+		return nil
+	}
+
+	return &gogo.Any{
+		TypeUrl: proto.MessageName(msg),
+		Value:   theType,
+	}
+}
+
+func FromProtoMsgSliceToAnySlice(msgs ...proto.Message) []*gogo.Any {
+	result := make([]*gogo.Any, len(msgs))
+	for i, msg := range msgs {
+		result[i] = FromProtoMsgToAny(msg)
+	}
+	return result
 }

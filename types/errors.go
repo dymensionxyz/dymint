@@ -116,14 +116,15 @@ type ErrTimeFraud struct {
 }
 
 func NewErrTimeFraud(block *Block, currentTime time.Time) error {
-	drift := time.Unix(int64(block.Header.Time), 0).Sub(currentTime)
+	headerTime := block.Header.GetTimestamp()
+	drift := headerTime.Sub(currentTime)
 
 	return ErrTimeFraud{
 		Drift:           drift,
 		ProposerAddress: block.Header.ProposerAddress,
 		HeaderHash:      block.Header.Hash(),
 		HeaderHeight:    block.Header.Height,
-		HeaderTime:      time.Unix(int64(block.Header.Time), 0),
+		HeaderTime:      headerTime,
 		CurrentTime:     currentTime,
 	}
 }
@@ -325,18 +326,20 @@ type ErrStateUpdateNumBlocksNotMatchingFraud struct {
 	StateIndex  uint64
 	SLNumBlocks uint64
 	NumBds      uint64
+	NumDABlocks uint64
 }
 
-func NewErrStateUpdateNumBlocksNotMatchingFraud(stateIndex uint64, slNumBlocks uint64, numbds uint64) error {
+func NewErrStateUpdateNumBlocksNotMatchingFraud(stateIndex, slNumBlocks, numbds, numDABlocks uint64) error {
 	return &ErrStateUpdateNumBlocksNotMatchingFraud{
 		StateIndex:  stateIndex,
 		SLNumBlocks: slNumBlocks,
 		NumBds:      numbds,
+		NumDABlocks: numDABlocks,
 	}
 }
 
 func (e ErrStateUpdateNumBlocksNotMatchingFraud) Error() string {
-	return fmt.Sprintf("numblocks not matching. StateIndex: %d Batch numblocks: %d Num of block descriptors: %d", e.StateIndex, e.SLNumBlocks, e.NumBds)
+	return fmt.Sprintf("blocks not matching. StateIndex: %d Batch numblocks: %d Num of block descriptors: %d Num of DA blocks: %d", e.StateIndex, e.SLNumBlocks, e.NumBds, e.NumDABlocks)
 }
 
 func (e ErrStateUpdateNumBlocksNotMatchingFraud) Unwrap() error {
