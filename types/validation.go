@@ -118,12 +118,13 @@ func (c *Commit) ValidateBasic() error {
 			return errors.New("signature is too big")
 		}
 	}
+
 	return nil
 }
 
 func (c *Commit) ValidateWithHeader(proposerPubKey tmcrypto.PubKey, header *Header) error {
 	if err := c.ValidateBasic(); err != nil {
-		return NewErrInvalidSignatureFraud(err)
+		return NewErrInvalidSignatureFraud(err, header, c)
 	}
 
 	abciHeaderPb := ToABCIHeaderPB(header)
@@ -134,7 +135,7 @@ func (c *Commit) ValidateWithHeader(proposerPubKey tmcrypto.PubKey, header *Head
 
 	// commit is validated to have single signature
 	if !proposerPubKey.VerifySignature(abciHeaderBytes, c.Signatures[0]) {
-		return NewErrInvalidSignatureFraud(ErrInvalidSignature)
+		return NewErrInvalidSignatureFraud(ErrInvalidSignature, header, c)
 	}
 
 	if c.Height != header.Height {

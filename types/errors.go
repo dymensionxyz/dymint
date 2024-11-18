@@ -247,17 +247,25 @@ func (e ErrInvalidHeaderHashFraud) Unwrap() error {
 }
 
 type ErrInvalidSignatureFraud struct {
-	Err error
+	Err    error
+	Header *Header
+	Commit *Commit
 }
 
-func NewErrInvalidSignatureFraud(err error) error {
+func NewErrInvalidSignatureFraud(err error, header *Header, c *Commit) error {
 	return &ErrInvalidSignatureFraud{
-		Err: err,
+		Header: header,
+		Err:    err,
+		Commit: c,
 	}
 }
 
 func (e ErrInvalidSignatureFraud) Error() string {
-	return fmt.Sprintf("invalid signature: %s", e.Err)
+	return fmt.Sprintf(
+		"possible fraud detected on height %d, with header hash %X, emitted by sequencer %X: Invalid Signature: %s, signatures=%v",
+		e.Header.Height, e.Header.Hash(), e.Header.ProposerAddress,
+		e.Err, e.Commit.Signatures,
+	)
 }
 
 func (e ErrInvalidSignatureFraud) Unwrap() error {
