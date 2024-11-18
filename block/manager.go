@@ -69,6 +69,9 @@ type Manager struct {
 	// RunMode represents the mode of the node. Set during initialization and shouldn't change after that.
 	RunMode uint
 
+	// context used when freezing node
+	Cancel context.CancelFunc
+	ctx    context.Context
 	/*
 		Sequencer and full-node
 	*/
@@ -115,8 +118,6 @@ type Manager struct {
 
 	// validates all non-finalized state updates from settlement, checking there is consistency between DA and P2P blocks, and the information in the state update.
 	SettlementValidator *SettlementValidator
-
-	Cancel context.CancelFunc
 }
 
 // NewManager creates new block Manager.
@@ -186,21 +187,10 @@ func NewManager(
 		return nil, err
 	}
 
-	if instruction, forkNeeded := m.forkNeeded(); forkNeeded {
-		// Set proposer to nil
-		m.State.SetProposer(nil)
-
-		// Upgrade revision on state
-		state := m.State
-		state.SetRevision(instruction.Revision)
-		state.RevisionStartHeight = instruction.RevisionStartHeight
-
-		// this is necessary to pass ValidateConfigWithRollappParams when DRS upgrade is required
-		if instruction.RevisionStartHeight == m.State.NextHeight() {
-			state.RollappParams.DrsVersion = version.DRS
-		}
-
-		m.State = state
+	// update dymint state with fork info
+	err = m.updateStateWhenFork()
+	if err != nil {
+		return nil, err
 	}
 
 	// validate configuration params and rollapp consensus params are in line
@@ -216,7 +206,7 @@ func NewManager(
 
 // Start starts the block manager.
 func (m *Manager) Start(ctx context.Context) error {
-	ctx, m.Cancel = context.WithCancel(ctx)
+	m.ctx, m.Cancel = context.WithCancel(ctx)
 	// Check if InitChain flow is needed
 	if m.State.IsGenesis() {
 		m.logger.Info("Running InitChain")
@@ -262,7 +252,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	// send signal to validation loop with last settlement state update
 	m.triggerSettlementValidation()
 
-	eg, ctx := errgroup.WithContext(ctx)
+	eg, ctx := errgroup.WithContext(m.ctx)
 
 	// Start the pruning loop in the background
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
@@ -273,7 +263,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		err := m.SettlementSyncLoop(ctx)
 		if err != nil {
-			m.freezeNode(context.Background(), err)
+			m.freezeNode(m.ctx, err)
 		}
 		return nil
 	})
@@ -359,8 +349,12 @@ func (m *Manager) UpdateTargetHeight(h uint64) {
 
 // ValidateConfigWithRollappParams checks the configuration params are consistent with the params in the dymint state (e.g. DA and version)
 func (m *Manager) ValidateConfigWithRollappParams() error {
-	if version.DRS != m.State.RollappParams.DrsVersion {
-		return fmt.Errorf("DRS version mismatch. rollapp param: %d binary used:%d", m.State.RollappParams.DrsVersion, version.DRS)
+	drsVersion, err := version.GetDRSVersion()
+	if err != nil {
+		return err
+	}
+	if drsVersion != m.State.RollappParams.DrsVersion {
+		return fmt.Errorf("DRS version mismatch. rollapp param: %d binary used:%d", m.State.RollappParams.DrsVersion, drsVersion)
 	}
 
 	if da.Client(m.State.RollappParams.Da) != m.DAClient.GetClientType() {

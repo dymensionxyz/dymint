@@ -36,6 +36,11 @@ func (m *Manager) ApplyBatchFromSL(slBatch *settlement.Batch) error {
 				continue
 			}
 
+			if block.GetRevision() != m.State.GetRevision() {
+				err := m.checkForkUpdate(m.ctx, "syncing to fork height. please restart the node.")
+				return err
+			}
+
 			// We dont validate because validateBlockBeforeApply already checks if the block is already applied, and we don't need to fail there.
 			err := m.applyBlockWithFraudHandling(block, batch.Commits[i], types.BlockMetaData{Source: types.DA, DAHeight: slBatch.MetaData.DA.Height})
 			if err != nil {

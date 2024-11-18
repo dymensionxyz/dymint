@@ -31,7 +31,7 @@ import (
 
 const (
 	addressPrefix     = "dym"
-	SENTINEL_PROPOSER = ""
+	SENTINEL_PROPOSER = "sentinel"
 )
 
 const (

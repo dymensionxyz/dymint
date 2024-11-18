@@ -11,6 +11,7 @@ require (
 	github.com/cosmos/cosmos-sdk v0.46.16
 	github.com/dgraph-io/badger/v4 v4.3.0
 	github.com/dymensionxyz/cosmosclient v0.4.2-beta.0.20240821081230-b4018b2bac13
+	github.com/dymensionxyz/dymension-rdk v1.6.1-0.20241115090119-5216362174e3
 	github.com/dymensionxyz/gerr-cosmos v1.0.0
 	github.com/go-kit/kit v0.12.0
 	github.com/gofrs/uuid v4.3.0+incompatible
@@ -42,18 +43,18 @@ require (
 )
 
 require (
-	cloud.google.com/go v0.112.1 // indirect
-	cloud.google.com/go/storage v1.38.0 // indirect
+	cosmossdk.io/api v0.7.0 // indirect
+	cosmossdk.io/collections v0.4.0 // indirect
+	cosmossdk.io/core v0.12.0 // indirect
+	cosmossdk.io/depinject v1.0.0-alpha.4 // indirect
 	github.com/celestiaorg/go-square v1.0.1 // indirect
 	github.com/celestiaorg/go-square/merkle v0.0.0-20240429192549-dea967e1533b // indirect
+	github.com/cosmos/cosmos-db v1.0.0 // indirect
 	github.com/cskr/pubsub v1.0.2 // indirect
 	github.com/dgraph-io/badger/v3 v3.2103.3 // indirect
-	github.com/felixge/httpsnoop v1.0.4 // indirect
-	github.com/hashicorp/go-getter v1.7.5 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/ipfs/go-block-format v0.2.0 // indirect
 	github.com/tklauser/go-sysconf v0.3.11 // indirect
-	google.golang.org/api v0.169.0 // indirect
 )
 
 require (
@@ -267,7 +268,6 @@ require (
 	github.com/cockroachdb/pebble v1.1.0 // indirect
 	github.com/cockroachdb/redact v1.1.5 // indirect
 	github.com/cockroachdb/tokenbucket v0.0.0-20230807174530-cc333fc44b06 // indirect
-	github.com/cosmos/ibc-go/v6 v6.2.1 // indirect
 	github.com/danwt/gerr v1.0.0 // indirect
 	github.com/evmos/evmos/v12 v12.1.6 // indirect
 	github.com/getsentry/sentry-go v0.23.0 // indirect
@@ -296,6 +296,7 @@ require (
 )
 
 replace (
+	github.com/CosmWasm/wasmd => github.com/decentrio/wasmd v0.33.0-sdk46.2
 	github.com/centrifuge/go-substrate-rpc-client/v4 => github.com/availproject/go-substrate-rpc-client/v4 v4.0.12-avail-1.4.0-rc1-5e286e3
 	github.com/evmos/evmos/v12 => github.com/dymensionxyz/evmos/v12 v12.1.6-dymension-v0.3
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.2-alpha.regen.4

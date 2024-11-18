@@ -92,7 +92,7 @@ func TestShouldStopNode(t *testing.T) {
 				logger: logger,
 			}
 
-			result := manager.shouldStopNode(tt.rollapp, tt.block)
+			result := manager.shouldStopNode(tt.rollapp, tt.block.Header.Version.App)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -151,7 +151,7 @@ func TestCheckForkUpdate(t *testing.T) {
 				State:    mockState,
 			}
 
-			err := manager.checkForkUpdate(ctx)
+			err := manager.checkForkUpdate(ctx, "")
 			if tt.expectedError {
 				assert.Error(t, err)
 			} else {

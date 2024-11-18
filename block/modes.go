@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/dymensionxyz/dymint/types"
-
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/settlement"
 	uerrors "github.com/dymensionxyz/dymint/utils/errors"
@@ -37,11 +35,10 @@ func (m *Manager) runAsFullNode(ctx context.Context, eg *errgroup.Group) error {
 
 	m.subscribeFullNodeEvents(ctx)
 
-	if _, forkNeeded := m.forkNeeded(); forkNeeded {
-		err := types.DeleteInstructionFromDisk(m.RootDir)
-		if err != nil {
-			return fmt.Errorf("deleting instruction file: %w", err)
-		}
+	// forkFromInstruction deletes fork instruction file for full nodes
+	err = m.forkFromInstruction()
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -60,14 +57,10 @@ func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {
 	// Sequencer must wait till node is synced till last submittedHeight, in case it is not
 	m.waitForSettlementSyncing()
 
-	// if instruction file exists
-	if instruction, forkNeeded := m.forkNeeded(); forkNeeded {
-		m.doFork(instruction)
-
-		err := types.DeleteInstructionFromDisk(m.RootDir)
-		if err != nil {
-			return fmt.Errorf("deleting instruction file: %w", err)
-		}
+	// forkFromInstruction executes fork if necessary
+	err := m.forkFromInstruction()
+	if err != nil {
+		return err
 	}
 
 	// check if we should rotate
