@@ -69,10 +69,6 @@ func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {
 				return err
 			}
 		}
-		err := types.DeleteInstructionFromDisk(m.RootDir)
-		if err != nil {
-			return fmt.Errorf("deleting instruction file: %w", err)
-		}
 
 	}
 

@@ -63,6 +63,9 @@ func (m *Manager) AmIProposerOnSL() (bool, error) {
 // AmIProposerOnRollapp checks if the current node is the proposer on the rollapp.
 // Proposer on the rollapp is not necessarily the proposer on the hub during rotation phase.
 func (m *Manager) AmIProposerOnRollapp() bool {
+	if m.State.GetProposer() == nil {
+		return false
+	}
 	localProposerKeyBytes, _ := m.LocalKey.GetPublic().Raw()
 	rollappProposer := m.State.GetProposerPubKey().Bytes()
 
