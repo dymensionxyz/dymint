@@ -9,8 +9,12 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
+const (
+	ProposerMonitorInterval = 3 * time.Minute
+)
+
 func (m *Manager) MonitorProposerRotation(ctx context.Context) {
-	ticker := time.NewTicker(3 * time.Minute) // TODO: make this configurable
+	ticker := time.NewTicker(ProposerMonitorInterval) // TODO: make this configurable
 	defer ticker.Stop()
 
 	for {

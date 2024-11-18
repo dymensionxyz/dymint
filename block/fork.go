@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	LoopInterval = 15 * time.Second
+	ForkMonitorInterval = 15 * time.Second
 )
 
 // MonitorForkUpdateLoop monitors the hub for fork updates in a loop
@@ -26,7 +26,7 @@ func (m *Manager) MonitorForkUpdateLoop(ctx context.Context) error {
 		return nil
 	}
 
-	ticker := time.NewTicker(LoopInterval) // TODO make this configurable
+	ticker := time.NewTicker(ForkMonitorInterval) // TODO make this configurable
 	defer ticker.Stop()
 
 	for {
@@ -60,6 +60,7 @@ func (m *Manager) checkForkUpdate(ctx context.Context) error {
 	return nil
 }
 
+// createInstruction writes file to disk with fork information
 func (m *Manager) createInstruction(rollapp *types.Rollapp) error {
 	obsoleteDrs, err := m.SLClient.GetObsoleteDrs()
 	if err != nil {
@@ -101,33 +102,31 @@ func (m *Manager) forkNeeded() (types.Instruction, bool) {
 	return types.Instruction{}, false
 }
 
+// doFork creates fork blocks and submits a new batch with them
 func (m *Manager) doFork(instruction types.Instruction) error {
-	m.State.SetRevision(instruction.Revision)
-	SLProposer, err := m.SLClient.GetProposerAtHeight(int64(m.State.NextHeight()))
-	if err != nil {
-		return fmt.Errorf("get proposer at height: %w", err)
-	}
-	m.State.SetProposer(SLProposer)
-	consensusMsgs, err := m.prepareDRSUpgradeMessages(instruction.FaultyDRS)
-	if err != nil {
-		panic(fmt.Sprintf("prepare DRS upgrade messages: %v", err))
-	}
-	// Always bump the account sequences
-	consensusMsgs = append(consensusMsgs, &sequencers.MsgBumpAccountSequences{Authority: authtypes.NewModuleAddress("sequencers").String()})
 
-	err = m.createForkBlocks(instruction, consensusMsgs)
-	if err != nil {
-		panic(fmt.Sprintf("validate existing blocks: %v", err))
+	// if fork (two) blocks are not produced and applied yet, produce them
+	if m.State.Height() < instruction.RevisionStartHeight+1 {
+		// add consensus msgs for upgrade DRS only if current DRS is obsolete
+		consensusMsgs, err := m.prepareDRSUpgradeMessages(instruction.FaultyDRS)
+		if err != nil {
+			panic(fmt.Sprintf("prepare DRS upgrade messages: %v", err))
+		}
+		// add consensus msg to bump the account sequences in all fork cases
+		consensusMsgs = append(consensusMsgs, &sequencers.MsgBumpAccountSequences{Authority: authtypes.NewModuleAddress("sequencers").String()})
+
+		// create fork blocks
+		err = m.createForkBlocks(instruction, consensusMsgs)
+		if err != nil {
+			panic(fmt.Sprintf("validate existing blocks: %v", err))
+		}
 	}
 
+	// submit fork batch including two fork blocks
 	if err := m.submitForkBatch(instruction.RevisionStartHeight); err != nil {
 		panic(fmt.Sprintf("ensure batch exists: %v", err))
 	}
 
-	err = types.DeleteInstructionFromDisk(m.RootDir)
-	if err != nil {
-		return fmt.Errorf("deleting instruction file: %w", err)
-	}
 	return nil
 }
 
@@ -164,8 +163,7 @@ func (m *Manager) prepareDRSUpgradeMessages(obsoleteDRS []uint32) ([]proto.Messa
 func (m *Manager) createForkBlocks(instruction types.Instruction, consensusMsgs []proto.Message) error {
 	nextHeight := m.State.NextHeight()
 
-	// Something already been created?
-	// TODO: how is possible to have more than one already created? Crash failure should result in at most one.
+	//	Revise already created fork blocks
 	for h := instruction.RevisionStartHeight; h < nextHeight; h++ {
 		b, err := m.Store.LoadBlock(h)
 		if err != nil {
@@ -181,6 +179,7 @@ func (m *Manager) createForkBlocks(instruction types.Instruction, consensusMsgs 
 		}
 	}
 
+	// create two empty blocks including consensus msgs in the first one
 	for h := nextHeight; h < instruction.RevisionStartHeight+2; h++ {
 		if h == instruction.RevisionStartHeight {
 			m.Executor.AddConsensusMsgs(consensusMsgs...)
@@ -219,5 +218,52 @@ func (m *Manager) submitForkBatch(height uint64) error {
 		return fmt.Errorf("creating and submitting batch: %v", err)
 	}
 
+	return nil
+}
+
+// updateStateWhenFork updates dymint state in case fork is detected
+func (m *Manager) updateStateWhenFork() error {
+
+	// in case fork is detected dymint state needs to be updated
+	if instruction, forkNeeded := m.forkNeeded(); forkNeeded {
+		// Set proposer to nil to force updating it from SL
+		m.State.SetProposer(nil)
+		// Upgrade revision on state
+		state := m.State
+		state.RevisionStartHeight = instruction.RevisionStartHeight
+		// this is necessary to pass ValidateConfigWithRollappParams when DRS upgrade is required
+		if instruction.RevisionStartHeight == m.State.NextHeight() {
+			state.SetRevision(instruction.Revision)
+			drsVersion, err := version.GetDRSVersion()
+			if err != nil {
+				return err
+			}
+			state.RollappParams.DrsVersion = drsVersion
+		}
+		m.State = state
+	}
+	return nil
+}
+
+// forkFromInstruction checks if fork is needed, reading instruction file, and performs fork actions
+func (m *Manager) forkFromInstruction() error {
+	// if instruction file exists proposer needs to do fork actions (if settlement height is higher than revision height it is considered fork already happened and no need to do anything)
+	instruction, forkNeeded := m.forkNeeded()
+	if !forkNeeded {
+		return nil
+	}
+	if m.RunMode == RunModeProposer {
+		m.State.SetRevision(instruction.Revision)
+		if m.LastSettlementHeight.Load() < instruction.RevisionStartHeight {
+			err := m.doFork(instruction)
+			if err != nil {
+				return err
+			}
+		}
+	}
+	err := types.DeleteInstructionFromDisk(m.RootDir)
+	if err != nil {
+		return fmt.Errorf("deleting instruction file: %w", err)
+	}
 	return nil
 }
