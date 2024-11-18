@@ -48,7 +48,7 @@ func (b *Block) ValidateWithState(state *State) error {
 	err := b.ValidateBasic()
 	if err != nil {
 		if errors.Is(err, ErrInvalidHeaderDataHash) {
-			return NewErrInvalidHeaderDataHashFraud(b.Header.DataHash, [32]byte(GetDataHash(b)))
+			return NewErrInvalidHeaderDataHashFraud(b.Header.DataHash, [32]byte(GetDataHash(b)), b.Header)
 		}
 
 		return err
@@ -79,7 +79,7 @@ func (b *Block) ValidateWithState(state *State) error {
 
 	proposerHash := state.GetProposerHash()
 	if !bytes.Equal(b.Header.SequencerHash[:], proposerHash) {
-		return NewErrInvalidSequencerHashFraud([32]byte(proposerHash), b.Header.SequencerHash[:])
+		return NewErrInvalidSequencerHashFraud([32]byte(proposerHash), b.Header.SequencerHash[:], &b.Header)
 	}
 
 	if !bytes.Equal(b.Header.AppHash[:], state.AppHash[:]) {
@@ -143,7 +143,7 @@ func (c *Commit) ValidateWithHeader(proposerPubKey tmcrypto.PubKey, header *Head
 	}
 
 	if !bytes.Equal(header.ProposerAddress, proposerPubKey.Address()) {
-		return NewErrInvalidProposerAddressFraud(header.ProposerAddress, proposerPubKey.Address())
+		return NewErrInvalidProposerAddressFraud(header.ProposerAddress, proposerPubKey.Address(), header)
 	}
 
 	seq := NewSequencerFromValidator(*tmtypes.NewValidator(proposerPubKey, 1))
@@ -153,7 +153,7 @@ func (c *Commit) ValidateWithHeader(proposerPubKey tmcrypto.PubKey, header *Head
 	}
 
 	if !bytes.Equal(header.SequencerHash[:], proposerHash) {
-		return NewErrInvalidSequencerHashFraud(header.SequencerHash, proposerHash[:])
+		return NewErrInvalidSequencerHashFraud(header.SequencerHash, proposerHash[:], header)
 	}
 
 	if c.HeaderHash != header.Hash() {

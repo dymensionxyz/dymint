@@ -452,7 +452,7 @@ func TestCommit_ValidateWithHeader(t *testing.T) {
 		// Validate and expect an error due to mismatching proposer addresses
 		err = commit.ValidateWithHeader(proposerKey.PubKey(), &block.Header)
 		require.Error(t, err, "Validation should fail when the proposer's address does not match the header's proposer address")
-		assert.Equal(t, NewErrInvalidProposerAddressFraud(block.Header.ProposerAddress, proposerKey.PubKey().Address()), err)
+		assert.Equal(t, NewErrInvalidProposerAddressFraud(block.Header.ProposerAddress, proposerKey.PubKey().Address(), &block.Header), err)
 		assert.True(t, errors.Is(err, gerrc.ErrFault), "The error should be a fraud error")
 	})
 
@@ -480,7 +480,7 @@ func TestCommit_ValidateWithHeader(t *testing.T) {
 		err = commit.ValidateWithHeader(proposerKey.PubKey(), &block.Header)
 		bytes := NewSequencerFromValidator(*tmtypes.NewValidator(proposerKey.PubKey(), 1)).MustHash()
 
-		require.Equal(t, &ErrInvalidSequencerHashFraud{[32]byte{1, 2, 3}, bytes}, err)
+		require.Equal(t, &ErrInvalidSequencerHashFraud{[32]byte{1, 2, 3}, bytes, &block.Header}, err)
 		require.True(t, errors.Is(err, gerrc.ErrFault), "The error should be a fraud error")
 	})
 

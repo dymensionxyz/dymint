@@ -275,17 +275,24 @@ func (e ErrInvalidSignatureFraud) Unwrap() error {
 type ErrInvalidProposerAddressFraud struct {
 	ExpectedAddress []byte
 	ActualAddress   tmcrypto.Address
+
+	Header *Header
 }
 
-func NewErrInvalidProposerAddressFraud(address []byte, address2 tmcrypto.Address) error {
+func NewErrInvalidProposerAddressFraud(address []byte, address2 tmcrypto.Address, header *Header) error {
 	return &ErrInvalidProposerAddressFraud{
 		ExpectedAddress: address,
 		ActualAddress:   address2,
+		Header:          header,
 	}
 }
 
 func (e ErrInvalidProposerAddressFraud) Error() string {
-	return fmt.Sprintf("invalid proposer address. expected=%X, got=%X", e.ExpectedAddress, e.ActualAddress)
+	return fmt.Sprintf(
+		"possible fraud detected on height %d, with header hash %X, emitted by sequencer %X: Invalid Proposer Address: expected %X, got %X",
+		e.Header.Height, e.Header.Hash(), e.Header.ProposerAddress,
+		e.ExpectedAddress, e.ActualAddress,
+	)
 }
 
 func (e ErrInvalidProposerAddressFraud) Unwrap() error {
@@ -295,17 +302,24 @@ func (e ErrInvalidProposerAddressFraud) Unwrap() error {
 type ErrInvalidSequencerHashFraud struct {
 	ExpectedHash [32]byte
 	ActualHash   []byte
+
+	Header *Header
 }
 
-func NewErrInvalidSequencerHashFraud(expectedHash [32]byte, actualHash []byte) error {
+func NewErrInvalidSequencerHashFraud(expectedHash [32]byte, actualHash []byte, header *Header) error {
 	return &ErrInvalidSequencerHashFraud{
 		ExpectedHash: expectedHash,
 		ActualHash:   actualHash,
+		Header:       header,
 	}
 }
 
 func (e ErrInvalidSequencerHashFraud) Error() string {
-	return fmt.Sprintf("invalid sequencer hash. expected=%X, got=%X", e.ExpectedHash, e.ActualHash)
+	return fmt.Sprintf(
+		"possible fraud detected on height %d, with header hash %X, emitted by sequencer %X: Invalid Sequencer Hash: expected %X, got %X",
+		e.Header.Height, e.Header.Hash(), e.Header.ProposerAddress,
+		e.ExpectedHash, e.ActualHash,
+	)
 }
 
 func (e ErrInvalidSequencerHashFraud) Unwrap() error {
@@ -314,18 +328,22 @@ func (e ErrInvalidSequencerHashFraud) Unwrap() error {
 
 type ErrInvalidNextSequencersHashFraud struct {
 	ExpectedHash [32]byte
-	ActualHash   [32]byte
+	Header       Header
 }
 
-func NewErrInvalidNextSequencersHashFraud(expectedHash [32]byte, actualHash [32]byte) error {
+func NewErrInvalidNextSequencersHashFraud(expectedHash [32]byte, header Header) error {
 	return &ErrInvalidNextSequencersHashFraud{
 		ExpectedHash: expectedHash,
-		ActualHash:   actualHash,
+		Header:       header,
 	}
 }
 
 func (e ErrInvalidNextSequencersHashFraud) Error() string {
-	return fmt.Sprintf("invalid next sequencers hash. expected=%X, got=%X", e.ExpectedHash, e.ActualHash)
+	return fmt.Sprintf(
+		"possible fraud detected on height %d, with header hash %X, emitted by sequencer %X: Invalid Next Sequencers Hash: expected %X, got %X",
+		e.Header.Height, e.Header.Hash(), e.Header.ProposerAddress,
+		e.ExpectedHash, e.Header.NextSequencersHash,
+	)
 }
 
 func (e ErrInvalidNextSequencersHashFraud) Unwrap() error {
@@ -335,17 +353,25 @@ func (e ErrInvalidNextSequencersHashFraud) Unwrap() error {
 type ErrInvalidHeaderDataHashFraud struct {
 	Expected [32]byte
 	Actual   [32]byte
+
+	Header Header
 }
 
-func NewErrInvalidHeaderDataHashFraud(expected [32]byte, actual [32]byte) error {
+func NewErrInvalidHeaderDataHashFraud(expected [32]byte, actual [32]byte, header Header) error {
 	return &ErrInvalidHeaderDataHashFraud{
 		Expected: expected,
 		Actual:   actual,
+
+		Header: header,
 	}
 }
 
 func (e ErrInvalidHeaderDataHashFraud) Error() string {
-	return fmt.Sprintf("invalid header data hash. expected=%X, got=%X", e.Expected, e.Actual)
+	return fmt.Sprintf(
+		"possible fraud detected on height %d, with header hash %X, emitted by sequencer %X: Invalid Header Data Hash: expected %X, got %X",
+		e.Header.Height, e.Header.Hash(), e.Header.ProposerAddress,
+		e.Expected, e.Actual,
+	)
 }
 
 func (e ErrInvalidHeaderDataHashFraud) Unwrap() error {
@@ -369,7 +395,10 @@ func NewErrStateUpdateNumBlocksNotMatchingFraud(stateIndex, slNumBlocks, numbds,
 }
 
 func (e ErrStateUpdateNumBlocksNotMatchingFraud) Error() string {
-	return fmt.Sprintf("blocks not matching. StateIndex: %d Batch numblocks: %d Num of block descriptors: %d Num of DA blocks: %d", e.StateIndex, e.SLNumBlocks, e.NumBds, e.NumDABlocks)
+	return fmt.Sprintf(
+		"possible fraud detected: Blocks Not Matching - StateIndex: %d, BatchNumBlocks: %d, NumBlockDescriptors: %d, NumDABlocks: %d",
+		e.StateIndex, e.SLNumBlocks, e.NumBds, e.NumDABlocks,
+	)
 }
 
 func (e ErrStateUpdateNumBlocksNotMatchingFraud) Unwrap() error {
@@ -395,7 +424,10 @@ func NewErrStateUpdateHeightNotMatchingFraud(stateIndex uint64, slBeginHeight ui
 }
 
 func (e ErrStateUpdateHeightNotMatchingFraud) Error() string {
-	return fmt.Sprintf("block height in DA batch not matching SL batch height. StateIndex: %d SL Begin height: %d DA Begin height: %d SL End height:%d DA End height: %d", e.StateIndex, e.SLBeginHeight, e.DABeginHeight, e.SLEndHeight, e.DAEndHeight)
+	return fmt.Sprintf(
+		"possible fraud detected: Height Mismatch - StateIndex: %d, SL Begin Height: %d, DA Begin Height: %d, SL End Height: %d, DA End Height: %d",
+		e.StateIndex, e.SLBeginHeight, e.DABeginHeight, e.SLEndHeight, e.DAEndHeight,
+	)
 }
 
 func (e ErrStateUpdateHeightNotMatchingFraud) Unwrap() error {
@@ -419,7 +451,11 @@ func NewErrStateUpdateStateRootNotMatchingFraud(stateIndex uint64, height uint64
 }
 
 func (e ErrStateUpdateStateRootNotMatchingFraud) Error() string {
-	return fmt.Sprintf("state root in DA batch block not matching state root in SL. StateIndex: %d Height: %d SL state root: %s DA state root: %s", e.StateIndex, e.Height, hex.EncodeToString(e.SLStateRoot), hex.EncodeToString(e.DAStateRoot))
+	return fmt.Sprintf(
+		"possible fraud detected on height %d: State Root Mismatch - StateIndex: %d, SL State Root: %X, DA State Root: %X",
+		e.Height,
+		e.StateIndex, e.SLStateRoot, e.DAStateRoot,
+	)
 }
 
 func (e ErrStateUpdateStateRootNotMatchingFraud) Unwrap() error {
@@ -443,7 +479,10 @@ func NewErrStateUpdateTimestampNotMatchingFraud(stateIndex uint64, height uint64
 }
 
 func (e ErrStateUpdateTimestampNotMatchingFraud) Error() string {
-	return fmt.Sprintf("timestamp in DA batch block not matching timestamp in SL. StateIndex: %d Height: %d SL timestsamp: %s DA timestamp: %s", e.StateIndex, e.Height, e.SLTimestamp, e.DATimestamp)
+	return fmt.Sprintf(
+		"possible fraud detected: Timestamp Mismatch - StateIndex: %d, SL Timestamp: %s, DA Timestamp: %s",
+		e.StateIndex, e.SLTimestamp.Format(time.RFC3339), e.DATimestamp.Format(time.RFC3339),
+	)
 }
 
 func (e ErrStateUpdateTimestampNotMatchingFraud) Unwrap() error {
@@ -483,7 +522,7 @@ func (e ErrStateUpdateDoubleSigningFraud) Error() string {
 	if err != nil {
 		return fmt.Sprintf("err marshal da block:%s", err)
 	}
-	return fmt.Sprintf("block received from P2P not matching block found in DA. \n  P2P Json Block: %s \n DA Json Block:%s \n P2P Block hash:%s \n  DA block hash:%s \n  P2P block bytes:%s \n DA Block bytes:%s \n", jsonP2PBlock, jsonDABlock, hex.EncodeToString(e.P2PBlockHash), hex.EncodeToString(e.DABlockHash), hex.EncodeToString(p2pBlockBytes), hex.EncodeToString(daBlockBytes))
+	return fmt.Sprintf("possible fraud detected: block received from P2P not matching block found in DA. \n  P2P Json Block: %s \n DA Json Block:%s \n P2P Block hash:%s \n  DA block hash:%s \n  P2P block bytes:%s \n DA Block bytes:%s \n", jsonP2PBlock, jsonDABlock, hex.EncodeToString(e.P2PBlockHash), hex.EncodeToString(e.DABlockHash), hex.EncodeToString(p2pBlockBytes), hex.EncodeToString(daBlockBytes))
 }
 
 func (e ErrStateUpdateDoubleSigningFraud) Unwrap() error {
@@ -531,7 +570,10 @@ func NewErrStateUpdateBlobNotAvailableFraud(stateIndex uint64, da string, daHeig
 }
 
 func (e ErrStateUpdateBlobNotAvailableFraud) Error() string {
-	return fmt.Sprintf("blob not available in DA. StateIndex: %d DA: %s DA Height: %d Commitment: %s", e.StateIndex, e.DA, e.DAHeight, e.Commitment)
+	return fmt.Sprintf(
+		"possible fraud detected: Blob Not Available in DA - StateIndex: %d, DA: %s, DA Height: %d, Commitment: %s",
+		e.StateIndex, e.DA, e.DAHeight, e.Commitment,
+	)
 }
 
 func (e ErrStateUpdateBlobNotAvailableFraud) Unwrap() error {
@@ -555,7 +597,10 @@ func NewErrStateUpdateBlobCorruptedFraud(stateIndex uint64, da string, daHeight 
 }
 
 func (e ErrStateUpdateBlobCorruptedFraud) Error() string {
-	return fmt.Sprintf("blob not parsable in DA. StateIndex: %d DA: %s DA Height: %d Commitment: %s", e.StateIndex, e.DA, e.DAHeight, e.Commitment)
+	return fmt.Sprintf(
+		"possible fraud detected: Blob Corrupted in DA - StateIndex: %d, DA: %s, DA Height: %d, Commitment: %s",
+		e.StateIndex, e.DA, e.DAHeight, e.Commitment,
+	)
 }
 
 func (e ErrStateUpdateBlobCorruptedFraud) Unwrap() error {
@@ -579,7 +624,10 @@ func NewErrStateUpdateDRSVersionFraud(stateIndex uint64, height uint64, blockVer
 }
 
 func (e ErrStateUpdateDRSVersionFraud) Error() string {
-	return fmt.Sprintf("drs version not matching. StateIndex: %d Height: %d Block DRS: %d SL DRS: %d", e.StateIndex, e.Height, e.BlockVersion, e.SLVersion)
+	return fmt.Sprintf(
+		"possible fraud detected: DRS Version Mismatch - StateIndex: %d, Block DRS: %d, SL DRS: %d",
+		e.StateIndex, e.BlockVersion, e.SLVersion,
+	)
 }
 
 func (e ErrStateUpdateDRSVersionFraud) Unwrap() error {
