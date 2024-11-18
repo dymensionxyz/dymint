@@ -190,3 +190,14 @@ func (m *Manager) HandleSequencerSetUpdate(newSet []types.Sequencer) error {
 	m.Sequencers.Set(newSet)
 	return nil
 }
+
+// UpdateProposerFromSL queries the hub and updates the local dymint state proposer at the current height
+func (m *Manager) UpdateProposerFromSL() error {
+	SLProposer, err := m.SLClient.GetProposerAtHeight(int64(m.State.NextHeight()))
+	if err != nil {
+		return fmt.Errorf("get proposer at height: %w", err)
+	}
+	m.logger.Debug("Updating proposer to ", SLProposer.SettlementAddress)
+	m.State.SetProposer(SLProposer)
+	return nil
+}

@@ -254,7 +254,11 @@ func (m *Manager) forkFromInstruction() error {
 		return nil
 	}
 	if m.RunMode == RunModeProposer {
+		// update revision with revision after fork
 		m.State.SetRevision(instruction.Revision)
+		// update sequencer in case it changed after syncing
+		m.UpdateProposerFromSL()
+		// create fork batch in case it has not been submitted yet
 		if m.LastSettlementHeight.Load() < instruction.RevisionStartHeight {
 			err := m.doFork(instruction)
 			if err != nil {
@@ -262,6 +266,7 @@ func (m *Manager) forkFromInstruction() error {
 			}
 		}
 	}
+	// remove instruction file after fork to avoid enter loop again
 	err := types.DeleteInstructionFromDisk(m.RootDir)
 	if err != nil {
 		return fmt.Errorf("deleting instruction file: %w", err)

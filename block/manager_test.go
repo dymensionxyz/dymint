@@ -211,6 +211,7 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 // TODO: this test is flaky! https://github.com/dymensionxyz/dymint/issues/1173
 func TestApplyCachedBlocks_WithFraudCheck(t *testing.T) {
 	// Init app
+	version.DRS = "0"
 	app := testutil.GetAppMock(testutil.EndBlock)
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
 		RollappParamUpdates: &abci.RollappParams{
