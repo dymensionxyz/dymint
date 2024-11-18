@@ -82,17 +82,8 @@ func TestShouldStopNode(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			state := &types.State{}
-			state.LastBlockHeight.Store(tt.height)
-
-			logger := log.NewNopLogger()
-
-			manager := &Manager{
-				State:  state,
-				logger: logger,
-			}
-
-			result := manager.shouldStopNode(tt.rollapp, tt.block.Header.Version.App)
+			expectedRevision := tt.rollapp.GetRevisionForHeight(tt.height)
+			result := shouldStopNode(expectedRevision, tt.height, tt.block.Header.Version.App)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -259,7 +250,8 @@ func TestCreateInstruction(t *testing.T) {
 			}, nil)
 
 			manager.SLClient = mockSL
-			err := manager.createInstruction(tt.rollapp)
+			expectedRevision := tt.rollapp.GetRevisionForHeight(tt.block.Header.Height)
+			err := manager.createInstruction(expectedRevision)
 			if tt.expectedError {
 				assert.Error(t, err)
 			} else {
