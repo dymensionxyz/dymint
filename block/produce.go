@@ -140,12 +140,12 @@ func (m *Manager) produceApplyGossip(ctx context.Context, allowEmpty bool, nextP
 // It then calculates the diff between the two and creates consensus messages for the new sequencers,
 // i.e., only for the diff between two sets.  The new sequencer set will be used for next block and
 // will be stored in the state after the block production instead of the old sequencer set.
-func (m *Manager) SnapshotSequencerSet() (newSequencerSet types.Sequencers, err error) {
+func (m *Manager) SnapshotSequencerSet() (allSequencers types.Sequencers, err error) {
 	// the most recent sequencer set
-	newSequencerSet = m.Sequencers.GetAll()
+	allSequencers = m.Sequencers.GetAll()
 
 	// the sequencer set that was used for the last block
-	lastSequencerSet, err := m.Store.LoadLastBlockSequencerSet()
+	lastSequencers, err := m.Store.LoadLastBlockSequencerSet()
 	// it's okay if the last sequencer set is not found, it can happen on genesis or after
 	// rotation from the full node to the proposer
 	if err != nil && !errors.Is(err, gerrc.ErrNotFound) {
@@ -153,7 +153,7 @@ func (m *Manager) SnapshotSequencerSet() (newSequencerSet types.Sequencers, err 
 	}
 
 	// diff between the two sequencer sets
-	newSequencers := types.SequencerListRightOuterJoin(lastSequencerSet, newSequencerSet)
+	newSequencers := types.SequencerListRightOuterJoin(lastSequencers, allSequencers)
 
 	// create consensus msgs for new sequencers
 	msgs, err := ConsensusMsgsOnSequencerSetUpdate(newSequencers)
@@ -162,7 +162,7 @@ func (m *Manager) SnapshotSequencerSet() (newSequencerSet types.Sequencers, err 
 	}
 	m.Executor.AddConsensusMsgs(msgs...)
 
-	return newSequencerSet, nil
+	return allSequencers, nil
 }
 
 func (m *Manager) produceBlock(allowEmpty bool, nextProposerHash *[32]byte) (*types.Block, *types.Commit, error) {

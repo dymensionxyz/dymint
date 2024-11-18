@@ -163,6 +163,8 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	}
 
 	// 4. Save the last block sequencer set to the store if it's present (only applicable in the sequencer mode).
+	// This is done to memorize the sequencers that were already processed in the Rollapp.
+	// Currently, it's used on reboots to avoid sending the same UpsertSequencer consensus msgs twice.
 	if len(blockMetaData.SequencerSet) != 0 {
 		batch, err = m.Store.SaveLastBlockSequencerSet(blockMetaData.SequencerSet, batch)
 		if err != nil {
