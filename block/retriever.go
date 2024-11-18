@@ -38,17 +38,18 @@ func (m *Manager) ApplyBatchFromSL(slBatch *settlement.Batch) error {
 			}
 
 			if block.GetRevision() != m.State.GetRevision() {
-
 				rollapp, err := m.SLClient.GetRollapp()
 				if err != nil {
 					return err
 				}
-				if m.shouldStopNode(rollapp, m.State.GetRevision()) {
+
+				revision := rollapp.LatestRevision()
+				if m.shouldStopNode(revision, m.State.GetRevision()) {
 					err = m.createInstruction(rollapp)
 					if err != nil {
 						return err
 					}
-					m.freezeNode(context.Background(), fmt.Errorf("syncing to fork height. please restart the node. local_block_height: %d rollapp_revision_start_height: %d local_revision: %d rollapp_revision: %d", m.State.Height(), rollapp.RevisionStartHeight, m.State.GetRevision(), rollapp.Revision))
+					m.freezeNode(context.Background(), fmt.Errorf("syncing to fork height. please restart the node. local_block_height: %d rollapp_revision_start_height: %d local_revision: %d rollapp_revision: %d", m.State.Height(), revision.StartHeight, m.State.GetRevision(), revision.Number))
 					return nil
 				}
 			}

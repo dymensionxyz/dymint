@@ -92,7 +92,7 @@ func TestShouldStopNode(t *testing.T) {
 				logger: logger,
 			}
 
-			result := manager.shouldStopNode(tt.rollapp, tt.block.Header.Version.App)
+			result := manager.shouldStopNode(tt.rollapp.LatestRevision(), tt.block.Header.Version.App)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -114,7 +114,7 @@ func TestCheckForkUpdate(t *testing.T) {
 				mockSL.On("GetRollapp").Return(&types.Rollapp{
 					Revisions: []types.Revision{{
 						Number:      1,
-						StartHeight: 100,
+						StartHeight: 200,
 					}},
 				}, nil)
 
