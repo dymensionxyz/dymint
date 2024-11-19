@@ -13,9 +13,7 @@ const (
 	ProposerMonitorInterval = 3 * time.Minute
 )
 
-var (
-	errRotationRequested = fmt.Errorf("sequencer rotation started. signal to stop production")
-)
+var errRotationRequested = fmt.Errorf("sequencer rotation started. signal to stop production")
 
 func (m *Manager) MonitorProposerRotation(ctx context.Context, rotateC chan struct{}) error {
 	ticker := time.NewTicker(ProposerMonitorInterval) // TODO: make this configurable

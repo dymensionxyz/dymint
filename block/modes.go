@@ -92,10 +92,9 @@ func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {
 		return m.MonitorProposerRotation(ctx, rotateSequencerC)
 	})
 
-	// check wether
 	go func() {
 		err = eg.Wait()
-		// Check if exited due to sequencer rotation signal
+		// Check if loops exited due to sequencer rotation signal
 		if errors.Is(err, errRotationRequested) {
 			m.rotate(ctx)
 		}
