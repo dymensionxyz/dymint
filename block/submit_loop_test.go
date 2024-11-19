@@ -87,8 +87,10 @@ func testSubmitLoopInner(
 			time.Sleep(approx(args.produceTime))
 
 			if args.batchSkew <= skewTime() {
+				t.Log("not produce", skewTime())
 				continue
 			}
+			t.Log("produce", skewTime())
 
 			nBytes := rand.Intn(args.produceBytes) // simulate block production
 			nProducedBytes.Add(uint64(nBytes))
@@ -98,7 +100,7 @@ func testSubmitLoopInner(
 		}
 	}()
 
-	submitBatch := func(maxSize uint64) (uint64, error) { // mock the batch submission
+	submitBatch := func(maxSize uint64) (int, error) { // mock the batch submission
 		time.Sleep(approx(args.submitTime))
 		if rand.Float64() < args.submissionHaltProbability {
 			time.Sleep(args.submissionHaltTime)
@@ -108,13 +110,16 @@ func testSubmitLoopInner(
 		pendingBlocks.Store(0)                    // no pending blocks to be submitted
 		lastSettlementBlockTime = time.Now()
 
-		return uint64(consumed), nil
+		return consumed, nil
 	}
 	accumulatedBlocks := func() uint64 {
 		return pendingBlocks.Load()
 	}
+	pendingBytes := func() int {
+		return int(nProducedBytes.Load())
+	}
 
-	block.SubmitLoopInner(ctx, log.NewNopLogger(), producedBytesC, args.batchSkew, accumulatedBlocks, skewTime, args.maxTime, args.batchBytes, submitBatch)
+	block.SubmitLoopInner(ctx, log.NewNopLogger(), producedBytesC, args.batchSkew, accumulatedBlocks, pendingBytes, skewTime, args.maxTime, args.batchBytes, submitBatch)
 }
 
 // Make sure the producer does not get too far ahead

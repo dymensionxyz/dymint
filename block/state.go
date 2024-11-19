@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"time"
 
 	errorsmod "cosmossdk.io/errors"
 
@@ -91,22 +90,6 @@ func (m *Manager) UpdateStateFromApp(blockHeaderHash [32]byte) error {
 	m.Executor.UpdateStateAfterCommit(m.State, resp, proxyAppInfo.LastBlockAppHash, appHeight, blockHeaderHash)
 
 	return nil
-}
-
-// SetLastBlockTimeInSettlementFromHeight is used to initialize LastBlockTimeInSettlement from height
-func (m *Manager) SetLastBlockTimeInSettlementFromHeight(lastSettlementHeight uint64) {
-
-	// considered no batch is submitted yet, so it is initialized
-	if lastSettlementHeight == uint64(1) {
-		m.State.LastBlockTimeInSettlement.Store(time.Now().Unix())
-		return
-	}
-	block, err := m.Store.LoadBlock(lastSettlementHeight)
-	if err != nil {
-		// if settlement height block is not found it will be updated after syncing
-		return
-	}
-	m.State.LastBlockTimeInSettlement.Store(block.Header.GetTimestamp().Unix())
 }
 
 func (e *Executor) UpdateStateAfterInitChain(s *types.State, res *abci.ResponseInitChain) {

@@ -43,12 +43,6 @@ type State struct {
 
 	// LastHeaderHash is the hash of the last block header.
 	LastHeaderHash [32]byte
-
-	// LastBlockTimeInSettlement is the time of last submitted block used to calculated skew time
-	LastBlockTimeInSettlement atomic.Int64
-
-	// LastBlockTimeInSettlement is the time of last produced block used to calculated skew time
-	LastBlockTime atomic.Int64
 }
 
 func (s *State) GetProposer() *Sequencer {

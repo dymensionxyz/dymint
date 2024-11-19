@@ -14,7 +14,6 @@ import (
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
-	uatomic "github.com/dymensionxyz/dymint/utils/atomic"
 	uchannel "github.com/dymensionxyz/dymint/utils/channel"
 )
 
@@ -32,6 +31,7 @@ func (m *Manager) SubmitLoop(ctx context.Context,
 		bytesProduced,
 		m.Conf.MaxBatchSkewTime,
 		m.GetUnsubmittedBlocks,
+		m.GetUnsubmittedBytes,
 		m.GetBatchSkewTime,
 		m.Conf.BatchSubmitTime,
 		m.Conf.BatchSubmitBytes,
@@ -46,10 +46,11 @@ func SubmitLoopInner(
 	bytesProduced chan int, // a channel of block and commit bytes produced
 	maxProduceSubmitSkewTime time.Duration, // max time between last submitted block and last produced block allowed. if this threshold is reached block production is stopped.
 	unsubmittedBlocksNum func() uint64,
+	unsubmittedBlocksBytes func() int,
 	batchSkewTime func() time.Duration,
 	maxBatchSubmitTime time.Duration, // max time to allow between batches
 	maxBatchSubmitBytes uint64, // max size of serialised batch in bytes
-	createAndSubmitBatch func(maxSizeBytes uint64) (sizeBlocksCommits uint64, err error),
+	createAndSubmitBatch func(maxSizeBytes uint64) (bytes int, err error),
 ) error {
 	eg, ctx := errgroup.WithContext(ctx)
 
@@ -128,7 +129,7 @@ func SubmitLoopInner(
 					return err
 				}
 				ticker.Reset(maxBatchSubmitTime)
-				pending = uatomic.Uint64Sub(&pendingBytes, nConsumed)
+				pending = uint64(unsubmittedBlocksBytes())
 				logger.Info("Submitted a batch to both sub-layers.", "n bytes consumed from pending", nConsumed, "pending after", pending) // TODO: debug level
 			}
 			trigger.Nudge()
@@ -141,12 +142,12 @@ func SubmitLoopInner(
 // CreateAndSubmitBatchGetSizeBlocksCommits creates and submits a batch to the DA and SL.
 // Returns size of block and commit bytes
 // max size bytes is the maximum size of the serialized batch type
-func (m *Manager) CreateAndSubmitBatchGetSizeBlocksCommits(maxSize uint64) (uint64, error) {
+func (m *Manager) CreateAndSubmitBatchGetSizeBlocksCommits(maxSize uint64) (int, error) {
 	b, err := m.CreateAndSubmitBatch(maxSize, false)
 	if b == nil {
 		return 0, err
 	}
-	return uint64(b.SizeBlockAndCommitBytes()), err
+	return b.SizeBlockAndCommitBytes(), err
 }
 
 // CreateAndSubmitBatch creates and submits a batch to the DA and SL.
@@ -247,7 +248,7 @@ func (m *Manager) SubmitBatch(batch *types.Batch) error {
 	m.LastSettlementHeight.Store(batch.EndHeight())
 
 	// update last submitted block time with batch last block (used to calculate max skew time)
-	m.State.LastBlockTimeInSettlement.Store(batch.Blocks[len(batch.Blocks)-1].Header.GetTimestamp().UTC().UnixNano())
+	m.LastBlockTimeInSettlement.Store(batch.Blocks[len(batch.Blocks)-1].Header.GetTimestamp().UTC().UnixNano())
 
 	return err
 }
@@ -306,8 +307,8 @@ func (m *Manager) UpdateLastSubmittedHeight(event pubsub.Message) {
 
 // GetBatchSkewTime returns the time between the last produced block and the last block submitted to SL
 func (m *Manager) GetBatchSkewTime() time.Duration {
-	lastProducedTime := time.Unix(m.State.LastBlockTime.Load(), 0)
-	lastSubmittedTime := time.Unix(m.State.LastBlockTimeInSettlement.Load(), 0)
+	lastProducedTime := time.Unix(0, m.LastBlockTime.Load())
+	lastSubmittedTime := time.Unix(0, m.LastBlockTimeInSettlement.Load())
 	return lastProducedTime.Sub(lastSubmittedTime)
 }
 

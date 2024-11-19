@@ -128,7 +128,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	}
 
 	// update last block time
-	m.State.LastBlockTime.Store(block.Header.GetTimestamp().Unix())
+	m.LastBlockTime.Store(block.Header.GetTimestamp().UTC().UnixNano())
 	// Update the store:
 	//  1. Save the proposer for the current height to the store.
 	//  2. Update the proposer in the state in case of rotation.

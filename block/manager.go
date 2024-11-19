@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"golang.org/x/sync/errgroup"
@@ -72,6 +73,12 @@ type Manager struct {
 	// context used when freezing node
 	Cancel context.CancelFunc
 	Ctx    context.Context
+
+	// LastBlockTimeInSettlement is the time of last submitted block used to calculated skew time
+	LastBlockTimeInSettlement atomic.Int64
+
+	// LastBlockTimeInSettlement is the time of last produced block used to calculated skew time
+	LastBlockTime atomic.Int64
 	/*
 		Sequencer and full-node
 	*/
@@ -323,7 +330,7 @@ func (m *Manager) updateFromLastSettlementState() error {
 	// init last block time in dymint state to calculate batch submit skew time
 	block, err := m.Store.LoadBlock(m.State.Height())
 	if err == nil {
-		m.State.LastBlockTime.Store(block.Header.GetTimestamp().UTC().UnixNano())
+		m.LastBlockTime.Store(block.Header.GetTimestamp().UTC().UnixNano())
 	}
 	return nil
 }
@@ -409,4 +416,19 @@ func (m *Manager) freezeNode(err error) {
 	}
 	uevent.MustPublish(m.Ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
 	m.Cancel()
+}
+
+// SetLastBlockTimeInSettlementFromHeight is used to initialize LastBlockTimeInSettlement from height
+func (m *Manager) SetLastBlockTimeInSettlementFromHeight(lastSettlementHeight uint64) {
+	// considered no batch is submitted yet, so it is initialized
+	if lastSettlementHeight == uint64(1) {
+		m.LastBlockTimeInSettlement.Store(time.Now().UTC().UnixNano())
+		return
+	}
+	block, err := m.Store.LoadBlock(lastSettlementHeight)
+	if err != nil {
+		// if settlement height block is not found it will be updated after syncing
+		return
+	}
+	m.LastBlockTimeInSettlement.Store(block.Header.GetTimestamp().UTC().UnixNano())
 }
