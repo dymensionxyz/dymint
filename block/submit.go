@@ -47,8 +47,8 @@ func SubmitLoopInner(
 	maxProduceSubmitSkewTime time.Duration, // max time between last submitted block and last produced block allowed. if this threshold is reached block production is stopped.
 	unsubmittedBlocksNum func() uint64,
 	batchSkewTime func() time.Duration,
-	maxBatchTime time.Duration, // max time to allow between batches
-	maxBatchBytes uint64, // max size of serialised batch in bytes
+	maxBatchSubmitTime time.Duration, // max time to allow between batches
+	maxBatchSubmitBytes uint64, // max size of serialised batch in bytes
 	createAndSubmitBatch func(maxSizeBytes uint64) (sizeBlocksCommits uint64, err error),
 ) error {
 	eg, ctx := errgroup.WithContext(ctx)
@@ -87,7 +87,7 @@ func SubmitLoopInner(
 
 	eg.Go(func() error {
 		// 'submitter': this thread actually creates and submits batches, and will do it on a timer if he isn't nudged by block production
-		ticker := time.NewTicker(maxBatchTime / 10) // interval does not need to match max batch time since we keep track anyway, it's just to wakeup
+		ticker := time.NewTicker(maxBatchSubmitTime / 10) // interval does not need to match max batch time since we keep track anyway, it's just to wakeup
 		for {
 			select {
 			case <-ctx.Done():
@@ -103,8 +103,8 @@ func SubmitLoopInner(
 				done := ctx.Err() != nil
 				nothingToSubmit := pending == 0
 
-				lastSubmissionIsRecent := batchSkewTime() < maxBatchTime
-				maxDataNotExceeded := pending <= maxBatchBytes
+				lastSubmissionIsRecent := batchSkewTime() < maxBatchSubmitTime
+				maxDataNotExceeded := pending <= maxBatchSubmitBytes
 
 				UpdateBatchSubmissionGauges(pendingBytes.Load(), unsubmittedBlocksNum(), batchSkewTime())
 
@@ -112,7 +112,7 @@ func SubmitLoopInner(
 					break
 				}
 
-				nConsumed, err := createAndSubmitBatch(maxBatchBytes)
+				nConsumed, err := createAndSubmitBatch(maxBatchSubmitBytes)
 				if err != nil {
 					err = fmt.Errorf("create and submit batch: %w", err)
 					if errors.Is(err, gerrc.ErrInternal) {
@@ -127,7 +127,7 @@ func SubmitLoopInner(
 					}
 					return err
 				}
-				ticker.Reset(maxBatchTime)
+				ticker.Reset(maxBatchSubmitTime)
 				pending = uatomic.Uint64Sub(&pendingBytes, nConsumed)
 				logger.Info("Submitted a batch to both sub-layers.", "n bytes consumed from pending", nConsumed, "pending after", pending) // TODO: debug level
 			}
