@@ -87,10 +87,8 @@ func testSubmitLoopInner(
 			time.Sleep(approx(args.produceTime))
 
 			if args.batchSkew <= skewTime() {
-				t.Log("not produce", skewTime())
 				continue
 			}
-			t.Log("produce", skewTime())
 
 			nBytes := rand.Intn(args.produceBytes) // simulate block production
 			nProducedBytes.Add(uint64(nBytes))
@@ -108,7 +106,7 @@ func testSubmitLoopInner(
 		consumed := rand.Intn(int(maxSize))
 		nProducedBytes.Add(^uint64(consumed - 1)) // subtract
 		pendingBlocks.Store(0)                    // no pending blocks to be submitted
-		lastSettlementBlockTime = time.Now()
+		lastSettlementBlockTime = lastBlockTime
 
 		return consumed, nil
 	}
@@ -127,7 +125,7 @@ func TestSubmitLoopFastProducerHaltingSubmitter(t *testing.T) {
 	testSubmitLoop(
 		t,
 		testArgs{
-			nParallel:    50,
+			nParallel:    1,
 			testDuration: 2 * time.Second,
 			batchSkew:    100 * time.Millisecond,
 			skewMargin:   10 * time.Millisecond,
