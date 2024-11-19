@@ -98,7 +98,7 @@ func (m *Manager) SetLastBlockTimeInSettlementFromHeight(lastSettlementHeight ui
 
 	// considered no batch is submitted yet, so it is initialized
 	if lastSettlementHeight == uint64(1) {
-		m.State.LastBlockTimeInSettlement = time.Now()
+		m.State.LastBlockTimeInSettlement.Store(time.Now().Unix())
 		return
 	}
 	block, err := m.Store.LoadBlock(lastSettlementHeight)
@@ -106,7 +106,7 @@ func (m *Manager) SetLastBlockTimeInSettlementFromHeight(lastSettlementHeight ui
 		// if settlement height block is not found it will be updated after syncing
 		return
 	}
-	m.State.LastBlockTimeInSettlement = block.Header.GetTimestamp()
+	m.State.LastBlockTimeInSettlement.Store(block.Header.GetTimestamp().Unix())
 }
 
 func (e *Executor) UpdateStateAfterInitChain(s *types.State, res *abci.ResponseInitChain) {

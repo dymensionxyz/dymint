@@ -247,7 +247,7 @@ func (m *Manager) SubmitBatch(batch *types.Batch) error {
 	m.LastSettlementHeight.Store(batch.EndHeight())
 
 	// update last submitted block time with batch last block (used to calculate max skew time)
-	m.State.LastBlockTimeInSettlement = batch.Blocks[len(batch.Blocks)-1].Header.GetTimestamp()
+	m.State.LastBlockTimeInSettlement.Store(batch.Blocks[len(batch.Blocks)-1].Header.GetTimestamp().UTC().UnixNano())
 
 	return err
 }
@@ -306,7 +306,9 @@ func (m *Manager) UpdateLastSubmittedHeight(event pubsub.Message) {
 
 // GetBatchSkewTime returns the time between the last produced block and the last block submitted to SL
 func (m *Manager) GetBatchSkewTime() time.Duration {
-	return m.State.LastBlockTime.Sub(m.State.LastBlockTimeInSettlement)
+	lastProducedTime := time.Unix(m.State.LastBlockTime.Load(), 0)
+	lastSubmittedTime := time.Unix(m.State.LastBlockTimeInSettlement.Load(), 0)
+	return lastProducedTime.Sub(lastSubmittedTime)
 }
 
 func UpdateBatchSubmissionGauges(skewBytes uint64, skewBlocks uint64, skewTime time.Duration) {

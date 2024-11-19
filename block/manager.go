@@ -323,7 +323,7 @@ func (m *Manager) updateFromLastSettlementState() error {
 	// init last block time in dymint state to calculate batch submit skew time
 	block, err := m.Store.LoadBlock(m.State.Height())
 	if err == nil {
-		m.State.LastBlockTime = block.Header.GetTimestamp()
+		m.State.LastBlockTime.Store(block.Header.GetTimestamp().UTC().UnixNano())
 	}
 	return nil
 }
