@@ -245,11 +245,12 @@ func TestSubmissionByTime(t *testing.T) {
 
 	// Init manager with empty blocks feature enabled
 	managerConfig := config.BlockManagerConfig{
-		BlockTime:        blockTime,
-		MaxIdleTime:      0,
-		BatchSkew:        10,
-		BatchSubmitTime:  submitTimeout,
-		BatchSubmitBytes: 1000,
+		BlockTime:                  blockTime,
+		MaxIdleTime:                0,
+		BatchSkew:                  10,
+		BatchSubmitTime:            submitTimeout,
+		BatchSubmitBytes:           1000,
+		SequencerSetUpdateInterval: config.DefaultSequencerSetUpdateInterval,
 	}
 
 	manager, err := testutil.GetManager(managerConfig, nil, 1, 1, 0, proxyApp, nil)
