@@ -370,7 +370,7 @@ func TestCommit_ValidateWithHeader(t *testing.T) {
 
 		err = commit.ValidateWithHeader(proposerKey.PubKey(), &block.Header)
 		require.Error(t, err, "Validation should fail due to an invalid height")
-		require.Equal(t, &ErrInvalidBlockHeightFraud{0, 1}, err)
+		require.Equal(t, &ErrInvalidBlockHeightFraud{0, &block.Header}, err)
 		require.True(t, errors.Is(err, gerrc.ErrFault), "The error should be a fraud error")
 	})
 
@@ -386,7 +386,7 @@ func TestCommit_ValidateWithHeader(t *testing.T) {
 
 		err = commit.ValidateWithHeader(proposerKey.PubKey(), &block.Header)
 		require.Error(t, err, "Validation should fail due to an invalid signature")
-		assert.Equal(t, NewErrInvalidSignatureFraud(ErrInvalidSignature), err)
+		assert.Equal(t, NewErrInvalidSignatureFraud(ErrInvalidSignature, &block.Header, commit), err)
 		assert.True(t, errors.Is(err, gerrc.ErrFault), "The error should be a fraud error")
 	})
 
@@ -407,7 +407,7 @@ func TestCommit_ValidateWithHeader(t *testing.T) {
 		// Validate and expect an error due to multiple signatures
 		err = commit.ValidateWithHeader(proposerKey.PubKey(), &block.Header)
 		require.Error(t, err, "Validation should fail when there is more than one signature")
-		assert.Equal(t, NewErrInvalidSignatureFraud(errors.New("there should be 1 signature")), err)
+		assert.Equal(t, NewErrInvalidSignatureFraud(errors.New("there should be 1 signature"), &block.Header, commit), err)
 		assert.True(t, errors.Is(err, gerrc.ErrFault), "The error should be a fraud error")
 	})
 
@@ -427,7 +427,7 @@ func TestCommit_ValidateWithHeader(t *testing.T) {
 		// Validate and expect an error due to oversized signature
 		err = commit.ValidateWithHeader(proposerKey.PubKey(), &block.Header)
 		require.Error(t, err, "Validation should fail when the signature size exceeds the maximum allowed size")
-		assert.Equal(t, NewErrInvalidSignatureFraud(errors.New("signature is too big")), err)
+		assert.Equal(t, NewErrInvalidSignatureFraud(errors.New("signature is too big"), &block.Header, commit), err)
 		assert.True(t, errors.Is(err, gerrc.ErrFault), "The error should be a fraud error")
 	})
 
@@ -452,7 +452,7 @@ func TestCommit_ValidateWithHeader(t *testing.T) {
 		// Validate and expect an error due to mismatching proposer addresses
 		err = commit.ValidateWithHeader(proposerKey.PubKey(), &block.Header)
 		require.Error(t, err, "Validation should fail when the proposer's address does not match the header's proposer address")
-		assert.Equal(t, NewErrInvalidProposerAddressFraud(block.Header.ProposerAddress, proposerKey.PubKey().Address()), err)
+		assert.Equal(t, NewErrInvalidProposerAddressFraud(block.Header.ProposerAddress, proposerKey.PubKey().Address(), &block.Header), err)
 		assert.True(t, errors.Is(err, gerrc.ErrFault), "The error should be a fraud error")
 	})
 
@@ -480,7 +480,7 @@ func TestCommit_ValidateWithHeader(t *testing.T) {
 		err = commit.ValidateWithHeader(proposerKey.PubKey(), &block.Header)
 		bytes := NewSequencerFromValidator(*tmtypes.NewValidator(proposerKey.PubKey(), 1)).MustHash()
 
-		require.Equal(t, &ErrInvalidSequencerHashFraud{[32]byte{1, 2, 3}, bytes}, err)
+		require.Equal(t, &ErrInvalidSequencerHashFraud{[32]byte{1, 2, 3}, bytes, &block.Header}, err)
 		require.True(t, errors.Is(err, gerrc.ErrFault), "The error should be a fraud error")
 	})
 
@@ -493,7 +493,7 @@ func TestCommit_ValidateWithHeader(t *testing.T) {
 		assert.NotEqual(t, block.Hash(), commit.HeaderHash, "The commit header hash should not match the block header hash")
 
 		err = commit.ValidateWithHeader(proposerKey.PubKey(), &block.Header)
-		require.Equal(t, &ErrInvalidHeaderHashFraud{[32]byte{1, 2, 3}, block.Hash()}, err)
+		require.Equal(t, &ErrInvalidHeaderHashFraud{[32]byte{1, 2, 3}, &block.Header}, err)
 		require.True(t, errors.Is(err, gerrc.ErrFault), "The error should be a fraud error")
 	})
 }
