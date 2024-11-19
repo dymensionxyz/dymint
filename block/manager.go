@@ -311,6 +311,8 @@ func (m *Manager) updateFromLastSettlementState() error {
 		return err
 	}
 
+	m.LastSettlementHeight.Store(latestHeight)
+
 	if latestHeight >= m.State.NextHeight() {
 		m.UpdateTargetHeight(latestHeight)
 	}

@@ -98,6 +98,7 @@ func (m *Manager) SetLastBlockTimeInSettlementFromHeight(lastSettlementHeight ui
 	block, err := m.Store.LoadBlock(lastSettlementHeight)
 	if err != nil {
 		m.State.LastBlockTimeInSettlement = time.Now()
+		return
 	}
 	m.State.LastBlockTimeInSettlement = block.Header.GetTimestamp()
 }

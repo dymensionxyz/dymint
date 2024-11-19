@@ -61,6 +61,7 @@ func testSubmitLoopInner(
 	producedBytesC := make(chan int)  // producer sends on here, and can be blocked by not consuming from here
 
 	lastSettlementBlockTime := time.Now()
+	lastBlockTime := time.Now()
 	skewTime := func(time time.Time) time.Duration {
 		return time.Sub(lastSettlementBlockTime)
 	}
@@ -73,7 +74,7 @@ func testSubmitLoopInner(
 				default:
 				}
 				// producer shall not get too far ahead
-				require.True(t, skewTime(time.Now()) < args.batchSkew+args.skewMargin, "last produced blocks time not less than maximum skew time", "produced block skew time", skewTime, "max skew time", args.batchSkew)
+				require.True(t, skewTime(lastBlockTime) < args.batchSkew+args.skewMargin, "last produced blocks time not less than maximum skew time", "produced block skew time", skewTime(time.Now()), "max skew time", args.batchSkew)
 			}
 		}()
 		for {
@@ -85,12 +86,14 @@ func testSubmitLoopInner(
 
 			time.Sleep(approx(args.produceTime))
 
-			if args.batchSkew <= skewTime(time.Now()) {
+			if args.batchSkew <= skewTime(lastBlockTime) {
 				continue
 			}
+
 			nBytes := rand.Intn(args.produceBytes) // simulate block production
 			nProducedBytes.Add(uint64(nBytes))
 			producedBytesC <- nBytes
+			lastBlockTime = time.Now()
 			pendingBlocks.Add(1) // increase pending blocks to be submitted counter
 		}
 	}()
