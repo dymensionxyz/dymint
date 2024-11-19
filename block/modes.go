@@ -11,6 +11,13 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
+const (
+	syncLoop         = "syncLoop"
+	validateLoop     = "validateLoop"
+	p2pGossipLoop    = "applyGossipedBlocksLoop"
+	p2pBlocksyncLoop = "applyBlockSyncBlocksLoop"
+)
+
 // setFraudHandler sets the fraud handler for the block manager.
 func (m *Manager) runAsFullNode(ctx context.Context, eg *errgroup.Group) error {
 	m.logger.Info("starting block manager", "mode", "full node")
@@ -26,13 +33,13 @@ func (m *Manager) runAsFullNode(ctx context.Context, eg *errgroup.Group) error {
 		return m.SettlementValidateLoop(ctx)
 	})
 
-	// Subscribe to new (or finalized) state updates events.
-	go uevent.MustSubscribe(ctx, m.Pubsub, "syncLoop", settlement.EventQueryNewSettlementBatchAccepted, m.onNewStateUpdate, m.logger)
-	go uevent.MustSubscribe(ctx, m.Pubsub, "validateLoop", settlement.EventQueryNewSettlementBatchFinalized, m.onNewStateUpdateFinalized, m.logger)
+	m.subscribeFullNodeEvents(ctx)
 
-	// Subscribe to P2P received blocks events (used for P2P syncing).
-	go uevent.MustSubscribe(ctx, m.Pubsub, "applyGossipedBlocksLoop", p2p.EventQueryNewGossipedBlock, m.OnReceivedBlock, m.logger)
-	go uevent.MustSubscribe(ctx, m.Pubsub, "applyBlockSyncBlocksLoop", p2p.EventQueryNewBlockSyncBlock, m.OnReceivedBlock, m.logger)
+	// forkFromInstruction deletes fork instruction file for full nodes
+	err = m.forkFromInstruction()
+	if err != nil {
+		return err
+	}
 
 	return nil
 }
@@ -50,6 +57,12 @@ func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {
 	// Sequencer must wait till node is synced till last submittedHeight, in case it is not
 	m.waitForSettlementSyncing()
 
+	// forkFromInstruction executes fork if necessary
+	err := m.forkFromInstruction()
+	if err != nil {
+		return err
+	}
+
 	// check if we should rotate
 	shouldRotate, err := m.ShouldRotate()
 	if err != nil {
@@ -65,6 +78,7 @@ func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		return m.SubmitLoop(ctx, bytesProducedC)
 	})
+
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		bytesProducedC <- m.GetUnsubmittedBytes() // load unsubmitted bytes from previous run
 		return m.ProduceBlockLoop(ctx, bytesProducedC)
@@ -74,4 +88,14 @@ func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {
 	go m.MonitorProposerRotation(ctx)
 
 	return nil
+}
+
+func (m *Manager) subscribeFullNodeEvents(ctx context.Context) {
+	// Subscribe to new (or finalized) state updates events.
+	go uevent.MustSubscribe(ctx, m.Pubsub, syncLoop, settlement.EventQueryNewSettlementBatchAccepted, m.onNewStateUpdate, m.logger)
+	go uevent.MustSubscribe(ctx, m.Pubsub, validateLoop, settlement.EventQueryNewSettlementBatchFinalized, m.onNewStateUpdateFinalized, m.logger)
+
+	// Subscribe to P2P received blocks events (used for P2P syncing).
+	go uevent.MustSubscribe(ctx, m.Pubsub, p2pGossipLoop, p2p.EventQueryNewGossipedBlock, m.OnReceivedBlock, m.logger)
+	go uevent.MustSubscribe(ctx, m.Pubsub, p2pBlocksyncLoop, p2p.EventQueryNewBlockSyncBlock, m.OnReceivedBlock, m.logger)
 }

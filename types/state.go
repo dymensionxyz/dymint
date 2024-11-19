@@ -17,8 +17,8 @@ import (
 
 // State contains information about current state of the blockchain.
 type State struct {
-	Version tmstate.Version
-
+	Version             tmstate.Version
+	RevisionStartHeight uint64
 	// immutable
 	ChainID       string
 	InitialHeight uint64 // should be 1, not 0, when starting from height 1
@@ -133,4 +133,12 @@ func (s *State) SetRollappParamsFromGenesis(appState json.RawMessage) error {
 	}
 	s.RollappParams = *rollappParams.Params
 	return nil
+}
+
+func (s *State) GetRevision() uint64 {
+	return s.Version.Consensus.App
+}
+
+func (s *State) SetRevision(revision uint64) {
+	s.Version.Consensus.App = revision
 }

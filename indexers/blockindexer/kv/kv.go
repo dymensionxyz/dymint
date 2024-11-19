@@ -622,6 +622,7 @@ func (idx *BlockerIndexer) pruneEvents(height int64, logger log.Logger, batch st
 			logger.Error("pruning block indexer iterate events", "height", height, "err", err)
 			continue
 		}
+
 	}
 	return pruned, nil
 }

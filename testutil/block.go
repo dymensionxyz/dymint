@@ -14,6 +14,7 @@ import (
 	"github.com/dymensionxyz/dymint/indexers/txindex/kv"
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/settlement"
+	"github.com/dymensionxyz/dymint/types"
 
 	"github.com/tendermint/tendermint/crypto/ed25519"
 	"github.com/tendermint/tendermint/libs/log"
@@ -128,10 +129,13 @@ func GetManagerWithProposerKey(conf config.BlockManagerConfig, proposerKey crypt
 	p2pClient.SetBlockValidator(p2pValidator.BlockValidator())
 
 	manager.P2PClient = p2pClient
-
+	manager.Ctx = context.Background()
 	if err = p2pClient.Start(context.Background()); err != nil {
 		return nil, err
 	}
+
+	manager.Sequencers.Set([]types.Sequencer{*state.Proposer.Load()})
+
 	return manager, nil
 }
 

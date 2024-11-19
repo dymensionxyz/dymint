@@ -175,6 +175,7 @@ func (d *Data) ToProto() *pb.Data {
 		Txs:                    txsToByteSlices(d.Txs),
 		IntermediateStateRoots: d.IntermediateStateRoots.RawRootsList,
 		Evidence:               evidenceToProto(d.Evidence),
+		ConsensusMessages:      d.ConsensusMessages,
 	}
 }
 
@@ -187,6 +188,7 @@ func (b *Block) FromProto(other *pb.Block) error {
 	b.Data.Txs = byteSlicesToTxs(other.Data.Txs)
 	b.Data.IntermediateStateRoots.RawRootsList = other.Data.IntermediateStateRoots
 	b.Data.Evidence = evidenceFromProto(other.Data.Evidence)
+	b.Data.ConsensusMessages = other.Data.ConsensusMessages
 	if other.LastCommit != nil {
 		err := b.LastCommit.FromProto(other.LastCommit)
 		if err != nil {
@@ -261,17 +263,18 @@ func (s *State) ToProto() (*pb.State, error) {
 	}
 
 	return &pb.State{
-		Version:         &s.Version,
-		ChainId:         s.ChainID,
-		InitialHeight:   int64(s.InitialHeight),
-		LastBlockHeight: int64(s.Height()),
-		LastBlockTime:   s.LastBlockTime.Load(),
-		ConsensusParams: s.ConsensusParams,
-		LastResultsHash: s.LastResultsHash[:],
-		LastHeaderHash:  s.LastHeaderHash[:],
-		AppHash:         s.AppHash[:],
-		RollappParams:   s.RollappParams,
-		Proposer:        proposerProto,
+		Version:             &s.Version,
+		ChainId:             s.ChainID,
+		InitialHeight:       int64(s.InitialHeight),
+		LastBlockHeight:     int64(s.Height()),
+		LastBlockTime:       s.LastBlockTime.Load(),
+		ConsensusParams:     s.ConsensusParams,
+		LastResultsHash:     s.LastResultsHash[:],
+		LastHeaderHash:      s.LastHeaderHash[:],
+		AppHash:             s.AppHash[:],
+		RollappParams:       s.RollappParams,
+		Proposer:            proposerProto,
+		RevisionStartHeight: int64(s.RevisionStartHeight),
 	}, nil
 }
 
@@ -281,7 +284,7 @@ func (s *State) FromProto(other *pb.State) error {
 	s.ChainID = other.ChainId
 	s.InitialHeight = uint64(other.InitialHeight)
 	s.SetHeight(uint64(other.LastBlockHeight))
-
+	s.RevisionStartHeight = uint64(other.RevisionStartHeight)
 	if other.Proposer != nil {
 		proposer, err := SequencerFromProto(other.Proposer)
 		if err != nil {
@@ -295,6 +298,7 @@ func (s *State) FromProto(other *pb.State) error {
 
 	s.ConsensusParams = other.ConsensusParams
 	copy(s.LastResultsHash[:], other.LastResultsHash)
+	copy(s.LastHeaderHash[:], other.LastHeaderHash)
 	copy(s.AppHash[:], other.AppHash)
 	s.RollappParams = other.RollappParams
 	s.LastBlockTime.Store(other.LastBlockTime)

@@ -8,9 +8,7 @@ import (
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/tendermint/tendermint/libs/pubsub"
 
-	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/settlement"
-	uevent "github.com/dymensionxyz/dymint/utils/event"
 )
 
 // onNewStateUpdate will update the last submitted height and will update sequencers list from SL. After, it triggers syncing or validation, depending whether it needs to sync first or only validate.
@@ -52,12 +50,14 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-
 		case <-m.settlementSyncingC:
-
 			m.logger.Info("syncing to target height", "targetHeight", m.LastSettlementHeight.Load())
 
 			for currH := m.State.NextHeight(); currH <= m.LastSettlementHeight.Load(); currH = m.State.NextHeight() {
+				// if context has been cancelled, stop syncing
+				if ctx.Err() != nil {
+					return ctx.Err()
+				}
 				// if we have the block locally, we don't need to fetch it from the DA.
 				// it will only happen in case of rollback.
 				err := m.applyLocalBlock(currH)
@@ -71,7 +71,7 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 
 				settlementBatch, err := m.SLClient.GetBatchAtHeight(m.State.NextHeight())
 				if err != nil {
-					return fmt.Errorf("retrieve batch: %w", err)
+					return fmt.Errorf("retrieve SL batch err: %w", err)
 				}
 				m.logger.Info("Retrieved state update from SL.", "state_index", settlementBatch.StateIndex)
 
@@ -83,12 +83,7 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 
 				err = m.ApplyBatchFromSL(settlementBatch.Batch)
 				if err != nil {
-					m.logger.Error("process next DA batch", "err", err)
-				}
-
-				// if height havent been updated, we are stuck
-				if m.State.NextHeight() == currH {
-					return fmt.Errorf("stuck at height %d", currH)
+					return fmt.Errorf("process next DA batch. err:%w", err)
 				}
 
 				m.logger.Info("Synced from DA", "store height", m.State.Height(), "target height", m.LastSettlementHeight.Load())
@@ -98,16 +93,17 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 
 				err = m.attemptApplyCachedBlocks()
 				if err != nil {
-					uevent.MustPublish(context.TODO(), m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
-					m.logger.Error("Attempt apply cached blocks.", "err", err)
+					return fmt.Errorf("Attempt apply cached blocks. err:%w", err)
 				}
 
 			}
 
-			m.logger.Info("Synced.", "current height", m.State.Height(), "last submitted height", m.LastSettlementHeight.Load())
-
-			// nudge to signal to any listens that we're currently synced with the last settlement height we've seen so far
-			m.syncedFromSettlement.Nudge()
+			// avoid notifying as synced in case if fails before
+			if m.State.Height() == m.LastSettlementHeight.Load() {
+				m.logger.Info("Synced.", "current height", m.State.Height(), "last submitted height", m.LastSettlementHeight.Load())
+				// nudge to signal to any listens that we're currently synced with the last settlement height we've seen so far
+				m.syncedFromSettlement.Nudge()
+			}
 
 		}
 	}

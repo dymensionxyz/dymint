@@ -6,10 +6,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/dymensionxyz/dymint/test/loadtime/payload"
-	"github.com/dymensionxyz/dymint/types"
 	"github.com/gofrs/uuid"
 	"gonum.org/v1/gonum/stat"
+
+	"github.com/dymensionxyz/dymint/test/loadtime/payload"
+	"github.com/dymensionxyz/dymint/types"
 )
 
 // BlockStore defines the set of methods needed by the report generator from
@@ -226,8 +227,8 @@ func GenerateFromBlockStore(s BlockStore) (*Reports, error) {
 				panic(err)
 			}
 			for _, tx := range cur.Data.Txs {
-				UTCfromUnixNano := time.Unix(0, int64(cur.Header.Time))
-				txc <- txData{tx: tx, bt: UTCfromUnixNano}
+				utcFromUnixNano := cur.Header.GetTimestamp()
+				txc <- txData{tx: tx, bt: utcFromUnixNano}
 			}
 		}
 		close(txc)

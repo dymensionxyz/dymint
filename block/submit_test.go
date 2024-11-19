@@ -37,7 +37,6 @@ func TestBatchOverhead(t *testing.T) {
 	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, manager)
-
 	maxBatchSize := uint64(10_000)                                            // 10KB
 	maxTxData := uint64(float64(maxBatchSize) * types.MaxBlockSizeAdjustment) // 90% of maxBatchSize
 
@@ -135,7 +134,7 @@ func TestBatchSubmissionHappyFlow(t *testing.T) {
 	require.Zero(manager.LastSettlementHeight.Load())
 
 	// Produce block and validate that we produced blocks
-	_, _, err = manager.ProduceApplyGossipBlock(ctx, true)
+	_, _, err = manager.ProduceApplyGossipBlock(ctx, block.ProduceBlockOptions{AllowEmpty: true})
 	require.NoError(err)
 	assert.Greater(t, manager.State.Height(), initialHeight)
 	assert.Zero(t, manager.LastSettlementHeight.Load())
@@ -200,18 +199,18 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 	require.Zero(manager.LastSettlementHeight.Load())
 
 	// Produce block and validate that we produced blocks
-	_, _, err = manager.ProduceApplyGossipBlock(ctx, true)
+	_, _, err = manager.ProduceApplyGossipBlock(ctx, block.ProduceBlockOptions{AllowEmpty: true})
 	require.NoError(err)
 	assert.Greater(t, manager.State.Height(), initialHeight)
 	assert.Zero(t, manager.LastSettlementHeight.Load())
 
 	// try to submit, we expect failure
-	slmock.On("SubmitBatch", mock.Anything, mock.Anything, mock.Anything).Return(fmt.Errorf("submit batch")).Once()
+	slmock.On("SubmitBatch", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(fmt.Errorf("submit batch")).Once()
 	_, err = manager.CreateAndSubmitBatch(manager.Conf.BatchSubmitBytes, false)
 	assert.Error(t, err)
 
 	// try to submit again, we expect success
-	slmock.On("SubmitBatch", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
+	slmock.On("SubmitBatch", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 	manager.CreateAndSubmitBatch(manager.Conf.BatchSubmitBytes, false)
 	assert.EqualValues(t, manager.State.Height(), manager.LastSettlementHeight.Load())
 }

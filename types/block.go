@@ -14,7 +14,7 @@ type Header struct {
 	Version Version
 
 	Height uint64
-	Time   uint64 // UNIX time in milliseconds
+	Time   int64 // UNIX time in nanoseconds. Use int64 as Golang stores UNIX nanoseconds in int64.
 
 	// prev block info
 	LastHeaderHash [32]byte
@@ -46,7 +46,7 @@ type Header struct {
 }
 
 func (h Header) GetTimestamp() time.Time {
-	return time.Unix(0, int64(h.Time))
+	return time.Unix(0, h.Time)
 }
 
 var (
@@ -72,6 +72,10 @@ type Block struct {
 
 func (b Block) SizeBytes() int {
 	return b.ToProto().Size()
+}
+
+func (b *Block) GetRevision() uint64 {
+	return b.Header.Version.App
 }
 
 var (

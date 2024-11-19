@@ -51,6 +51,18 @@ type Client struct {
 	refreshTime    int
 }
 
+func (c *Client) GetRollapp() (*types.Rollapp, error) {
+	return &types.Rollapp{
+		RollappID: c.rollappID,
+		Revisions: []types.Revision{{Number: 0, StartHeight: 0}},
+	}, nil
+}
+
+// GetObsoleteDrs returns the list of deprecated DRS.
+func (c *Client) GetObsoleteDrs() ([]uint32, error) {
+	return []uint32{}, nil
+}
+
 var _ settlement.ClientI = (*Client)(nil)
 
 // Init initializes the mock layer client.

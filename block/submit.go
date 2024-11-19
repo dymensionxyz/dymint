@@ -105,6 +105,7 @@ func SubmitLoopInner(
 			case <-ticker.C:
 			case <-submitter.C:
 			}
+
 			pending := pendingBytes.Load()
 
 			skew, err := skewTime()
@@ -231,7 +232,7 @@ func (m *Manager) CreateBatch(maxBatchSize uint64, startHeight uint64, endHeight
 		batch.DRSVersion = append(batch.DRSVersion, drsVersion)
 
 		totalSize := batch.SizeBytes()
-		if int(maxBatchSize) < totalSize {
+		if maxBatchSize < uint64(totalSize) {
 
 			// Remove the last block and commit from the batch
 			batch.Blocks = batch.Blocks[:len(batch.Blocks)-1]
@@ -244,6 +245,7 @@ func (m *Manager) CreateBatch(maxBatchSize uint64, startHeight uint64, endHeight
 			break
 		}
 	}
+	batch.Revision = batch.Blocks[len(batch.Blocks)-1].GetRevision()
 
 	return batch, nil
 }
@@ -297,6 +299,7 @@ func (m *Manager) GetUnsubmittedBytes() int {
 		}
 		total += block.SizeBytes() + commit.SizeBytes()
 	}
+
 	return total
 }
 

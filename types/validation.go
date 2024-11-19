@@ -63,11 +63,11 @@ func (b *Block) ValidateWithState(state *State) error {
 	}
 
 	currentTime := time.Now().UTC()
-	if currentTime.Add(TimeFraudMaxDrift).Before(time.Unix(0, int64(b.Header.Time))) {
+	if currentTime.Add(TimeFraudMaxDrift).Before(b.Header.GetTimestamp()) {
 		return NewErrTimeFraud(b, currentTime)
 	}
 
-	if b.Header.Version.App != state.Version.Consensus.App ||
+	if b.Header.Version.App != state.GetRevision() ||
 		b.Header.Version.Block != state.Version.Consensus.Block {
 		return ErrVersionMismatch
 	}

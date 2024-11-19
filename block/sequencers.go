@@ -9,8 +9,12 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
+const (
+	ProposerMonitorInterval = 3 * time.Minute
+)
+
 func (m *Manager) MonitorProposerRotation(ctx context.Context) {
-	ticker := time.NewTicker(3 * time.Minute) // TODO: make this configurable
+	ticker := time.NewTicker(ProposerMonitorInterval) // TODO: make this configurable
 	defer ticker.Stop()
 
 	for {
@@ -63,6 +67,9 @@ func (m *Manager) AmIProposerOnSL() (bool, error) {
 // AmIProposerOnRollapp checks if the current node is the proposer on the rollapp.
 // Proposer on the rollapp is not necessarily the proposer on the hub during rotation phase.
 func (m *Manager) AmIProposerOnRollapp() bool {
+	if m.State.GetProposer() == nil {
+		return false
+	}
 	localProposerKeyBytes, _ := m.LocalKey.GetPublic().Raw()
 	rollappProposer := m.State.GetProposerPubKey().Bytes()
 
@@ -100,7 +107,12 @@ func (m *Manager) rotate(ctx context.Context) {
 		panic(fmt.Sprintf("rotate: fetch next proposer set from Hub: %v", err))
 	}
 
-	err = m.CreateAndPostLastBatch(ctx, [32]byte(nextProposer.MustHash()))
+	var nextProposerHash [32]byte
+	if !nextProposer.IsEmpty() {
+		nextProposerHash = [32]byte(nextProposer.MustHash())
+	}
+
+	err = m.CreateAndPostLastBatch(ctx, nextProposerHash)
 	if err != nil {
 		panic(fmt.Sprintf("rotate: create and post last batch: %v", err))
 	}
@@ -119,7 +131,7 @@ func (m *Manager) CreateAndPostLastBatch(ctx context.Context, nextSeqHash [32]by
 		return fmt.Errorf("load block: height: %d: %w", h, err)
 	}
 
-	// check if the last block already produced with nextProposerHash set.
+	// check if the last block already produced with NextProposerHash set.
 	// After creating the last block, the sequencer will be restarted so it will not be able to produce blocks anymore.
 	if bytes.Equal(block.Header.NextSequencersHash[:], nextSeqHash[:]) {
 		m.logger.Debug("Last block already produced and applied.")
@@ -164,8 +176,9 @@ func (m *Manager) UpdateSequencerSetFromSL() error {
 // creates consensus messages for all new sequencers. The method updates the current state
 // and is not thread-safe. Returns errors on serialization issues.
 func (m *Manager) HandleSequencerSetUpdate(newSet []types.Sequencer) error {
+	actualSequencers := m.Sequencers.GetAll()
 	// find new (updated) sequencers
-	newSequencers := types.SequencerListRightOuterJoin(m.Sequencers.GetAll(), newSet)
+	newSequencers := types.SequencerListRightOuterJoin(actualSequencers, newSet)
 	// create consensus msgs for new sequencers
 	msgs, err := ConsensusMsgsOnSequencerSetUpdate(newSequencers)
 	if err != nil {
@@ -175,5 +188,16 @@ func (m *Manager) HandleSequencerSetUpdate(newSet []types.Sequencer) error {
 	m.Executor.AddConsensusMsgs(msgs...)
 	// save the new sequencer set to the state
 	m.Sequencers.Set(newSet)
+	return nil
+}
+
+// UpdateProposerFromSL queries the hub and updates the local dymint state proposer at the current height
+func (m *Manager) UpdateProposerFromSL() error {
+	SLProposer, err := m.SLClient.GetProposerAtHeight(int64(m.State.NextHeight()))
+	if err != nil {
+		return fmt.Errorf("get proposer at height: %w", err)
+	}
+	m.logger.Debug("Updating proposer to ", SLProposer.SettlementAddress)
+	m.State.SetProposer(SLProposer)
 	return nil
 }
