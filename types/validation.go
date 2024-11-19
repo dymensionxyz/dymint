@@ -48,7 +48,7 @@ func (b *Block) ValidateWithState(state *State) error {
 	err := b.ValidateBasic()
 	if err != nil {
 		if errors.Is(err, ErrInvalidHeaderDataHash) {
-			return NewErrInvalidHeaderDataHashFraud(b.Header.DataHash, [32]byte(GetDataHash(b)), b.Header)
+			return NewErrInvalidHeaderDataHashFraud(b)
 		}
 
 		return err
@@ -74,7 +74,7 @@ func (b *Block) ValidateWithState(state *State) error {
 
 	nextHeight := state.NextHeight()
 	if b.Header.Height != nextHeight {
-		return NewErrFraudHeightMismatch(state.NextHeight(), b)
+		return NewErrFraudHeightMismatch(state.NextHeight(), &b.Header)
 	}
 
 	proposerHash := state.GetProposerHash()
@@ -83,11 +83,11 @@ func (b *Block) ValidateWithState(state *State) error {
 	}
 
 	if !bytes.Equal(b.Header.AppHash[:], state.AppHash[:]) {
-		return NewErrFraudAppHashMismatch(state.AppHash, b)
+		return NewErrFraudAppHashMismatch(state.AppHash, &b.Header)
 	}
 
 	if !bytes.Equal(b.Header.LastResultsHash[:], state.LastResultsHash[:]) {
-		return NewErrLastResultsHashMismatch(state.LastResultsHash, b)
+		return NewErrLastResultsHashMismatch(state.LastResultsHash, &b.Header)
 	}
 
 	return nil
