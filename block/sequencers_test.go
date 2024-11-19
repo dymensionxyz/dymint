@@ -8,7 +8,6 @@ import (
 	"github.com/dymensionxyz/dymint/block"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
-	"github.com/dymensionxyz/dymint/version"
 )
 
 func TestHandleSequencerSetUpdate(t *testing.T) {
@@ -16,7 +15,6 @@ func TestHandleSequencerSetUpdate(t *testing.T) {
 	seq2 := testutil.GenerateSequencer()
 	seq3 := testutil.GenerateSequencer()
 	seq4 := testutil.GenerateSequencer()
-	version.DRS = "0"
 	testCases := []struct {
 		name    string
 		initial []types.Sequencer

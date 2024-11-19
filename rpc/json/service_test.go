@@ -29,7 +29,6 @@ import (
 	"github.com/dymensionxyz/dymint/config"
 	"github.com/dymensionxyz/dymint/mempool"
 	tmmocks "github.com/dymensionxyz/dymint/mocks/github.com/tendermint/tendermint/abci/types"
-	"github.com/dymensionxyz/dymint/version"
 
 	"github.com/dymensionxyz/dymint/node"
 	"github.com/dymensionxyz/dymint/rpc/client"
@@ -278,7 +277,6 @@ func TestSubscription(t *testing.T) {
 func getRPC(t *testing.T) (*tmmocks.MockApplication, *client.Client) {
 	t.Helper()
 	require := require.New(t)
-	version.DRS = "0"
 	app := &tmmocks.MockApplication{}
 	app.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 	app.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})

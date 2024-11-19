@@ -21,7 +21,6 @@ import (
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
-	"github.com/dymensionxyz/dymint/version"
 
 	abci "github.com/tendermint/tendermint/abci/types"
 	"github.com/tendermint/tendermint/crypto/ed25519"
@@ -46,7 +45,6 @@ import (
 // TODO: test sequencer after L2 handover but before last state update submitted
 // TODO: test halt scenario
 func TestInitialState(t *testing.T) {
-	version.DRS = "0"
 	var err error
 	assert := assert.New(t)
 	genesis := testutil.GenerateGenesis(123)
@@ -211,7 +209,6 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 // TODO: this test is flaky! https://github.com/dymensionxyz/dymint/issues/1173
 func TestApplyCachedBlocks_WithFraudCheck(t *testing.T) {
 	// Init app
-	version.DRS = "0"
 	app := testutil.GetAppMock(testutil.EndBlock)
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
 		RollappParamUpdates: &abci.RollappParams{

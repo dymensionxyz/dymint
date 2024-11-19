@@ -71,7 +71,7 @@ type Manager struct {
 
 	// context used when freezing node
 	Cancel context.CancelFunc
-	ctx    context.Context
+	Ctx    context.Context
 	/*
 		Sequencer and full-node
 	*/
@@ -206,7 +206,7 @@ func NewManager(
 
 // Start starts the block manager.
 func (m *Manager) Start(ctx context.Context) error {
-	m.ctx, m.Cancel = context.WithCancel(ctx)
+	m.Ctx, m.Cancel = context.WithCancel(ctx)
 	// Check if InitChain flow is needed
 	if m.State.IsGenesis() {
 		m.logger.Info("Running InitChain")
@@ -251,7 +251,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	// send signal to validation loop with last settlement state update
 	m.triggerSettlementValidation()
 
-	eg, ctx := errgroup.WithContext(m.ctx)
+	eg, ctx := errgroup.WithContext(m.Ctx)
 
 	// Start the pruning loop in the background
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
@@ -261,8 +261,8 @@ func (m *Manager) Start(ctx context.Context) error {
 	// Start the settlement sync loop in the background
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		err := m.SettlementSyncLoop(ctx)
-		if err != nil && ctx.Err() != nil {
-			m.freezeNode(ctx, err)
+		if err != nil {
+			m.freezeNode(err)
 		}
 		return nil
 	})
@@ -394,8 +394,11 @@ func (m *Manager) setFraudHandler(handler *FreezeHandler) {
 }
 
 // freezeNode sets the node as unhealthy and prevents the node continues producing and processing blocks
-func (m *Manager) freezeNode(ctx context.Context, err error) {
+func (m *Manager) freezeNode(err error) {
 	m.logger.Info("Freezing node", "err", err)
-	uevent.MustPublish(ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
+	if m.Ctx.Err() != nil {
+		return
+	}
+	uevent.MustPublish(m.Ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
 	m.Cancel()
 }

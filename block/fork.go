@@ -32,7 +32,7 @@ func (m *Manager) MonitorForkUpdateLoop(ctx context.Context) error {
 	defer ticker.Stop()
 
 	for {
-		if err := m.checkForkUpdate(ctx, ForkMessage); err != nil {
+		if err := m.checkForkUpdate(ForkMessage); err != nil {
 			m.logger.Error("Check for update.", err)
 		}
 		select {
@@ -44,7 +44,7 @@ func (m *Manager) MonitorForkUpdateLoop(ctx context.Context) error {
 }
 
 // checkForkUpdate checks if the hub has a fork update
-func (m *Manager) checkForkUpdate(ctx context.Context, msg string) error {
+func (m *Manager) checkForkUpdate(msg string) error {
 	rollapp, err := m.SLClient.GetRollapp()
 	if err != nil {
 		return err
@@ -56,7 +56,7 @@ func (m *Manager) checkForkUpdate(ctx context.Context, msg string) error {
 			return err
 		}
 
-		m.freezeNode(ctx, fmt.Errorf("%s  local_block_height: %d rollapp_revision_start_height: %d local_revision: %d rollapp_revision: %d", msg, m.State.Height(), rollapp.LatestRevision().StartHeight, m.State.GetRevision(), rollapp.LatestRevision().Number))
+		m.freezeNode(fmt.Errorf("%s  local_block_height: %d rollapp_revision_start_height: %d local_revision: %d rollapp_revision: %d", msg, m.State.Height(), rollapp.LatestRevision().StartHeight, m.State.GetRevision(), rollapp.LatestRevision().Number))
 	}
 
 	return nil

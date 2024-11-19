@@ -14,12 +14,10 @@ import (
 
 	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/testutil"
-	"github.com/dymensionxyz/dymint/version"
 )
 
 func TestNodeHealthRPCPropagation(t *testing.T) {
 	var err error
-	version.DRS = "0"
 	server, listener := testutil.CreateLocalServer(t)
 	defer func() {
 		err = server.Stop()

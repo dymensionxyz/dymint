@@ -1,7 +1,6 @@
 package block
 
 import (
-	"context"
 	"errors"
 	"fmt"
 
@@ -34,7 +33,7 @@ func (m *Manager) applyBlockWithFraudHandling(block *types.Block, commit *types.
 		// FraudHandler is an interface that defines a method to handle faults. Implement this interface to handle faults
 		// in specific ways. For example, once a fault is detected, it publishes a DataHealthStatus event to the
 		// pubsub which sets the node in a frozen state.
-		m.FraudHandler.HandleFault(context.Background(), err)
+		m.FraudHandler.HandleFault(m.Ctx, err)
 	}
 
 	return err

@@ -37,7 +37,6 @@ import (
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
-	"github.com/dymensionxyz/dymint/version"
 )
 
 var expectedInfo = abci.ResponseInfo{
@@ -987,7 +986,6 @@ func getRPCAndNodeSequencer(t *testing.T) (*tmmocks.MockApplication, *client.Cli
 // getRPC returns a mock application and a new RPC client (non-sequencer mode)
 func getRPCInternal(t *testing.T, sequencer bool) (*tmmocks.MockApplication, *client.Client, *node.Node) {
 	t.Helper()
-	version.DRS = "0"
 	require := require.New(t)
 	app := &tmmocks.MockApplication{}
 	app.On("Info", mock.Anything).Return(expectedInfo)

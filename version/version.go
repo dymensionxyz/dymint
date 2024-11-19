@@ -7,7 +7,7 @@ import (
 
 var (
 	Build = "<version>"
-	DRS   = "<drs>"
+	DRS   = "0"
 )
 
 func GetDRSVersion() (uint32, error) {
