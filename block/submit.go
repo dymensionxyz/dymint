@@ -313,5 +313,4 @@ func UpdateBatchSubmissionGauges(skewBytes uint64, skewBlocks uint64, skewTime t
 	types.RollappPendingSubmissionsSkewBytes.Set(float64(skewBytes))
 	types.RollappPendingSubmissionsSkewBlocks.Set(float64(skewBlocks))
 	types.RollappPendingSubmissionsSkewTimeMinutes.Set(float64(skewTime.Minutes()))
-
 }
