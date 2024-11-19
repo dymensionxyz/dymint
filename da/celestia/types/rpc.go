@@ -2,6 +2,7 @@ package types
 
 import (
 	"context"
+	"github.com/celestiaorg/celestia-openrpc/types/state"
 
 	"github.com/celestiaorg/celestia-openrpc/types/blob"
 	"github.com/celestiaorg/celestia-openrpc/types/header"
@@ -18,4 +19,7 @@ type CelestiaRPCClient interface {
 
 	/* --------------------------------- header --------------------------------- */
 	GetByHeight(ctx context.Context, height uint64) (*header.ExtendedHeader, error)
+
+	/* ---------------------------------- state --------------------------------- */
+	GetSignerBalance(ctx context.Context) (*state.Balance, error)
 }

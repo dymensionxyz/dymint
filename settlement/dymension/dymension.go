@@ -113,7 +113,7 @@ func (c *Client) Stop() error {
 
 // SubmitBatch posts a batch to the Dymension Hub. it tries to post the batch until it is accepted by the settlement layer.
 // it emits success and failure events to the event bus accordingly.
-func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) error {
+func (c *Client) SubmitBatch(batch *types.Batch, _ da.Client, daResult *da.ResultSubmitBatch) error {
 	msgUpdateState, err := c.convertBatchToMsgUpdateState(batch, daResult)
 	if err != nil {
 		return fmt.Errorf("convert batch to msg update state: %w", err)
@@ -724,4 +724,51 @@ func (c *Client) getLatestProposer() (string, error) {
 		return "", err
 	}
 	return proposerAddr, nil
+}
+
+func (c *Client) GetSignerBalance() (*types.Balance, error) {
+	account, err := c.cosmosClient.GetAccount(c.config.DymAccountName)
+	if err != nil {
+		return nil, fmt.Errorf("obtain account: %w", err)
+	}
+
+	addr, err := account.Address(addressPrefix)
+	if err != nil {
+		return nil, fmt.Errorf("derive address: %w", err)
+	}
+
+	denom := "udym"
+
+	// Realizar la consulta de saldo con reintentos
+	var res *banktypes.QueryBalanceResponse
+	err = c.RunWithRetry(func() error {
+		res, err = c.cosmosClient.GetBankClient().Balance(c.ctx, &banktypes.QueryBalanceRequest{
+			Address: addr,
+			Denom:   denom,
+		})
+		if err != nil {
+			// Manejar errores específicos
+			if status.Code(err) == codes.NotFound {
+				return retry.Unrecoverable(errors.Join(gerrc.ErrNotFound, err))
+			}
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, fmt.Errorf("consultar saldo: %w", err)
+	}
+
+	// Verificar que la respuesta no sea nil
+	if res == nil {
+		return nil, fmt.Errorf("respuesta vacía: %w", gerrc.ErrUnknown)
+	}
+
+	// Convertir la respuesta al tipo types.Balance
+	balance := &types.Balance{
+		Amount: res.Balance.Amount,
+		Denom:  res.Balance.Denom,
+	}
+
+	return balance, nil
 }

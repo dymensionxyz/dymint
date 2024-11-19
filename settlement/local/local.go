@@ -344,3 +344,8 @@ func keyFromIndex(ix uint64) []byte {
 	binary.BigEndian.PutUint64(b, ix)
 	return b
 }
+
+func (c *Client) GetSignerBalance() (*types.Balance, error) {
+	//TODO implement me
+	panic("implement me")
+}

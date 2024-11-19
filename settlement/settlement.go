@@ -98,4 +98,6 @@ type ClientI interface {
 	GetRollapp() (*types.Rollapp, error)
 	// GetObsoleteDrs returns the list of deprecated DRS.
 	GetObsoleteDrs() ([]uint32, error)
+	// GetSignerBalance returns the balance of the signer.
+	GetSignerBalance() (*types.Balance, error)
 }

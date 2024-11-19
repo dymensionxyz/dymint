@@ -86,3 +86,6 @@ func (c *cosmosClient) GetAccount(accountName string) (cosmosaccount.Account, er
 	}
 	return acc, err
 }
+
+func (c *cosmosClient) GetBalance(accountName string) (sdktypes.Coin, error) {
+}

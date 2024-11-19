@@ -1,6 +1,7 @@
 package da
 
 import (
+	"cosmossdk.io/math"
 	"encoding/hex"
 	"fmt"
 	"strconv"
@@ -72,6 +73,11 @@ type DASubmitMetaData struct {
 	Length int
 	// any NMT root for the specific height, necessary for non-inclusion proof
 	Root []byte
+}
+
+type Balance struct {
+	Amount math.Int
+	Denom  string
 }
 
 const PathSeparator = "|"
@@ -221,6 +227,9 @@ type DataAvailabilityLayerClient interface {
 
 	// Returns the maximum allowed blob size in the DA, used to check the max batch size configured
 	GetMaxBlobSizeBytes() uint32
+
+	// GetSignerBalance returns the balance for a specific address
+	GetSignerBalance() (*Balance, error)
 }
 
 // BatchRetriever is additional interface that can be implemented by Data Availability Layer Client that is able to retrieve

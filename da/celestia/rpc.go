@@ -2,11 +2,11 @@ package celestia
 
 import (
 	"context"
-
 	openrpc "github.com/celestiaorg/celestia-openrpc"
 	"github.com/celestiaorg/celestia-openrpc/types/blob"
 	"github.com/celestiaorg/celestia-openrpc/types/header"
 	"github.com/celestiaorg/celestia-openrpc/types/share"
+	"github.com/celestiaorg/celestia-openrpc/types/state"
 
 	"github.com/dymensionxyz/dymint/da/celestia/types"
 )
@@ -35,7 +35,7 @@ func (c *OpenRPC) Submit(ctx context.Context, blobs []*blob.Blob, options *blob.
 	return c.rpc.Blob.Submit(ctx, blobs, options)
 }
 
-// Getting proof for submitted blob
+// GetProof gets the proof for a specific share commitment.
 func (c *OpenRPC) GetProof(ctx context.Context, height uint64, namespace share.Namespace, commitment blob.Commitment) (*blob.Proof, error) {
 	return c.rpc.Blob.GetProof(ctx, height, namespace, commitment)
 }
@@ -45,12 +45,17 @@ func (c *OpenRPC) Get(ctx context.Context, height uint64, namespace share.Namesp
 	return c.rpc.Blob.Get(ctx, height, namespace, commitment)
 }
 
-// Get extended Celestia headers for a specific height
+// GetByHeight gets the header by height
 func (c *OpenRPC) GetByHeight(ctx context.Context, height uint64) (*header.ExtendedHeader, error) {
 	return c.rpc.Header.GetByHeight(ctx, height)
 }
 
-// Get extended Celestia headers for a specific height
+// Included checks if a blob is included in the chain
 func (c *OpenRPC) Included(ctx context.Context, height uint64, namespace share.Namespace, proof *blob.Proof, commitment blob.Commitment) (bool, error) {
 	return c.rpc.Blob.Included(ctx, height, namespace, proof, commitment)
+}
+
+// GetSignerBalance balance for a specific address
+func (c *OpenRPC) GetSignerBalance(ctx context.Context) (*state.Balance, error) {
+	return c.rpc.State.Balance(ctx)
 }

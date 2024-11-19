@@ -83,3 +83,13 @@ var RollappConsecutiveFailedDASubmission = promauto.NewGauge(prometheus.GaugeOpt
 	Name: "rollapp_consecutive_failed_da_submissions",
 	Help: "The number of consecutive times the da fails to submit.",
 })
+
+var DaLayerBalanceGauge = promauto.NewGauge(prometheus.GaugeOpts{
+	Name: "da_layer_balance",
+	Help: "The balance of the DA layer.",
+})
+
+var HubLayerBalanceGauge = promauto.NewGauge(prometheus.GaugeOpts{
+	Name: "hub_layer_balance",
+	Help: "The balance of the hub layer.",
+})

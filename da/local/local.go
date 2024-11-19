@@ -181,3 +181,8 @@ func (m *DataAvailabilityLayerClient) updateDAHeight() {
 func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint32 {
 	return maxBlobSize
 }
+
+func (m *DataAvailabilityLayerClient) GetSignerBalance() (*da.Balance, error) {
+	//TODO implement me
+	panic("implement me")
+}

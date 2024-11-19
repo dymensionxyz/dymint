@@ -395,3 +395,8 @@ func (c *Client) retrieveBatchAtStateIndex(slStateIndex uint64) (*settlement.Res
 	}
 	return &batchResult, nil
 }
+
+func (c *Client) GetSignerBalance() (*types.Balance, error) {
+	//TODO implement me
+	panic("implement me")
+}

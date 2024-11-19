@@ -400,3 +400,25 @@ func (m *Manager) freezeNode(ctx context.Context, err error) {
 	uevent.MustPublish(ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
 	m.Cancel()
 }
+
+type Balances struct {
+	DA *da.Balance
+	SL *types.Balance
+}
+
+func (m *Manager) checkBalances() (*Balances, error) {
+	daBalance, err := m.DAClient.GetSignerBalance()
+	if err != nil {
+		return nil, fmt.Errorf("get signer balance: %w", err)
+	}
+
+	slBalance, err := m.SLClient.GetSignerBalance()
+	if err != nil {
+		return nil, fmt.Errorf("get signer balance: %w", err)
+	}
+
+	return &Balances{
+		DA: daBalance,
+		SL: slBalance,
+	}, nil
+}

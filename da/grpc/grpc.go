@@ -153,3 +153,8 @@ func (d *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 		Batches: batches,
 	}
 }
+
+func (d *DataAvailabilityLayerClient) GetSignerBalance() (*da.Balance, error) {
+	//TODO implement me
+	panic("implement me")
+}
