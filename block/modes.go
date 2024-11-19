@@ -85,11 +85,9 @@ func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {
 		return m.ProduceBlockLoop(ctx, bytesProducedC)
 	})
 
-	// channel to signal sequencer rotation started
-	rotateSequencerC := make(chan struct{}, 1)
 	// Monitor and handling of the rotation
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
-		return m.MonitorProposerRotation(ctx, rotateSequencerC)
+		return m.MonitorProposerRotation(ctx)
 	})
 
 	go func() {

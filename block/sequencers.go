@@ -15,7 +15,7 @@ const (
 
 var errRotationRequested = fmt.Errorf("sequencer rotation started. signal to stop production")
 
-func (m *Manager) MonitorProposerRotation(ctx context.Context, rotateC chan struct{}) error {
+func (m *Manager) MonitorProposerRotation(ctx context.Context) error {
 	ticker := time.NewTicker(ProposerMonitorInterval) // TODO: make this configurable
 	defer ticker.Stop()
 
