@@ -57,8 +57,19 @@ func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {
 	// Sequencer must wait till node is synced till last submittedHeight, in case it is not
 	m.waitForSettlementSyncing()
 
+	// it is checked again whether the node is the active proposer, since this could have changed after syncing.
+	amIProposerOnSL, err := m.AmIProposerOnSL()
+	if err != nil {
+		return fmt.Errorf("am i proposer on SL: %w", err)
+	}
+	amIProposer := amIProposerOnSL || m.AmIProposerOnRollapp()
+
+	if !amIProposer {
+		return fmt.Errorf("this node is no longer the proposer. please restart")
+	}
+
 	// forkFromInstruction executes fork if necessary
-	err := m.forkFromInstruction()
+	err = m.forkFromInstruction()
 	if err != nil {
 		return err
 	}

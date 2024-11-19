@@ -254,6 +254,14 @@ func (m *Manager) forkFromInstruction() error {
 		return nil
 	}
 	if m.RunMode == RunModeProposer {
+		// it is checked again whether the node is the active proposer, since this could have changed after syncing.
+		amIProposerOnSL, err := m.AmIProposerOnSL()
+		if err != nil {
+			return fmt.Errorf("am i proposer on SL: %w", err)
+		}
+		if !amIProposerOnSL {
+			return fmt.Errorf("the node is no longer the proposer. please restart.")
+		}
 		// update revision with revision after fork
 		m.State.SetRevision(instruction.Revision)
 		// update sequencer in case it changed after syncing
