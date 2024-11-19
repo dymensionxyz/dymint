@@ -37,6 +37,7 @@ import (
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/dymint/version"
 )
 
 var expectedInfo = abci.ResponseInfo{
@@ -109,6 +110,7 @@ func TestGenesisChunked(t *testing.T) {
 			BatchSubmitTime:  60 * time.Second,
 			BatchSubmitBytes: 1000,
 			MaxBatchSkewTime: 24 * time.Hour,
+			SequencerSetUpdateInterval: config.DefaultSequencerSetUpdateInterval,
 		},
 		DAConfig:         "",
 		SettlementLayer:  "mock",
@@ -853,10 +855,18 @@ func TestValidatorSetHandling(t *testing.T) {
 			BlockSyncRequestIntervalTime: 30 * time.Second,
 		},
 		BlockManagerConfig: config.BlockManagerConfig{
+<<<<<<< HEAD
 			BlockTime:        10 * time.Millisecond,
 			BatchSubmitTime:  60 * time.Second,
 			BatchSubmitBytes: 1000,
 			MaxBatchSkewTime: 24 * time.Hour,
+=======
+			BlockTime:                  10 * time.Millisecond,
+			BatchSubmitTime:            60 * time.Second,
+			BatchSubmitBytes:           1000,
+			BatchSkew:                  10,
+			SequencerSetUpdateInterval: config.DefaultSequencerSetUpdateInterval,
+>>>>>>> main
 		},
 		SettlementConfig: settlement.Config{
 			ProposerPubKey: hex.EncodeToString(proposerPubKeyBytes),
@@ -986,6 +996,7 @@ func getRPCAndNodeSequencer(t *testing.T) (*tmmocks.MockApplication, *client.Cli
 // getRPC returns a mock application and a new RPC client (non-sequencer mode)
 func getRPCInternal(t *testing.T, sequencer bool) (*tmmocks.MockApplication, *client.Client, *node.Node) {
 	t.Helper()
+	version.DRS = "0"
 	require := require.New(t)
 	app := &tmmocks.MockApplication{}
 	app.On("Info", mock.Anything).Return(expectedInfo)
@@ -1015,10 +1026,18 @@ func getRPCInternal(t *testing.T, sequencer bool) (*tmmocks.MockApplication, *cl
 		RPC:           config.RPCConfig{},
 		MempoolConfig: *tmcfg.DefaultMempoolConfig(),
 		BlockManagerConfig: config.BlockManagerConfig{
+<<<<<<< HEAD
 			BlockTime:        100 * time.Millisecond,
 			BatchSubmitTime:  60 * time.Second,
 			BatchSubmitBytes: 1000,
 			MaxBatchSkewTime: 24 * time.Hour,
+=======
+			BlockTime:                  100 * time.Millisecond,
+			BatchSubmitTime:            60 * time.Second,
+			BatchSubmitBytes:           1000,
+			BatchSkew:                  10,
+			SequencerSetUpdateInterval: config.DefaultSequencerSetUpdateInterval,
+>>>>>>> main
 		},
 		DAConfig:        "",
 		SettlementLayer: "mock",
@@ -1121,10 +1140,18 @@ func TestMempool2Nodes(t *testing.T) {
 			BlockSyncRequestIntervalTime: 30 * time.Second,
 		},
 		BlockManagerConfig: config.BlockManagerConfig{
+<<<<<<< HEAD
 			BlockTime:        100 * time.Millisecond,
 			BatchSubmitTime:  60 * time.Second,
 			BatchSubmitBytes: 1000,
 			MaxBatchSkewTime: 24 * time.Hour,
+=======
+			BlockTime:                  100 * time.Millisecond,
+			BatchSubmitTime:            60 * time.Second,
+			BatchSubmitBytes:           1000,
+			BatchSkew:                  10,
+			SequencerSetUpdateInterval: config.DefaultSequencerSetUpdateInterval,
+>>>>>>> main
 		},
 		MempoolConfig: *tmcfg.DefaultMempoolConfig(),
 	}, key1, signingKey1, proxy.NewLocalClientCreator(app), genesis, "", log.TestingLogger(), mempool.NopMetrics())
@@ -1137,10 +1164,18 @@ func TestMempool2Nodes(t *testing.T) {
 			ProposerPubKey: hex.EncodeToString(proposerPK),
 		},
 		BlockManagerConfig: config.BlockManagerConfig{
+<<<<<<< HEAD
 			BlockTime:        100 * time.Millisecond,
 			BatchSubmitTime:  60 * time.Second,
 			BatchSubmitBytes: 1000,
 			MaxBatchSkewTime: 24 * time.Hour,
+=======
+			BlockTime:                  100 * time.Millisecond,
+			BatchSubmitTime:            60 * time.Second,
+			BatchSubmitBytes:           1000,
+			BatchSkew:                  10,
+			SequencerSetUpdateInterval: config.DefaultSequencerSetUpdateInterval,
+>>>>>>> main
 		},
 		P2PConfig: config.P2PConfig{
 			ListenAddress:                "/ip4/127.0.0.1/tcp/9002",

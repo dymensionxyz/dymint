@@ -48,7 +48,7 @@ func (b *Block) ValidateWithState(state *State) error {
 	err := b.ValidateBasic()
 	if err != nil {
 		if errors.Is(err, ErrInvalidHeaderDataHash) {
-			return NewErrInvalidHeaderDataHashFraud(b.Header.DataHash, [32]byte(GetDataHash(b)))
+			return NewErrInvalidHeaderDataHashFraud(b)
 		}
 
 		return err
@@ -74,20 +74,20 @@ func (b *Block) ValidateWithState(state *State) error {
 
 	nextHeight := state.NextHeight()
 	if b.Header.Height != nextHeight {
-		return NewErrFraudHeightMismatch(state.NextHeight(), b.Header.Height, b)
+		return NewErrFraudHeightMismatch(state.NextHeight(), &b.Header)
 	}
 
 	proposerHash := state.GetProposerHash()
 	if !bytes.Equal(b.Header.SequencerHash[:], proposerHash) {
-		return NewErrInvalidSequencerHashFraud([32]byte(proposerHash), b.Header.SequencerHash[:])
+		return NewErrInvalidSequencerHashFraud([32]byte(proposerHash), b.Header.SequencerHash[:], &b.Header)
 	}
 
 	if !bytes.Equal(b.Header.AppHash[:], state.AppHash[:]) {
-		return NewErrFraudAppHashMismatch(state.AppHash, b.Header.AppHash, b)
+		return NewErrFraudAppHashMismatch(state.AppHash, &b.Header)
 	}
 
 	if !bytes.Equal(b.Header.LastResultsHash[:], state.LastResultsHash[:]) {
-		return NewErrLastResultsHashMismatch(state.LastResultsHash, b)
+		return NewErrLastResultsHashMismatch(state.LastResultsHash, &b.Header)
 	}
 
 	return nil
@@ -118,12 +118,13 @@ func (c *Commit) ValidateBasic() error {
 			return errors.New("signature is too big")
 		}
 	}
+
 	return nil
 }
 
 func (c *Commit) ValidateWithHeader(proposerPubKey tmcrypto.PubKey, header *Header) error {
 	if err := c.ValidateBasic(); err != nil {
-		return NewErrInvalidSignatureFraud(err)
+		return NewErrInvalidSignatureFraud(err, header, c)
 	}
 
 	abciHeaderPb := ToABCIHeaderPB(header)
@@ -134,15 +135,15 @@ func (c *Commit) ValidateWithHeader(proposerPubKey tmcrypto.PubKey, header *Head
 
 	// commit is validated to have single signature
 	if !proposerPubKey.VerifySignature(abciHeaderBytes, c.Signatures[0]) {
-		return NewErrInvalidSignatureFraud(ErrInvalidSignature)
+		return NewErrInvalidSignatureFraud(ErrInvalidSignature, header, c)
 	}
 
 	if c.Height != header.Height {
-		return NewErrInvalidBlockHeightFraud(c.Height, header.Height)
+		return NewErrInvalidCommitBlockHeightFraud(c.Height, header)
 	}
 
 	if !bytes.Equal(header.ProposerAddress, proposerPubKey.Address()) {
-		return NewErrInvalidProposerAddressFraud(header.ProposerAddress, proposerPubKey.Address())
+		return NewErrInvalidProposerAddressFraud(header.ProposerAddress, proposerPubKey.Address(), header)
 	}
 
 	seq := NewSequencerFromValidator(*tmtypes.NewValidator(proposerPubKey, 1))
@@ -152,11 +153,11 @@ func (c *Commit) ValidateWithHeader(proposerPubKey tmcrypto.PubKey, header *Head
 	}
 
 	if !bytes.Equal(header.SequencerHash[:], proposerHash) {
-		return NewErrInvalidSequencerHashFraud(header.SequencerHash, proposerHash[:])
+		return NewErrInvalidSequencerHashFraud(header.SequencerHash, proposerHash[:], header)
 	}
 
 	if c.HeaderHash != header.Hash() {
-		return NewErrInvalidHeaderHashFraud(c.HeaderHash, header.Hash())
+		return NewErrInvalidHeaderHashFraud(c.HeaderHash, header)
 	}
 
 	return nil

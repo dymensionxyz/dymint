@@ -59,6 +59,8 @@ type BlockManagerConfig struct {
 	MaxBatchSkewTime time.Duration `mapstructure:"max_skew_time"`
 	// The size of the batch of blocks and commits in Bytes. We'll write every batch to the DA and the settlement layer.
 	BatchSubmitBytes uint64 `mapstructure:"batch_submit_bytes"`
+	// SequencerSetUpdateInterval defines the interval at which to fetch sequencer updates from the settlement layer
+	SequencerSetUpdateInterval time.Duration `mapstructure:"sequencer_update_interval"`
 }
 
 // GetViperConfig reads configuration parameters from Viper instance.
@@ -161,6 +163,10 @@ func (c BlockManagerConfig) Validate() error {
 
 	if c.MaxBatchSkewTime < c.BatchSubmitTime {
 		return fmt.Errorf("max_skew_time cannot be less than batch_submit_time. max_skew_time: %s batch_submit_time: %s", c.MaxBatchSkewTime, c.BatchSubmitTime)
+	}
+
+	if c.SequencerSetUpdateInterval <= 0 {
+		return fmt.Errorf("sequencer_update_interval must be positive")
 	}
 
 	return nil

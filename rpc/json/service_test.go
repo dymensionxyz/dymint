@@ -314,11 +314,12 @@ func getRPC(t *testing.T) (*tmmocks.MockApplication, *client.Client) {
 	config := config.NodeConfig{
 		SettlementLayer: "mock",
 		BlockManagerConfig: config.BlockManagerConfig{
-			BlockTime:        1 * time.Second,
-			MaxIdleTime:      0,
-			MaxBatchSkewTime: 24 * time.Hour,
-			BatchSubmitTime:  30 * time.Minute,
-			BatchSubmitBytes: 1000,
+			BlockTime:                  1 * time.Second,
+			MaxIdleTime:                0,
+			MaxBatchSkewTime:           24 * time.Hour,
+			BatchSubmitTime:            30 * time.Minute,
+			BatchSubmitBytes:           1000,
+			SequencerSetUpdateInterval: config.DefaultSequencerSetUpdateInterval,
 		},
 		SettlementConfig: settlement.Config{
 			ProposerPubKey: hex.EncodeToString(proposerPubKeyBytes),
