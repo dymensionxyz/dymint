@@ -14,20 +14,19 @@ import (
 )
 
 var (
-	blockPrefix                   = [1]byte{1}
-	indexPrefix                   = [1]byte{2}
-	commitPrefix                  = [1]byte{3}
-	statePrefix                   = [1]byte{4}
-	responsesPrefix               = [1]byte{5}
-	proposerPrefix                = [1]byte{6}
-	cidPrefix                     = [1]byte{7}
-	sourcePrefix                  = [1]byte{8}
-	validatedHeightPrefix         = [1]byte{9}
-	baseHeightPrefix              = [1]byte{10}
-	blocksyncBaseHeightPrefix     = [1]byte{11}
-	indexerBaseHeightPrefix       = [1]byte{12}
-	drsVersionPrefix              = [1]byte{13}
-	lastSettlementBlockTimePrefix = [1]byte{14}
+	blockPrefix               = [1]byte{1}
+	indexPrefix               = [1]byte{2}
+	commitPrefix              = [1]byte{3}
+	statePrefix               = [1]byte{4}
+	responsesPrefix           = [1]byte{5}
+	proposerPrefix            = [1]byte{6}
+	cidPrefix                 = [1]byte{7}
+	sourcePrefix              = [1]byte{8}
+	validatedHeightPrefix     = [1]byte{9}
+	baseHeightPrefix          = [1]byte{10}
+	blocksyncBaseHeightPrefix = [1]byte{11}
+	indexerBaseHeightPrefix   = [1]byte{12}
+	drsVersionPrefix          = [1]byte{13}
 )
 
 // DefaultStore is a default store implementation.
@@ -448,8 +447,4 @@ func getBlockSyncBaseHeightKey() []byte {
 
 func getIndexerBaseHeightKey() []byte {
 	return indexerBaseHeightPrefix[:]
-}
-
-func getLastSettlementBlockTimeKey() []byte {
-	return lastSettlementBlockTimePrefix[:]
 }
