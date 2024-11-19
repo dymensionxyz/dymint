@@ -99,8 +99,6 @@ func TestShouldStopNode(t *testing.T) {
 }
 
 func TestCheckForkUpdate(t *testing.T) {
-	ctx := context.Background()
-
 	tests := []struct {
 		name          string
 		setupMocks    func(*settlement.MockClientI, *store.MockStore, *types.State)
@@ -151,7 +149,7 @@ func TestCheckForkUpdate(t *testing.T) {
 				State:    mockState,
 			}
 
-			err := manager.checkForkUpdate(ctx, "")
+			err := manager.checkForkUpdate("")
 			if tt.expectedError {
 				assert.Error(t, err)
 			} else {

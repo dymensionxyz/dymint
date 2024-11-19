@@ -208,7 +208,6 @@ func TestCreateEmptyBlocksNew(t *testing.T) {
 func TestStopBlockProduction(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-	version.DRS = "0"
 	app := testutil.GetAppMock(testutil.EndBlock)
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
 		RollappParamUpdates: &abci.RollappParams{
@@ -291,6 +290,7 @@ func TestStopBlockProduction(t *testing.T) {
 }
 
 func TestUpdateInitialSequencerSet(t *testing.T) {
+
 	require := require.New(t)
 	app := testutil.GetAppMock(testutil.EndBlock)
 	ctx := context.Background()

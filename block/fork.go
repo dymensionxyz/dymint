@@ -32,7 +32,7 @@ func (m *Manager) MonitorForkUpdateLoop(ctx context.Context) error {
 	defer ticker.Stop()
 
 	for {
-		if err := m.checkForkUpdate(ctx, ForkMessage); err != nil {
+		if err := m.checkForkUpdate(ForkMessage); err != nil {
 			m.logger.Error("Check for update.", err)
 		}
 		select {
@@ -44,7 +44,7 @@ func (m *Manager) MonitorForkUpdateLoop(ctx context.Context) error {
 }
 
 // checkForkUpdate checks if the hub has a fork update
-func (m *Manager) checkForkUpdate(ctx context.Context, msg string) error {
+func (m *Manager) checkForkUpdate(msg string) error {
 	rollapp, err := m.SLClient.GetRollapp()
 	if err != nil {
 		return err
@@ -56,7 +56,7 @@ func (m *Manager) checkForkUpdate(ctx context.Context, msg string) error {
 			return err
 		}
 
-		m.freezeNode(ctx, fmt.Errorf("%s  local_block_height: %d rollapp_revision_start_height: %d local_revision: %d rollapp_revision: %d", msg, m.State.Height(), rollapp.LatestRevision().StartHeight, m.State.GetRevision(), rollapp.LatestRevision().Number))
+		m.freezeNode(fmt.Errorf("%s  local_block_height: %d rollapp_revision_start_height: %d local_revision: %d rollapp_revision: %d", msg, m.State.Height(), rollapp.LatestRevision().StartHeight, m.State.GetRevision(), rollapp.LatestRevision().Number))
 	}
 
 	return nil
@@ -254,7 +254,22 @@ func (m *Manager) forkFromInstruction() error {
 		return nil
 	}
 	if m.RunMode == RunModeProposer {
+		// it is checked again whether the node is the active proposer, since this could have changed after syncing.
+		amIProposerOnSL, err := m.AmIProposerOnSL()
+		if err != nil {
+			return fmt.Errorf("am i proposer on SL: %w", err)
+		}
+		if !amIProposerOnSL {
+			return fmt.Errorf("the node is no longer the proposer. please restart.")
+		}
+		// update revision with revision after fork
 		m.State.SetRevision(instruction.Revision)
+		// update sequencer in case it changed after syncing
+		err = m.UpdateProposerFromSL()
+		if err != nil {
+			return err
+		}
+		// create fork batch in case it has not been submitted yet
 		if m.LastSettlementHeight.Load() < instruction.RevisionStartHeight {
 			err := m.doFork(instruction)
 			if err != nil {
@@ -262,6 +277,7 @@ func (m *Manager) forkFromInstruction() error {
 			}
 		}
 	}
+	// remove instruction file after fork to avoid enter loop again
 	err := types.DeleteInstructionFromDisk(m.RootDir)
 	if err != nil {
 		return fmt.Errorf("deleting instruction file: %w", err)
