@@ -6,12 +6,14 @@ import (
 
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/testutil"
+	"github.com/dymensionxyz/dymint/version"
 	"github.com/ipfs/go-datastore"
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/libs/log"
 )
 
 func TestBlockSync(t *testing.T) {
+	version.DRS = "0"
 	logger := log.TestingLogger()
 	ctx := context.Background()
 

@@ -42,7 +42,7 @@ func (m *Manager) MonitorProposerRotation(ctx context.Context) error {
 }
 
 func (m *Manager) MonitorSequencerSetUpdates(ctx context.Context) error {
-	ticker := time.NewTicker(3 * time.Minute) // TODO: make this configurable
+	ticker := time.NewTicker(m.Conf.SequencerSetUpdateInterval)
 	defer ticker.Stop()
 
 	for {

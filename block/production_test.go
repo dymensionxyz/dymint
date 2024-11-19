@@ -32,11 +32,13 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 	uchannel "github.com/dymensionxyz/dymint/utils/channel"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
+	"github.com/dymensionxyz/dymint/version"
 )
 
 // TODO: test producing lastBlock
 // TODO: test using already produced lastBlock
 func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
+	version.DRS = "0"
 	const blockTime = 200 * time.Millisecond
 	const MaxIdleTime = blockTime * 10
 	const runTime = 10 * time.Second
@@ -292,6 +294,7 @@ func TestUpdateInitialSequencerSet(t *testing.T) {
 	require := require.New(t)
 	app := testutil.GetAppMock(testutil.EndBlock)
 	ctx := context.Background()
+	version.DRS = "0"
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
 		RollappParamUpdates: &abci.RollappParams{
 			Da:         "mock",
@@ -398,6 +401,7 @@ func TestUpdateExistingSequencerSet(t *testing.T) {
 	require := require.New(t)
 	app := testutil.GetAppMock(testutil.EndBlock)
 	ctx := context.Background()
+	version.DRS = "0"
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
 		RollappParamUpdates: &abci.RollappParams{
 			Da:         "mock",

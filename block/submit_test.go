@@ -26,6 +26,7 @@ import (
 	slmocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/dymint/version"
 )
 
 // TestBatchOverhead tests the scenario where we have a single block that is very large, and occupies the entire batch size.
@@ -34,6 +35,7 @@ import (
 // 1. single block with single large tx
 // 2. single block with multiple small tx
 func TestBatchOverhead(t *testing.T) {
+	version.DRS = "0"
 	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, manager)
@@ -105,6 +107,8 @@ func TestBatchSubmissionHappyFlow(t *testing.T) {
 	app := testutil.GetAppMock(testutil.EndBlock)
 	ctx := context.Background()
 
+	version.DRS = "0"
+
 	// Create proxy app
 	clientCreator := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(clientCreator)
@@ -148,6 +152,8 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 	require := require.New(t)
 	app := testutil.GetAppMock(testutil.EndBlock)
 	ctx := context.Background()
+
+	version.DRS = "0"
 
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
 		RollappParamUpdates: &abci.RollappParams{
@@ -222,6 +228,7 @@ func TestSubmissionByTime(t *testing.T) {
 		submitTimeout = 1 * time.Second
 		blockTime     = 200 * time.Millisecond
 	)
+	version.DRS = "0"
 
 	require := require.New(t)
 	app := testutil.GetAppMock(testutil.EndBlock)
@@ -245,11 +252,12 @@ func TestSubmissionByTime(t *testing.T) {
 
 	// Init manager with empty blocks feature enabled
 	managerConfig := config.BlockManagerConfig{
-		BlockTime:        blockTime,
-		MaxIdleTime:      0,
-		BatchSkew:        10,
-		BatchSubmitTime:  submitTimeout,
-		BatchSubmitBytes: 1000,
+		BlockTime:                  blockTime,
+		MaxIdleTime:                0,
+		BatchSkew:                  10,
+		BatchSubmitTime:            submitTimeout,
+		BatchSubmitBytes:           1000,
+		SequencerSetUpdateInterval: config.DefaultSequencerSetUpdateInterval,
 	}
 
 	manager, err := testutil.GetManager(managerConfig, nil, 1, 1, 0, proxyApp, nil)
