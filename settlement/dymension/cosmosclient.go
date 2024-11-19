@@ -32,6 +32,7 @@ type CosmosClient interface {
 	GetRollappClient() rollapptypes.QueryClient
 	GetSequencerClient() sequencertypes.QueryClient
 	GetAccount(accountName string) (cosmosaccount.Account, error)
+	GetBalance(ctx context.Context, accountName string, denom string) (*sdktypes.Coin, error)
 }
 
 type cosmosClient struct {
@@ -87,5 +88,21 @@ func (c *cosmosClient) GetAccount(accountName string) (cosmosaccount.Account, er
 	return acc, err
 }
 
-func (c *cosmosClient) GetBalance(accountName string) (sdktypes.Coin, error) {
+func (c *cosmosClient) GetBalance(ctx context.Context, accountName string, denom string) (*sdktypes.Coin, error) {
+	acc, err := c.GetAccount(accountName)
+	if err != nil {
+		return &sdktypes.Coin{}, err
+	}
+
+	addr, err := acc.Address(addressPrefix)
+	if err != nil {
+		return &sdktypes.Coin{}, err
+	}
+
+	balance, err := c.Client.Balance(ctx, addr, denom)
+	if err != nil {
+		return &sdktypes.Coin{}, err
+	}
+
+	return balance.Balance, nil
 }

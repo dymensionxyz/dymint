@@ -739,35 +739,14 @@ func (c *Client) GetSignerBalance() (*types.Balance, error) {
 
 	denom := "udym"
 
-	// Realizar la consulta de saldo con reintentos
-	var res *banktypes.QueryBalanceResponse
-	err = c.RunWithRetry(func() error {
-		res, err = c.cosmosClient.GetBankClient().Balance(c.ctx, &banktypes.QueryBalanceRequest{
-			Address: addr,
-			Denom:   denom,
-		})
-		if err != nil {
-			// Manejar errores específicos
-			if status.Code(err) == codes.NotFound {
-				return retry.Unrecoverable(errors.Join(gerrc.ErrNotFound, err))
-			}
-			return err
-		}
-		return nil
-	})
+	res, err := c.cosmosClient.GetBalance(c.ctx, addr, denom)
 	if err != nil {
-		return nil, fmt.Errorf("consultar saldo: %w", err)
+		return nil, fmt.Errorf("get balance: %w", err)
 	}
 
-	// Verificar que la respuesta no sea nil
-	if res == nil {
-		return nil, fmt.Errorf("respuesta vacía: %w", gerrc.ErrUnknown)
-	}
-
-	// Convertir la respuesta al tipo types.Balance
 	balance := &types.Balance{
-		Amount: res.Balance.Amount,
-		Denom:  res.Balance.Denom,
+		Amount: res.Amount,
+		Denom:  res.Denom,
 	}
 
 	return balance, nil
