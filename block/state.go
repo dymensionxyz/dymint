@@ -95,9 +95,15 @@ func (m *Manager) UpdateStateFromApp(blockHeaderHash [32]byte) error {
 
 // SetLastBlockTimeInSettlementFromHeight is used to initialize LastBlockTimeInSettlement from height
 func (m *Manager) SetLastBlockTimeInSettlementFromHeight(lastSettlementHeight uint64) {
+
+	// considered no batch is submitted yet, so it is initialized
+	if lastSettlementHeight == uint64(1) {
+		m.State.LastBlockTimeInSettlement = time.Now()
+		return
+	}
 	block, err := m.Store.LoadBlock(lastSettlementHeight)
 	if err != nil {
-		m.State.LastBlockTimeInSettlement = time.Now()
+		// if settlement height block is not found it will be updated after syncing
 		return
 	}
 	m.State.LastBlockTimeInSettlement = block.Header.GetTimestamp()

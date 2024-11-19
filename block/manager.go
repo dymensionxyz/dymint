@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"golang.org/x/sync/errgroup"
@@ -325,10 +324,7 @@ func (m *Manager) updateFromLastSettlementState() error {
 	block, err := m.Store.LoadBlock(m.State.Height())
 	if err == nil {
 		m.State.LastBlockTime = block.Header.GetTimestamp()
-	} else {
-		m.State.LastBlockTime = time.Now()
 	}
-
 	return nil
 }
 

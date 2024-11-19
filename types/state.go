@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync/atomic"
-	"time"
 
 	// TODO(tzdybal): copy to local project?
 
@@ -46,10 +45,10 @@ type State struct {
 	LastHeaderHash [32]byte
 
 	// LastBlockTimeInSettlement is the time of last submitted block used to calculated skew time
-	LastBlockTimeInSettlement time.Time
+	LastBlockTimeInSettlement atomic.Int64
 
 	// LastBlockTimeInSettlement is the time of last produced block used to calculated skew time
-	LastBlockTime time.Time
+	LastBlockTime atomic.Int64
 }
 
 func (s *State) GetProposer() *Sequencer {
