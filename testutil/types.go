@@ -156,7 +156,7 @@ func GenerateBlocks(startHeight uint64, num uint64, proposerKey crypto.PrivKey, 
 		}
 		block.LastCommit.Signatures = []types.Signature{signature}
 		block.Header.ProposerAddress = ed25519.PrivKey(r).PubKey().Address()
-		block.Header.Time = uint64(time.Now().UTC().UnixNano())
+		block.Header.Time = time.Now().UTC().UnixNano()
 		blocks[i] = block
 		lastHeaderHash = block.Header.Hash()
 	}
