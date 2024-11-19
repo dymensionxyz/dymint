@@ -62,8 +62,8 @@ func testSubmitLoopInner(
 
 	lastSettlementBlockTime := time.Now()
 	lastBlockTime := time.Now()
-	skewTime := func(time time.Time) time.Duration {
-		return time.Sub(lastSettlementBlockTime)
+	skewTime := func() time.Duration {
+		return lastBlockTime.Sub(lastSettlementBlockTime)
 	}
 	go func() { // simulate block production
 		go func() { // another thread to check system properties
@@ -74,7 +74,7 @@ func testSubmitLoopInner(
 				default:
 				}
 				// producer shall not get too far ahead
-				require.True(t, skewTime(lastBlockTime) < args.batchSkew+args.skewMargin, "last produced blocks time not less than maximum skew time", "produced block skew time", skewTime(time.Now()), "max skew time", args.batchSkew)
+				require.True(t, skewTime() < args.batchSkew+args.skewMargin, "last produced blocks time not less than maximum skew time", "produced block skew time", skewTime(), "max skew time", args.batchSkew)
 			}
 		}()
 		for {
@@ -86,7 +86,7 @@ func testSubmitLoopInner(
 
 			time.Sleep(approx(args.produceTime))
 
-			if args.batchSkew <= skewTime(lastBlockTime) {
+			if args.batchSkew <= skewTime() {
 				continue
 			}
 

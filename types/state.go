@@ -47,6 +47,9 @@ type State struct {
 
 	// LastBlockTimeInSettlement is the time of last submitted block used to calculated skew time
 	LastBlockTimeInSettlement time.Time
+
+	// LastBlockTimeInSettlement is the time of last produced block used to calculated skew time
+	LastBlockTime time.Time
 }
 
 func (s *State) GetProposer() *Sequencer {

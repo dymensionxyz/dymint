@@ -46,7 +46,7 @@ func SubmitLoopInner(
 	bytesProduced chan int, // a channel of block and commit bytes produced
 	maxBatchSkew time.Duration, // max time between last submitted block and last produced block allowed. if this threshold is reached block production is stopped.
 	unsubmittedBlocksNum func() uint64,
-	skewTime func(time.Time) time.Duration,
+	skewTime func() time.Duration,
 	maxBatchTime time.Duration, // max time to allow between batches
 	maxBatchBytes uint64, // max size of serialised batch in bytes
 	createAndSubmitBatch func(maxSizeBytes uint64) (sizeBlocksCommits uint64, err error),
@@ -72,11 +72,11 @@ func SubmitLoopInner(
 
 			types.RollappPendingSubmissionsSkewBytes.Set(float64(pendingBytes.Load()))
 			types.RollappPendingSubmissionsSkewBlocks.Set(float64(unsubmittedBlocksNum()))
-			types.RollappPendingSubmissionsSkewTimeMinutes.Set(float64(skewTime(time.Now()).Minutes()))
+			types.RollappPendingSubmissionsSkewTimeMinutes.Set(float64(skewTime().Minutes()))
 
 			submitter.Nudge()
 
-			if maxBatchSkew < skewTime(time.Now()) {
+			if maxBatchSkew < skewTime() {
 				// too much stuff is pending submission
 				// we block here until we get a progress nudge from the submitter thread
 				select {
@@ -103,14 +103,14 @@ func SubmitLoopInner(
 			pending := pendingBytes.Load()
 			types.RollappPendingSubmissionsSkewBytes.Set(float64(pending))
 			types.RollappPendingSubmissionsSkewBlocks.Set(float64(unsubmittedBlocksNum()))
-			types.RollappPendingSubmissionsSkewTimeMinutes.Set(float64(skewTime(time.Now()).Minutes()))
+			types.RollappPendingSubmissionsSkewTimeMinutes.Set(float64(skewTime().Minutes()))
 
 			// while there are accumulated blocks, create and submit batches!!
 			for {
 				done := ctx.Err() != nil
 				nothingToSubmit := pending == 0
 
-				lastSubmissionIsRecent := skewTime(time.Now()) < maxBatchTime
+				lastSubmissionIsRecent := skewTime() < maxBatchTime
 				maxDataNotExceeded := pending <= maxBatchBytes
 				if done || nothingToSubmit || (lastSubmissionIsRecent && maxDataNotExceeded) {
 					break
@@ -310,6 +310,7 @@ func (m *Manager) UpdateLastSubmittedHeight(event pubsub.Message) {
 }
 
 // GetSkewTime returns the time between the last produced block and the last block submitted to SL
-func (m *Manager) GetSkewTime(lastBlockTime time.Time) time.Duration {
-	return lastBlockTime.Sub(m.State.LastBlockTimeInSettlement)
+func (m *Manager) GetSkewTime() time.Duration {
+
+	return m.State.LastBlockTime.Sub(m.State.LastBlockTimeInSettlement)
 }

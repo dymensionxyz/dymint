@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sync"
 	"sync/atomic"
+	"time"
 
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"golang.org/x/sync/errgroup"
@@ -311,12 +312,23 @@ func (m *Manager) updateFromLastSettlementState() error {
 		return err
 	}
 
-	m.LastSettlementHeight.Store(latestHeight)
-
 	if latestHeight >= m.State.NextHeight() {
 		m.UpdateTargetHeight(latestHeight)
 	}
+
+	m.LastSettlementHeight.Store(latestHeight)
+
+	// init last block in settlement time in dymint state to calculate batch submit skew time
 	m.SetLastBlockTimeInSettlementFromHeight(latestHeight)
+
+	// init last block time in dymint state to calculate batch submit skew time
+	block, err := m.Store.LoadBlock(m.State.Height())
+	if err == nil {
+		m.State.LastBlockTime = block.Header.GetTimestamp()
+	} else {
+		m.State.LastBlockTime = time.Now()
+	}
+
 	return nil
 }
 
