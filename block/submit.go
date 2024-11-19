@@ -30,9 +30,9 @@ func (m *Manager) SubmitLoop(ctx context.Context,
 		ctx,
 		m.logger,
 		bytesProduced,
-		m.Conf.BatchSkew,
+		m.Conf.MaxBatchSkewTime,
 		m.GetUnsubmittedBlocks,
-		m.GetSkewTime,
+		m.GetBatchSkewTime,
 		m.Conf.BatchSubmitTime,
 		m.Conf.BatchSubmitBytes,
 		m.CreateAndSubmitBatchGetSizeBlocksCommits,
@@ -44,9 +44,9 @@ func SubmitLoopInner(
 	ctx context.Context,
 	logger types.Logger,
 	bytesProduced chan int, // a channel of block and commit bytes produced
-	maxBatchSkew time.Duration, // max time between last submitted block and last produced block allowed. if this threshold is reached block production is stopped.
+	maxProduceSubmitSkewTime time.Duration, // max time between last submitted block and last produced block allowed. if this threshold is reached block production is stopped.
 	unsubmittedBlocksNum func() uint64,
-	skewTime func() time.Duration,
+	batchSkewTime func() time.Duration,
 	maxBatchTime time.Duration, // max time to allow between batches
 	maxBatchBytes uint64, // max size of serialised batch in bytes
 	createAndSubmitBatch func(maxSizeBytes uint64) (sizeBlocksCommits uint64, err error),
@@ -70,13 +70,9 @@ func SubmitLoopInner(
 				logger.Debug("Added bytes produced to bytes pending submission counter.", "bytes added", n, "pending", pendingBytes.Load())
 			}
 
-			types.RollappPendingSubmissionsSkewBytes.Set(float64(pendingBytes.Load()))
-			types.RollappPendingSubmissionsSkewBlocks.Set(float64(unsubmittedBlocksNum()))
-			types.RollappPendingSubmissionsSkewTimeMinutes.Set(float64(skewTime().Minutes()))
-
 			submitter.Nudge()
 
-			if maxBatchSkew < skewTime() {
+			if maxProduceSubmitSkewTime < batchSkewTime() {
 				// too much stuff is pending submission
 				// we block here until we get a progress nudge from the submitter thread
 				select {
@@ -101,17 +97,17 @@ func SubmitLoopInner(
 			}
 
 			pending := pendingBytes.Load()
-			types.RollappPendingSubmissionsSkewBytes.Set(float64(pending))
-			types.RollappPendingSubmissionsSkewBlocks.Set(float64(unsubmittedBlocksNum()))
-			types.RollappPendingSubmissionsSkewTimeMinutes.Set(float64(skewTime().Minutes()))
 
 			// while there are accumulated blocks, create and submit batches!!
 			for {
 				done := ctx.Err() != nil
 				nothingToSubmit := pending == 0
 
-				lastSubmissionIsRecent := skewTime() < maxBatchTime
+				lastSubmissionIsRecent := batchSkewTime() < maxBatchTime
 				maxDataNotExceeded := pending <= maxBatchBytes
+
+				UpdateBatchSubmissionGauges(pendingBytes.Load(), unsubmittedBlocksNum(), batchSkewTime())
+
 				if done || nothingToSubmit || (lastSubmissionIsRecent && maxDataNotExceeded) {
 					break
 				}
@@ -308,7 +304,14 @@ func (m *Manager) UpdateLastSubmittedHeight(event pubsub.Message) {
 	}
 }
 
-// GetSkewTime returns the time between the last produced block and the last block submitted to SL
-func (m *Manager) GetSkewTime() time.Duration {
+// GetBatchSkewTime returns the time between the last produced block and the last block submitted to SL
+func (m *Manager) GetBatchSkewTime() time.Duration {
 	return m.State.LastBlockTime.Sub(m.State.LastBlockTimeInSettlement)
+}
+
+func UpdateBatchSubmissionGauges(skewBytes uint64, skewBlocks uint64, skewTime time.Duration) {
+	types.RollappPendingSubmissionsSkewBytes.Set(float64(skewBytes))
+	types.RollappPendingSubmissionsSkewBlocks.Set(float64(skewBlocks))
+	types.RollappPendingSubmissionsSkewTimeMinutes.Set(float64(skewTime.Minutes()))
+
 }
