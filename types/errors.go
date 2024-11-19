@@ -38,12 +38,12 @@ type ErrFraudHeightMismatch struct {
 }
 
 // NewErrFraudHeightMismatch creates a new ErrFraudHeightMismatch error.
-func NewErrFraudHeightMismatch(expected uint64, block *Block) error {
+func NewErrFraudHeightMismatch(expected uint64, header *Header) error {
 	return &ErrFraudHeightMismatch{
 		Expected:   expected,
-		Actual:     block.Header.Height,
-		HeaderHash: block.Header.Hash(),
-		Proposer:   block.Header.ProposerAddress,
+		Actual:     header.Height,
+		HeaderHash: header.Hash(),
+		Proposer:   header.ProposerAddress,
 	}
 }
 
@@ -67,13 +67,13 @@ type ErrFraudAppHashMismatch struct {
 }
 
 // NewErrFraudAppHashMismatch creates a new ErrFraudAppHashMismatch error.
-func NewErrFraudAppHashMismatch(expected [32]byte, block *Block) error {
+func NewErrFraudAppHashMismatch(expected [32]byte, header *Header) error {
 	return &ErrFraudAppHashMismatch{
 		Expected:     expected,
-		HeaderHeight: block.Header.Height,
-		HeaderHash:   block.Header.Hash(),
-		AppHash:      block.Header.AppHash,
-		Proposer:     block.Header.ProposerAddress,
+		HeaderHeight: header.Height,
+		HeaderHash:   header.Hash(),
+		AppHash:      header.AppHash,
+		Proposer:     header.ProposerAddress,
 	}
 }
 
@@ -97,13 +97,13 @@ type ErrLastResultsHashMismatch struct {
 }
 
 // NewErrLastResultsHashMismatch creates a new ErrLastResultsHashMismatch error.
-func NewErrLastResultsHashMismatch(expected [32]byte, block *Block) error {
+func NewErrLastResultsHashMismatch(expected [32]byte, header *Header) error {
 	return &ErrLastResultsHashMismatch{
 		Expected:       expected,
-		HeaderHeight:   block.Header.Height,
-		HeaderHash:     block.Header.Hash(),
-		Proposer:       block.Header.ProposerAddress,
-		LastResultHash: block.Header.LastResultsHash,
+		HeaderHeight:   header.Height,
+		HeaderHash:     header.Hash(),
+		Proposer:       header.ProposerAddress,
+		LastResultHash: header.LastResultsHash,
 	}
 }
 
@@ -369,12 +369,12 @@ type ErrInvalidHeaderDataHashFraud struct {
 	Header Header
 }
 
-func NewErrInvalidHeaderDataHashFraud(expected [32]byte, actual [32]byte, header Header) error {
+func NewErrInvalidHeaderDataHashFraud(block *Block) error {
 	return &ErrInvalidHeaderDataHashFraud{
-		Expected: expected,
-		Actual:   actual,
+		Expected: block.Header.DataHash,
+		Actual:   [32]byte(GetDataHash(block)),
 
-		Header: header,
+		Header: block.Header,
 	}
 }
 

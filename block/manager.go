@@ -71,7 +71,7 @@ type Manager struct {
 
 	// context used when freezing node
 	Cancel context.CancelFunc
-	ctx    context.Context
+	Ctx    context.Context
 	/*
 		Sequencer and full-node
 	*/
@@ -206,7 +206,7 @@ func NewManager(
 
 // Start starts the block manager.
 func (m *Manager) Start(ctx context.Context) error {
-	m.ctx, m.Cancel = context.WithCancel(ctx)
+	m.Ctx, m.Cancel = context.WithCancel(ctx)
 	// Check if InitChain flow is needed
 	if m.State.IsGenesis() {
 		m.logger.Info("Running InitChain")
@@ -222,11 +222,10 @@ func (m *Manager) Start(ctx context.Context) error {
 	// In case there is also no proposer on the hub to our current height, it means that the chain is halted.
 	if m.State.GetProposer() == nil {
 		m.logger.Info("No proposer on the rollapp, fallback to the hub proposer, if available")
-		SLProposer, err := m.SLClient.GetProposerAtHeight(int64(m.State.NextHeight()))
+		err := m.UpdateProposerFromSL()
 		if err != nil {
-			return fmt.Errorf("get proposer at height: %w", err)
+			return err
 		}
-		m.State.SetProposer(SLProposer)
 	}
 
 	// checks if the the current node is the proposer either on rollapp or on the hub.
@@ -252,7 +251,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	// send signal to validation loop with last settlement state update
 	m.triggerSettlementValidation()
 
-	eg, ctx := errgroup.WithContext(m.ctx)
+	eg, ctx := errgroup.WithContext(m.Ctx)
 
 	// Start the pruning loop in the background
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
@@ -263,7 +262,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		err := m.SettlementSyncLoop(ctx)
 		if err != nil {
-			m.freezeNode(m.ctx, err)
+			m.freezeNode(err)
 		}
 		return nil
 	})
@@ -395,9 +394,12 @@ func (m *Manager) setFraudHandler(handler *FreezeHandler) {
 }
 
 // freezeNode sets the node as unhealthy and prevents the node continues producing and processing blocks
-func (m *Manager) freezeNode(ctx context.Context, err error) {
+func (m *Manager) freezeNode(err error) {
 	m.logger.Info("Freezing node", "err", err)
-	uevent.MustPublish(ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
+	if m.Ctx.Err() != nil {
+		return
+	}
+	uevent.MustPublish(m.Ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
 	m.Cancel()
 }
 
