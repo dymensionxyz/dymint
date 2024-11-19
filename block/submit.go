@@ -311,6 +311,5 @@ func (m *Manager) UpdateLastSubmittedHeight(event pubsub.Message) {
 
 // GetSkewTime returns the time between the last produced block and the last block submitted to SL
 func (m *Manager) GetSkewTime() time.Duration {
-
 	return m.State.LastBlockTime.Sub(m.State.LastBlockTimeInSettlement)
 }
