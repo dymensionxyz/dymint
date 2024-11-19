@@ -222,7 +222,10 @@ func (m *Manager) Start(ctx context.Context) error {
 	// In case there is also no proposer on the hub to our current height, it means that the chain is halted.
 	if m.State.GetProposer() == nil {
 		m.logger.Info("No proposer on the rollapp, fallback to the hub proposer, if available")
-		m.UpdateProposerFromSL()
+		err := m.UpdateProposerFromSL()
+		if err != nil {
+			return err
+		}
 	}
 
 	// checks if the the current node is the proposer either on rollapp or on the hub.

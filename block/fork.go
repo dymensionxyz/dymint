@@ -265,7 +265,10 @@ func (m *Manager) forkFromInstruction() error {
 		// update revision with revision after fork
 		m.State.SetRevision(instruction.Revision)
 		// update sequencer in case it changed after syncing
-		m.UpdateProposerFromSL()
+		err = m.UpdateProposerFromSL()
+		if err != nil {
+			return err
+		}
 		// create fork batch in case it has not been submitted yet
 		if m.LastSettlementHeight.Load() < instruction.RevisionStartHeight {
 			err := m.doFork(instruction)
