@@ -60,10 +60,15 @@ func testSubmitLoopInner(
 	nProducedBytes := atomic.Uint64{} // tracking how many actual bytes have been produced but not submitted so far
 	producedBytesC := make(chan int)  // producer sends on here, and can be blocked by not consuming from here
 
-	lastSettlementBlockTime := time.Now()
-	lastBlockTime := time.Now()
+	lastSettlementBlockTime := atomic.Int64{}
+	lastBlockTime := atomic.Int64{}
+	lastSettlementBlockTime.Store(time.Now().UTC().UnixNano())
+	lastBlockTime.Store(time.Now().UTC().UnixNano())
+
 	skewTime := func() time.Duration {
-		return lastBlockTime.Sub(lastSettlementBlockTime)
+		blockTime := time.Unix(0, lastBlockTime.Load())
+		settlementTime := time.Unix(0, lastSettlementBlockTime.Load())
+		return blockTime.Sub(settlementTime)
 	}
 	go func() { // simulate block production
 		go func() { // another thread to check system properties
@@ -93,7 +98,8 @@ func testSubmitLoopInner(
 			nBytes := rand.Intn(args.produceBytes) // simulate block production
 			nProducedBytes.Add(uint64(nBytes))
 			producedBytesC <- nBytes
-			lastBlockTime = time.Now()
+			lastBlockTime.Store(time.Now().UTC().UnixNano())
+
 			pendingBlocks.Add(1) // increase pending blocks to be submitted counter
 		}
 	}()
@@ -106,8 +112,7 @@ func testSubmitLoopInner(
 		consumed := rand.Intn(int(maxSize))
 		nProducedBytes.Add(^uint64(consumed - 1)) // subtract
 		pendingBlocks.Store(0)                    // no pending blocks to be submitted
-		lastSettlementBlockTime = lastBlockTime
-
+		lastSettlementBlockTime.Store(lastBlockTime.Load())
 		return consumed, nil
 	}
 	accumulatedBlocks := func() uint64 {
@@ -125,7 +130,7 @@ func TestSubmitLoopFastProducerHaltingSubmitter(t *testing.T) {
 	testSubmitLoop(
 		t,
 		testArgs{
-			nParallel:    1,
+			nParallel:    50,
 			testDuration: 2 * time.Second,
 			batchSkew:    100 * time.Millisecond,
 			skewMargin:   10 * time.Millisecond,
@@ -136,7 +141,7 @@ func TestSubmitLoopFastProducerHaltingSubmitter(t *testing.T) {
 			produceTime:  2 * time.Millisecond,
 			// a relatively long possibility of the submitter halting
 			// tests the case where we need to stop the producer getting too far ahead
-			submissionHaltTime:        200 * time.Millisecond,
+			submissionHaltTime:        150 * time.Millisecond,
 			submissionHaltProbability: 0.05,
 		},
 	)
@@ -148,7 +153,7 @@ func TestSubmitLoopTimer(t *testing.T) {
 		t,
 		testArgs{
 			nParallel:    50,
-			testDuration: 2 * time.Second,
+			testDuration: 4 * time.Second,
 			batchSkew:    100 * time.Millisecond,
 			skewMargin:   10 * time.Millisecond,
 			batchBytes:   100,
