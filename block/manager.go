@@ -261,7 +261,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	// Start the settlement sync loop in the background
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		err := m.SettlementSyncLoop(ctx)
-		if err != nil {
+		if err != nil && ctx.Err() != nil {
 			m.freezeNode(ctx, err)
 		}
 		return nil

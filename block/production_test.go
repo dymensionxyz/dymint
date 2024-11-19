@@ -292,6 +292,7 @@ func TestStopBlockProduction(t *testing.T) {
 
 func TestUpdateInitialSequencerSet(t *testing.T) {
 	version.DRS = "0"
+
 	require := require.New(t)
 	app := testutil.GetAppMock(testutil.EndBlock)
 	ctx := context.Background()
