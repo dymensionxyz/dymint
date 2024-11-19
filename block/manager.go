@@ -262,7 +262,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		err := m.SettlementSyncLoop(ctx)
 		if err != nil {
-			m.freezeNode(m.ctx, err)
+			m.freezeNode(ctx, err)
 		}
 		return nil
 	})
