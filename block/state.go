@@ -9,7 +9,6 @@ import (
 	errorsmod "cosmossdk.io/errors"
 
 	"github.com/cometbft/cometbft/crypto/merkle"
-	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
@@ -95,17 +94,12 @@ func (m *Manager) UpdateStateFromApp(blockHeaderHash [32]byte) error {
 }
 
 // SetLastBlockTimeInSettlementFromHeight is used to initialize LastBlockTimeInSettlement from height
-func (m *Manager) SetLastBlockTimeInSettlementFromHeight(lastSettlementHeight uint64) error {
+func (m *Manager) SetLastBlockTimeInSettlementFromHeight(lastSettlementHeight uint64) {
 	block, err := m.Store.LoadBlock(lastSettlementHeight)
-	if err != nil && !errors.Is(err, gerrc.ErrNotFound) {
-		return err
-	}
-	if errors.Is(err, gerrc.ErrNotFound) {
+	if err != nil {
 		m.State.LastBlockTimeInSettlement = time.Now()
-		return nil
 	}
 	m.State.LastBlockTimeInSettlement = block.Header.GetTimestamp()
-	return nil
 }
 
 func (e *Executor) UpdateStateAfterInitChain(s *types.State, res *abci.ResponseInitChain) {
