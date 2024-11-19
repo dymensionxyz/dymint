@@ -115,7 +115,6 @@ func SubmitLoopInner(
 				if done || nothingToSubmit || (lastSubmissionIsRecent && maxDataNotExceeded) {
 					break
 				}
-				logger.Error("done", done, "nothingToSubmit", nothingToSubmit, "lastSubmissionIsRecent", lastSubmissionIsRecent, "maxDataNotExceeded", maxDataNotExceeded, "skewtime", skewTime, "batchTime", maxBatchTime, "pending", pending)
 
 				nConsumed, err := createAndSubmitBatch(maxBatchBytes)
 				if err != nil {
