@@ -172,11 +172,11 @@ func initSettlementLayerMock(rollappId string, settlementlc settlement.ClientI, 
 
 func GetManagerConfig() config.BlockManagerConfig {
 	return config.BlockManagerConfig{
-		BlockTime:               100 * time.Millisecond,
-		BatchSubmitBytes:        1000000,
-		BatchSubmitTime:         30 * time.Minute,
-		BatchSkew:               10,
-		SequencerUpdateInterval: config.DefaultSequencerUpdateInterval,
+		BlockTime:                  100 * time.Millisecond,
+		BatchSubmitBytes:           1000000,
+		BatchSubmitTime:            30 * time.Minute,
+		BatchSkew:                  10,
+		SequencerSetUpdateInterval: config.DefaultSequencerSetUpdateInterval,
 	}
 }
 

@@ -14,7 +14,7 @@ const (
 
 	DefaultHomeDir = "sequencer_keys"
 
-	DefaultSequencerUpdateInterval = 3 * time.Minute
+	DefaultSequencerSetUpdateInterval = 3 * time.Minute
 )
 
 // DefaultNodeConfig keeps default values of NodeConfig
@@ -24,13 +24,13 @@ var DefaultNodeConfig = *DefaultConfig("")
 func DefaultConfig(home string) *NodeConfig {
 	cfg := &NodeConfig{
 		BlockManagerConfig: BlockManagerConfig{
-			BlockTime:               200 * time.Millisecond,
-			MaxIdleTime:             3600 * time.Second,
-			MaxProofTime:            100 * time.Second,
-			BatchSubmitTime:         3600 * time.Second,
-			BatchSkew:               10,
-			BatchSubmitBytes:        500000,
-			SequencerUpdateInterval: DefaultSequencerUpdateInterval,
+			BlockTime:                  200 * time.Millisecond,
+			MaxIdleTime:                3600 * time.Second,
+			MaxProofTime:               100 * time.Second,
+			BatchSubmitTime:            3600 * time.Second,
+			BatchSkew:                  10,
+			BatchSubmitBytes:           500000,
+			SequencerSetUpdateInterval: DefaultSequencerSetUpdateInterval,
 		},
 		SettlementLayer: "mock",
 		Instrumentation: &InstrumentationConfig{

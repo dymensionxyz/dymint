@@ -183,13 +183,13 @@ func TestNodeConfig_Validate(t *testing.T) {
 func fullNodeConfig() config.NodeConfig {
 	return config.NodeConfig{
 		BlockManagerConfig: config.BlockManagerConfig{
-			BlockTime:               1 * time.Second,
-			MaxIdleTime:             20 * time.Second,
-			MaxProofTime:            20 * time.Second,
-			BatchSubmitTime:         20 * time.Second,
-			BatchSkew:               10,
-			BatchSubmitBytes:        10000,
-			SequencerUpdateInterval: config.DefaultSequencerUpdateInterval,
+			BlockTime:                  1 * time.Second,
+			MaxIdleTime:                20 * time.Second,
+			MaxProofTime:               20 * time.Second,
+			BatchSubmitTime:            20 * time.Second,
+			BatchSkew:                  10,
+			BatchSubmitBytes:           10000,
+			SequencerSetUpdateInterval: config.DefaultSequencerSetUpdateInterval,
 		},
 		DAConfig:        "da-config",
 		SettlementLayer: "dymension",
