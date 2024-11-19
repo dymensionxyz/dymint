@@ -1,6 +1,3 @@
-// This file is a modified copy of the rollapp module proto contract. Source:
-// https://github.com/dymensionxyz/dymension/blob/f140cd1dd561cefb3e6562cbf4379b88cd16400d/proto/dymensionxyz/dymension/rollapp/.
-
 syntax = "proto3";
 package dymensionxyz.dymension.rollapp;
 
@@ -18,7 +15,7 @@ service Query {
   // Parameters queries the parameters of the module.
   rpc Params(QueryParamsRequest) returns (QueryParamsResponse) {}
   // Queries a Rollapp by index.
-  rpc Rollapp(QueryGetRollappRequest) returns (QueryGetRollappResponse) {}
+  rpc Rollapp(QueryGetRollappRequest) returns (QueryGetRollappResponse) { }
 
   // Queries a Rollapp by index.
   rpc RollappByEIP155(QueryGetRollappByEIP155Request)
@@ -37,6 +34,12 @@ service Query {
 
   // Queries a StateInfo by index.
   rpc StateInfo(QueryGetStateInfoRequest) returns (QueryGetStateInfoResponse) {}
+
+  // Queries a list of registered denoms for the rollapp.
+  rpc RegisteredDenoms(QueryRegisteredDenomsRequest) returns (QueryRegisteredDenomsResponse) {}
+
+  // Queries a list of obsolete DRS versions.
+  rpc ObsoleteDRSVersions(QueryObsoleteDRSVersionsRequest) returns (QueryObsoleteDRSVersionsResponse) {}
 }
 
 // QueryParamsRequest is request type for the Query/Params RPC method.
@@ -105,4 +108,18 @@ message QueryGetStateInfoRequest {
 
 message QueryGetStateInfoResponse {
   StateInfo stateInfo = 1 [ (gogoproto.nullable) = false ];
+}
+
+message QueryRegisteredDenomsRequest {
+  string rollappId = 1;
+}
+
+message QueryRegisteredDenomsResponse {
+  repeated string denoms = 1;
+}
+
+message QueryObsoleteDRSVersionsRequest {}
+
+message QueryObsoleteDRSVersionsResponse {
+  repeated uint32 drs_versions = 1;
 }
