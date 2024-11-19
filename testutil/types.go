@@ -3,10 +3,10 @@ package testutil
 import (
 	"crypto/rand"
 	"math/big"
-	"strconv"
 	"time"
 
 	"github.com/cosmos/cosmos-sdk/types/bech32"
+	dymintversion "github.com/dymensionxyz/dymint/version"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmcrypto "github.com/tendermint/tendermint/crypto"
@@ -18,7 +18,6 @@ import (
 
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/dymensionxyz/dymint/types/pb/dymint"
-	dymintversion "github.com/dymensionxyz/dymint/version"
 )
 
 const (
@@ -184,10 +183,10 @@ func GenerateCommits(blocks []*types.Block, proposerKey crypto.PrivKey) ([]*type
 }
 
 func GenerateDRS(blocks int) []uint32 {
-	drsVersion, _ := strconv.ParseUint(dymintversion.DrsVersion, 10, 32)
+	drsVersion, _ := dymintversion.GetDRSVersion()
 	drs := make([]uint32, blocks)
 	for i := 0; i < blocks; i++ {
-		drs[i] = uint32(drsVersion)
+		drs[i] = drsVersion
 	}
 	return drs
 }
@@ -322,7 +321,6 @@ func GenerateSequencer() types.Sequencer {
 
 // GenerateStateWithSequencer generates an initial state for testing.
 func GenerateStateWithSequencer(initialHeight int64, lastBlockHeight int64, pubkey tmcrypto.PubKey) *types.State {
-	dymintVersion, _ := strconv.ParseUint(dymintversion.DrsVersion, 10, 32)
 	s := &types.State{
 		ChainID:         "test-chain",
 		InitialHeight:   uint64(initialHeight),
@@ -336,7 +334,7 @@ func GenerateStateWithSequencer(initialHeight int64, lastBlockHeight int64, pubk
 		},
 		RollappParams: dymint.RollappParams{
 			Da:         "mock",
-			DrsVersion: uint32(dymintVersion),
+			DrsVersion: 0,
 		},
 		ConsensusParams: tmproto.ConsensusParams{
 			Block: tmproto.BlockParams{

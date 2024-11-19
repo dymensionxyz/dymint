@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
 	"sync"
 	"sync/atomic"
 
@@ -53,6 +52,7 @@ type Manager struct {
 	Genesis         *tmtypes.GenesisDoc
 	GenesisChecksum string
 	LocalKey        crypto.PrivKey
+	RootDir         string
 
 	// Store and execution
 	Store      store.Store
@@ -69,6 +69,9 @@ type Manager struct {
 	// RunMode represents the mode of the node. Set during initialization and shouldn't change after that.
 	RunMode uint
 
+	// context used when freezing node
+	Cancel context.CancelFunc
+	Ctx    context.Context
 	/*
 		Sequencer and full-node
 	*/
@@ -155,6 +158,7 @@ func NewManager(
 		Pubsub:          pubsub,
 		P2PClient:       p2pClient,
 		LocalKey:        localKey,
+		RootDir:         conf.RootDir,
 		Conf:            conf.BlockManagerConfig,
 		Genesis:         genesis,
 		GenesisChecksum: genesisChecksum,
@@ -173,13 +177,18 @@ func NewManager(
 		syncedFromSettlement:  uchannel.NewNudger(),   // used by the sequencer to wait  till the node completes the syncing from settlement.
 	}
 	m.setFraudHandler(NewFreezeHandler(m))
-
 	err = m.LoadStateOnInit(store, genesis, logger)
 	if err != nil {
 		return nil, fmt.Errorf("get initial state: %w", err)
 	}
 
 	err = m.setDA(conf.DAConfig, dalcKV, logger)
+	if err != nil {
+		return nil, err
+	}
+
+	// update dymint state with fork info
+	err = m.updateStateWhenFork()
 	if err != nil {
 		return nil, err
 	}
@@ -197,6 +206,7 @@ func NewManager(
 
 // Start starts the block manager.
 func (m *Manager) Start(ctx context.Context) error {
+	m.Ctx, m.Cancel = context.WithCancel(ctx)
 	// Check if InitChain flow is needed
 	if m.State.IsGenesis() {
 		m.logger.Info("Running InitChain")
@@ -212,11 +222,10 @@ func (m *Manager) Start(ctx context.Context) error {
 	// In case there is also no proposer on the hub to our current height, it means that the chain is halted.
 	if m.State.GetProposer() == nil {
 		m.logger.Info("No proposer on the rollapp, fallback to the hub proposer, if available")
-		SLProposer, err := m.SLClient.GetProposerAtHeight(int64(m.State.NextHeight()))
+		err := m.UpdateProposerFromSL()
 		if err != nil {
-			return fmt.Errorf("get proposer at height: %w", err)
+			return err
 		}
-		m.State.SetProposer(SLProposer)
 	}
 
 	// checks if the the current node is the proposer either on rollapp or on the hub.
@@ -229,6 +238,8 @@ func (m *Manager) Start(ctx context.Context) error {
 	}
 	amIProposer := amIProposerOnSL || m.AmIProposerOnRollapp()
 
+	m.logger.Info("starting block manager", "mode", map[bool]string{true: "proposer", false: "full node"}[amIProposer])
+
 	// update local state from latest state in settlement
 	err = m.updateFromLastSettlementState()
 	if err != nil {
@@ -240,7 +251,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	// send signal to validation loop with last settlement state update
 	m.triggerSettlementValidation()
 
-	eg, ctx := errgroup.WithContext(ctx)
+	eg, ctx := errgroup.WithContext(m.Ctx)
 
 	// Start the pruning loop in the background
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
@@ -251,7 +262,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		err := m.SettlementSyncLoop(ctx)
 		if err != nil {
-			m.freezeNode(context.Background(), err)
+			m.freezeNode(err)
 		}
 		return nil
 	})
@@ -259,6 +270,10 @@ func (m *Manager) Start(ctx context.Context) error {
 	// Monitor sequencer set updates
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		return m.MonitorSequencerSetUpdates(ctx)
+	})
+
+	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
+		return m.MonitorForkUpdateLoop(ctx)
 	})
 
 	// run based on the node role
@@ -333,11 +348,11 @@ func (m *Manager) UpdateTargetHeight(h uint64) {
 
 // ValidateConfigWithRollappParams checks the configuration params are consistent with the params in the dymint state (e.g. DA and version)
 func (m *Manager) ValidateConfigWithRollappParams() error {
-	drsVersion, err := strconv.ParseUint(version.DrsVersion, 10, 32)
+	drsVersion, err := version.GetDRSVersion()
 	if err != nil {
-		return fmt.Errorf("unable to parse drs version")
+		return err
 	}
-	if uint32(drsVersion) != m.State.RollappParams.DrsVersion {
+	if drsVersion != m.State.RollappParams.DrsVersion {
 		return fmt.Errorf("DRS version mismatch. rollapp param: %d binary used:%d", m.State.RollappParams.DrsVersion, drsVersion)
 	}
 
@@ -378,9 +393,12 @@ func (m *Manager) setFraudHandler(handler *FreezeHandler) {
 	m.FraudHandler = handler
 }
 
-func (m *Manager) freezeNode(ctx context.Context, err error) {
-	uevent.MustPublish(ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
-	if m.RunMode == RunModeFullNode {
-		m.unsubscribeFullNodeEvents(ctx)
+// freezeNode sets the node as unhealthy and prevents the node continues producing and processing blocks
+func (m *Manager) freezeNode(err error) {
+	m.logger.Info("Freezing node", "err", err)
+	if m.Ctx.Err() != nil {
+		return
 	}
+	uevent.MustPublish(m.Ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
+	m.Cancel()
 }

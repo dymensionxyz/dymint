@@ -54,6 +54,13 @@ type Client struct {
 	settlementKV store.KV
 }
 
+func (c *Client) GetRollapp() (*types.Rollapp, error) {
+	return &types.Rollapp{
+		RollappID: c.rollappID,
+		Revisions: []types.Revision{{Number: 0, StartHeight: 0}},
+	}, nil
+}
+
 var _ settlement.ClientI = (*Client)(nil)
 
 // Init initializes the mock layer client.
@@ -234,6 +241,11 @@ func (c *Client) GetSequencerByAddress(address string) (types.Sequencer, error) 
 // GetAllSequencers implements settlement.ClientI.
 func (c *Client) GetAllSequencers() ([]types.Sequencer, error) {
 	return c.GetBondedSequencers()
+}
+
+// GetObsoleteDrs returns the list of deprecated DRS.
+func (c *Client) GetObsoleteDrs() ([]uint32, error) {
+	return []uint32{}, nil
 }
 
 // GetBondedSequencers implements settlement.ClientI.

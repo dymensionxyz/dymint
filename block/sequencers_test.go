@@ -15,7 +15,6 @@ func TestHandleSequencerSetUpdate(t *testing.T) {
 	seq2 := testutil.GenerateSequencer()
 	seq3 := testutil.GenerateSequencer()
 	seq4 := testutil.GenerateSequencer()
-
 	testCases := []struct {
 		name    string
 		initial []types.Sequencer

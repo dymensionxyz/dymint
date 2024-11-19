@@ -8,8 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/dymensionxyz/gerr-cosmos/gerrc"
-
 	"github.com/ipfs/go-datastore"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -35,9 +33,12 @@ import (
 	"github.com/dymensionxyz/dymint/da"
 	blockmocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/block"
 	"github.com/dymensionxyz/dymint/node/events"
+
 	slregistry "github.com/dymensionxyz/dymint/settlement/registry"
 	"github.com/dymensionxyz/dymint/store"
+
 	"github.com/dymensionxyz/dymint/utils/event"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 )
 
 // TODO: test loading sequencer while rotation in progress
@@ -187,7 +188,7 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 	assert.True(t, manager.State.Height() == 0)
 
 	// enough time to sync and produce blocks
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*4)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 	// Capture the error returned by manager.Start.
 
@@ -233,7 +234,6 @@ func TestApplyCachedBlocks_WithFraudCheck(t *testing.T) {
 	t.Log("Taking the manager out of sync by submitting a batch")
 	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
 	manager.Retriever = manager.DAClient.(da.BatchRetriever)
-
 	mockExecutor := &blockmocks.MockExecutorI{}
 	manager.Executor = mockExecutor
 	mockExecutor.On("GetAppInfo").Return(&abci.ResponseInfo{
@@ -243,12 +243,11 @@ func TestApplyCachedBlocks_WithFraudCheck(t *testing.T) {
 
 	// Check that handle fault is called
 	manager.FraudHandler = block.NewFreezeHandler(manager)
-
 	fraudEventReceived := make(chan *events.DataHealthStatus, 1)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
+	_, manager.Cancel = context.WithCancel(context.Background())
 	go event.MustSubscribe(
 		ctx,
 		manager.Pubsub,
@@ -437,7 +436,7 @@ func TestProduceNewBlock(t *testing.T) {
 	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(t, err)
 	// Produce block
-	_, _, err = manager.ProduceApplyGossipBlock(context.Background(), true)
+	_, _, err = manager.ProduceApplyGossipBlock(context.Background(), block.ProduceBlockOptions{AllowEmpty: true})
 	require.NoError(t, err)
 	// Validate state is updated with the commit hash
 	assert.Equal(t, uint64(1), manager.State.Height())
@@ -469,19 +468,19 @@ func TestProducePendingBlock(t *testing.T) {
 	// Init manager
 	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(t, err)
-	// Generate block and commit and save it to the store
-	block := testutil.GetRandomBlock(1, 3)
-	copy(block.Header.SequencerHash[:], manager.State.GetProposerHash())
-	copy(block.Header.NextSequencersHash[:], manager.State.GetProposerHash())
+	// Generate b and commit and save it to the store
+	b := testutil.GetRandomBlock(1, 3)
+	copy(b.Header.SequencerHash[:], manager.State.GetProposerHash())
+	copy(b.Header.NextSequencersHash[:], manager.State.GetProposerHash())
 
-	_, err = manager.Store.SaveBlock(block, &block.LastCommit, nil)
+	_, err = manager.Store.SaveBlock(b, &b.LastCommit, nil)
 	require.NoError(t, err)
-	// Produce block
-	_, _, err = manager.ProduceApplyGossipBlock(context.Background(), true)
+	// Produce b
+	_, _, err = manager.ProduceApplyGossipBlock(context.Background(), block.ProduceBlockOptions{AllowEmpty: true})
 	require.NoError(t, err)
 
-	// Validate state is updated with the block that was saved in the store
-	// hacky way to validate the block was indeed contain txs
+	// Validate state is updated with the b that was saved in the store
+	// hacky way to validate the b was indeed contain txs
 	assert.NotEqual(t, manager.State.LastResultsHash, testutil.GetEmptyLastResultsHash())
 }
 
@@ -575,7 +574,7 @@ func TestProduceBlockFailAfterCommit(t *testing.T) {
 				},
 			})
 			mockStore.ShouldFailUpdateStateWithBatch = tc.shoudFailOnSaveState
-			_, _, _ = manager.ProduceApplyGossipBlock(context.Background(), true)
+			_, _, _ = manager.ProduceApplyGossipBlock(context.Background(), block.ProduceBlockOptions{AllowEmpty: true})
 			storeState, err := manager.Store.LoadState()
 			assert.NoError(err)
 			manager.State = storeState
@@ -641,7 +640,7 @@ func TestCreateNextDABatchWithBytesLimit(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			// Produce blocks
 			for i := 0; i < tc.blocksToProduce; i++ {
-				_, _, err := manager.ProduceApplyGossipBlock(ctx, true)
+				_, _, err := manager.ProduceApplyGossipBlock(ctx, block.ProduceBlockOptions{AllowEmpty: true})
 				assert.NoError(err)
 			}
 

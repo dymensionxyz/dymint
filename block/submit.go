@@ -95,6 +95,7 @@ func SubmitLoopInner(
 			case <-ticker.C:
 			case <-submitter.C:
 			}
+
 			pending := pendingBytes.Load()
 			types.RollappPendingSubmissionsSkewBytes.Set(float64(pendingBytes.Load()))
 			types.RollappPendingSubmissionsSkewBlocks.Set(float64(unsubmittedBlocks()))
@@ -223,6 +224,7 @@ func (m *Manager) CreateBatch(maxBatchSize uint64, startHeight uint64, endHeight
 			break
 		}
 	}
+	batch.Revision = batch.Blocks[len(batch.Blocks)-1].GetRevision()
 
 	return batch, nil
 }
@@ -273,6 +275,7 @@ func (m *Manager) GetUnsubmittedBytes() int {
 		}
 		total += block.SizeBytes() + commit.SizeBytes()
 	}
+
 	return total
 }
 
