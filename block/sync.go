@@ -75,11 +75,7 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 				}
 				m.logger.Info("Retrieved state update from SL.", "state_index", settlementBatch.StateIndex)
 
-				lastSLBlockTimestamp := settlementBatch.BlockDescriptors[len(settlementBatch.BlockDescriptors)-1].GetTimestamp()
-				err = m.SetLastSettlementBlockTime(lastSLBlockTimestamp)
-				if err != nil {
-					return fmt.Errorf("save last SL block time: %w", err)
-				}
+				m.State.LastBlockTimeInSettlement = settlementBatch.BlockDescriptors[len(settlementBatch.BlockDescriptors)-1].GetTimestamp()
 
 				err = m.ApplyBatchFromSL(settlementBatch.Batch)
 				if err != nil {

@@ -45,8 +45,8 @@ type State struct {
 	// LastHeaderHash is the hash of the last block header.
 	LastHeaderHash [32]byte
 
-	// Last block time
-	LastBlockTime atomic.Uint64 // time in tai64 format
+	// LastBlockTimeInSettlement is the time of last submitted block used to calculated skew time
+	LastBlockTimeInSettlement time.Time
 }
 
 func (s *State) GetProposer() *Sequencer {
@@ -87,18 +87,6 @@ type RollappParams struct {
 // returns OK if the value was updated successfully or did not need to be updated
 func (s *State) SetHeight(height uint64) {
 	s.LastBlockHeight.Store(height)
-}
-
-// SetLastBlockTime saves the last block produced timestamp
-func (s *State) SetLastBlockTime(time time.Time) {
-	if time.After(s.GetLastBlockTime()) {
-		s.LastBlockTime.Store(uint64(time.UTC().UnixNano()))
-	}
-}
-
-// GetLastBlockTime returns the last block produced timestamp
-func (s *State) GetLastBlockTime() time.Time {
-	return time.Unix(0, int64(s.LastBlockTime.Load()))
 }
 
 // Height returns height of the highest block saved in the Store.

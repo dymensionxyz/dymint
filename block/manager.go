@@ -303,6 +303,7 @@ func (m *Manager) updateFromLastSettlementState() error {
 		// The SL hasn't got any batches for this chain yet.
 		m.logger.Info("No batches for chain found in SL.")
 		m.LastSettlementHeight.Store(uint64(m.Genesis.InitialHeight - 1))
+		m.SetLastBlockTimeInSettlementFromHeight(uint64(m.Genesis.InitialHeight))
 		return nil
 	}
 	if err != nil {
@@ -310,12 +311,10 @@ func (m *Manager) updateFromLastSettlementState() error {
 		return err
 	}
 
-	m.LastSettlementHeight.Store(latestHeight)
-
 	if latestHeight >= m.State.NextHeight() {
 		m.UpdateTargetHeight(latestHeight)
 	}
-
+	m.SetLastBlockTimeInSettlementFromHeight(latestHeight)
 	return nil
 }
 

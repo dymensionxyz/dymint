@@ -35,9 +35,9 @@ var RollappPendingSubmissionsSkewBatches = promauto.NewGauge(prometheus.GaugeOpt
 	Help: "The number of batches which have been accumulated but not yet submitted.",
 })
 
-var RollappPendingSubmissionsSkewTimeHours = promauto.NewGauge(prometheus.GaugeOpts{
-	Name: "rollapp_pending_submissions_skew_time",
-	Help: "Time between the last block produced and the last block submitted in hours.",
+var RollappPendingSubmissionsSkewTimeMinutes = promauto.NewGauge(prometheus.GaugeOpts{
+	Name: "rollapp_pending_submissions_skew_time_minutes",
+	Help: "Time between the last block produced and the last block submitted in minutes.",
 })
 
 var RollappPendingSubmissionsSkewBytes = promauto.NewGauge(prometheus.GaugeOpts{

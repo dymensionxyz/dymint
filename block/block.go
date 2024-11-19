@@ -110,9 +110,6 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 			return fmt.Errorf("commit block: %w", err)
 		}
 
-		// update last block time
-		m.State.SetLastBlockTime(block.Header.GetTimestamp())
-
 		// Prune old heights, if requested by ABCI app.
 		// retainHeight is determined by currentHeight - min-retain-blocks (app.toml config).
 		// Unless max_age_num_blocks in consensus params is higher than min-retain-block, then max_age_num_blocks will be used instead of min-retain-blocks.

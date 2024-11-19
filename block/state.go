@@ -9,6 +9,7 @@ import (
 	errorsmod "cosmossdk.io/errors"
 
 	"github.com/cometbft/cometbft/crypto/merkle"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
@@ -93,6 +94,20 @@ func (m *Manager) UpdateStateFromApp(blockHeaderHash [32]byte) error {
 	return nil
 }
 
+// SetLastBlockTimeInSettlementFromHeight is used to initialize LastBlockTimeInSettlement from height
+func (m *Manager) SetLastBlockTimeInSettlementFromHeight(lastSettlementHeight uint64) error {
+	block, err := m.Store.LoadBlock(lastSettlementHeight)
+	if err != nil && !errors.Is(err, gerrc.ErrNotFound) {
+		return err
+	}
+	if errors.Is(err, gerrc.ErrNotFound) {
+		m.State.LastBlockTimeInSettlement = time.Now()
+		return nil
+	}
+	m.State.LastBlockTimeInSettlement = block.Header.GetTimestamp()
+	return nil
+}
+
 func (e *Executor) UpdateStateAfterInitChain(s *types.State, res *abci.ResponseInitChain) {
 	// If the app did not return an app hash, we keep the one set from the genesis doc in
 	// the state. We don't set appHash since we don't want the genesis doc app hash
@@ -109,7 +124,6 @@ func (e *Executor) UpdateStateAfterInitChain(s *types.State, res *abci.ResponseI
 	}
 	// We update the last results hash with the empty hash, to conform with RFC-6962.
 	copy(s.LastResultsHash[:], merkle.HashFromByteSlices(nil))
-	s.SetLastBlockTime(time.Now())
 }
 
 func (e *Executor) UpdateMempoolAfterInitChain(s *types.State) {

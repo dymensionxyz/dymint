@@ -21,8 +21,8 @@ message State {
   int64 last_block_height = 4;
 
   tendermint.types.BlockID last_block_id = 5 [(gogoproto.nullable) = false, (gogoproto.customname) = "LastBlockID"];
-  uint64 last_block_time = 6;
 
+  reserved 6;
   reserved 7;
   reserved 8;
   tendermint.types.ValidatorSet validators = 9 [deprecated = true]; 
@@ -50,6 +50,7 @@ message State {
   Sequencer proposer = 20;
 
   int64 revision_start_height = 21;
+
 }
 
 //rollapp params defined in genesis and updated via gov proposal

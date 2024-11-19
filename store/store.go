@@ -358,24 +358,6 @@ func (s *DefaultStore) SaveBaseHeight(height uint64) error {
 	return s.db.Set(getBaseHeightKey(), b)
 }
 
-func (s *DefaultStore) SaveLastSettlementBlockTime(time uint64, batch KVBatch) (KVBatch, error) {
-	b := make([]byte, 8)
-	binary.LittleEndian.PutUint64(b, time)
-	if batch == nil {
-		return nil, s.db.Set(getLastSettlementBlockTimeKey(), b)
-	}
-	err := batch.Set(getLastSettlementBlockTimeKey(), b)
-	return batch, err
-}
-
-func (s *DefaultStore) LoadLastSettlementBlockTime() (uint64, error) {
-	b, err := s.db.Get(getLastSettlementBlockTimeKey())
-	if err != nil {
-		return 0, err
-	}
-	return binary.LittleEndian.Uint64(b), nil
-}
-
 func (s *DefaultStore) LoadBlockSyncBaseHeight() (uint64, error) {
 	b, err := s.db.Get(getBlockSyncBaseHeightKey())
 	if err != nil {

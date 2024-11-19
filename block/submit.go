@@ -44,9 +44,9 @@ func SubmitLoopInner(
 	ctx context.Context,
 	logger types.Logger,
 	bytesProduced chan int, // a channel of block and commit bytes produced
-	maxBatchSkew time.Duration, // max number of blocks that submitter is allowed to have pending
+	maxBatchSkew time.Duration, // max time between last submitted block and last produced block allowed. if this threshold is reached block production is stopped.
 	unsubmittedBlocksNum func() uint64,
-	skewTime func() (time.Duration, error),
+	skewTime func(time.Time) time.Duration,
 	maxBatchTime time.Duration, // max time to allow between batches
 	maxBatchBytes uint64, // max size of serialised batch in bytes
 	createAndSubmitBatch func(maxSizeBytes uint64) (sizeBlocksCommits uint64, err error),
@@ -72,17 +72,11 @@ func SubmitLoopInner(
 
 			types.RollappPendingSubmissionsSkewBytes.Set(float64(pendingBytes.Load()))
 			types.RollappPendingSubmissionsSkewBlocks.Set(float64(unsubmittedBlocksNum()))
-
-			skewTime, err := skewTime()
-			if err != nil {
-				return err
-			}
-
-			types.RollappPendingSubmissionsSkewTimeHours.Set(float64(skewTime.Hours()))
+			types.RollappPendingSubmissionsSkewTimeMinutes.Set(float64(skewTime(time.Now()).Minutes()))
 
 			submitter.Nudge()
 
-			if maxBatchSkew < skewTime {
+			if maxBatchSkew < skewTime(time.Now()) {
 				// too much stuff is pending submission
 				// we block here until we get a progress nudge from the submitter thread
 				select {
@@ -107,26 +101,16 @@ func SubmitLoopInner(
 			}
 
 			pending := pendingBytes.Load()
-
-			skew, err := skewTime()
-			if err != nil {
-				return err
-			}
-			logger.Error("skew time", skew)
 			types.RollappPendingSubmissionsSkewBytes.Set(float64(pending))
 			types.RollappPendingSubmissionsSkewBlocks.Set(float64(unsubmittedBlocksNum()))
-			types.RollappPendingSubmissionsSkewTimeHours.Set(float64(skew.Hours()))
+			types.RollappPendingSubmissionsSkewTimeMinutes.Set(float64(skewTime(time.Now()).Minutes()))
 
 			// while there are accumulated blocks, create and submit batches!!
 			for {
 				done := ctx.Err() != nil
 				nothingToSubmit := pending == 0
 
-				skew, err = skewTime()
-				if err != nil {
-					return err
-				}
-				lastSubmissionIsRecent := skew < maxBatchTime
+				lastSubmissionIsRecent := skewTime(time.Now()) < maxBatchTime
 				maxDataNotExceeded := pending <= maxBatchBytes
 				if done || nothingToSubmit || (lastSubmissionIsRecent && maxDataNotExceeded) {
 					break
@@ -268,7 +252,7 @@ func (m *Manager) SubmitBatch(batch *types.Batch) error {
 	m.LastSettlementHeight.Store(batch.EndHeight())
 
 	// update last submitted block time with batch last block (used to calculate max skew time)
-	err = m.SetLastSettlementBlockTime(batch.Blocks[len(batch.Blocks)-1].Header.GetTimestamp())
+	m.State.LastBlockTimeInSettlement = batch.Blocks[len(batch.Blocks)-1].Header.GetTimestamp()
 
 	return err
 }
@@ -325,30 +309,7 @@ func (m *Manager) UpdateLastSubmittedHeight(event pubsub.Message) {
 	}
 }
 
-// SetLastSettlementBlockTime saves the last block on SL timestamp
-func (m *Manager) SetLastSettlementBlockTime(time time.Time) error {
-	_, err := m.Store.SaveLastSettlementBlockTime(uint64(time.UTC().UnixNano()), nil)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-// GetLastSettlementBlockTime returns the last block on  SL timestamp
-func (m *Manager) GetLastSettlementBlockTime() (time.Time, error) {
-	lastSettlementBlockTime, err := m.Store.LoadLastSettlementBlockTime()
-	if err != nil {
-		return time.Time{}, err
-	}
-	return time.Unix(0, int64(lastSettlementBlockTime)), nil
-}
-
 // GetSkewTime returns the time between the last produced block and the last block submitted to SL
-func (m *Manager) GetSkewTime() (time.Duration, error) {
-	lastSettlementBlockTime, err := m.GetLastSettlementBlockTime()
-	if err != nil {
-		return time.Duration(0), err
-	}
-
-	return m.State.GetLastBlockTime().Sub(lastSettlementBlockTime), nil
+func (m *Manager) GetSkewTime(lastBlockTime time.Time) time.Duration {
+	return lastBlockTime.Sub(m.State.LastBlockTimeInSettlement)
 }
