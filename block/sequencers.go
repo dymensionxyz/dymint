@@ -13,23 +13,32 @@ const (
 	ProposerMonitorInterval = 3 * time.Minute
 )
 
-func (m *Manager) MonitorProposerRotation(ctx context.Context) {
+var (
+	errRotationRequested = fmt.Errorf("sequencer rotation started. signal to stop production")
+)
+
+func (m *Manager) MonitorProposerRotation(ctx context.Context, rotateC chan struct{}) error {
 	ticker := time.NewTicker(ProposerMonitorInterval) // TODO: make this configurable
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ctx.Done():
-			return
+			return nil
 		case <-ticker.C:
-			next, err := m.SLClient.GetNextProposer()
+			nextProposer, err := m.SLClient.GetNextProposer()
 			if err != nil {
 				m.logger.Error("Check rotation in progress", "err", err)
 				continue
 			}
-			if next != nil {
-				m.rotate(ctx)
+			// no rotation in progress
+			if nextProposer == nil {
+				continue
 			}
+
+			// we get here once a sequencer rotation signal is received
+			m.logger.Info("Sequencer rotation started.", "nextSeqAddr", nextProposer.SettlementAddress)
+			return errRotationRequested
 		}
 	}
 }
@@ -103,7 +112,7 @@ func (m *Manager) ShouldRotate() (bool, error) {
 func (m *Manager) rotate(ctx context.Context) {
 	// Get Next Proposer from SL. We assume such exists (even if empty proposer) otherwise function wouldn't be called.
 	nextProposer, err := m.SLClient.GetNextProposer()
-	if err != nil {
+	if err != nil || nextProposer == nil {
 		panic(fmt.Sprintf("rotate: fetch next proposer set from Hub: %v", err))
 	}
 

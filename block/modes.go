@@ -2,6 +2,7 @@ package block
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/dymensionxyz/dymint/p2p"
@@ -69,7 +70,7 @@ func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {
 		return fmt.Errorf("checking should rotate: %w", err)
 	}
 	if shouldRotate {
-		m.rotate(ctx)
+		m.rotate(ctx) // panics afterwards
 	}
 
 	// populate the bytes produced channel
@@ -84,8 +85,21 @@ func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {
 		return m.ProduceBlockLoop(ctx, bytesProducedC)
 	})
 
+	// channel to signal sequencer rotation started
+	rotateSequencerC := make(chan struct{}, 1)
 	// Monitor and handling of the rotation
-	go m.MonitorProposerRotation(ctx)
+	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
+		return m.MonitorProposerRotation(ctx, rotateSequencerC)
+	})
+
+	// check wether
+	go func() {
+		err = eg.Wait()
+		// Check if exited due to sequencer rotation signal
+		if errors.Is(err, errRotationRequested) {
+			m.rotate(ctx)
+		}
+	}()
 
 	return nil
 }
