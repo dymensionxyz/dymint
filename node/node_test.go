@@ -14,6 +14,7 @@ import (
 	"github.com/dymensionxyz/dymint/node"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/testutil"
+	"github.com/dymensionxyz/dymint/version"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/peer"
@@ -31,6 +32,7 @@ import (
 // simply check that node is starting and stopping without panicking
 func TestStartup(t *testing.T) {
 
+	version.DRS = "0"
 	assert := assert.New(t)
 	require := require.New(t)
 

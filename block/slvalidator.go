@@ -194,10 +194,7 @@ func (v *SettlementValidator) ValidateDaBlocks(slBatch *settlement.ResultRetriev
 	}
 
 	if !bytes.Equal(expectedNextSeqHash[:], lastDABlock.Header.NextSequencersHash[:]) {
-		return types.NewErrInvalidNextSequencersHashFraud(
-			expectedNextSeqHash,
-			lastDABlock.Header.NextSequencersHash,
-		)
+		return types.NewErrInvalidNextSequencersHashFraud(expectedNextSeqHash, lastDABlock.Header)
 	}
 
 	v.logger.Debug("DA blocks validated successfully", "start height", daBlocks[0].Header.Height, "end height", daBlocks[len(daBlocks)-1].Header.Height)

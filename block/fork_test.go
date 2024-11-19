@@ -99,7 +99,6 @@ func TestShouldStopNode(t *testing.T) {
 }
 
 func TestCheckForkUpdate(t *testing.T) {
-
 	tests := []struct {
 		name          string
 		setupMocks    func(*settlement.MockClientI, *store.MockStore, *types.State)
