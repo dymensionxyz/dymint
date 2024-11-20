@@ -257,7 +257,7 @@ require (
 )
 
 require (
-	cosmossdk.io/math v1.3.0 // indirect
+	cosmossdk.io/math v1.4.0 // indirect
 	github.com/DataDog/zstd v1.5.5 // indirect
 	github.com/Jorropo/jsync v1.0.1 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
