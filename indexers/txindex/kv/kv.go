@@ -607,12 +607,12 @@ func (txi *TxIndex) pruneTxsAndEvents(from, to uint64, logger log.Logger) (uint6
 
 		// first all events are pruned associated to the same height
 		prunedEvents, err := txi.pruneEvents(h, batch)
+		pruned += prunedEvents
 		toFlush += prunedEvents
 		if err != nil {
 			logger.Error("pruning txs indexer events by height", "height", h, "error", err)
 			continue
 		}
-		pruned += prunedEvents
 
 		// then all txs indexed are iterated by height
 		it := txi.store.PrefixIterator(prefixForHeight(int64(h)))
