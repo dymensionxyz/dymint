@@ -2,6 +2,7 @@ package block_test
 
 import (
 	"context"
+	"fmt"
 	"math/rand"
 	"sync"
 	"sync/atomic"
@@ -55,8 +56,7 @@ func testSubmitLoopInner(
 		return time.Duration(base + rand.Intn(factor))
 	}
 
-	pendingBlocks := atomic.Uint64{} // pending blocks to be submitted. gap between produced and submitted.
-
+	pendingBlocks := atomic.Uint64{}  // pending blocks to be submitted. gap between produced and submitted.
 	nProducedBytes := atomic.Uint64{} // tracking how many actual bytes have been produced but not submitted so far
 	producedBytesC := make(chan int)  // producer sends on here, and can be blocked by not consuming from here
 
@@ -70,6 +70,10 @@ func testSubmitLoopInner(
 		settlementTime := time.Unix(0, lastSettlementBlockTime.Load())
 		return blockTime.Sub(settlementTime)
 	}
+	skewNow := func() time.Duration {
+		settlementTime := time.Unix(0, lastSettlementBlockTime.Load())
+		return time.Now().Sub(settlementTime)
+	}
 	go func() { // simulate block production
 		go func() { // another thread to check system properties
 			for {
@@ -79,7 +83,7 @@ func testSubmitLoopInner(
 				default:
 				}
 				// producer shall not get too far ahead
-				require.True(t, skewTime() < args.batchSkew+args.skewMargin, "last produced blocks time not less than maximum skew time", "produced block skew time", skewTime(), "max skew time", args.batchSkew)
+				require.True(t, skewTime() < args.batchSkew+args.skewMargin, fmt.Sprintf("last produced blocks time not less than maximum skew time. produced block skew time: %s max skew: %s", skewTime(), args.batchSkew+args.skewMargin))
 			}
 		}()
 		for {
@@ -91,7 +95,7 @@ func testSubmitLoopInner(
 
 			time.Sleep(approx(args.produceTime))
 
-			if args.batchSkew <= skewTime() {
+			if args.batchSkew <= skewNow() {
 				continue
 			}
 
@@ -130,7 +134,7 @@ func TestSubmitLoopFastProducerHaltingSubmitter(t *testing.T) {
 	testSubmitLoop(
 		t,
 		testArgs{
-			nParallel:    10,
+			nParallel:    50,
 			testDuration: 4 * time.Second,
 			batchSkew:    100 * time.Millisecond,
 			skewMargin:   10 * time.Millisecond,
@@ -152,7 +156,7 @@ func TestSubmitLoopTimer(t *testing.T) {
 	testSubmitLoop(
 		t,
 		testArgs{
-			nParallel:    10,
+			nParallel:    50,
 			testDuration: 4 * time.Second,
 			batchSkew:    100 * time.Millisecond,
 			skewMargin:   10 * time.Millisecond,
