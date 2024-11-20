@@ -302,7 +302,6 @@ replace (
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.2-alpha.regen.4
 	github.com/gorilla/rpc => github.com/dymensionxyz/rpc v1.3.1
 	github.com/tendermint/tendermint => github.com/dymensionxyz/cometbft v0.34.29-0.20241104165035-feade34f8f89
-	github.com/dymensionxyz/cosmosclient => ../cosmosclient
 )
 
 replace github.com/osmosis-labs/osmosis/v15 => github.com/dymensionxyz/osmosis/v15 v15.2.0-dymension-v1.1.2
