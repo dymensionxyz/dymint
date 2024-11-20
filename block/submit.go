@@ -50,7 +50,7 @@ func SubmitLoopInner(
 	batchSkewTime func() time.Duration,
 	maxBatchSubmitTime time.Duration, // max time to allow between batches
 	maxBatchSubmitBytes uint64, // max size of serialised batch in bytes
-	createAndSubmitBatch func(maxSizeBytes uint64) (bytes int, err error),
+	createAndSubmitBatch func(maxSizeBytes uint64) (bytes uint64, err error),
 ) error {
 	eg, ctx := errgroup.WithContext(ctx)
 
@@ -107,7 +107,7 @@ func SubmitLoopInner(
 				lastSubmissionIsRecent := batchSkewTime() < maxBatchSubmitTime
 				maxDataNotExceeded := pending <= maxBatchSubmitBytes
 
-				UpdateBatchSubmissionGauges(pendingBytes.Load(), unsubmittedBlocksNum(), batchSkewTime())
+				UpdateBatchSubmissionGauges(pending, unsubmittedBlocksNum(), batchSkewTime())
 
 				if done || nothingToSubmit || (lastSubmissionIsRecent && maxDataNotExceeded) {
 					break
@@ -142,12 +142,12 @@ func SubmitLoopInner(
 // CreateAndSubmitBatchGetSizeBlocksCommits creates and submits a batch to the DA and SL.
 // Returns size of block and commit bytes
 // max size bytes is the maximum size of the serialized batch type
-func (m *Manager) CreateAndSubmitBatchGetSizeBlocksCommits(maxSize uint64) (int, error) {
+func (m *Manager) CreateAndSubmitBatchGetSizeBlocksCommits(maxSize uint64) (uint64, error) {
 	b, err := m.CreateAndSubmitBatch(maxSize, false)
 	if b == nil {
 		return 0, err
 	}
-	return b.SizeBlockAndCommitBytes(), err
+	return uint64(b.SizeBlockAndCommitBytes()), err
 }
 
 // CreateAndSubmitBatch creates and submits a batch to the DA and SL.

@@ -85,7 +85,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int)
 			default:
 				evt := &events.DataHealthStatus{Error: fmt.Errorf("bytes produced channel is full: %w", gerrc.ErrResourceExhausted)}
 				uevent.MustPublish(ctx, m.Pubsub, evt, events.HealthStatusList)
-				m.logger.Error("Pausing block production until new batch is submitted.", "Batch skew time", m.GetBatchSkewTime())
+				m.logger.Error("Pausing block production until new batch is submitted.", "Batch skew time", m.GetBatchSkewTime(), "Max batch skew time", m.Conf.MaxBatchSkewTime)
 				select {
 				case <-ctx.Done():
 					return nil

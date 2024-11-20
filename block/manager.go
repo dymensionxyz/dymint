@@ -74,10 +74,10 @@ type Manager struct {
 	Cancel context.CancelFunc
 	Ctx    context.Context
 
-	// LastBlockTimeInSettlement is the time of last submitted block used to calculated skew time
+	// LastBlockTimeInSettlement is the time of last submitted block, used to measure batch skew time
 	LastBlockTimeInSettlement atomic.Int64
 
-	// LastBlockTimeInSettlement is the time of last produced block used to calculated skew time
+	// LastBlockTime is the time of last produced block, used to measure batch skew time
 	LastBlockTime atomic.Int64
 	/*
 		Sequencer and full-node
@@ -418,16 +418,16 @@ func (m *Manager) freezeNode(err error) {
 	m.Cancel()
 }
 
-// SetLastBlockTimeInSettlementFromHeight is used to initialize LastBlockTimeInSettlement from height
+// SetLastBlockTimeInSettlementFromHeight is used to initialize LastBlockTimeInSettlement from rollapp height in settlement
 func (m *Manager) SetLastBlockTimeInSettlementFromHeight(lastSettlementHeight uint64) {
-	// considered no batch is submitted yet, so it is initialized
+	// in this case it is considered no batch is submitted yet, so it is initialized to current time
 	if lastSettlementHeight == uint64(1) {
 		m.LastBlockTimeInSettlement.Store(time.Now().UTC().UnixNano())
 		return
 	}
 	block, err := m.Store.LoadBlock(lastSettlementHeight)
 	if err != nil {
-		// if settlement height block is not found it will be updated after syncing
+		// if settlement height block is not found it will be updated after, when syncing
 		return
 	}
 	m.LastBlockTimeInSettlement.Store(block.Header.GetTimestamp().UTC().UnixNano())

@@ -108,7 +108,7 @@ func testSubmitLoopInner(
 		}
 	}()
 
-	submitBatch := func(maxSize uint64) (int, error) { // mock the batch submission
+	submitBatch := func(maxSize uint64) (uint64, error) { // mock the batch submission
 		time.Sleep(approx(args.submitTime))
 		if rand.Float64() < args.submissionHaltProbability {
 			time.Sleep(args.submissionHaltTime)
@@ -117,7 +117,7 @@ func testSubmitLoopInner(
 		nProducedBytes.Add(^uint64(consumed - 1)) // subtract
 		pendingBlocks.Store(0)                    // no pending blocks to be submitted
 		lastSettlementBlockTime.Store(lastBlockTime.Load())
-		return consumed, nil
+		return uint64(consumed), nil
 	}
 	accumulatedBlocks := func() uint64 {
 		return pendingBlocks.Load()
