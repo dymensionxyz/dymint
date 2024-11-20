@@ -11,8 +11,9 @@ import (
 	corep2p "github.com/tendermint/tendermint/p2p"
 )
 
-type ProposerGetter interface {
+type StateGetter interface {
 	GetProposerPubKey() tmcrypto.PubKey
+	GetRevision() uint64
 }
 
 // GossipValidator is a callback function type.
@@ -28,13 +29,13 @@ type IValidator interface {
 // Validator is a validator for messages gossiped in the p2p network.
 type Validator struct {
 	logger         types.Logger
-	proposerGetter ProposerGetter
+	proposerGetter StateGetter
 }
 
 var _ IValidator = (*Validator)(nil)
 
 // NewValidator creates a new Validator.
-func NewValidator(logger types.Logger, blockmanager ProposerGetter) *Validator {
+func NewValidator(logger types.Logger, blockmanager StateGetter) *Validator {
 	return &Validator{
 		logger:         logger,
 		proposerGetter: blockmanager,
@@ -80,8 +81,11 @@ func (v *Validator) BlockValidator() GossipValidator {
 			v.logger.Error("Deserialize gossiped block.", "error", err)
 			return false
 		}
+		if v.proposerGetter.GetRevision() != gossipedBlock.Block.GetRevision() {
+			return false
+		}
 		if err := gossipedBlock.Validate(v.proposerGetter.GetProposerPubKey()); err != nil {
-			v.logger.Error("Failed to validate gossiped block.", "height", gossipedBlock.Block.Header.Height, "error", err)
+			v.logger.Error("Failed to validate gossiped block at P2P level.", "height", gossipedBlock.Block.Header.Height)
 			return false
 		}
 

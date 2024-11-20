@@ -230,18 +230,18 @@ func (m *Manager) updateStateWhenFork() error {
 		// Set proposer to nil to force updating it from SL
 		m.State.SetProposer(nil)
 		// Upgrade revision on state
-		state := m.State
-		state.RevisionStartHeight = instruction.RevisionStartHeight
+		m.State.RevisionStartHeight = instruction.RevisionStartHeight
 		// this is necessary to pass ValidateConfigWithRollappParams when DRS upgrade is required
 		if instruction.RevisionStartHeight == m.State.NextHeight() {
-			state.SetRevision(instruction.Revision)
+			m.State.SetRevision(instruction.Revision)
 			drsVersion, err := version.GetDRSVersion()
 			if err != nil {
 				return err
 			}
-			state.RollappParams.DrsVersion = drsVersion
+			m.State.RollappParams.DrsVersion = drsVersion
 		}
-		m.State = state
+		_, err := m.Store.SaveState(m.State, nil)
+		return err
 	}
 	return nil
 }

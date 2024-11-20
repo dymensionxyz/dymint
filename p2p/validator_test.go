@@ -138,7 +138,7 @@ func TestValidator_BlockValidator(t *testing.T) {
 			// Create empty block
 			block := executor.CreateBlock(1, &types.Commit{}, [32]byte{}, [32]byte(state.GetProposerHash()), state, maxBytes)
 
-			getProposer := &p2pmock.MockGetProposerI{}
+			getProposer := &p2pmock.MockStateGetter{}
 			getProposer.On("GetProposerPubKey").Return(proposerKey.PubKey())
 
 			// Create commit for the block

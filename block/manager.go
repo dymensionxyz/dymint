@@ -313,6 +313,7 @@ func (m *Manager) updateFromLastSettlementState() error {
 
 	m.LastSettlementHeight.Store(latestHeight)
 
+	m.P2PClient.UpdateLatestSeenHeight(latestHeight)
 	if latestHeight >= m.State.NextHeight() {
 		m.UpdateTargetHeight(latestHeight)
 	}
@@ -335,6 +336,10 @@ func (m *Manager) updateLastFinalizedHeightFromSettlement() error {
 
 func (m *Manager) GetProposerPubKey() tmcrypto.PubKey {
 	return m.State.GetProposerPubKey()
+}
+
+func (m *Manager) GetRevision() uint64 {
+	return m.State.GetRevision()
 }
 
 func (m *Manager) UpdateTargetHeight(h uint64) {

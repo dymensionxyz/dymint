@@ -34,7 +34,7 @@ packages:
      DataAvailabilityLayerClient:
   github.com/dymensionxyz/dymint/p2p:
     interfaces:
-     GetProposerI:
+     StateGetter:
   github.com/dymensionxyz/dymint/block:
     interfaces:
       ExecutorI:

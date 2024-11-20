@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/tendermint/tendermint/libs/pubsub"
 
@@ -76,6 +77,9 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 				m.logger.Info("Retrieved state update from SL.", "state_index", settlementBatch.StateIndex)
 
 				err = m.ApplyBatchFromSL(settlementBatch.Batch)
+				if errors.Is(err, da.ErrRetrieval) {
+					continue
+				}
 				if err != nil {
 					return fmt.Errorf("process next DA batch. err:%w", err)
 				}
