@@ -7,9 +7,11 @@ import (
 	"time"
 )
 
+const CheckBalancesInterval = 3 * time.Minute
+
 // MonitorBalances checks the balances of the node and updates the gauges for prometheus
 func (m *Manager) MonitorBalances(ctx context.Context) error {
-	ticker := time.NewTicker(m.Conf.BlockTime)
+	ticker := time.NewTicker(CheckBalancesInterval)
 	defer ticker.Stop()
 
 	for {
@@ -22,7 +24,6 @@ func (m *Manager) MonitorBalances(ctx context.Context) error {
 
 			if balances.DA != nil {
 				if amountFloat, err := strconv.ParseFloat(balances.DA.Amount.String(), 64); err == nil {
-					m.logger.Info("Setting DA balance gauge.", "amount", amountFloat)
 					types.DaLayerBalanceGauge.Set(amountFloat)
 				} else {
 					m.logger.Error("Parsing DA balance amount", "error", err)
@@ -31,7 +32,6 @@ func (m *Manager) MonitorBalances(ctx context.Context) error {
 
 			if balances.SL != nil {
 				if amountFloat, err := strconv.ParseFloat(balances.SL.Amount.String(), 64); err == nil {
-					m.logger.Info("Setting SL balance gauge.", "amount", amountFloat)
 					types.HubLayerBalanceGauge.Set(amountFloat)
 				} else {
 					m.logger.Error("Parsing SL balance amount", "error", err)
