@@ -409,18 +409,43 @@ type Balances struct {
 }
 
 func (m *Manager) checkBalances() (*Balances, error) {
-	daBalance, err := m.DAClient.GetSignerBalance()
-	if err != nil {
-		return nil, fmt.Errorf("get signer balance: %w", err)
+	balances := &Balances{}
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	errChan := make(chan error, 2)
+
+	go func() {
+		defer wg.Done()
+		balance, err := m.DAClient.GetSignerBalance()
+		if err != nil {
+			errChan <- fmt.Errorf("get DA signer balance: %w", err)
+			return
+		}
+		balances.DA = balance
+	}()
+
+	go func() {
+		defer wg.Done()
+		balance, err := m.SLClient.GetSignerBalance()
+		if err != nil {
+			errChan <- fmt.Errorf("get SL signer balance: %w", err)
+			return
+		}
+		balances.SL = balance
+	}()
+
+	wg.Wait()
+	close(errChan)
+
+	var errs []error
+	for err := range errChan {
+		errs = append(errs, err)
 	}
 
-	slBalance, err := m.SLClient.GetSignerBalance()
-	if err != nil {
-		return nil, fmt.Errorf("get signer balance: %w", err)
+	if len(errs) > 0 {
+		return balances, fmt.Errorf("errors checking balances: %v", errs)
 	}
 
-	return &Balances{
-		DA: daBalance,
-		SL: slBalance,
-	}, nil
+	return balances, nil
 }

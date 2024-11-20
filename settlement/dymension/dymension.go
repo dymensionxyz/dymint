@@ -737,7 +737,7 @@ func (c *Client) GetSignerBalance() (*types.Balance, error) {
 		return nil, fmt.Errorf("derive address: %w", err)
 	}
 
-	denom := "udym"
+	denom := "adym"
 
 	res, err := c.cosmosClient.GetBalance(c.ctx, addr, denom)
 	if err != nil {

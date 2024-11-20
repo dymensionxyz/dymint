@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
 	"time"
 
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
@@ -283,38 +282,4 @@ func getHeaderHashAndCommit(store store.Store, height uint64) ([32]byte, *types.
 		return [32]byte{}, nil, fmt.Errorf("load block after load commit: height: %d: %w", height, err)
 	}
 	return lastBlock.Header.Hash(), lastCommit, nil
-}
-
-func (m *Manager) MonitorBalances(ctx context.Context) {
-	ticker := time.NewTicker(m.Conf.BlockTime)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-ticker.C:
-			m.logger.Info("Checking balances.")
-			balances, err := m.checkBalances()
-			if err != nil {
-				m.logger.Error("Checking balances.", "error", err)
-			}
-
-			amountStr := balances.DA.Amount.String()
-			amountFloat, err := strconv.ParseFloat(amountStr, 64)
-			if err != nil {
-				m.logger.Error("Checking balances.", "error", err)
-				return
-			}
-			types.DaLayerBalanceGauge.Set(amountFloat)
-
-			amountStr = balances.SL.Amount.String()
-			amountFloat, err = strconv.ParseFloat(amountStr, 64)
-			if err != nil {
-				m.logger.Error("Checking balances.", "error", err)
-				return
-			}
-			types.HubLayerBalanceGauge.Set(amountFloat)
-		}
-	}
 }

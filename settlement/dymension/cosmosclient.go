@@ -88,18 +88,8 @@ func (c *cosmosClient) GetAccount(accountName string) (cosmosaccount.Account, er
 	return acc, err
 }
 
-func (c *cosmosClient) GetBalance(ctx context.Context, accountName string, denom string) (*sdktypes.Coin, error) {
-	acc, err := c.GetAccount(accountName)
-	if err != nil {
-		return &sdktypes.Coin{}, err
-	}
-
-	addr, err := acc.Address(addressPrefix)
-	if err != nil {
-		return &sdktypes.Coin{}, err
-	}
-
-	balance, err := c.Client.Balance(ctx, addr, denom)
+func (c *cosmosClient) GetBalance(ctx context.Context, address string, denom string) (*sdktypes.Coin, error) {
+	balance, err := c.Client.Balance(ctx, address, denom)
 	if err != nil {
 		return &sdktypes.Coin{}, err
 	}
