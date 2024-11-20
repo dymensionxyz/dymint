@@ -26,7 +26,7 @@ func DefaultConfig(home string) *NodeConfig {
 		BlockManagerConfig: BlockManagerConfig{
 			BlockTime:                  200 * time.Millisecond,
 			MaxIdleTime:                3600 * time.Second,
-			MaxProofTime:               100 * time.Second,
+			MaxProofTime:               5 * time.Second,
 			BatchSubmitTime:            3600 * time.Second,
 			BatchSkew:                  10,
 			BatchSubmitBytes:           500000,
