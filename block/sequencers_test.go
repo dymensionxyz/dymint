@@ -123,7 +123,11 @@ func TestHandleSequencerSetUpdate(t *testing.T) {
 			// Update the set
 			actualNewSet, err := manager.SnapshotSequencerSet()
 			require.NoError(t, err)
-			require.ElementsMatch(t, manager.Sequencers.GetAll(), actualNewSet)
+			if len(tc.diff) == 0 {
+				require.Empty(t, actualNewSet)
+			} else {
+				require.ElementsMatch(t, manager.Sequencers.GetAll(), actualNewSet)
+			}
 
 			// Get the consensus msgs queue and verify the result
 			// Msgs are created only for the diff

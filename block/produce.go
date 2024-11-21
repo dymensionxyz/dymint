@@ -146,11 +146,18 @@ func (m *Manager) produceApplyGossip(ctx context.Context, opts ProduceBlockOptio
 //   - and the most recent one (from the manager memory)
 //
 // It then calculates the diff between the two and creates consensus messages for the new sequencers,
-// i.e., only for the diff between two sets.  The new sequencer set will be used for next block and
-// will be stored in the state after the block production instead of the old sequencer set.
-func (m *Manager) SnapshotSequencerSet() (allSequencers types.Sequencers, err error) {
+// i.e., only for the diff between two sets. If there is any diff (i.e., the sequencer set is updated),
+// the method returns the entire new set. The new set will be used for next block and will be stored
+// in the state instead of the old set after the block production.
+//
+// The set from the state is dumped to memory on reboots. It helps to avoid sending unnecessary
+// UspertSequencer consensus messages on reboots. This is not a 100% solution, because the sequencer set
+// is not persisted in the store in full node mode. It's only used in the proposer mode. Therefore,
+// on rotation from the full node to the proposer, the sequencer set is duplicated as consensus msgs.
+// Though single-time duplication it's not a big deal.
+func (m *Manager) SnapshotSequencerSet() (sequencersAfterUpdate types.Sequencers, err error) {
 	// the most recent sequencer set
-	allSequencers = m.Sequencers.GetAll()
+	sequencersAfterUpdate = m.Sequencers.GetAll()
 
 	// the sequencer set that was used for the last block
 	lastSequencers, err := m.Store.LoadLastBlockSequencerSet()
@@ -161,7 +168,12 @@ func (m *Manager) SnapshotSequencerSet() (allSequencers types.Sequencers, err er
 	}
 
 	// diff between the two sequencer sets
-	newSequencers := types.SequencerListRightOuterJoin(lastSequencers, allSequencers)
+	newSequencers := types.SequencerListRightOuterJoin(lastSequencers, sequencersAfterUpdate)
+
+	if len(newSequencers) == 0 {
+		// nothing to upsert, nothing to persist
+		return nil, nil
+	}
 
 	// create consensus msgs for new sequencers
 	msgs, err := ConsensusMsgsOnSequencerSetUpdate(newSequencers)
@@ -170,7 +182,8 @@ func (m *Manager) SnapshotSequencerSet() (allSequencers types.Sequencers, err er
 	}
 	m.Executor.AddConsensusMsgs(msgs...)
 
-	return allSequencers, nil
+	// return the entire new set if there is any update
+	return sequencersAfterUpdate, nil
 }
 
 func (m *Manager) produceBlock(opts ProduceBlockOptions) (*types.Block, *types.Commit, error) {

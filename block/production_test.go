@@ -405,7 +405,7 @@ func TestUpdateInitialSequencerSet(t *testing.T) {
 
 	// Produce one more block and validate results. We expect to have zero consensus messages
 	// since there are no sequencer set updates.
-	block, _, err = manager.ProduceApplyGossipBlock(ctx, true)
+	block, _, err = manager.ProduceApplyGossipBlock(ctx, block2.ProduceBlockOptions{AllowEmpty: true})
 	require.NoError(err)
 	assert.Greater(t, manager.State.Height(), uint64(1))
 	assert.Zero(t, manager.LastSettlementHeight.Load())

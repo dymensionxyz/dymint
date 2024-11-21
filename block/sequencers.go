@@ -168,25 +168,6 @@ func (m *Manager) UpdateSequencerSetFromSL() error {
 	return nil
 }
 
-// HandleSequencerSetUpdate calculates the diff between hub's and current sequencer sets and
-// creates consensus messages for all new sequencers. The method updates the current state
-// and is not thread-safe. Returns errors on serialization issues.
-func (m *Manager) HandleSequencerSetUpdate(newSet []types.Sequencer) error {
-	actualSequencers := m.Sequencers.GetAll()
-	// find new (updated) sequencers
-	newSequencers := types.SequencerListRightOuterJoin(actualSequencers, newSet)
-	// create consensus msgs for new sequencers
-	msgs, err := ConsensusMsgsOnSequencerSetUpdate(newSequencers)
-	if err != nil {
-		return fmt.Errorf("consensus msgs on sequencers set update: %w", err)
-	}
-	// add consensus msgs to the stream
-	m.Executor.AddConsensusMsgs(msgs...)
-	// save the new sequencer set to the state
-	m.Sequencers.Set(newSet)
-	return nil
-}
-
 // UpdateProposerFromSL queries the hub and updates the local dymint state proposer at the current height
 func (m *Manager) UpdateProposerFromSL() error {
 	SLProposer, err := m.SLClient.GetProposerAtHeight(int64(m.State.NextHeight()))
