@@ -110,6 +110,7 @@ func SubmitLoopInner(
 				UpdateBatchSubmissionGauges(pending, unsubmittedBlocksNum(), batchSkewTime())
 
 				if done || nothingToSubmit || (lastSubmissionIsRecent && maxDataNotExceeded) {
+					pendingBytes.Store(pending)
 					break
 				}
 
