@@ -100,7 +100,7 @@ func TestNodeConfig_Validate(t *testing.T) {
 		}, {
 			name: "max_skew_time 0",
 			malleate: func(nc *config.NodeConfig) {
-				nc.BlockManagerConfig.MaxBatchSkewTime = 0
+				nc.BlockManagerConfig.MaxSkewTime = 0
 			},
 			wantErr: assert.Error,
 		}, {
@@ -187,7 +187,7 @@ func fullNodeConfig() config.NodeConfig {
 			MaxIdleTime:                20 * time.Second,
 			MaxProofTime:               20 * time.Second,
 			BatchSubmitTime:            20 * time.Second,
-			MaxBatchSkewTime:           24 * 7 * time.Hour,
+			MaxSkewTime:                24 * 7 * time.Hour,
 			BatchSubmitBytes:           10000,
 			SequencerSetUpdateInterval: config.DefaultSequencerSetUpdateInterval,
 		},

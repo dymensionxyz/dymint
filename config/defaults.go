@@ -28,7 +28,7 @@ func DefaultConfig(home string) *NodeConfig {
 			MaxIdleTime:                3600 * time.Second,
 			MaxProofTime:               100 * time.Second,
 			BatchSubmitTime:            3600 * time.Second,
-			MaxBatchSkewTime:           24 * 7 * time.Hour,
+			MaxSkewTime:                24 * 7 * time.Hour,
 			BatchSubmitBytes:           500000,
 			SequencerSetUpdateInterval: DefaultSequencerSetUpdateInterval,
 		},

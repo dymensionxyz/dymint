@@ -56,7 +56,7 @@ type BlockManagerConfig struct {
 	// BatchSubmitMaxTime is how long should block manager wait for before submitting batch
 	BatchSubmitTime time.Duration `mapstructure:"batch_submit_time"`
 	// MaxSkewTime is the number of batches waiting to be submitted. Block production will be paused if this limit is reached.
-	MaxBatchSkewTime time.Duration `mapstructure:"max_skew_time"`
+	MaxSkewTime time.Duration `mapstructure:"max_skew_time"`
 	// The size of the batch of blocks and commits in Bytes. We'll write every batch to the DA and the settlement layer.
 	BatchSubmitBytes uint64 `mapstructure:"batch_submit_bytes"`
 	// SequencerSetUpdateInterval defines the interval at which to fetch sequencer updates from the settlement layer
@@ -161,8 +161,8 @@ func (c BlockManagerConfig) Validate() error {
 		return fmt.Errorf("batch_submit_bytes must be positive")
 	}
 
-	if c.MaxBatchSkewTime < c.BatchSubmitTime {
-		return fmt.Errorf("max_skew_time cannot be less than batch_submit_time. max_skew_time: %s batch_submit_time: %s", c.MaxBatchSkewTime, c.BatchSubmitTime)
+	if c.MaxSkewTime < c.BatchSubmitTime {
+		return fmt.Errorf("max_skew_time cannot be less than batch_submit_time. max_skew_time: %s batch_submit_time: %s", c.MaxSkewTime, c.BatchSubmitTime)
 	}
 
 	if c.SequencerSetUpdateInterval <= 0 {

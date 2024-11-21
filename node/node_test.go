@@ -80,7 +80,7 @@ func TestMempoolDirectly(t *testing.T) {
 			BlockTime:                  1 * time.Second,
 			BatchSubmitTime:            60 * time.Second,
 			BatchSubmitBytes:           100000,
-			MaxBatchSkewTime:           24 * 7 * time.Hour,
+			MaxSkewTime:                24 * 7 * time.Hour,
 			SequencerSetUpdateInterval: config.DefaultSequencerSetUpdateInterval,
 		},
 		DAConfig:         "",

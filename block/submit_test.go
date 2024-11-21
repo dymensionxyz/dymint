@@ -255,7 +255,7 @@ func TestSubmissionByTime(t *testing.T) {
 	managerConfig := config.BlockManagerConfig{
 		BlockTime:                  blockTime,
 		MaxIdleTime:                0,
-		MaxBatchSkewTime:           24 * time.Hour,
+		MaxSkewTime:                24 * time.Hour,
 		BatchSubmitTime:            submitTimeout,
 		BatchSubmitBytes:           1000,
 		SequencerSetUpdateInterval: config.DefaultSequencerSetUpdateInterval,

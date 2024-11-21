@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"sync"
 	"sync/atomic"
-	"time"
 
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"golang.org/x/sync/errgroup"
@@ -310,7 +309,7 @@ func (m *Manager) updateFromLastSettlementState() error {
 		// The SL hasn't got any batches for this chain yet.
 		m.logger.Info("No batches for chain found in SL.")
 		m.LastSettlementHeight.Store(uint64(m.Genesis.InitialHeight - 1))
-		m.SetLastBlockTimeInSettlementFromHeight(uint64(m.Genesis.InitialHeight))
+		m.LastBlockTimeInSettlement.Store(m.Genesis.GenesisTime.UTC().UnixNano())
 		return nil
 	}
 	if err != nil {
@@ -420,11 +419,7 @@ func (m *Manager) freezeNode(err error) {
 
 // SetLastBlockTimeInSettlementFromHeight is used to initialize LastBlockTimeInSettlement from rollapp height in settlement
 func (m *Manager) SetLastBlockTimeInSettlementFromHeight(lastSettlementHeight uint64) {
-	// in this case it is considered no batch is submitted yet, so it is initialized to current time
-	if lastSettlementHeight == uint64(1) {
-		m.LastBlockTimeInSettlement.Store(time.Now().UTC().UnixNano())
-		return
-	}
+
 	block, err := m.Store.LoadBlock(lastSettlementHeight)
 	if err != nil {
 		// if settlement height block is not found it will be updated after, when syncing
