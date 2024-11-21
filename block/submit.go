@@ -131,9 +131,11 @@ func SubmitLoopInner(
 					return err
 				}
 				pending = uint64(unsubmittedBlocksBytes())
-				logger.Info("Submitted a batch to both sub-layers.", "n bytes consumed from pending", nConsumed, "pending after", pending) // TODO: debug level
+				if batchSkewTime() < maxProduceSubmitSkewTime {
+					trigger.Nudge()
+				}
+				logger.Info("Submitted a batch to both sub-layers.", "n bytes consumed from pending", nConsumed, "pending after", pending, "skew time", batchSkewTime()) // TODO: debug level
 			}
-			trigger.Nudge()
 		}
 	})
 
