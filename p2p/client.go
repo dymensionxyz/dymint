@@ -601,7 +601,6 @@ func (c *Client) retrieveBlockSyncLoop(ctx context.Context, msgHandler BlockSync
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-
 			if len(c.Peers()) == 0 {
 				continue
 			}
@@ -656,7 +655,6 @@ func (c *Client) retrieveBlockSyncLoop(ctx context.Context, msgHandler BlockSync
 
 // advertiseBlockSyncCids is used to advertise all the block identifiers (cids) stored in the local store to the DHT on startup
 func (c *Client) advertiseBlockSyncCids(ctx context.Context) {
-
 	ticker := time.NewTicker(c.conf.BlockSyncRequestIntervalTime)
 	defer ticker.Stop()
 
@@ -694,7 +692,7 @@ func (c *Client) advertiseBlockSyncCids(ctx context.Context) {
 				}
 
 			}
-			break
+			return
 		}
 	}
 }

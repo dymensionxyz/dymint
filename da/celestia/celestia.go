@@ -272,7 +272,6 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 				func() error {
 					resultRetrieveBatch = c.retrieveBatches(daMetaData)
 					return resultRetrieveBatch.Error
-
 				},
 				retry.Attempts(uint(*c.config.RetryAttempts)),
 				retry.DelayType(retry.FixedDelay),

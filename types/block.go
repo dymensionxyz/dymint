@@ -77,6 +77,7 @@ func (b Block) SizeBytes() int {
 func (b *Block) Height() uint64 {
 	return b.Header.Height
 }
+
 func (b *Block) GetRevision() uint64 {
 	return b.Header.Version.App
 }
