@@ -29,7 +29,6 @@ func (m *Manager) SettlementValidateLoop(ctx context.Context) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		case <-m.settlementValidationC:
-
 			targetValidationHeight := min(m.LastSettlementHeight.Load(), m.State.Height())
 			m.logger.Info("validating state updates to target height", "targetHeight", targetValidationHeight)
 
@@ -40,6 +39,7 @@ func (m *Manager) SettlementValidateLoop(ctx context.Context) error {
 					uevent.MustPublish(ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
 					return err
 				}
+
 				// validate batch
 				err = m.SettlementValidator.ValidateStateUpdate(batch)
 				if err != nil {

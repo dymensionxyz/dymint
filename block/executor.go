@@ -175,7 +175,6 @@ func (e *Executor) CreateBlock(
 	copy(block.Header.DataHash[:], types.GetDataHash(block))
 	copy(block.Header.SequencerHash[:], state.GetProposerHash())
 	copy(block.Header.NextSequencersHash[:], nextSeqHash[:])
-
 	return block
 }
 
@@ -261,7 +260,7 @@ func (e *Executor) ExecuteBlock(block *types.Block) (*tmstate.ABCIResponses, err
 				Votes: nil,
 			},
 			ByzantineValidators: nil,
-			// ConsensusMessages:   block.Data.ConsensusMessages,
+			ConsensusMessages:   block.Data.ConsensusMessages,
 		})
 	if err != nil {
 		return nil, err

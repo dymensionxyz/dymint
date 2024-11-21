@@ -131,7 +131,7 @@ func (v *SettlementValidator) ValidateP2PBlocks(daBlocks []*types.Block, p2pBloc
 			return err
 		}
 		if !bytes.Equal(p2pBlockHash, daBlockHash) {
-			return types.NewErrStateUpdateDoubleSigningFraud(daBlock, p2pBlock)
+			return types.NewErrStateUpdateDoubleSigningFraud(daBlock, p2pBlock, daBlockHash, p2pBlockHash)
 		}
 
 	}
@@ -177,6 +177,13 @@ func (v *SettlementValidator) ValidateDaBlocks(slBatch *settlement.ResultRetriev
 	// because it did not change. If the next sequencer is set, we check if the next sequencer hash is equal on the
 	// last block of the batch
 	lastDABlock := daBlocks[numSlBDs-1]
+
+	// if lastDaBlock is previous block to fork, dont validate nextsequencerhash of last block because it will not match
+	if v.blockManager.State.RevisionStartHeight-1 == lastDABlock.Header.Height {
+		v.logger.Debug("DA blocks, previous to fork, validated successfully", "start height", daBlocks[0].Header.Height, "end height", daBlocks[len(daBlocks)-1].Header.Height)
+		return nil
+	}
+
 	expectedNextSeqHash := lastDABlock.Header.SequencerHash
 	if slBatch.NextSequencer != slBatch.Sequencer {
 		nextSequencer, found := v.blockManager.Sequencers.GetByAddress(slBatch.NextSequencer)
@@ -185,12 +192,9 @@ func (v *SettlementValidator) ValidateDaBlocks(slBatch *settlement.ResultRetriev
 		}
 		copy(expectedNextSeqHash[:], nextSequencer.MustHash())
 	}
-	// FIXME: support hard fork
+
 	if !bytes.Equal(expectedNextSeqHash[:], lastDABlock.Header.NextSequencersHash[:]) {
-		return types.NewErrInvalidNextSequencersHashFraud(
-			expectedNextSeqHash,
-			lastDABlock.Header.NextSequencersHash,
-		)
+		return types.NewErrInvalidNextSequencersHashFraud(expectedNextSeqHash, lastDABlock.Header)
 	}
 
 	v.logger.Debug("DA blocks validated successfully", "start height", daBlocks[0].Header.Height, "end height", daBlocks[len(daBlocks)-1].Header.Height)

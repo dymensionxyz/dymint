@@ -98,9 +98,9 @@ func TestNodeConfig_Validate(t *testing.T) {
 			},
 			wantErr: assert.Error,
 		}, {
-			name: "max_batch_skew 0",
+			name: "max_skew_time 0",
 			malleate: func(nc *config.NodeConfig) {
-				nc.BlockManagerConfig.BatchSkew = 0
+				nc.BlockManagerConfig.MaxSkewTime = 0
 			},
 			wantErr: assert.Error,
 		}, {
@@ -183,12 +183,13 @@ func TestNodeConfig_Validate(t *testing.T) {
 func fullNodeConfig() config.NodeConfig {
 	return config.NodeConfig{
 		BlockManagerConfig: config.BlockManagerConfig{
-			BlockTime:        1 * time.Second,
-			MaxIdleTime:      20 * time.Second,
-			MaxProofTime:     20 * time.Second,
-			BatchSubmitTime:  20 * time.Second,
-			BatchSkew:        10,
-			BatchSubmitBytes: 10000,
+			BlockTime:                  1 * time.Second,
+			MaxIdleTime:                20 * time.Second,
+			MaxProofTime:               20 * time.Second,
+			BatchSubmitTime:            20 * time.Second,
+			MaxSkewTime:                24 * 7 * time.Hour,
+			BatchSubmitBytes:           10000,
+			SequencerSetUpdateInterval: config.DefaultSequencerSetUpdateInterval,
 		},
 		DAConfig:        "da-config",
 		SettlementLayer: "dymension",

@@ -1,7 +1,6 @@
 package block
 
 import (
-	"context"
 	"errors"
 	"fmt"
 
@@ -34,7 +33,7 @@ func (m *Manager) applyBlockWithFraudHandling(block *types.Block, commit *types.
 		// FraudHandler is an interface that defines a method to handle faults. Implement this interface to handle faults
 		// in specific ways. For example, once a fault is detected, it publishes a DataHealthStatus event to the
 		// pubsub which sets the node in a frozen state.
-		m.FraudHandler.HandleFault(context.Background(), err)
+		m.FraudHandler.HandleFault(m.Ctx, err)
 	}
 
 	return err
@@ -122,12 +121,14 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 				m.logger.Debug("pruning channel full. skipping pruning", "retainHeight", retainHeight)
 			}
 		}
-
 		// Update the state with the new app hash, and store height from the commit.
 		// Every one of those, if happens before commit, prevents us from re-executing the block in case failed during commit.
 		m.Executor.UpdateStateAfterCommit(m.State, responses, appHash, block.Header.Height, block.Header.Hash())
+
 	}
 
+	// save last block time used to calculate batch skew time
+	m.LastBlockTime.Store(block.Header.GetTimestamp().UTC().UnixNano())
 	// Update the store:
 	//  1. Save the proposer for the current height to the store.
 	//  2. Update the proposer in the state in case of rotation.
@@ -223,7 +224,9 @@ func (m *Manager) attemptApplyCachedBlocks() error {
 		if !blockExists {
 			break
 		}
-
+		if cachedBlock.Block.GetRevision() != m.State.GetRevision() {
+			break
+		}
 		err := m.applyBlockWithFraudHandling(cachedBlock.Block, cachedBlock.Commit, types.BlockMetaData{Source: cachedBlock.Source})
 		if err != nil {
 			return fmt.Errorf("apply cached block: expected height: %d: %w", expectedHeight, err)

@@ -57,9 +57,8 @@ func NewStateFromGenesis(genDoc *tmtypes.GenesisDoc) (*types.State, error) {
 	}
 
 	s := types.State{
-		Version: InitStateVersion,
-		ChainID: genDoc.ChainID,
-
+		Version:         InitStateVersion,
+		ChainID:         genDoc.ChainID,
 		InitialHeight:   uint64(genDoc.InitialHeight),
 		ConsensusParams: *genDoc.ConsensusParams,
 	}
@@ -123,7 +122,6 @@ func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResp
 	copy(s.LastHeaderHash[:], lastHeaderHash[:])
 
 	s.SetHeight(height)
-
 	if resp.EndBlock.ConsensusParamUpdates != nil {
 		s.ConsensusParams.Block.MaxGas = resp.EndBlock.ConsensusParamUpdates.Block.MaxGas
 		s.ConsensusParams.Block.MaxBytes = resp.EndBlock.ConsensusParamUpdates.Block.MaxBytes

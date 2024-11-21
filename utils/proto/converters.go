@@ -1,6 +1,8 @@
 package proto
 
 import (
+	"strings"
+
 	cosmos "github.com/cosmos/cosmos-sdk/codec/types"
 	"github.com/gogo/protobuf/proto"
 	gogo "github.com/gogo/protobuf/types"
@@ -32,8 +34,10 @@ func FromProtoMsgToAny(msg proto.Message) *gogo.Any {
 		return nil
 	}
 
+	typeUrl := strings.Replace(proto.MessageName(msg), "dymension_rdk", "rollapp", 1)
+
 	return &gogo.Any{
-		TypeUrl: proto.MessageName(msg),
+		TypeUrl: typeUrl,
 		Value:   theType,
 	}
 }
