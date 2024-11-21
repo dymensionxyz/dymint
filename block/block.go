@@ -121,12 +121,14 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 				m.logger.Debug("pruning channel full. skipping pruning", "retainHeight", retainHeight)
 			}
 		}
-
 		// Update the state with the new app hash, and store height from the commit.
 		// Every one of those, if happens before commit, prevents us from re-executing the block in case failed during commit.
 		m.Executor.UpdateStateAfterCommit(m.State, responses, appHash, block.Header.Height, block.Header.Hash())
+
 	}
 
+	// save last block time used to calculate batch skew time
+	m.LastBlockTime.Store(block.Header.GetTimestamp().UTC().UnixNano())
 	// Update the store:
 	//  1. Save the proposer for the current height to the store.
 	//  2. Update the proposer in the state in case of rotation.
