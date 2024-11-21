@@ -410,7 +410,7 @@ func (c *Client) setupPeerDiscovery(ctx context.Context) error {
 	// wait for DHT
 	select {
 	case <-ctx.Done():
-		return ctx.Err()
+		return nil
 	case <-c.DHT.RefreshRoutingTable():
 	}
 	c.disc = discovery.NewRoutingDiscovery(c.DHT)
@@ -569,24 +569,23 @@ func (c *Client) bootstrapLoop(ctx context.Context) {
 	ticker := time.NewTicker(c.conf.BootstrapRetryTime)
 	defer ticker.Stop()
 	for {
-		if len(c.Peers()) == 0 {
-			err := c.DHT.Bootstrap(ctx)
-			if err != nil {
-				c.logger.Error("Re-bootstrap DHT: %w", err)
-			}
-		}
-		persistentNodes := c.GetSeedAddrInfo(c.conf.PersistentNodes)
-		for _, peer := range persistentNodes {
-			found := c.findConnection(peer)
-			if !found {
-				c.tryConnect(ctx, peer)
-			}
-		}
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			continue
+			if len(c.Peers()) == 0 {
+				err := c.DHT.Bootstrap(ctx)
+				if err != nil {
+					c.logger.Error("Re-bootstrap DHT: %w", err)
+				}
+			}
+			persistentNodes := c.GetSeedAddrInfo(c.conf.PersistentNodes)
+			for _, peer := range persistentNodes {
+				found := c.findConnection(peer)
+				if !found {
+					c.tryConnect(ctx, peer)
+				}
+			}
 		}
 	}
 }

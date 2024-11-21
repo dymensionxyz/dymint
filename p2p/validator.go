@@ -85,7 +85,7 @@ func (v *Validator) BlockValidator() GossipValidator {
 			return false
 		}
 		if err := gossipedBlock.Validate(v.stateGetter.GetProposerPubKey()); err != nil {
-			v.logger.Error("Failed to validate gossiped block at P2P level.", "height", gossipedBlock.Block.Header.Height)
+			v.logger.Error("P2P block validation.", "height", gossipedBlock.Block.Header.Height, "err", err)
 			return false
 		}
 
