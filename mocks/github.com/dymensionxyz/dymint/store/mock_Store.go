@@ -694,61 +694,6 @@ func (_c *MockStore_LoadIndexerBaseHeight_Call) RunAndReturn(run func() (uint64,
 	return _c
 }
 
-// LoadLastSettlementBlockTime provides a mock function with given fields:
-func (_m *MockStore) LoadLastSettlementBlockTime() (uint64, error) {
-	ret := _m.Called()
-
-	if len(ret) == 0 {
-		panic("no return value specified for LoadLastSettlementBlockTime")
-	}
-
-	var r0 uint64
-	var r1 error
-	if rf, ok := ret.Get(0).(func() (uint64, error)); ok {
-		return rf()
-	}
-	if rf, ok := ret.Get(0).(func() uint64); ok {
-		r0 = rf()
-	} else {
-		r0 = ret.Get(0).(uint64)
-	}
-
-	if rf, ok := ret.Get(1).(func() error); ok {
-		r1 = rf()
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockStore_LoadLastSettlementBlockTime_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'LoadLastSettlementBlockTime'
-type MockStore_LoadLastSettlementBlockTime_Call struct {
-	*mock.Call
-}
-
-// LoadLastSettlementBlockTime is a helper method to define mock.On call
-func (_e *MockStore_Expecter) LoadLastSettlementBlockTime() *MockStore_LoadLastSettlementBlockTime_Call {
-	return &MockStore_LoadLastSettlementBlockTime_Call{Call: _e.mock.On("LoadLastSettlementBlockTime")}
-}
-
-func (_c *MockStore_LoadLastSettlementBlockTime_Call) Run(run func()) *MockStore_LoadLastSettlementBlockTime_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run()
-	})
-	return _c
-}
-
-func (_c *MockStore_LoadLastSettlementBlockTime_Call) Return(_a0 uint64, _a1 error) *MockStore_LoadLastSettlementBlockTime_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockStore_LoadLastSettlementBlockTime_Call) RunAndReturn(run func() (uint64, error)) *MockStore_LoadLastSettlementBlockTime_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
 // LoadProposer provides a mock function with given fields: height
 func (_m *MockStore) LoadProposer(height uint64) (types.Sequencer, error) {
 	ret := _m.Called(height)
@@ -1501,65 +1446,6 @@ func (_c *MockStore_SaveIndexerBaseHeight_Call) Return(_a0 error) *MockStore_Sav
 }
 
 func (_c *MockStore_SaveIndexerBaseHeight_Call) RunAndReturn(run func(uint64) error) *MockStore_SaveIndexerBaseHeight_Call {
-	_c.Call.Return(run)
-	return _c
-}
-
-// SaveLastSettlementBlockTime provides a mock function with given fields: height, batch
-func (_m *MockStore) SaveLastSettlementBlockTime(height uint64, batch store.KVBatch) (store.KVBatch, error) {
-	ret := _m.Called(height, batch)
-
-	if len(ret) == 0 {
-		panic("no return value specified for SaveLastSettlementBlockTime")
-	}
-
-	var r0 store.KVBatch
-	var r1 error
-	if rf, ok := ret.Get(0).(func(uint64, store.KVBatch) (store.KVBatch, error)); ok {
-		return rf(height, batch)
-	}
-	if rf, ok := ret.Get(0).(func(uint64, store.KVBatch) store.KVBatch); ok {
-		r0 = rf(height, batch)
-	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(store.KVBatch)
-		}
-	}
-
-	if rf, ok := ret.Get(1).(func(uint64, store.KVBatch) error); ok {
-		r1 = rf(height, batch)
-	} else {
-		r1 = ret.Error(1)
-	}
-
-	return r0, r1
-}
-
-// MockStore_SaveLastSettlementBlockTime_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SaveLastSettlementBlockTime'
-type MockStore_SaveLastSettlementBlockTime_Call struct {
-	*mock.Call
-}
-
-// SaveLastSettlementBlockTime is a helper method to define mock.On call
-//   - height uint64
-//   - batch store.KVBatch
-func (_e *MockStore_Expecter) SaveLastSettlementBlockTime(height interface{}, batch interface{}) *MockStore_SaveLastSettlementBlockTime_Call {
-	return &MockStore_SaveLastSettlementBlockTime_Call{Call: _e.mock.On("SaveLastSettlementBlockTime", height, batch)}
-}
-
-func (_c *MockStore_SaveLastSettlementBlockTime_Call) Run(run func(height uint64, batch store.KVBatch)) *MockStore_SaveLastSettlementBlockTime_Call {
-	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(uint64), args[1].(store.KVBatch))
-	})
-	return _c
-}
-
-func (_c *MockStore_SaveLastSettlementBlockTime_Call) Return(_a0 store.KVBatch, _a1 error) *MockStore_SaveLastSettlementBlockTime_Call {
-	_c.Call.Return(_a0, _a1)
-	return _c
-}
-
-func (_c *MockStore_SaveLastSettlementBlockTime_Call) RunAndReturn(run func(uint64, store.KVBatch) (store.KVBatch, error)) *MockStore_SaveLastSettlementBlockTime_Call {
 	_c.Call.Return(run)
 	return _c
 }

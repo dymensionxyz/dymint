@@ -249,7 +249,7 @@ func TestApplyCachedBlocks_WithFraudCheck(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	_, manager.Cancel = context.WithCancel(context.Background())
+	manager.Ctx, manager.Cancel = context.WithCancel(context.Background())
 	go event.MustSubscribe(
 		ctx,
 		manager.Pubsub,
@@ -274,8 +274,9 @@ func TestApplyCachedBlocks_WithFraudCheck(t *testing.T) {
 		assert.NoError(t, err)
 		blockData := p2p.BlockData{Block: *batch.Blocks[0], Commit: *batch.Commits[0]}
 		msg := pubsub.NewMessage(blockData, map[string][]string{p2p.EventTypeKey: {p2p.EventNewGossipedBlock}})
-		manager.OnReceivedBlock(msg)
-
+		if manager.Ctx.Err() == nil {
+			manager.OnReceivedBlock(msg)
+		}
 		// Wait until daHeight is updated
 		time.Sleep(time.Millisecond * 500)
 	}

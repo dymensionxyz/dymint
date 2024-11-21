@@ -140,6 +140,7 @@ func TestValidator_BlockValidator(t *testing.T) {
 
 			getProposer := &p2pmock.MockStateGetter{}
 			getProposer.On("GetProposerPubKey").Return(proposerKey.PubKey())
+			getProposer.On("GetRevision").Return(uint64(0))
 
 			// Create commit for the block
 			abciHeaderPb := types.ToABCIHeaderPB(&block.Header)

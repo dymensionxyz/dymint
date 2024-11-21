@@ -28,8 +28,8 @@ type IValidator interface {
 
 // Validator is a validator for messages gossiped in the p2p network.
 type Validator struct {
-	logger         types.Logger
-	proposerGetter StateGetter
+	logger      types.Logger
+	stateGetter StateGetter
 }
 
 var _ IValidator = (*Validator)(nil)
@@ -37,8 +37,8 @@ var _ IValidator = (*Validator)(nil)
 // NewValidator creates a new Validator.
 func NewValidator(logger types.Logger, blockmanager StateGetter) *Validator {
 	return &Validator{
-		logger:         logger,
-		proposerGetter: blockmanager,
+		logger:      logger,
+		stateGetter: blockmanager,
 	}
 }
 
@@ -81,10 +81,10 @@ func (v *Validator) BlockValidator() GossipValidator {
 			v.logger.Error("Deserialize gossiped block.", "error", err)
 			return false
 		}
-		if v.proposerGetter.GetRevision() != gossipedBlock.Block.GetRevision() {
+		if v.stateGetter.GetRevision() != gossipedBlock.Block.GetRevision() {
 			return false
 		}
-		if err := gossipedBlock.Validate(v.proposerGetter.GetProposerPubKey()); err != nil {
+		if err := gossipedBlock.Validate(v.stateGetter.GetProposerPubKey()); err != nil {
 			v.logger.Error("Failed to validate gossiped block at P2P level.", "height", gossipedBlock.Block.Header.Height)
 			return false
 		}
