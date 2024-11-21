@@ -14,7 +14,6 @@ import (
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
-	uatomic "github.com/dymensionxyz/dymint/utils/atomic"
 	uchannel "github.com/dymensionxyz/dymint/utils/channel"
 )
 
@@ -30,8 +29,10 @@ func (m *Manager) SubmitLoop(ctx context.Context,
 		ctx,
 		m.logger,
 		bytesProduced,
-		m.Conf.BatchSkew,
+		m.Conf.MaxSkewTime,
 		m.GetUnsubmittedBlocks,
+		m.GetUnsubmittedBytes,
+		m.GetBatchSkewTime,
 		m.Conf.BatchSubmitTime,
 		m.Conf.BatchSubmitBytes,
 		m.CreateAndSubmitBatchGetSizeBlocksCommits,
@@ -43,11 +44,13 @@ func SubmitLoopInner(
 	ctx context.Context,
 	logger types.Logger,
 	bytesProduced chan int, // a channel of block and commit bytes produced
-	maxBatchSkew uint64, // max number of blocks that submitter is allowed to have pending
-	unsubmittedBlocks func() uint64,
-	maxBatchTime time.Duration, // max time to allow between batches
-	maxBatchBytes uint64, // max size of serialised batch in bytes
-	createAndSubmitBatch func(maxSizeBytes uint64) (sizeBlocksCommits uint64, err error),
+	maxProduceSubmitSkewTime time.Duration, // max time between last submitted block and last produced block allowed. if this threshold is reached block production is stopped.
+	unsubmittedBlocksNum func() uint64,
+	unsubmittedBlocksBytes func() int,
+	batchSkewTime func() time.Duration,
+	maxBatchSubmitTime time.Duration, // max time to allow between batches
+	maxBatchSubmitBytes uint64, // max size of serialised batch in bytes
+	createAndSubmitBatch func(maxSizeBytes uint64) (bytes uint64, err error),
 ) error {
 	eg, ctx := errgroup.WithContext(ctx)
 
@@ -60,7 +63,17 @@ func SubmitLoopInner(
 		// 'trigger': this thread is responsible for waking up the submitter when a new block arrives, and back-pressures the block production loop
 		// if it gets too far ahead.
 		for {
-			if maxBatchSkew*maxBatchBytes < pendingBytes.Load() {
+			select {
+			case <-ctx.Done():
+				return ctx.Err()
+			case n := <-bytesProduced:
+				pendingBytes.Add(uint64(n))
+				logger.Debug("Added bytes produced to bytes pending submission counter.", "bytes added", n, "pending", pendingBytes.Load())
+			}
+
+			submitter.Nudge()
+
+			if maxProduceSubmitSkewTime < batchSkewTime() {
 				// too much stuff is pending submission
 				// we block here until we get a progress nudge from the submitter thread
 				select {
@@ -68,26 +81,14 @@ func SubmitLoopInner(
 					return ctx.Err()
 				case <-trigger.C:
 				}
-			} else {
-				select {
-				case <-ctx.Done():
-					return ctx.Err()
-				case n := <-bytesProduced:
-					pendingBytes.Add(uint64(n))
-					logger.Debug("Added bytes produced to bytes pending submission counter.", "bytes added", n, "pending", pendingBytes.Load())
-				}
 			}
 
-			types.RollappPendingSubmissionsSkewBytes.Set(float64(pendingBytes.Load()))
-			types.RollappPendingSubmissionsSkewBlocks.Set(float64(unsubmittedBlocks()))
-			submitter.Nudge()
 		}
 	})
 
 	eg.Go(func() error {
 		// 'submitter': this thread actually creates and submits batches, and will do it on a timer if he isn't nudged by block production
-		timeLastSubmission := time.Now()
-		ticker := time.NewTicker(maxBatchTime / 10) // interval does not need to match max batch time since we keep track anyway, it's just to wakeup
+		ticker := time.NewTicker(maxBatchSubmitTime / 10) // interval does not need to match max batch time since we keep track anyway, it's just to wakeup
 		for {
 			select {
 			case <-ctx.Done():
@@ -97,21 +98,24 @@ func SubmitLoopInner(
 			}
 
 			pending := pendingBytes.Load()
-			types.RollappPendingSubmissionsSkewBytes.Set(float64(pendingBytes.Load()))
-			types.RollappPendingSubmissionsSkewBlocks.Set(float64(unsubmittedBlocks()))
-			types.RollappPendingSubmissionsSkewBatches.Set(float64(pendingBytes.Load() / maxBatchBytes))
 
 			// while there are accumulated blocks, create and submit batches!!
 			for {
 				done := ctx.Err() != nil
 				nothingToSubmit := pending == 0
-				lastSubmissionIsRecent := time.Since(timeLastSubmission) < maxBatchTime
-				maxDataNotExceeded := pending <= maxBatchBytes
+
+				lastSubmissionIsRecent := batchSkewTime() < maxBatchSubmitTime
+				maxDataNotExceeded := pending <= maxBatchSubmitBytes
+
+				UpdateBatchSubmissionGauges(pending, unsubmittedBlocksNum(), batchSkewTime())
+
 				if done || nothingToSubmit || (lastSubmissionIsRecent && maxDataNotExceeded) {
+					pendingBytes.Store(pending)
+					ticker.Reset(maxBatchSubmitTime)
 					break
 				}
 
-				nConsumed, err := createAndSubmitBatch(min(pending, maxBatchBytes))
+				nConsumed, err := createAndSubmitBatch(maxBatchSubmitBytes)
 				if err != nil {
 					err = fmt.Errorf("create and submit batch: %w", err)
 					if errors.Is(err, gerrc.ErrInternal) {
@@ -126,12 +130,12 @@ func SubmitLoopInner(
 					}
 					return err
 				}
-				timeLastSubmission = time.Now()
-				ticker.Reset(maxBatchTime)
-				pending = uatomic.Uint64Sub(&pendingBytes, nConsumed)
-				logger.Info("Submitted a batch to both sub-layers.", "n bytes consumed from pending", nConsumed, "pending after", pending) // TODO: debug level
+				pending = uint64(unsubmittedBlocksBytes())
+				if batchSkewTime() < maxProduceSubmitSkewTime {
+					trigger.Nudge()
+				}
+				logger.Info("Submitted a batch to both sub-layers.", "n bytes consumed from pending", nConsumed, "pending after", pending, "skew time", batchSkewTime()) // TODO: debug level
 			}
-			trigger.Nudge()
 		}
 	})
 
@@ -219,7 +223,7 @@ func (m *Manager) CreateBatch(maxBatchSize uint64, startHeight uint64, endHeight
 			batch.DRSVersion = batch.DRSVersion[:len(batch.DRSVersion)-1]
 
 			if h == startHeight {
-				return nil, fmt.Errorf("block size exceeds max batch size: h %d: size: %d: %w", h, totalSize, gerrc.ErrOutOfRange)
+				return nil, fmt.Errorf("block size exceeds max batch size: h %d: batch size: %d: max size: %d err:%w", h, totalSize, maxBatchSize, gerrc.ErrOutOfRange)
 			}
 			break
 		}
@@ -246,7 +250,10 @@ func (m *Manager) SubmitBatch(batch *types.Batch) error {
 	types.RollappHubHeightGauge.Set(float64(batch.EndHeight()))
 	m.LastSettlementHeight.Store(batch.EndHeight())
 
-	return nil
+	// update last submitted block time with batch last block (used to calculate max skew time)
+	m.LastBlockTimeInSettlement.Store(batch.Blocks[len(batch.Blocks)-1].Header.GetTimestamp().UTC().UnixNano())
+
+	return err
 }
 
 // GetUnsubmittedBytes returns the total number of unsubmitted bytes produced an element on a channel
@@ -299,4 +306,17 @@ func (m *Manager) UpdateLastSubmittedHeight(event pubsub.Message) {
 			break
 		}
 	}
+}
+
+// GetBatchSkewTime returns the time between the last produced block and the last block submitted to SL
+func (m *Manager) GetBatchSkewTime() time.Duration {
+	lastProducedTime := time.Unix(0, m.LastBlockTime.Load())
+	lastSubmittedTime := time.Unix(0, m.LastBlockTimeInSettlement.Load())
+	return lastProducedTime.Sub(lastSubmittedTime)
+}
+
+func UpdateBatchSubmissionGauges(skewBytes uint64, skewBlocks uint64, skewTime time.Duration) {
+	types.RollappPendingSubmissionsSkewBytes.Set(float64(skewBytes))
+	types.RollappPendingSubmissionsSkewBlocks.Set(float64(skewBlocks))
+	types.RollappPendingSubmissionsSkewTimeMinutes.Set(float64(skewTime.Minutes()))
 }
