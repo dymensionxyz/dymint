@@ -111,6 +111,7 @@ func SubmitLoopInner(
 
 				if done || nothingToSubmit || (lastSubmissionIsRecent && maxDataNotExceeded) {
 					pendingBytes.Store(pending)
+					ticker.Reset(maxBatchSubmitTime)
 					break
 				}
 
@@ -129,7 +130,6 @@ func SubmitLoopInner(
 					}
 					return err
 				}
-				ticker.Reset(maxBatchSubmitTime)
 				pending = uint64(unsubmittedBlocksBytes())
 				logger.Info("Submitted a batch to both sub-layers.", "n bytes consumed from pending", nConsumed, "pending after", pending) // TODO: debug level
 			}
