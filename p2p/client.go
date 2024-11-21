@@ -606,6 +606,9 @@ func (c *Client) retrieveBlockSyncLoop(ctx context.Context, msgHandler BlockSync
 		// this loop iterates and retrieves all the blocks between the last block applied and the greatest height received,
 		// skipping any block cached, since are already received.
 		for h := state.NextHeight(); h <= c.blocksReceived.latestSeenHeight; h++ {
+			if ctx.Err() != nil {
+				return
+			}
 			ok := c.blocksReceived.IsBlockReceived(h)
 			if ok {
 				continue
@@ -613,7 +616,7 @@ func (c *Client) retrieveBlockSyncLoop(ctx context.Context, msgHandler BlockSync
 			c.logger.Debug("Blocksync getting block.", "height", h, "revision", state.GetRevision())
 			id, err := c.GetBlockIdFromDHT(ctx, h, state.GetRevision())
 			if err != nil || id == cid.Undef {
-				c.logger.Error("Blocksync unable to find cid", "height", h)
+				c.logger.Debug("Blocksync unable to find cid", "height", h)
 				continue
 			}
 			_, err = c.store.SaveBlockCid(h, id, nil)
@@ -626,13 +629,16 @@ func (c *Client) retrieveBlockSyncLoop(ctx context.Context, msgHandler BlockSync
 				c.logger.Error("Blocksync LoadBlock", "err", err)
 				continue
 			}
-
 			c.logger.Debug("Blocksync block received ", "height", h)
-			msgHandler(&block)
+
 			state, err := c.store.LoadState()
 			if err != nil {
 				return
 			}
+			if err := block.Validate(state.GetProposerPubKey()); err != nil {
+				c.logger.Error("Failed to validate blocksync block.", "height", block.Block.Header.Height)
+			}
+			msgHandler(&block)
 			h = max(h, state.NextHeight()-1)
 		}
 		c.blocksReceived.RemoveBlocksReceivedUpToHeight(state.NextHeight())
@@ -657,7 +663,9 @@ func (c *Client) advertiseBlockSyncCids(ctx context.Context) {
 		return
 	}
 	for h := baseHeight; h <= state.Height(); h++ {
-
+		if ctx.Err() != nil {
+			return
+		}
 		id, err := c.store.LoadBlockCid(h)
 		if err != nil || id == cid.Undef {
 			continue

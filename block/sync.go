@@ -61,9 +61,9 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 				}
 				// if we have the block locally, we don't need to fetch it from the DA.
 				// it will only happen in case of rollback.
-				err := m.applyLocalBlock(currH)
+				err := m.applyLocalBlock()
 				if err == nil {
-					m.logger.Info("Synced from local", "store height", currH, "target height", m.LastSettlementHeight.Load())
+					m.logger.Info("Synced from local", "store height", m.State.Height(), "target height", m.LastSettlementHeight.Load())
 					continue
 				}
 				if !errors.Is(err, gerrc.ErrNotFound) {

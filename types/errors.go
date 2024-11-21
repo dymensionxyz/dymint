@@ -160,6 +160,7 @@ type ErrLastHeaderHashMismatch struct {
 }
 
 func NewErrLastHeaderHashMismatch(expected [32]byte, block *Block) error {
+
 	return &ErrLastHeaderHashMismatch{
 		Expected:       expected,
 		LastHeaderHash: block.Header.LastHeaderHash,

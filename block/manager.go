@@ -232,6 +232,10 @@ func (m *Manager) Start(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
+		_, err = m.Store.SaveState(m.State, nil)
+		if err != nil {
+			return err
+		}
 	}
 
 	// checks if the the current node is the proposer either on rollapp or on the hub.
@@ -419,6 +423,8 @@ func (m *Manager) freezeNode(err error) {
 		return
 	}
 	uevent.MustPublish(m.Ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
+	m.P2PClient.Close()
+	m.DAClient.Stop()
 	m.Cancel()
 }
 
