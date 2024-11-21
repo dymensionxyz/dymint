@@ -597,88 +597,105 @@ func (c *Client) retrieveBlockSyncLoop(ctx context.Context, msgHandler BlockSync
 	defer ticker.Stop()
 
 	for {
-
-		state, err := c.store.LoadState()
-		if err != nil {
-			continue
-		}
-
-		// this loop iterates and retrieves all the blocks between the last block applied and the greatest height received,
-		// skipping any block cached, since are already received.
-		for h := state.NextHeight(); h <= c.blocksReceived.latestSeenHeight; h++ {
-			if ctx.Err() != nil {
-				return
-			}
-			ok := c.blocksReceived.IsBlockReceived(h)
-			if ok {
-				continue
-			}
-			c.logger.Debug("Blocksync getting block.", "height", h, "revision", state.GetRevision())
-			id, err := c.GetBlockIdFromDHT(ctx, h, state.GetRevision())
-			if err != nil || id == cid.Undef {
-				c.logger.Debug("Blocksync unable to find cid", "height", h)
-				continue
-			}
-			_, err = c.store.SaveBlockCid(h, id, nil)
-			if err != nil {
-				c.logger.Error("Blocksync storing block cid", "height", h, "cid", id)
-				continue
-			}
-			block, err := c.blocksync.LoadBlock(ctx, id)
-			if err != nil {
-				c.logger.Error("Blocksync LoadBlock", "err", err)
-				continue
-			}
-			c.logger.Debug("Blocksync block received ", "height", h)
-
-			state, err := c.store.LoadState()
-			if err != nil {
-				return
-			}
-			if err := block.Validate(state.GetProposerPubKey()); err != nil {
-				c.logger.Error("Failed to validate blocksync block.", "height", block.Block.Header.Height)
-			}
-			msgHandler(&block)
-			h = max(h, state.NextHeight()-1)
-		}
-		c.blocksReceived.RemoveBlocksReceivedUpToHeight(state.NextHeight())
-
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			continue
+
+			if len(c.Peers()) == 0 {
+				continue
+			}
+			state, err := c.store.LoadState()
+			if err != nil {
+				continue
+			}
+
+			// this loop iterates and retrieves all the blocks between the last block applied and the greatest height received,
+			// skipping any block cached, since are already received.
+			for h := state.NextHeight(); h <= c.blocksReceived.latestSeenHeight; h++ {
+				if ctx.Err() != nil {
+					return
+				}
+				ok := c.blocksReceived.IsBlockReceived(h)
+				if ok {
+					continue
+				}
+				c.logger.Debug("Blocksync getting block.", "height", h, "revision", state.GetRevision())
+				id, err := c.GetBlockIdFromDHT(ctx, h, state.GetRevision())
+				if err != nil || id == cid.Undef {
+					c.logger.Debug("Blocksync unable to find cid", "height", h)
+					continue
+				}
+				_, err = c.store.SaveBlockCid(h, id, nil)
+				if err != nil {
+					c.logger.Error("Blocksync storing block cid", "height", h, "cid", id)
+					continue
+				}
+				block, err := c.blocksync.LoadBlock(ctx, id)
+				if err != nil {
+					c.logger.Error("Blocksync LoadBlock", "err", err)
+					continue
+				}
+				c.logger.Debug("Blocksync block received ", "height", h)
+
+				state, err := c.store.LoadState()
+				if err != nil {
+					return
+				}
+				if err := block.Validate(state.GetProposerPubKey()); err != nil {
+					c.logger.Error("Failed to validate blocksync block.", "height", block.Block.Header.Height)
+				}
+				msgHandler(&block)
+				h = max(h, state.NextHeight()-1)
+			}
+			c.blocksReceived.RemoveBlocksReceivedUpToHeight(state.NextHeight())
+
 		}
 	}
 }
 
 // advertiseBlockSyncCids is used to advertise all the block identifiers (cids) stored in the local store to the DHT on startup
 func (c *Client) advertiseBlockSyncCids(ctx context.Context) {
-	state, err := c.store.LoadState()
-	if err != nil {
-		return
-	}
-	baseHeight, err := c.store.LoadBlockSyncBaseHeight()
-	if err != nil && !errors.Is(err, gerrc.ErrNotFound) {
-		return
-	}
-	for h := baseHeight; h <= state.Height(); h++ {
-		if ctx.Err() != nil {
-			return
-		}
-		id, err := c.store.LoadBlockCid(h)
-		if err != nil || id == cid.Undef {
-			continue
-		}
-		revision := uint64(0)
-		if h >= state.RevisionStartHeight {
-			revision = state.GetRevision()
-		}
-		err = c.AdvertiseBlockIdToDHT(ctx, h, revision, id)
-		if err != nil {
-			continue
-		}
 
+	ticker := time.NewTicker(c.conf.BlockSyncRequestIntervalTime)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			if len(c.Peers()) == 0 {
+				continue
+			}
+			state, err := c.store.LoadState()
+			if err != nil {
+				return
+			}
+			baseHeight, err := c.store.LoadBlockSyncBaseHeight()
+			if err != nil && !errors.Is(err, gerrc.ErrNotFound) {
+				return
+			}
+			for h := baseHeight; h <= state.Height(); h++ {
+				if ctx.Err() != nil {
+					return
+				}
+				id, err := c.store.LoadBlockCid(h)
+				if err != nil || id == cid.Undef {
+					continue
+				}
+				revision := uint64(0)
+				if h >= state.RevisionStartHeight {
+					revision = state.GetRevision()
+				}
+				err = c.AdvertiseBlockIdToDHT(ctx, h, revision, id)
+				if err != nil {
+					continue
+				}
+
+			}
+			break
+		}
 	}
 }
 
