@@ -419,7 +419,6 @@ func (m *Manager) freezeNode(err error) {
 
 // SetLastBlockTimeInSettlementFromHeight is used to initialize LastBlockTimeInSettlement from rollapp height in settlement
 func (m *Manager) SetLastBlockTimeInSettlementFromHeight(lastSettlementHeight uint64) {
-
 	block, err := m.Store.LoadBlock(lastSettlementHeight)
 	if err != nil {
 		// if settlement height block is not found it will be updated after, when syncing
