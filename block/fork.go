@@ -7,12 +7,11 @@ import (
 	"time"
 
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"
+	sequencers "github.com/dymensionxyz/dymension-rdk/x/sequencers/types"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/gogo/protobuf/proto"
 
-	sequencers "github.com/dymensionxyz/dymension-rdk/x/sequencers/types"
 	"github.com/dymensionxyz/dymint/types"
-
 	"github.com/dymensionxyz/dymint/version"
 )
 
@@ -50,29 +49,33 @@ func (m *Manager) checkForkUpdate(msg string) error {
 		return err
 	}
 
-	if m.shouldStopNode(rollapp, m.State.GetRevision()) {
-		err = m.createInstruction(rollapp)
+	var (
+		nextHeight       = m.State.NextHeight()
+		actualRevision   = m.State.GetRevision()
+		expectedRevision = rollapp.GetRevisionForHeight(nextHeight)
+	)
+	if shouldStopNode(expectedRevision, nextHeight, actualRevision) {
+		err = m.createInstruction(expectedRevision)
 		if err != nil {
 			return err
 		}
 
-		m.freezeNode(fmt.Errorf("%s  local_block_height: %d rollapp_revision_start_height: %d local_revision: %d rollapp_revision: %d", msg, m.State.Height(), rollapp.LatestRevision().StartHeight, m.State.GetRevision(), rollapp.LatestRevision().Number))
+		m.freezeNode(fmt.Errorf("%s  local_block_height: %d rollapp_revision_start_height: %d local_revision: %d rollapp_revision: %d", msg, m.State.Height(), expectedRevision.StartHeight, actualRevision, expectedRevision.Number))
 	}
 
 	return nil
 }
 
 // createInstruction writes file to disk with fork information
-func (m *Manager) createInstruction(rollapp *types.Rollapp) error {
+func (m *Manager) createInstruction(expectedRevision types.Revision) error {
 	obsoleteDrs, err := m.SLClient.GetObsoleteDrs()
 	if err != nil {
 		return err
 	}
 
-	revision := rollapp.LatestRevision()
 	instruction := types.Instruction{
-		Revision:            revision.Number,
-		RevisionStartHeight: revision.StartHeight,
+		Revision:            expectedRevision.Number,
+		RevisionStartHeight: expectedRevision.StartHeight,
 		FaultyDRS:           obsoleteDrs,
 	}
 
@@ -89,11 +92,12 @@ func (m *Manager) createInstruction(rollapp *types.Rollapp) error {
 // This method checks two conditions to decide if a node should be stopped:
 // 1. If the next state height is greater than or equal to the rollapp's revision start height.
 // 2. If the block's app version (equivalent to revision) is less than the rollapp's revision
-func (m *Manager) shouldStopNode(rollapp *types.Rollapp, revision uint64) bool {
-	if m.State.NextHeight() >= rollapp.LatestRevision().StartHeight && revision < rollapp.LatestRevision().Number {
-		return true
-	}
-	return false
+func shouldStopNode(
+	expectedRevision types.Revision,
+	nextHeight uint64,
+	actualRevisionNumber uint64,
+) bool {
+	return nextHeight >= expectedRevision.StartHeight && actualRevisionNumber < expectedRevision.Number
 }
 
 // forkNeeded returns true if the fork file exists
