@@ -39,6 +39,7 @@ func TestBatchOverhead(t *testing.T) {
 	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, nil, nil)
 	require.NoError(t, err)
 	require.NotNil(t, manager)
+
 	maxBatchSize := uint64(10_000)                                            // 10KB
 	maxTxData := uint64(float64(maxBatchSize) * types.MaxBlockSizeAdjustment) // 90% of maxBatchSize
 
@@ -211,12 +212,12 @@ func TestBatchSubmissionFailedSubmission(t *testing.T) {
 	assert.Zero(t, manager.LastSettlementHeight.Load())
 
 	// try to submit, we expect failure
-	slmock.On("SubmitBatch", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(fmt.Errorf("submit batch")).Once()
+	slmock.On("SubmitBatch", mock.Anything, mock.Anything, mock.Anything).Return(fmt.Errorf("submit batch")).Once()
 	_, err = manager.CreateAndSubmitBatch(manager.Conf.BatchSubmitBytes, false)
 	assert.Error(t, err)
 
 	// try to submit again, we expect success
-	slmock.On("SubmitBatch", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
+	slmock.On("SubmitBatch", mock.Anything, mock.Anything, mock.Anything).Return(nil).Once()
 	manager.CreateAndSubmitBatch(manager.Conf.BatchSubmitBytes, false)
 	assert.EqualValues(t, manager.State.Height(), manager.LastSettlementHeight.Load())
 }
@@ -252,11 +253,12 @@ func TestSubmissionByTime(t *testing.T) {
 
 	// Init manager with empty blocks feature enabled
 	managerConfig := config.BlockManagerConfig{
-		BlockTime:        blockTime,
-		MaxIdleTime:      0,
-		BatchSkew:        10,
-		BatchSubmitTime:  submitTimeout,
-		BatchSubmitBytes: 1000,
+		BlockTime:                  blockTime,
+		MaxIdleTime:                0,
+		MaxSkewTime:                24 * time.Hour,
+		BatchSubmitTime:            submitTimeout,
+		BatchSubmitBytes:           1000,
+		SequencerSetUpdateInterval: config.DefaultSequencerSetUpdateInterval,
 	}
 
 	manager, err := testutil.GetManager(managerConfig, nil, 1, 1, 0, proxyApp, nil)
@@ -265,6 +267,7 @@ func TestSubmissionByTime(t *testing.T) {
 	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
 	manager.Retriever = manager.DAClient.(da.BatchRetriever)
 
+	manager.LastBlockTimeInSettlement.Store(time.Now().UTC().UnixNano())
 	// Check initial height
 	initialHeight := uint64(0)
 	require.Equal(initialHeight, manager.State.Height())
@@ -337,6 +340,7 @@ func TestSubmissionByBatchSize(t *testing.T) {
 		managerConfig.BatchSubmitBytes = c.blockBatchMaxSizeBytes
 		manager, err := testutil.GetManager(managerConfig, nil, 1, 1, 0, proxyApp, nil)
 		require.NoError(err)
+		manager.LastBlockTimeInSettlement.Store(time.Now().UTC().UnixNano())
 
 		manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
 		manager.Retriever = manager.DAClient.(da.BatchRetriever)

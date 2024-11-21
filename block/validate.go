@@ -39,6 +39,7 @@ func (m *Manager) SettlementValidateLoop(ctx context.Context) error {
 					uevent.MustPublish(ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
 					return err
 				}
+
 				// validate batch
 				err = m.SettlementValidator.ValidateStateUpdate(batch)
 				if err != nil {
