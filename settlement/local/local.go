@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"cosmossdk.io/math"
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
@@ -343,4 +344,11 @@ func keyFromIndex(ix uint64) []byte {
 	b = append(b, byte('i'))
 	binary.BigEndian.PutUint64(b, ix)
 	return b
+}
+
+func (c *Client) GetSignerBalance() (types.Balance, error) {
+	return types.Balance{
+		Amount: math.ZeroInt(),
+		Denom:  "adym",
+	}, nil
 }

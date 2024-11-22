@@ -102,7 +102,7 @@ func WithBatchRetryAttempts(attempts uint) da.Option {
 }
 
 // Init initializes DataAvailabilityLayerClient instance.
-func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.Server, kvStore store.KV, logger types.Logger, options ...da.Option) error {
+func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.Server, _ store.KV, logger types.Logger, options ...da.Option) error {
 	c.logger = logger
 	c.synced = make(chan struct{}, 1)
 
@@ -441,4 +441,9 @@ func (c *DataAvailabilityLayerClient) getHeightFromHash(hash availtypes.Hash) (u
 // GetMaxBlobSizeBytes returns the maximum allowed blob size in the DA, used to check the max batch size configured
 func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint32 {
 	return maxBlobSize
+}
+
+// GetBalance returns the balance for a specific address
+func (c *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
+	return da.Balance{}, nil
 }
