@@ -2,6 +2,7 @@ package celestia
 
 import (
 	"context"
+
 	openrpc "github.com/celestiaorg/celestia-openrpc"
 	"github.com/celestiaorg/celestia-openrpc/types/blob"
 	"github.com/celestiaorg/celestia-openrpc/types/header"

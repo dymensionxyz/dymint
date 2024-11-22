@@ -3,11 +3,11 @@ package block
 import (
 	"context"
 	"fmt"
-	"github.com/cockroachdb/errors"
 	"strconv"
 	"sync"
 	"time"
 
+	"github.com/cockroachdb/errors"
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/types"
 )
