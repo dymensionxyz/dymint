@@ -417,53 +417,6 @@ func (m *Manager) freezeNode(err error) {
 	m.Cancel()
 }
 
-type Balances struct {
-	DA *da.Balance
-	SL *types.Balance
-}
-
-func (m *Manager) checkBalances() (*Balances, error) {
-	balances := &Balances{}
-	var wg sync.WaitGroup
-	wg.Add(2)
-
-	errChan := make(chan error, 2)
-
-	go func() {
-		defer wg.Done()
-		balance, err := m.DAClient.GetSignerBalance()
-		if err != nil {
-			errChan <- fmt.Errorf("get DA signer balance: %w", err)
-			return
-		}
-		balances.DA = balance
-	}()
-
-	go func() {
-		defer wg.Done()
-		balance, err := m.SLClient.GetSignerBalance()
-		if err != nil {
-			errChan <- fmt.Errorf("get SL signer balance: %w", err)
-			return
-		}
-		balances.SL = balance
-	}()
-
-	wg.Wait()
-	close(errChan)
-
-	var errs []error
-	for err := range errChan {
-		errs = append(errs, err)
-	}
-
-	if len(errs) > 0 {
-		return balances, fmt.Errorf("errors checking balances: %v", errs)
-	}
-
-	return balances, nil
-}
-
 // SetLastBlockTimeInSettlementFromHeight is used to initialize LastBlockTimeInSettlement from rollapp height in settlement
 func (m *Manager) SetLastBlockTimeInSettlementFromHeight(lastSettlementHeight uint64) {
 	block, err := m.Store.LoadBlock(lastSettlementHeight)

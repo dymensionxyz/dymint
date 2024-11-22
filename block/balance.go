@@ -2,9 +2,14 @@ package block
 
 import (
 	"context"
-	"github.com/dymensionxyz/dymint/types"
+	"fmt"
+	"github.com/cockroachdb/errors"
 	"strconv"
+	"sync"
 	"time"
+
+	"github.com/dymensionxyz/dymint/da"
+	"github.com/dymensionxyz/dymint/types"
 )
 
 const CheckBalancesInterval = 3 * time.Minute
@@ -43,4 +48,53 @@ func (m *Manager) MonitorBalances(ctx context.Context) error {
 			}
 		}
 	}
+}
+
+type Balances struct {
+	DA *da.Balance
+	SL *types.Balance
+}
+
+func (m *Manager) checkBalances() (*Balances, error) {
+	balances := &Balances{}
+	var wg sync.WaitGroup
+	wg.Add(2)
+
+	var errDA, errSL error
+
+	go func() {
+		defer wg.Done()
+		balance, err := m.DAClient.GetSignerBalance()
+		if err != nil {
+			errDA = fmt.Errorf("get DA signer balance: %w", err)
+			return
+		}
+		balances.DA = balance
+	}()
+
+	go func() {
+		defer wg.Done()
+		balance, err := m.SLClient.GetSignerBalance()
+		if err != nil {
+			errSL = fmt.Errorf("get SL signer balance: %w", err)
+			return
+		}
+		balances.SL = balance
+	}()
+
+	wg.Wait()
+
+	var errs error
+	if errDA != nil {
+		errs = errors.Join(errs, errDA)
+	}
+	if errSL != nil {
+		errs = errors.Join(errs, errSL)
+	}
+
+	if errs != nil {
+		return balances, fmt.Errorf("errors checking balances: %w", errs)
+	}
+
+	return balances, nil
 }
