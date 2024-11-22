@@ -129,7 +129,7 @@ func SubmitLoopInner(
 					return err
 				}
 				ticker.Reset(maxBatchSubmitTime)
-				pending = uint64(unsubmittedBlocksBytes())
+				pending = uint64(unsubmittedBlocksBytes())                                                                                 //nolint:gosec // bytes size is always positive
 				logger.Info("Submitted a batch to both sub-layers.", "n bytes consumed from pending", nConsumed, "pending after", pending) // TODO: debug level
 			}
 			trigger.Nudge()
