@@ -108,6 +108,12 @@ message Sequencer {
 	repeated string whitelisted_relayers = 4;
 }
 
+// SequencerSet is a struct that holds the sequencers set. This type is used to persist the latest
+// applied sequencers set in the store.
+message SequencerSet {
+	repeated Sequencer sequencers = 1 [(gogoproto.nullable) = false];
+}
+
 message EventKeys {
 	repeated bytes keys = 1;
 }
