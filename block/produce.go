@@ -119,13 +119,18 @@ func (m *Manager) ProduceApplyGossipBlock(ctx context.Context, opts ProduceBlock
 }
 
 func (m *Manager) produceApplyGossip(ctx context.Context, opts ProduceBlockOptions) (block *types.Block, commit *types.Commit, err error) {
+	newSequencerSet, err := m.SnapshotSequencerSet()
+	if err != nil {
+		return nil, nil, fmt.Errorf("snapshot sequencer set: %w", err)
+	}
+
 	// If I'm not the current rollapp proposer, I should not produce a blocks.
 	block, commit, err = m.produceBlock(opts)
 	if err != nil {
 		return nil, nil, fmt.Errorf("produce block: %w", err)
 	}
 
-	if err := m.applyBlock(block, commit, types.BlockMetaData{Source: types.Produced}); err != nil {
+	if err := m.applyBlock(block, commit, types.BlockMetaData{Source: types.Produced, SequencerSet: newSequencerSet}); err != nil {
 		return nil, nil, fmt.Errorf("apply block: %w: %w", err, ErrNonRecoverable)
 	}
 
@@ -134,6 +139,51 @@ func (m *Manager) produceApplyGossip(ctx context.Context, opts ProduceBlockOptio
 	}
 
 	return block, commit, nil
+}
+
+// SnapshotSequencerSet loads two versions of the sequencer set:
+//   - the one that was used for the last block (from the store)
+//   - and the most recent one (from the manager memory)
+//
+// It then calculates the diff between the two and creates consensus messages for the new sequencers,
+// i.e., only for the diff between two sets. If there is any diff (i.e., the sequencer set is updated),
+// the method returns the entire new set. The new set will be used for next block and will be stored
+// in the state instead of the old set after the block production.
+//
+// The set from the state is dumped to memory on reboots. It helps to avoid sending unnecessary
+// UspertSequencer consensus messages on reboots. This is not a 100% solution, because the sequencer set
+// is not persisted in the store in full node mode. It's only used in the proposer mode. Therefore,
+// on rotation from the full node to the proposer, the sequencer set is duplicated as consensus msgs.
+// Though single-time duplication it's not a big deal.
+func (m *Manager) SnapshotSequencerSet() (sequencersAfterUpdate types.Sequencers, err error) {
+	// the most recent sequencer set
+	sequencersAfterUpdate = m.Sequencers.GetAll()
+
+	// the sequencer set that was used for the last block
+	lastSequencers, err := m.Store.LoadLastBlockSequencerSet()
+	// it's okay if the last sequencer set is not found, it can happen on genesis or after
+	// rotation from the full node to the proposer
+	if err != nil && !errors.Is(err, gerrc.ErrNotFound) {
+		return nil, fmt.Errorf("load last block sequencer set: %w", err)
+	}
+
+	// diff between the two sequencer sets
+	newSequencers := types.SequencerListRightOuterJoin(lastSequencers, sequencersAfterUpdate)
+
+	if len(newSequencers) == 0 {
+		// nothing to upsert, nothing to persist
+		return nil, nil
+	}
+
+	// create consensus msgs for new sequencers
+	msgs, err := ConsensusMsgsOnSequencerSetUpdate(newSequencers)
+	if err != nil {
+		return nil, fmt.Errorf("consensus msgs on sequencers set update: %w", err)
+	}
+	m.Executor.AddConsensusMsgs(msgs...)
+
+	// return the entire new set if there is any update
+	return sequencersAfterUpdate, nil
 }
 
 func (m *Manager) produceBlock(opts ProduceBlockOptions) (*types.Block, *types.Commit, error) {

@@ -113,13 +113,21 @@ func TestHandleSequencerSetUpdate(t *testing.T) {
 			manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, nil, nil)
 			require.NoError(t, err)
 			require.NotNil(t, manager)
-			// Set the initial set
-			manager.Sequencers.Set(tc.initial)
+			// Set the initial set in the store
+			_, err = manager.Store.SaveLastBlockSequencerSet(tc.initial, nil)
+			require.NoError(t, err)
+
+			// Set the updated set in memory
+			manager.Sequencers.Set(tc.update)
 
 			// Update the set
-			err = manager.HandleSequencerSetUpdate(tc.update)
+			actualNewSet, err := manager.SnapshotSequencerSet()
 			require.NoError(t, err)
-			require.ElementsMatch(t, manager.Sequencers.GetAll(), tc.update)
+			if len(tc.diff) == 0 {
+				require.Empty(t, actualNewSet)
+			} else {
+				require.ElementsMatch(t, manager.Sequencers.GetAll(), actualNewSet)
+			}
 
 			// Get the consensus msgs queue and verify the result
 			// Msgs are created only for the diff
