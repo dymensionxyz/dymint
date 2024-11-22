@@ -274,7 +274,7 @@ func (m *Manager) createTMSignature(block *types.Block, proposerAddress []byte, 
 	headerHash := block.Header.Hash()
 	vote := tmtypes.Vote{
 		Type:      cmtproto.PrecommitType,
-		Height:    int64(block.Header.Height),
+		Height:    int64(block.Header.Height), //nolint:gosec // height is non-negative and falls in int64
 		Round:     0,
 		Timestamp: voteTimestamp,
 		BlockID: tmtypes.BlockID{Hash: headerHash[:], PartSetHeader: tmtypes.PartSetHeader{

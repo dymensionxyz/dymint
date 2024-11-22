@@ -3,10 +3,11 @@ package main
 import (
 	"fmt"
 
-	"github.com/dymensionxyz/dymint/test/loadtime/payload"
-	"github.com/dymensionxyz/dymint/test/pb/loadtime"
 	"github.com/google/uuid"
 	"github.com/informalsystems/tm-load-test/pkg/loadtest"
+
+	"github.com/dymensionxyz/dymint/test/loadtime/payload"
+	"github.com/dymensionxyz/dymint/test/pb/loadtime"
 )
 
 // Ensure all of the interfaces are correctly satisfied.
@@ -56,6 +57,8 @@ func (f *ClientFactory) ValidateConfig(cfg loadtest.Config) error {
 }
 
 // NewClient creates a new client for the load test.
+//
+//nolint:gosec // params are always positive and fall in uint64
 func (f *ClientFactory) NewClient(cfg loadtest.Config) (loadtest.Client, error) {
 	return &TxGenerator{
 		id:    f.ID,

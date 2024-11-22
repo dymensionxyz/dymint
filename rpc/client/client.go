@@ -298,7 +298,7 @@ func (c *Client) Genesis(_ context.Context) (*ctypes.ResultGenesis, error) {
 }
 
 // GenesisChunked returns given chunk of genesis.
-func (c *Client) GenesisChunked(context context.Context, id uint) (*ctypes.ResultGenesisChunk, error) {
+func (c *Client) GenesisChunked(_ context.Context, id uint) (*ctypes.ResultGenesisChunk, error) {
 	genChunks, err := c.GetGenesisChunks()
 	if err != nil {
 		return nil, fmt.Errorf("while creating chunks of the genesis document: %w", err)
@@ -312,13 +312,14 @@ func (c *Client) GenesisChunked(context context.Context, id uint) (*ctypes.Resul
 		return nil, fmt.Errorf("service configuration error, there are no chunks")
 	}
 
-	if int(id) > chunkLen-1 {
+	// it's safe to do uint(chunkLen)-1 (no overflow) since we always have at least one chunk here
+	if id > uint(chunkLen)-1 {
 		return nil, fmt.Errorf("there are %d chunks, %d is invalid", chunkLen-1, id)
 	}
 
 	return &ctypes.ResultGenesisChunk{
 		TotalChunks: chunkLen,
-		ChunkNumber: int(id),
+		ChunkNumber: int(id), //nolint:gosec // id is always positive
 		Data:        genChunks[id],
 	}, nil
 }
@@ -335,8 +336,8 @@ func (c *Client) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64)
 		baseHeight = 1
 	}
 	minHeight, maxHeight, err = filterMinMax(
-		int64(baseHeight),
-		int64(c.node.GetBlockManagerHeight()),
+		int64(baseHeight),                     //nolint:gosec // height is non-negative and falls in int64
+		int64(c.node.GetBlockManagerHeight()), //nolint:gosec // height is non-negative and falls in int64
 		minHeight,
 		maxHeight,
 		limit)
@@ -347,7 +348,7 @@ func (c *Client) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64)
 
 	blocks := make([]*tmtypes.BlockMeta, 0, maxHeight-minHeight+1)
 	for height := maxHeight; height >= minHeight; height-- {
-		block, err := c.node.Store.LoadBlock(uint64(height))
+		block, err := c.node.Store.LoadBlock(uint64(height)) //nolint:gosec // height is non-negative and falls in int64
 		if err != nil {
 			return nil, err
 		}
@@ -361,7 +362,7 @@ func (c *Client) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64)
 	}
 
 	return &ctypes.ResultBlockchainInfo{
-		LastHeight: int64(c.node.GetBlockManagerHeight()),
+		LastHeight: int64(c.node.GetBlockManagerHeight()), //nolint:gosec // height is non-negative and falls in int64
 		BlockMetas: blocks,
 	}, nil
 }
@@ -405,7 +406,7 @@ func (c *Client) ConsensusParams(ctx context.Context, height *int64) (*ctypes.Re
 	// TODO(tzdybal): implement consensus params handling: https://github.com/dymensionxyz/dymint/issues/291
 	params := c.node.GetGenesis().ConsensusParams
 	return &ctypes.ResultConsensusParams{
-		BlockHeight: int64(c.normalizeHeight(height)),
+		BlockHeight: int64(c.normalizeHeight(height)), //nolint:gosec // height is non-negative and falls in int64
 		ConsensusParams: tmproto.ConsensusParams{
 			Block: tmproto.BlockParams{
 				MaxBytes:   params.Block.MaxBytes,
@@ -490,7 +491,7 @@ func (c *Client) BlockResults(ctx context.Context, height *int64) (*ctypes.Resul
 	if height == nil {
 		h = c.node.GetBlockManagerHeight()
 	} else {
-		h = uint64(*height)
+		h = uint64(*height) //nolint:gosec // height is non-negative and falls in int64
 	}
 	resp, err := c.node.Store.LoadBlockResponses(h)
 	if err != nil {
@@ -498,7 +499,7 @@ func (c *Client) BlockResults(ctx context.Context, height *int64) (*ctypes.Resul
 	}
 
 	return &ctypes.ResultBlockResults{
-		Height:                int64(h),
+		Height:                int64(h), //nolint:gosec // height is non-negative and falls in int64
 		TxsResults:            resp.DeliverTxs,
 		BeginBlockEvents:      resp.BeginBlock.Events,
 		EndBlockEvents:        resp.EndBlock.Events,
@@ -528,7 +529,7 @@ func (c *Client) Commit(ctx context.Context, height *int64) (*ctypes.ResultCommi
 }
 
 // Validators returns paginated list of validators at given height.
-func (c *Client) Validators(ctx context.Context, heightPtr *int64, pagePtr, perPagePtr *int) (*ctypes.ResultValidators, error) {
+func (c *Client) Validators(ctx context.Context, heightPtr *int64, _, _ *int) (*ctypes.ResultValidators, error) {
 	height := c.normalizeHeight(heightPtr)
 
 	proposer, err := c.node.Store.LoadProposer(height)
@@ -537,7 +538,7 @@ func (c *Client) Validators(ctx context.Context, heightPtr *int64, pagePtr, perP
 	}
 
 	return &ctypes.ResultValidators{
-		BlockHeight: int64(height),
+		BlockHeight: int64(height), //nolint:gosec // height is non-negative and falls in int64
 		Validators:  proposer.TMValidators(),
 		Count:       1,
 		Total:       1,
@@ -560,8 +561,8 @@ func (c *Client) Tx(ctx context.Context, hash []byte, prove bool) (*ctypes.Resul
 
 	var proof tmtypes.TxProof
 	if prove {
-		block, _ := c.node.Store.LoadBlock(uint64(height))
-		blockProof := block.Data.Txs.Proof(int(index)) // XXX: overflow on 32-bit machines
+		block, _ := c.node.Store.LoadBlock(uint64(height)) //nolint:gosec // height is non-negative and falls in int64
+		blockProof := block.Data.Txs.Proof(int(index))     // XXX: overflow on 32-bit machines
 		proof = tmtypes.TxProof{
 			RootHash: blockProof.RootHash,
 			Data:     tmtypes.Tx(blockProof.Data),
@@ -689,7 +690,7 @@ func (c *Client) BlockSearch(ctx context.Context, query string, page, perPage *i
 	// Fetch the blocks
 	blocks := make([]*ctypes.ResultBlock, 0, pageSize)
 	for i := skipCount; i < skipCount+pageSize; i++ {
-		b, err := c.node.Store.LoadBlock(uint64(results[i]))
+		b, err := c.node.Store.LoadBlock(uint64(results[i])) //nolint:gosec // height is non-negative and falls in int64
 		if err != nil {
 			return nil, err
 		}
@@ -709,7 +710,7 @@ func (c *Client) BlockSearch(ctx context.Context, query string, page, perPage *i
 }
 
 // Status returns detailed information about current status of the node.
-func (c *Client) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
+func (c *Client) Status(_ context.Context) (*ctypes.ResultStatus, error) {
 	latest, err := c.node.Store.LoadBlock(c.node.GetBlockManagerHeight())
 	if err != nil {
 		// TODO(tzdybal): extract error
@@ -755,7 +756,7 @@ func (c *Client) Status(ctx context.Context) (*ctypes.ResultStatus, error) {
 		SyncInfo: ctypes.SyncInfo{
 			LatestBlockHash:   latestBlockHash[:],
 			LatestAppHash:     latestAppHash[:],
-			LatestBlockHeight: int64(latestHeight),
+			LatestBlockHeight: int64(latestHeight), //nolint:gosec // height is non-negative and falls in int64
 			LatestBlockTime:   latestBlockTime,
 			// CatchingUp is true if the node is not at the latest height received from p2p or da.
 			CatchingUp: c.node.BlockManager.TargetHeight.Load() > latestHeight,
@@ -824,11 +825,11 @@ func (c *Client) BlockValidated(height *int64) (*ResultBlockValidated, error) {
 		return &ResultBlockValidated{Result: -1, ChainID: chainID}, nil
 	}
 	// node has not reached the height yet
-	if uint64(*height) > c.node.BlockManager.State.Height() {
+	if uint64(*height) > c.node.BlockManager.State.Height() { //nolint:gosec // height is non-negative and falls in int64
 		return &ResultBlockValidated{Result: NotValidated, ChainID: chainID}, nil
 	}
 
-	if uint64(*height) <= c.node.BlockManager.SettlementValidator.GetLastValidatedHeight() {
+	if uint64(*height) <= c.node.BlockManager.SettlementValidator.GetLastValidatedHeight() { //nolint:gosec // height is non-negative and falls in int64
 		return &ResultBlockValidated{Result: SLValidated, ChainID: chainID}, nil
 	}
 
@@ -869,7 +870,7 @@ func (c *Client) eventsRoutine(sub tmtypes.Subscription, subscriber string, q tm
 
 // Try to resubscribe with exponential backoff.
 func (c *Client) resubscribe(subscriber string, q tmpubsub.Query) tmtypes.Subscription {
-	attempts := 0
+	attempts := uint(0)
 	for {
 		if !c.IsRunning() {
 			return nil
@@ -881,7 +882,7 @@ func (c *Client) resubscribe(subscriber string, q tmpubsub.Query) tmtypes.Subscr
 		}
 
 		attempts++
-		time.Sleep((10 << uint(attempts)) * time.Millisecond) // 10ms -> 20ms -> 40ms
+		time.Sleep((10 << attempts) * time.Millisecond) // 10ms -> 20ms -> 40ms
 	}
 }
 
@@ -906,7 +907,7 @@ func (c *Client) normalizeHeight(height *int64) uint64 {
 	if height == nil || *height == 0 {
 		heightValue = c.node.GetBlockManagerHeight()
 	} else {
-		heightValue = uint64(*height)
+		heightValue = uint64(*height) //nolint:gosec // height is non-negative and falls in int64
 	}
 
 	return heightValue
