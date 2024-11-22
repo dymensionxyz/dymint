@@ -28,18 +28,18 @@ func (m *Manager) MonitorBalances(ctx context.Context) error {
 			balances, err := m.checkBalances()
 
 			if balances.DA != nil {
-				if amountFloat, err := strconv.ParseFloat(balances.DA.Amount.String(), 64); err == nil {
+				if amountFloat, errDA := strconv.ParseFloat(balances.DA.Amount.String(), 64); errDA == nil {
 					types.DaLayerBalanceGauge.Set(amountFloat)
 				} else {
-					m.logger.Error("Parsing DA balance amount", "error", err)
+					m.logger.Error("Parsing DA balance amount", "error", errDA)
 				}
 			}
 
 			if balances.SL != nil {
-				if amountFloat, err := strconv.ParseFloat(balances.SL.Amount.String(), 64); err == nil {
+				if amountFloat, errSL := strconv.ParseFloat(balances.SL.Amount.String(), 64); errSL == nil {
 					types.HubLayerBalanceGauge.Set(amountFloat)
 				} else {
-					m.logger.Error("Parsing SL balance amount", "error", err)
+					m.logger.Error("Parsing SL balance amount", "error", errSL)
 				}
 			}
 
