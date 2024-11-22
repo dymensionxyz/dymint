@@ -155,8 +155,8 @@ func (d *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 	}
 }
 
-func (d *DataAvailabilityLayerClient) GetSignerBalance() (*da.Balance, error) {
-	return &da.Balance{
+func (d *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
+	return da.Balance{
 		Amount: math.ZeroInt(),
 		Denom:  "adym",
 	}, nil

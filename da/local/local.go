@@ -183,8 +183,8 @@ func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint32 {
 	return maxBlobSize
 }
 
-func (m *DataAvailabilityLayerClient) GetSignerBalance() (*da.Balance, error) {
-	return &da.Balance{
+func (m *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
+	return da.Balance{
 		Amount: math.ZeroInt(),
 		Denom:  "adym",
 	}, nil

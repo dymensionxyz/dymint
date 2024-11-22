@@ -163,24 +163,22 @@ func (_c *MockDataAvailabilityLayerClient_GetMaxBlobSizeBytes_Call) RunAndReturn
 }
 
 // GetSignerBalance provides a mock function with given fields:
-func (_m *MockDataAvailabilityLayerClient) GetSignerBalance() (*da.Balance, error) {
+func (_m *MockDataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetSignerBalance")
 	}
 
-	var r0 *da.Balance
+	var r0 da.Balance
 	var r1 error
-	if rf, ok := ret.Get(0).(func() (*da.Balance, error)); ok {
+	if rf, ok := ret.Get(0).(func() (da.Balance, error)); ok {
 		return rf()
 	}
-	if rf, ok := ret.Get(0).(func() *da.Balance); ok {
+	if rf, ok := ret.Get(0).(func() da.Balance); ok {
 		r0 = rf()
 	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*da.Balance)
-		}
+		r0 = ret.Get(0).(da.Balance)
 	}
 
 	if rf, ok := ret.Get(1).(func() error); ok {
@@ -209,12 +207,12 @@ func (_c *MockDataAvailabilityLayerClient_GetSignerBalance_Call) Run(run func())
 	return _c
 }
 
-func (_c *MockDataAvailabilityLayerClient_GetSignerBalance_Call) Return(_a0 *da.Balance, _a1 error) *MockDataAvailabilityLayerClient_GetSignerBalance_Call {
+func (_c *MockDataAvailabilityLayerClient_GetSignerBalance_Call) Return(_a0 da.Balance, _a1 error) *MockDataAvailabilityLayerClient_GetSignerBalance_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockDataAvailabilityLayerClient_GetSignerBalance_Call) RunAndReturn(run func() (*da.Balance, error)) *MockDataAvailabilityLayerClient_GetSignerBalance_Call {
+func (_c *MockDataAvailabilityLayerClient_GetSignerBalance_Call) RunAndReturn(run func() (da.Balance, error)) *MockDataAvailabilityLayerClient_GetSignerBalance_Call {
 	_c.Call.Return(run)
 	return _c
 }

@@ -444,6 +444,6 @@ func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint32 {
 }
 
 // GetBalance returns the balance for a specific address
-func (c *DataAvailabilityLayerClient) GetSignerBalance() (*da.Balance, error) {
-	return &da.Balance{}, nil
+func (c *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
+	return da.Balance{}, nil
 }

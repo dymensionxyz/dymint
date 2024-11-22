@@ -69,7 +69,7 @@ func (m *Manager) checkBalances() (*Balances, error) {
 			errDA = fmt.Errorf("get DA signer balance: %w", err)
 			return
 		}
-		balances.DA = balance
+		balances.DA = &balance
 	}()
 
 	go func() {

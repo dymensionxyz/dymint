@@ -229,7 +229,7 @@ type DataAvailabilityLayerClient interface {
 	GetMaxBlobSizeBytes() uint32
 
 	// GetSignerBalance returns the balance for a specific address
-	GetSignerBalance() (*Balance, error)
+	GetSignerBalance() (Balance, error)
 }
 
 // BatchRetriever is additional interface that can be implemented by Data Availability Layer Client that is able to retrieve

@@ -607,16 +607,16 @@ func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint32 {
 }
 
 // GetSignerBalance returns the balance for a specific address
-func (d *DataAvailabilityLayerClient) GetSignerBalance() (*da.Balance, error) {
+func (d *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
 	ctx, cancel := context.WithTimeout(d.ctx, d.config.Timeout)
 	defer cancel()
 
 	balance, err := d.rpc.GetSignerBalance(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("get balance: %w", err)
+		return da.Balance{}, fmt.Errorf("get balance: %w", err)
 	}
 
-	daBalance := &da.Balance{
+	daBalance := da.Balance{
 		Amount: balance.Amount,
 		Denom:  balance.Denom,
 	}
