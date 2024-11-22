@@ -33,7 +33,7 @@ func (m *Manager) PruningLoop(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return nil
 		case retainHeight := <-m.pruningC:
 			var pruningHeight uint64
 			if m.RunMode == RunModeProposer { // do not delete anything that we might submit in future

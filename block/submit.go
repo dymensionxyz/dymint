@@ -65,7 +65,7 @@ func SubmitLoopInner(
 		for {
 			select {
 			case <-ctx.Done():
-				return ctx.Err()
+				return nil
 			case n := <-bytesProduced:
 				pendingBytes.Add(uint64(n)) //nolint:gosec // bytes size is always positive
 				logger.Debug("Added bytes produced to bytes pending submission counter.", "bytes added", n, "pending", pendingBytes.Load())
@@ -78,7 +78,7 @@ func SubmitLoopInner(
 				// we block here until we get a progress nudge from the submitter thread
 				select {
 				case <-ctx.Done():
-					return ctx.Err()
+					return nil
 				case <-trigger.C:
 				}
 			}
@@ -92,7 +92,7 @@ func SubmitLoopInner(
 		for {
 			select {
 			case <-ctx.Done():
-				return ctx.Err()
+				return nil
 			case <-ticker.C:
 			case <-submitter.C:
 			}
