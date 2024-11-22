@@ -22,11 +22,13 @@ func (m *Manager) RunInitChain(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
 	// update the state with only the consensus pubkey
 	m.Executor.UpdateStateAfterInitChain(m.State, res)
 	m.Executor.UpdateMempoolAfterInitChain(m.State)
 	if _, err := m.Store.SaveState(m.State, nil); err != nil {
 		return err
 	}
+
 	return nil
 }

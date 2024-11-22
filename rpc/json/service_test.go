@@ -277,7 +277,6 @@ func TestSubscription(t *testing.T) {
 func getRPC(t *testing.T) (*tmmocks.MockApplication, *client.Client) {
 	t.Helper()
 	require := require.New(t)
-
 	app := &tmmocks.MockApplication{}
 	app.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
 	app.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
@@ -315,11 +314,12 @@ func getRPC(t *testing.T) (*tmmocks.MockApplication, *client.Client) {
 	config := config.NodeConfig{
 		SettlementLayer: "mock",
 		BlockManagerConfig: config.BlockManagerConfig{
-			BlockTime:        1 * time.Second,
-			MaxIdleTime:      0,
-			BatchSkew:        10,
-			BatchSubmitTime:  30 * time.Minute,
-			BatchSubmitBytes: 1000,
+			BlockTime:                  1 * time.Second,
+			MaxIdleTime:                0,
+			MaxSkewTime:                24 * time.Hour,
+			BatchSubmitTime:            30 * time.Minute,
+			BatchSubmitBytes:           1000,
+			SequencerSetUpdateInterval: config.DefaultSequencerSetUpdateInterval,
 		},
 		SettlementConfig: settlement.Config{
 			ProposerPubKey: hex.EncodeToString(proposerPubKeyBytes),

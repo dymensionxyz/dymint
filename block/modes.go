@@ -35,6 +35,12 @@ func (m *Manager) runAsFullNode(ctx context.Context, eg *errgroup.Group) error {
 
 	m.subscribeFullNodeEvents(ctx)
 
+	// forkFromInstruction deletes fork instruction file for full nodes
+	err = m.forkFromInstruction()
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -51,6 +57,12 @@ func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {
 	// Sequencer must wait till node is synced till last submittedHeight, in case it is not
 	m.waitForSettlementSyncing()
 
+	// forkFromInstruction executes fork if necessary
+	err := m.forkFromInstruction()
+	if err != nil {
+		return err
+	}
+
 	// check if we should rotate
 	shouldRotate, err := m.ShouldRotate()
 	if err != nil {
@@ -66,6 +78,7 @@ func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		return m.SubmitLoop(ctx, bytesProducedC)
 	})
+
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		bytesProducedC <- m.GetUnsubmittedBytes() // load unsubmitted bytes from previous run
 		return m.ProduceBlockLoop(ctx, bytesProducedC)
@@ -85,18 +98,4 @@ func (m *Manager) subscribeFullNodeEvents(ctx context.Context) {
 	// Subscribe to P2P received blocks events (used for P2P syncing).
 	go uevent.MustSubscribe(ctx, m.Pubsub, p2pGossipLoop, p2p.EventQueryNewGossipedBlock, m.OnReceivedBlock, m.logger)
 	go uevent.MustSubscribe(ctx, m.Pubsub, p2pBlocksyncLoop, p2p.EventQueryNewBlockSyncBlock, m.OnReceivedBlock, m.logger)
-}
-
-func (m *Manager) unsubscribeFullNodeEvents(ctx context.Context) {
-	// unsubscribe for specific event (clientId)
-	unsubscribe := func(clientId string) {
-		err := m.Pubsub.UnsubscribeAll(ctx, clientId)
-		if err != nil {
-			m.logger.Error("Unsubscribe", "clientId", clientId, "error", err)
-		}
-	}
-	unsubscribe(syncLoop)
-	unsubscribe(validateLoop)
-	unsubscribe(p2pGossipLoop)
-	unsubscribe(p2pBlocksyncLoop)
 }

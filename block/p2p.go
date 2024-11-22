@@ -58,7 +58,7 @@ func (m *Manager) OnReceivedBlock(event pubsub.Message) {
 
 	err := m.attemptApplyCachedBlocks()
 	if err != nil {
-		m.freezeNode(context.Background(), err)
+		m.freezeNode(err)
 		m.logger.Error("Attempt apply cached blocks.", "err", err)
 	}
 }

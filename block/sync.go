@@ -50,12 +50,14 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-
 		case <-m.settlementSyncingC:
-
 			m.logger.Info("syncing to target height", "targetHeight", m.LastSettlementHeight.Load())
 
 			for currH := m.State.NextHeight(); currH <= m.LastSettlementHeight.Load(); currH = m.State.NextHeight() {
+				// if context has been cancelled, stop syncing
+				if ctx.Err() != nil {
+					return ctx.Err()
+				}
 				// if we have the block locally, we don't need to fetch it from the DA.
 				// it will only happen in case of rollback.
 				err := m.applyLocalBlock(currH)
@@ -72,6 +74,9 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 					return fmt.Errorf("retrieve SL batch err: %w", err)
 				}
 				m.logger.Info("Retrieved state update from SL.", "state_index", settlementBatch.StateIndex)
+
+				// we update LastBlockTimeInSettlement to be able to measure batch skew time with last block time in settlement
+				m.LastBlockTimeInSettlement.Store(settlementBatch.BlockDescriptors[len(settlementBatch.BlockDescriptors)-1].GetTimestamp().UTC().UnixNano())
 
 				err = m.ApplyBatchFromSL(settlementBatch.Batch)
 				if err != nil {

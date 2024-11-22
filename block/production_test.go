@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	rdktypes "github.com/dymensionxyz/dymension-rdk/x/sequencers/types"
 	"github.com/gogo/protobuf/proto"
 	prototypes "github.com/gogo/protobuf/types"
 	"github.com/libp2p/go-libp2p/core/crypto"
@@ -29,15 +30,15 @@ import (
 	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
-	rdktypes "github.com/dymensionxyz/dymint/types/pb/rollapp/sequencers/types"
 	uchannel "github.com/dymensionxyz/dymint/utils/channel"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
-	protoutils "github.com/dymensionxyz/dymint/utils/proto"
+	"github.com/dymensionxyz/dymint/version"
 )
 
 // TODO: test producing lastBlock
 // TODO: test using already produced lastBlock
 func TestCreateEmptyBlocksEnableDisable(t *testing.T) {
+	version.DRS = "0"
 	const blockTime = 200 * time.Millisecond
 	const MaxIdleTime = blockTime * 10
 	const runTime = 10 * time.Second
@@ -207,7 +208,6 @@ func TestCreateEmptyBlocksNew(t *testing.T) {
 func TestStopBlockProduction(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
-
 	app := testutil.GetAppMock(testutil.EndBlock)
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
 		RollappParamUpdates: &abci.RollappParams{
@@ -290,9 +290,11 @@ func TestStopBlockProduction(t *testing.T) {
 }
 
 func TestUpdateInitialSequencerSet(t *testing.T) {
+
 	require := require.New(t)
 	app := testutil.GetAppMock(testutil.EndBlock)
 	ctx := context.Background()
+	version.DRS = "0"
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
 		RollappParamUpdates: &abci.RollappParams{
 			Da:         "mock",
@@ -344,7 +346,7 @@ func TestUpdateInitialSequencerSet(t *testing.T) {
 	require.NoError(err)
 
 	// Produce block and validate that we produced blocks
-	block, _, err := manager.ProduceApplyGossipBlock(ctx, true)
+	block, _, err := manager.ProduceApplyGossipBlock(ctx, block2.ProduceBlockOptions{AllowEmpty: true})
 	require.NoError(err)
 	assert.Greater(t, manager.State.Height(), uint64(0))
 	assert.Zero(t, manager.LastSettlementHeight.Load())
@@ -362,14 +364,14 @@ func TestUpdateInitialSequencerSet(t *testing.T) {
 	expectedConsMsg1 := &rdktypes.ConsensusMsgUpsertSequencer{
 		Signer:     signer.String(),
 		Operator:   proposer.SettlementAddress,
-		ConsPubKey: protoutils.CosmosToGogo(anyPK1),
+		ConsPubKey: anyPK1,
 		RewardAddr: proposer.RewardAddr,
 		Relayers:   proposer.WhitelistedRelayers,
 	}
 	expectedConsMsgBytes1, err := proto.Marshal(expectedConsMsg1)
 	require.NoError(err)
 	anyMsg1 := &prototypes.Any{
-		TypeUrl: proto.MessageName(expectedConsMsg1),
+		TypeUrl: "rollapp.sequencers.types.ConsensusMsgUpsertSequencer",
 		Value:   expectedConsMsgBytes1,
 	}
 
@@ -379,14 +381,14 @@ func TestUpdateInitialSequencerSet(t *testing.T) {
 	expectedConsMsg2 := &rdktypes.ConsensusMsgUpsertSequencer{
 		Signer:     signer.String(),
 		Operator:   sequencer.SettlementAddress,
-		ConsPubKey: protoutils.CosmosToGogo(anyPK2),
+		ConsPubKey: anyPK2,
 		RewardAddr: sequencer.RewardAddr,
 		Relayers:   sequencer.WhitelistedRelayers,
 	}
 	expectedConsMsgBytes2, err := proto.Marshal(expectedConsMsg2)
 	require.NoError(err)
 	anyMsg2 := &prototypes.Any{
-		TypeUrl: proto.MessageName(expectedConsMsg2),
+		TypeUrl: "rollapp.sequencers.types.ConsensusMsgUpsertSequencer",
 		Value:   expectedConsMsgBytes2,
 	}
 
@@ -399,6 +401,7 @@ func TestUpdateExistingSequencerSet(t *testing.T) {
 	require := require.New(t)
 	app := testutil.GetAppMock(testutil.EndBlock)
 	ctx := context.Background()
+	version.DRS = "0"
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
 		RollappParamUpdates: &abci.RollappParams{
 			Da:         "mock",
@@ -470,7 +473,7 @@ func TestUpdateExistingSequencerSet(t *testing.T) {
 	require.Equal(updatedSequencer, sequencers[1])
 
 	// Produce block and validate that we produced blocks
-	block, _, err := manager.ProduceApplyGossipBlock(ctx, true)
+	block, _, err := manager.ProduceApplyGossipBlock(ctx, block2.ProduceBlockOptions{AllowEmpty: true})
 	require.NoError(err)
 	assert.Greater(t, manager.State.Height(), uint64(0))
 	assert.Zero(t, manager.LastSettlementHeight.Load())
@@ -486,14 +489,14 @@ func TestUpdateExistingSequencerSet(t *testing.T) {
 	expectedConsMsg := &rdktypes.ConsensusMsgUpsertSequencer{
 		Signer:     signer.String(),
 		Operator:   updatedSequencer.SettlementAddress,
-		ConsPubKey: protoutils.CosmosToGogo(anyPK),
+		ConsPubKey: anyPK,
 		RewardAddr: updatedSequencer.RewardAddr,
 		Relayers:   updatedSequencer.WhitelistedRelayers,
 	}
 	expectedConsMsgBytes, err := proto.Marshal(expectedConsMsg)
 	require.NoError(err)
 	anyMsg1 := &prototypes.Any{
-		TypeUrl: proto.MessageName(expectedConsMsg),
+		TypeUrl: "rollapp.sequencers.types.ConsensusMsgUpsertSequencer",
 		Value:   expectedConsMsgBytes,
 	}
 

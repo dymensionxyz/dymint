@@ -36,6 +36,11 @@ func (m *Manager) ApplyBatchFromSL(slBatch *settlement.Batch) error {
 				continue
 			}
 
+			if block.GetRevision() != m.State.GetRevision() {
+				err := m.checkForkUpdate("syncing to fork height. please restart the node.")
+				return err
+			}
+
 			// We dont validate because validateBlockBeforeApply already checks if the block is already applied, and we don't need to fail there.
 			err := m.applyBlockWithFraudHandling(block, batch.Commits[i], types.BlockMetaData{Source: types.DA, DAHeight: slBatch.MetaData.DA.Height})
 			if err != nil {
@@ -47,6 +52,12 @@ func (m *Manager) ApplyBatchFromSL(slBatch *settlement.Batch) error {
 			m.blockCache.Delete(block.Header.Height)
 		}
 	}
+
+	// validate the batch applied successfully and we are at the end height
+	if m.State.Height() != slBatch.EndHeight {
+		return fmt.Errorf("state height mismatch: state height: %d: batch end height: %d", m.State.Height(), slBatch.EndHeight)
+	}
+
 	types.LastReceivedDAHeightGauge.Set(lastAppliedHeight)
 
 	return nil

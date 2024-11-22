@@ -2,6 +2,7 @@ package block_test
 
 import (
 	"context"
+	"fmt"
 	"math/rand"
 	"sync"
 	"sync/atomic"
@@ -16,7 +17,8 @@ import (
 type testArgs struct {
 	nParallel                 int           // number of instances to run in parallel
 	testDuration              time.Duration // how long to run one instance of the test (should be short)
-	batchSkew                 uint64        // max number of batches to get ahead
+	batchSkew                 time.Duration // time between last block produced and submitted
+	skewMargin                time.Duration // skew margin allowed
 	batchBytes                uint64        // max number of bytes in a batch
 	maxTime                   time.Duration // maximum time to wait before submitting submissions
 	submitTime                time.Duration // how long it takes to submit a batch
@@ -54,14 +56,24 @@ func testSubmitLoopInner(
 		return time.Duration(base + rand.Intn(factor))
 	}
 
-	pendingBlocks := atomic.Uint64{} // pending blocks to be submitted. gap between produced and submitted.
-
+	pendingBlocks := atomic.Uint64{}  // pending blocks to be submitted. gap between produced and submitted.
 	nProducedBytes := atomic.Uint64{} // tracking how many actual bytes have been produced but not submitted so far
 	producedBytesC := make(chan int)  // producer sends on here, and can be blocked by not consuming from here
 
-	// the time of the last block produced or the last batch submitted or the last starting of the node
-	timeLastProgress := atomic.Int64{}
+	lastSettlementBlockTime := atomic.Int64{}
+	lastBlockTime := atomic.Int64{}
+	lastSettlementBlockTime.Store(time.Now().UTC().UnixNano())
+	lastBlockTime.Store(time.Now().UTC().UnixNano())
 
+	skewTime := func() time.Duration {
+		blockTime := time.Unix(0, lastBlockTime.Load())
+		settlementTime := time.Unix(0, lastSettlementBlockTime.Load())
+		return blockTime.Sub(settlementTime)
+	}
+	skewNow := func() time.Duration {
+		settlementTime := time.Unix(0, lastSettlementBlockTime.Load())
+		return time.Now().Sub(settlementTime)
+	}
 	go func() { // simulate block production
 		go func() { // another thread to check system properties
 			for {
@@ -71,9 +83,7 @@ func testSubmitLoopInner(
 				default:
 				}
 				// producer shall not get too far ahead
-				absoluteMax := (args.batchSkew + 1) * args.batchBytes // +1 is because the producer is always blocked after the fact
-				nProduced := nProducedBytes.Load()
-				require.True(t, nProduced < absoluteMax, "produced bytes not less than maximum", "nProduced", nProduced, "max", absoluteMax)
+				require.True(t, skewTime() < args.batchSkew+args.skewMargin, fmt.Sprintf("last produced blocks time not less than maximum skew time. produced block skew time: %s max skew: %s", skewTime(), args.batchSkew+args.skewMargin))
 			}
 		}()
 		for {
@@ -82,13 +92,19 @@ func testSubmitLoopInner(
 				return
 			default:
 			}
+
 			time.Sleep(approx(args.produceTime))
+
+			if args.batchSkew <= skewNow() {
+				continue
+			}
+
 			nBytes := rand.Intn(args.produceBytes) // simulate block production
 			nProducedBytes.Add(uint64(nBytes))
 			producedBytesC <- nBytes
-			pendingBlocks.Add(1) // increase pending blocks to be submitted counter
+			lastBlockTime.Store(time.Now().UTC().UnixNano())
 
-			timeLastProgress.Store(time.Now().Unix())
+			pendingBlocks.Add(1) // increase pending blocks to be submitted counter
 		}
 	}()
 
@@ -96,25 +112,21 @@ func testSubmitLoopInner(
 		time.Sleep(approx(args.submitTime))
 		if rand.Float64() < args.submissionHaltProbability {
 			time.Sleep(args.submissionHaltTime)
-			timeLastProgress.Store(time.Now().Unix()) // we have now recovered
 		}
 		consumed := rand.Intn(int(maxSize))
 		nProducedBytes.Add(^uint64(consumed - 1)) // subtract
-
-		timeLastProgressT := time.Unix(timeLastProgress.Load(), 0)
-		absoluteMax := int64(2 * float64(args.maxTime)) // allow some leeway for code execution. Tests may run on small boxes (GH actions)
-		timeSinceLast := time.Since(timeLastProgressT).Milliseconds()
-		require.True(t, timeSinceLast < absoluteMax, "too long since last update", "timeSinceLast", timeSinceLast, "max", absoluteMax)
-
 		pendingBlocks.Store(0)                    // no pending blocks to be submitted
-		timeLastProgress.Store(time.Now().Unix()) // we have submitted  batch
+		lastSettlementBlockTime.Store(lastBlockTime.Load())
 		return uint64(consumed), nil
 	}
 	accumulatedBlocks := func() uint64 {
 		return pendingBlocks.Load()
 	}
+	pendingBytes := func() int {
+		return int(nProducedBytes.Load())
+	}
 
-	block.SubmitLoopInner(ctx, log.NewNopLogger(), producedBytesC, args.batchSkew, accumulatedBlocks, args.maxTime, args.batchBytes, submitBatch)
+	block.SubmitLoopInner(ctx, log.NewNopLogger(), producedBytesC, args.batchSkew, accumulatedBlocks, pendingBytes, skewTime, args.maxTime, args.batchBytes, submitBatch)
 }
 
 // Make sure the producer does not get too far ahead
@@ -123,8 +135,9 @@ func TestSubmitLoopFastProducerHaltingSubmitter(t *testing.T) {
 		t,
 		testArgs{
 			nParallel:    50,
-			testDuration: 2 * time.Second,
-			batchSkew:    10,
+			testDuration: 4 * time.Second,
+			batchSkew:    100 * time.Millisecond,
+			skewMargin:   10 * time.Millisecond,
 			batchBytes:   100,
 			maxTime:      10 * time.Millisecond,
 			submitTime:   2 * time.Millisecond,
@@ -132,8 +145,8 @@ func TestSubmitLoopFastProducerHaltingSubmitter(t *testing.T) {
 			produceTime:  2 * time.Millisecond,
 			// a relatively long possibility of the submitter halting
 			// tests the case where we need to stop the producer getting too far ahead
-			submissionHaltTime:        50 * time.Millisecond,
-			submissionHaltProbability: 0.01,
+			submissionHaltTime:        150 * time.Millisecond,
+			submissionHaltProbability: 0.05,
 		},
 	)
 }
@@ -144,8 +157,9 @@ func TestSubmitLoopTimer(t *testing.T) {
 		t,
 		testArgs{
 			nParallel:    50,
-			testDuration: 2 * time.Second,
-			batchSkew:    10,
+			testDuration: 4 * time.Second,
+			batchSkew:    100 * time.Millisecond,
+			skewMargin:   10 * time.Millisecond,
 			batchBytes:   100,
 			maxTime:      10 * time.Millisecond,
 			submitTime:   2 * time.Millisecond,

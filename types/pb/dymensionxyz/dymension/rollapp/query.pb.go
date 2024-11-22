@@ -688,6 +688,174 @@ func (m *QueryGetStateInfoResponse) GetStateInfo() StateInfo {
 	return StateInfo{}
 }
 
+type QueryRegisteredDenomsRequest struct {
+	RollappId string `protobuf:"bytes,1,opt,name=rollappId,proto3" json:"rollappId,omitempty"`
+}
+
+func (m *QueryRegisteredDenomsRequest) Reset()         { *m = QueryRegisteredDenomsRequest{} }
+func (m *QueryRegisteredDenomsRequest) String() string { return proto.CompactTextString(m) }
+func (*QueryRegisteredDenomsRequest) ProtoMessage()    {}
+func (*QueryRegisteredDenomsRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_20818724c4f98326, []int{13}
+}
+func (m *QueryRegisteredDenomsRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *QueryRegisteredDenomsRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_QueryRegisteredDenomsRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *QueryRegisteredDenomsRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_QueryRegisteredDenomsRequest.Merge(m, src)
+}
+func (m *QueryRegisteredDenomsRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *QueryRegisteredDenomsRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_QueryRegisteredDenomsRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_QueryRegisteredDenomsRequest proto.InternalMessageInfo
+
+func (m *QueryRegisteredDenomsRequest) GetRollappId() string {
+	if m != nil {
+		return m.RollappId
+	}
+	return ""
+}
+
+type QueryRegisteredDenomsResponse struct {
+	Denoms []string `protobuf:"bytes,1,rep,name=denoms,proto3" json:"denoms,omitempty"`
+}
+
+func (m *QueryRegisteredDenomsResponse) Reset()         { *m = QueryRegisteredDenomsResponse{} }
+func (m *QueryRegisteredDenomsResponse) String() string { return proto.CompactTextString(m) }
+func (*QueryRegisteredDenomsResponse) ProtoMessage()    {}
+func (*QueryRegisteredDenomsResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_20818724c4f98326, []int{14}
+}
+func (m *QueryRegisteredDenomsResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *QueryRegisteredDenomsResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_QueryRegisteredDenomsResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *QueryRegisteredDenomsResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_QueryRegisteredDenomsResponse.Merge(m, src)
+}
+func (m *QueryRegisteredDenomsResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *QueryRegisteredDenomsResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_QueryRegisteredDenomsResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_QueryRegisteredDenomsResponse proto.InternalMessageInfo
+
+func (m *QueryRegisteredDenomsResponse) GetDenoms() []string {
+	if m != nil {
+		return m.Denoms
+	}
+	return nil
+}
+
+type QueryObsoleteDRSVersionsRequest struct {
+}
+
+func (m *QueryObsoleteDRSVersionsRequest) Reset()         { *m = QueryObsoleteDRSVersionsRequest{} }
+func (m *QueryObsoleteDRSVersionsRequest) String() string { return proto.CompactTextString(m) }
+func (*QueryObsoleteDRSVersionsRequest) ProtoMessage()    {}
+func (*QueryObsoleteDRSVersionsRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_20818724c4f98326, []int{15}
+}
+func (m *QueryObsoleteDRSVersionsRequest) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *QueryObsoleteDRSVersionsRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_QueryObsoleteDRSVersionsRequest.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *QueryObsoleteDRSVersionsRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_QueryObsoleteDRSVersionsRequest.Merge(m, src)
+}
+func (m *QueryObsoleteDRSVersionsRequest) XXX_Size() int {
+	return m.Size()
+}
+func (m *QueryObsoleteDRSVersionsRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_QueryObsoleteDRSVersionsRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_QueryObsoleteDRSVersionsRequest proto.InternalMessageInfo
+
+type QueryObsoleteDRSVersionsResponse struct {
+	DrsVersions []uint32 `protobuf:"varint,1,rep,packed,name=drs_versions,json=drsVersions,proto3" json:"drs_versions,omitempty"`
+}
+
+func (m *QueryObsoleteDRSVersionsResponse) Reset()         { *m = QueryObsoleteDRSVersionsResponse{} }
+func (m *QueryObsoleteDRSVersionsResponse) String() string { return proto.CompactTextString(m) }
+func (*QueryObsoleteDRSVersionsResponse) ProtoMessage()    {}
+func (*QueryObsoleteDRSVersionsResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_20818724c4f98326, []int{16}
+}
+func (m *QueryObsoleteDRSVersionsResponse) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *QueryObsoleteDRSVersionsResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_QueryObsoleteDRSVersionsResponse.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *QueryObsoleteDRSVersionsResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_QueryObsoleteDRSVersionsResponse.Merge(m, src)
+}
+func (m *QueryObsoleteDRSVersionsResponse) XXX_Size() int {
+	return m.Size()
+}
+func (m *QueryObsoleteDRSVersionsResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_QueryObsoleteDRSVersionsResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_QueryObsoleteDRSVersionsResponse proto.InternalMessageInfo
+
+func (m *QueryObsoleteDRSVersionsResponse) GetDrsVersions() []uint32 {
+	if m != nil {
+		return m.DrsVersions
+	}
+	return nil
+}
+
 func init() {
 	proto.RegisterType((*QueryParamsRequest)(nil), "dymensionxyz.dymension.rollapp.QueryParamsRequest")
 	proto.RegisterType((*QueryParamsResponse)(nil), "dymensionxyz.dymension.rollapp.QueryParamsResponse")
@@ -702,6 +870,10 @@ func init() {
 	proto.RegisterType((*QueryAllRollappResponse)(nil), "dymensionxyz.dymension.rollapp.QueryAllRollappResponse")
 	proto.RegisterType((*QueryGetStateInfoRequest)(nil), "dymensionxyz.dymension.rollapp.QueryGetStateInfoRequest")
 	proto.RegisterType((*QueryGetStateInfoResponse)(nil), "dymensionxyz.dymension.rollapp.QueryGetStateInfoResponse")
+	proto.RegisterType((*QueryRegisteredDenomsRequest)(nil), "dymensionxyz.dymension.rollapp.QueryRegisteredDenomsRequest")
+	proto.RegisterType((*QueryRegisteredDenomsResponse)(nil), "dymensionxyz.dymension.rollapp.QueryRegisteredDenomsResponse")
+	proto.RegisterType((*QueryObsoleteDRSVersionsRequest)(nil), "dymensionxyz.dymension.rollapp.QueryObsoleteDRSVersionsRequest")
+	proto.RegisterType((*QueryObsoleteDRSVersionsResponse)(nil), "dymensionxyz.dymension.rollapp.QueryObsoleteDRSVersionsResponse")
 }
 
 func init() {
@@ -709,58 +881,66 @@ func init() {
 }
 
 var fileDescriptor_20818724c4f98326 = []byte{
-	// 809 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x56, 0x4b, 0x4f, 0x13, 0x51,
-	0x14, 0xee, 0x94, 0xd2, 0xc7, 0xc1, 0x44, 0x72, 0x25, 0x58, 0x0b, 0x19, 0x9a, 0x31, 0x51, 0xdc,
-	0xcc, 0xd8, 0x92, 0xa2, 0xc6, 0x67, 0x89, 0x82, 0x10, 0x35, 0x38, 0x68, 0x8c, 0x1a, 0x83, 0x53,
-	0x7a, 0x29, 0x63, 0x3a, 0x0f, 0x7a, 0xa7, 0x86, 0x12, 0x8d, 0x89, 0x71, 0xa7, 0x0b, 0x77, 0xfe,
-	0x14, 0xd7, 0xee, 0x58, 0xb2, 0x74, 0x65, 0x0c, 0xfc, 0x08, 0xb7, 0xa6, 0x73, 0xcf, 0x4c, 0xa7,
-	0x53, 0xa0, 0xd3, 0xea, 0xaa, 0xbd, 0x27, 0xf3, 0x7d, 0xe7, 0x3b, 0xcf, 0x7b, 0xe1, 0xb2, 0xd3,
-	0xb2, 0x29, 0x53, 0xaa, 0x2d, 0x83, 0x9a, 0x4c, 0xb7, 0xcc, 0x9d, 0xd6, 0x6e, 0xe7, 0xa0, 0x34,
-	0xac, 0x7a, 0x5d, 0xb3, 0x6d, 0x65, 0xbb, 0x49, 0x1b, 0x2d, 0xd9, 0x6e, 0x58, 0x8e, 0x45, 0xc4,
-	0xe0, 0xb7, 0xb2, 0x7f, 0x90, 0xf1, 0xdb, 0xdc, 0x44, 0xcd, 0xaa, 0x59, 0xee, 0xa7, 0x4a, 0xfb,
-	0x1f, 0x47, 0xe5, 0xd0, 0xcf, 0x86, 0xc5, 0x0c, 0x8b, 0x29, 0x15, 0x8d, 0x51, 0x4e, 0xaa, 0xbc,
-	0x2d, 0x54, 0xa8, 0xa3, 0x15, 0x14, 0x5b, 0xab, 0xe9, 0xa6, 0xe6, 0xb4, 0x99, 0x38, 0xa2, 0x10,
-	0x49, 0x99, 0xad, 0x35, 0x34, 0x83, 0x21, 0xa4, 0x18, 0x09, 0x82, 0xbf, 0x88, 0x29, 0x45, 0xc2,
-	0x30, 0x47, 0x73, 0xe8, 0xba, 0x6e, 0x6e, 0x7a, 0xf1, 0xc8, 0x91, 0x60, 0xbe, 0x1b, 0x69, 0x02,
-	0xc8, 0xe3, 0x76, 0xbc, 0xab, 0xae, 0x5e, 0x95, 0x6e, 0x37, 0x29, 0x73, 0xa4, 0x97, 0x70, 0xa6,
-	0xcb, 0xca, 0x6c, 0xcb, 0x64, 0x94, 0xdc, 0x85, 0x24, 0x8f, 0x2b, 0x2b, 0xe4, 0x85, 0xd9, 0xb1,
-	0xe2, 0x05, 0xf9, 0xe4, 0x9c, 0xcb, 0x1c, 0xbf, 0x90, 0xd8, 0xfb, 0x35, 0x13, 0x53, 0x11, 0x2b,
-	0xad, 0xc1, 0xa4, 0x4b, 0xbe, 0x44, 0x1d, 0x95, 0x7f, 0x87, 0x6e, 0xc9, 0x34, 0x64, 0x10, 0xb9,
-	0x5c, 0x75, 0x5d, 0x64, 0xd4, 0x8e, 0x81, 0x4c, 0x41, 0xc6, 0x32, 0x74, 0x67, 0x5d, 0xb3, 0x6d,
-	0x96, 0x8d, 0xe7, 0x85, 0xd9, 0xb4, 0x9a, 0x6e, 0x1b, 0xca, 0xb6, 0xcd, 0xa4, 0xa7, 0x20, 0x86,
-	0x48, 0x17, 0x5a, 0xf7, 0x96, 0x57, 0x0b, 0xa5, 0x92, 0x47, 0x3e, 0x09, 0x49, 0xaa, 0xdb, 0x85,
-	0x52, 0xc9, 0x65, 0x4e, 0xa8, 0x78, 0x3a, 0x99, 0xf6, 0x39, 0x4c, 0x79, 0xb4, 0x0f, 0x34, 0x87,
-	0x32, 0xe7, 0x3e, 0xd5, 0x6b, 0x5b, 0x4e, 0x34, 0xc1, 0xd3, 0x90, 0xd9, 0xd4, 0x4d, 0xad, 0xae,
-	0xef, 0xd2, 0x2a, 0x32, 0x77, 0x0c, 0xd2, 0x3c, 0x4c, 0x1f, 0x4d, 0x8d, 0xc9, 0x9e, 0x84, 0xe4,
-	0x96, 0x6b, 0xf1, 0xf4, 0xf2, 0x93, 0xf4, 0x0a, 0x66, 0xba, 0x71, 0x6b, 0xed, 0x1e, 0x58, 0x36,
-	0xab, 0x74, 0xe7, 0x7f, 0xc8, 0xda, 0x81, 0xfc, 0xf1, 0xf4, 0x28, 0xed, 0x09, 0x00, 0xf3, 0xad,
-	0xd8, 0x0b, 0x72, 0xbf, 0x5e, 0x40, 0x9e, 0x4d, 0xcb, 0x45, 0x61, 0x4f, 0x04, 0x78, 0xa4, 0x3f,
-	0x02, 0x9c, 0xed, 0x69, 0x0c, 0xf4, 0xb8, 0x04, 0x29, 0xe4, 0x41, 0x77, 0x17, 0xfb, 0xb9, 0xf3,
-	0xba, 0x80, 0xfb, 0xf1, 0xd0, 0xe4, 0x11, 0xa4, 0x58, 0xd3, 0x30, 0xb4, 0x46, 0x2b, 0x9b, 0x8c,
-	0xa6, 0x1b, 0x89, 0xd6, 0x38, 0xca, 0xe3, 0x43, 0x12, 0x72, 0x13, 0x12, 0x6e, 0xe3, 0xa4, 0xf2,
-	0x23, 0xb3, 0x63, 0xc5, 0xf3, 0xfd, 0xc8, 0xca, 0xa8, 0x48, 0x50, 0x5d, 0xd8, 0x4a, 0x22, 0x1d,
-	0x1f, 0x4f, 0x4a, 0xef, 0x71, 0x22, 0xca, 0xf5, 0x7a, 0x68, 0x22, 0x16, 0x01, 0x3a, 0x0b, 0xc8,
-	0x9f, 0x3a, 0xbe, 0xad, 0xe4, 0xf6, 0xb6, 0x92, 0xf9, 0x0a, 0xc4, 0x6d, 0x25, 0xaf, 0x6a, 0x35,
-	0x8a, 0x58, 0x35, 0x80, 0x3c, 0xb9, 0xc9, 0x7f, 0x78, 0x89, 0x0f, 0xfa, 0xc7, 0xc4, 0x3f, 0xeb,
-	0x24, 0x7e, 0xc4, 0x0d, 0xf1, 0x4a, 0xbf, 0x10, 0x8f, 0x29, 0x61, 0xb8, 0x10, 0x4b, 0x5d, 0x91,
-	0xc5, 0xb1, 0xa8, 0xfd, 0x22, 0xe3, 0x5c, 0xc1, 0xd0, 0x56, 0x12, 0x69, 0x61, 0x3c, 0x2e, 0x7d,
-	0x12, 0x20, 0xeb, 0x79, 0xf6, 0x3b, 0x2d, 0xda, 0x3c, 0x4c, 0xc0, 0xa8, 0xee, 0x36, 0x72, 0xdc,
-	0x9d, 0x33, 0x7e, 0x08, 0x8c, 0xdf, 0x48, 0x70, 0xfc, 0xba, 0xa7, 0x27, 0x11, 0x9e, 0x9e, 0x37,
-	0x70, 0xee, 0x08, 0x15, 0x98, 0xcb, 0x87, 0x90, 0x61, 0x9e, 0x11, 0x6b, 0x79, 0x29, 0xf2, 0xd4,
-	0x60, 0xfe, 0x3a, 0x0c, 0xc5, 0xef, 0x29, 0x18, 0x75, 0x9d, 0x11, 0x06, 0x49, 0xbe, 0x69, 0x49,
-	0x31, 0x52, 0x75, 0xba, 0x96, 0x7d, 0x6e, 0x6e, 0x20, 0x0c, 0x8f, 0x45, 0x8a, 0x91, 0x77, 0x90,
-	0xc2, 0x12, 0x93, 0xf9, 0x81, 0x7b, 0x82, 0x7b, 0x1e, 0xb6, 0x97, 0xa4, 0x18, 0xf9, 0x22, 0xc0,
-	0xe9, 0xd0, 0xa2, 0x27, 0xb7, 0x06, 0xa4, 0x0b, 0xdd, 0x10, 0xff, 0x22, 0xe7, 0x03, 0x00, 0x1a,
-	0xcb, 0xf5, 0x7a, 0xc4, 0x7c, 0xf4, 0x4c, 0x7b, 0x44, 0x01, 0xbd, 0x53, 0x2a, 0xc5, 0xc8, 0x67,
-	0x01, 0x4e, 0x05, 0xaf, 0x11, 0x72, 0x3d, 0x6a, 0x30, 0x47, 0xdc, 0x6b, 0xb9, 0x1b, 0xc3, 0x81,
-	0x7d, 0x35, 0xdf, 0x04, 0x18, 0x0f, 0xdf, 0x1e, 0xe4, 0xf6, 0x60, 0xa4, 0x3d, 0xd7, 0x5a, 0xee,
-	0xce, 0xf0, 0x04, 0xbe, 0xb2, 0x8f, 0x02, 0x64, 0xfc, 0x99, 0x22, 0x57, 0xa3, 0x32, 0x86, 0x57,
-	0x4a, 0xee, 0xda, 0x10, 0x48, 0x4f, 0xc4, 0xc2, 0xeb, 0xbd, 0x03, 0x51, 0xd8, 0x3f, 0x10, 0x85,
-	0xdf, 0x07, 0xa2, 0xf0, 0xf5, 0x50, 0x8c, 0xed, 0x1f, 0x8a, 0xb1, 0x9f, 0x87, 0x62, 0xec, 0xc5,
-	0x62, 0x4d, 0x77, 0xb6, 0x9a, 0x15, 0x79, 0xc3, 0x32, 0x7a, 0xde, 0x70, 0xba, 0xe9, 0x28, 0xfc,
-	0x75, 0x67, 0x57, 0xfa, 0x3c, 0xf0, 0x2a, 0x49, 0xf7, 0x75, 0x37, 0xf7, 0x37, 0x00, 0x00, 0xff,
-	0xff, 0x3d, 0x13, 0xc0, 0xe4, 0x47, 0x0b, 0x00, 0x00,
+	// 938 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x56, 0xcd, 0x6f, 0x1b, 0x45,
+	0x14, 0xf7, 0x38, 0xae, 0x13, 0xbf, 0x14, 0x11, 0x4d, 0xa3, 0x60, 0xdc, 0xe0, 0xba, 0x83, 0x04,
+	0xe1, 0xb2, 0xc6, 0xae, 0xdc, 0x82, 0x68, 0x81, 0x44, 0x69, 0x43, 0x2a, 0x3e, 0xc2, 0x86, 0x0f,
+	0x01, 0x42, 0x61, 0x5d, 0x4f, 0x9c, 0x45, 0xf6, 0xee, 0x76, 0x67, 0x52, 0xc5, 0x15, 0x08, 0x09,
+	0x71, 0x83, 0x03, 0x9c, 0x90, 0xf8, 0x6f, 0xb8, 0xf5, 0xd8, 0x23, 0x27, 0x84, 0x92, 0x0b, 0xff,
+	0x01, 0x57, 0xe4, 0x99, 0xb7, 0xeb, 0xf5, 0xfa, 0x6b, 0x6c, 0x38, 0xd9, 0xf3, 0x34, 0xbf, 0xdf,
+	0xfb, 0x98, 0xf7, 0x7e, 0x6f, 0xe1, 0x55, 0xd9, 0x0b, 0xb8, 0xa8, 0xb6, 0x7a, 0x5d, 0xee, 0x09,
+	0xd7, 0xf7, 0xce, 0x7a, 0x8f, 0x07, 0x87, 0x6a, 0xe8, 0x77, 0x3a, 0x4e, 0x10, 0x54, 0x1f, 0x9e,
+	0xf2, 0xb0, 0x67, 0x05, 0xa1, 0x2f, 0x7d, 0x5a, 0x4e, 0xde, 0xb5, 0xe2, 0x83, 0x85, 0x77, 0x4b,
+	0xeb, 0x6d, 0xbf, 0xed, 0xab, 0xab, 0xd5, 0xfe, 0x3f, 0x8d, 0x2a, 0xa1, 0x9f, 0x07, 0xbe, 0xe8,
+	0xfa, 0xa2, 0xda, 0x74, 0x04, 0xd7, 0xa4, 0xd5, 0x47, 0xb5, 0x26, 0x97, 0x4e, 0xad, 0x1a, 0x38,
+	0x6d, 0xd7, 0x73, 0x64, 0x9f, 0x49, 0x23, 0x6a, 0x46, 0x91, 0x05, 0x4e, 0xe8, 0x74, 0x05, 0x42,
+	0xea, 0x46, 0x10, 0xfc, 0x45, 0x4c, 0xc3, 0x08, 0x23, 0xa4, 0x23, 0xf9, 0x91, 0xeb, 0x1d, 0x47,
+	0xf9, 0x58, 0x46, 0xb0, 0xd8, 0x0d, 0x5b, 0x07, 0xfa, 0x61, 0x3f, 0xdf, 0x03, 0x15, 0xaf, 0xcd,
+	0x1f, 0x9e, 0x72, 0x21, 0xd9, 0x17, 0x70, 0x65, 0xc8, 0x2a, 0x02, 0xdf, 0x13, 0x9c, 0xee, 0x42,
+	0x5e, 0xe7, 0x55, 0x24, 0x15, 0xb2, 0xb5, 0x5a, 0x7f, 0xc9, 0x9a, 0x5e, 0x73, 0x4b, 0xe3, 0x77,
+	0x72, 0x4f, 0xfe, 0xbc, 0x96, 0xb1, 0x11, 0xcb, 0x0e, 0x61, 0x43, 0x91, 0xef, 0x71, 0x69, 0xeb,
+	0x7b, 0xe8, 0x96, 0x6e, 0x42, 0x01, 0x91, 0xfb, 0x2d, 0xe5, 0xa2, 0x60, 0x0f, 0x0c, 0xf4, 0x2a,
+	0x14, 0xfc, 0xae, 0x2b, 0x8f, 0x9c, 0x20, 0x10, 0xc5, 0x6c, 0x85, 0x6c, 0xad, 0xd8, 0x2b, 0x7d,
+	0xc3, 0x76, 0x10, 0x08, 0xf6, 0x31, 0x94, 0x53, 0xa4, 0x3b, 0xbd, 0xbb, 0xfb, 0x07, 0xb5, 0x46,
+	0x23, 0x22, 0xdf, 0x80, 0x3c, 0x77, 0x83, 0x5a, 0xa3, 0xa1, 0x98, 0x73, 0x36, 0x9e, 0xa6, 0xd3,
+	0x7e, 0x06, 0x57, 0x23, 0xda, 0x77, 0x1d, 0xc9, 0x85, 0x7c, 0x87, 0xbb, 0xed, 0x13, 0x69, 0x16,
+	0xf0, 0x26, 0x14, 0x8e, 0x5d, 0xcf, 0xe9, 0xb8, 0x8f, 0x79, 0x0b, 0x99, 0x07, 0x06, 0x76, 0x13,
+	0x36, 0xc7, 0x53, 0x63, 0xb1, 0x37, 0x20, 0x7f, 0xa2, 0x2c, 0x51, 0xbc, 0xfa, 0xc4, 0xbe, 0x84,
+	0x6b, 0xc3, 0xb8, 0xc3, 0x7e, 0x0f, 0xec, 0x7b, 0x2d, 0x7e, 0xf6, 0x7f, 0x84, 0x75, 0x06, 0x95,
+	0xc9, 0xf4, 0x18, 0xda, 0x47, 0x00, 0x22, 0xb6, 0x62, 0x2f, 0x58, 0xb3, 0x7a, 0x01, 0x79, 0x8e,
+	0x7d, 0x85, 0xc2, 0x9e, 0x48, 0xf0, 0xb0, 0x7f, 0x08, 0x3c, 0x37, 0xd2, 0x18, 0xe8, 0x71, 0x0f,
+	0x96, 0x91, 0x07, 0xdd, 0xbd, 0x3c, 0xcb, 0x5d, 0xd4, 0x05, 0xda, 0x4f, 0x84, 0xa6, 0xef, 0xc3,
+	0xb2, 0x38, 0xed, 0x76, 0x9d, 0xb0, 0x57, 0xcc, 0x9b, 0xc5, 0x8d, 0x44, 0x87, 0x1a, 0x15, 0xf1,
+	0x21, 0x09, 0xbd, 0x03, 0x39, 0xd5, 0x38, 0xcb, 0x95, 0xa5, 0xad, 0xd5, 0xfa, 0x8b, 0xb3, 0xc8,
+	0xb6, 0x31, 0x22, 0x62, 0x2b, 0xd8, 0xfd, 0xdc, 0x4a, 0x76, 0x2d, 0xcf, 0xbe, 0xc5, 0x89, 0xd8,
+	0xee, 0x74, 0x52, 0x13, 0x71, 0x0f, 0x60, 0x20, 0x40, 0xf1, 0xd4, 0x69, 0xb5, 0xb2, 0xfa, 0x6a,
+	0x65, 0x69, 0x09, 0x44, 0xb5, 0xb2, 0x0e, 0x9c, 0x36, 0x47, 0xac, 0x9d, 0x40, 0x4e, 0x6f, 0xf2,
+	0xdf, 0xa3, 0xc2, 0x27, 0xfd, 0x63, 0xe1, 0x3f, 0x1d, 0x14, 0x7e, 0x49, 0xa5, 0x78, 0x6b, 0x56,
+	0x8a, 0x13, 0x9e, 0x30, 0xfd, 0x10, 0x7b, 0x43, 0x99, 0x65, 0xf1, 0x51, 0x67, 0x65, 0xa6, 0xb9,
+	0x92, 0xa9, 0xdd, 0xcf, 0xad, 0x90, 0xb5, 0x2c, 0xfb, 0x81, 0x40, 0x31, 0xf2, 0x1c, 0x77, 0x9a,
+	0xd9, 0x3c, 0xac, 0xc3, 0x25, 0x57, 0x35, 0x72, 0x56, 0xcd, 0x99, 0x3e, 0x24, 0xc6, 0x6f, 0x29,
+	0x39, 0x7e, 0xc3, 0xd3, 0x93, 0x4b, 0x4f, 0xcf, 0xd7, 0xf0, 0xfc, 0x98, 0x28, 0xb0, 0x96, 0xef,
+	0x41, 0x41, 0x44, 0x46, 0x7c, 0xcb, 0x57, 0x8c, 0xa7, 0x06, 0xeb, 0x37, 0x60, 0x60, 0xb7, 0x51,
+	0x40, 0x6c, 0xde, 0x76, 0x85, 0xe4, 0x21, 0x6f, 0xed, 0x72, 0xcf, 0x8f, 0x45, 0x7c, 0x7a, 0xd6,
+	0xec, 0x16, 0xbc, 0x30, 0x01, 0x3d, 0xd0, 0x9f, 0x96, 0xb2, 0x14, 0x49, 0x65, 0x69, 0xab, 0x60,
+	0xe3, 0x89, 0x5d, 0x47, 0xfd, 0xf9, 0xa0, 0x29, 0xfc, 0x0e, 0x97, 0x7c, 0xd7, 0x3e, 0xfc, 0x84,
+	0x87, 0xfd, 0xa0, 0xe3, 0xf5, 0x71, 0x17, 0x35, 0x64, 0xec, 0x15, 0xa4, 0xbf, 0x0e, 0x97, 0x5b,
+	0xa1, 0x38, 0x7a, 0x84, 0x76, 0xe5, 0xe4, 0x19, 0x7b, 0xb5, 0x15, 0x8a, 0xe8, 0x6a, 0xfd, 0xef,
+	0x02, 0x5c, 0x52, 0x3c, 0x54, 0x40, 0x5e, 0xaf, 0x12, 0x5a, 0x37, 0x6a, 0xbf, 0xa1, 0x6d, 0x56,
+	0xba, 0x31, 0x17, 0x46, 0xc7, 0xc7, 0x32, 0xf4, 0x1b, 0x58, 0xc6, 0x1e, 0xa6, 0x37, 0xe7, 0x6e,
+	0x7a, 0xed, 0x79, 0xd1, 0x61, 0x61, 0x19, 0xfa, 0x13, 0x81, 0x67, 0x53, 0x9b, 0x8c, 0xbe, 0x39,
+	0x27, 0x5d, 0x6a, 0x05, 0xfe, 0x97, 0x70, 0xbe, 0x03, 0x40, 0xe3, 0x76, 0xa7, 0x63, 0x58, 0x8f,
+	0x11, 0x39, 0x33, 0x0c, 0x60, 0x54, 0x86, 0x58, 0x86, 0xfe, 0x48, 0xe0, 0x72, 0x72, 0x4f, 0xd2,
+	0x37, 0x4c, 0x93, 0x19, 0xb3, 0xb8, 0x4b, 0xb7, 0x17, 0x03, 0xc7, 0xd1, 0xfc, 0x4a, 0x60, 0x2d,
+	0xbd, 0x1e, 0xe9, 0x5b, 0xf3, 0x91, 0x8e, 0xec, 0xed, 0xd2, 0xdb, 0x8b, 0x13, 0xc4, 0x91, 0x7d,
+	0x4f, 0xa0, 0x10, 0x8b, 0x06, 0x7d, 0xcd, 0x94, 0x31, 0xad, 0x99, 0xa5, 0xd7, 0x17, 0x40, 0xc6,
+	0x41, 0xfc, 0x42, 0x60, 0x2d, 0x2d, 0x2c, 0xd4, 0xac, 0xe6, 0x13, 0xd4, 0xac, 0x74, 0x67, 0x41,
+	0x74, 0x1c, 0xd3, 0x6f, 0x04, 0xae, 0x8c, 0x11, 0x24, 0xc3, 0x57, 0x9b, 0xac, 0x76, 0x86, 0xaf,
+	0x36, 0x45, 0x0b, 0x59, 0x66, 0xe7, 0xab, 0x27, 0xe7, 0x65, 0xf2, 0xf4, 0xbc, 0x4c, 0xfe, 0x3a,
+	0x2f, 0x93, 0x9f, 0x2f, 0xca, 0x99, 0xa7, 0x17, 0xe5, 0xcc, 0x1f, 0x17, 0xe5, 0xcc, 0xe7, 0xf7,
+	0xda, 0xae, 0x3c, 0x39, 0x6d, 0x5a, 0x0f, 0xfc, 0xee, 0xc8, 0x57, 0xbd, 0xeb, 0xc9, 0xaa, 0xfe,
+	0xde, 0x0f, 0x9a, 0x33, 0x3e, 0xf9, 0x9b, 0x79, 0xf5, 0xbd, 0x7f, 0xe3, 0xdf, 0x00, 0x00, 0x00,
+	0xff, 0xff, 0xf2, 0xe2, 0x5c, 0x94, 0x59, 0x0d, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -789,6 +969,10 @@ type QueryClient interface {
 	LatestStateIndex(ctx context.Context, in *QueryGetLatestStateIndexRequest, opts ...grpc.CallOption) (*QueryGetLatestStateIndexResponse, error)
 	// Queries a StateInfo by index.
 	StateInfo(ctx context.Context, in *QueryGetStateInfoRequest, opts ...grpc.CallOption) (*QueryGetStateInfoResponse, error)
+	// Queries a list of registered denoms for the rollapp.
+	RegisteredDenoms(ctx context.Context, in *QueryRegisteredDenomsRequest, opts ...grpc.CallOption) (*QueryRegisteredDenomsResponse, error)
+	// Queries a list of obsolete DRS versions.
+	ObsoleteDRSVersions(ctx context.Context, in *QueryObsoleteDRSVersionsRequest, opts ...grpc.CallOption) (*QueryObsoleteDRSVersionsResponse, error)
 }
 
 type queryClient struct {
@@ -862,6 +1046,24 @@ func (c *queryClient) StateInfo(ctx context.Context, in *QueryGetStateInfoReques
 	return out, nil
 }
 
+func (c *queryClient) RegisteredDenoms(ctx context.Context, in *QueryRegisteredDenomsRequest, opts ...grpc.CallOption) (*QueryRegisteredDenomsResponse, error) {
+	out := new(QueryRegisteredDenomsResponse)
+	err := c.cc.Invoke(ctx, "/dymensionxyz.dymension.rollapp.Query/RegisteredDenoms", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *queryClient) ObsoleteDRSVersions(ctx context.Context, in *QueryObsoleteDRSVersionsRequest, opts ...grpc.CallOption) (*QueryObsoleteDRSVersionsResponse, error) {
+	out := new(QueryObsoleteDRSVersionsResponse)
+	err := c.cc.Invoke(ctx, "/dymensionxyz.dymension.rollapp.Query/ObsoleteDRSVersions", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // QueryServer is the server API for Query service.
 type QueryServer interface {
 	// Parameters queries the parameters of the module.
@@ -878,6 +1080,10 @@ type QueryServer interface {
 	LatestStateIndex(context.Context, *QueryGetLatestStateIndexRequest) (*QueryGetLatestStateIndexResponse, error)
 	// Queries a StateInfo by index.
 	StateInfo(context.Context, *QueryGetStateInfoRequest) (*QueryGetStateInfoResponse, error)
+	// Queries a list of registered denoms for the rollapp.
+	RegisteredDenoms(context.Context, *QueryRegisteredDenomsRequest) (*QueryRegisteredDenomsResponse, error)
+	// Queries a list of obsolete DRS versions.
+	ObsoleteDRSVersions(context.Context, *QueryObsoleteDRSVersionsRequest) (*QueryObsoleteDRSVersionsResponse, error)
 }
 
 // UnimplementedQueryServer can be embedded to have forward compatible implementations.
@@ -904,6 +1110,12 @@ func (*UnimplementedQueryServer) LatestStateIndex(ctx context.Context, req *Quer
 }
 func (*UnimplementedQueryServer) StateInfo(ctx context.Context, req *QueryGetStateInfoRequest) (*QueryGetStateInfoResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method StateInfo not implemented")
+}
+func (*UnimplementedQueryServer) RegisteredDenoms(ctx context.Context, req *QueryRegisteredDenomsRequest) (*QueryRegisteredDenomsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method RegisteredDenoms not implemented")
+}
+func (*UnimplementedQueryServer) ObsoleteDRSVersions(ctx context.Context, req *QueryObsoleteDRSVersionsRequest) (*QueryObsoleteDRSVersionsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ObsoleteDRSVersions not implemented")
 }
 
 func RegisterQueryServer(s grpc1.Server, srv QueryServer) {
@@ -1036,6 +1248,42 @@ func _Query_StateInfo_Handler(srv interface{}, ctx context.Context, dec func(int
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Query_RegisteredDenoms_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryRegisteredDenomsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(QueryServer).RegisteredDenoms(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/dymensionxyz.dymension.rollapp.Query/RegisteredDenoms",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(QueryServer).RegisteredDenoms(ctx, req.(*QueryRegisteredDenomsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _Query_ObsoleteDRSVersions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(QueryObsoleteDRSVersionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(QueryServer).ObsoleteDRSVersions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/dymensionxyz.dymension.rollapp.Query/ObsoleteDRSVersions",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(QueryServer).ObsoleteDRSVersions(ctx, req.(*QueryObsoleteDRSVersionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 var _Query_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "dymensionxyz.dymension.rollapp.Query",
 	HandlerType: (*QueryServer)(nil),
@@ -1067,6 +1315,14 @@ var _Query_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "StateInfo",
 			Handler:    _Query_StateInfo_Handler,
+		},
+		{
+			MethodName: "RegisteredDenoms",
+			Handler:    _Query_RegisteredDenoms_Handler,
+		},
+		{
+			MethodName: "ObsoleteDRSVersions",
+			Handler:    _Query_ObsoleteDRSVersions_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
@@ -1582,6 +1838,132 @@ func (m *QueryGetStateInfoResponse) MarshalToSizedBuffer(dAtA []byte) (int, erro
 	return len(dAtA) - i, nil
 }
 
+func (m *QueryRegisteredDenomsRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *QueryRegisteredDenomsRequest) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *QueryRegisteredDenomsRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.RollappId) > 0 {
+		i -= len(m.RollappId)
+		copy(dAtA[i:], m.RollappId)
+		i = encodeVarintQuery(dAtA, i, uint64(len(m.RollappId)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *QueryRegisteredDenomsResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *QueryRegisteredDenomsResponse) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *QueryRegisteredDenomsResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Denoms) > 0 {
+		for iNdEx := len(m.Denoms) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.Denoms[iNdEx])
+			copy(dAtA[i:], m.Denoms[iNdEx])
+			i = encodeVarintQuery(dAtA, i, uint64(len(m.Denoms[iNdEx])))
+			i--
+			dAtA[i] = 0xa
+		}
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *QueryObsoleteDRSVersionsRequest) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *QueryObsoleteDRSVersionsRequest) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *QueryObsoleteDRSVersionsRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	return len(dAtA) - i, nil
+}
+
+func (m *QueryObsoleteDRSVersionsResponse) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *QueryObsoleteDRSVersionsResponse) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *QueryObsoleteDRSVersionsResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.DrsVersions) > 0 {
+		dAtA9 := make([]byte, len(m.DrsVersions)*10)
+		var j8 int
+		for _, num := range m.DrsVersions {
+			for num >= 1<<7 {
+				dAtA9[j8] = uint8(uint64(num)&0x7f | 0x80)
+				num >>= 7
+				j8++
+			}
+			dAtA9[j8] = uint8(num)
+			j8++
+		}
+		i -= j8
+		copy(dAtA[i:], dAtA9[:j8])
+		i = encodeVarintQuery(dAtA, i, uint64(j8))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
 func encodeVarintQuery(dAtA []byte, offset int, v uint64) int {
 	offset -= sovQuery(v)
 	base := offset
@@ -1783,6 +2165,59 @@ func (m *QueryGetStateInfoResponse) Size() (n int) {
 	_ = l
 	l = m.StateInfo.Size()
 	n += 1 + l + sovQuery(uint64(l))
+	return n
+}
+
+func (m *QueryRegisteredDenomsRequest) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.RollappId)
+	if l > 0 {
+		n += 1 + l + sovQuery(uint64(l))
+	}
+	return n
+}
+
+func (m *QueryRegisteredDenomsResponse) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if len(m.Denoms) > 0 {
+		for _, s := range m.Denoms {
+			l = len(s)
+			n += 1 + l + sovQuery(uint64(l))
+		}
+	}
+	return n
+}
+
+func (m *QueryObsoleteDRSVersionsRequest) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	return n
+}
+
+func (m *QueryObsoleteDRSVersionsResponse) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if len(m.DrsVersions) > 0 {
+		l = 0
+		for _, e := range m.DrsVersions {
+			l += sovQuery(uint64(e))
+		}
+		n += 1 + sovQuery(uint64(l)) + l
+	}
 	return n
 }
 
@@ -3050,6 +3485,346 @@ func (m *QueryGetStateInfoResponse) Unmarshal(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipQuery(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthQuery
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *QueryRegisteredDenomsRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowQuery
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: QueryRegisteredDenomsRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: QueryRegisteredDenomsRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RollappId", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQuery
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQuery
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQuery
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.RollappId = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipQuery(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthQuery
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *QueryRegisteredDenomsResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowQuery
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: QueryRegisteredDenomsResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: QueryRegisteredDenomsResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Denoms", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowQuery
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthQuery
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthQuery
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Denoms = append(m.Denoms, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipQuery(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthQuery
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *QueryObsoleteDRSVersionsRequest) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowQuery
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: QueryObsoleteDRSVersionsRequest: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: QueryObsoleteDRSVersionsRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		default:
+			iNdEx = preIndex
+			skippy, err := skipQuery(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
+				return ErrInvalidLengthQuery
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *QueryObsoleteDRSVersionsResponse) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowQuery
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: QueryObsoleteDRSVersionsResponse: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: QueryObsoleteDRSVersionsResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType == 0 {
+				var v uint32
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowQuery
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					v |= uint32(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				m.DrsVersions = append(m.DrsVersions, v)
+			} else if wireType == 2 {
+				var packedLen int
+				for shift := uint(0); ; shift += 7 {
+					if shift >= 64 {
+						return ErrIntOverflowQuery
+					}
+					if iNdEx >= l {
+						return io.ErrUnexpectedEOF
+					}
+					b := dAtA[iNdEx]
+					iNdEx++
+					packedLen |= int(b&0x7F) << shift
+					if b < 0x80 {
+						break
+					}
+				}
+				if packedLen < 0 {
+					return ErrInvalidLengthQuery
+				}
+				postIndex := iNdEx + packedLen
+				if postIndex < 0 {
+					return ErrInvalidLengthQuery
+				}
+				if postIndex > l {
+					return io.ErrUnexpectedEOF
+				}
+				var elementCount int
+				var count int
+				for _, integer := range dAtA[iNdEx:postIndex] {
+					if integer < 128 {
+						count++
+					}
+				}
+				elementCount = count
+				if elementCount != 0 && len(m.DrsVersions) == 0 {
+					m.DrsVersions = make([]uint32, 0, elementCount)
+				}
+				for iNdEx < postIndex {
+					var v uint32
+					for shift := uint(0); ; shift += 7 {
+						if shift >= 64 {
+							return ErrIntOverflowQuery
+						}
+						if iNdEx >= l {
+							return io.ErrUnexpectedEOF
+						}
+						b := dAtA[iNdEx]
+						iNdEx++
+						v |= uint32(b&0x7F) << shift
+						if b < 0x80 {
+							break
+						}
+					}
+					m.DrsVersions = append(m.DrsVersions, v)
+				}
+			} else {
+				return fmt.Errorf("proto: wrong wireType = %d for field DrsVersions", wireType)
+			}
 		default:
 			iNdEx = preIndex
 			skippy, err := skipQuery(dAtA[iNdEx:])

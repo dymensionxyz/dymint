@@ -745,7 +745,7 @@ func (c *Client) Status(_ context.Context) (*ctypes.ResultStatus, error) {
 			DefaultNodeID:   id,
 			ListenAddr:      addr,
 			Network:         network,
-			Version:         version.BuildVersion,
+			Version:         version.Build,
 			Channels:        []byte{0x1},
 			Moniker:         config.DefaultBaseConfig().Moniker,
 			Other: p2p.DefaultNodeInfoOther{

@@ -62,11 +62,9 @@ func (v *SettlementValidator) ValidateStateUpdate(batch *settlement.ResultRetrie
 			continue
 		}
 		p2pBlocks[block.Header.Height] = block
-
 	}
 
 	// load all DA blocks from the batch to be validated
-	daBlocks := []*types.Block{}
 	var daBatch da.ResultRetrieveBatch
 	for {
 		daBatch = v.blockManager.Retriever.RetrieveBatches(batch.MetaData.DA)
@@ -84,8 +82,12 @@ func (v *SettlementValidator) ValidateStateUpdate(batch *settlement.ResultRetrie
 		if errors.Is(checkBatchResult.Error, da.ErrBlobNotIncluded) {
 			return types.NewErrStateUpdateBlobNotAvailableFraud(batch.StateIndex, string(batch.MetaData.DA.Client), batch.MetaData.DA.Height, hex.EncodeToString(batch.MetaData.DA.Commitment))
 		}
+
+		// FIXME: how to handle non-happy case? not returning error?
+		continue
 	}
 
+	daBlocks := []*types.Block{}
 	for _, batch := range daBatch.Batches {
 		daBlocks = append(daBlocks, batch.Blocks...)
 	}
@@ -129,7 +131,7 @@ func (v *SettlementValidator) ValidateP2PBlocks(daBlocks []*types.Block, p2pBloc
 			return err
 		}
 		if !bytes.Equal(p2pBlockHash, daBlockHash) {
-			return types.NewErrStateUpdateDoubleSigningFraud(daBlock, p2pBlock)
+			return types.NewErrStateUpdateDoubleSigningFraud(daBlock, p2pBlock, daBlockHash, p2pBlockHash)
 		}
 
 	}
@@ -142,13 +144,9 @@ func (v *SettlementValidator) ValidateDaBlocks(slBatch *settlement.ResultRetriev
 	// we first verify the numblocks included in the state info match the block descriptors and the blocks obtained from DA
 	numSlBDs := uint64(len(slBatch.BlockDescriptors))
 	numSLBlocks := slBatch.NumBlocks
-	if numSLBlocks != numSlBDs {
-		return types.NewErrStateUpdateNumBlocksNotMatchingFraud(slBatch.EndHeight, numSLBlocks, numSLBlocks)
-	}
-
-	currentProposer := v.blockManager.State.GetProposer()
-	if currentProposer == nil {
-		return fmt.Errorf("proposer is not set")
+	numDABlocks := uint64(len(daBlocks))
+	if numSLBlocks != numSlBDs || numDABlocks < numSlBDs {
+		return types.NewErrStateUpdateNumBlocksNotMatchingFraud(slBatch.EndHeight, numSLBlocks, numSLBlocks, numDABlocks)
 	}
 
 	// we compare all DA blocks against the information included in the state info block descriptors
@@ -172,36 +170,33 @@ func (v *SettlementValidator) ValidateDaBlocks(slBatch *settlement.ResultRetriev
 		if err != nil {
 			return err
 		}
-
-		// we compare the sequencer address between SL state info and DA block
-		// if next sequencer is not set, we check if the sequencer hash is equal to the next sequencer hash
-		// because it did not change. If the next sequencer is set, we check if the next sequencer hash is equal on the
-		// last block of the batch
-		isLastBlock := i == len(slBatch.BlockDescriptors)-1
-		if slBatch.NextSequencer != currentProposer.SettlementAddress && isLastBlock {
-			err := v.blockManager.UpdateSequencerSetFromSL()
-			if err != nil {
-				return fmt.Errorf("update sequencer set from SL: %w", err)
-			}
-			nextSequencer, found := v.blockManager.Sequencers.GetByAddress(slBatch.NextSequencer)
-			if !found {
-				return fmt.Errorf("next sequencer not found")
-			}
-			if !bytes.Equal(nextSequencer.MustHash(), daBlocks[i].Header.NextSequencersHash[:]) {
-				return types.NewErrInvalidNextSequencersHashFraud(
-					[32]byte(nextSequencer.MustHash()),
-					daBlocks[i].Header.NextSequencersHash,
-				)
-			}
-		} else {
-			if !bytes.Equal(daBlocks[i].Header.SequencerHash[:], daBlocks[i].Header.NextSequencersHash[:]) {
-				return types.NewErrInvalidNextSequencersHashFraud(
-					daBlocks[i].Header.SequencerHash,
-					daBlocks[i].Header.NextSequencersHash,
-				)
-			}
-		}
 	}
+
+	// we compare the sequencer address between SL state info and DA block
+	// if next sequencer is not set, we check if the sequencer hash is equal to the next sequencer hash
+	// because it did not change. If the next sequencer is set, we check if the next sequencer hash is equal on the
+	// last block of the batch
+	lastDABlock := daBlocks[numSlBDs-1]
+
+	// if lastDaBlock is previous block to fork, dont validate nextsequencerhash of last block because it will not match
+	if v.blockManager.State.RevisionStartHeight-1 == lastDABlock.Header.Height {
+		v.logger.Debug("DA blocks, previous to fork, validated successfully", "start height", daBlocks[0].Header.Height, "end height", daBlocks[len(daBlocks)-1].Header.Height)
+		return nil
+	}
+
+	expectedNextSeqHash := lastDABlock.Header.SequencerHash
+	if slBatch.NextSequencer != slBatch.Sequencer {
+		nextSequencer, found := v.blockManager.Sequencers.GetByAddress(slBatch.NextSequencer)
+		if !found {
+			return fmt.Errorf("next sequencer not found")
+		}
+		copy(expectedNextSeqHash[:], nextSequencer.MustHash())
+	}
+
+	if !bytes.Equal(expectedNextSeqHash[:], lastDABlock.Header.NextSequencersHash[:]) {
+		return types.NewErrInvalidNextSequencersHashFraud(expectedNextSeqHash, lastDABlock.Header)
+	}
+
 	v.logger.Debug("DA blocks validated successfully", "start height", daBlocks[0].Header.Height, "end height", daBlocks[len(daBlocks)-1].Header.Height)
 	return nil
 }
