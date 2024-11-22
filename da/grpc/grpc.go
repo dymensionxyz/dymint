@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"strconv"
 
+	"cosmossdk.io/math"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
@@ -155,6 +156,8 @@ func (d *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 }
 
 func (d *DataAvailabilityLayerClient) GetSignerBalance() (*da.Balance, error) {
-	//TODO implement me
-	panic("implement me")
+	return &da.Balance{
+		Amount: math.ZeroInt(),
+		Denom:  "adym",
+	}, nil
 }

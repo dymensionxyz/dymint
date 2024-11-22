@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"cosmossdk.io/math"
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
@@ -183,6 +184,8 @@ func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint32 {
 }
 
 func (m *DataAvailabilityLayerClient) GetSignerBalance() (*da.Balance, error) {
-	//TODO implement me
-	panic("implement me")
+	return &da.Balance{
+		Amount: math.ZeroInt(),
+		Denom:  "adym",
+	}, nil
 }
