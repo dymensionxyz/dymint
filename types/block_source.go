@@ -22,8 +22,9 @@ func (s BlockSource) String() string {
 var AllSources = []string{"none", "produced", "gossip", "blocksync", "da", "local_db"}
 
 type BlockMetaData struct {
-	Source   BlockSource
-	DAHeight uint64
+	Source       BlockSource
+	DAHeight     uint64
+	SequencerSet Sequencers // The set of Rollapp sequencers that were present in the Hub while producing this block
 }
 
 type CachedBlock struct {

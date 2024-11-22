@@ -694,6 +694,63 @@ func (_c *MockStore_LoadIndexerBaseHeight_Call) RunAndReturn(run func() (uint64,
 	return _c
 }
 
+// LoadLastBlockSequencerSet provides a mock function with given fields:
+func (_m *MockStore) LoadLastBlockSequencerSet() (types.Sequencers, error) {
+	ret := _m.Called()
+
+	if len(ret) == 0 {
+		panic("no return value specified for LoadLastBlockSequencerSet")
+	}
+
+	var r0 types.Sequencers
+	var r1 error
+	if rf, ok := ret.Get(0).(func() (types.Sequencers, error)); ok {
+		return rf()
+	}
+	if rf, ok := ret.Get(0).(func() types.Sequencers); ok {
+		r0 = rf()
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(types.Sequencers)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func() error); ok {
+		r1 = rf()
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockStore_LoadLastBlockSequencerSet_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'LoadLastBlockSequencerSet'
+type MockStore_LoadLastBlockSequencerSet_Call struct {
+	*mock.Call
+}
+
+// LoadLastBlockSequencerSet is a helper method to define mock.On call
+func (_e *MockStore_Expecter) LoadLastBlockSequencerSet() *MockStore_LoadLastBlockSequencerSet_Call {
+	return &MockStore_LoadLastBlockSequencerSet_Call{Call: _e.mock.On("LoadLastBlockSequencerSet")}
+}
+
+func (_c *MockStore_LoadLastBlockSequencerSet_Call) Run(run func()) *MockStore_LoadLastBlockSequencerSet_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run()
+	})
+	return _c
+}
+
+func (_c *MockStore_LoadLastBlockSequencerSet_Call) Return(_a0 types.Sequencers, _a1 error) *MockStore_LoadLastBlockSequencerSet_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockStore_LoadLastBlockSequencerSet_Call) RunAndReturn(run func() (types.Sequencers, error)) *MockStore_LoadLastBlockSequencerSet_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // LoadProposer provides a mock function with given fields: height
 func (_m *MockStore) LoadProposer(height uint64) (types.Sequencer, error) {
 	ret := _m.Called(height)
@@ -1446,6 +1503,65 @@ func (_c *MockStore_SaveIndexerBaseHeight_Call) Return(_a0 error) *MockStore_Sav
 }
 
 func (_c *MockStore_SaveIndexerBaseHeight_Call) RunAndReturn(run func(uint64) error) *MockStore_SaveIndexerBaseHeight_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// SaveLastBlockSequencerSet provides a mock function with given fields: sequencers, batch
+func (_m *MockStore) SaveLastBlockSequencerSet(sequencers types.Sequencers, batch store.KVBatch) (store.KVBatch, error) {
+	ret := _m.Called(sequencers, batch)
+
+	if len(ret) == 0 {
+		panic("no return value specified for SaveLastBlockSequencerSet")
+	}
+
+	var r0 store.KVBatch
+	var r1 error
+	if rf, ok := ret.Get(0).(func(types.Sequencers, store.KVBatch) (store.KVBatch, error)); ok {
+		return rf(sequencers, batch)
+	}
+	if rf, ok := ret.Get(0).(func(types.Sequencers, store.KVBatch) store.KVBatch); ok {
+		r0 = rf(sequencers, batch)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(store.KVBatch)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(types.Sequencers, store.KVBatch) error); ok {
+		r1 = rf(sequencers, batch)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockStore_SaveLastBlockSequencerSet_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'SaveLastBlockSequencerSet'
+type MockStore_SaveLastBlockSequencerSet_Call struct {
+	*mock.Call
+}
+
+// SaveLastBlockSequencerSet is a helper method to define mock.On call
+//   - sequencers types.Sequencers
+//   - batch store.KVBatch
+func (_e *MockStore_Expecter) SaveLastBlockSequencerSet(sequencers interface{}, batch interface{}) *MockStore_SaveLastBlockSequencerSet_Call {
+	return &MockStore_SaveLastBlockSequencerSet_Call{Call: _e.mock.On("SaveLastBlockSequencerSet", sequencers, batch)}
+}
+
+func (_c *MockStore_SaveLastBlockSequencerSet_Call) Run(run func(sequencers types.Sequencers, batch store.KVBatch)) *MockStore_SaveLastBlockSequencerSet_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(types.Sequencers), args[1].(store.KVBatch))
+	})
+	return _c
+}
+
+func (_c *MockStore_SaveLastBlockSequencerSet_Call) Return(_a0 store.KVBatch, _a1 error) *MockStore_SaveLastBlockSequencerSet_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockStore_SaveLastBlockSequencerSet_Call) RunAndReturn(run func(types.Sequencers, store.KVBatch) (store.KVBatch, error)) *MockStore_SaveLastBlockSequencerSet_Call {
 	_c.Call.Return(run)
 	return _c
 }

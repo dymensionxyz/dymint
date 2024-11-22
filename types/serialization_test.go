@@ -6,6 +6,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/tendermint/tendermint/crypto/ed25519"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
 	tmversion "github.com/tendermint/tendermint/proto/tendermint/version"
@@ -222,4 +223,37 @@ func TestStateWithProposer(t *testing.T) {
 			assert.Equal(t, state.GetProposer(), newState.GetProposer())
 		})
 	}
+}
+
+func TestSequencersProtoSerialization(t *testing.T) {
+	t.Parallel()
+
+	// Create a sample Sequencer
+	pubKey := ed25519.GenPrivKey().PubKey()
+	sequencer := types.NewSequencer(pubKey, "settlementAddress", "rewardAddr", []string{"relayer1", "relayer2"})
+
+	// Create a Sequencers slice
+	sequencers := types.Sequencers{*sequencer}
+
+	// Convert Sequencers to protobuf
+	protoSet, err := sequencers.ToProto()
+	require.NoError(t, err)
+	require.NotNil(t, protoSet)
+
+	// Marshal the protobuf to bytes
+	bytes, err := protoSet.Marshal()
+	require.NoError(t, err)
+	require.NotEmpty(t, bytes)
+
+	// Unmarshal the bytes back to protobuf
+	var newProtoSet pb.SequencerSet
+	err = newProtoSet.Unmarshal(bytes)
+	require.NoError(t, err)
+
+	// Convert protobuf back to Sequencers
+	newSequencers, err := types.SequencersFromProto(&newProtoSet)
+	require.NoError(t, err)
+
+	// Assert that the original and new Sequencers are equal
+	assert.Equal(t, sequencers, newSequencers)
 }

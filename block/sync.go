@@ -50,14 +50,14 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return nil
 		case <-m.settlementSyncingC:
 			m.logger.Info("syncing to target height", "targetHeight", m.LastSettlementHeight.Load())
 
 			for currH := m.State.NextHeight(); currH <= m.LastSettlementHeight.Load(); currH = m.State.NextHeight() {
 				// if context has been cancelled, stop syncing
 				if ctx.Err() != nil {
-					return ctx.Err()
+					return nil
 				}
 				// if we have the block locally, we don't need to fetch it from the DA.
 				// it will only happen in case of rollback.

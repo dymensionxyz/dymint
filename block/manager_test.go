@@ -361,7 +361,6 @@ func TestApplyLocalBlock_WithFraudCheck(t *testing.T) {
 	mockExecutor.On("UpdateStateAfterInitChain", mock.Anything, mock.Anything).Return(nil)
 	mockExecutor.On("UpdateMempoolAfterInitChain", mock.Anything).Return(nil)
 	mockExecutor.On("ExecuteBlock", mock.Anything, mock.Anything).Return(nil, gerrc.ErrFault)
-	mockExecutor.On("AddConsensusMsgs", mock.Anything).Return()
 
 	// Check that handle fault is called
 	mockFraudHandler := &blockmocks.MockFraudHandler{}
