@@ -72,7 +72,7 @@ func WithSubmitBackoff(c uretry.BackoffConfig) da.Option {
 }
 
 // Init initializes DataAvailabilityLayerClient instance.
-func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.Server, kvStore store.KV, logger types.Logger, options ...da.Option) error {
+func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.Server, _ store.KV, logger types.Logger, options ...da.Option) error {
 	c.logger = logger
 	c.synced = make(chan struct{}, 1)
 	var err error
@@ -604,4 +604,22 @@ func (c *DataAvailabilityLayerClient) sync(rpc *openrpc.Client) {
 // GetMaxBlobSizeBytes returns the maximum allowed blob size in the DA, used to check the max batch size configured
 func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint32 {
 	return maxBlobSizeBytes
+}
+
+// GetSignerBalance returns the balance for a specific address
+func (d *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
+	ctx, cancel := context.WithTimeout(d.ctx, d.config.Timeout)
+	defer cancel()
+
+	balance, err := d.rpc.GetSignerBalance(ctx)
+	if err != nil {
+		return da.Balance{}, fmt.Errorf("get balance: %w", err)
+	}
+
+	daBalance := da.Balance{
+		Amount: balance.Amount,
+		Denom:  balance.Denom,
+	}
+
+	return daBalance, nil
 }

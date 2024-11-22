@@ -254,6 +254,66 @@ func (_c *MockCosmosClient_GetAccount_Call) RunAndReturn(run func(string) (cosmo
 	return _c
 }
 
+// GetBalance provides a mock function with given fields: ctx, accountName, denom
+func (_m *MockCosmosClient) GetBalance(ctx context.Context, accountName string, denom string) (*types.Coin, error) {
+	ret := _m.Called(ctx, accountName, denom)
+
+	if len(ret) == 0 {
+		panic("no return value specified for GetBalance")
+	}
+
+	var r0 *types.Coin
+	var r1 error
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) (*types.Coin, error)); ok {
+		return rf(ctx, accountName, denom)
+	}
+	if rf, ok := ret.Get(0).(func(context.Context, string, string) *types.Coin); ok {
+		r0 = rf(ctx, accountName, denom)
+	} else {
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).(*types.Coin)
+		}
+	}
+
+	if rf, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = rf(ctx, accountName, denom)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockCosmosClient_GetBalance_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'GetBalance'
+type MockCosmosClient_GetBalance_Call struct {
+	*mock.Call
+}
+
+// GetBalance is a helper method to define mock.On call
+//   - ctx context.Context
+//   - accountName string
+//   - denom string
+func (_e *MockCosmosClient_Expecter) GetBalance(ctx interface{}, accountName interface{}, denom interface{}) *MockCosmosClient_GetBalance_Call {
+	return &MockCosmosClient_GetBalance_Call{Call: _e.mock.On("GetBalance", ctx, accountName, denom)}
+}
+
+func (_c *MockCosmosClient_GetBalance_Call) Run(run func(ctx context.Context, accountName string, denom string)) *MockCosmosClient_GetBalance_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(context.Context), args[1].(string), args[2].(string))
+	})
+	return _c
+}
+
+func (_c *MockCosmosClient_GetBalance_Call) Return(_a0 *types.Coin, _a1 error) *MockCosmosClient_GetBalance_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockCosmosClient_GetBalance_Call) RunAndReturn(run func(context.Context, string, string) (*types.Coin, error)) *MockCosmosClient_GetBalance_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // GetRollappClient provides a mock function with given fields:
 func (_m *MockCosmosClient) GetRollappClient() rollapp.QueryClient {
 	ret := _m.Called()
