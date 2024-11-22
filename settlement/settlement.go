@@ -99,5 +99,5 @@ type ClientI interface {
 	// GetObsoleteDrs returns the list of deprecated DRS.
 	GetObsoleteDrs() ([]uint32, error)
 	// GetSignerBalance returns the balance of the signer.
-	GetSignerBalance() (*types.Balance, error)
+	GetSignerBalance() (types.Balance, error)
 }

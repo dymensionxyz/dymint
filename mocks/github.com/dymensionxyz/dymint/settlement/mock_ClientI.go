@@ -709,24 +709,22 @@ func (_c *MockClientI_GetSequencerByAddress_Call) RunAndReturn(run func(string) 
 }
 
 // GetSignerBalance provides a mock function with given fields:
-func (_m *MockClientI) GetSignerBalance() (*types.Balance, error) {
+func (_m *MockClientI) GetSignerBalance() (types.Balance, error) {
 	ret := _m.Called()
 
 	if len(ret) == 0 {
 		panic("no return value specified for GetSignerBalance")
 	}
 
-	var r0 *types.Balance
+	var r0 types.Balance
 	var r1 error
-	if rf, ok := ret.Get(0).(func() (*types.Balance, error)); ok {
+	if rf, ok := ret.Get(0).(func() (types.Balance, error)); ok {
 		return rf()
 	}
-	if rf, ok := ret.Get(0).(func() *types.Balance); ok {
+	if rf, ok := ret.Get(0).(func() types.Balance); ok {
 		r0 = rf()
 	} else {
-		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*types.Balance)
-		}
+		r0 = ret.Get(0).(types.Balance)
 	}
 
 	if rf, ok := ret.Get(1).(func() error); ok {
@@ -755,12 +753,12 @@ func (_c *MockClientI_GetSignerBalance_Call) Run(run func()) *MockClientI_GetSig
 	return _c
 }
 
-func (_c *MockClientI_GetSignerBalance_Call) Return(_a0 *types.Balance, _a1 error) *MockClientI_GetSignerBalance_Call {
+func (_c *MockClientI_GetSignerBalance_Call) Return(_a0 types.Balance, _a1 error) *MockClientI_GetSignerBalance_Call {
 	_c.Call.Return(_a0, _a1)
 	return _c
 }
 
-func (_c *MockClientI_GetSignerBalance_Call) RunAndReturn(run func() (*types.Balance, error)) *MockClientI_GetSignerBalance_Call {
+func (_c *MockClientI_GetSignerBalance_Call) RunAndReturn(run func() (types.Balance, error)) *MockClientI_GetSignerBalance_Call {
 	_c.Call.Return(run)
 	return _c
 }

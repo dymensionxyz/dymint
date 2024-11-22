@@ -79,7 +79,7 @@ func (m *Manager) checkBalances() (*Balances, error) {
 			errSL = fmt.Errorf("get SL signer balance: %w", err)
 			return
 		}
-		balances.SL = balance
+		balances.SL = &balance
 	}()
 
 	wg.Wait()

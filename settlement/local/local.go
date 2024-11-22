@@ -346,8 +346,8 @@ func keyFromIndex(ix uint64) []byte {
 	return b
 }
 
-func (c *Client) GetSignerBalance() (*types.Balance, error) {
-	return &types.Balance{
+func (c *Client) GetSignerBalance() (types.Balance, error) {
+	return types.Balance{
 		Amount: math.ZeroInt(),
 		Denom:  "adym",
 	}, nil

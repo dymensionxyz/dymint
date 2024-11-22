@@ -726,25 +726,25 @@ func (c *Client) getLatestProposer() (string, error) {
 	return proposerAddr, nil
 }
 
-func (c *Client) GetSignerBalance() (*types.Balance, error) {
+func (c *Client) GetSignerBalance() (types.Balance, error) {
 	account, err := c.cosmosClient.GetAccount(c.config.DymAccountName)
 	if err != nil {
-		return nil, fmt.Errorf("obtain account: %w", err)
+		return types.Balance{}, fmt.Errorf("obtain account: %w", err)
 	}
 
 	addr, err := account.Address(addressPrefix)
 	if err != nil {
-		return nil, fmt.Errorf("derive address: %w", err)
+		return types.Balance{}, fmt.Errorf("derive address: %w", err)
 	}
 
 	denom := "adym"
 
 	res, err := c.cosmosClient.GetBalance(c.ctx, addr, denom)
 	if err != nil {
-		return nil, fmt.Errorf("get balance: %w", err)
+		return types.Balance{}, fmt.Errorf("get balance: %w", err)
 	}
 
-	balance := &types.Balance{
+	balance := types.Balance{
 		Amount: res.Amount,
 		Denom:  res.Denom,
 	}

@@ -397,8 +397,8 @@ func (c *Client) retrieveBatchAtStateIndex(slStateIndex uint64) (*settlement.Res
 	return &batchResult, nil
 }
 
-func (c *Client) GetSignerBalance() (*types.Balance, error) {
-	return &types.Balance{
+func (c *Client) GetSignerBalance() (types.Balance, error) {
+	return types.Balance{
 		Amount: math.ZeroInt(),
 		Denom:  "adym",
 	}, nil
