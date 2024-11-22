@@ -2,11 +2,11 @@ package types
 
 import (
 	"context"
-	"github.com/celestiaorg/celestia-openrpc/types/state"
 
 	"github.com/celestiaorg/celestia-openrpc/types/blob"
 	"github.com/celestiaorg/celestia-openrpc/types/header"
 	"github.com/celestiaorg/celestia-openrpc/types/share"
+	"github.com/celestiaorg/celestia-openrpc/types/state"
 )
 
 type CelestiaRPCClient interface {

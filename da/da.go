@@ -1,12 +1,12 @@
 package da
 
 import (
-	"cosmossdk.io/math"
 	"encoding/hex"
 	"fmt"
 	"strconv"
 	"strings"
 
+	"cosmossdk.io/math"
 	"github.com/celestiaorg/celestia-openrpc/types/blob"
 	"github.com/cometbft/cometbft/crypto/merkle"
 	"github.com/dymensionxyz/dymint/store"
