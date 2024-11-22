@@ -87,10 +87,6 @@ func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {
 	// Monitor and handling of the rotation
 	go m.MonitorProposerRotation(ctx)
 
-	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
-		return m.MonitorBalances(ctx)
-	})
-
 	return nil
 }
 

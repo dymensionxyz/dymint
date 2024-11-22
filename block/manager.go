@@ -282,6 +282,10 @@ func (m *Manager) Start(ctx context.Context) error {
 		return m.MonitorForkUpdateLoop(ctx)
 	})
 
+	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
+		return m.MonitorBalances(ctx)
+	})
+
 	// run based on the node role
 	if !amIProposer {
 		return m.runAsFullNode(ctx, eg)
