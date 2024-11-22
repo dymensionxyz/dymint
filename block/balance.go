@@ -84,14 +84,7 @@ func (m *Manager) checkBalances() (*Balances, error) {
 
 	wg.Wait()
 
-	var errs error
-	if errDA != nil {
-		errs = errors.Join(errs, errDA)
-	}
-	if errSL != nil {
-		errs = errors.Join(errs, errSL)
-	}
-
+	errs := errors.Join(errDA, errSL)
 	if errs != nil {
 		return balances, fmt.Errorf("errors checking balances: %w", errs)
 	}
