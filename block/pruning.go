@@ -28,11 +28,12 @@ func (m *Manager) Prune(retainHeight uint64) {
 	logResult(err, "dymint store", retainHeight, pruned)
 }
 
+//nolint:gosec // height is non-negative and falls in int64
 func (m *Manager) PruningLoop(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
-			return ctx.Err()
+			return nil
 		case retainHeight := <-m.pruningC:
 			var pruningHeight uint64
 			if m.RunMode == RunModeProposer { // do not delete anything that we might submit in future

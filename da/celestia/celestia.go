@@ -72,7 +72,7 @@ func WithSubmitBackoff(c uretry.BackoffConfig) da.Option {
 }
 
 // Init initializes DataAvailabilityLayerClient instance.
-func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.Server, kvStore store.KV, logger types.Logger, options ...da.Option) error {
+func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.Server, _ store.KV, logger types.Logger, options ...da.Option) error {
 	c.logger = logger
 	c.synced = make(chan struct{}, 1)
 	var err error
@@ -278,7 +278,7 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 
 					return nil
 				},
-				retry.Attempts(uint(*c.config.RetryAttempts)),
+				retry.Attempts(uint(*c.config.RetryAttempts)), //nolint:gosec // RetryAttempts should be always positive
 				retry.DelayType(retry.FixedDelay),
 				retry.Delay(c.config.RetryDelay),
 			)
@@ -361,17 +361,22 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 			c.logger.Debug("Context cancelled")
 			return da.ResultCheckBatch{}
 		default:
-			err := retry.Do(func() error {
-				result := c.checkBatchAvailability(daMetaData)
-				availabilityResult = result
+			err := retry.Do(
+				func() error {
+					result := c.checkBatchAvailability(daMetaData)
+					availabilityResult = result
 
-				if result.Code != da.StatusSuccess {
-					c.logger.Error("Blob submitted not found in DA. Retrying availability check.")
-					return da.ErrBlobNotFound
-				}
+					if result.Code != da.StatusSuccess {
+						c.logger.Error("Blob submitted not found in DA. Retrying availability check.")
+						return da.ErrBlobNotFound
+					}
 
-				return nil
-			}, retry.Attempts(uint(*c.config.RetryAttempts)), retry.DelayType(retry.FixedDelay), retry.Delay(c.config.RetryDelay))
+					return nil
+				},
+				retry.Attempts(uint(*c.config.RetryAttempts)), //nolint:gosec // RetryAttempts should be always positive
+				retry.DelayType(retry.FixedDelay),
+				retry.Delay(c.config.RetryDelay),
+			)
 			if err != nil {
 				c.logger.Error("CheckAvailability process failed.", "error", err)
 			}
@@ -496,11 +501,6 @@ func (c *DataAvailabilityLayerClient) submit(daBlob da.Blob) (uint64, da.Commitm
 		return 0, nil, fmt.Errorf("zero commitments: %w: %w", gerrc.ErrNotFound, gerrc.ErrInternal)
 	}
 
-	blobSizes := make([]uint32, len(blobs))
-	for i, blob := range blobs {
-		blobSizes[i] = uint32(len(blob.Data))
-	}
-
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
@@ -604,4 +604,22 @@ func (c *DataAvailabilityLayerClient) sync(rpc *openrpc.Client) {
 // GetMaxBlobSizeBytes returns the maximum allowed blob size in the DA, used to check the max batch size configured
 func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint32 {
 	return maxBlobSizeBytes
+}
+
+// GetSignerBalance returns the balance for a specific address
+func (d *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
+	ctx, cancel := context.WithTimeout(d.ctx, d.config.Timeout)
+	defer cancel()
+
+	balance, err := d.rpc.GetSignerBalance(ctx)
+	if err != nil {
+		return da.Balance{}, fmt.Errorf("get balance: %w", err)
+	}
+
+	daBalance := da.Balance{
+		Amount: balance.Amount,
+		Denom:  balance.Denom,
+	}
+
+	return daBalance, nil
 }

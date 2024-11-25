@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"strconv"
 
+	"cosmossdk.io/math"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
@@ -152,4 +153,11 @@ func (d *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 		},
 		Batches: batches,
 	}
+}
+
+func (d *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
+	return da.Balance{
+		Amount: math.ZeroInt(),
+		Denom:  "adym",
+	}, nil
 }

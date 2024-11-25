@@ -133,6 +133,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	//  1. Save the proposer for the current height to the store.
 	//  2. Update the proposer in the state in case of rotation.
 	//  3. Save the state to the store (independently of the height). Here the proposer might differ from (1).
+	//  4. Save the last block sequencer set to the store if it's present (only applicable in the sequencer mode).
 	// here, (3) helps properly handle reboots (specifically when there's rotation).
 	// If reboot happens after block H (which rotates seqA -> seqB):
 	//  - Block H+1 will be signed by seqB.
@@ -160,6 +161,19 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	batch, err = m.Store.SaveState(m.State, batch)
 	if err != nil {
 		return fmt.Errorf("update state: %w", err)
+	}
+
+	// 4. Save the last block sequencer set to the store if it's present (only applicable in the sequencer mode).
+	// The set from the state is dumped to memory on reboots. It helps to avoid sending unnecessary
+	// UspertSequencer consensus messages on reboots. This is not a 100% solution, because the sequencer set
+	// is not persisted in the store in full node mode. It's only used in the proposer mode. Therefore,
+	// on rotation from the full node to the proposer, the sequencer set is duplicated as consensus msgs.
+	// Though single-time duplication it's not a big deal.
+	if len(blockMetaData.SequencerSet) != 0 {
+		batch, err = m.Store.SaveLastBlockSequencerSet(blockMetaData.SequencerSet, batch)
+		if err != nil {
+			return fmt.Errorf("save last block sequencer set: %w", err)
+		}
 	}
 
 	err = batch.Commit()
@@ -195,7 +209,7 @@ func (m *Manager) isHeightAlreadyApplied(blockHeight uint64) (bool, error) {
 		return false, errorsmod.Wrap(err, "get app info")
 	}
 
-	isBlockAlreadyApplied := uint64(proxyAppInfo.LastBlockHeight) == blockHeight
+	isBlockAlreadyApplied := uint64(proxyAppInfo.LastBlockHeight) == blockHeight //nolint:gosec // LastBlockHeight is always positive
 
 	// TODO: add switch case to validate better the current app state
 

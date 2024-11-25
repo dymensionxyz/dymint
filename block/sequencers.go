@@ -5,31 +5,36 @@ import (
 	"context"
 	"fmt"
 	"time"
-
-	"github.com/dymensionxyz/dymint/types"
 )
 
 const (
 	ProposerMonitorInterval = 3 * time.Minute
 )
 
-func (m *Manager) MonitorProposerRotation(ctx context.Context) {
+var errRotationRequested = fmt.Errorf("sequencer rotation started. signal to stop production")
+
+func (m *Manager) MonitorProposerRotation(ctx context.Context) error {
 	ticker := time.NewTicker(ProposerMonitorInterval) // TODO: make this configurable
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ctx.Done():
-			return
+			return nil
 		case <-ticker.C:
-			next, err := m.SLClient.GetNextProposer()
+			nextProposer, err := m.SLClient.GetNextProposer()
 			if err != nil {
 				m.logger.Error("Check rotation in progress", "err", err)
 				continue
 			}
-			if next != nil {
-				m.rotate(ctx)
+			// no rotation in progress
+			if nextProposer == nil {
+				continue
 			}
+
+			// we get here once a sequencer rotation signal is received
+			m.logger.Info("Sequencer rotation started.", "nextSeqAddr", nextProposer.SettlementAddress)
+			return errRotationRequested
 		}
 	}
 }
@@ -103,7 +108,7 @@ func (m *Manager) ShouldRotate() (bool, error) {
 func (m *Manager) rotate(ctx context.Context) {
 	// Get Next Proposer from SL. We assume such exists (even if empty proposer) otherwise function wouldn't be called.
 	nextProposer, err := m.SLClient.GetNextProposer()
-	if err != nil {
+	if err != nil || nextProposer == nil {
 		panic(fmt.Sprintf("rotate: fetch next proposer set from Hub: %v", err))
 	}
 
@@ -157,43 +162,22 @@ func (m *Manager) CreateAndPostLastBatch(ctx context.Context, nextSeqHash [32]by
 	return nil
 }
 
-// UpdateSequencerSetFromSL updates the sequencer set from the SL.
+// UpdateSequencerSetFromSL updates the sequencer set from the SL. The sequencer set is saved only in memory.
+// It will be persisted to the store when the block is produced (only in the proposer mode).
 // Proposer is not changed here.
 func (m *Manager) UpdateSequencerSetFromSL() error {
 	seqs, err := m.SLClient.GetAllSequencers()
 	if err != nil {
 		return fmt.Errorf("get all sequencers from the hub: %w", err)
 	}
-	err = m.HandleSequencerSetUpdate(seqs)
-	if err != nil {
-		return fmt.Errorf("handle sequencer set update: %w", err)
-	}
+	m.Sequencers.Set(seqs)
 	m.logger.Debug("Updated bonded sequencer set.", "newSet", m.Sequencers.String())
-	return nil
-}
-
-// HandleSequencerSetUpdate calculates the diff between hub's and current sequencer sets and
-// creates consensus messages for all new sequencers. The method updates the current state
-// and is not thread-safe. Returns errors on serialization issues.
-func (m *Manager) HandleSequencerSetUpdate(newSet []types.Sequencer) error {
-	actualSequencers := m.Sequencers.GetAll()
-	// find new (updated) sequencers
-	newSequencers := types.SequencerListRightOuterJoin(actualSequencers, newSet)
-	// create consensus msgs for new sequencers
-	msgs, err := ConsensusMsgsOnSequencerSetUpdate(newSequencers)
-	if err != nil {
-		return fmt.Errorf("consensus msgs on sequencers set update: %w", err)
-	}
-	// add consensus msgs to the stream
-	m.Executor.AddConsensusMsgs(msgs...)
-	// save the new sequencer set to the state
-	m.Sequencers.Set(newSet)
 	return nil
 }
 
 // UpdateProposerFromSL queries the hub and updates the local dymint state proposer at the current height
 func (m *Manager) UpdateProposerFromSL() error {
-	SLProposer, err := m.SLClient.GetProposerAtHeight(int64(m.State.NextHeight()))
+	SLProposer, err := m.SLClient.GetProposerAtHeight(int64(m.State.NextHeight())) //nolint:gosec // height is non-negative and falls in int64
 	if err != nil {
 		return fmt.Errorf("get proposer at height: %w", err)
 	}

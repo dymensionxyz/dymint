@@ -266,11 +266,7 @@ func (m *Manager) Start(ctx context.Context) error {
 
 	// Start the settlement sync loop in the background
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
-		err := m.SettlementSyncLoop(ctx)
-		if err != nil {
-			m.freezeNode(err)
-		}
-		return nil
+		return m.SettlementSyncLoop(ctx)
 	})
 
 	// Monitor sequencer set updates
@@ -280,6 +276,10 @@ func (m *Manager) Start(ctx context.Context) error {
 
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		return m.MonitorForkUpdateLoop(ctx)
+	})
+
+	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
+		return m.MonitorBalances(ctx)
 	})
 
 	// run based on the node role
@@ -308,7 +308,7 @@ func (m *Manager) updateFromLastSettlementState() error {
 	if errors.Is(err, gerrc.ErrNotFound) {
 		// The SL hasn't got any batches for this chain yet.
 		m.logger.Info("No batches for chain found in SL.")
-		m.LastSettlementHeight.Store(uint64(m.Genesis.InitialHeight - 1))
+		m.LastSettlementHeight.Store(uint64(m.Genesis.InitialHeight - 1)) //nolint:gosec // height is non-negative and falls in int64
 		m.LastBlockTimeInSettlement.Store(m.Genesis.GenesisTime.UTC().UnixNano())
 		return nil
 	}

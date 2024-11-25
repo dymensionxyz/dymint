@@ -35,7 +35,7 @@ func (msg *MsgUpdateState) ValidateBasic() error {
 	}
 
 	// check to see that update contains all BDs
-	if len(msg.BDs.BD) != int(msg.NumBlocks) {
+	if uint64(len(msg.BDs.BD)) != msg.NumBlocks {
 		return errorsmod.Wrapf(ErrInvalidNumBlocks, "number of blocks (%d) != number of block descriptors(%d)", msg.NumBlocks, len(msg.BDs.BD))
 	}
 

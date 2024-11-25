@@ -21,7 +21,7 @@ func ToABCIHeader(header *Header) tmtypes.Header {
 			Block: header.Version.Block,
 			App:   header.Version.App,
 		},
-		Height: int64(header.Height),
+		Height: int64(header.Height), //nolint:gosec // height is non-negative and falls in int64
 		Time:   header.GetTimestamp(),
 		LastBlockID: tmtypes.BlockID{
 			Hash: header.LastHeaderHash[:],
@@ -96,7 +96,7 @@ func ToABCIBlockMeta(block *Block) (*tmtypes.BlockMeta, error) {
 func ToABCICommit(commit *Commit, header *Header) *tmtypes.Commit {
 	headerHash := header.Hash()
 	tmCommit := tmtypes.Commit{
-		Height: int64(commit.Height),
+		Height: int64(commit.Height), //nolint:gosec // height is non-negative and falls in int64
 		Round:  0,
 		BlockID: tmtypes.BlockID{
 			Hash: headerHash[:],

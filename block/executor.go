@@ -144,8 +144,8 @@ func (e *Executor) CreateBlock(
 	state *types.State,
 	maxBlockDataSizeBytes uint64,
 ) *types.Block {
-	maxBlockDataSizeBytes = min(maxBlockDataSizeBytes, uint64(max(minBlockMaxBytes, state.ConsensusParams.Block.MaxBytes)))
-	mempoolTxs := e.mempool.ReapMaxBytesMaxGas(int64(maxBlockDataSizeBytes), state.ConsensusParams.Block.MaxGas)
+	maxBlockDataSizeBytes = min(maxBlockDataSizeBytes, uint64(max(minBlockMaxBytes, state.ConsensusParams.Block.MaxBytes))) //nolint:gosec // MaxBytes is always positive
+	mempoolTxs := e.mempool.ReapMaxBytesMaxGas(int64(maxBlockDataSizeBytes), state.ConsensusParams.Block.MaxGas)            //nolint:gosec // size is always positive and falls in int64
 
 	block := &types.Block{
 		Header: types.Header{
@@ -214,7 +214,7 @@ func (e *Executor) commit(state *types.State, block *types.Block, deliverTxs []*
 
 	maxBytes := state.ConsensusParams.Block.MaxBytes
 	maxGas := state.ConsensusParams.Block.MaxGas
-	err = e.mempool.Update(int64(block.Header.Height), fromDymintTxs(block.Data.Txs), deliverTxs)
+	err = e.mempool.Update(int64(block.Header.Height), fromDymintTxs(block.Data.Txs), deliverTxs) //nolint:gosec // height is non-negative and falls in int64
 	if err != nil {
 		return nil, 0, err
 	}
@@ -273,7 +273,7 @@ func (e *Executor) ExecuteBlock(block *types.Block) (*tmstate.ABCIResponses, err
 		}
 	}
 
-	abciResponses.EndBlock, err = e.proxyAppConsensusConn.EndBlockSync(abci.RequestEndBlock{Height: int64(block.Header.Height)})
+	abciResponses.EndBlock, err = e.proxyAppConsensusConn.EndBlockSync(abci.RequestEndBlock{Height: int64(block.Header.Height)}) //nolint:gosec // height is non-negative and falls in int64
 	if err != nil {
 		return nil, err
 	}
@@ -305,14 +305,14 @@ func (e *Executor) publishEvents(resp *tmstate.ABCIResponses, block *types.Block
 	for _, ev := range abciBlock.Evidence.Evidence {
 		err = multierr.Append(err, e.eventBus.PublishEventNewEvidence(tmtypes.EventDataNewEvidence{
 			Evidence: ev,
-			Height:   int64(block.Header.Height),
+			Height:   int64(block.Header.Height), //nolint:gosec // height is non-negative and falls in int64
 		}))
 	}
 	for i, dtx := range resp.DeliverTxs {
 		err = multierr.Append(err, e.eventBus.PublishEventTx(tmtypes.EventDataTx{
 			TxResult: abci.TxResult{
-				Height: int64(block.Header.Height),
-				Index:  uint32(i),
+				Height: int64(block.Header.Height), //nolint:gosec // block height is within int64 range
+				Index:  uint32(i),                  //nolint:gosec // num of deliver txs is less than 2^32
 				Tx:     abciBlock.Data.Txs[i],
 				Result: *dtx,
 			},

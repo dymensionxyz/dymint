@@ -123,12 +123,12 @@ func (s Sequencer) MustFullHash() []byte {
 //	s1 =      {seq1, seq2, seq3}
 //	s2 =      {      seq2, seq3, seq4}
 //	s1 * s2 = {                  seq4}
-func SequencerListRightOuterJoin(A, B []Sequencer) []Sequencer {
+func SequencerListRightOuterJoin(A, B Sequencers) Sequencers {
 	lhsSet := make(map[string]struct{})
 	for _, s := range A {
 		lhsSet[string(s.MustFullHash())] = struct{}{}
 	}
-	var diff []Sequencer
+	var diff Sequencers
 	for _, s := range B {
 		if _, ok := lhsSet[string(s.MustFullHash())]; !ok {
 			diff = append(diff, s)
@@ -141,13 +141,16 @@ func (s Sequencer) String() string {
 	return fmt.Sprintf("Sequencer{SettlementAddress: %s RewardAddr: %s WhitelistedRelayers: %v Validator: %s}", s.SettlementAddress, s.RewardAddr, s.WhitelistedRelayers, s.val.String())
 }
 
+// Sequencers is a list of sequencers.
+type Sequencers []Sequencer
+
 // SequencerSet is a set of rollapp sequencers. It holds the entire set of sequencers
 // that were ever associated with the rollapp (including bonded/unbonded/unbonding).
 // It is populated from the Hub on start and is periodically updated from the Hub polling.
 // This type is thread-safe.
 type SequencerSet struct {
 	mu         sync.RWMutex
-	sequencers []Sequencer
+	sequencers Sequencers
 }
 
 func NewSequencerSet(s ...Sequencer) *SequencerSet {
@@ -158,13 +161,13 @@ func NewSequencerSet(s ...Sequencer) *SequencerSet {
 }
 
 // Set sets the sequencers of the sequencer set.
-func (s *SequencerSet) Set(sequencers []Sequencer) {
+func (s *SequencerSet) Set(sequencers Sequencers) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.sequencers = sequencers
 }
 
-func (s *SequencerSet) GetAll() []Sequencer {
+func (s *SequencerSet) GetAll() Sequencers {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return slices.Clone(s.sequencers)

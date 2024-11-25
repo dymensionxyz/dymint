@@ -265,15 +265,15 @@ func (s *State) ToProto() (*pb.State, error) {
 	return &pb.State{
 		Version:             &s.Version,
 		ChainId:             s.ChainID,
-		InitialHeight:       int64(s.InitialHeight),
-		LastBlockHeight:     int64(s.Height()),
+		InitialHeight:       int64(s.InitialHeight), //nolint:gosec // height is non-negative and falls in int64
+		LastBlockHeight:     int64(s.Height()),      //nolint:gosec // height is non-negative and falls in int64
 		ConsensusParams:     s.ConsensusParams,
 		LastResultsHash:     s.LastResultsHash[:],
 		LastHeaderHash:      s.LastHeaderHash[:],
 		AppHash:             s.AppHash[:],
 		RollappParams:       s.RollappParams,
 		Proposer:            proposerProto,
-		RevisionStartHeight: int64(s.RevisionStartHeight),
+		RevisionStartHeight: int64(s.RevisionStartHeight), //nolint:gosec // height is non-negative and falls in int64
 	}, nil
 }
 
@@ -281,9 +281,9 @@ func (s *State) ToProto() (*pb.State, error) {
 func (s *State) FromProto(other *pb.State) error {
 	s.Version = *other.Version
 	s.ChainID = other.ChainId
-	s.InitialHeight = uint64(other.InitialHeight)
-	s.SetHeight(uint64(other.LastBlockHeight))
-	s.RevisionStartHeight = uint64(other.RevisionStartHeight)
+	s.InitialHeight = uint64(other.InitialHeight)             //nolint:gosec // height is non-negative and falls in int64
+	s.SetHeight(uint64(other.LastBlockHeight))                //nolint:gosec // height is non-negative and falls in int64
+	s.RevisionStartHeight = uint64(other.RevisionStartHeight) //nolint:gosec // height is non-negative and falls in int64
 	if other.Proposer != nil {
 		proposer, err := SequencerFromProto(other.Proposer)
 		if err != nil {
@@ -335,6 +335,35 @@ func SequencerFromProto(seq *pb.Sequencer) (*Sequencer, error) {
 		WhitelistedRelayers: seq.WhitelistedRelayers,
 		val:                 *val,
 	}, nil
+}
+
+// ToProto converts Sequencers into protobuf representation and returns it.
+func (s Sequencers) ToProto() (*pb.SequencerSet, error) {
+	seqs := make([]pb.Sequencer, len(s))
+	for i, seq := range s {
+		seqProto, err := seq.ToProto()
+		if err != nil {
+			return nil, fmt.Errorf("sequencer to proto: %w", err)
+		}
+		seqs[i] = *seqProto
+	}
+	return &pb.SequencerSet{Sequencers: seqs}, nil
+}
+
+// SequencersFromProto fills Sequencers with data from its protobuf representation.
+func SequencersFromProto(s *pb.SequencerSet) (Sequencers, error) {
+	if s == nil {
+		return Sequencers{}, fmt.Errorf("nil sequencer set")
+	}
+	seqs := make([]Sequencer, len(s.Sequencers))
+	for i, seq := range s.Sequencers {
+		sequencer, err := SequencerFromProto(&seq)
+		if err != nil {
+			return Sequencers{}, fmt.Errorf("sequencer from proto: %w", err)
+		}
+		seqs[i] = *sequencer
+	}
+	return seqs, nil
 }
 
 func txsToByteSlices(txs Txs) [][]byte {
