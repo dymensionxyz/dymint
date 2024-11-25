@@ -600,6 +600,7 @@ func (c *Client) retrieveBlockSyncLoop(ctx context.Context, msgHandler BlockSync
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
+			// if no connected at p2p level, dont try
 			if len(c.Peers()) == 0 {
 				continue
 			}
@@ -662,6 +663,7 @@ func (c *Client) advertiseBlockSyncCids(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
+			// if no connected at p2p level, it will try again after ticker time
 			if len(c.Peers()) == 0 {
 				continue
 			}
@@ -691,6 +693,7 @@ func (c *Client) advertiseBlockSyncCids(ctx context.Context) {
 				}
 
 			}
+			// just try once and then quit when finished
 			return
 		}
 	}
