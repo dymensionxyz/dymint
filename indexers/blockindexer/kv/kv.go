@@ -19,9 +19,10 @@ import (
 	indexer "github.com/dymensionxyz/dymint/indexers/blockindexer"
 	"github.com/dymensionxyz/dymint/store"
 
+	tmtypes "github.com/tendermint/tendermint/types"
+
 	"github.com/dymensionxyz/dymint/types/pb/dymint"
 	dmtypes "github.com/dymensionxyz/dymint/types/pb/dymint"
-	tmtypes "github.com/tendermint/tendermint/types"
 )
 
 var _ indexer.BlockIndexer = (*BlockerIndexer)(nil)
@@ -545,7 +546,7 @@ func (idx *BlockerIndexer) pruneBlocks(from, to uint64, logger log.Logger) (uint
 		return nil
 	}
 
-	for h := int64(from); h < int64(to); h++ {
+	for h := int64(from); h < int64(to); h++ { //nolint:gosec // heights (from and to) are always positive and fall in int64
 
 		// flush every 1000 blocks to avoid batches becoming too large
 		if toFlush > 1000 {
@@ -591,7 +592,7 @@ func (idx *BlockerIndexer) pruneBlocks(from, to uint64, logger log.Logger) (uint
 
 	}
 
-	err := flush(batch, int64(to))
+	err := flush(batch, int64(to)) //nolint:gosec // height is non-negative and falls in int64
 	if err != nil {
 		return 0, err
 	}

@@ -6,18 +6,21 @@ import (
 	"strconv"
 	"strings"
 
+	"cosmossdk.io/math"
 	"github.com/celestiaorg/celestia-openrpc/types/blob"
 	"github.com/cometbft/cometbft/crypto/merkle"
+	"github.com/tendermint/tendermint/libs/pubsub"
+
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
-	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
 // StatusCode is a type for DA layer return status.
 // TODO: define an enum of different non-happy-path cases
 // that might need to be handled by Dymint independent of
-// the underlying DA chain.
-type StatusCode uint64
+// the underlying DA chain. Use int32 to match the protobuf
+// enum representation.
+type StatusCode int32
 
 // Commitment should contain serialized cryptographic commitment to Blob value.
 type Commitment = []byte
@@ -72,6 +75,11 @@ type DASubmitMetaData struct {
 	Length int
 	// any NMT root for the specific height, necessary for non-inclusion proof
 	Root []byte
+}
+
+type Balance struct {
+	Amount math.Int
+	Denom  string
 }
 
 const PathSeparator = "|"
@@ -221,6 +229,9 @@ type DataAvailabilityLayerClient interface {
 
 	// Returns the maximum allowed blob size in the DA, used to check the max batch size configured
 	GetMaxBlobSizeBytes() uint32
+
+	// GetSignerBalance returns the balance for a specific address
+	GetSignerBalance() (Balance, error)
 }
 
 // BatchRetriever is additional interface that can be implemented by Data Availability Layer Client that is able to retrieve

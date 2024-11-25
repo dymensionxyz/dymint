@@ -12,6 +12,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"cosmossdk.io/math"
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	"github.com/cosmos/cosmos-sdk/crypto/keys/ed25519"
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
@@ -394,4 +395,11 @@ func (c *Client) retrieveBatchAtStateIndex(slStateIndex uint64) (*settlement.Res
 		Batch:      &settlementBatch,
 	}
 	return &batchResult, nil
+}
+
+func (c *Client) GetSignerBalance() (types.Balance, error) {
+	return types.Balance{
+		Amount: math.ZeroInt(),
+		Denom:  "adym",
+	}, nil
 }

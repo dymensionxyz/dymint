@@ -265,15 +265,15 @@ func (s *State) ToProto() (*pb.State, error) {
 	return &pb.State{
 		Version:             &s.Version,
 		ChainId:             s.ChainID,
-		InitialHeight:       int64(s.InitialHeight),
-		LastBlockHeight:     int64(s.Height()),
+		InitialHeight:       int64(s.InitialHeight), //nolint:gosec // height is non-negative and falls in int64
+		LastBlockHeight:     int64(s.Height()),      //nolint:gosec // height is non-negative and falls in int64
 		ConsensusParams:     s.ConsensusParams,
 		LastResultsHash:     s.LastResultsHash[:],
 		LastHeaderHash:      s.LastHeaderHash[:],
 		AppHash:             s.AppHash[:],
 		RollappParams:       s.RollappParams,
 		Proposer:            proposerProto,
-		RevisionStartHeight: int64(s.RevisionStartHeight),
+		RevisionStartHeight: int64(s.RevisionStartHeight), //nolint:gosec // height is non-negative and falls in int64
 	}, nil
 }
 
@@ -281,9 +281,9 @@ func (s *State) ToProto() (*pb.State, error) {
 func (s *State) FromProto(other *pb.State) error {
 	s.Version = *other.Version
 	s.ChainID = other.ChainId
-	s.InitialHeight = uint64(other.InitialHeight)
-	s.SetHeight(uint64(other.LastBlockHeight))
-	s.RevisionStartHeight = uint64(other.RevisionStartHeight)
+	s.InitialHeight = uint64(other.InitialHeight)             //nolint:gosec // height is non-negative and falls in int64
+	s.SetHeight(uint64(other.LastBlockHeight))                //nolint:gosec // height is non-negative and falls in int64
+	s.RevisionStartHeight = uint64(other.RevisionStartHeight) //nolint:gosec // height is non-negative and falls in int64
 	if other.Proposer != nil {
 		proposer, err := SequencerFromProto(other.Proposer)
 		if err != nil {

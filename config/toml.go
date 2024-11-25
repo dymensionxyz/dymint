@@ -69,7 +69,9 @@ const defaultConfigTemplate = `
 block_time = "{{ .BlockManagerConfig.BlockTime }}"
 # block production interval in case of no transactions ("0s" produces empty blocks)
 max_idle_time = "{{ .BlockManagerConfig.MaxIdleTime }}"
+# block production interval after block with no transactions
 max_proof_time = "{{ .BlockManagerConfig.MaxProofTime }}"
+# maximum time the node will produce blocks without submitting to SL before stopping block production
 max_skew_time = "{{ .BlockManagerConfig.MaxSkewTime }}"
 
 

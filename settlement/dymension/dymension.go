@@ -113,7 +113,7 @@ func (c *Client) Stop() error {
 
 // SubmitBatch posts a batch to the Dymension Hub. it tries to post the batch until it is accepted by the settlement layer.
 // it emits success and failure events to the event bus accordingly.
-func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) error {
+func (c *Client) SubmitBatch(batch *types.Batch, _ da.Client, daResult *da.ResultSubmitBatch) error {
 	msgUpdateState, err := c.convertBatchToMsgUpdateState(batch, daResult)
 	if err != nil {
 		return fmt.Errorf("convert batch to msg update state: %w", err)
@@ -724,4 +724,30 @@ func (c *Client) getLatestProposer() (string, error) {
 		return "", err
 	}
 	return proposerAddr, nil
+}
+
+func (c *Client) GetSignerBalance() (types.Balance, error) {
+	account, err := c.cosmosClient.GetAccount(c.config.DymAccountName)
+	if err != nil {
+		return types.Balance{}, fmt.Errorf("obtain account: %w", err)
+	}
+
+	addr, err := account.Address(addressPrefix)
+	if err != nil {
+		return types.Balance{}, fmt.Errorf("derive address: %w", err)
+	}
+
+	denom := "adym"
+
+	res, err := c.cosmosClient.GetBalance(c.ctx, addr, denom)
+	if err != nil {
+		return types.Balance{}, fmt.Errorf("get balance: %w", err)
+	}
+
+	balance := types.Balance{
+		Amount: res.Amount,
+		Denom:  res.Denom,
+	}
+
+	return balance, nil
 }
