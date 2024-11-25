@@ -19,7 +19,7 @@ func (m *Manager) ApplyBatchFromSL(slBatch *settlement.Batch) error {
 
 	m.logger.Debug("retrieved batches", "n", len(batchResp.Batches), "daHeight", slBatch.MetaData.DA.Height)
 
-	// if batch blocks have already been applied skip.
+	// if batch blocks have already been applied skip, otherwise it will fail in endheight validation (it can happen when syncing from blocksync in parallel).
 	if m.State.Height() > slBatch.EndHeight {
 		return nil
 	}
