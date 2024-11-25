@@ -99,7 +99,7 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 
 			}
 
-			// avoid notifying as synced in case if fails before
+			// avoid notifying as synced in case it fails before
 			if m.State.Height() >= m.LastSettlementHeight.Load() {
 				m.logger.Info("Synced.", "current height", m.State.Height(), "last submitted height", m.LastSettlementHeight.Load())
 				// nudge to signal to any listens that we're currently synced with the last settlement height we've seen so far
