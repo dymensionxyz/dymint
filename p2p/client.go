@@ -201,13 +201,13 @@ func (c *Client) GossipBlock(ctx context.Context, blockBytes []byte) error {
 }
 
 // SaveBlock stores the block in the blocksync datastore, stores locally the returned identifier and advertises the identifier to the DHT, so other nodes can know the identifier for the block height.
-func (c *Client) SaveBlock(ctx context.Context, block *types.Block, blockBytes []byte) error {
+func (c *Client) SaveBlock(ctx context.Context, height uint64, revision uint64, blockBytes []byte) error {
 	if !c.conf.BlockSyncEnabled {
 		return nil
 	}
 	_, err := c.store.LoadBlockSyncBaseHeight()
 	if err != nil {
-		err = c.store.SaveBlockSyncBaseHeight(block.Header.Height)
+		err = c.store.SaveBlockSyncBaseHeight(height)
 		if err != nil {
 			return err
 		}
@@ -217,11 +217,11 @@ func (c *Client) SaveBlock(ctx context.Context, block *types.Block, blockBytes [
 	if err != nil {
 		return fmt.Errorf("blocksync add block: %w", err)
 	}
-	_, err = c.store.SaveBlockCid(block.Header.Height, cid, nil)
+	_, err = c.store.SaveBlockCid(height, cid, nil)
 	if err != nil {
 		return fmt.Errorf("blocksync store block id: %w", err)
 	}
-	err = c.AdvertiseBlockIdToDHT(ctx, block.Header.Height, block.GetRevision(), cid)
+	err = c.AdvertiseBlockIdToDHT(ctx, height, revision, cid)
 	if err != nil {
 		c.logger.Debug("block-sync advertise block", "error", err)
 	}
@@ -554,7 +554,7 @@ func (c *Client) blockGossipReceived(ctx context.Context, block []byte) {
 		if err == nil {
 			return
 		}
-		err = c.SaveBlock(ctx, &gossipedBlock.Block, block)
+		err = c.SaveBlock(ctx, gossipedBlock.Block.Header.Height, gossipedBlock.Block.GetRevision(), block)
 		if err != nil {
 			c.logger.Error("Adding  block to blocksync store.", "err", err, "height", gossipedBlock.Block.Header.Height)
 		}
