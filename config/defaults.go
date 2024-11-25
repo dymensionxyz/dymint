@@ -39,7 +39,7 @@ func DefaultConfig(home string) *NodeConfig {
 		},
 		P2PConfig: P2PConfig{
 			GossipSubCacheSize:           50,
-			BootstrapRetryTime:           20 * time.Second,
+			BootstrapRetryTime:           30 * time.Second,
 			BlockSyncRequestIntervalTime: 30 * time.Second,
 			ListenAddress:                DefaultListenAddress,
 			BootstrapNodes:               "",
