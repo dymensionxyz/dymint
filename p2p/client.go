@@ -217,11 +217,11 @@ func (c *Client) SaveBlock(ctx context.Context, block *types.Block, blockBytes [
 	if err != nil {
 		return fmt.Errorf("blocksync add block: %w", err)
 	}
-	_, err = c.store.SaveBlockCid(block.Height(), cid, nil)
+	_, err = c.store.SaveBlockCid(block.Header.Height, cid, nil)
 	if err != nil {
 		return fmt.Errorf("blocksync store block id: %w", err)
 	}
-	err = c.AdvertiseBlockIdToDHT(ctx, block.Height(), block.GetRevision(), cid)
+	err = c.AdvertiseBlockIdToDHT(ctx, block.Header.Height, block.GetRevision(), cid)
 	if err != nil {
 		c.logger.Debug("block-sync advertise block", "error", err)
 	}
