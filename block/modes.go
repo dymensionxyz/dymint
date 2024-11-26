@@ -93,7 +93,6 @@ func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {
 		// Check if loops exited due to sequencer rotation signal
 		if errors.Is(err, errRotationRequested) {
 			m.rotate(ctx)
-			m.freezeNode(fmt.Errorf("rotation completed. please restart."))
 		} else if err != nil {
 			m.logger.Error("block manager exited with error", "error", err)
 			m.freezeNode(err)

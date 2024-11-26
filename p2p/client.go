@@ -643,6 +643,7 @@ func (c *Client) retrieveBlockSyncLoop(ctx context.Context, msgHandler BlockSync
 				}
 				if err := block.Validate(state.GetProposerPubKey()); err != nil {
 					c.logger.Error("Failed to validate blocksync block.", "height", block.Block.Header.Height)
+					continue
 				}
 				msgHandler(&block)
 				h = max(h, state.NextHeight()-1)

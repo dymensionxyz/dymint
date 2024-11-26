@@ -423,10 +423,6 @@ func (m *Manager) freezeNode(err error) {
 		return
 	}
 	uevent.MustPublish(m.Ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
-	err = m.DAClient.Stop()
-	if err != nil {
-		m.logger.Error("stop data availability layer client", "error", err)
-	}
 	m.Cancel()
 }
 
