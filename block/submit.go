@@ -128,6 +128,7 @@ func SubmitLoopInner(
 					return err
 				}
 				pending = uint64(unsubmittedBlocksBytes()) //nolint:gosec // bytes size is always positive
+				// after new batch submitted we check the skew time to wake up 'trigger' thread and restart block production
 				if batchSkewTime() < maxSkewTime {
 					trigger.Nudge()
 				}
