@@ -80,6 +80,8 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 				m.LastBlockTimeInSettlement.Store(settlementBatch.BlockDescriptors[len(settlementBatch.BlockDescriptors)-1].GetTimestamp().UTC().UnixNano())
 
 				err = m.ApplyBatchFromSL(settlementBatch.Batch)
+
+				// this will keep sync loop alive when DA is down or retrievals are failing because DA issues.
 				if errors.Is(err, da.ErrRetrieval) {
 					continue
 				}
