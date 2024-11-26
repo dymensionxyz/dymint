@@ -44,10 +44,10 @@ func SubmitLoopInner(
 	ctx context.Context,
 	logger types.Logger,
 	bytesProduced chan int, // a channel of block and commit bytes produced
-	maxProduceSubmitSkewTime time.Duration, // max time between last submitted block and last produced block allowed. if this threshold is reached block production is stopped.
-	unsubmittedBlocksNum func() uint64,
-	unsubmittedBlocksBytes func() int,
-	batchSkewTime func() time.Duration,
+	maxSkewTime time.Duration, // max time between last submitted block and last produced block allowed. if this threshold is reached block production is stopped.
+	unsubmittedBlocksNum func() uint64, // func that returns the amount of non-submitted blocks
+	unsubmittedBlocksBytes func() int, // func that returns bytes from non-submitted blocks
+	batchSkewTime func() time.Duration, // func that returns measured time between last submitted block and last produced block
 	maxBatchSubmitTime time.Duration, // max time to allow between batches
 	maxBatchSubmitBytes uint64, // max size of serialised batch in bytes
 	createAndSubmitBatch func(maxSizeBytes uint64) (bytes uint64, err error),
@@ -73,9 +73,8 @@ func SubmitLoopInner(
 
 			submitter.Nudge()
 
-			if maxProduceSubmitSkewTime < batchSkewTime() {
-				// too much stuff is pending submission
-				// we block here until we get a progress nudge from the submitter thread
+			// if the time between the last produced block and last submitted is greater than maxSkewTime we block here until we get a progress nudge from the submitter thread
+			if maxSkewTime < batchSkewTime() {
 				select {
 				case <-ctx.Done():
 					return nil
@@ -87,8 +86,8 @@ func SubmitLoopInner(
 	})
 
 	eg.Go(func() error {
-		// 'submitter': this thread actually creates and submits batches, and will do it on a timer if he isn't nudged by block production
-		ticker := time.NewTicker(maxBatchSubmitTime / 10) // interval does not need to match max batch time since we keep track anyway, it's just to wakeup
+		// 'submitter': this thread actually creates and submits batches. this thread is woken up every batch_submit_time (in addition to every block produced) to check if there is anything to submit even if no new blocks have been produced
+		ticker := time.NewTicker(maxBatchSubmitTime)
 		for {
 			select {
 			case <-ctx.Done():
@@ -128,11 +127,15 @@ func SubmitLoopInner(
 					}
 					return err
 				}
-				ticker.Reset(maxBatchSubmitTime)
-				pending = uint64(unsubmittedBlocksBytes())                                                                                 //nolint:gosec // bytes size is always positive
-				logger.Info("Submitted a batch to both sub-layers.", "n bytes consumed from pending", nConsumed, "pending after", pending) // TODO: debug level
+				pending = uint64(unsubmittedBlocksBytes()) //nolint:gosec // bytes size is always positive
+				// after new batch submitted we check the skew time to wake up 'trigger' thread and restart block production
+				if batchSkewTime() < maxSkewTime {
+					trigger.Nudge()
+				}
+				logger.Debug("Submitted a batch to both sub-layers.", "n bytes consumed from pending", nConsumed, "pending after", pending, "skew time", batchSkewTime())
 			}
-			trigger.Nudge()
+			// update pendingBytes with non submitted block bytes after all pending batches have been submitted
+			pendingBytes.Store(pending)
 		}
 	})
 
