@@ -9,6 +9,7 @@ import "types/dymensionxyz/dymension/rollapp/params.proto";
 import "types/dymensionxyz/dymension/rollapp/rollapp.proto";
 import "types/dymensionxyz/dymension/rollapp/state_info.proto";
 import "types/dymensionxyz/dymension/rollapp/app.proto";
+import "types/dymensionxyz/dymension/rollapp/genesis_bridge_data.proto";
 
 // Query defines the gRPC querier service.
 service Query {
@@ -40,6 +41,9 @@ service Query {
 
   // Queries a list of obsolete DRS versions.
   rpc ObsoleteDRSVersions(QueryObsoleteDRSVersionsRequest) returns (QueryObsoleteDRSVersionsResponse) {}
+
+  // Validates provided genesis bridge data against the hub.
+  rpc ValidateGenesisBridge(QueryValidateGenesisBridgeRequest) returns (QueryValidateGenesisBridgeResponse) {}
 }
 
 // QueryParamsRequest is request type for the Query/Params RPC method.
@@ -122,4 +126,14 @@ message QueryObsoleteDRSVersionsRequest {}
 
 message QueryObsoleteDRSVersionsResponse {
   repeated uint32 drs_versions = 1;
+}
+
+message QueryValidateGenesisBridgeRequest {
+  string rollappId = 1;
+  GenesisBridgeData data = 2 [ (gogoproto.nullable) = false ];
+}
+
+message QueryValidateGenesisBridgeResponse {
+  bool valid = 1;
+  string err = 2;
 }

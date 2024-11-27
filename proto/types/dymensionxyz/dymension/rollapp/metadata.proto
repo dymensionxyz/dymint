@@ -1,6 +1,3 @@
-// This file is a modified copy of the rollapp module proto contract. Source:
-// https://github.com/dymensionxyz/dymension/blob/f140cd1dd561cefb3e6562cbf4379b88cd16400d/proto/dymensionxyz/dymension/rollapp/.
-
 syntax = "proto3";
 package dymensionxyz.dymension.rollapp;
 

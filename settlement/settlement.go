@@ -1,10 +1,11 @@
 package settlement
 
 import (
+	"github.com/tendermint/tendermint/libs/pubsub"
+
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
-	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
 // StatusCode is a type for settlement layer return status.
@@ -100,4 +101,6 @@ type ClientI interface {
 	GetObsoleteDrs() ([]uint32, error)
 	// GetSignerBalance returns the balance of the signer.
 	GetSignerBalance() (types.Balance, error)
+	// ValidateGenesisBridgeData validates the genesis bridge data.
+	ValidateGenesisBridgeData(data rollapp.GenesisBridgeData) error
 }

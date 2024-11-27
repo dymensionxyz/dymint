@@ -1,6 +1,3 @@
-// This file is a modified copy of the rollapp module proto contract. Source:
-// https://github.com/dymensionxyz/dymension/blob/f140cd1dd561cefb3e6562cbf4379b88cd16400d/proto/dymensionxyz/dymension/rollapp/.
-
 syntax = "proto3";
 package dymensionxyz.dymension.rollapp;
 
@@ -10,8 +7,8 @@ import "gogoproto/gogo.proto";
 import "types/dymensionxyz/dymension/rollapp/params.proto";
 import "types/dymensionxyz/dymension/rollapp/rollapp.proto";
 import "types/dymensionxyz/dymension/rollapp/state_info.proto";
-import "types/dymensionxyz/dymension/rollapp/genesis_transfer.proto";
 import "types/dymensionxyz/dymension/rollapp/liveness.proto";
+import "types/dymensionxyz/dymension/rollapp/app.proto";
 
 // GenesisState defines the rollapp module's genesis state.
 message GenesisState {
@@ -23,4 +20,19 @@ message GenesisState {
   repeated BlockHeightToFinalizationQueue blockHeightToFinalizationQueueList = 6 [(gogoproto.nullable) = false];
   // LivenessEvents are scheduled upcoming liveness events
   repeated LivenessEvent livenessEvents = 7 [(gogoproto.nullable) = false];
+  repeated App appList = 8 [(gogoproto.nullable) = false];
+  repeated RollappRegisteredDenoms registeredDenoms = 9 [(gogoproto.nullable) = false];
+  repeated SequencerHeightPair sequencerHeightPairs = 10 [(gogoproto.nullable) = false];
+  // ObsoleteDrsVersions is a list of DRS versions that are marked obsolete
+  repeated uint32 obsolete_drs_versions = 11;
+}
+
+message SequencerHeightPair {
+  string sequencer = 1; // sequencer addr to lookup in x/sequencer
+  uint64 height = 2; // rollapp chain height
+}
+
+message RollappRegisteredDenoms {
+  string rollapp_id = 1;
+  repeated string denoms = 2;
 }

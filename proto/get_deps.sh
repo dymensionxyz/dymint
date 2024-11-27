@@ -33,6 +33,7 @@ COSMOS_PROTO_FILES=(
   base/v1beta1/coin.proto
   base/query/v1beta1/pagination.proto
   msg/v1/msg.proto
+  bank/v1beta1/bank.proto
 )
 
 echo Fetching protobuf dependencies from Cosmos $COSMOS_VERSION
@@ -40,4 +41,18 @@ for FILE in "${COSMOS_PROTO_FILES[@]}"; do
   echo Fetching "$FILE"
   mkdir -p "cosmos/$(dirname $FILE)"
   curl -sSL "$COSMOS_PROTO_URL/$FILE" > "cosmos/$FILE"
+done
+
+IBC_VERSION=v6.2.1
+IBC_PROTO_URL=https://raw.githubusercontent.com/cosmos/ibc-go/refs/tags/$IBC_VERSION/proto
+
+IBC_PROTO_FILES=(
+  ibc/applications/transfer/v2/packet.proto
+)
+
+echo Fetching protobuf dependencies from IBC $IBC_VERSION
+for FILE in "${IBC_PROTO_FILES[@]}"; do
+  echo Fetching "$FILE"
+  mkdir -p "ibc/$(dirname $FILE)"
+  curl -sSL "$IBC_PROTO_URL/$FILE" > "ibc/$FILE"
 done

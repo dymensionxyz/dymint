@@ -8,6 +8,8 @@ import (
 
 	pubsub "github.com/tendermint/tendermint/libs/pubsub"
 
+	rollapp "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
+
 	settlement "github.com/dymensionxyz/dymint/settlement"
 
 	types "github.com/dymensionxyz/dymint/types"
@@ -961,6 +963,52 @@ func (_c *MockClientI_SubmitBatch_Call) Return(_a0 error) *MockClientI_SubmitBat
 }
 
 func (_c *MockClientI_SubmitBatch_Call) RunAndReturn(run func(*types.Batch, da.Client, *da.ResultSubmitBatch) error) *MockClientI_SubmitBatch_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
+// ValidateGenesisBridgeData provides a mock function with given fields: data
+func (_m *MockClientI) ValidateGenesisBridgeData(data rollapp.GenesisBridgeData) error {
+	ret := _m.Called(data)
+
+	if len(ret) == 0 {
+		panic("no return value specified for ValidateGenesisBridgeData")
+	}
+
+	var r0 error
+	if rf, ok := ret.Get(0).(func(rollapp.GenesisBridgeData) error); ok {
+		r0 = rf(data)
+	} else {
+		r0 = ret.Error(0)
+	}
+
+	return r0
+}
+
+// MockClientI_ValidateGenesisBridgeData_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ValidateGenesisBridgeData'
+type MockClientI_ValidateGenesisBridgeData_Call struct {
+	*mock.Call
+}
+
+// ValidateGenesisBridgeData is a helper method to define mock.On call
+//   - data rollapp.GenesisBridgeData
+func (_e *MockClientI_Expecter) ValidateGenesisBridgeData(data interface{}) *MockClientI_ValidateGenesisBridgeData_Call {
+	return &MockClientI_ValidateGenesisBridgeData_Call{Call: _e.mock.On("ValidateGenesisBridgeData", data)}
+}
+
+func (_c *MockClientI_ValidateGenesisBridgeData_Call) Run(run func(data rollapp.GenesisBridgeData)) *MockClientI_ValidateGenesisBridgeData_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(rollapp.GenesisBridgeData))
+	})
+	return _c
+}
+
+func (_c *MockClientI_ValidateGenesisBridgeData_Call) Return(_a0 error) *MockClientI_ValidateGenesisBridgeData_Call {
+	_c.Call.Return(_a0)
+	return _c
+}
+
+func (_c *MockClientI_ValidateGenesisBridgeData_Call) RunAndReturn(run func(rollapp.GenesisBridgeData) error) *MockClientI_ValidateGenesisBridgeData_Call {
 	_c.Call.Return(run)
 	return _c
 }
