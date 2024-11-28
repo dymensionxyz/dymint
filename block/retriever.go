@@ -19,13 +19,13 @@ func (m *Manager) ApplyBatchFromSL(slBatch *settlement.Batch) error {
 
 	m.logger.Debug("retrieved batches", "n", len(batchResp.Batches), "daHeight", slBatch.MetaData.DA.Height)
 
+	m.retrieverMu.Lock()
+	defer m.retrieverMu.Unlock()
+
 	// if batch blocks have already been applied skip, otherwise it will fail in endheight validation (it can happen when syncing from blocksync in parallel).
 	if m.State.Height() > slBatch.EndHeight {
 		return nil
 	}
-
-	m.retrieverMu.Lock()
-	defer m.retrieverMu.Unlock()
 
 	blockIndex := 0
 	for _, batch := range batchResp.Batches {

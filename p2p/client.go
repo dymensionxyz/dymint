@@ -684,11 +684,11 @@ func (c *Client) advertiseBlockSyncCids(ctx context.Context) {
 				if err != nil || id == cid.Undef {
 					continue
 				}
-				revision := uint64(0)
-				if h >= state.RevisionStartHeight {
-					revision = state.GetRevision()
+				block, err := c.store.LoadBlock(h)
+				if err != nil {
+					continue
 				}
-				err = c.AdvertiseBlockIdToDHT(ctx, h, revision, id)
+				err = c.AdvertiseBlockIdToDHT(ctx, h, block.GetRevision(), id)
 				if err != nil {
 					continue
 				}
