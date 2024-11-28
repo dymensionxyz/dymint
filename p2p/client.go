@@ -622,7 +622,6 @@ func (c *Client) retrieveBlockSyncLoop(ctx context.Context, msgHandler BlockSync
 				c.logger.Debug("Blocksync getting block.", "height", h, "revision", state.GetRevision())
 				id, err := c.GetBlockIdFromDHT(ctx, h, state.GetRevision())
 				if err != nil || id == cid.Undef {
-					c.logger.Debug("Blocksync unable to find cid", "height", h)
 					continue
 				}
 				_, err = c.store.SaveBlockCid(h, id, nil)
