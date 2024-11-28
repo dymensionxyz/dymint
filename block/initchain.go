@@ -52,7 +52,7 @@ func (m *Manager) ValidateGenesisBridgeData(dataBytes []byte) error {
 	}
 
 	var genesisBridgeData rollapptypes.GenesisBridgeData
-	err := tmjson.Unmarshal(dataBytes, genesisBridgeData)
+	err := tmjson.Unmarshal(dataBytes, &genesisBridgeData)
 	if err != nil {
 		return fmt.Errorf("unmarshal genesis bridge data: %w", err)
 	}
