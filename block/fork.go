@@ -175,7 +175,6 @@ func (m *Manager) createForkBlocks(instruction types.Instruction, consensusMsgs 
 		if err != nil {
 			return gerrc.ErrInternal.Wrapf("load stored blocks: %d", h)
 		}
-
 		if 0 < len(b.Data.Txs) {
 			return gerrc.ErrInternal.Wrapf("fork block has tx: %d", h)
 		}
