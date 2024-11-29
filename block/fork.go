@@ -44,7 +44,6 @@ func (m *Manager) MonitorForkUpdateLoop(ctx context.Context) error {
 
 // checkForkUpdate checks if the hub has a fork update
 func (m *Manager) checkForkUpdate(msg string) error {
-
 	rollapp, err := m.SLClient.GetRollapp()
 	if err != nil {
 		return err
