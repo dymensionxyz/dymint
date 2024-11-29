@@ -22,6 +22,11 @@ const (
 
 // MonitorForkUpdateLoop monitors the hub for fork updates in a loop
 func (m *Manager) MonitorForkUpdateLoop(ctx context.Context) error {
+	// if instruction already exists no need to check for fork update
+	if types.InstructionExists(m.RootDir) {
+		return nil
+	}
+
 	ticker := time.NewTicker(ForkMonitorInterval) // TODO make this configurable
 	defer ticker.Stop()
 
@@ -39,10 +44,6 @@ func (m *Manager) MonitorForkUpdateLoop(ctx context.Context) error {
 
 // checkForkUpdate checks if the hub has a fork update
 func (m *Manager) checkForkUpdate(msg string) error {
-	// if instruction already exists no need to check for fork update
-	if types.InstructionExists(m.RootDir) {
-		return nil
-	}
 
 	rollapp, err := m.SLClient.GetRollapp()
 	if err != nil {
