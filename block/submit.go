@@ -174,13 +174,6 @@ func (m *Manager) CreateAndSubmitBatch(maxSizeBytes uint64, lastBatch bool) (*ty
 		return nil, fmt.Errorf("create batch: %w", err)
 	}
 
-	// check all blocks have the same revision
-	for i, block := range b.Blocks[:len(b.Blocks)-1] {
-		if b.Blocks[i+1].GetRevision() != block.GetRevision() {
-			return nil, fmt.Errorf("create batch: batch includes blocks with different revisions: %w", gerrc.ErrInternal)
-		}
-	}
-
 	// This is the last batch, so we need to mark it as such
 	if lastBatch && b.EndHeight() == endHeightInclusive {
 		b.LastBatch = true
@@ -218,13 +211,18 @@ func (m *Manager) CreateBatch(maxBatchSize uint64, startHeight uint64, endHeight
 		if err != nil {
 			return nil, fmt.Errorf("load drs version: h: %d: %w", h, err)
 		}
+
+		// check all blocks have the same revision
+		if len(batch.Blocks) > 0 && batch.Blocks[len(batch.Blocks)-1].GetRevision() != block.GetRevision() {
+			return nil, fmt.Errorf("create batch: batch includes blocks with different revisions: %w", gerrc.ErrInternal)
+		}
+
 		batch.Blocks = append(batch.Blocks, block)
 		batch.Commits = append(batch.Commits, commit)
 		batch.DRSVersion = append(batch.DRSVersion, drsVersion)
 
 		totalSize := batch.SizeBytes()
 		if maxBatchSize < uint64(totalSize) { //nolint:gosec // size is always positive and falls in uint64
-
 			// Remove the last block and commit from the batch
 			batch.Blocks = batch.Blocks[:len(batch.Blocks)-1]
 			batch.Commits = batch.Commits[:len(batch.Commits)-1]
