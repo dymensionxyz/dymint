@@ -47,14 +47,19 @@ require (
 	cosmossdk.io/collections v0.4.0 // indirect
 	cosmossdk.io/core v0.12.0 // indirect
 	cosmossdk.io/depinject v1.0.0-alpha.4 // indirect
+	github.com/StackExchange/wmi v1.2.1 // indirect
 	github.com/celestiaorg/go-square v1.0.1 // indirect
 	github.com/celestiaorg/go-square/merkle v0.0.0-20240429192549-dea967e1533b // indirect
 	github.com/cosmos/cosmos-db v1.0.0 // indirect
 	github.com/cskr/pubsub v1.0.2 // indirect
+	github.com/deckarep/golang-set/v2 v2.1.0 // indirect
 	github.com/dgraph-io/badger/v3 v3.2103.3 // indirect
+	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/ipfs/go-block-format v0.2.0 // indirect
+	github.com/shirou/gopsutil v3.21.4-0.20210419000835-c7a38de76ee5+incompatible // indirect
 	github.com/tklauser/go-sysconf v0.3.11 // indirect
+	github.com/tklauser/numcpus v0.6.0 // indirect
 )
 
 require (
@@ -84,7 +89,7 @@ require (
 	github.com/decred/base58 v1.0.4 // indirect
 	github.com/decred/dcrd/crypto/blake256 v1.0.1 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
-	github.com/ethereum/go-ethereum v1.12.0 // indirect
+	github.com/ethereum/go-ethereum v1.12.0
 	github.com/filecoin-project/go-jsonrpc v0.5.0 // indirect
 	github.com/ghodss/yaml v1.0.0 // indirect
 	github.com/go-logr/logr v1.4.1 // indirect
@@ -263,7 +268,7 @@ require (
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/btcsuite/btcd/btcutil v1.1.3 // indirect
 	github.com/cenkalti/backoff v2.2.1+incompatible // indirect
-	github.com/cockroachdb/errors v1.11.1 // indirect
+	github.com/cockroachdb/errors v1.11.1
 	github.com/cockroachdb/logtags v0.0.0-20230118201751-21c54148d20b // indirect
 	github.com/cockroachdb/pebble v1.1.0 // indirect
 	github.com/cockroachdb/redact v1.1.5 // indirect
