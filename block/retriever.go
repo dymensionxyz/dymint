@@ -41,7 +41,7 @@ func (m *Manager) ApplyBatchFromSL(slBatch *settlement.Batch) error {
 			}
 
 			if block.GetRevision() != m.State.GetRevision() {
-				err := m.checkForkUpdate("syncing to fork height. please restart the node.")
+				err := m.checkForkUpdate(fmt.Sprintf("syncing to fork height. received block revision: %d node revision: %d. please restart the node.", block.GetRevision(), m.State.GetRevision()))
 				return err
 			}
 
