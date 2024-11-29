@@ -173,7 +173,6 @@ func (m *Manager) CreateAndSubmitBatch(maxSizeBytes uint64, lastBatch bool) (*ty
 	if err != nil {
 		return nil, fmt.Errorf("create batch: %w", err)
 	}
-
 	// This is the last batch, so we need to mark it as such
 	if lastBatch && b.EndHeight() == endHeightInclusive {
 		b.LastBatch = true
@@ -223,6 +222,7 @@ func (m *Manager) CreateBatch(maxBatchSize uint64, startHeight uint64, endHeight
 
 		totalSize := batch.SizeBytes()
 		if maxBatchSize < uint64(totalSize) { //nolint:gosec // size is always positive and falls in uint64
+
 			// Remove the last block and commit from the batch
 			batch.Blocks = batch.Blocks[:len(batch.Blocks)-1]
 			batch.Commits = batch.Commits[:len(batch.Commits)-1]
