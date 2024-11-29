@@ -146,51 +146,22 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 	return nil
 }
 
-// Start prepares DataAvailabilityLayerClient to work.
-func (c *DataAvailabilityLayerClient) Start() (err error) {
+// Start starts DataAvailabilityLayerClient instance.
+func (c *DataAvailabilityLayerClient) Start() error {
+	c.synced <- struct{}{}
 	return nil
-	/*
-		c.logger.Info("Starting Celestia Data Availability Layer Client.")
-
-		// other client has already been set
-		if c.rpc != nil {
-			c.logger.Info("Celestia-node client already set.")
-			return nil
-		}
-
-		var rpc *openrpc.Client
-		rpc, err = openrpc.NewClient(c.ctx, c.config.BaseURL, c.config.AuthToken)
-		if err != nil {
-			return err
-		}
-		c.rpc = NewOpenRPC(rpc)
-
-		go c.sync(rpc)
-
-		return
-	*/
 }
 
-// Stop stops DataAvailabilityLayerClient.
+// Stop stops DataAvailabilityLayerClient instance.
 func (c *DataAvailabilityLayerClient) Stop() error {
-	/*
-		c.logger.Info("Stopping Celestia Data Availability Layer Client.")
-		err := c.pubsubServer.Stop()
-		if err != nil {
-			return err
-		}
-		c.cancel()
-		close(c.synced)
-		return nil
-	*/
+	c.cancel()
+	close(c.synced)
 	return nil
 }
 
 // WaitForSyncing is used to check when the DA light client finished syncing
 func (m *DataAvailabilityLayerClient) WaitForSyncing() {
-	/*
-		<-m.synced
-	*/
+	<-m.synced
 }
 
 // GetClientType returns client type.
