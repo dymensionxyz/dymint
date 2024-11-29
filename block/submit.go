@@ -175,14 +175,12 @@ func (m *Manager) CreateAndSubmitBatch(maxSizeBytes uint64, lastBatch bool) (*ty
 	}
 
 	// check all blocks have the same revision
-	for i, block := range b.Blocks {
-		if len(b.Blocks) <= i+1 {
-			break
-		}
+	for i, block := range b.Blocks[:len(b.Blocks)-1] {
 		if b.Blocks[i+1].GetRevision() != block.GetRevision() {
 			return nil, fmt.Errorf("create batch: batch includes blocks with different revisions: %w", gerrc.ErrInternal)
 		}
 	}
+
 	// This is the last batch, so we need to mark it as such
 	if lastBatch && b.EndHeight() == endHeightInclusive {
 		b.LastBatch = true
