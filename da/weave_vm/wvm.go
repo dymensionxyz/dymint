@@ -2,14 +2,19 @@ package weave_vm
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/celestiaorg/celestia-openrpc/types/blob"
 	"github.com/celestiaorg/celestia-openrpc/types/header"
 	"github.com/dymensionxyz/dymint/da"
+	"github.com/dymensionxyz/dymint/da/weave_vm/rpc"
+	"github.com/dymensionxyz/dymint/da/weave_vm/signer"
 	weaveVMtypes "github.com/dymensionxyz/dymint/da/weave_vm/types"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/dymint/utils/retry"
 	uretry "github.com/dymensionxyz/dymint/utils/retry"
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
@@ -18,40 +23,19 @@ type WeaveVM interface {
 	SendTransaction(ctx context.Context, to string, data []byte) (string, error)
 }
 
-/*
-// DataAvailabilityLayerClient defines generic interface for DA layer block submission.
-// It also contains life-cycle methods.
+// TODO: adjust
+const (
+	defaultRpcRetryDelay    = 3 * time.Second
+	namespaceVersion        = 0
+	DefaultGasPrices        = 0.1
+	defaultRpcRetryAttempts = 5
+	maxBlobSizeBytes        = 500000
+)
 
-	type DataAvailabilityLayerClient interface {
-		// Init is called once to allow DA client to read configuration and initialize resources.
-		Init(config []byte, pubsubServer *pubsub.Server, kvStore store.KV, logger types.Logger, options ...Option) error
-
-		// Start is called once, after Init. It's implementation should start operation of DataAvailabilityLayerClient.
-		Start() error
-
-		// Stop is called once, when DataAvailabilityLayerClient is no longer needed.
-		Stop() error
-
-		// SubmitBatch submits the passed in block to the DA layer.
-		// This should create a transaction which (potentially)
-		// triggers a state transition in the DA layer.
-		SubmitBatch(batch *types.Batch) ResultSubmitBatch
-
-		GetClientType() Client
-
-		// CheckBatchAvailability checks the availability of the blob submitted getting proofs and validating them
-		CheckBatchAvailability(daMetaData *DASubmitMetaData) ResultCheckBatch
-
-		// Used to check when the DA light client finished syncing
-		WaitForSyncing()
-
-		// Returns the maximum allowed blob size in the DA, used to check the max batch size configured
-		GetMaxBlobSizeBytes() uint32
-
-		// GetSignerBalance returns the balance for a specific address
-		GetSignerBalance() (Balance, error)
-	}
-*/
+var defaultSubmitBackoff = uretry.NewBackoffConfig(
+	uretry.WithInitialDelay(time.Second*6),
+	uretry.WithMaxDelay(time.Second*6),
+)
 
 // DataAvailabilityLayerClient use celestia-node public API.
 type DataAvailabilityLayerClient struct {
@@ -97,66 +81,69 @@ func WithSubmitBackoff(c uretry.BackoffConfig) da.Option {
 	}
 }
 
-// Init initializes DataAvailabilityLayerClient instance.
-func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.Server, _ store.KV, logger types.Logger, options ...da.Option) error {
-	return nil
-	/*c.logger = logger
-	c.synced = make(chan struct{}, 1)
-	var err error
-	c.config, err = createConfig(config)
-	if err != nil {
-		return fmt.Errorf("create config: %w: %w", err, gerrc.ErrInvalidArgument)
+// Init initializes the WeaveVM DA client
+func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.Server, kvStore store.KV, logger types.Logger, options ...da.Option) error {
+	var cfg weaveVMtypes.Config
+	if len(config) > 0 {
+		err := json.Unmarshal(config, &c.config)
+		if err != nil {
+			return fmt.Errorf("failed to unmarshal config: %w", err)
+		}
 	}
 
-	c.ctx, c.cancel = context.WithCancel(context.Background())
-
+	// Set defaults
 	c.pubsubServer = pubsubServer
+	c.logger = logger
+	c.config = &cfg
+
+	// Validate and set defaults
+	if c.config.RetryDelay == 0 {
+		c.config.RetryDelay = defaultRpcRetryDelay
+	}
+	if c.config.Backoff == (retry.BackoffConfig{}) {
+		c.config.Backoff = defaultSubmitBackoff
+	}
+	if c.config.RetryAttempts == nil {
+		attempts := defaultRpcRetryAttempts
+		c.config.RetryAttempts = &attempts
+	}
 
 	// Apply options
 	for _, apply := range options {
 		apply(c)
 	}
-
 	types.RollappConsecutiveFailedDASubmission.Set(0)
 
+	c.ctx, c.cancel = context.WithCancel(context.Background())
+
+	if c.client != nil {
+		if cfg.Web3SignerEndpoint != "" {
+			web3signer, err := signer.NewWeb3SignerClient(&cfg, logger)
+			if err != nil {
+				return fmt.Errorf("failed to initialize web3signer client: %w", err)
+			}
+			client, err := rpc.NewWvmRPCClient(logger, &cfg, web3signer)
+			if err != nil {
+				return fmt.Errorf("failed to initialize rpc client for weaveVM chain: %w", err)
+			}
+			c.client = client
+			return nil
+		}
+
+		// Use PrivateKey signer
+		if cfg.PrivateKeyHex == "" {
+			return fmt.Errorf("weaveVM private key is empty and weaveVM web3 signer is empty")
+		}
+		privateKeySigner := signer.NewPrivateKeySigner(cfg.PrivateKeyHex, logger, cfg.ChainID)
+		client, err := rpc.NewWvmRPCClient(logger, &cfg, privateKeySigner)
+		if err != nil {
+			return fmt.Errorf("failed to initialize rpc client for weaveVM chain: %w", err)
+		}
+
+		c.client = client
+	}
+
 	return nil
-	*/
-}
-
-func createConfig(bz []byte) (c weaveVMtypes.Config, err error) {
-	return weaveVMtypes.Config{}, nil
-	/*
-		if len(bz) <= 0 {
-			return c, errors.New("supplied config is empty")
-		}
-		err = json.Unmarshal(bz, &c)
-		if err != nil {
-			return c, fmt.Errorf("json unmarshal: %w", err)
-		}
-
-		err = c.InitNamespaceID()
-		if err != nil {
-			return c, fmt.Errorf("init namespace id: %w", err)
-		}
-
-		if c.GasPrices == 0 {
-			return c, errors.New("gas prices must be set")
-		}
-
-		// NOTE: 0 is valid value for RetryAttempts
-
-		if c.RetryDelay == 0 {
-			c.RetryDelay = defaultRpcRetryDelay
-		}
-		if c.Backoff == (uretry.BackoffConfig{}) {
-			c.Backoff = defaultSubmitBackoff
-		}
-		if c.RetryAttempts == nil {
-			attempts := defaultRpcRetryAttempts
-			c.RetryAttempts = &attempts
-		}
-		return c, nil
-	*/
 }
 
 // Start prepares DataAvailabilityLayerClient to work.

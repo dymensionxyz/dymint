@@ -17,17 +17,16 @@ import (
 	weaveVMtypes "github.com/dymensionxyz/dymint/da/weave_vm/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/log"
 )
 
 type Web3SignerClient struct {
 	chainID  int64
 	endpoint string
-	log      log.Logger
+	log      Logger
 	client   *http.Client
 }
 
-func NewWeb3SignerClient(cfg *weaveVMtypes.Config, log log.Logger) (*Web3SignerClient, error) {
+func NewWeb3SignerClient(cfg *weaveVMtypes.Config, log Logger) (*Web3SignerClient, error) {
 	transport := &http.Transport{
 		DialContext: (&net.Dialer{
 			Timeout: cfg.Timeout,
@@ -37,7 +36,7 @@ func NewWeb3SignerClient(cfg *weaveVMtypes.Config, log log.Logger) (*Web3SignerC
 
 	// Configure TLS if cert and key files are provided
 	if cfg.Web3SignerTLSCertFile != "" && cfg.Web3SignerTLSKeyFile != "" {
-		err := configureTransportTLS(transport, cfg)
+		err := configureTransportTLS(transport, cfg, log)
 		if err != nil {
 			return nil, err
 		}
@@ -56,7 +55,7 @@ func NewWeb3SignerClient(cfg *weaveVMtypes.Config, log log.Logger) (*Web3SignerC
 	}, nil
 }
 
-func configureTransportTLS(transport *http.Transport, cfg *weaveVMtypes.Config) error {
+func configureTransportTLS(transport *http.Transport, cfg *weaveVMtypes.Config, log Logger) error {
 	tlsConfig := &tls.Config{
 		MinVersion: tls.VersionTLS12,
 	}
@@ -82,7 +81,7 @@ func configureTransportTLS(transport *http.Transport, cfg *weaveVMtypes.Config) 
 		tlsConfig.RootCAs = caCertPool
 	} else {
 		// If no CA cert provided, skip verification
-		log.Warn("No CA certificate provided, TLS verification will be skipped",
+		log.Info("No CA certificate provided, TLS verification will be skipped",
 			"endpoint", cfg.Web3SignerEndpoint)
 		tlsConfig.InsecureSkipVerify = true
 	}

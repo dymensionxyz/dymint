@@ -14,17 +14,22 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/log"
 )
+
+type Logger interface {
+	Debug(msg string, keyvals ...interface{})
+	Info(msg string, keyvals ...interface{})
+	Error(msg string, keyvals ...interface{})
+}
 
 type PrivateKeySigner struct {
 	privateKey string
 	chainID    int64
 
-	log log.Logger
+	log Logger
 }
 
-func NewPrivateKeySigner(privateKey string, log log.Logger, chainID int64) *PrivateKeySigner {
+func NewPrivateKeySigner(privateKey string, log Logger, chainID int64) *PrivateKeySigner {
 	return &PrivateKeySigner{privateKey: privateKey, log: log, chainID: chainID}
 }
 

@@ -15,7 +15,6 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
-	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rlp"
 )
 
@@ -24,15 +23,21 @@ type Signer interface {
 	SignTransaction(ctx context.Context, signData *weaveVMtypes.SignData) (string, error)
 }
 
+type Logger interface {
+	Debug(msg string, keyvals ...interface{})
+	Info(msg string, keyvals ...interface{})
+	Error(msg string, keyvals ...interface{})
+}
+
 // WeaveVM RPC client
 type RPCClient struct {
-	log     log.Logger
+	log     Logger
 	client  *ethclient.Client
 	chainID int64
 	signer  Signer
 }
 
-func NewWvmRPCClient(log log.Logger, cfg *weaveVMtypes.Config, signer Signer) (*RPCClient, error) {
+func NewWvmRPCClient(log Logger, cfg *weaveVMtypes.Config, signer Signer) (*RPCClient, error) {
 	client, err := ethclient.Dial(cfg.Endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to the WeaveVM client: %w", err)
