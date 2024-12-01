@@ -22,7 +22,11 @@ func (m *Manager) ApplyBatchFromSL(slBatch *settlement.Batch) error {
 	m.retrieverMu.Lock()
 	defer m.retrieverMu.Unlock()
 
-	var lastAppliedHeight float64
+	// if batch blocks have already been applied skip, otherwise it will fail in endheight validation (it can happen when syncing from blocksync in parallel).
+	if m.State.Height() > slBatch.EndHeight {
+		return nil
+	}
+
 	blockIndex := 0
 	for _, batch := range batchResp.Batches {
 		for i, block := range batch.Blocks {
@@ -37,7 +41,7 @@ func (m *Manager) ApplyBatchFromSL(slBatch *settlement.Batch) error {
 			}
 
 			if block.GetRevision() != m.State.GetRevision() {
-				err := m.checkForkUpdate("syncing to fork height. please restart the node.")
+				err := m.checkForkUpdate(fmt.Sprintf("syncing to fork height. received block revision: %d node revision: %d. please restart the node.", block.GetRevision(), m.State.GetRevision()))
 				return err
 			}
 
@@ -47,8 +51,6 @@ func (m *Manager) ApplyBatchFromSL(slBatch *settlement.Batch) error {
 				return fmt.Errorf("apply block: height: %d: %w", block.Header.Height, err)
 			}
 
-			lastAppliedHeight = float64(block.Header.Height)
-
 			m.blockCache.Delete(block.Header.Height)
 		}
 	}
@@ -57,8 +59,6 @@ func (m *Manager) ApplyBatchFromSL(slBatch *settlement.Batch) error {
 	if m.State.Height() != slBatch.EndHeight {
 		return fmt.Errorf("state height mismatch: state height: %d: batch end height: %d", m.State.Height(), slBatch.EndHeight)
 	}
-
-	types.LastReceivedDAHeightGauge.Set(lastAppliedHeight)
 
 	return nil
 }
@@ -71,9 +71,11 @@ func (m *Manager) ApplyBatchFromSL(slBatch *settlement.Batch) error {
 // if seq produces new block H, it can lead to double signing, as the old block can still be in the p2p network
 // ----
 // when this scenario encountered previously, we wanted to apply same block instead of producing new one
-func (m *Manager) applyLocalBlock(height uint64) error {
+func (m *Manager) applyLocalBlock() error {
 	defer m.retrieverMu.Unlock()
 	m.retrieverMu.Lock()
+
+	height := m.State.NextHeight()
 
 	block, err := m.Store.LoadBlock(height)
 	if err != nil {

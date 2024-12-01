@@ -90,6 +90,7 @@ func (v *SettlementValidator) ValidateStateUpdate(batch *settlement.ResultRetrie
 	daBlocks := []*types.Block{}
 	for _, batch := range daBatch.Batches {
 		daBlocks = append(daBlocks, batch.Blocks...)
+		types.LastReceivedDAHeightGauge.Set(float64(batch.EndHeight()))
 	}
 
 	// validate DA blocks against the state update
