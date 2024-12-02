@@ -232,6 +232,10 @@ func (m *Manager) Start(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
+		_, err = m.Store.SaveState(m.State, nil)
+		if err != nil {
+			return err
+		}
 	}
 
 	// checks if the the current node is the proposer either on rollapp or on the hub.
@@ -317,6 +321,7 @@ func (m *Manager) updateFromLastSettlementState() error {
 		return err
 	}
 
+	m.P2PClient.UpdateLatestSeenHeight(latestHeight)
 	if latestHeight >= m.State.NextHeight() {
 		m.UpdateTargetHeight(latestHeight)
 	}
@@ -349,6 +354,10 @@ func (m *Manager) updateLastFinalizedHeightFromSettlement() error {
 
 func (m *Manager) GetProposerPubKey() tmcrypto.PubKey {
 	return m.State.GetProposerPubKey()
+}
+
+func (m *Manager) GetRevision() uint64 {
+	return m.State.GetRevision()
 }
 
 func (m *Manager) UpdateTargetHeight(h uint64) {

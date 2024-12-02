@@ -201,7 +201,7 @@ func (c *Client) GossipBlock(ctx context.Context, blockBytes []byte) error {
 }
 
 // SaveBlock stores the block in the blocksync datastore, stores locally the returned identifier and advertises the identifier to the DHT, so other nodes can know the identifier for the block height.
-func (c *Client) SaveBlock(ctx context.Context, height uint64, blockBytes []byte) error {
+func (c *Client) SaveBlock(ctx context.Context, height uint64, revision uint64, blockBytes []byte) error {
 	if !c.conf.BlockSyncEnabled {
 		return nil
 	}
@@ -221,7 +221,7 @@ func (c *Client) SaveBlock(ctx context.Context, height uint64, blockBytes []byte
 	if err != nil {
 		return fmt.Errorf("blocksync store block id: %w", err)
 	}
-	err = c.AdvertiseBlockIdToDHT(ctx, height, cid)
+	err = c.AdvertiseBlockIdToDHT(ctx, height, revision, cid)
 	if err != nil {
 		c.logger.Debug("block-sync advertise block", "error", err)
 	}
@@ -269,19 +269,23 @@ func (c *Client) RemoveBlocks(ctx context.Context, to uint64) (uint64, error) {
 	return prunedBlocks, nil
 }
 
-// AdvertiseBlockIdToDHT is used to advertise the identifier (cid) for a specific block height to the DHT, using a PutValue operation
-func (c *Client) AdvertiseBlockIdToDHT(ctx context.Context, height uint64, cid cid.Cid) error {
-	err := c.DHT.PutValue(ctx, getBlockSyncKeyByHeight(height), []byte(cid.String()))
+// AdvertiseBlockIdToDHT is used to advertise the identifier (cid) for a specific block height and revision to the DHT, using a PutValue operation
+func (c *Client) AdvertiseBlockIdToDHT(ctx context.Context, height uint64, revision uint64, cid cid.Cid) error {
+	err := c.DHT.PutValue(ctx, getBlockSyncKeyByHeight(height, revision), []byte(cid.String()))
 	return err
 }
 
-// GetBlockIdFromDHT is used to retrieve the identifier (cid) for a specific block height from the DHT, using a GetValue operation
-func (c *Client) GetBlockIdFromDHT(ctx context.Context, height uint64) (cid.Cid, error) {
-	cidBytes, err := c.DHT.GetValue(ctx, getBlockSyncKeyByHeight(height))
+// GetBlockIdFromDHT is used to retrieve the identifier (cid) for a specific block height and revision from the DHT, using a GetValue operation
+func (c *Client) GetBlockIdFromDHT(ctx context.Context, height uint64, revision uint64) (cid.Cid, error) {
+	cidBytes, err := c.DHT.GetValue(ctx, getBlockSyncKeyByHeight(height, revision))
 	if err != nil {
 		return cid.Undef, err
 	}
 	return cid.MustParse(string(cidBytes)), nil
+}
+
+func (c *Client) UpdateLatestSeenHeight(height uint64) {
+	c.blocksReceived.latestSeenHeight = max(height, c.blocksReceived.latestSeenHeight)
 }
 
 // SetBlockValidator sets the callback function, that will be invoked after block is received from P2P network.
@@ -406,7 +410,7 @@ func (c *Client) setupPeerDiscovery(ctx context.Context) error {
 	// wait for DHT
 	select {
 	case <-ctx.Done():
-		return ctx.Err()
+		return nil
 	case <-c.DHT.RefreshRoutingTable():
 	}
 	c.disc = discovery.NewRoutingDiscovery(c.DHT)
@@ -550,7 +554,7 @@ func (c *Client) blockGossipReceived(ctx context.Context, block []byte) {
 		if err == nil {
 			return
 		}
-		err = c.SaveBlock(ctx, gossipedBlock.Block.Header.Height, block)
+		err = c.SaveBlock(ctx, gossipedBlock.Block.Header.Height, gossipedBlock.Block.GetRevision(), block)
 		if err != nil {
 			c.logger.Error("Adding  block to blocksync store.", "err", err, "height", gossipedBlock.Block.Header.Height)
 		}
@@ -582,7 +586,6 @@ func (c *Client) bootstrapLoop(ctx context.Context) {
 					c.tryConnect(ctx, peer)
 				}
 			}
-
 		}
 	}
 }
@@ -597,6 +600,10 @@ func (c *Client) retrieveBlockSyncLoop(ctx context.Context, msgHandler BlockSync
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
+			// if no connected at p2p level, dont try
+			if len(c.Peers()) == 0 {
+				continue
+			}
 			state, err := c.store.LoadState()
 			if err != nil {
 				continue
@@ -605,14 +612,16 @@ func (c *Client) retrieveBlockSyncLoop(ctx context.Context, msgHandler BlockSync
 			// this loop iterates and retrieves all the blocks between the last block applied and the greatest height received,
 			// skipping any block cached, since are already received.
 			for h := state.NextHeight(); h <= c.blocksReceived.latestSeenHeight; h++ {
+				if ctx.Err() != nil {
+					return
+				}
 				ok := c.blocksReceived.IsBlockReceived(h)
 				if ok {
 					continue
 				}
-				c.logger.Debug("Blocksync getting block.", "height", h)
-				id, err := c.GetBlockIdFromDHT(ctx, h)
+				c.logger.Debug("Blocksync getting block.", "height", h, "revision", state.GetRevision())
+				id, err := c.GetBlockIdFromDHT(ctx, h, state.GetRevision())
 				if err != nil || id == cid.Undef {
-					c.logger.Error("Blocksync unable to find cid", "height", h)
 					continue
 				}
 				_, err = c.store.SaveBlockCid(h, id, nil)
@@ -625,42 +634,68 @@ func (c *Client) retrieveBlockSyncLoop(ctx context.Context, msgHandler BlockSync
 					c.logger.Error("Blocksync LoadBlock", "err", err)
 					continue
 				}
-
 				c.logger.Debug("Blocksync block received ", "height", h)
-				msgHandler(&block)
+
 				state, err := c.store.LoadState()
 				if err != nil {
 					return
 				}
+				if err := block.Validate(state.GetProposerPubKey()); err != nil {
+					c.logger.Error("Failed to validate blocksync block.", "height", block.Block.Header.Height)
+					continue
+				}
+				msgHandler(&block)
 				h = max(h, state.NextHeight()-1)
 			}
 			c.blocksReceived.RemoveBlocksReceivedUpToHeight(state.NextHeight())
+
 		}
 	}
 }
 
 // advertiseBlockSyncCids is used to advertise all the block identifiers (cids) stored in the local store to the DHT on startup
 func (c *Client) advertiseBlockSyncCids(ctx context.Context) {
-	state, err := c.store.LoadState()
-	if err != nil {
-		return
-	}
-	baseHeight, err := c.store.LoadBaseHeight()
-	if err != nil {
-		return
-	}
-	for h := baseHeight; h <= state.Height(); h++ {
+	ticker := time.NewTicker(c.conf.BlockSyncRequestIntervalTime)
+	defer ticker.Stop()
 
-		id, err := c.store.LoadBlockCid(h)
-		if err != nil || id == cid.Undef {
-			continue
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			// if no connected at p2p level, it will try again after ticker time
+			if len(c.Peers()) == 0 {
+				continue
+			}
+			state, err := c.store.LoadState()
+			if err != nil {
+				return
+			}
+			baseHeight, err := c.store.LoadBlockSyncBaseHeight()
+			if err != nil && !errors.Is(err, gerrc.ErrNotFound) {
+				return
+			}
+			for h := baseHeight; h <= state.Height(); h++ {
+				if ctx.Err() != nil {
+					return
+				}
+				id, err := c.store.LoadBlockCid(h)
+				if err != nil || id == cid.Undef {
+					continue
+				}
+				block, err := c.store.LoadBlock(h)
+				if err != nil {
+					continue
+				}
+				err = c.AdvertiseBlockIdToDHT(ctx, h, block.GetRevision(), id)
+				if err != nil {
+					continue
+				}
+
+			}
+			// just try once and then quit when finished
+			return
 		}
-
-		err = c.AdvertiseBlockIdToDHT(ctx, h, id)
-		if err != nil {
-			continue
-		}
-
 	}
 }
 
@@ -674,8 +709,8 @@ func (c *Client) findConnection(peer peer.AddrInfo) bool {
 	return false
 }
 
-func getBlockSyncKeyByHeight(height uint64) string {
-	return "/" + blockSyncProtocolPrefix + "/" + strconv.FormatUint(height, 10)
+func getBlockSyncKeyByHeight(height uint64, revision uint64) string {
+	return "/" + blockSyncProtocolPrefix + "/" + strconv.FormatUint(revision, 10) + "/" + strconv.FormatUint(height, 10)
 }
 
 // validates that the content identifiers advertised in the DHT are valid.

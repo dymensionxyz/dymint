@@ -267,23 +267,18 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 			return da.ResultRetrieveBatch{}
 		default:
 			var resultRetrieveBatch da.ResultRetrieveBatch
+
 			err := retry.Do(
 				func() error {
 					resultRetrieveBatch = c.retrieveBatches(daMetaData)
-
-					if errors.Is(resultRetrieveBatch.Error, da.ErrRetrieval) {
-						c.logger.Error("Retrieve batch.", "error", resultRetrieveBatch.Error)
-						return resultRetrieveBatch.Error
-					}
-
-					return nil
+					return resultRetrieveBatch.Error
 				},
 				retry.Attempts(uint(*c.config.RetryAttempts)), //nolint:gosec // RetryAttempts should be always positive
 				retry.DelayType(retry.FixedDelay),
 				retry.Delay(c.config.RetryDelay),
 			)
 			if err != nil {
-				c.logger.Error("RetrieveBatches process failed.", "error", err)
+				c.logger.Error("Retrieve batch", "height", daMetaData.Height, "commitment", hex.EncodeToString(daMetaData.Commitment))
 			}
 			return resultRetrieveBatch
 
