@@ -751,3 +751,31 @@ func (c *Client) GetSignerBalance() (types.Balance, error) {
 
 	return balance, nil
 }
+
+func (c *Client) ValidateGenesisBridgeData(data rollapptypes.GenesisBridgeData) error {
+	var res *rollapptypes.QueryValidateGenesisBridgeResponse
+	req := &rollapptypes.QueryValidateGenesisBridgeRequest{
+		RollappId: c.rollappId,
+		Data:      data,
+	}
+
+	err := c.RunWithRetry(func() error {
+		var err error
+		res, err = c.cosmosClient.GetRollappClient().ValidateGenesisBridge(c.ctx, req)
+		return err
+	})
+	if err != nil {
+		return fmt.Errorf("rollapp client: validate genesis bridge: %w", err)
+	}
+
+	// not supposed to happen, but just in case
+	if res == nil {
+		return fmt.Errorf("empty response: %w", gerrc.ErrUnknown)
+	}
+
+	if !res.Valid || len(res.Err) != 0 {
+		return fmt.Errorf("genesis bridge data is invalid: %s", res.Err)
+	}
+
+	return nil
+}

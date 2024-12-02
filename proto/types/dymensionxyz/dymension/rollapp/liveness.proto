@@ -1,6 +1,3 @@
-// This file is a modified copy of the rollapp module proto contract. Source:
-// https://github.com/dymensionxyz/dymension/blob/f140cd1dd561cefb3e6562cbf4379b88cd16400d/proto/dymensionxyz/dymension/rollapp/.
-
 syntax = "proto3";
 package dymensionxyz.dymension.rollapp;
 
@@ -12,10 +9,9 @@ import "types/cosmos/base/v1beta1/coin.proto";
 
 // LivenessEvent stores upcoming slash/jail actions on sequencers of rollapps
 message LivenessEvent {
+  reserved 3;
   // RollappId of relevant rollapp
   string rollapp_id = 1;
   // HubHeight when event will occur
   int64 hub_height = 2;
-  // IsJail is true iff the event is to jail rather than slash
-  bool is_jail = 3;
 }
