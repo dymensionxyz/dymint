@@ -11,6 +11,7 @@ import (
 	"time"
 
 	tmcfg "github.com/tendermint/tendermint/config"
+	tmjson "github.com/tendermint/tendermint/libs/json"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
@@ -37,6 +38,7 @@ import (
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
 	"github.com/dymensionxyz/dymint/version"
 )
 
@@ -89,7 +91,8 @@ func TestGenesisChunked(t *testing.T) {
 	genDoc := testutil.GenerateGenesis(1)
 
 	mockApp := &tmmocks.MockApplication{}
-	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
+	gbdBz, _ := tmjson.Marshal(rollapp.GenesisBridgeData{})
+	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{GenesisBridgeDataBytes: gbdBz}, nil)
 	mockApp.On("Info", mock.Anything).Return(expectedInfo)
 	privKey, _, _ := crypto.GenerateEd25519Key(crand.Reader)
 	signingKey, _, _ := crypto.GenerateEd25519Key(crand.Reader)
@@ -158,7 +161,8 @@ func TestBroadcastTxAsync(t *testing.T) {
 
 	mockApp, rpc, node := getRPCAndNode(t)
 	mockApp.On("CheckTx", abci.RequestCheckTx{Tx: expectedTx}).Return(abci.ResponseCheckTx{})
-	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
+	gbdBz, _ := tmjson.Marshal(rollapp.GenesisBridgeData{})
+	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{GenesisBridgeDataBytes: gbdBz}, nil)
 
 	err := node.Start()
 	require.NoError(t, err)
@@ -193,7 +197,8 @@ func TestBroadcastTxSync(t *testing.T) {
 	}
 
 	mockApp, rpc, node := getRPCAndNode(t)
-	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
+	gbdBz, _ := tmjson.Marshal(rollapp.GenesisBridgeData{})
+	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{GenesisBridgeDataBytes: gbdBz}, nil)
 
 	err := node.Start()
 	require.NoError(t, err)
@@ -244,7 +249,8 @@ func TestBroadcastTxCommit(t *testing.T) {
 	mockApp.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
 	mockApp.BeginBlock(abci.RequestBeginBlock{})
 	mockApp.On("CheckTx", abci.RequestCheckTx{Tx: expectedTx}).Return(expectedCheckResp)
-	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
+	gbdBz, _ := tmjson.Marshal(rollapp.GenesisBridgeData{})
+	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{GenesisBridgeDataBytes: gbdBz}, nil)
 	// in order to broadcast, the node must be started
 	err := node.Start()
 	require.NoError(err)
@@ -280,7 +286,8 @@ func TestGetBlock(t *testing.T) {
 	mockApp.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{})
 	mockApp.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{})
 	mockApp.On("Commit", mock.Anything).Return(abci.ResponseCommit{})
-	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
+	gbdBz, _ := tmjson.Marshal(rollapp.GenesisBridgeData{})
+	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{GenesisBridgeDataBytes: gbdBz}, nil)
 
 	err := node.Start()
 	require.NoError(err)
@@ -306,7 +313,8 @@ func TestValidatedHeight(t *testing.T) {
 
 	mockApp.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
 	mockApp.On("Commit", mock.Anything).Return(abci.ResponseCommit{})
-	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
+	gbdBz, _ := tmjson.Marshal(rollapp.GenesisBridgeData{})
+	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{GenesisBridgeDataBytes: gbdBz}, nil)
 
 	err := node.Start()
 	require.NoError(err)
@@ -391,7 +399,8 @@ func TestGetCommit(t *testing.T) {
 
 	mockApp.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
 	mockApp.On("Commit", mock.Anything).Return(abci.ResponseCommit{})
-	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
+	gbdBz, _ := tmjson.Marshal(rollapp.GenesisBridgeData{})
+	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{GenesisBridgeDataBytes: gbdBz}, nil)
 
 	blocks := []*types.Block{getRandomBlock(1, 5), getRandomBlock(2, 6), getRandomBlock(3, 8), getRandomBlock(4, 10)}
 
@@ -431,7 +440,8 @@ func TestValidatorSetHashConsistency(t *testing.T) {
 
 	mockApp.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
 	mockApp.On("Commit", mock.Anything).Return(abci.ResponseCommit{})
-	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
+	gbdBz, _ := tmjson.Marshal(rollapp.GenesisBridgeData{})
+	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{GenesisBridgeDataBytes: gbdBz}, nil)
 
 	v := tmtypes.NewValidator(ed25519.GenPrivKey().PubKey(), 1)
 	s := types.NewSequencerFromValidator(*v)
@@ -539,7 +549,8 @@ func TestGetBlockByHash(t *testing.T) {
 	mockApp.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{})
 	mockApp.On("Commit", mock.Anything).Return(abci.ResponseCommit{})
 	mockApp.On("Info", mock.Anything).Return(abci.ResponseInfo{LastBlockHeight: 0, LastBlockAppHash: []byte{0}})
-	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
+	gbdBz, _ := tmjson.Marshal(rollapp.GenesisBridgeData{})
+	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{GenesisBridgeDataBytes: gbdBz}, nil)
 
 	err := node.Start()
 	require.NoError(err)
@@ -592,7 +603,8 @@ func TestTx(t *testing.T) {
 	mockApp.On("DeliverTx", mock.Anything).Return(abci.ResponseDeliverTx{})
 	mockApp.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{})
 	mockApp.On("Info", mock.Anything).Return(abci.ResponseInfo{LastBlockHeight: 0, LastBlockAppHash: []byte{0}})
-	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
+	gbdBz, _ := tmjson.Marshal(rollapp.GenesisBridgeData{})
+	mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{GenesisBridgeDataBytes: gbdBz}, nil)
 
 	err := node.Start()
 	require.NoError(err)
@@ -640,7 +652,8 @@ func TestUnconfirmedTxs(t *testing.T) {
 			mockApp, rpc, node := getRPCAndNode(t)
 			mockApp.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
 			mockApp.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{})
-			mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
+			gbdBz, _ := tmjson.Marshal(rollapp.GenesisBridgeData{})
+			mockApp.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{GenesisBridgeDataBytes: gbdBz}, nil)
 
 			err := node.Start()
 			require.NoError(err)
@@ -802,7 +815,8 @@ func TestValidatorSetHandling(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 	app := &tmmocks.MockApplication{}
-	app.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
+	gbdBz, _ := tmjson.Marshal(rollapp.GenesisBridgeData{})
+	app.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{GenesisBridgeDataBytes: gbdBz}, nil)
 	app.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{})
 	app.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
 	app.On("Info", mock.Anything).Return(abci.ResponseInfo{LastBlockHeight: 0, LastBlockAppHash: []byte{0}})
@@ -1095,7 +1109,8 @@ func TestMempool2Nodes(t *testing.T) {
 	require := require.New(t)
 
 	app := &tmmocks.MockApplication{}
-	app.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
+	gbdBz, _ := tmjson.Marshal(rollapp.GenesisBridgeData{})
+	app.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{GenesisBridgeDataBytes: gbdBz})
 	app.On("BeginBlock", mock.Anything).Return(abci.ResponseBeginBlock{})
 	app.On("CheckTx", abci.RequestCheckTx{Tx: []byte("bad")}).Return(abci.ResponseCheckTx{Code: 1})
 	app.On("CheckTx", abci.RequestCheckTx{Tx: []byte("good")}).Return(abci.ResponseCheckTx{Code: 0})

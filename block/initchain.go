@@ -28,7 +28,7 @@ func (m *Manager) RunInitChain() error {
 	// validate the resulting genesis bridge data against the hub
 	err = m.ValidateGenesisBridgeData(res.GenesisBridgeDataBytes)
 	if err != nil {
-		return fmt.Errorf("validate genesis bridge data: %w", err)
+		return fmt.Errorf("Cannot validate genesis bridge data: %w. Please call `$EXECUTABLE dymint unsafe-reset-all` before the next launch to reset this node to genesis state.", err)
 	}
 
 	// update the state with only the consensus pubkey
@@ -45,12 +45,8 @@ func (m *Manager) RunInitChain() error {
 // InitChainResponse against the rollapp genesis stored in the hub.
 func (m *Manager) ValidateGenesisBridgeData(dataBytes []byte) error {
 	if len(dataBytes) == 0 {
-		// This may happen in mock run or tests.
-		// This is not an error, but we want to know about it.
-		m.logger.Error("genesis bridge data is empty in InitChainResponse")
-		return nil
+		return fmt.Errorf("genesis bridge data is empty in InitChainResponse")
 	}
-
 	var genesisBridgeData rollapptypes.GenesisBridgeData
 	err := tmjson.Unmarshal(dataBytes, &genesisBridgeData)
 	if err != nil {
