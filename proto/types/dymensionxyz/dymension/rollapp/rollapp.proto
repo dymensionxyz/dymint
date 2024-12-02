@@ -9,6 +9,7 @@ import "types/cosmos/msg/v1/msg.proto";
 
 import "types/dymensionxyz/dymension/rollapp/state_info.proto";
 import "types/dymensionxyz/dymension/rollapp/metadata.proto";
+import "types/dymensionxyz/dymension/rollapp/genesis_info.proto";
 
 // RollappGenesisState is a partial repr of the state the hub can expect the
 // rollapp to be in upon genesis
@@ -40,10 +41,9 @@ message Rollapp {
   RollappGenesisState genesis_state = 7 [ (gogoproto.nullable) = false ];
   // channel_id will be set to the canonical IBC channel of the rollapp.
   string channel_id = 8;
-  // frozen is a boolean that indicates if the rollapp is frozen.
-  bool frozen = 9;
 
-  reserved 10;
+  reserved 9,10;
+  
   // metadata is the rollapp metadata
   RollappMetadata metadata = 11;
   // genesis_info keeps immutable rollapp fields
@@ -71,9 +71,9 @@ message Rollapp {
   // LivenessEventHeight is the height on the HUB of an upcoming liveness event (slash or
   // jail against the rollapp). 0 means not set
   int64 liveness_event_height = 17;
-  // The LastStateUpdateHeight HUB height when the last state update was
-  // received
-  int64 last_state_update_height = 18;
+  // The height on the HUB that we start counting liveness from. If the rollapp is not active
+  // for a long time after this height, a liveness event will happen.
+  int64 liveness_countdown_start_height = 18;
 
   // Revisions is a list of all the rollapp revisions.
   repeated Revision revisions = 19 [ (gogoproto.nullable) = false ];
@@ -85,41 +85,6 @@ message Revision {
   uint64 number = 19;
   // StartHeight is the first height of the rollapp when the revision started.
   uint64 start_height = 20;
-}
-
-message GenesisInfo {
-  // checksum used to verify integrity of the genesis file
-  string genesis_checksum = 1;
-  // unique bech32 prefix
-  string bech32_prefix = 2;
-  // native_denom is the base denom for the native token
-  DenomMetadata native_denom = 3 [ (gogoproto.nullable) = false ];
-  // initial_supply is the initial supply of the native token
-  string initial_supply = 4 [
-    (gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Int",
-    (gogoproto.nullable) = false
-  ];
-
-  // sealed indicates if the fields in this object are no longer updatable
-  bool sealed = 5;
-
-  GenesisAccounts genesis_accounts = 6 [ (gogoproto.nullable) = true ];
-}
-
-message GenesisAccounts {
-  repeated GenesisAccount accounts = 1 [ (gogoproto.nullable) = false ];
-}
-
-
-// GenesisAccount is a struct for the genesis account for the rollapp
-message GenesisAccount {
-  // amount of coins to be sent to the genesis address
-  string amount = 1 [
-    (gogoproto.customtype) = "github.com/cosmos/cosmos-sdk/types.Int",
-    (gogoproto.nullable) = false
-  ];
-  // address is a bech-32 address of the genesis account
-  string address = 2;
 }
 
 // Rollapp summary is a compact representation of Rollapp

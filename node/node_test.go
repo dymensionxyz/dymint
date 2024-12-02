@@ -9,11 +9,13 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	tmjson "github.com/tendermint/tendermint/libs/json"
 
 	"github.com/dymensionxyz/dymint/mempool"
 	"github.com/dymensionxyz/dymint/node"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/testutil"
+	"github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
 	"github.com/dymensionxyz/dymint/version"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
@@ -57,7 +59,8 @@ func TestMempoolDirectly(t *testing.T) {
 	require := require.New(t)
 
 	app := &tmmocks.MockApplication{}
-	app.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{})
+	gbdBz, _ := tmjson.Marshal(rollapp.GenesisBridgeData{})
+	app.On("InitChain", mock.Anything).Return(abci.ResponseInitChain{GenesisBridgeDataBytes: gbdBz}, nil)
 	app.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{})
 	app.On("Info", mock.Anything).Return(abci.ResponseInfo{})
 	key, _, _ := crypto.GenerateEd25519Key(rand.Reader)
