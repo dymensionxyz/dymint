@@ -119,10 +119,20 @@ func (m *Manager) ProduceApplyGossipBlock(ctx context.Context, opts ProduceBlock
 }
 
 func (m *Manager) produceApplyGossip(ctx context.Context, opts ProduceBlockOptions) (block *types.Block, commit *types.Commit, err error) {
+	// Snapshot sequencer set to check if there are sequencer set updates.
+	// It fills the consensus messages queue for all the new sequencers.
+	//
+	// Note that there cannot be any recoverable errors between when the queue is filled and dequeued;
+	// otherwise, the queue may grow uncontrollably if there is a recoverable error loop in the middle.
+	//
+	// All errors in this method are non-recoverable.
 	newSequencerSet, err := m.SnapshotSequencerSet()
 	if err != nil {
 		return nil, nil, fmt.Errorf("snapshot sequencer set: %w", err)
 	}
+	// We want to propagate sequencer set updated to the Rollapp even if the block is empty.
+	// Therefore, we allow empty blocks if there are any sequencer set updates.
+	opts.AllowEmpty = opts.AllowEmpty || len(newSequencerSet) > 0
 
 	// If I'm not the current rollapp proposer, I should not produce a blocks.
 	block, commit, err = m.produceBlock(opts)
@@ -164,7 +174,8 @@ func (m *Manager) SnapshotSequencerSet() (sequencersAfterUpdate types.Sequencers
 	// it's okay if the last sequencer set is not found, it can happen on genesis or after
 	// rotation from the full node to the proposer
 	if err != nil && !errors.Is(err, gerrc.ErrNotFound) {
-		return nil, fmt.Errorf("load last block sequencer set: %w", err)
+		// unexpected error from the store is non-recoverable
+		return nil, fmt.Errorf("load last block sequencer set: %w: %w", err, ErrNonRecoverable)
 	}
 
 	// diff between the two sequencer sets
@@ -175,10 +186,11 @@ func (m *Manager) SnapshotSequencerSet() (sequencersAfterUpdate types.Sequencers
 		return nil, nil
 	}
 
-	// create consensus msgs for new sequencers
+	// Create consensus msgs for new sequencers.
+	// It can fail only on decoding or internal errors this is non-recoverable.
 	msgs, err := ConsensusMsgsOnSequencerSetUpdate(newSequencers)
 	if err != nil {
-		return nil, fmt.Errorf("consensus msgs on sequencers set update: %w", err)
+		return nil, fmt.Errorf("consensus msgs on sequencers set update: %w: %w", err, ErrNonRecoverable)
 	}
 	m.Executor.AddConsensusMsgs(msgs...)
 
@@ -190,6 +202,7 @@ func (m *Manager) produceBlock(opts ProduceBlockOptions) (*types.Block, *types.C
 	newHeight := m.State.NextHeight()
 	lastHeaderHash, lastCommit, err := m.GetPreviousBlockHashes(newHeight)
 	if err != nil {
+		// the error here is always non-recoverable, see GetPreviousBlockHashes() for details
 		return nil, nil, fmt.Errorf("load prev block: %w", err)
 	}
 
@@ -223,7 +236,10 @@ func (m *Manager) produceBlock(opts ProduceBlockOptions) (*types.Block, *types.C
 		proposerHashForBlock = *opts.NextProposerHash
 	}
 
+	// dequeue consensus messages for the new sequencers while creating a new block
 	block = m.Executor.CreateBlock(newHeight, lastCommit, lastHeaderHash, proposerHashForBlock, m.State, maxBlockDataSize)
+	// this cannot happen if there are any sequencer set updates
+	// AllowEmpty should be always true in this case
 	if !opts.AllowEmpty && len(block.Data.Txs) == 0 {
 		return nil, nil, fmt.Errorf("%w: %w", types.ErrEmptyBlock, ErrRecoverable)
 	}
