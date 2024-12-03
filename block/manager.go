@@ -292,7 +292,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	})
 
 	// run based on the node role
-	if m.RunMode == RunModeProposer {
+	if m.RunMode == RunModeFullNode {
 		return m.runAsFullNode(ctx, eg)
 	}
 
