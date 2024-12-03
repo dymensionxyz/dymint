@@ -51,7 +51,7 @@ func (m *Manager) checkForkUpdate(msg string) error {
 		expectedRevision = rollapp.GetRevisionForHeight(nextHeight)
 	)
 
-	if shouldStopNode(expectedRevision, nextHeight, actualRevision) {
+	if shouldStopNode(expectedRevision, nextHeight, actualRevision, m.RunMode == RunModeProposer) {
 		instruction, err := m.createInstruction(expectedRevision)
 		if err != nil {
 			return err
@@ -92,8 +92,13 @@ func shouldStopNode(
 	expectedRevision types.Revision,
 	nextHeight uint64,
 	actualRevisionNumber uint64,
+	proposerMode bool,
 ) bool {
+	if proposerMode {
+		return nextHeight > expectedRevision.StartHeight && actualRevisionNumber < expectedRevision.Number
+	}
 	return nextHeight >= expectedRevision.StartHeight && actualRevisionNumber < expectedRevision.Number
+
 }
 
 // forkNeeded returns true if the fork file exists

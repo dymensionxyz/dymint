@@ -83,7 +83,7 @@ func TestShouldStopNode(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			expectedRevision := tt.rollapp.GetRevisionForHeight(tt.height)
-			result := shouldStopNode(expectedRevision, tt.height, tt.block.Header.Version.App)
+			result := shouldStopNode(expectedRevision, tt.height, tt.block.Header.Version.App, false)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
