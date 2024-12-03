@@ -249,7 +249,7 @@ func TestCreateInstruction(t *testing.T) {
 
 			manager.SLClient = mockSL
 			expectedRevision := tt.rollapp.GetRevisionForHeight(tt.block.Header.Height)
-			err := manager.createInstruction(expectedRevision)
+			_, err := manager.createInstruction(expectedRevision)
 			if tt.expectedError {
 				assert.Error(t, err)
 			} else {

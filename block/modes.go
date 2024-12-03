@@ -7,6 +7,7 @@ import (
 
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/settlement"
+	"github.com/dymensionxyz/dymint/types"
 	uerrors "github.com/dymensionxyz/dymint/utils/errors"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
 	"golang.org/x/sync/errgroup"
@@ -36,10 +37,12 @@ func (m *Manager) runAsFullNode(ctx context.Context, eg *errgroup.Group) error {
 
 	m.subscribeFullNodeEvents(ctx)
 
-	// forkFromInstruction deletes fork instruction file for full nodes
-	err = m.forkFromInstruction()
-	if err != nil {
-		return err
+	if _, instructionExists := m.forkNeeded(); instructionExists {
+		// remove instruction file after fork to avoid enter fork loop again
+		err := types.DeleteInstructionFromDisk(m.RootDir)
+		if err != nil {
+			return fmt.Errorf("deleting instruction file: %w", err)
+		}
 	}
 
 	return nil
@@ -60,8 +63,8 @@ func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {
 	// Sequencer must wait till node is synced till last submittedHeight, in case it is not
 	m.waitForSettlementSyncing()
 
-	// forkFromInstruction executes fork if necessary
-	err := m.forkFromInstruction()
+	// checkRevisionAndFork executes fork if necessary
+	err := m.checkRevisionAndFork()
 	if err != nil {
 		return err
 	}
