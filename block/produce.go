@@ -130,8 +130,8 @@ func (m *Manager) produceApplyGossip(ctx context.Context, opts ProduceBlockOptio
 	if err != nil {
 		return nil, nil, fmt.Errorf("snapshot sequencer set: %w", err)
 	}
-	// We want to propagate sequencer set updated to the Rollapp even if the block is empty.
-	// Therefore, we allow empty blocks if there are any sequencer set updates.
+	// We do not want to wait for a new block created to propagate a new sequencer set.
+	// Therefore, we force an empty block if there are any sequencer set updates.
 	opts.AllowEmpty = opts.AllowEmpty || len(newSequencerSet) > 0
 
 	// If I'm not the current rollapp proposer, I should not produce a blocks.
