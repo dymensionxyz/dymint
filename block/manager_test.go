@@ -131,7 +131,8 @@ func TestInitialState(t *testing.T) {
 	}
 }
 
-// TestProduceOnlyAfterSynced should test that we are resuming publishing blocks after we are synced
+//	should test that we are resuming publishing blocks after we are synced
+//
 // 1. Submit a batch and desync the manager
 // 2. Fail to produce blocks
 // 2. Sync the manager
