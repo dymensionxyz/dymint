@@ -50,7 +50,7 @@ func (m *Manager) checkForkUpdate(msg string) error {
 		expectedRevision = rollapp.GetRevisionForHeight(nextHeight)
 	)
 
-	if shouldStopNode(expectedRevision, nextHeight, actualRevision, m.RunMode == RunModeProposer) {
+	if shouldStopNode(expectedRevision, nextHeight, actualRevision, m.RunMode) {
 		instruction, err := m.createInstruction(expectedRevision)
 		if err != nil {
 			return err
@@ -91,9 +91,9 @@ func shouldStopNode(
 	expectedRevision types.Revision,
 	nextHeight uint64,
 	actualRevisionNumber uint64,
-	proposerMode bool,
+	nodeMode uint,
 ) bool {
-	if proposerMode {
+	if nodeMode == RunModeFullNode {
 		return nextHeight > expectedRevision.StartHeight && actualRevisionNumber < expectedRevision.Number
 	}
 	return nextHeight >= expectedRevision.StartHeight && actualRevisionNumber < expectedRevision.Number
