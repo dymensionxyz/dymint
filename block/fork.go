@@ -39,7 +39,6 @@ func (m *Manager) MonitorForkUpdateLoop(ctx context.Context) error {
 
 // checkForkUpdate checks if the hub has a fork update
 func (m *Manager) checkForkUpdate(msg string) error {
-
 	rollapp, err := m.SLClient.GetRollapp()
 	if err != nil {
 		return err
@@ -98,7 +97,6 @@ func shouldStopNode(
 		return nextHeight > expectedRevision.StartHeight && actualRevisionNumber < expectedRevision.Number
 	}
 	return nextHeight >= expectedRevision.StartHeight && actualRevisionNumber < expectedRevision.Number
-
 }
 
 // forkNeeded returns true if the fork file exists
@@ -253,7 +251,6 @@ func (m *Manager) updateStateWhenFork() error {
 
 // checkRevisionAndFork checks if fork is needed after syncing, and performs fork actions
 func (m *Manager) checkRevisionAndFork() error {
-
 	// it is checked again whether the node is the active proposer, since this could have changed after syncing.
 	amIProposerOnSL, err := m.AmIProposerOnSL()
 	if err != nil {
