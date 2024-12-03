@@ -246,9 +246,14 @@ func (m *Manager) Start(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("am i proposer on SL: %w", err)
 	}
-	amIProposer := amIProposerOnSL || m.AmIProposerOnRollapp()
 
-	m.logger.Info("starting block manager", "mode", map[bool]string{true: "proposer", false: "full node"}[amIProposer])
+	if amIProposerOnSL || m.AmIProposerOnRollapp() {
+		m.RunMode = RunModeProposer
+	} else {
+		m.RunMode = RunModeFullNode
+	}
+
+	m.logger.Info("starting block manager", "mode", map[bool]string{true: "proposer", false: "full node"}[m.RunMode == RunModeProposer])
 
 	// update local state from latest state in settlement
 	err = m.updateFromLastSettlementState()
@@ -287,7 +292,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	})
 
 	// run based on the node role
-	if !amIProposer {
+	if m.RunMode == RunModeFullNode {
 		return m.runAsFullNode(ctx, eg)
 	}
 

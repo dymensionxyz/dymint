@@ -22,6 +22,7 @@ func TestShouldStopNode(t *testing.T) {
 		rollapp  *types.Rollapp
 		block    *types.Block
 		height   uint64
+		runMode  uint
 		expected bool
 	}{
 		{
@@ -40,6 +41,7 @@ func TestShouldStopNode(t *testing.T) {
 				},
 			},
 			height:   150,
+			runMode:  RunModeFullNode,
 			expected: true,
 		},
 		{
@@ -58,6 +60,7 @@ func TestShouldStopNode(t *testing.T) {
 				},
 			},
 			height:   50,
+			runMode:  RunModeFullNode,
 			expected: false,
 		},
 		{
@@ -76,6 +79,7 @@ func TestShouldStopNode(t *testing.T) {
 				},
 			},
 			height:   150,
+			runMode:  RunModeFullNode,
 			expected: false,
 		},
 	}
@@ -83,7 +87,7 @@ func TestShouldStopNode(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			expectedRevision := tt.rollapp.GetRevisionForHeight(tt.height)
-			result := shouldStopNode(expectedRevision, tt.height, tt.block.Header.Version.App)
+			result := shouldStopNode(expectedRevision, tt.height, tt.block.Header.Version.App, tt.runMode)
 			assert.Equal(t, tt.expected, result)
 		})
 	}
@@ -249,7 +253,7 @@ func TestCreateInstruction(t *testing.T) {
 
 			manager.SLClient = mockSL
 			expectedRevision := tt.rollapp.GetRevisionForHeight(tt.block.Header.Height)
-			err := manager.createInstruction(expectedRevision)
+			_, err := manager.createInstruction(expectedRevision)
 			if tt.expectedError {
 				assert.Error(t, err)
 			} else {
