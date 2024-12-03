@@ -277,7 +277,7 @@ func (m *Manager) checkRevisionAndFork() error {
 	if m.LastSettlementHeight.Load() < expectedRevision.StartHeight {
 		instruction, err := m.createInstruction(expectedRevision)
 		if err != nil {
-			return nil
+			return err
 		}
 		// update revision with revision after fork
 		m.State.SetRevision(instruction.Revision)
