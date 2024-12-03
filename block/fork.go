@@ -39,11 +39,6 @@ func (m *Manager) MonitorForkUpdateLoop(ctx context.Context) error {
 
 // checkForkUpdate checks if the hub has a fork update
 func (m *Manager) checkForkUpdate(msg string) error {
-	// if instruction exists no need to check for fork update
-	if types.InstructionExists(m.RootDir) {
-		return nil
-	}
-
 	rollapp, err := m.SLClient.GetRollapp()
 	if err != nil {
 		return err
@@ -54,12 +49,17 @@ func (m *Manager) checkForkUpdate(msg string) error {
 		actualRevision   = m.State.GetRevision()
 		expectedRevision = rollapp.GetRevisionForHeight(nextHeight)
 	)
-	if shouldStopNode(expectedRevision, nextHeight, actualRevision) {
-		err = m.createInstruction(expectedRevision)
+
+	if shouldStopNode(expectedRevision, nextHeight, actualRevision, m.RunMode) {
+		instruction, err := m.createInstruction(expectedRevision)
 		if err != nil {
 			return err
 		}
 
+		err = types.PersistInstructionToDisk(m.RootDir, instruction)
+		if err != nil {
+			return err
+		}
 		m.freezeNode(fmt.Errorf("%s  local_block_height: %d rollapp_revision_start_height: %d local_revision: %d rollapp_revision: %d", msg, m.State.Height(), expectedRevision.StartHeight, actualRevision, expectedRevision.Number))
 	}
 
@@ -67,10 +67,10 @@ func (m *Manager) checkForkUpdate(msg string) error {
 }
 
 // createInstruction writes file to disk with fork information
-func (m *Manager) createInstruction(expectedRevision types.Revision) error {
+func (m *Manager) createInstruction(expectedRevision types.Revision) (types.Instruction, error) {
 	obsoleteDrs, err := m.SLClient.GetObsoleteDrs()
 	if err != nil {
-		return err
+		return types.Instruction{}, err
 	}
 
 	instruction := types.Instruction{
@@ -79,12 +79,7 @@ func (m *Manager) createInstruction(expectedRevision types.Revision) error {
 		FaultyDRS:           obsoleteDrs,
 	}
 
-	err = types.PersistInstructionToDisk(m.RootDir, instruction)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return instruction, nil
 }
 
 // shouldStopNode determines if a rollapp node should be stopped based on revision criteria.
@@ -96,7 +91,11 @@ func shouldStopNode(
 	expectedRevision types.Revision,
 	nextHeight uint64,
 	actualRevisionNumber uint64,
+	nodeMode uint,
 ) bool {
+	if nodeMode == RunModeFullNode {
+		return nextHeight > expectedRevision.StartHeight && actualRevisionNumber < expectedRevision.Number
+	}
 	return nextHeight >= expectedRevision.StartHeight && actualRevisionNumber < expectedRevision.Number
 }
 
@@ -250,41 +249,57 @@ func (m *Manager) updateStateWhenFork() error {
 	return nil
 }
 
-// forkFromInstruction checks if fork is needed, reading instruction file, and performs fork actions
-func (m *Manager) forkFromInstruction() error {
-	// if instruction file exists proposer needs to do fork actions (if settlement height is higher than revision height it is considered fork already happened and no need to do anything)
-	instruction, forkNeeded := m.forkNeeded()
-	if !forkNeeded {
-		return nil
+// checkRevisionAndFork checks if fork is needed after syncing, and performs fork actions
+func (m *Manager) checkRevisionAndFork() error {
+	// it is checked again whether the node is the active proposer, since this could have changed after syncing.
+	amIProposerOnSL, err := m.AmIProposerOnSL()
+	if err != nil {
+		return fmt.Errorf("am i proposer on SL: %w", err)
 	}
-	if m.RunMode == RunModeProposer {
-		// it is checked again whether the node is the active proposer, since this could have changed after syncing.
-		amIProposerOnSL, err := m.AmIProposerOnSL()
-		if err != nil {
-			return fmt.Errorf("am i proposer on SL: %w", err)
-		}
-		if !amIProposerOnSL {
-			return fmt.Errorf("the node is no longer the proposer. please restart.")
-		}
-		// update revision with revision after fork
-		m.State.SetRevision(instruction.Revision)
-		// update sequencer in case it changed after syncing
-		err = m.UpdateProposerFromSL()
+	if !amIProposerOnSL {
+		return fmt.Errorf("the node is no longer the proposer. please restart.")
+	}
+
+	// update sequencer in case it changed after syncing
+	err = m.UpdateProposerFromSL()
+	if err != nil {
+		return err
+	}
+
+	// get the revision for the current height to check against local state
+	rollapp, err := m.SLClient.GetRollapp()
+	if err != nil {
+		return err
+	}
+	expectedRevision := rollapp.GetRevisionForHeight(m.State.NextHeight())
+
+	// create fork batch in case it has not been submitted yet
+	if m.LastSettlementHeight.Load() < expectedRevision.StartHeight {
+		instruction, err := m.createInstruction(expectedRevision)
 		if err != nil {
 			return err
 		}
-		// create fork batch in case it has not been submitted yet
-		if m.LastSettlementHeight.Load() < instruction.RevisionStartHeight {
-			err := m.doFork(instruction)
-			if err != nil {
-				return err
-			}
+		// update revision with revision after fork
+		m.State.SetRevision(instruction.Revision)
+		// create and submit fork batch
+		err = m.doFork(instruction)
+		if err != nil {
+			return err
 		}
 	}
-	// remove instruction file after fork to avoid enter loop again
-	err := types.DeleteInstructionFromDisk(m.RootDir)
-	if err != nil {
-		return fmt.Errorf("deleting instruction file: %w", err)
+
+	// this cannot happen. it means the revision number obtained is not the same or the next revision. unable to fork.
+	if expectedRevision.Number != m.State.GetRevision() {
+		panic("Inconsistent expected revision number from Hub. Unable to fork")
 	}
+
+	// remove instruction file after fork to avoid enter fork loop again
+	if _, instructionExists := m.forkNeeded(); instructionExists {
+		err := types.DeleteInstructionFromDisk(m.RootDir)
+		if err != nil {
+			return fmt.Errorf("deleting instruction file: %w", err)
+		}
+	}
+
 	return nil
 }

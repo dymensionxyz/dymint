@@ -24,7 +24,7 @@ const (
 	// BlockVersion is the default block version for testing
 	BlockVersion = 1
 	// AppVersion is the default app version for testing
-	AppVersion = 2
+	AppVersion = 0
 
 	SettlementAccountPrefix = "dym"
 )
