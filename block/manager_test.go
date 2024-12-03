@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	tmjson "github.com/tendermint/tendermint/libs/json"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
 
@@ -38,8 +39,9 @@ import (
 	slregistry "github.com/dymensionxyz/dymint/settlement/registry"
 	"github.com/dymensionxyz/dymint/store"
 
-	"github.com/dymensionxyz/dymint/utils/event"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
+
+	"github.com/dymensionxyz/dymint/utils/event"
 )
 
 // TODO: test loading sequencer while rotation in progress
@@ -354,7 +356,8 @@ func TestApplyLocalBlock_WithFraudCheck(t *testing.T) {
 
 	mockExecutor := &blockmocks.MockExecutorI{}
 	manager.Executor = mockExecutor
-	mockExecutor.On("InitChain", mock.Anything, mock.Anything, mock.Anything).Return(&abci.ResponseInitChain{}, nil)
+	gbdBz, _ := tmjson.Marshal(rollapp.GenesisBridgeData{})
+	mockExecutor.On("InitChain", mock.Anything, mock.Anything, mock.Anything).Return(&abci.ResponseInitChain{GenesisBridgeDataBytes: gbdBz}, nil)
 	mockExecutor.On("GetAppInfo").Return(&abci.ResponseInfo{
 		LastBlockHeight: int64(batch.EndHeight()),
 	}, nil)
@@ -383,7 +386,7 @@ func TestApplyLocalBlock_WithFraudCheck(t *testing.T) {
 	go func() {
 		errChan <- manager.Start(ctx)
 		err := <-errChan
-		require.True(t, errors.Is(err, gerrc.ErrFault))
+		require.Truef(t, errors.Is(err, gerrc.ErrFault), "expected error to be %v, got: %v", gerrc.ErrFault, err)
 	}()
 	<-ctx.Done()
 	assert.Equal(t, batch.EndHeight(), manager.LastSettlementHeight.Load())

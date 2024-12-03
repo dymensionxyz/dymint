@@ -403,3 +403,7 @@ func (c *Client) GetSignerBalance() (types.Balance, error) {
 		Denom:  "adym",
 	}, nil
 }
+
+func (c *Client) ValidateGenesisBridgeData(rollapptypes.GenesisBridgeData) error {
+	return nil
+}

@@ -217,7 +217,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	if m.State.IsGenesis() {
 		m.logger.Info("Running InitChain")
 
-		err := m.RunInitChain(ctx)
+		err := m.RunInitChain()
 		if err != nil {
 			return err
 		}
