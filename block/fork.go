@@ -98,7 +98,7 @@ func shouldStopNode(
 	return nextHeight >= expectedRevision.StartHeight && actualRevisionNumber < expectedRevision.Number
 }
 
-// forkNeeded returns true if the fork file exists
+// forkNeeded returns true if fork action is required
 func (m *Manager) forkNeeded() (types.Instruction, bool) {
 	rollapp, err := m.SLClient.GetRollapp()
 	if err != nil {
@@ -280,19 +280,13 @@ func (m *Manager) checkRevisionAndFork() error {
 	}
 
 	// get the revision for the current height to check against local state
-	rollapp, err := m.SLClient.GetRollapp()
-	if err != nil {
-		return err
+	instruction, forkNeeded := m.forkNeeded()
+	if !forkNeeded {
+		return nil
 	}
 
-	expectedRevision := rollapp.GetRevisionForHeight(m.State.NextHeight())
-
 	// create fork batch in case it has not been submitted yet
-	if m.LastSettlementHeight.Load() < expectedRevision.StartHeight {
-		instruction, err := m.createInstruction(expectedRevision)
-		if err != nil {
-			return err
-		}
+	if m.LastSettlementHeight.Load() < instruction.RevisionStartHeight {
 		// update revision with revision after fork
 		m.State.SetRevision(instruction.Revision)
 		// create and submit fork batch
@@ -303,7 +297,7 @@ func (m *Manager) checkRevisionAndFork() error {
 	}
 
 	// this cannot happen. it means the revision number obtained is not the same or the next revision. unable to fork.
-	if expectedRevision.Number != m.State.GetRevision() {
+	if instruction.Revision != m.State.GetRevision() {
 		panic("Inconsistent expected revision number from Hub. Unable to fork")
 	}
 
