@@ -98,7 +98,7 @@ func shouldStopNode(
 	return nextHeight >= expectedRevision.StartHeight && actualRevisionNumber < expectedRevision.Number
 }
 
-// forkNeeded returns true if fork action is required
+// forkNeeded returns true + fork data if fork action is required
 func (m *Manager) forkNeeded() (types.Instruction, bool) {
 	rollapp, err := m.SLClient.GetRollapp()
 	if err != nil {
