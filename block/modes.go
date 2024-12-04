@@ -37,15 +37,9 @@ func (m *Manager) runAsFullNode(ctx context.Context, eg *errgroup.Group) error {
 
 	m.subscribeFullNodeEvents(ctx)
 
-	if _, instructionExists := m.forkNeeded(); instructionExists {
-		// remove instruction file after fork to avoid enter fork loop again
-		err := types.DeleteInstructionFromDisk(m.RootDir)
-		if err != nil {
-			return fmt.Errorf("deleting instruction file: %w", err)
-		}
-	}
+	// remove instruction file after fork to avoid enter fork loop again
+	return types.DeleteInstructionFromDisk(m.RootDir)
 
-	return nil
 }
 
 func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {

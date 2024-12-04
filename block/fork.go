@@ -100,7 +100,19 @@ func shouldStopNode(
 
 // forkNeeded returns true if the fork file exists
 func (m *Manager) forkNeeded() (types.Instruction, bool) {
-	if instruction, err := types.LoadInstructionFromDisk(m.RootDir); err == nil {
+	rollapp, err := m.SLClient.GetRollapp()
+	if err != nil {
+		return types.Instruction{}, false
+	}
+
+	nextHeight := m.State.NextHeight()
+	expectedRevision := rollapp.GetRevisionForHeight(nextHeight)
+
+	if nextHeight != expectedRevision.StartHeight {
+		return types.Instruction{}, false
+	}
+
+	if instruction, err := m.createInstruction(expectedRevision); err == nil {
 		return instruction, true
 	}
 
@@ -234,15 +246,13 @@ func (m *Manager) updateStateWhenFork() error {
 		// Upgrade revision on state
 		m.State.RevisionStartHeight = instruction.RevisionStartHeight
 		// this is necessary to pass ValidateConfigWithRollappParams when DRS upgrade is required
-		if instruction.RevisionStartHeight == m.State.NextHeight() {
-			m.State.SetRevision(instruction.Revision)
-			drsVersion, err := version.GetDRSVersion()
-			if err != nil {
-				return err
-			}
-			m.State.RollappParams.DrsVersion = drsVersion
+		m.State.SetRevision(instruction.Revision)
+		drsVersion, err := version.GetDRSVersion()
+		if err != nil {
+			return err
 		}
-		_, err := m.Store.SaveState(m.State, nil)
+		m.State.RollappParams.DrsVersion = drsVersion
+		_, err = m.Store.SaveState(m.State, nil)
 		return err
 	}
 	return nil
@@ -274,6 +284,7 @@ func (m *Manager) checkRevisionAndFork() error {
 	if err != nil {
 		return err
 	}
+
 	expectedRevision := rollapp.GetRevisionForHeight(m.State.NextHeight())
 
 	// create fork batch in case it has not been submitted yet
@@ -296,13 +307,6 @@ func (m *Manager) checkRevisionAndFork() error {
 		panic("Inconsistent expected revision number from Hub. Unable to fork")
 	}
 
-	// remove instruction file after fork to avoid enter fork loop again
-	if _, instructionExists := m.forkNeeded(); instructionExists {
-		err := types.DeleteInstructionFromDisk(m.RootDir)
-		if err != nil {
-			return fmt.Errorf("deleting instruction file: %w", err)
-		}
-	}
-
-	return nil
+	// remove instruction file after fork
+	return types.DeleteInstructionFromDisk(m.RootDir)
 }
