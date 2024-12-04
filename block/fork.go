@@ -69,7 +69,7 @@ func (m *Manager) checkForkUpdate(msg string) error {
 	return nil
 }
 
-// createInstruction writes file to disk with fork information
+// createInstruction returns instruction with fork information
 func (m *Manager) createInstruction(expectedRevision types.Revision) (types.Instruction, error) {
 	obsoleteDrs, err := m.SLClient.GetObsoleteDrs()
 	if err != nil {
