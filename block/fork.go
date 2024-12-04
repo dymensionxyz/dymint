@@ -39,6 +39,9 @@ func (m *Manager) MonitorForkUpdateLoop(ctx context.Context) error {
 
 // checkForkUpdate checks if the hub has a fork update
 func (m *Manager) checkForkUpdate(msg string) error {
+	defer m.forkMu.Unlock()
+	m.forkMu.Lock()
+
 	rollapp, err := m.SLClient.GetRollapp()
 	if err != nil {
 		return err
@@ -50,7 +53,7 @@ func (m *Manager) checkForkUpdate(msg string) error {
 		expectedRevision = rollapp.GetRevisionForHeight(nextHeight)
 	)
 
-	if shouldStopNode(expectedRevision, nextHeight, actualRevision, m.RunMode) {
+	if shouldStopNode(expectedRevision, nextHeight, actualRevision) {
 		instruction, err := m.createInstruction(expectedRevision)
 		if err != nil {
 			return err
@@ -91,11 +94,7 @@ func shouldStopNode(
 	expectedRevision types.Revision,
 	nextHeight uint64,
 	actualRevisionNumber uint64,
-	nodeMode uint,
 ) bool {
-	if nodeMode == RunModeFullNode {
-		return nextHeight > expectedRevision.StartHeight && actualRevisionNumber < expectedRevision.Number
-	}
 	return nextHeight >= expectedRevision.StartHeight && actualRevisionNumber < expectedRevision.Number
 }
 
@@ -251,6 +250,10 @@ func (m *Manager) updateStateWhenFork() error {
 
 // checkRevisionAndFork checks if fork is needed after syncing, and performs fork actions
 func (m *Manager) checkRevisionAndFork() error {
+
+	defer m.forkMu.Unlock()
+	m.forkMu.Lock()
+
 	// it is checked again whether the node is the active proposer, since this could have changed after syncing.
 	amIProposerOnSL, err := m.AmIProposerOnSL()
 	if err != nil {
