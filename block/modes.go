@@ -39,7 +39,6 @@ func (m *Manager) runAsFullNode(ctx context.Context, eg *errgroup.Group) error {
 
 	// remove instruction file after fork to avoid enter fork loop again
 	return types.DeleteInstructionFromDisk(m.RootDir)
-
 }
 
 func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {

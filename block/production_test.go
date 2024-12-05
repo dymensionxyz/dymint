@@ -329,6 +329,7 @@ func TestUpdateInitialSequencerSet(t *testing.T) {
 	slmock.On("Start").Return(nil)
 	slmock.On("GetProposer").Return(proposer)
 	slmock.On("GetAllSequencers").Return([]types.Sequencer{proposer, sequencer}, nil)
+	slmock.On("GetRollapp").Return(&types.Rollapp{}, nil)
 
 	manager, err := testutil.GetManagerWithProposerKey(testutil.GetManagerConfig(), lib2pPrivKey, slmock, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
@@ -459,6 +460,7 @@ func TestUpdateExistingSequencerSet(t *testing.T) {
 	slmock.On("Init", mock.Anything, mock.Anything, mock.Anything, mock.Anything).Return(nil)
 	slmock.On("Start").Return(nil)
 	slmock.On("GetProposer").Return(proposer)
+	slmock.On("GetRollapp").Return(&types.Rollapp{}, nil)
 
 	manager, err := testutil.GetManagerWithProposerKey(testutil.GetManagerConfig(), lib2pPrivKey, slmock, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)

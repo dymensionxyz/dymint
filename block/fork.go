@@ -260,7 +260,6 @@ func (m *Manager) updateStateWhenFork() error {
 
 // checkRevisionAndFork checks if fork is needed after syncing, and performs fork actions
 func (m *Manager) checkRevisionAndFork() error {
-
 	defer m.forkMu.Unlock()
 	m.forkMu.Lock()
 
