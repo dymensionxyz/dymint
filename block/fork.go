@@ -98,25 +98,13 @@ func shouldStopNode(
 	return nextHeight >= expectedRevision.StartHeight && actualRevisionNumber < expectedRevision.Number
 }
 
-// forkNeeded returns true + fork data if fork action is required
-func (m *Manager) forkNeeded() (types.Instruction, bool) {
+// getRevision returns revision data for the specific height
+func (m *Manager) getRevision(height uint64) (types.Revision, error) {
 	rollapp, err := m.SLClient.GetRollapp()
 	if err != nil {
-		return types.Instruction{}, false
+		return types.Revision{}, err
 	}
-
-	nextHeight := m.State.NextHeight()
-	expectedRevision := rollapp.GetRevisionForHeight(nextHeight)
-
-	if nextHeight != expectedRevision.StartHeight {
-		return types.Instruction{}, false
-	}
-
-	if instruction, err := m.createInstruction(expectedRevision); err == nil {
-		return instruction, true
-	}
-
-	return types.Instruction{}, false
+	return rollapp.GetRevisionForHeight(height), nil
 }
 
 // doFork creates fork blocks and submits a new batch with them
@@ -240,13 +228,21 @@ func (m *Manager) submitForkBatch(height uint64) error {
 // updateStateWhenFork updates dymint state in case fork is detected
 func (m *Manager) updateStateWhenFork() error {
 	// in case fork is detected dymint state needs to be updated
-	if instruction, forkNeeded := m.forkNeeded(); forkNeeded {
+
+	// get last revision
+	lastRevision, err := m.getRevision(m.State.NextHeight())
+	if err != nil {
+		return err
+	}
+
+	// if next height is revision start height, update local state
+	if lastRevision.StartHeight == m.State.NextHeight() {
 		// Set proposer to nil to force updating it from SL
 		m.State.SetProposer(nil)
 		// Upgrade revision on state
-		m.State.RevisionStartHeight = instruction.RevisionStartHeight
+		m.State.RevisionStartHeight = lastRevision.StartHeight
 		// this is necessary to pass ValidateConfigWithRollappParams when DRS upgrade is required
-		m.State.SetRevision(instruction.Revision)
+		m.State.SetRevision(lastRevision.Number)
 		drsVersion, err := version.GetDRSVersion()
 		if err != nil {
 			return err
@@ -278,14 +274,18 @@ func (m *Manager) checkRevisionAndFork() error {
 		return err
 	}
 
-	// get the revision for the current height to check against local state
-	instruction, forkNeeded := m.forkNeeded()
-	if !forkNeeded {
-		return nil
+	// get revision next height
+	expectedRevision, err := m.getRevision(m.State.NextHeight())
+	if err != nil {
+		return err
 	}
 
 	// create fork batch in case it has not been submitted yet
-	if m.LastSettlementHeight.Load() < instruction.RevisionStartHeight {
+	if m.LastSettlementHeight.Load() < expectedRevision.StartHeight {
+		instruction, err := m.createInstruction(expectedRevision)
+		if err != nil {
+			return err
+		}
 		// update revision with revision after fork
 		m.State.SetRevision(instruction.Revision)
 		// create and submit fork batch
@@ -296,7 +296,7 @@ func (m *Manager) checkRevisionAndFork() error {
 	}
 
 	// this cannot happen. it means the revision number obtained is not the same or the next revision. unable to fork.
-	if instruction.Revision != m.State.GetRevision() {
+	if expectedRevision.Number != m.State.GetRevision() {
 		panic("Inconsistent expected revision number from Hub. Unable to fork")
 	}
 
