@@ -57,7 +57,8 @@ func (m *Manager) ValidateGenesisBridgeData(dataBytes []byte) error {
 	if err != nil {
 		fmt.Printf("Error marshaling genesis bridge data: %v\n", err)
 	} else {
-		fmt.Printf("genesisBridgeData:\n%s\n", string(prettyJSON))
+		fmt.Printf("genesisBridgeData (raw): %v\n", genesisBridgeData)
+		fmt.Printf("genesisBridgeData (pretty):\n%s\n", string(prettyJSON))
 	}
 	return m.SLClient.ValidateGenesisBridgeData(genesisBridgeData)
 }
