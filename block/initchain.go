@@ -52,5 +52,6 @@ func (m *Manager) ValidateGenesisBridgeData(dataBytes []byte) error {
 	if err != nil {
 		return fmt.Errorf("unmarshal genesis bridge data: %w", err)
 	}
+	fmt.Println("genesisBridgeData", genesisBridgeData)
 	return m.SLClient.ValidateGenesisBridgeData(genesisBridgeData)
 }
