@@ -52,6 +52,12 @@ func (m *Manager) ValidateGenesisBridgeData(dataBytes []byte) error {
 	if err != nil {
 		return fmt.Errorf("unmarshal genesis bridge data: %w", err)
 	}
-	fmt.Println("genesisBridgeData", genesisBridgeData)
+	// Pretty print the genesisBridgeData as JSON
+	prettyJSON, err := tmjson.MarshalIndent(genesisBridgeData, "", "  ")
+	if err != nil {
+		fmt.Printf("Error marshaling genesis bridge data: %v\n", err)
+	} else {
+		fmt.Printf("genesisBridgeData:\n%s\n", string(prettyJSON))
+	}
 	return m.SLClient.ValidateGenesisBridgeData(genesisBridgeData)
 }
