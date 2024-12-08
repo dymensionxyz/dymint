@@ -23,6 +23,7 @@ const (
 // setFraudHandler sets the fraud handler for the block manager.
 func (m *Manager) runAsFullNode(ctx context.Context, eg *errgroup.Group) error {
 	m.logger.Info("starting block manager", "mode", "full node")
+	m.RunMode = RunModeFullNode
 	// update latest finalized height
 	err := m.updateLastFinalizedHeightFromSettlement()
 	if err != nil {
@@ -36,19 +37,13 @@ func (m *Manager) runAsFullNode(ctx context.Context, eg *errgroup.Group) error {
 
 	m.subscribeFullNodeEvents(ctx)
 
-	if _, instructionExists := m.forkNeeded(); instructionExists {
-		// remove instruction file after fork to avoid enter fork loop again
-		err := types.DeleteInstructionFromDisk(m.RootDir)
-		if err != nil {
-			return fmt.Errorf("deleting instruction file: %w", err)
-		}
-	}
-
-	return nil
+	// remove instruction file after fork to avoid enter fork loop again
+	return types.DeleteInstructionFromDisk(m.RootDir)
 }
 
 func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {
 	m.logger.Info("starting block manager", "mode", "proposer")
+	m.RunMode = RunModeProposer
 	// Subscribe to batch events, to update last submitted height in case batch confirmation was lost. This could happen if the sequencer crash/restarted just after submitting a batch to the settlement and by the time we query the last batch, this batch wasn't accepted yet.
 	go uevent.MustSubscribe(ctx, m.Pubsub, "updateSubmittedHeightLoop", settlement.EventQueryNewSettlementBatchAccepted, m.UpdateLastSubmittedHeight, m.logger)
 	// Subscribe to P2P received blocks events (used for P2P syncing).
@@ -61,8 +56,23 @@ func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {
 	// Sequencer must wait till node is synced till last submittedHeight, in case it is not
 	m.waitForSettlementSyncing()
 
-	// checkRevisionAndFork executes fork if necessary
-	err := m.checkRevisionAndFork()
+	// it is checked again whether the node is the active proposer, since this could have changed after syncing.
+	amIProposerOnSL, err := m.AmIProposerOnSL()
+	if err != nil {
+		return fmt.Errorf("am i proposer on SL: %w", err)
+	}
+	if !amIProposerOnSL {
+		return fmt.Errorf("the node is no longer the proposer. please restart.")
+	}
+
+	// update l2 proposer from SL in case it changed after syncing
+	err = m.UpdateProposerFromSL()
+	if err != nil {
+		return err
+	}
+
+	// doForkWhenNewRevision executes fork if necessary
+	err = m.doForkWhenNewRevision()
 	if err != nil {
 		return err
 	}
