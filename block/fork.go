@@ -98,8 +98,8 @@ func shouldStopNode(
 	return nextHeight >= expectedRevision.StartHeight && actualRevisionNumber < expectedRevision.Number
 }
 
-// getRevision returns revision data for the specific height
-func (m *Manager) getRevision(height uint64) (types.Revision, error) {
+// getRevisionFromSL returns revision data for the specific height
+func (m *Manager) getRevisionFromSL(height uint64) (types.Revision, error) {
 	rollapp, err := m.SLClient.GetRollapp()
 	if err != nil {
 		return types.Revision{}, err
@@ -230,7 +230,7 @@ func (m *Manager) updateStateWhenFork() error {
 	// in case fork is detected dymint state needs to be updated
 
 	// get last revision
-	lastRevision, err := m.getRevision(m.State.NextHeight())
+	lastRevision, err := m.getRevisionFromSL(m.State.NextHeight())
 	if err != nil {
 		return err
 	}
@@ -275,7 +275,7 @@ func (m *Manager) checkRevisionAndFork() error {
 	}
 
 	// get revision next height
-	expectedRevision, err := m.getRevision(m.State.NextHeight())
+	expectedRevision, err := m.getRevisionFromSL(m.State.NextHeight())
 	if err != nil {
 		return err
 	}
