@@ -111,7 +111,7 @@ func (m *Manager) getRevisionFromSL(height uint64) (types.Revision, error) {
 func (m *Manager) doFork(instruction types.Instruction) error {
 	// if fork (two) blocks are not produced and applied yet, produce them
 	if m.State.Height() < instruction.RevisionStartHeight+1 {
-		// add consensus msgs for upgrade DRS only if current DRS is obsolete
+		// add consensus msgs to upgrade DRS to running node version (msg is created in all cases and RDK will upgrade if necessary). If returns error if running version is deprecated.
 		consensusMsgs, err := m.prepareDRSUpgradeMessages(instruction.FaultyDRS)
 		if err != nil {
 			return fmt.Errorf("prepare DRS upgrade messages: %v", err)

@@ -65,7 +65,7 @@ func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {
 		return fmt.Errorf("the node is no longer the proposer. please restart.")
 	}
 
-	// update sequencer in case it changed after syncing
+	// update l2 proposer from SL in case it changed after syncing
 	err = m.UpdateProposerFromSL()
 	if err != nil {
 		return err
