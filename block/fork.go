@@ -229,25 +229,28 @@ func (m *Manager) submitForkBatch(height uint64) error {
 func (m *Manager) updateStateWhenFork() error {
 	// in case fork is detected dymint state needs to be updated
 
-	// get last revision
-	lastRevision, err := m.getRevisionFromSL(m.State.NextHeight())
+	// get next revision according to node height
+	nextRevision, err := m.getRevisionFromSL(m.State.NextHeight())
 	if err != nil {
 		return err
 	}
 
 	// if next height is revision start height, update local state
-	if lastRevision.StartHeight == m.State.NextHeight() {
+	if nextRevision.StartHeight == m.State.NextHeight() {
 		// Set proposer to nil to force updating it from SL
 		m.State.SetProposer(nil)
 		// Upgrade revision on state
-		m.State.RevisionStartHeight = lastRevision.StartHeight
-		// this is necessary to pass ValidateConfigWithRollappParams when DRS upgrade is required
-		m.State.SetRevision(lastRevision.Number)
+		m.State.RevisionStartHeight = nextRevision.StartHeight
+		m.State.SetRevision(nextRevision.Number)
+
+		// we set rollappparam to node drs version to pass ValidateConfigWithRollappParams check, when drs upgrade is necessary.
+		// if the node starts with the wrong version at revision start height, it will stop after applyBlock.
 		drsVersion, err := version.GetDRSVersion()
 		if err != nil {
 			return err
 		}
 		m.State.RollappParams.DrsVersion = drsVersion
+		// update stored state
 		_, err = m.Store.SaveState(m.State, nil)
 		return err
 	}
