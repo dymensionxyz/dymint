@@ -78,6 +78,9 @@ type Manager struct {
 
 	// LastBlockTime is the time of last produced block, used to measure batch skew time
 	LastBlockTime atomic.Int64
+
+	// mutex used to avoid stopping node when fork is detected but proposer is creating/sending fork batch
+	forkMu sync.Mutex
 	/*
 		Sequencer and full-node
 	*/
@@ -193,8 +196,8 @@ func NewManager(
 		return nil, err
 	}
 
-	// update dymint state with fork info
-	err = m.updateStateWhenFork()
+	// update dymint state with next revision info
+	err = m.updateStateForNextRevision()
 	if err != nil {
 		return nil, err
 	}
@@ -247,13 +250,9 @@ func (m *Manager) Start(ctx context.Context) error {
 		return fmt.Errorf("am i proposer on SL: %w", err)
 	}
 
-	if amIProposerOnSL || m.AmIProposerOnRollapp() {
-		m.RunMode = RunModeProposer
-	} else {
-		m.RunMode = RunModeFullNode
-	}
+	amIProposer := amIProposerOnSL || m.AmIProposerOnRollapp()
 
-	m.logger.Info("starting block manager", "mode", map[bool]string{true: "proposer", false: "full node"}[m.RunMode == RunModeProposer])
+	m.logger.Info("starting block manager", "mode", map[bool]string{true: "proposer", false: "full node"}[amIProposer])
 
 	// update local state from latest state in settlement
 	err = m.updateFromLastSettlementState()
@@ -292,7 +291,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	})
 
 	// run based on the node role
-	if m.RunMode == RunModeFullNode {
+	if !amIProposer {
 		return m.runAsFullNode(ctx, eg)
 	}
 

@@ -39,6 +39,9 @@ func (m *Manager) MonitorForkUpdateLoop(ctx context.Context) error {
 
 // checkForkUpdate checks if the hub has a fork update
 func (m *Manager) checkForkUpdate(msg string) error {
+	defer m.forkMu.Unlock()
+	m.forkMu.Lock()
+
 	rollapp, err := m.SLClient.GetRollapp()
 	if err != nil {
 		return err
@@ -50,7 +53,7 @@ func (m *Manager) checkForkUpdate(msg string) error {
 		expectedRevision = rollapp.GetRevisionForHeight(nextHeight)
 	)
 
-	if shouldStopNode(expectedRevision, nextHeight, actualRevision, m.RunMode) {
+	if shouldStopNode(expectedRevision, nextHeight, actualRevision) {
 		instruction, err := m.createInstruction(expectedRevision)
 		if err != nil {
 			return err
@@ -66,7 +69,7 @@ func (m *Manager) checkForkUpdate(msg string) error {
 	return nil
 }
 
-// createInstruction writes file to disk with fork information
+// createInstruction returns instruction with fork information
 func (m *Manager) createInstruction(expectedRevision types.Revision) (types.Instruction, error) {
 	obsoleteDrs, err := m.SLClient.GetObsoleteDrs()
 	if err != nil {
@@ -91,31 +94,27 @@ func shouldStopNode(
 	expectedRevision types.Revision,
 	nextHeight uint64,
 	actualRevisionNumber uint64,
-	nodeMode uint,
 ) bool {
-	if nodeMode == RunModeFullNode {
-		return nextHeight > expectedRevision.StartHeight && actualRevisionNumber < expectedRevision.Number
-	}
 	return nextHeight >= expectedRevision.StartHeight && actualRevisionNumber < expectedRevision.Number
 }
 
-// forkNeeded returns true if the fork file exists
-func (m *Manager) forkNeeded() (types.Instruction, bool) {
-	if instruction, err := types.LoadInstructionFromDisk(m.RootDir); err == nil {
-		return instruction, true
+// getRevisionFromSL returns revision data for the specific height
+func (m *Manager) getRevisionFromSL(height uint64) (types.Revision, error) {
+	rollapp, err := m.SLClient.GetRollapp()
+	if err != nil {
+		return types.Revision{}, err
 	}
-
-	return types.Instruction{}, false
+	return rollapp.GetRevisionForHeight(height), nil
 }
 
 // doFork creates fork blocks and submits a new batch with them
 func (m *Manager) doFork(instruction types.Instruction) error {
 	// if fork (two) blocks are not produced and applied yet, produce them
 	if m.State.Height() < instruction.RevisionStartHeight+1 {
-		// add consensus msgs for upgrade DRS only if current DRS is obsolete
+		// add consensus msgs to upgrade DRS to running node version (msg is created in all cases and RDK will upgrade if necessary). If returns error if running version is deprecated.
 		consensusMsgs, err := m.prepareDRSUpgradeMessages(instruction.FaultyDRS)
 		if err != nil {
-			panic(fmt.Sprintf("prepare DRS upgrade messages: %v", err))
+			return fmt.Errorf("prepare DRS upgrade messages: %v", err)
 		}
 		// add consensus msg to bump the account sequences in all fork cases
 		consensusMsgs = append(consensusMsgs, &sequencers.MsgBumpAccountSequences{Authority: authtypes.NewModuleAddress("sequencers").String()})
@@ -123,13 +122,13 @@ func (m *Manager) doFork(instruction types.Instruction) error {
 		// create fork blocks
 		err = m.createForkBlocks(instruction, consensusMsgs)
 		if err != nil {
-			panic(fmt.Sprintf("validate existing blocks: %v", err))
+			return fmt.Errorf("validate fork blocks: %v", err)
 		}
 	}
 
 	// submit fork batch including two fork blocks
 	if err := m.submitForkBatch(instruction.RevisionStartHeight); err != nil {
-		panic(fmt.Sprintf("ensure batch exists: %v", err))
+		return fmt.Errorf("submit fork batch: %v", err)
 	}
 
 	return nil
@@ -226,52 +225,48 @@ func (m *Manager) submitForkBatch(height uint64) error {
 	return nil
 }
 
-// updateStateWhenFork updates dymint state in case fork is detected
-func (m *Manager) updateStateWhenFork() error {
+// updateStateForNextRevision updates dymint stored state in case next height corresponds to a new revision, to enable syncing (and validation) for rollapps with multiple revisions.
+func (m *Manager) updateStateForNextRevision() error {
 	// in case fork is detected dymint state needs to be updated
-	if instruction, forkNeeded := m.forkNeeded(); forkNeeded {
+
+	// get next revision according to node height
+	nextRevision, err := m.getRevisionFromSL(m.State.NextHeight())
+	if err != nil {
+		return err
+	}
+
+	// if next height is revision start height, update local state
+	if nextRevision.StartHeight == m.State.NextHeight() {
 		// Set proposer to nil to force updating it from SL
 		m.State.SetProposer(nil)
 		// Upgrade revision on state
-		m.State.RevisionStartHeight = instruction.RevisionStartHeight
-		// this is necessary to pass ValidateConfigWithRollappParams when DRS upgrade is required
-		if instruction.RevisionStartHeight == m.State.NextHeight() {
-			m.State.SetRevision(instruction.Revision)
-			drsVersion, err := version.GetDRSVersion()
-			if err != nil {
-				return err
-			}
-			m.State.RollappParams.DrsVersion = drsVersion
+		m.State.RevisionStartHeight = nextRevision.StartHeight
+		m.State.SetRevision(nextRevision.Number)
+
+		// we set rollappparam to node drs version to pass ValidateConfigWithRollappParams check, when drs upgrade is necessary.
+		// if the node starts with the wrong version at revision start height, it will stop after applyBlock.
+		drsVersion, err := version.GetDRSVersion()
+		if err != nil {
+			return err
 		}
-		_, err := m.Store.SaveState(m.State, nil)
+		m.State.RollappParams.DrsVersion = drsVersion
+		// update stored state
+		_, err = m.Store.SaveState(m.State, nil)
 		return err
 	}
 	return nil
 }
 
-// checkRevisionAndFork checks if fork is needed after syncing, and performs fork actions
-func (m *Manager) checkRevisionAndFork() error {
-	// it is checked again whether the node is the active proposer, since this could have changed after syncing.
-	amIProposerOnSL, err := m.AmIProposerOnSL()
-	if err != nil {
-		return fmt.Errorf("am i proposer on SL: %w", err)
-	}
-	if !amIProposerOnSL {
-		return fmt.Errorf("the node is no longer the proposer. please restart.")
-	}
+// doForkWhenNewRevision creates and submit to SL fork blocks according to next revision start height.
+func (m *Manager) doForkWhenNewRevision() error {
+	defer m.forkMu.Unlock()
+	m.forkMu.Lock()
 
-	// update sequencer in case it changed after syncing
-	err = m.UpdateProposerFromSL()
+	// get revision next height
+	expectedRevision, err := m.getRevisionFromSL(m.State.NextHeight())
 	if err != nil {
 		return err
 	}
-
-	// get the revision for the current height to check against local state
-	rollapp, err := m.SLClient.GetRollapp()
-	if err != nil {
-		return err
-	}
-	expectedRevision := rollapp.GetRevisionForHeight(m.State.NextHeight())
 
 	// create fork batch in case it has not been submitted yet
 	if m.LastSettlementHeight.Load() < expectedRevision.StartHeight {
@@ -293,13 +288,6 @@ func (m *Manager) checkRevisionAndFork() error {
 		panic("Inconsistent expected revision number from Hub. Unable to fork")
 	}
 
-	// remove instruction file after fork to avoid enter fork loop again
-	if _, instructionExists := m.forkNeeded(); instructionExists {
-		err := types.DeleteInstructionFromDisk(m.RootDir)
-		if err != nil {
-			return fmt.Errorf("deleting instruction file: %w", err)
-		}
-	}
-
-	return nil
+	// remove instruction file after fork
+	return types.DeleteInstructionFromDisk(m.RootDir)
 }
