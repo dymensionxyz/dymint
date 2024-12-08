@@ -196,8 +196,8 @@ func NewManager(
 		return nil, err
 	}
 
-	// update dymint state with fork info
-	err = m.updateStateWhenFork()
+	// update dymint state with next revision info
+	err = m.updateStateForNextRevision()
 	if err != nil {
 		return nil, err
 	}

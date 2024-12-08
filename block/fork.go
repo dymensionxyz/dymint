@@ -114,7 +114,7 @@ func (m *Manager) doFork(instruction types.Instruction) error {
 		// add consensus msgs for upgrade DRS only if current DRS is obsolete
 		consensusMsgs, err := m.prepareDRSUpgradeMessages(instruction.FaultyDRS)
 		if err != nil {
-			panic(fmt.Sprintf("prepare DRS upgrade messages: %v", err))
+			return fmt.Errorf("prepare DRS upgrade messages: %v", err)
 		}
 		// add consensus msg to bump the account sequences in all fork cases
 		consensusMsgs = append(consensusMsgs, &sequencers.MsgBumpAccountSequences{Authority: authtypes.NewModuleAddress("sequencers").String()})
@@ -122,13 +122,13 @@ func (m *Manager) doFork(instruction types.Instruction) error {
 		// create fork blocks
 		err = m.createForkBlocks(instruction, consensusMsgs)
 		if err != nil {
-			panic(fmt.Sprintf("validate existing blocks: %v", err))
+			return fmt.Errorf("validate fork blocks: %v", err)
 		}
 	}
 
 	// submit fork batch including two fork blocks
 	if err := m.submitForkBatch(instruction.RevisionStartHeight); err != nil {
-		panic(fmt.Sprintf("ensure batch exists: %v", err))
+		return fmt.Errorf("submit fork batch: %v", err)
 	}
 
 	return nil
@@ -225,8 +225,8 @@ func (m *Manager) submitForkBatch(height uint64) error {
 	return nil
 }
 
-// updateStateWhenFork updates dymint state in case fork is detected
-func (m *Manager) updateStateWhenFork() error {
+// updateStateForNextRevision updates dymint stored state in case next height corresponds to a new revision, to enable syncing (and validation) for rollapps with multiple revisions.
+func (m *Manager) updateStateForNextRevision() error {
 	// in case fork is detected dymint state needs to be updated
 
 	// get next revision according to node height
@@ -257,25 +257,10 @@ func (m *Manager) updateStateWhenFork() error {
 	return nil
 }
 
-// checkRevisionAndFork checks if fork is needed after syncing, and performs fork actions
-func (m *Manager) checkRevisionAndFork() error {
+// doForkWhenNewRevision creates and submit to SL fork blocks according to next revision start height.
+func (m *Manager) doForkWhenNewRevision() error {
 	defer m.forkMu.Unlock()
 	m.forkMu.Lock()
-
-	// it is checked again whether the node is the active proposer, since this could have changed after syncing.
-	amIProposerOnSL, err := m.AmIProposerOnSL()
-	if err != nil {
-		return fmt.Errorf("am i proposer on SL: %w", err)
-	}
-	if !amIProposerOnSL {
-		return fmt.Errorf("the node is no longer the proposer. please restart.")
-	}
-
-	// update sequencer in case it changed after syncing
-	err = m.UpdateProposerFromSL()
-	if err != nil {
-		return err
-	}
 
 	// get revision next height
 	expectedRevision, err := m.getRevisionFromSL(m.State.NextHeight())
