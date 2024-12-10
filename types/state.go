@@ -14,6 +14,8 @@ import (
 	"github.com/dymensionxyz/dymint/types/pb/dymint"
 )
 
+const rollappparams_modulename = "rollappparams"
+
 // State contains information about current state of the blockchain.
 type State struct {
 	Version             tmstate.Version
@@ -105,9 +107,9 @@ func (s *State) SetRollappParamsFromGenesis(appState json.RawMessage) error {
 	if err != nil {
 		return err
 	}
-	params, ok := objmap["rollappparams"]
+	params, ok := objmap[rollappparams_modulename]
 	if !ok {
-		return fmt.Errorf("rollappparams not defined in genesis")
+		return fmt.Errorf("module not defined in genesis: %s", rollappparams_modulename)
 	}
 
 	var rollappParams RollappParams

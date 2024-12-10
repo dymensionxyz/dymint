@@ -16,7 +16,6 @@ import (
 	"github.com/dymensionxyz/dymint/store"
 	uerrors "github.com/dymensionxyz/dymint/utils/errors"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
-	"github.com/dymensionxyz/dymint/version"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
 
@@ -375,14 +374,6 @@ func (m *Manager) UpdateTargetHeight(h uint64) {
 
 // ValidateConfigWithRollappParams checks the configuration params are consistent with the params in the dymint state (e.g. DA and version)
 func (m *Manager) ValidateConfigWithRollappParams() error {
-	drsVersion, err := version.GetDRSVersion()
-	if err != nil {
-		return err
-	}
-	if drsVersion != m.State.RollappParams.DrsVersion {
-		return fmt.Errorf("DRS version mismatch. rollapp param: %d binary used:%d", m.State.RollappParams.DrsVersion, drsVersion)
-	}
-
 	if da.Client(m.State.RollappParams.Da) != m.DAClient.GetClientType() {
 		return fmt.Errorf("da client mismatch. rollapp param: %s da configured: %s", m.State.RollappParams.Da, m.DAClient.GetClientType())
 	}
