@@ -243,13 +243,6 @@ func (m *Manager) updateStateForNextRevision() error {
 		m.State.RevisionStartHeight = nextRevision.StartHeight
 		m.State.SetRevision(nextRevision.Number)
 
-		// we set rollappparam to node drs version to pass ValidateConfigWithRollappParams check, when drs upgrade is necessary.
-		// if the node starts with the wrong version at revision start height, it will stop after applyBlock.
-		drsVersion, err := version.GetDRSVersion()
-		if err != nil {
-			return err
-		}
-		m.State.RollappParams.DrsVersion = drsVersion
 		// update stored state
 		_, err = m.Store.SaveState(m.State, nil)
 		return err
