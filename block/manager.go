@@ -248,7 +248,6 @@ func (m *Manager) Start(ctx context.Context) error {
 	// for this case, 2 nodes will get `true` for `AmIProposer` so the l2 proposer can produce blocks and the hub proposer can submit his last batch.
 	// The hub proposer, after sending the last state update, will panic and restart as full node.
 	amIProposerOnSL, err := m.AmIProposerOnSL()
-
 	if errors.Is(err, settlement.ErrProposerIsSentinel) {
 		amIProposerOnSL = false
 	} else if err != nil {
