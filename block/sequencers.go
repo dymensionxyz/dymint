@@ -66,7 +66,6 @@ func (m *Manager) AmIProposerOnSL() (bool, error) {
 	localProposerKeyBytes, _ := m.LocalKey.GetPublic().Raw()
 	// get hub proposer key
 	SLProposer, err := m.SLClient.GetProposerAtHeight(-1)
-
 	if err != nil {
 		return false, fmt.Errorf("get proposer at height: %w", err)
 	}
