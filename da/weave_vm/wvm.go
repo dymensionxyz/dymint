@@ -3,6 +3,7 @@ package weave_vm
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/dymensionxyz/dymint/utils/retry"
 	uretry "github.com/dymensionxyz/dymint/utils/retry"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
@@ -171,91 +173,88 @@ func (c *DataAvailabilityLayerClient) GetClientType() da.Client {
 
 // SubmitBatch submits a batch to the DA layer.
 func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultSubmitBatch {
-	/*
-		data, err := batch.MarshalBinary()
-		if err != nil {
-			return da.ResultSubmitBatch{
-				BaseResult: da.BaseResult{
-					Code:    da.StatusError,
-					Message: err.Error(),
-					Error:   err,
-				},
-			}
+	data, err := batch.MarshalBinary()
+	if err != nil {
+		return da.ResultSubmitBatch{
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: err.Error(),
+				Error:   err,
+			},
 		}
+	}
 
-		if len(data) > celtypes.DefaultMaxBytes {
-			return da.ResultSubmitBatch{
-				BaseResult: da.BaseResult{
-					Code:    da.StatusError,
-					Message: fmt.Sprintf("size bigger than maximum blob size: max n bytes: %d", celtypes.DefaultMaxBytes),
-					Error:   errors.New("blob size too big"),
-				},
-			}
+	if len(data) > maxBlobSizeBytes {
+		return da.ResultSubmitBatch{
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: fmt.Sprintf("size bigger than maximum blob size: max n bytes: %d", celtypes.DefaultMaxBytes),
+				Error:   errors.New("blob size too big"),
+			},
 		}
+	}
 
-		backoff := c.config.Backoff.Backoff()
+	backoff := c.config.Backoff.Backoff()
 
-		for {
-			select {
-			case <-c.ctx.Done():
-				c.logger.Debug("Context cancelled.")
-				return da.ResultSubmitBatch{}
-			default:
+	for {
+		select {
+		case <-c.ctx.Done():
+			c.logger.Debug("Context cancelled.")
+			return da.ResultSubmitBatch{}
+		default:
 
-				// TODO(srene):  Split batch in multiple blobs if necessary if supported
-				height, commitment, err := c.submit(data)
-				if errors.Is(err, gerrc.ErrInternal) {
-					// no point retrying if it's because of our code being wrong
-					err = fmt.Errorf("submit: %w", err)
-					return da.ResultSubmitBatch{
-						BaseResult: da.BaseResult{
-							Code:    da.StatusError,
-							Message: err.Error(),
-							Error:   err,
-						},
-					}
-				}
-
-				if err != nil {
-					c.logger.Error("Submit blob.", "error", err)
-					types.RollappConsecutiveFailedDASubmission.Inc()
-					backoff.Sleep()
-					continue
-				}
-
-				daMetaData := &da.DASubmitMetaData{
-					Client:     da.Celestia,
-					Height:     height,
-					Commitment: commitment,
-					Namespace:  c.config.NamespaceID.Bytes(),
-				}
-
-				c.logger.Debug("Submitted blob to DA successfully.")
-
-				result := c.CheckBatchAvailability(daMetaData)
-				if result.Code != da.StatusSuccess {
-					c.logger.Error("Check batch availability: submitted batch but did not get availability success status.", "error", err)
-					types.RollappConsecutiveFailedDASubmission.Inc()
-					backoff.Sleep()
-					continue
-				}
-				daMetaData.Root = result.CheckMetaData.Root
-				daMetaData.Index = result.CheckMetaData.Index
-				daMetaData.Length = result.CheckMetaData.Length
-
-				c.logger.Debug("Blob availability check passed successfully.")
-
-				types.RollappConsecutiveFailedDASubmission.Set(0)
+			height, commitment, err := c.submit(data)
+			if errors.Is(err, gerrc.ErrInternal) {
+				// no point retrying if it's because of our code being wrong
+				err = fmt.Errorf("submit: %w", err)
 				return da.ResultSubmitBatch{
 					BaseResult: da.BaseResult{
-						Code:    da.StatusSuccess,
-						Message: "Submission successful",
+						Code:    da.StatusError,
+						Message: err.Error(),
+						Error:   err,
 					},
-					SubmitMetaData: daMetaData,
 				}
 			}
+
+			if err != nil {
+				c.logger.Error("Submit blob.", "error", err)
+				types.RollappConsecutiveFailedDASubmission.Inc()
+				backoff.Sleep()
+				continue
+			}
+
+			daMetaData := &da.DASubmitMetaData{
+				Client:     da.Celestia,
+				Height:     height,
+				Commitment: commitment,
+				Namespace:  c.config.NamespaceID.Bytes(),
+			}
+
+			c.logger.Debug("Submitted blob to DA successfully.")
+
+			result := c.CheckBatchAvailability(daMetaData)
+			if result.Code != da.StatusSuccess {
+				c.logger.Error("Check batch availability: submitted batch but did not get availability success status.", "error", err)
+				types.RollappConsecutiveFailedDASubmission.Inc()
+				backoff.Sleep()
+				continue
+			}
+			daMetaData.Root = result.CheckMetaData.Root
+			daMetaData.Index = result.CheckMetaData.Index
+			daMetaData.Length = result.CheckMetaData.Length
+
+			c.logger.Debug("Blob availability check passed successfully.")
+
+			types.RollappConsecutiveFailedDASubmission.Set(0)
+			return da.ResultSubmitBatch{
+				BaseResult: da.BaseResult{
+					Code:    da.StatusSuccess,
+					Message: "Submission successful",
+				},
+				SubmitMetaData: daMetaData,
+			}
 		}
-	*/
+	}
 	return da.ResultSubmitBatch{}
 }
 
