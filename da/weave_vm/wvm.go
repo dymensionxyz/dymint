@@ -5,8 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/big"
 	"time"
 
+	"github.com/avast/retry-go/v4"
 	"github.com/celestiaorg/celestia-openrpc/types/blob"
 	"github.com/celestiaorg/celestia-openrpc/types/header"
 	"github.com/dymensionxyz/dymint/da"
@@ -15,14 +17,15 @@ import (
 	weaveVMtypes "github.com/dymensionxyz/dymint/da/weave_vm/types"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
-	"github.com/dymensionxyz/dymint/utils/retry"
 	uretry "github.com/dymensionxyz/dymint/utils/retry"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
 type WeaveVM interface {
 	SendTransaction(ctx context.Context, to string, data []byte) (string, error)
+	GetTransactionReceipt(ctx context.Context, txHash string) (*ethtypes.Receipt, error)
 }
 
 // TODO: adjust
@@ -31,7 +34,6 @@ const (
 	namespaceVersion        = 0
 	DefaultGasPrices        = 0.1
 	defaultRpcRetryAttempts = 5
-	maxBlobSizeBytes        = 500000
 )
 
 var defaultSubmitBackoff = uretry.NewBackoffConfig(
@@ -102,7 +104,7 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 	if c.config.RetryDelay == 0 {
 		c.config.RetryDelay = defaultRpcRetryDelay
 	}
-	if c.config.Backoff == (retry.BackoffConfig{}) {
+	if c.config.Backoff == (uretry.BackoffConfig{}) {
 		c.config.Backoff = defaultSubmitBackoff
 	}
 	if c.config.RetryAttempts == nil {
@@ -184,11 +186,11 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 		}
 	}
 
-	if len(data) > maxBlobSizeBytes {
+	if len(data) > weaveVMtypes.WeaveVMMaxTransactionSize {
 		return da.ResultSubmitBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
-				Message: fmt.Sprintf("size bigger than maximum blob size: max n bytes: %d", celtypes.DefaultMaxBytes),
+				Message: fmt.Sprintf("size bigger than maximum blob size: max n bytes: %d", weaveVMtypes.WeaveVMMaxTransactionSize),
 				Error:   errors.New("blob size too big"),
 			},
 		}
@@ -202,10 +204,8 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			c.logger.Debug("Context cancelled.")
 			return da.ResultSubmitBatch{}
 		default:
-
 			height, commitment, err := c.submit(data)
 			if errors.Is(err, gerrc.ErrInternal) {
-				// no point retrying if it's because of our code being wrong
 				err = fmt.Errorf("submit: %w", err)
 				return da.ResultSubmitBatch{
 					BaseResult: da.BaseResult{
@@ -224,26 +224,13 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			}
 
 			daMetaData := &da.DASubmitMetaData{
-				Client:     da.Celestia,
+				Client:     da.WeaveVM,
 				Height:     height,
 				Commitment: commitment,
-				Namespace:  c.config.NamespaceID.Bytes(),
+				Namespace:  nil,
 			}
 
 			c.logger.Debug("Submitted blob to DA successfully.")
-
-			result := c.CheckBatchAvailability(daMetaData)
-			if result.Code != da.StatusSuccess {
-				c.logger.Error("Check batch availability: submitted batch but did not get availability success status.", "error", err)
-				types.RollappConsecutiveFailedDASubmission.Inc()
-				backoff.Sleep()
-				continue
-			}
-			daMetaData.Root = result.CheckMetaData.Root
-			daMetaData.Index = result.CheckMetaData.Index
-			daMetaData.Length = result.CheckMetaData.Length
-
-			c.logger.Debug("Blob availability check passed successfully.")
 
 			types.RollappConsecutiveFailedDASubmission.Set(0)
 			return da.ResultSubmitBatch{
@@ -255,7 +242,6 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			}
 		}
 	}
-	return da.ResultSubmitBatch{}
 }
 
 func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
@@ -503,27 +489,59 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 
 // Submit submits the Blobs to Data Availability layer.
 func (c *DataAvailabilityLayerClient) submit(daBlob da.Blob) (uint64, da.Commitment, error) {
-	return 0, nil, nil
-	/*
-		  blobs, commitments, err := c.blobsAndCommitments(daBlob)
+	// Create context with timeout
+	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
+	defer cancel()
+
+	// Submit transaction to WeaveVM with the blob data
+	txHash, err := c.client.SendTransaction(ctx, weaveVMtypes.ArchivePoolAddress, daBlob)
+	if err != nil {
+		return 0, nil, fmt.Errorf("failed to send transaction: %w", gerrc.ErrInternal)
+	}
+
+	c.logger.Info("wvm tx hash", "hash", txHash)
+
+	// Wait for receipt
+	receipt, err := c.waitForTxReceipt(ctx, txHash)
+	if err != nil {
+		return 0, nil, fmt.Errorf("failed to get tx receipt: %w", err)
+	}
+
+	return receipt.BlockNumber.Uint64(), receipt.TxHash.Bytes(), nil
+}
+
+func (c *DataAvailabilityLayerClient) waitForTxReceipt(ctx context.Context, txHash string) (*ethtypes.Receipt, error) {
+	var receipt *ethtypes.Receipt
+	err := retry.Do(
+		func() error {
+			var err error
+			receipt, err = c.client.GetTransactionReceipt(ctx, txHash)
 			if err != nil {
-				return 0, nil, fmt.Errorf("blobs and commitments: %w: %w", err, gerrc.ErrInternal)
+				return fmt.Errorf("get receipt failed: %w", err)
 			}
-
-			if len(commitments) == 0 {
-				return 0, nil, fmt.Errorf("zero commitments: %w: %w", gerrc.ErrNotFound, gerrc.ErrInternal)
+			if receipt == nil {
+				return errors.New("receipt not found")
 			}
-
-			ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
-			defer cancel()
-
-			height, err := c.rpc.Submit(ctx, blobs, blob.NewSubmitOptions(blob.WithGasPrice(c.config.GasPrices)))
-			if err != nil {
-				return 0, nil, fmt.Errorf("do rpc submit: %w", err)
+			if receipt.BlockNumber == big.NewInt(0) {
+				return errors.New("no block number in receipt")
 			}
+			return nil
+		},
+		retry.Context(ctx),
+		retry.Attempts(uint(*c.config.RetryAttempts)),
+		retry.Delay(c.config.RetryDelay),
+		retry.OnRetry(func(n uint, err error) {
+			c.logger.Debug("waiting for receipt",
+				"txHash", txHash,
+				"attempt", n,
+				"error", err)
+		}),
+	)
+	if err != nil {
+		return nil, err
+	}
 
-			return height, commitments[0], nil
-	*/
+	return receipt, nil
 }
 
 func (c *DataAvailabilityLayerClient) getProof(daMetaData *da.DASubmitMetaData) (*blob.Proof, error) {
