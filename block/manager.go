@@ -232,7 +232,9 @@ func (m *Manager) Start(ctx context.Context) error {
 	if m.State.GetProposer() == nil {
 		m.logger.Info("No proposer on the rollapp, fallback to the hub proposer, if available")
 		err := m.UpdateProposerFromSL()
-		if err != nil {
+		if errors.Is(err, settlement.ErrProposerIsSentinel) {
+			m.freezeNode(fmt.Errorf("unable to start without new proposer at height %d", m.State.NextHeight()))
+		} else if err != nil {
 			return err
 		}
 		_, err = m.Store.SaveState(m.State, nil)
@@ -246,7 +248,10 @@ func (m *Manager) Start(ctx context.Context) error {
 	// for this case, 2 nodes will get `true` for `AmIProposer` so the l2 proposer can produce blocks and the hub proposer can submit his last batch.
 	// The hub proposer, after sending the last state update, will panic and restart as full node.
 	amIProposerOnSL, err := m.AmIProposerOnSL()
-	if err != nil {
+
+	if errors.Is(err, settlement.ErrProposerIsSentinel) {
+		amIProposerOnSL = false
+	} else if err != nil {
 		return fmt.Errorf("am i proposer on SL: %w", err)
 	}
 
