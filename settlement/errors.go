@@ -9,6 +9,9 @@ import (
 // ErrBatchNotAccepted is returned when a batch is not accepted by the settlement layer.
 var ErrBatchNotAccepted = fmt.Errorf("batch not accepted: %w", gerrc.ErrUnknown)
 
+// ErrProposerIsSentinel is returned when a rollapp has no sequencer assigned.
+var ErrProposerIsSentinel = fmt.Errorf("proposer is sentinel")
+
 type ErrNextSequencerAddressFraud struct {
 	Expected string
 	Actual   string
