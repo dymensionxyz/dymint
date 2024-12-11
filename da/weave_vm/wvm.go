@@ -13,8 +13,6 @@ import (
 	"time"
 
 	"github.com/avast/retry-go/v4"
-	"github.com/celestiaorg/celestia-openrpc/types/blob"
-	"github.com/celestiaorg/celestia-openrpc/types/header"
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/da/weave_vm/rpc"
 	"github.com/dymensionxyz/dymint/da/weave_vm/signer"
@@ -573,69 +571,9 @@ func (c *DataAvailabilityLayerClient) waitForTxReceipt(ctx context.Context, txHa
 	return receipt, nil
 }
 
-func (c *DataAvailabilityLayerClient) getProof(daMetaData *da.DASubmitMetaData) (*blob.Proof, error) {
-	return nil, nil
-	/*
-		c.logger.Debug("Getting proof via RPC call.", "height", daMetaData.Height, "namespace", daMetaData.Namespace, "commitment", daMetaData.Commitment)
-		ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
-		defer cancel()
-
-		proof, err := c.rpc.GetProof(ctx, daMetaData.Height, daMetaData.Namespace, daMetaData.Commitment)
-		if err != nil {
-			return nil, err
-		}
-
-		return proof, nil
-	*/
-}
-
-func (c *DataAvailabilityLayerClient) blobsAndCommitments(daBlob da.Blob) ([]*blob.Blob, []da.Commitment, error) {
-	return nil, nil, nil
-	/*
-		var blobs []*blob.Blob
-		var commitments []da.Commitment
-		b, err := blob.NewBlobV0(c.config.NamespaceID.Bytes(), daBlob)
-		if err != nil {
-			return nil, nil, err
-		}
-		blobs = append(blobs, b)
-
-		commitments = append(commitments, b.Commitment)
-		return blobs, commitments, nil
-	*/
-}
-
-func (c *DataAvailabilityLayerClient) validateProof(daMetaData *da.DASubmitMetaData, proof *blob.Proof) (bool, error) {
-	return false, nil
-	/*
-		c.logger.Debug("Validating proof via RPC call.", "height", daMetaData.Height, "namespace", daMetaData.Namespace, "commitment", daMetaData.Commitment)
-		ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
-		defer cancel()
-
-		return c.rpc.Included(ctx, daMetaData.Height, daMetaData.Namespace, proof, daMetaData.Commitment)
-	*/
-}
-
-func (c *DataAvailabilityLayerClient) getDataAvailabilityHeaders(height uint64) (*header.DataAvailabilityHeader, error) {
-	return nil, nil
-	/*
-		c.logger.Debug("Getting extended headers via RPC call.", "height", height)
-		ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
-		defer cancel()
-
-		headers, err := c.rpc.GetByHeight(ctx, height)
-		if err != nil {
-			return nil, err
-		}
-
-		return headers.DAH, nil
-	*/
-}
-
 // GetMaxBlobSizeBytes returns the maximum allowed blob size in the DA, used to check the max batch size configured
 func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint32 {
-	// return maxBlobSizeBytes
-	return 0
+	return weaveVMtypes.WeaveVMMaxTransactionSize
 }
 
 // GetSignerBalance returns the balance for a specific address
