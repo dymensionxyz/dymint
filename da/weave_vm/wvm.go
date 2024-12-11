@@ -2,10 +2,14 @@ package weave_vm
 
 import (
 	"context"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"math/big"
+	"net/http"
+	"strings"
 	"time"
 
 	"github.com/avast/retry-go/v4"
@@ -17,9 +21,13 @@ import (
 	weaveVMtypes "github.com/dymensionxyz/dymint/da/weave_vm/types"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
+	pb "github.com/dymensionxyz/dymint/types/pb/dymint"
 	uretry "github.com/dymensionxyz/dymint/utils/retry"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/gogo/protobuf/proto"
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
@@ -245,246 +253,254 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 }
 
 func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
-	return da.ResultRetrieveBatch{}
-	/*
-		for {
-			select {
-			case <-c.ctx.Done():
-				c.logger.Debug("Context cancelled.")
-				return da.ResultRetrieveBatch{}
-			default:
-				var resultRetrieveBatch da.ResultRetrieveBatch
-				err := retry.Do(
-					func() error {
-						resultRetrieveBatch = c.retrieveBatches(daMetaData)
+	for {
+		select {
+		case <-c.ctx.Done():
+			c.logger.Debug("Context cancelled.")
+			return da.ResultRetrieveBatch{}
+		default:
+			var resultRetrieveBatch da.ResultRetrieveBatch
+			err := retry.Do(
+				func() error {
+					resultRetrieveBatch = c.retrieveBatches(daMetaData)
 
-						if errors.Is(resultRetrieveBatch.Error, da.ErrRetrieval) {
-							c.logger.Error("Retrieve batch.", "error", resultRetrieveBatch.Error)
-							return resultRetrieveBatch.Error
-						}
+					if errors.Is(resultRetrieveBatch.Error, da.ErrRetrieval) {
+						c.logger.Error("Retrieve batch.", "error", resultRetrieveBatch.Error)
+						return resultRetrieveBatch.Error
+					}
 
-						return nil
-					},
-					retry.Attempts(uint(*c.config.RetryAttempts)), //nolint:gosec // RetryAttempts should be always positive
-					retry.DelayType(retry.FixedDelay),
-					retry.Delay(c.config.RetryDelay),
-				)
-				if err != nil {
-					c.logger.Error("RetrieveBatches process failed.", "error", err)
-				}
-				return resultRetrieveBatch
-
+					return nil
+				},
+				retry.Attempts(uint(*c.config.RetryAttempts)), //nolint:gosec // RetryAttempts should be always positive
+				retry.DelayType(retry.FixedDelay),
+				retry.Delay(c.config.RetryDelay),
+			)
+			if err != nil {
+				c.logger.Error("RetrieveBatches process failed.", "error", err)
 			}
+			return resultRetrieveBatch
+
 		}
-	*/
+	}
 }
 
 func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
-	return da.ResultRetrieveBatch{}
-	/*
-		ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
-		defer cancel()
+	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
+	defer cancel()
 
-		c.logger.Debug("Getting blob from DA.", "height", daMetaData.Height, "namespace", hex.EncodeToString(daMetaData.Namespace), "commitment", hex.EncodeToString(daMetaData.Commitment))
-		var batches []*types.Batch
-		blob, err := c.rpc.Get(ctx, daMetaData.Height, daMetaData.Namespace, daMetaData.Commitment)
-		if err != nil {
-			return da.ResultRetrieveBatch{
-				BaseResult: da.BaseResult{
-					Code:    da.StatusError,
-					Message: err.Error(),
-					Error:   da.ErrRetrieval,
-				},
-			}
-		}
-		if blob == nil {
-			return da.ResultRetrieveBatch{
-				BaseResult: da.BaseResult{
-					Code:    da.StatusError,
-					Message: "Blob not found",
-					Error:   da.ErrBlobNotFound,
-				},
-			}
-		}
+	c.logger.Debug("Getting blob from DA.", "height", daMetaData.Height, "namespace", hex.EncodeToString(daMetaData.Namespace), "commitment", hex.EncodeToString(daMetaData.Commitment))
+	var batches []*types.Batch
 
-		var batch pb.Batch
-		err = proto.Unmarshal(blob.Data, &batch)
-		if err != nil {
-			c.logger.Error("Unmarshal blob.", "daHeight", daMetaData.Height, "error", err)
-			return da.ResultRetrieveBatch{
-				BaseResult: da.BaseResult{
-					Code:    da.StatusError,
-					Message: err.Error(),
-					Error:   da.ErrBlobNotParsed,
-				},
-			}
-		}
+	// get wvm tx hash
 
-		c.logger.Debug("Blob retrieved successfully from DA.", "DA height", daMetaData.Height, "lastBlockHeight", batch.EndHeight)
+	txHash := common.BytesToHash(daMetaData.Commitment)
 
-		parsedBatch := new(types.Batch)
-		err = parsedBatch.FromProto(&batch)
-		if err != nil {
-			return da.ResultRetrieveBatch{
-				BaseResult: da.BaseResult{
-					Code:    da.StatusError,
-					Message: err.Error(),
-					Error:   da.ErrBlobNotParsed,
-				},
-			}
-		}
-		batches = append(batches, parsedBatch)
+	blob, err := c.getFromGateway(ctx, txHash.Hex())
+	if err != nil {
 		return da.ResultRetrieveBatch{
 			BaseResult: da.BaseResult{
-				Code:    da.StatusSuccess,
-				Message: "Batch retrieval successful",
+				Code:    da.StatusError,
+				Message: err.Error(),
+				Error:   da.ErrRetrieval,
 			},
-			Batches: batches,
 		}
-	*/
+	}
+	if blob == nil {
+		return da.ResultRetrieveBatch{
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: "Blob not found",
+				Error:   da.ErrBlobNotFound,
+			},
+		}
+	}
+
+	var batch pb.Batch
+	err = proto.Unmarshal(blob, &batch)
+	if err != nil {
+		c.logger.Error("Unmarshal blob.", "daHeight", daMetaData.Height, "error", err)
+		return da.ResultRetrieveBatch{
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: err.Error(),
+				Error:   da.ErrBlobNotParsed,
+			},
+		}
+	}
+
+	c.logger.Debug("Blob retrieved successfully from DA.", "DA height", daMetaData.Height, "lastBlockHeight", batch.EndHeight)
+
+	parsedBatch := new(types.Batch)
+	err = parsedBatch.FromProto(&batch)
+	if err != nil {
+		return da.ResultRetrieveBatch{
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: err.Error(),
+				Error:   da.ErrBlobNotParsed,
+			},
+		}
+	}
+	batches = append(batches, parsedBatch)
+	return da.ResultRetrieveBatch{
+		BaseResult: da.BaseResult{
+			Code:    da.StatusSuccess,
+			Message: "Batch retrieval successful",
+		},
+		Batches: batches,
+	}
+}
+
+const weaveVMGatewayURL = "https://gateway.wvm.dev/v1/calldata/%s"
+
+type WvmDymintBlob struct {
+	ArweaveBlockHash string
+	WvmBlockHash     string
+	WvmTxHash        string
+	Blob             []byte
+}
+
+// Modified get function with improved error handling
+func (c *DataAvailabilityLayerClient) getFromGateway(ctx context.Context, weaveVMTxHash string) (*WvmDymintBlob, error) {
+	type WvmRetrieverResponse struct {
+		ArweaveBlockHash   string `json:"arweave_block_hash"`
+		Calldata           string `json:"calldata"`
+		WarDecodedCalldata string `json:"war_decoded_calldata"`
+		WvmBlockHash       string `json:"weavevm_block_hash"`
+	}
+	r, err := http.NewRequestWithContext(ctx, http.MethodGet,
+		fmt.Sprintf(weaveVMGatewayURL,
+			weaveVMTxHash), nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	r.Header.Set("Accept", "application/json")
+	client := &http.Client{
+		Timeout: c.config.Timeout,
+	}
+
+	c.logger.Debug("sending request to WeaveVM data retriever",
+		"url", r.URL.String(),
+		"headers", r.Header)
+
+	resp, err := client.Do(r)
+	if err != nil {
+		return nil, fmt.Errorf("failed to call weaveVM-data-retriever: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	if err := validateResponse(resp, body); err != nil {
+		c.logger.Error("invalid response from WeaveVM data retriever",
+			"status", resp.Status,
+			"content_type", resp.Header.Get("Content-Type"),
+			"body", string(body))
+		return nil, fmt.Errorf("invalid response: %w", err)
+	}
+
+	var weaveVMData WvmRetrieverResponse
+	if err = json.Unmarshal(body, &weaveVMData); err != nil {
+		c.logger.Error("failed to unmarshal response",
+			"error", err,
+			"body", string(body),
+			"content_type", resp.Header.Get("Content-Type"))
+		return nil, fmt.Errorf("failed to unmarshal response: %w, body: %s", err, string(body))
+	}
+
+	c.logger.Info("weaveVM backend: get data from weaveVM",
+		"arweave_block_hash", weaveVMData.ArweaveBlockHash,
+		"weavevm_block_hash", weaveVMData.WvmBlockHash,
+		"calldata_length", len(weaveVMData.Calldata))
+
+	blob, err := hexutil.Decode(weaveVMData.Calldata)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode calldata: %w", err)
+	}
+
+	if len(blob) == 0 {
+		return nil, fmt.Errorf("decoded blob has length zero")
+	}
+
+	return &WvmDymintBlob{ArweaveBlockHash: weaveVMData.ArweaveBlockHash, WvmBlockHash: weaveVMData.WvmBlockHash, WvmTxHash: weaveVMTxHash, Blob: blob}, nil
+}
+
+func validateResponse(resp *http.Response, body []byte) error {
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("unexpected status code: %d, body: %s", resp.StatusCode, string(body))
+	}
+
+	contentType := resp.Header.Get("Content-Type")
+	if !strings.Contains(contentType, "application/json") {
+		return fmt.Errorf("unexpected content type: %s, body: %s", contentType, string(body))
+	}
+
+	return nil
 }
 
 func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
-	return da.ResultCheckBatch{}
-	/*
-		var availabilityResult da.ResultCheckBatch
-		for {
-			select {
-			case <-c.ctx.Done():
-				c.logger.Debug("Context cancelled")
-				return da.ResultCheckBatch{}
-			default:
-				err := retry.Do(
-					func() error {
-						result := c.checkBatchAvailability(daMetaData)
-						availabilityResult = result
+	var availabilityResult da.ResultCheckBatch
+	for {
+		select {
+		case <-c.ctx.Done():
+			c.logger.Debug("Context cancelled")
+			return da.ResultCheckBatch{}
+		default:
+			err := retry.Do(
+				func() error {
+					result := c.checkBatchAvailability(daMetaData)
+					availabilityResult = result
 
-						if result.Code != da.StatusSuccess {
-							c.logger.Error("Blob submitted not found in DA. Retrying availability check.")
-							return da.ErrBlobNotFound
-						}
+					if result.Code != da.StatusSuccess {
+						c.logger.Error("Blob submitted not found in DA. Retrying availability check.")
+						return da.ErrBlobNotFound
+					}
 
-						return nil
-					},
-					retry.Attempts(uint(*c.config.RetryAttempts)), //nolint:gosec // RetryAttempts should be always positive
-					retry.DelayType(retry.FixedDelay),
-					retry.Delay(c.config.RetryDelay),
-				)
-				if err != nil {
-					c.logger.Error("CheckAvailability process failed.", "error", err)
-				}
-				return availabilityResult
+					return nil
+				},
+				retry.Attempts(uint(*c.config.RetryAttempts)), //nolint:gosec // RetryAttempts should be always positive
+				retry.DelayType(retry.FixedDelay),
+				retry.Delay(c.config.RetryDelay),
+			)
+			if err != nil {
+				c.logger.Error("CheckAvailability process failed.", "error", err)
 			}
+			return availabilityResult
 		}
-	*/
+	}
 }
 
 func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
-	return da.ResultCheckBatch{}
-	/*
-		var proofs []*blob.Proof
+	DACheckMetaData := &da.DACheckMetaData{
+		Client:     daMetaData.Client,
+		Height:     daMetaData.Height,
+		Commitment: daMetaData.Commitment,
+	}
 
-		DACheckMetaData := &da.DACheckMetaData{
-			Client:     daMetaData.Client,
-			Height:     daMetaData.Height,
-			Commitment: daMetaData.Commitment,
-			Namespace:  daMetaData.Namespace,
-		}
-
-		dah, err := c.getDataAvailabilityHeaders(daMetaData.Height)
-		if err != nil {
-			// Returning Data Availability header Data Root for dispute validation
-			return da.ResultCheckBatch{
-				BaseResult: da.BaseResult{
-					Code:    da.StatusError,
-					Message: fmt.Sprintf("Error getting row to data root proofs: %s", err),
-					Error:   da.ErrUnableToGetProof,
-				},
-				CheckMetaData: DACheckMetaData,
-			}
-		}
-		DACheckMetaData.Root = dah.Hash()
-		included := false
-
-		proof, err := c.getProof(daMetaData)
-		if err != nil || proof == nil {
-			// TODO (srene): Not getting proof means there is no existing data for the namespace and the commitment (the commitment is wrong).
-			// Therefore we need to prove whether the commitment is wrong or the span does not exists.
-			// In case the span is correct it is necessary to return the data for the span and the proofs to the data root, so we can prove the data
-			// is the data for the span, and reproducing the commitment will generate a different one.
-			return da.ResultCheckBatch{
-				BaseResult: da.BaseResult{
-					Code:    da.StatusError,
-					Message: fmt.Sprintf("Error getting NMT proof: %s", err),
-					Error:   da.ErrUnableToGetProof,
-				},
-				CheckMetaData: DACheckMetaData,
-			}
-		}
-
-		nmtProofs := []*nmt.Proof(*proof)
-		shares := 0
-		index := 0
-		for j, proof := range nmtProofs {
-			if j == 0 {
-				index = proof.Start()
-			}
-			shares += proof.End() - proof.Start()
-		}
-
-		if daMetaData.Index > 0 && daMetaData.Length > 0 {
-			if index != daMetaData.Index || shares != daMetaData.Length {
-				// TODO (srene): In this case the commitment is correct but does not match the span.
-				// If the span is correct we have to repeat the previous step (sending data + proof of data)
-				// In case the span is not correct we need to send unavailable proof by sending proof of any row root to data root
-				return da.ResultCheckBatch{
-					CheckMetaData: DACheckMetaData,
-					BaseResult: da.BaseResult{
-						Code: da.StatusError,
-						Message: fmt.Sprintf("Proof index not matching: %d != %d or length not matching: %d != %d",
-							index, daMetaData.Index, shares, daMetaData.Length),
-						Error: da.ErrProofNotMatching,
-					},
-				}
-			}
-		}
-
-		included, err = c.validateProof(daMetaData, proof)
-		// The both cases below (there is an error validating the proof or the proof is wrong) should not happen
-		// if we consider correct functioning of the celestia light node.
-		// This will only happen in case the previous step the celestia light node returned wrong proofs..
-		if err != nil {
-			return da.ResultCheckBatch{
-				BaseResult: da.BaseResult{
-					Code:    da.StatusError,
-					Message: "Error validating proof",
-					Error:   err,
-				},
-				CheckMetaData: DACheckMetaData,
-			}
-		} else if !included {
-			return da.ResultCheckBatch{
-				BaseResult: da.BaseResult{
-					Code:    da.StatusError,
-					Message: "Blob not included",
-					Error:   da.ErrBlobNotIncluded,
-				},
-				CheckMetaData: DACheckMetaData,
-			}
-		}
-		proofs = append(proofs, proof)
-
-		DACheckMetaData.Index = index
-		DACheckMetaData.Length = shares
-		DACheckMetaData.Proofs = proofs
+	txHash := common.BytesToHash(daMetaData.Commitment)
+	res, err := c.getFromGateway(context.Background(), txHash.Hex())
+	if err != nil {
 		return da.ResultCheckBatch{
 			BaseResult: da.BaseResult{
-				Code:    da.StatusSuccess,
-				Message: "Blob available",
+				Code:    da.StatusError,
+				Message: err.Error(),
+				Error:   da.ErrBlobNotFound,
 			},
 			CheckMetaData: DACheckMetaData,
 		}
-	*/
+	}
+
+	return da.ResultCheckBatch{
+		BaseResult: da.BaseResult{
+			Code:    da.StatusSuccess,
+			Message: "batch available",
+		},
+		CheckMetaData: DACheckMetaData,
+	}
 }
 
 // Submit submits the Blobs to Data Availability layer.
