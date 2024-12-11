@@ -316,7 +316,7 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMet
 	}
 
 	var batch pb.Batch
-	err = proto.Unmarshal(blob, &batch)
+	err = proto.Unmarshal(blob.Blob, &batch)
 	if err != nil {
 		c.logger.Error("Unmarshal blob.", "daHeight", daMetaData.Height, "error", err)
 		return da.ResultRetrieveBatch{
@@ -476,18 +476,31 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 
 func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
 	DACheckMetaData := &da.DACheckMetaData{
-		Client:     daMetaData.Client,
-		Height:     daMetaData.Height,
-		Commitment: daMetaData.Commitment,
+		Client:              daMetaData.Client,
+		WvmArweaveBlockHash: daMetaData.WvmArweaveBlockHash,
+		WvmTxHash:           daMetaData.WvmTxHash,
 	}
 
 	txHash := common.BytesToHash(daMetaData.Commitment)
-	res, err := c.getFromGateway(context.Background(), txHash.Hex())
+	wvmBlob, err := c.getFromGateway(context.Background(), txHash.Hex())
 	if err != nil {
 		return da.ResultCheckBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
 				Message: err.Error(),
+				Error:   da.ErrBlobNotFound,
+			},
+			CheckMetaData: DACheckMetaData,
+		}
+	}
+
+	// Verify both WeaveVM tx hash and Arweave block hash match what we got during submission
+	if daMetaData.WvmTxHash != wvmBlob.WvmTxHash ||
+		daMetaData.WvmArweaveBlockHash != wvmBlob.ArweaveBlockHash {
+		return da.ResultCheckBatch{
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: "data verification mismatch",
 				Error:   da.ErrBlobNotFound,
 			},
 			CheckMetaData: DACheckMetaData,
