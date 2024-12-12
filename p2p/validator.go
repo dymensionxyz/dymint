@@ -16,16 +16,11 @@ type StateGetter interface {
 	GetRevision() uint64
 }
 
-
 type GossipValidator func(*GossipMessage) bool
 
-
 type IValidator interface {
-	
-	
 	TxValidator(mp mempool.Mempool, mpoolIDS *nodemempool.MempoolIDs) GossipValidator
 }
-
 
 type Validator struct {
 	logger      types.Logger
@@ -34,16 +29,12 @@ type Validator struct {
 
 var _ IValidator = (*Validator)(nil)
 
-
 func NewValidator(logger types.Logger, blockmanager StateGetter) *Validator {
 	return &Validator{
 		logger:      logger,
 		stateGetter: blockmanager,
 	}
 }
-
-
-
 
 func (v *Validator) TxValidator(mp mempool.Mempool, mpoolIDS *nodemempool.MempoolIDs) GossipValidator {
 	return func(txMessage *GossipMessage) bool {
@@ -59,7 +50,7 @@ func (v *Validator) TxValidator(mp mempool.Mempool, mpoolIDS *nodemempool.Mempoo
 		case errors.Is(err, mempool.ErrTxInCache):
 			return true
 		case errors.Is(err, mempool.ErrMempoolIsFull{}):
-			return true 
+			return true
 		case errors.Is(err, mempool.ErrTxTooLarge{}):
 			return false
 		case errors.Is(err, mempool.ErrPreCheck{}):
@@ -72,7 +63,6 @@ func (v *Validator) TxValidator(mp mempool.Mempool, mpoolIDS *nodemempool.Mempoo
 		return res.GetCheckTx().Code == abci.CodeTypeOK
 	}
 }
-
 
 func (v *Validator) BlockValidator() GossipValidator {
 	return func(blockMsg *GossipMessage) bool {

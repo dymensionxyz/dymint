@@ -1,5 +1,3 @@
-
-
 package sequencer
 
 import (
@@ -12,7 +10,6 @@ import (
 	sequencer "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/sequencer"
 )
 
-
 type MockQueryClient struct {
 	mock.Mock
 }
@@ -24,7 +21,6 @@ type MockQueryClient_Expecter struct {
 func (_m *MockQueryClient) EXPECT() *MockQueryClient_Expecter {
 	return &MockQueryClient_Expecter{mock: &_m.Mock}
 }
-
 
 func (_m *MockQueryClient) GetNextProposerByRollapp(ctx context.Context, in *sequencer.QueryGetNextProposerByRollappRequest, opts ...grpc.CallOption) (*sequencer.QueryGetNextProposerByRollappResponse, error) {
 	_va := make([]interface{}, len(opts))
@@ -62,14 +58,9 @@ func (_m *MockQueryClient) GetNextProposerByRollapp(ctx context.Context, in *seq
 	return r0, r1
 }
 
-
 type MockQueryClient_GetNextProposerByRollapp_Call struct {
 	*mock.Call
 }
-
-
-
-
 
 func (_e *MockQueryClient_Expecter) GetNextProposerByRollapp(ctx interface{}, in interface{}, opts ...interface{}) *MockQueryClient_GetNextProposerByRollapp_Call {
 	return &MockQueryClient_GetNextProposerByRollapp_Call{Call: _e.mock.On("GetNextProposerByRollapp",
@@ -98,7 +89,6 @@ func (_c *MockQueryClient_GetNextProposerByRollapp_Call) RunAndReturn(run func(c
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockQueryClient) GetProposerByRollapp(ctx context.Context, in *sequencer.QueryGetProposerByRollappRequest, opts ...grpc.CallOption) (*sequencer.QueryGetProposerByRollappResponse, error) {
 	_va := make([]interface{}, len(opts))
@@ -136,14 +126,9 @@ func (_m *MockQueryClient) GetProposerByRollapp(ctx context.Context, in *sequenc
 	return r0, r1
 }
 
-
 type MockQueryClient_GetProposerByRollapp_Call struct {
 	*mock.Call
 }
-
-
-
-
 
 func (_e *MockQueryClient_Expecter) GetProposerByRollapp(ctx interface{}, in interface{}, opts ...interface{}) *MockQueryClient_GetProposerByRollapp_Call {
 	return &MockQueryClient_GetProposerByRollapp_Call{Call: _e.mock.On("GetProposerByRollapp",
@@ -172,7 +157,6 @@ func (_c *MockQueryClient_GetProposerByRollapp_Call) RunAndReturn(run func(conte
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockQueryClient) Params(ctx context.Context, in *sequencer.QueryParamsRequest, opts ...grpc.CallOption) (*sequencer.QueryParamsResponse, error) {
 	_va := make([]interface{}, len(opts))
@@ -210,14 +194,9 @@ func (_m *MockQueryClient) Params(ctx context.Context, in *sequencer.QueryParams
 	return r0, r1
 }
 
-
 type MockQueryClient_Params_Call struct {
 	*mock.Call
 }
-
-
-
-
 
 func (_e *MockQueryClient_Expecter) Params(ctx interface{}, in interface{}, opts ...interface{}) *MockQueryClient_Params_Call {
 	return &MockQueryClient_Params_Call{Call: _e.mock.On("Params",
@@ -246,7 +225,6 @@ func (_c *MockQueryClient_Params_Call) RunAndReturn(run func(context.Context, *s
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockQueryClient) Proposers(ctx context.Context, in *sequencer.QueryProposersRequest, opts ...grpc.CallOption) (*sequencer.QueryProposersResponse, error) {
 	_va := make([]interface{}, len(opts))
@@ -284,14 +262,9 @@ func (_m *MockQueryClient) Proposers(ctx context.Context, in *sequencer.QueryPro
 	return r0, r1
 }
 
-
 type MockQueryClient_Proposers_Call struct {
 	*mock.Call
 }
-
-
-
-
 
 func (_e *MockQueryClient_Expecter) Proposers(ctx interface{}, in interface{}, opts ...interface{}) *MockQueryClient_Proposers_Call {
 	return &MockQueryClient_Proposers_Call{Call: _e.mock.On("Proposers",
@@ -320,7 +293,6 @@ func (_c *MockQueryClient_Proposers_Call) RunAndReturn(run func(context.Context,
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockQueryClient) Sequencer(ctx context.Context, in *sequencer.QueryGetSequencerRequest, opts ...grpc.CallOption) (*sequencer.QueryGetSequencerResponse, error) {
 	_va := make([]interface{}, len(opts))
@@ -358,14 +330,9 @@ func (_m *MockQueryClient) Sequencer(ctx context.Context, in *sequencer.QueryGet
 	return r0, r1
 }
 
-
 type MockQueryClient_Sequencer_Call struct {
 	*mock.Call
 }
-
-
-
-
 
 func (_e *MockQueryClient_Expecter) Sequencer(ctx interface{}, in interface{}, opts ...interface{}) *MockQueryClient_Sequencer_Call {
 	return &MockQueryClient_Sequencer_Call{Call: _e.mock.On("Sequencer",
@@ -394,7 +361,6 @@ func (_c *MockQueryClient_Sequencer_Call) RunAndReturn(run func(context.Context,
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockQueryClient) Sequencers(ctx context.Context, in *sequencer.QuerySequencersRequest, opts ...grpc.CallOption) (*sequencer.QuerySequencersResponse, error) {
 	_va := make([]interface{}, len(opts))
@@ -432,14 +398,9 @@ func (_m *MockQueryClient) Sequencers(ctx context.Context, in *sequencer.QuerySe
 	return r0, r1
 }
 
-
 type MockQueryClient_Sequencers_Call struct {
 	*mock.Call
 }
-
-
-
-
 
 func (_e *MockQueryClient_Expecter) Sequencers(ctx interface{}, in interface{}, opts ...interface{}) *MockQueryClient_Sequencers_Call {
 	return &MockQueryClient_Sequencers_Call{Call: _e.mock.On("Sequencers",
@@ -468,7 +429,6 @@ func (_c *MockQueryClient_Sequencers_Call) RunAndReturn(run func(context.Context
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockQueryClient) SequencersByRollapp(ctx context.Context, in *sequencer.QueryGetSequencersByRollappRequest, opts ...grpc.CallOption) (*sequencer.QueryGetSequencersByRollappResponse, error) {
 	_va := make([]interface{}, len(opts))
@@ -506,14 +466,9 @@ func (_m *MockQueryClient) SequencersByRollapp(ctx context.Context, in *sequence
 	return r0, r1
 }
 
-
 type MockQueryClient_SequencersByRollapp_Call struct {
 	*mock.Call
 }
-
-
-
-
 
 func (_e *MockQueryClient_Expecter) SequencersByRollapp(ctx interface{}, in interface{}, opts ...interface{}) *MockQueryClient_SequencersByRollapp_Call {
 	return &MockQueryClient_SequencersByRollapp_Call{Call: _e.mock.On("SequencersByRollapp",
@@ -542,7 +497,6 @@ func (_c *MockQueryClient_SequencersByRollapp_Call) RunAndReturn(run func(contex
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockQueryClient) SequencersByRollappByStatus(ctx context.Context, in *sequencer.QueryGetSequencersByRollappByStatusRequest, opts ...grpc.CallOption) (*sequencer.QueryGetSequencersByRollappByStatusResponse, error) {
 	_va := make([]interface{}, len(opts))
@@ -580,14 +534,9 @@ func (_m *MockQueryClient) SequencersByRollappByStatus(ctx context.Context, in *
 	return r0, r1
 }
 
-
 type MockQueryClient_SequencersByRollappByStatus_Call struct {
 	*mock.Call
 }
-
-
-
-
 
 func (_e *MockQueryClient_Expecter) SequencersByRollappByStatus(ctx interface{}, in interface{}, opts ...interface{}) *MockQueryClient_SequencersByRollappByStatus_Call {
 	return &MockQueryClient_SequencersByRollappByStatus_Call{Call: _e.mock.On("SequencersByRollappByStatus",
@@ -617,12 +566,11 @@ func (_c *MockQueryClient_SequencersByRollappByStatus_Call) RunAndReturn(run fun
 	return _c
 }
 
-
-
 func NewMockQueryClient(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *MockQueryClient {
+},
+) *MockQueryClient {
 	mock := &MockQueryClient{}
 	mock.Mock.Test(t)
 

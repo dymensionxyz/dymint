@@ -13,106 +13,52 @@ import (
 const (
 	MempoolChannel = byte(0x30)
 
-	
 	PeerCatchupSleepIntervalMS = 100
 
-	
-	
 	UnknownPeerID uint16 = 0
 
 	MaxActiveIDs = math.MaxUint16
 )
 
-
-
-
-
 type Mempool interface {
-	
-	
 	CheckTx(tx types.Tx, callback func(*abci.Response), txInfo TxInfo) error
 
-	
-	
 	RemoveTxByKey(txKey types.TxKey) error
 
-	
-	
-	
-	
-	
-	
 	ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs
 
-	
-	
-	
 	ReapMaxTxs(max int) types.Txs
 
-	
-	
 	Lock()
 
-	
 	Unlock()
 
-	
-	
-	
-	
-	
-	
 	Update(
 		blockHeight int64,
 		blockTxs types.Txs,
 		deliverTxResponses []*abci.ResponseDeliverTx,
 	) error
 
-	
 	SetPreCheckFn(fn PreCheckFunc)
 
-	
 	SetPostCheckFn(fn PostCheckFunc)
 
-	
-	
-	
-	
-	
 	FlushAppConn() error
 
-	
 	Flush()
 
-	
-	
-	
-	
-	
 	TxsAvailable() <-chan struct{}
 
-	
-	
 	EnableTxsAvailable()
 
-	
 	Size() int
 
-	
 	SizeBytes() int64
 }
 
-
-
-
 type PreCheckFunc func(types.Tx) error
 
-
-
-
 type PostCheckFunc func(types.Tx, *abci.ResponseCheckTx) error
-
-
 
 func PreCheckMaxBytes(maxBytes int64) PreCheckFunc {
 	return func(tx types.Tx) error {
@@ -125,8 +71,6 @@ func PreCheckMaxBytes(maxBytes int64) PreCheckFunc {
 		return nil
 	}
 }
-
-
 
 func PostCheckMaxGas(maxGas int64) PostCheckFunc {
 	return func(tx types.Tx, res *abci.ResponseCheckTx) error {
@@ -146,13 +90,9 @@ func PostCheckMaxGas(maxGas int64) PostCheckFunc {
 	}
 }
 
-
 var ErrTxInCache = errors.New("tx already exists in cache")
 
-
 type TxKey [sha256.Size]byte
-
-
 
 type ErrTxTooLarge struct {
 	Max    int
@@ -162,8 +102,6 @@ type ErrTxTooLarge struct {
 func (e ErrTxTooLarge) Error() string {
 	return fmt.Sprintf("Tx too large. Max size is %d, but got %d", e.Max, e.Actual)
 }
-
-
 
 type ErrMempoolIsFull struct {
 	NumTxs      int
@@ -182,7 +120,6 @@ func (e ErrMempoolIsFull) Error() string {
 	)
 }
 
-
 type ErrPreCheck struct {
 	Reason error
 }
@@ -190,7 +127,6 @@ type ErrPreCheck struct {
 func (e ErrPreCheck) Error() string {
 	return e.Reason.Error()
 }
-
 
 func IsPreCheckError(err error) bool {
 	return errors.As(err, &ErrPreCheck{})

@@ -1,5 +1,3 @@
-
-
 package proxy
 
 import (
@@ -8,7 +6,6 @@ import (
 
 	types "github.com/tendermint/tendermint/abci/types"
 )
-
 
 type MockAppConnConsensus struct {
 	mock.Mock
@@ -21,7 +18,6 @@ type MockAppConnConsensus_Expecter struct {
 func (_m *MockAppConnConsensus) EXPECT() *MockAppConnConsensus_Expecter {
 	return &MockAppConnConsensus_Expecter{mock: &_m.Mock}
 }
-
 
 func (_m *MockAppConnConsensus) BeginBlockSync(_a0 types.RequestBeginBlock) (*types.ResponseBeginBlock, error) {
 	ret := _m.Called(_a0)
@@ -52,12 +48,9 @@ func (_m *MockAppConnConsensus) BeginBlockSync(_a0 types.RequestBeginBlock) (*ty
 	return r0, r1
 }
 
-
 type MockAppConnConsensus_BeginBlockSync_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockAppConnConsensus_Expecter) BeginBlockSync(_a0 interface{}) *MockAppConnConsensus_BeginBlockSync_Call {
 	return &MockAppConnConsensus_BeginBlockSync_Call{Call: _e.mock.On("BeginBlockSync", _a0)}
@@ -79,7 +72,6 @@ func (_c *MockAppConnConsensus_BeginBlockSync_Call) RunAndReturn(run func(types.
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockAppConnConsensus) CommitSync() (*types.ResponseCommit, error) {
 	ret := _m.Called()
@@ -110,11 +102,9 @@ func (_m *MockAppConnConsensus) CommitSync() (*types.ResponseCommit, error) {
 	return r0, r1
 }
 
-
 type MockAppConnConsensus_CommitSync_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockAppConnConsensus_Expecter) CommitSync() *MockAppConnConsensus_CommitSync_Call {
 	return &MockAppConnConsensus_CommitSync_Call{Call: _e.mock.On("CommitSync")}
@@ -137,7 +127,6 @@ func (_c *MockAppConnConsensus_CommitSync_Call) RunAndReturn(run func() (*types.
 	return _c
 }
 
-
 func (_m *MockAppConnConsensus) DeliverTxAsync(_a0 types.RequestDeliverTx) *abcicli.ReqRes {
 	ret := _m.Called(_a0)
 
@@ -157,12 +146,9 @@ func (_m *MockAppConnConsensus) DeliverTxAsync(_a0 types.RequestDeliverTx) *abci
 	return r0
 }
 
-
 type MockAppConnConsensus_DeliverTxAsync_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockAppConnConsensus_Expecter) DeliverTxAsync(_a0 interface{}) *MockAppConnConsensus_DeliverTxAsync_Call {
 	return &MockAppConnConsensus_DeliverTxAsync_Call{Call: _e.mock.On("DeliverTxAsync", _a0)}
@@ -184,7 +170,6 @@ func (_c *MockAppConnConsensus_DeliverTxAsync_Call) RunAndReturn(run func(types.
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockAppConnConsensus) EndBlockSync(_a0 types.RequestEndBlock) (*types.ResponseEndBlock, error) {
 	ret := _m.Called(_a0)
@@ -215,12 +200,9 @@ func (_m *MockAppConnConsensus) EndBlockSync(_a0 types.RequestEndBlock) (*types.
 	return r0, r1
 }
 
-
 type MockAppConnConsensus_EndBlockSync_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockAppConnConsensus_Expecter) EndBlockSync(_a0 interface{}) *MockAppConnConsensus_EndBlockSync_Call {
 	return &MockAppConnConsensus_EndBlockSync_Call{Call: _e.mock.On("EndBlockSync", _a0)}
@@ -243,7 +225,6 @@ func (_c *MockAppConnConsensus_EndBlockSync_Call) RunAndReturn(run func(types.Re
 	return _c
 }
 
-
 func (_m *MockAppConnConsensus) Error() error {
 	ret := _m.Called()
 
@@ -261,11 +242,9 @@ func (_m *MockAppConnConsensus) Error() error {
 	return r0
 }
 
-
 type MockAppConnConsensus_Error_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockAppConnConsensus_Expecter) Error() *MockAppConnConsensus_Error_Call {
 	return &MockAppConnConsensus_Error_Call{Call: _e.mock.On("Error")}
@@ -287,7 +266,6 @@ func (_c *MockAppConnConsensus_Error_Call) RunAndReturn(run func() error) *MockA
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockAppConnConsensus) InitChainSync(_a0 types.RequestInitChain) (*types.ResponseInitChain, error) {
 	ret := _m.Called(_a0)
@@ -318,12 +296,9 @@ func (_m *MockAppConnConsensus) InitChainSync(_a0 types.RequestInitChain) (*type
 	return r0, r1
 }
 
-
 type MockAppConnConsensus_InitChainSync_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockAppConnConsensus_Expecter) InitChainSync(_a0 interface{}) *MockAppConnConsensus_InitChainSync_Call {
 	return &MockAppConnConsensus_InitChainSync_Call{Call: _e.mock.On("InitChainSync", _a0)}
@@ -346,17 +321,13 @@ func (_c *MockAppConnConsensus_InitChainSync_Call) RunAndReturn(run func(types.R
 	return _c
 }
 
-
 func (_m *MockAppConnConsensus) SetResponseCallback(_a0 abcicli.Callback) {
 	_m.Called(_a0)
 }
 
-
 type MockAppConnConsensus_SetResponseCallback_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockAppConnConsensus_Expecter) SetResponseCallback(_a0 interface{}) *MockAppConnConsensus_SetResponseCallback_Call {
 	return &MockAppConnConsensus_SetResponseCallback_Call{Call: _e.mock.On("SetResponseCallback", _a0)}
@@ -379,12 +350,11 @@ func (_c *MockAppConnConsensus_SetResponseCallback_Call) RunAndReturn(run func(a
 	return _c
 }
 
-
-
 func NewMockAppConnConsensus(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *MockAppConnConsensus {
+},
+) *MockAppConnConsensus {
 	mock := &MockAppConnConsensus{}
 	mock.Mock.Test(t)
 

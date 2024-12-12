@@ -4,12 +4,7 @@ import (
 	uevent "github.com/dymensionxyz/dymint/utils/event"
 )
 
-
-
-
-
 const (
-	
 	EventTypeKey = "p2p.event"
 )
 
@@ -18,12 +13,6 @@ const (
 	EventNewBlockSyncBlock = "NewBlockSyncBlock"
 )
 
-
-
-
-
-
 var EventQueryNewGossipedBlock = uevent.QueryFor(EventTypeKey, EventNewGossipedBlock)
-
 
 var EventQueryNewBlockSyncBlock = uevent.QueryFor(EventTypeKey, EventNewBlockSyncBlock)

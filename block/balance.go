@@ -14,7 +14,6 @@ import (
 
 const CheckBalancesInterval = 3 * time.Minute
 
-
 func (m *Manager) MonitorBalances(ctx context.Context) error {
 	ticker := time.NewTicker(CheckBalancesInterval)
 	defer ticker.Stop()

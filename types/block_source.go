@@ -24,7 +24,7 @@ var AllSources = []string{"none", "produced", "gossip", "blocksync", "da", "loca
 type BlockMetaData struct {
 	Source       BlockSource
 	DAHeight     uint64
-	SequencerSet Sequencers 
+	SequencerSet Sequencers
 }
 
 type CachedBlock struct {

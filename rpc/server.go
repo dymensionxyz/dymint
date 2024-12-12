@@ -26,7 +26,6 @@ import (
 	"github.com/dymensionxyz/dymint/rpc/middleware"
 )
 
-
 type Server struct {
 	*service.BaseService
 
@@ -43,20 +42,17 @@ type Server struct {
 
 const (
 	onStopTimeout = 5 * time.Second
-	
+
 	readHeaderTimeout = 5 * time.Second
 )
 
-
 type Option func(*Server)
-
 
 func WithListener(listener net.Listener) Option {
 	return func(d *Server) {
 		d.listener = listener
 	}
 }
-
 
 func NewServer(node *node.Node, config *config.RPCConfig, logger log.Logger, options ...Option) *Server {
 	srv := &Server{
@@ -66,15 +62,11 @@ func NewServer(node *node.Node, config *config.RPCConfig, logger log.Logger, opt
 	}
 	srv.BaseService = service.NewBaseService(logger, "RPC", srv)
 
-	
 	for _, option := range options {
 		option(srv)
 	}
 	return srv
 }
-
-
-
 
 func (s *Server) Client() rpcclient.Client {
 	return s.client
@@ -84,12 +76,10 @@ func (s *Server) PubSubServer() *pubsub.Server {
 	return s.node.PubSubServer()
 }
 
-
 func (s *Server) OnStart() error {
 	s.startEventListener()
 	return s.startRPC()
 }
-
 
 func (s *Server) OnStop() {
 	ctx, cancel := context.WithTimeout(context.Background(), onStopTimeout)
@@ -99,11 +89,9 @@ func (s *Server) OnStop() {
 	}
 }
 
-
 func (s *Server) startEventListener() {
 	go uevent.MustSubscribe(context.Background(), s.PubSubServer(), "RPCNodeHealthStatusHandler", events.QueryHealthStatus, s.onNodeHealthUpdate, s.Logger)
 }
-
 
 func (s *Server) onNodeHealthUpdate(event pubsub.Message) {
 	eventData, _ := event.Data().(*events.DataHealthStatus)
@@ -169,13 +157,11 @@ func (s *Server) startRPC() error {
 		handler = c.Handler(handler)
 	}
 
-	
 	reg := middleware.GetRegistry()
 	reg.Register(middleware.Status{Err: s.getHealthStatus})
 	middlewareClient := middleware.NewClient(*reg, s.Logger.With("module", "rpc/middleware"))
 	handler = middlewareClient.Handle(handler)
 
-	
 	go func() {
 		err := s.serve(listener, handler)
 		if !errors.Is(err, http.ErrServerClosed) {

@@ -15,5 +15,5 @@ func GetDRSVersion() (uint32, error) {
 	if err != nil {
 		return uint32(0), fmt.Errorf("converting DRS version to int: %v", err)
 	}
-	return uint32(currentDRS), nil 
+	return uint32(currentDRS), nil
 }

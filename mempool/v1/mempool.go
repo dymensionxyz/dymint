@@ -20,44 +20,29 @@ import (
 
 var _ mempool.Mempool = (*TxMempool)(nil)
 
-
 type TxMempoolOption func(*TxMempool)
 
-
-
-
-
-
-
-
-
-
 type TxMempool struct {
-	
 	logger       log.Logger
 	config       *config.MempoolConfig
 	proxyAppConn proxy.AppConnMempool
 	metrics      *mempool.Metrics
-	cache        mempool.TxCache 
+	cache        mempool.TxCache
 
-	
-	txsBytes  int64 
-	txRecheck int64 
+	txsBytes  int64
+	txRecheck int64
 
-	
 	mtx                  *sync.RWMutex
 	notifiedTxsAvailable bool
-	txsAvailable         chan struct{} 
+	txsAvailable         chan struct{}
 	preCheck             mempool.PreCheckFunc
 	postCheck            mempool.PostCheckFunc
-	height               int64 
+	height               int64
 
-	txs        *clist.CList 
+	txs        *clist.CList
 	txByKey    map[types.TxKey]*clist.CElement
-	txBySender map[string]*clist.CElement 
+	txBySender map[string]*clist.CElement
 }
-
-
 
 func NewTxMempool(
 	logger log.Logger,
@@ -91,58 +76,32 @@ func NewTxMempool(
 	return txmp
 }
 
-
-
-
 func WithPreCheck(f mempool.PreCheckFunc) TxMempoolOption {
 	return func(txmp *TxMempool) { txmp.preCheck = f }
 }
-
-
-
 
 func WithPostCheck(f mempool.PostCheckFunc) TxMempoolOption {
 	return func(txmp *TxMempool) { txmp.postCheck = f }
 }
 
-
 func WithMetrics(metrics *mempool.Metrics) TxMempoolOption {
 	return func(txmp *TxMempool) { txmp.metrics = metrics }
 }
 
-
-
 func (txmp *TxMempool) Lock() { txmp.mtx.Lock() }
-
 
 func (txmp *TxMempool) Unlock() { txmp.mtx.Unlock() }
 
-
-
 func (txmp *TxMempool) Size() int { return txmp.txs.Len() }
-
-
 
 func (txmp *TxMempool) SizeBytes() int64 { return atomic.LoadInt64(&txmp.txsBytes) }
 
-
-
-
-
 func (txmp *TxMempool) FlushAppConn() error {
-	
-	
-	
-	
-	
-	
 	txmp.mtx.Unlock()
 	defer txmp.mtx.Lock()
 
 	return txmp.proxyAppConn.FlushSync()
 }
-
-
 
 func (txmp *TxMempool) EnableTxsAvailable() {
 	txmp.mtx.Lock()
@@ -151,60 +110,31 @@ func (txmp *TxMempool) EnableTxsAvailable() {
 	txmp.txsAvailable = make(chan struct{}, 1)
 }
 
-
-
 func (txmp *TxMempool) TxsAvailable() <-chan struct{} { return txmp.txsAvailable }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 func (txmp *TxMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo mempool.TxInfo) error {
-	
-	
-	
 	height, err := func() (int64, error) {
 		txmp.mtx.RLock()
 		defer txmp.mtx.RUnlock()
 
-		
 		if len(tx) > txmp.config.MaxTxBytes {
 			return 0, mempool.ErrTxTooLarge{Max: txmp.config.MaxTxBytes, Actual: len(tx)}
 		}
 
-		
 		if txmp.preCheck != nil {
 			if err := txmp.preCheck(tx); err != nil {
 				return 0, mempool.ErrPreCheck{Reason: err}
 			}
 		}
 
-		
 		if err := txmp.proxyAppConn.Error(); err != nil {
 			return 0, err
 		}
 
 		txKey := tx.Key()
 
-		
 		if !txmp.cache.Push(tx) {
-			
+
 			if elt, ok := txmp.txByKey[txKey]; ok {
 				w, _ := elt.Value.(*WrappedTx)
 				w.SetPeer(txInfo.SenderID)
@@ -217,13 +147,6 @@ func (txmp *TxMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo memp
 		return err
 	}
 
-	
-	
-	
-	
-	
-	
-	
 	reqRes := txmp.proxyAppConn.CheckTxAsync(abci.RequestCheckTx{Tx: tx})
 	if err := txmp.proxyAppConn.FlushSync(); err != nil {
 		return err
@@ -244,16 +167,11 @@ func (txmp *TxMempool) CheckTx(tx types.Tx, cb func(*abci.Response), txInfo memp
 	return nil
 }
 
-
-
-
 func (txmp *TxMempool) RemoveTxByKey(txKey types.TxKey) error {
 	txmp.mtx.Lock()
 	defer txmp.mtx.Unlock()
 	return txmp.removeTxByKey(txKey)
 }
-
-
 
 func (txmp *TxMempool) removeTxByKey(key types.TxKey) error {
 	if elt, ok := txmp.txByKey[key]; ok {
@@ -269,8 +187,6 @@ func (txmp *TxMempool) removeTxByKey(key types.TxKey) error {
 	return fmt.Errorf("transaction %x not found", key)
 }
 
-
-
 func (txmp *TxMempool) removeTxByElement(elt *clist.CElement) {
 	w, _ := elt.Value.(*WrappedTx)
 	delete(txmp.txByKey, w.tx.Key())
@@ -281,14 +197,10 @@ func (txmp *TxMempool) removeTxByElement(elt *clist.CElement) {
 	atomic.AddInt64(&txmp.txsBytes, -w.Size())
 }
 
-
-
 func (txmp *TxMempool) Flush() {
 	txmp.mtx.Lock()
 	defer txmp.mtx.Unlock()
 
-	
-	
 	cur := txmp.txs.Front()
 	for cur != nil {
 		next := cur.Next()
@@ -297,13 +209,8 @@ func (txmp *TxMempool) Flush() {
 	}
 	txmp.cache.Reset()
 
-	
-	
 	atomic.StoreInt64(&txmp.txRecheck, 0)
 }
-
-
-
 
 func (txmp *TxMempool) allEntriesSorted() []*WrappedTx {
 	txmp.mtx.RLock()
@@ -317,28 +224,17 @@ func (txmp *TxMempool) allEntriesSorted() []*WrappedTx {
 		if all[i].priority == all[j].priority {
 			return all[i].timestamp.Before(all[j].timestamp)
 		}
-		return all[i].priority > all[j].priority 
+		return all[i].priority > all[j].priority
 	})
 	return all
 }
 
-
-
-
-
-
-
-
-
-
-
 func (txmp *TxMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 	var totalGas, totalBytes int64
 
-	var keep []types.Tx 
+	var keep []types.Tx
 	for _, w := range txmp.allEntriesSorted() {
-		
-		
+
 		totalGas += w.gasWanted
 		totalBytes += types.ComputeProtoSizeForTxs([]types.Tx{w.tx})
 		if (maxGas >= 0 && totalGas > maxGas) || (maxBytes >= 0 && totalBytes > maxBytes) {
@@ -349,24 +245,12 @@ func (txmp *TxMempool) ReapMaxBytesMaxGas(maxBytes, maxGas int64) types.Txs {
 	return keep
 }
 
-
-
 func (txmp *TxMempool) TxsWaitChan() <-chan struct{} { return txmp.txs.WaitChan() }
-
-
 
 func (txmp *TxMempool) TxsFront() *clist.CElement { return txmp.txs.Front() }
 
-
-
-
-
-
-
-
-
 func (txmp *TxMempool) ReapMaxTxs(max int) types.Txs {
-	var keep []types.Tx 
+	var keep []types.Tx
 
 	for _, w := range txmp.allEntriesSorted() {
 		if max >= 0 && len(keep) >= max {
@@ -377,28 +261,16 @@ func (txmp *TxMempool) ReapMaxTxs(max int) types.Txs {
 	return keep
 }
 
-
-
-
-
-
-
-
-
-
-
-
 func (txmp *TxMempool) Update(
 	blockHeight int64,
 	blockTxs types.Txs,
 	deliverTxResponses []*abci.ResponseDeliverTx,
 ) error {
-	
 	if txmp.mtx.TryLock() {
 		txmp.mtx.Unlock()
 		panic("mempool: Update caller does not hold the lock")
 	}
-	
+
 	if len(blockTxs) != len(deliverTxResponses) {
 		panic(fmt.Sprintf("mempool: got %d transactions but %d DeliverTx responses",
 			len(blockTxs), len(deliverTxResponses)))
@@ -408,24 +280,18 @@ func (txmp *TxMempool) Update(
 	txmp.notifiedTxsAvailable = false
 
 	for i, tx := range blockTxs {
-		
-		
-		
+
 		if deliverTxResponses[i].Code == abci.CodeTypeOK {
 			_ = txmp.cache.Push(tx)
 		} else if !txmp.config.KeepInvalidTxsInCache {
 			txmp.cache.Remove(tx)
 		}
 
-		
 		_ = txmp.removeTxByKey(tx.Key())
 	}
 
 	txmp.purgeExpiredTxs(blockHeight)
 
-	
-	
-	
 	size := txmp.Size()
 	txmp.metrics.Size.Set(float64(size))
 	if size > 0 {
@@ -445,19 +311,6 @@ func (txmp *TxMempool) SetPreCheckFn(fn mempool.PreCheckFunc) {
 func (txmp *TxMempool) SetPostCheckFn(fn mempool.PostCheckFunc) {
 	txmp.postCheck = fn
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 func (txmp *TxMempool) initialTxCallback(wtx *WrappedTx, res *abci.Response) {
 	checkTxRes, ok := res.Value.(*abci.Response_CheckTx)
@@ -490,14 +343,10 @@ func (txmp *TxMempool) initialTxCallback(wtx *WrappedTx, res *abci.Response) {
 
 		txmp.metrics.FailedTxs.Add(1)
 
-		
-		
 		if !txmp.config.KeepInvalidTxsInCache {
 			txmp.cache.Remove(wtx.tx)
 		}
 
-		
-		
 		if err != nil {
 			checkTxRes.CheckTx.MempoolError = err.Error()
 		}
@@ -507,9 +356,6 @@ func (txmp *TxMempool) initialTxCallback(wtx *WrappedTx, res *abci.Response) {
 	priority := checkTxRes.CheckTx.Priority
 	sender := checkTxRes.CheckTx.Sender
 
-	
-	
-	
 	if sender != "" {
 		elt, ok := txmp.txBySender[sender]
 		if ok {
@@ -526,15 +372,9 @@ func (txmp *TxMempool) initialTxCallback(wtx *WrappedTx, res *abci.Response) {
 		}
 	}
 
-	
-	
-	
-	
-	
-
 	if err := txmp.canAddTx(wtx); err != nil {
-		var victims []*clist.CElement 
-		var victimBytes int64         
+		var victims []*clist.CElement
+		var victimBytes int64
 		for cur := txmp.txs.Front(); cur != nil; cur = cur.Next() {
 			cw := cur.Value.(*WrappedTx)
 			if cw.priority < priority {
@@ -543,9 +383,6 @@ func (txmp *TxMempool) initialTxCallback(wtx *WrappedTx, res *abci.Response) {
 			}
 		}
 
-		
-		
-		
 		if len(victims) == 0 || victimBytes < wtx.Size() {
 			txmp.cache.Remove(wtx.tx)
 			txmp.logger.Error(
@@ -564,8 +401,6 @@ func (txmp *TxMempool) initialTxCallback(wtx *WrappedTx, res *abci.Response) {
 			"new_priority", priority,
 		)
 
-		
-		
 		sort.Slice(victims, func(i, j int) bool {
 			iw := victims[i].Value.(*WrappedTx)
 			jw := victims[j].Value.(*WrappedTx)
@@ -575,7 +410,6 @@ func (txmp *TxMempool) initialTxCallback(wtx *WrappedTx, res *abci.Response) {
 			return iw.Priority() < jw.Priority()
 		})
 
-		
 		var evictedBytes int64
 		for _, vic := range victims {
 			w := vic.Value.(*WrappedTx)
@@ -589,8 +423,6 @@ func (txmp *TxMempool) initialTxCallback(wtx *WrappedTx, res *abci.Response) {
 			txmp.cache.Remove(w.tx)
 			txmp.metrics.EvictedTxs.Add(1)
 
-			
-			
 			evictedBytes += w.Size()
 			if evictedBytes >= wtx.Size() {
 				break
@@ -625,26 +457,15 @@ func (txmp *TxMempool) insertTx(wtx *WrappedTx) {
 	atomic.AddInt64(&txmp.txsBytes, wtx.Size())
 }
 
-
-
-
-
-
-
 func (txmp *TxMempool) recheckTxCallback(req *abci.Request, res *abci.Response) {
 	checkTxRes, ok := res.Value.(*abci.Response_CheckTx)
 	if !ok {
-		
-		
 		return
 	}
 
-	
-	
-	
 	numLeft := atomic.AddInt64(&txmp.txRecheck, -1)
 	if numLeft == 0 {
-		defer txmp.notifyTxsAvailable() 
+		defer txmp.notifyTxsAvailable()
 	} else if numLeft < 0 {
 		return
 	}
@@ -655,16 +476,12 @@ func (txmp *TxMempool) recheckTxCallback(req *abci.Request, res *abci.Response) 
 	txmp.mtx.Lock()
 	defer txmp.mtx.Unlock()
 
-	
-	
-	
 	elt, ok := txmp.txByKey[tx.Key()]
 	if !ok {
 		return
 	}
 	wtx := elt.Value.(*WrappedTx)
 
-	
 	var err error
 	if txmp.postCheck != nil {
 		err = txmp.postCheck(tx, checkTxRes.CheckTx)
@@ -672,7 +489,7 @@ func (txmp *TxMempool) recheckTxCallback(req *abci.Request, res *abci.Response) 
 
 	if checkTxRes.CheckTx.Code == abci.CodeTypeOK && err == nil {
 		wtx.SetPriority(checkTxRes.CheckTx.Priority)
-		return 
+		return
 	}
 
 	txmp.logger.Debug(
@@ -690,12 +507,6 @@ func (txmp *TxMempool) recheckTxCallback(req *abci.Request, res *abci.Response) 
 	txmp.metrics.Size.Set(float64(txmp.Size()))
 }
 
-
-
-
-
-
-
 func (txmp *TxMempool) recheckTransactions() {
 	if txmp.Size() == 0 {
 		panic("mempool: cannot run recheck on an empty mempool")
@@ -705,10 +516,7 @@ func (txmp *TxMempool) recheckTransactions() {
 		"num_txs", txmp.Size(),
 		"height", txmp.height,
 	)
-	
-	
-	
-	
+
 	txmp.mtx.Unlock()
 	defer txmp.mtx.Lock()
 
@@ -716,7 +524,6 @@ func (txmp *TxMempool) recheckTransactions() {
 	for e := txmp.txs.Front(); e != nil; e = e.Next() {
 		wtx := e.Value.(*WrappedTx)
 
-		
 		_ = txmp.proxyAppConn.CheckTxAsync(abci.RequestCheckTx{
 			Tx:   wtx.tx,
 			Type: abci.CheckTxType_Recheck,
@@ -729,9 +536,6 @@ func (txmp *TxMempool) recheckTransactions() {
 
 	txmp.proxyAppConn.FlushAsync()
 }
-
-
-
 
 func (txmp *TxMempool) canAddTx(wtx *WrappedTx) error {
 	numTxs := txmp.Size()
@@ -749,21 +553,15 @@ func (txmp *TxMempool) canAddTx(wtx *WrappedTx) error {
 	return nil
 }
 
-
-
-
-
-
 func (txmp *TxMempool) purgeExpiredTxs(blockHeight int64) {
 	if txmp.config.TTLNumBlocks == 0 && txmp.config.TTLDuration == 0 {
-		return 
+		return
 	}
 
 	now := time.Now()
 	cur := txmp.txs.Front()
 	for cur != nil {
-		
-		
+
 		next := cur.Next()
 
 		w := cur.Value.(*WrappedTx)
@@ -782,11 +580,11 @@ func (txmp *TxMempool) purgeExpiredTxs(blockHeight int64) {
 
 func (txmp *TxMempool) notifyTxsAvailable() {
 	if txmp.Size() == 0 {
-		return 
+		return
 	}
 
 	if txmp.txsAvailable != nil && !txmp.notifiedTxsAvailable {
-		
+
 		txmp.notifiedTxsAvailable = true
 
 		select {

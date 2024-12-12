@@ -40,7 +40,6 @@ func (wsc *wsConn) sendLoop() {
 }
 
 func (h *handler) wsHandler(w http.ResponseWriter, r *http.Request) {
-	
 	upgrader := websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
@@ -89,7 +88,7 @@ func (h *handler) wsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if mt != websocket.TextMessage {
-			
+
 			h.logger.Debug("expected text message")
 			continue
 		}
@@ -111,13 +110,11 @@ func newResponseWriter(w io.Writer) http.ResponseWriter {
 	return &wsResponse{w}
 }
 
-
 type wsResponse struct {
 	w io.Writer
 }
 
 var _ http.ResponseWriter = wsResponse{}
-
 
 func (w wsResponse) Write(bytes []byte) (int, error) {
 	return w.w.Write(bytes)

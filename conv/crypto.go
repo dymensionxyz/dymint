@@ -8,7 +8,6 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 )
 
-
 func GetNodeKey(nodeKey *p2p.NodeKey) (crypto.PrivKey, error) {
 	if nodeKey == nil || nodeKey.PrivKey == nil {
 		return nil, ErrNilKey

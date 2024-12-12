@@ -20,12 +20,10 @@ import (
 )
 
 const (
-	
 	defaultSubscribeTimeout = 5 * time.Second
-	
+
 	defaultSubscribeBufferSize = 100
 )
-
 
 func GetHTTPHandler(l *client.Client, logger types.Logger, opts ...option) (http.Handler, error) {
 	return newHandler(newService(l, logger, opts...), json2.NewCodec(), logger), nil
@@ -137,9 +135,9 @@ func (s *service) Subscribe(req *http.Request, args *subscribeArgs, wsConn *wsCo
 	}
 	go func(subscriptionID []byte) {
 		for msg := range out {
-			
+
 			var resp rpctypes.RPCResponse
-			
+
 			subscriptionIDInt, err := strconv.Atoi(string(subscriptionID))
 			if err != nil {
 				s.logger.Info("Failed to convert subscriptionID to int")
@@ -147,7 +145,7 @@ func (s *service) Subscribe(req *http.Request, args *subscribeArgs, wsConn *wsCo
 			} else {
 				resp = rpctypes.NewRPCSuccessResponse(rpctypes.JSONRPCIntID(subscriptionIDInt), msg)
 			}
-			
+
 			jsonBytes, err := json.MarshalIndent(resp, "", "  ")
 			if err != nil {
 				s.logger.Error("marshal RPCResponse to JSON", "err", err)
@@ -180,7 +178,6 @@ func (s *service) UnsubscribeAll(req *http.Request, args *unsubscribeAllArgs) (*
 	return &emptyResult{}, nil
 }
 
-
 func (s *service) Health(req *http.Request, args *healthArgs) (*ctypes.ResultHealth, error) {
 	return s.client.Health(req.Context())
 }
@@ -202,7 +199,7 @@ func (s *service) Genesis(req *http.Request, args *genesisArgs) (*ctypes.ResultG
 }
 
 func (s *service) GenesisChunked(req *http.Request, args *genesisChunkedArgs) (*ctypes.ResultGenesisChunk, error) {
-	return s.client.GenesisChunked(req.Context(), uint(args.ID)) 
+	return s.client.GenesisChunked(req.Context(), uint(args.ID))
 }
 
 func (s *service) Block(req *http.Request, args *blockArgs) (*ctypes.ResultBlock, error) {
@@ -261,7 +258,6 @@ func (s *service) NumUnconfirmedTxs(req *http.Request, args *numUnconfirmedTxsAr
 	return s.client.NumUnconfirmedTxs(req.Context())
 }
 
-
 func (s *service) BroadcastTxCommit(req *http.Request, args *broadcastTxCommitArgs) (*ctypes.ResultBroadcastTxCommit, error) {
 	return s.client.BroadcastTxCommit(req.Context(), args.Tx)
 }
@@ -274,7 +270,6 @@ func (s *service) BroadcastTxAsync(req *http.Request, args *broadcastTxAsyncArgs
 	return s.client.BroadcastTxAsync(req.Context(), args.Tx)
 }
 
-
 func (s *service) ABCIQuery(req *http.Request, args *ABCIQueryArgs) (*ctypes.ResultABCIQuery, error) {
 	return s.client.ABCIQueryWithOptions(req.Context(), args.Path, args.Data, rpcclient.ABCIQueryOptions{
 		Height: int64(args.Height),
@@ -285,7 +280,6 @@ func (s *service) ABCIQuery(req *http.Request, args *ABCIQueryArgs) (*ctypes.Res
 func (s *service) ABCIInfo(req *http.Request, args *ABCIInfoArgs) (*ctypes.ResultABCIInfo, error) {
 	return s.client.ABCIInfo(req.Context())
 }
-
 
 func (s *service) BroadcastEvidence(req *http.Request, args *broadcastEvidenceArgs) (*ctypes.ResultBroadcastEvidence, error) {
 	return s.client.BroadcastEvidence(req.Context(), args.Evidence)

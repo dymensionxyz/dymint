@@ -20,9 +20,6 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
-
-
-
 func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int) error {
 	m.logger.Info("Started block producer loop.")
 
@@ -40,12 +37,11 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int)
 		case <-ctx.Done():
 			return nil
 		case <-ticker.C:
-			
+
 			if !m.AmIProposerOnRollapp() {
 				continue
 			}
 
-			
 			produceEmptyBlock := firstBlock || m.Conf.MaxIdleTime == 0 || nextEmptyBlock.Before(time.Now())
 			firstBlock = false
 
@@ -54,7 +50,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int)
 				m.logger.Error("Produce and gossip: context canceled.", "error", err)
 				return nil
 			}
-			if errors.Is(err, types.ErrEmptyBlock) { 
+			if errors.Is(err, types.ErrEmptyBlock) {
 				continue
 			}
 			if errors.Is(err, ErrNonRecoverable) {
@@ -68,8 +64,6 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int)
 			}
 			nextEmptyBlock = time.Now().Add(m.Conf.MaxIdleTime)
 			if 0 < len(block.Data.Txs) {
-				
-				
 				nextEmptyBlock = time.Now().Add(m.Conf.MaxProofTime)
 			} else {
 				m.logger.Info("Produced empty block.")
@@ -102,9 +96,8 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int)
 type ProduceBlockOptions struct {
 	AllowEmpty       bool
 	MaxData          *uint64
-	NextProposerHash *[32]byte 
+	NextProposerHash *[32]byte
 }
-
 
 func (m *Manager) ProduceApplyGossipLastBlock(ctx context.Context, nextProposerHash [32]byte) (err error) {
 	_, _, err = m.produceApplyGossip(ctx, ProduceBlockOptions{
@@ -119,22 +112,13 @@ func (m *Manager) ProduceApplyGossipBlock(ctx context.Context, opts ProduceBlock
 }
 
 func (m *Manager) produceApplyGossip(ctx context.Context, opts ProduceBlockOptions) (block *types.Block, commit *types.Commit, err error) {
-	
-	
-	
-	
-	
-	
-	
 	newSequencerSet, err := m.SnapshotSequencerSet()
 	if err != nil {
 		return nil, nil, fmt.Errorf("snapshot sequencer set: %w", err)
 	}
-	
-	
+
 	opts.AllowEmpty = opts.AllowEmpty || len(newSequencerSet) > 0
 
-	
 	block, commit, err = m.produceBlock(opts)
 	if err != nil {
 		return nil, nil, fmt.Errorf("produce block: %w", err)
@@ -151,50 +135,27 @@ func (m *Manager) produceApplyGossip(ctx context.Context, opts ProduceBlockOptio
 	return block, commit, nil
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 func (m *Manager) SnapshotSequencerSet() (sequencersAfterUpdate types.Sequencers, err error) {
-	
 	sequencersAfterUpdate = m.Sequencers.GetAll()
 
-	
 	lastSequencers, err := m.Store.LoadLastBlockSequencerSet()
-	
-	
+
 	if err != nil && !errors.Is(err, gerrc.ErrNotFound) {
-		
 		return nil, fmt.Errorf("load last block sequencer set: %w: %w", err, ErrNonRecoverable)
 	}
 
-	
 	newSequencers := types.SequencerListRightOuterJoin(lastSequencers, sequencersAfterUpdate)
 
 	if len(newSequencers) == 0 {
-		
 		return nil, nil
 	}
 
-	
-	
 	msgs, err := ConsensusMsgsOnSequencerSetUpdate(newSequencers)
 	if err != nil {
 		return nil, fmt.Errorf("consensus msgs on sequencers set update: %w: %w", err, ErrNonRecoverable)
 	}
 	m.Executor.AddConsensusMsgs(msgs...)
 
-	
 	return sequencersAfterUpdate, nil
 }
 
@@ -202,18 +163,15 @@ func (m *Manager) produceBlock(opts ProduceBlockOptions) (*types.Block, *types.C
 	newHeight := m.State.NextHeight()
 	lastHeaderHash, lastCommit, err := m.GetPreviousBlockHashes(newHeight)
 	if err != nil {
-		
 		return nil, nil, fmt.Errorf("load prev block: %w", err)
 	}
 
 	var block *types.Block
 	var commit *types.Commit
 
-	
-	
 	pendingBlock, err := m.Store.LoadBlock(newHeight)
 	if err == nil {
-		
+
 		block = pendingBlock
 		commit, err = m.Store.LoadCommit(newHeight)
 		if err != nil {
@@ -230,16 +188,14 @@ func (m *Manager) produceBlock(opts ProduceBlockOptions) (*types.Block, *types.C
 		maxBlockDataSize = *opts.MaxData
 	}
 	proposerHashForBlock := [32]byte(m.State.GetProposerHash())
-	
+
 	if opts.NextProposerHash != nil {
 		maxBlockDataSize = 0
 		proposerHashForBlock = *opts.NextProposerHash
 	}
 
-	
 	block = m.Executor.CreateBlock(newHeight, lastCommit, lastHeaderHash, proposerHashForBlock, m.State, maxBlockDataSize)
-	
-	
+
 	if !opts.AllowEmpty && len(block.Data.Txs) == 0 {
 		return nil, nil, fmt.Errorf("%w: %w", types.ErrEmptyBlock, ErrRecoverable)
 	}
@@ -254,7 +210,6 @@ func (m *Manager) produceBlock(opts ProduceBlockOptions) (*types.Block, *types.C
 	types.RollappBlockSizeTxsGauge.Set(float64(len(block.Data.Txs)))
 	return block, commit, nil
 }
-
 
 func (m *Manager) createCommit(block *types.Block) (*types.Commit, error) {
 	abciHeaderPb := types.ToABCIHeaderPB(&block.Header)
@@ -290,7 +245,7 @@ func (m *Manager) createTMSignature(block *types.Block, proposerAddress []byte, 
 	headerHash := block.Header.Hash()
 	vote := tmtypes.Vote{
 		Type:      cmtproto.PrecommitType,
-		Height:    int64(block.Header.Height), 
+		Height:    int64(block.Header.Height),
 		Round:     0,
 		Timestamp: voteTimestamp,
 		BlockID: tmtypes.BlockID{Hash: headerHash[:], PartSetHeader: tmtypes.PartSetHeader{
@@ -301,18 +256,17 @@ func (m *Manager) createTMSignature(block *types.Block, proposerAddress []byte, 
 		ValidatorIndex:   0,
 	}
 	v := vote.ToProto()
-	
-	
+
 	rawKey, _ := m.LocalKey.Raw()
 	tmprivkey := tmed25519.PrivKey(rawKey)
 	tmprivkey.PubKey().Bytes()
-	
+
 	tmvalidator := tmtypes.NewMockPVWithParams(tmprivkey, false, false)
 	err := tmvalidator.SignVote(m.State.ChainID, v)
 	if err != nil {
 		return nil, err
 	}
-	
+
 	vote.Signature = v.Signature
 	pubKey := tmprivkey.PubKey()
 	voteSignBytes := tmtypes.VoteSignBytes(m.State.ChainID, v)
@@ -322,12 +276,10 @@ func (m *Manager) createTMSignature(block *types.Block, proposerAddress []byte, 
 	return vote.Signature, nil
 }
 
-
-
 func (m *Manager) GetPreviousBlockHashes(forHeight uint64) (lastHeaderHash [32]byte, lastCommit *types.Commit, err error) {
-	lastHeaderHash, lastCommit, err = getHeaderHashAndCommit(m.Store, forHeight-1) 
+	lastHeaderHash, lastCommit, err = getHeaderHashAndCommit(m.Store, forHeight-1)
 	if err != nil {
-		if !m.State.IsGenesis() { 
+		if !m.State.IsGenesis() {
 			return [32]byte{}, nil, fmt.Errorf("load prev block: %w: %w", err, ErrNonRecoverable)
 		}
 		lastHeaderHash = [32]byte{}
@@ -335,7 +287,6 @@ func (m *Manager) GetPreviousBlockHashes(forHeight uint64) (lastHeaderHash [32]b
 	}
 	return lastHeaderHash, lastCommit, nil
 }
-
 
 func getHeaderHashAndCommit(store store.Store, height uint64) ([32]byte, *types.Commit, error) {
 	lastCommit, err := store.LoadCommit(height)

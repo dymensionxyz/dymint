@@ -12,9 +12,6 @@ import (
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
 )
 
-
-
-
 func MustSubscribe(
 	ctx context.Context,
 	pubsubServer *pubsub.Server,
@@ -46,14 +43,12 @@ func MustSubscribe(
 	}
 }
 
-
 func MustPublish(ctx context.Context, pubsubServer *pubsub.Server, msg interface{}, events map[string][]string) {
 	err := pubsubServer.PublishWithEvents(ctx, msg, events)
 	if err != nil && !errors.Is(err, context.Canceled) {
 		panic(err)
 	}
 }
-
 
 func QueryFor(eventTypeKey, eventType string) tmpubsub.Query {
 	return tmquery.MustParse(fmt.Sprintf("%s='%s'", eventTypeKey, eventType))

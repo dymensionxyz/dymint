@@ -20,7 +20,6 @@ func main() {
 		cli.NewCompletionCmd(rootCmd, true),
 	)
 
-	
 	rootCmd.AddCommand(commands.NewRunNodeCmd())
 
 	cmd := cli.PrepareBaseCmd(rootCmd, "DM", os.ExpandEnv(filepath.Join("$HOME", config.DefaultDymintDir)))

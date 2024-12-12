@@ -9,7 +9,6 @@ import (
 )
 
 const (
-	
 	DefaultListenAddress = "/ip4/0.0.0.0/tcp/26656"
 
 	DefaultHomeDir = "sequencer_keys"
@@ -17,9 +16,7 @@ const (
 	DefaultSequencerSetUpdateInterval = 3 * time.Minute
 )
 
-
 var DefaultNodeConfig = *DefaultConfig("")
-
 
 func DefaultConfig(home string) *NodeConfig {
 	cfg := &NodeConfig{
@@ -57,7 +54,6 @@ func DefaultConfig(home string) *NodeConfig {
 	}
 	keyringDir := filepath.Join(home, DefaultHomeDir)
 
-	
 	defaultSlGrpcConfig := settlement.GrpcConfig{
 		Host:        "127.0.0.1",
 		Port:        7981,
@@ -79,7 +75,6 @@ func DefaultConfig(home string) *NodeConfig {
 	}
 	cfg.SettlementConfig = defaultSLconfig
 
-	
 	defaultDAGrpc := grpc.Config{
 		Host: "127.0.0.1",
 		Port: 7980,

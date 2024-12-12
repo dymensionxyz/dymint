@@ -20,9 +20,8 @@ const (
 	ForkMessage         = "rollapp fork detected. please rollback to height previous to rollapp_revision_start_height."
 )
 
-
 func (m *Manager) MonitorForkUpdateLoop(ctx context.Context) error {
-	ticker := time.NewTicker(ForkMonitorInterval) 
+	ticker := time.NewTicker(ForkMonitorInterval)
 	defer ticker.Stop()
 
 	for {
@@ -36,7 +35,6 @@ func (m *Manager) MonitorForkUpdateLoop(ctx context.Context) error {
 		}
 	}
 }
-
 
 func (m *Manager) checkForkUpdate(msg string) error {
 	defer m.forkMu.Unlock()
@@ -69,7 +67,6 @@ func (m *Manager) checkForkUpdate(msg string) error {
 	return nil
 }
 
-
 func (m *Manager) createInstruction(expectedRevision types.Revision) (types.Instruction, error) {
 	obsoleteDrs, err := m.SLClient.GetObsoleteDrs()
 	if err != nil {
@@ -85,11 +82,6 @@ func (m *Manager) createInstruction(expectedRevision types.Revision) (types.Inst
 	return instruction, nil
 }
 
-
-
-
-
-
 func shouldStopNode(
 	expectedRevision types.Revision,
 	nextHeight uint64,
@@ -97,7 +89,6 @@ func shouldStopNode(
 ) bool {
 	return nextHeight >= expectedRevision.StartHeight && actualRevisionNumber < expectedRevision.Number
 }
-
 
 func (m *Manager) getRevisionFromSL(height uint64) (types.Revision, error) {
 	rollapp, err := m.SLClient.GetRollapp()
@@ -107,39 +98,28 @@ func (m *Manager) getRevisionFromSL(height uint64) (types.Revision, error) {
 	return rollapp.GetRevisionForHeight(height), nil
 }
 
-
 func (m *Manager) doFork(instruction types.Instruction) error {
-	
 	if m.State.Height() < instruction.RevisionStartHeight+1 {
-		
+
 		consensusMsgs, err := m.prepareDRSUpgradeMessages(instruction.FaultyDRS)
 		if err != nil {
 			return fmt.Errorf("prepare DRS upgrade messages: %v", err)
 		}
-		
+
 		consensusMsgs = append(consensusMsgs, &sequencers.MsgBumpAccountSequences{Authority: authtypes.NewModuleAddress("sequencers").String()})
 
-		
 		err = m.createForkBlocks(instruction, consensusMsgs)
 		if err != nil {
 			return fmt.Errorf("validate fork blocks: %v", err)
 		}
 	}
 
-	
 	if err := m.submitForkBatch(instruction.RevisionStartHeight); err != nil {
 		return fmt.Errorf("submit fork batch: %v", err)
 	}
 
 	return nil
 }
-
-
-
-
-
-
-
 
 func (m *Manager) prepareDRSUpgradeMessages(obsoleteDRS []uint32) ([]proto.Message, error) {
 	drsVersion, err := version.GetDRSVersion()
@@ -161,13 +141,9 @@ func (m *Manager) prepareDRSUpgradeMessages(obsoleteDRS []uint32) ([]proto.Messa
 	}, nil
 }
 
-
-
-
 func (m *Manager) createForkBlocks(instruction types.Instruction, consensusMsgs []proto.Message) error {
 	nextHeight := m.State.NextHeight()
 
-	
 	for h := instruction.RevisionStartHeight; h < nextHeight; h++ {
 		b, err := m.Store.LoadBlock(h)
 		if err != nil {
@@ -183,7 +159,6 @@ func (m *Manager) createForkBlocks(instruction types.Instruction, consensusMsgs 
 		}
 	}
 
-	
 	for h := nextHeight; h < instruction.RevisionStartHeight+2; h++ {
 		if h == instruction.RevisionStartHeight {
 			m.Executor.AddConsensusMsgs(consensusMsgs...)
@@ -200,13 +175,6 @@ func (m *Manager) createForkBlocks(instruction types.Instruction, consensusMsgs 
 
 	return nil
 }
-
-
-
-
-
-
-
 
 func (m *Manager) submitForkBatch(height uint64) error {
 	resp, err := m.SLClient.GetBatchAtHeight(height)
@@ -225,62 +193,51 @@ func (m *Manager) submitForkBatch(height uint64) error {
 	return nil
 }
 
-
 func (m *Manager) updateStateForNextRevision() error {
-	
-
-	
 	nextRevision, err := m.getRevisionFromSL(m.State.NextHeight())
 	if err != nil {
 		return err
 	}
 
-	
 	if nextRevision.StartHeight == m.State.NextHeight() {
-		
+
 		m.State.SetProposer(nil)
-		
+
 		m.State.RevisionStartHeight = nextRevision.StartHeight
 		m.State.SetRevision(nextRevision.Number)
 
-		
 		_, err = m.Store.SaveState(m.State, nil)
 		return err
 	}
 	return nil
 }
 
-
 func (m *Manager) doForkWhenNewRevision() error {
 	defer m.forkMu.Unlock()
 	m.forkMu.Lock()
 
-	
 	expectedRevision, err := m.getRevisionFromSL(m.State.NextHeight())
 	if err != nil {
 		return err
 	}
 
-	
 	if m.LastSettlementHeight.Load() < expectedRevision.StartHeight {
 		instruction, err := m.createInstruction(expectedRevision)
 		if err != nil {
 			return err
 		}
-		
+
 		m.State.SetRevision(instruction.Revision)
-		
+
 		err = m.doFork(instruction)
 		if err != nil {
 			return err
 		}
 	}
 
-	
 	if expectedRevision.Number != m.State.GetRevision() {
 		panic("Inconsistent expected revision number from Hub. Unable to fork")
 	}
 
-	
 	return types.DeleteInstructionFromDisk(m.RootDir)
 }

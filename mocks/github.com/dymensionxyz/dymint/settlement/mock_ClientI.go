@@ -1,5 +1,3 @@
-
-
 package settlement
 
 import (
@@ -15,7 +13,6 @@ import (
 	types "github.com/dymensionxyz/dymint/types"
 )
 
-
 type MockClientI struct {
 	mock.Mock
 }
@@ -27,7 +24,6 @@ type MockClientI_Expecter struct {
 func (_m *MockClientI) EXPECT() *MockClientI_Expecter {
 	return &MockClientI_Expecter{mock: &_m.Mock}
 }
-
 
 func (_m *MockClientI) GetAllSequencers() ([]types.Sequencer, error) {
 	ret := _m.Called()
@@ -58,11 +54,9 @@ func (_m *MockClientI) GetAllSequencers() ([]types.Sequencer, error) {
 	return r0, r1
 }
 
-
 type MockClientI_GetAllSequencers_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockClientI_Expecter) GetAllSequencers() *MockClientI_GetAllSequencers_Call {
 	return &MockClientI_GetAllSequencers_Call{Call: _e.mock.On("GetAllSequencers")}
@@ -84,7 +78,6 @@ func (_c *MockClientI_GetAllSequencers_Call) RunAndReturn(run func() ([]types.Se
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockClientI) GetBatchAtHeight(index uint64) (*settlement.ResultRetrieveBatch, error) {
 	ret := _m.Called(index)
@@ -115,12 +108,9 @@ func (_m *MockClientI) GetBatchAtHeight(index uint64) (*settlement.ResultRetriev
 	return r0, r1
 }
 
-
 type MockClientI_GetBatchAtHeight_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockClientI_Expecter) GetBatchAtHeight(index interface{}) *MockClientI_GetBatchAtHeight_Call {
 	return &MockClientI_GetBatchAtHeight_Call{Call: _e.mock.On("GetBatchAtHeight", index)}
@@ -142,7 +132,6 @@ func (_c *MockClientI_GetBatchAtHeight_Call) RunAndReturn(run func(uint64) (*set
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockClientI) GetBatchAtIndex(index uint64) (*settlement.ResultRetrieveBatch, error) {
 	ret := _m.Called(index)
@@ -173,12 +162,9 @@ func (_m *MockClientI) GetBatchAtIndex(index uint64) (*settlement.ResultRetrieve
 	return r0, r1
 }
 
-
 type MockClientI_GetBatchAtIndex_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockClientI_Expecter) GetBatchAtIndex(index interface{}) *MockClientI_GetBatchAtIndex_Call {
 	return &MockClientI_GetBatchAtIndex_Call{Call: _e.mock.On("GetBatchAtIndex", index)}
@@ -200,7 +186,6 @@ func (_c *MockClientI_GetBatchAtIndex_Call) RunAndReturn(run func(uint64) (*sett
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockClientI) GetBondedSequencers() ([]types.Sequencer, error) {
 	ret := _m.Called()
@@ -231,11 +216,9 @@ func (_m *MockClientI) GetBondedSequencers() ([]types.Sequencer, error) {
 	return r0, r1
 }
 
-
 type MockClientI_GetBondedSequencers_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockClientI_Expecter) GetBondedSequencers() *MockClientI_GetBondedSequencers_Call {
 	return &MockClientI_GetBondedSequencers_Call{Call: _e.mock.On("GetBondedSequencers")}
@@ -257,7 +240,6 @@ func (_c *MockClientI_GetBondedSequencers_Call) RunAndReturn(run func() ([]types
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockClientI) GetLatestBatch() (*settlement.ResultRetrieveBatch, error) {
 	ret := _m.Called()
@@ -288,11 +270,9 @@ func (_m *MockClientI) GetLatestBatch() (*settlement.ResultRetrieveBatch, error)
 	return r0, r1
 }
 
-
 type MockClientI_GetLatestBatch_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockClientI_Expecter) GetLatestBatch() *MockClientI_GetLatestBatch_Call {
 	return &MockClientI_GetLatestBatch_Call{Call: _e.mock.On("GetLatestBatch")}
@@ -314,7 +294,6 @@ func (_c *MockClientI_GetLatestBatch_Call) RunAndReturn(run func() (*settlement.
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockClientI) GetLatestFinalizedHeight() (uint64, error) {
 	ret := _m.Called()
@@ -343,11 +322,9 @@ func (_m *MockClientI) GetLatestFinalizedHeight() (uint64, error) {
 	return r0, r1
 }
 
-
 type MockClientI_GetLatestFinalizedHeight_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockClientI_Expecter) GetLatestFinalizedHeight() *MockClientI_GetLatestFinalizedHeight_Call {
 	return &MockClientI_GetLatestFinalizedHeight_Call{Call: _e.mock.On("GetLatestFinalizedHeight")}
@@ -369,7 +346,6 @@ func (_c *MockClientI_GetLatestFinalizedHeight_Call) RunAndReturn(run func() (ui
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockClientI) GetLatestHeight() (uint64, error) {
 	ret := _m.Called()
@@ -398,11 +374,9 @@ func (_m *MockClientI) GetLatestHeight() (uint64, error) {
 	return r0, r1
 }
 
-
 type MockClientI_GetLatestHeight_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockClientI_Expecter) GetLatestHeight() *MockClientI_GetLatestHeight_Call {
 	return &MockClientI_GetLatestHeight_Call{Call: _e.mock.On("GetLatestHeight")}
@@ -424,7 +398,6 @@ func (_c *MockClientI_GetLatestHeight_Call) RunAndReturn(run func() (uint64, err
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockClientI) GetNextProposer() (*types.Sequencer, error) {
 	ret := _m.Called()
@@ -455,11 +428,9 @@ func (_m *MockClientI) GetNextProposer() (*types.Sequencer, error) {
 	return r0, r1
 }
 
-
 type MockClientI_GetNextProposer_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockClientI_Expecter) GetNextProposer() *MockClientI_GetNextProposer_Call {
 	return &MockClientI_GetNextProposer_Call{Call: _e.mock.On("GetNextProposer")}
@@ -481,7 +452,6 @@ func (_c *MockClientI_GetNextProposer_Call) RunAndReturn(run func() (*types.Sequ
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockClientI) GetObsoleteDrs() ([]uint32, error) {
 	ret := _m.Called()
@@ -512,11 +482,9 @@ func (_m *MockClientI) GetObsoleteDrs() ([]uint32, error) {
 	return r0, r1
 }
 
-
 type MockClientI_GetObsoleteDrs_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockClientI_Expecter) GetObsoleteDrs() *MockClientI_GetObsoleteDrs_Call {
 	return &MockClientI_GetObsoleteDrs_Call{Call: _e.mock.On("GetObsoleteDrs")}
@@ -538,7 +506,6 @@ func (_c *MockClientI_GetObsoleteDrs_Call) RunAndReturn(run func() ([]uint32, er
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockClientI) GetProposerAtHeight(height int64) (*types.Sequencer, error) {
 	ret := _m.Called(height)
@@ -569,12 +536,9 @@ func (_m *MockClientI) GetProposerAtHeight(height int64) (*types.Sequencer, erro
 	return r0, r1
 }
 
-
 type MockClientI_GetProposerAtHeight_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockClientI_Expecter) GetProposerAtHeight(height interface{}) *MockClientI_GetProposerAtHeight_Call {
 	return &MockClientI_GetProposerAtHeight_Call{Call: _e.mock.On("GetProposerAtHeight", height)}
@@ -596,7 +560,6 @@ func (_c *MockClientI_GetProposerAtHeight_Call) RunAndReturn(run func(int64) (*t
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockClientI) GetRollapp() (*types.Rollapp, error) {
 	ret := _m.Called()
@@ -627,11 +590,9 @@ func (_m *MockClientI) GetRollapp() (*types.Rollapp, error) {
 	return r0, r1
 }
 
-
 type MockClientI_GetRollapp_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockClientI_Expecter) GetRollapp() *MockClientI_GetRollapp_Call {
 	return &MockClientI_GetRollapp_Call{Call: _e.mock.On("GetRollapp")}
@@ -653,7 +614,6 @@ func (_c *MockClientI_GetRollapp_Call) RunAndReturn(run func() (*types.Rollapp, 
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockClientI) GetSequencerByAddress(address string) (types.Sequencer, error) {
 	ret := _m.Called(address)
@@ -682,12 +642,9 @@ func (_m *MockClientI) GetSequencerByAddress(address string) (types.Sequencer, e
 	return r0, r1
 }
 
-
 type MockClientI_GetSequencerByAddress_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockClientI_Expecter) GetSequencerByAddress(address interface{}) *MockClientI_GetSequencerByAddress_Call {
 	return &MockClientI_GetSequencerByAddress_Call{Call: _e.mock.On("GetSequencerByAddress", address)}
@@ -709,7 +666,6 @@ func (_c *MockClientI_GetSequencerByAddress_Call) RunAndReturn(run func(string) 
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockClientI) GetSignerBalance() (types.Balance, error) {
 	ret := _m.Called()
@@ -738,11 +694,9 @@ func (_m *MockClientI) GetSignerBalance() (types.Balance, error) {
 	return r0, r1
 }
 
-
 type MockClientI_GetSignerBalance_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockClientI_Expecter) GetSignerBalance() *MockClientI_GetSignerBalance_Call {
 	return &MockClientI_GetSignerBalance_Call{Call: _e.mock.On("GetSignerBalance")}
@@ -764,7 +718,6 @@ func (_c *MockClientI_GetSignerBalance_Call) RunAndReturn(run func() (types.Bala
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockClientI) Init(config settlement.Config, rollappId string, _a2 *pubsub.Server, logger types.Logger, options ...settlement.Option) error {
 	_va := make([]interface{}, len(options))
@@ -790,16 +743,9 @@ func (_m *MockClientI) Init(config settlement.Config, rollappId string, _a2 *pub
 	return r0
 }
 
-
 type MockClientI_Init_Call struct {
 	*mock.Call
 }
-
-
-
-
-
-
 
 func (_e *MockClientI_Expecter) Init(config interface{}, rollappId interface{}, _a2 interface{}, logger interface{}, options ...interface{}) *MockClientI_Init_Call {
 	return &MockClientI_Init_Call{Call: _e.mock.On("Init",
@@ -829,7 +775,6 @@ func (_c *MockClientI_Init_Call) RunAndReturn(run func(settlement.Config, string
 	return _c
 }
 
-
 func (_m *MockClientI) Start() error {
 	ret := _m.Called()
 
@@ -847,11 +792,9 @@ func (_m *MockClientI) Start() error {
 	return r0
 }
 
-
 type MockClientI_Start_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockClientI_Expecter) Start() *MockClientI_Start_Call {
 	return &MockClientI_Start_Call{Call: _e.mock.On("Start")}
@@ -874,7 +817,6 @@ func (_c *MockClientI_Start_Call) RunAndReturn(run func() error) *MockClientI_St
 	return _c
 }
 
-
 func (_m *MockClientI) Stop() error {
 	ret := _m.Called()
 
@@ -892,11 +834,9 @@ func (_m *MockClientI) Stop() error {
 	return r0
 }
 
-
 type MockClientI_Stop_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockClientI_Expecter) Stop() *MockClientI_Stop_Call {
 	return &MockClientI_Stop_Call{Call: _e.mock.On("Stop")}
@@ -919,7 +859,6 @@ func (_c *MockClientI_Stop_Call) RunAndReturn(run func() error) *MockClientI_Sto
 	return _c
 }
 
-
 func (_m *MockClientI) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) error {
 	ret := _m.Called(batch, daClient, daResult)
 
@@ -937,14 +876,9 @@ func (_m *MockClientI) SubmitBatch(batch *types.Batch, daClient da.Client, daRes
 	return r0
 }
 
-
 type MockClientI_SubmitBatch_Call struct {
 	*mock.Call
 }
-
-
-
-
 
 func (_e *MockClientI_Expecter) SubmitBatch(batch interface{}, daClient interface{}, daResult interface{}) *MockClientI_SubmitBatch_Call {
 	return &MockClientI_SubmitBatch_Call{Call: _e.mock.On("SubmitBatch", batch, daClient, daResult)}
@@ -967,7 +901,6 @@ func (_c *MockClientI_SubmitBatch_Call) RunAndReturn(run func(*types.Batch, da.C
 	return _c
 }
 
-
 func (_m *MockClientI) ValidateGenesisBridgeData(data rollapp.GenesisBridgeData) error {
 	ret := _m.Called(data)
 
@@ -985,12 +918,9 @@ func (_m *MockClientI) ValidateGenesisBridgeData(data rollapp.GenesisBridgeData)
 	return r0
 }
 
-
 type MockClientI_ValidateGenesisBridgeData_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockClientI_Expecter) ValidateGenesisBridgeData(data interface{}) *MockClientI_ValidateGenesisBridgeData_Call {
 	return &MockClientI_ValidateGenesisBridgeData_Call{Call: _e.mock.On("ValidateGenesisBridgeData", data)}
@@ -1013,12 +943,11 @@ func (_c *MockClientI_ValidateGenesisBridgeData_Call) RunAndReturn(run func(roll
 	return _c
 }
 
-
-
 func NewMockClientI(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *MockClientI {
+},
+) *MockClientI {
 	mock := &MockClientI{}
 	mock.Mock.Test(t)
 

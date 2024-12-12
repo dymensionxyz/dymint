@@ -49,21 +49,16 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.mux.ServeHTTP(w, r)
 }
 
-
 func (h *handler) serveJSONRPC(w http.ResponseWriter, r *http.Request) {
 	h.serveJSONRPCforWS(w, r, nil)
 }
 
-
-
 func (h *handler) serveJSONRPCforWS(w http.ResponseWriter, r *http.Request, wsConn *wsConn) {
-	
 	codecReq := h.codec.NewRequest(r)
-	
+
 	method, err := codecReq.Method()
 	if err != nil {
 		if e, ok := err.(*json2.Error); method == "" && ok && e.Message == "EOF" {
-			
 			return
 		}
 		codecReq.WriteError(w, http.StatusBadRequest, err)
@@ -76,7 +71,6 @@ func (h *handler) serveJSONRPCforWS(w http.ResponseWriter, r *http.Request, wsCo
 		return
 	}
 
-	
 	args := reflect.New(methodSpec.argsType)
 	if errRead := codecReq.ReadRequest(args.Interface()); errRead != nil {
 		codecReq.WriteError(w, http.StatusBadRequest, errRead)
@@ -98,7 +92,6 @@ func (h *handler) serveJSONRPCforWS(w http.ResponseWriter, r *http.Request, wsCo
 	}
 	rets := methodSpec.m.Call(callArgs)
 
-	
 	var errResult error
 	statusCode := http.StatusOK
 	errInter := rets[1].Interface()
@@ -107,11 +100,8 @@ func (h *handler) serveJSONRPCforWS(w http.ResponseWriter, r *http.Request, wsCo
 		errResult, _ = errInter.(error)
 	}
 
-	
-	
 	w.Header().Set("x-content-type-options", "nosniff")
 
-	
 	if errResult == nil {
 		var raw json.RawMessage
 		raw, err = tmjson.Marshal(rets[0].Interface())
@@ -153,7 +143,7 @@ func (h *handler) newHandler(methodSpec *method) func(http.ResponseWriter, *http
 				case reflect.String:
 					args.Elem().Field(i).SetString(rawVal)
 				case reflect.Slice:
-					
+
 					if field.Type.Elem().Kind() == reflect.Uint8 {
 						err = setByteSliceParam(rawVal, &args, i)
 					}
@@ -172,7 +162,6 @@ func (h *handler) newHandler(methodSpec *method) func(http.ResponseWriter, *http
 			args,
 		})
 
-		
 		statusCode := http.StatusOK
 		errInter := rets[1].Interface()
 		if errInter != nil {
@@ -185,8 +174,6 @@ func (h *handler) newHandler(methodSpec *method) func(http.ResponseWriter, *http
 }
 
 func (h *handler) encodeAndWriteResponse(w http.ResponseWriter, result interface{}, errResult error, statusCode int) {
-	
-	
 	w.Header().Set("x-content-type-options", "nosniff")
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 

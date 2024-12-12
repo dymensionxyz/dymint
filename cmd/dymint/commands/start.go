@@ -32,8 +32,6 @@ import (
 
 var genesisHash []byte
 
-
-
 func NewRunNodeCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "start",
@@ -125,7 +123,6 @@ func startInProcess(config *cfg.NodeConfig, tmConfig *tmcfg.Config, logger log.L
 
 	logger.Info("Started dymint node")
 
-	
 	tmos.TrapSignal(logger, func() {
 		logger.Info("Caught SIGTERM. Exiting...")
 		if dymintNode.IsRunning() {
@@ -135,7 +132,6 @@ func startInProcess(config *cfg.NodeConfig, tmConfig *tmcfg.Config, logger log.L
 		}
 	})
 
-	
 	select {}
 }
 
@@ -148,7 +144,6 @@ func checkGenesisHash(config *tmcfg.Config) error {
 		return nil
 	}
 
-	
 	f, err := os.Open(config.GenesisFile())
 	if err != nil {
 		return fmt.Errorf("can't open genesis file: %w", err)
@@ -164,7 +159,6 @@ func checkGenesisHash(config *tmcfg.Config) error {
 	}
 	actualHash := h.Sum(nil)
 
-	
 	if !bytes.Equal(genesisHash, actualHash) {
 		return fmt.Errorf(
 			"--genesis_hash=%X does not match %s hash: %X",

@@ -16,8 +16,7 @@ import (
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
-const maxBlobSize = 2097152 
-
+const maxBlobSize = 2097152
 
 type DataAvailabilityLayerClient struct {
 	config Config
@@ -28,13 +27,10 @@ type DataAvailabilityLayerClient struct {
 	logger types.Logger
 }
 
-
 type Config struct {
-	
 	Host string `json:"host"`
 	Port int    `json:"port"`
 }
-
 
 var DefaultConfig = Config{
 	Host: "127.0.0.1",
@@ -46,7 +42,6 @@ var (
 	_ da.BatchRetriever              = &DataAvailabilityLayerClient{}
 )
 
-
 func (d *DataAvailabilityLayerClient) Init(config []byte, _ *pubsub.Server, _ store.KV, logger types.Logger, options ...da.Option) error {
 	d.logger = logger
 	d.synced = make(chan struct{}, 1)
@@ -57,14 +52,13 @@ func (d *DataAvailabilityLayerClient) Init(config []byte, _ *pubsub.Server, _ st
 	return json.Unmarshal(config, &d.config)
 }
 
-
 func (d *DataAvailabilityLayerClient) Start() error {
 	d.logger.Info("starting GRPC DALC", "host", d.config.Host, "port", d.config.Port)
 	d.synced <- struct{}{}
 
 	var err error
 	var opts []grpc.DialOption
-	
+
 	opts = append(opts, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	d.conn, err = grpc.Dial(d.config.Host+":"+strconv.Itoa(d.config.Port), opts...)
 	if err != nil {
@@ -75,22 +69,18 @@ func (d *DataAvailabilityLayerClient) Start() error {
 	return nil
 }
 
-
 func (d *DataAvailabilityLayerClient) Stop() error {
 	d.logger.Info("stopping GRPC DALC")
 	return d.conn.Close()
 }
 
-
 func (m *DataAvailabilityLayerClient) WaitForSyncing() {
 	<-m.synced
 }
 
-
 func (d *DataAvailabilityLayerClient) GetClientType() da.Client {
 	return da.Grpc
 }
-
 
 func (d *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultSubmitBatch {
 	resp, err := d.client.SubmitBatch(context.TODO(), &dalc.SubmitBatchRequest{Batch: batch.ToProto()})
@@ -111,7 +101,6 @@ func (d *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 	}
 }
 
-
 func (d *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
 	resp, err := d.client.CheckBatchAvailability(context.TODO(), &dalc.CheckBatchAvailabilityRequest{DataLayerHeight: daMetaData.Height})
 	if err != nil {
@@ -122,11 +111,9 @@ func (d *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 	}
 }
 
-
 func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint32 {
 	return maxBlobSize
 }
-
 
 func (d *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
 	resp, err := d.client.RetrieveBatches(context.TODO(), &dalc.RetrieveBatchesRequest{DataLayerHeight: daMetaData.Height})

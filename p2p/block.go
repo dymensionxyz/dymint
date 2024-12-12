@@ -6,23 +6,15 @@ import (
 	tmcrypto "github.com/tendermint/tendermint/crypto"
 )
 
-
-
-
-
-
 type BlockData struct {
-	
 	Block types.Block
-	
+
 	Commit types.Commit
 }
-
 
 func (b *BlockData) MarshalBinary() ([]byte, error) {
 	return b.ToProto().Marshal()
 }
-
 
 func (b *BlockData) UnmarshalBinary(data []byte) error {
 	var pbBlock pb.BlockData
@@ -34,14 +26,12 @@ func (b *BlockData) UnmarshalBinary(data []byte) error {
 	return err
 }
 
-
 func (b *BlockData) ToProto() *pb.BlockData {
 	return &pb.BlockData{
 		Block:  b.Block.ToProto(),
 		Commit: b.Commit.ToProto(),
 	}
 }
-
 
 func (b *BlockData) FromProto(other *pb.BlockData) error {
 	if err := b.Block.FromProto(other.Block); err != nil {
@@ -52,7 +42,6 @@ func (b *BlockData) FromProto(other *pb.BlockData) error {
 	}
 	return nil
 }
-
 
 func (b *BlockData) Validate(proposerPubKey tmcrypto.PubKey) error {
 	if err := b.Block.ValidateBasic(); err != nil {

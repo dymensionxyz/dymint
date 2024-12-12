@@ -1,12 +1,9 @@
 package rollapp
 
-
-
 import (
 	errorsmod "cosmossdk.io/errors"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 )
-
 
 var (
 	ErrRollappExists                   = errorsmod.Register(ModuleName, 1000, "rollapp already exists")
@@ -44,7 +41,6 @@ var (
 	ErrInvalidRequest                  = errorsmod.Wrap(gerrc.ErrInvalidArgument, "invalid request")
 	ErrInvalidVMType                   = errorsmod.Wrap(gerrc.ErrInvalidArgument, "invalid vm type")
 
-	
 	ErrDisputeAlreadyFinalized = errorsmod.Register(ModuleName, 2000, "disputed height already finalized")
 	ErrDisputeAlreadyReverted  = errorsmod.Register(ModuleName, 2001, "disputed height already reverted")
 	ErrWrongClientId           = errorsmod.Register(ModuleName, 2002, "client id does not match the rollapp")

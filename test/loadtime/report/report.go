@@ -13,16 +13,11 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
-
-
-
-
 type BlockStore interface {
 	Height() uint64
 	Base() uint64
 	LoadBlock(uint64) (*types.Block, error)
 }
-
 
 type DataPoint struct {
 	Duration  time.Duration
@@ -30,48 +25,30 @@ type DataPoint struct {
 	Hash      []byte
 }
 
-
-
 type Report struct {
 	ID                      uuid.UUID
 	Rate, Connections, Size uint64
 	Max, Min, Avg, StdDev   time.Duration
 
-	
-	
-	
-	
-	
 	NegativeCount int
 
-	
 	TPS uint64
 
-	
-	
-	
 	All []DataPoint
 
-	
 	sum int64
 }
-
 
 type Reports struct {
 	s map[uuid.UUID]Report
 	l []Report
 
-	
-	
-	
 	errorCount int
 }
-
 
 func (rs *Reports) List() []Report {
 	return rs.l
 }
-
 
 func (rs *Reports) ErrorCount() int {
 	return rs.errorCount
@@ -100,9 +77,7 @@ func (rs *Reports) addDataPoint(id uuid.UUID, l time.Duration, bt time.Time, has
 	if int64(l) < 0 {
 		r.NegativeCount++
 	}
-	
-	
-	
+
 	r.sum += int64(l)
 	rs.s[id] = r
 }
@@ -122,14 +97,12 @@ func (rs *Reports) calculateAll() {
 	}
 }
 
-
 func calculateTPS(in []DataPoint) uint64 {
-	
 	blocks := make(map[time.Time]int)
 	for _, v := range in {
 		blocks[v.BlockTime]++
 	}
-	
+
 	var blockTimes []time.Time
 	for k := range blocks {
 		blockTimes = append(blockTimes, k)
@@ -137,7 +110,7 @@ func calculateTPS(in []DataPoint) uint64 {
 	sort.Slice(blockTimes, func(i, j int) bool {
 		return blockTimes[i].Before(blockTimes[j])
 	})
-	
+
 	TPS := uint64(0)
 	for index, blockTime := range blockTimes {
 		currentTx := blocks[blockTime]
@@ -160,8 +133,6 @@ func (rs *Reports) addError() {
 	rs.errorCount++
 }
 
-
-
 func GenerateFromBlockStore(s BlockStore) (*Reports, error) {
 	type payloadData struct {
 		id                      uuid.UUID
@@ -179,11 +150,6 @@ func GenerateFromBlockStore(s BlockStore) (*Reports, error) {
 		s: make(map[uuid.UUID]Report),
 	}
 
-	
-	
-	
-	
-	
 	const poolSize = 16
 
 	txc := make(chan txData)

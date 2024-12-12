@@ -21,9 +21,8 @@ import (
 )
 
 const (
-	
 	BlockVersion = 1
-	
+
 	AppVersion = 0
 
 	SettlementAccountPrefix = "dym"
@@ -62,7 +61,6 @@ func GenerateSettlementAddress() string {
 	}
 	return addr
 }
-
 
 func generateBlock(height uint64, proposerHash []byte, lastHeaderHash [32]byte) *types.Block {
 	h := createRandomHashes()
@@ -135,7 +133,6 @@ func GenerateBlocksWithTxs(startHeight uint64, num uint64, proposerKey crypto.Pr
 	return blocks, nil
 }
 
-
 func GenerateBlocks(startHeight uint64, num uint64, proposerKey crypto.PrivKey, lastBlockHeader [32]byte) ([]*types.Block, error) {
 	r, _ := proposerKey.Raw()
 	seq := types.NewSequencerFromValidator(*tmtypes.NewValidator(ed25519.PrivKey(r).PubKey(), 1))
@@ -162,7 +159,6 @@ func GenerateBlocks(startHeight uint64, num uint64, proposerKey crypto.PrivKey, 
 	}
 	return blocks, nil
 }
-
 
 func GenerateCommits(blocks []*types.Block, proposerKey crypto.PrivKey) ([]*types.Commit, error) {
 	commits := make([]*types.Commit, len(blocks))
@@ -205,7 +201,6 @@ func generateSignature(proposerKey crypto.PrivKey, header *types.Header) ([]byte
 	return sign, nil
 }
 
-
 func GenerateBatch(startHeight uint64, endHeight uint64, proposerKey crypto.PrivKey, lastBlockHeader [32]byte) (*types.Batch, error) {
 	blocks, err := GenerateBlocks(startHeight, endHeight-startHeight+1, proposerKey, lastBlockHeader)
 	if err != nil {
@@ -222,7 +217,6 @@ func GenerateBatch(startHeight uint64, endHeight uint64, proposerKey crypto.Priv
 	}
 	return batch, nil
 }
-
 
 func GenerateLastBatch(startHeight uint64, endHeight uint64, proposerKey crypto.PrivKey, nextSequencerKey crypto.PrivKey, lastHeaderHash [32]byte) (*types.Batch, error) {
 	nextSequencerRaw, _ := nextSequencerKey.Raw()
@@ -247,7 +241,6 @@ func GenerateLastBatch(startHeight uint64, endHeight uint64, proposerKey crypto.
 
 	return batch, nil
 }
-
 
 func GenerateLastBlocks(startHeight uint64, num uint64, proposerKey crypto.PrivKey, lastHeaderHash [32]byte, nextSequencerHash [32]byte) ([]*types.Block, error) {
 	r, _ := proposerKey.Raw()
@@ -304,7 +297,6 @@ func MustGenerateBatchAndKey(startHeight uint64, endHeight uint64) *types.Batch 
 	return MustGenerateBatch(startHeight, endHeight, proposerKey)
 }
 
-
 func GenerateRandomValidatorSet() *tmtypes.ValidatorSet {
 	return tmtypes.NewValidatorSet([]*tmtypes.Validator{
 		tmtypes.NewValidator(ed25519.GenPrivKey().PubKey(), 1),
@@ -320,11 +312,10 @@ func GenerateSequencer() types.Sequencer {
 	)
 }
 
-
 func GenerateStateWithSequencer(initialHeight int64, lastBlockHeight int64, pubkey tmcrypto.PubKey) *types.State {
 	s := &types.State{
 		ChainID:         "test-chain",
-		InitialHeight:   uint64(initialHeight), 
+		InitialHeight:   uint64(initialHeight),
 		AppHash:         [32]byte{},
 		LastResultsHash: GetEmptyLastResultsHash(),
 		Version: tmstate.Version{
@@ -350,10 +341,9 @@ func GenerateStateWithSequencer(initialHeight int64, lastBlockHeight int64, pubk
 		GenerateSettlementAddress(),
 		[]string{GenerateSettlementAddress()},
 	))
-	s.SetHeight(uint64(lastBlockHeight)) 
+	s.SetHeight(uint64(lastBlockHeight))
 	return s
 }
-
 
 func GenerateGenesis(initialHeight int64) *tmtypes.GenesisDoc {
 	return &tmtypes.GenesisDoc{

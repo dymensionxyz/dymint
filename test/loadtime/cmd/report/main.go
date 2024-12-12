@@ -19,18 +19,15 @@ const (
 
 var mainPrefix = [1]byte{0}
 
-
 type BlockStore struct {
 	*store.DefaultStore
 	base   uint64
 	height uint64
 }
 
-
 func (b *BlockStore) Height() uint64 {
 	return b.height
 }
-
 
 func (b *BlockStore) Base() uint64 {
 	return b.base

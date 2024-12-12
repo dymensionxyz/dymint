@@ -12,7 +12,6 @@ import (
 	ctypes "github.com/tendermint/tendermint/rpc/core/types"
 )
 
-
 const (
 	eventStateUpdateFmt          = "state_update.rollapp_id='%s' AND state_update.status='PENDING'"
 	eventStateUpdateFinalizedFmt = "state_update.rollapp_id='%s' AND state_update.status='FINALIZED'"
@@ -42,7 +41,6 @@ func (c *Client) eventHandler() {
 	eventRotationStartedQ := fmt.Sprintf(eventRotationStartedFmt, c.rollappId)
 	eventStateUpdateFinalizedQ := fmt.Sprintf(eventStateUpdateFinalizedFmt, c.rollappId)
 
-	
 	eventMap := map[string]string{
 		eventStateUpdateQ:          settlement.EventNewBatchAccepted,
 		eventSequencersListQ:       settlement.EventNewBondedSequencer,
@@ -66,7 +64,7 @@ func (c *Client) eventHandler() {
 	if err != nil {
 		panic(fmt.Errorf("subscribe to events (%s): %w", eventStateUpdateFinalizedQ, err))
 	}
-	defer c.cosmosClient.UnsubscribeAll(c.ctx, subscriber) 
+	defer c.cosmosClient.UnsubscribeAll(c.ctx, subscriber)
 
 	for {
 		var e ctypes.ResultEvent
@@ -74,7 +72,7 @@ func (c *Client) eventHandler() {
 		case <-c.ctx.Done():
 			return
 		case <-c.cosmosClient.EventListenerQuit():
-			
+
 			return
 		case e = <-stateUpdatesC:
 		case e = <-sequencersListC:
@@ -86,7 +84,6 @@ func (c *Client) eventHandler() {
 }
 
 func (c *Client) handleReceivedEvent(event ctypes.ResultEvent, eventMap map[string]string) {
-	
 	internalType, ok := eventMap[event.Query]
 	if !ok {
 		c.logger.Error("Ignoring event. Type not supported.", "event", event)
@@ -105,7 +102,7 @@ func (c *Client) handleReceivedEvent(event ctypes.ResultEvent, eventMap map[stri
 
 func convertToNewBatchEvent(rawEventData ctypes.ResultEvent) (*settlement.EventDataNewBatch, error) {
 	var errs []error
-	
+
 	events := rawEventData.Events
 	if events["state_update.num_blocks"] == nil || events["state_update.start_height"] == nil || events["state_update.state_info_index"] == nil {
 		return nil, fmt.Errorf("missing expected attributes in event")
@@ -137,12 +134,10 @@ func convertToNewBatchEvent(rawEventData ctypes.ResultEvent) (*settlement.EventD
 }
 
 func convertToNewSequencerEvent(rawEventData ctypes.ResultEvent) (*settlement.EventDataNewBondedSequencer, error) {
-	
 	events := rawEventData.Events
 	if events["create_sequencer.rollapp_id"] == nil {
 		return nil, fmt.Errorf("missing expected attributes in event")
 	}
-	
 
 	if events["create_sequencer.sequencer"] == nil {
 		return nil, fmt.Errorf("missing expected attributes in event")
@@ -154,13 +149,10 @@ func convertToNewSequencerEvent(rawEventData ctypes.ResultEvent) (*settlement.Ev
 }
 
 func convertToRotationStartedEvent(rawEventData ctypes.ResultEvent) (*settlement.EventDataRotationStarted, error) {
-	
 	events := rawEventData.Events
 	if events["proposer_rotation_started.rollapp_id"] == nil {
 		return nil, fmt.Errorf("missing expected attributes in event")
 	}
-
-	
 
 	if events["proposer_rotation_started.next_proposer"] == nil {
 		return nil, fmt.Errorf("missing expected attributes in event")

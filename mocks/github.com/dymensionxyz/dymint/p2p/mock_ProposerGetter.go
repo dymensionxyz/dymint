@@ -1,12 +1,9 @@
-
-
 package p2p
 
 import (
 	mock "github.com/stretchr/testify/mock"
 	crypto "github.com/tendermint/tendermint/crypto"
 )
-
 
 type MockProposerGetter struct {
 	mock.Mock
@@ -19,7 +16,6 @@ type MockProposerGetter_Expecter struct {
 func (_m *MockProposerGetter) EXPECT() *MockProposerGetter_Expecter {
 	return &MockProposerGetter_Expecter{mock: &_m.Mock}
 }
-
 
 func (_m *MockProposerGetter) GetProposerPubKey() crypto.PubKey {
 	ret := _m.Called()
@@ -40,11 +36,9 @@ func (_m *MockProposerGetter) GetProposerPubKey() crypto.PubKey {
 	return r0
 }
 
-
 type MockProposerGetter_GetProposerPubKey_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockProposerGetter_Expecter) GetProposerPubKey() *MockProposerGetter_GetProposerPubKey_Call {
 	return &MockProposerGetter_GetProposerPubKey_Call{Call: _e.mock.On("GetProposerPubKey")}
@@ -67,7 +61,6 @@ func (_c *MockProposerGetter_GetProposerPubKey_Call) RunAndReturn(run func() cry
 	return _c
 }
 
-
 func (_m *MockProposerGetter) GetRevision() uint64 {
 	ret := _m.Called()
 
@@ -85,11 +78,9 @@ func (_m *MockProposerGetter) GetRevision() uint64 {
 	return r0
 }
 
-
 type MockProposerGetter_GetRevision_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockProposerGetter_Expecter) GetRevision() *MockProposerGetter_GetRevision_Call {
 	return &MockProposerGetter_GetRevision_Call{Call: _e.mock.On("GetRevision")}
@@ -112,12 +103,11 @@ func (_c *MockProposerGetter_GetRevision_Call) RunAndReturn(run func() uint64) *
 	return _c
 }
 
-
-
 func NewMockProposerGetter(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *MockProposerGetter {
+},
+) *MockProposerGetter {
 	mock := &MockProposerGetter{}
 	mock.Mock.Test(t)
 

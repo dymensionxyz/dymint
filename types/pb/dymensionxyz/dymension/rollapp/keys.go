@@ -1,19 +1,14 @@
 package rollapp
 
 const (
-	
 	ModuleName = "rollapp"
 
-	
 	StoreKey = ModuleName
 
-	
 	RouterKey = ModuleName
 
-	
 	QuerierRoute = ModuleName
 
-	
 	MemStoreKey = "mem_rollapp"
 )
 

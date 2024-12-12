@@ -5,7 +5,6 @@ import (
 	"time"
 )
 
-
 type Config struct {
 	KeyringBackend          string        `mapstructure:"keyring_backend"`
 	NodeAddress             string        `mapstructure:"settlement_node_address"`
@@ -19,9 +18,9 @@ type Config struct {
 	RetryMinDelay           time.Duration `mapstructure:"retry_min_delay"`
 	BatchAcceptanceTimeout  time.Duration `mapstructure:"batch_acceptance_timeout"`
 	BatchAcceptanceAttempts uint          `mapstructure:"batch_acceptance_attempts"`
-	
+
 	ProposerPubKey string `json:"proposer_pub_key"`
-	
+
 	SLGrpc GrpcConfig `mapstructure:",squash"`
 }
 

@@ -21,8 +21,6 @@ type BlockSyncDagService struct {
 	cidBuilder cid.Builder
 }
 
-
-
 func NewDAGService(bsrv blockservice.BlockService) BlockSyncDagService {
 	bsDagService := &BlockSyncDagService{
 		cidBuilder: &cid.Prefix{
@@ -37,15 +35,12 @@ func NewDAGService(bsrv blockservice.BlockService) BlockSyncDagService {
 	return *bsDagService
 }
 
-
-
 func (bsDagService *BlockSyncDagService) SaveBlock(ctx context.Context, block []byte) (cid.Cid, error) {
 	blockReader := bytes.NewReader(block)
 
 	splitter := chunker.NewSizeSplitter(blockReader, chunker.DefaultBlockSize)
 	nodes := []*dag.ProtoNode{}
 
-	
 	for {
 		nextData, err := splitter.NextBytes()
 		if err == io.EOF {
@@ -63,14 +58,12 @@ func (bsDagService *BlockSyncDagService) SaveBlock(ctx context.Context, block []
 
 	}
 
-	
 	root := dag.NodeWithData(nil)
 	err := root.SetCidBuilder(bsDagService.cidBuilder)
 	if err != nil {
 		return cid.Undef, err
 	}
 
-	
 	for _, n := range nodes {
 
 		err := root.AddNodeLink(n.Cid().String(), n)
@@ -90,21 +83,17 @@ func (bsDagService *BlockSyncDagService) SaveBlock(ctx context.Context, block []
 	return root.Cid(), nil
 }
 
-
 func (bsDagService *BlockSyncDagService) LoadBlock(ctx context.Context, cid cid.Cid) ([]byte, error) {
-	
 	nd, err := bsDagService.Get(ctx, cid)
 	if err != nil {
 		return nil, err
 	}
 
-	
 	read, err := dagReader(nd, bsDagService)
 	if err != nil {
 		return nil, err
 	}
 
-	
 	data, err := io.ReadAll(read)
 	if err != nil {
 		return nil, err
@@ -113,13 +102,11 @@ func (bsDagService *BlockSyncDagService) LoadBlock(ctx context.Context, cid cid.
 }
 
 func (bsDagService *BlockSyncDagService) DeleteBlock(ctx context.Context, cid cid.Cid) error {
-	
 	root, err := bsDagService.Get(ctx, cid)
 	if err != nil {
 		return err
 	}
 
-	
 	for _, l := range root.Links() {
 		err := bsDagService.Remove(ctx, l.Cid)
 		if err != nil {
@@ -129,12 +116,10 @@ func (bsDagService *BlockSyncDagService) DeleteBlock(ctx context.Context, cid ci
 	return nil
 }
 
-
 func dagReader(root ipld.Node, ds ipld.DAGService) (io.Reader, error) {
 	ctx := context.Background()
 	buf := new(bytes.Buffer)
 
-	
 	for _, l := range root.Links() {
 		n, err := ds.Get(ctx, l.Cid)
 		if err != nil {

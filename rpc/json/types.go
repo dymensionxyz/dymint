@@ -18,7 +18,6 @@ type unsubscribeArgs struct {
 }
 type unsubscribeAllArgs struct{}
 
-
 type (
 	healthArgs         struct{}
 	statusArgs         struct{}
@@ -86,7 +85,6 @@ type unconfirmedTxsArgs struct {
 }
 type numUnconfirmedTxsArgs struct{}
 
-
 type broadcastTxCommitArgs struct {
 	Tx types.Tx `json:"tx"`
 }
@@ -97,9 +95,6 @@ type broadcastTxAsyncArgs struct {
 	Tx types.Tx `json:"tx"`
 }
 
-
-
-
 type ABCIQueryArgs struct {
 	Path   string         `json:"path"`
 	Data   bytes.HexBytes `json:"data"`
@@ -107,10 +102,7 @@ type ABCIQueryArgs struct {
 	Prove  bool           `json:"prove"`
 }
 
-
 type ABCIInfoArgs struct{}
-
-
 
 type broadcastEvidenceArgs struct {
 	Evidence types.Evidence `json:"evidence"`
@@ -118,19 +110,13 @@ type broadcastEvidenceArgs struct {
 
 type emptyResult struct{}
 
-
-
-
 type StrInt int
 
-
 type StrInt64 int64
-
 
 func (s *StrInt64) UnmarshalJSON(b []byte) error {
 	return unmarshalStrInt64(b, s)
 }
-
 
 func (s *StrInt) UnmarshalJSON(b []byte) error {
 	var val StrInt64

@@ -19,7 +19,6 @@ import (
 	protoutils "github.com/dymensionxyz/dymint/utils/proto"
 )
 
-
 const minBlockMaxBytes = 10000
 
 type ExecutorI interface {
@@ -33,14 +32,11 @@ type ExecutorI interface {
 	UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResponses, appHash []byte, height uint64, lastHeaderHash [32]byte)
 	UpdateProposerFromBlock(s *types.State, seqSet *types.SequencerSet, block *types.Block) bool
 
-	
-
 	AddConsensusMsgs(...proto2.Message)
 	GetConsensusMsgs() []proto2.Message
 }
 
 var _ ExecutorI = new(Executor)
-
 
 type Executor struct {
 	localAddress          []byte
@@ -54,8 +50,6 @@ type Executor struct {
 
 	logger types.Logger
 }
-
-
 
 func NewExecutor(
 	localAddress []byte,
@@ -79,23 +73,17 @@ func NewExecutor(
 	return &be, nil
 }
 
-
-
 func (e *Executor) AddConsensusMsgs(msgs ...proto2.Message) {
 	e.consensusMsgQueue.Add(msgs...)
 }
-
-
 
 func (e *Executor) GetConsensusMsgs() []proto2.Message {
 	return e.consensusMsgQueue.Get()
 }
 
-
 func (e *Executor) InitChain(genesis *tmtypes.GenesisDoc, genesisChecksum string, valset []*tmtypes.Validator) (*abci.ResponseInitChain, error) {
 	valUpdates := abci.ValidatorUpdates{}
 
-	
 	for _, validator := range valset {
 		tmkey, err := tmcrypto.PubKeyToProto(validator.PubKey)
 		if err != nil {
@@ -136,7 +124,6 @@ func (e *Executor) InitChain(genesis *tmtypes.GenesisDoc, genesisChecksum string
 	})
 }
 
-
 func (e *Executor) CreateBlock(
 	height uint64,
 	lastCommit *types.Commit,
@@ -144,8 +131,8 @@ func (e *Executor) CreateBlock(
 	state *types.State,
 	maxBlockDataSizeBytes uint64,
 ) *types.Block {
-	maxBlockDataSizeBytes = min(maxBlockDataSizeBytes, uint64(max(minBlockMaxBytes, state.ConsensusParams.Block.MaxBytes))) 
-	mempoolTxs := e.mempool.ReapMaxBytesMaxGas(int64(maxBlockDataSizeBytes), state.ConsensusParams.Block.MaxGas)            
+	maxBlockDataSizeBytes = min(maxBlockDataSizeBytes, uint64(max(minBlockMaxBytes, state.ConsensusParams.Block.MaxBytes)))
+	mempoolTxs := e.mempool.ReapMaxBytesMaxGas(int64(maxBlockDataSizeBytes), state.ConsensusParams.Block.MaxGas)
 
 	block := &types.Block{
 		Header: types.Header{
@@ -178,7 +165,6 @@ func (e *Executor) CreateBlock(
 	return block
 }
 
-
 func (e *Executor) Commit(state *types.State, block *types.Block, resp *tmstate.ABCIResponses) ([]byte, int64, error) {
 	appHash, retainHeight, err := e.commit(state, block, resp.DeliverTxs)
 	if err != nil {
@@ -192,7 +178,6 @@ func (e *Executor) Commit(state *types.State, block *types.Block, resp *tmstate.
 	}
 	return appHash, retainHeight, nil
 }
-
 
 func (e *Executor) GetAppInfo() (*abci.ResponseInfo, error) {
 	return e.proxyAppQueryConn.InfoSync(abci.RequestInfo{})
@@ -214,7 +199,7 @@ func (e *Executor) commit(state *types.State, block *types.Block, deliverTxs []*
 
 	maxBytes := state.ConsensusParams.Block.MaxBytes
 	maxGas := state.ConsensusParams.Block.MaxGas
-	err = e.mempool.Update(int64(block.Header.Height), fromDymintTxs(block.Data.Txs), deliverTxs) 
+	err = e.mempool.Update(int64(block.Header.Height), fromDymintTxs(block.Data.Txs), deliverTxs)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -223,7 +208,6 @@ func (e *Executor) commit(state *types.State, block *types.Block, deliverTxs []*
 
 	return resp.Data, resp.RetainHeight, err
 }
-
 
 func (e *Executor) ExecuteBlock(block *types.Block) (*tmstate.ABCIResponses, error) {
 	abciResponses := new(tmstate.ABCIResponses)
@@ -273,7 +257,7 @@ func (e *Executor) ExecuteBlock(block *types.Block) (*tmstate.ABCIResponses, err
 		}
 	}
 
-	abciResponses.EndBlock, err = e.proxyAppConsensusConn.EndBlockSync(abci.RequestEndBlock{Height: int64(block.Header.Height)}) 
+	abciResponses.EndBlock, err = e.proxyAppConsensusConn.EndBlockSync(abci.RequestEndBlock{Height: int64(block.Header.Height)})
 	if err != nil {
 		return nil, err
 	}
@@ -305,14 +289,14 @@ func (e *Executor) publishEvents(resp *tmstate.ABCIResponses, block *types.Block
 	for _, ev := range abciBlock.Evidence.Evidence {
 		err = multierr.Append(err, e.eventBus.PublishEventNewEvidence(tmtypes.EventDataNewEvidence{
 			Evidence: ev,
-			Height:   int64(block.Header.Height), 
+			Height:   int64(block.Header.Height),
 		}))
 	}
 	for i, dtx := range resp.DeliverTxs {
 		err = multierr.Append(err, e.eventBus.PublishEventTx(tmtypes.EventDataTx{
 			TxResult: abci.TxResult{
-				Height: int64(block.Header.Height), 
-				Index:  uint32(i),                  
+				Height: int64(block.Header.Height),
+				Index:  uint32(i),
 				Tx:     abciBlock.Data.Txs[i],
 				Result: *dtx,
 			},

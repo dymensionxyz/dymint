@@ -15,11 +15,9 @@ const (
 type MempoolIDs struct {
 	mtx       tmsync.RWMutex
 	peerMap   map[peer.ID]uint16
-	nextID    uint16              
-	activeIDs map[uint16]struct{} 
+	nextID    uint16
+	activeIDs map[uint16]struct{}
 }
-
-
 
 func (ids *MempoolIDs) ReserveForPeer(peer peer.ID) {
 	ids.mtx.Lock()
@@ -29,8 +27,6 @@ func (ids *MempoolIDs) ReserveForPeer(peer peer.ID) {
 	ids.peerMap[peer] = curID
 	ids.activeIDs[curID] = struct{}{}
 }
-
-
 
 func (ids *MempoolIDs) nextPeerID() uint16 {
 	if len(ids.activeIDs) == maxActiveIDs {
@@ -47,7 +43,6 @@ func (ids *MempoolIDs) nextPeerID() uint16 {
 	return curID
 }
 
-
 func (ids *MempoolIDs) Reclaim(peer peer.ID) {
 	ids.mtx.Lock()
 	defer ids.mtx.Unlock()
@@ -58,7 +53,6 @@ func (ids *MempoolIDs) Reclaim(peer peer.ID) {
 		delete(ids.peerMap, peer)
 	}
 }
-
 
 func (ids *MempoolIDs) GetForPeer(peer peer.ID) uint16 {
 	ids.mtx.Lock()
@@ -78,6 +72,6 @@ func NewMempoolIDs() *MempoolIDs {
 	return &MempoolIDs{
 		peerMap:   make(map[peer.ID]uint16),
 		activeIDs: map[uint16]struct{}{0: {}},
-		nextID:    1, 
+		nextID:    1,
 	}
 }

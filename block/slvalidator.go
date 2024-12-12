@@ -13,13 +13,11 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
-
 type SettlementValidator struct {
 	logger              types.Logger
 	blockManager        *Manager
 	lastValidatedHeight atomic.Uint64
 }
-
 
 func NewSettlementValidator(logger types.Logger, blockManager *Manager) *SettlementValidator {
 	lastValidatedHeight, err := blockManager.Store.LoadValidationHeight()
@@ -36,13 +34,9 @@ func NewSettlementValidator(logger types.Logger, blockManager *Manager) *Settlem
 	return validator
 }
 
-
-
-
 func (v *SettlementValidator) ValidateStateUpdate(batch *settlement.ResultRetrieveBatch) error {
 	v.logger.Debug("validating state update", "start height", batch.StartHeight, "end height", batch.EndHeight)
 
-	
 	p2pBlocks := make(map[uint64]*types.Block)
 	for height := batch.StartHeight; height <= batch.EndHeight; height++ {
 		source, err := v.blockManager.Store.LoadBlockSource(height)
@@ -51,7 +45,6 @@ func (v *SettlementValidator) ValidateStateUpdate(batch *settlement.ResultRetrie
 			continue
 		}
 
-		
 		if source != types.Gossiped && source != types.BlockSync {
 			continue
 		}
@@ -64,7 +57,6 @@ func (v *SettlementValidator) ValidateStateUpdate(batch *settlement.ResultRetrie
 		p2pBlocks[block.Header.Height] = block
 	}
 
-	
 	var daBatch da.ResultRetrieveBatch
 	for {
 		daBatch = v.blockManager.Retriever.RetrieveBatches(batch.MetaData.DA)
@@ -72,18 +64,15 @@ func (v *SettlementValidator) ValidateStateUpdate(batch *settlement.ResultRetrie
 			break
 		}
 
-		
 		if errors.Is(daBatch.BaseResult.Error, da.ErrBlobNotParsed) {
 			return types.NewErrStateUpdateBlobCorruptedFraud(batch.StateIndex, string(batch.MetaData.DA.Client), batch.MetaData.DA.Height, hex.EncodeToString(batch.MetaData.DA.Commitment))
 		}
 
-		
 		checkBatchResult := v.blockManager.Retriever.CheckBatchAvailability(batch.MetaData.DA)
 		if errors.Is(checkBatchResult.Error, da.ErrBlobNotIncluded) {
 			return types.NewErrStateUpdateBlobNotAvailableFraud(batch.StateIndex, string(batch.MetaData.DA.Client), batch.MetaData.DA.Height, hex.EncodeToString(batch.MetaData.DA.Commitment))
 		}
 
-		
 		continue
 	}
 
@@ -93,18 +82,15 @@ func (v *SettlementValidator) ValidateStateUpdate(batch *settlement.ResultRetrie
 		types.LastReceivedDAHeightGauge.Set(float64(batch.EndHeight()))
 	}
 
-	
 	err := v.ValidateDaBlocks(batch, daBlocks)
 	if err != nil {
 		return err
 	}
 
-	
 	if len(p2pBlocks) == 0 {
 		return nil
 	}
 
-	
 	err = v.ValidateP2PBlocks(daBlocks, p2pBlocks)
 	if err != nil {
 		return err
@@ -113,10 +99,7 @@ func (v *SettlementValidator) ValidateStateUpdate(batch *settlement.ResultRetrie
 	return nil
 }
 
-
-
 func (v *SettlementValidator) ValidateP2PBlocks(daBlocks []*types.Block, p2pBlocks map[uint64]*types.Block) error {
-	
 	for _, daBlock := range daBlocks {
 
 		p2pBlock, ok := p2pBlocks[daBlock.Header.Height]
@@ -140,9 +123,7 @@ func (v *SettlementValidator) ValidateP2PBlocks(daBlocks []*types.Block, p2pBloc
 	return nil
 }
 
-
 func (v *SettlementValidator) ValidateDaBlocks(slBatch *settlement.ResultRetrieveBatch, daBlocks []*types.Block) error {
-	
 	numSlBDs := uint64(len(slBatch.BlockDescriptors))
 	numSLBlocks := slBatch.NumBlocks
 	numDABlocks := uint64(len(daBlocks))
@@ -150,36 +131,28 @@ func (v *SettlementValidator) ValidateDaBlocks(slBatch *settlement.ResultRetriev
 		return types.NewErrStateUpdateNumBlocksNotMatchingFraud(slBatch.EndHeight, numSLBlocks, numSLBlocks, numDABlocks)
 	}
 
-	
 	for i, bd := range slBatch.BlockDescriptors {
-		
+
 		if bd.Height != daBlocks[i].Header.Height {
 			return types.NewErrStateUpdateHeightNotMatchingFraud(slBatch.StateIndex, slBatch.BlockDescriptors[0].Height, daBlocks[0].Header.Height, slBatch.BlockDescriptors[len(slBatch.BlockDescriptors)-1].Height, daBlocks[len(daBlocks)-1].Header.Height)
 		}
-		
+
 		if !bytes.Equal(bd.StateRoot, daBlocks[i].Header.AppHash[:]) {
 			return types.NewErrStateUpdateStateRootNotMatchingFraud(slBatch.StateIndex, bd.Height, bd.StateRoot, daBlocks[i].Header.AppHash[:])
 		}
 
-		
 		if !bd.Timestamp.Equal(daBlocks[i].Header.GetTimestamp()) {
 			return types.NewErrStateUpdateTimestampNotMatchingFraud(slBatch.StateIndex, bd.Height, bd.Timestamp, daBlocks[i].Header.GetTimestamp())
 		}
 
-		
 		err := v.validateDRS(slBatch.StateIndex, bd.Height, bd.DrsVersion)
 		if err != nil {
 			return err
 		}
 	}
 
-	
-	
-	
-	
 	lastDABlock := daBlocks[numSlBDs-1]
 
-	
 	if v.blockManager.State.RevisionStartHeight-1 == lastDABlock.Header.Height {
 		v.logger.Debug("DA blocks, previous to fork, validated successfully", "start height", daBlocks[0].Header.Height, "end height", daBlocks[len(daBlocks)-1].Header.Height)
 		return nil
@@ -202,8 +175,6 @@ func (v *SettlementValidator) ValidateDaBlocks(slBatch *settlement.ResultRetriev
 	return nil
 }
 
-
-
 func (v *SettlementValidator) UpdateLastValidatedHeight(height uint64) {
 	for {
 		curr := v.lastValidatedHeight.Load()
@@ -217,16 +188,13 @@ func (v *SettlementValidator) UpdateLastValidatedHeight(height uint64) {
 	}
 }
 
-
 func (v *SettlementValidator) GetLastValidatedHeight() uint64 {
 	return v.lastValidatedHeight.Load()
 }
 
-
 func (v *SettlementValidator) NextValidationHeight() uint64 {
 	return v.lastValidatedHeight.Load() + 1
 }
-
 
 func (v *SettlementValidator) validateDRS(stateIndex uint64, height uint64, version uint32) error {
 	drs, err := v.blockManager.Store.LoadDRSVersion(height)
@@ -239,7 +207,6 @@ func (v *SettlementValidator) validateDRS(stateIndex uint64, height uint64, vers
 
 	return nil
 }
-
 
 func blockHash(block *types.Block) ([]byte, error) {
 	blockBytes, err := block.MarshalBinary()

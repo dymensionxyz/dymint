@@ -22,7 +22,6 @@ func (m *Manager) ApplyBatchFromSL(slBatch *settlement.Batch) error {
 	m.retrieverMu.Lock()
 	defer m.retrieverMu.Unlock()
 
-	
 	if m.State.Height() > slBatch.EndHeight {
 		return nil
 	}
@@ -30,7 +29,7 @@ func (m *Manager) ApplyBatchFromSL(slBatch *settlement.Batch) error {
 	blockIndex := 0
 	for _, batch := range batchResp.Batches {
 		for i, block := range batch.Blocks {
-			
+
 			if blockIndex >= len(slBatch.BlockDescriptors) {
 				break
 			}
@@ -45,7 +44,6 @@ func (m *Manager) ApplyBatchFromSL(slBatch *settlement.Batch) error {
 				return err
 			}
 
-			
 			err := m.applyBlockWithFraudHandling(block, batch.Commits[i], types.BlockMetaData{Source: types.DA, DAHeight: slBatch.MetaData.DA.Height})
 			if err != nil {
 				return fmt.Errorf("apply block: height: %d: %w", block.Header.Height, err)
@@ -55,21 +53,12 @@ func (m *Manager) ApplyBatchFromSL(slBatch *settlement.Batch) error {
 		}
 	}
 
-	
 	if m.State.Height() != slBatch.EndHeight {
 		return fmt.Errorf("state height mismatch: state height: %d: batch end height: %d", m.State.Height(), slBatch.EndHeight)
 	}
 
 	return nil
 }
-
-
-
-
-
-
-
-
 
 func (m *Manager) applyLocalBlock() error {
 	defer m.retrieverMu.Unlock()
@@ -101,7 +90,6 @@ func (m *Manager) applyLocalBlock() error {
 }
 
 func (m *Manager) fetchBatch(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
-	
 	if daMetaData.Client != m.DAClient.GetClientType() {
 		return da.ResultRetrieveBatch{
 			BaseResult: da.BaseResult{
@@ -112,9 +100,7 @@ func (m *Manager) fetchBatch(daMetaData *da.DASubmitMetaData) da.ResultRetrieveB
 		}
 	}
 
-	
 	batchRes := m.Retriever.RetrieveBatches(daMetaData)
-	
-	
+
 	return batchRes
 }

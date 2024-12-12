@@ -8,7 +8,6 @@ import (
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 )
 
-
 func (s *DefaultStore) PruneStore(to uint64, logger types.Logger) (uint64, error) {
 	pruned := uint64(0)
 	from, err := s.LoadBaseHeight()
@@ -28,7 +27,6 @@ func (s *DefaultStore) PruneStore(to uint64, logger types.Logger) (uint64, error
 	}
 	return pruned, nil
 }
-
 
 func (s *DefaultStore) pruneHeights(from, to uint64, logger types.Logger) (uint64, error) {
 	pruneBlocks := func(batch KVBatch, height uint64) error {
@@ -64,7 +62,6 @@ func (s *DefaultStore) pruneHeights(from, to uint64, logger types.Logger) (uint6
 	return pruned, err
 }
 
-
 func (s *DefaultStore) prune(from, to uint64, prune func(batch KVBatch, height uint64) error, logger types.Logger) (uint64, error) {
 	pruned := uint64(0)
 	batch := s.db.NewBatch()
@@ -86,7 +83,6 @@ func (s *DefaultStore) prune(from, to uint64, prune func(batch KVBatch, height u
 		}
 		pruned++
 
-		
 		if pruned%1000 == 0 && pruned > 0 {
 			err := flush(batch, h)
 			if err != nil {

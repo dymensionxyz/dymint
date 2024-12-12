@@ -1,5 +1,3 @@
-
-
 package da
 
 import (
@@ -13,7 +11,6 @@ import (
 	types "github.com/dymensionxyz/dymint/types"
 )
 
-
 type MockDataAvailabilityLayerClient struct {
 	mock.Mock
 }
@@ -25,7 +22,6 @@ type MockDataAvailabilityLayerClient_Expecter struct {
 func (_m *MockDataAvailabilityLayerClient) EXPECT() *MockDataAvailabilityLayerClient_Expecter {
 	return &MockDataAvailabilityLayerClient_Expecter{mock: &_m.Mock}
 }
-
 
 func (_m *MockDataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
 	ret := _m.Called(daMetaData)
@@ -44,12 +40,9 @@ func (_m *MockDataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da
 	return r0
 }
 
-
 type MockDataAvailabilityLayerClient_CheckBatchAvailability_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockDataAvailabilityLayerClient_Expecter) CheckBatchAvailability(daMetaData interface{}) *MockDataAvailabilityLayerClient_CheckBatchAvailability_Call {
 	return &MockDataAvailabilityLayerClient_CheckBatchAvailability_Call{Call: _e.mock.On("CheckBatchAvailability", daMetaData)}
@@ -72,7 +65,6 @@ func (_c *MockDataAvailabilityLayerClient_CheckBatchAvailability_Call) RunAndRet
 	return _c
 }
 
-
 func (_m *MockDataAvailabilityLayerClient) GetClientType() da.Client {
 	ret := _m.Called()
 
@@ -90,11 +82,9 @@ func (_m *MockDataAvailabilityLayerClient) GetClientType() da.Client {
 	return r0
 }
 
-
 type MockDataAvailabilityLayerClient_GetClientType_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockDataAvailabilityLayerClient_Expecter) GetClientType() *MockDataAvailabilityLayerClient_GetClientType_Call {
 	return &MockDataAvailabilityLayerClient_GetClientType_Call{Call: _e.mock.On("GetClientType")}
@@ -117,7 +107,6 @@ func (_c *MockDataAvailabilityLayerClient_GetClientType_Call) RunAndReturn(run f
 	return _c
 }
 
-
 func (_m *MockDataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint32 {
 	ret := _m.Called()
 
@@ -135,11 +124,9 @@ func (_m *MockDataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint32 {
 	return r0
 }
 
-
 type MockDataAvailabilityLayerClient_GetMaxBlobSizeBytes_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockDataAvailabilityLayerClient_Expecter) GetMaxBlobSizeBytes() *MockDataAvailabilityLayerClient_GetMaxBlobSizeBytes_Call {
 	return &MockDataAvailabilityLayerClient_GetMaxBlobSizeBytes_Call{Call: _e.mock.On("GetMaxBlobSizeBytes")}
@@ -161,7 +148,6 @@ func (_c *MockDataAvailabilityLayerClient_GetMaxBlobSizeBytes_Call) RunAndReturn
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockDataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
 	ret := _m.Called()
@@ -190,11 +176,9 @@ func (_m *MockDataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error
 	return r0, r1
 }
 
-
 type MockDataAvailabilityLayerClient_GetSignerBalance_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockDataAvailabilityLayerClient_Expecter) GetSignerBalance() *MockDataAvailabilityLayerClient_GetSignerBalance_Call {
 	return &MockDataAvailabilityLayerClient_GetSignerBalance_Call{Call: _e.mock.On("GetSignerBalance")}
@@ -216,7 +200,6 @@ func (_c *MockDataAvailabilityLayerClient_GetSignerBalance_Call) RunAndReturn(ru
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockDataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.Server, kvStore store.KV, logger types.Logger, options ...da.Option) error {
 	_va := make([]interface{}, len(options))
@@ -242,16 +225,9 @@ func (_m *MockDataAvailabilityLayerClient) Init(config []byte, pubsubServer *pub
 	return r0
 }
 
-
 type MockDataAvailabilityLayerClient_Init_Call struct {
 	*mock.Call
 }
-
-
-
-
-
-
 
 func (_e *MockDataAvailabilityLayerClient_Expecter) Init(config interface{}, pubsubServer interface{}, kvStore interface{}, logger interface{}, options ...interface{}) *MockDataAvailabilityLayerClient_Init_Call {
 	return &MockDataAvailabilityLayerClient_Init_Call{Call: _e.mock.On("Init",
@@ -281,7 +257,6 @@ func (_c *MockDataAvailabilityLayerClient_Init_Call) RunAndReturn(run func([]byt
 	return _c
 }
 
-
 func (_m *MockDataAvailabilityLayerClient) Start() error {
 	ret := _m.Called()
 
@@ -299,11 +274,9 @@ func (_m *MockDataAvailabilityLayerClient) Start() error {
 	return r0
 }
 
-
 type MockDataAvailabilityLayerClient_Start_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockDataAvailabilityLayerClient_Expecter) Start() *MockDataAvailabilityLayerClient_Start_Call {
 	return &MockDataAvailabilityLayerClient_Start_Call{Call: _e.mock.On("Start")}
@@ -326,7 +299,6 @@ func (_c *MockDataAvailabilityLayerClient_Start_Call) RunAndReturn(run func() er
 	return _c
 }
 
-
 func (_m *MockDataAvailabilityLayerClient) Stop() error {
 	ret := _m.Called()
 
@@ -344,11 +316,9 @@ func (_m *MockDataAvailabilityLayerClient) Stop() error {
 	return r0
 }
 
-
 type MockDataAvailabilityLayerClient_Stop_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockDataAvailabilityLayerClient_Expecter) Stop() *MockDataAvailabilityLayerClient_Stop_Call {
 	return &MockDataAvailabilityLayerClient_Stop_Call{Call: _e.mock.On("Stop")}
@@ -371,7 +341,6 @@ func (_c *MockDataAvailabilityLayerClient_Stop_Call) RunAndReturn(run func() err
 	return _c
 }
 
-
 func (_m *MockDataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultSubmitBatch {
 	ret := _m.Called(batch)
 
@@ -389,12 +358,9 @@ func (_m *MockDataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.Re
 	return r0
 }
 
-
 type MockDataAvailabilityLayerClient_SubmitBatch_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockDataAvailabilityLayerClient_Expecter) SubmitBatch(batch interface{}) *MockDataAvailabilityLayerClient_SubmitBatch_Call {
 	return &MockDataAvailabilityLayerClient_SubmitBatch_Call{Call: _e.mock.On("SubmitBatch", batch)}
@@ -417,16 +383,13 @@ func (_c *MockDataAvailabilityLayerClient_SubmitBatch_Call) RunAndReturn(run fun
 	return _c
 }
 
-
 func (_m *MockDataAvailabilityLayerClient) WaitForSyncing() {
 	_m.Called()
 }
 
-
 type MockDataAvailabilityLayerClient_WaitForSyncing_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockDataAvailabilityLayerClient_Expecter) WaitForSyncing() *MockDataAvailabilityLayerClient_WaitForSyncing_Call {
 	return &MockDataAvailabilityLayerClient_WaitForSyncing_Call{Call: _e.mock.On("WaitForSyncing")}
@@ -449,12 +412,11 @@ func (_c *MockDataAvailabilityLayerClient_WaitForSyncing_Call) RunAndReturn(run 
 	return _c
 }
 
-
-
 func NewMockDataAvailabilityLayerClient(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *MockDataAvailabilityLayerClient {
+},
+) *MockDataAvailabilityLayerClient {
 	mock := &MockDataAvailabilityLayerClient{}
 	mock.Mock.Test(t)
 

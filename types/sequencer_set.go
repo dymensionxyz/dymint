@@ -13,18 +13,13 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-
-
-
 type Sequencer struct {
-	
 	SettlementAddress string
-	
+
 	RewardAddr string
-	
+
 	WhitelistedRelayers []string
 
-	
 	val types.Validator
 }
 
@@ -44,8 +39,6 @@ func NewSequencer(
 		val:                 *types.NewValidator(pubKey, 1),
 	}
 }
-
-
 
 func (s Sequencer) IsEmpty() bool {
 	return s.val.PubKey == nil
@@ -71,7 +64,6 @@ func (s Sequencer) TMValset() (*types.ValidatorSet, error) {
 	return types.ValidatorSetFromExistingValidators(s.TMValidators())
 }
 
-
 func (s Sequencer) Hash() ([]byte, error) {
 	vs, err := s.TMValset()
 	if err != nil {
@@ -80,7 +72,6 @@ func (s Sequencer) Hash() ([]byte, error) {
 	return vs.Hash(), nil
 }
 
-
 func (s Sequencer) MustHash() []byte {
 	h, err := s.Hash()
 	if err != nil {
@@ -88,7 +79,6 @@ func (s Sequencer) MustHash() []byte {
 	}
 	return h
 }
-
 
 func (s Sequencer) AnyConsPubKey() (*codectypes.Any, error) {
 	val := s.TMValidator()
@@ -103,7 +93,6 @@ func (s Sequencer) AnyConsPubKey() (*codectypes.Any, error) {
 	return anyPK, nil
 }
 
-
 func (s Sequencer) MustFullHash() []byte {
 	h := sha256.New()
 	h.Write([]byte(s.SettlementAddress))
@@ -114,14 +103,6 @@ func (s Sequencer) MustFullHash() []byte {
 	h.Write(s.MustHash())
 	return h.Sum(nil)
 }
-
-
-
-
-
-
-
-
 
 func SequencerListRightOuterJoin(A, B Sequencers) Sequencers {
 	lhsSet := make(map[string]struct{})
@@ -141,12 +122,7 @@ func (s Sequencer) String() string {
 	return fmt.Sprintf("Sequencer{SettlementAddress: %s RewardAddr: %s WhitelistedRelayers: %v Validator: %s}", s.SettlementAddress, s.RewardAddr, s.WhitelistedRelayers, s.val.String())
 }
 
-
 type Sequencers []Sequencer
-
-
-
-
 
 type SequencerSet struct {
 	mu         sync.RWMutex
@@ -160,7 +136,6 @@ func NewSequencerSet(s ...Sequencer) *SequencerSet {
 	}
 }
 
-
 func (s *SequencerSet) Set(sequencers Sequencers) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -173,7 +148,6 @@ func (s *SequencerSet) GetAll() Sequencers {
 	return slices.Clone(s.sequencers)
 }
 
-
 func (s *SequencerSet) GetByHash(hash []byte) (Sequencer, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -185,8 +159,6 @@ func (s *SequencerSet) GetByHash(hash []byte) (Sequencer, bool) {
 	return Sequencer{}, false
 }
 
-
-
 func (s *SequencerSet) GetByAddress(settlementAddress string) (Sequencer, bool) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
@@ -197,7 +169,6 @@ func (s *SequencerSet) GetByAddress(settlementAddress string) (Sequencer, bool) 
 	}
 	return Sequencer{}, false
 }
-
 
 func (s *SequencerSet) GetByConsAddress(consAddr []byte) (Sequencer, bool) {
 	s.mu.RLock()
@@ -213,10 +184,6 @@ func (s *SequencerSet) GetByConsAddress(consAddr []byte) (Sequencer, bool) {
 func (s *SequencerSet) String() string {
 	return fmt.Sprintf("SequencerSet: %v", s.sequencers)
 }
-
-
-
-
 
 func NewSequencerFromValidator(val types.Validator) *Sequencer {
 	return &Sequencer{

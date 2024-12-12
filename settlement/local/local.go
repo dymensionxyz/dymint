@@ -38,10 +38,8 @@ const (
 
 var (
 	settlementKVPrefix = []byte{0}
-	slStateIndexKey    = []byte("slStateIndex") 
+	slStateIndexKey    = []byte("slStateIndex")
 )
-
-
 
 type Client struct {
 	rollappID      string
@@ -49,7 +47,7 @@ type Client struct {
 	logger         types.Logger
 	pubsub         *pubsub.Server
 
-	mu           sync.Mutex 
+	mu           sync.Mutex
 	slStateIndex uint64
 	latestHeight uint64
 	settlementKV store.KV
@@ -64,7 +62,6 @@ func (c *Client) GetRollapp() (*types.Rollapp, error) {
 
 var _ settlement.ClientI = (*Client)(nil)
 
-
 func (c *Client) Init(config settlement.Config, rollappId string, pubsub *pubsub.Server, logger types.Logger, options ...settlement.Option) error {
 	slstore, proposer, err := initConfig(config)
 	if err != nil {
@@ -77,7 +74,7 @@ func (c *Client) Init(config settlement.Config, rollappId string, pubsub *pubsub
 	b, err := settlementKV.Get(slStateIndexKey)
 	if err == nil {
 		slStateIndex = binary.BigEndian.Uint64(b)
-		
+
 		var settlementBatch rollapptypes.MsgUpdateState
 		b, err := settlementKV.Get(keyFromIndex(slStateIndex))
 		if err != nil {
@@ -101,9 +98,9 @@ func (c *Client) Init(config settlement.Config, rollappId string, pubsub *pubsub
 
 func initConfig(conf settlement.Config) (slstore store.KV, proposer string, err error) {
 	if conf.KeyringHomeDir == "" {
-		
+
 		slstore = store.NewDefaultInMemoryKVStore()
-		
+
 		if conf.ProposerPubKey != "" {
 			proposer = conf.ProposerPubKey
 		} else {
@@ -135,16 +132,13 @@ func initConfig(conf settlement.Config) (slstore store.KV, proposer string, err 
 	return
 }
 
-
 func (c *Client) Start() error {
 	return nil
 }
 
-
 func (c *Client) Stop() error {
 	return c.settlementKV.Close()
 }
-
 
 func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) error {
 	settlementBatch := c.convertBatchToSettlementBatch(batch, daResult)
@@ -153,13 +147,12 @@ func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *d
 		return err
 	}
 
-	time.Sleep(100 * time.Millisecond) 
+	time.Sleep(100 * time.Millisecond)
 	ctx := context.Background()
 	uevent.MustPublish(ctx, c.pubsub, settlement.EventDataNewBatch{EndHeight: settlementBatch.EndHeight}, settlement.EventNewBatchAcceptedList)
 
 	return nil
 }
-
 
 func (c *Client) GetLatestBatch() (*settlement.ResultRetrieveBatch, error) {
 	c.mu.Lock()
@@ -172,16 +165,13 @@ func (c *Client) GetLatestBatch() (*settlement.ResultRetrieveBatch, error) {
 	return batchResult, nil
 }
 
-
 func (c *Client) GetLatestHeight() (uint64, error) {
 	return c.latestHeight, nil
 }
 
-
 func (c *Client) GetLatestFinalizedHeight() (uint64, error) {
 	return uint64(0), gerrc.ErrNotFound
 }
-
 
 func (c *Client) GetBatchAtIndex(index uint64) (*settlement.ResultRetrieveBatch, error) {
 	batchResult, err := c.retrieveBatchAtStateIndex(index)
@@ -196,7 +186,7 @@ func (c *Client) GetBatchAtIndex(index uint64) (*settlement.ResultRetrieveBatch,
 func (c *Client) GetBatchAtHeight(h uint64) (*settlement.ResultRetrieveBatch, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	for i := c.slStateIndex; i > 0; i-- {
 		b, err := c.GetBatchAtIndex(i)
 		if err != nil {
@@ -208,9 +198,8 @@ func (c *Client) GetBatchAtHeight(h uint64) (*settlement.ResultRetrieveBatch, er
 			return b, nil
 		}
 	}
-	return nil, gerrc.ErrNotFound 
+	return nil, gerrc.ErrNotFound
 }
-
 
 func (c *Client) GetProposerAtHeight(height int64) (*types.Sequencer, error) {
 	pubKeyBytes, err := hex.DecodeString(c.ProposerPubKey)
@@ -234,21 +223,17 @@ func (c *Client) GetProposerAtHeight(height int64) (*types.Sequencer, error) {
 	), nil
 }
 
-
 func (c *Client) GetSequencerByAddress(address string) (types.Sequencer, error) {
 	panic("GetSequencerByAddress not implemented in local SL")
 }
-
 
 func (c *Client) GetAllSequencers() ([]types.Sequencer, error) {
 	return c.GetBondedSequencers()
 }
 
-
 func (c *Client) GetObsoleteDrs() ([]uint32, error) {
 	return []uint32{}, nil
 }
-
 
 func (c *Client) GetBondedSequencers() ([]types.Sequencer, error) {
 	proposer, err := c.GetProposerAtHeight(-1)
@@ -257,7 +242,6 @@ func (c *Client) GetBondedSequencers() ([]types.Sequencer, error) {
 	}
 	return []types.Sequencer{*proposer}, nil
 }
-
 
 func (c *Client) GetNextProposer() (*types.Sequencer, error) {
 	return nil, nil
@@ -274,7 +258,7 @@ func (c *Client) saveBatch(batch *settlement.Batch) error {
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	c.slStateIndex++
 	err = c.settlementKV.Set(keyFromIndex(c.slStateIndex), b)
 	if err != nil {

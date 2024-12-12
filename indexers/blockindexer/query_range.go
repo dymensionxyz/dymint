@@ -6,20 +6,15 @@ import (
 	"github.com/tendermint/tendermint/libs/pubsub/query"
 )
 
-
-
-
 type QueryRanges map[string]QueryRange
 
-
 type QueryRange struct {
-	LowerBound        interface{} 
-	UpperBound        interface{} 
+	LowerBound        interface{}
+	UpperBound        interface{}
 	Key               string
 	IncludeLowerBound bool
 	IncludeUpperBound bool
 }
-
 
 func (qr QueryRange) AnyBound() interface{} {
 	if qr.LowerBound != nil {
@@ -28,8 +23,6 @@ func (qr QueryRange) AnyBound() interface{} {
 
 	return qr.UpperBound
 }
-
-
 
 func (qr QueryRange) LowerBoundValue() interface{} {
 	if qr.LowerBound == nil {
@@ -52,8 +45,6 @@ func (qr QueryRange) LowerBoundValue() interface{} {
 	}
 }
 
-
-
 func (qr QueryRange) UpperBoundValue() interface{} {
 	if qr.UpperBound == nil {
 		return nil
@@ -74,8 +65,6 @@ func (qr QueryRange) UpperBoundValue() interface{} {
 		panic("not implemented")
 	}
 }
-
-
 
 func LookForRanges(conditions []query.Condition) (ranges QueryRanges, indexes []int) {
 	ranges = make(QueryRanges)
@@ -109,8 +98,6 @@ func LookForRanges(conditions []query.Condition) (ranges QueryRanges, indexes []
 
 	return ranges, indexes
 }
-
-
 
 func IsRangeOperation(op query.Operator) bool {
 	switch op {

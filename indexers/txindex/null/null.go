@@ -13,19 +13,15 @@ import (
 
 var _ txindex.TxIndexer = (*TxIndex)(nil)
 
-
 type TxIndex struct{}
-
 
 func (txi *TxIndex) Get(hash []byte) (*abci.TxResult, error) {
 	return nil, errors.New(`indexing is disabled (set 'tx_index = "kv"' in config)`)
 }
 
-
 func (txi *TxIndex) AddBatch(batch *txindex.Batch) error {
 	return nil
 }
-
 
 func (txi *TxIndex) Index(result *abci.TxResult) error {
 	return nil

@@ -8,14 +8,12 @@ import (
 	"github.com/dymensionxyz/dymint/da/local"
 )
 
-
 var clients = map[string]func() da.DataAvailabilityLayerClient{
 	"mock":     func() da.DataAvailabilityLayerClient { return &local.DataAvailabilityLayerClient{} },
 	"grpc":     func() da.DataAvailabilityLayerClient { return &grpc.DataAvailabilityLayerClient{} },
 	"celestia": func() da.DataAvailabilityLayerClient { return &celestia.DataAvailabilityLayerClient{} },
 	"avail":    func() da.DataAvailabilityLayerClient { return &avail.DataAvailabilityLayerClient{} },
 }
-
 
 func GetClient(name string) da.DataAvailabilityLayerClient {
 	f, ok := clients[name]
@@ -24,7 +22,6 @@ func GetClient(name string) da.DataAvailabilityLayerClient {
 	}
 	return f()
 }
-
 
 func RegisteredClients() []string {
 	registered := make([]string, 0, len(clients))

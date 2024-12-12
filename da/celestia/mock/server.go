@@ -20,14 +20,12 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
-
 type Server struct {
 	da        *local.DataAvailabilityLayerClient
 	blockTime time.Duration
 	server    *http.Server
 	logger    types.Logger
 }
-
 
 func NewServer(blockTime time.Duration, logger types.Logger) *Server {
 	return &Server{
@@ -36,7 +34,6 @@ func NewServer(blockTime time.Duration, logger types.Logger) *Server {
 		logger:    logger,
 	}
 }
-
 
 func (s *Server) Start(listener net.Listener) error {
 	err := s.da.Init([]byte(s.blockTime.String()), pubsub.NewServer(), store.NewDefaultInMemoryKVStore(), s.logger)
@@ -55,7 +52,6 @@ func (s *Server) Start(listener net.Listener) error {
 	}()
 	return nil
 }
-
 
 func (s *Server) Stop() {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)

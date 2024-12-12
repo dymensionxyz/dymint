@@ -17,10 +17,6 @@ import (
 	sequencertypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/sequencer"
 )
 
-
-
-
-
 type CosmosClient interface {
 	Context() sdkclient.Context
 	StartEventListener() error
@@ -40,7 +36,6 @@ type cosmosClient struct {
 }
 
 var _ CosmosClient = &cosmosClient{}
-
 
 func NewCosmosClient(client cosmosclient.Client) CosmosClient {
 	return &cosmosClient{client}

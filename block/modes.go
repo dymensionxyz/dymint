@@ -20,43 +20,36 @@ const (
 	p2pBlocksyncLoop = "applyBlockSyncBlocksLoop"
 )
 
-
 func (m *Manager) runAsFullNode(ctx context.Context, eg *errgroup.Group) error {
 	m.logger.Info("starting block manager", "mode", "full node")
 	m.RunMode = RunModeFullNode
-	
+
 	err := m.updateLastFinalizedHeightFromSettlement()
 	if err != nil {
 		return fmt.Errorf("sync block manager from settlement: %w", err)
 	}
 
-	
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		return m.SettlementValidateLoop(ctx)
 	})
 
 	m.subscribeFullNodeEvents(ctx)
 
-	
 	return types.DeleteInstructionFromDisk(m.RootDir)
 }
 
 func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {
 	m.logger.Info("starting block manager", "mode", "proposer")
 	m.RunMode = RunModeProposer
-	
+
 	go uevent.MustSubscribe(ctx, m.Pubsub, "updateSubmittedHeightLoop", settlement.EventQueryNewSettlementBatchAccepted, m.UpdateLastSubmittedHeight, m.logger)
-	
+
 	go uevent.MustSubscribe(ctx, m.Pubsub, p2pBlocksyncLoop, p2p.EventQueryNewBlockSyncBlock, m.OnReceivedBlock, m.logger)
 
-	
-	
 	m.DAClient.WaitForSyncing()
 
-	
 	m.waitForSettlementSyncing()
 
-	
 	amIProposerOnSL, err := m.AmIProposerOnSL()
 	if err != nil {
 		return fmt.Errorf("am i proposer on SL: %w", err)
@@ -65,28 +58,24 @@ func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {
 		return fmt.Errorf("the node is no longer the proposer. please restart.")
 	}
 
-	
 	err = m.UpdateProposerFromSL()
 	if err != nil {
 		return err
 	}
 
-	
 	err = m.doForkWhenNewRevision()
 	if err != nil {
 		return err
 	}
 
-	
 	shouldRotate, err := m.ShouldRotate()
 	if err != nil {
 		return fmt.Errorf("checking should rotate: %w", err)
 	}
 	if shouldRotate {
-		m.rotate(ctx) 
+		m.rotate(ctx)
 	}
 
-	
 	bytesProducedC := make(chan int)
 
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
@@ -94,18 +83,17 @@ func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {
 	})
 
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
-		bytesProducedC <- m.GetUnsubmittedBytes() 
+		bytesProducedC <- m.GetUnsubmittedBytes()
 		return m.ProduceBlockLoop(ctx, bytesProducedC)
 	})
 
-	
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		return m.MonitorProposerRotation(ctx)
 	})
 
 	go func() {
 		err = eg.Wait()
-		
+
 		if errors.Is(err, errRotationRequested) {
 			m.rotate(ctx)
 		} else if err != nil {
@@ -118,11 +106,9 @@ func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {
 }
 
 func (m *Manager) subscribeFullNodeEvents(ctx context.Context) {
-	
 	go uevent.MustSubscribe(ctx, m.Pubsub, syncLoop, settlement.EventQueryNewSettlementBatchAccepted, m.onNewStateUpdate, m.logger)
 	go uevent.MustSubscribe(ctx, m.Pubsub, validateLoop, settlement.EventQueryNewSettlementBatchFinalized, m.onNewStateUpdateFinalized, m.logger)
 
-	
 	go uevent.MustSubscribe(ctx, m.Pubsub, p2pGossipLoop, p2p.EventQueryNewGossipedBlock, m.OnReceivedBlock, m.logger)
 	go uevent.MustSubscribe(ctx, m.Pubsub, p2pBlocksyncLoop, p2p.EventQueryNewBlockSyncBlock, m.OnReceivedBlock, m.logger)
 }

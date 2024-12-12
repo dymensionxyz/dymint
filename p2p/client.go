@@ -33,28 +33,17 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
-
 const (
-	
 	reAdvertisePeriod = 1 * time.Hour
 
-	
 	peerLimit = 60
 
-	
 	txTopicSuffix = "-tx"
 
-	
 	blockTopicSuffix = "-block"
 
-	
 	blockSyncProtocolPrefix = "block-sync"
 )
-
-
-
-
-
 
 type Client struct {
 	conf    config.P2PConfig
@@ -71,28 +60,20 @@ type Client struct {
 	blockGossiper  *Gossiper
 	blockValidator GossipValidator
 
-	
-	
 	cancel context.CancelFunc
 
 	localPubsubServer *tmpubsub.Server
 
 	logger types.Logger
 
-	
 	blocksync *BlockSync
 
-	
 	blockSyncStore datastore.Datastore
 
 	store store.Store
 
 	blocksReceived *BlocksReceived
 }
-
-
-
-
 
 func NewClient(conf config.P2PConfig, privKey crypto.PrivKey, chainID string, store store.Store, localPubsubServer *tmpubsub.Server, blockSyncStore datastore.Datastore, logger types.Logger) (*Client, error) {
 	if privKey == nil {
@@ -116,15 +97,7 @@ func NewClient(conf config.P2PConfig, privKey crypto.PrivKey, chainID string, st
 	}, nil
 }
 
-
-
-
-
-
-
-
 func (c *Client) Start(ctx context.Context) error {
-	
 	ctx, c.cancel = context.WithCancel(ctx)
 	host, err := c.listen()
 	if err != nil {
@@ -171,7 +144,6 @@ func (c *Client) StartWithHost(ctx context.Context, h host.Host) error {
 	return nil
 }
 
-
 func (c *Client) Close() error {
 	c.cancel()
 
@@ -183,23 +155,19 @@ func (c *Client) Close() error {
 	)
 }
 
-
 func (c *Client) GossipTx(ctx context.Context, tx []byte) error {
 	c.logger.Debug("Gossiping transaction.", "len", len(tx))
 	return c.txGossiper.Publish(ctx, tx)
 }
 
-
 func (c *Client) SetTxValidator(val GossipValidator) {
 	c.txValidator = val
 }
-
 
 func (c *Client) GossipBlock(ctx context.Context, blockBytes []byte) error {
 	c.logger.Debug("Gossiping block.", "len", len(blockBytes))
 	return c.blockGossiper.Publish(ctx, blockBytes)
 }
-
 
 func (c *Client) SaveBlock(ctx context.Context, height uint64, revision uint64, blockBytes []byte) error {
 	if !c.conf.BlockSyncEnabled {
@@ -227,7 +195,6 @@ func (c *Client) SaveBlock(ctx context.Context, height uint64, revision uint64, 
 	}
 	return nil
 }
-
 
 func (c *Client) RemoveBlocks(ctx context.Context, to uint64) (uint64, error) {
 	prunedBlocks := uint64(0)
@@ -269,12 +236,10 @@ func (c *Client) RemoveBlocks(ctx context.Context, to uint64) (uint64, error) {
 	return prunedBlocks, nil
 }
 
-
 func (c *Client) AdvertiseBlockIdToDHT(ctx context.Context, height uint64, revision uint64, cid cid.Cid) error {
 	err := c.DHT.PutValue(ctx, getBlockSyncKeyByHeight(height, revision), []byte(cid.String()))
 	return err
 }
-
 
 func (c *Client) GetBlockIdFromDHT(ctx context.Context, height uint64, revision uint64) (cid.Cid, error) {
 	cidBytes, err := c.DHT.GetValue(ctx, getBlockSyncKeyByHeight(height, revision))
@@ -288,22 +253,17 @@ func (c *Client) UpdateLatestSeenHeight(height uint64) {
 	c.blocksReceived.latestSeenHeight = max(height, c.blocksReceived.latestSeenHeight)
 }
 
-
 func (c *Client) SetBlockValidator(validator GossipValidator) {
 	c.blockValidator = validator
 }
-
 
 func (c *Client) Addrs() []multiaddr.Multiaddr {
 	return c.Host.Addrs()
 }
 
-
 func (c *Client) Info() (p2p.ID, string, string) {
 	return p2p.ID(hex.EncodeToString([]byte(c.Host.ID()))), c.conf.ListenAddress, c.chainID
 }
-
-
 
 type PeerConnection struct {
 	NodeInfo         p2p.DefaultNodeInfo  `json:"node_info"`
@@ -311,7 +271,6 @@ type PeerConnection struct {
 	ConnectionStatus p2p.ConnectionStatus `json:"connection_status"`
 	RemoteIP         string               `json:"remote_ip"`
 }
-
 
 func (c *Client) Peers() []PeerConnection {
 	conns := c.Host.Network().Conns()
@@ -322,12 +281,10 @@ func (c *Client) Peers() []PeerConnection {
 				ListenAddr:    c.conf.ListenAddress,
 				Network:       c.chainID,
 				DefaultNodeID: p2p.ID(conn.RemotePeer().String()),
-				
 			},
 			IsOutbound: conn.Stat().Direction == network.DirOutbound,
 			ConnectionStatus: p2p.ConnectionStatus{
 				Duration: time.Since(conn.Stat().Opened),
-				
 			},
 			RemoteIP: conn.RemoteMultiaddr().String(),
 		}
@@ -407,7 +364,6 @@ func (c *Client) peerDiscovery(ctx context.Context) error {
 }
 
 func (c *Client) setupPeerDiscovery(ctx context.Context) error {
-	
 	select {
 	case <-ctx.Done():
 		return nil
@@ -443,7 +399,6 @@ func (c *Client) findPeers(ctx context.Context) error {
 	return nil
 }
 
-
 func (c *Client) tryConnect(ctx context.Context, peer peer.AddrInfo) {
 	c.logger.Debug("Trying to connect to peer.", "peer", peer)
 	err := c.Host.Connect(ctx, peer)
@@ -463,7 +418,6 @@ func (c *Client) setupGossiping(ctx context.Context) error {
 		return err
 	}
 
-	
 	c.txGossiper, err = NewGossiper(c.Host, ps, c.getTxTopic(), nil, c.logger, WithValidator(c.txValidator))
 	if err != nil {
 		return err
@@ -502,25 +456,17 @@ func (c *Client) GetSeedAddrInfo(seedStr string) []peer.AddrInfo {
 	return addrs
 }
 
-
-
-
-
 func (c *Client) getNamespace() string {
 	return c.chainID
 }
-
 
 func (c *Client) getTxTopic() string {
 	return c.getNamespace() + txTopicSuffix
 }
 
-
 func (c *Client) getBlockTopic() string {
 	return c.getNamespace() + blockTopicSuffix
 }
-
-
 
 func (c *Client) NewTxValidator() GossipValidator {
 	return func(g *GossipMessage) bool {
@@ -528,16 +474,14 @@ func (c *Client) NewTxValidator() GossipValidator {
 	}
 }
 
-
 func (c *Client) blockSyncReceived(block *BlockData) {
 	err := c.localPubsubServer.PublishWithEvents(context.Background(), *block, map[string][]string{EventTypeKey: {EventNewBlockSyncBlock}})
 	if err != nil {
 		c.logger.Error("Publishing event.", "err", err)
 	}
-	
+
 	c.blocksReceived.AddBlockReceived(block.Block.Header.Height)
 }
-
 
 func (c *Client) blockGossipReceived(ctx context.Context, block []byte) {
 	var gossipedBlock BlockData
@@ -550,7 +494,7 @@ func (c *Client) blockGossipReceived(ctx context.Context, block []byte) {
 	}
 	if c.conf.BlockSyncEnabled {
 		_, err := c.store.LoadBlockCid(gossipedBlock.Block.Header.Height)
-		
+
 		if err == nil {
 			return
 		}
@@ -558,12 +502,10 @@ func (c *Client) blockGossipReceived(ctx context.Context, block []byte) {
 		if err != nil {
 			c.logger.Error("Adding  block to blocksync store.", "err", err, "height", gossipedBlock.Block.Header.Height)
 		}
-		
+
 		c.blocksReceived.AddBlockReceived(gossipedBlock.Block.Header.Height)
 	}
 }
-
-
 
 func (c *Client) bootstrapLoop(ctx context.Context) {
 	ticker := time.NewTicker(c.conf.BootstrapRetryTime)
@@ -590,7 +532,6 @@ func (c *Client) bootstrapLoop(ctx context.Context) {
 	}
 }
 
-
 func (c *Client) retrieveBlockSyncLoop(ctx context.Context, msgHandler BlockSyncMessageHandler) {
 	ticker := time.NewTicker(c.conf.BlockSyncRequestIntervalTime)
 	defer ticker.Stop()
@@ -600,7 +541,7 @@ func (c *Client) retrieveBlockSyncLoop(ctx context.Context, msgHandler BlockSync
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			
+
 			if len(c.Peers()) == 0 {
 				continue
 			}
@@ -609,8 +550,6 @@ func (c *Client) retrieveBlockSyncLoop(ctx context.Context, msgHandler BlockSync
 				continue
 			}
 
-			
-			
 			for h := state.NextHeight(); h <= c.blocksReceived.latestSeenHeight; h++ {
 				if ctx.Err() != nil {
 					return
@@ -653,7 +592,6 @@ func (c *Client) retrieveBlockSyncLoop(ctx context.Context, msgHandler BlockSync
 	}
 }
 
-
 func (c *Client) advertiseBlockSyncCids(ctx context.Context) {
 	ticker := time.NewTicker(c.conf.BlockSyncRequestIntervalTime)
 	defer ticker.Stop()
@@ -663,7 +601,7 @@ func (c *Client) advertiseBlockSyncCids(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			
+
 			if len(c.Peers()) == 0 {
 				continue
 			}
@@ -693,12 +631,11 @@ func (c *Client) advertiseBlockSyncCids(ctx context.Context) {
 				}
 
 			}
-			
+
 			return
 		}
 	}
 }
-
 
 func (c *Client) findConnection(peer peer.AddrInfo) bool {
 	for _, con := range c.Host.Network().Conns() {
@@ -712,7 +649,6 @@ func (c *Client) findConnection(peer peer.AddrInfo) bool {
 func getBlockSyncKeyByHeight(height uint64, revision uint64) string {
 	return "/" + blockSyncProtocolPrefix + "/" + strconv.FormatUint(revision, 10) + "/" + strconv.FormatUint(height, 10)
 }
-
 
 type blockIdValidator struct{}
 

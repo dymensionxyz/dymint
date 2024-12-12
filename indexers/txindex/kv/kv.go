@@ -29,19 +29,15 @@ const (
 
 var _ txindex.TxIndexer = (*TxIndex)(nil)
 
-
 type TxIndex struct {
 	store store.KV
 }
-
 
 func NewTxIndex(store store.KV) *TxIndex {
 	return &TxIndex{
 		store: store,
 	}
 }
-
-
 
 func (txi *TxIndex) Get(hash []byte) (*abci.TxResult, error) {
 	if len(hash) == 0 {
@@ -65,10 +61,6 @@ func (txi *TxIndex) Get(hash []byte) (*abci.TxResult, error) {
 	return txResult, nil
 }
 
-
-
-
-
 func (txi *TxIndex) AddBatch(b *txindex.Batch) error {
 	storeBatch := txi.store.NewBatch()
 	defer storeBatch.Discard()
@@ -77,13 +69,12 @@ func (txi *TxIndex) AddBatch(b *txindex.Batch) error {
 	for _, result := range b.Ops {
 		hash := types.Tx(result.Tx).Hash()
 
-		
 		eventKeys, err := txi.indexEvents(result, hash, storeBatch)
 		if err != nil {
 			return err
 		}
 		eventKeysBatch.Keys = append(eventKeysBatch.Keys, eventKeys.Keys...)
-		
+
 		err = storeBatch.Set(keyForHeight(result), hash)
 		if err != nil {
 			return err
@@ -93,7 +84,7 @@ func (txi *TxIndex) AddBatch(b *txindex.Batch) error {
 		if err != nil {
 			return err
 		}
-		
+
 		err = storeBatch.Set(hash, rawBytes)
 		if err != nil {
 			return err
@@ -108,29 +99,22 @@ func (txi *TxIndex) AddBatch(b *txindex.Batch) error {
 	return storeBatch.Commit()
 }
 
-
-
-
-
 func (txi *TxIndex) Index(result *abci.TxResult) error {
 	b := txi.store.NewBatch()
 	defer b.Discard()
 
 	hash := types.Tx(result.Tx).Hash()
 
-	
 	eventKeys, err := txi.indexEvents(result, hash, b)
 	if err != nil {
 		return err
 	}
 
-	
 	err = txi.addEventKeys(result.Height, &eventKeys, b)
 	if err != nil {
 		return nil
 	}
 
-	
 	err = b.Set(keyForHeight(result), hash)
 	if err != nil {
 		return err
@@ -140,7 +124,7 @@ func (txi *TxIndex) Index(result *abci.TxResult) error {
 	if err != nil {
 		return err
 	}
-	
+
 	err = b.Set(hash, rawBytes)
 	if err != nil {
 		return err
@@ -152,7 +136,7 @@ func (txi *TxIndex) Index(result *abci.TxResult) error {
 func (txi *TxIndex) indexEvents(result *abci.TxResult, hash []byte, store store.KVBatch) (dmtypes.EventKeys, error) {
 	eventKeys := dmtypes.EventKeys{}
 	for _, event := range result.Result.Events {
-		
+
 		if len(event.Type) == 0 {
 			continue
 		}
@@ -162,7 +146,6 @@ func (txi *TxIndex) indexEvents(result *abci.TxResult, hash []byte, store store.
 				continue
 			}
 
-			
 			compositeTag := fmt.Sprintf("%s.%s", event.Type, string(attr.Key))
 			if attr.GetIndex() {
 				err := store.Set(keyForEvent(compositeTag, attr.Value, result), hash)
@@ -177,17 +160,6 @@ func (txi *TxIndex) indexEvents(result *abci.TxResult, hash []byte, store store.
 	return eventKeys, nil
 }
 
-
-
-
-
-
-
-
-
-
-
-
 func (txi *TxIndex) Search(ctx context.Context, q *query.Query) ([]*abci.TxResult, error) {
 	select {
 	case <-ctx.Done():
@@ -199,13 +171,11 @@ func (txi *TxIndex) Search(ctx context.Context, q *query.Query) ([]*abci.TxResul
 	var hashesInitialized bool
 	filteredHashes := make(map[string][]byte)
 
-	
 	conditions, err := q.Conditions()
 	if err != nil {
 		return nil, fmt.Errorf("during parsing conditions from query: %w", err)
 	}
 
-	
 	hash, ok, err := lookForHash(conditions)
 	if err != nil {
 		return nil, fmt.Errorf("during searching for a hash in the query: %w", err)
@@ -221,12 +191,8 @@ func (txi *TxIndex) Search(ctx context.Context, q *query.Query) ([]*abci.TxResul
 		}
 	}
 
-	
 	skipIndexes := make([]int, 0)
 
-	
-	
-	
 	ranges, rangeIndexes := indexer.LookForRanges(conditions)
 	if len(ranges) > 0 {
 		skipIndexes = append(skipIndexes, rangeIndexes...)
@@ -236,8 +202,6 @@ func (txi *TxIndex) Search(ctx context.Context, q *query.Query) ([]*abci.TxResul
 				filteredHashes = txi.matchRange(ctx, qr, startKey(qr.Key), filteredHashes, true)
 				hashesInitialized = true
 
-				
-				
 				if len(filteredHashes) == 0 {
 					break
 				}
@@ -247,10 +211,8 @@ func (txi *TxIndex) Search(ctx context.Context, q *query.Query) ([]*abci.TxResul
 		}
 	}
 
-	
 	height := lookForHeight(conditions)
 
-	
 	for i, c := range conditions {
 		if intInSlice(i, skipIndexes) {
 			continue
@@ -260,8 +222,6 @@ func (txi *TxIndex) Search(ctx context.Context, q *query.Query) ([]*abci.TxResul
 			filteredHashes = txi.match(ctx, c, startKeyForCondition(c, height), filteredHashes, true)
 			hashesInitialized = true
 
-			
-			
 			if len(filteredHashes) == 0 {
 				break
 			}
@@ -283,7 +243,6 @@ func (txi *TxIndex) Search(ctx context.Context, q *query.Query) ([]*abci.TxResul
 		}
 		results = append(results, res)
 
-		
 		select {
 		case <-ctx.Done():
 			cont = false
@@ -308,7 +267,6 @@ func lookForHash(conditions []query.Condition) (hash []byte, ok bool, err error)
 	return
 }
 
-
 func lookForHeight(conditions []query.Condition) (height int64) {
 	for _, c := range conditions {
 		if c.CompositeKey == tmtypes.TxHeightKey && c.Op == query.OpEqual {
@@ -318,11 +276,6 @@ func lookForHeight(conditions []query.Condition) (height int64) {
 	return 0
 }
 
-
-
-
-
-
 func (txi *TxIndex) match(
 	ctx context.Context,
 	c query.Condition,
@@ -330,8 +283,6 @@ func (txi *TxIndex) match(
 	filteredHashes map[string][]byte,
 	firstRun bool,
 ) map[string][]byte {
-	
-	
 	if !firstRun && len(filteredHashes) == 0 {
 		return filteredHashes
 	}
@@ -348,7 +299,6 @@ func (txi *TxIndex) match(
 
 			tmpHashes[string(it.Value())] = it.Value()
 
-			
 			select {
 			case <-ctx.Done():
 				cont = false
@@ -364,8 +314,7 @@ func (txi *TxIndex) match(
 		}
 
 	case c.Op == query.OpExists:
-		
-		
+
 		it := txi.store.PrefixIterator(startKey(c.CompositeKey))
 		defer it.Discard()
 
@@ -374,7 +323,6 @@ func (txi *TxIndex) match(
 
 			tmpHashes[string(it.Value())] = it.Value()
 
-			
 			select {
 			case <-ctx.Done():
 				cont = false
@@ -390,9 +338,7 @@ func (txi *TxIndex) match(
 		}
 
 	case c.Op == query.OpContains:
-		
-		
-		
+
 		it := txi.store.PrefixIterator(startKey(c.CompositeKey))
 		defer it.Discard()
 
@@ -407,7 +353,6 @@ func (txi *TxIndex) match(
 				tmpHashes[string(it.Value())] = it.Value()
 			}
 
-			
 			select {
 			case <-ctx.Done():
 				cont = false
@@ -426,25 +371,15 @@ func (txi *TxIndex) match(
 	}
 
 	if len(tmpHashes) == 0 || firstRun {
-		
-		
-		
-		
-		
-		
-		
 		return tmpHashes
 	}
 
-	
-	
 	for k := range filteredHashes {
 		cont := true
 
 		if tmpHashes[k] == nil {
 			delete(filteredHashes, k)
 
-			
 			select {
 			case <-ctx.Done():
 				cont = false
@@ -460,11 +395,6 @@ func (txi *TxIndex) match(
 	return filteredHashes
 }
 
-
-
-
-
-
 func (txi *TxIndex) matchRange(
 	ctx context.Context,
 	qr indexer.QueryRange,
@@ -472,8 +402,6 @@ func (txi *TxIndex) matchRange(
 	filteredHashes map[string][]byte,
 	firstRun bool,
 ) map[string][]byte {
-	
-	
 	if !firstRun && len(filteredHashes) == 0 {
 		return filteredHashes
 	}
@@ -512,15 +440,8 @@ LOOP:
 				tmpHashes[string(it.Value())] = it.Value()
 			}
 
-			
-			
-			
-			
-			
-			
 		}
 
-		
 		select {
 		case <-ctx.Done():
 			cont = false
@@ -536,25 +457,15 @@ LOOP:
 	}
 
 	if len(tmpHashes) == 0 || firstRun {
-		
-		
-		
-		
-		
-		
-		
 		return tmpHashes
 	}
 
-	
-	
 	for k := range filteredHashes {
 		cont := true
 
 		if tmpHashes[k] == nil {
 			delete(filteredHashes, k)
 
-			
 			select {
 			case <-ctx.Done():
 				cont = false
@@ -592,9 +503,8 @@ func (txi *TxIndex) pruneTxsAndEvents(from, to uint64, logger log.Logger) (uint6
 		return nil
 	}
 
-	for h := int64(from); h < int64(to); h++ { 
+	for h := int64(from); h < int64(to); h++ {
 
-		
 		if toFlush > 1000 {
 			err := flush(batch, h)
 			if err != nil {
@@ -605,7 +515,6 @@ func (txi *TxIndex) pruneTxsAndEvents(from, to uint64, logger log.Logger) (uint6
 			toFlush = 0
 		}
 
-		
 		prunedEvents, err := txi.pruneEvents(h, batch)
 		pruned += prunedEvents
 		toFlush += prunedEvents
@@ -614,10 +523,8 @@ func (txi *TxIndex) pruneTxsAndEvents(from, to uint64, logger log.Logger) (uint6
 			continue
 		}
 
-		
 		it := txi.store.PrefixIterator(prefixForHeight(h))
 
-		
 		for ; it.Valid(); it.Next() {
 			toFlush++
 			if err := batch.Delete(it.Key()); err != nil {
@@ -635,7 +542,7 @@ func (txi *TxIndex) pruneTxsAndEvents(from, to uint64, logger log.Logger) (uint6
 
 	}
 
-	err := flush(batch, int64(to)) 
+	err := flush(batch, int64(to))
 	if err != nil {
 		return 0, err
 	}
@@ -669,7 +576,6 @@ func (txi *TxIndex) pruneEvents(height int64, batch store.KVBatch) (uint64, erro
 }
 
 func (txi *TxIndex) addEventKeys(height int64, eventKeys *dymint.EventKeys, batch store.KVBatch) error {
-	
 	eventKeyHeight, err := eventHeightKey(height)
 	if err != nil {
 		return err
@@ -683,8 +589,6 @@ func (txi *TxIndex) addEventKeys(height int64, eventKeys *dymint.EventKeys, batc
 	}
 	return nil
 }
-
-
 
 func isTagKey(key []byte) bool {
 	return strings.Count(string(key), tagKeySeparator) == 3

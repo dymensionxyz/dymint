@@ -20,48 +20,36 @@ import (
 	"github.com/libp2p/go-libp2p/core/host"
 )
 
-
-
-
-
-
 type BlockSync struct {
-	
 	bsrv blockservice.BlockService
-	
+
 	bstore blockstore.Blockstore
-	
+
 	net network.BitSwapNetwork
-	
+
 	dsrv BlockSyncDagService
-	
+
 	cidBuilder cid.Builder
 	logger     types.Logger
 }
 
 type BlockSyncMessageHandler func(block *BlockData)
 
-
 func SetupBlockSync(ctx context.Context, h host.Host, store datastore.Datastore, logger types.Logger) *BlockSync {
-	
 	ds := dsync.MutexWrap(store)
 
-	
 	bs := blockstore.NewBlockstore(ds)
 
-	
 	bsnet := network.NewFromIpfsHost(h, &routinghelpers.Null{}, network.Prefix("/dymension/block-sync/"))
 
-	
 	bsserver := server.New(
 		ctx,
 		bsnet,
 		bs,
-		server.ProvideEnabled(false), 
+		server.ProvideEnabled(false),
 		server.SetSendDontHaves(false),
 	)
 
-	
 	bsclient := client.New(
 		ctx,
 		bsnet,
@@ -71,7 +59,6 @@ func SetupBlockSync(ctx context.Context, h host.Host, store datastore.Datastore,
 		client.WithoutDuplicatedBlockStats(),
 	)
 
-	
 	bsnet.Start(bsserver, bsclient)
 
 	bsrv := blockservice.New(bs, bsclient)
@@ -93,11 +80,9 @@ func SetupBlockSync(ctx context.Context, h host.Host, store datastore.Datastore,
 	return blockSync
 }
 
-
 func (blocksync *BlockSync) SaveBlock(ctx context.Context, block []byte) (cid.Cid, error) {
 	return blocksync.dsrv.SaveBlock(ctx, block)
 }
-
 
 func (blocksync *BlockSync) LoadBlock(ctx context.Context, cid cid.Cid) (BlockData, error) {
 	blockBytes, err := blocksync.dsrv.LoadBlock(ctx, cid)
@@ -110,7 +95,6 @@ func (blocksync *BlockSync) LoadBlock(ctx context.Context, cid cid.Cid) (BlockDa
 	}
 	return block, nil
 }
-
 
 func (blocksync *BlockSync) DeleteBlock(ctx context.Context, cid cid.Cid) error {
 	return blocksync.dsrv.DeleteBlock(ctx, cid)

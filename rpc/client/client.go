@@ -34,7 +34,6 @@ const (
 	defaultPerPage = 30
 	maxPerPage     = 100
 
-	
 	subscribeTimeout = 5 * time.Second
 )
 
@@ -46,20 +45,15 @@ const (
 	SLValidated
 )
 
-
 var ErrConsensusStateNotAvailable = errors.New("consensus state not available in Dymint")
 
 var _ rpcclient.Client = &Client{}
-
-
-
 
 type Client struct {
 	*tmtypes.EventBus
 	config *config.RPCConfig
 	node   *node.Node
 
-	
 	genChunks []string
 }
 
@@ -67,7 +61,6 @@ type ResultBlockValidated struct {
 	ChainID string
 	Result  BlockValidationStatus
 }
-
 
 func NewClient(node *node.Node) *Client {
 	return &Client{
@@ -77,7 +70,6 @@ func NewClient(node *node.Node) *Client {
 	}
 }
 
-
 func (c *Client) ABCIInfo(ctx context.Context) (*ctypes.ResultABCIInfo, error) {
 	resInfo, err := c.Query().InfoSync(proxy.RequestInfo)
 	if err != nil {
@@ -86,11 +78,9 @@ func (c *Client) ABCIInfo(ctx context.Context) (*ctypes.ResultABCIInfo, error) {
 	return &ctypes.ResultABCIInfo{Response: *resInfo}, nil
 }
 
-
 func (c *Client) ABCIQuery(ctx context.Context, path string, data tmbytes.HexBytes) (*ctypes.ResultABCIQuery, error) {
 	return c.ABCIQueryWithOptions(ctx, path, data, rpcclient.DefaultABCIQueryOptions)
 }
-
 
 func (c *Client) ABCIQueryWithOptions(ctx context.Context, path string, data tmbytes.HexBytes, opts rpcclient.ABCIQueryOptions) (*ctypes.ResultABCIQuery, error) {
 	resQuery, err := c.Query().QuerySync(abci.RequestQuery{
@@ -106,19 +96,13 @@ func (c *Client) ABCIQueryWithOptions(ctx context.Context, path string, data tmb
 	return &ctypes.ResultABCIQuery{Response: *resQuery}, nil
 }
 
-
-
 func (c *Client) BroadcastTxCommit(ctx context.Context, tx tmtypes.Tx) (*ctypes.ResultBroadcastTxCommit, error) {
-	
-	
-	
-	subscriber := "" 
+	subscriber := ""
 
 	if err := c.IsSubscriptionAllowed(subscriber); err != nil {
 		return nil, sdkerrors.Wrap(err, "subscription not allowed")
 	}
 
-	
 	subCtx, cancel := context.WithTimeout(ctx, subscribeTimeout)
 	defer cancel()
 	q := tmtypes.EventQueryTxFor(tx)
@@ -134,7 +118,6 @@ func (c *Client) BroadcastTxCommit(ctx context.Context, tx tmtypes.Tx) (*ctypes.
 		}
 	}()
 
-	
 	checkTxResCh := make(chan *abci.Response, 1)
 	err = c.node.Mempool.CheckTx(tx, func(res *abci.Response) {
 		select {
@@ -159,15 +142,13 @@ func (c *Client) BroadcastTxCommit(ctx context.Context, tx tmtypes.Tx) (*ctypes.
 			}, nil
 		}
 
-		
 		err = c.node.P2P.GossipTx(ctx, tx)
 		if err != nil {
 			return nil, fmt.Errorf("tx added to local mempool but failure to broadcast: %w", err)
 		}
 
-		
 		select {
-		case msg := <-deliverTxSub.Out(): 
+		case msg := <-deliverTxSub.Out():
 			deliverTxRes, _ := msg.Data().(tmtypes.EventDataTx)
 			return &ctypes.ResultBroadcastTxCommit{
 				CheckTx:   *checkTxRes,
@@ -201,24 +182,18 @@ func (c *Client) BroadcastTxCommit(ctx context.Context, tx tmtypes.Tx) (*ctypes.
 	}
 }
 
-
-
-
 func (c *Client) BroadcastTxAsync(ctx context.Context, tx tmtypes.Tx) (*ctypes.ResultBroadcastTx, error) {
 	err := c.node.Mempool.CheckTx(tx, nil, mempool.TxInfo{})
 	if err != nil {
 		return nil, err
 	}
-	
+
 	err = c.node.P2P.GossipTx(ctx, tx)
 	if err != nil {
 		return nil, fmt.Errorf("tx added to local mempool but failed to gossip: %w", err)
 	}
 	return &ctypes.ResultBroadcastTx{Hash: tx.Hash()}, nil
 }
-
-
-
 
 func (c *Client) BroadcastTxSync(ctx context.Context, tx tmtypes.Tx) (*ctypes.ResultBroadcastTx, error) {
 	resCh := make(chan *abci.Response, 1)
@@ -231,16 +206,10 @@ func (c *Client) BroadcastTxSync(ctx context.Context, tx tmtypes.Tx) (*ctypes.Re
 	res := <-resCh
 	r := res.GetCheckTx()
 
-	
-	
-	
 	if r.Code == abci.CodeTypeOK {
 		err = c.node.P2P.GossipTx(ctx, tx)
 		if err != nil {
-			
-			
-			
-			
+
 			_ = c.node.Mempool.RemoveTxByKey(tx.Key())
 			return nil, fmt.Errorf("gossip tx: %w", err)
 		}
@@ -254,7 +223,6 @@ func (c *Client) BroadcastTxSync(ctx context.Context, tx tmtypes.Tx) (*ctypes.Re
 		Hash:      tx.Hash(),
 	}, nil
 }
-
 
 func (c *Client) Subscribe(ctx context.Context, subscriber, query string, outCapacity ...int) (out <-chan ctypes.ResultEvent, err error) {
 	q, err := tmquery.New(query)
@@ -283,7 +251,6 @@ func (c *Client) Subscribe(ctx context.Context, subscriber, query string, outCap
 	return outc, nil
 }
 
-
 func (c *Client) Unsubscribe(ctx context.Context, subscriber, query string) error {
 	q, err := tmquery.New(query)
 	if err != nil {
@@ -292,11 +259,9 @@ func (c *Client) Unsubscribe(ctx context.Context, subscriber, query string) erro
 	return c.EventBus.Unsubscribe(ctx, subscriber, q)
 }
 
-
 func (c *Client) Genesis(_ context.Context) (*ctypes.ResultGenesis, error) {
 	return &ctypes.ResultGenesis{Genesis: c.node.GetGenesis()}, nil
 }
-
 
 func (c *Client) GenesisChunked(_ context.Context, id uint) (*ctypes.ResultGenesisChunk, error) {
 	genChunks, err := c.GetGenesisChunks()
@@ -312,18 +277,16 @@ func (c *Client) GenesisChunked(_ context.Context, id uint) (*ctypes.ResultGenes
 		return nil, fmt.Errorf("service configuration error, there are no chunks")
 	}
 
-	
 	if id > uint(chunkLen)-1 {
 		return nil, fmt.Errorf("there are %d chunks, %d is invalid", chunkLen-1, id)
 	}
 
 	return &ctypes.ResultGenesisChunk{
 		TotalChunks: chunkLen,
-		ChunkNumber: int(id), 
+		ChunkNumber: int(id),
 		Data:        genChunks[id],
 	}, nil
 }
-
 
 func (c *Client) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64) (*ctypes.ResultBlockchainInfo, error) {
 	const limit int64 = 20
@@ -336,8 +299,8 @@ func (c *Client) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64)
 		baseHeight = 1
 	}
 	minHeight, maxHeight, err = filterMinMax(
-		int64(baseHeight),                     
-		int64(c.node.GetBlockManagerHeight()), 
+		int64(baseHeight),
+		int64(c.node.GetBlockManagerHeight()),
 		minHeight,
 		maxHeight,
 		limit)
@@ -348,7 +311,7 @@ func (c *Client) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64)
 
 	blocks := make([]*tmtypes.BlockMeta, 0, maxHeight-minHeight+1)
 	for height := maxHeight; height >= minHeight; height-- {
-		block, err := c.node.Store.LoadBlock(uint64(height)) 
+		block, err := c.node.Store.LoadBlock(uint64(height))
 		if err != nil {
 			return nil, err
 		}
@@ -362,11 +325,10 @@ func (c *Client) BlockchainInfo(ctx context.Context, minHeight, maxHeight int64)
 	}
 
 	return &ctypes.ResultBlockchainInfo{
-		LastHeight: int64(c.node.GetBlockManagerHeight()), 
+		LastHeight: int64(c.node.GetBlockManagerHeight()),
 		BlockMetas: blocks,
 	}, nil
 }
-
 
 func (c *Client) NetInfo(ctx context.Context) (*ctypes.ResultNetInfo, error) {
 	res := ctypes.ResultNetInfo{
@@ -389,24 +351,18 @@ func (c *Client) NetInfo(ctx context.Context) (*ctypes.ResultNetInfo, error) {
 	return &res, nil
 }
 
-
 func (c *Client) DumpConsensusState(ctx context.Context) (*ctypes.ResultDumpConsensusState, error) {
 	return nil, ErrConsensusStateNotAvailable
 }
-
 
 func (c *Client) ConsensusState(ctx context.Context) (*ctypes.ResultConsensusState, error) {
 	return nil, ErrConsensusStateNotAvailable
 }
 
-
-
-
 func (c *Client) ConsensusParams(ctx context.Context, height *int64) (*ctypes.ResultConsensusParams, error) {
-	
 	params := c.node.GetGenesis().ConsensusParams
 	return &ctypes.ResultConsensusParams{
-		BlockHeight: int64(c.normalizeHeight(height)), 
+		BlockHeight: int64(c.normalizeHeight(height)),
 		ConsensusParams: tmproto.ConsensusParams{
 			Block: tmproto.BlockParams{
 				MaxBytes:   params.Block.MaxBytes,
@@ -428,13 +384,9 @@ func (c *Client) ConsensusParams(ctx context.Context, height *int64) (*ctypes.Re
 	}, nil
 }
 
-
 func (c *Client) Health(ctx context.Context) (*ctypes.ResultHealth, error) {
 	return &ctypes.ResultHealth{}, nil
 }
-
-
-
 
 func (c *Client) Block(ctx context.Context, height *int64) (*ctypes.ResultBlock, error) {
 	heightValue := c.normalizeHeight(height)
@@ -458,7 +410,6 @@ func (c *Client) Block(ctx context.Context, height *int64) (*ctypes.ResultBlock,
 		Block: abciBlock,
 	}, nil
 }
-
 
 func (c *Client) BlockByHash(ctx context.Context, hash []byte) (*ctypes.ResultBlock, error) {
 	var h [32]byte
@@ -485,13 +436,12 @@ func (c *Client) BlockByHash(ctx context.Context, hash []byte) (*ctypes.ResultBl
 	}, nil
 }
 
-
 func (c *Client) BlockResults(ctx context.Context, height *int64) (*ctypes.ResultBlockResults, error) {
 	var h uint64
 	if height == nil {
 		h = c.node.GetBlockManagerHeight()
 	} else {
-		h = uint64(*height) 
+		h = uint64(*height)
 	}
 	resp, err := c.node.Store.LoadBlockResponses(h)
 	if err != nil {
@@ -499,7 +449,7 @@ func (c *Client) BlockResults(ctx context.Context, height *int64) (*ctypes.Resul
 	}
 
 	return &ctypes.ResultBlockResults{
-		Height:                int64(h), 
+		Height:                int64(h),
 		TxsResults:            resp.DeliverTxs,
 		BeginBlockEvents:      resp.BeginBlock.Events,
 		EndBlockEvents:        resp.EndBlock.Events,
@@ -507,7 +457,6 @@ func (c *Client) BlockResults(ctx context.Context, height *int64) (*ctypes.Resul
 		ConsensusParamUpdates: resp.EndBlock.ConsensusParamUpdates,
 	}, nil
 }
-
 
 func (c *Client) Commit(ctx context.Context, height *int64) (*ctypes.ResultCommit, error) {
 	heightValue := c.normalizeHeight(height)
@@ -528,7 +477,6 @@ func (c *Client) Commit(ctx context.Context, height *int64) (*ctypes.ResultCommi
 	return ctypes.NewResultCommit(&block.Header, commit, true), nil
 }
 
-
 func (c *Client) Validators(ctx context.Context, heightPtr *int64, _, _ *int) (*ctypes.ResultValidators, error) {
 	height := c.normalizeHeight(heightPtr)
 
@@ -538,13 +486,12 @@ func (c *Client) Validators(ctx context.Context, heightPtr *int64, _, _ *int) (*
 	}
 
 	return &ctypes.ResultValidators{
-		BlockHeight: int64(height), 
+		BlockHeight: int64(height),
 		Validators:  proposer.TMValidators(),
 		Count:       1,
 		Total:       1,
 	}, nil
 }
-
 
 func (c *Client) Tx(ctx context.Context, hash []byte, prove bool) (*ctypes.ResultTx, error) {
 	res, err := c.node.TxIndexer.Get(hash)
@@ -561,8 +508,8 @@ func (c *Client) Tx(ctx context.Context, hash []byte, prove bool) (*ctypes.Resul
 
 	var proof tmtypes.TxProof
 	if prove {
-		block, _ := c.node.Store.LoadBlock(uint64(height)) 
-		blockProof := block.Data.Txs.Proof(int(index))     
+		block, _ := c.node.Store.LoadBlock(uint64(height))
+		blockProof := block.Data.Txs.Proof(int(index))
 		proof = tmtypes.TxProof{
 			RootHash: blockProof.RootHash,
 			Data:     tmtypes.Tx(blockProof.Data),
@@ -580,7 +527,6 @@ func (c *Client) Tx(ctx context.Context, hash []byte, prove bool) (*ctypes.Resul
 	}, nil
 }
 
-
 func (c *Client) TxSearch(ctx context.Context, query string, prove bool, pagePtr, perPagePtr *int, orderBy string) (*ctypes.ResultTxSearch, error) {
 	q, err := tmquery.New(query)
 	if err != nil {
@@ -592,7 +538,6 @@ func (c *Client) TxSearch(ctx context.Context, query string, prove bool, pagePtr
 		return nil, err
 	}
 
-	
 	switch orderBy {
 	case "desc":
 		sort.Slice(results, func(i, j int) bool {
@@ -612,7 +557,6 @@ func (c *Client) TxSearch(ctx context.Context, query string, prove bool, pagePtr
 		return nil, errors.New("expected order_by to be either `asc` or `desc` or empty")
 	}
 
-	
 	totalCount := len(results)
 	perPage := validatePerPage(perPagePtr)
 
@@ -629,7 +573,6 @@ func (c *Client) TxSearch(ctx context.Context, query string, prove bool, pagePtr
 		r := results[i]
 
 		var proof tmtypes.TxProof
-		
 
 		apiResults = append(apiResults, &ctypes.ResultTx{
 			Hash:     tmtypes.Tx(r.Tx).Hash(),
@@ -644,8 +587,6 @@ func (c *Client) TxSearch(ctx context.Context, query string, prove bool, pagePtr
 	return &ctypes.ResultTxSearch{Txs: apiResults, TotalCount: totalCount}, nil
 }
 
-
-
 func (c *Client) BlockSearch(ctx context.Context, query string, page, perPage *int, orderBy string) (*ctypes.ResultBlockSearch, error) {
 	q, err := tmquery.New(query)
 	if err != nil {
@@ -657,7 +598,6 @@ func (c *Client) BlockSearch(ctx context.Context, query string, page, perPage *i
 		return nil, err
 	}
 
-	
 	switch orderBy {
 	case "desc":
 		sort.Slice(results, func(i, j int) bool {
@@ -672,7 +612,6 @@ func (c *Client) BlockSearch(ctx context.Context, query string, page, perPage *i
 		return nil, errors.New("expected order_by to be either `asc` or `desc` or empty")
 	}
 
-	
 	totalCount := len(results)
 	perPageVal := validatePerPage(perPage)
 
@@ -684,10 +623,9 @@ func (c *Client) BlockSearch(ctx context.Context, query string, page, perPage *i
 	skipCount := validateSkipCount(pageVal, perPageVal)
 	pageSize := tmmath.MinInt(perPageVal, totalCount-skipCount)
 
-	
 	blocks := make([]*ctypes.ResultBlock, 0, pageSize)
 	for i := skipCount; i < skipCount+pageSize; i++ {
-		b, err := c.node.Store.LoadBlock(uint64(results[i])) 
+		b, err := c.node.Store.LoadBlock(uint64(results[i]))
 		if err != nil {
 			return nil, err
 		}
@@ -706,11 +644,9 @@ func (c *Client) BlockSearch(ctx context.Context, query string, page, perPage *i
 	return &ctypes.ResultBlockSearch{Blocks: blocks, TotalCount: totalCount}, nil
 }
 
-
 func (c *Client) Status(_ context.Context) (*ctypes.ResultStatus, error) {
 	latest, err := c.node.Store.LoadBlock(c.node.GetBlockManagerHeight())
 	if err != nil {
-		
 		return nil, fmt.Errorf("find latest block: %w", err)
 	}
 
@@ -736,7 +672,6 @@ func (c *Client) Status(_ context.Context) (*ctypes.ResultStatus, error) {
 	txIndexerStatus := "on"
 
 	result := &ctypes.ResultStatus{
-		
 		NodeInfo: p2p.DefaultNodeInfo{
 			ProtocolVersion: defaultProtocolVersion,
 			DefaultNodeID:   id,
@@ -753,18 +688,12 @@ func (c *Client) Status(_ context.Context) (*ctypes.ResultStatus, error) {
 		SyncInfo: ctypes.SyncInfo{
 			LatestBlockHash:   latestBlockHash[:],
 			LatestAppHash:     latestAppHash[:],
-			LatestBlockHeight: int64(latestHeight), 
+			LatestBlockHeight: int64(latestHeight),
 			LatestBlockTime:   latestBlockTime,
-			
+
 			CatchingUp: c.node.BlockManager.TargetHeight.Load() > latestHeight,
-			
-			
-			
-			
-			
-			
 		},
-		
+
 		ValidatorInfo: ctypes.ValidatorInfo{
 			Address:     tmbytes.HexBytes(proposer.ConsAddress()),
 			PubKey:      proposer.PubKey(),
@@ -774,13 +703,11 @@ func (c *Client) Status(_ context.Context) (*ctypes.ResultStatus, error) {
 	return result, nil
 }
 
-
 func (c *Client) BroadcastEvidence(ctx context.Context, evidence tmtypes.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
 	return &ctypes.ResultBroadcastEvidence{
 		Hash: evidence.Hash(),
 	}, nil
 }
-
 
 func (c *Client) NumUnconfirmedTxs(ctx context.Context) (*ctypes.ResultUnconfirmedTxs, error) {
 	return &ctypes.ResultUnconfirmedTxs{
@@ -790,9 +717,7 @@ func (c *Client) NumUnconfirmedTxs(ctx context.Context) (*ctypes.ResultUnconfirm
 	}, nil
 }
 
-
 func (c *Client) UnconfirmedTxs(ctx context.Context, limitPtr *int) (*ctypes.ResultUnconfirmedTxs, error) {
-	
 	limit := validatePerPage(limitPtr)
 
 	txs := c.node.Mempool.ReapMaxTxs(limit)
@@ -804,9 +729,6 @@ func (c *Client) UnconfirmedTxs(ctx context.Context, limitPtr *int) (*ctypes.Res
 	}, nil
 }
 
-
-
-
 func (c *Client) CheckTx(ctx context.Context, tx tmtypes.Tx) (*ctypes.ResultCheckTx, error) {
 	res, err := c.Mempool().CheckTxSync(abci.RequestCheckTx{Tx: tx})
 	if err != nil {
@@ -817,20 +739,19 @@ func (c *Client) CheckTx(ctx context.Context, tx tmtypes.Tx) (*ctypes.ResultChec
 
 func (c *Client) BlockValidated(height *int64) (*ResultBlockValidated, error) {
 	_, _, chainID := c.node.P2P.Info()
-	
+
 	if height == nil || *height < 0 {
 		return &ResultBlockValidated{Result: -1, ChainID: chainID}, nil
 	}
-	
-	if uint64(*height) > c.node.BlockManager.State.Height() { 
+
+	if uint64(*height) > c.node.BlockManager.State.Height() {
 		return &ResultBlockValidated{Result: NotValidated, ChainID: chainID}, nil
 	}
 
-	if uint64(*height) <= c.node.BlockManager.SettlementValidator.GetLastValidatedHeight() { 
+	if uint64(*height) <= c.node.BlockManager.SettlementValidator.GetLastValidatedHeight() {
 		return &ResultBlockValidated{Result: SLValidated, ChainID: chainID}, nil
 	}
 
-	
 	return &ResultBlockValidated{Result: P2PValidated, ChainID: chainID}, nil
 }
 
@@ -856,7 +777,7 @@ func (c *Client) eventsRoutine(sub tmtypes.Subscription, subscriber string, q tm
 
 			c.Logger.Error("subscription was cancelled, resubscribing...", "err", sub.Err(), "query", q.String())
 			sub = c.resubscribe(subscriber, q)
-			if sub == nil { 
+			if sub == nil {
 				return
 			}
 		case <-c.Quit():
@@ -864,7 +785,6 @@ func (c *Client) eventsRoutine(sub tmtypes.Subscription, subscriber string, q tm
 		}
 	}
 }
-
 
 func (c *Client) resubscribe(subscriber string, q tmpubsub.Query) tmtypes.Subscription {
 	attempts := uint(0)
@@ -879,7 +799,7 @@ func (c *Client) resubscribe(subscriber string, q tmpubsub.Query) tmtypes.Subscr
 		}
 
 		attempts++
-		time.Sleep((10 << attempts) * time.Millisecond) 
+		time.Sleep((10 << attempts) * time.Millisecond)
 	}
 }
 
@@ -904,7 +824,7 @@ func (c *Client) normalizeHeight(height *int64) uint64 {
 	if height == nil || *height == 0 {
 		heightValue = c.node.GetBlockManagerHeight()
 	} else {
-		heightValue = uint64(*height) 
+		heightValue = uint64(*height)
 	}
 
 	return heightValue
@@ -921,7 +841,7 @@ func (c *Client) IsSubscriptionAllowed(subscriber string) error {
 }
 
 func validatePerPage(perPagePtr *int) int {
-	if perPagePtr == nil { 
+	if perPagePtr == nil {
 		return defaultPerPage
 	}
 
@@ -939,13 +859,13 @@ func validatePage(pagePtr *int, perPage, totalCount int) (int, error) {
 		panic(fmt.Sprintf("zero or negative perPage: %d", perPage))
 	}
 
-	if pagePtr == nil || *pagePtr <= 0 { 
+	if pagePtr == nil || *pagePtr <= 0 {
 		return 1, nil
 	}
 
 	pages := ((totalCount - 1) / perPage) + 1
 	if pages == 0 {
-		pages = 1 
+		pages = 1
 	}
 	page := *pagePtr
 	if page > pages {
@@ -965,12 +885,10 @@ func validateSkipCount(page, perPage int) int {
 }
 
 func filterMinMax(base, height, min, max, limit int64) (int64, int64, error) {
-	
 	if min < 0 || max < 0 {
 		return min, max, errors.New("height must be greater than zero")
 	}
 
-	
 	if min == 0 {
 		min = 1
 	}
@@ -978,14 +896,10 @@ func filterMinMax(base, height, min, max, limit int64) (int64, int64, error) {
 		max = height
 	}
 
-	
 	max = tmmath.MinInt64(height, max)
 
-	
 	min = tmmath.MaxInt64(base, min)
 
-	
-	
 	min = tmmath.MaxInt64(min, max-limit+1)
 
 	if min > max {

@@ -8,11 +8,8 @@ import (
 )
 
 const (
-	
-	
-	genesisChunkSize = 16 * 1024 * 1024 
+	genesisChunkSize = 16 * 1024 * 1024
 )
-
 
 func (c *Client) GetGenesisChunks() ([]string, error) {
 	if c.genChunks != nil {
@@ -25,8 +22,6 @@ func (c *Client) GetGenesisChunks() ([]string, error) {
 	}
 	return c.genChunks, err
 }
-
-
 
 func (c *Client) initGenesisChunks(genesis *tmtypes.GenesisDoc) error {
 	if genesis == nil {

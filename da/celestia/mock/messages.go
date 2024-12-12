@@ -5,16 +5,11 @@ import (
 	"encoding/binary"
 )
 
-
-
-
 const (
 	shareSize     = 256
 	namespaceSize = 8
 	msgShareSize  = shareSize - namespaceSize
 )
-
-
 
 func splitMessage(rawData []byte, nid []byte) []NamespacedShare {
 	shares := make([]NamespacedShare, 0)
@@ -40,9 +35,7 @@ func splitMessage(rawData []byte, nid []byte) []NamespacedShare {
 	return shares
 }
 
-
 type Share []byte
-
 
 type NamespacedShare struct {
 	Share
@@ -68,16 +61,12 @@ func zeroPadIfNecessary(share []byte, width int) []byte {
 	return share
 }
 
-
-
 func marshalDelimited(data []byte) ([]byte, error) {
 	lenBuf := make([]byte, binary.MaxVarintLen64)
 	length := uint64(len(data))
 	n := binary.PutUvarint(lenBuf, length)
 	return append(lenBuf[:n], data...), nil
 }
-
-
 
 func appendToShares(shares []NamespacedShare, nid []byte, rawData []byte) []NamespacedShare {
 	if len(rawData) <= msgShareSize {
@@ -89,7 +78,7 @@ func appendToShares(shares []NamespacedShare, nid []byte, rawData []byte) []Name
 		paddedShare := zeroPadIfNecessary(rawShare, shareSize)
 		share := NamespacedShare{paddedShare, nid}
 		shares = append(shares, share)
-	} else { 
+	} else {
 		shares = append(shares, splitMessage(rawData, nid)...)
 	}
 	return shares

@@ -1,7 +1,7 @@
 package local
 
 import (
-	"crypto/sha1" 
+	"crypto/sha1"
 	"encoding/binary"
 	"math/rand"
 	"sync/atomic"
@@ -14,8 +14,6 @@ import (
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
-
-
 type DataAvailabilityLayerClient struct {
 	logger   types.Logger
 	dalcKV   store.KV
@@ -26,7 +24,7 @@ type DataAvailabilityLayerClient struct {
 
 const (
 	defaultBlockTime = 3 * time.Second
-	maxBlobSize      = 2097152 
+	maxBlobSize      = 2097152
 )
 
 type config struct {
@@ -37,7 +35,6 @@ var (
 	_ da.DataAvailabilityLayerClient = &DataAvailabilityLayerClient{}
 	_ da.BatchRetriever              = &DataAvailabilityLayerClient{}
 )
-
 
 func (m *DataAvailabilityLayerClient) Init(config []byte, _ *pubsub.Server, dalcKV store.KV, logger types.Logger, options ...da.Option) error {
 	m.logger = logger
@@ -56,7 +53,6 @@ func (m *DataAvailabilityLayerClient) Init(config []byte, _ *pubsub.Server, dalc
 	return nil
 }
 
-
 func (m *DataAvailabilityLayerClient) Start() error {
 	m.logger.Debug("Mock Data Availability Layer Client starting")
 	m.synced <- struct{}{}
@@ -70,25 +66,19 @@ func (m *DataAvailabilityLayerClient) Start() error {
 	return nil
 }
 
-
 func (m *DataAvailabilityLayerClient) Stop() error {
 	m.logger.Debug("Mock Data Availability Layer Client stopped")
 	close(m.synced)
 	return nil
 }
 
-
 func (m *DataAvailabilityLayerClient) WaitForSyncing() {
 	<-m.synced
 }
 
-
 func (m *DataAvailabilityLayerClient) GetClientType() da.Client {
 	return da.Mock
 }
-
-
-
 
 func (m *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultSubmitBatch {
 	daHeight := m.daHeight.Load()
@@ -99,7 +89,7 @@ func (m *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 	if err != nil {
 		return da.ResultSubmitBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error(), Error: err}}
 	}
-	hash := sha1.Sum(uint64ToBinary(batch.EndHeight())) 
+	hash := sha1.Sum(uint64ToBinary(batch.EndHeight()))
 	err = m.dalcKV.Set(getKey(daHeight, batch.StartHeight()), hash[:])
 	if err != nil {
 		return da.ResultSubmitBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error(), Error: err}}
@@ -109,7 +99,7 @@ func (m *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 		return da.ResultSubmitBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error(), Error: err}}
 	}
 
-	m.daHeight.Store(daHeight + 1) 
+	m.daHeight.Store(daHeight + 1)
 
 	return da.ResultSubmitBatch{
 		BaseResult: da.BaseResult{
@@ -123,12 +113,10 @@ func (m *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 	}
 }
 
-
 func (m *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
 	batchesRes := m.RetrieveBatches(daMetaData)
 	return da.ResultCheckBatch{BaseResult: da.BaseResult{Code: batchesRes.Code, Message: batchesRes.Message, Error: batchesRes.Error}, CheckMetaData: batchesRes.CheckMetaData}
 }
-
 
 func (m *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
 	if daMetaData.Height >= m.daHeight.Load() {
@@ -174,10 +162,9 @@ func getKey(daHeight uint64, height uint64) []byte {
 }
 
 func (m *DataAvailabilityLayerClient) updateDAHeight() {
-	blockStep := rand.Uint64()%10 + 1 
+	blockStep := rand.Uint64()%10 + 1
 	m.daHeight.Add(blockStep)
 }
-
 
 func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint32 {
 	return maxBlobSize

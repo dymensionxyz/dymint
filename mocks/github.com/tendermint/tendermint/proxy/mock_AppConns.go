@@ -1,5 +1,3 @@
-
-
 package proxy
 
 import (
@@ -8,7 +6,6 @@ import (
 
 	proxy "github.com/tendermint/tendermint/proxy"
 )
-
 
 type MockAppConns struct {
 	mock.Mock
@@ -21,7 +18,6 @@ type MockAppConns_Expecter struct {
 func (_m *MockAppConns) EXPECT() *MockAppConns_Expecter {
 	return &MockAppConns_Expecter{mock: &_m.Mock}
 }
-
 
 func (_m *MockAppConns) Consensus() proxy.AppConnConsensus {
 	ret := _m.Called()
@@ -42,11 +38,9 @@ func (_m *MockAppConns) Consensus() proxy.AppConnConsensus {
 	return r0
 }
 
-
 type MockAppConns_Consensus_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockAppConns_Expecter) Consensus() *MockAppConns_Consensus_Call {
 	return &MockAppConns_Consensus_Call{Call: _e.mock.On("Consensus")}
@@ -69,7 +63,6 @@ func (_c *MockAppConns_Consensus_Call) RunAndReturn(run func() proxy.AppConnCons
 	return _c
 }
 
-
 func (_m *MockAppConns) IsRunning() bool {
 	ret := _m.Called()
 
@@ -87,11 +80,9 @@ func (_m *MockAppConns) IsRunning() bool {
 	return r0
 }
 
-
 type MockAppConns_IsRunning_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockAppConns_Expecter) IsRunning() *MockAppConns_IsRunning_Call {
 	return &MockAppConns_IsRunning_Call{Call: _e.mock.On("IsRunning")}
@@ -114,7 +105,6 @@ func (_c *MockAppConns_IsRunning_Call) RunAndReturn(run func() bool) *MockAppCon
 	return _c
 }
 
-
 func (_m *MockAppConns) Mempool() proxy.AppConnMempool {
 	ret := _m.Called()
 
@@ -134,11 +124,9 @@ func (_m *MockAppConns) Mempool() proxy.AppConnMempool {
 	return r0
 }
 
-
 type MockAppConns_Mempool_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockAppConns_Expecter) Mempool() *MockAppConns_Mempool_Call {
 	return &MockAppConns_Mempool_Call{Call: _e.mock.On("Mempool")}
@@ -161,7 +149,6 @@ func (_c *MockAppConns_Mempool_Call) RunAndReturn(run func() proxy.AppConnMempoo
 	return _c
 }
 
-
 func (_m *MockAppConns) OnReset() error {
 	ret := _m.Called()
 
@@ -179,11 +166,9 @@ func (_m *MockAppConns) OnReset() error {
 	return r0
 }
 
-
 type MockAppConns_OnReset_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockAppConns_Expecter) OnReset() *MockAppConns_OnReset_Call {
 	return &MockAppConns_OnReset_Call{Call: _e.mock.On("OnReset")}
@@ -206,7 +191,6 @@ func (_c *MockAppConns_OnReset_Call) RunAndReturn(run func() error) *MockAppConn
 	return _c
 }
 
-
 func (_m *MockAppConns) OnStart() error {
 	ret := _m.Called()
 
@@ -224,11 +208,9 @@ func (_m *MockAppConns) OnStart() error {
 	return r0
 }
 
-
 type MockAppConns_OnStart_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockAppConns_Expecter) OnStart() *MockAppConns_OnStart_Call {
 	return &MockAppConns_OnStart_Call{Call: _e.mock.On("OnStart")}
@@ -251,16 +233,13 @@ func (_c *MockAppConns_OnStart_Call) RunAndReturn(run func() error) *MockAppConn
 	return _c
 }
 
-
 func (_m *MockAppConns) OnStop() {
 	_m.Called()
 }
 
-
 type MockAppConns_OnStop_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockAppConns_Expecter) OnStop() *MockAppConns_OnStop_Call {
 	return &MockAppConns_OnStop_Call{Call: _e.mock.On("OnStop")}
@@ -283,7 +262,6 @@ func (_c *MockAppConns_OnStop_Call) RunAndReturn(run func()) *MockAppConns_OnSto
 	return _c
 }
 
-
 func (_m *MockAppConns) Query() proxy.AppConnQuery {
 	ret := _m.Called()
 
@@ -303,11 +281,9 @@ func (_m *MockAppConns) Query() proxy.AppConnQuery {
 	return r0
 }
 
-
 type MockAppConns_Query_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockAppConns_Expecter) Query() *MockAppConns_Query_Call {
 	return &MockAppConns_Query_Call{Call: _e.mock.On("Query")}
@@ -330,7 +306,6 @@ func (_c *MockAppConns_Query_Call) RunAndReturn(run func() proxy.AppConnQuery) *
 	return _c
 }
 
-
 func (_m *MockAppConns) Quit() <-chan struct{} {
 	ret := _m.Called()
 
@@ -350,11 +325,9 @@ func (_m *MockAppConns) Quit() <-chan struct{} {
 	return r0
 }
 
-
 type MockAppConns_Quit_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockAppConns_Expecter) Quit() *MockAppConns_Quit_Call {
 	return &MockAppConns_Quit_Call{Call: _e.mock.On("Quit")}
@@ -377,7 +350,6 @@ func (_c *MockAppConns_Quit_Call) RunAndReturn(run func() <-chan struct{}) *Mock
 	return _c
 }
 
-
 func (_m *MockAppConns) Reset() error {
 	ret := _m.Called()
 
@@ -395,11 +367,9 @@ func (_m *MockAppConns) Reset() error {
 	return r0
 }
 
-
 type MockAppConns_Reset_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockAppConns_Expecter) Reset() *MockAppConns_Reset_Call {
 	return &MockAppConns_Reset_Call{Call: _e.mock.On("Reset")}
@@ -422,17 +392,13 @@ func (_c *MockAppConns_Reset_Call) RunAndReturn(run func() error) *MockAppConns_
 	return _c
 }
 
-
 func (_m *MockAppConns) SetLogger(_a0 log.Logger) {
 	_m.Called(_a0)
 }
 
-
 type MockAppConns_SetLogger_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockAppConns_Expecter) SetLogger(_a0 interface{}) *MockAppConns_SetLogger_Call {
 	return &MockAppConns_SetLogger_Call{Call: _e.mock.On("SetLogger", _a0)}
@@ -455,7 +421,6 @@ func (_c *MockAppConns_SetLogger_Call) RunAndReturn(run func(log.Logger)) *MockA
 	return _c
 }
 
-
 func (_m *MockAppConns) Snapshot() proxy.AppConnSnapshot {
 	ret := _m.Called()
 
@@ -475,11 +440,9 @@ func (_m *MockAppConns) Snapshot() proxy.AppConnSnapshot {
 	return r0
 }
 
-
 type MockAppConns_Snapshot_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockAppConns_Expecter) Snapshot() *MockAppConns_Snapshot_Call {
 	return &MockAppConns_Snapshot_Call{Call: _e.mock.On("Snapshot")}
@@ -502,7 +465,6 @@ func (_c *MockAppConns_Snapshot_Call) RunAndReturn(run func() proxy.AppConnSnaps
 	return _c
 }
 
-
 func (_m *MockAppConns) Start() error {
 	ret := _m.Called()
 
@@ -520,11 +482,9 @@ func (_m *MockAppConns) Start() error {
 	return r0
 }
 
-
 type MockAppConns_Start_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockAppConns_Expecter) Start() *MockAppConns_Start_Call {
 	return &MockAppConns_Start_Call{Call: _e.mock.On("Start")}
@@ -547,7 +507,6 @@ func (_c *MockAppConns_Start_Call) RunAndReturn(run func() error) *MockAppConns_
 	return _c
 }
 
-
 func (_m *MockAppConns) Stop() error {
 	ret := _m.Called()
 
@@ -565,11 +524,9 @@ func (_m *MockAppConns) Stop() error {
 	return r0
 }
 
-
 type MockAppConns_Stop_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockAppConns_Expecter) Stop() *MockAppConns_Stop_Call {
 	return &MockAppConns_Stop_Call{Call: _e.mock.On("Stop")}
@@ -592,7 +549,6 @@ func (_c *MockAppConns_Stop_Call) RunAndReturn(run func() error) *MockAppConns_S
 	return _c
 }
 
-
 func (_m *MockAppConns) String() string {
 	ret := _m.Called()
 
@@ -610,11 +566,9 @@ func (_m *MockAppConns) String() string {
 	return r0
 }
 
-
 type MockAppConns_String_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockAppConns_Expecter) String() *MockAppConns_String_Call {
 	return &MockAppConns_String_Call{Call: _e.mock.On("String")}
@@ -637,12 +591,11 @@ func (_c *MockAppConns_String_Call) RunAndReturn(run func() string) *MockAppConn
 	return _c
 }
 
-
-
 func NewMockAppConns(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *MockAppConns {
+},
+) *MockAppConns {
 	mock := &MockAppConns{}
 	mock.Mock.Test(t)
 

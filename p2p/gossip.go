@@ -13,27 +13,22 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
-
 const pubsubBufferSize = 3000
-
 
 type GossipMessage struct {
 	Data []byte
 	From peer.ID
 }
 
-
 type GossiperOption func(*Gossiper) error
 
 type GossipMessageHandler func(ctx context.Context, gossipedBlock []byte)
-
 
 func WithValidator(validator GossipValidator) GossiperOption {
 	return func(g *Gossiper) error {
 		return g.ps.RegisterTopicValidator(g.topic.String(), wrapValidator(g, validator))
 	}
 }
-
 
 type Gossiper struct {
 	ownID peer.ID
@@ -44,9 +39,6 @@ type Gossiper struct {
 	msgHandler GossipMessageHandler
 	logger     types.Logger
 }
-
-
-
 
 func NewGossiper(host host.Host, ps *pubsub.PubSub, topicStr string, msgHandler GossipMessageHandler, logger types.Logger, options ...GossiperOption) (*Gossiper, error) {
 	topic, err := ps.Join(topicStr)
@@ -76,7 +68,6 @@ func NewGossiper(host host.Host, ps *pubsub.PubSub, topicStr string, msgHandler 
 	return g, nil
 }
 
-
 func (g *Gossiper) Close() error {
 	err := g.ps.UnregisterTopicValidator(g.topic.String())
 	g.sub.Cancel()
@@ -86,11 +77,9 @@ func (g *Gossiper) Close() error {
 	)
 }
 
-
 func (g *Gossiper) Publish(ctx context.Context, data []byte) error {
 	return g.topic.Publish(ctx, data)
 }
-
 
 func (g *Gossiper) ProcessMessages(ctx context.Context) {
 	for {
@@ -110,8 +99,6 @@ func (g *Gossiper) ProcessMessages(ctx context.Context) {
 
 func wrapValidator(gossiper *Gossiper, validator GossipValidator) pubsub.Validator {
 	return func(_ context.Context, _ peer.ID, msg *pubsub.Message) bool {
-		
-		
 		if msg.GetFrom() == gossiper.ownID {
 			return true
 		}

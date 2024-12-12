@@ -6,19 +6,13 @@ import (
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 )
 
-
 type Tx []byte
 
-
 type Txs []Tx
-
 
 func (tx Tx) Hash() []byte {
 	return tmhash.Sum(tx)
 }
-
-
-
 
 func (txs Txs) Proof(i int) TxProof {
 	l := len(txs)
@@ -34,7 +28,6 @@ func (txs Txs) Proof(i int) TxProof {
 		Proof:    *proofs[i],
 	}
 }
-
 
 type TxProof struct {
 	RootHash tmbytes.HexBytes `json:"root_hash"`

@@ -17,7 +17,6 @@ import (
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
-
 func GetServer(kv store.KV, conf grpcda.Config, mockConfig []byte) *grpc.Server {
 	logger := tmlog.NewTMLogger(os.Stdout)
 

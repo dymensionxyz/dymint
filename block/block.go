@@ -11,12 +11,11 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
-
 func (m *Manager) applyBlockWithFraudHandling(block *types.Block, commit *types.Commit, blockMetaData types.BlockMetaData) error {
 	validateWithFraud := func() error {
 		if err := m.validateBlockBeforeApply(block, commit); err != nil {
 			m.blockCache.Delete(block.Header.Height)
-			
+
 			return fmt.Errorf("block not valid at height %d, dropping it: err:%w", block.Header.Height, err)
 		}
 
@@ -29,27 +28,15 @@ func (m *Manager) applyBlockWithFraudHandling(block *types.Block, commit *types.
 
 	err := validateWithFraud()
 	if errors.Is(err, gerrc.ErrFault) {
-		
-		
-		
-		
 		m.FraudHandler.HandleFault(m.Ctx, err)
 	}
 
 	return err
 }
 
-
-
-
-
-
-
 func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMetaData types.BlockMetaData) error {
 	var retainHeight int64
 
-	
-	
 	if block.Header.Height != m.State.NextHeight() {
 		return types.ErrInvalidBlockHeight
 	}
@@ -58,13 +45,11 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 
 	m.logger.Debug("Applying block", "height", block.Header.Height, "source", blockMetaData.Source.String())
 
-	
 	isBlockAlreadyApplied, err := m.isHeightAlreadyApplied(block.Header.Height)
 	if err != nil {
 		return fmt.Errorf("check if block is already applied: %w", err)
 	}
-	
-	
+
 	if isBlockAlreadyApplied {
 		err := m.UpdateStateFromApp(block.Header.Hash())
 		if err != nil {
@@ -73,7 +58,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		m.logger.Info("updated state from app commit", "height", block.Header.Height)
 	} else {
 		var appHash []byte
-		
+
 		_, err = m.Store.SaveBlock(block, commit, nil)
 		if err != nil {
 			return fmt.Errorf("save block: %w", err)
@@ -104,15 +89,10 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 			return fmt.Errorf("add drs version: %w", err)
 		}
 
-		
 		appHash, retainHeight, err = m.Executor.Commit(m.State, block, responses)
 		if err != nil {
 			return fmt.Errorf("commit block: %w", err)
 		}
-
-		
-		
-		
 
 		if 0 < retainHeight {
 			select {
@@ -121,25 +101,13 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 				m.logger.Debug("pruning channel full. skipping pruning", "retainHeight", retainHeight)
 			}
 		}
-		
-		
+
 		m.Executor.UpdateStateAfterCommit(m.State, responses, appHash, block.Header.Height, block.Header.Hash())
 
 	}
 
-	
 	m.LastBlockTime.Store(block.Header.GetTimestamp().UTC().UnixNano())
-	
-	
-	
-	
-	
-	
-	
-	
-	
 
-	
 	proposer := m.State.GetProposer()
 	if proposer == nil {
 		return fmt.Errorf("logic error: got nil proposer while applying block")
@@ -147,28 +115,18 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 
 	batch := m.Store.NewBatch()
 
-	
-	
 	batch, err = m.Store.SaveProposer(block.Header.Height, *proposer, batch)
 	if err != nil {
 		return fmt.Errorf("save proposer: %w", err)
 	}
 
-	
 	isProposerUpdated := m.Executor.UpdateProposerFromBlock(m.State, m.Sequencers, block)
 
-	
 	batch, err = m.Store.SaveState(m.State, batch)
 	if err != nil {
 		return fmt.Errorf("update state: %w", err)
 	}
 
-	
-	
-	
-	
-	
-	
 	if len(blockMetaData.SequencerSet) != 0 {
 		batch, err = m.Store.SaveLastBlockSequencerSet(blockMetaData.SequencerSet, batch)
 		if err != nil {
@@ -185,16 +143,11 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 
 	m.blockCache.Delete(block.Header.Height)
 
-	
 	err = m.ValidateConfigWithRollappParams()
 	if err != nil {
 		return err
 	}
 
-	
-	
-	
-	
 	if isProposerUpdated && m.AmIProposerOnRollapp() {
 		panic("I'm the new Proposer now. restarting as a proposer")
 	}
@@ -202,16 +155,13 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	return nil
 }
 
-
 func (m *Manager) isHeightAlreadyApplied(blockHeight uint64) (bool, error) {
 	proxyAppInfo, err := m.Executor.GetAppInfo()
 	if err != nil {
 		return false, errorsmod.Wrap(err, "get app info")
 	}
 
-	isBlockAlreadyApplied := uint64(proxyAppInfo.LastBlockHeight) == blockHeight 
-
-	
+	isBlockAlreadyApplied := uint64(proxyAppInfo.LastBlockHeight) == blockHeight
 
 	return isBlockAlreadyApplied, nil
 }
@@ -239,7 +189,6 @@ func (m *Manager) attemptApplyCachedBlocks() error {
 
 	return nil
 }
-
 
 func (m *Manager) validateBlockBeforeApply(block *types.Block, commit *types.Commit) error {
 	return types.ValidateProposedTransition(m.State, block, commit, m.State.GetProposerPubKey())

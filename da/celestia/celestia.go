@@ -26,7 +26,6 @@ import (
 	uretry "github.com/dymensionxyz/dymint/utils/retry"
 )
 
-
 type DataAvailabilityLayerClient struct {
 	rpc celtypes.CelestiaRPCClient
 
@@ -43,13 +42,11 @@ var (
 	_ da.BatchRetriever              = &DataAvailabilityLayerClient{}
 )
 
-
 func WithRPCClient(rpc celtypes.CelestiaRPCClient) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
 		daLayerClient.(*DataAvailabilityLayerClient).rpc = rpc
 	}
 }
-
 
 func WithRPCRetryDelay(delay time.Duration) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
@@ -57,20 +54,17 @@ func WithRPCRetryDelay(delay time.Duration) da.Option {
 	}
 }
 
-
 func WithRPCAttempts(attempts int) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
 		daLayerClient.(*DataAvailabilityLayerClient).config.RetryAttempts = &attempts
 	}
 }
 
-
 func WithSubmitBackoff(c uretry.BackoffConfig) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
 		daLayerClient.(*DataAvailabilityLayerClient).config.Backoff = c
 	}
 }
-
 
 func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.Server, _ store.KV, logger types.Logger, options ...da.Option) error {
 	c.logger = logger
@@ -85,7 +79,6 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 
 	c.pubsubServer = pubsubServer
 
-	
 	for _, apply := range options {
 		apply(c)
 	}
@@ -113,8 +106,6 @@ func createConfig(bz []byte) (c Config, err error) {
 		return c, errors.New("gas prices must be set")
 	}
 
-	
-
 	if c.RetryDelay == 0 {
 		c.RetryDelay = defaultRpcRetryDelay
 	}
@@ -128,11 +119,9 @@ func createConfig(bz []byte) (c Config, err error) {
 	return c, nil
 }
 
-
 func (c *DataAvailabilityLayerClient) Start() (err error) {
 	c.logger.Info("Starting Celestia Data Availability Layer Client.")
 
-	
 	if c.rpc != nil {
 		c.logger.Info("Celestia-node client already set.")
 		return nil
@@ -150,7 +139,6 @@ func (c *DataAvailabilityLayerClient) Start() (err error) {
 	return
 }
 
-
 func (c *DataAvailabilityLayerClient) Stop() error {
 	c.logger.Info("Stopping Celestia Data Availability Layer Client.")
 	err := c.pubsubServer.Stop()
@@ -162,16 +150,13 @@ func (c *DataAvailabilityLayerClient) Stop() error {
 	return nil
 }
 
-
 func (m *DataAvailabilityLayerClient) WaitForSyncing() {
 	<-m.synced
 }
 
-
 func (c *DataAvailabilityLayerClient) GetClientType() da.Client {
 	return da.Celestia
 }
-
 
 func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultSubmitBatch {
 	data, err := batch.MarshalBinary()
@@ -204,10 +189,9 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			return da.ResultSubmitBatch{}
 		default:
 
-			
 			height, commitment, err := c.submit(data)
 			if errors.Is(err, gerrc.ErrInternal) {
-				
+
 				err = fmt.Errorf("submit: %w", err)
 				return da.ResultSubmitBatch{
 					BaseResult: da.BaseResult{
@@ -273,7 +257,7 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 					resultRetrieveBatch = c.retrieveBatches(daMetaData)
 					return resultRetrieveBatch.Error
 				},
-				retry.Attempts(uint(*c.config.RetryAttempts)), 
+				retry.Attempts(uint(*c.config.RetryAttempts)),
 				retry.DelayType(retry.FixedDelay),
 				retry.Delay(c.config.RetryDelay),
 			)
@@ -368,7 +352,7 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 
 					return nil
 				},
-				retry.Attempts(uint(*c.config.RetryAttempts)), 
+				retry.Attempts(uint(*c.config.RetryAttempts)),
 				retry.DelayType(retry.FixedDelay),
 				retry.Delay(c.config.RetryDelay),
 			)
@@ -392,7 +376,6 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 
 	dah, err := c.getDataAvailabilityHeaders(daMetaData.Height)
 	if err != nil {
-		
 		return da.ResultCheckBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
@@ -407,10 +390,6 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 
 	proof, err := c.getProof(daMetaData)
 	if err != nil || proof == nil {
-		
-		
-		
-		
 		return da.ResultCheckBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
@@ -433,9 +412,6 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 
 	if daMetaData.Index > 0 && daMetaData.Length > 0 {
 		if index != daMetaData.Index || shares != daMetaData.Length {
-			
-			
-			
 			return da.ResultCheckBatch{
 				CheckMetaData: DACheckMetaData,
 				BaseResult: da.BaseResult{
@@ -449,9 +425,7 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 	}
 
 	included, err = c.validateProof(daMetaData, proof)
-	
-	
-	
+
 	if err != nil {
 		return da.ResultCheckBatch{
 			BaseResult: da.BaseResult{
@@ -484,7 +458,6 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 		CheckMetaData: DACheckMetaData,
 	}
 }
-
 
 func (c *DataAvailabilityLayerClient) submit(daBlob da.Blob) (uint64, da.Commitment, error) {
 	blobs, commitments, err := c.blobsAndCommitments(daBlob)
@@ -554,7 +527,6 @@ func (c *DataAvailabilityLayerClient) getDataAvailabilityHeaders(height uint64) 
 	return headers.DAH, nil
 }
 
-
 func (c *DataAvailabilityLayerClient) sync(rpc *openrpc.Client) {
 	sync := func() error {
 		done := make(chan error, 1)
@@ -579,7 +551,7 @@ func (c *DataAvailabilityLayerClient) sync(rpc *openrpc.Client) {
 	}
 
 	err := retry.Do(sync,
-		retry.Attempts(0), 
+		retry.Attempts(0),
 		retry.Delay(10*time.Second),
 		retry.LastErrorOnly(true),
 		retry.DelayType(retry.FixedDelay),
@@ -596,11 +568,9 @@ func (c *DataAvailabilityLayerClient) sync(rpc *openrpc.Client) {
 	}
 }
 
-
 func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint32 {
 	return maxBlobSizeBytes
 }
-
 
 func (d *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
 	ctx, cancel := context.WithTimeout(d.ctx, d.config.Timeout)

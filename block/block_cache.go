@@ -5,7 +5,6 @@ import (
 )
 
 type Cache struct {
-	
 	cache map[uint64]types.CachedBlock
 }
 

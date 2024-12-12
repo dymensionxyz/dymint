@@ -36,94 +36,65 @@ import (
 )
 
 const (
-	
 	RunModeProposer uint = iota
-	
+
 	RunModeFullNode
 )
-
 
 type Manager struct {
 	logger types.Logger
 
-	
 	Conf            config.BlockManagerConfig
 	Genesis         *tmtypes.GenesisDoc
 	GenesisChecksum string
 	LocalKey        crypto.PrivKey
 	RootDir         string
 
-	
 	Store      store.Store
 	State      *types.State
 	Executor   ExecutorI
-	Sequencers *types.SequencerSet 
+	Sequencers *types.SequencerSet
 
-	
 	Pubsub    *pubsub.Server
 	P2PClient *p2p.Client
 	DAClient  da.DataAvailabilityLayerClient
 	SLClient  settlement.ClientI
 
-	
 	RunMode uint
 
-	
 	Cancel context.CancelFunc
 	Ctx    context.Context
 
-	
 	LastBlockTimeInSettlement atomic.Int64
 
-	
 	LastBlockTime atomic.Int64
 
-	
 	forkMu sync.Mutex
-	
-	
-	
-	
-	
+
 	LastSettlementHeight atomic.Uint64
 
-	
 	pruningC chan int64
 
-	
 	IndexerService *txindex.IndexerService
 
-	
 	Retriever da.BatchRetriever
 
-	
-	
-	
 	retrieverMu sync.Mutex
 
-	
-	
 	blockCache *Cache
 
-	
 	TargetHeight atomic.Uint64
 
-	
 	FraudHandler FraudHandler
 
-	
 	settlementSyncingC chan struct{}
 
-	
 	settlementValidationC chan struct{}
 
-	
 	syncedFromSettlement *uchannel.Nudger
 
-	
 	SettlementValidator *SettlementValidator
 }
-
 
 func NewManager(
 	localKey crypto.PrivKey,
@@ -151,7 +122,7 @@ func NewManager(
 		mempool,
 		proxyApp,
 		eventBus,
-		NewConsensusMsgQueue(), 
+		NewConsensusMsgQueue(),
 		logger,
 	)
 	if err != nil {
@@ -175,10 +146,10 @@ func NewManager(
 		blockCache: &Cache{
 			cache: make(map[uint64]types.CachedBlock),
 		},
-		pruningC:              make(chan int64, 10),   
-		settlementSyncingC:    make(chan struct{}, 1), 
-		settlementValidationC: make(chan struct{}, 1), 
-		syncedFromSettlement:  uchannel.NewNudger(),   
+		pruningC:              make(chan int64, 10),
+		settlementSyncingC:    make(chan struct{}, 1),
+		settlementValidationC: make(chan struct{}, 1),
+		syncedFromSettlement:  uchannel.NewNudger(),
 	}
 	m.setFraudHandler(NewFreezeHandler(m))
 	err = m.LoadStateOnInit(store, genesis, logger)
@@ -191,13 +162,11 @@ func NewManager(
 		return nil, err
 	}
 
-	
 	err = m.updateStateForNextRevision()
 	if err != nil {
 		return nil, err
 	}
 
-	
 	err = m.ValidateConfigWithRollappParams()
 	if err != nil {
 		return nil, err
@@ -208,10 +177,9 @@ func NewManager(
 	return m, nil
 }
 
-
 func (m *Manager) Start(ctx context.Context) error {
 	m.Ctx, m.Cancel = context.WithCancel(ctx)
-	
+
 	if m.State.IsGenesis() {
 		m.logger.Info("Running InitChain")
 
@@ -221,9 +189,6 @@ func (m *Manager) Start(ctx context.Context) error {
 		}
 	}
 
-	
-	
-	
 	if m.State.GetProposer() == nil {
 		m.logger.Info("No proposer on the rollapp, fallback to the hub proposer, if available")
 		err := m.UpdateProposerFromSL()
@@ -236,10 +201,6 @@ func (m *Manager) Start(ctx context.Context) error {
 		}
 	}
 
-	
-	
-	
-	
 	amIProposerOnSL, err := m.AmIProposerOnSL()
 	if err != nil {
 		return fmt.Errorf("am i proposer on SL: %w", err)
@@ -249,30 +210,25 @@ func (m *Manager) Start(ctx context.Context) error {
 
 	m.logger.Info("starting block manager", "mode", map[bool]string{true: "proposer", false: "full node"}[amIProposer])
 
-	
 	err = m.updateFromLastSettlementState()
 	if err != nil {
 		return fmt.Errorf("sync block manager from settlement: %w", err)
 	}
 
-	
 	m.triggerSettlementSyncing()
-	
+
 	m.triggerSettlementValidation()
 
 	eg, ctx := errgroup.WithContext(m.Ctx)
 
-	
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		return m.PruningLoop(ctx)
 	})
 
-	
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		return m.SettlementSyncLoop(ctx)
 	})
 
-	
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		return m.MonitorSequencerSetUpdates(ctx)
 	})
@@ -285,7 +241,6 @@ func (m *Manager) Start(ctx context.Context) error {
 		return m.MonitorBalances(ctx)
 	})
 
-	
 	if !amIProposer {
 		return m.runAsFullNode(ctx, eg)
 	}
@@ -297,26 +252,21 @@ func (m *Manager) NextHeightToSubmit() uint64 {
 	return m.LastSettlementHeight.Load() + 1
 }
 
-
 func (m *Manager) updateFromLastSettlementState() error {
-	
 	err := m.UpdateSequencerSetFromSL()
 	if err != nil {
-		
 		m.logger.Error("Cannot fetch sequencer set from the Hub", "error", err)
 	}
 
-	
 	latestHeight, err := m.SLClient.GetLatestHeight()
 	if errors.Is(err, gerrc.ErrNotFound) {
-		
+
 		m.logger.Info("No batches for chain found in SL.")
-		m.LastSettlementHeight.Store(uint64(m.Genesis.InitialHeight - 1)) 
+		m.LastSettlementHeight.Store(uint64(m.Genesis.InitialHeight - 1))
 		m.LastBlockTimeInSettlement.Store(m.Genesis.GenesisTime.UTC().UnixNano())
 		return nil
 	}
 	if err != nil {
-		
 		return err
 	}
 
@@ -327,10 +277,8 @@ func (m *Manager) updateFromLastSettlementState() error {
 
 	m.LastSettlementHeight.Store(latestHeight)
 
-	
 	m.SetLastBlockTimeInSettlementFromHeight(latestHeight)
 
-	
 	block, err := m.Store.LoadBlock(m.State.Height())
 	if err == nil {
 		m.LastBlockTime.Store(block.Header.GetTimestamp().UTC().UnixNano())
@@ -339,7 +287,6 @@ func (m *Manager) updateFromLastSettlementState() error {
 }
 
 func (m *Manager) updateLastFinalizedHeightFromSettlement() error {
-	
 	height, err := m.SLClient.GetLatestFinalizedHeight()
 	if errors.Is(err, gerrc.ErrNotFound) {
 		m.logger.Info("No finalized batches for chain found in SL.")
@@ -368,7 +315,6 @@ func (m *Manager) UpdateTargetHeight(h uint64) {
 	}
 }
 
-
 func (m *Manager) ValidateConfigWithRollappParams() error {
 	if da.Client(m.State.RollappParams.Da) != m.DAClient.GetClientType() {
 		return fmt.Errorf("da client mismatch. rollapp param: %s da configured: %s", m.State.RollappParams.Da, m.DAClient.GetClientType())
@@ -380,7 +326,6 @@ func (m *Manager) ValidateConfigWithRollappParams() error {
 
 	return nil
 }
-
 
 func (m *Manager) setDA(daconfig string, dalcKV store.KV, logger log.Logger) error {
 	daLayer := m.State.RollappParams.Da
@@ -402,11 +347,9 @@ func (m *Manager) setDA(daconfig string, dalcKV store.KV, logger log.Logger) err
 	return nil
 }
 
-
 func (m *Manager) setFraudHandler(handler *FreezeHandler) {
 	m.FraudHandler = handler
 }
-
 
 func (m *Manager) freezeNode(err error) {
 	m.logger.Info("Freezing node", "err", err)
@@ -417,11 +360,9 @@ func (m *Manager) freezeNode(err error) {
 	m.Cancel()
 }
 
-
 func (m *Manager) SetLastBlockTimeInSettlementFromHeight(lastSettlementHeight uint64) {
 	block, err := m.Store.LoadBlock(lastSettlementHeight)
 	if err != nil {
-		
 		return
 	}
 	m.LastBlockTimeInSettlement.Store(block.Header.GetTimestamp().UTC().UnixNano())

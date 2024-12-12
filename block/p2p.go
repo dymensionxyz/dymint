@@ -9,7 +9,6 @@ import (
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
-
 func (m *Manager) OnReceivedBlock(event pubsub.Message) {
 	eventData, ok := event.Data().(p2p.BlockData)
 	if !ok {
@@ -40,9 +39,8 @@ func (m *Manager) OnReceivedBlock(event pubsub.Message) {
 	if block.Header.Height < m.State.NextHeight() {
 		return
 	}
-	m.retrieverMu.Lock() 
+	m.retrieverMu.Lock()
 
-	
 	if m.blockCache.Has(height) {
 		m.retrieverMu.Unlock()
 		return
@@ -54,7 +52,7 @@ func (m *Manager) OnReceivedBlock(event pubsub.Message) {
 	m.logger.Debug("Received new block from p2p.", "block height", height, "source", source.String(), "store height", m.State.Height(), "n cachedBlocks", m.blockCache.Size())
 	m.blockCache.Add(height, &block, &commit, source)
 
-	m.retrieverMu.Unlock() 
+	m.retrieverMu.Unlock()
 
 	err := m.attemptApplyCachedBlocks()
 	if err != nil {
@@ -62,7 +60,6 @@ func (m *Manager) OnReceivedBlock(event pubsub.Message) {
 		m.logger.Error("Attempt apply cached blocks.", "err", err)
 	}
 }
-
 
 func (m *Manager) gossipBlock(ctx context.Context, block types.Block, commit types.Commit) error {
 	m.logger.Info("Gossipping block", "height", block.Header.Height)
@@ -72,14 +69,11 @@ func (m *Manager) gossipBlock(ctx context.Context, block types.Block, commit typ
 		return fmt.Errorf("marshal binary: %w: %w", err, ErrNonRecoverable)
 	}
 	if err := m.P2PClient.GossipBlock(ctx, gossipedBlockBytes); err != nil {
-		
-		
 		return fmt.Errorf("p2p gossip block: %w: %w", err, ErrRecoverable)
 	}
 
 	return nil
 }
-
 
 func (m *Manager) saveP2PBlockToBlockSync(block *types.Block, commit *types.Commit) error {
 	gossipedBlock := p2p.BlockData{Block: *block, Commit: *commit}

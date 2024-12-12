@@ -1,5 +1,3 @@
-
-
 package types
 
 import (
@@ -16,7 +14,6 @@ import (
 	share "github.com/celestiaorg/celestia-openrpc/types/share"
 )
 
-
 type MockCelestiaRPCClient struct {
 	mock.Mock
 }
@@ -28,7 +25,6 @@ type MockCelestiaRPCClient_Expecter struct {
 func (_m *MockCelestiaRPCClient) EXPECT() *MockCelestiaRPCClient_Expecter {
 	return &MockCelestiaRPCClient_Expecter{mock: &_m.Mock}
 }
-
 
 func (_m *MockCelestiaRPCClient) Get(ctx context.Context, height uint64, namespace share.Namespace, commitment blob.Commitment) (*blob.Blob, error) {
 	ret := _m.Called(ctx, height, namespace, commitment)
@@ -59,15 +55,9 @@ func (_m *MockCelestiaRPCClient) Get(ctx context.Context, height uint64, namespa
 	return r0, r1
 }
 
-
 type MockCelestiaRPCClient_Get_Call struct {
 	*mock.Call
 }
-
-
-
-
-
 
 func (_e *MockCelestiaRPCClient_Expecter) Get(ctx interface{}, height interface{}, namespace interface{}, commitment interface{}) *MockCelestiaRPCClient_Get_Call {
 	return &MockCelestiaRPCClient_Get_Call{Call: _e.mock.On("Get", ctx, height, namespace, commitment)}
@@ -89,7 +79,6 @@ func (_c *MockCelestiaRPCClient_Get_Call) RunAndReturn(run func(context.Context,
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockCelestiaRPCClient) GetAll(_a0 context.Context, _a1 uint64, _a2 []share.Namespace) ([]*blob.Blob, error) {
 	ret := _m.Called(_a0, _a1, _a2)
@@ -120,14 +109,9 @@ func (_m *MockCelestiaRPCClient) GetAll(_a0 context.Context, _a1 uint64, _a2 []s
 	return r0, r1
 }
 
-
 type MockCelestiaRPCClient_GetAll_Call struct {
 	*mock.Call
 }
-
-
-
-
 
 func (_e *MockCelestiaRPCClient_Expecter) GetAll(_a0 interface{}, _a1 interface{}, _a2 interface{}) *MockCelestiaRPCClient_GetAll_Call {
 	return &MockCelestiaRPCClient_GetAll_Call{Call: _e.mock.On("GetAll", _a0, _a1, _a2)}
@@ -149,7 +133,6 @@ func (_c *MockCelestiaRPCClient_GetAll_Call) RunAndReturn(run func(context.Conte
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockCelestiaRPCClient) GetByHeight(ctx context.Context, height uint64) (*header.ExtendedHeader, error) {
 	ret := _m.Called(ctx, height)
@@ -180,13 +163,9 @@ func (_m *MockCelestiaRPCClient) GetByHeight(ctx context.Context, height uint64)
 	return r0, r1
 }
 
-
 type MockCelestiaRPCClient_GetByHeight_Call struct {
 	*mock.Call
 }
-
-
-
 
 func (_e *MockCelestiaRPCClient_Expecter) GetByHeight(ctx interface{}, height interface{}) *MockCelestiaRPCClient_GetByHeight_Call {
 	return &MockCelestiaRPCClient_GetByHeight_Call{Call: _e.mock.On("GetByHeight", ctx, height)}
@@ -208,7 +187,6 @@ func (_c *MockCelestiaRPCClient_GetByHeight_Call) RunAndReturn(run func(context.
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockCelestiaRPCClient) GetProof(ctx context.Context, height uint64, namespace share.Namespace, commitment blob.Commitment) (*blob.Proof, error) {
 	ret := _m.Called(ctx, height, namespace, commitment)
@@ -239,15 +217,9 @@ func (_m *MockCelestiaRPCClient) GetProof(ctx context.Context, height uint64, na
 	return r0, r1
 }
 
-
 type MockCelestiaRPCClient_GetProof_Call struct {
 	*mock.Call
 }
-
-
-
-
-
 
 func (_e *MockCelestiaRPCClient_Expecter) GetProof(ctx interface{}, height interface{}, namespace interface{}, commitment interface{}) *MockCelestiaRPCClient_GetProof_Call {
 	return &MockCelestiaRPCClient_GetProof_Call{Call: _e.mock.On("GetProof", ctx, height, namespace, commitment)}
@@ -269,7 +241,6 @@ func (_c *MockCelestiaRPCClient_GetProof_Call) RunAndReturn(run func(context.Con
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockCelestiaRPCClient) GetSignerBalance(ctx context.Context) (*sdk.Coin, error) {
 	ret := _m.Called(ctx)
@@ -300,12 +271,9 @@ func (_m *MockCelestiaRPCClient) GetSignerBalance(ctx context.Context) (*sdk.Coi
 	return r0, r1
 }
 
-
 type MockCelestiaRPCClient_GetSignerBalance_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockCelestiaRPCClient_Expecter) GetSignerBalance(ctx interface{}) *MockCelestiaRPCClient_GetSignerBalance_Call {
 	return &MockCelestiaRPCClient_GetSignerBalance_Call{Call: _e.mock.On("GetSignerBalance", ctx)}
@@ -327,7 +295,6 @@ func (_c *MockCelestiaRPCClient_GetSignerBalance_Call) RunAndReturn(run func(con
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockCelestiaRPCClient) Included(ctx context.Context, height uint64, namespace share.Namespace, proof *blob.Proof, commitment blob.Commitment) (bool, error) {
 	ret := _m.Called(ctx, height, namespace, proof, commitment)
@@ -356,16 +323,9 @@ func (_m *MockCelestiaRPCClient) Included(ctx context.Context, height uint64, na
 	return r0, r1
 }
 
-
 type MockCelestiaRPCClient_Included_Call struct {
 	*mock.Call
 }
-
-
-
-
-
-
 
 func (_e *MockCelestiaRPCClient_Expecter) Included(ctx interface{}, height interface{}, namespace interface{}, proof interface{}, commitment interface{}) *MockCelestiaRPCClient_Included_Call {
 	return &MockCelestiaRPCClient_Included_Call{Call: _e.mock.On("Included", ctx, height, namespace, proof, commitment)}
@@ -387,7 +347,6 @@ func (_c *MockCelestiaRPCClient_Included_Call) RunAndReturn(run func(context.Con
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockCelestiaRPCClient) Submit(ctx context.Context, blobs []*blob.Blob, options *blob.SubmitOptions) (uint64, error) {
 	ret := _m.Called(ctx, blobs, options)
@@ -416,14 +375,9 @@ func (_m *MockCelestiaRPCClient) Submit(ctx context.Context, blobs []*blob.Blob,
 	return r0, r1
 }
 
-
 type MockCelestiaRPCClient_Submit_Call struct {
 	*mock.Call
 }
-
-
-
-
 
 func (_e *MockCelestiaRPCClient_Expecter) Submit(ctx interface{}, blobs interface{}, options interface{}) *MockCelestiaRPCClient_Submit_Call {
 	return &MockCelestiaRPCClient_Submit_Call{Call: _e.mock.On("Submit", ctx, blobs, options)}
@@ -446,12 +400,11 @@ func (_c *MockCelestiaRPCClient_Submit_Call) RunAndReturn(run func(context.Conte
 	return _c
 }
 
-
-
 func NewMockCelestiaRPCClient(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *MockCelestiaRPCClient {
+},
+) *MockCelestiaRPCClient {
 	mock := &MockCelestiaRPCClient{}
 	mock.Mock.Test(t)
 

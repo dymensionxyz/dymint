@@ -29,26 +29,23 @@ import (
 	rollapptypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
 )
 
-
 type ABCIMethod string
 
 const (
-	
 	InitChain ABCIMethod = "InitChain"
-	
+
 	CheckTx ABCIMethod = "CheckTx"
-	
+
 	BeginBlock ABCIMethod = "BeginBlock"
-	
+
 	DeliverTx ABCIMethod = "DeliverTx"
-	
+
 	EndBlock ABCIMethod = "EndBlock"
-	
+
 	Commit ABCIMethod = "Commit"
-	
+
 	Info ABCIMethod = "Info"
 )
-
 
 func GetABCIProxyAppMock(logger log.Logger) proxy.AppConns {
 	app := GetAppMock()
@@ -59,7 +56,6 @@ func GetABCIProxyAppMock(logger log.Logger) proxy.AppConns {
 
 	return proxyApp
 }
-
 
 func GetAppMock(excludeMethods ...ABCIMethod) *tmmocks.MockApplication {
 	app := &tmmocks.MockApplication{}
@@ -72,7 +68,6 @@ func GetAppMock(excludeMethods ...ABCIMethod) *tmmocks.MockApplication {
 	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{})
 	app.On("Info", mock.Anything).Return(abci.ResponseInfo{LastBlockHeight: 0, LastBlockAppHash: []byte{0}})
 
-	
 	for _, method := range excludeMethods {
 		UnsetMockFn(app.On(string(method)))
 	}
@@ -92,7 +87,6 @@ var UnsetMockFn = func(call *mock.Call) {
 	}
 }
 
-
 func CountMockCalls(totalCalls []mock.Call, methodName string) int {
 	var count int
 	for _, call := range totalCalls {
@@ -103,15 +97,12 @@ func CountMockCalls(totalCalls []mock.Call, methodName string) int {
 	return count
 }
 
-
 type MockStore struct {
 	ShoudFailSaveState             bool
 	ShouldFailUpdateStateWithBatch bool
 	*store.DefaultStore
 	height uint64
 }
-
-
 
 func (m *MockStore) SetHeight(height uint64) {
 	m.height = height
@@ -125,14 +116,12 @@ func (m *MockStore) NextHeight() uint64 {
 	return m.height + 1
 }
 
-
 func (m *MockStore) SaveState(state *types.State, batch store.KVBatch) (store.KVBatch, error) {
 	if batch != nil && m.ShouldFailUpdateStateWithBatch || m.ShoudFailSaveState && batch == nil {
 		return nil, errors.New("failed to update state")
 	}
 	return m.DefaultStore.SaveState(state, batch)
 }
-
 
 func NewMockStore() *MockStore {
 	defaultStore := store.New(store.NewDefaultInMemoryKVStore())
@@ -148,26 +137,21 @@ const (
 	connectionRefusedErrorMessage = "connection refused"
 )
 
-
 type DALayerClientSubmitBatchError struct {
 	localda.DataAvailabilityLayerClient
 }
-
 
 func (s *DALayerClientSubmitBatchError) SubmitBatch(_ *types.Batch) da.ResultSubmitBatch {
 	return da.ResultSubmitBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: connectionRefusedErrorMessage, Error: errors.New(connectionRefusedErrorMessage)}}
 }
 
-
 type DALayerClientRetrieveBatchesError struct {
 	localda.DataAvailabilityLayerClient
 }
 
-
 func (m *DALayerClientRetrieveBatchesError) RetrieveBatches(_ *da.DASubmitMetaData) da.ResultRetrieveBatch {
 	return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: batchNotFoundErrorMessage, Error: da.ErrBlobNotFound}}
 }
-
 
 type SubscribeMock struct {
 	messageCh chan interface{}
@@ -195,8 +179,7 @@ type MockDA struct {
 
 func NewMockDA(t *testing.T) (*MockDA, error) {
 	mockDA := &MockDA{}
-	
-	
+
 	mockDA.DaClient = registry.GetClient("celestia")
 
 	config := celestia.Config{
@@ -233,7 +216,7 @@ func NewMockDA(t *testing.T) (*MockDA, error) {
 
 	nIDSize := 1
 	tree := exampleNMT(nIDSize, true, 1, 2, 3, 4)
-	
+
 	proof, _ := tree.ProveNamespace(mockDA.NID)
 	mockDA.BlobProof = blob.Proof([]*nmt.Proof{&proof})
 
@@ -243,7 +226,6 @@ func NewMockDA(t *testing.T) (*MockDA, error) {
 	}
 	return mockDA, nil
 }
-
 
 func exampleNMT(nidSize int, ignoreMaxNamespace bool, leavesNIDs ...byte) *nmt.NamespacedMerkleTree {
 	tree := nmt.New(sha256.New(), nmt.NamespaceIDSize(nidSize), nmt.IgnoreMaxNamespace(ignoreMaxNamespace))

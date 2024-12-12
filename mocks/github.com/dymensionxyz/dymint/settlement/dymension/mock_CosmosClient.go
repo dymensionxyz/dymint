@@ -1,5 +1,3 @@
-
-
 package dymension
 
 import (
@@ -22,7 +20,6 @@ import (
 	types "github.com/cosmos/cosmos-sdk/types"
 )
 
-
 type MockCosmosClient struct {
 	mock.Mock
 }
@@ -34,7 +31,6 @@ type MockCosmosClient_Expecter struct {
 func (_m *MockCosmosClient) EXPECT() *MockCosmosClient_Expecter {
 	return &MockCosmosClient_Expecter{mock: &_m.Mock}
 }
-
 
 func (_m *MockCosmosClient) BroadcastTx(accountName string, msgs ...types.Msg) (cosmosclient.Response, error) {
 	_va := make([]interface{}, len(msgs))
@@ -70,13 +66,9 @@ func (_m *MockCosmosClient) BroadcastTx(accountName string, msgs ...types.Msg) (
 	return r0, r1
 }
 
-
 type MockCosmosClient_BroadcastTx_Call struct {
 	*mock.Call
 }
-
-
-
 
 func (_e *MockCosmosClient_Expecter) BroadcastTx(accountName interface{}, msgs ...interface{}) *MockCosmosClient_BroadcastTx_Call {
 	return &MockCosmosClient_BroadcastTx_Call{Call: _e.mock.On("BroadcastTx",
@@ -106,7 +98,6 @@ func (_c *MockCosmosClient_BroadcastTx_Call) RunAndReturn(run func(string, ...ty
 	return _c
 }
 
-
 func (_m *MockCosmosClient) Context() client.Context {
 	ret := _m.Called()
 
@@ -124,11 +115,9 @@ func (_m *MockCosmosClient) Context() client.Context {
 	return r0
 }
 
-
 type MockCosmosClient_Context_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockCosmosClient_Expecter) Context() *MockCosmosClient_Context_Call {
 	return &MockCosmosClient_Context_Call{Call: _e.mock.On("Context")}
@@ -151,7 +140,6 @@ func (_c *MockCosmosClient_Context_Call) RunAndReturn(run func() client.Context)
 	return _c
 }
 
-
 func (_m *MockCosmosClient) EventListenerQuit() <-chan struct{} {
 	ret := _m.Called()
 
@@ -171,11 +159,9 @@ func (_m *MockCosmosClient) EventListenerQuit() <-chan struct{} {
 	return r0
 }
 
-
 type MockCosmosClient_EventListenerQuit_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockCosmosClient_Expecter) EventListenerQuit() *MockCosmosClient_EventListenerQuit_Call {
 	return &MockCosmosClient_EventListenerQuit_Call{Call: _e.mock.On("EventListenerQuit")}
@@ -197,7 +183,6 @@ func (_c *MockCosmosClient_EventListenerQuit_Call) RunAndReturn(run func() <-cha
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockCosmosClient) GetAccount(accountName string) (cosmosaccount.Account, error) {
 	ret := _m.Called(accountName)
@@ -226,12 +211,9 @@ func (_m *MockCosmosClient) GetAccount(accountName string) (cosmosaccount.Accoun
 	return r0, r1
 }
 
-
 type MockCosmosClient_GetAccount_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockCosmosClient_Expecter) GetAccount(accountName interface{}) *MockCosmosClient_GetAccount_Call {
 	return &MockCosmosClient_GetAccount_Call{Call: _e.mock.On("GetAccount", accountName)}
@@ -253,7 +235,6 @@ func (_c *MockCosmosClient_GetAccount_Call) RunAndReturn(run func(string) (cosmo
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockCosmosClient) GetBalance(ctx context.Context, accountName string, denom string) (*types.Coin, error) {
 	ret := _m.Called(ctx, accountName, denom)
@@ -284,14 +265,9 @@ func (_m *MockCosmosClient) GetBalance(ctx context.Context, accountName string, 
 	return r0, r1
 }
 
-
 type MockCosmosClient_GetBalance_Call struct {
 	*mock.Call
 }
-
-
-
-
 
 func (_e *MockCosmosClient_Expecter) GetBalance(ctx interface{}, accountName interface{}, denom interface{}) *MockCosmosClient_GetBalance_Call {
 	return &MockCosmosClient_GetBalance_Call{Call: _e.mock.On("GetBalance", ctx, accountName, denom)}
@@ -314,7 +290,6 @@ func (_c *MockCosmosClient_GetBalance_Call) RunAndReturn(run func(context.Contex
 	return _c
 }
 
-
 func (_m *MockCosmosClient) GetRollappClient() rollapp.QueryClient {
 	ret := _m.Called()
 
@@ -334,11 +309,9 @@ func (_m *MockCosmosClient) GetRollappClient() rollapp.QueryClient {
 	return r0
 }
 
-
 type MockCosmosClient_GetRollappClient_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockCosmosClient_Expecter) GetRollappClient() *MockCosmosClient_GetRollappClient_Call {
 	return &MockCosmosClient_GetRollappClient_Call{Call: _e.mock.On("GetRollappClient")}
@@ -361,7 +334,6 @@ func (_c *MockCosmosClient_GetRollappClient_Call) RunAndReturn(run func() rollap
 	return _c
 }
 
-
 func (_m *MockCosmosClient) GetSequencerClient() sequencer.QueryClient {
 	ret := _m.Called()
 
@@ -381,11 +353,9 @@ func (_m *MockCosmosClient) GetSequencerClient() sequencer.QueryClient {
 	return r0
 }
 
-
 type MockCosmosClient_GetSequencerClient_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockCosmosClient_Expecter) GetSequencerClient() *MockCosmosClient_GetSequencerClient_Call {
 	return &MockCosmosClient_GetSequencerClient_Call{Call: _e.mock.On("GetSequencerClient")}
@@ -408,7 +378,6 @@ func (_c *MockCosmosClient_GetSequencerClient_Call) RunAndReturn(run func() sequ
 	return _c
 }
 
-
 func (_m *MockCosmosClient) StartEventListener() error {
 	ret := _m.Called()
 
@@ -426,11 +395,9 @@ func (_m *MockCosmosClient) StartEventListener() error {
 	return r0
 }
 
-
 type MockCosmosClient_StartEventListener_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockCosmosClient_Expecter) StartEventListener() *MockCosmosClient_StartEventListener_Call {
 	return &MockCosmosClient_StartEventListener_Call{Call: _e.mock.On("StartEventListener")}
@@ -453,7 +420,6 @@ func (_c *MockCosmosClient_StartEventListener_Call) RunAndReturn(run func() erro
 	return _c
 }
 
-
 func (_m *MockCosmosClient) StopEventListener() error {
 	ret := _m.Called()
 
@@ -471,11 +437,9 @@ func (_m *MockCosmosClient) StopEventListener() error {
 	return r0
 }
 
-
 type MockCosmosClient_StopEventListener_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockCosmosClient_Expecter) StopEventListener() *MockCosmosClient_StopEventListener_Call {
 	return &MockCosmosClient_StopEventListener_Call{Call: _e.mock.On("StopEventListener")}
@@ -497,7 +461,6 @@ func (_c *MockCosmosClient_StopEventListener_Call) RunAndReturn(run func() error
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockCosmosClient) SubscribeToEvents(ctx context.Context, subscriber string, query string, outCapacity ...int) (<-chan coretypes.ResultEvent, error) {
 	_va := make([]interface{}, len(outCapacity))
@@ -535,15 +498,9 @@ func (_m *MockCosmosClient) SubscribeToEvents(ctx context.Context, subscriber st
 	return r0, r1
 }
 
-
 type MockCosmosClient_SubscribeToEvents_Call struct {
 	*mock.Call
 }
-
-
-
-
-
 
 func (_e *MockCosmosClient_Expecter) SubscribeToEvents(ctx interface{}, subscriber interface{}, query interface{}, outCapacity ...interface{}) *MockCosmosClient_SubscribeToEvents_Call {
 	return &MockCosmosClient_SubscribeToEvents_Call{Call: _e.mock.On("SubscribeToEvents",
@@ -573,7 +530,6 @@ func (_c *MockCosmosClient_SubscribeToEvents_Call) RunAndReturn(run func(context
 	return _c
 }
 
-
 func (_m *MockCosmosClient) UnsubscribeAll(ctx context.Context, subscriber string) error {
 	ret := _m.Called(ctx, subscriber)
 
@@ -591,13 +547,9 @@ func (_m *MockCosmosClient) UnsubscribeAll(ctx context.Context, subscriber strin
 	return r0
 }
 
-
 type MockCosmosClient_UnsubscribeAll_Call struct {
 	*mock.Call
 }
-
-
-
 
 func (_e *MockCosmosClient_Expecter) UnsubscribeAll(ctx interface{}, subscriber interface{}) *MockCosmosClient_UnsubscribeAll_Call {
 	return &MockCosmosClient_UnsubscribeAll_Call{Call: _e.mock.On("UnsubscribeAll", ctx, subscriber)}
@@ -620,12 +572,11 @@ func (_c *MockCosmosClient_UnsubscribeAll_Call) RunAndReturn(run func(context.Co
 	return _c
 }
 
-
-
 func NewMockCosmosClient(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *MockCosmosClient {
+},
+) *MockCosmosClient {
 	mock := &MockCosmosClient{}
 	mock.Mock.Test(t)
 

@@ -6,7 +6,6 @@ import (
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 )
 
-
 var ErrBatchNotAccepted = fmt.Errorf("batch not accepted: %w", gerrc.ErrUnknown)
 
 type ErrNextSequencerAddressFraud struct {

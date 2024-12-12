@@ -24,10 +24,7 @@ var (
 	ErrEmptyProposerAddress  = errors.New("no proposer address")
 )
 
-
 var TimeFraudMaxDrift = 10 * time.Minute
-
-
 
 type ErrFraudHeightMismatch struct {
 	Expected uint64
@@ -36,7 +33,6 @@ type ErrFraudHeightMismatch struct {
 	HeaderHash [32]byte
 	Proposer   []byte
 }
-
 
 func NewErrFraudHeightMismatch(expected uint64, header *Header) error {
 	return &ErrFraudHeightMismatch{
@@ -56,7 +52,6 @@ func (e ErrFraudHeightMismatch) Unwrap() error {
 	return gerrc.ErrFault
 }
 
-
 type ErrFraudAppHashMismatch struct {
 	Expected [32]byte
 
@@ -65,7 +60,6 @@ type ErrFraudAppHashMismatch struct {
 	AppHash      [32]byte
 	Proposer     []byte
 }
-
 
 func NewErrFraudAppHashMismatch(expected [32]byte, header *Header) error {
 	return &ErrFraudAppHashMismatch{
@@ -86,7 +80,6 @@ func (e ErrFraudAppHashMismatch) Unwrap() error {
 	return gerrc.ErrFault
 }
 
-
 type ErrLastResultsHashMismatch struct {
 	Expected [32]byte
 
@@ -95,7 +88,6 @@ type ErrLastResultsHashMismatch struct {
 	Proposer       []byte
 	LastResultHash [32]byte
 }
-
 
 func NewErrLastResultsHashMismatch(expected [32]byte, header *Header) error {
 	return &ErrLastResultsHashMismatch{
@@ -115,7 +107,6 @@ func (e ErrLastResultsHashMismatch) Error() string {
 func (e ErrLastResultsHashMismatch) Unwrap() error {
 	return gerrc.ErrFault
 }
-
 
 type ErrTimeFraud struct {
 	Drift           time.Duration
@@ -153,7 +144,6 @@ func (e ErrTimeFraud) Unwrap() error {
 	return gerrc.ErrFault
 }
 
-
 type ErrLastHeaderHashMismatch struct {
 	Expected       [32]byte
 	LastHeaderHash [32]byte
@@ -173,7 +163,6 @@ func (e ErrLastHeaderHashMismatch) Error() string {
 func (e ErrLastHeaderHashMismatch) Unwrap() error {
 	return gerrc.ErrFault
 }
-
 
 type ErrInvalidChainID struct {
 	Expected string
@@ -200,8 +189,6 @@ func (e ErrInvalidChainID) Unwrap() error {
 	return gerrc.ErrFault
 }
 
-
-
 type ErrInvalidBlockHeightFraud struct {
 	Expected uint64
 	Header   *Header
@@ -226,7 +213,6 @@ func (e ErrInvalidBlockHeightFraud) Error() string {
 func (e ErrInvalidBlockHeightFraud) Unwrap() error {
 	return gerrc.ErrFault
 }
-
 
 type ErrInvalidHeaderHashFraud struct {
 	ExpectedHash [32]byte
@@ -253,7 +239,6 @@ func (e ErrInvalidHeaderHashFraud) Unwrap() error {
 	return gerrc.ErrFault
 }
 
-
 type ErrInvalidSignatureFraud struct {
 	Err    error
 	Header *Header
@@ -279,7 +264,6 @@ func (e ErrInvalidSignatureFraud) Error() string {
 func (e ErrInvalidSignatureFraud) Unwrap() error {
 	return gerrc.ErrFault
 }
-
 
 type ErrInvalidProposerAddressFraud struct {
 	ExpectedAddress []byte
@@ -308,7 +292,6 @@ func (e ErrInvalidProposerAddressFraud) Unwrap() error {
 	return gerrc.ErrFault
 }
 
-
 type ErrInvalidSequencerHashFraud struct {
 	ExpectedHash [32]byte
 	ActualHash   []byte
@@ -336,7 +319,6 @@ func (e ErrInvalidSequencerHashFraud) Unwrap() error {
 	return gerrc.ErrFault
 }
 
-
 type ErrInvalidNextSequencersHashFraud struct {
 	ExpectedHash [32]byte
 	Header       Header
@@ -360,7 +342,6 @@ func (e ErrInvalidNextSequencersHashFraud) Error() string {
 func (e ErrInvalidNextSequencersHashFraud) Unwrap() error {
 	return gerrc.ErrFault
 }
-
 
 type ErrInvalidHeaderDataHashFraud struct {
 	Expected [32]byte
@@ -390,7 +371,6 @@ func (e ErrInvalidHeaderDataHashFraud) Unwrap() error {
 	return gerrc.ErrFault
 }
 
-
 type ErrStateUpdateNumBlocksNotMatchingFraud struct {
 	StateIndex  uint64
 	SLNumBlocks uint64
@@ -417,8 +397,6 @@ func (e ErrStateUpdateNumBlocksNotMatchingFraud) Error() string {
 func (e ErrStateUpdateNumBlocksNotMatchingFraud) Unwrap() error {
 	return gerrc.ErrFault
 }
-
-
 
 type ErrStateUpdateHeightNotMatchingFraud struct {
 	StateIndex    uint64
@@ -449,7 +427,6 @@ func (e ErrStateUpdateHeightNotMatchingFraud) Unwrap() error {
 	return gerrc.ErrFault
 }
 
-
 type ErrStateUpdateStateRootNotMatchingFraud struct {
 	StateIndex  uint64
 	Height      uint64
@@ -478,7 +455,6 @@ func (e ErrStateUpdateStateRootNotMatchingFraud) Unwrap() error {
 	return gerrc.ErrFault
 }
 
-
 type ErrStateUpdateTimestampNotMatchingFraud struct {
 	StateIndex  uint64
 	Height      uint64
@@ -505,7 +481,6 @@ func (e ErrStateUpdateTimestampNotMatchingFraud) Error() string {
 func (e ErrStateUpdateTimestampNotMatchingFraud) Unwrap() error {
 	return gerrc.ErrFault
 }
-
 
 type ErrStateUpdateDoubleSigningFraud struct {
 	DABlock      *Block
@@ -571,7 +546,6 @@ func getJsonFromBlock(block *Block) ([]byte, error) {
 	return jsonBlock, nil
 }
 
-
 type ErrStateUpdateBlobNotAvailableFraud struct {
 	StateIndex uint64
 	DA         string
@@ -599,7 +573,6 @@ func (e ErrStateUpdateBlobNotAvailableFraud) Unwrap() error {
 	return gerrc.ErrFault
 }
 
-
 type ErrStateUpdateBlobCorruptedFraud struct {
 	StateIndex uint64
 	DA         string
@@ -626,7 +599,6 @@ func (e ErrStateUpdateBlobCorruptedFraud) Error() string {
 func (e ErrStateUpdateBlobCorruptedFraud) Unwrap() error {
 	return gerrc.ErrFault
 }
-
 
 type ErrStateUpdateDRSVersionFraud struct {
 	StateIndex   uint64

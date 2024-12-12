@@ -4,15 +4,9 @@ import (
 	"context"
 )
 
-
-
 type FraudHandler interface {
-	
-	
 	HandleFault(ctx context.Context, fault error)
 }
-
-
 
 type FreezeHandler struct {
 	m *Manager

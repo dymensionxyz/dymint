@@ -24,7 +24,6 @@ var defaultSubmitBackoff = uretry.NewBackoffConfig(
 	uretry.WithMaxDelay(time.Second*6),
 )
 
-
 type Config struct {
 	BaseURL        string               `json:"base_url,omitempty"`
 	AppNodeURL     string               `json:"app_node_url,omitempty"`
@@ -60,13 +59,12 @@ func (c *Config) InitNamespaceID() error {
 	if c.NamespaceIDStr == "" {
 		c.NamespaceIDStr = generateRandNamespaceID()
 	}
-	
+
 	namespaceBytes, err := hex.DecodeString(c.NamespaceIDStr)
 	if err != nil {
 		return fmt.Errorf("decode string: %w", err)
 	}
 
-	
 	if len(namespaceBytes) != openrpcns.NamespaceVersionZeroIDSize {
 		return fmt.Errorf("wrong length: got: %v: expect %v", len(namespaceBytes), openrpcns.NamespaceVersionZeroIDSize)
 	}

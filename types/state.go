@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"sync/atomic"
 
-	
-
 	tmcrypto "github.com/tendermint/tendermint/crypto"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -16,34 +14,25 @@ import (
 
 const rollappparams_modulename = "rollappparams"
 
-
 type State struct {
 	Version             tmstate.Version
 	RevisionStartHeight uint64
-	
-	ChainID       string
-	InitialHeight uint64 
 
-	
+	ChainID       string
+	InitialHeight uint64
+
 	LastBlockHeight atomic.Uint64
 
-	
 	Proposer atomic.Pointer[Sequencer]
 
-	
-	
 	ConsensusParams tmproto.ConsensusParams
 
-	
 	LastResultsHash [32]byte
 
-	
 	AppHash [32]byte
 
-	
 	RollappParams dymint.RollappParams
 
-	
 	LastHeaderHash [32]byte
 }
 
@@ -59,7 +48,6 @@ func (s *State) GetProposerPubKey() tmcrypto.PubKey {
 	return proposer.PubKey()
 }
 
-
 func (s *State) GetProposerHash() []byte {
 	proposer := s.Proposer.Load()
 	if proposer == nil {
@@ -67,7 +55,6 @@ func (s *State) GetProposerHash() []byte {
 	}
 	return proposer.MustHash()
 }
-
 
 func (s *State) SetProposer(proposer *Sequencer) {
 	s.Proposer.Store(proposer)
@@ -81,17 +68,13 @@ type RollappParams struct {
 	Params *dymint.RollappParams
 }
 
-
-
 func (s *State) SetHeight(height uint64) {
 	s.LastBlockHeight.Store(height)
 }
 
-
 func (s *State) Height() uint64 {
 	return s.LastBlockHeight.Load()
 }
-
 
 func (s *State) NextHeight() uint64 {
 	if s.IsGenesis() {
@@ -99,7 +82,6 @@ func (s *State) NextHeight() uint64 {
 	}
 	return s.Height() + 1
 }
-
 
 func (s *State) SetRollappParamsFromGenesis(appState json.RawMessage) error {
 	var objmap map[string]json.RawMessage

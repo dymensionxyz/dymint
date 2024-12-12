@@ -6,13 +6,10 @@ import (
 	"github.com/tendermint/tendermint/libs/log"
 )
 
-
-
 type Client struct {
 	registry *Registry
 	logger   log.Logger
 }
-
 
 func NewClient(reg Registry, logger log.Logger) *Client {
 	return &Client{
@@ -20,7 +17,6 @@ func NewClient(reg Registry, logger log.Logger) *Client {
 		logger:   logger,
 	}
 }
-
 
 func (mc *Client) Handle(h http.Handler) http.Handler {
 	registeredMiddlewares := mc.registry.GetRegistered()

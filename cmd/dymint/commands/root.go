@@ -28,8 +28,6 @@ func registerFlagsRootCmd(cmd *cobra.Command) {
 	cmd.PersistentFlags().String("log_level", tmconfig.LogLevel, "log level")
 }
 
-
-
 func ParseConfig(cmd *cobra.Command) (*cfg.Config, error) {
 	conf := cfg.DefaultConfig()
 	err := viper.Unmarshal(conf)
@@ -60,14 +58,12 @@ func ParseConfig(cmd *cobra.Command) (*cfg.Config, error) {
 	return conf, nil
 }
 
-
 var RootCmd = &cobra.Command{
 	Use:   "dymint",
 	Short: "ABCI-client implementation for dymension's autonomous rollapps",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) (err error) {
 		v := viper.GetViper()
 
-		
 		if err := v.BindPFlags(cmd.Flags()); err != nil {
 			return err
 		}

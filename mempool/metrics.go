@@ -8,41 +8,22 @@ import (
 )
 
 const (
-	
-	
 	MetricsSubsystem = "mempool"
 )
 
-
-
 type Metrics struct {
-	
 	Size metrics.Gauge
 
-	
 	TxSizeBytes metrics.Histogram
 
-	
 	FailedTxs metrics.Counter
 
-	
-	
-	
-	
 	RejectedTxs metrics.Counter
 
-	
-	
-	
-	
 	EvictedTxs metrics.Counter
 
-	
 	RecheckTimes metrics.Counter
 }
-
-
-
 
 func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 	labels := []string{}
@@ -94,7 +75,6 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 		}, labels).With(labelsAndValues...),
 	}
 }
-
 
 func NopMetrics() *Metrics {
 	return &Metrics{

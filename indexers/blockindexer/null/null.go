@@ -13,7 +13,6 @@ import (
 
 var _ indexer.BlockIndexer = (*BlockerIndexer)(nil)
 
-
 type BlockerIndexer struct{}
 
 func (idx *BlockerIndexer) Has(height int64) (bool, error) {

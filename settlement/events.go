@@ -7,16 +7,13 @@ import (
 )
 
 const (
-	
 	EventTypeKey = "settlement.event"
 
-	
 	EventNewBatchAccepted   = "NewBatchAccepted"
 	EventNewBondedSequencer = "NewBondedSequencer"
 	EventRotationStarted    = "RotationStarted"
 	EventNewBatchFinalized  = "NewBatchFinalized"
 )
-
 
 var (
 	EventNewBatchAcceptedList   = map[string][]string{EventTypeKey: {EventNewBatchAccepted}}
@@ -25,7 +22,6 @@ var (
 	EventNewBatchFinalizedList  = map[string][]string{EventTypeKey: {EventNewBatchFinalized}}
 )
 
-
 var (
 	EventQueryNewSettlementBatchAccepted  = uevent.QueryFor(EventTypeKey, EventNewBatchAccepted)
 	EventQueryNewSettlementBatchFinalized = uevent.QueryFor(EventTypeKey, EventNewBatchFinalized)
@@ -33,13 +29,11 @@ var (
 	EventQueryRotationStarted             = uevent.QueryFor(EventTypeKey, EventRotationStarted)
 )
 
-
-
 type EventDataNewBatch struct {
 	StartHeight uint64
-	
+
 	EndHeight uint64
-	
+
 	StateIndex uint64
 }
 

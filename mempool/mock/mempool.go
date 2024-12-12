@@ -7,7 +7,6 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-
 type Mempool struct{}
 
 var _ mempool.Mempool = Mempool{}

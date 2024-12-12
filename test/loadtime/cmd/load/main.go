@@ -10,19 +10,14 @@ import (
 	"github.com/dymensionxyz/dymint/test/pb/loadtime"
 )
 
-
 var (
 	_ loadtest.ClientFactory = (*ClientFactory)(nil)
 	_ loadtest.Client        = (*TxGenerator)(nil)
 )
 
-
 type ClientFactory struct {
 	ID []byte
 }
-
-
-
 
 type TxGenerator struct {
 	id    []byte
@@ -32,7 +27,7 @@ type TxGenerator struct {
 }
 
 func main() {
-	u := [16]byte(uuid.New()) 
+	u := [16]byte(uuid.New())
 	if err := loadtest.RegisterClientFactory("loadtime-client", &ClientFactory{ID: u[:]}); err != nil {
 		panic(err)
 	}
@@ -43,7 +38,6 @@ func main() {
 		DefaultClientFactory: "loadtime-client",
 	})
 }
-
 
 func (f *ClientFactory) ValidateConfig(cfg loadtest.Config) error {
 	psb, err := payload.MaxUnpaddedSize()
@@ -56,9 +50,6 @@ func (f *ClientFactory) ValidateConfig(cfg loadtest.Config) error {
 	return nil
 }
 
-
-
-
 func (f *ClientFactory) NewClient(cfg loadtest.Config) (loadtest.Client, error) {
 	return &TxGenerator{
 		id:    f.ID,
@@ -67,7 +58,6 @@ func (f *ClientFactory) NewClient(cfg loadtest.Config) (loadtest.Client, error) 
 		size:  uint64(cfg.Size),
 	}, nil
 }
-
 
 func (c *TxGenerator) GenerateTx() ([]byte, error) {
 	return payload.NewBytes(&loadtime.Payload{

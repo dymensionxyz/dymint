@@ -15,19 +15,11 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
-
-
-
-
-
 type StatusCode int32
-
 
 type Commitment = []byte
 
-
 type Blob = []byte
-
 
 const (
 	StatusUnknown StatusCode = iota
@@ -35,9 +27,7 @@ const (
 	StatusError
 )
 
-
 type Client string
-
 
 const (
 	Mock     Client = "mock"
@@ -46,34 +36,29 @@ const (
 	Grpc     Client = "grpc"
 )
 
-
 type Option func(DataAvailabilityLayerClient)
 
-
 type BaseResult struct {
-	
 	Code StatusCode
-	
+
 	Message string
-	
+
 	Error error
 }
 
-
 type DASubmitMetaData struct {
-	
 	Height uint64
-	
+
 	Namespace []byte
-	
+
 	Client Client
-	
+
 	Commitment Commitment
-	
+
 	Index int
-	
+
 	Length int
-	
+
 	Root []byte
 }
 
@@ -84,9 +69,7 @@ type Balance struct {
 
 const PathSeparator = "|"
 
-
 func (d *DASubmitMetaData) ToPath() string {
-	
 	if d.Commitment != nil {
 		commitment := hex.EncodeToString(d.Commitment)
 		dataroot := hex.EncodeToString(d.Root)
@@ -109,7 +92,6 @@ func (d *DASubmitMetaData) ToPath() string {
 	}
 }
 
-
 func (d *DASubmitMetaData) FromPath(path string) (*DASubmitMetaData, error) {
 	pathParts := strings.FieldsFunc(path, func(r rune) bool { return r == rune(PathSeparator[0]) })
 	if len(pathParts) < 2 {
@@ -125,7 +107,7 @@ func (d *DASubmitMetaData) FromPath(path string) (*DASubmitMetaData, error) {
 		Height: height,
 		Client: Client(pathParts[0]),
 	}
-	
+
 	if len(pathParts) == 7 {
 		submitData.Index, err = strconv.Atoi(pathParts[2])
 		if err != nil {
@@ -152,93 +134,72 @@ func (d *DASubmitMetaData) FromPath(path string) (*DASubmitMetaData, error) {
 	return submitData, nil
 }
 
-
 type DACheckMetaData struct {
-	
 	Height uint64
-	
+
 	Client Client
-	
+
 	SLIndex uint64
-	
+
 	Namespace []byte
-	
+
 	Commitment Commitment
-	
+
 	Index int
-	
+
 	Length int
-	
+
 	Proofs []*blob.Proof
-	
+
 	NMTRoots []byte
-	
+
 	RowProofs []*merkle.Proof
-	
+
 	Root []byte
 }
 
-
 type ResultSubmitBatch struct {
 	BaseResult
-	
+
 	SubmitMetaData *DASubmitMetaData
 }
 
-
 type ResultCheckBatch struct {
 	BaseResult
-	
+
 	CheckMetaData *DACheckMetaData
 }
-
 
 type ResultRetrieveBatch struct {
 	BaseResult
-	
-	
+
 	Batches []*types.Batch
-	
+
 	CheckMetaData *DACheckMetaData
 }
 
-
-
 type DataAvailabilityLayerClient interface {
-	
 	Init(config []byte, pubsubServer *pubsub.Server, kvStore store.KV, logger types.Logger, options ...Option) error
 
-	
 	Start() error
 
-	
 	Stop() error
 
-	
-	
-	
 	SubmitBatch(batch *types.Batch) ResultSubmitBatch
 
 	GetClientType() Client
 
-	
 	CheckBatchAvailability(daMetaData *DASubmitMetaData) ResultCheckBatch
 
-	
 	WaitForSyncing()
 
-	
 	GetMaxBlobSizeBytes() uint32
 
-	
 	GetSignerBalance() (Balance, error)
 }
 
-
-
 type BatchRetriever interface {
-	
 	RetrieveBatches(daMetaData *DASubmitMetaData) ResultRetrieveBatch
-	
+
 	CheckBatchAvailability(daMetaData *DASubmitMetaData) ResultCheckBatch
 }

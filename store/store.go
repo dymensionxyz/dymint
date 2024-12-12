@@ -30,13 +30,11 @@ var (
 	lastBlockSequencerSetPrefix = [1]byte{14}
 )
 
-
 type DefaultStore struct {
 	db KV
 }
 
 var _ Store = &DefaultStore{}
-
 
 func New(kv KV) Store {
 	return &DefaultStore{
@@ -44,18 +42,13 @@ func New(kv KV) Store {
 	}
 }
 
-
 func (s *DefaultStore) Close() error {
 	return s.db.Close()
 }
 
-
 func (s *DefaultStore) NewBatch() KVBatch {
 	return s.db.NewBatch()
 }
-
-
-
 
 func (s *DefaultStore) SaveBlock(block *types.Block, commit *types.Commit, batch KVBatch) (KVBatch, error) {
 	hash := block.Header.Hash()
@@ -69,7 +62,6 @@ func (s *DefaultStore) SaveBlock(block *types.Block, commit *types.Commit, batch
 		return batch, fmt.Errorf("marshal Commit to binary: %w", err)
 	}
 
-	
 	if batch != nil {
 		err = multierr.Append(err, batch.Set(getBlockKey(hash), blockBlob))
 		err = multierr.Append(err, batch.Set(getCommitKey(hash), commitBlob))
@@ -94,10 +86,6 @@ func (s *DefaultStore) SaveBlock(block *types.Block, commit *types.Commit, batch
 	return nil, nil
 }
 
-
-
-
-
 func (s *DefaultStore) LoadBlock(height uint64) (*types.Block, error) {
 	h, err := s.loadHashFromIndex(height)
 	if err != nil {
@@ -105,7 +93,6 @@ func (s *DefaultStore) LoadBlock(height uint64) (*types.Block, error) {
 	}
 	return s.LoadBlockByHash(h)
 }
-
 
 func (s *DefaultStore) LoadBlockByHash(hash [32]byte) (*types.Block, error) {
 	blockData, err := s.db.Get(getBlockKey(hash))
@@ -121,7 +108,6 @@ func (s *DefaultStore) LoadBlockByHash(hash [32]byte) (*types.Block, error) {
 	return block, nil
 }
 
-
 func (s *DefaultStore) SaveBlockSource(height uint64, source types.BlockSource, batch KVBatch) (KVBatch, error) {
 	b := make([]byte, 8)
 	binary.LittleEndian.PutUint64(b, uint64(source))
@@ -132,7 +118,6 @@ func (s *DefaultStore) SaveBlockSource(height uint64, source types.BlockSource, 
 	return batch, err
 }
 
-
 func (s *DefaultStore) LoadBlockSource(height uint64) (types.BlockSource, error) {
 	source, err := s.db.Get(getSourceKey(height))
 	if err != nil {
@@ -140,7 +125,6 @@ func (s *DefaultStore) LoadBlockSource(height uint64) (types.BlockSource, error)
 	}
 	return types.BlockSource(binary.LittleEndian.Uint64(source)), nil
 }
-
 
 func (s *DefaultStore) SaveBlockResponses(height uint64, responses *tmstate.ABCIResponses, batch KVBatch) (KVBatch, error) {
 	data, err := responses.Marshal()
@@ -153,7 +137,6 @@ func (s *DefaultStore) SaveBlockResponses(height uint64, responses *tmstate.ABCI
 	err = batch.Set(getResponsesKey(height), data)
 	return batch, err
 }
-
 
 func (s *DefaultStore) LoadBlockResponses(height uint64) (*tmstate.ABCIResponses, error) {
 	data, err := s.db.Get(getResponsesKey(height))
@@ -168,7 +151,6 @@ func (s *DefaultStore) LoadBlockResponses(height uint64) (*tmstate.ABCIResponses
 	return &responses, nil
 }
 
-
 func (s *DefaultStore) LoadCommit(height uint64) (*types.Commit, error) {
 	hash, err := s.loadHashFromIndex(height)
 	if err != nil {
@@ -176,7 +158,6 @@ func (s *DefaultStore) LoadCommit(height uint64) (*types.Commit, error) {
 	}
 	return s.LoadCommitByHash(hash)
 }
-
 
 func (s *DefaultStore) LoadCommitByHash(hash [32]byte) (*types.Commit, error) {
 	commitData, err := s.db.Get(getCommitKey(hash))
@@ -190,8 +171,6 @@ func (s *DefaultStore) LoadCommitByHash(hash [32]byte) (*types.Commit, error) {
 	}
 	return commit, nil
 }
-
-
 
 func (s *DefaultStore) SaveState(state *types.State, batch KVBatch) (KVBatch, error) {
 	pbState, err := state.ToProto()
@@ -209,7 +188,6 @@ func (s *DefaultStore) SaveState(state *types.State, batch KVBatch) (KVBatch, er
 	err = batch.Set(getStateKey(), data)
 	return batch, err
 }
-
 
 func (s *DefaultStore) LoadState() (*types.State, error) {
 	blob, err := s.db.Get(getStateKey())
@@ -231,7 +209,6 @@ func (s *DefaultStore) LoadState() (*types.State, error) {
 	return &state, nil
 }
 
-
 func (s *DefaultStore) SaveProposer(height uint64, proposer types.Sequencer, batch KVBatch) (KVBatch, error) {
 	pbProposer, err := proposer.ToProto()
 	if err != nil {
@@ -248,7 +225,6 @@ func (s *DefaultStore) SaveProposer(height uint64, proposer types.Sequencer, bat
 	err = batch.Set(getProposerKey(height), blob)
 	return batch, err
 }
-
 
 func (s *DefaultStore) LoadProposer(height uint64) (types.Sequencer, error) {
 	blob, err := s.db.Get(getProposerKey(height))

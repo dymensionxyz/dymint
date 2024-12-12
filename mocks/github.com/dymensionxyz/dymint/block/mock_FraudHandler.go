@@ -1,5 +1,3 @@
-
-
 package block
 
 import (
@@ -7,7 +5,6 @@ import (
 
 	mock "github.com/stretchr/testify/mock"
 )
-
 
 type MockFraudHandler struct {
 	mock.Mock
@@ -21,18 +18,13 @@ func (_m *MockFraudHandler) EXPECT() *MockFraudHandler_Expecter {
 	return &MockFraudHandler_Expecter{mock: &_m.Mock}
 }
 
-
 func (_m *MockFraudHandler) HandleFault(ctx context.Context, fault error) {
 	_m.Called(ctx, fault)
 }
 
-
 type MockFraudHandler_HandleFault_Call struct {
 	*mock.Call
 }
-
-
-
 
 func (_e *MockFraudHandler_Expecter) HandleFault(ctx interface{}, fault interface{}) *MockFraudHandler_HandleFault_Call {
 	return &MockFraudHandler_HandleFault_Call{Call: _e.mock.On("HandleFault", ctx, fault)}
@@ -55,12 +47,11 @@ func (_c *MockFraudHandler_HandleFault_Call) RunAndReturn(run func(context.Conte
 	return _c
 }
 
-
-
 func NewMockFraudHandler(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *MockFraudHandler {
+},
+) *MockFraudHandler {
 	mock := &MockFraudHandler{}
 	mock.Mock.Test(t)
 

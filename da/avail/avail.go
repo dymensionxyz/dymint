@@ -34,7 +34,7 @@ const (
 	DataCallMethod                  = "submit_data"
 	DataCallSectionIndex            = 29
 	DataCallMethodIndex             = 1
-	maxBlobSize                     = 2097152 
+	maxBlobSize                     = 2097152
 )
 
 type SubstrateApiI interface {
@@ -74,13 +74,11 @@ var (
 	_ da.BatchRetriever              = &DataAvailabilityLayerClient{}
 )
 
-
 func WithClient(client SubstrateApiI) da.Option {
 	return func(dalc da.DataAvailabilityLayerClient) {
 		dalc.(*DataAvailabilityLayerClient).client = client
 	}
 }
-
 
 func WithTxInclusionTimeout(timeout time.Duration) da.Option {
 	return func(dalc da.DataAvailabilityLayerClient) {
@@ -88,20 +86,17 @@ func WithTxInclusionTimeout(timeout time.Duration) da.Option {
 	}
 }
 
-
 func WithBatchRetryDelay(delay time.Duration) da.Option {
 	return func(dalc da.DataAvailabilityLayerClient) {
 		dalc.(*DataAvailabilityLayerClient).batchRetryDelay = delay
 	}
 }
 
-
 func WithBatchRetryAttempts(attempts uint) da.Option {
 	return func(dalc da.DataAvailabilityLayerClient) {
 		dalc.(*DataAvailabilityLayerClient).batchRetryAttempts = attempts
 	}
 }
-
 
 func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.Server, _ store.KV, logger types.Logger, options ...da.Option) error {
 	c.logger = logger
@@ -114,18 +109,15 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 		}
 	}
 
-	
 	c.pubsubServer = pubsubServer
 	c.txInclusionTimeout = defaultTxInculsionTimeout
 	c.batchRetryDelay = defaultBatchRetryDelay
 	c.batchRetryAttempts = defaultBatchRetryAttempts
 
-	
 	for _, apply := range options {
 		apply(c)
 	}
 
-	
 	if c.client == nil {
 		substrateApiClient, err := gsrpc.NewSubstrateAPI(c.config.ApiURL)
 		if err != nil {
@@ -144,12 +136,10 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 	return nil
 }
 
-
 func (c *DataAvailabilityLayerClient) Start() error {
 	c.synced <- struct{}{}
 	return nil
 }
-
 
 func (c *DataAvailabilityLayerClient) Stop() error {
 	c.cancel()
@@ -157,19 +147,15 @@ func (c *DataAvailabilityLayerClient) Stop() error {
 	return nil
 }
 
-
 func (m *DataAvailabilityLayerClient) WaitForSyncing() {
 	<-m.synced
 }
-
 
 func (c *DataAvailabilityLayerClient) GetClientType() da.Client {
 	return da.Avail
 }
 
-
 func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
-	
 	blockHash, err := c.client.GetBlockHash(daMetaData.Height)
 	if err != nil {
 		return da.ResultRetrieveBatch{
@@ -190,10 +176,9 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 			},
 		}
 	}
-	
+
 	var batches []*types.Batch
 	for _, ext := range block.Block.Extrinsics {
-		
 		if ext.Signature.AppID.Int64() == c.config.AppID &&
 			ext.Method.CallIndex.SectionIndex == DataCallSectionIndex &&
 			ext.Method.CallIndex.MethodIndex == DataCallMethodIndex {
@@ -206,16 +191,16 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 					c.logger.Error("unmarshal batch", "daHeight", daMetaData.Height, "error", err)
 					continue
 				}
-				
+
 				batch := &types.Batch{}
 				err = batch.FromProto(&pbBatch)
 				if err != nil {
 					c.logger.Error("batch from proto", "daHeight", daMetaData.Height, "error", err)
 					continue
 				}
-				
+
 				batches = append(batches, batch)
-				
+
 				data = data[proto.Size(&pbBatch):]
 
 			}
@@ -233,7 +218,6 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 	}
 }
 
-
 func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultSubmitBatch {
 	blob, err := batch.MarshalBinary()
 	if err != nil {
@@ -249,8 +233,6 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 	c.logger.Debug("Submitting to da batch with size", "size", len(blob))
 	return c.submitBatchLoop(blob)
 }
-
-
 
 func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.ResultSubmitBatch {
 	for {
@@ -318,8 +300,6 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 	}
 }
 
-
-
 func (c *DataAvailabilityLayerClient) broadcastTx(tx []byte) (uint64, error) {
 	meta, err := c.client.GetMetadataLatest()
 	if err != nil {
@@ -329,7 +309,7 @@ func (c *DataAvailabilityLayerClient) broadcastTx(tx []byte) (uint64, error) {
 	if err != nil {
 		return 0, fmt.Errorf("%w: %s", da.ErrTxBroadcastConfigError, err)
 	}
-	
+
 	ext := availtypes.NewExtrinsic(newCall)
 	genesisHash, err := c.client.GetBlockHash(0)
 	if err != nil {
@@ -343,7 +323,7 @@ func (c *DataAvailabilityLayerClient) broadcastTx(tx []byte) (uint64, error) {
 	if err != nil {
 		return 0, fmt.Errorf("%w: %s", da.ErrTxBroadcastConfigError, err)
 	}
-	
+
 	key, err := availtypes.CreateStorageKey(meta, "System", "Account", keyringPair.PublicKey)
 	if err != nil {
 		return 0, fmt.Errorf("%w: %s", da.ErrTxBroadcastConfigError, err)
@@ -364,16 +344,14 @@ func (c *DataAvailabilityLayerClient) broadcastTx(tx []byte) (uint64, error) {
 		SpecVersion:        rv.SpecVersion,
 		Tip:                availtypes.NewUCompactFromUInt(c.config.Tip),
 		TransactionVersion: rv.TransactionVersion,
-		AppID:              availtypes.NewUCompactFromUInt(uint64(c.config.AppID)), 
+		AppID:              availtypes.NewUCompactFromUInt(uint64(c.config.AppID)),
 	}
 
-	
 	err = ext.Sign(keyringPair, options)
 	if err != nil {
 		return 0, fmt.Errorf("%w: %s", da.ErrTxBroadcastConfigError, err)
 	}
 
-	
 	sub, err := c.client.SubmitAndWatchExtrinsic(ext)
 	if err != nil {
 		return 0, fmt.Errorf("%w: %s", da.ErrTxBroadcastNetworkError, err)
@@ -419,7 +397,6 @@ func (c *DataAvailabilityLayerClient) broadcastTx(tx []byte) (uint64, error) {
 	}
 }
 
-
 func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
 	return da.ResultCheckBatch{
 		BaseResult: da.BaseResult{
@@ -428,7 +405,6 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 		},
 	}
 }
-
 
 func (c *DataAvailabilityLayerClient) getHeightFromHash(hash availtypes.Hash) (uint64, error) {
 	c.logger.Debug("Getting block height from hash", "hash", hash)
@@ -439,11 +415,9 @@ func (c *DataAvailabilityLayerClient) getHeightFromHash(hash availtypes.Hash) (u
 	return uint64(header.Number), nil
 }
 
-
 func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint32 {
 	return maxBlobSize
 }
-
 
 func (c *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
 	return da.Balance{}, nil

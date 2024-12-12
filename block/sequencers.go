@@ -14,7 +14,7 @@ const (
 var errRotationRequested = fmt.Errorf("sequencer rotation started. signal to stop production")
 
 func (m *Manager) MonitorProposerRotation(ctx context.Context) error {
-	ticker := time.NewTicker(ProposerMonitorInterval) 
+	ticker := time.NewTicker(ProposerMonitorInterval)
 	defer ticker.Stop()
 
 	for {
@@ -27,12 +27,11 @@ func (m *Manager) MonitorProposerRotation(ctx context.Context) error {
 				m.logger.Error("Check rotation in progress", "err", err)
 				continue
 			}
-			
+
 			if nextProposer == nil {
 				continue
 			}
 
-			
 			m.logger.Info("Sequencer rotation started.", "nextSeqAddr", nextProposer.SettlementAddress)
 			return errRotationRequested
 		}
@@ -50,26 +49,21 @@ func (m *Manager) MonitorSequencerSetUpdates(ctx context.Context) error {
 		case <-ticker.C:
 			err := m.UpdateSequencerSetFromSL()
 			if err != nil {
-				
 				m.logger.Error("Cannot fetch sequencer set from the Hub", "error", err)
 			}
 		}
 	}
 }
 
-
-
 func (m *Manager) AmIProposerOnSL() (bool, error) {
 	localProposerKeyBytes, _ := m.LocalKey.GetPublic().Raw()
-	
+
 	SLProposer, err := m.SLClient.GetProposerAtHeight(-1)
 	if err != nil {
 		return false, fmt.Errorf("get proposer at height: %w", err)
 	}
 	return bytes.Equal(SLProposer.PubKey().Bytes(), localProposerKeyBytes), nil
 }
-
-
 
 func (m *Manager) AmIProposerOnRollapp() bool {
 	if m.State.GetProposer() == nil {
@@ -81,8 +75,6 @@ func (m *Manager) AmIProposerOnRollapp() bool {
 	return bytes.Equal(rollappProposer, localProposerKeyBytes)
 }
 
-
-
 func (m *Manager) ShouldRotate() (bool, error) {
 	nextProposer, err := m.SLClient.GetNextProposer()
 	if err != nil {
@@ -91,8 +83,7 @@ func (m *Manager) ShouldRotate() (bool, error) {
 	if nextProposer == nil {
 		return false, nil
 	}
-	
-	
+
 	amIProposerOnSL, err := m.AmIProposerOnSL()
 	if err != nil {
 		return false, fmt.Errorf("am i proposer on SL: %w", err)
@@ -100,13 +91,7 @@ func (m *Manager) ShouldRotate() (bool, error) {
 	return amIProposerOnSL, nil
 }
 
-
-
-
-
-
 func (m *Manager) rotate(ctx context.Context) {
-	
 	nextProposer, err := m.SLClient.GetNextProposer()
 	if err != nil || nextProposer == nil {
 		panic(fmt.Sprintf("rotate: fetch next proposer set from Hub: %v", err))
@@ -127,8 +112,6 @@ func (m *Manager) rotate(ctx context.Context) {
 	panic("rotate: sequencer is no longer the proposer. restarting as a full node")
 }
 
-
-
 func (m *Manager) CreateAndPostLastBatch(ctx context.Context, nextSeqHash [32]byte) error {
 	h := m.State.Height()
 	block, err := m.Store.LoadBlock(h)
@@ -136,8 +119,6 @@ func (m *Manager) CreateAndPostLastBatch(ctx context.Context, nextSeqHash [32]by
 		return fmt.Errorf("load block: height: %d: %w", h, err)
 	}
 
-	
-	
 	if bytes.Equal(block.Header.NextSequencersHash[:], nextSeqHash[:]) {
 		m.logger.Debug("Last block already produced and applied.")
 	} else {
@@ -147,7 +128,6 @@ func (m *Manager) CreateAndPostLastBatch(ctx context.Context, nextSeqHash [32]by
 		}
 	}
 
-	
 	for {
 		b, err := m.CreateAndSubmitBatch(m.Conf.BatchSubmitBytes, true)
 		if err != nil {
@@ -162,9 +142,6 @@ func (m *Manager) CreateAndPostLastBatch(ctx context.Context, nextSeqHash [32]by
 	return nil
 }
 
-
-
-
 func (m *Manager) UpdateSequencerSetFromSL() error {
 	seqs, err := m.SLClient.GetAllSequencers()
 	if err != nil {
@@ -175,9 +152,8 @@ func (m *Manager) UpdateSequencerSetFromSL() error {
 	return nil
 }
 
-
 func (m *Manager) UpdateProposerFromSL() error {
-	SLProposer, err := m.SLClient.GetProposerAtHeight(int64(m.State.NextHeight())) 
+	SLProposer, err := m.SLClient.GetProposerAtHeight(int64(m.State.NextHeight()))
 	if err != nil {
 		return fmt.Errorf("get proposer at height: %w", err)
 	}

@@ -1,7 +1,5 @@
 package clist
 
-
-
 import (
 	"fmt"
 	"sync"
@@ -9,11 +7,7 @@ import (
 	tmsync "github.com/tendermint/tendermint/libs/sync"
 )
 
-
-
-
 const MaxLength = int(^uint(0) >> 1)
-
 
 type CElement struct {
 	mtx        tmsync.RWMutex
@@ -25,10 +19,8 @@ type CElement struct {
 	nextWaitCh chan struct{}
 	removed    bool
 
-	Value interface{} 
+	Value interface{}
 }
-
-
 
 func (e *CElement) NextWait() *CElement {
 	for {
@@ -43,12 +35,9 @@ func (e *CElement) NextWait() *CElement {
 		}
 
 		nextWg.Wait()
-		
-		
+
 	}
 }
-
-
 
 func (e *CElement) PrevWait() *CElement {
 	for {
@@ -66,16 +55,12 @@ func (e *CElement) PrevWait() *CElement {
 	}
 }
 
-
-
 func (e *CElement) PrevWaitChan() <-chan struct{} {
 	e.mtx.RLock()
 	defer e.mtx.RUnlock()
 
 	return e.prevWaitCh
 }
-
-
 
 func (e *CElement) NextWaitChan() <-chan struct{} {
 	e.mtx.RLock()
@@ -84,14 +69,12 @@ func (e *CElement) NextWaitChan() <-chan struct{} {
 	return e.nextWaitCh
 }
 
-
 func (e *CElement) Next() *CElement {
 	e.mtx.RLock()
 	val := e.next
 	e.mtx.RUnlock()
 	return val
 }
-
 
 func (e *CElement) Prev() *CElement {
 	e.mtx.RLock()
@@ -127,20 +110,14 @@ func (e *CElement) DetachPrev() {
 	e.mtx.Unlock()
 }
 
-
-
 func (e *CElement) SetNext(newNext *CElement) {
 	e.mtx.Lock()
 
 	oldNext := e.next
 	e.next = newNext
 	if oldNext != nil && newNext == nil {
-		
-		
-		
-		
-		
-		e.nextWg = waitGroup1() 
+
+		e.nextWg = waitGroup1()
 		e.nextWaitCh = make(chan struct{})
 	}
 	if oldNext == nil && newNext != nil {
@@ -150,15 +127,13 @@ func (e *CElement) SetNext(newNext *CElement) {
 	e.mtx.Unlock()
 }
 
-
-
 func (e *CElement) SetPrev(newPrev *CElement) {
 	e.mtx.Lock()
 
 	oldPrev := e.prev
 	e.prev = newPrev
 	if oldPrev != nil && newPrev == nil {
-		e.prevWg = waitGroup1() 
+		e.prevWg = waitGroup1()
 		e.prevWaitCh = make(chan struct{})
 	}
 	if oldPrev == nil && newPrev != nil {
@@ -173,7 +148,6 @@ func (e *CElement) SetRemoved() {
 
 	e.removed = true
 
-	
 	if e.prev == nil {
 		e.prevWg.Done()
 		close(e.prevWaitCh)
@@ -185,20 +159,14 @@ func (e *CElement) SetRemoved() {
 	e.mtx.Unlock()
 }
 
-
-
-
-
-
-
 type CList struct {
 	mtx    tmsync.RWMutex
 	wg     *sync.WaitGroup
 	waitCh chan struct{}
-	head   *CElement 
-	tail   *CElement 
-	len    int       
-	maxLen int       
+	head   *CElement
+	tail   *CElement
+	len    int
+	maxLen int
 }
 
 func (l *CList) Init() *CList {
@@ -213,10 +181,7 @@ func (l *CList) Init() *CList {
 	return l
 }
 
-
 func New() *CList { return newWithMax(MaxLength) }
-
-
 
 func newWithMax(maxLength int) *CList {
 	l := new(CList)
@@ -239,7 +204,6 @@ func (l *CList) Front() *CElement {
 }
 
 func (l *CList) FrontWait() *CElement {
-	
 	for {
 		l.mtx.RLock()
 		head := l.head
@@ -250,7 +214,7 @@ func (l *CList) FrontWait() *CElement {
 			return head
 		}
 		wg.Wait()
-		
+
 	}
 }
 
@@ -272,12 +236,9 @@ func (l *CList) BackWait() *CElement {
 			return tail
 		}
 		wg.Wait()
-		
-		
+
 	}
 }
-
-
 
 func (l *CList) WaitChan() <-chan struct{} {
 	l.mtx.Lock()
@@ -286,11 +247,9 @@ func (l *CList) WaitChan() <-chan struct{} {
 	return l.waitCh
 }
 
-
 func (l *CList) PushBack(v interface{}) *CElement {
 	l.mtx.Lock()
 
-	
 	e := &CElement{
 		prev:       nil,
 		prevWg:     waitGroup1(),
@@ -302,7 +261,6 @@ func (l *CList) PushBack(v interface{}) *CElement {
 		Value:      v,
 	}
 
-	
 	if l.len == 0 {
 		l.wg.Done()
 		close(l.waitCh)
@@ -312,20 +270,17 @@ func (l *CList) PushBack(v interface{}) *CElement {
 	}
 	l.len++
 
-	
 	if l.tail == nil {
 		l.head = e
 		l.tail = e
 	} else {
-		e.SetPrev(l.tail) 
-		l.tail.SetNext(e) 
-		l.tail = e        
+		e.SetPrev(l.tail)
+		l.tail.SetNext(e)
+		l.tail = e
 	}
 	l.mtx.Unlock()
 	return e
 }
-
-
 
 func (l *CList) Remove(e *CElement) interface{} {
 	l.mtx.Lock()
@@ -346,16 +301,13 @@ func (l *CList) Remove(e *CElement) interface{} {
 		panic("Remove(e) with false tail")
 	}
 
-	
 	if l.len == 1 {
-		l.wg = waitGroup1() 
+		l.wg = waitGroup1()
 		l.waitCh = make(chan struct{})
 	}
 
-	
 	l.len--
 
-	
 	if prev == nil {
 		l.head = next
 	} else {
@@ -367,7 +319,6 @@ func (l *CList) Remove(e *CElement) interface{} {
 		next.SetPrev(prev)
 	}
 
-	
 	e.SetRemoved()
 
 	l.mtx.Unlock()

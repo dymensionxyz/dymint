@@ -36,8 +36,6 @@ const (
 	addressPrefix = "dym"
 )
 
-
-
 type Client struct {
 	ctx            context.Context
 	rollappID      string
@@ -59,13 +57,11 @@ func (c *Client) GetRollapp() (*types.Rollapp, error) {
 	}, nil
 }
 
-
 func (c *Client) GetObsoleteDrs() ([]uint32, error) {
 	return []uint32{}, nil
 }
 
 var _ settlement.ClientI = (*Client)(nil)
-
 
 func (c *Client) Init(config settlement.Config, rollappId string, pubsub *pubsub.Server, logger types.Logger, options ...settlement.Option) error {
 	ctx := context.Background()
@@ -149,7 +145,6 @@ func initConfig(conf settlement.Config) (proposer string, err error) {
 	return
 }
 
-
 func (c *Client) Start() error {
 	c.logger.Info("Starting grpc mock settlement")
 
@@ -159,7 +154,7 @@ func (c *Client) Start() error {
 		for {
 			select {
 			case <-c.stopchan:
-				
+
 				return
 			case <-tick.C:
 				index, err := c.sl.GetIndex(c.ctx, &slmock.SLGetIndexRequest{})
@@ -185,13 +180,11 @@ func (c *Client) Start() error {
 	return nil
 }
 
-
 func (c *Client) Stop() error {
 	c.logger.Info("Stopping grpc mock settlement")
 	close(c.stopchan)
 	return nil
 }
-
 
 func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) error {
 	settlementBatch := c.convertBatchtoSettlementBatch(batch, daResult)
@@ -200,14 +193,13 @@ func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *d
 		return err
 	}
 
-	time.Sleep(10 * time.Millisecond) 
+	time.Sleep(10 * time.Millisecond)
 	err = c.pubsub.PublishWithEvents(context.Background(), &settlement.EventDataNewBatch{EndHeight: settlementBatch.EndHeight}, settlement.EventNewBatchAcceptedList)
 	if err != nil {
 		return err
 	}
 	return nil
 }
-
 
 func (c *Client) GetLatestBatch() (*settlement.ResultRetrieveBatch, error) {
 	c.logger.Info("GetLatestBatch grpc", "index", c.slStateIndex)
@@ -217,7 +209,6 @@ func (c *Client) GetLatestBatch() (*settlement.ResultRetrieveBatch, error) {
 	}
 	return batchResult, nil
 }
-
 
 func (c *Client) GetBatchAtIndex(index uint64) (*settlement.ResultRetrieveBatch, error) {
 	batchResult, err := c.retrieveBatchAtStateIndex(index)
@@ -230,7 +221,6 @@ func (c *Client) GetBatchAtIndex(index uint64) (*settlement.ResultRetrieveBatch,
 }
 
 func (c *Client) GetBatchAtHeight(h uint64) (*settlement.ResultRetrieveBatch, error) {
-	
 	left, right := uint64(1), c.slStateIndex
 
 	for left <= right {
@@ -256,7 +246,6 @@ func (c *Client) GetBatchAtHeight(h uint64) (*settlement.ResultRetrieveBatch, er
 	return nil, gerrc.ErrNotFound
 }
 
-
 func (c *Client) GetProposerAtHeight(height int64) (*types.Sequencer, error) {
 	pubKeyBytes, err := hex.DecodeString(c.ProposerPubKey)
 	if err != nil {
@@ -279,16 +268,13 @@ func (c *Client) GetProposerAtHeight(height int64) (*types.Sequencer, error) {
 	), nil
 }
 
-
 func (c *Client) GetSequencerByAddress(address string) (types.Sequencer, error) {
 	panic("GetSequencerByAddress not implemented in grpc SL")
 }
 
-
 func (c *Client) GetAllSequencers() ([]types.Sequencer, error) {
 	return c.GetBondedSequencers()
 }
-
 
 func (c *Client) GetBondedSequencers() ([]types.Sequencer, error) {
 	proposer, err := c.GetProposerAtHeight(-1)
@@ -298,16 +284,13 @@ func (c *Client) GetBondedSequencers() ([]types.Sequencer, error) {
 	return []types.Sequencer{*proposer}, nil
 }
 
-
 func (c *Client) GetNextProposer() (*types.Sequencer, error) {
 	return nil, nil
 }
 
-
 func (c *Client) GetLatestHeight() (uint64, error) {
 	return c.latestHeight.Load(), nil
 }
-
 
 func (c *Client) GetLatestFinalizedHeight() (uint64, error) {
 	return uint64(0), gerrc.ErrNotFound
@@ -320,7 +303,7 @@ func (c *Client) saveBatch(batch *settlement.Batch) error {
 	if err != nil {
 		return err
 	}
-	
+
 	c.logger.Debug("Saving batch to grpc settlement layer", "index", c.slStateIndex+1)
 	setBatchReply, err := c.sl.SetBatch(c.ctx, &slmock.SLSetBatchRequest{Index: c.slStateIndex + 1, Batch: b})
 	if err != nil {
@@ -337,7 +320,7 @@ func (c *Client) saveBatch(batch *settlement.Batch) error {
 		return err
 	}
 	c.logger.Debug("Setting grpc SL Index to ", "index", setIndexReply.GetIndex())
-	
+
 	c.latestHeight.Store(batch.EndHeight)
 	return nil
 }

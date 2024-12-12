@@ -24,7 +24,7 @@ import (
 
 func CreateNode(isSequencer bool, blockManagerConfig *config.BlockManagerConfig, genesis *types.GenesisDoc) (*node.Node, error) {
 	app := GetAppMock(EndBlock)
-	
+
 	clientCreator := proxy.NewLocalClientCreator(app)
 	proxyApp := proxy.NewAppConns(clientCreator)
 	err := proxyApp.Start()
@@ -48,7 +48,6 @@ func CreateNode(isSequencer bool, blockManagerConfig *config.BlockManagerConfig,
 	signingKey, pubkey, _ := crypto.GenerateEd25519Key(rand.Reader)
 	pubkeyBytes, _ := pubkey.Raw()
 
-	
 	nodeConfig := config.DefaultNodeConfig
 
 	if blockManagerConfig == nil {
@@ -62,7 +61,6 @@ func CreateNode(isSequencer bool, blockManagerConfig *config.BlockManagerConfig,
 	}
 	nodeConfig.BlockManagerConfig = *blockManagerConfig
 
-	
 	nodeConfig.SettlementConfig = settlement.Config{ProposerPubKey: hex.EncodeToString(pubkeyBytes)}
 
 	node, err := node.NewNode(

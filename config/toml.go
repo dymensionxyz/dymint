@@ -9,7 +9,6 @@ import (
 	tmos "github.com/tendermint/tendermint/libs/os"
 )
 
-
 const DefaultDirPerm = 0o700
 
 var configTemplate *template.Template
@@ -23,10 +22,6 @@ func init() {
 		panic(err)
 	}
 }
-
-
-
-
 
 func EnsureRoot(rootDir string, defaultConfig *NodeConfig) {
 	if err := tmos.EnsureDir(rootDir, DefaultDirPerm); err != nil {
@@ -42,12 +37,10 @@ func EnsureRoot(rootDir string, defaultConfig *NodeConfig) {
 
 	configFilePath := filepath.Join(rootDir, DefaultConfigDirName, DefaultConfigFileName)
 
-	
 	if !tmos.FileExists(configFilePath) {
 		WriteConfigFile(configFilePath, defaultConfig)
 	}
 }
-
 
 func WriteConfigFile(configFilePath string, config *NodeConfig) {
 	var buffer bytes.Buffer
@@ -58,8 +51,6 @@ func WriteConfigFile(configFilePath string, config *NodeConfig) {
 
 	tmos.MustWriteFile(configFilePath, buffer.Bytes(), 0o644)
 }
-
-
 
 const defaultConfigTemplate = `
 #######################################################

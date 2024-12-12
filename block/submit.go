@@ -17,11 +17,6 @@ import (
 	uchannel "github.com/dymensionxyz/dymint/utils/channel"
 )
 
-
-
-
-
-
 func (m *Manager) SubmitLoop(ctx context.Context,
 	bytesProduced chan int,
 ) (err error) {
@@ -39,41 +34,37 @@ func (m *Manager) SubmitLoop(ctx context.Context,
 	)
 }
 
-
 func SubmitLoopInner(
 	ctx context.Context,
 	logger types.Logger,
-	bytesProduced chan int, 
-	maxSkewTime time.Duration, 
-	unsubmittedBlocksNum func() uint64, 
-	unsubmittedBlocksBytes func() int, 
-	batchSkewTime func() time.Duration, 
-	maxBatchSubmitTime time.Duration, 
-	maxBatchSubmitBytes uint64, 
+	bytesProduced chan int,
+	maxSkewTime time.Duration,
+	unsubmittedBlocksNum func() uint64,
+	unsubmittedBlocksBytes func() int,
+	batchSkewTime func() time.Duration,
+	maxBatchSubmitTime time.Duration,
+	maxBatchSubmitBytes uint64,
 	createAndSubmitBatch func(maxSizeBytes uint64) (bytes uint64, err error),
 ) error {
 	eg, ctx := errgroup.WithContext(ctx)
 
 	pendingBytes := atomic.Uint64{}
 
-	trigger := uchannel.NewNudger()   
-	submitter := uchannel.NewNudger() 
+	trigger := uchannel.NewNudger()
+	submitter := uchannel.NewNudger()
 
 	eg.Go(func() error {
-		
-		
 		for {
 			select {
 			case <-ctx.Done():
 				return nil
 			case n := <-bytesProduced:
-				pendingBytes.Add(uint64(n)) 
+				pendingBytes.Add(uint64(n))
 				logger.Debug("Added bytes produced to bytes pending submission counter.", "bytes added", n, "pending", pendingBytes.Load())
 			}
 
 			submitter.Nudge()
 
-			
 			if maxSkewTime < batchSkewTime() {
 				select {
 				case <-ctx.Done():
@@ -86,7 +77,6 @@ func SubmitLoopInner(
 	})
 
 	eg.Go(func() error {
-		
 		ticker := time.NewTicker(maxBatchSubmitTime)
 		for {
 			select {
@@ -98,7 +88,6 @@ func SubmitLoopInner(
 
 			pending := pendingBytes.Load()
 
-			
 			for {
 				done := ctx.Err() != nil
 				nothingToSubmit := pending == 0
@@ -119,22 +108,21 @@ func SubmitLoopInner(
 						logger.Error("Create and submit batch", "err", err, "pending", pending)
 						panic(err)
 					}
-					
-					
+
 					if errors.Is(err, gerrc.ErrAlreadyExists) {
 						logger.Debug("Batch already accepted", "err", err, "pending", pending)
 						panic(err)
 					}
 					return err
 				}
-				pending = uint64(unsubmittedBlocksBytes()) 
-				
+				pending = uint64(unsubmittedBlocksBytes())
+
 				if batchSkewTime() < maxSkewTime {
 					trigger.Nudge()
 				}
 				logger.Debug("Submitted a batch to both sub-layers.", "n bytes consumed from pending", nConsumed, "pending after", pending, "skew time", batchSkewTime())
 			}
-			
+
 			pendingBytes.Store(pending)
 		}
 	})
@@ -142,25 +130,19 @@ func SubmitLoopInner(
 	return eg.Wait()
 }
 
-
-
-
 func (m *Manager) CreateAndSubmitBatchGetSizeBlocksCommits(maxSize uint64) (uint64, error) {
 	b, err := m.CreateAndSubmitBatch(maxSize, false)
 	if b == nil {
 		return 0, err
 	}
-	return uint64(b.SizeBlockAndCommitBytes()), err 
+	return uint64(b.SizeBlockAndCommitBytes()), err
 }
-
-
 
 func (m *Manager) CreateAndSubmitBatch(maxSizeBytes uint64, lastBatch bool) (*types.Batch, error) {
 	startHeight := m.NextHeightToSubmit()
 	endHeightInclusive := m.State.Height()
 
 	if endHeightInclusive < startHeight {
-		
 		return nil, fmt.Errorf(
 			"next height to submit is greater than last block height, create and submit batch should not have been called: start height: %d: end height inclusive: %d: %w",
 			startHeight,
@@ -173,7 +155,7 @@ func (m *Manager) CreateAndSubmitBatch(maxSizeBytes uint64, lastBatch bool) (*ty
 	if err != nil {
 		return nil, fmt.Errorf("create batch: %w", err)
 	}
-	
+
 	if lastBatch && b.EndHeight() == endHeightInclusive {
 		b.LastBatch = true
 	}
@@ -186,8 +168,6 @@ func (m *Manager) CreateAndSubmitBatch(maxSizeBytes uint64, lastBatch bool) (*ty
 	}
 	return b, nil
 }
-
-
 
 func (m *Manager) CreateBatch(maxBatchSize uint64, startHeight uint64, endHeightInclusive uint64) (*types.Batch, error) {
 	batchSize := endHeightInclusive - startHeight + 1
@@ -211,7 +191,6 @@ func (m *Manager) CreateBatch(maxBatchSize uint64, startHeight uint64, endHeight
 			return nil, fmt.Errorf("load drs version: h: %d: %w", h, err)
 		}
 
-		
 		if len(batch.Blocks) > 0 && batch.Blocks[len(batch.Blocks)-1].GetRevision() != block.GetRevision() {
 			return nil, fmt.Errorf("create batch: batch includes blocks with different revisions: %w", gerrc.ErrInternal)
 		}
@@ -221,9 +200,8 @@ func (m *Manager) CreateBatch(maxBatchSize uint64, startHeight uint64, endHeight
 		batch.DRSVersion = append(batch.DRSVersion, drsVersion)
 
 		totalSize := batch.SizeBytes()
-		if maxBatchSize < uint64(totalSize) { 
+		if maxBatchSize < uint64(totalSize) {
 
-			
 			batch.Blocks = batch.Blocks[:len(batch.Blocks)-1]
 			batch.Commits = batch.Commits[:len(batch.Commits)-1]
 			batch.DRSVersion = batch.DRSVersion[:len(batch.DRSVersion)-1]
@@ -256,17 +234,14 @@ func (m *Manager) SubmitBatch(batch *types.Batch) error {
 	types.RollappHubHeightGauge.Set(float64(batch.EndHeight()))
 	m.LastSettlementHeight.Store(batch.EndHeight())
 
-	
 	m.LastBlockTimeInSettlement.Store(batch.Blocks[len(batch.Blocks)-1].Header.GetTimestamp().UTC().UnixNano())
 
 	return err
 }
 
-
-
 func (m *Manager) GetUnsubmittedBytes() int {
 	total := 0
-	
+
 	currH := m.State.Height()
 
 	for h := m.NextHeightToSubmit(); h <= currH; h++ {
@@ -294,8 +269,6 @@ func (m *Manager) GetUnsubmittedBlocks() uint64 {
 	return m.State.Height() - m.LastSettlementHeight.Load()
 }
 
-
-
 func (m *Manager) UpdateLastSubmittedHeight(event pubsub.Message) {
 	eventData, ok := event.Data().(*settlement.EventDataNewBatch)
 	if !ok {
@@ -311,7 +284,6 @@ func (m *Manager) UpdateLastSubmittedHeight(event pubsub.Message) {
 		}
 	}
 }
-
 
 func (m *Manager) GetBatchSkewTime() time.Duration {
 	lastProducedTime := time.Unix(0, m.LastBlockTime.Load())

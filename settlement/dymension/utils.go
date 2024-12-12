@@ -8,8 +8,6 @@ import (
 	rollapptypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
 )
 
-
-
 func (c *Client) RunWithRetry(operation func() error) error {
 	return retry.Do(operation,
 		retry.Context(c.ctx),
@@ -19,8 +17,6 @@ func (c *Client) RunWithRetry(operation func() error) error {
 		retry.MaxDelay(c.retryMaxDelay),
 	)
 }
-
-
 
 func (c *Client) RunWithRetryInfinitely(operation func() error) error {
 	return retry.Do(operation,

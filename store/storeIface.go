@@ -7,26 +7,21 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
-
-
-
 type KV interface {
-	Get(key []byte) ([]byte, error)          
-	Set(key []byte, value []byte) error      
-	Delete(key []byte) error                 
-	NewBatch() KVBatch                       
-	PrefixIterator(prefix []byte) KVIterator 
-	Close() error                            
+	Get(key []byte) ([]byte, error)
+	Set(key []byte, value []byte) error
+	Delete(key []byte) error
+	NewBatch() KVBatch
+	PrefixIterator(prefix []byte) KVIterator
+	Close() error
 }
-
 
 type KVBatch interface {
-	Set(key, value []byte) error 
-	Delete(key []byte) error     
-	Commit() error               
-	Discard()                    
+	Set(key, value []byte) error
+	Delete(key []byte) error
+	Commit() error
+	Discard()
 }
-
 
 type KVIterator interface {
 	Valid() bool
@@ -37,37 +32,25 @@ type KVIterator interface {
 	Discard()
 }
 
-
 type Store interface {
-	
 	NewBatch() KVBatch
 
-	
 	SaveBlock(block *types.Block, commit *types.Commit, batch KVBatch) (KVBatch, error)
 
-	
 	LoadBlock(height uint64) (*types.Block, error)
 
-	
 	LoadBlockByHash(hash [32]byte) (*types.Block, error)
 
-	
 	SaveBlockResponses(height uint64, responses *tmstate.ABCIResponses, batch KVBatch) (KVBatch, error)
 
-	
 	LoadBlockResponses(height uint64) (*tmstate.ABCIResponses, error)
 
-	
 	LoadCommit(height uint64) (*types.Commit, error)
 
-	
 	LoadCommitByHash(hash [32]byte) (*types.Commit, error)
 
-	
-	
 	SaveState(state *types.State, batch KVBatch) (KVBatch, error)
 
-	
 	LoadState() (*types.State, error)
 
 	SaveProposer(height uint64, proposer types.Sequencer, batch KVBatch) (KVBatch, error)

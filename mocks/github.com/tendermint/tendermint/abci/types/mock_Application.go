@@ -1,12 +1,9 @@
-
-
 package types
 
 import (
 	mock "github.com/stretchr/testify/mock"
 	types "github.com/tendermint/tendermint/abci/types"
 )
-
 
 type MockApplication struct {
 	mock.Mock
@@ -19,7 +16,6 @@ type MockApplication_Expecter struct {
 func (_m *MockApplication) EXPECT() *MockApplication_Expecter {
 	return &MockApplication_Expecter{mock: &_m.Mock}
 }
-
 
 func (_m *MockApplication) ApplySnapshotChunk(_a0 types.RequestApplySnapshotChunk) types.ResponseApplySnapshotChunk {
 	ret := _m.Called(_a0)
@@ -38,12 +34,9 @@ func (_m *MockApplication) ApplySnapshotChunk(_a0 types.RequestApplySnapshotChun
 	return r0
 }
 
-
 type MockApplication_ApplySnapshotChunk_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockApplication_Expecter) ApplySnapshotChunk(_a0 interface{}) *MockApplication_ApplySnapshotChunk_Call {
 	return &MockApplication_ApplySnapshotChunk_Call{Call: _e.mock.On("ApplySnapshotChunk", _a0)}
@@ -66,7 +59,6 @@ func (_c *MockApplication_ApplySnapshotChunk_Call) RunAndReturn(run func(types.R
 	return _c
 }
 
-
 func (_m *MockApplication) BeginBlock(_a0 types.RequestBeginBlock) types.ResponseBeginBlock {
 	ret := _m.Called(_a0)
 
@@ -84,12 +76,9 @@ func (_m *MockApplication) BeginBlock(_a0 types.RequestBeginBlock) types.Respons
 	return r0
 }
 
-
 type MockApplication_BeginBlock_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockApplication_Expecter) BeginBlock(_a0 interface{}) *MockApplication_BeginBlock_Call {
 	return &MockApplication_BeginBlock_Call{Call: _e.mock.On("BeginBlock", _a0)}
@@ -112,7 +101,6 @@ func (_c *MockApplication_BeginBlock_Call) RunAndReturn(run func(types.RequestBe
 	return _c
 }
 
-
 func (_m *MockApplication) CheckTx(_a0 types.RequestCheckTx) types.ResponseCheckTx {
 	ret := _m.Called(_a0)
 
@@ -130,12 +118,9 @@ func (_m *MockApplication) CheckTx(_a0 types.RequestCheckTx) types.ResponseCheck
 	return r0
 }
 
-
 type MockApplication_CheckTx_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockApplication_Expecter) CheckTx(_a0 interface{}) *MockApplication_CheckTx_Call {
 	return &MockApplication_CheckTx_Call{Call: _e.mock.On("CheckTx", _a0)}
@@ -158,7 +143,6 @@ func (_c *MockApplication_CheckTx_Call) RunAndReturn(run func(types.RequestCheck
 	return _c
 }
 
-
 func (_m *MockApplication) Commit() types.ResponseCommit {
 	ret := _m.Called()
 
@@ -176,11 +160,9 @@ func (_m *MockApplication) Commit() types.ResponseCommit {
 	return r0
 }
 
-
 type MockApplication_Commit_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockApplication_Expecter) Commit() *MockApplication_Commit_Call {
 	return &MockApplication_Commit_Call{Call: _e.mock.On("Commit")}
@@ -203,7 +185,6 @@ func (_c *MockApplication_Commit_Call) RunAndReturn(run func() types.ResponseCom
 	return _c
 }
 
-
 func (_m *MockApplication) DeliverTx(_a0 types.RequestDeliverTx) types.ResponseDeliverTx {
 	ret := _m.Called(_a0)
 
@@ -221,12 +202,9 @@ func (_m *MockApplication) DeliverTx(_a0 types.RequestDeliverTx) types.ResponseD
 	return r0
 }
 
-
 type MockApplication_DeliverTx_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockApplication_Expecter) DeliverTx(_a0 interface{}) *MockApplication_DeliverTx_Call {
 	return &MockApplication_DeliverTx_Call{Call: _e.mock.On("DeliverTx", _a0)}
@@ -249,7 +227,6 @@ func (_c *MockApplication_DeliverTx_Call) RunAndReturn(run func(types.RequestDel
 	return _c
 }
 
-
 func (_m *MockApplication) EndBlock(_a0 types.RequestEndBlock) types.ResponseEndBlock {
 	ret := _m.Called(_a0)
 
@@ -267,12 +244,9 @@ func (_m *MockApplication) EndBlock(_a0 types.RequestEndBlock) types.ResponseEnd
 	return r0
 }
 
-
 type MockApplication_EndBlock_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockApplication_Expecter) EndBlock(_a0 interface{}) *MockApplication_EndBlock_Call {
 	return &MockApplication_EndBlock_Call{Call: _e.mock.On("EndBlock", _a0)}
@@ -295,7 +269,6 @@ func (_c *MockApplication_EndBlock_Call) RunAndReturn(run func(types.RequestEndB
 	return _c
 }
 
-
 func (_m *MockApplication) Info(_a0 types.RequestInfo) types.ResponseInfo {
 	ret := _m.Called(_a0)
 
@@ -313,12 +286,9 @@ func (_m *MockApplication) Info(_a0 types.RequestInfo) types.ResponseInfo {
 	return r0
 }
 
-
 type MockApplication_Info_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockApplication_Expecter) Info(_a0 interface{}) *MockApplication_Info_Call {
 	return &MockApplication_Info_Call{Call: _e.mock.On("Info", _a0)}
@@ -341,7 +311,6 @@ func (_c *MockApplication_Info_Call) RunAndReturn(run func(types.RequestInfo) ty
 	return _c
 }
 
-
 func (_m *MockApplication) InitChain(_a0 types.RequestInitChain) types.ResponseInitChain {
 	ret := _m.Called(_a0)
 
@@ -359,12 +328,9 @@ func (_m *MockApplication) InitChain(_a0 types.RequestInitChain) types.ResponseI
 	return r0
 }
 
-
 type MockApplication_InitChain_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockApplication_Expecter) InitChain(_a0 interface{}) *MockApplication_InitChain_Call {
 	return &MockApplication_InitChain_Call{Call: _e.mock.On("InitChain", _a0)}
@@ -387,7 +353,6 @@ func (_c *MockApplication_InitChain_Call) RunAndReturn(run func(types.RequestIni
 	return _c
 }
 
-
 func (_m *MockApplication) ListSnapshots(_a0 types.RequestListSnapshots) types.ResponseListSnapshots {
 	ret := _m.Called(_a0)
 
@@ -405,12 +370,9 @@ func (_m *MockApplication) ListSnapshots(_a0 types.RequestListSnapshots) types.R
 	return r0
 }
 
-
 type MockApplication_ListSnapshots_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockApplication_Expecter) ListSnapshots(_a0 interface{}) *MockApplication_ListSnapshots_Call {
 	return &MockApplication_ListSnapshots_Call{Call: _e.mock.On("ListSnapshots", _a0)}
@@ -433,7 +395,6 @@ func (_c *MockApplication_ListSnapshots_Call) RunAndReturn(run func(types.Reques
 	return _c
 }
 
-
 func (_m *MockApplication) LoadSnapshotChunk(_a0 types.RequestLoadSnapshotChunk) types.ResponseLoadSnapshotChunk {
 	ret := _m.Called(_a0)
 
@@ -451,12 +412,9 @@ func (_m *MockApplication) LoadSnapshotChunk(_a0 types.RequestLoadSnapshotChunk)
 	return r0
 }
 
-
 type MockApplication_LoadSnapshotChunk_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockApplication_Expecter) LoadSnapshotChunk(_a0 interface{}) *MockApplication_LoadSnapshotChunk_Call {
 	return &MockApplication_LoadSnapshotChunk_Call{Call: _e.mock.On("LoadSnapshotChunk", _a0)}
@@ -479,7 +437,6 @@ func (_c *MockApplication_LoadSnapshotChunk_Call) RunAndReturn(run func(types.Re
 	return _c
 }
 
-
 func (_m *MockApplication) OfferSnapshot(_a0 types.RequestOfferSnapshot) types.ResponseOfferSnapshot {
 	ret := _m.Called(_a0)
 
@@ -497,12 +454,9 @@ func (_m *MockApplication) OfferSnapshot(_a0 types.RequestOfferSnapshot) types.R
 	return r0
 }
 
-
 type MockApplication_OfferSnapshot_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockApplication_Expecter) OfferSnapshot(_a0 interface{}) *MockApplication_OfferSnapshot_Call {
 	return &MockApplication_OfferSnapshot_Call{Call: _e.mock.On("OfferSnapshot", _a0)}
@@ -525,7 +479,6 @@ func (_c *MockApplication_OfferSnapshot_Call) RunAndReturn(run func(types.Reques
 	return _c
 }
 
-
 func (_m *MockApplication) Query(_a0 types.RequestQuery) types.ResponseQuery {
 	ret := _m.Called(_a0)
 
@@ -543,12 +496,9 @@ func (_m *MockApplication) Query(_a0 types.RequestQuery) types.ResponseQuery {
 	return r0
 }
 
-
 type MockApplication_Query_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockApplication_Expecter) Query(_a0 interface{}) *MockApplication_Query_Call {
 	return &MockApplication_Query_Call{Call: _e.mock.On("Query", _a0)}
@@ -571,7 +521,6 @@ func (_c *MockApplication_Query_Call) RunAndReturn(run func(types.RequestQuery) 
 	return _c
 }
 
-
 func (_m *MockApplication) SetOption(_a0 types.RequestSetOption) types.ResponseSetOption {
 	ret := _m.Called(_a0)
 
@@ -589,12 +538,9 @@ func (_m *MockApplication) SetOption(_a0 types.RequestSetOption) types.ResponseS
 	return r0
 }
 
-
 type MockApplication_SetOption_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockApplication_Expecter) SetOption(_a0 interface{}) *MockApplication_SetOption_Call {
 	return &MockApplication_SetOption_Call{Call: _e.mock.On("SetOption", _a0)}
@@ -617,12 +563,11 @@ func (_c *MockApplication_SetOption_Call) RunAndReturn(run func(types.RequestSet
 	return _c
 }
 
-
-
 func NewMockApplication(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *MockApplication {
+},
+) *MockApplication {
 	mock := &MockApplication{}
 	mock.Mock.Test(t)
 

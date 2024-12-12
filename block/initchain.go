@@ -11,8 +11,7 @@ import (
 )
 
 func (m *Manager) RunInitChain() error {
-	
-	proposer, err := m.SLClient.GetProposerAtHeight(int64(m.State.Height()) + 1) 
+	proposer, err := m.SLClient.GetProposerAtHeight(int64(m.State.Height()) + 1)
 	if err != nil {
 		return fmt.Errorf("get proposer at height: %w", err)
 	}
@@ -25,13 +24,11 @@ func (m *Manager) RunInitChain() error {
 		return err
 	}
 
-	
 	err = m.ValidateGenesisBridgeData(res.GenesisBridgeDataBytes)
 	if err != nil {
 		return fmt.Errorf("Cannot validate genesis bridge data: %w. Please call `$EXECUTABLE dymint unsafe-reset-all` before the next launch to reset this node to genesis state.", err)
 	}
 
-	
 	m.Executor.UpdateStateAfterInitChain(m.State, res)
 	m.Executor.UpdateMempoolAfterInitChain(m.State)
 	if _, err := m.Store.SaveState(m.State, nil); err != nil {
@@ -40,8 +37,6 @@ func (m *Manager) RunInitChain() error {
 
 	return nil
 }
-
-
 
 func (m *Manager) ValidateGenesisBridgeData(dataBytes []byte) error {
 	if len(dataBytes) == 0 {

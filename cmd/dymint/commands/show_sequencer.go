@@ -9,13 +9,11 @@ import (
 	"github.com/tendermint/tendermint/privval"
 )
 
-
 var ShowSequencer = &cobra.Command{
 	Use:     "show-sequencer",
 	Aliases: []string{"show_sequencer"},
 	Short:   "Show this node's sequencer info",
 	RunE:    showSequencer,
-	
 }
 
 func showSequencer(cmd *cobra.Command, args []string) error {

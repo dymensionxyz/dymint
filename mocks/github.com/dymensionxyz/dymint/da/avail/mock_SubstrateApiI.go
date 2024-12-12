@@ -1,5 +1,3 @@
-
-
 package avail
 
 import (
@@ -14,7 +12,6 @@ import (
 	types "github.com/centrifuge/go-substrate-rpc-client/v4/types"
 )
 
-
 type MockSubstrateApiI struct {
 	mock.Mock
 }
@@ -26,7 +23,6 @@ type MockSubstrateApiI_Expecter struct {
 func (_m *MockSubstrateApiI) EXPECT() *MockSubstrateApiI_Expecter {
 	return &MockSubstrateApiI_Expecter{mock: &_m.Mock}
 }
-
 
 func (_m *MockSubstrateApiI) GetBlock(blockHash types.Hash) (*types.SignedBlock, error) {
 	ret := _m.Called(blockHash)
@@ -57,12 +53,9 @@ func (_m *MockSubstrateApiI) GetBlock(blockHash types.Hash) (*types.SignedBlock,
 	return r0, r1
 }
 
-
 type MockSubstrateApiI_GetBlock_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockSubstrateApiI_Expecter) GetBlock(blockHash interface{}) *MockSubstrateApiI_GetBlock_Call {
 	return &MockSubstrateApiI_GetBlock_Call{Call: _e.mock.On("GetBlock", blockHash)}
@@ -84,7 +77,6 @@ func (_c *MockSubstrateApiI_GetBlock_Call) RunAndReturn(run func(types.Hash) (*t
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockSubstrateApiI) GetBlockHash(blockNumber uint64) (types.Hash, error) {
 	ret := _m.Called(blockNumber)
@@ -115,12 +107,9 @@ func (_m *MockSubstrateApiI) GetBlockHash(blockNumber uint64) (types.Hash, error
 	return r0, r1
 }
 
-
 type MockSubstrateApiI_GetBlockHash_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockSubstrateApiI_Expecter) GetBlockHash(blockNumber interface{}) *MockSubstrateApiI_GetBlockHash_Call {
 	return &MockSubstrateApiI_GetBlockHash_Call{Call: _e.mock.On("GetBlockHash", blockNumber)}
@@ -142,7 +131,6 @@ func (_c *MockSubstrateApiI_GetBlockHash_Call) RunAndReturn(run func(uint64) (ty
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockSubstrateApiI) GetBlockHashLatest() (types.Hash, error) {
 	ret := _m.Called()
@@ -173,11 +161,9 @@ func (_m *MockSubstrateApiI) GetBlockHashLatest() (types.Hash, error) {
 	return r0, r1
 }
 
-
 type MockSubstrateApiI_GetBlockHashLatest_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockSubstrateApiI_Expecter) GetBlockHashLatest() *MockSubstrateApiI_GetBlockHashLatest_Call {
 	return &MockSubstrateApiI_GetBlockHashLatest_Call{Call: _e.mock.On("GetBlockHashLatest")}
@@ -199,7 +185,6 @@ func (_c *MockSubstrateApiI_GetBlockHashLatest_Call) RunAndReturn(run func() (ty
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockSubstrateApiI) GetBlockLatest() (*types.SignedBlock, error) {
 	ret := _m.Called()
@@ -230,11 +215,9 @@ func (_m *MockSubstrateApiI) GetBlockLatest() (*types.SignedBlock, error) {
 	return r0, r1
 }
 
-
 type MockSubstrateApiI_GetBlockLatest_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockSubstrateApiI_Expecter) GetBlockLatest() *MockSubstrateApiI_GetBlockLatest_Call {
 	return &MockSubstrateApiI_GetBlockLatest_Call{Call: _e.mock.On("GetBlockLatest")}
@@ -256,7 +239,6 @@ func (_c *MockSubstrateApiI_GetBlockLatest_Call) RunAndReturn(run func() (*types
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockSubstrateApiI) GetChildKeys(childStorageKey types.StorageKey, prefix types.StorageKey, blockHash types.Hash) ([]types.StorageKey, error) {
 	ret := _m.Called(childStorageKey, prefix, blockHash)
@@ -287,14 +269,9 @@ func (_m *MockSubstrateApiI) GetChildKeys(childStorageKey types.StorageKey, pref
 	return r0, r1
 }
 
-
 type MockSubstrateApiI_GetChildKeys_Call struct {
 	*mock.Call
 }
-
-
-
-
 
 func (_e *MockSubstrateApiI_Expecter) GetChildKeys(childStorageKey interface{}, prefix interface{}, blockHash interface{}) *MockSubstrateApiI_GetChildKeys_Call {
 	return &MockSubstrateApiI_GetChildKeys_Call{Call: _e.mock.On("GetChildKeys", childStorageKey, prefix, blockHash)}
@@ -316,7 +293,6 @@ func (_c *MockSubstrateApiI_GetChildKeys_Call) RunAndReturn(run func(types.Stora
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockSubstrateApiI) GetChildKeysLatest(childStorageKey types.StorageKey, prefix types.StorageKey) ([]types.StorageKey, error) {
 	ret := _m.Called(childStorageKey, prefix)
@@ -347,13 +323,9 @@ func (_m *MockSubstrateApiI) GetChildKeysLatest(childStorageKey types.StorageKey
 	return r0, r1
 }
 
-
 type MockSubstrateApiI_GetChildKeysLatest_Call struct {
 	*mock.Call
 }
-
-
-
 
 func (_e *MockSubstrateApiI_Expecter) GetChildKeysLatest(childStorageKey interface{}, prefix interface{}) *MockSubstrateApiI_GetChildKeysLatest_Call {
 	return &MockSubstrateApiI_GetChildKeysLatest_Call{Call: _e.mock.On("GetChildKeysLatest", childStorageKey, prefix)}
@@ -375,7 +347,6 @@ func (_c *MockSubstrateApiI_GetChildKeysLatest_Call) RunAndReturn(run func(types
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockSubstrateApiI) GetChildStorage(childStorageKey types.StorageKey, key types.StorageKey, target interface{}, blockHash types.Hash) (bool, error) {
 	ret := _m.Called(childStorageKey, key, target, blockHash)
@@ -404,15 +375,9 @@ func (_m *MockSubstrateApiI) GetChildStorage(childStorageKey types.StorageKey, k
 	return r0, r1
 }
 
-
 type MockSubstrateApiI_GetChildStorage_Call struct {
 	*mock.Call
 }
-
-
-
-
-
 
 func (_e *MockSubstrateApiI_Expecter) GetChildStorage(childStorageKey interface{}, key interface{}, target interface{}, blockHash interface{}) *MockSubstrateApiI_GetChildStorage_Call {
 	return &MockSubstrateApiI_GetChildStorage_Call{Call: _e.mock.On("GetChildStorage", childStorageKey, key, target, blockHash)}
@@ -434,7 +399,6 @@ func (_c *MockSubstrateApiI_GetChildStorage_Call) RunAndReturn(run func(types.St
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockSubstrateApiI) GetChildStorageHash(childStorageKey types.StorageKey, key types.StorageKey, blockHash types.Hash) (types.Hash, error) {
 	ret := _m.Called(childStorageKey, key, blockHash)
@@ -465,14 +429,9 @@ func (_m *MockSubstrateApiI) GetChildStorageHash(childStorageKey types.StorageKe
 	return r0, r1
 }
 
-
 type MockSubstrateApiI_GetChildStorageHash_Call struct {
 	*mock.Call
 }
-
-
-
-
 
 func (_e *MockSubstrateApiI_Expecter) GetChildStorageHash(childStorageKey interface{}, key interface{}, blockHash interface{}) *MockSubstrateApiI_GetChildStorageHash_Call {
 	return &MockSubstrateApiI_GetChildStorageHash_Call{Call: _e.mock.On("GetChildStorageHash", childStorageKey, key, blockHash)}
@@ -494,7 +453,6 @@ func (_c *MockSubstrateApiI_GetChildStorageHash_Call) RunAndReturn(run func(type
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockSubstrateApiI) GetChildStorageHashLatest(childStorageKey types.StorageKey, key types.StorageKey) (types.Hash, error) {
 	ret := _m.Called(childStorageKey, key)
@@ -525,13 +483,9 @@ func (_m *MockSubstrateApiI) GetChildStorageHashLatest(childStorageKey types.Sto
 	return r0, r1
 }
 
-
 type MockSubstrateApiI_GetChildStorageHashLatest_Call struct {
 	*mock.Call
 }
-
-
-
 
 func (_e *MockSubstrateApiI_Expecter) GetChildStorageHashLatest(childStorageKey interface{}, key interface{}) *MockSubstrateApiI_GetChildStorageHashLatest_Call {
 	return &MockSubstrateApiI_GetChildStorageHashLatest_Call{Call: _e.mock.On("GetChildStorageHashLatest", childStorageKey, key)}
@@ -553,7 +507,6 @@ func (_c *MockSubstrateApiI_GetChildStorageHashLatest_Call) RunAndReturn(run fun
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockSubstrateApiI) GetChildStorageLatest(childStorageKey types.StorageKey, key types.StorageKey, target interface{}) (bool, error) {
 	ret := _m.Called(childStorageKey, key, target)
@@ -582,14 +535,9 @@ func (_m *MockSubstrateApiI) GetChildStorageLatest(childStorageKey types.Storage
 	return r0, r1
 }
 
-
 type MockSubstrateApiI_GetChildStorageLatest_Call struct {
 	*mock.Call
 }
-
-
-
-
 
 func (_e *MockSubstrateApiI_Expecter) GetChildStorageLatest(childStorageKey interface{}, key interface{}, target interface{}) *MockSubstrateApiI_GetChildStorageLatest_Call {
 	return &MockSubstrateApiI_GetChildStorageLatest_Call{Call: _e.mock.On("GetChildStorageLatest", childStorageKey, key, target)}
@@ -611,7 +559,6 @@ func (_c *MockSubstrateApiI_GetChildStorageLatest_Call) RunAndReturn(run func(ty
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockSubstrateApiI) GetChildStorageRaw(childStorageKey types.StorageKey, key types.StorageKey, blockHash types.Hash) (*types.StorageDataRaw, error) {
 	ret := _m.Called(childStorageKey, key, blockHash)
@@ -642,14 +589,9 @@ func (_m *MockSubstrateApiI) GetChildStorageRaw(childStorageKey types.StorageKey
 	return r0, r1
 }
 
-
 type MockSubstrateApiI_GetChildStorageRaw_Call struct {
 	*mock.Call
 }
-
-
-
-
 
 func (_e *MockSubstrateApiI_Expecter) GetChildStorageRaw(childStorageKey interface{}, key interface{}, blockHash interface{}) *MockSubstrateApiI_GetChildStorageRaw_Call {
 	return &MockSubstrateApiI_GetChildStorageRaw_Call{Call: _e.mock.On("GetChildStorageRaw", childStorageKey, key, blockHash)}
@@ -671,7 +613,6 @@ func (_c *MockSubstrateApiI_GetChildStorageRaw_Call) RunAndReturn(run func(types
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockSubstrateApiI) GetChildStorageRawLatest(childStorageKey types.StorageKey, key types.StorageKey) (*types.StorageDataRaw, error) {
 	ret := _m.Called(childStorageKey, key)
@@ -702,13 +643,9 @@ func (_m *MockSubstrateApiI) GetChildStorageRawLatest(childStorageKey types.Stor
 	return r0, r1
 }
 
-
 type MockSubstrateApiI_GetChildStorageRawLatest_Call struct {
 	*mock.Call
 }
-
-
-
 
 func (_e *MockSubstrateApiI_Expecter) GetChildStorageRawLatest(childStorageKey interface{}, key interface{}) *MockSubstrateApiI_GetChildStorageRawLatest_Call {
 	return &MockSubstrateApiI_GetChildStorageRawLatest_Call{Call: _e.mock.On("GetChildStorageRawLatest", childStorageKey, key)}
@@ -730,7 +667,6 @@ func (_c *MockSubstrateApiI_GetChildStorageRawLatest_Call) RunAndReturn(run func
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockSubstrateApiI) GetChildStorageSize(childStorageKey types.StorageKey, key types.StorageKey, blockHash types.Hash) (types.U64, error) {
 	ret := _m.Called(childStorageKey, key, blockHash)
@@ -759,14 +695,9 @@ func (_m *MockSubstrateApiI) GetChildStorageSize(childStorageKey types.StorageKe
 	return r0, r1
 }
 
-
 type MockSubstrateApiI_GetChildStorageSize_Call struct {
 	*mock.Call
 }
-
-
-
-
 
 func (_e *MockSubstrateApiI_Expecter) GetChildStorageSize(childStorageKey interface{}, key interface{}, blockHash interface{}) *MockSubstrateApiI_GetChildStorageSize_Call {
 	return &MockSubstrateApiI_GetChildStorageSize_Call{Call: _e.mock.On("GetChildStorageSize", childStorageKey, key, blockHash)}
@@ -788,7 +719,6 @@ func (_c *MockSubstrateApiI_GetChildStorageSize_Call) RunAndReturn(run func(type
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockSubstrateApiI) GetChildStorageSizeLatest(childStorageKey types.StorageKey, key types.StorageKey) (types.U64, error) {
 	ret := _m.Called(childStorageKey, key)
@@ -817,13 +747,9 @@ func (_m *MockSubstrateApiI) GetChildStorageSizeLatest(childStorageKey types.Sto
 	return r0, r1
 }
 
-
 type MockSubstrateApiI_GetChildStorageSizeLatest_Call struct {
 	*mock.Call
 }
-
-
-
 
 func (_e *MockSubstrateApiI_Expecter) GetChildStorageSizeLatest(childStorageKey interface{}, key interface{}) *MockSubstrateApiI_GetChildStorageSizeLatest_Call {
 	return &MockSubstrateApiI_GetChildStorageSizeLatest_Call{Call: _e.mock.On("GetChildStorageSizeLatest", childStorageKey, key)}
@@ -845,7 +771,6 @@ func (_c *MockSubstrateApiI_GetChildStorageSizeLatest_Call) RunAndReturn(run fun
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockSubstrateApiI) GetFinalizedHead() (types.Hash, error) {
 	ret := _m.Called()
@@ -876,11 +801,9 @@ func (_m *MockSubstrateApiI) GetFinalizedHead() (types.Hash, error) {
 	return r0, r1
 }
 
-
 type MockSubstrateApiI_GetFinalizedHead_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockSubstrateApiI_Expecter) GetFinalizedHead() *MockSubstrateApiI_GetFinalizedHead_Call {
 	return &MockSubstrateApiI_GetFinalizedHead_Call{Call: _e.mock.On("GetFinalizedHead")}
@@ -902,7 +825,6 @@ func (_c *MockSubstrateApiI_GetFinalizedHead_Call) RunAndReturn(run func() (type
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockSubstrateApiI) GetHeader(blockHash types.Hash) (*types.Header, error) {
 	ret := _m.Called(blockHash)
@@ -933,12 +855,9 @@ func (_m *MockSubstrateApiI) GetHeader(blockHash types.Hash) (*types.Header, err
 	return r0, r1
 }
 
-
 type MockSubstrateApiI_GetHeader_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockSubstrateApiI_Expecter) GetHeader(blockHash interface{}) *MockSubstrateApiI_GetHeader_Call {
 	return &MockSubstrateApiI_GetHeader_Call{Call: _e.mock.On("GetHeader", blockHash)}
@@ -960,7 +879,6 @@ func (_c *MockSubstrateApiI_GetHeader_Call) RunAndReturn(run func(types.Hash) (*
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockSubstrateApiI) GetHeaderLatest() (*types.Header, error) {
 	ret := _m.Called()
@@ -991,11 +909,9 @@ func (_m *MockSubstrateApiI) GetHeaderLatest() (*types.Header, error) {
 	return r0, r1
 }
 
-
 type MockSubstrateApiI_GetHeaderLatest_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockSubstrateApiI_Expecter) GetHeaderLatest() *MockSubstrateApiI_GetHeaderLatest_Call {
 	return &MockSubstrateApiI_GetHeaderLatest_Call{Call: _e.mock.On("GetHeaderLatest")}
@@ -1017,7 +933,6 @@ func (_c *MockSubstrateApiI_GetHeaderLatest_Call) RunAndReturn(run func() (*type
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockSubstrateApiI) GetKeys(prefix types.StorageKey, blockHash types.Hash) ([]types.StorageKey, error) {
 	ret := _m.Called(prefix, blockHash)
@@ -1048,13 +963,9 @@ func (_m *MockSubstrateApiI) GetKeys(prefix types.StorageKey, blockHash types.Ha
 	return r0, r1
 }
 
-
 type MockSubstrateApiI_GetKeys_Call struct {
 	*mock.Call
 }
-
-
-
 
 func (_e *MockSubstrateApiI_Expecter) GetKeys(prefix interface{}, blockHash interface{}) *MockSubstrateApiI_GetKeys_Call {
 	return &MockSubstrateApiI_GetKeys_Call{Call: _e.mock.On("GetKeys", prefix, blockHash)}
@@ -1076,7 +987,6 @@ func (_c *MockSubstrateApiI_GetKeys_Call) RunAndReturn(run func(types.StorageKey
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockSubstrateApiI) GetKeysLatest(prefix types.StorageKey) ([]types.StorageKey, error) {
 	ret := _m.Called(prefix)
@@ -1107,12 +1017,9 @@ func (_m *MockSubstrateApiI) GetKeysLatest(prefix types.StorageKey) ([]types.Sto
 	return r0, r1
 }
 
-
 type MockSubstrateApiI_GetKeysLatest_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockSubstrateApiI_Expecter) GetKeysLatest(prefix interface{}) *MockSubstrateApiI_GetKeysLatest_Call {
 	return &MockSubstrateApiI_GetKeysLatest_Call{Call: _e.mock.On("GetKeysLatest", prefix)}
@@ -1134,7 +1041,6 @@ func (_c *MockSubstrateApiI_GetKeysLatest_Call) RunAndReturn(run func(types.Stor
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockSubstrateApiI) GetMetadata(blockHash types.Hash) (*types.Metadata, error) {
 	ret := _m.Called(blockHash)
@@ -1165,12 +1071,9 @@ func (_m *MockSubstrateApiI) GetMetadata(blockHash types.Hash) (*types.Metadata,
 	return r0, r1
 }
 
-
 type MockSubstrateApiI_GetMetadata_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockSubstrateApiI_Expecter) GetMetadata(blockHash interface{}) *MockSubstrateApiI_GetMetadata_Call {
 	return &MockSubstrateApiI_GetMetadata_Call{Call: _e.mock.On("GetMetadata", blockHash)}
@@ -1192,7 +1095,6 @@ func (_c *MockSubstrateApiI_GetMetadata_Call) RunAndReturn(run func(types.Hash) 
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockSubstrateApiI) GetMetadataLatest() (*types.Metadata, error) {
 	ret := _m.Called()
@@ -1223,11 +1125,9 @@ func (_m *MockSubstrateApiI) GetMetadataLatest() (*types.Metadata, error) {
 	return r0, r1
 }
 
-
 type MockSubstrateApiI_GetMetadataLatest_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockSubstrateApiI_Expecter) GetMetadataLatest() *MockSubstrateApiI_GetMetadataLatest_Call {
 	return &MockSubstrateApiI_GetMetadataLatest_Call{Call: _e.mock.On("GetMetadataLatest")}
@@ -1249,7 +1149,6 @@ func (_c *MockSubstrateApiI_GetMetadataLatest_Call) RunAndReturn(run func() (*ty
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockSubstrateApiI) GetRuntimeVersion(blockHash types.Hash) (*types.RuntimeVersion, error) {
 	ret := _m.Called(blockHash)
@@ -1280,12 +1179,9 @@ func (_m *MockSubstrateApiI) GetRuntimeVersion(blockHash types.Hash) (*types.Run
 	return r0, r1
 }
 
-
 type MockSubstrateApiI_GetRuntimeVersion_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockSubstrateApiI_Expecter) GetRuntimeVersion(blockHash interface{}) *MockSubstrateApiI_GetRuntimeVersion_Call {
 	return &MockSubstrateApiI_GetRuntimeVersion_Call{Call: _e.mock.On("GetRuntimeVersion", blockHash)}
@@ -1307,7 +1203,6 @@ func (_c *MockSubstrateApiI_GetRuntimeVersion_Call) RunAndReturn(run func(types.
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockSubstrateApiI) GetRuntimeVersionLatest() (*types.RuntimeVersion, error) {
 	ret := _m.Called()
@@ -1338,11 +1233,9 @@ func (_m *MockSubstrateApiI) GetRuntimeVersionLatest() (*types.RuntimeVersion, e
 	return r0, r1
 }
 
-
 type MockSubstrateApiI_GetRuntimeVersionLatest_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockSubstrateApiI_Expecter) GetRuntimeVersionLatest() *MockSubstrateApiI_GetRuntimeVersionLatest_Call {
 	return &MockSubstrateApiI_GetRuntimeVersionLatest_Call{Call: _e.mock.On("GetRuntimeVersionLatest")}
@@ -1364,7 +1257,6 @@ func (_c *MockSubstrateApiI_GetRuntimeVersionLatest_Call) RunAndReturn(run func(
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockSubstrateApiI) GetStorage(key types.StorageKey, target interface{}, blockHash types.Hash) (bool, error) {
 	ret := _m.Called(key, target, blockHash)
@@ -1393,14 +1285,9 @@ func (_m *MockSubstrateApiI) GetStorage(key types.StorageKey, target interface{}
 	return r0, r1
 }
 
-
 type MockSubstrateApiI_GetStorage_Call struct {
 	*mock.Call
 }
-
-
-
-
 
 func (_e *MockSubstrateApiI_Expecter) GetStorage(key interface{}, target interface{}, blockHash interface{}) *MockSubstrateApiI_GetStorage_Call {
 	return &MockSubstrateApiI_GetStorage_Call{Call: _e.mock.On("GetStorage", key, target, blockHash)}
@@ -1422,7 +1309,6 @@ func (_c *MockSubstrateApiI_GetStorage_Call) RunAndReturn(run func(types.Storage
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockSubstrateApiI) GetStorageHash(key types.StorageKey, blockHash types.Hash) (types.Hash, error) {
 	ret := _m.Called(key, blockHash)
@@ -1453,13 +1339,9 @@ func (_m *MockSubstrateApiI) GetStorageHash(key types.StorageKey, blockHash type
 	return r0, r1
 }
 
-
 type MockSubstrateApiI_GetStorageHash_Call struct {
 	*mock.Call
 }
-
-
-
 
 func (_e *MockSubstrateApiI_Expecter) GetStorageHash(key interface{}, blockHash interface{}) *MockSubstrateApiI_GetStorageHash_Call {
 	return &MockSubstrateApiI_GetStorageHash_Call{Call: _e.mock.On("GetStorageHash", key, blockHash)}
@@ -1481,7 +1363,6 @@ func (_c *MockSubstrateApiI_GetStorageHash_Call) RunAndReturn(run func(types.Sto
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockSubstrateApiI) GetStorageHashLatest(key types.StorageKey) (types.Hash, error) {
 	ret := _m.Called(key)
@@ -1512,12 +1393,9 @@ func (_m *MockSubstrateApiI) GetStorageHashLatest(key types.StorageKey) (types.H
 	return r0, r1
 }
 
-
 type MockSubstrateApiI_GetStorageHashLatest_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockSubstrateApiI_Expecter) GetStorageHashLatest(key interface{}) *MockSubstrateApiI_GetStorageHashLatest_Call {
 	return &MockSubstrateApiI_GetStorageHashLatest_Call{Call: _e.mock.On("GetStorageHashLatest", key)}
@@ -1539,7 +1417,6 @@ func (_c *MockSubstrateApiI_GetStorageHashLatest_Call) RunAndReturn(run func(typ
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockSubstrateApiI) GetStorageLatest(key types.StorageKey, target interface{}) (bool, error) {
 	ret := _m.Called(key, target)
@@ -1568,13 +1445,9 @@ func (_m *MockSubstrateApiI) GetStorageLatest(key types.StorageKey, target inter
 	return r0, r1
 }
 
-
 type MockSubstrateApiI_GetStorageLatest_Call struct {
 	*mock.Call
 }
-
-
-
 
 func (_e *MockSubstrateApiI_Expecter) GetStorageLatest(key interface{}, target interface{}) *MockSubstrateApiI_GetStorageLatest_Call {
 	return &MockSubstrateApiI_GetStorageLatest_Call{Call: _e.mock.On("GetStorageLatest", key, target)}
@@ -1596,7 +1469,6 @@ func (_c *MockSubstrateApiI_GetStorageLatest_Call) RunAndReturn(run func(types.S
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockSubstrateApiI) GetStorageRaw(key types.StorageKey, blockHash types.Hash) (*types.StorageDataRaw, error) {
 	ret := _m.Called(key, blockHash)
@@ -1627,13 +1499,9 @@ func (_m *MockSubstrateApiI) GetStorageRaw(key types.StorageKey, blockHash types
 	return r0, r1
 }
 
-
 type MockSubstrateApiI_GetStorageRaw_Call struct {
 	*mock.Call
 }
-
-
-
 
 func (_e *MockSubstrateApiI_Expecter) GetStorageRaw(key interface{}, blockHash interface{}) *MockSubstrateApiI_GetStorageRaw_Call {
 	return &MockSubstrateApiI_GetStorageRaw_Call{Call: _e.mock.On("GetStorageRaw", key, blockHash)}
@@ -1655,7 +1523,6 @@ func (_c *MockSubstrateApiI_GetStorageRaw_Call) RunAndReturn(run func(types.Stor
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockSubstrateApiI) GetStorageRawLatest(key types.StorageKey) (*types.StorageDataRaw, error) {
 	ret := _m.Called(key)
@@ -1686,12 +1553,9 @@ func (_m *MockSubstrateApiI) GetStorageRawLatest(key types.StorageKey) (*types.S
 	return r0, r1
 }
 
-
 type MockSubstrateApiI_GetStorageRawLatest_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockSubstrateApiI_Expecter) GetStorageRawLatest(key interface{}) *MockSubstrateApiI_GetStorageRawLatest_Call {
 	return &MockSubstrateApiI_GetStorageRawLatest_Call{Call: _e.mock.On("GetStorageRawLatest", key)}
@@ -1713,7 +1577,6 @@ func (_c *MockSubstrateApiI_GetStorageRawLatest_Call) RunAndReturn(run func(type
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockSubstrateApiI) GetStorageSize(key types.StorageKey, blockHash types.Hash) (types.U64, error) {
 	ret := _m.Called(key, blockHash)
@@ -1742,13 +1605,9 @@ func (_m *MockSubstrateApiI) GetStorageSize(key types.StorageKey, blockHash type
 	return r0, r1
 }
 
-
 type MockSubstrateApiI_GetStorageSize_Call struct {
 	*mock.Call
 }
-
-
-
 
 func (_e *MockSubstrateApiI_Expecter) GetStorageSize(key interface{}, blockHash interface{}) *MockSubstrateApiI_GetStorageSize_Call {
 	return &MockSubstrateApiI_GetStorageSize_Call{Call: _e.mock.On("GetStorageSize", key, blockHash)}
@@ -1770,7 +1629,6 @@ func (_c *MockSubstrateApiI_GetStorageSize_Call) RunAndReturn(run func(types.Sto
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockSubstrateApiI) GetStorageSizeLatest(key types.StorageKey) (types.U64, error) {
 	ret := _m.Called(key)
@@ -1799,12 +1657,9 @@ func (_m *MockSubstrateApiI) GetStorageSizeLatest(key types.StorageKey) (types.U
 	return r0, r1
 }
 
-
 type MockSubstrateApiI_GetStorageSizeLatest_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockSubstrateApiI_Expecter) GetStorageSizeLatest(key interface{}) *MockSubstrateApiI_GetStorageSizeLatest_Call {
 	return &MockSubstrateApiI_GetStorageSizeLatest_Call{Call: _e.mock.On("GetStorageSizeLatest", key)}
@@ -1826,7 +1681,6 @@ func (_c *MockSubstrateApiI_GetStorageSizeLatest_Call) RunAndReturn(run func(typ
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockSubstrateApiI) PendingExtrinsics() ([]types.Extrinsic, error) {
 	ret := _m.Called()
@@ -1857,11 +1711,9 @@ func (_m *MockSubstrateApiI) PendingExtrinsics() ([]types.Extrinsic, error) {
 	return r0, r1
 }
 
-
 type MockSubstrateApiI_PendingExtrinsics_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockSubstrateApiI_Expecter) PendingExtrinsics() *MockSubstrateApiI_PendingExtrinsics_Call {
 	return &MockSubstrateApiI_PendingExtrinsics_Call{Call: _e.mock.On("PendingExtrinsics")}
@@ -1883,7 +1735,6 @@ func (_c *MockSubstrateApiI_PendingExtrinsics_Call) RunAndReturn(run func() ([]t
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockSubstrateApiI) QueryStorage(keys []types.StorageKey, startBlock types.Hash, block types.Hash) ([]types.StorageChangeSet, error) {
 	ret := _m.Called(keys, startBlock, block)
@@ -1914,14 +1765,9 @@ func (_m *MockSubstrateApiI) QueryStorage(keys []types.StorageKey, startBlock ty
 	return r0, r1
 }
 
-
 type MockSubstrateApiI_QueryStorage_Call struct {
 	*mock.Call
 }
-
-
-
-
 
 func (_e *MockSubstrateApiI_Expecter) QueryStorage(keys interface{}, startBlock interface{}, block interface{}) *MockSubstrateApiI_QueryStorage_Call {
 	return &MockSubstrateApiI_QueryStorage_Call{Call: _e.mock.On("QueryStorage", keys, startBlock, block)}
@@ -1943,7 +1789,6 @@ func (_c *MockSubstrateApiI_QueryStorage_Call) RunAndReturn(run func([]types.Sto
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockSubstrateApiI) QueryStorageAt(keys []types.StorageKey, block types.Hash) ([]types.StorageChangeSet, error) {
 	ret := _m.Called(keys, block)
@@ -1974,13 +1819,9 @@ func (_m *MockSubstrateApiI) QueryStorageAt(keys []types.StorageKey, block types
 	return r0, r1
 }
 
-
 type MockSubstrateApiI_QueryStorageAt_Call struct {
 	*mock.Call
 }
-
-
-
 
 func (_e *MockSubstrateApiI_Expecter) QueryStorageAt(keys interface{}, block interface{}) *MockSubstrateApiI_QueryStorageAt_Call {
 	return &MockSubstrateApiI_QueryStorageAt_Call{Call: _e.mock.On("QueryStorageAt", keys, block)}
@@ -2002,7 +1843,6 @@ func (_c *MockSubstrateApiI_QueryStorageAt_Call) RunAndReturn(run func([]types.S
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockSubstrateApiI) QueryStorageAtLatest(keys []types.StorageKey) ([]types.StorageChangeSet, error) {
 	ret := _m.Called(keys)
@@ -2033,12 +1873,9 @@ func (_m *MockSubstrateApiI) QueryStorageAtLatest(keys []types.StorageKey) ([]ty
 	return r0, r1
 }
 
-
 type MockSubstrateApiI_QueryStorageAtLatest_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockSubstrateApiI_Expecter) QueryStorageAtLatest(keys interface{}) *MockSubstrateApiI_QueryStorageAtLatest_Call {
 	return &MockSubstrateApiI_QueryStorageAtLatest_Call{Call: _e.mock.On("QueryStorageAtLatest", keys)}
@@ -2060,7 +1897,6 @@ func (_c *MockSubstrateApiI_QueryStorageAtLatest_Call) RunAndReturn(run func([]t
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockSubstrateApiI) QueryStorageLatest(keys []types.StorageKey, startBlock types.Hash) ([]types.StorageChangeSet, error) {
 	ret := _m.Called(keys, startBlock)
@@ -2091,13 +1927,9 @@ func (_m *MockSubstrateApiI) QueryStorageLatest(keys []types.StorageKey, startBl
 	return r0, r1
 }
 
-
 type MockSubstrateApiI_QueryStorageLatest_Call struct {
 	*mock.Call
 }
-
-
-
 
 func (_e *MockSubstrateApiI_Expecter) QueryStorageLatest(keys interface{}, startBlock interface{}) *MockSubstrateApiI_QueryStorageLatest_Call {
 	return &MockSubstrateApiI_QueryStorageLatest_Call{Call: _e.mock.On("QueryStorageLatest", keys, startBlock)}
@@ -2119,7 +1951,6 @@ func (_c *MockSubstrateApiI_QueryStorageLatest_Call) RunAndReturn(run func([]typ
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockSubstrateApiI) SubmitAndWatchExtrinsic(xt types.Extrinsic) (*author.ExtrinsicStatusSubscription, error) {
 	ret := _m.Called(xt)
@@ -2150,12 +1981,9 @@ func (_m *MockSubstrateApiI) SubmitAndWatchExtrinsic(xt types.Extrinsic) (*autho
 	return r0, r1
 }
 
-
 type MockSubstrateApiI_SubmitAndWatchExtrinsic_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockSubstrateApiI_Expecter) SubmitAndWatchExtrinsic(xt interface{}) *MockSubstrateApiI_SubmitAndWatchExtrinsic_Call {
 	return &MockSubstrateApiI_SubmitAndWatchExtrinsic_Call{Call: _e.mock.On("SubmitAndWatchExtrinsic", xt)}
@@ -2177,7 +2005,6 @@ func (_c *MockSubstrateApiI_SubmitAndWatchExtrinsic_Call) RunAndReturn(run func(
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockSubstrateApiI) SubmitExtrinsic(xt types.Extrinsic) (types.Hash, error) {
 	ret := _m.Called(xt)
@@ -2208,12 +2035,9 @@ func (_m *MockSubstrateApiI) SubmitExtrinsic(xt types.Extrinsic) (types.Hash, er
 	return r0, r1
 }
 
-
 type MockSubstrateApiI_SubmitExtrinsic_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockSubstrateApiI_Expecter) SubmitExtrinsic(xt interface{}) *MockSubstrateApiI_SubmitExtrinsic_Call {
 	return &MockSubstrateApiI_SubmitExtrinsic_Call{Call: _e.mock.On("SubmitExtrinsic", xt)}
@@ -2235,7 +2059,6 @@ func (_c *MockSubstrateApiI_SubmitExtrinsic_Call) RunAndReturn(run func(types.Ex
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockSubstrateApiI) SubscribeFinalizedHeads() (*chain.FinalizedHeadsSubscription, error) {
 	ret := _m.Called()
@@ -2266,11 +2089,9 @@ func (_m *MockSubstrateApiI) SubscribeFinalizedHeads() (*chain.FinalizedHeadsSub
 	return r0, r1
 }
 
-
 type MockSubstrateApiI_SubscribeFinalizedHeads_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockSubstrateApiI_Expecter) SubscribeFinalizedHeads() *MockSubstrateApiI_SubscribeFinalizedHeads_Call {
 	return &MockSubstrateApiI_SubscribeFinalizedHeads_Call{Call: _e.mock.On("SubscribeFinalizedHeads")}
@@ -2292,7 +2113,6 @@ func (_c *MockSubstrateApiI_SubscribeFinalizedHeads_Call) RunAndReturn(run func(
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockSubstrateApiI) SubscribeNewHeads() (*chain.NewHeadsSubscription, error) {
 	ret := _m.Called()
@@ -2323,11 +2143,9 @@ func (_m *MockSubstrateApiI) SubscribeNewHeads() (*chain.NewHeadsSubscription, e
 	return r0, r1
 }
 
-
 type MockSubstrateApiI_SubscribeNewHeads_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockSubstrateApiI_Expecter) SubscribeNewHeads() *MockSubstrateApiI_SubscribeNewHeads_Call {
 	return &MockSubstrateApiI_SubscribeNewHeads_Call{Call: _e.mock.On("SubscribeNewHeads")}
@@ -2349,7 +2167,6 @@ func (_c *MockSubstrateApiI_SubscribeNewHeads_Call) RunAndReturn(run func() (*ch
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockSubstrateApiI) SubscribeRuntimeVersion() (*state.RuntimeVersionSubscription, error) {
 	ret := _m.Called()
@@ -2380,11 +2197,9 @@ func (_m *MockSubstrateApiI) SubscribeRuntimeVersion() (*state.RuntimeVersionSub
 	return r0, r1
 }
 
-
 type MockSubstrateApiI_SubscribeRuntimeVersion_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockSubstrateApiI_Expecter) SubscribeRuntimeVersion() *MockSubstrateApiI_SubscribeRuntimeVersion_Call {
 	return &MockSubstrateApiI_SubscribeRuntimeVersion_Call{Call: _e.mock.On("SubscribeRuntimeVersion")}
@@ -2406,7 +2221,6 @@ func (_c *MockSubstrateApiI_SubscribeRuntimeVersion_Call) RunAndReturn(run func(
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockSubstrateApiI) SubscribeStorageRaw(keys []types.StorageKey) (*state.StorageSubscription, error) {
 	ret := _m.Called(keys)
@@ -2437,12 +2251,9 @@ func (_m *MockSubstrateApiI) SubscribeStorageRaw(keys []types.StorageKey) (*stat
 	return r0, r1
 }
 
-
 type MockSubstrateApiI_SubscribeStorageRaw_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockSubstrateApiI_Expecter) SubscribeStorageRaw(keys interface{}) *MockSubstrateApiI_SubscribeStorageRaw_Call {
 	return &MockSubstrateApiI_SubscribeStorageRaw_Call{Call: _e.mock.On("SubscribeStorageRaw", keys)}
@@ -2465,12 +2276,11 @@ func (_c *MockSubstrateApiI_SubscribeStorageRaw_Call) RunAndReturn(run func([]ty
 	return _c
 }
 
-
-
 func NewMockSubstrateApiI(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *MockSubstrateApiI {
+},
+) *MockSubstrateApiI {
 	mock := &MockSubstrateApiI{}
 	mock.Mock.Test(t)
 

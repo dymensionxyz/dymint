@@ -1,5 +1,3 @@
-
-
 package block
 
 import (
@@ -16,7 +14,6 @@ import (
 	types "github.com/dymensionxyz/dymint/types"
 )
 
-
 type MockExecutorI struct {
 	mock.Mock
 }
@@ -29,7 +26,6 @@ func (_m *MockExecutorI) EXPECT() *MockExecutorI_Expecter {
 	return &MockExecutorI_Expecter{mock: &_m.Mock}
 }
 
-
 func (_m *MockExecutorI) AddConsensusMsgs(_a0 ...proto.Message) {
 	_va := make([]interface{}, len(_a0))
 	for _i := range _a0 {
@@ -40,12 +36,9 @@ func (_m *MockExecutorI) AddConsensusMsgs(_a0 ...proto.Message) {
 	_m.Called(_ca...)
 }
 
-
 type MockExecutorI_AddConsensusMsgs_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockExecutorI_Expecter) AddConsensusMsgs(_a0 ...interface{}) *MockExecutorI_AddConsensusMsgs_Call {
 	return &MockExecutorI_AddConsensusMsgs_Call{Call: _e.mock.On("AddConsensusMsgs",
@@ -74,7 +67,6 @@ func (_c *MockExecutorI_AddConsensusMsgs_Call) RunAndReturn(run func(...proto.Me
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockExecutorI) Commit(_a0 *types.State, _a1 *types.Block, resp *state.ABCIResponses) ([]byte, int64, error) {
 	ret := _m.Called(_a0, _a1, resp)
@@ -112,14 +104,9 @@ func (_m *MockExecutorI) Commit(_a0 *types.State, _a1 *types.Block, resp *state.
 	return r0, r1, r2
 }
 
-
 type MockExecutorI_Commit_Call struct {
 	*mock.Call
 }
-
-
-
-
 
 func (_e *MockExecutorI_Expecter) Commit(_a0 interface{}, _a1 interface{}, resp interface{}) *MockExecutorI_Commit_Call {
 	return &MockExecutorI_Commit_Call{Call: _e.mock.On("Commit", _a0, _a1, resp)}
@@ -142,7 +129,6 @@ func (_c *MockExecutorI_Commit_Call) RunAndReturn(run func(*types.State, *types.
 	return _c
 }
 
-
 func (_m *MockExecutorI) CreateBlock(height uint64, lastCommit *types.Commit, lastHeaderHash [32]byte, nextSeqHash [32]byte, _a4 *types.State, maxBlockDataSizeBytes uint64) *types.Block {
 	ret := _m.Called(height, lastCommit, lastHeaderHash, nextSeqHash, _a4, maxBlockDataSizeBytes)
 
@@ -162,17 +148,9 @@ func (_m *MockExecutorI) CreateBlock(height uint64, lastCommit *types.Commit, la
 	return r0
 }
 
-
 type MockExecutorI_CreateBlock_Call struct {
 	*mock.Call
 }
-
-
-
-
-
-
-
 
 func (_e *MockExecutorI_Expecter) CreateBlock(height interface{}, lastCommit interface{}, lastHeaderHash interface{}, nextSeqHash interface{}, _a4 interface{}, maxBlockDataSizeBytes interface{}) *MockExecutorI_CreateBlock_Call {
 	return &MockExecutorI_CreateBlock_Call{Call: _e.mock.On("CreateBlock", height, lastCommit, lastHeaderHash, nextSeqHash, _a4, maxBlockDataSizeBytes)}
@@ -194,7 +172,6 @@ func (_c *MockExecutorI_CreateBlock_Call) RunAndReturn(run func(uint64, *types.C
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockExecutorI) ExecuteBlock(_a0 *types.Block) (*state.ABCIResponses, error) {
 	ret := _m.Called(_a0)
@@ -225,12 +202,9 @@ func (_m *MockExecutorI) ExecuteBlock(_a0 *types.Block) (*state.ABCIResponses, e
 	return r0, r1
 }
 
-
 type MockExecutorI_ExecuteBlock_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockExecutorI_Expecter) ExecuteBlock(_a0 interface{}) *MockExecutorI_ExecuteBlock_Call {
 	return &MockExecutorI_ExecuteBlock_Call{Call: _e.mock.On("ExecuteBlock", _a0)}
@@ -252,7 +226,6 @@ func (_c *MockExecutorI_ExecuteBlock_Call) RunAndReturn(run func(*types.Block) (
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockExecutorI) GetAppInfo() (*abcitypes.ResponseInfo, error) {
 	ret := _m.Called()
@@ -283,11 +256,9 @@ func (_m *MockExecutorI) GetAppInfo() (*abcitypes.ResponseInfo, error) {
 	return r0, r1
 }
 
-
 type MockExecutorI_GetAppInfo_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockExecutorI_Expecter) GetAppInfo() *MockExecutorI_GetAppInfo_Call {
 	return &MockExecutorI_GetAppInfo_Call{Call: _e.mock.On("GetAppInfo")}
@@ -310,7 +281,6 @@ func (_c *MockExecutorI_GetAppInfo_Call) RunAndReturn(run func() (*abcitypes.Res
 	return _c
 }
 
-
 func (_m *MockExecutorI) GetConsensusMsgs() []proto.Message {
 	ret := _m.Called()
 
@@ -330,11 +300,9 @@ func (_m *MockExecutorI) GetConsensusMsgs() []proto.Message {
 	return r0
 }
 
-
 type MockExecutorI_GetConsensusMsgs_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockExecutorI_Expecter) GetConsensusMsgs() *MockExecutorI_GetConsensusMsgs_Call {
 	return &MockExecutorI_GetConsensusMsgs_Call{Call: _e.mock.On("GetConsensusMsgs")}
@@ -356,7 +324,6 @@ func (_c *MockExecutorI_GetConsensusMsgs_Call) RunAndReturn(run func() []proto.M
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockExecutorI) InitChain(genesis *tenderminttypes.GenesisDoc, genesisChecksum string, valset []*tenderminttypes.Validator) (*abcitypes.ResponseInitChain, error) {
 	ret := _m.Called(genesis, genesisChecksum, valset)
@@ -387,14 +354,9 @@ func (_m *MockExecutorI) InitChain(genesis *tenderminttypes.GenesisDoc, genesisC
 	return r0, r1
 }
 
-
 type MockExecutorI_InitChain_Call struct {
 	*mock.Call
 }
-
-
-
-
 
 func (_e *MockExecutorI_Expecter) InitChain(genesis interface{}, genesisChecksum interface{}, valset interface{}) *MockExecutorI_InitChain_Call {
 	return &MockExecutorI_InitChain_Call{Call: _e.mock.On("InitChain", genesis, genesisChecksum, valset)}
@@ -417,17 +379,13 @@ func (_c *MockExecutorI_InitChain_Call) RunAndReturn(run func(*tenderminttypes.G
 	return _c
 }
 
-
 func (_m *MockExecutorI) UpdateMempoolAfterInitChain(s *types.State) {
 	_m.Called(s)
 }
 
-
 type MockExecutorI_UpdateMempoolAfterInitChain_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockExecutorI_Expecter) UpdateMempoolAfterInitChain(s interface{}) *MockExecutorI_UpdateMempoolAfterInitChain_Call {
 	return &MockExecutorI_UpdateMempoolAfterInitChain_Call{Call: _e.mock.On("UpdateMempoolAfterInitChain", s)}
@@ -450,7 +408,6 @@ func (_c *MockExecutorI_UpdateMempoolAfterInitChain_Call) RunAndReturn(run func(
 	return _c
 }
 
-
 func (_m *MockExecutorI) UpdateProposerFromBlock(s *types.State, seqSet *types.SequencerSet, _a2 *types.Block) bool {
 	ret := _m.Called(s, seqSet, _a2)
 
@@ -468,14 +425,9 @@ func (_m *MockExecutorI) UpdateProposerFromBlock(s *types.State, seqSet *types.S
 	return r0
 }
 
-
 type MockExecutorI_UpdateProposerFromBlock_Call struct {
 	*mock.Call
 }
-
-
-
-
 
 func (_e *MockExecutorI_Expecter) UpdateProposerFromBlock(s interface{}, seqSet interface{}, _a2 interface{}) *MockExecutorI_UpdateProposerFromBlock_Call {
 	return &MockExecutorI_UpdateProposerFromBlock_Call{Call: _e.mock.On("UpdateProposerFromBlock", s, seqSet, _a2)}
@@ -498,21 +450,13 @@ func (_c *MockExecutorI_UpdateProposerFromBlock_Call) RunAndReturn(run func(*typ
 	return _c
 }
 
-
 func (_m *MockExecutorI) UpdateStateAfterCommit(s *types.State, resp *state.ABCIResponses, appHash []byte, height uint64, lastHeaderHash [32]byte) {
 	_m.Called(s, resp, appHash, height, lastHeaderHash)
 }
 
-
 type MockExecutorI_UpdateStateAfterCommit_Call struct {
 	*mock.Call
 }
-
-
-
-
-
-
 
 func (_e *MockExecutorI_Expecter) UpdateStateAfterCommit(s interface{}, resp interface{}, appHash interface{}, height interface{}, lastHeaderHash interface{}) *MockExecutorI_UpdateStateAfterCommit_Call {
 	return &MockExecutorI_UpdateStateAfterCommit_Call{Call: _e.mock.On("UpdateStateAfterCommit", s, resp, appHash, height, lastHeaderHash)}
@@ -535,18 +479,13 @@ func (_c *MockExecutorI_UpdateStateAfterCommit_Call) RunAndReturn(run func(*type
 	return _c
 }
 
-
 func (_m *MockExecutorI) UpdateStateAfterInitChain(s *types.State, res *abcitypes.ResponseInitChain) {
 	_m.Called(s, res)
 }
 
-
 type MockExecutorI_UpdateStateAfterInitChain_Call struct {
 	*mock.Call
 }
-
-
-
 
 func (_e *MockExecutorI_Expecter) UpdateStateAfterInitChain(s interface{}, res interface{}) *MockExecutorI_UpdateStateAfterInitChain_Call {
 	return &MockExecutorI_UpdateStateAfterInitChain_Call{Call: _e.mock.On("UpdateStateAfterInitChain", s, res)}
@@ -569,12 +508,11 @@ func (_c *MockExecutorI_UpdateStateAfterInitChain_Call) RunAndReturn(run func(*t
 	return _c
 }
 
-
-
 func NewMockExecutorI(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *MockExecutorI {
+},
+) *MockExecutorI {
 	mock := &MockExecutorI{}
 	mock.Mock.Test(t)
 

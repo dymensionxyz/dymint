@@ -6,14 +6,10 @@ import (
 	tmtypes "github.com/tendermint/tendermint/types"
 )
 
-
-
 func ToABCIHeaderPB(header *Header) types.Header {
 	tmheader := ToABCIHeader(header)
 	return *tmheader.ToProto()
 }
-
-
 
 func ToABCIHeader(header *Header) tmtypes.Header {
 	return tmtypes.Header{
@@ -21,7 +17,7 @@ func ToABCIHeader(header *Header) tmtypes.Header {
 			Block: header.Version.Block,
 			App:   header.Version.App,
 		},
-		Height: int64(header.Height), 
+		Height: int64(header.Height),
 		Time:   header.GetTimestamp(),
 		LastBlockID: tmtypes.BlockID{
 			Hash: header.LastHeaderHash[:],
@@ -43,12 +39,10 @@ func ToABCIHeader(header *Header) tmtypes.Header {
 	}
 }
 
-
-
 func ToABCIBlock(block *Block) (*tmtypes.Block, error) {
 	abciHeader := ToABCIHeader(&block.Header)
 	abciCommit := ToABCICommit(&block.LastCommit, &block.Header)
-	
+
 	if len(abciCommit.Signatures) == 1 {
 		abciCommit.Signatures[0].ValidatorAddress = block.Header.ProposerAddress
 	}
@@ -65,7 +59,6 @@ func ToABCIBlock(block *Block) (*tmtypes.Block, error) {
 	return &abciBlock, nil
 }
 
-
 func ToABCIBlockDataTxs(data *Data) []tmtypes.Tx {
 	txs := make([]tmtypes.Tx, len(data.Txs))
 	for i := range data.Txs {
@@ -73,7 +66,6 @@ func ToABCIBlockDataTxs(data *Data) []tmtypes.Tx {
 	}
 	return txs
 }
-
 
 func ToABCIBlockMeta(block *Block) (*tmtypes.BlockMeta, error) {
 	tmblock, err := ToABCIBlock(block)
@@ -90,13 +82,10 @@ func ToABCIBlockMeta(block *Block) (*tmtypes.BlockMeta, error) {
 	}, nil
 }
 
-
-
-
 func ToABCICommit(commit *Commit, header *Header) *tmtypes.Commit {
 	headerHash := header.Hash()
 	tmCommit := tmtypes.Commit{
-		Height: int64(commit.Height), 
+		Height: int64(commit.Height),
 		Round:  0,
 		BlockID: tmtypes.BlockID{
 			Hash: headerHash[:],
@@ -106,7 +95,7 @@ func ToABCICommit(commit *Commit, header *Header) *tmtypes.Commit {
 			},
 		},
 	}
-	
+
 	if len(commit.TMSignature.Signature) == 0 {
 		for _, sig := range commit.Signatures {
 			commitSig := tmtypes.CommitSig{
@@ -115,7 +104,7 @@ func ToABCICommit(commit *Commit, header *Header) *tmtypes.Commit {
 			}
 			tmCommit.Signatures = append(tmCommit.Signatures, commitSig)
 		}
-		
+
 		if len(commit.Signatures) == 1 {
 			tmCommit.Signatures[0].ValidatorAddress = header.ProposerAddress
 			tmCommit.Signatures[0].Timestamp = header.GetTimestamp()

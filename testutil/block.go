@@ -37,14 +37,9 @@ const (
 	DefaultTestBatchSize = 5
 )
 
-
-
-
-
 func GetManagerWithProposerKey(conf config.BlockManagerConfig, proposerKey crypto.PrivKey, settlementlc settlement.ClientI, genesisHeight, storeInitialHeight, storeLastBlockHeight int64, proxyAppConns proxy.AppConns, mockStore store.Store) (*block.Manager, error) {
 	genesis := GenerateGenesis(genesisHeight)
-	
-	
+
 	raw, _ := proposerKey.GetPublic().Raw()
 	pubkey := ed25519.PubKey(raw)
 
@@ -67,7 +62,6 @@ func GetManagerWithProposerKey(conf config.BlockManagerConfig, proposerKey crypt
 		return nil, err
 	}
 
-	
 	if settlementlc == nil {
 		settlementlc = slregistry.GetClient(slregistry.Local)
 	}
@@ -96,7 +90,6 @@ func GetManagerWithProposerKey(conf config.BlockManagerConfig, proposerKey crypt
 	mp := mempoolv1.NewTxMempool(logger, tmcfg.DefaultMempoolConfig(), proxyApp.Mempool(), 0)
 	mpIDs := nodemempool.NewMempoolIDs()
 
-	
 	p2pKey, _, _ := crypto.GenerateEd25519Key(rand.Reader)
 	p2pClient, err := p2p.NewClient(config.P2PConfig{
 		GossipSubCacheSize:           50,

@@ -7,24 +7,20 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-
-
 type WrappedTx struct {
-	tx        types.Tx    
-	hash      types.TxKey 
-	height    int64       
-	timestamp time.Time   
+	tx        types.Tx
+	hash      types.TxKey
+	height    int64
+	timestamp time.Time
 
 	mtx       sync.Mutex
-	gasWanted int64           
-	priority  int64           
-	sender    string          
-	peers     map[uint16]bool 
+	gasWanted int64
+	priority  int64
+	sender    string
+	peers     map[uint16]bool
 }
 
-
 func (w *WrappedTx) Size() int64 { return int64(len(w.tx)) }
-
 
 func (w *WrappedTx) SetPeer(id uint16) {
 	w.mtx.Lock()
@@ -36,7 +32,6 @@ func (w *WrappedTx) SetPeer(id uint16) {
 	}
 }
 
-
 func (w *WrappedTx) HasPeer(id uint16) bool {
 	w.mtx.Lock()
 	defer w.mtx.Unlock()
@@ -44,13 +39,11 @@ func (w *WrappedTx) HasPeer(id uint16) bool {
 	return ok
 }
 
-
 func (w *WrappedTx) SetGasWanted(gas int64) {
 	w.mtx.Lock()
 	defer w.mtx.Unlock()
 	w.gasWanted = gas
 }
-
 
 func (w *WrappedTx) GasWanted() int64 {
 	w.mtx.Lock()
@@ -58,13 +51,11 @@ func (w *WrappedTx) GasWanted() int64 {
 	return w.gasWanted
 }
 
-
 func (w *WrappedTx) SetSender(sender string) {
 	w.mtx.Lock()
 	defer w.mtx.Unlock()
 	w.sender = sender
 }
-
 
 func (w *WrappedTx) Sender() string {
 	w.mtx.Lock()
@@ -72,13 +63,11 @@ func (w *WrappedTx) Sender() string {
 	return w.sender
 }
 
-
 func (w *WrappedTx) SetPriority(p int64) {
 	w.mtx.Lock()
 	defer w.mtx.Unlock()
 	w.priority = p
 }
-
 
 func (w *WrappedTx) Priority() int64 {
 	w.mtx.Lock()

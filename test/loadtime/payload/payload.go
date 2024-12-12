@@ -16,9 +16,6 @@ const (
 	maxPayloadSize = 4 * 1024 * 1024
 )
 
-
-
-
 func NewBytes(p *loadtime.Payload) ([]byte, error) {
 	p.Padding = make([]byte, 1)
 	nullTime := time.Time{}
@@ -32,12 +29,11 @@ func NewBytes(p *loadtime.Payload) ([]byte, error) {
 	if p.Size() > maxPayloadSize {
 		return nil, fmt.Errorf("configured size %d is too large (>%d)", p.Size(), maxPayloadSize)
 	}
-	pSize := int(p.GetSize_()) 
+	pSize := int(p.GetSize_())
 	if pSize < us {
 		return nil, fmt.Errorf("configured size %d not large enough to fit unpadded transaction of size %d", pSize, us)
 	}
 
-	
 	p.Padding = make([]byte, (pSize-us)/2)
 	_, err = rand.Read(p.Padding)
 	if err != nil {
@@ -49,13 +45,8 @@ func NewBytes(p *loadtime.Payload) ([]byte, error) {
 	}
 	h := []byte(hex.EncodeToString(b))
 
-	
-	
 	return append([]byte(keyPrefix), h...), nil
 }
-
-
-
 
 func FromBytes(b []byte) (*loadtime.Payload, error) {
 	trH := bytes.TrimPrefix(b, []byte(keyPrefix))
@@ -75,8 +66,6 @@ func FromBytes(b []byte) (*loadtime.Payload, error) {
 	return p, nil
 }
 
-
-
 func MaxUnpaddedSize() (int, error) {
 	p := &loadtime.Payload{
 		Time:        time.Now(),
@@ -87,9 +76,6 @@ func MaxUnpaddedSize() (int, error) {
 	}
 	return CalculateUnpaddedSize(p)
 }
-
-
-
 
 func CalculateUnpaddedSize(p *loadtime.Payload) (int, error) {
 	if len(p.Padding) != 1 {

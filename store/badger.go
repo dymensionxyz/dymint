@@ -16,7 +16,7 @@ import (
 
 const (
 	gcTimeout    = 1 * time.Minute
-	discardRatio = 0.5 
+	discardRatio = 0.5
 )
 
 var (
@@ -24,13 +24,11 @@ var (
 	_ KVBatch = &BadgerBatch{}
 )
 
-
 type BadgerKV struct {
 	db        *badger.DB
 	closing   chan struct{}
 	closeOnce sync.Once
 }
-
 
 func NewDefaultInMemoryKVStore() KV {
 	db, err := badger.Open(badger.DefaultOptions("").WithInMemory(true))
@@ -58,11 +56,9 @@ func NewKVStore(rootDir, dbPath, dbName string, syncWrites bool, logger types.Lo
 	return b
 }
 
-
 func NewDefaultKVStore(rootDir, dbPath, dbName string) KV {
 	return NewKVStore(rootDir, dbPath, dbName, true, log.NewNopLogger())
 }
-
 
 func Rootify(rootDir, dbPath string) string {
 	if filepath.IsAbs(dbPath) {
@@ -70,7 +66,6 @@ func Rootify(rootDir, dbPath string) string {
 	}
 	return filepath.Join(rootDir, dbPath)
 }
-
 
 func (b *BadgerKV) Close() error {
 	b.closeOnce.Do(func() {
@@ -85,7 +80,7 @@ func (b *BadgerKV) gc(period time.Duration, discardRatio float64, logger types.L
 	for {
 		select {
 		case <-b.closing:
-			
+
 			return
 		case <-ticker.C:
 			err := b.db.RunValueLogGC(discardRatio)
@@ -96,7 +91,6 @@ func (b *BadgerKV) gc(period time.Duration, discardRatio float64, logger types.L
 		}
 	}
 }
-
 
 func (b *BadgerKV) Get(key []byte) ([]byte, error) {
 	txn := b.db.NewTransaction(false)
@@ -111,7 +105,6 @@ func (b *BadgerKV) Get(key []byte) ([]byte, error) {
 	return item.ValueCopy(nil)
 }
 
-
 func (b *BadgerKV) Set(key []byte, value []byte) error {
 	txn := b.db.NewTransaction(true)
 	defer txn.Discard()
@@ -121,7 +114,6 @@ func (b *BadgerKV) Set(key []byte, value []byte) error {
 	}
 	return txn.Commit()
 }
-
 
 func (b *BadgerKV) Delete(key []byte) error {
 	txn := b.db.NewTransaction(true)
@@ -133,19 +125,15 @@ func (b *BadgerKV) Delete(key []byte) error {
 	return txn.Commit()
 }
 
-
-
 func (b *BadgerKV) NewBatch() KVBatch {
 	return &BadgerBatch{
 		txn: b.db.NewTransaction(true),
 	}
 }
 
-
 type BadgerBatch struct {
 	txn *badger.Txn
 }
-
 
 func (bb *BadgerBatch) Set(key, value []byte) error {
 	if err := bb.txn.Set(key, value); err != nil {
@@ -155,23 +143,19 @@ func (bb *BadgerBatch) Set(key, value []byte) error {
 	return nil
 }
 
-
 func (bb *BadgerBatch) Delete(key []byte) error {
 	return bb.txn.Delete(key)
 }
 
-
 func (bb *BadgerBatch) Commit() error {
 	return bb.txn.Commit()
 }
-
 
 func (bb *BadgerBatch) Discard() {
 	bb.txn.Discard()
 }
 
 var _ KVIterator = &BadgerIterator{}
-
 
 func (b *BadgerKV) PrefixIterator(prefix []byte) KVIterator {
 	txn := b.db.NewTransaction(false)
@@ -185,7 +169,6 @@ func (b *BadgerKV) PrefixIterator(prefix []byte) KVIterator {
 	}
 }
 
-
 type BadgerIterator struct {
 	txn       *badger.Txn
 	iter      *badger.Iterator
@@ -193,21 +176,17 @@ type BadgerIterator struct {
 	lastError error
 }
 
-
 func (i *BadgerIterator) Valid() bool {
 	return i.iter.ValidForPrefix(i.prefix)
 }
-
 
 func (i *BadgerIterator) Next() {
 	i.iter.Next()
 }
 
-
 func (i *BadgerIterator) Key() []byte {
 	return i.iter.Item().KeyCopy(nil)
 }
-
 
 func (i *BadgerIterator) Value() []byte {
 	val, err := i.iter.Item().ValueCopy(nil)
@@ -217,45 +196,34 @@ func (i *BadgerIterator) Value() []byte {
 	return val
 }
 
-
 func (i *BadgerIterator) Error() error {
 	return i.lastError
 }
-
 
 func (i *BadgerIterator) Discard() {
 	i.iter.Close()
 	i.txn.Discard()
 }
 
-
-
 func memoryEfficientBadgerConfig(path string, syncWrites bool) *badger.Options {
-	opts := badger.DefaultOptions(path) 
-	
-	
+	opts := badger.DefaultOptions(path)
+
 	opts.SyncWrites = syncWrites
-	
-	
-	
-	
+
 	opts.BlockCacheSize = 0
-	
+
 	opts.Compression = options.None
-	
-	
+
 	opts.MemTableSize = 16 << 20
-	
-	
+
 	opts.NumMemtables = 3
-	
-	
+
 	opts.NumLevelZeroTables = 3
-	
+
 	opts.NumLevelZeroTablesStall = 5
-	
+
 	opts.NumCompactors = 2
-	
+
 	opts.CompactL0OnClose = true
 
 	return &opts

@@ -12,16 +12,13 @@ import (
 	pb "github.com/dymensionxyz/dymint/types/pb/dymint"
 )
 
-
 func (b *Block) MarshalBinary() ([]byte, error) {
 	return b.ToProto().Marshal()
 }
 
-
 func (b *Batch) MarshalBinary() ([]byte, error) {
 	return b.ToProto().Marshal()
 }
-
 
 func (b *Block) UnmarshalBinary(data []byte) error {
 	var pBlock pb.Block
@@ -33,7 +30,6 @@ func (b *Block) UnmarshalBinary(data []byte) error {
 	return err
 }
 
-
 func (b *Batch) UnmarshalBinary(data []byte) error {
 	var pBatch pb.Batch
 	err := pBatch.Unmarshal(data)
@@ -44,11 +40,9 @@ func (b *Batch) UnmarshalBinary(data []byte) error {
 	return err
 }
 
-
 func (h *Header) MarshalBinary() ([]byte, error) {
 	return h.ToProto().Marshal()
 }
-
 
 func (h *Header) UnmarshalBinary(data []byte) error {
 	var pHeader pb.Header
@@ -60,16 +54,13 @@ func (h *Header) UnmarshalBinary(data []byte) error {
 	return err
 }
 
-
 func (d *Data) MarshalBinary() ([]byte, error) {
 	return d.ToProto().Marshal()
 }
 
-
 func (c *Commit) MarshalBinary() ([]byte, error) {
 	return c.ToProto().Marshal()
 }
-
 
 func (c *Commit) UnmarshalBinary(data []byte) error {
 	var pCommit pb.Commit
@@ -80,7 +71,6 @@ func (c *Commit) UnmarshalBinary(data []byte) error {
 	err = c.FromProto(&pCommit)
 	return err
 }
-
 
 func (h *Header) ToProto() *pb.Header {
 	return &pb.Header{
@@ -100,7 +90,6 @@ func (h *Header) ToProto() *pb.Header {
 		ChainId:           h.ChainID,
 	}
 }
-
 
 func (h *Header) FromProto(other *pb.Header) error {
 	h.Version.Block = other.Version.Block
@@ -140,8 +129,6 @@ func (h *Header) FromProto(other *pb.Header) error {
 	return nil
 }
 
-
-
 func safeCopy(dst, src []byte) bool {
 	if len(src) != len(dst) {
 		return false
@@ -150,7 +137,6 @@ func safeCopy(dst, src []byte) bool {
 	return true
 }
 
-
 func (b *Block) ToProto() *pb.Block {
 	return &pb.Block{
 		Header:     b.Header.ToProto(),
@@ -158,7 +144,6 @@ func (b *Block) ToProto() *pb.Block {
 		LastCommit: b.LastCommit.ToProto(),
 	}
 }
-
 
 func (b *Batch) ToProto() *pb.Batch {
 	return &pb.Batch{
@@ -169,7 +154,6 @@ func (b *Batch) ToProto() *pb.Batch {
 	}
 }
 
-
 func (d *Data) ToProto() *pb.Data {
 	return &pb.Data{
 		Txs:                    txsToByteSlices(d.Txs),
@@ -178,7 +162,6 @@ func (d *Data) ToProto() *pb.Data {
 		ConsensusMessages:      d.ConsensusMessages,
 	}
 }
-
 
 func (b *Block) FromProto(other *pb.Block) error {
 	err := b.Header.FromProto(other.Header)
@@ -199,7 +182,6 @@ func (b *Block) FromProto(other *pb.Block) error {
 	return nil
 }
 
-
 func (b *Batch) FromProto(other *pb.Batch) error {
 	n := len(other.Blocks)
 	start := other.StartHeight
@@ -215,7 +197,6 @@ func (b *Batch) FromProto(other *pb.Batch) error {
 	return nil
 }
 
-
 func (c *Commit) ToProto() *pb.Commit {
 	return &pb.Commit{
 		Height:     c.Height,
@@ -230,14 +211,13 @@ func (c *Commit) ToProto() *pb.Commit {
 	}
 }
 
-
 func (c *Commit) FromProto(other *pb.Commit) error {
 	c.Height = other.Height
 	if !safeCopy(c.HeaderHash[:], other.HeaderHash) {
 		return errors.New("invalid length of HeaderHash")
 	}
 	c.Signatures = byteSlicesToSignatures(other.Signatures)
-	
+
 	if other.TmSignature != nil {
 		c.TMSignature = types.CommitSig{
 			BlockIDFlag:      types.BlockIDFlag(other.TmSignature.BlockIdFlag),
@@ -249,7 +229,6 @@ func (c *Commit) FromProto(other *pb.Commit) error {
 
 	return nil
 }
-
 
 func (s *State) ToProto() (*pb.State, error) {
 	var proposerProto *pb.Sequencer
@@ -265,25 +244,24 @@ func (s *State) ToProto() (*pb.State, error) {
 	return &pb.State{
 		Version:             &s.Version,
 		ChainId:             s.ChainID,
-		InitialHeight:       int64(s.InitialHeight), 
-		LastBlockHeight:     int64(s.Height()),      
+		InitialHeight:       int64(s.InitialHeight),
+		LastBlockHeight:     int64(s.Height()),
 		ConsensusParams:     s.ConsensusParams,
 		LastResultsHash:     s.LastResultsHash[:],
 		LastHeaderHash:      s.LastHeaderHash[:],
 		AppHash:             s.AppHash[:],
 		RollappParams:       s.RollappParams,
 		Proposer:            proposerProto,
-		RevisionStartHeight: int64(s.RevisionStartHeight), 
+		RevisionStartHeight: int64(s.RevisionStartHeight),
 	}, nil
 }
-
 
 func (s *State) FromProto(other *pb.State) error {
 	s.Version = *other.Version
 	s.ChainID = other.ChainId
-	s.InitialHeight = uint64(other.InitialHeight)             
-	s.SetHeight(uint64(other.LastBlockHeight))                
-	s.RevisionStartHeight = uint64(other.RevisionStartHeight) 
+	s.InitialHeight = uint64(other.InitialHeight)
+	s.SetHeight(uint64(other.LastBlockHeight))
+	s.RevisionStartHeight = uint64(other.RevisionStartHeight)
 	if other.Proposer != nil {
 		proposer, err := SequencerFromProto(other.Proposer)
 		if err != nil {
@@ -291,7 +269,6 @@ func (s *State) FromProto(other *pb.State) error {
 		}
 		s.SetProposer(proposer)
 	} else {
-		
 		s.SetProposer(nil)
 	}
 
@@ -302,7 +279,6 @@ func (s *State) FromProto(other *pb.State) error {
 	s.RollappParams = other.RollappParams
 	return nil
 }
-
 
 func (s *Sequencer) ToProto() (*pb.Sequencer, error) {
 	if s == nil {
@@ -320,7 +296,6 @@ func (s *Sequencer) ToProto() (*pb.Sequencer, error) {
 	}, nil
 }
 
-
 func SequencerFromProto(seq *pb.Sequencer) (*Sequencer, error) {
 	if seq == nil {
 		return nil, fmt.Errorf("nil sequencer")
@@ -337,7 +312,6 @@ func SequencerFromProto(seq *pb.Sequencer) (*Sequencer, error) {
 	}, nil
 }
 
-
 func (s Sequencers) ToProto() (*pb.SequencerSet, error) {
 	seqs := make([]pb.Sequencer, len(s))
 	for i, seq := range s {
@@ -349,7 +323,6 @@ func (s Sequencers) ToProto() (*pb.SequencerSet, error) {
 	}
 	return &pb.SequencerSet{Sequencers: seqs}, nil
 }
-
 
 func SequencersFromProto(s *pb.SequencerSet) (Sequencers, error) {
 	if s == nil {
@@ -389,7 +362,7 @@ func evidenceToProto(evidence EvidenceData) []*abci.Evidence {
 	var ret []*abci.Evidence
 	for _, e := range evidence.Evidence {
 		for _, ae := range e.ABCI() {
-			ret = append(ret, &ae) 
+			ret = append(ret, &ae)
 		}
 	}
 	return ret
@@ -397,7 +370,7 @@ func evidenceToProto(evidence EvidenceData) []*abci.Evidence {
 
 func evidenceFromProto([]*abci.Evidence) EvidenceData {
 	var ret EvidenceData
-	
+
 	return ret
 }
 
@@ -423,7 +396,6 @@ func byteSlicesToSignatures(bytes [][]byte) []Signature {
 	return sigs
 }
 
-
 func blocksToProto(blocks []*Block) []*pb.Block {
 	pbBlocks := make([]*pb.Block, len(blocks))
 	for i, b := range blocks {
@@ -431,7 +403,6 @@ func blocksToProto(blocks []*Block) []*pb.Block {
 	}
 	return pbBlocks
 }
-
 
 func protoToBlocks(pbBlocks []*pb.Block) []*Block {
 	blocks := make([]*Block, len(pbBlocks))
@@ -445,7 +416,6 @@ func protoToBlocks(pbBlocks []*pb.Block) []*Block {
 	return blocks
 }
 
-
 func commitsToProto(commits []*Commit) []*pb.Commit {
 	pbCommits := make([]*pb.Commit, len(commits))
 	for i, c := range commits {
@@ -453,7 +423,6 @@ func commitsToProto(commits []*Commit) []*pb.Commit {
 	}
 	return pbCommits
 }
-
 
 func protoToCommits(pbCommits []*pb.Commit) []*Commit {
 	commits := make([]*Commit, len(pbCommits))

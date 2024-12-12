@@ -7,30 +7,17 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-
-
-
-
-
 type TxCache interface {
-	
 	Reset()
 
-	
-	
 	Push(tx types.Tx) bool
 
-	
 	Remove(tx types.Tx)
 
-	
-	
 	Has(tx types.Tx) bool
 }
 
 var _ TxCache = (*LRUTxCache)(nil)
-
-
 
 type LRUTxCache struct {
 	mtx      sync.Mutex
@@ -46,8 +33,6 @@ func NewLRUTxCache(cacheSize int) *LRUTxCache {
 		list:     list.New(),
 	}
 }
-
-
 
 func (c *LRUTxCache) GetList() *list.List {
 	return c.list
@@ -108,7 +93,6 @@ func (c *LRUTxCache) Has(tx types.Tx) bool {
 	_, ok := c.cacheMap[tx.Key()]
 	return ok
 }
-
 
 type NopTxCache struct{}
 

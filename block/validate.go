@@ -11,8 +11,6 @@ import (
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
-
-
 func (m *Manager) onNewStateUpdateFinalized(event pubsub.Message) {
 	eventData, ok := event.Data().(*settlement.EventDataNewBatch)
 	if !ok {
@@ -21,7 +19,6 @@ func (m *Manager) onNewStateUpdateFinalized(event pubsub.Message) {
 	}
 	m.SettlementValidator.UpdateLastValidatedHeight(eventData.EndHeight)
 }
-
 
 func (m *Manager) SettlementValidateLoop(ctx context.Context) error {
 	for {
@@ -33,14 +30,13 @@ func (m *Manager) SettlementValidateLoop(ctx context.Context) error {
 			m.logger.Info("validating state updates to target height", "targetHeight", targetValidationHeight)
 
 			for currH := m.SettlementValidator.NextValidationHeight(); currH <= targetValidationHeight; currH = m.SettlementValidator.NextValidationHeight() {
-				
+
 				batch, err := m.SLClient.GetBatchAtHeight(currH)
 				if err != nil {
 					uevent.MustPublish(ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
 					return err
 				}
 
-				
 				err = m.SettlementValidator.ValidateStateUpdate(batch)
 				if err != nil {
 					if errors.Is(err, gerrc.ErrFault) {
@@ -51,7 +47,6 @@ func (m *Manager) SettlementValidateLoop(ctx context.Context) error {
 					return err
 				}
 
-				
 				m.SettlementValidator.UpdateLastValidatedHeight(batch.EndHeight)
 
 				m.logger.Debug("state info validated", "lastValidatedHeight", m.SettlementValidator.GetLastValidatedHeight())

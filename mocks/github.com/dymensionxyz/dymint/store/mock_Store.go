@@ -1,5 +1,3 @@
-
-
 package store
 
 import (
@@ -13,7 +11,6 @@ import (
 	types "github.com/dymensionxyz/dymint/types"
 )
 
-
 type MockStore struct {
 	mock.Mock
 }
@@ -25,7 +22,6 @@ type MockStore_Expecter struct {
 func (_m *MockStore) EXPECT() *MockStore_Expecter {
 	return &MockStore_Expecter{mock: &_m.Mock}
 }
-
 
 func (_m *MockStore) Close() error {
 	ret := _m.Called()
@@ -44,11 +40,9 @@ func (_m *MockStore) Close() error {
 	return r0
 }
 
-
 type MockStore_Close_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockStore_Expecter) Close() *MockStore_Close_Call {
 	return &MockStore_Close_Call{Call: _e.mock.On("Close")}
@@ -70,7 +64,6 @@ func (_c *MockStore_Close_Call) RunAndReturn(run func() error) *MockStore_Close_
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockStore) LoadBaseHeight() (uint64, error) {
 	ret := _m.Called()
@@ -99,11 +92,9 @@ func (_m *MockStore) LoadBaseHeight() (uint64, error) {
 	return r0, r1
 }
 
-
 type MockStore_LoadBaseHeight_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockStore_Expecter) LoadBaseHeight() *MockStore_LoadBaseHeight_Call {
 	return &MockStore_LoadBaseHeight_Call{Call: _e.mock.On("LoadBaseHeight")}
@@ -125,7 +116,6 @@ func (_c *MockStore_LoadBaseHeight_Call) RunAndReturn(run func() (uint64, error)
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockStore) LoadBlock(height uint64) (*types.Block, error) {
 	ret := _m.Called(height)
@@ -156,12 +146,9 @@ func (_m *MockStore) LoadBlock(height uint64) (*types.Block, error) {
 	return r0, r1
 }
 
-
 type MockStore_LoadBlock_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockStore_Expecter) LoadBlock(height interface{}) *MockStore_LoadBlock_Call {
 	return &MockStore_LoadBlock_Call{Call: _e.mock.On("LoadBlock", height)}
@@ -183,7 +170,6 @@ func (_c *MockStore_LoadBlock_Call) RunAndReturn(run func(uint64) (*types.Block,
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockStore) LoadBlockByHash(hash [32]byte) (*types.Block, error) {
 	ret := _m.Called(hash)
@@ -214,12 +200,9 @@ func (_m *MockStore) LoadBlockByHash(hash [32]byte) (*types.Block, error) {
 	return r0, r1
 }
 
-
 type MockStore_LoadBlockByHash_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockStore_Expecter) LoadBlockByHash(hash interface{}) *MockStore_LoadBlockByHash_Call {
 	return &MockStore_LoadBlockByHash_Call{Call: _e.mock.On("LoadBlockByHash", hash)}
@@ -241,7 +224,6 @@ func (_c *MockStore_LoadBlockByHash_Call) RunAndReturn(run func([32]byte) (*type
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockStore) LoadBlockCid(height uint64) (cid.Cid, error) {
 	ret := _m.Called(height)
@@ -270,12 +252,9 @@ func (_m *MockStore) LoadBlockCid(height uint64) (cid.Cid, error) {
 	return r0, r1
 }
 
-
 type MockStore_LoadBlockCid_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockStore_Expecter) LoadBlockCid(height interface{}) *MockStore_LoadBlockCid_Call {
 	return &MockStore_LoadBlockCid_Call{Call: _e.mock.On("LoadBlockCid", height)}
@@ -297,7 +276,6 @@ func (_c *MockStore_LoadBlockCid_Call) RunAndReturn(run func(uint64) (cid.Cid, e
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockStore) LoadBlockResponses(height uint64) (*state.ABCIResponses, error) {
 	ret := _m.Called(height)
@@ -328,12 +306,9 @@ func (_m *MockStore) LoadBlockResponses(height uint64) (*state.ABCIResponses, er
 	return r0, r1
 }
 
-
 type MockStore_LoadBlockResponses_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockStore_Expecter) LoadBlockResponses(height interface{}) *MockStore_LoadBlockResponses_Call {
 	return &MockStore_LoadBlockResponses_Call{Call: _e.mock.On("LoadBlockResponses", height)}
@@ -355,7 +330,6 @@ func (_c *MockStore_LoadBlockResponses_Call) RunAndReturn(run func(uint64) (*sta
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockStore) LoadBlockSource(height uint64) (types.BlockSource, error) {
 	ret := _m.Called(height)
@@ -384,12 +358,9 @@ func (_m *MockStore) LoadBlockSource(height uint64) (types.BlockSource, error) {
 	return r0, r1
 }
 
-
 type MockStore_LoadBlockSource_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockStore_Expecter) LoadBlockSource(height interface{}) *MockStore_LoadBlockSource_Call {
 	return &MockStore_LoadBlockSource_Call{Call: _e.mock.On("LoadBlockSource", height)}
@@ -411,7 +382,6 @@ func (_c *MockStore_LoadBlockSource_Call) RunAndReturn(run func(uint64) (types.B
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockStore) LoadBlockSyncBaseHeight() (uint64, error) {
 	ret := _m.Called()
@@ -440,11 +410,9 @@ func (_m *MockStore) LoadBlockSyncBaseHeight() (uint64, error) {
 	return r0, r1
 }
 
-
 type MockStore_LoadBlockSyncBaseHeight_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockStore_Expecter) LoadBlockSyncBaseHeight() *MockStore_LoadBlockSyncBaseHeight_Call {
 	return &MockStore_LoadBlockSyncBaseHeight_Call{Call: _e.mock.On("LoadBlockSyncBaseHeight")}
@@ -466,7 +434,6 @@ func (_c *MockStore_LoadBlockSyncBaseHeight_Call) RunAndReturn(run func() (uint6
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockStore) LoadCommit(height uint64) (*types.Commit, error) {
 	ret := _m.Called(height)
@@ -497,12 +464,9 @@ func (_m *MockStore) LoadCommit(height uint64) (*types.Commit, error) {
 	return r0, r1
 }
 
-
 type MockStore_LoadCommit_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockStore_Expecter) LoadCommit(height interface{}) *MockStore_LoadCommit_Call {
 	return &MockStore_LoadCommit_Call{Call: _e.mock.On("LoadCommit", height)}
@@ -524,7 +488,6 @@ func (_c *MockStore_LoadCommit_Call) RunAndReturn(run func(uint64) (*types.Commi
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockStore) LoadCommitByHash(hash [32]byte) (*types.Commit, error) {
 	ret := _m.Called(hash)
@@ -555,12 +518,9 @@ func (_m *MockStore) LoadCommitByHash(hash [32]byte) (*types.Commit, error) {
 	return r0, r1
 }
 
-
 type MockStore_LoadCommitByHash_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockStore_Expecter) LoadCommitByHash(hash interface{}) *MockStore_LoadCommitByHash_Call {
 	return &MockStore_LoadCommitByHash_Call{Call: _e.mock.On("LoadCommitByHash", hash)}
@@ -582,7 +542,6 @@ func (_c *MockStore_LoadCommitByHash_Call) RunAndReturn(run func([32]byte) (*typ
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockStore) LoadDRSVersion(height uint64) (uint32, error) {
 	ret := _m.Called(height)
@@ -611,12 +570,9 @@ func (_m *MockStore) LoadDRSVersion(height uint64) (uint32, error) {
 	return r0, r1
 }
 
-
 type MockStore_LoadDRSVersion_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockStore_Expecter) LoadDRSVersion(height interface{}) *MockStore_LoadDRSVersion_Call {
 	return &MockStore_LoadDRSVersion_Call{Call: _e.mock.On("LoadDRSVersion", height)}
@@ -638,7 +594,6 @@ func (_c *MockStore_LoadDRSVersion_Call) RunAndReturn(run func(uint64) (uint32, 
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockStore) LoadIndexerBaseHeight() (uint64, error) {
 	ret := _m.Called()
@@ -667,11 +622,9 @@ func (_m *MockStore) LoadIndexerBaseHeight() (uint64, error) {
 	return r0, r1
 }
 
-
 type MockStore_LoadIndexerBaseHeight_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockStore_Expecter) LoadIndexerBaseHeight() *MockStore_LoadIndexerBaseHeight_Call {
 	return &MockStore_LoadIndexerBaseHeight_Call{Call: _e.mock.On("LoadIndexerBaseHeight")}
@@ -693,7 +646,6 @@ func (_c *MockStore_LoadIndexerBaseHeight_Call) RunAndReturn(run func() (uint64,
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockStore) LoadLastBlockSequencerSet() (types.Sequencers, error) {
 	ret := _m.Called()
@@ -724,11 +676,9 @@ func (_m *MockStore) LoadLastBlockSequencerSet() (types.Sequencers, error) {
 	return r0, r1
 }
 
-
 type MockStore_LoadLastBlockSequencerSet_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockStore_Expecter) LoadLastBlockSequencerSet() *MockStore_LoadLastBlockSequencerSet_Call {
 	return &MockStore_LoadLastBlockSequencerSet_Call{Call: _e.mock.On("LoadLastBlockSequencerSet")}
@@ -750,7 +700,6 @@ func (_c *MockStore_LoadLastBlockSequencerSet_Call) RunAndReturn(run func() (typ
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockStore) LoadProposer(height uint64) (types.Sequencer, error) {
 	ret := _m.Called(height)
@@ -779,12 +728,9 @@ func (_m *MockStore) LoadProposer(height uint64) (types.Sequencer, error) {
 	return r0, r1
 }
 
-
 type MockStore_LoadProposer_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockStore_Expecter) LoadProposer(height interface{}) *MockStore_LoadProposer_Call {
 	return &MockStore_LoadProposer_Call{Call: _e.mock.On("LoadProposer", height)}
@@ -806,7 +752,6 @@ func (_c *MockStore_LoadProposer_Call) RunAndReturn(run func(uint64) (types.Sequ
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockStore) LoadState() (*types.State, error) {
 	ret := _m.Called()
@@ -837,11 +782,9 @@ func (_m *MockStore) LoadState() (*types.State, error) {
 	return r0, r1
 }
 
-
 type MockStore_LoadState_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockStore_Expecter) LoadState() *MockStore_LoadState_Call {
 	return &MockStore_LoadState_Call{Call: _e.mock.On("LoadState")}
@@ -863,7 +806,6 @@ func (_c *MockStore_LoadState_Call) RunAndReturn(run func() (*types.State, error
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockStore) LoadValidationHeight() (uint64, error) {
 	ret := _m.Called()
@@ -892,11 +834,9 @@ func (_m *MockStore) LoadValidationHeight() (uint64, error) {
 	return r0, r1
 }
 
-
 type MockStore_LoadValidationHeight_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockStore_Expecter) LoadValidationHeight() *MockStore_LoadValidationHeight_Call {
 	return &MockStore_LoadValidationHeight_Call{Call: _e.mock.On("LoadValidationHeight")}
@@ -919,7 +859,6 @@ func (_c *MockStore_LoadValidationHeight_Call) RunAndReturn(run func() (uint64, 
 	return _c
 }
 
-
 func (_m *MockStore) NewBatch() store.KVBatch {
 	ret := _m.Called()
 
@@ -939,11 +878,9 @@ func (_m *MockStore) NewBatch() store.KVBatch {
 	return r0
 }
 
-
 type MockStore_NewBatch_Call struct {
 	*mock.Call
 }
-
 
 func (_e *MockStore_Expecter) NewBatch() *MockStore_NewBatch_Call {
 	return &MockStore_NewBatch_Call{Call: _e.mock.On("NewBatch")}
@@ -965,7 +902,6 @@ func (_c *MockStore_NewBatch_Call) RunAndReturn(run func() store.KVBatch) *MockS
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockStore) PruneStore(to uint64, logger types.Logger) (uint64, error) {
 	ret := _m.Called(to, logger)
@@ -994,13 +930,9 @@ func (_m *MockStore) PruneStore(to uint64, logger types.Logger) (uint64, error) 
 	return r0, r1
 }
 
-
 type MockStore_PruneStore_Call struct {
 	*mock.Call
 }
-
-
-
 
 func (_e *MockStore_Expecter) PruneStore(to interface{}, logger interface{}) *MockStore_PruneStore_Call {
 	return &MockStore_PruneStore_Call{Call: _e.mock.On("PruneStore", to, logger)}
@@ -1023,7 +955,6 @@ func (_c *MockStore_PruneStore_Call) RunAndReturn(run func(uint64, types.Logger)
 	return _c
 }
 
-
 func (_m *MockStore) RemoveBlockCid(height uint64) error {
 	ret := _m.Called(height)
 
@@ -1041,12 +972,9 @@ func (_m *MockStore) RemoveBlockCid(height uint64) error {
 	return r0
 }
 
-
 type MockStore_RemoveBlockCid_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockStore_Expecter) RemoveBlockCid(height interface{}) *MockStore_RemoveBlockCid_Call {
 	return &MockStore_RemoveBlockCid_Call{Call: _e.mock.On("RemoveBlockCid", height)}
@@ -1069,7 +997,6 @@ func (_c *MockStore_RemoveBlockCid_Call) RunAndReturn(run func(uint64) error) *M
 	return _c
 }
 
-
 func (_m *MockStore) SaveBaseHeight(height uint64) error {
 	ret := _m.Called(height)
 
@@ -1087,12 +1014,9 @@ func (_m *MockStore) SaveBaseHeight(height uint64) error {
 	return r0
 }
 
-
 type MockStore_SaveBaseHeight_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockStore_Expecter) SaveBaseHeight(height interface{}) *MockStore_SaveBaseHeight_Call {
 	return &MockStore_SaveBaseHeight_Call{Call: _e.mock.On("SaveBaseHeight", height)}
@@ -1114,7 +1038,6 @@ func (_c *MockStore_SaveBaseHeight_Call) RunAndReturn(run func(uint64) error) *M
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockStore) SaveBlock(block *types.Block, commit *types.Commit, batch store.KVBatch) (store.KVBatch, error) {
 	ret := _m.Called(block, commit, batch)
@@ -1145,14 +1068,9 @@ func (_m *MockStore) SaveBlock(block *types.Block, commit *types.Commit, batch s
 	return r0, r1
 }
 
-
 type MockStore_SaveBlock_Call struct {
 	*mock.Call
 }
-
-
-
-
 
 func (_e *MockStore_Expecter) SaveBlock(block interface{}, commit interface{}, batch interface{}) *MockStore_SaveBlock_Call {
 	return &MockStore_SaveBlock_Call{Call: _e.mock.On("SaveBlock", block, commit, batch)}
@@ -1174,7 +1092,6 @@ func (_c *MockStore_SaveBlock_Call) RunAndReturn(run func(*types.Block, *types.C
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockStore) SaveBlockCid(height uint64, _a1 cid.Cid, batch store.KVBatch) (store.KVBatch, error) {
 	ret := _m.Called(height, _a1, batch)
@@ -1205,14 +1122,9 @@ func (_m *MockStore) SaveBlockCid(height uint64, _a1 cid.Cid, batch store.KVBatc
 	return r0, r1
 }
 
-
 type MockStore_SaveBlockCid_Call struct {
 	*mock.Call
 }
-
-
-
-
 
 func (_e *MockStore_Expecter) SaveBlockCid(height interface{}, _a1 interface{}, batch interface{}) *MockStore_SaveBlockCid_Call {
 	return &MockStore_SaveBlockCid_Call{Call: _e.mock.On("SaveBlockCid", height, _a1, batch)}
@@ -1234,7 +1146,6 @@ func (_c *MockStore_SaveBlockCid_Call) RunAndReturn(run func(uint64, cid.Cid, st
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockStore) SaveBlockResponses(height uint64, responses *state.ABCIResponses, batch store.KVBatch) (store.KVBatch, error) {
 	ret := _m.Called(height, responses, batch)
@@ -1265,14 +1176,9 @@ func (_m *MockStore) SaveBlockResponses(height uint64, responses *state.ABCIResp
 	return r0, r1
 }
 
-
 type MockStore_SaveBlockResponses_Call struct {
 	*mock.Call
 }
-
-
-
-
 
 func (_e *MockStore_Expecter) SaveBlockResponses(height interface{}, responses interface{}, batch interface{}) *MockStore_SaveBlockResponses_Call {
 	return &MockStore_SaveBlockResponses_Call{Call: _e.mock.On("SaveBlockResponses", height, responses, batch)}
@@ -1294,7 +1200,6 @@ func (_c *MockStore_SaveBlockResponses_Call) RunAndReturn(run func(uint64, *stat
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockStore) SaveBlockSource(height uint64, source types.BlockSource, batch store.KVBatch) (store.KVBatch, error) {
 	ret := _m.Called(height, source, batch)
@@ -1325,14 +1230,9 @@ func (_m *MockStore) SaveBlockSource(height uint64, source types.BlockSource, ba
 	return r0, r1
 }
 
-
 type MockStore_SaveBlockSource_Call struct {
 	*mock.Call
 }
-
-
-
-
 
 func (_e *MockStore_Expecter) SaveBlockSource(height interface{}, source interface{}, batch interface{}) *MockStore_SaveBlockSource_Call {
 	return &MockStore_SaveBlockSource_Call{Call: _e.mock.On("SaveBlockSource", height, source, batch)}
@@ -1355,7 +1255,6 @@ func (_c *MockStore_SaveBlockSource_Call) RunAndReturn(run func(uint64, types.Bl
 	return _c
 }
 
-
 func (_m *MockStore) SaveBlockSyncBaseHeight(height uint64) error {
 	ret := _m.Called(height)
 
@@ -1373,12 +1272,9 @@ func (_m *MockStore) SaveBlockSyncBaseHeight(height uint64) error {
 	return r0
 }
 
-
 type MockStore_SaveBlockSyncBaseHeight_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockStore_Expecter) SaveBlockSyncBaseHeight(height interface{}) *MockStore_SaveBlockSyncBaseHeight_Call {
 	return &MockStore_SaveBlockSyncBaseHeight_Call{Call: _e.mock.On("SaveBlockSyncBaseHeight", height)}
@@ -1400,7 +1296,6 @@ func (_c *MockStore_SaveBlockSyncBaseHeight_Call) RunAndReturn(run func(uint64) 
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockStore) SaveDRSVersion(height uint64, version uint32, batch store.KVBatch) (store.KVBatch, error) {
 	ret := _m.Called(height, version, batch)
@@ -1431,14 +1326,9 @@ func (_m *MockStore) SaveDRSVersion(height uint64, version uint32, batch store.K
 	return r0, r1
 }
 
-
 type MockStore_SaveDRSVersion_Call struct {
 	*mock.Call
 }
-
-
-
-
 
 func (_e *MockStore_Expecter) SaveDRSVersion(height interface{}, version interface{}, batch interface{}) *MockStore_SaveDRSVersion_Call {
 	return &MockStore_SaveDRSVersion_Call{Call: _e.mock.On("SaveDRSVersion", height, version, batch)}
@@ -1461,7 +1351,6 @@ func (_c *MockStore_SaveDRSVersion_Call) RunAndReturn(run func(uint64, uint32, s
 	return _c
 }
 
-
 func (_m *MockStore) SaveIndexerBaseHeight(height uint64) error {
 	ret := _m.Called(height)
 
@@ -1479,12 +1368,9 @@ func (_m *MockStore) SaveIndexerBaseHeight(height uint64) error {
 	return r0
 }
 
-
 type MockStore_SaveIndexerBaseHeight_Call struct {
 	*mock.Call
 }
-
-
 
 func (_e *MockStore_Expecter) SaveIndexerBaseHeight(height interface{}) *MockStore_SaveIndexerBaseHeight_Call {
 	return &MockStore_SaveIndexerBaseHeight_Call{Call: _e.mock.On("SaveIndexerBaseHeight", height)}
@@ -1506,7 +1392,6 @@ func (_c *MockStore_SaveIndexerBaseHeight_Call) RunAndReturn(run func(uint64) er
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockStore) SaveLastBlockSequencerSet(sequencers types.Sequencers, batch store.KVBatch) (store.KVBatch, error) {
 	ret := _m.Called(sequencers, batch)
@@ -1537,13 +1422,9 @@ func (_m *MockStore) SaveLastBlockSequencerSet(sequencers types.Sequencers, batc
 	return r0, r1
 }
 
-
 type MockStore_SaveLastBlockSequencerSet_Call struct {
 	*mock.Call
 }
-
-
-
 
 func (_e *MockStore_Expecter) SaveLastBlockSequencerSet(sequencers interface{}, batch interface{}) *MockStore_SaveLastBlockSequencerSet_Call {
 	return &MockStore_SaveLastBlockSequencerSet_Call{Call: _e.mock.On("SaveLastBlockSequencerSet", sequencers, batch)}
@@ -1565,7 +1446,6 @@ func (_c *MockStore_SaveLastBlockSequencerSet_Call) RunAndReturn(run func(types.
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockStore) SaveProposer(height uint64, proposer types.Sequencer, batch store.KVBatch) (store.KVBatch, error) {
 	ret := _m.Called(height, proposer, batch)
@@ -1596,14 +1476,9 @@ func (_m *MockStore) SaveProposer(height uint64, proposer types.Sequencer, batch
 	return r0, r1
 }
 
-
 type MockStore_SaveProposer_Call struct {
 	*mock.Call
 }
-
-
-
-
 
 func (_e *MockStore_Expecter) SaveProposer(height interface{}, proposer interface{}, batch interface{}) *MockStore_SaveProposer_Call {
 	return &MockStore_SaveProposer_Call{Call: _e.mock.On("SaveProposer", height, proposer, batch)}
@@ -1625,7 +1500,6 @@ func (_c *MockStore_SaveProposer_Call) RunAndReturn(run func(uint64, types.Seque
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockStore) SaveState(_a0 *types.State, batch store.KVBatch) (store.KVBatch, error) {
 	ret := _m.Called(_a0, batch)
@@ -1656,13 +1530,9 @@ func (_m *MockStore) SaveState(_a0 *types.State, batch store.KVBatch) (store.KVB
 	return r0, r1
 }
 
-
 type MockStore_SaveState_Call struct {
 	*mock.Call
 }
-
-
-
 
 func (_e *MockStore_Expecter) SaveState(_a0 interface{}, batch interface{}) *MockStore_SaveState_Call {
 	return &MockStore_SaveState_Call{Call: _e.mock.On("SaveState", _a0, batch)}
@@ -1684,7 +1554,6 @@ func (_c *MockStore_SaveState_Call) RunAndReturn(run func(*types.State, store.KV
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockStore) SaveValidationHeight(height uint64, batch store.KVBatch) (store.KVBatch, error) {
 	ret := _m.Called(height, batch)
@@ -1715,13 +1584,9 @@ func (_m *MockStore) SaveValidationHeight(height uint64, batch store.KVBatch) (s
 	return r0, r1
 }
 
-
 type MockStore_SaveValidationHeight_Call struct {
 	*mock.Call
 }
-
-
-
 
 func (_e *MockStore_Expecter) SaveValidationHeight(height interface{}, batch interface{}) *MockStore_SaveValidationHeight_Call {
 	return &MockStore_SaveValidationHeight_Call{Call: _e.mock.On("SaveValidationHeight", height, batch)}
@@ -1744,12 +1609,11 @@ func (_c *MockStore_SaveValidationHeight_Call) RunAndReturn(run func(uint64, sto
 	return _c
 }
 
-
-
 func NewMockStore(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *MockStore {
+},
+) *MockStore {
 	mock := &MockStore{}
 	mock.Mock.Test(t)
 

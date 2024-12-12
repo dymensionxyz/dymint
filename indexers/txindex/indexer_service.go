@@ -11,13 +11,9 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-
-
 const (
 	subscriber = "IndexerService"
 )
-
-
 
 type IndexerService struct {
 	service.BaseService
@@ -26,7 +22,6 @@ type IndexerService struct {
 	blockIdxr indexer.BlockIndexer
 	eventBus  *types.EventBus
 }
-
 
 func NewIndexerService(
 	txIdxr TxIndexer,
@@ -38,12 +33,7 @@ func NewIndexerService(
 	return is
 }
 
-
-
 func (is *IndexerService) OnStart() error {
-	
-	
-	
 	blockHeadersSub, err := is.eventBus.Subscribe(
 		context.Background(),
 		subscriber,
@@ -94,16 +84,13 @@ func (is *IndexerService) OnStart() error {
 	return nil
 }
 
-
 func (is *IndexerService) OnStop() {
 	if is.eventBus.IsRunning() {
 		_ = is.eventBus.UnsubscribeAll(context.Background(), subscriber)
 	}
 }
 
-
 func (is *IndexerService) Prune(to uint64, s store.Store) (uint64, error) {
-	
 	indexerBaseHeight, err := s.LoadIndexerBaseHeight()
 
 	if errors.Is(err, gerrc.ErrNotFound) {
@@ -112,19 +99,16 @@ func (is *IndexerService) Prune(to uint64, s store.Store) (uint64, error) {
 		return 0, err
 	}
 
-	
 	blockPruned, err := is.blockIdxr.Prune(indexerBaseHeight, to, is.Logger)
 	if err != nil {
 		return blockPruned, err
 	}
 
-	
 	txPruned, err := is.txIdxr.Prune(indexerBaseHeight, to, is.Logger)
 	if err != nil {
 		return txPruned, err
 	}
 
-	
 	err = s.SaveIndexerBaseHeight(to)
 	if err != nil {
 		is.Logger.Error("saving indexer base height", "err", err)

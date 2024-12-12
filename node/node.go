@@ -34,14 +34,11 @@ import (
 	"github.com/dymensionxyz/dymint/store"
 )
 
-
 var (
 	mainPrefix    = []byte{0}
 	dalcPrefix    = []byte{1}
 	indexerPrefix = []byte{2}
 )
-
-
 
 type Node struct {
 	service.BaseService
@@ -54,7 +51,6 @@ type Node struct {
 	conf config.NodeConfig
 	P2P  *p2p.Client
 
-	
 	Mempool      mempool.Mempool
 	MempoolIDs   *nodemempool.MempoolIDs
 	incomingTxCh chan *p2p.GossipMessage
@@ -68,11 +64,9 @@ type Node struct {
 	BlockIndexer   indexer.BlockIndexer
 	IndexerService *txindex.IndexerService
 
-	
 	ctx    context.Context
 	cancel context.CancelFunc
 }
-
 
 func NewNode(
 	ctx context.Context,
@@ -102,12 +96,12 @@ func NewNode(
 	var baseKV store.KV
 	var dstore datastore.Datastore
 
-	if conf.DBConfig.InMemory || (conf.RootDir == "" && conf.DBPath == "") { 
+	if conf.DBConfig.InMemory || (conf.RootDir == "" && conf.DBPath == "") {
 		logger.Info("WARNING: working in in-memory mode")
 		baseKV = store.NewDefaultInMemoryKVStore()
 		dstore = datastore.NewMapDatastore()
 	} else {
-		
+
 		baseKV = store.NewKVStore(conf.RootDir, conf.DBPath, "dymint", conf.DBConfig.SyncWrites, logger)
 		path := filepath.Join(store.Rootify(conf.RootDir, conf.DBPath), "blocksync")
 		var err error
@@ -120,9 +114,8 @@ func NewNode(
 	s := store.New(store.NewPrefixKV(baseKV, mainPrefix))
 	indexerKV := store.NewPrefixKV(baseKV, indexerPrefix)
 
-	
 	dalcKV := store.NewPrefixKV(baseKV, dalcPrefix)
-	
+
 	settlementlc := slregistry.GetClient(slregistry.Client(conf.SettlementLayer))
 	if settlementlc == nil {
 		return nil, fmt.Errorf("get settlement client: named: %s", conf.SettlementLayer)
@@ -161,7 +154,7 @@ func NewNode(
 		settlementlc,
 		eventBus,
 		pubsubServer,
-		nil, 
+		nil,
 		dalcKV,
 		indexerService,
 		logger,
@@ -170,7 +163,6 @@ func NewNode(
 		return nil, fmt.Errorf("BlockManager initialization: %w", err)
 	}
 
-	
 	p2pValidator := p2p.NewValidator(logger.With("module", "p2p_validator"), blockManager)
 	p2pClient, err := p2p.NewClient(conf.P2PConfig, p2pKey, genesis.ChainID, s, pubsubServer, dstore, logger.With("module", "p2p"))
 	if err != nil {
@@ -179,7 +171,6 @@ func NewNode(
 	p2pClient.SetTxValidator(p2pValidator.TxValidator(mp, mpIDs))
 	p2pClient.SetBlockValidator(p2pValidator.BlockValidator())
 
-	
 	blockManager.P2PClient = p2pClient
 
 	ctx, cancel := context.WithCancel(ctx)
@@ -209,7 +200,6 @@ func NewNode(
 	return node, nil
 }
 
-
 func (n *Node) OnStart() error {
 	n.Logger.Info("starting P2P client")
 	err := n.P2P.Start(n.ctx)
@@ -234,7 +224,6 @@ func (n *Node) OnStart() error {
 		}
 	}()
 
-	
 	err = n.BlockManager.Start(n.ctx)
 	if err != nil {
 		return fmt.Errorf("while starting block manager: %w", err)
@@ -243,11 +232,9 @@ func (n *Node) OnStart() error {
 	return nil
 }
 
-
 func (n *Node) GetGenesis() *tmtypes.GenesisDoc {
 	return n.genesis
 }
-
 
 func (n *Node) OnStop() {
 	err := n.BlockManager.DAClient.Stop()
@@ -273,31 +260,25 @@ func (n *Node) OnStop() {
 	n.cancel()
 }
 
-
 func (n *Node) OnReset() error {
 	panic("OnReset - not implemented!")
 }
-
 
 func (n *Node) SetLogger(logger log.Logger) {
 	n.Logger = logger
 }
 
-
 func (n *Node) GetLogger() log.Logger {
 	return n.Logger
 }
-
 
 func (n *Node) EventBus() *tmtypes.EventBus {
 	return n.eventBus
 }
 
-
 func (n *Node) PubSubServer() *pubsub.Server {
 	return n.PubsubServer
 }
-
 
 func (n *Node) ProxyApp() proxy.AppConns {
 	return n.proxyApp

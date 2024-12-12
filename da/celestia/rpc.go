@@ -14,11 +14,9 @@ import (
 
 var _ types.CelestiaRPCClient = &OpenRPC{}
 
-
 type OpenRPC struct {
 	rpc *openrpc.Client
 }
-
 
 func NewOpenRPC(rpc *openrpc.Client) *OpenRPC {
 	return &OpenRPC{
@@ -26,36 +24,29 @@ func NewOpenRPC(rpc *openrpc.Client) *OpenRPC {
 	}
 }
 
-
 func (c *OpenRPC) GetAll(ctx context.Context, height uint64, namespaces []share.Namespace) ([]*blob.Blob, error) {
 	return c.rpc.Blob.GetAll(ctx, height, namespaces)
 }
-
 
 func (c *OpenRPC) Submit(ctx context.Context, blobs []*blob.Blob, options *blob.SubmitOptions) (uint64, error) {
 	return c.rpc.Blob.Submit(ctx, blobs, options)
 }
 
-
 func (c *OpenRPC) GetProof(ctx context.Context, height uint64, namespace share.Namespace, commitment blob.Commitment) (*blob.Proof, error) {
 	return c.rpc.Blob.GetProof(ctx, height, namespace, commitment)
 }
-
 
 func (c *OpenRPC) Get(ctx context.Context, height uint64, namespace share.Namespace, commitment blob.Commitment) (*blob.Blob, error) {
 	return c.rpc.Blob.Get(ctx, height, namespace, commitment)
 }
 
-
 func (c *OpenRPC) GetByHeight(ctx context.Context, height uint64) (*header.ExtendedHeader, error) {
 	return c.rpc.Header.GetByHeight(ctx, height)
 }
 
-
 func (c *OpenRPC) Included(ctx context.Context, height uint64, namespace share.Namespace, proof *blob.Proof, commitment blob.Commitment) (bool, error) {
 	return c.rpc.Blob.Included(ctx, height, namespace, proof, commitment)
 }
-
 
 func (c *OpenRPC) GetSignerBalance(ctx context.Context) (*state.Balance, error) {
 	return c.rpc.State.Balance(ctx)

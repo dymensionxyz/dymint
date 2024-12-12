@@ -21,7 +21,6 @@ func ValidateProposedTransition(state *State, block *Block, commit *Commit, prop
 	return nil
 }
 
-
 func (b *Block) ValidateBasic() error {
 	err := b.Header.ValidateBasic()
 	if err != nil {
@@ -93,7 +92,6 @@ func (b *Block) ValidateWithState(state *State) error {
 	return nil
 }
 
-
 func (h *Header) ValidateBasic() error {
 	if len(h.ProposerAddress) == 0 {
 		return ErrEmptyProposerAddress
@@ -102,12 +100,9 @@ func (h *Header) ValidateBasic() error {
 	return nil
 }
 
-
-
 func (d *Data) ValidateBasic() error {
 	return nil
 }
-
 
 func (c *Commit) ValidateBasic() error {
 	if c.Height > 0 {
@@ -133,7 +128,6 @@ func (c *Commit) ValidateWithHeader(proposerPubKey tmcrypto.PubKey, header *Head
 		return err
 	}
 
-	
 	if !proposerPubKey.VerifySignature(abciHeaderBytes, c.Signatures[0]) {
 		return NewErrInvalidSignatureFraud(ErrInvalidSignature, header, c)
 	}

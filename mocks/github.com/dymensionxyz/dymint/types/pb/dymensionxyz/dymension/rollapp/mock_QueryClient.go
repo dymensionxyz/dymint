@@ -1,5 +1,3 @@
-
-
 package rollapp
 
 import (
@@ -12,7 +10,6 @@ import (
 	rollapp "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
 )
 
-
 type MockQueryClient struct {
 	mock.Mock
 }
@@ -24,7 +21,6 @@ type MockQueryClient_Expecter struct {
 func (_m *MockQueryClient) EXPECT() *MockQueryClient_Expecter {
 	return &MockQueryClient_Expecter{mock: &_m.Mock}
 }
-
 
 func (_m *MockQueryClient) LatestHeight(ctx context.Context, in *rollapp.QueryGetLatestHeightRequest, opts ...grpc.CallOption) (*rollapp.QueryGetLatestHeightResponse, error) {
 	_va := make([]interface{}, len(opts))
@@ -62,14 +58,9 @@ func (_m *MockQueryClient) LatestHeight(ctx context.Context, in *rollapp.QueryGe
 	return r0, r1
 }
 
-
 type MockQueryClient_LatestHeight_Call struct {
 	*mock.Call
 }
-
-
-
-
 
 func (_e *MockQueryClient_Expecter) LatestHeight(ctx interface{}, in interface{}, opts ...interface{}) *MockQueryClient_LatestHeight_Call {
 	return &MockQueryClient_LatestHeight_Call{Call: _e.mock.On("LatestHeight",
@@ -98,7 +89,6 @@ func (_c *MockQueryClient_LatestHeight_Call) RunAndReturn(run func(context.Conte
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockQueryClient) LatestStateIndex(ctx context.Context, in *rollapp.QueryGetLatestStateIndexRequest, opts ...grpc.CallOption) (*rollapp.QueryGetLatestStateIndexResponse, error) {
 	_va := make([]interface{}, len(opts))
@@ -136,14 +126,9 @@ func (_m *MockQueryClient) LatestStateIndex(ctx context.Context, in *rollapp.Que
 	return r0, r1
 }
 
-
 type MockQueryClient_LatestStateIndex_Call struct {
 	*mock.Call
 }
-
-
-
-
 
 func (_e *MockQueryClient_Expecter) LatestStateIndex(ctx interface{}, in interface{}, opts ...interface{}) *MockQueryClient_LatestStateIndex_Call {
 	return &MockQueryClient_LatestStateIndex_Call{Call: _e.mock.On("LatestStateIndex",
@@ -172,7 +157,6 @@ func (_c *MockQueryClient_LatestStateIndex_Call) RunAndReturn(run func(context.C
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockQueryClient) ObsoleteDRSVersions(ctx context.Context, in *rollapp.QueryObsoleteDRSVersionsRequest, opts ...grpc.CallOption) (*rollapp.QueryObsoleteDRSVersionsResponse, error) {
 	_va := make([]interface{}, len(opts))
@@ -210,14 +194,9 @@ func (_m *MockQueryClient) ObsoleteDRSVersions(ctx context.Context, in *rollapp.
 	return r0, r1
 }
 
-
 type MockQueryClient_ObsoleteDRSVersions_Call struct {
 	*mock.Call
 }
-
-
-
-
 
 func (_e *MockQueryClient_Expecter) ObsoleteDRSVersions(ctx interface{}, in interface{}, opts ...interface{}) *MockQueryClient_ObsoleteDRSVersions_Call {
 	return &MockQueryClient_ObsoleteDRSVersions_Call{Call: _e.mock.On("ObsoleteDRSVersions",
@@ -246,7 +225,6 @@ func (_c *MockQueryClient_ObsoleteDRSVersions_Call) RunAndReturn(run func(contex
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockQueryClient) Params(ctx context.Context, in *rollapp.QueryParamsRequest, opts ...grpc.CallOption) (*rollapp.QueryParamsResponse, error) {
 	_va := make([]interface{}, len(opts))
@@ -284,14 +262,9 @@ func (_m *MockQueryClient) Params(ctx context.Context, in *rollapp.QueryParamsRe
 	return r0, r1
 }
 
-
 type MockQueryClient_Params_Call struct {
 	*mock.Call
 }
-
-
-
-
 
 func (_e *MockQueryClient_Expecter) Params(ctx interface{}, in interface{}, opts ...interface{}) *MockQueryClient_Params_Call {
 	return &MockQueryClient_Params_Call{Call: _e.mock.On("Params",
@@ -320,7 +293,6 @@ func (_c *MockQueryClient_Params_Call) RunAndReturn(run func(context.Context, *r
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockQueryClient) RegisteredDenoms(ctx context.Context, in *rollapp.QueryRegisteredDenomsRequest, opts ...grpc.CallOption) (*rollapp.QueryRegisteredDenomsResponse, error) {
 	_va := make([]interface{}, len(opts))
@@ -358,14 +330,9 @@ func (_m *MockQueryClient) RegisteredDenoms(ctx context.Context, in *rollapp.Que
 	return r0, r1
 }
 
-
 type MockQueryClient_RegisteredDenoms_Call struct {
 	*mock.Call
 }
-
-
-
-
 
 func (_e *MockQueryClient_Expecter) RegisteredDenoms(ctx interface{}, in interface{}, opts ...interface{}) *MockQueryClient_RegisteredDenoms_Call {
 	return &MockQueryClient_RegisteredDenoms_Call{Call: _e.mock.On("RegisteredDenoms",
@@ -394,7 +361,6 @@ func (_c *MockQueryClient_RegisteredDenoms_Call) RunAndReturn(run func(context.C
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockQueryClient) Rollapp(ctx context.Context, in *rollapp.QueryGetRollappRequest, opts ...grpc.CallOption) (*rollapp.QueryGetRollappResponse, error) {
 	_va := make([]interface{}, len(opts))
@@ -432,14 +398,9 @@ func (_m *MockQueryClient) Rollapp(ctx context.Context, in *rollapp.QueryGetRoll
 	return r0, r1
 }
 
-
 type MockQueryClient_Rollapp_Call struct {
 	*mock.Call
 }
-
-
-
-
 
 func (_e *MockQueryClient_Expecter) Rollapp(ctx interface{}, in interface{}, opts ...interface{}) *MockQueryClient_Rollapp_Call {
 	return &MockQueryClient_Rollapp_Call{Call: _e.mock.On("Rollapp",
@@ -468,7 +429,6 @@ func (_c *MockQueryClient_Rollapp_Call) RunAndReturn(run func(context.Context, *
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockQueryClient) RollappAll(ctx context.Context, in *rollapp.QueryAllRollappRequest, opts ...grpc.CallOption) (*rollapp.QueryAllRollappResponse, error) {
 	_va := make([]interface{}, len(opts))
@@ -506,14 +466,9 @@ func (_m *MockQueryClient) RollappAll(ctx context.Context, in *rollapp.QueryAllR
 	return r0, r1
 }
 
-
 type MockQueryClient_RollappAll_Call struct {
 	*mock.Call
 }
-
-
-
-
 
 func (_e *MockQueryClient_Expecter) RollappAll(ctx interface{}, in interface{}, opts ...interface{}) *MockQueryClient_RollappAll_Call {
 	return &MockQueryClient_RollappAll_Call{Call: _e.mock.On("RollappAll",
@@ -542,7 +497,6 @@ func (_c *MockQueryClient_RollappAll_Call) RunAndReturn(run func(context.Context
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockQueryClient) RollappByEIP155(ctx context.Context, in *rollapp.QueryGetRollappByEIP155Request, opts ...grpc.CallOption) (*rollapp.QueryGetRollappResponse, error) {
 	_va := make([]interface{}, len(opts))
@@ -580,14 +534,9 @@ func (_m *MockQueryClient) RollappByEIP155(ctx context.Context, in *rollapp.Quer
 	return r0, r1
 }
 
-
 type MockQueryClient_RollappByEIP155_Call struct {
 	*mock.Call
 }
-
-
-
-
 
 func (_e *MockQueryClient_Expecter) RollappByEIP155(ctx interface{}, in interface{}, opts ...interface{}) *MockQueryClient_RollappByEIP155_Call {
 	return &MockQueryClient_RollappByEIP155_Call{Call: _e.mock.On("RollappByEIP155",
@@ -616,7 +565,6 @@ func (_c *MockQueryClient_RollappByEIP155_Call) RunAndReturn(run func(context.Co
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockQueryClient) StateInfo(ctx context.Context, in *rollapp.QueryGetStateInfoRequest, opts ...grpc.CallOption) (*rollapp.QueryGetStateInfoResponse, error) {
 	_va := make([]interface{}, len(opts))
@@ -654,14 +602,9 @@ func (_m *MockQueryClient) StateInfo(ctx context.Context, in *rollapp.QueryGetSt
 	return r0, r1
 }
 
-
 type MockQueryClient_StateInfo_Call struct {
 	*mock.Call
 }
-
-
-
-
 
 func (_e *MockQueryClient_Expecter) StateInfo(ctx interface{}, in interface{}, opts ...interface{}) *MockQueryClient_StateInfo_Call {
 	return &MockQueryClient_StateInfo_Call{Call: _e.mock.On("StateInfo",
@@ -690,7 +633,6 @@ func (_c *MockQueryClient_StateInfo_Call) RunAndReturn(run func(context.Context,
 	_c.Call.Return(run)
 	return _c
 }
-
 
 func (_m *MockQueryClient) ValidateGenesisBridge(ctx context.Context, in *rollapp.QueryValidateGenesisBridgeRequest, opts ...grpc.CallOption) (*rollapp.QueryValidateGenesisBridgeResponse, error) {
 	_va := make([]interface{}, len(opts))
@@ -728,14 +670,9 @@ func (_m *MockQueryClient) ValidateGenesisBridge(ctx context.Context, in *rollap
 	return r0, r1
 }
 
-
 type MockQueryClient_ValidateGenesisBridge_Call struct {
 	*mock.Call
 }
-
-
-
-
 
 func (_e *MockQueryClient_Expecter) ValidateGenesisBridge(ctx interface{}, in interface{}, opts ...interface{}) *MockQueryClient_ValidateGenesisBridge_Call {
 	return &MockQueryClient_ValidateGenesisBridge_Call{Call: _e.mock.On("ValidateGenesisBridge",
@@ -765,12 +702,11 @@ func (_c *MockQueryClient_ValidateGenesisBridge_Call) RunAndReturn(run func(cont
 	return _c
 }
 
-
-
 func NewMockQueryClient(t interface {
 	mock.TestingT
 	Cleanup(func())
-}) *MockQueryClient {
+},
+) *MockQueryClient {
 	mock := &MockQueryClient{}
 	mock.Mock.Test(t)
 

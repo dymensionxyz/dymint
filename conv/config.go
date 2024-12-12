@@ -8,10 +8,6 @@ import (
 	"github.com/dymensionxyz/dymint/config"
 )
 
-
-
-
-
 func GetNodeConfig(nodeConf *config.NodeConfig, tmConf *tmcfg.Config) error {
 	if tmConf == nil {
 		return errors.New("tendermint config is nil but required to populate Dymint config")
@@ -31,7 +27,7 @@ func GetNodeConfig(nodeConf *config.NodeConfig, tmConf *tmcfg.Config) error {
 	if tmConf.Mempool == nil {
 		return errors.New("tendermint mempool config is nil but required to populate Dymint config")
 	}
-	
+
 	nodeConf.MempoolConfig = *tmConf.Mempool
 
 	return nil

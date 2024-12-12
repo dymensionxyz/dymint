@@ -14,7 +14,6 @@ import (
 )
 
 const (
-	
 	DefaultDymintDir      = ".dymint"
 	DefaultConfigDirName  = "config"
 	DefaultConfigFileName = "dymint.toml"
@@ -23,63 +22,54 @@ const (
 	MaxBatchSubmitTime    = 1 * time.Hour
 )
 
-
 type NodeConfig struct {
-	
 	RootDir       string
 	DBPath        string
 	RPC           RPCConfig
 	MempoolConfig tmcfg.MempoolConfig
 
-	
 	BlockManagerConfig `mapstructure:",squash"`
 	DAConfig           string                 `mapstructure:"da_config"`
 	SettlementLayer    string                 `mapstructure:"settlement_layer"`
 	SettlementConfig   settlement.Config      `mapstructure:",squash"`
 	Instrumentation    *InstrumentationConfig `mapstructure:"instrumentation"`
-	
+
 	DAGrpc grpc.Config `mapstructure:",squash"`
-	
+
 	P2PConfig `mapstructure:",squash"`
-	
+
 	DBConfig `mapstructure:"db"`
 }
 
-
 type BlockManagerConfig struct {
-	
 	BlockTime time.Duration `mapstructure:"block_time"`
-	
+
 	MaxIdleTime time.Duration `mapstructure:"max_idle_time"`
-	
+
 	MaxProofTime time.Duration `mapstructure:"max_proof_time"`
-	
+
 	BatchSubmitTime time.Duration `mapstructure:"batch_submit_time"`
-	
+
 	MaxSkewTime time.Duration `mapstructure:"max_skew_time"`
-	
+
 	BatchSubmitBytes uint64 `mapstructure:"batch_submit_bytes"`
-	
+
 	SequencerSetUpdateInterval time.Duration `mapstructure:"sequencer_update_interval"`
 }
-
 
 func (nc *NodeConfig) GetViperConfig(cmd *cobra.Command, homeDir string) error {
 	v := viper.GetViper()
 
-	
 	EnsureRoot(homeDir, nil)
 	v.SetConfigName("dymint")
-	v.AddConfigPath(homeDir)                                      
-	v.AddConfigPath(filepath.Join(homeDir, DefaultConfigDirName)) 
+	v.AddConfigPath(homeDir)
+	v.AddConfigPath(filepath.Join(homeDir, DefaultConfigDirName))
 
-	
 	err := BindDymintFlags(cmd, v)
 	if err != nil {
 		return err
 	}
 
-	
 	err = v.ReadInConfig()
 	if err != nil {
 		return err
@@ -126,7 +116,6 @@ func (nc NodeConfig) Validate() error {
 	return nil
 }
 
-
 func (c BlockManagerConfig) Validate() error {
 	if c.BlockTime < MinBlockTime {
 		return fmt.Errorf("block_time cannot be less than %s", MinBlockTime)
@@ -139,7 +128,7 @@ func (c BlockManagerConfig) Validate() error {
 	if c.MaxIdleTime < 0 {
 		return fmt.Errorf("max_idle_time must be positive or zero to disable")
 	}
-	
+
 	if c.MaxIdleTime != 0 {
 		if c.MaxIdleTime <= c.BlockTime || c.MaxIdleTime > MaxBatchSubmitTime {
 			return fmt.Errorf("max_idle_time must be greater than block_time and not greater than %s", MaxBatchSubmitTime)
@@ -203,14 +192,9 @@ func (nc NodeConfig) validateInstrumentation() error {
 	return nc.Instrumentation.Validate()
 }
 
-
 type InstrumentationConfig struct {
-	
-	
-	
 	Prometheus bool `mapstructure:"prometheus"`
 
-	
 	PrometheusListenAddr string `mapstructure:"prometheus_listen_addr"`
 }
 
@@ -222,11 +206,9 @@ func (ic InstrumentationConfig) Validate() error {
 	return nil
 }
 
-
 type DBConfig struct {
-	
 	SyncWrites bool `mapstructure:"sync_writes"`
-	
+
 	InMemory bool `mapstructure:"in_memory"`
 }
 

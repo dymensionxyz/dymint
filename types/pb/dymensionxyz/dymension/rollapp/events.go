@@ -11,12 +11,10 @@ const (
 	AttributeKeyDAPath         = "da_path"
 	AttributeKeyStatus         = "status"
 
-	
 	EventTypeFraud             = "fraud_proposal"
 	AttributeKeyFraudHeight    = "fraud_height"
 	AttributeKeyFraudSequencer = "fraud_sequencer"
 	AttributeKeyClientID       = "client_id"
 
-	
 	EventTypeTransferGenesisTransfersEnabled = "transfer_genesis_transfers_enabled"
 )
