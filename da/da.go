@@ -80,6 +80,8 @@ type DASubmitMetaData struct {
 	WvmArweaveBlockHash string
 	// WeaveVM tx hash
 	WvmTxHash string
+	// WeaveVM block hash
+	WvmBlockHash string
 }
 
 type Balance struct {
@@ -185,6 +187,8 @@ type DACheckMetaData struct {
 	WvmArweaveBlockHash string
 	// WeaveVM tx hash
 	WvmTxHash string
+	// WeaveVM block hash
+	WvmBlockHash string
 }
 
 // ResultSubmitBatch contains information returned from DA layer after block submission.

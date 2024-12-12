@@ -174,6 +174,15 @@ func (rpc *RPCClient) sendRawTransaction(ctx context.Context, signedTxHex string
 	return tx.Hash().String(), nil
 }
 
+func (rpc *RPCClient) GetTransactionByHash(ctx context.Context, txHash string) (*ethtypes.Transaction, bool, error) {
+	hash := common.HexToHash(txHash)
+	tx, isPending, err := rpc.client.TransactionByHash(ctx, hash)
+	if err != nil {
+		return nil, false, fmt.Errorf("failed to get transaction by hash: %w", err)
+	}
+	return tx, isPending, nil
+}
+
 func (rpc *RPCClient) GetTransactionReceipt(ctx context.Context, txHash string) (*ethtypes.Receipt, error) {
 	hash := common.HexToHash(txHash)
 

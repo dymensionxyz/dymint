@@ -1,6 +1,7 @@
 package weave_vm
 
 import (
+	"bytes"
 	"context"
 	"encoding/hex"
 	"encoding/json"
@@ -22,9 +23,9 @@ import (
 	pb "github.com/dymensionxyz/dymint/types/pb/dymint"
 	uretry "github.com/dymensionxyz/dymint/utils/retry"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/gogo/protobuf/proto"
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
@@ -32,6 +33,7 @@ import (
 type WeaveVM interface {
 	SendTransaction(ctx context.Context, to string, data []byte) (string, error)
 	GetTransactionReceipt(ctx context.Context, txHash string) (*ethtypes.Receipt, error)
+	GetTransactionByHash(ctx context.Context, txHash string) (*ethtypes.Transaction, bool, error)
 }
 
 // TODO: adjust
@@ -95,7 +97,7 @@ func WithSubmitBackoff(c uretry.BackoffConfig) da.Option {
 func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.Server, kvStore store.KV, logger types.Logger, options ...da.Option) error {
 	var cfg weaveVMtypes.Config
 	if len(config) > 0 {
-		err := json.Unmarshal(config, &c.config)
+		err := json.Unmarshal(config, &cfg)
 		if err != nil {
 			return fmt.Errorf("failed to unmarshal config: %w", err)
 		}
@@ -192,6 +194,8 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 		}
 	}
 
+	commitment := generateCommitment(data)
+
 	if len(data) > weaveVMtypes.WeaveVMMaxTransactionSize {
 		return da.ResultSubmitBatch{
 			BaseResult: da.BaseResult{
@@ -210,7 +214,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			c.logger.Debug("Context cancelled.")
 			return da.ResultSubmitBatch{}
 		default:
-			height, commitment, err := c.submit(data)
+			submitMeta, err := c.submit(data)
 			if errors.Is(err, gerrc.ErrInternal) {
 				err = fmt.Errorf("submit: %w", err)
 				return da.ResultSubmitBatch{
@@ -230,10 +234,11 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			}
 
 			daMetaData := &da.DASubmitMetaData{
-				Client:     da.WeaveVM,
-				Height:     height,
-				Commitment: commitment,
-				Namespace:  nil,
+				Client:       da.WeaveVM,
+				Height:       submitMeta.WvmBlockNumber.Uint64(),
+				Commitment:   commitment,
+				WvmTxHash:    submitMeta.WvmTxHash,
+				WvmBlockHash: submitMeta.WvmBlockHash,
 			}
 
 			c.logger.Debug("Submitted blob to DA successfully.")
@@ -285,25 +290,46 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
+	c.logger.Debug("Getting blob from weaveVM DA.")
 
-	c.logger.Debug("Getting blob from DA.", "height", daMetaData.Height, "namespace", hex.EncodeToString(daMetaData.Namespace), "commitment", hex.EncodeToString(daMetaData.Commitment))
-	var batches []*types.Batch
-
-	// get wvm tx hash
-
-	txHash := common.BytesToHash(daMetaData.Commitment)
-
-	blob, err := c.getFromGateway(ctx, txHash.Hex())
-	if err != nil {
-		return da.ResultRetrieveBatch{
-			BaseResult: da.BaseResult{
-				Code:    da.StatusError,
-				Message: err.Error(),
-				Error:   da.ErrRetrieval,
-			},
-		}
+	// 1. Try WeaveVM RPC first
+	data, errRpc := c.retrieveFromWeaveVM(ctx, daMetaData.WvmTxHash)
+	if errRpc != nil {
+		c.logger.Error("Failed to retrieve blob from weavevm rpc, we will try to use weavevm gateway",
+			"wvm_tx_hash", daMetaData.WvmTxHash, "error", errRpc)
+		errRpc = fmt.Errorf("unable to retrieve data from weavevm chain rpc: %w", errRpc)
 	}
-	if blob == nil {
+	if errRpc == nil {
+		return c.processRetrievedData(data, daMetaData)
+	}
+
+	// 2. Try gateway
+	data, errGateway := c.retrieveFromGateway(ctx, daMetaData.WvmTxHash)
+	if errGateway == nil {
+		return c.processRetrievedData(data, daMetaData)
+	}
+
+	return da.ResultRetrieveBatch{
+		BaseResult: da.BaseResult{
+			Code:    da.StatusError,
+			Message: fmt.Sprintf("failed to retrieve blob from both endpoints: %s :%s", errGateway.Error(), errRpc.Error()),
+			Error:   da.ErrRetrieval,
+		},
+	}
+}
+
+func (c *DataAvailabilityLayerClient) retrieveFromWeaveVM(ctx context.Context, txHash string) (*WvmDymintBlob, error) {
+	tx, _, err := c.client.GetTransactionByHash(ctx, txHash)
+	if err != nil {
+		return nil, err
+	}
+
+	return &WvmDymintBlob{Blob: tx.Data(), WvmTxHash: txHash}, nil
+}
+
+func (c *DataAvailabilityLayerClient) processRetrievedData(data *WvmDymintBlob, daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
+	var batches []*types.Batch
+	if data.Blob == nil {
 		return da.ResultRetrieveBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
@@ -313,10 +339,24 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMet
 		}
 	}
 
+	// Verify blob data integrity
+	if err := c.verifyBlobData(daMetaData.Commitment, data.Blob); err != nil {
+		return da.ResultRetrieveBatch{
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: err.Error(),
+				Error:   da.ErrProofNotMatching,
+			},
+		}
+	}
 	var batch pb.Batch
-	err = proto.Unmarshal(blob.Blob, &batch)
+	err := proto.Unmarshal(data.Blob, &batch)
 	if err != nil {
-		c.logger.Error("Unmarshal blob.", "daHeight", daMetaData.Height, "error", err)
+		c.logger.Error("Unmarshal blob.",
+			"wvm_block_number", daMetaData.Height,
+			"wvm_block_hash", daMetaData.WvmBlockHash,
+			"wvm_tx_hash", daMetaData.WvmTxHash,
+			"arweave_block_hash", daMetaData.WvmArweaveBlockHash, "error", err)
 		return da.ResultRetrieveBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
@@ -326,7 +366,7 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMet
 		}
 	}
 
-	c.logger.Debug("Blob retrieved successfully from DA.", "DA height", daMetaData.Height, "lastBlockHeight", batch.EndHeight)
+	c.logger.Debug("Blob retrieved successfully from WeaveVM DA.", "wvm_tx_hash", daMetaData.WvmTxHash)
 
 	parsedBatch := new(types.Batch)
 	err = parsedBatch.FromProto(&batch)
@@ -359,7 +399,8 @@ type WvmDymintBlob struct {
 }
 
 // Modified get function with improved error handling
-func (c *DataAvailabilityLayerClient) getFromGateway(ctx context.Context, weaveVMTxHash string) (*WvmDymintBlob, error) {
+func (c *DataAvailabilityLayerClient) retrieveFromGateway(ctx context.Context, txHash string) (*WvmDymintBlob, error) {
+	// TODO: add block number in response
 	type WvmRetrieverResponse struct {
 		ArweaveBlockHash   string `json:"arweave_block_hash"`
 		Calldata           string `json:"calldata"`
@@ -368,7 +409,7 @@ func (c *DataAvailabilityLayerClient) getFromGateway(ctx context.Context, weaveV
 	}
 	r, err := http.NewRequestWithContext(ctx, http.MethodGet,
 		fmt.Sprintf(weaveVMGatewayURL,
-			weaveVMTxHash), nil)
+			txHash), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
@@ -424,7 +465,7 @@ func (c *DataAvailabilityLayerClient) getFromGateway(ctx context.Context, weaveV
 		return nil, fmt.Errorf("decoded blob has length zero")
 	}
 
-	return &WvmDymintBlob{ArweaveBlockHash: weaveVMData.ArweaveBlockHash, WvmBlockHash: weaveVMData.WvmBlockHash, WvmTxHash: weaveVMTxHash, Blob: blob}, nil
+	return &WvmDymintBlob{ArweaveBlockHash: weaveVMData.ArweaveBlockHash, WvmBlockHash: weaveVMData.WvmBlockHash, WvmTxHash: txHash, Blob: blob}, nil
 }
 
 func validateResponse(resp *http.Response, body []byte) error {
@@ -473,14 +514,17 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 }
 
 func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
+	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
+	defer cancel()
+
 	DACheckMetaData := &da.DACheckMetaData{
-		Client:              daMetaData.Client,
-		WvmArweaveBlockHash: daMetaData.WvmArweaveBlockHash,
-		WvmTxHash:           daMetaData.WvmTxHash,
+		Client:       daMetaData.Client,
+		Height:       daMetaData.Height,
+		WvmTxHash:    daMetaData.WvmTxHash,
+		WvmBlockHash: daMetaData.WvmBlockHash,
 	}
 
-	txHash := common.BytesToHash(daMetaData.Commitment)
-	wvmBlob, err := c.getFromGateway(context.Background(), txHash.Hex())
+	wvmBlob, err := c.retrieveFromGateway(ctx, daMetaData.WvmTxHash)
 	if err != nil {
 		return da.ResultCheckBatch{
 			BaseResult: da.BaseResult{
@@ -492,17 +536,27 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 		}
 	}
 
-	// Verify both WeaveVM tx hash and Arweave block hash match what we got during submission
-	if daMetaData.WvmTxHash != wvmBlob.WvmTxHash ||
-		daMetaData.WvmArweaveBlockHash != wvmBlob.ArweaveBlockHash {
+	if err := c.verifyBlobData(daMetaData.Commitment, wvmBlob.Blob); err != nil {
 		return da.ResultCheckBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
-				Message: "data verification mismatch",
-				Error:   da.ErrBlobNotFound,
+				Message: err.Error(),
+				Error:   da.ErrProofNotMatching,
 			},
-			CheckMetaData: DACheckMetaData,
 		}
+	}
+
+	if DACheckMetaData.WvmArweaveBlockHash == "" {
+		DACheckMetaData.WvmArweaveBlockHash = wvmBlob.ArweaveBlockHash
+	} else {
+		// could be reorg cases
+		if DACheckMetaData.WvmArweaveBlockHash != wvmBlob.ArweaveBlockHash {
+			// update arweave blob hash
+			DACheckMetaData.WvmArweaveBlockHash = wvmBlob.WvmBlockHash
+		}
+	}
+	if DACheckMetaData.WvmBlockHash != wvmBlob.WvmBlockHash {
+		DACheckMetaData.WvmBlockHash = wvmBlob.WvmBlockHash
 	}
 
 	return da.ResultCheckBatch{
@@ -514,16 +568,23 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 	}
 }
 
+type WvmSubmitBlobMeta struct {
+	WvmBlockNumber      *big.Int
+	WvmBlockHash        string
+	WvmTxHash           string
+	WvmArweaveBlockHash string
+}
+
 // Submit submits the Blobs to Data Availability layer.
-func (c *DataAvailabilityLayerClient) submit(daBlob da.Blob) (uint64, da.Commitment, error) {
-	// Create context with timeout
+func (c *DataAvailabilityLayerClient) submit(daBlob da.Blob) (*WvmSubmitBlobMeta, error) {
+	// create context with timeout
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
 	// Submit transaction to WeaveVM with the blob data
 	txHash, err := c.client.SendTransaction(ctx, weaveVMtypes.ArchivePoolAddress, daBlob)
 	if err != nil {
-		return 0, nil, fmt.Errorf("failed to send transaction: %w", gerrc.ErrInternal)
+		return nil, fmt.Errorf("failed to send transaction: %w", gerrc.ErrInternal)
 	}
 
 	c.logger.Info("wvm tx hash", "hash", txHash)
@@ -531,11 +592,51 @@ func (c *DataAvailabilityLayerClient) submit(daBlob da.Blob) (uint64, da.Commitm
 	// Wait for receipt
 	receipt, err := c.waitForTxReceipt(ctx, txHash)
 	if err != nil {
-		return 0, nil, fmt.Errorf("failed to get tx receipt: %w", err)
+		return nil, fmt.Errorf("failed to get tx receipt: %w", err)
 	}
 
-	return receipt.BlockNumber.Uint64(), receipt.TxHash.Bytes(), nil
+	// Update DAMetaData with both hashes
+	c.logger.Info("data available in arweave",
+		"wvm_tx", receipt.TxHash.Hex(),
+		"wvm_block", receipt.BlockHash.Hex(),
+		"wvm_block_number", receipt.BlockNumber)
+
+	return &WvmSubmitBlobMeta{WvmBlockNumber: receipt.BlockNumber, WvmBlockHash: receipt.BlockHash.Hex(), WvmTxHash: receipt.TxHash.Hex()}, nil
 }
+
+/* we guarantee that tx will be included in arweave in some delta time after weavevm chain inclusion
+func (c *DataAvailabilityLayerClient) waitForArweaveInclusion(ctx context.Context, wvmTxHash string) (string, error) {
+	var arweaveBlockHash string
+
+	err := retry.Do(
+		func() error {
+			// Get from gateway which will return data once it's in Arweave
+			blob, err := c.retrieveFromGateway(ctx, wvmTxHash)
+			if err != nil {
+				return fmt.Errorf("gateway check failed: %w", err)
+			}
+
+			if blob == nil || blob.ArweaveBlockHash == "" {
+				return errors.New("data not yet available in arweave")
+			}
+
+			arweaveBlockHash = blob.ArweaveBlockHash
+			return nil
+		},
+		retry.Context(ctx),
+		retry.Attempts(uint(*c.config.RetryAttempts)),
+		retry.Delay(c.config.RetryDelay),
+		retry.OnRetry(func(n uint, err error) {
+			c.logger.Debug("waiting for arweave inclusion",
+				"wvm_tx", wvmTxHash,
+				"attempt", n,
+				"error", err)
+		}),
+	)
+
+	return arweaveBlockHash, err
+}
+*/
 
 func (c *DataAvailabilityLayerClient) waitForTxReceipt(ctx context.Context, txHash string) (*ethtypes.Receipt, error) {
 	var receipt *ethtypes.Receipt
@@ -572,27 +673,27 @@ func (c *DataAvailabilityLayerClient) waitForTxReceipt(ctx context.Context, txHa
 }
 
 // GetMaxBlobSizeBytes returns the maximum allowed blob size in the DA, used to check the max batch size configured
-func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint32 {
+func (c *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint32 {
 	return weaveVMtypes.WeaveVMMaxTransactionSize
 }
 
 // GetSignerBalance returns the balance for a specific address
-func (d *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
+func (c *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
 	return da.Balance{}, nil
-	/*
-		ctx, cancel := context.WithTimeout(d.ctx, d.config.Timeout)
-		defer cancel()
+}
 
-		balance, err := d.rpc.GetSignerBalance(ctx)
-		if err != nil {
-			return da.Balance{}, fmt.Errorf("get balance: %w", err)
-		}
+func generateCommitment(data []byte) []byte {
+	return crypto.Keccak256(data)
+}
 
-		daBalance := da.Balance{
-			Amount: balance.Amount,
-			Denom:  balance.Denom,
-		}
-
-		return daBalance, nil
-	*/
+func (c *DataAvailabilityLayerClient) verifyBlobData(commitment []byte, data []byte) error {
+	h := crypto.Keccak256Hash(data)
+	if !bytes.Equal(h[:], commitment) {
+		c.logger.Debug("commitment verification failed",
+			"expected", hex.EncodeToString(commitment),
+			"got", h.Hex())
+		return fmt.Errorf("commitment does not match data, expected: %s got: %s",
+			hex.EncodeToString(commitment), h.Hex())
+	}
+	return nil
 }
