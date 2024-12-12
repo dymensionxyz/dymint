@@ -8,19 +8,19 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-
+// BlockIndexer defines an interface contract for indexing block events.
 type BlockIndexer interface {
-	
-	
+	// Has returns true if the given height has been indexed. An error is returned
+	// upon database query failure.
 	Has(height int64) (bool, error)
 
-	
+	// Index indexes BeginBlock and EndBlock events for a given block by its height.
 	Index(types.EventDataNewBlockHeader) error
 
-	
-	
+	// Search performs a query for block heights that match a given BeginBlock
+	// and Endblock event search criteria.
 	Search(ctx context.Context, q *query.Query) ([]int64, error)
 
-	
+	// Delete indexed block entries  up to (but not including) a height. It returns number of entries pruned.
 	Prune(from, to uint64, logger log.Logger) (uint64, error)
 }

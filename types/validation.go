@@ -21,7 +21,7 @@ func ValidateProposedTransition(state *State, block *Block, commit *Commit, prop
 	return nil
 }
 
-
+// ValidateBasic performs basic validation of a block.
 func (b *Block) ValidateBasic() error {
 	err := b.Header.ValidateBasic()
 	if err != nil {
@@ -93,7 +93,7 @@ func (b *Block) ValidateWithState(state *State) error {
 	return nil
 }
 
-
+// ValidateBasic performs basic validation of a header.
 func (h *Header) ValidateBasic() error {
 	if len(h.ProposerAddress) == 0 {
 		return ErrEmptyProposerAddress
@@ -102,13 +102,13 @@ func (h *Header) ValidateBasic() error {
 	return nil
 }
 
-
-
+// ValidateBasic performs basic validation of block data.
+// Actually it's a placeholder, because nothing is checked.
 func (d *Data) ValidateBasic() error {
 	return nil
 }
 
-
+// ValidateBasic performs basic validation of a commit.
 func (c *Commit) ValidateBasic() error {
 	if c.Height > 0 {
 		if len(c.Signatures) != 1 {
@@ -133,7 +133,7 @@ func (c *Commit) ValidateWithHeader(proposerPubKey tmcrypto.PubKey, header *Head
 		return err
 	}
 
-	
+	// commit is validated to have single signature
 	if !proposerPubKey.VerifySignature(abciHeaderBytes, c.Signatures[0]) {
 		return NewErrInvalidSignatureFraud(ErrInvalidSignature, header, c)
 	}

@@ -36,95 +36,99 @@ import (
 )
 
 const (
-	
+	// RunModeProposer represents a node running as a proposer
 	RunModeProposer uint = iota
-	
+	// RunModeFullNode represents a node running as a full node
 	RunModeFullNode
 )
 
-
+// Manager is responsible for aggregating transactions into blocks.
 type Manager struct {
 	logger types.Logger
 
-	
+	// Configuration
 	Conf            config.BlockManagerConfig
 	Genesis         *tmtypes.GenesisDoc
 	GenesisChecksum string
 	LocalKey        crypto.PrivKey
 	RootDir         string
 
-	
+	// Store and execution
 	Store      store.Store
 	State      *types.State
 	Executor   ExecutorI
-	Sequencers *types.SequencerSet 
+	Sequencers *types.SequencerSet // Sequencers is the set of sequencers that are currently active on the rollapp
 
-	
+	// Clients and servers
 	Pubsub    *pubsub.Server
 	P2PClient *p2p.Client
 	DAClient  da.DataAvailabilityLayerClient
 	SLClient  settlement.ClientI
 
-	
+	// RunMode represents the mode of the node. Set during initialization and shouldn't change after that.
 	RunMode uint
 
-	
+	// context used when freezing node
 	Cancel context.CancelFunc
 	Ctx    context.Context
 
-	
+	// LastBlockTimeInSettlement is the time of last submitted block, used to measure batch skew time
 	LastBlockTimeInSettlement atomic.Int64
 
-	
+	// LastBlockTime is the time of last produced block, used to measure batch skew time
 	LastBlockTime atomic.Int64
 
-	
+	// mutex used to avoid stopping node when fork is detected but proposer is creating/sending fork batch
 	forkMu sync.Mutex
-	
-	
-	
-	
-	
+	/*
+		Sequencer and full-node
+	*/
+	// The last height which was submitted to settlement, that we know of. When we produce new batches, we will
+	// start at this height + 1.
+	// It is ALSO used by the producer, because the producer needs to check if it can prune blocks and it won't
+	// prune anything that might be submitted in the future. Therefore, it must be atomic.
 	LastSettlementHeight atomic.Uint64
 
-	
+	// channel used to send the retain height to the pruning background loop
 	pruningC chan int64
 
-	
+	// indexer
 	IndexerService *txindex.IndexerService
 
-	
+	// used to fetch blocks from DA. Sequencer will only fetch batches in case it requires to re-sync (in case of rollback). Full-node will fetch batches for syncing and validation.
 	Retriever da.BatchRetriever
 
-	
-	
-	
+	/*
+		Full-node only
+	*/
+	// Protect against processing two blocks at once when there are two routines handling incoming gossiped blocks,
+	// and incoming DA blocks, respectively.
 	retrieverMu sync.Mutex
 
-	
-	
+	// Cached blocks and commits, coming from P2P, for applying at future heights. The blocks may not be valid, because
+	// we can only do full validation in sequential order.
 	blockCache *Cache
 
-	
+	// TargetHeight holds the value of the current highest block seen from either p2p (probably higher) or the DA
 	TargetHeight atomic.Uint64
 
-	
+	// Fraud handler
 	FraudHandler FraudHandler
 
-	
+	// channel used to signal the syncing loop when there is a new state update available
 	settlementSyncingC chan struct{}
 
-	
+	// channel used to signal the validation loop when there is a new state update available
 	settlementValidationC chan struct{}
 
-	
+	// notifies when the node has completed syncing
 	syncedFromSettlement *uchannel.Nudger
 
-	
+	// validates all non-finalized state updates from settlement, checking there is consistency between DA and P2P blocks, and the information in the state update.
 	SettlementValidator *SettlementValidator
 }
 
-
+// NewManager creates new block Manager.
 func NewManager(
 	localKey crypto.PrivKey,
 	conf config.NodeConfig,
@@ -151,7 +155,7 @@ func NewManager(
 		mempool,
 		proxyApp,
 		eventBus,
-		NewConsensusMsgQueue(), 
+		NewConsensusMsgQueue(), // TODO properly specify ConsensusMsgStream: https://github.com/dymensionxyz/dymint/issues/1125
 		logger,
 	)
 	if err != nil {
@@ -175,10 +179,10 @@ func NewManager(
 		blockCache: &Cache{
 			cache: make(map[uint64]types.CachedBlock),
 		},
-		pruningC:              make(chan int64, 10),   
-		settlementSyncingC:    make(chan struct{}, 1), 
-		settlementValidationC: make(chan struct{}, 1), 
-		syncedFromSettlement:  uchannel.NewNudger(),   
+		pruningC:              make(chan int64, 10),   // use of buffered channel to avoid blocking applyBlock thread. In case channel is full, pruning will be skipped, but the retain height can be pruned in the next iteration.
+		settlementSyncingC:    make(chan struct{}, 1), // use of buffered channel to avoid blocking. In case channel is full, its skipped because there is an ongoing syncing process, but syncing height is updated, which means the ongoing syncing will sync to the new height.
+		settlementValidationC: make(chan struct{}, 1), // use of buffered channel to avoid blocking. In case channel is full, its skipped because there is an ongoing validation process, but validation height is updated, which means the ongoing validation will validate to the new height.
+		syncedFromSettlement:  uchannel.NewNudger(),   // used by the sequencer to wait  till the node completes the syncing from settlement.
 	}
 	m.setFraudHandler(NewFreezeHandler(m))
 	err = m.LoadStateOnInit(store, genesis, logger)
@@ -191,13 +195,13 @@ func NewManager(
 		return nil, err
 	}
 
-	
+	// update dymint state with next revision info
 	err = m.updateStateForNextRevision()
 	if err != nil {
 		return nil, err
 	}
 
-	
+	// validate configuration params and rollapp consensus params are in line
 	err = m.ValidateConfigWithRollappParams()
 	if err != nil {
 		return nil, err
@@ -208,10 +212,10 @@ func NewManager(
 	return m, nil
 }
 
-
+// Start starts the block manager.
 func (m *Manager) Start(ctx context.Context) error {
 	m.Ctx, m.Cancel = context.WithCancel(ctx)
-	
+	// Check if InitChain flow is needed
 	if m.State.IsGenesis() {
 		m.logger.Info("Running InitChain")
 
@@ -221,9 +225,9 @@ func (m *Manager) Start(ctx context.Context) error {
 		}
 	}
 
-	
-	
-	
+	// Check if a proposer on the rollapp is set. In case no proposer is set on the Rollapp, fallback to the hub proposer (If such exists).
+	// No proposer on the rollapp means that at some point there was no available proposer.
+	// In case there is also no proposer on the hub to our current height, it means that the chain is halted.
 	if m.State.GetProposer() == nil {
 		m.logger.Info("No proposer on the rollapp, fallback to the hub proposer, if available")
 		err := m.UpdateProposerFromSL()
@@ -236,10 +240,10 @@ func (m *Manager) Start(ctx context.Context) error {
 		}
 	}
 
-	
-	
-	
-	
+	// checks if the the current node is the proposer either on rollapp or on the hub.
+	// In case of sequencer rotation, there's a phase where proposer rotated on Rollapp but hasn't yet rotated on hub.
+	// for this case, 2 nodes will get `true` for `AmIProposer` so the l2 proposer can produce blocks and the hub proposer can submit his last batch.
+	// The hub proposer, after sending the last state update, will panic and restart as full node.
 	amIProposerOnSL, err := m.AmIProposerOnSL()
 	if err != nil {
 		return fmt.Errorf("am i proposer on SL: %w", err)
@@ -249,30 +253,30 @@ func (m *Manager) Start(ctx context.Context) error {
 
 	m.logger.Info("starting block manager", "mode", map[bool]string{true: "proposer", false: "full node"}[amIProposer])
 
-	
+	// update local state from latest state in settlement
 	err = m.updateFromLastSettlementState()
 	if err != nil {
 		return fmt.Errorf("sync block manager from settlement: %w", err)
 	}
 
-	
+	// send signal to syncing loop with last settlement state update
 	m.triggerSettlementSyncing()
-	
+	// send signal to validation loop with last settlement state update
 	m.triggerSettlementValidation()
 
 	eg, ctx := errgroup.WithContext(m.Ctx)
 
-	
+	// Start the pruning loop in the background
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		return m.PruningLoop(ctx)
 	})
 
-	
+	// Start the settlement sync loop in the background
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		return m.SettlementSyncLoop(ctx)
 	})
 
-	
+	// Monitor sequencer set updates
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		return m.MonitorSequencerSetUpdates(ctx)
 	})
@@ -285,7 +289,7 @@ func (m *Manager) Start(ctx context.Context) error {
 		return m.MonitorBalances(ctx)
 	})
 
-	
+	// run based on the node role
 	if !amIProposer {
 		return m.runAsFullNode(ctx, eg)
 	}
@@ -297,26 +301,26 @@ func (m *Manager) NextHeightToSubmit() uint64 {
 	return m.LastSettlementHeight.Load() + 1
 }
 
-
+// updateFromLastSettlementState retrieves last sequencers and state update from the Hub and updates local state with it
 func (m *Manager) updateFromLastSettlementState() error {
-	
+	// Update sequencers list from SL
 	err := m.UpdateSequencerSetFromSL()
 	if err != nil {
-		
+		// this error is not critical
 		m.logger.Error("Cannot fetch sequencer set from the Hub", "error", err)
 	}
 
-	
+	// update latest height from SL
 	latestHeight, err := m.SLClient.GetLatestHeight()
 	if errors.Is(err, gerrc.ErrNotFound) {
-		
+		// The SL hasn't got any batches for this chain yet.
 		m.logger.Info("No batches for chain found in SL.")
-		m.LastSettlementHeight.Store(uint64(m.Genesis.InitialHeight - 1)) 
+		m.LastSettlementHeight.Store(uint64(m.Genesis.InitialHeight - 1)) //nolint:gosec // height is non-negative and falls in int64
 		m.LastBlockTimeInSettlement.Store(m.Genesis.GenesisTime.UTC().UnixNano())
 		return nil
 	}
 	if err != nil {
-		
+		// TODO: separate between fresh rollapp and non-registered rollapp
 		return err
 	}
 
@@ -327,10 +331,10 @@ func (m *Manager) updateFromLastSettlementState() error {
 
 	m.LastSettlementHeight.Store(latestHeight)
 
-	
+	// init last block in settlement time in dymint state to calculate batch submit skew time
 	m.SetLastBlockTimeInSettlementFromHeight(latestHeight)
 
-	
+	// init last block time in dymint state to calculate batch submit skew time
 	block, err := m.Store.LoadBlock(m.State.Height())
 	if err == nil {
 		m.LastBlockTime.Store(block.Header.GetTimestamp().UTC().UnixNano())
@@ -339,7 +343,7 @@ func (m *Manager) updateFromLastSettlementState() error {
 }
 
 func (m *Manager) updateLastFinalizedHeightFromSettlement() error {
-	
+	// update latest finalized height from SL
 	height, err := m.SLClient.GetLatestFinalizedHeight()
 	if errors.Is(err, gerrc.ErrNotFound) {
 		m.logger.Info("No finalized batches for chain found in SL.")
@@ -368,7 +372,7 @@ func (m *Manager) UpdateTargetHeight(h uint64) {
 	}
 }
 
-
+// ValidateConfigWithRollappParams checks the configuration params are consistent with the params in the dymint state (e.g. DA and version)
 func (m *Manager) ValidateConfigWithRollappParams() error {
 	if da.Client(m.State.RollappParams.Da) != m.DAClient.GetClientType() {
 		return fmt.Errorf("da client mismatch. rollapp param: %s da configured: %s", m.State.RollappParams.Da, m.DAClient.GetClientType())
@@ -381,7 +385,7 @@ func (m *Manager) ValidateConfigWithRollappParams() error {
 	return nil
 }
 
-
+// setDA initializes DA client in blockmanager according to DA type set in genesis or stored in state
 func (m *Manager) setDA(daconfig string, dalcKV store.KV, logger log.Logger) error {
 	daLayer := m.State.RollappParams.Da
 	dalc := registry.GetClient(daLayer)
@@ -402,12 +406,12 @@ func (m *Manager) setDA(daconfig string, dalcKV store.KV, logger log.Logger) err
 	return nil
 }
 
-
+// setFraudHandler sets the fraud handler for the block manager.
 func (m *Manager) setFraudHandler(handler *FreezeHandler) {
 	m.FraudHandler = handler
 }
 
-
+// freezeNode sets the node as unhealthy and prevents the node continues producing and processing blocks
 func (m *Manager) freezeNode(err error) {
 	m.logger.Info("Freezing node", "err", err)
 	if m.Ctx.Err() != nil {
@@ -417,11 +421,11 @@ func (m *Manager) freezeNode(err error) {
 	m.Cancel()
 }
 
-
+// SetLastBlockTimeInSettlementFromHeight is used to initialize LastBlockTimeInSettlement from rollapp height in settlement
 func (m *Manager) SetLastBlockTimeInSettlementFromHeight(lastSettlementHeight uint64) {
 	block, err := m.Store.LoadBlock(lastSettlementHeight)
 	if err != nil {
-		
+		// if settlement height block is not found it will be updated after, when syncing
 		return
 	}
 	m.LastBlockTimeInSettlement.Store(block.Header.GetTimestamp().UTC().UnixNano())

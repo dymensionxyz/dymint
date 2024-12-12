@@ -34,15 +34,15 @@ import (
 	"github.com/dymensionxyz/dymint/store"
 )
 
-
+// prefixes used in KV store to separate main node data from DALC data
 var (
 	mainPrefix    = []byte{0}
 	dalcPrefix    = []byte{1}
 	indexerPrefix = []byte{2}
 )
 
-
-
+// Node represents a client node in Dymint network.
+// It connects all the components and orchestrates their work.
 type Node struct {
 	service.BaseService
 	eventBus     *tmtypes.EventBus
@@ -54,7 +54,7 @@ type Node struct {
 	conf config.NodeConfig
 	P2P  *p2p.Client
 
-	
+	// TODO(tzdybal): consider extracting "mempool reactor"
 	Mempool      mempool.Mempool
 	MempoolIDs   *nodemempool.MempoolIDs
 	incomingTxCh chan *p2p.GossipMessage
@@ -68,12 +68,12 @@ type Node struct {
 	BlockIndexer   indexer.BlockIndexer
 	IndexerService *txindex.IndexerService
 
-	
+	// shared context for all dymint components
 	ctx    context.Context
 	cancel context.CancelFunc
 }
 
-
+// NewNode creates new Dymint node.
 func NewNode(
 	ctx context.Context,
 	conf config.NodeConfig,
@@ -102,12 +102,12 @@ func NewNode(
 	var baseKV store.KV
 	var dstore datastore.Datastore
 
-	if conf.DBConfig.InMemory || (conf.RootDir == "" && conf.DBPath == "") { 
+	if conf.DBConfig.InMemory || (conf.RootDir == "" && conf.DBPath == "") { // this is used for testing
 		logger.Info("WARNING: working in in-memory mode")
 		baseKV = store.NewDefaultInMemoryKVStore()
 		dstore = datastore.NewMapDatastore()
 	} else {
-		
+		// TODO(omritoptx): Move dymint to const
 		baseKV = store.NewKVStore(conf.RootDir, conf.DBPath, "dymint", conf.DBConfig.SyncWrites, logger)
 		path := filepath.Join(store.Rootify(conf.RootDir, conf.DBPath), "blocksync")
 		var err error
@@ -120,9 +120,9 @@ func NewNode(
 	s := store.New(store.NewPrefixKV(baseKV, mainPrefix))
 	indexerKV := store.NewPrefixKV(baseKV, indexerPrefix)
 
-	
+	// TODO: dalcKV is needed for mock only. Initialize only if mock used
 	dalcKV := store.NewPrefixKV(baseKV, dalcPrefix)
-	
+	// Init the settlement layer client
 	settlementlc := slregistry.GetClient(slregistry.Client(conf.SettlementLayer))
 	if settlementlc == nil {
 		return nil, fmt.Errorf("get settlement client: named: %s", conf.SettlementLayer)
@@ -161,7 +161,7 @@ func NewNode(
 		settlementlc,
 		eventBus,
 		pubsubServer,
-		nil, 
+		nil, // p2p client is set later
 		dalcKV,
 		indexerService,
 		logger,
@@ -170,7 +170,7 @@ func NewNode(
 		return nil, fmt.Errorf("BlockManager initialization: %w", err)
 	}
 
-	
+	// Set p2p client and it's validators
 	p2pValidator := p2p.NewValidator(logger.With("module", "p2p_validator"), blockManager)
 	p2pClient, err := p2p.NewClient(conf.P2PConfig, p2pKey, genesis.ChainID, s, pubsubServer, dstore, logger.With("module", "p2p"))
 	if err != nil {
@@ -179,7 +179,7 @@ func NewNode(
 	p2pClient.SetTxValidator(p2pValidator.TxValidator(mp, mpIDs))
 	p2pClient.SetBlockValidator(p2pValidator.BlockValidator())
 
-	
+	// Set p2p client in block manager
 	blockManager.P2PClient = p2pClient
 
 	ctx, cancel := context.WithCancel(ctx)
@@ -209,7 +209,7 @@ func NewNode(
 	return node, nil
 }
 
-
+// OnStart is a part of Service interface.
 func (n *Node) OnStart() error {
 	n.Logger.Info("starting P2P client")
 	err := n.P2P.Start(n.ctx)
@@ -234,7 +234,7 @@ func (n *Node) OnStart() error {
 		}
 	}()
 
-	
+	// start the block manager
 	err = n.BlockManager.Start(n.ctx)
 	if err != nil {
 		return fmt.Errorf("while starting block manager: %w", err)
@@ -243,12 +243,12 @@ func (n *Node) OnStart() error {
 	return nil
 }
 
-
+// GetGenesis returns entire genesis doc.
 func (n *Node) GetGenesis() *tmtypes.GenesisDoc {
 	return n.genesis
 }
 
-
+// OnStop is a part of Service interface.
 func (n *Node) OnStop() {
 	err := n.BlockManager.DAClient.Stop()
 	if err != nil {
@@ -273,32 +273,32 @@ func (n *Node) OnStop() {
 	n.cancel()
 }
 
-
+// OnReset is a part of Service interface.
 func (n *Node) OnReset() error {
 	panic("OnReset - not implemented!")
 }
 
-
+// SetLogger sets the logger used by node.
 func (n *Node) SetLogger(logger log.Logger) {
 	n.Logger = logger
 }
 
-
+// GetLogger returns logger.
 func (n *Node) GetLogger() log.Logger {
 	return n.Logger
 }
 
-
+// EventBus gives access to Node's event bus.
 func (n *Node) EventBus() *tmtypes.EventBus {
 	return n.eventBus
 }
 
-
+// PubSubServer gives access to the Node's pubsub server
 func (n *Node) PubSubServer() *pubsub.Server {
 	return n.PubsubServer
 }
 
-
+// ProxyApp returns ABCI proxy connections to communicate with application.
 func (n *Node) ProxyApp() proxy.AppConns {
 	return n.proxyApp
 }

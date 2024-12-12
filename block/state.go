@@ -19,7 +19,7 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
-
+// LoadStateOnInit tries to load lastState from Store, and if it's not available it reads GenesisDoc.
 func (m *Manager) LoadStateOnInit(store store.Store, genesis *tmtypes.GenesisDoc, logger types.Logger) error {
 	s, err := store.LoadState()
 	if errors.Is(err, types.ErrNoStateFound) {
@@ -36,18 +36,18 @@ func (m *Manager) LoadStateOnInit(store store.Store, genesis *tmtypes.GenesisDoc
 	return nil
 }
 
-
-
+// NewStateFromGenesis reads blockchain State from genesis.
+// The active sequencer list will be set on InitChain
 func NewStateFromGenesis(genDoc *tmtypes.GenesisDoc) (*types.State, error) {
 	err := genDoc.ValidateAndComplete()
 	if err != nil {
 		return nil, fmt.Errorf("in genesis doc: %w", err)
 	}
 
-	
-	
-	
-	
+	// InitStateVersion sets the Consensus.Block and Software versions,
+	// but leaves the Consensus.App version blank.
+	// The Consensus.App version will be set during the Handshake, once
+	// we hear from the app what protocol version it is running.
 	InitStateVersion := tmstate.Version{
 		Consensus: tmversion.Consensus{
 			Block: version.BlockProtocol,
@@ -59,7 +59,7 @@ func NewStateFromGenesis(genDoc *tmtypes.GenesisDoc) (*types.State, error) {
 	s := types.State{
 		Version:         InitStateVersion,
 		ChainID:         genDoc.ChainID,
-		InitialHeight:   uint64(genDoc.InitialHeight), 
+		InitialHeight:   uint64(genDoc.InitialHeight), //nolint:gosec // height is non-negative and falls in int64
 		ConsensusParams: *genDoc.ConsensusParams,
 	}
 	s.SetHeight(0)
@@ -73,29 +73,29 @@ func NewStateFromGenesis(genDoc *tmtypes.GenesisDoc) (*types.State, error) {
 	return &s, nil
 }
 
-
+// UpdateStateFromApp is responsible for aligning the state of the store from the abci app
 func (m *Manager) UpdateStateFromApp(blockHeaderHash [32]byte) error {
 	proxyAppInfo, err := m.Executor.GetAppInfo()
 	if err != nil {
 		return errorsmod.Wrap(err, "get app info")
 	}
 
-	appHeight := uint64(proxyAppInfo.LastBlockHeight) 
+	appHeight := uint64(proxyAppInfo.LastBlockHeight) //nolint:gosec // height is non-negative and falls in int64
 	resp, err := m.Store.LoadBlockResponses(appHeight)
 	if err != nil {
 		return errorsmod.Wrap(err, "load block responses")
 	}
 
-	
+	// update the state with the app hashes created on the app commit
 	m.Executor.UpdateStateAfterCommit(m.State, resp, proxyAppInfo.LastBlockAppHash, appHeight, blockHeaderHash)
 
 	return nil
 }
 
 func (e *Executor) UpdateStateAfterInitChain(s *types.State, res *abci.ResponseInitChain) {
-	
-	
-	
+	// If the app did not return an app hash, we keep the one set from the genesis doc in
+	// the state. We don't set appHash since we don't want the genesis doc app hash
+	// recorded in the genesis block. We should probably just remove GenesisDoc.AppHash.
 	if len(res.AppHash) > 0 {
 		copy(s.AppHash[:], res.AppHash)
 	}
@@ -106,7 +106,7 @@ func (e *Executor) UpdateStateAfterInitChain(s *types.State, res *abci.ResponseI
 			s.ConsensusParams.Block.MaxGas = params.Block.MaxGas
 		}
 	}
-	
+	// We update the last results hash with the empty hash, to conform with RFC-6962.
 	copy(s.LastResultsHash[:], merkle.HashFromByteSlices(nil))
 }
 
@@ -115,7 +115,7 @@ func (e *Executor) UpdateMempoolAfterInitChain(s *types.State) {
 	e.mempool.SetPostCheckFn(mempool.PostCheckMaxGas(s.ConsensusParams.Block.MaxGas))
 }
 
-
+// UpdateStateAfterCommit updates the state with the app hash and last results hash
 func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResponses, appHash []byte, height uint64, lastHeaderHash [32]byte) {
 	copy(s.AppHash[:], appHash[:])
 	copy(s.LastResultsHash[:], tmtypes.NewResults(resp.DeliverTxs).Hash())
@@ -132,26 +132,26 @@ func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResp
 	}
 }
 
-
-
-
+// UpdateProposerFromBlock updates the proposer from the block
+// The next proposer is defined in the block header (NextSequencersHash)
+// TODO: (https://github.com/dymensionxyz/dymint/issues/1008)
 func (e *Executor) UpdateProposerFromBlock(s *types.State, seqSet *types.SequencerSet, block *types.Block) bool {
-	
+	// no sequencer change
 	if bytes.Equal(block.Header.SequencerHash[:], block.Header.NextSequencersHash[:]) {
 		return false
 	}
 
 	if block.Header.NextSequencersHash == [32]byte{} {
-		
-		
+		// the chain will be halted until proposer is set
+		// TODO: recover from halt (https://github.com/dymensionxyz/dymint/issues/1021)
 		e.logger.Info("rollapp left with no proposer. chain is halted")
 		s.SetProposer(nil)
 		return true
 	}
 
-	
-	
-	
+	// if hash changed, update the proposer
+	// We assume here that we're updated with the latest sequencer set
+	// FIXME: Think how to handle not being updated with the latest sequencer set
 	seq, found := seqSet.GetByHash(block.Header.NextSequencersHash[:])
 	if !found {
 		e.logger.Error("cannot find proposer by hash")

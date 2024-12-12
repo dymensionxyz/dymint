@@ -26,7 +26,7 @@ import (
 	"github.com/dymensionxyz/dymint/rpc/middleware"
 )
 
-
+// Server handles HTTP and JSON-RPC requests, exposing Tendermint-compatible API.
 type Server struct {
 	*service.BaseService
 
@@ -43,21 +43,21 @@ type Server struct {
 
 const (
 	onStopTimeout = 5 * time.Second
-	
+	// readHeaderTimeout is the timeout for reading the request headers.
 	readHeaderTimeout = 5 * time.Second
 )
 
-
+// Option is a function that configures the Server.
 type Option func(*Server)
 
-
+// WithListener is an option that sets the listener.
 func WithListener(listener net.Listener) Option {
 	return func(d *Server) {
 		d.listener = listener
 	}
 }
 
-
+// NewServer creates new instance of Server with given configuration.
 func NewServer(node *node.Node, config *config.RPCConfig, logger log.Logger, options ...Option) *Server {
 	srv := &Server{
 		config: config,
@@ -66,16 +66,16 @@ func NewServer(node *node.Node, config *config.RPCConfig, logger log.Logger, opt
 	}
 	srv.BaseService = service.NewBaseService(logger, "RPC", srv)
 
-	
+	// Apply options
 	for _, option := range options {
 		option(srv)
 	}
 	return srv
 }
 
-
-
-
+// Client returns a Tendermint-compatible rpc Client instance.
+//
+// This method is called in cosmos-sdk.
 func (s *Server) Client() rpcclient.Client {
 	return s.client
 }
@@ -84,13 +84,13 @@ func (s *Server) PubSubServer() *pubsub.Server {
 	return s.node.PubSubServer()
 }
 
-
+// OnStart is called when Server is started (see service.BaseService for details).
 func (s *Server) OnStart() error {
 	s.startEventListener()
 	return s.startRPC()
 }
 
-
+// OnStop is called when Server is stopped (see service.BaseService for details).
 func (s *Server) OnStop() {
 	ctx, cancel := context.WithTimeout(context.Background(), onStopTimeout)
 	defer cancel()
@@ -99,12 +99,12 @@ func (s *Server) OnStop() {
 	}
 }
 
-
+// startEventListener registers events to callbacks.
 func (s *Server) startEventListener() {
 	go uevent.MustSubscribe(context.Background(), s.PubSubServer(), "RPCNodeHealthStatusHandler", events.QueryHealthStatus, s.onNodeHealthUpdate, s.Logger)
 }
 
-
+// onNodeHealthUpdate is a callback function that handles health status events from the node.
 func (s *Server) onNodeHealthUpdate(event pubsub.Message) {
 	eventData, _ := event.Data().(*events.DataHealthStatus)
 	if eventData.Error != nil {
@@ -169,13 +169,13 @@ func (s *Server) startRPC() error {
 		handler = c.Handler(handler)
 	}
 
-	
+	// Apply Middleware
 	reg := middleware.GetRegistry()
 	reg.Register(middleware.Status{Err: s.getHealthStatus})
 	middlewareClient := middleware.NewClient(*reg, s.Logger.With("module", "rpc/middleware"))
 	handler = middlewareClient.Handle(handler)
 
-	
+	// Start HTTP server
 	go func() {
 		err := s.serve(listener, handler)
 		if !errors.Is(err, http.ErrServerClosed) {

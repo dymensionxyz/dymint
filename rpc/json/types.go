@@ -18,7 +18,7 @@ type unsubscribeArgs struct {
 }
 type unsubscribeAllArgs struct{}
 
-
+// info API
 type (
 	healthArgs         struct{}
 	statusArgs         struct{}
@@ -86,7 +86,7 @@ type unconfirmedTxsArgs struct {
 }
 type numUnconfirmedTxsArgs struct{}
 
-
+// tx broadcast API
 type broadcastTxCommitArgs struct {
 	Tx types.Tx `json:"tx"`
 }
@@ -97,9 +97,9 @@ type broadcastTxAsyncArgs struct {
 	Tx types.Tx `json:"tx"`
 }
 
+// abci API
 
-
-
+// ABCIQueryArgs defines args for ABCI Query method.
 type ABCIQueryArgs struct {
 	Path   string         `json:"path"`
 	Data   bytes.HexBytes `json:"data"`
@@ -107,10 +107,10 @@ type ABCIQueryArgs struct {
 	Prove  bool           `json:"prove"`
 }
 
-
+// ABCIInfoArgs defines args for ABCI Info method.
 type ABCIInfoArgs struct{}
 
-
+// evidence API
 
 type broadcastEvidenceArgs struct {
 	Evidence types.Evidence `json:"evidence"`
@@ -118,20 +118,20 @@ type broadcastEvidenceArgs struct {
 
 type emptyResult struct{}
 
+// JSON-deserialization specific types
 
-
-
+// StrInt is an proper int or quoted "int"
 type StrInt int
 
-
+// StrInt64 is an proper int64 or quoted "int64"
 type StrInt64 int64
 
-
+// UnmarshalJSON parses JSON (int or int qouted as string) into StrInt64
 func (s *StrInt64) UnmarshalJSON(b []byte) error {
 	return unmarshalStrInt64(b, s)
 }
 
-
+// UnmarshalJSON parses JSON (int or int qouted as string) into StrInt
 func (s *StrInt) UnmarshalJSON(b []byte) error {
 	var val StrInt64
 	err := unmarshalStrInt64(b, &val)

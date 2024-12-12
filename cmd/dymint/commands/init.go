@@ -14,7 +14,7 @@ import (
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
-
+// InitFilesCmd initialises a fresh Dymint Core instance.
 var InitFilesCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Initialize Dymint",
@@ -25,9 +25,9 @@ func initFiles(cmd *cobra.Command, args []string) error {
 	return InitFilesWithConfig(tmconfig)
 }
 
-
+// InitFilesWithConfig initialises a fresh Dymint instance.
 func InitFilesWithConfig(config *cfg.Config) error {
-	
+	// private validator
 	privValKeyFile := config.PrivValidatorKeyFile()
 	privValStateFile := config.PrivValidatorStateFile()
 	var pv *privval.FilePV
@@ -52,7 +52,7 @@ func InitFilesWithConfig(config *cfg.Config) error {
 		logger.Info("Generated node key", "path", nodeKeyFile)
 	}
 
-	
+	// genesis file
 	genFile := config.GenesisFile()
 	if tmos.FileExists(genFile) {
 		logger.Info("Found genesis file", "path", genFile)

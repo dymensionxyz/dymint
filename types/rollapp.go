@@ -14,7 +14,7 @@ type Revision struct {
 
 func (r Rollapp) LatestRevision() Revision {
 	if len(r.Revisions) == 0 {
-		
+		// Revision 0 if no revisions exist.
 		return Revision{}
 	}
 	return r.Revisions[len(r.Revisions)-1]

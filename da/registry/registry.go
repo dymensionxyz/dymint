@@ -8,7 +8,7 @@ import (
 	"github.com/dymensionxyz/dymint/da/local"
 )
 
-
+// this is a central registry for all Data Availability Layer Clients
 var clients = map[string]func() da.DataAvailabilityLayerClient{
 	"mock":     func() da.DataAvailabilityLayerClient { return &local.DataAvailabilityLayerClient{} },
 	"grpc":     func() da.DataAvailabilityLayerClient { return &grpc.DataAvailabilityLayerClient{} },
@@ -16,7 +16,7 @@ var clients = map[string]func() da.DataAvailabilityLayerClient{
 	"avail":    func() da.DataAvailabilityLayerClient { return &avail.DataAvailabilityLayerClient{} },
 }
 
-
+// GetClient returns client identified by name.
 func GetClient(name string) da.DataAvailabilityLayerClient {
 	f, ok := clients[name]
 	if !ok {
@@ -25,7 +25,7 @@ func GetClient(name string) da.DataAvailabilityLayerClient {
 	return f()
 }
 
-
+// RegisteredClients returns names of all DA clients in registry.
 func RegisteredClients() []string {
 	registered := make([]string, 0, len(clients))
 	for name := range clients {

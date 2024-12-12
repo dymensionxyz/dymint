@@ -33,7 +33,7 @@ func LoadInstructionFromDisk(dir string) (Instruction, error) {
 	var instruction Instruction
 
 	filePath := filepath.Join(dir, instructionFileName)
-	data, err := os.ReadFile(filePath) 
+	data, err := os.ReadFile(filePath) // nolint:gosec
 	if err != nil {
 		return Instruction{}, err
 	}

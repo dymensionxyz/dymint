@@ -7,31 +7,31 @@ import (
 	"github.com/tendermint/tendermint/types"
 )
 
-
-
-
-
-
+// TxCache defines an interface for raw transaction caching in a mempool.
+// Currently, a TxCache does not allow direct reading or getting of transaction
+// values. A TxCache is used primarily to push transactions and removing
+// transactions. Pushing via Push returns a boolean telling the caller if the
+// transaction already exists in the cache or not.
 type TxCache interface {
-	
+	// Reset resets the cache to an empty state.
 	Reset()
 
-	
-	
+	// Push adds the given raw transaction to the cache and returns true if it was
+	// newly added. Otherwise, it returns false.
 	Push(tx types.Tx) bool
 
-	
+	// Remove removes the given raw transaction from the cache.
 	Remove(tx types.Tx)
 
-	
-	
+	// Has reports whether tx is present in the cache. Checking for presence is
+	// not treated as an access of the value.
 	Has(tx types.Tx) bool
 }
 
 var _ TxCache = (*LRUTxCache)(nil)
 
-
-
+// LRUTxCache maintains a thread-safe LRU cache of raw transactions. The cache
+// only stores the hash of the raw transaction.
 type LRUTxCache struct {
 	mtx      sync.Mutex
 	size     int
@@ -47,8 +47,8 @@ func NewLRUTxCache(cacheSize int) *LRUTxCache {
 	}
 }
 
-
-
+// GetList returns the underlying linked-list that backs the LRU cache. Note,
+// this should be used for testing purposes only!
 func (c *LRUTxCache) GetList() *list.List {
 	return c.list
 }
@@ -109,7 +109,7 @@ func (c *LRUTxCache) Has(tx types.Tx) bool {
 	return ok
 }
 
-
+// NopTxCache defines a no-op raw transaction cache.
 type NopTxCache struct{}
 
 var _ TxCache = (*NopTxCache)(nil)

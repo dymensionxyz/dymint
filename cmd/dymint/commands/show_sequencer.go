@@ -9,13 +9,13 @@ import (
 	"github.com/tendermint/tendermint/privval"
 )
 
-
+// ShowSequencer adds capabilities for showing the validator info.
 var ShowSequencer = &cobra.Command{
 	Use:     "show-sequencer",
 	Aliases: []string{"show_sequencer"},
 	Short:   "Show this node's sequencer info",
 	RunE:    showSequencer,
-	
+	// PreRun:  deprecateSnakeCase,
 }
 
 func showSequencer(cmd *cobra.Command, args []string) error {

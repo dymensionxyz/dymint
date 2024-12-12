@@ -8,7 +8,7 @@ import (
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 )
 
-
+// PruneStore removes blocks up to (but not including) a height. It returns number of blocks pruned.
 func (s *DefaultStore) PruneStore(to uint64, logger types.Logger) (uint64, error) {
 	pruned := uint64(0)
 	from, err := s.LoadBaseHeight()
@@ -29,7 +29,7 @@ func (s *DefaultStore) PruneStore(to uint64, logger types.Logger) (uint64, error
 	return pruned, nil
 }
 
-
+// pruneHeights prunes all store entries that are stored along blocks (blocks,commit,proposer, etc)
 func (s *DefaultStore) pruneHeights(from, to uint64, logger types.Logger) (uint64, error) {
 	pruneBlocks := func(batch KVBatch, height uint64) error {
 		hash, err := s.loadHashFromIndex(height)
@@ -64,7 +64,7 @@ func (s *DefaultStore) pruneHeights(from, to uint64, logger types.Logger) (uint6
 	return pruned, err
 }
 
-
+// prune is the function  that iterates through all heights and prunes according to the pruning function set
 func (s *DefaultStore) prune(from, to uint64, prune func(batch KVBatch, height uint64) error, logger types.Logger) (uint64, error) {
 	pruned := uint64(0)
 	batch := s.db.NewBatch()
@@ -86,7 +86,7 @@ func (s *DefaultStore) prune(from, to uint64, prune func(batch KVBatch, height u
 		}
 		pruned++
 
-		
+		// flush every 1000 blocks to avoid batches becoming too large
 		if pruned%1000 == 0 && pruned > 0 {
 			err := flush(batch, h)
 			if err != nil {

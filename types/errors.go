@@ -24,11 +24,11 @@ var (
 	ErrEmptyProposerAddress  = errors.New("no proposer address")
 )
 
-
+// TimeFraudMaxDrift is the maximum allowed time drift between the block time and the local time.
 var TimeFraudMaxDrift = 10 * time.Minute
 
-
-
+// ErrFraudHeightMismatch is the fraud that occurs when the height of the block is different from the expected
+// next height of the state.
 type ErrFraudHeightMismatch struct {
 	Expected uint64
 	Actual   uint64
@@ -37,7 +37,7 @@ type ErrFraudHeightMismatch struct {
 	Proposer   []byte
 }
 
-
+// NewErrFraudHeightMismatch creates a new ErrFraudHeightMismatch error.
 func NewErrFraudHeightMismatch(expected uint64, header *Header) error {
 	return &ErrFraudHeightMismatch{
 		Expected:   expected,
@@ -56,7 +56,7 @@ func (e ErrFraudHeightMismatch) Unwrap() error {
 	return gerrc.ErrFault
 }
 
-
+// ErrFraudAppHashMismatch is the fraud that occurs when the AppHash of the block is different from the expected AppHash.
 type ErrFraudAppHashMismatch struct {
 	Expected [32]byte
 
@@ -66,7 +66,7 @@ type ErrFraudAppHashMismatch struct {
 	Proposer     []byte
 }
 
-
+// NewErrFraudAppHashMismatch creates a new ErrFraudAppHashMismatch error.
 func NewErrFraudAppHashMismatch(expected [32]byte, header *Header) error {
 	return &ErrFraudAppHashMismatch{
 		Expected:     expected,
@@ -86,7 +86,7 @@ func (e ErrFraudAppHashMismatch) Unwrap() error {
 	return gerrc.ErrFault
 }
 
-
+// ErrLastResultsHashMismatch indicates a potential fraud when the LastResultsHash of a block does not match the expected value.
 type ErrLastResultsHashMismatch struct {
 	Expected [32]byte
 
@@ -96,7 +96,7 @@ type ErrLastResultsHashMismatch struct {
 	LastResultHash [32]byte
 }
 
-
+// NewErrLastResultsHashMismatch creates a new ErrLastResultsHashMismatch error.
 func NewErrLastResultsHashMismatch(expected [32]byte, header *Header) error {
 	return &ErrLastResultsHashMismatch{
 		Expected:       expected,
@@ -116,7 +116,7 @@ func (e ErrLastResultsHashMismatch) Unwrap() error {
 	return gerrc.ErrFault
 }
 
-
+// ErrTimeFraud represents an error indicating a possible fraud due to time drift.
 type ErrTimeFraud struct {
 	Drift           time.Duration
 	ProposerAddress []byte
@@ -153,7 +153,7 @@ func (e ErrTimeFraud) Unwrap() error {
 	return gerrc.ErrFault
 }
 
-
+// ErrLastHeaderHashMismatch is the error that occurs when the last header hash does not match the expected value.
 type ErrLastHeaderHashMismatch struct {
 	Expected       [32]byte
 	LastHeaderHash [32]byte
@@ -174,7 +174,7 @@ func (e ErrLastHeaderHashMismatch) Unwrap() error {
 	return gerrc.ErrFault
 }
 
-
+// ErrInvalidChainID is the fraud that occurs when the chain ID of the block is different from the expected chain ID.
 type ErrInvalidChainID struct {
 	Expected string
 	Block    *Block
@@ -200,8 +200,8 @@ func (e ErrInvalidChainID) Unwrap() error {
 	return gerrc.ErrFault
 }
 
-
-
+// ErrInvalidBlockHeightFraud is the fraud that happens when the height that is on the commit header is
+// different from the height of the block.
 type ErrInvalidBlockHeightFraud struct {
 	Expected uint64
 	Header   *Header
@@ -227,7 +227,7 @@ func (e ErrInvalidBlockHeightFraud) Unwrap() error {
 	return gerrc.ErrFault
 }
 
-
+// ErrInvalidHeaderHashFraud indicates a potential fraud when the Header Hash does not match the expected value.
 type ErrInvalidHeaderHashFraud struct {
 	ExpectedHash [32]byte
 	Header       *Header
@@ -253,7 +253,7 @@ func (e ErrInvalidHeaderHashFraud) Unwrap() error {
 	return gerrc.ErrFault
 }
 
-
+// ErrInvalidSignatureFraud indicates a potential fraud due to an invalid signature in the block.
 type ErrInvalidSignatureFraud struct {
 	Err    error
 	Header *Header
@@ -280,7 +280,7 @@ func (e ErrInvalidSignatureFraud) Unwrap() error {
 	return gerrc.ErrFault
 }
 
-
+// ErrInvalidProposerAddressFraud indicates a potential fraud when the proposer's address is invalid.
 type ErrInvalidProposerAddressFraud struct {
 	ExpectedAddress []byte
 	ActualAddress   tmcrypto.Address
@@ -308,7 +308,7 @@ func (e ErrInvalidProposerAddressFraud) Unwrap() error {
 	return gerrc.ErrFault
 }
 
-
+// ErrInvalidSequencerHashFraud indicates a potential fraud when the sequencer's hash is invalid.
 type ErrInvalidSequencerHashFraud struct {
 	ExpectedHash [32]byte
 	ActualHash   []byte
@@ -336,7 +336,7 @@ func (e ErrInvalidSequencerHashFraud) Unwrap() error {
 	return gerrc.ErrFault
 }
 
-
+// ErrInvalidNextSequencersHashFraud indicates a potential fraud when the NextSequencersHash does not match the expected value.
 type ErrInvalidNextSequencersHashFraud struct {
 	ExpectedHash [32]byte
 	Header       Header
@@ -361,7 +361,7 @@ func (e ErrInvalidNextSequencersHashFraud) Unwrap() error {
 	return gerrc.ErrFault
 }
 
-
+// ErrInvalidHeaderDataHashFraud indicates a potential fraud when the Header Data Hash does not match the expected value.
 type ErrInvalidHeaderDataHashFraud struct {
 	Expected [32]byte
 	Actual   [32]byte
@@ -390,7 +390,7 @@ func (e ErrInvalidHeaderDataHashFraud) Unwrap() error {
 	return gerrc.ErrFault
 }
 
-
+// ErrStateUpdateNumBlocksNotMatchingFraud represents an error where the number of blocks in the state update does not match the expected number.
 type ErrStateUpdateNumBlocksNotMatchingFraud struct {
 	StateIndex  uint64
 	SLNumBlocks uint64
@@ -418,8 +418,8 @@ func (e ErrStateUpdateNumBlocksNotMatchingFraud) Unwrap() error {
 	return gerrc.ErrFault
 }
 
-
-
+// ErrStateUpdateHeightNotMatchingFraud is the fraud that happens when the height that is on the commit header is
+// different from the height of the block.
 type ErrStateUpdateHeightNotMatchingFraud struct {
 	StateIndex    uint64
 	SLBeginHeight uint64
@@ -449,7 +449,7 @@ func (e ErrStateUpdateHeightNotMatchingFraud) Unwrap() error {
 	return gerrc.ErrFault
 }
 
-
+// ErrStateUpdateStateRootNotMatchingFraud represents an error where the state roots do not match in the state update.
 type ErrStateUpdateStateRootNotMatchingFraud struct {
 	StateIndex  uint64
 	Height      uint64
@@ -478,7 +478,7 @@ func (e ErrStateUpdateStateRootNotMatchingFraud) Unwrap() error {
 	return gerrc.ErrFault
 }
 
-
+// ErrStateUpdateTimestampNotMatchingFraud represents an error where the timestamps do not match in the state update.
 type ErrStateUpdateTimestampNotMatchingFraud struct {
 	StateIndex  uint64
 	Height      uint64
@@ -506,7 +506,7 @@ func (e ErrStateUpdateTimestampNotMatchingFraud) Unwrap() error {
 	return gerrc.ErrFault
 }
 
-
+// ErrStateUpdateDoubleSigningFraud indicates a potential fraud due to double signing detected between DA and P2P blocks.
 type ErrStateUpdateDoubleSigningFraud struct {
 	DABlock      *Block
 	P2PBlock     *Block
@@ -571,7 +571,7 @@ func getJsonFromBlock(block *Block) ([]byte, error) {
 	return jsonBlock, nil
 }
 
-
+// ErrStateUpdateBlobNotAvailableFraud represents an error where a blob is not available in DA.
 type ErrStateUpdateBlobNotAvailableFraud struct {
 	StateIndex uint64
 	DA         string
@@ -599,7 +599,7 @@ func (e ErrStateUpdateBlobNotAvailableFraud) Unwrap() error {
 	return gerrc.ErrFault
 }
 
-
+// ErrStateUpdateBlobCorruptedFraud represents an error where a blob is corrupted in DA.
 type ErrStateUpdateBlobCorruptedFraud struct {
 	StateIndex uint64
 	DA         string
@@ -627,7 +627,7 @@ func (e ErrStateUpdateBlobCorruptedFraud) Unwrap() error {
 	return gerrc.ErrFault
 }
 
-
+// ErrStateUpdateDRSVersionFraud represents an error where the DRS versions do not match in the state update.
 type ErrStateUpdateDRSVersionFraud struct {
 	StateIndex   uint64
 	Height       uint64

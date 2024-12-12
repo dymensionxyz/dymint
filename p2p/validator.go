@@ -16,17 +16,17 @@ type StateGetter interface {
 	GetRevision() uint64
 }
 
-
+// GossipValidator is a callback function type.
 type GossipValidator func(*GossipMessage) bool
 
-
+// IValidator is an interface for implementing validators of messages gossiped in the p2p network.
 type IValidator interface {
-	
-	
+	// TxValidator creates a pubsub validator that uses the node's mempool to check the
+	// transaction. If the transaction is valid, then it is added to the mempool
 	TxValidator(mp mempool.Mempool, mpoolIDS *nodemempool.MempoolIDs) GossipValidator
 }
 
-
+// Validator is a validator for messages gossiped in the p2p network.
 type Validator struct {
 	logger      types.Logger
 	stateGetter StateGetter
@@ -34,7 +34,7 @@ type Validator struct {
 
 var _ IValidator = (*Validator)(nil)
 
-
+// NewValidator creates a new Validator.
 func NewValidator(logger types.Logger, blockmanager StateGetter) *Validator {
 	return &Validator{
 		logger:      logger,
@@ -42,9 +42,9 @@ func NewValidator(logger types.Logger, blockmanager StateGetter) *Validator {
 	}
 }
 
-
-
-
+// TxValidator creates a pubsub validator that uses the node's mempool to check the
+// transaction.
+// False means the TX is considered invalid and should not be gossiped.
 func (v *Validator) TxValidator(mp mempool.Mempool, mpoolIDS *nodemempool.MempoolIDs) GossipValidator {
 	return func(txMessage *GossipMessage) bool {
 		v.logger.Debug("Transaction received.", "bytes", len(txMessage.Data))
@@ -59,7 +59,7 @@ func (v *Validator) TxValidator(mp mempool.Mempool, mpoolIDS *nodemempool.Mempoo
 		case errors.Is(err, mempool.ErrTxInCache):
 			return true
 		case errors.Is(err, mempool.ErrMempoolIsFull{}):
-			return true 
+			return true // we have no reason to believe that we should throw away the message
 		case errors.Is(err, mempool.ErrTxTooLarge{}):
 			return false
 		case errors.Is(err, mempool.ErrPreCheck{}):
@@ -73,7 +73,7 @@ func (v *Validator) TxValidator(mp mempool.Mempool, mpoolIDS *nodemempool.Mempoo
 	}
 }
 
-
+// BlockValidator runs basic checks on the gossiped block
 func (v *Validator) BlockValidator() GossipValidator {
 	return func(blockMsg *GossipMessage) bool {
 		var gossipedBlock BlockData

@@ -36,8 +36,8 @@ const (
 	addressPrefix = "dym"
 )
 
-
-
+// Client is an extension of the base settlement layer client
+// for usage in tests and local development.
 type Client struct {
 	ctx            context.Context
 	rollappID      string
@@ -59,14 +59,14 @@ func (c *Client) GetRollapp() (*types.Rollapp, error) {
 	}, nil
 }
 
-
+// GetObsoleteDrs returns the list of deprecated DRS.
 func (c *Client) GetObsoleteDrs() ([]uint32, error) {
 	return []uint32{}, nil
 }
 
 var _ settlement.ClientI = (*Client)(nil)
 
-
+// Init initializes the mock layer client.
 func (c *Client) Init(config settlement.Config, rollappId string, pubsub *pubsub.Server, logger types.Logger, options ...settlement.Option) error {
 	ctx := context.Background()
 
@@ -149,7 +149,7 @@ func initConfig(conf settlement.Config) (proposer string, err error) {
 	return
 }
 
-
+// Start starts the mock client
 func (c *Client) Start() error {
 	c.logger.Info("Starting grpc mock settlement")
 
@@ -159,7 +159,7 @@ func (c *Client) Start() error {
 		for {
 			select {
 			case <-c.stopchan:
-				
+				// stop
 				return
 			case <-tick.C:
 				index, err := c.sl.GetIndex(c.ctx, &slmock.SLGetIndexRequest{})
@@ -185,14 +185,14 @@ func (c *Client) Start() error {
 	return nil
 }
 
-
+// Stop stops the mock client
 func (c *Client) Stop() error {
 	c.logger.Info("Stopping grpc mock settlement")
 	close(c.stopchan)
 	return nil
 }
 
-
+// SubmitBatch saves the batch to the kv store
 func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *da.ResultSubmitBatch) error {
 	settlementBatch := c.convertBatchtoSettlementBatch(batch, daResult)
 	err := c.saveBatch(settlementBatch)
@@ -200,7 +200,7 @@ func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *d
 		return err
 	}
 
-	time.Sleep(10 * time.Millisecond) 
+	time.Sleep(10 * time.Millisecond) // mimic a delay in batch acceptance
 	err = c.pubsub.PublishWithEvents(context.Background(), &settlement.EventDataNewBatch{EndHeight: settlementBatch.EndHeight}, settlement.EventNewBatchAcceptedList)
 	if err != nil {
 		return err
@@ -208,7 +208,7 @@ func (c *Client) SubmitBatch(batch *types.Batch, daClient da.Client, daResult *d
 	return nil
 }
 
-
+// GetLatestBatch returns the latest batch from the kv store
 func (c *Client) GetLatestBatch() (*settlement.ResultRetrieveBatch, error) {
 	c.logger.Info("GetLatestBatch grpc", "index", c.slStateIndex)
 	batchResult, err := c.GetBatchAtIndex(atomic.LoadUint64(&c.slStateIndex))
@@ -218,7 +218,7 @@ func (c *Client) GetLatestBatch() (*settlement.ResultRetrieveBatch, error) {
 	return batchResult, nil
 }
 
-
+// GetBatchAtIndex returns the batch at the given index
 func (c *Client) GetBatchAtIndex(index uint64) (*settlement.ResultRetrieveBatch, error) {
 	batchResult, err := c.retrieveBatchAtStateIndex(index)
 	if err != nil {
@@ -230,7 +230,7 @@ func (c *Client) GetBatchAtIndex(index uint64) (*settlement.ResultRetrieveBatch,
 }
 
 func (c *Client) GetBatchAtHeight(h uint64) (*settlement.ResultRetrieveBatch, error) {
-	
+	// Binary search implementation
 	left, right := uint64(1), c.slStateIndex
 
 	for left <= right {
@@ -256,7 +256,7 @@ func (c *Client) GetBatchAtHeight(h uint64) (*settlement.ResultRetrieveBatch, er
 	return nil, gerrc.ErrNotFound
 }
 
-
+// GetProposerAtHeight implements settlement.ClientI.
 func (c *Client) GetProposerAtHeight(height int64) (*types.Sequencer, error) {
 	pubKeyBytes, err := hex.DecodeString(c.ProposerPubKey)
 	if err != nil {
@@ -279,17 +279,17 @@ func (c *Client) GetProposerAtHeight(height int64) (*types.Sequencer, error) {
 	), nil
 }
 
-
+// GetSequencerByAddress returns all sequencer information by its address. Not implemented since it will not be used in grpc SL
 func (c *Client) GetSequencerByAddress(address string) (types.Sequencer, error) {
 	panic("GetSequencerByAddress not implemented in grpc SL")
 }
 
-
+// GetAllSequencers implements settlement.ClientI.
 func (c *Client) GetAllSequencers() ([]types.Sequencer, error) {
 	return c.GetBondedSequencers()
 }
 
-
+// GetBondedSequencers implements settlement.ClientI.
 func (c *Client) GetBondedSequencers() ([]types.Sequencer, error) {
 	proposer, err := c.GetProposerAtHeight(-1)
 	if err != nil {
@@ -298,17 +298,17 @@ func (c *Client) GetBondedSequencers() ([]types.Sequencer, error) {
 	return []types.Sequencer{*proposer}, nil
 }
 
-
+// GetNextProposer implements settlement.ClientI.
 func (c *Client) GetNextProposer() (*types.Sequencer, error) {
 	return nil, nil
 }
 
-
+// GetLatestHeight returns the latest state update height from the settlement layer.
 func (c *Client) GetLatestHeight() (uint64, error) {
 	return c.latestHeight.Load(), nil
 }
 
-
+// GetLatestFinalizedHeight returns the latest finalized height from the settlement layer.
 func (c *Client) GetLatestFinalizedHeight() (uint64, error) {
 	return uint64(0), gerrc.ErrNotFound
 }
@@ -320,7 +320,7 @@ func (c *Client) saveBatch(batch *settlement.Batch) error {
 	if err != nil {
 		return err
 	}
-	
+	// Save the batch to the next state index
 	c.logger.Debug("Saving batch to grpc settlement layer", "index", c.slStateIndex+1)
 	setBatchReply, err := c.sl.SetBatch(c.ctx, &slmock.SLSetBatchRequest{Index: c.slStateIndex + 1, Batch: b})
 	if err != nil {
@@ -337,7 +337,7 @@ func (c *Client) saveBatch(batch *settlement.Batch) error {
 		return err
 	}
 	c.logger.Debug("Setting grpc SL Index to ", "index", setIndexReply.GetIndex())
-	
+	// Save latest height in memory and in store
 	c.latestHeight.Store(batch.EndHeight)
 	return nil
 }

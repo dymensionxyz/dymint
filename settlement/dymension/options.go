@@ -6,7 +6,7 @@ import (
 	"github.com/dymensionxyz/dymint/settlement"
 )
 
-
+// WithCosmosClient is an option that sets the CosmosClient.
 func WithCosmosClient(cosmosClient CosmosClient) settlement.Option {
 	return func(c settlement.ClientI) {
 		dlc, _ := c.(*Client)
@@ -14,7 +14,7 @@ func WithCosmosClient(cosmosClient CosmosClient) settlement.Option {
 	}
 }
 
-
+// WithRetryAttempts is an option that sets the number of attempts to retry when interacting with the settlement layer.
 func WithRetryAttempts(batchRetryAttempts uint) settlement.Option {
 	return func(c settlement.ClientI) {
 		dlc, _ := c.(*Client)
@@ -22,7 +22,7 @@ func WithRetryAttempts(batchRetryAttempts uint) settlement.Option {
 	}
 }
 
-
+// WithBatchAcceptanceTimeout is an option that sets the timeout for waiting for a batch to be accepted by the settlement layer.
 func WithBatchAcceptanceTimeout(batchAcceptanceTimeout time.Duration) settlement.Option {
 	return func(c settlement.ClientI) {
 		dlc, _ := c.(*Client)
@@ -30,7 +30,7 @@ func WithBatchAcceptanceTimeout(batchAcceptanceTimeout time.Duration) settlement
 	}
 }
 
-
+// WithBatchAcceptanceAttempts is an option that sets the number of attempts to check if a batch has been accepted by the settlement layer.
 func WithBatchAcceptanceAttempts(batchAcceptanceAttempts uint) settlement.Option {
 	return func(c settlement.ClientI) {
 		dlc, _ := c.(*Client)
@@ -38,7 +38,7 @@ func WithBatchAcceptanceAttempts(batchAcceptanceAttempts uint) settlement.Option
 	}
 }
 
-
+// WithRetryMinDelay is an option that sets the retry function mindelay between hub retry attempts.
 func WithRetryMinDelay(retryMinDelay time.Duration) settlement.Option {
 	return func(c settlement.ClientI) {
 		dlc, _ := c.(*Client)
@@ -46,7 +46,7 @@ func WithRetryMinDelay(retryMinDelay time.Duration) settlement.Option {
 	}
 }
 
-
+// WithRetryMaxDelay is an option that sets the retry function max delay between hub retry attempts.
 func WithRetryMaxDelay(retryMaxDelay time.Duration) settlement.Option {
 	return func(c settlement.ClientI) {
 		dlc, _ := c.(*Client)

@@ -28,8 +28,8 @@ func registerFlagsRootCmd(cmd *cobra.Command) {
 	cmd.PersistentFlags().String("log_level", tmconfig.LogLevel, "log level")
 }
 
-
-
+// ParseConfig retrieves the default environment configuration,
+// sets up the Dymint root and ensures that the root exists
 func ParseConfig(cmd *cobra.Command) (*cfg.Config, error) {
 	conf := cfg.DefaultConfig()
 	err := viper.Unmarshal(conf)
@@ -60,14 +60,14 @@ func ParseConfig(cmd *cobra.Command) (*cfg.Config, error) {
 	return conf, nil
 }
 
-
+// RootCmd is the root command for Dymint core.
 var RootCmd = &cobra.Command{
 	Use:   "dymint",
 	Short: "ABCI-client implementation for dymension's autonomous rollapps",
 	PersistentPreRunE: func(cmd *cobra.Command, args []string) (err error) {
 		v := viper.GetViper()
 
-		
+		// cmd.Flags() includes flags from this command and all persistent flags from the parent
 		if err := v.BindPFlags(cmd.Flags()); err != nil {
 			return err
 		}

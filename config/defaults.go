@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	
+	// DefaultListenAddress is a default listen address for P2P client.
 	DefaultListenAddress = "/ip4/0.0.0.0/tcp/26656"
 
 	DefaultHomeDir = "sequencer_keys"
@@ -17,10 +17,10 @@ const (
 	DefaultSequencerSetUpdateInterval = 3 * time.Minute
 )
 
-
+// DefaultNodeConfig keeps default values of NodeConfig
 var DefaultNodeConfig = *DefaultConfig("")
 
-
+// DefaultConfig returns a default configuration for dymint node.
 func DefaultConfig(home string) *NodeConfig {
 	cfg := &NodeConfig{
 		BlockManagerConfig: BlockManagerConfig{
@@ -57,7 +57,7 @@ func DefaultConfig(home string) *NodeConfig {
 	}
 	keyringDir := filepath.Join(home, DefaultHomeDir)
 
-	
+	// Setting default params for sl grpc mock
 	defaultSlGrpcConfig := settlement.GrpcConfig{
 		Host:        "127.0.0.1",
 		Port:        7981,
@@ -79,7 +79,7 @@ func DefaultConfig(home string) *NodeConfig {
 	}
 	cfg.SettlementConfig = defaultSLconfig
 
-	
+	// Setting default params for da grpc mock
 	defaultDAGrpc := grpc.Config{
 		Host: "127.0.0.1",
 		Port: 7980,

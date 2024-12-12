@@ -8,7 +8,7 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 )
 
-
+// GetNodeKey creates libp2p private key from Tendermints NodeKey.
 func GetNodeKey(nodeKey *p2p.NodeKey) (crypto.PrivKey, error) {
 	if nodeKey == nil || nodeKey.PrivKey == nil {
 		return nil, ErrNilKey

@@ -24,7 +24,7 @@ var defaultSubmitBackoff = uretry.NewBackoffConfig(
 	uretry.WithMaxDelay(time.Second*6),
 )
 
-
+// Config stores Celestia DALC configuration parameters.
 type Config struct {
 	BaseURL        string               `json:"base_url,omitempty"`
 	AppNodeURL     string               `json:"app_node_url,omitempty"`
@@ -60,13 +60,13 @@ func (c *Config) InitNamespaceID() error {
 	if c.NamespaceIDStr == "" {
 		c.NamespaceIDStr = generateRandNamespaceID()
 	}
-	
+	// Decode NamespaceID from string to byte array
 	namespaceBytes, err := hex.DecodeString(c.NamespaceIDStr)
 	if err != nil {
 		return fmt.Errorf("decode string: %w", err)
 	}
 
-	
+	// Check if NamespaceID is of correct length (10 bytes)
 	if len(namespaceBytes) != openrpcns.NamespaceVersionZeroIDSize {
 		return fmt.Errorf("wrong length: got: %v: expect %v", len(namespaceBytes), openrpcns.NamespaceVersionZeroIDSize)
 	}

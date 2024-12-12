@@ -15,30 +15,30 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
-
-
-
-
-
+// StatusCode is a type for DA layer return status.
+// TODO: define an enum of different non-happy-path cases
+// that might need to be handled by Dymint independent of
+// the underlying DA chain. Use int32 to match the protobuf
+// enum representation.
 type StatusCode int32
 
-
+// Commitment should contain serialized cryptographic commitment to Blob value.
 type Commitment = []byte
 
-
+// Blob is the data submitted/received from DA interface.
 type Blob = []byte
 
-
+// Data Availability return codes.
 const (
 	StatusUnknown StatusCode = iota
 	StatusSuccess
 	StatusError
 )
 
-
+// Client defines all the possible da clients
 type Client string
 
-
+// Data availability clients
 const (
 	Mock     Client = "mock"
 	Celestia Client = "celestia"
@@ -46,34 +46,34 @@ const (
 	Grpc     Client = "grpc"
 )
 
-
+// Option is a function that sets a parameter on the da layer.
 type Option func(DataAvailabilityLayerClient)
 
-
+// BaseResult contains basic information returned by DA layer.
 type BaseResult struct {
-	
+	// Code is to determine if the action succeeded.
 	Code StatusCode
-	
+	// Message may contain DA layer specific information (like DA block height/hash, detailed error message, etc)
 	Message string
-	
+	// Error is the error returned by the DA layer
 	Error error
 }
 
-
+// DAMetaData contains meta data about a batch on the Data Availability Layer.
 type DASubmitMetaData struct {
-	
+	// Height is the height of the block in the da layer
 	Height uint64
-	
+	// Namespace ID
 	Namespace []byte
-	
+	// Client is the client to use to fetch data from the da layer
 	Client Client
-	
+	// Share commitment, for each blob, used to obtain blobs and proofs
 	Commitment Commitment
-	
+	// Initial position for each blob in the NMT
 	Index int
-	
+	// Number of shares of each blob
 	Length int
-	
+	// any NMT root for the specific height, necessary for non-inclusion proof
 	Root []byte
 }
 
@@ -84,9 +84,9 @@ type Balance struct {
 
 const PathSeparator = "|"
 
-
+// ToPath converts a DAMetaData to a path.
 func (d *DASubmitMetaData) ToPath() string {
-	
+	// convert uint64 to string
 	if d.Commitment != nil {
 		commitment := hex.EncodeToString(d.Commitment)
 		dataroot := hex.EncodeToString(d.Root)
@@ -109,7 +109,7 @@ func (d *DASubmitMetaData) ToPath() string {
 	}
 }
 
-
+// FromPath parses a path to a DAMetaData.
 func (d *DASubmitMetaData) FromPath(path string) (*DASubmitMetaData, error) {
 	pathParts := strings.FieldsFunc(path, func(r rune) bool { return r == rune(PathSeparator[0]) })
 	if len(pathParts) < 2 {
@@ -125,7 +125,7 @@ func (d *DASubmitMetaData) FromPath(path string) (*DASubmitMetaData, error) {
 		Height: height,
 		Client: Client(pathParts[0]),
 	}
-	
+	// TODO: check per DA and panic if not enough parts
 	if len(pathParts) == 7 {
 		submitData.Index, err = strconv.Atoi(pathParts[2])
 		if err != nil {
@@ -152,93 +152,93 @@ func (d *DASubmitMetaData) FromPath(path string) (*DASubmitMetaData, error) {
 	return submitData, nil
 }
 
-
+// DAMetaData contains meta data about a batch on the Data Availability Layer.
 type DACheckMetaData struct {
-	
+	// Height is the height of the block in the da layer
 	Height uint64
-	
+	// Client is the client to use to fetch data from the da layer
 	Client Client
-	
+	// Submission index in the Hub
 	SLIndex uint64
-	
+	// Namespace ID
 	Namespace []byte
-	
+	// Share commitment, for each blob, used to obtain blobs and proofs
 	Commitment Commitment
-	
+	// Initial position for each blob in the NMT
 	Index int
-	
+	// Number of shares of each blob
 	Length int
-	
+	// Proofs necessary to validate blob inclusion in the specific height
 	Proofs []*blob.Proof
-	
+	// NMT roots for each NMT Proof
 	NMTRoots []byte
-	
+	// Proofs necessary to validate blob inclusion in the specific height
 	RowProofs []*merkle.Proof
-	
+	// any NMT root for the specific height, necessary for non-inclusion proof
 	Root []byte
 }
 
-
+// ResultSubmitBatch contains information returned from DA layer after block submission.
 type ResultSubmitBatch struct {
 	BaseResult
-	
+	// DAHeight informs about a height on Data Availability Layer for given result.
 	SubmitMetaData *DASubmitMetaData
 }
 
-
+// ResultCheckBatch contains information about block availability, returned from DA layer client.
 type ResultCheckBatch struct {
 	BaseResult
-	
+	// DAHeight informs about a height on Data Availability Layer for given result.
 	CheckMetaData *DACheckMetaData
 }
 
-
+// ResultRetrieveBatch contains batch of blocks returned from DA layer client.
 type ResultRetrieveBatch struct {
 	BaseResult
-	
-	
+	// Block is the full block retrieved from Data Availability Layer.
+	// If Code is not equal to StatusSuccess, it has to be nil.
 	Batches []*types.Batch
-	
+	// DAHeight informs about a height on Data Availability Layer for given result.
 	CheckMetaData *DACheckMetaData
 }
 
-
-
+// DataAvailabilityLayerClient defines generic interface for DA layer block submission.
+// It also contains life-cycle methods.
 type DataAvailabilityLayerClient interface {
-	
+	// Init is called once to allow DA client to read configuration and initialize resources.
 	Init(config []byte, pubsubServer *pubsub.Server, kvStore store.KV, logger types.Logger, options ...Option) error
 
-	
+	// Start is called once, after Init. It's implementation should start operation of DataAvailabilityLayerClient.
 	Start() error
 
-	
+	// Stop is called once, when DataAvailabilityLayerClient is no longer needed.
 	Stop() error
 
-	
-	
-	
+	// SubmitBatch submits the passed in block to the DA layer.
+	// This should create a transaction which (potentially)
+	// triggers a state transition in the DA layer.
 	SubmitBatch(batch *types.Batch) ResultSubmitBatch
 
 	GetClientType() Client
 
-	
+	// CheckBatchAvailability checks the availability of the blob submitted getting proofs and validating them
 	CheckBatchAvailability(daMetaData *DASubmitMetaData) ResultCheckBatch
 
-	
+	// Used to check when the DA light client finished syncing
 	WaitForSyncing()
 
-	
+	// Returns the maximum allowed blob size in the DA, used to check the max batch size configured
 	GetMaxBlobSizeBytes() uint32
 
-	
+	// GetSignerBalance returns the balance for a specific address
 	GetSignerBalance() (Balance, error)
 }
 
-
-
+// BatchRetriever is additional interface that can be implemented by Data Availability Layer Client that is able to retrieve
+// block data from DA layer. This gives the ability to use it for block synchronization.
 type BatchRetriever interface {
-	
+	// RetrieveBatches returns blocks at given data layer height from data availability layer.
 	RetrieveBatches(daMetaData *DASubmitMetaData) ResultRetrieveBatch
-	
+	// CheckBatchAvailability checks the availability of the blob received getting proofs and validating them
 	CheckBatchAvailability(daMetaData *DASubmitMetaData) ResultCheckBatch
 }

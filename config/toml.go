@@ -9,7 +9,7 @@ import (
 	tmos "github.com/tendermint/tendermint/libs/os"
 )
 
-
+// DefaultDirPerm is the default permissions used when creating directories.
 const DefaultDirPerm = 0o700
 
 var configTemplate *template.Template
@@ -24,10 +24,10 @@ func init() {
 	}
 }
 
+/****** these are for production settings ***********/
 
-
-
-
+// EnsureRoot creates the root, config, and data directories if they don't exist,
+// and panics if it fails.
 func EnsureRoot(rootDir string, defaultConfig *NodeConfig) {
 	if err := tmos.EnsureDir(rootDir, DefaultDirPerm); err != nil {
 		panic(err.Error())
@@ -42,13 +42,13 @@ func EnsureRoot(rootDir string, defaultConfig *NodeConfig) {
 
 	configFilePath := filepath.Join(rootDir, DefaultConfigDirName, DefaultConfigFileName)
 
-	
+	// Write default config file if missing.
 	if !tmos.FileExists(configFilePath) {
 		WriteConfigFile(configFilePath, defaultConfig)
 	}
 }
 
-
+// WriteConfigFile renders config using the template and writes it to configFilePath.
 func WriteConfigFile(configFilePath string, config *NodeConfig) {
 	var buffer bytes.Buffer
 
@@ -59,8 +59,8 @@ func WriteConfigFile(configFilePath string, config *NodeConfig) {
 	tmos.MustWriteFile(configFilePath, buffer.Bytes(), 0o644)
 }
 
-
-
+// Note: any changes to the comments/variables/mapstructure
+// must be reflected in the appropriate struct in config/config.go
 const defaultConfigTemplate = `
 #######################################################
 ###       Dymint Configuration Options     ###
