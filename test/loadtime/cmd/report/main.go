@@ -19,19 +19,19 @@ const (
 
 var mainPrefix = [1]byte{0}
 
-// BlockStore is a thin wrapper around the DefaultStore which will be used for inspecting the blocks
+
 type BlockStore struct {
 	*store.DefaultStore
 	base   uint64
 	height uint64
 }
 
-// Height implements report.BlockStore.
+
 func (b *BlockStore) Height() uint64 {
 	return b.height
 }
 
-// Base will be used to get the block height of the first block we want to generate the report for
+
 func (b *BlockStore) Base() uint64 {
 	return b.base
 }

@@ -17,10 +17,10 @@ import (
 	sequencertypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/sequencer"
 )
 
-// CosmosClient is an interface for interacting with cosmos client chains.
-// It is a wrapper around the cosmos client in order to provide with an interface which can be implemented by
-// other clients and can easily be mocked for testing purposes.
-// Currently it contains only the methods that are used by the dymension hub client.
+
+
+
+
 type CosmosClient interface {
 	Context() sdkclient.Context
 	StartEventListener() error
@@ -41,7 +41,7 @@ type cosmosClient struct {
 
 var _ CosmosClient = &cosmosClient{}
 
-// NewCosmosClient creates a new cosmos client
+
 func NewCosmosClient(client cosmosclient.Client) CosmosClient {
 	return &cosmosClient{client}
 }

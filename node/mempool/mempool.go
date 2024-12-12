@@ -15,12 +15,12 @@ const (
 type MempoolIDs struct {
 	mtx       tmsync.RWMutex
 	peerMap   map[peer.ID]uint16
-	nextID    uint16              // assumes that a node will never have over 65536 active peers
-	activeIDs map[uint16]struct{} // used to check if a given peerID key is used, the value doesn't matter
+	nextID    uint16              
+	activeIDs map[uint16]struct{} 
 }
 
-// Reserve searches for the next unused ID and assigns it to the
-// peer.
+
+
 func (ids *MempoolIDs) ReserveForPeer(peer peer.ID) {
 	ids.mtx.Lock()
 	defer ids.mtx.Unlock()
@@ -30,8 +30,8 @@ func (ids *MempoolIDs) ReserveForPeer(peer peer.ID) {
 	ids.activeIDs[curID] = struct{}{}
 }
 
-// nextPeerID returns the next unused peer ID to use.
-// This assumes that ids's mutex is already locked.
+
+
 func (ids *MempoolIDs) nextPeerID() uint16 {
 	if len(ids.activeIDs) == maxActiveIDs {
 		panic(fmt.Sprintf("node has maximum %d active IDs and wanted to get one more", maxActiveIDs))
@@ -47,7 +47,7 @@ func (ids *MempoolIDs) nextPeerID() uint16 {
 	return curID
 }
 
-// Reclaim returns the ID reserved for the peer back to unused pool.
+
 func (ids *MempoolIDs) Reclaim(peer peer.ID) {
 	ids.mtx.Lock()
 	defer ids.mtx.Unlock()
@@ -59,7 +59,7 @@ func (ids *MempoolIDs) Reclaim(peer peer.ID) {
 	}
 }
 
-// GetForPeer returns an ID for the peer. ID is generated if required.
+
 func (ids *MempoolIDs) GetForPeer(peer peer.ID) uint16 {
 	ids.mtx.Lock()
 	defer ids.mtx.Unlock()
@@ -78,6 +78,6 @@ func NewMempoolIDs() *MempoolIDs {
 	return &MempoolIDs{
 		peerMap:   make(map[peer.ID]uint16),
 		activeIDs: map[uint16]struct{}{0: {}},
-		nextID:    1, // reserve unknownPeerID(0) for mempoolReactor.BroadcastTx
+		nextID:    1, 
 	}
 }

@@ -5,7 +5,7 @@ import (
 	"time"
 )
 
-// Config for the DymensionLayerClient
+
 type Config struct {
 	KeyringBackend          string        `mapstructure:"keyring_backend"`
 	NodeAddress             string        `mapstructure:"settlement_node_address"`
@@ -19,9 +19,9 @@ type Config struct {
 	RetryMinDelay           time.Duration `mapstructure:"retry_min_delay"`
 	BatchAcceptanceTimeout  time.Duration `mapstructure:"batch_acceptance_timeout"`
 	BatchAcceptanceAttempts uint          `mapstructure:"batch_acceptance_attempts"`
-	// For testing only. probably should be refactored
+	
 	ProposerPubKey string `json:"proposer_pub_key"`
-	// Config used for sl shared grpc mock
+	
 	SLGrpc GrpcConfig `mapstructure:",squash"`
 }
 

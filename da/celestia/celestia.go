@@ -26,7 +26,7 @@ import (
 	uretry "github.com/dymensionxyz/dymint/utils/retry"
 )
 
-// DataAvailabilityLayerClient use celestia-node public API.
+
 type DataAvailabilityLayerClient struct {
 	rpc celtypes.CelestiaRPCClient
 
@@ -43,35 +43,35 @@ var (
 	_ da.BatchRetriever              = &DataAvailabilityLayerClient{}
 )
 
-// WithRPCClient sets rpc client.
+
 func WithRPCClient(rpc celtypes.CelestiaRPCClient) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
 		daLayerClient.(*DataAvailabilityLayerClient).rpc = rpc
 	}
 }
 
-// WithRPCRetryDelay sets failed rpc calls retry delay.
+
 func WithRPCRetryDelay(delay time.Duration) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
 		daLayerClient.(*DataAvailabilityLayerClient).config.RetryDelay = delay
 	}
 }
 
-// WithRPCAttempts sets failed rpc calls retry attempts.
+
 func WithRPCAttempts(attempts int) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
 		daLayerClient.(*DataAvailabilityLayerClient).config.RetryAttempts = &attempts
 	}
 }
 
-// WithSubmitBackoff sets submit retry delay config.
+
 func WithSubmitBackoff(c uretry.BackoffConfig) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
 		daLayerClient.(*DataAvailabilityLayerClient).config.Backoff = c
 	}
 }
 
-// Init initializes DataAvailabilityLayerClient instance.
+
 func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.Server, _ store.KV, logger types.Logger, options ...da.Option) error {
 	c.logger = logger
 	c.synced = make(chan struct{}, 1)
@@ -85,7 +85,7 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 
 	c.pubsubServer = pubsubServer
 
-	// Apply options
+	
 	for _, apply := range options {
 		apply(c)
 	}
@@ -113,7 +113,7 @@ func createConfig(bz []byte) (c Config, err error) {
 		return c, errors.New("gas prices must be set")
 	}
 
-	// NOTE: 0 is valid value for RetryAttempts
+	
 
 	if c.RetryDelay == 0 {
 		c.RetryDelay = defaultRpcRetryDelay
@@ -128,11 +128,11 @@ func createConfig(bz []byte) (c Config, err error) {
 	return c, nil
 }
 
-// Start prepares DataAvailabilityLayerClient to work.
+
 func (c *DataAvailabilityLayerClient) Start() (err error) {
 	c.logger.Info("Starting Celestia Data Availability Layer Client.")
 
-	// other client has already been set
+	
 	if c.rpc != nil {
 		c.logger.Info("Celestia-node client already set.")
 		return nil
@@ -150,7 +150,7 @@ func (c *DataAvailabilityLayerClient) Start() (err error) {
 	return
 }
 
-// Stop stops DataAvailabilityLayerClient.
+
 func (c *DataAvailabilityLayerClient) Stop() error {
 	c.logger.Info("Stopping Celestia Data Availability Layer Client.")
 	err := c.pubsubServer.Stop()
@@ -162,17 +162,17 @@ func (c *DataAvailabilityLayerClient) Stop() error {
 	return nil
 }
 
-// WaitForSyncing is used to check when the DA light client finished syncing
+
 func (m *DataAvailabilityLayerClient) WaitForSyncing() {
 	<-m.synced
 }
 
-// GetClientType returns client type.
+
 func (c *DataAvailabilityLayerClient) GetClientType() da.Client {
 	return da.Celestia
 }
 
-// SubmitBatch submits a batch to the DA layer.
+
 func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultSubmitBatch {
 	data, err := batch.MarshalBinary()
 	if err != nil {
@@ -204,10 +204,10 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			return da.ResultSubmitBatch{}
 		default:
 
-			// TODO(srene):  Split batch in multiple blobs if necessary if supported
+			
 			height, commitment, err := c.submit(data)
 			if errors.Is(err, gerrc.ErrInternal) {
-				// no point retrying if it's because of our code being wrong
+				
 				err = fmt.Errorf("submit: %w", err)
 				return da.ResultSubmitBatch{
 					BaseResult: da.BaseResult{
@@ -273,7 +273,7 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 					resultRetrieveBatch = c.retrieveBatches(daMetaData)
 					return resultRetrieveBatch.Error
 				},
-				retry.Attempts(uint(*c.config.RetryAttempts)), //nolint:gosec // RetryAttempts should be always positive
+				retry.Attempts(uint(*c.config.RetryAttempts)), 
 				retry.DelayType(retry.FixedDelay),
 				retry.Delay(c.config.RetryDelay),
 			)
@@ -368,7 +368,7 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 
 					return nil
 				},
-				retry.Attempts(uint(*c.config.RetryAttempts)), //nolint:gosec // RetryAttempts should be always positive
+				retry.Attempts(uint(*c.config.RetryAttempts)), 
 				retry.DelayType(retry.FixedDelay),
 				retry.Delay(c.config.RetryDelay),
 			)
@@ -392,7 +392,7 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 
 	dah, err := c.getDataAvailabilityHeaders(daMetaData.Height)
 	if err != nil {
-		// Returning Data Availability header Data Root for dispute validation
+		
 		return da.ResultCheckBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
@@ -407,10 +407,10 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 
 	proof, err := c.getProof(daMetaData)
 	if err != nil || proof == nil {
-		// TODO (srene): Not getting proof means there is no existing data for the namespace and the commitment (the commitment is wrong).
-		// Therefore we need to prove whether the commitment is wrong or the span does not exists.
-		// In case the span is correct it is necessary to return the data for the span and the proofs to the data root, so we can prove the data
-		// is the data for the span, and reproducing the commitment will generate a different one.
+		
+		
+		
+		
 		return da.ResultCheckBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
@@ -433,9 +433,9 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 
 	if daMetaData.Index > 0 && daMetaData.Length > 0 {
 		if index != daMetaData.Index || shares != daMetaData.Length {
-			// TODO (srene): In this case the commitment is correct but does not match the span.
-			// If the span is correct we have to repeat the previous step (sending data + proof of data)
-			// In case the span is not correct we need to send unavailable proof by sending proof of any row root to data root
+			
+			
+			
 			return da.ResultCheckBatch{
 				CheckMetaData: DACheckMetaData,
 				BaseResult: da.BaseResult{
@@ -449,9 +449,9 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 	}
 
 	included, err = c.validateProof(daMetaData, proof)
-	// The both cases below (there is an error validating the proof or the proof is wrong) should not happen
-	// if we consider correct functioning of the celestia light node.
-	// This will only happen in case the previous step the celestia light node returned wrong proofs..
+	
+	
+	
 	if err != nil {
 		return da.ResultCheckBatch{
 			BaseResult: da.BaseResult{
@@ -485,7 +485,7 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 	}
 }
 
-// Submit submits the Blobs to Data Availability layer.
+
 func (c *DataAvailabilityLayerClient) submit(daBlob da.Blob) (uint64, da.Commitment, error) {
 	blobs, commitments, err := c.blobsAndCommitments(daBlob)
 	if err != nil {
@@ -554,7 +554,7 @@ func (c *DataAvailabilityLayerClient) getDataAvailabilityHeaders(height uint64) 
 	return headers.DAH, nil
 }
 
-// Celestia syncing in background
+
 func (c *DataAvailabilityLayerClient) sync(rpc *openrpc.Client) {
 	sync := func() error {
 		done := make(chan error, 1)
@@ -579,7 +579,7 @@ func (c *DataAvailabilityLayerClient) sync(rpc *openrpc.Client) {
 	}
 
 	err := retry.Do(sync,
-		retry.Attempts(0), // try forever
+		retry.Attempts(0), 
 		retry.Delay(10*time.Second),
 		retry.LastErrorOnly(true),
 		retry.DelayType(retry.FixedDelay),
@@ -596,12 +596,12 @@ func (c *DataAvailabilityLayerClient) sync(rpc *openrpc.Client) {
 	}
 }
 
-// GetMaxBlobSizeBytes returns the maximum allowed blob size in the DA, used to check the max batch size configured
+
 func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint32 {
 	return maxBlobSizeBytes
 }
 
-// GetSignerBalance returns the balance for a specific address
+
 func (d *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
 	ctx, cancel := context.WithTimeout(d.ctx, d.config.Timeout)
 	defer cancel()

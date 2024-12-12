@@ -13,28 +13,28 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
-// buffer size used by gossipSub router to consume received packets (blocks or txs). packets are dropped in case buffer overflows. in case of blocks, it can buffer up to 5 minutes (assuming 200ms block rate)
+
 const pubsubBufferSize = 3000
 
-// GossipMessage represents message gossiped via P2P network (e.g. transaction, Block etc).
+
 type GossipMessage struct {
 	Data []byte
 	From peer.ID
 }
 
-// GossiperOption sets optional parameters of Gossiper.
+
 type GossiperOption func(*Gossiper) error
 
 type GossipMessageHandler func(ctx context.Context, gossipedBlock []byte)
 
-// WithValidator options registers topic validator for Gossiper.
+
 func WithValidator(validator GossipValidator) GossiperOption {
 	return func(g *Gossiper) error {
 		return g.ps.RegisterTopicValidator(g.topic.String(), wrapValidator(g, validator))
 	}
 }
 
-// Gossiper is an abstraction of P2P publish subscribe mechanism.
+
 type Gossiper struct {
 	ownID peer.ID
 
@@ -45,9 +45,9 @@ type Gossiper struct {
 	logger     types.Logger
 }
 
-// NewGossiper creates new, ready to use instance of Gossiper.
-//
-// Returned Gossiper object can be used for sending (Publishing) and receiving messages in topic identified by topicStr.
+
+
+
 func NewGossiper(host host.Host, ps *pubsub.PubSub, topicStr string, msgHandler GossipMessageHandler, logger types.Logger, options ...GossiperOption) (*Gossiper, error) {
 	topic, err := ps.Join(topicStr)
 	if err != nil {
@@ -76,7 +76,7 @@ func NewGossiper(host host.Host, ps *pubsub.PubSub, topicStr string, msgHandler 
 	return g, nil
 }
 
-// Close is used to disconnect from topic and free resources used by Gossiper.
+
 func (g *Gossiper) Close() error {
 	err := g.ps.UnregisterTopicValidator(g.topic.String())
 	g.sub.Cancel()
@@ -86,12 +86,12 @@ func (g *Gossiper) Close() error {
 	)
 }
 
-// Publish publishes data to gossip topic.
+
 func (g *Gossiper) Publish(ctx context.Context, data []byte) error {
 	return g.topic.Publish(ctx, data)
 }
 
-// ProcessMessages waits for messages published in the topic and execute handler.
+
 func (g *Gossiper) ProcessMessages(ctx context.Context) {
 	for {
 		msg, err := g.sub.Next(ctx)
@@ -110,8 +110,8 @@ func (g *Gossiper) ProcessMessages(ctx context.Context) {
 
 func wrapValidator(gossiper *Gossiper, validator GossipValidator) pubsub.Validator {
 	return func(_ context.Context, _ peer.ID, msg *pubsub.Message) bool {
-		// Make sure we don't process our own messages.
-		// In this case we'll want to return true but not to actually handle the message.
+		
+		
 		if msg.GetFrom() == gossiper.ownID {
 			return true
 		}

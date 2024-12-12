@@ -1,7 +1,7 @@
 package local
 
 import (
-	"crypto/sha1" //#nosec
+	"crypto/sha1" 
 	"encoding/binary"
 	"math/rand"
 	"sync/atomic"
@@ -14,8 +14,8 @@ import (
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
-// DataAvailabilityLayerClient is intended only for usage in tests.
-// It does actually ensures DA - it stores data in-memory.
+
+
 type DataAvailabilityLayerClient struct {
 	logger   types.Logger
 	dalcKV   store.KV
@@ -26,7 +26,7 @@ type DataAvailabilityLayerClient struct {
 
 const (
 	defaultBlockTime = 3 * time.Second
-	maxBlobSize      = 2097152 // 2MB (equivalent to avail or celestia)
+	maxBlobSize      = 2097152 
 )
 
 type config struct {
@@ -38,7 +38,7 @@ var (
 	_ da.BatchRetriever              = &DataAvailabilityLayerClient{}
 )
 
-// Init is called once to allow DA client to read configuration and initialize resources.
+
 func (m *DataAvailabilityLayerClient) Init(config []byte, _ *pubsub.Server, dalcKV store.KV, logger types.Logger, options ...da.Option) error {
 	m.logger = logger
 	m.dalcKV = dalcKV
@@ -56,7 +56,7 @@ func (m *DataAvailabilityLayerClient) Init(config []byte, _ *pubsub.Server, dalc
 	return nil
 }
 
-// Start implements DataAvailabilityLayerClient interface.
+
 func (m *DataAvailabilityLayerClient) Start() error {
 	m.logger.Debug("Mock Data Availability Layer Client starting")
 	m.synced <- struct{}{}
@@ -70,26 +70,26 @@ func (m *DataAvailabilityLayerClient) Start() error {
 	return nil
 }
 
-// Stop implements DataAvailabilityLayerClient interface.
+
 func (m *DataAvailabilityLayerClient) Stop() error {
 	m.logger.Debug("Mock Data Availability Layer Client stopped")
 	close(m.synced)
 	return nil
 }
 
-// WaitForSyncing is used to check when the DA light client finished syncing
+
 func (m *DataAvailabilityLayerClient) WaitForSyncing() {
 	<-m.synced
 }
 
-// GetClientType returns client type.
+
 func (m *DataAvailabilityLayerClient) GetClientType() da.Client {
 	return da.Mock
 }
 
-// SubmitBatch submits the passed in batch to the DA layer.
-// This should create a transaction which (potentially)
-// triggers a state transition in the DA layer.
+
+
+
 func (m *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultSubmitBatch {
 	daHeight := m.daHeight.Load()
 
@@ -99,7 +99,7 @@ func (m *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 	if err != nil {
 		return da.ResultSubmitBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error(), Error: err}}
 	}
-	hash := sha1.Sum(uint64ToBinary(batch.EndHeight())) //#nosec
+	hash := sha1.Sum(uint64ToBinary(batch.EndHeight())) 
 	err = m.dalcKV.Set(getKey(daHeight, batch.StartHeight()), hash[:])
 	if err != nil {
 		return da.ResultSubmitBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error(), Error: err}}
@@ -109,7 +109,7 @@ func (m *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 		return da.ResultSubmitBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error(), Error: err}}
 	}
 
-	m.daHeight.Store(daHeight + 1) // guaranteed no ABA problem as submit batch is only called when the object is locked
+	m.daHeight.Store(daHeight + 1) 
 
 	return da.ResultSubmitBatch{
 		BaseResult: da.BaseResult{
@@ -123,13 +123,13 @@ func (m *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 	}
 }
 
-// CheckBatchAvailability queries DA layer to check data availability of block corresponding to given header.
+
 func (m *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
 	batchesRes := m.RetrieveBatches(daMetaData)
 	return da.ResultCheckBatch{BaseResult: da.BaseResult{Code: batchesRes.Code, Message: batchesRes.Message, Error: batchesRes.Error}, CheckMetaData: batchesRes.CheckMetaData}
 }
 
-// RetrieveBatches returns block at given height from data availability layer.
+
 func (m *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
 	if daMetaData.Height >= m.daHeight.Load() {
 		return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: "batch not found", Error: da.ErrBlobNotFound}}
@@ -174,11 +174,11 @@ func getKey(daHeight uint64, height uint64) []byte {
 }
 
 func (m *DataAvailabilityLayerClient) updateDAHeight() {
-	blockStep := rand.Uint64()%10 + 1 //#nosec
+	blockStep := rand.Uint64()%10 + 1 
 	m.daHeight.Add(blockStep)
 }
 
-// GetMaxBlobSizeBytes returns the maximum allowed blob size in the DA, used to check the max batch size configured
+
 func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint32 {
 	return maxBlobSize
 }
