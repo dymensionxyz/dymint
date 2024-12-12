@@ -32,11 +32,7 @@ const (
 	FlagP2PBootstrapRetryTime = "dymint.p2p_config.bootstrap_retry_time"
 )
 
-// AddNodeFlags adds Dymint specific configuration options to cobra Command.
-//
-// This function is called in cosmos-sdk.
 func AddNodeFlags(cmd *cobra.Command) {
-	// Add tendermint default flags
 	tmcmd.AddNodeFlags(cmd)
 
 	def := DefaultNodeConfig
@@ -58,7 +54,7 @@ func AddNodeFlags(cmd *cobra.Command) {
 	cmd.Flags().String(FlagP2PListenAddress, def.P2PConfig.ListenAddress, "P2P listen address")
 	cmd.Flags().String(FlagP2PBootstrapNodes, def.P2PConfig.BootstrapNodes, "P2P bootstrap nodes")
 	cmd.Flags().Duration(FlagP2PBootstrapRetryTime, def.P2PConfig.BootstrapRetryTime, "P2P bootstrap time")
-	cmd.Flags().Uint64(FlagP2PGossipCacheSize, uint64(def.P2PConfig.GossipSubCacheSize), "P2P Gossiped blocks cache size") //nolint:gosec // GossipSubCacheSize should be always positive
+	cmd.Flags().Uint64(FlagP2PGossipCacheSize, uint64(def.P2PConfig.GossipSubCacheSize), "P2P Gossiped blocks cache size")
 }
 
 func BindDymintFlags(cmd *cobra.Command, v *viper.Viper) error {

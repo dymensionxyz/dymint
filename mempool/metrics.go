@@ -8,42 +8,23 @@ import (
 )
 
 const (
-	// MetricsSubsystem is a subsystem shared by all metrics exposed by this
-	// package.
 	MetricsSubsystem = "mempool"
 )
 
-// Metrics contains metrics exposed by this package.
-// see MetricsProvider for descriptions.
 type Metrics struct {
-	// Size of the mempool.
 	Size metrics.Gauge
 
-	// Histogram of transaction sizes, in bytes.
 	TxSizeBytes metrics.Histogram
 
-	// Number of failed transactions.
 	FailedTxs metrics.Counter
 
-	// RejectedTxs defines the number of rejected transactions. These are
-	// transactions that passed CheckTx but failed to make it into the mempool
-	// due to resource limits, e.g. mempool is full and no lower priority
-	// transactions exist in the mempool.
 	RejectedTxs metrics.Counter
 
-	// EvictedTxs defines the number of evicted transactions. These are valid
-	// transactions that passed CheckTx and existed in the mempool but were later
-	// evicted to make room for higher priority valid transactions that passed
-	// CheckTx.
 	EvictedTxs metrics.Counter
 
-	// Number of times transactions are rechecked in the mempool.
 	RecheckTimes metrics.Counter
 }
 
-// PrometheusMetrics returns Metrics build using Prometheus client library.
-// Optionally, labels can be provided along with their values ("foo",
-// "fooValue").
 func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 	labels := []string{}
 	for i := 0; i < len(labelsAndValues); i += 2 {
@@ -95,7 +76,6 @@ func PrometheusMetrics(namespace string, labelsAndValues ...string) *Metrics {
 	}
 }
 
-// NopMetrics returns no-op Metrics.
 func NopMetrics() *Metrics {
 	return &Metrics{
 		Size:         discard.NewGauge(),

@@ -7,17 +7,14 @@ import (
 )
 
 const (
-	// EventTypeKey is a reserved composite key for event name.
 	EventTypeKey = "settlement.event"
 
-	// Event types
 	EventNewBatchAccepted   = "NewBatchAccepted"
 	EventNewBondedSequencer = "NewBondedSequencer"
 	EventRotationStarted    = "RotationStarted"
 	EventNewBatchFinalized  = "NewBatchFinalized"
 )
 
-// Convenience objects
 var (
 	EventNewBatchAcceptedList   = map[string][]string{EventTypeKey: {EventNewBatchAccepted}}
 	EventNewBondedSequencerList = map[string][]string{EventTypeKey: {EventNewBondedSequencer}}
@@ -25,7 +22,6 @@ var (
 	EventNewBatchFinalizedList  = map[string][]string{EventTypeKey: {EventNewBatchFinalized}}
 )
 
-// Queries
 var (
 	EventQueryNewSettlementBatchAccepted  = uevent.QueryFor(EventTypeKey, EventNewBatchAccepted)
 	EventQueryNewSettlementBatchFinalized = uevent.QueryFor(EventTypeKey, EventNewBatchFinalized)
@@ -33,13 +29,11 @@ var (
 	EventQueryRotationStarted             = uevent.QueryFor(EventTypeKey, EventRotationStarted)
 )
 
-// Data
-
 type EventDataNewBatch struct {
 	StartHeight uint64
-	// EndHeight is the height of the last accepted batch
+
 	EndHeight uint64
-	// StateIndex is the rollapp-specific index the batch was saved in the SL
+
 	StateIndex uint64
 }
 

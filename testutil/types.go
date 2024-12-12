@@ -21,9 +21,8 @@ import (
 )
 
 const (
-	// BlockVersion is the default block version for testing
 	BlockVersion = 1
-	// AppVersion is the default app version for testing
+
 	AppVersion = 0
 
 	SettlementAccountPrefix = "dym"
@@ -63,7 +62,6 @@ func GenerateSettlementAddress() string {
 	return addr
 }
 
-// generateBlock generates random blocks.
 func generateBlock(height uint64, proposerHash []byte, lastHeaderHash [32]byte) *types.Block {
 	h := createRandomHashes()
 
@@ -135,7 +133,6 @@ func GenerateBlocksWithTxs(startHeight uint64, num uint64, proposerKey crypto.Pr
 	return blocks, nil
 }
 
-// GenerateBlocks generates random blocks.
 func GenerateBlocks(startHeight uint64, num uint64, proposerKey crypto.PrivKey, lastBlockHeader [32]byte) ([]*types.Block, error) {
 	r, _ := proposerKey.Raw()
 	seq := types.NewSequencerFromValidator(*tmtypes.NewValidator(ed25519.PrivKey(r).PubKey(), 1))
@@ -163,7 +160,6 @@ func GenerateBlocks(startHeight uint64, num uint64, proposerKey crypto.PrivKey, 
 	return blocks, nil
 }
 
-// GenerateCommits generates commits based on passed blocks.
 func GenerateCommits(blocks []*types.Block, proposerKey crypto.PrivKey) ([]*types.Commit, error) {
 	commits := make([]*types.Commit, len(blocks))
 
@@ -205,7 +201,6 @@ func generateSignature(proposerKey crypto.PrivKey, header *types.Header) ([]byte
 	return sign, nil
 }
 
-// GenerateBatch generates a batch out of random blocks
 func GenerateBatch(startHeight uint64, endHeight uint64, proposerKey crypto.PrivKey, lastBlockHeader [32]byte) (*types.Batch, error) {
 	blocks, err := GenerateBlocks(startHeight, endHeight-startHeight+1, proposerKey, lastBlockHeader)
 	if err != nil {
@@ -223,7 +218,6 @@ func GenerateBatch(startHeight uint64, endHeight uint64, proposerKey crypto.Priv
 	return batch, nil
 }
 
-// GenerateLastBatch generates a final batch with LastBatch flag set to true and different NextSequencerHash
 func GenerateLastBatch(startHeight uint64, endHeight uint64, proposerKey crypto.PrivKey, nextSequencerKey crypto.PrivKey, lastHeaderHash [32]byte) (*types.Batch, error) {
 	nextSequencerRaw, _ := nextSequencerKey.Raw()
 	nextSeq := types.NewSequencerFromValidator(*tmtypes.NewValidator(ed25519.PrivKey(nextSequencerRaw).PubKey(), 1))
@@ -248,7 +242,6 @@ func GenerateLastBatch(startHeight uint64, endHeight uint64, proposerKey crypto.
 	return batch, nil
 }
 
-// GenerateLastBlocks es similar a GenerateBlocks pero incluye el NextSequencerHash
 func GenerateLastBlocks(startHeight uint64, num uint64, proposerKey crypto.PrivKey, lastHeaderHash [32]byte, nextSequencerHash [32]byte) ([]*types.Block, error) {
 	r, _ := proposerKey.Raw()
 	seq := types.NewSequencerFromValidator(*tmtypes.NewValidator(ed25519.PrivKey(r).PubKey(), 1))
@@ -304,7 +297,6 @@ func MustGenerateBatchAndKey(startHeight uint64, endHeight uint64) *types.Batch 
 	return MustGenerateBatch(startHeight, endHeight, proposerKey)
 }
 
-// GenerateRandomValidatorSet generates random validator sets
 func GenerateRandomValidatorSet() *tmtypes.ValidatorSet {
 	return tmtypes.NewValidatorSet([]*tmtypes.Validator{
 		tmtypes.NewValidator(ed25519.GenPrivKey().PubKey(), 1),
@@ -320,11 +312,10 @@ func GenerateSequencer() types.Sequencer {
 	)
 }
 
-// GenerateStateWithSequencer generates an initial state for testing.
 func GenerateStateWithSequencer(initialHeight int64, lastBlockHeight int64, pubkey tmcrypto.PubKey) *types.State {
 	s := &types.State{
 		ChainID:         "test-chain",
-		InitialHeight:   uint64(initialHeight), //nolint:gosec // height is non-negative and falls in int64
+		InitialHeight:   uint64(initialHeight),
 		AppHash:         [32]byte{},
 		LastResultsHash: GetEmptyLastResultsHash(),
 		Version: tmstate.Version{
@@ -350,11 +341,10 @@ func GenerateStateWithSequencer(initialHeight int64, lastBlockHeight int64, pubk
 		GenerateSettlementAddress(),
 		[]string{GenerateSettlementAddress()},
 	))
-	s.SetHeight(uint64(lastBlockHeight)) //nolint:gosec // height is non-negative and falls in int64
+	s.SetHeight(uint64(lastBlockHeight))
 	return s
 }
 
-// GenerateGenesis generates a genesis for testing.
 func GenerateGenesis(initialHeight int64) *tmtypes.GenesisDoc {
 	return &tmtypes.GenesisDoc{
 		ChainID:       "test-chain",

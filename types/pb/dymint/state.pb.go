@@ -185,7 +185,7 @@ func (m *State) GetRevisionStartHeight() int64 {
 	return 0
 }
 
-//rollapp params defined in genesis and updated via gov proposal
+// rollapp params defined in genesis and updated via gov proposal
 type RollappParams struct {
 	//data availability type (e.g. celestia) used in the rollapp
 	Da string `protobuf:"bytes,1,opt,name=da,proto3" json:"da,omitempty"`

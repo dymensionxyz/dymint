@@ -16,7 +16,7 @@ func (s Status) Handler(logger log.Logger) HandlerFunc {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			err := s.Err()
 			isHealthy := err == nil
-			// in case the endpoint is health we return health response
+
 			if r.URL.Path == "/health" {
 
 				w.WriteHeader(http.StatusOK)

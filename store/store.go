@@ -30,33 +30,26 @@ var (
 	lastBlockSequencerSetPrefix = [1]byte{14}
 )
 
-// DefaultStore is a default store implementation.
 type DefaultStore struct {
 	db KV
 }
 
 var _ Store = &DefaultStore{}
 
-// New returns new, default store.
 func New(kv KV) Store {
 	return &DefaultStore{
 		db: kv,
 	}
 }
 
-// Close implements Store.
 func (s *DefaultStore) Close() error {
 	return s.db.Close()
 }
 
-// NewBatch creates a new db batch.
 func (s *DefaultStore) NewBatch() KVBatch {
 	return s.db.NewBatch()
 }
 
-// SaveBlock adds block to the store along with corresponding commit.
-// Stored height is updated if block height is greater than stored value.
-// In case a batch is provided, the block and commit are added to the batch and not saved.
 func (s *DefaultStore) SaveBlock(block *types.Block, commit *types.Commit, batch KVBatch) (KVBatch, error) {
 	hash := block.Header.Hash()
 	blockBlob, err := block.MarshalBinary()
@@ -69,7 +62,6 @@ func (s *DefaultStore) SaveBlock(block *types.Block, commit *types.Commit, batch
 		return batch, fmt.Errorf("marshal Commit to binary: %w", err)
 	}
 
-	// Not sure it's neeeded, as it's not used anywhere
 	if batch != nil {
 		err = multierr.Append(err, batch.Set(getBlockKey(hash), blockBlob))
 		err = multierr.Append(err, batch.Set(getCommitKey(hash), commitBlob))
@@ -94,10 +86,6 @@ func (s *DefaultStore) SaveBlock(block *types.Block, commit *types.Commit, batch
 	return nil, nil
 }
 
-// LoadBlock returns block at given height, or error if it's not found in Store.
-// TODO(tzdybal): what is more common access pattern? by height or by hash?
-// currently, we're indexing height->hash, and store blocks by hash, but we might as well store by height
-// and index hash->height
 func (s *DefaultStore) LoadBlock(height uint64) (*types.Block, error) {
 	h, err := s.loadHashFromIndex(height)
 	if err != nil {
@@ -106,7 +94,6 @@ func (s *DefaultStore) LoadBlock(height uint64) (*types.Block, error) {
 	return s.LoadBlockByHash(h)
 }
 
-// LoadBlockByHash returns block with given block header hash, or error if it's not found in Store.
 func (s *DefaultStore) LoadBlockByHash(hash [32]byte) (*types.Block, error) {
 	blockData, err := s.db.Get(getBlockKey(hash))
 	if err != nil {
@@ -121,7 +108,6 @@ func (s *DefaultStore) LoadBlockByHash(hash [32]byte) (*types.Block, error) {
 	return block, nil
 }
 
-// SaveBlockSource saves block validation in Store.
 func (s *DefaultStore) SaveBlockSource(height uint64, source types.BlockSource, batch KVBatch) (KVBatch, error) {
 	b := make([]byte, 8)
 	binary.LittleEndian.PutUint64(b, uint64(source))
@@ -132,7 +118,6 @@ func (s *DefaultStore) SaveBlockSource(height uint64, source types.BlockSource, 
 	return batch, err
 }
 
-// LoadBlockSource returns block validation in Store.
 func (s *DefaultStore) LoadBlockSource(height uint64) (types.BlockSource, error) {
 	source, err := s.db.Get(getSourceKey(height))
 	if err != nil {
@@ -141,7 +126,6 @@ func (s *DefaultStore) LoadBlockSource(height uint64) (types.BlockSource, error)
 	return types.BlockSource(binary.LittleEndian.Uint64(source)), nil
 }
 
-// SaveBlockResponses saves block responses (events, tx responses, etc) in Store.
 func (s *DefaultStore) SaveBlockResponses(height uint64, responses *tmstate.ABCIResponses, batch KVBatch) (KVBatch, error) {
 	data, err := responses.Marshal()
 	if err != nil {
@@ -154,7 +138,6 @@ func (s *DefaultStore) SaveBlockResponses(height uint64, responses *tmstate.ABCI
 	return batch, err
 }
 
-// LoadBlockResponses returns block results at given height, or error if it's not found in Store.
 func (s *DefaultStore) LoadBlockResponses(height uint64) (*tmstate.ABCIResponses, error) {
 	data, err := s.db.Get(getResponsesKey(height))
 	if err != nil {
@@ -168,7 +151,6 @@ func (s *DefaultStore) LoadBlockResponses(height uint64) (*tmstate.ABCIResponses
 	return &responses, nil
 }
 
-// LoadCommit returns commit for a block at given height, or error if it's not found in Store.
 func (s *DefaultStore) LoadCommit(height uint64) (*types.Commit, error) {
 	hash, err := s.loadHashFromIndex(height)
 	if err != nil {
@@ -177,7 +159,6 @@ func (s *DefaultStore) LoadCommit(height uint64) (*types.Commit, error) {
 	return s.LoadCommitByHash(hash)
 }
 
-// LoadCommitByHash returns commit for a block with given block header hash, or error if it's not found in Store.
 func (s *DefaultStore) LoadCommitByHash(hash [32]byte) (*types.Commit, error) {
 	commitData, err := s.db.Get(getCommitKey(hash))
 	if err != nil {
@@ -191,8 +172,6 @@ func (s *DefaultStore) LoadCommitByHash(hash [32]byte) (*types.Commit, error) {
 	return commit, nil
 }
 
-// SaveState updates state saved in Store. Only one State is stored.
-// If there is no State in Store, state will be saved.
 func (s *DefaultStore) SaveState(state *types.State, batch KVBatch) (KVBatch, error) {
 	pbState, err := state.ToProto()
 	if err != nil {
@@ -210,7 +189,6 @@ func (s *DefaultStore) SaveState(state *types.State, batch KVBatch) (KVBatch, er
 	return batch, err
 }
 
-// LoadState returns last state saved with UpdateState.
 func (s *DefaultStore) LoadState() (*types.State, error) {
 	blob, err := s.db.Get(getStateKey())
 	if err != nil {
@@ -231,7 +209,6 @@ func (s *DefaultStore) LoadState() (*types.State, error) {
 	return &state, nil
 }
 
-// SaveProposer stores the proposer for given block height in store.
 func (s *DefaultStore) SaveProposer(height uint64, proposer types.Sequencer, batch KVBatch) (KVBatch, error) {
 	pbProposer, err := proposer.ToProto()
 	if err != nil {
@@ -249,7 +226,6 @@ func (s *DefaultStore) SaveProposer(height uint64, proposer types.Sequencer, bat
 	return batch, err
 }
 
-// LoadProposer loads proposer at given block height from store.
 func (s *DefaultStore) LoadProposer(height uint64) (types.Sequencer, error) {
 	blob, err := s.db.Get(getProposerKey(height))
 	if err != nil {

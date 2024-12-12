@@ -6,20 +6,14 @@ import (
 	tmbytes "github.com/tendermint/tendermint/libs/bytes"
 )
 
-// Tx represents transaction.
 type Tx []byte
 
-// Txs represents a slice of transactions.
 type Txs []Tx
 
-// Hash computes the TMHASH hash of the wire encoded transaction.
 func (tx Tx) Hash() []byte {
 	return tmhash.Sum(tx)
 }
 
-// Proof returns a simple merkle proof for this node.
-// Panics if i < 0 or i >= len(txs)
-// TODO: optimize this!
 func (txs Txs) Proof(i int) TxProof {
 	l := len(txs)
 	bzs := make([][]byte, l)
@@ -35,7 +29,6 @@ func (txs Txs) Proof(i int) TxProof {
 	}
 }
 
-// TxProof represents a Merkle proof of the presence of a transaction in the Merkle tree.
 type TxProof struct {
 	RootHash tmbytes.HexBytes `json:"root_hash"`
 	Data     Tx               `json:"data"`

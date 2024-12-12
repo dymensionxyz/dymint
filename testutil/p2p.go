@@ -45,10 +45,8 @@ type HostDescr struct {
 	RealKey bool
 }
 
-// copied from libp2p net/mock
 var blackholeIP6 = net.ParseIP("100::")
 
-// copied from libp2p net/mock
 func getAddr(sk crypto.PrivKey) (multiaddr.Multiaddr, error) {
 	id, err := peer.IDFromPrivateKey(sk)
 	if err != nil {
@@ -92,7 +90,6 @@ func StartTestNetwork(ctx context.Context, t *testing.T, n int, conf map[int]Hos
 	err := mnet.LinkAll()
 	require.NoError(err)
 
-	// prepare seed node lists
 	seeds := make([]string, n)
 	for src, descr := range conf {
 		require.Less(src, n)

@@ -14,7 +14,6 @@ import (
 )
 
 const (
-	// DefaultDymintDir is the default directory for dymint
 	DefaultDymintDir      = ".dymint"
 	DefaultConfigDirName  = "config"
 	DefaultConfigFileName = "dymint.toml"
@@ -23,63 +22,54 @@ const (
 	MaxBatchSubmitTime    = 1 * time.Hour
 )
 
-// NodeConfig stores Dymint node configuration.
 type NodeConfig struct {
-	// parameters below are translated from existing config
 	RootDir       string
 	DBPath        string
 	RPC           RPCConfig
 	MempoolConfig tmcfg.MempoolConfig
 
-	// parameters below are dymint specific and read from config
 	BlockManagerConfig `mapstructure:",squash"`
 	DAConfig           string                 `mapstructure:"da_config"`
 	SettlementLayer    string                 `mapstructure:"settlement_layer"`
 	SettlementConfig   settlement.Config      `mapstructure:",squash"`
 	Instrumentation    *InstrumentationConfig `mapstructure:"instrumentation"`
-	// Config params for mock grpc da
+
 	DAGrpc grpc.Config `mapstructure:",squash"`
-	// P2P Options
+
 	P2PConfig `mapstructure:",squash"`
-	// DB Options
+
 	DBConfig `mapstructure:"db"`
 }
 
-// BlockManagerConfig consists of all parameters required by BlockManagerConfig
 type BlockManagerConfig struct {
-	// BlockTime defines how often new blocks are produced
 	BlockTime time.Duration `mapstructure:"block_time"`
-	// MaxIdleTime defines how long should block manager wait for new transactions before producing empty block
+
 	MaxIdleTime time.Duration `mapstructure:"max_idle_time"`
-	// MaxProofTime defines the max time to be idle, if txs that requires proof were included in last block
+
 	MaxProofTime time.Duration `mapstructure:"max_proof_time"`
-	// BatchSubmitMaxTime is how long should block manager wait for before submitting batch
+
 	BatchSubmitTime time.Duration `mapstructure:"batch_submit_time"`
-	// MaxSkewTime is the number of batches waiting to be submitted. Block production will be paused if this limit is reached.
+
 	MaxSkewTime time.Duration `mapstructure:"max_skew_time"`
-	// The size of the batch of blocks and commits in Bytes. We'll write every batch to the DA and the settlement layer.
+
 	BatchSubmitBytes uint64 `mapstructure:"batch_submit_bytes"`
-	// SequencerSetUpdateInterval defines the interval at which to fetch sequencer updates from the settlement layer
+
 	SequencerSetUpdateInterval time.Duration `mapstructure:"sequencer_update_interval"`
 }
 
-// GetViperConfig reads configuration parameters from Viper instance.
 func (nc *NodeConfig) GetViperConfig(cmd *cobra.Command, homeDir string) error {
 	v := viper.GetViper()
 
-	// Loads dymint toml config file
 	EnsureRoot(homeDir, nil)
 	v.SetConfigName("dymint")
-	v.AddConfigPath(homeDir)                                      // search root directory
-	v.AddConfigPath(filepath.Join(homeDir, DefaultConfigDirName)) // search root directory /config
+	v.AddConfigPath(homeDir)
+	v.AddConfigPath(filepath.Join(homeDir, DefaultConfigDirName))
 
-	// bind flags so we could override config file with flags
 	err := BindDymintFlags(cmd, v)
 	if err != nil {
 		return err
 	}
 
-	// Read viper config
 	err = v.ReadInConfig()
 	if err != nil {
 		return err
@@ -126,7 +116,6 @@ func (nc NodeConfig) Validate() error {
 	return nil
 }
 
-// Validate BlockManagerConfig
 func (c BlockManagerConfig) Validate() error {
 	if c.BlockTime < MinBlockTime {
 		return fmt.Errorf("block_time cannot be less than %s", MinBlockTime)
@@ -139,7 +128,7 @@ func (c BlockManagerConfig) Validate() error {
 	if c.MaxIdleTime < 0 {
 		return fmt.Errorf("max_idle_time must be positive or zero to disable")
 	}
-	// MaxIdleTime zero disables adaptive block production.
+
 	if c.MaxIdleTime != 0 {
 		if c.MaxIdleTime <= c.BlockTime || c.MaxIdleTime > MaxBatchSubmitTime {
 			return fmt.Errorf("max_idle_time must be greater than block_time and not greater than %s", MaxBatchSubmitTime)
@@ -203,14 +192,9 @@ func (nc NodeConfig) validateInstrumentation() error {
 	return nc.Instrumentation.Validate()
 }
 
-// InstrumentationConfig defines the configuration for metrics reporting.
 type InstrumentationConfig struct {
-	// When true, Prometheus metrics are served under /metrics on
-	// PrometheusListenAddr.
-	// Check out the documentation for the list of available metrics.
 	Prometheus bool `mapstructure:"prometheus"`
 
-	// Address to listen for Prometheus collector(s) connections.
 	PrometheusListenAddr string `mapstructure:"prometheus_listen_addr"`
 }
 
@@ -222,11 +206,9 @@ func (ic InstrumentationConfig) Validate() error {
 	return nil
 }
 
-// DBConfig holds configuration for the database.
 type DBConfig struct {
-	// SyncWrites makes sure that data is written to disk before returning from a write operation.
 	SyncWrites bool `mapstructure:"sync_writes"`
-	// InMemory sets the database to run in-memory, without touching the disk.
+
 	InMemory bool `mapstructure:"in_memory"`
 }
 

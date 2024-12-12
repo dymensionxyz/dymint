@@ -40,7 +40,6 @@ func (wsc *wsConn) sendLoop() {
 }
 
 func (h *handler) wsHandler(w http.ResponseWriter, r *http.Request) {
-	// TODO(tzdybal): configuration options
 	upgrader := websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
@@ -89,7 +88,7 @@ func (h *handler) wsHandler(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if mt != websocket.TextMessage {
-			// TODO(tzdybal): https://github.com/dymensionxyz/dymint/issues/465
+
 			h.logger.Debug("expected text message")
 			continue
 		}
@@ -111,14 +110,12 @@ func newResponseWriter(w io.Writer) http.ResponseWriter {
 	return &wsResponse{w}
 }
 
-// wsResponse is a simple implementation of http.ResponseWriter
 type wsResponse struct {
 	w io.Writer
 }
 
 var _ http.ResponseWriter = wsResponse{}
 
-// Write use underlying writer to write response to WebSocket
 func (w wsResponse) Write(bytes []byte) (int, error) {
 	return w.w.Write(bytes)
 }
