@@ -12,9 +12,9 @@ import (
 	tmquery "github.com/tendermint/tendermint/libs/pubsub/query"
 )
 
-// MustSubscribe subscribes to events and sends back a callback
-// clientID is essentially the subscriber id, see https://pkg.go.dev/github.com/tendermint/tendermint/libs/pubsub#pkg-overview
-// - will not panic on context cancel or deadline exceeded
+
+
+
 func MustSubscribe(
 	ctx context.Context,
 	pubsubServer *pubsub.Server,
@@ -46,7 +46,7 @@ func MustSubscribe(
 	}
 }
 
-// MustPublish submits an event or panics - will not panic on context cancel or deadline exceeded
+
 func MustPublish(ctx context.Context, pubsubServer *pubsub.Server, msg interface{}, events map[string][]string) {
 	err := pubsubServer.PublishWithEvents(ctx, msg, events)
 	if err != nil && !errors.Is(err, context.Canceled) {
@@ -54,7 +54,7 @@ func MustPublish(ctx context.Context, pubsubServer *pubsub.Server, msg interface
 	}
 }
 
-// QueryFor returns a query for the given event.
+
 func QueryFor(eventTypeKey, eventType string) tmpubsub.Query {
 	return tmquery.MustParse(fmt.Sprintf("%s='%s'", eventTypeKey, eventType))
 }

@@ -20,13 +20,13 @@ import (
 )
 
 const (
-	// defaultSubscribeTimeout is the default timeout for a subscription.
+	
 	defaultSubscribeTimeout = 5 * time.Second
-	// defaultSubscribeBufferSize is the default buffer size for a subscription.
+	
 	defaultSubscribeBufferSize = 100
 )
 
-// GetHTTPHandler returns handler configured to serve Tendermint-compatible RPC.
+
 func GetHTTPHandler(l *client.Client, logger types.Logger, opts ...option) (http.Handler, error) {
 	return newHandler(newService(l, logger, opts...), json2.NewCodec(), logger), nil
 }
@@ -137,9 +137,9 @@ func (s *service) Subscribe(req *http.Request, args *subscribeArgs, wsConn *wsCo
 	}
 	go func(subscriptionID []byte) {
 		for msg := range out {
-			// build the base response
+			
 			var resp rpctypes.RPCResponse
-			// Check if subscriptionID is string or int and generate the rest of the response accordingly
+			
 			subscriptionIDInt, err := strconv.Atoi(string(subscriptionID))
 			if err != nil {
 				s.logger.Info("Failed to convert subscriptionID to int")
@@ -147,7 +147,7 @@ func (s *service) Subscribe(req *http.Request, args *subscribeArgs, wsConn *wsCo
 			} else {
 				resp = rpctypes.NewRPCSuccessResponse(rpctypes.JSONRPCIntID(subscriptionIDInt), msg)
 			}
-			// Marshal response to JSON and send it to the websocket queue
+			
 			jsonBytes, err := json.MarshalIndent(resp, "", "  ")
 			if err != nil {
 				s.logger.Error("marshal RPCResponse to JSON", "err", err)
@@ -180,7 +180,7 @@ func (s *service) UnsubscribeAll(req *http.Request, args *unsubscribeAllArgs) (*
 	return &emptyResult{}, nil
 }
 
-// info API
+
 func (s *service) Health(req *http.Request, args *healthArgs) (*ctypes.ResultHealth, error) {
 	return s.client.Health(req.Context())
 }
@@ -202,7 +202,7 @@ func (s *service) Genesis(req *http.Request, args *genesisArgs) (*ctypes.ResultG
 }
 
 func (s *service) GenesisChunked(req *http.Request, args *genesisChunkedArgs) (*ctypes.ResultGenesisChunk, error) {
-	return s.client.GenesisChunked(req.Context(), uint(args.ID)) //nolint:gosec // id is always positive
+	return s.client.GenesisChunked(req.Context(), uint(args.ID)) 
 }
 
 func (s *service) Block(req *http.Request, args *blockArgs) (*ctypes.ResultBlock, error) {
@@ -261,7 +261,7 @@ func (s *service) NumUnconfirmedTxs(req *http.Request, args *numUnconfirmedTxsAr
 	return s.client.NumUnconfirmedTxs(req.Context())
 }
 
-// tx broadcast API
+
 func (s *service) BroadcastTxCommit(req *http.Request, args *broadcastTxCommitArgs) (*ctypes.ResultBroadcastTxCommit, error) {
 	return s.client.BroadcastTxCommit(req.Context(), args.Tx)
 }
@@ -274,7 +274,7 @@ func (s *service) BroadcastTxAsync(req *http.Request, args *broadcastTxAsyncArgs
 	return s.client.BroadcastTxAsync(req.Context(), args.Tx)
 }
 
-// abci API
+
 func (s *service) ABCIQuery(req *http.Request, args *ABCIQueryArgs) (*ctypes.ResultABCIQuery, error) {
 	return s.client.ABCIQueryWithOptions(req.Context(), args.Path, args.Data, rpcclient.ABCIQueryOptions{
 		Height: int64(args.Height),
@@ -286,7 +286,7 @@ func (s *service) ABCIInfo(req *http.Request, args *ABCIInfoArgs) (*ctypes.Resul
 	return s.client.ABCIInfo(req.Context())
 }
 
-// evidence API
+
 func (s *service) BroadcastEvidence(req *http.Request, args *broadcastEvidenceArgs) (*ctypes.ResultBroadcastEvidence, error) {
 	return s.client.BroadcastEvidence(req.Context(), args.Evidence)
 }

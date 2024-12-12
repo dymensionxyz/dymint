@@ -5,8 +5,8 @@ import (
 	"encoding/binary"
 )
 
-// This code is extracted from celestia-app. It's here to build shares from messages (serialized blocks).
-// TODO(tzdybal): if we stop using `/namespaced_shares` we can get rid of this file.
+
+
 
 const (
 	shareSize     = 256
@@ -14,8 +14,8 @@ const (
 	msgShareSize  = shareSize - namespaceSize
 )
 
-// splitMessage breaks the data in a message into the minimum number of
-// namespaced shares
+
+
 func splitMessage(rawData []byte, nid []byte) []NamespacedShare {
 	shares := make([]NamespacedShare, 0)
 	firstRawShare := append(append(
@@ -40,10 +40,10 @@ func splitMessage(rawData []byte, nid []byte) []NamespacedShare {
 	return shares
 }
 
-// Share contains the raw share data without the corresponding namespace.
+
 type Share []byte
 
-// NamespacedShare extends a Share with the corresponding namespace.
+
 type NamespacedShare struct {
 	Share
 	ID []byte
@@ -68,8 +68,8 @@ func zeroPadIfNecessary(share []byte, width int) []byte {
 	return share
 }
 
-// marshalDelimited marshals the raw data (excluding the namespace) of this
-// message and prefixes it with the length of that encoding.
+
+
 func marshalDelimited(data []byte) ([]byte, error) {
 	lenBuf := make([]byte, binary.MaxVarintLen64)
 	length := uint64(len(data))
@@ -77,8 +77,8 @@ func marshalDelimited(data []byte) ([]byte, error) {
 	return append(lenBuf[:n], data...), nil
 }
 
-// appendToShares appends raw data as shares.
-// Used to build shares from blocks/messages.
+
+
 func appendToShares(shares []NamespacedShare, nid []byte, rawData []byte) []NamespacedShare {
 	if len(rawData) <= msgShareSize {
 		rawShare := append(append(
@@ -89,7 +89,7 @@ func appendToShares(shares []NamespacedShare, nid []byte, rawData []byte) []Name
 		paddedShare := zeroPadIfNecessary(rawShare, shareSize)
 		share := NamespacedShare{paddedShare, nid}
 		shares = append(shares, share)
-	} else { // len(rawData) > msgShareSize
+	} else { 
 		shares = append(shares, splitMessage(rawData, nid)...)
 	}
 	return shares

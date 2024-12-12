@@ -10,7 +10,7 @@ import (
 	"github.com/tendermint/tendermint/p2p"
 )
 
-// ShowNodeIDCmd dumps node's ID to the standard output.
+
 var ShowNodeIDCmd = &cobra.Command{
 	Use:     "show-node-id",
 	Aliases: []string{"show_node_id"},
@@ -27,7 +27,7 @@ func showNodeID(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	// convert nodeKey to libp2p key
+	
 	host, err := libp2p.New(libp2p.Identity(signingKey))
 	if err != nil {
 		return err

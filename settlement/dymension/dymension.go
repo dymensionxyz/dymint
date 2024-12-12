@@ -38,7 +38,7 @@ const (
 	postBatchSubscriberPrefix = "postBatchSubscriber"
 )
 
-// Client is the client for the Dymension Hub.
+
 type Client struct {
 	config                  *settlement.Config
 	rollappId               string
@@ -58,7 +58,7 @@ type Client struct {
 
 var _ settlement.ClientI = &Client{}
 
-// Init is called once. it initializes the struct members.
+
 func (c *Client) Init(config settlement.Config, rollappId string, pubsub *pubsub.Server, logger types.Logger, options ...settlement.Option) error {
 	interfaceRegistry := cdctypes.NewInterfaceRegistry()
 	cryptocodec.RegisterInterfaces(interfaceRegistry)
@@ -76,7 +76,7 @@ func (c *Client) Init(config settlement.Config, rollappId string, pubsub *pubsub
 	c.retryMinDelay = config.RetryMinDelay
 	c.retryMaxDelay = config.RetryMaxDelay
 
-	// Apply options
+	
 	for _, apply := range options {
 		apply(c)
 	}
@@ -96,7 +96,7 @@ func (c *Client) Init(config settlement.Config, rollappId string, pubsub *pubsub
 	return nil
 }
 
-// Start starts the HubClient.
+
 func (c *Client) Start() error {
 	err := c.cosmosClient.StartEventListener()
 	if err != nil {
@@ -106,31 +106,31 @@ func (c *Client) Start() error {
 	return nil
 }
 
-// Stop stops the HubClient.
+
 func (c *Client) Stop() error {
 	return c.cosmosClient.StopEventListener()
 }
 
-// SubmitBatch posts a batch to the Dymension Hub. it tries to post the batch until it is accepted by the settlement layer.
-// it emits success and failure events to the event bus accordingly.
+
+
 func (c *Client) SubmitBatch(batch *types.Batch, _ da.Client, daResult *da.ResultSubmitBatch) error {
 	msgUpdateState, err := c.convertBatchToMsgUpdateState(batch, daResult)
 	if err != nil {
 		return fmt.Errorf("convert batch to msg update state: %w", err)
 	}
 
-	// TODO: probably should be changed to be a channel, as the eventHandler is also in the HubClient in he produces the event
+	
 	postBatchSubscriberClient := fmt.Sprintf("%s-%d-%s", postBatchSubscriberPrefix, batch.StartHeight(), uuid.New().String())
 	subscription, err := c.pubsub.Subscribe(c.ctx, postBatchSubscriberClient, settlement.EventQueryNewSettlementBatchAccepted, 1000)
 	if err != nil {
 		return fmt.Errorf("pub sub subscribe to settlement state updates: %w", err)
 	}
 
-	//nolint:errcheck
+	
 	defer c.pubsub.UnsubscribeAll(c.ctx, postBatchSubscriberClient)
 
 	for {
-		// broadcast loop: broadcast the transaction to the blockchain (with infinite retries).
+		
 		err := c.RunWithRetryInfinitely(func() error {
 			err := c.broadcastBatch(msgUpdateState)
 			if err != nil {
@@ -154,7 +154,7 @@ func (c *Client) SubmitBatch(batch *types.Batch, _ da.Client, daResult *da.Resul
 			return fmt.Errorf("broadcast batch: %w", err)
 		}
 
-		// Batch was submitted successfully. Wait for it to be accepted by the settlement layer.
+		
 		timer := time.NewTimer(c.batchAcceptanceTimeout)
 		defer timer.Stop()
 		attempt := uint64(1)
@@ -171,20 +171,20 @@ func (c *Client) SubmitBatch(batch *types.Batch, _ da.Client, daResult *da.Resul
 				eventData, _ := event.Data().(*settlement.EventDataNewBatch)
 				if eventData.EndHeight != batch.EndHeight() {
 					c.logger.Debug("Received event for a different batch, ignoring.", "event", eventData)
-					continue // continue waiting for acceptance of the current batch
+					continue 
 				}
 				c.logger.Info("Batch accepted.", "startHeight", batch.StartHeight(), "endHeight", batch.EndHeight(), "stateIndex", eventData.StateIndex, "dapath", msgUpdateState.DAPath)
 				return nil
 
 			case <-timer.C:
-				// Check if the batch was accepted by the settlement layer, and we've just missed the event.
+				
 				includedBatch, err := c.pollForBatchInclusion(batch.EndHeight())
 				timer.Reset(c.batchAcceptanceTimeout)
-				// no error, but still not included
+				
 				if err == nil && !includedBatch {
 					attempt++
 					if attempt <= uint64(c.batchAcceptanceAttempts) {
-						continue // continue waiting for acceptance of the current batch
+						continue 
 					}
 					c.logger.Error(
 						"Timed out waiting for batch inclusion on settlement layer",
@@ -193,7 +193,7 @@ func (c *Client) SubmitBatch(batch *types.Batch, _ da.Client, daResult *da.Resul
 						"endHeight",
 						batch.EndHeight(),
 					)
-					break // breaks the switch case, and goes back to the broadcast loop
+					break 
 				}
 				if err != nil {
 					c.logger.Error(
@@ -205,13 +205,13 @@ func (c *Client) SubmitBatch(batch *types.Batch, _ da.Client, daResult *da.Resul
 						"error",
 						err,
 					)
-					continue // continue waiting for acceptance of the current batch
+					continue 
 				}
-				// all good
+				
 				c.logger.Info("Batch accepted", "startHeight", batch.StartHeight(), "endHeight", batch.EndHeight())
 				return nil
 			}
-			break // failed waiting for acceptance. broadcast the batch again
+			break 
 		}
 	}
 }
@@ -237,7 +237,7 @@ func (c *Client) getStateInfo(index, height *uint64) (res *rollapptypes.QueryGet
 	if err != nil {
 		return nil, fmt.Errorf("query state info: %w", err)
 	}
-	if res == nil { // not supposed to happen
+	if res == nil { 
 		return nil, fmt.Errorf("empty response with nil err: %w", gerrc.ErrUnknown)
 	}
 	return
@@ -259,13 +259,13 @@ func (c *Client) getLatestHeight(finalized bool) (res *rollapptypes.QueryGetLate
 	if err != nil {
 		return nil, fmt.Errorf("query state info: %w", err)
 	}
-	if res == nil { // not supposed to happen
+	if res == nil { 
 		return nil, fmt.Errorf("empty response with nil err: %w", gerrc.ErrUnknown)
 	}
 	return
 }
 
-// GetLatestBatch returns the latest batch from the Dymension Hub.
+
 func (c *Client) GetLatestBatch() (*settlement.ResultRetrieveBatch, error) {
 	res, err := c.getStateInfo(nil, nil)
 	if err != nil {
@@ -274,7 +274,7 @@ func (c *Client) GetLatestBatch() (*settlement.ResultRetrieveBatch, error) {
 	return convertStateInfoToResultRetrieveBatch(&res.StateInfo)
 }
 
-// GetBatchAtIndex returns the batch at the given index from the Dymension Hub.
+
 func (c *Client) GetBatchAtIndex(index uint64) (*settlement.ResultRetrieveBatch, error) {
 	res, err := c.getStateInfo(&index, nil)
 	if err != nil {
@@ -283,7 +283,7 @@ func (c *Client) GetBatchAtIndex(index uint64) (*settlement.ResultRetrieveBatch,
 	return convertStateInfoToResultRetrieveBatch(&res.StateInfo)
 }
 
-// GetBatchAtHeight returns the batch at the given height from the Dymension Hub.
+
 func (c *Client) GetBatchAtHeight(height uint64) (*settlement.ResultRetrieveBatch, error) {
 	res, err := c.getStateInfo(nil, &height)
 	if err != nil {
@@ -292,7 +292,7 @@ func (c *Client) GetBatchAtHeight(height uint64) (*settlement.ResultRetrieveBatc
 	return convertStateInfoToResultRetrieveBatch(&res.StateInfo)
 }
 
-// GetLatestHeight returns the latest state update height from the settlement layer.
+
 func (c *Client) GetLatestHeight() (uint64, error) {
 	res, err := c.getLatestHeight(false)
 	if err != nil {
@@ -301,7 +301,7 @@ func (c *Client) GetLatestHeight() (uint64, error) {
 	return res.Height, nil
 }
 
-// GetLatestFinalizedHeight returns the latest finalized height from the settlement layer.
+
 func (c *Client) GetLatestFinalizedHeight() (uint64, error) {
 	res, err := c.getLatestHeight(true)
 	if err != nil {
@@ -310,16 +310,16 @@ func (c *Client) GetLatestFinalizedHeight() (uint64, error) {
 	return res.Height, nil
 }
 
-// GetProposerAtHeight return the proposer at height.
-// In case of negative height, it will return the latest proposer.
+
+
 func (c *Client) GetProposerAtHeight(height int64) (*types.Sequencer, error) {
-	// Get all sequencers to find the proposer address
+	
 	seqs, err := c.GetAllSequencers()
 	if err != nil {
 		return nil, fmt.Errorf("get bonded sequencers: %w", err)
 	}
 
-	// Get either latest proposer or proposer at height
+	
 	var proposerAddr string
 	if height < 0 {
 		proposerAddr, err = c.getLatestProposer()
@@ -327,12 +327,12 @@ func (c *Client) GetProposerAtHeight(height int64) (*types.Sequencer, error) {
 			return nil, fmt.Errorf("get latest proposer: %w", err)
 		}
 	} else {
-		// Get the state info for the relevant height and get address from there
+		
 		res, err := c.GetBatchAtHeight(uint64(height))
-		// if case of height not found, it may be because it didn't arrive to the hub yet.
-		// In that case we want to return the current proposer.
+		
+		
 		if err != nil {
-			// If batch not found, fallback to latest proposer
+			
 			if errors.Is(err, gerrc.ErrNotFound) {
 				proposerAddr, err = c.getLatestProposer()
 				if err != nil {
@@ -350,7 +350,7 @@ func (c *Client) GetProposerAtHeight(height int64) (*types.Sequencer, error) {
 		return nil, fmt.Errorf("proposer is sentinel")
 	}
 
-	// Find and return the matching sequencer
+	
 	for _, seq := range seqs {
 		if seq.SettlementAddress == proposerAddr {
 			return &seq, nil
@@ -359,7 +359,7 @@ func (c *Client) GetProposerAtHeight(height int64) (*types.Sequencer, error) {
 	return nil, fmt.Errorf("proposer not found")
 }
 
-// GetSequencerByAddress returns a sequencer by its address.
+
 func (c *Client) GetSequencerByAddress(address string) (types.Sequencer, error) {
 	var res *sequencertypes.QueryGetSequencerResponse
 	req := &sequencertypes.QueryGetSequencerRequest{
@@ -402,7 +402,7 @@ func (c *Client) GetSequencerByAddress(address string) (types.Sequencer, error) 
 	), nil
 }
 
-// GetAllSequencers returns all sequencers of the given rollapp.
+
 func (c *Client) GetAllSequencers() ([]types.Sequencer, error) {
 	var res *sequencertypes.QueryGetSequencersByRollappResponse
 	req := &sequencertypes.QueryGetSequencersByRollappRequest{
@@ -425,7 +425,7 @@ func (c *Client) GetAllSequencers() ([]types.Sequencer, error) {
 		return nil, err
 	}
 
-	// not supposed to happen, but just in case
+	
 	if res == nil {
 		return nil, fmt.Errorf("empty response: %w", gerrc.ErrUnknown)
 	}
@@ -455,7 +455,7 @@ func (c *Client) GetAllSequencers() ([]types.Sequencer, error) {
 	return sequencerList, nil
 }
 
-// GetBondedSequencers returns the bonded sequencers of the given rollapp.
+
 func (c *Client) GetBondedSequencers() ([]types.Sequencer, error) {
 	var res *sequencertypes.QueryGetSequencersByRollappByStatusResponse
 	req := &sequencertypes.QueryGetSequencersByRollappByStatusRequest{
@@ -479,7 +479,7 @@ func (c *Client) GetBondedSequencers() ([]types.Sequencer, error) {
 		return nil, err
 	}
 
-	// not supposed to happen, but just in case
+	
 	if res == nil {
 		return nil, fmt.Errorf("empty response: %w", gerrc.ErrUnknown)
 	}
@@ -508,10 +508,10 @@ func (c *Client) GetBondedSequencers() ([]types.Sequencer, error) {
 	return sequencerList, nil
 }
 
-// GetNextProposer returns the next proposer on the hub.
-// In case the current proposer is the next proposer, it returns nil.
-// in case there is no next proposer, it returns an empty sequencer struct.
-// in case there is a next proposer, it returns the next proposer.
+
+
+
+
 func (c *Client) GetNextProposer() (*types.Sequencer, error) {
 	var (
 		nextAddr string
@@ -577,7 +577,7 @@ func (c *Client) GetRollapp() (*types.Rollapp, error) {
 		return nil, fmt.Errorf("get rollapp: %w", err)
 	}
 
-	// not supposed to happen, but just in case
+	
 	if res == nil {
 		return nil, fmt.Errorf("empty response: %w", gerrc.ErrUnknown)
 	}
@@ -586,7 +586,7 @@ func (c *Client) GetRollapp() (*types.Rollapp, error) {
 	return &rollapp, nil
 }
 
-// GetObsoleteDrs returns the list of deprecated DRS.
+
 func (c *Client) GetObsoleteDrs() ([]uint32, error) {
 	var res *rollapptypes.QueryObsoleteDRSVersionsResponse
 	req := &rollapptypes.QueryObsoleteDRSVersionsRequest{}
@@ -606,7 +606,7 @@ func (c *Client) GetObsoleteDrs() ([]uint32, error) {
 		return nil, fmt.Errorf("get rollapp: %w", err)
 	}
 
-	// not supposed to happen, but just in case
+	
 	if res == nil {
 		return nil, fmt.Errorf("empty response: %w", gerrc.ErrUnknown)
 	}
@@ -694,7 +694,7 @@ func getCosmosClientOptions(config *settlement.Config) []cosmosclient.Option {
 	return options
 }
 
-// pollForBatchInclusion polls the hub for the inclusion of a batch with the given end height.
+
 func (c *Client) pollForBatchInclusion(batchEndHeight uint64) (bool, error) {
 	latestBatch, err := c.GetLatestBatch()
 	if err != nil {
@@ -768,7 +768,7 @@ func (c *Client) ValidateGenesisBridgeData(data rollapptypes.GenesisBridgeData) 
 		return fmt.Errorf("rollapp client: validate genesis bridge: %w", err)
 	}
 
-	// not supposed to happen, but just in case
+	
 	if res == nil {
 		return fmt.Errorf("empty response: %w", gerrc.ErrUnknown)
 	}

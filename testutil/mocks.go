@@ -29,27 +29,27 @@ import (
 	rollapptypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
 )
 
-// ABCIMethod is a string representing an ABCI method
+
 type ABCIMethod string
 
 const (
-	// InitChain is the string representation of the InitChain ABCI method
+	
 	InitChain ABCIMethod = "InitChain"
-	// CheckTx is the string representation of the CheckTx ABCI method
+	
 	CheckTx ABCIMethod = "CheckTx"
-	// BeginBlock is the string representation of the BeginBlockMethod ABCI method
+	
 	BeginBlock ABCIMethod = "BeginBlock"
-	// DeliverTx is the string representation of the DeliverTx ABCI method
+	
 	DeliverTx ABCIMethod = "DeliverTx"
-	// EndBlock is the string representation of the EndBlock ABCI method
+	
 	EndBlock ABCIMethod = "EndBlock"
-	// Commit is the string representation of the Commit ABCI method
+	
 	Commit ABCIMethod = "Commit"
-	// Info is the string representation of the Info ABCI method
+	
 	Info ABCIMethod = "Info"
 )
 
-// GetABCIProxyAppMock returns a dummy abci proxy app mock for testing
+
 func GetABCIProxyAppMock(logger log.Logger) proxy.AppConns {
 	app := GetAppMock()
 
@@ -60,7 +60,7 @@ func GetABCIProxyAppMock(logger log.Logger) proxy.AppConns {
 	return proxyApp
 }
 
-// GetAppMock returns a dummy abci app mock for testing
+
 func GetAppMock(excludeMethods ...ABCIMethod) *tmmocks.MockApplication {
 	app := &tmmocks.MockApplication{}
 	gbdBz, _ := tmjson.Marshal(rollapptypes.GenesisBridgeData{})
@@ -72,7 +72,7 @@ func GetAppMock(excludeMethods ...ABCIMethod) *tmmocks.MockApplication {
 	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{})
 	app.On("Info", mock.Anything).Return(abci.ResponseInfo{LastBlockHeight: 0, LastBlockAppHash: []byte{0}})
 
-	// iterate exclude methods and unset the mock
+	
 	for _, method := range excludeMethods {
 		UnsetMockFn(app.On(string(method)))
 	}
@@ -92,7 +92,7 @@ var UnsetMockFn = func(call *mock.Call) {
 	}
 }
 
-// CountMockCalls returns the number of times a mock specific function was called
+
 func CountMockCalls(totalCalls []mock.Call, methodName string) int {
 	var count int
 	for _, call := range totalCalls {
@@ -103,7 +103,7 @@ func CountMockCalls(totalCalls []mock.Call, methodName string) int {
 	return count
 }
 
-// MockStore is a mock store for testing
+
 type MockStore struct {
 	ShoudFailSaveState             bool
 	ShouldFailUpdateStateWithBatch bool
@@ -111,8 +111,8 @@ type MockStore struct {
 	height uint64
 }
 
-// SetHeight sets the height of the mock store
-// Don't set the height to mock failure in setting the height
+
+
 func (m *MockStore) SetHeight(height uint64) {
 	m.height = height
 }
@@ -125,7 +125,7 @@ func (m *MockStore) NextHeight() uint64 {
 	return m.height + 1
 }
 
-// UpdateState updates the state of the mock store
+
 func (m *MockStore) SaveState(state *types.State, batch store.KVBatch) (store.KVBatch, error) {
 	if batch != nil && m.ShouldFailUpdateStateWithBatch || m.ShoudFailSaveState && batch == nil {
 		return nil, errors.New("failed to update state")
@@ -133,7 +133,7 @@ func (m *MockStore) SaveState(state *types.State, batch store.KVBatch) (store.KV
 	return m.DefaultStore.SaveState(state, batch)
 }
 
-// NewMockStore returns a new mock store
+
 func NewMockStore() *MockStore {
 	defaultStore := store.New(store.NewDefaultInMemoryKVStore())
 	return &MockStore{
@@ -148,27 +148,27 @@ const (
 	connectionRefusedErrorMessage = "connection refused"
 )
 
-// DALayerClientSubmitBatchError is a mock data availability layer client that can be used to test error handling
+
 type DALayerClientSubmitBatchError struct {
 	localda.DataAvailabilityLayerClient
 }
 
-// SubmitBatch submits a batch to the data availability layer
+
 func (s *DALayerClientSubmitBatchError) SubmitBatch(_ *types.Batch) da.ResultSubmitBatch {
 	return da.ResultSubmitBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: connectionRefusedErrorMessage, Error: errors.New(connectionRefusedErrorMessage)}}
 }
 
-// DALayerClientRetrieveBatchesError is a mock data availability layer client that can be used to test error handling
+
 type DALayerClientRetrieveBatchesError struct {
 	localda.DataAvailabilityLayerClient
 }
 
-// RetrieveBatches retrieves batches from the data availability layer
+
 func (m *DALayerClientRetrieveBatchesError) RetrieveBatches(_ *da.DASubmitMetaData) da.ResultRetrieveBatch {
 	return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: batchNotFoundErrorMessage, Error: da.ErrBlobNotFound}}
 }
 
-// SubscribeMock is a mock to provide a subscription like behavior for testing
+
 type SubscribeMock struct {
 	messageCh chan interface{}
 }
@@ -195,8 +195,8 @@ type MockDA struct {
 
 func NewMockDA(t *testing.T) (*MockDA, error) {
 	mockDA := &MockDA{}
-	// Create DA
-	// init celestia DA with mock RPC client
+	
+	
 	mockDA.DaClient = registry.GetClient("celestia")
 
 	config := celestia.Config{
@@ -233,7 +233,7 @@ func NewMockDA(t *testing.T) (*MockDA, error) {
 
 	nIDSize := 1
 	tree := exampleNMT(nIDSize, true, 1, 2, 3, 4)
-	// build a proof for an NID that is within the namespace range of the tree
+	
 	proof, _ := tree.ProveNamespace(mockDA.NID)
 	mockDA.BlobProof = blob.Proof([]*nmt.Proof{&proof})
 
@@ -244,7 +244,7 @@ func NewMockDA(t *testing.T) (*MockDA, error) {
 	return mockDA, nil
 }
 
-// exampleNMT creates a new NamespacedMerkleTree with the given namespace ID size and leaf namespace IDs. Each byte in the leavesNIDs parameter corresponds to one leaf's namespace ID. If nidSize is greater than 1, the function repeats each NID in leavesNIDs nidSize times before prepending it to the leaf data.
+
 func exampleNMT(nidSize int, ignoreMaxNamespace bool, leavesNIDs ...byte) *nmt.NamespacedMerkleTree {
 	tree := nmt.New(sha256.New(), nmt.NamespaceIDSize(nidSize), nmt.IgnoreMaxNamespace(ignoreMaxNamespace))
 	for i, nid := range leavesNIDs {

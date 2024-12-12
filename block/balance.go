@@ -14,7 +14,7 @@ import (
 
 const CheckBalancesInterval = 3 * time.Minute
 
-// MonitorBalances checks the balances of the node and updates the gauges for prometheus
+
 func (m *Manager) MonitorBalances(ctx context.Context) error {
 	ticker := time.NewTicker(CheckBalancesInterval)
 	defer ticker.Stop()

@@ -49,21 +49,21 @@ func (h *handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.mux.ServeHTTP(w, r)
 }
 
-// serveJSONRPC serves HTTP request
+
 func (h *handler) serveJSONRPC(w http.ResponseWriter, r *http.Request) {
 	h.serveJSONRPCforWS(w, r, nil)
 }
 
-// serveJSONRPC serves HTTP request
-// implementation is highly inspired by Gorilla RPC v2 (but simplified a lot)
+
+
 func (h *handler) serveJSONRPCforWS(w http.ResponseWriter, r *http.Request, wsConn *wsConn) {
-	// Create a new codec request.
+	
 	codecReq := h.codec.NewRequest(r)
-	// Get service method to be called.
+	
 	method, err := codecReq.Method()
 	if err != nil {
 		if e, ok := err.(*json2.Error); method == "" && ok && e.Message == "EOF" {
-			// just serve empty page if request is empty
+			
 			return
 		}
 		codecReq.WriteError(w, http.StatusBadRequest, err)
@@ -76,7 +76,7 @@ func (h *handler) serveJSONRPCforWS(w http.ResponseWriter, r *http.Request, wsCo
 		return
 	}
 
-	// Decode the args.
+	
 	args := reflect.New(methodSpec.argsType)
 	if errRead := codecReq.ReadRequest(args.Interface()); errRead != nil {
 		codecReq.WriteError(w, http.StatusBadRequest, errRead)
@@ -98,7 +98,7 @@ func (h *handler) serveJSONRPCforWS(w http.ResponseWriter, r *http.Request, wsCo
 	}
 	rets := methodSpec.m.Call(callArgs)
 
-	// Extract the result to error if needed.
+	
 	var errResult error
 	statusCode := http.StatusOK
 	errInter := rets[1].Interface()
@@ -107,11 +107,11 @@ func (h *handler) serveJSONRPCforWS(w http.ResponseWriter, r *http.Request, wsCo
 		errResult, _ = errInter.(error)
 	}
 
-	// Prevents Internet Explorer from MIME-sniffing a response away
-	// from the declared content-type
+	
+	
 	w.Header().Set("x-content-type-options", "nosniff")
 
-	// Encode the response.
+	
 	if errResult == nil {
 		var raw json.RawMessage
 		raw, err = tmjson.Marshal(rets[0].Interface())
@@ -153,7 +153,7 @@ func (h *handler) newHandler(methodSpec *method) func(http.ResponseWriter, *http
 				case reflect.String:
 					args.Elem().Field(i).SetString(rawVal)
 				case reflect.Slice:
-					// []byte is a reflect.Slice of reflect.Uint8's
+					
 					if field.Type.Elem().Kind() == reflect.Uint8 {
 						err = setByteSliceParam(rawVal, &args, i)
 					}
@@ -172,7 +172,7 @@ func (h *handler) newHandler(methodSpec *method) func(http.ResponseWriter, *http
 			args,
 		})
 
-		// Extract the result to error if needed.
+		
 		statusCode := http.StatusOK
 		errInter := rets[1].Interface()
 		if errInter != nil {
@@ -185,8 +185,8 @@ func (h *handler) newHandler(methodSpec *method) func(http.ResponseWriter, *http
 }
 
 func (h *handler) encodeAndWriteResponse(w http.ResponseWriter, result interface{}, errResult error, statusCode int) {
-	// Prevents Internet Explorer from MIME-sniffing a response away
-	// from the declared content-type
+	
+	
 	w.Header().Set("x-content-type-options", "nosniff")
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 

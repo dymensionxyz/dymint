@@ -8,12 +8,12 @@ import (
 )
 
 const (
-	// genesisChunkSize is the maximum size, in bytes, of each
-	// chunk in the genesis structure for the chunked API
-	genesisChunkSize = 16 * 1024 * 1024 // 16 MiB
+	
+	
+	genesisChunkSize = 16 * 1024 * 1024 
 )
 
-// GetGenesisChunks returns chunked version of genesis.
+
 func (c *Client) GetGenesisChunks() ([]string, error) {
 	if c.genChunks != nil {
 		return c.genChunks, nil
@@ -26,8 +26,8 @@ func (c *Client) GetGenesisChunks() ([]string, error) {
 	return c.genChunks, err
 }
 
-// initGenesisChunks creates a chunked format of the genesis document to make it easier to
-// iterate through larger genesis structures.
+
+
 func (c *Client) initGenesisChunks(genesis *tmtypes.GenesisDoc) error {
 	if genesis == nil {
 		return nil

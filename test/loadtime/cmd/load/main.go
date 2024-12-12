@@ -10,20 +10,20 @@ import (
 	"github.com/dymensionxyz/dymint/test/pb/loadtime"
 )
 
-// Ensure all of the interfaces are correctly satisfied.
+
 var (
 	_ loadtest.ClientFactory = (*ClientFactory)(nil)
 	_ loadtest.Client        = (*TxGenerator)(nil)
 )
 
-// ClientFactory implements the loadtest.ClientFactory interface.
+
 type ClientFactory struct {
 	ID []byte
 }
 
-// TxGenerator is responsible for generating transactions.
-// TxGenerator holds the set of information that will be used to generate
-// each transaction.
+
+
+
 type TxGenerator struct {
 	id    []byte
 	conns uint64
@@ -32,7 +32,7 @@ type TxGenerator struct {
 }
 
 func main() {
-	u := [16]byte(uuid.New()) // generate run ID on startup
+	u := [16]byte(uuid.New()) 
 	if err := loadtest.RegisterClientFactory("loadtime-client", &ClientFactory{ID: u[:]}); err != nil {
 		panic(err)
 	}
@@ -44,7 +44,7 @@ func main() {
 	})
 }
 
-// ValidateConfig validates the configuration for the load test.
+
 func (f *ClientFactory) ValidateConfig(cfg loadtest.Config) error {
 	psb, err := payload.MaxUnpaddedSize()
 	if err != nil {
@@ -56,9 +56,9 @@ func (f *ClientFactory) ValidateConfig(cfg loadtest.Config) error {
 	return nil
 }
 
-// NewClient creates a new client for the load test.
-//
-//nolint:gosec // params are always positive and fall in uint64
+
+
+
 func (f *ClientFactory) NewClient(cfg loadtest.Config) (loadtest.Client, error) {
 	return &TxGenerator{
 		id:    f.ID,
@@ -68,7 +68,7 @@ func (f *ClientFactory) NewClient(cfg loadtest.Config) (loadtest.Client, error) 
 	}, nil
 }
 
-// GenerateTx generates a new transactions for the load test.
+
 func (c *TxGenerator) GenerateTx() ([]byte, error) {
 	return payload.NewBytes(&loadtime.Payload{
 		Connections: c.conns,

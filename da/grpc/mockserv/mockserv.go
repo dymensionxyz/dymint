@@ -17,7 +17,7 @@ import (
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
-// GetServer creates and returns gRPC server instance.
+
 func GetServer(kv store.KV, conf grpcda.Config, mockConfig []byte) *grpc.Server {
 	logger := tmlog.NewTMLogger(os.Stdout)
 
