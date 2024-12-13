@@ -138,19 +138,26 @@ func (m *Manager) doFork(instruction types.Instruction) error {
 // It performs version validation and generates the necessary upgrade messages for the sequencer.
 //
 // The function implements the following logic:
-//   - If no faulty DRS version is provided (faultyDRS is nil), returns no messages
 //   - Validates the current DRS version against the potentially faulty version
-//   - Generates an upgrade message with the current valid DRS version
+//   - If DRS version used (binary version) is obsolete returns error
+//   - If DRS version used (binary version) is different from rollapp params, generates an upgrade message with the binary DRS version
+//   - Otherwise no upgrade messages are returned
 func (m *Manager) prepareDRSUpgradeMessages(obsoleteDRS []uint32) ([]proto.Message, error) {
 	drsVersion, err := version.GetDRSVersion()
 	if err != nil {
 		return nil, err
 	}
 
+	// if binary DRS is obsolete return error (to panic)
 	for _, drs := range obsoleteDRS {
 		if drs == drsVersion {
 			return nil, gerrc.ErrCancelled.Wrapf("obsolete DRS version: %d", drs)
 		}
+	}
+
+	// same DRS message detected, no upgrade is necessary
+	if m.State.RollappParams.DrsVersion == drsVersion {
+		return []proto.Message{}, nil
 	}
 
 	return []proto.Message{
