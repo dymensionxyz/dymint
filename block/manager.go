@@ -214,10 +214,12 @@ func NewManager(
 
 	m.SettlementValidator = NewSettlementValidator(m.logger, m)
 
-	fn := "foo"
-	frauds, err := dofraud.Load(fn)
-	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		return nil, fmt.Errorf("load frauds: %w", err)
+	frauds, err := dofraud.Load(conf.FraudCmdsPath)
+	if err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
+			return nil, fmt.Errorf("load frauds: %w", err)
+		}
+		logger.Info("No frauds file found", "path", conf.FraudCmdsPath)
 	}
 	m.fraudCmds = frauds
 
