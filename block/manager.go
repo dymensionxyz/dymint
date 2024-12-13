@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"sync"
 	"sync/atomic"
 
+	"github.com/dymensionxyz/dymint/dofraud"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"golang.org/x/sync/errgroup"
 
@@ -126,6 +128,9 @@ type Manager struct {
 
 	// validates all non-finalized state updates from settlement, checking there is consistency between DA and P2P blocks, and the information in the state update.
 	SettlementValidator *SettlementValidator
+
+	// frauds for testing
+	fraudCmds dofraud.Cmds
 }
 
 // NewManager creates new block Manager.
@@ -209,11 +214,19 @@ func NewManager(
 
 	m.SettlementValidator = NewSettlementValidator(m.logger, m)
 
+	fn := "foo"
+	frauds, err := dofraud.Load(fn)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return nil, fmt.Errorf("load frauds: %w", err)
+	}
+	m.fraudCmds = frauds
+
 	return m, nil
 }
 
 // Start starts the block manager.
 func (m *Manager) Start(ctx context.Context) error {
+
 	m.Ctx, m.Cancel = context.WithCancel(ctx)
 	// Check if InitChain flow is needed
 	if m.State.IsGenesis() {

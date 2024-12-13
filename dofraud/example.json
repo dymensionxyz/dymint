@@ -1,0 +1,40 @@
+{
+  "Pairs": [
+    {
+      "Height": 10,
+      "Cmd": {
+        "HeaderVersionBlock": 1,
+        "HeaderChainID": "chain-1",
+        "Data": {},
+        "LastCommit": {}
+      }
+    },
+    {
+      "Height": 20,
+      "Cmd": {
+        "HeaderVersionApp": 2,
+        "HeaderHeight": 100,
+        "Data": {},
+        "LastCommit": {}
+      }
+    },
+    {
+      "Height": 30,
+      "Cmd": {
+        "HeaderTime": 1234567890,
+        "HeaderDataHash": "datahash",
+        "Data": {},
+        "LastCommit": {}
+      }
+    },
+    {
+      "Height": 40,
+      "Cmd": {
+        "HeaderDataHash": "datahash",
+        "HeaderNextSequencerHash": "foobar",
+        "Data": {},
+        "LastCommit": {}
+      }
+    }
+  ]
+}
