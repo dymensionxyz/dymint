@@ -1,8 +1,7 @@
 package main
 
 import (
-	"fmt"
-
+	"errors"
 	"github.com/google/uuid"
 	"github.com/informalsystems/tm-load-test/pkg/loadtest"
 
@@ -51,7 +50,7 @@ func (f *ClientFactory) ValidateConfig(cfg loadtest.Config) error {
 		return err
 	}
 	if psb > cfg.Size {
-		return fmt.Errorf("payload size exceeds configured size")
+		return errors.New("payload size exceeds configured size")
 	}
 	return nil
 }

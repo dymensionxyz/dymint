@@ -189,7 +189,7 @@ func (v *SettlementValidator) ValidateDaBlocks(slBatch *settlement.ResultRetriev
 	if slBatch.NextSequencer != slBatch.Sequencer {
 		nextSequencer, found := v.blockManager.Sequencers.GetByAddress(slBatch.NextSequencer)
 		if !found {
-			return fmt.Errorf("next sequencer not found")
+			return errors.New("next sequencer not found")
 		}
 		copy(expectedNextSeqHash[:], nextSequencer.MustHash())
 	}

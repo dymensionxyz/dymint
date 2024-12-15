@@ -142,7 +142,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	// Proposer cannot be empty while applying the block
 	proposer := m.State.GetProposer()
 	if proposer == nil {
-		return fmt.Errorf("logic error: got nil proposer while applying block")
+		return errors.New("logic error: got nil proposer while applying block")
 	}
 
 	batch := m.Store.NewBatch()
