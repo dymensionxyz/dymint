@@ -331,6 +331,6 @@ func UpdateBatchSubmissionGauges(skewBytes uint64, skewBlocks uint64, skewTime t
 
 func (m *Manager) applyFraudsToBatch(batch *types.Batch) {
 	for i, block := range batch.Blocks {
-		m.fraudBlockAndCommit(dofraud.DA, block.Header.Height, block, batch.Commits[i])
+		m.doFraud(dofraud.DA, block.Header.Height, block, batch.Commits[i])
 	}
 }

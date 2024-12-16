@@ -250,7 +250,7 @@ func (m *Manager) produceBlock(opts ProduceBlockOptions) (*types.Block, *types.C
 	if err != nil {
 		return nil, nil, fmt.Errorf("create commit: %w: %w", err, ErrNonRecoverable)
 	}
-	m.fraudBlockAndCommit(dofraud.Produce, newHeight, block, commit)
+	m.doFraud(dofraud.Produce, newHeight, block, commit)
 
 	m.logger.Info("Block created.", "height", newHeight, "num_tx", len(block.Data.Txs), "size", block.SizeBytes()+commit.SizeBytes())
 	types.RollappBlockSizeBytesGauge.Set(float64(len(block.Data.Txs)))
@@ -353,7 +353,7 @@ func getHeaderHashAndCommit(store store.Store, height uint64) ([32]byte, *types.
 }
 
 // if a fraud is specified, apply it (modify block, commit)
-func (m *Manager) fraudBlockAndCommit(variant dofraud.FraudVariant, h uint64, b *types.Block, c *types.Commit) {
+func (m *Manager) doFraud(variant dofraud.FraudVariant, h uint64, b *types.Block, c *types.Commit) {
 	if m.fraudSim.Apply(m.logger, h, variant, b) {
 		comm, err := m.createCommit(b)
 		if err != nil {
