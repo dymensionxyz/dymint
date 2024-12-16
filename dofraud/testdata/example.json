@@ -10,10 +10,31 @@
       }
     },
     {
-      "Height": 22,
-      "Variants": "da",
+      "Height": 44,
+      "Variants": "da,gossip,produce",
       "Block": {
+        "HeaderDataHash": "1290830918230981239812903819823909123",
+        "HeaderLastResultsHash": "129038120938120938120938120938120938",
         "HeaderNextSequencerHash": "1092381209381923809182391823098129038",
+        "Data": {},
+        "LastCommit": {}
+      }
+    },
+    {
+      "Height": 105,
+      "Variants": "gossip",
+      "Block": {
+        "HeaderTime": 1734374656000000000,
+        "HeaderNextSequencerHash": "1092381209381923809182391823098129038",
+        "Data": {},
+        "LastCommit": {}
+      }
+    },
+    {
+      "Height": 120,
+      "Variants": "gossip",
+      "Block": {
+        "HeaderVersionApp": 3,
         "Data": {},
         "LastCommit": {}
       }
