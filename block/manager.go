@@ -129,8 +129,8 @@ type Manager struct {
 	// validates all non-finalized state updates from settlement, checking there is consistency between DA and P2P blocks, and the information in the state update.
 	SettlementValidator *SettlementValidator
 
-	// frauds for testing
-	fraudCmds dofraud.Cmds
+	// for testing
+	fraudSim dofraud.Frauds
 }
 
 // NewManager creates new block Manager.
@@ -221,7 +221,7 @@ func NewManager(
 		}
 		logger.Info("No frauds file found", "path", conf.FraudCmdsPath)
 	}
-	m.fraudCmds = frauds
+	m.fraudSim = frauds
 
 	return m, nil
 }

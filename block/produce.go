@@ -239,10 +239,7 @@ func (m *Manager) produceBlock(opts ProduceBlockOptions) (*types.Block, *types.C
 
 	// dequeue consensus messages for the new sequencers while creating a new block
 	block = m.Executor.CreateBlock(newHeight, lastCommit, lastHeaderHash, proposerHashForBlock, m.State, maxBlockDataSize)
-	f, ok := m.fraudCmds[newHeight]
-	if ok {
-		block = dofraud.ApplyFraud(f, block)
-	}
+	m.fraudSim.Apply(newHeight, dofraud.Produce, block)
 
 	// this cannot happen if there are any sequencer set updates
 	// AllowEmpty should be always true in this case

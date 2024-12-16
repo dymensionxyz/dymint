@@ -39,22 +39,22 @@ type diskBlock struct {
 	LastCommit              struct{} `json:",omitempty"` // TODO:
 }
 
-func Load(fn string) (*Frauds, error) {
+func Load(fn string) (Frauds, error) {
 	file, err := os.Open(fn)
 	if err != nil {
-		return nil, err
+		return Frauds{}, err
 	}
 	defer file.Close()
 
 	data, err := io.ReadAll(file)
 	if err != nil {
-		return nil, err
+		return Frauds{}, err
 	}
 
 	var d disk
 	err = json.Unmarshal(data, &d)
 	if err != nil {
-		return nil, err
+		return Frauds{}, err
 	}
 
 	ret := Frauds{}
@@ -113,7 +113,7 @@ func Load(fn string) (*Frauds, error) {
 			ret.frauds[key{ins.Height, v}.String()] = cmd
 		}
 	}
-	return &ret, nil
+	return ret, nil
 }
 
 func parseHash(hashStr string) [32]byte {
