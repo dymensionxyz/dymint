@@ -6,8 +6,8 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
-type FraudVariant int
-type FraudType int
+type FraudVariant = int
+type FraudType = int
 
 // Variant
 const (

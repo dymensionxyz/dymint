@@ -39,6 +39,7 @@ func TestGenerateJson(t *testing.T) {
 func TestParseJson(t *testing.T) {
 	fraud, err := Load(fp)
 	require.NoError(t, err)
-	_, ok := fraud.frauds["10:1"]
+	cmd, ok := fraud.frauds[key{10, DA}.String()]
 	require.True(t, ok)
+	require.Contains(t, cmd.ts, HeaderProposerAddr)
 }
