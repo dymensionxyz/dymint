@@ -41,11 +41,11 @@ type diskBlock struct {
 }
 
 func Load(fn string) (Frauds, error) {
-	file, err := os.Open(fn)
+	file, err := os.Open(fn) //nolint:gosec
 	if err != nil {
 		return Frauds{}, err
 	}
-	defer file.Close()
+	defer file.Close() //nolint:errcheck
 
 	data, err := io.ReadAll(file)
 	if err != nil {
