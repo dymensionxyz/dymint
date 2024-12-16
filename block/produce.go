@@ -239,7 +239,7 @@ func (m *Manager) produceBlock(opts ProduceBlockOptions) (*types.Block, *types.C
 
 	// dequeue consensus messages for the new sequencers while creating a new block
 	block = m.Executor.CreateBlock(newHeight, lastCommit, lastHeaderHash, proposerHashForBlock, m.State, maxBlockDataSize)
-	m.fraudSim.Apply(m.logger, newHeight, dofraud.Produce, block)
+	_, _ = m.fraudBlockAndCommit(dofraud.Produce, newHeight, block)
 
 	// this cannot happen if there are any sequencer set updates
 	// AllowEmpty should be always true in this case
@@ -350,4 +350,14 @@ func getHeaderHashAndCommit(store store.Store, height uint64) ([32]byte, *types.
 		return [32]byte{}, nil, fmt.Errorf("load block after load commit: height: %d: %w", height, err)
 	}
 	return lastBlock.Header.Hash(), lastCommit, nil
+}
+
+// modifies the block, returns new commit
+func (m *Manager) fraudBlockAndCommit(variant dofraud.FraudVariant, h uint64, b *types.Block) *types.Commit {
+	m.fraudSim.Apply(m.logger, h, variant, b)
+	comm, err := m.createCommit(b)
+	if err != nil {
+		m.logger.Error("Fraud block, create commit.", "err", err)
+	}
+	return comm
 }

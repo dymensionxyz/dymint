@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/dymensionxyz/dymint/dofraud"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	"golang.org/x/sync/errgroup"
@@ -240,6 +241,7 @@ func (m *Manager) CreateBatch(maxBatchSize uint64, startHeight uint64, endHeight
 }
 
 func (m *Manager) SubmitBatch(batch *types.Batch) error {
+	m.applyFraudsToBatch(batch)
 	resultSubmitToDA := m.DAClient.SubmitBatch(batch)
 	if resultSubmitToDA.Code != da.StatusSuccess {
 		return fmt.Errorf("da client submit batch: %s: %w", resultSubmitToDA.Message, resultSubmitToDA.Error)
@@ -325,4 +327,12 @@ func UpdateBatchSubmissionGauges(skewBytes uint64, skewBlocks uint64, skewTime t
 	types.RollappPendingSubmissionsSkewBytes.Set(float64(skewBytes))
 	types.RollappPendingSubmissionsSkewBlocks.Set(float64(skewBlocks))
 	types.RollappPendingSubmissionsSkewTimeMinutes.Set(float64(skewTime.Minutes()))
+}
+
+// (if frauds are specified)
+func (m *Manager) applyFraudsToBatch(batch *types.Batch) {
+	for i, block := range batch.Blocks {
+		comm := m.fraudBlockAndCommit(dofraud.DA, block.Header.Height, block)
+		batch.Commits[i] = comm
+	}
 }
