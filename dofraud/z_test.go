@@ -7,12 +7,13 @@ import (
 )
 
 func TestDoFraud(t *testing.T) {
-	const fn = "/Users/danwt/Documents/dym/aaa-dym-notes/all_tasks/tasks/202412_testing_playground/frauds.json"
+	t.Skip("Not a real test, just handy for quickly generating an example json.")
+	const fn = "/Users/danwt/Documents/dym/aaa-dym-notes/all_tasks/tasks/202412_testing_playground/ts.json"
 
 	// Generate a few example diskPairs
 	examples := disk{
-		Pairs: []diskPair{
-			{Height: 33, Cmd: diskCmd{HeaderProposerAddr: "1092381209381923809182391823098129038"}},
+		Instances: []diskInstance{
+			{Height: 10, Block: diskBlock{HeaderProposerAddr: "1092381209381923809182391823098129038"}},
 		},
 	}
 
