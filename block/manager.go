@@ -214,18 +214,26 @@ func NewManager(
 
 	m.SettlementValidator = NewSettlementValidator(m.logger, m)
 
-	frauds, err := dofraud.Load(conf.FraudCmdsPath)
+	err = m.loadFraud(conf.FraudCmdsPath)
 	if err != nil {
-		if !errors.Is(err, os.ErrNotExist) {
-			return nil, fmt.Errorf("load frauds: %w", err)
-		}
-		logger.Info("Did not load fraud tests -  frauds file not found", "path", conf.FraudCmdsPath)
-	} else {
-		logger.Info("Loaded frauds.")
+		return nil, fmt.Errorf("load frauds: %w", err)
 	}
-	m.fraudSim = frauds
 
 	return m, nil
+}
+
+func (m *Manager) loadFraud(path string) error {
+	frauds, err := dofraud.Load(path)
+	if err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("load frauds: %w", err)
+		}
+		m.logger.Info("Did not load fraud tests -  frauds file not found", "path", path)
+	} else {
+		m.logger.Info("Loaded frauds.")
+	}
+	m.fraudSim = frauds
+	return nil
 }
 
 // Start starts the block manager.
