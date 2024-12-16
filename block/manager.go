@@ -72,12 +72,6 @@ type Manager struct {
 	Cancel context.CancelFunc
 	Ctx    context.Context
 
-	// LastBlockTimeInSettlement is the time of last submitted block, used to measure batch skew time
-	LastBlockTimeInSettlement atomic.Int64
-
-	// LastBlockTime is the time of last produced block, used to measure batch skew time
-	LastBlockTime atomic.Int64
-
 	// mutex used to avoid stopping node when fork is detected but proposer is creating/sending fork batch
 	forkMu sync.Mutex
 	/*
@@ -316,7 +310,7 @@ func (m *Manager) updateFromLastSettlementState() error {
 		// The SL hasn't got any batches for this chain yet.
 		m.logger.Info("No batches for chain found in SL.")
 		m.LastSettlementHeight.Store(uint64(m.Genesis.InitialHeight - 1)) //nolint:gosec // height is non-negative and falls in int64
-		m.LastBlockTimeInSettlement.Store(m.Genesis.GenesisTime.UTC().UnixNano())
+
 		return nil
 	}
 	if err != nil {
@@ -331,14 +325,6 @@ func (m *Manager) updateFromLastSettlementState() error {
 
 	m.LastSettlementHeight.Store(latestHeight)
 
-	// init last block in settlement time in dymint state to calculate batch submit skew time
-	m.SetLastBlockTimeInSettlementFromHeight(latestHeight)
-
-	// init last block time in dymint state to calculate batch submit skew time
-	block, err := m.Store.LoadBlock(m.State.Height())
-	if err == nil {
-		m.LastBlockTime.Store(block.Header.GetTimestamp().UTC().UnixNano())
-	}
 	return nil
 }
 
@@ -419,14 +405,4 @@ func (m *Manager) freezeNode(err error) {
 	}
 	uevent.MustPublish(m.Ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
 	m.Cancel()
-}
-
-// SetLastBlockTimeInSettlementFromHeight is used to initialize LastBlockTimeInSettlement from rollapp height in settlement
-func (m *Manager) SetLastBlockTimeInSettlementFromHeight(lastSettlementHeight uint64) {
-	block, err := m.Store.LoadBlock(lastSettlementHeight)
-	if err != nil {
-		// if settlement height block is not found it will be updated after, when syncing
-		return
-	}
-	m.LastBlockTimeInSettlement.Store(block.Header.GetTimestamp().UTC().UnixNano())
 }
