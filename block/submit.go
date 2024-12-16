@@ -311,16 +311,23 @@ func (m *Manager) UpdateLastSubmittedHeight(event pubsub.Message) {
 	}
 }
 
-func (m *Manager) GetLastBlockInSettlementTime() time.Time {
+func (m *Manager) GetLastBlockInSettlementTime() (time.Time, error) {
 	lastBlockInSettlement, err := m.Store.LoadBlock(m.LastSettlementHeight.Load())
-	if err != nil {
-		firstBlock, err := m.Store.LoadBlock(uint64(m.Genesis.InitialHeight))
-		if err != nil {
-			return time.Now()
-		}
-		return firstBlock.Header.GetTimestamp()
+	if err != nil && !errors.Is(err, gerrc.ErrNotFound) {
+		return time.Time{}, err
 	}
-	return lastBlockInSettlement.Header.GetTimestamp()
+	if errors.Is(err, gerrc.ErrNotFound) {
+		firstBlock, err := m.Store.LoadBlock(uint64(m.Genesis.InitialHeight))
+		if err != nil && !errors.Is(err, gerrc.ErrNotFound) {
+			return time.Time{}, err
+		}
+		if errors.Is(err, gerrc.ErrNotFound) {
+			return time.Now(), nil
+		}
+		return firstBlock.Header.GetTimestamp(), nil
+
+	}
+	return lastBlockInSettlement.Header.GetTimestamp(), nil
 }
 
 // GetBatchSkewTime returns the time between the last produced block and the last block submitted to SL
@@ -329,7 +336,11 @@ func (m *Manager) GetBatchSkewTime() time.Duration {
 	if err != nil {
 		return 0
 	}
-	return lastBlockProduced.Header.GetTimestamp().Sub(m.GetLastBlockInSettlementTime())
+	lastBlockInSettlementTime, err := m.GetLastBlockInSettlementTime()
+	if err != nil {
+		return 0
+	}
+	return lastBlockProduced.Header.GetTimestamp().Sub(lastBlockInSettlementTime)
 }
 
 func UpdateBatchSubmissionGauges(skewBytes uint64, skewBlocks uint64, skewTime time.Duration) {

@@ -82,9 +82,13 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int)
 				return nil
 			case bytesProducedC <- bytesProducedN:
 			default:
-				evt := &events.DataHealthStatus{Error: fmt.Errorf("Block production paused. Time between last block produced and last block submitted higher than max skew time: %s last block in settlement time: %s %w", m.Conf.MaxSkewTime, m.GetLastBlockInSettlementTime(), gerrc.ErrResourceExhausted)}
+				lastBlockTimeInSettlement, err := m.GetLastBlockInSettlementTime()
+				if err != nil {
+					m.logger.Error("Unable to get last block in settlement time")
+				}
+				evt := &events.DataHealthStatus{Error: fmt.Errorf("Block production paused. Time between last block produced and last block submitted higher than max skew time: %s last block in settlement time: %s %w", m.Conf.MaxSkewTime, lastBlockTimeInSettlement, gerrc.ErrResourceExhausted)}
 				uevent.MustPublish(ctx, m.Pubsub, evt, events.HealthStatusList)
-				m.logger.Error("Pausing block production until new batch is submitted.", "Batch skew time", m.GetBatchSkewTime(), "Max batch skew time", m.Conf.MaxSkewTime, "Last block in settlement time", m.GetLastBlockInSettlementTime())
+				m.logger.Error("Pausing block production until new batch is submitted.", "Batch skew time", m.GetBatchSkewTime(), "Max batch skew time", m.Conf.MaxSkewTime, "Last block in settlement time", lastBlockTimeInSettlement)
 				select {
 				case <-ctx.Done():
 					return nil
