@@ -2,11 +2,12 @@ package dofraud
 
 import (
 	"encoding/json"
-	"github.com/dymensionxyz/dymint/types"
 	"io"
 	"os"
 	"slices"
 	"strings"
+
+	"github.com/dymensionxyz/dymint/types"
 )
 
 type disk struct {
@@ -14,9 +15,9 @@ type disk struct {
 }
 
 type diskInstance struct {
-	Height  uint64
-	Variant string
-	Block   diskBlock
+	Height   uint64
+	Variants string
+	Block    diskBlock
 }
 
 type diskBlock struct {
@@ -57,86 +58,62 @@ func Load(fn string) (*Frauds, error) {
 	}
 
 	ret := Frauds{}
-	for _, pair := range d.Instances {
-		cmd := Cmd{
-			Block: &types.Block{},
-		}
-		key := key{pair.Height, parseVariant(pair.Variant)}
-		if pair.Block.HeaderVersionBlock != 0 {
-			frauds = append(frauds, HeaderVersionBlock)
-		}
-		if pair.Block.HeaderVersionApp != 0 {
-			frauds = append(frauds, HeaderVersionApp)
-		}
-		if pair.Block.HeaderChainID != "" {
-			frauds = append(frauds, HeaderChainID)
-		}
-		if pair.Block.HeaderHeight != 0 {
-			frauds = append(frauds, HeaderHeight)
-		}
-		if pair.Block.HeaderTime != 0 {
-			frauds = append(frauds, HeaderTime)
-		}
-		if pair.Block.HeaderLastHeaderHash != "" {
-			frauds = append(frauds, HeaderLastHeaderHash)
-		}
-		if pair.Block.HeaderDataHash != "" {
-			frauds = append(frauds, HeaderDataHash)
-		}
-		if pair.Block.HeaderConsensusHash != "" {
-			frauds = append(frauds, HeaderConsensusHash)
-		}
-		if pair.Block.HeaderAppHash != "" {
-			frauds = append(frauds, HeaderAppHash)
-		}
-		if pair.Block.HeaderLastResultsHash != "" {
-			frauds = append(frauds, HeaderLastResultsHash)
-		}
-		if pair.Block.HeaderProposerAddr != "" {
-			frauds = append(frauds, HeaderProposerAddr)
-		}
-		if pair.Block.HeaderLastCommitHash != "" {
-			frauds = append(frauds, HeaderLastCommitHash)
-		}
-		if pair.Block.HeaderSequencerHash != "" {
-			frauds = append(frauds, HeaderSequencerHash)
-		}
-		if pair.Block.HeaderNextSequencerHash != "" {
-			frauds = append(frauds, HeaderNextSequencerHash)
-		}
-		// TODO: Data and LastCommit
-	}
-
-	cmds := make(Cmds)
-	for _, pair := range d.Instances {
+	ret.frauds = make(map[string]Cmd)
+	for _, ins := range d.Instances {
 		cmd := Cmd{
 			Block: &types.Block{
-				Header: types.Header{
-					Version: types.Version{
-						Block: pair.Block.HeaderVersionBlock,
-						App:   pair.Block.HeaderVersionApp,
-					},
-					ChainID:            pair.Block.HeaderChainID,
-					Height:             pair.Block.HeaderHeight,
-					Time:               pair.Block.HeaderTime,
-					LastHeaderHash:     parseHash(pair.Block.HeaderLastHeaderHash),
-					DataHash:           parseHash(pair.Block.HeaderDataHash),
-					ConsensusHash:      parseHash(pair.Block.HeaderConsensusHash),
-					AppHash:            parseHash(pair.Block.HeaderAppHash),
-					LastResultsHash:    parseHash(pair.Block.HeaderLastResultsHash),
-					ProposerAddress:    []byte(pair.Block.HeaderProposerAddr),
-					LastCommitHash:     parseHash(pair.Block.HeaderLastCommitHash),
-					SequencerHash:      parseHash(pair.Block.HeaderSequencerHash),
-					NextSequencersHash: parseHash(pair.Block.HeaderNextSequencerHash),
-				},
-				// Data and LastCommit fields need to be populated as per your requirements
+				Header: types.Header{Version: types.Version{}},
 			},
-			ts: frauds,
 		}
-		cmds[pair.Height] = cmd
+		if ins.Block.HeaderVersionBlock != 0 {
+			cmd.Block.Header.Version.Block = ins.Block.HeaderVersionBlock
+		}
+		if ins.Block.HeaderVersionApp != 0 {
+			cmd.Block.Header.Version.App = ins.Block.HeaderVersionApp
+		}
+		if ins.Block.HeaderChainID != "" {
+			cmd.Block.Header.ChainID = ins.Block.HeaderChainID
+		}
+		if ins.Block.HeaderHeight != 0 {
+			cmd.Block.Header.Height = ins.Block.HeaderHeight
+		}
+		if ins.Block.HeaderTime != 0 {
+			cmd.Block.Header.Time = ins.Block.HeaderTime
+		}
+		if ins.Block.HeaderLastHeaderHash != "" {
+			cmd.Block.Header.LastHeaderHash = parseHash(ins.Block.HeaderLastHeaderHash)
+		}
+		if ins.Block.HeaderDataHash != "" {
+			cmd.Block.Header.DataHash = parseHash(ins.Block.HeaderDataHash)
+		}
+		if ins.Block.HeaderConsensusHash != "" {
+			cmd.Block.Header.ConsensusHash = parseHash(ins.Block.HeaderConsensusHash)
+		}
+		if ins.Block.HeaderAppHash != "" {
+			cmd.Block.Header.AppHash = parseHash(ins.Block.HeaderAppHash)
+		}
+		if ins.Block.HeaderLastResultsHash != "" {
+			cmd.Block.Header.LastResultsHash = parseHash(ins.Block.HeaderLastResultsHash)
+		}
+		if ins.Block.HeaderProposerAddr != "" {
+			cmd.Block.Header.ProposerAddress = []byte(ins.Block.HeaderProposerAddr)
+		}
+		if ins.Block.HeaderLastCommitHash != "" {
+			cmd.Block.Header.LastCommitHash = parseHash(ins.Block.HeaderLastCommitHash)
+		}
+		if ins.Block.HeaderSequencerHash != "" {
+			cmd.Block.Header.SequencerHash = parseHash(ins.Block.HeaderSequencerHash)
+		}
+		if ins.Block.HeaderNextSequencerHash != "" {
+			cmd.Block.Header.NextSequencersHash = parseHash(ins.Block.HeaderNextSequencerHash)
+		}
+		// TODO: Data and LastCommit
+		vs := parseVariants(ins.Variants)
+		for _, v := range vs {
+			ret.frauds[key{ins.Height, v}.String()] = cmd
+		}
 	}
-
-	return cmds, nil
+	return &ret, nil
 }
 
 func parseHash(hashStr string) [32]byte {
@@ -145,21 +122,17 @@ func parseHash(hashStr string) [32]byte {
 	return hash
 }
 
-func parseVariants(s string) []int {
-	ret := []int{}
-	s = strings.ToLower(s)
-	if strings.Contains(s, ",") {
-		l := strings.Split(s, ",")
-		for _, v := range l {
-			sub := parseVariants(v)
-			ret = append(ret, sub...)
-		}
-		return ret
+func parseVariants(s string) []FraudVariant {
+	ret := []FraudVariant{}
+	l := strings.Split(s, ",")
+	if slices.Contains(l, "da") {
+		ret = append(ret, DA)
 	}
-	if s == "da" {
-		return []int{DA}
+	if slices.Contains(l, "gossip") {
+		ret = append(ret, Gossip)
 	}
-	if s == "gossip" {
-		return []int{DA}
+	if slices.Contains(l, "produce") {
+		ret = append(ret, Produce)
 	}
+	return ret
 }

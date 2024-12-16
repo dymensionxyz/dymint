@@ -14,6 +14,7 @@ const (
 	NoneVariant = iota
 	DA
 	Gossip
+	Produce
 )
 
 // Type
