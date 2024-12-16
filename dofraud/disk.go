@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 )
 
 type disk struct {
@@ -21,22 +22,22 @@ type diskInstance struct {
 }
 
 type diskBlock struct {
-	HeaderVersionBlock      uint64   `json:",omitempty"`
-	HeaderVersionApp        uint64   `json:",omitempty"`
-	HeaderChainID           string   `json:",omitempty"`
-	HeaderHeight            uint64   `json:",omitempty"`
-	HeaderTime              int64    `json:",omitempty"`
-	HeaderLastHeaderHash    string   `json:",omitempty"`
-	HeaderDataHash          string   `json:",omitempty"`
-	HeaderConsensusHash     string   `json:",omitempty"`
-	HeaderAppHash           string   `json:",omitempty"`
-	HeaderLastResultsHash   string   `json:",omitempty"`
-	HeaderProposerAddr      string   `json:",omitempty"`
-	HeaderLastCommitHash    string   `json:",omitempty"`
-	HeaderSequencerHash     string   `json:",omitempty"`
-	HeaderNextSequencerHash string   `json:",omitempty"`
-	Data                    struct{} `json:",omitempty"` // TODO:
-	LastCommit              struct{} `json:",omitempty"` // TODO:
+	HeaderVersionBlock      uint64    `json:",omitempty"`
+	HeaderVersionApp        uint64    `json:",omitempty"`
+	HeaderChainID           string    `json:",omitempty"`
+	HeaderHeight            uint64    `json:",omitempty"`
+	HeaderTime              int64     `json:",omitempty"`
+	HeaderLastHeaderHash    string    `json:",omitempty"`
+	HeaderDataHash          string    `json:",omitempty"`
+	HeaderConsensusHash     string    `json:",omitempty"`
+	HeaderAppHash           string    `json:",omitempty"`
+	HeaderLastResultsHash   string    `json:",omitempty"`
+	HeaderProposerAddr      string    `json:",omitempty"`
+	HeaderLastCommitHash    string    `json:",omitempty"`
+	HeaderSequencerHash     string    `json:",omitempty"`
+	HeaderNextSequencerHash string    `json:",omitempty"`
+	Data                    *struct{} `json:",omitempty"` // TODO:
+	LastCommit              *struct{} `json:",omitempty"` // TODO:
 }
 
 func Load(fn string) (Frauds, error) {
@@ -121,7 +122,12 @@ func Load(fn string) (Frauds, error) {
 			cmd.Block.Header.NextSequencersHash = parseHash(ins.Block.HeaderNextSequencerHash)
 			cmd.ts = append(cmd.ts, HeaderNextSequencerHash)
 		}
-		// TODO: Data and LastCommit
+		if ins.Block.Data != nil {
+			return Frauds{}, gerrc.ErrUnimplemented.Wrap("block data")
+		}
+		if ins.Block.LastCommit != nil {
+			return Frauds{}, gerrc.ErrUnimplemented.Wrap("last commit")
+		}
 		vs := parseVariants(ins.Variants)
 		for _, v := range vs {
 			ret.frauds[key{ins.Height, v}.String()] = cmd

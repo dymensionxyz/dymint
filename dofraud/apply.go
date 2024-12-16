@@ -43,6 +43,7 @@ type Cmd struct {
 	ts []FraudType
 }
 
+// The possibilites are simple, just change
 type Frauds struct {
 	frauds map[string]Cmd
 }
