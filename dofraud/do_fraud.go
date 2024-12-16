@@ -17,7 +17,38 @@ type disk struct {
 	Pairs []diskPair
 }
 
+type FraudType int
+type FraudVariant int
+
+const (
+	NoneType = iota
+	HeaderVersionBlock
+	HeaderVersionApp
+	HeaderChainID
+	HeaderHeight
+	HeaderTime
+	HeaderLastHeaderHash
+	HeaderDataHash
+	HeaderConsensusHash
+	HeaderAppHash
+	HeaderLastResultsHash
+	HeaderProposerAddr
+	HeaderLastCommitHash
+	HeaderSequencerHash
+	HeaderNextSequencerHash
+	Data
+	LastCommit
+)
+
+const (
+	NoneVariant = iota
+	Produce
+	DA
+	Gossip
+)
+
 type diskCmd struct {
+	Variant                 string   `json:",omitempty"`
 	HeaderVersionBlock      uint64   `json:",omitempty"`
 	HeaderVersionApp        uint64   `json:",omitempty"`
 	HeaderChainID           string   `json:",omitempty"`
@@ -139,28 +170,6 @@ func parseHash(hashStr string) [32]byte {
 	copy(hash[:], hashStr)
 	return hash
 }
-
-type FraudType int
-
-const (
-	None = iota
-	HeaderVersionBlock
-	HeaderVersionApp
-	HeaderChainID
-	HeaderHeight
-	HeaderTime
-	HeaderLastHeaderHash
-	HeaderDataHash
-	HeaderConsensusHash
-	HeaderAppHash
-	HeaderLastResultsHash
-	HeaderProposerAddr
-	HeaderLastCommitHash
-	HeaderSequencerHash
-	HeaderNextSequencerHash
-	Data
-	LastCommit
-)
 
 // height -> cmd
 type Cmds map[uint64]Cmd

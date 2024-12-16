@@ -12,10 +12,7 @@ func TestDoFraud(t *testing.T) {
 	// Generate a few example diskPairs
 	examples := disk{
 		Pairs: []diskPair{
-			{Height: 10, Cmd: diskCmd{HeaderVersionBlock: 1, HeaderChainID: "chain-1"}},
-			{Height: 20, Cmd: diskCmd{HeaderVersionApp: 2, HeaderHeight: 100}},
-			{Height: 30, Cmd: diskCmd{HeaderTime: 1234567890, HeaderDataHash: "datahash"}},
-			{Height: 40, Cmd: diskCmd{HeaderNextSequencerHash: "foobar", HeaderDataHash: "datahash"}},
+			{Height: 33, Cmd: diskCmd{HeaderProposerAddr: "1092381209381923809182391823098129038"}},
 		},
 	}
 
