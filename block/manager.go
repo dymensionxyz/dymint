@@ -219,7 +219,9 @@ func NewManager(
 		if !errors.Is(err, os.ErrNotExist) {
 			return nil, fmt.Errorf("load frauds: %w", err)
 		}
-		logger.Info("No frauds file found", "path", conf.FraudCmdsPath)
+		logger.Info("Did not load fraud tests -  frauds file not found", "path", conf.FraudCmdsPath)
+	} else {
+		logger.Info("Loaded frauds.")
 	}
 	m.fraudSim = frauds
 
