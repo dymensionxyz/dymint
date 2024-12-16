@@ -1,21 +1,10 @@
 {
   "Instances": [
     {
-      "Height": 10,
+      "Height": 40,
       "Variants": "da,gossip",
       "Block": {
-        "HeaderProposerAddr": "1092381209381923809182391823098129038",
-        "Data": {},
-        "LastCommit": {}
-      }
-    },
-    {
-      "Height": 22,
-      "Variants": "da",
-      "Block": {
-        "HeaderNextSequencerHash": "1092381209381923809182391823098129038",
-        "Data": {},
-        "LastCommit": {}
+        "HeaderProposerAddr": "1092381209381923809182391823098129038"
       }
     }
   ]

@@ -67,45 +67,59 @@ func Load(fn string) (Frauds, error) {
 		}
 		if ins.Block.HeaderVersionBlock != 0 {
 			cmd.Block.Header.Version.Block = ins.Block.HeaderVersionBlock
+			cmd.ts = append(cmd.ts, HeaderVersionBlock)
 		}
 		if ins.Block.HeaderVersionApp != 0 {
 			cmd.Block.Header.Version.App = ins.Block.HeaderVersionApp
+			cmd.ts = append(cmd.ts, HeaderVersionApp)
 		}
 		if ins.Block.HeaderChainID != "" {
 			cmd.Block.Header.ChainID = ins.Block.HeaderChainID
+			cmd.ts = append(cmd.ts, HeaderChainID)
 		}
 		if ins.Block.HeaderHeight != 0 {
 			cmd.Block.Header.Height = ins.Block.HeaderHeight
+			cmd.ts = append(cmd.ts, HeaderHeight)
 		}
 		if ins.Block.HeaderTime != 0 {
 			cmd.Block.Header.Time = ins.Block.HeaderTime
+			cmd.ts = append(cmd.ts, HeaderTime)
 		}
 		if ins.Block.HeaderLastHeaderHash != "" {
 			cmd.Block.Header.LastHeaderHash = parseHash(ins.Block.HeaderLastHeaderHash)
+			cmd.ts = append(cmd.ts, HeaderLastHeaderHash)
 		}
 		if ins.Block.HeaderDataHash != "" {
 			cmd.Block.Header.DataHash = parseHash(ins.Block.HeaderDataHash)
+			cmd.ts = append(cmd.ts, HeaderDataHash)
 		}
 		if ins.Block.HeaderConsensusHash != "" {
 			cmd.Block.Header.ConsensusHash = parseHash(ins.Block.HeaderConsensusHash)
+			cmd.ts = append(cmd.ts, HeaderConsensusHash)
 		}
 		if ins.Block.HeaderAppHash != "" {
 			cmd.Block.Header.AppHash = parseHash(ins.Block.HeaderAppHash)
+			cmd.ts = append(cmd.ts, HeaderAppHash)
 		}
 		if ins.Block.HeaderLastResultsHash != "" {
 			cmd.Block.Header.LastResultsHash = parseHash(ins.Block.HeaderLastResultsHash)
+			cmd.ts = append(cmd.ts, HeaderLastResultsHash)
 		}
 		if ins.Block.HeaderProposerAddr != "" {
 			cmd.Block.Header.ProposerAddress = []byte(ins.Block.HeaderProposerAddr)
+			cmd.ts = append(cmd.ts, HeaderProposerAddr)
 		}
 		if ins.Block.HeaderLastCommitHash != "" {
 			cmd.Block.Header.LastCommitHash = parseHash(ins.Block.HeaderLastCommitHash)
+			cmd.ts = append(cmd.ts, HeaderLastCommitHash)
 		}
 		if ins.Block.HeaderSequencerHash != "" {
 			cmd.Block.Header.SequencerHash = parseHash(ins.Block.HeaderSequencerHash)
+			cmd.ts = append(cmd.ts, HeaderSequencerHash)
 		}
 		if ins.Block.HeaderNextSequencerHash != "" {
 			cmd.Block.Header.NextSequencersHash = parseHash(ins.Block.HeaderNextSequencerHash)
+			cmd.ts = append(cmd.ts, HeaderNextSequencerHash)
 		}
 		// TODO: Data and LastCommit
 		vs := parseVariants(ins.Variants)
