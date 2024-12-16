@@ -44,13 +44,13 @@ func (m *Manager) SubmitLoop(ctx context.Context,
 func SubmitLoopInner(
 	ctx context.Context,
 	logger types.Logger,
-	bytesProduced chan int,             // a channel of block and commit bytes produced
-	maxSkewTime time.Duration,          // max time between last submitted block and last produced block allowed. if this threshold is reached block production is stopped.
+	bytesProduced chan int, // a channel of block and commit bytes produced
+	maxSkewTime time.Duration, // max time between last submitted block and last produced block allowed. if this threshold is reached block production is stopped.
 	unsubmittedBlocksNum func() uint64, // func that returns the amount of non-submitted blocks
-	unsubmittedBlocksBytes func() int,  // func that returns bytes from non-submitted blocks
+	unsubmittedBlocksBytes func() int, // func that returns bytes from non-submitted blocks
 	batchSkewTime func() time.Duration, // func that returns measured time between last submitted block and last produced block
-	maxBatchSubmitTime time.Duration,   // max time to allow between batches
-	maxBatchSubmitBytes uint64,         // max size of serialised batch in bytes
+	maxBatchSubmitTime time.Duration, // max time to allow between batches
+	maxBatchSubmitBytes uint64, // max size of serialised batch in bytes
 	createAndSubmitBatch func(maxSizeBytes uint64) (bytes uint64, err error),
 ) error {
 	eg, ctx := errgroup.WithContext(ctx)
@@ -241,8 +241,22 @@ func (m *Manager) CreateBatch(maxBatchSize uint64, startHeight uint64, endHeight
 }
 
 func (m *Manager) SubmitBatch(batch *types.Batch) error {
-	m.applyFraudsToBatch(batch)
-	resultSubmitToDA := m.DAClient.SubmitBatch(batch)
+	var daBatch = batch
+	// a little optimized to avoid expensive clone on every batch
+	// only clone and apply frauds if a fraud is actually specified
+	// if fraud is specified, it's only for the DA, not for the SL
+	for _, b := range batch.Blocks {
+		if m.fraudSim.Has(b.Header.Height, dofraud.DA) {
+			var err error
+			daBatch, err = batch.Clone()
+			if err != nil {
+				return fmt.Errorf("deep clone batch: %w", err)
+			}
+			m.applyFraudsToBatch(daBatch)
+			break
+		}
+	}
+	resultSubmitToDA := m.DAClient.SubmitBatch(daBatch)
 	if resultSubmitToDA.Code != da.StatusSuccess {
 		return fmt.Errorf("da client submit batch: %s: %w", resultSubmitToDA.Message, resultSubmitToDA.Error)
 	}
@@ -329,6 +343,7 @@ func UpdateBatchSubmissionGauges(skewBytes uint64, skewBlocks uint64, skewTime t
 	types.RollappPendingSubmissionsSkewTimeMinutes.Set(float64(skewTime.Minutes()))
 }
 
+// applies frauds to a clone of the batch, if necessary, returns same batch or
 func (m *Manager) applyFraudsToBatch(batch *types.Batch) {
 	for i, block := range batch.Blocks {
 		m.doFraud(dofraud.DA, block.Header.Height, block, batch.Commits[i])

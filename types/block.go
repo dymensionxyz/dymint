@@ -130,3 +130,5 @@ func GetDataHash(block *Block) []byte {
 	}
 	return abciData.Hash()
 }
+
+func

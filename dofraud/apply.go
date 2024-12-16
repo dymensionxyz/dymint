@@ -57,6 +57,11 @@ func (k key) String() string {
 	return fmt.Sprintf("%d:%d", k.height, k.variant)
 }
 
+func (f *Frauds) Has(height uint64, variant FraudVariant) bool {
+	_, ok := f.frauds[key{height, variant}.String()]
+	return ok
+}
+
 // apply any loaded frauds, no-op if none
 func (f *Frauds) Apply(log types.Logger, height uint64, fraudVariant FraudVariant, b *types.Block) bool {
 	cmd, ok := f.frauds[key{height, fraudVariant}.String()]

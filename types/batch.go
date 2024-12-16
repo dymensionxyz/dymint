@@ -53,3 +53,10 @@ func (b Batch) SizeBlockAndCommitBytes() int {
 func (b Batch) SizeBytes() int {
 	return b.ToProto().Size()
 }
+
+func (b Batch) Clone() (*Batch, error) {
+	p := b.ToProto()
+	ret := &Batch{}
+	err := ret.FromProto(p)
+	return ret, err
+}
