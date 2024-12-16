@@ -57,10 +57,11 @@ func (k key) String() string {
 	return fmt.Sprintf("%d:%d", k.height, k.variant)
 }
 
-func (f *Frauds) Apply(log types.Logger, height uint64, fraudVariant FraudVariant, b *types.Block) {
+// apply any loaded frauds, no-op if none
+func (f *Frauds) Apply(log types.Logger, height uint64, fraudVariant FraudVariant, b *types.Block) bool {
 	cmd, ok := f.frauds[key{height, fraudVariant}.String()]
 	if !ok {
-		return
+		return false
 	}
 
 	for _, fraud := range cmd.ts {
@@ -102,4 +103,5 @@ func (f *Frauds) Apply(log types.Logger, height uint64, fraudVariant FraudVarian
 	}
 
 	log.Info("Applied fraud.", "height", height, "variant", fraudVariant, "types", cmd.ts)
+	return true
 }

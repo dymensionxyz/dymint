@@ -67,7 +67,7 @@ func (m *Manager) OnReceivedBlock(event pubsub.Message) {
 // gossipBlock sends created blocks by the sequencer to full-nodes using P2P gossipSub
 func (m *Manager) gossipBlock(ctx context.Context, block types.Block, commit types.Commit) error {
 	m.logger.Info("Gossipping block", "height", block.Header.Height)
-	commit = *m.fraudBlockAndCommit(dofraud.Gossip, block.Header.Height, &block)
+	m.fraudBlockAndCommit(dofraud.Gossip, block.Header.Height, &block, &commit)
 	gossipedBlock := p2p.BlockData{Block: block, Commit: commit}
 	gossipedBlockBytes, err := gossipedBlock.MarshalBinary()
 	if err != nil {
