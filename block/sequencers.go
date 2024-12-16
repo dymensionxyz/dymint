@@ -3,8 +3,11 @@ package block
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"time"
+
+	"github.com/dymensionxyz/dymint/settlement"
 )
 
 const (
@@ -94,7 +97,11 @@ func (m *Manager) ShouldRotate() (bool, error) {
 	// At this point we know that there is a next proposer,
 	// so we should rotate only if we are the current proposer on the hub
 	amIProposerOnSL, err := m.AmIProposerOnSL()
-	if err != nil {
+
+	// if no proposer assigned, return false without error
+	if errors.Is(err, settlement.ErrProposerIsSentinel) {
+		return false, nil
+	} else if err != nil {
 		return false, fmt.Errorf("am i proposer on SL: %w", err)
 	}
 	return amIProposerOnSL, nil
