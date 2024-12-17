@@ -238,7 +238,6 @@ func (m *Manager) loadFraud(path string) error {
 
 // Start starts the block manager.
 func (m *Manager) Start(ctx context.Context) error {
-
 	m.Ctx, m.Cancel = context.WithCancel(ctx)
 	// Check if InitChain flow is needed
 	if m.State.IsGenesis() {

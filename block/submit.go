@@ -241,7 +241,7 @@ func (m *Manager) CreateBatch(maxBatchSize uint64, startHeight uint64, endHeight
 }
 
 func (m *Manager) SubmitBatch(batch *types.Batch) error {
-	var daBatch = batch
+	daBatch := batch
 	// a little optimized to avoid expensive clone on every batch
 	// only clone and apply frauds if a fraud is actually specified
 	// if fraud is specified, it's only for the DA, not for the SL

@@ -38,7 +38,7 @@ func TestGenerateJson(t *testing.T) {
 	data, err := json.MarshalIndent(examples, "", "  ")
 	require.NoError(t, err)
 
-	err = os.WriteFile(fp, data, 0644)
+	err = os.WriteFile(fp, data, 0o644)
 	require.NoError(t, err)
 }
 
