@@ -17,7 +17,6 @@ import (
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
-// GetServer creates and returns gRPC server instance.
 func GetServer(kv store.KV, conf grpcda.Config, mockConfig []byte) *grpc.Server {
 	logger := tmlog.NewTMLogger(os.Stdout)
 
@@ -25,12 +24,10 @@ func GetServer(kv store.KV, conf grpcda.Config, mockConfig []byte) *grpc.Server 
 	mockImpl := &mockImpl{}
 	err := mockImpl.da.Init(mockConfig, pubsub.NewServer(), kv, logger)
 	if err != nil {
-		logger.Error("initialize mock DALC", "error", err)
 		panic(err)
 	}
 	err = mockImpl.da.Start()
 	if err != nil {
-		logger.Error("start mock DALC", "error", err)
 		panic(err)
 	}
 	dalc.RegisterDALCServiceServer(srv, mockImpl)

@@ -8,8 +8,6 @@ import (
 	rollapptypes "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp"
 )
 
-// RunWithRetry runs the given operation with retry, doing a number of attempts, and taking the last
-// error only. It uses the context of the HubClient.
 func (c *Client) RunWithRetry(operation func() error) error {
 	return retry.Do(operation,
 		retry.Context(c.ctx),
@@ -20,8 +18,6 @@ func (c *Client) RunWithRetry(operation func() error) error {
 	)
 }
 
-// RunWithRetryInfinitely runs the given operation with retry, doing a number of attempts, and taking the last
-// error only. It uses the context of the HubClient.
 func (c *Client) RunWithRetryInfinitely(operation func() error) error {
 	return retry.Do(operation,
 		retry.Context(c.ctx),

@@ -11,18 +11,14 @@ import (
 )
 
 func (m *Manager) ApplyBatchFromSL(slBatch *settlement.Batch) error {
-	m.logger.Debug("trying to retrieve batch from DA", "daHeight", slBatch.MetaData.DA.Height)
 	batchResp := m.fetchBatch(slBatch.MetaData.DA)
 	if batchResp.Code != da.StatusSuccess {
 		return batchResp.Error
 	}
 
-	m.logger.Debug("retrieved batches", "n", len(batchResp.Batches), "daHeight", slBatch.MetaData.DA.Height)
-
 	m.retrieverMu.Lock()
 	defer m.retrieverMu.Unlock()
 
-	// if batch blocks have already been applied skip, otherwise it will fail in endheight validation (it can happen when syncing from blocksync in parallel).
 	if m.State.Height() > slBatch.EndHeight {
 		return nil
 	}
@@ -30,7 +26,7 @@ func (m *Manager) ApplyBatchFromSL(slBatch *settlement.Batch) error {
 	blockIndex := 0
 	for _, batch := range batchResp.Batches {
 		for i, block := range batch.Blocks {
-			// We dont apply a block if not included in the block descriptor (adds support for rollback)
+
 			if blockIndex >= len(slBatch.BlockDescriptors) {
 				break
 			}
@@ -45,7 +41,6 @@ func (m *Manager) ApplyBatchFromSL(slBatch *settlement.Batch) error {
 				return err
 			}
 
-			// We dont validate because validateBlockBeforeApply already checks if the block is already applied, and we don't need to fail there.
 			err := m.applyBlockWithFraudHandling(block, batch.Commits[i], types.BlockMetaData{Source: types.DA, DAHeight: slBatch.MetaData.DA.Height})
 			if err != nil {
 				return fmt.Errorf("apply block: height: %d: %w", block.Header.Height, err)
@@ -55,7 +50,6 @@ func (m *Manager) ApplyBatchFromSL(slBatch *settlement.Batch) error {
 		}
 	}
 
-	// validate the batch applied successfully and we are at the end height
 	if m.State.Height() != slBatch.EndHeight {
 		return fmt.Errorf("state height mismatch: state height: %d: batch end height: %d", m.State.Height(), slBatch.EndHeight)
 	}
@@ -63,14 +57,6 @@ func (m *Manager) ApplyBatchFromSL(slBatch *settlement.Batch) error {
 	return nil
 }
 
-// Used it when doing local rollback, and applying same blocks (instead of producing new ones)
-// it was used for an edge case, eg:
-// seq produced block H and gossiped
-// bug in code produces app mismatch across nodes
-// bug fixed, state rolled back to H-1
-// if seq produces new block H, it can lead to double signing, as the old block can still be in the p2p network
-// ----
-// when this scenario encountered previously, we wanted to apply same block instead of producing new one
 func (m *Manager) applyLocalBlock() error {
 	defer m.retrieverMu.Unlock()
 	m.retrieverMu.Lock()
@@ -101,7 +87,6 @@ func (m *Manager) applyLocalBlock() error {
 }
 
 func (m *Manager) fetchBatch(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
-	// Check DA client
 	if daMetaData.Client != m.DAClient.GetClientType() {
 		return da.ResultRetrieveBatch{
 			BaseResult: da.BaseResult{
@@ -112,9 +97,7 @@ func (m *Manager) fetchBatch(daMetaData *da.DASubmitMetaData) da.ResultRetrieveB
 		}
 	}
 
-	// batchRes.MetaData includes proofs necessary to open disputes with the Hub
 	batchRes := m.Retriever.RetrieveBatches(daMetaData)
-	// TODO(srene) : for invalid transactions there is no specific error code since it will need to be validated somewhere else for fraud proving.
-	// NMT proofs (availRes.MetaData.Proofs) are included in the result batchRes, necessary to be included in the dispute
+
 	return batchRes
 }

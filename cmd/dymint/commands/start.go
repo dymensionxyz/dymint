@@ -32,8 +32,6 @@ import (
 
 var genesisHash []byte
 
-// NewRunNodeCmd returns the command that allows the CLI to start a node.
-// It can be used with a custom PrivValidator and in-process ABCI application.
 func NewRunNodeCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "start",
@@ -90,7 +88,6 @@ func startInProcess(config *cfg.NodeConfig, tmConfig *tmcfg.Config, logger log.L
 	if err != nil {
 		return err
 	}
-	logger.Info("starting node with ABCI dymint in-process", "conf", config)
 
 	genesisChecksum, err := ComputeGenesisHash(tmConfig.GenesisFile())
 	if err != nil {
@@ -118,24 +115,17 @@ func startInProcess(config *cfg.NodeConfig, tmConfig *tmcfg.Config, logger log.L
 		return err
 	}
 
-	logger.Debug("initialization: dymint node created")
 	if err := dymintNode.Start(); err != nil {
 		return err
 	}
 
-	logger.Info("Started dymint node")
-
-	// Stop upon receiving SIGTERM or CTRL-C.
 	tmos.TrapSignal(logger, func() {
-		logger.Info("Caught SIGTERM. Exiting...")
 		if dymintNode.IsRunning() {
 			if err := dymintNode.Stop(); err != nil {
-				logger.Error("unable to stop the node", "error", err)
 			}
 		}
 	})
 
-	// Run forever.
 	select {}
 }
 
@@ -148,7 +138,6 @@ func checkGenesisHash(config *tmcfg.Config) error {
 		return nil
 	}
 
-	// Calculate SHA-256 hash of the genesis file.
 	f, err := os.Open(config.GenesisFile())
 	if err != nil {
 		return fmt.Errorf("can't open genesis file: %w", err)
@@ -164,7 +153,6 @@ func checkGenesisHash(config *tmcfg.Config) error {
 	}
 	actualHash := h.Sum(nil)
 
-	// Compare with the flag.
 	if !bytes.Equal(genesisHash, actualHash) {
 		return fmt.Errorf(
 			"--genesis_hash=%X does not match %s hash: %X",

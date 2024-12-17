@@ -5,7 +5,6 @@ import (
 )
 
 type Cache struct {
-	// concurrency managed by Manager.retrieverMu mutex
 	cache map[uint64]types.CachedBlock
 }
 

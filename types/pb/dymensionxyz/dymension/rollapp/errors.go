@@ -1,13 +1,10 @@
 package rollapp
 
-// DONTCOVER
-
 import (
 	errorsmod "cosmossdk.io/errors"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 )
 
-// x/rollapp module sentinel errors
 var (
 	ErrRollappExists                   = errorsmod.Register(ModuleName, 1000, "rollapp already exists")
 	ErrInvalidInitialSequencer         = errorsmod.Register(ModuleName, 1001, "empty initial sequencer")
@@ -44,7 +41,6 @@ var (
 	ErrInvalidRequest                  = errorsmod.Wrap(gerrc.ErrInvalidArgument, "invalid request")
 	ErrInvalidVMType                   = errorsmod.Wrap(gerrc.ErrInvalidArgument, "invalid vm type")
 
-	/* ------------------------------ fraud related ----------------------------- */
 	ErrDisputeAlreadyFinalized = errorsmod.Register(ModuleName, 2000, "disputed height already finalized")
 	ErrDisputeAlreadyReverted  = errorsmod.Register(ModuleName, 2001, "disputed height already reverted")
 	ErrWrongClientId           = errorsmod.Register(ModuleName, 2002, "client id does not match the rollapp")

@@ -47,7 +47,6 @@ func ConsensusMsgSigner(m proto.Message) (sdk.AccAddress, error) {
 	}
 }
 
-// ConsensusMsgsOnSequencerSetUpdate forms a list of consensus messages to handle the sequencer set update.
 func ConsensusMsgsOnSequencerSetUpdate(newSequencers []types.Sequencer) ([]proto.Message, error) {
 	msgs := make([]proto.Message, 0, len(newSequencers))
 	for _, s := range newSequencers {

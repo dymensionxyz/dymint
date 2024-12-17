@@ -20,7 +20,6 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
-// Server mocks celestia-node HTTP API.
 type Server struct {
 	da        *local.DataAvailabilityLayerClient
 	blockTime time.Duration
@@ -28,7 +27,6 @@ type Server struct {
 	logger    types.Logger
 }
 
-// NewServer creates new instance of Server.
 func NewServer(blockTime time.Duration, logger types.Logger) *Server {
 	return &Server{
 		da:        new(local.DataAvailabilityLayerClient),
@@ -37,7 +35,6 @@ func NewServer(blockTime time.Duration, logger types.Logger) *Server {
 	}
 }
 
-// Start starts HTTP server with given listener.
 func (s *Server) Start(listener net.Listener) error {
 	err := s.da.Init([]byte(s.blockTime.String()), pubsub.NewServer(), store.NewDefaultInMemoryKVStore(), s.logger)
 	if err != nil {
@@ -51,12 +48,10 @@ func (s *Server) Start(listener net.Listener) error {
 	s.server.Handler = s.getHandler()
 	go func() {
 		err := s.server.Serve(listener)
-		s.logger.Debug("http server exited with", "error", err)
 	}()
 	return nil
 }
 
-// Stop shuts down the Server.
 func (s *Server) Stop() {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
@@ -208,7 +203,6 @@ func (s *Server) writeResponse(w http.ResponseWriter, payload []byte) {
 	w.WriteHeader(http.StatusOK)
 	_, err := w.Write(payload)
 	if err != nil {
-		s.logger.Error("write response", "error", err)
 	}
 }
 
@@ -217,10 +211,8 @@ func (s *Server) writeError(w http.ResponseWriter, err error) {
 	w.WriteHeader(http.StatusInternalServerError)
 	resp, jerr := json.Marshal(err.Error())
 	if jerr != nil {
-		s.logger.Error("serialize error message", "error", jerr)
 	}
 	_, werr := w.Write(resp)
 	if werr != nil {
-		s.logger.Error("write response", "error", werr)
 	}
 }

@@ -12,17 +12,14 @@ import (
 	pb "github.com/dymensionxyz/dymint/types/pb/dymint"
 )
 
-// MarshalBinary encodes Block into binary form and returns it.
 func (b *Block) MarshalBinary() ([]byte, error) {
 	return b.ToProto().Marshal()
 }
 
-// MarshalBinary encodes Batch into binary form and returns it.
 func (b *Batch) MarshalBinary() ([]byte, error) {
 	return b.ToProto().Marshal()
 }
 
-// UnmarshalBinary decodes binary form of Block into object.
 func (b *Block) UnmarshalBinary(data []byte) error {
 	var pBlock pb.Block
 	err := pBlock.Unmarshal(data)
@@ -33,7 +30,6 @@ func (b *Block) UnmarshalBinary(data []byte) error {
 	return err
 }
 
-// UnmarshalBinary decodes binary form of Batch into object.
 func (b *Batch) UnmarshalBinary(data []byte) error {
 	var pBatch pb.Batch
 	err := pBatch.Unmarshal(data)
@@ -44,12 +40,10 @@ func (b *Batch) UnmarshalBinary(data []byte) error {
 	return err
 }
 
-// MarshalBinary encodes Header into binary form and returns it.
 func (h *Header) MarshalBinary() ([]byte, error) {
 	return h.ToProto().Marshal()
 }
 
-// UnmarshalBinary decodes binary form of Header into object.
 func (h *Header) UnmarshalBinary(data []byte) error {
 	var pHeader pb.Header
 	err := pHeader.Unmarshal(data)
@@ -60,17 +54,14 @@ func (h *Header) UnmarshalBinary(data []byte) error {
 	return err
 }
 
-// MarshalBinary encodes Data into binary form and returns it.
 func (d *Data) MarshalBinary() ([]byte, error) {
 	return d.ToProto().Marshal()
 }
 
-// MarshalBinary encodes Commit into binary form and returns it.
 func (c *Commit) MarshalBinary() ([]byte, error) {
 	return c.ToProto().Marshal()
 }
 
-// UnmarshalBinary decodes binary form of Commit into object.
 func (c *Commit) UnmarshalBinary(data []byte) error {
 	var pCommit pb.Commit
 	err := pCommit.Unmarshal(data)
@@ -81,7 +72,6 @@ func (c *Commit) UnmarshalBinary(data []byte) error {
 	return err
 }
 
-// ToProto converts Header into protobuf representation and returns it.
 func (h *Header) ToProto() *pb.Header {
 	return &pb.Header{
 		Version:           &pb.Version{Block: h.Version.Block, App: h.Version.App},
@@ -101,7 +91,6 @@ func (h *Header) ToProto() *pb.Header {
 	}
 }
 
-// FromProto fills Header with data from its protobuf representation.
 func (h *Header) FromProto(other *pb.Header) error {
 	h.Version.Block = other.Version.Block
 	h.Version.App = other.Version.App
@@ -140,8 +129,6 @@ func (h *Header) FromProto(other *pb.Header) error {
 	return nil
 }
 
-// safeCopy copies bytes from src slice into dst slice if both have same size.
-// It returns true if sizes of src and dst are the same.
 func safeCopy(dst, src []byte) bool {
 	if len(src) != len(dst) {
 		return false
@@ -150,7 +137,6 @@ func safeCopy(dst, src []byte) bool {
 	return true
 }
 
-// ToProto converts Block into protobuf representation and returns it.
 func (b *Block) ToProto() *pb.Block {
 	return &pb.Block{
 		Header:     b.Header.ToProto(),
@@ -159,7 +145,6 @@ func (b *Block) ToProto() *pb.Block {
 	}
 }
 
-// ToProto converts Batch into protobuf representation and returns it.
 func (b *Batch) ToProto() *pb.Batch {
 	return &pb.Batch{
 		StartHeight: b.StartHeight(),
@@ -169,7 +154,6 @@ func (b *Batch) ToProto() *pb.Batch {
 	}
 }
 
-// ToProto converts Data into protobuf representation and returns it.
 func (d *Data) ToProto() *pb.Data {
 	return &pb.Data{
 		Txs:                    txsToByteSlices(d.Txs),
@@ -179,7 +163,6 @@ func (d *Data) ToProto() *pb.Data {
 	}
 }
 
-// FromProto fills Block with data from its protobuf representation.
 func (b *Block) FromProto(other *pb.Block) error {
 	err := b.Header.FromProto(other.Header)
 	if err != nil {
@@ -199,7 +182,6 @@ func (b *Block) FromProto(other *pb.Block) error {
 	return nil
 }
 
-// FromProto fills Batch with data from its protobuf representation.
 func (b *Batch) FromProto(other *pb.Batch) error {
 	n := len(other.Blocks)
 	start := other.StartHeight
@@ -215,7 +197,6 @@ func (b *Batch) FromProto(other *pb.Batch) error {
 	return nil
 }
 
-// ToProto converts Commit into protobuf representation and returns it.
 func (c *Commit) ToProto() *pb.Commit {
 	return &pb.Commit{
 		Height:     c.Height,
@@ -230,14 +211,13 @@ func (c *Commit) ToProto() *pb.Commit {
 	}
 }
 
-// FromProto fills Commit with data from its protobuf representation.
 func (c *Commit) FromProto(other *pb.Commit) error {
 	c.Height = other.Height
 	if !safeCopy(c.HeaderHash[:], other.HeaderHash) {
 		return errors.New("invalid length of HeaderHash")
 	}
 	c.Signatures = byteSlicesToSignatures(other.Signatures)
-	// For backwards compatibility with old state files that don't have this field.
+
 	if other.TmSignature != nil {
 		c.TMSignature = types.CommitSig{
 			BlockIDFlag:      types.BlockIDFlag(other.TmSignature.BlockIdFlag),
@@ -250,7 +230,6 @@ func (c *Commit) FromProto(other *pb.Commit) error {
 	return nil
 }
 
-// ToProto converts State into protobuf representation and returns it.
 func (s *State) ToProto() (*pb.State, error) {
 	var proposerProto *pb.Sequencer
 	proposer := s.GetProposer()
@@ -265,25 +244,24 @@ func (s *State) ToProto() (*pb.State, error) {
 	return &pb.State{
 		Version:             &s.Version,
 		ChainId:             s.ChainID,
-		InitialHeight:       int64(s.InitialHeight), //nolint:gosec // height is non-negative and falls in int64
-		LastBlockHeight:     int64(s.Height()),      //nolint:gosec // height is non-negative and falls in int64
+		InitialHeight:       int64(s.InitialHeight),
+		LastBlockHeight:     int64(s.Height()),
 		ConsensusParams:     s.ConsensusParams,
 		LastResultsHash:     s.LastResultsHash[:],
 		LastHeaderHash:      s.LastHeaderHash[:],
 		AppHash:             s.AppHash[:],
 		RollappParams:       s.RollappParams,
 		Proposer:            proposerProto,
-		RevisionStartHeight: int64(s.RevisionStartHeight), //nolint:gosec // height is non-negative and falls in int64
+		RevisionStartHeight: int64(s.RevisionStartHeight),
 	}, nil
 }
 
-// FromProto fills State with data from its protobuf representation.
 func (s *State) FromProto(other *pb.State) error {
 	s.Version = *other.Version
 	s.ChainID = other.ChainId
-	s.InitialHeight = uint64(other.InitialHeight)             //nolint:gosec // height is non-negative and falls in int64
-	s.SetHeight(uint64(other.LastBlockHeight))                //nolint:gosec // height is non-negative and falls in int64
-	s.RevisionStartHeight = uint64(other.RevisionStartHeight) //nolint:gosec // height is non-negative and falls in int64
+	s.InitialHeight = uint64(other.InitialHeight)
+	s.SetHeight(uint64(other.LastBlockHeight))
+	s.RevisionStartHeight = uint64(other.RevisionStartHeight)
 	if other.Proposer != nil {
 		proposer, err := SequencerFromProto(other.Proposer)
 		if err != nil {
@@ -291,7 +269,6 @@ func (s *State) FromProto(other *pb.State) error {
 		}
 		s.SetProposer(proposer)
 	} else {
-		// proposer may be nil in the state
 		s.SetProposer(nil)
 	}
 
@@ -303,7 +280,6 @@ func (s *State) FromProto(other *pb.State) error {
 	return nil
 }
 
-// ToProto converts Sequencer into protobuf representation and returns it.
 func (s *Sequencer) ToProto() (*pb.Sequencer, error) {
 	if s == nil {
 		return nil, fmt.Errorf("nil sequencer")
@@ -320,7 +296,6 @@ func (s *Sequencer) ToProto() (*pb.Sequencer, error) {
 	}, nil
 }
 
-// SequencerFromProto fills Sequencer with data from its protobuf representation.
 func SequencerFromProto(seq *pb.Sequencer) (*Sequencer, error) {
 	if seq == nil {
 		return nil, fmt.Errorf("nil sequencer")
@@ -337,7 +312,6 @@ func SequencerFromProto(seq *pb.Sequencer) (*Sequencer, error) {
 	}, nil
 }
 
-// ToProto converts Sequencers into protobuf representation and returns it.
 func (s Sequencers) ToProto() (*pb.SequencerSet, error) {
 	seqs := make([]pb.Sequencer, len(s))
 	for i, seq := range s {
@@ -350,7 +324,6 @@ func (s Sequencers) ToProto() (*pb.SequencerSet, error) {
 	return &pb.SequencerSet{Sequencers: seqs}, nil
 }
 
-// SequencersFromProto fills Sequencers with data from its protobuf representation.
 func SequencersFromProto(s *pb.SequencerSet) (Sequencers, error) {
 	if s == nil {
 		return Sequencers{}, fmt.Errorf("nil sequencer set")
@@ -389,7 +362,7 @@ func evidenceToProto(evidence EvidenceData) []*abci.Evidence {
 	var ret []*abci.Evidence
 	for _, e := range evidence.Evidence {
 		for _, ae := range e.ABCI() {
-			ret = append(ret, &ae) //#nosec
+			ret = append(ret, &ae)
 		}
 	}
 	return ret
@@ -397,7 +370,7 @@ func evidenceToProto(evidence EvidenceData) []*abci.Evidence {
 
 func evidenceFromProto([]*abci.Evidence) EvidenceData {
 	var ret EvidenceData
-	// TODO(tzdybal): right now Evidence is just an interface without implementations
+
 	return ret
 }
 
@@ -423,7 +396,6 @@ func byteSlicesToSignatures(bytes [][]byte) []Signature {
 	return sigs
 }
 
-// Convert a list of blocks to a list of protobuf blocks.
 func blocksToProto(blocks []*Block) []*pb.Block {
 	pbBlocks := make([]*pb.Block, len(blocks))
 	for i, b := range blocks {
@@ -432,7 +404,6 @@ func blocksToProto(blocks []*Block) []*pb.Block {
 	return pbBlocks
 }
 
-// protoToBlocks converts a list of protobuf blocks to a list of go struct blocks.
 func protoToBlocks(pbBlocks []*pb.Block) []*Block {
 	blocks := make([]*Block, len(pbBlocks))
 	for i, b := range pbBlocks {
@@ -445,7 +416,6 @@ func protoToBlocks(pbBlocks []*pb.Block) []*Block {
 	return blocks
 }
 
-// commitsToProto converts a list of commits to a list of protobuf commits.
 func commitsToProto(commits []*Commit) []*pb.Commit {
 	pbCommits := make([]*pb.Commit, len(commits))
 	for i, c := range commits {
@@ -454,7 +424,6 @@ func commitsToProto(commits []*Commit) []*pb.Commit {
 	return pbCommits
 }
 
-// protoToCommits converts a list of protobuf commits to a list of go struct commits.
 func protoToCommits(pbCommits []*pb.Commit) []*Commit {
 	commits := make([]*Commit, len(pbCommits))
 	for i, c := range pbCommits {

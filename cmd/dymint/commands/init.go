@@ -14,7 +14,6 @@ import (
 	tmtime "github.com/tendermint/tendermint/types/time"
 )
 
-// InitFilesCmd initialises a fresh Dymint Core instance.
 var InitFilesCmd = &cobra.Command{
 	Use:   "init",
 	Short: "Initialize Dymint",
@@ -25,37 +24,27 @@ func initFiles(cmd *cobra.Command, args []string) error {
 	return InitFilesWithConfig(tmconfig)
 }
 
-// InitFilesWithConfig initialises a fresh Dymint instance.
 func InitFilesWithConfig(config *cfg.Config) error {
-	// private validator
 	privValKeyFile := config.PrivValidatorKeyFile()
 	privValStateFile := config.PrivValidatorStateFile()
 	var pv *privval.FilePV
 	if tmos.FileExists(privValKeyFile) {
 		pv = privval.LoadFilePV(privValKeyFile, privValStateFile)
-		logger.Info("Found private validator", "keyFile", privValKeyFile,
-			"stateFile", privValStateFile)
 	} else {
 		pv = privval.GenFilePV(privValKeyFile, privValStateFile)
 		pv.Save()
-		logger.Info("Generated private validator", "keyFile", privValKeyFile,
-			"stateFile", privValStateFile)
 	}
 
 	nodeKeyFile := config.NodeKeyFile()
 	if tmos.FileExists(nodeKeyFile) {
-		logger.Info("Found node key", "path", nodeKeyFile)
 	} else {
 		if _, err := p2p.LoadOrGenNodeKey(nodeKeyFile); err != nil {
 			return err
 		}
-		logger.Info("Generated node key", "path", nodeKeyFile)
 	}
 
-	// genesis file
 	genFile := config.GenesisFile()
 	if tmos.FileExists(genFile) {
-		logger.Info("Found genesis file", "path", genFile)
 	} else {
 		genDoc := types.GenesisDoc{
 			ChainID:         fmt.Sprintf("test-chain-%v", tmrand.Str(6)),
@@ -76,7 +65,6 @@ func InitFilesWithConfig(config *cfg.Config) error {
 		if err := genDoc.SaveAs(genFile); err != nil {
 			return err
 		}
-		logger.Info("Generated genesis file", "path", genFile)
 	}
 
 	return nil

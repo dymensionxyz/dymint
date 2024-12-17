@@ -25,22 +25,18 @@ func (wsc *wsConn) sendLoop() {
 	for msg := range wsc.queue {
 		writer, err := wsc.conn.NextWriter(websocket.TextMessage)
 		if err != nil {
-			wsc.logger.Error("create writer", "error", err)
 			continue
 		}
 		_ = wsc.conn.SetWriteDeadline(time.Now().Add(writeWait))
 		_, err = writer.Write(msg)
 		if err != nil {
-			wsc.logger.Error("write message", "error", err)
 		}
 		if err = writer.Close(); err != nil {
-			wsc.logger.Error("close writer", "error", err)
 		}
 	}
 }
 
 func (h *handler) wsHandler(w http.ResponseWriter, r *http.Request) {
-	// TODO(tzdybal): configuration options
 	upgrader := websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
@@ -51,7 +47,6 @@ func (h *handler) wsHandler(w http.ResponseWriter, r *http.Request) {
 
 	wsc, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		h.logger.Error("update to WebSocket connection", "error", err)
 		return
 	}
 
@@ -65,7 +60,6 @@ func (h *handler) wsHandler(w http.ResponseWriter, r *http.Request) {
 		close(ws.queue)
 
 		if err := ws.conn.Close(); err != nil {
-			h.logger.Error("close WebSocket connection", "err")
 		}
 	}()
 
@@ -77,25 +71,19 @@ func (h *handler) wsHandler(w http.ResponseWriter, r *http.Request) {
 		mt, rdr, err := wsc.NextReader()
 		if err != nil {
 			if _, ok := err.(*websocket.CloseError); ok {
-				h.logger.Debug("WebSocket connection closed", "reason", err)
 			} else {
-				h.logger.Error("read next WebSocket message", "error", err)
 			}
 			err := h.srv.client.EventBus.UnsubscribeAll(r.Context(), remoteAddr)
 			if err != nil && !errors.Is(err, tmpubsub.ErrSubscriptionNotFound) {
-				h.logger.Error("unsubscribe addr from events", "addr", remoteAddr, "err", err)
 			}
 			break
 		}
 
 		if mt != websocket.TextMessage {
-			// TODO(tzdybal): https://github.com/dymensionxyz/dymint/issues/465
-			h.logger.Debug("expected text message")
 			continue
 		}
 		req, err := http.NewRequest(http.MethodGet, "", rdr)
 		if err != nil {
-			h.logger.Error("create request", "error", err)
 			continue
 		}
 
@@ -111,14 +99,12 @@ func newResponseWriter(w io.Writer) http.ResponseWriter {
 	return &wsResponse{w}
 }
 
-// wsResponse is a simple implementation of http.ResponseWriter
 type wsResponse struct {
 	w io.Writer
 }
 
 var _ http.ResponseWriter = wsResponse{}
 
-// Write use underlying writer to write response to WebSocket
 func (w wsResponse) Write(bytes []byte) (int, error) {
 	return w.w.Write(bytes)
 }

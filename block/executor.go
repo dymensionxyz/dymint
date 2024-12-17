@@ -19,7 +19,6 @@ import (
 	protoutils "github.com/dymensionxyz/dymint/utils/proto"
 )
 
-// default minimum block max size allowed. not specific reason to set it to 10K, but we need to avoid no transactions can be included in a block.
 const minBlockMaxBytes = 10000
 
 type ExecutorI interface {
@@ -33,15 +32,12 @@ type ExecutorI interface {
 	UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResponses, appHash []byte, height uint64, lastHeaderHash [32]byte)
 	UpdateProposerFromBlock(s *types.State, seqSet *types.SequencerSet, block *types.Block) bool
 
-	/* Consensus Messages */
-
 	AddConsensusMsgs(...proto2.Message)
 	GetConsensusMsgs() []proto2.Message
 }
 
 var _ ExecutorI = new(Executor)
 
-// Executor creates and applies blocks and maintains state.
 type Executor struct {
 	localAddress          []byte
 	chainID               string
@@ -55,8 +51,6 @@ type Executor struct {
 	logger types.Logger
 }
 
-// NewExecutor creates new instance of BlockExecutor.
-// localAddress will be used in sequencer mode only.
 func NewExecutor(
 	localAddress []byte,
 	chainID string,
@@ -79,23 +73,17 @@ func NewExecutor(
 	return &be, nil
 }
 
-// AddConsensusMsgs adds new consensus msgs to the queue.
-// The method is thread-safe.
 func (e *Executor) AddConsensusMsgs(msgs ...proto2.Message) {
 	e.consensusMsgQueue.Add(msgs...)
 }
 
-// GetConsensusMsgs dequeues consensus msgs from the queue.
-// The method is thread-safe.
 func (e *Executor) GetConsensusMsgs() []proto2.Message {
 	return e.consensusMsgQueue.Get()
 }
 
-// InitChain calls InitChainSync using consensus connection to app.
 func (e *Executor) InitChain(genesis *tmtypes.GenesisDoc, genesisChecksum string, valset []*tmtypes.Validator) (*abci.ResponseInitChain, error) {
 	valUpdates := abci.ValidatorUpdates{}
 
-	// prepare the validator updates as expected by the ABCI app
 	for _, validator := range valset {
 		tmkey, err := tmcrypto.PubKeyToProto(validator.PubKey)
 		if err != nil {
@@ -136,7 +124,6 @@ func (e *Executor) InitChain(genesis *tmtypes.GenesisDoc, genesisChecksum string
 	})
 }
 
-// CreateBlock reaps transactions from mempool and builds a block.
 func (e *Executor) CreateBlock(
 	height uint64,
 	lastCommit *types.Commit,
@@ -144,8 +131,8 @@ func (e *Executor) CreateBlock(
 	state *types.State,
 	maxBlockDataSizeBytes uint64,
 ) *types.Block {
-	maxBlockDataSizeBytes = min(maxBlockDataSizeBytes, uint64(max(minBlockMaxBytes, state.ConsensusParams.Block.MaxBytes))) //nolint:gosec // MaxBytes is always positive
-	mempoolTxs := e.mempool.ReapMaxBytesMaxGas(int64(maxBlockDataSizeBytes), state.ConsensusParams.Block.MaxGas)            //nolint:gosec // size is always positive and falls in int64
+	maxBlockDataSizeBytes = min(maxBlockDataSizeBytes, uint64(max(minBlockMaxBytes, state.ConsensusParams.Block.MaxBytes)))
+	mempoolTxs := e.mempool.ReapMaxBytesMaxGas(int64(maxBlockDataSizeBytes), state.ConsensusParams.Block.MaxGas)
 
 	block := &types.Block{
 		Header: types.Header{
@@ -178,7 +165,6 @@ func (e *Executor) CreateBlock(
 	return block
 }
 
-// Commit commits the block
 func (e *Executor) Commit(state *types.State, block *types.Block, resp *tmstate.ABCIResponses) ([]byte, int64, error) {
 	appHash, retainHeight, err := e.commit(state, block, resp.DeliverTxs)
 	if err != nil {
@@ -187,13 +173,11 @@ func (e *Executor) Commit(state *types.State, block *types.Block, resp *tmstate.
 
 	err = e.publishEvents(resp, block)
 	if err != nil {
-		e.logger.Error("fire block events", "error", err)
 		return nil, 0, err
 	}
 	return appHash, retainHeight, nil
 }
 
-// GetAppInfo returns the latest AppInfo from the proxyApp.
 func (e *Executor) GetAppInfo() (*abci.ResponseInfo, error) {
 	return e.proxyAppQueryConn.InfoSync(abci.RequestInfo{})
 }
@@ -214,7 +198,7 @@ func (e *Executor) commit(state *types.State, block *types.Block, deliverTxs []*
 
 	maxBytes := state.ConsensusParams.Block.MaxBytes
 	maxGas := state.ConsensusParams.Block.MaxGas
-	err = e.mempool.Update(int64(block.Header.Height), fromDymintTxs(block.Data.Txs), deliverTxs) //nolint:gosec // height is non-negative and falls in int64
+	err = e.mempool.Update(int64(block.Header.Height), fromDymintTxs(block.Data.Txs), deliverTxs)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -224,7 +208,6 @@ func (e *Executor) commit(state *types.State, block *types.Block, deliverTxs []*
 	return resp.Data, resp.RetainHeight, err
 }
 
-// ExecuteBlock executes the block and returns the ABCIResponses. Block should be valid (passed validation checks).
 func (e *Executor) ExecuteBlock(block *types.Block) (*tmstate.ABCIResponses, error) {
 	abciResponses := new(tmstate.ABCIResponses)
 	abciResponses.DeliverTxs = make([]*abci.ResponseDeliverTx, len(block.Data.Txs))
@@ -241,7 +224,6 @@ func (e *Executor) ExecuteBlock(block *types.Block) (*tmstate.ABCIResponses, err
 			if txRes.Code == abci.CodeTypeOK {
 				validTxs++
 			} else {
-				e.logger.Debug("Invalid tx", "code", txRes.Code, "log", txRes.Log)
 				invalidTxs++
 			}
 			abciResponses.DeliverTxs[txIdx] = txRes
@@ -273,7 +255,7 @@ func (e *Executor) ExecuteBlock(block *types.Block) (*tmstate.ABCIResponses, err
 		}
 	}
 
-	abciResponses.EndBlock, err = e.proxyAppConsensusConn.EndBlockSync(abci.RequestEndBlock{Height: int64(block.Header.Height)}) //nolint:gosec // height is non-negative and falls in int64
+	abciResponses.EndBlock, err = e.proxyAppConsensusConn.EndBlockSync(abci.RequestEndBlock{Height: int64(block.Header.Height)})
 	if err != nil {
 		return nil, err
 	}
@@ -305,14 +287,14 @@ func (e *Executor) publishEvents(resp *tmstate.ABCIResponses, block *types.Block
 	for _, ev := range abciBlock.Evidence.Evidence {
 		err = multierr.Append(err, e.eventBus.PublishEventNewEvidence(tmtypes.EventDataNewEvidence{
 			Evidence: ev,
-			Height:   int64(block.Header.Height), //nolint:gosec // height is non-negative and falls in int64
+			Height:   int64(block.Header.Height),
 		}))
 	}
 	for i, dtx := range resp.DeliverTxs {
 		err = multierr.Append(err, e.eventBus.PublishEventTx(tmtypes.EventDataTx{
 			TxResult: abci.TxResult{
-				Height: int64(block.Header.Height), //nolint:gosec // block height is within int64 range
-				Index:  uint32(i),                  //nolint:gosec // num of deliver txs is less than 2^32
+				Height: int64(block.Header.Height),
+				Index:  uint32(i),
 				Tx:     abciBlock.Data.Txs[i],
 				Result: *dtx,
 			},

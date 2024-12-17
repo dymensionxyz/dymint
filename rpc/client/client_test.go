@@ -374,7 +374,6 @@ func TestValidatedHeight(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
-
 			node.BlockManager.SettlementValidator.UpdateLastValidatedHeight(test.validatedHeight)
 			node.BlockManager.LastSettlementHeight.Store(test.submittedHeight)
 
@@ -389,7 +388,6 @@ func TestValidatedHeight(t *testing.T) {
 
 	err = node.Stop()
 	require.NoError(err)
-
 }
 
 func TestGetCommit(t *testing.T) {
