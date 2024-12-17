@@ -9,7 +9,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-const fp = "/Users/danwt/Documents/dym/d-dymint/dofraud/testdata/example.json"
+const fp = "testdata/example.json"
 
 //go:embed testdata/example.json
 var testData []byte
@@ -43,7 +43,7 @@ func TestGenerateJson(t *testing.T) {
 }
 
 func TestParseJson(t *testing.T) {
-	fraud, err := Load(fp)
+	fraud, err := loadBz(testData)
 	require.NoError(t, err)
 	cmd, ok := fraud.frauds[key{10, DA}.String()]
 	require.True(t, ok)

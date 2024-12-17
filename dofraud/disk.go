@@ -51,9 +51,12 @@ func Load(fn string) (Frauds, error) {
 	if err != nil {
 		return Frauds{}, err
 	}
+	return loadBz(data)
+}
 
+func loadBz(bz []byte) (Frauds, error) {
 	var d disk
-	err = json.Unmarshal(data, &d)
+	err := json.Unmarshal(bz, &d)
 	if err != nil {
 		return Frauds{}, err
 	}
