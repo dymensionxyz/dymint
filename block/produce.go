@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/dymensionxyz/dymint/dofraud"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 
 	"github.com/dymensionxyz/dymint/node/events"
@@ -238,6 +239,7 @@ func (m *Manager) produceBlock(opts ProduceBlockOptions) (*types.Block, *types.C
 
 	// dequeue consensus messages for the new sequencers while creating a new block
 	block = m.Executor.CreateBlock(newHeight, lastCommit, lastHeaderHash, proposerHashForBlock, m.State, maxBlockDataSize)
+
 	// this cannot happen if there are any sequencer set updates
 	// AllowEmpty should be always true in this case
 	if !opts.AllowEmpty && len(block.Data.Txs) == 0 {
@@ -248,6 +250,7 @@ func (m *Manager) produceBlock(opts ProduceBlockOptions) (*types.Block, *types.C
 	if err != nil {
 		return nil, nil, fmt.Errorf("create commit: %w: %w", err, ErrNonRecoverable)
 	}
+	m.doFraud(dofraud.Produce, newHeight, block, commit)
 
 	m.logger.Info("Block created.", "height", newHeight, "num_tx", len(block.Data.Txs), "size", block.SizeBytes()+commit.SizeBytes())
 	types.RollappBlockSizeBytesGauge.Set(float64(len(block.Data.Txs)))
@@ -347,4 +350,16 @@ func getHeaderHashAndCommit(store store.Store, height uint64) ([32]byte, *types.
 		return [32]byte{}, nil, fmt.Errorf("load block after load commit: height: %d: %w", height, err)
 	}
 	return lastBlock.Header.Hash(), lastCommit, nil
+}
+
+// if a fraud is specified, apply it (modify block, commit)
+func (m *Manager) doFraud(variant dofraud.FraudVariant, h uint64, b *types.Block, c *types.Commit) {
+	if m.fraudSim.Apply(m.logger, h, variant, b) {
+		comm, err := m.createCommit(b)
+		if err != nil {
+			m.logger.Error("Fraud block, create commit.", "err", err)
+		} else {
+			*c = *comm
+		}
+	}
 }

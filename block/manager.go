@@ -4,9 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"sync"
 	"sync/atomic"
 
+	"github.com/dymensionxyz/dymint/dofraud"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"golang.org/x/sync/errgroup"
 
@@ -126,6 +128,9 @@ type Manager struct {
 
 	// validates all non-finalized state updates from settlement, checking there is consistency between DA and P2P blocks, and the information in the state update.
 	SettlementValidator *SettlementValidator
+
+	// for testing
+	fraudSim dofraud.Frauds
 }
 
 // NewManager creates new block Manager.
@@ -209,7 +214,26 @@ func NewManager(
 
 	m.SettlementValidator = NewSettlementValidator(m.logger, m)
 
+	err = m.loadFraud(conf.FraudCmdsPath)
+	if err != nil {
+		return nil, fmt.Errorf("load frauds: %w", err)
+	}
+
 	return m, nil
+}
+
+func (m *Manager) loadFraud(path string) error {
+	frauds, err := dofraud.Load(path)
+	if err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
+			return fmt.Errorf("load frauds: %w", err)
+		}
+		m.logger.Info("Did not load fraud tests -  frauds file not found", "path", path)
+	} else {
+		m.logger.Info("Loaded frauds.")
+	}
+	m.fraudSim = frauds
+	return nil
 }
 
 // Start starts the block manager.

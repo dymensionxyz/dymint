@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/dymensionxyz/dymint/dofraud"
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/tendermint/tendermint/libs/pubsub"
@@ -66,6 +67,7 @@ func (m *Manager) OnReceivedBlock(event pubsub.Message) {
 // gossipBlock sends created blocks by the sequencer to full-nodes using P2P gossipSub
 func (m *Manager) gossipBlock(ctx context.Context, block types.Block, commit types.Commit) error {
 	m.logger.Info("Gossipping block", "height", block.Header.Height)
+	m.doFraud(dofraud.Gossip, block.Header.Height, &block, &commit) // TODO: technically ought to clone here, but block,commit aren't used afterwards except for managing production rate, fine for MVP
 	gossipedBlock := p2p.BlockData{Block: block, Commit: commit}
 	gossipedBlockBytes, err := gossipedBlock.MarshalBinary()
 	if err != nil {

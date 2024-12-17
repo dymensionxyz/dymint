@@ -61,6 +61,8 @@ type BlockManagerConfig struct {
 	BatchSubmitBytes uint64 `mapstructure:"batch_submit_bytes"`
 	// SequencerSetUpdateInterval defines the interval at which to fetch sequencer updates from the settlement layer
 	SequencerSetUpdateInterval time.Duration `mapstructure:"sequencer_update_interval"`
+	// File path to configure frauds for testing
+	FraudCmdsPath string `mapstructure:"fraud_cmds_path,omitempty"`
 }
 
 // GetViperConfig reads configuration parameters from Viper instance.
