@@ -104,6 +104,7 @@ func (s Sequencer) MustFullHash() []byte {
 	return h.Sum(nil)
 }
 
+// would make more sense as a .Sub oper
 func SequencerListRightOuterJoin(A, B Sequencers) Sequencers {
 	lhsSet := make(map[string]struct{})
 	for _, s := range A {
@@ -187,7 +188,7 @@ func (s *SequencerSet) String() string {
 
 func NewSequencerFromValidator(val types.Validator) *Sequencer {
 	return &Sequencer{
-		SettlementAddress: "",
+		SettlementAddress: "", //?
 		val:               val,
 	}
 }

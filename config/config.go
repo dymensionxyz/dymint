@@ -44,6 +44,8 @@ type NodeConfig struct {
 type BlockManagerConfig struct {
 	BlockTime time.Duration `mapstructure:"block_time"`
 
+	// if zero, always produced empty blocks
+	// if non zero, reschedules an empty block after this duration, after each block produced
 	MaxIdleTime time.Duration `mapstructure:"max_idle_time"`
 
 	MaxProofTime time.Duration `mapstructure:"max_proof_time"`

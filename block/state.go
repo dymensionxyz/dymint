@@ -126,13 +126,13 @@ func (e *Executor) UpdateProposerFromBlock(s *types.State, seqSet *types.Sequenc
 
 	if block.Header.NextSequencersHash == [32]byte{} {
 
-		s.SetProposer(nil)
+		s.SetProposer(nil) // sentinel rotation
 		return true
 	}
 
 	seq, found := seqSet.GetByHash(block.Header.NextSequencersHash[:])
 	if !found {
-		panic("cannot find proposer by hash")
+		panic("cannot find proposer by hash") // attack vector, should be a fraud freeze
 	}
 	s.SetProposer(&seq)
 	return true

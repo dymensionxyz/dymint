@@ -186,7 +186,7 @@ func (m *Manager) CreateBatch(maxBatchSize uint64, startHeight uint64, endHeight
 			return nil, fmt.Errorf("load drs version: h: %d: %w", h, err)
 		}
 
-		if len(batch.Blocks) > 0 && batch.Blocks[len(batch.Blocks)-1].GetRevision() != block.GetRevision() {
+		if len(batch.Blocks) > 0 && batch.Blocks[len(batch.Blocks)-1].GetRevision() != block.GetRevision() { // should be method
 			return nil, fmt.Errorf("create batch: batch includes blocks with different revisions: %w", gerrc.ErrInternal)
 		}
 
@@ -202,6 +202,7 @@ func (m *Manager) CreateBatch(maxBatchSize uint64, startHeight uint64, endHeight
 			batch.DRSVersion = batch.DRSVersion[:len(batch.DRSVersion)-1]
 
 			if h == startHeight {
+				// internal
 				return nil, fmt.Errorf("block size exceeds max batch size: h %d: batch size: %d: max size: %d err:%w", h, totalSize, maxBatchSize, gerrc.ErrOutOfRange)
 			}
 			break

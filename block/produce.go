@@ -35,7 +35,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int)
 			return nil
 		case <-ticker.C:
 
-			if !m.AmIProposerOnRollapp() {
+			if !m.AmIProposerOnRollapp() { // wtf?
 				continue
 			}
 
@@ -54,7 +54,7 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int)
 				return err
 			}
 
-			if err != nil {
+			if err != nil { // does this properly capture problems with writing to store etc?
 				continue
 			}
 			nextEmptyBlock = time.Now().Add(m.Conf.MaxIdleTime)
@@ -70,6 +70,8 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int)
 				return nil
 			case bytesProducedC <- bytesProducedN:
 			default:
+				// errors should not have punctuation
+				// error refers to max skew, maybe misleading
 				evt := &events.DataHealthStatus{Error: fmt.Errorf("Block production paused. Time between last block produced and last block submitted higher than max skew time: %s last block in settlement time: %s %w", m.Conf.MaxSkewTime, time.Unix(0, m.LastBlockTimeInSettlement.Load()), gerrc.ErrResourceExhausted)}
 				uevent.MustPublish(ctx, m.Pubsub, evt, events.HealthStatusList)
 				select {
@@ -86,8 +88,8 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int)
 }
 
 type ProduceBlockOptions struct {
-	AllowEmpty       bool
-	MaxData          *uint64
+	AllowEmpty       bool    // where is the force empty?
+	MaxData          *uint64 // set to 0 to force empty?
 	NextProposerHash *[32]byte
 }
 
@@ -109,6 +111,7 @@ func (m *Manager) produceApplyGossip(ctx context.Context, opts ProduceBlockOptio
 		return nil, nil, fmt.Errorf("snapshot sequencer set: %w", err)
 	}
 
+	// if need to do cons message, let there be no txs
 	opts.AllowEmpty = opts.AllowEmpty || len(newSequencerSet) > 0
 
 	block, commit, err = m.produceBlock(opts)
@@ -174,6 +177,7 @@ func (m *Manager) produceBlock(opts ProduceBlockOptions) (*types.Block, *types.C
 		return nil, nil, fmt.Errorf("load block: height: %d: %w: %w", newHeight, err, ErrNonRecoverable)
 	}
 
+	// worst case, block can take up 1 entire batch
 	maxBlockDataSize := uint64(float64(m.Conf.BatchSubmitBytes) * types.MaxBlockSizeAdjustment)
 	if opts.MaxData != nil {
 		maxBlockDataSize = *opts.MaxData
@@ -181,8 +185,8 @@ func (m *Manager) produceBlock(opts ProduceBlockOptions) (*types.Block, *types.C
 	proposerHashForBlock := [32]byte(m.State.GetProposerHash())
 
 	if opts.NextProposerHash != nil {
-		maxBlockDataSize = 0
-		proposerHashForBlock = *opts.NextProposerHash
+		maxBlockDataSize = 0                          // should have been set before
+		proposerHashForBlock = *opts.NextProposerHash // can be empty on rotate sentinel
 	}
 
 	block = m.Executor.CreateBlock(newHeight, lastCommit, lastHeaderHash, proposerHashForBlock, m.State, maxBlockDataSize)

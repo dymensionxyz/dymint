@@ -23,7 +23,7 @@ type State struct {
 
 	LastBlockHeight atomic.Uint64
 
-	Proposer atomic.Pointer[Sequencer]
+	Proposer atomic.Pointer[Sequencer] // why atomic, seems risky
 
 	ConsensusParams tmproto.ConsensusParams
 

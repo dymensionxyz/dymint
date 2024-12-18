@@ -75,7 +75,7 @@ func (m *Manager) saveP2PBlockToBlockSync(block *types.Block, commit *types.Comm
 	if err != nil {
 		return fmt.Errorf("marshal binary: %w: %w", err, ErrNonRecoverable)
 	}
-	err = m.P2PClient.SaveBlock(context.Background(), block.Header.Height, block.GetRevision(), gossipedBlockBytes)
+	err = m.P2PClient.SaveBlock(context.Background(), block.Header.Height, block.GetRevision(), gossipedBlockBytes) // background :(
 	if err != nil {
 	}
 	return nil

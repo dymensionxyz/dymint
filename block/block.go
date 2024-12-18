@@ -43,7 +43,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 
 	types.SetLastAppliedBlockSource(blockMetaData.Source.String())
 
-	isBlockAlreadyApplied, err := m.isHeightAlreadyApplied(block.Header.Height)
+	isBlockAlreadyApplied, err := m.isHeightAlreadyApplied(block.Header.Height) // why? crash tolerance?
 	if err != nil {
 		return fmt.Errorf("check if block is already applied: %w", err)
 	}
@@ -69,6 +69,9 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		if err != nil {
 			return fmt.Errorf("execute block: %w", err)
 		}
+
+		// I suppose, no batching needed: if anything fails that then the executor was not yet
+		// committed, it will retry the whole thing.
 
 		_, err = m.Store.SaveBlockResponses(block.Header.Height, responses, nil)
 		if err != nil {
@@ -105,8 +108,10 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 
 	proposer := m.State.GetProposer()
 	if proposer == nil {
-		return fmt.Errorf("logic error: got nil proposer while applying block")
+		return fmt.Errorf("logic error: got nil proposer while applying block") // internal
 	}
+
+	// looks a bit sus if we return in any of these errors, how to recover?
 
 	batch := m.Store.NewBatch()
 
@@ -122,7 +127,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		return fmt.Errorf("update state: %w", err)
 	}
 
-	if len(blockMetaData.SequencerSet) != 0 {
+	if len(blockMetaData.SequencerSet) != 0 { // only relevant in produce case
 		batch, err = m.Store.SaveLastBlockSequencerSet(blockMetaData.SequencerSet, batch)
 		if err != nil {
 			return fmt.Errorf("save last block sequencer set: %w", err)
@@ -143,7 +148,7 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		return err
 	}
 
-	if isProposerUpdated && m.AmIProposerOnRollapp() {
+	if isProposerUpdated && m.AmIProposerOnRollapp() { // hacky, would be much simpler to just know the current role (or have this function return something)
 		panic("I'm the new Proposer now. restarting as a proposer")
 	}
 

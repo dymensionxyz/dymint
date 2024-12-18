@@ -116,6 +116,7 @@ func (m *Manager) CreateAndPostLastBatch(ctx context.Context, nextSeqHash [32]by
 	}
 
 	if bytes.Equal(block.Header.NextSequencersHash[:], nextSeqHash[:]) {
+		// already produced last
 	} else {
 		err := m.ProduceApplyGossipLastBlock(ctx, nextSeqHash)
 		if err != nil {
