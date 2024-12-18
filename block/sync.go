@@ -90,7 +90,7 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 
 func (m *Manager) waitForSettlementSyncing() {
 	if m.State.Height() < m.LastSettlementHeight.Load() {
-		<-m.syncedFromSettlement.C
+		<-m.syncedFromSettlement.C // nudge can be missed?
 	}
 }
 

@@ -50,6 +50,7 @@ var LastBatchSubmittedBytes = promauto.NewGauge(prometheus.GaugeOpts{
 	Help: "The size in bytes of the last batch submitted to DA.",
 })
 
+// makes sense after HF?
 var LastReceivedP2PHeightGauge = promauto.NewGauge(prometheus.GaugeOpts{
 	Name: "last_received_p2p_height",
 	Help: "The height of the last block received from P2P.",

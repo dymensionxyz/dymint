@@ -73,7 +73,7 @@ func (m *Manager) AmIProposerOnRollapp() bool {
 }
 
 func (m *Manager) ShouldRotate() (bool, error) {
-	nextProposer, err := m.SLClient.GetNextProposer()
+	nextProposer, err := m.SLClient.GetNextProposer() // only returns something if rotation is needed
 	if err != nil {
 		return false, err
 	}
@@ -104,9 +104,10 @@ func (m *Manager) rotate(ctx context.Context) {
 		panic(fmt.Sprintf("rotate: create and post last batch: %v", err))
 	}
 
-	panic("rotate: sequencer is no longer the proposer. restarting as a full node")
+	panic("rotate: sequencer is no longer the proposer. restarting as a full node") // should be done gracefully with context cancel
 }
 
+// next can be nil
 func (m *Manager) CreateAndPostLastBatch(ctx context.Context, nextSeqHash [32]byte) error {
 	h := m.State.Height()
 	block, err := m.Store.LoadBlock(h)

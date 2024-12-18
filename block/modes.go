@@ -53,10 +53,10 @@ func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {
 		return fmt.Errorf("am i proposer on SL: %w", err)
 	}
 	if !amIProposerOnSL {
-		return fmt.Errorf("the node is no longer the proposer. please restart.")
+		return fmt.Errorf("the node is no longer the proposer. please restart.") // no punctuation allowed
 	}
 
-	err = m.UpdateProposerFromSL()
+	err = m.UpdateProposerFromSL() // ???????? we know it from previous lines
 	if err != nil {
 		return err
 	}
@@ -66,7 +66,7 @@ func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {
 		return err
 	}
 
-	shouldRotate, err := m.ShouldRotate()
+	shouldRotate, err := m.ShouldRotate() // third time checking am I proposer here
 	if err != nil {
 		return fmt.Errorf("checking should rotate: %w", err)
 	}

@@ -508,7 +508,7 @@ func (c *DataAvailabilityLayerClient) sync(rpc *openrpc.Client) {
 	sync := func() error {
 		done := make(chan error, 1)
 		go func() {
-			done <- rpc.Header.SyncWait(c.ctx)
+			done <- rpc.Header.SyncWait(c.ctx) // waiting for this to return nil
 		}()
 		ticker := time.NewTicker(30 * time.Second)
 		defer ticker.Stop()

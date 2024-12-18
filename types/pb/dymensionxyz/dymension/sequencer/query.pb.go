@@ -927,7 +927,7 @@ func (c *queryClient) SequencersByRollapp(ctx context.Context, in *QueryGetSeque
 	return out, nil
 }
 
-func (c *queryClient) SequencersByRollappByStatus(ctx context.Context, in *QueryGetSequencersByRollappByStatusRequest, opts ...grpc.CallOption) (*QueryGetSequencersByRollappByStatusResponse, error) {
+func (c *queryClient) SequencersByRollappByStatus(ctx context.Context, in *QueryGetSequencersByRollappByStatusRequest, opts ...grpc.CallOption) (*QueryGetSequencersByRollappByStatusResponse, error) { // missing pagination
 	out := new(QueryGetSequencersByRollappByStatusResponse)
 	err := c.cc.Invoke(ctx, "/dymensionxyz.dymension.sequencer.Query/SequencersByRollappByStatus", in, out, opts...)
 	if err != nil {

@@ -44,7 +44,7 @@ func (m *Manager) OnReceivedBlock(event pubsub.Message) {
 	}
 
 	m.UpdateTargetHeight(height)
-	types.LastReceivedP2PHeightGauge.Set(float64(height)) // this is wrong, it can go backwards
+	types.LastReceivedP2PHeightGauge.Set(float64(height)) // this is wrong, it can go backwards (well I guess it's last not max)
 
 	m.blockCache.Add(height, &block, &commit, source)
 

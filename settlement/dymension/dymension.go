@@ -479,7 +479,7 @@ func (c *Client) GetNextProposer() (*types.Sequencer, error) {
 		return nil, nil
 	}
 	if nextAddr == SENTINEL_PROPOSER {
-		return &types.Sequencer{}, nil
+		return &types.Sequencer{}, nil // why not make a sentinel var for empty?
 	}
 
 	seqs, err := c.GetBondedSequencers()
@@ -487,7 +487,7 @@ func (c *Client) GetNextProposer() (*types.Sequencer, error) {
 		return nil, fmt.Errorf("get sequencers: %w", err)
 	}
 
-	for _, sequencer := range seqs {
+	for _, sequencer := range seqs { // can extract common util
 		if sequencer.SettlementAddress == nextAddr {
 			return &sequencer, nil
 		}
