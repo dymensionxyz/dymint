@@ -12,7 +12,7 @@ import (
 func (m *Manager) OnReceivedBlock(event pubsub.Message) {
 	eventData, ok := event.Data().(p2p.BlockData)
 	if !ok {
-		return
+		return // when can it happen
 	}
 	var source types.BlockSource
 
@@ -44,7 +44,7 @@ func (m *Manager) OnReceivedBlock(event pubsub.Message) {
 	}
 
 	m.UpdateTargetHeight(height)
-	types.LastReceivedP2PHeightGauge.Set(float64(height))
+	types.LastReceivedP2PHeightGauge.Set(float64(height)) // this is wrong, it can go backwards
 
 	m.blockCache.Add(height, &block, &commit, source)
 

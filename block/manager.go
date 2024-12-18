@@ -303,7 +303,7 @@ func (m *Manager) GetRevision() uint64 {
 }
 
 func (m *Manager) UpdateTargetHeight(h uint64) {
-	for {
+	for { // should factor atomic min/max funcs
 		currentHeight := m.TargetHeight.Load()
 		if m.TargetHeight.CompareAndSwap(currentHeight, max(currentHeight, h)) {
 			break

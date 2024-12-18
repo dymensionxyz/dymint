@@ -4,6 +4,7 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
+// seems like this should have its own mutex rather than always requiring receiver mu
 type Cache struct {
 	cache map[uint64]types.CachedBlock
 }
