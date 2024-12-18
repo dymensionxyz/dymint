@@ -10,6 +10,7 @@ import (
 	"time"
 
 	rdktypes "github.com/dymensionxyz/dymension-rdk/x/sequencers/types"
+	protoutils "github.com/dymensionxyz/dymint/utils/proto"
 	"github.com/gogo/protobuf/proto"
 	prototypes "github.com/gogo/protobuf/types"
 	"github.com/libp2p/go-libp2p/core/crypto"
@@ -28,6 +29,7 @@ import (
 	mempoolv1 "github.com/dymensionxyz/dymint/mempool/v1"
 	slmocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/node/events"
+	p2ptypes "github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
 	uchannel "github.com/dymensionxyz/dymint/utils/channel"
@@ -290,6 +292,7 @@ func TestStopBlockProduction(t *testing.T) {
 }
 
 func TestUpdateInitialSequencerSet(t *testing.T) {
+
 	require := require.New(t)
 	app := testutil.GetAppMock(testutil.EndBlock)
 	ctx := context.Background()
@@ -545,4 +548,99 @@ func TestUpdateExistingSequencerSet(t *testing.T) {
 	require.Len(actualStoreSequencers, 2)
 	require.Equal(actualStoreSequencers[0], proposer)
 	require.Equal(actualStoreSequencers[1], updatedSequencer)
+}
+
+func getBlock(addr []byte) *types.Block {
+
+	lastCommit := &types.Commit{}
+
+	block := &types.Block{
+		Header: types.Header{
+			Version: types.Version{
+				Block: 2,
+				App:   3,
+			},
+			ChainID:         "foo",
+			Height:          32,
+			Time:            time.Now().UTC().UnixNano(),
+			LastHeaderHash:  [32]byte{},
+			DataHash:        [32]byte{},
+			ConsensusHash:   [32]byte{},
+			AppHash:         [32]byte{},
+			LastResultsHash: [32]byte{},
+			ProposerAddress: addr,
+		},
+		Data: types.Data{
+			Txs:                    nil,
+			IntermediateStateRoots: types.IntermediateStateRoots{RawRootsList: nil},
+			Evidence:               types.EvidenceData{Evidence: nil},
+			ConsensusMessages:      protoutils.FromProtoMsgSliceToAnySlice(nil),
+		},
+		LastCommit: *lastCommit,
+	}
+	copy(block.Header.LastCommitHash[:], types.GetLastCommitHash(lastCommit, &block.Header))
+	copy(block.Header.DataHash[:], types.GetDataHash(block))
+	copy(block.Header.SequencerHash[:], []byte("sequencerHash"))
+	copy(block.Header.NextSequencersHash[:], []byte("nextSequencersHash"))
+	return block
+}
+
+func TestBlockConsensusMessages(t *testing.T) {
+	version.DRS = "0"
+	const blockTime = 200 * time.Millisecond
+	const MaxIdleTime = blockTime * 10
+	const runTime = 10 * time.Second
+
+	require := require.New(t)
+	app := testutil.GetAppMock(testutil.EndBlock)
+	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
+		RollappParamUpdates: &abci.RollappParams{
+			Da:         "mock",
+			DrsVersion: 0,
+		},
+		ConsensusParamUpdates: &abci.ConsensusParams{
+			Block: &abci.BlockParams{
+				MaxGas:   40000000,
+				MaxBytes: 500000,
+			},
+		},
+	})
+	// Create proxy app
+	clientCreator := proxy.NewLocalClientCreator(app)
+	proxyApp := proxy.NewAppConns(clientCreator)
+	err := proxyApp.Start()
+	require.NoError(err)
+
+	// Init manager with empty blocks feature enabled
+	managerConfig := testutil.GetManagerConfig()
+	managerConfig.BlockTime = blockTime
+	managerConfig.MaxIdleTime = MaxIdleTime
+	managerConfig.MaxProofTime = MaxIdleTime
+	manager, err := testutil.GetManager(managerConfig, nil, 1, 1, 0, proxyApp, nil)
+	require.NoError(err)
+
+	// Check initial height
+	initialHeight := uint64(0)
+	require.Equal(initialHeight, manager.State.Height())
+
+	addr, _ := types.GetAddress(manager.LocalKey)
+
+	b := getBlock(addr)
+	comm, err := manager.CreateCommit(b)
+	require.NoError(err)
+
+	bd := p2ptypes.BlockData{
+		Block:  *b,
+		Commit: *comm,
+	}
+	err = bd.Validate(manager.GetProposerPubKey())
+	require.NoError(err)
+
+	q := block2.ConsensusMsgQueue{}
+	q.Add(&rdktypes.ConsensusMsgUpsertSequencer{})
+	b.Data.ConsensusMessages = protoutils.FromProtoMsgSliceToAnySlice(q.Get()...)
+
+	err = bd.Validate(manager.GetProposerPubKey())
+	require.NoError(err)
+
 }
