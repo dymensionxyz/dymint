@@ -207,7 +207,7 @@ func (m *Manager) updateStateForNextRevision() error {
 		m.State.SetProposer(nil)
 
 		m.State.RevisionStartHeight = nextRevision.StartHeight
-		m.State.SetRevision(nextRevision.Number)
+		m.State.SetRevision(nextRevision.Number) // misleading: setting revision before actually reaching it
 
 		_, err = m.Store.SaveState(m.State, nil)
 		return err

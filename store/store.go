@@ -172,7 +172,7 @@ func (s *DefaultStore) LoadCommitByHash(hash [32]byte) (*types.Commit, error) {
 	return commit, nil
 }
 
-func (s *DefaultStore) SaveState(state *types.State, batch KVBatch) (KVBatch, error) {
+func (s *DefaultStore) SaveState(state *types.State, batch KVBatch) (KVBatch, error) { // should not return batch, since it's modified
 	pbState, err := state.ToProto()
 	if err != nil {
 		return batch, fmt.Errorf("marshal state to JSON: %w", err)

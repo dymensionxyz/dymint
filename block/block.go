@@ -173,6 +173,7 @@ func (m *Manager) attemptApplyCachedBlocks() error {
 			break
 		}
 		if cachedBlock.Block.GetRevision() != m.State.GetRevision() {
+			// delete from cache?
 			break
 		}
 		err := m.applyBlockWithFraudHandling(cachedBlock.Block, cachedBlock.Commit, types.BlockMetaData{Source: cachedBlock.Source})

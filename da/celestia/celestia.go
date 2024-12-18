@@ -251,7 +251,7 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 			)
 			if err != nil {
 			}
-			return resultRetrieveBatch
+			return resultRetrieveBatch // can be corrupted due to way errors are treated here
 
 		}
 	}

@@ -63,7 +63,7 @@ type Manager struct {
 	RunMode uint
 
 	Cancel context.CancelFunc
-	Ctx    context.Context
+	Ctx    context.Context // ctx on field is horrible
 
 	LastBlockTimeInSettlement atomic.Int64
 
@@ -79,7 +79,7 @@ type Manager struct {
 
 	Retriever da.BatchRetriever
 
-	retrieverMu sync.Mutex
+	retrieverMu sync.Mutex // seems like a terrible name, since also used for application from cache
 
 	blockCache *Cache
 
@@ -108,11 +108,11 @@ func NewManager(
 	eventBus *tmtypes.EventBus,
 	pubsub *pubsub.Server,
 	p2pClient *p2p.Client,
-	dalcKV *store.PrefixKV,
+	dalcKV *store.PrefixKV, // should have better name
 	indexerService *txindex.IndexerService,
 	logger log.Logger,
 ) (*Manager, error) {
-	localAddress, err := types.GetAddress(localKey)
+	localAddress, err := types.GetAddress(localKey) // ultimately derives from tendermint priv val key (ed25519). Should be method on manager.
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +146,7 @@ func NewManager(
 		blockCache: &Cache{
 			cache: make(map[uint64]types.CachedBlock),
 		},
-		pruningC:              make(chan int64, 10),
+		pruningC:              make(chan int64, 10), // why 10, seriously
 		settlementSyncingC:    make(chan struct{}, 1),
 		settlementValidationC: make(chan struct{}, 1),
 		syncedFromSettlement:  uchannel.NewNudger(),
@@ -199,6 +199,7 @@ func (m *Manager) Start(ctx context.Context) error {
 		}
 	}
 
+	// should be IAM
 	amIProposerOnSL, err := m.AmIProposerOnSL()
 	if err != nil {
 		return fmt.Errorf("am i proposer on SL: %w", err)
@@ -206,7 +207,7 @@ func (m *Manager) Start(ctx context.Context) error {
 
 	amIProposer := amIProposerOnSL || m.AmIProposerOnRollapp()
 
-	err = m.updateFromLastSettlementState()
+	err = m.updateFromLastSettlementState() // third time to fetch all sequencers during startup phase, could be optimized
 	if err != nil {
 		return fmt.Errorf("sync block manager from settlement: %w", err)
 	}
@@ -248,16 +249,17 @@ func (m *Manager) NextHeightToSubmit() uint64 {
 	return m.LastSettlementHeight.Load() + 1
 }
 
-func (m *Manager) updateFromLastSettlementState() error {
+func (m *Manager) updateFromLastSettlementState() error { // update what?
 	err := m.UpdateSequencerSetFromSL()
 	if err != nil {
+		// risky
 	}
 
 	latestHeight, err := m.SLClient.GetLatestHeight()
 	if errors.Is(err, gerrc.ErrNotFound) {
 
-		m.LastSettlementHeight.Store(uint64(m.Genesis.InitialHeight - 1))
-		m.LastBlockTimeInSettlement.Store(m.Genesis.GenesisTime.UTC().UnixNano())
+		m.LastSettlementHeight.Store(uint64(m.Genesis.InitialHeight - 1))         // should reuse initial height method
+		m.LastBlockTimeInSettlement.Store(m.Genesis.GenesisTime.UTC().UnixNano()) // ??
 		return nil
 	}
 	if err != nil {
@@ -273,6 +275,7 @@ func (m *Manager) updateFromLastSettlementState() error {
 
 	m.SetLastBlockTimeInSettlementFromHeight(latestHeight)
 
+	// this isn't really part of what the function implies
 	block, err := m.Store.LoadBlock(m.State.Height())
 	if err == nil {
 		m.LastBlockTime.Store(block.Header.GetTimestamp().UTC().UnixNano())
@@ -320,6 +323,7 @@ func (m *Manager) ValidateConfigWithRollappParams() error {
 	return nil
 }
 
+// why do we make this in manager but the sl client is made is node?
 func (m *Manager) setDA(daconfig string, dalcKV store.KV, logger log.Logger) error {
 	daLayer := m.State.RollappParams.Da
 	dalc := registry.GetClient(daLayer)
@@ -357,5 +361,5 @@ func (m *Manager) SetLastBlockTimeInSettlementFromHeight(lastSettlementHeight ui
 	if err != nil {
 		return
 	}
-	m.LastBlockTimeInSettlement.Store(block.Header.GetTimestamp().UTC().UnixNano())
+	m.LastBlockTimeInSettlement.Store(block.Header.GetTimestamp().UTC().UnixNano()) // this unixnano should really be a method
 }

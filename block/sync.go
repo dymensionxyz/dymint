@@ -43,11 +43,11 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 
 			for currH := m.State.NextHeight(); currH <= m.LastSettlementHeight.Load(); currH = m.State.NextHeight() {
 
-				if ctx.Err() != nil {
+				if ctx.Err() != nil { // useless
 					return nil
 				}
 
-				err := m.applyLocalBlock()
+				err := m.applyLocalBlock() // is it here to support rollback?
 				if err == nil {
 					continue
 				}
@@ -59,6 +59,7 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 					return fmt.Errorf("retrieve SL batch err: %w", err)
 				}
 
+				// might as well do this every time we query SL, and encapsulate it there
 				m.LastBlockTimeInSettlement.Store(settlementBatch.BlockDescriptors[len(settlementBatch.BlockDescriptors)-1].GetTimestamp().UTC().UnixNano())
 
 				err = m.ApplyBatchFromSL(settlementBatch.Batch)
@@ -74,7 +75,7 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 
 				err = m.attemptApplyCachedBlocks()
 				if err != nil {
-					return fmt.Errorf("Attempt apply cached blocks. err:%w", err)
+					return fmt.Errorf("Attempt apply cached blocks. err:%w", err) // no caps
 				}
 
 			}
@@ -95,14 +96,14 @@ func (m *Manager) waitForSettlementSyncing() {
 
 func (m *Manager) triggerSettlementSyncing() {
 	select {
-	case m.settlementSyncingC <- struct{}{}:
+	case m.settlementSyncingC <- struct{}{}: // isn't this exactly the use case for nudger?
 	default:
 	}
 }
 
 func (m *Manager) triggerSettlementValidation() {
 	select {
-	case m.settlementValidationC <- struct{}{}:
+	case m.settlementValidationC <- struct{}{}: // isn't this exactly the use case for nudger?
 	default:
 	}
 }

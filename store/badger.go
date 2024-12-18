@@ -93,7 +93,7 @@ func (b *BadgerKV) gc(period time.Duration, discardRatio float64, logger types.L
 
 func (b *BadgerKV) Get(key []byte) ([]byte, error) {
 	txn := b.db.NewTransaction(false)
-	defer txn.Discard()
+	defer txn.Discard() // commit is more correct
 	item, err := txn.Get(key)
 	if errors.Is(err, badger.ErrKeyNotFound) {
 		return nil, gerrc.ErrNotFound

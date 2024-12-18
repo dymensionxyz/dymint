@@ -65,10 +65,10 @@ func (v *Validator) TxValidator(mp mempool.Mempool, mpoolIDS *nodemempool.Mempoo
 func (v *Validator) BlockValidator() GossipValidator {
 	return func(blockMsg *GossipMessage) bool {
 		var gossipedBlock BlockData
-		if err := gossipedBlock.UnmarshalBinary(blockMsg.Data); err != nil {
+		if err := gossipedBlock.UnmarshalBinary(blockMsg.Data); err != nil { // safe to be first?
 			return false
 		}
-		if v.stateGetter.GetRevision() != gossipedBlock.Block.GetRevision() {
+		if v.stateGetter.GetRevision() != gossipedBlock.Block.GetRevision() { // unfairly punished reputation?
 			return false
 		}
 		if err := gossipedBlock.Validate(v.stateGetter.GetProposerPubKey()); err != nil {

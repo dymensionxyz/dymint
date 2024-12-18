@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 )
 
+// terrible name
 type Instruction struct {
 	Revision            uint64
 	RevisionStartHeight uint64
@@ -26,7 +27,7 @@ func PersistInstructionToDisk(dir string, instruction Instruction) error {
 	}
 
 	filePath := filepath.Join(dir, instructionFileName)
-	return os.WriteFile(filePath, data, 0o600)
+	return os.WriteFile(filePath, data, 0o600) // write file can leave partial /corrupted file
 }
 
 func LoadInstructionFromDisk(dir string) (Instruction, error) {

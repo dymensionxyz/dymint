@@ -11,7 +11,7 @@ func (m *Manager) Prune(retainHeight uint64) {
 		}
 	}
 
-	pruned, err := m.P2PClient.RemoveBlocks(context.Background(), retainHeight)
+	pruned, err := m.P2PClient.RemoveBlocks(context.Background(), retainHeight) // ctx background?
 	logResult(err, "blocksync", retainHeight, pruned)
 
 	pruned, err = m.IndexerService.Prune(retainHeight, m.Store)
@@ -29,7 +29,7 @@ func (m *Manager) PruningLoop(ctx context.Context) error {
 		case retainHeight := <-m.pruningC:
 			var pruningHeight uint64
 			if m.RunMode == RunModeProposer {
-				pruningHeight = min(m.NextHeightToSubmit(), uint64(retainHeight))
+				pruningHeight = min(m.NextHeightToSubmit(), uint64(retainHeight)) // hopefully it doesn't prune something needed from next height -1
 			} else {
 				pruningHeight = min(m.SettlementValidator.NextValidationHeight(), uint64(retainHeight))
 			}

@@ -31,7 +31,7 @@ import (
 
 const (
 	addressPrefix     = "dym"
-	SENTINEL_PROPOSER = "sentinel"
+	SENTINEL_PROPOSER = "sentinel" // not go idiom
 )
 
 const (
@@ -267,13 +267,13 @@ func (c *Client) GetLatestFinalizedHeight() (uint64, error) {
 }
 
 func (c *Client) GetProposerAtHeight(height int64) (*types.Sequencer, error) {
-	seqs, err := c.GetAllSequencers()
+	seqs, err := c.GetAllSequencers() // makes more sense to get this after getting proposer addr
 	if err != nil {
 		return nil, fmt.Errorf("get bonded sequencers: %w", err)
 	}
 
 	var proposerAddr string
-	if height < 0 {
+	if height < 0 { // would be better to have two separate methods
 		proposerAddr, err = c.getLatestProposer()
 		if err != nil {
 			return nil, fmt.Errorf("get latest proposer: %w", err)
@@ -284,7 +284,7 @@ func (c *Client) GetProposerAtHeight(height int64) (*types.Sequencer, error) {
 
 		if err != nil {
 			if errors.Is(err, gerrc.ErrNotFound) {
-				proposerAddr, err = c.getLatestProposer()
+				proposerAddr, err = c.getLatestProposer() // misleading!! what's the use case?
 				if err != nil {
 					return nil, fmt.Errorf("get latest proposer: %w", err)
 				}
@@ -352,7 +352,7 @@ func (c *Client) GetSequencerByAddress(address string) (types.Sequencer, error) 
 
 func (c *Client) GetAllSequencers() ([]types.Sequencer, error) {
 	var res *sequencertypes.QueryGetSequencersByRollappResponse
-	req := &sequencertypes.QueryGetSequencersByRollappRequest{
+	req := &sequencertypes.QueryGetSequencersByRollappRequest{ // needs to use pagination
 		RollappId: c.rollappId,
 	}
 
@@ -362,7 +362,6 @@ func (c *Client) GetAllSequencers() ([]types.Sequencer, error) {
 		if err == nil {
 			return nil
 		}
-
 		if status.Code(err) == codes.NotFound {
 			return retry.Unrecoverable(errors.Join(gerrc.ErrNotFound, err))
 		}
@@ -373,6 +372,7 @@ func (c *Client) GetAllSequencers() ([]types.Sequencer, error) {
 	}
 
 	if res == nil {
+		// shouldn't happen
 		return nil, fmt.Errorf("empty response: %w", gerrc.ErrUnknown)
 	}
 
@@ -541,7 +541,7 @@ func (c *Client) GetObsoleteDrs() ([]uint32, error) {
 		return err
 	})
 	if err != nil {
-		return nil, fmt.Errorf("get rollapp: %w", err)
+		return nil, fmt.Errorf("get rollapp: %w", err) // wrong
 	}
 
 	if res == nil {

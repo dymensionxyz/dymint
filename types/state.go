@@ -45,7 +45,7 @@ func (s *State) GetProposerPubKey() tmcrypto.PubKey {
 	if proposer == nil {
 		return nil
 	}
-	return proposer.PubKey()
+	return proposer.PubKey() // can make this method nil friendly instead
 }
 
 func (s *State) GetProposerHash() []byte {

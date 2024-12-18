@@ -26,7 +26,7 @@ func NewSettlementValidator(logger types.Logger, blockManager *Manager) *Settlem
 
 	validator := &SettlementValidator{
 		logger:       logger,
-		blockManager: blockManager,
+		blockManager: blockManager, // backward reference
 	}
 	validator.lastValidatedHeight.Store(lastValidatedHeight)
 

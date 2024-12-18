@@ -45,7 +45,7 @@ func (m *Manager) MonitorSequencerSetUpdates(ctx context.Context) error {
 		case <-ctx.Done():
 			return nil
 		case <-ticker.C:
-			err := m.UpdateSequencerSetFromSL()
+			err := m.UpdateSequencerSetFromSL() // what is the point in this? what justification is there?
 			if err != nil {
 			}
 		}
@@ -63,10 +63,10 @@ func (m *Manager) AmIProposerOnSL() (bool, error) {
 }
 
 func (m *Manager) AmIProposerOnRollapp() bool {
-	if m.State.GetProposer() == nil {
+	if m.State.GetProposer() == nil { // when can it occur?
 		return false
 	}
-	localProposerKeyBytes, _ := m.LocalKey.GetPublic().Raw()
+	localProposerKeyBytes, _ := m.LocalKey.GetPublic().Raw() // should be method, dryer
 	rollappProposer := m.State.GetProposerPubKey().Bytes()
 
 	return bytes.Equal(rollappProposer, localProposerKeyBytes)
@@ -137,7 +137,7 @@ func (m *Manager) CreateAndPostLastBatch(ctx context.Context, nextSeqHash [32]by
 }
 
 func (m *Manager) UpdateSequencerSetFromSL() error {
-	seqs, err := m.SLClient.GetAllSequencers()
+	seqs, err := m.SLClient.GetAllSequencers() // cache/debounce?
 	if err != nil {
 		return fmt.Errorf("get all sequencers from the hub: %w", err)
 	}

@@ -29,7 +29,7 @@ func NewSequencer(
 	rewardAddr string,
 	whitelistedRelayers []string,
 ) *Sequencer {
-	if pubKey == nil {
+	if pubKey == nil { // when would this happen? should return error
 		return nil
 	}
 	return &Sequencer{
@@ -145,7 +145,7 @@ func (s *SequencerSet) Set(sequencers Sequencers) {
 func (s *SequencerSet) GetAll() Sequencers {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return slices.Clone(s.sequencers)
+	return slices.Clone(s.sequencers) // whitelisted relayers and pubkey are not cloned
 }
 
 func (s *SequencerSet) GetByHash(hash []byte) (Sequencer, bool) {

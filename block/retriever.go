@@ -28,7 +28,7 @@ func (m *Manager) ApplyBatchFromSL(slBatch *settlement.Batch) error {
 		for i, block := range batch.Blocks {
 
 			if blockIndex >= len(slBatch.BlockDescriptors) {
-				break
+				break // supports fork truncation? something weird here
 			}
 			blockIndex++
 
@@ -41,6 +41,7 @@ func (m *Manager) ApplyBatchFromSL(slBatch *settlement.Batch) error {
 				return err
 			}
 
+			// should go to cache
 			err := m.applyBlockWithFraudHandling(block, batch.Commits[i], types.BlockMetaData{Source: types.DA, DAHeight: slBatch.MetaData.DA.Height})
 			if err != nil {
 				return fmt.Errorf("apply block: height: %d: %w", block.Header.Height, err)
@@ -50,7 +51,7 @@ func (m *Manager) ApplyBatchFromSL(slBatch *settlement.Batch) error {
 		}
 	}
 
-	if m.State.Height() != slBatch.EndHeight {
+	if m.State.Height() != slBatch.EndHeight { // not sure why gossip cant make state height > end height
 		return fmt.Errorf("state height mismatch: state height: %d: batch end height: %d", m.State.Height(), slBatch.EndHeight)
 	}
 

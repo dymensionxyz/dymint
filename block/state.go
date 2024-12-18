@@ -19,6 +19,7 @@ import (
 	"github.com/dymensionxyz/dymint/types"
 )
 
+// unused logger arg
 func (m *Manager) LoadStateOnInit(store store.Store, genesis *tmtypes.GenesisDoc, logger types.Logger) error {
 	s, err := store.LoadState()
 	if errors.Is(err, types.ErrNoStateFound) {
@@ -43,7 +44,7 @@ func NewStateFromGenesis(genDoc *tmtypes.GenesisDoc) (*types.State, error) {
 	InitStateVersion := tmstate.Version{
 		Consensus: tmversion.Consensus{
 			Block: version.BlockProtocol,
-			App:   0,
+			App:   0, //  zero is correct, it's what the hub starts the rollapp at
 		},
 		Software: version.TMCoreSemVer,
 	}
@@ -51,10 +52,10 @@ func NewStateFromGenesis(genDoc *tmtypes.GenesisDoc) (*types.State, error) {
 	s := types.State{
 		Version:         InitStateVersion,
 		ChainID:         genDoc.ChainID,
-		InitialHeight:   uint64(genDoc.InitialHeight),
+		InitialHeight:   uint64(genDoc.InitialHeight), // do we ever allow non 0? how about 1? Need to match revision?
 		ConsensusParams: *genDoc.ConsensusParams,
 	}
-	s.SetHeight(0)
+	s.SetHeight(0) // clashes with gendoc initial height
 	copy(s.AppHash[:], genDoc.AppHash)
 
 	err = s.SetRollappParamsFromGenesis(genDoc.AppState)

@@ -33,6 +33,7 @@ type CachedBlock struct {
 	Source BlockSource
 }
 
+// wrong file
 func GetAddress(key crypto.PrivKey) ([]byte, error) {
 	rawKey, err := key.GetPublic().Raw()
 	if err != nil {

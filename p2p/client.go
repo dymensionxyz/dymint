@@ -204,6 +204,7 @@ func (c *Client) RemoveBlocks(ctx context.Context, to uint64) (uint64, error) {
 		if err != nil {
 			continue
 		}
+		// blocksync update not atomic with store update
 		err = c.blocksync.DeleteBlock(ctx, cid)
 		if err != nil {
 			continue
@@ -237,7 +238,7 @@ func (c *Client) GetBlockIdFromDHT(ctx context.Context, height uint64, revision 
 }
 
 func (c *Client) UpdateLatestSeenHeight(height uint64) {
-	c.blocksReceived.latestSeenHeight = max(height, c.blocksReceived.latestSeenHeight)
+	c.blocksReceived.latestSeenHeight = max(height, c.blocksReceived.latestSeenHeight) // :(
 }
 
 func (c *Client) SetBlockValidator(validator GossipValidator) {
