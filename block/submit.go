@@ -318,11 +318,11 @@ func (m *Manager) GetLastBlockInSettlementTime() (time.Time, error) {
 	}
 	if errors.Is(err, gerrc.ErrNotFound) {
 		firstBlock, err := m.Store.LoadBlock(uint64(m.Genesis.InitialHeight))
-		if err != nil && !errors.Is(err, gerrc.ErrNotFound) {
-			return time.Time{}, err
-		}
 		if errors.Is(err, gerrc.ErrNotFound) {
 			return time.Now(), nil
+		}
+		if err != nil {
+			return time.Time{}, err
 		}
 		return firstBlock.Header.GetTimestamp(), nil
 
