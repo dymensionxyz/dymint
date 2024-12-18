@@ -550,6 +550,7 @@ func (c *Client) retrieveBlockSyncLoop(ctx context.Context, msgHandler BlockSync
 				if err != nil {
 					return
 				}
+				// why do we check proposer but not revision?
 				if err := block.Validate(state.GetProposerPubKey()); err != nil {
 					continue
 				}
