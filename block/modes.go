@@ -71,7 +71,7 @@ func (m *Manager) runAsProposer(ctx context.Context, eg *errgroup.Group) error {
 		return fmt.Errorf("checking should rotate: %w", err)
 	}
 	if shouldRotate {
-		m.rotate(ctx)
+		m.rotate(ctx) // why not integrate this into existing errRotationRequestedFlow
 	}
 
 	bytesProducedC := make(chan int)

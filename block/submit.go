@@ -64,6 +64,7 @@ func SubmitLoopInner(
 
 			submitter.Nudge()
 
+			// batchSkewTime = time between last block locally and last block on hub
 			if maxSkewTime < batchSkewTime() {
 				select {
 				case <-ctx.Done():
@@ -114,7 +115,7 @@ func SubmitLoopInner(
 				}
 				pending = uint64(unsubmittedBlocksBytes())
 
-				if batchSkewTime() < maxSkewTime {
+				if batchSkewTime() < maxSkewTime { // should always nudge and have the check in the other function
 					trigger.Nudge()
 				}
 			}

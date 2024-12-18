@@ -42,6 +42,7 @@ type NodeConfig struct {
 }
 
 type BlockManagerConfig struct {
+	// used to tick, so it will be the typical time between blocks assuming a constant tx inflow
 	BlockTime time.Duration `mapstructure:"block_time"`
 
 	// if zero, always produced empty blocks
@@ -50,6 +51,7 @@ type BlockManagerConfig struct {
 
 	MaxProofTime time.Duration `mapstructure:"max_proof_time"`
 
+	// max time between batch submissions
 	BatchSubmitTime time.Duration `mapstructure:"batch_submit_time"`
 
 	MaxSkewTime time.Duration `mapstructure:"max_skew_time"`

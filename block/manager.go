@@ -67,7 +67,7 @@ type Manager struct {
 
 	LastBlockTimeInSettlement atomic.Int64
 
-	LastBlockTime atomic.Int64
+	LastBlockTime atomic.Int64 // why do we store this again, it's denormalized
 
 	forkMu sync.Mutex
 
