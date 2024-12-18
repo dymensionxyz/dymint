@@ -2,6 +2,7 @@ package types
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 )
@@ -52,11 +53,12 @@ func InstructionExists(dir string) bool {
 }
 
 func DeleteInstructionFromDisk(dir string) error {
-	filePath := filepath.Join(dir, instructionFileName)
-	err := os.Remove(filePath)
-	if err != nil {
-		return err
+	if !InstructionExists(dir) {
+		return nil
 	}
-
+	filePath := filepath.Join(dir, instructionFileName)
+	if err := os.Remove(filePath); err != nil {
+		return fmt.Errorf("deleting instruction file: %w", err)
+	}
 	return nil
 }

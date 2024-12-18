@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
+	tmjson "github.com/tendermint/tendermint/libs/json"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
 
@@ -38,8 +39,9 @@ import (
 	slregistry "github.com/dymensionxyz/dymint/settlement/registry"
 	"github.com/dymensionxyz/dymint/store"
 
-	"github.com/dymensionxyz/dymint/utils/event"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
+
+	"github.com/dymensionxyz/dymint/utils/event"
 )
 
 // TODO: test loading sequencer while rotation in progress
@@ -129,7 +131,8 @@ func TestInitialState(t *testing.T) {
 	}
 }
 
-// TestProduceOnlyAfterSynced should test that we are resuming publishing blocks after we are synced
+//	should test that we are resuming publishing blocks after we are synced
+//
 // 1. Submit a batch and desync the manager
 // 2. Fail to produce blocks
 // 2. Sync the manager
@@ -249,7 +252,7 @@ func TestApplyCachedBlocks_WithFraudCheck(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	_, manager.Cancel = context.WithCancel(context.Background())
+	manager.Ctx, manager.Cancel = context.WithCancel(context.Background())
 	go event.MustSubscribe(
 		ctx,
 		manager.Pubsub,
@@ -274,8 +277,9 @@ func TestApplyCachedBlocks_WithFraudCheck(t *testing.T) {
 		assert.NoError(t, err)
 		blockData := p2p.BlockData{Block: *batch.Blocks[0], Commit: *batch.Commits[0]}
 		msg := pubsub.NewMessage(blockData, map[string][]string{p2p.EventTypeKey: {p2p.EventNewGossipedBlock}})
-		manager.OnReceivedBlock(msg)
-
+		if manager.Ctx.Err() == nil {
+			manager.OnReceivedBlock(msg)
+		}
 		// Wait until daHeight is updated
 		time.Sleep(time.Millisecond * 500)
 	}
@@ -353,7 +357,8 @@ func TestApplyLocalBlock_WithFraudCheck(t *testing.T) {
 
 	mockExecutor := &blockmocks.MockExecutorI{}
 	manager.Executor = mockExecutor
-	mockExecutor.On("InitChain", mock.Anything, mock.Anything, mock.Anything).Return(&abci.ResponseInitChain{}, nil)
+	gbdBz, _ := tmjson.Marshal(rollapp.GenesisBridgeData{})
+	mockExecutor.On("InitChain", mock.Anything, mock.Anything, mock.Anything).Return(&abci.ResponseInitChain{GenesisBridgeDataBytes: gbdBz}, nil)
 	mockExecutor.On("GetAppInfo").Return(&abci.ResponseInfo{
 		LastBlockHeight: int64(batch.EndHeight()),
 	}, nil)
@@ -382,7 +387,7 @@ func TestApplyLocalBlock_WithFraudCheck(t *testing.T) {
 	go func() {
 		errChan <- manager.Start(ctx)
 		err := <-errChan
-		require.True(t, errors.Is(err, gerrc.ErrFault))
+		require.Truef(t, errors.Is(err, gerrc.ErrFault), "expected error to be %v, got: %v", gerrc.ErrFault, err)
 	}()
 	<-ctx.Done()
 	assert.Equal(t, batch.EndHeight(), manager.LastSettlementHeight.Load())

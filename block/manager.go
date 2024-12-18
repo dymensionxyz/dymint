@@ -16,7 +16,6 @@ import (
 	"github.com/dymensionxyz/dymint/store"
 	uerrors "github.com/dymensionxyz/dymint/utils/errors"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
-	"github.com/dymensionxyz/dymint/version"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
 
@@ -78,6 +77,9 @@ type Manager struct {
 
 	// LastBlockTime is the time of last produced block, used to measure batch skew time
 	LastBlockTime atomic.Int64
+
+	// mutex used to avoid stopping node when fork is detected but proposer is creating/sending fork batch
+	forkMu sync.Mutex
 	/*
 		Sequencer and full-node
 	*/
@@ -193,8 +195,8 @@ func NewManager(
 		return nil, err
 	}
 
-	// update dymint state with fork info
-	err = m.updateStateWhenFork()
+	// update dymint state with next revision info
+	err = m.updateStateForNextRevision()
 	if err != nil {
 		return nil, err
 	}
@@ -217,7 +219,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	if m.State.IsGenesis() {
 		m.logger.Info("Running InitChain")
 
-		err := m.RunInitChain(ctx)
+		err := m.RunInitChain()
 		if err != nil {
 			return err
 		}
@@ -232,6 +234,10 @@ func (m *Manager) Start(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
+		_, err = m.Store.SaveState(m.State, nil)
+		if err != nil {
+			return err
+		}
 	}
 
 	// checks if the the current node is the proposer either on rollapp or on the hub.
@@ -242,6 +248,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("am i proposer on SL: %w", err)
 	}
+
 	amIProposer := amIProposerOnSL || m.AmIProposerOnRollapp()
 
 	m.logger.Info("starting block manager", "mode", map[bool]string{true: "proposer", false: "full node"}[amIProposer])
@@ -317,6 +324,7 @@ func (m *Manager) updateFromLastSettlementState() error {
 		return err
 	}
 
+	m.P2PClient.UpdateLatestSeenHeight(latestHeight)
 	if latestHeight >= m.State.NextHeight() {
 		m.UpdateTargetHeight(latestHeight)
 	}
@@ -351,6 +359,10 @@ func (m *Manager) GetProposerPubKey() tmcrypto.PubKey {
 	return m.State.GetProposerPubKey()
 }
 
+func (m *Manager) GetRevision() uint64 {
+	return m.State.GetRevision()
+}
+
 func (m *Manager) UpdateTargetHeight(h uint64) {
 	for {
 		currentHeight := m.TargetHeight.Load()
@@ -362,14 +374,6 @@ func (m *Manager) UpdateTargetHeight(h uint64) {
 
 // ValidateConfigWithRollappParams checks the configuration params are consistent with the params in the dymint state (e.g. DA and version)
 func (m *Manager) ValidateConfigWithRollappParams() error {
-	drsVersion, err := version.GetDRSVersion()
-	if err != nil {
-		return err
-	}
-	if drsVersion != m.State.RollappParams.DrsVersion {
-		return fmt.Errorf("DRS version mismatch. rollapp param: %d binary used:%d", m.State.RollappParams.DrsVersion, drsVersion)
-	}
-
 	if da.Client(m.State.RollappParams.Da) != m.DAClient.GetClientType() {
 		return fmt.Errorf("da client mismatch. rollapp param: %s da configured: %s", m.State.RollappParams.Da, m.DAClient.GetClientType())
 	}

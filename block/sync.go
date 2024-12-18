@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/tendermint/tendermint/libs/pubsub"
 
@@ -60,9 +61,9 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 				}
 				// if we have the block locally, we don't need to fetch it from the DA.
 				// it will only happen in case of rollback.
-				err := m.applyLocalBlock(currH)
+				err := m.applyLocalBlock()
 				if err == nil {
-					m.logger.Info("Synced from local", "store height", currH, "target height", m.LastSettlementHeight.Load())
+					m.logger.Info("Synced from local", "store height", m.State.Height(), "target height", m.LastSettlementHeight.Load())
 					continue
 				}
 				if !errors.Is(err, gerrc.ErrNotFound) {
@@ -79,6 +80,11 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 				m.LastBlockTimeInSettlement.Store(settlementBatch.BlockDescriptors[len(settlementBatch.BlockDescriptors)-1].GetTimestamp().UTC().UnixNano())
 
 				err = m.ApplyBatchFromSL(settlementBatch.Batch)
+
+				// this will keep sync loop alive when DA is down or retrievals are failing because DA issues.
+				if errors.Is(err, da.ErrRetrieval) {
+					continue
+				}
 				if err != nil {
 					return fmt.Errorf("process next DA batch. err:%w", err)
 				}
@@ -95,8 +101,8 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 
 			}
 
-			// avoid notifying as synced in case if fails before
-			if m.State.Height() == m.LastSettlementHeight.Load() {
+			// avoid notifying as synced in case it fails before
+			if m.State.Height() >= m.LastSettlementHeight.Load() {
 				m.logger.Info("Synced.", "current height", m.State.Height(), "last submitted height", m.LastSettlementHeight.Load())
 				// nudge to signal to any listens that we're currently synced with the last settlement height we've seen so far
 				m.syncedFromSettlement.Nudge()

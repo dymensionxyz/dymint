@@ -210,6 +210,12 @@ func (m *Manager) CreateBatch(maxBatchSize uint64, startHeight uint64, endHeight
 		if err != nil {
 			return nil, fmt.Errorf("load drs version: h: %d: %w", h, err)
 		}
+
+		// check all blocks have the same revision
+		if len(batch.Blocks) > 0 && batch.Blocks[len(batch.Blocks)-1].GetRevision() != block.GetRevision() {
+			return nil, fmt.Errorf("create batch: batch includes blocks with different revisions: %w", gerrc.ErrInternal)
+		}
+
 		batch.Blocks = append(batch.Blocks, block)
 		batch.Commits = append(batch.Commits, commit)
 		batch.DRSVersion = append(batch.DRSVersion, drsVersion)
