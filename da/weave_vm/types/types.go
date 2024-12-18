@@ -13,22 +13,18 @@ const (
 
 // Config...WeaveVM client configuration
 type Config struct {
-	Enabled bool
-	// RPC endpoint of WeaveVM chain
-	Endpoint string
-	// WeaveVM chain id
-	ChainID int64
-	// Timeout on WeaveVM calls in seconds
-	Timeout time.Duration
+	Timeout  time.Duration `json:"timeout,omitempty"`
+	ChainID  int64         `json:"chain_id,omitempty"`
+	Endpoint string        `json:"endpoint,omitempty"`
 
-	// WeaveVm Private Key
-	PrivateKeyHex string
-	// Web3Signer configuration
-	Web3SignerEndpoint      string
-	Web3SignerTLSCertFile   string
-	Web3SignerTLSKeyFile    string
-	Web3SignerTLSCACertFile string
+	// Signer config (either private key or web3signer required)
+	PrivateKeyHex           string `json:"private_key_hex,omitempty"`
+	Web3SignerEndpoint      string `json:"web3_signer_endpoint,omitempty"`
+	Web3SignerTLSCertFile   string `json:"web3_signer_tls_cert_file,omitempty"`
+	Web3SignerTLSKeyFile    string `json:"web3_signer_tls_key_file,omitempty"`
+	Web3SignerTLSCACertFile string `json:"web3_signer_tls_ca_cert_file,omitempty"`
 
+	// Retry config
 	Backoff       uretry.BackoffConfig `json:"backoff,omitempty"`
 	RetryAttempts *int                 `json:"retry_attempts,omitempty"`
 	RetryDelay    time.Duration        `json:"retry_delay,omitempty"`

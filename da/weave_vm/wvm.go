@@ -39,6 +39,7 @@ type WeaveVM interface {
 // TODO: adjust
 const (
 	defaultRpcRetryDelay    = 3 * time.Second
+	defaultRpcTimeout       = 5 * time.Second
 	namespaceVersion        = 0
 	DefaultGasPrices        = 0.1
 	defaultRpcRetryAttempts = 5
@@ -103,22 +104,30 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 		}
 	}
 
-	// Set defaults
+	// Set initial values
 	c.pubsubServer = pubsubServer
 	c.logger = logger
-	c.config = &cfg
+	c.synced = make(chan struct{}, 1)
 
-	// Validate and set defaults
-	if c.config.RetryDelay == 0 {
-		c.config.RetryDelay = defaultRpcRetryDelay
+	// Validate and set defaults for config
+	if cfg.Timeout == 0 {
+		cfg.Timeout = defaultRpcTimeout
 	}
-	if c.config.Backoff == (uretry.BackoffConfig{}) {
-		c.config.Backoff = defaultSubmitBackoff
+	if cfg.RetryDelay == 0 {
+		cfg.RetryDelay = defaultRpcRetryDelay
 	}
-	if c.config.RetryAttempts == nil {
+	if cfg.RetryAttempts == nil {
 		attempts := defaultRpcRetryAttempts
-		c.config.RetryAttempts = &attempts
+		cfg.RetryAttempts = &attempts
 	}
+	if cfg.Backoff == (uretry.BackoffConfig{}) {
+		cfg.Backoff = defaultSubmitBackoff
+	}
+	if cfg.ChainID == 0 {
+		return fmt.Errorf("chain ID must be set")
+	}
+
+	c.config = &cfg
 
 	// Apply options
 	for _, apply := range options {
@@ -126,33 +135,33 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 	}
 	types.RollappConsecutiveFailedDASubmission.Set(0)
 
+	// Initialize context
 	c.ctx, c.cancel = context.WithCancel(context.Background())
 
-	if c.client != nil {
+	// Initialize client if not set through options
+	if c.client == nil {
 		if cfg.Web3SignerEndpoint != "" {
+			// Initialize with web3signer
 			web3signer, err := signer.NewWeb3SignerClient(&cfg, logger)
 			if err != nil {
 				return fmt.Errorf("failed to initialize web3signer client: %w", err)
 			}
 			client, err := rpc.NewWvmRPCClient(logger, &cfg, web3signer)
 			if err != nil {
-				return fmt.Errorf("failed to initialize rpc client for weaveVM chain: %w", err)
+				return fmt.Errorf("failed to initialize rpc client: %w", err)
 			}
 			c.client = client
-			return nil
+		} else if cfg.PrivateKeyHex != "" {
+			// Initialize with private key
+			privateKeySigner := signer.NewPrivateKeySigner(cfg.PrivateKeyHex, logger, cfg.ChainID)
+			client, err := rpc.NewWvmRPCClient(logger, &cfg, privateKeySigner)
+			if err != nil {
+				return fmt.Errorf("failed to initialize rpc client: %w", err)
+			}
+			c.client = client
+		} else {
+			return fmt.Errorf("either web3signer endpoint or private key must be provided")
 		}
-
-		// Use PrivateKey signer
-		if cfg.PrivateKeyHex == "" {
-			return fmt.Errorf("weaveVM private key is empty and weaveVM web3 signer is empty")
-		}
-		privateKeySigner := signer.NewPrivateKeySigner(cfg.PrivateKeyHex, logger, cfg.ChainID)
-		client, err := rpc.NewWvmRPCClient(logger, &cfg, privateKeySigner)
-		if err != nil {
-			return fmt.Errorf("failed to initialize rpc client for weaveVM chain: %w", err)
-		}
-
-		c.client = client
 	}
 
 	return nil
@@ -603,40 +612,6 @@ func (c *DataAvailabilityLayerClient) submit(daBlob da.Blob) (*WvmSubmitBlobMeta
 
 	return &WvmSubmitBlobMeta{WvmBlockNumber: receipt.BlockNumber, WvmBlockHash: receipt.BlockHash.Hex(), WvmTxHash: receipt.TxHash.Hex()}, nil
 }
-
-/* we guarantee that tx will be included in arweave in some delta time after weavevm chain inclusion
-func (c *DataAvailabilityLayerClient) waitForArweaveInclusion(ctx context.Context, wvmTxHash string) (string, error) {
-	var arweaveBlockHash string
-
-	err := retry.Do(
-		func() error {
-			// Get from gateway which will return data once it's in Arweave
-			blob, err := c.retrieveFromGateway(ctx, wvmTxHash)
-			if err != nil {
-				return fmt.Errorf("gateway check failed: %w", err)
-			}
-
-			if blob == nil || blob.ArweaveBlockHash == "" {
-				return errors.New("data not yet available in arweave")
-			}
-
-			arweaveBlockHash = blob.ArweaveBlockHash
-			return nil
-		},
-		retry.Context(ctx),
-		retry.Attempts(uint(*c.config.RetryAttempts)),
-		retry.Delay(c.config.RetryDelay),
-		retry.OnRetry(func(n uint, err error) {
-			c.logger.Debug("waiting for arweave inclusion",
-				"wvm_tx", wvmTxHash,
-				"attempt", n,
-				"error", err)
-		}),
-	)
-
-	return arweaveBlockHash, err
-}
-*/
 
 func (c *DataAvailabilityLayerClient) waitForTxReceipt(ctx context.Context, txHash string) (*ethtypes.Receipt, error) {
 	var receipt *ethtypes.Receipt
