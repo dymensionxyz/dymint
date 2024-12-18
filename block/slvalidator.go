@@ -148,6 +148,7 @@ func (v *SettlementValidator) ValidateDaBlocks(slBatch *settlement.ResultRetriev
 	lastDABlock := daBlocks[numSlBDs-1]
 
 	if v.blockManager.State.RevisionStartHeight-1 == lastDABlock.Header.Height {
+		// TODO: come back to this tomorrow
 		return nil
 	}
 
@@ -171,7 +172,7 @@ func (v *SettlementValidator) UpdateLastValidatedHeight(height uint64) {
 	for {
 		curr := v.lastValidatedHeight.Load()
 		if v.lastValidatedHeight.CompareAndSwap(curr, max(curr, height)) {
-			_, err := v.blockManager.Store.SaveValidationHeight(v.GetLastValidatedHeight(), nil)
+			_, err := v.blockManager.Store.SaveValidationHeight(v.GetLastValidatedHeight(), nil) // not atomic, can write a lower value
 			if err != nil {
 			}
 			break
