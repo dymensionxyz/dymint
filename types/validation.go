@@ -39,10 +39,11 @@ func (b *Block) ValidateBasic() error {
 		return err
 	}
 
-	if b.Header.DataHash != [32]byte(GetDataHash(b)) { // could make it a header method
+	if b.Header.DataHash != [32]byte(GetDataHash(b)) {
 		return ErrInvalidHeaderDataHash
 	}
 
+	if
 	if err := b.Header.Extra.validateBlock(b); err != nil {
 		return gerrc.ErrInvalidArgument.Wrapf("block header extra data isn't correctly formed from block data:%w", err)
 	}

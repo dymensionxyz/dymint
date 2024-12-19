@@ -22,6 +22,20 @@ func evidenceHash(header *Header) cmtbytes.HexBytes {
 	return header.Extra.hash()
 }
 
+// header corresponds to block?
+//
+// valid possibilities:
+// - old block version and extra data
+// - empty cons messages and default evidence hash
+// - populated cons messages
+func validateExtra(block *Block, header *Header) error {
+	zero := ExtraSignedData{}
+	if block.Header.Extra == zero && block.Data.ConsensusMessages {
+
+	}
+
+}
+
 func (e ExtraSignedData) validateBlock(block *Block) error {
 	expect := e
 	got, err := ExtraSignedData{}.fromBlock(block)
