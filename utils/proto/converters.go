@@ -49,3 +49,11 @@ func FromProtoMsgSliceToAnySlice(msgs ...proto.Message) []*gogo.Any {
 	}
 	return result
 }
+
+func MustMarshal(msg proto.Message) []byte {
+	bz, err := proto.Marshal(msg)
+	if err != nil {
+		panic(err)
+	}
+	return bz
+}

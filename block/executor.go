@@ -162,6 +162,9 @@ func (e *Executor) CreateBlock(
 			AppHash:         state.AppHash,
 			LastResultsHash: state.LastResultsHash,
 			ProposerAddress: e.localAddress,
+			Dym: &types.DymHeader{
+				ConsensusMessagesHash: [32]byte{},
+			},
 		},
 		Data: types.Data{
 			Txs:                    toDymintTxs(mempoolTxs),
@@ -175,6 +178,7 @@ func (e *Executor) CreateBlock(
 	copy(block.Header.DataHash[:], types.GetDataHash(block))
 	copy(block.Header.SequencerHash[:], state.GetProposerHash())
 	copy(block.Header.NextSequencersHash[:], nextSeqHash[:])
+	copy(block.Header.ConsensusHash[:], types.GetConsensusHash(block))
 	return block
 }
 

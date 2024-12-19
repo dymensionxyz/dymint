@@ -48,12 +48,6 @@ type Header struct {
 	Dym *DymHeader
 }
 
-// Additional data that the sequencer must sign over
-type DymHeader struct {
-	// must be the hash of the (merkle root) of the consensus messages
-	ConsensusMessagesHash [32]byte
-}
-
 func (h Header) GetTimestamp() time.Time {
 	return time.Unix(0, h.Time)
 }
