@@ -44,13 +44,14 @@ type Header struct {
 	// The Chain ID
 	ChainID string
 
-	Extra ExtraSignedData
+	// Note: LOSSY when converted to tendermint (squashed into a single hash)
+	Dym *DymHeader
 }
 
 // Additional data that the sequencer must sign over
 type DymHeader struct {
 	// must be the hash of the (merkle root) of the consensus messages
-	ConsensusMessagesHash []byte `protobuf:"bytes,1,opt,name=consensus_messages_hash,json=consensusMessagesHash,proto3" json:"consensus_messages_hash,omitempty"`
+	ConsensusMessagesHash [32]byte
 }
 
 func (h Header) GetTimestamp() time.Time {
