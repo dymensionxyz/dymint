@@ -13,11 +13,13 @@ import (
 // legacy version of dymint which did not support consensus message hashing
 const blockVersionWithDefaultEvidenceHash = 0
 
+var defaultEvidenceHash = new(tmtypes.EvidenceData).Hash()
+
 // we overload tendermint header evidence hash with our own stuff
 // (we don't need evidence, because we don't use comet)
 func evidenceHash(header *Header) cmtbytes.HexBytes {
 	if header.Version.Block == blockVersionWithDefaultEvidenceHash {
-		return new(tmtypes.EvidenceData).Hash()
+		return defaultEvidenceHash
 	}
 	return header.Extra.hash()
 }
@@ -25,15 +27,21 @@ func evidenceHash(header *Header) cmtbytes.HexBytes {
 // header corresponds to block?
 //
 // valid possibilities:
-// - old block version and extra data
-// - empty cons messages and default evidence hash
-// - populated cons messages
+// - old block version + extra data not populated + hash is default
+// - new block version + extra data populated + hash is something // TODO: empty?
 func validateExtra(block *Block, header *Header) error {
+	zero := ExtraSignedData{}
+	if bytes.Equal(evidenceHash(header), defaultEvidenceHash) {
+		if header.Extra != zero {
+			return fmt.Errorf("unexpected extra data in block with default evidence hash")
+		}
+		return nil
+
+	}
 	zero := ExtraSignedData{}
 	if block.Header.Extra == zero && block.Data.ConsensusMessages {
 
 	}
-
 }
 
 func (e ExtraSignedData) validateBlock(block *Block) error {
