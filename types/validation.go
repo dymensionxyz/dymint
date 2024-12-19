@@ -41,6 +41,9 @@ func (b *Block) ValidateBasic() error {
 	if b.Header.DataHash != [32]byte(GetDataHash(b)) {
 		return ErrInvalidHeaderDataHash
 	}
+
+	if b.Header.
+
 	return nil
 }
 

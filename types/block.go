@@ -43,6 +43,13 @@ type Header struct {
 
 	// The Chain ID
 	ChainID string
+
+	Extra ExtraSignedData
+}
+
+// hashes of stuff
+type ExtraSignedData struct {
+	ConsensusMessagesHash [32]byte
 }
 
 func (h Header) GetTimestamp() time.Time {
