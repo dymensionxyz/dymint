@@ -1,6 +1,8 @@
 package settlement
 
 import (
+	"time"
+
 	"github.com/tendermint/tendermint/libs/pubsub"
 
 	"github.com/dymensionxyz/dymint/da"
@@ -42,8 +44,9 @@ type Batch struct {
 	NextSequencer    string
 
 	// MetaData about the batch in the DA layer
-	MetaData  *BatchMetaData
-	NumBlocks uint64 // FIXME: can be removed. not used and will be deprecated
+	MetaData     *BatchMetaData
+	NumBlocks    uint64 // FIXME: can be removed. not used and will be deprecated
+	CreationTime time.Time
 }
 
 type ResultRetrieveBatch struct {
