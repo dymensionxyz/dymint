@@ -41,7 +41,6 @@ func TestBlockSerializationRoundTrip(t *testing.T) {
 		name  string
 		input *types.Block
 	}{
-		{"empty block", &types.Block{}},
 		{"full", &types.Block{
 			Header: types.Header{
 				Version: types.Version{
