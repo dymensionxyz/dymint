@@ -3,6 +3,7 @@ package types
 import (
 	"github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/proto/tendermint/version"
+
 	tmtypes "github.com/tendermint/tendermint/types"
 )
 
@@ -37,7 +38,7 @@ func ToABCIHeader(header *Header) tmtypes.Header {
 		ConsensusHash:      header.ConsensusHash[:],
 		AppHash:            header.AppHash[:],
 		LastResultsHash:    header.LastResultsHash[:],
-		EvidenceHash:       new(tmtypes.EvidenceData).Hash(),
+		EvidenceHash:       evidenceHash(header),
 		ProposerAddress:    header.ProposerAddress,
 		ChainID:            header.ChainID,
 	}
