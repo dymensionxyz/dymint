@@ -90,7 +90,10 @@ da_config = "{{ .DAConfig }}"
 # da_config = "{\"base_url\":\"http:\/\/127.0.0.1:26658\",\"timeout\":30000000000,\"gas_prices\":0.1,\"auth_token\":\"TOKEN\",\"backoff\":{\"initial_delay\":6000000000,\"max_delay\":6000000000,\"growth_factor\":2},\"retry_attempts\":4,\"retry_delay\":3000000000}"
 # Avail config example:
 # da_config = "{\"seed\": \"MNEMONIC\", \"api_url\": \"wss://kate.avail.tools/ws\", \"app_id\": 0, \"tip\":10}"
-
+# WeaveVM config example:
+# da_config = "{\"endpoint\":\"https://testnet-rpc.wvm.dev\",\"chain_id\":9496,\"timeout\":\"30s\",\"private_key_hex\":\"PRIVATE_KEY_HEX\"}"
+# Or with web3signer:
+# da_config = "{\"endpoint\":\"https://testnet-rpc.wvm.dev\",\"chain_id\":9496,\"timeout\":\"30s\",\"web3_signer_endpoint\":\"http://localhost:9000\"}"
 
 ### p2p config ###
 
