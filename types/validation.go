@@ -43,9 +43,9 @@ func (b *Block) ValidateBasic() error {
 		return ErrInvalidHeaderDataHash
 	}
 
-	if
+	// TODO:
 	if err := b.Header.Extra.validateBlock(b); err != nil {
-		return gerrc.ErrInvalidArgument.Wrapf("block header extra data isn't correctly formed from block data:%w", err)
+		return gerrc.ErrInvalidArgument.Wrapf("block header extra data isn't correctly formed from block data:%v", err)
 	}
 
 	return nil

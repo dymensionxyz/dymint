@@ -38,10 +38,11 @@ func validateExtra(block *Block, header *Header) error {
 		return nil
 
 	}
-	zero := ExtraSignedData{}
-	if block.Header.Extra == zero && block.Data.ConsensusMessages {
-
-	}
+	//zero := ExtraSignedData{}
+	//if block.Header.Extra == zero && block.Data.ConsensusMessages {
+	//
+	//}
+	return nil
 }
 
 func (e ExtraSignedData) validateBlock(block *Block) error {
