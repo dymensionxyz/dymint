@@ -96,6 +96,7 @@ func WithSubmitBackoff(c uretry.BackoffConfig) da.Option {
 
 // Init initializes the WeaveVM DA client
 func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.Server, kvStore store.KV, logger types.Logger, options ...da.Option) error {
+	logger.Debug("Initializing WeaveVM DA client", "config", string(config))
 	var cfg weaveVMtypes.Config
 	if len(config) > 0 {
 		err := json.Unmarshal(config, &cfg)
@@ -593,7 +594,7 @@ func (c *DataAvailabilityLayerClient) submit(daBlob da.Blob) (*WvmSubmitBlobMeta
 	// Submit transaction to WeaveVM with the blob data
 	txHash, err := c.client.SendTransaction(ctx, weaveVMtypes.ArchivePoolAddress, daBlob)
 	if err != nil {
-		return nil, fmt.Errorf("failed to send transaction: %w", gerrc.ErrInternal)
+		return nil, fmt.Errorf("failed to send transaction: %w", err)
 	}
 
 	c.logger.Info("wvm tx hash", "hash", txHash)
