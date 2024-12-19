@@ -32,6 +32,9 @@ func (d *DymHeader) Hash() cmtbytes.HexBytes {
 }
 
 func (d *DymHeader) ToProto() *dymint.DymHeader {
+	if d == nil {
+		return nil // for tests
+	}
 	return &dymint.DymHeader{
 		ConsensusMessagesHash: d.ConsensusMessagesHash[:],
 	}

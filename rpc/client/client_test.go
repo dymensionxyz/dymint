@@ -932,6 +932,7 @@ func getRandomBlock(height uint64, nTxs int) *types.Block {
 			Height:          height,
 			Version:         types.Version{Block: testutil.BlockVersion},
 			ProposerAddress: getRandomBytes(20),
+			Dym:             types.NewDymHeader(nil),
 		},
 		Data: types.Data{
 			Txs: make(types.Txs, nTxs),

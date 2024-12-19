@@ -137,6 +137,7 @@ func (h *Header) FromProto(other *pb.Header) error {
 		h.ProposerAddress = make([]byte, len(other.ProposerAddress))
 		copy(h.ProposerAddress, other.ProposerAddress)
 	}
+	h.Dym = &DymHeader{}
 	if err := h.Dym.FromProto(other.Dym); err != nil {
 		return err
 	}

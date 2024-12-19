@@ -390,6 +390,7 @@ func GetRandomBlock(height uint64, nTxs int) *types.Block {
 	block := &types.Block{
 		Header: types.Header{
 			Height: height,
+			Dym:    types.NewDymHeader(nil),
 		},
 		Data: types.Data{
 			Txs: make(types.Txs, nTxs),
