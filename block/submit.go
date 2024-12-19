@@ -88,8 +88,8 @@ func SubmitLoopInner(
 	})
 
 	eg.Go(func() error {
-		// 'submitter': this thread actually creates and submits batches. this thread is woken up every batch_submit_time (in addition to every block produced) to check if there is anything to submit even if no new blocks have been produced
-		ticker := time.NewTicker(maxBatchSubmitTime)
+		// 'submitter': this thread actually creates and submits batches. this thread is woken up every batch_submit_time/10 (we used /10 to avoid waiting too much if submission is not required for t-maxBatchSubmitTime, but it maybe required before t) to check if submission is required even if no new blocks have been produced
+		ticker := time.NewTicker(maxBatchSubmitTime / 10)
 		for {
 			select {
 			case <-ctx.Done():
