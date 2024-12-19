@@ -335,7 +335,7 @@ func (m *Manager) GetLastBlockTimeInSettlement() time.Time {
 		return time.Time{}
 	}
 	if errors.Is(err, gerrc.ErrNotFound) {
-		firstBlock, err := m.Store.LoadBlock(uint64(m.Genesis.InitialHeight))
+		firstBlock, err := m.Store.LoadBlock(uint64(m.Genesis.InitialHeight)) //nolint:gosec // height is non-negative and falls in int64
 		if errors.Is(err, gerrc.ErrNotFound) {
 			return time.Now()
 		}
@@ -356,10 +356,9 @@ func (m *Manager) GetBatchSkewTime() time.Duration {
 // isLastBatchRecent returns true if the last batch submitted is more recent than submitBatchTime
 // in case of no submission time the first block produced is used as a reference.
 func (m *Manager) isLastBatchRecent(submitBatchTime time.Duration) bool {
-
 	var lastSubmittedTime time.Time
 	if m.LastSubmissionTime.Load() == 0 {
-		firstBlock, err := m.Store.LoadBlock(uint64(m.Genesis.InitialHeight))
+		firstBlock, err := m.Store.LoadBlock(uint64(m.Genesis.InitialHeight)) //nolint:gosec // height is non-negative and falls in int64
 		if err != nil {
 			return true
 		} else {
@@ -368,7 +367,7 @@ func (m *Manager) isLastBatchRecent(submitBatchTime time.Duration) bool {
 	} else {
 		lastSubmittedTime = time.Unix(0, m.LastSubmissionTime.Load())
 	}
-	return time.Now().Sub(lastSubmittedTime) < submitBatchTime
+	return time.Since(lastSubmittedTime) < submitBatchTime
 }
 
 func UpdateBatchSubmissionGauges(skewBytes uint64, skewBlocks uint64, skewTime time.Duration) {
