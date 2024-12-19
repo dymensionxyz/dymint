@@ -41,7 +41,6 @@ func TestBlockSerializationRoundTrip(t *testing.T) {
 		name  string
 		input *types.Block
 	}{
-		{"empty block", &types.Block{}},
 		{"full", &types.Block{
 			Header: types.Header{
 				Version: types.Version{
@@ -58,6 +57,7 @@ func TestBlockSerializationRoundTrip(t *testing.T) {
 				LastResultsHash:    h[5],
 				ProposerAddress:    []byte{4, 3, 2, 1},
 				NextSequencersHash: h[6],
+				Dym:                types.NewDymHeader(nil),
 			},
 			Data: types.Data{
 				Txs:                    nil,

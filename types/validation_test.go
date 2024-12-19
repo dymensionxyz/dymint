@@ -8,6 +8,7 @@ import (
 
 	"github.com/cometbft/cometbft/libs/math"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
+	proto "github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/crypto/ed25519"
@@ -36,6 +37,7 @@ func TestBlock_ValidateWithState(t *testing.T) {
 	validState.LastBlockHeight.Store(9)
 	validState.SetProposer(proposer)
 
+	// TODO: tests should be written to mutate valid block
 	validBlock := &Block{
 		Header: Header{
 			Version: Version{
@@ -51,6 +53,7 @@ func TestBlock_ValidateWithState(t *testing.T) {
 			LastHeaderHash:  [32]byte{7, 8, 9},
 			ChainID:         "chainID",
 			SequencerHash:   [32]byte(proposerHash),
+			Dym:             NewDymHeader(nil),
 		},
 		Data:       Data{},
 		LastCommit: Commit{},
@@ -89,6 +92,7 @@ func TestBlock_ValidateWithState(t *testing.T) {
 					DataHash:        [32]byte(GetDataHash(validBlock)),
 					LastHeaderHash:  [32]byte{7, 8, 9},
 					ChainID:         "chainID",
+					Dym:             NewDymHeader(nil),
 				},
 			},
 			state:   validState,
@@ -112,6 +116,7 @@ func TestBlock_ValidateWithState(t *testing.T) {
 					DataHash:        [32]byte(GetDataHash(validBlock)),
 					LastHeaderHash:  [32]byte{7, 8, 9},
 					ChainID:         "chainID",
+					Dym:             NewDymHeader(nil),
 				},
 			},
 			state:   validState,
@@ -130,6 +135,7 @@ func TestBlock_ValidateWithState(t *testing.T) {
 					LastResultsHash: [32]byte{4, 5, 6},
 					ProposerAddress: []byte("proposer"),
 					DataHash:        [32]byte(GetDataHash(validBlock)),
+					Dym:             NewDymHeader(nil),
 				},
 			},
 			state:           validState,
@@ -148,6 +154,7 @@ func TestBlock_ValidateWithState(t *testing.T) {
 					LastResultsHash: [32]byte{4, 5, 6},
 					ProposerAddress: []byte("proposer"),
 					DataHash:        [32]byte(GetDataHash(validBlock)),
+					Dym:             NewDymHeader(nil),
 				},
 			},
 			state:           validState,
@@ -166,6 +173,7 @@ func TestBlock_ValidateWithState(t *testing.T) {
 					LastResultsHash: [32]byte{9, 9, 9},
 					ProposerAddress: []byte("proposer"),
 					DataHash:        [32]byte(GetDataHash(validBlock)),
+					Dym:             NewDymHeader(nil),
 				},
 			},
 			state:           validState,
@@ -184,6 +192,7 @@ func TestBlock_ValidateWithState(t *testing.T) {
 					LastResultsHash: [32]byte{4, 5, 6},
 					ProposerAddress: []byte("proposer"),
 					DataHash:        [32]byte(GetDataHash(validBlock)),
+					Dym:             NewDymHeader(nil),
 				},
 			},
 			state:           validState,
@@ -201,6 +210,7 @@ func TestBlock_ValidateWithState(t *testing.T) {
 					AppHash:         [32]byte{1, 2, 3},
 					LastResultsHash: [32]byte{4, 5, 6},
 					ProposerAddress: []byte{},
+					Dym:             NewDymHeader(nil),
 				},
 			},
 			state:           validState,
@@ -220,6 +230,7 @@ func TestBlock_ValidateWithState(t *testing.T) {
 					ProposerAddress: []byte("proposer"),
 					DataHash:        [32]byte(GetDataHash(validBlock)),
 					LastHeaderHash:  [32]byte{1, 2, 3},
+					Dym:             NewDymHeader(nil),
 				},
 			},
 			state:           validState,
@@ -240,6 +251,7 @@ func TestBlock_ValidateWithState(t *testing.T) {
 					DataHash:        [32]byte(GetDataHash(validBlock)),
 					LastHeaderHash:  [32]byte{7, 8, 9},
 					ChainID:         "invalidChainID",
+					Dym:             NewDymHeader(nil),
 				},
 			},
 			state:           validState,
@@ -261,6 +273,7 @@ func TestBlock_ValidateWithState(t *testing.T) {
 					LastHeaderHash:     [32]byte{7, 8, 9},
 					ChainID:            "chainID",
 					NextSequencersHash: [32]byte{1, 2, 3},
+					Dym:                NewDymHeader(nil),
 				},
 			},
 			state:           validState,
@@ -281,11 +294,33 @@ func TestBlock_ValidateWithState(t *testing.T) {
 					DataHash:        [32]byte{1, 2, 3},
 					LastHeaderHash:  [32]byte{7, 8, 9},
 					ChainID:         "chainID",
+					Dym:             NewDymHeader(nil),
 				},
 			},
 			state:           validState,
 			wantErr:         true,
 			expectedErrType: ErrInvalidHeaderDataHashFraud{},
+			isFraud:         true,
+		},
+		{
+			name: "invalid dym header",
+			block: &Block{
+				Header: Header{
+					Version:         validBlock.Header.Version,
+					Height:          10,
+					Time:            currentTime.UnixNano(),
+					AppHash:         [32]byte{1, 2, 3},
+					LastResultsHash: [32]byte{4, 5, 6},
+					ProposerAddress: []byte("proposer"),
+					DataHash:        [32]byte{1, 2, 3},
+					LastHeaderHash:  [32]byte{7, 8, 9},
+					ChainID:         "chainID",
+					Dym:             NewDymHeader([]*proto.Any{{}}),
+				},
+			},
+			state:           validState,
+			wantErr:         true,
+			expectedErrType: ErrInvalidDymHeaderFraud{},
 			isFraud:         true,
 		},
 	}
@@ -337,6 +372,7 @@ func TestCommit_ValidateWithHeader(t *testing.T) {
 				LastResultsHash: [32]byte{},
 				ProposerAddress: proposerKey.PubKey().Address(),
 				SequencerHash:   [32]byte(proposerHash),
+				Dym:             NewDymHeader(nil),
 			},
 		}
 

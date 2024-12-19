@@ -43,6 +43,9 @@ type Header struct {
 
 	// The Chain ID
 	ChainID string
+
+	// Note: LOSSY when converted to tendermint (squashed into a single hash)
+	Dym *DymHeader
 }
 
 func (h Header) GetTimestamp() time.Time {
@@ -124,6 +127,8 @@ func GetLastCommitHash(lastCommit *Commit, header *Header) []byte {
 }
 
 // GetDataHash returns the hash of the block data to be set in the block header.
+// Doesn't include consensus messages because we want to avoid touching
+// fundamental primitive and allow tx inclusion proofs.
 func GetDataHash(block *Block) []byte {
 	abciData := tmtypes.Data{
 		Txs: ToABCIBlockDataTxs(&block.Data),
