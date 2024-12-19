@@ -6,12 +6,12 @@ import (
 	tmtypes "github.com/tendermint/tendermint/types"
 )
 
-const versionWithDefaultEvidence = 0
+const blockVersionWithDefaultEvidenceHash = 0
 
 // we overload tendermint header evidence hash with our own stuff
 // (we don't need evidence, because we don't use comet)
 func evidenceHash(header *Header) cmtbytes.HexBytes {
-	if header.Version.Block == versionWithDefaultEvidence {
+	if header.Version.Block == blockVersionWithDefaultEvidenceHash {
 		return new(tmtypes.EvidenceData).Hash()
 	}
 	return header.Extra.hash()
