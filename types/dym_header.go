@@ -17,7 +17,32 @@ type DymHeader struct {
 }
 
 func NewDymHeader(cons []*proto.Any) *DymHeader {
-	return &DymHeader{}
+	return &DymHeader{
+		ConsensusMessagesHash: consMessagesHash(cons),
+	}
+}
+
+func (d *DymHeader) Hash() [32]byte {
+	ret := [32]byte{}
+	h := merkle.HashFromByteSlices([][]byte{d.ConsensusMessagesHash[:]})
+	copy(ret[:], h) // merkle is already 32 bytes
+	return ret
+}
+
+func consMessagesHash(msgs []*proto.Any) [32]byte {
+	bzz := make([][]byte, len(msgs))
+	for i, msg := range msgs {
+		var err error
+		bzz[i], err = msg.Marshal()
+		if err != nil {
+			// Not obvious how to recover here. Shouldn't happen.
+			panic(fmt.Errorf("marshal consensus message: %w", err))
+		}
+	}
+	merkleRoot := merkle.HashFromByteSlices(bzz)
+	ret := [32]byte{}
+	copy(ret[:], merkleRoot) // merkleRoot is already 32 bytes
+	return ret
 }
 
 // legacy version of dymint which did not support consensus message hashing
@@ -28,6 +53,7 @@ var defaultEvidenceHash = new(tmtypes.EvidenceData).Hash()
 // we overload tendermint header evidence hash with our own stuff
 // (we don't need evidence, because we don't use comet)
 func evidenceHash(header *Header) cmtbytes.HexBytes {
+
 	if header.Version.Block == blockVersionWithDefaultEvidenceHash {
 		return defaultEvidenceHash
 	}
@@ -80,20 +106,5 @@ func (e ExtraSignedData) fromBlock(block *Block) (ExtraSignedData, error) {
 	if err != nil {
 		return ExtraSignedData{}, fmt.Errorf("consensus messages hash: %w", err)
 	}
-	return ret, nil
-}
-
-func consMessagesHash(msgs []*proto.Any) ([32]byte, error) {
-	bzz := make([][]byte, len(msgs))
-	for i, msg := range msgs {
-		var err error
-		bzz[i], err = msg.Marshal()
-		if err != nil {
-			return [32]byte{}, fmt.Errorf("marshal consensus message: %w", err)
-		}
-	}
-	merkleRoot := merkle.HashFromByteSlices(bzz)
-	ret := [32]byte{}
-	copy(ret[:], merkleRoot) // merkleRoot is already 32 bytes
 	return ret, nil
 }

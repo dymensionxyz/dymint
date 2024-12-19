@@ -40,7 +40,7 @@ func ToABCIHeader(header *Header) tmtypes.Header {
 		ConsensusHash:      header.ConsensusHash[:],
 		AppHash:            header.AppHash[:],
 		LastResultsHash:    header.LastResultsHash[:],
-		EvidenceHash:       evidenceHash(header),
+		EvidenceHash:       header.Dym.Hash(),
 		ProposerAddress:    header.ProposerAddress,
 		ChainID:            header.ChainID,
 	}
