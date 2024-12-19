@@ -38,10 +38,11 @@ func (d *DymHeader) ToProto() *dymint.DymHeader {
 }
 
 func (d *DymHeader) FromProto(o *pb.DymHeader) error {
-	// bit pointless to verify length, since will be checked
-	// against a re-derivation anyway in val basic
+	if o == nil || len(o.ConsensusMessagesHash) != 32 {
+		return fmt.Errorf("missing or corrupted - check software version is same as block: %w", ErrInvalidDymHeader)
+	}
 	copy(d.ConsensusMessagesHash[:], o.ConsensusMessagesHash)
-	return nil // return error anyway just to be consistent with the pattern
+	return nil
 }
 
 func consMessagesHash(msgs []*proto.Any) [32]byte {
