@@ -19,6 +19,7 @@ var (
 	ErrEmptyBlock            = errors.New("block has no transactions and is not allowed to be empty")
 	ErrInvalidBlockHeight    = errors.New("invalid block height")
 	ErrInvalidHeaderDataHash = errors.New("header not matching block data")
+	ErrInvalidDymHeader      = gerrc.ErrInvalidArgument.Wrap("dym header")
 	ErrMissingProposerPubKey = fmt.Errorf("missing proposer public key: %w", gerrc.ErrNotFound)
 	ErrVersionMismatch       = errors.New("version mismatch")
 	ErrEmptyProposerAddress  = errors.New("no proposer address")
@@ -373,8 +374,7 @@ func NewErrInvalidHeaderDataHashFraud(block *Block) error {
 	return &ErrInvalidHeaderDataHashFraud{
 		Expected: block.Header.DataHash,
 		Actual:   [32]byte(GetDataHash(block)),
-
-		Header: block.Header,
+		Header:   block.Header,
 	}
 }
 
@@ -387,6 +387,28 @@ func (e ErrInvalidHeaderDataHashFraud) Error() string {
 }
 
 func (e ErrInvalidHeaderDataHashFraud) Unwrap() error {
+	return gerrc.ErrFault
+}
+
+// when dym header on the block header is not correctly derived from block data
+type ErrInvalidDymHeaderFraud struct {
+	*Block
+}
+
+func NewErrInvalidDymHeaderFraud(block *Block) error {
+	return &ErrInvalidDymHeaderFraud{
+		block,
+	}
+}
+
+func (e ErrInvalidDymHeaderFraud) Error() string {
+	return fmt.Sprintf(
+		"possible fraud: invalid dym header: height : %d",
+		e.Header.Height,
+	)
+}
+
+func (e ErrInvalidDymHeaderFraud) Unwrap() error {
 	return gerrc.ErrFault
 }
 

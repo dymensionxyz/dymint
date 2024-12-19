@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	tmcrypto "github.com/tendermint/tendermint/crypto"
 	tmtypes "github.com/tendermint/tendermint/types"
 )
@@ -43,9 +42,8 @@ func (b *Block) ValidateBasic() error {
 		return ErrInvalidHeaderDataHash
 	}
 
-	// TODO:
-	if err := b.Header.Extra.validateBlock(b); err != nil {
-		return gerrc.ErrInvalidArgument.Wrapf("block header extra data isn't correctly formed from block data:%v", err)
+	if !bytes.Equal(b.Header.Dym.Hash(), NewDymHeader(b.Data.ConsensusMessages).Hash()) {
+		return ErrInvalidDymHeader
 	}
 
 	return nil
@@ -56,6 +54,9 @@ func (b *Block) ValidateWithState(state *State) error {
 	if err != nil {
 		if errors.Is(err, ErrInvalidHeaderDataHash) {
 			return NewErrInvalidHeaderDataHashFraud(b)
+		}
+		if errors.Is(err, ErrInvalidDymHeader) {
+			return NewErrInvalidDymHeaderFraud(b)
 		}
 
 		return err

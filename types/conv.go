@@ -40,7 +40,7 @@ func ToABCIHeader(header *Header) tmtypes.Header {
 		ConsensusHash:      header.ConsensusHash[:],
 		AppHash:            header.AppHash[:],
 		LastResultsHash:    header.LastResultsHash[:],
-		EvidenceHash:       header.Dym.Hash(),
+		EvidenceHash:       header.Dym.Hash(), // Overloaded, we don't need the evidence field because we don't use comet.
 		ProposerAddress:    header.ProposerAddress,
 		ChainID:            header.ChainID,
 	}
