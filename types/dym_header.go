@@ -25,7 +25,11 @@ func NewDymHeader(cons []*proto.Any) *DymHeader {
 }
 
 func (d *DymHeader) Hash() cmtbytes.HexBytes {
-	return merkle.HashFromByteSlices([][]byte{d.ConsensusMessagesHash[:]}) // 32 bytes long
+	// 32 bytes long
+	return merkle.HashFromByteSlices([][]byte{
+		d.ConsensusMessagesHash[:],
+		// can be extended with other things if we need to later
+	})
 }
 
 func (d *DymHeader) ToProto() *dymint.DymHeader {
