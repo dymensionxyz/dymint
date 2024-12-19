@@ -22,6 +22,20 @@ func evidenceHash(header *Header) cmtbytes.HexBytes {
 	return header.Extra.hash()
 }
 
+func (e ExtraSignedData) validateBlock(block *Block) error {
+	expect := e
+	got, err := ExtraSignedData{}.fromBlock(block)
+	if err != nil {
+		return fmt.Errorf("from block: %w", err)
+	}
+	expectH := expect.hash()
+	gotH := got.hash()
+	if !bytes.Equal(expectH, gotH) {
+		return fmt.Errorf("hash mismatch: expected %X, got %X", expectH, gotH)
+	}
+	return nil
+}
+
 func (e ExtraSignedData) hash() []byte {
 	return merkle.HashFromByteSlices([][]byte{e.ConsensusMessagesHash[:]})
 }
@@ -47,20 +61,6 @@ func consMessagesHash(msgs []*proto.Any) ([32]byte, error) {
 	}
 	merkleRoot := merkle.HashFromByteSlices(bzz)
 	ret := [32]byte{}
-	copy(ret[:], merkleRoot) // note merkleRoot is already 32 bytes
+	copy(ret[:], merkleRoot) // merkleRoot is already 32 bytes
 	return ret, nil
-}
-
-func (e ExtraSignedData) validateBlock(block *Block) error {
-	expect := e
-	got, err := ExtraSignedData{}.fromBlock(block)
-	if err != nil {
-		return fmt.Errorf("from block: %w", err)
-	}
-	expectH := expect.hash()
-	gotH := got.hash()
-	if !bytes.Equal(expectH, gotH) {
-		return fmt.Errorf("hash mismatch: expected %X, got %X", expectH, gotH)
-	}
-	return nil
 }

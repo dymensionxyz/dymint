@@ -9,6 +9,7 @@ import (
 
 // ToABCIHeaderPB converts Dymint header to Header format defined in ABCI.
 // Caller should fill all the fields that are not available in Dymint header (like ChainID).
+// WARNING: THIS IS A LOSSY CONVERSION
 func ToABCIHeaderPB(header *Header) types.Header {
 	tmheader := ToABCIHeader(header)
 	return *tmheader.ToProto()
@@ -16,6 +17,7 @@ func ToABCIHeaderPB(header *Header) types.Header {
 
 // ToABCIHeader converts Dymint header to Header format defined in ABCI.
 // Caller should fill all the fields that are not available in Dymint header (like ChainID).
+// WARNING: THIS IS A LOSSY CONVERSION
 func ToABCIHeader(header *Header) tmtypes.Header {
 	return tmtypes.Header{
 		Version: version.Consensus{

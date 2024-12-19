@@ -47,7 +47,7 @@ type Header struct {
 	Extra ExtraSignedData
 }
 
-// hashes of stuff
+// hashes of stuff, we can add as much as we like
 type ExtraSignedData struct {
 	ConsensusMessagesHash [32]byte
 }
