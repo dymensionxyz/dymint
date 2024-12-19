@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	tmcrypto "github.com/tendermint/tendermint/crypto"
 	tmtypes "github.com/tendermint/tendermint/types"
 )
@@ -42,7 +43,9 @@ func (b *Block) ValidateBasic() error {
 		return ErrInvalidHeaderDataHash
 	}
 
-	if b.Header.
+	if err := b.Header.Extra.validateBlock(b); err != nil {
+		return gerrc.ErrInvalidArgument.Wrapf("block header extra data isn't correctly formed from block data:%w", err)
+	}
 
 	return nil
 }
