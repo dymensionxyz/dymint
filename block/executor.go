@@ -129,7 +129,7 @@ func (e *Executor) InitChain(genesis *tmtypes.GenesisDoc, genesisChecksum string
 			Version: &tmproto.VersionParams{
 				AppVersion: params.Version.AppVersion,
 			},
-		}, Validators:   valUpdates,
+		}, Validators: valUpdates,
 		AppStateBytes:   genesis.AppState,
 		InitialHeight:   genesis.InitialHeight,
 		GenesisChecksum: genesisChecksum,

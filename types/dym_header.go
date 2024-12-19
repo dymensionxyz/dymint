@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"fmt"
 
+	"github.com/dymensionxyz/dymint/types/pb/dymint"
+	pb "github.com/dymensionxyz/dymint/types/pb/dymint"
 	proto "github.com/gogo/protobuf/types"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	cmtbytes "github.com/tendermint/tendermint/libs/bytes"
@@ -22,12 +24,28 @@ func NewDymHeader(cons []*proto.Any) *DymHeader {
 	}
 }
 
-func (d *DymHeader) Hash() [32]byte {
-	ret := [32]byte{}
-	h := merkle.HashFromByteSlices([][]byte{d.ConsensusMessagesHash[:]})
-	copy(ret[:], h) // merkle is already 32 bytes
-	return ret
+func (d *DymHeader) Hash() cmtbytes.HexBytes {
+	return merkle.HashFromByteSlices([][]byte{d.ConsensusMessagesHash[:]}) // 32 bytes long
 }
+
+func (d *DymHeader) ToProto() *dymint.DymHeader {
+	return &dymint.DymHeader{
+		ConsensusMessagesHash: d.ConsensusMessagesHash[:],
+	}
+}
+
+func (d *DymHeader) FromProto(o *pb.DymHeader) error {
+	// TODO: validate length?
+	copy(d.ConsensusMessagesHash[:], o.ConsensusMessagesHash)
+	return nil
+}
+
+//func (d *DymHeader) HashA() [32]byte {
+//	ret := [32]byte{}
+//	h := merkle.HashFromByteSlices([][]byte{d.ConsensusMessagesHash[:]})
+//	copy(ret[:], h) // merkle is already 32 bytes
+//	return ret
+//}
 
 func consMessagesHash(msgs []*proto.Any) [32]byte {
 	bzz := make([][]byte, len(msgs))
