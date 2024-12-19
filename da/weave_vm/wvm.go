@@ -606,7 +606,7 @@ func (c *DataAvailabilityLayerClient) submit(daBlob da.Blob) (*WvmSubmitBlobMeta
 	}
 
 	// Update DAMetaData with both hashes
-	c.logger.Info("data available in arweave",
+	c.logger.Info("data available in weavevm",
 		"wvm_tx", receipt.TxHash.Hex(),
 		"wvm_block", receipt.BlockHash.Hex(),
 		"wvm_block_number", receipt.BlockNumber)
@@ -621,19 +621,23 @@ func (c *DataAvailabilityLayerClient) waitForTxReceipt(ctx context.Context, txHa
 			var err error
 			receipt, err = c.client.GetTransactionReceipt(ctx, txHash)
 			if err != nil {
+				// Mark network/temporary errors as retryable
 				return fmt.Errorf("get receipt failed: %w", err)
 			}
 			if receipt == nil {
-				return errors.New("receipt not found")
+				// Receipt not found yet - this is retryable
+				return fmt.Errorf("receipt not found")
 			}
-			if receipt.BlockNumber == big.NewInt(0) {
-				return errors.New("no block number in receipt")
+			if receipt.BlockNumber == nil || receipt.BlockNumber.Cmp(big.NewInt(0)) == 0 {
+				return fmt.Errorf("no block number in receipt")
 			}
 			return nil
 		},
 		retry.Context(ctx),
 		retry.Attempts(uint(*c.config.RetryAttempts)),
 		retry.Delay(c.config.RetryDelay),
+		retry.DelayType(retry.FixedDelay), // Force fixed delay between attempts
+		retry.LastErrorOnly(true),         // Only log the last error
 		retry.OnRetry(func(n uint, err error) {
 			c.logger.Debug("waiting for receipt",
 				"txHash", txHash,
@@ -642,7 +646,8 @@ func (c *DataAvailabilityLayerClient) waitForTxReceipt(ctx context.Context, txHa
 		}),
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to get receipt after %d attempts: %w",
+			*c.config.RetryAttempts, err)
 	}
 
 	return receipt, nil
