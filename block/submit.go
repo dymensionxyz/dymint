@@ -353,9 +353,9 @@ func (m *Manager) GetBatchSkewTime() time.Duration {
 	return m.GetLastProducedBlockTime().Sub(m.GetLastBlockTimeInSettlement())
 }
 
-// isLastBatchRecent returns true if the last batch submitted is more recent than submitBatchTime
+// isLastBatchRecent returns true if the last batch submitted is more recent than maxBatchSubmitTime
 // in case of no submission time the first block produced is used as a reference.
-func (m *Manager) isLastBatchRecent(submitBatchTime time.Duration) bool {
+func (m *Manager) isLastBatchRecent(maxBatchSubmitTime time.Duration) bool {
 	var lastSubmittedTime time.Time
 	if m.LastSubmissionTime.Load() == 0 {
 		firstBlock, err := m.Store.LoadBlock(uint64(m.Genesis.InitialHeight)) //nolint:gosec // height is non-negative and falls in int64
@@ -367,7 +367,7 @@ func (m *Manager) isLastBatchRecent(submitBatchTime time.Duration) bool {
 	} else {
 		lastSubmittedTime = time.Unix(0, m.LastSubmissionTime.Load())
 	}
-	return time.Since(lastSubmittedTime) < submitBatchTime
+	return time.Since(lastSubmittedTime) < maxBatchSubmitTime
 }
 
 func UpdateBatchSubmissionGauges(skewBytes uint64, skewBlocks uint64, skewTime time.Duration) {
