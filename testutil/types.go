@@ -85,6 +85,7 @@ func generateBlock(height uint64, proposerHash []byte, lastHeaderHash [32]byte) 
 			SequencerHash:      [32]byte(proposerHash),
 			NextSequencersHash: [32]byte(proposerHash),
 			ChainID:            "test-chain",
+			Dym:                types.NewDymHeader(nil),
 		},
 		Data: types.Data{
 			Txs:                    nil,

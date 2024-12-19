@@ -129,7 +129,7 @@ func (e *Executor) InitChain(genesis *tmtypes.GenesisDoc, genesisChecksum string
 			Version: &tmproto.VersionParams{
 				AppVersion: params.Version.AppVersion,
 			},
-		}, Validators: valUpdates,
+		}, Validators:   valUpdates,
 		AppStateBytes:   genesis.AppState,
 		InitialHeight:   genesis.InitialHeight,
 		GenesisChecksum: genesisChecksum,
@@ -171,11 +171,11 @@ func (e *Executor) CreateBlock(
 		},
 		LastCommit: *lastCommit,
 	}
+	block.Header.Dym = types.NewDymHeader(block.Data.ConsensusMessages)
 	copy(block.Header.LastCommitHash[:], types.GetLastCommitHash(lastCommit, &block.Header))
 	copy(block.Header.DataHash[:], types.GetDataHash(block))
 	copy(block.Header.SequencerHash[:], state.GetProposerHash())
 	copy(block.Header.NextSequencersHash[:], nextSeqHash[:])
-	block.Header.Dym = types.NewDymHeader(block.Data.ConsensusMessages)
 	return block
 }
 
