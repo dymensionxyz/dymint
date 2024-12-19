@@ -38,17 +38,11 @@ func (d *DymHeader) ToProto() *dymint.DymHeader {
 }
 
 func (d *DymHeader) FromProto(o *pb.DymHeader) error {
-	// TODO: validate length?
+	// bit pointless to verify length, since will be checked
+	// against a re-derivation anyway in val basic
 	copy(d.ConsensusMessagesHash[:], o.ConsensusMessagesHash)
-	return nil
+	return nil // return error anyway just to be consistent with the pattern
 }
-
-//func (d *DymHeader) HashA() [32]byte {
-//	ret := [32]byte{}
-//	h := merkle.HashFromByteSlices([][]byte{d.ConsensusMessagesHash[:]})
-//	copy(ret[:], h) // merkle is already 32 bytes
-//	return ret
-//}
 
 func consMessagesHash(msgs []*proto.Any) [32]byte {
 	bzz := make([][]byte, len(msgs))
