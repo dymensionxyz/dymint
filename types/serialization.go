@@ -98,6 +98,7 @@ func (h *Header) ToProto() *pb.Header {
 		SequencerHash:     h.SequencerHash[:],
 		NextSequencerHash: h.NextSequencersHash[:],
 		ChainId:           h.ChainID,
+		Extra:             &pb.ExtraSignedData{ConsensusMessagesHash: h.Extra.ConsensusMessagesHash[:]},
 	}
 }
 
@@ -135,6 +136,11 @@ func (h *Header) FromProto(other *pb.Header) error {
 	if len(other.ProposerAddress) > 0 {
 		h.ProposerAddress = make([]byte, len(other.ProposerAddress))
 		copy(h.ProposerAddress, other.ProposerAddress)
+	}
+	if other.Extra != nil {
+		if !safeCopy(h.Extra.ConsensusMessagesHash[:], other.Extra.ConsensusMessagesHash) {
+			return errors.New("invalid length of 'ConsensusMessagesHash'")
+		}
 	}
 
 	return nil

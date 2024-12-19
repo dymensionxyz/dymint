@@ -39,7 +39,7 @@ func (b *Block) ValidateBasic() error {
 		return err
 	}
 
-	if b.Header.DataHash != [32]byte(GetDataHash(b)) {
+	if b.Header.DataHash != [32]byte(GetDataHash(b)) { // could make it a header method
 		return ErrInvalidHeaderDataHash
 	}
 
