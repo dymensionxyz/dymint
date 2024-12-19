@@ -47,9 +47,10 @@ type Header struct {
 	Extra ExtraSignedData
 }
 
-// hashes of stuff, we can add as much as we like
-type ExtraSignedData struct {
-	ConsensusMessagesHash [32]byte
+// Additional data that the sequencer must sign over
+type DymHeader struct {
+	// must be the hash of the (merkle root) of the consensus messages
+	ConsensusMessagesHash []byte `protobuf:"bytes,1,opt,name=consensus_messages_hash,json=consensusMessagesHash,proto3" json:"consensus_messages_hash,omitempty"`
 }
 
 func (h Header) GetTimestamp() time.Time {
