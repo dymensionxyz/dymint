@@ -33,6 +33,7 @@ func (m *Manager) SubmitLoop(ctx context.Context,
 		m.GetUnsubmittedBlocks,
 		m.GetUnsubmittedBytes,
 		m.GetBatchSkewTime,
+		m.isLastBatchRecent,
 		m.Conf.BatchSubmitTime,
 		m.Conf.BatchSubmitBytes,
 		m.CreateAndSubmitBatchGetSizeBlocksCommits,
@@ -48,6 +49,7 @@ func SubmitLoopInner(
 	unsubmittedBlocksNum func() uint64, // func that returns the amount of non-submitted blocks
 	unsubmittedBlocksBytes func() int, // func that returns bytes from non-submitted blocks
 	batchSkewTime func() time.Duration, // func that returns measured time between last submitted block and last produced block
+	isLastBatchRecent func(time.Duration) bool, // func that returns true if there is already a batch submitted within last maxBatchSubmitTime
 	maxBatchSubmitTime time.Duration, // max time to allow between batches
 	maxBatchSubmitBytes uint64, // max size of serialised batch in bytes
 	createAndSubmitBatch func(maxSizeBytes uint64) (bytes uint64, err error),
@@ -103,7 +105,7 @@ func SubmitLoopInner(
 				done := ctx.Err() != nil
 				nothingToSubmit := pending == 0
 
-				lastSubmissionIsRecent := batchSkewTime() < maxBatchSubmitTime
+				lastSubmissionIsRecent := isLastBatchRecent(maxBatchSubmitTime)
 				maxDataNotExceeded := pending <= maxBatchSubmitBytes
 
 				UpdateBatchSubmissionGauges(pending, unsubmittedBlocksNum(), batchSkewTime())
@@ -341,6 +343,16 @@ func (m *Manager) GetBatchSkewTime() time.Duration {
 		return 0
 	}
 	return lastBlockProduced.Header.GetTimestamp().Sub(lastBlockInSettlementTime)
+}
+
+// isLastBatchRecent returns true if there is already a batch submitted within last maxBatchSubmitTime
+func (m *Manager) isLastBatchRecent(submitBatchTime time.Duration) bool {
+
+	lastBlockInSettlementTime, err := m.GetLastBlockInSettlementTime()
+	if err != nil {
+		return false
+	}
+	return time.Now().Sub(lastBlockInSettlementTime) < submitBatchTime
 }
 
 func UpdateBatchSubmissionGauges(skewBytes uint64, skewBlocks uint64, skewTime time.Duration) {
