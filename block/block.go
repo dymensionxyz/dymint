@@ -127,8 +127,6 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 
 	}
 
-	// save last block time used to calculate batch skew time
-	m.LastBlockTime.Store(block.Header.GetTimestamp().UTC().UnixNano())
 	// Update the store:
 	//  1. Save the proposer for the current height to the store.
 	//  2. Update the proposer in the state in case of rotation.

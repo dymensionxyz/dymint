@@ -334,6 +334,7 @@ func (c *Client) convertBatchToSettlementBatch(batch *types.Batch, daResult *da.
 			},
 		},
 		BlockDescriptors: bds,
+		CreationTime:     time.Now(),
 	}
 
 	return settlementBatch
