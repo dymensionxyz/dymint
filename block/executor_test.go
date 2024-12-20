@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	sequencers "github.com/dymensionxyz/dymension-rdk/x/sequencers/types"
 	pb "github.com/dymensionxyz/dymint/types/pb/dymint"
 	"github.com/gogo/protobuf/proto"
 	prototypes "github.com/gogo/protobuf/types"
@@ -87,7 +86,6 @@ func TestCreateBlock(t *testing.T) {
 	require.NoError(err)
 	err = mpool.CheckTx(make([]byte, 100), func(r *abci.Response) {}, mempool.TxInfo{})
 	require.NoError(err)
-	executor.AddConsensusMsgs(&sequencers.MsgUpgradeDRS{DrsVersion: 1})
 	block = executor.CreateBlock(3, &types.Commit{}, [32]byte{}, [32]byte(state.GetProposerHash()), state, maxBytes)
 	block.Data.ToProto()
 	require.NotNil(block)
@@ -195,6 +193,36 @@ func TestCreateBlockWithConsensusMessages(t *testing.T) {
 
 	assert.True(proto.Equal(anyMsg1, block.Data.ConsensusMessages[0]))
 	assert.True(proto.Equal(anyMsg2, block.Data.ConsensusMessages[1]))
+
+	// native -> proto -> binary -> proto -> native
+	var b1 = block
+	require.NoError(b1.ValidateBasic())
+	b1p1 := b1.ToProto()
+	b1p1bz, err := b1p1.Marshal()
+	require.NoError(err)
+	var b1p2 pb.Block
+	err = proto.Unmarshal(b1p1bz, &b1p2)
+	require.NoError(err)
+	var b2 types.Block
+	err = b2.FromProto(&b1p2)
+	require.NoError(err)
+	require.NoError(b2.ValidateBasic())
+
+	// same
+	b1bz, err := b1.MarshalBinary()
+	require.NoError(err)
+	var b3 types.Block
+	err = b3.UnmarshalBinary(b1bz)
+	require.NoError(err)
+	require.NoError(b3.ValidateBasic())
+
+	// only to proto
+	require.NoError(b1.ValidateBasic())
+	b1p3 := b1.ToProto()
+	var b4 types.Block
+	err = b4.FromProto(b1p3)
+	require.NoError(err)
+	require.NoError(b4.ValidateBasic())
 }
 
 func TestApplyBlock(t *testing.T) {
