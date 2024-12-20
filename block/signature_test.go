@@ -58,7 +58,6 @@ func TestProduceNewBlockMutation(t *testing.T) {
 
 	// mutate
 	b.Data.ConsensusMessages = []*proto.Any{{}}
-	// b.Data.ConsensusMessages = append(b.Data.ConsensusMessages, &proto.Any{TypeUrl: "mock", Value: []byte{1}})
 	bd = p2p.BlockData{
 		Block:  *b,
 		Commit: *c,
