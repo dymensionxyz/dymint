@@ -88,6 +88,10 @@ func TestCreateBlock(t *testing.T) {
 	block = executor.CreateBlock(3, &types.Commit{}, [32]byte{}, [32]byte(state.GetProposerHash()), state, maxBytes)
 	require.NotNil(block)
 	assert.Len(block.Data.Txs, 2)
+
+	pb := block.ToProto()
+	err = block.FromProto(pb)
+	require.NoError(err)
 }
 
 func TestCreateBlockWithConsensusMessages(t *testing.T) {

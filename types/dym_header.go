@@ -30,7 +30,7 @@ func (h DymHeader) Hash() cmtbytes.HexBytes {
 }
 
 func (h *Header) SetDymHeader(dh DymHeader) {
-	h.ConsensusMessagesHash = dh.ConsensusMessagesHash
+	copy(h.ConsensusMessagesHash[:], dh.ConsensusMessagesHash[:])
 }
 
 func (h *Header) DymHash() cmtbytes.HexBytes {

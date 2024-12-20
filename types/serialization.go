@@ -138,7 +138,7 @@ func (h *Header) FromProto(other *pb.Header) error {
 		copy(h.ProposerAddress, other.ProposerAddress)
 	}
 	if !safeCopy(h.ConsensusMessagesHash[:], other.ConsensusMessagesHash) {
-		return errors.New("invalid length of 'SequencersHash'")
+		return errors.New("invalid length of 'consensusMessagesHash'")
 	}
 	return nil
 }
