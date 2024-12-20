@@ -58,7 +58,8 @@ func TestBlockSerializationRoundTrip(t *testing.T) {
 				LastResultsHash:       h[5],
 				ProposerAddress:       []byte{4, 3, 2, 1},
 				NextSequencersHash:    h[6],
-				ConsensusMessagesHash: types.ConsMessagesHash(nil)},
+				ConsensusMessagesHash: types.ConsMessagesHash(nil),
+			},
 			Data: types.Data{
 				Txs:                    nil,
 				IntermediateStateRoots: types.IntermediateStateRoots{RawRootsList: [][]byte{{0x1}}},

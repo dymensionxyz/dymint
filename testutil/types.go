@@ -85,7 +85,8 @@ func generateBlock(height uint64, proposerHash []byte, lastHeaderHash [32]byte) 
 			SequencerHash:         [32]byte(proposerHash),
 			NextSequencersHash:    [32]byte(proposerHash),
 			ChainID:               "test-chain",
-			ConsensusMessagesHash: types.ConsMessagesHash(nil)},
+			ConsensusMessagesHash: types.ConsMessagesHash(nil),
+		},
 		Data: types.Data{
 			Txs:                    nil,
 			IntermediateStateRoots: types.IntermediateStateRoots{RawRootsList: [][]byte{{0x1}}},
@@ -388,8 +389,8 @@ func GetEmptyLastResultsHash() [32]byte {
 func GetRandomBlock(height uint64, nTxs int) *types.Block {
 	block := &types.Block{
 		Header: types.Header{
-			Height: height,
-			Dym:    types.ConsMessagesHash(nil),
+			Height:                height,
+			ConsensusMessagesHash: types.ConsMessagesHash(nil),
 		},
 		Data: types.Data{
 			Txs: make(types.Txs, nTxs),

@@ -3,7 +3,6 @@ package types
 import (
 	"fmt"
 
-	pb "github.com/dymensionxyz/dymint/types/pb/dymint"
 	proto "github.com/gogo/protobuf/types"
 	"github.com/tendermint/tendermint/crypto/merkle"
 	cmtbytes "github.com/tendermint/tendermint/libs/bytes"
@@ -38,35 +37,6 @@ func (h *Header) DymHash() cmtbytes.HexBytes {
 	return DymHeader{
 		ConsensusMessagesHash: h.ConsensusMessagesHash,
 	}.Hash()
-}
-
-func dymHashFr(blocks []*Block) cmtbytes.HexBytes {
-	// 32 bytes long
-	bzz := make([][]byte, len(blocks))
-	for i, block := range blocks {
-		bzz[i] = block.Header.DymHash()
-	}
-	return merkle.HashFromByteSlices(bzz)
-}
-
-func (d *DymHeader) ToProto() *pb.DymHeader {
-	if d == nil {
-		// responsibility of caller to validate
-		return nil
-	}
-	return &pb.DymHeader{
-		ConsensusMessagesHash: d.ConsensusMessagesHash[:],
-	}
-}
-
-func (d *DymHeader) FromProto(o *pb.DymHeader) error {
-	if o == nil || len(o.ConsensusMessagesHash) != 32 {
-		// the proto is invalid, or comes from an old version
-		// we don't error here, because it's the responsibility of the validation func
-		return nil
-	}
-	copy(d.ConsensusMessagesHash[:], o.ConsensusMessagesHash)
-	return nil // just return error anyway to stick with pattern
 }
 
 func ConsMessagesHash(msgs []*proto.Any) [32]byte {
