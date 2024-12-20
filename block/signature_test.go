@@ -49,6 +49,9 @@ func TestProduceNewBlockMutation(t *testing.T) {
 	assert.Equal(t, uint64(1), manager.State.Height())
 	assert.Equal(t, commitHash, manager.State.AppHash)
 
+	err = b.ValidateBasic()
+	require.NoError(t, err)
+
 	// TODO: better way to write test is to clone the block and commit and check a table of mutations
 	bd := p2p.BlockData{
 		Block:  *b,

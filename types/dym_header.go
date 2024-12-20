@@ -40,6 +40,9 @@ func (h *Header) DymHash() cmtbytes.HexBytes {
 }
 
 func ConsMessagesHash(msgs []*proto.Any) [32]byte {
+	if len(msgs) == 0 {
+		return ConsMessagesHash(nil)
+	}
 	bzz := make([][]byte, len(msgs))
 	for i, msg := range msgs {
 		var err error
