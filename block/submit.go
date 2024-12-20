@@ -33,6 +33,7 @@ func (m *Manager) SubmitLoop(ctx context.Context,
 		m.GetUnsubmittedBlocks,
 		m.GetUnsubmittedBytes,
 		m.GetBatchSkewTime,
+		m.isLastBatchRecent,
 		m.Conf.BatchSubmitTime,
 		m.Conf.BatchSubmitBytes,
 		m.CreateAndSubmitBatchGetSizeBlocksCommits,
@@ -48,6 +49,7 @@ func SubmitLoopInner(
 	unsubmittedBlocksNum func() uint64, // func that returns the amount of non-submitted blocks
 	unsubmittedBlocksBytes func() int, // func that returns bytes from non-submitted blocks
 	batchSkewTime func() time.Duration, // func that returns measured time between last submitted block and last produced block
+	isLastBatchRecent func(time.Duration) bool, // func that returns true if the last batch submission time is more recent than batch submission time
 	maxBatchSubmitTime time.Duration, // max time to allow between batches
 	maxBatchSubmitBytes uint64, // max size of serialised batch in bytes
 	createAndSubmitBatch func(maxSizeBytes uint64) (bytes uint64, err error),
@@ -86,8 +88,8 @@ func SubmitLoopInner(
 	})
 
 	eg.Go(func() error {
-		// 'submitter': this thread actually creates and submits batches. this thread is woken up every batch_submit_time (in addition to every block produced) to check if there is anything to submit even if no new blocks have been produced
-		ticker := time.NewTicker(maxBatchSubmitTime)
+		// 'submitter': this thread actually creates and submits batches. this thread is woken up every batch_submit_time/10 (we used /10 to avoid waiting too much if submission is not required for t-maxBatchSubmitTime, but it maybe required before t) to check if submission is required even if no new blocks have been produced
+		ticker := time.NewTicker(maxBatchSubmitTime / 10)
 		for {
 			select {
 			case <-ctx.Done():
@@ -103,7 +105,7 @@ func SubmitLoopInner(
 				done := ctx.Err() != nil
 				nothingToSubmit := pending == 0
 
-				lastSubmissionIsRecent := batchSkewTime() < maxBatchSubmitTime
+				lastSubmissionIsRecent := isLastBatchRecent(maxBatchSubmitTime)
 				maxDataNotExceeded := pending <= maxBatchSubmitBytes
 
 				UpdateBatchSubmissionGauges(pending, unsubmittedBlocksNum(), batchSkewTime())
@@ -257,7 +259,7 @@ func (m *Manager) SubmitBatch(batch *types.Batch) error {
 	m.LastSettlementHeight.Store(batch.EndHeight())
 
 	// update last submitted block time with batch last block (used to calculate max skew time)
-	m.LastBlockTimeInSettlement.Store(batch.Blocks[len(batch.Blocks)-1].Header.GetTimestamp().UTC().UnixNano())
+	m.LastSubmissionTime.Store(time.Now().UTC().UnixNano())
 
 	return err
 }
@@ -314,11 +316,58 @@ func (m *Manager) UpdateLastSubmittedHeight(event pubsub.Message) {
 	}
 }
 
+// GetLastBlockTime returns the time of the last produced block
+func (m *Manager) GetLastProducedBlockTime() time.Time {
+	lastProducedBlock, err := m.Store.LoadBlock(m.State.Height())
+	if err != nil {
+		return time.Time{}
+	}
+	return lastProducedBlock.Header.GetTimestamp()
+}
+
+// GetLastBlockTimeInSettlement returns the time of the last submitted block to SL
+// If no height in settlement returns first block time
+// If no first block produced returns now
+// If different error returns empty time
+func (m *Manager) GetLastBlockTimeInSettlement() time.Time {
+	lastBlockInSettlement, err := m.Store.LoadBlock(m.LastSettlementHeight.Load())
+	if err != nil && !errors.Is(err, gerrc.ErrNotFound) {
+		return time.Time{}
+	}
+	if errors.Is(err, gerrc.ErrNotFound) {
+		firstBlock, err := m.Store.LoadBlock(uint64(m.Genesis.InitialHeight)) //nolint:gosec // height is non-negative and falls in int64
+		if errors.Is(err, gerrc.ErrNotFound) {
+			return time.Now()
+		}
+		if err != nil {
+			return time.Time{}
+		}
+		return firstBlock.Header.GetTimestamp()
+
+	}
+	return lastBlockInSettlement.Header.GetTimestamp()
+}
+
 // GetBatchSkewTime returns the time between the last produced block and the last block submitted to SL
 func (m *Manager) GetBatchSkewTime() time.Duration {
-	lastProducedTime := time.Unix(0, m.LastBlockTime.Load())
-	lastSubmittedTime := time.Unix(0, m.LastBlockTimeInSettlement.Load())
-	return lastProducedTime.Sub(lastSubmittedTime)
+	return m.GetLastProducedBlockTime().Sub(m.GetLastBlockTimeInSettlement())
+}
+
+// isLastBatchRecent returns true if the last batch submitted is more recent than maxBatchSubmitTime
+// in case of no submission time the first block produced is used as a reference.
+func (m *Manager) isLastBatchRecent(maxBatchSubmitTime time.Duration) bool {
+	var lastSubmittedTime time.Time
+	if m.LastSubmissionTime.Load() == 0 {
+		firstBlock, err := m.Store.LoadBlock(uint64(m.Genesis.InitialHeight)) //nolint:gosec // height is non-negative and falls in int64
+		if err != nil {
+			return true
+		} else {
+			lastSubmittedTime = firstBlock.Header.GetTimestamp()
+		}
+	} else {
+		lastSubmittedTime = time.Unix(0, m.LastSubmissionTime.Load())
+	}
+	return time.Since(lastSubmittedTime) < maxBatchSubmitTime
 }
 
 func UpdateBatchSubmissionGauges(skewBytes uint64, skewBlocks uint64, skewTime time.Duration) {

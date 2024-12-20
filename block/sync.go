@@ -76,8 +76,8 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 				}
 				m.logger.Info("Retrieved state update from SL.", "state_index", settlementBatch.StateIndex)
 
-				// we update LastBlockTimeInSettlement to be able to measure batch skew time with last block time in settlement
-				m.LastBlockTimeInSettlement.Store(settlementBatch.BlockDescriptors[len(settlementBatch.BlockDescriptors)-1].GetTimestamp().UTC().UnixNano())
+				// we update LastSubmissionTime to be able to measure batch submission time
+				m.LastSubmissionTime.Store(settlementBatch.Batch.CreationTime.UTC().UnixNano())
 
 				err = m.ApplyBatchFromSL(settlementBatch.Batch)
 
