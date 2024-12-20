@@ -55,17 +55,15 @@ func TestIndexerServiceIndexesBlocks(t *testing.T) {
 		Tx:     types.Tx("foo"),
 		Result: abci.ResponseDeliverTx{
 			Code: 0,
-			Events: []abci.Event{
-				{
-					Type: "test_event",
-					Attributes: []abci.EventAttribute{
-						{
-							Key:   []byte("foo"),
-							Value: []byte("100"),
-							Index: true,
-						},
+			Events: []abci.Event{{Type: "test_event",
+				Attributes: []abci.EventAttribute{
+					{
+						Key:   []byte("foo"),
+						Value: []byte("100"),
+						Index: true,
 					},
 				},
+			},
 			},
 		},
 	}
@@ -78,17 +76,15 @@ func TestIndexerServiceIndexesBlocks(t *testing.T) {
 		Tx:     types.Tx("bar"),
 		Result: abci.ResponseDeliverTx{
 			Code: 0,
-			Events: []abci.Event{
-				{
-					Type: "test_event",
-					Attributes: []abci.EventAttribute{
-						{
-							Key:   []byte("foo"),
-							Value: []byte("100"),
-							Index: true,
-						},
+			Events: []abci.Event{{Type: "test_event",
+				Attributes: []abci.EventAttribute{
+					{
+						Key:   []byte("foo"),
+						Value: []byte("100"),
+						Index: true,
 					},
 				},
+			},
 			},
 		},
 	}
@@ -119,4 +115,5 @@ func TestIndexerServiceIndexesBlocks(t *testing.T) {
 	// 2 indexed tx + indexed 2 events = 4 pruned
 	expectedPruned := uint64(4)
 	require.Equal(t, expectedPruned, pruned)
+
 }

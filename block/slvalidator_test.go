@@ -146,6 +146,7 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 	}
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+
 			// Create manager
 			manager, err := testutil.GetManagerWithProposerKey(testutil.GetManagerConfig(), proposerKey, nil, 1, 1, 0, proxyApp, nil)
 			require.NoError(t, err)
@@ -257,11 +258,14 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 			} else {
 				require.Equal(t, reflect.ValueOf(tc.expectedErrType).Type(), reflect.TypeOf(err))
 			}
+
 		})
 	}
+
 }
 
 func TestStateUpdateValidator_ValidateDAFraud(t *testing.T) {
+
 	// Init app
 	app := testutil.GetAppMock(testutil.EndBlock)
 	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
@@ -325,6 +329,7 @@ func TestStateUpdateValidator_ValidateDAFraud(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+
 			// Create manager
 			manager, err := testutil.GetManagerWithProposerKey(testutil.GetManagerConfig(), proposerKey, nil, 1, 1, 0, proxyApp, nil)
 			require.NoError(t, err)
@@ -391,6 +396,7 @@ func TestStateUpdateValidator_ValidateDAFraud(t *testing.T) {
 			}
 		})
 	}
+
 }
 
 func getBlockDescriptors(batch *types.Batch) ([]rollapp.BlockDescriptor, error) {

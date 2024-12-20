@@ -87,4 +87,5 @@ func TestPruningRetainHeight(t *testing.T) {
 		validatePruning(i, expectedPruned, pruned, err)
 
 	}
+
 }

@@ -315,6 +315,7 @@ func TestTxSearchMultipleTxs(t *testing.T) {
 }
 
 func TestTxIndexerPruning(t *testing.T) {
+
 	// init the block indexer
 	indexer := NewTxIndex(store.NewDefaultInMemoryKVStore())
 	numBlocks := uint64(100)
@@ -356,6 +357,7 @@ func TestTxIndexerPruning(t *testing.T) {
 		results := indexer.match(context.Background(), c, startKeyForCondition(c, 0), nil, true)
 		require.Equal(t, 0, len(results))
 	}
+
 }
 
 func txResultWithEvents(events []abci.Event) *abci.TxResult {
@@ -372,7 +374,6 @@ func txResultWithEvents(events []abci.Event) *abci.TxResult {
 		},
 	}
 }
-
 func getRandomTxResult(height int64, events []abci.Event) *abci.TxResult {
 	tx := types.Tx(randomTxHash())
 	return &abci.TxResult{

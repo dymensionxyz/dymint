@@ -148,6 +148,7 @@ func TestBlockIndexer(t *testing.T) {
 }
 
 func TestBlockIndexerPruning(t *testing.T) {
+
 	// init the block indexer
 	prefixStore := store.NewPrefixKV(store.NewDefaultInMemoryKVStore(), []byte("block_events"))
 	indexer := blockidxkv.New(prefixStore)
@@ -183,6 +184,7 @@ func TestBlockIndexerPruning(t *testing.T) {
 	results, err = indexer.Search(context.Background(), q)
 	require.NoError(t, err)
 	require.Equal(t, 0, len(results))
+
 }
 
 func getBeginBlock() abci.ResponseBeginBlock {
