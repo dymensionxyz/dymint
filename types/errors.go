@@ -20,6 +20,8 @@ var (
 	ErrInvalidBlockHeight    = errors.New("invalid block height")
 	ErrInvalidHeaderDataHash = errors.New("header not matching block data")
 	ErrInvalidDymHeader      = gerrc.ErrInvalidArgument.Wrap("dym header")
+	ErrInvalidDymHeaderHash  = fmt.Errorf("hash mismatch: %w", ErrInvalidDymHeader)
+	ErrInvalidDymHeaderNil   = fmt.Errorf("is nil: %w", ErrInvalidDymHeader)
 	ErrMissingProposerPubKey = fmt.Errorf("missing proposer public key: %w", gerrc.ErrNotFound)
 	ErrVersionMismatch       = errors.New("version mismatch")
 	ErrEmptyProposerAddress  = errors.New("no proposer address")
@@ -393,11 +395,13 @@ func (e ErrInvalidHeaderDataHashFraud) Unwrap() error {
 // when dym header on the block header is not correctly derived from block data
 type ErrInvalidDymHeaderFraud struct {
 	*Block
+	base error
 }
 
-func NewErrInvalidDymHeaderFraud(block *Block) error {
+func NewErrInvalidDymHeaderFraud(block *Block, err error) error {
 	return &ErrInvalidDymHeaderFraud{
-		block,
+		Block: block,
+		base:  err,
 	}
 }
 
@@ -409,7 +413,7 @@ func (e ErrInvalidDymHeaderFraud) Error() string {
 }
 
 func (e ErrInvalidDymHeaderFraud) Unwrap() error {
-	return gerrc.ErrFault
+	return errors.Join(e.base, gerrc.ErrFault)
 }
 
 // ErrStateUpdateNumBlocksNotMatchingFraud represents an error where the number of blocks in the state update does not match the expected number.

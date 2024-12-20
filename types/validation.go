@@ -51,7 +51,7 @@ func (b *Block) ValidateBasic() error {
 
 func (b *Block) validateDymHeader() error {
 	if !bytes.Equal(b.Header.Dym.Hash(), NewDymHeader(b.Data.ConsensusMessages).Hash()) {
-		return ErrInvalidDymHeader
+		return ErrInvalidDymHeaderHash
 	}
 	return nil
 }
@@ -63,7 +63,7 @@ func (b *Block) ValidateWithState(state *State) error {
 			return NewErrInvalidHeaderDataHashFraud(b)
 		}
 		if errors.Is(err, ErrInvalidDymHeader) {
-			return NewErrInvalidDymHeaderFraud(b)
+			return NewErrInvalidDymHeaderFraud(b, err)
 		}
 
 		return err

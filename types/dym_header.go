@@ -24,7 +24,7 @@ func NewDymHeader(cons []*proto.Any) *DymHeader {
 
 func (d *DymHeader) ValidateBasic() error {
 	if d == nil {
-		return fmt.Errorf("dym header is nil")
+		return ErrInvalidDymHeaderNil
 	}
 	return nil
 }
