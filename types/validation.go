@@ -50,8 +50,9 @@ func (b *Block) ValidateBasic() error {
 }
 
 func (b *Block) validateDymHeader() error {
-	if !bytes.Equal(b.Header.DymHash(), NewDymHeader(b.Data.ConsensusMessages).Hash()) {
-	if !bytes.Equal(b.Header.Dym.Hash(), NewDymHeader(b.Data.ConsensusMessages).Hash()) {
+	exp := b.Header.DymHash()
+	got := MakeDymHeader(b.Data.ConsensusMessages).Hash()
+	if !bytes.Equal(exp, got) {
 		return ErrInvalidDymHeaderHash
 	}
 	return nil
@@ -113,9 +114,6 @@ func (b *Block) ValidateWithState(state *State) error {
 func (h *Header) ValidateBasic() error {
 	if len(h.ProposerAddress) == 0 {
 		return ErrEmptyProposerAddress
-	}
-	if err := h.Dym.ValidateBasic(); err != nil {
-		return fmt.Errorf("dym header: %w", err)
 	}
 
 	return nil

@@ -22,16 +22,22 @@ func MakeDymHeader(consMessages []*proto.Any) DymHeader {
 	}
 }
 
-func (h *Header) SetDymHeader(dh DymHeader) {
-	h.ConsensusMessagesHash = dh.ConsensusMessagesHash
-}
-
-func (h *Header) DymHash() cmtbytes.HexBytes {
+func (h DymHeader) Hash() cmtbytes.HexBytes {
 	// 32 bytes long
 	return merkle.HashFromByteSlices([][]byte{
 		h.ConsensusMessagesHash[:],
 		// can be extended with other things if we need to later
 	})
+}
+
+func (h *Header) SetDymHeader(dh DymHeader) {
+	h.ConsensusMessagesHash = dh.ConsensusMessagesHash
+}
+
+func (h *Header) DymHash() cmtbytes.HexBytes {
+	return DymHeader{
+		ConsensusMessagesHash: h.ConsensusMessagesHash,
+	}.Hash()
 }
 
 func dymHashFr(blocks []*Block) cmtbytes.HexBytes {
