@@ -3,7 +3,6 @@ package types
 import (
 	"fmt"
 
-	"github.com/dymensionxyz/dymint/types/pb/dymint"
 	pb "github.com/dymensionxyz/dymint/types/pb/dymint"
 	proto "github.com/gogo/protobuf/types"
 	"github.com/tendermint/tendermint/crypto/merkle"
@@ -31,11 +30,11 @@ func (d *DymHeader) Hash() cmtbytes.HexBytes {
 	})
 }
 
-func (d *DymHeader) ToProto() *dymint.DymHeader {
+func (d *DymHeader) ToProto() *pb.DymHeader {
 	if d == nil {
 		return nil // for tests
 	}
-	return &dymint.DymHeader{
+	return &pb.DymHeader{
 		ConsensusMessagesHash: d.ConsensusMessagesHash[:],
 	}
 }
