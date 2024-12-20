@@ -64,14 +64,9 @@ message Header {
 	// Chain ID the block belongs to
 	string chain_id = 13;
 
+	// The following fields are added on top of the normal TM header, for dymension purposes
   // Note: LOSSY when converted to tendermint (squashed into a single hash)
-  DymHeader dym = 15;
-}
-
-// Additional data that the sequencer must sign over
-message DymHeader {
-  // must be the hash of the (merkle root) of the consensus messages
-  bytes consensus_messages_hash = 1;
+	bytes consensus_messages_hash = 15;
 }
 
 message Commit {

@@ -44,8 +44,9 @@ type Header struct {
 	// The Chain ID
 	ChainID string
 
+	// The following fields are added on top of the normal TM header, for dymension purposes
 	// Note: LOSSY when converted to tendermint (squashed into a single hash)
-	Dym *DymHeader
+	ConsensusMessagesHash [32]byte // must be the hash of the (merkle root) of the consensus messages
 }
 
 func (h Header) GetTimestamp() time.Time {

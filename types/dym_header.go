@@ -10,12 +10,6 @@ import (
 	_ "github.com/tendermint/tendermint/types"
 )
 
-// Additional data that the sequencer must sign over
-type DymHeader struct {
-	// must be the hash of the (merkle root) of the consensus messages
-	ConsensusMessagesHash [32]byte
-}
-
 func NewDymHeader(cons []*proto.Any) *DymHeader {
 	return &DymHeader{
 		ConsensusMessagesHash: consMessagesHash(cons),
