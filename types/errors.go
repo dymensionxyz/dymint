@@ -21,7 +21,6 @@ var (
 	ErrInvalidHeaderDataHash = errors.New("header not matching block data")
 	ErrInvalidDymHeader      = gerrc.ErrInvalidArgument.Wrap("dym header")
 	ErrInvalidDymHeaderHash  = fmt.Errorf("hash mismatch: %w", ErrInvalidDymHeader)
-	ErrInvalidDymHeaderNil   = fmt.Errorf("is nil: %w", ErrInvalidDymHeader)
 	ErrMissingProposerPubKey = fmt.Errorf("missing proposer public key: %w", gerrc.ErrNotFound)
 	ErrVersionMismatch       = errors.New("version mismatch")
 	ErrEmptyProposerAddress  = errors.New("no proposer address")
