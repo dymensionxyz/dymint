@@ -22,6 +22,13 @@ func NewDymHeader(cons []*proto.Any) *DymHeader {
 	}
 }
 
+func (d *DymHeader) ValidateBasic() error {
+	if d == nil {
+		return fmt.Errorf("dym header is nil")
+	}
+	return nil
+}
+
 func (d *DymHeader) Hash() cmtbytes.HexBytes {
 	// 32 bytes long
 	return merkle.HashFromByteSlices([][]byte{
@@ -32,7 +39,8 @@ func (d *DymHeader) Hash() cmtbytes.HexBytes {
 
 func (d *DymHeader) ToProto() *pb.DymHeader {
 	if d == nil {
-		return nil // for tests
+		// responsibility of caller to validate
+		return nil
 	}
 	return &pb.DymHeader{
 		ConsensusMessagesHash: d.ConsensusMessagesHash[:],
@@ -41,10 +49,12 @@ func (d *DymHeader) ToProto() *pb.DymHeader {
 
 func (d *DymHeader) FromProto(o *pb.DymHeader) error {
 	if o == nil || len(o.ConsensusMessagesHash) != 32 {
-		return fmt.Errorf("missing or corrupted - check software version is same as block: %w", ErrInvalidDymHeader)
+		// the proto is invalid, or comes from an old version
+		// we don't error here, because it's the responsibility of the validation func
+		return nil
 	}
 	copy(d.ConsensusMessagesHash[:], o.ConsensusMessagesHash)
-	return nil
+	return nil // just return error anyway to stick with pattern
 }
 
 func consMessagesHash(msgs []*proto.Any) [32]byte {
