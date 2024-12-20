@@ -407,7 +407,7 @@ func NewErrInvalidDymHeaderFraud(block *Block, err error) error {
 
 func (e ErrInvalidDymHeaderFraud) Error() string {
 	return fmt.Sprintf(
-		"possible fraud: invalid dym header: height : %d",
+		"possible fraud, double check using correct DRS and block version: invalid dym header: height : %d",
 		e.Header.Height,
 	)
 }
