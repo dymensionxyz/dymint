@@ -84,21 +84,21 @@ func (c *Commit) UnmarshalBinary(data []byte) error {
 // ToProto converts Header into protobuf representation and returns it.
 func (h *Header) ToProto() *pb.Header {
 	return &pb.Header{
-		Version:           &pb.Version{Block: h.Version.Block, App: h.Version.App},
-		NamespaceId:       []byte{},
-		Height:            h.Height,
-		Time:              h.Time,
-		LastHeaderHash:    h.LastHeaderHash[:],
-		LastCommitHash:    h.LastCommitHash[:],
-		DataHash:          h.DataHash[:],
-		ConsensusHash:     h.ConsensusHash[:],
-		AppHash:           h.AppHash[:],
-		LastResultsHash:   h.LastResultsHash[:],
-		ProposerAddress:   h.ProposerAddress[:],
-		SequencerHash:     h.SequencerHash[:],
-		NextSequencerHash: h.NextSequencersHash[:],
-		ChainId:           h.ChainID,
-		Dym:               h.Dym.ToProto(),
+		Version:               &pb.Version{Block: h.Version.Block, App: h.Version.App},
+		NamespaceId:           []byte{},
+		Height:                h.Height,
+		Time:                  h.Time,
+		LastHeaderHash:        h.LastHeaderHash[:],
+		LastCommitHash:        h.LastCommitHash[:],
+		DataHash:              h.DataHash[:],
+		ConsensusHash:         h.ConsensusHash[:],
+		AppHash:               h.AppHash[:],
+		LastResultsHash:       h.LastResultsHash[:],
+		ProposerAddress:       h.ProposerAddress[:],
+		SequencerHash:         h.SequencerHash[:],
+		NextSequencerHash:     h.NextSequencersHash[:],
+		ChainId:               h.ChainID,
+		ConsensusMessagesHash: h.ConsensusMessagesHash[:],
 	}
 }
 
@@ -137,11 +137,8 @@ func (h *Header) FromProto(other *pb.Header) error {
 		h.ProposerAddress = make([]byte, len(other.ProposerAddress))
 		copy(h.ProposerAddress, other.ProposerAddress)
 	}
-	if h.Dym != nil {
-		h.Dym = &DymHeader{}
-		if err := h.Dym.FromProto(other.Dym); err != nil {
-			return err
-		}
+	if !safeCopy(h.ConsensusMessagesHash[:], other.ConsensusMessagesHash) {
+		return errors.New("invalid length of 'SequencersHash'")
 	}
 	return nil
 }

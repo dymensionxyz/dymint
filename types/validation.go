@@ -50,6 +50,7 @@ func (b *Block) ValidateBasic() error {
 }
 
 func (b *Block) validateDymHeader() error {
+	if !bytes.Equal(b.Header.DymHash(), NewDymHeader(b.Data.ConsensusMessages).Hash()) {
 	if !bytes.Equal(b.Header.Dym.Hash(), NewDymHeader(b.Data.ConsensusMessages).Hash()) {
 		return ErrInvalidDymHeaderHash
 	}

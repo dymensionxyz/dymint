@@ -10,25 +10,37 @@ import (
 	_ "github.com/tendermint/tendermint/types"
 )
 
-func NewDymHeader(cons []*proto.Any) *DymHeader {
-	return &DymHeader{
-		ConsensusMessagesHash: consMessagesHash(cons),
+// a convenience struct to make computing easier
+// persisted and over the wire types use a flat representation
+type DymHeader struct {
+	ConsensusMessagesHash [32]byte
+}
+
+func MakeDymHeader(consMessages []*proto.Any) DymHeader {
+	return DymHeader{
+		ConsensusMessagesHash: ConsMessagesHash(consMessages),
 	}
 }
 
-func (d *DymHeader) ValidateBasic() error {
-	if d == nil {
-		return ErrInvalidDymHeaderNil
-	}
-	return nil
+func (h *Header) SetDymHeader(dh DymHeader) {
+	h.ConsensusMessagesHash = dh.ConsensusMessagesHash
 }
 
-func (d *DymHeader) Hash() cmtbytes.HexBytes {
+func (h *Header) DymHash() cmtbytes.HexBytes {
 	// 32 bytes long
 	return merkle.HashFromByteSlices([][]byte{
-		d.ConsensusMessagesHash[:],
+		h.ConsensusMessagesHash[:],
 		// can be extended with other things if we need to later
 	})
+}
+
+func dymHashFr(blocks []*Block) cmtbytes.HexBytes {
+	// 32 bytes long
+	bzz := make([][]byte, len(blocks))
+	for i, block := range blocks {
+		bzz[i] = block.Header.DymHash()
+	}
+	return merkle.HashFromByteSlices(bzz)
 }
 
 func (d *DymHeader) ToProto() *pb.DymHeader {
@@ -51,7 +63,7 @@ func (d *DymHeader) FromProto(o *pb.DymHeader) error {
 	return nil // just return error anyway to stick with pattern
 }
 
-func consMessagesHash(msgs []*proto.Any) [32]byte {
+func ConsMessagesHash(msgs []*proto.Any) [32]byte {
 	bzz := make([][]byte, len(msgs))
 	for i, msg := range msgs {
 		var err error

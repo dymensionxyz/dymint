@@ -929,11 +929,10 @@ func TestValidatorSetHandling(t *testing.T) {
 func getRandomBlock(height uint64, nTxs int) *types.Block {
 	block := &types.Block{
 		Header: types.Header{
-			Height:          height,
-			Version:         types.Version{Block: testutil.BlockVersion},
-			ProposerAddress: getRandomBytes(20),
-			Dym:             types.NewDymHeader(nil),
-		},
+			Height:                height,
+			Version:               types.Version{Block: testutil.BlockVersion},
+			ProposerAddress:       getRandomBytes(20),
+			ConsensusMessagesHash: types.ConsMessagesHash(nil)},
 		Data: types.Data{
 			Txs: make(types.Txs, nTxs),
 			IntermediateStateRoots: types.IntermediateStateRoots{
