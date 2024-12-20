@@ -92,9 +92,11 @@ func TestCreateBlock(t *testing.T) {
 	require.NotNil(block)
 	assert.Len(block.Data.Txs, 2)
 
+	require.NoError(block.ValidateBasic())
 	pb := block.ToProto()
 	err = block.FromProto(pb)
 	require.NoError(err)
+	require.NoError(block.ValidateBasic())
 }
 
 func TestCreateBlockWithConsensusMessages(t *testing.T) {
