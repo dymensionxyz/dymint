@@ -131,7 +131,7 @@ func (h *Header) FromProto(other *pb.Header) error {
 		return errors.New("invalid length of 'SequencerHash'")
 	}
 	if !safeCopy(h.NextSequencersHash[:], other.NextSequencerHash) {
-		return errors.New("invalid length of 'SequencersHash'")
+		return errors.New("invalid length of 'NextSequencersHash'")
 	}
 	if len(other.ProposerAddress) > 0 { // TODO: why if?
 		h.ProposerAddress = make([]byte, len(other.ProposerAddress))
