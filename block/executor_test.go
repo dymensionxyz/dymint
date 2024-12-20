@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	sequencers "github.com/dymensionxyz/dymension-rdk/x/sequencers/types"
 	"github.com/gogo/protobuf/proto"
 	prototypes "github.com/gogo/protobuf/types"
 	"github.com/golang/groupcache/testpb"
@@ -85,7 +86,9 @@ func TestCreateBlock(t *testing.T) {
 	require.NoError(err)
 	err = mpool.CheckTx(make([]byte, 100), func(r *abci.Response) {}, mempool.TxInfo{})
 	require.NoError(err)
+	executor.AddConsensusMsgs(&sequencers.MsgUpgradeDRS{DrsVersion: 1})
 	block = executor.CreateBlock(3, &types.Commit{}, [32]byte{}, [32]byte(state.GetProposerHash()), state, maxBytes)
+	block.Data.ToProto()
 	require.NotNil(block)
 	assert.Len(block.Data.Txs, 2)
 

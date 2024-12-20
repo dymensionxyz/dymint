@@ -4,10 +4,11 @@ import (
 	"context"
 	"testing"
 
+	proto "github.com/gogo/protobuf/types"
+
 	"github.com/dymensionxyz/dymint/block"
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/testutil"
-	proto "github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -56,7 +57,6 @@ func TestProduceNewBlockMutation(t *testing.T) {
 	err = bd.Validate(manager.State.GetProposerPubKey())
 	require.NoError(t, err)
 
-	// mutate
 	b.Data.ConsensusMessages = []*proto.Any{{}}
 	bd = p2p.BlockData{
 		Block:  *b,
