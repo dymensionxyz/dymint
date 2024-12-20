@@ -133,12 +133,14 @@ func (h *Header) FromProto(other *pb.Header) error {
 	if !safeCopy(h.NextSequencersHash[:], other.NextSequencerHash) {
 		return errors.New("invalid length of 'SequencersHash'")
 	}
-	if len(other.ProposerAddress) > 0 {
+	if len(other.ProposerAddress) > 0 { // TODO: why if?
 		h.ProposerAddress = make([]byte, len(other.ProposerAddress))
 		copy(h.ProposerAddress, other.ProposerAddress)
 	}
-	if !safeCopy(h.ConsensusMessagesHash[:], other.ConsensusMessagesHash) {
-		return errors.New("invalid length of 'consensusMessagesHash'")
+	if 0 < len(other.ConsensusMessagesHash) {
+		if !safeCopy(h.ConsensusMessagesHash[:], other.ConsensusMessagesHash) {
+			return errors.New("invalid length of 'consensusMessagesHash'")
+		}
 	}
 	return nil
 }
