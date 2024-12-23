@@ -51,7 +51,6 @@ message State {
 
   int64 revision_start_height = 21;
 
-  uint32 prev_drs = 23;
 }
 
 //rollapp params defined in genesis and updated via gov proposal
