@@ -45,8 +45,6 @@ type State struct {
 
 	// LastHeaderHash is the hash of the last block header.
 	LastHeaderHash [32]byte
-
-	PrevDrs uint32
 }
 
 func (s *State) GetProposer() *Sequencer {
