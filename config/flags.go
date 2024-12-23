@@ -78,6 +78,9 @@ func BindDymintFlags(cmd *cobra.Command, v *viper.Viper) error {
 	if err := v.BindPFlag("batch_submit_bytes", cmd.Flags().Lookup(FlagBatchSubmitBytes)); err != nil {
 		return err
 	}
+	if err := v.BindPFlag("skip_validation_height", cmd.Flags().Lookup(FlagSkipValidationHeight)); err != nil {
+		return err
+	}
 	if err := v.BindPFlag("settlement_layer", cmd.Flags().Lookup(FlagSettlementLayer)); err != nil {
 		return err
 	}

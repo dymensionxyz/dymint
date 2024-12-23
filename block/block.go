@@ -14,7 +14,7 @@ import (
 // applyBlockWithFraudHandling calls applyBlock and validateBlockBeforeApply with fraud handling.
 func (m *Manager) applyBlockWithFraudHandling(block *types.Block, commit *types.Commit, blockMetaData types.BlockMetaData) error {
 	validateWithFraud := func() error {
-		if m.Conf.SkipValidationHeight == block.Header.Height {
+		if m.Conf.SkipValidationHeight != block.Header.Height {
 			if err := m.validateBlockBeforeApply(block, commit); err != nil {
 				m.blockCache.Delete(block.Header.Height)
 				// TODO: can we take an action here such as dropping the peer / reducing their reputation?
