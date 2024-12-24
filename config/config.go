@@ -61,6 +61,8 @@ type BlockManagerConfig struct {
 	BatchSubmitBytes uint64 `mapstructure:"batch_submit_bytes"`
 	// SequencerSetUpdateInterval defines the interval at which to fetch sequencer updates from the settlement layer
 	SequencerSetUpdateInterval time.Duration `mapstructure:"sequencer_update_interval"`
+	// SkipValidationHeight can be used to skip fraud validation for a specific height (used to bypass backward compatibility issues between versions)
+	SkipValidationHeight uint64 `mapstructure:"skip_validation_height"`
 }
 
 // GetViperConfig reads configuration parameters from Viper instance.
