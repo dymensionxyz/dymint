@@ -304,12 +304,12 @@ func (c *Client) GenesisChunked(_ context.Context, id uint) (*ctypes.ResultGenes
 		return nil, fmt.Errorf("while creating chunks of the genesis document: %w", err)
 	}
 	if genChunks == nil {
-		return nil, fmt.Errorf("service configuration error, genesis chunks are not initialized")
+		return nil, errors.New("service configuration error, genesis chunks are not initialized")
 	}
 
 	chunkLen := len(genChunks)
 	if chunkLen == 0 {
-		return nil, fmt.Errorf("service configuration error, there are no chunks")
+		return nil, errors.New("service configuration error, there are no chunks")
 	}
 
 	// it's safe to do uint(chunkLen)-1 (no overflow) since we always have at least one chunk here

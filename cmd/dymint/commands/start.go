@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -141,7 +142,7 @@ func startInProcess(config *cfg.NodeConfig, tmConfig *tmcfg.Config, logger log.L
 
 func checkGenesisHash(config *tmcfg.Config) error {
 	if config.Genesis == "" {
-		return fmt.Errorf("genesis file is not set")
+		return errors.New("genesis file is not set")
 	}
 
 	if len(genesisHash) == 0 {
