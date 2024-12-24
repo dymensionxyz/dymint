@@ -179,8 +179,13 @@ func (v *SettlementValidator) ValidateDaBlocks(slBatch *settlement.ResultRetriev
 	// last block of the batch
 	lastDABlock := daBlocks[numSlBDs-1]
 
+	// we get revision for the next state update
+	revision, err := v.blockManager.getRevisionFromSL(lastDABlock.Header.Height + 1)
+	if err != nil {
+		return err
+	}
 	// if lastDaBlock is previous block to fork, dont validate nextsequencerhash of last block because it will not match
-	if v.blockManager.State.RevisionStartHeight-1 == lastDABlock.Header.Height {
+	if revision.StartHeight-1 == lastDABlock.Header.Height {
 		v.logger.Debug("DA blocks, previous to fork, validated successfully", "start height", daBlocks[0].Header.Height, "end height", daBlocks[len(daBlocks)-1].Header.Height)
 		return nil
 	}
