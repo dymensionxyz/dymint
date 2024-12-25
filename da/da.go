@@ -2,7 +2,7 @@ package da
 
 import (
 	"encoding/hex"
-	"fmt"
+	"errors"
 	"strconv"
 	"strings"
 
@@ -113,7 +113,7 @@ func (d *DASubmitMetaData) ToPath() string {
 func (d *DASubmitMetaData) FromPath(path string) (*DASubmitMetaData, error) {
 	pathParts := strings.FieldsFunc(path, func(r rune) bool { return r == rune(PathSeparator[0]) })
 	if len(pathParts) < 2 {
-		return nil, fmt.Errorf("invalid DA path")
+		return nil, errors.New("invalid DA path")
 	}
 
 	height, err := strconv.ParseUint(pathParts[1], 10, 64)
