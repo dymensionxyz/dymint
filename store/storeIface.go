@@ -76,6 +76,8 @@ type Store interface {
 
 	PruneStore(to uint64, logger types.Logger) (uint64, error)
 
+	PruneHeights(from, to uint64, logger types.Logger) (uint64, error)
+
 	SaveBlockCid(height uint64, cid cid.Cid, batch KVBatch) (KVBatch, error)
 
 	LoadBlockCid(height uint64) (cid.Cid, error)
