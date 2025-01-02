@@ -192,12 +192,6 @@ func NewManager(
 		return nil, err
 	}
 
-	// update dymint state with next revision info
-	err = m.updateStateForNextRevision()
-	if err != nil {
-		return nil, err
-	}
-
 	// validate configuration params and rollapp consensus params are in line
 	err = m.ValidateConfigWithRollappParams()
 	if err != nil {
@@ -220,6 +214,12 @@ func (m *Manager) Start(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	// update dymint state with next revision info
+	err := m.updateStateForNextRevision()
+	if err != nil {
+		return err
 	}
 
 	// Check if a proposer on the rollapp is set. In case no proposer is set on the Rollapp, fallback to the hub proposer (If such exists).
