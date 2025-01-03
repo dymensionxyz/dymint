@@ -54,6 +54,7 @@ require (
 	github.com/cskr/pubsub v1.0.2 // indirect
 	github.com/dgraph-io/badger/v3 v3.2103.3 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
+	github.com/hashicorp/go-uuid v1.0.1 // indirect
 	github.com/ipfs/go-block-format v0.2.0 // indirect
 	github.com/regen-network/cosmos-proto v0.3.1 // indirect
 	github.com/tklauser/go-sysconf v0.3.11 // indirect
@@ -94,7 +95,6 @@ require (
 	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/pprof v0.0.0-20240207164012-fb44976bdcd5 // indirect
-	github.com/hashicorp/go-uuid v1.0.1 // indirect
 	github.com/hashicorp/golang-lru/v2 v2.0.7 // indirect
 	github.com/ipfs/go-log v1.0.5 // indirect
 	github.com/klauspost/reedsolomon v1.11.8 // indirect
