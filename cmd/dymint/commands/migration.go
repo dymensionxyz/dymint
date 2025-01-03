@@ -10,12 +10,12 @@ import (
 
 var mainPrefix = []byte{0}
 
-// run3dMigrationCmd
+// Run3dMigrationCmd migrates store to 3D version (1.3.0) for old rollapps.
 func Run3dMigrationCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:     "run-3d-migration",
 		Aliases: []string{"run-3d-migration"},
-		Short:   "Show this node's ID",
+		Short:   "Migrate dymint store to 3D",
 		RunE:    run3dMigration,
 	}
 	cfg.AddNodeFlags(cmd)
