@@ -36,7 +36,10 @@ func run3dMigration(cmd *cobra.Command, args []string) error {
 	baseKV := store.NewKVStore(conf.RootDir, conf.DBPath, "dymint", conf.DBConfig.SyncWrites, logger)
 	s := store.New(store.NewPrefixKV(baseKV, mainPrefix))
 
-	s.run3dMigration()
-	fmt.Println("Store migration successful")
+	err = s.Run3DMigration()
+	if err != nil {
+		fmt.Println("3D dymint store migration failed. Err:", err)
+	}
+	fmt.Println("3D dymint store migration successful")
 	return nil
 }

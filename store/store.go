@@ -11,6 +11,7 @@ import (
 
 	"github.com/dymensionxyz/dymint/types"
 	pb "github.com/dymensionxyz/dymint/types/pb/dymint"
+	"github.com/dymensionxyz/dymint/version"
 )
 
 var (
@@ -421,6 +422,24 @@ func (s *DefaultStore) LoadLastBlockSequencerSet() (types.Sequencers, error) {
 	}
 
 	return sequencers, nil
+}
+
+func (s *DefaultStore) Run3DMigration() error {
+
+	state, err := s.LoadState()
+	if err != nil {
+		return err
+	}
+	if state.RollappParams.DrsVersion != 0 {
+		return fmt.Errorf("3D migration already executed")
+	}
+	state.RollappParams.Da = "celestia"
+	version, err := version.GetDRSVersion()
+	if err != nil {
+		return err
+	}
+	state.RollappParams.DrsVersion = version
+	return nil
 }
 
 func getBlockKey(hash [32]byte) []byte {
