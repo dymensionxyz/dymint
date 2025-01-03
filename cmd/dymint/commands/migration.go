@@ -3,6 +3,7 @@ package commands
 import (
 	"fmt"
 
+	"github.com/cosmos/cosmos-sdk/server"
 	cfg "github.com/dymensionxyz/dymint/config"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/spf13/cobra"
@@ -23,7 +24,11 @@ func Run3dMigrationCmd() *cobra.Command {
 }
 
 func run3dMigration(cmd *cobra.Command, args []string) error {
-	baseKV := store.NewDefaultKVStore(tmconfig.RootDir, tmconfig.DBPath, "dymint")
+
+	serverCtx := server.GetServerContextFromCmd(cmd)
+	cfg := serverCtx.Config
+
+	baseKV := store.NewDefaultKVStore(cfg.RootDir, cfg.DBPath, "dymint")
 	s := store.New(store.NewPrefixKV(baseKV, mainPrefix))
 
 	err := s.Run3DMigration()
