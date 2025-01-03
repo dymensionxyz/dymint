@@ -130,7 +130,8 @@ func (h *Header) FromProto(other *pb.Header) error {
 	if !safeCopy(h.SequencerHash[:], other.SequencerHash) {
 		return errors.New("invalid length of 'SequencerHash'")
 	}
-	if !safeCopy(h.NextSequencersHash[:], other.NextSequencerHash) {
+	// if NextSequencerHash is nil (2D rollapps) dont copy
+	if other.NextSequencerHash != nil && !safeCopy(h.NextSequencersHash[:], other.NextSequencerHash) {
 		return errors.New("invalid length of 'NextSequencersHash'")
 	}
 	if len(other.ProposerAddress) > 0 { // TODO: why if?

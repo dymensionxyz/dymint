@@ -209,7 +209,7 @@ func (m *Manager) CreateBatch(maxBatchSize uint64, startHeight uint64, endHeight
 		}
 
 		drsVersion, err := m.Store.LoadDRSVersion(block.Header.Height)
-		if err != nil {
+		if err != nil && !errors.Is(err, gerrc.ErrNotFound) {
 			return nil, fmt.Errorf("load drs version: h: %d: %w", h, err)
 		}
 

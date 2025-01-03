@@ -29,7 +29,7 @@ func run3dMigration(cmd *cobra.Command, args []string) error {
 
 	err := s.Run3DMigration()
 	if err != nil {
-		fmt.Println("3D dymint store migration failed. Err:", err)
+		return fmt.Errorf("3D dymint store migration failed. err:%w", err)
 	}
 	fmt.Println("3D dymint store migration successful")
 	return nil
