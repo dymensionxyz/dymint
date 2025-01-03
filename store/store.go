@@ -439,6 +439,33 @@ func (s *DefaultStore) Run3DMigration() error {
 		return err
 	}
 	state.RollappParams.DrsVersion = version
+	state.SetProposer(nil)
+
+	_, err = s.SaveState(state, nil)
+	if err != nil {
+		return err
+	}
+
+	_, err = s.SaveValidationHeight(0, nil)
+	if err != nil {
+		return err
+	}
+
+	err = s.SaveBaseHeight(0)
+	if err != nil {
+		return err
+	}
+
+	err = s.SaveBlockSyncBaseHeight(0)
+	if err != nil {
+		return err
+	}
+
+	err = s.SaveIndexerBaseHeight(0)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

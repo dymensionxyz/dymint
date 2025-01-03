@@ -16,6 +16,7 @@ func main() {
 		commands.InitFilesCmd,
 		commands.ShowSequencer,
 		commands.ShowNodeIDCmd,
+		commands.Run3dMigrationCmd(),
 		debug.DebugCmd,
 		cli.NewCompletionCmd(rootCmd, true),
 	)

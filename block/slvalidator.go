@@ -234,6 +234,10 @@ func (v *SettlementValidator) NextValidationHeight() uint64 {
 
 // validateDRS compares the DRS version stored for the specific height, obtained from rollapp params.
 func (v *SettlementValidator) validateDRS(stateIndex uint64, height uint64, version uint32) error {
+	// skip validation for DRS version 0 (2D rollapps)
+	if version == 0 {
+		return nil
+	}
 	drs, err := v.blockManager.Store.LoadDRSVersion(height)
 	if err != nil {
 		return err
