@@ -101,11 +101,9 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 			return fmt.Errorf("save block source: %w", err)
 		}
 
-		if responses.EndBlock.RollappParamUpdates != nil {
-			_, err = m.Store.SaveDRSVersion(block.Header.Height, responses.EndBlock.RollappParamUpdates.DrsVersion, nil)
-			if err != nil {
-				return fmt.Errorf("add drs version: %w", err)
-			}
+		_, err = m.Store.SaveDRSVersion(block.Header.Height, responses.EndBlock.RollappParamUpdates.DrsVersion, nil)
+		if err != nil {
+			return fmt.Errorf("add drs version: %w", err)
 		}
 		// Commit block to app
 		appHash, retainHeight, err = m.Executor.Commit(m.State, block, responses)
