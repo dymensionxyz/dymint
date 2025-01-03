@@ -425,7 +425,6 @@ func (s *DefaultStore) LoadLastBlockSequencerSet() (types.Sequencers, error) {
 }
 
 func (s *DefaultStore) Run3DMigration() error {
-
 	state, err := s.LoadState()
 	if err != nil {
 		return err

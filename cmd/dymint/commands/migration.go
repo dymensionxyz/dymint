@@ -23,7 +23,6 @@ func Run3dMigrationCmd() *cobra.Command {
 }
 
 func run3dMigration(cmd *cobra.Command, args []string) error {
-
 	baseKV := store.NewDefaultKVStore(tmconfig.RootDir, tmconfig.DBPath, "dymint")
 	s := store.New(store.NewPrefixKV(baseKV, mainPrefix))
 
