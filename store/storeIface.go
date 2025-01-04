@@ -112,5 +112,5 @@ type Store interface {
 
 	Close() error
 
-	Run3DMigration() error
+	Run3DMigration(da string) error
 }

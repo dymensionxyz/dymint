@@ -424,7 +424,7 @@ func (s *DefaultStore) LoadLastBlockSequencerSet() (types.Sequencers, error) {
 	return sequencers, nil
 }
 
-func (s *DefaultStore) Run3DMigration() error {
+func (s *DefaultStore) Run3DMigration(da string) error {
 	state, err := s.LoadState()
 	if err != nil {
 		return err
@@ -434,7 +434,7 @@ func (s *DefaultStore) Run3DMigration() error {
 		return fmt.Errorf("3D migration is not needed")
 	}
 	// we set DA and DRS_version rollapp params
-	state.RollappParams.Da = "celestia"
+	state.RollappParams.Da = da
 	version, err := version.GetDRSVersion()
 	if err != nil {
 		return err

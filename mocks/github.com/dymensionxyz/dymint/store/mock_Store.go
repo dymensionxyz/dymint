@@ -1069,17 +1069,17 @@ func (_c *MockStore_RemoveBlockCid_Call) RunAndReturn(run func(uint64) error) *M
 	return _c
 }
 
-// Run3DMigration provides a mock function with no fields
-func (_m *MockStore) Run3DMigration() error {
-	ret := _m.Called()
+// Run3DMigration provides a mock function with given fields: da
+func (_m *MockStore) Run3DMigration(da string) error {
+	ret := _m.Called(da)
 
 	if len(ret) == 0 {
 		panic("no return value specified for Run3DMigration")
 	}
 
 	var r0 error
-	if rf, ok := ret.Get(0).(func() error); ok {
-		r0 = rf()
+	if rf, ok := ret.Get(0).(func(string) error); ok {
+		r0 = rf(da)
 	} else {
 		r0 = ret.Error(0)
 	}
@@ -1093,13 +1093,14 @@ type MockStore_Run3DMigration_Call struct {
 }
 
 // Run3DMigration is a helper method to define mock.On call
-func (_e *MockStore_Expecter) Run3DMigration() *MockStore_Run3DMigration_Call {
-	return &MockStore_Run3DMigration_Call{Call: _e.mock.On("Run3DMigration")}
+//   - da string
+func (_e *MockStore_Expecter) Run3DMigration(da interface{}) *MockStore_Run3DMigration_Call {
+	return &MockStore_Run3DMigration_Call{Call: _e.mock.On("Run3DMigration", da)}
 }
 
-func (_c *MockStore_Run3DMigration_Call) Run(run func()) *MockStore_Run3DMigration_Call {
+func (_c *MockStore_Run3DMigration_Call) Run(run func(da string)) *MockStore_Run3DMigration_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run()
+		run(args[0].(string))
 	})
 	return _c
 }
@@ -1109,7 +1110,7 @@ func (_c *MockStore_Run3DMigration_Call) Return(_a0 error) *MockStore_Run3DMigra
 	return _c
 }
 
-func (_c *MockStore_Run3DMigration_Call) RunAndReturn(run func() error) *MockStore_Run3DMigration_Call {
+func (_c *MockStore_Run3DMigration_Call) RunAndReturn(run func(string) error) *MockStore_Run3DMigration_Call {
 	_c.Call.Return(run)
 	return _c
 }

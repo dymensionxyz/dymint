@@ -11,6 +11,8 @@ import (
 
 var mainPrefix = []byte{0}
 
+const rollappParamDAFlag = "rollappparam-da-mock"
+
 // Run3dMigrationCmd migrates store to 3D version (1.3.0) for old rollapps.
 func Run3dMigrationCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -19,6 +21,7 @@ func Run3dMigrationCmd() *cobra.Command {
 		Short:   "Migrate dymint store to 3D",
 		RunE:    run3dMigration,
 	}
+	cmd.Flags().Bool(rollappParamDAFlag, false, "migrate using mock DA")
 	cfg.AddNodeFlags(cmd)
 	return cmd
 }
@@ -31,7 +34,12 @@ func run3dMigration(cmd *cobra.Command, args []string) error {
 	baseKV := store.NewDefaultKVStore(cfg.RootDir, cfg.DBPath, "dymint")
 	s := store.New(store.NewPrefixKV(baseKV, mainPrefix))
 
-	err := s.Run3DMigration()
+	daMock := serverCtx.Viper.GetBool(rollappParamDAFlag)
+	da := "celestia"
+	if daMock {
+		da = "mock"
+	}
+	err := s.Run3DMigration(da)
 	if err != nil {
 		return fmt.Errorf("3D dymint store migration failed. err:%w", err)
 	}
