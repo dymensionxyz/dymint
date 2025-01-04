@@ -27,7 +27,6 @@ func Run3dMigrationCmd() *cobra.Command {
 }
 
 func run3dMigration(cmd *cobra.Command, args []string) error {
-
 	serverCtx := server.GetServerContextFromCmd(cmd)
 	cfg := serverCtx.Config
 
