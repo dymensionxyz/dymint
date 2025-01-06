@@ -4,7 +4,6 @@ package dymensionxyz.dymension.rollapp;
 option go_package = "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp";
 
 import "gogoproto/gogo.proto";
-import "google/api/annotations.proto";
 import "types/cosmos/base/query/v1beta1/pagination.proto";
 import "types/dymensionxyz/dymension/rollapp/params.proto";
 import "types/dymensionxyz/dymension/rollapp/rollapp.proto";
@@ -15,59 +14,36 @@ import "types/dymensionxyz/dymension/rollapp/genesis_bridge_data.proto";
 // Query defines the gRPC querier service.
 service Query {
   // Parameters queries the parameters of the module.
-  rpc Params(QueryParamsRequest) returns (QueryParamsResponse) {
-    option (google.api.http).get = "/dymensionxyz/dymension/rollapp/params";
-  }
+  rpc Params(QueryParamsRequest) returns (QueryParamsResponse) {}
   // Queries a Rollapp by index.
-  rpc Rollapp(QueryGetRollappRequest) returns (QueryGetRollappResponse) {
-    option (google.api.http).get =
-        "/dymensionxyz/dymension/rollapp/rollapp/{rollappId}";
-  }
+  rpc Rollapp(QueryGetRollappRequest) returns (QueryGetRollappResponse) { }
 
   // Queries a Rollapp by index.
   rpc RollappByEIP155(QueryGetRollappByEIP155Request)
-      returns (QueryGetRollappResponse) {
-    option (google.api.http).get =
-        "/dymensionxyz/dymension/rollapp/eip155/{eip155}";
-  }
+      returns (QueryGetRollappResponse) {}
 
   // Queries a list of Rollapp items.
-  rpc RollappAll(QueryAllRollappRequest) returns (QueryAllRollappResponse) {
-    option (google.api.http).get = "/dymensionxyz/dymension/rollapp/rollapp";
-  }
+  rpc RollappAll(QueryAllRollappRequest) returns (QueryAllRollappResponse) {}
 
   // Queries a LatestHeight by rollapp-id.
   rpc LatestHeight(QueryGetLatestHeightRequest)
-      returns (QueryGetLatestHeightResponse) {
-    option (google.api.http).get =
-        "/dymensionxyz/dymension/rollapp/latest_height/{rollappId}";
-  }
+      returns (QueryGetLatestHeightResponse) {}
 
   // Queries a LatestStateIndex by rollapp-id.
   rpc LatestStateIndex(QueryGetLatestStateIndexRequest)
-      returns (QueryGetLatestStateIndexResponse) {
-    option (google.api.http).get =
-        "/dymensionxyz/dymension/rollapp/latest_state_index/{rollappId}";
-  }
+      returns (QueryGetLatestStateIndexResponse) {}
 
   // Queries a StateInfo by index.
-  rpc StateInfo(QueryGetStateInfoRequest) returns (QueryGetStateInfoResponse) {
-    option (google.api.http).get =
-        "/dymensionxyz/dymension/rollapp/state_info/{rollappId}/{index}";
-  }
+  rpc StateInfo(QueryGetStateInfoRequest) returns (QueryGetStateInfoResponse) {}
 
   // Queries a list of registered denoms for the rollapp.
-  rpc RegisteredDenoms(QueryRegisteredDenomsRequest) returns (QueryRegisteredDenomsResponse) {
-    option (google.api.http).get = "/dymensionxyz/dymension/rollapp/registered_denoms";
-  }
+  rpc RegisteredDenoms(QueryRegisteredDenomsRequest) returns (QueryRegisteredDenomsResponse) {}
 
   // Queries a list of obsolete DRS versions.
-  rpc ObsoleteDRSVersions(QueryObsoleteDRSVersionsRequest) returns (QueryObsoleteDRSVersionsResponse) {
-    option (google.api.http).get = "/dymensionxyz/dymension/rollapp/obsolete_drs_versions";
-  }
+  rpc ObsoleteDRSVersions(QueryObsoleteDRSVersionsRequest) returns (QueryObsoleteDRSVersionsResponse) {}
 
   // Validates provided genesis bridge data against the hub.
-  rpc ValidateGenesisBridge(QueryValidateGenesisBridgeRequest) returns (QueryValidateGenesisBridgeResponse);
+  rpc ValidateGenesisBridge(QueryValidateGenesisBridgeRequest) returns (QueryValidateGenesisBridgeResponse) {}
 }
 
 // QueryParamsRequest is request type for the Query/Params RPC method.
@@ -140,12 +116,10 @@ message QueryGetStateInfoResponse {
 
 message QueryRegisteredDenomsRequest {
   string rollappId = 1;
-  cosmos.base.query.v1beta1.PageRequest pagination = 2;
 }
 
 message QueryRegisteredDenomsResponse {
   repeated string denoms = 1;
-  cosmos.base.query.v1beta1.PageResponse pagination = 2;
 }
 
 message QueryObsoleteDRSVersionsRequest {}
