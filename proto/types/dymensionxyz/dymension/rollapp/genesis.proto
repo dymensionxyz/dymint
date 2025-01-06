@@ -1,14 +1,14 @@
 syntax = "proto3";
 package dymensionxyz.dymension.rollapp;
 
-option go_package = "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp";
+option go_package = "github.com/dymensionxyz/dymension/v3/x/rollapp/types";
 
 import "gogoproto/gogo.proto";
-import "types/dymensionxyz/dymension/rollapp/params.proto";
-import "types/dymensionxyz/dymension/rollapp/rollapp.proto";
-import "types/dymensionxyz/dymension/rollapp/state_info.proto";
-import "types/dymensionxyz/dymension/rollapp/liveness.proto";
-import "types/dymensionxyz/dymension/rollapp/app.proto";
+import "dymensionxyz/dymension/rollapp/params.proto";
+import "dymensionxyz/dymension/rollapp/rollapp.proto";
+import "dymensionxyz/dymension/rollapp/state_info.proto";
+import "dymensionxyz/dymension/rollapp/liveness.proto";
+import "dymensionxyz/dymension/rollapp/app.proto";
 
 // GenesisState defines the rollapp module's genesis state.
 message GenesisState {

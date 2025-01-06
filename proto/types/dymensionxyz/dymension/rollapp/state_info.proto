@@ -1,13 +1,13 @@
 syntax = "proto3";
 package dymensionxyz.dymension.rollapp;
 
-option go_package = "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp";
+option go_package = "github.com/dymensionxyz/dymension/v3/x/rollapp/types";
 
 import "gogoproto/gogo.proto";
 import "google/protobuf/timestamp.proto";
 
-import "types/dymensionxyz/dymension/rollapp/block_descriptor.proto";
-import "types/dymensionxyz/dymension/common/status.proto";
+import "dymensionxyz/dymension/rollapp/block_descriptor.proto"; 
+import "dymensionxyz/dymension/common/status.proto";
 
 // StateInfoIndex is the data used for indexing and retrieving a StateInfo 
 // it updated and saved with every UpdateState in StateInfo.

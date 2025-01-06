@@ -1,13 +1,13 @@
 syntax = "proto3";
 package dymensionxyz.dymension.rollapp;
 
-option go_package = "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp";
+option go_package = "github.com/dymensionxyz/dymension/v3/x/rollapp/types";
 
 import "gogoproto/gogo.proto";
 import "google/protobuf/timestamp.proto";
-import "types/cosmos/msg/v1/msg.proto";
+import "cosmos/msg/v1/msg.proto";
 
-import "types/dymensionxyz/dymension/rollapp/metadata.proto";
+import "dymensionxyz/dymension/rollapp/metadata.proto";
 
 message GenesisInfo {
   // checksum used to verify integrity of the genesis file

@@ -2,42 +2,66 @@ syntax = "proto3";
 package dymensionxyz.dymension.sequencer;
 
 import "gogoproto/gogo.proto";
-import "types/cosmos/base/query/v1beta1/pagination.proto";
-import "types/dymensionxyz/dymension/sequencer/params.proto";
-import "types/dymensionxyz/dymension/sequencer/sequencer.proto";
-import "types/dymensionxyz/dymension/sequencer/operating_status.proto";
+import "google/api/annotations.proto";
+import "cosmos/base/query/v1beta1/pagination.proto";
+import "dymensionxyz/dymension/sequencer/params.proto";
+import "dymensionxyz/dymension/sequencer/sequencer.proto";
+import "dymensionxyz/dymension/sequencer/operating_status.proto";
 
-option go_package = "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/sequencer";
+option go_package = "github.com/dymensionxyz/dymension/v3/x/sequencer/types";
 
 // Query defines the gRPC querier service.
 service Query {
   // Parameters queries the parameters of the module.
-  rpc Params(QueryParamsRequest) returns (QueryParamsResponse) {}
+  rpc Params(QueryParamsRequest) returns (QueryParamsResponse) {
+    option (google.api.http).get = "/dymensionxyz/dymension/sequencer/params";
+  }
 
   // Queries a Sequencer by address.
-  rpc Sequencer(QueryGetSequencerRequest) returns (QueryGetSequencerResponse) {}
+  rpc Sequencer(QueryGetSequencerRequest) returns (QueryGetSequencerResponse) {
+    option (google.api.http).get =
+        "/dymensionxyz/dymension/sequencer/sequencer/{sequencerAddress}";
+  }
 
   // Queries a list of Sequencer items.
-  rpc Sequencers(QuerySequencersRequest) returns (QuerySequencersResponse) {}
+  rpc Sequencers(QuerySequencersRequest) returns (QuerySequencersResponse) {
+    option (google.api.http).get =
+        "/dymensionxyz/dymension/sequencer/sequencers";
+  }
 
   // Queries a SequencersByRollapp by rollappId.
   rpc SequencersByRollapp(QueryGetSequencersByRollappRequest)
-      returns (QueryGetSequencersByRollappResponse) {}
+      returns (QueryGetSequencersByRollappResponse) {
+    option (google.api.http).get =
+        "/dymensionxyz/dymension/sequencer/sequencers_by_rollapp/{rollappId}";
+  }
 
   // Queries a SequencersByRollappByStatus
   rpc SequencersByRollappByStatus(QueryGetSequencersByRollappByStatusRequest)
-      returns (QueryGetSequencersByRollappByStatusResponse) {}
+      returns (QueryGetSequencersByRollappByStatusResponse) {
+    option (google.api.http).get =
+        "/dymensionxyz/dymension/sequencer/sequencers_by_rollapp/{rollappId}/{status}";
+  }
 
   // Queries the current proposer by rollappId.
   rpc GetProposerByRollapp(QueryGetProposerByRollappRequest)
-      returns (QueryGetProposerByRollappResponse) {}
+      returns (QueryGetProposerByRollappResponse) {
+    option (google.api.http).get =
+        "/dymensionxyz/dymension/sequencer/proposers/{rollappId}";
+  }
 
   // Queries the next proposer by rollappId.
   rpc GetNextProposerByRollapp(QueryGetNextProposerByRollappRequest)
-      returns (QueryGetNextProposerByRollappResponse) {}
+      returns (QueryGetNextProposerByRollappResponse) {
+    option (google.api.http).get =
+        "/dymensionxyz/dymension/sequencer/next_proposer/{rollappId}";
+  }
 
   // Queries a list of proposers.
-  rpc Proposers(QueryProposersRequest) returns (QueryProposersResponse) {}
+  rpc Proposers(QueryProposersRequest) returns (QueryProposersResponse) {
+    option (google.api.http).get =
+        "/dymensionxyz/dymension/sequencer/proposers";
+  }
 }
 
 // QueryParamsRequest is request type for the Query/Params RPC method.
@@ -64,19 +88,25 @@ message QuerySequencersResponse {
   cosmos.base.query.v1beta1.PageResponse pagination = 2;
 }
 
-message QueryGetSequencersByRollappRequest { string rollappId = 1; }
+message QueryGetSequencersByRollappRequest {
+  string rollappId = 1;
+  cosmos.base.query.v1beta1.PageRequest pagination = 2;
+}
 
 message QueryGetSequencersByRollappResponse {
   repeated Sequencer sequencers = 1 [ (gogoproto.nullable) = false ];
+  cosmos.base.query.v1beta1.PageResponse pagination = 2;
 }
 
 message QueryGetSequencersByRollappByStatusRequest {
   string rollappId = 1;
   OperatingStatus status = 2;
+  cosmos.base.query.v1beta1.PageRequest pagination = 3;
 }
 
 message QueryGetSequencersByRollappByStatusResponse {
   repeated Sequencer sequencers = 1 [ (gogoproto.nullable) = false ];
+  cosmos.base.query.v1beta1.PageResponse pagination = 2;
 }
 
 // Request type for the GetProposerByRollapp RPC method.
