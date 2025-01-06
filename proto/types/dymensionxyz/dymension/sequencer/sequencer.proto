@@ -7,11 +7,11 @@ import "cosmos_proto/cosmos.proto";
 import "google/protobuf/any.proto";
 import "gogoproto/gogo.proto";
 import "google/protobuf/timestamp.proto";
-import "cosmos/base/v1beta1/coin.proto";
-import "cosmos/msg/v1/msg.proto";
+import "types/cosmos/base/v1beta1/coin.proto";
+import "types/cosmos/msg/v1/msg.proto";
 
-import "dymensionxyz/dymension/sequencer/metadata.proto";
-import "dymensionxyz/dymension/sequencer/operating_status.proto";
+import "types/dymensionxyz/dymension/sequencer/metadata.proto";
+import "types/dymensionxyz/dymension/sequencer/operating_status.proto";
 
 // Sequencer defines a sequencer identified by its' address (sequencerAddress).
 // The sequencer could be attached to only one rollapp (rollappId).

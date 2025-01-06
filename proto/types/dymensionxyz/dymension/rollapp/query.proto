@@ -5,12 +5,12 @@ option go_package = "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymens
 
 import "gogoproto/gogo.proto";
 import "google/api/annotations.proto";
-import "cosmos/base/query/v1beta1/pagination.proto";
-import "dymensionxyz/dymension/rollapp/params.proto";
-import "dymensionxyz/dymension/rollapp/rollapp.proto";
-import "dymensionxyz/dymension/rollapp/state_info.proto";
-import "dymensionxyz/dymension/rollapp/app.proto";
-import "dymensionxyz/dymension/rollapp/genesis_bridge_data.proto";
+import "types/cosmos/base/query/v1beta1/pagination.proto";
+import "types/dymensionxyz/dymension/rollapp/params.proto";
+import "types/dymensionxyz/dymension/rollapp/rollapp.proto";
+import "types/dymensionxyz/dymension/rollapp/state_info.proto";
+import "types/dymensionxyz/dymension/rollapp/app.proto";
+import "types/dymensionxyz/dymension/rollapp/genesis_bridge_data.proto";
 
 // Query defines the gRPC querier service.
 service Query {

@@ -3,7 +3,7 @@ package dymensionxyz.dymension.rollapp;
 
 option go_package = "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp";
 
-import "dymensionxyz/dymension/rollapp/app.proto";
+import "types/dymensionxyz/dymension/rollapp/app.proto";
 
 message EventAppAdded {
   App app = 1;

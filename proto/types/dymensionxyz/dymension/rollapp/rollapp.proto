@@ -5,12 +5,12 @@ option go_package = "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymens
 
 import "gogoproto/gogo.proto";
 import "google/protobuf/timestamp.proto";
-import "cosmos/msg/v1/msg.proto";
+import "types/cosmos/msg/v1/msg.proto";
 
-import "dymensionxyz/dymension/rollapp/state_info.proto";
-import "dymensionxyz/dymension/rollapp/metadata.proto";
-import "cosmos/base/v1beta1/coin.proto";
-import "dymensionxyz/dymension/rollapp/genesis_info.proto";
+import "types/dymensionxyz/dymension/rollapp/state_info.proto";
+import "types/dymensionxyz/dymension/rollapp/metadata.proto";
+import "types/cosmos/base/v1beta1/coin.proto";
+import "types/dymensionxyz/dymension/rollapp/genesis_info.proto";
 
 // RollappGenesisState is a partial repr of the state the hub can expect the
 // rollapp to be in upon genesis

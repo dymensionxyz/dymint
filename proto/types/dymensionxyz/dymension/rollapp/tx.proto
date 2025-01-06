@@ -3,13 +3,13 @@ package dymensionxyz.dymension.rollapp;
 
 option go_package = "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp";
 
-import "cosmos/msg/v1/msg.proto";
-import "dymensionxyz/dymension/rollapp/block_descriptor.proto";
-import "dymensionxyz/dymension/rollapp/rollapp.proto";
-import "dymensionxyz/dymension/rollapp/metadata.proto";
-import "dymensionxyz/dymension/rollapp/genesis_info.proto";
+import "types/cosmos/msg/v1/msg.proto";
+import "types/dymensionxyz/dymension/rollapp/block_descriptor.proto";
+import "types/dymensionxyz/dymension/rollapp/rollapp.proto";
+import "types/dymensionxyz/dymension/rollapp/metadata.proto";
+import "types/dymensionxyz/dymension/rollapp/genesis_info.proto";
 import "gogoproto/gogo.proto";
-import "cosmos/base/v1beta1/coin.proto";
+import "types/cosmos/base/v1beta1/coin.proto";
 
 // Msg defines the Msg service.
 service Msg {

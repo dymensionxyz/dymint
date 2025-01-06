@@ -5,9 +5,9 @@ option go_package = "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymens
 
 import "gogoproto/gogo.proto";
 import "google/protobuf/timestamp.proto";
-import "cosmos/msg/v1/msg.proto";
+import "types/cosmos/msg/v1/msg.proto";
 
-import "dymensionxyz/dymension/rollapp/metadata.proto";
+import "types/dymensionxyz/dymension/rollapp/metadata.proto";
 
 message GenesisInfo {
   // checksum used to verify integrity of the genesis file

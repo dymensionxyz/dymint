@@ -2,10 +2,10 @@ syntax = "proto3";
 package dymensionxyz.dymension.rollapp;
 
 import "gogoproto/gogo.proto";
-import "cosmos/bank/v1beta1/bank.proto";
+import "types/cosmos/bank/v1beta1/bank.proto";
 import "ibc/applications/transfer/v2/packet.proto";
-import "dymensionxyz/dymension/rollapp/metadata.proto";
-import "dymensionxyz/dymension/rollapp/genesis_info.proto";
+import "types/dymensionxyz/dymension/rollapp/metadata.proto";
+import "types/dymensionxyz/dymension/rollapp/genesis_info.proto";
 
 
 option go_package = "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp";

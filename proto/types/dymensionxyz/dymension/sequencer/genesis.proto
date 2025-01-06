@@ -2,8 +2,8 @@ syntax = "proto3";
 package dymensionxyz.dymension.sequencer;
 
 import "gogoproto/gogo.proto";
-import "dymensionxyz/dymension/sequencer/params.proto";
-import "dymensionxyz/dymension/sequencer/sequencer.proto";
+import "types/dymensionxyz/dymension/sequencer/params.proto";
+import "types/dymensionxyz/dymension/sequencer/sequencer.proto";
 
 option go_package = "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/sequencer";
 
