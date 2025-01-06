@@ -32,10 +32,8 @@ func (m *Manager) applyBlockWithFraudHandling(block *types.Block, commit *types.
 	err := validateWithFraud()
 	if errors.Is(err, gerrc.ErrFault) {
 		// Here we handle the fault by calling the fraud handler.
-		// FraudHandler is an interface that defines a method to handle faults. Implement this interface to handle faults
-		// in specific ways. For example, once a fault is detected, it publishes a DataHealthStatus event to the
-		// pubsub which sets the node in a frozen state.
-		m.FraudHandler.HandleFault(m.Ctx, err)
+		// it publishes a DataHealthStatus event to the pubsub and stops the block manager.
+		m.FraudHandler.HandleFault(err)
 	}
 
 	return err

@@ -63,7 +63,9 @@ func (m *Manager) checkForkUpdate(msg string) error {
 		if err != nil {
 			return err
 		}
-		m.freezeNode(fmt.Errorf("%s local_block_height: %d rollapp_revision_start_height: %d local_revision: %d rollapp_revision: %d", msg, m.State.Height(), expectedRevision.StartHeight, actualRevision, expectedRevision.Number))
+
+		err = fmt.Errorf("%s  local_block_height: %d rollapp_revision_start_height: %d local_revision: %d rollapp_revision: %d", msg, m.State.Height(), expectedRevision.StartHeight, actualRevision, expectedRevision.Number)
+		return errors.Join(ErrNonRecoverable, err)
 	}
 
 	return nil
@@ -148,7 +150,7 @@ func (m *Manager) prepareDRSUpgradeMessages(obsoleteDRS []uint32) ([]proto.Messa
 		return nil, err
 	}
 
-	// if binary DRS is obsolete return error (to panic)
+	// if binary DRS is obsolete return error
 	for _, drs := range obsoleteDRS {
 		if drs == drsVersion {
 			return nil, gerrc.ErrCancelled.Wrapf("obsolete DRS version: %d", drs)
@@ -283,7 +285,7 @@ func (m *Manager) doForkWhenNewRevision() error {
 
 	// this cannot happen. it means the revision number obtained is not the same or the next revision. unable to fork.
 	if expectedRevision.Number != m.State.GetRevision() {
-		panic("Inconsistent expected revision number from Hub. Unable to fork")
+		return fmt.Errorf("inconsistent expected revision number from Hub (%d != %d). Unable to fork", expectedRevision.Number, m.State.GetRevision())
 	}
 
 	// remove instruction file after fork

@@ -44,7 +44,7 @@ func (m *Manager) SettlementValidateLoop(ctx context.Context) error {
 				err = m.SettlementValidator.ValidateStateUpdate(batch)
 				if err != nil {
 					if errors.Is(err, gerrc.ErrFault) {
-						m.FraudHandler.HandleFault(ctx, err)
+						m.FraudHandler.HandleFault(err)
 					} else {
 						uevent.MustPublish(ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
 					}

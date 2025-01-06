@@ -72,6 +72,8 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 
 				settlementBatch, err := m.SLClient.GetBatchAtHeight(m.State.NextHeight())
 				if err != nil {
+					// FIXME: should be recoraverable?
+					// FIXME: set to unhealthy and break
 					return fmt.Errorf("retrieve SL batch err: %w", err)
 				}
 				m.logger.Info("Retrieved state update from SL.", "state_index", settlementBatch.StateIndex)
@@ -83,9 +85,11 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 
 				// this will keep sync loop alive when DA is down or retrievals are failing because DA issues.
 				if errors.Is(err, da.ErrRetrieval) {
+					// fixme: set unhealthy?
 					continue
 				}
 				if err != nil {
+					// FIXME: recoverable?
 					return fmt.Errorf("process next DA batch. err:%w", err)
 				}
 
@@ -96,6 +100,7 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 
 				err = m.attemptApplyCachedBlocks()
 				if err != nil {
+					// FIXME: recoverable?
 					return fmt.Errorf("Attempt apply cached blocks. err:%w", err)
 				}
 

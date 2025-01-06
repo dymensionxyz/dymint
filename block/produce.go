@@ -58,12 +58,14 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int)
 				continue
 			}
 			if errors.Is(err, ErrNonRecoverable) {
+				// FIXME: should be recoraverable?
 				uevent.MustPublish(ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
 				return err
 			}
 
 			if err != nil {
 				m.logger.Error("Produce and gossip: uncategorized, assuming recoverable.", "error", err)
+				// FIXME: should set unhealthy?
 				continue
 			}
 			nextEmptyBlock = time.Now().Add(m.Conf.MaxIdleTime)
@@ -82,15 +84,14 @@ func (m *Manager) ProduceBlockLoop(ctx context.Context, bytesProducedC chan int)
 				return nil
 			case bytesProducedC <- bytesProducedN:
 			default:
-				evt := &events.DataHealthStatus{Error: fmt.Errorf("Block production paused. Time between last block produced and last block submitted higher than max skew time: %s last block in settlement time: %s %w", m.Conf.MaxSkewTime, m.GetLastBlockTimeInSettlement(), gerrc.ErrResourceExhausted)}
-				uevent.MustPublish(ctx, m.Pubsub, evt, events.HealthStatusList)
+				err := fmt.Errorf("Block production paused. Time between last block produced and last block submitted higher than max skew time: %s last block in settlement time: %s %w", m.Conf.MaxSkewTime, m.GetLastBlockTimeInSettlement(), gerrc.ErrResourceExhausted)
+				m.setUnhealthy(err)
 				m.logger.Error("Pausing block production until new batch is submitted.", "Batch skew time", m.GetBatchSkewTime(), "Max batch skew time", m.Conf.MaxSkewTime, "Last block in settlement time", m.GetLastBlockTimeInSettlement())
 				select {
 				case <-ctx.Done():
 					return nil
 				case bytesProducedC <- bytesProducedN:
-					evt := &events.DataHealthStatus{Error: nil}
-					uevent.MustPublish(ctx, m.Pubsub, evt, events.HealthStatusList)
+					m.setHealthy()
 					m.logger.Info("Resumed block production.")
 				}
 			}
