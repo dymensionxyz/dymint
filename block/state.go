@@ -74,7 +74,7 @@ func NewStateFromGenesis(genDoc *tmtypes.GenesisDoc) (*types.State, error) {
 }
 
 // UpdateStateFromApp is responsible for aligning the state of the store from the abci app
-func (m *Manager) UpdateStateFromApp(blockHeaderHash [32]byte) error {
+func (m *Manager) UpdateStateFromApp(block *types.Block) error {
 	proxyAppInfo, err := m.Executor.GetAppInfo()
 	if err != nil {
 		return errorsmod.Wrap(err, "get app info")
@@ -87,7 +87,7 @@ func (m *Manager) UpdateStateFromApp(blockHeaderHash [32]byte) error {
 	}
 
 	// update the state with the app hashes created on the app commit
-	m.Executor.UpdateStateAfterCommit(m.State, resp, proxyAppInfo.LastBlockAppHash, appHeight, blockHeaderHash)
+	m.Executor.UpdateStateAfterCommit(m.State, resp, proxyAppInfo.LastBlockAppHash, block)
 
 	return nil
 }
@@ -116,12 +116,13 @@ func (e *Executor) UpdateMempoolAfterInitChain(s *types.State) {
 }
 
 // UpdateStateAfterCommit updates the state with the app hash and last results hash
-func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResponses, appHash []byte, height uint64, lastHeaderHash [32]byte) {
+func (e *Executor) UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResponses, appHash []byte, block *types.Block) {
 	copy(s.AppHash[:], appHash[:])
 	copy(s.LastResultsHash[:], tmtypes.NewResults(resp.DeliverTxs).Hash())
+	lastHeaderHash := block.Header.Hash()
 	copy(s.LastHeaderHash[:], lastHeaderHash[:])
 
-	s.SetHeight(height)
+	s.SetHeight(block.Header.Height)
 	if resp.EndBlock.ConsensusParamUpdates != nil {
 		s.ConsensusParams.Block.MaxGas = resp.EndBlock.ConsensusParamUpdates.Block.MaxGas
 		s.ConsensusParams.Block.MaxBytes = resp.EndBlock.ConsensusParamUpdates.Block.MaxBytes
