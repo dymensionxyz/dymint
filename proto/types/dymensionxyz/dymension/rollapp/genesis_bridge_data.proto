@@ -8,7 +8,7 @@ import "dymensionxyz/dymension/rollapp/metadata.proto";
 import "dymensionxyz/dymension/rollapp/genesis_info.proto";
 
 
-option go_package = "github.com/dymensionxyz/dymension/v3/x/rollapp";
+option go_package = "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/rollapp";
 
 // GenesisBridgeData is the data struct that is passed to the hub for the
 // genesis bridge flow

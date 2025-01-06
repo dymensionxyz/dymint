@@ -6,7 +6,7 @@ import "cosmos_proto/cosmos.proto";
 import "gogoproto/gogo.proto";
 import "cosmos/base/v1beta1/coin.proto";
 
-option go_package = "github.com/dymensionxyz/dymension/v3/x/sequencer";
+option go_package = "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/sequencer";
 
 // EventIncreasedBond is an event emitted when a sequencer's bond is increased.
 message EventIncreasedBond {

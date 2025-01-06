@@ -3,7 +3,7 @@ package dymensionxyz.dymension.common;
 
 import "gogoproto/gogo.proto";
 
-option go_package = "github.com/dymensionxyz/dymension/v3/x/common";
+option go_package = "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/common";
 
 enum Status {
     PENDING = 0;

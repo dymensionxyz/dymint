@@ -8,7 +8,7 @@ import "dymensionxyz/dymension/sequencer/params.proto";
 import "dymensionxyz/dymension/sequencer/sequencer.proto";
 import "dymensionxyz/dymension/sequencer/operating_status.proto";
 
-option go_package = "github.com/dymensionxyz/dymension/v3/x/sequencer";
+option go_package = "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/sequencer";
 
 // Query defines the gRPC querier service.
 service Query {

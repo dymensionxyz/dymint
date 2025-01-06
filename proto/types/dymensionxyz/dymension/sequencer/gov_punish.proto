@@ -3,7 +3,7 @@ package dymensionxyz.dymension.sequencer;
 
 import "gogoproto/gogo.proto";
 
-option go_package = "github.com/dymensionxyz/dymension/v3/x/sequencer";
+option go_package = "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/sequencer";
 
 message PunishSequencerProposal {
     option (gogoproto.equal) = true;

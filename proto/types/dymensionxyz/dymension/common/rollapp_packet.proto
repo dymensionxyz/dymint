@@ -5,7 +5,7 @@ import "gogoproto/gogo.proto";
 import "ibc/core/channel/v1/channel.proto"; 
 import "dymensionxyz/dymension/common/status.proto";
 
-option go_package = "github.com/dymensionxyz/dymension/v3/x/common";
+option go_package = "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymension/common";
 
 message RollappPacket {
     string rollapp_id = 1;
