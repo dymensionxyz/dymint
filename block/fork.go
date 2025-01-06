@@ -17,7 +17,7 @@ import (
 
 const (
 	ForkMonitorInterval = 15 * time.Second
-	ForkMessage         = "rollapp fork detected. please rollback to height previous to rollapp_revision_start_height."
+	ForkMonitorMessage  = "rollapp fork detected. please rollback to height previous to rollapp_revision_start_height."
 )
 
 // MonitorForkUpdateLoop monitors the hub for fork updates in a loop
@@ -26,8 +26,11 @@ func (m *Manager) MonitorForkUpdateLoop(ctx context.Context) error {
 	defer ticker.Stop()
 
 	for {
-		if err := m.checkForkUpdate(ForkMessage); err != nil {
+		if err := m.checkForkUpdate(ForkMonitorMessage); err != nil {
 			m.logger.Error("Check for update.", err)
+			if errors.Is(err, ErrNonRecoverable) {
+				return err
+			}
 		}
 		select {
 		case <-ctx.Done():

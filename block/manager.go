@@ -263,7 +263,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	m.triggerSettlementValidation()
 
 	// This error group is used to control the lifetime of the block manager.
-	// when one of the loops exits, the block manager exits
+	// when one of the loops exits with error, the block manager exits
 	eg, ctx := errgroup.WithContext(ctx)
 
 	// Start the pruning loop in the background

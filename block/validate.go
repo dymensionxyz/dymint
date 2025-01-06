@@ -2,12 +2,8 @@ package block
 
 import (
 	"context"
-	"errors"
 
-	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/settlement"
-	uevent "github.com/dymensionxyz/dymint/utils/event"
-	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
@@ -36,27 +32,20 @@ func (m *Manager) SettlementValidateLoop(ctx context.Context) error {
 				// get next batch that needs to be validated from SL
 				batch, err := m.SLClient.GetBatchAtHeight(currH)
 				if err != nil {
-					uevent.MustPublish(ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
 					return err
 				}
 
 				// validate batch
 				err = m.SettlementValidator.ValidateStateUpdate(batch)
 				if err != nil {
-					if errors.Is(err, gerrc.ErrFault) {
-						m.FraudHandler.HandleFault(err)
-					} else {
-						uevent.MustPublish(ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
-					}
 					return err
 				}
 
 				// update the last validated height to the batch last block height
 				m.SettlementValidator.UpdateLastValidatedHeight(batch.EndHeight)
 
-				m.logger.Debug("state info validated", "lastValidatedHeight", m.SettlementValidator.GetLastValidatedHeight())
+				m.logger.Info("state info validated", "idx", batch.StateIndex, "start height", batch.StartHeight, "end height", batch.EndHeight)
 			}
-
 		}
 	}
 }

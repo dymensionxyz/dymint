@@ -26,7 +26,6 @@ func (m *Manager) runAsFullNode(ctx context.Context, eg *errgroup.Group) error {
 
 	// Start the settlement validation loop in the background
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
-		// FIXME: review
 		return m.SettlementValidateLoop(ctx)
 	})
 

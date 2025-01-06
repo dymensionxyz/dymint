@@ -91,6 +91,8 @@ func SubmitLoopInner(
 	eg.Go(func() error {
 		// 'submitter': this thread actually creates and submits batches. this thread is woken up every batch_submit_time/10 (we used /10 to avoid waiting too much if submission is not required for t-maxBatchSubmitTime, but it maybe required before t) to check if submission is required even if no new blocks have been produced
 		ticker := time.NewTicker(maxBatchSubmitTime / 10)
+		defer ticker.Stop()
+
 		for {
 			select {
 			case <-ctx.Done():
@@ -125,7 +127,7 @@ func SubmitLoopInner(
 					// we panic here cause restarting may reset the last batch submitted counter and the sequencer can potentially resume submitting batches.
 					if errors.Is(err, gerrc.ErrAlreadyExists) {
 						logger.Debug("Batch already accepted", "err", err, "pending", pending)
-						// FIXME: find better, non panic, way to handle this scenario
+						// TODO: find better, non panic, way to handle this scenario
 						panic(err)
 					}
 					return err
