@@ -30,7 +30,7 @@ type ExecutorI interface {
 	ExecuteBlock(block *types.Block) (*tmstate.ABCIResponses, error)
 	UpdateStateAfterInitChain(s *types.State, res *abci.ResponseInitChain)
 	UpdateMempoolAfterInitChain(s *types.State)
-	UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResponses, appHash []byte, height uint64, lastHeaderHash [32]byte)
+	UpdateStateAfterCommit(s *types.State, resp *tmstate.ABCIResponses, appHash []byte, block *types.Block)
 	UpdateProposerFromBlock(s *types.State, seqSet *types.SequencerSet, block *types.Block) bool
 
 	/* Consensus Messages */
