@@ -38,7 +38,7 @@ func run3dMigration(cmd *cobra.Command, args []string) error {
 	if daMock {
 		da = "mock"
 	}
-	err := s.Run3DMigration(da)
+	err := store.Run3DMigration(s, da)
 	if err != nil {
 		return fmt.Errorf("3D dymint store migration failed. err:%w", err)
 	}

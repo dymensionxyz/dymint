@@ -111,6 +111,4 @@ type Store interface {
 	LoadLastBlockSequencerSet() (types.Sequencers, error)
 
 	Close() error
-
-	Run3DMigration(da string) error
 }

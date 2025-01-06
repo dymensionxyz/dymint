@@ -45,13 +45,13 @@ func getStore(directory string) *store.PrefixKV {
 }
 
 func newBlockStore(kvstore store.KV, baseHeight uint64) *BlockStore {
-	store, _ := store.New(kvstore).(*store.DefaultStore)
-	state, err := store.LoadState()
+	s := store.New(kvstore)
+	state, err := s.LoadState()
 	if err != nil {
 		log.Fatalf("loading state %s", err)
 	}
 	return &BlockStore{
-		DefaultStore: store,
+		DefaultStore: s,
 		base:         baseHeight,
 		height:       state.Height(),
 	}
