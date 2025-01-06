@@ -13,6 +13,7 @@ import (
 	cdctypes "github.com/cosmos/cosmos-sdk/codec/types"
 	cryptocodec "github.com/cosmos/cosmos-sdk/crypto/codec"
 	cryptotypes "github.com/cosmos/cosmos-sdk/crypto/types"
+	querytypes "github.com/cosmos/cosmos-sdk/types/query"
 	"github.com/dymensionxyz/cosmosclient/cosmosclient"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/google/uuid"
@@ -404,34 +405,39 @@ func (c *Client) GetSequencerByAddress(address string) (types.Sequencer, error) 
 
 // GetAllSequencers returns all sequencers of the given rollapp.
 func (c *Client) GetAllSequencers() ([]types.Sequencer, error) {
-	var res *sequencertypes.QueryGetSequencersByRollappResponse
 	req := &sequencertypes.QueryGetSequencersByRollappRequest{
-		RollappId: c.rollappId,
+		RollappId:  c.rollappId,
+		Pagination: &querytypes.PageRequest{},
 	}
 
-	err := c.RunWithRetry(func() error {
-		var err error
-		res, err = c.sequencerQueryClient.SequencersByRollapp(c.ctx, req)
-		if err == nil {
-			return nil
-		}
+	res := []sequencertypes.Sequencer{}
 
-		if status.Code(err) == codes.NotFound {
-			return retry.Unrecoverable(errors.Join(gerrc.ErrNotFound, err))
+	err := c.RunWithRetry(func() error {
+		for {
+			qres, err := c.sequencerQueryClient.SequencersByRollapp(c.ctx, req)
+			if err != nil {
+				if status.Code(err) == codes.NotFound {
+					return retry.Unrecoverable(errors.Join(gerrc.ErrNotFound, err))
+				}
+				return err
+			}
+			res = append(res, qres.Sequencers...)
+			req.Pagination.Key = qres.GetPagination().NextKey
+			if req.Pagination.Key == nil {
+				return nil
+			}
 		}
-		return err
 	})
 	if err != nil {
 		return nil, err
 	}
-
 	// not supposed to happen, but just in case
 	if res == nil {
 		return nil, fmt.Errorf("empty response: %w", gerrc.ErrUnknown)
 	}
 
 	var sequencerList []types.Sequencer
-	for _, sequencer := range res.Sequencers {
+	for _, sequencer := range res {
 		dymintPubKey := protoutils.GogoToCosmos(sequencer.DymintPubKey)
 		var pubKey cryptotypes.PubKey
 		err := c.protoCodec.UnpackAny(dymintPubKey, &pubKey)
