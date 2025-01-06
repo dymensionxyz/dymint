@@ -2,7 +2,6 @@ syntax = "proto3";
 package dymensionxyz.dymension.sequencer;
 
 import "gogoproto/gogo.proto";
-import "google/api/annotations.proto";
 import "types/cosmos/base/query/v1beta1/pagination.proto";
 import "types/dymensionxyz/dymension/sequencer/params.proto";
 import "types/dymensionxyz/dymension/sequencer/sequencer.proto";
@@ -13,54 +12,39 @@ option go_package = "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymens
 // Query defines the gRPC querier service.
 service Query {
   // Parameters queries the parameters of the module.
-  rpc Params(QueryParamsRequest) returns (QueryParamsResponse) {
-    option (google.api.http).get = "/dymensionxyz/dymension/sequencer/params";
-  }
+  rpc Params(QueryParamsRequest) returns (QueryParamsResponse) {}
 
   // Queries a Sequencer by address.
   rpc Sequencer(QueryGetSequencerRequest) returns (QueryGetSequencerResponse) {
-    option (google.api.http).get =
-        "/dymensionxyz/dymension/sequencer/sequencer/{sequencerAddress}";
+
   }
 
   // Queries a list of Sequencer items.
   rpc Sequencers(QuerySequencersRequest) returns (QuerySequencersResponse) {
-    option (google.api.http).get =
-        "/dymensionxyz/dymension/sequencer/sequencers";
   }
 
   // Queries a SequencersByRollapp by rollappId.
   rpc SequencersByRollapp(QueryGetSequencersByRollappRequest)
       returns (QueryGetSequencersByRollappResponse) {
-    option (google.api.http).get =
-        "/dymensionxyz/dymension/sequencer/sequencers_by_rollapp/{rollappId}";
   }
 
   // Queries a SequencersByRollappByStatus
   rpc SequencersByRollappByStatus(QueryGetSequencersByRollappByStatusRequest)
       returns (QueryGetSequencersByRollappByStatusResponse) {
-    option (google.api.http).get =
-        "/dymensionxyz/dymension/sequencer/sequencers_by_rollapp/{rollappId}/{status}";
   }
 
   // Queries the current proposer by rollappId.
   rpc GetProposerByRollapp(QueryGetProposerByRollappRequest)
       returns (QueryGetProposerByRollappResponse) {
-    option (google.api.http).get =
-        "/dymensionxyz/dymension/sequencer/proposers/{rollappId}";
   }
 
   // Queries the next proposer by rollappId.
   rpc GetNextProposerByRollapp(QueryGetNextProposerByRollappRequest)
       returns (QueryGetNextProposerByRollappResponse) {
-    option (google.api.http).get =
-        "/dymensionxyz/dymension/sequencer/next_proposer/{rollappId}";
   }
 
   // Queries a list of proposers.
   rpc Proposers(QueryProposersRequest) returns (QueryProposersResponse) {
-    option (google.api.http).get =
-        "/dymensionxyz/dymension/sequencer/proposers";
   }
 }
 
