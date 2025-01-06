@@ -63,7 +63,7 @@ func (m *Manager) checkForkUpdate(msg string) error {
 		if err != nil {
 			return err
 		}
-		m.freezeNode(fmt.Errorf("%s  local_block_height: %d rollapp_revision_start_height: %d local_revision: %d rollapp_revision: %d", msg, m.State.Height(), expectedRevision.StartHeight, actualRevision, expectedRevision.Number))
+		m.freezeNode(fmt.Errorf("%s local_block_height: %d rollapp_revision_start_height: %d local_revision: %d rollapp_revision: %d", msg, m.State.Height(), expectedRevision.StartHeight, actualRevision, expectedRevision.Number))
 	}
 
 	return nil
@@ -246,8 +246,6 @@ func (m *Manager) updateStateForNextRevision() error {
 	if nextRevision.StartHeight == m.State.NextHeight() {
 		// Set proposer to nil to force updating it from SL
 		m.State.SetProposer(nil)
-		// Upgrade revision on state
-		m.State.RevisionStartHeight = nextRevision.StartHeight
 		m.State.SetRevision(nextRevision.Number)
 
 		// update stored state

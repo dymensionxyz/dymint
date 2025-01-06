@@ -3,11 +3,13 @@ package types
 import (
 	"github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/proto/tendermint/version"
+
 	tmtypes "github.com/tendermint/tendermint/types"
 )
 
 // ToABCIHeaderPB converts Dymint header to Header format defined in ABCI.
 // Caller should fill all the fields that are not available in Dymint header (like ChainID).
+// WARNING: THIS IS A LOSSY CONVERSION
 func ToABCIHeaderPB(header *Header) types.Header {
 	tmheader := ToABCIHeader(header)
 	return *tmheader.ToProto()
@@ -15,6 +17,7 @@ func ToABCIHeaderPB(header *Header) types.Header {
 
 // ToABCIHeader converts Dymint header to Header format defined in ABCI.
 // Caller should fill all the fields that are not available in Dymint header (like ChainID).
+// WARNING: THIS IS A LOSSY CONVERSION
 func ToABCIHeader(header *Header) tmtypes.Header {
 	return tmtypes.Header{
 		Version: version.Consensus{
@@ -37,7 +40,7 @@ func ToABCIHeader(header *Header) tmtypes.Header {
 		ConsensusHash:      header.ConsensusHash[:],
 		AppHash:            header.AppHash[:],
 		LastResultsHash:    header.LastResultsHash[:],
-		EvidenceHash:       new(tmtypes.EvidenceData).Hash(),
+		EvidenceHash:       header.DymHash(), // Overloaded, we don't need the evidence field because we don't use comet.
 		ProposerAddress:    header.ProposerAddress,
 		ChainID:            header.ChainID,
 	}

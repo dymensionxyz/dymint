@@ -72,11 +72,8 @@ type Manager struct {
 	Cancel context.CancelFunc
 	Ctx    context.Context
 
-	// LastBlockTimeInSettlement is the time of last submitted block, used to measure batch skew time
-	LastBlockTimeInSettlement atomic.Int64
-
-	// LastBlockTime is the time of last produced block, used to measure batch skew time
-	LastBlockTime atomic.Int64
+	// LastSubmissionTime is the time of last batch submitted in SL
+	LastSubmissionTime atomic.Int64
 
 	// mutex used to avoid stopping node when fork is detected but proposer is creating/sending fork batch
 	forkMu sync.Mutex
@@ -195,12 +192,6 @@ func NewManager(
 		return nil, err
 	}
 
-	// update dymint state with next revision info
-	err = m.updateStateForNextRevision()
-	if err != nil {
-		return nil, err
-	}
-
 	// validate configuration params and rollapp consensus params are in line
 	err = m.ValidateConfigWithRollappParams()
 	if err != nil {
@@ -223,6 +214,12 @@ func (m *Manager) Start(ctx context.Context) error {
 		if err != nil {
 			return err
 		}
+	}
+
+	// update dymint state with next revision info
+	err := m.updateStateForNextRevision()
+	if err != nil {
+		return err
 	}
 
 	// Check if a proposer on the rollapp is set. In case no proposer is set on the Rollapp, fallback to the hub proposer (If such exists).
@@ -310,13 +307,12 @@ func (m *Manager) updateFromLastSettlementState() error {
 		m.logger.Error("Cannot fetch sequencer set from the Hub", "error", err)
 	}
 
-	// update latest height from SL
-	latestHeight, err := m.SLClient.GetLatestHeight()
+	// get latest submitted batch from SL
+	latestBatch, err := m.SLClient.GetLatestBatch()
 	if errors.Is(err, gerrc.ErrNotFound) {
 		// The SL hasn't got any batches for this chain yet.
 		m.logger.Info("No batches for chain found in SL.")
 		m.LastSettlementHeight.Store(uint64(m.Genesis.InitialHeight - 1)) //nolint:gosec // height is non-negative and falls in int64
-		m.LastBlockTimeInSettlement.Store(m.Genesis.GenesisTime.UTC().UnixNano())
 		return nil
 	}
 	if err != nil {
@@ -324,21 +320,14 @@ func (m *Manager) updateFromLastSettlementState() error {
 		return err
 	}
 
-	m.P2PClient.UpdateLatestSeenHeight(latestHeight)
-	if latestHeight >= m.State.NextHeight() {
-		m.UpdateTargetHeight(latestHeight)
+	m.P2PClient.UpdateLatestSeenHeight(latestBatch.EndHeight)
+	if latestBatch.EndHeight >= m.State.NextHeight() {
+		m.UpdateTargetHeight(latestBatch.EndHeight)
 	}
 
-	m.LastSettlementHeight.Store(latestHeight)
+	m.LastSettlementHeight.Store(latestBatch.EndHeight)
+	m.LastSubmissionTime.Store(latestBatch.CreationTime.UTC().UnixNano())
 
-	// init last block in settlement time in dymint state to calculate batch submit skew time
-	m.SetLastBlockTimeInSettlementFromHeight(latestHeight)
-
-	// init last block time in dymint state to calculate batch submit skew time
-	block, err := m.Store.LoadBlock(m.State.Height())
-	if err == nil {
-		m.LastBlockTime.Store(block.Header.GetTimestamp().UTC().UnixNano())
-	}
 	return nil
 }
 
@@ -419,14 +408,4 @@ func (m *Manager) freezeNode(err error) {
 	}
 	uevent.MustPublish(m.Ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
 	m.Cancel()
-}
-
-// SetLastBlockTimeInSettlementFromHeight is used to initialize LastBlockTimeInSettlement from rollapp height in settlement
-func (m *Manager) SetLastBlockTimeInSettlementFromHeight(lastSettlementHeight uint64) {
-	block, err := m.Store.LoadBlock(lastSettlementHeight)
-	if err != nil {
-		// if settlement height block is not found it will be updated after, when syncing
-		return
-	}
-	m.LastBlockTimeInSettlement.Store(block.Header.GetTimestamp().UTC().UnixNano())
 }

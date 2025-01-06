@@ -84,20 +84,21 @@ func (c *Commit) UnmarshalBinary(data []byte) error {
 // ToProto converts Header into protobuf representation and returns it.
 func (h *Header) ToProto() *pb.Header {
 	return &pb.Header{
-		Version:           &pb.Version{Block: h.Version.Block, App: h.Version.App},
-		NamespaceId:       []byte{},
-		Height:            h.Height,
-		Time:              h.Time,
-		LastHeaderHash:    h.LastHeaderHash[:],
-		LastCommitHash:    h.LastCommitHash[:],
-		DataHash:          h.DataHash[:],
-		ConsensusHash:     h.ConsensusHash[:],
-		AppHash:           h.AppHash[:],
-		LastResultsHash:   h.LastResultsHash[:],
-		ProposerAddress:   h.ProposerAddress[:],
-		SequencerHash:     h.SequencerHash[:],
-		NextSequencerHash: h.NextSequencersHash[:],
-		ChainId:           h.ChainID,
+		Version:               &pb.Version{Block: h.Version.Block, App: h.Version.App},
+		NamespaceId:           []byte{},
+		Height:                h.Height,
+		Time:                  h.Time,
+		LastHeaderHash:        h.LastHeaderHash[:],
+		LastCommitHash:        h.LastCommitHash[:],
+		DataHash:              h.DataHash[:],
+		ConsensusHash:         h.ConsensusHash[:],
+		AppHash:               h.AppHash[:],
+		LastResultsHash:       h.LastResultsHash[:],
+		ProposerAddress:       h.ProposerAddress[:],
+		SequencerHash:         h.SequencerHash[:],
+		NextSequencerHash:     h.NextSequencersHash[:],
+		ChainId:               h.ChainID,
+		ConsensusMessagesHash: h.ConsensusMessagesHash[:],
 	}
 }
 
@@ -130,13 +131,17 @@ func (h *Header) FromProto(other *pb.Header) error {
 		return errors.New("invalid length of 'SequencerHash'")
 	}
 	if !safeCopy(h.NextSequencersHash[:], other.NextSequencerHash) {
-		return errors.New("invalid length of 'SequencersHash'")
+		return errors.New("invalid length of 'NextSequencersHash'")
 	}
-	if len(other.ProposerAddress) > 0 {
+	if len(other.ProposerAddress) > 0 { // TODO: why if?
 		h.ProposerAddress = make([]byte, len(other.ProposerAddress))
 		copy(h.ProposerAddress, other.ProposerAddress)
 	}
-
+	if 0 < len(other.ConsensusMessagesHash) {
+		if !safeCopy(h.ConsensusMessagesHash[:], other.ConsensusMessagesHash) {
+			return errors.New("invalid length of 'consensusMessagesHash'")
+		}
+	}
 	return nil
 }
 
