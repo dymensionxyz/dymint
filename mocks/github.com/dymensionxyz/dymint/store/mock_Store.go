@@ -966,6 +966,64 @@ func (_c *MockStore_NewBatch_Call) RunAndReturn(run func() store.KVBatch) *MockS
 	return _c
 }
 
+// PruneHeights provides a mock function with given fields: from, to, logger
+func (_m *MockStore) PruneHeights(from uint64, to uint64, logger types.Logger) (uint64, error) {
+	ret := _m.Called(from, to, logger)
+
+	if len(ret) == 0 {
+		panic("no return value specified for PruneHeights")
+	}
+
+	var r0 uint64
+	var r1 error
+	if rf, ok := ret.Get(0).(func(uint64, uint64, types.Logger) (uint64, error)); ok {
+		return rf(from, to, logger)
+	}
+	if rf, ok := ret.Get(0).(func(uint64, uint64, types.Logger) uint64); ok {
+		r0 = rf(from, to, logger)
+	} else {
+		r0 = ret.Get(0).(uint64)
+	}
+
+	if rf, ok := ret.Get(1).(func(uint64, uint64, types.Logger) error); ok {
+		r1 = rf(from, to, logger)
+	} else {
+		r1 = ret.Error(1)
+	}
+
+	return r0, r1
+}
+
+// MockStore_PruneHeights_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'PruneHeights'
+type MockStore_PruneHeights_Call struct {
+	*mock.Call
+}
+
+// PruneHeights is a helper method to define mock.On call
+//   - from uint64
+//   - to uint64
+//   - logger types.Logger
+func (_e *MockStore_Expecter) PruneHeights(from interface{}, to interface{}, logger interface{}) *MockStore_PruneHeights_Call {
+	return &MockStore_PruneHeights_Call{Call: _e.mock.On("PruneHeights", from, to, logger)}
+}
+
+func (_c *MockStore_PruneHeights_Call) Run(run func(from uint64, to uint64, logger types.Logger)) *MockStore_PruneHeights_Call {
+	_c.Call.Run(func(args mock.Arguments) {
+		run(args[0].(uint64), args[1].(uint64), args[2].(types.Logger))
+	})
+	return _c
+}
+
+func (_c *MockStore_PruneHeights_Call) Return(_a0 uint64, _a1 error) *MockStore_PruneHeights_Call {
+	_c.Call.Return(_a0, _a1)
+	return _c
+}
+
+func (_c *MockStore_PruneHeights_Call) RunAndReturn(run func(uint64, uint64, types.Logger) (uint64, error)) *MockStore_PruneHeights_Call {
+	_c.Call.Return(run)
+	return _c
+}
+
 // PruneStore provides a mock function with given fields: to, logger
 func (_m *MockStore) PruneStore(to uint64, logger types.Logger) (uint64, error) {
 	ret := _m.Called(to, logger)

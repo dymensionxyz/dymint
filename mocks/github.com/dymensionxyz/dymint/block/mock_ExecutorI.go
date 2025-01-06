@@ -498,9 +498,9 @@ func (_c *MockExecutorI_UpdateProposerFromBlock_Call) RunAndReturn(run func(*typ
 	return _c
 }
 
-// UpdateStateAfterCommit provides a mock function with given fields: s, resp, appHash, height, lastHeaderHash
-func (_m *MockExecutorI) UpdateStateAfterCommit(s *types.State, resp *state.ABCIResponses, appHash []byte, height uint64, lastHeaderHash [32]byte) {
-	_m.Called(s, resp, appHash, height, lastHeaderHash)
+// UpdateStateAfterCommit provides a mock function with given fields: s, resp, appHash, _a3
+func (_m *MockExecutorI) UpdateStateAfterCommit(s *types.State, resp *state.ABCIResponses, appHash []byte, _a3 *types.Block) {
+	_m.Called(s, resp, appHash, _a3)
 }
 
 // MockExecutorI_UpdateStateAfterCommit_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'UpdateStateAfterCommit'
@@ -512,15 +512,14 @@ type MockExecutorI_UpdateStateAfterCommit_Call struct {
 //   - s *types.State
 //   - resp *state.ABCIResponses
 //   - appHash []byte
-//   - height uint64
-//   - lastHeaderHash [32]byte
-func (_e *MockExecutorI_Expecter) UpdateStateAfterCommit(s interface{}, resp interface{}, appHash interface{}, height interface{}, lastHeaderHash interface{}) *MockExecutorI_UpdateStateAfterCommit_Call {
-	return &MockExecutorI_UpdateStateAfterCommit_Call{Call: _e.mock.On("UpdateStateAfterCommit", s, resp, appHash, height, lastHeaderHash)}
+//   - _a3 *types.Block
+func (_e *MockExecutorI_Expecter) UpdateStateAfterCommit(s interface{}, resp interface{}, appHash interface{}, _a3 interface{}) *MockExecutorI_UpdateStateAfterCommit_Call {
+	return &MockExecutorI_UpdateStateAfterCommit_Call{Call: _e.mock.On("UpdateStateAfterCommit", s, resp, appHash, _a3)}
 }
 
-func (_c *MockExecutorI_UpdateStateAfterCommit_Call) Run(run func(s *types.State, resp *state.ABCIResponses, appHash []byte, height uint64, lastHeaderHash [32]byte)) *MockExecutorI_UpdateStateAfterCommit_Call {
+func (_c *MockExecutorI_UpdateStateAfterCommit_Call) Run(run func(s *types.State, resp *state.ABCIResponses, appHash []byte, _a3 *types.Block)) *MockExecutorI_UpdateStateAfterCommit_Call {
 	_c.Call.Run(func(args mock.Arguments) {
-		run(args[0].(*types.State), args[1].(*state.ABCIResponses), args[2].([]byte), args[3].(uint64), args[4].([32]byte))
+		run(args[0].(*types.State), args[1].(*state.ABCIResponses), args[2].([]byte), args[3].(*types.Block))
 	})
 	return _c
 }
@@ -530,7 +529,11 @@ func (_c *MockExecutorI_UpdateStateAfterCommit_Call) Return() *MockExecutorI_Upd
 	return _c
 }
 
+<<<<<<< HEAD
 func (_c *MockExecutorI_UpdateStateAfterCommit_Call) RunAndReturn(run func(*types.State, *state.ABCIResponses, []byte, uint64, [32]byte)) *MockExecutorI_UpdateStateAfterCommit_Call {
+=======
+func (_c *MockExecutorI_UpdateStateAfterCommit_Call) RunAndReturn(run func(*types.State, *state.ABCIResponses, []byte, *types.Block)) *MockExecutorI_UpdateStateAfterCommit_Call {
+>>>>>>> main
 	_c.Run(run)
 	return _c
 }
