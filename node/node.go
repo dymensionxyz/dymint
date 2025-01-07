@@ -45,12 +45,9 @@ var (
 // It connects all the components and orchestrates their work.
 type Node struct {
 	service.BaseService
-	// FIXME: why we need both eventBus and PubsubServer?
 	eventBus     *tmtypes.EventBus
 	PubsubServer *pubsub.Server
-
-	// FIXME: can be removed? already wrapped in the RPC client and in the block manager
-	proxyApp proxy.AppConns
+	proxyApp     proxy.AppConns
 
 	genesis *tmtypes.GenesisDoc
 
@@ -94,14 +91,12 @@ func NewNode(
 		return nil, fmt.Errorf("starting proxy app connections: %w", err)
 	}
 
-	// used by indexer (external?)
 	eventBus := tmtypes.NewEventBus()
 	eventBus.SetLogger(logger.With("module", "events"))
 	if err := eventBus.Start(); err != nil {
 		return nil, err
 	}
 
-	// used by SL client and block manager (internal?)
 	pubsubServer := pubsub.NewServer()
 
 	var baseKV store.KV

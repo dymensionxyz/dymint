@@ -310,6 +310,7 @@ func (m *Manager) Start(ctx context.Context) error {
 		} else if errors.Is(err, gerrc.ErrFault) {
 			// Here we handle the fault by calling the fraud handler.
 			// it publishes a DataHealthStatus event to the pubsub and stops the block manager.
+			m.logger.Error("block manager exited with fault", "error", err)
 			m.FraudHandler.HandleFault(err)
 		} else if err != nil {
 			m.logger.Error("block manager exited with error", "error", err)
@@ -432,8 +433,7 @@ func (m *Manager) setFraudHandler(handler *FreezeHandler) {
 	m.FraudHandler = handler
 }
 
-// StopManager sets the node as unhealthy and prevents the node continues producing and processing blocks
-// It should be called by callback or functions with no error return
+// StopManager sets the node as unhealthy and stops the block manager context
 func (m *Manager) StopManager(err error) {
 	m.logger.Info("Freezing node", "err", err)
 	m.setUnhealthy(err)

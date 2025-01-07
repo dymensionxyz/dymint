@@ -61,12 +61,14 @@ func (m *Manager) OnReceivedBlock(event pubsub.Message) {
 	err := m.attemptApplyCachedBlocks()
 	if err != nil {
 		// OnReceivedBlock is a callback, and we can't return an error.
-		// Therefore we publish a DataHealthStatus event to the pubsub and stop the block manager.
+		// Therefore we handle the error here as well.
 		if errors.Is(err, gerrc.ErrFault) {
 			// Here we handle the fault by calling the fraud handler.
 			// it publishes a DataHealthStatus event to the pubsub and stops the block manager.
+			m.logger.Error("block manager exited with fault", "error", err)
 			m.FraudHandler.HandleFault(err)
 		} else {
+			m.logger.Error("block manager exited with error", "error", err)
 			m.StopManager(err)
 		}
 		m.logger.Error("Attempt apply cached blocks.", "err", err)

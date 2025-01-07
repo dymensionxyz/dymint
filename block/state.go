@@ -156,7 +156,6 @@ func (e *Executor) UpdateProposerFromBlock(s *types.State, seqSet *types.Sequenc
 	seq, found := seqSet.GetByHash(block.Header.NextSequencersHash[:])
 	if !found {
 		e.logger.Error("cannot find proposer by hash")
-		// FIXME :freeze instead
 		panic("cannot find proposer by hash")
 	}
 	s.SetProposer(&seq)
