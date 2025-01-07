@@ -99,6 +99,7 @@ func SubmitLoopInner(
 			}
 
 			pending := pendingBytes.Load()
+			UpdateBatchSubmissionGauges(pending, unsubmittedBlocksNum(), batchSkewTime())
 
 			// while there are accumulated blocks, create and submit batches!!
 			for {
@@ -107,8 +108,6 @@ func SubmitLoopInner(
 
 				lastSubmissionIsRecent := isLastBatchRecent(maxBatchSubmitTime)
 				maxDataNotExceeded := pending <= maxBatchSubmitBytes
-
-				UpdateBatchSubmissionGauges(pending, unsubmittedBlocksNum(), batchSkewTime())
 
 				if done || nothingToSubmit || (lastSubmissionIsRecent && maxDataNotExceeded) {
 					break
@@ -131,10 +130,13 @@ func SubmitLoopInner(
 				}
 				pending = uint64(unsubmittedBlocksBytes()) //nolint:gosec // bytes size is always positive
 				// after new batch submitted we check the skew time to wake up 'trigger' thread and restart block production
-				if batchSkewTime() < maxSkewTime {
+				skewTime := batchSkewTime()
+				if skewTime < maxSkewTime {
 					trigger.Nudge()
 				}
-				logger.Debug("Submitted a batch to both sub-layers.", "n bytes consumed from pending", nConsumed, "pending after", pending, "skew time", batchSkewTime())
+				UpdateBatchSubmissionGauges(pending, unsubmittedBlocksNum(), skewTime)
+
+				logger.Debug("Submitted a batch to both sub-layers.", "n bytes consumed from pending", nConsumed, "pending after", pending, "skew time", skewTime)
 			}
 			// update pendingBytes with non submitted block bytes after all pending batches have been submitted
 			pendingBytes.Store(pending)

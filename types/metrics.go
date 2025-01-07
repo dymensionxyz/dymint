@@ -18,13 +18,13 @@ var RollappHubHeightGauge = promauto.NewGauge(prometheus.GaugeOpts{
 	Help: "The latest height of the Rollapp that has been synced to the hub.",
 })
 
-// FIXME: should be a histogram?
+// TODO: should be a histogram?
 var RollappBlockSizeBytesGauge = promauto.NewGauge(prometheus.GaugeOpts{
 	Name: "rollapp_block_size_bytes",
 	Help: "last block size in bytes",
 })
 
-// FIXME: should be a histogram?
+// TODO: should be a histogram?
 var RollappBlockSizeTxsGauge = promauto.NewGauge(prometheus.GaugeOpts{
 	Name: "rollapp_block_num_txs",
 	Help: "number of transactions in the last block",
