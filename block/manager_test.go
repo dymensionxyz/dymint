@@ -191,13 +191,10 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 	defer cancel()
 	// Capture the error returned by manager.Start.
 
-	errChan := make(chan error, 1)
-	go func() {
-		errChan <- manager.Start(ctx)
-		err := <-errChan
-		require.NoError(t, err)
-	}()
+	err = manager.Start(ctx)
+	require.NoError(t, err)
 	<-ctx.Done()
+
 	assert.Equal(t, batch.EndHeight(), manager.LastSettlementHeight.Load())
 	// validate that we produced blocks
 	assert.Greater(t, manager.State.Height(), batch.EndHeight())

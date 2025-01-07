@@ -97,17 +97,17 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 
 			}
 
+			// after syncing from SL, attempt to apply cached blocks if any
+			err := m.attemptApplyCachedBlocks()
+			if err != nil {
+				return fmt.Errorf("Attempt apply cached blocks. err:%w", err)
+			}
+
 			// avoid notifying as synced in case it fails before
 			if m.State.Height() >= m.LastSettlementHeight.Load() {
 				m.logger.Info("Synced.", "current height", m.State.Height(), "last submitted height", m.LastSettlementHeight.Load())
 				// nudge to signal to any listens that we're currently synced with the last settlement height we've seen so far
 				m.syncedFromSettlement.Nudge()
-			}
-
-			// after syncing from SL, attempt to apply cached blocks if any
-			err := m.attemptApplyCachedBlocks()
-			if err != nil {
-				return fmt.Errorf("Attempt apply cached blocks. err:%w", err)
 			}
 		}
 	}
