@@ -11,6 +11,7 @@ import (
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 )
 
 // SettlementValidator validates batches from settlement layer with the corresponding blocks from DA and P2P.
@@ -234,11 +235,13 @@ func (v *SettlementValidator) NextValidationHeight() uint64 {
 
 // validateDRS compares the DRS version stored for the specific height, obtained from rollapp params.
 func (v *SettlementValidator) validateDRS(stateIndex uint64, height uint64, version uint32) error {
-	// skip validation for DRS version 0 (2D rollapps)
-	if version == 0 {
+
+	drs, err := v.blockManager.Store.LoadDRSVersion(height)
+	//it can happen DRS is not found for blocks applied previous to migration, in case of migration from 2D rollapps
+	if errors.Is(err, gerrc.ErrNotFound) {
+		v.logger.Error("Unable to validate BD DRS version. Height:%d Err:%w", height, err)
 		return nil
 	}
-	drs, err := v.blockManager.Store.LoadDRSVersion(height)
 	if err != nil {
 		return err
 	}
