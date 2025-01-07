@@ -423,7 +423,7 @@ func (c *Client) GetAllSequencers() ([]types.Sequencer, error) {
 			}
 			res = append(res, qres.Sequencers...)
 			req.Pagination.Key = qres.GetPagination().NextKey
-			if req.Pagination.Key == nil {
+			if len(req.Pagination.Key) == 0 {
 				return nil
 			}
 		}
