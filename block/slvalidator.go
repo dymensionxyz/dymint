@@ -235,9 +235,8 @@ func (v *SettlementValidator) NextValidationHeight() uint64 {
 
 // validateDRS compares the DRS version stored for the specific height, obtained from rollapp params.
 func (v *SettlementValidator) validateDRS(stateIndex uint64, height uint64, version uint32) error {
-
 	drs, err := v.blockManager.Store.LoadDRSVersion(height)
-	//it can happen DRS is not found for blocks applied previous to migration, in case of migration from 2D rollapps
+	// it can happen DRS is not found for blocks applied previous to migration, in case of migration from 2D rollapps
 	if errors.Is(err, gerrc.ErrNotFound) {
 		v.logger.Error("Unable to validate BD DRS version. Height:%d Err:%w", height, err)
 		return nil
