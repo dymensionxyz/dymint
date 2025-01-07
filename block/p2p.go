@@ -2,10 +2,12 @@ package block
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
 
@@ -58,7 +60,15 @@ func (m *Manager) OnReceivedBlock(event pubsub.Message) {
 
 	err := m.attemptApplyCachedBlocks()
 	if err != nil {
-		m.setUnhealthy(err)
+		// OnReceivedBlock is a callback, and we can't return an error.
+		// Therefore we publish a DataHealthStatus event to the pubsub and stop the block manager.
+		if errors.Is(err, gerrc.ErrFault) {
+			// Here we handle the fault by calling the fraud handler.
+			// it publishes a DataHealthStatus event to the pubsub and stops the block manager.
+			m.FraudHandler.HandleFault(err)
+		} else {
+			m.StopManager(err)
+		}
 		m.logger.Error("Attempt apply cached blocks.", "err", err)
 	}
 }

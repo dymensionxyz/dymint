@@ -81,9 +81,8 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 				// we update LastSubmissionTime to be able to measure batch submission time
 				m.LastSubmissionTime.Store(settlementBatch.Batch.CreationTime.UTC().UnixNano())
 
-				err = m.ApplyBatchFromSL(settlementBatch.Batch)
-
 				// this will keep sync loop alive when DA is down or retrievals are failing because DA issues.
+				err = m.ApplyBatchFromSL(settlementBatch.Batch)
 				if errors.Is(err, da.ErrRetrieval) {
 					// fixme: set unhealthy?
 					continue
@@ -98,12 +97,6 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 				// trigger state update validation, after each state update is applied
 				m.triggerSettlementValidation()
 
-				err = m.attemptApplyCachedBlocks()
-				if err != nil {
-					// FIXME: recoverable?
-					return fmt.Errorf("Attempt apply cached blocks. err:%w", err)
-				}
-
 			}
 
 			// avoid notifying as synced in case it fails before
@@ -113,6 +106,11 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 				m.syncedFromSettlement.Nudge()
 			}
 
+			// after syncing from SL, attempt to apply cached blocks
+			err := m.attemptApplyCachedBlocks()
+			if err != nil {
+				return fmt.Errorf("Attempt apply cached blocks. err:%w", err)
+			}
 		}
 	}
 }

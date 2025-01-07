@@ -1,10 +1,7 @@
 package block
 
 import (
-	"errors"
 	"fmt"
-
-	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 
 	errorsmod "cosmossdk.io/errors"
 
@@ -13,30 +10,19 @@ import (
 
 // applyBlockWithFraudHandling calls applyBlock and validateBlockBeforeApply with fraud handling.
 func (m *Manager) applyBlockWithFraudHandling(block *types.Block, commit *types.Commit, blockMetaData types.BlockMetaData) error {
-	validateWithFraud := func() error {
-		if m.Conf.SkipValidationHeight != block.Header.Height {
-			if err := m.validateBlockBeforeApply(block, commit); err != nil {
-				m.blockCache.Delete(block.Header.Height)
-				// TODO: can we take an action here such as dropping the peer / reducing their reputation?
-				return fmt.Errorf("block not valid at height %d, dropping it: err:%w", block.Header.Height, err)
-			}
+	if m.Conf.SkipValidationHeight != block.Header.Height {
+		if err := m.validateBlockBeforeApply(block, commit); err != nil {
+			m.blockCache.Delete(block.Header.Height)
+			// TODO: can we take an action here such as dropping the peer / reducing their reputation?
+			return fmt.Errorf("block not valid at height %d, dropping it: err:%w", block.Header.Height, err)
 		}
-
-		if err := m.applyBlock(block, commit, blockMetaData); err != nil {
-			return fmt.Errorf("apply block: %w", err)
-		}
-
-		return nil
 	}
 
-	err := validateWithFraud()
-	if errors.Is(err, gerrc.ErrFault) {
-		// Here we handle the fault by calling the fraud handler.
-		// it publishes a DataHealthStatus event to the pubsub and stops the block manager.
-		m.FraudHandler.HandleFault(err)
+	if err := m.applyBlock(block, commit, blockMetaData); err != nil {
+		return fmt.Errorf("apply block: %w", err)
 	}
 
-	return err
+	return nil
 }
 
 // applyBlock applies the block to the store and the abci app.

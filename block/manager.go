@@ -67,6 +67,7 @@ type Manager struct {
 
 	// RunMode represents the mode of the node. Set during initialization and shouldn't change after that.
 	RunMode uint
+	Cancel  context.CancelFunc
 
 	// LastSubmissionTime is the time of last batch submitted in SL
 	LastSubmissionTime atomic.Int64
@@ -201,11 +202,10 @@ func NewManager(
 // Start starts the block manager.
 func (m *Manager) Start(ctx context.Context) error {
 	// create new, cancelable context for the block manager
-	ctx, cancel := context.WithCancel(ctx)
-
+	ctx, m.Cancel = context.WithCancel(ctx)
 	// set the fraud handler to freeze the node in case of fraud
 	// TODO: should be called for fullnode only?
-	m.setFraudHandler(NewFreezeHandler(m, cancel))
+	m.setFraudHandler(NewFreezeHandler(m))
 
 	// Check if InitChain flow is needed
 	if m.State.IsGenesis() {
@@ -307,9 +307,13 @@ func (m *Manager) Start(ctx context.Context) error {
 		// Check if loops exited due to sequencer rotation signal
 		if errors.Is(err, errRotationRequested) {
 			m.rotate(ctx)
+		} else if errors.Is(err, gerrc.ErrFault) {
+			// Here we handle the fault by calling the fraud handler.
+			// it publishes a DataHealthStatus event to the pubsub and stops the block manager.
+			m.FraudHandler.HandleFault(err)
 		} else if err != nil {
 			m.logger.Error("block manager exited with error", "error", err)
-			m.StopManager(err, cancel)
+			m.StopManager(err)
 		}
 	}()
 
@@ -430,10 +434,10 @@ func (m *Manager) setFraudHandler(handler *FreezeHandler) {
 
 // StopManager sets the node as unhealthy and prevents the node continues producing and processing blocks
 // It should be called by callback or functions with no error return
-func (m *Manager) StopManager(err error, cancel context.CancelFunc) {
+func (m *Manager) StopManager(err error) {
 	m.logger.Info("Freezing node", "err", err)
 	m.setUnhealthy(err)
-	cancel()
+	m.Cancel()
 }
 
 func (m *Manager) setUnhealthy(err error) {
