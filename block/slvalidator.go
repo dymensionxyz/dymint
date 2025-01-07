@@ -32,7 +32,11 @@ func NewSettlementValidator(logger types.Logger, blockManager *Manager) *Settlem
 		logger:       logger,
 		blockManager: blockManager,
 	}
-	validator.lastValidatedHeight.Store(lastValidatedHeight)
+
+	// if SkipValidationHeight is set,  dont validate anything previous to that (used by 2D migration)
+	validationHeight := max(blockManager.Conf.SkipValidationHeight+1, lastValidatedHeight)
+
+	validator.lastValidatedHeight.Store(validationHeight)
 
 	return validator
 }
