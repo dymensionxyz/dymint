@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	tmcrypto "github.com/tendermint/tendermint/crypto"
 	tmtypes "github.com/tendermint/tendermint/types"
 )
@@ -141,7 +142,7 @@ func (c *Commit) ValidateBasic() error {
 
 func (c *Commit) ValidateWithHeader(proposerPubKey tmcrypto.PubKey, header *Header) error {
 	if err := c.ValidateBasic(); err != nil {
-		return NewErrInvalidSignatureFraud(err, header, c)
+		return gerrc.ErrInvalidArgument.Wrap("invalid sig")
 	}
 
 	abciHeaderPb := ToABCIHeaderPB(header)
@@ -152,7 +153,7 @@ func (c *Commit) ValidateWithHeader(proposerPubKey tmcrypto.PubKey, header *Head
 
 	// commit is validated to have single signature
 	if !proposerPubKey.VerifySignature(abciHeaderBytes, c.Signatures[0]) {
-		return NewErrInvalidSignatureFraud(ErrInvalidSignature, header, c)
+		return gerrc.ErrInvalidArgument.Wrap("invalid sig")
 	}
 
 	if c.Height != header.Height {

@@ -255,33 +255,6 @@ func (e ErrInvalidHeaderHashFraud) Unwrap() error {
 	return gerrc.ErrFault
 }
 
-// ErrInvalidSignatureFraud indicates a potential fraud due to an invalid signature in the block.
-type ErrInvalidSignatureFraud struct {
-	Err    error
-	Header *Header
-	Commit *Commit
-}
-
-func NewErrInvalidSignatureFraud(err error, header *Header, c *Commit) error {
-	return &ErrInvalidSignatureFraud{
-		Header: header,
-		Err:    err,
-		Commit: c,
-	}
-}
-
-func (e ErrInvalidSignatureFraud) Error() string {
-	return fmt.Sprintf(
-		"possible fraud detected on height %d, with header hash %X, emitted by sequencer %X: Invalid Signature: %s, signatures=%v",
-		e.Header.Height, e.Header.Hash(), e.Header.ProposerAddress,
-		e.Err, e.Commit.Signatures,
-	)
-}
-
-func (e ErrInvalidSignatureFraud) Unwrap() error {
-	return gerrc.ErrFault
-}
-
 // ErrInvalidProposerAddressFraud indicates a potential fraud when the proposer's address is invalid.
 type ErrInvalidProposerAddressFraud struct {
 	ExpectedAddress []byte
