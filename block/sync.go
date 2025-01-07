@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/dymensionxyz/dymint/da"
+	"github.com/dymensionxyz/dymint/types"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/tendermint/tendermint/libs/pubsub"
 
@@ -21,6 +22,7 @@ func (m *Manager) onNewStateUpdate(event pubsub.Message) {
 	}
 
 	// Update heights based on state update end height
+	types.RollappHubHeightGauge.Set(float64(eventData.EndHeight))
 	m.LastSettlementHeight.Store(eventData.EndHeight)
 
 	// Update sequencers list from SL

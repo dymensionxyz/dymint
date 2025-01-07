@@ -181,11 +181,11 @@ func (m *Manager) CreateAndSubmitBatch(maxSizeBytes uint64, lastBatch bool) (*ty
 	}
 
 	m.logger.Info("Created batch.", "start height", startHeight, "end height", endHeightInclusive, "size", b.SizeBytes(), "last batch", b.LastBatch)
-	types.LastBatchSubmittedBytes.Set(float64(b.SizeBytes()))
-
 	if err := m.SubmitBatch(b); err != nil {
 		return nil, fmt.Errorf("submit batch: %w", err)
 	}
+
+	types.LastBatchSubmittedBytes.Set(float64(b.SizeBytes()))
 	return b, nil
 }
 
@@ -371,7 +371,7 @@ func (m *Manager) isLastBatchRecent(maxBatchSubmitTime time.Duration) bool {
 }
 
 func UpdateBatchSubmissionGauges(skewBytes uint64, skewBlocks uint64, skewTime time.Duration) {
-	types.RollappPendingSubmissionsSkewBytes.Set(float64(skewBytes))
-	types.RollappPendingSubmissionsSkewBlocks.Set(float64(skewBlocks))
+	types.RollappPendingSubmissionsBytes.Set(float64(skewBytes))
+	types.RollappPendingSubmissionsBlocks.Set(float64(skewBlocks))
 	types.RollappPendingSubmissionsSkewTimeMinutes.Set(float64(skewTime.Minutes()))
 }
