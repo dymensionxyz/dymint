@@ -9,6 +9,7 @@ import (
 	errorsmod "cosmossdk.io/errors"
 
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/dymint/types/metrics"
 )
 
 // applyBlockWithFraudHandling calls applyBlock and validateBlockBeforeApply with fraud handling.
@@ -196,10 +197,10 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	}
 
 	// update metrics
-	types.RollappHeightGauge.Set(float64(block.Header.Height))
-	types.RollappBlockSizeBytesGauge.Set(float64(block.SizeBytes()))
-	types.RollappBlockSizeTxsGauge.Set(float64(len(block.Data.Txs)))
-	types.SetLastAppliedBlockSource(blockMetaData.Source.String())
+	metrics.RollappHeightGauge.Set(float64(block.Header.Height))
+	metrics.RollappBlockSizeBytesGauge.Set(float64(block.SizeBytes()))
+	metrics.RollappBlockSizeTxsGauge.Set(float64(len(block.Data.Txs)))
+	metrics.SetLastAppliedBlockSource(blockMetaData.Source.String())
 
 	return nil
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/dymint/types/metrics"
 )
 
 // SettlementValidator validates batches from settlement layer with the corresponding blocks from DA and P2P.
@@ -218,7 +219,7 @@ func (v *SettlementValidator) UpdateLastValidatedHeight(height uint64) {
 				v.logger.Error("update validation height: %w", err)
 			}
 
-			types.LastValidatedHeight.Set(float64(h))
+			metrics.LastValidatedHeight.Set(float64(h))
 			break
 		}
 	}
