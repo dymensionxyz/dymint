@@ -33,8 +33,8 @@ func Run3DMigration(s *DefaultStore, da string) error {
 		return err
 	}
 
-	// we set validation to 0 and it will be updated after restart from last finalized height
-	_, err = s.SaveValidationHeight(0, nil)
+	// we set validation to next height to skip validation of any previous block/batch to migration
+	_, err = s.SaveValidationHeight(state.NextHeight(), nil)
 	if err != nil {
 		return err
 	}
