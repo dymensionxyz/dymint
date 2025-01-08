@@ -74,8 +74,6 @@ func SequencersByRollappByStatusKey(rollappId string, status OperatingStatus) []
 		prefix = BondedSequencersKeyPrefix
 	case Unbonded:
 		prefix = UnbondedSequencersKeyPrefix
-	case Unbonding:
-		prefix = UnbondingSequencersKeyPrefix
 	}
 
 	return []byte(fmt.Sprintf("%s%s%s", SequencersByRollappKey(rollappId), KeySeparator, prefix))
