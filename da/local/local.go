@@ -93,8 +93,6 @@ func (m *DataAvailabilityLayerClient) GetClientType() da.Client {
 func (m *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultSubmitBatch {
 	daHeight := m.daHeight.Load()
 
-	m.logger.Info("Submit batch DA client LOCAL.")
-
 	m.logger.Debug("Submitting batch to DA layer", "start height", batch.StartHeight(), "end height", batch.EndHeight(), "da height", daHeight)
 
 	blob, err := batch.MarshalBinary()

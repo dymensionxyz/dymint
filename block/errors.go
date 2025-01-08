@@ -1,8 +1,6 @@
 package block
 
-import (
-	"errors"
-)
+import "errors"
 
 var (
 	ErrNonRecoverable = errors.New("non recoverable")
