@@ -344,11 +344,13 @@ func (c *Client) saveBatch(batch *settlement.Batch) error {
 
 func (c *Client) convertBatchtoSettlementBatch(batch *types.Batch, daResult *da.ResultSubmitBatch) *settlement.Batch {
 	bds := []rollapp.BlockDescriptor{}
-	for _, block := range batch.Blocks {
+
+	for index, block := range batch.Blocks {
 		bd := rollapp.BlockDescriptor{
-			Height:    block.Header.Height,
-			StateRoot: block.Header.AppHash[:],
-			Timestamp: block.Header.GetTimestamp(),
+			Height:     block.Header.Height,
+			StateRoot:  block.Header.AppHash[:],
+			Timestamp:  block.Header.GetTimestamp(),
+			DrsVersion: batch.DRSVersion[index],
 		}
 		bds = append(bds, bd)
 	}
@@ -359,9 +361,10 @@ func (c *Client) convertBatchtoSettlementBatch(batch *types.Batch, daResult *da.
 	}
 
 	settlementBatch := &settlement.Batch{
-		Sequencer:   proposer.SettlementAddress,
-		StartHeight: batch.StartHeight(),
-		EndHeight:   batch.EndHeight(),
+		Sequencer:     proposer.SettlementAddress,
+		StartHeight:   batch.StartHeight(),
+		EndHeight:     batch.EndHeight(),
+		NextSequencer: proposer.SettlementAddress,
 		MetaData: &settlement.BatchMetaData{
 			DA: &da.DASubmitMetaData{
 				Height: daResult.SubmitMetaData.Height,
@@ -369,6 +372,7 @@ func (c *Client) convertBatchtoSettlementBatch(batch *types.Batch, daResult *da.
 			},
 		},
 		BlockDescriptors: bds,
+		NumBlocks:        batch.EndHeight() - batch.StartHeight() + 1,
 	}
 
 	return settlementBatch
