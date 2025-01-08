@@ -3,7 +3,6 @@ package grpc
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"strconv"
 
 	"cosmossdk.io/math"
@@ -56,9 +55,7 @@ var (
 func (d *DataAvailabilityLayerClient) Init(config []byte, _ *pubsub.Server, _ store.KV, logger types.Logger, options ...da.Option) error {
 	d.logger = logger
 	d.synced = make(chan struct{}, 1)
-	d.logger.Info("da config", "config", string(config))
 	d.ctx, d.cancel = context.WithCancel(context.Background())
-	d.logger.Info("INIT GRPC CTX", "ctx", d.ctx, "this", fmt.Sprintf("%p", d))
 	if len(config) == 0 {
 		d.config = DefaultConfig
 		return nil
@@ -86,7 +83,6 @@ func (d *DataAvailabilityLayerClient) Start() error {
 
 // Stop closes connection to gRPC server.
 func (d *DataAvailabilityLayerClient) Stop() error {
-	d.logger.Info("stopping GRPC DALC")
 	d.cancel()
 	return d.conn.Close()
 }
@@ -103,11 +99,9 @@ func (d *DataAvailabilityLayerClient) GetClientType() da.Client {
 
 // SubmitBatch proxies SubmitBatch request to gRPC server.
 func (d *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultSubmitBatch {
-	d.logger.Info("Submit batch DA client GRPC.")
 
 	backoff := d.getBackoff()
 
-	d.logger.Info("GRPC CTX", "ctx", d.ctx, "this", fmt.Sprintf("%p", d))
 	for {
 		select {
 		case <-d.ctx.Done():
