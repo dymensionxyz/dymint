@@ -15,29 +15,37 @@ service Query {
   rpc Params(QueryParamsRequest) returns (QueryParamsResponse) {}
 
   // Queries a Sequencer by address.
-  rpc Sequencer(QueryGetSequencerRequest) returns (QueryGetSequencerResponse) {}
+  rpc Sequencer(QueryGetSequencerRequest) returns (QueryGetSequencerResponse) {
+
+  }
 
   // Queries a list of Sequencer items.
-  rpc Sequencers(QuerySequencersRequest) returns (QuerySequencersResponse) {}
+  rpc Sequencers(QuerySequencersRequest) returns (QuerySequencersResponse) {
+  }
 
   // Queries a SequencersByRollapp by rollappId.
   rpc SequencersByRollapp(QueryGetSequencersByRollappRequest)
-      returns (QueryGetSequencersByRollappResponse) {}
+      returns (QueryGetSequencersByRollappResponse) {
+  }
 
   // Queries a SequencersByRollappByStatus
   rpc SequencersByRollappByStatus(QueryGetSequencersByRollappByStatusRequest)
-      returns (QueryGetSequencersByRollappByStatusResponse) {}
+      returns (QueryGetSequencersByRollappByStatusResponse) {
+  }
 
   // Queries the current proposer by rollappId.
   rpc GetProposerByRollapp(QueryGetProposerByRollappRequest)
-      returns (QueryGetProposerByRollappResponse) {}
+      returns (QueryGetProposerByRollappResponse) {
+  }
 
   // Queries the next proposer by rollappId.
   rpc GetNextProposerByRollapp(QueryGetNextProposerByRollappRequest)
-      returns (QueryGetNextProposerByRollappResponse) {}
+      returns (QueryGetNextProposerByRollappResponse) {
+  }
 
   // Queries a list of proposers.
-  rpc Proposers(QueryProposersRequest) returns (QueryProposersResponse) {}
+  rpc Proposers(QueryProposersRequest) returns (QueryProposersResponse) {
+  }
 }
 
 // QueryParamsRequest is request type for the Query/Params RPC method.
@@ -64,19 +72,25 @@ message QuerySequencersResponse {
   cosmos.base.query.v1beta1.PageResponse pagination = 2;
 }
 
-message QueryGetSequencersByRollappRequest { string rollappId = 1; }
+message QueryGetSequencersByRollappRequest {
+  string rollappId = 1;
+  cosmos.base.query.v1beta1.PageRequest pagination = 2;
+}
 
 message QueryGetSequencersByRollappResponse {
   repeated Sequencer sequencers = 1 [ (gogoproto.nullable) = false ];
+  cosmos.base.query.v1beta1.PageResponse pagination = 2;
 }
 
 message QueryGetSequencersByRollappByStatusRequest {
   string rollappId = 1;
   OperatingStatus status = 2;
+  cosmos.base.query.v1beta1.PageRequest pagination = 3;
 }
 
 message QueryGetSequencersByRollappByStatusResponse {
   repeated Sequencer sequencers = 1 [ (gogoproto.nullable) = false ];
+  cosmos.base.query.v1beta1.PageResponse pagination = 2;
 }
 
 // Request type for the GetProposerByRollapp RPC method.
