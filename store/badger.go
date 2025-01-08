@@ -46,7 +46,8 @@ func NewDefaultInMemoryKVStore() KV {
 func NewKVStore(rootDir, dbPath, dbName string,
 	badgerOpts BadgerOpts,
 
-	logger types.Logger) KV {
+	logger types.Logger,
+) KV {
 	path := filepath.Join(Rootify(rootDir, dbPath), dbName)
 	opts := memoryEfficientBadgerConfig(path, badgerOpts)
 	db, err := badger.Open(*opts)
