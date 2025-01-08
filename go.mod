@@ -13,7 +13,7 @@ require (
 	github.com/dgraph-io/badger/v4 v4.3.0
 	github.com/dymensionxyz/cosmosclient v0.4.2-beta.0.20241121093220-e0d7ad456fbd
 	github.com/dymensionxyz/dymension-rdk v1.6.1-0.20241119103059-def6322e4345
-	github.com/dymensionxyz/gerr-cosmos v1.0.0
+	github.com/dymensionxyz/gerr-cosmos v1.1.0
 	github.com/go-kit/kit v0.12.0
 	github.com/gofrs/uuid v4.3.0+incompatible
 	github.com/gogo/protobuf v1.3.3

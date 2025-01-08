@@ -3,6 +3,7 @@ package block_test
 import (
 	"context"
 	"crypto/rand"
+	"errors"
 	"testing"
 	"time"
 
@@ -371,7 +372,7 @@ func TestApplyBlock(t *testing.T) {
 
 	// Apply the block with an invalid commit
 	err = types.ValidateProposedTransition(state, block, invalidCommit, state.GetProposerPubKey())
-	require.ErrorContains(err, types.ErrInvalidSignature.Error())
+	require.True(errors.Is(err, types.ErrInvalidSignature))
 
 	// Create a valid commit for the block
 	signature, err = proposerKey.Sign(abciHeaderBytes)

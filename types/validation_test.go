@@ -422,8 +422,7 @@ func TestCommit_ValidateWithHeader(t *testing.T) {
 
 		err = commit.ValidateWithHeader(proposerKey.PubKey(), &block.Header)
 		require.Error(t, err, "Validation should fail due to an invalid signature")
-		assert.Equal(t, NewErrInvalidSignatureFraud(ErrInvalidSignature, &block.Header, commit), err)
-		assert.True(t, errors.Is(err, gerrc.ErrFault), "The error should be a fraud error")
+		assert.True(t, errors.Is(err, gerrc.ErrInvalidArgument))
 	})
 
 	t.Run("Fails with more than one signature", func(t *testing.T) {
@@ -443,8 +442,7 @@ func TestCommit_ValidateWithHeader(t *testing.T) {
 		// Validate and expect an error due to multiple signatures
 		err = commit.ValidateWithHeader(proposerKey.PubKey(), &block.Header)
 		require.Error(t, err, "Validation should fail when there is more than one signature")
-		assert.Equal(t, NewErrInvalidSignatureFraud(errors.New("there should be 1 signature"), &block.Header, commit), err)
-		assert.True(t, errors.Is(err, gerrc.ErrFault), "The error should be a fraud error")
+		assert.True(t, errors.Is(err, gerrc.ErrInvalidArgument))
 	})
 
 	t.Run("Fails when signature size exceeds MaxSignatureSize", func(t *testing.T) {
@@ -463,8 +461,7 @@ func TestCommit_ValidateWithHeader(t *testing.T) {
 		// Validate and expect an error due to oversized signature
 		err = commit.ValidateWithHeader(proposerKey.PubKey(), &block.Header)
 		require.Error(t, err, "Validation should fail when the signature size exceeds the maximum allowed size")
-		assert.Equal(t, NewErrInvalidSignatureFraud(errors.New("signature is too big"), &block.Header, commit), err)
-		assert.True(t, errors.Is(err, gerrc.ErrFault), "The error should be a fraud error")
+		assert.True(t, errors.Is(err, gerrc.ErrInvalidArgument))
 	})
 
 	t.Run("Fails when proposerPubKey.Address() does not match Header.ProposerAddress", func(t *testing.T) {

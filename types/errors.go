@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	ErrInvalidSignature      = errors.New("invalid signature")
+	ErrInvalidSignature      = gerrc.ErrInvalidArgument.Wrap("signature")
 	ErrNoStateFound          = errors.New("no state found")
 	ErrEmptyBlock            = errors.New("block has no transactions and is not allowed to be empty")
 	ErrInvalidBlockHeight    = errors.New("invalid block height")
