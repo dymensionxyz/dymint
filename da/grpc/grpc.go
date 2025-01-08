@@ -146,12 +146,29 @@ func (d *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 
 // CheckBatchAvailability proxies CheckBatchAvailability request to gRPC server.
 func (d *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
-	resp, err := d.client.CheckBatchAvailability(context.TODO(), &dalc.CheckBatchAvailabilityRequest{DataLayerHeight: daMetaData.Height})
-	if err != nil {
-		return da.ResultCheckBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error(), Error: err}}
-	}
-	return da.ResultCheckBatch{
-		BaseResult: da.BaseResult{Code: da.StatusCode(resp.Result.Code), Message: resp.Result.Message},
+
+	backoff := d.getBackoff()
+
+	for {
+
+		select {
+		case <-d.ctx.Done():
+			d.logger.Debug("Context cancelled")
+			return da.ResultCheckBatch{}
+		default:
+			resp, err := d.client.CheckBatchAvailability(context.TODO(), &dalc.CheckBatchAvailabilityRequest{DataLayerHeight: daMetaData.Height})
+			if err != nil {
+				if !errorIsRetryable(err) {
+					return da.ResultCheckBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error(), Error: err}}
+				}
+				d.logger.Error("Check blob availability.", "error", err)
+				backoff.Sleep()
+				continue
+			}
+			return da.ResultCheckBatch{
+				BaseResult: da.BaseResult{Code: da.StatusCode(resp.Result.Code), Message: resp.Result.Message},
+			}
+		}
 	}
 }
 
