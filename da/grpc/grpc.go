@@ -111,23 +111,35 @@ func (d *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 		select {
 		case <-d.ctx.Done():
 			return da.ResultSubmitBatch{}
-		}
-		resp, err := d.client.SubmitBatch(context.TODO(), &dalc.SubmitBatchRequest{Batch: batch.ToProto()})
-
-		if err != nil {
-			return da.ResultSubmitBatch{
-				BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error(), Error: err},
+		default:
+			resp, err := d.client.SubmitBatch(context.TODO(), &dalc.SubmitBatchRequest{Batch: batch.ToProto()})
+			if err != nil {
+				if !errorIsRetryable(err) {
+					return da.ResultSubmitBatch{
+						BaseResult: da.BaseResult{
+							Code:    da.StatusError,
+							Message: err.Error(),
+							Error:   err,
+						},
+					}
+				}
 			}
-		}
-		return da.ResultSubmitBatch{
-			BaseResult: da.BaseResult{
-				Code:    da.StatusCode(resp.Result.Code),
-				Message: resp.Result.Message,
-			},
-			SubmitMetaData: &da.DASubmitMetaData{
-				Client: da.Grpc,
-				Height: resp.Result.DataLayerHeight,
-			},
+			if err != nil {
+				d.logger.Error("Submit blob.", "error", err)
+				types.RollappConsecutiveFailedDASubmission.Inc()
+				backoff.Sleep()
+				continue
+			}
+			return da.ResultSubmitBatch{
+				BaseResult: da.BaseResult{
+					Code:    da.StatusCode(resp.Result.Code),
+					Message: resp.Result.Message,
+				},
+				SubmitMetaData: &da.DASubmitMetaData{
+					Client: da.Grpc,
+					Height: resp.Result.DataLayerHeight,
+				},
+			}
 		}
 	}
 }
@@ -188,5 +200,5 @@ func (d *DataAvailabilityLayerClient) getBackoff() uretry.Backoff {
 }
 
 func errorIsRetryable(err error) bool {
-
+	return true
 }
