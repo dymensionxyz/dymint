@@ -6,6 +6,9 @@ import (
 	"strconv"
 
 	"cosmossdk.io/math"
+	"github.com/avast/retry-go/v4"
+	sdk "github.com/cosmos/cosmos-sdk/types"
+	uretry "github.com/dymensionxyz/dymint/utils/retry"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
@@ -26,6 +29,10 @@ type DataAvailabilityLayerClient struct {
 	client dalc.DALCServiceClient
 	synced chan struct{}
 	logger types.Logger
+
+	// FIXME: ought to refactor so ctx is given to us by the object creator (same pattern should apply to celestia, avail clients)
+	ctx    context.Context
+	cancel context.CancelFunc
 }
 
 // Config contains configuration options for DataAvailabilityLayerClient.
@@ -55,6 +62,7 @@ func (d *DataAvailabilityLayerClient) Init(config []byte, _ *pubsub.Server, _ st
 		d.config = DefaultConfig
 		return nil
 	}
+	d.ctx, c.cancel = context.WithCancel(context.Background())
 	return json.Unmarshal(config, &d.config)
 }
 
@@ -79,6 +87,7 @@ func (d *DataAvailabilityLayerClient) Start() error {
 // Stop closes connection to gRPC server.
 func (d *DataAvailabilityLayerClient) Stop() error {
 	d.logger.Info("stopping GRPC DALC")
+	d.cancel()
 	return d.conn.Close()
 }
 
@@ -95,21 +104,31 @@ func (d *DataAvailabilityLayerClient) GetClientType() da.Client {
 // SubmitBatch proxies SubmitBatch request to gRPC server.
 func (d *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultSubmitBatch {
 	d.logger.Info("Submit batch DA client GRPC.")
-	resp, err := d.client.SubmitBatch(context.TODO(), &dalc.SubmitBatchRequest{Batch: batch.ToProto()})
-	if err != nil {
-		return da.ResultSubmitBatch{
-			BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error(), Error: err},
+
+	backoff := d.getBackoff()
+
+	for {
+		select {
+		case <-d.ctx.Done():
+			return da.ResultSubmitBatch{}
 		}
-	}
-	return da.ResultSubmitBatch{
-		BaseResult: da.BaseResult{
-			Code:    da.StatusCode(resp.Result.Code),
-			Message: resp.Result.Message,
-		},
-		SubmitMetaData: &da.DASubmitMetaData{
-			Client: da.Grpc,
-			Height: resp.Result.DataLayerHeight,
-		},
+		resp, err := d.client.SubmitBatch(context.TODO(), &dalc.SubmitBatchRequest{Batch: batch.ToProto()})
+
+		if err != nil {
+			return da.ResultSubmitBatch{
+				BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error(), Error: err},
+			}
+		}
+		return da.ResultSubmitBatch{
+			BaseResult: da.BaseResult{
+				Code:    da.StatusCode(resp.Result.Code),
+				Message: resp.Result.Message,
+			},
+			SubmitMetaData: &da.DASubmitMetaData{
+				Client: da.Grpc,
+				Height: resp.Result.DataLayerHeight,
+			},
+		}
 	}
 }
 
@@ -162,4 +181,12 @@ func (d *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
 		Amount: math.ZeroInt(),
 		Denom:  "adym",
 	}, nil
+}
+
+func (d *DataAvailabilityLayerClient) getBackoff() uretry.Backoff {
+	return uretry.NewBackoffConfig().Backoff()
+}
+
+func errorIsRetryable(err error) bool {
+
 }
