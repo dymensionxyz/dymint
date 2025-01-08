@@ -4,10 +4,8 @@ import (
 	"context"
 	"errors"
 
-	errorsmod "cosmossdk.io/errors"
 	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/settlement"
-	"github.com/dymensionxyz/dymint/types"
 	uevent "github.com/dymensionxyz/dymint/utils/event"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/tendermint/tendermint/libs/pubsub"
@@ -18,7 +16,7 @@ import (
 func (m *Manager) onNewStateUpdateFinalized(event pubsub.Message) {
 	eventData, ok := event.Data().(*settlement.EventDataNewBatch)
 	if !ok {
-		m.logger.Error("onNewStateUpdateFinalized", "err", errorsmod.WithType(types.ErrWrongType, event))
+		m.logger.Error("onNewStateUpdateFinalized", "err", "wrong event data received")
 		return
 	}
 	m.SettlementValidator.UpdateLastValidatedHeight(eventData.EndHeight)
