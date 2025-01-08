@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
-	abci "github.com/tendermint/tendermint/abci/types"
 	prototypes "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 
@@ -385,22 +384,6 @@ func byteSlicesToTxs(bytes [][]byte) Txs {
 		txs[i] = bytes[i]
 	}
 	return txs
-}
-
-func evidenceToProto(evidence EvidenceData) []*abci.Evidence {
-	var ret []*abci.Evidence
-	for _, e := range evidence.Evidence {
-		for _, ae := range e.ABCI() {
-			ret = append(ret, &ae) //#nosec
-		}
-	}
-	return ret
-}
-
-func evidenceFromProto([]*abci.Evidence) EvidenceData {
-	var ret EvidenceData
-	// TODO(tzdybal): right now Evidence is just an interface without implementations
-	return ret
 }
 
 func signaturesToByteSlices(sigs []Signature) [][]byte {
