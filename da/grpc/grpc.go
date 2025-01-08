@@ -93,6 +93,7 @@ func (d *DataAvailabilityLayerClient) GetClientType() da.Client {
 
 // SubmitBatch proxies SubmitBatch request to gRPC server.
 func (d *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultSubmitBatch {
+	d.logger.Info("Submit batch DA client GRPC.")
 	resp, err := d.client.SubmitBatch(context.TODO(), &dalc.SubmitBatchRequest{Batch: batch.ToProto()})
 	if err != nil {
 		return da.ResultSubmitBatch{
