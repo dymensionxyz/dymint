@@ -43,9 +43,12 @@ func NewDefaultInMemoryKVStore() KV {
 	}
 }
 
-func NewKVStore(rootDir, dbPath, dbName string, syncWrites bool, logger types.Logger) KV {
+func NewKVStore(rootDir, dbPath, dbName string,
+	badgerOpts BadgerOpts,
+
+	logger types.Logger) KV {
 	path := filepath.Join(Rootify(rootDir, dbPath), dbName)
-	opts := memoryEfficientBadgerConfig(path, syncWrites)
+	opts := memoryEfficientBadgerConfig(path, badgerOpts)
 	db, err := badger.Open(*opts)
 	if err != nil {
 		panic(err)
@@ -60,7 +63,7 @@ func NewKVStore(rootDir, dbPath, dbName string, syncWrites bool, logger types.Lo
 
 // NewDefaultKVStore creates instance of default key-value store.
 func NewDefaultKVStore(rootDir, dbPath, dbName string) KV {
-	return NewKVStore(rootDir, dbPath, dbName, true, log.NewNopLogger())
+	return NewKVStore(rootDir, dbPath, dbName, BadgerOpts{SyncWrites: true}, log.NewNopLogger())
 }
 
 // Rootify is helper function to make config creation independent of root dir
@@ -228,13 +231,18 @@ func (i *BadgerIterator) Discard() {
 	i.txn.Discard()
 }
 
+type BadgerOpts struct {
+	SyncWrites    bool
+	NumCompactors int
+}
+
 // memoryEfficientBadgerConfig sets badger configuration parameters to reduce memory usage, specially during compactions to avoid memory spikes that causes OOM.
 // based on https://github.com/celestiaorg/celestia-node/issues/2905
-func memoryEfficientBadgerConfig(path string, syncWrites bool) *badger.Options {
+func memoryEfficientBadgerConfig(path string, o BadgerOpts) *badger.Options {
 	opts := badger.DefaultOptions(path) // this must be copied
 	// SyncWrites is a configuration option in Badger that determines whether writes are immediately synced to disk or no.
 	// If set to true it writes to the write-ahead log (value log) are synced to disk before being applied to the LSM tree.
-	opts.SyncWrites = syncWrites
+	opts.SyncWrites = o.SyncWrites
 	// default 64mib => 0 - disable block cache
 	// BlockCacheSize specifies how much data cache should hold in memory.
 	// It improves lookup performance but increases memory consumption.
@@ -254,7 +262,10 @@ func memoryEfficientBadgerConfig(path string, syncWrites bool) *badger.Options {
 	// default 15 => 5 - this prevents memory growth on CPU constraint systems by blocking all writers
 	opts.NumLevelZeroTablesStall = 5
 	// reducing number compactors, makes it slower but reduces memory usage during compaction
-	opts.NumCompactors = 2
+	opts.NumCompactors = o.NumCompactors
+	if opts.NumCompactors == 0 {
+		opts.NumCompactors = 2 // default
+	}
 	// makes sure badger is always compacted on shutdown
 	opts.CompactL0OnClose = true
 
