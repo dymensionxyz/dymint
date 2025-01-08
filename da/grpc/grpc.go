@@ -50,6 +50,7 @@ var (
 func (d *DataAvailabilityLayerClient) Init(config []byte, _ *pubsub.Server, _ store.KV, logger types.Logger, options ...da.Option) error {
 	d.logger = logger
 	d.synced = make(chan struct{}, 1)
+	d.logger.Info("da config", "config", string(config))
 	if len(config) == 0 {
 		d.config = DefaultConfig
 		return nil
