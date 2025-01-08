@@ -16,7 +16,7 @@ import (
 func (m *Manager) onNewStateUpdate(event pubsub.Message) {
 	eventData, ok := event.Data().(*settlement.EventDataNewBatch)
 	if !ok {
-		m.logger.Error("onReceivedBatch", "err", "wrong event data received")
+		m.logger.Error("onReceivedBatch", "err", errorsmod.WithType(types.ErrWrongType, event))
 		return
 	}
 

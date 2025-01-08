@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	errorsmod "cosmossdk.io/errors"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	"golang.org/x/sync/errgroup"
@@ -303,7 +304,7 @@ func (m *Manager) GetUnsubmittedBlocks() uint64 {
 func (m *Manager) UpdateLastSubmittedHeight(event pubsub.Message) {
 	eventData, ok := event.Data().(*settlement.EventDataNewBatch)
 	if !ok {
-		m.logger.Error("onReceivedBatch", "err", "wrong event data received")
+		m.logger.Error("onReceivedBatch", "err", errorsmod.WithType(types.ErrWrongType, event))
 		return
 	}
 	h := eventData.EndHeight

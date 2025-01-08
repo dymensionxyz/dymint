@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	errorsmod "cosmossdk.io/errors"
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/tendermint/tendermint/libs/pubsub"
@@ -13,7 +14,7 @@ import (
 func (m *Manager) OnReceivedBlock(event pubsub.Message) {
 	eventData, ok := event.Data().(p2p.BlockData)
 	if !ok {
-		m.logger.Error("onReceivedBlock", "err", "wrong event data received")
+		m.logger.Error("onReceivedBlock", "err", errorsmod.WithType(types.ErrWrongType, event))
 		return
 	}
 	var source types.BlockSource
