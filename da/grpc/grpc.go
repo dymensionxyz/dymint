@@ -99,7 +99,6 @@ func (d *DataAvailabilityLayerClient) GetClientType() da.Client {
 
 // SubmitBatch proxies SubmitBatch request to gRPC server.
 func (d *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultSubmitBatch {
-
 	backoff := d.getBackoff()
 
 	for {
@@ -140,11 +139,9 @@ func (d *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 
 // CheckBatchAvailability proxies CheckBatchAvailability request to gRPC server.
 func (d *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
-
 	backoff := d.getBackoff()
 
 	for {
-
 		select {
 		case <-d.ctx.Done():
 			d.logger.Debug("Context cancelled")
@@ -173,11 +170,9 @@ func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint32 {
 
 // RetrieveBatches proxies RetrieveBlocks request to gRPC server.
 func (d *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
-
 	backoff := d.getBackoff()
 
 	for {
-
 		select {
 		case <-d.ctx.Done():
 			d.logger.Debug("Context cancelled")
