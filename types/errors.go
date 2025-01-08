@@ -24,7 +24,6 @@ var (
 	ErrMissingProposerPubKey = fmt.Errorf("missing proposer public key: %w", gerrc.ErrNotFound)
 	ErrVersionMismatch       = errors.New("version mismatch")
 	ErrEmptyProposerAddress  = errors.New("no proposer address")
-	ErrWrongType             = gerrc.ErrInvalidArgument.Wrap("type") // wrap with %T
 )
 
 // TimeFraudMaxDrift is the maximum allowed time drift between the block time and the local time.

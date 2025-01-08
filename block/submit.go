@@ -7,7 +7,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	errorsmod "cosmossdk.io/errors"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	"golang.org/x/sync/errgroup"
@@ -210,7 +209,8 @@ func (m *Manager) CreateBatch(maxBatchSize uint64, startHeight uint64, endHeight
 		}
 
 		drsVersion, err := m.Store.LoadDRSVersion(block.Header.Height)
-		if err != nil {
+		// if drsVersion is not found in store, batch is submitted using version 0 (it can happen for pending submission blocks for migrated rollapps)
+		if err != nil && !errors.Is(err, gerrc.ErrNotFound) {
 			return nil, fmt.Errorf("load drs version: h: %d: %w", h, err)
 		}
 
@@ -304,7 +304,7 @@ func (m *Manager) GetUnsubmittedBlocks() uint64 {
 func (m *Manager) UpdateLastSubmittedHeight(event pubsub.Message) {
 	eventData, ok := event.Data().(*settlement.EventDataNewBatch)
 	if !ok {
-		m.logger.Error("onReceivedBatch", "err", errorsmod.WithType(types.ErrWrongType, event))
+		m.logger.Error("onReceivedBatch", "err", "wrong event data received")
 		return
 	}
 	h := eventData.EndHeight

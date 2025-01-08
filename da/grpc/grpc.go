@@ -3,11 +3,10 @@ package grpc
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strconv"
 
 	"cosmossdk.io/math"
-	"github.com/avast/retry-go/v4"
-	sdk "github.com/cosmos/cosmos-sdk/types"
 	uretry "github.com/dymensionxyz/dymint/utils/retry"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -58,11 +57,12 @@ func (d *DataAvailabilityLayerClient) Init(config []byte, _ *pubsub.Server, _ st
 	d.logger = logger
 	d.synced = make(chan struct{}, 1)
 	d.logger.Info("da config", "config", string(config))
+	d.ctx, d.cancel = context.WithCancel(context.Background())
+	d.logger.Info("INIT GRPC CTX", "ctx", d.ctx, "this", fmt.Sprintf("%p", d))
 	if len(config) == 0 {
 		d.config = DefaultConfig
 		return nil
 	}
-	d.ctx, c.cancel = context.WithCancel(context.Background())
 	return json.Unmarshal(config, &d.config)
 }
 
@@ -107,6 +107,7 @@ func (d *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 
 	backoff := d.getBackoff()
 
+	d.logger.Info("GRPC CTX", "ctx", d.ctx, "this", fmt.Sprintf("%p", d))
 	for {
 		select {
 		case <-d.ctx.Done():
@@ -126,7 +127,6 @@ func (d *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			}
 			if err != nil {
 				d.logger.Error("Submit blob.", "error", err)
-				types.RollappConsecutiveFailedDASubmission.Inc()
 				backoff.Sleep()
 				continue
 			}
@@ -179,29 +179,46 @@ func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint32 {
 
 // RetrieveBatches proxies RetrieveBlocks request to gRPC server.
 func (d *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
-	resp, err := d.client.RetrieveBatches(context.TODO(), &dalc.RetrieveBatchesRequest{DataLayerHeight: daMetaData.Height})
-	if err != nil {
-		return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error(), Error: err}}
-	}
 
-	batches := make([]*types.Batch, len(resp.Batches))
-	for i, batch := range resp.Batches {
-		var b types.Batch
-		err = b.FromProto(batch)
-		if err != nil {
-			return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error(), Error: err}}
+	backoff := d.getBackoff()
+
+	for {
+
+		select {
+		case <-d.ctx.Done():
+			d.logger.Debug("Context cancelled")
+			return da.ResultRetrieveBatch{}
+		default:
+			resp, err := d.client.RetrieveBatches(context.TODO(), &dalc.RetrieveBatchesRequest{DataLayerHeight: daMetaData.Height})
+			if err != nil {
+				if !errorIsRetryable(err) {
+					return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error(), Error: err}}
+				}
+				d.logger.Error("Retrieve batches", "error", err)
+				backoff.Sleep()
+				continue
+			}
+
+			batches := make([]*types.Batch, len(resp.Batches))
+			for i, batch := range resp.Batches {
+				var b types.Batch
+				err = b.FromProto(batch)
+				if err != nil {
+					return da.ResultRetrieveBatch{BaseResult: da.BaseResult{Code: da.StatusError, Message: err.Error(), Error: err}}
+				}
+				batches[i] = &b
+			}
+			return da.ResultRetrieveBatch{
+				BaseResult: da.BaseResult{
+					Code:    da.StatusCode(resp.Result.Code),
+					Message: resp.Result.Message,
+				},
+				CheckMetaData: &da.DACheckMetaData{
+					Height: daMetaData.Height,
+				},
+				Batches: batches,
+			}
 		}
-		batches[i] = &b
-	}
-	return da.ResultRetrieveBatch{
-		BaseResult: da.BaseResult{
-			Code:    da.StatusCode(resp.Result.Code),
-			Message: resp.Result.Message,
-		},
-		CheckMetaData: &da.DACheckMetaData{
-			Height: daMetaData.Height,
-		},
-		Batches: batches,
 	}
 }
 
@@ -217,5 +234,6 @@ func (d *DataAvailabilityLayerClient) getBackoff() uretry.Backoff {
 }
 
 func errorIsRetryable(err error) bool {
+	// kept it simple for now
 	return true
 }
