@@ -178,10 +178,8 @@ func (b *Batch) ToProto() *pb.Batch {
 // ToProto converts Data into protobuf representation and returns it.
 func (d *Data) ToProto() *pb.Data {
 	return &pb.Data{
-		Txs:                    txsToByteSlices(d.Txs),
-		IntermediateStateRoots: d.IntermediateStateRoots.RawRootsList,
-		Evidence:               evidenceToProto(d.Evidence),
-		ConsensusMessages:      d.ConsensusMessages,
+		Txs:               txsToByteSlices(d.Txs),
+		ConsensusMessages: d.ConsensusMessages,
 	}
 }
 
@@ -192,8 +190,6 @@ func (b *Block) FromProto(other *pb.Block) error {
 		return err
 	}
 	b.Data.Txs = byteSlicesToTxs(other.Data.Txs)
-	b.Data.IntermediateStateRoots.RawRootsList = other.Data.IntermediateStateRoots
-	b.Data.Evidence = evidenceFromProto(other.Data.Evidence)
 	b.Data.ConsensusMessages = other.Data.ConsensusMessages
 	if other.LastCommit != nil {
 		err := b.LastCommit.FromProto(other.LastCommit)

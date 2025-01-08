@@ -129,7 +129,7 @@ func (e *Executor) InitChain(genesis *tmtypes.GenesisDoc, genesisChecksum string
 			Version: &tmproto.VersionParams{
 				AppVersion: params.Version.AppVersion,
 			},
-		}, Validators: valUpdates,
+		}, Validators:   valUpdates,
 		AppStateBytes:   genesis.AppState,
 		InitialHeight:   genesis.InitialHeight,
 		GenesisChecksum: genesisChecksum,
@@ -164,10 +164,8 @@ func (e *Executor) CreateBlock(
 			ProposerAddress: e.localAddress,
 		},
 		Data: types.Data{
-			Txs:                    toDymintTxs(mempoolTxs),
-			IntermediateStateRoots: types.IntermediateStateRoots{RawRootsList: nil},
-			Evidence:               types.EvidenceData{Evidence: nil},
-			ConsensusMessages:      protoutils.FromProtoMsgSliceToAnySlice(e.consensusMsgQueue.Get()...),
+			Txs:               toDymintTxs(mempoolTxs),
+			ConsensusMessages: protoutils.FromProtoMsgSliceToAnySlice(e.consensusMsgQueue.Get()...),
 		},
 		LastCommit: *lastCommit,
 	}
