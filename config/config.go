@@ -230,6 +230,8 @@ type DBConfig struct {
 	SyncWrites bool `mapstructure:"sync_writes"`
 	// InMemory sets the database to run in-memory, without touching the disk.
 	InMemory bool `mapstructure:"in_memory"`
+	// if zero, default is used
+	BadgerCompactors int `mapstructure:"badger_num_compactors"`
 }
 
 func (dbc DBConfig) Validate() error {

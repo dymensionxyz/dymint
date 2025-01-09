@@ -1,6 +1,3 @@
-// This file is a modified copy of the common module proto contract. Source:
-// https://github.com/dymensionxyz/dymension/blob/f140cd1dd561cefb3e6562cbf4379b88cd16400d/proto/dymensionxyz/dymension/common/.
-
 syntax = "proto3";
 package dymensionxyz.dymension.common;
 
@@ -11,5 +8,4 @@ option go_package = "github.com/dymensionxyz/dymint/types/pb/dymensionxyz/dymens
 enum Status {
     PENDING = 0;
     FINALIZED = 1;
-    REVERTED = 3;
 }

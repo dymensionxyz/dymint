@@ -153,6 +153,8 @@ sync_writes = {{ .DBConfig.SyncWrites }}
 # When true, the database will run in-memory only (FOR EXPERIMENTAL USE ONLY)
 in_memory = {{ .DBConfig.InMemory }}
 
+# When zero/empty, uses default
+badger_num_compactors = {{ .DBConfig.BadgerCompactors }}
 
 #######################################################
 ###       Instrumentation Configuration Options     ###

@@ -89,10 +89,8 @@ var (
 
 // Data defines Dymint block data.
 type Data struct {
-	Txs                    Txs
-	IntermediateStateRoots IntermediateStateRoots
-	Evidence               EvidenceData
-	ConsensusMessages      []*proto.Any
+	Txs               Txs
+	ConsensusMessages []*proto.Any
 }
 
 // EvidenceData defines how evidence is stored in block.
