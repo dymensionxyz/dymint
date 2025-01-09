@@ -245,7 +245,7 @@ func TestSeedStringParsing(t *testing.T) {
 	seed2AI, err := peer.AddrInfoFromP2pAddr(seed2MA)
 	require.NoError(t, err)
 
-	// this one is a want multiaddr, but can't be converted to PeerID (because there is no ID)
+	// this one is a valid multiaddr, but can't be converted to PeerID (because there is no ID)
 	seed3 := "/ip4/127.0.0.1/tcp/12345"
 
 	pubsubServer := pubsub.NewServer()

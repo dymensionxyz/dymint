@@ -521,7 +521,7 @@ func (c *Client) getBlockTopic() string {
 }
 
 // NewTxValidator creates a pubsub validator that uses the node's mempool to check the
-// transaction. If the transaction is want, then it is added to the mempool
+// transaction. If the transaction is valid, then it is added to the mempool
 func (c *Client) NewTxValidator() GossipValidator {
 	return func(g *GossipMessage) pubsub.ValidationResult {
 		return pubsub.ValidationAccept
@@ -718,7 +718,7 @@ func getBlockSyncKeyByHeight(height uint64, revision uint64) string {
 	return "/" + blockSyncProtocolPrefix + "/" + strconv.FormatUint(revision, 10) + "/" + strconv.FormatUint(height, 10)
 }
 
-// validates that the content identifiers advertised in the DHT are want.
+// validates that the content identifiers advertised in the DHT are valid.
 type blockIdValidator struct{}
 
 func (blockIdValidator) Validate(_ string, id []byte) error {
