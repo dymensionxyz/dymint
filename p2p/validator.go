@@ -6,6 +6,7 @@ import (
 	"github.com/dymensionxyz/dymint/mempool"
 	nodemempool "github.com/dymensionxyz/dymint/node/mempool"
 	"github.com/dymensionxyz/dymint/types"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	abci "github.com/tendermint/tendermint/abci/types"
 	tmcrypto "github.com/tendermint/tendermint/crypto"
 	corep2p "github.com/tendermint/tendermint/p2p"
@@ -17,7 +18,7 @@ type StateGetter interface {
 }
 
 // GossipValidator is a callback function type.
-type GossipValidator func(*GossipMessage) bool
+type GossipValidator func(*GossipMessage) pubsub.ValidationResult
 
 // IValidator is an interface for implementing validators of messages gossiped in the p2p network.
 type IValidator interface {
