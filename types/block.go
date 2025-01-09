@@ -122,8 +122,8 @@ type IntermediateStateRoots struct {
 	RawRootsList [][]byte
 }
 
-func GetLastCommitHash(lastCommit *Commit, header *Header) []byte {
-	lastABCICommit := ToABCICommit(lastCommit, header)
+func GetLastCommitHash(lastCommit *Commit) []byte {
+	lastABCICommit := ToABCICommit(lastCommit)
 	// Note: hash only depends on the signature
 	return lastABCICommit.Hash()
 }
