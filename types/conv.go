@@ -50,17 +50,13 @@ func ToABCIHeader(header *Header) tmtypes.Header {
 // Returned block should pass `ValidateBasic`.
 func ToABCIBlock(block *Block) (*tmtypes.Block, error) {
 	abciHeader := ToABCIHeader(&block.Header)
-	abciCommit := ToABCICommit(&block.LastCommit)
-	// This assumes that we have only one signature
-	if len(abciCommit.Signatures) == 1 {
-		abciCommit.Signatures[0].ValidatorAddress = block.Header.ProposerAddress
-	}
+	abciLastCommit := ToABCICommit(&block.LastCommit)
 	abciBlock := tmtypes.Block{
 		Header: abciHeader,
 		Evidence: tmtypes.EvidenceData{
 			Evidence: nil,
 		},
-		LastCommit: abciCommit,
+		LastCommit: abciLastCommit,
 	}
 	abciBlock.Data.Txs = ToABCIBlockDataTxs(&block.Data)
 	abciBlock.Header.DataHash = block.Header.DataHash[:]
