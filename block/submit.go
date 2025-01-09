@@ -54,47 +54,61 @@ func SubmitLoopInner(
 	maxBatchSubmitBytes uint64, // max size of serialised batch in bytes
 	createAndSubmitBatch func(maxSizeBytes uint64) (bytes uint64, err error),
 ) error {
+
+	var (
+		pendingBytes = atomic.Uint64{}
+		trigger      = uchannel.NewNudger() // used to avoid busy waiting (using cpu) on trigger thread
+		submitter    = uchannel.NewNudger() // used to avoid busy waiting (using cpu) on submitter thread
+	)
 	eg, ctx := errgroup.WithContext(ctx)
 
-	pendingBytes := atomic.Uint64{}
-
-	trigger := uchannel.NewNudger()   // used to avoid busy waiting (using cpu) on trigger thread
-	submitter := uchannel.NewNudger() // used to avoid busy waiting (using cpu) on submitter thread
-
+	// 'trigger': this thread is responsible for waking up the submitter when enough data has been accumulated or time has passed
+	// if too much skew been accumulated, we back pressure block production
 	eg.Go(func() error {
-		// 'trigger': this thread is responsible for waking up the submitter when a new block arrives, and back-pressures the block production loop
-		// if it gets too far ahead.
+		ticker := time.NewTicker(maxBatchSubmitTime)
+		defer ticker.Stop()
+
+		pending := uint64(0)
+
 		for {
+			byTime := false
 			select {
 			case <-ctx.Done():
 				return nil
 			case n := <-bytesProduced:
-				pendingBytes.Add(uint64(n)) //nolint:gosec // bytes size is always positive
-				logger.Debug("Added bytes produced to bytes pending submission counter.", "bytes added", n, "pending", pendingBytes.Load())
+				pending = pendingBytes.Add(uint64(n)) //nolint:gosec // bytes size is always positive
+			case <-ticker.C:
+				byTime = true
 			}
 
-			submitter.Nudge()
+			skewTime := batchSkewTime()
+			UpdateBatchSubmissionGauges(pending, unsubmittedBlocksNum(), skewTime)
+
+			byData := pending >= maxBatchSubmitBytes
+			bySkew := maxSkewTime < skewTime
+
+			// check if submission is required by time or size
+			if byTime || bySkew || byData {
+				submitter.Nudge()
+				ticker.Reset(maxBatchSubmitTime)
+			}
 
 			// if the time between the last produced block and last submitted is greater than maxSkewTime we block here until we get a progress nudge from the submitter thread
-			if maxSkewTime < batchSkewTime() {
+			if bySkew {
 				select {
 				case <-ctx.Done():
 					return nil
 				case <-trigger.C:
 				}
 			}
-
 		}
 	})
 
 	eg.Go(func() error {
-		// 'submitter': this thread actually creates and submits batches. this thread is woken up every batch_submit_time/10 (we used /10 to avoid waiting too much if submission is not required for t-maxBatchSubmitTime, but it maybe required before t) to check if submission is required even if no new blocks have been produced
-		ticker := time.NewTicker(maxBatchSubmitTime / 10)
 		for {
 			select {
 			case <-ctx.Done():
 				return nil
-			case <-ticker.C:
 			case <-submitter.C:
 			}
 
@@ -102,16 +116,8 @@ func SubmitLoopInner(
 
 			// while there are accumulated blocks, create and submit batches!!
 			for {
-				done := ctx.Err() != nil
-				nothingToSubmit := pending == 0
-
-				lastSubmissionIsRecent := isLastBatchRecent(maxBatchSubmitTime)
-				maxDataNotExceeded := pending <= maxBatchSubmitBytes
-
-				UpdateBatchSubmissionGauges(pending, unsubmittedBlocksNum(), batchSkewTime())
-
-				if done || nothingToSubmit || (lastSubmissionIsRecent && maxDataNotExceeded) {
-					break
+				if ctx.Err() != nil {
+					return nil
 				}
 
 				nConsumed, err := createAndSubmitBatch(maxBatchSubmitBytes)
@@ -129,12 +135,23 @@ func SubmitLoopInner(
 					}
 					return err
 				}
+
+				// FIXME: can be simplified? can we use nConsumed?
 				pending = uint64(unsubmittedBlocksBytes()) //nolint:gosec // bytes size is always positive
+				skewTime := batchSkewTime()
+				logger.Debug("Submitted a batch to both sub-layers.", "n bytes consumed from pending", nConsumed, "pending after", pending, "skew time", skewTime)
+
 				// after new batch submitted we check the skew time to wake up 'trigger' thread and restart block production
-				if batchSkewTime() < maxSkewTime {
-					trigger.Nudge()
+				trigger.Nudge()
+
+				// Check if we need to submit another batch
+				byData := pending >= maxBatchSubmitBytes
+				bySkew := maxSkewTime < skewTime
+
+				// check if submission is required by time or size
+				if !(bySkew || byData) {
+					break
 				}
-				logger.Debug("Submitted a batch to both sub-layers.", "n bytes consumed from pending", nConsumed, "pending after", pending, "skew time", batchSkewTime())
 			}
 			// update pendingBytes with non submitted block bytes after all pending batches have been submitted
 			pendingBytes.Store(pending)
@@ -331,6 +348,8 @@ func (m *Manager) GetLastProducedBlockTime() time.Time {
 // If no first block produced returns now
 // If different error returns empty time
 func (m *Manager) GetLastBlockTimeInSettlement() time.Time {
+	// FIXME: why it cant be LastSubmissionTime????
+
 	lastBlockInSettlement, err := m.Store.LoadBlock(m.LastSettlementHeight.Load())
 	if err != nil && !errors.Is(err, gerrc.ErrNotFound) {
 		return time.Time{}
