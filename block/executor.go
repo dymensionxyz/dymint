@@ -129,7 +129,7 @@ func (e *Executor) InitChain(genesis *tmtypes.GenesisDoc, genesisChecksum string
 			Version: &tmproto.VersionParams{
 				AppVersion: params.Version.AppVersion,
 			},
-		}, Validators: valUpdates,
+		}, Validators:   valUpdates,
 		AppStateBytes:   genesis.AppState,
 		InitialHeight:   genesis.InitialHeight,
 		GenesisChecksum: genesisChecksum,
@@ -177,6 +177,50 @@ func (e *Executor) CreateBlock(
 	copy(block.Header.DataHash[:], types.GetDataHash(block))
 	copy(block.Header.SequencerHash[:], state.GetProposerHash())
 	copy(block.Header.NextSequencersHash[:], nextSeqHash[:])
+	return block
+}
+
+// CreateBlock reaps transactions from mempool and builds a block.
+func (e *Executor) CreateBlockAlt(
+	height uint64,
+	lastCommit *types.Commit,
+	lastHeaderHash, nextSeqHash [32]byte,
+	state *types.State,
+	maxBlockDataSizeBytes uint64,
+) *types.Block {
+	maxBlockDataSizeBytes = min(maxBlockDataSizeBytes, uint64(max(minBlockMaxBytes, state.ConsensusParams.Block.MaxBytes))) //nolint:gosec // MaxBytes is always positive
+	mempoolTxs := e.mempool.ReapMaxBytesMaxGas(int64(maxBlockDataSizeBytes), state.ConsensusParams.Block.MaxGas)            //nolint:gosec // size is always positive and falls in int64
+
+	block := &types.Block{
+		Header: types.Header{
+			Version: types.Version{
+				Block: state.Version.Consensus.Block,
+				App:   state.Version.Consensus.App,
+			},
+			ChainID:         e.chainID,
+			Height:          height,
+			Time:            time.Now().UTC().UnixNano(),
+			LastHeaderHash:  lastHeaderHash,
+			DataHash:        [32]byte{},
+			ConsensusHash:   [32]byte{},
+			AppHash:         state.AppHash,
+			LastResultsHash: state.LastResultsHash,
+			ProposerAddress: e.localAddress,
+		},
+		Data: types.Data{
+			Txs:                    toDymintTxs(mempoolTxs),
+			IntermediateStateRoots: types.IntermediateStateRoots{RawRootsList: nil},
+			Evidence:               types.EvidenceData{Evidence: nil},
+			ConsensusMessages:      protoutils.FromProtoMsgSliceToAnySlice(e.consensusMsgQueue.Get()...),
+		},
+		LastCommit: *lastCommit,
+	}
+
+	block.Header.SetDymHeader(types.MakeDymHeader(block.Data.ConsensusMessages))
+	copy(block.Header.DataHash[:], types.GetDataHash(block))
+	copy(block.Header.SequencerHash[:], state.GetProposerHash())
+	copy(block.Header.NextSequencersHash[:], nextSeqHash[:])
+	copy(block.Header.LastCommitHash[:], types.GetLastCommitHash(lastCommit, &block.Header))
 	return block
 }
 

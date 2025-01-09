@@ -225,6 +225,44 @@ func TestCreateBlockWithConsensusMessages(t *testing.T) {
 	require.NoError(b4.ValidateBasic())
 }
 
+func TestCreateBlockLastCommitHash(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	logger := log.TestingLogger()
+
+	app := &tmmocks.MockApplication{}
+	app.On("CheckTx", mock.Anything).Return(abci.ResponseCheckTx{})
+
+	clientCreator := proxy.NewLocalClientCreator(app)
+	abciClient, err := clientCreator.NewABCIClient()
+	require.NoError(err)
+	require.NotNil(clientCreator)
+	require.NotNil(abciClient)
+
+	mpool := mempoolv1.NewTxMempool(logger, cfg.DefaultMempoolConfig(), proxy.NewAppConnMempool(abciClient), 0)
+	executor, err := block.NewExecutor([]byte("test address"), "test", mpool, proxy.NewAppConns(clientCreator), nil, block.NewConsensusMsgQueue(), logger)
+	assert.NoError(err)
+
+	maxBytes := uint64(100)
+
+	// Create a valid proposer for the block
+	proposerKey := ed25519.GenPrivKey()
+	tmPubKey, err := cryptocodec.ToTmPubKeyInterface(proposerKey.PubKey())
+	require.NoError(err)
+
+	// Init state
+	state := &types.State{}
+	state.SetProposer(types.NewSequencerFromValidator(*tmtypes.NewValidator(tmPubKey, 1)))
+	state.ConsensusParams.Block.MaxBytes = int64(maxBytes)
+	state.ConsensusParams.Block.MaxGas = 100000
+	// empty block
+	block0 := executor.CreateBlock(1, &types.Commit{}, [32]byte{}, [32]byte(state.GetProposerHash()), state, maxBytes)
+	conc := executor.(*block.Executor)
+	block1 := conc.CreateBlockAlt(1, &types.Commit{}, [32]byte{}, [32]byte(state.GetProposerHash()), state, maxBytes)
+	t.Log(block0.Hash(), block1.Hash())
+}
+
 func TestApplyBlock(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
