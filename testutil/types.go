@@ -88,9 +88,7 @@ func generateBlock(height uint64, proposerHash []byte, lastHeaderHash [32]byte) 
 			ConsensusMessagesHash: types.ConsMessagesHash(nil),
 		},
 		Data: types.Data{
-			Txs:                    nil,
-			IntermediateStateRoots: types.IntermediateStateRoots{RawRootsList: [][]byte{{0x1}}},
-			Evidence:               types.EvidenceData{Evidence: nil},
+			Txs: nil,
 		},
 		LastCommit: types.Commit{
 			Height:     8,
@@ -115,14 +113,10 @@ func GenerateBlocksWithTxs(startHeight uint64, num uint64, proposerKey crypto.Pr
 
 		block.Data = types.Data{
 			Txs: make(types.Txs, nTxs),
-			IntermediateStateRoots: types.IntermediateStateRoots{
-				RawRootsList: make([][]byte, nTxs),
-			},
 		}
 
 		for i := 0; i < nTxs; i++ {
 			block.Data.Txs[i] = GetRandomTx()
-			block.Data.IntermediateStateRoots.RawRootsList[i] = GetRandomBytes(32)
 		}
 
 		signature, err := generateSignature(proposerKey, &block.Header)
@@ -394,15 +388,11 @@ func GetRandomBlock(height uint64, nTxs int) *types.Block {
 		},
 		Data: types.Data{
 			Txs: make(types.Txs, nTxs),
-			IntermediateStateRoots: types.IntermediateStateRoots{
-				RawRootsList: make([][]byte, nTxs),
-			},
 		},
 	}
 
 	for i := 0; i < nTxs; i++ {
 		block.Data.Txs[i] = GetRandomTx()
-		block.Data.IntermediateStateRoots.RawRootsList[i] = GetRandomBytes(32)
 	}
 
 	return block
