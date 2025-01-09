@@ -104,7 +104,8 @@ func ToABCICommit(commit *Commit) *tmtypes.Commit {
 			},
 		},
 	}
+	// Very old commits may not have a TM signature already. Should run a prior version of
+	// dymint to handle them.
 	tmCommit.Signatures = append(tmCommit.Signatures, commit.TMSignature)
-
 	return &tmCommit
 }
