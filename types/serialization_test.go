@@ -61,10 +61,7 @@ func TestBlockSerializationRoundTrip(t *testing.T) {
 				ConsensusMessagesHash: types.ConsMessagesHash(nil),
 			},
 			Data: types.Data{
-				Txs:                    nil,
-				IntermediateStateRoots: types.IntermediateStateRoots{RawRootsList: [][]byte{{0x1}}},
-				// TODO(tzdybal): update when we have actual evidence types
-				Evidence:          types.EvidenceData{Evidence: nil},
+				Txs:               nil,
 				ConsensusMessages: protoutils.FromProtoMsgSliceToAnySlice(consensusMsgs...),
 			},
 			LastCommit: types.Commit{

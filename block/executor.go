@@ -164,10 +164,8 @@ func (e *Executor) CreateBlock(
 			ProposerAddress: e.localAddress,
 		},
 		Data: types.Data{
-			Txs:                    toDymintTxs(mempoolTxs),
-			IntermediateStateRoots: types.IntermediateStateRoots{RawRootsList: nil},
-			Evidence:               types.EvidenceData{Evidence: nil},
-			ConsensusMessages:      protoutils.FromProtoMsgSliceToAnySlice(e.consensusMsgQueue.Get()...),
+			Txs:               toDymintTxs(mempoolTxs),
+			ConsensusMessages: protoutils.FromProtoMsgSliceToAnySlice(e.consensusMsgQueue.Get()...),
 		},
 		LastCommit: *lastCommit,
 	}
