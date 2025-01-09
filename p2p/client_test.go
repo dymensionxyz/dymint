@@ -25,6 +25,7 @@ import (
 	"github.com/dymensionxyz/dymint/config"
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/testutil"
+	p2ppubsub "github.com/libp2p/go-libp2p-pubsub"
 )
 
 func TestClientStartup(t *testing.T) {
@@ -104,17 +105,17 @@ func TestGossiping(t *testing.T) {
 	wg.Add(2)
 
 	// ensure that Tx is delivered to client
-	assertRecv := func(tx *p2p.GossipMessage) bool {
+	assertRecv := func(tx *p2p.GossipMessage) p2ppubsub.ValidationResult {
 		logger.Debug("received tx", "body", string(tx.Data), "from", tx.From)
 		assert.Equal(expectedMsg, tx.Data)
 		wg.Done()
-		return true
+		return p2ppubsub.ValidationAccept
 	}
 
 	// ensure that Tx is not delivered to client
-	assertNotRecv := func(*p2p.GossipMessage) bool {
+	assertNotRecv := func(*p2p.GossipMessage) p2ppubsub.ValidationResult {
 		t.Fatal("unexpected Tx received")
-		return false
+		return p2ppubsub.ValidationReject
 	}
 
 	validators := []p2p.GossipValidator{assertRecv, assertNotRecv, assertNotRecv, assertRecv, assertNotRecv}
@@ -151,8 +152,8 @@ func TestAdvertiseBlock(t *testing.T) {
 	ctx := context.Background()
 
 	// required for tx validator
-	assertRecv := func(tx *p2p.GossipMessage) bool {
-		return true
+	assertRecv := func(tx *p2p.GossipMessage) p2ppubsub.ValidationResult {
+		return p2ppubsub.ValidationAccept
 	}
 
 	// Create a cid manually by specifying the 'prefix' parameters
@@ -201,8 +202,8 @@ func TestAdvertiseWrongCid(t *testing.T) {
 	ctx := context.Background()
 
 	// required for tx validator
-	assertRecv := func(tx *p2p.GossipMessage) bool {
-		return true
+	assertRecv := func(tx *p2p.GossipMessage) p2ppubsub.ValidationResult {
+		return p2ppubsub.ValidationAccept
 	}
 
 	validators := []p2p.GossipValidator{assertRecv, assertRecv, assertRecv, assertRecv, assertRecv}
@@ -244,7 +245,7 @@ func TestSeedStringParsing(t *testing.T) {
 	seed2AI, err := peer.AddrInfoFromP2pAddr(seed2MA)
 	require.NoError(t, err)
 
-	// this one is a valid multiaddr, but can't be converted to PeerID (because there is no ID)
+	// this one is a want multiaddr, but can't be converted to PeerID (because there is no ID)
 	seed3 := "/ip4/127.0.0.1/tcp/12345"
 
 	pubsubServer := pubsub.NewServer()

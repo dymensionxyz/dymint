@@ -5,6 +5,7 @@ import (
 
 	mempoolv1 "github.com/dymensionxyz/dymint/mempool/v1"
 	"github.com/dymensionxyz/dymint/types"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/assert"
@@ -35,50 +36,50 @@ func TestValidator_TxValidator(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want bool
+		want pubsub.ValidationResult
 	}{
 		{
-			name: "valid: tx already in cache",
+			name: "want: tx already in cache",
 			args: args{
 				mp:      &mockMP{err: mempool.ErrTxInCache},
 				numMsgs: 3,
 			},
-			want: true,
+			want: pubsub.ValidationAccept,
 		}, {
-			name: "valid: mempool is full",
+			name: "want: mempool is full",
 			args: args{
 				mp:      &mockMP{err: mempool.ErrMempoolIsFull{}},
 				numMsgs: 3,
 			},
-			want: true,
+			want: pubsub.ValidationAccept,
 		}, {
 			name: "invalid: tx too large",
 			args: args{
 				mp:      &mockMP{err: mempool.ErrTxTooLarge{}},
 				numMsgs: 3,
 			},
-			want: false,
+			want: pubsub.ValidationReject,
 		}, {
 			name: "invalid: pre-check error",
 			args: args{
 				mp:      &mockMP{err: mempool.ErrPreCheck{}},
 				numMsgs: 3,
 			},
-			want: false,
+			want: pubsub.ValidationReject,
 		}, {
-			name: "valid: no error",
+			name: "want: no error",
 			args: args{
 				mp:      &mockMP{},
 				numMsgs: 3,
 			},
-			want: true,
+			want: pubsub.ValidationAccept,
 		}, {
 			name: "unknown error",
 			args: args{
 				mp:      &mockMP{err: assert.AnError},
 				numMsgs: 3,
 			},
-			want: false,
+			want: pubsub.ValidationReject,
 		},
 	}
 	for _, tt := range tests {
@@ -100,16 +101,16 @@ func TestValidator_BlockValidator(t *testing.T) {
 	tests := []struct {
 		name        string
 		proposerKey ed25519.PrivKey
-		valid       bool
+		want        pubsub.ValidationResult
 	}{
 		{
-			name:        "valid: block signed by proposer",
+			name:        "want: block signed by proposer",
 			proposerKey: proposerKey,
-			valid:       true,
+			want:        pubsub.ValidationAccept,
 		}, {
 			name:        "invalid: bad signer",
 			proposerKey: attackerKey,
-			valid:       false,
+			want:        pubsub.ValidationReject,
 		},
 	}
 	for _, tt := range tests {
@@ -139,7 +140,7 @@ func TestValidator_BlockValidator(t *testing.T) {
 			block := executor.CreateBlock(1, &types.Commit{}, [32]byte{}, [32]byte(state.GetProposerHash()), state, maxBytes)
 
 			getProposer := &p2pmock.MockStateGetter{}
-			getProposer.On("GetProposerPubKey").Return(proposerKey.PubKey())
+			getProposer.On("SafeProposerPubKey").Return(proposerKey.PubKey(), nil)
 			getProposer.On("GetRevision").Return(uint64(0))
 
 			// Create commit for the block
@@ -147,7 +148,7 @@ func TestValidator_BlockValidator(t *testing.T) {
 			abciHeaderBytes, err := abciHeaderPb.Marshal()
 			require.NoError(t, err)
 			var signature []byte
-			if tt.valid {
+			if tt.want == pubsub.ValidationAccept {
 				signature, err = proposerKey.Sign(abciHeaderBytes)
 				require.NoError(t, err)
 			} else {
@@ -172,7 +173,7 @@ func TestValidator_BlockValidator(t *testing.T) {
 			// Check block validity
 			validateBlock := p2p.NewValidator(logger, getProposer).BlockValidator()
 			valid := validateBlock(blockMsg)
-			require.Equal(t, tt.valid, valid)
+			require.Equal(t, tt.want, valid)
 		})
 	}
 }

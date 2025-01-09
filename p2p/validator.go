@@ -23,7 +23,7 @@ type GossipValidator func(*GossipMessage) pubsub.ValidationResult
 // IValidator is an interface for implementing validators of messages gossiped in the p2p network.
 type IValidator interface {
 	// TxValidator creates a pubsub validator that uses the node's mempool to check the
-	// transaction. If the transaction is valid, then it is added to the mempool
+	// transaction. If the transaction is want, then it is added to the mempool
 	TxValidator(mp mempool.Mempool, mpoolIDS *nodemempool.MempoolIDs) GossipValidator
 }
 
@@ -47,7 +47,7 @@ func NewValidator(logger types.Logger, blockmanager StateGetter) *Validator {
 // transaction.
 // False means the TX is considered invalid and should not be gossiped.
 func (v *Validator) TxValidator(mp mempool.Mempool, mpoolIDS *nodemempool.MempoolIDs) GossipValidator {
-	return func(txMessage *GossipMessage) bool {
+	return func(txMessage *GossipMessage) pubsub.ValidationResult {
 		v.logger.Debug("Transaction received.", "bytes", len(txMessage.Data))
 		var res *abci.Response
 		err := mp.CheckTx(txMessage.Data, func(resp *abci.Response) {
@@ -58,43 +58,46 @@ func (v *Validator) TxValidator(mp mempool.Mempool, mpoolIDS *nodemempool.Mempoo
 		})
 		switch {
 		case errors.Is(err, mempool.ErrTxInCache):
-			return true
+			return pubsub.ValidationAccept
 		case errors.Is(err, mempool.ErrMempoolIsFull{}):
-			return true // we have no reason to believe that we should throw away the message
+			return pubsub.ValidationAccept // we have no reason to believe that we should throw away the message
 		case errors.Is(err, mempool.ErrTxTooLarge{}):
-			return false
+			return pubsub.ValidationReject
 		case errors.Is(err, mempool.ErrPreCheck{}):
-			return false
+			return pubsub.ValidationReject
 		case err != nil:
 			v.logger.Error("Check tx.", "error", err)
-			return false
+			return pubsub.ValidationReject
 		}
 
-		return res.GetCheckTx().Code == abci.CodeTypeOK
+		if res.GetCheckTx().Code == abci.CodeTypeOK {
+			return pubsub.ValidationAccept
+		}
+		return pubsub.ValidationReject
 	}
 }
 
 // BlockValidator runs basic checks on the gossiped block
 func (v *Validator) BlockValidator() GossipValidator {
-	return func(blockMsg *GossipMessage) bool {
+	return func(blockMsg *GossipMessage) pubsub.ValidationResult {
 		var gossipedBlock BlockData
 		if err := gossipedBlock.UnmarshalBinary(blockMsg.Data); err != nil {
 			v.logger.Error("Deserialize gossiped block.", "error", err)
-			return false
+			return pubsub.ValidationReject
 		}
 		if v.stateGetter.GetRevision() != gossipedBlock.Block.GetRevision() {
-			return false
+			return pubsub.ValidationReject
 		}
 		propKey, err := v.stateGetter.SafeProposerPubKey()
 		if err != nil {
 			v.logger.Error("Get proposer pubkey.", "error", err)
-			return false
+			return pubsub.ValidationIgnore
 		}
 		if err := gossipedBlock.Validate(propKey); err != nil {
 			v.logger.Error("P2P block validation.", "height", gossipedBlock.Block.Header.Height, "err", err)
-			return false
+			return pubsub.ValidationReject
 		}
 
-		return true
+		return pubsub.ValidationAccept
 	}
 }
