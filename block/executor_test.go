@@ -261,6 +261,7 @@ func TestCreateBlockLastCommitHash(t *testing.T) {
 	conc := executor.(*block.Executor)
 	block1 := conc.CreateBlockAlt(1, &types.Commit{}, [32]byte{}, [32]byte(state.GetProposerHash()), state, maxBytes)
 	t.Log(block0.Hash(), block1.Hash())
+	t.Log(block0.Header.LastCommitHash, block1.Header.LastCommitHash)
 }
 
 func TestApplyBlock(t *testing.T) {

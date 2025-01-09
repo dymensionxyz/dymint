@@ -109,8 +109,12 @@ func ToABCICommit(commit *Commit, header *Header) *tmtypes.Commit {
 			},
 		},
 	}
-	// Check if TMSignature exists. if not use the previous dymint signature for backwards compatibility.
-	if len(commit.TMSignature.Signature) == 0 {
+	if 0 < len(commit.TMSignature.Signature) {
+		tmCommit.Signatures = append(tmCommit.Signatures, commit.TMSignature)
+	} else {
+		// This is the legacy backwards compatibility path.
+		// Recent commits are always created with a TMSignature.
+
 		for _, sig := range commit.Signatures {
 			commitSig := tmtypes.CommitSig{
 				BlockIDFlag: tmtypes.BlockIDFlagCommit,
@@ -123,8 +127,6 @@ func ToABCICommit(commit *Commit, header *Header) *tmtypes.Commit {
 			tmCommit.Signatures[0].ValidatorAddress = header.ProposerAddress
 			tmCommit.Signatures[0].Timestamp = header.GetTimestamp()
 		}
-	} else {
-		tmCommit.Signatures = append(tmCommit.Signatures, commit.TMSignature)
 	}
 
 	return &tmCommit

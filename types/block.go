@@ -124,6 +124,7 @@ type IntermediateStateRoots struct {
 
 func GetLastCommitHash(lastCommit *Commit, header *Header) []byte {
 	lastABCICommit := ToABCICommit(lastCommit, header)
+	// Note: hash only depends on the signature
 	return lastABCICommit.Hash()
 }
 
