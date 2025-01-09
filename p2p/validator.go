@@ -12,7 +12,7 @@ import (
 )
 
 type StateGetter interface {
-	GetProposerPubKey() tmcrypto.PubKey
+	SafeProposerPubKey() (tmcrypto.PubKey, error)
 	GetRevision() uint64
 }
 
@@ -84,7 +84,12 @@ func (v *Validator) BlockValidator() GossipValidator {
 		if v.stateGetter.GetRevision() != gossipedBlock.Block.GetRevision() {
 			return false
 		}
-		if err := gossipedBlock.Validate(v.stateGetter.GetProposerPubKey()); err != nil {
+		propKey, err := v.stateGetter.SafeProposerPubKey()
+		if err != nil {
+			v.logger.Error("Get proposer pubkey.", "error", err)
+			return false
+		}
+		if err := gossipedBlock.Validate(propKey); err != nil {
 			v.logger.Error("P2P block validation.", "height", gossipedBlock.Block.Header.Height, "err", err)
 			return false
 		}

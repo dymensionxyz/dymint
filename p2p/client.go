@@ -640,7 +640,12 @@ func (c *Client) retrieveBlockSyncLoop(ctx context.Context, msgHandler BlockSync
 				if err != nil {
 					return
 				}
-				if err := block.Validate(state.GetProposerPubKey()); err != nil {
+				propKey, err := state.SafeProposerPubKey()
+				if err != nil {
+					c.logger.Error("Get proposer public key.", "err", err)
+					continue
+				}
+				if err := block.Validate(propKey); err != nil {
 					c.logger.Error("Failed to validate blocksync block.", "height", block.Block.Header.Height)
 					continue
 				}
