@@ -773,6 +773,10 @@ func (c *Client) Status(_ context.Context) (*ctypes.ResultStatus, error) {
 			PubKey:      proposer.PubKey(),
 			VotingPower: 1,
 		},
+		DymensionStatus: ctypes.DymensionStatus{
+			DAPath:        c.node.BlockManager.DAClient.DAPath(),
+			RollappParams: types.RollappParamsToABCI(state.RollappParams),
+		},
 	}
 	return result, nil
 }

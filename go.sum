@@ -405,8 +405,8 @@ github.com/dustin/go-humanize v1.0.1 h1:GzkhY7T5VNhEkwH0PVJgjz+fX1rhBrR7pRT3mDkp
 github.com/dustin/go-humanize v1.0.1/go.mod h1:Mu1zIs6XwVuF/gI1OepvI0qD18qycQx+mFykh5fBlto=
 github.com/dvsekhvalnov/jose2go v1.5.0 h1:3j8ya4Z4kMCwT5nXIKFSV84YS+HdqSSO0VsTQxaLAeM=
 github.com/dvsekhvalnov/jose2go v1.5.0/go.mod h1:QsHjhyTlD/lAVqn/NSbVZmSCGeDehTB/mPZadG+mhXU=
-github.com/dymensionxyz/cometbft v0.34.29-0.20241128205759-2a9d5f015da5 h1:DIKsa7EWJRt+pIzzFn3MGYajwqaTmQQ/k255xONciRc=
-github.com/dymensionxyz/cometbft v0.34.29-0.20241128205759-2a9d5f015da5/go.mod h1:L9shMfbkZ8B+7JlwANEr+NZbBcn+hBpwdbeYvA5rLCw=
+github.com/dymensionxyz/cometbft v0.34.29-0.20250109171128-0ea81b630cbc h1:ylgD5jzLTNx3NbIHC26QDr63U1lwyEtI/6BAhYc7V1M=
+github.com/dymensionxyz/cometbft v0.34.29-0.20250109171128-0ea81b630cbc/go.mod h1:L9shMfbkZ8B+7JlwANEr+NZbBcn+hBpwdbeYvA5rLCw=
 github.com/dymensionxyz/cosmos-sdk v0.46.17-0.20241128210616-e9dfe47b8c73 h1:A0Oqua/AfzhBWvv4jiep48TAaAsh6wSwgCKBAqU/LQ0=
 github.com/dymensionxyz/cosmos-sdk v0.46.17-0.20241128210616-e9dfe47b8c73/go.mod h1:VPUuzF+l+ekSGPV7VVB8m0OMQfwp3QdKWNZjvkU3A1U=
 github.com/dymensionxyz/cosmosclient v0.4.2-beta.0.20241121093220-e0d7ad456fbd h1:V89QyOFM84o9w0iFdctMU6So8SS/Xt32JWAXGqJduT0=
