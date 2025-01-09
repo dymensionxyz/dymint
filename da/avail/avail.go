@@ -116,6 +116,8 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 
 	// Set defaults
 	c.pubsubServer = pubsubServer
+
+	// TODO: Make configurable
 	c.txInclusionTimeout = defaultTxInculsionTimeout
 	c.batchRetryDelay = defaultBatchRetryDelay
 	c.batchRetryAttempts = defaultBatchRetryAttempts
@@ -125,6 +127,14 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 		apply(c)
 	}
 
+	types.RollappConsecutiveFailedDASubmission.Set(0)
+
+	return nil
+}
+
+// Start starts DataAvailabilityLayerClient instance.
+func (c *DataAvailabilityLayerClient) Start() error {
+	c.ctx, c.cancel = context.WithCancel(context.Background())
 	// If client wasn't set, create a new one
 	if c.client == nil {
 		substrateApiClient, err := gsrpc.NewSubstrateAPI(c.config.ApiURL)
@@ -138,14 +148,7 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 		}
 	}
 
-	types.RollappConsecutiveFailedDASubmission.Set(0)
-
-	c.ctx, c.cancel = context.WithCancel(context.Background())
-	return nil
-}
-
-// Start starts DataAvailabilityLayerClient instance.
-func (c *DataAvailabilityLayerClient) Start() error {
+	// TODO: should actually check for synced client
 	c.synced <- struct{}{}
 	return nil
 }
@@ -169,6 +172,8 @@ func (c *DataAvailabilityLayerClient) GetClientType() da.Client {
 
 // RetrieveBatches retrieves batch from DataAvailabilityLayerClient instance.
 func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
+	// TODO: add retries (better to refactor and add retries by the caller)
+
 	//nolint:typecheck
 	blockHash, err := c.client.GetBlockHash(daMetaData.Height)
 	if err != nil {
@@ -199,6 +204,7 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 			ext.Method.CallIndex.MethodIndex == DataCallMethodIndex {
 
 			data := ext.Method.Args
+			// FIXME: potential deadlock on parsing error
 			for 0 < len(data) {
 				var pbBatch pb.Batch
 				err := proto.Unmarshal(data, &pbBatch)
@@ -221,6 +227,8 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 			}
 		}
 	}
+
+	// TODO: if no batches, return error
 
 	return da.ResultRetrieveBatch{
 		BaseResult: da.BaseResult{
@@ -256,13 +264,7 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 	for {
 		select {
 		case <-c.ctx.Done():
-			return da.ResultSubmitBatch{
-				BaseResult: da.BaseResult{
-					Code:    da.StatusError,
-					Message: "context done",
-					Error:   c.ctx.Err(),
-				},
-			}
+			return da.ResultSubmitBatch{}
 		default:
 			var daBlockHeight uint64
 			err := retry.Do(
@@ -378,10 +380,9 @@ func (c *DataAvailabilityLayerClient) broadcastTx(tx []byte) (uint64, error) {
 	if err != nil {
 		return 0, fmt.Errorf("%w: %s", da.ErrTxBroadcastNetworkError, err)
 	}
+	defer sub.Unsubscribe()
 
 	c.logger.Info("Submitted batch to avail. Waiting for inclusion event")
-
-	defer sub.Unsubscribe()
 
 	inclusionTimer := time.NewTimer(c.txInclusionTimeout)
 	defer inclusionTimer.Stop()
