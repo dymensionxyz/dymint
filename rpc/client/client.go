@@ -777,6 +777,9 @@ func (c *Client) Status(_ context.Context) (*ctypes.ResultStatus, error) {
 	return result, nil
 }
 
+type DAInfo struct {
+}
+
 // BroadcastEvidence is not yet implemented.
 func (c *Client) BroadcastEvidence(ctx context.Context, evidence tmtypes.Evidence) (*ctypes.ResultBroadcastEvidence, error) {
 	return &ctypes.ResultBroadcastEvidence{

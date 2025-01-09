@@ -103,7 +103,6 @@ func createConfig(bz []byte) (c Config, err error) {
 	if err != nil {
 		return c, fmt.Errorf("json unmarshal: %w", err)
 	}
-
 	err = c.InitNamespaceID()
 	if err != nil {
 		return c, fmt.Errorf("init namespace id: %w", err)
