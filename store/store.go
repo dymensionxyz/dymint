@@ -38,7 +38,7 @@ type DefaultStore struct {
 var _ Store = &DefaultStore{}
 
 // New returns new, default store.
-func New(kv KV) Store {
+func New(kv KV) *DefaultStore {
 	return &DefaultStore{
 		db: kv,
 	}
