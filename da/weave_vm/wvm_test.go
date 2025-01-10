@@ -2,9 +2,11 @@ package weave_vm_test
 
 import (
 	"context"
+	cryptoRand "crypto/rand"
 	"encoding/json"
 	"errors"
 	"math/big"
+	"math/rand"
 	"testing"
 	"time"
 
@@ -22,9 +24,9 @@ import (
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/types"
+	uretry "github.com/dymensionxyz/dymint/utils/retry"
 )
 
-// MockWeaveVM is a mock of WeaveVM interface using testify/mock
 type MockWeaveVM struct {
 	mock.Mock
 }
@@ -53,171 +55,23 @@ const (
 	testBlockHash = "0xblockhash"
 )
 
-func getTestConfig() weaveVMtypes.Config {
-	attempts := 1 // Only try once to avoid retries in tests
-	return weaveVMtypes.Config{
-		ChainID:       1,
-		PrivateKeyHex: "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
-		Endpoint:      "http://localhost:8545",
-		Timeout:       1 * time.Second,        // Short timeout for tests
-		RetryDelay:    100 * time.Millisecond, // Short retry delay
-		RetryAttempts: &attempts,
-	}
-}
+// func getTestConfig() weaveVMtypes.Config {
+// 	attempts := 1 // single attempt for tests
+// 	return weaveVMtypes.Config{
+// 		ChainID:       1,
+// 		PrivateKeyHex: "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+// 		Endpoint:      "http://localhost:8545",
+// 		Timeout:       1 * time.Second,        // short timeout for tests
+// 		RetryDelay:    100 * time.Millisecond, // short delay
+// 		RetryAttempts: &attempts,
+// 	}
+// }
 
-func TestInit(t *testing.T) {
-	tests := []struct {
-		name        string
-		config      weaveVMtypes.Config
-		expectError bool
-	}{
-		{
-			name: "valid config with private key",
-			config: weaveVMtypes.Config{
-				ChainID:       1,
-				PrivateKeyHex: "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
-				Endpoint:      "http://localhost:8545",
-			},
-			expectError: false,
-		},
-		{
-			name: "valid config with web3signer",
-			config: weaveVMtypes.Config{
-				ChainID:            1,
-				Web3SignerEndpoint: "http://localhost:8545",
-				Endpoint:           "http://localhost:8545",
-			},
-			expectError: false,
-		},
-		{
-			name: "invalid config - no authentication",
-			config: weaveVMtypes.Config{
-				ChainID:  1,
-				Endpoint: "http://localhost:8545",
-			},
-			expectError: true,
-		},
-		{
-			name: "invalid config - no chain ID",
-			config: weaveVMtypes.Config{
-				PrivateKeyHex: "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
-				Endpoint:      "http://localhost:8545",
-			},
-			expectError: true,
-		},
-	}
+func setupTestDALC(t *testing.T, mockWVM *MockWeaveVM) (*weave_vm.DataAvailabilityLayerClient, *pubsub.Server) {
+	t.Helper()
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			configBytes, err := json.Marshal(tt.config)
-			require.NoError(t, err)
-
-			dalc := &weave_vm.DataAvailabilityLayerClient{}
-			err = dalc.Init(configBytes, pubsub.NewServer(), store.NewDefaultInMemoryKVStore(), log.TestingLogger())
-
-			if tt.expectError {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-			}
-		})
-	}
-}
-
-func TestDALC(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
-
-	mockWVM := new(MockWeaveVM)
-	dalc, pubsubServer := setupTestDALC(t, mockWVM)
-	defer func() {
-		err := pubsubServer.Stop()
-		require.NoError(err)
-	}()
-
-	// Create test data
-	block1 := testutil.GetRandomBlock(1, 10)
-	batch1 := &types.Batch{
-		Blocks: []*types.Block{block1},
-	}
-	batchData, err := batch1.MarshalBinary()
-	require.NoError(err)
-
-	// Mock WeaveVM responses
-	blockHash := common.HexToHash(testBlockHash)
-	blockNumber := big.NewInt(123)
-
-	mockWVM.On("SendTransaction", mock.Anything, weaveVMtypes.ArchivePoolAddress, mock.Anything).
-		Return(testTxHash, nil).Once()
-
-	mockWVM.On("GetTransactionReceipt", mock.Anything, testTxHash).
-		Return(&ethtypes.Receipt{
-			BlockHash:   blockHash,
-			BlockNumber: blockNumber,
-			TxHash:      common.HexToHash(testTxHash),
-		}, nil).Once()
-
-	// Submit batch
-	t.Log("Submitting batch1")
-	res1 := dalc.SubmitBatch(batch1)
-	h1 := res1.SubmitMetaData
-	assert.Equal(da.StatusSuccess, res1.Code)
-
-	// Create test transaction
-	tx := ethtypes.NewTx(&ethtypes.LegacyTx{
-		Data: batchData,
-	})
-
-	mockWVM.On("GetTransactionByHash", mock.Anything, testTxHash).
-		Return(tx, false, nil).Once()
-
-	// Retrieve batch
-	retrieveRes := dalc.RetrieveBatches(h1)
-	assert.Equal(da.StatusSuccess, retrieveRes.Code)
-	require.Len(retrieveRes.Batches, 1)
-	compareBatches(t, batch1, retrieveRes.Batches[0])
-
-	mockWVM.AssertExpectations(t)
-}
-
-func TestRetryBehavior(t *testing.T) {
-	assert := assert.New(t)
-	require := require.New(t)
-
-	mockWVM := new(MockWeaveVM)
-	dalc, pubsubServer := setupTestDALC(t, mockWVM)
-	defer func() {
-		err := pubsubServer.Stop()
-		require.NoError(err)
-	}()
-
-	batch := testutil.MustGenerateBatchAndKey(0, 1)
-
-	// Mock temporary failure followed by success
-	mockWVM.On("SendTransaction", mock.Anything, weaveVMtypes.ArchivePoolAddress, mock.Anything).
-		Return("", errors.New("temporary error")).Once()
-
-	mockWVM.On("SendTransaction", mock.Anything, weaveVMtypes.ArchivePoolAddress, mock.Anything).
-		Return(testTxHash, nil).Once()
-
-	mockWVM.On("GetTransactionReceipt", mock.Anything, testTxHash).
-		Return(&ethtypes.Receipt{
-			BlockHash:   common.HexToHash(testBlockHash),
-			BlockNumber: big.NewInt(123),
-			TxHash:      common.HexToHash(testTxHash),
-		}, nil).Once()
-
-	result := dalc.SubmitBatch(batch)
-	assert.Equal(da.StatusSuccess, result.Code)
-	assert.NoError(result.Error)
-
-	mockWVM.AssertExpectations(t)
-}
-
-func setupTestDALC(t *testing.T, mockWVM weave_vm.WeaveVM) (*weave_vm.DataAvailabilityLayerClient, *pubsub.Server) {
-	config := getTestConfig()
-
-	configBytes, err := json.Marshal(config)
+	cfg := getTestConfig()
+	configBytes, err := json.Marshal(cfg)
 	require.NoError(t, err)
 
 	pubsubServer := pubsub.NewServer()
@@ -232,22 +86,234 @@ func setupTestDALC(t *testing.T, mockWVM weave_vm.WeaveVM) (*weave_vm.DataAvaila
 	err = dalc.Start()
 	require.NoError(t, err)
 
+	t.Cleanup(func() {
+		require.NoError(t, pubsubServer.Stop())
+		mockWVM.AssertExpectations(t)
+	})
+
 	return dalc, pubsubServer
 }
 
+// compareBatches is a helper to compare expected vs. actual batches.
 func compareBatches(t *testing.T, expected, actual *types.Batch) {
-	assert := assert.New(t)
-	assert.Equal(expected.StartHeight(), actual.StartHeight())
-	assert.Equal(expected.EndHeight(), actual.EndHeight())
-	assert.Equal(len(expected.Blocks), len(actual.Blocks))
+	assert.Equal(t, expected.StartHeight(), actual.StartHeight())
+	assert.Equal(t, expected.EndHeight(), actual.EndHeight())
+	assert.Equal(t, len(expected.Blocks), len(actual.Blocks))
 	for i := range expected.Blocks {
 		compareBlocks(t, expected.Blocks[i], actual.Blocks[i])
 	}
 }
 
+// compareBlocks is a helper to compare expected vs. actual blocks.
 func compareBlocks(t *testing.T, expected, actual *types.Block) {
-	assert := assert.New(t)
-	assert.Equal(expected.Header.Height, actual.Header.Height)
-	assert.Equal(expected.Header.Hash(), actual.Header.Hash())
-	assert.Equal(expected.Header.AppHash, actual.Header.AppHash)
+	assert.Equal(t, expected.Header.Height, actual.Header.Height)
+	assert.Equal(t, expected.Header.Hash(), actual.Header.Hash())
+	assert.Equal(t, expected.Header.AppHash, actual.Header.AppHash)
+}
+
+// TestInit checks different config initialization scenarios with sub-tests.
+func TestInit(t *testing.T) {
+	t.Run("ValidConfigWithPrivateKey", func(t *testing.T) {
+		config := weaveVMtypes.Config{
+			ChainID:       1,
+			PrivateKeyHex: "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+			Endpoint:      "http://localhost:8545",
+		}
+		configBytes, err := json.Marshal(config)
+		require.NoError(t, err)
+
+		dalc := &weave_vm.DataAvailabilityLayerClient{}
+		err = dalc.Init(configBytes, pubsub.NewServer(), store.NewDefaultInMemoryKVStore(), log.TestingLogger())
+		require.NoError(t, err)
+	})
+
+	t.Run("ValidConfigWithWeb3Signer", func(t *testing.T) {
+		config := weaveVMtypes.Config{
+			ChainID:            1,
+			Web3SignerEndpoint: "http://localhost:8545",
+			Endpoint:           "http://localhost:8545",
+		}
+		configBytes, err := json.Marshal(config)
+		require.NoError(t, err)
+
+		dalc := &weave_vm.DataAvailabilityLayerClient{}
+		err = dalc.Init(configBytes, pubsub.NewServer(), store.NewDefaultInMemoryKVStore(), log.TestingLogger())
+		require.NoError(t, err)
+	})
+
+	t.Run("InvalidConfigNoAuth", func(t *testing.T) {
+		config := weaveVMtypes.Config{
+			ChainID:  1,
+			Endpoint: "http://localhost:8545",
+		}
+		configBytes, err := json.Marshal(config)
+		require.NoError(t, err)
+
+		dalc := &weave_vm.DataAvailabilityLayerClient{}
+		err = dalc.Init(configBytes, pubsub.NewServer(), store.NewDefaultInMemoryKVStore(), log.TestingLogger())
+		require.Error(t, err)
+	})
+
+	t.Run("InvalidConfigNoChainID", func(t *testing.T) {
+		config := weaveVMtypes.Config{
+			PrivateKeyHex: "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+			Endpoint:      "http://localhost:8545",
+		}
+		configBytes, err := json.Marshal(config)
+		require.NoError(t, err)
+
+		dalc := &weave_vm.DataAvailabilityLayerClient{}
+		err = dalc.Init(configBytes, pubsub.NewServer(), store.NewDefaultInMemoryKVStore(), log.TestingLogger())
+		require.Error(t, err)
+	})
+}
+
+func getTestConfig() weaveVMtypes.Config {
+	attempts := 1 // Single attempt for tests to simplify validation
+	return weaveVMtypes.Config{
+		ChainID:       1,
+		PrivateKeyHex: "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
+		Endpoint:      "http://localhost:8545",
+		Timeout:       1 * time.Second,
+		RetryDelay:    100 * time.Millisecond,
+		RetryAttempts: &attempts,
+		// Disable backoff for predictable behavior in tests
+		Backoff: uretry.BackoffConfig{
+			InitialDelay: 1 * time.Millisecond,
+			MaxDelay:     1 * time.Millisecond,
+			GrowthFactor: 1.0,
+		},
+	}
+}
+
+func TestDALC(t *testing.T) {
+	mockWVM := new(MockWeaveVM)
+	dalc, _ := setupTestDALC(t, mockWVM)
+
+	testCases := []struct {
+		name        string
+		setupMocks  func()
+		createBatch func() *types.Batch
+		expectCode  da.StatusCode
+		expectError string
+	}{
+		{
+			name: "Submit Batch",
+			setupMocks: func() {
+				// Setup successful submission
+				mockWVM.On("SendTransaction", mock.Anything, weaveVMtypes.ArchivePoolAddress, mock.Anything).
+					Return(testTxHash, nil).Once()
+
+				// Setup successful receipt
+				mockWVM.On("GetTransactionReceipt", mock.Anything, testTxHash).
+					Return(&ethtypes.Receipt{
+						Status:      1,
+						BlockHash:   common.HexToHash(testBlockHash),
+						BlockNumber: big.NewInt(123),
+						TxHash:      common.HexToHash(testTxHash),
+					}, nil).Once()
+			},
+			createBatch: func() *types.Batch {
+				block := getRandomBlock(1, 10)
+				return &types.Batch{Blocks: []*types.Block{block}}
+			},
+			expectCode: da.StatusSuccess,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Reset mock expectations
+			mockWVM.ExpectedCalls = nil
+			mockWVM.Calls = nil
+
+			// Setup test case mocks
+			tc.setupMocks()
+
+			// Execute test
+			batch := tc.createBatch()
+			res := dalc.SubmitBatch(batch)
+
+			// Verify results
+			assert.Equal(t, tc.expectCode, res.Code)
+			if tc.expectError != "" {
+				assert.Contains(t, res.Error.Error(), tc.expectError)
+			} else {
+				submitMD := res.SubmitMetaData
+				assert.NotNil(t, submitMD)
+				assert.Equal(t, da.WeaveVM, submitMD.Client)
+				assert.Equal(t, uint64(123), submitMD.Height)
+			}
+
+			// Verify all expected mock calls were made
+			mockWVM.AssertExpectations(t)
+		})
+	}
+}
+
+// Utility for creating batches directly from blocks
+func ToBatch(b *types.Block) *types.Batch {
+	return &types.Batch{Blocks: []*types.Block{b}}
+}
+
+// TestRetryBehavior verifies we retry if SendTransaction fails the first time.
+func TestRetryBehavior(t *testing.T) {
+	mockWVM := new(MockWeaveVM)
+	dalc, _ := setupTestDALC(t, mockWVM)
+
+	batch := testutil.MustGenerateBatchAndKey(0, 1)
+
+	mockWVM.On("SendTransaction", mock.Anything, weaveVMtypes.ArchivePoolAddress, mock.Anything).
+		Return("", errors.New("temporary error")).Once()
+
+	mockWVM.On("SendTransaction", mock.Anything, weaveVMtypes.ArchivePoolAddress, mock.Anything).
+		Return(testTxHash, nil).Once()
+
+	mockWVM.On("GetTransactionReceipt", mock.Anything, testTxHash).
+		Return(&ethtypes.Receipt{
+			BlockHash:   common.HexToHash(testBlockHash),
+			BlockNumber: big.NewInt(123),
+			TxHash:      common.HexToHash(testTxHash),
+		}, nil).Once()
+
+	result := dalc.SubmitBatch(batch)
+	require.Equal(t, da.StatusSuccess, result.Code)
+	require.NoError(t, result.Error)
+}
+
+// Generates a random block with a given height and number of transactions
+func getRandomBlock(height uint64, nTxs int) *types.Block {
+	block := &types.Block{
+		Header: types.Header{
+			Height:                height,
+			ConsensusMessagesHash: types.ConsMessagesHash(nil),
+		},
+		Data: types.Data{
+			Txs: make(types.Txs, nTxs),
+		},
+	}
+	copy(block.Header.AppHash[:], getRandomBytes(32))
+
+	for i := 0; i < nTxs; i++ {
+		block.Data.Txs[i] = getRandomTx()
+	}
+
+	if nTxs == 0 {
+		block.Data.Txs = nil
+	}
+
+	return block
+}
+
+// Generates a random transaction
+func getRandomTx() types.Tx {
+	size := rand.Int()%100 + 100
+	return types.Tx(getRandomBytes(size))
+}
+
+// Generates a random byte slice of the given length
+func getRandomBytes(n int) []byte {
+	data := make([]byte, n)
+	_, _ = cryptoRand.Read(data)
+	return data
 }

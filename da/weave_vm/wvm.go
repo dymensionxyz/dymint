@@ -40,8 +40,6 @@ type WeaveVM interface {
 const (
 	defaultRpcRetryDelay    = 3 * time.Second
 	defaultRpcTimeout       = 5 * time.Second
-	namespaceVersion        = 0
-	DefaultGasPrices        = 0.1
 	defaultRpcRetryAttempts = 5
 )
 
@@ -405,6 +403,7 @@ type WvmDymintBlob struct {
 	ArweaveBlockHash string
 	WvmBlockHash     string
 	WvmTxHash        string
+	WvmBlockNumber   uint64
 	Blob             []byte
 }
 
@@ -416,6 +415,7 @@ func (c *DataAvailabilityLayerClient) retrieveFromGateway(ctx context.Context, t
 		Calldata           string `json:"calldata"`
 		WarDecodedCalldata string `json:"war_decoded_calldata"`
 		WvmBlockHash       string `json:"weavevm_block_hash"`
+		WvmBlockNumber     uint64 `json:"wvm_block_id"`
 	}
 	r, err := http.NewRequestWithContext(ctx, http.MethodGet,
 		fmt.Sprintf(weaveVMGatewayURL,
@@ -556,15 +556,19 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 		}
 	}
 
-	if DACheckMetaData.WvmArweaveBlockHash == "" {
+	// If ArweaveBlockHash is missing in metadata but available in the blob, update it.
+	if DACheckMetaData.WvmArweaveBlockHash == "" && wvmBlob.ArweaveBlockHash != "" {
 		DACheckMetaData.WvmArweaveBlockHash = wvmBlob.ArweaveBlockHash
-	} else {
-		// could be reorg cases
-		if DACheckMetaData.WvmArweaveBlockHash != wvmBlob.ArweaveBlockHash {
-			// update arweave blob hash
-			DACheckMetaData.WvmArweaveBlockHash = wvmBlob.WvmBlockHash
-		}
 	}
+
+	if DACheckMetaData.Height < wvmBlob.WvmBlockNumber {
+		// Update metadata only if the blob represents a higher block (reorg case)
+		DACheckMetaData.WvmArweaveBlockHash = wvmBlob.ArweaveBlockHash
+		DACheckMetaData.WvmBlockHash = wvmBlob.WvmBlockHash
+		DACheckMetaData.Height = wvmBlob.WvmBlockNumber
+	}
+
+	// Ensure WvmBlockHash matches the latest blob hash for consistency
 	if DACheckMetaData.WvmBlockHash != wvmBlob.WvmBlockHash {
 		DACheckMetaData.WvmBlockHash = wvmBlob.WvmBlockHash
 	}
@@ -587,11 +591,9 @@ type WvmSubmitBlobMeta struct {
 
 // Submit submits the Blobs to Data Availability layer.
 func (c *DataAvailabilityLayerClient) submit(daBlob da.Blob) (*WvmSubmitBlobMeta, error) {
-	// create context with timeout
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
-	// Submit transaction to WeaveVM with the blob data
 	txHash, err := c.client.SendTransaction(ctx, weaveVMtypes.ArchivePoolAddress, daBlob)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send transaction: %w", err)
@@ -599,13 +601,11 @@ func (c *DataAvailabilityLayerClient) submit(daBlob da.Blob) (*WvmSubmitBlobMeta
 
 	c.logger.Info("wvm tx hash", "hash", txHash)
 
-	// Wait for receipt
 	receipt, err := c.waitForTxReceipt(ctx, txHash)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get tx receipt: %w", err)
 	}
 
-	// Update DAMetaData with both hashes
 	c.logger.Info("data available in weavevm",
 		"wvm_tx", receipt.TxHash.Hex(),
 		"wvm_block", receipt.BlockHash.Hex(),
