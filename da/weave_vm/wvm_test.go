@@ -12,6 +12,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -54,18 +55,6 @@ const (
 	testTxHash    = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
 	testBlockHash = "0xblockhash"
 )
-
-// func getTestConfig() weaveVMtypes.Config {
-// 	attempts := 1 // single attempt for tests
-// 	return weaveVMtypes.Config{
-// 		ChainID:       1,
-// 		PrivateKeyHex: "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
-// 		Endpoint:      "http://localhost:8545",
-// 		Timeout:       1 * time.Second,        // short timeout for tests
-// 		RetryDelay:    100 * time.Millisecond, // short delay
-// 		RetryAttempts: &attempts,
-// 	}
-// }
 
 func setupTestDALC(t *testing.T, mockWVM *MockWeaveVM) (*weave_vm.DataAvailabilityLayerClient, *pubsub.Server) {
 	t.Helper()
@@ -186,7 +175,7 @@ func getTestConfig() weaveVMtypes.Config {
 	}
 }
 
-func TestDALC(t *testing.T) {
+func TestSubmitBatch(t *testing.T) {
 	mockWVM := new(MockWeaveVM)
 	dalc, _ := setupTestDALC(t, mockWVM)
 
@@ -246,6 +235,100 @@ func TestDALC(t *testing.T) {
 			}
 
 			// Verify all expected mock calls were made
+			mockWVM.AssertExpectations(t)
+		})
+	}
+}
+
+func TestRetrieveBatches(t *testing.T) {
+	mockWVM := new(MockWeaveVM)
+	dalc, _ := setupTestDALC(t, mockWVM)
+
+	batch := &types.Batch{
+		Blocks: []*types.Block{getRandomBlock(1, 10)},
+	}
+	batchData, _ := batch.MarshalBinary()
+
+	testCases := []struct {
+		name            string
+		setupMocks      func()
+		submitMeta      *da.DASubmitMetaData
+		expectCode      da.StatusCode
+		expectError     string
+		validateBatches func(t *testing.T, batches []*types.Batch)
+	}{
+		{
+			name: "Successful Retrieval",
+			setupMocks: func() {
+				// Mock GetTransactionByHash to return valid data
+				tx := ethtypes.NewTx(&ethtypes.LegacyTx{Data: batchData})
+				mockWVM.On("GetTransactionByHash", mock.Anything, testTxHash).
+					Return(tx, false, nil).Once()
+			},
+			submitMeta: &da.DASubmitMetaData{
+				Client:     da.WeaveVM,
+				Height:     123,
+				WvmTxHash:  testTxHash,
+				Commitment: crypto.Keccak256(batchData),
+			},
+			expectCode: da.StatusSuccess,
+			validateBatches: func(t *testing.T, batches []*types.Batch) {
+				require.Len(t, batches, 1)
+				block := batches[0].Blocks[0]
+				assert.Equal(t, uint64(1), block.Header.Height)
+			},
+		},
+		{
+			name: "Non-Existent Transaction",
+			setupMocks: func() {
+				// Mock GetTransactionByHash to return an error
+				mockWVM.On("GetTransactionByHash", mock.Anything, testTxHash).
+					Return(nil, false, errors.New("retrieval failed")).Once()
+			},
+			submitMeta: &da.DASubmitMetaData{
+				Client:     da.WeaveVM,
+				Height:     123,
+				WvmTxHash:  testTxHash,
+				Commitment: crypto.Keccak256(batchData),
+			},
+			expectCode:  da.StatusError,
+			expectError: da.ErrRetrieval.Error(),
+		},
+		{
+			name: "Malformed Batch Data",
+			setupMocks: func() {
+				// Mock GetTransactionByHash to return corrupted data
+				tx := ethtypes.NewTx(&ethtypes.LegacyTx{Data: []byte("corrupted data")})
+				mockWVM.On("GetTransactionByHash", mock.Anything, testTxHash).
+					Return(tx, false, nil).Once()
+			},
+			submitMeta: &da.DASubmitMetaData{
+				Client:     da.WeaveVM,
+				Height:     123,
+				WvmTxHash:  testTxHash,
+				Commitment: crypto.Keccak256(batchData),
+			},
+			expectCode:  da.StatusError,
+			expectError: da.ErrProofNotMatching.Error(),
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			mockWVM.ExpectedCalls = nil
+			mockWVM.Calls = nil
+
+			tc.setupMocks()
+
+			res := dalc.RetrieveBatches(tc.submitMeta)
+
+			assert.Equal(t, tc.expectCode, res.Code)
+			if tc.expectError != "" {
+				assert.Contains(t, res.Error.Error(), tc.expectError)
+			} else if tc.validateBatches != nil {
+				tc.validateBatches(t, res.Batches)
+			}
+
 			mockWVM.AssertExpectations(t)
 		})
 	}
