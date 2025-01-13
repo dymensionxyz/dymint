@@ -250,8 +250,6 @@ func (m *Manager) produceBlock(opts ProduceBlockOptions) (*types.Block, *types.C
 	}
 
 	m.logger.Info("Block created.", "height", newHeight, "num_tx", len(block.Data.Txs), "size", block.SizeBytes()+commit.SizeBytes())
-	types.RollappBlockSizeBytesGauge.Set(float64(len(block.Data.Txs)))
-	types.RollappBlockSizeTxsGauge.Set(float64(len(block.Data.Txs)))
 	return block, commit, nil
 }
 

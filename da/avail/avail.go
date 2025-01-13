@@ -22,6 +22,7 @@ import (
 
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/store"
+	"github.com/dymensionxyz/dymint/types/metrics"
 	pb "github.com/dymensionxyz/dymint/types/pb/dymint"
 )
 
@@ -138,7 +139,7 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 		}
 	}
 
-	types.RollappConsecutiveFailedDASubmission.Set(0)
+	metrics.RollappConsecutiveFailedDASubmission.Set(0)
 
 	c.ctx, c.cancel = context.WithCancel(context.Background())
 	return nil
@@ -270,7 +271,7 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 					var err error
 					daBlockHeight, err = c.broadcastTx(dataBlob)
 					if err != nil {
-						types.RollappConsecutiveFailedDASubmission.Inc()
+						metrics.RollappConsecutiveFailedDASubmission.Inc()
 						c.logger.Error("broadcasting batch", "error", err)
 						if errors.Is(err, da.ErrTxBroadcastConfigError) {
 							err = retry.Unrecoverable(err)
@@ -301,7 +302,7 @@ func (c *DataAvailabilityLayerClient) submitBatchLoop(dataBlob []byte) da.Result
 				c.logger.Error(err.Error())
 				continue
 			}
-			types.RollappConsecutiveFailedDASubmission.Set(0)
+			metrics.RollappConsecutiveFailedDASubmission.Set(0)
 
 			c.logger.Debug("Successfully submitted batch.")
 			return da.ResultSubmitBatch{

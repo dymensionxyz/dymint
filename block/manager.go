@@ -274,6 +274,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	})
 
 	// Start the settlement sync loop in the background
+	// TODO: should be called for fullnode only? it's triggered by p2p callback anyhow
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		return m.SettlementSyncLoop(ctx)
 	})
