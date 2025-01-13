@@ -11,6 +11,7 @@ import (
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/dymint/types/metrics"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 )
 
@@ -95,7 +96,6 @@ func (v *SettlementValidator) ValidateStateUpdate(batch *settlement.ResultRetrie
 	daBlocks := []*types.Block{}
 	for _, batch := range daBatch.Batches {
 		daBlocks = append(daBlocks, batch.Blocks...)
-		types.LastReceivedDAHeightGauge.Set(float64(batch.EndHeight()))
 	}
 
 	// validate DA blocks against the state update
@@ -218,10 +218,13 @@ func (v *SettlementValidator) UpdateLastValidatedHeight(height uint64) {
 	for {
 		curr := v.lastValidatedHeight.Load()
 		if v.lastValidatedHeight.CompareAndSwap(curr, max(curr, height)) {
-			_, err := v.blockManager.Store.SaveValidationHeight(v.GetLastValidatedHeight(), nil)
+			h := v.lastValidatedHeight.Load()
+			_, err := v.blockManager.Store.SaveValidationHeight(h, nil)
 			if err != nil {
 				v.logger.Error("update validation height: %w", err)
 			}
+
+			metrics.LastValidatedHeight.Set(float64(h))
 			break
 		}
 	}

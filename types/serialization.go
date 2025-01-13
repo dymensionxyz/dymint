@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
-	abci "github.com/tendermint/tendermint/abci/types"
 	prototypes "github.com/tendermint/tendermint/proto/tendermint/types"
 	"github.com/tendermint/tendermint/types"
 
@@ -130,10 +129,15 @@ func (h *Header) FromProto(other *pb.Header) error {
 	if !safeCopy(h.SequencerHash[:], other.SequencerHash) {
 		return errors.New("invalid length of 'SequencerHash'")
 	}
-	// if NextSequencerHash is nil (2D rollapps) dont copy
-	if other.NextSequencerHash != nil && !safeCopy(h.NextSequencersHash[:], other.NextSequencerHash) {
+	// if NextSequencerHash is nil (2D rollapps) use sequencerHash
+	nextSequencerHash := other.NextSequencerHash
+	if nextSequencerHash == nil {
+		nextSequencerHash = other.SequencerHash
+	}
+	if !safeCopy(h.NextSequencersHash[:], nextSequencerHash) {
 		return errors.New("invalid length of 'NextSequencersHash'")
 	}
+
 	if len(other.ProposerAddress) > 0 { // TODO: why if?
 		h.ProposerAddress = make([]byte, len(other.ProposerAddress))
 		copy(h.ProposerAddress, other.ProposerAddress)
@@ -178,10 +182,8 @@ func (b *Batch) ToProto() *pb.Batch {
 // ToProto converts Data into protobuf representation and returns it.
 func (d *Data) ToProto() *pb.Data {
 	return &pb.Data{
-		Txs:                    txsToByteSlices(d.Txs),
-		IntermediateStateRoots: d.IntermediateStateRoots.RawRootsList,
-		Evidence:               evidenceToProto(d.Evidence),
-		ConsensusMessages:      d.ConsensusMessages,
+		Txs:               txsToByteSlices(d.Txs),
+		ConsensusMessages: d.ConsensusMessages,
 	}
 }
 
@@ -192,8 +194,6 @@ func (b *Block) FromProto(other *pb.Block) error {
 		return err
 	}
 	b.Data.Txs = byteSlicesToTxs(other.Data.Txs)
-	b.Data.IntermediateStateRoots.RawRootsList = other.Data.IntermediateStateRoots
-	b.Data.Evidence = evidenceFromProto(other.Data.Evidence)
 	b.Data.ConsensusMessages = other.Data.ConsensusMessages
 	if other.LastCommit != nil {
 		err := b.LastCommit.FromProto(other.LastCommit)
@@ -389,22 +389,6 @@ func byteSlicesToTxs(bytes [][]byte) Txs {
 		txs[i] = bytes[i]
 	}
 	return txs
-}
-
-func evidenceToProto(evidence EvidenceData) []*abci.Evidence {
-	var ret []*abci.Evidence
-	for _, e := range evidence.Evidence {
-		for _, ae := range e.ABCI() {
-			ret = append(ret, &ae) //#nosec
-		}
-	}
-	return ret
-}
-
-func evidenceFromProto([]*abci.Evidence) EvidenceData {
-	var ret EvidenceData
-	// TODO(tzdybal): right now Evidence is just an interface without implementations
-	return ret
 }
 
 func signaturesToByteSlices(sigs []Signature) [][]byte {

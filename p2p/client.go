@@ -523,8 +523,8 @@ func (c *Client) getBlockTopic() string {
 // NewTxValidator creates a pubsub validator that uses the node's mempool to check the
 // transaction. If the transaction is valid, then it is added to the mempool
 func (c *Client) NewTxValidator() GossipValidator {
-	return func(g *GossipMessage) bool {
-		return true
+	return func(g *GossipMessage) pubsub.ValidationResult {
+		return pubsub.ValidationAccept
 	}
 }
 
@@ -640,7 +640,12 @@ func (c *Client) retrieveBlockSyncLoop(ctx context.Context, msgHandler BlockSync
 				if err != nil {
 					return
 				}
-				if err := block.Validate(state.GetProposerPubKey()); err != nil {
+				propKey, err := state.SafeProposerPubKey()
+				if err != nil {
+					c.logger.Error("Get proposer public key.", "err", err)
+					continue
+				}
+				if err := block.Validate(propKey); err != nil {
 					c.logger.Error("Failed to validate blocksync block.", "height", block.Block.Header.Height)
 					continue
 				}

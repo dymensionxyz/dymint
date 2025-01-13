@@ -269,6 +269,7 @@ func (m *Manager) Start(ctx context.Context) error {
 	})
 
 	// Start the settlement sync loop in the background
+	// TODO: should be called for fullnode only? it's triggered by p2p callback anyhow
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
 		return m.SettlementSyncLoop(ctx)
 	})
@@ -346,6 +347,10 @@ func (m *Manager) updateLastFinalizedHeightFromSettlement() error {
 
 func (m *Manager) GetProposerPubKey() tmcrypto.PubKey {
 	return m.State.GetProposerPubKey()
+}
+
+func (m *Manager) SafeProposerPubKey() (tmcrypto.PubKey, error) {
+	return m.State.SafeProposerPubKey()
 }
 
 func (m *Manager) GetRevision() uint64 {

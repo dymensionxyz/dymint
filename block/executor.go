@@ -164,16 +164,14 @@ func (e *Executor) CreateBlock(
 			ProposerAddress: e.localAddress,
 		},
 		Data: types.Data{
-			Txs:                    toDymintTxs(mempoolTxs),
-			IntermediateStateRoots: types.IntermediateStateRoots{RawRootsList: nil},
-			Evidence:               types.EvidenceData{Evidence: nil},
-			ConsensusMessages:      protoutils.FromProtoMsgSliceToAnySlice(e.consensusMsgQueue.Get()...),
+			Txs:               toDymintTxs(mempoolTxs),
+			ConsensusMessages: protoutils.FromProtoMsgSliceToAnySlice(e.consensusMsgQueue.Get()...),
 		},
 		LastCommit: *lastCommit,
 	}
 
 	block.Header.SetDymHeader(types.MakeDymHeader(block.Data.ConsensusMessages))
-	copy(block.Header.LastCommitHash[:], types.GetLastCommitHash(lastCommit, &block.Header))
+	copy(block.Header.LastCommitHash[:], types.GetLastCommitHash(lastCommit))
 	copy(block.Header.DataHash[:], types.GetDataHash(block))
 	copy(block.Header.SequencerHash[:], state.GetProposerHash())
 	copy(block.Header.NextSequencersHash[:], nextSeqHash[:])
