@@ -142,7 +142,7 @@ func GenerateBlocks(startHeight uint64, num uint64, proposerKey crypto.PrivKey, 
 		block := generateBlock(i+startHeight, proposerHash, lastHeaderHash)
 		copy(block.Header.DataHash[:], types.GetDataHash(block))
 		if i > 0 {
-			copy(block.Header.LastCommitHash[:], types.GetLastCommitHash(&blocks[i-1].LastCommit, &block.Header))
+			copy(block.Header.LastCommitHash[:], types.GetLastCommitHash(&blocks[i-1].LastCommit))
 		}
 
 		signature, err := generateSignature(proposerKey, &block.Header)
@@ -262,7 +262,7 @@ func GenerateLastBlocks(startHeight uint64, num uint64, proposerKey crypto.PrivK
 
 		copy(block.Header.DataHash[:], types.GetDataHash(block))
 		if i > 0 {
-			copy(block.Header.LastCommitHash[:], types.GetLastCommitHash(&blocks[i-1].LastCommit, &block.Header))
+			copy(block.Header.LastCommitHash[:], types.GetLastCommitHash(&blocks[i-1].LastCommit))
 		}
 
 		signature, err := generateSignature(proposerKey, &block.Header)
