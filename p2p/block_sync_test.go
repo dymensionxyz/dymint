@@ -8,6 +8,7 @@ import (
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/dymint/version"
 	"github.com/ipfs/go-datastore"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/stretchr/testify/require"
 	"github.com/tendermint/tendermint/libs/log"
 )
@@ -23,8 +24,8 @@ func TestBlockSync(t *testing.T) {
 	require.NotNil(t, manager)
 
 	// required for tx validator
-	assertRecv := func(tx *p2p.GossipMessage) bool {
-		return true
+	assertRecv := func(tx *p2p.GossipMessage) pubsub.ValidationResult {
+		return pubsub.ValidationAccept
 	}
 
 	// Create a block for height 1
