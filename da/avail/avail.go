@@ -173,8 +173,6 @@ func (c *DataAvailabilityLayerClient) GetClientType() da.Client {
 
 // RetrieveBatches retrieves batch from DataAvailabilityLayerClient instance.
 func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
-	// TODO: add retries (better to refactor and add retries by the caller)
-
 	//nolint:typecheck
 	blockHash, err := c.client.GetBlockHash(daMetaData.Height)
 	if err != nil {
@@ -182,7 +180,7 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
 				Message: err.Error(),
-				Error:   err,
+				Error:   errors.Join(da.ErrRetrieval, err),
 			},
 		}
 	}
@@ -192,7 +190,7 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
 				Message: err.Error(),
-				Error:   err,
+				Error:   errors.Join(da.ErrRetrieval, err),
 			},
 		}
 	}
@@ -205,31 +203,38 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 			ext.Method.CallIndex.MethodIndex == DataCallMethodIndex {
 
 			data := ext.Method.Args
-			// FIXME: potential deadlock on parsing error
 			for 0 < len(data) {
 				var pbBatch pb.Batch
 				err := proto.Unmarshal(data, &pbBatch)
 				if err != nil {
 					c.logger.Error("unmarshal batch", "daHeight", daMetaData.Height, "error", err)
-					continue
+					break
 				}
 				// Convert the proto batch to a batch
 				batch := &types.Batch{}
 				err = batch.FromProto(&pbBatch)
 				if err != nil {
 					c.logger.Error("batch from proto", "daHeight", daMetaData.Height, "error", err)
-					continue
+					break
 				}
 				// Add the batch to the list
 				batches = append(batches, batch)
 				// Remove the bytes we just decoded.
 				data = data[proto.Size(&pbBatch):]
-
 			}
 		}
 	}
 
-	// TODO: if no batches, return error
+	// if no batches, return error
+	if len(batches) == 0 {
+		return da.ResultRetrieveBatch{
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: "Blob not found",
+				Error:   da.ErrBlobNotFound,
+			},
+		}
+	}
 
 	return da.ResultRetrieveBatch{
 		BaseResult: da.BaseResult{
