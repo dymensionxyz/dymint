@@ -22,6 +22,7 @@ import (
 	celtypes "github.com/dymensionxyz/dymint/da/celestia/types"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/dymint/types/metrics"
 	pb "github.com/dymensionxyz/dymint/types/pb/dymint"
 	uretry "github.com/dymensionxyz/dymint/utils/retry"
 )
@@ -90,7 +91,7 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 		apply(c)
 	}
 
-	types.RollappConsecutiveFailedDASubmission.Set(0)
+	metrics.RollappConsecutiveFailedDASubmission.Set(0)
 
 	return nil
 }
@@ -216,7 +217,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 
 			if err != nil {
 				c.logger.Error("Submit blob.", "error", err)
-				types.RollappConsecutiveFailedDASubmission.Inc()
+				metrics.RollappConsecutiveFailedDASubmission.Inc()
 				backoff.Sleep()
 				continue
 			}
@@ -233,7 +234,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 			result := c.CheckBatchAvailability(daMetaData)
 			if result.Code != da.StatusSuccess {
 				c.logger.Error("Check batch availability: submitted batch but did not get availability success status.", "error", err)
-				types.RollappConsecutiveFailedDASubmission.Inc()
+				metrics.RollappConsecutiveFailedDASubmission.Inc()
 				backoff.Sleep()
 				continue
 			}
@@ -243,7 +244,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 
 			c.logger.Debug("Blob availability check passed successfully.")
 
-			types.RollappConsecutiveFailedDASubmission.Set(0)
+			metrics.RollappConsecutiveFailedDASubmission.Set(0)
 			return da.ResultSubmitBatch{
 				BaseResult: da.BaseResult{
 					Code:    da.StatusSuccess,

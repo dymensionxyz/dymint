@@ -519,7 +519,7 @@ func (c *Client) Commit(ctx context.Context, height *int64) (*ctypes.ResultCommi
 	if err != nil {
 		return nil, err
 	}
-	commit := types.ToABCICommit(com, &b.Header)
+	commit := types.ToABCICommit(com)
 	block, err := types.ToABCIBlock(b)
 	if err != nil {
 		return nil, err

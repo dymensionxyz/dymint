@@ -171,7 +171,7 @@ func (e *Executor) CreateBlock(
 	}
 
 	block.Header.SetDymHeader(types.MakeDymHeader(block.Data.ConsensusMessages))
-	copy(block.Header.LastCommitHash[:], types.GetLastCommitHash(lastCommit, &block.Header))
+	copy(block.Header.LastCommitHash[:], types.GetLastCommitHash(lastCommit))
 	copy(block.Header.DataHash[:], types.GetDataHash(block))
 	copy(block.Header.SequencerHash[:], state.GetProposerHash())
 	copy(block.Header.NextSequencersHash[:], nextSeqHash[:])
