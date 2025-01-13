@@ -353,6 +353,10 @@ func (m *Manager) GetProposerPubKey() tmcrypto.PubKey {
 	return m.State.GetProposerPubKey()
 }
 
+func (m *Manager) SafeProposerPubKey() (tmcrypto.PubKey, error) {
+	return m.State.SafeProposerPubKey()
+}
+
 func (m *Manager) GetRevision() uint64 {
 	return m.State.GetRevision()
 }
