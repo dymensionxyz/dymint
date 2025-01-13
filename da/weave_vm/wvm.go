@@ -7,14 +7,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"math/big"
-	"net/http"
-	"strings"
 	"time"
 
 	"github.com/avast/retry-go/v4"
 	"github.com/dymensionxyz/dymint/da"
+	"github.com/dymensionxyz/dymint/da/weave_vm/gateway"
 	"github.com/dymensionxyz/dymint/da/weave_vm/rpc"
 	"github.com/dymensionxyz/dymint/da/weave_vm/signer"
 	weaveVMtypes "github.com/dymensionxyz/dymint/da/weave_vm/types"
@@ -23,7 +21,6 @@ import (
 	pb "github.com/dymensionxyz/dymint/types/pb/dymint"
 	uretry "github.com/dymensionxyz/dymint/utils/retry"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/gogo/protobuf/proto"
@@ -34,6 +31,10 @@ type WeaveVM interface {
 	SendTransaction(ctx context.Context, to string, data []byte) (string, error)
 	GetTransactionReceipt(ctx context.Context, txHash string) (*ethtypes.Receipt, error)
 	GetTransactionByHash(ctx context.Context, txHash string) (*ethtypes.Transaction, bool, error)
+}
+
+type Gateway interface {
+	RetrieveFromGateway(ctx context.Context, txHash string) (*weaveVMtypes.WvmDymintBlob, error)
 }
 
 // TODO: adjust
@@ -51,6 +52,7 @@ var defaultSubmitBackoff = uretry.NewBackoffConfig(
 // DataAvailabilityLayerClient use celestia-node public API.
 type DataAvailabilityLayerClient struct {
 	client       WeaveVM
+	gateway      Gateway
 	pubsubServer *pubsub.Server
 	config       *weaveVMtypes.Config
 	logger       types.Logger
@@ -63,6 +65,13 @@ var (
 	_ da.DataAvailabilityLayerClient = &DataAvailabilityLayerClient{}
 	_ da.BatchRetriever              = &DataAvailabilityLayerClient{}
 )
+
+// WithRPCClient sets rpc client.
+func WithGatewayClient(gateway Gateway) da.Option {
+	return func(daLayerClient da.DataAvailabilityLayerClient) {
+		daLayerClient.(*DataAvailabilityLayerClient).gateway = gateway
+	}
+}
 
 // WithRPCClient sets rpc client.
 func WithRPCClient(rpc WeaveVM) da.Option {
@@ -127,6 +136,8 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 	}
 
 	c.config = &cfg
+
+	c.gateway = gateway.NewGatewayClient(c.config, logger)
 
 	// Apply options
 	for _, apply := range options {
@@ -312,7 +323,7 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMet
 	}
 
 	// 2. Try gateway
-	data, errGateway := c.retrieveFromGateway(ctx, daMetaData.WvmTxHash)
+	data, errGateway := c.gateway.RetrieveFromGateway(ctx, daMetaData.WvmTxHash)
 	if errGateway == nil {
 		return c.processRetrievedData(data, daMetaData)
 	}
@@ -326,16 +337,16 @@ func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMet
 	}
 }
 
-func (c *DataAvailabilityLayerClient) retrieveFromWeaveVM(ctx context.Context, txHash string) (*WvmDymintBlob, error) {
+func (c *DataAvailabilityLayerClient) retrieveFromWeaveVM(ctx context.Context, txHash string) (*weaveVMtypes.WvmDymintBlob, error) {
 	tx, _, err := c.client.GetTransactionByHash(ctx, txHash)
 	if err != nil {
 		return nil, err
 	}
 
-	return &WvmDymintBlob{Blob: tx.Data(), WvmTxHash: txHash}, nil
+	return &weaveVMtypes.WvmDymintBlob{Blob: tx.Data(), WvmTxHash: txHash}, nil
 }
 
-func (c *DataAvailabilityLayerClient) processRetrievedData(data *WvmDymintBlob, daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
+func (c *DataAvailabilityLayerClient) processRetrievedData(data *weaveVMtypes.WvmDymintBlob, daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
 	var batches []*types.Batch
 	if data.Blob == nil {
 		return da.ResultRetrieveBatch{
@@ -397,100 +408,6 @@ func (c *DataAvailabilityLayerClient) processRetrievedData(data *WvmDymintBlob, 
 	}
 }
 
-const weaveVMGatewayURL = "https://gateway.wvm.dev/v1/calldata/%s"
-
-type WvmDymintBlob struct {
-	ArweaveBlockHash string
-	WvmBlockHash     string
-	WvmTxHash        string
-	WvmBlockNumber   uint64
-	Blob             []byte
-}
-
-// Modified get function with improved error handling
-func (c *DataAvailabilityLayerClient) retrieveFromGateway(ctx context.Context, txHash string) (*WvmDymintBlob, error) {
-	// TODO: add block number in response
-	type WvmRetrieverResponse struct {
-		ArweaveBlockHash   string `json:"arweave_block_hash"`
-		Calldata           string `json:"calldata"`
-		WarDecodedCalldata string `json:"war_decoded_calldata"`
-		WvmBlockHash       string `json:"weavevm_block_hash"`
-		WvmBlockNumber     uint64 `json:"wvm_block_id"`
-	}
-	r, err := http.NewRequestWithContext(ctx, http.MethodGet,
-		fmt.Sprintf(weaveVMGatewayURL,
-			txHash), nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-
-	r.Header.Set("Accept", "application/json")
-	client := &http.Client{
-		Timeout: c.config.Timeout,
-	}
-
-	c.logger.Debug("sending request to WeaveVM data retriever",
-		"url", r.URL.String(),
-		"headers", r.Header)
-
-	resp, err := client.Do(r)
-	if err != nil {
-		return nil, fmt.Errorf("failed to call weaveVM-data-retriever: %w", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read response body: %w", err)
-	}
-
-	if err := validateResponse(resp, body); err != nil {
-		c.logger.Error("invalid response from WeaveVM data retriever",
-			"status", resp.Status,
-			"content_type", resp.Header.Get("Content-Type"),
-			"body", string(body))
-		return nil, fmt.Errorf("invalid response: %w", err)
-	}
-
-	var weaveVMData WvmRetrieverResponse
-	if err = json.Unmarshal(body, &weaveVMData); err != nil {
-		c.logger.Error("failed to unmarshal response",
-			"error", err,
-			"body", string(body),
-			"content_type", resp.Header.Get("Content-Type"))
-		return nil, fmt.Errorf("failed to unmarshal response: %w, body: %s", err, string(body))
-	}
-
-	c.logger.Info("weaveVM backend: get data from weaveVM",
-		"arweave_block_hash", weaveVMData.ArweaveBlockHash,
-		"weavevm_block_hash", weaveVMData.WvmBlockHash,
-		"calldata_length", len(weaveVMData.Calldata))
-
-	blob, err := hexutil.Decode(weaveVMData.Calldata)
-	if err != nil {
-		return nil, fmt.Errorf("failed to decode calldata: %w", err)
-	}
-
-	if len(blob) == 0 {
-		return nil, fmt.Errorf("decoded blob has length zero")
-	}
-
-	return &WvmDymintBlob{ArweaveBlockHash: weaveVMData.ArweaveBlockHash, WvmBlockHash: weaveVMData.WvmBlockHash, WvmTxHash: txHash, Blob: blob}, nil
-}
-
-func validateResponse(resp *http.Response, body []byte) error {
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("unexpected status code: %d, body: %s", resp.StatusCode, string(body))
-	}
-
-	contentType := resp.Header.Get("Content-Type")
-	if !strings.Contains(contentType, "application/json") {
-		return fmt.Errorf("unexpected content type: %s, body: %s", contentType, string(body))
-	}
-
-	return nil
-}
-
 func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
 	var availabilityResult da.ResultCheckBatch
 	for {
@@ -506,7 +423,7 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 
 					if result.Code != da.StatusSuccess {
 						c.logger.Error("Blob submitted not found in DA. Retrying availability check.")
-						return da.ErrBlobNotFound
+						return result.Error
 					}
 
 					return nil
@@ -534,7 +451,7 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 		WvmBlockHash: daMetaData.WvmBlockHash,
 	}
 
-	wvmBlob, err := c.retrieveFromGateway(ctx, daMetaData.WvmTxHash)
+	wvmBlob, err := c.gateway.RetrieveFromGateway(ctx, daMetaData.WvmTxHash)
 	if err != nil {
 		return da.ResultCheckBatch{
 			BaseResult: da.BaseResult{
@@ -553,6 +470,7 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 				Message: err.Error(),
 				Error:   da.ErrProofNotMatching,
 			},
+			CheckMetaData: DACheckMetaData,
 		}
 	}
 

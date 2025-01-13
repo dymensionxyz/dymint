@@ -51,12 +51,24 @@ func (m *MockWeaveVM) GetTransactionByHash(ctx context.Context, txHash string) (
 	return tx, args.Bool(1), args.Error(2)
 }
 
+type MockGateway struct {
+	mock.Mock
+}
+
+func (m *MockGateway) RetrieveFromGateway(ctx context.Context, txHash string) (*weaveVMtypes.WvmDymintBlob, error) {
+	args := m.Called(ctx, txHash)
+	if res, ok := args.Get(0).(*weaveVMtypes.WvmDymintBlob); ok {
+		return res, args.Error(1)
+	}
+	return nil, args.Error(1)
+}
+
 const (
 	testTxHash    = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
 	testBlockHash = "0xblockhash"
 )
 
-func setupTestDALC(t *testing.T, mockWVM *MockWeaveVM) (*weave_vm.DataAvailabilityLayerClient, *pubsub.Server) {
+func setupTestDALC(t *testing.T, mockWVM *MockWeaveVM, mockGateway *MockGateway) (*weave_vm.DataAvailabilityLayerClient, *pubsub.Server) {
 	t.Helper()
 
 	cfg := getTestConfig()
@@ -69,7 +81,7 @@ func setupTestDALC(t *testing.T, mockWVM *MockWeaveVM) (*weave_vm.DataAvailabili
 
 	dalc := &weave_vm.DataAvailabilityLayerClient{}
 	err = dalc.Init(configBytes, pubsubServer, store.NewDefaultInMemoryKVStore(), log.TestingLogger(),
-		weave_vm.WithRPCClient(mockWVM))
+		weave_vm.WithRPCClient(mockWVM), weave_vm.WithGatewayClient(mockGateway))
 	require.NoError(t, err)
 
 	err = dalc.Start()
@@ -177,7 +189,9 @@ func getTestConfig() weaveVMtypes.Config {
 
 func TestSubmitBatch(t *testing.T) {
 	mockWVM := new(MockWeaveVM)
-	dalc, _ := setupTestDALC(t, mockWVM)
+	mockGateway := new(MockGateway)
+
+	dalc, _ := setupTestDALC(t, mockWVM, mockGateway)
 
 	testCases := []struct {
 		name        string
@@ -242,7 +256,9 @@ func TestSubmitBatch(t *testing.T) {
 
 func TestRetrieveBatches(t *testing.T) {
 	mockWVM := new(MockWeaveVM)
-	dalc, _ := setupTestDALC(t, mockWVM)
+	mockGateway := new(MockGateway)
+
+	dalc, _ := setupTestDALC(t, mockWVM, mockGateway)
 
 	batch := &types.Batch{
 		Blocks: []*types.Block{getRandomBlock(1, 10)},
@@ -284,6 +300,9 @@ func TestRetrieveBatches(t *testing.T) {
 				// Mock GetTransactionByHash to return an error
 				mockWVM.On("GetTransactionByHash", mock.Anything, testTxHash).
 					Return(nil, false, errors.New("retrieval failed")).Once()
+
+				mockGateway.On("RetrieveFromGateway", mock.Anything, testTxHash).
+					Return(nil, errors.New("blob not found")).Once()
 			},
 			submitMeta: &da.DASubmitMetaData{
 				Client:     da.WeaveVM,
@@ -334,6 +353,117 @@ func TestRetrieveBatches(t *testing.T) {
 	}
 }
 
+func TestCheckBatchAvailability(t *testing.T) {
+	mockWVM := new(MockWeaveVM)
+	mockGateway := new(MockGateway)
+
+	dalc, _ := setupTestDALC(t, mockWVM, mockGateway)
+
+	batch := &types.Batch{
+		Blocks: []*types.Block{getRandomBlock(1, 10)},
+	}
+	batchData, _ := batch.MarshalBinary()
+	batchHash := crypto.Keccak256(batchData)
+
+	testCases := []struct {
+		name        string
+		setupMocks  func()
+		submitMeta  *da.DASubmitMetaData
+		expectCode  da.StatusCode
+		expectError string
+	}{
+		{
+			name: "Successful Availability Check",
+			setupMocks: func() {
+				mockGateway.On("RetrieveFromGateway", mock.Anything, testTxHash).
+					Return(&weaveVMtypes.WvmDymintBlob{
+						Blob:             batchData,
+						WvmTxHash:        testTxHash,
+						WvmBlockHash:     testBlockHash,
+						ArweaveBlockHash: "testArweaveHash",
+						WvmBlockNumber:   123,
+					}, nil).Once()
+			},
+			submitMeta: &da.DASubmitMetaData{
+				Client:     da.WeaveVM,
+				Height:     123,
+				WvmTxHash:  testTxHash,
+				Commitment: batchHash,
+			},
+			expectCode: da.StatusSuccess,
+		},
+		{
+			name: "Blob Not Found",
+			setupMocks: func() {
+				mockGateway.On("RetrieveFromGateway", mock.Anything, testTxHash).
+					Return(nil, errors.New("blob not found")).Once()
+			},
+			submitMeta: &da.DASubmitMetaData{
+				Client:     da.WeaveVM,
+				Height:     123,
+				WvmTxHash:  testTxHash,
+				Commitment: batchHash,
+			},
+			expectCode:  da.StatusError,
+			expectError: da.ErrBlobNotFound.Error(),
+		},
+		{
+			name: "Verification Failure",
+			setupMocks: func() {
+				mockGateway.On("RetrieveFromGateway", mock.Anything, testTxHash).
+					Return(&weaveVMtypes.WvmDymintBlob{
+						Blob:             []byte("corrupted data"),
+						WvmBlockHash:     testBlockHash,
+						WvmTxHash:        testTxHash,
+						ArweaveBlockHash: "testArweaveHash",
+						WvmBlockNumber:   123,
+					}, nil).Once()
+			},
+			submitMeta: &da.DASubmitMetaData{
+				Client:     da.WeaveVM,
+				Height:     123,
+				WvmTxHash:  testTxHash,
+				Commitment: batchHash,
+			},
+			expectCode:  da.StatusError,
+			expectError: da.ErrProofNotMatching.Error(),
+		},
+		{
+			name: "Context Timeout",
+			setupMocks: func() {
+				mockGateway.On("RetrieveFromGateway", mock.Anything, testTxHash).
+					Return(nil, context.DeadlineExceeded).Once()
+			},
+			submitMeta: &da.DASubmitMetaData{
+				Client:     da.WeaveVM,
+				Height:     123,
+				WvmTxHash:  testTxHash,
+				Commitment: batchHash,
+			},
+			expectCode:  da.StatusError,
+			expectError: da.ErrBlobNotFound.Error(),
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			mockWVM.ExpectedCalls = nil
+			mockWVM.Calls = nil
+
+			tc.setupMocks()
+
+			res := dalc.CheckBatchAvailability(tc.submitMeta)
+
+			assert.Equal(t, tc.expectCode, res.Code)
+			if tc.expectError != "" {
+				assert.Contains(t, res.Error.Error(), tc.expectError)
+			}
+
+			mockWVM.AssertExpectations(t)
+		})
+	}
+}
+
 // Utility for creating batches directly from blocks
 func ToBatch(b *types.Block) *types.Batch {
 	return &types.Batch{Blocks: []*types.Block{b}}
@@ -342,7 +472,9 @@ func ToBatch(b *types.Block) *types.Batch {
 // TestRetryBehavior verifies we retry if SendTransaction fails the first time.
 func TestRetryBehavior(t *testing.T) {
 	mockWVM := new(MockWeaveVM)
-	dalc, _ := setupTestDALC(t, mockWVM)
+	mockGateway := new(MockGateway)
+
+	dalc, _ := setupTestDALC(t, mockWVM, mockGateway)
 
 	batch := testutil.MustGenerateBatchAndKey(0, 1)
 

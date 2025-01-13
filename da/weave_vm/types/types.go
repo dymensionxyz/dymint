@@ -36,3 +36,11 @@ type RetrieverResponse struct {
 	WarDecodedCalldata string `json:"war_decoded_calldata"`
 	WvmBlockHash       string `json:"wvm_block_hash"`
 }
+
+type WvmDymintBlob struct {
+	ArweaveBlockHash string
+	WvmBlockHash     string
+	WvmTxHash        string
+	WvmBlockNumber   uint64
+	Blob             []byte
+}
