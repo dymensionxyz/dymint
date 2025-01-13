@@ -128,7 +128,7 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 		apply(c)
 	}
 
-	types.RollappConsecutiveFailedDASubmission.Set(0)
+	metrics.RollappConsecutiveFailedDASubmission.Set(0)
 
 	return nil
 }
