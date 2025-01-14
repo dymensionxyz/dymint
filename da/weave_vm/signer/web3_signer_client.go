@@ -230,7 +230,7 @@ func (web3s *Web3SignerClient) doRequest(ctx context.Context, request *weaveVMty
 	if err != nil {
 		return nil, fmt.Errorf("failed to send request: %w", err)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() // nolint:errcheck
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
