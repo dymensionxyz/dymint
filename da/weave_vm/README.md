@@ -48,6 +48,7 @@ But this can be used as an example.
 ```sh
 # Set environment variables
 export DA_CLIENT="weavevm"  # This is the key change
+export WVM_PRIV_KEY="your_hex_string_wvm_priv_key_without_0x_at_the_beginning"
 
 export ROLLAPP_CHAIN_ID="rollappevm_1234-1"
 export KEY_NAME_ROLLAPP="rol-user"
