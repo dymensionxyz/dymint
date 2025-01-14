@@ -10,7 +10,6 @@ import (
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"golang.org/x/sync/errgroup"
 
-	"github.com/dymensionxyz/dymint/da/registry"
 	"github.com/dymensionxyz/dymint/indexers/txindex"
 	"github.com/dymensionxyz/dymint/node/events"
 	"github.com/dymensionxyz/dymint/store"
@@ -135,10 +134,10 @@ func NewManager(
 	mempool mempool.Mempool,
 	proxyApp proxy.AppConns,
 	settlementClient settlement.ClientI,
+	daClient da.DataAvailabilityLayerClient,
 	eventBus *tmtypes.EventBus,
 	pubsub *pubsub.Server,
 	p2pClient *p2p.Client,
-	dalcKV *store.PrefixKV,
 	indexerService *txindex.IndexerService,
 	logger log.Logger,
 ) (*Manager, error) {
@@ -171,6 +170,8 @@ func NewManager(
 		Executor:        exec,
 		Sequencers:      types.NewSequencerSet(),
 		SLClient:        settlementClient,
+		DAClient:        daClient,
+		Retriever:       daClient,
 		IndexerService:  indexerService,
 		logger:          logger.With("module", "block_manager"),
 		blockCache: &Cache{
@@ -185,17 +186,6 @@ func NewManager(
 	err = m.LoadStateOnInit(store, genesis, logger)
 	if err != nil {
 		return nil, fmt.Errorf("get initial state: %w", err)
-	}
-
-	err = m.setDA(conf.DAConfig, dalcKV, logger)
-	if err != nil {
-		return nil, err
-	}
-
-	// validate configuration params and rollapp consensus params are in line
-	err = m.ValidateConfigWithRollappParams()
-	if err != nil {
-		return nil, err
 	}
 
 	m.SettlementValidator = NewSettlementValidator(m.logger, m)
@@ -216,8 +206,14 @@ func (m *Manager) Start(ctx context.Context) error {
 		}
 	}
 
+	// validate configuration params and rollapp consensus params are in line
+	err := m.ValidateConfigWithRollappParams()
+	if err != nil {
+		return err
+	}
+
 	// update dymint state with next revision info
-	err := m.updateStateForNextRevision()
+	err = m.updateStateForNextRevision()
 	if err != nil {
 		return err
 	}
@@ -372,31 +368,11 @@ func (m *Manager) ValidateConfigWithRollappParams() error {
 		return fmt.Errorf("da client mismatch. rollapp param: %s da configured: %s", m.State.RollappParams.Da, m.DAClient.GetClientType())
 	}
 
+	// TODO: proposer only?
 	if m.Conf.BatchSubmitBytes > uint64(m.DAClient.GetMaxBlobSizeBytes()) {
 		return fmt.Errorf("batch size above limit: batch size: %d limit: %d: DA %s", m.Conf.BatchSubmitBytes, m.DAClient.GetMaxBlobSizeBytes(), m.DAClient.GetClientType())
 	}
 
-	return nil
-}
-
-// setDA initializes DA client in blockmanager according to DA type set in genesis or stored in state
-func (m *Manager) setDA(daconfig string, dalcKV store.KV, logger log.Logger) error {
-	daLayer := m.State.RollappParams.Da
-	dalc := registry.GetClient(daLayer)
-	if dalc == nil {
-		return fmt.Errorf("get data availability client named '%s'", daLayer)
-	}
-
-	err := dalc.Init([]byte(daconfig), m.Pubsub, dalcKV, logger.With("module", string(dalc.GetClientType())))
-	if err != nil {
-		return fmt.Errorf("data availability layer client initialization:  %w", err)
-	}
-	m.DAClient = dalc
-	retriever, ok := dalc.(da.BatchRetriever)
-	if !ok {
-		return fmt.Errorf("data availability layer client is not of type BatchRetriever")
-	}
-	m.Retriever = retriever
 	return nil
 }
 

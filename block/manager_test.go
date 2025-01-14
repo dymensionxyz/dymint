@@ -68,6 +68,9 @@ func TestInitialState(t *testing.T) {
 	settlementlc := slregistry.GetClient(slregistry.Local)
 	_ = settlementlc.Init(settlement.Config{}, genesis.ChainID, pubsubServer, logger)
 
+	daclient := testutil.GetMockDALC(logger)
+	_ = daclient.Init(nil, pubsubServer, store.NewDefaultInMemoryKVStore(), logger)
+
 	// Init empty store and full store
 	emptyStore := store.New(store.NewDefaultInMemoryKVStore())
 	fullStore := store.New(store.NewDefaultInMemoryKVStore())
@@ -120,8 +123,8 @@ func TestInitialState(t *testing.T) {
 
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			agg, err := block.NewManager(key, conf, c.genesis, "", c.store, nil, proxyApp, settlementlc,
-				nil, pubsubServer, p2pClient, nil, nil, logger)
+			agg, err := block.NewManager(key, conf, c.genesis, "", c.store, nil, proxyApp, settlementlc, daclient,
+				nil, pubsubServer, p2pClient, nil, logger)
 			assert.NoError(err)
 			assert.NotNil(agg)
 			assert.Equal(c.expectedChainID, agg.State.ChainID)
@@ -166,7 +169,7 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 
 	t.Log("Taking the manager out of sync by submitting a batch")
 	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
-	manager.Retriever = manager.DAClient.(da.BatchRetriever)
+	manager.Retriever = manager.DAClient
 
 	numBatchesToAdd := 2
 	nextBatchStartHeight := manager.NextHeightToSubmit()
@@ -238,7 +241,7 @@ func TestApplyCachedBlocks_WithFraudCheck(t *testing.T) {
 
 	t.Log("Taking the manager out of sync by submitting a batch")
 	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
-	manager.Retriever = manager.DAClient.(da.BatchRetriever)
+	manager.Retriever = manager.DAClient
 	mockExecutor := &blockmocks.MockExecutorI{}
 	manager.Executor = mockExecutor
 	mockExecutor.On("GetAppInfo").Return(&abci.ResponseInfo{
@@ -325,7 +328,7 @@ func TestApplyLocalBlock_WithFraudCheck(t *testing.T) {
 	require.NotNil(t, manager)
 	t.Log("Taking the manager out of sync by submitting a batch")
 	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
-	manager.Retriever = manager.DAClient.(da.BatchRetriever)
+	manager.Retriever = manager.DAClient
 
 	numBatchesToAdd := 2
 	nextBatchStartHeight := manager.NextHeightToSubmit()
@@ -400,7 +403,7 @@ func TestRetrieveDaBatchesFailed(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, manager)
 	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
-	manager.Retriever = manager.DAClient.(da.BatchRetriever)
+	manager.Retriever = manager.DAClient
 
 	batch := &settlement.Batch{
 		MetaData: &settlement.BatchMetaData{
@@ -706,7 +709,7 @@ func TestDAFetch(t *testing.T) {
 	commitHash := [32]byte{}
 
 	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
-	manager.Retriever = manager.DAClient.(da.BatchRetriever)
+	manager.Retriever = manager.DAClient
 
 	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{Data: commitHash[:]})
 
@@ -802,7 +805,7 @@ func TestManager_ApplyBatchFromSL_FraudHandling(t *testing.T) {
 	require.NoError(err)
 	commitHash := [32]byte{1}
 	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
-	manager.Retriever = manager.DAClient.(da.BatchRetriever)
+	manager.Retriever = manager.DAClient
 	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{Data: commitHash[:]})
 	nextBatchStartHeight := manager.NextHeightToSubmit()
 	batch, err := testutil.GenerateBatch(

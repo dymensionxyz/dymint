@@ -11,6 +11,11 @@ var _ da.DataAvailabilityLayerClient = &Layer{}
 
 type Layer struct{}
 
+// RetrieveBatches implements da.DataAvailabilityLayerClient.
+func (l *Layer) RetrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
+	panic("unimplemented")
+}
+
 func (l Layer) Init(config []byte, pubsubServer *pubsub.Server, kvStore store.KV, logger types.Logger, options ...da.Option) error {
 	panic("implement me")
 }
