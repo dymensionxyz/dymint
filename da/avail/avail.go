@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/avast/retry-go/v4"
+	"github.com/dymensionxyz/dymint/da/stub"
 	"github.com/gogo/protobuf/proto"
 
 	"github.com/dymensionxyz/dymint/types"
@@ -58,6 +59,7 @@ type Config struct {
 }
 
 type DataAvailabilityLayerClient struct {
+	stub.Layer
 	client             SubstrateApiI
 	pubsubServer       *pubsub.Server
 	config             Config
