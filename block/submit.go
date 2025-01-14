@@ -86,7 +86,7 @@ func SubmitLoopInner(
 			UpdateBatchSubmissionGauges(pending, unsubmittedBlocksNum(), skewTime)
 
 			byData := pending >= maxBatchSubmitBytes
-			bySkew := maxSkewTime < skewTime
+			bySkew := skewTime >= maxSkewTime
 
 			// check if submission is required by time or size
 			if byTime || bySkew || byData {
@@ -137,20 +137,18 @@ func SubmitLoopInner(
 					}
 					return err
 				}
-
-				// FIXME: can be simplified? can we use nConsumed?
 				pending = uint64(unsubmittedBlocksBytes()) //nolint:gosec // bytes size is always positive
 				skewTime := batchSkewTime()
 				logger.Debug("Submitted a batch to both sub-layers.", "n bytes consumed from pending", nConsumed, "pending after", pending, "skew time", skewTime)
 
-				// after new batch submitted we check the skew time to wake up 'trigger' thread and restart block production
+				// after new batch submitted we wake up 'trigger' thread just in case it is blocked due to too much skew
 				trigger.Nudge()
 
 				// Check if we need to submit another batch
 				byData := pending >= maxBatchSubmitBytes
 				bySkew := maxSkewTime < skewTime
 
-				// check if submission is required by time or size
+				// check if submission is required by skew or data
 				if !(bySkew || byData) {
 					break
 				}
@@ -351,8 +349,6 @@ func (m *Manager) GetLastProducedBlockTime() time.Time {
 // If no first block produced returns now
 // If different error returns empty time
 func (m *Manager) GetLastBlockTimeInSettlement() time.Time {
-	// FIXME: why it cant be LastSubmissionTime????
-
 	lastBlockInSettlement, err := m.Store.LoadBlock(m.LastSettlementHeight.Load())
 	if err != nil && !errors.Is(err, gerrc.ErrNotFound) {
 		return time.Time{}
