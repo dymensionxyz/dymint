@@ -44,6 +44,7 @@ const (
 	Celestia Client = "celestia"
 	Avail    Client = "avail"
 	Grpc     Client = "grpc"
+	WeaveVM  Client = "weavevm"
 )
 
 // Option is a function that sets a parameter on the da layer.
@@ -75,6 +76,12 @@ type DASubmitMetaData struct {
 	Length int
 	// any NMT root for the specific height, necessary for non-inclusion proof
 	Root []byte
+	// WeaveVM arweave block hash means data stored permanently in Arweave block
+	WvmArweaveBlockHash string
+	// WeaveVM tx hash
+	WvmTxHash string
+	// WeaveVM block hash
+	WvmBlockHash string
 }
 
 type Balance struct {
@@ -176,6 +183,12 @@ type DACheckMetaData struct {
 	RowProofs []*merkle.Proof
 	// any NMT root for the specific height, necessary for non-inclusion proof
 	Root []byte
+	// WeaveVM arweave block hash means data stored permanently in Arweave block
+	WvmArweaveBlockHash string
+	// WeaveVM tx hash
+	WvmTxHash string
+	// WeaveVM block hash
+	WvmBlockHash string
 }
 
 // ResultSubmitBatch contains information returned from DA layer after block submission.
