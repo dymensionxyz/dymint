@@ -27,16 +27,19 @@ WeaveVM integration within Dymension allows decentralized and secure way to perm
 ### Configuration Options
 
 For EOA private key signing:
+
 ```toml
 da_config = '{"endpoint":"https://testnet-rpc.wvm.dev","chain_id":9496,"timeout":60000000000,"private_key_hex":"your_hex_string_wvm_priv_key_without_0x_at_the_beginning"}'
 ```
 
 For web3signer external signing:
+
 ```toml
 da_config = '{"endpoint":"https://testnet-rpc.wvm.dev","chain_id":9496,"timeout":"60000000000","web3_signer_endpoint":"http://localhost:9000"}'
 ```
 
 To enable `tls` you should add next fields to the json:
+
 ```
 web3_signer_tls_cert_file
 web3_signer_tls_key_file
@@ -85,6 +88,7 @@ $EXECUTABLE start --log_level=debug \
 ```
 
 Example log output:
+
 ```log
 INFO[0000] weaveVM: successfully sent transaction[tx hash 0x8a7a7f965019cf9d2cc5a3d01ee99d56ccd38977edc636cc0bbd0af5d2383d2a]  module=weavevm
 INFO[0000] wvm tx hash[hash 0x8a7a7f965019cf9d2cc5a3d01ee99d56ccd38977edc636cc0bbd0af5d2383d2a]  module=weavevm

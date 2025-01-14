@@ -201,10 +201,6 @@ func (c *DataAvailabilityLayerClient) GetClientType() da.Client {
 	return da.WeaveVM
 }
 
-func (c *DataAvailabilityLayerClient) DAPath() string {
-	return ""
-}
-
 // SubmitBatch submits a batch to the DA layer.
 func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultSubmitBatch {
 	data, err := batch.MarshalBinary()
