@@ -87,10 +87,6 @@ func (s *State) IsGenesis() bool {
 	return s.Height() == 0
 }
 
-type RollappParams struct {
-	Params *dymint.RollappParams
-}
-
 // SetHeight sets the height saved in the Store if it is higher than the existing height
 // returns OK if the value was updated successfully or did not need to be updated
 func (s *State) SetHeight(height uint64) {

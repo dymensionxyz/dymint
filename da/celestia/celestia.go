@@ -96,6 +96,10 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 	return nil
 }
 
+func (c DataAvailabilityLayerClient) DAPath() string {
+	return c.config.NamespaceIDStr
+}
+
 func createConfig(bz []byte) (c Config, err error) {
 	if len(bz) <= 0 {
 		return c, errors.New("supplied config is empty")
@@ -104,7 +108,6 @@ func createConfig(bz []byte) (c Config, err error) {
 	if err != nil {
 		return c, fmt.Errorf("json unmarshal: %w", err)
 	}
-
 	err = c.InitNamespaceID()
 	if err != nil {
 		return c, fmt.Errorf("init namespace id: %w", err)

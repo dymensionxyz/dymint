@@ -245,6 +245,9 @@ type DataAvailabilityLayerClient interface {
 
 	// GetSignerBalance returns the balance for a specific address
 	GetSignerBalance() (Balance, error)
+
+	// Something third parties can use to identify rollapp activity on the DA
+	DAPath() string
 }
 
 // BatchRetriever is additional interface that can be implemented by Data Availability Layer Client that is able to retrieve
