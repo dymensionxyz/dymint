@@ -82,3 +82,25 @@ $EXECUTABLE start --log_level=debug \
   --p2p.laddr="tcp://0.0.0.0:36656" \
   --proxy_app="tcp://127.0.0.1:36658"
 ```
+
+in rollap-evm log you will eventually see something like this:
+```log
+INFO[0000] weaveVM: successfully sent transaction[tx hash 0x8a7a7f965019cf9d2cc5a3d01ee99d56ccd38977edc636cc0bbd0af5d2383d2a]  module=weavevm
+INFO[0000] wvm tx hash[hash 0x8a7a7f965019cf9d2cc5a3d01ee99d56ccd38977edc636cc0bbd0af5d2383d2a]  module=weavevm
+DEBU[0000] waiting for receipt[txHash 0x8a7a7f965019cf9d2cc5a3d01ee99d56ccd38977edc636cc0bbd0af5d2383d2a attempt 0 error get receipt failed: failed to get transaction receipt: not found]  module=weavevm
+INFO[0002] Block created.[height 35 num_tx 0 size 786]   module=block_manager
+DEBU[0002] Applying block[height 35 source produced]     module=block_manager
+DEBU[0002] block-sync advertise block[error failed to find any peer in table]  module=p2p
+INFO[0002] MINUTE EPOCH 6[]                              module=x/epochs
+INFO[0002] Epoch Start Time: 2025-01-13 09:21:03.239539 +0000 UTC[]  module=x/epochs
+INFO[0002] commit synced[commit 436F6D6D697449447B5B3130342038203131302032303620352031323920393020343520313633203933203235322031352031343320333920313538203131342035382035352031352038322038203939203132392032333520313731203230382031392032343320313932203139203233352036355D3A32337D]
+DEBU[0002] snapshot is skipped[height 35]
+INFO[0002] Gossipping block[height 35]                   module=block_manager
+DEBU[0002] Gossiping block.[len 792]                     module=p2p
+DEBU[0002] indexed block[height 35]                      module=txindex
+DEBU[0002] indexed block txs[height 35 num_txs 0]        module=txindex
+INFO[0002] Produced empty block.[]                       module=block_manager
+DEBU[0002] Added bytes produced to bytes pending submission counter.[bytes added 786 pending 15719]  module=block_manager
+INFO[0003] data available in weavevm[wvm_tx 0x8a7a7f965019cf9d2cc5a3d01ee99d56ccd38977edc636cc0bbd0af5d2383d2a wvm_block 0xe897eab56aee50b97a0f2bd1ff47af3c834e96ca18528bb869c4eafc0df583be wvm_block_number 5651207]  module=weavevm
+DEBU[0003] Submitted blob to DA successfully.[]          module=weavevm
+```
