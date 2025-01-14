@@ -69,7 +69,6 @@ func TestInitialState(t *testing.T) {
 	_ = settlementlc.Init(settlement.Config{}, genesis.ChainID, pubsubServer, logger)
 
 	daclient := testutil.GetMockDALC(logger)
-	_ = daclient.Init(nil, pubsubServer, store.NewDefaultInMemoryKVStore(), logger)
 
 	// Init empty store and full store
 	emptyStore := store.New(store.NewDefaultInMemoryKVStore())
