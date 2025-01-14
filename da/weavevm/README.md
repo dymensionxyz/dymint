@@ -5,7 +5,6 @@
     <img src="https://raw.githubusercontent.com/weaveVM/.github/main/profile/bg.png">
   </a>
 </p>
- 
 
 ## Key Details
 
@@ -40,7 +39,7 @@ da_config = '{"endpoint":"https://testnet-rpc.wvm.dev","chain_id":9496,"timeout"
 
 To enable `tls` you should add next fields to the json:
 
-```
+```sh
 web3_signer_tls_cert_file
 web3_signer_tls_key_file
 web3_signer_tls_ca_cert_file
