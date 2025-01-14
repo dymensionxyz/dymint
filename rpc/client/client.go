@@ -519,7 +519,7 @@ func (c *Client) Commit(ctx context.Context, height *int64) (*ctypes.ResultCommi
 	if err != nil {
 		return nil, err
 	}
-	commit := types.ToABCICommit(com, &b.Header)
+	commit := types.ToABCICommit(com)
 	block, err := types.ToABCIBlock(b)
 	if err != nil {
 		return nil, err
@@ -773,9 +773,15 @@ func (c *Client) Status(_ context.Context) (*ctypes.ResultStatus, error) {
 			PubKey:      proposer.PubKey(),
 			VotingPower: 1,
 		},
+		DymensionStatus: ctypes.DymensionStatus{
+			DAPath:        c.node.BlockManager.DAClient.DAPath(),
+			RollappParams: types.RollappParamsToABCI(state.RollappParams),
+		},
 	}
 	return result, nil
 }
+
+type DAInfo struct{}
 
 // BroadcastEvidence is not yet implemented.
 func (c *Client) BroadcastEvidence(ctx context.Context, evidence tmtypes.Evidence) (*ctypes.ResultBroadcastEvidence, error) {

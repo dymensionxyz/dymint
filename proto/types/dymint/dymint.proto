@@ -79,8 +79,7 @@ message Commit {
 
 message Data {
 	repeated bytes txs = 1;
-	repeated bytes intermediate_state_roots = 2;
-	repeated tendermint.abci.Evidence evidence = 3;
+	reserved 2,3;
 	repeated google.protobuf.Any consensus_messages = 4;
 }
 

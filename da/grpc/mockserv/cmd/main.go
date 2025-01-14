@@ -11,6 +11,8 @@ import (
 	"github.com/dymensionxyz/dymint/store"
 )
 
+// go run github.com/dymensionxyz/dymint/da/grpc/mockserv/cmd
+
 func main() {
 	conf := grpcda.DefaultConfig
 

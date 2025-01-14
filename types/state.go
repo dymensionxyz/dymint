@@ -7,6 +7,7 @@ import (
 
 	// TODO(tzdybal): copy to local project?
 
+	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	tmcrypto "github.com/tendermint/tendermint/crypto"
 	tmstate "github.com/tendermint/tendermint/proto/tendermint/state"
 	tmproto "github.com/tendermint/tendermint/proto/tendermint/types"
@@ -51,12 +52,21 @@ func (s *State) GetProposer() *Sequencer {
 	return s.Proposer.Load()
 }
 
+// Warning: can be nil during 'graceful' shutdown
 func (s *State) GetProposerPubKey() tmcrypto.PubKey {
 	proposer := s.Proposer.Load()
 	if proposer == nil {
 		return nil
 	}
 	return proposer.PubKey()
+}
+
+func (s *State) SafeProposerPubKey() (tmcrypto.PubKey, error) {
+	ret := s.GetProposerPubKey()
+	if ret == nil {
+		return nil, gerrc.ErrNotFound.Wrap("proposer")
+	}
+	return ret, nil
 }
 
 // GetProposerHash returns the hash of the proposer
@@ -75,10 +85,6 @@ func (s *State) SetProposer(proposer *Sequencer) {
 
 func (s *State) IsGenesis() bool {
 	return s.Height() == 0
-}
-
-type RollappParams struct {
-	Params *dymint.RollappParams
 }
 
 // SetHeight sets the height saved in the Store if it is higher than the existing height

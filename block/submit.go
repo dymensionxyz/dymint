@@ -14,6 +14,7 @@ import (
 	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/settlement"
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/dymint/types/metrics"
 	uchannel "github.com/dymensionxyz/dymint/utils/channel"
 )
 
@@ -113,6 +114,7 @@ func SubmitLoopInner(
 			}
 
 			pending := pendingBytes.Load()
+			UpdateBatchSubmissionGauges(pending, unsubmittedBlocksNum(), batchSkewTime())
 
 			// while there are accumulated blocks, create and submit batches!!
 			for {
@@ -196,13 +198,12 @@ func (m *Manager) CreateAndSubmitBatch(maxSizeBytes uint64, lastBatch bool) (*ty
 	if lastBatch && b.EndHeight() == endHeightInclusive {
 		b.LastBatch = true
 	}
-
 	m.logger.Info("Created batch.", "start height", startHeight, "end height", endHeightInclusive, "size", b.SizeBytes(), "last batch", b.LastBatch)
-	types.LastBatchSubmittedBytes.Set(float64(b.SizeBytes()))
 
 	if err := m.SubmitBatch(b); err != nil {
 		return nil, fmt.Errorf("submit batch: %w", err)
 	}
+
 	return b, nil
 }
 
@@ -273,11 +274,13 @@ func (m *Manager) SubmitBatch(batch *types.Batch) error {
 
 	m.logger.Info("Submitted batch to SL.", "start height", batch.StartHeight(), "end height", batch.EndHeight())
 
-	types.RollappHubHeightGauge.Set(float64(batch.EndHeight()))
-	m.LastSettlementHeight.Store(batch.EndHeight())
-
 	// update last submitted block time with batch last block (used to calculate max skew time)
+	m.LastSettlementHeight.Store(batch.EndHeight())
 	m.LastSubmissionTime.Store(time.Now().UTC().UnixNano())
+
+	// update metrics
+	metrics.RollappHubHeightGauge.Set(float64(batch.EndHeight()))
+	metrics.LastBatchSubmittedBytes.Set(float64(batch.SizeBytes()))
 
 	return err
 }
@@ -391,7 +394,7 @@ func (m *Manager) isLastBatchRecent(maxBatchSubmitTime time.Duration) bool {
 }
 
 func UpdateBatchSubmissionGauges(skewBytes uint64, skewBlocks uint64, skewTime time.Duration) {
-	types.RollappPendingSubmissionsSkewBytes.Set(float64(skewBytes))
-	types.RollappPendingSubmissionsSkewBlocks.Set(float64(skewBlocks))
-	types.RollappPendingSubmissionsSkewTimeMinutes.Set(float64(skewTime.Minutes()))
+	metrics.RollappPendingSubmissionsBytes.Set(float64(skewBytes))
+	metrics.RollappPendingSubmissionsBlocks.Set(float64(skewBlocks))
+	metrics.RollappPendingSubmissionsSkewTimeMinutes.Set(float64(skewTime.Minutes()))
 }
