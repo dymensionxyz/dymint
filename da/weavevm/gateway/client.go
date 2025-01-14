@@ -53,7 +53,7 @@ func (g *Gateway) RetrieveFromGateway(ctx context.Context, txHash string) (*weav
 	if err != nil {
 		return nil, fmt.Errorf("failed to call weaveVM-data-retriever: %w", err)
 	}
-	defer resp.Body.Close()
+	defer resp.Body.Close() // nolint:errcheck
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {

@@ -601,3 +601,7 @@ func (c *DataAvailabilityLayerClient) verifyBlobData(commitment []byte, data []b
 	}
 	return nil
 }
+
+func (c *DataAvailabilityLayerClient) DAPath() string {
+	return fmt.Sprintf("%d", c.config.ChainID)
+}
