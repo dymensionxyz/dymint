@@ -55,7 +55,6 @@ func SubmitLoopInner(
 	maxBatchSubmitBytes uint64, // max size of serialised batch in bytes
 	createAndSubmitBatch func(maxSizeBytes uint64) (bytes uint64, err error),
 ) error {
-
 	var (
 		pendingBytes = atomic.Uint64{}
 		trigger      = uchannel.NewNudger() // used to avoid busy waiting (using cpu) on trigger thread
