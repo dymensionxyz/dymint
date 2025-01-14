@@ -1,11 +1,5 @@
 # WeaveVM Integration Guide
 
-<p align="center">
-  <a href="https://wvm.dev">
-    <img src="https://raw.githubusercontent.com/weaveVM/.github/main/profile/bg.png">
-  </a>
-</p>
-
 ## Key Details
 
 * WeaveVM provides a data pipeline for Arweave's permanent storage with its own (WeaveVM) high data throughput of the permanently stored data into Arweave.
@@ -111,6 +105,6 @@ DEBU[0003] Submitted blob to DA successfully.[]          module=weavevm
 
 ## Resources
 
-* WeaveVM docs: https://docs.wvm.dev/
-* WeaveVM Explorer: https://explorer.wvm.dev/
-* WeaveVM faucet: https://www.wvm.dev/faucet
+* [WeaveVM docs](https://docs.wvm.dev/)
+* [WeaveVM Explorer](https://explorer.wvm.dev/)
+* [WeaveVM faucet](https://www.wvm.dev/faucet)
