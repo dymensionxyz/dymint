@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"strings"
 
-	weaveVMtypes "github.com/dymensionxyz/dymint/da/weave_vm/types"
+	weaveVMtypes "github.com/dymensionxyz/dymint/da/weavevm/types"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 )

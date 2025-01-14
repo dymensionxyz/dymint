@@ -6,7 +6,7 @@ import (
 	"github.com/dymensionxyz/dymint/da/celestia"
 	"github.com/dymensionxyz/dymint/da/grpc"
 	"github.com/dymensionxyz/dymint/da/local"
-	weavevm "github.com/dymensionxyz/dymint/da/weave_vm"
+	weavevm "github.com/dymensionxyz/dymint/da/weavevm"
 )
 
 // this is a central registry for all Data Availability Layer Clients
