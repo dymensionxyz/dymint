@@ -7,6 +7,7 @@ import (
 
 	"github.com/dymensionxyz/dymint/p2p"
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/dymint/types/metrics"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/tendermint/tendermint/libs/pubsub"
 )
@@ -51,7 +52,7 @@ func (m *Manager) OnReceivedBlock(event pubsub.Message) {
 	}
 
 	m.UpdateTargetHeight(height)
-	types.LastReceivedP2PHeightGauge.Set(float64(height))
+	metrics.LastReceivedP2PHeightGauge.Set(float64(height))
 
 	m.logger.Debug("Received new block from p2p.", "block height", height, "source", source.String(), "store height", m.State.Height(), "n cachedBlocks", m.blockCache.Size())
 	m.blockCache.Add(height, &block, &commit, source)

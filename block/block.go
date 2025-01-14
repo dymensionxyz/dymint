@@ -6,6 +6,7 @@ import (
 	errorsmod "cosmossdk.io/errors"
 
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/dymint/types/metrics"
 )
 
 // validateAndApplyBlock calls validateBlockBeforeApply and applyBlock.
@@ -39,8 +40,6 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	if block.Header.Height != m.State.NextHeight() {
 		return types.ErrInvalidBlockHeight
 	}
-
-	types.SetLastAppliedBlockSource(blockMetaData.Source.String())
 
 	m.logger.Debug("Applying block", "height", block.Header.Height, "source", blockMetaData.Source.String())
 
@@ -165,8 +164,6 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 		return fmt.Errorf("commit state: %w", err)
 	}
 
-	types.RollappHeightGauge.Set(float64(block.Header.Height))
-
 	m.blockCache.Delete(block.Header.Height)
 
 	// validate whether configuration params and rollapp consensus params keep in line, after rollapp params are updated from the responses received in the block execution
@@ -182,6 +179,12 @@ func (m *Manager) applyBlock(block *types.Block, commit *types.Commit, blockMeta
 	if isProposerUpdated && m.AmIProposerOnRollapp() {
 		panic("I'm the new Proposer now. restarting as a proposer")
 	}
+
+	// update metrics
+	metrics.RollappHeightGauge.Set(float64(block.Header.Height))
+	metrics.RollappBlockSizeBytesGauge.Set(float64(block.SizeBytes()))
+	metrics.RollappBlockSizeTxsGauge.Set(float64(len(block.Data.Txs)))
+	metrics.SetLastAppliedBlockSource(blockMetaData.Source.String())
 
 	return nil
 }
