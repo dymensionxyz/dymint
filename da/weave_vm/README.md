@@ -1,49 +1,51 @@
-## WEAVE VM DA CLIENT 
+# WeaveVM Integration Guide
 
-### Key Details
+<p align="center">
+  <a href="https://wvm.dev">
+    <img src="https://raw.githubusercontent.com/weaveVM/.github/main/profile/bg.png">
+  </a>
+</p>
+ 
 
-* WeaveVM provides a gateway for Arweave's permanent with its own (WeaveVM) high data throughput of the permanently stored data into .
-* Current maximum encoded blob size is 8 MB (8_388_608 bytes).
+## Key Details
+
+* WeaveVM provides a data pipeline for Arweave's permanent storage with its own (WeaveVM) high data throughput of the permanently stored data into Arweave.
+* Current maximum encoded blob size is 8 MB (`8_388_608 bytes`).
 * WeaveVM currently operating in public testnet (Alphanet) - not recommended to use it in production environment.
 
-### How it works
+## How It Works
 
-When transaction settles on weaveVM chain it has not only weaveVM guarantess but it also will be eventually included in Arweave.
-It allows decentralized and secure way to permanently store RollApps data.
+When transaction settles on weaveVM it has not only weaveVM highthroughout DA & EVM storage, but also it will be eventually included in Arweave.
 
-### Links
+WeaveVM integration within Dymension allows decentralized and secure way to permanently store RollApps data.
 
-https://docs.wvm.dev/
-https://explorer.wvm.dev/
-https://www.wvm.dev/faucet
+## Getting Started
 
-### How To
-You should chose "weaveVM" as a DA layer of your RollApp.
+1. Select "weaveVM" as your RollApp's DA layer
+2. Get test tWVM tokens from the [faucet](https://wvm.dev/faucet)
 
-To successfully store data on weaveVM as a first step you need to obtain test tWVM tokens through our faucet.
-If you are going to use private key of your weaveVM address to sign transactions your config will look like this
+### Configuration Options
 
+For EOA private key signing:
 ```toml
 da_config = '{"endpoint":"https://testnet-rpc.wvm.dev","chain_id":9496,"timeout":60000000000,"private_key_hex":"your_hex_string_wvm_priv_key_without_0x_at_the_beginning"}'
 ```
 
-Using with web3signer as an external signer:
+For web3signer external signing:
 ```toml
 da_config = '{"endpoint":"https://testnet-rpc.wvm.dev","chain_id":9496,"timeout":"60000000000","web3_signer_endpoint":"http://localhost:9000"}'
 ```
 
-to enable tls you should add next fields to the json:
-
+To enable `tls` you should add next fields to the json:
 ```
 web3_signer_tls_cert_file
 web3_signer_tls_key_file
 web3_signer_tls_ca_cert_file
 ```
 
-## Example of rollap-evm configuration
+## RollApp-EVM Configuration Example
 
-Please refer to the most recent configuration in rollap-evm repo.
-But this can be used as an example.
+Please refer to the most recent configuration in [rollap-evm repo](https://github.com/dymensionxyz/rollapp-evm).
 
 ```sh
 # Set environment variables
@@ -75,16 +77,14 @@ dasel put -f "${ROLLAPP_HOME_DIR}"/config/dymint.toml "settlement_layer" -v "moc
 dasel put -f "${ROLLAPP_HOME_DIR}"/config/dymint.toml "node_address" -v "http://localhost:36657"
 dasel put -f "${ROLLAPP_HOME_DIR}"/config/dymint.toml "settlement_node_address" -v "http://127.0.0.1:36657"
 
-
 # Start the rollapp
-
 $EXECUTABLE start --log_level=debug \
   --rpc.laddr="tcp://127.0.0.1:36657" \
   --p2p.laddr="tcp://0.0.0.0:36656" \
   --proxy_app="tcp://127.0.0.1:36658"
 ```
 
-in rollap-evm log you will eventually see something like this:
+Example log output:
 ```log
 INFO[0000] weaveVM: successfully sent transaction[tx hash 0x8a7a7f965019cf9d2cc5a3d01ee99d56ccd38977edc636cc0bbd0af5d2383d2a]  module=weavevm
 INFO[0000] wvm tx hash[hash 0x8a7a7f965019cf9d2cc5a3d01ee99d56ccd38977edc636cc0bbd0af5d2383d2a]  module=weavevm
@@ -105,3 +105,9 @@ DEBU[0002] Added bytes produced to bytes pending submission counter.[bytes added
 INFO[0003] data available in weavevm[wvm_tx 0x8a7a7f965019cf9d2cc5a3d01ee99d56ccd38977edc636cc0bbd0af5d2383d2a wvm_block 0xe897eab56aee50b97a0f2bd1ff47af3c834e96ca18528bb869c4eafc0df583be wvm_block_number 5651207]  module=weavevm
 DEBU[0003] Submitted blob to DA successfully.[]          module=weavevm
 ```
+
+## Resources
+
+* WeaveVM docs: https://docs.wvm.dev/
+* WeaveVM Explorer: https://explorer.wvm.dev/
+* WeaveVM faucet: https://www.wvm.dev/faucet
