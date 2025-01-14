@@ -18,6 +18,7 @@ import (
 	weaveVMtypes "github.com/dymensionxyz/dymint/da/weave_vm/types"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
+	"github.com/dymensionxyz/dymint/types/metrics"
 	pb "github.com/dymensionxyz/dymint/types/pb/dymint"
 	uretry "github.com/dymensionxyz/dymint/utils/retry"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
@@ -143,7 +144,7 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 	for _, apply := range options {
 		apply(c)
 	}
-	types.RollappConsecutiveFailedDASubmission.Set(0)
+	metrics.RollappConsecutiveFailedDASubmission.Set(0)
 
 	// Initialize context
 	c.ctx, c.cancel = context.WithCancel(context.Background())
@@ -200,6 +201,10 @@ func (c *DataAvailabilityLayerClient) GetClientType() da.Client {
 	return da.WeaveVM
 }
 
+func (c *DataAvailabilityLayerClient) DAPath() string {
+	return ""
+}
+
 // SubmitBatch submits a batch to the DA layer.
 func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultSubmitBatch {
 	data, err := batch.MarshalBinary()
@@ -247,7 +252,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 
 			if err != nil {
 				c.logger.Error("Submit blob.", "error", err)
-				types.RollappConsecutiveFailedDASubmission.Inc()
+				metrics.RollappConsecutiveFailedDASubmission.Inc()
 				backoff.Sleep()
 				continue
 			}
@@ -262,7 +267,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 
 			c.logger.Debug("Submitted blob to DA successfully.")
 
-			types.RollappConsecutiveFailedDASubmission.Set(0)
+			metrics.RollappConsecutiveFailedDASubmission.Set(0)
 			return da.ResultSubmitBatch{
 				BaseResult: da.BaseResult{
 					Code:    da.StatusSuccess,
