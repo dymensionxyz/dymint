@@ -6,6 +6,7 @@ import (
 	"github.com/dymensionxyz/dymint/da/celestia"
 	"github.com/dymensionxyz/dymint/da/grpc"
 	"github.com/dymensionxyz/dymint/da/local"
+	weavevm "github.com/dymensionxyz/dymint/da/weave_vm"
 )
 
 // this is a central registry for all Data Availability Layer Clients
@@ -14,6 +15,7 @@ var clients = map[string]func() da.DataAvailabilityLayerClient{
 	"grpc":     func() da.DataAvailabilityLayerClient { return &grpc.DataAvailabilityLayerClient{} },
 	"celestia": func() da.DataAvailabilityLayerClient { return &celestia.DataAvailabilityLayerClient{} },
 	"avail":    func() da.DataAvailabilityLayerClient { return &avail.DataAvailabilityLayerClient{} },
+	"weavevm":  func() da.DataAvailabilityLayerClient { return &weavevm.DataAvailabilityLayerClient{} },
 }
 
 // GetClient returns client identified by name.
