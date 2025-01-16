@@ -35,4 +35,8 @@ type RPCConfig struct {
 	// NOTE: both tls-cert-file and tls-key-file must be present for Tendermint to create HTTPS server.
 	// Otherwise, HTTP server is run.
 	TLSKeyFile string `mapstructure:"tls-key-file"`
+
+	// pprof listen address (https://golang.org/pkg/net/http/pprof)
+	// FIXME: This should be moved under the instrumentation section
+	PprofListenAddress string `mapstructure:"pprof_laddr"`
 }
