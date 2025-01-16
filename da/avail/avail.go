@@ -551,13 +551,7 @@ func (c *DataAvailabilityLayerClient) sync() error {
 					continue
 				}
 
-				latestHash, err := c.client.GetBlockHash(0)
-				if err != nil {
-					c.logger.Error("Failed to get latest block hash", "error", err)
-					continue
-				}
-
-				currentBlock, err := c.client.GetBlock(latestHash)
+				currentBlock, err := c.client.GetBlockLatest()
 				if err != nil {
 					c.logger.Error("Failed to get current block", "error", err)
 					continue
