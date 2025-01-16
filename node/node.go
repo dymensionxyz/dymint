@@ -42,6 +42,8 @@ var (
 	indexerPrefix = []byte{2}
 )
 
+const readHeaderTimeout = 10 * time.Second
+
 // Node represents a client node in Dymint network.
 // It connects all the components and orchestrates their work.
 type Node struct {
@@ -244,6 +246,16 @@ func (n *Node) OnStart() error {
 		}
 	}()
 
+	// run pprof server if it is enabled
+	if len(n.conf.RPC.PprofListenAddress) != 0 {
+		go func() {
+			if err := n.startPprofServer(); err != nil {
+				panic(err)
+			}
+		}()
+		//n.pprofSrv = n.startPprofServer()
+	}
+
 	// start the block manager
 	err = n.BlockManager.Start(n.ctx)
 	if err != nil {
@@ -357,6 +369,25 @@ func (n *Node) startPrometheusServer() error {
 		return srv.Close()
 	}
 	return nil
+}
+
+// starts a ppro.
+func (n *Node) startPprofServer() error {
+	srv := &http.Server{
+		Addr:              n.conf.RPC.PprofListenAddress,
+		Handler:           nil,
+		ReadHeaderTimeout: readHeaderTimeout,
+	}
+	go func() {
+		if err := srv.ListenAndServe(); err != http.ErrServerClosed {
+			// Error starting or closing listener:
+			n.Logger.Error("pprof HTTP server ListenAndServe", "err", err)
+		}
+	}()
+	n.Logger.Info("Pprof server started", "address", n.conf.Instrumentation.PrometheusListenAddr)
+
+	<-n.ctx.Done()
+	return srv.Close()
 }
 
 func (n *Node) GetBlockManagerHeight() uint64 {

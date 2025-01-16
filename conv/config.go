@@ -18,7 +18,6 @@ func GetNodeConfig(nodeConf *config.NodeConfig, tmConf *tmcfg.Config) error {
 	}
 	nodeConf.RootDir = tmConf.RootDir
 	nodeConf.DBPath = tmConf.DBPath
-
 	if tmConf.RPC != nil {
 		nodeConf.RPC.ListenAddress = tmConf.RPC.ListenAddress
 		nodeConf.RPC.CORSAllowedOrigins = tmConf.RPC.CORSAllowedOrigins
