@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"cosmossdk.io/math"
-	"github.com/celestiaorg/celestia-openrpc/types/blob"
+	"github.com/celestiaorg/nmt"
 	"github.com/cometbft/cometbft/crypto/merkle"
 	"github.com/tendermint/tendermint/libs/pubsub"
 
@@ -96,7 +96,7 @@ func (d *DASubmitMetaData) ToPath() string {
 	// convert uint64 to string
 	if d.Commitment != nil {
 		commitment := hex.EncodeToString(d.Commitment)
-		dataroot := hex.EncodeToString(d.Root)
+		//dataroot := hex.EncodeToString(d.Root)
 		path := []string{
 			string((d.Client)),
 			strconv.FormatUint(d.Height, 10),
@@ -104,7 +104,7 @@ func (d *DASubmitMetaData) ToPath() string {
 			strconv.Itoa(d.Length),
 			commitment,
 			hex.EncodeToString(d.Namespace),
-			dataroot,
+			//	dataroot,
 		}
 		for i, part := range path {
 			path[i] = strings.Trim(part, PathSeparator)
@@ -133,7 +133,7 @@ func (d *DASubmitMetaData) FromPath(path string) (*DASubmitMetaData, error) {
 		Client: Client(pathParts[0]),
 	}
 	// TODO: check per DA and panic if not enough parts
-	if len(pathParts) == 7 {
+	if len(pathParts) == 6 {
 		submitData.Index, err = strconv.Atoi(pathParts[2])
 		if err != nil {
 			return nil, err
@@ -150,10 +150,10 @@ func (d *DASubmitMetaData) FromPath(path string) (*DASubmitMetaData, error) {
 		if err != nil {
 			return nil, err
 		}
-		submitData.Root, err = hex.DecodeString(pathParts[6])
+		/*submitData.Root, err = hex.DecodeString(pathParts[6])
 		if err != nil {
 			return nil, err
-		}
+		}*/
 	}
 
 	return submitData, nil
@@ -176,7 +176,7 @@ type DACheckMetaData struct {
 	// Number of shares of each blob
 	Length int
 	// Proofs necessary to validate blob inclusion in the specific height
-	Proofs []*blob.Proof
+	Proofs [][]*nmt.Proof
 	// NMT roots for each NMT Proof
 	NMTRoots []byte
 	// Proofs necessary to validate blob inclusion in the specific height

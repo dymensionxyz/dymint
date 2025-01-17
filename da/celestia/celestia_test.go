@@ -1,9 +1,12 @@
 package celestia_test
 
 import (
+	"bytes"
 	cryptoRand "crypto/rand"
+	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"math/rand"
 	"testing"
 	"time"
@@ -274,7 +277,7 @@ func setDAandMock(t *testing.T) (*mocks.MockCelestiaRPCClient, da.DataAvailabili
 
 	mockRPCClient := mocks.NewMockCelestiaRPCClient(t)
 	options := []da.Option{
-		celestia.WithRPCClient(mockRPCClient),
+		//celestia.WithRPCClient(mockRPCClient),
 		celestia.WithRPCAttempts(1),
 		celestia.WithRPCRetryDelay(time.Second * 2),
 	}
@@ -348,4 +351,17 @@ func getRandomBytes(n int) []byte {
 	data := make([]byte, n)
 	_, _ = cryptoRand.Read(data)
 	return data
+}
+
+// exampleNMT creates a new NamespacedMerkleTree with the given namespace ID size and leaf namespace IDs. Each byte in the leavesNIDs parameter corresponds to one leaf's namespace ID. If nidSize is greater than 1, the function repeats each NID in leavesNIDs nidSize times before prepending it to the leaf data.
+func exampleNMT(nidSize int, ignoreMaxNamespace bool, leavesNIDs ...byte) *nmt.NamespacedMerkleTree {
+	tree := nmt.New(sha256.New(), nmt.NamespaceIDSize(nidSize), nmt.IgnoreMaxNamespace(ignoreMaxNamespace))
+	for i, nid := range leavesNIDs {
+		namespace := bytes.Repeat([]byte{nid}, nidSize)
+		d := append(namespace, []byte(fmt.Sprintf("leaf_%d", i))...)
+		if err := tree.Push(d); err != nil {
+			panic(fmt.Sprintf("unexpected error: %v", err))
+		}
+	}
+	return tree
 }

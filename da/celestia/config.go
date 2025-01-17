@@ -27,7 +27,6 @@ var defaultSubmitBackoff = uretry.NewBackoffConfig(
 // Config stores Celestia DALC configuration parameters.
 type Config struct {
 	BaseURL        string               `json:"base_url,omitempty"`
-	AppNodeURL     string               `json:"app_node_url,omitempty"`
 	Timeout        time.Duration        `json:"timeout,omitempty"`
 	GasPrices      float64              `json:"gas_prices,omitempty"`
 	NamespaceIDStr string               `json:"namespace_id,omitempty"`
@@ -40,7 +39,6 @@ type Config struct {
 
 var TestConfig = Config{
 	BaseURL:        "http://127.0.0.1:26658",
-	AppNodeURL:     "",
 	Timeout:        5 * time.Second,
 	GasPrices:      DefaultGasPrices,
 	NamespaceIDStr: "",

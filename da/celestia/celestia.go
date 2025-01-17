@@ -2,6 +2,7 @@ package celestia
 
 import (
 	"context"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -9,28 +10,31 @@ import (
 	"time"
 
 	"github.com/avast/retry-go/v4"
-	"github.com/celestiaorg/celestia-openrpc/types/blob"
-	"github.com/celestiaorg/celestia-openrpc/types/header"
 	"github.com/celestiaorg/nmt"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/gogo/protobuf/proto"
+	goDA "github.com/rollkit/go-da"
+	proxyda "github.com/rollkit/go-da/proxy"
+
+	pb "github.com/dymensionxyz/dymint/types/pb/dymint"
 	"github.com/tendermint/tendermint/libs/pubsub"
 
-	openrpc "github.com/celestiaorg/celestia-openrpc"
-
 	"github.com/dymensionxyz/dymint/da"
-	celtypes "github.com/dymensionxyz/dymint/da/celestia/types"
 	"github.com/dymensionxyz/dymint/store"
 	"github.com/dymensionxyz/dymint/types"
 	"github.com/dymensionxyz/dymint/types/metrics"
-	pb "github.com/dymensionxyz/dymint/types/pb/dymint"
 	uretry "github.com/dymensionxyz/dymint/utils/retry"
 )
 
+// heightLen is a length (in bytes) of serialized height.
+//
+// This is 8 as uint64 consist of 8 bytes.
+const heightLen = 8
+
 // DataAvailabilityLayerClient use celestia-node public API.
 type DataAvailabilityLayerClient struct {
-	rpc celtypes.CelestiaRPCClient
-
+	//rpc celtypes.CelestiaRPCClient
+	client       goDA.DA
 	pubsubServer *pubsub.Server
 	config       Config
 	logger       types.Logger
@@ -45,16 +49,22 @@ var (
 )
 
 // WithRPCClient sets rpc client.
-func WithRPCClient(rpc celtypes.CelestiaRPCClient) da.Option {
+/*func WithRPCClient(rpc celtypes.CelestiaRPCClient) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
 		daLayerClient.(*DataAvailabilityLayerClient).rpc = rpc
 	}
-}
+}*/
 
 // WithRPCRetryDelay sets failed rpc calls retry delay.
 func WithRPCRetryDelay(delay time.Duration) da.Option {
 	return func(daLayerClient da.DataAvailabilityLayerClient) {
 		daLayerClient.(*DataAvailabilityLayerClient).config.RetryDelay = delay
+	}
+}
+
+func WithDAClient(client goDA.DA) da.Option {
+	return func(daLayerClient da.DataAvailabilityLayerClient) {
+		daLayerClient.(*DataAvailabilityLayerClient).client = client
 	}
 }
 
@@ -137,19 +147,17 @@ func (c *DataAvailabilityLayerClient) Start() (err error) {
 	c.logger.Info("Starting Celestia Data Availability Layer Client.")
 
 	// other client has already been set
-	if c.rpc != nil {
+	if c.client != nil {
 		c.logger.Info("Celestia-node client already set.")
 		return nil
 	}
 
-	var rpc *openrpc.Client
-	rpc, err = openrpc.NewClient(c.ctx, c.config.BaseURL, c.config.AuthToken)
+	client, err := proxyda.NewClient(c.config.BaseURL, c.config.AuthToken)
 	if err != nil {
-		return err
+		return fmt.Errorf("error while establishing connection to DA layer: %w", err)
 	}
-	c.rpc = NewOpenRPC(rpc)
-
-	go c.sync(rpc)
+	c.client = client
+	c.synced <- struct{}{}
 
 	return
 }
@@ -189,16 +197,6 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 		}
 	}
 
-	if len(data) > celtypes.DefaultMaxBytes {
-		return da.ResultSubmitBatch{
-			BaseResult: da.BaseResult{
-				Code:    da.StatusError,
-				Message: fmt.Sprintf("size bigger than maximum blob size: max n bytes: %d", celtypes.DefaultMaxBytes),
-				Error:   errors.New("blob size too big"),
-			},
-		}
-	}
-
 	backoff := c.config.Backoff.Backoff()
 
 	for {
@@ -209,18 +207,9 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 		default:
 
 			// TODO(srene):  Split batch in multiple blobs if necessary if supported
-			height, commitment, err := c.submit(data)
-			if errors.Is(err, gerrc.ErrInternal) {
-				// no point retrying if it's because of our code being wrong
-				err = fmt.Errorf("submit: %w", err)
-				return da.ResultSubmitBatch{
-					BaseResult: da.BaseResult{
-						Code:    da.StatusError,
-						Message: err.Error(),
-						Error:   err,
-					},
-				}
-			}
+			ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
+			defer cancel()
+			ids, err := c.client.Submit(ctx, []da.Blob{data}, c.config.GasPrices, c.config.NamespaceID.Bytes())
 
 			if err != nil {
 				c.logger.Error("Submit blob.", "error", err)
@@ -228,6 +217,7 @@ func (c *DataAvailabilityLayerClient) SubmitBatch(batch *types.Batch) da.ResultS
 				backoff.Sleep()
 				continue
 			}
+			height, commitment := splitID(ids[0])
 
 			daMetaData := &da.DASubmitMetaData{
 				Client:     da.Celestia,
@@ -289,69 +279,6 @@ func (c *DataAvailabilityLayerClient) RetrieveBatches(daMetaData *da.DASubmitMet
 		}
 	}
 }
-
-func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
-	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
-	defer cancel()
-
-	c.logger.Debug("Getting blob from DA.", "height", daMetaData.Height, "namespace", hex.EncodeToString(daMetaData.Namespace), "commitment", hex.EncodeToString(daMetaData.Commitment))
-	var batches []*types.Batch
-	blob, err := c.rpc.Get(ctx, daMetaData.Height, daMetaData.Namespace, daMetaData.Commitment)
-	if err != nil {
-		return da.ResultRetrieveBatch{
-			BaseResult: da.BaseResult{
-				Code:    da.StatusError,
-				Message: err.Error(),
-				Error:   da.ErrRetrieval,
-			},
-		}
-	}
-	if blob == nil {
-		return da.ResultRetrieveBatch{
-			BaseResult: da.BaseResult{
-				Code:    da.StatusError,
-				Message: "Blob not found",
-				Error:   da.ErrBlobNotFound,
-			},
-		}
-	}
-
-	var batch pb.Batch
-	err = proto.Unmarshal(blob.Data, &batch)
-	if err != nil {
-		c.logger.Error("Unmarshal blob.", "daHeight", daMetaData.Height, "error", err)
-		return da.ResultRetrieveBatch{
-			BaseResult: da.BaseResult{
-				Code:    da.StatusError,
-				Message: err.Error(),
-				Error:   da.ErrBlobNotParsed,
-			},
-		}
-	}
-
-	c.logger.Debug("Blob retrieved successfully from DA.", "DA height", daMetaData.Height, "lastBlockHeight", batch.EndHeight)
-
-	parsedBatch := new(types.Batch)
-	err = parsedBatch.FromProto(&batch)
-	if err != nil {
-		return da.ResultRetrieveBatch{
-			BaseResult: da.BaseResult{
-				Code:    da.StatusError,
-				Message: err.Error(),
-				Error:   da.ErrBlobNotParsed,
-			},
-		}
-	}
-	batches = append(batches, parsedBatch)
-	return da.ResultRetrieveBatch{
-		BaseResult: da.BaseResult{
-			Code:    da.StatusSuccess,
-			Message: "Batch retrieval successful",
-		},
-		Batches: batches,
-	}
-}
-
 func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
 	var availabilityResult da.ResultCheckBatch
 	for {
@@ -384,9 +311,47 @@ func (c *DataAvailabilityLayerClient) CheckBatchAvailability(daMetaData *da.DASu
 	}
 }
 
-func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
-	var proofs []*blob.Proof
+// GetMaxBlobSizeBytes returns the maximum allowed blob size in the DA, used to check the max batch size configured
+func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint32 {
+	return maxBlobSizeBytes
+}
 
+// GetSignerBalance returns the balance for a specific address
+func (d *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
+	/*ctx, cancel := context.WithTimeout(d.ctx, d.config.Timeout)
+	defer cancel()
+
+	balance, err := d.rpc.GetSignerBalance(ctx)
+	if err != nil {
+		return da.Balance{}, fmt.Errorf("get balance: %w", err)
+	}
+
+	daBalance := da.Balance{
+		Amount: balance.Amount,
+		Denom:  balance.Denom,
+	}*/
+
+	return da.Balance{}, nil
+}
+
+func makeID(height uint64, commitment da.Commitment) goDA.ID {
+	id := make([]byte, heightLen+len(commitment))
+	binary.LittleEndian.PutUint64(id, height)
+	copy(id[heightLen:], commitment)
+	return id
+}
+
+func splitID(id goDA.ID) (uint64, da.Commitment) {
+	if len(id) <= heightLen {
+		return 0, nil
+	}
+	commitment := id[heightLen:]
+	return binary.LittleEndian.Uint64(id[:heightLen]), commitment
+}
+
+func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASubmitMetaData) da.ResultCheckBatch {
+	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
+	defer cancel()
 	DACheckMetaData := &da.DACheckMetaData{
 		Client:     daMetaData.Client,
 		Height:     daMetaData.Height,
@@ -394,7 +359,7 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 		Namespace:  daMetaData.Namespace,
 	}
 
-	dah, err := c.getDataAvailabilityHeaders(daMetaData.Height)
+	/*dah, err := c.getDataAvailabilityHeaders(daMetaData.Height)
 	if err != nil {
 		// Returning Data Availability header Data Root for dispute validation
 		return da.ResultCheckBatch{
@@ -406,11 +371,13 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 			CheckMetaData: DACheckMetaData,
 		}
 	}
-	DACheckMetaData.Root = dah.Hash()
-	included := false
+	DACheckMetaData.Root = dah.Hash()*/
 
-	proof, err := c.getProof(daMetaData)
-	if err != nil || proof == nil {
+	included := false
+	ids := []goDA.ID{makeID(daMetaData.Height, daMetaData.Commitment)}
+	daProofs, err := c.client.GetProofs(ctx, ids, c.config.NamespaceID.Bytes())
+	//proof, err := c.getProof(daMetaData)
+	if err != nil || daProofs[0] == nil {
 		// TODO (srene): Not getting proof means there is no existing data for the namespace and the commitment (the commitment is wrong).
 		// Therefore we need to prove whether the commitment is wrong or the span does not exists.
 		// In case the span is correct it is necessary to return the data for the span and the proofs to the data root, so we can prove the data
@@ -425,10 +392,30 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 		}
 	}
 
-	nmtProofs := []*nmt.Proof(*proof)
+	var nmtProofs [][]*nmt.Proof
+	for _, daProof := range daProofs {
+		blobProof := &[]nmt.Proof{}
+		err := json.Unmarshal(daProof, blobProof)
+		if err != nil {
+			return da.ResultCheckBatch{
+				BaseResult: da.BaseResult{
+					Code:    da.StatusError,
+					Message: fmt.Sprintf("Error parsing NMT proof: %s", err),
+					Error:   da.ErrUnableToGetProof,
+				},
+				CheckMetaData: DACheckMetaData,
+			}
+		}
+		var nmtProof []*nmt.Proof
+		for _, prf := range *blobProof {
+			nmtProof = append(nmtProof, &prf)
+		}
+		nmtProofs = append(nmtProofs, nmtProof)
+
+	}
 	shares := 0
 	index := 0
-	for j, proof := range nmtProofs {
+	for j, proof := range nmtProofs[0] {
 		if j == 0 {
 			index = proof.Start()
 		}
@@ -451,8 +438,9 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 			}
 		}
 	}
-
-	included, err = c.validateProof(daMetaData, proof)
+	includeds, err := c.client.Validate(ctx, ids, daProofs, c.config.NamespaceID.Bytes())
+	included = includeds[0]
+	//included, err = c.validateProof(daMetaData, proof)
 	// The both cases below (there is an error validating the proof or the proof is wrong) should not happen
 	// if we consider correct functioning of the celestia light node.
 	// This will only happen in case the previous step the celestia light node returned wrong proofs..
@@ -475,11 +463,10 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 			CheckMetaData: DACheckMetaData,
 		}
 	}
-	proofs = append(proofs, proof)
 
 	DACheckMetaData.Index = index
 	DACheckMetaData.Length = shares
-	DACheckMetaData.Proofs = proofs
+	DACheckMetaData.Proofs = nmtProofs
 	return da.ResultCheckBatch{
 		BaseResult: da.BaseResult{
 			Code:    da.StatusSuccess,
@@ -489,136 +476,66 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 	}
 }
 
-// Submit submits the Blobs to Data Availability layer.
-func (c *DataAvailabilityLayerClient) submit(daBlob da.Blob) (uint64, da.Commitment, error) {
-	blobs, commitments, err := c.blobsAndCommitments(daBlob)
-	if err != nil {
-		return 0, nil, fmt.Errorf("blobs and commitments: %w: %w", err, gerrc.ErrInternal)
-	}
-
-	if len(commitments) == 0 {
-		return 0, nil, fmt.Errorf("zero commitments: %w: %w", gerrc.ErrNotFound, gerrc.ErrInternal)
-	}
-
+func (c *DataAvailabilityLayerClient) retrieveBatches(daMetaData *da.DASubmitMetaData) da.ResultRetrieveBatch {
 	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
-	height, err := c.rpc.Submit(ctx, blobs, blob.NewSubmitOptions(blob.WithGasPrice(c.config.GasPrices)))
+	c.logger.Debug("Getting blob from DA.", "height", daMetaData.Height, "namespace", hex.EncodeToString(daMetaData.Namespace), "commitment", hex.EncodeToString(daMetaData.Commitment))
+	var batches []*types.Batch
+
+	id := makeID(daMetaData.Height, daMetaData.Commitment)
+	blob, err := c.client.Get(ctx, []goDA.ID{id}, c.config.NamespaceID.Bytes())
 	if err != nil {
-		return 0, nil, fmt.Errorf("do rpc submit: %w", err)
+		return da.ResultRetrieveBatch{
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: err.Error(),
+				Error:   da.ErrRetrieval,
+			},
+		}
 	}
-
-	return height, commitments[0], nil
-}
-
-func (c *DataAvailabilityLayerClient) getProof(daMetaData *da.DASubmitMetaData) (*blob.Proof, error) {
-	c.logger.Debug("Getting proof via RPC call.", "height", daMetaData.Height, "namespace", daMetaData.Namespace, "commitment", daMetaData.Commitment)
-	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
-	defer cancel()
-
-	proof, err := c.rpc.GetProof(ctx, daMetaData.Height, daMetaData.Namespace, daMetaData.Commitment)
-	if err != nil {
-		return nil, err
-	}
-
-	return proof, nil
-}
-
-func (c *DataAvailabilityLayerClient) blobsAndCommitments(daBlob da.Blob) ([]*blob.Blob, []da.Commitment, error) {
-	var blobs []*blob.Blob
-	var commitments []da.Commitment
-	b, err := blob.NewBlobV0(c.config.NamespaceID.Bytes(), daBlob)
-	if err != nil {
-		return nil, nil, err
-	}
-	blobs = append(blobs, b)
-
-	commitments = append(commitments, b.Commitment)
-	return blobs, commitments, nil
-}
-
-func (c *DataAvailabilityLayerClient) validateProof(daMetaData *da.DASubmitMetaData, proof *blob.Proof) (bool, error) {
-	c.logger.Debug("Validating proof via RPC call.", "height", daMetaData.Height, "namespace", daMetaData.Namespace, "commitment", daMetaData.Commitment)
-	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
-	defer cancel()
-
-	return c.rpc.Included(ctx, daMetaData.Height, daMetaData.Namespace, proof, daMetaData.Commitment)
-}
-
-func (c *DataAvailabilityLayerClient) getDataAvailabilityHeaders(height uint64) (*header.DataAvailabilityHeader, error) {
-	c.logger.Debug("Getting extended headers via RPC call.", "height", height)
-	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
-	defer cancel()
-
-	headers, err := c.rpc.GetByHeight(ctx, height)
-	if err != nil {
-		return nil, err
-	}
-
-	return headers.DAH, nil
-}
-
-// Celestia syncing in background
-func (c *DataAvailabilityLayerClient) sync(rpc *openrpc.Client) {
-	sync := func() error {
-		done := make(chan error, 1)
-		go func() {
-			done <- rpc.Header.SyncWait(c.ctx)
-		}()
-		ticker := time.NewTicker(30 * time.Second)
-		defer ticker.Stop()
-		for {
-			select {
-			case err := <-done:
-				return err
-			case <-ticker.C:
-				state, err := rpc.Header.SyncState(c.ctx)
-				if err != nil {
-					return err
-				}
-				c.logger.Info("Celestia-node syncing", "height", state.Height, "target", state.ToHeight)
-
-			}
+	if blob == nil {
+		return da.ResultRetrieveBatch{
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: "Blob not found",
+				Error:   da.ErrBlobNotFound,
+			},
 		}
 	}
 
-	err := retry.Do(sync,
-		retry.Attempts(0), // try forever
-		retry.Delay(10*time.Second),
-		retry.LastErrorOnly(true),
-		retry.DelayType(retry.FixedDelay),
-		retry.OnRetry(func(n uint, err error) {
-			c.logger.Error("Failed to sync Celestia DA", "attempt", n, "error", err)
-		}),
-	)
-
-	c.logger.Info("Celestia-node is synced.")
-	c.synced <- struct{}{}
-
+	var batch pb.Batch
+	err = proto.Unmarshal(blob[0], &batch)
 	if err != nil {
-		c.logger.Error("Waiting for Celestia data availability client to sync", "err", err)
+		c.logger.Error("Unmarshal blob.", "daHeight", daMetaData.Height, "error", err)
+		return da.ResultRetrieveBatch{
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: err.Error(),
+				Error:   da.ErrBlobNotParsed,
+			},
+		}
 	}
-}
 
-// GetMaxBlobSizeBytes returns the maximum allowed blob size in the DA, used to check the max batch size configured
-func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint32 {
-	return maxBlobSizeBytes
-}
+	c.logger.Debug("Blob retrieved successfully from DA.", "DA height", daMetaData.Height, "lastBlockHeight", batch.EndHeight)
 
-// GetSignerBalance returns the balance for a specific address
-func (d *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
-	ctx, cancel := context.WithTimeout(d.ctx, d.config.Timeout)
-	defer cancel()
-
-	balance, err := d.rpc.GetSignerBalance(ctx)
+	parsedBatch := new(types.Batch)
+	err = parsedBatch.FromProto(&batch)
 	if err != nil {
-		return da.Balance{}, fmt.Errorf("get balance: %w", err)
+		return da.ResultRetrieveBatch{
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: err.Error(),
+				Error:   da.ErrBlobNotParsed,
+			},
+		}
 	}
-
-	daBalance := da.Balance{
-		Amount: balance.Amount,
-		Denom:  balance.Denom,
+	batches = append(batches, parsedBatch)
+	return da.ResultRetrieveBatch{
+		BaseResult: da.BaseResult{
+			Code:    da.StatusSuccess,
+			Message: "Batch retrieval successful",
+		},
+		Batches: batches,
 	}
-
-	return daBalance, nil
 }
