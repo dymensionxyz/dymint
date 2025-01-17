@@ -96,7 +96,7 @@ func (d *DASubmitMetaData) ToPath() string {
 	// convert uint64 to string
 	if d.Commitment != nil {
 		commitment := hex.EncodeToString(d.Commitment)
-		//dataroot := hex.EncodeToString(d.Root)
+		dataroot := hex.EncodeToString(d.Root)
 		path := []string{
 			string((d.Client)),
 			strconv.FormatUint(d.Height, 10),
@@ -104,7 +104,7 @@ func (d *DASubmitMetaData) ToPath() string {
 			strconv.Itoa(d.Length),
 			commitment,
 			hex.EncodeToString(d.Namespace),
-			//	dataroot,
+			dataroot,
 		}
 		for i, part := range path {
 			path[i] = strings.Trim(part, PathSeparator)
@@ -150,10 +150,10 @@ func (d *DASubmitMetaData) FromPath(path string) (*DASubmitMetaData, error) {
 		if err != nil {
 			return nil, err
 		}
-		/*submitData.Root, err = hex.DecodeString(pathParts[6])
+		submitData.Root, err = hex.DecodeString(pathParts[6])
 		if err != nil {
 			return nil, err
-		}*/
+		}
 	}
 
 	return submitData, nil
