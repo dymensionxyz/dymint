@@ -133,7 +133,7 @@ func (d *DASubmitMetaData) FromPath(path string) (*DASubmitMetaData, error) {
 		Client: Client(pathParts[0]),
 	}
 	// TODO: check per DA and panic if not enough parts
-	if len(pathParts) == 6 {
+	if len(pathParts) == 7 {
 		submitData.Index, err = strconv.Atoi(pathParts[2])
 		if err != nil {
 			return nil, err

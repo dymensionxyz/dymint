@@ -1,10 +1,10 @@
-package daproxy
+package daclient
 
 import (
 	"context"
 	"time"
 
-	"github.com/tendermint/tendermint/types"
+	sdk "github.com/cosmos/cosmos-sdk/types"
 )
 
 // DA defines very generic interface for interaction with Data Availability layers.
@@ -43,6 +43,8 @@ type DA interface {
 	Validate(ctx context.Context, ids []ID, proofs []Proof, namespace Namespace) ([]bool, error)
 
 	GetByHeight(ctx context.Context, height uint64) (*ExtendedHeader, error)
+
+	Balance(context.Context) (*Balance, error)
 }
 
 // Namespace is an optional parameter used to set the location a blob should be
@@ -61,6 +63,9 @@ type Commitment = []byte
 // Proof should contain serialized proof of inclusion (publication) of Blob in Data Availability layer.
 type Proof = []byte
 
+// Balance is an alias to the Coin type from Cosmos-SDK.
+type Balance = sdk.Coin
+
 // GetIDsResult holds the result of GetIDs call: IDs and timestamp of corresponding block.
 type GetIDsResult struct {
 	IDs       []ID
@@ -72,39 +77,7 @@ type Module interface {
 	DA
 }
 
-// RawHeader is an alias to core.Header. It is
-// "raw" because it is not yet wrapped to include
-// the DataAvailabilityHeader.
-type RawHeader = types.Header
-
-// ExtendedHeader represents a wrapped "raw" header that includes
-// information necessary for Celestia Nodes to be notified of new
-// block headers and perform Data Availability Sampling.
-type ExtendedHeader struct {
-	RawHeader    `json:"header"`
-	Commit       *types.Commit           `json:"commit"`
-	ValidatorSet *types.ValidatorSet     `json:"validator_set"`
-	DAH          *DataAvailabilityHeader `json:"dah"`
-}
-
-// DataAvailabilityHeader (DAHeader) contains the row and column roots of the
-// erasure coded version of the data in Block.Data. The original Block.Data is
-// split into shares and arranged in a square of width squareSize. Then, this
-// square is "extended" into an extended data square (EDS) of width 2*squareSize
-// by applying Reed-Solomon encoding. For details see Section 5.2 of
-// https://arxiv.org/abs/1809.09044 or the Celestia specification:
-// https://github.com/celestiaorg/celestia-specs/blob/master/src/specs/data_structures.md#availabledataheader
-type DataAvailabilityHeader struct {
-	// RowRoot_j = root((M_{j,1} || M_{j,2} || ... || M_{j,2k} ))
-	RowRoots [][]byte `json:"row_roots"`
-	// ColumnRoot_j = root((M_{1,j} || M_{2,j} || ... || M_{2k,j} ))
-	ColumnRoots [][]byte `json:"column_roots"`
-	// hash is the Merkle root of the row and column roots. This field is the
-	// memoized result from `Hash()`.
-	hash []byte
-}
-
-// API defines the jsonrpc service module API
+// API defines the jsonrpc DA service module API
 type DAAPI struct {
 	Internal struct {
 		MaxBlobSize       func(ctx context.Context) (uint64, error)                                     `perm:"read"`
@@ -115,13 +88,6 @@ type DAAPI struct {
 		Validate          func(context.Context, []ID, []Proof, Namespace) ([]bool, error)               `perm:"read"`
 		Submit            func(context.Context, []Blob, float64, Namespace) ([]ID, error)               `perm:"write"`
 		SubmitWithOptions func(context.Context, []Blob, float64, Namespace, []byte) ([]ID, error)       `perm:"write"`
-	}
-}
-
-// API defines the jsonrpc service module API
-type HeadersAPI struct {
-	Internal struct {
-		GetByHeight func(context.Context, uint64) (*ExtendedHeader, error) `perm:"read"`
 	}
 }
 
@@ -165,7 +131,26 @@ func (api *DAAPI) SubmitWithOptions(ctx context.Context, blobs []Blob, gasPrice 
 	return api.Internal.SubmitWithOptions(ctx, blobs, gasPrice, ns, options)
 }
 
+// API defines the jsonrpc Header service module API
+type HeadersAPI struct {
+	Internal struct {
+		GetByHeight func(context.Context, uint64) (*ExtendedHeader, error) `perm:"read"`
+	}
+}
+
 // GetByHeight submits the Blobs to Data Availability layer.
 func (api *HeadersAPI) GetByHeight(ctx context.Context, height uint64) (*ExtendedHeader, error) {
 	return api.Internal.GetByHeight(ctx, height)
+}
+
+// API defines the jsonrpc service module API
+type StateAPI struct {
+	Internal struct {
+		Balance func(context.Context) (*Balance, error) `perm:"read"`
+	}
+}
+
+// GetByHeight submits the Blobs to Data Availability layer.
+func (api *StateAPI) Balance(ctx context.Context) (*Balance, error) {
+	return api.Internal.Balance(ctx)
 }

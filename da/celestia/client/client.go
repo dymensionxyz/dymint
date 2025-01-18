@@ -1,4 +1,4 @@
-package daproxy
+package daclient
 
 import (
 	"context"
@@ -12,6 +12,7 @@ import (
 type Client struct {
 	DA      DAAPI
 	Headers HeadersAPI
+	State   StateAPI
 	closer  multiClientCloser
 }
 
@@ -72,8 +73,9 @@ func newClient(ctx context.Context, addr string, authHeader http.Header) (*Clien
 func moduleMap(client *Client) map[string]interface{} {
 	// TODO: this duplication of strings many times across the codebase can be avoided with issue #1176
 	return map[string]interface{}{
-		"da":      &client.DA.Internal,
-		"headers": &client.Headers.Internal,
+		"da":     &client.DA.Internal,
+		"header": &client.Headers.Internal,
+		"state":  &client.State.Internal,
 	}
 }
 

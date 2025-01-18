@@ -15,7 +15,7 @@ import (
 	"github.com/gogo/protobuf/proto"
 	goDA "github.com/rollkit/go-da"
 
-	daproxy "github.com/dymensionxyz/dymint/da/celestia/client"
+	daclient "github.com/dymensionxyz/dymint/da/celestia/client"
 	pb "github.com/dymensionxyz/dymint/types/pb/dymint"
 	"github.com/tendermint/tendermint/libs/pubsub"
 
@@ -33,7 +33,7 @@ const heightLen = 8
 
 // DataAvailabilityLayerClient use celestia-node public API.
 type DataAvailabilityLayerClient struct {
-	client       daproxy.Client
+	client       daclient.Client
 	pubsubServer *pubsub.Server
 	config       Config
 	logger       types.Logger
@@ -132,7 +132,7 @@ func createConfig(bz []byte) (c Config, err error) {
 func (c *DataAvailabilityLayerClient) Start() (err error) {
 	c.logger.Info("Starting Celestia Data Availability Layer Client.")
 
-	client, err := daproxy.NewClient(c.config.BaseURL, c.config.AuthToken)
+	client, err := daclient.NewClient(c.config.BaseURL, c.config.AuthToken)
 	if err != nil {
 		return fmt.Errorf("error while establishing connection to DA layer: %w", err)
 	}
@@ -307,11 +307,11 @@ func (c *DataAvailabilityLayerClient) getMaxBlobSizeBytes() (uint64, error) {
 }
 
 // GetSignerBalance returns the balance for a specific address
-func (d *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
-	/*ctx, cancel := context.WithTimeout(d.ctx, d.config.Timeout)
+func (c *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
+	ctx, cancel := context.WithTimeout(c.ctx, c.config.Timeout)
 	defer cancel()
 
-	balance, err := d.rpc.GetSignerBalance(ctx)
+	balance, err := c.client.State.Balance(ctx)
 	if err != nil {
 		return da.Balance{}, fmt.Errorf("get balance: %w", err)
 	}
@@ -319,9 +319,9 @@ func (d *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
 	daBalance := da.Balance{
 		Amount: balance.Amount,
 		Denom:  balance.Denom,
-	}*/
+	}
 
-	return da.Balance{}, nil
+	return daBalance, nil
 }
 
 func makeID(height uint64, commitment da.Commitment) goDA.ID {
@@ -349,19 +349,20 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 		Namespace:  daMetaData.Namespace,
 	}
 
-	/*dah, err := c.client.GetByHeight(ctx, daMetaData.Height)
+	dah, err := c.client.Headers.GetByHeight(ctx, daMetaData.Height)
 	if err != nil {
 		// Returning Data Availability header Data Root for dispute validation
 		return da.ResultCheckBatch{
 			BaseResult: da.BaseResult{
 				Code:    da.StatusError,
-				Message: fmt.Sprintf("Error getting row to data root proofs: %s", err),
+				Message: fmt.Sprintf("Error getting DAHeader: %s", err),
 				Error:   da.ErrUnableToGetProof,
 			},
 			CheckMetaData: DACheckMetaData,
 		}
 	}
-	DACheckMetaData.Root = dah.Hash()*/
+
+	DACheckMetaData.Root = dah.DAH.Hash()
 
 	included := false
 	ids := []goDA.ID{makeID(daMetaData.Height, daMetaData.Commitment)}

@@ -1,4 +1,4 @@
-package daproxy
+package daclient
 
 // Code defines error codes for JSON-RPC.
 type Code int
