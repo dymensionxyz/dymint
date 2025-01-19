@@ -1,15 +1,11 @@
 package block
 
-import (
-	"context"
-)
-
 // FraudHandler is an interface that defines a method to handle faults.
 // Contract: should not be blocking.
 type FraudHandler interface {
 	// HandleFault handles a fault that occurred in the system.
 	// The fault is passed as an error type.
-	HandleFault(ctx context.Context, fault error)
+	HandleFault(fault error)
 }
 
 // FreezeHandler is used to handle faults coming from executing and validating blocks.
@@ -18,8 +14,8 @@ type FreezeHandler struct {
 	m *Manager
 }
 
-func (f FreezeHandler) HandleFault(ctx context.Context, fault error) {
-	f.m.freezeNode(fault)
+func (f FreezeHandler) HandleFault(fault error) {
+	f.m.StopManager(fault)
 }
 
 func NewFreezeHandler(manager *Manager) *FreezeHandler {

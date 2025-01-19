@@ -1,10 +1,7 @@
 package block
 
 import (
-	"errors"
 	"fmt"
-
-	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 
 	errorsmod "cosmossdk.io/errors"
 
@@ -12,34 +9,21 @@ import (
 	"github.com/dymensionxyz/dymint/types/metrics"
 )
 
-// applyBlockWithFraudHandling calls applyBlock and validateBlockBeforeApply with fraud handling.
-func (m *Manager) applyBlockWithFraudHandling(block *types.Block, commit *types.Commit, blockMetaData types.BlockMetaData) error {
-	validateWithFraud := func() error {
-		if m.Conf.SkipValidationHeight != block.Header.Height {
-			if err := m.validateBlockBeforeApply(block, commit); err != nil {
-				m.blockCache.Delete(block.Header.Height)
-				// TODO: can we take an action here such as dropping the peer / reducing their reputation?
-				return fmt.Errorf("block not valid at height %d, dropping it: err:%w", block.Header.Height, err)
-			}
+// validateAndApplyBlock calls validateBlockBeforeApply and applyBlock.
+func (m *Manager) validateAndApplyBlock(block *types.Block, commit *types.Commit, blockMetaData types.BlockMetaData) error {
+	if m.Conf.SkipValidationHeight != block.Header.Height {
+		if err := m.validateBlockBeforeApply(block, commit); err != nil {
+			m.blockCache.Delete(block.Header.Height)
+			// TODO: can we take an action here such as dropping the peer / reducing their reputation?
+			return fmt.Errorf("block not valid at height %d, dropping it: err:%w", block.Header.Height, err)
 		}
-
-		if err := m.applyBlock(block, commit, blockMetaData); err != nil {
-			return fmt.Errorf("apply block: %w", err)
-		}
-
-		return nil
 	}
 
-	err := validateWithFraud()
-	if errors.Is(err, gerrc.ErrFault) {
-		// Here we handle the fault by calling the fraud handler.
-		// FraudHandler is an interface that defines a method to handle faults. Implement this interface to handle faults
-		// in specific ways. For example, once a fault is detected, it publishes a DataHealthStatus event to the
-		// pubsub which sets the node in a frozen state.
-		m.FraudHandler.HandleFault(m.Ctx, err)
+	if err := m.applyBlock(block, commit, blockMetaData); err != nil {
+		return fmt.Errorf("apply block: %w", err)
 	}
 
-	return err
+	return nil
 }
 
 // applyBlock applies the block to the store and the abci app.
@@ -233,7 +217,7 @@ func (m *Manager) attemptApplyCachedBlocks() error {
 		if cachedBlock.Block.GetRevision() != m.State.GetRevision() {
 			break
 		}
-		err := m.applyBlockWithFraudHandling(cachedBlock.Block, cachedBlock.Commit, types.BlockMetaData{Source: cachedBlock.Source})
+		err := m.validateAndApplyBlock(cachedBlock.Block, cachedBlock.Commit, types.BlockMetaData{Source: cachedBlock.Source})
 		if err != nil {
 			return fmt.Errorf("apply cached block: expected height: %d: %w", expectedHeight, err)
 		}
