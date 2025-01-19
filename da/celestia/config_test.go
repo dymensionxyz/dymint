@@ -23,7 +23,6 @@ func TestCreateConfig(t *testing.T) {
 
 		c := Config{
 			BaseURL:       TestConfig.BaseURL,
-			AppNodeURL:    TestConfig.AppNodeURL,
 			Timeout:       TestConfig.Timeout,
 			GasPrices:     42,
 			Backoff:       uretry.NewBackoffConfig(uretry.WithGrowthFactor(1.65)),
@@ -39,10 +38,9 @@ func TestCreateConfig(t *testing.T) {
 	})
 	t.Run("no backoff", func(t *testing.T) {
 		c := Config{
-			BaseURL:    TestConfig.BaseURL,
-			AppNodeURL: TestConfig.AppNodeURL,
-			Timeout:    TestConfig.Timeout,
-			GasPrices:  42,
+			BaseURL:   TestConfig.BaseURL,
+			Timeout:   TestConfig.Timeout,
+			GasPrices: 42,
 		}
 		bz := mustMarshal(c)
 		gotC, err := createConfig(bz)
@@ -54,7 +52,6 @@ func TestCreateConfig(t *testing.T) {
 
 		c := Config{
 			BaseURL:       TestConfig.BaseURL,
-			AppNodeURL:    TestConfig.AppNodeURL,
 			Timeout:       TestConfig.Timeout,
 			GasPrices:     0.1,
 			AuthToken:     "TOKEN",

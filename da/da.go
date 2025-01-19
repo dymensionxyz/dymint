@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"cosmossdk.io/math"
-	"github.com/celestiaorg/celestia-openrpc/types/blob"
+	"github.com/celestiaorg/nmt"
 	"github.com/cometbft/cometbft/crypto/merkle"
 	"github.com/tendermint/tendermint/libs/pubsub"
 
@@ -176,7 +176,7 @@ type DACheckMetaData struct {
 	// Number of shares of each blob
 	Length int
 	// Proofs necessary to validate blob inclusion in the specific height
-	Proofs []*blob.Proof
+	Proofs [][]*nmt.Proof
 	// NMT roots for each NMT Proof
 	NMTRoots []byte
 	// Proofs necessary to validate blob inclusion in the specific height
