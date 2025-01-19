@@ -468,7 +468,7 @@ func (c *DataAvailabilityLayerClient) sync() error {
 				for {
 					select {
 					case <-c.ctx.Done():
-						return fmt.Errorf("context cancelled while checking sync status")
+						return nil
 					default:
 						// Get the latest finalized block height
 						finalizedHash, err := c.client.GetFinalizedHead()
