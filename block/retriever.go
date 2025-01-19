@@ -46,7 +46,7 @@ func (m *Manager) ApplyBatchFromSL(slBatch *settlement.Batch) error {
 			}
 
 			// We dont validate because validateBlockBeforeApply already checks if the block is already applied, and we don't need to fail there.
-			err := m.applyBlockWithFraudHandling(block, batch.Commits[i], types.BlockMetaData{Source: types.DA, DAHeight: slBatch.MetaData.DA.Height})
+			err := m.validateAndApplyBlock(block, batch.Commits[i], types.BlockMetaData{Source: types.DA, DAHeight: slBatch.MetaData.DA.Height})
 			if err != nil {
 				return fmt.Errorf("apply block: height: %d: %w", block.Header.Height, err)
 			}
@@ -92,7 +92,7 @@ func (m *Manager) applyLocalBlock() error {
 		return fmt.Errorf("load source: %w", gerrc.ErrNotFound)
 	}
 
-	err = m.applyBlockWithFraudHandling(block, commit, types.BlockMetaData{Source: source})
+	err = m.validateAndApplyBlock(block, commit, types.BlockMetaData{Source: source})
 	if err != nil {
 		return fmt.Errorf("apply block from local store: height: %d: %w", height, err)
 	}

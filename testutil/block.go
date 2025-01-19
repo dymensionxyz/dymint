@@ -129,7 +129,6 @@ func GetManagerWithProposerKey(conf config.BlockManagerConfig, proposerKey crypt
 	p2pClient.SetBlockValidator(p2pValidator.BlockValidator())
 
 	manager.P2PClient = p2pClient
-	manager.Ctx = context.Background()
 	if err = p2pClient.Start(context.Background()); err != nil {
 		return nil, err
 	}
