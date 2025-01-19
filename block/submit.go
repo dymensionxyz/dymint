@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	errorsmod "cosmossdk.io/errors"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/tendermint/tendermint/libs/pubsub"
 	"golang.org/x/sync/errgroup"
@@ -91,6 +92,8 @@ func SubmitLoopInner(
 	eg.Go(func() error {
 		// 'submitter': this thread actually creates and submits batches. this thread is woken up every batch_submit_time/10 (we used /10 to avoid waiting too much if submission is not required for t-maxBatchSubmitTime, but it maybe required before t) to check if submission is required even if no new blocks have been produced
 		ticker := time.NewTicker(maxBatchSubmitTime / 10)
+		defer ticker.Stop()
+
 		for {
 			select {
 			case <-ctx.Done():
@@ -118,13 +121,13 @@ func SubmitLoopInner(
 				if err != nil {
 					err = fmt.Errorf("create and submit batch: %w", err)
 					if errors.Is(err, gerrc.ErrInternal) {
-						logger.Error("Create and submit batch", "err", err, "pending", pending)
-						panic(err)
+						return errorsmod.Wrap(err, "create and submit batch")
 					}
 					// this could happen if we timed-out waiting for acceptance in the previous iteration, but the batch was indeed submitted.
 					// we panic here cause restarting may reset the last batch submitted counter and the sequencer can potentially resume submitting batches.
 					if errors.Is(err, gerrc.ErrAlreadyExists) {
 						logger.Debug("Batch already accepted", "err", err, "pending", pending)
+						// TODO: find better, non panic, way to handle this scenario
 						panic(err)
 					}
 					return err
