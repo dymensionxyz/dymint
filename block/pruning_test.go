@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/dymensionxyz/dymint/block"
-	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/testutil"
 	"github.com/dymensionxyz/gerr-cosmos/gerrc"
 	"github.com/stretchr/testify/assert"
@@ -41,7 +40,7 @@ func TestPruningRetainHeight(t *testing.T) {
 	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, nil)
 	require.NoError(err)
 	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
-	manager.Retriever = manager.DAClient.(da.BatchRetriever)
+	manager.Retriever = manager.DAClient
 
 	// Check initial assertions
 	require.Zero(manager.State.Height())

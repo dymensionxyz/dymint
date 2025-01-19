@@ -11,6 +11,7 @@ import (
 	leveldb "github.com/ipfs/go-ds-leveldb"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
+	"github.com/dymensionxyz/dymint/da/registry"
 	"github.com/libp2p/go-libp2p/core/crypto"
 
 	"github.com/tendermint/tendermint/libs/log"
@@ -32,6 +33,7 @@ import (
 	"github.com/dymensionxyz/dymint/settlement"
 	slregistry "github.com/dymensionxyz/dymint/settlement/registry"
 	"github.com/dymensionxyz/dymint/store"
+	"github.com/dymensionxyz/dymint/types"
 )
 
 // prefixes used in KV store to separate main node data from DALC data
@@ -121,9 +123,23 @@ func NewNode(
 	s := store.New(store.NewPrefixKV(baseKV, mainPrefix))
 	indexerKV := store.NewPrefixKV(baseKV, indexerPrefix)
 
-	// TODO: dalcKV is needed for mock only. Initialize only if mock used
-	dalcKV := store.NewPrefixKV(baseKV, dalcPrefix)
-	// Init the settlement layer client
+	/* ------------------------------ init DA layer ----------------------------- */
+	params, err := types.GetRollappParamsFromGenesis(genesis.AppState)
+	if err != nil {
+		return nil, fmt.Errorf("in genesis doc: %w", err)
+	}
+
+	dalc := registry.GetClient(params.Params.Da)
+	if dalc == nil {
+		return nil, fmt.Errorf("get data availability client named '%s'", params.Params.Da)
+	}
+
+	err = dalc.Init([]byte(conf.DAConfig), pubsubServer, store.NewPrefixKV(baseKV, dalcPrefix), logger.With("module", string(dalc.GetClientType())))
+	if err != nil {
+		return nil, fmt.Errorf("data availability layer client initialization:  %w", err)
+	}
+
+	/* -------------------- Init the settlement layer client -------------------- */
 	settlementlc := slregistry.GetClient(slregistry.Client(conf.SettlementLayer))
 	if settlementlc == nil {
 		return nil, fmt.Errorf("get settlement client: named: %s", conf.SettlementLayer)
@@ -131,7 +147,7 @@ func NewNode(
 	if conf.SettlementLayer == "mock" {
 		conf.SettlementConfig.KeyringHomeDir = conf.RootDir
 	}
-	err := settlementlc.Init(conf.SettlementConfig, genesis.ChainID, pubsubServer, logger.With("module", "settlement_client"))
+	err = settlementlc.Init(conf.SettlementConfig, genesis.ChainID, pubsubServer, logger.With("module", "settlement_client"))
 	if err != nil {
 		return nil, fmt.Errorf("settlement layer client initialization: %w", err)
 	}
@@ -160,10 +176,10 @@ func NewNode(
 		mp,
 		proxyApp,
 		settlementlc,
+		dalc,
 		eventBus,
 		pubsubServer,
 		nil, // p2p client is set later
-		dalcKV,
 		indexerService,
 		logger,
 	)

@@ -172,7 +172,7 @@ func TestStateUpdateValidator_ValidateStateUpdate(t *testing.T) {
 
 			// Create DA
 			manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
-			manager.Retriever = manager.DAClient.(da.BatchRetriever)
+			manager.Retriever = manager.DAClient
 
 			// Generate batch
 			var batch *types.Batch
@@ -343,7 +343,7 @@ func TestStateUpdateValidator_ValidateDAFraud(t *testing.T) {
 			manager.DAClient = mockDA.DaClient
 			err = manager.DAClient.Start()
 			require.NoError(t, err)
-			manager.Retriever = manager.DAClient.(da.BatchRetriever)
+			manager.Retriever = manager.DAClient
 
 			// Generate blob from batch data
 			require.NoError(t, err)

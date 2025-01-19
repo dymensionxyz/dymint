@@ -23,7 +23,6 @@ import (
 	"github.com/tendermint/tendermint/proxy"
 
 	block2 "github.com/dymensionxyz/dymint/block"
-	"github.com/dymensionxyz/dymint/da"
 	"github.com/dymensionxyz/dymint/mempool"
 	mempoolv1 "github.com/dymensionxyz/dymint/mempool/v1"
 	slmocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/settlement"
@@ -335,7 +334,7 @@ func TestUpdateInitialSequencerSet(t *testing.T) {
 	require.NoError(err)
 
 	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
-	manager.Retriever = manager.DAClient.(da.BatchRetriever)
+	manager.Retriever = manager.DAClient
 
 	// Check initial assertions
 	require.Zero(manager.State.Height())
@@ -466,7 +465,7 @@ func TestUpdateExistingSequencerSet(t *testing.T) {
 	require.NoError(err)
 
 	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
-	manager.Retriever = manager.DAClient.(da.BatchRetriever)
+	manager.Retriever = manager.DAClient
 
 	// Set the initial sequencer set
 	manager.Sequencers.Set([]types.Sequencer{proposer, sequencer})

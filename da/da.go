@@ -218,6 +218,9 @@ type ResultRetrieveBatch struct {
 // DataAvailabilityLayerClient defines generic interface for DA layer block submission.
 // It also contains life-cycle methods.
 type DataAvailabilityLayerClient interface {
+	BatchRetriever
+	BatchSubmitter
+
 	// Init is called once to allow DA client to read configuration and initialize resources.
 	Init(config []byte, pubsubServer *pubsub.Server, kvStore store.KV, logger types.Logger, options ...Option) error
 
@@ -226,11 +229,6 @@ type DataAvailabilityLayerClient interface {
 
 	// Stop is called once, when DataAvailabilityLayerClient is no longer needed.
 	Stop() error
-
-	// SubmitBatch submits the passed in block to the DA layer.
-	// This should create a transaction which (potentially)
-	// triggers a state transition in the DA layer.
-	SubmitBatch(batch *types.Batch) ResultSubmitBatch
 
 	GetClientType() Client
 
@@ -248,6 +246,15 @@ type DataAvailabilityLayerClient interface {
 
 	// Something third parties can use to identify rollapp activity on the DA
 	DAPath() string
+}
+
+// BatchSubmitter is additional interface that can be implemented by Data Availability Layer Client that is able to submit
+// block data to DA layer.
+type BatchSubmitter interface {
+	// SubmitBatch submits the passed in batch to the DA layer.
+	// This should create a transaction which (potentially)
+	// triggers a state transition in the DA layer.
+	SubmitBatch(batch *types.Batch) ResultSubmitBatch
 }
 
 // BatchRetriever is additional interface that can be implemented by Data Availability Layer Client that is able to retrieve
