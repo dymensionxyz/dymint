@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/avast/retry-go/v4"
+	"github.com/dymensionxyz/dymint/da/stub"
 	"github.com/gogo/protobuf/proto"
 
 	"github.com/dymensionxyz/dymint/types"
@@ -58,6 +59,7 @@ type Config struct {
 }
 
 type DataAvailabilityLayerClient struct {
+	stub.Layer
 	client             SubstrateApiI
 	pubsubServer       *pubsub.Server
 	config             Config
@@ -129,12 +131,12 @@ func (c *DataAvailabilityLayerClient) Init(config []byte, pubsubServer *pubsub.S
 	}
 
 	metrics.RollappConsecutiveFailedDASubmission.Set(0)
-
 	return nil
 }
 
 // Start starts DataAvailabilityLayerClient instance.
 func (c *DataAvailabilityLayerClient) Start() error {
+	c.logger.Info("Starting Avail Data Availability Layer Client.")
 	c.ctx, c.cancel = context.WithCancel(context.Background())
 	// If client wasn't set, create a new one
 	if c.client == nil {
@@ -149,8 +151,9 @@ func (c *DataAvailabilityLayerClient) Start() error {
 		}
 	}
 
-	// TODO: should actually check for synced client
-	c.synced <- struct{}{}
+	// check for synced client
+	go c.sync() //nolint:errcheck
+
 	return nil
 }
 
@@ -454,4 +457,120 @@ func (d *DataAvailabilityLayerClient) GetMaxBlobSizeBytes() uint32 {
 // GetBalance returns the balance for a specific address
 func (c *DataAvailabilityLayerClient) GetSignerBalance() (da.Balance, error) {
 	return da.Balance{}, nil
+}
+
+func (c *DataAvailabilityLayerClient) sync() error {
+	sync := func() error {
+		done := make(chan error, 1)
+		go func() {
+			// Continuously check sync status in a separate goroutine
+			done <- func() error {
+				for {
+					select {
+					case <-c.ctx.Done():
+						return fmt.Errorf("context cancelled while checking sync status")
+					default:
+						// Get the latest finalized block height
+						finalizedHash, err := c.client.GetFinalizedHead()
+						if err != nil {
+							return fmt.Errorf("failed to get finalized head: %w", err)
+						}
+
+						finalizedHeader, err := c.client.GetHeader(finalizedHash)
+						if err != nil {
+							return fmt.Errorf("failed to get finalized header: %w", err)
+						}
+						finalizedHeight := uint64(finalizedHeader.Number)
+
+						// Get the current block height
+						currentBlock, err := c.client.GetBlockLatest()
+						if err != nil {
+							return fmt.Errorf("failed to get current block: %w", err)
+						}
+						currentHeight := uint64(currentBlock.Block.Header.Number)
+
+						// Calculate blocks behind
+						var blocksBehind uint64
+						if currentHeight >= finalizedHeight {
+							blocksBehind = currentHeight - finalizedHeight
+						} else {
+							blocksBehind = finalizedHeight - currentHeight
+						}
+
+						defaultSyncThreshold := uint64(3) // TODO : Can change this defaultSyncThreshold
+
+						// Check if within sync threshold
+						if blocksBehind <= defaultSyncThreshold && currentHeight > 0 { // Add check for currentHeight > 0
+							c.logger.Info("Node is synced",
+								"current_height", currentHeight,
+								"finalized_height", finalizedHeight,
+								"blocks_behind", blocksBehind)
+							return nil
+						}
+
+						c.logger.Debug("Node is not yet synced",
+							"current_height", currentHeight,
+							"finalized_height", finalizedHeight,
+							"blocks_behind", blocksBehind)
+
+						return fmt.Errorf("node not synced: current=%d, finalized=%d, behind=%d",
+							currentHeight, finalizedHeight, blocksBehind)
+					}
+				}
+			}()
+		}()
+
+		ticker := time.NewTicker(30 * time.Second)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case err := <-done:
+				return err
+			case <-ticker.C:
+				// Get sync status for logging
+				finalizedHash, err := c.client.GetFinalizedHead()
+				if err != nil {
+					c.logger.Error("Failed to get finalized head", "error", err)
+					continue
+				}
+
+				finalizedHeader, err := c.client.GetHeader(finalizedHash)
+				if err != nil {
+					c.logger.Error("Failed to get finalized header", "error", err)
+					continue
+				}
+
+				currentBlock, err := c.client.GetBlockLatest()
+				if err != nil {
+					c.logger.Error("Failed to get current block", "error", err)
+					continue
+				}
+
+				c.logger.Info("Avail-node syncing",
+					"current_height", currentBlock.Block.Header.Number,
+					"finalized_height", finalizedHeader.Number)
+			}
+		}
+	}
+
+	// Start sync with retry mechanism
+	err := retry.Do(sync,
+		retry.Attempts(0), // try forever
+		retry.Delay(10*time.Second),
+		retry.LastErrorOnly(true),
+		retry.DelayType(retry.FixedDelay),
+		retry.OnRetry(func(n uint, err error) {
+			c.logger.Error("Failed to sync Avail DA", "attempt", n, "error", err)
+		}),
+	)
+
+	c.logger.Info("Avail-node is synced.")
+	c.synced <- struct{}{}
+
+	if err != nil {
+		c.logger.Error("Waiting for Avail data availability client to sync", "err", err)
+	}
+
+	return err
 }

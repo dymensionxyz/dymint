@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"cosmossdk.io/math"
+	"github.com/dymensionxyz/dymint/da/stub"
 	uretry "github.com/dymensionxyz/dymint/utils/retry"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -21,6 +22,7 @@ const maxBlobSize = 2097152 // 2MB (equivalent to avail or celestia)
 
 // DataAvailabilityLayerClient is a generic client that proxies all DA requests via gRPC.
 type DataAvailabilityLayerClient struct {
+	stub.Layer
 	config Config
 
 	conn   *grpc.ClientConn
