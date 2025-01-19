@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	weaveVMtypes "github.com/dymensionxyz/dymint/da/weave_vm/types"
+	weaveVMtypes "github.com/dymensionxyz/dymint/da/weavevm/types"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"

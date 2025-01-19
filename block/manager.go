@@ -66,10 +66,7 @@ type Manager struct {
 
 	// RunMode represents the mode of the node. Set during initialization and shouldn't change after that.
 	RunMode uint
-
-	// context used when freezing node
-	Cancel context.CancelFunc
-	Ctx    context.Context
+	Cancel  context.CancelFunc
 
 	// LastSubmissionTime is the time of last batch submitted in SL
 	LastSubmissionTime atomic.Int64
@@ -182,7 +179,6 @@ func NewManager(
 		settlementValidationC: make(chan struct{}, 1), // use of buffered channel to avoid blocking. In case channel is full, its skipped because there is an ongoing validation process, but validation height is updated, which means the ongoing validation will validate to the new height.
 		syncedFromSettlement:  uchannel.NewNudger(),   // used by the sequencer to wait  till the node completes the syncing from settlement.
 	}
-	m.setFraudHandler(NewFreezeHandler(m))
 	err = m.LoadStateOnInit(store, genesis, logger)
 	if err != nil {
 		return nil, fmt.Errorf("get initial state: %w", err)
@@ -195,7 +191,12 @@ func NewManager(
 
 // Start starts the block manager.
 func (m *Manager) Start(ctx context.Context) error {
-	m.Ctx, m.Cancel = context.WithCancel(ctx)
+	// create new, cancelable context for the block manager
+	ctx, m.Cancel = context.WithCancel(ctx)
+	// set the fraud handler to freeze the node in case of fraud
+	// TODO: should be called for fullnode only?
+	m.setFraudHandler(NewFreezeHandler(m))
+
 	// Check if InitChain flow is needed
 	if m.State.IsGenesis() {
 		m.logger.Info("Running InitChain")
@@ -257,7 +258,9 @@ func (m *Manager) Start(ctx context.Context) error {
 	// send signal to validation loop with last settlement state update
 	m.triggerSettlementValidation()
 
-	eg, ctx := errgroup.WithContext(m.Ctx)
+	// This error group is used to control the lifetime of the block manager.
+	// when one of the loops exits with error, the block manager exits
+	eg, ctx := errgroup.WithContext(ctx)
 
 	// Start the pruning loop in the background
 	uerrors.ErrGroupGoLog(eg, m.logger, func() error {
@@ -285,10 +288,34 @@ func (m *Manager) Start(ctx context.Context) error {
 
 	// run based on the node role
 	if !amIProposer {
-		return m.runAsFullNode(ctx, eg)
+		err = m.runAsFullNode(ctx, eg)
+		if err != nil {
+			return err
+		}
+	} else {
+		err = m.runAsProposer(ctx, eg)
+		if err != nil {
+			return err
+		}
 	}
 
-	return m.runAsProposer(ctx, eg)
+	go func() {
+		err = eg.Wait()
+		// Check if loops exited due to sequencer rotation signal
+		if errors.Is(err, errRotationRequested) {
+			m.rotate(ctx)
+		} else if errors.Is(err, gerrc.ErrFault) {
+			// Here we handle the fault by calling the fraud handler.
+			// it publishes a DataHealthStatus event to the pubsub and stops the block manager.
+			m.logger.Error("block manager exited with fault", "error", err)
+			m.FraudHandler.HandleFault(err)
+		} else if err != nil {
+			m.logger.Error("block manager exited with error", "error", err)
+			m.StopManager(err)
+		}
+	}()
+
+	return nil
 }
 
 func (m *Manager) NextHeightToSubmit() uint64 {
@@ -317,6 +344,12 @@ func (m *Manager) updateFromLastSettlementState() error {
 		return err
 	}
 
+	// update latest finalized height
+	err = m.updateLastFinalizedHeightFromSettlement()
+	if err != nil {
+		return fmt.Errorf("sync block manager from settlement: %w", err)
+	}
+
 	m.P2PClient.UpdateLatestSeenHeight(latestBatch.EndHeight)
 	if latestBatch.EndHeight >= m.State.NextHeight() {
 		m.UpdateTargetHeight(latestBatch.EndHeight)
@@ -328,8 +361,8 @@ func (m *Manager) updateFromLastSettlementState() error {
 	return nil
 }
 
+// updateLastFinalizedHeightFromSettlement updates the last finalized height from the Hub
 func (m *Manager) updateLastFinalizedHeightFromSettlement() error {
-	// update latest finalized height from SL
 	height, err := m.SLClient.GetLatestFinalizedHeight()
 	if errors.Is(err, gerrc.ErrNotFound) {
 		m.logger.Info("No finalized batches for chain found in SL.")
@@ -381,12 +414,17 @@ func (m *Manager) setFraudHandler(handler *FreezeHandler) {
 	m.FraudHandler = handler
 }
 
-// freezeNode sets the node as unhealthy and prevents the node continues producing and processing blocks
-func (m *Manager) freezeNode(err error) {
+// StopManager sets the node as unhealthy and stops the block manager context
+func (m *Manager) StopManager(err error) {
 	m.logger.Info("Freezing node", "err", err)
-	if m.Ctx.Err() != nil {
-		return
-	}
-	uevent.MustPublish(m.Ctx, m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
+	m.setUnhealthy(err)
 	m.Cancel()
+}
+
+func (m *Manager) setUnhealthy(err error) {
+	uevent.MustPublish(context.Background(), m.Pubsub, &events.DataHealthStatus{Error: err}, events.HealthStatusList)
+}
+
+func (m *Manager) setHealthy() {
+	uevent.MustPublish(context.Background(), m.Pubsub, &events.DataHealthStatus{Error: nil}, events.HealthStatusList)
 }

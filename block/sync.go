@@ -74,6 +74,7 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 
 				settlementBatch, err := m.SLClient.GetBatchAtHeight(m.State.NextHeight())
 				if err != nil {
+					// TODO: should be recoverable. set to unhealthy and continue
 					return fmt.Errorf("retrieve SL batch err: %w", err)
 				}
 				m.logger.Info("Retrieved state update from SL.", "state_index", settlementBatch.StateIndex)
@@ -82,9 +83,9 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 				m.LastSubmissionTime.Store(settlementBatch.Batch.CreationTime.UTC().UnixNano())
 
 				err = m.ApplyBatchFromSL(settlementBatch.Batch)
-
 				// this will keep sync loop alive when DA is down or retrievals are failing because DA issues.
 				if errors.Is(err, da.ErrRetrieval) {
+					// TODO: set to unhealthy?
 					continue
 				}
 				if err != nil {
@@ -96,11 +97,12 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 				// trigger state update validation, after each state update is applied
 				m.triggerSettlementValidation()
 
-				err = m.attemptApplyCachedBlocks()
-				if err != nil {
-					return fmt.Errorf("Attempt apply cached blocks. err:%w", err)
-				}
+			}
 
+			// after syncing from SL, attempt to apply cached blocks if any
+			err := m.attemptApplyCachedBlocks()
+			if err != nil {
+				return fmt.Errorf("Attempt apply cached blocks. err:%w", err)
 			}
 
 			// avoid notifying as synced in case it fails before
@@ -109,7 +111,6 @@ func (m *Manager) SettlementSyncLoop(ctx context.Context) error {
 				// nudge to signal to any listens that we're currently synced with the last settlement height we've seen so far
 				m.syncedFromSettlement.Nudge()
 			}
-
 		}
 	}
 }

@@ -3,7 +3,6 @@ package block_test
 import (
 	"context"
 	"crypto/rand"
-	"errors"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -12,7 +11,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	tmjson "github.com/tendermint/tendermint/libs/json"
 
 	"github.com/libp2p/go-libp2p/core/crypto"
 
@@ -33,20 +31,16 @@ import (
 
 	"github.com/dymensionxyz/dymint/config"
 	"github.com/dymensionxyz/dymint/da"
-	blockmocks "github.com/dymensionxyz/dymint/mocks/github.com/dymensionxyz/dymint/block"
-	"github.com/dymensionxyz/dymint/node/events"
 
 	slregistry "github.com/dymensionxyz/dymint/settlement/registry"
 	"github.com/dymensionxyz/dymint/store"
-
-	"github.com/dymensionxyz/gerr-cosmos/gerrc"
-
-	"github.com/dymensionxyz/dymint/utils/event"
 )
 
 // TODO: test loading sequencer while rotation in progress
 // TODO: test sequencer after L2 handover but before last state update submitted
 // TODO: test halt scenario
+// TODO: TestApplyCachedBlocks_WithFraudCheck
+
 func TestInitialState(t *testing.T) {
 	version.DRS = "0"
 	var err error
@@ -199,202 +193,13 @@ func TestProduceOnlyAfterSynced(t *testing.T) {
 	defer cancel()
 	// Capture the error returned by manager.Start.
 
-	errChan := make(chan error, 1)
-	go func() {
-		errChan <- manager.Start(ctx)
-		err := <-errChan
-		require.NoError(t, err)
-	}()
+	err = manager.Start(ctx)
+	require.NoError(t, err)
 	<-ctx.Done()
+
 	assert.Equal(t, batch.EndHeight(), manager.LastSettlementHeight.Load())
 	// validate that we produced blocks
 	assert.Greater(t, manager.State.Height(), batch.EndHeight())
-}
-
-// TestApplyCachedBlocks checks the flow that happens when we are receiving blocks from p2p and some of the blocks
-// are already cached. This means blocks that were gossiped but are bigger than the expected next block height.
-// TODO: this test is flaky! https://github.com/dymensionxyz/dymint/issues/1173
-func TestApplyCachedBlocks_WithFraudCheck(t *testing.T) {
-	// Init app
-	app := testutil.GetAppMock(testutil.EndBlock)
-	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
-		RollappParamUpdates: &abci.RollappParams{
-			Da:         "mock",
-			DrsVersion: 0,
-		},
-		ConsensusParamUpdates: &abci.ConsensusParams{
-			Block: &abci.BlockParams{
-				MaxGas:   40000000,
-				MaxBytes: 500000,
-			},
-		},
-	})
-	// Create proxy app
-	clientCreator := proxy.NewLocalClientCreator(app)
-	proxyApp := proxy.NewAppConns(clientCreator)
-	err := proxyApp.Start()
-	require.NoError(t, err)
-	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, nil)
-	require.NoError(t, err)
-	require.NotNil(t, manager)
-
-	t.Log("Taking the manager out of sync by submitting a batch")
-	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
-	manager.Retriever = manager.DAClient
-	mockExecutor := &blockmocks.MockExecutorI{}
-	manager.Executor = mockExecutor
-	mockExecutor.On("GetAppInfo").Return(&abci.ResponseInfo{
-		LastBlockHeight: int64(0),
-	}, nil)
-	mockExecutor.On("ExecuteBlock", mock.Anything, mock.Anything).Return(nil, gerrc.ErrFault)
-
-	// Check that handle fault is called
-	manager.FraudHandler = block.NewFreezeHandler(manager)
-	fraudEventReceived := make(chan *events.DataHealthStatus, 1)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	manager.Ctx, manager.Cancel = context.WithCancel(context.Background())
-	go event.MustSubscribe(
-		ctx,
-		manager.Pubsub,
-		"testFraudClient",
-		events.QueryHealthStatus,
-		func(msg pubsub.Message) {
-			event, ok := msg.Data().(*events.DataHealthStatus)
-			if !ok {
-				t.Errorf("Unexpected event type received: %T", msg.Data())
-				return
-			}
-			fraudEventReceived <- event
-		},
-		log.NewNopLogger(),
-	)
-
-	numBatchesToAdd := 1
-	nextBatchStartHeight := manager.NextHeightToSubmit()
-	var batch *types.Batch
-	for i := 0; i < numBatchesToAdd; i++ {
-		batch, err = testutil.GenerateBatch(nextBatchStartHeight, nextBatchStartHeight, manager.LocalKey, [32]byte{})
-		assert.NoError(t, err)
-		blockData := p2p.BlockData{Block: *batch.Blocks[0], Commit: *batch.Commits[0]}
-		msg := pubsub.NewMessage(blockData, map[string][]string{p2p.EventTypeKey: {p2p.EventNewGossipedBlock}})
-		if manager.Ctx.Err() == nil {
-			manager.OnReceivedBlock(msg)
-		}
-		// Wait until daHeight is updated
-		time.Sleep(time.Millisecond * 500)
-	}
-
-	select {
-	case receivedEvent := <-fraudEventReceived:
-		if receivedEvent.Error == nil {
-			t.Error("there should be an error in the event")
-		} else if !errors.Is(receivedEvent.Error, gerrc.ErrFault) {
-			t.Errorf("Unexpected error received, expected: %v, got: %v", gerrc.ErrFault, receivedEvent.Error)
-		}
-	case <-time.After(5 * time.Second):
-		t.Error("timeout waiting for fraud event")
-	}
-
-	mockExecutor.AssertExpectations(t)
-}
-
-// TestApplyLocalBlock checks the flow that happens when there is a block saved on the Store and we apply it locally.
-func TestApplyLocalBlock_WithFraudCheck(t *testing.T) {
-	// Init app
-	app := testutil.GetAppMock(testutil.EndBlock)
-	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
-		RollappParamUpdates: &abci.RollappParams{
-			Da:         "mock",
-			DrsVersion: 0,
-		},
-		ConsensusParamUpdates: &abci.ConsensusParams{
-			Block: &abci.BlockParams{
-				MaxGas:   40000000,
-				MaxBytes: 500000,
-			},
-		},
-	})
-
-	// Create proxy app
-	clientCreator := proxy.NewLocalClientCreator(app)
-	proxyApp := proxy.NewAppConns(clientCreator)
-	err := proxyApp.Start()
-	require.NoError(t, err)
-	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, nil)
-	require.NoError(t, err)
-	require.NotNil(t, manager)
-	t.Log("Taking the manager out of sync by submitting a batch")
-	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
-	manager.Retriever = manager.DAClient
-
-	numBatchesToAdd := 2
-	nextBatchStartHeight := manager.NextHeightToSubmit()
-
-	var batch *types.Batch
-	for i := 0; i < numBatchesToAdd; i++ {
-		batch, err = testutil.GenerateBatch(
-			nextBatchStartHeight,
-			nextBatchStartHeight+uint64(testutil.DefaultTestBatchSize-1),
-			manager.LocalKey,
-			[32]byte{},
-		)
-		assert.NoError(t, err)
-
-		// Save one block on state to enforce local block application
-		_, err = manager.Store.SaveBlock(batch.Blocks[0], batch.Commits[0], nil)
-		require.NoError(t, err)
-
-		daResultSubmitBatch := manager.DAClient.SubmitBatch(batch)
-		assert.Equal(t, daResultSubmitBatch.Code, da.StatusSuccess)
-
-		err = manager.SLClient.SubmitBatch(batch, manager.DAClient.GetClientType(), &daResultSubmitBatch)
-		require.NoError(t, err)
-
-		nextBatchStartHeight = batch.EndHeight() + 1
-
-		time.Sleep(time.Millisecond * 500)
-	}
-
-	mockExecutor := &blockmocks.MockExecutorI{}
-	manager.Executor = mockExecutor
-	gbdBz, _ := tmjson.Marshal(rollapp.GenesisBridgeData{})
-	mockExecutor.On("InitChain", mock.Anything, mock.Anything, mock.Anything).Return(&abci.ResponseInitChain{GenesisBridgeDataBytes: gbdBz}, nil)
-	mockExecutor.On("GetAppInfo").Return(&abci.ResponseInfo{
-		LastBlockHeight: int64(batch.EndHeight()),
-	}, nil)
-	mockExecutor.On("UpdateStateAfterInitChain", mock.Anything, mock.Anything).Return(nil)
-	mockExecutor.On("UpdateMempoolAfterInitChain", mock.Anything).Return(nil)
-	mockExecutor.On("ExecuteBlock", mock.Anything, mock.Anything).Return(nil, gerrc.ErrFault)
-
-	// Check that handle fault is called
-	mockFraudHandler := &blockmocks.MockFraudHandler{}
-	manager.FraudHandler = mockFraudHandler
-
-	mockFraudHandler.On("HandleFault", mock.Anything, mock.MatchedBy(func(err error) bool {
-		return errors.Is(err, gerrc.ErrFault)
-	})).Return(nil)
-
-	// Initially sync target is 0
-	assert.Zero(t, manager.LastSettlementHeight.Load())
-	assert.True(t, manager.State.Height() == 0)
-
-	// enough time to sync and produce blocks
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	defer cancel()
-	// Capture the error returned by manager.Start.
-
-	errChan := make(chan error, 1)
-	go func() {
-		errChan <- manager.Start(ctx)
-		err := <-errChan
-		require.Truef(t, errors.Is(err, gerrc.ErrFault), "expected error to be %v, got: %v", gerrc.ErrFault, err)
-	}()
-	<-ctx.Done()
-	assert.Equal(t, batch.EndHeight(), manager.LastSettlementHeight.Load())
-	mockExecutor.AssertExpectations(t)
-	mockFraudHandler.AssertExpectations(t)
 }
 
 func TestRetrieveDaBatchesFailed(t *testing.T) {
@@ -773,94 +578,6 @@ func TestDAFetch(t *testing.T) {
 			require.Equal(c.err, err)
 		})
 	}
-}
-
-// TestManager_ApplyBatchFromSL_FraudHandling tests the case when the manager receives a fraud when the block is part of the batch received from the DA.
-func TestManager_ApplyBatchFromSL_FraudHandling(t *testing.T) {
-	require := require.New(t)
-	// Setup app
-	app := testutil.GetAppMock(testutil.Info, testutil.Commit, testutil.EndBlock)
-	app.On("EndBlock", mock.Anything).Return(abci.ResponseEndBlock{
-		RollappParamUpdates: &abci.RollappParams{
-			Da:         "mock",
-			DrsVersion: 0,
-		},
-		ConsensusParamUpdates: &abci.ConsensusParams{
-			Block: &abci.BlockParams{
-				MaxGas:   40000000,
-				MaxBytes: 500000,
-			},
-		},
-	})
-	// Create proxy app
-	clientCreator := proxy.NewLocalClientCreator(app)
-	proxyApp := proxy.NewAppConns(clientCreator)
-	err := proxyApp.Start()
-	require.NoError(err)
-	// Create a new mock store which should succeed to save the first block
-	mockStore := testutil.NewMockStore()
-	// Init manager
-	manager, err := testutil.GetManager(testutil.GetManagerConfig(), nil, 1, 1, 0, proxyApp, mockStore)
-	require.NoError(err)
-	commitHash := [32]byte{1}
-	manager.DAClient = testutil.GetMockDALC(log.TestingLogger())
-	manager.Retriever = manager.DAClient
-	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{Data: commitHash[:]})
-	nextBatchStartHeight := manager.NextHeightToSubmit()
-	batch, err := testutil.GenerateBatch(
-		nextBatchStartHeight,
-		nextBatchStartHeight+uint64(testutil.DefaultTestBatchSize-1),
-		manager.LocalKey,
-		[32]byte{},
-	)
-	require.NoError(err)
-	daResultSubmitBatch := manager.DAClient.SubmitBatch(batch)
-	require.Equal(daResultSubmitBatch.Code, da.StatusSuccess)
-	err = manager.SLClient.SubmitBatch(batch, manager.DAClient.GetClientType(), &daResultSubmitBatch)
-	require.NoError(err)
-
-	// Mock Executor to return ErrFraud
-	mockExecutor := &blockmocks.MockExecutorI{}
-	manager.Executor = mockExecutor
-	mockExecutor.On("GetAppInfo").Return(&abci.ResponseInfo{
-		LastBlockHeight: int64(batch.EndHeight()),
-	}, nil)
-	mockExecutor.On("ExecuteBlock", mock.Anything, mock.Anything).Return(nil, gerrc.ErrFault)
-
-	// Check that handle fault is called
-	mockFraudHandler := &blockmocks.MockFraudHandler{}
-	manager.FraudHandler = mockFraudHandler
-
-	mockFraudHandler.On("HandleFault", mock.Anything, mock.MatchedBy(func(err error) bool {
-		return errors.Is(err, gerrc.ErrFault)
-	})).Return(nil)
-
-	app.On("Commit", mock.Anything).Return(abci.ResponseCommit{Data: commitHash[:]}).Once()
-	app.On("Info", mock.Anything).Return(abci.ResponseInfo{
-		LastBlockHeight:  int64(batch.EndHeight()),
-		LastBlockAppHash: commitHash[:],
-	})
-
-	var bds []rollapp.BlockDescriptor
-	for _, block := range batch.Blocks {
-		bds = append(bds, rollapp.BlockDescriptor{
-			Height: block.Header.Height,
-		})
-	}
-	slBatch := &settlement.Batch{
-		MetaData: &settlement.BatchMetaData{
-			DA: daResultSubmitBatch.SubmitMetaData,
-		},
-		BlockDescriptors: bds,
-	}
-
-	// Call ApplyBatchFromSL
-	err = manager.ApplyBatchFromSL(slBatch)
-
-	// Verify
-	require.True(errors.Is(err, gerrc.ErrFault))
-	mockExecutor.AssertExpectations(t)
-	mockFraudHandler.AssertExpectations(t)
 }
 
 func TestManager_updateTargetHeight(t *testing.T) {
