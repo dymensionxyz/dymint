@@ -257,10 +257,15 @@ func (m *Manager) Start(ctx context.Context) error {
 		return fmt.Errorf("sync block manager from settlement: %w", err)
 	}
 
-	// send signal to syncing loop with last settlement state update
-	m.triggerSettlementSyncing()
-	// send signal to validation loop with last settlement state update
-	m.triggerSettlementValidation()
+	// we only trigger validation if no syncing is required (otherwise it may cause race condition).
+	// syncing loop will trigger validation after each batch synced.
+	if m.LastSettlementHeight.Load() > m.State.Height() {
+		// send signal to syncing loop with last settlement state update
+		m.triggerSettlementSyncing()
+	} else {
+		// send signal to validation loop with last settlement state update
+		m.triggerSettlementValidation()
+	}
 
 	// This error group is used to control the lifetime of the block manager.
 	// when one of the loops exits with error, the block manager exits
