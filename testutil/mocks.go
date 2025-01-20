@@ -239,9 +239,11 @@ func NewMockDA(t *testing.T) (*MockDA, error) {
 	// build a proof for an NID that is within the namespace range of the tree
 	proof, err := tree.ProveNamespace(mockDA.NID)
 	require.NoError(t, err)
-	proofs, err := proof.MarshalJSON()
+	var proofs []*nmt.Proof
+	proofs = append(proofs, &proof)
+	jsonProofs, err := json.Marshal(proofs)
 	require.NoError(t, err)
-	mockDA.BlobProofs = []daclient.Proof{proofs}
+	mockDA.BlobProofs = []daclient.Proof{jsonProofs}
 
 	err = mockDA.DaClient.Init(conf, nil, store.NewDefaultInMemoryKVStore(), log.TestingLogger(), options...)
 	if err != nil {

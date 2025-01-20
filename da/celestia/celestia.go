@@ -382,7 +382,6 @@ func (c *DataAvailabilityLayerClient) checkBatchAvailability(daMetaData *da.DASu
 	included := false
 	ids := []goDA.ID{makeID(daMetaData.Height, daMetaData.Commitment)}
 	daProofs, err := c.client.GetProofs(ctx, ids, c.config.NamespaceID.Bytes())
-	//proof, err := c.getProof(daMetaData)
 	if err != nil || daProofs[0] == nil {
 		// TODO (srene): Not getting proof means there is no existing data for the namespace and the commitment (the commitment is wrong).
 		// Therefore we need to prove whether the commitment is wrong or the span does not exists.
