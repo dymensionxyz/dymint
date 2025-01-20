@@ -256,6 +256,8 @@ func (m *Manager) Start(ctx context.Context) error {
 		return fmt.Errorf("sync block manager from settlement: %w", err)
 	}
 
+	// we only trigger validation if no syncing is required (otherwise it may cause race condition).
+	// syncing loop will trigger validation after each batch synced.
 	if m.LastSettlementHeight.Load() > m.State.Height() {
 		// send signal to syncing loop with last settlement state update
 		m.triggerSettlementSyncing()
