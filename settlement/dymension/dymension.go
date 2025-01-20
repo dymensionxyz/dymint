@@ -347,8 +347,8 @@ func (c *Client) GetProposerAtHeight(height int64) (*types.Sequencer, error) {
 		}
 	}
 
-	if proposerAddr == SENTINEL_PROPOSER {
-		return nil, fmt.Errorf("proposer is sentinel")
+	if proposerAddr == "" || proposerAddr == SENTINEL_PROPOSER {
+		return nil, settlement.ErrProposerIsSentinel
 	}
 
 	// Find and return the matching sequencer
@@ -544,7 +544,7 @@ func (c *Client) GetNextProposer() (*types.Sequencer, error) {
 	if !found {
 		return nil, nil
 	}
-	if nextAddr == SENTINEL_PROPOSER {
+	if nextAddr == "" || nextAddr == SENTINEL_PROPOSER {
 		return &types.Sequencer{}, nil
 	}
 
